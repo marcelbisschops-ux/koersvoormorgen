@@ -218,21 +218,6 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--b
 .btn-restart{background:var(--teal);color:var(--void);font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;padding:10px 20px;border-radius:var(--r);border:none;cursor:pointer;transition:all .12s}
 .btn-restart:hover{background:var(--teal-dim)}
 
-/* MODAL */
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;display:flex;align-items:center;justify-content:center;padding:1.5rem}
-.modal{background:var(--panel);border:1px solid var(--border2);border-radius:var(--r2);padding:2rem;max-width:440px;width:100%}
-.modal-title{font-family:'Playfair Display',serif;font-size:1.2rem;color:var(--white);font-weight:600;margin-bottom:.5rem}
-.modal-sub{font-size:13px;color:var(--mid);line-height:1.65;margin-bottom:1.25rem}
-.modal-field{display:flex;flex-direction:column;gap:6px;margin-bottom:.75rem}
-.modal-field label{font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
-.modal-field input{background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:'IBM Plex Mono',monospace;font-size:12px;padding:10px 12px;outline:none;transition:border-color .12s;width:100%}
-.modal-field input:focus{border-color:var(--teal)}
-.modal-note{font-size:11px;color:var(--muted);line-height:1.6;margin-bottom:1.5rem}
-.modal-note a{color:var(--teal);text-decoration:none}
-.modal-btns{display:flex;gap:10px;justify-content:flex-end}
-.btn-cancel{background:transparent;border:1px solid var(--border2);color:var(--mid);font-family:'IBM Plex Sans',sans-serif;font-size:13px;padding:9px 16px;border-radius:var(--r);cursor:pointer}
-.btn-confirm{background:var(--teal);color:var(--void);font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;padding:9px 18px;border-radius:var(--r);border:none;cursor:pointer}
-
 @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 .anim{animation:fadeUp .35s ease forwards}
 .a1{animation-delay:.06s;opacity:0}.a2{animation-delay:.12s;opacity:0}.a3{animation-delay:.18s;opacity:0}.a4{animation-delay:.24s;opacity:0}
@@ -240,7 +225,6 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--b
 </head>
 <body>
 <div id="app"></div>
-<div id="modal-root"></div>
 <script>
 /* ═══ DATA ═══ */
 const SECTIONS=[
@@ -358,7 +342,6 @@ const SCENARIOS={
 let ST={
   screen:'intro',section:0,answers:{},scores:null,scenarios:null,
   openScenario:null,aiText:null,aiLoading:false,
-  apiKey:localStorage.getItem('ki_key')||'',showModal:false,
   profile:{naam:'',regio:'',fte:'',omzet:'',specialisme:'',doelgroep:'',software:'',ambitie:'',context:''}
 };
 
@@ -448,7 +431,7 @@ Schrijf een professioneel, gepersonaliseerd strategisch memo. Gebruik ## voor ho
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
         model:'claude-sonnet-4-20250514',
-        max_tokens:1000,
+        max_tokens:1200,
         stream:true,
         messages:[{role:'user',content:prompt}]
       })
@@ -472,7 +455,7 @@ Schrijf een professioneel, gepersonaliseerd strategisch memo. Gebruik ## voor ho
     updateAI(true);
   }catch(err){
     ST.aiLoading=false;
-    ST.aiText=`**Fout:** ${err.message}\n\nControleer uw API-sleutel (invoeren via de knop) en probeer opnieuw.`;
+    ST.aiText=`**Tijdelijk niet beschikbaar.** Het AI-advies kon niet worden gegenereerd. Probeer het over enkele seconden opnieuw.`;
     updateAI(true);
   }
 }
@@ -502,7 +485,6 @@ function render(){
   else if(ST.screen==='intake')app.innerHTML=rIntake();
   else if(ST.screen==='questions')app.innerHTML=rQuestions();
   else if(ST.screen==='results')app.innerHTML=rResults();
-  if(ST.showModal)renderModal();
   bindEvents();
 }
 
@@ -699,9 +681,8 @@ function rResults(){
         <div><div class="ai-panel-name">Gepersonaliseerd strategisch advies</div><div class="ai-panel-sub">Op basis van scanresultaten + kantoorprofiel — gegenereerd door Claude</div></div>
       </div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        <button class="btn-ghost" id="set-key-btn" style="font-size:11px;padding:7px 12px">🔑 API-sleutel</button>
         <button class="btn-gen" id="gen-btn" ${ST.aiLoading?'disabled':''}>
-          ${ST.aiLoading?'<div class="ai-spinner" style="width:13px;height:13px;border-width:2px"></div> Genereren…':ST.aiText?'↺ Opnieuw':'◈ Genereer AI-advies'}
+          ${ST.aiLoading?'<div class="ai-spinner" style="width:13px;height:13px;border-width:2px"></div> Genereren…':ST.aiText?'↺ Opnieuw genereren':'◈ Genereer AI-advies'}
         </button>
       </div>
     </div>
@@ -722,22 +703,6 @@ function rResults(){
     </div>
   </div>
 </div>`}
-
-function renderModal(){
-  document.getElementById('modal-root').innerHTML=`
-  <div class="modal-overlay" id="m-overlay">
-    <div class="modal">
-      <div class="modal-title">Anthropic API-sleutel</div>
-      <div class="modal-sub">Voer uw Anthropic API-sleutel in om het AI-memo te genereren. De sleutel wordt alleen in uw browser opgeslagen.</div>
-      <div class="modal-field"><label>API-sleutel</label><input type="password" id="key-inp" placeholder="sk-ant-…" value="${ST.apiKey}"></div>
-      <div class="modal-note">Haal uw sleutel op via <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a>. De sleutel verlaat uw browser niet.</div>
-      <div class="modal-btns">
-        <button class="btn-cancel" id="m-cancel">Annuleren</button>
-        <button class="btn-confirm" id="m-confirm">Opslaan & genereren</button>
-      </div>
-    </div>
-  </div>`;
-}
 
 /* ═══ EVENTS ═══ */
 function bindEvents(){
@@ -760,18 +725,7 @@ function bindEvents(){
   document.querySelectorAll('.l-btn').forEach(b=>{b.onclick=()=>{ST.answers[b.dataset.q]=parseInt(b.dataset.v);render()}});
   document.querySelectorAll('.sc-hdr').forEach(h=>{h.onclick=()=>{const k=h.dataset.k;ST.openScenario=ST.openScenario===k?null:k;render()}});
 
-  on('gen-btn','click',()=>{
-    if(!ST.apiKey){ST.showModal=true;render();}
-    else generateAI();
-  });
-  on('set-key-btn','click',()=>{ST.showModal=true;render()});
-  on('m-cancel','click',()=>{ST.showModal=false;render()});
-  on('m-confirm','click',()=>{
-    const k=$('key-inp')?.value||'';
-    ST.apiKey=k;localStorage.setItem('ki_key',k);ST.showModal=false;render();
-    generateAI();
-  });
-  on('m-overlay','click',(e)=>{if(e.target===$('m-overlay')){ST.showModal=false;render()}});
+  on('gen-btn','click',()=>generateAI());
   on('restart-btn','click',()=>{
     ST={...ST,screen:'intro',section:0,answers:{},scores:null,scenarios:null,openScenario:null,aiText:null,aiLoading:false,profile:{naam:'',regio:'',fte:'',omzet:'',specialisme:'',doelgroep:'',software:'',ambitie:'',context:''}};
     render();window.scrollTo(0,0);
