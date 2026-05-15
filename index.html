@@ -463,7 +463,7 @@ function renderAIText(text,cursor=false){
   if(!text)return`<div class="ai-placeholder"><div class="ai-placeholder-icon">&#9672;</div><p class="ai-placeholder-text">Klik op "Genereer AI-advies" voor een gepersonaliseerd strategisch memo op basis van de scanresultaten en het kantoorprofiel.</p></div>`;
   if(text==='__ERROR__')return`<div class="ai-placeholder"><div class="ai-placeholder-icon" style="opacity:.5">&#9888;</div><p class="ai-placeholder-text" style="margin-bottom:1rem">Kon niet verbinden. Controleer de WORKER URL in de configuratie.</p><button class="btn-gen" onclick="generateAI()" style="margin:0 auto">Opnieuw proberen</button></div>`;
   let html=text.replace(/## (.+)/g,'<h3>$1</h3>').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/^- (.+)/gm,'<li>$1</li>').replace(/(<li>[^]*?<\/li>\n?)+/g,m=>`<ul>${m}</ul>`);
-  html=html.split('\n\n').map(p=>p.trim()&&!p.startsWith('<')?`<p>${p}</p>`:p).join('');
+  html=html.split('\n\n').map(para=>para.trim()&&!para.startsWith('<')?`<p>${para}</p>`:para).join('');
   if(cursor)html+=`<span class="ai-cursor"></span>`;
   return`<div class="ai-output">${html}</div>`;
 }
