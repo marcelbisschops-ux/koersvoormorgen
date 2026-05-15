@@ -242,7 +242,29 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--b
 .error-screen{text-align:center;padding:4rem 2rem}
 .error-screen h3{font-family:'Playfair Display',serif;font-size:1.4rem;color:var(--head);margin-bottom:.75rem}
 .error-screen p{font-size:14px;color:var(--mid);margin-bottom:1.5rem}
-@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@media print{
+  @page{margin:1cm;size:A4}
+  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+  body{background:#fff!important;color:#000!important;font-size:12px}
+  #app{min-height:auto}
+  .anim,.a1,.a2,.a3,.a4{opacity:1!important;animation:none!important}
+  .ai-panel,.score-hero,.dim-card,.sc-card,.matrix-sec,.r-footer,.group-panel{break-inside:avoid}
+  .sc-body{display:block!important}
+  .btn-gen,.btn-print,.btn-restart,.btn-ghost,.footer-btns{display:none!important}
+  .r-footer{border-top:1px solid #ddd;padding-top:1rem}
+  header,footer{display:none!important}
+}
+.ai-generating{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:3rem 2rem;text-align:center;gap:1.5rem}
+.ai-gen-spinner{width:48px;height:48px;border-radius:50%;border:3px solid var(--border2);border-top-color:var(--teal);animation:spin .8s linear infinite}
+.ai-gen-title{font-family:'Playfair Display',serif;font-size:1.1rem;color:var(--head);font-weight:600}
+.ai-gen-steps{display:flex;flex-direction:column;gap:6px;text-align:left;min-width:220px}
+.ai-gen-step{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);transition:color .3s}
+.ai-gen-step.active{color:var(--teal);font-weight:500}
+.ai-gen-step.done{color:var(--mid)}
+.ai-gen-dot{width:6px;height:6px;border-radius:50%;background:var(--border2);flex-shrink:0;transition:background .3s}
+.ai-gen-step.active .ai-gen-dot{background:var(--teal);box-shadow:0 0 8px rgba(26,122,94,.4)}
+.ai-gen-step.done .ai-gen-dot{background:var(--mid)}
+@keyframes fadeUp@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 .anim{animation:fadeUp .35s ease forwards}
 .a1{animation-delay:.06s;opacity:0}.a2{animation-delay:.12s;opacity:0}.a3{animation-delay:.18s;opacity:0}.a4{animation-delay:.24s;opacity:0}
 </style>
@@ -378,12 +400,63 @@ async function generateAI(){
     }
   }
 
+  // Collect in background, show steps
+  function setStep(n){
+    const steps=document.querySelectorAll('.ai-gen-step');
+    steps.forEach((s,i)=>{
+      s.classList.remove('active','done');
+      if(i<n)s.classList.add('done');
+      if(i===n)s.classList.add('active');
+    });
+  }
+
   try{
     ST.aiLoading=false;
-    await streamCall(mainPrompt);
-    ST.aiText+='\n\n---\n\n';updateAI();
-    await streamCall(appendixPrompt);
+    // Show loading UI
+    const el=document.getElementById('ai-out');
+    if(el)el.innerHTML='<div class="ai-generating"><div class="ai-gen-spinner"></div><div class="ai-gen-title">Strategisch rapport wordt opgesteld...</div><div class="ai-gen-steps"><div class="ai-gen-step active"><div class="ai-gen-dot"></div>Kantoorprofiel analyseren</div><div class="ai-gen-step"><div class="ai-gen-dot"></div>Strategisch advies schrijven</div><div class="ai-gen-step"><div class="ai-gen-dot"></div>Scenario's uitwerken</div><div class="ai-gen-step"><div class="ai-gen-dot"></div>Bijlage samenstellen</div></div></div>';
+
+    // Collect main prompt silently
+    let collected='';
+    const resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:mainPrompt}]})});
+    if(!resp.ok)throw new Error('HTTP '+resp.status);
+    const reader=resp.body.getReader();
+    setTimeout(()=>setStep(1),2000);
+    setTimeout(()=>setStep(2),8000);
+    while(true){
+      const{done,value}=await reader.read();if(done)break;
+      const chunk=dec.decode(value,{stream:true});
+      for(const line of chunk.split('\n')){
+        if(line.startsWith('data:')){
+          const d=line.slice(5).trim();if(d==='[DONE]')continue;
+          try{const j=JSON.parse(d);if(j.type==='content_block_delta'&&j.delta&&j.delta.text)collected+=j.delta.text;}catch(e){}
+        }
+      }
+    }
+
+    setStep(3);
+    collected+='\n\n---\n\n';
+
+    // Collect appendix silently
+    const resp2=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:appendixPrompt}]})});
+    if(resp2.ok){
+      const reader2=resp2.body.getReader();
+      while(true){
+        const{done,value}=await reader2.read();if(done)break;
+        const chunk=dec.decode(value,{stream:true});
+        for(const line of chunk.split('\n')){
+          if(line.startsWith('data:')){
+            const d=line.slice(5).trim();if(d==='[DONE]')continue;
+            try{const j=JSON.parse(d);if(j.type==='content_block_delta'&&j.delta&&j.delta.text)collected+=j.delta.text;}catch(e){}
+          }
+        }
+      }
+    }
+
+    // Present all at once
+    ST.aiText=collected;
     updateAI(true);
+
   }catch(err){
     ST.aiLoading=false;ST.aiText='__ERROR__';updateAI(true);
   }
@@ -520,7 +593,7 @@ Deze analyse is gebaseerd op zelfrapportage en indicatieve benchmarkdata. Scores
 <button onclick="window.location.href='mailto:marcel@bisschopsfinancing.nl'" style="display:inline-flex;align-items:center;gap:8px;background:var(--teal);color:var(--void);font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;padding:10px 20px;border-radius:var(--r);border:none;cursor:pointer">✉ marcel@bisschopsfinancing.nl</button>
 </div>
 </div>
-<p class="footer-note">&copy; ${new Date().getFullYear()} Bisschops Financing BV — KantoorInzicht. Aanbevelingen zijn indicatief en vormen geen formeel advies.</p><div class="footer-btns"><button class="btn-print" onclick="window.print()">PDF</button>${ST.groupId?`<button class="btn-ghost" id="view-group-btn">Dashboard</button>`:''}<button class="btn-restart" id="restart-btn">Nieuwe scan</button></div></div></div>`;
+<p class="footer-note">&copy; ${new Date().getFullYear()} Bisschops Financing BV — KantoorInzicht. Aanbevelingen zijn indicatief en vormen geen formeel advies.</p><div class="footer-btns"><button class="btn-print" onclick="setTimeout(function(){window.print()},300)">PDF</button>${ST.groupId?`<button class="btn-ghost" id="view-group-btn">Dashboard</button>`:''}<button class="btn-restart" id="restart-btn">Nieuwe scan</button></div></div></div>`;
 }
 
 function rDashboard(){
@@ -538,7 +611,7 @@ function rDashboard(){
   const cumPts=SECTIONS.map((_,i)=>pt(i,cum[SECTIONS[i].id]||0)).map(p=>p.join(',')).join(' ');
   const axisLines=SECTIONS.map((_,i)=>{const[x,y]=pt(i,100);return`<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="var(--border2)" stroke-width="1"/>`;}).join('');
   const axisLabels=SECTIONS.map((sec,i)=>{const[x,y]=pt(i,118);const anchor=x<cx-5?'end':x>cx+5?'start':'middle';return`<text x="${x}" y="${y}" text-anchor="${anchor}" font-size="9" fill="var(--muted)" font-family="IBM Plex Sans">${sec.label}</text>`;}).join('');
-  return`<div class="page-wrap"><div class="page-hdr"><div class="page-brand"><div class="wdot"></div>KantoorInzicht</div><div class="page-step">Groepsdashboard · ${d.group?.name||ST.groupId}</div></div><div class="dash-head anim"><div class="dash-title"><em>${d.group?.name||'Groep'}</em></div><div class="dash-sub">Groepscode: <span class="mono" style="color:var(--teal)">${d.group?.id||ST.groupId}</span> · ${offices.length} deelnemende kantoren</div></div><div class="dash-stats anim a1"><div class="stat-card"><div class="stat-num" style="color:var(--teal)">${offices.length}</div><div class="stat-lbl">Kantoren</div></div><div class="stat-card"><div class="stat-num" style="color:${avg>=70?'var(--teal)':avg>=50?'var(--gold)':'var(--red)'}">${avg||'—'}</div><div class="stat-lbl">Gemiddelde score</div></div><div class="stat-card"><div class="stat-num" style="color:var(--head)">${sorted[0]?sorted[0].overall:'—'}</div><div class="stat-lbl">Hoogste score</div></div><div class="stat-card"><div class="stat-num" style="color:var(--head);font-size:1rem">${topScenario?topScenario[0].split(' ')[0]:'—'}</div><div class="stat-lbl">Meest aanbevolen</div></div></div><div class="sec-lbl anim a1">Groepsprofiel — radardiagram</div><div class="radar-wrap anim a1"><div class="radar-title">Radardiagram groepsgemiddelden</div><div class="radar-sub">Teal = groepsgemiddelde · Lichte vlakken = individuele kantoren</div><svg width="400" height="430" viewBox="0 0 400 430" style="display:block;margin:0 auto">${[20,40,60,80,100].map(v=>`<polygon points="${gridPts(v)}" fill="none" stroke="var(--border)" stroke-width="0.5"/>`).join('')}${axisLines}${dataPolygon}<polygon points="${cumPts}" fill="rgba(34,197,160,.15)" stroke="var(--teal)" stroke-width="2"/>${axisLabels}${SECTIONS.map((_,i)=>{const[x,y]=pt(i,cum[SECTIONS[i].id]||0);return`<circle cx="${x}" cy="${y}" r="3" fill="var(--teal)"/>`;}).join('')}</svg></div><div class="sec-lbl anim a2">Benchmarkvergelijking</div><div class="dim-grid anim a2">${SECTIONS.map(sec=>{const v=cum[sec.id]||0;const f=df(v);return`<div class="dim-card"><div class="dim-top"><div class="dim-name">${sec.label}</div><div class="dim-val" style="color:${dc(v)}">${v}</div></div><div class="dim-bar-bg"><div class="dim-bar" style="width:${v}%;background:${dc(v)}"></div></div><div class="dim-flag" style="color:${f.c}">${f.l}</div></div>`;}).join('')}</div><div class="sec-lbl anim a2">Vergelijkingen</div><div class="compare-grid anim a2"><div class="compare-card"><div class="compare-title">Sterkste dimensies (groep)</div>${SECTIONS.map(sec=>({...sec,v:cum[sec.id]||0})).sort((a,b)=>b.v-a.v).slice(0,5).map(sec=>`<div class="compare-item"><span class="compare-name">${sec.label}</span><span class="compare-val" style="color:${dc(sec.v)}">${sec.v}</span></div>`).join('')}</div><div class="compare-card"><div class="compare-title">Zwakste dimensies (groep)</div>${SECTIONS.map(sec=>({...sec,v:cum[sec.id]||0})).sort((a,b)=>a.v-b.v).slice(0,5).map(sec=>`<div class="compare-item"><span class="compare-name">${sec.label}</span><span class="compare-val" style="color:${dc(sec.v)}">${sec.v}</span></div>`).join('')}</div><div class="compare-card"><div class="compare-title">Ranglijst kantoren</div>${sorted.map((o,i)=>`<div class="compare-item"><span class="compare-name">${i+1}. ${o.name||'Anoniem'}${o.region?' · '+o.region:''}</span><span class="compare-val" style="color:${dc(o.overall)}">${o.overall}</span></div>`).join('')}</div><div class="compare-card"><div class="compare-title">Aanbevolen scenarios</div>${Object.entries(scenarioCounts).sort((a,b)=>b[1]-a[1]).map(([sc,cnt])=>`<div class="compare-item"><span class="compare-name">${sc}</span><span class="compare-val" style="color:var(--sub)">${cnt}x</span></div>`).join('')}</div></div><div class="sec-lbl anim a3">Individuele kantoorprofielen</div><div class="office-list anim a3">${sorted.map((o,i)=>`<div class="office-card"><div class="office-hdr" data-oid="${o.id}"><span class="office-rank">#${i+1}</span><div><div class="office-name">${o.name||'Anoniem'}</div><div class="office-meta">${o.region?`<span>${o.region}</span>`:''}${o.fte?`<span>${o.fte} fte</span>`:''}${o.revenue?`<span>${o.revenue}</span>`:''}${o.top_scenario?`<span style="color:var(--teal)">${o.top_scenario}</span>`:''}</div></div><div class="office-score" style="color:${dc(o.overall)}">${o.overall}</div><span class="office-chev${ST.openOffice===o.id?' open':''}">&#9662;</span></div><div class="office-body${ST.openOffice===o.id?' open':''}"><div class="office-dim-grid">${SECTIONS.map(sec=>{const v=o.scores[sec.id]||0;return`<div class="office-dim"><div class="office-dim-name">${sec.label}</div><div class="office-dim-bar"><div class="office-dim-fill" style="width:${v}%;background:${dc(v)};height:100%"></div></div><div class="office-dim-val" style="color:${dc(v)}">${v}</div></div>`;}).join('')}</div><div style="font-size:11px;color:var(--muted);margin-top:.5rem">Ingevuld op ${new Date(o.created_at).toLocaleDateString('nl-NL')}</div></div></div>`).join('')}</div><div class="r-footer"><p class="footer-note">© ${new Date().getFullYear()} Bisschops Financing BV — KantoorInzicht</p><div class="footer-btns"><button class="btn-print" onclick="window.print()">PDF</button><button class="btn-ghost" id="back-intro">Start</button><button class="btn-adv" id="refresh-dash">Verversen</button></div></div></div>`;
+  return`<div class="page-wrap"><div class="page-hdr"><div class="page-brand"><div class="wdot"></div>KantoorInzicht</div><div class="page-step">Groepsdashboard · ${d.group?.name||ST.groupId}</div></div><div class="dash-head anim"><div class="dash-title"><em>${d.group?.name||'Groep'}</em></div><div class="dash-sub">Groepscode: <span class="mono" style="color:var(--teal)">${d.group?.id||ST.groupId}</span> · ${offices.length} deelnemende kantoren</div></div><div class="dash-stats anim a1"><div class="stat-card"><div class="stat-num" style="color:var(--teal)">${offices.length}</div><div class="stat-lbl">Kantoren</div></div><div class="stat-card"><div class="stat-num" style="color:${avg>=70?'var(--teal)':avg>=50?'var(--gold)':'var(--red)'}">${avg||'—'}</div><div class="stat-lbl">Gemiddelde score</div></div><div class="stat-card"><div class="stat-num" style="color:var(--head)">${sorted[0]?sorted[0].overall:'—'}</div><div class="stat-lbl">Hoogste score</div></div><div class="stat-card"><div class="stat-num" style="color:var(--head);font-size:1rem">${topScenario?topScenario[0].split(' ')[0]:'—'}</div><div class="stat-lbl">Meest aanbevolen</div></div></div><div class="sec-lbl anim a1">Groepsprofiel — radardiagram</div><div class="radar-wrap anim a1"><div class="radar-title">Radardiagram groepsgemiddelden</div><div class="radar-sub">Teal = groepsgemiddelde · Lichte vlakken = individuele kantoren</div><svg width="400" height="430" viewBox="0 0 400 430" style="display:block;margin:0 auto">${[20,40,60,80,100].map(v=>`<polygon points="${gridPts(v)}" fill="none" stroke="var(--border)" stroke-width="0.5"/>`).join('')}${axisLines}${dataPolygon}<polygon points="${cumPts}" fill="rgba(34,197,160,.15)" stroke="var(--teal)" stroke-width="2"/>${axisLabels}${SECTIONS.map((_,i)=>{const[x,y]=pt(i,cum[SECTIONS[i].id]||0);return`<circle cx="${x}" cy="${y}" r="3" fill="var(--teal)"/>`;}).join('')}</svg></div><div class="sec-lbl anim a2">Benchmarkvergelijking</div><div class="dim-grid anim a2">${SECTIONS.map(sec=>{const v=cum[sec.id]||0;const f=df(v);return`<div class="dim-card"><div class="dim-top"><div class="dim-name">${sec.label}</div><div class="dim-val" style="color:${dc(v)}">${v}</div></div><div class="dim-bar-bg"><div class="dim-bar" style="width:${v}%;background:${dc(v)}"></div></div><div class="dim-flag" style="color:${f.c}">${f.l}</div></div>`;}).join('')}</div><div class="sec-lbl anim a2">Vergelijkingen</div><div class="compare-grid anim a2"><div class="compare-card"><div class="compare-title">Sterkste dimensies (groep)</div>${SECTIONS.map(sec=>({...sec,v:cum[sec.id]||0})).sort((a,b)=>b.v-a.v).slice(0,5).map(sec=>`<div class="compare-item"><span class="compare-name">${sec.label}</span><span class="compare-val" style="color:${dc(sec.v)}">${sec.v}</span></div>`).join('')}</div><div class="compare-card"><div class="compare-title">Zwakste dimensies (groep)</div>${SECTIONS.map(sec=>({...sec,v:cum[sec.id]||0})).sort((a,b)=>a.v-b.v).slice(0,5).map(sec=>`<div class="compare-item"><span class="compare-name">${sec.label}</span><span class="compare-val" style="color:${dc(sec.v)}">${sec.v}</span></div>`).join('')}</div><div class="compare-card"><div class="compare-title">Ranglijst kantoren</div>${sorted.map((o,i)=>`<div class="compare-item"><span class="compare-name">${i+1}. ${o.name||'Anoniem'}${o.region?' · '+o.region:''}</span><span class="compare-val" style="color:${dc(o.overall)}">${o.overall}</span></div>`).join('')}</div><div class="compare-card"><div class="compare-title">Aanbevolen scenarios</div>${Object.entries(scenarioCounts).sort((a,b)=>b[1]-a[1]).map(([sc,cnt])=>`<div class="compare-item"><span class="compare-name">${sc}</span><span class="compare-val" style="color:var(--sub)">${cnt}x</span></div>`).join('')}</div></div><div class="sec-lbl anim a3">Individuele kantoorprofielen</div><div class="office-list anim a3">${sorted.map((o,i)=>`<div class="office-card"><div class="office-hdr" data-oid="${o.id}"><span class="office-rank">#${i+1}</span><div><div class="office-name">${o.name||'Anoniem'}</div><div class="office-meta">${o.region?`<span>${o.region}</span>`:''}${o.fte?`<span>${o.fte} fte</span>`:''}${o.revenue?`<span>${o.revenue}</span>`:''}${o.top_scenario?`<span style="color:var(--teal)">${o.top_scenario}</span>`:''}</div></div><div class="office-score" style="color:${dc(o.overall)}">${o.overall}</div><span class="office-chev${ST.openOffice===o.id?' open':''}">&#9662;</span></div><div class="office-body${ST.openOffice===o.id?' open':''}"><div class="office-dim-grid">${SECTIONS.map(sec=>{const v=o.scores[sec.id]||0;return`<div class="office-dim"><div class="office-dim-name">${sec.label}</div><div class="office-dim-bar"><div class="office-dim-fill" style="width:${v}%;background:${dc(v)};height:100%"></div></div><div class="office-dim-val" style="color:${dc(v)}">${v}</div></div>`;}).join('')}</div><div style="font-size:11px;color:var(--muted);margin-top:.5rem">Ingevuld op ${new Date(o.created_at).toLocaleDateString('nl-NL')}</div></div></div>`).join('')}</div><div class="r-footer"><p class="footer-note">© ${new Date().getFullYear()} Bisschops Financing BV — KantoorInzicht</p><div class="footer-btns"><button class="btn-print" onclick="setTimeout(function(){window.print()},300)">PDF</button><button class="btn-ghost" id="back-intro">Start</button><button class="btn-adv" id="refresh-dash">Verversen</button></div></div></div>`;
 }
 
 /* ════════ EVENTS ════════ */
