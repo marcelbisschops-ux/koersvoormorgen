@@ -343,6 +343,17 @@ async function generateAI(){
   const dims=SECTIONS.map(sec=>`- ${sec.label}: ${s[sec.id]}/100`).join('\n');
   const risks=SECTIONS.filter(sec=>s[sec.id]<55).map(sec=>sec.label).join(', ')||'geen kritieke risicos';
   const naam=p.naamAnon?'Anoniem kantoor':p.naam||'Vertrouwelijk kantoor';
+  // Bouw vraag/antwoord overzicht
+  const qa = SECTIONS.map(sec => {
+    const lines = sec.questions.map(q => {
+      const rawVal = ST.answers[q.id];
+      const val = rawVal !== undefined ? rawVal : '-';
+      const label = rawVal === 1 ? 'Helemaal niet' : rawVal === 2 ? 'Grotendeels niet' : rawVal === 3 ? 'Neutraal' : rawVal === 4 ? 'Grotendeels wel' : rawVal === 5 ? 'Volledig' : 'Niet beantwoord';
+      return `  Vraag: ${q.q}\n  Antwoord: ${val}/5 — ${label}`;
+    }).join('\n');
+    return `${sec.label}:\n${lines}`;
+  }).join('\n\n');
+
   const prompt=`Je bent een senior M&A-adviseur gespecialiseerd in Nederlandse accountantskantoren. Vandaag is het mei 2026.
 
 Schrijf een volledig strategisch adviesrapport. De lezer is een directeur-eigenaar die direct wil weten wat er toe doet. Gebruik het pyramide-principe: conclusie eerst, onderbouwing daarna.
