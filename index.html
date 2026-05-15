@@ -337,116 +337,57 @@ function df(v){return v>=70?{l:'Sterk',c:'var(--teal)'}:v>=50?{l:'Gemiddeld',c:'
 
 /* ════════ API ════════ */
 async function generateAI(){
-  const s=ST.scores;const ov=overall(s);const vd=verdict(ov);
-  const top3=ST.scenarios.slice(0,3).map(sc=>`${sc.name} (${sc.score}%)`).join(', ');
+  const s=ST.scores;
+  const ov=overall(s);
+  const vd=verdict(ov);
+  const top3=ST.scenarios.slice(0,3).map(sc=>sc.name+' ('+sc.score+'%)').join(', ');
   const p=ST.profile;
-  const dims=SECTIONS.map(sec=>`- ${sec.label}: ${s[sec.id]}/100`).join('\n');
+  const dims=SECTIONS.map(sec=>'- '+sec.label+': '+s[sec.id]+'/100').join('\n');
   const risks=SECTIONS.filter(sec=>s[sec.id]<55).map(sec=>sec.label).join(', ')||'geen kritieke risicos';
-  const naam=p.naamAnon?'Anoniem kantoor':p.naam||'Vertrouwelijk kantoor';
+  const naam=p.naamAnon?'Anoniem kantoor':(p.naam||'Vertrouwelijk kantoor');
 
-  // Bouw twee prompts: hoofdadvies + bijlage apart
-  const promptMain=`Je bent een senior M&A-adviseur gespecialiseerd in Nederlandse accountantskantoren. Vandaag is het mei 2026.
-
-Schrijf een volledig strategisch adviesrapport. De lezer is een directeur-eigenaar. Gebruik het pyramide-principe: conclusie eerst, onderbouwing daarna.
-
-KANTOORPROFIEL:
-- Naam: ${naam}
-- Regio: ${p.regio||'Niet opgegeven'}
-- Medewerkers: ${p.fte||'Niet opgegeven'} fte
-- Jaaromzet: ${p.omzet||'Niet opgegeven'}
-- Specialisme: ${p.specialisme||'Generalistisch'}
-- Doelgroep: ${p.doelgroep||'MKB'}
-- Software: ${p.software||'Onbekend'}
-- Ambitie: ${p.ambitie||'Niet opgegeven'}
-- Context: ${p.context||'Geen aanvullende context'}
-
-SCORES (0-100):
-${dims}
-
-Totaalscore: ${ov}/100 — ${vd.label}
-Aanbevolen scenario: ${top3}
-Aandachtspunten (score <55): ${risks}
-
-SCHRIJFREGELS:
-- Gebruik "de scan suggereert", "dit profiel wijst op", "op basis van uw input"
-- Noem scores altijd met het getal
-- Spreek eigenaar direct aan (u)
-- GEEN markdown tabellen
-- GEEN bulletpoints binnen lopende tekst
-- Elke sectie minimaal 150 woorden
-
-## Kernboodschap
-## Kritieke inzichten
-[3 scores uitgebreid, min 200 woorden per inzicht]
-## Strategisch advies
-[Per fase, min 250 woorden]
-## Strategische scenario's — volledig uitgewerkt
-[Alle drie scenarios volledig: waarom passend, drie fases, randvoorwaarden, risicos en kansen, min 200 woorden per scenario]
-## Eerste 90 dagen
-[3 genummerde acties als alineas met eigenaar, deadline en meetbaar resultaat]
-## Mogelijk onderbelicht risico
-[Exploratief, niet stellig. Gebruik "de scan suggereert", "het is denkbaar dat". Min 100 woorden. Eindig met zachte aanbeveling.]
-## Vervolgstap
-[Warme uitnodiging voor gesprek met Marcel Bisschops: 06 - 38 68 98 88 of marcel@bisschopsfinancing.nl]`;
-
-  const promptAppendix=`Maak een leesbare bijlage van de ingevulde vragenlijst. Schrijf per dimensie de naam en score, dan per vraag de volledige vraagtekst gevolgd door het antwoord (1-5) met betekenis. Schrijf als lopende tekst per dimensie zonder tabellen of bullets.
-
-INGEVULDE VRAGENLIJST:
-${qa}
-
-Begin direct met: ## Bijlage — Ingevulde vragenlijst`;
-
-  // Bouw vraag/antwoord overzicht
-  const qa = SECTIONS.map(sec => {
-    const lines = sec.questions.map(q => {
-      const rawVal = ST.answers[q.id];
-      const val = rawVal !== undefined ? rawVal : '-';
-      const label = rawVal === 1 ? 'Helemaal niet' : rawVal === 2 ? 'Grotendeels niet' : rawVal === 3 ? 'Neutraal' : rawVal === 4 ? 'Grotendeels wel' : rawVal === 5 ? 'Volledig' : 'Niet beantwoord';
-      return `  Vraag: ${q.q}\n  Antwoord: ${val}/5 — ${label}`;
+  const qa=SECTIONS.map(sec=>{
+    const lines=sec.questions.map(q=>{
+      const v=ST.answers[q.id];
+      const lbl=v===1?'Helemaal niet':v===2?'Grotendeels niet':v===3?'Neutraal':v===4?'Grotendeels wel':v===5?'Volledig':'Niet beantwoord';
+      return '  Vraag: '+q.q+'\n  Antwoord: '+(v||'-')+'/5 - '+lbl;
     }).join('\n');
-    return `${sec.label} (score: ${ST.scores[sec.id]}/100):\n${lines}`;
+    return sec.label+' (score: '+s[sec.id]+'/100):\n'+lines;
   }).join('\n\n');
 
-  ST.aiLoading=true;ST.aiText='';render();
+  const mainPrompt='Je bent een senior M&A-adviseur gespecialiseerd in Nederlandse accountantskantoren. Vandaag is het mei 2026.\n\nKANTOORPROFIEL:\n- Naam: '+naam+'\n- Regio: '+(p.regio||'Niet opgegeven')+'\n- Medewerkers: '+(p.fte||'Niet opgegeven')+' fte\n- Jaaromzet: '+(p.omzet||'Niet opgegeven')+'\n- Specialisme: '+(p.specialisme||'Generalistisch')+'\n- Doelgroep: '+(p.doelgroep||'MKB')+'\n- Software: '+(p.software||'Onbekend')+'\n- Ambitie: '+(p.ambitie||'Niet opgegeven')+'\n- Context: '+(p.context||'Geen aanvullende context')+'\n\nSCORES (0-100):\n'+dims+'\n\nTotaalscore: '+ov+'/100 - '+vd.label+'\nAanbevolen scenario: '+top3+'\nAandachtspunten (score <55): '+risks+'\n\nSCHRIJFREGELS:\n- Gebruik "de scan suggereert", "dit profiel wijst op"\n- Noem scores altijd met het getal\n- Spreek eigenaar aan met u\n- GEEN tabellen of bulletpoints\n- Elke sectie minimaal 150 woorden\n\n## Kernboodschap\n## Kritieke inzichten\n[3 scores, min 200 woorden per inzicht]\n## Strategisch advies\n[Per fase, min 250 woorden]\n## Strategische scenarios - volledig uitgewerkt\n[Alle drie scenarios: waarom passend, drie fases, randvoorwaarden, risicos en kansen, min 200 woorden per scenario]\n## Eerste 90 dagen\n[3 genummerde acties als alineas]\n## Mogelijk onderbelicht risico\n[Exploratief, gebruik "de scan suggereert", "het is denkbaar dat". Eindig met zachte aanbeveling.]\n## Vervolgstap\n[Uitnodiging voor gesprek met Marcel Bisschops: 06 - 38 68 98 88 of marcel@bisschopsfinancing.nl]';
 
-  // Stap 1: genereer hoofdadvies
-  try{
-    const resp=await fetch(`${WORKER}/ai`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:promptMain}]})});
-    if(!resp.ok)throw new Error(`HTTP ${resp.status}`);
-    const reader=resp.body.getReader();const dec=new TextDecoder();
-    ST.aiLoading=false;ST.aiText='';
+  const appendixPrompt='Maak een leesbare bijlage van de ingevulde vragenlijst. Per dimensie: naam en score, dan per vraag de vraagtekst en het antwoord met betekenis. Lopende tekst, geen tabellen of bullets.\n\nINGEVULDE VRAGENLIJST:\n'+qa+'\n\nBegin direct met: ## Bijlage - Ingevulde vragenlijst';
+
+  ST.aiLoading=true;ST.aiText='';render();
+  const dec=new TextDecoder();
+
+  async function streamCall(prompt){
+    const resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}]})});
+    if(!resp.ok)throw new Error('HTTP '+resp.status);
+    const reader=resp.body.getReader();
     while(true){
       const{done,value}=await reader.read();if(done)break;
       const chunk=dec.decode(value,{stream:true});
       for(const line of chunk.split('\n')){
         if(line.startsWith('data:')){
           const d=line.slice(5).trim();if(d==='[DONE]')continue;
-          try{const j=JSON.parse(d);if(j.type==='content_block_delta'&&j.delta?.text){ST.aiText+=j.delta.text;updateAI();}}catch(e){}
+          try{const j=JSON.parse(d);if(j.type==='content_block_delta'&&j.delta&&j.delta.text){ST.aiText+=j.delta.text;updateAI();}}catch(e){}
         }
       }
     }
-    // Stap 2: genereer bijlage
-    ST.aiText+='\n\n---\n\n*Bijlage wordt gegenereerd...*';updateAI();
-    const resp2=await fetch(`${WORKER}/ai`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:promptAppendix}]})});
-    if(resp2.ok){
-      const reader2=resp2.body.getReader();
-      // Remove the loading indicator
-      ST.aiText=ST.aiText.replace('\n\n---\n\n*Bijlage wordt gegenereerd...*','\n\n---\n\n');
-      while(true){
-        const{done,value}=await reader2.read();if(done)break;
-        const chunk=dec.decode(value,{stream:true});
-        for(const line of chunk.split('\n')){
-          if(line.startsWith('data:')){
-            const d=line.slice(5).trim();if(d==='[DONE]')continue;
-            try{const j=JSON.parse(d);if(j.type==='content_block_delta'&&j.delta?.text){ST.aiText+=j.delta.text;updateAI();}}catch(e){}
-          }
-        }
-      }
-    }
-    updateAI(true);
-  }catch(err){ST.aiLoading=false;ST.aiText='__ERROR__';updateAI(true);}
-}
+  }
 
+  try{
+    ST.aiLoading=false;
+    await streamCall(mainPrompt);
+    ST.aiText+='\n\n---\n\n';updateAI();
+    await streamCall(appendixPrompt);
+    updateAI(true);
+  }catch(err){
+    ST.aiLoading=false;ST.aiText='__ERROR__';updateAI(true);
+  }
+}
 async function saveScanToGroup(){
   if(!ST.scores)return;
   if(!ST.profile.saveConsent&&!ST.groupId)return;
