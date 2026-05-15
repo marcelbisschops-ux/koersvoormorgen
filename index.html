@@ -4,12 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Strategische Kantoor Scan — KantoorInzicht</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --void:#0b0d0f;--deep:#111418;--panel:#161b21;--card:#1c2229;
+  --void:#0b0d0f;--panel:#161b21;--card:#1c2229;
   --border:#252d37;--border2:#2f3a47;--muted:#4a5868;--mid:#6b7d8f;
   --body:#9aabb8;--sub:#c4d0d9;--head:#e8edf2;--white:#f4f7fa;
   --teal:#22c5a0;--teal-dim:#1a9b7e;--teal-dark:#0f5c4a;--teal-bg:rgba(34,197,160,.08);
@@ -21,14 +20,34 @@ html{scroll-behavior:smooth}
 body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--body);min-height:100vh;font-size:15px;line-height:1.6}
 .mono{font-family:'IBM Plex Mono',monospace}
 #app{min-height:100vh}
-
-/* INTRO */
+.page-wrap{max-width:900px;margin:0 auto;padding:2rem 2rem 5rem}
+.page-wrap.narrow{max-width:680px}
+.page-hdr{display:flex;align-items:center;justify-content:space-between;padding:1.5rem 0;border-bottom:1px solid var(--border);margin-bottom:2.5rem}
+.page-brand{font-size:11px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:8px}
+.page-step{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted)}
+.wdot{width:6px;height:6px;border-radius:50%;background:var(--teal);flex-shrink:0}
+.sec-lbl{font-size:10px;font-weight:600;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-bottom:1rem;display:flex;align-items:center;gap:10px}
+.sec-lbl::after{content:'';flex:1;height:1px;background:var(--border)}
+.btn-ghost{background:transparent;border:1px solid var(--border2);color:var(--mid);font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:500;padding:10px 20px;border-radius:var(--r);cursor:pointer;transition:all .12s}
+.btn-ghost:hover{border-color:var(--mid);color:var(--sub)}
+.btn-ghost:disabled{opacity:0;pointer-events:none}
+.btn-adv{background:var(--teal);color:var(--void);font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;padding:10px 24px;border-radius:var(--r);border:none;cursor:pointer;transition:all .12s}
+.btn-adv:hover{background:var(--teal-dim)}
+.btn-adv:disabled{background:var(--border2);color:var(--muted);cursor:default}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.field input,.field select,.field textarea{background:var(--panel);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:'IBM Plex Sans',sans-serif;font-size:13px;padding:10px 12px;outline:none;transition:border-color .12s;-webkit-appearance:none;width:100%}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--teal)}
+.field select option{background:var(--panel)}
+.field textarea{resize:vertical;min-height:70px}
+.field input::placeholder,.field textarea::placeholder{color:var(--muted)}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:1.5rem}
+.form-grid.full{grid-template-columns:1fr}
 .intro-wrap{min-height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:4rem 2rem;position:relative;overflow:hidden}
 .intro-wrap::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 600px 400px at 70% 30%,rgba(34,197,160,.04),transparent 70%),radial-gradient(ellipse 400px 600px at 20% 80%,rgba(201,168,76,.03),transparent 70%);pointer-events:none}
 .intro-grid{position:absolute;inset:0;background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);background-size:60px 60px;opacity:.2;pointer-events:none}
 .intro-inner{max-width:700px;width:100%;text-align:center;position:relative;z-index:1}
 .wordmark{display:inline-flex;align-items:center;gap:10px;margin-bottom:2.5rem;font-size:11px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}
-.wdot{width:6px;height:6px;border-radius:50%;background:var(--teal)}
 .eyebrow{font-size:11px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--teal);margin-bottom:1.25rem}
 .intro-h1{font-family:'Playfair Display',serif;font-size:clamp(2.2rem,5vw,3.6rem);font-weight:600;color:var(--white);line-height:1.1;margin-bottom:1.25rem}
 .intro-h1 em{font-style:italic;color:var(--teal)}
@@ -40,34 +59,21 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--b
 .kpi-div{width:1px;height:36px;background:var(--border2);align-self:center}
 .dim-row{display:flex;flex-wrap:wrap;justify-content:center;gap:7px;margin-bottom:2.5rem}
 .dim-chip{font-size:11px;font-weight:500;padding:4px 11px;border-radius:3px;border:1px solid var(--border2);color:var(--mid);background:var(--panel)}
-.btn-start{display:inline-flex;align-items:center;gap:8px;background:var(--teal);color:var(--void);font-family:'IBM Plex Sans',sans-serif;font-size:14px;font-weight:600;padding:14px 32px;border-radius:var(--r);border:none;cursor:pointer;transition:all .15s}
-.btn-start:hover{background:var(--teal-dim);transform:translateY(-1px)}
 .intro-foot{margin-top:3rem;font-size:11px;color:var(--muted);display:flex;align-items:center;gap:8px;justify-content:center}
 .intro-foot::before,.intro-foot::after{content:'';flex:1;max-width:80px;height:1px;background:var(--border)}
-
-/* PAGE SHELL */
-.page-wrap{max-width:860px;margin:0 auto;padding:2rem 2rem 5rem}
-.page-wrap.narrow{max-width:680px}
-.page-hdr{display:flex;align-items:center;justify-content:space-between;padding:1.5rem 0;border-bottom:1px solid var(--border);margin-bottom:2.5rem}
-.page-brand{font-size:11px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:8px}
-.page-step{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted)}
-
-/* INTAKE */
-.intake-title{font-family:'Playfair Display',serif;font-size:1.8rem;color:var(--white);font-weight:600;margin-bottom:.5rem}
-.intake-sub{font-size:13px;color:var(--mid);line-height:1.65;margin-bottom:2rem}
-.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:1.5rem}
-.form-grid.full{grid-template-columns:1fr}
-.field{display:flex;flex-direction:column;gap:6px}
-.field label{font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
-.field input,.field select,.field textarea{background:var(--panel);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:'IBM Plex Sans',sans-serif;font-size:13px;padding:10px 12px;outline:none;transition:border-color .12s;-webkit-appearance:none;width:100%}
-.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--teal)}
-.field select option{background:var(--panel)}
-.field textarea{resize:vertical;min-height:72px}
-.field input::placeholder,.field textarea::placeholder{color:var(--muted)}
-.note-box{font-size:12px;color:var(--muted);line-height:1.6;padding:12px 14px;background:var(--panel);border:1px solid var(--border);border-radius:var(--r);margin-bottom:2rem}
+.route-cards{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:2.5rem;max-width:580px;margin-left:auto;margin-right:auto}
+@media(max-width:500px){.route-cards{grid-template-columns:1fr}}
+.route-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.5rem;text-align:left;cursor:pointer;transition:all .15s;display:flex;flex-direction:column;gap:.75rem}
+.route-card:hover{border-color:var(--teal);transform:translateY(-2px)}
+.route-icon{font-size:1.4rem}
+.route-title{font-family:'Playfair Display',serif;font-size:1.1rem;color:var(--head);font-weight:600}
+.route-desc{font-size:12px;color:var(--mid);line-height:1.6}
+.group-panel{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:2rem;margin-bottom:2rem}
+.group-panel-title{font-family:'Playfair Display',serif;font-size:1.3rem;color:var(--head);font-weight:600;margin-bottom:.4rem}
+.group-panel-sub{font-size:13px;color:var(--mid);line-height:1.65;margin-bottom:1.5rem}
+.code-display{font-family:'IBM Plex Mono',monospace;font-size:2.4rem;font-weight:500;color:var(--teal);letter-spacing:.2em;text-align:center;padding:1.5rem;background:var(--card);border:1px solid var(--border2);border-radius:var(--r2);margin:1.5rem 0}
+.note-box{font-size:12px;color:var(--muted);line-height:1.6;padding:12px 14px;background:var(--card);border:1px solid var(--border);border-radius:var(--r);margin-bottom:1.5rem}
 .note-box strong{color:var(--sub)}
-
-/* PROGRESS */
 .prog-section{margin-bottom:2.5rem}
 .prog-top{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:.75rem}
 .prog-lbl{font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--teal)}
@@ -79,13 +85,9 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--b
 .p-step{flex:1;height:3px;border-radius:1px;background:var(--border);transition:background .3s}
 .p-step.done{background:var(--teal-dark)}
 .p-step.active{background:var(--teal)}
-
-/* SECTION HEAD */
 .sec-badge{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500;color:var(--teal);border:1px solid var(--teal-dark);background:var(--teal-bg);padding:2px 8px;border-radius:3px;display:inline-block;margin-bottom:.6rem}
 .sec-title{font-family:'Playfair Display',serif;font-size:1.5rem;color:var(--white);font-weight:600;margin-bottom:.4rem}
 .sec-desc{font-size:14px;color:var(--mid);line-height:1.65;margin-bottom:2rem}
-
-/* QUESTION CARDS */
 .q-stack{display:flex;flex-direction:column;gap:12px;margin-bottom:2.5rem}
 .q-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem 1.5rem;transition:border-color .15s}
 .q-card.answered{border-color:var(--border2)}
@@ -99,18 +101,8 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--b
 .l-btn:hover{border-color:var(--border2);color:var(--sub);background:var(--panel)}
 .l-btn.sel{background:var(--teal-bg);border-color:var(--teal);color:var(--teal)}
 .likert-axis{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);letter-spacing:.05em;margin-top:6px;padding:0 2px;text-transform:uppercase}
-
-/* NAV */
 .scan-nav{display:flex;align-items:center;justify-content:space-between;padding:1.5rem 0 0;border-top:1px solid var(--border)}
 .nav-info{font-size:12px;color:var(--muted);font-family:'IBM Plex Mono',monospace}
-.btn-ghost{background:transparent;border:1px solid var(--border2);color:var(--mid);font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:500;padding:10px 20px;border-radius:var(--r);cursor:pointer;transition:all .12s}
-.btn-ghost:hover{border-color:var(--mid);color:var(--sub)}
-.btn-ghost:disabled{opacity:0;pointer-events:none}
-.btn-adv{background:var(--teal);color:var(--void);font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;padding:10px 24px;border-radius:var(--r);border:none;cursor:pointer;transition:all .12s;letter-spacing:.02em}
-.btn-adv:hover{background:var(--teal-dim)}
-.btn-adv:disabled{background:var(--border2);color:var(--muted);cursor:default}
-
-/* RESULTS */
 .r-header{border-bottom:1px solid var(--border);padding:1.5rem 0 2rem;margin-bottom:2.5rem}
 .r-brand-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem}
 .r-brand{font-size:11px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:8px}
@@ -125,7 +117,6 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--b
 .score-inner{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
 .score-big{font-family:'Playfair Display',serif;font-size:2.2rem;font-weight:600;color:var(--white);line-height:1}
 .score-denom{font-size:11px;color:var(--muted);font-family:'IBM Plex Mono',monospace}
-.score-verdict{font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:600;color:var(--head);margin-bottom:.4rem}
 .score-explain{font-size:13px;color:var(--mid);line-height:1.65}
 .bench-strip{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:12px 16px;margin-bottom:2rem;font-size:12px;flex-wrap:wrap}
 .bench-lbl{color:var(--muted);font-weight:500;white-space:nowrap}
@@ -135,8 +126,6 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--b
 .bench-leg{display:flex;gap:12px;flex-shrink:0}
 .bench-leg-item{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--muted)}
 .bench-dot{width:8px;height:8px;border-radius:50%}
-.sec-lbl{font-size:10px;font-weight:600;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-bottom:1rem;display:flex;align-items:center;gap:10px}
-.sec-lbl::after{content:'';flex:1;height:1px;background:var(--border)}
 .dim-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:2.5rem}
 @media(max-width:560px){.dim-grid{grid-template-columns:1fr}}
 .dim-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:14px 16px;display:flex;flex-direction:column;gap:8px}
@@ -176,11 +165,9 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--b
 .act-title{font-size:13px;color:var(--sub);font-weight:500;line-height:1.5}
 .act-desc{font-size:12px;color:var(--mid);line-height:1.5;margin-top:2px}
 .act-horizon{font-size:10px;color:var(--muted);font-family:'IBM Plex Mono',monospace;margin-top:3px}
-
-/* AI PANEL */
 .ai-panel{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);overflow:hidden;margin-bottom:2.5rem}
 .ai-panel-hdr{display:flex;align-items:center;justify-content:space-between;padding:1.25rem 1.5rem;border-bottom:1px solid var(--border);background:var(--card);gap:1rem;flex-wrap:wrap}
-.ai-badge{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:3px;background:rgba(34,197,160,.12);color:var(--teal);border:1px solid var(--teal-dark)}
+.ai-badge-el{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:3px;background:rgba(34,197,160,.12);color:var(--teal);border:1px solid var(--teal-dark)}
 .ai-title-group{display:flex;align-items:center;gap:10px}
 .ai-panel-name{font-family:'Playfair Display',serif;font-size:1rem;color:var(--head);font-weight:600}
 .ai-panel-sub{font-size:12px;color:var(--muted);margin-top:1px}
@@ -203,21 +190,58 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--b
 .ai-output ul li{font-size:13px}
 .ai-cursor{display:inline-block;width:2px;height:14px;background:var(--teal);margin-left:2px;vertical-align:text-bottom;animation:blink .8s steps(1) infinite}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
-.risk-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:2.5rem}
-@media(max-width:560px){.risk-grid{grid-template-columns:1fr}}
-.risk-card{background:var(--panel);border-radius:var(--r);border:1px solid var(--border);padding:12px 14px}
-.risk-top{display:flex;align-items:center;gap:8px;margin-bottom:5px}
-.risk-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
-.risk-name{font-size:12px;font-weight:500;color:var(--sub)}
-.risk-body{font-size:11px;color:var(--muted);line-height:1.55}
-.r-footer{border-top:1px solid var(--border);padding-top:2rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem}
+.r-footer{border-top:1px solid var(--border);padding-top:2rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-top:1rem}
 .footer-note{font-size:12px;color:var(--muted);max-width:380px;line-height:1.6}
 .footer-btns{display:flex;gap:10px;flex-wrap:wrap}
 .btn-print{background:transparent;border:1px solid var(--border2);color:var(--mid);font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:500;padding:10px 18px;border-radius:var(--r);cursor:pointer;transition:all .12s}
 .btn-print:hover{border-color:var(--mid);color:var(--sub)}
 .btn-restart{background:var(--teal);color:var(--void);font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;padding:10px 20px;border-radius:var(--r);border:none;cursor:pointer;transition:all .12s}
 .btn-restart:hover{background:var(--teal-dim)}
-
+.dash-head{margin-bottom:2.5rem}
+.dash-title{font-family:'Playfair Display',serif;font-size:2rem;color:var(--white);font-weight:600;margin-bottom:.4rem}
+.dash-title em{font-style:italic;color:var(--teal)}
+.dash-sub{font-size:13px;color:var(--mid)}
+.dash-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:2.5rem}
+@media(max-width:600px){.dash-stats{grid-template-columns:repeat(2,1fr)}}
+.stat-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;text-align:center}
+.stat-num{font-family:'Playfair Display',serif;font-size:2rem;font-weight:600;color:var(--head);line-height:1;margin-bottom:.3rem}
+.stat-lbl{font-size:11px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.radar-wrap{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.5rem;margin-bottom:2rem}
+.radar-title{font-family:'Playfair Display',serif;font-size:1.1rem;color:var(--head);font-weight:600;margin-bottom:.25rem}
+.radar-sub{font-size:12px;color:var(--muted);margin-bottom:1.25rem}
+.office-list{display:flex;flex-direction:column;gap:10px;margin-bottom:2.5rem}
+.office-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);overflow:hidden}
+.office-hdr{display:flex;align-items:center;gap:12px;padding:1rem 1.5rem;cursor:pointer;transition:background .12s}
+.office-hdr:hover{background:var(--card)}
+.office-rank{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);min-width:24px}
+.office-name{font-size:14px;font-weight:600;color:var(--head);flex:1}
+.office-meta{font-size:11px;color:var(--muted);display:flex;gap:8px;flex-wrap:wrap}
+.office-score{font-family:'IBM Plex Mono',monospace;font-size:1.2rem;font-weight:500;flex-shrink:0}
+.office-chev{color:var(--muted);font-size:11px;transition:transform .2s}
+.office-chev.open{transform:rotate(180deg)}
+.office-body{display:none;padding:1.25rem 1.5rem;border-top:1px solid var(--border);background:var(--card)}
+.office-body.open{display:block}
+.office-dim-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:1rem}
+@media(max-width:560px){.office-dim-grid{grid-template-columns:repeat(2,1fr)}}
+.office-dim{background:var(--panel);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px}
+.office-dim-name{font-size:11px;color:var(--muted);margin-bottom:4px}
+.office-dim-bar{height:3px;background:var(--border2);border-radius:2px;overflow:hidden;margin-bottom:4px}
+.office-dim-fill{height:100%;border-radius:2px}
+.office-dim-val{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500}
+.compare-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1rem;margin-bottom:2.5rem}
+@media(max-width:560px){.compare-grid{grid-template-columns:1fr}}
+.compare-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem}
+.compare-title{font-size:12px;font-weight:600;color:var(--sub);margin-bottom:.75rem;letter-spacing:.04em}
+.compare-item{display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)}
+.compare-item:last-child{border-bottom:none}
+.compare-name{font-size:12px;color:var(--mid)}
+.compare-val{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500}
+.loading-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;gap:1.5rem}
+.loading-screen .ai-spinner{width:32px;height:32px;border-width:3px}
+.loading-screen p{font-size:14px;color:var(--mid)}
+.error-screen{text-align:center;padding:4rem 2rem}
+.error-screen h3{font-family:'Playfair Display',serif;font-size:1.4rem;color:var(--head);margin-bottom:.75rem}
+.error-screen p{font-size:14px;color:var(--mid);margin-bottom:1.5rem}
 @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 .anim{animation:fadeUp .35s ease forwards}
 .a1{animation-delay:.06s;opacity:0}.a2{animation-delay:.12s;opacity:0}.a3{animation-delay:.18s;opacity:0}.a4{animation-delay:.24s;opacity:0}
@@ -226,7 +250,11 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--b
 <body>
 <div id="app"></div>
 <script>
-/* ═══ DATA ═══ */
+
+/* ════════ CONFIG ════════ */
+const WORKER = 'https://kantoorinzicht.marcel-bisschops.workers.dev';
+
+/* ════════ DATA ════════ */
 const SECTIONS=[
   {id:'strategisch',label:'Strategische positie',icon:'I',desc:'Hoe helder en onderscheidend is de strategische koers van het kantoor?',questions:[
     {id:'s1',q:'Het kantoor heeft een uitgesproken, herkenbare positionering in de markt.',hint:'bijv. niche, doelgroep, regio of prijssegment'},
@@ -243,7 +271,7 @@ const SECTIONS=[
     {id:'w2',q:'De EBITDA-marge is in lijn met of beter dan de branchebenchmark van 20–30%.',hint:null},
     {id:'w3',q:'De omzet per fte is stabiel of groeiend over de afgelopen drie jaar.',hint:null},
   ]},
-  {id:'schaal',label:'Schaalbaarheid',icon:'IV',desc:'Kan het kantoor groeien in omzet zonder evenredige groei in kosten of hoofden?',questions:[
+  {id:'schaal',label:'Schaalbaarheid',icon:'IV',desc:'Kan het kantoor groeien zonder evenredige groei in kosten of hoofden?',questions:[
     {id:'sc1',q:'Werkprocessen zijn volledig gestandaardiseerd en schriftelijk vastgelegd.',hint:null},
     {id:'sc2',q:'30% omzetgroei is realiseerbaar zonder de bezetting proportioneel uit te breiden.',hint:null},
     {id:'sc3',q:'Er zijn schaalbare dienstverleningsmodellen actief (pakketten, portals, rapportagetools).',hint:null},
@@ -275,7 +303,7 @@ const SECTIONS=[
   ]},
   {id:'personeel',label:'Personeelsdruk',icon:'X',desc:'Is het kantoor in staat om talent aan te trekken, te ontwikkelen en te behouden?',questions:[
     {id:'pe1',q:'Er zijn geen structurele vacatures die langer dan 3 maanden onvervuld blijven.',hint:'omgekeerd: lang onvervuld = slecht'},
-    {id:'pe2',q:'Het personeelsverloop is lager dan het sectorgemiddelde van ±15% per jaar.',hint:null},
+    {id:'pe2',q:'Het personeelsverloop is lager dan het sectorgemiddelde van 15% per jaar.',hint:null},
     {id:'pe3',q:'Er is een helder carrièrepad en structureel leer- en ontwikkelbeleid voor alle lagen.',hint:null},
   ]},
   {id:'commercieel',label:'Commerciële kracht',icon:'XI',desc:'Hoe proactief en effectief is het kantoor in het genereren en verdiepen van klantwaarde?',questions:[
@@ -284,297 +312,124 @@ const SECTIONS=[
     {id:'c3',q:'Cross-sell naar bestaande klanten wordt systematisch en meetbaar opgepakt.',hint:null},
   ]},
 ];
-
 const REVERSE=new Set(['p1','k1','k2','ai1','pe1']);
-
 const SCENARIOS={
-  'zelfstandig-doorgroeien':{name:'Zelfstandig doorgroeien',fit:s=>Math.round((s.commercieel+s.winst+s.klant+s.auto)/4),actions:[
-    {t:'Versterk de commerciële pipeline',d:'Introduceer een gestructureerd CRM-proces en acquisitieritme.',h:'0–6 mnd'},
-    {t:'Verbreed de managementlaag',d:'Benoem een MT zodat groei niet afhangt van de eigenaar.',h:'6–12 mnd'},
-    {t:'Verken aangrenzende diensten',d:'Identificeer onbediende klantbehoeften en ontwikkel aanvullend aanbod.',h:'6–18 mnd'},
-    {t:'Monitor KPI\'s maandelijks',d:'Omzet per fte, NPS en churn als vaste stuurindicatoren.',h:'Continu'},
-  ]},
-  'regionaliseren':{name:'Regionaliseren',fit:s=>Math.round((s.schaal+s.commercieel+s.auto+s.partner)/4),actions:[
-    {t:'Marktanalyse regionale kansen',d:'Breng in kaart welke regio\'s ondervoorzien zijn en waar kandidaten beschikbaar zijn.',h:'0–3 mnd'},
-    {t:'Acquisitie-longlist opstellen',d:'Identificeer 5–10 regionale kantoren die strategisch passend zijn.',h:'3–9 mnd'},
-    {t:'Integratiespelboek ontwikkelen',d:'Documenteer IT-migratie, cultuurintegratie en klantoverdracht.',h:'6–12 mnd'},
-    {t:'Regionaal merkverhaal versterken',d:'Investeer in lokale PR, partnerships met notarissen en banken.',h:'Continu'},
-  ]},
-  'niche-specialisatie':{name:'Niche-specialisatie',fit:s=>Math.round((100-s.auto+s.winst+100-s.schaal)/3),actions:[
-    {t:'Kies één of twee kernspecialisaties',d:'Baseer op bestaande portfolio, teamexpertise en marktpotentieel.',h:'0–3 mnd'},
-    {t:'Bouw thought leadership op',d:'Publiceer sectoranalyses, spreek op branche-events, start een nieuwsbrief.',h:'3–12 mnd'},
-    {t:'Verdiep het dienstenaanbod',d:'Voeg waardering, sector-benchmarks en compliance toe rondom de niche.',h:'6–18 mnd'},
-    {t:'Positioneer alle uitingen op de niche',d:'Herstel website, LinkedIn en pitch materials op de gekozen doelgroep.',h:'0–6 mnd'},
-  ]},
-  'fusiepartner-zoeken':{name:'Fusiepartner zoeken',fit:s=>Math.round((s.fusie+100-s.schaal+100-s.opvolging)/3),actions:[
-    {t:'Stel partnercriteria vast',d:'Definieer harde (omvang, regio) en zachte criteria (cultuur, ambitie).',h:'0–2 mnd'},
-    {t:'M&A-adviseur inschakelen',d:'Werk met een adviseur met sectorervaring in accountancy.',h:'1–3 mnd'},
-    {t:'Due diligence-materiaal op orde',d:'Drie jaar jaarrekeningen, klantcontracten en procesbeschrijvingen.',h:'0–4 mnd'},
-    {t:'Verkenningsgesprekken starten',d:'Voer oriënterende gesprekken met 3–5 partijen onder NDA.',h:'3–9 mnd'},
-  ]},
-  'opvolging-voorbereiden':{name:'Opvolging voorbereiden',fit:s=>Math.round(100-s.opvolging),actions:[
-    {t:'Opvolgingskandidaat benoemen',d:'Identificeer intern talent en start formeel een mentoring- of co-partnertraject.',h:'0–3 mnd'},
-    {t:'Formeel opvolgingsplan opstellen',d:'Documenteer tijdlijn, verantwoordelijkheden en financiële structuur.',h:'0–6 mnd'},
-    {t:'Klantrelatieoverdracht starten',d:'Introduceer opvolgers actief bij strategische klanten gedurende 12+ maanden.',h:'Onmiddellijk'},
-    {t:'Kantoorwaardering laten uitvoeren',d:'Verkrijg inzicht in de waarderingsbandbreedte als basis voor onderhandelingen.',h:'1–3 mnd'},
-  ]},
-  'pe-ready-maken':{name:'PE-ready maken',fit:s=>Math.round((s.fusie+s.winst+s.schaal+s.klant)/4),actions:[
-    {t:'Terugkerende omzet maximaliseren',d:'Converteer naar abonnementen. Streef naar >70% recurring revenue.',h:'0–12 mnd'},
-    {t:'EBITDA-marge naar 25–35%',d:'Analyseer kostenstructuur en automatiseer lage-margewerk.',h:'6–18 mnd'},
-    {t:'Klantconcentratie verlagen',d:'Target: geen klant >8% van omzet. Groei de long-tail actief.',h:'12–24 mnd'},
-    {t:'Managementrapportage professionaliseren',d:'Maandelijks KPI-dashboard, cashflow-forecast en personeelsanalyse.',h:'0–6 mnd'},
-  ]},
-  'verkoop-voorbereiden':{name:'Verkoop binnen 3 jaar voorbereiden',fit:s=>Math.round((s.fusie+s.winst+100-s.opvolging)/3),actions:[
-    {t:'Verkoopgereed-stappenplan opstellen',d:'Concrete mijlpalen per kwartaal met verantwoordelijke per actie.',h:'0–3 mnd'},
-    {t:'Overdraagbaarheid vergroten',d:'Verminder persoonsgebonden relaties. Documenteer alle processen.',h:'0–18 mnd'},
-    {t:'Winstgevendheid optimaliseren',d:'Focus op hoge-marge diensten. Verhoog tarieven voor lage rendementen.',h:'0–12 mnd'},
-    {t:'Bedrijfswaardering laten uitvoeren',d:'Begrijp de EBITDA-multiple-bandbreedte in de huidige markt.',h:'3–6 mnd'},
-  ]},
-  'afweerstrategie':{name:'Consolidatie-afweerstrategie',fit:s=>Math.round((100-s.klant+100-s.personeel+100-s.schaal)/3),actions:[
-    {t:'Unieke positionering versterken',d:'Maak overnemen minder logisch via niche, klantbinding en cultuur.',h:'0–12 mnd'},
-    {t:'Strategische allianties sluiten',d:'Werk samen in een netwerk of coöperatiemodel zonder volledige fusie.',h:'6–18 mnd'},
-    {t:'Klantloyaliteit verhogen',d:'Langere contracttermijnen, loyaliteitsprogramma\'s en verdiepte relaties.',h:'0–12 mnd'},
-    {t:'Werkgeversmerk opbouwen',d:'Investeer in arbeidsmarktcommunicatie en cultuur om talent te behouden.',h:'6–24 mnd'},
-  ]},
+  'zelfstandig-doorgroeien':{name:'Zelfstandig doorgroeien',fit:s=>Math.round((s.commercieel+s.winst+s.klant+s.auto)/4),actions:[{t:'Versterk de commerciële pipeline',d:'Introduceer een gestructureerd CRM-proces en acquisitieritme.',h:'0–6 mnd'},{t:'Verbreed de managementlaag',d:'Benoem een MT zodat groei niet afhangt van de eigenaar.',h:'6–12 mnd'},{t:'Verken aangrenzende diensten',d:'Identificeer onbediende klantbehoeften en ontwikkel aanvullend aanbod.',h:'6–18 mnd'},{t:'Monitor KPIs maandelijks',d:'Omzet per fte, NPS en churn als vaste stuurindicatoren.',h:'Continu'}]},
+  'regionaliseren':{name:'Regionaliseren',fit:s=>Math.round((s.schaal+s.commercieel+s.auto+s.partner)/4),actions:[{t:'Marktanalyse regionale kansen',d:"Breng in kaart welke regio's ondervoorzien zijn.",h:'0–3 mnd'},{t:'Acquisitie-longlist opstellen',d:"Identificeer 5–10 regionale kantoren die strategisch passend zijn.",h:'3–9 mnd'},{t:'Integratiespelboek ontwikkelen',d:'Documenteer IT-migratie, cultuurintegratie en klantoverdracht.',h:'6–12 mnd'},{t:'Regionaal merkverhaal versterken',d:'Investeer in lokale PR en partnerships.',h:'Continu'}]},
+  'niche-specialisatie':{name:'Niche-specialisatie',fit:s=>Math.round((100-s.auto+s.winst+100-s.schaal)/3),actions:[{t:'Kies kernspecialisaties',d:'Baseer op bestaande portfolio, teamexpertise en marktpotentieel.',h:'0–3 mnd'},{t:'Bouw thought leadership op',d:'Publiceer sectoranalyses, spreek op branche-events.',h:'3–12 mnd'},{t:'Verdiep het dienstenaanbod',d:'Voeg waardering, sector-benchmarks en compliance toe.',h:'6–18 mnd'},{t:'Positioneer alle uitingen op de niche',d:'Herstel website, LinkedIn en pitch materials.',h:'0–6 mnd'}]},
+  'fusiepartner-zoeken':{name:'Fusiepartner zoeken',fit:s=>Math.round((s.fusie+100-s.schaal+100-s.opvolging)/3),actions:[{t:'Stel partnercriteria vast',d:'Definieer harde en zachte criteria.',h:'0–2 mnd'},{t:'M&A-adviseur inschakelen',d:'Werk met een adviseur met sectorervaring.',h:'1–3 mnd'},{t:'Due diligence-materiaal op orde',d:'Drie jaar jaarrekeningen, klantcontracten, procesbeschrijvingen.',h:'0–4 mnd'},{t:'Verkenningsgesprekken starten',d:'Voer gesprekken met 3–5 partijen onder NDA.',h:'3–9 mnd'}]},
+  'opvolging-voorbereiden':{name:'Opvolging voorbereiden',fit:s=>Math.round(100-s.opvolging),actions:[{t:'Opvolgingskandidaat benoemen',d:'Identificeer intern talent en start een formeel traject.',h:'0–3 mnd'},{t:'Formeel opvolgingsplan opstellen',d:'Documenteer tijdlijn, verantwoordelijkheden en financiële structuur.',h:'0–6 mnd'},{t:'Klantrelatieoverdracht starten',d:'Introduceer opvolgers actief bij strategische klanten.',h:'Onmiddellijk'},{t:'Kantoorwaardering laten uitvoeren',d:'Verkrijg inzicht in de waarderingsbandbreedte.',h:'1–3 mnd'}]},
+  'pe-ready-maken':{name:'PE-ready maken',fit:s=>Math.round((s.fusie+s.winst+s.schaal+s.klant)/4),actions:[{t:'Terugkerende omzet maximaliseren',d:'Converteer naar abonnementen. Streef naar >70% recurring.',h:'0–12 mnd'},{t:'EBITDA-marge naar 25–35%',d:'Analyseer kostenstructuur en automatiseer lage-margewerk.',h:'6–18 mnd'},{t:'Klantconcentratie verlagen',d:'Target: geen klant >8% van omzet.',h:'12–24 mnd'},{t:'Managementrapportage professionaliseren',d:'Maandelijks KPI-dashboard en cashflow-forecast.',h:'0–6 mnd'}]},
+  'verkoop-voorbereiden':{name:'Verkoop binnen 3 jaar',fit:s=>Math.round((s.fusie+s.winst+100-s.opvolging)/3),actions:[{t:'Verkoopgereed-stappenplan opstellen',d:'Concrete mijlpalen per kwartaal.',h:'0–3 mnd'},{t:'Overdraagbaarheid vergroten',d:'Verminder persoonsgebonden relaties.',h:'0–18 mnd'},{t:'Winstgevendheid optimaliseren',d:'Focus op hoge-marge diensten.',h:'0–12 mnd'},{t:'Bedrijfswaardering laten uitvoeren',d:'Begrijp de EBITDA-multiple-bandbreedte.',h:'3–6 mnd'}]},
+  'afweerstrategie':{name:'Consolidatie-afweer',fit:s=>Math.round((100-s.klant+100-s.personeel+100-s.schaal)/3),actions:[{t:'Unieke positionering versterken',d:'Maak overnemen minder logisch via niche en klantbinding.',h:'0–12 mnd'},{t:'Strategische allianties sluiten',d:'Werk samen in een netwerk zonder volledige fusie.',h:'6–18 mnd'},{t:'Klantloyaliteit verhogen',d:'Langere contracttermijnen en loyaliteitsprogrammas.',h:'0–12 mnd'},{t:'Werkgeversmerk opbouwen',d:'Investeer in cultuur om talent te behouden.',h:'6–24 mnd'}]},
 };
 
-/* ═══ STATE ═══ */
-let ST={
-  screen:'intro',section:0,answers:{},scores:null,scenarios:null,
-  openScenario:null,aiText:null,aiLoading:false,
-  profile:{naam:'',regio:'',fte:'',omzet:'',specialisme:'',doelgroep:'',software:'',ambitie:'',context:''}
-};
+/* ════════ STATE ════════ */
+let ST={screen:'intro',section:0,answers:{},scores:null,scenarios:null,openScenario:null,openOffice:null,aiText:null,aiLoading:false,groupId:null,groupData:null,groupLoading:false,savedScanId:null,profile:{naam:'',naamAnon:false,email:'',regio:'',fte:'',omzet:'',specialisme:'',doelgroep:'',software:'',ambitie:'',context:''}};
 
-/* ═══ SCORING ═══ */
-function calcScores(){
-  const s={};
-  SECTIONS.forEach(sec=>{
-    let tot=0,cnt=0;
-    sec.questions.forEach(q=>{
-      if(ST.answers[q.id]!==undefined){
-        let v=ST.answers[q.id];
-        if(REVERSE.has(q.id)) v=6-v;
-        tot+=v;cnt++;
-      }
-    });
-    s[sec.id]=cnt>0?Math.round((tot/(cnt*5))*100):0;
-  });
-  return s;
-}
+/* ════════ SCORING ════════ */
+function calcScores(){const s={};SECTIONS.forEach(sec=>{let tot=0,cnt=0;sec.questions.forEach(q=>{if(ST.answers[q.id]!==undefined){let v=ST.answers[q.id];if(REVERSE.has(q.id))v=6-v;tot+=v;cnt++;}});s[sec.id]=cnt>0?Math.round((tot/(cnt*5))*100):0;});return s;}
+function rankScenarios(s){return Object.entries(SCENARIOS).map(([k,sc])=>({k,...sc,score:Math.min(100,sc.fit(s))})).sort((a,b)=>b.score-a.score);}
+function overall(s){return Math.round(Object.values(s).reduce((a,b)=>a+b,0)/Object.values(s).length);}
+function verdict(v){if(v>=72)return{label:'Sterk strategisch profiel',color:'var(--teal)',bg:'var(--teal-bg)',txt:'Het kantoor beschikt over een solide strategische basis.'};if(v>=52)return{label:'Gemiddeld — actie vereist',color:'var(--gold)',bg:'var(--gold-bg)',txt:'Redelijk fundament, maar verbeterpunten beperken de waarde.'};return{label:'Kwetsbaar — urgente actie',color:'var(--red)',bg:'var(--red-bg)',txt:'Meerdere kritieke dimensies vereisen onmiddellijke aandacht.'};}
+function dc(v){return v>=70?'var(--teal)':v>=50?'var(--gold)':'var(--red)';}
+function df(v){return v>=70?{l:'Sterk',c:'var(--teal)'}:v>=50?{l:'Gemiddeld',c:'var(--gold)'}:{l:'Aandacht',c:'var(--red)'};}
 
-function rankScenarios(s){
-  return Object.entries(SCENARIOS)
-    .map(([k,sc])=>({k,...sc,score:Math.min(100,sc.fit(s))}))
-    .sort((a,b)=>b.score-a.score);
-}
-
-function overall(s){return Math.round(Object.values(s).reduce((a,b)=>a+b,0)/Object.values(s).length)}
-
-function verdict(v){
-  if(v>=72)return{label:'Sterk strategisch profiel',color:'var(--teal)',bg:'var(--teal-bg)',txt:'Het kantoor beschikt over een solide strategische basis. De kernwaardedrivers zijn goed ontwikkeld.'};
-  if(v>=52)return{label:'Gemiddeld profiel — actie vereist',color:'var(--gold)',bg:'var(--gold-bg)',txt:'Het kantoor functioneert redelijk, maar er zijn duidelijke verbeterpunten die de waarde beperken.'};
-  return{label:'Kwetsbaar profiel — urgente actie',color:'var(--red)',bg:'var(--red-bg)',txt:'Meerdere kritieke dimensies vereisen onmiddellijke aandacht.'};
-}
-
-function dc(v){return v>=70?'var(--teal)':v>=50?'var(--gold)':'var(--red)'}
-function df(v){return v>=70?{l:'Sterk',c:'var(--teal)'}:v>=50?{l:'Gemiddeld',c:'var(--gold)'}:{l:'Aandacht vereist',c:'var(--red)'}}
-
-/* ═══ AI ═══ */
+/* ════════ API ════════ */
 async function generateAI(){
-  const s=ST.scores; const ov=overall(s); const vd=verdict(ov);
-  const top3=ST.scenarios.slice(0,3).map(sc=>`${sc.name} (${sc.score}% fit)`).join(', ');
+  const s=ST.scores;const ov=overall(s);const vd=verdict(ov);
+  const top3=ST.scenarios.slice(0,3).map(sc=>`${sc.name} (${sc.score}%)`).join(', ');
   const p=ST.profile;
   const dims=SECTIONS.map(sec=>`- ${sec.label}: ${s[sec.id]}/100`).join('\n');
-  const risks=SECTIONS.filter(sec=>s[sec.id]<55).map(sec=>sec.label).join(', ')||'geen kritieke risico\'s';
-
-  const prompt=`Je bent een senior strategisch adviseur gespecialiseerd in administratie- en accountantskantoren in Nederland. Je combineert de diepgang van een M&A-adviseur met praktische sectorkennis.
-
-KANTOORPROFIEL:
-- Naam: ${p.naam||'Niet opgegeven'}
-- Regio: ${p.regio||'Niet opgegeven'}
-- Medewerkers (fte): ${p.fte||'Niet opgegeven'}
-- Jaaromzet: ${p.omzet||'Niet opgegeven'}
-- Specialisme: ${p.specialisme||'Generalistisch'}
-- Doelgroep: ${p.doelgroep||'MKB algemeen'}
-- Software: ${p.software||'Onbekend'}
-- Strategische ambitie: ${p.ambitie||'Niet opgegeven'}
-- Context: ${p.context||'Geen aanvullende context'}
-
-SCANRESULTATEN:
-Totaalscore: ${ov}/100 — ${vd.label}
-${dims}
-Aanbevolen scenario's: ${top3}
-Risicosignalen: ${risks}
-
-Schrijf een professioneel, gepersonaliseerd strategisch memo. Gebruik ## voor hoofdstukken en ** voor vetgedrukte sleutelzinnen. Schrijf scherp, direct en zonder open deuren. Verwerk de kantoorgegevens actief in het advies.
-
-## Strategisch oordeel
-[2-3 zinnen directe diagnose afgestemd op dit kantoor]
-
-## Kritieke inzichten
-[De 2–3 meest urgente bevindingen met verwijzing naar specifieke scores]
-
-## Strategisch advies
-[Concreet advies passend bij het aanbevolen scenario, omvang en ambitie van dit kantoor]
-
-## Eerste 90 dagen
-[3 concrete prioriteiten met eigenaar en gewenst resultaat]
-
-## Waarschuwingssignaal
-[Één kritisch risico dat dit kantoor nu waarschijnlijk onderschat]`;
-
+  const risks=SECTIONS.filter(sec=>s[sec.id]<55).map(sec=>sec.label).join(', ')||'geen kritieke risicos';
+  const naam=p.naamAnon?'Anoniem kantoor':p.naam||'Niet opgegeven';
+  const prompt=`Je bent een senior strategisch adviseur gespecialiseerd in administratie- en accountantskantoren in Nederland.\n\nKANTOORPROFIEL:\n- Naam: ${naam}\n- Regio: ${p.regio||'Niet opgegeven'}\n- Medewerkers (fte): ${p.fte||'Niet opgegeven'}\n- Jaaromzet: ${p.omzet||'Niet opgegeven'}\n- Specialisme: ${p.specialisme||'Generalistisch'}\n- Doelgroep: ${p.doelgroep||'MKB'}\n- Software: ${p.software||'Onbekend'}\n- Strategische ambitie: ${p.ambitie||'Niet opgegeven'}\n- Context: ${p.context||'Geen aanvullende context'}\n\nSCANRESULTATEN:\nTotaalscore: ${ov}/100 — ${vd.label}\n${dims}\nAanbevolen scenarios: ${top3}\nRisicosignalen: ${risks}\n\nSchrijf een professioneel, gepersonaliseerd strategisch memo. Gebruik ## voor hoofdstukken en ** voor sleutelzinnen. Scherp, direct, zonder open deuren.\n\n## Strategisch oordeel\n## Kritieke inzichten\n## Strategisch advies\n## Eerste 90 dagen\n## Waarschuwingssignaal`;
   ST.aiLoading=true;ST.aiText='';render();
-
   try{
-    const resp=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        model:'claude-sonnet-4-20250514',
-        max_tokens:1200,
-        stream:true,
-        messages:[{role:'user',content:prompt}]
-      })
-    });
-
-    if(!resp.ok){const e=await resp.json().catch(()=>({}));throw new Error(e.error?.message||`HTTP ${resp.status}`)}
-
+    const resp=await fetch(`${WORKER}/ai`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}]})});
+    if(!resp.ok)throw new Error(`HTTP ${resp.status}`);
     const reader=resp.body.getReader();const dec=new TextDecoder();
     ST.aiLoading=false;ST.aiText='';
-
     while(true){
       const{done,value}=await reader.read();if(done)break;
       const chunk=dec.decode(value,{stream:true});
       for(const line of chunk.split('\n')){
         if(line.startsWith('data:')){
           const d=line.slice(5).trim();if(d==='[DONE]')continue;
-          try{const j=JSON.parse(d);if(j.type==='content_block_delta'&&j.delta?.text){ST.aiText+=j.delta.text;updateAI()}}catch(e){}
+          try{const j=JSON.parse(d);if(j.type==='content_block_delta'&&j.delta?.text){ST.aiText+=j.delta.text;updateAI();}}catch(e){}
         }
       }
     }
     updateAI(true);
-  }catch(err){
-    ST.aiLoading=false;
-    ST.aiText=`**Tijdelijk niet beschikbaar.** Het AI-advies kon niet worden gegenereerd. Probeer het over enkele seconden opnieuw.`;
-    updateAI(true);
-  }
+  }catch(err){ST.aiLoading=false;ST.aiText='__ERROR__';updateAI(true);}
 }
 
-function updateAI(final=false){
-  const el=document.getElementById('ai-out');
-  if(el) el.innerHTML=renderAIText(ST.aiText,!final);
+async function saveScanToGroup(){
+  if(!ST.groupId||!ST.scores)return;
+  const p=ST.profile;
+  try{
+    const resp=await fetch(`${WORKER}/group/join`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({group_id:ST.groupId,office_name:p.naamAnon?'Anoniem':p.naam,office_email:p.naamAnon?'':p.email,region:p.regio,fte:p.fte,revenue:p.omzet,scores:ST.scores,top_scenario:ST.scenarios?.[0]?.name||''})});
+    const data=await resp.json();
+    if(data.scan_id)ST.savedScanId=data.scan_id;
+  }catch(e){console.warn('Scan niet opgeslagen:',e);}
 }
 
+async function createGroup(name,email){
+  const resp=await fetch(`${WORKER}/group/create`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,admin_email:email})});
+  return resp.json();
+}
+
+async function loadGroup(gid){
+  ST.groupLoading=true;render();
+  try{
+    const resp=await fetch(`${WORKER}/group/${gid}`);
+    if(!resp.ok)throw new Error('niet gevonden');
+    ST.groupData=await resp.json();ST.screen='dashboard';
+  }catch(e){ST.groupData=null;ST.screen='dashboard-error';}
+  ST.groupLoading=false;render();
+}
+
+function updateAI(final=false){const el=document.getElementById('ai-out');if(el)el.innerHTML=renderAIText(ST.aiText,!final);}
 function renderAIText(text,cursor=false){
-  if(!text&&ST.aiLoading)return`<div class="ai-loading"><div class="ai-spinner"></div>Strategisch memo wordt gegenereerd…</div>`;
-  if(!text)return`<div class="ai-placeholder"><div class="ai-placeholder-icon">◈</div><p class="ai-placeholder-text">Klik op "Genereer AI-advies" om een volledig gepersonaliseerd strategisch memo te ontvangen op basis van de scanresultaten en het kantoorprofiel.</p></div>`;
-  let html=text
-    .replace(/## (.+)/g,'<h3>$1</h3>')
-    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
-    .replace(/^- (.+)/gm,'<li>$1</li>')
-    .replace(/(<li>[^]*?<\/li>\n?)+/g,m=>`<ul>${m}</ul>`);
+  if(ST.aiLoading)return`<div class="ai-loading"><div class="ai-spinner"></div><span>Strategisch memo wordt gegenereerd...</span></div>`;
+  if(!text)return`<div class="ai-placeholder"><div class="ai-placeholder-icon">&#9672;</div><p class="ai-placeholder-text">Klik op "Genereer AI-advies" voor een gepersonaliseerd strategisch memo op basis van de scanresultaten en het kantoorprofiel.</p></div>`;
+  if(text==='__ERROR__')return`<div class="ai-placeholder"><div class="ai-placeholder-icon" style="opacity:.5">&#9888;</div><p class="ai-placeholder-text" style="margin-bottom:1rem">Kon niet verbinden. Controleer de WORKER URL in de configuratie.</p><button class="btn-gen" onclick="generateAI()" style="margin:0 auto">Opnieuw proberen</button></div>`;
+  let html=text.replace(/## (.+)/g,'<h3>$1</h3>').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/^- (.+)/gm,'<li>$1</li>').replace(/(<li>[^]*?<\/li>\n?)+/g,m=>`<ul>${m}</ul>`);
   html=html.split('\n\n').map(p=>p.trim()&&!p.startsWith('<')?`<p>${p}</p>`:p).join('');
   if(cursor)html+=`<span class="ai-cursor"></span>`;
   return`<div class="ai-output">${html}</div>`;
 }
 
-/* ═══ RENDER ═══ */
+/* ════════ RENDER ════════ */
 function render(){
   const app=document.getElementById('app');
-  if(ST.screen==='intro')app.innerHTML=rIntro();
-  else if(ST.screen==='intake')app.innerHTML=rIntake();
-  else if(ST.screen==='questions')app.innerHTML=rQuestions();
-  else if(ST.screen==='results')app.innerHTML=rResults();
+  const screens={intro:rIntro,intake:rIntake,questions:rQuestions,results:rResults,'group-create':rGroupCreate,'group-join':rGroupJoin,'group-created':rGroupCreated,dashboard:rDashboard,'dashboard-error':rDashboardError};
+  app.innerHTML=(screens[ST.screen]||rIntro)();
   bindEvents();
 }
 
-function rIntro(){return`
-<div class="intro-wrap">
-  <div class="intro-grid"></div>
-  <div class="intro-inner">
-    <div class="wordmark"><div class="wdot"></div>KantoorInzicht<div class="wdot"></div></div>
-    <div class="eyebrow">Strategisch analyse-instrument · AI-powered</div>
-    <h1 class="intro-h1">Strategische <em>Kantoor</em> Scan</h1>
-    <p class="intro-sub">Een PE-geïnspireerde analyse van uw kantoor. In 10 minuten een volledig strategisch profiel, positioneringsmatrix en een door AI gegenereerd adviesrapport op maat.</p>
-    <div class="kpi-row">
-      <div class="kpi-item"><div class="kpi-num">11</div><div class="kpi-lbl">Dimensies</div></div>
-      <div class="kpi-div"></div>
-      <div class="kpi-item"><div class="kpi-num">33</div><div class="kpi-lbl">Vragen</div></div>
-      <div class="kpi-div"></div>
-      <div class="kpi-item"><div class="kpi-num">8</div><div class="kpi-lbl">Scenario's</div></div>
-      <div class="kpi-div"></div>
-      <div class="kpi-item"><div class="kpi-num">AI</div><div class="kpi-lbl">Advies op maat</div></div>
-    </div>
-    <div class="dim-row">${SECTIONS.map(s=>`<span class="dim-chip">${s.label}</span>`).join('')}</div>
-    <button class="btn-start" id="start-btn">Start de Kantoor Scan →</button>
-    <div class="intro-foot">Vertrouwelijk · Gebaseerd op PE & M&A-waarderingscriteria · Powered by Claude AI</div>
-  </div>
-</div>`}
+function rIntro(){return`<div class="intro-wrap"><div class="intro-grid"></div><div class="intro-inner"><div class="wordmark"><div class="wdot"></div>KantoorInzicht<div class="wdot"></div></div><div class="eyebrow">Strategisch analyse-instrument · AI-powered</div><h1 class="intro-h1">Strategische <em>Kantoor</em> Scan</h1><p class="intro-sub">Een PE-geïnspireerde analyse van uw kantoor. In 10 minuten een volledig strategisch profiel, positioneringsmatrix en AI-adviesrapport op maat.</p><div class="kpi-row"><div class="kpi-item"><div class="kpi-num">11</div><div class="kpi-lbl">Dimensies</div></div><div class="kpi-div"></div><div class="kpi-item"><div class="kpi-num">33</div><div class="kpi-lbl">Vragen</div></div><div class="kpi-div"></div><div class="kpi-item"><div class="kpi-num">8</div><div class="kpi-lbl">Scenarios</div></div><div class="kpi-div"></div><div class="kpi-item"><div class="kpi-num">AI</div><div class="kpi-lbl">Advies</div></div></div><div class="dim-row">${SECTIONS.map(s=>`<span class="dim-chip">${s.label}</span>`).join('')}</div><div class="route-cards"><div class="route-card" id="route-solo"><div class="route-icon">&#9672;</div><div class="route-title">Individuele scan</div><div class="route-desc">Vul de scan in voor uw eigen kantoor en ontvang direct uw persoonlijk rapport.</div></div><div class="route-card" id="route-group-join"><div class="route-icon">&#8853;</div><div class="route-title">Deelnemen aan groep</div><div class="route-desc">Scan invullen als onderdeel van een groep — uw resultaten worden vergeleken.</div></div><div class="route-card" id="route-group-create"><div class="route-icon">&#8862;</div><div class="route-title">Groep aanmaken</div><div class="route-desc">Maak een groep aan voor meerdere kantoren en beheer het groepsdashboard.</div></div><div class="route-card" id="route-dashboard"><div class="route-icon">&#9636;</div><div class="route-title">Dashboard bekijken</div><div class="route-desc">Bekijk het groepsdashboard met alle ingediende scans en benchmarks.</div></div></div><div class="intro-foot">Vertrouwelijk · Gebaseerd op PE &amp; M&amp;A-criteria · Powered by Claude AI</div></div></div>`;}
+
+function rGroupCreate(){return`<div class="page-wrap narrow"><div class="page-hdr"><div class="page-brand"><div class="wdot"></div>KantoorInzicht</div><div class="page-step">Groep aanmaken</div></div><div class="group-panel anim"><div class="group-panel-title">Nieuwe groep aanmaken</div><div class="group-panel-sub">U ontvangt een unieke 6-cijferige groepscode die u deelt met deelnemende kantoren.</div><div class="form-grid full"><div class="field"><label>Naam van de groep</label><input type="text" id="gc-name" placeholder="bijv. Accountantsvereniging Gelderland"></div></div><div class="form-grid full"><div class="field"><label>Uw e-mailadres (beheerder)</label><input type="email" id="gc-email" placeholder="u@kantoor.nl"></div></div><div class="note-box"><strong>U ontvangt een groepscode</strong> die u kunt delen via e-mail of WhatsApp. Deelnemers voeren deze code in bij "Deelnemen aan groep".</div><div style="display:flex;gap:10px"><button class="btn-ghost" id="back-intro">Terug</button><button class="btn-adv" id="do-create-group">Groep aanmaken</button></div></div></div>`;}
+
+function rGroupCreated(){return`<div class="page-wrap narrow"><div class="page-hdr"><div class="page-brand"><div class="wdot"></div>KantoorInzicht</div><div class="page-step">Groep aangemaakt</div></div><div class="group-panel anim"><div class="group-panel-title">Groep aangemaakt</div><div class="group-panel-sub">Deel de onderstaande code met deelnemende kantoren.</div><div class="code-display">${ST.groupId||'------'}</div><div class="note-box"><strong>Dashboard:</strong> Voer de code in via "Dashboard bekijken" om resultaten te zien zodra kantoren de scan hebben ingevuld.</div><div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn-ghost" id="back-intro">Terug naar start</button><button class="btn-adv" id="view-dashboard-btn">Dashboard bekijken</button></div></div></div>`;}
+
+function rGroupJoin(){return`<div class="page-wrap narrow"><div class="page-hdr"><div class="page-brand"><div class="wdot"></div>KantoorInzicht</div><div class="page-step">Groep deelnemen</div></div><div class="group-panel anim"><div class="group-panel-title">Deelnemen aan een groep</div><div class="group-panel-sub">Voer de groepscode in die u hebt ontvangen van de beheerder.</div><div class="form-grid full" style="margin-bottom:1rem"><div class="field"><label>Groepscode</label><input type="text" id="gj-code" placeholder="bijv. AB12CD" maxlength="6" style="text-transform:uppercase;letter-spacing:.2em;font-size:1.4rem;text-align:center"></div></div><div class="note-box"><strong>Anoniem deelnemen is toegestaan.</strong> U kunt bij de volgende stap kiezen of u uw kantoornaam zichtbaar wilt maken.</div><div style="display:flex;gap:10px"><button class="btn-ghost" id="back-intro">Terug</button><button class="btn-adv" id="do-join-group">Doorgaan naar scan</button></div></div></div>`;}
+
+function rDashboardError(){return`<div class="page-wrap narrow"><div class="page-hdr"><div class="page-brand"><div class="wdot"></div>KantoorInzicht</div><div class="page-step">Dashboard</div></div><div class="error-screen anim"><h3>Groep niet gevonden</h3><p>Controleer de groepscode en probeer opnieuw.</p><button class="btn-adv" id="back-intro">Terug naar start</button></div></div>`;}
 
 function rIntake(){
   const p=ST.profile;
-  return`
-<div class="page-wrap narrow">
-  <div class="page-hdr"><div class="page-brand"><div class="wdot"></div>KantoorInzicht</div><div class="page-step">STAP 1 — Kantoorprofiel</div></div>
-  <div class="anim"><div class="intake-title">Vertel ons over uw kantoor</div>
-  <div class="intake-sub">Deze gegevens worden door de AI gebruikt om uw adviesrapport volledig te personaliseren. Niet alles is verplicht.</div></div>
-  <div class="form-grid anim a1">
-    <div class="field"><label>Naam kantoor</label><input type="text" id="f-naam" placeholder="bijv. Bakker & Partners" value="${p.naam}"></div>
-    <div class="field"><label>Regio</label><input type="text" id="f-regio" placeholder="bijv. Achterhoek, Maastricht" value="${p.regio}"></div>
-    <div class="field"><label>Aantal medewerkers (fte)</label>
-      <select id="f-fte"><option value="">Selecteer…</option>${['1–3','4–8','9–15','16–30','31–60','60+'].map(v=>`<option${p.fte===v?' selected':''}>${v}</option>`).join('')}</select></div>
-    <div class="field"><label>Geschatte jaaromzet</label>
-      <select id="f-omzet"><option value="">Selecteer…</option>${['< €300k','€300k – €700k','€700k – €1,5m','€1,5m – €3m','€3m – €7m','> €7m'].map(v=>`<option${p.omzet===v?' selected':''}>${v}</option>`).join('')}</select></div>
-    <div class="field"><label>Specialisme of niche</label><input type="text" id="f-spec" placeholder="bijv. agri, vastgoed, zorg, generalist" value="${p.specialisme}"></div>
-    <div class="field"><label>Primaire doelgroep</label><input type="text" id="f-doel" placeholder="bijv. MKB, ZZP, familiebedrijven" value="${p.doelgroep}"></div>
-    <div class="field"><label>Gebruikte software</label><input type="text" id="f-sw" placeholder="bijv. Exact, Twinfield, Yuki, Afas" value="${p.software}"></div>
-    <div class="field"><label>Strategische ambitie</label>
-      <select id="f-ambitie"><option value="">Selecteer…</option>${['Stabiel houden','Groeien (organisch)','Groeien (via overnames)','Fusie of samenwerking','Verkoop (3–7 jaar)','Opvolging regelen'].map(v=>`<option${p.ambitie===v?' selected':''}>${v}</option>`).join('')}</select></div>
-  </div>
-  <div class="form-grid full anim a2">
-    <div class="field"><label>Aanvullende context (optioneel)</label>
-      <textarea id="f-context" placeholder="Wat speelt er momenteel? Bijzondere omstandigheden, recente ontwikkelingen, specifieke vragen…">${p.context}</textarea></div>
-  </div>
-  <div class="note-box anim a2"><strong>Privacy:</strong> Uw gegevens worden alleen gebruikt voor het genereren van uw persoonlijke rapport en worden niet opgeslagen op externe servers.</div>
-  <div class="scan-nav anim a3">
-    <button class="btn-ghost" id="back-intro">← Terug</button>
-    <button class="btn-adv" id="start-scan">Naar de vragenlijst →</button>
-  </div>
-</div>`}
+  return`<div class="page-wrap narrow"><div class="page-hdr"><div class="page-brand"><div class="wdot"></div>KantoorInzicht</div><div class="page-step">STAP 1 — Kantoorprofiel</div></div><div class="anim"><div style="font-family:'Playfair Display',serif;font-size:1.8rem;color:var(--white);font-weight:600;margin-bottom:.5rem">Vertel ons over uw kantoor</div><div style="font-size:13px;color:var(--mid);line-height:1.65;margin-bottom:2rem">Deze gegevens personaliseren uw AI-adviesrapport.${ST.groupId?` <span style="color:var(--teal)">Deelname aan groep <strong>${ST.groupId}</strong>.</span>`:''}</div></div>${ST.groupId?`<div class="note-box anim a1"><strong>Anoniem deelnemen:</strong><label style="display:flex;align-items:center;gap:8px;margin-top:8px;cursor:pointer;font-size:13px;color:var(--sub)"><input type="checkbox" id="anon-check" ${p.naamAnon?'checked':''} style="width:16px;height:16px;accent-color:var(--teal)">Mijn kantoornaam niet zichtbaar maken in het groepsdashboard</label></div>`:''}<div class="form-grid anim a1"><div class="field"><label>Naam kantoor</label><input type="text" id="f-naam" placeholder="bijv. Bakker &amp; Partners" value="${p.naam}" ${p.naamAnon?'disabled style="opacity:.4"':''}></div><div class="field"><label>E-mailadres (optioneel)</label><input type="email" id="f-email" placeholder="u@kantoor.nl" value="${p.email}"></div><div class="field"><label>Regio</label><input type="text" id="f-regio" placeholder="bijv. Achterhoek, Maastricht" value="${p.regio}"></div><div class="field"><label>Aantal medewerkers (fte)</label><select id="f-fte"><option value="">Selecteer...</option>${['1–3','4–8','9–15','16–30','31–60','60+'].map(v=>`<option${p.fte===v?' selected':''}>${v}</option>`).join('')}</select></div><div class="field"><label>Geschatte jaaromzet</label><select id="f-omzet"><option value="">Selecteer...</option>${['< 300k','300k – 700k','700k – 1,5m','1,5m – 3m','3m – 7m','> 7m'].map(v=>`<option${p.omzet===v?' selected':''}>${v}</option>`).join('')}</select></div><div class="field"><label>Specialisme of niche</label><input type="text" id="f-spec" placeholder="bijv. agri, vastgoed, zorg" value="${p.specialisme}"></div><div class="field"><label>Primaire doelgroep</label><input type="text" id="f-doel" placeholder="bijv. MKB, ZZP" value="${p.doelgroep}"></div><div class="field"><label>Gebruikte software</label><input type="text" id="f-sw" placeholder="bijv. Exact, Twinfield, Yuki" value="${p.software}"></div><div class="field"><label>Strategische ambitie</label><select id="f-ambitie"><option value="">Selecteer...</option>${['Stabiel houden','Groeien (organisch)','Groeien (via overnames)','Fusie of samenwerking','Verkoop (3–7 jaar)','Opvolging regelen'].map(v=>`<option${p.ambitie===v?' selected':''}>${v}</option>`).join('')}</select></div></div><div class="form-grid full anim a2"><div class="field"><label>Aanvullende context (optioneel)</label><textarea id="f-context" placeholder="Wat speelt er momenteel?">${p.context}</textarea></div></div><div class="note-box anim a2"><strong>Privacy:</strong> Gegevens worden alleen gebruikt voor uw rapport. Bij anonieme deelname ziet het dashboard alleen "Anoniem".</div><div class="scan-nav anim a3"><button class="btn-ghost" id="back-intro">Terug</button><button class="btn-adv" id="start-scan">Naar de vragenlijst</button></div></div>`;
+}
 
 function rQuestions(){
   const sec=SECTIONS[ST.section];const total=SECTIONS.length;
   const answered=sec.questions.every(q=>ST.answers[q.id]!==undefined);
   const isLast=ST.section===total-1;
   const steps=SECTIONS.map((_,i)=>`<div class="p-step${i<ST.section?' done':i===ST.section?' active':''}"></div>`).join('');
-  return`
-<div class="page-wrap">
-  <div class="page-hdr"><div class="page-brand"><div class="wdot"></div>KantoorInzicht</div><div class="page-step mono">STAP ${ST.section+1}/${total}</div></div>
-  <div class="prog-section">
-    <div class="prog-top"><div class="prog-lbl">${sec.label}</div><div class="prog-frac">${ST.section+1} / ${total}</div></div>
-    <div class="prog-track"><div class="prog-fill" style="width:${(ST.section/total)*100}%"></div></div>
-    <div class="prog-steps">${steps}</div>
-  </div>
-  <div class="anim"><span class="sec-badge">${sec.icon}</span><div class="sec-title">${sec.label}</div><div class="sec-desc">${sec.desc}</div></div>
-  <div class="q-stack">
-    ${sec.questions.map((q,qi)=>{const v=ST.answers[q.id];return`
-    <div class="q-card${v!==undefined?' answered':''} anim a${qi+1}">
-      <div class="q-row">
-        <div><div class="q-text">${q.q}</div>${q.hint?`<div class="q-hint">${q.hint}</div>`:''}</div>
-        <div class="q-val${v!==undefined?' set':''}">${v!==undefined?v:'—'}</div>
-      </div>
-      <div class="likert">${[1,2,3,4,5].map(n=>`<button class="l-btn${v===n?' sel':''}" data-q="${q.id}" data-v="${n}">${n}</button>`).join('')}</div>
-      <div class="likert-axis"><span>Helemaal niet</span><span>Volledig</span></div>
-    </div>`;}).join('')}
-  </div>
-  <div class="scan-nav">
-    <div class="nav-info">${Object.keys(ST.answers).length} / 33 beantwoord</div>
-    <div style="display:flex;gap:10px">
-      <button class="btn-ghost" id="prev-btn" ${ST.section===0?'disabled':''}>← Terug</button>
-      <button class="btn-adv" id="next-btn" ${!answered?'disabled':''}>${isLast?'Genereer rapport →':'Volgende →'}</button>
-    </div>
-  </div>
-</div>`}
+  return`<div class="page-wrap"><div class="page-hdr"><div class="page-brand"><div class="wdot"></div>KantoorInzicht</div><div class="page-step mono">STAP ${ST.section+1}/${total}</div></div><div class="prog-section"><div class="prog-top"><div class="prog-lbl">${sec.label}</div><div class="prog-frac">${ST.section+1} / ${total}</div></div><div class="prog-track"><div class="prog-fill" style="width:${(ST.section/total)*100}%"></div></div><div class="prog-steps">${steps}</div></div><div class="anim"><span class="sec-badge">${sec.icon}</span><div class="sec-title">${sec.label}</div><div class="sec-desc">${sec.desc}</div></div><div class="q-stack">${sec.questions.map((q,qi)=>{const v=ST.answers[q.id];return`<div class="q-card${v!==undefined?' answered':''} anim a${qi+1}"><div class="q-row"><div><div class="q-text">${q.q}</div>${q.hint?`<div class="q-hint">${q.hint}</div>`:''}</div><div class="q-val${v!==undefined?' set':''}">${v!==undefined?v:'—'}</div></div><div class="likert">${[1,2,3,4,5].map(n=>`<button class="l-btn${v===n?' sel':''}" data-q="${q.id}" data-v="${n}">${n}</button>`).join('')}</div><div class="likert-axis"><span>Helemaal niet</span><span>Volledig</span></div></div>`;}).join('')}</div><div class="scan-nav"><div class="nav-info">${Object.keys(ST.answers).length} / 33 beantwoord</div><div style="display:flex;gap:10px"><button class="btn-ghost" id="prev-btn" ${ST.section===0?'disabled':''}>Terug</button><button class="btn-adv" id="next-btn" ${!answered?'disabled':''}>${isLast?'Genereer rapport':'Volgende'}</button></div></div></div>`;
+}
 
 function rResults(){
   const s=ST.scores;const ov=overall(s);const vd=verdict(ov);
@@ -584,155 +439,78 @@ function rResults(){
   const bench=62;const p=ST.profile;
   const risks=SECTIONS.filter(sec=>s[sec.id]<55).slice(0,6);
   const now=new Date().toLocaleDateString('nl-NL',{year:'numeric',month:'long',day:'numeric'});
+  const naam=p.naamAnon?'Anoniem kantoor':p.naam;
+  return`<div class="page-wrap"><div class="r-header anim"><div class="r-brand-row"><div class="r-brand"><div class="wdot"></div>KantoorInzicht</div><div class="r-date">${now}</div></div>${naam?`<div class="kantoor-slug">${naam}${p.regio?' · '+p.regio:''}</div>`:''}  <h2 class="report-title">Strategisch <em>profiel</em> &amp; adviesrapport</h2><p class="report-sub">33 indicatoren · 11 dimensies${p.fte?' · '+p.fte+' fte':''}${p.omzet?' · '+p.omzet:''}${ST.savedScanId?` · <span style="color:var(--teal)">Opgeslagen in groep ${ST.groupId}</span>`:''}</p></div><div class="score-hero anim a1"><div class="score-circle"><svg width="110" height="110" viewBox="0 0 110 110"><circle cx="55" cy="55" r="48" fill="none" stroke="var(--border)" stroke-width="6"/><circle cx="55" cy="55" r="48" fill="none" stroke="${vd.color}" stroke-width="6" stroke-dasharray="${2*Math.PI*48}" stroke-dashoffset="${2*Math.PI*48*(1-ov/100)}" stroke-linecap="round"/></svg><div class="score-inner"><div class="score-big">${ov}</div><div class="score-denom">/100</div></div></div><div><div style="margin-bottom:.5rem"><span style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:3px;background:${vd.bg};color:${vd.color};border:1px solid ${vd.color}44">${vd.label}</span></div><div class="score-explain">${vd.txt}</div></div></div><div class="bench-strip anim a1"><span class="bench-lbl">Benchmark</span><div class="bench-track"><div class="bench-bar" style="width:${ov}%"></div><div class="bench-marker" style="left:${bench}%"></div></div><div class="bench-leg"><div class="bench-leg-item"><div class="bench-dot" style="background:var(--teal)"></div><span>Uw kantoor (${ov})</span></div><div class="bench-leg-item"><div class="bench-dot" style="background:var(--gold)"></div><span>Sector (~${bench})</span></div></div></div><div class="sec-lbl anim a2">Scores per dimensie</div><div class="dim-grid anim a2">${SECTIONS.map(sec=>{const v=s[sec.id];const f=df(v);return`<div class="dim-card"><div class="dim-top"><div class="dim-name">${sec.label}</div><div class="dim-val" style="color:${dc(v)}">${v}</div></div><div class="dim-bar-bg"><div class="dim-bar" style="width:${v}%;background:${dc(v)}"></div></div><div class="dim-flag" style="color:${f.c}">${f.l}</div></div>`;}).join('')}</div><div class="sec-lbl anim a2">Positioneringsmatrix</div><div class="matrix-sec anim a2"><div class="matrix-title">Strategische positiematrix</div><div class="matrix-sub">Schaalbaarheid &amp; commercieel (X) · Winstkracht &amp; klantbinding (Y)</div><div class="matrix-body"><svg width="270" height="220" viewBox="0 0 270 220" style="flex-shrink:0"><rect x="30" y="10" width="220" height="170" fill="var(--card)" rx="4"/><rect x="30" y="10" width="110" height="85" fill="rgba(224,82,82,.07)" rx="4"/><rect x="140" y="10" width="110" height="85" fill="rgba(201,168,76,.07)"/><rect x="30" y="95" width="110" height="85" fill="rgba(201,168,76,.07)"/><rect x="140" y="95" width="110" height="85" fill="rgba(34,197,160,.07)" rx="4"/><line x1="140" y1="10" x2="140" y2="180" stroke="var(--border2)" stroke-width="1" stroke-dasharray="4,3"/><line x1="30" y1="95" x2="250" y2="95" stroke="var(--border2)" stroke-width="1" stroke-dasharray="4,3"/><text x="85" y="26" text-anchor="middle" font-size="9" fill="var(--muted)" font-family="IBM Plex Sans">Kwetsbaar</text><text x="195" y="26" text-anchor="middle" font-size="9" fill="var(--muted)" font-family="IBM Plex Sans">Groei mogelijk</text><text x="85" y="172" text-anchor="middle" font-size="9" fill="var(--muted)" font-family="IBM Plex Sans">Stabiel</text><text x="195" y="172" text-anchor="middle" font-size="9" fill="var(--teal)" font-family="IBM Plex Sans">Sterk platform</text><text x="140" y="207" text-anchor="middle" font-size="9" fill="var(--muted)" font-family="IBM Plex Sans">Schaal &amp; commercieel</text><circle cx="${30+(bench/100)*220}" cy="${180-((bench/100)*170)}" r="5" fill="none" stroke="var(--gold)" stroke-width="1.5" opacity=".6"/><circle cx="${30+(mx/100)*220}" cy="${180-((my/100)*170)}" r="9" fill="var(--teal)" opacity=".2"/><circle cx="${30+(mx/100)*220}" cy="${180-((my/100)*170)}" r="5" fill="var(--teal)"/></svg><div class="quadrant-list">${[{q:'Sterk platform',d:'Hoge schaal + hoge winstkracht.',a:mx>50&&my>50},{q:'Groei mogelijk',d:'Lage schaal + hoge winstkracht.',a:mx<=50&&my>50},{q:'Stabiel / defensief',d:'Hoge schaal + lagere winstkracht.',a:mx>50&&my<=50},{q:'Kwetsbaar',d:'Lage schaal + lage winstkracht.',a:mx<=50&&my<=50}].map(i=>`<div class="q-item${i.a?' active':''}"><div class="q-dot" style="background:${i.a?'var(--teal)':'var(--border2)'}"></div><div><div class="q-iname">${i.q}</div><div class="q-idesc">${i.d}</div></div></div>`).join('')}</div></div></div><div class="sec-lbl anim a3">Scenarios &amp; adviespad</div><div class="scenario-cards anim a3">${top3.map((sc,i)=>`<div class="sc-card"><div class="sc-hdr" data-k="${sc.k}"><span class="sc-rank${i===0?' pri':''}">${i===0?'AANBEVOLEN':i===1?'ALTERNATIEF':'OPTIONEEL'}</span><span class="sc-name${i===0?' pri':''}">${sc.name}</span><span class="sc-fit mono">${sc.score}% fit</span><span class="sc-chev${ST.openScenario===sc.k?' open':''}">&#9662;</span></div><div class="sc-body${ST.openScenario===sc.k?' open':''}"><div class="actions-lbl">Concrete vervolgstappen</div><div class="action-items">${sc.actions.map((a,ai)=>`<div class="action-item"><span class="act-num">0${ai+1}</span><div><div class="act-title">${a.t}</div><div class="act-desc">${a.d}</div><div class="act-horizon">${a.h}</div></div></div>`).join('')}</div></div></div>`).join('')}</div><div class="sec-lbl anim a3">AI-strategisch memo</div><div class="ai-panel anim a3"><div class="ai-panel-hdr"><div class="ai-title-group"><span class="ai-badge-el">AI · Claude</span><div><div class="ai-panel-name">Gepersonaliseerd strategisch advies</div><div class="ai-panel-sub">Op basis van scanresultaten + kantoorprofiel</div></div></div><button class="btn-gen" id="gen-btn" ${ST.aiLoading?'disabled':''}>${ST.aiLoading?'Genereren...':ST.aiText&&ST.aiText!=='__ERROR__'?'Opnieuw genereren':'Genereer AI-advies'}</button></div><div class="ai-body"><div id="ai-out">${renderAIText(ST.aiText,false)}</div></div></div>${risks.length>0?`<div class="sec-lbl anim a4">Risicovlaggen</div><div class="dim-grid anim a4">${risks.map(r=>`<div class="dim-card"><div class="dim-top"><div class="dim-name">${r.label}</div><div class="dim-val" style="color:${dc(s[r.id])}">${s[r.id]}</div></div><div class="dim-bar-bg"><div class="dim-bar" style="width:${s[r.id]}%;background:${dc(s[r.id])}"></div></div><div class="dim-flag" style="color:${dc(s[r.id])}">Prioritaire aandacht</div></div>`).join('')}</div>`:''}<div class="r-footer anim a4"><p class="footer-note">KantoorInzicht — aanbevelingen zijn indicatief. &copy; ${new Date().getFullYear()}</p><div class="footer-btns"><button class="btn-print" onclick="window.print()">PDF</button>${ST.groupId?`<button class="btn-ghost" id="view-group-btn">Dashboard</button>`:''}<button class="btn-restart" id="restart-btn">Nieuwe scan</button></div></div></div>`;
+}
 
-  return`
-<div class="page-wrap">
-  <div class="r-header anim">
-    <div class="r-brand-row"><div class="r-brand"><div class="wdot"></div>KantoorInzicht — Strategische Kantoor Scan</div><div class="r-date">${now}</div></div>
-    ${p.naam?`<div class="kantoor-slug">${p.naam}${p.regio?' · '+p.regio:''}</div>`:''}
-    <h2 class="report-title">Strategisch <em>profiel</em> &amp; adviesrapport</h2>
-    <p class="report-sub">Gebaseerd op 33 indicatoren over 11 strategische dimensies.${p.fte?' Kantoor '+p.fte+' fte'+( p.omzet?', '+p.omzet:'')+'.' :''}</p>
-  </div>
+function rDashboard(){
+  if(ST.groupLoading)return`<div class="page-wrap"><div class="loading-screen"><div class="ai-spinner"></div><p>Dashboard wordt geladen...</p></div></div>`;
+  const d=ST.groupData;if(!d)return rDashboardError();
+  const offices=d.offices||[];const cum=d.cumulative||{};const avg=overall(cum);const bench=62;
+  const sorted=[...offices].sort((a,b)=>b.overall-a.overall);
+  const scenarioCounts={};offices.forEach(o=>{if(o.top_scenario)scenarioCounts[o.top_scenario]=(scenarioCounts[o.top_scenario]||0)+1;});
+  const topScenario=Object.entries(scenarioCounts).sort((a,b)=>b[1]-a[1])[0];
+  const n=SECTIONS.length;const cx=200,cy=200,r=150;
+  const angle=i=>(i*2*Math.PI/n)-Math.PI/2;
+  const pt=(i,val)=>{const a=angle(i);const rv=(val/100)*r;return[cx+rv*Math.cos(a),cy+rv*Math.sin(a)];};
+  const gridPts=v=>SECTIONS.map((_,i)=>pt(i,v)).map(p=>p.join(',')).join(' ');
+  const dataPolygon=offices.map(o=>{const s=o.scores;const pts=SECTIONS.map((_,i)=>pt(i,s[SECTIONS[i].id]||0)).map(p=>p.join(',')).join(' ');return`<polygon points="${pts}" fill="rgba(34,197,160,.06)" stroke="rgba(34,197,160,.25)" stroke-width="1"/>`;}).join('');
+  const cumPts=SECTIONS.map((_,i)=>pt(i,cum[SECTIONS[i].id]||0)).map(p=>p.join(',')).join(' ');
+  const axisLines=SECTIONS.map((_,i)=>{const[x,y]=pt(i,100);return`<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="var(--border2)" stroke-width="1"/>`;}).join('');
+  const axisLabels=SECTIONS.map((sec,i)=>{const[x,y]=pt(i,118);const anchor=x<cx-5?'end':x>cx+5?'start':'middle';return`<text x="${x}" y="${y}" text-anchor="${anchor}" font-size="9" fill="var(--muted)" font-family="IBM Plex Sans">${sec.label}</text>`;}).join('');
+  return`<div class="page-wrap"><div class="page-hdr"><div class="page-brand"><div class="wdot"></div>KantoorInzicht</div><div class="page-step">Groepsdashboard · ${d.group?.name||ST.groupId}</div></div><div class="dash-head anim"><div class="dash-title"><em>${d.group?.name||'Groep'}</em></div><div class="dash-sub">Groepscode: <span class="mono" style="color:var(--teal)">${d.group?.id||ST.groupId}</span> · ${offices.length} deelnemende kantoren</div></div><div class="dash-stats anim a1"><div class="stat-card"><div class="stat-num" style="color:var(--teal)">${offices.length}</div><div class="stat-lbl">Kantoren</div></div><div class="stat-card"><div class="stat-num" style="color:${avg>=70?'var(--teal)':avg>=50?'var(--gold)':'var(--red)'}">${avg||'—'}</div><div class="stat-lbl">Gemiddelde score</div></div><div class="stat-card"><div class="stat-num" style="color:var(--head)">${sorted[0]?sorted[0].overall:'—'}</div><div class="stat-lbl">Hoogste score</div></div><div class="stat-card"><div class="stat-num" style="color:var(--head);font-size:1rem">${topScenario?topScenario[0].split(' ')[0]:'—'}</div><div class="stat-lbl">Meest aanbevolen</div></div></div><div class="sec-lbl anim a1">Groepsprofiel — radardiagram</div><div class="radar-wrap anim a1"><div class="radar-title">Radardiagram groepsgemiddelden</div><div class="radar-sub">Teal = groepsgemiddelde · Lichte vlakken = individuele kantoren</div><svg width="400" height="430" viewBox="0 0 400 430" style="display:block;margin:0 auto">${[20,40,60,80,100].map(v=>`<polygon points="${gridPts(v)}" fill="none" stroke="var(--border)" stroke-width="0.5"/>`).join('')}${axisLines}${dataPolygon}<polygon points="${cumPts}" fill="rgba(34,197,160,.15)" stroke="var(--teal)" stroke-width="2"/>${axisLabels}${SECTIONS.map((_,i)=>{const[x,y]=pt(i,cum[SECTIONS[i].id]||0);return`<circle cx="${x}" cy="${y}" r="3" fill="var(--teal)"/>`;}).join('')}</svg></div><div class="sec-lbl anim a2">Benchmarkvergelijking</div><div class="dim-grid anim a2">${SECTIONS.map(sec=>{const v=cum[sec.id]||0;const f=df(v);return`<div class="dim-card"><div class="dim-top"><div class="dim-name">${sec.label}</div><div class="dim-val" style="color:${dc(v)}">${v}</div></div><div class="dim-bar-bg"><div class="dim-bar" style="width:${v}%;background:${dc(v)}"></div></div><div class="dim-flag" style="color:${f.c}">${f.l}</div></div>`;}).join('')}</div><div class="sec-lbl anim a2">Vergelijkingen</div><div class="compare-grid anim a2"><div class="compare-card"><div class="compare-title">Sterkste dimensies (groep)</div>${SECTIONS.map(sec=>({...sec,v:cum[sec.id]||0})).sort((a,b)=>b.v-a.v).slice(0,5).map(sec=>`<div class="compare-item"><span class="compare-name">${sec.label}</span><span class="compare-val" style="color:${dc(sec.v)}">${sec.v}</span></div>`).join('')}</div><div class="compare-card"><div class="compare-title">Zwakste dimensies (groep)</div>${SECTIONS.map(sec=>({...sec,v:cum[sec.id]||0})).sort((a,b)=>a.v-b.v).slice(0,5).map(sec=>`<div class="compare-item"><span class="compare-name">${sec.label}</span><span class="compare-val" style="color:${dc(sec.v)}">${sec.v}</span></div>`).join('')}</div><div class="compare-card"><div class="compare-title">Ranglijst kantoren</div>${sorted.map((o,i)=>`<div class="compare-item"><span class="compare-name">${i+1}. ${o.name||'Anoniem'}${o.region?' · '+o.region:''}</span><span class="compare-val" style="color:${dc(o.overall)}">${o.overall}</span></div>`).join('')}</div><div class="compare-card"><div class="compare-title">Aanbevolen scenarios</div>${Object.entries(scenarioCounts).sort((a,b)=>b[1]-a[1]).map(([sc,cnt])=>`<div class="compare-item"><span class="compare-name">${sc}</span><span class="compare-val" style="color:var(--sub)">${cnt}x</span></div>`).join('')}</div></div><div class="sec-lbl anim a3">Individuele kantoorprofielen</div><div class="office-list anim a3">${sorted.map((o,i)=>`<div class="office-card"><div class="office-hdr" data-oid="${o.id}"><span class="office-rank">#${i+1}</span><div><div class="office-name">${o.name||'Anoniem'}</div><div class="office-meta">${o.region?`<span>${o.region}</span>`:''}${o.fte?`<span>${o.fte} fte</span>`:''}${o.revenue?`<span>${o.revenue}</span>`:''}${o.top_scenario?`<span style="color:var(--teal)">${o.top_scenario}</span>`:''}</div></div><div class="office-score" style="color:${dc(o.overall)}">${o.overall}</div><span class="office-chev${ST.openOffice===o.id?' open':''}">&#9662;</span></div><div class="office-body${ST.openOffice===o.id?' open':''}"><div class="office-dim-grid">${SECTIONS.map(sec=>{const v=o.scores[sec.id]||0;return`<div class="office-dim"><div class="office-dim-name">${sec.label}</div><div class="office-dim-bar"><div class="office-dim-fill" style="width:${v}%;background:${dc(v)};height:100%"></div></div><div class="office-dim-val" style="color:${dc(v)}">${v}</div></div>`;}).join('')}</div><div style="font-size:11px;color:var(--muted);margin-top:.5rem">Ingevuld op ${new Date(o.created_at).toLocaleDateString('nl-NL')}</div></div></div>`).join('')}</div><div class="r-footer"><p class="footer-note">KantoorInzicht Groepsdashboard · ${offices.length} kantoren · Gemiddelde ${avg}/100</p><div class="footer-btns"><button class="btn-print" onclick="window.print()">PDF</button><button class="btn-ghost" id="back-intro">Start</button><button class="btn-adv" id="refresh-dash">Verversen</button></div></div></div>`;
+}
 
-  <div class="score-hero anim a1">
-    <div class="score-circle">
-      <svg width="110" height="110" viewBox="0 0 110 110"><circle cx="55" cy="55" r="48" fill="none" stroke="var(--border)" stroke-width="6"/><circle cx="55" cy="55" r="48" fill="none" stroke="${vd.color}" stroke-width="6" stroke-dasharray="${2*Math.PI*48}" stroke-dashoffset="${2*Math.PI*48*(1-ov/100)}" stroke-linecap="round"/></svg>
-      <div class="score-inner"><div class="score-big">${ov}</div><div class="score-denom">/100</div></div>
-    </div>
-    <div>
-      <div style="margin-bottom:.5rem"><span style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:3px;background:${vd.bg};color:${vd.color};border:1px solid ${vd.color}44">${vd.label}</span></div>
-      <div class="score-explain">${vd.txt}</div>
-    </div>
-  </div>
-
-  <div class="bench-strip anim a1">
-    <span class="bench-lbl">Benchmark</span>
-    <div class="bench-track"><div class="bench-bar" style="width:${ov}%"></div><div class="bench-marker" style="left:${bench}%"></div></div>
-    <div class="bench-leg">
-      <div class="bench-leg-item"><div class="bench-dot" style="background:var(--teal)"></div><span>Uw kantoor (${ov})</span></div>
-      <div class="bench-leg-item"><div class="bench-dot" style="background:var(--gold)"></div><span>Sector (~${bench})</span></div>
-    </div>
-  </div>
-
-  <div class="sec-lbl anim a2">Scores per dimensie</div>
-  <div class="dim-grid anim a2">
-    ${SECTIONS.map(sec=>{const v=s[sec.id];const f=df(v);return`<div class="dim-card">
-      <div class="dim-top"><div class="dim-name">${sec.label}</div><div class="dim-val" style="color:${dc(v)}">${v}</div></div>
-      <div class="dim-bar-bg"><div class="dim-bar" style="width:${v}%;background:${dc(v)}"></div></div>
-      <div class="dim-flag" style="color:${f.c}">${f.l}</div>
-    </div>`}).join('')}
-  </div>
-
-  <div class="sec-lbl anim a2">Positioneringsmatrix</div>
-  <div class="matrix-sec anim a2">
-    <div class="matrix-title">Strategische positiematrix</div>
-    <div class="matrix-sub">Schaalbaarheid & commercieel (X) · Winstkracht & klantbinding (Y)</div>
-    <div class="matrix-body">
-      <div style="flex-shrink:0">
-        <svg width="270" height="220" viewBox="0 0 270 220">
-          <rect x="30" y="10" width="220" height="170" fill="var(--card)" rx="4"/>
-          <rect x="30" y="10" width="110" height="85" fill="rgba(224,82,82,.07)" rx="4"/>
-          <rect x="140" y="10" width="110" height="85" fill="rgba(201,168,76,.07)"/>
-          <rect x="30" y="95" width="110" height="85" fill="rgba(201,168,76,.07)"/>
-          <rect x="140" y="95" width="110" height="85" fill="rgba(34,197,160,.07)" rx="4"/>
-          <line x1="140" y1="10" x2="140" y2="180" stroke="var(--border2)" stroke-width="1" stroke-dasharray="4,3"/>
-          <line x1="30" y1="95" x2="250" y2="95" stroke="var(--border2)" stroke-width="1" stroke-dasharray="4,3"/>
-          <text x="85" y="26" text-anchor="middle" font-size="9" fill="var(--muted)" font-family="IBM Plex Sans">Kwetsbaar</text>
-          <text x="195" y="26" text-anchor="middle" font-size="9" fill="var(--muted)" font-family="IBM Plex Sans">Groei mogelijk</text>
-          <text x="85" y="172" text-anchor="middle" font-size="9" fill="var(--muted)" font-family="IBM Plex Sans">Stabiel / defensief</text>
-          <text x="195" y="172" text-anchor="middle" font-size="9" fill="var(--teal)" font-family="IBM Plex Sans">Sterk platform</text>
-          <text x="140" y="207" text-anchor="middle" font-size="9" fill="var(--muted)" font-family="IBM Plex Sans">← Schaal & commercieel →</text>
-          <circle cx="${30+(bench/100)*220}" cy="${180-((bench/100)*170)}" r="5" fill="none" stroke="var(--gold)" stroke-width="1.5" opacity=".6"/>
-          <circle cx="${30+(mx/100)*220}" cy="${180-((my/100)*170)}" r="9" fill="var(--teal)" opacity=".2"/>
-          <circle cx="${30+(mx/100)*220}" cy="${180-((my/100)*170)}" r="5" fill="var(--teal)"/>
-          ${p.naam?`<text x="${30+(mx/100)*220+9}" y="${180-((my/100)*170)-4}" font-size="8" fill="var(--teal)" font-family="IBM Plex Sans">${p.naam.split(/\s|&/)[0]}</text>`:''}
-        </svg>
-      </div>
-      <div class="quadrant-list">
-        ${[{q:'Sterk platform',d:'Hoge schaal + hoge winstkracht.',a:mx>50&&my>50},{q:'Groei mogelijk',d:'Lage schaal + hoge winstkracht.',a:mx<=50&&my>50},{q:'Stabiel / defensief',d:'Hoge schaal + lagere winstkracht.',a:mx>50&&my<=50},{q:'Kwetsbaar',d:'Lage schaal + lage winstkracht.',a:mx<=50&&my<=50}]
-          .map(i=>`<div class="q-item${i.a?' active':''}"><div class="q-dot" style="background:${i.a?'var(--teal)':'var(--border2)'}"></div><div><div class="q-iname">${i.q}</div><div class="q-idesc">${i.d}</div></div></div>`).join('')}
-      </div>
-    </div>
-  </div>
-
-  <div class="sec-lbl anim a3">Strategische scenario's & adviespad</div>
-  <div class="scenario-cards anim a3">
-    ${top3.map((sc,i)=>`<div class="sc-card">
-      <div class="sc-hdr" data-k="${sc.k}">
-        <span class="sc-rank${i===0?' pri':''}">${i===0?'AANBEVOLEN':i===1?'ALTERNATIEF':'OPTIONEEL'}</span>
-        <span class="sc-name${i===0?' pri':''}">${sc.name}</span>
-        <span class="sc-fit mono">${sc.score}% fit</span>
-        <span class="sc-chev${ST.openScenario===sc.k?' open':''}">▾</span>
-      </div>
-      <div class="sc-body${ST.openScenario===sc.k?' open':''}">
-        <div class="actions-lbl">Concrete vervolgstappen</div>
-        <div class="action-items">
-          ${sc.actions.map((a,ai)=>`<div class="action-item"><span class="act-num">0${ai+1}</span><div><div class="act-title">${a.t}</div><div class="act-desc">${a.d}</div><div class="act-horizon">${a.h}</div></div></div>`).join('')}
-        </div>
-      </div>
-    </div>`).join('')}
-  </div>
-
-  <div class="sec-lbl anim a3">AI-strategisch memo</div>
-  <div class="ai-panel anim a3">
-    <div class="ai-panel-hdr">
-      <div class="ai-title-group">
-        <span class="ai-badge">AI · Claude</span>
-        <div><div class="ai-panel-name">Gepersonaliseerd strategisch advies</div><div class="ai-panel-sub">Op basis van scanresultaten + kantoorprofiel — gegenereerd door Claude</div></div>
-      </div>
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        <button class="btn-gen" id="gen-btn" ${ST.aiLoading?'disabled':''}>
-          ${ST.aiLoading?'<div class="ai-spinner" style="width:13px;height:13px;border-width:2px"></div> Genereren…':ST.aiText?'↺ Opnieuw genereren':'◈ Genereer AI-advies'}
-        </button>
-      </div>
-    </div>
-    <div class="ai-body"><div id="ai-out">${renderAIText(ST.aiText,false)}</div></div>
-  </div>
-
-  ${risks.length>0?`
-  <div class="sec-lbl anim a4">Risicovlaggen</div>
-  <div class="risk-grid anim a4">
-    ${risks.map(r=>`<div class="risk-card"><div class="risk-top"><div class="risk-dot" style="background:${dc(s[r.id])}"></div><div class="risk-name">${r.label}</div></div><div class="risk-body">Score ${s[r.id]}/100 — prioritaire aandacht vereist.</div></div>`).join('')}
-  </div>`:''}
-
-  <div class="r-footer anim a4">
-    <p class="footer-note">Rapport gegenereerd door KantoorInzicht. Aanbevelingen zijn indicatief. © KantoorInzicht ${new Date().getFullYear()}</p>
-    <div class="footer-btns">
-      <button class="btn-print" onclick="window.print()">↓ PDF / Afdrukken</button>
-      <button class="btn-restart" id="restart-btn">Nieuwe scan</button>
-    </div>
-  </div>
-</div>`}
-
-/* ═══ EVENTS ═══ */
+/* ════════ EVENTS ════════ */
 function bindEvents(){
   const $=id=>document.getElementById(id);
-  const on=(id,ev,fn)=>{const el=$(id);if(el)el[`on${ev}`]=fn};
-
-  on('start-btn','click',()=>{ST.screen='intake';render()});
-  on('back-intro','click',()=>{ST.screen='intro';render()});
+  const on=(id,ev,fn)=>{const el=$(id);if(el)el['on'+ev]=fn;};
+  on('back-intro','click',()=>{ST.screen='intro';render();});
+  on('route-solo','click',()=>{ST.groupId=null;ST.screen='intake';render();});
+  on('route-group-join','click',()=>{ST.screen='group-join';render();});
+  on('route-group-create','click',()=>{ST.screen='group-create';render();});
+  on('route-dashboard','click',async()=>{const code=prompt('Voer uw groepscode in:','');if(code){ST.groupId=code.toUpperCase().trim();await loadGroup(ST.groupId);}});
+  on('do-create-group','click',async()=>{
+    const name=$('gc-name')?.value?.trim();const email=$('gc-email')?.value?.trim();
+    if(!name||!email){alert('Vul naam en e-mail in.');return;}
+    const btn=$('do-create-group');if(btn){btn.disabled=true;btn.textContent='Aanmaken...';}
+    const data=await createGroup(name,email);
+    if(data.group_id){ST.groupId=data.group_id;ST.screen='group-created';render();}
+    else alert('Fout: '+(data.error||'Onbekend'));
+  });
+  on('view-dashboard-btn','click',()=>loadGroup(ST.groupId));
+  on('do-join-group','click',()=>{
+    const code=$('gj-code')?.value?.trim().toUpperCase();
+    if(!code||code.length<4){alert('Voer een geldige groepscode in.');return;}
+    ST.groupId=code;ST.screen='intake';render();
+  });
+  on('anon-check','change',function(){
+    ST.profile.naamAnon=this.checked;
+    const ni=$('f-naam');if(ni){ni.disabled=this.checked;ni.style.opacity=this.checked?'.4':'1';}
+  });
   on('start-scan','click',()=>{
-    ST.profile={naam:$('f-naam')?.value||'',regio:$('f-regio')?.value||'',fte:$('f-fte')?.value||'',omzet:$('f-omzet')?.value||'',specialisme:$('f-spec')?.value||'',doelgroep:$('f-doel')?.value||'',software:$('f-sw')?.value||'',ambitie:$('f-ambitie')?.value||'',context:$('f-context')?.value||''};
+    const anon=$('anon-check')?.checked||false;
+    ST.profile={naam:$('f-naam')?.value||'',naamAnon:anon,email:$('f-email')?.value||'',regio:$('f-regio')?.value||'',fte:$('f-fte')?.value||'',omzet:$('f-omzet')?.value||'',specialisme:$('f-spec')?.value||'',doelgroep:$('f-doel')?.value||'',software:$('f-sw')?.value||'',ambitie:$('f-ambitie')?.value||'',context:$('f-context')?.value||''};
     ST.screen='questions';render();
   });
-  on('prev-btn','click',()=>{if(ST.section>0){ST.section--;render()}});
-  on('next-btn','click',()=>{
+  on('prev-btn','click',()=>{if(ST.section>0){ST.section--;render();}});
+  on('next-btn','click',async()=>{
     const sec=SECTIONS[ST.section];
     if(!sec.questions.every(q=>ST.answers[q.id]!==undefined))return;
     if(ST.section<SECTIONS.length-1){ST.section++;render();}
-    else{ST.scores=calcScores();ST.scenarios=rankScenarios(ST.scores);ST.screen='results';render();window.scrollTo(0,0);}
+    else{ST.scores=calcScores();ST.scenarios=rankScenarios(ST.scores);ST.screen='results';render();window.scrollTo(0,0);if(ST.groupId)await saveScanToGroup();}
   });
-  document.querySelectorAll('.l-btn').forEach(b=>{b.onclick=()=>{ST.answers[b.dataset.q]=parseInt(b.dataset.v);render()}});
-  document.querySelectorAll('.sc-hdr').forEach(h=>{h.onclick=()=>{const k=h.dataset.k;ST.openScenario=ST.openScenario===k?null:k;render()}});
-
+  document.querySelectorAll('.l-btn').forEach(b=>{b.onclick=()=>{ST.answers[b.dataset.q]=parseInt(b.dataset.v);render();};});
+  document.querySelectorAll('.sc-hdr').forEach(h=>{h.onclick=()=>{const k=h.dataset.k;ST.openScenario=ST.openScenario===k?null:k;render();};});
+  document.querySelectorAll('.office-hdr').forEach(h=>{h.onclick=()=>{const id=h.dataset.oid;ST.openOffice=ST.openOffice===id?null:id;render();};});
   on('gen-btn','click',()=>generateAI());
-  on('restart-btn','click',()=>{
-    ST={...ST,screen:'intro',section:0,answers:{},scores:null,scenarios:null,openScenario:null,aiText:null,aiLoading:false,profile:{naam:'',regio:'',fte:'',omzet:'',specialisme:'',doelgroep:'',software:'',ambitie:'',context:''}};
-    render();window.scrollTo(0,0);
-  });
+  on('view-group-btn','click',()=>loadGroup(ST.groupId));
+  on('refresh-dash','click',()=>loadGroup(ST.groupId));
+  on('restart-btn','click',()=>{ST={...ST,screen:'intro',section:0,answers:{},scores:null,scenarios:null,openScenario:null,aiText:null,aiLoading:false,savedScanId:null,profile:{naam:'',naamAnon:false,email:'',regio:'',fte:'',omzet:'',specialisme:'',doelgroep:'',software:'',ambitie:'',context:''}};render();window.scrollTo(0,0);});
 }
 
 render();
+
 </script>
 </body>
 </html>
