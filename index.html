@@ -538,7 +538,8 @@ function rResults(){
   const top3=ST.scenarios.slice(0,3);
   const mx=Math.round((s.schaal+s.auto+s.commercieel)/3);
   const my=Math.round((s.winst+s.klant+s.partner)/3);
-  const bench=62; // benchmark verborgenconst p=ST.profile;
+  const bench=62;
+  const p=ST.profile;
   const risks=SECTIONS.filter(sec=>s[sec.id]<55).slice(0,6);
   const now=new Date().toLocaleDateString('nl-NL',{year:'numeric',month:'long',day:'numeric'});
   const naam=p.naamAnon?'Anoniem kantoor':p.naam;
