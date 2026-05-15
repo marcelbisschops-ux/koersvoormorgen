@@ -325,7 +325,7 @@ const SCENARIOS={
 };
 
 /* ════════ STATE ════════ */
-let ST={screen:'intro',section:0,answers:{},scores:null,scenarios:null,openScenario:null,openOffice:null,aiText:null,aiLoading:false,groupId:null,groupData:null,groupLoading:false,savedScanId:null,profile:{naam:'',naamAnon:false,email:'',regio:'',fte:'',omzet:'',specialisme:'',doelgroep:'',software:'',ambitie:'',context:''}};
+let ST={screen:'intro',section:0,answers:{},scores:null,scenarios:null,openScenario:null,openOffice:null,aiText:null,aiLoading:false,groupId:null,groupData:null,groupLoading:false,savedScanId:null,profile:{naam:'',naamAnon:false,email:'',regio:'',fte:'',omzet:'',specialisme:'',doelgroep:'',software:'',ambitie:'',context:'',saveConsent:true}};
 
 /* ════════ SCORING ════════ */
 function calcScores(){const s={};SECTIONS.forEach(sec=>{let tot=0,cnt=0;sec.questions.forEach(q=>{if(ST.answers[q.id]!==undefined){let v=ST.answers[q.id];if(REVERSE.has(q.id))v=6-v;tot+=v;cnt++;}});s[sec.id]=cnt>0?Math.round((tot/(cnt*5))*100):0;});return s;}
@@ -410,10 +410,11 @@ Presenteer als overzichtelijke tabel met 3 acties:
 }
 
 async function saveScanToGroup(){
-  if(!ST.groupId||!ST.scores)return;
+  if(!ST.scores)return;
+  if(!ST.profile.saveConsent&&!ST.groupId)return;
   const p=ST.profile;
   try{
-    const resp=await fetch(`${WORKER}/group/join`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({group_id:ST.groupId,office_name:p.naamAnon?'Anoniem':p.naam,office_email:p.naamAnon?'':p.email,region:p.regio,fte:p.fte,revenue:p.omzet,scores:ST.scores,top_scenario:ST.scenarios?.[0]?.name||''})});
+    const resp=await fetch(`${WORKER}/group/join`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({group_id:ST.groupId||'SOLO',office_name:p.naamAnon?'Anoniem':p.naam,office_email:p.naamAnon?'':p.email,region:p.regio,fte:p.fte,revenue:p.omzet,scores:ST.scores,top_scenario:ST.scenarios?.[0]?.name||''})});
     const data=await resp.json();
     if(data.scan_id)ST.savedScanId=data.scan_id;
   }catch(e){console.warn('Scan niet opgeslagen:',e);}
@@ -493,7 +494,13 @@ function rDashboardError(){return`<div class="page-wrap narrow"><div class="page
 
 function rIntake(){
   const p=ST.profile;
-  return`<div class="page-wrap narrow"><div class="page-hdr"><div class="page-brand"><div class="wdot"></div>KantoorInzicht</div><div class="page-step">STAP 1 — Kantoorprofiel</div></div><div class="anim"><div style="font-family:'Playfair Display',serif;font-size:1.8rem;color:var(--white);font-weight:600;margin-bottom:.5rem">Vertel ons over uw kantoor</div><div style="font-size:13px;color:var(--mid);line-height:1.65;margin-bottom:2rem">Deze gegevens personaliseren uw AI-adviesrapport.${ST.groupId?` <span style="color:var(--teal)">Deelname aan groep <strong>${ST.groupId}</strong>.</span>`:''}</div></div>${ST.groupId?`<div class="note-box anim a1"><strong>Anoniem deelnemen:</strong><label style="display:flex;align-items:center;gap:8px;margin-top:8px;cursor:pointer;font-size:13px;color:var(--sub)"><input type="checkbox" id="anon-check" ${p.naamAnon?'checked':''} style="width:16px;height:16px;accent-color:var(--teal)">Mijn kantoornaam niet zichtbaar maken in het groepsdashboard</label></div>`:''}<div class="form-grid anim a1"><div class="field"><label>Naam kantoor</label><input type="text" id="f-naam" placeholder="bijv. Bakker &amp; Partners" value="${p.naam}" ${p.naamAnon?'disabled style="opacity:.4"':''}></div><div class="field"><label>E-mailadres (optioneel)</label><input type="email" id="f-email" placeholder="u@kantoor.nl" value="${p.email}"></div><div class="field"><label>Regio</label><input type="text" id="f-regio" placeholder="bijv. Achterhoek, Maastricht" value="${p.regio}"></div><div class="field"><label>Aantal medewerkers (fte)</label><select id="f-fte"><option value="">Selecteer...</option>${['1–3','4–8','9–15','16–30','31–60','60+'].map(v=>`<option${p.fte===v?' selected':''}>${v}</option>`).join('')}</select></div><div class="field"><label>Geschatte jaaromzet</label><select id="f-omzet"><option value="">Selecteer...</option>${['< €300k','€300k – €700k','€700k – €1,5m','€1,5m – €3m','€3m – €7m','€7m – €15m','€15m – €30m','€30m – €75m','€75m – €150m','> €150m'].map(v=>`<option${p.omzet===v?' selected':''}>${v}</option>`).join('')}</select></div><div class="field"><label>Specialisme of niche</label><input type="text" id="f-spec" placeholder="bijv. agri, vastgoed, zorg" value="${p.specialisme}"></div><div class="field"><label>Primaire doelgroep</label><input type="text" id="f-doel" placeholder="bijv. MKB, ZZP" value="${p.doelgroep}"></div><div class="field"><label>Gebruikte software</label><input type="text" id="f-sw" placeholder="bijv. Exact, Twinfield, Yuki" value="${p.software}"></div><div class="field"><label>Strategische ambitie</label><select id="f-ambitie"><option value="">Selecteer...</option>${['Stabiel houden','Groeien (organisch)','Groeien (via overnames)','Fusie of samenwerking','Verkoop (3–7 jaar)','Opvolging regelen'].map(v=>`<option${p.ambitie===v?' selected':''}>${v}</option>`).join('')}</select></div></div><div class="form-grid full anim a2"><div class="field"><label>Aanvullende context (optioneel)</label><textarea id="f-context" placeholder="Wat speelt er momenteel?">${p.context}</textarea></div></div><div class="note-box anim a2"><strong>Privacy:</strong> Gegevens worden alleen gebruikt voor uw rapport. Bij anonieme deelname ziet het dashboard alleen "Anoniem".</div><div class="scan-nav anim a3"><button class="btn-ghost" id="back-intro">Terug</button><button class="btn-adv" id="start-scan">Naar de vragenlijst</button></div></div>`;
+  return`<div class="page-wrap narrow"><div class="page-hdr"><div class="page-brand"><div class="wdot"></div>KantoorInzicht</div><div class="page-step">STAP 1 — Kantoorprofiel</div></div><div class="anim"><div style="font-family:'Playfair Display',serif;font-size:1.8rem;color:var(--white);font-weight:600;margin-bottom:.5rem">Vertel ons over uw kantoor</div><div style="font-size:13px;color:var(--mid);line-height:1.65;margin-bottom:2rem">Deze gegevens personaliseren uw AI-adviesrapport.${ST.groupId?` <span style="color:var(--teal)">Deelname aan groep <strong>${ST.groupId}</strong>.</span>`:''}</div></div>${ST.groupId?`<div class="note-box anim a1"><strong>Anoniem deelnemen:</strong><label style="display:flex;align-items:center;gap:8px;margin-top:8px;cursor:pointer;font-size:13px;color:var(--sub)"><input type="checkbox" id="anon-check" ${p.naamAnon?'checked':''} style="width:16px;height:16px;accent-color:var(--teal)">Mijn kantoornaam niet zichtbaar maken in het groepsdashboard</label></div>`:''}<div class="form-grid anim a1"><div class="field"><label>Naam kantoor</label><input type="text" id="f-naam" placeholder="bijv. Bakker &amp; Partners" value="${p.naam}" ${p.naamAnon?'disabled style="opacity:.4"':''}></div><div class="field"><label>E-mailadres (optioneel)</label><input type="email" id="f-email" placeholder="u@kantoor.nl" value="${p.email}"></div><div class="field"><label>Regio</label><input type="text" id="f-regio" placeholder="bijv. Achterhoek, Maastricht" value="${p.regio}"></div><div class="field"><label>Aantal medewerkers (fte)</label><select id="f-fte"><option value="">Selecteer...</option>${['1–3','4–8','9–15','16–30','31–60','60+'].map(v=>`<option${p.fte===v?' selected':''}>${v}</option>`).join('')}</select></div><div class="field"><label>Geschatte jaaromzet</label><select id="f-omzet"><option value="">Selecteer...</option>${['< €300k','€300k – €700k','€700k – €1,5m','€1,5m – €3m','€3m – €7m','€7m – €15m','€15m – €30m','€30m – €75m','€75m – €150m','> €150m'].map(v=>`<option${p.omzet===v?' selected':''}>${v}</option>`).join('')}</select></div><div class="field"><label>Specialisme of niche</label><input type="text" id="f-spec" placeholder="bijv. agri, vastgoed, zorg" value="${p.specialisme}"></div><div class="field"><label>Primaire doelgroep</label><input type="text" id="f-doel" placeholder="bijv. MKB, ZZP" value="${p.doelgroep}"></div><div class="field"><label>Gebruikte software</label><input type="text" id="f-sw" placeholder="bijv. Exact, Twinfield, Yuki" value="${p.software}"></div><div class="field"><label>Strategische ambitie</label><select id="f-ambitie"><option value="">Selecteer...</option>${['Stabiel houden','Groeien (organisch)','Groeien (via overnames)','Fusie of samenwerking','Verkoop (3–7 jaar)','Opvolging regelen'].map(v=>`<option${p.ambitie===v?' selected':''}>${v}</option>`).join('')}</select></div></div><div class="form-grid full anim a2"><div class="field"><label>Aanvullende context (optioneel)</label><textarea id="f-context" placeholder="Wat speelt er momenteel?">${p.context}</textarea></div></div><div class="note-box anim a2">
+<strong>Privacy:</strong> Gegevens worden alleen gebruikt voor uw rapport. Bij anonieme deelname ziet het dashboard alleen "Anoniem".
+<label style="display:flex;align-items:flex-start;gap:10px;margin-top:10px;cursor:pointer;font-size:13px;color:var(--sub)">
+<input type="checkbox" id="save-consent" checked style="width:16px;height:16px;accent-color:var(--teal);margin-top:2px;flex-shrink:0">
+<span>Sla mijn scanresultaten <strong>anoniem</strong> op voor sectorale benchmarkdoeleinden. Ik geef geen persoonsgegevens vrij. <span style="color:var(--mid)">(Aanbevolen — helpt de benchmark te verbeteren)</span></span>
+</label>
+</div><div class="scan-nav anim a3"><button class="btn-ghost" id="back-intro">Terug</button><button class="btn-adv" id="start-scan">Naar de vragenlijst</button></div></div>`;
 }
 
 function rQuestions(){
@@ -566,7 +573,8 @@ function bindEvents(){
   });
   on('start-scan','click',()=>{
     const anon=$('anon-check')?.checked||false;
-    ST.profile={naam:$('f-naam')?.value||'',naamAnon:anon,email:$('f-email')?.value||'',regio:$('f-regio')?.value||'',fte:$('f-fte')?.value||'',omzet:$('f-omzet')?.value||'',specialisme:$('f-spec')?.value||'',doelgroep:$('f-doel')?.value||'',software:$('f-sw')?.value||'',ambitie:$('f-ambitie')?.value||'',context:$('f-context')?.value||''};
+    const saveConsent=$('save-consent')?.checked!==false;
+    ST.profile={naam:$('f-naam')?.value||'',naamAnon:anon,saveConsent,email:$('f-email')?.value||'',regio:$('f-regio')?.value||'',fte:$('f-fte')?.value||'',omzet:$('f-omzet')?.value||'',specialisme:$('f-spec')?.value||'',doelgroep:$('f-doel')?.value||'',software:$('f-sw')?.value||'',ambitie:$('f-ambitie')?.value||'',context:$('f-context')?.value||''};
     ST.screen='questions';render();
   });
   on('prev-btn','click',()=>{if(ST.section>0){ST.section--;render();}});
@@ -574,7 +582,7 @@ function bindEvents(){
     const sec=SECTIONS[ST.section];
     if(!sec.questions.every(q=>ST.answers[q.id]!==undefined))return;
     if(ST.section<SECTIONS.length-1){ST.section++;render();}
-    else{ST.scores=calcScores();ST.scenarios=rankScenarios(ST.scores);ST.screen='results';render();window.scrollTo(0,0);if(ST.groupId)await saveScanToGroup();}
+    else{ST.scores=calcScores();ST.scenarios=rankScenarios(ST.scores);ST.screen='results';render();window.scrollTo(0,0);await saveScanToGroup();}
   });
   document.querySelectorAll('.l-btn').forEach(b=>{b.onclick=()=>{ST.answers[b.dataset.q]=parseInt(b.dataset.v);render();};});
   document.querySelectorAll('.sc-hdr').forEach(h=>{h.onclick=()=>{const k=h.dataset.k;ST.openScenario=ST.openScenario===k?null:k;render();};});
@@ -582,7 +590,7 @@ function bindEvents(){
   on('gen-btn','click',()=>generateAI());
   on('view-group-btn','click',()=>loadGroup(ST.groupId));
   on('refresh-dash','click',()=>loadGroup(ST.groupId));
-  on('restart-btn','click',()=>{ST={...ST,screen:'intro',section:0,answers:{},scores:null,scenarios:null,openScenario:null,aiText:null,aiLoading:false,savedScanId:null,profile:{naam:'',naamAnon:false,email:'',regio:'',fte:'',omzet:'',specialisme:'',doelgroep:'',software:'',ambitie:'',context:''}};render();window.scrollTo(0,0);});
+  on('restart-btn','click',()=>{ST={...ST,screen:'intro',section:0,answers:{},scores:null,scenarios:null,openScenario:null,aiText:null,aiLoading:false,savedScanId:null,profile:{naam:'',naamAnon:false,email:'',regio:'',fte:'',omzet:'',specialisme:'',doelgroep:'',software:'',ambitie:'',context:'',saveConsent:true}};render();window.scrollTo(0,0);});
 }
 
 render();
