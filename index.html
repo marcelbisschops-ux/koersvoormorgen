@@ -507,11 +507,12 @@ Deze analyse is gebaseerd op zelfrapportage en indicatieve benchmarkdata. Scores
 <div style="font-family:'Playfair Display',serif;font-size:1.2rem;color:var(--head);font-weight:600;margin-bottom:.5rem">Wilt u de uitkomsten bespreken?</div>
 <div style="font-size:13px;color:var(--mid);line-height:1.7;margin-bottom:1rem">Een strategisch gesprek op basis van uw scanresultaten geeft inzicht in de concrete vervolgstappen voor uw kantoor.</div>
 <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap">
+<button id="callback-btn" style="display:inline-flex;align-items:center;gap:8px;background:var(--teal);color:var(--void);font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;padding:10px 20px;border-radius:var(--r);border:none;cursor:pointer">📋 Stuur terugbelverzoek</button>
 <a href="tel:+31638689888" style="display:inline-flex;align-items:center;gap:8px;background:var(--teal);color:var(--void);font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;padding:10px 20px;border-radius:var(--r);text-decoration:none">📞 06 - 38 68 98 88</a>
 <a href="mailto:marcel@bisschopsfinancing.nl" style="display:inline-flex;align-items:center;gap:8px;background:transparent;border:1.5px solid var(--teal);color:var(--teal);font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;padding:10px 20px;border-radius:var(--r);text-decoration:none">✉ marcel@bisschopsfinancing.nl</a>
 </div>
 </div>
-<p class="footer-note">KantoorInzicht — aanbevelingen zijn indicatief. &copy; ${new Date().getFullYear()}</p><div class="footer-btns"><button class="btn-print" onclick="window.print()">PDF</button>${ST.groupId?`<button class="btn-ghost" id="view-group-btn">Dashboard</button>`:''}<button class="btn-restart" id="restart-btn">Nieuwe scan</button></div></div></div>`;
+<p class="footer-note">&copy; ${new Date().getFullYear()} KantoorInzicht — Marcel Bisschops | marcel@bisschopsfinancing.nl | 06 - 38 68 98 88. Aanbevelingen zijn indicatief.</p><div class="footer-btns"><button class="btn-print" onclick="window.print()">PDF</button>${ST.groupId?`<button class="btn-ghost" id="view-group-btn">Dashboard</button>`:''}<button class="btn-restart" id="restart-btn">Nieuwe scan</button></div></div></div>`;
 }
 
 function rDashboard(){
@@ -578,6 +579,7 @@ function bindEvents(){
   on('gen-btn','click',()=>generateAI());
   on('view-group-btn','click',()=>loadGroup(ST.groupId));
   on('refresh-dash','click',()=>loadGroup(ST.groupId));
+  on('callback-btn','click',()=>showCallbackModal());
   on('restart-btn','click',()=>{ST={...ST,screen:'intro',section:0,answers:{},scores:null,scenarios:null,openScenario:null,aiText:null,aiLoading:false,savedScanId:null,profile:{naam:'',naamAnon:false,email:'',regio:'',fte:'',omzet:'',specialisme:'',doelgroep:'',software:'',ambitie:'',context:'',saveConsent:true}};render();window.scrollTo(0,0);});
 }
 
