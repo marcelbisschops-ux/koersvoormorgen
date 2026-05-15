@@ -612,7 +612,7 @@ function bindEvents(){
     const sec=SECTIONS[ST.section];
     if(!sec.questions.every(q=>ST.answers[q.id]!==undefined))return;
     if(ST.section<SECTIONS.length-1){ST.section++;render();}
-    else{ST.scores=calcScores();ST.scenarios=rankScenarios(ST.scores);ST.screen='results';render();window.scrollTo(0,0);await saveScanToGroup();}
+    else{ST.scores=calcScores();ST.scenarios=rankScenarios(ST.scores);ST.screen='results';render();window.scrollTo(0,0);saveScanToGroup().catch(()=>{});}
   });
   document.querySelectorAll('.l-btn').forEach(b=>{b.onclick=()=>{ST.answers[b.dataset.q]=parseInt(b.dataset.v);render();};});
   document.querySelectorAll('.sc-hdr').forEach(h=>{h.onclick=()=>{const k=h.dataset.k;ST.openScenario=ST.openScenario===k?null:k;render();};});
