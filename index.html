@@ -343,20 +343,11 @@ async function generateAI(){
   const dims=SECTIONS.map(sec=>`- ${sec.label}: ${s[sec.id]}/100`).join('\n');
   const risks=SECTIONS.filter(sec=>s[sec.id]<55).map(sec=>sec.label).join(', ')||'geen kritieke risicos';
   const naam=p.naamAnon?'Anoniem kantoor':p.naam||'Vertrouwelijk kantoor';
-  // Bouw vraag/antwoord overzicht
-  const qa = SECTIONS.map(sec => {
-    const lines = sec.questions.map(q => {
-      const rawVal = ST.answers[q.id];
-      const val = rawVal !== undefined ? rawVal : '-';
-      const label = rawVal === 1 ? 'Helemaal niet' : rawVal === 2 ? 'Grotendeels niet' : rawVal === 3 ? 'Neutraal' : rawVal === 4 ? 'Grotendeels wel' : rawVal === 5 ? 'Volledig' : 'Niet beantwoord';
-      return `  Vraag: ${q.q}\n  Antwoord: ${val}/5 — ${label}`;
-    }).join('\n');
-    return `${sec.label}:\n${lines}`;
-  }).join('\n\n');
 
-  const prompt=`Je bent een senior M&A-adviseur gespecialiseerd in Nederlandse accountantskantoren. Vandaag is het mei 2026.
+  // Bouw twee prompts: hoofdadvies + bijlage apart
+  const promptMain=`Je bent een senior M&A-adviseur gespecialiseerd in Nederlandse accountantskantoren. Vandaag is het mei 2026.
 
-Schrijf een volledig strategisch adviesrapport. De lezer is een directeur-eigenaar die direct wil weten wat er toe doet. Gebruik het pyramide-principe: conclusie eerst, onderbouwing daarna.
+Schrijf een volledig strategisch adviesrapport. De lezer is een directeur-eigenaar. Gebruik het pyramide-principe: conclusie eerst, onderbouwing daarna.
 
 KANTOORPROFIEL:
 - Naam: ${naam}
@@ -376,44 +367,51 @@ Totaalscore: ${ov}/100 — ${vd.label}
 Aanbevolen scenario: ${top3}
 Aandachtspunten (score <55): ${risks}
 
+SCHRIJFREGELS:
+- Gebruik "de scan suggereert", "dit profiel wijst op", "op basis van uw input"
+- Noem scores altijd met het getal
+- Spreek eigenaar direct aan (u)
+- GEEN markdown tabellen
+- GEEN bulletpoints binnen lopende tekst
+- Elke sectie minimaal 150 woorden
+
+## Kernboodschap
+## Kritieke inzichten
+[3 scores uitgebreid, min 200 woorden per inzicht]
+## Strategisch advies
+[Per fase, min 250 woorden]
+## Strategische scenario's — volledig uitgewerkt
+[Alle drie scenarios volledig: waarom passend, drie fases, randvoorwaarden, risicos en kansen, min 200 woorden per scenario]
+## Eerste 90 dagen
+[3 genummerde acties als alineas met eigenaar, deadline en meetbaar resultaat]
+## Mogelijk onderbelicht risico
+[Exploratief, niet stellig. Gebruik "de scan suggereert", "het is denkbaar dat". Min 100 woorden. Eindig met zachte aanbeveling.]
+## Vervolgstap
+[Warme uitnodiging voor gesprek met Marcel Bisschops: 06 - 38 68 98 88 of marcel@bisschopsfinancing.nl]`;
+
+  const promptAppendix=`Maak een leesbare bijlage van de ingevulde vragenlijst. Schrijf per dimensie de naam en score, dan per vraag de volledige vraagtekst gevolgd door het antwoord (1-5) met betekenis. Schrijf als lopende tekst per dimensie zonder tabellen of bullets.
+
 INGEVULDE VRAGENLIJST:
 ${qa}
 
-SCHRIJFREGELS:
-- Gebruik "de scan suggereert", "dit profiel wijst op", "op basis van uw input" bij interpretaties
-- Noem scores altijd met het getal erbij
-- Spreek eigenaar direct aan (u, uw kantoor)
-- GEEN markdown tabellen — schrijf als alinea's
-- GEEN bulletpoints of streepjes binnen lopende tekst
-- Elke sectie minimaal 150 woorden
-- Verbind scores expliciet aan kantoorgegevens
+Begin direct met: ## Bijlage — Ingevulde vragenlijst`;
 
-## Kernboodschap
-[3-4 zinnen. Belangrijkste conclusie direct. Wat staat op het spel en waarom nu handelen.]
+  // Bouw vraag/antwoord overzicht
+  const qa = SECTIONS.map(sec => {
+    const lines = sec.questions.map(q => {
+      const rawVal = ST.answers[q.id];
+      const val = rawVal !== undefined ? rawVal : '-';
+      const label = rawVal === 1 ? 'Helemaal niet' : rawVal === 2 ? 'Grotendeels niet' : rawVal === 3 ? 'Neutraal' : rawVal === 4 ? 'Grotendeels wel' : rawVal === 5 ? 'Volledig' : 'Niet beantwoord';
+      return `  Vraag: ${q.q}\n  Antwoord: ${val}/5 — ${label}`;
+    }).join('\n');
+    return `${sec.label} (score: ${ST.scores[sec.id]}/100):\n${lines}`;
+  }).join('\n\n');
 
-## Kritieke inzichten
-[De 3 meest impactvolle scores uitgebreid. Per score: betekenis, consequentie, wat te doen. Minimaal 200 woorden per inzicht.]
-
-## Strategisch advies
-[Uitgebreid advies afgestemd op aanbevolen scenario. Concrete stappen per fase. Minimum 250 woorden.]
-
-## Strategische scenario's — volledig uitgewerkt
-[Schrijf alle drie de aanbevolen scenario's volledig uit. Per scenario: naam en fit-percentage, waarom dit scenario past bij dit specifieke kantoor op basis van de scores, concrete uitvoering in drie fases, vereiste randvoorwaarden, risico's en kansen. Minimum 200 woorden per scenario.]
-
-## Eerste 90 dagen
-[Drie genummerde acties als volledige alinea's. Per actie: wat precies, wie verantwoordelijk, wanneer klaar, meetbaar resultaat.]
-
-## Wat u onderschat
-[Één concreet specifiek risico. Minimum 150 woorden. Eindig met directe aanbeveling.]
-
-## Bijlage — Ingevulde vragenlijst
-[Geef een volledig overzicht van alle 33 vragen met de gegeven antwoorden, gegroepeerd per dimensie. Schrijf per dimensie de naam, dan per vraag de volledige vraagtekst gevolgd door het antwoord (1-5) met de bijbehorende betekenis. Presenteer dit als lopende tekst per dimensie, zonder tabellen of bullets.]
-
-## Vervolgstap
-Sluit af met een warme, professionele uitnodiging voor een persoonlijk strategiegesprek met Marcel Bisschops. Vermeld: bel 06 - 386 899 88 of mail marcel@bisschopsfinancing.nl`
   ST.aiLoading=true;ST.aiText='';render();
+
+  // Stap 1: genereer hoofdadvies
   try{
-    const resp=await fetch(`${WORKER}/ai`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}]})});
+    const resp=await fetch(`${WORKER}/ai`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:promptMain}]})});
     if(!resp.ok)throw new Error(`HTTP ${resp.status}`);
     const reader=resp.body.getReader();const dec=new TextDecoder();
     ST.aiLoading=false;ST.aiText='';
@@ -424,6 +422,24 @@ Sluit af met een warme, professionele uitnodiging voor een persoonlijk strategie
         if(line.startsWith('data:')){
           const d=line.slice(5).trim();if(d==='[DONE]')continue;
           try{const j=JSON.parse(d);if(j.type==='content_block_delta'&&j.delta?.text){ST.aiText+=j.delta.text;updateAI();}}catch(e){}
+        }
+      }
+    }
+    // Stap 2: genereer bijlage
+    ST.aiText+='\n\n---\n\n*Bijlage wordt gegenereerd...*';updateAI();
+    const resp2=await fetch(`${WORKER}/ai`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:promptAppendix}]})});
+    if(resp2.ok){
+      const reader2=resp2.body.getReader();
+      // Remove the loading indicator
+      ST.aiText=ST.aiText.replace('\n\n---\n\n*Bijlage wordt gegenereerd...*','\n\n---\n\n');
+      while(true){
+        const{done,value}=await reader2.read();if(done)break;
+        const chunk=dec.decode(value,{stream:true});
+        for(const line of chunk.split('\n')){
+          if(line.startsWith('data:')){
+            const d=line.slice(5).trim();if(d==='[DONE]')continue;
+            try{const j=JSON.parse(d);if(j.type==='content_block_delta'&&j.delta?.text){ST.aiText+=j.delta.text;updateAI();}}catch(e){}
+          }
         }
       }
     }
@@ -550,7 +566,7 @@ Deze analyse is gebaseerd op zelfrapportage en indicatieve benchmarkdata. Scores
 <div style="font-family:'Playfair Display',serif;font-size:1.2rem;color:var(--head);font-weight:600;margin-bottom:.5rem">Wilt u de uitkomsten bespreken?</div>
 <div style="font-size:13px;color:var(--mid);line-height:1.7;margin-bottom:1rem">Een strategisch gesprek op basis van uw scanresultaten geeft inzicht in de concrete vervolgstappen voor uw kantoor.</div>
 <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap">
-<a href="tel:+31638689888" style="display:inline-flex;align-items:center;gap:8px;background:var(--teal);color:var(--void);font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;padding:10px 20px;border-radius:var(--r);text-decoration:none">📞 06 - 386 899 88</a>
+<a href="tel:+31638689888" style="display:inline-flex;align-items:center;gap:8px;background:var(--teal);color:var(--void);font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;padding:10px 20px;border-radius:var(--r);text-decoration:none">📞 06 - 38 68 98 88</a>
 <a href="mailto:marcel@bisschopsfinancing.nl" style="display:inline-flex;align-items:center;gap:8px;background:transparent;border:1.5px solid var(--teal);color:var(--teal);font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;padding:10px 20px;border-radius:var(--r);text-decoration:none">✉ marcel@bisschopsfinancing.nl</a>
 </div>
 </div>
