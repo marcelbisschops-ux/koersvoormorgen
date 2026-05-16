@@ -509,6 +509,15 @@ async function generateAI(){
     ST.aiText=collected;
     updateAI(true);
 
+    // Sla rapport op in database
+    if(ST.savedScanId){
+      fetch(WORKER+'/rapport/save',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({scan_id:ST.savedScanId,rapport:collected})
+      }).catch(()=>{});
+    }
+
   }catch(err){
     ST.aiLoading=false;ST.aiText='__ERROR__';updateAI(true);
   }
