@@ -164,6 +164,19 @@ const mnaStyle = document.createElement('style');
 mnaStyle.textContent = `.mna-detail{background:var(--card);border-top:1px solid var(--border);padding:1rem 1.25rem;display:none}.mna-detail.open{display:block}.mna-fase-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:1rem}.mna-fase-card{background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:.75rem;font-size:11px}.mna-fase-title{font-weight:600;color:var(--sub);margin-bottom:.2rem}.mna-fase-pct{color:var(--teal);font-family:'IBM Plex Mono',monospace}.mna-data-row{display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-bottom:1px solid var(--border)}.mna-data-row:last-child{border-bottom:none}.form-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:.75rem}.form-row .f{display:flex;flex-direction:column;gap:3px}.form-row label{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}.form-row input,.form-row select,.form-row textarea{background:var(--card);border:1px solid var(--border2);border-radius:5px;color:var(--sub);font-family:'IBM Plex Sans',sans-serif;font-size:12px;padding:7px 10px;outline:none;width:100%}.form-row input:focus,.form-row select:focus{border-color:var(--teal)}`;
 document.head.appendChild(mnaStyle);
 
+async function vergrendelTraject(code) {
+  const datum = new Date().toLocaleString('nl-NL');
+  if (!confirm('Traject ' + code + ' vergrendelen?\n\nHet kantoor kan na vergrendeling geen wijzigingen meer maken.\nTijdstempel: ' + datum + '\n\nDit kan niet ongedaan worden gemaakt.')) return;
+  try {
+    const r = await fetch(WORKER + '/mna/admin/vergrendel/' + code + '?key=' + encodeURIComponent(adminKey), { method: 'POST' });
+    const d = await r.json();
+    if (d.ok) {
+      alert('Traject ' + code + ' is vergrendeld op ' + new Date(d.vergrendeld_op).toLocaleString('nl-NL') + '.\n\nDit tijdstempel is opgeslagen in de database als gecertificeerd moment.');
+      await refreshData();
+    }
+  } catch(e) { alert('Fout bij vergrendelen.'); }
+}
+
 async function createTraject() {
   const naam = document.getElementById('new-naam')?.value?.trim();
   const contact = document.getElementById('new-contact')?.value?.trim();
@@ -246,8 +259,8 @@ async function loadMnaDetail(code) {
 }
 
 function renderMnaTab(el) {
-  const statusClass = {actief:'score-high',in_behandeling:'score-mid',afgerond:'score-low'};
-  const statusLabel = {actief:'Actief',in_behandeling:'In behandeling',afgerond:'Afgerond'};
+  const statusClass = {actief:'score-high',in_behandeling:'score-mid',afgerond:'score-low',vergrendeld:'score-low'};
+  const statusLabel = {actief:'Actief',in_behandeling:'In behandeling',afgerond:'Afgerond',vergrendeld:'&#128274; Vergrendeld'};
   el.innerHTML = `
     <div class="table-wrap" style="margin-bottom:1.5rem">
       <div class="table-hdr">
@@ -289,11 +302,15 @@ function renderMnaTab(el) {
             <td class="mono" style="font-size:11px">${formatDate(t.created_at)}</td>
             <td class="mono" style="font-size:11px">${formatDate(t.updated_at)}</td>
             <td onclick="event.stopPropagation()" style="font-size:11px">
-              <select onchange="changeStatus('${t.id}',this.value)" style="font-size:11px;padding:3px 6px;border:1px solid var(--border2);border-radius:4px;background:var(--card);cursor:pointer">
+              ${t.status === 'vergrendeld'
+                ? '<span style="color:var(--red);font-size:11px;font-weight:600">&#128274; Vergrendeld</span><br><small style="color:var(--muted)">' + (t.vergrendeld_op ? new Date(t.vergrendeld_op).toLocaleString('nl-NL') : '') + '</small>'
+                : `<select onchange="changeStatus('${t.id}',this.value)" style="font-size:11px;padding:3px 6px;border:1px solid var(--border2);border-radius:4px;background:var(--card);cursor:pointer">
                 <option value="actief" ${t.status==='actief'?'selected':''}>Actief</option>
                 <option value="in_behandeling" ${t.status==='in_behandeling'?'selected':''}>In behandeling</option>
                 <option value="afgerond" ${t.status==='afgerond'?'selected':''}>Afgerond</option>
               </select>
+              <button onclick="event.stopPropagation();vergrendelTraject('${t.id}')" style="margin-top:4px;display:block;font-size:10px;padding:2px 8px;background:var(--red-bg);color:var(--red);border:1px solid var(--red);border-radius:3px;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;white-space:nowrap">&#128274; Vergrendel</button>`
+              }
             </td>
           </tr>
           <tr><td colspan="8" style="padding:0">
