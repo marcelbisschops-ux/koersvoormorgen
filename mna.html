@@ -164,11 +164,11 @@ var FASES=[
   {id:'toetsOordeel',label:'Oordeel kwaliteitstoetsing',ph:'bijv. voldoende / met aandachtspunten',doc:true,req:true},
   {id:'tuchtzaken',label:'Lopende tuchtzaken',ph:'bijv. geen / ja (beschrijf)',doc:false,req:true},
   {id:'claims',label:'Civiele claims',ph:'bijv. geen / ja (bedrag)',doc:false,req:true},
-  {id:'wwft',label:'Wwft-procedures op orde',ph:'bijv. ja / deels / nee',doc:true,req:true},
+  {id:'wwft',label:'Wwft-procedures volledig geimplementeerd en aantoonbaar up-to-date',ph:'bijv. ja / deels / nee — toelichting',doc:true,req:true},
   {id:'incidenten',label:'Integriteitsincidenten <5 jaar',ph:'bijv. geen / ja (beschrijf)',doc:false,req:true},
  ],
- items:['NBA-inschrijving en vergunningsstatus gecontroleerd','Laatste kwaliteitstoetsingen doorgenomen','Bevindingen en herstelmaatregelen beoordeeld','Wwft-procedures en client acceptance gereviewed','Lopende tuchtzaken geïnventariseerd','Compliance handboek actueel'],
- redflags:['Negatieve kwaliteitstoetsing NBA afgelopen 2 jaar','Lopende tuchtzaken of civiele claims','Wwft zwak ingericht','Structurele dossierbevindingen']},
+ items:['NBA-inschrijving en vergunningsstatus gecontroleerd','Laatste kwaliteitstoetsingen doorgenomen','Bevindingen en herstelmaatregelen beoordeeld','Wwft-procedures en client acceptance gereviewed (volledig, aantoonbaar, up-to-date)','Lopende tuchtzaken geïnventariseerd','Compliance handboek actueel'],
+ redflags:['Negatieve kwaliteitstoetsing NBA afgelopen 2 jaar','Lopende tuchtzaken of civiele claims','Wwft zwak, niet aantoonbaar of niet up-to-date ingericht (dealbreaker bij DD en toezicht)','Structurele dossierbevindingen']},
 
 {id:'it',num:'V',title:'IT & automatisering',desc:'Systemen, automatiseringsgraad en AI-readiness.',
  dataFields:[
