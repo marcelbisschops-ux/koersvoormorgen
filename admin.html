@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>KantoorInzicht — Admin</title>
+<title>KantoorInzicht Admin</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -18,15 +18,11 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--s
 .btn:hover{background:var(--teal-dim)}
 .btn-ghost{background:transparent;border:1px solid var(--border2);color:var(--mid);font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:500;padding:9px 18px;border-radius:var(--r);cursor:pointer}
 .btn-ghost:hover{border-color:var(--mid)}
-.login-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:80vh;gap:1.5rem}
-.login-box{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:2.5rem;width:100%;max-width:380px}
-.login-title{font-family:'Playfair Display',serif;font-size:1.4rem;color:var(--head);font-weight:600;margin-bottom:.4rem}
-.login-sub{font-size:13px;color:var(--muted);margin-bottom:1.5rem}
 .field{display:flex;flex-direction:column;gap:6px;margin-bottom:1rem}
 .field label{font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
-.field input{background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:'IBM Plex Sans',sans-serif;font-size:13px;padding:10px 12px;outline:none;width:100%}
-.field input:focus{border-color:var(--teal)}
-.tabs{display:flex;gap:4px;margin-bottom:2rem;border-bottom:1px solid var(--border);padding-bottom:0}
+.field input,.field textarea,.field select{background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:'IBM Plex Sans',sans-serif;font-size:13px;padding:10px 12px;outline:none;width:100%}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--teal)}
+.tabs{display:flex;gap:4px;margin-bottom:2rem;border-bottom:1px solid var(--border)}
 .tab{font-size:13px;font-weight:500;padding:10px 18px;border-radius:var(--r) var(--r) 0 0;cursor:pointer;color:var(--muted);background:transparent;border:none;border-bottom:2px solid transparent;margin-bottom:-1px}
 .tab.active{color:var(--teal);border-bottom-color:var(--teal);font-weight:600}
 .stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:2rem}
@@ -34,7 +30,7 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--s
 .stat-num{font-family:'Playfair Display',serif;font-size:2rem;font-weight:600;color:var(--teal);line-height:1;margin-bottom:.25rem}
 .stat-lbl{font-size:11px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
 .table-wrap{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);overflow:hidden;margin-bottom:2rem}
-.table-hdr{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.25rem;border-bottom:1px solid var(--border);background:var(--card)}
+.table-hdr{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.25rem;border-bottom:1px solid var(--border);background:var(--card);flex-wrap:wrap;gap:.5rem}
 .table-title{font-size:13px;font-weight:600;color:var(--head)}
 table{width:100%;border-collapse:collapse}
 th{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding:10px 14px;text-align:left;border-bottom:1px solid var(--border);background:var(--card)}
@@ -47,23 +43,29 @@ tr:hover td{background:var(--card)}
 .score-low{background:var(--red-bg);color:var(--red)}
 .tag{display:inline-block;font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border-radius:3px;background:var(--teal-bg);color:var(--teal);border:1px solid var(--teal-dark)}
 .empty{text-align:center;padding:3rem;color:var(--muted);font-size:13px}
-.refresh-btn{font-size:12px}
-.logout-btn{font-size:12px}
 .search-bar{background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:8px 12px;font-family:'IBM Plex Sans',sans-serif;font-size:13px;width:220px;outline:none}
 .search-bar:focus{border-color:var(--teal)}
-.dim-mini{display:flex;flex-wrap:wrap;gap:4px;max-width:300px}
-.dim-chip{font-size:10px;font-family:'IBM Plex Mono',monospace;padding:1px 5px;border-radius:2px}
 .detail-panel{background:var(--card);border-top:1px solid var(--border);padding:12px 14px;display:none}
 .detail-panel.open{display:block}
 .detail-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}
 .detail-item{background:var(--panel);border:1px solid var(--border);border-radius:var(--r);padding:8px 10px}
 .detail-label{font-size:10px;color:var(--muted);margin-bottom:2px}
 .detail-val{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500}
-
+.btn-del{font-size:10px;padding:2px 7px;background:var(--red-bg);color:var(--red);border:1px solid var(--red);border-radius:3px;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;white-space:nowrap}
+.btn-del:hover{background:var(--red);color:#fff}
+.btn-copy{font-size:10px;padding:2px 6px;background:var(--card);border:1px solid var(--border2);border-radius:3px;cursor:pointer}
+.btn-copy:hover{border-color:var(--teal)}
+.mna-detail{background:var(--card);border-top:1px solid var(--border);padding:12px 14px;display:none}
+.mna-detail.open{display:block}
+.mna-fase-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:1rem}
+.mna-fase-card{background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:.75rem;font-size:11px}
+.mna-fase-title{font-weight:600;color:var(--sub);margin-bottom:.2rem}
+.mna-fase-pct{color:var(--teal);font-family:'IBM Plex Mono',monospace}
+.form-grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:.75rem}
+.form-grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:.75rem}
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:500;display:flex;align-items:flex-start;justify-content:center;padding:2rem;overflow-y:auto}
 .modal-box{background:var(--panel);border:1px solid var(--border2);border-radius:var(--r2);padding:2rem;max-width:780px;width:100%;margin:auto;position:relative}
 .modal-close{position:absolute;top:1rem;right:1rem;background:transparent;border:none;font-size:1.2rem;cursor:pointer;color:var(--muted)}
-.modal-close:hover{color:var(--head)}
 .rapport-body{font-size:13px;color:var(--mid);line-height:1.8;margin-top:1rem}
 .rapport-body h3{font-family:'Playfair Display',serif;font-size:1rem;color:var(--head);font-weight:600;margin:1.25rem 0 .4rem;padding-top:1rem;border-top:1px solid var(--border)}
 .rapport-body h3:first-child{margin-top:0;padding-top:0;border-top:none}
@@ -71,12 +73,14 @@ tr:hover td{background:var(--card)}
 .rapport-body strong{color:var(--sub);font-weight:600}
 .btn-rapport{font-size:11px;padding:4px 10px;background:var(--teal-bg);color:var(--teal);border:1px solid var(--teal-dark);border-radius:3px;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;font-weight:600}
 .btn-rapport:hover{background:var(--teal);color:#fff}
+.login-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:80vh}
+.login-box{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:2.5rem;width:100%;max-width:380px}
 </style>
 </head>
 <body>
 <div id="rapport-modal" style="display:none" class="modal-overlay" onclick="if(event.target===this)closeModal()">
   <div class="modal-box">
-    <button class="modal-close" onclick="closeModal()">✕</button>
+    <button class="modal-close" onclick="closeModal()">x</button>
     <div style="font-family:'Playfair Display',serif;font-size:1.2rem;color:var(--head);font-weight:600;margin-bottom:.25rem" id="modal-title">Rapport</div>
     <div style="font-size:11px;color:var(--muted);margin-bottom:1rem" id="modal-sub"></div>
     <div id="modal-body" class="rapport-body"></div>
@@ -89,288 +93,70 @@ tr:hover td{background:var(--card)}
 <div class="wrap">
   <div class="hdr">
     <div class="brand"><div class="wdot"></div>KantoorInzicht <span style="color:var(--teal);margin-left:4px">Admin</span></div>
-    <div id="hdr-actions" style="display:none">
-      <button class="btn-ghost logout-btn" onclick="logout()">Uitloggen</button>
+    <div id="hdr-actions" style="display:none;gap:8px;display:none">
+      <button class="btn-ghost" style="font-size:12px" onclick="logout()">Uitloggen</button>
     </div>
   </div>
   <div id="app"></div>
 </div>
-
 <script>
-const WORKER = 'https://kantoorinzicht.marcel-bisschops.workers.dev';
-let adminKey = '';
-let scans = [];
-let callbacks = [];
-let mnaTrajecten = [];
-let openMna = null;
-let activeTab = 'scans';
-let scanFilter = '';
-let openRow = null;
+var WORKER = 'https://kantoorinzicht.marcel-bisschops.workers.dev';
+var adminKey = '';
+var scans = [];
+var callbacks = [];
+var mnaTrajecten = [];
+var openMna = null;
+var openRow = null;
+var activeTab = 'scans';
+var scanFilter = '';
 
 function logout() {
   adminKey = '';
-  scans = [];
-  callbacks = [];
+  scans = []; callbacks = []; mnaTrajecten = [];
   document.getElementById('hdr-actions').style.display = 'none';
-  function closeModal(){
-  document.getElementById('rapport-modal').style.display='none';
+  renderLogin();
 }
 
-async function showRapport(scanId, kantoorNaam, adminKey) {
-  const modal = document.getElementById('rapport-modal');
-  const body = document.getElementById('modal-body');
-  const title = document.getElementById('modal-title');
-  const sub = document.getElementById('modal-sub');
-  title.textContent = kantoorNaam || 'Rapport';
-  sub.textContent = 'Laden...';
-  body.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--muted)">Rapport wordt opgehaald...</div>';
-  modal.style.display = 'flex';
-
-  try {
-    const r = await fetch(WORKER + '/admin/rapport/' + scanId + '?key=' + encodeURIComponent(adminKey));
-    const d = await r.json();
-    if (d.rapport) {
-      sub.textContent = 'Gegenereerd AI-rapport';
-      let html = d.rapport
-        .replace(/## (.+)/g, '<h3>$1</h3>')
-        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-        .replace(/^- (.+)/gm, '<li>$1</li>');
-      html = html.split('\n\n').map(p => p.trim() && !p.startsWith('<') ? '<p>'+p+'</p>' : p).join('');
-      body.innerHTML = html;
-    } else {
-      sub.textContent = '';
-      body.innerHTML = '<div style="color:var(--muted);padding:2rem;text-align:center">Geen rapport beschikbaar voor deze scan.<br><small>Het rapport wordt opgeslagen zodra de gebruiker op "Genereer AI-advies" klikt.</small></div>';
-    }
-  } catch(e) {
-    body.innerHTML = '<div style="color:var(--red);padding:1rem">Kon rapport niet ophalen.</div>';
-  }
-}
-
-renderLogin();
-}
-
-function dc(v) {
-  return v >= 70 ? 'score-high' : v >= 50 ? 'score-mid' : 'score-low';
-}
-
+function dc(v) { return v >= 70 ? 'score-high' : v >= 50 ? 'score-mid' : 'score-low'; }
 function formatDate(ts) {
-  if (!ts) return '—';
+  if (!ts) return '-';
   return new Date(ts).toLocaleDateString('nl-NL', {day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
 }
-
-
-/* MNA ADMIN STYLES */
-const mnaStyle = document.createElement('style');
-mnaStyle.textContent = `.mna-detail{background:var(--card);border-top:1px solid var(--border);padding:1rem 1.25rem;display:none}.mna-detail.open{display:block}.mna-fase-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:1rem}.mna-fase-card{background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:.75rem;font-size:11px}.mna-fase-title{font-weight:600;color:var(--sub);margin-bottom:.2rem}.mna-fase-pct{color:var(--teal);font-family:'IBM Plex Mono',monospace}.mna-data-row{display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-bottom:1px solid var(--border)}.mna-data-row:last-child{border-bottom:none}.form-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:.75rem}.form-row .f{display:flex;flex-direction:column;gap:3px}.form-row label{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}.form-row input,.form-row select,.form-row textarea{background:var(--card);border:1px solid var(--border2);border-radius:5px;color:var(--sub);font-family:'IBM Plex Sans',sans-serif;font-size:12px;padding:7px 10px;outline:none;width:100%}.form-row input:focus,.form-row select:focus{border-color:var(--teal)}`;
-document.head.appendChild(mnaStyle);
-
-async function vergrendelTraject(code) {
-  const datum = new Date().toLocaleString('nl-NL');
-  if (!confirm('Traject ' + code + ' vergrendelen?\n\nHet kantoor kan na vergrendeling geen wijzigingen meer maken.\nTijdstempel: ' + datum + '\n\nDit kan niet ongedaan worden gemaakt.')) return;
-  try {
-    const r = await fetch(WORKER + '/mna/admin/vergrendel/' + code + '?key=' + encodeURIComponent(adminKey), { method: 'POST' });
-    const d = await r.json();
-    if (d.ok) {
-      alert('Traject ' + code + ' is vergrendeld op ' + new Date(d.vergrendeld_op).toLocaleString('nl-NL') + '.\n\nDit tijdstempel is opgeslagen in de database als gecertificeerd moment.');
-      await refreshData();
-    }
-  } catch(e) { alert('Fout bij vergrendelen.'); }
-}
-
-async function createTraject() {
-  const naam = document.getElementById('new-naam')?.value?.trim();
-  const contact = document.getElementById('new-contact')?.value?.trim();
-  const email = document.getElementById('new-email')?.value?.trim();
-  const type = document.getElementById('new-type')?.value;
-  const notitie = document.getElementById('new-notitie')?.value?.trim();
-  if (!naam) { alert('Kantoornaam is verplicht.'); return; }
-  const btn = document.getElementById('create-btn');
-  btn.disabled = true; btn.textContent = 'Aanmaken...';
-  try {
-    const r = await fetch(WORKER + '/mna/create?key=' + encodeURIComponent(adminKey), {
-      method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ kantoor_naam: naam, contact_naam: contact, contact_email: email, traject_type: type, notitie })
-    });
-    const d = await r.json();
-    if (d.ok) {
-      alert('Traject aangemaakt! Trajectcode: ' + d.code + '\n\nDeel deze code met ' + naam + ' om in te loggen op koersvoormorgen.nl/mna.html');
-      await refreshData();
-    } else { alert('Fout: ' + (d.error||'Onbekend')); }
-  } catch(e) { alert('Verbindingsfout.'); }
-  btn.disabled = false; btn.textContent = 'Traject aanmaken';
-}
-
-async function changeStatus(code, status) {
-  await fetch(WORKER + '/mna/admin/status/' + code + '?key=' + encodeURIComponent(adminKey), {
-    method: 'POST', headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({ status })
-  });
-  await refreshData();
-}
-
-async function loadMnaDetail(code) {
-  if (openMna === code) { openMna = null; renderDashboard(); return; }
-  openMna = code;
-  renderDashboard();
-  try {
-    const r = await fetch(WORKER + '/mna/admin/detail/' + code + '?key=' + encodeURIComponent(adminKey));
-    const d = await r.json();
-    const el = document.getElementById('mna-detail-' + code);
-    if (!el) return;
-    // Build detail HTML
-    const FASES = ['financieel','commercieel','partner','compliance','it','juridisch','strategisch'];
-    const FASE_TITLES = {financieel:'I. Financieel',commercieel:'II. Klanten & commercieel',partner:'III. Partners & personeel',compliance:'IV. Compliance',it:'V. IT & automatisering',juridisch:'VI. Juridisch & fiscaal',strategisch:'VII. Strategisch & markt'};
-    let html = '';
-    if (d.data && d.data.length) {
-      html += '<div class="mna-fase-grid">';
-      d.data.forEach(row => {
-        const chk = JSON.parse(row.checklist_json||'{}');
-        const items = Object.values(chk.items||{});
-        const done = items.filter(Boolean).length;
-        const total = items.length;
-        const pct = total ? Math.round(done/total*100) : 0;
-        const rfs = Object.values(chk.redflags||{}).filter(Boolean).length;
-        html += `<div class="mna-fase-card"><div class="mna-fase-title">${FASE_TITLES[row.fase_id]||row.fase_id}</div>`
-          + `<div class="mna-fase-pct">${pct}%</div>`
-          + (rfs ? `<div style="color:var(--red);font-size:10px">&#9888; ${rfs} rode vlag${rfs>1?'gen':''}</div>` : '')
-          + '</div>';
-      });
-      html += '</div>';
-      // Show per-fase data
-      d.data.forEach(row => {
-        const dataJson = JSON.parse(row.data_json||'{}');
-        const entries = Object.entries(dataJson);
-        if (!entries.length && !row.notitie) return;
-        html += `<div style="margin-bottom:1rem"><div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:.4rem">${FASE_TITLES[row.fase_id]||row.fase_id}</div>`;
-        entries.forEach(([k,v]) => {
-          if(v && v.value) html += `<div class="mna-data-row"><span style="color:var(--muted)">${v.label||k}</span><span style="font-family:'IBM Plex Mono',monospace;font-size:11px">${v.value}${v.ref?' <span style="color:var(--gold)">&#128196;'+v.ref+'</span>':''}</span></div>`;
-        });
-        if(row.notitie) html += `<div style="font-size:11px;font-style:italic;color:var(--mid);margin-top:.3rem;padding:.3rem .5rem;background:var(--card);border-radius:4px">${row.notitie}</div>`;
-        html += '</div>';
-      });
-    } else {
-      html = '<div style="color:var(--muted);font-size:13px;padding:1rem 0">Nog geen data ingevoerd door het kantoor.</div>';
-    }
-    el.innerHTML = html;
-  } catch(e) {
-    const el = document.getElementById('mna-detail-' + code);
-    if (el) el.innerHTML = '<div style="color:var(--red);font-size:12px">Kon detail niet laden.</div>';
-  }
-}
-
-function renderMnaTab(el) {
-  const statusClass = {actief:'score-high',in_behandeling:'score-mid',afgerond:'score-low',vergrendeld:'score-low'};
-  const statusLabel = {actief:'Actief',in_behandeling:'In behandeling',afgerond:'Afgerond',vergrendeld:'&#128274; Vergrendeld'};
-  el.innerHTML = `
-    <div class="table-wrap" style="margin-bottom:1.5rem">
-      <div class="table-hdr">
-        <div class="table-title">Nieuw traject aanmaken</div>
-      </div>
-      <div style="padding:1.25rem">
-        <div class="form-row">
-          <div class="f"><label>Kantoornaam *</label><input type="text" id="new-naam" placeholder="bijv. Bakker &amp; Partners"></div>
-          <div class="f"><label>Contactpersoon</label><input type="text" id="new-contact" placeholder="Naam eigenaar"></div>
-          <div class="f"><label>E-mail contactpersoon</label><input type="email" id="new-email" placeholder="eigenaar@kantoor.nl"></div>
-        </div>
-        <div class="form-row">
-          <div class="f"><label>Trajecttype</label><select id="new-type"><option>Verkoop</option><option>Fusie</option><option>PE-investering</option><option>Opvolging</option><option>Overname</option></select></div>
-          <div class="f" style="grid-column:span 2"><label>Interne notitie (niet zichtbaar voor kantoor)</label><textarea id="new-notitie" placeholder="Context, aanleiding, aandachtspunten..." style="min-height:38px"></textarea></div>
-        </div>
-        <button class="btn" id="create-btn" onclick="createTraject()">Traject aanmaken</button>
-        <div style="font-size:11px;color:var(--muted);margin-top:.5rem">Na aanmaken ontvangt u een unieke trajectcode die u deelt met het kantoor.</div>
-      </div>
-    </div>
-    <div class="table-wrap">
-      <div class="table-hdr">
-        <div class="table-title">Lopende trajecten (${mnaTrajecten.length})</div>
-        <button class="btn refresh-btn" onclick="refreshData()">&#8635; Verversen</button>
-      </div>
-      ${mnaTrajecten.length === 0 ? '<div class="empty">Nog geen trajecten aangemaakt.</div>' : `
-      <table>
-        <thead><tr>
-          <th>Code</th><th>Kantoor</th><th>Contact</th><th>Type</th><th>Status</th>
-          <th>Aangemaakt</th><th>Laatste update</th><th>Actie</th>
-        </tr></thead>
-        <tbody>
-        ${mnaTrajecten.map(t => `
-          <tr style="cursor:pointer" onclick="loadMnaDetail('${t.id}')">
-            <td>
-              <div><span class="mono" style="font-size:12px;background:var(--teal-bg);color:var(--teal);padding:2px 6px;border-radius:3px">${t.id}</span></div>
-              <div style="font-size:10px;color:var(--muted);margin-top:2px">Koper: <span class="mono" style="color:var(--gold)">${t.koper_code||'—'}</span></div>
-            </td>
-            <td style="font-weight:500;color:var(--head)">${t.kantoor_naam||'—'}</td>
-            <td style="font-size:12px">${t.contact_naam||'—'}${t.contact_email?'<br><a href="mailto:'+t.contact_email+'" style="color:var(--teal);font-size:10px">'+t.contact_email+'</a>':''}</td>
-            <td style="font-size:12px">${t.traject_type||'—'}</td>
-            <td><span class="score-badge ${statusClass[t.status]||'score-mid'}">${statusLabel[t.status]||t.status}</span></td>
-            <td class="mono" style="font-size:11px">${formatDate(t.created_at)}</td>
-            <td class="mono" style="font-size:11px">${formatDate(t.updated_at)}</td>
-            <td onclick="event.stopPropagation()" style="font-size:11px">
-              ${t.status === 'vergrendeld'
-                ? '<span style="color:var(--red);font-size:11px;font-weight:600">&#128274; Vergrendeld</span><br><small style="color:var(--muted)">' + (t.vergrendeld_op ? new Date(t.vergrendeld_op).toLocaleString('nl-NL') : '') + '</small>'
-                : `<select onchange="changeStatus('${t.id}',this.value)" style="font-size:11px;padding:3px 6px;border:1px solid var(--border2);border-radius:4px;background:var(--card);cursor:pointer">
-                <option value="actief" ${t.status==='actief'?'selected':''}>Actief</option>
-                <option value="in_behandeling" ${t.status==='in_behandeling'?'selected':''}>In behandeling</option>
-                <option value="afgerond" ${t.status==='afgerond'?'selected':''}>Afgerond</option>
-              </select>
-              <button onclick="event.stopPropagation();vergrendelTraject('${t.id}')" style="margin-top:4px;display:block;font-size:10px;padding:2px 8px;background:var(--red-bg);color:var(--red);border:1px solid var(--red);border-radius:3px;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;white-space:nowrap">&#128274; Vergrendel</button>`
-              }
-            </td>
-          </tr>
-          <tr><td colspan="8" style="padding:0">
-            <div class="mna-detail ${openMna===t.id?'open':''}" id="mna-detail-${t.id}">
-              <div style="color:var(--muted);font-size:12px">Laden...</div>
-            </div>
-          </td></tr>
-        `).join('')}
-        </tbody>
-      </table>`}
-    </div>`;
-}
-
-function renderLogin() {
-  document.getElementById('app').innerHTML = `
-    <div class="login-wrap">
-      <div class="login-box">
-        <div class="login-title">Admin toegang</div>
-        <div class="login-sub">Voer uw admin-sleutel in om door te gaan.</div>
-        <div class="field"><label>Admin-sleutel</label><input type="password" id="admin-key-input" placeholder="••••••••" autofocus></div>
-        <button class="btn" style="width:100%" onclick="doLogin()">Inloggen</button>
-        <div id="login-error" style="color:var(--red);font-size:12px;margin-top:.75rem;display:none">Sleutel incorrect of verbindingsfout.</div>
-      </div>
-    </div>`;
-  document.getElementById('admin-key-input').onkeydown = e => { if (e.key === 'Enter') doLogin(); };
-}
+function ge(id) { return document.getElementById(id); }
+function closeModal() { ge('rapport-modal').style.display = 'none'; }
 
 async function doLogin() {
-  const key = document.getElementById('admin-key-input').value.trim();
+  var key = (ge('admin-key') || {}).value || '';
   if (!key) return;
-  const btn = document.querySelector('.login-wrap .btn');
+  var btn = ge('login-btn');
   btn.disabled = true; btn.textContent = 'Laden...';
-  // Fetch data via same-origin Worker URL
   try {
-    const [r1, r2] = await Promise.all([
-      fetch(WORKER + '/admin/scans?key=' + encodeURIComponent(key)),
-      fetch(WORKER + '/admin/callbacks?key=' + encodeURIComponent(key))
-    ]);
+    var r1 = await fetch(WORKER + '/admin/scans?key=' + encodeURIComponent(key));
     if (!r1.ok) throw new Error('unauthorized');
+    var r2 = await fetch(WORKER + '/admin/callbacks?key=' + encodeURIComponent(key));
+    var r3 = await fetch(WORKER + '/mna/admin/lijst?key=' + encodeURIComponent(key));
     scans = await r1.json();
     callbacks = await r2.json();
+    mnaTrajecten = r3.ok ? await r3.json() : [];
     adminKey = key;
-    document.getElementById('hdr-actions').style.display = 'block';
+    ge('hdr-actions').style.display = 'flex';
+    // Login notification
+    fetch(WORKER + '/admin/login-notify?key=' + encodeURIComponent(key), {
+      method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ip:'browser'})
+    }).catch(function() {});
     renderDashboard();
   } catch(e) {
-    document.getElementById('login-error').style.display = 'block';
+    var err = ge('login-err');
+    if (err) err.style.display = 'block';
     btn.disabled = false; btn.textContent = 'Inloggen';
   }
 }
 
 async function refreshData() {
   try {
-    const [r1, r2, r3] = await Promise.all([
-      fetch(WORKER + '/admin/scans?key=' + encodeURIComponent(adminKey)),
-      fetch(WORKER + '/admin/callbacks?key=' + encodeURIComponent(adminKey)),
-      fetch(WORKER + '/mna/admin/lijst?key=' + encodeURIComponent(adminKey))
-    ]);
+    var r1 = await fetch(WORKER + '/admin/scans?key=' + encodeURIComponent(adminKey));
+    var r2 = await fetch(WORKER + '/admin/callbacks?key=' + encodeURIComponent(adminKey));
+    var r3 = await fetch(WORKER + '/mna/admin/lijst?key=' + encodeURIComponent(adminKey));
     scans = await r1.json();
     callbacks = await r2.json();
     mnaTrajecten = r3.ok ? await r3.json() : [];
@@ -378,182 +164,336 @@ async function refreshData() {
   } catch(e) { alert('Kon niet verversen.'); }
 }
 
-function renderDashboard() {
-  const avgScore = scans.length ? Math.round(scans.reduce((a, s) => a + (s.overall || 0), 0) / scans.length) : 0;
-  const recentScans = scans.filter(s => Date.now() - s.created_at < 7 * 24 * 3600 * 1000).length;
-
-  document.getElementById('app').innerHTML = `
-    <div class="stats-row">
-      <div class="stat-card"><div class="stat-num">${scans.length}</div><div class="stat-lbl">Totaal scans</div></div>
-      <div class="stat-card"><div class="stat-num">${recentScans}</div><div class="stat-lbl">Afgelopen 7 dagen</div></div>
-      <div class="stat-card"><div class="stat-num">${avgScore || '—'}</div><div class="stat-lbl">Gem. totaalscore</div></div>
-      <div class="stat-card"><div class="stat-num">${callbacks.length}</div><div class="stat-lbl">Terugbelverzoeken</div></div>
-    </div>
-    <div class="tabs">
-      <button class="tab ${activeTab==='scans'?'active':''}" onclick="switchTab('scans')">Scans (${scans.length})</button>
-      <button class="tab ${activeTab==='callbacks'?'active':''}" onclick="switchTab('callbacks')">Terugbelverzoeken (${callbacks.length})</button>
-      <button class="tab ${activeTab==='mna'?'active':''}" onclick="switchTab('mna')">M&A Trajecten (${mnaTrajecten.length})</button>
-    </div>
-    <div id="tab-content"></div>`;
-
-  renderTab();
+async function deleteScan(id) {
+  if (!id || id === 'undefined') { alert('ID niet gevonden.'); return; }
+  if (!confirm('Scan verwijderen?')) return;
+  var r = await fetch(WORKER + '/admin/delete/scan/' + id + '?key=' + encodeURIComponent(adminKey), {method:'POST'});
+  var d = await r.json().catch(function() { return {}; });
+  if (d.ok) { scans = scans.filter(function(s) { return String(s.id) !== String(id); }); renderDashboard(); }
+  else alert('Fout: ' + (d.error || 'onbekend'));
 }
 
-function switchTab(tab) {
-  activeTab = tab;
-  scanFilter = '';
-  openRow = null;
-  renderDashboard();
+async function deleteCallback(id) {
+  if (!id || id === 'undefined') { alert('ID niet gevonden.'); return; }
+  if (!confirm('Terugbelverzoek verwijderen?')) return;
+  var r = await fetch(WORKER + '/admin/delete/callback/' + id + '?key=' + encodeURIComponent(adminKey), {method:'POST'});
+  var d = await r.json().catch(function() { return {}; });
+  if (d.ok) { callbacks = callbacks.filter(function(c) { return String(c.id) !== String(id); }); renderDashboard(); }
+  else alert('Fout: ' + (d.error || 'onbekend'));
 }
 
-function renderTab() {
-  const el = document.getElementById('tab-content');
-  if (activeTab === 'scans') renderScansTab(el);
-  else if (activeTab === 'callbacks') renderCallbacksTab(el);
-  else renderMnaTab(el);
+async function deleteMna(code) {
+  if (!code || code === 'undefined') { alert('Code niet gevonden.'); return; }
+  if (!confirm('Traject ' + code + ' verwijderen? Dit verwijdert ook alle ingevoerde data.')) return;
+  var r = await fetch(WORKER + '/admin/delete/mna/' + code + '?key=' + encodeURIComponent(adminKey), {method:'POST'});
+  var d = await r.json().catch(function() { return {}; });
+  if (d.ok) {
+    mnaTrajecten = mnaTrajecten.filter(function(t) { return t.id !== code; });
+    if (openMna === code) openMna = null;
+    renderDashboard();
+  } else alert('Fout: ' + (d.error || 'onbekend'));
 }
 
-function renderScansTab(el) {
-  const filtered = scans.filter(s => {
-    if (!scanFilter) return true;
-    const q = scanFilter.toLowerCase();
-    return (s.office_name||'').toLowerCase().includes(q) ||
-           (s.region||'').toLowerCase().includes(q) ||
-           (s.top_scenario||'').toLowerCase().includes(q) ||
-           (s.group_name||'').toLowerCase().includes(q);
+async function changeStatus(code, status) {
+  await fetch(WORKER + '/mna/admin/status/' + code + '?key=' + encodeURIComponent(adminKey), {
+    method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({status: status})
   });
-
-  el.innerHTML = `
-    <div class="table-wrap">
-      <div class="table-hdr">
-        <div class="table-title">Ingediende scans</div>
-        <div style="display:flex;gap:10px;align-items:center">
-          <input class="search-bar" placeholder="Zoek op naam, regio, scenario..." value="${scanFilter}" oninput="scanFilter=this.value;renderTab()">
-          <button class="btn refresh-btn" onclick="refreshData()">&#8635; Verversen</button>
-        </div>
-      </div>
-      ${filtered.length === 0 ? '<div class="empty">Geen scans gevonden.</div>' : `
-      <table>
-        <thead><tr>
-          <th>Datum</th>
-          <th>Kantoor</th>
-          <th>Regio</th>
-          <th>Fte</th>
-          <th>Omzet</th>
-          <th>Score</th>
-          <th>Scenario</th>
-          <th>Groep</th>
-          <th></th>
-        </tr></thead>
-        <tbody>
-          ${filtered.map((s, i) => `
-            <tr style="cursor:pointer" onclick="toggleRow(${i})">
-              <td class="mono" style="font-size:11px;white-space:nowrap">${formatDate(s.created_at)}</td>
-              <td style="font-weight:500;color:var(--head)">${s.office_name||'Anoniem'}</td>
-              <td>${s.region||'—'}</td>
-              <td>${s.fte||'—'}</td>
-              <td>${s.revenue||'—'}</td>
-              <td><span class="score-badge ${dc(s.overall)}">${s.overall||'—'}</span></td>
-              <td><span class="tag">${(s.top_scenario||'—').split(' ').slice(0,2).join(' ')}</span></td>
-              <td style="font-size:11px;color:var(--muted)">${s.group_name||s.group_id||'Solo'}</td>
-              <td style="color:var(--muted);font-size:11px" onclick="event.stopPropagation()">
-                <button class="btn-rapport" data-sid="${s.id||s.scan_id}" data-naam="${s.office_name||'Anoniem'}" onclick="showRapport(this.dataset.sid,this.dataset.naam,adminKey)">Rapport</button>
-              </td>
-            </tr>
-            <tr id="detail-${i}">
-              <td colspan="9" style="padding:0">
-                <div class="detail-panel ${openRow===i?'open':''}">
-                  <div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Scores per dimensie</div>
-                  <div class="detail-grid">
-                    ${s.scores ? Object.entries(JSON.parse(typeof s.scores === 'string' ? s.scores : JSON.stringify(s.scores))).map(([k,v])=>`
-                      <div class="detail-item">
-                        <div class="detail-label">${k}</div>
-                        <div class="detail-val" style="color:${v>=70?'var(--teal)':v>=50?'var(--gold)':'var(--red)'}">${v}/100</div>
-                      </div>`).join('') : '<div style="color:var(--muted);font-size:12px">Geen scoredata beschikbaar.</div>'}
-                  </div>
-                </div>
-              </td>
-            </tr>`).join('')}
-        </tbody>
-      </table>`}
-    </div>`;
+  await refreshData();
 }
 
-function renderCallbacksTab(el) {
-  el.innerHTML = `
-    <div class="table-wrap">
-      <div class="table-hdr">
-        <div class="table-title">Terugbelverzoeken</div>
-        <button class="btn refresh-btn" onclick="refreshData()">&#8635; Verversen</button>
-      </div>
-      ${callbacks.length === 0 ? '<div class="empty">Nog geen terugbelverzoeken.</div>' : `
-      <table>
-        <thead><tr>
-          <th>Datum</th>
-          <th>Naam</th>
-          <th>Telefoon</th>
-          <th>E-mail</th>
-          <th>Beltijd</th>
-          <th>Kantoor</th>
-          <th>Score</th>
-          <th>Scenario</th>
-        </tr></thead>
-        <tbody>
-          ${callbacks.map(c => {
-            const kantoor = typeof c.kantoor === 'string' ? JSON.parse(c.kantoor||'{}') : (c.kantoor||{});
-            return `<tr>
-              <td class="mono" style="font-size:11px;white-space:nowrap">${formatDate(c.created_at)}</td>
-              <td style="font-weight:500;color:var(--head)">${c.naam||'—'}</td>
-              <td><a href="tel:${c.tel}" style="color:var(--teal);text-decoration:none">${c.tel||'—'}</a></td>
-              <td><a href="mailto:${c.email}" style="color:var(--teal);text-decoration:none">${c.email||'—'}</a></td>
-              <td>${c.tijd||'—'}</td>
-              <td style="font-size:12px">${kantoor.naam||'—'}${kantoor.regio?' · '+kantoor.regio:''}</td>
-              <td><span class="score-badge ${dc(c.totaal)}">${c.totaal||'—'}</span></td>
-              <td><span class="tag" style="font-size:9px">${(c.scenario||'—').split(' ').slice(0,2).join(' ')}</span></td>
-            </tr>`;
-          }).join('')}
-        </tbody>
-      </table>`}
-    </div>`;
+async function vergrendelTraject(code) {
+  var datum = new Date().toLocaleString('nl-NL');
+  if (!confirm('Traject ' + code + ' vergrendelen op ' + datum + '?\n\nHet kantoor kan daarna geen wijzigingen meer maken.')) return;
+  var r = await fetch(WORKER + '/mna/admin/vergrendel/' + code + '?key=' + encodeURIComponent(adminKey), {method:'POST'});
+  var d = await r.json().catch(function() { return {}; });
+  if (d.ok) { alert('Vergrendeld op ' + new Date(d.vergrendeld_op).toLocaleString('nl-NL')); await refreshData(); }
+  else alert('Fout bij vergrendelen.');
 }
 
-function toggleRow(i) {
-  openRow = openRow === i ? null : i;
-  renderTab();
+async function createTraject() {
+  var naam = (ge('new-naam') || {}).value || '';
+  var contact = (ge('new-contact') || {}).value || '';
+  var email = (ge('new-email') || {}).value || '';
+  var type = (ge('new-type') || {}).value || 'Verkoop';
+  var notitie = (ge('new-notitie') || {}).value || '';
+  if (!naam.trim()) { alert('Kantoornaam is verplicht.'); return; }
+  var btn = ge('create-btn');
+  btn.disabled = true; btn.textContent = 'Aanmaken...';
+  var r = await fetch(WORKER + '/mna/create?key=' + encodeURIComponent(adminKey), {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({kantoor_naam:naam.trim(), contact_naam:contact, contact_email:email, traject_type:type, notitie:notitie})
+  });
+  var d = await r.json().catch(function() { return {}; });
+  if (d.ok) {
+    alert('Aangemaakt!\n\nTrajectcode (verkoper): ' + d.code + '\nKoperscode: ' + (d.koper_code||'-') + '\n\nDeel via koersvoormorgen.nl/mna.html');
+    ge('new-naam').value = ''; ge('new-contact').value = ''; ge('new-email').value = ''; ge('new-notitie').value = '';
+    await refreshData();
+  } else alert('Fout: ' + (d.error || 'onbekend'));
+  btn.disabled = false; btn.textContent = 'Traject aanmaken';
 }
 
-function closeModal(){
-  document.getElementById('rapport-modal').style.display='none';
+function copyText(text, label) {
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(text).then(function() { alert((label||'Tekst') + ' gekopieerd:\n' + text); });
+  } else {
+    var el = document.createElement('textarea');
+    el.value = text; document.body.appendChild(el); el.select();
+    document.execCommand('copy'); document.body.removeChild(el);
+    alert((label||'Tekst') + ' gekopieerd:\n' + text);
+  }
 }
 
-async function showRapport(scanId, kantoorNaam, adminKey) {
-  const modal = document.getElementById('rapport-modal');
-  const body = document.getElementById('modal-body');
-  const title = document.getElementById('modal-title');
-  const sub = document.getElementById('modal-sub');
+function downloadCodes(code, naam, koperCode) {
+  var tekst = 'KantoorInzicht M&A Trajectcodes\n================================\n\n'
+    + 'Kantoor: ' + naam + '\n'
+    + 'Trajectcode (verkoper): ' + code + '\n'
+    + (koperCode ? 'Koperscode (koper): ' + koperCode + '\n' : '')
+    + '\nInloggen via: https://koersvoormorgen.nl/mna.html\n'
+    + '\nBewaar dit bestand vertrouwelijk.\n'
+    + 'Gegenereerd op: ' + new Date().toLocaleString('nl-NL');
+  var blob = new Blob([tekst], {type:'text/plain'});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'trajectcodes-' + code + '.txt';
+  a.click();
+}
+
+async function showRapport(scanId, kantoorNaam) {
+  var modal = ge('rapport-modal');
+  var body = ge('modal-body');
+  var title = ge('modal-title');
+  var sub = ge('modal-sub');
   title.textContent = kantoorNaam || 'Rapport';
   sub.textContent = 'Laden...';
   body.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--muted)">Rapport wordt opgehaald...</div>';
   modal.style.display = 'flex';
-
   try {
-    const r = await fetch(WORKER + '/admin/rapport/' + scanId + '?key=' + encodeURIComponent(adminKey));
-    const d = await r.json();
+    var r = await fetch(WORKER + '/admin/rapport/' + scanId + '?key=' + encodeURIComponent(adminKey));
+    var d = await r.json();
     if (d.rapport) {
-      sub.textContent = 'Gegenereerd AI-rapport';
-      let html = d.rapport
-        .replace(/## (.+)/g, '<h3>$1</h3>')
-        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-        .replace(/^- (.+)/gm, '<li>$1</li>');
-      html = html.split('\n\n').map(p => p.trim() && !p.startsWith('<') ? '<p>'+p+'</p>' : p).join('');
+      sub.textContent = 'AI-rapport';
+      var html = d.rapport
+        .replace(/## ([^\n]+)/g, function(_,t) { return '<h3>' + t + '</h3>'; })
+        .replace(/[*][*]([^*]+)[*][*]/g, function(_,t) { return '<strong>' + t + '</strong>'; });
+      html = html.split('\n\n').map(function(p) { return p.trim() && p.charAt(0) !== '<' ? '<p>' + p + '</p>' : p; }).join('');
       body.innerHTML = html;
     } else {
       sub.textContent = '';
-      body.innerHTML = '<div style="color:var(--muted);padding:2rem;text-align:center">Geen rapport beschikbaar voor deze scan.<br><small>Het rapport wordt opgeslagen zodra de gebruiker op "Genereer AI-advies" klikt.</small></div>';
+      body.innerHTML = '<div style="color:var(--muted);padding:2rem;text-align:center">Geen rapport beschikbaar voor deze scan.</div>';
     }
   } catch(e) {
-    body.innerHTML = '<div style="color:var(--red);padding:1rem">Kon rapport niet ophalen.</div>';
+    body.innerHTML = '<div style="color:var(--red)">Kon rapport niet ophalen.</div>';
   }
+}
+
+async function loadMnaDetail(code) {
+  if (openMna === code) { openMna = null; renderDashboard(); return; }
+  openMna = code;
+  renderDashboard();
+  var el = ge('mna-det-' + code);
+  if (!el) return;
+  el.innerHTML = '<div style="color:var(--muted);font-size:12px">Laden...</div>';
+  try {
+    var r = await fetch(WORKER + '/mna/admin/detail/' + code + '?key=' + encodeURIComponent(adminKey));
+    var d = await r.json();
+    var titels = {financieel:'I. Financieel',commercieel:'II. Klanten',partner:'III. Partners',compliance:'IV. Compliance',it:'V. IT',juridisch:'VI. Juridisch',strategisch:'VII. Strategisch'};
+    var html = '';
+    if (d.data && d.data.length) {
+      html += '<div class="mna-fase-grid">';
+      d.data.forEach(function(row) {
+        var cj = JSON.parse(row.checklist_json || '{}');
+        var items = Object.values(cj.items || {});
+        var done = items.filter(Boolean).length;
+        var pct = items.length ? Math.round(done / items.length * 100) : 0;
+        var rfs = Object.values(cj.redflags || {}).filter(Boolean).length;
+        html += '<div class="mna-fase-card"><div class="mna-fase-title">' + (titels[row.fase_id] || row.fase_id) + '</div>'
+          + '<div class="mna-fase-pct">' + pct + '%</div>'
+          + (rfs ? '<div style="color:var(--red);font-size:10px">! ' + rfs + ' rode vlag' + (rfs > 1 ? 'gen' : '') + '</div>' : '')
+          + '</div>';
+      });
+      html += '</div>';
+      d.data.forEach(function(row) {
+        var dj = JSON.parse(row.data_json || '{}');
+        var entries = Object.entries(dj);
+        if (!entries.length && !row.notitie) return;
+        html += '<div style="margin-bottom:.75rem"><div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:.3rem">' + (titels[row.fase_id] || row.fase_id) + '</div>';
+        entries.forEach(function(kv) {
+          var v = kv[1];
+          if (v && v.value) html += '<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-bottom:1px solid var(--border)"><span style="color:var(--muted)">' + (v.label || kv[0]) + '</span><span style="font-family:IBM Plex Mono,monospace;font-size:11px">' + v.value + (v.ref ? ' <span style="color:var(--gold)">doc:' + v.ref + '</span>' : '') + '</span></div>';
+        });
+        if (row.notitie) html += '<div style="font-size:11px;font-style:italic;color:var(--mid);margin-top:.3rem;padding:.3rem .5rem;background:var(--panel);border-radius:4px">' + row.notitie + '</div>';
+        html += '</div>';
+      });
+    } else {
+      html = '<div style="color:var(--muted);font-size:13px">Nog geen data ingevoerd.</div>';
+    }
+    el.innerHTML = html;
+  } catch(e) {
+    el.innerHTML = '<div style="color:var(--red);font-size:12px">Kon detail niet laden.</div>';
+  }
+}
+
+function toggleRow(i) { openRow = openRow === i ? null : i; renderDashboard(); }
+
+function renderLogin() {
+  ge('app').innerHTML = '<div class="login-wrap"><div class="login-box">'
+    + '<div style="font-family:Playfair Display,serif;font-size:1.4rem;color:var(--head);font-weight:600;margin-bottom:.3rem">Admin toegang</div>'
+    + '<div style="font-size:13px;color:var(--muted);margin-bottom:1.5rem">Voer uw admin-sleutel in.</div>'
+    + '<div class="field"><label>Admin-sleutel</label><input type="password" id="admin-key" placeholder="..." autocomplete="off"></div>'
+    + '<div id="login-err" style="color:var(--red);font-size:12px;margin-bottom:.75rem;display:none">Sleutel incorrect of verbindingsfout.</div>'
+    + '<button class="btn" id="login-btn" style="width:100%" onclick="doLogin()">Inloggen</button>'
+    + '<div style="margin-top:1rem;font-size:11px;color:var(--muted)">KantoorInzicht &middot; Bisschops Financing BV</div>'
+    + '</div></div>';
+  ge('admin-key').onkeydown = function(e) { if (e.key === 'Enter') doLogin(); };
+}
+
+function renderDashboard() {
+  var avgScore = scans.length ? Math.round(scans.reduce(function(a, s) { return a + (s.overall || 0); }, 0) / scans.length) : 0;
+  var recent = scans.filter(function(s) { return Date.now() - s.created_at < 7 * 86400000; }).length;
+  ge('app').innerHTML = '<div class="stats-row">'
+    + '<div class="stat-card"><div class="stat-num">' + scans.length + '</div><div class="stat-lbl">Totaal scans</div></div>'
+    + '<div class="stat-card"><div class="stat-num">' + recent + '</div><div class="stat-lbl">Afgelopen 7 dagen</div></div>'
+    + '<div class="stat-card"><div class="stat-num">' + (avgScore || '-') + '</div><div class="stat-lbl">Gem. score</div></div>'
+    + '<div class="stat-card"><div class="stat-num">' + callbacks.length + '</div><div class="stat-lbl">Terugbelverzoeken</div></div>'
+    + '</div>'
+    + '<div class="tabs">'
+    + '<button class="tab ' + (activeTab === 'scans' ? 'active' : '') + '" onclick="activeTab=\'scans\';renderDashboard()">Scans (' + scans.length + ')</button>'
+    + '<button class="tab ' + (activeTab === 'callbacks' ? 'active' : '') + '" onclick="activeTab=\'callbacks\';renderDashboard()">Terugbelverzoeken (' + callbacks.length + ')</button>'
+    + '<button class="tab ' + (activeTab === 'mna' ? 'active' : '') + '" onclick="activeTab=\'mna\';renderDashboard()">M&amp;A Trajecten (' + mnaTrajecten.length + ')</button>'
+    + '</div>'
+    + '<div id="tab-content"></div>';
+  if (activeTab === 'scans') renderScansTab();
+  else if (activeTab === 'callbacks') renderCallbacksTab();
+  else renderMnaTab();
+}
+
+function renderScansTab() {
+  var filtered = scans.filter(function(s) {
+    if (!scanFilter) return true;
+    var q = scanFilter.toLowerCase();
+    return (s.office_name||'').toLowerCase().includes(q) || (s.region||'').toLowerCase().includes(q) || (s.top_scenario||'').toLowerCase().includes(q);
+  });
+  var html = '<div class="table-wrap"><div class="table-hdr"><div class="table-title">Scans</div>'
+    + '<div style="display:flex;gap:8px;align-items:center">'
+    + '<input class="search-bar" placeholder="Zoek op naam, regio, scenario..." value="' + scanFilter + '" oninput="scanFilter=this.value;renderDashboard()">'
+    + '<button class="btn" style="font-size:12px;padding:7px 14px" onclick="refreshData()">Verversen</button>'
+    + '</div></div>';
+  if (!filtered.length) {
+    html += '<div class="empty">Geen scans gevonden.</div>';
+  } else {
+    html += '<table><thead><tr><th>Datum</th><th>Kantoor</th><th>Regio</th><th>Fte</th><th>Omzet</th><th>Score</th><th>Scenario</th><th>Groep</th><th></th></tr></thead><tbody>';
+    filtered.forEach(function(s, i) {
+      var scores = '';
+      if (s.scores && openRow === i) {
+        var sc = typeof s.scores === 'string' ? JSON.parse(s.scores) : s.scores;
+        scores = '<tr><td colspan="9" style="padding:0"><div class="detail-panel open"><div class="detail-grid">'
+          + Object.entries(sc).map(function(kv) {
+            return '<div class="detail-item"><div class="detail-label">' + kv[0] + '</div><div class="detail-val" style="color:' + (kv[1]>=70?'var(--teal)':kv[1]>=50?'var(--gold)':'var(--red)') + '">' + kv[1] + '/100</div></div>';
+          }).join('') + '</div></div></td></tr>';
+      }
+      html += '<tr style="cursor:pointer" onclick="toggleRow(' + i + ')">'
+        + '<td class="mono" style="font-size:11px">' + formatDate(s.created_at) + '</td>'
+        + '<td style="font-weight:500;color:var(--head)">' + (s.office_name||'Anoniem') + '</td>'
+        + '<td>' + (s.region||'-') + '</td>'
+        + '<td>' + (s.fte||'-') + '</td>'
+        + '<td>' + (s.revenue||'-') + '</td>'
+        + '<td><span class="score-badge ' + dc(s.overall) + '">' + (s.overall||'-') + '</span></td>'
+        + '<td><span class="tag" style="font-size:9px">' + (s.top_scenario||'-').split(' ').slice(0,2).join(' ') + '</span></td>'
+        + '<td style="font-size:11px;color:var(--muted)">' + (s.group_name||s.group_id||'Solo') + '</td>'
+        + '<td onclick="event.stopPropagation()" style="white-space:nowrap">'
+        + '<button class="btn-rapport" onclick="showRapport(\'' + s.id + '\',\'' + (s.office_name||'').replace(/'/g,"") + '\')">Rapport</button> '
+        + '<button class="btn-del" onclick="deleteScan(\'' + s.id + '\')">Verwijder</button>'
+        + '</td></tr>' + scores;
+    });
+    html += '</tbody></table>';
+  }
+  html += '</div>';
+  ge('tab-content').innerHTML = html;
+}
+
+function renderCallbacksTab() {
+  var html = '<div class="table-wrap"><div class="table-hdr"><div class="table-title">Terugbelverzoeken</div>'
+    + '<button class="btn" style="font-size:12px;padding:7px 14px" onclick="refreshData()">Verversen</button></div>';
+  if (!callbacks.length) {
+    html += '<div class="empty">Nog geen terugbelverzoeken.</div>';
+  } else {
+    html += '<table><thead><tr><th>Datum</th><th>Naam</th><th>Telefoon</th><th>E-mail</th><th>Beltijd</th><th>Kantoor</th><th>Score</th><th>Scenario</th><th></th></tr></thead><tbody>';
+    callbacks.forEach(function(c) {
+      var kantoor = {};
+      try { kantoor = typeof c.kantoor === 'string' ? JSON.parse(c.kantoor || '{}') : (c.kantoor || {}); } catch(e) {}
+      html += '<tr>'
+        + '<td class="mono" style="font-size:11px">' + formatDate(c.created_at) + '</td>'
+        + '<td style="font-weight:500;color:var(--head)">' + (c.naam||'-') + '</td>'
+        + '<td><a href="tel:' + c.tel + '" style="color:var(--teal);text-decoration:none">' + (c.tel||'-') + '</a></td>'
+        + '<td><a href="mailto:' + c.email + '" style="color:var(--teal);text-decoration:none">' + (c.email||'-') + '</a></td>'
+        + '<td>' + (c.tijd||'-') + '</td>'
+        + '<td style="font-size:12px">' + (kantoor.naam||'-') + (kantoor.regio ? ' - ' + kantoor.regio : '') + '</td>'
+        + '<td><span class="score-badge ' + dc(c.totaal) + '">' + (c.totaal||'-') + '</span></td>'
+        + '<td style="font-size:11px">' + (c.scenario||'-').split(' ').slice(0,2).join(' ') + '</td>'
+        + '<td><button class="btn-del" onclick="deleteCallback(\'' + c.id + '\')">Verwijder</button></td>'
+        + '</tr>';
+    });
+    html += '</tbody></table>';
+  }
+  html += '</div>';
+  ge('tab-content').innerHTML = html;
+}
+
+function renderMnaTab() {
+  var statusClass = {actief:'score-high',in_behandeling:'score-mid',afgerond:'score-low',vergrendeld:'score-low'};
+  var statusLabel = {actief:'Actief',in_behandeling:'In behandeling',afgerond:'Afgerond',vergrendeld:'Vergrendeld'};
+  var html = '<div class="table-wrap" style="margin-bottom:1.5rem"><div class="table-hdr"><div class="table-title">Nieuw traject aanmaken</div></div>'
+    + '<div style="padding:1.25rem">'
+    + '<div class="form-grid3"><div class="field"><label>Kantoornaam *</label><input type="text" id="new-naam" placeholder="bijv. Bakker &amp; Partners"></div>'
+    + '<div class="field"><label>Contactpersoon</label><input type="text" id="new-contact" placeholder="Naam eigenaar"></div>'
+    + '<div class="field"><label>E-mail contactpersoon</label><input type="email" id="new-email" placeholder="eigenaar@kantoor.nl"></div></div>'
+    + '<div class="form-grid2"><div class="field"><label>Trajecttype</label><select id="new-type"><option>Verkoop</option><option>Fusie</option><option>PE-investering</option><option>Opvolging</option><option>Overname</option></select></div>'
+    + '<div class="field"><label>Interne notitie</label><textarea id="new-notitie" placeholder="Context, aanleiding..." style="min-height:38px"></textarea></div></div>'
+    + '<button class="btn" id="create-btn" onclick="createTraject()">Traject aanmaken</button>'
+    + '<div style="font-size:11px;color:var(--muted);margin-top:.4rem">Na aanmaken ontvangt u een trajectcode (verkoper) en koperscode.</div>'
+    + '</div></div>'
+    + '<div class="table-wrap"><div class="table-hdr"><div class="table-title">Lopende trajecten (' + mnaTrajecten.length + ')</div>'
+    + '<button class="btn" style="font-size:12px;padding:7px 14px" onclick="refreshData()">Verversen</button></div>';
+
+  if (!mnaTrajecten.length) {
+    html += '<div class="empty">Nog geen trajecten aangemaakt.</div>';
+  } else {
+    html += '<table><thead><tr><th>Codes</th><th>Kantoor</th><th>Contact</th><th>Type</th><th>Status</th><th>Aangemaakt</th><th>Bijgewerkt</th><th>Acties</th></tr></thead><tbody>';
+    mnaTrajecten.forEach(function(t) {
+      var isVerg = t.status === 'vergrendeld';
+      html += '<tr style="cursor:pointer" onclick="loadMnaDetail(\'' + t.id + '\')">'
+        + '<td onclick="event.stopPropagation()">'
+        + '<div style="display:flex;align-items:center;gap:4px">'
+        + '<span class="mono" style="font-size:12px;background:var(--teal-bg);color:var(--teal);padding:2px 6px;border-radius:3px">' + t.id + '</span>'
+        + '<button class="btn-copy" onclick="copyText(\'' + t.id + '\',\'Trajectcode\')" title="Kopieer trajectcode">C</button>'
+        + '</div>'
+        + (t.koper_code ? '<div style="margin-top:3px;display:flex;align-items:center;gap:4px"><span class="mono" style="font-size:11px;color:var(--gold)">' + t.koper_code + '</span>'
+          + '<button class="btn-copy" onclick="copyText(\'' + t.koper_code + '\',\'Koperscode\')" title="Kopieer koperscode">C</button></div>' : '')
+        + '<div style="margin-top:3px"><button class="btn-copy" onclick="downloadCodes(\'' + t.id + '\',\'' + (t.kantoor_naam||'').replace(/'/g,'') + '\',\'' + (t.koper_code||'') + '\')" title="Download codes als tekstbestand">&#8595; Sla op</button></div>'
+        + '</td>'
+        + '<td style="font-weight:500;color:var(--head)">' + (t.kantoor_naam||'-') + '</td>'
+        + '<td style="font-size:12px">' + (t.contact_naam||'-') + (t.contact_email ? '<br><a href="mailto:' + t.contact_email + '" style="color:var(--teal);font-size:10px">' + t.contact_email + '</a>' : '') + '</td>'
+        + '<td style="font-size:12px">' + (t.traject_type||'-') + '</td>'
+        + '<td><span class="score-badge ' + (statusClass[t.status]||'score-mid') + '">' + (statusLabel[t.status]||t.status) + '</span>'
+        + (isVerg && t.vergrendeld_op ? '<br><small style="color:var(--muted);font-size:10px">' + formatDate(t.vergrendeld_op) + '</small>' : '') + '</td>'
+        + '<td class="mono" style="font-size:11px">' + formatDate(t.created_at) + '</td>'
+        + '<td class="mono" style="font-size:11px">' + formatDate(t.updated_at) + '</td>'
+        + '<td onclick="event.stopPropagation()" style="white-space:nowrap">'
+        + (!isVerg ? '<select onchange="changeStatus(\'' + t.id + '\',this.value)" style="font-size:11px;padding:3px 6px;border:1px solid var(--border2);border-radius:4px;background:var(--card);cursor:pointer;margin-bottom:3px;display:block">'
+          + '<option value="actief"' + (t.status==='actief'?' selected':'') + '>Actief</option>'
+          + '<option value="in_behandeling"' + (t.status==='in_behandeling'?' selected':'') + '>In behandeling</option>'
+          + '<option value="afgerond"' + (t.status==='afgerond'?' selected':'') + '>Afgerond</option>'
+          + '</select>'
+          + '<button class="btn-del" style="margin-bottom:3px;display:block" onclick="vergrendelTraject(\'' + t.id + '\')">Vergrendel</button>' : '')
+        + '<button class="btn-del" style="display:block" onclick="deleteMna(\'' + t.id + '\')">Verwijder</button>'
+        + '</td></tr>'
+        + '<tr><td colspan="8" style="padding:0"><div class="mna-detail ' + (openMna===t.id?'open':'') + '" id="mna-det-' + t.id + '">'
+        + (openMna===t.id ? '<div style="color:var(--muted);font-size:12px">Laden...</div>' : '') + '</div></td></tr>';
+    });
+    html += '</tbody></table>';
+  }
+  html += '</div>';
+  ge('tab-content').innerHTML = html;
 }
 
 renderLogin();
