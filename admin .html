@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KantoorInzicht — Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--void:#faf9f6;--panel:#ffffff;--card:#f0eeea;--border:#dddbd4;--border2:#c8c5bc;--muted:#8a8880;--mid:#5a5854;--sub:#2a2825;--head:#1a1815;--teal:#1a7a5e;--teal-dim:#145f48;--teal-dark:#0a3d2e;--teal-bg:rgba(34,197,160,.1);--gold:#c9a84c;--gold-bg:rgba(201,168,76,.12);--red:#e05252;--red-bg:rgba(224,82,82,.1);--r:6px;--r2:10px}
+body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--sub);min-height:100vh;font-size:14px;line-height:1.6}
+.mono{font-family:'IBM Plex Mono',monospace}
+.wrap{max-width:1100px;margin:0 auto;padding:2rem}
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:1.25rem 0;border-bottom:1px solid var(--border);margin-bottom:2rem}
+.brand{font-size:11px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:8px}
+.wdot{width:6px;height:6px;border-radius:50%;background:var(--teal)}
+.btn{background:var(--teal);color:#fff;font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;padding:9px 18px;border-radius:var(--r);border:none;cursor:pointer}
+.btn:hover{background:var(--teal-dim)}
+.btn-ghost{background:transparent;border:1px solid var(--border2);color:var(--mid);font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:500;padding:9px 18px;border-radius:var(--r);cursor:pointer}
+.btn-ghost:hover{border-color:var(--mid)}
+.login-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:80vh;gap:1.5rem}
+.login-box{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:2.5rem;width:100%;max-width:380px}
+.login-title{font-family:'Playfair Display',serif;font-size:1.4rem;color:var(--head);font-weight:600;margin-bottom:.4rem}
+.login-sub{font-size:13px;color:var(--muted);margin-bottom:1.5rem}
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:1rem}
+.field label{font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.field input{background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:'IBM Plex Sans',sans-serif;font-size:13px;padding:10px 12px;outline:none;width:100%}
+.field input:focus{border-color:var(--teal)}
+.tabs{display:flex;gap:4px;margin-bottom:2rem;border-bottom:1px solid var(--border);padding-bottom:0}
+.tab{font-size:13px;font-weight:500;padding:10px 18px;border-radius:var(--r) var(--r) 0 0;cursor:pointer;color:var(--muted);background:transparent;border:none;border-bottom:2px solid transparent;margin-bottom:-1px}
+.tab.active{color:var(--teal);border-bottom-color:var(--teal);font-weight:600}
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:2rem}
+.stat-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;text-align:center}
+.stat-num{font-family:'Playfair Display',serif;font-size:2rem;font-weight:600;color:var(--teal);line-height:1;margin-bottom:.25rem}
+.stat-lbl{font-size:11px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.table-wrap{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);overflow:hidden;margin-bottom:2rem}
+.table-hdr{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.25rem;border-bottom:1px solid var(--border);background:var(--card)}
+.table-title{font-size:13px;font-weight:600;color:var(--head)}
+table{width:100%;border-collapse:collapse}
+th{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding:10px 14px;text-align:left;border-bottom:1px solid var(--border);background:var(--card)}
+td{padding:10px 14px;border-bottom:1px solid var(--border);font-size:13px;color:var(--mid);vertical-align:top}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--card)}
+.score-badge{display:inline-block;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;padding:2px 8px;border-radius:3px}
+.score-high{background:var(--teal-bg);color:var(--teal)}
+.score-mid{background:var(--gold-bg);color:var(--gold)}
+.score-low{background:var(--red-bg);color:var(--red)}
+.tag{display:inline-block;font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border-radius:3px;background:var(--teal-bg);color:var(--teal);border:1px solid var(--teal-dark)}
+.empty{text-align:center;padding:3rem;color:var(--muted);font-size:13px}
+.refresh-btn{font-size:12px}
+.logout-btn{font-size:12px}
+.search-bar{background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:8px 12px;font-family:'IBM Plex Sans',sans-serif;font-size:13px;width:220px;outline:none}
+.search-bar:focus{border-color:var(--teal)}
+.dim-mini{display:flex;flex-wrap:wrap;gap:4px;max-width:300px}
+.dim-chip{font-size:10px;font-family:'IBM Plex Mono',monospace;padding:1px 5px;border-radius:2px}
+.detail-panel{background:var(--card);border-top:1px solid var(--border);padding:12px 14px;display:none}
+.detail-panel.open{display:block}
+.detail-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}
+.detail-item{background:var(--panel);border:1px solid var(--border);border-radius:var(--r);padding:8px 10px}
+.detail-label{font-size:10px;color:var(--muted);margin-bottom:2px}
+.detail-val{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hdr">
+    <div class="brand"><div class="wdot"></div>KantoorInzicht <span style="color:var(--teal);margin-left:4px">Admin</span></div>
+    <div id="hdr-actions" style="display:none">
+      <button class="btn-ghost logout-btn" onclick="logout()">Uitloggen</button>
+    </div>
+  </div>
+  <div id="app"></div>
+</div>
+
+<script>
+const WORKER = 'https://kantoorinzicht.marcel-bisschops.workers.dev';
+let adminKey = '';
+let scans = [];
+let callbacks = [];
+let activeTab = 'scans';
+let scanFilter = '';
+let openRow = null;
+
+function logout() {
+  adminKey = '';
+  scans = [];
+  callbacks = [];
+  document.getElementById('hdr-actions').style.display = 'none';
+  renderLogin();
+}
+
+function dc(v) {
+  return v >= 70 ? 'score-high' : v >= 50 ? 'score-mid' : 'score-low';
+}
+
+function formatDate(ts) {
+  if (!ts) return '—';
+  return new Date(ts).toLocaleDateString('nl-NL', {day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+}
+
+function renderLogin() {
+  document.getElementById('app').innerHTML = `
+    <div class="login-wrap">
+      <div class="login-box">
+        <div class="login-title">Admin toegang</div>
+        <div class="login-sub">Voer uw admin-sleutel in om door te gaan.</div>
+        <div class="field"><label>Admin-sleutel</label><input type="password" id="admin-key-input" placeholder="••••••••" autofocus></div>
+        <button class="btn" style="width:100%" onclick="doLogin()">Inloggen</button>
+        <div id="login-error" style="color:var(--red);font-size:12px;margin-top:.75rem;display:none">Sleutel incorrect of verbindingsfout.</div>
+      </div>
+    </div>`;
+  document.getElementById('admin-key-input').onkeydown = e => { if (e.key === 'Enter') doLogin(); };
+}
+
+async function doLogin() {
+  const key = document.getElementById('admin-key-input').value.trim();
+  if (!key) return;
+  const btn = document.querySelector('.login-wrap .btn');
+  btn.disabled = true; btn.textContent = 'Laden...';
+  // Fetch data via same-origin Worker URL
+  try {
+    const [r1, r2] = await Promise.all([
+      fetch(WORKER + '/admin/scans?key=' + encodeURIComponent(key)),
+      fetch(WORKER + '/admin/callbacks?key=' + encodeURIComponent(key))
+    ]);
+    if (!r1.ok) throw new Error('unauthorized');
+    scans = await r1.json();
+    callbacks = await r2.json();
+    adminKey = key;
+    document.getElementById('hdr-actions').style.display = 'block';
+    renderDashboard();
+  } catch(e) {
+    document.getElementById('login-error').style.display = 'block';
+    btn.disabled = false; btn.textContent = 'Inloggen';
+  }
+}
+
+async function refreshData() {
+  try {
+    const [r1, r2] = await Promise.all([
+      fetch(WORKER + '/admin/scans?key=' + encodeURIComponent(adminKey)),
+      fetch(WORKER + '/admin/callbacks?key=' + encodeURIComponent(adminKey))
+    ]);
+    scans = await r1.json();
+    callbacks = await r2.json();
+    renderDashboard();
+  } catch(e) { alert('Kon niet verversen.'); }
+}
+
+function renderDashboard() {
+  const avgScore = scans.length ? Math.round(scans.reduce((a, s) => a + (s.overall || 0), 0) / scans.length) : 0;
+  const recentScans = scans.filter(s => Date.now() - s.created_at < 7 * 24 * 3600 * 1000).length;
+
+  document.getElementById('app').innerHTML = `
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-num">${scans.length}</div><div class="stat-lbl">Totaal scans</div></div>
+      <div class="stat-card"><div class="stat-num">${recentScans}</div><div class="stat-lbl">Afgelopen 7 dagen</div></div>
+      <div class="stat-card"><div class="stat-num">${avgScore || '—'}</div><div class="stat-lbl">Gem. totaalscore</div></div>
+      <div class="stat-card"><div class="stat-num">${callbacks.length}</div><div class="stat-lbl">Terugbelverzoeken</div></div>
+    </div>
+    <div class="tabs">
+      <button class="tab ${activeTab==='scans'?'active':''}" onclick="switchTab('scans')">Scans (${scans.length})</button>
+      <button class="tab ${activeTab==='callbacks'?'active':''}" onclick="switchTab('callbacks')">Terugbelverzoeken (${callbacks.length})</button>
+    </div>
+    <div id="tab-content"></div>`;
+
+  renderTab();
+}
+
+function switchTab(tab) {
+  activeTab = tab;
+  scanFilter = '';
+  openRow = null;
+  renderDashboard();
+}
+
+function renderTab() {
+  const el = document.getElementById('tab-content');
+  if (activeTab === 'scans') renderScansTab(el);
+  else renderCallbacksTab(el);
+}
+
+function renderScansTab(el) {
+  const filtered = scans.filter(s => {
+    if (!scanFilter) return true;
+    const q = scanFilter.toLowerCase();
+    return (s.office_name||'').toLowerCase().includes(q) ||
+           (s.region||'').toLowerCase().includes(q) ||
+           (s.top_scenario||'').toLowerCase().includes(q) ||
+           (s.group_name||'').toLowerCase().includes(q);
+  });
+
+  el.innerHTML = `
+    <div class="table-wrap">
+      <div class="table-hdr">
+        <div class="table-title">Ingediende scans</div>
+        <div style="display:flex;gap:10px;align-items:center">
+          <input class="search-bar" placeholder="Zoek op naam, regio, scenario..." value="${scanFilter}" oninput="scanFilter=this.value;renderTab()">
+          <button class="btn refresh-btn" onclick="refreshData()">&#8635; Verversen</button>
+        </div>
+      </div>
+      ${filtered.length === 0 ? '<div class="empty">Geen scans gevonden.</div>' : `
+      <table>
+        <thead><tr>
+          <th>Datum</th>
+          <th>Kantoor</th>
+          <th>Regio</th>
+          <th>Fte</th>
+          <th>Omzet</th>
+          <th>Score</th>
+          <th>Scenario</th>
+          <th>Groep</th>
+          <th></th>
+        </tr></thead>
+        <tbody>
+          ${filtered.map((s, i) => `
+            <tr style="cursor:pointer" onclick="toggleRow(${i})">
+              <td class="mono" style="font-size:11px;white-space:nowrap">${formatDate(s.created_at)}</td>
+              <td style="font-weight:500;color:var(--head)">${s.office_name||'Anoniem'}</td>
+              <td>${s.region||'—'}</td>
+              <td>${s.fte||'—'}</td>
+              <td>${s.revenue||'—'}</td>
+              <td><span class="score-badge ${dc(s.overall)}">${s.overall||'—'}</span></td>
+              <td><span class="tag">${(s.top_scenario||'—').split(' ').slice(0,2).join(' ')}</span></td>
+              <td style="font-size:11px;color:var(--muted)">${s.group_name||s.group_id||'Solo'}</td>
+              <td style="color:var(--muted);font-size:11px">${openRow===i?'▲':'▼'}</td>
+            </tr>
+            <tr id="detail-${i}">
+              <td colspan="9" style="padding:0">
+                <div class="detail-panel ${openRow===i?'open':''}">
+                  <div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Scores per dimensie</div>
+                  <div class="detail-grid">
+                    ${s.scores ? Object.entries(JSON.parse(typeof s.scores === 'string' ? s.scores : JSON.stringify(s.scores))).map(([k,v])=>`
+                      <div class="detail-item">
+                        <div class="detail-label">${k}</div>
+                        <div class="detail-val" style="color:${v>=70?'var(--teal)':v>=50?'var(--gold)':'var(--red)'}">${v}/100</div>
+                      </div>`).join('') : '<div style="color:var(--muted);font-size:12px">Geen scoredata beschikbaar.</div>'}
+                  </div>
+                </div>
+              </td>
+            </tr>`).join('')}
+        </tbody>
+      </table>`}
+    </div>`;
+}
+
+function renderCallbacksTab(el) {
+  el.innerHTML = `
+    <div class="table-wrap">
+      <div class="table-hdr">
+        <div class="table-title">Terugbelverzoeken</div>
+        <button class="btn refresh-btn" onclick="refreshData()">&#8635; Verversen</button>
+      </div>
+      ${callbacks.length === 0 ? '<div class="empty">Nog geen terugbelverzoeken.</div>' : `
+      <table>
+        <thead><tr>
+          <th>Datum</th>
+          <th>Naam</th>
+          <th>Telefoon</th>
+          <th>E-mail</th>
+          <th>Beltijd</th>
+          <th>Kantoor</th>
+          <th>Score</th>
+          <th>Scenario</th>
+        </tr></thead>
+        <tbody>
+          ${callbacks.map(c => {
+            const kantoor = typeof c.kantoor === 'string' ? JSON.parse(c.kantoor||'{}') : (c.kantoor||{});
+            return `<tr>
+              <td class="mono" style="font-size:11px;white-space:nowrap">${formatDate(c.created_at)}</td>
+              <td style="font-weight:500;color:var(--head)">${c.naam||'—'}</td>
+              <td><a href="tel:${c.tel}" style="color:var(--teal);text-decoration:none">${c.tel||'—'}</a></td>
+              <td><a href="mailto:${c.email}" style="color:var(--teal);text-decoration:none">${c.email||'—'}</a></td>
+              <td>${c.tijd||'—'}</td>
+              <td style="font-size:12px">${kantoor.naam||'—'}${kantoor.regio?' · '+kantoor.regio:''}</td>
+              <td><span class="score-badge ${dc(c.totaal)}">${c.totaal||'—'}</span></td>
+              <td><span class="tag" style="font-size:9px">${(c.scenario||'—').split(' ').slice(0,2).join(' ')}</span></td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>`}
+    </div>`;
+}
+
+function toggleRow(i) {
+  openRow = openRow === i ? null : i;
+  renderTab();
+}
+
+renderLogin();
+</script>
+</body>
+</html>
