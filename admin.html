@@ -101,6 +101,8 @@ const WORKER = 'https://kantoorinzicht.marcel-bisschops.workers.dev';
 let adminKey = '';
 let scans = [];
 let callbacks = [];
+let mnaTrajecten = [];
+let openMna = null;
 let activeTab = 'scans';
 let scanFilter = '';
 let openRow = null;
@@ -156,6 +158,155 @@ function formatDate(ts) {
   return new Date(ts).toLocaleDateString('nl-NL', {day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
 }
 
+
+/* MNA ADMIN STYLES */
+const mnaStyle = document.createElement('style');
+mnaStyle.textContent = `.mna-detail{background:var(--card);border-top:1px solid var(--border);padding:1rem 1.25rem;display:none}.mna-detail.open{display:block}.mna-fase-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:1rem}.mna-fase-card{background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:.75rem;font-size:11px}.mna-fase-title{font-weight:600;color:var(--sub);margin-bottom:.2rem}.mna-fase-pct{color:var(--teal);font-family:'IBM Plex Mono',monospace}.mna-data-row{display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-bottom:1px solid var(--border)}.mna-data-row:last-child{border-bottom:none}.form-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:.75rem}.form-row .f{display:flex;flex-direction:column;gap:3px}.form-row label{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}.form-row input,.form-row select,.form-row textarea{background:var(--card);border:1px solid var(--border2);border-radius:5px;color:var(--sub);font-family:'IBM Plex Sans',sans-serif;font-size:12px;padding:7px 10px;outline:none;width:100%}.form-row input:focus,.form-row select:focus{border-color:var(--teal)}`;
+document.head.appendChild(mnaStyle);
+
+async function createTraject() {
+  const naam = document.getElementById('new-naam')?.value?.trim();
+  const contact = document.getElementById('new-contact')?.value?.trim();
+  const email = document.getElementById('new-email')?.value?.trim();
+  const type = document.getElementById('new-type')?.value;
+  const notitie = document.getElementById('new-notitie')?.value?.trim();
+  if (!naam) { alert('Kantoornaam is verplicht.'); return; }
+  const btn = document.getElementById('create-btn');
+  btn.disabled = true; btn.textContent = 'Aanmaken...';
+  try {
+    const r = await fetch(WORKER + '/mna/create?key=' + encodeURIComponent(adminKey), {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ kantoor_naam: naam, contact_naam: contact, contact_email: email, traject_type: type, notitie })
+    });
+    const d = await r.json();
+    if (d.ok) {
+      alert('Traject aangemaakt! Trajectcode: ' + d.code + '\n\nDeel deze code met ' + naam + ' om in te loggen op koersvoormorgen.nl/mna.html');
+      await refreshData();
+    } else { alert('Fout: ' + (d.error||'Onbekend')); }
+  } catch(e) { alert('Verbindingsfout.'); }
+  btn.disabled = false; btn.textContent = 'Traject aanmaken';
+}
+
+async function changeStatus(code, status) {
+  await fetch(WORKER + '/mna/admin/status/' + code + '?key=' + encodeURIComponent(adminKey), {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ status })
+  });
+  await refreshData();
+}
+
+async function loadMnaDetail(code) {
+  if (openMna === code) { openMna = null; renderDashboard(); return; }
+  openMna = code;
+  renderDashboard();
+  try {
+    const r = await fetch(WORKER + '/mna/admin/detail/' + code + '?key=' + encodeURIComponent(adminKey));
+    const d = await r.json();
+    const el = document.getElementById('mna-detail-' + code);
+    if (!el) return;
+    // Build detail HTML
+    const FASES = ['financieel','commercieel','partner','compliance','it','juridisch','strategisch'];
+    const FASE_TITLES = {financieel:'I. Financieel',commercieel:'II. Klanten & commercieel',partner:'III. Partners & personeel',compliance:'IV. Compliance',it:'V. IT & automatisering',juridisch:'VI. Juridisch & fiscaal',strategisch:'VII. Strategisch & markt'};
+    let html = '';
+    if (d.data && d.data.length) {
+      html += '<div class="mna-fase-grid">';
+      d.data.forEach(row => {
+        const chk = JSON.parse(row.checklist_json||'{}');
+        const items = Object.values(chk.items||{});
+        const done = items.filter(Boolean).length;
+        const total = items.length;
+        const pct = total ? Math.round(done/total*100) : 0;
+        const rfs = Object.values(chk.redflags||{}).filter(Boolean).length;
+        html += `<div class="mna-fase-card"><div class="mna-fase-title">${FASE_TITLES[row.fase_id]||row.fase_id}</div>`
+          + `<div class="mna-fase-pct">${pct}%</div>`
+          + (rfs ? `<div style="color:var(--red);font-size:10px">&#9888; ${rfs} rode vlag${rfs>1?'gen':''}</div>` : '')
+          + '</div>';
+      });
+      html += '</div>';
+      // Show per-fase data
+      d.data.forEach(row => {
+        const dataJson = JSON.parse(row.data_json||'{}');
+        const entries = Object.entries(dataJson);
+        if (!entries.length && !row.notitie) return;
+        html += `<div style="margin-bottom:1rem"><div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:.4rem">${FASE_TITLES[row.fase_id]||row.fase_id}</div>`;
+        entries.forEach(([k,v]) => {
+          if(v && v.value) html += `<div class="mna-data-row"><span style="color:var(--muted)">${v.label||k}</span><span style="font-family:'IBM Plex Mono',monospace;font-size:11px">${v.value}${v.ref?' <span style="color:var(--gold)">&#128196;'+v.ref+'</span>':''}</span></div>`;
+        });
+        if(row.notitie) html += `<div style="font-size:11px;font-style:italic;color:var(--mid);margin-top:.3rem;padding:.3rem .5rem;background:var(--card);border-radius:4px">${row.notitie}</div>`;
+        html += '</div>';
+      });
+    } else {
+      html = '<div style="color:var(--muted);font-size:13px;padding:1rem 0">Nog geen data ingevoerd door het kantoor.</div>';
+    }
+    el.innerHTML = html;
+  } catch(e) {
+    const el = document.getElementById('mna-detail-' + code);
+    if (el) el.innerHTML = '<div style="color:var(--red);font-size:12px">Kon detail niet laden.</div>';
+  }
+}
+
+function renderMnaTab(el) {
+  const statusClass = {actief:'score-high',in_behandeling:'score-mid',afgerond:'score-low'};
+  const statusLabel = {actief:'Actief',in_behandeling:'In behandeling',afgerond:'Afgerond'};
+  el.innerHTML = `
+    <div class="table-wrap" style="margin-bottom:1.5rem">
+      <div class="table-hdr">
+        <div class="table-title">Nieuw traject aanmaken</div>
+      </div>
+      <div style="padding:1.25rem">
+        <div class="form-row">
+          <div class="f"><label>Kantoornaam *</label><input type="text" id="new-naam" placeholder="bijv. Bakker &amp; Partners"></div>
+          <div class="f"><label>Contactpersoon</label><input type="text" id="new-contact" placeholder="Naam eigenaar"></div>
+          <div class="f"><label>E-mail contactpersoon</label><input type="email" id="new-email" placeholder="eigenaar@kantoor.nl"></div>
+        </div>
+        <div class="form-row">
+          <div class="f"><label>Trajecttype</label><select id="new-type"><option>Verkoop</option><option>Fusie</option><option>PE-investering</option><option>Opvolging</option><option>Overname</option></select></div>
+          <div class="f" style="grid-column:span 2"><label>Interne notitie (niet zichtbaar voor kantoor)</label><textarea id="new-notitie" placeholder="Context, aanleiding, aandachtspunten..." style="min-height:38px"></textarea></div>
+        </div>
+        <button class="btn" id="create-btn" onclick="createTraject()">Traject aanmaken</button>
+        <div style="font-size:11px;color:var(--muted);margin-top:.5rem">Na aanmaken ontvangt u een unieke trajectcode die u deelt met het kantoor.</div>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <div class="table-hdr">
+        <div class="table-title">Lopende trajecten (${mnaTrajecten.length})</div>
+        <button class="btn refresh-btn" onclick="refreshData()">&#8635; Verversen</button>
+      </div>
+      ${mnaTrajecten.length === 0 ? '<div class="empty">Nog geen trajecten aangemaakt.</div>' : `
+      <table>
+        <thead><tr>
+          <th>Code</th><th>Kantoor</th><th>Contact</th><th>Type</th><th>Status</th>
+          <th>Aangemaakt</th><th>Laatste update</th><th>Actie</th>
+        </tr></thead>
+        <tbody>
+        ${mnaTrajecten.map(t => `
+          <tr style="cursor:pointer" onclick="loadMnaDetail('${t.id}')">
+            <td><span class="mono" style="font-size:12px;background:var(--teal-bg);color:var(--teal);padding:2px 7px;border-radius:3px">${t.id}</span></td>
+            <td style="font-weight:500;color:var(--head)">${t.kantoor_naam||'—'}</td>
+            <td style="font-size:12px">${t.contact_naam||'—'}${t.contact_email?'<br><a href="mailto:'+t.contact_email+'" style="color:var(--teal);font-size:10px">'+t.contact_email+'</a>':''}</td>
+            <td style="font-size:12px">${t.traject_type||'—'}</td>
+            <td><span class="score-badge ${statusClass[t.status]||'score-mid'}">${statusLabel[t.status]||t.status}</span></td>
+            <td class="mono" style="font-size:11px">${formatDate(t.created_at)}</td>
+            <td class="mono" style="font-size:11px">${formatDate(t.updated_at)}</td>
+            <td onclick="event.stopPropagation()" style="font-size:11px">
+              <select onchange="changeStatus('${t.id}',this.value)" style="font-size:11px;padding:3px 6px;border:1px solid var(--border2);border-radius:4px;background:var(--card);cursor:pointer">
+                <option value="actief" ${t.status==='actief'?'selected':''}>Actief</option>
+                <option value="in_behandeling" ${t.status==='in_behandeling'?'selected':''}>In behandeling</option>
+                <option value="afgerond" ${t.status==='afgerond'?'selected':''}>Afgerond</option>
+              </select>
+            </td>
+          </tr>
+          <tr><td colspan="8" style="padding:0">
+            <div class="mna-detail ${openMna===t.id?'open':''}" id="mna-detail-${t.id}">
+              <div style="color:var(--muted);font-size:12px">Laden...</div>
+            </div>
+          </td></tr>
+        `).join('')}
+        </tbody>
+      </table>`}
+    </div>`;
+}
+
 function renderLogin() {
   document.getElementById('app').innerHTML = `
     <div class="login-wrap">
@@ -195,12 +346,14 @@ async function doLogin() {
 
 async function refreshData() {
   try {
-    const [r1, r2] = await Promise.all([
+    const [r1, r2, r3] = await Promise.all([
       fetch(WORKER + '/admin/scans?key=' + encodeURIComponent(adminKey)),
-      fetch(WORKER + '/admin/callbacks?key=' + encodeURIComponent(adminKey))
+      fetch(WORKER + '/admin/callbacks?key=' + encodeURIComponent(adminKey)),
+      fetch(WORKER + '/mna/admin/lijst?key=' + encodeURIComponent(adminKey))
     ]);
     scans = await r1.json();
     callbacks = await r2.json();
+    mnaTrajecten = r3.ok ? await r3.json() : [];
     renderDashboard();
   } catch(e) { alert('Kon niet verversen.'); }
 }
@@ -219,6 +372,7 @@ function renderDashboard() {
     <div class="tabs">
       <button class="tab ${activeTab==='scans'?'active':''}" onclick="switchTab('scans')">Scans (${scans.length})</button>
       <button class="tab ${activeTab==='callbacks'?'active':''}" onclick="switchTab('callbacks')">Terugbelverzoeken (${callbacks.length})</button>
+      <button class="tab ${activeTab==='mna'?'active':''}" onclick="switchTab('mna')">M&A Trajecten (${mnaTrajecten.length})</button>
     </div>
     <div id="tab-content"></div>`;
 
@@ -235,7 +389,8 @@ function switchTab(tab) {
 function renderTab() {
   const el = document.getElementById('tab-content');
   if (activeTab === 'scans') renderScansTab(el);
-  else renderCallbacksTab(el);
+  else if (activeTab === 'callbacks') renderCallbacksTab(el);
+  else renderMnaTab(el);
 }
 
 function renderScansTab(el) {
