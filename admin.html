@@ -59,9 +59,33 @@ tr:hover td{background:var(--card)}
 .detail-item{background:var(--panel);border:1px solid var(--border);border-radius:var(--r);padding:8px 10px}
 .detail-label{font-size:10px;color:var(--muted);margin-bottom:2px}
 .detail-val{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500}
+
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:500;display:flex;align-items:flex-start;justify-content:center;padding:2rem;overflow-y:auto}
+.modal-box{background:var(--panel);border:1px solid var(--border2);border-radius:var(--r2);padding:2rem;max-width:780px;width:100%;margin:auto;position:relative}
+.modal-close{position:absolute;top:1rem;right:1rem;background:transparent;border:none;font-size:1.2rem;cursor:pointer;color:var(--muted)}
+.modal-close:hover{color:var(--head)}
+.rapport-body{font-size:13px;color:var(--mid);line-height:1.8;margin-top:1rem}
+.rapport-body h3{font-family:'Playfair Display',serif;font-size:1rem;color:var(--head);font-weight:600;margin:1.25rem 0 .4rem;padding-top:1rem;border-top:1px solid var(--border)}
+.rapport-body h3:first-child{margin-top:0;padding-top:0;border-top:none}
+.rapport-body p{margin-bottom:.6rem}
+.rapport-body strong{color:var(--sub);font-weight:600}
+.btn-rapport{font-size:11px;padding:4px 10px;background:var(--teal-bg);color:var(--teal);border:1px solid var(--teal-dark);border-radius:3px;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;font-weight:600}
+.btn-rapport:hover{background:var(--teal);color:#fff}
 </style>
 </head>
 <body>
+<div id="rapport-modal" style="display:none" class="modal-overlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <div style="font-family:'Playfair Display',serif;font-size:1.2rem;color:var(--head);font-weight:600;margin-bottom:.25rem" id="modal-title">Rapport</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:1rem" id="modal-sub"></div>
+    <div id="modal-body" class="rapport-body"></div>
+    <div style="margin-top:1.5rem;display:flex;gap:10px">
+      <button class="btn" onclick="window.print()">Afdrukken</button>
+      <button class="btn-ghost" onclick="closeModal()">Sluiten</button>
+    </div>
+  </div>
+</div>
 <div class="wrap">
   <div class="hdr">
     <div class="brand"><div class="wdot"></div>KantoorInzicht <span style="color:var(--teal);margin-left:4px">Admin</span></div>
@@ -86,7 +110,41 @@ function logout() {
   scans = [];
   callbacks = [];
   document.getElementById('hdr-actions').style.display = 'none';
-  renderLogin();
+  function closeModal(){
+  document.getElementById('rapport-modal').style.display='none';
+}
+
+async function showRapport(scanId, kantoorNaam, adminKey) {
+  const modal = document.getElementById('rapport-modal');
+  const body = document.getElementById('modal-body');
+  const title = document.getElementById('modal-title');
+  const sub = document.getElementById('modal-sub');
+  title.textContent = kantoorNaam || 'Rapport';
+  sub.textContent = 'Laden...';
+  body.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--muted)">Rapport wordt opgehaald...</div>';
+  modal.style.display = 'flex';
+
+  try {
+    const r = await fetch(WORKER + '/admin/rapport/' + scanId + '?key=' + encodeURIComponent(adminKey));
+    const d = await r.json();
+    if (d.rapport) {
+      sub.textContent = 'Gegenereerd AI-rapport';
+      let html = d.rapport
+        .replace(/## (.+)/g, '<h3>$1</h3>')
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/^- (.+)/gm, '<li>$1</li>');
+      html = html.split('\n\n').map(p => p.trim() && !p.startsWith('<') ? '<p>'+p+'</p>' : p).join('');
+      body.innerHTML = html;
+    } else {
+      sub.textContent = '';
+      body.innerHTML = '<div style="color:var(--muted);padding:2rem;text-align:center">Geen rapport beschikbaar voor deze scan.<br><small>Het rapport wordt opgeslagen zodra de gebruiker op "Genereer AI-advies" klikt.</small></div>';
+    }
+  } catch(e) {
+    body.innerHTML = '<div style="color:var(--red);padding:1rem">Kon rapport niet ophalen.</div>';
+  }
+}
+
+renderLogin();
 }
 
 function dc(v) {
@@ -117,10 +175,11 @@ async function doLogin() {
   if (!key) return;
   const btn = document.querySelector('.login-wrap .btn');
   btn.disabled = true; btn.textContent = 'Laden...';
+  // Fetch data via same-origin Worker URL
   try {
     const [r1, r2] = await Promise.all([
-      fetch(WORKER + '/admin/scans', { headers: { 'x-admin-key': key } }),
-      fetch(WORKER + '/admin/callbacks', { headers: { 'x-admin-key': key } })
+      fetch(WORKER + '/admin/scans?key=' + encodeURIComponent(key)),
+      fetch(WORKER + '/admin/callbacks?key=' + encodeURIComponent(key))
     ]);
     if (!r1.ok) throw new Error('unauthorized');
     scans = await r1.json();
@@ -137,8 +196,8 @@ async function doLogin() {
 async function refreshData() {
   try {
     const [r1, r2] = await Promise.all([
-      fetch(WORKER + '/admin/scans', { headers: { 'x-admin-key': adminKey } }),
-      fetch(WORKER + '/admin/callbacks', { headers: { 'x-admin-key': adminKey } })
+      fetch(WORKER + '/admin/scans?key=' + encodeURIComponent(adminKey)),
+      fetch(WORKER + '/admin/callbacks?key=' + encodeURIComponent(adminKey))
     ]);
     scans = await r1.json();
     callbacks = await r2.json();
@@ -222,7 +281,9 @@ function renderScansTab(el) {
               <td><span class="score-badge ${dc(s.overall)}">${s.overall||'—'}</span></td>
               <td><span class="tag">${(s.top_scenario||'—').split(' ').slice(0,2).join(' ')}</span></td>
               <td style="font-size:11px;color:var(--muted)">${s.group_name||s.group_id||'Solo'}</td>
-              <td style="color:var(--muted);font-size:11px">${openRow===i?'▲':'▼'}</td>
+              <td style="color:var(--muted);font-size:11px" onclick="event.stopPropagation()">
+                <button class="btn-rapport" data-sid="${s.id||s.scan_id}" data-naam="${s.office_name||'Anoniem'}" onclick="showRapport(this.dataset.sid,this.dataset.naam,adminKey)">Rapport</button>
+              </td>
             </tr>
             <tr id="detail-${i}">
               <td colspan="9" style="padding:0">
@@ -284,6 +345,40 @@ function renderCallbacksTab(el) {
 function toggleRow(i) {
   openRow = openRow === i ? null : i;
   renderTab();
+}
+
+function closeModal(){
+  document.getElementById('rapport-modal').style.display='none';
+}
+
+async function showRapport(scanId, kantoorNaam, adminKey) {
+  const modal = document.getElementById('rapport-modal');
+  const body = document.getElementById('modal-body');
+  const title = document.getElementById('modal-title');
+  const sub = document.getElementById('modal-sub');
+  title.textContent = kantoorNaam || 'Rapport';
+  sub.textContent = 'Laden...';
+  body.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--muted)">Rapport wordt opgehaald...</div>';
+  modal.style.display = 'flex';
+
+  try {
+    const r = await fetch(WORKER + '/admin/rapport/' + scanId + '?key=' + encodeURIComponent(adminKey));
+    const d = await r.json();
+    if (d.rapport) {
+      sub.textContent = 'Gegenereerd AI-rapport';
+      let html = d.rapport
+        .replace(/## (.+)/g, '<h3>$1</h3>')
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/^- (.+)/gm, '<li>$1</li>');
+      html = html.split('\n\n').map(p => p.trim() && !p.startsWith('<') ? '<p>'+p+'</p>' : p).join('');
+      body.innerHTML = html;
+    } else {
+      sub.textContent = '';
+      body.innerHTML = '<div style="color:var(--muted);padding:2rem;text-align:center">Geen rapport beschikbaar voor deze scan.<br><small>Het rapport wordt opgeslagen zodra de gebruiker op "Genereer AI-advies" klikt.</small></div>';
+    }
+  } catch(e) {
+    body.innerHTML = '<div style="color:var(--red);padding:1rem">Kon rapport niet ophalen.</div>';
+  }
 }
 
 renderLogin();
