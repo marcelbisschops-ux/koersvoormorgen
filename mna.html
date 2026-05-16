@@ -8,408 +8,532 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{--void:#faf9f6;--panel:#fff;--card:#f0eeea;--border:#dddbd4;--border2:#c8c5bc;--muted:#8a8880;--mid:#5a5854;--sub:#2a2825;--head:#1a1815;--teal:#1a7a5e;--teal-dim:#145f48;--teal-dark:#0a3d2e;--teal-bg:rgba(34,197,160,.1);--gold:#c9a84c;--gold-bg:rgba(201,168,76,.12);--red:#e05252;--red-bg:rgba(224,82,82,.1);--r:6px;--r2:10px}
-body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--sub);min-height:100vh;font-size:15px;line-height:1.6}
+body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--sub);min-height:100vh;font-size:14px;line-height:1.6}
 #app{min-height:100vh}
-.wrap{max-width:900px;margin:0 auto;padding:2rem 2rem 5rem}
-.narrow{max-width:680px}
-.hdr{display:flex;align-items:center;justify-content:space-between;padding:1.25rem 0;border-bottom:1px solid var(--border);margin-bottom:2.5rem}
+.wrap{max-width:960px;margin:0 auto;padding:2rem 2rem 5rem}
+.narrow{max-width:640px;margin:0 auto}
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:1.25rem 0;border-bottom:1px solid var(--border);margin-bottom:2rem}
 .brand{font-size:11px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:8px}
 .wdot{width:6px;height:6px;border-radius:50%;background:var(--teal)}
-.field{display:flex;flex-direction:column;gap:6px;margin-bottom:1rem}
-.field label{font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
-.field input,.field textarea{background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:'IBM Plex Sans',sans-serif;font-size:13px;padding:10px 12px;outline:none;width:100%;transition:border-color .12s}
-.field input:focus,.field textarea:focus{border-color:var(--teal)}
-.btn{background:var(--teal);color:#fff;font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;padding:10px 22px;border-radius:var(--r);border:none;cursor:pointer;transition:background .12s}
+.btn{background:var(--teal);color:#fff;font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;padding:9px 20px;border-radius:var(--r);border:none;cursor:pointer}
 .btn:hover{background:var(--teal-dim)}
-.btn-ghost{background:transparent;border:1px solid var(--border2);color:var(--mid);font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:500;padding:10px 20px;border-radius:var(--r);cursor:pointer;transition:all .12s}
+.btn:disabled{background:var(--border2);color:var(--muted);cursor:default}
+.btn-ghost{background:transparent;border:1px solid var(--border2);color:var(--mid);font-family:'IBM Plex Sans',sans-serif;font-size:13px;padding:9px 18px;border-radius:var(--r);cursor:pointer}
 .btn-ghost:hover{border-color:var(--mid);color:var(--sub)}
-.panel{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:2rem;margin-bottom:1.5rem}
-.note{font-size:12px;color:var(--muted);line-height:1.6;padding:10px 14px;background:var(--card);border:1px solid var(--border);border-radius:var(--r);margin-bottom:1.25rem}
-/* Overview grid */
-.fase-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:2rem}
-@media(max-width:700px){.fase-grid{grid-template-columns:repeat(2,1fr)}}
-.fase-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1rem;cursor:pointer;transition:all .15s}
-.fase-card:hover,.fase-card.active{border-color:var(--teal);box-shadow:0 0 0 2px var(--teal-bg)}
-.fase-num{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:.25rem}
-.fase-title{font-size:12px;font-weight:600;color:var(--head);margin-bottom:.4rem}
-.fase-bar{height:3px;background:var(--border2);border-radius:2px;overflow:hidden;margin-bottom:.25rem}
-.fase-fill{height:100%;background:var(--teal);border-radius:2px;transition:width .4s}
-.fase-pct{font-size:10px;color:var(--muted);font-family:'IBM Plex Mono',monospace}
-/* Progress bar */
-.prog-wrap{margin-bottom:2rem}
-.prog-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:.4rem}
-.prog-lbl{font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--teal)}
-.prog-pct{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted)}
-.prog-track{height:5px;background:var(--border2);border-radius:3px;overflow:hidden}
-.prog-fill{height:100%;background:var(--teal);border-radius:3px;transition:width .5s}
+.btn-sm{font-size:11px;padding:5px 12px}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.5rem;margin-bottom:1.25rem}
+/* Field */
+.f{display:flex;flex-direction:column;gap:4px}
+.f label{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.f input,.f textarea,.f select{background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:'IBM Plex Sans',sans-serif;font-size:13px;padding:8px 11px;outline:none;width:100%;transition:border-color .12s}
+.f input:focus,.f textarea:focus,.f select:focus{border-color:var(--teal)}
+.f textarea{resize:vertical;min-height:60px}
+.f input::placeholder,.f textarea::placeholder{color:var(--muted)}
+/* Data entry grid */
+.data-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:1rem}
+@media(max-width:600px){.data-grid{grid-template-columns:1fr}}
+.data-grid.triple{grid-template-columns:1fr 1fr 1fr}
+@media(max-width:700px){.data-grid.triple{grid-template-columns:1fr 1fr}}
+/* Section header */
+.sec-hdr{font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem;display:flex;align-items:center;gap:8px}
+.sec-hdr::after{content:'';flex:1;height:1px;background:var(--border)}
+/* Tab bar */
+.tab-bar{display:flex;gap:2px;margin-bottom:2rem;border-bottom:2px solid var(--border);overflow-x:auto}
+.tab{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;padding:9px 14px;border:none;background:transparent;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;white-space:nowrap;transition:all .12s}
+.tab:hover{color:var(--sub)}
+.tab.active{color:var(--teal);border-bottom-color:var(--teal)}
+.tab.done{color:var(--mid)}
+.tab.done::after{content:' ✓';font-size:9px}
+/* Progress */
+.prog-bar{height:4px;background:var(--border2);border-radius:2px;overflow:hidden;margin-bottom:1.5rem}
+.prog-fill{height:100%;background:var(--teal);border-radius:2px;transition:width .5s}
 /* Checklist */
-.check-section{margin-bottom:1.5rem}
-.check-lbl{font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem;display:flex;align-items:center;gap:8px}
-.check-lbl::after{content:'';flex:1;height:1px;background:var(--border)}
-.check-items{display:flex;flex-direction:column;gap:5px}
-.check-item{display:flex;align-items:flex-start;gap:10px;padding:9px 12px;background:var(--panel);border:1px solid var(--border);border-radius:var(--r);cursor:pointer;transition:all .1s;-webkit-user-select:none;user-select:none}
-.check-item:hover{border-color:var(--border2)}
-.check-item.on{border-color:var(--teal);background:var(--teal-bg)}
-.check-item.rf{border-color:var(--red)!important}
-.check-item.rf.on{background:rgba(224,82,82,.12)!important}
-.chk-box{width:16px;height:16px;border-radius:3px;border:1.5px solid var(--border2);flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;transition:all .1s}
-.check-item.on .chk-box{background:var(--teal);border-color:var(--teal);color:#fff}
-.check-item.rf .chk-box{border-color:var(--red)}
-.check-item.rf.on .chk-box{background:var(--red);border-color:var(--red);color:#fff}
+.chk-item{display:flex;align-items:flex-start;gap:9px;padding:8px 11px;background:var(--panel);border:1px solid var(--border);border-radius:var(--r);cursor:pointer;margin-bottom:5px;user-select:none;-webkit-user-select:none}
+.chk-item:hover{border-color:var(--border2)}
+.chk-item.on{border-color:var(--teal);background:var(--teal-bg)}
+.chk-item.rf{border-color:var(--red)}
+.chk-item.rf.on{background:rgba(224,82,82,.1)}
+.chk-box{width:15px;height:15px;border-radius:3px;border:1.5px solid var(--border2);flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700}
+.chk-item.on .chk-box{background:var(--teal);border-color:var(--teal);color:#fff}
+.chk-item.rf .chk-box{border-color:var(--red)}
+.chk-item.rf.on .chk-box{background:var(--red);border-color:var(--red);color:#fff}
 .chk-lbl{font-size:13px;color:var(--sub);line-height:1.5;flex:1}
-.check-item.on .chk-lbl{color:var(--teal-dim)}
-.check-item.rf .chk-lbl{color:var(--red)}
-/* Notitie */
-.notitie{width:100%;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:10px 12px;font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--sub);resize:vertical;min-height:90px;outline:none;margin-top:.5rem}
-.notitie:focus{border-color:var(--teal)}
+.chk-item.on .chk-lbl{color:var(--teal-dim)}
+.chk-item.rf .chk-lbl{color:var(--red)}
 /* AI panel */
 .ai-panel{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);overflow:hidden;margin-top:1.5rem}
-.ai-hdr{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.25rem;background:var(--card);border-bottom:1px solid var(--border);flex-wrap:wrap;gap:.75rem}
-.ai-title{font-family:'Playfair Display',serif;font-size:.95rem;color:var(--head);font-weight:600}
-.ai-sub{font-size:11px;color:var(--muted);margin-top:1px}
-.btn-gen{display:flex;align-items:center;gap:6px;background:var(--teal);color:#fff;font-family:'IBM Plex Sans',sans-serif;font-size:12px;font-weight:600;padding:8px 16px;border-radius:var(--r);border:none;cursor:pointer;white-space:nowrap}
+.ai-hdr{display:flex;align-items:center;justify-content:space-between;padding:.9rem 1.25rem;background:var(--card);border-bottom:1px solid var(--border);flex-wrap:wrap;gap:.6rem}
+.ai-title{font-family:'Playfair Display',serif;font-size:.9rem;color:var(--head);font-weight:600}
+.ai-sub{font-size:10px;color:var(--muted)}
+.btn-gen{display:flex;align-items:center;gap:6px;background:var(--teal);color:#fff;font-family:'IBM Plex Sans',sans-serif;font-size:12px;font-weight:600;padding:7px 14px;border-radius:var(--r);border:none;cursor:pointer}
 .btn-gen:hover{background:var(--teal-dim)}
 .btn-gen:disabled{background:var(--border2);color:var(--muted);cursor:default}
-.ai-body{padding:1.25rem;font-size:13px;color:var(--mid);line-height:1.8;min-height:60px}
-.ai-body h3{font-family:'Playfair Display',serif;font-size:1rem;color:var(--head);margin:1rem 0 .4rem;padding-top:1rem;border-top:1px solid var(--border)}
+.ai-body{padding:1.1rem 1.25rem;font-size:13px;color:var(--mid);line-height:1.8;min-height:50px}
+.ai-body h3{font-family:'Playfair Display',serif;font-size:.95rem;color:var(--head);margin:1rem 0 .35rem;padding-top:1rem;border-top:1px solid var(--border)}
 .ai-body h3:first-child{margin-top:0;padding-top:0;border-top:none}
-.ai-body p{margin-bottom:.55rem}
+.ai-body p{margin-bottom:.5rem}
 .ai-body strong{color:var(--sub);font-weight:600}
-.spinner{width:14px;height:14px;border-radius:50%;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;animation:spin .7s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
+/* Overview */
+.fase-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:1.5rem}
+@media(max-width:680px){.fase-grid{grid-template-columns:repeat(2,1fr)}}
+.fase-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:.9rem;cursor:pointer;transition:all .15s}
+.fase-card:hover,.fase-card.active{border-color:var(--teal);box-shadow:0 0 0 2px var(--teal-bg)}
+.fase-num{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);margin-bottom:.2rem}
+.fase-name{font-size:12px;font-weight:600;color:var(--head);margin-bottom:.35rem;line-height:1.3}
+.fase-bar{height:3px;background:var(--border2);border-radius:2px;overflow:hidden;margin-bottom:.2rem}
+.fase-fill{height:100%;background:var(--teal);border-radius:2px}
+.fase-pct{font-size:10px;color:var(--muted);font-family:'IBM Plex Mono',monospace}
 /* Nav */
-.fase-nav{display:flex;gap:10px;margin-top:1.5rem;padding-top:1.5rem;border-top:1px solid var(--border)}
+.fase-nav{display:flex;gap:8px;align-items:center;margin-top:1.5rem;padding-top:1.25rem;border-top:1px solid var(--border)}
 /* Summary */
-.summary-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:2rem}
-@media(max-width:560px){.summary-grid{grid-template-columns:1fr}}
-.summary-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1rem}
-.summary-card-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:.5rem}
-.summary-item{font-size:12px;color:var(--mid);padding:3px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px}
-.summary-item:last-child{border-bottom:none}
-.s-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
-@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-.anim{animation:fadeUp .3s ease forwards}
+.sum-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1rem;margin-bottom:.75rem}
+.sum-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:.5rem;display:flex;align-items:center;justify-content:space-between}
+.sum-row{display:flex;justify-content:space-between;font-size:12px;color:var(--mid);padding:3px 0;border-bottom:1px solid var(--border)}
+.sum-row:last-child{border-bottom:none}
+.sum-row .lbl{color:var(--muted)}
+/* Spinner */
+.spin{width:12px;height:12px;border-radius:50%;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;animation:sp .7s linear infinite;display:inline-block}
+@keyframes sp{to{transform:rotate(360deg)}}
+/* Doc ref badge */
+.doc-badge{display:inline-flex;align-items:center;gap:5px;font-size:10px;background:var(--gold-bg);color:var(--gold);border:1px solid rgba(201,168,76,.3);padding:2px 7px;border-radius:3px;font-family:'IBM Plex Mono',monospace}
+@keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.anim{animation:fadeUp .25s ease forwards}
 @media print{
   @page{margin:1.5cm;size:A4}
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+  .btn,.btn-ghost,.btn-gen,.fase-nav,.fase-grid,.tab-bar{display:none!important}
+  .ai-panel,.panel{break-inside:avoid}
   body{font-size:11px}
-  .btn,.btn-ghost,.btn-gen,.fase-nav,.fase-grid{display:none!important}
-  .ai-panel,.check-items,.panel{break-inside:avoid}
 }
 </style>
 </head>
 <body>
 <div id="app"></div>
 <script>
-const WORKER = 'https://kantoorinzicht.marcel-bisschops.workers.dev';
-const MNA_PW = 'KantoorMnA2026';
+var WORKER='https://kantoorinzicht.marcel-bisschops.workers.dev';
+var MNA_PW='KantoorMnA2026';
 
-const FASES = [
-  {id:'financieel',title:'Financieel',num:'I',desc:'Kwaliteit en duurzaamheid van omzet en winst.',
-   items:['Jaarrekeningen laatste 3 jaar beschikbaar en doorgenomen','Actuele YTD-cijfers aangeleverd','Omzet per dienstlijn inzichtelijk (assurance / samenstel / fiscaal / advisory)','EBITDA-normalisatie opgesteld (partnerbeloning, privékosten, eenmalige posten)','Top 20 klanten met omzetbijdrage in kaart','Onderhanden werk (WIP) geïnventariseerd en beoordeeld','Debiteurenpositie en aging geanalyseerd','Urenproductiviteit per medewerker inzichtelijk','Partnerbeloningen vergeleken met marktconform niveau','Omzet per FTE berekend en gebenchmarkt','Declarabiliteit en realisatiegraad bepaald','Cash conversion cycle vastgesteld'],
-   redflags:['Hoge WIP en oude debiteuren (meer dan 90 dagen)','Lage partnerproductiviteit ten opzichte van benchmark','Eenmalige omzetpieken die het beeld vertekenen','Niet-genormaliseerde of bovenmatige partnerbeloningen']},
-  {id:'commercieel',title:'Klanten & commercieel',num:'II',desc:'Concentratie, retentie en commerciële kracht.',
-   items:['Klantverloop (churn) per jaar inzichtelijk voor afgelopen 3 jaar','Nieuwe vs verloren klanten geanalyseerd','Gemiddelde klantduur bepaald','Top 10 klanten samen minder dan 40% van totale omzet','Geen enkele klant meer dan 10% van totale omzet','Cross-sell percentage per klant vastgesteld','Sectorverdeling klanten geïnventariseerd','Pipeline en acquisitiestructuur besproken met directie','Pricing power en tariefopbouw geanalyseerd','Contractduur en verlengingsstructuur inzichtelijk','Betaalgedrag en debiteurentrend beoordeeld'],
-   redflags:['Omzet geconcentreerd bij minder dan 5 klanten','Hoog klantverloop (meer dan 10% per jaar)','Klantrelaties hangen aan individuele partners niet aan het kantoor','Geen structurele acquisitie — kantoor groeit alleen via referrals']},
-  {id:'partner',title:'Partners & personeel',num:'III',desc:'Afhankelijkheden, opvolging en cultuur.',
-   items:['Individuele omzetbijdrage per partner vastgesteld','Leeftijdsopbouw partners in kaart gebracht (pensioengolf?)','Contractduur en exitregelingen partners besproken','Good/bad leaver bepalingen aanwezig en actueel','Opvolgingsplan voor sleutelpartners aanwezig','Retentierisico partners na transactie beoordeeld','Organogram met FTE per niveau aangeleverd','Verlooppercentage medewerkers bepaald (benchmark 15%)','Openstaande vacatures geïnventariseerd','Senioriteitsmix en RA/AA-trajecten inzichtelijk','Partnertrack en performance management besproken','Cultuur en veranderbereidheid getoetst'],
-   redflags:['Omzet zit in hoofden van 1 of 2 partners','Pensioengolf aankomend zonder concrete opvolging','Hoog personeelsverloop (meer dan 15%)','Geen formele of actuele partnerovereenkomsten']},
-  {id:'compliance',title:'Compliance & kwaliteit',num:'IV',desc:'Regulatory status, dossierkwaliteit en integriteitsrisico.',
-   items:['NBA-inschrijving en vergunningsstatus gecontroleerd','AFM-vergunning indien van toepassing bevestigd','Laatste kwaliteitstoetsingen NBA doorgenomen','Inspectierapportage en bevindingen beoordeeld','Herstelmaatregelen na toetsingen vastgesteld en opgevolgd','Wwft-procedures en client acceptance gereviewed','UBO-processen en risicoclassificaties inzichtelijk','Sanctiewetgeving monitoring aanwezig en actueel','Lopende tuchtzaken geïnventariseerd','Civiele claims en geschillen in kaart','Integriteitsincidenten afgelopen 5 jaar beoordeeld','Compliance handboek actueel en geïmplementeerd'],
-   redflags:['Negatieve kwaliteitstoetsing NBA in afgelopen 2 jaar','Lopende tuchtzaken of civiele claims','Wwft zwak ingericht met verhoogd compliance-risico','Dossiers met structurele en herhalende bevindingen']},
-  {id:'it',title:'IT & automatisering',num:'V',desc:'Systemen, automatiseringsgraad en AI-readiness.',
-   items:['Softwarelandschap volledig in kaart (Exact, AFAS, Twinfield, Caseware etc.)','Automatiseringsgraad routinetaken bepaald en beoordeeld','AI-tooling aanwezig en actief in gebruik','Workflow management systeem operationeel','Integraties tussen systemen inzichtelijk en functioneel','Cybersecurity status en ISO/NEN-certificering vastgesteld','Backup- en recoveryprocessen getoetst','Autorisatiebeheer en toegangscontrole beoordeeld','Datakwaliteit en rapportagestructuur inzichtelijk','Licentiestructuur software vastgesteld','IT-kosten als percentage van omzet bepaald'],
-   redflags:['Geen schaalbaar of modern systeemlandschap','Hoge mate van handmatig werk en automatiseringsachterstand','Lage AI-readiness en digitaliseringsvolwassenheid','Cybersecurity kwetsbaarheden of incidenten aanwezig']},
-  {id:'juridisch',title:'Juridisch & fiscaal',num:'VI',desc:'Structuur, contracten en fiscale risico.',
-   items:['Statuten en aandeelhoudersovereenkomst aangeleverd en doorgenomen','Groepsstructuur en werkmaatschappijen inzichtelijk','Partnerovereenkomsten compleet en actueel','Huurcontracten en looptijden inzichtelijk','Leaseverplichtingen geïnventariseerd','VPB-positie laatste 3 jaar beoordeeld','BTW-positie en eventuele discussies inzichtelijk','Loonheffingen en arbeidsovereenkomsten getoetst','Partnerstructuur fiscaal geanalyseerd','Openstaande discussies met Belastingdienst vastgesteld','STAK-structuur indien aanwezig beoordeeld','Earn-out en financieringsafspraken vastgesteld'],
-   redflags:['Openstaande fiscale discussies of dreigende naheffingen','Gebrekkige of ontbrekende partnerovereenkomsten','Huurcontracten niet overdraagbaar bij transactie','Onbekende claims of garantieverplichtingen']},
-  {id:'strategisch',title:'Strategisch & markt',num:'VII',desc:'Marktpositie, groeipotentieel en strategische fit.',
-   items:['Regionale marktpositie en niches vastgesteld','Concurrentieanalyse uitgevoerd','AI-impact op dienstverleningsmodel beoordeeld','Buy and build potentieel geïnventariseerd','Schaalbaarheid van het kantoor vastgesteld','Synergiepotentieel met kopende partij bepaald','Cultuurfit getoetst (ondernemerschap en governance)','Integratiemogelijkheden IT en processen beoordeeld','Managementlaag onder partners beoordeeld','Ability to recruit getoetst op arbeidsmarktpositie','PE-readiness indicatief bepaald'],
-   redflags:['Te hoge afhankelijkheid samenstelpraktijk gezien AI-risico','Geen duidelijke niche of herkenbare marktpositie','Cultuurmismatch met kopende partij zichtbaar','Beperkt buy and build integratiepotentieel']},
+// ── FASE DEFINITIES ──────────────────────────────────────────────
+var FASES=[
+{id:'financieel',num:'I',title:'Financieel',desc:'Kwaliteit en duurzaamheid van omzet en winst.',
+ dataFields:[
+  {id:'omzet1',label:'Jaaromzet jaar 1 (oudste)',placeholder:'bijv. 2.400.000',type:'text',doc:true},
+  {id:'omzet2',label:'Jaaromzet jaar 2',placeholder:'bijv. 2.650.000',type:'text',doc:true},
+  {id:'omzet3',label:'Jaaromzet jaar 3 (meest recent)',placeholder:'bijv. 2.900.000',type:'text',doc:true},
+  {id:'omzetYTD',label:'Omzet YTD (huidig jaar)',placeholder:'bijv. 1.800.000',type:'text',doc:true},
+  {id:'ebitda1',label:'EBITDA-marge jaar 3 (%)',placeholder:'bijv. 23',type:'text',doc:false},
+  {id:'ebitdaNorm',label:'Genormaliseerde EBITDA',placeholder:'bijv. 650.000',type:'text',doc:true},
+  {id:'omzetFte',label:'Omzet per FTE',placeholder:'bijv. 145.000',type:'text',doc:false},
+  {id:'wip',label:'Onderhanden werk (WIP)',placeholder:'bijv. 180.000',type:'text',doc:true},
+  {id:'debiteuren',label:'Debiteuren totaal',placeholder:'bijv. 320.000',type:'text',doc:true},
+  {id:'debiteurenOud',label:'Debiteuren >90 dagen (%)',placeholder:'bijv. 12',type:'text',doc:false},
+  {id:'declarab',label:'Declarabiliteit (%)',placeholder:'bijv. 78',type:'text',doc:false},
+  {id:'partnerBel',label:'Partnerbeloning (marktconform?)',placeholder:'bijv. ja / nee / hoog',type:'text',doc:false},
+ ],
+ items:['Jaarrekeningen 3 jaar beschikbaar en doorgenomen','YTD-cijfers aangeleverd','Omzet per dienstlijn inzichtelijk (assurance/samenstel/fiscaal/advisory)','EBITDA-normalisatie opgesteld','Top 20 klanten met omzetbijdrage in kaart','WIP geïnventariseerd','Debiteurenpositie en aging geanalyseerd','Urenproductiviteit inzichtelijk','Partnerbeloningen vergeleken met marktconform','Declarabiliteit en realisatiegraad bepaald','Cash conversion cycle vastgesteld'],
+ redflags:['Hoge WIP en oude debiteuren (>90 dagen)','Lage partnerproductiviteit tov benchmark','Eenmalige omzetpieken vertekenen beeld','Niet-genormaliseerde partnerbeloningen']},
+
+{id:'commercieel',num:'II',title:'Klanten & commercieel',desc:'Concentratie, retentie en commerciële kracht.',
+ dataFields:[
+  {id:'aantalKlanten',label:'Aantal actieve klanten',placeholder:'bijv. 340',type:'text',doc:false},
+  {id:'churn',label:'Klantverloop per jaar (%)',placeholder:'bijv. 6',type:'text',doc:false},
+  {id:'klantduur',label:'Gemiddelde klantduur (jaar)',placeholder:'bijv. 8',type:'text',doc:false},
+  {id:'top1pct',label:'Grootste klant (% van omzet)',placeholder:'bijv. 8',type:'text',doc:false},
+  {id:'top10pct',label:'Top 10 klanten samen (% omzet)',placeholder:'bijv. 35',type:'text',doc:false},
+  {id:'recurring',label:'Vaste/abonnements-omzet (%)',placeholder:'bijv. 65',type:'text',doc:false},
+  {id:'crossSell',label:'Cross-sell percentage (%)',placeholder:'bijv. 22',type:'text',doc:false},
+  {id:'nieuwKlanten',label:'Nieuwe klanten per jaar',placeholder:'bijv. 28',type:'text',doc:false},
+  {id:'verliesKlanten',label:'Verloren klanten per jaar',placeholder:'bijv. 18',type:'text',doc:false},
+  {id:'pipeline',label:'Pipeline omvang (indicatief)',placeholder:'bijv. 200.000',type:'text',doc:false},
+ ],
+ items:['Klantverloop per jaar inzichtelijk (3 jaar)','Nieuwe vs verloren klanten geanalyseerd','Gemiddelde klantduur bepaald','Top 10 klanten samen minder dan 40% omzet','Geen klant meer dan 10% omzet','Cross-sell percentage vastgesteld','Sectorverdeling geïnventariseerd','Pipeline en acquisitiestructuur besproken','Pricing power en tariefopbouw geanalyseerd','Contractduur en verlengingsstructuur inzichtelijk'],
+ redflags:['Omzet geconcentreerd bij minder dan 5 klanten','Klantverloop meer dan 10% per jaar','Klantrelaties hangen aan individuele partners','Geen structurele acquisitie — alleen referrals']},
+
+{id:'partner',num:'III',title:'Partners & personeel',desc:'Afhankelijkheden, opvolging en cultuur.',
+ dataFields:[
+  {id:'aantalPartners',label:'Aantal partners/eigenaren',placeholder:'bijv. 4',type:'text',doc:false},
+  {id:'gemLeeftijdP',label:'Gemiddelde leeftijd partners',placeholder:'bijv. 54',type:'text',doc:false},
+  {id:'omzetPerPartner',label:'Omzet per partner',placeholder:'bijv. 725.000',type:'text',doc:false},
+  {id:'aftredendP',label:'Partners met pensioen <5 jaar',placeholder:'bijv. 2',type:'text',doc:false},
+  {id:'aantalFte',label:'Totaal FTE',placeholder:'bijv. 22',type:'text',doc:false},
+  {id:'verloop',label:'Personeelsverloop (%)',placeholder:'bijv. 11',type:'text',doc:false},
+  {id:'vacatures',label:'Openstaande vacatures',placeholder:'bijv. 3',type:'text',doc:false},
+  {id:'raAa',label:'Aantal RA/AA in opleiding',placeholder:'bijv. 4',type:'text',doc:false},
+  {id:'opvolging',label:'Opvolgingskandidaat aanwezig',placeholder:'bijv. ja / in ontwikkeling / nee',type:'text',doc:false},
+  {id:'partnerContract',label:'Partnerovereenkomsten actueel',placeholder:'bijv. ja / deels / nee',type:'text',doc:true},
+ ],
+ items:['Omzetbijdrage per partner vastgesteld','Leeftijdsopbouw partners in kaart','Contractduur en exitregelingen besproken','Good/bad leaver bepalingen aanwezig','Opvolgingsplan sleutelpartners aanwezig','Retentierisico na transactie beoordeeld','Organogram met FTE per niveau aangeleverd','Verlooppercentage bepaald (benchmark 15%)','Openstaande vacatures geïnventariseerd','Cultuur en veranderbereidheid getoetst'],
+ redflags:['Omzet zit in hoofden van 1-2 partners','Pensioengolf zonder concrete opvolging','Personeelsverloop meer dan 15%','Geen formele of actuele partnerovereenkomsten']},
+
+{id:'compliance',num:'IV',title:'Compliance & kwaliteit',desc:'Regulatory status, dossierkwaliteit en integriteitsrisico.',
+ dataFields:[
+  {id:'nbaStatus',label:'NBA-inschrijving status',placeholder:'bijv. actief / opgeschort',type:'text',doc:true},
+  {id:'afmVerg',label:'AFM-vergunning',placeholder:'bijv. n.v.t. / aanwezig / vereist',type:'text',doc:true},
+  {id:'toetsDatum',label:'Laatste kwaliteitstoetsing (jaar)',placeholder:'bijv. 2023',type:'text',doc:true},
+  {id:'toetsOordeel',label:'Oordeel kwaliteitstoetsing',placeholder:'bijv. voldoende / met aandachtspunten',type:'text',doc:true},
+  {id:'tuchtzaken',label:'Lopende tuchtzaken',placeholder:'bijv. 0 / 1 (beschrijf)',type:'text',doc:false},
+  {id:'civieleClaims',label:'Civiele claims',placeholder:'bijv. geen / ja (bedrag)',type:'text',doc:false},
+  {id:'wwft',label:'Wwft-procedures op orde',placeholder:'bijv. ja / deels / nee',type:'text',doc:true},
+  {id:'incidenten',label:'Integriteitsincidenten <5 jaar',placeholder:'bijv. geen / ja (beschrijf)',type:'text',doc:false},
+ ],
+ items:['NBA-inschrijving en vergunningsstatus gecontroleerd','Laatste kwaliteitstoetsingen doorgenomen','Bevindingen en herstelmaatregelen beoordeeld','Wwft-procedures en client acceptance gereviewed','UBO-processen en risicoclassificaties inzichtelijk','Lopende tuchtzaken geïnventariseerd','Civiele claims in kaart','Compliance handboek actueel en geïmplementeerd'],
+ redflags:['Negatieve kwaliteitstoetsing NBA afgelopen 2 jaar','Lopende tuchtzaken of civiele claims','Wwft zwak ingericht','Structurele dossierbevindingen']},
+
+{id:'it',num:'V',title:'IT & automatisering',desc:'Systemen, automatiseringsgraad en AI-readiness.',
+ dataFields:[
+  {id:'software',label:'Primaire software (kern)',placeholder:'bijv. Exact Online, Caseware',type:'text',doc:false},
+  {id:'softwareOverig',label:'Overige systemen',placeholder:'bijv. AFAS, Silverfin, Dext',type:'text',doc:false},
+  {id:'autoGraad',label:'Automatiseringsgraad routinetaken',placeholder:'bijv. hoog / gemiddeld / laag',type:'text',doc:false},
+  {id:'aiTooling',label:'AI-tooling in gebruik',placeholder:'bijv. Copilot, ChatGPT, eigen tooling',type:'text',doc:false},
+  {id:'itKosten',label:'IT-kosten (% van omzet)',placeholder:'bijv. 4',type:'text',doc:false},
+  {id:'security',label:'Cybersecurity status',placeholder:'bijv. ISO 27001 / geen certificering',type:'text',doc:true},
+  {id:'itRisicos',label:'Bekende IT-risicos of issues',placeholder:'bijv. verouderde software, geen backups',type:'text',doc:false},
+ ],
+ items:['Softwarelandschap volledig in kaart','Automatiseringsgraad routinetaken bepaald','AI-tooling aanwezig en in gebruik','Workflow management operationeel','Cybersecurity status vastgesteld','Backup- en recoveryprocessen getoetst','Datakwaliteit en rapportagestructuur inzichtelijk','Licentiestructuur software vastgesteld'],
+ redflags:['Geen schaalbaar systeemlandschap','Hoge mate van handmatig werk','Lage AI-readiness','Cybersecurity kwetsbaarheden aanwezig']},
+
+{id:'juridisch',num:'VI',title:'Juridisch & fiscaal',desc:'Structuur, contracten en fiscale risico.',
+ dataFields:[
+  {id:'rechtsvorm',label:'Rechtsvorm(en)',placeholder:'bijv. BV, maatschap, coöperatie',type:'text',doc:true},
+  {id:'aandeelhouders',label:'Aandeelhouders / structuur',placeholder:'bijv. 3 partners elk 33%',type:'text',doc:true},
+  {id:'huur',label:'Huurcontract looptijd',placeholder:'bijv. tot 2027, verlengbaar',type:'text',doc:true},
+  {id:'vpb',label:'VPB openstaande discussies',placeholder:'bijv. geen / ja (beschrijf)',type:'text',doc:false},
+  {id:'fiscaalRisico',label:'Fiscale risicos (indicatief)',placeholder:'bijv. geen / ja (omschrijving)',type:'text',doc:false},
+  {id:'stak',label:'STAK of bijzondere structuur',placeholder:'bijv. n.v.t. / ja (beschrijf)',type:'text',doc:true},
+  {id:'claims',label:'Openstaande claims of garanties',placeholder:'bijv. geen / ja (bedrag)',type:'text',doc:false},
+  {id:'leaseVerp',label:'Leasing-verplichtingen',placeholder:'bijv. 45.000 per jaar',type:'text',doc:true},
+ ],
+ items:['Statuten en aandeelhoudersovereenkomst doorgenomen','Groepsstructuur inzichtelijk','Partnerovereenkomsten compleet en actueel','Huurcontracten en looptijden inzichtelijk','Leaseverplichtingen geïnventariseerd','VPB-positie 3 jaar beoordeeld','Partnerstructuur fiscaal geanalyseerd','Openstaande Belastingdienstdiscussies vastgesteld'],
+ redflags:['Openstaande fiscale discussies of naheffingen','Gebrekkige partnerovereenkomsten','Huurcontract niet overdraagbaar','Onbekende claims of garantieverplichtingen']},
+
+{id:'strategisch',num:'VII',title:'Strategisch & markt',desc:'Marktpositie, groeipotentieel en strategische fit.',
+ dataFields:[
+  {id:'marktpos',label:'Marktpositie / regio',placeholder:'bijv. top 3 in regio X',type:'text',doc:false},
+  {id:'niche',label:'Niche of specialisme',placeholder:'bijv. agri, zorg, PE-backed',type:'text',doc:false},
+  {id:'concurrenten',label:'Belangrijkste concurrenten',placeholder:'bijv. kantoor A, B, C',type:'text',doc:false},
+  {id:'aiImpact',label:'AI-impact op dienstenmix',placeholder:'bijv. hoog (60% samenstel) / laag',type:'text',doc:false},
+  {id:'cultuurFit',label:'Cultuurfit met koper (indicatief)',placeholder:'bijv. goed / twijfelachtig / nader te toetsen',type:'text',doc:false},
+  {id:'synergie',label:'Synergiepotentieel (indicatief)',placeholder:'bijv. 15% kostensynergie, cross-sell',type:'text',doc:false},
+  {id:'groeipot',label:'Buy & build potentieel',placeholder:'bijv. 2-3 regionale kantoren in scope',type:'text',doc:false},
+  {id:'peReadiness',label:'PE-readiness (indicatief)',placeholder:'bijv. hoog / gemiddeld / laag',type:'text',doc:false},
+ ],
+ items:['Regionale marktpositie en niches vastgesteld','Concurrentieanalyse uitgevoerd','AI-impact op dienstverleningsmodel beoordeeld','Buy & build potentieel geïnventariseerd','Schaalbaarheid vastgesteld','Synergiepotentieel bepaald','Cultuurfit getoetst','Managementlaag onder partners beoordeeld','PE-readiness indicatief bepaald'],
+ redflags:['Te hoge afhankelijkheid samenstelpraktijk (AI-risico)','Geen duidelijke niche of marktpositie','Cultuurmismatch met koper','Beperkt integratiepotentieel']},
 ];
 
-let S = {
-  screen: 'login',
-  naam: '',
-  fase: 0,
-  checked: {},
-  notities: {},
-  aiTexts: {},
-  aiLoading: {}
+// ── STATE ────────────────────────────────────────────────────────
+var S={
+  screen:'login',
+  naam:'',
+  fase:0,
+  checked:{},
+  data:{},
+  docRefs:{},
+  notities:{},
+  aiTexts:{},
+  aiLoading:{}
 };
 
-function pct(faseId) {
-  var f = FASES.find(function(x){return x.id===faseId;});
-  if(!f) return 0;
-  var done = f.items.filter(function(_,i){return S.checked[faseId+'_'+i];}).length;
-  return f.items.length ? Math.round(done/f.items.length*100) : 0;
+// ── HELPERS ──────────────────────────────────────────────────────
+function pct(id){
+  var f=FASES.find(function(x){return x.id===id;});
+  if(!f)return 0;
+  var done=f.items.filter(function(_,i){return S.checked[id+'_'+i];}).length;
+  return f.items.length?Math.round(done/f.items.length*100):0;
 }
-
-function totalPct() {
-  var total=0, done=0;
+function totalPct(){
+  var t=0,d=0;
   FASES.forEach(function(f){
-    total+=f.items.length;
-    done+=f.items.filter(function(_,i){return S.checked[f.id+'_'+i];}).length;
+    t+=f.items.length;
+    d+=f.items.filter(function(_,i){return S.checked[f.id+'_'+i];}).length;
   });
-  return total ? Math.round(done/total*100) : 0;
+  return t?Math.round(d/t*100):0;
+}
+function dc(v){return v>=70?'var(--teal)':v>=50?'var(--gold)':'var(--red)';}
+function ge(id){return document.getElementById(id);}
+
+// ── SAVE CURRENT FASE DATA ───────────────────────────────────────
+function saveCurrent(){
+  var f=FASES[S.fase];
+  if(!f||S.screen!=='main')return;
+  f.dataFields.forEach(function(df){
+    var el=ge('df_'+df.id);
+    if(el)S.data[f.id+'_'+df.id]=el.value;
+    if(df.doc){
+      var rel=ge('dr_'+df.id);
+      if(rel)S.docRefs[f.id+'_'+df.id]=rel.value;
+    }
+  });
+  var nel=ge('notitie_'+f.id);
+  if(nel)S.notities[f.id]=nel.value;
 }
 
-function dc(v){return v>=70?'var(--teal)':v>=50?'var(--gold)':'var(--red)';}
-
-function renderApp() {
-  var app = document.getElementById('app');
-  if(S.screen==='login') app.innerHTML = renderLogin();
-  else if(S.screen==='main') app.innerHTML = renderMain();
-  else if(S.screen==='summary') app.innerHTML = renderSummary();
+// ── RENDER ───────────────────────────────────────────────────────
+function renderApp(){
+  var app=ge('app');
+  if(S.screen==='login') app.innerHTML=renderLogin();
+  else if(S.screen==='main') app.innerHTML=renderMain();
+  else if(S.screen==='summary') app.innerHTML=renderSummary();
   bindAll();
 }
 
-function renderLogin() {
-  return '<div class="wrap narrow anim">'
-    +'<div class="hdr"><div class="brand"><div class="wdot"></div>KantoorInzicht</div>'
-    +'<a href="index.html" style="font-size:11px;color:var(--muted);text-decoration:none">&#8592; Terug naar scan</a></div>'
-    +'<div style="min-height:70vh;display:flex;flex-direction:column;align-items:center;justify-content:center">'
+function renderLogin(){
+  return '<div class="wrap narrow" style="padding-top:4rem"><div class="hdr"><div class="brand"><div class="wdot"></div>KantoorInzicht</div><a href="index.html" style="font-size:11px;color:var(--muted);text-decoration:none">&#8592; Terug naar scan</a></div>'
+    +'<div style="min-height:60vh;display:flex;align-items:center;justify-content:center">'
     +'<div class="panel" style="max-width:400px;width:100%">'
     +'<div style="font-family:Playfair Display,serif;font-size:1.4rem;color:var(--head);font-weight:600;margin-bottom:.3rem">M&amp;A Begeleiding</div>'
     +'<div style="font-size:13px;color:var(--muted);line-height:1.65;margin-bottom:1.5rem">Due diligence voorbereiding voor uw kantoor. Alleen toegankelijk voor deelnemers aan een M&amp;A-traject met Bisschops Financing.</div>'
-    +'<div class="field"><label>Naam van uw kantoor</label><input type="text" id="l-naam" placeholder="bijv. Bakker &amp; Partners" autocomplete="off"></div>'
-    +'<div class="field"><label>Toegangscode</label><input type="password" id="l-pw" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;"></div>'
+    +'<div class="f" style="margin-bottom:.75rem"><label>Naam van uw kantoor</label><input type="text" id="l-naam" placeholder="bijv. Bakker &amp; Partners" autocomplete="off"></div>'
+    +'<div class="f" style="margin-bottom:.75rem"><label>Toegangscode</label><input type="password" id="l-pw" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;"></div>'
     +'<div id="l-err" style="color:var(--red);font-size:12px;margin-bottom:.75rem;display:none">Onjuiste toegangscode.</div>'
-    +'<div style="display:flex;gap:10px">'
-    +'<button class="btn-ghost" onclick="window.location.href=\'index.html\'">Terug</button>'
-    +'<button class="btn" id="l-btn">Toegang</button></div>'
-    +'<div style="margin-top:1.25rem;font-size:11px;color:var(--muted);padding-top:1rem;border-top:1px solid var(--border)">'
-    +'Toegangscode via Marcel Bisschops &middot; <a href="mailto:marcel@bisschopsfinancing.nl" style="color:var(--teal)">marcel@bisschopsfinancing.nl</a></div>'
+    +'<div style="display:flex;gap:10px"><button class="btn-ghost" onclick="window.location.href=\'index.html\'">Terug</button><button class="btn" id="l-btn">Toegang</button></div>'
+    +'<div style="margin-top:1.25rem;font-size:11px;color:var(--muted);padding-top:1rem;border-top:1px solid var(--border)">Toegangscode via Marcel Bisschops &middot; <a href="mailto:marcel@bisschopsfinancing.nl" style="color:var(--teal)">marcel@bisschopsfinancing.nl</a></div>'
     +'</div></div></div>';
 }
 
-function renderMain() {
-  var f = FASES[S.fase];
-  var tp = totalPct();
+function renderMain(){
+  var f=FASES[S.fase];
+  var tp=totalPct();
 
-  var overviewHtml = '<div class="fase-grid">';
-  FASES.forEach(function(fase, i) {
-    var p = pct(fase.id);
-    var active = S.fase===i;
-    overviewHtml += '<div class="fase-card'+(active?' active':'')+'" data-fi="'+i+'">'
+  // Overview cards
+  var ov='<div class="fase-grid">';
+  FASES.forEach(function(fase,i){
+    var p=pct(fase.id);
+    ov+='<div class="fase-card'+(S.fase===i?' active':'')+'" data-fi="'+i+'">'
       +'<div class="fase-num">'+fase.num+'</div>'
-      +'<div class="fase-title">'+fase.title+'</div>'
+      +'<div class="fase-name">'+fase.title+'</div>'
       +'<div class="fase-bar"><div class="fase-fill" style="width:'+p+'%"></div></div>'
-      +'<div class="fase-pct">'+p+'% &middot; '+f.items.filter(function(_,j){return S.checked[fase.id+'_'+j];}).length+'/'+fase.items.length+'</div>'
+      +'<div class="fase-pct">'+p+'%</div>'
       +'</div>';
   });
-  overviewHtml += '</div>';
+  ov+='</div>';
 
-  var itemsHtml = '<div class="check-section"><div class="check-lbl">Checklist</div><div class="check-items">';
-  f.items.forEach(function(item, i) {
-    var key = f.id+'_'+i;
-    var on = !!S.checked[key];
-    itemsHtml += '<div class="check-item'+(on?' on':'')+'" data-key="'+key+'">'
+  // Data entry section
+  var dataHtml='<div class="panel"><div class="sec-hdr">Cijfers &amp; kengetallen invoeren</div>'
+    +'<div class="data-grid">';
+  f.dataFields.forEach(function(df){
+    var val=S.data[f.id+'_'+df.id]||'';
+    var ref=S.docRefs[f.id+'_'+df.id]||'';
+    dataHtml+='<div>';
+    dataHtml+='<div class="f"><label>'+df.label+(df.doc?' <span style="color:var(--gold);font-size:9px">&#128196; ref</span>':'')+'</label>'
+      +'<input type="'+df.type+'" id="df_'+df.id+'" value="'+escHtml(val)+'" placeholder="'+escHtml(df.placeholder)+'"></div>';
+    if(df.doc){
+      dataHtml+='<div class="f" style="margin-top:4px"><label style="font-size:9px;color:var(--gold)">Documentreferentie / bestandsnaam</label>'
+        +'<input type="text" id="dr_'+df.id+'" value="'+escHtml(ref)+'" placeholder="bijv. jaarrekening_2023.pdf"></div>';
+    }
+    dataHtml+='</div>';
+  });
+  dataHtml+='</div></div>';
+
+  // Checklist
+  var chkHtml='<div class="panel"><div class="sec-hdr">Checklist</div>';
+  f.items.forEach(function(item,i){
+    var key=f.id+'_'+i;
+    var on=!!S.checked[key];
+    chkHtml+='<div class="chk-item'+(on?' on':'')+'" data-key="'+key+'">'
       +'<div class="chk-box">'+(on?'&#10003;':'')+'</div>'
       +'<div class="chk-lbl">'+item+'</div></div>';
   });
-  itemsHtml += '</div></div>';
-
-  var rfHtml = '<div class="check-section"><div class="check-lbl" style="color:var(--red)">Rode vlaggen &mdash; gesignaleerd?</div><div class="check-items">';
-  f.redflags.forEach(function(rf, i) {
-    var key = f.id+'_rf_'+i;
-    var on = !!S.checked[key];
-    rfHtml += '<div class="check-item rf'+(on?' on':'')+'" data-key="'+key+'">'
+  chkHtml+='<div class="sec-hdr" style="margin-top:1rem;color:var(--red)">Rode vlaggen &mdash; gesignaleerd?</div>';
+  f.redflags.forEach(function(rf,i){
+    var key=f.id+'_rf_'+i;
+    var on=!!S.checked[key];
+    chkHtml+='<div class="chk-item rf'+(on?' on':'')+'" data-key="'+key+'">'
       +'<div class="chk-box">'+(on?'&#10003;':'')+'</div>'
       +'<div class="chk-lbl">'+rf+'</div></div>';
   });
-  rfHtml += '</div></div>';
+  chkHtml+='</div>';
 
-  var aiText = S.aiTexts[f.id];
-  var aiLoading = S.aiLoading[f.id];
+  // Notitie
+  var notHtml='<div class="panel"><div class="sec-hdr">Notities &amp; bevindingen</div>'
+    +'<textarea class="f" id="notitie_'+f.id+'" style="width:100%;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:9px 11px;font-family:IBM Plex Sans,sans-serif;font-size:13px;color:var(--sub);resize:vertical;min-height:80px;outline:none" placeholder="Voer bevindingen, vragen en aandachtspunten in voor deze fase...">'+(S.notities[f.id]||'')+'</textarea>'
+    +'<div style="font-size:11px;color:var(--muted);margin-top:.25rem">Alles wordt bewaard zolang deze pagina open is. Gebruik het PDF-overzicht om te exporteren.</div>'
+    +'</div>';
+
+  // AI panel
+  var aiText=S.aiTexts[f.id];
+  var aiLoad=S.aiLoading[f.id];
   var aiBodyHtml;
-  if(aiLoading) {
-    aiBodyHtml = '<div style="display:flex;align-items:center;gap:10px;color:var(--mid);font-size:13px"><div class="spinner" style="border-color:var(--border2);border-top-color:var(--teal);width:16px;height:16px;border-width:2px"></div>Advies wordt gegenereerd...</div>';
-  } else if(!aiText) {
-    aiBodyHtml = '<div style="color:var(--muted);font-size:13px">Klik op Genereer advies voor een AI-analyse op basis van de ingevulde checklist, rode vlaggen en notities.</div>';
-  } else if(aiText==='__ERROR__') {
-    aiBodyHtml = '<div style="color:var(--red);font-size:13px">Kon niet verbinden. Probeer opnieuw.</div>';
-  } else {
-    var html = aiText.replace(/## ([^\n]+)/g, function(_,t){return '<h3>'+t+'</h3>';});
-    html = html.replace(/\*\*([^*]+)\*\*/g, function(_,t){return '<strong>'+t+'</strong>';});
-    html = html.split('\n\n').map(function(p){return p.trim()&&p.charAt(0)!=='<'?'<p>'+p+'</p>':p;}).join('');
-    aiBodyHtml = html;
+  if(aiLoad){
+    aiBodyHtml='<div style="display:flex;align-items:center;gap:8px;color:var(--mid);font-size:13px"><div class="spin" style="border-color:var(--border2);border-top-color:var(--teal);width:14px;height:14px"></div>Advies wordt gegenereerd...</div>';
+  }else if(!aiText){
+    aiBodyHtml='<div style="color:var(--muted);font-size:13px">Klik op Genereer advies voor een AI-analyse op basis van de ingevulde cijfers, checklist, rode vlaggen en notities.</div>';
+  }else if(aiText==='__ERROR__'){
+    aiBodyHtml='<div style="color:var(--red);font-size:13px">Kon niet verbinden. Probeer opnieuw.</div>';
+  }else{
+    var h=aiText.replace(/## ([^\n]+)/g,function(_,t){return '<h3>'+t+'</h3>';});
+    h=h.replace(/\*\*([^*]+)\*\*/g,function(_,t){return '<strong>'+t+'</strong>';});
+    h=h.split('\n\n').map(function(p){return p.trim()&&p.charAt(0)!=='<'?'<p>'+p+'</p>':p;}).join('');
+    aiBodyHtml=h;
   }
+  var aiHtml='<div class="ai-panel">'
+    +'<div class="ai-hdr"><div><div class="ai-title">AI-advies: '+f.title+'</div>'
+    +'<div class="ai-sub">Op basis van ingevoerde cijfers, checklist, rode vlaggen en notities</div></div>'
+    +'<button class="btn-gen" id="gen-btn" '+(aiLoad?'disabled':'')+'>'+(aiLoad?'<div class="spin"></div> Genereren...':aiText&&aiText!=='__ERROR__'?'Opnieuw genereren':'Genereer advies')+'</button>'
+    +'</div><div class="ai-body">'+aiBodyHtml+'</div></div>';
 
-  var navHtml = '<div class="fase-nav">';
-  if(S.fase>0) navHtml += '<button class="btn-ghost" id="prev-btn">&#8592; Vorige</button>';
-  navHtml += '<div style="flex:1"></div>';
-  navHtml += '<button class="btn-ghost" id="summary-btn">Overzicht</button>';
-  if(S.fase<FASES.length-1) navHtml += '<button class="btn" id="next-btn">Volgende &#8594;</button>';
-  else navHtml += '<button class="btn" id="summary-btn2">Afronden &#10003;</button>';
-  navHtml += '</div>';
+  // Nav
+  var nav='<div class="fase-nav">'
+    +(S.fase>0?'<button class="btn-ghost btn-sm" id="prev-btn">&#8592; Vorige</button>':'')
+    +'<div style="flex:1"></div>'
+    +'<button class="btn-ghost btn-sm" id="sum-btn">Overzicht</button>'
+    +(S.fase<FASES.length-1?'<button class="btn btn-sm" id="next-btn">Volgende &#8594;</button>':'<button class="btn btn-sm" id="sum-btn2">Afronden &#10003;</button>')
+    +'</div>';
 
   return '<div class="wrap anim">'
-    +'<div class="hdr">'
-    +'<div class="brand"><div class="wdot"></div>KantoorInzicht &middot; M&amp;A</div>'
-    +'<div style="display:flex;align-items:center;gap:12px">'
-    +'<span style="font-size:11px;color:var(--muted)">'+S.naam+'</span>'
-    +'<button class="btn-ghost" style="font-size:11px;padding:5px 12px" onclick="window.location.href=\'index.html\'">&#8592; Scan</button>'
+    +'<div class="hdr"><div class="brand"><div class="wdot"></div>KantoorInzicht &middot; M&amp;A</div>'
+    +'<div style="display:flex;align-items:center;gap:10px">'
+    +'<span style="font-size:11px;color:var(--muted)">'+escHtml(S.naam)+'</span>'
+    +'<button class="btn-ghost btn-sm" onclick="window.print()">PDF</button>'
+    +'<button class="btn-ghost btn-sm" onclick="window.location.href=\'index.html\'">&#8592; Scan</button>'
     +'</div></div>'
-    +'<div style="font-family:Playfair Display,serif;font-size:1.6rem;color:var(--head);font-weight:600;margin-bottom:.25rem">Due Diligence <em style="color:var(--teal)">Voorbereiding</em></div>'
-    +'<div class="prog-wrap" style="margin-bottom:1.5rem">'
-    +'<div class="prog-top"><span class="prog-lbl">Totale voortgang</span><span class="prog-pct">'+tp+'%</span></div>'
-    +'<div class="prog-track"><div class="prog-fill" style="width:'+tp+'%"></div></div>'
-    +'</div>'
-    +overviewHtml
-    +'<div class="panel">'
-    +'<div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:.25rem">'
-    +'<div style="font-family:Playfair Display,serif;font-size:1.1rem;color:var(--head);font-weight:600">'+f.num+'. '+f.title+'</div>'
-    +'<div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--muted)">'+pct(f.id)+'%</div>'
-    +'</div>'
+    +'<div style="font-family:Playfair Display,serif;font-size:1.5rem;color:var(--head);font-weight:600;margin-bottom:.25rem">'
+    +'Due Diligence <em style="color:var(--teal)">Voorbereiding</em></div>'
+    +'<div style="font-size:13px;color:var(--muted);margin-bottom:1rem">'+escHtml(S.naam)+' &middot; '
+    +'<span style="font-family:IBM Plex Mono,monospace">Totaal: '+tp+'%</span></div>'
+    +'<div class="prog-bar"><div class="prog-fill" style="width:'+tp+'%"></div></div>'
+    +ov
+    +'<div style="font-family:Playfair Display,serif;font-size:1.1rem;color:var(--head);font-weight:600;margin-bottom:.2rem">'+f.num+'. '+f.title+'</div>'
     +'<div style="font-size:13px;color:var(--muted);margin-bottom:1.25rem">'+f.desc+'</div>'
-    +itemsHtml
-    +rfHtml
-    +'<div style="margin-top:1rem">'
-    +'<div style="font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:.4rem">Notities &amp; bevindingen</div>'
-    +'<textarea class="notitie" id="notitie-field" placeholder="Voer uw bevindingen, vragen en aandachtspunten in voor deze fase...">'+(S.notities[f.id]||'')+'</textarea>'
-    +'<div style="font-size:11px;color:var(--muted);margin-top:.25rem">Notities blijven bewaard zolang deze pagina open is.</div>'
-    +'</div>'
-    +'<div class="ai-panel">'
-    +'<div class="ai-hdr">'
-    +'<div><div class="ai-title">AI-advies: '+f.title+'</div>'
-    +'<div class="ai-sub">Op basis van checklist, rode vlaggen en notities</div></div>'
-    +'<button class="btn-gen" id="gen-btn" '+(aiLoading?'disabled':'')+'>'+(aiLoading?'<div class="spinner"></div>':'')+(aiLoading?'Genereren...':aiText&&aiText!=='__ERROR__'?'Opnieuw':'Genereer advies')+'</button>'
-    +'</div>'
-    +'<div class="ai-body">'+aiBodyHtml+'</div>'
-    +'</div>'
-    +navHtml
-    +'</div></div>';
+    +dataHtml+chkHtml+notHtml+aiHtml+nav
+    +'</div>';
 }
 
-function renderSummary() {
-  var tp = totalPct();
-  var redFlagCount = 0;
-  FASES.forEach(function(f){
-    f.redflags.forEach(function(_,i){if(S.checked[f.id+'_rf_'+i])redFlagCount++;});
-  });
+function renderSummary(){
+  var tp=totalPct();
+  var rfCount=0;
+  FASES.forEach(function(f){f.redflags.forEach(function(_,i){if(S.checked[f.id+'_rf_'+i])rfCount++;});});
+  var aiCount=Object.keys(S.aiTexts).filter(function(k){return S.aiTexts[k]&&S.aiTexts[k]!=="__ERROR__";}).length;
 
-  var cardsHtml = '';
-  FASES.forEach(function(f) {
-    var p = pct(f.id);
-    var rfs = f.redflags.filter(function(_,i){return S.checked[f.id+'_rf_'+i];});
-    cardsHtml += '<div class="summary-card">'
-      +'<div class="summary-card-title">'+f.num+'. '+f.title+' &mdash; <span style="color:'+dc(p)+'">'+p+'%</span></div>';
-    if(rfs.length>0){
-      rfs.forEach(function(rf){
-        cardsHtml += '<div class="summary-item"><div class="s-dot" style="background:var(--red)"></div><span style="color:var(--red)">'+rf+'</span></div>';
-      });
-    } else {
-      cardsHtml += '<div class="summary-item"><div class="s-dot" style="background:var(--teal)"></div><span style="color:var(--muted)">Geen rode vlaggen gesignaleerd</span></div>';
-    }
-    if(S.notities[f.id]) {
-      cardsHtml += '<div style="font-size:11px;color:var(--mid);margin-top:.4rem;padding-top:.4rem;border-top:1px solid var(--border);font-style:italic">'+S.notities[f.id].substring(0,120)+(S.notities[f.id].length>120?'...':'')+'</div>';
-    }
-    cardsHtml += '</div>';
+  var cards='';
+  FASES.forEach(function(f){
+    var p=pct(f.id);
+    var rfs=f.redflags.filter(function(_,i){return S.checked[f.id+'_rf_'+i];});
+    // collect entered data
+    var dataRows='';
+    f.dataFields.forEach(function(df){
+      var val=S.data[f.id+'_'+df.id];
+      var ref=S.docRefs[f.id+'_'+df.id];
+      if(val){
+        dataRows+='<div class="sum-row"><span class="lbl">'+df.label+'</span><span style="font-family:IBM Plex Mono,monospace;font-size:11px">'+escHtml(val)+(ref?' <span class="doc-badge">&#128196; '+escHtml(ref)+'</span>':'')+'</span></div>';
+      }
+    });
+    var notitie=S.notities[f.id];
+    cards+='<div class="sum-card">'
+      +'<div class="sum-title">'+f.num+'. '+f.title+' <span style="color:'+dc(p)+'">'+p+'%</span></div>'
+      +(dataRows?dataRows:'<div class="sum-row"><span class="lbl" style="font-style:italic">Geen cijfers ingevoerd</span></div>')
+      +(rfs.length?rfs.map(function(rf){return '<div class="sum-row"><span style="color:var(--red)">&#9888; '+rf+'</span></div>';}).join(''):'')
+      +(notitie?'<div style="font-size:11px;color:var(--mid);margin-top:.4rem;padding-top:.4rem;border-top:1px solid var(--border);font-style:italic">'+escHtml(notitie.substring(0,160))+(notitie.length>160?'...':'')+'</div>':'')
+      +'</div>';
   });
 
   return '<div class="wrap anim">'
     +'<div class="hdr"><div class="brand"><div class="wdot"></div>KantoorInzicht &middot; M&amp;A</div>'
-    +'<button class="btn-ghost" style="font-size:11px;padding:5px 12px" onclick="S.screen=\'main\';renderApp()">&#8592; Terug</button></div>'
-    +'<div style="font-family:Playfair Display,serif;font-size:1.6rem;color:var(--head);font-weight:600;margin-bottom:.3rem">DD <em style="color:var(--teal)">Samenvatting</em></div>'
-    +'<div style="font-size:13px;color:var(--muted);margin-bottom:1.5rem">'+S.naam+' &middot; '+new Date().toLocaleDateString('nl-NL',{day:'2-digit',month:'long',year:'numeric'})+'</div>'
-    +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:2rem">'
-    +'<div class="panel" style="text-align:center;padding:1.25rem"><div style="font-family:Playfair Display,serif;font-size:2rem;font-weight:600;color:'+dc(tp)+'">'+tp+'%</div><div style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)">Totaal gereed</div></div>'
-    +'<div class="panel" style="text-align:center;padding:1.25rem"><div style="font-family:Playfair Display,serif;font-size:2rem;font-weight:600;color:var(--red)">'+redFlagCount+'</div><div style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)">Rode vlaggen</div></div>'
-    +'<div class="panel" style="text-align:center;padding:1.25rem"><div style="font-family:Playfair Display,serif;font-size:2rem;font-weight:600;color:var(--head)">'+Object.keys(S.aiTexts).filter(function(k){return S.aiTexts[k]&&S.aiTexts[k]!=="__ERROR__";}).length+'</div><div style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)">AI-adviezen</div></div>'
+    +'<div style="display:flex;gap:8px">'
+    +'<button class="btn-ghost btn-sm" onclick="window.print()">PDF afdrukken</button>'
+    +'<button class="btn-ghost btn-sm" id="back-main">&#8592; Terug</button>'
+    +'</div></div>'
+    +'<div style="font-family:Playfair Display,serif;font-size:1.5rem;color:var(--head);font-weight:600;margin-bottom:.25rem">DD Samenvatting</div>'
+    +'<div style="font-size:13px;color:var(--muted);margin-bottom:1.5rem">'+escHtml(S.naam)+' &middot; '+new Date().toLocaleDateString('nl-NL',{day:'2-digit',month:'long',year:'numeric'})+'</div>'
+    +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:1.5rem">'
+    +'<div class="panel" style="text-align:center;padding:1.1rem"><div style="font-family:Playfair Display,serif;font-size:1.8rem;font-weight:600;color:'+dc(tp)+'">'+tp+'%</div><div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)">Totaal gereed</div></div>'
+    +'<div class="panel" style="text-align:center;padding:1.1rem"><div style="font-family:Playfair Display,serif;font-size:1.8rem;font-weight:600;color:var(--red)">'+rfCount+'</div><div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)">Rode vlaggen</div></div>'
+    +'<div class="panel" style="text-align:center;padding:1.1rem"><div style="font-family:Playfair Display,serif;font-size:1.8rem;font-weight:600;color:var(--head)">'+aiCount+'</div><div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)">AI-adviezen</div></div>'
     +'</div>'
-    +'<div class="summary-grid">'+cardsHtml+'</div>'
-    +'<div style="display:flex;gap:10px">'
-    +'<button class="btn-ghost" onclick="S.screen=\'main\';renderApp()">&#8592; Terug naar checklist</button>'
-    +'<button class="btn" onclick="window.print()">PDF afdrukken</button>'
-    +'</div></div>';
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'+cards+'</div>'
+    +'</div>';
 }
 
-async function generateAI(faseId) {
-  var f = FASES.find(function(x){return x.id===faseId;});
-  if(!f) return;
-  saveNotitie();
-  S.aiLoading[faseId] = true;
+// ── GENERATE AI ──────────────────────────────────────────────────
+async function generateAI(faseId){
+  var f=FASES.find(function(x){return x.id===faseId;});
+  if(!f)return;
+  saveCurrent();
+  S.aiLoading[faseId]=true;
   renderApp();
 
-  var checkedItems = f.items.filter(function(_,i){return S.checked[faseId+'_'+i];});
-  var uncheckedItems = f.items.filter(function(_,i){return !S.checked[faseId+'_'+i];});
-  var rfHits = f.redflags.filter(function(_,i){return S.checked[faseId+'_rf_'+i];});
-  var notitie = S.notities[faseId] || '';
-  var p = pct(faseId);
+  var dataLines=[];
+  f.dataFields.forEach(function(df){
+    var val=S.data[f.id+'_'+df.id];
+    var ref=S.docRefs[f.id+'_'+df.id];
+    if(val) dataLines.push(df.label+': '+val+(ref?' (document: '+ref+')':''));
+  });
 
-  var checkedStr = checkedItems.length ? checkedItems.map(function(x){return 'Gereed: '+x;}).join('\n') : 'Nog niets afgerond in deze fase';
-  var openStr = uncheckedItems.length ? uncheckedItems.map(function(x){return 'Open: '+x;}).join('\n') : 'Alle items afgerond';
-  var rfStr = rfHits.length ? rfHits.map(function(x){return 'Rode vlag: '+x;}).join('\n') : 'Geen rode vlaggen gesignaleerd';
+  var checkedItems=f.items.filter(function(_,i){return S.checked[faseId+'_'+i];});
+  var openItems=f.items.filter(function(_,i){return !S.checked[faseId+'_'+i];});
+  var rfHits=f.redflags.filter(function(_,i){return S.checked[faseId+'_rf_'+i];});
+  var notitie=S.notities[faseId]||'';
+  var p=pct(faseId);
 
-  var prompt = 'Je bent Marcel Bisschops, senior M&A-adviseur gespecialiseerd in accountantskantoren en administratiekantoren. Je begeleidt een due diligence traject voor kantoor "' + S.naam + '".\n\nFASE: ' + f.title + '\nVOORTGANG: ' + p + '% voltooid (' + checkedItems.length + '/' + f.items.length + ' items)\n\n' + checkedStr + '\n\n' + openStr + '\n\n' + rfStr + '\n\nNOTITIES:\n' + (notitie || 'Geen notities ingevoerd') + '\n\nGeef een beknopt strategisch advies voor deze fase. Bespreek: de huidige voortgang en prioriteiten, welke openstaande items het meest urgent zijn, hoe eventuele rode vlaggen de transactie beinvloeden, en concrete vervolgstappen. Schrijf in ik-vorm, direct en professioneel. Gebruik ## koppen. Geen tabellen of bullet-lijsten.';
+  var dataStr=dataLines.length?dataLines.join('\n'):'Geen cijfers ingevoerd';
+  var checkedStr=checkedItems.length?checkedItems.map(function(x){return 'Gereed: '+x;}).join('\n'):'Nog niets afgerond';
+  var openStr=openItems.length?openItems.map(function(x){return 'Open: '+x;}).join('\n'):'Alle items afgerond';
+  var rfStr=rfHits.length?rfHits.map(function(x){return 'Rode vlag gesignaleerd: '+x;}).join('\n'):'Geen rode vlaggen gesignaleerd';
 
-  try {
-    var resp = await fetch(WORKER+'/ai', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({messages:[{role:'user',content:prompt}]})});
-    if(!resp.ok) throw new Error('HTTP '+resp.status);
-    var reader = resp.body.getReader();
-    var dec = new TextDecoder();
-    var collected = '';
-    while(true) {
-      var res = await reader.read();
-      if(res.done) break;
-      var chunk = dec.decode(res.value, {stream:true});
+  var prompt='Je bent Marcel Bisschops, senior M&A-adviseur gespecialiseerd in accountantskantoren en administratiekantoren. Je begeleidt een due diligence traject voor kantoor "'+S.naam+'".\n\nFASE: '+f.title+'\nVOORTGANG: '+p+'% ('+checkedItems.length+'/'+f.items.length+' checklistitems)\n\nINGEVOERDE CIJFERS EN KENGETALLEN:\n'+dataStr+'\n\nCHECKLIST STATUS:\n'+checkedStr+'\n\n'+openStr+'\n\nRODE VLAGGEN:\n'+rfStr+'\n\nNOTITIES:\n'+(notitie||'Geen notities ingevoerd')+'\n\nGeef een beknopt strategisch advies voor deze fase. Analyseer de ingevoerde cijfers expliciet waar relevant en vergelijk met sectorgemiddelden. Bespreek: de voortgang en prioriteiten, urgente openstaande items, hoe rode vlaggen de transactie beinvloeden, en concrete vervolgstappen. Schrijf in ik-vorm, direct en professioneel. Gebruik ## koppen. Geen tabellen of bullets.';
+
+  try{
+    var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}]})});
+    if(!resp.ok)throw new Error('HTTP '+resp.status);
+    var reader=resp.body.getReader();
+    var dec=new TextDecoder();
+    var collected='';
+    while(true){
+      var res=await reader.read();
+      if(res.done)break;
+      var chunk=dec.decode(res.value,{stream:true});
       chunk.split('\n').forEach(function(line){
-        if(line.startsWith('data:')) {
-          var d = line.slice(5).trim();
-          if(d==='[DONE]') return;
-          try { var j=JSON.parse(d); if(j.type==='content_block_delta'&&j.delta&&j.delta.text) collected+=j.delta.text; } catch(e){}
+        if(line.startsWith('data:')){
+          var d=line.slice(5).trim();
+          if(d==='[DONE]')return;
+          try{var j=JSON.parse(d);if(j.type==='content_block_delta'&&j.delta&&j.delta.text)collected+=j.delta.text;}catch(e){}
         }
       });
     }
-    S.aiTexts[faseId] = collected;
-  } catch(e) {
-    S.aiTexts[faseId] = '__ERROR__';
+    S.aiTexts[faseId]=collected;
+  }catch(e){
+    S.aiTexts[faseId]='__ERROR__';
   }
-  S.aiLoading[faseId] = false;
+  S.aiLoading[faseId]=false;
   renderApp();
 }
 
-function saveNotitie() {
-  var el = document.getElementById('notitie-field');
-  if(el && S.screen==='main') S.notities[FASES[S.fase].id] = el.value;
+// ── BIND EVENTS ──────────────────────────────────────────────────
+function bindAll(){
+  var lb=ge('l-btn');
+  if(lb){
+    lb.onclick=function(){
+      var pw=(ge('l-pw')||{}).value||'';
+      var naam=(ge('l-naam')||{}).value||'';
+      if(pw.trim()===MNA_PW){S.naam=naam.trim()||'Kantoor';S.screen='main';renderApp();}
+      else{var e=ge('l-err');if(e)e.style.display='block';}
+    };
+    var pf=ge('l-pw');
+    if(pf)pf.onkeydown=function(e){if(e.key==='Enter')lb.click();};
+  }
+  document.querySelectorAll('.fase-card[data-fi]').forEach(function(el){
+    el.onclick=function(){saveCurrent();S.fase=parseInt(el.dataset.fi);renderApp();};
+  });
+  document.querySelectorAll('.chk-item[data-key]').forEach(function(el){
+    el.onclick=function(){saveCurrent();S.checked[el.dataset.key]=!S.checked[el.dataset.key];renderApp();};
+  });
+  var gb=ge('gen-btn');
+  if(gb)gb.onclick=function(){generateAI(FASES[S.fase].id);};
+  var pb=ge('prev-btn');
+  if(pb)pb.onclick=function(){saveCurrent();S.fase--;renderApp();};
+  var nb=ge('next-btn');
+  if(nb)nb.onclick=function(){saveCurrent();S.fase++;renderApp();};
+  var sb=ge('sum-btn');
+  if(sb)sb.onclick=function(){saveCurrent();S.screen='summary';renderApp();};
+  var sb2=ge('sum-btn2');
+  if(sb2)sb2.onclick=function(){saveCurrent();S.screen='summary';renderApp();};
+  var bm=ge('back-main');
+  if(bm)bm.onclick=function(){S.screen='main';renderApp();};
 }
 
-function bindAll() {
-  var lBtn = document.getElementById('l-btn');
-  if(lBtn) {
-    lBtn.onclick = function() {
-      var pw = (document.getElementById('l-pw')||{}).value||'';
-      var naam = (document.getElementById('l-naam')||{}).value||'';
-      if(pw.trim()===MNA_PW) { S.naam=naam.trim()||'Kantoor'; S.screen='main'; renderApp(); }
-      else { var e=document.getElementById('l-err'); if(e) e.style.display='block'; }
-    };
-    var pwField = document.getElementById('l-pw');
-    if(pwField) pwField.onkeydown = function(e){if(e.key==='Enter') lBtn.click();};
-  }
-
-  document.querySelectorAll('.fase-card[data-fi]').forEach(function(el){
-    el.onclick = function(){saveNotitie(); S.fase=parseInt(el.dataset.fi); renderApp();};
-  });
-
-  document.querySelectorAll('.check-item[data-key]').forEach(function(el){
-    el.onclick = function(){S.checked[el.dataset.key]=!S.checked[el.dataset.key]; saveNotitie(); renderApp();};
-  });
-
-  var genBtn = document.getElementById('gen-btn');
-  if(genBtn) genBtn.onclick = function(){generateAI(FASES[S.fase].id);};
-
-  var prevBtn = document.getElementById('prev-btn');
-  if(prevBtn) prevBtn.onclick = function(){saveNotitie(); S.fase--; renderApp();};
-
-  var nextBtn = document.getElementById('next-btn');
-  if(nextBtn) nextBtn.onclick = function(){saveNotitie(); S.fase++; renderApp();};
-
-  var sumBtn = document.getElementById('summary-btn');
-  if(sumBtn) sumBtn.onclick = function(){saveNotitie(); S.screen='summary'; renderApp();};
-
-  var sumBtn2 = document.getElementById('summary-btn2');
-  if(sumBtn2) sumBtn2.onclick = function(){saveNotitie(); S.screen='summary'; renderApp();};
+function escHtml(s){
+  if(!s)return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 renderApp();
