@@ -219,6 +219,7 @@ function esc(s){if(!s)return '';return String(s).replace(/&/g,'&amp;').replace(/
 function saveCurrent(cb){
   var f=FASES[S.fase];
   if(!f||S.screen!=='main')return;
+  if(S.traject&&S.traject.status==='vergrendeld'){if(cb)cb();return;}
   f.dataFields.forEach(function(df){
     var el=ge('df_'+df.id);if(el)S.data[f.id+'_'+df.id]=el.value;
     if(df.doc){var re=ge('dr_'+df.id);if(re)S.docRefs[f.id+'_'+df.id]=re.value;}
@@ -437,6 +438,7 @@ function renderMain(){
     +'<div style="font-size:13px;color:var(--muted);margin-bottom:1rem">'+esc(S.traject&&S.traject.kantoor_naam||'')+'&nbsp;&middot;&nbsp;<span style="font-family:IBM Plex Mono,monospace">Totaal: '+tp+'%</span></div>'
     +'<div class="prog-bar"><div class="prog-fill" style="width:'+tp+'%"></div></div>'
     +ov
+    +(S.traject&&S.traject.status==='vergrendeld'?'<div style="background:rgba(224,82,82,.1);border:1px solid var(--red);border-radius:6px;padding:10px 14px;margin-bottom:1rem;font-size:13px;color:var(--red)">&#128274; <strong>Dit traject is vergrendeld.</strong> U kunt geen wijzigingen meer doorvoeren.</div>':'')
     +'<div style="font-family:Playfair Display,serif;font-size:1.1rem;color:var(--head);font-weight:600;margin-bottom:.2rem">'+f.num+'. '+f.title+'</div>'
     +'<div style="font-size:13px;color:var(--muted);margin-bottom:1.25rem">'+f.desc+'</div>'
     +dataHtml+chkHtml+notHtml+aiHtml+nav
