@@ -336,14 +336,57 @@ const SECTIONS=[
 ];
 const REVERSE=new Set(['p1','k1','k2','ai1','pe1']);
 const SCENARIOS={
-  'zelfstandig-doorgroeien':{name:'Zelfstandig doorgroeien',fit:s=>Math.round((s.commercieel+s.winst+s.klant+s.auto)/4),actions:[{t:'Versterk de commerciële pipeline',d:'Introduceer een gestructureerd CRM-proces en acquisitieritme.',h:'0–6 mnd'},{t:'Verbreed de managementlaag',d:'Benoem een MT zodat groei niet afhangt van de eigenaar.',h:'6–12 mnd'},{t:'Verken aangrenzende diensten',d:'Identificeer onbediende klantbehoeften en ontwikkel aanvullend aanbod.',h:'6–18 mnd'},{t:'Monitor KPIs maandelijks',d:'Omzet per fte, NPS en churn als vaste stuurindicatoren.',h:'Continu'}]},
-  'regionaliseren':{name:'Regionaliseren',fit:s=>Math.round((s.schaal+s.commercieel+s.auto+s.partner)/4),actions:[{t:'Marktanalyse regionale kansen',d:"Breng in kaart welke regio's ondervoorzien zijn.",h:'0–3 mnd'},{t:'Acquisitie-longlist opstellen',d:"Identificeer 5–10 regionale kantoren die strategisch passend zijn.",h:'3–9 mnd'},{t:'Integratiespelboek ontwikkelen',d:'Documenteer IT-migratie, cultuurintegratie en klantoverdracht.',h:'6–12 mnd'},{t:'Regionaal merkverhaal versterken',d:'Investeer in lokale PR en partnerships.',h:'Continu'}]},
-  'niche-specialisatie':{name:'Niche-specialisatie',fit:s=>Math.round((100-s.auto+s.winst+100-s.schaal)/3),actions:[{t:'Kies kernspecialisaties',d:'Baseer op bestaande portfolio, teamexpertise en marktpotentieel.',h:'0–3 mnd'},{t:'Bouw thought leadership op',d:'Publiceer sectoranalyses, spreek op branche-events.',h:'3–12 mnd'},{t:'Verdiep het dienstenaanbod',d:'Voeg waardering, sector-benchmarks en compliance toe.',h:'6–18 mnd'},{t:'Positioneer alle uitingen op de niche',d:'Herstel website, LinkedIn en pitch materials.',h:'0–6 mnd'}]},
-  'fusiepartner-zoeken':{name:'Fusiepartner zoeken',fit:s=>Math.round((s.fusie+100-s.schaal+100-s.opvolging)/3),actions:[{t:'Stel partnercriteria vast',d:'Definieer harde en zachte criteria.',h:'0–2 mnd'},{t:'M&A-adviseur inschakelen',d:'Werk met een adviseur met sectorervaring.',h:'1–3 mnd'},{t:'Due diligence-materiaal op orde',d:'Drie jaar jaarrekeningen, klantcontracten, procesbeschrijvingen.',h:'0–4 mnd'},{t:'Verkenningsgesprekken starten',d:'Voer gesprekken met 3–5 partijen onder NDA.',h:'3–9 mnd'}]},
-  'opvolging-voorbereiden':{name:'Opvolging voorbereiden',fit:s=>Math.round(100-s.opvolging),actions:[{t:'Opvolgingskandidaat benoemen',d:'Identificeer intern talent en start een formeel traject.',h:'0–3 mnd'},{t:'Formeel opvolgingsplan opstellen',d:'Documenteer tijdlijn, verantwoordelijkheden en financiële structuur.',h:'0–6 mnd'},{t:'Klantrelatieoverdracht starten',d:'Introduceer opvolgers actief bij strategische klanten.',h:'Onmiddellijk'},{t:'Kantoorwaardering laten uitvoeren',d:'Verkrijg inzicht in de waarderingsbandbreedte.',h:'1–3 mnd'}]},
-  'pe-ready-maken':{name:'PE-ready maken',fit:s=>Math.round((s.fusie+s.winst+s.schaal+s.klant)/4),actions:[{t:'Terugkerende omzet maximaliseren',d:'Converteer naar abonnementen. Streef naar >70% recurring.',h:'0–12 mnd'},{t:'EBITDA-marge naar 25–35%',d:'Analyseer kostenstructuur en automatiseer lage-margewerk.',h:'6–18 mnd'},{t:'Klantconcentratie verlagen',d:'Target: geen klant >8% van omzet.',h:'12–24 mnd'},{t:'Managementrapportage professionaliseren',d:'Maandelijks KPI-dashboard en cashflow-forecast.',h:'0–6 mnd'}]},
-  'verkoop-voorbereiden':{name:'Verkoop binnen 3 jaar',fit:s=>Math.round((s.fusie+s.winst+100-s.opvolging)/3),actions:[{t:'Verkoopgereed-stappenplan opstellen',d:'Concrete mijlpalen per kwartaal.',h:'0–3 mnd'},{t:'Overdraagbaarheid vergroten',d:'Verminder persoonsgebonden relaties.',h:'0–18 mnd'},{t:'Winstgevendheid optimaliseren',d:'Focus op hoge-marge diensten.',h:'0–12 mnd'},{t:'Bedrijfswaardering laten uitvoeren',d:'Begrijp de EBITDA-multiple-bandbreedte.',h:'3–6 mnd'}]},
-  'afweerstrategie':{name:'Consolidatie-afweer',fit:s=>Math.round((100-s.klant+100-s.personeel+100-s.schaal)/3),actions:[{t:'Unieke positionering versterken',d:'Maak overnemen minder logisch via niche en klantbinding.',h:'0–12 mnd'},{t:'Strategische allianties sluiten',d:'Werk samen in een netwerk zonder volledige fusie.',h:'6–18 mnd'},{t:'Klantloyaliteit verhogen',d:'Langere contracttermijnen en loyaliteitsprogrammas.',h:'0–12 mnd'},{t:'Werkgeversmerk opbouwen',d:'Investeer in cultuur om talent te behouden.',h:'6–24 mnd'}]},
+  'zelfstandig-doorgroeien':{name:'Zelfstandig doorgroeien',fit:s=>{
+    // Sterk bij: hoge commerciele kracht, goede winstkwaliteit, lage partnerafhankelijkheid risico, voldoende schaal
+    const base=Math.round((s.commercieel*0.3+s.winst*0.25+s.schaal*0.25+s.personeel*0.2));
+    // Bonus als opvolging op orde en niet te fusiegericht
+    const bonus=(s.opvolging>60?5:0)+(s.fusie<50?5:0);
+    return Math.min(100,base+bonus);
+  },actions:[{t:'Versterk de commerciële pipeline',d:'Introduceer een gestructureerd CRM-proces en acquisitieritme.',h:'0–6 mnd'},{t:'Verbreed de managementlaag',d:'Benoem een MT zodat groei niet afhangt van de eigenaar.',h:'6–12 mnd'},{t:'Verken aangrenzende diensten',d:'Identificeer onbediende klantbehoeften en ontwikkel aanvullend aanbod.',h:'6–18 mnd'},{t:'Monitor KPIs maandelijks',d:'Omzet per fte, NPS en churn als vaste stuurindicatoren.',h:'Continu'}]},
+  'regionaliseren':{name:'Regionaliseren',fit:s=>{
+    // Sterk bij: hoge fusiegereedheid, redelijke schaal, actief commercieel, maar niet top-performer
+    const base=Math.round((s.fusie*0.35+s.schaal*0.25+s.commercieel*0.2+s.auto*0.2));
+    // Alleen relevant als fusie hoog en zelfstandig groeien minder voor de hand ligt
+    const bonus=(s.fusie>65?8:0)+(s.schaal<60?5:0);
+    const penalty=(s.winst>80&&s.commercieel>80?-15:0); // bij topkantoren is regionaliseren minder urgent
+    return Math.min(100,base+bonus+penalty);
+  },actions:[{t:'Marktanalyse regionale kansen',d:"Breng in kaart welke regio's ondervoorzien zijn.",h:'0–3 mnd'},{t:'Acquisitie-longlist opstellen',d:"Identificeer 5–10 regionale kantoren die strategisch passend zijn.",h:'3–9 mnd'},{t:'Integratiespelboek ontwikkelen',d:'Documenteer IT-migratie, cultuurintegratie en klantoverdracht.',h:'6–12 mnd'},{t:'Regionaal merkverhaal versterken',d:'Investeer in lokale PR en partnerships.',h:'Continu'}]},
+  'niche-specialisatie':{name:'Niche-specialisatie',fit:s=>{
+    // Sterk bij: hoge winstkwaliteit maar lage schaal, of sterke strategische positie met lage commerciele kracht
+    const base=Math.round((s.winst*0.3+s.strategisch*0.3+(100-s.schaal)*0.2+s.klant*0.2));
+    const bonus=(s.strategisch>70?8:0)+(s.schaal<50?5:0);
+    return Math.min(100,base+bonus);
+  },actions:[{t:'Kies kernspecialisaties',d:'Baseer op bestaande portfolio, teamexpertise en marktpotentieel.',h:'0–3 mnd'},{t:'Bouw thought leadership op',d:'Publiceer sectoranalyses, spreek op branche-events.',h:'3–12 mnd'},{t:'Verdiep het dienstenaanbod',d:'Voeg waardering, sector-benchmarks en compliance toe.',h:'6–18 mnd'},{t:'Positioneer alle uitingen op de niche',d:'Herstel website, LinkedIn en pitch materials.',h:'0–6 mnd'}]},
+  'fusiepartner-zoeken':{name:'Fusiepartner zoeken',fit:s=>{
+    // Sterk bij: hoge fusiegereedheid, laag opvolgingsrisico (= risico aanwezig), matige schaal
+    const base=Math.round((s.fusie*0.4+(100-s.opvolging)*0.25+(100-s.schaal)*0.2+s.winst*0.15));
+    const bonus=(s.fusie>70?8:0)+((100-s.opvolging)>50?5:0);
+    return Math.min(100,base+bonus);
+  },actions:[{t:'Stel partnercriteria vast',d:'Definieer harde en zachte criteria.',h:'0–2 mnd'},{t:'M&A-adviseur inschakelen',d:'Werk met een adviseur met sectorervaring.',h:'1–3 mnd'},{t:'Due diligence-materiaal op orde',d:'Drie jaar jaarrekeningen, klantcontracten, procesbeschrijvingen.',h:'0–4 mnd'},{t:'Verkenningsgesprekken starten',d:'Voer gesprekken met 3–5 partijen onder NDA.',h:'3–9 mnd'}]},
+  'opvolging-voorbereiden':{name:'Opvolging voorbereiden',fit:s=>{
+    // Sterk bij: laag opvolgingsrisico score = hoog risico, hoge partnerafhankelijkheid risico
+    const base=Math.round(((100-s.opvolging)*0.5+(100-s.partner)*0.3+s.winst*0.2));
+    const bonus=((100-s.opvolging)>50?10:0);
+    return Math.min(100,base+bonus);
+  },actions:[{t:'Opvolgingskandidaat benoemen',d:'Identificeer intern talent en start een formeel traject.',h:'0–3 mnd'},{t:'Formeel opvolgingsplan opstellen',d:'Documenteer tijdlijn, verantwoordelijkheden en financiële structuur.',h:'0–6 mnd'},{t:'Klantrelatieoverdracht starten',d:'Introduceer opvolgers actief bij strategische klanten.',h:'Onmiddellijk'},{t:'Kantoorwaardering laten uitvoeren',d:'Verkrijg inzicht in de waarderingsbandbreedte.',h:'1–3 mnd'}]},
+  'pe-ready-maken':{name:'PE-ready maken',fit:s=>{
+    // Sterk bij: hoge winstkwaliteit + hoge fusiegereedheid + goede schaal + lage klantconcentratie risico
+    const base=Math.round((s.winst*0.35+s.fusie*0.3+s.schaal*0.2+s.klant*0.15));
+    const bonus=(s.winst>70&&s.fusie>70?10:0)+(s.auto>70?5:0);
+    const penalty=(s.opvolging<50?-10:0); // hoog opvolgingsrisico is dealbreaker voor PE
+    return Math.min(100,base+bonus+penalty);
+  },actions:[{t:'Terugkerende omzet maximaliseren',d:'Converteer naar abonnementen. Streef naar >70% recurring.',h:'0–12 mnd'},{t:'EBITDA-marge naar 25–35%',d:'Analyseer kostenstructuur en automatiseer lage-margewerk.',h:'6–18 mnd'},{t:'Klantconcentratie verlagen',d:'Target: geen klant >8% van omzet.',h:'12–24 mnd'},{t:'Managementrapportage professionaliseren',d:'Maandelijks KPI-dashboard en cashflow-forecast.',h:'0–6 mnd'}]},
+  'verkoop-voorbereiden':{name:'Verkoop binnen 3 jaar',fit:s=>{
+    const base=Math.round((s.fusie*0.35+s.winst*0.3+(100-s.opvolging)*0.2+s.klant*0.15));
+    const bonus=(s.winst>75&&s.fusie>65?8:0);
+    return Math.min(100,base+bonus);
+  },actions:[{t:'Verkoopgereed-stappenplan opstellen',d:'Concrete mijlpalen per kwartaal.',h:'0–3 mnd'},{t:'Overdraagbaarheid vergroten',d:'Verminder persoonsgebonden relaties.',h:'0–18 mnd'},{t:'Winstgevendheid optimaliseren',d:'Focus op hoge-marge diensten.',h:'0–12 mnd'},{t:'Bedrijfswaardering laten uitvoeren',d:'Begrijp de EBITDA-multiple-bandbreedte.',h:'3–6 mnd'}]},
+  'afweerstrategie':{name:'Consolidatie-afweer',fit:s=>{
+    // Sterk bij: lage fusiegereedheid, hoge klantbinding, sterke niche
+    const base=Math.round(((100-s.fusie)*0.3+s.klant*0.25+s.strategisch*0.25+(100-s.schaal)*0.2));
+    const bonus=(s.fusie<40?10:0)+(s.klant>70?5:0);
+    return Math.min(100,base+bonus);
+  },actions:[{t:'Unieke positionering versterken',d:'Maak overnemen minder logisch via niche en klantbinding.',h:'0–12 mnd'},{t:'Strategische allianties sluiten',d:'Werk samen in een netwerk zonder volledige fusie.',h:'6–18 mnd'},{t:'Klantloyaliteit verhogen',d:'Langere contracttermijnen en loyaliteitsprogrammas.',h:'0–12 mnd'},{t:'Werkgeversmerk opbouwen',d:'Investeer in cultuur om talent te behouden.',h:'6–24 mnd'}]},
 };
 
 /* ════════ STATE ════════ */
@@ -377,7 +420,7 @@ async function generateAI(){
     return sec.label+' (score: '+s[sec.id]+'/100):\n'+lines;
   }).join('\n\n');
 
-  const mainPrompt='Je bent een senior M&A-adviseur gespecialiseerd in Nederlandse accountantskantoren. Vandaag is het mei 2026.\n\nKANTOORPROFIEL:\n- Naam: '+naam+'\n- Regio: '+(p.regio||'Niet opgegeven')+'\n- Medewerkers: '+(p.fte||'Niet opgegeven')+' fte\n- Jaaromzet: '+(p.omzet||'Niet opgegeven')+'\n- Specialisme: '+(p.specialisme||'Generalistisch')+'\n- Doelgroep: '+(p.doelgroep||'MKB')+'\n- Software: '+(p.software||'Onbekend')+'\n- Ambitie: '+(p.ambitie||'Niet opgegeven')+'\n- Context: '+(p.context||'Geen aanvullende context')+'\n\nFINANCIELE KENGETALLEN (zelfgerapporteerd):\n- Omzet per fte: '+(p.omzetfte||'Niet opgegeven')+'\n- EBITDA-marge: '+(p.ebitda||'Niet opgegeven')+'\n- Aandeel vaste/abonnements-omzet: '+(p.recurring||'Niet opgegeven')+'\n\nSCORES (0-100):\n'+dims+'\n\nTotaalscore: '+ov+'/100 - '+vd.label+'\nAanbevolen scenario: '+top3+'\nAandachtspunten (score <55): '+risks+'\n\nSCHRIJFREGELS:\n- Gebruik "de scan suggereert", "dit profiel wijst op"\n- Noem scores altijd met het getal\n- Spreek eigenaar aan met u\n- GEEN tabellen of bulletpoints\n- Elke sectie minimaal 150 woorden\n\n## Kernboodschap\n## Kritieke inzichten\n[3 scores, min 200 woorden per inzicht]\n## Strategisch advies\n[Per fase, min 250 woorden]\n## Strategische scenarios - volledig uitgewerkt\n[Alle drie scenarios: waarom passend, drie fases, randvoorwaarden, risicos en kansen, min 200 woorden per scenario]\n## Eerste 90 dagen\n[3 genummerde acties als alineas]\n## Mogelijk onderbelicht risico\n[Exploratief, gebruik "de scan suggereert", "het is denkbaar dat". Eindig met zachte aanbeveling.]\n## Vervolgstap\n[Uitnodiging voor gesprek met Marcel Bisschops: 06 - 38 68 98 88 of marcel@bisschopsfinancing.nl]';
+  const mainPrompt='Je bent een senior M&A-adviseur gespecialiseerd in Nederlandse accountantskantoren. Vandaag is het mei 2026.\n\nKANTOORPROFIEL:\n- Naam: '+naam+'\n- Regio: '+(p.regio||'Niet opgegeven')+'\n- Medewerkers: '+(p.fte||'Niet opgegeven')+' fte\n- Jaaromzet: '+(p.omzet||'Niet opgegeven')+'\n- Specialisme: '+(p.specialisme||'Generalistisch')+'\n- Doelgroep: '+(p.doelgroep||'MKB')+'\n- Software: '+(p.software||'Onbekend')+'\n- Ambitie: '+(p.ambitie||'Niet opgegeven')+'\n- Context: '+(p.context||'Geen aanvullende context')+'\n\nFINANCIELE KENGETALLEN (zelfgerapporteerd):\n- Omzet per fte: '+(p.omzetfte||'Niet opgegeven')+'\n- EBITDA-marge: '+(p.ebitda||'Niet opgegeven')+'\n- Aandeel vaste/abonnements-omzet: '+(p.recurring||'Niet opgegeven')+'\n\nSCORES (0-100):\n'+dims+'\n\nTotaalscore: '+ov+'/100 - '+vd.label+'\nAanbevolen scenario: '+top3+'\nAandachtspunten (score <55): '+risks+'\n\nCORRELATIES EN VERBANDEN (analyseer deze expliciet):\n- Hoge fusiegereedheid + hoge winstkwaliteit = sterke onderhandelingspositie\n- Lage partnerafhankelijkheid + hoog opvolgingsrisico = structureel continuiteitsrisico\n- Hoge automatisering + lage schaalbaarheid = procesknelpunt buiten technologie\n- Hoge commerciele kracht + lage strategische positie = groei zonder richting\n- Lage personeelsdruk + hoge commerciele kracht = capaciteitsrisico bij verdere groei\n- Hoge winstkwaliteit + lage klantconcentratie = meest aantrekkelijk voor PE\n\nSCHRIJFREGELS:\n- Gebruik "de scan suggereert", "dit profiel wijst op"\n- Noem scores altijd met het getal\n- Spreek eigenaar aan met u\n- GEEN tabellen of bulletpoints\n- Benoem expliciet hoe scores elkaar versterken of tegenwerken\n- Elke sectie minimaal 150 woorden\n\n## Kernboodschap\n## Kritieke inzichten\n[3 scores, min 200 woorden per inzicht]\n## Strategisch advies\n[Per fase, min 250 woorden]\n## Strategische scenarios - volledig uitgewerkt\n[Alle drie scenarios: waarom passend, drie fases, randvoorwaarden, risicos en kansen, min 200 woorden per scenario]\n## Eerste 90 dagen\n[3 genummerde acties als alineas]\n## Mogelijk onderbelicht risico\n[Exploratief, gebruik "de scan suggereert", "het is denkbaar dat". Eindig met zachte aanbeveling.]\n## Vervolgstap\n[Uitnodiging voor gesprek met Marcel Bisschops: 06 - 38 68 98 88 of marcel@bisschopsfinancing.nl]';
 
   const appendixPrompt='Maak een leesbare bijlage van de ingevulde vragenlijst. Per dimensie: naam en score, dan per vraag de vraagtekst en het antwoord met betekenis. Lopende tekst, geen tabellen of bullets.\n\nINGEVULDE VRAGENLIJST:\n'+qa+'\n\nBegin direct met: ## Bijlage - Ingevulde vragenlijst';
 
@@ -402,27 +445,30 @@ async function generateAI(){
 
   // Collect in background, show steps
   function setStep(n){
-    const steps=document.querySelectorAll('.ai-gen-step');
-    steps.forEach((s,i)=>{
-      s.classList.remove('active','done');
-      if(i<n)s.classList.add('done');
-      if(i===n)s.classList.add('active');
-    });
+    for(let i=0;i<6;i++){
+      const el=document.getElementById('step-'+i);
+      if(!el)continue;
+      el.classList.remove('active','done');
+      if(i<n)el.classList.add('done');
+      if(i===n)el.classList.add('active');
+    }
   }
 
   try{
     ST.aiLoading=false;
     // Show loading UI
     const el=document.getElementById('ai-out');
-    if(el)el.innerHTML='<div class="ai-generating"><div class="ai-gen-spinner"></div><div class="ai-gen-title">Strategisch rapport wordt opgesteld...</div><div class="ai-gen-steps"><div class="ai-gen-step active"><div class="ai-gen-dot"></div>Kantoorprofiel analyseren</div><div class="ai-gen-step"><div class="ai-gen-dot"></div>Strategisch advies schrijven</div><div class="ai-gen-step"><div class="ai-gen-dot"></div>Scenario&#39;s uitwerken</div><div class="ai-gen-step"><div class="ai-gen-dot"></div>Bijlage samenstellen</div></div></div>';
+    if(el)el.innerHTML='<div class="ai-generating"><div class="ai-gen-spinner"></div><div class="ai-gen-title">Strategisch rapport wordt opgesteld...</div><div style="font-size:12px;color:var(--muted);margin-top:.25rem">Dit duurt 30–60 seconden</div><div class="ai-gen-steps"><div class="ai-gen-step active" id="step-0"><div class="ai-gen-dot"></div>Kantoorprofiel en scores analyseren</div><div class="ai-gen-step" id="step-1"><div class="ai-gen-dot"></div>Kritieke inzichten formuleren</div><div class="ai-gen-step" id="step-2"><div class="ai-gen-dot"></div>Strategisch advies per fase schrijven</div><div class="ai-gen-step" id="step-3"><div class="ai-gen-dot"></div>Scenario&#39;s volledig uitwerken</div><div class="ai-gen-step" id="step-4"><div class="ai-gen-dot"></div>90-dagen actieplan opstellen</div><div class="ai-gen-step" id="step-5"><div class="ai-gen-dot"></div>Bijlage met vragenlijst samenstellen</div></div></div>';
 
     // Collect main prompt silently
     let collected='';
     const resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:mainPrompt}]})});
     if(!resp.ok)throw new Error('HTTP '+resp.status);
     const reader=resp.body.getReader();
-    setTimeout(()=>setStep(1),2000);
-    setTimeout(()=>setStep(2),8000);
+    setTimeout(()=>setStep(1),4000);
+    setTimeout(()=>setStep(2),10000);
+    setTimeout(()=>setStep(3),18000);
+    setTimeout(()=>setStep(4),26000);
     while(true){
       const{done,value}=await reader.read();if(done)break;
       const chunk=dec.decode(value,{stream:true});
@@ -434,7 +480,7 @@ async function generateAI(){
       }
     }
 
-    setStep(3);
+    setStep(5);
     collected+='\n\n---\n\n';
 
     // Collect appendix silently
@@ -472,8 +518,8 @@ async function saveScanToGroup(){
   }catch(e){console.warn('Scan niet opgeslagen:',e);}
 }
 
-async function createGroup(name,email){
-  const resp=await fetch(`${WORKER}/group/create`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,admin_email:email})});
+async function createGroup(name,email,isPublic=true){
+  const resp=await fetch(`${WORKER}/group/create`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,admin_email:email,dashboard_public:isPublic})});
   return resp.json();
 }
 
@@ -536,7 +582,15 @@ function rIntro(){return`<div class="intro-wrap"><div class="intro-grid"></div><
 </div>
 </div><div class="intro-foot">Vertrouwelijk · Gebaseerd op PE &amp; M&amp;A-criteria · Powered by Claude AI</div></div></div>`;}
 
-function rGroupCreate(){return`<div class="page-wrap narrow"><div class="page-hdr"><div class="page-brand"><div class="wdot"></div>KantoorInzicht</div><div class="page-step">Groep aanmaken</div></div><div class="group-panel anim"><div class="group-panel-title">Nieuwe groep aanmaken</div><div class="group-panel-sub">U ontvangt een unieke 6-cijferige groepscode die u deelt met deelnemende kantoren.</div><div class="form-grid full"><div class="field"><label>Naam van de groep</label><input type="text" id="gc-name" placeholder="bijv. Accountantsvereniging Gelderland"></div></div><div class="form-grid full"><div class="field"><label>Uw e-mailadres (beheerder)</label><input type="email" id="gc-email" placeholder="u@kantoor.nl"></div></div><div class="note-box"><strong>U ontvangt een groepscode</strong> die u kunt delen via e-mail of WhatsApp. Deelnemers voeren deze code in bij "Deelnemen aan groep".</div><div style="display:flex;gap:10px"><button class="btn-ghost" id="back-intro">Terug</button><button class="btn-adv" id="do-create-group">Groep aanmaken</button></div></div></div>`;}
+function rGroupCreate(){return`<div class="page-wrap narrow"><div class="page-hdr"><div class="page-brand"><div class="wdot"></div>KantoorInzicht</div><div class="page-step">Groep aanmaken</div></div><div class="group-panel anim"><div class="group-panel-title">Nieuwe groep aanmaken</div><div class="group-panel-sub">U ontvangt een unieke 6-cijferige groepscode die u deelt met deelnemende kantoren.</div><div class="form-grid full"><div class="field"><label>Naam van de groep</label><input type="text" id="gc-name" placeholder="bijv. Accountantsvereniging Gelderland"></div></div><div class="form-grid full"><div class="field"><label>Uw e-mailadres (beheerder)</label><input type="email" id="gc-email" placeholder="u@kantoor.nl"></div></div>
+<div class="note-box" style="margin-bottom:1rem">
+<strong>Dashboard zichtbaarheid:</strong>
+<label style="display:flex;align-items:flex-start;gap:10px;margin-top:10px;cursor:pointer;font-size:13px;color:var(--sub)">
+<input type="checkbox" id="gc-public" checked style="width:16px;height:16px;accent-color:var(--teal);margin-top:2px;flex-shrink:0">
+<span>Deelnemers mogen het volledige dashboard zien, inclusief scores van andere kantoren</span>
+</label>
+</div>
+<div class="note-box"><strong>U ontvangt de groepscode per e-mail</strong> en kunt deze ook direct kopiëren. Deelnemers voeren de code in bij "Deelnemen aan groep".</div><div style="display:flex;gap:10px"><button class="btn-ghost" id="back-intro">Terug</button><button class="btn-adv" id="do-create-group">Groep aanmaken</button></div></div></div>`;}
 
 function rGroupCreated(){return`<div class="page-wrap narrow"><div class="page-hdr"><div class="page-brand"><div class="wdot"></div>KantoorInzicht</div><div class="page-step">Groep aangemaakt</div></div><div class="group-panel anim"><div class="group-panel-title">Groep aangemaakt</div><div class="group-panel-sub">Deel de onderstaande code met deelnemende kantoren.</div><div class="code-display">${ST.groupId||'------'}</div><div class="note-box"><strong>Dashboard:</strong> Voer de code in via "Dashboard bekijken" om resultaten te zien zodra kantoren de scan hebben ingevuld.</div><div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn-ghost" id="back-intro">Terug naar start</button><button class="btn-adv" id="view-dashboard-btn">Dashboard bekijken</button></div></div></div>`;}
 
@@ -546,7 +600,7 @@ function rDashboardError(){return`<div class="page-wrap narrow"><div class="page
 
 function rIntake(){
   const p=ST.profile;
-  return`<div class="page-wrap narrow"><div class="page-hdr"><div class="page-brand"><div class="wdot"></div>KantoorInzicht</div><div class="page-step">STAP 1 — Kantoorprofiel</div></div><div class="anim"><div style="font-family:'Playfair Display',serif;font-size:1.8rem;color:var(--white);font-weight:600;margin-bottom:.5rem">Vertel ons over uw kantoor</div><div style="font-size:13px;color:var(--mid);line-height:1.65;margin-bottom:2rem">Deze gegevens personaliseren uw AI-adviesrapport.${ST.groupId?` <span style="color:var(--teal)">Deelname aan groep <strong>${ST.groupId}</strong>.</span>`:''}</div></div>${ST.groupId?`<div class="note-box anim a1"><strong>Anoniem deelnemen:</strong><label style="display:flex;align-items:center;gap:8px;margin-top:8px;cursor:pointer;font-size:13px;color:var(--sub)"><input type="checkbox" id="anon-check" ${p.naamAnon?'checked':''} style="width:16px;height:16px;accent-color:var(--teal)">Mijn kantoornaam niet zichtbaar maken in het groepsdashboard</label></div>`:''}<div class="form-grid anim a1"><div class="field"><label>Naam kantoor</label><input type="text" id="f-naam" placeholder="bijv. Bakker &amp; Partners" value="${p.naam}" ${p.naamAnon?'disabled style="opacity:.4"':''}></div><div class="field"><label>E-mailadres (optioneel)</label><input type="email" id="f-email" placeholder="u@kantoor.nl" value="${p.email}"></div><div class="field"><label>Regio</label><input type="text" id="f-regio" placeholder="bijv. Achterhoek, Maastricht" value="${p.regio}"></div><div class="field"><label>Aantal medewerkers (fte)</label><select id="f-fte"><option value="">Selecteer...</option>${['1–3','4–8','9–15','16–30','31–60','60+'].map(v=>`<option${p.fte===v?' selected':''}>${v}</option>`).join('')}</select></div><div class="field"><label>Geschatte jaaromzet</label><select id="f-omzet"><option value="">Selecteer...</option>${['< €300k','€300k – €700k','€700k – €1,5m','€1,5m – €3m','€3m – €7m','€7m – €15m','€15m – €30m','€30m – €75m','€75m – €150m','> €150m'].map(v=>`<option${p.omzet===v?' selected':''}>${v}</option>`).join('')}</select></div><div class="field"><label>Specialisme of niche</label><input type="text" id="f-spec" placeholder="bijv. agri, vastgoed, zorg" value="${p.specialisme}"></div><div class="field"><label>Primaire doelgroep</label><input type="text" id="f-doel" placeholder="bijv. MKB, ZZP" value="${p.doelgroep}"></div><div class="field"><label>Gebruikte software</label><input type="text" id="f-sw" placeholder="bijv. Exact, Twinfield, Yuki" value="${p.software}"></div><div class="field"><label>Omzet per fte (schatting)</label><input type="text" id="f-omzet-fte" placeholder="bijv. €120.000" value="${p.omzetfte}"></div>
+  return`<div class="page-wrap narrow"><div class="page-hdr"><div class="page-brand"><div class="wdot"></div>KantoorInzicht</div><div class="page-step">STAP 1 — Kantoorprofiel</div></div><div class="anim"><div style="font-family:'Playfair Display',serif;font-size:1.8rem;color:var(--white);font-weight:600;margin-bottom:.5rem">Vertel ons over uw kantoor</div><div style="font-size:13px;color:var(--mid);line-height:1.65;margin-bottom:2rem">Deze gegevens personaliseren uw AI-adviesrapport.${ST.groupId?` <span style="color:var(--teal)">Deelname aan groep <strong>${ST.groupId}</strong>.</span>`:''}</div></div>${ST.groupId?`<div class="note-box anim a1"><strong>Anoniem deelnemen:</strong><label style="display:flex;align-items:center;gap:8px;margin-top:8px;cursor:pointer;font-size:13px;color:var(--sub)"><input type="checkbox" id="anon-check" ${p.naamAnon?'checked':''} style="width:16px;height:16px;accent-color:var(--teal)">Mijn kantoornaam niet zichtbaar maken in het groepsdashboard</label></div>`:''}<div class="form-grid anim a1"><div class="field"><label>Naam kantoor</label><input type="text" id="f-naam" placeholder="bijv. Bakker &amp; Partners" value="${p.naam}" ${p.naamAnon?'disabled style="opacity:.4"':''}></div><div class="field"><label>E-mailadres (optioneel)</label><input type="email" id="f-email" placeholder="u@kantoor.nl" value="${p.email}"></div><div class="field"><label>Regio</label><input type="text" id="f-regio" placeholder="bijv. Achterhoek, Maastricht" value="${p.regio}"></div><div class="field"><label>Aantal medewerkers (exact)</label><input type="number" id="f-fte" placeholder="bijv. 12" min="1" max="999" value="${p.fte}"></div><div class="field"><label>Jaaromzet</label><input type="text" id="f-omzet" placeholder="bijv. €2.400.000" value="${p.omzet}"></div><div class="field"><label>Specialisme of niche</label><input type="text" id="f-spec" placeholder="bijv. agri, vastgoed, zorg" value="${p.specialisme}"></div><div class="field"><label>Primaire doelgroep</label><input type="text" id="f-doel" placeholder="bijv. MKB, ZZP" value="${p.doelgroep}"></div><div class="field"><label>Gebruikte software</label><input type="text" id="f-sw" placeholder="bijv. Exact, Twinfield, Yuki" value="${p.software}"></div><div class="field"><label>Omzet per fte (schatting)</label><input type="text" id="f-omzet-fte" placeholder="bijv. €120.000" value="${p.omzetfte}"></div>
 <div class="field"><label>Geschatte EBITDA-marge</label><input type="text" id="f-ebitda" placeholder="bijv. 22%" value="${p.ebitda}"></div>
 <div class="field"><label>Aandeel vaste/abonnements-omzet</label><input type="text" id="f-recurring" placeholder="bijv. 65%" value="${p.recurring}"></div>
 <div class="field"><label>Strategische ambitie</label><select id="f-ambitie"><option value="">Selecteer...</option>${['Stabiel houden','Groeien (organisch)','Groeien (via overnames)','Fusie of samenwerking','Verkoop (3–7 jaar)','Opvolging regelen'].map(v=>`<option${p.ambitie===v?' selected':''}>${v}</option>`).join('')}</select></div></div><div class="form-grid full anim a2"><div class="field"><label>Aanvullende context (optioneel)</label><textarea id="f-context" placeholder="Wat speelt er momenteel?">${p.context}</textarea></div></div><div class="note-box anim a2">
@@ -627,8 +681,9 @@ function bindEvents(){
     const name=$('gc-name')?.value?.trim();const email=$('gc-email')?.value?.trim();
     if(!name||!email){alert('Vul naam en e-mail in.');return;}
     const btn=$('do-create-group');if(btn){btn.disabled=true;btn.textContent='Aanmaken...';}
-    const data=await createGroup(name,email);
-    if(data.group_id){ST.groupId=data.group_id;ST.screen='group-created';render();}
+    const isPublic=document.getElementById('gc-public')?.checked!==false;
+    const data=await createGroup(name,email,isPublic);
+    if(data.group_id){ST.groupId=data.group_id;ST.groupPublic=isPublic;ST.screen='group-created';render();}
     else alert('Fout: '+(data.error||'Onbekend'));
   });
   on('view-dashboard-btn','click',()=>loadGroup(ST.groupId));
