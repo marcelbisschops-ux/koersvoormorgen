@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Strategische Kantoor Scan — KantoorInzicht</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --void:#faf9f6;--panel:#ffffff;--card:#f0eeea;
+  --border:#dddbd4;--border2:#c8c5bc;--muted:#8a8880;--mid:#5a5854;
+  --body:#4a4845;--sub:#2a2825;--head:#1a1815;--white:#0a0805;
+  --teal:#1a7a5e;--teal-dim:#145f48;--teal-dark:#0a3d2e;--teal-bg:rgba(34,197,160,.1);
+  --gold:#c9a84c;--gold-bg:rgba(201,168,76,.12);
+  --red:#e05252;--red-bg:rgba(224,82,82,.1);
+  --r:6px;--r2:10px;
+}
+html{scroll-behavior:smooth}
+body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--body);min-height:100vh;font-size:15px;line-height:1.6}
+.mono{font-family:'IBM Plex Mono',monospace}
+#app{min-height:100vh}
+.page-wrap{max-width:900px;margin:0 auto;padding:2rem 2rem 5rem}
+.page-wrap.narrow{max-width:680px}
+.page-hdr{display:flex;align-items:center;justify-content:space-between;padding:1.5rem 0;border-bottom:1px solid var(--border);margin-bottom:2.5rem}
+.page-brand{font-size:11px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:8px}
+.page-step{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted)}
+.wdot{width:6px;height:6px;border-radius:50%;background:var(--teal);flex-shrink:0}
+.sec-lbl{font-size:10px;font-weight:600;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-bottom:1rem;display:flex;align-items:center;gap:10px}
+.sec-lbl::after{content:'';flex:1;height:1px;background:var(--border)}
+.btn-ghost{background:transparent;border:1px solid var(--border2);color:var(--mid);font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:500;padding:10px 20px;border-radius:var(--r);cursor:pointer;transition:all .12s}
+.btn-ghost:hover{border-color:var(--mid);color:var(--sub)}
+.btn-ghost:disabled{opacity:0;pointer-events:none}
+.btn-adv{background:var(--teal);color:var(--void);font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;padding:10px 24px;border-radius:var(--r);border:none;cursor:pointer;transition:all .12s}
+.btn-adv:hover{background:var(--teal-dim)}
+.btn-adv:disabled{background:var(--border2);color:var(--muted);cursor:default}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.field.required label::after{content:' *';color:var(--red);font-size:11px}
+.field.required input,.field.required select,.field.required textarea{border-color:var(--border2)}
+.field.required input:not([value='']),.field.required select:not([value='']){border-color:var(--teal)}
+.field input,.field select,.field textarea{background:var(--panel);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:'IBM Plex Sans',sans-serif;font-size:13px;padding:10px 12px;outline:none;transition:border-color .12s;-webkit-appearance:none;width:100%}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--teal)}
+.field select option{background:var(--panel)}
+.field textarea{resize:vertical;min-height:70px}
+.field input::placeholder,.field textarea::placeholder{color:var(--muted)}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:1.5rem}
+.form-grid.full{grid-template-columns:1fr}
+.intro-wrap{min-height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:4rem 2rem;position:relative;overflow:hidden}
+.intro-wrap::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 600px 400px at 70% 30%,rgba(34,197,160,.04),transparent 70%),radial-gradient(ellipse 400px 600px at 20% 80%,rgba(201,168,76,.03),transparent 70%);pointer-events:none}
+.intro-grid{position:absolute;inset:0;background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);background-size:60px 60px;opacity:.4;pointer-events:none}
+.intro-inner{max-width:700px;width:100%;text-align:center;position:relative;z-index:1}
+.wordmark{display:inline-flex;align-items:center;gap:10px;margin-bottom:2.5rem;font-size:11px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}
+.eyebrow{font-size:11px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--teal);margin-bottom:1.25rem}
+.intro-h1{font-family:'Playfair Display',serif;font-size:clamp(2.2rem,5vw,3.6rem);font-weight:600;color:var(--white);line-height:1.1;margin-bottom:1.25rem}
+.intro-h1 em{font-style:italic;color:var(--teal)}
+.intro-sub{font-size:15px;color:var(--sub);line-height:1.75;max-width:500px;margin:0 auto 2.5rem;font-weight:300}
+.kpi-row{display:flex;justify-content:center;gap:2rem;margin-bottom:2.5rem;flex-wrap:wrap}
+.kpi-item{text-align:center}
+.kpi-num{font-family:'Playfair Display',serif;font-size:2rem;font-weight:600;color:var(--head);line-height:1;margin-bottom:.2rem}
+.kpi-lbl{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.kpi-div{width:1px;height:36px;background:var(--border2);align-self:center}
+.dim-row{display:flex;flex-wrap:wrap;justify-content:center;gap:7px;margin-bottom:2.5rem}
+.dim-chip{font-size:11px;font-weight:500;padding:4px 11px;border-radius:3px;border:1px solid var(--border2);color:var(--mid);background:var(--panel)}
+.intro-foot{margin-top:3rem;font-size:11px;color:var(--muted);display:flex;align-items:center;gap:8px;justify-content:center}
+.intro-foot::before,.intro-foot::after{content:'';flex:1;max-width:80px;height:1px;background:var(--border)}
+.route-cards{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:2.5rem;max-width:580px;margin-left:auto;margin-right:auto}
+@media(max-width:500px){.route-cards{grid-template-columns:1fr}}
+.route-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.5rem;text-align:left;cursor:pointer;transition:all .15s;display:flex;flex-direction:column;gap:.75rem}
+.route-card:hover{border-color:var(--teal);transform:translateY(-2px)}
+.route-icon{font-size:1.4rem}
+.route-title{font-family:'Playfair Display',serif;font-size:1.1rem;color:var(--head);font-weight:600}
+.route-desc{font-size:12px;color:var(--mid);line-height:1.6}
+.group-panel{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:2rem;margin-bottom:2rem}
+.group-panel-title{font-family:'Playfair Display',serif;font-size:1.3rem;color:var(--head);font-weight:600;margin-bottom:.4rem}
+.group-panel-sub{font-size:13px;color:var(--mid);line-height:1.65;margin-bottom:1.5rem}
+.code-display{font-family:'IBM Plex Mono',monospace;font-size:2.4rem;font-weight:500;color:var(--teal);letter-spacing:.2em;text-align:center;padding:1.5rem;background:var(--card);border:1px solid var(--border2);border-radius:var(--r2);margin:1.5rem 0}
+.note-box{font-size:12px;color:var(--muted);line-height:1.6;padding:12px 14px;background:var(--card);border:1px solid var(--border);border-radius:var(--r);margin-bottom:1.5rem}
+.note-box strong{color:var(--sub)}
+.prog-section{margin-bottom:2.5rem}
+.prog-top{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:.75rem}
+.prog-lbl{font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--teal)}
+.prog-frac{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted)}
+.prog-track{height:2px;background:var(--border2);border-radius:1px;position:relative;overflow:visible}
+.prog-fill{height:100%;background:var(--teal);border-radius:1px;transition:width .5s cubic-bezier(.4,0,.2,1);position:relative}
+.prog-fill::after{content:'';position:absolute;right:-3px;top:-3px;width:8px;height:8px;border-radius:50%;background:var(--teal);box-shadow:0 0 12px rgba(34,197,160,.5)}
+.prog-steps{display:flex;gap:3px;margin-top:10px}
+.p-step{flex:1;height:3px;border-radius:1px;background:var(--border);transition:background .3s}
+.p-step.done{background:var(--teal-dark)}
+.p-step.active{background:var(--teal)}
+.sec-badge{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500;color:var(--teal);border:1px solid var(--teal-dark);background:var(--teal-bg);padding:2px 8px;border-radius:3px;display:inline-block;margin-bottom:.6rem}
+.sec-title{font-family:'Playfair Display',serif;font-size:1.5rem;color:var(--white);font-weight:600;margin-bottom:.4rem}
+.sec-desc{font-size:14px;color:var(--mid);line-height:1.65;margin-bottom:2rem}
+.q-stack{display:flex;flex-direction:column;gap:12px;margin-bottom:2.5rem}
+.q-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem 1.5rem;transition:border-color .15s}
+.q-card.answered{border-color:var(--border2)}
+.q-row{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin-bottom:1rem}
+.q-text{font-size:14px;color:var(--sub);line-height:1.6;flex:1}
+.q-hint{font-size:11px;color:var(--muted);font-style:italic;margin-top:3px}
+.q-val{font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:500;color:var(--muted);min-width:24px;text-align:right;flex-shrink:0;transition:color .12s}
+.q-val.set{color:var(--teal)}
+.likert{display:flex;gap:6px}
+.l-btn{flex:1;border:1px solid var(--border);background:var(--card);color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:500;padding:9px 4px;border-radius:var(--r);cursor:pointer;transition:all .1s;text-align:center}
+.l-btn:hover{border-color:var(--border2);color:var(--sub);background:var(--panel)}
+.l-btn.sel{background:var(--teal-bg);border-color:var(--teal);color:var(--teal)}
+.likert-axis{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);letter-spacing:.05em;margin-top:6px;padding:0 2px;text-transform:uppercase}
+.scan-nav{display:flex;align-items:center;justify-content:space-between;padding:1.5rem 0 0;border-top:1px solid var(--border)}
+.nav-info{font-size:12px;color:var(--muted);font-family:'IBM Plex Mono',monospace}
+.r-header{border-bottom:1px solid var(--border);padding:1.5rem 0 2rem;margin-bottom:2.5rem}
+.r-brand-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem}
+.r-brand{font-size:11px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:8px}
+.r-date{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted)}
+.kantoor-slug{font-family:'Playfair Display',serif;font-size:1rem;color:var(--teal);font-style:italic;margin-bottom:.3rem}
+.report-title{font-family:'Playfair Display',serif;font-size:clamp(1.6rem,3.5vw,2.4rem);font-weight:600;color:var(--white);line-height:1.1;margin-bottom:.5rem}
+.report-title em{font-style:italic;color:var(--teal)}
+.report-sub{font-size:13px;color:var(--mid);line-height:1.65}
+.score-hero{display:flex;align-items:center;gap:2rem;background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:2rem 2.5rem;margin-bottom:1.25rem}
+.score-circle{position:relative;flex-shrink:0;width:110px;height:110px}
+.score-circle svg{transform:rotate(-90deg)}
+.score-inner{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.score-big{font-family:'Playfair Display',serif;font-size:2.2rem;font-weight:600;color:var(--white);line-height:1}
+.score-denom{font-size:11px;color:var(--muted);font-family:'IBM Plex Mono',monospace}
+.score-explain{font-size:13px;color:var(--mid);line-height:1.65}
+.bench-strip{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:12px 16px;margin-bottom:2rem;font-size:12px;flex-wrap:wrap}
+.bench-lbl{color:var(--muted);font-weight:500;white-space:nowrap}
+.bench-track{flex:1;min-width:120px;height:6px;background:var(--border2);border-radius:3px;position:relative}
+.bench-bar{height:100%;border-radius:3px;background:var(--teal)}
+.bench-marker{position:absolute;top:-3px;width:12px;height:12px;border-radius:50%;border:2px solid var(--gold);background:var(--panel);transform:translateX(-50%)}
+.bench-leg{display:flex;gap:12px;flex-shrink:0}
+.bench-leg-item{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--muted)}
+.bench-dot{width:8px;height:8px;border-radius:50%}
+.dim-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:2.5rem}
+@media(max-width:560px){.dim-grid{grid-template-columns:1fr}}
+.dim-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:14px 16px;display:flex;flex-direction:column;gap:8px}
+.dim-top{display:flex;align-items:center;justify-content:space-between}
+.dim-name{font-size:12px;font-weight:500;color:var(--sub)}
+.dim-val{font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:500}
+.dim-bar-bg{height:4px;background:var(--border2);border-radius:2px;overflow:hidden}
+.dim-bar{height:100%;border-radius:2px;transition:width .8s cubic-bezier(.4,0,.2,1)}
+.dim-flag{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase}
+.matrix-sec{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:2rem;margin-bottom:2.5rem}
+.matrix-title{font-family:'Playfair Display',serif;font-size:1.1rem;color:var(--head);font-weight:600;margin-bottom:.25rem}
+.matrix-sub{font-size:12px;color:var(--muted);margin-bottom:1.5rem}
+.matrix-body{display:flex;gap:2rem;align-items:flex-start;flex-wrap:wrap}
+.quadrant-list{flex:1;min-width:180px;display:flex;flex-direction:column;gap:8px}
+.q-item{display:flex;align-items:flex-start;gap:8px;padding:8px 10px;border-radius:var(--r);border:1px solid transparent;font-size:12px}
+.q-item.active{border-color:var(--teal);background:var(--teal-bg)}
+.q-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:3px}
+.q-iname{color:var(--sub);font-weight:500;line-height:1.4}
+.q-idesc{color:var(--muted);margin-top:2px;line-height:1.4}
+.scenario-cards{display:flex;flex-direction:column;gap:10px;margin-bottom:2.5rem}
+.sc-card{border-radius:var(--r2);border:1px solid var(--border);overflow:hidden}
+.sc-hdr{display:flex;align-items:center;gap:12px;padding:1rem 1.5rem;background:var(--panel);cursor:pointer;transition:background .12s}
+.sc-hdr:hover{background:var(--card)}
+.sc-rank{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:500;border:1px solid var(--border2);color:var(--muted);padding:2px 7px;border-radius:3px;flex-shrink:0}
+.sc-rank.pri{border-color:var(--teal-dark);color:var(--teal);background:var(--teal-bg)}
+.sc-name{font-size:14px;font-weight:600;color:var(--head);flex:1}
+.sc-name.pri{color:var(--teal)}
+.sc-fit{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted)}
+.sc-chev{color:var(--muted);font-size:11px;transition:transform .2s}
+.sc-chev.open{transform:rotate(180deg)}
+.sc-body{padding:1.25rem 1.5rem;background:var(--card);border-top:1px solid var(--border);display:none}
+.sc-body.open{display:block}
+.actions-lbl{font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem}
+.action-items{display:flex;flex-direction:column;gap:8px}
+.action-item{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:var(--panel);border-radius:var(--r);border:1px solid var(--border)}
+.act-num{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:500;color:var(--teal);border:1px solid var(--teal-dark);background:var(--teal-bg);padding:1px 6px;border-radius:2px;flex-shrink:0;margin-top:1px}
+.act-title{font-size:13px;color:var(--sub);font-weight:500;line-height:1.5}
+.act-desc{font-size:12px;color:var(--mid);line-height:1.5;margin-top:2px}
+.act-horizon{font-size:10px;color:var(--muted);font-family:'IBM Plex Mono',monospace;margin-top:3px}
+.ai-panel{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);overflow:hidden;margin-bottom:2.5rem}
+.ai-panel-hdr{display:flex;align-items:center;justify-content:space-between;padding:1.25rem 1.5rem;border-bottom:1px solid var(--border);background:var(--card);gap:1rem;flex-wrap:wrap}
+.ai-badge-el{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:3px;background:rgba(34,197,160,.12);color:var(--teal);border:1px solid var(--teal-dark)}
+.ai-title-group{display:flex;align-items:center;gap:10px}
+.ai-panel-name{font-family:'Playfair Display',serif;font-size:1rem;color:var(--head);font-weight:600}
+.ai-panel-sub{font-size:12px;color:var(--muted);margin-top:1px}
+.btn-gen{display:flex;align-items:center;gap:8px;background:var(--teal);color:var(--void);font-family:'IBM Plex Sans',sans-serif;font-size:12px;font-weight:600;padding:9px 18px;border-radius:var(--r);border:none;cursor:pointer;transition:all .12s;white-space:nowrap;flex-shrink:0}
+.btn-gen:hover{background:var(--teal-dim)}
+.btn-gen:disabled{background:var(--border2);color:var(--muted);cursor:default}
+.ai-body{padding:1.5rem}
+.ai-placeholder{text-align:center;padding:2.5rem 1rem}
+.ai-placeholder-icon{font-size:2rem;margin-bottom:.75rem;opacity:.35}
+.ai-placeholder-text{font-size:13px;color:var(--muted);line-height:1.65;max-width:400px;margin:0 auto}
+.ai-loading{display:flex;align-items:center;gap:12px;padding:.5rem 0;font-size:13px;color:var(--mid)}
+.ai-spinner{width:16px;height:16px;border-radius:50%;border:2px solid var(--border2);border-top-color:var(--teal);animation:spin .7s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+.ai-output{font-size:14px;color:var(--mid);line-height:1.8}
+.ai-output h3{font-family:'Playfair Display',serif;font-size:1.05rem;color:var(--head);font-weight:600;margin:1.25rem 0 .5rem;padding-top:1.25rem;border-top:1px solid var(--border)}
+.ai-output h3:first-child{margin-top:0;padding-top:0;border-top:none}
+.ai-output p{margin-bottom:.65rem}
+.ai-output strong{color:var(--sub);font-weight:600}
+.ai-output ul{margin:.5rem 0 .75rem 1.1rem;display:flex;flex-direction:column;gap:3px}
+.ai-output ul li{font-size:13px}
+.ai-cursor{display:inline-block;width:2px;height:14px;background:var(--teal);margin-left:2px;vertical-align:text-bottom;animation:blink .8s steps(1) infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+.r-footer{border-top:1px solid var(--border);padding-top:2rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-top:1rem}
+.footer-note{font-size:12px;color:var(--muted);max-width:380px;line-height:1.6}
+.footer-btns{display:flex;gap:10px;flex-wrap:wrap}
+.btn-print{background:transparent;border:1px solid var(--border2);color:var(--mid);font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:500;padding:10px 18px;border-radius:var(--r);cursor:pointer;transition:all .12s}
+.btn-print:hover{border-color:var(--mid);color:var(--sub)}
+.btn-restart{background:var(--teal);color:var(--void);font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;padding:10px 20px;border-radius:var(--r);border:none;cursor:pointer;transition:all .12s}
+.btn-restart:hover{background:var(--teal-dim)}
+.dash-head{margin-bottom:2.5rem}
+.dash-title{font-family:'Playfair Display',serif;font-size:2rem;color:var(--white);font-weight:600;margin-bottom:.4rem}
+.dash-title em{font-style:italic;color:var(--teal)}
+.dash-sub{font-size:13px;color:var(--mid)}
+.dash-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:2.5rem}
+@media(max-width:600px){.dash-stats{grid-template-columns:repeat(2,1fr)}}
+.stat-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;text-align:center}
+.stat-num{font-family:'Playfair Display',serif;font-size:2rem;font-weight:600;color:var(--head);line-height:1;margin-bottom:.3rem}
+.stat-lbl{font-size:11px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.radar-wrap{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.5rem;margin-bottom:2rem}
+.radar-title{font-family:'Playfair Display',serif;font-size:1.1rem;color:var(--head);font-weight:600;margin-bottom:.25rem}
+.radar-sub{font-size:12px;color:var(--muted);margin-bottom:1.25rem}
+.office-list{display:flex;flex-direction:column;gap:10px;margin-bottom:2.5rem}
+.office-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);overflow:hidden}
+.office-hdr{display:flex;align-items:center;gap:12px;padding:1rem 1.5rem;cursor:pointer;transition:background .12s}
+.office-hdr:hover{background:var(--card)}
+.office-rank{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);min-width:24px}
+.office-name{font-size:14px;font-weight:600;color:var(--head);flex:1}
+.office-meta{font-size:11px;color:var(--muted);display:flex;gap:8px;flex-wrap:wrap}
+.office-score{font-family:'IBM Plex Mono',monospace;font-size:1.2rem;font-weight:500;flex-shrink:0}
+.office-chev{color:var(--muted);font-size:11px;transition:transform .2s}
+.office-chev.open{transform:rotate(180deg)}
+.office-body{display:none;padding:1.25rem 1.5rem;border-top:1px solid var(--border);background:var(--card)}
+.office-body.open{display:block}
+.office-dim-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:1rem}
+@media(max-width:560px){.office-dim-grid{grid-template-columns:repeat(2,1fr)}}
+.office-dim{background:var(--panel);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px}
+.office-dim-name{font-size:11px;color:var(--muted);margin-bottom:4px}
+.office-dim-bar{height:3px;background:var(--border2);border-radius:2px;overflow:hidden;margin-bottom:4px}
+.office-dim-fill{height:100%;border-radius:2px}
+.office-dim-val{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500}
+.compare-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1rem;margin-bottom:2.5rem}
+@media(max-width:560px){.compare-grid{grid-template-columns:1fr}}
+.compare-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem}
+.compare-title{font-size:12px;font-weight:600;color:var(--sub);margin-bottom:.75rem;letter-spacing:.04em}
+.compare-item{display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)}
+.compare-item:last-child{border-bottom:none}
+.compare-name{font-size:12px;color:var(--mid)}
+.compare-val{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500}
+.loading-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;gap:1.5rem}
+.loading-screen .ai-spinner{width:32px;height:32px;border-width:3px}
+.loading-screen p{font-size:14px;color:var(--mid)}
+.error-screen{text-align:center;padding:4rem 2rem}
+.error-screen h3{font-family:'Playfair Display',serif;font-size:1.4rem;color:var(--head);margin-bottom:.75rem}
+.error-screen p{font-size:14px;color:var(--mid);margin-bottom:1.5rem}
+@media print{
+  @page{margin:1cm;size:A4}
+  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+  body{background:#fff!important;color:#000!important;font-size:12px}
+  #app{min-height:auto}
+  .anim,.a1,.a2,.a3,.a4{opacity:1!important;animation:none!important}
+  .ai-panel,.score-hero,.dim-card,.sc-card,.matrix-sec,.r-footer,.group-panel{break-inside:avoid}
+  .sc-body{display:block!important}
+  .btn-gen,.btn-print,.btn-restart,.btn-ghost,.footer-btns{display:none!important}
+  .r-footer{border-top:1px solid #ddd;padding-top:1rem}
+  header,footer{display:none!important}
+}
+.ai-generating{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:3rem 2rem;text-align:center;gap:1.5rem}
+.ai-gen-title{font-family:'Playfair Display',serif;font-size:1.1rem;color:var(--head);font-weight:600}
+.ai-gen-bar-wrap{width:280px;height:6px;background:var(--border2);border-radius:3px;overflow:hidden}
+.ai-gen-bar{height:100%;background:var(--teal);border-radius:3px;width:0%;transition:width 1.5s ease}
+.ai-gen-steps{display:flex;flex-direction:column;gap:6px;text-align:left;min-width:220px;margin-top:.5rem}
+.ai-gen-step{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);transition:all .3s}
+.ai-gen-step.active{color:var(--teal);font-weight:500}
+.ai-gen-step.done{color:var(--mid)}
+.ai-gen-dot{width:6px;height:6px;border-radius:50%;background:var(--border2);flex-shrink:0;transition:background .3s}
+.ai-gen-step.active .ai-gen-dot{background:var(--teal);box-shadow:0 0 8px rgba(26,122,94,.4)}
+.ai-gen-step.done .ai-gen-dot{background:var(--teal)}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.anim{animation:fadeUp .35s ease forwards}
+.a1{animation-delay:.06s;opacity:0}.a2{animation-delay:.12s;opacity:0}.a3{animation-delay:.18s;opacity:0}.a4{animation-delay:.24s;opacity:0}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+
+/* ════════ CONFIG ════════ */
+const WORKER = 'https://kantoorinzicht.marcel-bisschops.workers.dev';
+
+/* ════════ DATA ════════ */
+const SECTIONS=[
+  {id:'strategisch',label:'Strategische positie',icon:'I',desc:'Hoe helder en onderscheidend is de strategische koers van het kantoor?',questions:[
+    {id:'s1',q:'Het kantoor heeft een uitgesproken, herkenbare positionering in de markt.',hint:'bijv. niche, doelgroep, regio of prijssegment'},
+    {id:'s2',q:'Er is een gedragen langetermijnvisie (3–5 jaar) die richting geeft aan beslissingen.',hint:null},
+    {id:'s3',q:'Het kantoor onderscheidt zich aantoonbaar van directe concurrenten op meer dan alleen prijs.',hint:null},
+  ]},
+  {id:'opvolging',label:'Opvolgingsrisico',icon:'II',desc:'Is de eigendoms- en managementcontinuïteit geborgd voor de komende 5–10 jaar?',questions:[
+    {id:'o1',q:'Er is een formeel en concreet opvolgingsplan voor eigenaren en sleutelpartners.',hint:null},
+    {id:'o2',q:'Potentiële interne opvolgers zijn aangewezen en worden actief klaargestoomd.',hint:null},
+    {id:'o3',q:'Het kantoor kan operationeel doordraaien bij langdurige uitval van een eigenaar.',hint:null},
+  ]},
+  {id:'winst',label:'Winstkwaliteit',icon:'III',desc:'Zijn de inkomsten structureel, voorspelbaar en weerbaar tegen marktdruk?',questions:[
+    {id:'w1',q:'Een significant deel van de omzet bestaat uit vaste abonnementen of retainer-tarieven.',hint:'terugkerende omzet is waarderingsrelevant'},
+    {id:'w2',q:'De EBITDA-marge is in lijn met of beter dan de branchebenchmark van 20–30%.',hint:null},
+    {id:'w3',q:'De omzet per fte is stabiel of groeiend over de afgelopen drie jaar.',hint:null},
+  ]},
+  {id:'schaal',label:'Schaalbaarheid',icon:'IV',desc:'Kan het kantoor groeien zonder evenredige groei in kosten of hoofden?',questions:[
+    {id:'sc1',q:'Werkprocessen zijn volledig gestandaardiseerd en schriftelijk vastgelegd.',hint:null},
+    {id:'sc2',q:'30% omzetgroei is realiseerbaar zonder de bezetting proportioneel uit te breiden.',hint:null},
+    {id:'sc3',q:'Er zijn schaalbare dienstverleningsmodellen actief (pakketten, portals, rapportagetools).',hint:null},
+  ]},
+  {id:'auto',label:'Automatiseringsgraad',icon:'V',desc:'In hoeverre zijn repetitieve processen vervangen door technologie?',questions:[
+    {id:'a1',q:'Routinetaken (scanning, codering, btw-verwerking) zijn grotendeels geautomatiseerd.',hint:null},
+    {id:'a2',q:'Het kantoor werkt met geïntegreerde cloudplatformen die data automatisch koppelen.',hint:'bijv. Exact, Twinfield, Yuki, Dext, Silverfin'},
+    {id:'a3',q:'Het team heeft voldoende digitale maturiteit om nieuwe tools zelfstandig te adopteren.',hint:null},
+  ]},
+  {id:'partner',label:'Partnerafhankelijkheid',icon:'VI',desc:'Hoe kwetsbaar is het kantoor als een partner of sleutelpersoon vertrekt?',questions:[
+    {id:'p1',q:'Klantrelaties zijn geborgd binnen het team — niet geconcentreerd bij één persoon.',hint:'laag = kwetsbaar, hoog = geborgd'},
+    {id:'p2',q:'Alle klantdossiers en procesbeschrijvingen zijn volledig gedocumenteerd en overdraagbaar.',hint:null},
+    {id:'p3',q:'Institutionele kennis is niet persoonsgebonden maar kantoorgebonden.',hint:null},
+  ]},
+  {id:'klant',label:'Klantconcentratie',icon:'VII',desc:'Is de omzetbasis voldoende gespreid om klantverloop op te vangen?',questions:[
+    {id:'k1',q:'Geen enkele klant vertegenwoordigt meer dan 10% van de totale omzet.',hint:'hoge score = lage concentratie = goed'},
+    {id:'k2',q:'De top-10 klanten zijn samen goed voor minder dan 40% van de omzet.',hint:null},
+    {id:'k3',q:'Het klantverloop (churn) is structureel laag — onder de 5% per jaar.',hint:null},
+  ]},
+  {id:'fusie',label:'Fusiegereedheid',icon:'VIII',desc:'Is het kantoor klaar voor een fusie, overname of strategische samenwerking?',questions:[
+    {id:'f1',q:'De financiële administratie en klantdossiers zijn op orde voor due diligence.',hint:null},
+    {id:'f2',q:'Het team staat open voor organisatorische verandering en externe samenwerking.',hint:null},
+    {id:'f3',q:'De eigenaar overweegt participatie in een fusie- of verkoopproces binnen 5 jaar.',hint:null},
+  ]},
+  {id:'ai_dim',label:'AI-risico & weerbaarheid',icon:'IX',desc:'In hoeverre ondermijnt AI de dienstverlening, en hoe goed is het kantoor voorbereid?',questions:[
+    {id:'ai1',q:'Een groot deel van de omzet is gebaseerd op diensten die AI binnen 3–5 jaar kan substitueren.',hint:'omgekeerd: hoog = hoog risico'},
+    {id:'ai2',q:'Het kantoor investeert actief in AI-bestendige diensten: advies, strategie, begeleiding.',hint:null},
+    {id:'ai3',q:'Het team experimenteert actief met AI-tools en integreert deze in de werkpraktijk.',hint:null},
+  ]},
+  {id:'personeel',label:'Personeelsdruk',icon:'X',desc:'Is het kantoor in staat om talent aan te trekken, te ontwikkelen en te behouden?',questions:[
+    {id:'pe1',q:'Er zijn geen structurele vacatures die langer dan 3 maanden onvervuld blijven.',hint:'omgekeerd: lang onvervuld = slecht'},
+    {id:'pe2',q:'Het personeelsverloop is lager dan het sectorgemiddelde van 15% per jaar.',hint:null},
+    {id:'pe3',q:'Er is een helder carrièrepad en structureel leer- en ontwikkelbeleid voor alle lagen.',hint:null},
+  ]},
+  {id:'commercieel',label:'Commerciële kracht',icon:'XI',desc:'Hoe proactief en effectief is het kantoor in het genereren en verdiepen van klantwaarde?',questions:[
+    {id:'c1',q:'Het kantoor groeit via actieve acquisitie — niet uitsluitend via doorverwijzingen.',hint:null},
+    {id:'c2',q:'Er is een structureel en actief marketingbeleid met zichtbare output.',hint:'website, LinkedIn, events, whitepapers'},
+    {id:'c3',q:'Cross-sell naar bestaande klanten wordt systematisch en meetbaar opgepakt.',hint:null},
+  ]},
+];
+const REVERSE=new Set(['p1','k1','k2','ai1','pe1']);
+const SCENARIOS={
+  'zelfstandig-doorgroeien':{name:'Zelfstandig doorgroeien',fit:s=>{
+    // Sterk bij: hoge commerciele kracht, goede winstkwaliteit, lage partnerafhankelijkheid risico, voldoende schaal
+    const base=Math.round((s.commercieel*0.3+s.winst*0.25+s.schaal*0.25+s.personeel*0.2));
+    // Bonus als opvolging op orde en niet te fusiegericht
+    const bonus=(s.opvolging>60?5:0)+(s.fusie<50?5:0);
+    return Math.min(100,base+bonus);
+  },actions:[{t:'Versterk de commerciële pipeline',d:'Introduceer een gestructureerd CRM-proces en acquisitieritme.',h:'0–6 mnd'},{t:'Verbreed de managementlaag',d:'Benoem een MT zodat groei niet afhangt van de eigenaar.',h:'6–12 mnd'},{t:'Verken aangrenzende diensten',d:'Identificeer onbediende klantbehoeften en ontwikkel aanvullend aanbod.',h:'6–18 mnd'},{t:'Monitor KPIs maandelijks',d:'Omzet per fte, NPS en churn als vaste stuurindicatoren.',h:'Continu'}]},
+  'regionaliseren':{name:'Regionaliseren',fit:s=>{
+    // Sterk bij: hoge fusiegereedheid, redelijke schaal, actief commercieel, maar niet top-performer
+    const base=Math.round((s.fusie*0.35+s.schaal*0.25+s.commercieel*0.2+s.auto*0.2));
+    // Alleen relevant als fusie hoog en zelfstandig groeien minder voor de hand ligt
+    const bonus=(s.fusie>65?8:0)+(s.schaal<60?5:0);
+    const penalty=(s.winst>80&&s.commercieel>80?-15:0); // bij topkantoren is regionaliseren minder urgent
+    return Math.min(100,base+bonus+penalty);
+  },actions:[{t:'Marktanalyse regionale kansen',d:"Breng in kaart welke regio's ondervoorzien zijn.",h:'0–3 mnd'},{t:'Acquisitie-longlist opstellen',d:"Identificeer 5–10 regionale kantoren die strategisch passend zijn.",h:'3–9 mnd'},{t:'Integratiespelboek ontwikkelen',d:'Documenteer IT-migratie, cultuurintegratie en klantoverdracht.',h:'6–12 mnd'},{t:'Regionaal merkverhaal versterken',d:'Investeer in lokale PR en partnerships.',h:'Continu'}]},
+  'niche-specialisatie':{name:'Niche-specialisatie',fit:s=>{
+    // Sterk bij: hoge winstkwaliteit maar lage schaal, of sterke strategische positie met lage commerciele kracht
+    const base=Math.round((s.winst*0.3+s.strategisch*0.3+(100-s.schaal)*0.2+s.klant*0.2));
+    const bonus=(s.strategisch>70?8:0)+(s.schaal<50?5:0);
+    return Math.min(100,base+bonus);
+  },actions:[{t:'Kies kernspecialisaties',d:'Baseer op bestaande portfolio, teamexpertise en marktpotentieel.',h:'0–3 mnd'},{t:'Bouw thought leadership op',d:'Publiceer sectoranalyses, spreek op branche-events.',h:'3–12 mnd'},{t:'Verdiep het dienstenaanbod',d:'Voeg waardering, sector-benchmarks en compliance toe.',h:'6–18 mnd'},{t:'Positioneer alle uitingen op de niche',d:'Herstel website, LinkedIn en pitch materials.',h:'0–6 mnd'}]},
+  'fusiepartner-zoeken':{name:'Fusiepartner zoeken',fit:s=>{
+    // Sterk bij: hoge fusiegereedheid, laag opvolgingsrisico (= risico aanwezig), matige schaal
+    const base=Math.round((s.fusie*0.4+(100-s.opvolging)*0.25+(100-s.schaal)*0.2+s.winst*0.15));
+    const bonus=(s.fusie>70?8:0)+((100-s.opvolging)>50?5:0);
+    return Math.min(100,base+bonus);
+  },actions:[{t:'Stel partnercriteria vast',d:'Definieer harde en zachte criteria.',h:'0–2 mnd'},{t:'M&A-adviseur inschakelen',d:'Werk met een adviseur met sectorervaring.',h:'1–3 mnd'},{t:'Due diligence-materiaal op orde',d:'Drie jaar jaarrekeningen, klantcontracten, procesbeschrijvingen.',h:'0–4 mnd'},{t:'Verkenningsgesprekken starten',d:'Voer gesprekken met 3–5 partijen onder NDA.',h:'3–9 mnd'}]},
+  'opvolging-voorbereiden':{name:'Opvolging voorbereiden',fit:s=>{
+    // Sterk bij: laag opvolgingsrisico score = hoog risico, hoge partnerafhankelijkheid risico
+    const base=Math.round(((100-s.opvolging)*0.5+(100-s.partner)*0.3+s.winst*0.2));
+    const bonus=((100-s.opvolging)>50?10:0);
+    return Math.min(100,base+bonus);
+  },actions:[{t:'Opvolgingskandidaat benoemen',d:'Identificeer intern talent en start een formeel traject.',h:'0–3 mnd'},{t:'Formeel opvolgingsplan opstellen',d:'Documenteer tijdlijn, verantwoordelijkheden en financiële structuur.',h:'0–6 mnd'},{t:'Klantrelatieoverdracht starten',d:'Introduceer opvolgers actief bij strategische klanten.',h:'Onmiddellijk'},{t:'Kantoorwaardering laten uitvoeren',d:'Verkrijg inzicht in de waarderingsbandbreedte.',h:'1–3 mnd'}]},
+  'pe-ready-maken':{name:'PE-ready maken',fit:s=>{
+    // Sterk bij: hoge winstkwaliteit + hoge fusiegereedheid + goede schaal + lage klantconcentratie risico
+    const base=Math.round((s.winst*0.35+s.fusie*0.3+s.schaal*0.2+s.klant*0.15));
+    const bonus=(s.winst>70&&s.fusie>70?10:0)+(s.auto>70?5:0);
+    const penalty=(s.opvolging<50?-10:0); // hoog opvolgingsrisico is dealbreaker voor PE
+    return Math.min(100,base+bonus+penalty);
+  },actions:[{t:'Terugkerende omzet maximaliseren',d:'Converteer naar abonnementen. Streef naar >70% recurring.',h:'0–12 mnd'},{t:'EBITDA-marge naar 25–35%',d:'Analyseer kostenstructuur en automatiseer lage-margewerk.',h:'6–18 mnd'},{t:'Klantconcentratie verlagen',d:'Target: geen klant >8% van omzet.',h:'12–24 mnd'},{t:'Managementrapportage professionaliseren',d:'Maandelijks KPI-dashboard en cashflow-forecast.',h:'0–6 mnd'}]},
+  'verkoop-voorbereiden':{name:'Verkoop binnen 3 jaar',fit:s=>{
+    const base=Math.round((s.fusie*0.35+s.winst*0.3+(100-s.opvolging)*0.2+s.klant*0.15));
+    const bonus=(s.winst>75&&s.fusie>65?8:0);
+    return Math.min(100,base+bonus);
+  },actions:[{t:'Verkoopgereed-stappenplan opstellen',d:'Concrete mijlpalen per kwartaal.',h:'0–3 mnd'},{t:'Overdraagbaarheid vergroten',d:'Verminder persoonsgebonden relaties.',h:'0–18 mnd'},{t:'Winstgevendheid optimaliseren',d:'Focus op hoge-marge diensten.',h:'0–12 mnd'},{t:'Bedrijfswaardering laten uitvoeren',d:'Begrijp de EBITDA-multiple-bandbreedte.',h:'3–6 mnd'}]},
+  'afweerstrategie':{name:'Consolidatie-afweer',fit:s=>{
+    // Sterk bij: lage fusiegereedheid, hoge klantbinding, sterke niche
+    const base=Math.round(((100-s.fusie)*0.3+s.klant*0.25+s.strategisch*0.25+(100-s.schaal)*0.2));
+    const bonus=(s.fusie<40?10:0)+(s.klant>70?5:0);
+    return Math.min(100,base+bonus);
+  },actions:[{t:'Unieke positionering versterken',d:'Maak overnemen minder logisch via niche en klantbinding.',h:'0–12 mnd'},{t:'Strategische allianties sluiten',d:'Werk samen in een netwerk zonder volledige fusie.',h:'6–18 mnd'},{t:'Klantloyaliteit verhogen',d:'Langere contracttermijnen en loyaliteitsprogrammas.',h:'0–12 mnd'},{t:'Werkgeversmerk opbouwen',d:'Investeer in cultuur om talent te behouden.',h:'6–24 mnd'}]},
+};
+
+/* ════════ STATE ════════ */
+let ST={screen:'intro',section:0,answers:{},scores:null,scenarios:null,openScenario:null,openOffice:null,aiText:null,aiLoading:false,groupId:null,groupData:null,groupLoading:false,savedScanId:null,profile:{naam:'',naamAnon:false,email:'',regio:'',fte:'',omzet:'',specialisme:'',doelgroep:'',software:'',ambitie:'',context:'',omzetfte:'',ebitda:'',recurring:'',saveConsent:true}};
+
+/* ════════ SCORING ════════ */
+function calcScores(){const s={};SECTIONS.forEach(sec=>{let tot=0,cnt=0;sec.questions.forEach(q=>{if(ST.answers[q.id]!==undefined){let v=ST.answers[q.id];if(REVERSE.has(q.id))v=6-v;tot+=v;cnt++;}});s[sec.id]=cnt>0?Math.round((tot/(cnt*5))*100):0;});return s;}
+function rankScenarios(s){return Object.entries(SCENARIOS).map(([k,sc])=>({k,...sc,score:Math.min(100,sc.fit(s))})).sort((a,b)=>b.score-a.score);}
+function overall(s){return Math.round(Object.values(s).reduce((a,b)=>a+b,0)/Object.values(s).length);}
+function verdict(v){if(v>=72)return{label:'Sterk strategisch profiel',color:'var(--teal)',bg:'var(--teal-bg)',txt:'Het kantoor beschikt over een solide strategische basis.'};if(v>=52)return{label:'Gemiddeld — actie vereist',color:'var(--gold)',bg:'var(--gold-bg)',txt:'Redelijk fundament, maar verbeterpunten beperken de waarde.'};return{label:'Kwetsbaar — urgente actie',color:'var(--red)',bg:'var(--red-bg)',txt:'Meerdere kritieke dimensies vereisen onmiddellijke aandacht.'};}
+function dc(v){return v>=70?'var(--teal)':v>=50?'var(--gold)':'var(--red)';}
+function df(v){return v>=70?{l:'Sterk',c:'var(--teal)'}:v>=50?{l:'Gemiddeld',c:'var(--gold)'}:{l:'Aandacht',c:'var(--red)'};}
+
+/* ════════ API ════════ */
+async function generateAI(){
+  const s=ST.scores;
+  const ov=overall(s);
+  const vd=verdict(ov);
+  const top3=ST.scenarios.slice(0,3).map(sc=>sc.name+' ('+sc.score+'%)').join(', ');
+  const p=ST.profile;
+  const dims=SECTIONS.map(sec=>'- '+sec.label+': '+s[sec.id]+'/100').join('\n');
+  const risks=SECTIONS.filter(sec=>s[sec.id]<55).map(sec=>sec.label).join(', ')||'geen kritieke risicos';
+  const naam=p.naamAnon?'Anoniem kantoor':(p.naam||'Vertrouwelijk kantoor');
+
+  const qa=SECTIONS.map(sec=>{
+    const lines=sec.questions.map(q=>{
+      const v=ST.answers[q.id];
+      const lbl=v===1?'Helemaal niet':v===2?'Grotendeels niet':v===3?'Neutraal':v===4?'Grotendeels wel':v===5?'Volledig':'Niet beantwoord';
+      return '  Vraag: '+q.q+'\n  Antwoord: '+(v||'-')+'/5 - '+lbl;
+    }).join('\n');
+    return sec.label+' (score: '+s[sec.id]+'/100):\n'+lines;
+  }).join('\n\n');
+
+  const mainPrompt='Je bent een senior M&A-adviseur gespecialiseerd in Nederlandse accountantskantoren. Vandaag is het mei 2026.\n\nKANTOORPROFIEL:\n- Naam: '+naam+'\n- Regio: '+(p.regio||'Niet opgegeven')+'\n- Medewerkers: '+(p.fte||'Niet opgegeven')+' fte\n- Jaaromzet: '+(p.omzet||'Niet opgegeven')+'\n- Specialisme: '+(p.specialisme||'Generalistisch')+'\n- Doelgroep: '+(p.doelgroep||'MKB')+'\n- Software: '+(p.software||'Onbekend')+'\n- Ambitie: '+(p.ambitie||'Niet opgegeven')+'\n- Context: '+(p.context||'Geen aanvullende context')+'\n\nFINANCIELE KENGETALLEN (zelfgerapporteerd — indicatief, op basis van opgave eigenaar):\n- Medewerkers: '+(p.fte||'?')+' fte\n- Jaaromzet: '+(p.omzet||'Niet opgegeven')+'\n- Omzet per fte: '+(p.omzetfte||'Niet opgegeven')+'\n- EBITDA-marge: '+(p.ebitda||'Niet opgegeven')+'\n- Aandeel vaste/abonnements-omzet: '+(p.recurring||'Niet opgegeven')+'CONSISTENTIECHECK (verplicht):\nVergelijk de financiele kengetallen met de vragenlijstscores. Signaleer tegenstrijdigheden: hoge Winstkwaliteitsscore maar lage EBITDA-marge; goede scores overal maar zwakke kengetallen; hoge Automatisering maar lage omzet per fte. Benoem dit direct: de scan suggereert X maar de kengetallen wijzen op Y. Kan duiden op zelfoverschatting of vereist nadere toelichting. Wees respectvol maar eerlijk.\n\n\n\nSCORES (0-100):\n'+dims+'\n\nTotaalscore: '+ov+'/100 - '+vd.label+'\nAanbevolen scenario: '+top3+'\nAandachtspunten (score <55): '+risks+'\n\nCORRELATIES EN VERBANDEN (analyseer deze expliciet):\n- Hoge fusiegereedheid + hoge winstkwaliteit = sterke onderhandelingspositie\n- Lage partnerafhankelijkheid + hoog opvolgingsrisico = structureel continuiteitsrisico\n- Hoge automatisering + lage schaalbaarheid = procesknelpunt buiten technologie\n- Hoge commerciele kracht + lage strategische positie = groei zonder richting\n- Lage personeelsdruk + hoge commerciele kracht = capaciteitsrisico bij verdere groei\n- Hoge winstkwaliteit + lage klantconcentratie = meest aantrekkelijk voor PE\n\nSCHRIJFREGELS:\n- Gebruik "de scan suggereert", "dit profiel wijst op"\n- Noem scores altijd met het getal\n- Spreek eigenaar aan met u\n- GEEN tabellen of bulletpoints\n- Benoem expliciet hoe scores elkaar versterken of tegenwerken\n- Elke sectie minimaal 150 woorden\n\n## Kernboodschap\n## Kritieke inzichten\n[3 scores, min 200 woorden per inzicht]\n## Strategisch advies\n[Per fase, min 250 woorden]\\n## Financiele analyse - indicatief\\n[Analyseer de opgegeven kengetallen expliciet. Bereken: absolute EBITDA = omzet x marge. Vergelijk omzet per fte met sectorgemiddelden (generalistisch 80k-120k, gespecialiseerd 120k-180k, top meer dan 200k). Geef waarderingsbandbreedte (accountantskantoren 4-7x EBITDA, PE-ready 6-9x). Beoordeel vaste omzet vs PE-norm (meer dan 60 procent) en EBITDA-marge vs sectorgemiddelde (20-25 procent). Gebruik taal als: op basis van de opgegeven cijfers, als indicatie. Dit is een indicatieve berekening op basis van zelfrapportage en geen formele waardering. Minimum 200 woorden.]\\n## Strategische scenarios - volledig uitgewerkt\\n[Alle drie scenarios: waarom passend, drie fases, randvoorwaarden, risicos en kansen, min 200 woorden per scenario]\\n## Eerste 90 dagen\\n[3 genummerde acties als alineas]\\n## Mogelijk onderbelicht risico\\n[Exploratief, gebruik "de scan suggereert", "het is denkbaar dat". Eindig met zachte aanbeveling.]\\n## Vervolgstap\\n[Sluit af met een warme, persoonlijke uitnodiging voor een gesprek. Noem dat Marcel Bisschops senior M&A-adviseur gespecialiseerd in accountantskantoren en administratiekantoren, met een achtergrond als bestuurder binnen accountantsorganisaties - hij heeft met zijn voeten in de klei gestaan en weet hoe kantoren van binnenuit werken. Breed netwerk van kantoren en softwareleveranciers. Contact: 06 - 38 68 98 88 of marcel@bisschopsfinancing.nl]';
+
+  const appendixPrompt='Maak een leesbare bijlage van de ingevulde vragenlijst. Per dimensie: naam en score, dan per vraag de vraagtekst en het antwoord met betekenis. Lopende tekst, geen tabellen of bullets.\n\nINGEVULDE VRAGENLIJST:\n'+qa+'\n\nBegin direct met: ## Bijlage - Ingevulde vragenlijst';
+
+  ST.aiLoading=true;ST.aiText='';render();
+  const dec=new TextDecoder();
+
+  async function streamCall(prompt){
+    const resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}]})});
+    if(!resp.ok)throw new Error('HTTP '+resp.status);
+    const reader=resp.body.getReader();
+    while(true){
+      const{done,value}=await reader.read();if(done)break;
+      const chunk=dec.decode(value,{stream:true});
+      for(const line of chunk.split('\n')){
+        if(line.startsWith('data:')){
+          const d=line.slice(5).trim();if(d==='[DONE]')continue;
+          try{const j=JSON.parse(d);if(j.type==='content_block_delta'&&j.delta&&j.delta.text){ST.aiText+=j.delta.text;updateAI();}}catch(e){}
+        }
+      }
+    }
+  }
+
+  // Collect in background, show steps
+  function setStep(n){
+    for(let i=0;i<6;i++){
+      const el=document.getElementById('step-'+i);
+      if(!el)continue;
+      el.classList.remove('active','done');
+      if(i<n)el.classList.add('done');
+      if(i===n)el.classList.add('active');
+    }
+    const bar=document.getElementById('gen-progress-bar');
+    if(bar)bar.style.width=Math.round((n/6)*100)+'%';
+  }
+
+  try{
+    ST.aiLoading=false;
+    // Show loading UI
+    const el=document.getElementById('ai-out');
+    if(el)el.innerHTML='<div class="ai-generating"><div class="ai-gen-title">Strategisch rapport wordt opgesteld</div><div style="font-size:12px;color:var(--muted);margin:.25rem 0 1rem">Dit duurt 2\u20133 minuten \u2014 het rapport verschijnt in \xe9\xe9n keer</div><div class="ai-gen-bar-wrap"><div class="ai-gen-bar" id="gen-progress-bar"></div></div><div class="ai-gen-steps"><div class="ai-gen-step active" id="step-0"><div class="ai-gen-dot"></div>Kantoorprofiel en scores analyseren</div><div class="ai-gen-step" id="step-1"><div class="ai-gen-dot"></div>Kritieke inzichten formuleren</div><div class="ai-gen-step" id="step-2"><div class="ai-gen-dot"></div>Strategisch advies per fase schrijven</div><div class="ai-gen-step" id="step-3"><div class="ai-gen-dot"></div>Financi\xeble analyse en scenario&#39;s</div><div class="ai-gen-step" id="step-4"><div class="ai-gen-dot"></div>90-dagen actieplan opstellen</div><div class="ai-gen-step" id="step-5"><div class="ai-gen-dot"></div>Bijlage met vragenlijst samenstellen</div></div></div>';
+
+    // Collect main prompt silently
+    let collected='';
+    const resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:mainPrompt}]})});
+    if(!resp.ok)throw new Error('HTTP '+resp.status);
+    const reader=resp.body.getReader();
+    setTimeout(()=>setStep(1),5000);
+    setTimeout(()=>setStep(2),12000);
+    setTimeout(()=>setStep(3),22000);
+    setTimeout(()=>setStep(4),35000);
+    while(true){
+      const{done,value}=await reader.read();if(done)break;
+      const chunk=dec.decode(value,{stream:true});
+      for(const line of chunk.split('\n')){
+        if(line.startsWith('data:')){
+          const d=line.slice(5).trim();if(d==='[DONE]')continue;
+          try{const j=JSON.parse(d);if(j.type==='content_block_delta'&&j.delta&&j.delta.text)collected+=j.delta.text;}catch(e){}
+        }
+      }
+    }
+
+    setStep(5);
+    collected+='\n\n---\n\n';
+
+    // Collect appendix silently
+    const resp2=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:appendixPrompt}]})});
+    if(resp2.ok){
+      const reader2=resp2.body.getReader();
+      while(true){
+        const{done,value}=await reader2.read();if(done)break;
+        const chunk=dec.decode(value,{stream:true});
+        for(const line of chunk.split('\n')){
+          if(line.startsWith('data:')){
+            const d=line.slice(5).trim();if(d==='[DONE]')continue;
+            try{const j=JSON.parse(d);if(j.type==='content_block_delta'&&j.delta&&j.delta.text)collected+=j.delta.text;}catch(e){}
+          }
+        }
+      }
+    }
+
+    // Present all at once
+    ST.aiText=collected;
+    updateAI(true);
+
+    // Sla rapport op in database
+    if(ST.savedScanId){
+      fetch(WORKER+'/rapport/save',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({scan_id:ST.savedScanId,rapport:collected})
+      }).catch(()=>{});
+    }
+
+  }catch(err){
+    ST.aiLoading=false;ST.aiText='__ERROR__';updateAI(true);
+  }
+}
+async function saveScanToGroup(){
+  if(!ST.scores)return;
+  if(!ST.profile.saveConsent&&!ST.groupId)return;
+  const p=ST.profile;
+  try{
+    const resp=await fetch(`${WORKER}/group/join`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({group_id:ST.groupId||'SOLO',office_name:p.naamAnon?'Anoniem':p.naam,office_email:p.naamAnon?'':p.email,region:p.regio,fte:p.fte,revenue:p.omzet,scores:ST.scores,top_scenario:ST.scenarios?.[0]?.name||''})});
+    const data=await resp.json();
+    if(data.scan_id)ST.savedScanId=data.scan_id;
+  }catch(e){console.warn('Scan niet opgeslagen:',e);}
+}
+
+async function createGroup(name,email,isPublic=true){
+  const resp=await fetch(`${WORKER}/group/create`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,admin_email:email,dashboard_public:isPublic})});
+  return resp.json();
+}
+
+async function loadGroup(gid){
+  ST.groupLoading=true;render();
+  try{
+    const resp=await fetch(`${WORKER}/group/${gid}`);
+    if(!resp.ok)throw new Error('niet gevonden');
+    ST.groupData=await resp.json();ST.screen='dashboard';
+  }catch(e){ST.groupData=null;ST.screen='dashboard-error';}
+  ST.groupLoading=false;render();
+}
+
+function updateAI(final=false){const el=document.getElementById('ai-out');if(el)el.innerHTML=renderAIText(ST.aiText,!final);}
+function renderAIText(text,cursor=false){
+  if(ST.aiLoading)return`<div class="ai-loading"><div class="ai-spinner"></div><span>Strategisch memo wordt gegenereerd...</span></div>`;
+  if(!text)return`<div class="ai-placeholder"><div class="ai-placeholder-icon">&#9672;</div><p class="ai-placeholder-text">Klik op "Genereer AI-advies" voor een gepersonaliseerd strategisch memo op basis van de scanresultaten en het kantoorprofiel.</p></div>`;
+  if(text==='__ERROR__')return`<div class="ai-placeholder"><div class="ai-placeholder-icon" style="opacity:.5">&#9888;</div><p class="ai-placeholder-text" style="margin-bottom:1rem">Kon niet verbinden.</p><button class="btn-gen" onclick="generateAI()" style="margin:0 auto">Opnieuw proberen</button></div>`;
+  let html=text.replace(/## (.+)/g,'<h3>$1</h3>').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/^- (.+)/gm,'<li>$1</li>').replace(/(<li>[^]*?<\/li>\n?)+/g,m=>`<ul>${m}</ul>`);
+  html=html.split('\n\n').map(para=>para.trim()&&!para.startsWith('<')?`<p>${para}</p>`:para).join('');
+  if(cursor)html+=`<span class="ai-cursor"></span>`;
+  return`<div class="ai-output">${html}</div>`;
+}
+
+/* ════════ RENDER ════════ */
+function render(){
+  const app=document.getElementById('app');
+  const screens={intro:rIntro,intake:rIntake,questions:rQuestions,results:rResults,'group-create':rGroupCreate,'group-join':rGroupJoin,'group-created':rGroupCreated,dashboard:rDashboard,'dashboard-error':rDashboardError};
+  app.innerHTML=(screens[ST.screen]||rIntro)();
+  bindEvents();
+}
+
+function rIntro(){return`<div class="intro-wrap"><div class="intro-grid"></div><div class="intro-inner"><div class="wordmark"><div class="wdot"></div>KantoorInzicht<div class="wdot"></div></div><div class="eyebrow">Strategisch analyse-instrument · AI-powered</div><h1 class="intro-h1">Strategische <em>Kantoor</em> Scan</h1><p class="intro-sub">Een PE-ge\xefnspireerde analyse van uw kantoor. In 10 minuten een volledig strategisch profiel, positioneringsmatrix en AI-adviesrapport op maat.</p><div class="kpi-row"><div class="kpi-item"><div class="kpi-num">11</div><div class="kpi-lbl">Dimensies</div></div><div class="kpi-div"></div><div class="kpi-item"><div class="kpi-num">33</div><div class="kpi-lbl">Vragen</div></div><div class="kpi-div"></div><div class="kpi-item"><div class="kpi-num">8</div><div class="kpi-lbl">Scenario&#39;s</div></div><div class="kpi-div"></div><div class="kpi-item"><div class="kpi-num">AI</div><div class="kpi-lbl">Advies</div></div></div><div class="dim-row">${SECTIONS.map(s=>`<span class="dim-chip">${s.label}</span>`).join('')}</div><div style="margin-bottom:2rem">
+<div style="font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--teal);margin-bottom:.75rem">Voor \xe9\xe9n kantoor</div>
+<div class="route-cards" style="max-width:580px;margin:0 auto 1.5rem">
+<div class="route-card highlight" id="route-solo" style="border:2px solid var(--teal);background:var(--teal-bg)">
+<div class="route-icon">&#9672;</div>
+<div class="route-title" style="color:var(--teal)">Start individuele scan</div>
+<div class="route-desc">Vul de scan in en ontvang direct uw persoonlijk strategisch rapport met AI-advies op maat. In 10 minuten compleet.</div>
+<div style="margin-top:.75rem;font-size:12px;font-weight:600;color:var(--teal)">\u2192 Direct starten</div>
+</div>
+</div>
+<div style="font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem">Voor meerdere kantoren</div>
+<div class="route-cards" style="max-width:580px;margin:0 auto">
+<div class="route-card" id="route-group-create">
+<div class="route-icon">\u229e</div>
+<div class="route-title">Groep aanmaken</div>
+<div class="route-desc">Maak een groepscode aan en nodig kantoren uit. U beheert het vergelijkingsdashboard.</div>
+</div>
+<div class="route-card" id="route-group-join">
+<div class="route-icon">\u2295</div>
+<div class="route-title">Deelnemen aan groep</div>
+<div class="route-desc">U heeft een groepscode ontvangen en wilt uw scan indienen voor benchmarkvergelijking.</div>
+</div>
+<div class="route-card" id="route-dashboard">
+<div class="route-icon">\u25a4</div>
+<div class="route-title">Dashboard bekijken</div>
+<div class="route-desc">Bekijk alle ingediende scans, benchmarks en vergelijkingen van uw groep.</div>
+</div>
+</div>
+</div><div class="intro-foot">Vertrouwelijk · Gebaseerd op PE &amp; M&amp;A-criteria · Powered by Claude AI</div></div></div>`;}
+
+function rGroupCreate(){return`<div class="page-wrap narrow"><div class="page-hdr"><div class="page-brand"><div class="wdot"></div>KantoorInzicht</div><div class="page-step">Groep aanmaken</div></div><div class="group-panel anim"><div class="group-panel-title">Nieuwe groep aanmaken</div><div class="group-panel-sub">U ontvangt de groepscode per e-mail en kunt deze direct kopiëren.</div><div class="form-grid full"><div class="field"><label>Naam van de groep</label><input type="text" id="gc-name" placeholder="bijv. Accountantsvereniging Gelderland"></div></div><div class="form-grid full"><div class="field"><label>Uw e-mailadres (beheerder)</label><input type="email" id="gc-email" placeholder="u@kantoor.nl"></div></div>
+<div class="note-box" style="border-color:var(--teal)"><strong>Dashboard zichtbaarheid:</strong><label style="display:flex;align-items:flex-start;gap:10px;margin-top:10px;cursor:pointer;font-size:13px;color:var(--sub)"><input type="checkbox" id="gc-public" checked style="width:16px;height:16px;accent-color:var(--teal);margin-top:2px;flex-shrink:0"><span>Deelnemers mogen het volledige dashboard zien, inclusief scores van andere kantoren</span></label></div>
+<div class="note-box"><strong>\u26a0 Bewaar de groepscode!</strong> U ontvangt de code per e-mail. Zonder de code heeft u geen toegang tot het dashboard.</div><div style="display:flex;gap:10px"><button class="btn-ghost" id="back-intro">Terug</button><button class="btn-adv" id="do-create-group">Groep aanmaken</button></div></div></div>`;}
+
+function rGroupCreated(){return`<div class="page-wrap narrow"><div class="page-hdr"><div class="page-brand"><div class="wdot"></div>KantoorInzicht</div><div class="page-step">Groep aangemaakt</div></div><div class="group-panel anim"><div class="group-panel-title">Groep aangemaakt</div><div class="group-panel-sub">Deel de onderstaande code met deelnemende kantoren via koersvoormorgen.nl.</div><div class="code-display" id="code-display-val">${ST.groupId||'------'}</div><div style="display:flex;gap:10px;margin-bottom:1.5rem;justify-content:center"><button class="btn-adv" id="copy-code-btn" style="font-size:13px">&#128203; Kopieer code</button><button class="btn-ghost" id="download-code-btn" style="font-size:13px">&#8595; Sla op als tekst</button></div><div class="note-box" style="border-color:var(--red);background:var(--red-bg)"><strong>&#9888; Bewaar deze code — noteer hem!</strong> Sla de code op via de knoppen hierboven. Code kwijt? Ga naar "Dashboard bekijken" en laat het veld leeg — het systeem vraagt dan uw e-mailadres.</div><div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn-ghost" id="back-intro">Terug naar start</button><button class="btn-adv" id="view-dashboard-btn">Dashboard bekijken</button></div></div></div>`;}
+
+function rGroupJoin(){return`<div class="page-wrap narrow"><div class="page-hdr"><div class="page-brand"><div class="wdot"></div>KantoorInzicht</div><div class="page-step">Groep deelnemen</div></div><div class="group-panel anim"><div class="group-panel-title">Deelnemen aan een groep</div><div class="group-panel-sub">Voer de groepscode in die u hebt ontvangen van de beheerder.</div><div class="form-grid full" style="margin-bottom:1rem"><div class="field"><label>Groepscode</label><input type="text" id="gj-code" placeholder="bijv. AB12CD" maxlength="6" style="text-transform:uppercase;letter-spacing:.2em;font-size:1.4rem;text-align:center"></div></div><div style="display:flex;gap:10px"><button class="btn-ghost" id="back-intro">Terug</button><button class="btn-adv" id="do-join-group">Doorgaan naar scan</button></div></div></div>`;}
+
+function rDashboardError(){return`<div class="page-wrap narrow"><div class="page-hdr"><div class="page-brand"><div class="wdot"></div>KantoorInzicht</div><div class="page-step">Dashboard</div></div><div class="error-screen anim"><h3>Groep niet gevonden</h3><p>Controleer de groepscode en probeer opnieuw.</p><button class="btn-adv" id="back-intro">Terug naar start</button></div></div>`;}
+
+function rIntake(){
+  const p=ST.profile;
+  return`<div class="page-wrap narrow"><div class="page-hdr"><div class="page-brand"><div class="wdot"></div>KantoorInzicht</div><div class="page-step">STAP 1 \u2014 Kantoorprofiel</div></div><div class="anim"><div style="font-family:'Playfair Display',serif;font-size:1.8rem;color:var(--white);font-weight:600;margin-bottom:.5rem">Vertel ons over uw kantoor</div><div style="font-size:13px;color:var(--mid);line-height:1.65;margin-bottom:2rem">Deze gegevens personaliseren uw AI-adviesrapport.${ST.groupId?` <span style="color:var(--teal)">Deelname aan groep <strong>${ST.groupId}</strong>.</span>`:''}</div></div><div style="font-size:11px;color:var(--muted);margin-bottom:1rem">Velden met <span style="color:var(--red);font-weight:600">*</span> zijn verplicht.</div><div class="form-grid anim a1"><div class="field" style="position:relative"><label>Naam kantoor <span style="color:var(--red)">*</span></label><input type="text" id="f-naam" placeholder="bijv. Bakker &amp; Partners" value="${p.naam}"></div><div class="field"><label>E-mailadres (optioneel)</label><input type="email" id="f-email" placeholder="u@kantoor.nl" value="${p.email}"></div><div class="field"><label>Regio</label><input type="text" id="f-regio" placeholder="bijv. Achterhoek, Maastricht" value="${p.regio}"></div><div class="field" style="position:relative"><label>Aantal medewerkers (exact) <span style="color:var(--red)">*</span></label><input type="number" id="f-fte" placeholder="bijv. 12" min="1" max="999" value="${p.fte}"></div><div class="field" style="position:relative"><label>Jaaromzet <span style="color:var(--red)">*</span></label><input type="text" id="f-omzet" placeholder="bijv. \u20ac2.400.000" value="${p.omzet}"></div><div class="field"><label>Specialisme of niche</label><input type="text" id="f-spec" placeholder="bijv. agri, vastgoed, zorg" value="${p.specialisme}"></div><div class="field"><label>Primaire doelgroep</label><input type="text" id="f-doel" placeholder="bijv. MKB, ZZP" value="${p.doelgroep}"></div><div class="field"><label>Gebruikte software</label><input type="text" id="f-sw" placeholder="bijv. Exact, Twinfield, Yuki" value="${p.software}"></div><div class="field" style="position:relative"><label>Omzet per fte <span style="color:var(--red)">*</span></label><input type="text" id="f-omzet-fte" placeholder="bijv. \u20ac120.000" value="${p.omzetfte}"></div><div class="field" style="position:relative"><label>EBITDA-marge <span style="color:var(--red)">*</span></label><input type="text" id="f-ebitda" placeholder="bijv. 22%" value="${p.ebitda}"></div><div class="field" style="position:relative"><label>Aandeel vaste omzet <span style="color:var(--red)">*</span></label><input type="text" id="f-recurring" placeholder="bijv. 65%" value="${p.recurring}"></div><div class="field"><label>Strategische ambitie</label><select id="f-ambitie"><option value="">Selecteer...</option>${['Stabiel houden','Groeien (organisch)','Groeien (via overnames)','Fusie of samenwerking','Verkoop (3\u20137 jaar)','Opvolging regelen'].map(v=>`<option${p.ambitie===v?' selected':''}>${v}</option>`).join('')}</select></div></div><div class="form-grid full anim a2"><div class="field"><label>Aanvullende context (optioneel)</label><textarea id="f-context" placeholder="Wat speelt er momenteel?">${p.context}</textarea></div></div><div class="note-box anim a2"><strong>Privacy:</strong> Gegevens worden alleen gebruikt voor uw rapport.<label style="display:flex;align-items:flex-start;gap:10px;margin-top:10px;cursor:pointer;font-size:13px;color:var(--sub)"><input type="checkbox" id="save-consent" checked style="width:16px;height:16px;accent-color:var(--teal);margin-top:2px;flex-shrink:0"><span>Sla mijn scanresultaten <strong>anoniem</strong> op voor sectorale benchmarkdoeleinden. <span style="color:var(--mid)">(Aanbevolen)</span></span></label></div><div class="scan-nav anim a3"><button class="btn-ghost" id="back-intro">Terug</button><button class="btn-adv" id="start-scan">Naar de vragenlijst</button></div></div>`;
+}
+
+function rQuestions(){
+  const sec=SECTIONS[ST.section];const total=SECTIONS.length;
+  const answered=sec.questions.every(q=>ST.answers[q.id]!==undefined);
+  const isLast=ST.section===total-1;
+  const steps=SECTIONS.map((_,i)=>`<div class="p-step${i<ST.section?' done':i===ST.section?' active':''}"></div>`).join('');
+  return`<div class="page-wrap"><div class="page-hdr"><div class="page-brand"><div class="wdot"></div>KantoorInzicht</div><div class="page-step mono">STAP ${ST.section+1}/${total}</div></div><div class="prog-section"><div class="prog-top"><div class="prog-lbl">${sec.label}</div><div class="prog-frac">${ST.section+1} / ${total}</div></div><div class="prog-track"><div class="prog-fill" style="width:${(ST.section/total)*100}%"></div></div><div class="prog-steps">${steps}</div></div><div class="anim"><span class="sec-badge">${sec.icon}</span><div class="sec-title">${sec.label}</div><div class="sec-desc">${sec.desc}</div></div><div class="q-stack">${sec.questions.map((q,qi)=>{const v=ST.answers[q.id];return`<div class="q-card${v!==undefined?' answered':''} anim a${qi+1}"><div class="q-row"><div><div class="q-text">${q.q}</div>${q.hint?`<div class="q-hint">${q.hint}</div>`:''}</div><div class="q-val${v!==undefined?' set':''}">${v!==undefined?v:'\u2014'}</div></div><div class="likert">${[1,2,3,4,5].map(n=>`<button class="l-btn${v===n?' sel':''}" data-q="${q.id}" data-v="${n}">${n}</button>`).join('')}</div><div class="likert-axis"><span>Helemaal niet</span><span>Volledig</span></div></div>`;}).join('')}</div><div class="scan-nav"><div class="nav-info">${Object.keys(ST.answers).length} / 33 beantwoord</div><div style="display:flex;gap:10px"><button class="btn-ghost" id="prev-btn" ${ST.section===0?'disabled':''}>Terug</button><button class="btn-adv" id="next-btn" ${!answered?'disabled':''}>${isLast?'Genereer rapport':'Volgende'}</button></div></div></div>`;
+}
+
+function rResults(){
+  const s=ST.scores;const ov=overall(s);const vd=verdict(ov);
+  const top3=ST.scenarios.slice(0,3);
+  const mx=Math.round((s.schaal+s.auto+s.commercieel)/3);
+  const my=Math.round((s.winst+s.klant+s.partner)/3);
+  const bench=62;
+  const p=ST.profile;
+  const now=new Date().toLocaleDateString('nl-NL',{year:'numeric',month:'long',day:'numeric'});
+  const naam=p.naamAnon?'Anoniem kantoor':p.naam;
+  return`<div class="page-wrap"><div class="r-header anim"><div class="r-brand-row"><div class="r-brand"><div class="wdot"></div>KantoorInzicht</div><div class="r-date">${now}</div></div>${naam?`<div class="kantoor-slug">${naam}${p.regio?' · '+p.regio:''}</div>`:''}  <h2 class="report-title">Strategisch <em>profiel</em> &amp; adviesrapport</h2><p style="font-size:11px;color:var(--muted);background:var(--card);border-left:3px solid var(--teal);padding:6px 12px;border-radius:0 var(--r) var(--r) 0;margin-bottom:.75rem">Dit rapport is gegenereerd door kunstmatige intelligentie op basis van zelfrapportage. De uitkomsten zijn indicatief en vormen geen formeel advies.</p><p class="report-sub">33 indicatoren · 11 dimensies${p.fte?' · '+p.fte+' fte':''}${p.omzet?' · '+p.omzet:''}${ST.savedScanId&&ST.groupId&&ST.groupId!=='SOLO'?` · <span style="color:var(--teal)">Opgeslagen in groep ${ST.groupId}</span>`:ST.savedScanId?' · <span style="color:var(--teal)">Anoniem opgeslagen</span>':''}</p></div><div class="score-hero anim a1"><div class="score-circle"><svg width="110" height="110" viewBox="0 0 110 110"><circle cx="55" cy="55" r="48" fill="none" stroke="var(--border)" stroke-width="6"/><circle cx="55" cy="55" r="48" fill="none" stroke="${vd.color}" stroke-width="6" stroke-dasharray="${2*Math.PI*48}" stroke-dashoffset="${2*Math.PI*48*(1-ov/100)}" stroke-linecap="round"/></svg><div class="score-inner"><div class="score-big">${ov}</div><div class="score-denom">/100</div></div></div><div><div style="margin-bottom:.5rem"><span style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:3px;background:${vd.bg};color:${vd.color};border:1px solid ${vd.color}44">${vd.label}</span></div><div class="score-explain">${vd.txt}</div></div></div>${(p.omzetfte||p.ebitda||p.recurring)?`<div class="sec-lbl anim a2">Financi\xeble kengetallen</div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:2rem">${[p.omzetfte?{l:'Omzet per fte',v:p.omzetfte,b:'Sector: \u20ac80k\u2013\u20ac150k | Top: >\u20ac200k'}:null,p.ebitda?{l:'EBITDA-marge',v:p.ebitda,b:'Benchmark: 20\u201330%'}:null,p.recurring?{l:'Vaste omzet',v:p.recurring,b:'PE-streefwaarde: >60%'}:null].filter(Boolean).map(k=>`<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:14px 16px"><div style="font-size:11px;color:var(--muted);margin-bottom:4px">${k.l}</div><div style="font-size:1.2rem;font-weight:600;color:var(--head);font-family:'IBM Plex Mono',monospace;margin-bottom:4px">${k.v}</div><div style="font-size:10px;color:var(--muted)">${k.b}</div></div>`).join('')}</div>`:''}
+<div class="sec-lbl anim a2">Strategische scenario&#39;s</div><div class="scenario-cards anim a3">${top3.map((sc,i)=>`<div class="sc-card"><div class="sc-hdr" data-k="${sc.k}"><span class="sc-rank${i===0?' pri':''}">${i===0?'AANBEVOLEN':i===1?'ALTERNATIEF':'OPTIONEEL'}</span><span class="sc-name${i===0?' pri':''}">${sc.name}</span><span class="sc-fit mono">${sc.score}% fit</span><span class="sc-chev${ST.openScenario===sc.k?' open':''}">&#9662;</span></div><div class="sc-body${ST.openScenario===sc.k?' open':''}"><div class="actions-lbl">Concrete vervolgstappen</div><div class="action-items">${sc.actions.map((a,ai)=>`<div class="action-item"><span class="act-num">0${ai+1}</span><div><div class="act-title">${a.t}</div><div class="act-desc">${a.d}</div><div class="act-horizon">${a.h}</div></div></div>`).join('')}</div></div></div>`).join('')}</div><div class="sec-lbl anim a3">Scores per dimensie <span style="font-size:10px;font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0">\u2014 bewijslaag</span></div>
+<div style="font-size:12px;color:var(--mid);line-height:1.6;padding:10px 16px;background:var(--card);border-left:3px solid var(--teal);border-radius:0 var(--r) var(--r) 0;margin-bottom:1rem">Deze analyse is gebaseerd op zelfrapportage. Scores geven richting aan strategische aandachtspunten en vormen geen formeel waarderings- of due diligence-advies.</div><div class="dim-grid anim a2">${SECTIONS.map(sec=>{const v=s[sec.id];const f=df(v);return`<div class="dim-card"><div class="dim-top"><div class="dim-name">${sec.label}</div><div class="dim-val" style="color:${dc(v)}">${v}</div></div><div class="dim-bar-bg"><div class="dim-bar" style="width:${v}%;background:${dc(v)}"></div></div><div class="dim-flag" style="color:${f.c}">${f.l}</div></div>`;}).join('')}</div><div class="sec-lbl anim a3">Positioneringsmatrix</div><div class="matrix-sec anim a2"><div class="matrix-title">Strategische positiematrix</div><div class="matrix-sub">Schaalbaarheid &amp; commercieel (X) · Winstkracht &amp; klantbinding (Y)</div><div class="matrix-body"><svg width="270" height="220" viewBox="0 0 270 220" style="flex-shrink:0"><rect x="30" y="10" width="220" height="170" fill="var(--card)" rx="4"/><rect x="30" y="10" width="110" height="85" fill="rgba(224,82,82,.07)" rx="4"/><rect x="140" y="10" width="110" height="85" fill="rgba(201,168,76,.07)"/><rect x="30" y="95" width="110" height="85" fill="rgba(201,168,76,.07)"/><rect x="140" y="95" width="110" height="85" fill="rgba(34,197,160,.07)" rx="4"/><line x1="140" y1="10" x2="140" y2="180" stroke="var(--border2)" stroke-width="1" stroke-dasharray="4,3"/><line x1="30" y1="95" x2="250" y2="95" stroke="var(--border2)" stroke-width="1" stroke-dasharray="4,3"/><text x="85" y="26" text-anchor="middle" font-size="9" fill="var(--muted)" font-family="IBM Plex Sans">Kwetsbaar</text><text x="195" y="26" text-anchor="middle" font-size="9" fill="var(--muted)" font-family="IBM Plex Sans">Groei mogelijk</text><text x="85" y="172" text-anchor="middle" font-size="9" fill="var(--muted)" font-family="IBM Plex Sans">Stabiel</text><text x="195" y="172" text-anchor="middle" font-size="9" fill="var(--teal)" font-family="IBM Plex Sans">Sterk platform</text><text x="140" y="207" text-anchor="middle" font-size="9" fill="var(--muted)" font-family="IBM Plex Sans">Schaal &amp; commercieel</text><circle cx="${30+(bench/100)*220}" cy="${180-((bench/100)*170)}" r="5" fill="none" stroke="var(--gold)" stroke-width="1.5" opacity=".6"/><circle cx="${30+(mx/100)*220}" cy="${180-((my/100)*170)}" r="9" fill="var(--teal)" opacity=".2"/><circle cx="${30+(mx/100)*220}" cy="${180-((my/100)*170)}" r="5" fill="var(--teal)"/></svg><div class="quadrant-list">${[{q:'Sterk platform',d:'Hoge schaal + hoge winstkracht.',a:mx>50&&my>50},{q:'Groei mogelijk',d:'Lage schaal + hoge winstkracht.',a:mx<=50&&my>50},{q:'Stabiel / defensief',d:'Hoge schaal + lagere winstkracht.',a:mx>50&&my<=50},{q:'Kwetsbaar',d:'Lage schaal + lage winstkracht.',a:mx<=50&&my<=50}].map(i=>`<div class="q-item${i.a?' active':''}"><div class="q-dot" style="background:${i.a?'var(--teal)':'var(--border2)'}"></div><div><div class="q-iname">${i.q}</div><div class="q-idesc">${i.d}</div></div></div>`).join('')}</div></div></div><div class="sec-lbl anim a1">Strategisch advies op maat</div><div class="ai-panel anim a3"><div class="ai-panel-hdr"><div class="ai-title-group"><span class="ai-badge-el">KantoorInzicht · AI</span><div><div class="ai-panel-name">Strategisch advies op maat</div><div class="ai-panel-sub">Op basis van zelfrapportage · Scores zijn indicatief · Mei 2026</div></div></div><button class="btn-gen" id="gen-btn" ${ST.aiLoading?'disabled':''}>${ST.aiLoading?'Genereren...':ST.aiText&&ST.aiText!=='__ERROR__'?'Opnieuw genereren':'Genereer AI-advies'}</button></div><div class="ai-body"><div id="ai-out">${renderAIText(ST.aiText,false)}</div></div></div><div class="r-footer anim a4"><div style="background:var(--teal-bg);border:1.5px solid var(--teal);border-radius:var(--r2);padding:1.5rem 2rem;margin-bottom:1.5rem;text-align:center"><div style="font-family:'Playfair Display',serif;font-size:1.2rem;color:var(--head);font-weight:600;margin-bottom:.5rem">Wilt u de uitkomsten bespreken?</div><div style="font-size:13px;color:var(--mid);line-height:1.7;margin-bottom:1rem">Marcel Bisschops is M&amp;A-adviseur gespecialiseerd in accountantskantoren \u2014 met een achtergrond als bestuurder binnen de accountancy- en administratiesector en een breed netwerk van kantoren en softwareleveranciers. Een gesprek duurt 30 minuten en is vrijblijvend.</div><div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap"><button id="callback-btn" style="display:inline-flex;align-items:center;gap:8px;background:var(--teal);color:var(--void);font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;padding:10px 20px;border-radius:var(--r);border:none;cursor:pointer">\ud83d\udccb Stuur terugbelverzoek</button><button onclick="window.location.href='tel:+31638689888'" style="display:inline-flex;align-items:center;gap:8px;background:var(--teal);color:var(--void);font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;padding:10px 20px;border-radius:var(--r);border:none;cursor:pointer">\ud83d\udcde 06 - 38 68 98 88</button><button onclick="window.location.href='mailto:marcel@bisschopsfinancing.nl'" style="display:inline-flex;align-items:center;gap:8px;background:var(--teal);color:var(--void);font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;padding:10px 20px;border-radius:var(--r);border:none;cursor:pointer">\u2709 marcel@bisschopsfinancing.nl</button></div></div><p class="footer-note">&copy; ${new Date().getFullYear()} Bisschops Financing BV \u2014 KantoorInzicht. Aanbevelingen zijn indicatief en vormen geen formeel advies.</p><div class="footer-btns"><button class="btn-print" onclick="setTimeout(function(){window.print()},300)">PDF</button>${ST.groupId?`<button class="btn-ghost" id="view-group-btn">Dashboard</button>`:''}<button class="btn-restart" id="restart-btn">Nieuwe scan</button></div></div></div>`;
+}
+
+function rDashboard(){
+  if(ST.groupLoading)return`<div class="page-wrap"><div class="loading-screen"><div class="ai-spinner"></div><p>Dashboard wordt geladen...</p></div></div>`;
+  const d=ST.groupData;if(!d)return rDashboardError();
+  const offices=d.offices||[];const cum=d.cumulative||{};const avg=overall(cum);const bench=62;
+  const sorted=[...offices].sort((a,b)=>b.overall-a.overall);
+  const scenarioCounts={};offices.forEach(o=>{if(o.top_scenario)scenarioCounts[o.top_scenario]=(scenarioCounts[o.top_scenario]||0)+1;});
+  const topScenario=Object.entries(scenarioCounts).sort((a,b)=>b[1]-a[1])[0];
+  const n=SECTIONS.length;const cx=200,cy=200,r=150;
+  const angle=i=>(i*2*Math.PI/n)-Math.PI/2;
+  const pt=(i,val)=>{const a=angle(i);const rv=(val/100)*r;return[cx+rv*Math.cos(a),cy+rv*Math.sin(a)];};
+  const gridPts=v=>SECTIONS.map((_,i)=>pt(i,v)).map(p=>p.join(',')).join(' ');
+  const dataPolygon=offices.map(o=>{const s=o.scores;const pts=SECTIONS.map((_,i)=>pt(i,s[SECTIONS[i].id]||0)).map(p=>p.join(',')).join(' ');return`<polygon points="${pts}" fill="rgba(34,197,160,.06)" stroke="rgba(34,197,160,.25)" stroke-width="1"/>`;}).join('');
+  const cumPts=SECTIONS.map((_,i)=>pt(i,cum[SECTIONS[i].id]||0)).map(p=>p.join(',')).join(' ');
+  const axisLines=SECTIONS.map((_,i)=>{const[x,y]=pt(i,100);return`<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="var(--border2)" stroke-width="1"/>`;}).join('');
+  const axisLabels=SECTIONS.map((sec,i)=>{const[x,y]=pt(i,118);const anchor=x<cx-5?'end':x>cx+5?'start':'middle';return`<text x="${x}" y="${y}" text-anchor="${anchor}" font-size="9" fill="var(--muted)" font-family="IBM Plex Sans">${sec.label}</text>`;}).join('');
+  return`<div class="page-wrap"><div class="page-hdr"><div class="page-brand"><div class="wdot"></div>KantoorInzicht</div><div class="page-step">Groepsdashboard · ${d.group?.name||ST.groupId}</div></div><div class="dash-head anim"><div class="dash-title"><em>${d.group?.name||'Groep'}</em></div><div class="dash-sub">Groepscode: <span class="mono" style="color:var(--teal)">${d.group?.id||ST.groupId}</span> · ${offices.length} deelnemende kantoren</div></div><div class="dash-stats anim a1"><div class="stat-card"><div class="stat-num" style="color:var(--teal)">${offices.length}</div><div class="stat-lbl">Kantoren</div></div><div class="stat-card"><div class="stat-num" style="color:${avg>=70?'var(--teal)':avg>=50?'var(--gold)':'var(--red)'}">${avg||'\u2014'}</div><div class="stat-lbl">Gemiddelde score</div></div><div class="stat-card"><div class="stat-num" style="color:var(--head)">${sorted[0]?sorted[0].overall:'\u2014'}</div><div class="stat-lbl">Hoogste score</div></div><div class="stat-card"><div class="stat-num" style="color:var(--head);font-size:1rem">${topScenario?topScenario[0].split(' ')[0]:'\u2014'}</div><div class="stat-lbl">Meest aanbevolen</div></div></div><div class="sec-lbl anim a1">Groepsprofiel \u2014 radardiagram</div><div class="radar-wrap anim a1"><div class="radar-title">Radardiagram groepsgemiddelden</div><div class="radar-sub">Teal = groepsgemiddelde · Lichte vlakken = individuele kantoren</div><svg width="400" height="430" viewBox="0 0 400 430" style="display:block;margin:0 auto">${[20,40,60,80,100].map(v=>`<polygon points="${gridPts(v)}" fill="none" stroke="var(--border)" stroke-width="0.5"/>`).join('')}${axisLines}${dataPolygon}<polygon points="${cumPts}" fill="rgba(34,197,160,.15)" stroke="var(--teal)" stroke-width="2"/>${axisLabels}${SECTIONS.map((_,i)=>{const[x,y]=pt(i,cum[SECTIONS[i].id]||0);return`<circle cx="${x}" cy="${y}" r="3" fill="var(--teal)"/>`;}).join('')}</svg></div><div class="sec-lbl anim a2">Benchmarkvergelijking</div><div class="dim-grid anim a2">${SECTIONS.map(sec=>{const v=cum[sec.id]||0;const f=df(v);return`<div class="dim-card"><div class="dim-top"><div class="dim-name">${sec.label}</div><div class="dim-val" style="color:${dc(v)}">${v}</div></div><div class="dim-bar-bg"><div class="dim-bar" style="width:${v}%;background:${dc(v)}"></div></div><div class="dim-flag" style="color:${f.c}">${f.l}</div></div>`;}).join('')}</div><div class="sec-lbl anim a2">Vergelijkingen</div><div class="compare-grid anim a2"><div class="compare-card"><div class="compare-title">Sterkste dimensies (groep)</div>${SECTIONS.map(sec=>({...sec,v:cum[sec.id]||0})).sort((a,b)=>b.v-a.v).slice(0,5).map(sec=>`<div class="compare-item"><span class="compare-name">${sec.label}</span><span class="compare-val" style="color:${dc(sec.v)}">${sec.v}</span></div>`).join('')}</div><div class="compare-card"><div class="compare-title">Zwakste dimensies (groep)</div>${SECTIONS.map(sec=>({...sec,v:cum[sec.id]||0})).sort((a,b)=>a.v-b.v).slice(0,5).map(sec=>`<div class="compare-item"><span class="compare-name">${sec.label}</span><span class="compare-val" style="color:${dc(sec.v)}">${sec.v}</span></div>`).join('')}</div><div class="compare-card"><div class="compare-title">Ranglijst kantoren</div>${sorted.map((o,i)=>`<div class="compare-item"><span class="compare-name">${i+1}. ${o.name||'Anoniem'}${o.region?' · '+o.region:''}</span><span class="compare-val" style="color:${dc(o.overall)}">${o.overall}</span></div>`).join('')}</div><div class="compare-card"><div class="compare-title">Aanbevolen scenarios</div>${Object.entries(scenarioCounts).sort((a,b)=>b[1]-a[1]).map(([sc,cnt])=>`<div class="compare-item"><span class="compare-name">${sc}</span><span class="compare-val" style="color:var(--sub)">${cnt}x</span></div>`).join('')}</div></div><div class="sec-lbl anim a3">Individuele kantoorprofielen</div><div class="office-list anim a3">${sorted.map((o,i)=>`<div class="office-card"><div class="office-hdr" data-oid="${o.id}"><span class="office-rank">#${i+1}</span><div><div class="office-name">${o.name||'Anoniem'}</div><div class="office-meta">${o.region?`<span>${o.region}</span>`:''}${o.fte?`<span>${o.fte} fte</span>`:''}${o.revenue?`<span>${o.revenue}</span>`:''}${o.top_scenario?`<span style="color:var(--teal)">${o.top_scenario}</span>`:''}</div></div><div class="office-score" style="color:${dc(o.overall)}">${o.overall}</div><span class="office-chev${ST.openOffice===o.id?' open':''}">&#9662;</span></div><div class="office-body${ST.openOffice===o.id?' open':''}"><div class="office-dim-grid">${SECTIONS.map(sec=>{const v=o.scores[sec.id]||0;return`<div class="office-dim"><div class="office-dim-name">${sec.label}</div><div class="office-dim-bar"><div class="office-dim-fill" style="width:${v}%;background:${dc(v)};height:100%"></div></div><div class="office-dim-val" style="color:${dc(v)}">${v}</div></div>`;}).join('')}</div><div style="font-size:11px;color:var(--muted);margin-top:.5rem">Ingevuld op ${new Date(o.created_at).toLocaleDateString('nl-NL')}</div></div></div>`).join('')}</div><div class="r-footer"><p class="footer-note">&copy; ${new Date().getFullYear()} Bisschops Financing BV \u2014 KantoorInzicht</p><div class="footer-btns"><button class="btn-print" onclick="setTimeout(function(){window.print()},300)">PDF</button><button class="btn-ghost" id="back-intro">Start</button><button class="btn-adv" id="refresh-dash">Verversen</button></div></div></div>`;
+}
+
+/* ════════ EVENTS ════════ */
+function bindEvents(){
+  const $=id=>document.getElementById(id);
+  const on=(id,ev,fn)=>{const el=$(id);if(el)el['on'+ev]=fn;};
+  on('back-intro','click',()=>{ST.screen='intro';render();});
+  on('route-solo','click',()=>{ST.groupId=null;ST.screen='intake';render();});
+  on('route-group-join','click',()=>{ST.screen='group-join';render();});
+  on('route-group-create','click',()=>{ST.screen='group-create';render();});
+  on('route-dashboard','click',async()=>{
+    const code=prompt('Voer uw groepscode in (of laat leeg als u de code kwijt bent):','');
+    if(code&&code.trim()){ST.groupId=code.toUpperCase().trim();await loadGroup(ST.groupId);}
+    else if(code!==null){
+      const email=prompt('Code kwijt? Voer het e-mailadres in waarmee de groep is aangemaakt:','');
+      if(email){
+        try{
+          const r=await fetch(WORKER+'/group/find-by-email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email.trim()})});
+          const d=await r.json();
+          if(d.group_id){
+            const ok=confirm('Gevonden: groep "'+d.name+'" met code '+d.group_id+'. Dashboard openen?');
+            if(ok){ST.groupId=d.group_id;await loadGroup(ST.groupId);}
+          } else {alert('Geen groep gevonden op dit e-mailadres.');}
+        }catch(e){alert('Kon niet zoeken. Neem contact op via marcel@bisschopsfinancing.nl');}
+      }
+    }
+  });
+  on('do-create-group','click',async()=>{
+    const name=$('gc-name')?.value?.trim();const email=$('gc-email')?.value?.trim();
+    if(!name||!email){alert('Vul naam en e-mail in.');return;}
+    const isPublic=document.getElementById('gc-public')?.checked!==false;
+    const btn=$('do-create-group');if(btn){btn.disabled=true;btn.textContent='Aanmaken...';}
+    const data=await createGroup(name,email,isPublic);
+    if(data.group_id){ST.groupId=data.group_id;ST.screen='group-created';render();}
+    else alert('Fout: '+(data.error||'Onbekend'));
+  });
+  on('view-dashboard-btn','click',()=>loadGroup(ST.groupId));
+  on('copy-code-btn','click',()=>{
+    const code=ST.groupId||'';
+    if(navigator.clipboard){navigator.clipboard.writeText(code).then(()=>alert('Code gekopieerd: '+code));}
+    else{const el=document.createElement('textarea');el.value=code;document.body.appendChild(el);el.select();document.execCommand('copy');document.body.removeChild(el);alert('Code gekopieerd: '+code);}
+  });
+  on('download-code-btn','click',()=>{
+    const code=ST.groupId||'';
+    const blob=new Blob(['KantoorInzicht Groepscode: '+code+'\n\nGa naar: https://koersvoormorgen.nl\nKlik op "Dashboard bekijken" en voer de code in.\n\nDeel deze code met deelnemende kantoren via dezelfde link.'], {type:'text/plain'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='KantoorInzicht-groepscode-'+code+'.txt';a.click();
+  });
+
+  on('do-join-group','click',()=>{
+    const code=$('gj-code')?.value?.trim().toUpperCase();
+    if(!code||code.length<4){alert('Voer een geldige groepscode in.');return;}
+    ST.groupId=code;ST.screen='intake';render();
+  });
+  on('start-scan','click',()=>{
+    const fte=$('f-fte')?.value?.trim();
+    const omzet=$('f-omzet')?.value?.trim();
+    const omzetfte=$('f-omzet-fte')?.value?.trim();
+    const ebitda=$('f-ebitda')?.value?.trim();
+    const recurring=$('f-recurring')?.value?.trim();
+    const naam=$('f-naam')?.value?.trim();
+    if(!naam||!fte||!omzet||!omzetfte||!ebitda||!recurring){
+      alert('Vul alle verplichte velden in (gemarkeerd met *):\nNaam kantoor, medewerkers, jaaromzet, omzet per fte, EBITDA-marge en aandeel vaste omzet.');return;
+    }
+    const saveConsent=$('save-consent')?.checked!==false;
+    ST.profile={naam,naamAnon:false,saveConsent,email:$('f-email')?.value||'',regio:$('f-regio')?.value||'',fte,omzet,specialisme:$('f-spec')?.value||'',doelgroep:$('f-doel')?.value||'',software:$('f-sw')?.value||'',ambitie:$('f-ambitie')?.value||'',context:$('f-context')?.value||'',omzetfte,ebitda,recurring};
+    ST.screen='questions';render();
+  });
+  on('prev-btn','click',()=>{if(ST.section>0){ST.section--;render();}});
+  on('next-btn','click',async()=>{
+    const sec=SECTIONS[ST.section];
+    if(!sec.questions.every(q=>ST.answers[q.id]!==undefined))return;
+    if(ST.section<SECTIONS.length-1){ST.section++;render();}
+    else{ST.scores=calcScores();ST.scenarios=rankScenarios(ST.scores);ST.screen='results';render();window.scrollTo(0,0);saveScanToGroup().catch(()=>{});}
+  });
+  document.querySelectorAll('.l-btn').forEach(b=>{b.onclick=()=>{ST.answers[b.dataset.q]=parseInt(b.dataset.v);render();};});
+  document.querySelectorAll('.sc-hdr').forEach(h=>{h.onclick=()=>{const k=h.dataset.k;ST.openScenario=ST.openScenario===k?null:k;render();};});
+  document.querySelectorAll('.office-hdr').forEach(h=>{h.onclick=()=>{const id=h.dataset.oid;ST.openOffice=ST.openOffice===id?null:id;render();};});
+  on('gen-btn','click',()=>generateAI());
+  on('view-group-btn','click',()=>loadGroup(ST.groupId));
+  on('refresh-dash','click',()=>loadGroup(ST.groupId));
+  on('callback-btn','click',()=>showCallbackModal());
+  on('restart-btn','click',()=>{ST={...ST,screen:'intro',section:0,answers:{},scores:null,scenarios:null,openScenario:null,aiText:null,aiLoading:false,savedScanId:null,profile:{naam:'',naamAnon:false,email:'',regio:'',fte:'',omzet:'',specialisme:'',doelgroep:'',software:'',ambitie:'',context:'',omzetfte:'',ebitda:'',recurring:'',saveConsent:true}};render();window.scrollTo(0,0);});
+}
+
+function showCallbackModal(){
+  const existing=document.getElementById('cb-overlay');
+  if(existing)existing.remove();
+  const overlay=document.createElement('div');
+  overlay.id='cb-overlay';
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:500;display:flex;align-items:center;justify-content:center;padding:1.5rem';
+  overlay.innerHTML='<div style="background:var(--panel);border:1px solid var(--border2);border-radius:var(--r2);padding:2rem;max-width:440px;width:100%;max-height:90vh;overflow-y:auto">'
+    +'<div style="font-family:\'Playfair Display\',serif;font-size:1.2rem;color:var(--head);font-weight:600;margin-bottom:.4rem">Terugbelverzoek</div>'
+    +'<div style="font-size:13px;color:var(--mid);line-height:1.65;margin-bottom:1.25rem">Vul uw gegevens in. Marcel Bisschops neemt binnen 1 werkdag contact op. Uw gegevens worden uitsluitend gebruikt voor dit verzoek.</div>'
+    +'<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:1.25rem">'
+    +'<div class="field"><label>Naam</label><input type="text" id="cb-naam" placeholder="Uw naam"></div>'
+    +'<div class="field"><label>Telefoonnummer</label><input type="tel" id="cb-tel" placeholder="06 - xx xx xx xx"></div>'
+    +'<div class="field"><label>E-mailadres</label><input type="email" id="cb-email" placeholder="u@kantoor.nl"></div>'
+    +'<div class="field"><label>Beste beltijd (optioneel)</label><input type="text" id="cb-tijd" placeholder="bijv. ochtend of na 14:00"></div>'
+    +'</div>'
+    +'<div id="cb-status" style="font-size:12px;color:var(--teal);margin-bottom:1rem;display:none">Verstuurd! Marcel neemt spoedig contact op.</div>'
+    +'<div style="display:flex;gap:10px;justify-content:flex-end">'
+    +'<button id="cb-cancel" class="btn-ghost">Annuleren</button>'
+    +'<button id="cb-send" class="btn-adv">Verstuur verzoek</button>'
+    +'</div></div>';
+  document.body.appendChild(overlay);
+  overlay.onclick=function(e){if(e.target===overlay)overlay.remove();};
+  document.getElementById('cb-cancel').onclick=function(){overlay.remove();};
+  document.getElementById('cb-send').onclick=async function(){
+    var naam=document.getElementById('cb-naam').value.trim();
+    var tel=document.getElementById('cb-tel').value.trim();
+    var email=document.getElementById('cb-email').value.trim();
+    var tijd=document.getElementById('cb-tijd').value.trim();
+    if(!naam||(!tel&&!email)){alert('Vul minimaal uw naam en telefoon of e-mail in.');return;}
+    var btn=document.getElementById('cb-send');
+    btn.disabled=true;btn.textContent='Versturen...';
+    var s=ST.scores||{};
+    var p=ST.profile||{};
+    var ov=ST.scores?overall(ST.scores):0;
+    try{
+      await fetch(WORKER+'/callback',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({naam:naam,tel:tel,email:email,tijd:tijd,
+          kantoor:{naam:p.naam||'Niet opgegeven',regio:p.regio||'',fte:p.fte||'',omzet:p.omzet||'',specialisme:p.specialisme||'',ambitie:p.ambitie||''},
+          scores:s,totaal:ov,scenario:ST.scenarios&&ST.scenarios[0]?ST.scenarios[0].name:''
+        })
+      });
+      document.getElementById('cb-status').style.display='block';
+      btn.textContent='Verstuurd';
+      setTimeout(function(){overlay.remove();},2500);
+    }catch(e){
+      btn.disabled=false;btn.textContent='Verstuur verzoek';
+      alert('Er ging iets mis. Bel direct: 06 - 38 68 98 88');
+    }
+  };
+}
+
+render();
+
+</script>
+</body>
+</html>
