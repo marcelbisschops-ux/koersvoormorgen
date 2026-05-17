@@ -611,8 +611,8 @@ function renderMain(){
     +'</div></div>'
     +lockedBanner
     +'<div style="font-family:Playfair Display,serif;font-size:1.4rem;color:var(--head);font-weight:600;margin-bottom:.25rem">'+esc(S.traject&&S.traject.kantoor_naam||'')+'</div>'
-    +'<div style="font-size:13px;color:var(--muted);margin-bottom:1rem">Voortgang: <span style="font-family:IBM Plex Mono,monospace;color:'+(tp===100?'var(--teal)':tp>50?'var(--gold)':'var(--red)')+'">'+tp+'%</span></div>'
-    +'<div class="prog-bar"><div class="prog-fill" style="width:'+tp+'%;background:'+(tp===100?'var(--teal)':tp>50?'var(--gold)':'var(--red)')+'"></div></div>'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">'+'<div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)">Trajectvoortgang</div>'+'<div style="font-family:IBM Plex Mono,monospace;font-size:13px;font-weight:600;color:'+(tp===100?'var(--teal)':tp>50?'var(--gold)':'var(--red)')+'">'+tp+'% &middot; '+(isVerkoper()?FASES.filter(function(f){return fillPct(f.id)===100;}).length:FASES.filter(function(f){return pct(f.id)===100;}).length))+' van '+FASES.length+' fasen afgerond</div></div>'
+    +'<div style="height:8px;background:var(--border2);border-radius:4px;overflow:hidden;margin-bottom:1.25rem">'+'<div style="height:100%;border-radius:4px;background:'+(tp===100?'var(--teal)':tp>50?'var(--gold)':'var(--red)')+';width:'+tp+'%;transition:width .5s ease"></div></div>'
     +ov
     +'<div style="font-family:Playfair Display,serif;font-size:1.1rem;color:var(--head);font-weight:600;margin-bottom:.2rem">'+f.num+'. '+f.title+'</div>'
     +'<div style="font-size:13px;color:var(--muted);margin-bottom:1.25rem">'+f.desc+'</div>'
@@ -731,6 +731,6 @@ function bindAll(){
 renderApp();
 </script>
 
-<div style="max-width:900px;margin:2rem auto;padding:0 2rem"><div class="disclaimer-footer"><strong>Beperking aansprakelijkheid &mdash; Bisschops Financing BV.</strong> KantoorInzicht is een zelfdiagnosticsinstrument. Alle uitkomsten, scores, scenario&rsquo;s en AI-gegenereerde analyses zijn uitsluitend indicatief. Bisschops Financing BV aanvaardt geen enkele aansprakelijkheid voor beslissingen die worden genomen op basis van dit instrument. De inhoud vormt geen financieel, juridisch of strategisch advies. Raadpleeg altijd een gekwalificeerde adviseur.</div></div>
+<div style="max-width:900px;margin:2rem auto;padding:0 2rem"><div class="disclaimer-footer"><strong>Beperking aansprakelijkheid &mdash; Bisschops Financing BV.</strong> KantoorInzicht is een zelfdiagnosticsinstrument. Alle uitkomsten, scores, scenario&rsquo;s en AI-gegenereerde analyses zijn uitsluitend indicatief. Bisschops Financing BV aanvaardt geen enkele aansprakelijkheid voor beslissingen die worden genomen op basis van dit instrument. De inhoud vormt geen financieel, juridisch of strategisch advies. Raadpleeg altijd een gekwalificeerde adviseur. <a href="voorwaarden.html" style="color:#5a5030;text-decoration:underline">Gebruiksvoorwaarden</a> &middot; <a href="privacy.html" style="color:#5a5030;text-decoration:underline">Privacyverklaring</a></div></div>
 </body>
 </html>
