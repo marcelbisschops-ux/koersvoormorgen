@@ -199,8 +199,8 @@ async function deleteMna(code) {
 }
 
 async function changeStatus(code, status) {
-  await fetch(WORKER + '/mna/admin/status/' + code, {headers: {'x-admin-key': adminKey},
-    method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({status: status})
+  await fetch(WORKER + '/mna/admin/status/' + code, {
+    method: 'POST', headers: {'x-admin-key': adminKey, 'Content-Type':'application/json'}, body: JSON.stringify({status: status})
   });
   await refreshData();
 }
@@ -223,8 +223,8 @@ async function createTraject() {
   if (!naam.trim()) { alert('Kantoornaam is verplicht.'); return; }
   var btn = ge('create-btn');
   btn.disabled = true; btn.textContent = 'Aanmaken...';
-  var r = await fetch(WORKER + '/mna/create', {headers: {'x-admin-key': adminKey},
-    method: 'POST', headers: {'Content-Type':'application/json'},
+  var r = await fetch(WORKER + '/mna/create', {
+    method: 'POST', headers: {'x-admin-key': adminKey, 'Content-Type':'application/json'},
     body: JSON.stringify({kantoor_naam:naam.trim(), contact_naam:contact, contact_email:email, traject_type:type, notitie:notitie})
   });
   var d = await r.json().catch(function() { return {}; });
@@ -345,8 +345,8 @@ async function createGroep() {
   var omschr = (ge('g-omschr')||{}).value||'';
   if (!naam.trim()) { alert('Naam is verplicht.'); return; }
   var btn = ge('g-create-btn'); btn.disabled=true; btn.textContent='Aanmaken...';
-  var r = await fetch(WORKER+'/mna/groep/create', {headers: {'x-admin-key': adminKey},
-    method:'POST', headers:{'Content-Type':'application/json'},
+  var r = await fetch(WORKER+'/mna/groep/create', {
+    method:'POST', headers:{'x-admin-key': adminKey, 'Content-Type':'application/json'},
     body: JSON.stringify({naam:naam.trim(), omschrijving:omschr.trim()})
   });
   var d = await r.json().catch(function(){return{};});
@@ -361,8 +361,8 @@ async function createGroep() {
 async function koppelTraject(groepId) {
   var sel = ge('koppel-'+groepId);
   if (!sel||!sel.value) return;
-  var r = await fetch(WORKER+'/mna/groep/koppel', {headers: {'x-admin-key': adminKey},
-    method:'POST', headers:{'Content-Type':'application/json'},
+  var r = await fetch(WORKER+'/mna/groep/koppel', {
+    method:'POST', headers:{'x-admin-key': adminKey, 'Content-Type':'application/json'},
     body: JSON.stringify({groep_id:groepId, traject_id:sel.value})
   });
   var d = await r.json().catch(function(){return{};});
@@ -372,8 +372,8 @@ async function koppelTraject(groepId) {
 
 async function ontkoppelTraject(groepId, trajectId) {
   if (!confirm('Kantoor ontkoppelen van deze groep?')) return;
-  var r = await fetch(WORKER+'/mna/groep/ontkoppel', {headers: {'x-admin-key': adminKey},
-    method:'POST', headers:{'Content-Type':'application/json'},
+  var r = await fetch(WORKER+'/mna/groep/ontkoppel', {
+    method:'POST', headers:{'x-admin-key': adminKey, 'Content-Type':'application/json'},
     body: JSON.stringify({groep_id:groepId, traject_id:trajectId})
   });
   var d = await r.json().catch(function(){return{};});
