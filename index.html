@@ -638,9 +638,13 @@ function rGroupCreated(){
     + `<div class="group-panel-title">Groep aangemaakt</div>`
     + `<div class="group-panel-sub">Deel de onderstaande code met de deelnemende kantoren. Bewaar de code — zonder deze heeft u geen toegang tot uw dashboard.</div>`
     + `<div class="code-display" id="gc-code-display">${code}</div>`
-    + `<div style="display:flex;gap:8px;margin-bottom:1.75rem">`
+    + `<div style="display:flex;gap:8px;margin-bottom:1rem">`
     + `<button class="btn-adv" id="copy-code-btn" style="flex:1;font-size:13px">Kopieer code</button>`
     + `<button class="btn-ghost" id="view-dashboard-btn" style="flex:1">Bekijk dashboard</button>`
+    + `</div>`
+    + `<div style="display:flex;gap:8px;margin-bottom:1.75rem">`
+    + `<button class="btn-ghost" id="save-code-btn" style="flex:1;font-size:12px">&#8681; Opslaan als bestand</button>`
+    + `<button class="btn-ghost" id="email-code-btn" style="flex:1;font-size:12px">&#9993; Stuur naar mijzelf</button>`
     + `</div>`
     + `<div style="font-size:12px;color:var(--muted);line-height:1.65;padding-top:1rem;border-top:1px solid var(--border)">Kantoren kunnen deelnemen via <strong style="color:var(--sub)">koersvoormorgen.nl</strong> \u2192 Deelnemen aan groep. Het dashboard toont resultaten zodra de eerste scan is ingediend.</div>`
     + `</div></div>`;
@@ -719,6 +723,24 @@ function bindEvents(){
       const btn=document.getElementById('copy-code-btn');
       if(btn){btn.textContent='\u2713 Gekopieerd';setTimeout(()=>{btn.textContent='Kopieer code';},2000);}
     }).catch(()=>alert('Code: '+code));
+  });
+  on('save-code-btn','click',()=>{
+    const code=ST.groupId||'';
+    const naam=(ST.groupData&&ST.groupData.group&&ST.groupData.group.name)||'Groep';
+    const inhoud='KantoorInzicht \u2014 Groepscode\n\nGroep: '+naam+'\nCode: '+code+'\nDatum: '+new Date().toLocaleDateString('nl-NL')+'\n\nDeelnemers kunnen de scan invullen via:\nhttps://koersvoormorgen.nl\n\nDashboard bekijken:\nhttps://koersvoormorgen.nl (kies "Dashboard bekijken" en voer bovenstaande code in)\n\nBewaar dit bestand goed \u2014 zonder de code heeft u geen toegang tot het dashboard.';
+    const blob=new Blob([inhoud],{type:'text/plain;charset=utf-8'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;a.download='kantoorinzicht-code-'+code+'.txt';
+    document.body.appendChild(a);a.click();
+    document.body.removeChild(a);URL.revokeObjectURL(url);
+  });
+  on('email-code-btn','click',()=>{
+    const code=ST.groupId||'';
+    const naam=(ST.groupData&&ST.groupData.group&&ST.groupData.group.name)||'Groep';
+    const onderwerp=encodeURIComponent('KantoorInzicht groepscode \u2014 '+naam);
+    const body=encodeURIComponent('Groepscode KantoorInzicht\n\nGroep: '+naam+'\nCode: '+code+'\n\nDeelnemers vullen de scan in via https://koersvoormorgen.nl en kiezen "Deelnemen aan groep".\nDashboard: https://koersvoormorgen.nl \u2192 "Dashboard bekijken" \u2192 voer bovenstaande code in.\n\nBewaar dit bericht goed \u2014 zonder de code heeft u geen toegang tot het dashboard.');
+    window.location.href='mailto:?subject='+onderwerp+'&body='+body;
   });
   on('view-dashboard-btn','click',()=>loadGroup(ST.groupId));
   on('do-join-group','click',()=>{
