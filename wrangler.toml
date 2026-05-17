@@ -9,7 +9,7 @@ compatibility_date = "2024-01-01"
 [[d1_databases]]
 binding = "DB"
 database_name = "kantoorinzicht"
-database_id = "VULL_DIT_IN_NA_wrangler_d1_create"
+database_id = "8565fdcb-b598-4739-9f7f-2c9b456300f1"
 
 # R2 bucket voor document-opslag (optioneel)
 # [[r2_buckets]]
