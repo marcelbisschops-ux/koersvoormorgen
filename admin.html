@@ -225,7 +225,7 @@ async function createTraject() {
   });
   var d = await r.json().catch(function() { return {}; });
   if (d.ok) {
-    alert('Aangemaakt!\n\nTrajectcode (verkoper): ' + d.code + '\nKoperscode: ' + (d.koper_code||'-') + '\n\nDeel via koersvoormorgen.nl/mna.html');
+    alert('Aangemaakt!\n\nTrajectcode (verkoper): ' + d.code + '\nKoperscode (koper): ' + (d.koper_code||'-') + '\nTussencode (tussenpersoon): ' + (d.tussen_code||'-') + '\n\nDeel via koersvoormorgen.nl/mna.html');
     ge('new-naam').value = ''; ge('new-contact').value = ''; ge('new-email').value = ''; ge('new-notitie').value = '';
     await refreshData();
   } else alert('Fout: ' + (d.error || 'onbekend'));
@@ -243,11 +243,12 @@ function copyText(text, label) {
   }
 }
 
-function downloadCodes(code, naam, koperCode) {
+function downloadCodes(code, naam, koperCode, tussenCode) {
   var tekst = 'KantoorInzicht M&A Trajectcodes\n================================\n\n'
     + 'Kantoor: ' + naam + '\n'
     + 'Trajectcode (verkoper): ' + code + '\n'
     + (koperCode ? 'Koperscode (koper): ' + koperCode + '\n' : '')
+    + (tussenCode ? 'Tussencode (tussenpersoon): ' + tussenCode + '\n' : '')
     + '\nInloggen via: https://koersvoormorgen.nl/mna.html\n'
     + '\nBewaar dit bestand vertrouwelijk.\n'
     + 'Gegenereerd op: ' + new Date().toLocaleString('nl-NL');
@@ -469,6 +470,7 @@ function renderMnaTab() {
         + '</div>'
         + (t.koper_code ? '<div style="margin-top:3px;display:flex;align-items:center;gap:4px"><span class="mono" style="font-size:11px;color:var(--gold)">' + t.koper_code + '</span>'
           + '<button class="btn-copy" onclick="copyText(\'' + t.koper_code + '\',\'Koperscode\')" title="Kopieer koperscode">C</button></div>' : '')
+        + (t.tussen_code ? '<div style="margin-top:3px;display:flex;align-items:center;gap:4px"><span class="mono" style="font-size:11px;color:var(--mid)">' + t.tussen_code + '</span><button class="btn-copy" onclick="copyText(\'' + t.tussen_code + '\',\'Tussencode\')" title="Kopieer tussencode">C</button><span style="font-size:9px;color:var(--muted);margin-left:2px">tussen.</span></div>' : '')
         + '<div style="margin-top:3px"><button class="btn-copy" onclick="downloadCodes(\'' + t.id + '\',\'' + (t.kantoor_naam||'').replace(/'/g,'') + '\',\'' + (t.koper_code||'') + '\')" title="Download codes als tekstbestand">&#8595; Sla op</button></div>'
         + '</td>'
         + '<td style="font-weight:500;color:var(--head)">' + (t.kantoor_naam||'-') + '</td>'
