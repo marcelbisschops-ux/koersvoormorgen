@@ -121,20 +121,6 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--s
 <script>
 var WORKER='https://kantoorinzicht.marcel-bisschops.workers.dev';
 
-function triggerFileUpload(faseId) {
-  var input = document.createElement('input');
-  input.type = 'file';
-  input.accept = '.pdf,.docx,.doc,.xlsx,.xls,.csv';
-  input.multiple = true;
-  document.body.appendChild(input);
-  input.addEventListener('change', function(e) {
-    var files = e.target.files;
-    for (var i = 0; i < files.length; i++) uploadDocument(faseId, files[i]);
-    document.body.removeChild(input);
-  });
-  input.click();
-}
-
 var FASES=[
 {id:'financieel',num:'I',title:'Financieel',desc:'Kwaliteit en duurzaamheid van omzet en winst.',
  dataFields:[
@@ -144,26 +130,14 @@ var FASES=[
   {id:'omzetYTD',label:'Omzet YTD huidig jaar',ph:'bijv. 1.800.000',doc:true,req:true},
   {id:'ebitda',label:'EBITDA-marge jaar 3 (%)',ph:'bijv. 23',doc:false,req:true},
   {id:'ebitdaNorm',label:'Genormaliseerde EBITDA',ph:'bijv. 650.000',doc:true,req:false},
-  {id:'wip',label:'Onderhanden werk / OHW',ph:'bijv. 180.000',doc:true,req:false},
+  {id:'wip',label:'Onderhanden werk (WIP)',ph:'bijv. 180.000',doc:true,req:false},
   {id:'debiteuren',label:'Debiteuren totaal',ph:'bijv. 320.000',doc:true,req:false},
   {id:'debiteurenOud',label:'Debiteuren >90 dagen (%)',ph:'bijv. 12',doc:false,req:false},
   {id:'declarab',label:'Declarabiliteit (%)',ph:'bijv. 78',doc:false,req:false},
   {id:'partnerBel',label:'Partnerbeloning (marktconform?)',ph:'bijv. ja / nee / hoog',doc:false,req:true},
-  {id:'_hdr_omzet',label:'— Omzetverdeling per dienstlijn (jaar 3)',ph:'',doc:false,req:false,header:true},
-  {id:'omzetJaarwerk',label:'Jaarwerk & samenstellen (%)',ph:'bijv. 45',doc:false,req:false},
-  {id:'omzetAdvies',label:'Advies & begeleiding (%)',ph:'bijv. 20',doc:false,req:false},
-  {id:'omzetLoon',label:'Loonadministratie (%)',ph:'bijv. 15',doc:false,req:false},
-  {id:'omzetFiscaal',label:'Fiscaal (aangifte, VPB, BTW) (%)',ph:'bijv. 12',doc:false,req:false},
-  {id:'omzetOverig',label:'Overig (%)',ph:'bijv. 8',doc:false,req:false},
-  {id:'_hdr_kosten',label:'— Kostenstructuur (jaar 3)',ph:'',doc:false,req:false,header:true},
-  {id:'kostenPersoneel',label:'Personeelskosten (% omzet)',ph:'bijv. 58',doc:false,req:false},
-  {id:'kostenHuisvesting',label:'Huisvesting & huur (% omzet)',ph:'bijv. 6',doc:false,req:false},
-  {id:'kostenIT',label:'IT & automatisering (% omzet)',ph:'bijv. 4',doc:false,req:false},
-  {id:'kostenMarketing',label:'Marketing & acquisitie (% omzet)',ph:'bijv. 2',doc:false,req:false},
-  {id:'kostenOverig',label:'Overige kosten (% omzet)',ph:'bijv. 5',doc:false,req:false},
  ],
- items:['Jaarrekeningen 3 jaar beschikbaar en doorgenomen','YTD-cijfers aangeleverd','Omzet per dienstlijn inzichtelijk','EBITDA-normalisatie opgesteld','Top 20 klanten met omzetbijdrage in kaart','OHW geïnventariseerd','Debiteurenpositie en aging geanalyseerd','Partnerbeloningen vergeleken met marktconform','Declarabiliteit en realisatiegraad bepaald','Omzetverdeling per dienstlijn vastgesteld','Kostenstructuur geanalyseerd en vergeleken met sectorgemiddelden'],
- redflags:['Hoge OHW en oude debiteuren (>90 dagen)','Lage partnerproductiviteit tov benchmark','Eenmalige omzetpieken vertekenen beeld','Niet-genormaliseerde partnerbeloningen','Meer dan 60% omzet uit jaarwerk/samenstellen (hoog AI-substitutierisico)','Personeelskosten boven 65% van omzet','IT-kosten onder 2% — mogelijke onderinvestering in automatisering']},
+ items:['Jaarrekeningen 3 jaar beschikbaar en doorgenomen','YTD-cijfers aangeleverd','Omzet per dienstlijn inzichtelijk','EBITDA-normalisatie opgesteld','Top 20 klanten met omzetbijdrage in kaart','WIP geenventariseerd','Debiteurenpositie en aging geanalyseerd','Partnerbeloningen vergeleken met marktconform','Declarabiliteit en realisatiegraad bepaald'],
+ redflags:['Hoge WIP en oude debiteuren (>90 dagen)','Lage partnerproductiviteit tov benchmark','Eenmalige omzetpieken vertekenen beeld','Niet-genormaliseerde partnerbeloningen']},
 
 {id:'commercieel',num:'II',title:'Klanten & commercieel',desc:'Concentratie, retentie en commerciele kracht.',
  dataFields:[
@@ -368,28 +342,63 @@ async function uploadDocument(faseId, file) {
 
 function autoFillFromExtraction(faseId, velden, fileName) {
   function setIfEmpty(key, value) {
-    if (value && value !== 'null' && value !== null && !(S.data[key] || '').trim()) {
+    if (value && value !== 'null' && value !== null && String(value).trim() !== '' && !(S.data[key] || '').trim()) {
       S.data[key] = String(value);
     }
   }
+
   if (faseId === 'financieel') {
+    // Verzamel alle omzet-per-jaar uit dit document in globale state
+    if (!S._omzetPerJaar) S._omzetPerJaar = {};
     var opy = velden.omzet_per_jaar;
     if (opy && typeof opy === 'object') {
-      var jaren = Object.keys(opy)
-        .filter(function(j){ return opy[j] && opy[j] !== 'null' && opy[j] !== null; })
-        .map(Number).filter(function(j){ return !isNaN(j) && j > 1990 && j < 2100; })
-        .sort(function(a,b){ return a-b; });
-      if (jaren.length >= 1) {
-        ['omzet1','omzet2','omzet3'].forEach(function(veld,i){
-          if (jaren[i]) setIfEmpty('financieel_'+veld, opy[String(jaren[i])]);
-        });
-      }
+      Object.keys(opy).forEach(function(jaar) {
+        var v = opy[jaar];
+        if (v && v !== 'null' && v !== null && !isNaN(Number(jaar)) && Number(jaar) > 1990 && Number(jaar) < 2100) {
+          // Overschrijf alleen als nieuwer of leeg
+          if (!S._omzetPerJaar[jaar]) S._omzetPerJaar[jaar] = v;
+        }
+      });
     }
-    if (!(S.data['financieel_omzet3']||'').trim()) setIfEmpty('financieel_omzet3', velden.omzet);
-    setIfEmpty('financieel_ebitda',            velden.ebitda_pct);
-    setIfEmpty('financieel_ebitdaNorm',        velden.resultaat);
-    setIfEmpty('financieel_wip',               velden.ohw);
-    setIfEmpty('financieel_debiteuren',        velden.debiteuren);
+    // Enkelvoudige omzet: koppel aan boekjaar als dat bekend is
+    if (velden.omzet && velden.boekjaar && !isNaN(Number(velden.boekjaar))) {
+      var bj = String(velden.boekjaar);
+      if (!S._omzetPerJaar[bj]) S._omzetPerJaar[bj] = velden.omzet;
+    }
+
+    // Hermap omzet1/2/3 op basis van alle bekende jaren (chronologisch)
+    var alleJaren = Object.keys(S._omzetPerJaar)
+      .map(Number).filter(function(j){ return !isNaN(j) && j > 1990 && j < 2100; })
+      .sort(function(a,b){ return a-b; });
+    // Sla alleen op als we 1+ jaar hebben
+    if (alleJaren.length >= 1) {
+      // Reset velden en vul opnieuw in op basis van positie
+      var veldNamen = ['omzet1','omzet2','omzet3'];
+      // Neem de laatste 3 jaren (oudste=1, midden=2, nieuwste=3)
+      var gebruikJaren = alleJaren.slice(-3);
+      gebruikJaren.forEach(function(jaar, i) {
+        var waarde = S._omzetPerJaar[String(jaar)];
+        if (waarde) S.data['financieel_' + veldNamen[i]] = String(waarde);
+      });
+    }
+
+    // EBITDA: gebruik meest recente jaar
+    if (velden.ebitda_pct && velden.ebitda_pct !== 'null') {
+      // Sla per jaar op en gebruik nieuwste
+      if (!S._ebitdaPerJaar) S._ebitdaPerJaar = {};
+      if (velden.boekjaar) S._ebitdaPerJaar[String(velden.boekjaar)] = velden.ebitda_pct;
+      var ebitdaJaren = Object.keys(S._ebitdaPerJaar).map(Number).filter(function(j){ return !isNaN(j); }).sort(function(a,b){ return b-a; });
+      if (ebitdaJaren.length) S.data['financieel_ebitda'] = String(S._ebitdaPerJaar[String(ebitdaJaren[0])]);
+    }
+
+    // OHW en debiteuren: gebruik altijd nieuwste waarde
+    if (velden.ohw && velden.ohw !== 'null') S.data['financieel_wip'] = String(velden.ohw);
+    if (velden.debiteuren && velden.debiteuren !== 'null') S.data['financieel_debiteuren'] = String(velden.debiteuren);
+
+    // Resultaat/genorm EBITDA
+    setIfEmpty('financieel_ebitdaNorm', velden.resultaat);
+
+    // Omzetverdeling: sla meest recente in
     setIfEmpty('financieel_omzetJaarwerk',     velden.omzet_jaarwerk_pct);
     setIfEmpty('financieel_omzetAdvies',       velden.omzet_advies_pct);
     setIfEmpty('financieel_omzetLoon',         velden.omzet_loon_pct);
@@ -400,7 +409,12 @@ function autoFillFromExtraction(faseId, velden, fileName) {
     setIfEmpty('financieel_kostenIT',          velden.kosten_it_pct);
     setIfEmpty('financieel_kostenMarketing',   velden.kosten_marketing_pct);
   }
-  if (faseId === 'partner') { setIfEmpty('partner_fte', velden.fte); }
+
+  if (faseId === 'partner') {
+    if (velden.fte && velden.fte !== 'null') S.data['partner_fte'] = String(velden.fte);
+  }
+
+  // Documentreferentie
   if (fileName) {
     var f = FASES.find(function(x){ return x.id === faseId; });
     if (f) f.dataFields.forEach(function(df) {
@@ -410,67 +424,6 @@ function autoFillFromExtraction(faseId, velden, fileName) {
       }
     });
   }
-}
-
-async function consolideerAnalyse(faseId) {
-  var docs = getDocsForFase(faseId);
-  if (!docs.length) return;
-  var f = FASES.find(function(x){ return x.id === faseId; });
-  if (!f) return;
-  var alleAnalyses = docs.map(function(d, i) {
-    return 'Document ' + (i+1) + ': ' + d.naam + '\n' + (d.analyse || 'Geen analyse beschikbaar');
-  }).join('\n\n---\n\n');
-  var geconsolideerd = {};
-  docs.forEach(function(d) {
-    if (!d.velden) return;
-    Object.keys(d.velden).forEach(function(k) {
-      var v = d.velden[k];
-      if (v && v !== 'null' && v !== null && !geconsolideerd[k]) geconsolideerd[k] = v;
-    });
-    if (d.velden.omzet_per_jaar && typeof d.velden.omzet_per_jaar === 'object') {
-      if (!geconsolideerd.omzet_per_jaar) geconsolideerd.omzet_per_jaar = {};
-      Object.keys(d.velden.omzet_per_jaar).forEach(function(jaar) {
-        var v = d.velden.omzet_per_jaar[jaar];
-        if (v && v !== 'null' && !geconsolideerd.omzet_per_jaar[jaar]) geconsolideerd.omzet_per_jaar[jaar] = v;
-      });
-    }
-  });
-  autoFillFromExtraction(faseId, geconsolideerd, null);
-  S.aiLoading[faseId] = true;
-  renderApp();
-  var dataLines = [];
-  f.dataFields.forEach(function(df) {
-    var v = S.data[f.id + '_' + df.id];
-    if (v) dataLines.push(df.label + ': ' + v);
-  });
-  var prompt = 'Je bent Marcel Bisschops, senior M&A-adviseur. Geconsolideerde analyse op basis van ' + docs.length + ' documenten voor fase: ' + f.title + ' van "' + esc(S.traject && S.traject.kantoor_naam || S.code) + '".\n\n'
-    + 'INGEVULDE VELDEN:\n' + (dataLines.join('\n') || 'Nog niet ingevuld') + '\n\n'
-    + 'DOCUMENT-ANALYSES:\n' + alleAnalyses + '\n\n'
-    + 'Geef een geconsolideerde analyse: wat tonen de documenten samen, welke jaren zijn gedekt, trends, rode vlaggen en aanbevelingen. Wees concreet met cijfers. Gebruik ## koppen. Geen bullets.';
-  try {
-    var resp = await fetch(WORKER + '/ai', {
-      method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({messages: [{role: 'user', content: prompt}]})
-    });
-    if (!resp.ok) throw new Error('HTTP ' + resp.status);
-    var reader = resp.body.getReader();
-    var dec = new TextDecoder();
-    var collected = '';
-    while (true) {
-      var res = await reader.read();
-      if (res.done) break;
-      dec.decode(res.value, {stream: true}).split('\n').forEach(function(line) {
-        if (line.startsWith('data:')) {
-          var d = line.slice(5).trim();
-          if (d === '[DONE]') return;
-          try { var j = JSON.parse(d); if (j.type === 'content_block_delta' && j.delta && j.delta.text) collected += j.delta.text; } catch(e) {}
-        }
-      });
-    }
-    S.aiTexts[faseId] = collected;
-  } catch(e) { S.aiTexts[faseId] = '__ERROR__'; }
-  S.aiLoading[faseId] = false;
-  renderApp();
 }
 
 async function deleteDocument(docId, faseId) {
@@ -488,7 +441,8 @@ function renderDocumentSectie(faseId) {
   var uploadHtml = '';
 
   if (!isReadOnly) {
-    uploadHtml = '<div class="upload-zone" id="upload-zone-' + faseId + '" data-fase="' + faseId + '" ondragover="event.preventDefault();this.classList.add(\'drag\')" ondragleave="this.classList.remove(\'drag\')" ondrop="event.preventDefault();this.classList.remove(\'drag\');handleDropUpload(event,' + JSON.stringify(faseId) + ')">' 
+    uploadHtml = '<div class="upload-zone" id="upload-zone-' + faseId + '" onclick="ge(\"file-input-' + faseId + '\").click()" ondragover="event.preventDefault();this.classList.add(\"drag\")" ondragleave="this.classList.remove(\"drag\")" ondrop="event.preventDefault();this.classList.remove(\"drag\");handleDropUpload(event,' + JSON.stringify(faseId) + ')">'
+      + '<input type="file" id="file-input-' + faseId + '" accept=".pdf,.docx,.doc,.xlsx,.xls,.csv" multiple onchange="handleFileUpload(event,' + JSON.stringify(faseId) + ')">'
       + '<div style="font-size:24px;margin-bottom:.4rem">&#128196;</div>'
       + '<div style="font-size:13px;font-weight:600;color:var(--mid);margin-bottom:.2rem">Klik om document te uploaden of sleep hier naartoe</div>'
       + '<div style="font-size:11px;color:var(--muted)">PDF, Word, Excel, CSV &middot; max 20MB &middot; AI leest en analyseert automatisch</div>'
@@ -526,12 +480,8 @@ function renderDocumentSectie(faseId) {
       + '</div>';
   }).join('');
 
-  var consolideerHtml = '';
-  if (!isReadOnly && docs.length > 1) {
-    consolideerHtml = '<button onclick="consolideerAnalyse(' + JSON.stringify(faseId) + ')" class="btn btn-sm" style="width:100%;margin-top:.5rem;background:var(--teal-dim)">&#9881; Geconsolideerde analyse (' + docs.length + ' documenten)</button>';
-  }
   return '<div class="panel" id="doc-sectie-' + faseId + '"><div class="sec-hdr">Documenten &amp; AI-analyse</div>'
-    + uploadHtml + docsHtml + consolideerHtml
+    + uploadHtml + docsHtml
     + (docs.length === 0 && isReadOnly ? '<div style="color:var(--muted);font-size:13px;font-style:italic">Geen documenten geupload voor deze fase.</div>' : '')
     + '</div>';
 }
@@ -569,7 +519,7 @@ function renderLogin(){
     +'<div style="font-family:Playfair Display,serif;font-size:1.4rem;color:var(--head);font-weight:600;margin-bottom:.3rem">M&amp;A Begeleiding</div>'
     +'<div style="font-size:13px;color:var(--muted);line-height:1.65;margin-bottom:1.5rem">Voer uw trajectcode in. Verkopers gebruiken de trajectcode, kopers de kopersscode. Beide codes ontvangt u van Marcel Bisschops.</div>'
     +'<div class="f" style="margin-bottom:.75rem"><label>Trajectcode of koperscode</label>'
-    +'<input type="text" id="l-code" placeholder="" style="text-transform:uppercase;letter-spacing:.15em;font-size:1.2rem;text-align:center;font-family:IBM Plex Mono,monospace" maxlength="7" autocomplete="off"></div>'
+    +'<input type="text" id="l-code" placeholder="bijv. ABC123" style="text-transform:uppercase;letter-spacing:.15em;font-size:1.2rem;text-align:center;font-family:IBM Plex Mono,monospace" maxlength="7" autocomplete="off"></div>'
     +'<div id="l-err" style="color:var(--red);font-size:12px;margin-bottom:.75rem;display:none">Code niet gevonden. Controleer uw code of neem contact op met Marcel Bisschops.</div>'
     +'<div id="l-load" style="color:var(--muted);font-size:12px;margin-bottom:.75rem;display:none">Laden...</div>'
     +'<div style="display:flex;gap:10px"><button class="btn-ghost" onclick="window.location.href=\'index.html\'">Terug</button><button class="btn" id="l-btn">Inloggen</button></div>'
@@ -595,7 +545,7 @@ function renderCover(){
   if(isVerkoper()){
     intro='<p>Geachte '+esc(t.contact_naam||'relatie')+',</p>'
       +'<p>In het kader van het '+esc(t.traject_type||'M&A')+'-traject voor <strong>'+esc(t.kantoor_naam)+'</strong> verzoek ik u onderstaande gegevens in te voeren via dit beveiligde platform. U kunt per fase de informatie invullen en tussentijds opslaan.</p>'
-      +'<p>Documenten uploadt u direct via het uploadvenster naast de velden &mdash; de AI analyseert ze en vult gegevens waar mogelijk automatisch in.</p>'
+      +'<p>Waar documentatie wordt gevraagd (gemarkeerd met &#128196;), vermeldt u de bestandsnaam in het daarvoor bestemde veld. Stuur de documenten als volgt veilig op:</p><ol style="margin:.5rem 0 .75rem 1.25rem"><li style="font-size:13px;color:var(--mid);margin-bottom:.4rem">Zet alle documenten in een map en maak een <strong>zip-bestand met wachtwoord</strong>.<br><span style="font-size:12px;color:var(--muted)">Windows: rechtsklik op map &rarr; Compress to ZIP file &rarr; stel een wachtwoord in. Mac: gebruik Keka (keka.io).</span></li><li style="font-size:13px;color:var(--mid);margin-bottom:.4rem">Stuur de zip per e-mail naar <a href="mailto:marcel@bisschopsfinancing.nl" style="color:var(--teal)">marcel@bisschopsfinancing.nl</a> met als onderwerp uw trajectcode.</li><li style="font-size:13px;color:var(--mid)">Stuur het <strong>wachtwoord apart via WhatsApp</strong> naar <a href="https://wa.me/31638689888" style="color:var(--teal)">06&nbsp;-&nbsp;38&nbsp;68&nbsp;98&nbsp;88</a>.</li></ol>'
       +'<p>Uw gegevens worden strikt vertrouwelijk behandeld.</p>'
       +'<div style="margin:1rem 0;padding:.75rem 1rem;background:var(--card);border:1px solid var(--border);border-radius:var(--r);font-size:11px;color:var(--muted);line-height:1.7">&#128274; <strong>Beveiliging &amp; AVG:</strong> Alle gegevens worden versleuteld via HTTPS verstuurd en opgeslagen op Cloudflare-servers in Europa (Frankfurt, EU). Uw gegevens worden uitsluitend gebruikt voor dit M&amp;A-traject en niet gedeeld met derden. Conform AVG heeft u recht op inzage, correctie en verwijdering. Zie ook onze <a href=\"privacy.html\" style=\"color:var(--teal)\">privacyverklaring</a>.</div>'
     +'<p>Met vriendelijke groet,<br><strong>Marcel Bisschops</strong><br><span style="font-size:12px;color:var(--muted)">Senior M&amp;A-adviseur &middot; Bisschops Financing BV<br>06 - 38 68 98 88 &middot; marcel@bisschopsfinancing.nl</span></p>';
@@ -604,15 +554,6 @@ function renderCover(){
       +'<p>U heeft toegang tot de voortgang van het due diligence traject (trajecttype: <strong>'+esc(t.traject_type||'M&A')+'</strong>). De kantooridentiteit is geanonimiseerd conform de afspraken. U kunt per fase de ingevoerde informatie inzien en een AI-advies genereren op basis van de beschikbare data.</p>'
       +'<p>Vragen? Neem contact op via <a href="mailto:marcel@bisschopsfinancing.nl" style="color:var(--teal)">marcel@bisschopsfinancing.nl</a>.</p>'
       +'<p>Met vriendelijke groet,<br><strong>Marcel Bisschops</strong><br><span style="font-size:12px;color:var(--muted)">Senior M&amp;A-adviseur &middot; Bisschops Financing BV</span></p>';
-  }else if(!t.koper_vrijgegeven){
-    return '<div class="wrap anim">'
-      +'<div class="hdr"><div class="brand"><div class="wdot"></div>KantoorInzicht &middot; M&amp;A</div></div>'
-      +'<div class="cover-letter" style="text-align:center;padding:3rem 2rem">'
-      +'<div style="font-size:2rem;margin-bottom:1rem">&#128274;</div>'
-      +'<div style="font-family:Playfair Display,serif;font-size:1.3rem;color:var(--head);font-weight:600;margin-bottom:.75rem">Informatie nog niet beschikbaar</div>'
-      +'<div style="font-size:13px;color:var(--mid);line-height:1.7;max-width:420px;margin:0 auto">De due diligence informatie is nog niet vrijgegeven door de adviseur. U ontvangt een bericht zodra de gegevens beschikbaar zijn.</div>'
-      +'<div style="margin-top:1.5rem;font-size:12px;color:var(--muted)">Vragen? <a href="mailto:marcel@bisschopsfinancing.nl" style="color:var(--teal)">marcel@bisschopsfinancing.nl</a></div>'
-      +'</div></div>';
   }else{
     intro='<p>Geachte relatie,</p>'
       +'<p>Hieronder vindt u de door het kantoor ingevulde informatie in het kader van het '+esc(t.traject_type||'M&A')+'-traject. U kunt de gegevens inzien. Vragen of opmerkingen kunt u richten aan Marcel Bisschops.</p>'
@@ -622,13 +563,7 @@ function renderCover(){
   return '<div class="wrap anim">'
     +'<div class="hdr"><div class="brand"><div class="wdot"></div>KantoorInzicht &middot; M&amp;A</div>'
     +'<div style="display:flex;gap:8px"><button class="btn-ghost btn-sm" onclick="window.print()">PDF afdrukken</button>'
-    +(isVerkoper()?'<button class="btn btn-sm" id="to-main-btn">Start invullen &#8594;</button>'
-    :isTussen()?
-      (t.koper_vrijgegeven
-        ?'<button class="btn-ghost btn-sm" id="intrekken-btn">&#128275; Vrijgave intrekken</button>'
-        :'<button class="btn btn-sm" id="vrijgeven-btn">&#128275; Koper toegang geven</button>')
-      +' <button class="btn btn-sm" id="to-main-btn">Bekijk data &#8594;</button>'
-    :'<button class="btn btn-sm" id="to-main-btn">Bekijk ingevoerde data &#8594;</button>')
+    +(isVerkoper()?'<button class="btn btn-sm" id="to-main-btn">Start invullen &#8594;</button>':'<button class="btn btn-sm" id="to-main-btn">Bekijk ingevoerde data &#8594;</button>')
     +'</div></div>'
     +(vergrendeld?'<div style="background:var(--red-bg);border:1px solid var(--red);border-radius:var(--r);padding:10px 14px;margin-bottom:1rem;font-size:13px;color:var(--red)">&#128274; <strong>Dit traject is vergrendeld op '+(t.vergrendeld_op?new Date(t.vergrendeld_op).toLocaleString('nl-NL'):'onbekend')+'.</strong> Verdere wijzigingen zijn niet meer mogelijk.</div>':'')
     +'<div class="cover-letter">'
@@ -661,10 +596,6 @@ function renderMain(){
   // Data fields
   var dataHtml='<div class="panel"><div class="sec-hdr">Informatie invullen</div><div class="data-grid">';
   f.dataFields.forEach(function(df){
-    if(df.header){
-      dataHtml+='</div><div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--teal);margin:1.25rem 0 .6rem;padding-top:1rem;border-top:1px solid var(--border)">'+df.label+'</div><div class="data-grid">';
-      return;
-    }
     var val=S.data[f.id+'_'+df.id]||'';
     var ref=S.docRefs[f.id+'_'+df.id]||'';
     var missing=S.showValidation&&df.req&&!val.trim();
@@ -730,11 +661,7 @@ function renderMain(){
     +ov
     +'<div style="font-family:Playfair Display,serif;font-size:1.1rem;color:var(--head);font-weight:600;margin-bottom:.2rem">'+f.num+'. '+f.title+'</div>'
     +'<div style="font-size:13px;color:var(--muted);margin-bottom:1.25rem">'+f.desc+'</div>'
-    +'<div style="display:grid;grid-template-columns:1fr 320px;gap:1rem;align-items:start">'
-    +dataHtml
-    +renderDocumentSectie(f.id)
-    +'</div>'
-    +extraHtml+nav+'</div>';
+    +dataHtml+renderDocumentSectie(f.id)+extraHtml+nav+'</div>';
 }
 
 function renderSummary(){
@@ -844,25 +771,6 @@ function bindAll(){
   if(!isKoper()){
     document.querySelectorAll('.chk-item[data-key]').forEach(function(el){el.onclick=function(){saveCurrent();S.checked[el.dataset.key]=!S.checked[el.dataset.key];renderApp();};});
   }
-  document.querySelectorAll('.upload-zone[data-fase]').forEach(function(el){
-    el.onclick=function(){ triggerFileUpload(el.dataset.fase); };
-  });
-  var vrgBtn=ge('vrijgeven-btn');
-  if(vrgBtn)vrgBtn.onclick=async function(){
-    var key=prompt('Admin sleutel:');
-    if(!key)return;
-    var r=await fetch(WORKER+'/mna/admin/vrijgeven/'+S.code+'?key='+encodeURIComponent(key),{method:'POST'}).then(function(x){return x.json();}).catch(function(){return{};});
-    if(r.ok){S.traject.koper_vrijgegeven=1;renderApp();}
-    else alert('Fout: '+(r.error||'onbekend'));
-  };
-  var intBtn=ge('intrekken-btn');
-  if(intBtn)intBtn.onclick=async function(){
-    var key=prompt('Admin sleutel:');
-    if(!key)return;
-    var r=await fetch(WORKER+'/mna/admin/intrekken/'+S.code+'?key='+encodeURIComponent(key),{method:'POST'}).then(function(x){return x.json();}).catch(function(){return{};});
-    if(r.ok){S.traject.koper_vrijgegeven=0;renderApp();}
-    else alert('Fout: '+(r.error||'onbekend'));
-  };
 }
 
 renderApp();
