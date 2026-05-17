@@ -122,7 +122,7 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--s
 <script>
 var WORKER='https://kantoorinzicht.marcel-bisschops.workers.dev';
 
-// Globale file input — buiten render-loop zodat .click() altijd werkt
+// Globale file input buiten render-loop zodat .click() altijd werkt
 var _uploadFaseId = null;
 document.addEventListener('DOMContentLoaded', function() {
   var gfi = document.getElementById('global-file-input');
@@ -378,46 +378,36 @@ function autoFillFromExtraction(faseId, velden, fileName) {
       S.data[key] = String(value);
     }
   }
-
   if (faseId === 'financieel') {
-    // Jaar-gebaseerde omzet: oudste→omzet1, midden→omzet2, nieuwste→omzet3
     var opy = velden.omzet_per_jaar || {};
     var jaren = Object.keys(opy)
       .filter(function(j){ return opy[j] && opy[j] !== 'null'; })
       .map(Number).filter(function(j){ return !isNaN(j); })
       .sort(function(a,b){ return a-b; });
     if (jaren.length >= 1) {
-      ['omzet1','omzet2','omzet3'].forEach(function(veld, i) {
-        if (jaren[i]) setIfEmpty('financieel_' + veld, opy[String(jaren[i])]);
+      ['omzet1','omzet2','omzet3'].forEach(function(veld,i){
+        if(jaren[i]) setIfEmpty('financieel_'+veld, opy[String(jaren[i])]);
       });
     } else {
       setIfEmpty('financieel_omzet3', velden.omzet);
     }
-
-    setIfEmpty('financieel_ebitda',      velden.ebitda_pct);
-    setIfEmpty('financieel_ebitdaNorm',  velden.resultaat);
-    setIfEmpty('financieel_wip',         velden.ohw);
-    setIfEmpty('financieel_debiteuren',  velden.debiteuren);
-
-    // Omzetverdeling
-    setIfEmpty('financieel_omzetJaarwerk', velden.omzet_jaarwerk_pct);
-    setIfEmpty('financieel_omzetAdvies',   velden.omzet_advies_pct);
-    setIfEmpty('financieel_omzetLoon',     velden.omzet_loon_pct);
-    setIfEmpty('financieel_omzetFiscaal',  velden.omzet_fiscaal_pct);
-    setIfEmpty('financieel_omzetOverig',   velden.omzet_overig_pct);
-
-    // Kostenstructuur
+    setIfEmpty('financieel_ebitda',            velden.ebitda_pct);
+    setIfEmpty('financieel_ebitdaNorm',        velden.resultaat);
+    setIfEmpty('financieel_wip',               velden.ohw);
+    setIfEmpty('financieel_debiteuren',        velden.debiteuren);
+    setIfEmpty('financieel_omzetJaarwerk',     velden.omzet_jaarwerk_pct);
+    setIfEmpty('financieel_omzetAdvies',       velden.omzet_advies_pct);
+    setIfEmpty('financieel_omzetLoon',         velden.omzet_loon_pct);
+    setIfEmpty('financieel_omzetFiscaal',      velden.omzet_fiscaal_pct);
+    setIfEmpty('financieel_omzetOverig',       velden.omzet_overig_pct);
     setIfEmpty('financieel_kostenPersoneel',   velden.kosten_personeel_pct);
     setIfEmpty('financieel_kostenHuisvesting', velden.kosten_huisvesting_pct);
     setIfEmpty('financieel_kostenIT',          velden.kosten_it_pct);
     setIfEmpty('financieel_kostenMarketing',   velden.kosten_marketing_pct);
   }
-
   if (faseId === 'partner') {
     setIfEmpty('partner_fte', velden.fte);
   }
-
-  // Documentreferentie voor doc-velden automatisch invullen
   if (fileName) {
     var f = FASES.find(function(x){ return x.id === faseId; });
     if (f) {
@@ -446,11 +436,7 @@ function renderDocumentSectie(faseId) {
   var uploadHtml = '';
 
   if (!isReadOnly) {
-    uploadHtml = '<div class="upload-zone" id="upload-zone-' + faseId + '"'
-      + ' onclick="triggerFileUpload(' + JSON.stringify(faseId) + ')"'
-      + ' ondragover="event.preventDefault();this.classList.add(\'drag\')"'
-      + ' ondragleave="this.classList.remove(\'drag\')"'
-      + ' ondrop="event.preventDefault();this.classList.remove(\'drag\');handleDropUpload(event,' + JSON.stringify(faseId) + ')">'
+    uploadHtml = '<div class="upload-zone" id="upload-zone-' + faseId + '" onclick="triggerFileUpload(' + JSON.stringify(faseId) + ')" ondragover="event.preventDefault();this.classList.add(\'drag\')" ondragleave="this.classList.remove(\'drag\')" ondrop="event.preventDefault();this.classList.remove(\'drag\');handleDropUpload(event,' + JSON.stringify(faseId) + ')">'
       + '<div style="font-size:24px;margin-bottom:.4rem">&#128196;</div>'
       + '<div style="font-size:13px;font-weight:600;color:var(--mid);margin-bottom:.2rem">Klik om document te uploaden of sleep hier naartoe</div>'
       + '<div style="font-size:11px;color:var(--muted)">PDF, Word, Excel, CSV &middot; max 20MB &middot; AI leest en analyseert automatisch</div>'
@@ -553,7 +539,7 @@ function renderCover(){
   if(isVerkoper()){
     intro='<p>Geachte '+esc(t.contact_naam||'relatie')+',</p>'
       +'<p>In het kader van het '+esc(t.traject_type||'M&A')+'-traject voor <strong>'+esc(t.kantoor_naam)+'</strong> verzoek ik u onderstaande gegevens in te voeren via dit beveiligde platform. U kunt per fase de informatie invullen en tussentijds opslaan.</p>'
-      +'<p>Waar documentatie wordt gevraagd (gemarkeerd met &#128196;), kunt u het bestand direct uploaden via het uploadvenster onderaan elke fase. Ondersteunde bestandstypen: PDF, Word, Excel en CSV (max. 20 MB per bestand). De documenten worden automatisch geanalyseerd en relevante gegevens worden waar mogelijk direct ingevuld.</p>'
+      +'<p>Waar documentatie wordt gevraagd (gemarkeerd met &#128196;), kunt u het bestand direct uploaden via het uploadvenster onderaan elke fase. Ondersteunde bestandstypen: PDF, Word, Excel en CSV (max. 20 MB). De documenten worden automatisch geanalyseerd en relevante gegevens worden waar mogelijk direct ingevuld.</p>'
       +'<p>Uw gegevens worden strikt vertrouwelijk behandeld.</p>'
       +'<div style="margin:1rem 0;padding:.75rem 1rem;background:var(--card);border:1px solid var(--border);border-radius:var(--r);font-size:11px;color:var(--muted);line-height:1.7">&#128274; <strong>Beveiliging &amp; AVG:</strong> Alle gegevens worden versleuteld via HTTPS verstuurd en opgeslagen op Cloudflare-servers in Europa (Frankfurt, EU). Uw gegevens worden uitsluitend gebruikt voor dit M&amp;A-traject en niet gedeeld met derden. Conform AVG heeft u recht op inzage, correctie en verwijdering. Zie ook onze <a href=\"privacy.html\" style=\"color:var(--teal)\">privacyverklaring</a>.</div>'
     +'<p>Met vriendelijke groet,<br><strong>Marcel Bisschops</strong><br><span style="font-size:12px;color:var(--muted)">Senior M&amp;A-adviseur &middot; Bisschops Financing BV<br>06 - 38 68 98 88 &middot; marcel@bisschopsfinancing.nl</span></p>';
