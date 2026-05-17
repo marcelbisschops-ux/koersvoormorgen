@@ -634,16 +634,15 @@ function rGroupCreate(){return`<div class="page-wrap narrow"><div class="page-hd
 function rGroupCreated(){
   const code = ST.groupId || '------';
   return `<div class="page-wrap narrow"><div class="page-hdr"><div class="page-brand"><div class="wdot"></div>KantoorInzicht</div><div class="page-step">Groep aangemaakt</div></div><div class="group-panel anim">`
+    + `<div style="font-size:1.4rem;margin-bottom:.35rem">&#10003;</div>`
     + `<div class="group-panel-title">Groep aangemaakt</div>`
-    + `<div class="group-panel-sub">Deel de onderstaande code met deelnemende kantoren.</div>`
+    + `<div class="group-panel-sub">Deel de onderstaande code met de deelnemende kantoren. Bewaar de code — zonder deze heeft u geen toegang tot uw dashboard.</div>`
     + `<div class="code-display" id="gc-code-display">${code}</div>`
-    + `<div style="display:flex;gap:8px;margin-bottom:1.25rem">`
-    + `<button class="btn-ghost" id="copy-code-btn" style="flex:1;font-size:12px">\ud83d\udccb Code kopi\u00ebren</button>`
+    + `<div style="display:flex;gap:8px;margin-bottom:1.75rem">`
+    + `<button class="btn-adv" id="copy-code-btn" style="flex:1;font-size:13px">Kopieer code</button>`
+    + `<button class="btn-ghost" id="view-dashboard-btn" style="flex:1">Bekijk dashboard</button>`
     + `</div>`
-    + `<div class="field" style="margin-bottom:1.25rem"><label>Notitie \u2014 sla de code hier op voor eigen gebruik</label><input type="text" id="gc-notitie" placeholder="bijv. kantoor X, datum..." style="font-size:13px"></div>`
-    + `<div class="note-box" style="border-color:var(--gold);background:var(--gold-bg)"><strong>\u26a0 Bewaar deze code!</strong> Noteer de code zodat u altijd toegang heeft tot uw dashboard.</div>`
-    + `<div class="note-box"><strong>Dashboard:</strong> Voer de code in via "Dashboard bekijken" om resultaten te zien.</div>`
-    + `<div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn-ghost" id="back-intro">Terug naar start</button><button class="btn-adv" id="view-dashboard-btn">Dashboard bekijken</button></div>`
+    + `<div style="font-size:12px;color:var(--muted);line-height:1.65;padding-top:1rem;border-top:1px solid var(--border)">Kantoren kunnen deelnemen via <strong style="color:var(--sub)">koersvoormorgen.nl</strong> \u2192 Deelnemen aan groep. Het dashboard toont resultaten zodra de eerste scan is ingediend.</div>`
     + `</div></div>`;
 }
 
@@ -718,7 +717,7 @@ function bindEvents(){
     const code=ST.groupId||'';
     navigator.clipboard.writeText(code).then(()=>{
       const btn=document.getElementById('copy-code-btn');
-      if(btn){btn.textContent='\u2713 Gekopieerd';setTimeout(()=>{btn.textContent='\ud83d\udccb Code kopi\u00ebren';},2000);}
+      if(btn){btn.textContent='\u2713 Gekopieerd';setTimeout(()=>{btn.textContent='Kopieer code';},2000);}
     }).catch(()=>alert('Code: '+code));
   });
   on('view-dashboard-btn','click',()=>loadGroup(ST.groupId));
