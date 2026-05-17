@@ -229,9 +229,16 @@ async function createTraject() {
   });
   var d = await r.json().catch(function() { return {}; });
   if (d.ok) {
-    alert('Aangemaakt!\n\nTrajectcode (verkoper): ' + d.code + '\nKoperscode (koper): ' + (d.koper_code||'-') + '\nTussencode (tussenpersoon): ' + (d.tussen_code||'-') + '\n\nDeel via koersvoormorgen.nl/mna.html');
-    ge('new-naam').value = ''; ge('new-contact').value = ''; ge('new-email').value = ''; ge('new-notitie').value = '';
     await refreshData();
+    var info = ge('create-info');
+    if (info) {
+      info.innerHTML = '<span style="color:var(--teal)">&#10003; Aangemaakt!</span> &mdash; <strong>Verkoper:</strong> ' + d.code
+        + ' &nbsp;|&nbsp; <strong>Koper:</strong> ' + (d.koper_code||'-')
+        + ' &nbsp;|&nbsp; <strong>Tussenpersoon:</strong> ' + (d.tussen_code||'-')
+        + ' <button class="btn-copy" onclick="copyText(\'' + d.code + '\',\'Trajectcode\')">&#128203;</button>';
+      info.style.display = 'block';
+      setTimeout(function(){ if(ge('create-info')) ge('create-info').style.display='none'; }, 20000);
+    }
   } else alert('Fout: ' + (d.error || 'onbekend'));
   btn.disabled = false; btn.textContent = 'Traject aanmaken';
 }
@@ -549,6 +556,7 @@ function renderMnaTab() {
     + '<div class="form-grid2"><div class="field"><label>Trajecttype</label><select id="new-type"><option>Verkoop</option><option>Fusie</option><option>PE-investering</option><option>Opvolging</option><option>Overname</option></select></div>'
     + '<div class="field"><label>Interne notitie</label><textarea id="new-notitie" placeholder="Context, aanleiding..." style="min-height:38px"></textarea></div></div>'
     + '<button class="btn" id="create-btn" onclick="createTraject()">Traject aanmaken</button>'
+    + '<div id="create-info" style="display:none;margin-top:.75rem;padding:.6rem 1rem;background:var(--teal-bg);border:1px solid var(--teal-dark);border-radius:var(--r);font-size:13px;color:var(--sub)"></div>'
     + '<div style="font-size:11px;color:var(--muted);margin-top:.4rem">Na aanmaken ontvangt u een trajectcode (verkoper) en koperscode.</div>'
     + '</div></div>'
     + '<div class="table-wrap"><div class="table-hdr"><div class="table-title">Lopende trajecten (' + mnaTrajecten.length + ')</div>'
