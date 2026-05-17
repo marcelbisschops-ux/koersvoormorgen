@@ -132,11 +132,11 @@ async function doLogin() {
   var btn = ge('login-btn');
   btn.disabled = true; btn.textContent = 'Laden...';
   try {
-    var r1 = await fetch(WORKER + '/admin/scans?key=' + encodeURIComponent(key));
+    var r1 = await fetch(WORKER + '/admin/scans', { headers: { 'x-admin-key': key } });
     if (!r1.ok) throw new Error('unauthorized');
-    var r2 = await fetch(WORKER + '/admin/callbacks?key=' + encodeURIComponent(key));
-    var r3 = await fetch(WORKER + '/mna/admin/lijst?key=' + encodeURIComponent(key));
-    var r4 = await fetch(WORKER + '/mna/groep/lijst?key=' + encodeURIComponent(key));
+    var r2 = await fetch(WORKER + '/admin/callbacks', { headers: { 'x-admin-key': key } });
+    var r3 = await fetch(WORKER + '/mna/admin/lijst', { headers: { 'x-admin-key': key } });
+    var r4 = await fetch(WORKER + '/mna/groep/lijst', { headers: { 'x-admin-key': key } });
     scans = await r1.json();
     callbacks = await r2.json();
     mnaTrajecten = r3.ok ? await r3.json() : [];
@@ -144,8 +144,7 @@ async function doLogin() {
     adminKey = key;
     ge('hdr-actions').style.display = 'flex';
     // Login notification
-    fetch(WORKER + '/admin/login-notify?key=' + encodeURIComponent(key), {
-      method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ip:'browser'})
+    fetch(WORKER + '/admin/login-notify', { method: 'POST', headers: {'x-admin-key': key, 'Content-Type':'application/json'}, body: JSON.stringify({ip:'browser'})
     }).catch(function() {});
     renderDashboard();
   } catch(e) {
@@ -157,10 +156,10 @@ async function doLogin() {
 
 async function refreshData() {
   try {
-    var r1 = await fetch(WORKER + '/admin/scans?key=' + encodeURIComponent(adminKey));
-    var r2 = await fetch(WORKER + '/admin/callbacks?key=' + encodeURIComponent(adminKey));
-    var r3 = await fetch(WORKER + '/mna/admin/lijst?key=' + encodeURIComponent(adminKey));
-    var r4 = await fetch(WORKER + '/mna/groep/lijst?key=' + encodeURIComponent(adminKey));
+    var r1 = await fetch(WORKER + '/admin/scans', { headers: { 'x-admin-key': adminKey } });
+    var r2 = await fetch(WORKER + '/admin/callbacks', { headers: { 'x-admin-key': adminKey } });
+    var r3 = await fetch(WORKER + '/mna/admin/lijst', { headers: { 'x-admin-key': adminKey } });
+    var r4 = await fetch(WORKER + '/mna/groep/lijst', { headers: { 'x-admin-key': adminKey } });
     scans = await r1.json();
     callbacks = await r2.json();
     mnaTrajecten = r3.ok ? await r3.json() : [];
@@ -172,7 +171,7 @@ async function refreshData() {
 async function deleteScan(id) {
   if (!id || id === 'undefined') { alert('ID niet gevonden.'); return; }
   if (!confirm('Scan verwijderen?')) return;
-  var r = await fetch(WORKER + '/admin/delete/scan/' + id + '?key=' + encodeURIComponent(adminKey), {method:'POST'});
+  var r = await fetch(WORKER + '/admin/delete/scan/' + id, {method:'POST', headers:{'x-admin-key': adminKey}});
   var d = await r.json().catch(function() { return {}; });
   if (d.ok) { scans = scans.filter(function(s) { return String(s.id) !== String(id); }); renderDashboard(); }
   else alert('Fout: ' + (d.error || 'onbekend'));
@@ -181,7 +180,7 @@ async function deleteScan(id) {
 async function deleteCallback(id) {
   if (!id || id === 'undefined') { alert('ID niet gevonden.'); return; }
   if (!confirm('Terugbelverzoek verwijderen?')) return;
-  var r = await fetch(WORKER + '/admin/delete/callback/' + id + '?key=' + encodeURIComponent(adminKey), {method:'POST'});
+  var r = await fetch(WORKER + '/admin/delete/callback/' + id, {method:'POST', headers:{'x-admin-key': adminKey}});
   var d = await r.json().catch(function() { return {}; });
   if (d.ok) { callbacks = callbacks.filter(function(c) { return String(c.id) !== String(id); }); renderDashboard(); }
   else alert('Fout: ' + (d.error || 'onbekend'));
@@ -190,7 +189,7 @@ async function deleteCallback(id) {
 async function deleteMna(code) {
   if (!code || code === 'undefined') { alert('Code niet gevonden.'); return; }
   if (!confirm('Traject ' + code + ' verwijderen? Dit verwijdert ook alle ingevoerde data.')) return;
-  var r = await fetch(WORKER + '/admin/delete/mna/' + code + '?key=' + encodeURIComponent(adminKey), {method:'POST'});
+  var r = await fetch(WORKER + '/admin/delete/mna/' + code, {method:'POST', headers:{'x-admin-key': adminKey}});
   var d = await r.json().catch(function() { return {}; });
   if (d.ok) {
     mnaTrajecten = mnaTrajecten.filter(function(t) { return t.id !== code; });
@@ -200,7 +199,7 @@ async function deleteMna(code) {
 }
 
 async function changeStatus(code, status) {
-  await fetch(WORKER + '/mna/admin/status/' + code + '?key=' + encodeURIComponent(adminKey), {
+  await fetch(WORKER + '/mna/admin/status/' + code, {headers: {'x-admin-key': adminKey},
     method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({status: status})
   });
   await refreshData();
@@ -209,7 +208,7 @@ async function changeStatus(code, status) {
 async function vergrendelTraject(code) {
   var datum = new Date().toLocaleString('nl-NL');
   if (!confirm('Traject ' + code + ' vergrendelen op ' + datum + '?\n\nHet kantoor kan daarna geen wijzigingen meer maken.')) return;
-  var r = await fetch(WORKER + '/mna/admin/vergrendel/' + code + '?key=' + encodeURIComponent(adminKey), {method:'POST'});
+  var r = await fetch(WORKER + '/mna/admin/vergrendel/' + code, {method:'POST', headers:{'x-admin-key': adminKey}});
   var d = await r.json().catch(function() { return {}; });
   if (d.ok) { alert('Vergrendeld op ' + new Date(d.vergrendeld_op).toLocaleString('nl-NL')); await refreshData(); }
   else alert('Fout bij vergrendelen.');
@@ -224,7 +223,7 @@ async function createTraject() {
   if (!naam.trim()) { alert('Kantoornaam is verplicht.'); return; }
   var btn = ge('create-btn');
   btn.disabled = true; btn.textContent = 'Aanmaken...';
-  var r = await fetch(WORKER + '/mna/create?key=' + encodeURIComponent(adminKey), {
+  var r = await fetch(WORKER + '/mna/create', {headers: {'x-admin-key': adminKey},
     method: 'POST', headers: {'Content-Type':'application/json'},
     body: JSON.stringify({kantoor_naam:naam.trim(), contact_naam:contact, contact_email:email, traject_type:type, notitie:notitie})
   });
@@ -274,7 +273,7 @@ async function showRapport(scanId, kantoorNaam) {
   body.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--muted)">Rapport wordt opgehaald...</div>';
   modal.style.display = 'flex';
   try {
-    var r = await fetch(WORKER + '/admin/rapport/' + scanId + '?key=' + encodeURIComponent(adminKey));
+    var r = await fetch(WORKER + '/admin/rapport/' + scanId, {headers: {'x-admin-key': adminKey}});
     var d = await r.json();
     if (d.rapport) {
       sub.textContent = 'AI-rapport';
@@ -300,7 +299,7 @@ async function loadMnaDetail(code) {
   if (!el) return;
   el.innerHTML = '<div style="color:var(--muted);font-size:12px">Laden...</div>';
   try {
-    var r = await fetch(WORKER + '/mna/admin/detail/' + code + '?key=' + encodeURIComponent(adminKey));
+    var r = await fetch(WORKER + '/mna/admin/detail/' + code, {headers: {'x-admin-key': adminKey}});
     var d = await r.json();
     var titels = {financieel:'I. Financieel',commercieel:'II. Klanten',partner:'III. Partners',compliance:'IV. Compliance',it:'V. IT',juridisch:'VI. Juridisch',strategisch:'VII. Strategisch'};
     var html = '';
@@ -346,7 +345,7 @@ async function createGroep() {
   var omschr = (ge('g-omschr')||{}).value||'';
   if (!naam.trim()) { alert('Naam is verplicht.'); return; }
   var btn = ge('g-create-btn'); btn.disabled=true; btn.textContent='Aanmaken...';
-  var r = await fetch(WORKER+'/mna/groep/create?key='+encodeURIComponent(adminKey), {
+  var r = await fetch(WORKER+'/mna/groep/create', {headers: {'x-admin-key': adminKey},
     method:'POST', headers:{'Content-Type':'application/json'},
     body: JSON.stringify({naam:naam.trim(), omschrijving:omschr.trim()})
   });
@@ -362,7 +361,7 @@ async function createGroep() {
 async function koppelTraject(groepId) {
   var sel = ge('koppel-'+groepId);
   if (!sel||!sel.value) return;
-  var r = await fetch(WORKER+'/mna/groep/koppel?key='+encodeURIComponent(adminKey), {
+  var r = await fetch(WORKER+'/mna/groep/koppel', {headers: {'x-admin-key': adminKey},
     method:'POST', headers:{'Content-Type':'application/json'},
     body: JSON.stringify({groep_id:groepId, traject_id:sel.value})
   });
@@ -373,7 +372,7 @@ async function koppelTraject(groepId) {
 
 async function ontkoppelTraject(groepId, trajectId) {
   if (!confirm('Kantoor ontkoppelen van deze groep?')) return;
-  var r = await fetch(WORKER+'/mna/groep/ontkoppel?key='+encodeURIComponent(adminKey), {
+  var r = await fetch(WORKER+'/mna/groep/ontkoppel', {headers: {'x-admin-key': adminKey},
     method:'POST', headers:{'Content-Type':'application/json'},
     body: JSON.stringify({groep_id:groepId, traject_id:trajectId})
   });
@@ -383,7 +382,7 @@ async function ontkoppelTraject(groepId, trajectId) {
 
 async function deleteGroep(id) {
   if (!confirm('Groep '+id+' verwijderen? Gekoppelde trajecten blijven bestaan.')) return;
-  var r = await fetch(WORKER+'/mna/groep/delete/'+id+'?key='+encodeURIComponent(adminKey), {method:'POST'});
+  var r = await fetch(WORKER+'/mna/groep/delete/'+id, {method:'POST', headers:{'x-admin-key': adminKey}});
   var d = await r.json().catch(function(){return{};});
   if (d.ok) { mnaGroepen=mnaGroepen.filter(function(g){return g.id!==id;}); renderDashboard(); }
   else alert('Fout: '+(d.error||'onbekend'));
