@@ -539,7 +539,8 @@ function renderMain(){
   ov+='</div>';
 
   // Data fields
-  var dataHtml='<div class="panel"><div class="sec-hdr">Informatie invullen</div><div class="data-grid">';
+  var dataSectionTitle = isRO && !vergrendeld ? 'Ingevoerde informatie' : 'Informatie invullen';
+  var dataHtml='<div class="panel"><div class="sec-hdr">'+dataSectionTitle+'</div><div class="data-grid">';
   f.dataFields.forEach(function(df){
     var val=S.data[f.id+'_'+df.id]||'';
     var ref=S.docRefs[f.id+'_'+df.id]||'';
@@ -562,9 +563,11 @@ function renderMain(){
   // Marcel-only: checklist + rode vlaggen + notities + AI
   var extraHtml='';
   if(!isVerkoper()){
-    var chkHtml='<div class="panel"><div class="sec-hdr">Checklist (intern)</div>';
+    var chkSectionTitle = isKoper() ? 'Due diligence voortgang' : 'Checklist (intern)';
+    var rfSectionTitle = isKoper() ? 'Gesignaleerde aandachtspunten' : 'Rode vlaggen &mdash; gesignaleerd?';
+    var chkHtml='<div class="panel"><div class="sec-hdr">'+chkSectionTitle+'</div>';
     f.items.forEach(function(item,i){var key=f.id+'_'+i;var on=!!S.checked[key];chkHtml+='<div class="chk-item'+(on?' on':'')+'" data-key="'+key+'"'+(isKoper()?' style="cursor:default"':'')+'><div class="chk-box">'+(on?'&#10003;':'')+'</div><div class="chk-lbl">'+item+'</div></div>';});
-    chkHtml+='<div class="sec-hdr" style="margin-top:1rem;color:var(--red)">Rode vlaggen &mdash; gesignaleerd?</div>';
+    chkHtml+='<div class="sec-hdr" style="margin-top:1rem;color:var(--red)">'+rfSectionTitle+'</div>';
     f.redflags.forEach(function(rf,i){var key=f.id+'_rf_'+i;var on=!!S.checked[key];chkHtml+='<div class="chk-item rf'+(on?' on':'')+'" data-key="'+key+'"'+(isKoper()?' style="cursor:default"':'')+'><div class="chk-box">'+(on?'&#10003;':'')+'</div><div class="chk-lbl">'+rf+'</div></div>';});
     chkHtml+='</div>';
     var notHtml='<div class="panel"><div class="sec-hdr">Notities (intern)</div>'
@@ -593,13 +596,16 @@ function renderMain(){
 
   var lockedBanner=vergrendeld?'<div style="background:var(--red-bg);border:1px solid var(--red);border-radius:var(--r);padding:10px 14px;margin-bottom:1rem;font-size:13px;color:var(--red)">&#128274; <strong>Dit traject is vergrendeld.</strong> U kunt geen wijzigingen meer doorvoeren.</div>':'';
 
+  var koperBanner = isKoper() ? '<div style="background:var(--teal-bg);border:1px solid var(--teal-dark);border-radius:var(--r);padding:10px 14px;margin-bottom:1.25rem;font-size:13px;color:var(--mid);line-height:1.65">U bekijkt de door de verkopende partij ingevulde due diligence informatie. De gegevens zijn gebaseerd op zelfrapportage. Vragen kunt u richten aan Marcel Bisschops &mdash; <a href="mailto:marcel@bisschopsfinancing.nl" style="color:var(--teal)">marcel@bisschopsfinancing.nl</a>.</div>' : '';
+  
   return '<div class="wrap anim">'
-    +'<div class="hdr"><div class="brand"><div class="wdot"></div>KantoorInzicht &middot; M&amp;A'+(isKoper()?' (koper-view)':isVerkoper()?' (invullen)':isTussen()?' (tussenpersoon-view)':'')+'</div>'
+    +'<div class="hdr"><div class="brand"><div class="wdot"></div>KantoorInzicht &middot; M&amp;A'+(isKoper()?' &middot; Due diligence overzicht':isVerkoper()?'':isTussen()?' &middot; Tussenpersoon':'')+'</div>'
     +'<div style="display:flex;align-items:center;gap:8px">'
     +'<span style="font-size:11px;color:var(--muted)">'+esc(S.traject&&S.traject.kantoor_naam||S.code)+'</span>'
     +'<button class="btn-ghost btn-sm" onclick="window.print()">PDF</button>'
     +'</div></div>'
     +lockedBanner
+    +koperBanner
     +'<div style="font-family:Playfair Display,serif;font-size:1.4rem;color:var(--head);font-weight:600;margin-bottom:.25rem">'+esc(S.traject&&S.traject.kantoor_naam||'')+'</div>'
     +'<div style="font-size:13px;color:var(--muted);margin-bottom:1rem">Voortgang: <span style="font-family:IBM Plex Mono,monospace;color:'+(tp===100?'var(--teal)':tp>50?'var(--gold)':'var(--red)')+'">'+tp+'%</span></div>'
     +'<div class="prog-bar"><div class="prog-fill" style="width:'+tp+'%;background:'+(tp===100?'var(--teal)':tp>50?'var(--gold)':'var(--red)')+'"></div></div>'
