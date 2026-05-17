@@ -414,7 +414,7 @@ function autoFillFromExtraction(faseId, velden, fileName) {
   if(fileName){
     var f=FASES.find(function(x){return x.id===faseId;});
     if(f)f.dataFields.forEach(function(df){
-      if(df.doc){var rk=faseId+'_'+df.id;if(!S.docRefs[rk]||!S.docRefs[rk].trim())S.docRefs[rk]=fileName;}
+      if(df.doc){var rk=faseId+'_'+df.id;S.docRefs[rk]=fileName;}
     });
   }
 }
@@ -463,6 +463,7 @@ async function deleteDocument(docId, faseId) {
 
 function renderDocumentSectie(faseId) {
   if(isKoper()) return '';
+  var toonAnalyse = isTussen();
   var docs = getDocsForFase(faseId);
   var isReadOnly = (S.traject && S.traject.status === 'vergrendeld');
   var uploadHtml = '';
@@ -483,7 +484,7 @@ function renderDocumentSectie(faseId) {
     var grootteMb = (doc.grootte / 1024 / 1024).toFixed(1);
 
     var veldenHtml = '';
-    if (doc.velden && Object.keys(doc.velden).length) {
+    if (toonAnalyse && doc.velden && Object.keys(doc.velden).length) {
       var relevantVelden = Object.entries(doc.velden).filter(function(kv){ return kv[1] && kv[1] !== 'null'; });
       if (relevantVelden.length) {
         veldenHtml = '<div class="doc-velden">'
@@ -495,7 +496,7 @@ function renderDocumentSectie(faseId) {
       }
     }
 
-    var analyseHtml = doc.uploading
+    var analyseHtml = !toonAnalyse ? '' : doc.uploading
       ? '<div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);margin-top:.4rem"><div class="spin" style="border-color:var(--border2);border-top-color:var(--teal);width:12px;height:12px"></div>Uploaden en analyseren...</div>'
       : (doc.analyse ? '<div class="doc-analyse">' + doc.analyse.replace(/## ([^\r\n]+)/g,'<strong>$1</strong><br>').replace(/[\r\n]/g,'<br>').substring(0,1500) + (doc.analyse.length>1500?'...':'') + '</div>' : '');
 
