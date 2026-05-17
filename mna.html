@@ -118,26 +118,21 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--s
 </head>
 <body>
 <div id="app"></div>
-<input type="file" id="global-file-input" accept=".pdf,.docx,.doc,.xlsx,.xls,.csv" multiple style="display:none">
 <script>
 var WORKER='https://kantoorinzicht.marcel-bisschops.workers.dev';
 
-var _uploadFaseId = null;
-document.addEventListener('DOMContentLoaded', function() {
-  var gfi = document.getElementById('global-file-input');
-  if (gfi) {
-    gfi.addEventListener('change', function(e) {
-      if (!_uploadFaseId) return;
-      var files = e.target.files;
-      for (var i = 0; i < files.length; i++) uploadDocument(_uploadFaseId, files[i]);
-      e.target.value = '';
-      _uploadFaseId = null;
-    });
-  }
-});
 function triggerFileUpload(faseId) {
-  _uploadFaseId = faseId;
-  document.getElementById('global-file-input').click();
+  var input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.pdf,.docx,.doc,.xlsx,.xls,.csv';
+  input.multiple = true;
+  document.body.appendChild(input);
+  input.addEventListener('change', function(e) {
+    var files = e.target.files;
+    for (var i = 0; i < files.length; i++) uploadDocument(faseId, files[i]);
+    document.body.removeChild(input);
+  });
+  input.click();
 }
 
 var FASES=[
@@ -373,23 +368,17 @@ async function uploadDocument(faseId, file) {
 
 function autoFillFromExtraction(faseId, velden, fileName) {
   function setIfEmpty(key, value) {
-    if (value && value !== 'null' && !(S.data[key] || '').trim()) {
-      S.data[key] = String(value);
-    }
+    if (value && value !== 'null' && !(S.data[key] || '').trim()) S.data[key] = String(value);
   }
   if (faseId === 'financieel') {
     var opy = velden.omzet_per_jaar || {};
-    var jaren = Object.keys(opy)
-      .filter(function(j){ return opy[j] && opy[j] !== 'null'; })
-      .map(Number).filter(function(j){ return !isNaN(j); })
-      .sort(function(a,b){ return a-b; });
+    var jaren = Object.keys(opy).filter(function(j){ return opy[j] && opy[j] !== 'null'; })
+      .map(Number).filter(function(j){ return !isNaN(j); }).sort(function(a,b){ return a-b; });
     if (jaren.length >= 1) {
       ['omzet1','omzet2','omzet3'].forEach(function(veld,i){
         if(jaren[i]) setIfEmpty('financieel_'+veld, opy[String(jaren[i])]);
       });
-    } else {
-      setIfEmpty('financieel_omzet3', velden.omzet);
-    }
+    } else { setIfEmpty('financieel_omzet3', velden.omzet); }
     setIfEmpty('financieel_ebitda',            velden.ebitda_pct);
     setIfEmpty('financieel_ebitdaNorm',        velden.resultaat);
     setIfEmpty('financieel_wip',               velden.ohw);
@@ -404,19 +393,15 @@ function autoFillFromExtraction(faseId, velden, fileName) {
     setIfEmpty('financieel_kostenIT',          velden.kosten_it_pct);
     setIfEmpty('financieel_kostenMarketing',   velden.kosten_marketing_pct);
   }
-  if (faseId === 'partner') {
-    setIfEmpty('partner_fte', velden.fte);
-  }
+  if (faseId === 'partner') { setIfEmpty('partner_fte', velden.fte); }
   if (fileName) {
     var f = FASES.find(function(x){ return x.id === faseId; });
-    if (f) {
-      f.dataFields.forEach(function(df) {
-        if (df.doc) {
-          var refKey = faseId + '_' + df.id;
-          if (!S.docRefs[refKey] || !S.docRefs[refKey].trim()) S.docRefs[refKey] = fileName;
-        }
-      });
-    }
+    if (f) f.dataFields.forEach(function(df) {
+      if (df.doc) {
+        var refKey = faseId + '_' + df.id;
+        if (!S.docRefs[refKey] || !S.docRefs[refKey].trim()) S.docRefs[refKey] = fileName;
+      }
+    });
   }
 }
 
@@ -435,7 +420,7 @@ function renderDocumentSectie(faseId) {
   var uploadHtml = '';
 
   if (!isReadOnly) {
-    uploadHtml = '<div class="upload-zone" id="upload-zone-' + faseId + '" onclick="triggerFileUpload(' + JSON.stringify(faseId) + ')" ondragover="event.preventDefault();this.classList.add(\'drag\')" ondragleave="this.classList.remove(\'drag\')" ondrop="event.preventDefault();this.classList.remove(\'drag\');handleDropUpload(event,' + JSON.stringify(faseId) + ')">'
+    uploadHtml = '<div class="upload-zone" id="upload-zone-' + faseId + '" data-fase="' + faseId + '" ondragover="event.preventDefault();this.classList.add(\'drag\')" ondragleave="this.classList.remove(\'drag\')" ondrop="event.preventDefault();this.classList.remove(\'drag\');handleDropUpload(event,' + JSON.stringify(faseId) + ')">'
       + '<div style="font-size:24px;margin-bottom:.4rem">&#128196;</div>'
       + '<div style="font-size:13px;font-weight:600;color:var(--mid);margin-bottom:.2rem">Klik om document te uploaden of sleep hier naartoe</div>'
       + '<div style="font-size:11px;color:var(--muted)">PDF, Word, Excel, CSV &middot; max 20MB &middot; AI leest en analyseert automatisch</div>'
@@ -768,6 +753,9 @@ function bindAll(){
   if(!isKoper()){
     document.querySelectorAll('.chk-item[data-key]').forEach(function(el){el.onclick=function(){saveCurrent();S.checked[el.dataset.key]=!S.checked[el.dataset.key];renderApp();};});
   }
+  document.querySelectorAll('.upload-zone[data-fase]').forEach(function(el){
+    el.onclick=function(){ triggerFileUpload(el.dataset.fase); };
+  });
 }
 
 renderApp();
