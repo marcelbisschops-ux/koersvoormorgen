@@ -373,7 +373,6 @@ function autoFillFromExtraction(faseId, velden, fileName) {
     }
   }
   if (faseId === 'financieel') {
-    // Jaar-gebaseerde omzet: probeer omzet_per_jaar, fallback op losse omzet
     var opy = velden.omzet_per_jaar;
     if (opy && typeof opy === 'object') {
       var jaren = Object.keys(opy)
@@ -386,9 +385,7 @@ function autoFillFromExtraction(faseId, velden, fileName) {
         });
       }
     }
-    // Fallback: enkelvoudige omzet
     if (!(S.data['financieel_omzet3']||'').trim()) setIfEmpty('financieel_omzet3', velden.omzet);
-
     setIfEmpty('financieel_ebitda',            velden.ebitda_pct);
     setIfEmpty('financieel_ebitdaNorm',        velden.resultaat);
     setIfEmpty('financieel_wip',               velden.ohw);
@@ -420,70 +417,39 @@ async function consolideerAnalyse(faseId) {
   if (!docs.length) return;
   var f = FASES.find(function(x){ return x.id === faseId; });
   if (!f) return;
-
-  // Verzamel alle analyses en veld-extracties
   var alleAnalyses = docs.map(function(d, i) {
-    return 'Document ' + (i+1) + ': ' + d.naam + '
-' + (d.analyse || 'Geen analyse beschikbaar');
-  }).join('
-
----
-
-');
-
-  // Consolideer velden: neem beste waarde per veld over alle documenten
+    return 'Document ' + (i+1) + ': ' + d.naam + '\n' + (d.analyse || 'Geen analyse beschikbaar');
+  }).join('\n\n---\n\n');
   var geconsolideerd = {};
   docs.forEach(function(d) {
     if (!d.velden) return;
     Object.keys(d.velden).forEach(function(k) {
       var v = d.velden[k];
-      if (v && v !== 'null' && v !== null && !geconsolideerd[k]) {
-        geconsolideerd[k] = v;
-      }
+      if (v && v !== 'null' && v !== null && !geconsolideerd[k]) geconsolideerd[k] = v;
     });
-    // Consolideer omzet_per_jaar: merge alle jaren
     if (d.velden.omzet_per_jaar && typeof d.velden.omzet_per_jaar === 'object') {
       if (!geconsolideerd.omzet_per_jaar) geconsolideerd.omzet_per_jaar = {};
       Object.keys(d.velden.omzet_per_jaar).forEach(function(jaar) {
         var v = d.velden.omzet_per_jaar[jaar];
-        if (v && v !== 'null' && !geconsolideerd.omzet_per_jaar[jaar]) {
-          geconsolideerd.omzet_per_jaar[jaar] = v;
-        }
+        if (v && v !== 'null' && !geconsolideerd.omzet_per_jaar[jaar]) geconsolideerd.omzet_per_jaar[jaar] = v;
       });
     }
   });
-
-  // Auto-fill met geconsolideerde waarden
   autoFillFromExtraction(faseId, geconsolideerd, null);
-
-  // Genereer geconsolideerde AI-analyse
   S.aiLoading[faseId] = true;
   renderApp();
-
   var dataLines = [];
   f.dataFields.forEach(function(df) {
     var v = S.data[f.id + '_' + df.id];
     if (v) dataLines.push(df.label + ': ' + v);
   });
-
-  var prompt = 'Je bent Marcel Bisschops, senior M&A-adviseur. Maak een geconsolideerde financiële analyse op basis van ' + docs.length + ' geüploade documenten voor fase: ' + f.title + ' van kantoor "' + esc(S.traject && S.traject.kantoor_naam || S.code) + '".
-
-'
-    + 'INGEVULDE VELDEN NA CONSOLIDATIE:
-' + (dataLines.join('
-') || 'Nog niet ingevuld') + '
-
-'
-    + 'INDIVIDUELE DOCUMENT-ANALYSES:
-' + alleAnalyses + '
-
-'
-    + 'Geef een geconsolideerde analyse: wat tonen de documenten samen, welke jaren zijn gedekt, wat zijn de trends, rode vlaggen en aanbevelingen. Wees concreet met de cijfers. Gebruik ## koppen. Geen bullets.';
-
+  var prompt = 'Je bent Marcel Bisschops, senior M&A-adviseur. Geconsolideerde analyse op basis van ' + docs.length + ' documenten voor fase: ' + f.title + ' van "' + esc(S.traject && S.traject.kantoor_naam || S.code) + '".\n\n'
+    + 'INGEVULDE VELDEN:\n' + (dataLines.join('\n') || 'Nog niet ingevuld') + '\n\n'
+    + 'DOCUMENT-ANALYSES:\n' + alleAnalyses + '\n\n'
+    + 'Geef een geconsolideerde analyse: wat tonen de documenten samen, welke jaren zijn gedekt, trends, rode vlaggen en aanbevelingen. Wees concreet met cijfers. Gebruik ## koppen. Geen bullets.';
   try {
     var resp = await fetch(WORKER + '/ai', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
+      method: 'POST', headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({messages: [{role: 'user', content: prompt}]})
     });
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
@@ -493,8 +459,7 @@ async function consolideerAnalyse(faseId) {
     while (true) {
       var res = await reader.read();
       if (res.done) break;
-      dec.decode(res.value, {stream: true}).split('
-').forEach(function(line) {
+      dec.decode(res.value, {stream: true}).split('\n').forEach(function(line) {
         if (line.startsWith('data:')) {
           var d = line.slice(5).trim();
           if (d === '[DONE]') return;
@@ -503,9 +468,7 @@ async function consolideerAnalyse(faseId) {
       });
     }
     S.aiTexts[faseId] = collected;
-  } catch(e) {
-    S.aiTexts[faseId] = '__ERROR__';
-  }
+  } catch(e) { S.aiTexts[faseId] = '__ERROR__'; }
   S.aiLoading[faseId] = false;
   renderApp();
 }
@@ -565,11 +528,10 @@ function renderDocumentSectie(faseId) {
 
   var consolideerHtml = '';
   if (!isReadOnly && docs.length > 1) {
-    consolideerHtml = '<button onclick="consolideerAnalyse(' + JSON.stringify(faseId) + ')" class="btn btn-sm" style="width:100%;margin-top:.5rem;background:var(--teal-dim)">&#9881; Geconsolideerde analyse genereren (' + docs.length + ' documenten)</button>';
+    consolideerHtml = '<button onclick="consolideerAnalyse(' + JSON.stringify(faseId) + ')" class="btn btn-sm" style="width:100%;margin-top:.5rem;background:var(--teal-dim)">&#9881; Geconsolideerde analyse (' + docs.length + ' documenten)</button>';
   }
   return '<div class="panel" id="doc-sectie-' + faseId + '"><div class="sec-hdr">Documenten &amp; AI-analyse</div>'
-    + uploadHtml + docsHtml
-    + consolideerHtml
+    + uploadHtml + docsHtml + consolideerHtml
     + (docs.length === 0 && isReadOnly ? '<div style="color:var(--muted);font-size:13px;font-style:italic">Geen documenten geupload voor deze fase.</div>' : '')
     + '</div>';
 }
@@ -643,13 +605,12 @@ function renderCover(){
       +'<p>Vragen? Neem contact op via <a href="mailto:marcel@bisschopsfinancing.nl" style="color:var(--teal)">marcel@bisschopsfinancing.nl</a>.</p>'
       +'<p>Met vriendelijke groet,<br><strong>Marcel Bisschops</strong><br><span style="font-size:12px;color:var(--muted)">Senior M&amp;A-adviseur &middot; Bisschops Financing BV</span></p>';
   }else if(!t.koper_vrijgegeven){
-    // Koper niet vrijgegeven: toon wachtmelding
     return '<div class="wrap anim">'
       +'<div class="hdr"><div class="brand"><div class="wdot"></div>KantoorInzicht &middot; M&amp;A</div></div>'
       +'<div class="cover-letter" style="text-align:center;padding:3rem 2rem">'
       +'<div style="font-size:2rem;margin-bottom:1rem">&#128274;</div>'
       +'<div style="font-family:Playfair Display,serif;font-size:1.3rem;color:var(--head);font-weight:600;margin-bottom:.75rem">Informatie nog niet beschikbaar</div>'
-      +'<div style="font-size:13px;color:var(--mid);line-height:1.7;max-width:420px;margin:0 auto">De due diligence informatie voor dit traject is nog niet vrijgegeven door de adviseur. U ontvangt een bericht zodra de gegevens beschikbaar zijn.</div>'
+      +'<div style="font-size:13px;color:var(--mid);line-height:1.7;max-width:420px;margin:0 auto">De due diligence informatie is nog niet vrijgegeven door de adviseur. U ontvangt een bericht zodra de gegevens beschikbaar zijn.</div>'
       +'<div style="margin-top:1.5rem;font-size:12px;color:var(--muted)">Vragen? <a href="mailto:marcel@bisschopsfinancing.nl" style="color:var(--teal)">marcel@bisschopsfinancing.nl</a></div>'
       +'</div></div>';
   }else{
@@ -662,7 +623,7 @@ function renderCover(){
     +'<div class="hdr"><div class="brand"><div class="wdot"></div>KantoorInzicht &middot; M&amp;A</div>'
     +'<div style="display:flex;gap:8px"><button class="btn-ghost btn-sm" onclick="window.print()">PDF afdrukken</button>'
     +(isVerkoper()?'<button class="btn btn-sm" id="to-main-btn">Start invullen &#8594;</button>'
-    :isTussen()||S.rol==='admin'?
+    :isTussen()?
       (t.koper_vrijgegeven
         ?'<button class="btn-ghost btn-sm" id="intrekken-btn">&#128275; Vrijgave intrekken</button>'
         :'<button class="btn btn-sm" id="vrijgeven-btn">&#128275; Koper toegang geven</button>')
@@ -888,19 +849,17 @@ function bindAll(){
   });
   var vrgBtn=ge('vrijgeven-btn');
   if(vrgBtn)vrgBtn.onclick=async function(){
-    var url=WORKER+'/mna/admin/vrijgeven/'+S.code;
     var key=prompt('Admin sleutel:');
     if(!key)return;
-    var r=await fetch(url+'?key='+encodeURIComponent(key),{method:'POST'}).then(function(x){return x.json();}).catch(function(){return{};});
+    var r=await fetch(WORKER+'/mna/admin/vrijgeven/'+S.code+'?key='+encodeURIComponent(key),{method:'POST'}).then(function(x){return x.json();}).catch(function(){return{};});
     if(r.ok){S.traject.koper_vrijgegeven=1;renderApp();}
     else alert('Fout: '+(r.error||'onbekend'));
   };
   var intBtn=ge('intrekken-btn');
   if(intBtn)intBtn.onclick=async function(){
-    var url=WORKER+'/mna/admin/intrekken/'+S.code;
     var key=prompt('Admin sleutel:');
     if(!key)return;
-    var r=await fetch(url+'?key='+encodeURIComponent(key),{method:'POST'}).then(function(x){return x.json();}).catch(function(){return{};});
+    var r=await fetch(WORKER+'/mna/admin/intrekken/'+S.code+'?key='+encodeURIComponent(key),{method:'POST'}).then(function(x){return x.json();}).catch(function(){return{};});
     if(r.ok){S.traject.koper_vrijgegeven=0;renderApp();}
     else alert('Fout: '+(r.error||'onbekend'));
   };
