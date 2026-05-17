@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>M&A Begeleiding — KantoorInzicht</title>
+<title>M&A Begeleiding - KantoorInzicht</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -122,10 +122,10 @@ var FASES=[
   {id:'declarab',label:'Declarabiliteit (%)',ph:'bijv. 78',doc:false,req:false},
   {id:'partnerBel',label:'Partnerbeloning (marktconform?)',ph:'bijv. ja / nee / hoog',doc:false,req:true},
  ],
- items:['Jaarrekeningen 3 jaar beschikbaar en doorgenomen','YTD-cijfers aangeleverd','Omzet per dienstlijn inzichtelijk','EBITDA-normalisatie opgesteld','Top 20 klanten met omzetbijdrage in kaart','WIP geïnventariseerd','Debiteurenpositie en aging geanalyseerd','Partnerbeloningen vergeleken met marktconform','Declarabiliteit en realisatiegraad bepaald'],
+ items:['Jaarrekeningen 3 jaar beschikbaar en doorgenomen','YTD-cijfers aangeleverd','Omzet per dienstlijn inzichtelijk','EBITDA-normalisatie opgesteld','Top 20 klanten met omzetbijdrage in kaart','WIP geenventariseerd','Debiteurenpositie en aging geanalyseerd','Partnerbeloningen vergeleken met marktconform','Declarabiliteit en realisatiegraad bepaald'],
  redflags:['Hoge WIP en oude debiteuren (>90 dagen)','Lage partnerproductiviteit tov benchmark','Eenmalige omzetpieken vertekenen beeld','Niet-genormaliseerde partnerbeloningen']},
 
-{id:'commercieel',num:'II',title:'Klanten & commercieel',desc:'Concentratie, retentie en commerciële kracht.',
+{id:'commercieel',num:'II',title:'Klanten & commercieel',desc:'Concentratie, retentie en commerciele kracht.',
  dataFields:[
   {id:'aantalKlanten',label:'Aantal actieve klanten',ph:'bijv. 340',doc:false,req:true},
   {id:'churn',label:'Klantverloop per jaar (%)',ph:'bijv. 6',doc:false,req:true},
@@ -137,7 +137,7 @@ var FASES=[
   {id:'nieuw',label:'Nieuwe klanten per jaar',ph:'bijv. 28',doc:false,req:false},
   {id:'verlies',label:'Verloren klanten per jaar',ph:'bijv. 18',doc:false,req:false},
  ],
- items:['Klantverloop per jaar inzichtelijk (3 jaar)','Nieuwe vs verloren klanten geanalyseerd','Top 10 klanten samen minder dan 40% omzet','Cross-sell percentage vastgesteld','Sectorverdeling geïnventariseerd','Contractduur en verlengingsstructuur inzichtelijk'],
+ items:['Klantverloop per jaar inzichtelijk (3 jaar)','Nieuwe vs verloren klanten geanalyseerd','Top 10 klanten samen minder dan 40% omzet','Cross-sell percentage vastgesteld','Sectorverdeling geenventariseerd','Contractduur en verlengingsstructuur inzichtelijk'],
  redflags:['Omzet geconcentreerd bij minder dan 5 klanten','Klantverloop meer dan 10% per jaar','Klantrelaties hangen aan individuele partners','Geen structurele acquisitie']},
 
 {id:'partner',num:'III',title:'Partners & personeel',desc:'Afhankelijkheden, opvolging en cultuur.',
@@ -156,7 +156,7 @@ var FASES=[
  ],
  items:['Omzetbijdrage per partner vastgesteld','Leeftijdsopbouw partners in kaart','Exitregelingen en contractduur besproken','Opvolgingsplan sleutelpartners aanwezig','Retentierisico na transactie beoordeeld','Verlooppercentage bepaald (benchmark 15%)'],
  redflags:['Omzet zit in hoofden van 1-2 partners','Pensioengolf zonder concrete opvolging','Personeelsverloop meer dan 15%','Geen formele partnerovereenkomsten',
-    'Lage veranderbereidheid partners of personeel — risico voor integratie en cultuurfit']},
+    'Lage veranderbereidheid partners of personeel - risico voor integratie en cultuurfit']},
 
 {id:'compliance',num:'IV',title:'Compliance & kwaliteit',desc:'Regulatory status en dossierkwaliteit.',
  dataFields:[
@@ -166,10 +166,10 @@ var FASES=[
   {id:'toetsOordeel',label:'Oordeel kwaliteitstoetsing',ph:'bijv. voldoende / met aandachtspunten',doc:true,req:true},
   {id:'tuchtzaken',label:'Lopende tuchtzaken',ph:'bijv. geen / ja (beschrijf)',doc:false,req:true},
   {id:'claims',label:'Civiele claims',ph:'bijv. geen / ja (bedrag)',doc:false,req:true},
-  {id:'wwft',label:'Wwft-procedures volledig geimplementeerd en aantoonbaar up-to-date',ph:'bijv. ja / deels / nee — toelichting',doc:true,req:true},
+  {id:'wwft',label:'Wwft-procedures volledig geimplementeerd en aantoonbaar up-to-date',ph:'bijv. ja / deels / nee - toelichting',doc:true,req:true},
   {id:'incidenten',label:'Integriteitsincidenten <5 jaar',ph:'bijv. geen / ja (beschrijf)',doc:false,req:true},
  ],
- items:['NBA-inschrijving en vergunningsstatus gecontroleerd','Laatste kwaliteitstoetsingen doorgenomen','Bevindingen en herstelmaatregelen beoordeeld','Wwft-procedures en client acceptance gereviewed (volledig, aantoonbaar, up-to-date)','Lopende tuchtzaken geïnventariseerd','Compliance handboek actueel'],
+ items:['NBA-inschrijving en vergunningsstatus gecontroleerd','Laatste kwaliteitstoetsingen doorgenomen','Bevindingen en herstelmaatregelen beoordeeld','Wwft-procedures en client acceptance gereviewed (volledig, aantoonbaar, up-to-date)','Lopende tuchtzaken geenventariseerd','Compliance handboek actueel'],
  redflags:['Negatieve kwaliteitstoetsing NBA afgelopen 2 jaar','Lopende tuchtzaken of civiele claims','Wwft zwak, niet aantoonbaar of niet up-to-date ingericht (dealbreaker bij DD en toezicht)','Structurele dossierbevindingen']},
 
 {id:'it',num:'V',title:'IT & automatisering',desc:'Systemen, automatiseringsgraad en AI-readiness.',
@@ -308,7 +308,8 @@ function renderCover(){
       +'<p>In het kader van het '+esc(t.traject_type||'M&A')+'-traject voor <strong>'+esc(t.kantoor_naam)+'</strong> verzoek ik u onderstaande gegevens in te voeren via dit beveiligde platform. U kunt per fase de informatie invullen en tussentijds opslaan.</p>'
       +'<p>Waar documentatie wordt gevraagd (gemarkeerd met &#128196;), vermeldt u de bestandsnaam in het daarvoor bestemde veld. Stuur de documenten als volgt veilig op:</p><ol style="margin:.5rem 0 .75rem 1.25rem"><li style="font-size:13px;color:var(--mid);margin-bottom:.4rem">Zet alle documenten in een map en maak een <strong>zip-bestand met wachtwoord</strong>.<br><span style="font-size:12px;color:var(--muted)">Windows: rechtsklik op map &rarr; Compress to ZIP file &rarr; stel een wachtwoord in. Mac: gebruik Keka (keka.io).</span></li><li style="font-size:13px;color:var(--mid);margin-bottom:.4rem">Stuur de zip per e-mail naar <a href="mailto:marcel@bisschopsfinancing.nl" style="color:var(--teal)">marcel@bisschopsfinancing.nl</a> met als onderwerp uw trajectcode.</li><li style="font-size:13px;color:var(--mid)">Stuur het <strong>wachtwoord apart via WhatsApp</strong> naar <a href="https://wa.me/31638689888" style="color:var(--teal)">06&nbsp;-&nbsp;38&nbsp;68&nbsp;98&nbsp;88</a>.</li></ol>'
       +'<p>Uw gegevens worden strikt vertrouwelijk behandeld.</p>'
-      +'<p>Met vriendelijke groet,<br><strong>Marcel Bisschops</strong><br><span style="font-size:12px;color:var(--muted)">Senior M&amp;A-adviseur &middot; Bisschops Financing BV<br>06 - 38 68 98 88 &middot; marcel@bisschopsfinancing.nl</span></p>';
+      +'<div style="margin:1rem 0;padding:.75rem 1rem;background:var(--card);border:1px solid var(--border);border-radius:var(--r);font-size:11px;color:var(--muted);line-height:1.7">&#128274; <strong>Beveiliging &amp; AVG:</strong> Alle gegevens worden versleuteld via HTTPS verstuurd en opgeslagen op Cloudflare-servers in Europa (Frankfurt, EU). Uw gegevens worden uitsluitend gebruikt voor dit M&amp;A-traject en niet gedeeld met derden. Conform AVG heeft u recht op inzage, correctie en verwijdering.</div>'
+    +'<p>Met vriendelijke groet,<br><strong>Marcel Bisschops</strong><br><span style="font-size:12px;color:var(--muted)">Senior M&amp;A-adviseur &middot; Bisschops Financing BV<br>06 - 38 68 98 88 &middot; marcel@bisschopsfinancing.nl</span></p>';
   }else if(isTussen()){
     intro='<p>Geachte tussenpersoon,</p>'
       +'<p>U heeft toegang tot de voortgang van het due diligence traject (trajecttype: <strong>'+esc(t.traject_type||'M&A')+'</strong>). De kantooridentiteit is geanonimiseerd conform de afspraken. U kunt per fase de ingevoerde informatie inzien en een AI-advies genereren op basis van de beschikbare data.</p>'
