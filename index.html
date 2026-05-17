@@ -722,11 +722,6 @@ function bindEvents(){
     }).catch(()=>alert('Code: '+code));
   });
   on('view-dashboard-btn','click',()=>loadGroup(ST.groupId));
-  
-      alert('Code verstuurd naar '+email+' \u2014 controleer ook uw spam.');
-    }catch(e){alert('Kon niet versturen. Noteer uw code: '+ST.groupId);}
-    if(btn){btn.disabled=false;btn.textContent='\ud83d\udce7 Stuur code opnieuw per e-mail';}
-  });
   on('do-join-group','click',()=>{
     const code=$('gj-code')?.value?.trim().toUpperCase();
     if(!code||code.length<4){alert('Voer een geldige groepscode in.');return;}
