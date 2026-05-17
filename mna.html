@@ -341,23 +341,70 @@ async function uploadDocument(faseId, file) {
 }
 
 function autoFillFromExtraction(faseId, velden, fileName) {
-  var mapping = {
-    financieel: { omzet: 'omzet3', ebitda_pct: 'ebitda', eigen_vermogen: 'ebitdaNorm' },
-    partner: { fte: 'fte' },
-  };
-  var faseMapping = mapping[faseId] || {};
-  Object.entries(faseMapping).forEach(function(kv) {
-    var extractKey = kv[0], fieldId = kv[1];
-    if (velden[extractKey] && velden[extractKey] !== 'null') {
-      var existing = S.data[faseId + '_' + fieldId];
-      if (!existing || !existing.trim()) {
-        S.data[faseId + '_' + fieldId] = String(velden[extractKey]);
+  if (faseId === 'financieel') {
+    // --- Jaar-gebaseerde omzet-mapping ---
+    // Verzamel alle jaren met omzetwaarden
+    var omzetPerJaar = velden.omzet_per_jaar || {};
+    var jaren = Object.keys(omzetPerJaar)
+      .filter(function(j) { return omzetPerJaar[j] && omzetPerJaar[j] !== 'null'; })
+      .map(function(j) { return parseInt(j); })
+      .filter(function(j) { return !isNaN(j); })
+      .sort(function(a, b) { return a - b; }); // oudste → nieuwste
+
+    if (jaren.length >= 1) {
+      // Bepaal welke DB-velden (omzet1/2/3) al ingevuld zijn
+      var bestaand1 = (S.data['financieel_omzet1'] || '').trim();
+      var bestaand2 = (S.data['financieel_omzet2'] || '').trim();
+      var bestaand3 = (S.data['financieel_omzet3'] || '').trim();
+
+      // Map: jaar[0]=oudste→omzet1, jaar[1]→omzet2, jaar[2]=nieuwste→omzet3
+      var jaarVeldMap = [
+        { jaar: jaren[0], veld: 'omzet1' },
+        { jaar: jaren[1], veld: 'omzet2' },
+        { jaar: jaren[2], veld: 'omzet3' },
+      ];
+
+      jaarVeldMap.forEach(function(m) {
+        if (!m.jaar) return;
+        var waarde = omzetPerJaar[String(m.jaar)];
+        if (!waarde || waarde === 'null') return;
+        var bestaandeWaarde = (S.data['financieel_' + m.veld] || '').trim();
+        if (!bestaandeWaarde) {
+          S.data['financieel_' + m.veld] = String(waarde);
+        }
+      });
+
+      // Als maar 1 jaar: zet alleen omzet3 (meest recent) als die leeg is
+      if (jaren.length === 1 && !(S.data['financieel_omzet3'] || '').trim()) {
+        S.data['financieel_omzet3'] = String(omzetPerJaar[String(jaren[0])]);
+      }
+    } else if (velden.omzet && velden.omzet !== 'null') {
+      // Fallback: geen jaar-info, zet in omzet3
+      if (!(S.data['financieel_omzet3'] || '').trim()) {
+        S.data['financieel_omzet3'] = String(velden.omzet);
       }
     }
-  });
-  // Auto-fill documentreferentie for doc-fields in this fase
+
+    // EBITDA-marge (meest recent)
+    if (velden.ebitda_pct && velden.ebitda_pct !== 'null' && !(S.data['financieel_ebitda'] || '').trim()) {
+      S.data['financieel_ebitda'] = String(velden.ebitda_pct);
+    }
+
+    // Genormaliseerde EBITDA (als getal beschikbaar)
+    if (velden.eigen_vermogen && velden.eigen_vermogen !== 'null' && !(S.data['financieel_ebitdaNorm'] || '').trim()) {
+      S.data['financieel_ebitdaNorm'] = String(velden.eigen_vermogen);
+    }
+  }
+
+  if (faseId === 'partner' && velden.fte && velden.fte !== 'null') {
+    if (!(S.data['partner_fte'] || '').trim()) {
+      S.data['partner_fte'] = String(velden.fte);
+    }
+  }
+
+  // Auto-fill documentreferentie voor doc-velden in deze fase
   if (fileName) {
-    var f = FASES.find(function(x){ return x.id === faseId; });
+    var f = FASES.find(function(x) { return x.id === faseId; });
     if (f) {
       f.dataFields.forEach(function(df) {
         if (df.doc) {
@@ -386,12 +433,12 @@ function renderDocumentSectie(faseId) {
   var uploadHtml = '';
 
   if (!isReadOnly) {
-    uploadHtml = '<label for="file-input-' + faseId + '" class="upload-zone" id="upload-zone-' + faseId + '" ondragover="event.preventDefault();this.classList.add(\'drag\')" ondragleave="this.classList.remove(\'drag\')" ondrop="event.preventDefault();this.classList.remove(\'drag\');handleDropUpload(event,' + JSON.stringify(faseId) + ')" style="display:block;cursor:pointer">'
-      + '<input type="file" id="file-input-' + faseId + '" accept=".pdf,.docx,.doc,.xlsx,.xls,.csv" multiple onchange="handleFileUpload(event,' + JSON.stringify(faseId) + ')" style="display:none">'
+    uploadHtml = '<div class="upload-zone" id="upload-zone-' + faseId + '" onclick="ge(\"file-input-' + faseId + '\").click()" ondragover="event.preventDefault();this.classList.add(\"drag\")" ondragleave="this.classList.remove(\"drag\")" ondrop="event.preventDefault();this.classList.remove(\"drag\");handleDropUpload(event,' + JSON.stringify(faseId) + ')">'
+      + '<input type="file" id="file-input-' + faseId + '" accept=".pdf,.docx,.doc,.xlsx,.xls,.csv" multiple onchange="handleFileUpload(event,' + JSON.stringify(faseId) + ')">'
       + '<div style="font-size:24px;margin-bottom:.4rem">&#128196;</div>'
       + '<div style="font-size:13px;font-weight:600;color:var(--mid);margin-bottom:.2rem">Klik om document te uploaden of sleep hier naartoe</div>'
       + '<div style="font-size:11px;color:var(--muted)">PDF, Word, Excel, CSV &middot; max 20MB &middot; AI leest en analyseert automatisch</div>'
-      + '</label>';
+      + '</div>';
   }
 
   var docsHtml = docs.map(function(doc) {
@@ -400,12 +447,36 @@ function renderDocumentSectie(faseId) {
 
     var veldenHtml = '';
     if (doc.velden && Object.keys(doc.velden).length) {
-      var relevantVelden = Object.entries(doc.velden).filter(function(kv){ return kv[1] && kv[1] !== 'null'; });
-      if (relevantVelden.length) {
+      var toonVelden = [];
+      // Per-jaar omzet
+      var opy = doc.velden.omzet_per_jaar;
+      if (opy && typeof opy === 'object') {
+        Object.keys(opy).sort().forEach(function(jaar) {
+          var v = opy[jaar];
+          if (v && v !== 'null') {
+            toonVelden.push({ lbl: 'Omzet ' + jaar, val: '€' + Number(v).toLocaleString('nl-NL') });
+          }
+        });
+      } else if (doc.velden.omzet && doc.velden.omzet !== 'null') {
+        toonVelden.push({ lbl: 'Omzet', val: '€' + Number(doc.velden.omzet).toLocaleString('nl-NL') });
+      }
+      // EBITDA per jaar
+      var epy = doc.velden.ebitda_per_jaar;
+      if (epy && typeof epy === 'object') {
+        var jaren = Object.keys(epy).sort();
+        var laatste = jaren[jaren.length - 1];
+        if (laatste && epy[laatste] && epy[laatste] !== 'null') {
+          toonVelden.push({ lbl: 'EBITDA% ' + laatste, val: epy[laatste] + '%' });
+        }
+      } else if (doc.velden.ebitda_pct && doc.velden.ebitda_pct !== 'null') {
+        toonVelden.push({ lbl: 'EBITDA%', val: doc.velden.ebitda_pct + '%' });
+      }
+      if (doc.velden.fte && doc.velden.fte !== 'null') toonVelden.push({ lbl: 'FTE', val: doc.velden.fte });
+      if (doc.velden.eigen_vermogen && doc.velden.eigen_vermogen !== 'null') toonVelden.push({ lbl: 'Eigen verm.', val: '€' + Number(doc.velden.eigen_vermogen).toLocaleString('nl-NL') });
+      if (toonVelden.length) {
         veldenHtml = '<div class="doc-velden">'
-          + relevantVelden.map(function(kv){
-            var labels = {omzet:'Omzet',ebitda_pct:'EBITDA%',fte:'FTE',resultaat:'Resultaat',eigen_vermogen:'Eigen verm.',vreemd_vermogen:'Vreemd verm.',solvabiliteit:'Solvabiliteit',overige_bevindingen:'Bevinding'};
-            return '<div class="doc-veld"><div class="doc-veld-lbl">' + (labels[kv[0]]||kv[0]) + '</div><div class="doc-veld-val">' + String(kv[1]).substring(0,20) + '</div></div>';
+          + toonVelden.map(function(v) {
+            return '<div class="doc-veld"><div class="doc-veld-lbl">' + v.lbl + '</div><div class="doc-veld-val">' + v.val + '</div></div>';
           }).join('')
           + '</div>';
       }
@@ -490,7 +561,7 @@ function renderCover(){
   if(isVerkoper()){
     intro='<p>Geachte '+esc(t.contact_naam||'relatie')+',</p>'
       +'<p>In het kader van het '+esc(t.traject_type||'M&A')+'-traject voor <strong>'+esc(t.kantoor_naam)+'</strong> verzoek ik u onderstaande gegevens in te voeren via dit beveiligde platform. U kunt per fase de informatie invullen en tussentijds opslaan.</p>'
-      +'<p>Waar documentatie wordt gevraagd (gemarkeerd met &#128196;), kunt u het bestand direct uploaden via het uploadvenster onderaan elke fase. Ondersteunde bestandstypen: PDF, Word, Excel en CSV (max. 20 MB per bestand). De documenten worden automatisch geanalyseerd en relevante gegevens worden waar mogelijk direct ingevuld.</p>'
+      +'<p>Waar documentatie wordt gevraagd (gemarkeerd met &#128196;), vermeldt u de bestandsnaam in het daarvoor bestemde veld. Stuur de documenten als volgt veilig op:</p><ol style="margin:.5rem 0 .75rem 1.25rem"><li style="font-size:13px;color:var(--mid);margin-bottom:.4rem">Zet alle documenten in een map en maak een <strong>zip-bestand met wachtwoord</strong>.<br><span style="font-size:12px;color:var(--muted)">Windows: rechtsklik op map &rarr; Compress to ZIP file &rarr; stel een wachtwoord in. Mac: gebruik Keka (keka.io).</span></li><li style="font-size:13px;color:var(--mid);margin-bottom:.4rem">Stuur de zip per e-mail naar <a href="mailto:marcel@bisschopsfinancing.nl" style="color:var(--teal)">marcel@bisschopsfinancing.nl</a> met als onderwerp uw trajectcode.</li><li style="font-size:13px;color:var(--mid)">Stuur het <strong>wachtwoord apart via WhatsApp</strong> naar <a href="https://wa.me/31638689888" style="color:var(--teal)">06&nbsp;-&nbsp;38&nbsp;68&nbsp;98&nbsp;88</a>.</li></ol>'
       +'<p>Uw gegevens worden strikt vertrouwelijk behandeld.</p>'
       +'<div style="margin:1rem 0;padding:.75rem 1rem;background:var(--card);border:1px solid var(--border);border-radius:var(--r);font-size:11px;color:var(--muted);line-height:1.7">&#128274; <strong>Beveiliging &amp; AVG:</strong> Alle gegevens worden versleuteld via HTTPS verstuurd en opgeslagen op Cloudflare-servers in Europa (Frankfurt, EU). Uw gegevens worden uitsluitend gebruikt voor dit M&amp;A-traject en niet gedeeld met derden. Conform AVG heeft u recht op inzage, correctie en verwijdering. Zie ook onze <a href=\"privacy.html\" style=\"color:var(--teal)\">privacyverklaring</a>.</div>'
     +'<p>Met vriendelijke groet,<br><strong>Marcel Bisschops</strong><br><span style="font-size:12px;color:var(--muted)">Senior M&amp;A-adviseur &middot; Bisschops Financing BV<br>06 - 38 68 98 88 &middot; marcel@bisschopsfinancing.nl</span></p>';
@@ -539,8 +610,7 @@ function renderMain(){
   ov+='</div>';
 
   // Data fields
-  var dataSectionTitle = isRO && !vergrendeld ? 'Ingevoerde informatie' : 'Informatie invullen';
-  var dataHtml='<div class="panel"><div class="sec-hdr">'+dataSectionTitle+'</div><div class="data-grid">';
+  var dataHtml='<div class="panel"><div class="sec-hdr">Informatie invullen</div><div class="data-grid">';
   f.dataFields.forEach(function(df){
     var val=S.data[f.id+'_'+df.id]||'';
     var ref=S.docRefs[f.id+'_'+df.id]||'';
@@ -563,11 +633,9 @@ function renderMain(){
   // Marcel-only: checklist + rode vlaggen + notities + AI
   var extraHtml='';
   if(!isVerkoper()){
-    var chkSectionTitle = isKoper() ? 'Due diligence voortgang' : 'Checklist (intern)';
-    var rfSectionTitle = isKoper() ? 'Gesignaleerde aandachtspunten' : 'Rode vlaggen &mdash; gesignaleerd?';
-    var chkHtml='<div class="panel"><div class="sec-hdr">'+chkSectionTitle+'</div>';
+    var chkHtml='<div class="panel"><div class="sec-hdr">Checklist (intern)</div>';
     f.items.forEach(function(item,i){var key=f.id+'_'+i;var on=!!S.checked[key];chkHtml+='<div class="chk-item'+(on?' on':'')+'" data-key="'+key+'"'+(isKoper()?' style="cursor:default"':'')+'><div class="chk-box">'+(on?'&#10003;':'')+'</div><div class="chk-lbl">'+item+'</div></div>';});
-    chkHtml+='<div class="sec-hdr" style="margin-top:1rem;color:var(--red)">'+rfSectionTitle+'</div>';
+    chkHtml+='<div class="sec-hdr" style="margin-top:1rem;color:var(--red)">Rode vlaggen &mdash; gesignaleerd?</div>';
     f.redflags.forEach(function(rf,i){var key=f.id+'_rf_'+i;var on=!!S.checked[key];chkHtml+='<div class="chk-item rf'+(on?' on':'')+'" data-key="'+key+'"'+(isKoper()?' style="cursor:default"':'')+'><div class="chk-box">'+(on?'&#10003;':'')+'</div><div class="chk-lbl">'+rf+'</div></div>';});
     chkHtml+='</div>';
     var notHtml='<div class="panel"><div class="sec-hdr">Notities (intern)</div>'
@@ -596,16 +664,13 @@ function renderMain(){
 
   var lockedBanner=vergrendeld?'<div style="background:var(--red-bg);border:1px solid var(--red);border-radius:var(--r);padding:10px 14px;margin-bottom:1rem;font-size:13px;color:var(--red)">&#128274; <strong>Dit traject is vergrendeld.</strong> U kunt geen wijzigingen meer doorvoeren.</div>':'';
 
-  var koperBanner = isKoper() ? '<div style="background:var(--teal-bg);border:1px solid var(--teal-dark);border-radius:var(--r);padding:10px 14px;margin-bottom:1.25rem;font-size:13px;color:var(--mid);line-height:1.65">U bekijkt de door de verkopende partij ingevulde due diligence informatie. De gegevens zijn gebaseerd op zelfrapportage. Vragen kunt u richten aan Marcel Bisschops &mdash; <a href="mailto:marcel@bisschopsfinancing.nl" style="color:var(--teal)">marcel@bisschopsfinancing.nl</a>.</div>' : '';
-  
   return '<div class="wrap anim">'
-    +'<div class="hdr"><div class="brand"><div class="wdot"></div>KantoorInzicht &middot; M&amp;A'+(isKoper()?' &middot; Due diligence overzicht':isVerkoper()?'':isTussen()?' &middot; Tussenpersoon':'')+'</div>'
+    +'<div class="hdr"><div class="brand"><div class="wdot"></div>KantoorInzicht &middot; M&amp;A'+(isKoper()?' (koper-view)':isVerkoper()?' (invullen)':isTussen()?' (tussenpersoon-view)':'')+'</div>'
     +'<div style="display:flex;align-items:center;gap:8px">'
     +'<span style="font-size:11px;color:var(--muted)">'+esc(S.traject&&S.traject.kantoor_naam||S.code)+'</span>'
     +'<button class="btn-ghost btn-sm" onclick="window.print()">PDF</button>'
     +'</div></div>'
     +lockedBanner
-    +koperBanner
     +'<div style="font-family:Playfair Display,serif;font-size:1.4rem;color:var(--head);font-weight:600;margin-bottom:.25rem">'+esc(S.traject&&S.traject.kantoor_naam||'')+'</div>'
     +'<div style="font-size:13px;color:var(--muted);margin-bottom:1rem">Voortgang: <span style="font-family:IBM Plex Mono,monospace;color:'+(tp===100?'var(--teal)':tp>50?'var(--gold)':'var(--red)')+'">'+tp+'%</span></div>'
     +'<div class="prog-bar"><div class="prog-fill" style="width:'+tp+'%;background:'+(tp===100?'var(--teal)':tp>50?'var(--gold)':'var(--red)')+'"></div></div>'
