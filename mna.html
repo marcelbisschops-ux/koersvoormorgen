@@ -114,14 +114,6 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--s
   .ai-panel,.panel{break-inside:avoid}
   body{font-size:11px}
 }
-
-.disclaimer-bar{background:#fff8f0;border:1.5px solid #e8a84c;border-radius:8px;padding:1rem 1.25rem;margin:1.25rem 0;display:flex;gap:.75rem;align-items:flex-start}
-.disclaimer-icon{font-size:1rem;flex-shrink:0;margin-top:.05rem}
-.disclaimer-text{font-size:12px;color:#5a5030;line-height:1.7}
-.disclaimer-text strong{color:#3a3010;font-weight:600}
-.disclaimer-footer{border-top:1px solid var(--border);padding-top:1.25rem;margin-top:2rem;font-size:11px;color:var(--muted);line-height:1.65}
-.disclaimer-footer strong{color:var(--mid)}
-
 </style>
 </head>
 <body>
@@ -394,12 +386,12 @@ function renderDocumentSectie(faseId) {
   var uploadHtml = '';
 
   if (!isReadOnly) {
-    uploadHtml = '<div class="upload-zone" id="upload-zone-' + faseId + '" onclick="ge(\"file-input-' + faseId + '\").click()" ondragover="event.preventDefault();this.classList.add(\"drag\")" ondragleave="this.classList.remove(\"drag\")" ondrop="event.preventDefault();this.classList.remove(\"drag\");handleDropUpload(event,' + JSON.stringify(faseId) + ')">'
-      + '<input type="file" id="file-input-' + faseId + '" accept=".pdf,.docx,.doc,.xlsx,.xls,.csv" multiple onchange="handleFileUpload(event,' + JSON.stringify(faseId) + ')">'
+    uploadHtml = '<label for="file-input-' + faseId + '" class="upload-zone" id="upload-zone-' + faseId + '" ondragover="event.preventDefault();this.classList.add(\'drag\')" ondragleave="this.classList.remove(\'drag\')" ondrop="event.preventDefault();this.classList.remove(\'drag\');handleDropUpload(event,' + JSON.stringify(faseId) + ')" style="display:block;cursor:pointer">'
+      + '<input type="file" id="file-input-' + faseId + '" accept=".pdf,.docx,.doc,.xlsx,.xls,.csv" multiple onchange="handleFileUpload(event,' + JSON.stringify(faseId) + ')" style="display:none">'
       + '<div style="font-size:24px;margin-bottom:.4rem">&#128196;</div>'
       + '<div style="font-size:13px;font-weight:600;color:var(--mid);margin-bottom:.2rem">Klik om document te uploaden of sleep hier naartoe</div>'
       + '<div style="font-size:11px;color:var(--muted)">PDF, Word, Excel, CSV &middot; max 20MB &middot; AI leest en analyseert automatisch</div>'
-      + '</div>';
+      + '</label>';
   }
 
   var docsHtml = docs.map(function(doc) {
@@ -498,15 +490,13 @@ function renderCover(){
   if(isVerkoper()){
     intro='<p>Geachte '+esc(t.contact_naam||'relatie')+',</p>'
       +'<p>In het kader van het '+esc(t.traject_type||'M&A')+'-traject voor <strong>'+esc(t.kantoor_naam)+'</strong> verzoek ik u onderstaande gegevens in te voeren via dit beveiligde platform. U kunt per fase de informatie invullen en tussentijds opslaan.</p>'
-      +'<div style="background:#fff8f0;border:1px solid #e8a84c;border-radius:6px;padding:.6rem 1rem;margin:.75rem 0 1.25rem;font-size:11px;color:#5a5030;line-height:1.6"><strong style=\"color:#3a3010\">&#9888; Beperking aansprakelijkheid:</strong> De uitkomsten van dit traject zijn indicatief en gebaseerd op door de gebruiker ingevoerde gegevens. Bisschops Financing BV aanvaardt geen enkele aansprakelijkheid voor beslissingen op basis van dit instrument. Dit vormt geen professioneel financieel, juridisch of strategisch advies.</div>'
-      +'<p>Waar documentatie wordt gevraagd (gemarkeerd met &#128196;), vermeldt u de bestandsnaam in het daarvoor bestemde veld. Stuur de documenten als volgt veilig op:</p><ol style="margin:.5rem 0 .75rem 1.25rem"><li style="font-size:13px;color:var(--mid);margin-bottom:.4rem">Zet alle documenten in een map en maak een <strong>zip-bestand met wachtwoord</strong>.<br><span style="font-size:12px;color:var(--muted)">Windows: rechtsklik op map &rarr; Compress to ZIP file &rarr; stel een wachtwoord in. Mac: gebruik Keka (keka.io).</span></li><li style="font-size:13px;color:var(--mid);margin-bottom:.4rem">Stuur de zip per e-mail naar <a href="mailto:marcel@bisschopsfinancing.nl" style="color:var(--teal)">marcel@bisschopsfinancing.nl</a> met als onderwerp uw trajectcode.</li><li style="font-size:13px;color:var(--mid)">Stuur het <strong>wachtwoord apart via WhatsApp</strong> naar <a href="https://wa.me/31638689888" style="color:var(--teal)">06&nbsp;-&nbsp;38&nbsp;68&nbsp;98&nbsp;88</a>.</li></ol>'
+      +'<p>Waar documentatie wordt gevraagd (gemarkeerd met &#128196;), kunt u het bestand direct uploaden via het uploadvenster onderaan elke fase. Ondersteunde bestandstypen: PDF, Word, Excel en CSV (max. 20 MB per bestand). De documenten worden automatisch geanalyseerd en relevante gegevens worden waar mogelijk direct ingevuld.</p>'
       +'<p>Uw gegevens worden strikt vertrouwelijk behandeld.</p>'
       +'<div style="margin:1rem 0;padding:.75rem 1rem;background:var(--card);border:1px solid var(--border);border-radius:var(--r);font-size:11px;color:var(--muted);line-height:1.7">&#128274; <strong>Beveiliging &amp; AVG:</strong> Alle gegevens worden versleuteld via HTTPS verstuurd en opgeslagen op Cloudflare-servers in Europa (Frankfurt, EU). Uw gegevens worden uitsluitend gebruikt voor dit M&amp;A-traject en niet gedeeld met derden. Conform AVG heeft u recht op inzage, correctie en verwijdering. Zie ook onze <a href=\"privacy.html\" style=\"color:var(--teal)\">privacyverklaring</a>.</div>'
     +'<p>Met vriendelijke groet,<br><strong>Marcel Bisschops</strong><br><span style="font-size:12px;color:var(--muted)">Senior M&amp;A-adviseur &middot; Bisschops Financing BV<br>06 - 38 68 98 88 &middot; marcel@bisschopsfinancing.nl</span></p>';
   }else if(isTussen()){
     intro='<p>Geachte tussenpersoon,</p>'
       +'<p>U heeft toegang tot de voortgang van het due diligence traject (trajecttype: <strong>'+esc(t.traject_type||'M&A')+'</strong>). De kantooridentiteit is geanonimiseerd conform de afspraken. U kunt per fase de ingevoerde informatie inzien en een AI-advies genereren op basis van de beschikbare data.</p>'
-      +'<div style="background:#fff8f0;border:1px solid #e8a84c;border-radius:6px;padding:.6rem 1rem;margin:.75rem 0 1.25rem;font-size:11px;color:#5a5030;line-height:1.6"><strong style=\"color:#3a3010\">&#9888; Beperking aansprakelijkheid:</strong> De uitkomsten van dit traject zijn indicatief en gebaseerd op door de gebruiker ingevoerde gegevens. Bisschops Financing BV aanvaardt geen enkele aansprakelijkheid voor beslissingen op basis van dit instrument. Dit vormt geen professioneel financieel, juridisch of strategisch advies.</div>'
       +'<p>Vragen? Neem contact op via <a href="mailto:marcel@bisschopsfinancing.nl" style="color:var(--teal)">marcel@bisschopsfinancing.nl</a>.</p>'
       +'<p>Met vriendelijke groet,<br><strong>Marcel Bisschops</strong><br><span style="font-size:12px;color:var(--muted)">Senior M&amp;A-adviseur &middot; Bisschops Financing BV</span></p>';
   }else{
@@ -611,8 +601,8 @@ function renderMain(){
     +'</div></div>'
     +lockedBanner
     +'<div style="font-family:Playfair Display,serif;font-size:1.4rem;color:var(--head);font-weight:600;margin-bottom:.25rem">'+esc(S.traject&&S.traject.kantoor_naam||'')+'</div>'
-    +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">'+'<div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)">Trajectvoortgang</div>'+'<div style="font-family:IBM Plex Mono,monospace;font-size:13px;font-weight:600;color:'+(tp===100?'var(--teal)':tp>50?'var(--gold)':'var(--red)')+'">'+tp+'% &middot; '+(isVerkoper()?FASES.filter(function(f){return fillPct(f.id)===100;}).length:FASES.filter(function(f){return pct(f.id)===100;}).length)+' van '+FASES.length+' fasen afgerond</div></div>'
-    +'<div style="height:8px;background:var(--border2);border-radius:4px;overflow:hidden;margin-bottom:1.25rem">'+'<div style="height:100%;border-radius:4px;background:'+(tp===100?'var(--teal)':tp>50?'var(--gold)':'var(--red)')+';width:'+tp+'%;transition:width .5s ease"></div></div>'
+    +'<div style="font-size:13px;color:var(--muted);margin-bottom:1rem">Voortgang: <span style="font-family:IBM Plex Mono,monospace;color:'+(tp===100?'var(--teal)':tp>50?'var(--gold)':'var(--red)')+'">'+tp+'%</span></div>'
+    +'<div class="prog-bar"><div class="prog-fill" style="width:'+tp+'%;background:'+(tp===100?'var(--teal)':tp>50?'var(--gold)':'var(--red)')+'"></div></div>'
     +ov
     +'<div style="font-family:Playfair Display,serif;font-size:1.1rem;color:var(--head);font-weight:600;margin-bottom:.2rem">'+f.num+'. '+f.title+'</div>'
     +'<div style="font-size:13px;color:var(--muted);margin-bottom:1.25rem">'+f.desc+'</div>'
@@ -730,7 +720,5 @@ function bindAll(){
 
 renderApp();
 </script>
-
-<div style="max-width:900px;margin:2rem auto;padding:0 2rem"><div class="disclaimer-footer"><strong>Beperking aansprakelijkheid &mdash; Bisschops Financing BV.</strong> KantoorInzicht is een zelfdiagnosticsinstrument. Alle uitkomsten, scores, scenario&rsquo;s en AI-gegenereerde analyses zijn uitsluitend indicatief. Bisschops Financing BV aanvaardt geen enkele aansprakelijkheid voor beslissingen die worden genomen op basis van dit instrument. De inhoud vormt geen financieel, juridisch of strategisch advies. Raadpleeg altijd een gekwalificeerde adviseur. <a href="voorwaarden.html" style="color:#5a5030;text-decoration:underline">Gebruiksvoorwaarden</a> &middot; <a href="privacy.html" style="color:#5a5030;text-decoration:underline">Privacyverklaring</a></div></div>
 </body>
 </html>
