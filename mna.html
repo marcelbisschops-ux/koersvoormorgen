@@ -135,9 +135,21 @@ var FASES=[
   {id:'debiteurenOud',label:'Debiteuren >90 dagen (%)',ph:'bijv. 12',doc:false,req:false},
   {id:'declarab',label:'Declarabiliteit (%)',ph:'bijv. 78',doc:false,req:false},
   {id:'partnerBel',label:'Partnerbeloning (marktconform?)',ph:'bijv. ja / nee / hoog',doc:false,req:true},
+  {id:'_hdr_omzet',label:'— Omzetverdeling per dienstlijn (jaar 3)',ph:'',doc:false,req:false,header:true},
+  {id:'omzetJaarwerk',label:'Jaarwerk & samenstellen (%)',ph:'bijv. 45',doc:false,req:false},
+  {id:'omzetAdvies',label:'Advies & begeleiding (%)',ph:'bijv. 20',doc:false,req:false},
+  {id:'omzetLoon',label:'Loonadministratie (%)',ph:'bijv. 15',doc:false,req:false},
+  {id:'omzetFiscaal',label:'Fiscaal (aangifte, VPB, BTW) (%)',ph:'bijv. 12',doc:false,req:false},
+  {id:'omzetOverig',label:'Overig (%)',ph:'bijv. 8',doc:false,req:false},
+  {id:'_hdr_kosten',label:'— Kostenstructuur (jaar 3)',ph:'',doc:false,req:false,header:true},
+  {id:'kostenPersoneel',label:'Personeelskosten (% omzet)',ph:'bijv. 58',doc:false,req:false},
+  {id:'kostenHuisvesting',label:'Huisvesting & huur (% omzet)',ph:'bijv. 6',doc:false,req:false},
+  {id:'kostenIT',label:'IT & automatisering (% omzet)',ph:'bijv. 4',doc:false,req:false},
+  {id:'kostenMarketing',label:'Marketing & acquisitie (% omzet)',ph:'bijv. 2',doc:false,req:false},
+  {id:'kostenOverig',label:'Overige kosten (% omzet)',ph:'bijv. 5',doc:false,req:false},
  ],
- items:['Jaarrekeningen 3 jaar beschikbaar en doorgenomen','YTD-cijfers aangeleverd','Omzet per dienstlijn inzichtelijk','EBITDA-normalisatie opgesteld','Top 20 klanten met omzetbijdrage in kaart','WIP geenventariseerd','Debiteurenpositie en aging geanalyseerd','Partnerbeloningen vergeleken met marktconform','Declarabiliteit en realisatiegraad bepaald'],
- redflags:['Hoge WIP en oude debiteuren (>90 dagen)','Lage partnerproductiviteit tov benchmark','Eenmalige omzetpieken vertekenen beeld','Niet-genormaliseerde partnerbeloningen']},
+ items:['Jaarrekeningen 3 jaar beschikbaar en doorgenomen','YTD-cijfers aangeleverd','Omzet per dienstlijn inzichtelijk','EBITDA-normalisatie opgesteld','Top 20 klanten met omzetbijdrage in kaart','WIP geenventariseerd','Debiteurenpositie en aging geanalyseerd','Partnerbeloningen vergeleken met marktconform','Declarabiliteit en realisatiegraad bepaald','Omzetverdeling per dienstlijn vastgesteld','Kostenstructuur geanalyseerd en vergeleken met sectorgemiddelden'],
+ redflags:['Hoge WIP en oude debiteuren (>90 dagen)','Lage partnerproductiviteit tov benchmark','Eenmalige omzetpieken vertekenen beeld','Niet-genormaliseerde partnerbeloningen','Meer dan 60% omzet uit jaarwerk/samenstellen (hoog AI-substitutierisico)','Personeelskosten boven 65% van omzet','IT-kosten onder 2% — mogelijke onderinvestering in automatisering']},
 
 {id:'commercieel',num:'II',title:'Klanten & commercieel',desc:'Concentratie, retentie en commerciele kracht.',
  dataFields:[
@@ -341,65 +353,53 @@ async function uploadDocument(faseId, file) {
 }
 
 function autoFillFromExtraction(faseId, velden, fileName) {
-  if (faseId === 'financieel') {
-    // --- Jaar-gebaseerde omzet-mapping ---
-    // Verzamel alle jaren met omzetwaarden
-    var omzetPerJaar = velden.omzet_per_jaar || {};
-    var jaren = Object.keys(omzetPerJaar)
-      .filter(function(j) { return omzetPerJaar[j] && omzetPerJaar[j] !== 'null'; })
-      .map(function(j) { return parseInt(j); })
-      .filter(function(j) { return !isNaN(j); })
-      .sort(function(a, b) { return a - b; }); // oudste → nieuwste
-
-    if (jaren.length >= 1) {
-      // Bepaal welke DB-velden (omzet1/2/3) al ingevuld zijn
-      var bestaand1 = (S.data['financieel_omzet1'] || '').trim();
-      var bestaand2 = (S.data['financieel_omzet2'] || '').trim();
-      var bestaand3 = (S.data['financieel_omzet3'] || '').trim();
-
-      // Map: jaar[0]=oudste→omzet1, jaar[1]→omzet2, jaar[2]=nieuwste→omzet3
-      var jaarVeldMap = [
-        { jaar: jaren[0], veld: 'omzet1' },
-        { jaar: jaren[1], veld: 'omzet2' },
-        { jaar: jaren[2], veld: 'omzet3' },
-      ];
-
-      jaarVeldMap.forEach(function(m) {
-        if (!m.jaar) return;
-        var waarde = omzetPerJaar[String(m.jaar)];
-        if (!waarde || waarde === 'null') return;
-        var bestaandeWaarde = (S.data['financieel_' + m.veld] || '').trim();
-        if (!bestaandeWaarde) {
-          S.data['financieel_' + m.veld] = String(waarde);
-        }
-      });
-
-      // Als maar 1 jaar: zet alleen omzet3 (meest recent) als die leeg is
-      if (jaren.length === 1 && !(S.data['financieel_omzet3'] || '').trim()) {
-        S.data['financieel_omzet3'] = String(omzetPerJaar[String(jaren[0])]);
-      }
-    } else if (velden.omzet && velden.omzet !== 'null') {
-      // Fallback: geen jaar-info, zet in omzet3
-      if (!(S.data['financieel_omzet3'] || '').trim()) {
-        S.data['financieel_omzet3'] = String(velden.omzet);
-      }
-    }
-
-    // EBITDA-marge (meest recent)
-    if (velden.ebitda_pct && velden.ebitda_pct !== 'null' && !(S.data['financieel_ebitda'] || '').trim()) {
-      S.data['financieel_ebitda'] = String(velden.ebitda_pct);
-    }
-
-    // Genormaliseerde EBITDA (als getal beschikbaar)
-    if (velden.eigen_vermogen && velden.eigen_vermogen !== 'null' && !(S.data['financieel_ebitdaNorm'] || '').trim()) {
-      S.data['financieel_ebitdaNorm'] = String(velden.eigen_vermogen);
+  function setIfEmpty(key, value) {
+    if (value && value !== 'null' && !(S.data[key] || '').trim()) {
+      S.data[key] = String(value);
     }
   }
 
-  if (faseId === 'partner' && velden.fte && velden.fte !== 'null') {
-    if (!(S.data['partner_fte'] || '').trim()) {
-      S.data['partner_fte'] = String(velden.fte);
+  if (faseId === 'financieel') {
+    // --- Jaar-gebaseerde omzet-mapping ---
+    var omzetPerJaar = velden.omzet_per_jaar || {};
+    var jaren = Object.keys(omzetPerJaar)
+      .filter(function(j) { return omzetPerJaar[j] && omzetPerJaar[j] !== 'null'; })
+      .map(Number).filter(function(j) { return !isNaN(j); })
+      .sort(function(a, b) { return a - b; });
+
+    if (jaren.length >= 1) {
+      var veldNamen = ['omzet1', 'omzet2', 'omzet3'];
+      jaren.slice(0, 3).forEach(function(jaar, i) {
+        setIfEmpty('financieel_' + veldNamen[i], omzetPerJaar[String(jaar)]);
+      });
+    } else if (velden.omzet) {
+      setIfEmpty('financieel_omzet3', velden.omzet);
     }
+
+    // EBITDA en genorm. EBITDA
+    setIfEmpty('financieel_ebitda', velden.ebitda_pct);
+    setIfEmpty('financieel_ebitdaNorm', velden.resultaat);
+
+    // Balansposten
+    setIfEmpty('financieel_wip',        velden.ohw);
+    setIfEmpty('financieel_debiteuren', velden.debiteuren);
+
+    // Omzetverdeling per dienstlijn
+    setIfEmpty('financieel_omzetJaarwerk', velden.omzet_jaarwerk_pct);
+    setIfEmpty('financieel_omzetAdvies',   velden.omzet_advies_pct);
+    setIfEmpty('financieel_omzetLoon',     velden.omzet_loon_pct);
+    setIfEmpty('financieel_omzetFiscaal',  velden.omzet_fiscaal_pct);
+    setIfEmpty('financieel_omzetOverig',   velden.omzet_overig_pct);
+
+    // Kostenstructuur
+    setIfEmpty('financieel_kostenPersoneel',   velden.kosten_personeel_pct);
+    setIfEmpty('financieel_kostenHuisvesting', velden.kosten_huisvesting_pct);
+    setIfEmpty('financieel_kostenIT',          velden.kosten_it_pct);
+    setIfEmpty('financieel_kostenMarketing',   velden.kosten_marketing_pct);
+  }
+
+  if (faseId === 'partner') {
+    setIfEmpty('partner_fte', velden.fte);
   }
 
   // Auto-fill documentreferentie voor doc-velden in deze fase
@@ -447,36 +447,12 @@ function renderDocumentSectie(faseId) {
 
     var veldenHtml = '';
     if (doc.velden && Object.keys(doc.velden).length) {
-      var toonVelden = [];
-      // Per-jaar omzet
-      var opy = doc.velden.omzet_per_jaar;
-      if (opy && typeof opy === 'object') {
-        Object.keys(opy).sort().forEach(function(jaar) {
-          var v = opy[jaar];
-          if (v && v !== 'null') {
-            toonVelden.push({ lbl: 'Omzet ' + jaar, val: '€' + Number(v).toLocaleString('nl-NL') });
-          }
-        });
-      } else if (doc.velden.omzet && doc.velden.omzet !== 'null') {
-        toonVelden.push({ lbl: 'Omzet', val: '€' + Number(doc.velden.omzet).toLocaleString('nl-NL') });
-      }
-      // EBITDA per jaar
-      var epy = doc.velden.ebitda_per_jaar;
-      if (epy && typeof epy === 'object') {
-        var jaren = Object.keys(epy).sort();
-        var laatste = jaren[jaren.length - 1];
-        if (laatste && epy[laatste] && epy[laatste] !== 'null') {
-          toonVelden.push({ lbl: 'EBITDA% ' + laatste, val: epy[laatste] + '%' });
-        }
-      } else if (doc.velden.ebitda_pct && doc.velden.ebitda_pct !== 'null') {
-        toonVelden.push({ lbl: 'EBITDA%', val: doc.velden.ebitda_pct + '%' });
-      }
-      if (doc.velden.fte && doc.velden.fte !== 'null') toonVelden.push({ lbl: 'FTE', val: doc.velden.fte });
-      if (doc.velden.eigen_vermogen && doc.velden.eigen_vermogen !== 'null') toonVelden.push({ lbl: 'Eigen verm.', val: '€' + Number(doc.velden.eigen_vermogen).toLocaleString('nl-NL') });
-      if (toonVelden.length) {
+      var relevantVelden = Object.entries(doc.velden).filter(function(kv){ return kv[1] && kv[1] !== 'null'; });
+      if (relevantVelden.length) {
         veldenHtml = '<div class="doc-velden">'
-          + toonVelden.map(function(v) {
-            return '<div class="doc-veld"><div class="doc-veld-lbl">' + v.lbl + '</div><div class="doc-veld-val">' + v.val + '</div></div>';
+          + relevantVelden.map(function(kv){
+            var labels = {omzet:'Omzet',ebitda_pct:'EBITDA%',fte:'FTE',resultaat:'Resultaat',eigen_vermogen:'Eigen verm.',vreemd_vermogen:'Vreemd verm.',solvabiliteit:'Solvabiliteit',overige_bevindingen:'Bevinding'};
+            return '<div class="doc-veld"><div class="doc-veld-lbl">' + (labels[kv[0]]||kv[0]) + '</div><div class="doc-veld-val">' + String(kv[1]).substring(0,20) + '</div></div>';
           }).join('')
           + '</div>';
       }
@@ -612,6 +588,13 @@ function renderMain(){
   // Data fields
   var dataHtml='<div class="panel"><div class="sec-hdr">Informatie invullen</div><div class="data-grid">';
   f.dataFields.forEach(function(df){
+    // Header veld = sectietussentitel, spant volledige breedte
+    if(df.header){
+      dataHtml+='</div>'
+        +'<div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--teal);margin:1.25rem 0 .6rem;padding-top:1rem;border-top:1px solid var(--border)">'+df.label+'</div>'
+        +'<div class="data-grid">';
+      return;
+    }
     var val=S.data[f.id+'_'+df.id]||'';
     var ref=S.docRefs[f.id+'_'+df.id]||'';
     var missing=S.showValidation&&df.req&&!val.trim();
