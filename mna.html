@@ -151,10 +151,12 @@ var FASES=[
   {id:'vacatures',label:'Openstaande vacatures',ph:'bijv. 3',doc:false,req:false},
   {id:'raAa',label:'RA/AA in opleiding',ph:'bijv. 4',doc:false,req:false},
   {id:'opvolging',label:'Opvolgingskandidaat aanwezig',ph:'bijv. ja / nee',doc:false,req:true},
+  {id:'verandering',label:'Bereidheid partners en medewerkers tot verandering',ph:'bijv. hoog / gemiddeld / laag / toelichting',doc:false,req:true},
   {id:'pContract',label:'Partnerovereenkomsten actueel',ph:'bijv. ja / deels / nee',doc:true,req:true},
  ],
  items:['Omzetbijdrage per partner vastgesteld','Leeftijdsopbouw partners in kaart','Exitregelingen en contractduur besproken','Opvolgingsplan sleutelpartners aanwezig','Retentierisico na transactie beoordeeld','Verlooppercentage bepaald (benchmark 15%)'],
- redflags:['Omzet zit in hoofden van 1-2 partners','Pensioengolf zonder concrete opvolging','Personeelsverloop meer dan 15%','Geen formele partnerovereenkomsten']},
+ redflags:['Omzet zit in hoofden van 1-2 partners','Pensioengolf zonder concrete opvolging','Personeelsverloop meer dan 15%','Geen formele partnerovereenkomsten',
+    'Lage veranderbereidheid partners of personeel — risico voor integratie en cultuurfit']},
 
 {id:'compliance',num:'IV',title:'Compliance & kwaliteit',desc:'Regulatory status en dossierkwaliteit.',
  dataFields:[
