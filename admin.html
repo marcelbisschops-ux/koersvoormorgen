@@ -106,6 +106,7 @@ var scans = [];
 var callbacks = [];
 var mnaTrajecten = [];
 var openMna = null;
+var mnaGroepen = [];
 var openRow = null;
 var activeTab = 'scans';
 var scanFilter = '';
@@ -135,9 +136,11 @@ async function doLogin() {
     if (!r1.ok) throw new Error('unauthorized');
     var r2 = await fetch(WORKER + '/admin/callbacks?key=' + encodeURIComponent(key));
     var r3 = await fetch(WORKER + '/mna/admin/lijst?key=' + encodeURIComponent(key));
+    var r4 = await fetch(WORKER + '/mna/groep/lijst?key=' + encodeURIComponent(key));
     scans = await r1.json();
     callbacks = await r2.json();
     mnaTrajecten = r3.ok ? await r3.json() : [];
+    mnaGroepen = r4.ok ? await r4.json() : [];
     adminKey = key;
     ge('hdr-actions').style.display = 'flex';
     // Login notification
@@ -157,9 +160,11 @@ async function refreshData() {
     var r1 = await fetch(WORKER + '/admin/scans?key=' + encodeURIComponent(adminKey));
     var r2 = await fetch(WORKER + '/admin/callbacks?key=' + encodeURIComponent(adminKey));
     var r3 = await fetch(WORKER + '/mna/admin/lijst?key=' + encodeURIComponent(adminKey));
+    var r4 = await fetch(WORKER + '/mna/groep/lijst?key=' + encodeURIComponent(adminKey));
     scans = await r1.json();
     callbacks = await r2.json();
     mnaTrajecten = r3.ok ? await r3.json() : [];
+    mnaGroepen = r4.ok ? await r4.json() : [];
     renderDashboard();
   } catch(e) { alert('Kon niet verversen.'); }
 }
@@ -336,6 +341,97 @@ async function loadMnaDetail(code) {
 
 function toggleRow(i) { openRow = openRow === i ? null : i; renderDashboard(); }
 
+async function createGroep() {
+  var naam = (ge('g-naam')||{}).value||'';
+  var omschr = (ge('g-omschr')||{}).value||'';
+  if (!naam.trim()) { alert('Naam is verplicht.'); return; }
+  var btn = ge('g-create-btn'); btn.disabled=true; btn.textContent='Aanmaken...';
+  var r = await fetch(WORKER+'/mna/groep/create?key='+encodeURIComponent(adminKey), {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({naam:naam.trim(), omschrijving:omschr.trim()})
+  });
+  var d = await r.json().catch(function(){return{};});
+  if (d.ok) {
+    alert('Groep aangemaakt!\n\nGroepscode (admin): '+d.groep_id+'\nTussencode (tussenpersoon): '+d.tussen_code+'\n\nDashboard via: koersvoormorgen.nl/mna-groep.html');
+    ge('g-naam').value=''; ge('g-omschr').value='';
+    await refreshData();
+  } else alert('Fout: '+(d.error||'onbekend'));
+  btn.disabled=false; btn.textContent='Groep aanmaken';
+}
+
+async function koppelTraject(groepId) {
+  var sel = ge('koppel-'+groepId);
+  if (!sel||!sel.value) return;
+  var r = await fetch(WORKER+'/mna/groep/koppel?key='+encodeURIComponent(adminKey), {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({groep_id:groepId, traject_id:sel.value})
+  });
+  var d = await r.json().catch(function(){return{};});
+  if (d.ok) await refreshData();
+  else alert('Fout: '+(d.error||'onbekend'));
+}
+
+async function ontkoppelTraject(groepId, trajectId) {
+  if (!confirm('Kantoor ontkoppelen van deze groep?')) return;
+  var r = await fetch(WORKER+'/mna/groep/ontkoppel?key='+encodeURIComponent(adminKey), {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({groep_id:groepId, traject_id:trajectId})
+  });
+  var d = await r.json().catch(function(){return{};});
+  if (d.ok) await refreshData();
+}
+
+async function deleteGroep(id) {
+  if (!confirm('Groep '+id+' verwijderen? Gekoppelde trajecten blijven bestaan.')) return;
+  var r = await fetch(WORKER+'/mna/groep/delete/'+id+'?key='+encodeURIComponent(adminKey), {method:'POST'});
+  var d = await r.json().catch(function(){return{};});
+  if (d.ok) { mnaGroepen=mnaGroepen.filter(function(g){return g.id!==id;}); renderDashboard(); }
+  else alert('Fout: '+(d.error||'onbekend'));
+}
+
+function renderGroepenTab() {
+  var html = '<div class="table-wrap" style="margin-bottom:1.5rem"><div class="table-hdr"><div class="table-title">Nieuwe groep aanmaken</div></div>'
+    + '<div style="padding:1.25rem;display:grid;grid-template-columns:1fr 2fr;gap:10px;align-items:end">'
+    + '<div class="field"><label>Naam groep *</label><input type="text" id="g-naam" placeholder="bijv. Buy & Build Regio Zuid"></div>'
+    + '<div class="field"><label>Omschrijving</label><input type="text" id="g-omschr" placeholder="optionele toelichting"></div>'
+    + '</div>'
+    + '<div style="padding:0 1.25rem 1.25rem"><button class="btn" id="g-create-btn" onclick="createGroep()">Groep aanmaken</button>'
+    + '<div style="font-size:11px;color:var(--muted);margin-top:.4rem">Na aanmaken koppelt u kantoren aan de groep. Tussenpersoon opent groepsdashboard via koersvoormorgen.nl/mna-groep.html</div>'
+    + '</div></div>'
+    + '<div class="table-wrap"><div class="table-hdr"><div class="table-title">Groepen ('+mnaGroepen.length+')</div>'
+    + '<button class="btn" style="font-size:12px;padding:7px 14px" onclick="refreshData()">Verversen</button></div>';
+
+  if (!mnaGroepen.length) {
+    html += '<div class="empty">Nog geen groepen aangemaakt.</div>';
+  } else {
+    mnaGroepen.forEach(function(g) {
+      // Find linked trajecten
+      html += '<div style="padding:1.25rem;border-bottom:1px solid var(--border)">'
+        + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">'
+        + '<div><div style="font-weight:600;color:var(--head)">' + g.naam + '</div>'
+        + '<div style="font-size:11px;color:var(--muted);margin-top:2px">'
+        + 'Groepscode: <span class="mono" style="color:var(--teal)">' + g.id + '</span>'
+        + ' &middot; Tussencode: <span class="mono" style="color:var(--mid)">' + (g.tussen_code||'-') + '</span>'
+        + ' &middot; ' + (g.aantal||0) + ' kantoren'
+        + ' &middot; <a href="mna-groep.html" target="_blank" style="color:var(--teal)">Dashboard openen</a>'
+        + '</div></div>'
+        + '<button class="btn-del" onclick="deleteGroep(''+g.id+'')">Verwijder groep</button>'
+        + '</div>'
+        + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:.5rem">'
+        + '<select id="koppel-'+g.id+'" style="font-size:12px;padding:5px 8px;border:1px solid var(--border2);border-radius:4px;background:var(--card);flex:1">'
+        + '<option value="">-- Koppel een traject --</option>'
+        + mnaTrajecten.map(function(t){ return '<option value="'+t.id+'">'+t.id+' - '+(t.kantoor_naam||'onbekend')+'</option>'; }).join('')
+        + '</select>'
+        + '<button class="btn" style="font-size:12px;padding:6px 14px" onclick="koppelTraject(''+g.id+'')">Koppelen</button>'
+        + '</div>'
+        + (g.aantal > 0 ? '<div style="font-size:11px;color:var(--muted)">Gekoppelde kantoren worden getoond in het groepsdashboard. Gebruik ontkoppelen-knop per kantoor om te verwijderen.</div>' : '')
+        + '</div>';
+    });
+  }
+  html += '</div>';
+  ge('tab-content').innerHTML = html;
+}
+
 function renderLogin() {
   ge('app').innerHTML = '<div class="login-wrap"><div class="login-box">'
     + '<div style="font-family:Playfair Display,serif;font-size:1.4rem;color:var(--head);font-weight:600;margin-bottom:.3rem">Admin toegang</div>'
@@ -365,6 +461,7 @@ function renderDashboard() {
     + '<div id="tab-content"></div>';
   if (activeTab === 'scans') renderScansTab();
   else if (activeTab === 'callbacks') renderCallbacksTab();
+  else if (activeTab === 'groepen') renderGroepenTab();
   else renderMnaTab();
 }
 
