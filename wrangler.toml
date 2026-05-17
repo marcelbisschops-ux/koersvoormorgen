@@ -1,0 +1,21 @@
+name = "kantoorinzicht"
+main = "cloudflare-worker.js"
+compatibility_date = "2024-01-01"
+
+# Stel ADMIN_KEY in via: wrangler secret put ADMIN_KEY
+# Stel ANTHROPIC_API_KEY in via: wrangler secret put ANTHROPIC_API_KEY
+# Stel RESEND_API_KEY in via: wrangler secret put RESEND_API_KEY
+
+[[d1_databases]]
+binding = "DB"
+database_name = "kantoorinzicht"
+database_id = "VULL_DIT_IN_NA_wrangler_d1_create"
+
+# R2 bucket voor document-opslag (optioneel)
+# [[r2_buckets]]
+# binding = "DOCS_BUCKET"
+# bucket_name = "kantoorinzicht-docs"
+
+# Cron Trigger: AVG cleanup op de 1e van elke maand om 03:00 UTC
+[triggers]
+crons = ["0 3 1 * *"]
