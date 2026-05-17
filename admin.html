@@ -577,7 +577,7 @@ function renderMnaTab() {
         + (t.koper_code ? '<div style="margin-top:3px;display:flex;align-items:center;gap:4px"><span class="mono" style="font-size:11px;color:var(--gold)">' + t.koper_code + '</span>'
           + '<button class="btn-copy" onclick="copyText(\'' + t.koper_code + '\',\'Koperscode\')" title="Kopieer koperscode">C</button></div>' : '')
         + (t.tussen_code ? '<div style="margin-top:3px;display:flex;align-items:center;gap:4px"><span class="mono" style="font-size:11px;color:var(--mid)">' + t.tussen_code + '</span><button class="btn-copy" onclick="copyText(\'' + t.tussen_code + '\',\'Tussencode\')" title="Kopieer tussencode">C</button><span style="font-size:9px;color:var(--muted);margin-left:2px">tussen.</span></div>' : '')
-        + '<div style="margin-top:3px"><button class="btn-copy" onclick="downloadCodes(\'' + t.id + '\',\'' + (t.kantoor_naam||'').replace(/'/g,'') + '\',\'' + (t.koper_code||'') + '\')" title="Download codes als tekstbestand">&#8595; Sla op</button></div>'
+        + '<div style="margin-top:3px"><button class="btn-copy" onclick="downloadCodes(\'' + t.id + '\',\'' + (t.kantoor_naam||'').replace(/'/g,'') + '\',\'' + (t.koper_code||'') + '\',\'' + (t.tussen_code||'') + '\')" title="Download alle codes als tekstbestand">&#8595; Download codes</button></div>'
         + '</td>'
         + '<td style="font-weight:500;color:var(--head)">' + (t.kantoor_naam||'-') + '</td>'
         + '<td style="font-size:12px">' + (t.contact_naam||'-') + (t.contact_email ? '<br><a href="mailto:' + t.contact_email + '" style="color:var(--teal);font-size:10px">' + t.contact_email + '</a>' : '') + '</td>'
