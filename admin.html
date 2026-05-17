@@ -392,20 +392,22 @@ async function deleteGroep(id) {
 function renderGroepenTab() {
   var html = '<div class="table-wrap" style="margin-bottom:1.5rem"><div class="table-hdr"><div class="table-title">Nieuwe groep aanmaken</div></div>'
     + '<div style="padding:1.25rem;display:grid;grid-template-columns:1fr 2fr;gap:10px;align-items:end">'
-    + '<div class="field"><label>Naam groep *</label><input type="text" id="g-naam" placeholder="bijv. Buy & Build Regio Zuid"></div>'
+    + '<div class="field"><label>Naam groep *</label><input type="text" id="g-naam" placeholder="bijv. Buy &amp; Build Regio Zuid"></div>'
     + '<div class="field"><label>Omschrijving</label><input type="text" id="g-omschr" placeholder="optionele toelichting"></div>'
     + '</div>'
     + '<div style="padding:0 1.25rem 1.25rem"><button class="btn" id="g-create-btn" onclick="createGroep()">Groep aanmaken</button>'
     + '<div style="font-size:11px;color:var(--muted);margin-top:.4rem">Na aanmaken koppelt u kantoren aan de groep. Tussenpersoon opent groepsdashboard via koersvoormorgen.nl/mna-groep.html</div>'
     + '</div></div>'
-    + '<div class="table-wrap"><div class="table-hdr"><div class="table-title">Groepen ('+mnaGroepen.length+')</div>'
+    + '<div class="table-wrap"><div class="table-hdr"><div class="table-title">Groepen (' + mnaGroepen.length + ')</div>'
     + '<button class="btn" style="font-size:12px;padding:7px 14px" onclick="refreshData()">Verversen</button></div>';
 
   if (!mnaGroepen.length) {
     html += '<div class="empty">Nog geen groepen aangemaakt.</div>';
   } else {
     mnaGroepen.forEach(function(g) {
-      // Find linked trajecten
+      var trajectOpties = mnaTrajecten.map(function(t) {
+        return '<option value="' + t.id + '">' + t.id + ' - ' + (t.kantoor_naam||'onbekend') + '</option>';
+      }).join('');
       html += '<div style="padding:1.25rem;border-bottom:1px solid var(--border)">'
         + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">'
         + '<div><div style="font-weight:600;color:var(--head)">' + g.naam + '</div>'
@@ -415,16 +417,16 @@ function renderGroepenTab() {
         + ' &middot; ' + (g.aantal||0) + ' kantoren'
         + ' &middot; <a href="mna-groep.html" target="_blank" style="color:var(--teal)">Dashboard openen</a>'
         + '</div></div>'
-        + '<button class="btn-del" onclick="deleteGroep(''+g.id+'')">Verwijder groep</button>'
+        + '<button class="btn-del" data-gid="' + g.id + '" onclick="deleteGroep(this.dataset.gid)">Verwijder</button>'
         + '</div>'
         + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:.5rem">'
-        + '<select id="koppel-'+g.id+'" style="font-size:12px;padding:5px 8px;border:1px solid var(--border2);border-radius:4px;background:var(--card);flex:1">'
-        + '<option value="">-- Koppel een traject --</option>'
-        + mnaTrajecten.map(function(t){ return '<option value="'+t.id+'">'+t.id+' - '+(t.kantoor_naam||'onbekend')+'</option>'; }).join('')
+        + '<select id="koppel-' + g.id + '" style="font-size:12px;padding:5px 8px;border:1px solid var(--border2);border-radius:4px;background:var(--card);flex:1">'
+        + '<option value="">-- Koppel een traject aan deze groep --</option>'
+        + trajectOpties
         + '</select>'
-        + '<button class="btn" style="font-size:12px;padding:6px 14px" onclick="koppelTraject(''+g.id+'')">Koppelen</button>'
+        + '<button class="btn" style="font-size:12px;padding:6px 14px" data-gid="' + g.id + '" onclick="koppelTraject(this.dataset.gid)">Koppelen</button>'
         + '</div>'
-        + (g.aantal > 0 ? '<div style="font-size:11px;color:var(--muted)">Gekoppelde kantoren worden getoond in het groepsdashboard. Gebruik ontkoppelen-knop per kantoor om te verwijderen.</div>' : '')
+        + '<div style="font-size:11px;color:var(--muted)">Voortgang zichtbaar in groepsdashboard zodra kantoren data invoeren.</div>'
         + '</div>';
     });
   }
