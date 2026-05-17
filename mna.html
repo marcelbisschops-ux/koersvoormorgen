@@ -121,13 +121,13 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--s
 <script>
 var WORKER='https://kantoorinzicht.marcel-bisschops.workers.dev';
 
-function triggerFileUpload(faseId){
-  var inp=document.createElement('input');
-  inp.type='file';inp.accept='.pdf,.docx,.doc,.xlsx,.xls,.csv';inp.multiple=true;
+function triggerFileUpload(faseId) {
+  var inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = '.pdf,.docx,.doc,.xlsx,.xls,.csv'; inp.multiple = true;
   document.body.appendChild(inp);
-  inp.addEventListener('change',function(e){
-    var files=e.target.files;
-    for(var i=0;i<files.length;i++)uploadDocument(faseId,files[i]);
+  inp.addEventListener('change', function(e) {
+    var files = e.target.files;
+    for (var i = 0; i < files.length; i++) uploadDocument(faseId, files[i]);
     document.body.removeChild(inp);
   });
   inp.click();
@@ -146,7 +146,7 @@ var FASES=[
   {id:'debiteuren',label:'Debiteuren totaal',ph:'bijv. 320.000',doc:true,req:false},
   {id:'debiteurenOud',label:'Debiteuren >90 dagen (%)',ph:'bijv. 12',doc:false,req:false},
   {id:'declarab',label:'Declarabiliteit (%)',ph:'bijv. 78',doc:false,req:false},
-  {id:'partnerBel',label:'Partnerbeloning (marktconform?)',ph:'bijv. ja / nee / hoog',doc:false,req:true},
+  {id:'partnerBel',label:'Partnerbeloning (marktconform?)',ph:'bijv. ja / nee / hoog',doc:false,req:true},,
   {id:'_hdr_omzet',label:'— Omzetverdeling per dienstlijn (jaar 3)',ph:'',doc:false,req:false,header:true},
   {id:'omzetJaarwerk',label:'Jaarwerk & samenstellen (%)',ph:'bijv. 45',doc:false,req:false},
   {id:'omzetAdvies',label:'Advies & begeleiding (%)',ph:'bijv. 20',doc:false,req:false},
@@ -277,9 +277,12 @@ function saveCurrent(cb){
   if(!f||S.screen!=='main'||isKoper())return;
   if(S.traject&&S.traject.status==='vergrendeld'){if(cb)cb();return;}
   f.dataFields.forEach(function(df){
+    if(df.header){
+      dataHtml+='</div><div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--teal);margin:1.25rem 0 .6rem;padding-top:1rem;border-top:1px solid var(--border)">'+df.label+'</div><div class="data-grid">';
+      return;
+    }
     if(df.header){return;}
     var el=ge('df_'+df.id);if(el)S.data[f.id+'_'+df.id]=el.value;
-    if(df.doc){var re=ge('dr_'+df.id);if(re)S.docRefs[f.id+'_'+df.id]=re.value;}
   });
   var nel=ge('notitie_'+f.id);if(nel)S.notities[f.id]=nel.value;
   clearTimeout(S.saveTimer);
@@ -294,7 +297,7 @@ function saveCurrent(cb){
   },800);
 }
 
-function getDataForFase(id){var f=FASES.find(function(x){return x.id===id;});if(!f)return {};var out={};f.dataFields.forEach(function(df){var v=S.data[id+'_'+df.id];if(v)out[df.id]={value:v||'',ref:'',label:df.label,req:df.req||false};});return out;}
+function getDataForFase(id){var f=FASES.find(function(x){return x.id===id;});if(!f)return {};var out={};f.dataFields.forEach(function(df){var v=S.data[id+'_'+df.id];if(v)out[df.id]={value:v,ref:'',label:df.label,req:df.req||false};});return out;}
 function getChecklistForFase(id){var out={items:{},redflags:{}};var f=FASES.find(function(x){return x.id===id;});if(!f)return out;f.items.forEach(function(_,i){out.items[i]=!!S.checked[id+'_'+i];});f.redflags.forEach(function(_,i){out.redflags[i]=!!S.checked[id+'_rf_'+i];});return out;}
 function loadDataFromDB(dbData){dbData.forEach(function(row){var id=row.fase_id;var dj=typeof row.data_json==='string'?JSON.parse(row.data_json||'{}'):row.data_json||{};var cj=typeof row.checklist_json==='string'?JSON.parse(row.checklist_json||'{}'):row.checklist_json||{};var f=FASES.find(function(x){return x.id===id;});if(!f)return;Object.keys(dj).forEach(function(k){var v=dj[k];if(v&&v.value)S.data[id+'_'+k]=v.value;});if(cj.items)Object.keys(cj.items).forEach(function(i){S.checked[id+'_'+i]=cj.items[i];});if(cj.redflags)Object.keys(cj.redflags).forEach(function(i){S.checked[id+'_rf_'+i]=cj.redflags[i];});if(row.notitie)S.notities[id]=row.notitie;});}
 function showSaveIndicator(){var el=ge('save-ind');if(!el)return;el.textContent='Opgeslagen';el.classList.add('show');setTimeout(function(){el.classList.remove('show');},2000);}
@@ -353,7 +356,7 @@ async function uploadDocument(faseId, file) {
         analyse: d.analyse, velden: d.veld_extractie || {}, bewaard: !!d.r2_opgeslagen, uploading: false
       });
       // Auto-fill fields from extraction
-      if (d.veld_extractie) autoFillFromExtraction(faseId, d.veld_extractie, file.name);
+      if (d.veld_extractie) autoFillFromExtraction(faseId, d.veld_extractie);
     } else {
       DOCS[faseId] = DOCS[faseId].filter(function(x){ return x.id !== tempId; });
       alert('Upload fout: ' + (d.error || 'onbekend'));
@@ -365,7 +368,7 @@ async function uploadDocument(faseId, file) {
   renderApp();
 }
 
-function autoFillFromExtraction(faseId, velden, fileName) {
+function autoFillFromExtraction(faseId, velden) {
   function setIfEmpty(key, val) {
     if(val && val!=='null' && val!==null && String(val).trim()!=='' && !(S.data[key]||'').trim())
       S.data[key]=String(val);
@@ -374,9 +377,9 @@ function autoFillFromExtraction(faseId, velden, fileName) {
     if(!S._opy)S._opy={};
     var opy=velden.omzet_per_jaar;
     if(opy&&typeof opy==='object'){
-      Object.keys(opy).forEach(function(jr){
-        var v=opy[jr],j=Number(jr);
-        if(v&&v!=='null'&&v!==null&&!isNaN(j)&&j>1990&&j<2100&&!S._opy[jr])S._opy[jr]=v;
+      Object.keys(opy).forEach(function(jaar){
+        var v=opy[jaar],j=Number(jaar);
+        if(v&&v!=='null'&&v!==null&&!isNaN(j)&&j>1990&&j<2100&&!S._opy[jaar])S._opy[jaar]=v;
       });
     }
     if(velden.omzet&&velden.boekjaar&&!isNaN(Number(velden.boekjaar))){
@@ -413,7 +416,6 @@ function autoFillFromExtraction(faseId, velden, fileName) {
 async function consolideerAnalyse(faseId){
   var docs=getDocsForFase(faseId);if(!docs.length)return;
   var f=FASES.find(function(x){return x.id===faseId;});if(!f)return;
-  var analyses=docs.map(function(d,i){return 'Doc '+(i+1)+': '+d.naam+'\n'+(d.analyse||'');}).join('\n---\n');
   var gc={};
   docs.forEach(function(d){
     if(!d.velden)return;
@@ -423,9 +425,10 @@ async function consolideerAnalyse(faseId){
       Object.keys(d.velden.omzet_per_jaar).forEach(function(jr){var v=d.velden.omzet_per_jaar[jr];if(v&&v!=='null'&&!gc.omzet_per_jaar[jr])gc.omzet_per_jaar[jr]=v;});
     }
   });
-  autoFillFromExtraction(faseId,gc,null);
+  autoFillFromExtraction(faseId,gc);
   S.aiLoading[faseId]=true;renderApp();
-  var lines=[];f.dataFields.forEach(function(df){var v=S.data[f.id+'_'+df.id];if(v)lines.push(df.label+': '+v);});
+  var lines=[];f.dataFields.forEach(function(df){var v=S.data[f.id+'_'+df.id];if(v&&!df.header)lines.push(df.label+': '+v);});
+  var analyses=docs.map(function(d,i){return 'Doc '+(i+1)+': '+d.naam+'\n'+(d.analyse||'');}).join('\n---\n');
   var prompt='Geconsolideerde M&A analyse voor fase '+f.title+' van '+esc(S.traject&&S.traject.kantoor_naam||S.code)+'.\n\nVelden:\n'+(lines.join('\n')||'leeg')+'\n\nAnalyses:\n'+analyses+'\n\nTrends, rode vlaggen, aanbevelingen. Concreet. ## koppen.';
   try{
     var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}]})});
@@ -463,10 +466,11 @@ function renderDocumentSectie(faseId) {
     uploadHtml = '<div class="upload-zone" id="upload-zone-' + faseId + '" data-fase="' + faseId + '"'
       + ' ondragover="event.preventDefault();this.classList.add(\'drag\')"'
       + ' ondragleave="this.classList.remove(\'drag\')"'
-      + ' ondrop="event.preventDefault();this.classList.remove(\'drag\');handleDropUpload(event,' + JSON.stringify(faseId) + ')">'
-      + '<div style="font-size:24px;margin-bottom:.4rem">&#128196;</div>'
-      + '<div style="font-size:13px;font-weight:600;color:var(--mid);margin-bottom:.2rem">Klik om document te uploaden of sleep hier naartoe</div>'
-      + '<div style="font-size:11px;color:var(--muted)">PDF, Word, Excel, CSV &middot; max 20MB &middot; AI leest en analyseert automatisch</div>'
+      + ' ondrop="event.preventDefault();this.classList.remove(\'drag\');handleDropUpload(event,' + JSON.stringify(faseId) + ')"'
+      + '>'
+      + '<div style="font-size:18px;margin-bottom:.3rem">&#128196;</div>'
+      + '<div style="font-size:12px;font-weight:600;color:var(--mid);margin-bottom:.1rem">Klik of sleep bestand</div>'
+      + '<div style="font-size:10px;color:var(--muted)">PDF, Word, Excel, CSV &middot; max 20MB</div>'
       + '</div>';
   }
 
@@ -475,7 +479,7 @@ function renderDocumentSectie(faseId) {
     var grootteMb = (doc.grootte / 1024 / 1024).toFixed(1);
 
     var veldenHtml = '';
-    if (toonAnalyse && doc.velden && Object.keys(doc.velden).length) {
+    if (doc.velden && Object.keys(doc.velden).length) {
       var relevantVelden = Object.entries(doc.velden).filter(function(kv){ return kv[1] && kv[1] !== 'null'; });
       if (relevantVelden.length) {
         veldenHtml = '<div class="doc-velden">'
@@ -487,7 +491,7 @@ function renderDocumentSectie(faseId) {
       }
     }
 
-    var analyseHtml = !toonAnalyse ? '' : doc.uploading
+    var analyseHtml = doc.uploading
       ? '<div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);margin-top:.4rem"><div class="spin" style="border-color:var(--border2);border-top-color:var(--teal);width:12px;height:12px"></div>Uploaden en analyseren...</div>'
       : (doc.analyse ? '<div class="doc-analyse">' + doc.analyse.replace(/## ([^\r\n]+)/g,'<strong>$1</strong><br>').replace(/[\r\n]/g,'<br>').substring(0,1500) + (doc.analyse.length>1500?'...':'') + '</div>' : '');
 
@@ -502,9 +506,7 @@ function renderDocumentSectie(faseId) {
   }).join('');
 
   var ch='';
-  if(!isReadOnly&&docs.length>1){
-    ch='<button onclick="consolideerAnalyse('+JSON.stringify(faseId)+')" class="btn btn-sm" style="width:100%;margin-top:.5rem;background:var(--teal-dim)">&#9881; Geconsolideerde analyse ('+docs.length+' docs)</button>';
-  }
+  if(!isReadOnly&&docs.length>1)ch='<button onclick="consolideerAnalyse('+JSON.stringify(faseId)+')" class="btn btn-sm" style="width:100%;margin-top:.5rem;background:var(--teal-dim)">&#9881; Geconsolideerde analyse ('+docs.length+' docs)</button>';
   return '<div class="panel" id="doc-sectie-'+faseId+'"><div class="sec-hdr">Documenten &amp; AI-analyse</div>'
     +uploadHtml+docsHtml+ch
     +(docs.length===0&&isReadOnly?'<div style="color:var(--muted);font-size:13px;font-style:italic">Geen documenten geupload.</div>':'')
@@ -571,9 +573,9 @@ function renderCover(){
     intro='<p>Geachte '+esc(t.contact_naam||'relatie')+',</p>'
       +'<p>In het kader van het '+esc(t.traject_type||'M&A')+'-traject voor <strong>'+esc(t.kantoor_naam)+'</strong> verzoek ik u onderstaande gegevens in te voeren via dit beveiligde platform. U kunt per fase de informatie invullen en tussentijds opslaan.</p>'
       +'<p>Documenten uploadt u direct via het uploadvenster naast de velden &mdash; de AI analyseert ze automatisch.</p>'
-          +'<p>Vult u de velden zo volledig mogelijk in. Wanneer een veld niet automatisch wordt ingevuld, kunt u dit handmatig doen — het geüploade document dient als ondersteuning.</p>'
+          +'<p>Wanneer een veld niet automatisch wordt ingevuld na het uploaden, kunt u dit handmatig doen — het geüploade document dient als ondersteuning.</p>'
       +'<p>Uw gegevens worden strikt vertrouwelijk behandeld.</p>'
-      +'<div style="margin:1rem 0;padding:.75rem 1rem;background:var(--card);border:1px solid var(--border);border-radius:var(--r);font-size:11px;color:var(--muted);line-height:1.7">&#128274; <strong>Beveiliging &amp; AVG:</strong> Alle gegevens worden versleuteld via HTTPS verstuurd en opgeslagen op Cloudflare-servers in Europa (Frankfurt, EU). Uw gegevens worden uitsluitend gebruikt voor dit M&amp;A-traject en niet gedeeld met derden. Conform AVG heeft u recht op inzage, correctie en verwijdering. Zie ook onze <a href=\"privacy.html?from=mna\" style=\"color:var(--teal)\">privacyverklaring</a>.</div>'
+      +'<div style="margin:1rem 0;padding:.75rem 1rem;background:var(--card);border:1px solid var(--border);border-radius:var(--r);font-size:11px;color:var(--muted);line-height:1.7">&#128274; <strong>Beveiliging &amp; AVG:</strong> Alle gegevens worden versleuteld via HTTPS verstuurd en opgeslagen op Cloudflare-servers in Europa (Frankfurt, EU). Uw gegevens worden uitsluitend gebruikt voor dit M&amp;A-traject en niet gedeeld met derden. Conform AVG heeft u recht op inzage, correctie en verwijdering. Zie ook onze <a href=\"privacy.html\" style=\"color:var(--teal)\">privacyverklaring</a>.</div>'
     +'<p>Met vriendelijke groet,<br><strong>Marcel Bisschops</strong><br><span style="font-size:12px;color:var(--muted)">Senior M&amp;A-adviseur &middot; Bisschops Financing BV<br>06 - 38 68 98 88 &middot; marcel@bisschopsfinancing.nl</span></p>';
   }else if(isTussen()){
     intro='<p>Geachte tussenpersoon,</p>'
@@ -581,7 +583,8 @@ function renderCover(){
       +'<p>Vragen? Neem contact op via <a href="mailto:marcel@bisschopsfinancing.nl" style="color:var(--teal)">marcel@bisschopsfinancing.nl</a>.</p>'
       +'<p>Met vriendelijke groet,<br><strong>Marcel Bisschops</strong><br><span style="font-size:12px;color:var(--muted)">Senior M&amp;A-adviseur &middot; Bisschops Financing BV</span></p>';
   }else if(!t.koper_vrijgegeven){
-    return '<div class="wrap anim"><div class="hdr"><div class="brand"><div class="wdot"></div>KantoorInzicht &middot; M&amp;A</div></div>'
+    return '<div class="wrap anim">'
+      +'<div class="hdr"><div class="brand"><div class="wdot"></div>KantoorInzicht &middot; M&amp;A</div></div>'
       +'<div class="cover-letter" style="text-align:center;padding:3rem 2rem">'
       +'<div style="font-size:2rem;margin-bottom:1rem">&#128274;</div>'
       +'<div style="font-family:Playfair Display,serif;font-size:1.3rem;color:var(--head);font-weight:600;margin-bottom:.75rem">Informatie nog niet beschikbaar</div>'
@@ -654,7 +657,7 @@ function renderMain(){
 
   // Marcel-only: checklist + rode vlaggen + notities + AI
   var extraHtml='';
-  if(isTussen()){
+  if(!isVerkoper()){
     var chkHtml='<div class="panel"><div class="sec-hdr">Checklist (intern)</div>';
     f.items.forEach(function(item,i){var key=f.id+'_'+i;var on=!!S.checked[key];chkHtml+='<div class="chk-item'+(on?' on':'')+'" data-key="'+key+'"'+(isKoper()?' style="cursor:default"':'')+'><div class="chk-box">'+(on?'&#10003;':'')+'</div><div class="chk-lbl">'+item+'</div></div>';});
     chkHtml+='<div class="sec-hdr" style="margin-top:1rem;color:var(--red)">Rode vlaggen &mdash; gesignaleerd?</div>';
@@ -699,8 +702,8 @@ function renderMain(){
     +ov
     +'<div style="font-family:Playfair Display,serif;font-size:1.1rem;color:var(--head);font-weight:600;margin-bottom:.2rem">'+f.num+'. '+f.title+'</div>'
     +'<div style="font-size:13px;color:var(--muted);margin-bottom:1.25rem">'+f.desc+'</div>'
-    +(!isKoper()?'<div style="display:grid;grid-template-columns:1fr 320px;gap:1rem;align-items:start">':'')
-    +dataHtml+(!isKoper()?renderDocumentSectie(f.id)+'</div>':'')
+    +'<div style="display:grid;grid-template-columns:1fr 320px;gap:1rem;align-items:start">'
+    +dataHtml+renderDocumentSectie(f.id)+'</div>'
     +extraHtml+nav+'</div>';
 }
 
