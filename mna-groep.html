@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>M&A Groepsanalyse — KantoorInzicht</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--void:#faf9f6;--panel:#fff;--card:#f0eeea;--border:#dddbd4;--border2:#c8c5bc;--muted:#8a8880;--mid:#5a5854;--sub:#2a2825;--head:#1a1815;--teal:#1a7a5e;--teal-dim:#145f48;--teal-bg:rgba(34,197,160,.1);--gold:#c9a84c;--gold-bg:rgba(201,168,76,.12);--red:#e05252;--red-bg:rgba(224,82,82,.1);--r:6px;--r2:10px}
+body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--sub);min-height:100vh;font-size:14px;line-height:1.6}
+#app{min-height:100vh}
+.wrap{max-width:1100px;margin:0 auto;padding:2rem 2rem 5rem}
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:1.25rem 0;border-bottom:1px solid var(--border);margin-bottom:2rem}
+.brand{font-size:11px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:8px}
+.wdot{width:6px;height:6px;border-radius:50%;background:var(--teal)}
+.btn{background:var(--teal);color:#fff;font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;padding:9px 20px;border-radius:var(--r);border:none;cursor:pointer}
+.btn:hover{background:var(--teal-dim)}
+.btn:disabled{background:var(--border2);color:var(--muted);cursor:default}
+.btn-ghost{background:transparent;border:1px solid var(--border2);color:var(--mid);font-family:'IBM Plex Sans',sans-serif;font-size:13px;padding:9px 18px;border-radius:var(--r);cursor:pointer}
+.btn-ghost:hover{border-color:var(--mid)}
+.btn-sm{font-size:11px;padding:5px 12px}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.5rem;margin-bottom:1.25rem}
+.f{display:flex;flex-direction:column;gap:4px}
+.f label{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.f input,.f textarea{background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:'IBM Plex Sans',sans-serif;font-size:13px;padding:8px 11px;outline:none;width:100%}
+.f input:focus,.f textarea:focus{border-color:var(--teal)}
+.sec-hdr{font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem;display:flex;align-items:center;gap:8px}
+.sec-hdr::after{content:'';flex:1;height:1px;background:var(--border)}
+/* Score bar */
+.score-bar-wrap{margin-bottom:.6rem}
+.score-bar-top{display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px}
+.score-bar-lbl{color:var(--mid)}
+.score-bar-val{font-family:'IBM Plex Mono',monospace;font-weight:600}
+.score-bar-track{height:8px;background:var(--border2);border-radius:4px;overflow:hidden}
+.score-bar-fill{height:100%;border-radius:4px;transition:width .5s}
+/* Kantoor card */
+.kantoor-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;margin-bottom:2rem}
+.kantoor-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);overflow:hidden}
+.kantoor-card-hdr{padding:1rem 1.25rem;background:var(--card);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.kantoor-naam{font-weight:600;color:var(--head);font-size:14px}
+.kantoor-type{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.kantoor-score{font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:600}
+.kantoor-body{padding:1rem 1.25rem}
+/* Fase tabel */
+.fase-tabel{width:100%;border-collapse:collapse;margin-bottom:1rem}
+.fase-tabel th{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);padding:6px 8px;text-align:left;border-bottom:1px solid var(--border)}
+.fase-tabel td{padding:6px 8px;font-size:12px;border-bottom:1px solid var(--border)}
+.fase-tabel tr:last-child td{border-bottom:none}
+.fase-tabel tr:hover td{background:var(--card)}
+/* Consolidatie */
+.consol-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-bottom:2rem}
+@media(max-width:800px){.consol-grid{grid-template-columns:repeat(4,1fr)}}
+.consol-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1rem;text-align:center}
+.consol-fase{font-size:10px;font-weight:600;color:var(--muted);margin-bottom:.4rem}
+.consol-score{font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:600;line-height:1}
+.consol-sub{font-size:10px;color:var(--muted);margin-top:.2rem}
+/* Rode vlaggen */
+.rf-item{display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;color:var(--red)}
+.rf-item:last-child{border-bottom:none}
+.rf-kantoor{font-size:10px;color:var(--muted);min-width:80px;flex-shrink:0}
+/* AI panel */
+.ai-panel{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);overflow:hidden;margin-top:1.5rem}
+.ai-hdr{display:flex;align-items:center;justify-content:space-between;padding:.9rem 1.25rem;background:var(--card);border-bottom:1px solid var(--border)}
+.ai-title{font-family:'Playfair Display',serif;font-size:.9rem;color:var(--head);font-weight:600}
+.btn-gen{display:flex;align-items:center;gap:6px;background:var(--teal);color:#fff;font-family:'IBM Plex Sans',sans-serif;font-size:12px;font-weight:600;padding:7px 14px;border-radius:var(--r);border:none;cursor:pointer}
+.btn-gen:hover{background:var(--teal-dim)}
+.btn-gen:disabled{background:var(--border2);color:var(--muted);cursor:default}
+.ai-body{padding:1.1rem 1.25rem;font-size:13px;color:var(--mid);line-height:1.8;min-height:50px}
+.ai-body h3{font-family:'Playfair Display',serif;font-size:.95rem;color:var(--head);margin:1rem 0 .35rem;padding-top:1rem;border-top:1px solid var(--border)}
+.ai-body h3:first-child{margin-top:0;padding-top:0;border-top:none}
+.ai-body p{margin-bottom:.5rem}
+.ai-body strong{color:var(--sub);font-weight:600}
+.spin{width:12px;height:12px;border-radius:50%;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;animation:sp .7s linear infinite;display:inline-block}
+@keyframes sp{to{transform:rotate(360deg)}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.anim{animation:fadeUp .25s ease forwards}
+@media print{
+  @page{margin:2cm;size:A4}
+  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+  .btn,.btn-ghost,.btn-gen{display:none!important}
+  body{font-size:11px}
+}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+var WORKER = 'https://kantoorinzicht.marcel-bisschops.workers.dev';
+
+var FASE_TITELS = {
+  financieel:'Financieel', commercieel:'Klanten & commercieel',
+  partner:'Partners & personeel', compliance:'Compliance & kwaliteit',
+  it:'IT & automatisering', juridisch:'Juridisch & fiscaal', strategisch:'Strategisch & markt'
+};
+var FASE_IDS = ['financieel','commercieel','partner','compliance','it','juridisch','strategisch'];
+
+var S = { screen:'login', code:'', groep:null, trajecten:[], rol:'', aiText:'', aiLoading:false };
+
+function ge(id) { return document.getElementById(id); }
+function esc(s) { if(!s)return''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function dc(v) { return v>=70?'var(--teal)':v>=50?'var(--gold)':'var(--red)'; }
+function formatDate(ts) { if(!ts)return'-'; return new Date(ts).toLocaleDateString('nl-NL',{day:'2-digit',month:'short',year:'numeric'}); }
+
+// Calculate checklist completion % per fase for a kantoor
+function faseVoortgang(faseData, faseId) {
+  var row = faseData.find(function(r){ return r.fase_id === faseId; });
+  if (!row) return { pct: 0, rfs: 0, data: {} };
+  var cj = JSON.parse(row.checklist_json || '{}');
+  var items = Object.values(cj.items || {});
+  var done = items.filter(Boolean).length;
+  var pct = items.length ? Math.round(done / items.length * 100) : 0;
+  var rfs = Object.values(cj.redflags || {}).filter(Boolean).length;
+  var dj = JSON.parse(row.data_json || '{}');
+  return { pct: pct, rfs: rfs, data: dj, notitie: row.notitie||'' };
+}
+
+// Calculate overall voortgang for a kantoor
+function kantoorVoortgang(faseData) {
+  var totaal = 0, count = 0;
+  FASE_IDS.forEach(function(id) {
+    var v = faseVoortgang(faseData, id);
+    totaal += v.pct; count++;
+  });
+  return count ? Math.round(totaal / count) : 0;
+}
+
+// Consolidated score per fase across all kantoren
+function geconsolideerdeFase(faseId) {
+  if (!S.trajecten.length) return 0;
+  var sum = 0;
+  S.trajecten.forEach(function(t) {
+    sum += faseVoortgang(t.data, faseId).pct;
+  });
+  return Math.round(sum / S.trajecten.length);
+}
+
+function renderApp() {
+  var app = ge('app');
+  if (S.screen === 'login') app.innerHTML = renderLogin();
+  else if (S.screen === 'dashboard') app.innerHTML = renderDashboard();
+  bindAll();
+}
+
+function renderLogin() {
+  return '<div class="wrap anim" style="max-width:480px;margin:0 auto;padding-top:3rem">'
+    + '<div class="hdr"><div class="brand"><div class="wdot"></div>KantoorInzicht &middot; Groepsanalyse</div>'
+    + '<a href="mna.html" style="font-size:11px;color:var(--muted);text-decoration:none">M&A Individueel</a></div>'
+    + '<div style="min-height:60vh;display:flex;align-items:center;justify-content:center">'
+    + '<div class="panel" style="width:100%">'
+    + '<div style="font-family:Playfair Display,serif;font-size:1.4rem;color:var(--head);font-weight:600;margin-bottom:.3rem">Groepsanalyse</div>'
+    + '<div style="font-size:13px;color:var(--muted);line-height:1.65;margin-bottom:1.5rem">Geconsolideerd overzicht van meerdere kantoren binnen een M&amp;A-traject. Voer de groepscode of tussencode in.</div>'
+    + '<div class="f" style="margin-bottom:.75rem"><label>Groepscode</label>'
+    + '<input type="text" id="l-code" placeholder="bijv. GABC1 of GTABC1" style="text-transform:uppercase;letter-spacing:.1em;font-size:1.1rem;text-align:center;font-family:IBM Plex Mono,monospace" autocomplete="off"></div>'
+    + '<div id="l-err" style="color:var(--red);font-size:12px;margin-bottom:.75rem;display:none">Code niet gevonden. Controleer uw code.</div>'
+    + '<div id="l-load" style="color:var(--muted);font-size:12px;margin-bottom:.75rem;display:none">Laden...</div>'
+    + '<div style="display:flex;gap:10px"><button class="btn-ghost" onclick="window.location.href=\'mna.html\'">Terug</button>'
+    + '<button class="btn" id="l-btn">Inloggen</button></div>'
+    + '<div style="margin-top:1.25rem;font-size:11px;color:var(--muted);padding-top:1rem;border-top:1px solid var(--border)">Code ontvangen via Marcel Bisschops &middot; <a href="mailto:marcel@bisschopsfinancing.nl" style="color:var(--teal)">marcel@bisschopsfinancing.nl</a></div>'
+    + '</div></div></div>';
+}
+
+function renderDashboard() {
+  var g = S.groep;
+  var trajecten = S.trajecten;
+  var totaalPct = trajecten.length ? Math.round(trajecten.reduce(function(a,t){ return a+kantoorVoortgang(t.data); },0)/trajecten.length) : 0;
+
+  // Consolidated fase scores
+  var consolHtml = '<div class="consol-grid">';
+  FASE_IDS.forEach(function(id) {
+    var pct = geconsolideerdeFase(id);
+    consolHtml += '<div class="consol-card">'
+      + '<div class="consol-fase">' + (FASE_TITELS[id]||id).split(' ')[0] + '</div>'
+      + '<div class="consol-score" style="color:' + dc(pct) + '">' + pct + '%</div>'
+      + '<div class="consol-sub">gem. voortgang</div>'
+      + '</div>';
+  });
+  consolHtml += '</div>';
+
+  // All rode vlaggen across kantoren
+  var rfHtml = '';
+  var rfCount = 0;
+  trajecten.forEach(function(t) {
+    FASE_IDS.forEach(function(id) {
+      var v = faseVoortgang(t.data, id);
+      if (v.rfs > 0) {
+        rfCount += v.rfs;
+        rfHtml += '<div class="rf-item"><span class="rf-kantoor">' + esc(t.traject.kantoor_naam||t.traject.id) + '</span>'
+          + '<span>' + esc(FASE_TITELS[id]) + ': ' + v.rfs + ' rode vlag' + (v.rfs>1?'gen':'') + '</span></div>';
+      }
+    });
+  });
+
+  // Per-kantoor cards
+  var kantorenHtml = '<div class="kantoor-grid">';
+  trajecten.forEach(function(t) {
+    var pct = kantoorVoortgang(t.data);
+    var naam = t.traject.kantoor_naam || t.traject.id;
+    kantorenHtml += '<div class="kantoor-card">'
+      + '<div class="kantoor-card-hdr">'
+      + '<div><div class="kantoor-naam">' + esc(naam) + '</div>'
+      + '<div class="kantoor-type">' + esc(t.traject.traject_type||'') + '</div></div>'
+      + '<div class="kantoor-score" style="color:' + dc(pct) + '">' + pct + '%</div>'
+      + '</div>'
+      + '<div class="kantoor-body">'
+      + '<table class="fase-tabel"><thead><tr><th>Fase</th><th>Voortgang</th><th>Vlaggen</th></tr></thead><tbody>';
+    FASE_IDS.forEach(function(id) {
+      var v = faseVoortgang(t.data, id);
+      kantorenHtml += '<tr>'
+        + '<td>' + (FASE_TITELS[id]||id).replace(' & ',' &amp; ') + '</td>'
+        + '<td><div style="display:flex;align-items:center;gap:6px"><div style="flex:1;height:6px;background:var(--border2);border-radius:3px;overflow:hidden"><div style="height:100%;width:'+v.pct+'%;background:'+dc(v.pct)+';border-radius:3px"></div></div><span style="font-family:IBM Plex Mono,monospace;font-size:10px;color:'+dc(v.pct)+'">'+v.pct+'%</span></div></td>'
+        + '<td>' + (v.rfs > 0 ? '<span style="color:var(--red);font-size:11px">! ' + v.rfs + '</span>' : '<span style="color:var(--teal);font-size:11px">-</span>') + '</td>'
+        + '</tr>';
+    });
+    kantorenHtml += '</tbody></table>';
+    // Key data per kantoor
+    var finData = faseVoortgang(t.data, 'financieel').data;
+    var keyFields = [];
+    if (finData.omzet3 && finData.omzet3.value) keyFields.push('Omzet: ' + finData.omzet3.value);
+    if (finData.ebitda && finData.ebitda.value) keyFields.push('EBITDA: ' + finData.ebitda.value + '%');
+    var partnerData = faseVoortgang(t.data, 'partner').data;
+    if (partnerData.fte && partnerData.fte.value) keyFields.push('FTE: ' + partnerData.fte.value);
+    if (keyFields.length) {
+      kantorenHtml += '<div style="font-size:11px;color:var(--muted);margin-top:.5rem;padding-top:.5rem;border-top:1px solid var(--border)">' + keyFields.join(' &middot; ') + '</div>';
+    }
+    kantorenHtml += '</div></div>';
+  });
+  kantorenHtml += '</div>';
+
+  // AI consolidated advies
+  var aiBodyHtml;
+  if (S.aiLoading) {
+    aiBodyHtml = '<div style="display:flex;align-items:center;gap:8px;color:var(--mid);font-size:13px"><div class="spin" style="border-color:var(--border2);border-top-color:var(--teal);width:14px;height:14px"></div>Consolidatie-advies wordt gegenereerd...</div>';
+  } else if (!S.aiText) {
+    aiBodyHtml = '<div style="color:var(--muted);font-size:13px">Klik op Genereer advies voor een geconsolideerde AI-analyse over alle kantoren in deze groep.</div>';
+  } else if (S.aiText === '__ERROR__') {
+    aiBodyHtml = '<div style="color:var(--red);font-size:13px">Verbindingsfout. Probeer opnieuw.</div>';
+  } else {
+    var h = S.aiText.replace(/## ([^\n]+)/g, function(_,t){ return '<h3>'+t+'</h3>'; });
+    h = h.replace(/\*\*([^*]+)\*\*/g, function(_,t){ return '<strong>'+t+'</strong>'; });
+    h = h.split('\n\n').map(function(p){ return p.trim()&&p.charAt(0)!=='<'?'<p>'+p+'</p>':p; }).join('');
+    aiBodyHtml = h;
+  }
+
+  return '<div class="wrap anim">'
+    + '<div class="hdr"><div class="brand"><div class="wdot"></div>KantoorInzicht &middot; Groepsanalyse</div>'
+    + '<div style="display:flex;gap:8px">'
+    + '<button class="btn-ghost btn-sm" onclick="window.print()">PDF</button>'
+    + '<button class="btn-ghost btn-sm" onclick="window.location.href=\'mna.html\'">M&amp;A Individueel</button>'
+    + '</div></div>'
+    + '<div style="font-family:Playfair Display,serif;font-size:1.6rem;color:var(--head);font-weight:600;margin-bottom:.25rem">' + esc(g.naam) + '</div>'
+    + '<div style="font-size:13px;color:var(--muted);margin-bottom:1.5rem">' + trajecten.length + ' kantoren &middot; Gem. voortgang: <span style="font-family:IBM Plex Mono,monospace;color:' + dc(totaalPct) + '">' + totaalPct + '%</span> &middot; ' + rfCount + ' rode vlaggen totaal</div>'
+
+    // Consolidated scores
+    + '<div class="sec-hdr">Geconsolideerde voortgang per fase</div>'
+    + consolHtml
+
+    // Per-kantoor overzicht
+    + '<div class="sec-hdr">Overzicht per kantoor</div>'
+    + kantorenHtml
+
+    // Rode vlaggen
+    + (rfCount > 0 ? '<div class="panel" style="border-color:var(--red);margin-bottom:1.5rem">'
+      + '<div class="sec-hdr" style="color:var(--red)">Rode vlaggen (' + rfCount + ')</div>'
+      + rfHtml + '</div>' : '')
+
+    // AI Consolidatie advies
+    + '<div class="ai-panel">'
+    + '<div class="ai-hdr"><div class="ai-title">AI Consolidatie-advies</div>'
+    + '<button class="btn-gen" id="gen-btn" ' + (S.aiLoading?'disabled':'') + '>'
+    + (S.aiLoading ? '<div class="spin"></div> Genereren...' : S.aiText&&S.aiText!=='__ERROR__' ? 'Opnieuw genereren' : 'Genereer advies')
+    + '</button></div>'
+    + '<div class="ai-body">' + aiBodyHtml + '</div>'
+    + '</div>'
+
+    // AVG notice
+    + '<div style="margin-top:2rem;font-size:11px;color:var(--muted);padding:10px 14px;background:var(--card);border:1px solid var(--border);border-radius:var(--r);line-height:1.7">'
+    + '&#128274; Alle gegevens worden versleuteld via HTTPS verstuurd en opgeslagen op Cloudflare-servers in Europa (Frankfurt, EU). Verwerking conform AVG.'
+    + '</div>'
+    + '</div>';
+}
+
+async function generateGroepsAdvies() {
+  if (!S.trajecten.length) return;
+  S.aiLoading = true; S.aiText = ''; renderApp();
+
+  // Build context for all kantoren
+  var kantorenContext = S.trajecten.map(function(t, i) {
+    var naam = t.traject.kantoor_naam || 'Kantoor ' + (i+1);
+    var lines = [];
+    FASE_IDS.forEach(function(id) {
+      var v = faseVoortgang(t.data, id);
+      var keyVals = Object.values(v.data).filter(function(d){ return d&&d.value; }).map(function(d){ return d.label+': '+d.value; });
+      lines.push(FASE_TITELS[id]+': '+v.pct+'% checklist'+(v.rfs?' | '+v.rfs+' rode vlaggen':'')+(keyVals.length?' | '+keyVals.slice(0,3).join(', '):''));
+    });
+    return naam+':\n' + lines.join('\n');
+  }).join('\n\n');
+
+  var consolScores = FASE_IDS.map(function(id){ return FASE_TITELS[id]+': '+geconsolideerdeFase(id)+'% gemiddeld'; }).join('\n');
+
+  var prompt = 'Je bent Marcel Bisschops, senior M&A-adviseur gespecialiseerd in accountantskantoren. Je analyseert een groep van ' + S.trajecten.length + ' kantoren voor een geconsolideerde M&A-analyse.\n\nGROEP: ' + S.groep.naam + '\n\nGECONSOLIDEERDE SCORES (gemiddeld):\n' + consolScores + '\n\nPER KANTOOR:\n' + kantorenContext + '\n\nGeef een geconsolideerd strategisch advies voor deze groep. Bespreek:\n## Groepsoverzicht\n[Kwaliteit van de groep als geheel, gem. voortgang, sterkste en zwakste kantoor]\n## Onderlinge vergelijking\n[Welke kantoren presteren boven/onder gemiddeld en waarom]\n## Geconsolideerde rode vlaggen\n[Systemische risicos die meerdere kantoren raken]\n## Groepspotentieel\n[Synergiepotentieel, buy & build kansen, gezamenlijke PE-aantrekkelijkheid]\n## Vervolgstappen\n[Prioriteiten per kantoor en voor de groep als geheel]\n\nSchrijf in ik-vorm, direct en professioneel. Geen tabellen of bullets.';
+
+  try {
+    var resp = await fetch(WORKER+'/ai', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({messages:[{role:'user',content:prompt}]})});
+    if (!resp.ok) throw new Error('HTTP '+resp.status);
+    var reader = resp.body.getReader();
+    var dec = new TextDecoder();
+    var collected = '';
+    while (true) {
+      var res = await reader.read();
+      if (res.done) break;
+      dec.decode(res.value, {stream:true}).split('\n').forEach(function(line) {
+        if (line.startsWith('data:')) {
+          var d = line.slice(5).trim();
+          if (d==='[DONE]') return;
+          try { var j=JSON.parse(d); if(j.type==='content_block_delta'&&j.delta&&j.delta.text) collected+=j.delta.text; } catch(e) {}
+        }
+      });
+    }
+    S.aiText = collected;
+  } catch(e) {
+    S.aiText = '__ERROR__';
+  }
+  S.aiLoading = false;
+  renderApp();
+}
+
+function bindAll() {
+  var lb = ge('l-btn');
+  if (lb) {
+    lb.onclick = async function() {
+      var code = ((ge('l-code')||{}).value||'').trim().toUpperCase();
+      if (!code) return;
+      var err = ge('l-err'); var load = ge('l-load');
+      if (err) err.style.display = 'none';
+      if (load) load.style.display = 'block';
+      lb.disabled = true;
+      try {
+        var resp = await fetch(WORKER+'/mna/groep/detail/'+code);
+        if (!resp.ok) throw new Error('not found');
+        var d = await resp.json();
+        S.code = code; S.groep = d.groep; S.trajecten = d.trajecten||[]; S.rol = d.rol||'tussenpersoon';
+        S.screen = 'dashboard';
+        renderApp();
+      } catch(e) {
+        if (err) err.style.display = 'block';
+        if (load) load.style.display = 'none';
+        lb.disabled = false;
+      }
+    };
+    var cf = ge('l-code');
+    if (cf) { cf.oninput = function(){ this.value=this.value.toUpperCase(); }; cf.onkeydown = function(e){ if(e.key==='Enter') lb.click(); }; }
+  }
+  var genBtn = ge('gen-btn');
+  if (genBtn) genBtn.onclick = generateGroepsAdvies;
+}
+
+renderApp();
+</script>
+</body>
+</html>
