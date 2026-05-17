@@ -462,7 +462,7 @@ async function deleteDocument(docId, faseId) {
 }
 
 function renderDocumentSectie(faseId) {
-  if(isKoper()||isVerkoper()) return '';
+  if(isKoper()) return '';
   var docs = getDocsForFase(faseId);
   var isReadOnly = (S.traject && S.traject.status === 'vergrendeld');
   var uploadHtml = '';
@@ -625,7 +625,7 @@ function renderMain(){
   var f=FASES[S.fase];
   var tp=isVerkoper()?totalFillPct():Math.round(FASES.reduce(function(a,fase){return a+pct(fase.id);},0)/FASES.length);
   var vergrendeld=S.traject&&S.traject.status==='vergrendeld';
-  var isRO=isKoper()||isTussen()||vergrendeld;
+  var isRO=isKoper()||vergrendeld;
 
   var ov='<div class="fase-grid">';
   FASES.forEach(function(fase,i){
@@ -662,7 +662,7 @@ function renderMain(){
 
   // Marcel-only: checklist + rode vlaggen + notities + AI
   var extraHtml='';
-  if(!isVerkoper()){
+  if(isTussen()){
     var chkHtml='<div class="panel"><div class="sec-hdr">Checklist (intern)</div>';
     f.items.forEach(function(item,i){var key=f.id+'_'+i;var on=!!S.checked[key];chkHtml+='<div class="chk-item'+(on?' on':'')+'" data-key="'+key+'"'+(isKoper()?' style="cursor:default"':'')+'><div class="chk-box">'+(on?'&#10003;':'')+'</div><div class="chk-lbl">'+item+'</div></div>';});
     chkHtml+='<div class="sec-hdr" style="margin-top:1rem;color:var(--red)">Rode vlaggen &mdash; gesignaleerd?</div>';
@@ -707,8 +707,8 @@ function renderMain(){
     +ov
     +'<div style="font-family:Playfair Display,serif;font-size:1.1rem;color:var(--head);font-weight:600;margin-bottom:.2rem">'+f.num+'. '+f.title+'</div>'
     +'<div style="font-size:13px;color:var(--muted);margin-bottom:1.25rem">'+f.desc+'</div>'
-    +(isTussen()?'<div style="display:grid;grid-template-columns:1fr 320px;gap:1rem;align-items:start">':'')
-    +dataHtml+(isTussen()?renderDocumentSectie(f.id)+'</div>':'')
+    +(!isKoper()?'<div style="display:grid;grid-template-columns:1fr 320px;gap:1rem;align-items:start">':'')
+    +dataHtml+(!isKoper()?renderDocumentSectie(f.id)+'</div>':'')
     +extraHtml+nav+'</div>';
 }
 
