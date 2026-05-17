@@ -146,7 +146,7 @@ var FASES=[
   {id:'debiteuren',label:'Debiteuren totaal',ph:'bijv. 320.000',doc:true,req:false},
   {id:'debiteurenOud',label:'Debiteuren >90 dagen (%)',ph:'bijv. 12',doc:false,req:false},
   {id:'declarab',label:'Declarabiliteit (%)',ph:'bijv. 78',doc:false,req:false},
-  {id:'partnerBel',label:'Partnerbeloning (marktconform?)',ph:'bijv. ja / nee / hoog',doc:false,req:true},,
+  {id:'partnerBel',label:'Partnerbeloning (marktconform?)',ph:'bijv. ja / nee / hoog',doc:false,req:true},
   {id:'_hdr_omzet',label:'— Omzetverdeling per dienstlijn (jaar 3)',ph:'',doc:false,req:false,header:true},
   {id:'omzetJaarwerk',label:'Jaarwerk & samenstellen (%)',ph:'bijv. 45',doc:false,req:false},
   {id:'omzetAdvies',label:'Advies & begeleiding (%)',ph:'bijv. 20',doc:false,req:false},
@@ -408,12 +408,6 @@ function autoFillFromExtraction(faseId, velden, fileName) {
     setIfEmpty('financieel_kostenMarketing',velden.kosten_marketing_pct);
   }
   if(faseId==='partner'&&velden.fte&&velden.fte!=='null')S.data['partner_fte']=String(velden.fte);
-  if(fileName){
-    var f=FASES.find(function(x){return x.id===faseId;});
-    if(f)f.dataFields.forEach(function(df){
-      if(df.doc){var rk=faseId+'_'+df.id;if(!(S.docRefs[rk]||'').trim())S.docRefs[rk]=fileName;}
-    });
-  }
 }
 
 async function consolideerAnalyse(faseId){
