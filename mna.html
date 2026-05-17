@@ -1,5 +1,23 @@
 <!DOCTYPE html>
-<html lang="nl">
+<html lang="n
+      +'<div style="margin-top:1.5rem;padding:1.25rem;background:var(--card);border:1px solid var(--border);border-radius:var(--r2)">'
+      +'<div style="font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--teal);margin-bottom:.75rem">Gebruiksinstructie &amp; definities</div>'
+      +'<p style="font-size:13px;color:var(--mid);line-height:1.7;margin-bottom:.75rem"><strong style="color:var(--sub)">Hoe werkt het?</strong> Doorloop de zeven fasen via de tabbladen bovenaan. Vul per fase de gevraagde gegevens in — uw voortgang wordt automatisch opgeslagen. Documenten uploadt u direct via het uploadvenster naast de velden; de AI analyseert ze en vult gegevens waar mogelijk automatisch in.</p>'
+      +'<p style="font-size:13px;color:var(--mid);line-height:1.7;margin-bottom:.75rem">Verplichte velden zijn gemarkeerd met <span style="color:var(--red);font-weight:700">*</span>. Optionele velden verrijken de analyse maar zijn niet vereist.</p>'
+      +'<div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem">Definities</div>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:5px 1.5rem">'
+      +'<div style="font-size:12px;color:var(--mid);padding:4px 0;border-bottom:1px solid var(--border)"><strong style="color:var(--sub)">EBITDA-marge</strong> — Winst vóór rente, belasting en afschrijving als % van omzet. Sectorgemiddelde: 20–30%.</div>'
+      +'<div style="font-size:12px;color:var(--mid);padding:4px 0;border-bottom:1px solid var(--border)"><strong style="color:var(--sub)">OHW / Onderhanden werk</strong> — Gewerkte uren die nog niet zijn gefactureerd.</div>'
+      +'<div style="font-size:12px;color:var(--mid);padding:4px 0;border-bottom:1px solid var(--border)"><strong style="color:var(--sub)">Genormaliseerde EBITDA</strong> — EBITDA gecorrigeerd voor eenmalige posten en niet-marktconforme partnerbeloningen.</div>'
+      +'<div style="font-size:12px;color:var(--mid);padding:4px 0;border-bottom:1px solid var(--border)"><strong style="color:var(--sub)">Declarabiliteit</strong> — % van gewerkte uren dat wordt gefactureerd. Benchmark: 75–85%.</div>'
+      +'<div style="font-size:12px;color:var(--mid);padding:4px 0;border-bottom:1px solid var(--border)"><strong style="color:var(--sub)">Recurring omzet</strong> — Vaste terugkerende omzet op abonnements- of retainerbasis. PE-norm: &gt;60%.</div>'
+      +'<div style="font-size:12px;color:var(--mid);padding:4px 0;border-bottom:1px solid var(--border)"><strong style="color:var(--sub)">YTD (Year-to-Date)</strong> — Omzet of resultaat vanaf 1 januari tot heden in het lopende jaar.</div>'
+      +'<div style="font-size:12px;color:var(--mid);padding:4px 0;border-bottom:1px solid var(--border)"><strong style="color:var(--sub)">Wwft</strong> — Wet ter voorkoming van witwassen. Aantoonbare implementatie is vereist bij due diligence.</div>'
+      +'<div style="font-size:12px;color:var(--mid);padding:4px 0;border-bottom:1px solid var(--border)"><strong style="color:var(--sub)">STAK</strong> — Stichting Administratiekantoor; juridische structuur met certificaten i.p.v. aandelen.</div>'
+      +'<div style="font-size:12px;color:var(--mid);padding:4px 0;border-bottom:1px solid var(--border)"><strong style="color:var(--sub)">Partnerbeloning</strong> — Totale vergoeding aan eigenaren. Marktconform = vergelijkbaar met wat een medewerker in die rol zou verdienen.</div>'
+      +'<div style="font-size:12px;color:var(--mid);padding:4px 0;border-bottom:1px solid var(--border)"><strong style="color:var(--sub)">Due diligence (DD)</strong> — Diepgaand onderzoek naar alle aspecten van het kantoor ter voorbereiding op een transactie.</div>'
+      +'</div>'
+      +'</div>'l">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -32,6 +50,7 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--s
 .f input::placeholder,.f textarea::placeholder{color:var(--muted)}
 .data-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:1rem}
 @media(max-width:600px){.data-grid{grid-template-columns:1fr}}
+@media(max-width:760px){.fase-layout{grid-template-columns:1fr!important}}
 .sec-hdr{font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem;display:flex;align-items:center;gap:8px}
 .sec-hdr::after{content:'';flex:1;height:1px;background:var(--border)}
 .prog-bar{height:4px;background:var(--border2);border-radius:2px;overflow:hidden;margin-bottom:1.5rem}
@@ -93,7 +112,7 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--s
 .readonly-val.empty{color:var(--muted);font-style:italic}
 @keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
 .anim{animation:fadeUp .25s ease forwards}
-.upload-zone{border:2px dashed var(--border2);border-radius:var(--r2);padding:1.5rem;text-align:center;cursor:pointer;transition:all .2s;margin-bottom:1rem;background:var(--card)}
+.upload-zone{border:2px dashed var(--border2);border-radius:var(--r2);padding:1rem;text-align:center;cursor:pointer;transition:all .2s;margin-bottom:.75rem;background:var(--card)}
 .upload-zone:hover,.upload-zone.drag{border-color:var(--teal);background:var(--teal-bg)}
 .upload-zone input{display:none}
 .doc-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--r);padding:.75rem 1rem;margin-bottom:.5rem}
@@ -421,9 +440,9 @@ function renderDocumentSectie(faseId) {
 
   if (!isReadOnly) {
     uploadHtml = '<div class="upload-zone" id="upload-zone-' + faseId + '" data-fase="' + faseId + '" ondragover="event.preventDefault();this.classList.add(\'drag\')" ondragleave="this.classList.remove(\'drag\')" ondrop="event.preventDefault();this.classList.remove(\'drag\');handleDropUpload(event,' + JSON.stringify(faseId) + ')">'
-      + '<div style="font-size:24px;margin-bottom:.4rem">&#128196;</div>'
-      + '<div style="font-size:13px;font-weight:600;color:var(--mid);margin-bottom:.2rem">Klik om document te uploaden of sleep hier naartoe</div>'
-      + '<div style="font-size:11px;color:var(--muted)">PDF, Word, Excel, CSV &middot; max 20MB &middot; AI leest en analyseert automatisch</div>'
+      + '<div style="font-size:18px;margin-bottom:.3rem">&#128196;</div>'
+      + '<div style="font-size:12px;font-weight:600;color:var(--mid);margin-bottom:.1rem">Klik of sleep bestand</div>'
+      + '<div style="font-size:10px;color:var(--muted)">PDF, Word, Excel, CSV &middot; max 20MB</div>'
       + '</div>';
   }
 
@@ -523,7 +542,7 @@ function renderCover(){
   if(isVerkoper()){
     intro='<p>Geachte '+esc(t.contact_naam||'relatie')+',</p>'
       +'<p>In het kader van het '+esc(t.traject_type||'M&A')+'-traject voor <strong>'+esc(t.kantoor_naam)+'</strong> verzoek ik u onderstaande gegevens in te voeren via dit beveiligde platform. U kunt per fase de informatie invullen en tussentijds opslaan.</p>'
-      +'<p>Waar documentatie wordt gevraagd (gemarkeerd met &#128196;), kunt u het bestand direct uploaden via het uploadvenster onderaan elke fase. Ondersteunde bestandstypen: PDF, Word, Excel en CSV (max. 20 MB). De documenten worden automatisch geanalyseerd en relevante gegevens worden waar mogelijk direct ingevuld.</p>'
+      +'<p>Documenten uploadt u direct via het uploadvenster naast de velden. De AI analyseert ze automatisch.</p>'
       +'<p>Uw gegevens worden strikt vertrouwelijk behandeld.</p>'
       +'<div style="margin:1rem 0;padding:.75rem 1rem;background:var(--card);border:1px solid var(--border);border-radius:var(--r);font-size:11px;color:var(--muted);line-height:1.7">&#128274; <strong>Beveiliging &amp; AVG:</strong> Alle gegevens worden versleuteld via HTTPS verstuurd en opgeslagen op Cloudflare-servers in Europa (Frankfurt, EU). Uw gegevens worden uitsluitend gebruikt voor dit M&amp;A-traject en niet gedeeld met derden. Conform AVG heeft u recht op inzage, correctie en verwijdering. Zie ook onze <a href=\"privacy.html\" style=\"color:var(--teal)\">privacyverklaring</a>.</div>'
     +'<p>Met vriendelijke groet,<br><strong>Marcel Bisschops</strong><br><span style="font-size:12px;color:var(--muted)">Senior M&amp;A-adviseur &middot; Bisschops Financing BV<br>06 - 38 68 98 88 &middot; marcel@bisschopsfinancing.nl</span></p>';
@@ -643,7 +662,11 @@ function renderMain(){
     +ov
     +'<div style="font-family:Playfair Display,serif;font-size:1.1rem;color:var(--head);font-weight:600;margin-bottom:.2rem">'+f.num+'. '+f.title+'</div>'
     +'<div style="font-size:13px;color:var(--muted);margin-bottom:1.25rem">'+f.desc+'</div>'
-    +dataHtml+renderDocumentSectie(f.id)+extraHtml+nav+'</div>';
+    +'<div class="fase-layout" style="display:grid;grid-template-columns:1fr 340px;gap:1rem;align-items:start">'
+    +dataHtml
+    +renderDocumentSectie(f.id)
+    +'</div>'
+    +extraHtml+nav+'</div>';
 }
 
 function renderSummary(){
