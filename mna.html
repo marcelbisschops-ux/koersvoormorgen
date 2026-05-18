@@ -283,6 +283,7 @@ function saveCurrent(cb){
     if(df.header){return;}
     var el=ge('df_'+df.id);if(el)S.data[f.id+'_'+df.id]=el.value;
   });
+  // docRefs niet meer opgeslagen
   var nel=ge('notitie_'+f.id);if(nel)S.notities[f.id]=nel.value;
   clearTimeout(S.saveTimer);
   S.saveTimer=setTimeout(function(){
@@ -462,7 +463,7 @@ async function deleteDocument(docId, faseId) {
   });
   renderApp();
   try {
-    var resp = await fetch(WORKER + '/mna/document/delete/' + docId, { method: 'POST' });
+    var resp = await fetch(WORKER + '/mna/document/delete/' + docId, { method: 'POST', headers: {'Cache-Control': 'no-cache'} });
     var result = await resp.json();
     if(result.ok || resp.ok) {
       // Verwijder uit lokale state
@@ -644,10 +645,10 @@ function renderLogin(){
     +'<div style="min-height:60vh;display:flex;align-items:center;justify-content:center">'
     +'<div class="panel" style="max-width:420px;width:100%">'
     +'<div style="font-family:Playfair Display,serif;font-size:1.4rem;color:var(--head);font-weight:600;margin-bottom:.3rem">M&amp;A Begeleiding</div>'
-    +'<div style="font-size:13px;color:var(--muted);line-height:1.65;margin-bottom:1.5rem">Voer uw trajectcode in. Verkopers gebruiken de trajectcode, kopers de kopersscode. Beide codes ontvangt u van Marcel Bisschops.</div>'
+    +'<div style="font-size:13px;color:var(--muted);line-height:1.65;margin-bottom:1.5rem">Voer uw trajectcode in. Verkopers gebruiken de trajectcode, kopers de kopersscode. Beide codes ontvangt u van Bisschops Financing BV.</div>'
     +'<div class="f" style="margin-bottom:.75rem"><label>Trajectcode of koperscode</label>'
     +'<input type="text" id="l-code" placeholder="" style="text-transform:uppercase;letter-spacing:.15em;font-size:1.2rem;text-align:center;font-family:IBM Plex Mono,monospace" maxlength="7" autocomplete="off"></div>'
-    +'<div id="l-err" style="color:var(--red);font-size:12px;margin-bottom:.75rem;display:none">Code niet gevonden. Controleer uw code of neem contact op met Marcel Bisschops.</div>'
+    +'<div id="l-err" style="color:var(--red);font-size:12px;margin-bottom:.75rem;display:none">Code niet gevonden. Controleer uw code of neem contact op via marcel@bisschopsfinancing.nl.</div>'
     +'<div id="l-load" style="color:var(--muted);font-size:12px;margin-bottom:.75rem;display:none">Laden...</div>'
     +'<div style="display:flex;gap:10px"><button class="btn-ghost" onclick="window.location.href=\'index.html\'">Terug</button><button class="btn" id="l-btn">Inloggen</button></div>'
     +'<div style="margin-top:1.25rem;font-size:11px;color:var(--muted);padding-top:1rem;border-top:1px solid var(--border)">Code ontvangen via Marcel Bisschops &middot; <a href="mailto:marcel@bisschopsfinancing.nl" style="color:var(--teal)">marcel@bisschopsfinancing.nl</a></div>'
@@ -742,17 +743,15 @@ function renderMain(){
       return;
     }
     var val=S.data[f.id+'_'+df.id]||'';
-    var ref=S.docRefs[f.id+'_'+df.id]||'';
     var missing=S.showValidation&&df.req&&!val.trim();
     dataHtml+='<div>';
     if(isRO){
-      dataHtml+='<div class="f"><label>'+df.label+(df.req?' <span class="req">*</span>':'')+(df.doc?' &#128196;':'')+'</label>'
-        +'<div class="readonly-val'+(val?'':' empty')+'>'+(val?esc(val):'Niet ingevuld')+(ref?'<span style="color:var(--gold);font-size:11px;margin-left:8px">&#128196; '+esc(ref)+'</span>':'')+'</div></div>';
+      dataHtml+='<div class="f"><label>'+df.label+(df.req?' <span class="req">*</span>':'')+'</label>'
+        +'<div class="readonly-val'+(val?'':' empty')+'>'+(val?esc(val):'Niet ingevuld')+'</div></div>';
     }else{
-      dataHtml+='<div class="f"><label>'+df.label+(df.req?' <span class="req">*</span>':'')+(df.doc?' <span style="color:var(--gold);font-size:9px">&#128196; ref</span>':'')+'</label>'
+      dataHtml+='<div class="f"><label>'+df.label+(df.req?' <span class="req">*</span>':'')+'</label>'
         +'<input type="text" id="df_'+df.id+'" value="'+esc(val)+'" placeholder="'+esc(df.ph)+'" class="'+(missing?'missing':'')+'" oninput="schedSave()"></div>';
-      if(df.doc)dataHtml+='<div class="f" style="margin-top:3px"><label style="font-size:9px;color:var(--gold)">Documentreferentie / bestandsnaam</label>'
-        +'<input type="text" id="dr_'+df.id+'" value="'+esc(ref)+'" placeholder="bijv. jaarrekening_2023.pdf" oninput="schedSave()"></div>';
+
     }
     dataHtml+='</div>';
   });
