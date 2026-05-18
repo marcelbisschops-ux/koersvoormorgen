@@ -359,9 +359,15 @@ async function uploadDocument(faseId, file) {
       });
       // Auto-fill fields from extraction, re-render, dan save
       if (d.veld_extractie) {
+        S._conflicts = [];
         autoFillFromExtraction(faseId, d.veld_extractie);
-        renderApp();
-        schedSave();
+        if(S._conflicts && S._conflicts.length) {
+          renderApp();
+          setTimeout(toonConflictDialog, 300);
+        } else {
+          renderApp();
+          schedSave();
+        }
       }
     } else {
       DOCS[faseId] = DOCS[faseId].filter(function(x){ return x.id !== tempId; });
@@ -374,11 +380,27 @@ async function uploadDocument(faseId, file) {
   renderApp();
 }
 
-function autoFillFromExtraction(faseId, velden) {
+function autoFillFromExtraction(faseId, velden, forceOverwrite) {
+  function setVal(key, val) {
+    if(val && val!=='null' && val!==null && String(val).trim()!=='')
+      S.data[key]=String(val);
+  }
   function setIfEmpty(key, val) {
     if(val && val!=='null' && val!==null && String(val).trim()!=='' && !(S.data[key]||'').trim())
       S.data[key]=String(val);
   }
+  function applyOrConflict(key, val, label) {
+    if(!val || val==='null' || val===null || String(val).trim()==='') return;
+    var newVal = String(val);
+    var existing = (S.data[key]||'').trim();
+    if(!existing) { S.data[key]=newVal; return; }
+    if(existing===newVal) return;
+    if(forceOverwrite) { S.data[key]=newVal; return; }
+    // Conflict - bewaar voor later
+    if(!S._conflicts) S._conflicts=[];
+    S._conflicts.push({key:key, label:label, huidig:existing, nieuw:newVal});
+  }
+
   if(faseId==='financieel'){
     if(!S._opy)S._opy={};
     var opy=velden.omzet_per_jaar;
@@ -397,7 +419,11 @@ function autoFillFromExtraction(faseId, velden) {
     if(yrs.length){
       var toFill=yrs.slice(-3);
       var flds=['omzet1','omzet2','omzet3'].slice(3-toFill.length);
-      toFill.forEach(function(yr,i){var w=S._opy[String(yr)];if(w)S.data['financieel_'+flds[i]]=String(w);});
+      var flabels=['Jaaromzet jaar 1 (oudste)','Jaaromzet jaar 2','Jaaromzet jaar 3 (meest recent)'].slice(3-toFill.length);
+      toFill.forEach(function(yr,i){
+        var w=S._opy[String(yr)];
+        if(w) applyOrConflict('financieel_'+flds[i], w, flabels[i]+' ('+yr+')');
+      });
     }
     if(!S._epy)S._epy={};
     var ebitdaVal=velden.ebitda_pct;
@@ -405,22 +431,63 @@ function autoFillFromExtraction(faseId, velden) {
       var eJaar=velden.boekjaar?String(Number(velden.boekjaar)):'0';
       if(!S._epy[eJaar])S._epy[eJaar]=ebitdaVal;
       var eys=Object.keys(S._epy).map(Number).filter(function(j){return!isNaN(j);}).sort(function(a,b){return b-a;});
-      if(eys.length)S.data['financieel_ebitda']=String(S._epy[String(eys[0])]);
+      if(eys.length) applyOrConflict('financieel_ebitda', S._epy[String(eys[0])], 'EBITDA-marge (%)');
     }
-    if(velden.ohw&&velden.ohw!=='null')S.data['financieel_wip']=String(velden.ohw);
-    if(velden.debiteuren&&velden.debiteuren!=='null')S.data['financieel_debiteuren']=String(velden.debiteuren);
-    setIfEmpty('financieel_ebitdaNorm',velden.resultaat);
-    setIfEmpty('financieel_omzetJaarwerk',velden.omzet_jaarwerk_pct);
-    setIfEmpty('financieel_omzetAdvies',velden.omzet_advies_pct);
-    setIfEmpty('financieel_omzetLoon',velden.omzet_loon_pct);
-    setIfEmpty('financieel_omzetFiscaal',velden.omzet_fiscaal_pct);
-    setIfEmpty('financieel_omzetOverig',velden.omzet_overig_pct);
-    setIfEmpty('financieel_kostenPersoneel',velden.kosten_personeel_pct);
-    setIfEmpty('financieel_kostenHuisvesting',velden.kosten_huisvesting_pct);
-    setIfEmpty('financieel_kostenIT',velden.kosten_it_pct);
-    setIfEmpty('financieel_kostenMarketing',velden.kosten_marketing_pct);
+    if(velden.ohw&&velden.ohw!=='null') applyOrConflict('financieel_wip', velden.ohw, 'Onderhanden werk');
+    if(velden.debiteuren&&velden.debiteuren!=='null') applyOrConflict('financieel_debiteuren', velden.debiteuren, 'Debiteuren totaal');
+    applyOrConflict('financieel_ebitdaNorm', velden.resultaat, 'Genormaliseerde EBITDA');
+    applyOrConflict('financieel_omzetJaarwerk', velden.omzet_jaarwerk_pct, 'Jaarwerk & samenstellen (%)');
+    applyOrConflict('financieel_omzetAdvies', velden.omzet_advies_pct, 'Advies & begeleiding (%)');
+    applyOrConflict('financieel_omzetLoon', velden.omzet_loon_pct, 'Loonadministratie (%)');
+    applyOrConflict('financieel_omzetFiscaal', velden.omzet_fiscaal_pct, 'Fiscaal (%)');
+    applyOrConflict('financieel_omzetOverig', velden.omzet_overig_pct, 'Overig (%)');
+    applyOrConflict('financieel_kostenPersoneel', velden.kosten_personeel_pct, 'Personeelskosten (%)');
+    applyOrConflict('financieel_kostenHuisvesting', velden.kosten_huisvesting_pct, 'Huisvesting (%)');
+    applyOrConflict('financieel_kostenIT', velden.kosten_it_pct, 'IT & automatisering (%)');
+    applyOrConflict('financieel_kostenMarketing', velden.kosten_marketing_pct, 'Marketing (%)');
   }
-  if(faseId==='partner'&&velden.fte&&velden.fte!=='null')S.data['partner_fte']=String(velden.fte);
+  if(faseId==='partner'&&velden.fte&&velden.fte!=='null') applyOrConflict('partner_fte', velden.fte, 'Totaal FTE');
+}
+
+function toonConflictDialog() {
+  if(!S._conflicts||!S._conflicts.length) return;
+  var conflicts = S._conflicts;
+  S._conflicts = [];
+
+  var overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;display:flex;align-items:center;justify-content:center;padding:1.5rem';
+  var html = '<div style="background:var(--panel);border:1px solid var(--border2);border-radius:var(--r2);padding:1.75rem;max-width:520px;width:100%;max-height:85vh;overflow-y:auto">';
+  html += '<div style="font-family:Playfair Display,serif;font-size:1.1rem;color:var(--head);font-weight:600;margin-bottom:.35rem">Afwijkende waarden gevonden</div>';
+  html += '<div style="font-size:13px;color:var(--mid);margin-bottom:1.25rem">Het nieuwe document bevat waarden die afwijken van eerder ingevulde gegevens. Kies per veld welke waarde u wilt gebruiken.</div>';
+  html += '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:1.25rem">';
+  conflicts.forEach(function(c, i) {
+    html += '<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px">';
+    html += '<div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px">'+c.label+'</div>';
+    html += '<div style="display:flex;gap:8px;flex-wrap:wrap">';
+    html += '<label style="flex:1;min-width:140px;display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;padding:7px 10px;border:1px solid var(--border2);border-radius:var(--r);background:var(--panel)">';
+    html += '<input type="radio" name="conflict_'+i+'" value="huidig" checked style="accent-color:var(--teal)"> <span style="color:var(--mid)">Huidig: <strong style="color:var(--sub)">'+c.huidig+'</strong></span></label>';
+    html += '<label style="flex:1;min-width:140px;display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;padding:7px 10px;border:1px solid var(--teal-dark);border-radius:var(--r);background:var(--teal-bg)">';
+    html += '<input type="radio" name="conflict_'+i+'" value="nieuw" style="accent-color:var(--teal)"> <span style="color:var(--mid)">Nieuw: <strong style="color:var(--teal-dim)">'+c.nieuw+'</strong></span></label>';
+    html += '</div></div>';
+  });
+  html += '</div>';
+  html += '<div style="display:flex;gap:10px;justify-content:flex-end">';
+  html += '<button id="conflict-huidig-all" class="btn-ghost" style="font-size:12px">Alles behouden</button>';
+  html += '<button id="conflict-apply" class="btn" style="font-size:12px">Toepassen</button>';
+  html += '</div></div>';
+  overlay.innerHTML = html;
+  document.body.appendChild(overlay);
+
+  document.getElementById('conflict-huidig-all').onclick = function() { overlay.remove(); };
+  document.getElementById('conflict-apply').onclick = function() {
+    conflicts.forEach(function(c, i) {
+      var sel = overlay.querySelector('input[name="conflict_'+i+'"]:checked');
+      if(sel && sel.value === 'nieuw') S.data[c.key] = c.nieuw;
+    });
+    overlay.remove();
+    renderApp();
+    schedSave();
+  };
 }
 
 async function consolideerAnalyse(faseId){
