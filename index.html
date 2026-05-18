@@ -631,11 +631,9 @@ function rGroupCreated(){
     + `<button class="btn-adv" id="copy-code-btn" style="flex:1;font-size:13px">Kopieer code</button>`
     + `<button class="btn-ghost" id="save-code-btn" style="flex:1;font-size:12px">&#8681; Opslaan als bestand</button>`
     + `</div>`
-    + `<div style="display:flex;gap:8px;margin-bottom:1.75rem">`
-    + `<input type="email" id="email-code-input" placeholder="uw@email.nl" style="flex:1;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:'IBM Plex Sans',sans-serif;font-size:13px;padding:9px 12px;outline:none">`
-    + `<button class="btn-ghost" id="email-code-btn" style="white-space:nowrap;font-size:12px">&#9993; Stuur code</button>`
+    + `<div style="margin-bottom:1.75rem">`
+    + `<button class="btn-ghost" id="email-code-btn" style="width:100%;font-size:12px">&#9993; Stuur code naar mijzelf</button>`
     + `</div>`
-    + `<div id="email-code-status" style="font-size:12px;color:var(--teal);margin-bottom:1rem;display:none">&#10003; Verstuurd</div>`
     + `<div style="display:flex;gap:8px;padding-top:1rem;border-top:1px solid var(--border)">`
     + `<button class="btn-adv" id="view-dashboard-btn" style="flex:1">Bekijk dashboard &#8594;</button>`
     + `</div>`
@@ -729,25 +727,12 @@ function bindEvents(){
     const a=document.createElement('a');a.href=url;a.download='kantoorinzicht-code-'+code+'.txt';
     document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
   });
-  on('email-code-btn','click',async()=>{
-    const emailEl=document.getElementById('email-code-input');
-    const email=(emailEl||{}).value?.trim();
-    if(!email||!/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(email)){if(emailEl)emailEl.focus();return;}
-    const btn=document.getElementById('email-code-btn');
+  on('email-code-btn','click',()=>{
     const code=ST.groupId||'';
     const naam=(ST.groupData&&ST.groupData.group&&ST.groupData.group.name)||'Groep';
-    if(btn){btn.disabled=true;btn.textContent='Versturen...';}
-    try{
-      await fetch(WORKER+'/callback',{method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({naam:'Groepsbeheerder',email,tel:'',tijd:'',
-          kantoor:{naam:'[KantoorInzicht] Groepscode: '+code+' ('+naam+')'},scores:{},totaal:0,scenario:'Groepscode bewaren'})});
-      const st=document.getElementById('email-code-status');
-      if(st)st.style.display='block';
-      if(btn)btn.textContent='Verstuurd';
-    }catch(e){
-      if(btn){btn.disabled=false;btn.textContent='\u2709 Stuur code';}
-      alert('Kon niet versturen. Kopieer de code handmatig.');
-    }
+    const onderwerp=encodeURIComponent('KantoorInzicht groepscode — '+naam);
+    const body=encodeURIComponent('Groep: '+naam+'\nCode: '+code+'\n\nDeelnemers: https://koersvoormorgen.nl \u2192 Deelnemen aan groep\nDashboard: https://koersvoormorgen.nl \u2192 Dashboard bekijken');
+    window.location.href='mailto:?subject='+onderwerp+'&body='+body;
   });
   on('do-join-group','click',()=>{
     const code=$('gj-code')?.value?.trim().toUpperCase();
