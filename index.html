@@ -568,6 +568,24 @@ async function generateAI(){
     ST.aiText=collected;
     updateAI(true);
 
+    // Sla rapport op in database
+    fetch(WORKER+'/rapport/save',{method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        scan_id:ST.savedScanId||'',
+        email:(ST.profile&&ST.profile.email)||'',
+        kantoor_naam:(ST.profile&&ST.profile.naam)||'',
+        overall:ST.scores?overall(ST.scores):0,
+        scores:ST.scores||{},
+        top_scenario:ST.scenarios&&ST.scenarios[0]?ST.scenarios[0].name:'',
+        ambitie:(ST.profile&&ST.profile.ambitie)||'',
+        regio:(ST.profile&&ST.profile.regio)||'',
+        fte:(ST.profile&&ST.profile.fte)||'',
+        omzet:(ST.profile&&ST.profile.omzet)||'',
+        rapport_tekst:collected
+      })
+    }).catch(()=>{});
+
     // Track rapport usage (limiet: 5x per e-mail+IP)
     const profileEmail=(ST.profile&&ST.profile.email)||'';
     if(profileEmail){
