@@ -731,6 +731,17 @@ function renderDataroom(){
   return html;
 }
 
+
+function uitloggen(){
+  // Volledige state reset
+  Object.keys(DOCS).forEach(function(k){delete DOCS[k];});
+  S={screen:'login',code:'',rol:'',traject:null,fase:0,checked:{},data:{},
+    docRefs:{},notities:{},aiTexts:{},aiLoading:{},saveTimer:null,
+    showValidation:false,dataroomLoading:false,dataroom:null,
+    _opy:{},_epy:{},_conflicts:[]};
+  renderApp();
+}
+
 function renderApp(){
   var app=ge('app');
   if(S.screen==='login')app.innerHTML=renderLogin();
@@ -744,7 +755,7 @@ function renderApp(){
 function renderLogin(){
   return '<div class="wrap narrow anim" style="padding-top:3rem">'
     +'<div class="hdr"><div class="brand"><div class="wdot"></div>KantoorInzicht</div>'
-    +'<a href="index.html" style="font-size:11px;color:var(--muted);text-decoration:none">&#8592; Terug naar scan</a></div>'
+    +'<div style="display:flex;gap:8px"><a href="index.html" style="font-size:11px;color:var(--muted);text-decoration:none">&#8592; Scan</a></div></div>'
     +'<div style="min-height:60vh;display:flex;align-items:center;justify-content:center">'
     +'<div class="panel" style="max-width:420px;width:100%">'
     +'<div style="font-family:Playfair Display,serif;font-size:1.4rem;color:var(--head);font-weight:600;margin-bottom:.3rem">M&amp;A Begeleiding</div>'
@@ -802,7 +813,9 @@ function renderCover(){
 
   return '<div class="wrap anim">'
     +'<div class="hdr"><div class="brand"><div class="wdot"></div>KantoorInzicht &middot; M&amp;A</div>'
-    +'<div style="display:flex;gap:8px"><button class="btn-ghost btn-sm" onclick="window.print()">PDF afdrukken</button>'
+    +'<div style="display:flex;gap:8px">'
+    +'<button class="btn-ghost btn-sm" onclick="uitloggen()" style="color:var(--muted)">&#8592; Ander traject</button>'
+    +'<button class="btn-ghost btn-sm" onclick="window.print()">PDF afdrukken</button>'
     +(isVerkoper()?'<button class="btn btn-sm" id="to-main-btn">Start invullen &#8594;</button>'
     :isTussen()?(t.koper_vrijgegeven
         ?'<button class="btn-ghost btn-sm" id="intrekken-btn">&#128275; Vrijgave intrekken</button>'
@@ -903,9 +916,11 @@ function renderMain(){
   return '<div class="wrap anim">'
     +'<div class="hdr"><div class="brand"><div class="wdot"></div>KantoorInzicht &middot; M&amp;A'+(isKoper()?' (koper-view)':isVerkoper()?' (invullen)':isTussen()?' (tussenpersoon-view)':'')+'</div>'
     +'<div style="display:flex;align-items:center;gap:8px">'
+    +'<div style="display:flex;align-items:center;gap:8px">'
     +'<span style="font-size:11px;color:var(--muted)">'+esc(S.traject&&S.traject.kantoor_naam||S.code)+'</span>'
     +'<button class="btn-ghost btn-sm" onclick="window.print()">PDF</button>'
     +(isTussen()?'<button class="btn-ghost btn-sm" onclick="S.screen=\'dataroom\';loadDataroom()">&#128451; Dataroom</button>':'')
+    +'<button class="btn-ghost btn-sm" onclick="uitloggen()" style="color:var(--muted)">&#8592; Ander traject</button>'
     +'</div></div>'
     +lockedBanner
     +'<div style="font-family:Playfair Display,serif;font-size:1.4rem;color:var(--head);font-weight:600;margin-bottom:.25rem">'+esc(S.traject&&S.traject.kantoor_naam||'')+'</div>'
