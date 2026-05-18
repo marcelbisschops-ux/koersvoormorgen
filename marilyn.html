@@ -80,7 +80,7 @@ tr:hover td{background:var(--card)}
 </div>
 <script>
 const WORKER='https://kantoorinzicht.marcel-bisschops.workers.dev';
-let adminKey='',scans=[],callbacks=[],mnaList=[],activeTab='scans',scanFilter='',openRow=null;
+let adminKey='',scans=[],callbacks=[],mnaList=[],rapporten=[],activeTab='scans',scanFilter='',openRow=null;
 
 function dc(v){return v>=70?'score-high':v>=50?'score-mid':'score-low';}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
@@ -104,15 +104,17 @@ async function doLogin(){
   if(!key)return;
   var btn=document.getElementById('login-btn');btn.disabled=true;btn.textContent='Laden...';
   try{
-    var [r1,r2,r3]=await Promise.all([
+    var [r1,r2,r3,r4]=await Promise.all([
       fetch(WORKER+'/admin/scans?key='+encodeURIComponent(key)),
       fetch(WORKER+'/admin/callbacks?key='+encodeURIComponent(key)),
-      fetch(WORKER+'/mna/admin/lijst?key='+encodeURIComponent(key))
+      fetch(WORKER+'/mna/admin/lijst?key='+encodeURIComponent(key)),
+      fetch(WORKER+'/admin/rapporten?key='+encodeURIComponent(key))
     ]);
     if(!r1.ok)throw new Error('unauthorized');
     scans=await r1.json();
     callbacks=await r2.json();
     mnaList=r3.ok?await r3.json():[];
+    rapporten=r4.ok?await r4.json():[];
     adminKey=key;
     document.getElementById('hdr-actions').style.display='flex';
     document.getElementById('btn-refresh').addEventListener('click',refreshData);
@@ -132,14 +134,16 @@ function logout(){
 
 async function refreshData(){
   try{
-    var [r1,r2,r3]=await Promise.all([
+    var [r1,r2,r3,r4]=await Promise.all([
       fetch(WORKER+'/admin/scans?key='+encodeURIComponent(adminKey)),
       fetch(WORKER+'/admin/callbacks?key='+encodeURIComponent(adminKey)),
-      fetch(WORKER+'/mna/admin/lijst?key='+encodeURIComponent(adminKey))
+      fetch(WORKER+'/mna/admin/lijst?key='+encodeURIComponent(adminKey)),
+      fetch(WORKER+'/admin/rapporten?key='+encodeURIComponent(adminKey))
     ]);
     scans=await r1.json();
     callbacks=await r2.json();
     mnaList=r3.ok?await r3.json():[];
+    rapporten=r4.ok?await r4.json():[];
     renderDashboard();
   }catch(e){alert('Kon niet verversen.');}
 }
@@ -161,12 +165,14 @@ function renderDashboard(){
     +'<button class="tab'+(activeTab==='callbacks'?' active':'')+'" id="t-cb">Terugbelverzoeken ('+callbacks.length+')</button>'
     +'<button class="tab'+(activeTab==='mna'?' active':'')+'" id="t-mna">M&A Trajecten ('+mnaList.length+')</button>'
     +'<button class="tab'+(activeTab==='docs'?' active':'')+'" id="t-docs">Documenten</button>'
+    +'<button class="tab'+(activeTab==='scans'?' active':'')+'" id="t-rapp">Scan rapporten ('+rapporten.length+')</button>'
     +'</div>'
     +'<div id="tc"></div>';
   document.getElementById('t-scans').addEventListener('click',function(){activeTab='scans';scanFilter='';openRow=null;renderDashboard();});
   document.getElementById('t-cb').addEventListener('click',function(){activeTab='callbacks';renderDashboard();});
   document.getElementById('t-mna').addEventListener('click',function(){activeTab='mna';renderDashboard();});
   document.getElementById('t-docs').addEventListener('click',function(){activeTab='docs';renderDashboard();});
+  document.getElementById('t-rapp').addEventListener('click',function(){activeTab='rapporten';renderDashboard();});
   renderTab();
 }
 
@@ -175,7 +181,8 @@ function renderTab(){
   if(activeTab==='scans')renderScansTab(el);
   else if(activeTab==='callbacks')renderCallbacksTab(el);
   else if(activeTab==='mna')renderMnaTab(el);
-  else renderDocsTab(el);
+  else if(activeTab==='docs')renderDocsTab(el);
+  else renderRapportenTab(el);
 }
 
 // SCANS TAB
@@ -338,6 +345,7 @@ function renderMnaTab(el){
 async function renderDocsTab(el){
   el.innerHTML='<div class="table-wrap"><div class="table-hdr"><div class="table-title">MNA Documenten</div>'
     +'<div style="display:flex;gap:8px">'
+    +'<input class="search-bar" id="doc-search" placeholder="Zoek traject of bestand..." style="width:180px">'
     +'<button class="btn" style="font-size:12px;padding:7px 14px" id="btn-load-docs">&#8635; Laden</button>'
     
     +'</div></div>'
@@ -369,11 +377,14 @@ async function renderDocsTab(el){
           +(vergr
             ?'<button class="btn-ghost btn-ontv-doc" data-id="'+d.id+'" style="font-size:11px;padding:3px 8px;color:var(--teal)">&#128275;</button>'
             :'<button class="btn-ghost btn-verg-doc" data-id="'+d.id+'" style="font-size:11px;padding:3px 8px;color:var(--gold)">&#128274;</button>')
+          +(!vergr?'<button class="btn-red btn-del-doc" data-id="'+d.id+'" style="font-size:10px;padding:2px 6px">&#10005;</button>':'')
           +'</td>'
           +'</tr>';
       });
       html+='</tbody></table>';
       db.innerHTML=html;
+      var ds=document.getElementById('doc-search');if(ds)ds.addEventListener('input',function(){var q=this.value.toLowerCase();db.querySelectorAll('tr').forEach(function(r){r.style.display=r.textContent.toLowerCase().includes(q)?'':'none';});});
+      db.querySelectorAll('.btn-del-doc').forEach(function(b){b.addEventListener('click',function(){verwijderDoc(b.dataset.id);});});
       db.querySelectorAll('.btn-verg-doc').forEach(function(b){
         b.addEventListener('click',function(){vergrendelDoc(b.dataset.id,true);});
       });
@@ -382,6 +393,91 @@ async function renderDocsTab(el){
       });
     }catch(e){db.textContent='Fout bij laden: '+e.message;}
   });
+}
+
+
+function renderRapportenTab(el){
+  var html='<div class="table-wrap"><div class="table-hdr"><div class="table-title">Scan rapporten</div>'
+    +'<div style="display:flex;gap:8px;align-items:center">'
+    +'<input class="search-bar" id="rapp-search" placeholder="Zoek op kantoor..." style="width:180px">'
+    +'<button class="btn" style="font-size:12px;padding:7px 14px" id="btn-ref-rapp">&#8635; Verversen</button>'
+    +'</div></div>';
+  if(!rapporten.length){
+    html+='<div class="empty">Nog geen rapporten. Worden opgeslagen zodra een gebruiker het AI-advies genereert.</div>';
+  } else {
+    html+='<table><thead><tr><th>Datum</th><th>Kantoor</th><th>Regio</th><th>Score</th><th>Scenario</th><th>Ambitie</th><th>Omzet</th><th></th></tr></thead><tbody>';
+    rapporten.forEach(function(r){
+      html+='<tr class="rapp-row">'
+        +'<td class="mono" style="font-size:11px;white-space:nowrap">'+formatDate(r.created_at)+'</td>'
+        +'<td style="font-weight:500;color:var(--head)">'+esc(r.kantoor_naam||'Anoniem')+'</td>'
+        +'<td>'+esc(r.regio||'—')+'</td>'
+        +'<td><span class="score-badge '+dc(r.overall)+'">'+(r.overall||'—')+'</span></td>'
+        +'<td><span class="tag" style="font-size:9px">'+esc((r.top_scenario||'—').split(' ').slice(0,2).join(' '))+'</span></td>'
+        +'<td style="font-size:11px">'+esc(r.ambitie||'—')+'</td>'
+        +'<td class="mono" style="font-size:11px">'+esc(r.omzet||'—')+'</td>'
+        +'<td style="white-space:nowrap;display:flex;gap:4px">'
+        +'<button class="btn-ghost btn-lees-rapp" data-id="'+r.id+'" style="font-size:11px;padding:3px 8px">&#128065; Lees</button>'
+        +'<button class="btn-red btn-del-rapp" data-id="'+r.id+'" style="font-size:10px;padding:2px 6px">&#10005;</button>'
+        +'</td></tr>';
+    });
+    html+='</tbody></table>';
+  }
+  html+='</div>';
+  el.innerHTML=html;
+  var rb=document.getElementById('btn-ref-rapp');
+  if(rb)rb.addEventListener('click',async function(){var r=await fetch(WORKER+'/admin/rapporten?key='+encodeURIComponent(adminKey));rapporten=r.ok?await r.json():[];renderDashboard();});
+  var rs=document.getElementById('rapp-search');
+  if(rs)rs.addEventListener('input',function(){var q=this.value.toLowerCase();el.querySelectorAll('.rapp-row').forEach(function(r){r.style.display=r.textContent.toLowerCase().includes(q)?'':'none';});});
+  el.querySelectorAll('.btn-del-rapp').forEach(function(b){b.addEventListener('click',function(){verwijderRapport(b.dataset.id);});});
+  el.querySelectorAll('.btn-lees-rapp').forEach(function(b){b.addEventListener('click',function(){leesRapport(b.dataset.id);});});
+}
+
+async function leesRapport(id){
+  var ov=document.createElement('div');ov.className='overlay';
+  var mo=document.createElement('div');mo.className='modal';mo.style.maxWidth='800px';
+  mo.innerHTML='<div class="modal-title">Laden...</div>'
+    +'<div id="rapp-body" style="font-size:13px;color:var(--mid);line-height:1.8;max-height:65vh;overflow-y:auto;margin-bottom:1rem"></div>'
+    +'<div style="display:flex;justify-content:flex-end"><button class="btn-ghost" id="rapp-sluit">Sluiten</button></div>';
+  ov.appendChild(mo);document.body.appendChild(ov);
+  ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
+  document.getElementById('rapp-sluit').addEventListener('click',function(){document.body.removeChild(ov);});
+  try{
+    var r=await fetch(WORKER+'/admin/rapport/'+id+'?key='+encodeURIComponent(adminKey));
+    var d=await r.json();
+    mo.querySelector('.modal-title').textContent=(d.kantoor_naam||'Rapport')+' — score '+d.overall+' — '+formatDate(d.created_at);
+    var rb=document.getElementById('rapp-body');
+    if(d.rapport_tekst){
+      var txt=d.rapport_tekst
+        .replace(/## (.+)/g,'<h3 style="font-family:Playfair Display,serif;font-size:1rem;color:var(--head);font-weight:600;margin:1.25rem 0 .5rem;border-top:1px solid var(--border);padding-top:1rem">$1</h3>')
+        .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+      txt=txt.split('\n\n').map(function(p){p=p.trim();if(!p||p.startsWith('<'))return p;return '<p>'+p+'</p>';}).join('');
+
+
+      rb.innerHTML=txt;
+    } else {
+      rb.textContent='Geen rapport tekst.';
+    }
+  }catch(e){document.getElementById('rapp-body').textContent='Fout: '+e.message;}
+}
+
+async function verwijderRapport(id){
+  if(!confirm('Rapport permanent verwijderen?'))return;
+  try{
+    var r=await fetch(WORKER+'/admin/delete/rapport/'+id+'?key='+encodeURIComponent(adminKey),{method:'POST'});
+    var d=await r.json();
+    if(d.ok){rapporten=rapporten.filter(function(x){return x.id!==id;});renderDashboard();}
+    else alert('Fout: '+(d.error||'onbekend'));
+  }catch(e){alert('Verbindingsfout.');}
+}
+
+async function verwijderDoc(id){
+  if(!confirm('Document permanent verwijderen?'))return;
+  try{
+    var r=await fetch(WORKER+'/mna/document/delete/'+id+'?key='+encodeURIComponent(adminKey),{method:'POST'});
+    var d=await r.json();
+    if(d.ok){document.getElementById('btn-load-docs').click();}
+    else alert('Fout: '+(d.error||'onbekend'));
+  }catch(e){alert('Verbindingsfout.');}
 }
 
 async function vergrendelDoc(id,lock){
