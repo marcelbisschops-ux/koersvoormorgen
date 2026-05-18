@@ -413,10 +413,16 @@ function autoFillFromExtraction(faseId, velden, forceOverwrite) {
     }
     var yrs=Object.keys(S._opy).map(Number).filter(function(j){return!isNaN(j)&&j>1990&&j<2100;}).sort(function(a,b){return a-b;});
     if(yrs.length){
+      // Altijd opnieuw mappen - juiste jaar altijd op juiste positie
       var toFill=yrs.slice(-3);
-      var flds=['omzet1','omzet2','omzet3'].slice(3-toFill.length);
-      var flabels=['Jaaromzet jaar 1','Jaaromzet jaar 2','Jaaromzet jaar 3'].slice(3-toFill.length);
-      toFill.forEach(function(yr,i){var w=S._opy[String(yr)];if(w)setIfEmpty('financieel_'+flds[i],w);});
+      var allFlds=['omzet1','omzet2','omzet3'];
+      var usedFlds=allFlds.slice(3-toFill.length);
+      // Reset alle omzetvelden eerst
+      allFlds.forEach(function(f){
+        if(usedFlds.indexOf(f)<0)delete S.data['financieel_'+f];
+      });
+      // Vul correct in
+      toFill.forEach(function(yr,i){var w=S._opy[String(yr)];if(w)S.data['financieel_'+usedFlds[i]]=String(w);});
     }
     if(!S._epy)S._epy={};
     var ev=velden.ebitda_pct;
