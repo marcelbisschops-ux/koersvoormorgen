@@ -457,33 +457,13 @@ async function consolideerAnalyse(faseId){
 }
 
 async function deleteDocument(docId, faseId) {
-  // Markeer als 'deleting' voor visuele feedback
+  // Verwijder direct uit lokale state voor snelle feedback
   Object.keys(DOCS).forEach(function(fid) {
-    DOCS[fid].forEach(function(d){ if(d.id===docId)d.deleting=true; });
+    DOCS[fid] = DOCS[fid].filter(function(d){ return d.id !== docId; });
   });
   renderApp();
-  try {
-    var resp = await fetch(WORKER + '/mna/document/delete/' + docId, { method: 'POST', headers: {'Cache-Control': 'no-cache'} });
-    var result = await resp.json();
-    if(result.ok || resp.ok) {
-      // Verwijder uit lokale state
-      Object.keys(DOCS).forEach(function(fid) {
-        DOCS[fid] = DOCS[fid].filter(function(d){ return d.id !== docId; });
-      });
-    } else {
-      // Reset deleting state bij fout
-      Object.keys(DOCS).forEach(function(fid) {
-        DOCS[fid].forEach(function(d){ if(d.id===docId)d.deleting=false; });
-      });
-      alert('Verwijderen mislukt: ' + (result.error||'onbekend'));
-    }
-  } catch(e) {
-    Object.keys(DOCS).forEach(function(fid) {
-      DOCS[fid].forEach(function(d){ if(d.id===docId)d.deleting=false; });
-    });
-    alert('Verbindingsfout bij verwijderen.');
-  }
-  renderApp();
+  // Verwijder ook uit DB (op achtergrond)
+  fetch(WORKER + '/mna/document/delete/' + docId, { method: 'POST' }).catch(function(){});
 }
 
 function renderDocumentSectie(faseId) {
@@ -792,6 +772,9 @@ function renderMain(){
 
   var lockedBanner=vergrendeld?'<div style="background:var(--red-bg);border:1px solid var(--red);border-radius:var(--r);padding:10px 14px;margin-bottom:1rem;font-size:13px;color:var(--red)">&#128274; <strong>Dit traject is vergrendeld.</strong> U kunt geen wijzigingen meer doorvoeren.</div>':'';
 
+  var instrHtml = isVerkoper() ? '<div style="background:var(--teal-bg);border:1px solid var(--teal-dark);border-radius:var(--r);padding:10px 14px;margin-bottom:1rem;font-size:12px;color:var(--mid);line-height:1.65">'
+    + '<strong style="color:var(--teal-dim)">Invulinstructie:</strong> Upload de relevante documenten via het uploadvenster rechts. Velden worden zoveel mogelijk automatisch ingelezen vanuit uw documenten. '
+    + '<strong>Controleer alle automatisch ingevulde waarden</strong> &mdash; de geüploade documenten dienen als grondslag voor de due diligence. Velden die niet automatisch worden ingevuld, vult u zelf in.</div>' : '';
   return '<div class="wrap anim">'
     +'<div class="hdr"><div class="brand"><div class="wdot"></div>KantoorInzicht &middot; M&amp;A'+(isKoper()?' (koper-view)':isVerkoper()?' (invullen)':isTussen()?' (tussenpersoon-view)':'')+'</div>'
     +'<div style="display:flex;align-items:center;gap:8px">'
@@ -799,7 +782,7 @@ function renderMain(){
     +'<button class="btn-ghost btn-sm" onclick="window.print()">PDF</button>'
     +(isTussen()?'<button class="btn-ghost btn-sm" onclick="S.screen=\'dataroom\';loadDataroom()">&#128451; Dataroom</button>':'')
     +'</div></div>'
-    +lockedBanner
+    +lockedBanner+instrHtml
     +'<div style="font-family:Playfair Display,serif;font-size:1.4rem;color:var(--head);font-weight:600;margin-bottom:.25rem">'+esc(S.traject&&S.traject.kantoor_naam||'')+'</div>'
     +'<div style="font-size:13px;color:var(--muted);margin-bottom:1rem">Voortgang: <span style="font-family:IBM Plex Mono,monospace;color:'+(tp===100?'var(--teal)':tp>50?'var(--gold)':'var(--red)')+'">'+tp+'%</span></div>'
     +'<div class="prog-bar"><div class="prog-fill" style="width:'+tp+'%;background:'+(tp===100?'var(--teal)':tp>50?'var(--gold)':'var(--red)')+'"></div></div>'
