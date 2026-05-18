@@ -457,12 +457,11 @@ async function consolideerAnalyse(faseId){
 }
 
 async function deleteDocument(docId, faseId) {
-  // Verwijder direct uit lokale state voor snelle feedback
+  alert('Verwijder aangeroepen voor: ' + docId);
   Object.keys(DOCS).forEach(function(fid) {
     DOCS[fid] = DOCS[fid].filter(function(d){ return d.id !== docId; });
   });
   renderApp();
-  // Verwijder ook uit DB (op achtergrond)
   fetch(WORKER + '/mna/document/delete/' + docId, { method: 'POST' }).catch(function(){});
 }
 
