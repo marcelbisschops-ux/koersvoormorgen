@@ -254,7 +254,7 @@ var FASES=[
  redflags:['Te hoge afhankelijkheid samenstelpraktijk (AI-risico)','Geen duidelijke niche of marktpositie','Cultuurmismatch met koper','Beperkt integratiepotentieel']},
 ];
 
-var S={screen:'login',code:'',rol:'',traject:null,fase:0,checked:{},data:{},docRefs:{},notities:{},aiTexts:{},aiLoading:{},saveTimer:null,showValidation:false,dataroomLoading:false,dataroom:null,_opy:{},_epy:{},_conflicts:[]};
+var S={screen:'login',code:'',rol:'',traject:null,fase:0,checked:{},data:{},docRefs:{},notities:{},aiTexts:{},aiLoading:{},saveTimer:null,showValidation:false,dataroomLoading:false,dataroom:null,_opy:{},_epy:{},_conflicts:[],_userEdited:{}};
 
 function pct(id){var f=FASES.find(function(x){return x.id===id;});if(!f)return 0;var d=f.items.filter(function(_,i){return S.checked[id+'_'+i];}).length;return f.items.length?Math.round(d/f.items.length*100):0;}
 function fillPct(id){var f=FASES.find(function(x){return x.id===id;});if(!f)return 0;var req=f.dataFields.filter(function(df){return df.req;});var done=req.filter(function(df){return !!(S.data[id+'_'+df.id]||'').trim();}).length;return req.length?Math.round(done/req.length*100):100;}
@@ -281,7 +281,12 @@ function saveCurrent(cb){
   if(S.traject&&S.traject.status==='vergrendeld'){if(cb)cb();return;}
   f.dataFields.forEach(function(df){
     if(df.header){return;}
-    var el=ge('df_'+df.id);if(el)S.data[f.id+'_'+df.id]=el.value;
+    var el=ge('df_'+df.id);
+    if(el){
+      var key=f.id+'_'+df.id;
+      if(el.value.trim())S._userEdited[key]=true;
+      S.data[key]=el.value;
+    }
   });
   var nel=ge('notitie_'+f.id);if(nel)S.notities[f.id]=nel.value;
   clearTimeout(S.saveTimer);
@@ -386,6 +391,10 @@ function autoFillFromExtraction(faseId, velden, forceOverwrite) {
     if(!existing){S.data[key]=newVal;return;}
     if(existing===newVal)return;
     if(forceOverwrite){S.data[key]=newVal;return;}
+    // Alleen conflict tonen als de gebruiker dit veld zelf heeft ingevuld
+    if(!S._userEdited||!S._userEdited[key]){
+      S.data[key]=newVal;return; // Stil overschrijven als niet user-edited
+    }
     if(!S._conflicts)S._conflicts=[];
     S._conflicts.push({key:key,label:label,huidig:existing,nieuw:newVal});
   }
@@ -908,7 +917,7 @@ function bindAll(){
         S={screen:'cover',code:code,rol:d.rol||'verkoper',traject:d.traject,
           fase:0,checked:{},data:{},docRefs:{},notities:{},aiTexts:{},aiLoading:{},
           saveTimer:null,showValidation:false,dataroomLoading:false,dataroom:null,
-          _opy:{},_epy:{},_conflicts:[]};
+          _opy:{},_epy:{},_conflicts:[],_userEdited:{}};
         if(d.data&&d.data.length)loadDataFromDB(d.data);
         renderApp();
       }catch(e){if(err)err.style.display='block';if(load)load.style.display='none';lb.disabled=false;}
