@@ -416,7 +416,7 @@ function autoFillFromExtraction(faseId, velden, forceOverwrite) {
       var toFill=yrs.slice(-3);
       var flds=['omzet1','omzet2','omzet3'].slice(3-toFill.length);
       var flabels=['Jaaromzet jaar 1','Jaaromzet jaar 2','Jaaromzet jaar 3'].slice(3-toFill.length);
-      toFill.forEach(function(yr,i){var w=S._opy[String(yr)];if(w)applyOrConflict('financieel_'+flds[i],w,flabels[i]+' ('+yr+')');});
+      toFill.forEach(function(yr,i){var w=S._opy[String(yr)];if(w)setIfEmpty('financieel_'+flds[i],w);});
     }
     if(!S._epy)S._epy={};
     var ev=velden.ebitda_pct;
