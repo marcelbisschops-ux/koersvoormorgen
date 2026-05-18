@@ -524,7 +524,7 @@ function renderDocumentSectie(faseId) {
       + ' <span class="doc-type">' + grootteMb + 'MB' + (doc.bewaard?' &middot; &#8681; download':' &middot; alleen analyse') + (uploadStempel?' &middot; '+uploadStempel:'') + '</span></div>'
       + (!isReadOnly && !doc.uploading ? (doc.deleting 
           ? '<span style="font-size:10px;color:var(--muted)">Verwijderen...</span>'
-          : '<button onclick="deleteDocument(' + JSON.stringify(doc.id) + ',' + JSON.stringify(faseId) + ')" class="btn-del" style="font-size:10px;padding:2px 7px">&#10005; Verwijder</button>') : '')
+          : '<button onclick="deleteDocument(\'' + doc.id + '\',\'' + faseId + '\')" class="btn-del" style="font-size:10px;padding:2px 7px">&#10005; Verwijder</button>') : '')
       + '</div>'
       + (toonAnalyse ? veldenHtml : '')
       + analyseHtml
