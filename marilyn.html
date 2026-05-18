@@ -281,6 +281,7 @@ function renderMnaTab(el){
     +'<div style="display:flex;gap:8px">'
     +'<button class="btn" style="font-size:12px;padding:7px 14px" id="btn-ref-m">&#8635; Verversen</button>'
     +'<button class="btn" style="font-size:12px;padding:7px 14px" id="btn-nieuw">+ Nieuw traject</button>'
+    +'<button class="btn" style="font-size:12px;padding:7px 14px;background:var(--gold)" id="btn-herstel-namen">&#9881; Herstel namen</button>'
     +'</div></div>';
   if(!mnaList.length){
     html+='<div class="empty">Geen trajecten.</div>';
@@ -311,6 +312,16 @@ function renderMnaTab(el){
   el.innerHTML=html;
   var rb=document.getElementById('btn-ref-m');if(rb)rb.addEventListener('click',refreshData);
   var bn=document.getElementById('btn-nieuw');if(bn)bn.addEventListener('click',toonNieuwModal);
+  var bhn=document.getElementById('btn-herstel-namen');if(bhn)bhn.addEventListener('click',async function(){
+    bhn.disabled=true;bhn.textContent='Bezig...';
+    try{
+      var r=await fetch(WORKER+'/mna/admin/herstel-namen?key='+encodeURIComponent(adminKey),{method:'POST'});
+      var d=await r.json();
+      if(d.ok){alert(d.updated+' van '+d.total+' kantoornamen bijgewerkt.');refreshData();}
+      else alert('Fout: '+(d.error||'onbekend'));
+    }catch(e){alert('Verbindingsfout.');}
+    bhn.disabled=false;bhn.textContent='\u2699\uFE0F Herstel namen';
+  });
   el.querySelectorAll('.copy-btn').forEach(function(b){
     b.addEventListener('click',function(){
       navigator.clipboard.writeText(b.dataset.copy).then(function(){var o=b.textContent;b.textContent='✓';setTimeout(function(){b.textContent=o;},1500);}).catch(function(){alert(b.dataset.copy);});
@@ -340,24 +351,46 @@ async function renderDocsTab(el){
       if(!r.ok)throw new Error('HTTP '+r.status);
       var docs=await r.json();
       if(!docs.length){db.innerHTML='<div class="empty">Geen documenten gevonden.</div>';return;}
-      var html='<table><thead><tr><th>Traject</th><th>Fase</th><th>Bestand</th><th>Grootte</th><th>Opgeslagen</th><th>Datum</th><th></th></tr></thead><tbody>';
+      var html='<table><thead><tr><th>Traject</th><th>Fase</th><th>Bestand</th><th>Grootte</th><th>Opgeslagen</th><th>Status</th><th>Datum</th><th></th></tr></thead><tbody>';
       docs.forEach(function(d){
         var gr=d.bestand_grootte?(d.bestand_grootte/1024/1024).toFixed(1)+'MB':'—';
         var dt=d.uploaded_at?new Date(d.uploaded_at).toLocaleString('nl-NL',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—';
+        var vergr=d.vergrendeld||0;
         html+='<tr>'
           +'<td class="mono" style="font-size:11px;color:var(--teal)">'+esc(d.traject_id||'—')+'</td>'
           +'<td style="font-size:11px">'+esc(d.fase_id||'—')+'</td>'
           +'<td style="font-weight:500;color:var(--head)">'+esc(d.bestand_naam||'—')+'</td>'
           +'<td class="mono" style="font-size:11px">'+gr+'</td>'
           +'<td>'+(d.bewaard?'<span class="tag">&#10003; Dataroom</span>':'<span style="font-size:11px;color:var(--muted)">Analyse only</span>')+'</td>'
+          +'<td>'+(vergr?'<span class="tag" style="background:var(--red-bg);color:var(--red);border-color:var(--red)">&#128274; Vergrendeld</span>':'<span style="font-size:11px;color:var(--muted)">Vrij</span>')+'</td>'
           +'<td class="mono" style="font-size:11px">'+dt+'</td>'
-          +'<td>'+(d.bewaard?'<a href="'+WORKER+'/mna/document/download/'+d.id+'?key='+encodeURIComponent(adminKey)+'" target="_blank" class="btn-ghost" style="font-size:11px;padding:3px 8px;text-decoration:none">&#8681; Download</a>':'')+'</td>'
+          +'<td style="white-space:nowrap;display:flex;gap:4px">'
+          +(d.bewaard?'<a href="'+WORKER+'/mna/document/download/'+d.id+'?key='+encodeURIComponent(adminKey)+'" target="_blank" class="btn-ghost" style="font-size:11px;padding:3px 8px;text-decoration:none">&#8681;</a>':'')
+          +(vergr
+            ?'<button class="btn-ghost btn-ontv-doc" data-id="'+d.id+'" style="font-size:11px;padding:3px 8px;color:var(--teal)">&#128275;</button>'
+            :'<button class="btn-ghost btn-verg-doc" data-id="'+d.id+'" style="font-size:11px;padding:3px 8px;color:var(--gold)">&#128274;</button>')
+          +'</td>'
           +'</tr>';
       });
       html+='</tbody></table>';
       db.innerHTML=html;
+      db.querySelectorAll('.btn-verg-doc').forEach(function(b){
+        b.addEventListener('click',function(){vergrendelDoc(b.dataset.id,true);});
+      });
+      db.querySelectorAll('.btn-ontv-doc').forEach(function(b){
+        b.addEventListener('click',function(){vergrendelDoc(b.dataset.id,false);});
+      });
     }catch(e){db.textContent='Fout bij laden: '+e.message;}
   });
+}
+
+async function vergrendelDoc(id,lock){
+  try{
+    var r=await fetch(WORKER+'/mna/admin/vergrendel-document/'+id+'?key='+encodeURIComponent(adminKey),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({vergrendeld:lock?1:0})});
+    var d=await r.json();
+    if(d.ok){document.getElementById('btn-load-docs').click();}
+    else alert('Fout: '+(d.error||'onbekend'));
+  }catch(e){alert('Verbindingsfout.');}
 }
 
 // DELETE FUNCTIES
