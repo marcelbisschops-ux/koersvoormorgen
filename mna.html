@@ -998,10 +998,15 @@ function bindAll(){
         var resp=await fetch(WORKER+'/mna/traject/'+code);
         if(!resp.ok)throw new Error('not found');
         var d=await resp.json();
-        S.code=code;S.traject=d.traject;S.rol=d.rol||'verkoper';
-        S._opy={};S._epy={};S._conflicts=[];
+        // Volledige reset - voorkom datalekken tussen trajecten
+        S={screen:'cover',code:code,rol:d.rol||'verkoper',traject:d.traject,
+          fase:0,checked:{},data:{},docRefs:{},notities:{},aiTexts:{},aiLoading:{},
+          saveTimer:null,showValidation:false,dataroomLoading:false,dataroom:null,
+          _opy:{},_epy:{},_conflicts:[]};
+        // Reset ook DOCS
+        Object.keys(DOCS).forEach(function(k){delete DOCS[k];});
         if(d.data&&d.data.length)loadDataFromDB(d.data);
-        S.screen='cover';renderApp();
+        renderApp();
       }catch(e){if(err)err.style.display='block';if(load)load.style.display='none';lb.disabled=false;}
     };
     var cf=ge('l-code');
