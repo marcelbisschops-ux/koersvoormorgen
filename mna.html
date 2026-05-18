@@ -451,44 +451,102 @@ function autoFillFromExtraction(faseId, velden, forceOverwrite) {
 
 function toonConflictDialog() {
   if(!S._conflicts||!S._conflicts.length) return;
-  var conflicts = S._conflicts;
+  var conflicts = S._conflicts.slice();
   S._conflicts = [];
 
+  // Bouw dialog via DOM ipv innerHTML om click-blokkade te omzeilen
   var overlay = document.createElement('div');
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;display:flex;align-items:center;justify-content:center;padding:1.5rem';
-  var html = '<div style="background:var(--panel);border:1px solid var(--border2);border-radius:var(--r2);padding:1.75rem;max-width:520px;width:100%;max-height:85vh;overflow-y:auto">';
-  html += '<div style="font-family:Playfair Display,serif;font-size:1.1rem;color:var(--head);font-weight:600;margin-bottom:.35rem">Afwijkende waarden gevonden</div>';
-  html += '<div style="font-size:13px;color:var(--mid);margin-bottom:1.25rem">Het nieuwe document bevat waarden die afwijken van eerder ingevulde gegevens. Kies per veld welke waarde u wilt gebruiken.</div>';
-  html += '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:1.25rem">';
-  conflicts.forEach(function(c, i) {
-    html += '<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px">';
-    html += '<div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px">'+c.label+'</div>';
-    html += '<div style="display:flex;gap:8px;flex-wrap:wrap">';
-    html += '<label style="flex:1;min-width:140px;display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;padding:7px 10px;border:1px solid var(--border2);border-radius:var(--r);background:var(--panel)">';
-    html += '<input type="radio" name="conflict_'+i+'" value="huidig" checked style="accent-color:var(--teal)"> <span style="color:var(--mid)">Huidig: <strong style="color:var(--sub)">'+c.huidig+'</strong></span></label>';
-    html += '<label style="flex:1;min-width:140px;display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;padding:7px 10px;border:1px solid var(--teal-dark);border-radius:var(--r);background:var(--teal-bg)">';
-    html += '<input type="radio" name="conflict_'+i+'" value="nieuw" style="accent-color:var(--teal)"> <span style="color:var(--mid)">Nieuw: <strong style="color:var(--teal-dim)">'+c.nieuw+'</strong></span></label>';
-    html += '</div></div>';
-  });
-  html += '</div>';
-  html += '<div style="display:flex;gap:10px;justify-content:flex-end">';
-  html += '<button id="conflict-huidig-all" class="btn-ghost" style="font-size:12px">Alles behouden</button>';
-  html += '<button id="conflict-apply" class="btn" style="font-size:12px">Toepassen</button>';
-  html += '</div></div>';
-  overlay.innerHTML = html;
-  document.body.appendChild(overlay);
 
-  document.getElementById('conflict-huidig-all').onclick = function() { overlay.remove(); };
-  document.getElementById('conflict-apply').onclick = function() {
-    conflicts.forEach(function(c, i) {
-      var sel = overlay.querySelector('input[name="conflict_'+i+'"]:checked');
-      if(sel && sel.value === 'nieuw') S.data[c.key] = c.nieuw;
+  var box = document.createElement('div');
+  box.style.cssText = 'background:var(--panel);border:1px solid var(--border2);border-radius:var(--r2);padding:1.75rem;max-width:520px;width:100%;max-height:85vh;overflow-y:auto';
+
+  var title = document.createElement('div');
+  title.style.cssText = 'font-family:Playfair Display,serif;font-size:1.1rem;color:var(--head);font-weight:600;margin-bottom:.35rem';
+  title.textContent = 'Afwijkende waarden gevonden';
+  box.appendChild(title);
+
+  var sub = document.createElement('div');
+  sub.style.cssText = 'font-size:13px;color:var(--mid);margin-bottom:1.25rem';
+  sub.textContent = 'Het nieuwe document bevat waarden die afwijken van eerder ingevulde gegevens. Kies per veld welke waarde u wilt gebruiken.';
+  box.appendChild(sub);
+
+  var list = document.createElement('div');
+  list.style.cssText = 'display:flex;flex-direction:column;gap:8px;margin-bottom:1.25rem';
+
+  var radios = [];
+  conflicts.forEach(function(c, i) {
+    var row = document.createElement('div');
+    row.style.cssText = 'background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px';
+
+    var lbl = document.createElement('div');
+    lbl.style.cssText = 'font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px';
+    lbl.textContent = c.label;
+    row.appendChild(lbl);
+
+    var opts = document.createElement('div');
+    opts.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap';
+
+    // Huidig
+    var lblH = document.createElement('label');
+    lblH.style.cssText = 'flex:1;min-width:140px;display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;padding:7px 10px;border:1px solid var(--border2);border-radius:var(--r);background:var(--panel)';
+    var rH = document.createElement('input');
+    rH.type = 'radio'; rH.name = 'cf_'+i; rH.value = 'huidig'; rH.checked = true;
+    rH.style.accentColor = 'var(--teal)';
+    lblH.appendChild(rH);
+    var tH = document.createElement('span');
+    tH.style.color = 'var(--mid)';
+    tH.innerHTML = 'Huidig: <strong style="color:var(--sub)">'+c.huidig+'</strong>';
+    lblH.appendChild(tH);
+    opts.appendChild(lblH);
+
+    // Nieuw
+    var lblN = document.createElement('label');
+    lblN.style.cssText = 'flex:1;min-width:140px;display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;padding:7px 10px;border:1px solid var(--teal-dark);border-radius:var(--r);background:var(--teal-bg)';
+    var rN = document.createElement('input');
+    rN.type = 'radio'; rN.name = 'cf_'+i; rN.value = 'nieuw';
+    rN.style.accentColor = 'var(--teal)';
+    lblN.appendChild(rN);
+    var tN = document.createElement('span');
+    tN.style.color = 'var(--mid)';
+    tN.innerHTML = 'Nieuw: <strong style="color:var(--teal-dim)">'+c.nieuw+'</strong>';
+    lblN.appendChild(tN);
+    opts.appendChild(lblN);
+
+    row.appendChild(opts);
+    list.appendChild(row);
+    radios.push({key:c.key, rH:rH, rN:rN});
+  });
+  box.appendChild(list);
+
+  var btns = document.createElement('div');
+  btns.style.cssText = 'display:flex;gap:10px;justify-content:flex-end';
+
+  var btnBehoud = document.createElement('button');
+  btnBehoud.className = 'btn-ghost';
+  btnBehoud.style.fontSize = '12px';
+  btnBehoud.textContent = 'Alles behouden';
+  btnBehoud.addEventListener('click', function() { document.body.removeChild(overlay); });
+  btns.appendChild(btnBehoud);
+
+  var btnApply = document.createElement('button');
+  btnApply.className = 'btn';
+  btnApply.style.fontSize = '12px';
+  btnApply.textContent = 'Toepassen';
+  btnApply.addEventListener('click', function() {
+    radios.forEach(function(r) {
+      if(r.rN.checked) S.data[r.key] = conflicts.find(function(c){return c.key===r.key;}).nieuw;
     });
-    overlay.remove();
+    document.body.removeChild(overlay);
     renderApp();
     schedSave();
-  };
+  });
+  btns.appendChild(btnApply);
+  box.appendChild(btns);
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
 }
+
 
 async function consolideerAnalyse(faseId){
   var docs=getDocsForFase(faseId);if(!docs.length)return;
@@ -781,7 +839,11 @@ function renderMain(){
   ov+='</div>';
 
   // Data fields
-  var dataHtml='<div class="panel"><div class="sec-hdr">Informatie invullen</div><div class="data-grid">';
+  var instrTxt = isVerkoper() ? '<div style="font-size:11px;color:var(--muted);line-height:1.6;margin-bottom:1rem;padding-bottom:.75rem;border-bottom:1px solid var(--border)">'
+    + 'Vul de velden in. Upload rechts de relevante documenten &mdash; velden worden automatisch ingelezen zolang het boekjaar in het document staat. '
+    + 'Controleer alle automatisch ingevulde waarden. De geüploade documenten dienen als grondslag voor de due diligence. Ontbrekende velden vult u zelf in.'
+    + '</div>' : '';
+  var dataHtml='<div class="panel"><div class="sec-hdr">Informatie invullen</div>'+instrTxt+'<div class="data-grid">';
   f.dataFields.forEach(function(df){
     if(df.header){
       dataHtml+='</div><div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--teal);margin:1.25rem 0 .6rem;padding-top:1rem;border-top:1px solid var(--border);grid-column:1/-1">'+df.label+'</div><div class="data-grid">';
@@ -837,9 +899,7 @@ function renderMain(){
 
   var lockedBanner=vergrendeld?'<div style="background:var(--red-bg);border:1px solid var(--red);border-radius:var(--r);padding:10px 14px;margin-bottom:1rem;font-size:13px;color:var(--red)">&#128274; <strong>Dit traject is vergrendeld.</strong> U kunt geen wijzigingen meer doorvoeren.</div>':'';
 
-  var instrHtml = isVerkoper() ? '<div style="background:var(--teal-bg);border:1px solid var(--teal-dark);border-radius:var(--r);padding:10px 14px;margin-bottom:1rem;font-size:12px;color:var(--mid);line-height:1.65">'
-    + '<strong style="color:var(--teal-dim)">Invulinstructie:</strong> Upload de relevante documenten via het uploadvenster rechts. Velden worden zoveel mogelijk automatisch ingelezen vanuit uw documenten. '
-    + '<strong>Controleer alle automatisch ingevulde waarden</strong> &mdash; de geüploade documenten dienen als grondslag voor de due diligence. Velden die niet automatisch worden ingevuld, vult u zelf in.</div>' : '';
+  var instrHtml = '';
   return '<div class="wrap anim">'
     +'<div class="hdr"><div class="brand"><div class="wdot"></div>KantoorInzicht &middot; M&amp;A'+(isKoper()?' (koper-view)':isVerkoper()?' (invullen)':isTussen()?' (tussenpersoon-view)':'')+'</div>'
     +'<div style="display:flex;align-items:center;gap:8px">'
@@ -847,7 +907,7 @@ function renderMain(){
     +'<button class="btn-ghost btn-sm" onclick="window.print()">PDF</button>'
     +(isTussen()?'<button class="btn-ghost btn-sm" onclick="S.screen=\'dataroom\';loadDataroom()">&#128451; Dataroom</button>':'')
     +'</div></div>'
-    +lockedBanner+instrHtml
+    +lockedBanner
     +'<div style="font-family:Playfair Display,serif;font-size:1.4rem;color:var(--head);font-weight:600;margin-bottom:.25rem">'+esc(S.traject&&S.traject.kantoor_naam||'')+'</div>'
     +'<div style="font-size:13px;color:var(--muted);margin-bottom:1rem">Voortgang: <span style="font-family:IBM Plex Mono,monospace;color:'+(tp===100?'var(--teal)':tp>50?'var(--gold)':'var(--red)')+'">'+tp+'%</span></div>'
     +'<div class="prog-bar"><div class="prog-fill" style="width:'+tp+'%;background:'+(tp===100?'var(--teal)':tp>50?'var(--gold)':'var(--red)')+'"></div></div>'
