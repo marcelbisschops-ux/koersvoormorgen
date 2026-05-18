@@ -401,7 +401,31 @@ let ST={screen:'intro',section:0,answers:{},scores:null,scenarios:null,openScena
 
 /* ======== SCORING ======== */
 function calcScores(){const s={};SECTIONS.forEach(sec=>{let tot=0,cnt=0;sec.questions.forEach(q=>{if(ST.answers[q.id]!==undefined){let v=ST.answers[q.id];if(REVERSE.has(q.id))v=6-v;tot+=v;cnt++;}});s[sec.id]=cnt>0?Math.round((tot/(cnt*5))*100):0;});return s;}
-function rankScenarios(s){return Object.entries(SCENARIOS).map(([k,sc])=>({k,...sc,score:Math.min(100,sc.fit(s))})).sort((a,b)=>b.score-a.score);}
+function rankScenarios(s){
+  const ambitie=(ST.profile&&ST.profile.ambitie)||'';
+  const context=((ST.profile&&ST.profile.context)||'').toLowerCase();
+  const ambitieBonus={
+    'Stabiel houden':{'afweerstrategie':20,'zelfstandig-doorgroeien':10},
+    'Groeien (organisch)':{'zelfstandig-doorgroeien':20,'niche-specialisatie':10},
+    'Groeien (via overnames)':{'regionaliseren':20,'zelfstandig-doorgroeien':15},
+    'Fusie of samenwerking':{'fusiepartner-zoeken':20,'regionaliseren':15},
+    'Verkoop (3–7 jaar)':{'verkoop-voorbereiden':25,'pe-ready-maken':15},
+    'Opvolging regelen':{'opvolging-voorbereiden':25,'verkoop-voorbereiden':10},
+  };
+  // Context keywords
+  const contextBonus={};
+  if(/kop[ei]n|acquisiti|overnemen|overnemer/.test(context)){contextBonus['regionaliseren']=15;contextBonus['zelfstandig-doorgroeien']=10;}
+  if(/verk[oa][op]|exit|uittreden/.test(context)){contextBonus['verkoop-voorbereiden']=20;contextBonus['pe-ready-maken']=10;}
+  if(/fusie|samen[wv]erk/.test(context)){contextBonus['fusiepartner-zoeken']=20;}
+  if(/opvolg|pensioen|overdracht/.test(context)){contextBonus['opvolging-voorbereiden']=20;}
+  if(/pe|private equity|investeer/.test(context)){contextBonus['pe-ready-maken']=20;}
+  const bonusMap={...(ambitieBonus[ambitie]||{}),...contextBonus};
+  return Object.entries(SCENARIOS).map(([k,sc])=>{
+    const base=sc.fit(s);
+    const bonus=bonusMap[k]||0;
+    return {k,...sc,score:Math.min(100,base+bonus)};
+  }).sort((a,b)=>b.score-a.score);
+}
 function overall(s){return Math.round(Object.values(s).reduce((a,b)=>a+b,0)/Object.values(s).length);}
 function verdict(v){if(v>=72)return{label:'Sterk strategisch profiel',color:'var(--teal)',bg:'var(--teal-bg)',txt:'Het kantoor beschikt over een solide strategische basis.'};if(v>=52)return{label:'Gemiddeld - actie vereist',color:'var(--gold)',bg:'var(--gold-bg)',txt:'Redelijk fundament, maar verbeterpunten beperken de waarde.'};return{label:'Kwetsbaar - urgente actie',color:'var(--red)',bg:'var(--red-bg)',txt:'Meerdere kritieke dimensies vereisen onmiddellijke aandacht.'};}
 function dc(v){return v>=70?'var(--teal)':v>=50?'var(--gold)':'var(--red)';}
@@ -764,7 +788,12 @@ function bindEvents(){
 function downloadRapport() {
   const naam = (ST.profile && ST.profile.naam) || 'kantoor';
   const datum = new Date().toLocaleDateString('nl-NL').replace(/\//g,'-');
-  const blob = new Blob([document.documentElement.outerHTML], {type:'text/html;charset=utf-8'});
+  const content = document.getElementById('app').innerHTML;
+  const doc = '<!DOCTYPE html><html lang="nl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>KantoorInzicht — '+naam+'</title>'
+    + '<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">'
+    + '<style>' + document.querySelector('style').textContent + '</style></head>'
+    + '<body><div id="app">' + content + '</div></body></html>';
+  const blob = new Blob([doc], {type:'text/html;charset=utf-8'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -776,7 +805,12 @@ function downloadRapport() {
 function downloadRapport() {
   const naam = (ST.profile && ST.profile.naam) || 'kantoor';
   const datum = new Date().toLocaleDateString('nl-NL').replace(/\//g,'-');
-  const blob = new Blob([document.documentElement.outerHTML], {type:'text/html;charset=utf-8'});
+  const content = document.getElementById('app').innerHTML;
+  const doc = '<!DOCTYPE html><html lang="nl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>KantoorInzicht — '+naam+'</title>'
+    + '<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">'
+    + '<style>' + document.querySelector('style').textContent + '</style></head>'
+    + '<body><div id="app">' + content + '</div></body></html>';
+  const blob = new Blob([doc], {type:'text/html;charset=utf-8'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
