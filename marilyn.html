@@ -328,24 +328,10 @@ async function renderDocsTab(el){
   el.innerHTML='<div class="table-wrap"><div class="table-hdr"><div class="table-title">MNA Documenten</div>'
     +'<div style="display:flex;gap:8px">'
     +'<button class="btn" style="font-size:12px;padding:7px 14px" id="btn-load-docs">&#8635; Laden</button>'
-    +'<button class="btn" style="font-size:12px;padding:7px 14px;background:var(--gold)" id="btn-herstel-docs">&#9881; Herstel vanuit R2</button>'
+    
     +'</div></div>'
     +'<div id="docs-body" class="empty">Klik op Laden om alle documenten op te halen.</div></div>';
-  document.getElementById('btn-herstel-docs').addEventListener('click',async function(){
-    var db=document.getElementById('docs-body');
-    if(!confirm('Dit scant alle bestanden in R2 en schrijft ze naar de database. Eenmalig uitvoeren. Doorgaan?'))return;
-    db.textContent='Bezig met herstel...';
-    try{
-      var r=await fetch(WORKER+'/mna/admin/herstel-documenten?key='+encodeURIComponent(adminKey),{method:'POST'});
-      if(!r.ok)throw new Error('HTTP '+r.status);
-      var d=await r.json();
-      if(d.ok){
-        db.innerHTML='<div class="empty" style="color:var(--teal)">&#10003; Herstel voltooid — '+d.inserted+' documenten toegevoegd, '+d.skipped+' overgeslagen. Klik nu op Laden.</div>';
-      } else {
-        db.textContent='Fout: '+(d.error||'onbekend');
-      }
-    }catch(e){db.textContent='Fout: '+e.message;}
-  });
+
   document.getElementById('btn-load-docs').addEventListener('click',async function(){
     var db=document.getElementById('docs-body');
     db.textContent='Laden...';
