@@ -107,6 +107,9 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--s
 .doc-veld-val{font-size:12px;font-family:'IBM Plex Mono',monospace;color:var(--teal-dark);font-weight:600}
 .upload-progress{height:4px;background:var(--border2);border-radius:2px;overflow:hidden;margin-top:.5rem;display:none}
 .upload-progress-fill{height:100%;background:var(--teal);border-radius:2px;transition:width .3s}
+.btn-del{background:transparent;border:1px solid var(--border2);color:var(--red);font-family:'IBM Plex Sans',sans-serif;cursor:pointer;border-radius:var(--r);transition:all .12s}
+.btn-del:hover{background:var(--red-bg);border-color:var(--red)}
+@keyframes prog{from{width:20%}to{width:85%}}
 @media print{
   @page{margin:2cm;size:A4}
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
@@ -476,7 +479,7 @@ function renderDocumentSectie(faseId) {
       + '>'
       + '<div style="font-size:18px;margin-bottom:.3rem">&#128196;</div>'
       + '<div style="font-size:12px;font-weight:600;color:var(--mid);margin-bottom:.1rem">Klik of sleep bestand</div>'
-      + '<div style="font-size:10px;color:var(--muted)">PDF, Word, Excel, CSV &middot; max 20MB</div>'
+      + '<div style="font-size:10px;color:var(--muted)">PDF, Word, Excel, CSV &middot; max 20MB</div>'+ '<div style="font-size:10px;color:var(--muted);margin-top:3px">Upload meerdere jaren tegelijk voor automatische jaar-invulling</div>'
       + '</div>';
   }
 
@@ -498,12 +501,18 @@ function renderDocumentSectie(faseId) {
     }
 
     var uploadStempel = doc.uploaded_at ? new Date(doc.uploaded_at).toLocaleString('nl-NL',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
-    var analyseHtml = '';
-    if(toonAnalyse) {
-      analyseHtml = doc.uploading
-
-      ? '<div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);margin-top:.4rem"><div class="spin" style="border-color:var(--border2);border-top-color:var(--teal);width:12px;height:12px"></div>Uploaden en analyseren...</div>'
-        : (doc.analyse ? '<div class="doc-analyse">' + doc.analyse.replace(/## ([^\r\n]+)/g,'<strong>$1</strong><br>').replace(/[\r\n]/g,'<br>').substring(0,1500) + (doc.analyse.length>1500?'...':'') + '</div>' : '');
+    var uploadingHtml = doc.uploading
+      ? '<div style="margin-top:.6rem;background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:.75rem 1rem">'
+        + '<div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--mid);margin-bottom:.5rem">'
+        + '<div class="spin" style="border-color:var(--border2);border-top-color:var(--teal);width:13px;height:13px;flex-shrink:0"></div>'
+        + '<span>Uploaden en analyseren&hellip;</span></div>'
+        + '<div style="height:3px;background:var(--border2);border-radius:2px;overflow:hidden">'
+        + '<div style="height:100%;background:var(--teal);border-radius:2px;width:60%;animation:prog 2s ease-in-out infinite alternate"></div></div>'
+        + '<div style="font-size:10px;color:var(--muted);margin-top:.35rem">Document wordt verwerkt &middot; Dit duurt 15&ndash;30 seconden</div>'
+        + '</div>' : '';
+    var analyseHtml = uploadingHtml;
+    if(!doc.uploading && toonAnalyse) {
+      analyseHtml += doc.analyse ? '<div class="doc-analyse">' + doc.analyse.replace(/## ([^\r\n]+)/g,'<strong>$1</strong><br>').replace(/[\r\n]/g,'<br>').substring(0,1500) + (doc.analyse.length>1500?'...':'') + '</div>' : '';
     }
 
     return '<div class="doc-card">'
@@ -638,7 +647,7 @@ function renderCover(){
   if(isVerkoper()){
     intro='<p>Geachte '+esc(t.contact_naam||'relatie')+',</p>'
       +'<p>In het kader van het '+esc(t.traject_type||'M&A')+'-traject voor <strong>'+esc(t.kantoor_naam)+'</strong> verzoek ik u onderstaande gegevens in te voeren via dit beveiligde platform. U kunt per fase de informatie invullen en tussentijds opslaan.</p>'
-      +'<p>Documenten uploadt u direct via het uploadvenster naast de velden &mdash; de AI analyseert ze automatisch.</p>'
+      +'<p>Documenten uploadt u direct via het uploadvenster naast de velden. Upload bij voorkeur <strong>alle jaarrekeningen tegelijk</strong> (bijv. 2021, 2022 en 2023) zodat de velden automatisch correct worden ingevuld.</p>'
           +'<p>Wanneer een veld niet automatisch wordt ingevuld na het uploaden, kunt u dit handmatig doen — het geüploade document dient als ondersteuning.</p>'
       +'<p>Uw gegevens worden strikt vertrouwelijk behandeld.</p>'
       +'<div style="margin:1rem 0;padding:.75rem 1rem;background:var(--card);border:1px solid var(--border);border-radius:var(--r);font-size:11px;color:var(--muted);line-height:1.7">&#128274; <strong>Beveiliging &amp; AVG:</strong> Alle gegevens worden versleuteld via HTTPS verstuurd en opgeslagen op Cloudflare-servers in Europa (Frankfurt, EU). Uw gegevens worden uitsluitend gebruikt voor dit M&amp;A-traject en niet gedeeld met derden. Conform AVG heeft u recht op inzage, correctie en verwijdering. Zie ook onze <a href=\"privacy.html\" style=\"color:var(--teal)\">privacyverklaring</a>.</div>'
