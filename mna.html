@@ -457,7 +457,6 @@ async function consolideerAnalyse(faseId){
 }
 
 async function deleteDocument(docId, faseId) {
-  alert('Verwijder aangeroepen voor: ' + docId);
   Object.keys(DOCS).forEach(function(fid) {
     DOCS[fid] = DOCS[fid].filter(function(d){ return d.id !== docId; });
   });
