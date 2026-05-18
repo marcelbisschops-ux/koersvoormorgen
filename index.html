@@ -631,9 +631,7 @@ function rGroupCreated(){
     + `<button class="btn-adv" id="copy-code-btn" style="flex:1;font-size:13px">Kopieer code</button>`
     + `<button class="btn-ghost" id="save-code-btn" style="flex:1;font-size:12px">&#8681; Opslaan als bestand</button>`
     + `</div>`
-    + `<div style="margin-bottom:1.75rem">`
-    + `<button class="btn-ghost" id="email-code-btn" style="width:100%;font-size:12px">&#9993; Stuur code naar mijzelf</button>`
-    + `</div>`
+
     + `<div style="display:flex;gap:8px;padding-top:1rem;border-top:1px solid var(--border)">`
     + `<button class="btn-adv" id="view-dashboard-btn" style="flex:1">Bekijk dashboard &#8594;</button>`
     + `</div>`
@@ -727,13 +725,7 @@ function bindEvents(){
     const a=document.createElement('a');a.href=url;a.download='kantoorinzicht-code-'+code+'.txt';
     document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
   });
-  on('email-code-btn','click',()=>{
-    const code=ST.groupId||'';
-    const naam=(ST.groupData&&ST.groupData.group&&ST.groupData.group.name)||'Groep';
-    const onderwerp=encodeURIComponent('KantoorInzicht groepscode — '+naam);
-    const body=encodeURIComponent('Groep: '+naam+'\nCode: '+code+'\n\nDeelnemers: https://koersvoormorgen.nl \u2192 Deelnemen aan groep\nDashboard: https://koersvoormorgen.nl \u2192 Dashboard bekijken');
-    window.location.href='mailto:?subject='+onderwerp+'&body='+body;
-  });
+
   on('do-join-group','click',()=>{
     const code=$('gj-code')?.value?.trim().toUpperCase();
     if(!code||code.length<4){alert('Voer een geldige groepscode in.');return;}
