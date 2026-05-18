@@ -999,6 +999,7 @@ function bindAll(){
         if(!resp.ok)throw new Error('not found');
         var d=await resp.json();
         S.code=code;S.traject=d.traject;S.rol=d.rol||'verkoper';
+        S._opy={};S._epy={};S._conflicts=[];
         if(d.data&&d.data.length)loadDataFromDB(d.data);
         S.screen='cover';renderApp();
       }catch(e){if(err)err.style.display='block';if(load)load.style.display='none';lb.disabled=false;}
