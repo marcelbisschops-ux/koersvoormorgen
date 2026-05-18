@@ -7,7 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-:root{--void:#faf9f6;--panel:#ffffff;--card:#f0eeea;--border:#dddbd4;--border2:#c8c5bc;--muted:#8a8880;--mid:#5a5854;--sub:#2a2825;--head:#1a1815;--teal:#1a7a5e;--teal-dim:#145f48;--teal-dark:#0a3d2e;--teal-bg:rgba(34,197,160,.1);--gold:#c9a84c;--gold-bg:rgba(201,168,76,.12);--red:#e05252;--red-bg:rgba(224,82,82,.1);--r:6px;--r2:10px}
+:root{--void:#faf9f6;--panel:#fff;--card:#f0eeea;--border:#dddbd4;--border2:#c8c5bc;--muted:#8a8880;--mid:#5a5854;--sub:#2a2825;--head:#1a1815;--teal:#1a7a5e;--teal-dim:#145f48;--teal-dark:#0a3d2e;--teal-bg:rgba(34,197,160,.1);--gold:#c9a84c;--gold-bg:rgba(201,168,76,.12);--red:#e05252;--red-bg:rgba(224,82,82,.1);--r:6px;--r2:10px}
 body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--sub);min-height:100vh;font-size:14px;line-height:1.6}
 .mono{font-family:'IBM Plex Mono',monospace}
 .wrap{max-width:1100px;margin:0 auto;padding:2rem}
@@ -16,29 +16,33 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--s
 .wdot{width:6px;height:6px;border-radius:50%;background:var(--teal)}
 .btn{background:var(--teal);color:#fff;font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;padding:9px 18px;border-radius:var(--r);border:none;cursor:pointer}
 .btn:hover{background:var(--teal-dim)}
+.btn:disabled{background:var(--border2);color:var(--muted);cursor:default}
 .btn-ghost{background:transparent;border:1px solid var(--border2);color:var(--mid);font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:500;padding:9px 18px;border-radius:var(--r);cursor:pointer}
 .btn-ghost:hover{border-color:var(--mid)}
-.login-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:80vh;gap:1.5rem}
+.btn-red{background:transparent;border:1px solid var(--red);color:var(--red);font-family:'IBM Plex Sans',sans-serif;font-size:11px;padding:3px 10px;border-radius:var(--r);cursor:pointer}
+.btn-red:hover{background:var(--red-bg)}
+.login-wrap{display:flex;align-items:center;justify-content:center;min-height:80vh}
 .login-box{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:2.5rem;width:100%;max-width:380px}
 .login-title{font-family:'Playfair Display',serif;font-size:1.4rem;color:var(--head);font-weight:600;margin-bottom:.4rem}
 .login-sub{font-size:13px;color:var(--muted);margin-bottom:1.5rem}
 .field{display:flex;flex-direction:column;gap:6px;margin-bottom:1rem}
 .field label{font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
-.field input{background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:'IBM Plex Sans',sans-serif;font-size:13px;padding:10px 12px;outline:none;width:100%}
-.field input:focus{border-color:var(--teal)}
-.tabs{display:flex;gap:4px;margin-bottom:2rem;border-bottom:1px solid var(--border);padding-bottom:0}
+.field input,.field select,.field textarea{background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:'IBM Plex Sans',sans-serif;font-size:13px;padding:10px 12px;outline:none;width:100%}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--teal)}
+.tabs{display:flex;gap:4px;margin-bottom:2rem;border-bottom:1px solid var(--border)}
 .tab{font-size:13px;font-weight:500;padding:10px 18px;border-radius:var(--r) var(--r) 0 0;cursor:pointer;color:var(--muted);background:transparent;border:none;border-bottom:2px solid transparent;margin-bottom:-1px}
 .tab.active{color:var(--teal);border-bottom-color:var(--teal);font-weight:600}
-.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:2rem}
+.stats-row{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:2rem}
+@media(max-width:700px){.stats-row{grid-template-columns:repeat(2,1fr)}}
 .stat-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;text-align:center}
 .stat-num{font-family:'Playfair Display',serif;font-size:2rem;font-weight:600;color:var(--teal);line-height:1;margin-bottom:.25rem}
 .stat-lbl{font-size:11px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
 .table-wrap{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);overflow:hidden;margin-bottom:2rem}
-.table-hdr{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.25rem;border-bottom:1px solid var(--border);background:var(--card)}
+.table-hdr{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.25rem;border-bottom:1px solid var(--border);background:var(--card);flex-wrap:wrap;gap:.5rem}
 .table-title{font-size:13px;font-weight:600;color:var(--head)}
 table{width:100%;border-collapse:collapse}
 th{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding:10px 14px;text-align:left;border-bottom:1px solid var(--border);background:var(--card)}
-td{padding:10px 14px;border-bottom:1px solid var(--border);font-size:13px;color:var(--mid);vertical-align:top}
+td{padding:10px 14px;border-bottom:1px solid var(--border);font-size:13px;color:var(--mid);vertical-align:middle}
 tr:last-child td{border-bottom:none}
 tr:hover td{background:var(--card)}
 .score-badge{display:inline-block;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;padding:2px 8px;border-radius:3px}
@@ -47,351 +51,275 @@ tr:hover td{background:var(--card)}
 .score-low{background:var(--red-bg);color:var(--red)}
 .tag{display:inline-block;font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border-radius:3px;background:var(--teal-bg);color:var(--teal);border:1px solid var(--teal-dark)}
 .empty{text-align:center;padding:3rem;color:var(--muted);font-size:13px}
-.refresh-btn{font-size:12px}
-.logout-btn{font-size:12px}
 .search-bar{background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:8px 12px;font-family:'IBM Plex Sans',sans-serif;font-size:13px;width:220px;outline:none}
 .search-bar:focus{border-color:var(--teal)}
-.dim-mini{display:flex;flex-wrap:wrap;gap:4px;max-width:300px}
-.dim-chip{font-size:10px;font-family:'IBM Plex Mono',monospace;padding:1px 5px;border-radius:2px}
 .detail-panel{background:var(--card);border-top:1px solid var(--border);padding:12px 14px;display:none}
 .detail-panel.open{display:block}
 .detail-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}
 .detail-item{background:var(--panel);border:1px solid var(--border);border-radius:var(--r);padding:8px 10px}
 .detail-label{font-size:10px;color:var(--muted);margin-bottom:2px}
 .detail-val{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500}
+.code-chip{font-family:'IBM Plex Mono',monospace;font-size:11px;background:var(--teal-bg);color:var(--teal);border:1px solid var(--teal-dark);padding:2px 8px;border-radius:3px;display:inline-block}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:100;display:flex;align-items:center;justify-content:center;padding:1.5rem}
+.modal{background:var(--panel);border:1px solid var(--border2);border-radius:var(--r2);padding:2rem;max-width:480px;width:100%;max-height:90vh;overflow-y:auto}
+.modal-title{font-family:'Playfair Display',serif;font-size:1.2rem;color:var(--head);font-weight:600;margin-bottom:1.25rem}
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="hdr">
     <div class="brand"><div class="wdot"></div>KantoorInzicht <span style="color:var(--teal);margin-left:4px">Admin</span></div>
-    <div id="hdr-actions" style="display:none">
-      <button class="btn-ghost logout-btn" onclick="logout()">Uitloggen</button>
+    <div id="hdr-actions" style="display:none;gap:10px;align-items:center">
+      <button class="btn-ghost" style="font-size:12px" id="btn-refresh">&#8635; Verversen</button>
+      <button class="btn-ghost" style="font-size:12px" id="btn-logout">Uitloggen</button>
     </div>
   </div>
   <div id="app"></div>
 </div>
-
 <script>
-const WORKER = 'https://kantoorinzicht.marcel-bisschops.workers.dev';
-let adminKey = '';
-let scans = [];
-let callbacks = [];
-let mnaTrajecten = [];
-let activeTab = 'scans';
-let scanFilter = '';
-let openRow = null;
+const WORKER='https://kantoorinzicht.marcel-bisschops.workers.dev';
+let adminKey='',scans=[],callbacks=[],mnaTrajecten=[],activeTab='scans',scanFilter='',openRow=null;
 
-function logout() {
-  adminKey = '';
-  scans = [];
-  callbacks = [];
-  document.getElementById('hdr-actions').style.display = 'none';
-  async function deleteMna(code) {
-  if (!confirm('Traject ' + code + ' verwijderen inclusief alle data en documenten?')) return;
-  try {
-    const r = await fetch(WORKER + '/admin/delete/mna/' + code + '?key=' + encodeURIComponent(adminKey), { method: 'POST' });
-    const d = await r.json();
-    if (d.ok) {
-      mnaTrajecten = mnaTrajecten.filter(t => t.id !== code);
-      renderTab();
-    } else {
-      alert('Fout: ' + (d.error || 'onbekend'));
-    }
-  } catch(e) { alert('Verbindingsfout.'); }
+function dc(v){return v>=70?'score-high':v>=50?'score-mid':'score-low';}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function formatDate(ts){if(!ts)return '—';return new Date(ts).toLocaleDateString('nl-NL',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});}
+
+function renderLogin(){
+  document.getElementById('app').innerHTML='<div class="login-wrap"><div class="login-box">'
+    +'<div class="login-title">Admin toegang</div>'
+    +'<div class="login-sub">Voer uw admin-sleutel in om door te gaan.</div>'
+    +'<div class="field"><label>Admin-sleutel</label><input type="password" id="ak" placeholder="••••••••" autofocus></div>'
+    +'<button class="btn" id="login-btn" style="width:100%">Inloggen</button>'
+    +'<div id="login-err" style="color:var(--red);font-size:12px;margin-top:.75rem;display:none">Sleutel incorrect of verbindingsfout.</div>'
+    +'</div></div>';
+  document.getElementById('login-btn').addEventListener('click',doLogin);
+  document.getElementById('ak').addEventListener('keydown',function(e){if(e.key==='Enter')doLogin();});
 }
 
-function renderMnaTab(el) {
-  el.innerHTML = `
-    <div class="table-wrap">
-      <div class="table-hdr">
-        <div class="table-title">M&A Trajecten</div>
-        <button class="btn refresh-btn" onclick="refreshData()">&#8635; Verversen</button>
-      </div>
-      ${mnaTrajecten.length === 0 ? '<div class="empty">Geen MNA trajecten gevonden.</div>' : `
-      <table>
-        <thead><tr>
-          <th>Code</th>
-          <th>Kantoor</th>
-          <th>Type</th>
-          <th>Status</th>
-          <th>Aangemaakt</th>
-          <th>Koper vrijgegeven</th>
-          <th></th>
-        </tr></thead>
-        <tbody>
-          ${mnaTrajecten.map(t => `
-            <tr>
-              <td class="mono" style="color:var(--teal);font-weight:600">${t.id}</td>
-              <td style="font-weight:500;color:var(--head)">${t.kantoor_naam||'—'}</td>
-              <td>${t.traject_type||'—'}</td>
-              <td><span class="tag" style="${t.status==='vergrendeld'?'background:var(--red-bg);color:var(--red);border-color:var(--red)':''}">${t.status||'actief'}</span></td>
-              <td class="mono" style="font-size:11px">${formatDate(t.created_at)}</td>
-              <td style="font-size:12px">${t.koper_vrijgegeven ? '&#10003; Ja' : '—'}</td>
-              <td>
-                <button onclick="deleteMna('${t.id}')" style="background:transparent;border:1px solid var(--red);color:var(--red);font-size:11px;padding:3px 10px;border-radius:var(--r);cursor:pointer">&#10005; Verwijder</button>
-              </td>
-            </tr>`).join('')}
-        </tbody>
-      </table>`}
-    </div>`;
-}
-
-renderLogin();
-}
-
-function dc(v) {
-  return v >= 70 ? 'score-high' : v >= 50 ? 'score-mid' : 'score-low';
-}
-
-function formatDate(ts) {
-  if (!ts) return '—';
-  return new Date(ts).toLocaleDateString('nl-NL', {day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
-}
-
-function renderLogin() {
-  document.getElementById('app').innerHTML = `
-    <div class="login-wrap">
-      <div class="login-box">
-        <div class="login-title">Admin toegang</div>
-        <div class="login-sub">Voer uw admin-sleutel in om door te gaan.</div>
-        <div class="field"><label>Admin-sleutel</label><input type="password" id="admin-key-input" placeholder="••••••••" autofocus></div>
-        <button class="btn" style="width:100%" onclick="doLogin()">Inloggen</button>
-        <div id="login-error" style="color:var(--red);font-size:12px;margin-top:.75rem;display:none">Sleutel incorrect of verbindingsfout.</div>
-      </div>
-    </div>`;
-  document.getElementById('admin-key-input').onkeydown = e => { if (e.key === 'Enter') doLogin(); };
-}
-
-async function doLogin() {
-  const key = document.getElementById('admin-key-input').value.trim();
-  if (!key) return;
-  const btn = document.querySelector('.login-wrap .btn');
-  btn.disabled = true; btn.textContent = 'Laden...';
-  // Fetch data via same-origin Worker URL
-  try {
-    const [r1, r2, r3] = await Promise.all([
-      fetch(WORKER + '/admin/scans?key=' + encodeURIComponent(key)),
-      fetch(WORKER + '/admin/callbacks?key=' + encodeURIComponent(key)),
-      fetch(WORKER + '/mna/admin/lijst?key=' + encodeURIComponent(key))
+async function doLogin(){
+  var key=document.getElementById('ak').value.trim();if(!key)return;
+  var btn=document.getElementById('login-btn');btn.disabled=true;btn.textContent='Laden...';
+  try{
+    var [r1,r2,r3]=await Promise.all([
+      fetch(WORKER+'/admin/scans?key='+encodeURIComponent(key)),
+      fetch(WORKER+'/admin/callbacks?key='+encodeURIComponent(key)),
+      fetch(WORKER+'/mna/admin/lijst?key='+encodeURIComponent(key))
     ]);
-    if (!r1.ok) throw new Error('unauthorized');
-    scans = await r1.json();
-    callbacks = await r2.json();
-    mnaTrajecten = r3.ok ? await r3.json() : [];
-    adminKey = key;
-    document.getElementById('hdr-actions').style.display = 'block';
+    if(!r1.ok)throw new Error('unauthorized');
+    scans=await r1.json();callbacks=await r2.json();
+    mnaTrajecten=r3.ok?await r3.json():[];
+    adminKey=key;
+    var ha=document.getElementById('hdr-actions');ha.style.display='flex';
+    document.getElementById('btn-refresh').addEventListener('click',refreshData);
+    document.getElementById('btn-logout').addEventListener('click',logout);
     renderDashboard();
-  } catch(e) {
-    document.getElementById('login-error').style.display = 'block';
-    btn.disabled = false; btn.textContent = 'Inloggen';
-  }
+  }catch(e){document.getElementById('login-err').style.display='block';btn.disabled=false;btn.textContent='Inloggen';}
 }
 
-async function refreshData() {
-  try {
-    const [r1, r2, r3] = await Promise.all([
-      fetch(WORKER + '/admin/scans?key=' + encodeURIComponent(adminKey)),
-      fetch(WORKER + '/admin/callbacks?key=' + encodeURIComponent(adminKey)),
-      fetch(WORKER + '/mna/admin/lijst?key=' + encodeURIComponent(adminKey))
+function logout(){adminKey='';scans=[];callbacks=[];mnaTrajecten=[];document.getElementById('hdr-actions').style.display='none';renderLogin();}
+
+async function refreshData(){
+  try{
+    var [r1,r2,r3]=await Promise.all([
+      fetch(WORKER+'/admin/scans?key='+encodeURIComponent(adminKey)),
+      fetch(WORKER+'/admin/callbacks?key='+encodeURIComponent(adminKey)),
+      fetch(WORKER+'/mna/admin/lijst?key='+encodeURIComponent(adminKey))
     ]);
-    scans = await r1.json();
-    callbacks = await r2.json();
-    mnaTrajecten = r3.ok ? await r3.json() : [];
+    scans=await r1.json();callbacks=await r2.json();mnaTrajecten=r3.ok?await r3.json():[];
     renderDashboard();
-  } catch(e) { alert('Kon niet verversen.'); }
+  }catch(e){alert('Kon niet verversen.');}
 }
 
-function renderDashboard() {
-  const avgScore = scans.length ? Math.round(scans.reduce((a, s) => a + (s.overall || 0), 0) / scans.length) : 0;
-  const recentScans = scans.filter(s => Date.now() - s.created_at < 7 * 24 * 3600 * 1000).length;
-
-  document.getElementById('app').innerHTML = `
-    <div class="stats-row">
-      <div class="stat-card"><div class="stat-num">${scans.length}</div><div class="stat-lbl">Totaal scans</div></div>
-      <div class="stat-card"><div class="stat-num">${recentScans}</div><div class="stat-lbl">Afgelopen 7 dagen</div></div>
-      <div class="stat-card"><div class="stat-num">${avgScore || '—'}</div><div class="stat-lbl">Gem. totaalscore</div></div>
-      <div class="stat-card"><div class="stat-num">${callbacks.length}</div><div class="stat-lbl">Terugbelverzoeken</div></div>
-    </div>
-    <div class="tabs">
-      <button class="tab ${activeTab==='scans'?'active':''}" onclick="switchTab('scans')">Scans (${scans.length})</button>
-      <button class="tab ${activeTab==='callbacks'?'active':''}" onclick="switchTab('callbacks')">Terugbelverzoeken (${callbacks.length})</button>
-      <button class="tab ${activeTab==='mna'?'active':''}" onclick="switchTab('mna')">M&A Trajecten (${mnaTrajecten.length})</button>
-    </div>
-    <div id="tab-content"></div>`;
-
+function renderDashboard(){
+  var avg=scans.length?Math.round(scans.reduce(function(a,s){return a+(s.overall||0);},0)/scans.length):0;
+  var recent=scans.filter(function(s){return Date.now()-s.created_at<7*24*3600*1000;}).length;
+  document.getElementById('app').innerHTML=
+    '<div class="stats-row">'
+    +'<div class="stat-card"><div class="stat-num">'+scans.length+'</div><div class="stat-lbl">Totaal scans</div></div>'
+    +'<div class="stat-card"><div class="stat-num">'+recent+'</div><div class="stat-lbl">Afgelopen 7 dagen</div></div>'
+    +'<div class="stat-card"><div class="stat-num">'+(avg||'—')+'</div><div class="stat-lbl">Gem. score</div></div>'
+    +'<div class="stat-card"><div class="stat-num">'+callbacks.length+'</div><div class="stat-lbl">Terugbelverzoeken</div></div>'
+    +'<div class="stat-card"><div class="stat-num">'+mnaTrajecten.length+'</div><div class="stat-lbl">M&A Trajecten</div></div>'
+    +'</div>'
+    +'<div class="tabs">'
+    +'<button class="tab'+(activeTab==='scans'?' active':'')+'" id="t-scans">Scans ('+scans.length+')</button>'
+    +'<button class="tab'+(activeTab==='callbacks'?' active':'')+'" id="t-cbs">Terugbelverzoeken ('+callbacks.length+')</button>'
+    +'<button class="tab'+(activeTab==='mna'?' active':'')+'" id="t-mna">M&A Trajecten ('+mnaTrajecten.length+')</button>'
+    +'</div>'
+    +'<div id="tab-content"></div>';
+  document.getElementById('t-scans').addEventListener('click',function(){activeTab='scans';scanFilter='';openRow=null;renderDashboard();});
+  document.getElementById('t-cbs').addEventListener('click',function(){activeTab='callbacks';renderDashboard();});
+  document.getElementById('t-mna').addEventListener('click',function(){activeTab='mna';renderDashboard();});
   renderTab();
 }
 
-function switchTab(tab) {
-  activeTab = tab;
-  scanFilter = '';
-  openRow = null;
-  renderDashboard();
+function renderTab(){
+  var el=document.getElementById('tab-content');
+  if(activeTab==='scans')renderScansTab(el);
+  else if(activeTab==='callbacks')renderCallbacksTab(el);
+  else renderMnaTab(el);
 }
 
-function renderTab() {
-  const el = document.getElementById('tab-content');
-  if (activeTab === 'scans') renderScansTab(el);
-  else if (activeTab === 'callbacks') renderCallbacksTab(el);
-  else if (activeTab === 'mna') renderMnaTab(el);
-}
-
-function renderScansTab(el) {
-  const filtered = scans.filter(s => {
-    if (!scanFilter) return true;
-    const q = scanFilter.toLowerCase();
-    return (s.office_name||'').toLowerCase().includes(q) ||
-           (s.region||'').toLowerCase().includes(q) ||
-           (s.top_scenario||'').toLowerCase().includes(q) ||
-           (s.group_name||'').toLowerCase().includes(q);
+function renderScansTab(el){
+  var filtered=scans.filter(function(s){
+    if(!scanFilter)return true;
+    var q=scanFilter.toLowerCase();
+    return(s.office_name||'').toLowerCase().includes(q)||(s.region||'').toLowerCase().includes(q)||(s.top_scenario||'').toLowerCase().includes(q);
   });
-
-  el.innerHTML = `
-    <div class="table-wrap">
-      <div class="table-hdr">
-        <div class="table-title">Ingediende scans</div>
-        <div style="display:flex;gap:10px;align-items:center">
-          <input class="search-bar" placeholder="Zoek op naam, regio, scenario..." value="${scanFilter}" oninput="scanFilter=this.value;renderTab()">
-          <button class="btn refresh-btn" onclick="refreshData()">&#8635; Verversen</button>
-        </div>
-      </div>
-      ${filtered.length === 0 ? '<div class="empty">Geen scans gevonden.</div>' : `
-      <table>
-        <thead><tr>
-          <th>Datum</th>
-          <th>Kantoor</th>
-          <th>Regio</th>
-          <th>Fte</th>
-          <th>Omzet</th>
-          <th>Score</th>
-          <th>Scenario</th>
-          <th>Groep</th>
-          <th></th>
-        </tr></thead>
-        <tbody>
-          ${filtered.map((s, i) => `
-            <tr style="cursor:pointer" onclick="toggleRow(${i})">
-              <td class="mono" style="font-size:11px;white-space:nowrap">${formatDate(s.created_at)}</td>
-              <td style="font-weight:500;color:var(--head)">${s.office_name||'Anoniem'}</td>
-              <td>${s.region||'—'}</td>
-              <td>${s.fte||'—'}</td>
-              <td>${s.revenue||'—'}</td>
-              <td><span class="score-badge ${dc(s.overall)}">${s.overall||'—'}</span></td>
-              <td><span class="tag">${(s.top_scenario||'—').split(' ').slice(0,2).join(' ')}</span></td>
-              <td style="font-size:11px;color:var(--muted)">${s.group_name||s.group_id||'Solo'}</td>
-              <td style="color:var(--muted);font-size:11px">${openRow===i?'▲':'▼'}</td>
-            </tr>
-            <tr id="detail-${i}">
-              <td colspan="9" style="padding:0">
-                <div class="detail-panel ${openRow===i?'open':''}">
-                  <div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Scores per dimensie</div>
-                  <div class="detail-grid">
-                    ${s.scores ? Object.entries(JSON.parse(typeof s.scores === 'string' ? s.scores : JSON.stringify(s.scores))).map(([k,v])=>`
-                      <div class="detail-item">
-                        <div class="detail-label">${k}</div>
-                        <div class="detail-val" style="color:${v>=70?'var(--teal)':v>=50?'var(--gold)':'var(--red)'}">${v}/100</div>
-                      </div>`).join('') : '<div style="color:var(--muted);font-size:12px">Geen scoredata beschikbaar.</div>'}
-                  </div>
-                </div>
-              </td>
-            </tr>`).join('')}
-        </tbody>
-      </table>`}
-    </div>`;
+  var html='<div class="table-wrap"><div class="table-hdr"><div class="table-title">Ingediende scans</div>'
+    +'<div style="display:flex;gap:10px;align-items:center"><input class="search-bar" id="scan-search" placeholder="Zoek op naam, regio..." value="'+esc(scanFilter)+'"></div></div>';
+  if(!filtered.length){html+='<div class="empty">Geen scans gevonden.</div>';}
+  else{
+    html+='<table><thead><tr><th>Datum</th><th>Kantoor</th><th>Regio</th><th>Fte</th><th>Omzet</th><th>Score</th><th>Scenario</th><th>Groep</th><th></th></tr></thead><tbody>';
+    filtered.forEach(function(s,i){
+      var scores='';
+      if(s.scores){try{var sc=typeof s.scores==='string'?JSON.parse(s.scores):s.scores;scores=Object.entries(sc).map(function(kv){return'<div class="detail-item"><div class="detail-label">'+kv[0]+'</div><div class="detail-val" style="color:'+(kv[1]>=70?'var(--teal)':kv[1]>=50?'var(--gold)':'var(--red)')+'">'+kv[1]+'/100</div></div>';}).join('');}catch(e){}}
+      html+='<tr data-ri="'+i+'" style="cursor:pointer">'
+        +'<td class="mono" style="font-size:11px;white-space:nowrap">'+formatDate(s.created_at)+'</td>'
+        +'<td style="font-weight:500;color:var(--head)">'+esc(s.office_name||'Anoniem')+'</td>'
+        +'<td>'+esc(s.region||'—')+'</td><td>'+(s.fte||'—')+'</td><td>'+(s.revenue||'—')+'</td>'
+        +'<td><span class="score-badge '+dc(s.overall)+'">'+(s.overall||'—')+'</span></td>'
+        +'<td><span class="tag">'+esc((s.top_scenario||'—').split(' ').slice(0,2).join(' '))+'</span></td>'
+        +'<td style="font-size:11px;color:var(--muted)">'+esc(s.group_name||s.group_id||'Solo')+'</td>'
+        +'<td style="color:var(--muted);font-size:11px">'+(openRow===i?'▲':'▼')+'</td></tr>'
+        +'<tr><td colspan="9" style="padding:0"><div class="detail-panel'+(openRow===i?' open':'')+'"><div class="detail-grid">'+(scores||'<div style="color:var(--muted);font-size:12px">Geen scoredata.</div>')+'</div></div></td></tr>';
+    });
+    html+='</tbody></table>';
+  }
+  html+='</div>';
+  el.innerHTML=html;
+  var inp=document.getElementById('scan-search');
+  if(inp)inp.addEventListener('input',function(){scanFilter=this.value;renderTab();});
+  el.querySelectorAll('tr[data-ri]').forEach(function(row){
+    row.addEventListener('click',function(){var i=parseInt(row.dataset.ri);openRow=openRow===i?null:i;renderTab();});
+  });
 }
 
-function renderCallbacksTab(el) {
-  el.innerHTML = `
-    <div class="table-wrap">
-      <div class="table-hdr">
-        <div class="table-title">Terugbelverzoeken</div>
-        <button class="btn refresh-btn" onclick="refreshData()">&#8635; Verversen</button>
-      </div>
-      ${callbacks.length === 0 ? '<div class="empty">Nog geen terugbelverzoeken.</div>' : `
-      <table>
-        <thead><tr>
-          <th>Datum</th>
-          <th>Naam</th>
-          <th>Telefoon</th>
-          <th>E-mail</th>
-          <th>Beltijd</th>
-          <th>Kantoor</th>
-          <th>Score</th>
-          <th>Scenario</th>
-        </tr></thead>
-        <tbody>
-          ${callbacks.map(c => {
-            const kantoor = typeof c.kantoor === 'string' ? JSON.parse(c.kantoor||'{}') : (c.kantoor||{});
-            return `<tr>
-              <td class="mono" style="font-size:11px;white-space:nowrap">${formatDate(c.created_at)}</td>
-              <td style="font-weight:500;color:var(--head)">${c.naam||'—'}</td>
-              <td><a href="tel:${c.tel}" style="color:var(--teal);text-decoration:none">${c.tel||'—'}</a></td>
-              <td><a href="mailto:${c.email}" style="color:var(--teal);text-decoration:none">${c.email||'—'}</a></td>
-              <td>${c.tijd||'—'}</td>
-              <td style="font-size:12px">${kantoor.naam||'—'}${kantoor.regio?' · '+kantoor.regio:''}</td>
-              <td><span class="score-badge ${dc(c.totaal)}">${c.totaal||'—'}</span></td>
-              <td><span class="tag" style="font-size:9px">${(c.scenario||'—').split(' ').slice(0,2).join(' ')}</span></td>
-            </tr>`;
-          }).join('')}
-        </tbody>
-      </table>`}
-    </div>`;
+function renderCallbacksTab(el){
+  var html='<div class="table-wrap"><div class="table-hdr"><div class="table-title">Terugbelverzoeken</div></div>';
+  if(!callbacks.length){html+='<div class="empty">Geen terugbelverzoeken.</div>';}
+  else{
+    html+='<table><thead><tr><th>Datum</th><th>Naam</th><th>Telefoon</th><th>E-mail</th><th>Beltijd</th><th>Kantoor</th><th>Score</th></tr></thead><tbody>';
+    callbacks.forEach(function(c){
+      var k=typeof c.kantoor==='string'?JSON.parse(c.kantoor||'{}'):(c.kantoor||{});
+      html+='<tr>'
+        +'<td class="mono" style="font-size:11px;white-space:nowrap">'+formatDate(c.created_at)+'</td>'
+        +'<td style="font-weight:500;color:var(--head)">'+esc(c.naam||'—')+'</td>'
+        +'<td><a href="tel:'+esc(c.tel)+'" style="color:var(--teal);text-decoration:none">'+esc(c.tel||'—')+'</a></td>'
+        +'<td><a href="mailto:'+esc(c.email)+'" style="color:var(--teal);text-decoration:none">'+esc(c.email||'—')+'</a></td>'
+        +'<td>'+esc(c.tijd||'—')+'</td>'
+        +'<td style="font-size:12px">'+esc(k.naam||'—')+(k.regio?' · '+esc(k.regio):'')+'</td>'
+        +'<td><span class="score-badge '+dc(c.totaal)+'">'+(c.totaal||'—')+'</span></td></tr>';
+    });
+    html+='</tbody></table>';
+  }
+  html+='</div>';
+  el.innerHTML=html;
 }
 
-function toggleRow(i) {
-  openRow = openRow === i ? null : i;
-  renderTab();
+function renderMnaTab(el){
+  var html='<div class="table-wrap"><div class="table-hdr"><div class="table-title">M&amp;A Trajecten</div>'
+    +'<button class="btn" id="btn-nieuw" style="font-size:12px;padding:7px 14px">+ Nieuw traject</button></div>';
+  if(!mnaTrajecten.length){html+='<div class="empty">Geen trajecten. Maak een nieuw traject aan.</div>';}
+  else{
+    html+='<table><thead><tr><th>Code</th><th>Kantoor</th><th>Type</th><th>Status</th><th>Verkoperscode</th><th>Koperscode</th><th>Tussenpersoon</th><th>Datum</th><th></th></tr></thead><tbody>';
+    mnaTrajecten.forEach(function(t){
+      html+='<tr>'
+        +'<td><span class="code-chip">'+esc(t.id)+'</span></td>'
+        +'<td style="font-weight:500;color:var(--head)">'+esc(t.kantoor_naam||'—')+'</td>'
+        +'<td>'+esc(t.traject_type||'—')+'</td>'
+        +'<td><span class="tag" style="'+(t.status==='vergrendeld'?'background:var(--red-bg);color:var(--red);border-color:var(--red)':'')+'">'+esc(t.status||'actief')+'</span></td>'
+        +'<td><span class="code-chip">'+esc(t.id)+'</span></td>'
+        +'<td><span class="code-chip" style="background:var(--gold-bg);color:var(--gold);border-color:var(--gold)">'+esc(t.koper_code||'—')+'</span></td>'
+        +'<td><span class="code-chip" style="background:var(--card);color:var(--mid);border-color:var(--border2)">'+esc(t.tussen_code||'—')+'</span></td>'
+        +'<td class="mono" style="font-size:11px">'+formatDate(t.created_at)+'</td>'
+        +'<td><button class="btn-red btn-del" data-id="'+esc(t.id)+'" data-naam="'+esc(t.kantoor_naam||t.id)+'">&#10005; Verwijder</button></td>'
+        +'</tr>';
+    });
+    html+='</tbody></table>';
+  }
+  html+='</div>';
+  el.innerHTML=html;
+  var btnN=document.getElementById('btn-nieuw');
+  if(btnN)btnN.addEventListener('click',toonNieuwModal);
+  el.querySelectorAll('.btn-del').forEach(function(btn){
+    btn.addEventListener('click',function(){deleteMna(btn.dataset.id,btn.dataset.naam);});
+  });
 }
 
-async function deleteMna(code) {
-  if (!confirm('Traject ' + code + ' verwijderen inclusief alle data en documenten?')) return;
-  try {
-    const r = await fetch(WORKER + '/admin/delete/mna/' + code + '?key=' + encodeURIComponent(adminKey), { method: 'POST' });
-    const d = await r.json();
-    if (d.ok) {
-      mnaTrajecten = mnaTrajecten.filter(t => t.id !== code);
-      renderTab();
-    } else {
-      alert('Fout: ' + (d.error || 'onbekend'));
+function toonNieuwModal(){
+  var ov=document.createElement('div');ov.className='overlay';
+  var mo=document.createElement('div');mo.className='modal';
+  mo.innerHTML='<div class="modal-title">Nieuw M&amp;A traject aanmaken</div>'
+    +'<div class="field"><label>Kantoornaam <span style="color:var(--red)">*</span></label><input type="text" id="m-kantoor" placeholder="bijv. Accountantskantoor De Vries"></div>'
+    +'<div class="field"><label>Contactpersoon</label><input type="text" id="m-contact" placeholder="Naam verkopende partner"></div>'
+    +'<div class="field"><label>E-mailadres contactpersoon</label><input type="email" id="m-email" placeholder="partner@kantoor.nl"></div>'
+    +'<div class="field"><label>Trajecttype</label><select id="m-type"><option value="Verkoop">Verkoop</option><option value="Fusie">Fusie</option><option value="Opvolging">Opvolging</option><option value="PE-traject">PE-traject</option><option value="Overname">Overname</option></select></div>'
+    +'<div class="field"><label>Notitie (intern)</label><textarea id="m-notitie" rows="2" placeholder="Interne aantekeningen..."></textarea></div>'
+    +'<div id="m-result" style="display:none;background:var(--teal-bg);border:1px solid var(--teal-dark);border-radius:var(--r);padding:1rem;margin-bottom:1rem;font-size:13px;line-height:1.8"></div>'
+    +'<div id="m-err" style="display:none;color:var(--red);font-size:12px;margin-bottom:.75rem"></div>'
+    +'<div style="display:flex;gap:10px;justify-content:flex-end">'
+    +'<button class="btn-ghost" id="m-annul">Annuleren</button>'
+    +'<button class="btn" id="m-ok">Traject aanmaken</button>'
+    +'</div>';
+  ov.appendChild(mo);document.body.appendChild(ov);
+  ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
+  document.getElementById('m-annul').addEventListener('click',function(){document.body.removeChild(ov);});
+  document.getElementById('m-ok').addEventListener('click',async function(){
+    var kantoor=document.getElementById('m-kantoor').value.trim();
+    if(!kantoor){var e=document.getElementById('m-err');e.style.display='block';e.textContent='Kantoornaam is verplicht.';return;}
+    var btn=document.getElementById('m-ok');btn.disabled=true;btn.textContent='Aanmaken...';
+    document.getElementById('m-err').style.display='none';
+    try{
+      var r=await fetch(WORKER+'/mna/create',{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':adminKey},
+        body:JSON.stringify({kantoor_naam:kantoor,contact_naam:document.getElementById('m-contact').value.trim(),
+          contact_email:document.getElementById('m-email').value.trim(),
+          traject_type:document.getElementById('m-type').value,
+          notitie:document.getElementById('m-notitie').value.trim()})});
+      var d=await r.json();
+      if(d.ok){
+        mnaTrajecten.unshift({id:d.code,kantoor_naam:kantoor,traject_type:document.getElementById('m-type').value,
+          koper_code:d.koper_code,tussen_code:d.tussen_code,status:'actief',created_at:Date.now()});
+        var res=document.getElementById('m-result');res.style.display='block';
+        res.innerHTML='<strong style="color:var(--teal-dim)">&#10003; Traject aangemaakt</strong><br><br>'
+          +'<b>Verkoperscode:</b> <span class="code-chip">'+d.code+'</span><br>'
+          +'<b>Koperscode:</b> <span class="code-chip" style="background:var(--gold-bg);color:var(--gold);border-color:var(--gold)">'+d.koper_code+'</span><br>'
+          +'<b>Tussenpersoonscode:</b> <span class="code-chip" style="background:var(--card);color:var(--mid)">'+d.tussen_code+'</span>';
+        btn.textContent='Aangemaakt';
+        document.getElementById('m-annul').textContent='Sluiten';
+        document.getElementById('m-annul').addEventListener('click',function(){document.body.removeChild(ov);renderTab();},{once:true});
+      }else{
+        var er=document.getElementById('m-err');er.style.display='block';er.textContent='Fout: '+(d.error||'onbekend');
+        btn.disabled=false;btn.textContent='Traject aanmaken';
+      }
+    }catch(e){
+      var er2=document.getElementById('m-err');er2.style.display='block';er2.textContent='Verbindingsfout.';
+      btn.disabled=false;btn.textContent='Traject aanmaken';
     }
-  } catch(e) { alert('Verbindingsfout.'); }
+  });
 }
 
-function renderMnaTab(el) {
-  el.innerHTML = `
-    <div class="table-wrap">
-      <div class="table-hdr">
-        <div class="table-title">M&A Trajecten</div>
-        <button class="btn refresh-btn" onclick="refreshData()">&#8635; Verversen</button>
-      </div>
-      ${mnaTrajecten.length === 0 ? '<div class="empty">Geen MNA trajecten gevonden.</div>' : `
-      <table>
-        <thead><tr>
-          <th>Code</th>
-          <th>Kantoor</th>
-          <th>Type</th>
-          <th>Status</th>
-          <th>Aangemaakt</th>
-          <th>Koper vrijgegeven</th>
-          <th></th>
-        </tr></thead>
-        <tbody>
-          ${mnaTrajecten.map(t => `
-            <tr>
-              <td class="mono" style="color:var(--teal);font-weight:600">${t.id}</td>
-              <td style="font-weight:500;color:var(--head)">${t.kantoor_naam||'—'}</td>
-              <td>${t.traject_type||'—'}</td>
-              <td><span class="tag" style="${t.status==='vergrendeld'?'background:var(--red-bg);color:var(--red);border-color:var(--red)':''}">${t.status||'actief'}</span></td>
-              <td class="mono" style="font-size:11px">${formatDate(t.created_at)}</td>
-              <td style="font-size:12px">${t.koper_vrijgegeven ? '&#10003; Ja' : '—'}</td>
-              <td>
-                <button onclick="deleteMna('${t.id}')" style="background:transparent;border:1px solid var(--red);color:var(--red);font-size:11px;padding:3px 10px;border-radius:var(--r);cursor:pointer">&#10005; Verwijder</button>
-              </td>
-            </tr>`).join('')}
-        </tbody>
-      </table>`}
-    </div>`;
+async function deleteMna(id,naam){
+  var ov=document.createElement('div');ov.className='overlay';
+  var mo=document.createElement('div');mo.className='modal';mo.style.maxWidth='420px';
+  mo.innerHTML='<div class="modal-title" style="color:var(--red)">Traject verwijderen</div>'
+    +'<div style="font-size:13px;color:var(--mid);margin-bottom:1.25rem">Weet u zeker dat u traject <strong style="color:var(--head)">'+esc(naam)+' ('+esc(id)+')</strong> wilt verwijderen? Alle data en documenten worden permanent gewist.</div>'
+    +'<div style="display:flex;gap:10px;justify-content:flex-end">'
+    +'<button class="btn-ghost" id="d-annul">Annuleren</button>'
+    +'<button class="btn-red" id="d-ok" style="padding:9px 18px;font-size:13px">Verwijder permanent</button>'
+    +'</div>';
+  ov.appendChild(mo);document.body.appendChild(ov);
+  ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
+  document.getElementById('d-annul').addEventListener('click',function(){document.body.removeChild(ov);});
+  document.getElementById('d-ok').addEventListener('click',async function(){
+    var btn=document.getElementById('d-ok');btn.disabled=true;btn.textContent='Verwijderen...';
+    try{
+      var r=await fetch(WORKER+'/admin/delete/mna/'+id+'?key='+encodeURIComponent(adminKey),{method:'POST'});
+      var d=await r.json();
+      if(d.ok){mnaTrajecten=mnaTrajecten.filter(function(t){return t.id!==id;});document.body.removeChild(ov);renderTab();}
+      else{alert('Fout: '+(d.error||'onbekend'));btn.disabled=false;btn.textContent='Verwijder permanent';}
+    }catch(e){alert('Verbindingsfout.');btn.disabled=false;btn.textContent='Verwijder permanent';}
+  });
 }
 
 renderLogin();
