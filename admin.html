@@ -146,15 +146,11 @@ function renderDashboard(){
     +'<div class="stat-card"><div class="stat-num">'+callbacks.length+'</div><div class="stat-lbl">Terugbelverzoeken</div></div>'
     +'<div class="stat-card"><div class="stat-num">'+mnaList.length+'</div><div class="stat-lbl">M&A Trajecten</div></div>'
     +'</div>'
-    +'<div class="tabs">'
-    +'<button class="tab'+(activeTab==='scans'?' active':'')+'" id="t-scans">Scans ('+scans.length+')</button>'
-    +'<button class="tab'+(activeTab==='callbacks'?' active':'')+'" id="t-cb">Terugbelverzoeken ('+callbacks.length+')</button>'
-    +'<button class="tab'+(activeTab==='mna'?' active':'')+'" id="t-mna">M&A Trajecten ('+mnaList.length+')</button>'
-    +'</div><div id="tc"></div>';
+    +'<div class="tabs">'    +'<button class="tab'+(activeTab==='scans'?' active':'')+'" id="t-scans">Scans ('+scans.length+')</button>'    +'<button class="tab'+(activeTab==='callbacks'?' active':'')+'" id="t-cb">Terugbelverzoeken ('+callbacks.length+')</button>'    +'<button class="tab'+(activeTab==='mna'?' active':'')+'" id="t-mna">M&A Trajecten ('+mnaList.length+')</button>'    +'<button class="tab'+(activeTab==='docs'?' active':'')+'" id="t-docs">Documenten</button>'    +'</div><div id="tc"></div>';
   document.getElementById('t-scans').addEventListener('click',function(){activeTab='scans';scanFilter='';openRow=null;renderDashboard();});
   document.getElementById('t-cb').addEventListener('click',function(){activeTab='callbacks';renderDashboard();});
   document.getElementById('t-mna').addEventListener('click',function(){activeTab='mna';renderDashboard();});
-  document.getElementById('t-docs').addEventListener('click',function(){activeTab='docs';renderDashboard();});
+  var tdocs=document.getElementById('t-docs');if(tdocs)tdocs.addEventListener('click',function(){activeTab='docs';renderDashboard();});
   renderTab();
 }
 
