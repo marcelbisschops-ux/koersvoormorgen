@@ -462,12 +462,26 @@ async function deleteDocument(docId, faseId) {
   });
   renderApp();
   try {
-    await fetch(WORKER + '/mna/document/delete/' + docId, { method: 'POST' });
-  } catch(e) {}
-  // Verwijder uit lokale state
-  Object.keys(DOCS).forEach(function(fid) {
-    DOCS[fid] = DOCS[fid].filter(function(d){ return d.id !== docId; });
-  });
+    var resp = await fetch(WORKER + '/mna/document/delete/' + docId, { method: 'POST' });
+    var result = await resp.json();
+    if(result.ok || resp.ok) {
+      // Verwijder uit lokale state
+      Object.keys(DOCS).forEach(function(fid) {
+        DOCS[fid] = DOCS[fid].filter(function(d){ return d.id !== docId; });
+      });
+    } else {
+      // Reset deleting state bij fout
+      Object.keys(DOCS).forEach(function(fid) {
+        DOCS[fid].forEach(function(d){ if(d.id===docId)d.deleting=false; });
+      });
+      alert('Verwijderen mislukt: ' + (result.error||'onbekend'));
+    }
+  } catch(e) {
+    Object.keys(DOCS).forEach(function(fid) {
+      DOCS[fid].forEach(function(d){ if(d.id===docId)d.deleting=false; });
+    });
+    alert('Verbindingsfout bij verwijderen.');
+  }
   renderApp();
 }
 
@@ -524,7 +538,9 @@ function renderDocumentSectie(faseId) {
 
     return '<div class="doc-card">'
       + '<div class="doc-card-hdr">'
-      + '<div><span style="font-size:16px;margin-right:6px">' + icon + '</span><span class="doc-naam">' + doc.naam + '</span> <span class="doc-type">' + grootteMb + 'MB' + (doc.bewaard?' &middot; opgeslagen':' &middot; alleen analyse') + (uploadStempel?' &middot; '+uploadStempel:'') + '</span></div>'
+      + '<div style="flex:1"><span style="font-size:16px;margin-right:6px">' + icon + '</span>'
+      + (doc.bewaard ? '<a href="' + WORKER + '/mna/document/download/' + doc.id + '" target="_blank" class="doc-naam" style="color:var(--teal);text-decoration:none">' + esc(doc.naam) + '</a>' : '<span class="doc-naam">' + esc(doc.naam) + '</span>')
+      + ' <span class="doc-type">' + grootteMb + 'MB' + (doc.bewaard?' &middot; &#8681; download':' &middot; alleen analyse') + (uploadStempel?' &middot; '+uploadStempel:'') + '</span></div>'
       + (!isReadOnly && !doc.uploading ? (doc.deleting 
           ? '<span style="font-size:10px;color:var(--muted)">Verwijderen...</span>'
           : '<button onclick="deleteDocument(' + JSON.stringify(doc.id) + ',' + JSON.stringify(faseId) + ')" class="btn-del" style="font-size:10px;padding:2px 7px">&#10005; Verwijder</button>') : '')
