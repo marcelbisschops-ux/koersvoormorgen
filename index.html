@@ -628,7 +628,7 @@ async function loadGroup(gid){
 async function loadGroupAsAdmin(gid,adminCode){
   ST.groupLoading=true;render();
   try{
-    const resp=await fetch(`${WORKER}/group/${gid}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({admin_code:adminCode})});
+    const resp=await fetch(WORKER+'/group/'+gid+'?admin_code='+encodeURIComponent(adminCode));
     if(!resp.ok)throw new Error('niet gevonden');
     ST.groupData=await resp.json();
     ST.isGroupAdmin=ST.groupData.is_admin||false;
