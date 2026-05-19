@@ -853,10 +853,10 @@ function bindEvents(){
     else alert('Fout: '+(data.error||'Onbekend'));
   });
   on('copy-code-btn','click',()=>{
-    const code=ST.groupId||'';
-    navigator.clipboard.writeText(code).then(()=>{
+    const copyTekst='Deelnemerscode: '+(ST.groupId||'')+'\nBeheerdscode: '+(ST.adminCode||'niet beschikbaar');
+    navigator.clipboard.writeText(copyTekst).then(()=>{
       const btn=document.getElementById('copy-code-btn');
-      if(btn){btn.textContent='\u2713 Gekopieerd';setTimeout(()=>{btn.textContent='Kopieer code';},2000);}
+      if(btn){btn.textContent='\u2713 Gekopieerd';setTimeout(()=>{btn.textContent='Kopieer codes';},2000);}
     }).catch(()=>alert('Code: '+code));
   });
   on('view-dashboard-btn','click',()=>{ST.isGroupAdmin=true;loadGroup(ST.groupId);});
@@ -864,7 +864,7 @@ function bindEvents(){
     const adminCode=ST.adminCode||'';
     const code=ST.groupId||'';
     const naam=(ST.groupData&&ST.groupData.group&&ST.groupData.group.name)||'Groep';
-    const inhoud='KantoorInzicht \u2014 Groepscode\n\nGroep: '+naam+'\nCode: '+code+'\nDatum: '+new Date().toLocaleDateString('nl-NL')+'\n\nDeelnemers: https://koersvoormorgen.nl\nDashboard: https://koersvoormorgen.nl \u2192 Dashboard bekijken';
+    const inhoud='KantoorInzicht — Groepscodes\n\nGroep: '+naam+'\nDeelnemerscode: '+code+'\nBeheerdscode: '+(adminCode||'niet beschikbaar')+'\nDatum: '+new Date().toLocaleDateString('nl-NL')+'\n\nKantoren gebruiken de DEELNEMERSCODE.\nU gebruikt de BEHEERDSCODE om alles te zien.\n\nhttps://koersvoormorgen.nl';
     const blob=new Blob([inhoud],{type:'text/plain;charset=utf-8'});
     const url=URL.createObjectURL(blob);
     const a=document.createElement('a');a.href=url;a.download='kantoorinzicht-code-'+code+'.txt';
