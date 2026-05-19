@@ -906,15 +906,13 @@ function bindEvents(){
     ST.groupData._aiTekst='';
     ST.groupLoading=false;
     ST.screen='dashboard';
-    console.log('groupData gezet:', ST.groupData);
-    console.log('screen:', ST.screen);
-    genereerGroepsAI();
   }catch(e){
     ST.groupLoading=false;
     ST.screen='dashboard-error';
     alert('Fout: '+e.message);
   }
   render();
+  if(ST.screen==='dashboard')setTimeout(genereerGroepsAI,100);
 });
   on('do-create-group','click',async()=>{
     const name=$('gc-name')?.value?.trim();const email='';
