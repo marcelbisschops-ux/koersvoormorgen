@@ -809,8 +809,9 @@ ${(p.ebitda||p.recurring)?`<div class="sec-lbl anim a2">Financi\xeble kengetalle
 function rDashboard(){
   if(ST.groupLoading)return`<div class="page-wrap"><div class="loading-screen"><div class="ai-spinner"></div><p>Dashboard wordt geladen...</p></div></div>`;
   const d=ST.groupData;if(!d)return rDashboardError();
-  const offices=d.offices||[];const cum=d.cumulative||{};const avg=overall(cum);const bench=62;
+  const offices=d.offices||[];const cum=d.cumulative||{};const avg=offices.length>0?overall(cum):0;const bench=62;
   const sorted=[...offices].sort((a,b)=>b.overall-a.overall);
+  if(!offices.length&&!ST.groupLoading){ST.groupLoading=false;}
   const isPublic=d.group?.dashboard_public!==0;
   const canSeeAll=ST.isGroupAdmin||isPublic;
   const scenarioCounts={};offices.forEach(o=>{if(o.top_scenario)scenarioCounts[o.top_scenario]=(scenarioCounts[o.top_scenario]||0)+1;});
@@ -839,6 +840,7 @@ function bindEvents(){
   if(!code)return;
   const c=code.toUpperCase().trim();
   ST.groupLoading=true;ST.screen='dashboard';render();
+  const _timeout=setTimeout(()=>{ST.groupLoading=false;render();},8000);
   try{
     if(c.length===7&&c.startsWith('B')){
       const r1=await fetch(WORKER+'/group/by-admin-code/'+c);
@@ -861,6 +863,7 @@ function bindEvents(){
     ST.groupLoading=false;ST.screen='dashboard-error';
     alert('Fout: '+e.message);
   }
+  clearTimeout(_timeout);
   render();
 });
   on('do-create-group','click',async()=>{
