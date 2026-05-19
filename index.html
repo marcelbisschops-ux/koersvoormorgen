@@ -834,23 +834,38 @@ function bindEvents(){
   on('route-solo','click',()=>{ST.groupId=null;ST.screen='intake';render();});
   on('route-group-join','click',()=>{ST.screen='group-join';render();});
   on('route-group-create','click',()=>{ST.screen='group-create';render();});
-  on('route-dashboard','click',async()=>{if(window._dashLoading)return;const code=prompt('Voer uw groepscode of beheerdscode in:','');if(code){window._dashLoading=true;setTimeout(()=>{window._dashLoading=false;},5000);
-    const c=code.toUpperCase().trim();
-    // Check of het een beheerdscode is (begint met B)
-    if(c.startsWith('B')&&c.length===7){
-      // Zoek de groep via admin code
-      ST.adminCode=c;ST.isGroupAdmin=true;
-      // Laad groep met admin_code
-      ST.groupLoading=true;render();
-      try{
-        const resp=await fetch(WORKER+'/group/by-admin-code/'+c);
-        if(resp.ok){const d=await resp.json();ST.groupId=d.group_id;await loadGroupAsAdmin(ST.groupId,c);}
-        else{alert('Beheerdscode niet gevonden.');ST.groupLoading=false;render();}
-      }catch(e){ST.groupLoading=false;render();}
-    } else {
-      ST.groupId=c;ST.isGroupAdmin=false;ST.adminCode=null;await loadGroup(ST.groupId);
-    }
-  }});
+  on('route-dashboard','click',async()=>{
+  if(window._dashBusy)return;
+  const code=prompt('Voer uw groepscode of beheerdscode in:','');
+  if(!code)return;
+  window._dashBusy=true;
+  const c=code.toUpperCase().trim();
+  if(c.length===7&&c.startsWith('B')){
+    ST.adminCode=c;ST.isGroupAdmin=true;ST.groupLoading=true;render();
+    try{
+      const r1=await fetch(WORKER+'/group/by-admin-code/'+c);
+      if(!r1.ok){alert('Beheerdscode niet gevonden.');ST.groupLoading=false;window._dashBusy=false;render();return;}
+      const d1=await r1.json();
+      ST.groupId=d1.group_id;
+      const r2=await fetch(WORKER+'/group/'+d1.group_id+'?admin_code='+encodeURIComponent(c));
+      if(!r2.ok)throw new Error('Laden mislukt');
+      ST.groupData=await r2.json();
+      ST.isGroupAdmin=true;
+      ST.groupLoading=false;
+      ST.screen='dashboard';
+    }catch(e){ST.groupLoading=false;ST.screen='dashboard-error';alert('Fout: '+e.message);}
+  } else {
+    ST.groupId=c;ST.isGroupAdmin=false;ST.adminCode=null;
+    ST.groupLoading=true;render();
+    try{
+      const r=await fetch(WORKER+'/group/'+c);
+      if(!r.ok)throw new Error('Groep niet gevonden');
+      ST.groupData=await r.json();ST.groupLoading=false;ST.screen='dashboard';
+    }catch(e){ST.groupLoading=false;ST.screen='dashboard-error';alert('Groepscode niet gevonden.');}
+  }
+  window._dashBusy=false;
+  render();
+});
   on('do-create-group','click',async()=>{
     const name=$('gc-name')?.value?.trim();const email='';
     if(!name){alert('Vul een groepsnaam in.');return;}
