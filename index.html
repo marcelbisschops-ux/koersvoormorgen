@@ -832,7 +832,7 @@ function rStaafdiagram(offices){
       new Chart(ctx,{type:'bar',data:{labels:namen,datasets:[
         {label:'EBITDA-marge (%)',data:ebitda,backgroundColor:'rgba(26,122,94,.8)',borderRadius:3},
         {label:'Vaste omzet (%)',data:recurring,backgroundColor:'rgba(201,168,76,.8)',borderRadius:3},
-        {label:'Totaalscore',data:scores,backgroundColor:'rgba(59,130,246,.7)',borderRadius:3}
+        {label:'Totaalscore (0-100, gem. van 11 dimensies)',data:scores,backgroundColor:'rgba(59,130,246,.7)',borderRadius:3}
       ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{boxWidth:12}},tooltip:{callbacks:{label:function(c){return c.dataset.label+': '+c.parsed.y;}}}},scales:{y:{beginAtZero:true,max:100},x:{grid:{display:false}}}}});
     },100);
   });
