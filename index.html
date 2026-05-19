@@ -810,10 +810,12 @@ ${(p.ebitda||p.recurring)?`<div class="sec-lbl anim a2">Financi\xeble kengetalle
 
 
 function laadChartJs(cb){
-  if(typeof Chart!=='undefined'){cb();return;}
+  if(typeof Chart!=='undefined'){setTimeout(cb,50);return;}
+  if(window._cjsLoad){setTimeout(function(){laadChartJs(cb);},200);return;}
+  window._cjsLoad=true;
   var s=document.createElement('script');
   s.src='https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js';
-  s.onload=cb;
+  s.onload=function(){window._cjsLoad=false;setTimeout(cb,100);};
   document.head.appendChild(s);
 }
 
@@ -865,6 +867,11 @@ function rDashboard(){
   const cumPts=SECTIONS.map((_,i)=>pt(i,cum[SECTIONS[i].id]||0)).map(p=>p.join(',')).join(' ');
   const axisLines=SECTIONS.map((_,i)=>{const[x,y]=pt(i,100);return`<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="var(--border2)" stroke-width="1"/>`;}).join('');
   const axisLabels=SECTIONS.map((sec,i)=>{const[x,y]=pt(i,118);const anchor=x<cx-5?'end':x>cx+5?'start':'middle';return`<text x="${x}" y="${y}" text-anchor="${anchor}" font-size="9" fill="var(--muted)" font-family="IBM Plex Sans">${sec.label}</text>`;}).join('');
+    +'<div style="margin-bottom:1.5rem"><div class="sec-lbl anim a2">AI-groepsanalyse</div>'
+    +'<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.5rem">'
+    +'<div id="groep-ai-out" style="font-size:14px;color:var(--mid);line-height:1.8"><div style="color:var(--muted);font-style:italic">Klik op de knop voor een AI-analyse van de hele groep.</div></div>'
+    +'<button id="groep-ai-btn" style="margin-top:1rem;background:var(--teal);color:#fff;border:none;border-radius:var(--r);padding:9px 18px;font-family:IBM Plex Sans,sans-serif;font-size:13px;font-weight:600;cursor:pointer">&#127775; Genereer groepsanalyse</button>'
+    +'</div></div>'
   return`<div class="page-wrap"><div class="page-hdr"><div class="page-brand"><div class="wdot"></div>KantoorInzicht</div><div class="page-step">Groepsdashboard &middot; ${d.group?.name||ST.groupId}</div></div><div class="dash-head anim"><div class="dash-title"><em>${d.group?.name||'Groep'}</em></div><div class="dash-sub">Groepscode: <span class="mono" style="color:var(--teal)">${d.group?.id||ST.groupId}</span> &middot; ${offices.length} deelnemende kantoren</div></div><div class="dash-stats anim a1"><div class="stat-card"><div class="stat-num" style="color:var(--teal)">${offices.length}</div><div class="stat-lbl">Kantoren</div></div><div class="stat-card"><div class="stat-num" style="color:${avg>=70?'var(--teal)':avg>=50?'var(--gold)':'var(--red)'}">${avg||'\u2014'}</div><div class="stat-lbl">Gemiddelde score</div></div><div class="stat-card"><div class="stat-num" style="color:var(--head)">${sorted[0]?sorted[0].overall:'\u2014'}</div><div class="stat-lbl">Hoogste score</div></div><div class="stat-card"><div class="stat-num" style="color:var(--head);font-size:1rem">${topScenario?topScenario[0].split(' ')[0]:'\u2014'}</div><div class="stat-lbl">Meest aanbevolen</div></div></div><div class="sec-lbl anim a1">Groepsprofiel \u2014 radardiagram</div><div class="radar-wrap anim a1"><div class="radar-title">Radardiagram groepsgemiddelden</div><div class="radar-sub">Teal = groepsgemiddelde &middot; Lichte vlakken = individuele kantoren</div><svg width="400" height="430" viewBox="0 0 400 430" style="display:block;margin:0 auto">${[20,40,60,80,100].map(v=>`<polygon points="${gridPts(v)}" fill="none" stroke="var(--border)" stroke-width="0.5"/>`).join('')}${axisLines}${dataPolygon}<polygon points="${cumPts}" fill="rgba(34,197,160,.15)" stroke="var(--teal)" stroke-width="2"/>${axisLabels}${SECTIONS.map((_,i)=>{const[x,y]=pt(i,cum[SECTIONS[i].id]||0);const v=cum[SECTIONS[i].id]||0;const lx=x+(x>200?14:-14);const ly=y+(y<100?-5:14);return`<circle cx="${x}" cy="${y}" r="4" fill="var(--teal)"/><text x="${lx}" y="${ly}" font-size="10" font-weight="600" fill="var(--teal)" font-family="IBM Plex Mono" text-anchor="${x>200?'start':'end'}">${v}</text>`;}).join('')}</svg></div><div class="sec-lbl anim a2">Benchmarkvergelijking</div><div class="dim-grid anim a2">${SECTIONS.map(sec=>{const v=cum[sec.id]||0;const f=df(v);return`<div class="dim-card"><div class="dim-top"><div class="dim-name">${sec.label}</div><div class="dim-val" style="color:${dc(v)}">${v}</div></div><div class="dim-bar-bg"><div class="dim-bar" style="width:${v}%;background:${dc(v)}"></div></div><div class="dim-flag" style="color:${f.c}">${f.l}</div></div>`;}).join('')}</div><div class="sec-lbl anim a2">Vergelijkingen</div><div class="compare-grid anim a2"><div class="compare-card"><div class="compare-title">Sterkste dimensies (groep)</div>${SECTIONS.map(sec=>({...sec,v:cum[sec.id]||0})).sort((a,b)=>b.v-a.v).slice(0,5).map(sec=>`<div class="compare-item"><span class="compare-name">${sec.label}</span><span class="compare-val" style="color:${dc(sec.v)}">${sec.v}</span></div>`).join('')}</div><div class="compare-card"><div class="compare-title">Zwakste dimensies (groep)</div>${SECTIONS.map(sec=>({...sec,v:cum[sec.id]||0})).sort((a,b)=>a.v-b.v).slice(0,5).map(sec=>`<div class="compare-item"><span class="compare-name">${sec.label}</span><span class="compare-val" style="color:${dc(sec.v)}">${sec.v}</span></div>`).join('')}</div><div class="compare-card"><div class="compare-title">Ranglijst kantoren</div>${sorted.map((o,i)=>`<div class="compare-item"><span class="compare-name">${i+1}. ${o.name||'Anoniem'}${o.region?' &middot; '+o.region:''}</span><span class="compare-val" style="color:${dc(o.overall)}">${o.overall}</span></div>`).join('')}</div><div class="compare-card"><div class="compare-title">Aanbevolen scenarios</div>${Object.entries(scenarioCounts).sort((a,b)=>b[1]-a[1]).map(([sc,cnt])=>`<div class="compare-item"><span class="compare-name">${sc}</span><span class="compare-val" style="color:var(--sub)">${cnt}x</span></div>`).join('')}</div></div>${canSeeAll&&sorted.length?(()=>{const chartId='ch_'+Math.random().toString(36).slice(2,6);const namen=sorted.map(o=>o.name||'Anoniem');const ebitda=sorted.map(o=>parseFloat(String(o.ebitda||'0').replace('%','').replace(',','.'))||0);const recurring=sorted.map(o=>parseFloat(String(o.recurring||'0').replace('%','').replace(',','.'))||0);const scores=sorted.map(o=>o.overall||0);function fmtOmzet(v){if(!v)return '\u2014';const n=parseFloat(String(v).replace(/[^0-9]/g,''));if(isNaN(n))return v;if(n>=1000000)return '\u20ac'+(n/1000000).toFixed(1)+'M';if(n>=1000)return '\u20ac'+(n/1000).toFixed(0)+'K';return '\u20ac'+n;}setTimeout(function(){if(typeof Chart==='undefined')return;const ctx=document.getElementById(chartId);if(!ctx)return;new Chart(ctx,{type:'bar',data:{labels:namen,datasets:[{label:'EBITDA-marge (%)',data:ebitda,backgroundColor:'rgba(26,122,94,.85)',borderRadius:4},{label:'Vaste omzet (%)',data:recurring,backgroundColor:'rgba(201,168,76,.85)',borderRadius:4},{label:'Totaalscore',data:scores,backgroundColor:'rgba(59,130,246,.7)',borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{boxWidth:12,font:{size:12},padding:16}},tooltip:{callbacks:{label:function(c){return c.dataset.label+': '+c.parsed.y;}}}},scales:{y:{beginAtZero:true,max:100,grid:{color:'rgba(0,0,0,.06)'}},x:{grid:{display:false}}}}});},150);const tableRows=sorted.map(function(o,i){const dcol=o.overall>=70?'var(--teal)':o.overall>=50?'var(--gold)':'var(--red)';return '<tr style="border-bottom:1px solid var(--border)"><td style="padding:12px 14px;font-weight:600;color:var(--head)"><span style="display:inline-block;width:22px;height:22px;border-radius:50%;background:var(--teal-bg);color:var(--teal);font-size:11px;font-weight:700;text-align:center;line-height:22px;margin-right:8px">'+(i+1)+'</span>'+(o.name||'Anoniem')+'</td><td style="padding:12px 14px;font-size:13px;color:var(--mid)">'+(o.region||'\u2014')+'</td><td style="padding:12px 14px;font-size:13px;text-align:right;font-family:IBM Plex Mono,monospace">'+(o.fte||'\u2014')+'</td><td style="padding:12px 14px;font-size:13px;text-align:right;font-family:IBM Plex Mono,monospace">'+fmtOmzet(o.revenue)+'</td><td style="padding:12px 14px;font-size:13px;text-align:right;font-family:IBM Plex Mono,monospace">'+(o.ebitda||'\u2014')+'</td><td style="padding:12px 14px;font-size:13px;text-align:right;font-family:IBM Plex Mono,monospace">'+(o.recurring||'\u2014')+'</td><td style="padding:12px 14px;text-align:center"><span style="font-family:IBM Plex Mono,monospace;font-size:13px;font-weight:600;padding:3px 10px;border-radius:4px;background:var(--teal-bg);color:'+dcol+'">'+o.overall+'</span></td><td style="padding:12px 14px"><span style="font-size:11px;font-weight:600;padding:3px 8px;border-radius:3px;background:var(--teal-bg);color:var(--teal);border:1px solid var(--teal-dark)">'+(o.top_scenario||'\u2014').split(' ').slice(0,2).join(' ')+'</span></td><td style="padding:12px 14px;font-size:12px;color:var(--mid)">'+(o.ambitie||'\u2014')+'</td></tr>';}).join('');return '<div class="sec-lbl anim a2">Vergelijkend overzicht</div><div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);overflow:hidden;margin-bottom:1.5rem"><div style="padding:1.25rem;border-bottom:1px solid var(--border);background:var(--card)"><div style="font-size:13px;font-weight:600;color:var(--head);margin-bottom:1rem">Kengetallen per kantoor</div><div style="position:relative;height:'+(Math.max(sorted.length*55+100,200))+'px"><canvas id="'+chartId+'" role="img" aria-label="Kengetallen per kantoor">Kengetallen.</canvas></div></div><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse"><thead><tr style="background:var(--card)"><th style="padding:10px 14px;text-align:left;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">Kantoor</th><th style="padding:10px 14px;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">Regio</th><th style="padding:10px 14px;text-align:right;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">Fte</th><th style="padding:10px 14px;text-align:right;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">Omzet</th><th style="padding:10px 14px;text-align:right;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">EBITDA</th><th style="padding:10px 14px;text-align:right;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">Vast</th><th style="padding:10px 14px;text-align:center;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">Score</th><th style="padding:10px 14px;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">Scenario</th></tr></thead><tbody>'+tableRows+'</tbody></table></div></div>';})():''}<div class="r-footer"><p class="footer-note">&copy; ${new Date().getFullYear()} Bisschops Financing BV \u2014 KantoorInzicht</p><div class="footer-btns"><button class="btn-print" onclick="setTimeout(function(){window.print()},300)">&#128438; Printen</button><button class="btn-print" onclick="downloadGroepsRapport()">&#8681; Groepsrapport</button><button class="btn-ghost" id="back-intro">Start</button><button class="btn-adv" id="refresh-dash">Verversen</button></div></div></div>`;
 }
 
@@ -973,6 +980,50 @@ function bindEvents(){
   on('gen-btn','click',()=>generateAI());
   on('view-group-btn','click',()=>loadGroup(ST.groupId));
   on('refresh-dash','click',()=>loadGroup(ST.groupId));
+  on('groep-ai-btn','click',async function(){
+    var btn=document.getElementById('groep-ai-btn');
+    var out=document.getElementById('groep-ai-out');
+    if(!btn||!out)return;
+    btn.disabled=true;btn.textContent='Genereren...';
+    out.innerHTML='<div class="ai-loading"><div class="ai-spinner"></div><span>Groepsanalyse wordt gegenereerd...</span></div>';
+    var d=ST.groupData;
+    if(!d)return;
+    var offices=(d.offices||[]).sort(function(a,b){return b.overall-a.overall;});
+    var cum=d.cumulative||{};
+    var avg=offices.length?Math.round(offices.reduce(function(a,o){return a+o.overall;},0)/offices.length):0;
+    var kantoorInfo=offices.map(function(o,i){
+      return (i+1)+'. '+( o.name||'Anoniem')+' | Score: '+o.overall+' | EBITDA: '+(o.ebitda||'?')+'% | Vast: '+(o.recurring||'?')+'% | Omzet: '+(o.revenue||'?')+' | Fte: '+(o.fte||'?')+' | Ambitie: '+(o.ambitie||'?')+' | Scenario: '+(o.top_scenario||'?');
+    }).join('\n');
+    var dimInfo=SECTIONS.map(function(s){return s.label+': '+(cum[s.id]||0);}).join(' | ');
+    var prompt='Je bent Marcel Bisschops, senior M&A-adviseur gespecialiseerd in accountantskantoren. Analyseer de volgende groep van '+offices.length+' accountantskantoren en geef een beknopt groepsrapport.\n\nGROEPSOVERZICHT:\nGroep: '+(d.group&&d.group.name||'Onbekend')+'\nAantal kantoren: '+offices.length+'\nGemiddelde score: '+avg+'/100\n\nDIMENSIEGEMIDDELDEN:\n'+dimInfo+'\n\nKANTOREN (gerangschikt op score):\n'+kantoorInfo+'\n\nGEEF:\n1. Groepsprofiel (2 alineas): wat typeert deze groep collectief?\n2. Sterktes en kansen van de groep als geheel\n3. Gemeenschappelijke risicos of aandachtspunten\n4. Top 3 aanbevelingen voor de groep\n5. Kort individueel commentaar per kantoor (1 zin)\n\nSchrijf direct en professioneel in het Nederlands. Gebruik ## koppen. Geen tabellen.';
+    try{
+      var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}]})});
+      if(!resp.ok)throw new Error('HTTP '+resp.status);
+      var reader=resp.body.getReader();
+      var dec=new TextDecoder();
+      var txt='';
+      out.innerHTML='';
+      while(true){
+        var res=await reader.read();
+        if(res.done)break;
+        var chunk=dec.decode(res.value,{stream:true});
+        var lines2=chunk.split('\n');
+        for(var li=0;li<lines2.length;li++){
+          var line2=lines2[li].trim();
+          if(!line2||line2==='data: [DONE]')continue;
+          if(line2.startsWith('data: ')){
+            try{var j=JSON.parse(line2.slice(6));if(j.type==='content_block_delta'&&j.delta&&j.delta.text)txt+=j.delta.text;}catch(e){}
+          }
+        }
+        out.innerHTML=renderAIText(txt,true);
+      }
+      out.innerHTML=renderAIText(txt,false);
+      btn.textContent='Opnieuw genereren';btn.disabled=false;
+    }catch(e){
+      out.innerHTML='<div style="color:var(--red)">Fout: '+e.message+'</div>';
+      btn.textContent='Probeer opnieuw';btn.disabled=false;
+    }
+  });
   on('callback-btn','click',()=>showCallbackModal());
   on('restart-btn','click',()=>{ST={...ST,screen:'intro',section:0,answers:{},scores:null,scenarios:null,openScenario:null,aiText:null,aiLoading:false,savedScanId:null,profile:{naam:'',naamAnon:false,email:'',regio:'',fte:'',omzet:'',specialisme:'',doelgroep:'',software:'',ambitie:'',context:'',omzetfte:'',ebitda:'',recurring:'',saveConsent:true}};render();window.scrollTo(0,0);});
 }
