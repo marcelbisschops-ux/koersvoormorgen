@@ -700,7 +700,7 @@ function formatOmzet(v){
 }
 function render(){
   const app=document.getElementById('app');
-  const screens={intro:rIntro,intake:rIntake,questions:rQuestions,results:rResults,'group-create':rGroupCreate,'group-join':rGroupJoin,'group-created':rGroupCreated,dashboard:rDashboard,'dashboard-error':rDashboardError};
+  const screens={intro:rIntro,intake:rIntake,questions:rQuestions,results:rResults,'group-create':rGroupCreate,'group-join':rGroupJoin,'group-created':rGroupCreated,dashboard:()=>rDashboard(ST.groupData),'dashboard-error':rDashboardError};
   app.innerHTML=(screens[ST.screen]||rIntro)();
   bindEvents();
 }
