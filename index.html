@@ -16,6 +16,16 @@
   --red:#e05252;--red-bg:rgba(224,82,82,.1);
   --r:6px;--r2:10px;
 }
+@media(prefers-color-scheme:dark){
+  :root{
+    --void:#1a1917;--panel:#242220;--card:#2e2c29;
+    --border:#3a3835;--border2:#4a4845;--muted:#7a7875;--mid:#a0a09c;
+    --body:#c8c5bc;--sub:#d8d5cc;--head:#f0eeea;--white:#faf9f6;
+    --teal:#22c98a;--teal-dim:#1a9a6a;--teal-dark:#0a5a3a;--teal-bg:rgba(34,197,138,.12);
+    --gold:#e0b85a;--gold-bg:rgba(224,184,90,.12);
+    --red:#f07070;--red-bg:rgba(240,112,112,.12);
+  }
+}
 html{scroll-behavior:smooth}
 body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--body);min-height:100vh;font-size:15px;line-height:1.6}
 .mono{font-family:'IBM Plex Mono',monospace}
@@ -1023,7 +1033,7 @@ function toonKantoorDetail(idx){
   mo.innerHTML='<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.5rem">'
     +'<div><div style="font-size:1.2rem;font-weight:600;color:#1a1815">'+(o.name||'Anoniem')+'</div>'
     +'<div style="font-size:13px;color:#8a8880">'+(o.fte?o.fte+' fte':'')+' &middot; Score: <strong style="color:'+sc(o.overall)+'">'+o.overall+'/100</strong></div></div>'
-    +'<button id="det-sluit" style="background:none;border:none;font-size:1.2rem;cursor:pointer;color:#8a8880;padding:4px">&times;</button></div>'
+    +'<div style="display:flex;gap:8px;align-items:center"><button id="det-ai-btn" style="background:var(--teal);color:#fff;border:none;border-radius:var(--r);padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer;font-family:IBM Plex Sans,sans-serif">&#127775; AI-analyse</button><button id="det-sluit" style="background:none;border:none;font-size:1.2rem;cursor:pointer;color:#8a8880;padding:4px">&times;</button></div></div>'
     +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:1.5rem">'
     +'<div style="background:#f0eeea;border-radius:8px;padding:10px"><div style="font-size:10px;text-transform:uppercase;font-weight:600;color:#8a8880;margin-bottom:2px">Omzet</div><div style="font-size:14px;font-weight:600;color:#1a1815">'+(o.revenue||'—')+'</div></div>'
     +'<div style="background:#f0eeea;border-radius:8px;padding:10px"><div style="font-size:10px;text-transform:uppercase;font-weight:600;color:#8a8880;margin-bottom:2px">EBITDA</div><div style="font-size:14px;font-weight:600;color:#1a1815">'+(o.ebitda||'—')+'</div></div>'
@@ -1035,8 +1045,37 @@ function toonKantoorDetail(idx){
   ov.appendChild(mo);document.body.appendChild(ov);
   ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
   document.getElementById('det-sluit').addEventListener('click',function(){document.body.removeChild(ov);});
+  var aiContainer=document.createElement('div');
+  aiContainer.style.cssText='margin-top:1.5rem;padding-top:1.5rem;border-top:1px solid #e8e6e0';
+  mo.insertBefore(aiContainer,mo.lastElementChild);
+  document.getElementById('det-ai-btn').addEventListener('click',function(){
+    genereerKantoorAI(o,aiContainer);
+  });
 }
 
+async function genereerKantoorAI(o, container){
+  container.innerHTML='<div class="ai-loading"><div class="ai-spinner"></div><span>Analyse wordt gegenereerd…</span></div>';
+  var dimInfo=SECTIONS.map(function(s){return s.label+': '+((o.scores&&o.scores[s.id])||0);}).join(', ');
+  var prompt='Je bent Marcel Bisschops, senior M&A-adviseur. Geef een strategische analyse van dit accountantskantoor.\n\nKantoor: '+(o.name||'Anoniem')+'\nScore: '+o.overall+'/100\nFte: '+(o.fte||'?')+' | Omzet: '+(o.revenue||'?')+' | EBITDA: '+(o.ebitda||'?')+'% | Vaste omzet: '+(o.recurring||'?')+'%\nAmbitie: '+(o.ambitie||'?')+' | Aanbevolen scenario: '+(o.top_scenario||'?')+'\nDimensiescores: '+dimInfo+'\n\nGeef een rapport in het Nederlands (max 300 woorden) met ## koppen:\n## Strategisch profiel\n## Sterktes\n## Risicos en aandachtspunten\n## Aanbeveling\n\nDirect, concreet en specifiek voor dit kantoor.';
+  try{
+    var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}]})});
+    if(!resp.ok)throw new Error('HTTP '+resp.status);
+    var reader=resp.body.getReader();var dec=new TextDecoder();var txt='';
+    while(true){
+      var res=await reader.read();if(res.done)break;
+      var chunk=dec.decode(res.value,{stream:true});
+      chunk.split('\n').forEach(function(line){
+        if(!line.startsWith('data: '))return;
+        var data=line.slice(6);if(data==='[DONE]')return;
+        try{var j=JSON.parse(data);if(j.type==='content_block_delta'&&j.delta&&j.delta.text)txt+=j.delta.text;}catch(e){}
+      });
+      container.innerHTML=renderAIText(txt,true);
+    }
+    container.innerHTML=renderAIText(txt,false);
+  }catch(e){
+    container.innerHTML='<div style="color:var(--red)">Fout: '+e.message+'</div>';
+  }
+}
 async function genereerGroepsAI(){
   var d=ST.groupData;
   if(!d||!d.offices||!d.offices.length)return;
