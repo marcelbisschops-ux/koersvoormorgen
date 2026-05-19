@@ -861,6 +861,7 @@ function bindEvents(){
   });
   on('view-dashboard-btn','click',()=>{ST.isGroupAdmin=true;loadGroup(ST.groupId);});
   on('save-code-btn','click',()=>{
+    const adminCode=ST.adminCode||'';
     const code=ST.groupId||'';
     const naam=(ST.groupData&&ST.groupData.group&&ST.groupData.group.name)||'Groep';
     const inhoud='KantoorInzicht \u2014 Groepscode\n\nGroep: '+naam+'\nCode: '+code+'\nDatum: '+new Date().toLocaleDateString('nl-NL')+'\n\nDeelnemers: https://koersvoormorgen.nl\nDashboard: https://koersvoormorgen.nl \u2192 Dashboard bekijken';
