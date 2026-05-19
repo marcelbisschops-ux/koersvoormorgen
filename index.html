@@ -858,6 +858,8 @@ function bindEvents(){
     ST.groupData=data;
     ST.groupLoading=false;
     ST.screen='dashboard';
+    console.log('groupData gezet:', ST.groupData);
+    console.log('screen:', ST.screen);
   }catch(e){
     ST.groupLoading=false;
     ST.screen='dashboard-error';
