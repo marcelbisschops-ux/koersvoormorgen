@@ -25,6 +25,8 @@
     --gold:#e0b85a;--gold-bg:rgba(224,184,90,.12);
     --red:#f07070;--red-bg:rgba(240,112,112,.12);
   }
+  .ai-h2{color:#e8e4da!important}
+  .ai-h3{color:#c8c5bc!important}
 }
 html{scroll-behavior:smooth}
 body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--body);min-height:100vh;font-size:15px;line-height:1.6}
@@ -1117,6 +1119,32 @@ async function genereerGroepsAI(){
 }
 
 /* ======== EVENTS ======== */
+
+function downloadGroepsRapport(){
+  var d=ST.groupData;if(!d)return;
+  var offices=(d.offices||[]).sort(function(a,b){return b.overall-a.overall;});
+  var avg=offices.length?Math.round(offices.reduce(function(a,o){return a+o.overall;},0)/offices.length):0;
+  var txt='KantoorInzicht -- Groepsrapport\n================================\n\n';
+  txt+='Groep: '+(d.group&&d.group.name||ST.groupId)+'\n';
+  txt+='Datum: '+new Date().toLocaleDateString('nl-NL')+'\n';
+  txt+='Deelnemers: '+offices.length+'\nGem. score: '+avg+'/100\n\n';
+  if(d._aiTekst)txt+='AI-ANALYSE\n----------\n'+d._aiTekst+'\n\n';
+  txt+='KANTOREN\n--------\n';
+  offices.forEach(function(o,i){
+    txt+='\n#'+(i+1)+' '+(o.name||'Anoniem')+' ('+o.overall+'/100)\n';
+    if(o.fte)txt+='Fte: '+o.fte+'\n';
+    if(o.revenue)txt+='Omzet: '+o.revenue+'\n';
+    if(o.ebitda)txt+='EBITDA: '+o.ebitda+'\n';
+    if(o.recurring)txt+='Vaste omzet: '+o.recurring+'\n';
+    if(o.ambitie)txt+='Ambitie: '+o.ambitie+'\n';
+    txt+='Scenario: '+(o.top_scenario||'Onbekend')+'\n';
+  });
+  var blob=new Blob([txt],{type:'text/plain;charset=utf-8'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');a.href=url;
+  a.download='groepsrapport-'+new Date().toISOString().slice(0,10)+'.txt';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
+}
 function bindEvents(){
   const $=id=>document.getElementById(id);
   const on=(id,ev,fn)=>{const el=$(id);if(el)el['on'+ev]=fn;};
