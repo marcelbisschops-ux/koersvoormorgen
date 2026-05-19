@@ -114,7 +114,7 @@ async function doLogin(){
     scans=await r1.json();
     callbacks=await r2.json();
     mnaList=r3.ok?await r3.json():[];
-    rapporten=r4.ok?await r4.json():[];
+    try{var r4data=r4.ok?await r4.json().catch(()=>[]):[];rapporten=Array.isArray(r4data)?r4data:[];}catch(e){rapporten=[];}
     adminKey=key;
     document.getElementById('hdr-actions').style.display='flex';
     document.getElementById('btn-refresh').addEventListener('click',refreshData);
@@ -143,7 +143,7 @@ async function refreshData(){
     scans=await r1.json();
     callbacks=await r2.json();
     mnaList=r3.ok?await r3.json():[];
-    rapporten=r4.ok?await r4.json():[];
+    try{var r4data=r4.ok?await r4.json().catch(()=>[]):[];rapporten=Array.isArray(r4data)?r4data:[];}catch(e){rapporten=[];}
     renderDashboard();
   }catch(e){alert('Kon niet verversen.');}
 }
