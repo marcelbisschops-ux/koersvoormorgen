@@ -807,7 +807,6 @@ ${(p.ebitda||p.recurring)?`<div class="sec-lbl anim a2">Financi\xeble kengetalle
 }
 
 function rDashboard(){
-  if(ST.groupLoading)return`<div class="page-wrap"><div class="loading-screen"><div class="ai-spinner"></div><p>Dashboard wordt geladen...</p></div></div>`;
   const d=ST.groupData;if(!d)return rDashboardError();
   const offices=d.offices||[];const cum=d.cumulative||{};const avg=offices.length>0?overall(cum):0;const bench=62;
   const sorted=[...offices].sort((a,b)=>b.overall-a.overall);
