@@ -839,31 +839,31 @@ function bindEvents(){
   const code=prompt('Voer uw groepscode of beheerdscode in:','');
   if(!code)return;
   const c=code.toUpperCase().trim();
-  ST.groupLoading=true;ST.screen='dashboard';render();
-  const _timeout=setTimeout(()=>{ST.groupLoading=false;render();},8000);
   try{
+    let data;
     if(c.length===7&&c.startsWith('B')){
       const r1=await fetch(WORKER+'/group/by-admin-code/'+c);
       if(!r1.ok)throw new Error('Beheerdscode niet gevonden');
       const d1=await r1.json();
-      ST.groupId=d1.group_id;ST.adminCode=c;ST.isGroupAdmin=true;
       const r2=await fetch(WORKER+'/group/'+d1.group_id+'?admin_code='+encodeURIComponent(c));
       if(!r2.ok)throw new Error('Dashboard laden mislukt');
-      ST.groupData=await r2.json();
+      data=await r2.json();
+      ST.groupId=d1.group_id;ST.adminCode=c;ST.isGroupAdmin=true;
     } else {
-      ST.groupId=c;ST.isGroupAdmin=false;ST.adminCode=null;
       const r=await fetch(WORKER+'/group/'+c);
       if(!r.ok)throw new Error('Groepscode niet gevonden');
-      const data=await r.json();
+      data=await r.json();
       if(data.error)throw new Error(data.error);
-      ST.groupData=data;
+      ST.groupId=c;ST.isGroupAdmin=false;ST.adminCode=null;
     }
-    ST.groupLoading=false;ST.screen='dashboard';
+    ST.groupData=data;
+    ST.groupLoading=false;
+    ST.screen='dashboard';
   }catch(e){
-    ST.groupLoading=false;ST.screen='dashboard-error';
+    ST.groupLoading=false;
+    ST.screen='dashboard-error';
     alert('Fout: '+e.message);
   }
-  clearTimeout(_timeout);
   render();
 });
   on('do-create-group','click',async()=>{
