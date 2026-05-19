@@ -718,7 +718,7 @@ function formatOmzet(v){
 }
 function render(){
   const app=document.getElementById('app');
-  const screens={intro:rIntro,intake:rIntake,questions:rQuestions,results:rResults,'group-create':rGroupCreate,'group-join':rGroupJoin,'group-created':rGroupCreated,dashboard:()=>rDashboard(ST.groupData),'dashboard-error':rDashboardError};
+  const screens={intro:rIntro,intake:rIntake,questions:rQuestions,results:rResults,'group-create':rGroupCreate,'group-join':rGroupJoin,'group-created':rGroupCreated,dashboard:()=>rDashboard(ST.groupData),'dashboard-error':rDashboardError,'rapport-ophalen':rRapportOphalen};
   app.innerHTML=(screens[ST.screen]||rIntro)();
   bindEvents();
 }
@@ -749,6 +749,11 @@ function rIntro(){return`<div class="intro-wrap"><div class="intro-grid"></div><
 <div class="route-icon">\u25a4</div>
 <div class="route-title">Dashboard bekijken</div>
 <div class="route-desc">Bekijk alle ingediende scans, benchmarks en vergelijkingen van uw groep.</div>
+</div>
+<div class="route-card" id="route-rapport">
+<div class="route-icon">&#9638;</div>
+<div class="route-title">Rapport ophalen</div>
+<div class="route-desc">Eerder een scan gedaan? Haal uw rapport op met uw rapportcode.</div>
 </div>
 </div>
 </div><div class="intro-foot">Vertrouwelijk &middot; Gebaseerd op PE &amp; M&amp;A-criteria &middot; Powered by Claude AI</div><div style="margin-top:1rem;max-width:540px;margin-left:auto;margin-right:auto"><div style="background:var(--panel);border:1px solid var(--teal);border-radius:var(--r2);padding:1.25rem;text-align:left;margin-bottom:1rem"><div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--teal);margin-bottom:.5rem">Wat is KantoorInzicht?</div><p style="font-size:12px;color:var(--mid);line-height:1.7;margin-bottom:.5rem">KantoorInzicht is een strategisch zelfanalyse-instrument voor accountants- en administratiekantoren. De scan geeft inzicht in uw positie op elf strategische dimensies en maakt inzichtelijk hoe klaar uw kantoor is voor de volgende fase - van groei en automatisering tot samenwerking, fusie of overdracht.</p><p style="font-size:11px;color:var(--muted);line-height:1.6"><strong style="color:var(--sub)">Let op:</strong> Deze scan is uitsluitend bedoeld voor kantoren zelf. Het gebruik door M&amp;A-adviseurs of intermediairs voor klantanalyse zonder licentieafspraak met Bisschops Financing BV is niet toegestaan.</p></div><div style="font-size:11px;color:var(--muted);text-align:center;line-height:1.7;padding:8px 0">&#128274; Versleuteld via HTTPS &middot; Opgeslagen op Cloudflare-servers in Europa (Frankfurt, EU) &middot; Verwerking conform AVG &middot; <a href="privacy.html" style="color:var(--teal)">Privacyverklaring</a></div></div></div></div>`;}
@@ -781,6 +786,20 @@ function rGroupCreated(){
 
 function rGroupJoin(){return`<div class="page-wrap narrow"><div class="page-hdr"><div class="page-brand"><div class="wdot"></div>KantoorInzicht</div><div class="page-step">Groep deelnemen</div></div><div class="group-panel anim"><div class="group-panel-title">Deelnemen aan een groep</div><div class="group-panel-sub">Voer de groepscode in die u hebt ontvangen van de beheerder.</div><div class="form-grid full" style="margin-bottom:1rem"><div class="field"><label>Groepscode</label><input type="text" id="gj-code" placeholder="" maxlength="6" style="text-transform:uppercase;letter-spacing:.2em;font-size:1.4rem;text-align:center"></div></div><div style="display:flex;gap:10px"><button class="btn-ghost" id="back-intro">Terug</button><button class="btn-adv" id="do-join-group">Doorgaan naar scan</button></div></div></div>`;}
 
+
+function rRapportOphalen(){
+  return`<div class="page-wrap narrow"><div class="page-hdr"><div class="page-brand"><div class="wdot"></div>KantoorInzicht</div><div class="page-step">Rapport ophalen</div></div>
+<div class="intake-wrap">
+  <h2 style="font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:600;color:var(--head);margin-bottom:.5rem">Uw rapport ophalen</h2>
+  <p style="font-size:14px;color:var(--muted);margin-bottom:1.5rem">Voer uw rapportcode in om uw eerder gemaakte scan terug te zien.</p>
+  <div class="field required"><label>Rapportcode</label><input id="rapport-code-input" type="text" placeholder="bijv. SC-ABC123" style="text-transform:uppercase;letter-spacing:.05em" maxlength="20"/></div>
+  <div id="rapport-error" style="color:var(--red);font-size:13px;margin-top:.5rem;display:none">Rapportcode niet gevonden. Controleer de code en probeer opnieuw.</div>
+  <div style="display:flex;gap:12px;margin-top:1.5rem">
+    <button class="btn-ghost" id="rapport-terug">Terug</button>
+    <button class="btn-adv" id="rapport-ophalen-btn">Rapport ophalen &rarr;</button>
+  </div>
+</div></div>`;
+}
 function rDashboardError(){return`<div class="page-wrap narrow"><div class="page-hdr"><div class="page-brand"><div class="wdot"></div>KantoorInzicht</div><div class="page-step">Dashboard</div></div><div class="error-screen anim"><h3>Groep niet gevonden</h3><p>Controleer de groepscode en probeer opnieuw.</p><button class="btn-adv" id="back-intro">Terug naar start</button></div></div>`;}
 
 function rIntake(){
@@ -1255,6 +1274,32 @@ function bindEvents(){
   on('gen-btn','click',()=>generateAI());
   on('view-group-btn','click',()=>loadGroup(ST.groupId));
   on('refresh-dash','click',()=>loadGroup(ST.groupId));
+  on('route-rapport','click',()=>{ST.screen='rapport-ophalen';render();});
+  on('rapport-terug','click',()=>{ST.screen='intro';render();});
+  on('rapport-ophalen-btn','click',async function(){
+    var code=document.getElementById('rapport-code-input');
+    if(!code||!code.value.trim())return;
+    var id=code.value.trim().toUpperCase();
+    var btn=document.getElementById('rapport-ophalen-btn');
+    var err=document.getElementById('rapport-error');
+    btn.textContent='Laden...';btn.disabled=true;
+    try{
+      var resp=await fetch(WORKER+'/rapport/'+id);
+      if(!resp.ok)throw new Error('niet gevonden');
+      var data=await resp.json();
+      if(data.error)throw new Error(data.error);
+      ST.savedScanId=data.scan_id;
+      ST.scores=JSON.parse(data.scores||'{}');
+      ST.scenarios=[{name:data.top_scenario}];
+      ST.profile={naam:data.kantoor_naam||'',email:data.email||'',regio:data.regio||'',fte:data.fte||'',omzet:data.revenue||''};
+      ST.aiTekst=data.ai_rapport||'';
+      ST.screen='results';
+    }catch(e){
+      if(err)err.style.display='block';
+    }
+    btn.textContent='Rapport ophalen →';btn.disabled=false;
+    render();
+  });
   on('groep-ai-btn','click',async function(){
     var btn=document.getElementById('groep-ai-btn');
     var out=document.getElementById('groep-ai-out');
