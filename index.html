@@ -829,7 +829,7 @@ function bindEvents(){
   on('route-dashboard','click',async()=>{const code=prompt('Voer uw groepscode in:','');if(code){
     const c=code.toUpperCase().trim();
     // Check of het een beheerdscode is (begint met B)
-    if(c.startsWith('B')&&c.length===6){
+    if(c.startsWith('B')&&c.length===7){
       // Zoek de groep via admin code
       ST.adminCode=c;ST.isGroupAdmin=true;
       // Laad groep met admin_code
