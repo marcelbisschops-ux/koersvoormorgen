@@ -409,7 +409,7 @@ const SCENARIOS={
 };
 
 /* ======== STATE ======== */
-let ST={screen:'intro',section:0,answers:{},scores:null,scenarios:null,openScenario:null,openOffice:null,aiText:null,aiLoading:false,groupId:null,groupData:null,groupLoading:false,isGroupAdmin:false,savedScanId:null,profile:{naam:'',naamAnon:false,email:'',regio:'',fte:'',omzet:'',specialisme:'',doelgroep:'',software:'',ambitie:'',context:'',omzetfte:'',ebitda:'',recurring:'',saveConsent:true}};
+let ST={screen:'intro',section:0,answers:{},scores:null,scenarios:null,openScenario:null,openOffice:null,aiText:null,aiLoading:false,groupId:null,adminCode:null,groupData:null,groupLoading:false,isGroupAdmin:false,savedScanId:null,profile:{naam:'',naamAnon:false,email:'',regio:'',fte:'',omzet:'',specialisme:'',doelgroep:'',software:'',ambitie:'',context:'',omzetfte:'',ebitda:'',recurring:'',saveConsent:true}};
 
 /* ======== SCORING ======== */
 function calcScores(){const s={};SECTIONS.forEach(sec=>{let tot=0,cnt=0;sec.questions.forEach(q=>{if(ST.answers[q.id]!==undefined){let v=ST.answers[q.id];if(REVERSE.has(q.id))v=6-v;tot+=v;cnt++;}});s[sec.id]=cnt>0?Math.round((tot/(cnt*5))*100):0;});return s;}
@@ -625,6 +625,18 @@ async function loadGroup(gid){
   ST.groupLoading=false;render();
 }
 
+async function loadGroupAsAdmin(gid,adminCode){
+  ST.groupLoading=true;render();
+  try{
+    const resp=await fetch(`${WORKER}/group/${gid}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({admin_code:adminCode})});
+    if(!resp.ok)throw new Error('niet gevonden');
+    ST.groupData=await resp.json();
+    ST.isGroupAdmin=ST.groupData.is_admin||false;
+    ST.screen='dashboard';
+  }catch(e){ST.groupData=null;ST.screen='dashboard-error';}
+  ST.groupLoading=false;render();
+}
+
 function updateAI(final=false){const el=document.getElementById('ai-out');if(el)el.innerHTML=renderAIText(ST.aiText,!final);}
 function renderAIText(text,cursor=false){
   if(ST.aiLoading)return`<div class="ai-loading"><div class="ai-spinner"></div><span>Strategisch memo wordt gegenereerd...</span></div>`;
@@ -722,11 +734,14 @@ function rGroupCreate(){return`<div class="page-wrap narrow"><div class="page-hd
 
 function rGroupCreated(){
   const code = ST.groupId || '------';
+    const adminCode = ST.adminCode || '------';
   return `<div class="page-wrap narrow"><div class="page-hdr"><div class="page-brand"><div class="wdot"></div>KantoorInzicht</div><div class="page-step">Groep aangemaakt</div></div><div class="group-panel anim">`
     + `<div style="font-size:1.4rem;margin-bottom:.35rem">&#10003;</div>`
     + `<div class="group-panel-title">Groep aangemaakt</div>`
     + `<div class="group-panel-sub">Deel de onderstaande code met de deelnemende kantoren. Bewaar de code — zonder deze heeft u geen toegang tot uw dashboard.</div>`
     + `<div class="code-display" id="gc-code-display">${code}</div>`
+    + `<div style="margin-bottom:.35rem;font-size:11px;color:var(--muted);margin-top:4px">&#8593; Deelnemerscode voor kantoren</div>`
+    + `<div style="background:var(--gold-bg);border:1.5px solid var(--gold);border-radius:var(--r2);padding:1rem;text-align:center;margin-bottom:.75rem"><div style="font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);margin-bottom:.35rem">Beheerdscode (alleen voor u)</div><div style="font-family:IBM Plex Mono,monospace;font-size:2rem;font-weight:600;color:var(--gold);letter-spacing:.1em">${adminCode}</div><div style="font-size:11px;color:var(--muted);margin-top:.35rem">Met deze code ziet u altijd alle deelnemers en scores</div></div>`
     + `<div style="display:flex;gap:8px;margin-bottom:1rem">`
     + `<button class="btn-adv" id="copy-code-btn" style="flex:1;font-size:13px">Kopieer code</button>`
     + `<button class="btn-ghost" id="save-code-btn" style="flex:1;font-size:12px">&#8681; Opslaan als bestand</button>`
@@ -811,14 +826,30 @@ function bindEvents(){
   on('route-solo','click',()=>{ST.groupId=null;ST.screen='intake';render();});
   on('route-group-join','click',()=>{ST.screen='group-join';render();});
   on('route-group-create','click',()=>{ST.screen='group-create';render();});
-  on('route-dashboard','click',async()=>{const code=prompt('Voer uw groepscode in:','');if(code){ST.groupId=code.toUpperCase().trim();ST.isGroupAdmin=false;await loadGroup(ST.groupId);}});
+  on('route-dashboard','click',async()=>{const code=prompt('Voer uw groepscode in:','');if(code){
+    const c=code.toUpperCase().trim();
+    // Check of het een beheerdscode is (begint met B)
+    if(c.startsWith('B')&&c.length===6){
+      // Zoek de groep via admin code
+      ST.adminCode=c;ST.isGroupAdmin=true;
+      // Laad groep met admin_code
+      ST.groupLoading=true;render();
+      try{
+        const resp=await fetch(WORKER+'/group/by-admin-code/'+c);
+        if(resp.ok){const d=await resp.json();ST.groupId=d.group_id;await loadGroupAsAdmin(ST.groupId,c);}
+        else{alert('Beheerdscode niet gevonden.');ST.groupLoading=false;render();}
+      }catch(e){ST.groupLoading=false;render();}
+    } else {
+      ST.groupId=c;ST.isGroupAdmin=false;ST.adminCode=null;await loadGroup(ST.groupId);
+    }
+  }});
   on('do-create-group','click',async()=>{
     const name=$('gc-name')?.value?.trim();const email=$('gc-email')?.value?.trim();
     if(!name||!email){alert('Vul naam en e-mail in.');return;}
     const isPublic=document.getElementById('gc-public')?.checked!==false;
     const btn=$('do-create-group');if(btn){btn.disabled=true;btn.textContent='Aanmaken...';}
     const data=await createGroup(name,email,isPublic);
-    if(data.group_id){ST.groupId=data.group_id;ST.screen='group-created';render();}
+    if(data.group_id){ST.groupId=data.group_id;ST.adminCode=data.admin_code||null;ST.isGroupAdmin=true;ST.screen='group-created';render();}
     else alert('Fout: '+(data.error||'Onbekend'));
   });
   on('copy-code-btn','click',()=>{
@@ -925,23 +956,46 @@ function toonFeedbackModal(){
   var ov=document.createElement('div');ov.id='fb-overlay';
   ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:500;display:flex;align-items:center;justify-content:center;padding:1.5rem';
   var mo=document.createElement('div');
-  mo.style.cssText='background:var(--panel);border:1px solid var(--border2);border-radius:var(--r2);padding:2rem;max-width:420px;width:100%';
+  mo.style.cssText='background:var(--panel);border:1px solid var(--border2);border-radius:var(--r2);padding:2rem;max-width:440px;width:100%;max-height:90vh;overflow-y:auto';
   mo.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.2rem;color:var(--head);font-weight:600;margin-bottom:.4rem">Feedback of vraag?</div>'
-    +'<div style="font-size:13px;color:var(--mid);line-height:1.65;margin-bottom:1.25rem">Neem direct contact op met Marcel Bisschops.</div>'
-    +'<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:1.25rem">'
-    +'<button id="fb-bel" style="display:flex;align-items:center;gap:10px;background:var(--teal);color:#fff;border:none;border-radius:var(--r);padding:12px 16px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:14px;font-weight:600">\u260e Bellen: 06 - 38 68 98 88</button>'
-    +'<button id="fb-email" style="display:flex;align-items:center;gap:10px;background:transparent;color:var(--teal);border:1px solid var(--teal);border-radius:var(--r);padding:12px 16px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:14px;font-weight:600">\u2709 E-mail kopi\u00ebren</button>'
+    +'<div style="font-size:13px;color:var(--mid);line-height:1.65;margin-bottom:1.25rem">Stuur een bericht naar Marcel Bisschops. U ontvangt binnen 1 werkdag reactie.</div>'
+    +'<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:1rem">'
+    +'<div><label style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:4px">Naam</label><input id="fb-naam" type="text" placeholder="Uw naam" style="width:100%;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:9px 12px;font-family:IBM Plex Sans,sans-serif;font-size:13px;color:var(--sub);outline:none"></div>'
+    +'<div><label style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:4px">E-mail of telefoon</label><input id="fb-contact" type="text" placeholder="u@kantoor.nl of 06-..." style="width:100%;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:9px 12px;font-family:IBM Plex Sans,sans-serif;font-size:13px;color:var(--sub);outline:none"></div>'
+    +'<div><label style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:4px">Bericht</label><textarea id="fb-bericht" rows="4" placeholder="Uw vraag of opmerking..." style="width:100%;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:9px 12px;font-family:IBM Plex Sans,sans-serif;font-size:13px;color:var(--sub);outline:none;resize:vertical"></textarea></div>'
     +'</div>'
-    +'<button id="fb-sluit" style="width:100%;background:transparent;border:1px solid var(--border2);color:var(--mid);border-radius:var(--r);padding:10px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:13px">Sluiten</button>';
+    +'<div id="fb-status" style="display:none;font-size:13px;color:var(--teal);margin-bottom:1rem;padding:10px;background:var(--teal-bg);border-radius:var(--r)">Verstuurd! Marcel neemt spoedig contact op.</div>'
+    +'<div id="fb-err" style="display:none;font-size:12px;color:var(--red);margin-bottom:.75rem"></div>'
+    +'<div style="display:flex;gap:10px">'
+    +'<button id="fb-sluit" style="flex:1;background:transparent;border:1px solid var(--border2);color:var(--mid);border-radius:var(--r);padding:10px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:13px">Annuleren</button>'
+    +'<button id="fb-send" style="flex:1;background:var(--teal);color:#fff;border:none;border-radius:var(--r);padding:10px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:13px;font-weight:600">Verstuur</button>'
+    +'</div>';
   ov.appendChild(mo);document.body.appendChild(ov);
   ov.addEventListener('click',function(e){if(e.target===ov)ov.remove();});
   document.getElementById('fb-sluit').addEventListener('click',function(){ov.remove();});
-  document.getElementById('fb-bel').addEventListener('click',function(){window.location.href='tel:+31638689888';});
-  document.getElementById('fb-email').addEventListener('click',function(){
-    navigator.clipboard.writeText('marcel@bisschopsfinancing.nl').then(function(){
-      document.getElementById('fb-email').textContent='\u2713 Gekopieerd!';
-      setTimeout(function(){document.getElementById('fb-email').textContent='\u2709 E-mail kopi\u00ebren';},2000);
-    });
+  document.getElementById('fb-send').addEventListener('click',async function(){
+    var naam=document.getElementById('fb-naam').value.trim();
+    var contact=document.getElementById('fb-contact').value.trim();
+    var bericht=document.getElementById('fb-bericht').value.trim();
+    var err=document.getElementById('fb-err');
+    if(!naam||!contact||!bericht){err.style.display='block';err.textContent='Vul alle velden in.';return;}
+    var btn=document.getElementById('fb-send');btn.disabled=true;btn.textContent='Versturen...';
+    err.style.display='none';
+    var p=ST.profile||{};
+    try{
+      await fetch(WORKER+'/callback',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({naam:naam,tel:contact.includes('@')?'':contact,email:contact.includes('@')?contact:'',
+          tijd:'',kantoor:{naam:p.naam||'',regio:p.regio||'',fte:p.fte||'',omzet:p.omzet||'',specialisme:p.specialisme||'',ambitie:p.ambitie||''},
+          scores:ST.scores||{},totaal:ST.scores?overall(ST.scores):0,
+          scenario:ST.scenarios&&ST.scenarios[0]?ST.scenarios[0].name:'',
+          feedback:bericht})});
+      document.getElementById('fb-status').style.display='block';
+      btn.textContent='Verstuurd';
+      setTimeout(function(){ov.remove();},2500);
+    }catch(e){
+      err.style.display='block';err.textContent='Fout bij versturen. Bel direct: 06 - 38 68 98 88';
+      btn.disabled=false;btn.textContent='Verstuur';
+    }
   });
 }
 function showCallbackModal(){
