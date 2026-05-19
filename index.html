@@ -621,7 +621,7 @@ async function loadGroup(gid){
     const resp=await fetch(`${WORKER}/group/${gid}`);
     if(!resp.ok)throw new Error('niet gevonden');
     ST.groupData=await resp.json();ST.screen='dashboard';
-  }catch(e){ST.groupData=null;ST.screen='dashboard-error';}
+  }catch(e){ST.groupData=null;ST.screen='dashboard-error';window._dashLoading=false;}
   ST.groupLoading=false;render();
 }
 
@@ -834,7 +834,7 @@ function bindEvents(){
   on('route-solo','click',()=>{ST.groupId=null;ST.screen='intake';render();});
   on('route-group-join','click',()=>{ST.screen='group-join';render();});
   on('route-group-create','click',()=>{ST.screen='group-create';render();});
-  on('route-dashboard','click',async()=>{const code=prompt('Voer uw groepscode of beheerdscode in:','');if(code){
+  on('route-dashboard','click',async()=>{if(window._dashLoading)return;const code=prompt('Voer uw groepscode of beheerdscode in:','');if(code){window._dashLoading=true;setTimeout(()=>{window._dashLoading=false;},5000);
     const c=code.toUpperCase().trim();
     // Check of het een beheerdscode is (begint met B)
     if(c.startsWith('B')&&c.length===7){
