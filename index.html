@@ -808,36 +808,37 @@ ${(p.ebitda||p.recurring)?`<div class="sec-lbl anim a2">Financi\xeble kengetalle
 
 
 
+
+function laadChartJs(cb){
+  if(typeof Chart!=='undefined'){cb();return;}
+  var s=document.createElement('script');
+  s.src='https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js';
+  s.onload=cb;
+  document.head.appendChild(s);
+}
+
 function rStaafdiagram(offices){
   if(!offices||!offices.length)return '';
-  const velden=[
-    {key:'ebitda',label:'EBITDA-marge'},
-    {key:'recurring',label:'Vaste omzet'},
-    {key:'overall',label:'Totaalscore',isNum:true}
-  ];
-  let html='<div class="sec-lbl anim a2">Vergelijkende kengetallen</div>';
-  html+='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;margin-bottom:1.5rem;overflow-x:auto">';
-  velden.forEach(v=>{
-    html+='<div style="margin-bottom:1.25rem">';
-    html+='<div style="font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem">'+v.label+'</div>';
-    offices.forEach(o=>{
-      const val=v.isNum?o.overall:(o[v.key]||'');
-      const pct=v.isNum?o.overall:parseFloat(String(val).replace('%','').replace(',','.'))||0;
-      const w=v.isNum?pct:Math.min(pct,100);
-      const naam=o.name||'Anoniem';
-      html+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">';
-      html+='<div style="width:120px;font-size:11px;color:var(--mid);text-align:right;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+naam+'</div>';
-      html+='<div style="flex:1;background:var(--card);border-radius:3px;height:18px;position:relative">';
-      html+='<div style="width:'+Math.max(w,2)+'%;background:var(--teal);height:100%;border-radius:3px;opacity:.8"></div>';
-      html+='</div>';
-      html+='<div style="width:50px;font-size:11px;font-family:IBM Plex Mono,monospace;color:var(--sub)">'+val+'</div>';
-      html+='</div>';
-    });
-    html+='</div>';
+  var namen=offices.map(function(o){return o.name||'Anoniem';});
+  var ebitda=offices.map(function(o){return parseFloat(String(o.ebitda||'0').replace('%','').replace(',','.'))||0;});
+  var recurring=offices.map(function(o){return parseFloat(String(o.recurring||'0').replace('%','').replace(',','.'))||0;});
+  var scores=offices.map(function(o){return o.overall||0;});
+  var chartId='chart_'+Math.random().toString(36).slice(2,8);
+  var h=Math.max(offices.length*50+150,250);
+  laadChartJs(function(){
+    setTimeout(function(){
+      var ctx=document.getElementById(chartId);
+      if(!ctx)return;
+      new Chart(ctx,{type:'bar',data:{labels:namen,datasets:[
+        {label:'EBITDA-marge (%)',data:ebitda,backgroundColor:'rgba(26,122,94,.8)',borderRadius:3},
+        {label:'Vaste omzet (%)',data:recurring,backgroundColor:'rgba(201,168,76,.8)',borderRadius:3},
+        {label:'Totaalscore',data:scores,backgroundColor:'rgba(59,130,246,.7)',borderRadius:3}
+      ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{boxWidth:12}},tooltip:{callbacks:{label:function(c){return c.dataset.label+': '+c.parsed.y;}}}},scales:{y:{beginAtZero:true,max:100},x:{grid:{display:false}}}}});
+    },100);
   });
-  html+='</div>';
-  return html;
+  return '<div style="margin-bottom:1.5rem"><div class="sec-lbl anim a2">Vergelijkende kengetallen</div><div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem"><div style="position:relative;height:'+h+'px"><canvas id="'+chartId+'" role="img" aria-label="Kengetallen per kantoor">Kengetallen.</canvas></div></div></div>';
 }
+
 function kantoorRadar(scores){
   const R=75,cx=85,cy=85,n=SECTIONS.length;
   const ap=(i,v)=>{const a=(i/n)*2*Math.PI-Math.PI/2,r=(v/100)*R;return[cx+r*Math.cos(a),cy+r*Math.sin(a)];};
