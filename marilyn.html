@@ -288,7 +288,7 @@ function renderMnaTab(el){
     +'<div style="display:flex;gap:8px">'
     +'<button class="btn" style="font-size:12px;padding:7px 14px" id="btn-ref-m">&#8635; Verversen</button>'
     +'<button class="btn" style="font-size:12px;padding:7px 14px" id="btn-nieuw">+ Nieuw traject</button>'
-    +'<button class="btn" style="font-size:12px;padding:7px 14px;background:var(--gold)" id="btn-herstel-namen">&#9881; Herstel namen</button>'
+
     +'</div></div>';
   if(!mnaList.length){
     html+='<div class="empty">Geen trajecten.</div>';
@@ -319,16 +319,7 @@ function renderMnaTab(el){
   el.innerHTML=html;
   var rb=document.getElementById('btn-ref-m');if(rb)rb.addEventListener('click',refreshData);
   var bn=document.getElementById('btn-nieuw');if(bn)bn.addEventListener('click',toonNieuwModal);
-  var bhn=document.getElementById('btn-herstel-namen');if(bhn)bhn.addEventListener('click',async function(){
-    bhn.disabled=true;bhn.textContent='Bezig...';
-    try{
-      var r=await fetch(WORKER+'/mna/admin/herstel-namen?key='+encodeURIComponent(adminKey),{method:'POST'});
-      var d=await r.json();
-      if(d.ok){alert(d.updated+' van '+d.total+' kantoornamen bijgewerkt.');refreshData();}
-      else alert('Fout: '+(d.error||'onbekend'));
-    }catch(e){alert('Verbindingsfout.');}
-    bhn.disabled=false;bhn.textContent='\u2699\uFE0F Herstel namen';
-  });
+
   el.querySelectorAll('.copy-btn').forEach(function(b){
     b.addEventListener('click',function(){
       navigator.clipboard.writeText(b.dataset.copy).then(function(){var o=b.textContent;b.textContent='✓';setTimeout(function(){b.textContent=o;},1500);}).catch(function(){alert(b.dataset.copy);});
