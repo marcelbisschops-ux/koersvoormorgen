@@ -856,15 +856,23 @@ function bindEvents(){
     }catch(e){ST.groupLoading=false;ST.screen='dashboard-error';alert('Fout: '+e.message);}
   } else {
     ST.groupId=c;ST.isGroupAdmin=false;ST.adminCode=null;
-    ST.groupLoading=true;render();
+    ST.groupLoading=true;ST.screen='dashboard';render();
     try{
       const r=await fetch(WORKER+'/group/'+c);
-      if(!r.ok)throw new Error('Groep niet gevonden');
-      ST.groupData=await r.json();ST.groupLoading=false;ST.screen='dashboard';
-    }catch(e){ST.groupLoading=false;ST.screen='dashboard-error';alert('Groepscode niet gevonden.');}
+      if(!r.ok)throw new Error('Groep niet gevonden ('+r.status+')');
+      const data=await r.json();
+      if(data.error)throw new Error(data.error);
+      ST.groupData=data;
+      ST.groupLoading=false;
+      ST.screen='dashboard';
+    }catch(e){
+      ST.groupLoading=false;
+      alert('Fout: '+e.message);
+      ST.screen='dashboard-error';
+    }
+    window._dashBusy=false;
+    render();
   }
-  window._dashBusy=false;
-  render();
 });
   on('do-create-group','click',async()=>{
     const name=$('gc-name')?.value?.trim();const email='';
