@@ -553,7 +553,7 @@ async function generateAI(){
   }
 
   try{
-    ST.aiLoading=false;
+    ST.aiLoading=true;
     // Show loading UI
     const el=document.getElementById('ai-out');
     if(el)el.innerHTML='<div class="ai-generating"><div class="ai-gen-title">Strategisch rapport wordt opgesteld</div><div style="font-size:12px;color:var(--muted);margin:.25rem 0 1rem">Dit duurt 2\u20133 minuten \u2014 het rapport verschijnt in \xe9\xe9n keer</div><div class="ai-gen-bar-wrap"><div class="ai-gen-bar" id="gen-progress-bar"></div></div><div class="ai-gen-steps"><div class="ai-gen-step active" id="step-0"><div class="ai-gen-dot"></div>Kantoorprofiel en scores analyseren</div><div class="ai-gen-step" id="step-1"><div class="ai-gen-dot"></div>Kritieke inzichten formuleren</div><div class="ai-gen-step" id="step-2"><div class="ai-gen-dot"></div>Strategisch advies per fase schrijven</div><div class="ai-gen-step" id="step-3"><div class="ai-gen-dot"></div>Financi\xeble analyse en scenario&#39;s</div><div class="ai-gen-step" id="step-4"><div class="ai-gen-dot"></div>90-dagen actieplan opstellen</div><div class="ai-gen-step" id="step-5"><div class="ai-gen-dot"></div>Bijlage met vragenlijst samenstellen</div></div></div>';
@@ -600,6 +600,23 @@ async function generateAI(){
     // Present all at once
     ST.aiText=collected;
     updateAI(true);
+    // Vul managementsamenvatting
+    const smvEl=document.getElementById('smv-out');
+    if(smvEl&&collected){
+      const smvLines=collected.split('\n');
+      let smvText='';
+      let inSmv=false;
+      for(const l of smvLines){
+        if(l.match(/^##.*[Ss]amenvatting|^##.*[Pp]rofiel|^##.*[Aa]dvies|^##.*[Ss]trategisch/))inSmv=true;
+        else if(l.startsWith('##'))inSmv=false;
+        if(inSmv&&!l.startsWith('##'))smvText+=l+'\n';
+      }
+      if(!smvText.trim()){
+        const paras=collected.split('\n\n').filter(p=>p.trim()&&!p.startsWith('#'));
+        smvText=paras.slice(0,2).join('\n\n');
+      }
+      smvEl.innerHTML=renderAIText(smvText.trim(),false);
+    }
 
     // Sla rapport op in database
     fetch(WORKER+'/rapport/save',{method:'POST',
