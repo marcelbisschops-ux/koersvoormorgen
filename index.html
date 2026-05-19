@@ -476,6 +476,7 @@ async function generateAI(){
   const dims=SECTIONS.map(sec=>'- '+sec.label+': '+s[sec.id]+'/100').join('\n');
   const risks=SECTIONS.filter(sec=>s[sec.id]<55).map(sec=>sec.label).join(', ')||'geen kritieke risicos';
   const naam=p.naamAnon?'Anoniem kantoor':(p.naam||'Vertrouwelijk kantoor');
+  const kantoorType=(p.kantoorType)||'accountantskantoor';
   const ebitdaVal=parseFloat(String(p.ebitda||'').replace('%','').replace(',','.'));
   const recurringVal=parseFloat(String(p.recurring||'').replace('%','').replace(',','.'));
   const ebitdaKritiek=!isNaN(ebitdaVal)&&ebitdaVal<0;
