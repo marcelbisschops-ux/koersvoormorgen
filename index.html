@@ -857,7 +857,7 @@ function bindEvents(){
     navigator.clipboard.writeText(copyTekst).then(()=>{
       const btn=document.getElementById('copy-code-btn');
       if(btn){btn.textContent='\u2713 Gekopieerd';setTimeout(()=>{btn.textContent='Kopieer codes';},2000);}
-    }).catch(()=>alert('Code: '+code));
+    }).catch(()=>alert('Codes: '+(ST.groupId||'')+' / '+(ST.adminCode||'')));
   });
   on('view-dashboard-btn','click',()=>{ST.isGroupAdmin=true;loadGroup(ST.groupId);});
   on('save-code-btn','click',()=>{
