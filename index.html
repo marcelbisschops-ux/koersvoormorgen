@@ -845,7 +845,7 @@ function bindEvents(){
   }});
   on('do-create-group','click',async()=>{
     const name=$('gc-name')?.value?.trim();const email='';
-    if(!name||!email){alert('Vul naam en e-mail in.');return;}
+    if(!name){alert('Vul een groepsnaam in.');return;}
     const isPublic=document.getElementById('gc-public')?.checked!==false;
     const btn=$('do-create-group');if(btn){btn.disabled=true;btn.textContent='Aanmaken...';}
     const data=await createGroup(name,email,isPublic);
