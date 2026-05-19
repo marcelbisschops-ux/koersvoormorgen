@@ -747,6 +747,7 @@ function rGroupCreated(){
     + `<button class="btn-ghost" id="save-code-btn" style="flex:1;font-size:12px">&#8681; Opslaan als bestand</button>`
     + `</div>`
     + `<div style="display:flex;gap:8px;padding-top:1rem;border-top:1px solid var(--border)">`
+    + `<button class="btn-ghost" id="start-scan-group-btn" style="flex:1">Start scan &#8594;</button>`
     + `<button class="btn-adv" id="view-dashboard-btn" style="flex:1">Bekijk dashboard &#8594;</button>`
     + `</div>`
     + `<div style="font-size:12px;color:var(--muted);line-height:1.65;margin-top:.75rem">Kantoren deelnemen via <strong style="color:var(--sub)">koersvoormorgen.nl</strong> → Deelnemen aan groep.</div>`
@@ -826,7 +827,7 @@ function bindEvents(){
   on('route-solo','click',()=>{ST.groupId=null;ST.screen='intake';render();});
   on('route-group-join','click',()=>{ST.screen='group-join';render();});
   on('route-group-create','click',()=>{ST.screen='group-create';render();});
-  on('route-dashboard','click',async()=>{const code=prompt('Voer uw groepscode in:','');if(code){
+  on('route-dashboard','click',async()=>{const code=prompt('Voer uw groepscode of beheerdscode in:','');if(code){
     const c=code.toUpperCase().trim();
     // Check of het een beheerdscode is (begint met B)
     if(c.startsWith('B')&&c.length===7){
@@ -859,6 +860,7 @@ function bindEvents(){
       if(btn){btn.textContent='\u2713 Gekopieerd';setTimeout(()=>{btn.textContent='Kopieer codes';},2000);}
     }).catch(()=>alert('Codes: '+(ST.groupId||'')+' / '+(ST.adminCode||'')));
   });
+  on('start-scan-group-btn','click',()=>{ST.screen='intake';render();});
   on('view-dashboard-btn','click',()=>{ST.isGroupAdmin=true;loadGroup(ST.groupId);});
   on('save-code-btn','click',()=>{
     const adminCode=ST.adminCode||'';
