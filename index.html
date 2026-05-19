@@ -845,7 +845,7 @@ function bindEvents(){
   on('route-group-join','click',()=>{ST.screen='group-join';render();});
   on('route-group-create','click',()=>{ST.screen='group-create';render();});
   on('route-dashboard','click',async()=>{
-  const code=prompt('Voer uw groepscode of beheerdscode in:','');
+  const code=prompt('Voer uw groepscode of beheerderscode in:','');
   if(!code)return;
   const c=code.toUpperCase().trim();
   try{
