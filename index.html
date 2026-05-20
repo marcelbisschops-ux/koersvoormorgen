@@ -825,6 +825,9 @@ function renderAIText(text,cursor=false){
 /* ======== RENDER ======== */
 
 function renderSummary(){
+  if(ST.aiLoading){
+    return '<h4>&#9749; Rapport wordt opgesteld&hellip;</h4><p style="color:var(--muted);font-size:13px">De samenvatting verschijnt hier zodra uw rapport gereed is.</p>';
+  }
   if(!ST.aiText||ST.aiText.length<100||ST.aiText==='__ERROR__'||ST.aiText==='__LIMIT__'){
     return '<p style="color:var(--muted);font-style:italic;font-size:13px">Genereer het AI-advies hieronder voor een uitgebreide managementsamenvatting.</p>';
   }
@@ -961,17 +964,7 @@ function rResults(){
   const naam=p.naamAnon?'Anoniem kantoor':p.naam;
   return`<div class="page-wrap"><div class="r-header anim"><div class="r-brand-row"><div class="r-brand"><div class="wdot"></div>KantoorInzicht</div><div class="r-date">${now}</div></div>${naam?`<div class="kantoor-slug">${naam}${p.regio?' &middot; '+p.regio:''}</div>`:''}  <h2 class="report-title">Strategisch <em>profiel</em> &amp; adviesrapport</h2><p class="report-sub">37 indicatoren &middot; 11 dimensies${p.fte?' &middot; '+p.fte+' fte':''}${p.omzet?' &middot; '+formatOmzet(p.omzet):''}</p></div><div class="score-hero anim a1"><div class="score-circle"><svg width="110" height="110" viewBox="0 0 110 110"><circle cx="55" cy="55" r="48" fill="none" stroke="var(--border)" stroke-width="6"/><circle cx="55" cy="55" r="48" fill="none" stroke="${vd.color}" stroke-width="6" stroke-dasharray="${2*Math.PI*48}" stroke-dashoffset="${2*Math.PI*48*(1-ov/100)}" stroke-linecap="round"/></svg><div class="score-inner"><div class="score-big">${ov}</div><div class="score-denom">/100</div></div></div><div><div style="margin-bottom:.5rem"><span style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:3px;background:${vd.bg};color:${vd.color};border:1px solid ${vd.color}44">${vd.label}</span></div><div class="score-explain">${vd.txt}</div></div></div><div class="sec-lbl anim a1">Managementsamenvatting</div>
 <div class="summary-box anim a1" id="summary-box">
-${ST.aiLoading?'<h4>&#9749; Rapport wordt opgesteld&hellip;</h4><p style="color:var(--muted);font-size:13px">De samenvatting verschijnt hier zodra uw rapport gereed is.</p>':`<h4>Strategisch profiel op hoofdlijnen</h4>
-${ST.aiText&&ST.aiText.length>100&&ST.aiText!=='__ERROR__'&&ST.aiText!=='__LIMIT__'
-  ?(function(){
-    var sc=ST.aiText.match(/##\s*Scorekaart[\s\S]*?(?=##|$)/);
-    var kb=ST.aiText.match(/##\s*Kernboodschap[\s\S]*?(?=##|$)/);
-    var txt='';
-    if(sc&&sc[0]){var t=sc[0].replace(/##\s*Scorekaart/,'').replace(/<[^>]+>/g,'').trim().slice(0,600);txt+='<p>'+t+'</p>';}
-    if(kb&&kb[0]){var t2=kb[0].replace(/##\s*Kernboodschap/,'').replace(/<[^>]+>/g,'').trim().slice(0,400);if(t2)txt+='<p><strong>Kernboodschap:</strong> '+t2+'</p>';}
-    return txt||'<p style="color:var(--muted);font-style:italic">Genereer het AI-advies hieronder voor een uitgebreide managementsamenvatting.</p>';
-  })()
-  :'<p style="color:var(--muted);font-style:italic">Genereer het AI-advies hieronder voor een uitgebreide managementsamenvatting op basis van uw scanresultaten.</p>'}
+${renderSummary()}
 </div>
 ${(p.ebitda||p.recurring)?`<div class="sec-lbl anim a2">Financi\xeble kengetallen</div><div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:2rem">${[p.ebitda?{l:'EBITDA-marge',v:p.ebitda,b:'Benchmark: 20\u201330%'}:null,p.recurring?{l:'Vaste omzet',v:p.recurring,b:'PE-streefwaarde: >60%'}:null].filter(Boolean).map(k=>`<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:14px 16px"><div style="font-size:11px;color:var(--muted);margin-bottom:4px">${k.l}</div><div style="font-size:1.2rem;font-weight:600;color:var(--head);font-family:'IBM Plex Mono',monospace;margin-bottom:4px">${k.v}</div><div style="font-size:10px;color:var(--muted)">${k.b}</div></div>`).join('')}</div>`:''}
 <div class="sec-lbl anim a2">Strategische scenario&#39;s</div><div class="scenario-cards anim a3">${top3.map((sc,i)=>`<div class="sc-card"><div class="sc-hdr" data-k="${sc.k}"><span class="sc-rank${i===0?' pri':''}">${i===0?'AANBEVOLEN':i===1?'ALTERNATIEF':'OPTIONEEL'}</span><span class="sc-name${i===0?' pri':''}">${sc.name}</span><span class="sc-fit mono">${sc.score}% fit</span><span class="sc-chev${ST.openScenario===sc.k?' open':''}">&#9662;</span></div><div class="sc-body${ST.openScenario===sc.k?' open':''}"><div class="actions-lbl">Concrete vervolgstappen</div><div class="action-items">${sc.actions.map((a,ai)=>`<div class="action-item"><span class="act-num">0${ai+1}</span><div><div class="act-title">${a.t}</div><div class="act-desc">${a.d}</div><div class="act-horizon">${a.h}</div></div></div>`).join('')}</div></div></div>`).join('')}</div><div class="sec-lbl anim a3">Scores per dimensie <span style="font-size:10px;font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0">\u2014 bewijslaag</span></div>
