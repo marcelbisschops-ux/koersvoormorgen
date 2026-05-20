@@ -356,8 +356,8 @@ function renderMnaTab(el){
     if(!ids.length)return;
     if(!confirm('Verwijder '+ids.length+' traject(en) inclusief alle data en documenten?'))return;
     btnDelM.disabled=true;btnDelM.textContent='Verwijderen...';
-    for(var i=0;i<ids.length;i++){try{await fetch(WORKER+'/admin/delete/mna/'+ids[i]+'?key='+encodeURIComponent(adminKey),{method:'POST'});}catch(e){}}
-    await refreshData();
+    for(var i=0;i<ids.length;i++){try{var rd=await fetch(WORKER+'/admin/delete/mna/'+ids[i]+'?key='+encodeURIComponent(adminKey),{method:'POST'});var dd=await rd.json();if(dd.ok)mnaList=mnaList.filter(function(t){return t.id!==ids[i];});}catch(e){}}
+    renderDashboard();
   });
 }
 
