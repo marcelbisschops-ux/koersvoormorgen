@@ -643,7 +643,9 @@ async function generateAI(){
       +'Sterktes: '+strengths+' | Zwaktes: '+weaknesses+'\n'
       +'Top scenario: '+top3+'\n'
       +(signalen.length?'Alarmsignalen: '+signalen.join(' | '):'');
+    var smvKlaar=false;
     const smvPromise=callAI(smvPrompt).then(function(smvTekst){
+      smvKlaar=true;
       if(smvEl)smvEl.innerHTML='<h4>Strategisch profiel op hoofdlijnen</h4>'
         +smvTekst.split('\n\n').filter(function(p){return p.trim();}).map(function(p){return '<p style="font-size:14px;color:var(--mid);line-height:1.8;margin-bottom:.6rem">'+p.trim()+'</p>';}).join('');
     }).catch(function(){if(smvEl)smvEl.innerHTML=renderSummary();});
@@ -752,9 +754,9 @@ async function loadGroupAsAdmin(gid,adminCode){
 function updateAI(final=false){
   const el=document.getElementById('ai-out');
   if(el)el.innerHTML=renderAIText(ST.aiText,!final);
-  // Verversen summary-box met renderSummary()
+  // Verversen summary-box alleen als de aparte samenvatting-call nog niet klaar is
   const sb=document.getElementById('summary-box');
-  if(sb)sb.innerHTML=renderSummary();
+  if(sb&&ST.aiLoading)sb.innerHTML=renderSummary();
 }
 function renderAIText(text,cursor=false){
   if(ST.aiLoading)return'<div class="ai-loading"><div class="ai-spinner"></div><p style="margin-top:1.25rem;color:var(--head);font-size:15px;font-weight:600">&#9749; Uw rapport wordt opgesteld</p><p style="margin-top:.5rem;color:var(--muted);font-size:13px">Neem gerust een kopje koffie &#9749; of doe wat rek- en strekoefeningen &#127939;</p></div>';
