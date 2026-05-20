@@ -1383,9 +1383,10 @@ function bindEvents(){
       try{parsedScores=JSON.parse(data.scores||'{}');}catch(e){parsedScores={};}
       ST.scores=parsedScores;
       // Herstel scenarios via rankScenarios zodat rResults correct werkt
-      try{ST.scenarios=rankScenarios(parsedScores);}catch(e){
-        ST.scenarios=Object.values(SCENARIOS).map(function(sc,i){return{k:Object.keys(SCENARIOS)[i],...sc,score:50};});
-      }
+      ST.scenarios=rankScenarios(Object.keys(parsedScores).length?parsedScores:{
+        strategisch:60,opvolging:60,winst:60,schaal:60,auto:60,
+        partner:60,klant:60,fusie:60,ai_dim:60,personeel:60,commercieel:60
+      });
       // Forceer top_scenario als eerste
       if(data.top_scenario){
         ST.scenarios.sort(function(a,b){return a.name===data.top_scenario?-1:b.name===data.top_scenario?1:0;});
