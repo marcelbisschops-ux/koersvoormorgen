@@ -564,70 +564,13 @@ async function generateAI(){
   }
 
   try{
-    let collected='';
+    const el=document.getElementById('ai-out');
+    if(el)el.innerHTML='<div style="text-align:center;padding:2rem"><div class="ai-spinner"></div><p style="margin-top:1rem;color:var(--muted);font-size:14px">Rapport wordt opgesteld... (30-60 seconden)</p></div>';
     const resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:mainPrompt}]})});
     if(!resp.ok)throw new Error('HTTP '+resp.status);
-    const reader=resp.body.getReader();
-    const dec=new TextDecoder();
-    while(true){
-      const{done,value}=await reader.read();
-      if(done)break;
-      const chunk=dec.decode(value,{stream:true});
-      for(const line of chunk.split('\n')){
-        if(!line.startsWith('data:'))continue;
-        const d=line.slice(5).trim();
-        if(d==='[DONE]')continue;
-        try{
-          const j=JSON.parse(d);
-          if(j.type==='content_block_delta'&&j.delta&&j.delta.text){
-            collected+=j.delta.text;
-            const el2=document.getElementById('ai-out')||document.querySelector('.ai-body div');if(el2)el2.innerHTML=renderAIText(collected,true);
-            if(el2)el2.innerHTML=renderAIText(collected,true);
-          }
-        }catch(e){}
-      }
-    }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    const data=await resp.json();
+    const collected=data.text||'';
+    if(!collected)throw new Error('Leeg rapport');
     setStep(5);
     collected+='\n\n---\n\n## Disclaimer\n\nDit rapport is gegenereerd op basis van zelfrapportage en is uitsluitend bedoeld als indicatief strategisch oriëntatie-instrument. De uitkomsten, scores en aanbevelingen vormen geen formeel advies, geen waarderings- of due diligence-rapport en geen accountants- of juridisch oordeel. Bisschops Financing BV aanvaardt geen aansprakelijkheid voor beslissingen die (mede) worden genomen op basis van de inhoud van dit rapport. Voor een formele waardering, due diligence of strategisch advies dient u een gekwalificeerde adviseur te raadplegen.\n\n---\n\n';
 
