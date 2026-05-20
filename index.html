@@ -569,9 +569,9 @@ async function generateAI(){
     const resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:mainPrompt}]})});
     if(!resp.ok)throw new Error('HTTP '+resp.status);
     const data=await resp.json();
+    if(data.error)throw new Error(data.error);
     const collected=data.text||'';
-    if(!collected)throw new Error('Leeg rapport');
-    setStep(5);
+    if(!collected)throw new Error('Leeg rapport ontvangen');
     collected+='\n\n---\n\n## Disclaimer\n\nDit rapport is gegenereerd op basis van zelfrapportage en is uitsluitend bedoeld als indicatief strategisch oriëntatie-instrument. De uitkomsten, scores en aanbevelingen vormen geen formeel advies, geen waarderings- of due diligence-rapport en geen accountants- of juridisch oordeel. Bisschops Financing BV aanvaardt geen aansprakelijkheid voor beslissingen die (mede) worden genomen op basis van de inhoud van dit rapport. Voor een formele waardering, due diligence of strategisch advies dient u een gekwalificeerde adviseur te raadplegen.\n\n---\n\n';
 
 
@@ -590,11 +590,11 @@ async function generateAI(){
 
 
 
-    // Present all at once
+
     ST.aiText=collected;updateAI(true);setTimeout(function(){updateAI(true);},100);
     updateAI(true);
-    // Vul managementsamenvatting
-    const smvEl=document.getElementById('smv-out');
+
+
     if(smvEl&&collected){
       const smvLines=collected.split('\n');
       let smvText='';
