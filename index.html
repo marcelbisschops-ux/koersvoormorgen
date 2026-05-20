@@ -636,28 +636,7 @@ async function generateAI(){
       +'<p style="margin-top:.25rem;color:var(--muted);font-size:12px">(duurt 2-3 minuten)</p>'
       +'</div>';
 
-    // Call 1: korte samenvatting voor de summary-box
-    const smvPrompt=
-      'Schrijf exact 3 alineas lopende tekst (totaal 200-250 woorden) als managementsamenvatting voor een accountants- of administratiekantoor. '
-      +'REGELS: geen koppen (geen ##), geen bullets, geen scores, geen tabellen, geen "Scorekaart". '
-      +'Gebruik alleen "uw kantoor". Begin de eerste alinea direct met een inhoudelijke observatie over het kantoor. '
-      +'Alinea 1: algehele positie en sterktes. Alinea 2: financieel profiel en risicos. Alinea 3: aanbeveling en scenario.\n\n'
-      +'Kantoor: '+naam+' | '+kantoorType+' | Score: '+ov+'/100\n'
-      +'EBITDA: '+(p.ebitda||'?')+'% | Vaste omzet: '+(p.recurring||'?')+'% | FTE: '+(p.fte||'?')+' | Omzet: '+(p.omzet||'?')+'\n'
-      +'Sterktes: '+strengths+' | Zwaktes: '+weaknesses+'\n'
-      +'Aanbevolen scenario: '+(ST.scenarios&&ST.scenarios[0]?ST.scenarios[0].name:'onbekend')+'\n'
-      +(signalen.length?'Financiele signalen: '+signalen.join(' | ')+'\n':'');
-    const smvTekst=await callAI(smvPrompt, 500);
-    ST._smvKlaar=true;
-    // Optie B: post-processing - pak eerste 3 alineas zonder koppen/scores/bullets
-    var smvAlineas=smvTekst.split('\n\n')
-      .map(function(p){return p.replace(/^##[^\n]*/gm,'').replace(/^[\-\*] /gm,'').replace(/\*\*/g,'').replace(/^\|.*$/gm,'').trim();})
-      .filter(function(p){return p.length>40&&!p.startsWith('#')&&!p.startsWith('|');})
-      .slice(0,3);
-    if(smvEl)smvEl.innerHTML='<h4>Strategisch profiel op hoofdlijnen</h4>'
-      +smvAlineas.map(function(p){return '<p style="font-size:14px;color:var(--mid);line-height:1.8;margin-bottom:.6rem">'+p+'</p>';}).join('');
-
-    // Call 2: volledig rapport
+    // Één call: volledig rapport
     let collected=await callAI(mainPrompt);
     collected+='\n\n---\n\n## Disclaimer\n\nDit rapport is gegenereerd op basis van zelfrapportage en is uitsluitend bedoeld als indicatief strategisch ori\xebntatie-instrument. De uitkomsten vormen geen formeel advies. \xa9 2026 Bisschops Financing BV.\n\n---\n\n';
 
@@ -665,6 +644,19 @@ async function generateAI(){
     ST.aiLoading=false;
     updateAI(true);
     setTimeout(function(){updateAI(true);},100);
+
+    // Extraheer samenvatting uit rapport: eerste 3 alineas na ## Scorekaart
+    ST._smvKlaar=true;
+    if(smvEl){
+      var smvMatch=collected.match(/## Scorekaart[^\n]*\n([\s\S]*?)(?=\n##|\n---|$)/i);
+      var smvBron=smvMatch&&smvMatch[1]?smvMatch[1]:collected;
+      var smvAlineas=smvBron.split('\n\n')
+        .map(function(p){return p.replace(/^##[^\n]*/gm,'').replace(/^[\-\*] /gm,'').replace(/\*\*/g,'').replace(/^\|.*$/gm,'').trim();})
+        .filter(function(p){return p.length>40&&!p.startsWith('#')&&!p.startsWith('|');})
+        .slice(0,3);
+      smvEl.innerHTML='<h4>Strategisch profiel op hoofdlijnen</h4>'
+        +smvAlineas.map(function(p){return '<p style="font-size:14px;color:var(--mid);line-height:1.8;margin-bottom:.6rem">'+p+'</p>';}).join('');
+    }
 
     // Opslaan in database en rapportcode ophalen
     // Wacht 2s zodat saveScanToGroup zeker klaar is en ST.savedScanId gevuld is
