@@ -427,7 +427,7 @@ const SCENARIOS={
 };
 
 /* ======== STATE ======== */
-let ST={screen:'intro',section:0,answers:{},scores:null,scenarios:null,openScenario:null,openOffice:null,aiText:null,aiLoading:false,groupId:null,adminCode:null,groupData:null,groupLoading:false,isGroupAdmin:false,savedScanId:null,profile:{naam:'',naamAnon:false,email:'',regio:'',fte:'',omzet:'',specialisme:'',doelgroep:'',software:'',ambitie:'',context:'',omzetfte:'',ebitda:'',recurring:'',saveConsent:true}};
+let ST={screen:'intro',section:0,answers:{},scores:null,scenarios:null,openScenario:null,openOffice:null,aiText:null,aiLoading:false,_smvKlaar:false,groupId:null,adminCode:null,groupData:null,groupLoading:false,isGroupAdmin:false,savedScanId:null,profile:{naam:'',naamAnon:false,email:'',regio:'',fte:'',omzet:'',specialisme:'',doelgroep:'',software:'',ambitie:'',context:'',omzetfte:'',ebitda:'',recurring:'',saveConsent:true}};
 
 /* ======== SCORING ======== */
 function calcScores(){const s={};SECTIONS.forEach(sec=>{let tot=0,cnt=0;sec.questions.forEach(q=>{if(ST.answers[q.id]!==undefined){let v=ST.answers[q.id];if(REVERSE.has(q.id))v=6-v;tot+=v;cnt++;}});s[sec.id]=cnt>0?Math.round((tot/(cnt*5))*100):0;});return s;}
@@ -1502,7 +1502,7 @@ function bindEvents(){
     }
   });
   on('callback-btn','click',()=>showCallbackModal());
-  on('restart-btn','click',()=>{ST={...ST,screen:'intro',section:0,answers:{},scores:null,scenarios:null,openScenario:null,aiText:null,aiLoading:false,savedScanId:null,profile:{naam:'',naamAnon:false,email:'',regio:'',fte:'',omzet:'',specialisme:'',doelgroep:'',software:'',ambitie:'',context:'',omzetfte:'',ebitda:'',recurring:'',saveConsent:true}};render();window.scrollTo(0,0);});
+  on('restart-btn','click',()=>{ST={...ST,screen:'intro',section:0,answers:{},scores:null,scenarios:null,openScenario:null,aiText:null,aiLoading:false,_smvKlaar:false,savedScanId:null,profile:{naam:'',naamAnon:false,email:'',regio:'',fte:'',omzet:'',specialisme:'',doelgroep:'',software:'',ambitie:'',context:'',omzetfte:'',ebitda:'',recurring:'',saveConsent:true}};render();window.scrollTo(0,0);});
 }
 
 
