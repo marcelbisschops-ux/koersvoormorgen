@@ -611,7 +611,9 @@ async function generateAI(){
     +'## Strategische positie en commerciele kracht\n'
     +'## Risicoprofiel\n'
     +'## Aanbeveling\n'
-    +'VERBOD: Gebruik GEEN markdown-tabellen (geen |---| of |kolom|). Schrijf alles in lopende tekst.\n';
+    +'VERBOD: Gebruik GEEN markdown-tabellen (geen |---| of |kolom|). Schrijf alles in lopende tekst.\n'
+    +(signalen.length?'VERPLICHT: Adresseer elk van deze alarmsignalen expliciet in het rapport: '+signalen.join(' | ')+'\n':'')
+    +(weaknesses!=='geen'?'VERPLICHT: Adresseer de zwakke dimensies expliciet: '+weaknesses+'\n':'');
 
   // Check limiet
   const _email=(ST.profile&&ST.profile.email)||'';
@@ -799,10 +801,10 @@ function renderSummary(){
   var omzetPerFte=omzetVal>0&&fteVal>0?Math.round(omzetVal/fteVal):0;
   var isAdmin=(p.kantoorType||'').toLowerCase().includes('admin');
   var bFte=isAdmin?100000:150000;
-  if(!isNaN(ebitdaVal)&&ebitdaVal<0)sigs.push({c:'var(--red)',t:'Negatieve EBITDA ('+ebitdaVal+'%) — directe actie vereist'});
-  else if(!isNaN(ebitdaVal)&&ebitdaVal<15)sigs.push({c:'var(--gold)',t:'EBITDA '+ebitdaVal+'% onder benchmark 20-30%'});
-  if(omzetPerFte>0&&omzetPerFte<bFte)sigs.push({c:'var(--gold)',t:'Omzet/FTE €'+omzetPerFte.toLocaleString('nl-NL')+' onder benchmark €'+(bFte/1000)+'K'});
-  if(!isNaN(recurringVal)&&recurringVal<50)sigs.push({c:'var(--gold)',t:'Vaste omzet '+recurringVal+'% — PE-norm is >70%'});
+  if(!isNaN(ebitdaVal)&&ebitdaVal<0)sigs.push({c:'var(--red)',t:'Negatieve EBITDA ('+ebitdaVal+'%)',sub:'Verliesgevend. Verkoopbaarheid nihil zonder directe winstgevendheidsherstel.'});
+  else if(!isNaN(ebitdaVal)&&ebitdaVal<15)sigs.push({c:'var(--gold)',t:'EBITDA '+ebitdaVal+'% (benchmark 20-30%)',sub:'Te lage marge voor PE-transacties en serieuze fusiegesprekken.'});
+  if(omzetPerFte>0&&omzetPerFte<bFte)sigs.push({c:'var(--gold)',t:'Omzet/FTE €'+omzetPerFte.toLocaleString('nl-NL')+' (benchmark €'+(bFte/1000)+'K)',sub:'Productiviteitspotentieel van €'+((bFte-omzetPerFte)*fteVal).toLocaleString('nl-NL')+' wordt niet benut.'});
+  if(!isNaN(recurringVal)&&recurringVal<50)sigs.push({c:'var(--gold)',t:'Vaste omzet '+recurringVal+'% (PE-norm >70%)',sub:'Lage contractzekerheid drukt waardering en verkoopbaarheid structureel.'});
   var weakDims=Object.entries(s).filter(function(e){return e[1]<50;}).map(function(e){var sec=SECTIONS.find(function(x){return x.id===e[0];});return sec?sec.label+' ('+e[1]+')':e[0];});
   var strongDims=Object.entries(s).filter(function(e){return e[1]>=75;}).map(function(e){var sec=SECTIONS.find(function(x){return x.id===e[0];});return sec?sec.label+' ('+e[1]+')':e[0];});
   var out='<h4>Strategisch profiel op hoofdlijnen</h4>';
@@ -812,10 +814,21 @@ function renderSummary(){
   out+='<div style="font-size:13px;color:var(--mid);margin-top:2px">'+vd.txt+'</div></div></div>';
   if(sigs.length){
     out+='<div style="margin-bottom:.75rem">';
-    sigs.forEach(function(sig){out+='<div style="font-size:12px;color:'+sig.c+';padding:4px 0;display:flex;gap:6px"><span>&#9888;</span><span>'+sig.t+'</span></div>';});
+    sigs.forEach(function(sig){
+      out+='<div style="padding:8px 10px;margin-bottom:6px;background:var(--card);border-left:3px solid '+sig.c+';border-radius:0 var(--r) var(--r) 0">';
+      out+='<div style="font-size:12px;font-weight:600;color:'+sig.c+';display:flex;gap:6px"><span>&#9888;</span><span>'+sig.t+'</span></div>';
+      if(sig.sub)out+='<div style="font-size:12px;color:var(--mid);margin-top:3px;padding-left:18px">'+sig.sub+'</div>';
+      out+='</div>';
+    });
     out+='</div>';
   }
-  if(strongDims.length){out+='<p style="font-size:13px;color:var(--mid);margin-bottom:.4rem"><strong style="color:var(--teal)">Sterktes:</strong> '+strongDims.join(', ')+'</p>';}
+  if(strongDims.length){
+    out+='<div style="margin-bottom:.75rem">';
+    out+='<div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--teal);margin-bottom:6px">Sterktes</div>';
+    out+='<div style="display:flex;flex-wrap:wrap;gap:6px">';
+    strongDims.forEach(function(d){out+='<span style="font-size:12px;background:var(--teal-bg);color:var(--teal);padding:3px 8px;border-radius:3px;border:1px solid var(--teal)44">'+d+'</span>';});
+    out+='</div></div>';
+  }
   if(weakDims.length){out+='<p style="font-size:13px;color:var(--mid);margin-bottom:.75rem"><strong style="color:var(--gold)">Aandacht:</strong> '+weakDims.join(', ')+'</p>';}
   if(top3sc.length){
     out+='<div style="margin-top:.5rem">';
