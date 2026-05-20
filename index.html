@@ -645,18 +645,9 @@ async function generateAI(){
     updateAI(true);
     setTimeout(function(){updateAI(true);},100);
 
-    // Extraheer samenvatting uit rapport: eerste 3 alineas na ## Scorekaart
+    // Verversen summary-box met data-gebaseerde weergave
     ST._smvKlaar=true;
-    if(smvEl){
-      var smvMatch=collected.match(/## Scorekaart[^\n]*\n([\s\S]*?)(?=\n##|\n---|$)/i);
-      var smvBron=smvMatch&&smvMatch[1]?smvMatch[1]:collected;
-      var smvAlineas=smvBron.split('\n\n')
-        .map(function(p){return p.replace(/^##[^\n]*/gm,'').replace(/^[\-\*] /gm,'').replace(/\*\*/g,'').replace(/^\|.*$/gm,'').trim();})
-        .filter(function(p){return p.length>40&&!p.startsWith('#')&&!p.startsWith('|');})
-        .slice(0,3);
-      smvEl.innerHTML='<h4>Strategisch profiel op hoofdlijnen</h4>'
-        +smvAlineas.map(function(p){return '<p style="font-size:14px;color:var(--mid);line-height:1.8;margin-bottom:.6rem">'+p+'</p>';}).join('');
-    }
+    if(smvEl)smvEl.innerHTML=renderSummary();
 
     // Opslaan in database en rapportcode ophalen
     // Wacht 2s zodat saveScanToGroup zeker klaar is en ST.savedScanId gevuld is
@@ -792,29 +783,51 @@ function renderSummary(){
   if(ST.aiLoading){
     return '<h4>Strategisch profiel op hoofdlijnen</h4><p style="color:var(--muted);font-size:13px">&#9749; Uw rapport wordt opgesteld &mdash; de samenvatting verschijnt hier zodra het gereed is.</p>';
   }
-  if(!ST.aiText||ST.aiText.length<100||ST.aiText==='__ERROR__'||ST.aiText==='__LIMIT__'){
+  if(!ST.scores){
     return '<h4>Strategisch profiel op hoofdlijnen</h4><p style="color:var(--muted);font-style:italic;font-size:13px">Genereer het AI-advies hieronder voor een uitgebreide managementsamenvatting.</p>';
   }
-  // Pak de Scorekaart-sectie, strip tabellen en markdown-rommel
-  var sc=ST.aiText.match(/## Scorekaart[^\n]*\n([\s\S]*?)(?=\n##|\n---|$)/i);
-  var out='';
-  if(sc&&sc[1]){
-    var t=sc[1]
-      .replace(/^\|.*$/gm,'')       // tabellen weg
-      .replace(/^\s*\|[-| ]+\|/gm,'') // tabel-scheidingslijnen weg
-      .replace(/\*\*/g,'')           // bold markers weg
-      .replace(/^#+\s*/gm,'')        // resterende koppen weg
-      .trim();
-    if(t){
-      var paras=t.split(/\n{2,}/).filter(function(p){return p.trim();});
-      out=paras.map(function(p){return '<p style="font-size:14px;color:var(--mid);line-height:1.8;margin-bottom:.6rem">'+p.trim()+'</p>';}).join('');
-    }
+  var s=ST.scores;
+  var ov=overall(s);
+  var vd=verdict(ov);
+  var top3sc=ST.scenarios?ST.scenarios.slice(0,3):[];
+  var sigs=[];
+  var p=ST.profile||{};
+  var ebitdaVal=parseFloat(String(p.ebitda||'').replace('%','').replace(',','.'));
+  var recurringVal=parseFloat(String(p.recurring||'').replace('%','').replace(',','.'));
+  var omzetVal=parseFloat(String(p.omzet||'').replace(/[^0-9.]/g,''))||0;
+  var fteVal=parseFloat(String(p.fte||'').replace(/[^0-9.]/g,''))||0;
+  var omzetPerFte=omzetVal>0&&fteVal>0?Math.round(omzetVal/fteVal):0;
+  var isAdmin=(p.kantoorType||'').toLowerCase().includes('admin');
+  var bFte=isAdmin?100000:150000;
+  if(!isNaN(ebitdaVal)&&ebitdaVal<0)sigs.push({c:'var(--red)',t:'Negatieve EBITDA ('+ebitdaVal+'%) — directe actie vereist'});
+  else if(!isNaN(ebitdaVal)&&ebitdaVal<15)sigs.push({c:'var(--gold)',t:'EBITDA '+ebitdaVal+'% onder benchmark 20-30%'});
+  if(omzetPerFte>0&&omzetPerFte<bFte)sigs.push({c:'var(--gold)',t:'Omzet/FTE €'+omzetPerFte.toLocaleString('nl-NL')+' onder benchmark €'+(bFte/1000)+'K'});
+  if(!isNaN(recurringVal)&&recurringVal<50)sigs.push({c:'var(--gold)',t:'Vaste omzet '+recurringVal+'% — PE-norm is >70%'});
+  var weakDims=Object.entries(s).filter(function(e){return e[1]<50;}).map(function(e){var sec=SECTIONS.find(function(x){return x.id===e[0];});return sec?sec.label+' ('+e[1]+')':e[0];});
+  var strongDims=Object.entries(s).filter(function(e){return e[1]>=75;}).map(function(e){var sec=SECTIONS.find(function(x){return x.id===e[0];});return sec?sec.label+' ('+e[1]+')':e[0];});
+  var out='<h4>Strategisch profiel op hoofdlijnen</h4>';
+  out+='<div style="display:flex;align-items:center;gap:1rem;margin-bottom:1rem;padding:.75rem 1rem;background:'+vd.bg+';border-left:4px solid '+vd.color+';border-radius:0 var(--r) var(--r) 0">';
+  out+='<div style="font-size:2rem;font-weight:700;color:'+vd.color+';font-family:IBM Plex Mono,monospace">'+ov+'</div>';
+  out+='<div><div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:'+vd.color+'">'+vd.label+'</div>';
+  out+='<div style="font-size:13px;color:var(--mid);margin-top:2px">'+vd.txt+'</div></div></div>';
+  if(sigs.length){
+    out+='<div style="margin-bottom:.75rem">';
+    sigs.forEach(function(sig){out+='<div style="font-size:12px;color:'+sig.c+';padding:4px 0;display:flex;gap:6px"><span>&#9888;</span><span>'+sig.t+'</span></div>';});
+    out+='</div>';
   }
-  if(!out){
-    var paras2=ST.aiText.split('\n\n').filter(function(p){return p.trim()&&!p.startsWith('#')&&!p.startsWith('|');});
-    out=paras2.slice(0,3).map(function(p){return '<p style="font-size:14px;color:var(--mid);line-height:1.8;margin-bottom:.6rem">'+p.trim()+'</p>';}).join('');
+  if(strongDims.length){out+='<p style="font-size:13px;color:var(--mid);margin-bottom:.4rem"><strong style="color:var(--teal)">Sterktes:</strong> '+strongDims.join(', ')+'</p>';}
+  if(weakDims.length){out+='<p style="font-size:13px;color:var(--mid);margin-bottom:.75rem"><strong style="color:var(--gold)">Aandacht:</strong> '+weakDims.join(', ')+'</p>';}
+  if(top3sc.length){
+    out+='<div style="margin-top:.5rem">';
+    top3sc.forEach(function(sc,i){
+      out+='<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border)">';
+      out+='<span style="font-size:13px;color:var(--sub)">'+['Aanbevolen','Alternatief','Optioneel'][i]+': '+sc.name+'</span>';
+      out+='<span style="font-size:12px;color:var(--teal);font-family:IBM Plex Mono,monospace">'+sc.score+'%</span>';
+      out+='</div>';
+    });
+    out+='</div>';
   }
-  return '<h4>Strategisch profiel op hoofdlijnen</h4>'+(out||'<p style="color:var(--muted);font-style:italic;font-size:13px">Managementsamenvatting beschikbaar nadat u het AI-advies heeft gegenereerd.</p>');
+  return out2||out;
 }
 
 function formatOmzet(v){
