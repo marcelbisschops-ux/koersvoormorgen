@@ -511,8 +511,6 @@ async function generateAI(){
     +'Totaal: '+ov+'/100. Scenario: '+top3+'. Aandacht: '+risks+'\n\n'
     +'Schrijf een direct M&A-adviesrapport in het Nederlands. Geen tabellen. ## koppen. Max 800 woorden.\n'
     +'## Scorekaart\n## Strategisch profiel\n## Kritieke bevindingen\n## Kansen\n## Risicos\n## Aanbeveling (incl. indicatieve waardering)';
-    (financieelSignaal?'\u26a0\ufe0f KRITIEK FINANCIEEL SIGNAAL - VERWERK DIT ALS HOOFDTHEMA: '+financieelSignaal+'\n\n':'')+
-    'Je bent een senior M\u0026A-adviseur gespecialiseerd in '+kantoorType+'s. Mei 2026.\n\nKANTOOR:\n- '+naam+' | '+kantoorType+'\n- Fte: '+(p.fte||'?')+' | Omzet: '+(p.omzet||'?')+(omzetPerFte>0?' (\u20ac'+(omzetPerFte/1000).toFixed(0)+'K/fte)':'')+'\n- EBITDA: '+(p.ebitda||'?')+'% | Vaste omzet: '+(p.recurring||'?')+'%\n- Specialisme: '+(p.specialisme||'n/a')+' | Software: '+(p.software||'n/a')+' | Doelgroep: '+(p.doelgroep||'n/a')+'\n- Ambitie: '+(p.ambitie||'?')+' | Context: '+(p.context||'geen')+'\n\nSCORES (0-100):\n'+dims+'\n\nTotaal: '+ov+'/100 | Scenario: '+top3+'\nAandachtspunten (<55): '+risks+'\n\nSCHRIJFREGELS: Direct, persoonlijk, eerlijk. Geen tabellen. ## koppen. Elke sectie min 120 woorden, max 200 woorden. Totaal rapport max 1200 woorden. Benoem scores met cijfers. Geef indicatieve waarderingsbandbreedte. Sluit altijd af bij de Aanbeveling - geen losse tekst daarna.\n\n## Scorekaart\n[Totaalscore, top 5 drivers positief+negatief, max 120 woorden]\n## Strategisch profiel\n[Positie in markt, sterkte van businessmodel, financieel profiel - als EBITDA negatief/laag: dit MOET hier centraal staan]\n## Kritieke bevindingen\n[Meest impactvolle inzichten op waarde en verkoopbaarheid - financiele signalen EERST]\n## Kansen en groeipotentieel\n[Concrete kansen passend bij ambitie en type kantoor]\n## Risicos en aandachtspunten\n[Eerlijk over zwaktes en wat dit betekent voor waarde]\n## Aanbeveling\n[Concreet advies: scenario, timing, acties. Indicatieve waarderingsrange op basis van EBITDA en vaste omzet.]\n\n[Sluit af met: Wilt u deze analyse bespreken? Marcel Bisschops, 06-38689888, marcel@bisschopsfinancing.nl]';
 
 
 
@@ -564,13 +562,14 @@ async function generateAI(){
   }
 
   try{
+    const smvEl=document.getElementById('ai-samenvatting');
     const el=document.getElementById('ai-out');
     if(el)el.innerHTML='<div style="text-align:center;padding:2rem"><div class="ai-spinner"></div><p style="margin-top:1rem;color:var(--muted);font-size:14px">Rapport wordt opgesteld... (30-60 seconden)</p></div>';
     const resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:mainPrompt}]})});
     if(!resp.ok)throw new Error('HTTP '+resp.status);
     const data=await resp.json();
     if(data.error)throw new Error(data.error);
-    const collected=data.text||'';
+    let collected=data.text||'';
     if(!collected)throw new Error('Leeg rapport ontvangen');
     collected+='\n\n---\n\n## Disclaimer\n\nDit rapport is gegenereerd op basis van zelfrapportage en is uitsluitend bedoeld als indicatief strategisch oriëntatie-instrument. De uitkomsten, scores en aanbevelingen vormen geen formeel advies, geen waarderings- of due diligence-rapport en geen accountants- of juridisch oordeel. Bisschops Financing BV aanvaardt geen aansprakelijkheid voor beslissingen die (mede) worden genomen op basis van de inhoud van dit rapport. Voor een formele waardering, due diligence of strategisch advies dient u een gekwalificeerde adviseur te raadplegen.\n\n---\n\n';
 
@@ -591,8 +590,7 @@ async function generateAI(){
 
 
 
-    ST.aiText=collected;updateAI(true);setTimeout(function(){updateAI(true);},100);
-    updateAI(true);
+    ST.aiText=collected;ST.aiLoading=false;updateAI(true);setTimeout(function(){updateAI(true);},100);
 
 
     if(smvEl&&collected){
