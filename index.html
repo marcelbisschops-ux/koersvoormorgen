@@ -502,103 +502,150 @@ function opschonen(tekst) {
 async function generateAI(){
   const s=ST.scores;
   const ov=overall(s);
-  const vd=verdict(ov);
-  const top3=ST.scenarios.slice(0,3).map(sc=>sc.name+' ('+sc.score+'%)').join(', ');
   const p=ST.profile;
-  const dims=SECTIONS.map(sec=>'- '+sec.label+': '+s[sec.id]+'/100').join('\n');
-  const risks=SECTIONS.filter(sec=>s[sec.id]<55).map(sec=>sec.label).join(', ')||'geen kritieke risicos';
   const naam=p.naamAnon?'Anoniem kantoor':(p.naam||'Vertrouwelijk kantoor');
   const kantoorType=(p.kantoorType)||'accountantskantoor';
+
+  // Financiële berekeningen
   const ebitdaVal=parseFloat(String(p.ebitda||'').replace('%','').replace(',','.'));
   const recurringVal=parseFloat(String(p.recurring||'').replace('%','').replace(',','.'));
-  const ebitdaKritiek=!isNaN(ebitdaVal)&&ebitdaVal<0;
-  const ebitdaLaag=!isNaN(ebitdaVal)&&ebitdaVal>=0&&ebitdaVal<15;
   const omzetVal=parseFloat(String(p.omzet||'').replace(/[^0-9.]/g,''))||0;
   const fteVal=parseFloat(String(p.fte||'').replace(/[^0-9.]/g,''))||0;
   const omzetPerFte=omzetVal>0&&fteVal>0?Math.round(omzetVal/fteVal):0;
-  const omzetKritiek=omzetPerFte>0&&omzetPerFte<100000;
-  const omzetLaag=omzetPerFte>=100000&&omzetPerFte<150000;
+  const ebitdaBedrag=!isNaN(ebitdaVal)&&omzetVal>0?Math.round(omzetVal*(ebitdaVal/100)):0;
+
+  // Benchmarks (admin vs accountant)
+  const isAdminKantoor=(p.kantoorType||'').toLowerCase().includes('admin')||(p.specialisme||'').toLowerCase().includes('admin');
+  const benchmarkFte=isAdminKantoor?100000:150000;
+  const benchmarkLabel=isAdminKantoor?'\u20ac100K (administratiekantoor-benchmark)':'\u20ac150K (accountantskantoor-benchmark)';
+
+  // Signalen
   const signalen=[];
-  if(ebitdaKritiek)signalen.push('KRITIEK: Negatieve EBITDA ('+ebitdaVal+'%). Optimalisatie winstgevendheid is topprioriteit.');
-  else if(ebitdaLaag)signalen.push('AANDACHT: EBITDA laag ('+ebitdaVal+'%), onder benchmark 20-30%. Kostenoptimalisatie essentieel.');
-  if(omzetKritiek)signalen.push('KRITIEK: Omzet per fte slechts €'+omzetPerFte.toLocaleString('nl-NL')+'. Zwaar onder marktstandaard €150K+. Productiviteitsverbetering urgent.');
-  else if(omzetLaag)signalen.push('AANDACHT: Omzet per fte €'+omzetPerFte.toLocaleString('nl-NL')+', onder benchmark €150K. Capaciteitsoptimalisatie aanbevolen.');
-  const financieelSignaal=signalen.join(' | ');
+  if(!isNaN(ebitdaVal)&&ebitdaVal<0)signalen.push('KRITIEK: Negatieve EBITDA ('+ebitdaVal+'%). Directe actie vereist.');
+  else if(!isNaN(ebitdaVal)&&ebitdaVal<15)signalen.push('AANDACHT: EBITDA '+ebitdaVal+'% onder benchmark 20-30%.');
+  if(omzetPerFte>0&&omzetPerFte<benchmarkFte*0.67)signalen.push('KRITIEK: Omzet/fte \u20ac'+omzetPerFte.toLocaleString('nl-NL')+' zwaar onder '+benchmarkLabel+'.');
+  else if(omzetPerFte>=benchmarkFte*0.67&&omzetPerFte<benchmarkFte)signalen.push('AANDACHT: Omzet/fte \u20ac'+omzetPerFte.toLocaleString('nl-NL')+' onder '+benchmarkLabel+'.');
+  if(!isNaN(recurringVal)&&recurringVal<50)signalen.push('AANDACHT: Slechts '+recurringVal+'% vaste omzet. PE-kopers willen >70%.');
 
+  // Software-analyse
+  const sw=(p.software||'').toLowerCase();
+  const excelWarn=sw.includes('excel')||sw.includes('xls');
+  const cloudSoftware=['exact online','exact','twinfield','yuki','afas','snelstart','e-boekhouden','jortt'].some(x=>sw.includes(x));
+  const premiumSoftware=['silverfin','caseware','accountview','unit4'].some(x=>sw.includes(x));
+  const swAnalyse=excelWarn
+    ?'RODE VLAG: Primair Excel. Onschaalbaar, foutgevoelig, niet auditeerbaar. Migratie naar cloudplatform is randvoorwaarde voor exit of groei.'
+    :cloudSoftware?'Cloud-accountingsoftware ('+p.software+') aanwezig - positief voor schaalbaarheid.'
+    :premiumSoftware?'Professionele software ('+p.software+') - sterke basis.'
+    :'Software: '+(p.software||'onbekend')+'. Onduidelijk of cloud/geintegreerd.';
 
+  // Vraagantwoorden → inzichten
+  const a=ST.answers||{};
+  const vi=[];
+  if(a.s1!==undefined)vi.push('Positionering: '+(a.s1<=2?'ZWAK':a.s1===3?'matig':'sterk'));
+  if(a.s3!==undefined)vi.push('Concurrentieonderscheid: '+(a.s3<=2?'nauwelijks - puur op prijs':a.s3===3?'beperkt':'aantoonbaar'));
+  if(a.o1!==undefined)vi.push('Opvolgingsplan: '+(a.o1<=2?'GEEN - kritiek risico':a.o1===3?'informeel':'formeel aanwezig'));
+  if(a.o3!==undefined)vi.push('Continuiteit bij uitval eigenaar: '+(a.o3<=2?'NIET geborgd':a.o3===3?'gedeeltelijk':'goed geborgd'));
+  if(a.w1!==undefined)vi.push('Terugkerende omzet: '+(a.w1<=2?'laag - projectmatig':a.w1===3?'gemiddeld':'hoog'));
+  if(a.a1!==undefined)vi.push('Automatisering routinetaken: '+(a.a1<=2?'LAAG - veel handwerk':a.a1===3?'gedeeltelijk':'hoog'));
+  if(a.a2!==undefined)vi.push('Geintegreerde cloudplatformen: '+(a.a2<=2?'NIET aanwezig':a.a2===3?'gedeeltelijk':'ja'));
+  if(a.a3!==undefined)vi.push('Digitale volwassenheid team: '+(a.a3<=2?'laag':a.a3===3?'gemiddeld':'hoog'));
+  if(a.p1!==undefined)vi.push('Klantrelaties geborgd in team: '+(a.p1<=2?'NEE - dealbreaker bij M&A':a.p1===3?'deels':'goed'));
+  if(a.p2!==undefined)vi.push('Dossiers overdraagbaar: '+(a.p2<=2?'onvoldoende':a.p2===3?'deels':'volledig'));
+  if(a.k1!==undefined)vi.push('Grootste klant >10% omzet: '+(a.k1<=2?'JA - concentratierisico':a.k1===3?'grensgebied':'nee'));
+  if(a.k3!==undefined)vi.push('Churn <5%/jaar: '+(a.k3<=2?'te hoog':a.k3===3?'matig':'laag'));
+  if(a.f4!==undefined)vi.push('Wwft: '+(a.f4<=2?'KRITIEK - dealbreaker due diligence':a.f4===3?'deels':'op orde'));
+  const peOpties=['Geen externe partij','Orienterende gesprekken','LoI getekend','PE deels betrokken','PE volledig aan boord'];
+  if(a.f5!==undefined)vi.push('Investeerdersstatus: '+(peOpties[a.f5-1]||'onbekend'));
+  if(a.ai1!==undefined)vi.push('AI-substitutierisico: '+(a.ai1>=4?'HOOG':a.ai1===3?'matig':'laag'));
+  if(a.ai2!==undefined)vi.push('AI-bestendige diensten: '+(a.ai2<=2?'nauwelijks':a.ai2===3?'in ontwikkeling':'actief'));
+  if(a.ai3!==undefined)vi.push('AI-adoptie team: '+(a.ai3<=2?'laag':a.ai3===3?'beperkt':'actief'));
+  if(a.pe2!==undefined)vi.push('Personeelsverloop: '+(a.pe2<=2?'HOOG':a.pe2===3?'gemiddeld':'laag'));
+  if(a.pe4!==undefined)vi.push('Veranderbereidheid: '+(a.pe4<=2?'laag - weerstand verwacht':a.pe4===3?'gemiddeld':'hoog'));
+  if(a.c1!==undefined)vi.push('Actieve acquisitie: '+(a.c1<=2?'nauwelijks':a.c1===3?'beperkt':'ja'));
+  if(a.c2!==undefined)vi.push('Marketingbeleid: '+(a.c2<=2?'nauwelijks':a.c2===3?'beperkt':'actief'));
+  if(a.c3!==undefined)vi.push('Cross-sell: '+(a.c3<=2?'niet systematisch':a.c3===3?'ad hoc':'systematisch'));
 
+  // Scores
+  const top3=ST.scenarios.slice(0,3).map(sc=>sc.name+' ('+sc.score+'%)').join(', ');
+  const dims=SECTIONS.map(sec=>'- '+sec.label+': '+s[sec.id]+'/100').join('\n');
+  const strengths=SECTIONS.filter(sec=>s[sec.id]>=70).map(sec=>sec.label+' ('+s[sec.id]+')').join(', ')||'geen';
+  const weaknesses=SECTIONS.filter(sec=>s[sec.id]<50).map(sec=>sec.label+' ('+s[sec.id]+')').join(', ')||'geen';
 
+  // Waardering
+  const recurring=!isNaN(recurringVal)?recurringVal:0;
+  const mult=recurring>60?'6-8x':recurring>40?'4-6x':'3-5x';
+  const wLow=ebitdaBedrag>0?Math.round(ebitdaBedrag*(recurring>60?6:recurring>40?4:3)/10000)*10000:0;
+  const wHigh=ebitdaBedrag>0?Math.round(ebitdaBedrag*(recurring>60?8:recurring>40?6:5)/10000)*10000:0;
+  const waardering=wLow>0
+    ?'Indicatief: \u20ac'+wLow.toLocaleString('nl-NL')+' \u2013 \u20ac'+wHigh.toLocaleString('nl-NL')+' (EBITDA multiple '+mult+', op basis van '+(!isNaN(ebitdaVal)?ebitdaVal:'?')+'% marge en '+recurring+'% recurring).'
+    :'Onvoldoende data voor berekening. Vul EBITDA% en omzet in.';
 
+  const mainPrompt=
+    'Je bent Marcel Bisschops, senior M&A-adviseur gespecialiseerd in accountants- en administratiekantoren.\n'
+    +'Schrijf een uitgebreid, eerlijk en direct strategisch adviesrapport in het Nederlands. Minimaal 1200 woorden.\n'
+    +'Begin DIRECT met ## Scorekaart en samenvatting. Geen titelpagina, geen "Opgesteld door"-regel.\n'
+    +'Gebruik ALTIJD "uw kantoor" - nooit "dit kantoor" of "het kantoor".\n'
+    +'NOOIT beginnen met "Laat ik direct zijn" of vergelijkbare retorische zinnen.\n\n'
+    +'KANTOORPROFIEL:\n'
+    +'- Naam: '+naam+' | Type: '+kantoorType+'\n'
+    +'- Regio: '+(p.regio||'onbekend')+' | FTE: '+(p.fte||'?')+' | Omzet: \u20ac'+(p.omzet||'?')+'\n'
+    +'- EBITDA: '+(p.ebitda||'?')+(ebitdaBedrag>0?' (\u20ac'+ebitdaBedrag.toLocaleString('nl-NL')+' absoluut)':'')+'\n'
+    +'- Vaste omzet: '+(p.recurring||'?')+'%\n'
+    +'- Omzet/FTE: '+(omzetPerFte>0?'\u20ac'+omzetPerFte.toLocaleString('nl-NL'):' onbekend')+(omzetPerFte>0&&omzetPerFte<benchmarkFte?' ONDER benchmark '+benchmarkLabel:'')+'\n'
+    +'- Specialisme: '+(p.specialisme||'generalist')+' | Doelgroep: '+(p.doelgroep||'MKB')+'\n'
+    +'- Software: '+(p.software||'onbekend')+'\n'
+    +'- Ambitie: '+(p.ambitie||'?')+'\n'
+    +'- Context: '+(p.context||'geen')+'\n\n'
+    +'SOFTWARE-ANALYSE:\n'+swAnalyse+'\n\n'
+    +(signalen.length?'ALARMSIGNALEN (verplicht hoofdthema):\n'+signalen.map(s=>'! '+s).join('\n')+'\n\n':'')
+    +'DIMENSIESCORES:\n'+dims+'\n'
+    +'Totaal: '+ov+'/100 | Sterktes: '+strengths+' | Zwaktes: '+weaknesses+'\n\n'
+    +'BEVINDINGEN PER VRAAG:\n'+vi.map(v=>'- '+v).join('\n')+'\n\n'
+    +'WAARDERING:\n'+waardering+'\n\n'
+    +'TOP SCENARIOS: '+top3+'\n\n'
+    +'STRUCTUUR (gebruik exact deze ## koppen):\n'
+    +'## Scorekaart en samenvatting\n'
+    +'## Financieel profiel\n'
+    +'## Bedrijfsvoering en technologie\n'
+    +'## Strategische positie en commerciele kracht\n'
+    +'## Risicoprofiel\n'
+    +'## Aanbeveling\n';
 
-
-
-
-
-  const mainPrompt=(financieelSignaal?'KRITIEK SIGNAAL - MAAK DIT HOOFDTHEMA: '+financieelSignaal+'\n\n':'')
-    +'Strategisch M&A-advies voor '+naam+' ('+kantoorType+'), mei 2026.\n'
-    +'Financieel: EBITDA '+(p.ebitda||'?')+'%, Vaste omzet '+(p.recurring||'?')+'%, Omzet '+(p.omzet||'?')+(omzetPerFte>0?', €'+(omzetPerFte/1000).toFixed(0)+'K/fte':'')+'\n'
-    +'Profiel: '+(p.fte||'?')+' fte, '+(p.specialisme||'generalist')+', software: '+(p.software||'onbekend')+', doelgroep: '+(p.doelgroep||'MKB')+'\n'
-    +'Ambitie: '+(p.ambitie||'?')+'. Context: '+(p.context||'geen')+'\n'
-    +'Scores (0-100): '+dims+'\n'
-    +'Totaal: '+ov+'/100. Scenario: '+top3+'. Aandacht: '+risks+'\n\n'
-    +'Schrijf een direct M&A-adviesrapport in het Nederlands. Geen tabellen. ## koppen. Max 800 woorden.\n'
-    +'## Scorekaart\n## Strategisch profiel\n## Kritieke bevindingen\n## Kansen\n## Risicos\n## Aanbeveling (incl. indicatieve waardering)';
-    (financieelSignaal?'\u26a0\ufe0f KRITIEK FINANCIEEL SIGNAAL - VERWERK DIT ALS HOOFDTHEMA: '+financieelSignaal+'\n\n':'')+
-    'Je bent een senior M\u0026A-adviseur gespecialiseerd in '+kantoorType+'s. Mei 2026.\n\nKANTOOR:\n- '+naam+' | '+kantoorType+'\n- Fte: '+(p.fte||'?')+' | Omzet: '+(p.omzet||'?')+(omzetPerFte>0?' (\u20ac'+(omzetPerFte/1000).toFixed(0)+'K/fte)':'')+'\n- EBITDA: '+(p.ebitda||'?')+'% | Vaste omzet: '+(p.recurring||'?')+'%\n- Specialisme: '+(p.specialisme||'n/a')+' | Software: '+(p.software||'n/a')+' | Doelgroep: '+(p.doelgroep||'n/a')+'\n- Ambitie: '+(p.ambitie||'?')+' | Context: '+(p.context||'geen')+'\n\nSCORES (0-100):\n'+dims+'\n\nTotaal: '+ov+'/100 | Scenario: '+top3+'\nAandachtspunten (<55): '+risks+'\n\nSCHRIJFREGELS: Direct, persoonlijk, eerlijk. Geen tabellen. ## koppen. Elke sectie min 120 woorden, max 200 woorden. Totaal rapport max 1200 woorden. Benoem scores met cijfers. Geef indicatieve waarderingsbandbreedte. Sluit altijd af bij de Aanbeveling - geen losse tekst daarna.\n\n## Scorekaart\n[Totaalscore, top 5 drivers positief+negatief, max 120 woorden]\n## Strategisch profiel\n[Positie in markt, sterkte van businessmodel, financieel profiel - als EBITDA negatief/laag: dit MOET hier centraal staan]\n## Kritieke bevindingen\n[Meest impactvolle inzichten op waarde en verkoopbaarheid - financiele signalen EERST]\n## Kansen en groeipotentieel\n[Concrete kansen passend bij ambitie en type kantoor]\n## Risicos en aandachtspunten\n[Eerlijk over zwaktes en wat dit betekent voor waarde]\n## Aanbeveling\n[Concreet advies: scenario, timing, acties. Indicatieve waarderingsrange op basis van EBITDA en vaste omzet.]\n\n[Sluit af met: Wilt u deze analyse bespreken? Marcel Bisschops, 06-38689888, marcel@bisschopsfinancing.nl]';
-
-
-
-  // Check rapport limit before generating
+  // Check limiet
   const _email=(ST.profile&&ST.profile.email)||'';
   if(_email){
     try{
       const _chk=await fetch(WORKER+'/rapport/check?email='+encodeURIComponent(_email));
       const _cd=await _chk.json();
-      if(_cd.blocked){
-        ST.aiLoading=false;
-        ST.aiText='__LIMIT__';
-        updateAI(true);
-        return;
-      }
+      if(_cd.blocked){ST.aiLoading=false;ST.aiText='__LIMIT__';updateAI(true);return;}
     }catch(e){}
   }
 
   ST.aiLoading=true;ST.aiText='';render();
-  const dec=new TextDecoder();
 
   try{
+    const smvEl=document.getElementById('ai-samenvatting');
     const el=document.getElementById('ai-out');
-    if(el)el.innerHTML='<div style="text-align:center;padding:2rem"><div class="ai-spinner"></div><p style="margin-top:1rem;color:var(--muted);font-size:14px">Rapport wordt opgesteld... (30-60 seconden)</p></div>';
+    if(el)el.innerHTML=
+      '<div style="text-align:center;padding:2.5rem 2rem">'
+      +'<div class="ai-spinner"></div>'
+      +'<p style="margin-top:1.25rem;color:var(--head);font-size:15px;font-weight:600">&#9749; Uw rapport wordt opgesteld</p>'
+      +'<p style="margin-top:.5rem;color:var(--muted);font-size:13px">Neem gerust een kopje koffie &#9749; of doe wat rek- en strekoefeningen &#127939;</p>'
+      +'</div>';
+
     let collected=await callAI(mainPrompt);
-    collected+='\n\n---\n\n## Disclaimer\n\nDit rapport is gegenereerd op basis van zelfrapportage en is uitsluitend bedoeld als indicatief strategisch oriëntatie-instrument. De uitkomsten, scores en aanbevelingen vormen geen formeel advies, geen waarderings- of due diligence-rapport en geen accountants- of juridisch oordeel. Bisschops Financing BV aanvaardt geen aansprakelijkheid voor beslissingen die (mede) worden genomen op basis van de inhoud van dit rapport. Voor een formele waardering, due diligence of strategisch advies dient u een gekwalificeerde adviseur te raadplegen.\n\n---\n\n';
+    collected+='\n\n---\n\n## Disclaimer\n\nDit rapport is gegenereerd op basis van zelfrapportage en is uitsluitend bedoeld als indicatief strategisch ori\xebntatie-instrument. De uitkomsten vormen geen formeel advies. \xa9 2026 Bisschops Financing BV.\n\n---\n\n';
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    ST.aiText=collected;updateAI(true);setTimeout(function(){updateAI(true);},100);
+    ST.aiText=collected;
+    ST.aiLoading=false;
     updateAI(true);
-
+    setTimeout(function(){updateAI(true);},100);
 
     if(smvEl&&collected){
       const smvLines=collected.split('\n');
-      let smvText='';
-      let inSmv=false;
+      let smvText='';let inSmv=false;
       for(const l of smvLines){
-        if(l.match(/^##.*[Ss]amenvatting|^##.*[Pp]rofiel|^##.*[Aa]dvies|^##.*[Ss]trategisch/))inSmv=true;
+        if(l.match(/^##.*[Ss]core|^##.*[Ss]amen/))inSmv=true;
         else if(l.startsWith('##'))inSmv=false;
         if(inSmv&&!l.startsWith('##'))smvText+=l+'\n';
       }
@@ -609,9 +656,8 @@ async function generateAI(){
       smvEl.innerHTML=renderAIText(smvText.trim(),false);
     }
 
-    // Sla rapport op in database
-    fetch(WORKER+'/rapport/save',{method:'POST',
-      headers:{'Content-Type':'application/json'},
+    // Opslaan in database
+    fetch(WORKER+'/rapport/save',{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
         scan_id:ST.savedScanId||'',
         email:(ST.profile&&ST.profile.email)||'',
@@ -627,11 +673,9 @@ async function generateAI(){
       })
     }).catch(()=>{});
 
-    // Track rapport usage (limiet: 5x per e-mail+IP)
     const profileEmail=(ST.profile&&ST.profile.email)||'';
     if(profileEmail){
-      fetch(WORKER+'/rapport/track',{method:'POST',
-        headers:{'Content-Type':'application/json'},
+      fetch(WORKER+'/rapport/track',{method:'POST',headers:{'Content-Type':'application/json'},
         body:JSON.stringify({email:profileEmail,scan_id:ST.scanId||''})
       }).catch(()=>{});
     }
@@ -640,14 +684,17 @@ async function generateAI(){
     ST.aiLoading=false;
     ST.aiText='__ERROR__';
     console.error('generateAI fout:',err);
-    // Toon foutmelding zichtbaar in de UI
     const _errEl=document.getElementById('ai-out');
-    if(_errEl)_errEl.innerHTML='<div style="padding:1.5rem;text-align:center"><div style="font-size:1.5rem;margin-bottom:.5rem">&#9888;</div>'
+    if(_errEl)_errEl.innerHTML=
+      '<div style="padding:1.5rem;text-align:center">'
+      +'<div style="font-size:1.5rem;margin-bottom:.5rem">&#9888;</div>'
       +'<p style="color:var(--red);font-size:13px;margin-bottom:.75rem"><strong>Fout:</strong> '+(err.message||'Onbekende fout')+'</p>'
-      +'<button class="btn-gen" onclick="generateAI()" style="margin:0 auto">Opnieuw proberen</button></div>';
+      +'<button class="btn-gen" onclick="generateAI()" style="margin:0 auto">Opnieuw proberen</button>'
+      +'</div>';
     updateAI(true);
   }
 }
+
 async function saveScanToGroup(){
   if(!ST.scores)return;
   if(!ST.profile.saveConsent&&!ST.groupId)return;
