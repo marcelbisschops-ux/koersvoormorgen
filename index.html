@@ -634,6 +634,21 @@ async function generateAI(){
       +'<p style="margin-top:.5rem;color:var(--muted);font-size:13px">Neem gerust een kopje koffie &#9749; of doe wat rek- en strekoefeningen &#127939;</p>'
       +'</div>';
 
+    // Call 1: korte samenvatting voor de summary-box (parallel gestart)
+    const smvPrompt=
+      'Je bent Marcel Bisschops, senior M&A-adviseur. Schrijf een managementsamenvatting van precies 3 alineas (totaal 200-250 woorden) over dit kantoor. '
+      +'Gebruik uitsluitend "uw kantoor". Geen koppen, geen bullets, alleen lopende tekst. Direct beginnen.\n\n'
+      +'Kantoor: '+naam+' | '+kantoorType+' | Score: '+ov+'/100\n'
+      +'EBITDA: '+(p.ebitda||'?')+'% | Vaste omzet: '+(p.recurring||'?')+'% | FTE: '+(p.fte||'?')+' | Omzet: '+(p.omzet||'?')+'\n'
+      +'Sterktes: '+strengths+' | Zwaktes: '+weaknesses+'\n'
+      +'Top scenario: '+top3+'\n'
+      +(signalen.length?'Alarmsignalen: '+signalen.join(' | '):'');
+    const smvPromise=callAI(smvPrompt).then(function(smvTekst){
+      if(smvEl)smvEl.innerHTML='<h4>Strategisch profiel op hoofdlijnen</h4>'
+        +smvTekst.split('\n\n').filter(function(p){return p.trim();}).map(function(p){return '<p style="font-size:14px;color:var(--mid);line-height:1.8;margin-bottom:.6rem">'+p.trim()+'</p>';}).join('');
+    }).catch(function(){if(smvEl)smvEl.innerHTML=renderSummary();});
+
+    // Call 2: volledig rapport
     let collected=await callAI(mainPrompt);
     collected+='\n\n---\n\n## Disclaimer\n\nDit rapport is gegenereerd op basis van zelfrapportage en is uitsluitend bedoeld als indicatief strategisch ori\xebntatie-instrument. De uitkomsten vormen geen formeel advies. \xa9 2026 Bisschops Financing BV.\n\n---\n\n';
 
@@ -642,7 +657,8 @@ async function generateAI(){
     updateAI(true);
     setTimeout(function(){updateAI(true);},100);
 
-    if(smvEl)smvEl.innerHTML=renderSummary();
+    // Wacht tot samenvatting ook klaar is
+    await smvPromise;
 
     // Opslaan in database en rapportcode ophalen
     // Wacht 2s zodat saveScanToGroup zeker klaar is en ST.savedScanId gevuld is
@@ -741,7 +757,7 @@ function updateAI(final=false){
   if(sb)sb.innerHTML=renderSummary();
 }
 function renderAIText(text,cursor=false){
-  if(ST.aiLoading)return'<div class="ai-loading"><div class="ai-spinner"></div><span>Rapport wordt opgesteld…</span></div>';
+  if(ST.aiLoading)return'<div class="ai-loading"><div class="ai-spinner"></div><p style="margin-top:1.25rem;color:var(--head);font-size:15px;font-weight:600">&#9749; Uw rapport wordt opgesteld</p><p style="margin-top:.5rem;color:var(--muted);font-size:13px">Neem gerust een kopje koffie &#9749; of doe wat rek- en strekoefeningen &#127939;</p></div>';
   if(!text)return'<div class="ai-placeholder"><div class="ai-placeholder-icon">&#9672;</div><p class="ai-placeholder-text">Klik op "Genereer AI-advies" voor een gepersonaliseerd strategisch memo.</p></div>';
   if(text==='__ERROR__')return'<div class="ai-placeholder"><div class="ai-placeholder-icon" style="opacity:.5">&#9888;</div><p class="ai-placeholder-text" style="margin-bottom:1rem">Kon niet verbinden.</p><button class="btn-gen" onclick="generateAI()" style="margin:0 auto">Opnieuw proberen</button></div>';
   if(text==='__LIMIT__')return'<div class="ai-placeholder"><div class="ai-placeholder-icon" style="color:var(--gold)">&#9888;</div><p class="ai-placeholder-text" style="margin-bottom:.5rem"><strong>Rapport-limiet bereikt</strong></p><p style="font-size:13px;color:var(--muted);text-align:center;max-width:380px;margin:0 auto">U heeft het maximale aantal rapporten bereikt. Neem contact op via <a href="mailto:marcel@bisschopsfinancing.nl" style="color:var(--teal)">marcel@bisschopsfinancing.nl</a>.</p></div>';
