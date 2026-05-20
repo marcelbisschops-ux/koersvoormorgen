@@ -581,7 +581,7 @@ async function generateAI(){
           const j=JSON.parse(d);
           if(j.type==='content_block_delta'&&j.delta&&j.delta.text){
             collected+=j.delta.text;
-            const el2=document.getElementById('ai-out');
+            const el2=document.getElementById('ai-out')||document.querySelector('.ai-body div');if(el2)el2.innerHTML=renderAIText(collected,true);
             if(el2)el2.innerHTML=renderAIText(collected,true);
           }
         }catch(e){}
@@ -648,7 +648,7 @@ async function generateAI(){
 
 
     // Present all at once
-    ST.aiText=collected;
+    ST.aiText=collected;updateAI(true);setTimeout(function(){updateAI(true);},100);
     updateAI(true);
     // Vul managementsamenvatting
     const smvEl=document.getElementById('smv-out');
