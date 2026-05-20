@@ -609,7 +609,8 @@ async function generateAI(){
     +'## Bedrijfsvoering en technologie\n'
     +'## Strategische positie en commerciele kracht\n'
     +'## Risicoprofiel\n'
-    +'## Aanbeveling\n';
+    +'## Aanbeveling\n'
+    +'VERBOD: Gebruik GEEN markdown-tabellen (geen |---| of |kolom|). Schrijf alles in lopende tekst.\n';
 
   // Check limiet
   const _email=(ST.profile&&ST.profile.email)||'';
@@ -742,31 +743,32 @@ async function loadGroupAsAdmin(gid,adminCode){
 
 function updateAI(final=false){const el=document.getElementById('ai-out');if(el)el.innerHTML=renderAIText(ST.aiText,!final);}
 function renderAIText(text,cursor=false){
-  if(ST.aiLoading)return`<div class="ai-loading"><div class="ai-spinner"></div><span>Strategisch memo wordt gegenereerd...</span></div>`;
-  if(!text)return`<div class="ai-placeholder"><div class="ai-placeholder-icon">&#9672;</div><p class="ai-placeholder-text">Klik op "Genereer AI-advies" voor een gepersonaliseerd strategisch memo op basis van de scanresultaten en het kantoorprofiel.</p></div>`;
-  if(text==='__ERROR__')return`<div class="ai-placeholder"><div class="ai-placeholder-icon" style="opacity:.5">&#9888;</div><p class="ai-placeholder-text" style="margin-bottom:1rem">Kon niet verbinden.</p><button class="btn-gen" onclick="generateAI()" style="margin:0 auto">Opnieuw proberen</button></div>`;
-  if(text==='__LIMIT__')return`<div class="ai-placeholder"><div class="ai-placeholder-icon" style="color:var(--gold)">&#9888;</div><p class="ai-placeholder-text" style="margin-bottom:.5rem"><strong>Rapport-limiet bereikt</strong></p><p style="font-size:13px;color:var(--muted);text-align:center;max-width:380px;margin:0 auto">U heeft het maximale aantal rapporten (5) voor dit e-mailadres bereikt. Neem contact op via <a href="mailto:marcel@bisschopsfinancing.nl" style="color:var(--teal)">marcel@bisschopsfinancing.nl</a> voor een licentieafspraak.</p></div>`;
-  // Stap 1: escape bestaande HTML-entiteiten niet dubbel
+  if(ST.aiLoading)return'<div class="ai-loading"><div class="ai-spinner"></div><span>Rapport wordt opgesteld…</span></div>';
+  if(!text)return'<div class="ai-placeholder"><div class="ai-placeholder-icon">&#9672;</div><p class="ai-placeholder-text">Klik op "Genereer AI-advies" voor een gepersonaliseerd strategisch memo.</p></div>';
+  if(text==='__ERROR__')return'<div class="ai-placeholder"><div class="ai-placeholder-icon" style="opacity:.5">&#9888;</div><p class="ai-placeholder-text" style="margin-bottom:1rem">Kon niet verbinden.</p><button class="btn-gen" onclick="generateAI()" style="margin:0 auto">Opnieuw proberen</button></div>';
+  if(text==='__LIMIT__')return'<div class="ai-placeholder"><div class="ai-placeholder-icon" style="color:var(--gold)">&#9888;</div><p class="ai-placeholder-text" style="margin-bottom:.5rem"><strong>Rapport-limiet bereikt</strong></p><p style="font-size:13px;color:var(--muted);text-align:center;max-width:380px;margin:0 auto">U heeft het maximale aantal rapporten bereikt. Neem contact op via <a href="mailto:marcel@bisschopsfinancing.nl" style="color:var(--teal)">marcel@bisschopsfinancing.nl</a>.</p></div>';
   let t=text;
-  // Stap 2: ## Koppen
-  t=t.replace(/^## (.+)$/gm,'<h3>$1</h3>');
-  // Stap 3: Bold
+  // Verwijder markdown tabellen (|---|) volledig
+  t=t.replace(/^\|.*\|.*$/gm,'').replace(/^\s*\|[-| :]+\|\s*$/gm,'');
+  // ## Koppen
+  t=t.replace(/^## (.+)$/gm,'<h3 class="ai-h2">$1</h3>');
+  // ### Subkoppen
+  t=t.replace(/^### (.+)$/gm,'<h4 class="ai-h3">$1</h4>');
+  // Bold
   t=t.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
-  // Stap 4: Bullets - zowel - als * aan begin regel
+  // Bullets
   t=t.replace(/^[\-\*] (.+)$/gm,'<li>$1</li>');
-  // Stap 5: Groepeer li's
-  t=t.replace(/(<li>.*<\/li>\n?)+/g,function(m){return '<ul>'+m+'</ul>';});
-  // Stap 6: Horizontale lijn
+  t=t.replace(/(<li>[\s\S]*?<\/li>\n?)+/g,function(m){return '<ul style="margin:.5rem 0 .5rem 1.25rem">'+m+'</ul>';});
+  // Horizontale lijn
   t=t.replace(/^---$/gm,'<hr style="border:none;border-top:1px solid var(--border);margin:1.5rem 0">');
-  // Stap 7: Paragrafen - splits op dubbele newline
+  // Paragrafen
   let parts=t.split(/\n{2,}/);
   t=parts.map(function(p){
     p=p.trim();
     if(!p)return '';
     if(p.startsWith('<'))return p;
-    // Enkele newlines binnen paragraaf -> <br>
     p=p.replace(/\n/g,'<br>');
-    return '<p>'+p+'</p>';
+    return '<p style="margin-bottom:.75rem">'+p+'</p>';
   }).join('');
   if(cursor)t+='<span class="ai-cursor"></span>';
   return '<div class="ai-output">'+t+'</div>';
@@ -775,14 +777,31 @@ function renderAIText(text,cursor=false){
 /* ======== RENDER ======== */
 
 function renderSummary(){
+  if(ST.aiLoading){
+    return '<h4>&#9749; Rapport wordt opgesteld&hellip;</h4><p style="color:var(--muted);font-size:13px">De samenvatting verschijnt hier zodra uw rapport gereed is.</p>';
+  }
   if(!ST.aiText||ST.aiText.length<100||ST.aiText==='__ERROR__'||ST.aiText==='__LIMIT__'){
     return '<p style="color:var(--muted);font-style:italic;font-size:13px">Genereer het AI-advies hieronder voor een uitgebreide managementsamenvatting.</p>';
   }
-  var sc=ST.aiText.match(/## Scorekaart([\s\S]*?)(?=##|---)/);
-  var kb=ST.aiText.match(/## Kernboodschap([\s\S]*?)(?=##|---)/);
+  // Pak de Scorekaart-sectie, strip tabellen en markdown-rommel
+  var sc=ST.aiText.match(/## Scorekaart[^\n]*\n([\s\S]*?)(?=\n##|\n---|$)/);
   var out='';
-  if(sc&&sc[1]){var t=sc[1].replace(/<[^>]+>/g,'').replace(/\*\*/g,'').trim().slice(0,700);if(t)out+='<p style="font-size:14px;color:var(--mid);line-height:1.75">'+t+'</p>';}
-  if(kb&&kb[1]){var t2=kb[1].replace(/<[^>]+>/g,'').replace(/\*\*/g,'').trim().slice(0,400);if(t2)out+='<p style="font-size:14px;color:var(--sub);line-height:1.75;margin-top:.5rem"><strong>Kernboodschap</strong> — '+t2+'</p>';}
+  if(sc&&sc[1]){
+    var t=sc[1]
+      .replace(/^\|.*$/gm,'')       // tabellen weg
+      .replace(/^\s*\|[-| ]+\|/gm,'') // tabel-scheidingslijnen weg
+      .replace(/\*\*/g,'')           // bold markers weg
+      .replace(/^#+\s*/gm,'')        // resterende koppen weg
+      .trim();
+    if(t){
+      var paras=t.split(/\n{2,}/).filter(function(p){return p.trim();});
+      out=paras.map(function(p){return '<p style="font-size:14px;color:var(--mid);line-height:1.8;margin-bottom:.6rem">'+p.trim()+'</p>';}).join('');
+    }
+  }
+  if(!out){
+    var paras2=ST.aiText.split('\n\n').filter(function(p){return p.trim()&&!p.startsWith('#')&&!p.startsWith('|');});
+    out=paras2.slice(0,3).map(function(p){return '<p style="font-size:14px;color:var(--mid);line-height:1.8;margin-bottom:.6rem">'+p.trim()+'</p>';}).join('');
+  }
   return out||'<p style="color:var(--muted);font-style:italic;font-size:13px">Managementsamenvatting beschikbaar nadat u het AI-advies heeft gegenereerd.</p>';
 }
 
@@ -1509,7 +1528,7 @@ function toonFeedbackModal(){
           tijd:'',kantoor:{naam:p.naam||'',regio:p.regio||'',fte:p.fte||'',omzet:p.omzet||'',specialisme:p.specialisme||'',ambitie:p.ambitie||''},
           scores:ST.scores||{},totaal:ST.scores?overall(ST.scores):0,
           scenario:ST.scenarios&&ST.scenarios[0]?ST.scenarios[0].name:'',
-          feedback:bericht})});
+          feedback:bericht,type:'feedback'})});
       document.getElementById('fb-status').style.display='block';
       btn.textContent='Verstuurd';
       setTimeout(function(){ov.remove();},2500);
