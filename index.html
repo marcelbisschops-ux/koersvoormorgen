@@ -637,7 +637,12 @@ async function generateAI(){
     }
 
   }catch(err){
-    ST.aiLoading=false;ST.aiText='__ERROR__';updateAI(true);
+    ST.aiLoading=false;
+    ST.aiText='__ERROR__';
+    console.error('generateAI fout:',err);
+    const errEl=document.getElementById('ai-out');
+    if(errEl)errEl.setAttribute('data-error',err.message||String(err));
+    updateAI(true);
   }
 }
 async function saveScanToGroup(){
