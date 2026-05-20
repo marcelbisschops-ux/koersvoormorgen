@@ -565,6 +565,11 @@ async function generateAI(){
   if(a.c1!==undefined)vi.push('Actieve acquisitie: '+(a.c1<=2?'nauwelijks':a.c1===3?'beperkt':'ja'));
   if(a.c2!==undefined)vi.push('Marketingbeleid: '+(a.c2<=2?'nauwelijks':a.c2===3?'beperkt':'actief'));
   if(a.c3!==undefined)vi.push('Cross-sell: '+(a.c3<=2?'niet systematisch':a.c3===3?'ad hoc':'systematisch'));
+  // Partner & fusie dimensies
+  if(a.pa1!==undefined)vi.push('Partnerafhankelijkheid: '+(a.pa1<=2?'HOOG - sleutelpersoonrisico':a.pa1===3?'gemiddeld':'laag'));
+  if(a.pa2!==undefined)vi.push('Managementteam zonder eigenaar: '+(a.pa2<=2?'NIET zelfstandig':a.pa2===3?'deels':'zelfstandig operationeel'));
+  if(a.fu1!==undefined)vi.push('Fusiebereidheid: '+(a.fu1<=2?'laag':a.fu1===3?'neutraal':'actief geïnteresseerd'));
+  if(a.fu2!==undefined)vi.push('Due diligence voorbereiding: '+(a.fu2<=2?'NIET klaar':a.fu2===3?'deels':'klaar'));
 
   // Scores
   const top3=ST.scenarios.slice(0,3).map(sc=>sc.name+' ('+sc.score+'%)').join(', ');
@@ -616,6 +621,9 @@ async function generateAI(){
     +'## Strategische positie en commerciele kracht\n'
     +'## Risicoprofiel\n'
     +'## Aanbeveling\n'
+    +'INSTRUCTIE Aanbeveling: geef 3-5 concrete prioriteiten met tijdshorizon (0-6 maanden / 6-18 maanden / 18+ maanden). '
+    +'Verwerk de indicatieve waardering ('+waardering+') in de aanbeveling. '
+    +'Sluit af met één heldere strategische hoofdboodschap.\n'
     +'VERBOD: Gebruik GEEN markdown-tabellen (geen |---| of |kolom|). Schrijf alles in lopende tekst.\n'
     +(signalen.length?'VERPLICHT: Adresseer elk van deze alarmsignalen expliciet in het rapport: '+signalen.join(' | ')+'\n':'')
     +(weaknesses!=='geen'?'VERPLICHT: Adresseer de zwakke dimensies expliciet: '+weaknesses+'\n':'');
