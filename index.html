@@ -790,7 +790,7 @@ function renderSummary(){
     return '<h4>Strategisch profiel op hoofdlijnen</h4><p style="color:var(--muted);font-style:italic;font-size:13px">Genereer het AI-advies hieronder voor een uitgebreide managementsamenvatting.</p>';
   }
   // Pak de Scorekaart-sectie, strip tabellen en markdown-rommel
-  var sc=ST.aiText.match(/## Scorekaart[^\n]*\n([\s\S]*?)(?=\n##|\n---|$)/);
+  var sc=ST.aiText.match(/## Scorekaart[^\n]*\n([\s\S]*?)(?=\n##|\n---|$)/i);
   var out='';
   if(sc&&sc[1]){
     var t=sc[1]
