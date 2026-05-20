@@ -582,8 +582,13 @@ async function generateAI(){
   const mult=recurring>60?'6-8x':recurring>40?'4-6x':'3-5x';
   const wLow=ebitdaBedrag>0?Math.round(ebitdaBedrag*(recurring>60?6:recurring>40?4:3)/10000)*10000:0;
   const wHigh=ebitdaBedrag>0?Math.round(ebitdaBedrag*(recurring>60?8:recurring>40?6:5)/10000)*10000:0;
-  const waardering=wLow>0
-    ?'Indicatief: \u20ac'+wLow.toLocaleString('nl-NL')+' \u2013 \u20ac'+wHigh.toLocaleString('nl-NL')+' (EBITDA multiple '+mult+', op basis van '+(!isNaN(ebitdaVal)?ebitdaVal:'?')+'% marge en '+recurring+'% recurring).'
+  const waardering=
+    (!isNaN(ebitdaVal)&&ebitdaVal<=0)
+      ?'Negatieve EBITDA ('+ebitdaVal+'%): geen positieve waardering mogelijk. Herstel winstgevendheid is randvoorwaarde voor elke transactie.'
+    :wLow>0
+      ?'Indicatief: \u20ac'+wLow.toLocaleString('nl-NL')+' \u2013 \u20ac'+wHigh.toLocaleString('nl-NL')+' (EBITDA multiple '+mult+', op basis van '+ebitdaVal+'% marge en '+recurring+'% recurring).'
+    :(!isNaN(ebitdaVal)&&ebitdaVal>0&&omzetVal===0)
+      ?'EBITDA-marge '+ebitdaVal+'% bekend maar omzet niet ingevuld \u2014 vul omzet in voor een indicatieve bandbreedte.'
     :'Onvoldoende data voor berekening. Vul EBITDA% en omzet in.';
 
   const mainPrompt=
