@@ -565,11 +565,13 @@ async function generateAI(){
     +'WAARDERINGSBEREKENING:\n'+waarderingTekst+'\n\n'
     +'TOP SCENARIOS: '+top3+'\n\n'
     +'SCHRIJFINSTRUCTIES:\n'
+    +'- Spreek de lezer direct aan: gebruik ALTIJD "uw kantoor" - nooit "dit kantoor" of "het kantoor"\n'
     +'- Direct, persoonlijk en eerlijk - niet voorzichtig of diplomatiek\n'
     +'- Benoem altijd specifieke scores met cijfers en vergelijk met branchebenchmarks\n'
     +'- Ga expliciet in op de genoemde software en wat dit betekent voor schaalbaarheid en waarde\n'
     +'- Verwerk ALLE bevindingen per deelvraag in de analyse - niet alleen de hoofdcategoriescores\n'
-    +'- Minimaal 1200 woorden, gebruik ## koppen, geen tabellen, lopende tekst per sectie\n\n'
+    +'- Minimaal 1400 woorden, gebruik ## koppen, geen tabellen, lopende tekst per sectie\n'
+    +'- De sectie ## Scorekaart en samenvatting moet minimaal 200 woorden zijn - dit is de managementsamenvatting die bovenaan het rapport verschijnt\n\n'
     +'## Scorekaart en samenvatting\n'
     +'## Financieel profiel\n'
     +'## Bedrijfsvoering en technologie\n'
@@ -656,6 +658,7 @@ async function generateAI(){
 
 
 
+    collected=collected.replace(/\bdit kantoor\b/gi,'uw kantoor').replace(/\bDit kantoor\b/g,'Uw kantoor');
     ST.aiText=collected;ST.aiLoading=false;updateAI(true);setTimeout(function(){updateAI(true);},100);
 
 
@@ -794,11 +797,18 @@ function renderSummary(){
   if(!ST.aiText||ST.aiText.length<100||ST.aiText==='__ERROR__'||ST.aiText==='__LIMIT__'){
     return '<p style="color:var(--muted);font-style:italic;font-size:13px">Genereer het AI-advies hieronder voor een uitgebreide managementsamenvatting.</p>';
   }
-  var sc=ST.aiText.match(/## Scorekaart([\s\S]*?)(?=##|---)/);
-  var kb=ST.aiText.match(/## Kernboodschap([\s\S]*?)(?=##|---)/);
+  // Pak de eerste sectie (## Scorekaart en samenvatting) volledig
+  var sc=ST.aiText.match(/##[^\n]*(?:[Ss]core|[Ss]amen)[\s\S]*?(?=\n##|\n---|$)/);
   var out='';
-  if(sc&&sc[1]){var t=sc[1].replace(/<[^>]+>/g,'').replace(/\*\*/g,'').trim().slice(0,700);if(t)out+='<p style="font-size:14px;color:var(--mid);line-height:1.75">'+t+'</p>';}
-  if(kb&&kb[1]){var t2=kb[1].replace(/<[^>]+>/g,'').replace(/\*\*/g,'').trim().slice(0,400);if(t2)out+='<p style="font-size:14px;color:var(--sub);line-height:1.75;margin-top:.5rem"><strong>Kernboodschap</strong> — '+t2+'</p>';}
+  if(sc&&sc[0]){
+    var t=sc[0].replace(/^##[^\n]*\n/,'').replace(/\*\*/g,'<strong>').replace(/\*\*$/g,'</strong>').trim();
+    if(t)out+='<div style="font-size:14px;color:var(--mid);line-height:1.8">'+t.split('\n').filter(l=>l.trim()).map(l=>'<p style=\'margin-bottom:.6rem\'>'+l+'</p>').join('')+'</div>';
+  }
+  if(!out){
+    // Fallback: eerste 2 paragrafen van de volledige tekst
+    var paras=ST.aiText.split('\n\n').filter(p=>p.trim()&&!p.startsWith('#')).slice(0,3);
+    out='<div style="font-size:14px;color:var(--mid);line-height:1.8">'+paras.map(p=>'<p style=\'margin-bottom:.6rem\'>'+p.trim()+'</p>').join('')+'</div>';
+  }
   return out||'<p style="color:var(--muted);font-style:italic;font-size:13px">Managementsamenvatting beschikbaar nadat u het AI-advies heeft gegenereerd.</p>';
 }
 
