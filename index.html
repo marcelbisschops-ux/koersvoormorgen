@@ -1523,7 +1523,7 @@ function bindEvents(){
     }
   });
   on('callback-btn','click',()=>showCallbackModal());
-  on('restart-btn','click',()=>{ST={...ST,screen:'intro',section:0,answers:{},scores:null,scenarios:null,openScenario:null,aiText:null,aiLoading:false,_smvKlaar:false,savedScanId:null,profile:{naam:'',naamAnon:false,email:'',regio:'',fte:'',omzet:'',specialisme:'',doelgroep:'',software:'',ambitie:'',context:'',omzetfte:'',ebitda:'',recurring:'',saveConsent:true}};render();window.scrollTo(0,0);});
+  on('restart-btn','click',()=>{if(ST.groupData)ST.groupData._aiTekst='';ST={...ST,screen:'intro',section:0,answers:{},scores:null,scenarios:null,openScenario:null,openOffice:null,aiText:null,aiLoading:false,_smvKlaar:false,savedScanId:null,adminCode:null,profile:{naam:'',naamAnon:false,email:'',regio:'',fte:'',omzet:'',specialisme:'',doelgroep:'',software:'',ambitie:'',context:'',omzetfte:'',ebitda:'',recurring:'',saveConsent:true}};render();window.scrollTo(0,0);});
 }
 
 
