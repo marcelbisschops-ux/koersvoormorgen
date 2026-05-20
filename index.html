@@ -741,7 +741,13 @@ async function loadGroupAsAdmin(gid,adminCode){
   render();
 }
 
-function updateAI(final=false){const el=document.getElementById('ai-out');if(el)el.innerHTML=renderAIText(ST.aiText,!final);}
+function updateAI(final=false){
+  const el=document.getElementById('ai-out');
+  if(el)el.innerHTML=renderAIText(ST.aiText,!final);
+  // Verversen summary-box met renderSummary()
+  const sb=document.getElementById('summary-box');
+  if(sb)sb.innerHTML='<h4>Strategisch profiel op hoofdlijnen</h4>'+renderSummary();
+}
 function renderAIText(text,cursor=false){
   if(ST.aiLoading)return'<div class="ai-loading"><div class="ai-spinner"></div><span>Rapport wordt opgesteld…</span></div>';
   if(!text)return'<div class="ai-placeholder"><div class="ai-placeholder-icon">&#9672;</div><p class="ai-placeholder-text">Klik op "Genereer AI-advies" voor een gepersonaliseerd strategisch memo.</p></div>';
@@ -828,6 +834,12 @@ function rIntro(){return`<div class="intro-wrap"><div class="intro-grid"></div><
 <div class="route-title" style="color:var(--teal)">Start individuele scan</div>
 <div class="route-desc">Vul de scan in en ontvang direct uw persoonlijk strategisch rapport met AI-advies op maat. In 10 minuten compleet.</div>
 <div style="margin-top:.75rem;font-size:12px;font-weight:600;color:var(--teal)">\u2192 Direct starten</div>
+</div>
+<div class="route-card" id="route-rapport" style="border:1px solid var(--border2)">
+<div class="route-icon">&#128274;</div>
+<div class="route-title">Rapport ophalen</div>
+<div class="route-desc">Eerder een scan gedaan? Haal uw rapport op met uw persoonlijke rapportcode.</div>
+<div style="margin-top:.75rem;font-size:12px;font-weight:600;color:var(--mid)">\u2192 Code invoeren</div>
 </div>
 </div>
 <div style="font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem">Voor meerdere kantoren</div>
@@ -1509,6 +1521,7 @@ function downloadRapport() {
 
 function bellen(){window.location.href="tel:+31638689888";}
 function toonFeedbackModal(){
+  var bestaand=document.getElementById('fb-overlay');if(bestaand)bestaand.remove();
   var ov=document.createElement('div');ov.id='fb-overlay';
   ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:500;display:flex;align-items:center;justify-content:center;padding:1.5rem';
   var mo=document.createElement('div');
