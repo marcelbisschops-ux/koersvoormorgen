@@ -644,7 +644,7 @@ async function generateAI(){
 
     if(smvEl)smvEl.innerHTML=renderSummary();
 
-    // Opslaan in database
+    // Opslaan in database en rapportcode ophalen
     fetch(WORKER+'/rapport/save',{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
         scan_id:ST.savedScanId||'',
@@ -659,6 +659,8 @@ async function generateAI(){
         omzet:(ST.profile&&ST.profile.omzet)||'',
         rapport_tekst:collected
       })
+    }).then(function(r){return r.json();}).then(function(d){
+      if(d&&d.id&&!ST.savedScanId){ST.savedScanId=d.id;render();}
     }).catch(()=>{});
 
     const profileEmail=(ST.profile&&ST.profile.email)||'';
