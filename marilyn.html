@@ -201,12 +201,13 @@ function renderScansTab(el){
   var html='<div class="table-wrap"><div class="table-hdr"><div class="table-title">Ingediende scans</div>'
     +'<div style="display:flex;gap:10px;align-items:center">'
     +'<input class="search-bar" id="ss" placeholder="Zoek op naam, regio, scenario..." value="'+esc(scanFilter)+'">'
+    +'<button class="btn-red" id="btn-del-sel-scans" style="font-size:12px;padding:7px 14px;display:none">&#10005; Verwijder geselecteerde (<span id="sel-cnt-scans">0</span>)</button>'
     +'<button class="btn" style="font-size:12px;padding:7px 14px" id="btn-ref-s">&#8635; Verversen</button>'
     +'</div></div>';
   if(!filtered.length){
     html+='<div class="empty">Geen scans gevonden'+(scans.length?'. Filter: "'+esc(scanFilter)+'"':' — nog geen scans ingediend.')+'</div>';
   } else {
-    html+='<table><thead><tr><th>Datum</th><th>Kantoor</th><th>Regio</th><th>Fte</th><th>Omzet</th><th>Score</th><th>Scenario</th><th>Groep</th><th></th></tr></thead><tbody>';
+    html+='<table><thead><tr><th style="width:32px"><input type="checkbox" id="cb-all-scans" title="Alles"></th><th>Datum</th><th>Kantoor</th><th>Regio</th><th>Fte</th><th>Omzet</th><th>Score</th><th>Scenario</th><th>Groep</th><th></th></tr></thead><tbody>';
     filtered.forEach(function(s,i){
       var scores='';
       if(s.scores){
@@ -218,7 +219,7 @@ function renderScansTab(el){
           }).join('');
         }catch(e){}
       }
-      html+='<tr data-i="'+i+'" style="cursor:pointer">'
+      html+='<tr data-i="'+i+'" style="cursor:pointer"><td onclick="event.stopPropagation()"><input type="checkbox" class="scan-cb" data-id="'+( s.id||'')+'" style="cursor:pointer"></td>'
         +'<td class="mono" style="font-size:11px;white-space:nowrap">'+formatDate(s.created_at)+'</td>'
         +'<td style="font-weight:500;color:var(--head)">'+esc(s.office_name||'Anoniem')+'</td>'
         +'<td>'+esc(s.region||'—')+'</td>'
@@ -230,7 +231,7 @@ function renderScansTab(el){
         +'<td style="white-space:nowrap">'+(openRow===i?'▲':'▼')
         +' <button class="btn-del-scan btn-red" data-id="'+(s.id||'')+'" style="font-size:10px;padding:2px 6px;margin-left:4px">&#10005;</button></td>'
         +'</tr>'
-        +'<tr><td colspan="9" style="padding:0"><div class="detail-panel'+(openRow===i?' open':'')+'"><div class="detail-grid">'
+        +'<tr><td colspan="10" style="padding:0"><div class="detail-panel'+(openRow===i?' open':'')+'"><div class="detail-grid">'
         +(scores||'<div style="color:var(--muted);font-size:12px">Geen scoredata.</div>')
         +'</div></div></td></tr>';
     });
@@ -250,19 +251,25 @@ function renderScansTab(el){
   el.querySelectorAll('.btn-del-scan').forEach(function(b){
     b.addEventListener('click',function(e){e.stopPropagation();deleteScan(b.dataset.id);});
   });
+  function updSelScans(){var n=el.querySelectorAll('.scan-cb:checked').length;var btn=document.getElementById('btn-del-sel-scans');var cnt=document.getElementById('sel-cnt-scans');if(btn)btn.style.display=n>0?'inline-block':'none';if(cnt)cnt.textContent=n;}
+  var cbAllS=document.getElementById('cb-all-scans');
+  if(cbAllS)cbAllS.addEventListener('change',function(){el.querySelectorAll('.scan-cb').forEach(function(cb){cb.checked=cbAllS.checked;});updSelScans();});
+  el.querySelectorAll('.scan-cb').forEach(function(cb){cb.addEventListener('change',updSelScans);});
+  var btnDelS=document.getElementById('btn-del-sel-scans');
+  if(btnDelS)btnDelS.addEventListener('click',async function(){var ids=Array.from(el.querySelectorAll('.scan-cb:checked')).map(function(cb){return cb.dataset.id;});if(!ids.length)return;if(!confirm('Verwijder '+ids.length+' scan(s)?'))return;btnDelS.disabled=true;btnDelS.textContent='Verwijderen...';for(var i=0;i<ids.length;i++){try{await fetch(WORKER+'/admin/delete/scan/'+ids[i]+'?key='+encodeURIComponent(adminKey),{method:'POST'});}catch(e){}}await refreshData();});
 }
 
 // CALLBACKS TAB
 function renderCallbacksTab(el){
   var html='<div class="table-wrap"><div class="table-hdr"><div class="table-title">Terugbelverzoeken</div>'
-    +'<button class="btn" style="font-size:12px;padding:7px 14px" id="btn-ref-c">&#8635; Verversen</button></div>';
+    +'<div style="display:flex;gap:8px;align-items:center"><button class="btn-red" id="btn-del-sel-cb" style="font-size:12px;padding:7px 14px;display:none">&#10005; Verwijder geselecteerde (<span id="sel-cnt-cb">0</span>)</button><button class="btn" style="font-size:12px;padding:7px 14px" id="btn-ref-c">&#8635; Verversen</button></div></div>';
   if(!callbacks.length){
     html+='<div class="empty">Nog geen terugbelverzoeken.</div>';
   } else {
-    html+='<table><thead><tr><th>Datum</th><th>Naam</th><th>Telefoon</th><th>E-mail</th><th>Beltijd</th><th>Kantoor</th><th>Score</th><th>Scenario</th><th></th></tr></thead><tbody>';
+    html+='<table><thead><tr><th style="width:32px"><input type="checkbox" id="cb-all-cb" title="Alles"></th><th>Datum</th><th>Naam</th><th>Telefoon</th><th>E-mail</th><th>Beltijd</th><th>Kantoor</th><th>Score</th><th>Scenario</th><th></th></tr></thead><tbody>';
     callbacks.forEach(function(c){
       var k=typeof c.kantoor==='string'?JSON.parse(c.kantoor||'{}'):(c.kantoor||{});
-      html+='<tr>'
+      html+='<tr><td><input type="checkbox" class="cb-cb" data-id="'+(c.id||'')+'"></td>'
         +'<td class="mono" style="font-size:11px;white-space:nowrap">'+formatDate(c.created_at)+'</td>'
         +'<td style="font-weight:500;color:var(--head)">'+esc(c.naam||'—')+'</td>'
         +'<td><a href="tel:'+esc(c.tel)+'" style="color:var(--teal);text-decoration:none">'+esc(c.tel||'—')+'</a></td>'
@@ -283,6 +290,12 @@ function renderCallbacksTab(el){
   el.querySelectorAll('.btn-del-cb').forEach(function(b){
     b.addEventListener('click',function(){deleteCallback(b.dataset.id);});
   });
+  function updSelCb(){var n=el.querySelectorAll('.cb-cb:checked').length;var btn=document.getElementById('btn-del-sel-cb');var cnt=document.getElementById('sel-cnt-cb');if(btn)btn.style.display=n>0?'inline-block':'none';if(cnt)cnt.textContent=n;}
+  var cbAllC=document.getElementById('cb-all-cb');
+  if(cbAllC)cbAllC.addEventListener('change',function(){el.querySelectorAll('.cb-cb').forEach(function(cb){cb.checked=cbAllC.checked;});updSelCb();});
+  el.querySelectorAll('.cb-cb').forEach(function(cb){cb.addEventListener('change',updSelCb);});
+  var btnDelC=document.getElementById('btn-del-sel-cb');
+  if(btnDelC)btnDelC.addEventListener('click',async function(){var ids=Array.from(el.querySelectorAll('.cb-cb:checked')).map(function(cb){return cb.dataset.id;});if(!ids.length)return;if(!confirm('Verwijder '+ids.length+' terugbelverzoek(en)?'))return;btnDelC.disabled=true;btnDelC.textContent='Verwijderen...';for(var i=0;i<ids.length;i++){try{await fetch(WORKER+'/admin/delete/callback/'+ids[i]+'?key='+encodeURIComponent(adminKey),{method:'POST'});}catch(e){}}await refreshData();});
 }
 
 // MNA TAB
@@ -345,29 +358,9 @@ async function renderDocsTab(el){
     +'</div></div>'
     +'<div id="docs-body" class="empty">Klik op Laden om alle documenten op te halen.</div></div>';
 
-  function updateSelCount(){
-    var checked=document.querySelectorAll('.doc-cb:checked').length;
-    var btn=document.getElementById('btn-del-selected');
-    var cnt=document.getElementById('sel-count');
-    if(btn){btn.style.display=checked>0?'inline-block':'none';}
-    if(cnt)cnt.textContent=checked;
-  }
+  function updateSelCount(){var checked=document.querySelectorAll('.doc-cb:checked').length;var btn=document.getElementById('btn-del-selected');var cnt=document.getElementById('sel-count');if(btn){btn.style.display=checked>0?'inline-block':'none';}if(cnt)cnt.textContent=checked;}
 
-  document.getElementById('btn-del-selected').addEventListener('click',async function(){
-    var ids=Array.from(document.querySelectorAll('.doc-cb:checked')).map(function(cb){return cb.dataset.id;});
-    if(!ids.length)return;
-    if(!confirm('Verwijder '+ids.length+' geselecteerde document(en)?'))return;
-    var btn=this;btn.disabled=true;btn.textContent='Verwijderen...';
-    var ok=0,fail=0;
-    for(var i=0;i<ids.length;i++){
-      try{
-        var r=await fetch(WORKER+'/mna/document/delete/'+ids[i]+'?key='+encodeURIComponent(adminKey),{method:'POST'});
-        if(r.ok)ok++;else fail++;
-      }catch(e){fail++;}
-    }
-    alert(ok+' verwijderd'+(fail>0?', '+fail+' mislukt':'')+'.');
-    document.getElementById('btn-load-docs').click();
-  });
+  document.getElementById('btn-del-selected').addEventListener('click',async function(){var ids=Array.from(document.querySelectorAll('.doc-cb:checked')).map(function(cb){return cb.dataset.id;});if(!ids.length)return;if(!confirm('Verwijder '+ids.length+' geselecteerde document(en)?'))return;var btn=this;btn.disabled=true;btn.textContent='Verwijderen...';var ok=0,fail=0;for(var i=0;i<ids.length;i++){try{var r=await fetch(WORKER+'/mna/document/delete/'+ids[i]+'?key='+encodeURIComponent(adminKey),{method:'POST'});if(r.ok)ok++;else fail++;}catch(e){fail++;}}alert(ok+' verwijderd'+(fail>0?', '+fail+' mislukt':'')+'.'); document.getElementById('btn-load-docs').click();});
 
   document.getElementById('btn-load-docs').addEventListener('click',async function(){
     var db=document.getElementById('docs-body');
@@ -377,10 +370,7 @@ async function renderDocsTab(el){
       if(!r.ok)throw new Error('HTTP '+r.status);
       var docs=await r.json();
       if(!docs.length){db.innerHTML='<div class="empty">Geen documenten gevonden.</div>';return;}
-      var html='<table><thead><tr>'
-        +'<th style="width:32px"><input type="checkbox" id="cb-all" title="Alles selecteren"></th>'
-        +'<th>Traject</th><th>Fase</th><th>Bestand</th><th>Grootte</th><th>Opgeslagen</th><th>Status</th><th>Datum</th><th></th>'
-        +'</tr></thead><tbody>';
+      var html='<table><thead><tr><th style="width:32px"><input type="checkbox" id="cb-all" title="Alles selecteren"></th><th>Traject</th><th>Fase</th><th>Bestand</th><th>Grootte</th><th>Opgeslagen</th><th>Status</th><th>Datum</th><th></th></tr></thead><tbody>';
       docs.forEach(function(d){
         var gr=d.bestand_grootte?(d.bestand_grootte/1024/1024).toFixed(1)+'MB':'—';
         var dt=d.uploaded_at?new Date(d.uploaded_at).toLocaleString('nl-NL',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—';
@@ -405,11 +395,9 @@ async function renderDocsTab(el){
       });
       html+='</tbody></table>';
       db.innerHTML=html;
-      // Alles-selecteren checkbox
-      var cbAll=document.getElementById('cb-all');
-      if(cbAll){cbAll.addEventListener('change',function(){document.querySelectorAll('.doc-cb:not(:disabled)').forEach(function(cb){cb.checked=cbAll.checked;});updateSelCount();});}
-      db.querySelectorAll('.doc-cb').forEach(function(cb){cb.addEventListener('change',updateSelCount);});
       var ds=document.getElementById('doc-search');if(ds)ds.addEventListener('input',function(){var q=this.value.toLowerCase();db.querySelectorAll('tr').forEach(function(r){r.style.display=r.textContent.toLowerCase().includes(q)?'':'none';});});
+      var cbAll=document.getElementById('cb-all');if(cbAll){cbAll.addEventListener('change',function(){document.querySelectorAll('.doc-cb:not(:disabled)').forEach(function(cb){cb.checked=cbAll.checked;});updateSelCount();});}
+      db.querySelectorAll('.doc-cb').forEach(function(cb){cb.addEventListener('change',updateSelCount);});
       db.querySelectorAll('.btn-del-doc').forEach(function(b){b.addEventListener('click',function(){verwijderDoc(b.dataset.id);});});
       db.querySelectorAll('.btn-verg-doc').forEach(function(b){b.addEventListener('click',function(){vergrendelDoc(b.dataset.id,true);});});
       db.querySelectorAll('.btn-ontv-doc').forEach(function(b){b.addEventListener('click',function(){vergrendelDoc(b.dataset.id,false);});});
@@ -422,14 +410,15 @@ function renderRapportenTab(el){
   var html='<div class="table-wrap"><div class="table-hdr"><div class="table-title">Scan rapporten</div>'
     +'<div style="display:flex;gap:8px;align-items:center">'
     +'<input class="search-bar" id="rapp-search" placeholder="Zoek op kantoor..." style="width:180px">'
+    +'<button class="btn-red" id="btn-del-sel-rapp" style="font-size:12px;padding:7px 14px;display:none">&#10005; Verwijder geselecteerde (<span id="sel-cnt-rapp">0</span>)</button>'
     +'<button class="btn" style="font-size:12px;padding:7px 14px" id="btn-ref-rapp">&#8635; Verversen</button>'
     +'</div></div>';
   if(!rapporten.length){
     html+='<div class="empty">Nog geen rapporten. Worden opgeslagen zodra een gebruiker het AI-advies genereert.</div>';
   } else {
-    html+='<table><thead><tr><th>Datum</th><th>Kantoor</th><th>Regio</th><th>Score</th><th>Scenario</th><th>Ambitie</th><th>Omzet</th><th></th></tr></thead><tbody>';
+    html+='<table><thead><tr><th style="width:32px"><input type="checkbox" id="cb-all-rapp" title="Alles"></th><th>Datum</th><th>Kantoor</th><th>Regio</th><th>Score</th><th>Scenario</th><th>Ambitie</th><th>Omzet</th><th></th></tr></thead><tbody>';
     rapporten.forEach(function(r){
-      html+='<tr class="rapp-row">'
+      html+='<tr class="rapp-row"><td><input type="checkbox" class="rapp-cb" data-id="'+r.id+'"></td>'
         +'<td class="mono" style="font-size:11px;white-space:nowrap">'+formatDate(r.created_at)+'</td>'
         +'<td style="font-weight:500;color:var(--head)">'+esc(r.kantoor_naam||'Anoniem')+'</td>'
         +'<td>'+esc(r.regio||'—')+'</td>'
@@ -452,6 +441,12 @@ function renderRapportenTab(el){
   if(rs)rs.addEventListener('input',function(){var q=this.value.toLowerCase();el.querySelectorAll('.rapp-row').forEach(function(r){r.style.display=r.textContent.toLowerCase().includes(q)?'':'none';});});
   el.querySelectorAll('.btn-del-rapp').forEach(function(b){b.addEventListener('click',function(){verwijderRapport(b.dataset.id);});});
   el.querySelectorAll('.btn-lees-rapp').forEach(function(b){b.addEventListener('click',function(){leesRapport(b.dataset.id);});});
+  function updSelRapp(){var n=el.querySelectorAll('.rapp-cb:checked').length;var btn=document.getElementById('btn-del-sel-rapp');var cnt=document.getElementById('sel-cnt-rapp');if(btn)btn.style.display=n>0?'inline-block':'none';if(cnt)cnt.textContent=n;}
+  var cbAllR=document.getElementById('cb-all-rapp');
+  if(cbAllR)cbAllR.addEventListener('change',function(){el.querySelectorAll('.rapp-cb').forEach(function(cb){cb.checked=cbAllR.checked;});updSelRapp();});
+  el.querySelectorAll('.rapp-cb').forEach(function(cb){cb.addEventListener('change',updSelRapp);});
+  var btnDelR=document.getElementById('btn-del-sel-rapp');
+  if(btnDelR)btnDelR.addEventListener('click',async function(){var ids=Array.from(el.querySelectorAll('.rapp-cb:checked')).map(function(cb){return cb.dataset.id;});if(!ids.length)return;if(!confirm('Verwijder '+ids.length+' rapport(en)?'))return;btnDelR.disabled=true;btnDelR.textContent='Verwijderen...';for(var i=0;i<ids.length;i++){try{await fetch(WORKER+'/admin/delete/rapport/'+ids[i]+'?key='+encodeURIComponent(adminKey),{method:'POST'});}catch(e){}}var rb2=document.getElementById('btn-ref-rapp');if(rb2)rb2.click();});
 }
 
 async function leesRapport(id){
