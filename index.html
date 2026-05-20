@@ -493,16 +493,18 @@ async function generateAI(){
   else if(omzetLaag)signalen.push('AANDACHT: Omzet per fte €'+omzetPerFte.toLocaleString('nl-NL')+', onder benchmark €150K. Capaciteitsoptimalisatie aanbevolen.');
   const financieelSignaal=signalen.join(' | ');
 
-  const qa=SECTIONS.map(sec=>{
-    const lines=sec.questions.map(q=>{
-      const v=ST.answers[q.id];
-      const lbl=v===1?'Helemaal niet':v===2?'Grotendeels niet':v===3?'Neutraal':v===4?'Grotendeels wel':v===5?'Volledig':'Niet beantwoord';
-      return '  Vraag: '+q.q+'\n  Antwoord: '+(v||'-')+'/5 - '+lbl;
-    }).join('\n');
-    return sec.label+' (score: '+s[sec.id]+'/100):\n'+lines;
-  }).join('\n\n');
 
-  const mainPrompt='Je bent een senior M\u0026A-adviseur gespecialiseerd in Nederlandse accountantskantoren. Vandaag is het mei 2026.\n\nKANTOORPROFIEL:\n- Naam: '+naam+'\n- Type kantoor: '+kantoorType+' (gebruik dit als basis voor alle benchmarks)\n- Regio: '+(p.regio||'Niet opgegeven')+'\n- Medewerkers: '+(p.fte||'?')+' fte\n- Jaaromzet: '+(p.omzet||'?')+'\n- Omzet per fte: '+(omzetPerFte>0?'circa \u20ac'+(omzetPerFte/1000).toFixed(0)+'K':'onbekend')+' (context: marktstandaard is richtlijn, geen fixed norm)\n- Specialisme/niche: '+(p.specialisme||'Generalistisch')+' (beoordeel onderscheidend vermogen)\n- Primaire doelgroep: '+(p.doelgroep||'MKB')+'\n- Gebruikte software: '+(p.software||'Onbekend')+' (beoordeel moderniteit, schaalbaarheid en risico op vendor lock-in)\n- Strategische ambitie van eigenaar: '+(p.ambitie||'?')+'\n- Aanvullende context: '+(p.context||'Geen')+'\n\nFINANCIELE KENGETALLEN (zelfgerapporteerd, behandel als indicatief):\n- EBITDA-marge: '+(p.ebitda||'?')+'% (benchmark: 20-30% voor accountantskantoren, 15-25% voor administratiekantoren)\n- Aandeel vaste/abonnements-omzet: '+(p.recurring||'?')+'% (cruciaal voor M\u0026A-waardebepaling: hoe hoger hoe beter, >60% is sterk)\n'+(financieelSignaal?'\n\u26a0\ufe0f SIGNALEN: '+financieelSignaal+'\n':'')+'nOPLEIDINGSCONTEXT: Dimensie Personeelsdruk bevat een vraag over HBO/WO vs MBO-zwaartepunt. Hogere opleiding = hogere marge en aantrekkelijker voor PE.\n\nSCORES (0-100):\n'+dims+'\n\nTotaalscore: '+ov+'/100 - '+vd.label+'\nAanbevolen scenario: '+top3+'\nAandachtspunten (score <55): '+risks+'\n\nCORRELATIES EN VERBANDEN (analyseer deze expliciet):\n- Hoge fusiegereedheid + hoge winstkwaliteit = sterke onderhandelingspositie\n- Lage partnerafhankelijkheid + hoog opvolgingsrisico = structureel continuiteitsrisico\n- Hoge automatisering + lage schaalbaarheid = procesknelpunt buiten technologie\n- Hoge commerciele kracht + lage strategische positie = groei zonder richting\n- Lage personeelsdruk + hoge commerciele kracht = capaciteitsrisico bij verdere groei\n- Hoge winstkwaliteit + lage klantconcentratie = meest aantrekkelijk voor PE\n\nSCHRIJFREGELS:\n- Schrijf direct, persoonlijk en eerlijk. Geen wollige consultentaal.\n- Spreek eigenaar aan met u maar wees direct: benoem ook ongemakkelijke waarheden.\n- Noem scores altijd met het getal en leg uit wat dit in de praktijk betekent.\n- Wees concreet over waarde: geef een indicatieve waarderingsbandbreedte.\n- Bij lage scores: benoem eerlijk wat dit voor de verkoopwaarde betekent.\n- GEEN tabellen of bulletpoints. Lopende tekst met ## koppen.\n- Benoem expliciet hoe scores elkaar versterken of tegenwerken.\n- Elke sectie minimaal 150 woorden.\n\n## Scorekaart\n[Begin met een beknopte scorekaart: totaalscore, kwalificatie, dan de TOP 5 dimensies die de score het meest beinvloeden - zowel positief als negatief. Per driver: naam, score, en in 1-2 zinnen waarom deze zo doorweegt op het totaal. Houd dit compact: max 150 woorden totaal.]\n## Sterktes en positief perspectief\n[Benoem expliciet wat dit kantoor goed doet en welk realistisch positief toekomstperspectief er is: welke kansen, welk groeipotentieel, welke scenario-opties zijn aantrekkelijk en waarom. Wees concreet. Min 150 woorden.]\n## Kernboodschap\n## Kritieke inzichten\n[3 scores, min 200 woorden per inzicht]\n## Strategisch advies\n[Per fase, min 250 woorden]\n## Financiele analyse - indicatief\n[Analyseer de opgegeven kengetallen expliciet. Bereken: absolute EBITDA = omzet x marge. Geef waarderingsbandbreedte (accountantskantoren 4-7x EBITDA, PE-ready 6-9x). Beoordeel vaste omzet vs PE-norm (meer dan 60 procent) en EBITDA-marge vs sectorgemiddelde (20-25 procent). Gebruik taal als: op basis van de opgegeven cijfers, als indicatie. Dit is geen formele waardering maar een indicatie - de achterkant van een sigarendoos, maar een waardevolle eerste schifting. Minimum 200 woorden.]\n## Strategische scenarios - volledig uitgewerkt\n[Alle drie scenarios: waarom passend, drie fases, randvoorwaarden, risicos en kansen, min 200 woorden per scenario]\n## Eerste 90 dagen\n[3 genummerde acties als alineas]\n## Mogelijk onderbelicht risico\n[Exploratief, gebruik de scan suggereert en het is denkbaar dat. Eindig met zachte aanbeveling.]\n## Vervolgstap\n[Sluit af met een warme, persoonlijke uitnodiging voor een gesprek. Noem dat Marcel Bisschops senior M&A-adviseur is gespecialiseerd in accountants- en administratiekantoren, met een achtergrond als bestuurder binnen accountantsorganisaties - hij heeft met zijn voeten in de klei gestaan en weet hoe kantoren van binnenuit werken. Breed netwerk van kantoren, softwareleveranciers en brancheorganisaties. Contact: 06 - 38 68 98 88 of marcel@bisschopsfinancing.nl]';
+
+
+
+
+
+
+
+
+  const mainPrompt='INSTRUCTIE: Als er financiele signalen zijn (negatieve EBITDA, lage omzet per fte), dan MOET dit de kern van het advies zijn. De 11 dimensies zijn ondersteunend, niet leidend bij slechte financiele prestaties.\n\n'+
+    (financieelSignaal?'\u26a0\ufe0f KRITIEK FINANCIEEL SIGNAAL - VERWERK DIT ALS HOOFDTHEMA: '+financieelSignaal+'\n\n':'')+
+    'Je bent een senior M\u0026A-adviseur gespecialiseerd in '+kantoorType+'s. Mei 2026.\n\nKANTOOR:\n- '+naam+' | '+kantoorType+'\n- Fte: '+(p.fte||'?')+' | Omzet: '+(p.omzet||'?')+(omzetPerFte>0?' (\u20ac'+(omzetPerFte/1000).toFixed(0)+'K/fte)':'')+'\n- EBITDA: '+(p.ebitda||'?')+'% | Vaste omzet: '+(p.recurring||'?')+'%\n- Specialisme: '+(p.specialisme||'n/a')+' | Software: '+(p.software||'n/a')+' | Doelgroep: '+(p.doelgroep||'n/a')+'\n- Ambitie: '+(p.ambitie||'?')+' | Context: '+(p.context||'geen')+'\n\nSCORES (0-100):\n'+dims+'\n\nTotaal: '+ov+'/100 | Scenario: '+top3+'\nAandachtspunten (<55): '+risks+'\n\nSCHRIJFREGELS: Direct, persoonlijk, eerlijk. Geen tabellen. ## koppen. Elke sectie min 120 woorden, max 200 woorden. Totaal rapport max 1200 woorden. Benoem scores met cijfers. Geef indicatieve waarderingsbandbreedte. Sluit altijd af bij de Aanbeveling - geen losse tekst daarna.\n\n## Scorekaart\n[Totaalscore, top 5 drivers positief+negatief, max 120 woorden]\n## Strategisch profiel\n[Positie in markt, sterkte van businessmodel, financieel profiel - als EBITDA negatief/laag: dit MOET hier centraal staan]\n## Kritieke bevindingen\n[Meest impactvolle inzichten op waarde en verkoopbaarheid - financiele signalen EERST]\n## Kansen en groeipotentieel\n[Concrete kansen passend bij ambitie en type kantoor]\n## Risicos en aandachtspunten\n[Eerlijk over zwaktes en wat dit betekent voor waarde]\n## Aanbeveling\n[Concreet advies: scenario, timing, acties. Indicatieve waarderingsrange op basis van EBITDA en vaste omzet.]\n\n[Sluit af met: Wilt u deze analyse bespreken? Marcel Bisschops, 06-38689888, marcel@bisschopsfinancing.nl]';
 
   const appendixPrompt='Maak een leesbare bijlage van de ingevulde vragenlijst. Per dimensie: naam en score, dan per vraag de vraagtekst en het antwoord met betekenis. Lopende tekst, geen tabellen of bullets.\n\nINGEVULDE VRAGENLIJST:\n'+qa+'\n\nBegin direct met: ## Bijlage - Ingevulde vragenlijst';
 
@@ -582,21 +584,21 @@ async function generateAI(){
     setStep(5);
     collected+='\n\n---\n\n## Disclaimer\n\nDit rapport is gegenereerd op basis van zelfrapportage en is uitsluitend bedoeld als indicatief strategisch oriëntatie-instrument. De uitkomsten, scores en aanbevelingen vormen geen formeel advies, geen waarderings- of due diligence-rapport en geen accountants- of juridisch oordeel. Bisschops Financing BV aanvaardt geen aansprakelijkheid voor beslissingen die (mede) worden genomen op basis van de inhoud van dit rapport. Voor een formele waardering, due diligence of strategisch advies dient u een gekwalificeerde adviseur te raadplegen.\n\n---\n\n';
 
-    // Collect appendix silently
-    const resp2=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:appendixPrompt}]})});
-    if(resp2.ok){
-      const reader2=resp2.body.getReader();
-      while(true){
-        const{done,value}=await reader2.read();if(done)break;
-        const chunk=dec.decode(value,{stream:true});
-        for(const line of chunk.split('\n')){
-          if(line.startsWith('data:')){
-            const d=line.slice(5).trim();if(d==='[DONE]')continue;
-            try{const j=JSON.parse(d);if(j.type==='content_block_delta'&&j.delta&&j.delta.text)collected+=j.delta.text;}catch(e){}
-          }
-        }
-      }
-    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     // Present all at once
     ST.aiText=collected;
