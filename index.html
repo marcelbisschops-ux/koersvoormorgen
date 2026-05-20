@@ -265,29 +265,16 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--b
 .error-screen h3{font-family:'Playfair Display',serif;font-size:1.4rem;color:var(--head);margin-bottom:.75rem}
 .error-screen p{font-size:14px;color:var(--mid);margin-bottom:1.5rem}
 @media print{
-  @page{margin:1.5cm 1.5cm 2cm;size:A4}
+  @page{margin:1cm;size:A4}
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
-  body{background:#fff!important;color:#1a1815!important;font-size:11pt;line-height:1.6}
+  body{background:#fff!important;color:#000!important;font-size:12px}
   #app{min-height:auto}
   .anim,.a1,.a2,.a3,.a4{opacity:1!important;animation:none!important}
-  .page-wrap{padding:0!important;max-width:100%!important}
-  .page-hdr{display:none!important}
-  .ai-panel,.score-hero,.dim-grid,.dim-card,.sc-card,.matrix-sec,.r-footer,.group-panel,.summary-box{break-inside:avoid}
+  .ai-panel,.score-hero,.dim-card,.sc-card,.matrix-sec,.r-footer,.group-panel{break-inside:avoid}
   .sc-body{display:block!important}
-  .btn-gen,.btn-print,.btn-restart,.btn-ghost,.footer-btns,.r-footer .callback-cta{display:none!important}
-  .ai-panel-hdr .btn-gen{display:none!important}
-  .ai-panel{border:1px solid #ccc!important;border-radius:0!important;padding:1rem!important}
-  .ai-body{padding:0!important}
-  .ai-h2{font-size:13pt!important;margin-top:1rem!important;color:#1a7a5e!important;border-bottom:1px solid #ddd;padding-bottom:4px}
-  .ai-h3{font-size:11pt!important;margin-top:.75rem!important}
-  .dim-grid{display:grid!important;grid-template-columns:repeat(4,1fr)!important;gap:8px!important}
-  .dim-card{border:1px solid #ddd!important;padding:8px!important}
-  .score-circle svg{width:80px!important;height:80px!important}
-  .r-footer{border-top:1px solid #ddd;padding-top:1rem;margin-top:1rem}
-  .print-disclaimer{display:block!important}
-  .print-rapportcode{display:block!important}
-  header,footer,nav{display:none!important}
-  a{color:inherit!important;text-decoration:none!important}
+  .btn-gen,.btn-print,.btn-restart,.btn-ghost,.footer-btns{display:none!important}
+  .r-footer{border-top:1px solid #ddd;padding-top:1rem}
+  header,footer{display:none!important}
 }
 .ai-generating{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:3rem 2rem;text-align:center;gap:1.5rem}
 .ai-gen-title{font-family:'Playfair Display',serif;font-size:1.1rem;color:var(--head);font-weight:600}
@@ -307,8 +294,6 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--b
 .summary-box h4{font-family:'Playfair Display',serif;font-size:1rem;color:var(--head);font-weight:600;margin-bottom:.75rem}
 .summary-box p{font-size:14px;color:var(--mid);line-height:1.75;margin-bottom:.5rem}
 .summary-box p:last-child{margin-bottom:0}
-}
-.print-rapportcode{color:var(--teal)}
 </style>
 </head>
 <body>
@@ -482,11 +467,7 @@ function dc(v){return v>=70?'var(--teal)':v>=50?'var(--gold)':'var(--red)';}
 function df(v){return v>=70?{l:'Sterk',c:'var(--teal)'}:v>=50?{l:'Gemiddeld',c:'var(--gold)'}:{l:'Aandacht',c:'var(--red)'};}
 
 /* ======== API ======== */
-/* ======== AI TRANSPORT LAYER ======════════
- * Één centrale callAI() voor alle drie aanroepen.
- * Alle post-processing (tekst opschonen) hier.
- * Nooit meer streaming-vs-JSON verwarring.
- * ═══════════════════════════════════════════ */
+/* ── Centrale AI transport + opschoon ── */
 async function callAI(prompt) {
   const resp = await fetch(WORKER + '/ai', {
     method: 'POST',
@@ -494,8 +475,8 @@ async function callAI(prompt) {
     body: JSON.stringify({ messages: [{ role: 'user', content: prompt }] })
   });
   if (!resp.ok) {
-    const errTxt = await resp.text().catch(() => resp.status);
-    throw new Error('Worker fout ' + resp.status + ': ' + String(errTxt).substring(0, 200));
+    const errTxt = await resp.text().catch(() => String(resp.status));
+    throw new Error('Worker fout ' + resp.status + ': ' + errTxt.substring(0, 200));
   }
   const data = await resp.json();
   if (data.error) throw new Error(data.error);
@@ -504,19 +485,15 @@ async function callAI(prompt) {
   return opschonen(tekst);
 }
 
-/* Centrale opschoon-functie — geldt voor alle AI-output */
 function opschonen(tekst) {
   return tekst
     .replace(/\bdit kantoor\b/gi, 'uw kantoor')
     .replace(/\bDit kantoor\b/g, 'Uw kantoor')
-    // Verwijder titelpagina / "Opgesteld door"-regels
     .replace(/^#{1}[^#][^\n]*\n/, '')
     .replace(/Opgesteld door[^\n]*\n?/gi, '')
     .replace(/Senior M&A-adviseur[^\n]*\n?/gi, '')
-    // Verwijder dubbele contactregel onderaan
     .replace(/Marcel Bisschops[^\n]*marcel@bisschops[^\n]*/gi, '')
     .replace(/\+31[^\n]*op afspraak[^\n]*/gi, '')
-    // Verwijder losse sterretjesregels
     .replace(/^\*+Marcel Bisschops[^\n]*/gm, '')
     .replace(/^\*+[\s]*$/gm, '')
     .trim();
@@ -525,120 +502,49 @@ function opschonen(tekst) {
 async function generateAI(){
   const s=ST.scores;
   const ov=overall(s);
+  const vd=verdict(ov);
+  const top3=ST.scenarios.slice(0,3).map(sc=>sc.name+' ('+sc.score+'%)').join(', ');
   const p=ST.profile;
+  const dims=SECTIONS.map(sec=>'- '+sec.label+': '+s[sec.id]+'/100').join('\n');
+  const risks=SECTIONS.filter(sec=>s[sec.id]<55).map(sec=>sec.label).join(', ')||'geen kritieke risicos';
   const naam=p.naamAnon?'Anoniem kantoor':(p.naam||'Vertrouwelijk kantoor');
   const kantoorType=(p.kantoorType)||'accountantskantoor';
-
-  // Financiele berekeningen
-  const ebitdaVal=parseFloat(String(p.ebitda||'')).toString()==='NaN'?NaN:parseFloat(String(p.ebitda||'').replace('%','').replace(',','.'));
+  const ebitdaVal=parseFloat(String(p.ebitda||'').replace('%','').replace(',','.'));
   const recurringVal=parseFloat(String(p.recurring||'').replace('%','').replace(',','.'));
+  const ebitdaKritiek=!isNaN(ebitdaVal)&&ebitdaVal<0;
+  const ebitdaLaag=!isNaN(ebitdaVal)&&ebitdaVal>=0&&ebitdaVal<15;
   const omzetVal=parseFloat(String(p.omzet||'').replace(/[^0-9.]/g,''))||0;
   const fteVal=parseFloat(String(p.fte||'').replace(/[^0-9.]/g,''))||0;
   const omzetPerFte=omzetVal>0&&fteVal>0?Math.round(omzetVal/fteVal):0;
-  const ebitdaBedrag=!isNaN(ebitdaVal)&&omzetVal>0?Math.round(omzetVal*(ebitdaVal/100)):0;
-
-  // Benchmarksignalen
+  const omzetKritiek=omzetPerFte>0&&omzetPerFte<100000;
+  const omzetLaag=omzetPerFte>=100000&&omzetPerFte<150000;
   const signalen=[];
-  if(!isNaN(ebitdaVal)&&ebitdaVal<0)signalen.push('KRITIEK: Negatieve EBITDA ('+ebitdaVal+'%). Directe actie vereist.');
-  else if(!isNaN(ebitdaVal)&&ebitdaVal<15)signalen.push('AANDACHT: EBITDA '+ebitdaVal+'% onder benchmark 20-30%.');
-  const isAdminKantoor=(p.kantoorType||'').toLowerCase().includes('admin')||(p.specialisme||'').toLowerCase().includes('admin');
-  const benchmarkFte=isAdminKantoor?100000:150000;
-  const benchmarkLabel=isAdminKantoor?'\u20ac100K (administratiekantoor-benchmark)':'\u20ac150K (accountantskantoor-benchmark)';
-  if(omzetPerFte>0&&omzetPerFte<benchmarkFte*0.67)signalen.push('KRITIEK: Omzet/fte \u20ac'+omzetPerFte.toLocaleString('nl-NL')+' — zwaar onder benchmark '+benchmarkLabel+'. Structureel productiviteitsprobleem.');
-  else if(omzetPerFte>=benchmarkFte*0.67&&omzetPerFte<benchmarkFte)signalen.push('AANDACHT: Omzet/fte \u20ac'+omzetPerFte.toLocaleString('nl-NL')+' — onder benchmark '+benchmarkLabel+'.');
-  if(!isNaN(recurringVal)&&recurringVal<50)signalen.push('AANDACHT: Slechts '+recurringVal+'% vaste omzet - PE-kopers willen >70%.');
+  if(ebitdaKritiek)signalen.push('KRITIEK: Negatieve EBITDA ('+ebitdaVal+'%). Optimalisatie winstgevendheid is topprioriteit.');
+  else if(ebitdaLaag)signalen.push('AANDACHT: EBITDA laag ('+ebitdaVal+'%), onder benchmark 20-30%. Kostenoptimalisatie essentieel.');
+  if(omzetKritiek)signalen.push('KRITIEK: Omzet per fte slechts €'+omzetPerFte.toLocaleString('nl-NL')+'. Zwaar onder marktstandaard €150K+. Productiviteitsverbetering urgent.');
+  else if(omzetLaag)signalen.push('AANDACHT: Omzet per fte €'+omzetPerFte.toLocaleString('nl-NL')+', onder benchmark €150K. Capaciteitsoptimalisatie aanbevolen.');
+  const financieelSignaal=signalen.join(' | ');
 
-  // Software-analyse
-  const sw=(p.software||'').toLowerCase();
-  const excelWarn=sw.includes('excel')||sw.includes('xls');
-  const cloudSoftware=['exact online','exact','twinfield','yuki','afas','snelstart','e-boekhouden','jortt'].some(x=>sw.includes(x));
-  const premiumSoftware=['silverfin','caseware','accountview','unit4'].some(x=>sw.includes(x));
-  const swAnalyse=excelWarn
-    ?'RODE VLAG: Primair Excel als werktool. Dit is een ernstige rode vlag: onschaalbaar, foutgevoelig, niet auditeerbaar. Migratie naar cloudplatform is randvoorwaarde voor elke exit- of groeistrategie.'
-    :cloudSoftware?'Cloud-accountingsoftware aanwezig ('+p.software+') - positief voor schaalbaarheid en due diligence.'
-    :premiumSoftware?'Professionele software ('+p.software+') - sterke basis voor automatisering.'
-    :'Software: '+(p.software||'onbekend')+'. Onduidelijk of dit cloud/geintegreerd is.';
 
-  // Individuele vraag-inzichten
-  const a=ST.answers||{};
-  const vraagInzichten=[];
-  if(a.s1!==undefined)vraagInzichten.push('Positionering in markt: '+(a.s1<=2?'ZWAK - geen herkenbaar onderscheidend vermogen':a.s1===3?'matig':'sterk en herkenbaar'));
-  if(a.s3!==undefined)vraagInzichten.push('Concurrentieonderscheid (niet op prijs): '+(a.s3<=2?'nauwelijks - concurreert puur op prijs':a.s3===3?'beperkt':'aantoonbaar aanwezig'));
-  if(a.o1!==undefined)vraagInzichten.push('Formeel opvolgingsplan: '+(a.o1<=2?'GEEN - kritiek risico bij verkoop/fusie':a.o1===3?'informeel plan':'formeel plan aanwezig'));
-  if(a.o3!==undefined)vraagInzichten.push('Continuiteit bij uitval eigenaar: '+(a.o3<=2?'NIET geborgd - sterk persoonsafhankelijk':a.o3===3?'gedeeltelijk':'goed geborgd'));
-  if(a.w1!==undefined)vraagInzichten.push('Terugkerende omzet (abonnementen/retainers): '+(a.w1<=2?'laag - grotendeels projectmatig':a.w1===3?'gemiddeld':'hoog - structureel terugkerend'));
-  if(a.a1!==undefined)vraagInzichten.push('Automatisering routinetaken (scanning/codering/btw): '+(a.a1<=2?'LAAG - veel handwerk, kostbaar en foutgevoelig':a.a1===3?'gedeeltelijk':'hoog'));
-  if(a.a2!==undefined)vraagInzichten.push('Geintegreerde cloudplatformen: '+(a.a2<=2?'NIET aanwezig - silo-systemen of Excel-dominant':a.a2===3?'gedeeltelijk':'ja, geintegreerd'));
-  if(a.a3!==undefined)vraagInzichten.push('Digitale volwassenheid team: '+(a.a3<=2?'laag - adoptie verloopt moeizaam':a.a3===3?'gemiddeld':'hoog'));
-  if(a.p1!==undefined)vraagInzichten.push('Klantrelaties geborgd in team: '+(a.p1<=2?'NEE - alles hangt aan 1-2 personen, dealbreaker bij M&A':a.p1===3?'deels geborgd':'goed verdeeld'));
-  if(a.p2!==undefined)vraagInzichten.push('Dossiers overdraagbaar en gedocumenteerd: '+(a.p2<=2?'onvoldoende':a.p2===3?'gedeeltelijk':'volledig op orde'));
-  if(a.k1!==undefined)vraagInzichten.push('Grootste klant >10% omzet: '+(a.k1<=2?'JA - concentratierisico aanwezig':a.k1===3?'grensgebied':'nee, goed gespreid'));
-  if(a.k3!==undefined)vraagInzichten.push('Churn <5%/jaar: '+(a.k3<=2?'churn te hoog':a.k3===3?'matig':'uitstekend, lage churn'));
-  if(a.f4!==undefined)vraagInzichten.push('Wwft-procedures: '+(a.f4<=2?'KRITIEK: Wwft NIET op orde - absolute dealbreaker bij due diligence':a.f4===3?'gedeeltelijk':'volledig geimplementeerd'));
-  const peOpties=['Geen externe partij betrokken','Orienterende gesprekken gevoerd','Letter of Intent getekend','PE of investeerder deels betrokken','PE of investeerder volledig aan boord'];
-  if(a.f5!==undefined)vraagInzichten.push('Investeerdersstatus: '+(peOpties[a.f5-1]||'onbekend'));
-  if(a.ai1!==undefined)vraagInzichten.push('AI-substitutierisico diensten: '+(a.ai1>=4?'HOOG - groot deel omzet kwetsbaar voor AI binnen 3-5 jaar':a.ai1===3?'matig':'laag - goed gepositioneerd'));
-  if(a.ai2!==undefined)vraagInzichten.push('Investering AI-bestendige diensten (advies/strategie): '+(a.ai2<=2?'nauwelijks - kwetsbaar':a.ai2===3?'in ontwikkeling':'actief'));
-  if(a.ai3!==undefined)vraagInzichten.push('AI-adoptie team: '+(a.ai3<=2?'laag - nauwelijks experimenteren':a.ai3===3?'beperkt':'actief geintegreerd'));
-  if(a.pe2!==undefined)vraagInzichten.push('Personeelsverloop vs sectorgemiddelde 15%: '+(a.pe2<=2?'HOOG verloop - cultuurprobleem':a.pe2===3?'rondom gemiddelde':'laag, stabiel team'));
-  if(a.pe4!==undefined)vraagInzichten.push('Veranderbereidheid partners/team: '+(a.pe4<=2?'laag - weerstand te verwachten bij fusie':a.pe4===3?'gemiddeld':'hoog - positief voor M&A'));
-  if(a.c1!==undefined)vraagInzichten.push('Actieve acquisitie (niet alleen via doorverwijzing): '+(a.c1<=2?'vrijwel geen':a.c1===3?'beperkt':'ja, actief'));
-  if(a.c2!==undefined)vraagInzichten.push('Structureel marketingbeleid: '+(a.c2<=2?'nauwelijks zichtbaar':a.c2===3?'beperkt':'actief en zichtbaar'));
-  if(a.c3!==undefined)vraagInzichten.push('Cross-sell bestaande klanten: '+(a.c3<=2?'niet systematisch':a.c3===3?'ad hoc':'systematisch en meetbaar'));
 
-  // Scores en scenarios
-  const top3=ST.scenarios.slice(0,3).map(sc=>sc.name+' ('+sc.score+'%)').join(', ');
-  const dims=SECTIONS.map(sec=>'- '+sec.label+': '+s[sec.id]+'/100').join('\n');
-  const strengths=SECTIONS.filter(sec=>s[sec.id]>=70).map(sec=>sec.label+' ('+s[sec.id]+')').join(', ')||'geen uitgesproken sterktes';
-  const weaknesses=SECTIONS.filter(sec=>s[sec.id]<50).map(sec=>sec.label+' ('+s[sec.id]+')').join(', ')||'geen kritieke zwaktes';
 
-  // Waarderingsindicatie
-  const recurring=!isNaN(recurringVal)?recurringVal:0;
-  const ebitdaMultiple=recurring>60?'6-8x':recurring>40?'4-6x':'3-5x';
-  const wLow=ebitdaBedrag>0?Math.round(ebitdaBedrag*(recurring>60?6:recurring>40?4:3)/10000)*10000:0;
-  const wHigh=ebitdaBedrag>0?Math.round(ebitdaBedrag*(recurring>60?8:recurring>40?6:5)/10000)*10000:0;
-  const waarderingTekst=wLow>0
-    ?'Indicatieve waardering: \u20ac'+wLow.toLocaleString('nl-NL')+' - \u20ac'+wHigh.toLocaleString('nl-NL')+' (EBITDA multiple '+ebitdaMultiple+', gebaseerd op '+(!isNaN(ebitdaVal)?ebitdaVal:'?')+'% marge en '+recurring+'% recurring).'
-    :'Onvoldoende financiele data voor waarderingsberekening. Vul EBITDA% en omzet in voor indicatie.';
 
-  const mainPrompt=
-    'Je bent Marcel Bisschops, senior M&A-adviseur gespecialiseerd in accountantskantoren. Schrijf een uitgebreid, eerlijk en direct strategisch adviesrapport in het Nederlands. Minimaal 1200 woorden.\n'
-    +'Begin DIRECT met ## Scorekaart en samenvatting. Geen titelpagina, geen "Opgesteld door"-regel, geen inleidende alinea voor de eerste ## kop.\n\n'
-    +'KANTOORPROFIEL:\n'
-    +'- Naam: '+naam+' | Type: '+kantoorType+'\n'
-    +'- Regio: '+(p.regio||'onbekend')+' | FTE: '+(p.fte||'?')+' | Omzet: \u20ac'+(p.omzet||'?')+'\n'
-    +'- EBITDA: '+(p.ebitda||'?')+(ebitdaBedrag>0?' (\u20ac'+ebitdaBedrag.toLocaleString('nl-NL')+' absoluut)':'')+'\n'
-    +'- Vaste/terugkerende omzet: '+(p.recurring||'?')+'%\n'
-    +'- Omzet per FTE: '+(omzetPerFte>0?'\u20ac'+omzetPerFte.toLocaleString('nl-NL'):'onbekend')+(omzetPerFte>0&&omzetPerFte<benchmarkFte?' ONDER benchmark '+benchmarkLabel:omzetPerFte>=benchmarkFte?' op/boven benchmark '+benchmarkLabel:'')+'\n'
-    +'- Specialisme: '+(p.specialisme||'generalist')+' | Doelgroep: '+(p.doelgroep||'MKB')+'\n'
-    +'- Software/tools: '+(p.software||'onbekend')+'\n'
-    +'- Ambitie: '+(p.ambitie||'?')+'\n'
-    +'- Context/toelichting eigenaar: '+(p.context||'geen aanvullende context')+'\n\n'
-    +'SOFTWARE-ANALYSE (verplicht te verwerken):\n'+swAnalyse+'\n\n'
-    +(signalen.length?'FINANCIELE ALARMSIGNALEN (verplicht als hoofdthema te verwerken):\n'+signalen.map(s=>'! '+s).join('\n')+'\n\n':'')
-    +'DIMENSIESCORES (0-100):\n'+dims+'\n'
-    +'Totaalscore: '+ov+'/100\n'
-    +'Sterktes (>=70): '+strengths+'\n'
-    +'Zwaktes (<50): '+weaknesses+'\n\n'
-    +'BEVINDINGEN PER DEELVRAAG (verwerk ALLE punten in het rapport):\n'+vraagInzichten.map(v=>'- '+v).join('\n')+'\n\n'
-    +'WAARDERINGSBEREKENING:\n'+waarderingTekst+'\n\n'
-    +'TOP SCENARIOS: '+top3+'\n\n'
-    +'SCHRIJFINSTRUCTIES:\n'
-    +'- Spreek de lezer direct aan: gebruik ALTIJD "uw kantoor" - nooit "dit kantoor" of "het kantoor"\n'
-    +'- Direct, persoonlijk en eerlijk — maar NOOIT beginnen met zinnen als "Laat ik direct zijn", "Ik ga er niet omheen draaien" of soortgelijke retorische openingen\n'
-    +'- Begin direct inhoudelijk, zonder retorische aanloopzinnen\n'
-    +'- Benoem altijd specifieke scores met cijfers en vergelijk met branchebenchmarks\n'
-    +'- Ga expliciet in op de genoemde software en wat dit betekent voor schaalbaarheid en waarde\n'
-    +'- Verwerk ALLE bevindingen per deelvraag in de analyse - niet alleen de hoofdcategoriescores\n'
-    +'- Minimaal 1400 woorden, gebruik ## koppen, geen tabellen, lopende tekst per sectie\n'
-    +'- De sectie ## Scorekaart en samenvatting moet minimaal 200 woorden zijn - dit is de managementsamenvatting die bovenaan het rapport verschijnt\n\n'
-    +'## Scorekaart en samenvatting\n'
-    +'## Financieel profiel\n'
-    +'## Bedrijfsvoering en technologie\n'
-    +'## Strategische positie en commerciele kracht\n'
-    +'## Risicoprofiel\n'
-    +'## Aanbeveling\n'
-    +'Sluit af met contactregel Marcel Bisschops.';
+
+
+
+
+
+  const mainPrompt=(financieelSignaal?'KRITIEK SIGNAAL - MAAK DIT HOOFDTHEMA: '+financieelSignaal+'\n\n':'')
+    +'Strategisch M&A-advies voor '+naam+' ('+kantoorType+'), mei 2026.\n'
+    +'Financieel: EBITDA '+(p.ebitda||'?')+'%, Vaste omzet '+(p.recurring||'?')+'%, Omzet '+(p.omzet||'?')+(omzetPerFte>0?', €'+(omzetPerFte/1000).toFixed(0)+'K/fte':'')+'\n'
+    +'Profiel: '+(p.fte||'?')+' fte, '+(p.specialisme||'generalist')+', software: '+(p.software||'onbekend')+', doelgroep: '+(p.doelgroep||'MKB')+'\n'
+    +'Ambitie: '+(p.ambitie||'?')+'. Context: '+(p.context||'geen')+'\n'
+    +'Scores (0-100): '+dims+'\n'
+    +'Totaal: '+ov+'/100. Scenario: '+top3+'. Aandacht: '+risks+'\n\n'
+    +'Schrijf een direct M&A-adviesrapport in het Nederlands. Geen tabellen. ## koppen. Max 800 woorden.\n'
+    +'## Scorekaart\n## Strategisch profiel\n## Kritieke bevindingen\n## Kansen\n## Risicos\n## Aanbeveling (incl. indicatieve waardering)';
+    (financieelSignaal?'\u26a0\ufe0f KRITIEK FINANCIEEL SIGNAAL - VERWERK DIT ALS HOOFDTHEMA: '+financieelSignaal+'\n\n':'')+
+    'Je bent een senior M\u0026A-adviseur gespecialiseerd in '+kantoorType+'s. Mei 2026.\n\nKANTOOR:\n- '+naam+' | '+kantoorType+'\n- Fte: '+(p.fte||'?')+' | Omzet: '+(p.omzet||'?')+(omzetPerFte>0?' (\u20ac'+(omzetPerFte/1000).toFixed(0)+'K/fte)':'')+'\n- EBITDA: '+(p.ebitda||'?')+'% | Vaste omzet: '+(p.recurring||'?')+'%\n- Specialisme: '+(p.specialisme||'n/a')+' | Software: '+(p.software||'n/a')+' | Doelgroep: '+(p.doelgroep||'n/a')+'\n- Ambitie: '+(p.ambitie||'?')+' | Context: '+(p.context||'geen')+'\n\nSCORES (0-100):\n'+dims+'\n\nTotaal: '+ov+'/100 | Scenario: '+top3+'\nAandachtspunten (<55): '+risks+'\n\nSCHRIJFREGELS: Direct, persoonlijk, eerlijk. Geen tabellen. ## koppen. Elke sectie min 120 woorden, max 200 woorden. Totaal rapport max 1200 woorden. Benoem scores met cijfers. Geef indicatieve waarderingsbandbreedte. Sluit altijd af bij de Aanbeveling - geen losse tekst daarna.\n\n## Scorekaart\n[Totaalscore, top 5 drivers positief+negatief, max 120 woorden]\n## Strategisch profiel\n[Positie in markt, sterkte van businessmodel, financieel profiel - als EBITDA negatief/laag: dit MOET hier centraal staan]\n## Kritieke bevindingen\n[Meest impactvolle inzichten op waarde en verkoopbaarheid - financiele signalen EERST]\n## Kansen en groeipotentieel\n[Concrete kansen passend bij ambitie en type kantoor]\n## Risicos en aandachtspunten\n[Eerlijk over zwaktes en wat dit betekent voor waarde]\n## Aanbeveling\n[Concreet advies: scenario, timing, acties. Indicatieve waarderingsrange op basis van EBITDA en vaste omzet.]\n\n[Sluit af met: Wilt u deze analyse bespreken? Marcel Bisschops, 06-38689888, marcel@bisschopsfinancing.nl]';
 
 
 
@@ -661,12 +567,10 @@ async function generateAI(){
   const dec=new TextDecoder();
 
   try{
-    const smvEl=document.getElementById('ai-samenvatting');
     const el=document.getElementById('ai-out');
-    if(el)el.innerHTML='<div style="text-align:center;padding:2.5rem 2rem"><div class="ai-spinner"></div><p style="margin-top:1.25rem;color:var(--head);font-size:15px;font-weight:600">&#9749; Uw rapport wordt opgesteld</p><p style="margin-top:.5rem;color:var(--muted);font-size:13px">Neem gerust een kopje koffie &#9749; of doe wat rek- en strekoefeningen &#127939;</p></div>';
+    if(el)el.innerHTML='<div style="text-align:center;padding:2rem"><div class="ai-spinner"></div><p style="margin-top:1rem;color:var(--muted);font-size:14px">Rapport wordt opgesteld... (30-60 seconden)</p></div>';
     let collected=await callAI(mainPrompt);
-    // Voeg disclaimer toe na ophalen
-    collected += '\n\n---\n\n## Disclaimer\n\nDit rapport is gegenereerd op basis van zelfrapportage en is uitsluitend bedoeld als indicatief strategisch oriëntatie-instrument. De uitkomsten, scores en aanbevelingen vormen geen formeel advies, geen waarderings- of due diligence-rapport en geen accountants- of juridisch oordeel. Bisschops Financing BV aanvaardt geen aansprakelijkheid voor beslissingen die (mede) worden genomen op basis van de inhoud van dit rapport. Voor een formele waardering, due diligence of strategisch advies dient u een gekwalificeerde adviseur te raadplegen.\n\n---\n\n';
+    collected+='\n\n---\n\n## Disclaimer\n\nDit rapport is gegenereerd op basis van zelfrapportage en is uitsluitend bedoeld als indicatief strategisch oriëntatie-instrument. De uitkomsten, scores en aanbevelingen vormen geen formeel advies, geen waarderings- of due diligence-rapport en geen accountants- of juridisch oordeel. Bisschops Financing BV aanvaardt geen aansprakelijkheid voor beslissingen die (mede) worden genomen op basis van de inhoud van dit rapport. Voor een formele waardering, due diligence of strategisch advies dient u een gekwalificeerde adviseur te raadplegen.\n\n---\n\n';
 
 
 
@@ -685,7 +589,8 @@ async function generateAI(){
 
 
 
-    ST.aiText=collected;ST.aiLoading=false;updateAI(true);setTimeout(function(){updateAI(true);},100);
+    ST.aiText=collected;updateAI(true);setTimeout(function(){updateAI(true);},100);
+    updateAI(true);
 
 
     if(smvEl&&collected){
@@ -732,36 +637,491 @@ async function generateAI(){
     }
 
   }catch(err){
-    ST.aiLoading=false;
-    ST.aiText='__ERROR__';
-    console.error('generateAI fout:',err);
-    const errEl=document.getElementById('ai-out');
-    if(errEl)errEl.setAttribute('data-error',err.message||String(err));
-    updateAI(true);
+    ST.aiLoading=false;ST.aiText='__ERROR__';updateAI(true);
   }
 }
+async function saveScanToGroup(){
+  if(!ST.scores)return;
+  if(!ST.profile.saveConsent&&!ST.groupId)return;
+  const p=ST.profile;
+  try{
+    const resp=await fetch(`${WORKER}/group/join`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({group_id:ST.groupId||'SOLO',office_name:p.naamAnon?'Anoniem':p.naam,office_email:p.naamAnon?'':p.email,region:p.regio,fte:p.fte,revenue:p.omzet,ebitda:p.ebitda,recurring:p.recurring,ambitie:p.ambitie,specialisme:p.specialisme,scores:ST.scores,top_scenario:ST.scenarios?.[0]?.name||''})});
+    const data=await resp.json();
+    if(data.scan_id)ST.savedScanId=data.scan_id;
+  }catch(e){console.warn('Scan niet opgeslagen:',e);}
+}
+
+async function createGroup(name,email,isPublic=true){
+  const resp=await fetch(`${WORKER}/group/create`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,admin_email:email,dashboard_public:isPublic})});
+  return resp.json();
+}
+
+async function loadGroup(gid){
+  ST.groupLoading=true;render();
+  try{
+    const resp=await fetch(`${WORKER}/group/${gid}`);
+    if(!resp.ok)throw new Error('niet gevonden');
+    ST.groupData=await resp.json();ST.screen='dashboard';
+  }catch(e){ST.groupData=null;ST.screen='dashboard-error';window._dashLoading=false;}
+  ST.groupLoading=false;render();
+}
+
+async function loadGroupAsAdmin(gid,adminCode){
+  ST.groupLoading=true;ST.screen='loading';render();
+  try{
+    const resp=await fetch(WORKER+'/group/'+gid+'?admin_code='+encodeURIComponent(adminCode));
+    if(!resp.ok)throw new Error('Groep niet gevonden');
+    const data=await resp.json();
+    ST.groupData=data;
+    ST.isGroupAdmin=data.is_admin||true;
+    ST.groupLoading=false;
+    ST.screen='dashboard';
+  }catch(e){
+    ST.groupData=null;
+    ST.groupLoading=false;
+    ST.screen='dashboard-error';
+    console.error('Admin load error:',e);
+  }
+  render();
+}
+
+function updateAI(final=false){const el=document.getElementById('ai-out');if(el)el.innerHTML=renderAIText(ST.aiText,!final);}
+function renderAIText(text,cursor=false){
+  if(ST.aiLoading)return`<div class="ai-loading"><div class="ai-spinner"></div><span>Strategisch memo wordt gegenereerd...</span></div>`;
+  if(!text)return`<div class="ai-placeholder"><div class="ai-placeholder-icon">&#9672;</div><p class="ai-placeholder-text">Klik op "Genereer AI-advies" voor een gepersonaliseerd strategisch memo op basis van de scanresultaten en het kantoorprofiel.</p></div>`;
+  if(text==='__ERROR__')return`<div class="ai-placeholder"><div class="ai-placeholder-icon" style="opacity:.5">&#9888;</div><p class="ai-placeholder-text" style="margin-bottom:1rem">Kon niet verbinden.</p><button class="btn-gen" onclick="generateAI()" style="margin:0 auto">Opnieuw proberen</button></div>`;
+  if(text==='__LIMIT__')return`<div class="ai-placeholder"><div class="ai-placeholder-icon" style="color:var(--gold)">&#9888;</div><p class="ai-placeholder-text" style="margin-bottom:.5rem"><strong>Rapport-limiet bereikt</strong></p><p style="font-size:13px;color:var(--muted);text-align:center;max-width:380px;margin:0 auto">U heeft het maximale aantal rapporten (5) voor dit e-mailadres bereikt. Neem contact op via <a href="mailto:marcel@bisschopsfinancing.nl" style="color:var(--teal)">marcel@bisschopsfinancing.nl</a> voor een licentieafspraak.</p></div>`;
+  // Stap 1: escape bestaande HTML-entiteiten niet dubbel
+  let t=text;
+  // Stap 2: ## Koppen
+  t=t.replace(/^## (.+)$/gm,'<h3>$1</h3>');
+  // Stap 3: Bold
+  t=t.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+  // Stap 4: Bullets - zowel - als * aan begin regel
+  t=t.replace(/^[\-\*] (.+)$/gm,'<li>$1</li>');
+  // Stap 5: Groepeer li's
+  t=t.replace(/(<li>.*<\/li>\n?)+/g,function(m){return '<ul>'+m+'</ul>';});
+  // Stap 6: Horizontale lijn
+  t=t.replace(/^---$/gm,'<hr style="border:none;border-top:1px solid var(--border);margin:1.5rem 0">');
+  // Stap 7: Paragrafen - splits op dubbele newline
+  let parts=t.split(/\n{2,}/);
+  t=parts.map(function(p){
+    p=p.trim();
+    if(!p)return '';
+    if(p.startsWith('<'))return p;
+    // Enkele newlines binnen paragraaf -> <br>
+    p=p.replace(/\n/g,'<br>');
+    return '<p>'+p+'</p>';
+  }).join('');
+  if(cursor)t+='<span class="ai-cursor"></span>';
+  return '<div class="ai-output">'+t+'</div>';
+}
+
+/* ======== RENDER ======== */
+
+function renderSummary(){
+  if(!ST.aiText||ST.aiText.length<100||ST.aiText==='__ERROR__'||ST.aiText==='__LIMIT__'){
+    return '<p style="color:var(--muted);font-style:italic;font-size:13px">Genereer het AI-advies hieronder voor een uitgebreide managementsamenvatting.</p>';
+  }
+  var sc=ST.aiText.match(/## Scorekaart([\s\S]*?)(?=##|---)/);
+  var kb=ST.aiText.match(/## Kernboodschap([\s\S]*?)(?=##|---)/);
+  var out='';
+  if(sc&&sc[1]){var t=sc[1].replace(/<[^>]+>/g,'').replace(/\*\*/g,'').trim().slice(0,700);if(t)out+='<p style="font-size:14px;color:var(--mid);line-height:1.75">'+t+'</p>';}
+  if(kb&&kb[1]){var t2=kb[1].replace(/<[^>]+>/g,'').replace(/\*\*/g,'').trim().slice(0,400);if(t2)out+='<p style="font-size:14px;color:var(--sub);line-height:1.75;margin-top:.5rem"><strong>Kernboodschap</strong> — '+t2+'</p>';}
+  return out||'<p style="color:var(--muted);font-style:italic;font-size:13px">Managementsamenvatting beschikbaar nadat u het AI-advies heeft gegenereerd.</p>';
+}
+
+function formatOmzet(v){
+  if(!v)return '';
+  var s=String(v).replace(/[^0-9]/g,'');
+  if(!s)return v;
+  var n=parseInt(s);
+  if(isNaN(n))return v;
+  return '€'+n.toLocaleString('nl-NL');
+}
+function render(){
+  const app=document.getElementById('app');
+  const screens={intro:rIntro,intake:rIntake,questions:rQuestions,results:rResults,'group-create':rGroupCreate,'group-join':rGroupJoin,'group-created':rGroupCreated,dashboard:()=>rDashboard(ST.groupData),'dashboard-error':rDashboardError,'rapport-ophalen':rRapportOphalen};
+  app.innerHTML=(screens[ST.screen]||rIntro)();
+  bindEvents();
+}
+
+function rIntro(){return`<div class="intro-wrap"><div class="intro-grid"></div><div class="intro-inner"><div class="wordmark"><div class="wdot"></div>KantoorInzicht<div class="wdot"></div></div><div class="eyebrow">Strategisch analyse-instrument &middot; AI-powered</div><h1 class="intro-h1">Strategische <em>Kantoor</em> Scan</h1><p class="intro-sub">Een PE-ge\xefnspireerde analyse van uw kantoor. In 10 minuten een volledig strategisch profiel, positioneringsmatrix en AI-adviesrapport op maat.</p><div class="kpi-row"><div class="kpi-item"><div class="kpi-num">11</div><div class="kpi-lbl">Dimensies</div></div><div class="kpi-div"></div><div class="kpi-item"><div class="kpi-num">37</div><div class="kpi-lbl">Vragen</div></div><div class="kpi-div"></div><div class="kpi-item"><div class="kpi-num">9</div><div class="kpi-lbl">Scenario&#39;s</div></div><div class="kpi-div"></div><div class="kpi-item"><div class="kpi-num">AI</div><div class="kpi-lbl">Advies</div></div></div><div class="dim-row">${SECTIONS.map(s=>`<span class="dim-chip">${s.label}</span>`).join('')}</div><div style="margin-bottom:2rem">
+<div style="font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--teal);margin-bottom:.75rem">Voor \xe9\xe9n kantoor</div>
+<div class="route-cards" style="max-width:580px;margin:0 auto 1.5rem">
+<div class="route-card highlight" id="route-solo" style="border:2px solid var(--teal);background:var(--teal-bg)">
+<div class="route-icon">&#9672;</div>
+<div class="route-title" style="color:var(--teal)">Start individuele scan</div>
+<div class="route-desc">Vul de scan in en ontvang direct uw persoonlijk strategisch rapport met AI-advies op maat. In 10 minuten compleet.</div>
+<div style="margin-top:.75rem;font-size:12px;font-weight:600;color:var(--teal)">\u2192 Direct starten</div>
+</div>
+</div>
+<div style="font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem">Voor meerdere kantoren</div>
+<div class="route-cards" style="max-width:580px;margin:0 auto">
+<div class="route-card" id="route-group-create">
+<div class="route-icon">\u229e</div>
+<div class="route-title">Groep aanmaken</div>
+<div class="route-desc">Maak een groepscode aan en nodig kantoren uit. U beheert het vergelijkingsdashboard.</div>
+</div>
+<div class="route-card" id="route-group-join">
+<div class="route-icon">\u2295</div>
+<div class="route-title">Deelnemen aan groep</div>
+<div class="route-desc">U heeft een groepscode ontvangen en wilt uw scan indienen voor benchmarkvergelijking.</div>
+</div>
+<div class="route-card" id="route-dashboard">
+<div class="route-icon">\u25a4</div>
+<div class="route-title">Dashboard bekijken</div>
+<div class="route-desc">Bekijk alle ingediende scans, benchmarks en vergelijkingen van uw groep.</div>
+</div>
+<div class="route-card" id="route-rapport">
+<div class="route-icon">&#9638;</div>
+<div class="route-title">Rapport ophalen</div>
+<div class="route-desc">Eerder een scan gedaan? Haal uw rapport op met uw rapportcode.</div>
+</div>
+</div>
+</div><div class="intro-foot">Vertrouwelijk &middot; Gebaseerd op PE &amp; M&amp;A-criteria &middot; Powered by Claude AI</div><div style="margin-top:1rem;max-width:540px;margin-left:auto;margin-right:auto"><div style="background:var(--panel);border:1px solid var(--teal);border-radius:var(--r2);padding:1.25rem;text-align:left;margin-bottom:1rem"><div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--teal);margin-bottom:.5rem">Wat is KantoorInzicht?</div><p style="font-size:12px;color:var(--mid);line-height:1.7;margin-bottom:.5rem">KantoorInzicht is een strategisch zelfanalyse-instrument voor accountants- en administratiekantoren. De scan geeft inzicht in uw positie op elf strategische dimensies en maakt inzichtelijk hoe klaar uw kantoor is voor de volgende fase - van groei en automatisering tot samenwerking, fusie of overdracht.</p><p style="font-size:11px;color:var(--muted);line-height:1.6"><strong style="color:var(--sub)">Let op:</strong> Deze scan is uitsluitend bedoeld voor kantoren zelf. Het gebruik door M&amp;A-adviseurs of intermediairs voor klantanalyse zonder licentieafspraak met Bisschops Financing BV is niet toegestaan.</p></div><div style="font-size:11px;color:var(--muted);text-align:center;line-height:1.7;padding:8px 0">&#128274; Versleuteld via HTTPS &middot; Opgeslagen op Cloudflare-servers in Europa (Frankfurt, EU) &middot; Verwerking conform AVG &middot; <a href="privacy.html" style="color:var(--teal)">Privacyverklaring</a></div></div></div></div>`;}
+
+function rGroupCreate(){return`<div class="page-wrap narrow"><div class="page-hdr"><div class="page-brand"><div class="wdot"></div>KantoorInzicht</div><div class="page-step">Groep aanmaken</div></div><div class="group-panel anim"><div class="group-panel-title">Nieuwe groep aanmaken</div><div class="group-panel-sub">Na aanmaken kunt u de code direct kopiëren en opslaan.</div><div class="form-grid full"><div class="field"><label>Naam van de groep</label><input type="text" id="gc-name" placeholder="bijv. Accountantsvereniging Gelderland"></div></div>
+<div class="note-box" style="border-color:var(--teal)"><strong>Dashboard zichtbaarheid:</strong><label style="display:flex;align-items:flex-start;gap:10px;margin-top:10px;cursor:pointer;font-size:13px;color:var(--sub)"><input type="checkbox" id="gc-public" checked style="width:16px;height:16px;accent-color:var(--teal);margin-top:2px;flex-shrink:0"><span>Deelnemers mogen het volledige dashboard zien, inclusief scores van andere kantoren</span></label></div>
+<div class="note-box"><strong>&#9888; Bewaar de groepscode!</strong> Na aanmaken ziet u de code direct op het scherm. Kopieer of sla hem op.</div><div style="display:flex;gap:10px"><button class="btn-ghost" id="back-intro">Terug</button><button class="btn-adv" id="do-create-group">Groep aanmaken</button></div></div></div>`;}
+
+function rGroupCreated(){
+  const code = ST.groupId || '------';
+    const adminCode = ST.adminCode || '------';
+  return `<div class="page-wrap narrow"><div class="page-hdr"><div class="page-brand"><div class="wdot"></div>KantoorInzicht</div><div class="page-step">Groep aangemaakt</div></div><div class="group-panel anim">`
+    + `<div style="font-size:1.4rem;margin-bottom:.35rem">&#10003;</div>`
+    + `<div class="group-panel-title">Groep aangemaakt</div>`
+    + `<div class="group-panel-sub">Deel de onderstaande code met de deelnemende kantoren. Bewaar de code — zonder deze heeft u geen toegang tot uw dashboard.</div>`
+    + `<div class="code-display" id="gc-code-display">${code}</div>`
+    + `<div style="margin-bottom:.35rem;font-size:11px;color:var(--muted);margin-top:4px">&#8593; Deelnemerscode voor kantoren</div>`
+    + `<div style="background:var(--gold-bg);border:1.5px solid var(--gold);border-radius:var(--r2);padding:1rem;text-align:center;margin-bottom:.75rem"><div style="font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);margin-bottom:.35rem">Beheerdscode (alleen voor u)</div><div style="font-family:IBM Plex Mono,monospace;font-size:2rem;font-weight:600;color:var(--gold);letter-spacing:.1em">${adminCode}</div><div style="font-size:11px;color:var(--muted);margin-top:.35rem">Met deze code ziet u altijd alle deelnemers en scores</div></div>`
+    + `<div style="display:flex;gap:8px;margin-bottom:1rem">`
+    + `<button class="btn-adv" id="copy-code-btn" style="flex:1;font-size:13px">Kopieer code</button>`
+    + `<button class="btn-ghost" id="save-code-btn" style="flex:1;font-size:12px">&#8681; Opslaan als bestand</button>`
+    + `</div>`
+    + `<div style="display:flex;gap:8px;padding-top:1rem;border-top:1px solid var(--border)">`
+    + `<button class="btn-ghost" id="start-scan-group-btn" style="flex:1">Start scan &#8594;</button>`
+    + `<button class="btn-adv" id="view-dashboard-btn" style="flex:1">Bekijk dashboard &#8594;</button>`
+    + `</div>`
+    + `<div style="font-size:12px;color:var(--muted);line-height:1.65;margin-top:.75rem">Kantoren deelnemen via <strong style="color:var(--sub)">koersvoormorgen.nl</strong> → Deelnemen aan groep.</div>`
+    + `</div></div>`;
+}
+
+function rGroupJoin(){return`<div class="page-wrap narrow"><div class="page-hdr"><div class="page-brand"><div class="wdot"></div>KantoorInzicht</div><div class="page-step">Groep deelnemen</div></div><div class="group-panel anim"><div class="group-panel-title">Deelnemen aan een groep</div><div class="group-panel-sub">Voer de groepscode in die u hebt ontvangen van de beheerder.</div><div class="form-grid full" style="margin-bottom:1rem"><div class="field"><label>Groepscode</label><input type="text" id="gj-code" placeholder="" maxlength="6" style="text-transform:uppercase;letter-spacing:.2em;font-size:1.4rem;text-align:center"></div></div><div style="display:flex;gap:10px"><button class="btn-ghost" id="back-intro">Terug</button><button class="btn-adv" id="do-join-group">Doorgaan naar scan</button></div></div></div>`;}
+
+
+function rRapportOphalen(){
+  return`<div class="page-wrap narrow"><div class="page-hdr"><div class="page-brand"><div class="wdot"></div>KantoorInzicht</div><div class="page-step">Rapport ophalen</div></div>
+<div class="intake-wrap">
+  <h2 style="font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:600;color:var(--head);margin-bottom:.5rem">Uw rapport ophalen</h2>
+  <p style="font-size:14px;color:var(--muted);margin-bottom:1.5rem">Voer uw rapportcode in om uw eerder gemaakte scan terug te zien.</p>
+  <div class="field required"><label>Rapportcode</label><input id="rapport-code-input" type="text" placeholder="bijv. SC-ABC123" style="text-transform:uppercase;letter-spacing:.05em" maxlength="20"/></div>
+  <div id="rapport-error" style="color:var(--red);font-size:13px;margin-top:.5rem;display:none">Rapportcode niet gevonden. Controleer de code en probeer opnieuw.</div>
+  <div style="display:flex;gap:12px;margin-top:1.5rem">
+    <button class="btn-ghost" id="rapport-terug">Terug</button>
+    <button class="btn-adv" id="rapport-ophalen-btn">Rapport ophalen &rarr;</button>
+  </div>
+</div></div>`;
+}
+function rDashboardError(){return`<div class="page-wrap narrow"><div class="page-hdr"><div class="page-brand"><div class="wdot"></div>KantoorInzicht</div><div class="page-step">Dashboard</div></div><div class="error-screen anim"><h3>Groep niet gevonden</h3><p>Controleer de groepscode en probeer opnieuw.</p><button class="btn-adv" id="back-intro">Terug naar start</button></div></div>`;}
+
+function rIntake(){
+  const p=ST.profile;
+  return`<div class="page-wrap narrow"><div class="page-hdr"><div class="page-brand"><div class="wdot"></div>KantoorInzicht</div><div class="page-step">STAP 1 \u2014 Kantoorprofiel</div></div><div class="anim"><div style="font-family:'Playfair Display',serif;font-size:1.8rem;color:var(--white);font-weight:600;margin-bottom:.5rem">Vertel ons over uw kantoor</div><div style="font-size:13px;color:var(--mid);line-height:1.65;margin-bottom:2rem">Deze gegevens personaliseren uw AI-adviesrapport.${ST.groupId?` <span style="color:var(--teal)">Deelname aan groep <strong>${ST.groupId}</strong>.</span>`:''}</div></div><div style="font-size:11px;color:var(--muted);margin-bottom:1rem">Groene velden zijn verplicht, overige zijn optioneel.</div><div class="form-grid anim a1"><div class="field required" style="grid-column:1/-1"><label>Type kantoor</label><select id="f-kantoortype"><option value="">Selecteer...</option><option value="accountantskantoor">Accountantskantoor</option><option value="administratiekantoor">Administratiekantoor</option></select></div><div class="field required" style="position:relative"><label>Naam kantoor</label><input type="text" id="f-naam" placeholder="bijv. Bakker &amp; Partners" value="${p.naam}"></div><div class="field"><label>E-mailadres (optioneel)</label><input type="email" id="f-email" placeholder="u@kantoor.nl" value="${p.email}"></div><div class="field"><label>Regio</label><input type="text" id="f-regio" placeholder="bijv. Achterhoek, Maastricht" value="${p.regio}"></div><div class="field required" style="position:relative"><label>Aantal medewerkers (exact)</label><input type="number" id="f-fte" placeholder="bijv. 12" min="1" max="999" value="${p.fte}"></div><div class="field required" style="position:relative"><label>Jaaromzet</label><input type="text" id="f-omzet" placeholder="bijv. \u20ac2.400.000" value="${p.omzet}"></div><div class="field"><label>Specialisme of niche</label><input type="text" id="f-spec" placeholder="bijv. agri, vastgoed, zorg" value="${p.specialisme}"></div><div class="field"><label>Primaire doelgroep</label><input type="text" id="f-doel" placeholder="bijv. MKB, ZZP" value="${p.doelgroep}"></div><div class="field"><label>Gebruikte software</label><input type="text" id="f-sw" placeholder="bijv. Exact, Twinfield, Yuki" value="${p.software}"></div><div class="field required" style="position:relative"><label>EBITDA-marge</label><input type="text" id="f-ebitda" placeholder="bijv. 22%" value="${p.ebitda}"></div><div class="field required" style="position:relative"><label>Aandeel vaste omzet</label><input type="text" id="f-recurring" placeholder="bijv. 65%" value="${p.recurring}"></div><div class="field required"><label>Strategische ambitie</label><select id="f-ambitie"><option value="">Selecteer...</option>${['Stabiel houden','Groeien (organisch)','Groeien (via overnames)','Fusie of samenwerking','Verkoop (3\u20137 jaar)','Opvolging regelen'].map(v=>`<option${p.ambitie===v?' selected':''}>${v}</option>`).join('')}</select></div></div><div class="form-grid full anim a2"><div class="field"><label>Aanvullende context (optioneel)</label><textarea id="f-context" placeholder="Wat speelt er momenteel?">${p.context}</textarea></div></div><div class="note-box anim a2"><strong>Privacy:</strong> Gegevens worden alleen gebruikt voor uw rapport en eventuele groepsvergelijking.</div><div class="scan-nav anim a3"><button class="btn-ghost" id="back-intro">Terug</button><button class="btn-adv" id="start-scan">Naar de vragenlijst</button></div></div>`;
+}
+
+function rQuestions(){
+  const sec=SECTIONS[ST.section];const total=SECTIONS.length;
+  const answered=sec.questions.every(q=>ST.answers[q.id]!==undefined);
+  const isLast=ST.section===total-1;
+  const steps=SECTIONS.map((_,i)=>`<div class="p-step${i<ST.section?' done':i===ST.section?' active':''}"></div>`).join('');
+  return`<div class="page-wrap"><div class="page-hdr"><div class="page-brand"><div class="wdot"></div>KantoorInzicht</div><div class="page-step mono">STAP ${ST.section+1}/${total}</div></div><div class="prog-section"><div class="prog-top"><div class="prog-lbl">${sec.label}</div><div class="prog-frac">${ST.section+1} / ${total}</div></div><div class="prog-track"><div class="prog-fill" style="width:${(ST.section/total)*100}%"></div></div><div class="prog-steps">${steps}</div></div><div class="anim"><span class="sec-badge">${sec.icon}</span><div class="sec-title">${sec.label}</div><div class="sec-desc">${sec.desc}</div></div><div class="q-stack">${sec.questions.map((q,qi)=>{const v=ST.answers[q.id];return q.type==='select' ? `<div class="q-card${v!==undefined?' answered':''} anim a${qi+1}"><div class="q-row"><div><div class="q-text">${q.q}</div>${q.hint?`<div class="q-hint">${q.hint}</div>`:''}</div><div class="q-val${v!==undefined?' set':''}">${v!==undefined?v:'\u2014'}</div></div><select class="q-select" data-q="${q.id}" style="width:100%;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:9px 12px;font-size:13px;margin-top:4px;color:var(--sub)"><option value="">Selecteer...</option>${q.options?q.options.map((o,oi)=>`<option value="${oi+1}" ${v===oi+1?'selected':''} >${o}</option>`).join(''):''}` + `</select></div>` : `<div class="q-card${v!==undefined?' answered':''} anim a${qi+1}"><div class="q-row"><div><div class="q-text">${q.q}</div>${q.hint?`<div class="q-hint">${q.hint}</div>`:''}</div><div class="q-val${v!==undefined?' set':''}">${v!==undefined?v:'\u2014'}</div></div><div class="likert">${[1,2,3,4,5].map(n=>`<button class="l-btn${v===n?' sel':''}" data-q="${q.id}" data-v="${n}">${n}</button>`).join('')}</div><div class="likert-axis"><span>1 = Helemaal niet</span><span>5 = Volledig</span></div></div>`;}).join('')}</div><div class="scan-nav"><div class="nav-info">${Object.keys(ST.answers).length} / 37 beantwoord</div><div style="display:flex;gap:10px"><button class="btn-ghost" id="prev-btn" ${ST.section===0?'disabled':''}>Terug</button><button class="btn-adv" id="next-btn" ${!answered?'disabled':''}>${isLast?'Genereer rapport':'Volgende'}</button></div></div></div>`;
+}
+
+function rResults(){
+  const s=ST.scores;const ov=overall(s);const vd=verdict(ov);
+  const top3=ST.scenarios.slice(0,3);
+  const mx=Math.round((s.schaal+s.auto+s.commercieel)/3);
+  const my=Math.round((s.winst+s.klant+s.partner)/3);
+  const bench=62;
+  const p=ST.profile;
+  const now=new Date().toLocaleDateString('nl-NL',{year:'numeric',month:'long',day:'numeric'});
+  const naam=p.naamAnon?'Anoniem kantoor':p.naam;
+  return`<div class="page-wrap"><div class="r-header anim"><div class="r-brand-row"><div class="r-brand"><div class="wdot"></div>KantoorInzicht</div><div class="r-date">${now}</div></div>${naam?`<div class="kantoor-slug">${naam}${p.regio?' &middot; '+p.regio:''}</div>`:''}  <h2 class="report-title">Strategisch <em>profiel</em> &amp; adviesrapport</h2><p class="report-sub">37 indicatoren &middot; 11 dimensies${p.fte?' &middot; '+p.fte+' fte':''}${p.omzet?' &middot; '+formatOmzet(p.omzet):''}</p></div><div class="score-hero anim a1"><div class="score-circle"><svg width="110" height="110" viewBox="0 0 110 110"><circle cx="55" cy="55" r="48" fill="none" stroke="var(--border)" stroke-width="6"/><circle cx="55" cy="55" r="48" fill="none" stroke="${vd.color}" stroke-width="6" stroke-dasharray="${2*Math.PI*48}" stroke-dashoffset="${2*Math.PI*48*(1-ov/100)}" stroke-linecap="round"/></svg><div class="score-inner"><div class="score-big">${ov}</div><div class="score-denom">/100</div></div></div><div><div style="margin-bottom:.5rem"><span style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:3px;background:${vd.bg};color:${vd.color};border:1px solid ${vd.color}44">${vd.label}</span></div><div class="score-explain">${vd.txt}</div></div></div><div class="sec-lbl anim a1">Managementsamenvatting</div>
+<div class="summary-box anim a1" id="summary-box">
+<h4>Strategisch profiel op hoofdlijnen</h4>
+${ST.aiText&&ST.aiText.length>100&&ST.aiText!=='__ERROR__'&&ST.aiText!=='__LIMIT__'
+  ?(function(){
+    var sc=ST.aiText.match(/##\s*Scorekaart[\s\S]*?(?=##|$)/);
+    var kb=ST.aiText.match(/##\s*Kernboodschap[\s\S]*?(?=##|$)/);
+    var txt='';
+    if(sc&&sc[0]){var t=sc[0].replace(/##\s*Scorekaart/,'').replace(/<[^>]+>/g,'').trim().slice(0,600);txt+='<p>'+t+'</p>';}
+    if(kb&&kb[0]){var t2=kb[0].replace(/##\s*Kernboodschap/,'').replace(/<[^>]+>/g,'').trim().slice(0,400);if(t2)txt+='<p><strong>Kernboodschap:</strong> '+t2+'</p>';}
+    return txt||'<p style="color:var(--muted);font-style:italic">Genereer het AI-advies hieronder voor een uitgebreide managementsamenvatting.</p>';
+  })()
+  :'<p style="color:var(--muted);font-style:italic">Genereer het AI-advies hieronder voor een uitgebreide managementsamenvatting op basis van uw scanresultaten.</p>'}
+</div>
+${(p.ebitda||p.recurring)?`<div class="sec-lbl anim a2">Financi\xeble kengetallen</div><div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:2rem">${[p.ebitda?{l:'EBITDA-marge',v:p.ebitda,b:'Benchmark: 20\u201330%'}:null,p.recurring?{l:'Vaste omzet',v:p.recurring,b:'PE-streefwaarde: >60%'}:null].filter(Boolean).map(k=>`<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:14px 16px"><div style="font-size:11px;color:var(--muted);margin-bottom:4px">${k.l}</div><div style="font-size:1.2rem;font-weight:600;color:var(--head);font-family:'IBM Plex Mono',monospace;margin-bottom:4px">${k.v}</div><div style="font-size:10px;color:var(--muted)">${k.b}</div></div>`).join('')}</div>`:''}
+<div class="sec-lbl anim a2">Strategische scenario&#39;s</div><div class="scenario-cards anim a3">${top3.map((sc,i)=>`<div class="sc-card"><div class="sc-hdr" data-k="${sc.k}"><span class="sc-rank${i===0?' pri':''}">${i===0?'AANBEVOLEN':i===1?'ALTERNATIEF':'OPTIONEEL'}</span><span class="sc-name${i===0?' pri':''}">${sc.name}</span><span class="sc-fit mono">${sc.score}% fit</span><span class="sc-chev${ST.openScenario===sc.k?' open':''}">&#9662;</span></div><div class="sc-body${ST.openScenario===sc.k?' open':''}"><div class="actions-lbl">Concrete vervolgstappen</div><div class="action-items">${sc.actions.map((a,ai)=>`<div class="action-item"><span class="act-num">0${ai+1}</span><div><div class="act-title">${a.t}</div><div class="act-desc">${a.d}</div><div class="act-horizon">${a.h}</div></div></div>`).join('')}</div></div></div>`).join('')}</div><div class="sec-lbl anim a3">Scores per dimensie <span style="font-size:10px;font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0">\u2014 bewijslaag</span></div>
+<div style="font-size:12px;color:var(--mid);line-height:1.6;padding:10px 16px;background:var(--card);border-left:3px solid var(--teal);border-radius:0 var(--r) var(--r) 0;margin-bottom:1rem">Deze analyse is gebaseerd op zelfrapportage. Scores geven richting aan strategische aandachtspunten en vormen geen formeel waarderings- of due diligence-advies.</div><div class="dim-grid anim a2">${SECTIONS.map(sec=>{const v=s[sec.id];const f=df(v);return`<div class="dim-card"><div class="dim-top"><div class="dim-name">${sec.label}</div><div class="dim-val" style="color:${dc(v)}">${v}</div></div><div class="dim-bar-bg"><div class="dim-bar" style="width:${v}%;background:${dc(v)}"></div></div><div class="dim-flag" style="color:${f.c}">${f.l}</div></div>`;}).join('')}</div><div class="sec-lbl anim a3">Positioneringsmatrix</div><div class="matrix-sec anim a2"><div class="matrix-title">Strategische positiematrix</div><div class="matrix-sub">Schaalbaarheid &amp; commercieel (X) &middot; Winstkracht &amp; klantbinding (Y)</div><div class="matrix-body"><svg width="270" height="220" viewBox="0 0 270 220" style="flex-shrink:0"><rect x="30" y="10" width="220" height="170" fill="var(--card)" rx="4"/><rect x="30" y="10" width="110" height="85" fill="rgba(224,82,82,.07)" rx="4"/><rect x="140" y="10" width="110" height="85" fill="rgba(201,168,76,.07)"/><rect x="30" y="95" width="110" height="85" fill="rgba(201,168,76,.07)"/><rect x="140" y="95" width="110" height="85" fill="rgba(34,197,160,.07)" rx="4"/><line x1="140" y1="10" x2="140" y2="180" stroke="var(--border2)" stroke-width="1" stroke-dasharray="4,3"/><line x1="30" y1="95" x2="250" y2="95" stroke="var(--border2)" stroke-width="1" stroke-dasharray="4,3"/><text x="85" y="26" text-anchor="middle" font-size="9" fill="var(--muted)" font-family="IBM Plex Sans">Kwetsbaar</text><text x="195" y="26" text-anchor="middle" font-size="9" fill="var(--muted)" font-family="IBM Plex Sans">Groei mogelijk</text><text x="85" y="172" text-anchor="middle" font-size="9" fill="var(--muted)" font-family="IBM Plex Sans">Stabiel</text><text x="195" y="172" text-anchor="middle" font-size="9" fill="var(--teal)" font-family="IBM Plex Sans">Sterk platform</text><text x="140" y="207" text-anchor="middle" font-size="9" fill="var(--muted)" font-family="IBM Plex Sans">Schaal &amp; commercieel</text><circle cx="${30+(bench/100)*220}" cy="${180-((bench/100)*170)}" r="5" fill="none" stroke="var(--gold)" stroke-width="1.5" opacity=".6"/><circle cx="${30+(mx/100)*220}" cy="${180-((my/100)*170)}" r="9" fill="var(--teal)" opacity=".2"/><circle cx="${30+(mx/100)*220}" cy="${180-((my/100)*170)}" r="5" fill="var(--teal)"/></svg><div class="quadrant-list">${[{q:'Sterk platform',d:'Hoge schaal + hoge winstkracht.',a:mx>50&&my>50},{q:'Groei mogelijk',d:'Lage schaal + hoge winstkracht.',a:mx<=50&&my>50},{q:'Stabiel / defensief',d:'Hoge schaal + lagere winstkracht.',a:mx>50&&my<=50},{q:'Kwetsbaar',d:'Lage schaal + lage winstkracht.',a:mx<=50&&my<=50}].map(i=>`<div class="q-item${i.a?' active':''}"><div class="q-dot" style="background:${i.a?'var(--teal)':'var(--border2)'}"></div><div><div class="q-iname">${i.q}</div><div class="q-idesc">${i.d}</div></div></div>`).join('')}</div></div></div><div class="sec-lbl anim a1">Strategisch advies op maat</div><div class="ai-panel anim a3"><div class="ai-panel-hdr"><div class="ai-title-group"><span class="ai-badge-el">KantoorInzicht &middot; AI</span><div><div class="ai-panel-name">Strategisch advies op maat</div><div class="ai-panel-sub">Op basis van zelfrapportage &middot; Scores zijn indicatief &middot; Mei 2026</div></div></div><button class="btn-gen" id="gen-btn" onclick="generateAI()" ${ST.aiLoading?'disabled':''}>${ST.aiLoading?'Genereren...':ST.aiText&&ST.aiText!=='__ERROR__'?'Opnieuw genereren':'Genereer AI-advies'}</button></div><div class="ai-body"><div id="ai-out">${renderAIText(ST.aiText,false)}</div></div></div><div class="r-footer anim a4"><div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:1rem 1.25rem;margin-bottom:1.5rem;font-size:11px;color:var(--muted);line-height:1.7"><strong style="color:var(--sub)">Disclaimer</strong> &mdash; Dit rapport is gegenereerd op basis van zelfrapportage door de gebruiker en is uitsluitend bedoeld als indicatief strategisch oriëntatie-instrument. De uitkomsten, scores en aanbevelingen vormen geen formeel advies, geen waarderings- of due diligence-rapport en geen accountants- of juridisch oordeel. Bisschops Financing BV aanvaardt geen aansprakelijkheid voor beslissingen die (mede) worden genomen op basis van de inhoud van dit rapport. Voor een formele waardering, due diligence of strategisch advies dient u een gekwalificeerde adviseur te raadplegen. &copy; 2026 Bisschops Financing BV &mdash; KantoorInzicht. Alle rechten voorbehouden.</div><div style="background:var(--teal-bg);border:1.5px solid var(--teal);border-radius:var(--r2);padding:1.5rem 2rem;margin-bottom:1.5rem;text-align:center"><div style="font-family:'Playfair Display',serif;font-size:1.2rem;color:var(--head);font-weight:600;margin-bottom:.5rem">Wilt u de uitkomsten bespreken?</div><div style="font-size:13px;color:var(--mid);line-height:1.7;margin-bottom:1rem">Marcel Bisschops is M&amp;A-adviseur gespecialiseerd in accountantskantoren \u2014 met een achtergrond als bestuurder binnen de sector en een breed netwerk van kantoren en softwareleveranciers. Een gesprek duurt 30 minuten en is vrijblijvend.</div><div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap"><button id="callback-btn" style="display:inline-flex;align-items:center;gap:8px;background:var(--teal);color:var(--void);font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;padding:10px 20px;border-radius:var(--r);border:none;cursor:pointer">\ud83d\udccb Stuur terugbelverzoek</button><button onclick="window.location.href='tel:+31638689888'" style="display:inline-flex;align-items:center;gap:8px;background:var(--teal);color:var(--void);font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;padding:10px 20px;border-radius:var(--r);border:none;cursor:pointer">\ud83d\udcde 06 - 38 68 98 88</button></div></div><p class="footer-note">&copy; ${new Date().getFullYear()} Bisschops Financing BV \u2014 KantoorInzicht. Aanbevelingen zijn indicatief en vormen geen formeel advies.</p><div class="footer-btns">${ST.savedScanId?`<div style="background:var(--teal-bg);border:1px solid var(--teal-dark);border-radius:var(--r);padding:.75rem 1rem;margin-bottom:.75rem"><div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px"><div><div style="font-size:12px;font-weight:600;color:var(--teal);margin-bottom:2px">&#128274; Uw persoonlijke rapportcode</div><div style="font-family:IBM Plex Mono,monospace;font-size:18px;font-weight:700;letter-spacing:.12em;color:var(--head)">${ST.savedScanId}</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Bewaar deze code. Gebruik &#8220;Rapport ophalen&#8221; op de beginpagina om dit rapport later terug te zien.</div></div><button onclick="navigator.clipboard.writeText(ST.savedScanId).then(function(){this.textContent='&#10003; Gekopieerd';}.bind(this))" style="background:var(--teal);color:#fff;border:none;border-radius:var(--r);padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer;font-family:IBM Plex Sans,sans-serif;white-space:nowrap">Kopieer code</button></div></div>`:''}<button class="btn-print" onclick="setTimeout(function(){window.print()},300)">&#128438; Printen</button><button class="btn-print" onclick="downloadRapport()">&#8681; Opslaan</button><button class="btn-print" onclick="toonFeedbackModal()">&#9993; Feedback</button>${ST.groupId?`<button class="btn-ghost" id="view-group-btn">Dashboard</button>`:''}<button class="btn-restart" id="restart-btn">Nieuwe scan</button></div></div></div>`;
+}
+
+
+
+
+function laadChartJs(cb){
+  if(typeof Chart!=='undefined'){setTimeout(cb,50);return;}
+  if(window._cjsLoad){setTimeout(function(){laadChartJs(cb);},200);return;}
+  window._cjsLoad=true;
+  var s=document.createElement('script');
+  s.src='https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js';
+  s.onload=function(){window._cjsLoad=false;setTimeout(cb,100);};
+  document.head.appendChild(s);
+}
+
+function rStaafdiagram(offices){
+  if(!offices||!offices.length)return '';
+  var namen=offices.map(function(o){return o.name||'Anoniem';});
+  var ebitda=offices.map(function(o){return parseFloat(String(o.ebitda||'0').replace('%','').replace(',','.'))||0;});
+  var recurring=offices.map(function(o){return parseFloat(String(o.recurring||'0').replace('%','').replace(',','.'))||0;});
+  var scores=offices.map(function(o){return o.overall||0;});
+  var chartId='chart_'+Math.random().toString(36).slice(2,8);
+  var h=Math.max(offices.length*50+150,250);
+  laadChartJs(function(){
+    setTimeout(function(){
+      var ctx=document.getElementById(chartId);
+      if(!ctx)return;
+      new Chart(ctx,{type:'bar',data:{labels:namen,datasets:[
+        {label:'EBITDA-marge (%)',data:ebitda,backgroundColor:'rgba(26,122,94,.8)',borderRadius:3},
+        {label:'Vaste omzet (%)',data:recurring,backgroundColor:'rgba(201,168,76,.8)',borderRadius:3},
+        {label:'Totaalscore (0-100, gem. van 11 dimensies)',data:scores,backgroundColor:'rgba(59,130,246,.7)',borderRadius:3}
+      ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{boxWidth:12}},tooltip:{callbacks:{label:function(c){return c.dataset.label+': '+c.parsed.y;}}}},scales:{y:{beginAtZero:true,max:100},x:{grid:{display:false}}}}});
+    },100);
+  });
+  return '<div style="margin-bottom:1.5rem"><div class="sec-lbl anim a2">Vergelijkende kengetallen</div><div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem"><div style="position:relative;height:'+h+'px"><canvas id="'+chartId+'" role="img" aria-label="Kengetallen per kantoor">Kengetallen.</canvas></div></div></div>';
+}
+
+function kantoorRadar(scores){
+  const R=75,cx=85,cy=85,n=SECTIONS.length;
+  const ap=(i,v)=>{const a=(i/n)*2*Math.PI-Math.PI/2,r=(v/100)*R;return[cx+r*Math.cos(a),cy+r*Math.sin(a)];};
+  const pts=SECTIONS.map((s,i)=>ap(i,scores[s.id]||0)).map(p=>p.join(",")).join(" ");
+  const grid=[20,40,60,80,100].map(v=>{const gp=SECTIONS.map((_,i)=>ap(i,v)).map(p=>p.join(",")).join(" ");return '<polygon points="'+gp+'" fill="none" stroke="var(--border)" stroke-width="0.5"/>';}).join("");
+  const axes=SECTIONS.map((_,i)=>{const[x,y]=ap(i,100);return '<line x1="'+cx+'" y1="'+cy+'" x2="'+x+'" y2="'+y+'" stroke="var(--border2)" stroke-width="0.5"/>';}).join("");
+  const labs=SECTIONS.map((s,i)=>{const[x,y]=ap(i,107);const lbl=s.label.length>9?s.label.slice(0,8)+"…":s.label;return '<text x="'+x+'" y="'+y+'" text-anchor="middle" font-size="6" fill="var(--muted)" font-family="IBM Plex Sans">'+lbl+'</text>';}).join("");
+  return '<svg width="170" height="170" viewBox="0 0 170 170" style="display:block;margin:.25rem auto">'+grid+axes+'<polygon points="'+pts+'" fill="rgba(34,197,160,.15)" stroke="var(--teal)" stroke-width="1.5"/>'+labs+'</svg>';
+}
+function rDashboard(){
+  var d=ST.groupData;if(!d||!d.group)return rDashboardError();
+  var offices=(d.offices||[]).sort(function(a,b){return b.overall-a.overall;});
+  var cum=d.cumulative||{};
+  var avg=offices.length?Math.round(offices.reduce(function(a,o){return a+o.overall;},0)/offices.length):0;
+  var canSee=ST.isGroupAdmin||d.group.dashboard_public!==0;
+  var scenarioCounts={};offices.forEach(function(o){if(o.top_scenario)scenarioCounts[o.top_scenario]=(scenarioCounts[o.top_scenario]||0)+1;});
+  var topSc=Object.entries(scenarioCounts).sort(function(a,b){return b[1]-a[1];})[0];
+  function fmt(v){return v||'\u2014';}
+  function fmtOmzet(v){if(!v)return '\u2014';var n=parseFloat(String(v).replace(/[^0-9]/g,''));if(isNaN(n))return v;if(n>=1000000)return '\u20ac'+(n/1000000).toFixed(1)+'M';if(n>=1000)return '\u20ac'+(n/1000).toFixed(0)+'K';return '\u20ac'+n;}
+  function scoreColor(v){return v>=70?'#1a7a5e':v>=50?'#c9a84c':'#e05252';}
+  function scoreBg(v){return v>=70?'rgba(26,122,94,.1)':v>=50?'rgba(201,168,76,.1)':'rgba(224,82,82,.1)';}
+
+  var chartId='bar_'+Math.random().toString(36).slice(2,6);
+  var radarId='rad_'+Math.random().toString(36).slice(2,6);
+
+  setTimeout(function(){
+    laadChartJs(function(){
+      // Staafdiagram
+      var bctx=document.getElementById(chartId);
+      if(bctx&&canSee&&offices.length){
+        new Chart(bctx,{type:'bar',
+          data:{labels:offices.map(function(o){return o.name||'Anoniem';}),
+            datasets:[
+              {label:'EBITDA %',data:offices.map(function(o){return parseFloat(String(o.ebitda||'0').replace('%',''))||0;}),backgroundColor:'rgba(26,122,94,.8)',borderRadius:3},
+              {label:'Vaste omzet %',data:offices.map(function(o){return parseFloat(String(o.recurring||'0').replace('%',''))||0;}),backgroundColor:'rgba(201,168,76,.8)',borderRadius:3},
+              {label:'Score',data:offices.map(function(o){return o.overall||0;}),backgroundColor:'rgba(59,130,246,.7)',borderRadius:3}
+            ]},
+          options:{responsive:true,maintainAspectRatio:false,
+            plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return c.dataset.label+': '+c.parsed.y;}}}},
+            scales:{y:{beginAtZero:true,max:100,grid:{color:'rgba(0,0,0,.05)'},ticks:{font:{size:11}}},x:{grid:{display:false},ticks:{font:{size:11}}}}}});
+      }
+      // Radardiagram
+      var rctx=document.getElementById(radarId);
+      if(rctx){
+        new Chart(rctx,{type:'radar',
+          data:{labels:SECTIONS.map(function(s){return s.label.length>12?s.label.slice(0,11)+'\u2026':s.label;}),
+            datasets:[{label:'Groepsgemiddelde',data:SECTIONS.map(function(s){return cum[s.id]||0;}),
+              backgroundColor:'rgba(26,122,94,.15)',borderColor:'#1a7a5e',borderWidth:2,pointBackgroundColor:'#1a7a5e',pointRadius:3}]},
+          options:{responsive:true,maintainAspectRatio:false,
+            plugins:{legend:{display:false}},
+            scales:{r:{min:0,max:100,ticks:{stepSize:20,font:{size:10}},pointLabels:{font:{size:10}}}}}});
+      }
+    });
+  },100);
+
+  // Tabel rijen
+  var rows=canSee?offices.map(function(o,i){
+    var sc=scoreColor(o.overall);var sb=scoreBg(o.overall);
+    return '<tr style="border-bottom:1px solid #e8e6e0;cursor:pointer" onclick="toonKantoorDetail(\''+i+'\')">'
+      +'<td style="padding:11px 14px;font-weight:600;color:#1a1815">'
+        +'<span style="display:inline-block;width:20px;height:20px;border-radius:50%;background:'+sb+';color:'+sc+';font-size:10px;font-weight:700;text-align:center;line-height:20px;margin-right:6px">'+(i+1)+'</span>'
+        +(o.name||'Anoniem')+'</td>'
+      +'<td style="padding:11px 14px;font-size:12px;text-align:right;font-family:IBM Plex Mono,monospace">'+(o.fte||'\u2014')+'</td>'
+      +'<td style="padding:11px 14px;font-size:12px;text-align:right;font-family:IBM Plex Mono,monospace">'+fmtOmzet(o.revenue)+'</td>'
+      +'<td style="padding:11px 14px;font-size:12px;text-align:right;font-family:IBM Plex Mono,monospace">'+(o.ebitda||'\u2014')+'</td>'
+      +'<td style="padding:11px 14px;font-size:12px;text-align:right;font-family:IBM Plex Mono,monospace">'+(o.recurring||'\u2014')+'</td>'
+      +'<td style="padding:11px 14px;font-size:12px;color:#5a5854">'+(o.ambitie||'\u2014')+'</td>'
+      +'<td style="padding:11px 14px;text-align:center">'
+        +'<span style="font-family:IBM Plex Mono,monospace;font-size:13px;font-weight:600;padding:3px 10px;border-radius:4px;background:'+sb+';color:'+sc+'">'+o.overall+'</span></td>'
+      +'<td style="padding:11px 14px"><span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:3px;background:rgba(26,122,94,.1);color:#1a7a5e;border:1px solid #0a3d2e">'+(o.top_scenario||'\u2014').split(' ').slice(0,2).join(' ')+'</span></td>'
+      +'<td style="padding:11px 14px;text-align:center"><button onclick="event.stopPropagation();toonKantoorDetail(\''+i+'\')" style="font-size:11px;padding:3px 8px;background:transparent;border:1px solid #c8c5bc;color:#5a5854;border-radius:4px;cursor:pointer">Detail</button></td>'
+      +'</tr>';
+  }).join(''):'<tr><td colspan="9" style="padding:1.5rem;text-align:center;color:#8a8880;font-style:italic">Beheerder heeft scores niet openbaar gemaakt.</td></tr>';
+
+  // AI status
+  var aiHtml=d._aiTekst?renderAIText(d._aiTekst,false):d._aiLoading?'<div class="ai-loading"><div class="ai-spinner"></div><span>Groepsanalyse wordt gegenereerd\u2026</span></div>':'<div style="color:#8a8880;font-style:italic">Analyse wordt geladen\u2026</div>';
+
+  // Chart legenda
+  var legenda='<div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:8px;font-size:12px;color:#5a5854">'
+    +'<span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:rgba(26,122,94,.8)"></span>EBITDA %</span>'
+    +'<span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:rgba(201,168,76,.8)"></span>Vaste omzet %</span>'
+    +'<span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:rgba(59,130,246,.7)"></span>Score</span>'
+    +'</div>';
+
+  return`<div class="page-wrap">
+<div class="page-hdr"><div class="page-brand"><div class="wdot"></div>KantoorInzicht</div><div class="page-step">Groepsdashboard &middot; ${d.group.name||ST.groupId}</div></div>
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2rem;flex-wrap:wrap;gap:1rem">
+  <div>
+    <div style="font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:600;color:#1a1815">${d.group.name||'Groep'}</div>
+    <div style="font-size:13px;color:#8a8880;margin-top:2px">Groepscode: <span style="font-family:IBM Plex Mono,monospace;color:#1a7a5e">${d.group.id||ST.groupId}</span> &middot; ${offices.length} kantoren &middot; ${new Date().toLocaleDateString('nl-NL')}</div>
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <button id="groep-ai-btn" style="font-size:12px;padding:6px 12px;background:transparent;border:1px solid #c8c5bc;color:#5a5854;border-radius:6px;cursor:pointer">&#8635; Herlaad analyse</button>
+    <button onclick="downloadGroepsRapport()" style="font-size:12px;padding:6px 12px;background:transparent;border:1px solid #c8c5bc;color:#5a5854;border-radius:6px;cursor:pointer">&#8681; Rapport</button>
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:2rem">
+  <div style="background:#fff;border:1px solid #e8e6e0;border-radius:10px;padding:1.25rem;text-align:center">
+    <div style="font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#8a8880;margin-bottom:.4rem">Kantoren</div>
+    <div style="font-family:'Playfair Display',serif;font-size:2rem;font-weight:600;color:#1a7a5e">${offices.length}</div>
+  </div>
+  <div style="background:#fff;border:1px solid #e8e6e0;border-radius:10px;padding:1.25rem;text-align:center">
+    <div style="font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#8a8880;margin-bottom:.4rem">Gem. score</div>
+    <div style="font-family:'Playfair Display',serif;font-size:2rem;font-weight:600;color:${scoreColor(avg)}">${avg||'\u2014'}</div>
+  </div>
+  <div style="background:#fff;border:1px solid #e8e6e0;border-radius:10px;padding:1.25rem;text-align:center">
+    <div style="font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#8a8880;margin-bottom:.4rem">Hoogste score</div>
+    <div style="font-family:'Playfair Display',serif;font-size:2rem;font-weight:600;color:#1a1815">${offices[0]?offices[0].overall:'\u2014'}</div>
+  </div>
+  <div style="background:#fff;border:1px solid #e8e6e0;border-radius:10px;padding:1.25rem;text-align:center">
+    <div style="font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#8a8880;margin-bottom:.4rem">Top scenario</div>
+    <div style="font-size:14px;font-weight:600;color:#1a1815;margin-top:.3rem">${topSc?topSc[0].split(' ')[0]:'\u2014'}</div>
+  </div>
+</div>
+
+<div style="font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#8a8880;margin-bottom:.75rem;padding-bottom:.5rem;border-bottom:1px solid #e8e6e0">Groepsanalyse &mdash; AI</div>
+<div style="background:#fff;border:1px solid #e8e6e0;border-left:4px solid #1a7a5e;border-radius:0 10px 10px 0;padding:1.5rem 2rem;margin-bottom:2rem">
+  <div id="groep-ai-out" style="font-size:14px;color:#5a5854;line-height:1.85">${aiHtml}</div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:2rem">
+  <div style="background:#fff;border:1px solid #e8e6e0;border-radius:10px;padding:1.25rem">
+    <div style="font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#8a8880;margin-bottom:1rem">Kengetallen vergelijking</div>
+    <div style="position:relative;height:${Math.max(offices.length*45+80,160)}px"><canvas id="${chartId}" role="img" aria-label="Kengetallen per kantoor">Kengetallen.</canvas></div>
+    ${legenda}
+  </div>
+  <div style="background:#fff;border:1px solid #e8e6e0;border-radius:10px;padding:1.25rem">
+    <div style="font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#8a8880;margin-bottom:1rem">Dimensieprofiel groep</div>
+    <div style="position:relative;height:${Math.max(offices.length*45+80,160)}px"><canvas id="${radarId}" role="img" aria-label="Radardiagram dimensies">Radardiagram.</canvas></div>
+  </div>
+</div>
+
+<div style="font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#8a8880;margin-bottom:.75rem;padding-bottom:.5rem;border-bottom:1px solid #e8e6e0">Kantoorenoverzicht</div>
+<div style="background:#fff;border:1px solid #e8e6e0;border-radius:10px;overflow:hidden;margin-bottom:2rem">
+  <table style="width:100%;border-collapse:collapse">
+
+    <thead><tr style="background:#f0eeea">
+      <th style="padding:10px 14px;text-align:left;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#8a8880">Kantoor</th>
+      <th style="padding:10px 14px;text-align:right;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#8a8880">Fte</th>
+      <th style="padding:10px 14px;text-align:right;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#8a8880">Omzet</th>
+      <th style="padding:10px 14px;text-align:right;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#8a8880">EBITDA</th>
+      <th style="padding:10px 14px;text-align:right;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#8a8880">Vast</th>
+      <th style="padding:10px 14px;text-align:left;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#8a8880">Ambitie</th>
+      <th style="padding:10px 14px;text-align:center;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#8a8880">Score</th>
+      <th style="padding:10px 14px;text-align:left;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#8a8880">Scenario</th>
+      <th style="padding:10px 14px"></th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+</div>
+
+<div class="r-footer"><p class="footer-note">&copy; ${new Date().getFullYear()} Bisschops Financing BV &mdash; KantoorInzicht. Vertrouwelijk.</p>
+<div class="footer-btns">
+  <button class="btn-print" onclick="setTimeout(function(){window.print()},300)">&#128438; Printen</button>
+  
+  <button class="btn-ghost" id="back-intro">Start</button>
+  <button class="btn-adv" id="refresh-dash">Verversen</button>
+</div></div>
+</div>`;
+}
+
+
+function toonKantoorDetail(idx){
+  var d=ST.groupData;if(!d)return;
+  var offices=(d.offices||[]).sort(function(a,b){return b.overall-a.overall;});
+  var o=offices[parseInt(idx)];if(!o)return;
+  function sc(v){return v>=70?'#1a7a5e':v>=50?'#c9a84c':'#e05252';}
+  var dimRows=SECTIONS.map(function(s){
+    var v=(o.scores&&o.scores[s.id])||0;
+    return '<tr style="border-bottom:1px solid #e8e6e0"><td style="padding:8px 12px;font-size:13px;color:#5a5854">'+s.label+'</td>'
+      +'<td style="padding:8px 12px;width:55%"><div style="height:6px;background:#f0eeea;border-radius:3px"><div style="height:100%;width:'+v+'%;background:'+sc(v)+';border-radius:3px"></div></div></td>'
+      +'<td style="padding:8px 12px;text-align:right;font-family:IBM Plex Mono,monospace;font-size:12px;font-weight:600;color:'+sc(v)+'">'+v+'</td></tr>';
+  }).join('');
+  var ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;display:flex;align-items:center;justify-content:center;padding:1rem';
+  var mo=document.createElement('div');
+  mo.style.cssText='background:#faf9f6;border-radius:12px;padding:2rem;max-width:680px;width:100%;max-height:90vh;overflow-y:auto;position:relative';
+  mo.innerHTML='<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.5rem">'
+    +'<div><div style="font-size:1.2rem;font-weight:600;color:#1a1815">'+(o.name||'Anoniem')+'</div>'
+    +'<div style="font-size:13px;color:#8a8880">'+(o.fte?o.fte+' fte':'')+' &middot; Score: <strong style="color:'+sc(o.overall)+'">'+o.overall+'/100</strong></div></div>'
+    +'<div style="display:flex;gap:8px;align-items:center"><button id="det-ai-btn" style="background:var(--teal);color:#fff;border:none;border-radius:var(--r);padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer;font-family:IBM Plex Sans,sans-serif">&#127775; AI-analyse</button><button id="det-sluit" style="background:none;border:none;font-size:1.2rem;cursor:pointer;color:#8a8880;padding:4px">&times;</button></div></div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:1.5rem">'
+    +'<div style="background:#f0eeea;border-radius:8px;padding:10px"><div style="font-size:10px;text-transform:uppercase;font-weight:600;color:#8a8880;margin-bottom:2px">Omzet</div><div style="font-size:14px;font-weight:600;color:#1a1815">'+(o.revenue||'—')+'</div></div>'
+    +'<div style="background:#f0eeea;border-radius:8px;padding:10px"><div style="font-size:10px;text-transform:uppercase;font-weight:600;color:#8a8880;margin-bottom:2px">EBITDA</div><div style="font-size:14px;font-weight:600;color:#1a1815">'+(o.ebitda||'—')+'</div></div>'
+    +'<div style="background:#f0eeea;border-radius:8px;padding:10px"><div style="font-size:10px;text-transform:uppercase;font-weight:600;color:#8a8880;margin-bottom:2px">Vast omzet</div><div style="font-size:14px;font-weight:600;color:#1a1815">'+(o.recurring||'—')+'</div></div></div>'
+    +'<div style="background:rgba(26,122,94,.08);border-radius:8px;padding:10px 14px;margin-bottom:1.5rem;font-size:13px;color:#1a7a5e;font-weight:600">'
+    +'Ambitie: '+(o.ambitie||'—')+' &rarr; '+( o.top_scenario||'—')+'</div>'
+    +'<div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#8a8880;margin-bottom:.75rem">Scores per dimensie</div>'
+    +'<table style="width:100%;border-collapse:collapse"><tbody>'+dimRows+'</tbody></table>';
+  ov.appendChild(mo);document.body.appendChild(ov);
+  ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
+  document.getElementById('det-sluit').addEventListener('click',function(){document.body.removeChild(ov);});
+  var aiContainer=document.createElement('div');
+  aiContainer.style.cssText='margin-top:1.5rem;padding-top:1.5rem;border-top:1px solid #e8e6e0';
+  mo.insertBefore(aiContainer,mo.lastElementChild);
+  document.getElementById('det-ai-btn').addEventListener('click',function(){
+    genereerKantoorAI(o,aiContainer);
+  });
+}
+
 async function genereerKantoorAI(o, container) {
   container.innerHTML = '<div class="ai-loading"><div class="ai-spinner"></div><span>Analyse wordt gegenereerd\u2026 (1-2 minuten)</span></div>';
   var dimInfo = SECTIONS.map(function(s) {
     return s.label + ': ' + ((o.scores && o.scores[s.id]) || 0);
   }).join(', ');
   var oPfte = o.fte && o.revenue
-    ? Math.round(parseFloat(String(o.revenue).replace(/[^0-9]/g,'')) / parseFloat(o.fte))
-    : 0;
+    ? Math.round(parseFloat(String(o.revenue).replace(/[^0-9]/g,'')) / parseFloat(o.fte)) : 0;
   var isAdmin = (o.kantoorType||'').toLowerCase().includes('admin') || (o.specialisme||'').toLowerCase().includes('admin');
   var bFte = isAdmin ? 100000 : 150000;
   var bLabel = isAdmin ? '\u20ac100K (admin-benchmark)' : '\u20ac150K (accountant-benchmark)';
   var prompt =
-    'Je bent Marcel Bisschops, senior M&A-adviseur gespecialiseerd in accountants- en administratiekantoren.\n'
-    + 'Schrijf een strategisch adviesrapport. Gebruik ALTIJD "uw kantoor". Begin direct met ## Strategisch profiel.\n\n'
-    + 'KANTOOR: ' + (o.name || 'Anoniem') + '\n'
-    + 'Score: ' + o.overall + '/100\n'
-    + 'Fte: ' + (o.fte || '?') + ' | Omzet: ' + (o.revenue || '?')
+    'Je bent Marcel Bisschops, senior M&A-adviseur. Schrijf een strategisch rapport. Gebruik "uw kantoor". Begin direct met ## Strategisch profiel.\n\n'
+    + 'Kantoor: ' + (o.name||'Anoniem') + ' | Score: ' + o.overall + '/100\n'
+    + 'Fte: ' + (o.fte||'?') + ' | Omzet: ' + (o.revenue||'?')
       + (oPfte > 0 ? ' (\u20ac' + (oPfte/1000).toFixed(0) + 'K/fte' + (oPfte < bFte ? ' — ONDER ' + bLabel : '') + ')' : '') + '\n'
-    + 'EBITDA: ' + (o.ebitda || '?') + '% | Vaste omzet: ' + (o.recurring || '?') + '%\n'
-    + 'Ambitie: ' + (o.ambitie || '?') + ' | Scenario: ' + (o.top_scenario || '?') + '\n'
+    + 'EBITDA: ' + (o.ebitda||'?') + '% | Vaste omzet: ' + (o.recurring||'?') + '%\n'
+    + 'Ambitie: ' + (o.ambitie||'?') + ' | Scenario: ' + (o.top_scenario||'?') + '\n'
     + 'Dimensiescores: ' + dimInfo + '\n\n'
-    + 'Geef een concreet rapport (400-500 woorden) met ## koppen:\n'
+    + 'Rapport (400-500 woorden) met ## koppen:\n'
     + '## Strategisch profiel\n## Sterktes\n## Risicos en aandachtspunten\n## Aanbeveling';
   try {
     var txt = await callAI(prompt);
@@ -776,42 +1136,27 @@ async function genereerGroepsAI() {
   d._aiLoading = true; d._aiTekst = '';
   var el = document.getElementById('groep-ai-out');
   if (el) el.innerHTML = '<div class="ai-loading"><div class="ai-spinner"></div><span>Groepsanalyse wordt gegenereerd\u2026 (1-2 minuten)</span></div>';
-
-  var offices = (d.offices || []).slice().sort(function(a,b){ return b.overall - a.overall; });
+  var offices = (d.offices||[]).slice().sort(function(a,b){ return b.overall - a.overall; });
   var cum = d.cumulative || {};
-  var avg = offices.length
-    ? Math.round(offices.reduce(function(a,o){ return a + o.overall; }, 0) / offices.length)
-    : 0;
-  var info = offices.map(function(o, i) {
+  var avg = offices.length ? Math.round(offices.reduce(function(a,o){ return a+o.overall; },0) / offices.length) : 0;
+  var info = offices.map(function(o,i) {
     var oPfte = o.fte && o.revenue
-      ? Math.round(parseFloat(String(o.revenue).replace(/[^0-9]/g,'')) / parseFloat(o.fte))
-      : 0;
-    return (i+1) + '. ' + (o.name || 'Anoniem')
-      + '\n   Score: ' + o.overall + '/100 | Scenario: ' + (o.top_scenario || '?')
-      + '\n   Fte: ' + (o.fte || '?') + ' | Omzet: ' + (o.revenue || '?')
+      ? Math.round(parseFloat(String(o.revenue).replace(/[^0-9]/g,'')) / parseFloat(o.fte)) : 0;
+    return (i+1) + '. ' + (o.name||'Anoniem')
+      + '\n   Score: ' + o.overall + '/100 | Scenario: ' + (o.top_scenario||'?')
+      + '\n   Fte: ' + (o.fte||'?') + ' | Omzet: ' + (o.revenue||'?')
         + (oPfte > 0 ? ' (\u20ac' + (oPfte/1000).toFixed(0) + 'K/fte)' : '')
-      + '\n   EBITDA: ' + (o.ebitda || '?') + '% | Vaste omzet: ' + (o.recurring || '?') + '%'
-      + '\n   Ambitie: ' + (o.ambitie || '?')
+      + '\n   EBITDA: ' + (o.ebitda||'?') + '% | Vaste omzet: ' + (o.recurring||'?') + '%'
+      + '\n   Ambitie: ' + (o.ambitie||'?')
       + (o.specialisme ? ' | Specialisme: ' + o.specialisme : '');
   }).join('\n');
-  var dims = SECTIONS.map(function(s){ return s.label + ': ' + (cum[s.id] || 0); }).join(', ');
-
+  var dims = SECTIONS.map(function(s){ return s.label + ': ' + (cum[s.id]||0); }).join(', ');
   var prompt =
-    'Je bent Marcel Bisschops, senior M&A-adviseur gespecialiseerd in accountants- en administratiekantoren.\n'
-    + 'Analyseer deze groep van ' + offices.length + ' kantoren. Gebruik "uw kantoor" of de kantoornaam direct.\n\n'
-    + 'GROEP: ' + (d.group && d.group.name || 'Onbekend') + '\n'
-    + 'Gemiddelde score: ' + avg + '/100\n'
-    + 'Dimensiegemiddelden: ' + dims + '\n\n'
-    + 'KANTOREN:\n' + info + '\n\n'
-    + 'Geef een uitgebreid groepsrapport (max 600 woorden) met ## koppen:\n'
-    + '## Groepsprofiel\n'
-    + '## Financieel profiel\n'
-    + '## Sterktes en kansen\n'
-    + '## Aandachtspunten\n'
-    + '## Strategische opties\n'
-    + '## Per kantoor\n'
-    + 'Direct, concreet, professioneel.';
-
+    'Je bent Marcel Bisschops, senior M&A-adviseur. Gebruik "uw kantoor" of de kantoornaam direct.\n\n'
+    + 'GROEP: ' + (d.group&&d.group.name||'Onbekend') + ' | Gem. score: ' + avg + '/100\n'
+    + 'Dimensiegemiddelden: ' + dims + '\n\nKANTOREN:\n' + info + '\n\n'
+    + 'Groepsrapport (max 600 woorden) met ## koppen:\n'
+    + '## Groepsprofiel\n## Financieel profiel\n## Sterktes en kansen\n## Aandachtspunten\n## Strategische opties\n## Per kantoor';
   try {
     var txt = await callAI(prompt);
     d._aiTekst = txt; d._aiLoading = false;
@@ -820,11 +1165,9 @@ async function genereerGroepsAI() {
   } catch(e) {
     d._aiLoading = false;
     var el3 = document.getElementById('groep-ai-out');
-    if (el3) el3.innerHTML = '<div style="color:var(--red);font-size:13px;padding:1rem">Kon groepsanalyse niet genereren: ' + e.message + '</div>';
+    if (el3) el3.innerHTML = '<div style="color:var(--red);font-size:13px;padding:1rem">Fout: ' + e.message + '</div>';
   }
 }
-
-/* ======== EVENTS ======== */
 
 function downloadGroepsRapport(){
   var d=ST.groupData;if(!d)return;
@@ -947,13 +1290,7 @@ function bindEvents(){
     const sec=SECTIONS[ST.section];
     if(!sec.questions.every(q=>ST.answers[q.id]!==undefined))return;
     if(ST.section<SECTIONS.length-1){ST.section++;render();}
-    else{
-      ST.scores=calcScores();ST.scenarios=rankScenarios(ST.scores);
-      ST.screen='results';render();window.scrollTo(0,0);
-      // Start AI direct, sla groep op achtergrond op
-      setTimeout(function(){generateAI();},100);
-      saveScanToGroup().catch(()=>{});
-    }
+    else{ST.scores=calcScores();ST.scenarios=rankScenarios(ST.scores);ST.screen='results';render();window.scrollTo(0,0);saveScanToGroup().catch(()=>{});}
   });
   document.querySelectorAll('.l-btn').forEach(b=>{b.onclick=()=>{ST.answers[b.dataset.q]=parseInt(b.dataset.v);render();};});
   document.querySelectorAll('.q-select').forEach(s=>{s.onchange=()=>{if(s.value)ST.answers[s.dataset.q]=parseInt(s.value);render();};});
@@ -973,30 +1310,65 @@ function bindEvents(){
     var err=document.getElementById('rapport-error');
     btn.textContent='Laden...';btn.disabled=true;
     try{
-      // Probeer eerst op scan_id (opgegeven code), dan op rapport-id
-      // Probeer zowel op id als scan_id
       var resp=await fetch(WORKER+'/rapport/'+id);
-      var data={};
-      try{data=await resp.json();}catch(e){data={error:'Parse fout'};}
-      console.log('Rapport ophalen response:',resp.status,data);
-      if(!resp.ok||data.error){
-        throw new Error('Rapport niet gevonden ('+resp.status+'). Controleer de code. '+(data.error||''));
-      }
+      if(!resp.ok)throw new Error('niet gevonden');
+      var data=await resp.json();
+      if(data.error)throw new Error(data.error);
       ST.savedScanId=data.scan_id;
       ST.scores=JSON.parse(data.scores||'{}');
-      var scLoaded=[];try{var scMap=JSON.parse(data.scores||'{}');Object.entries(scMap).forEach(([k,v])=>{});}catch(e){}ST.scenarios=[{name:data.top_scenario,score:80},{name:'',score:0}];
-      ST.profile={naam:data.kantoor_naam||'',email:data.email||'',regio:data.regio||'',fte:data.fte||'',omzet:data.omzet||data.revenue||'',ambitie:data.ambitie||'',specialisme:'',software:'',doelgroep:'',ebitda:'',recurring:'',context:'',naamAnon:false,saveConsent:false};
-      ST.aiText=data.rapport_tekst||'';
+      ST.scenarios=[{name:data.top_scenario}];
+      ST.profile={naam:data.kantoor_naam||'',email:data.email||'',regio:data.regio||'',fte:data.fte||'',omzet:data.revenue||''};
+      ST.aiTekst=data.ai_rapport||'';
       ST.screen='results';
     }catch(e){
-      console.error('Rapport ophalen fout:',e);
-      if(err){err.style.display='block';err.textContent='Rapport niet gevonden. Controleer de code en probeer opnieuw. ('+e.message+')';}
+      if(err)err.style.display='block';
     }
     btn.textContent='Rapport ophalen →';btn.disabled=false;
     render();
   });
   on('groep-ai-btn','click',async function(){
-    genereerGroepsAI();
+    var btn=document.getElementById('groep-ai-btn');
+    var out=document.getElementById('groep-ai-out');
+    if(!btn||!out)return;
+    btn.disabled=true;btn.textContent='Genereren...';
+    out.innerHTML='<div class="ai-loading"><div class="ai-spinner"></div><span>Groepsanalyse wordt gegenereerd...</span></div>';
+    var d=ST.groupData;
+    if(!d)return;
+    var offices=(d.offices||[]).sort(function(a,b){return b.overall-a.overall;});
+    var cum=d.cumulative||{};
+    var avg=offices.length?Math.round(offices.reduce(function(a,o){return a+o.overall;},0)/offices.length):0;
+    var kantoorInfo=offices.map(function(o,i){
+      return (i+1)+'. '+( o.name||'Anoniem')+' | Score: '+o.overall+' | EBITDA: '+(o.ebitda||'?')+'% | Vast: '+(o.recurring||'?')+'% | Omzet: '+(o.revenue||'?')+' | Fte: '+(o.fte||'?')+' | Ambitie: '+(o.ambitie||'?')+' | Scenario: '+(o.top_scenario||'?');
+    }).join('\n');
+    var dimInfo=SECTIONS.map(function(s){return s.label+': '+(cum[s.id]||0);}).join(' | ');
+    var oPfte=o.fte&&o.revenue?Math.round(parseFloat(String(o.revenue).replace(/[^0-9]/g,''))/parseFloat(o.fte)):0;var prompt='Je bent Marcel Bisschops, senior M&A-adviseur gespecialiseerd in accountants- en administratiekantoren. Geef een strategische analyse van dit kantoor.\n\nKANTOORPROFIEL:\n- Naam: '+(o.name||'Anoniem')+'\n- Score: '+o.overall+'/100\n- Fte: '+(o.fte||'?')+' medewerkers\n- Omzet: '+(o.revenue||'?')+(oPfte>0?' (\u20ac'+(oPfte/1000).toFixed(0)+'K per fte)':'')+'\n- EBITDA-marge: '+(o.ebitda||'?')+'% (benchmark: 20-30%)\n- Aandeel vaste/abonnements-omzet: '+(o.recurring||'?')+'% (>60% = sterk voor M&A)\n- Ambitie: '+(o.ambitie||'?')+'\n- Aanbevolen scenario: '+(o.top_scenario||'?')+'\n\nDIMENSIESCORES:\n'+dimInfo+'\n\nGeef een rapport in het Nederlands met ## koppen:\n## Strategisch profiel\n[Score en positie, kantoortype-context, omzet per fte beoordeling]\n## Sterktes\n[Concrete sterktes op basis van dimensiescores en financiele kengetallen]\n## Risicos en aandachtspunten\n[Lage scores, financiele signalen, structurele kwetsbaarheden]\n## Aanbeveling\n[Concreet advies passend bij ambitie en aanbevolen scenario]\n\nDirect, concreet, specifiek voor dit kantoor. Max 350 woorden.';
+    try{
+      var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}]})});
+      if(!resp.ok)throw new Error('HTTP '+resp.status);
+      var reader=resp.body.getReader();
+      var dec=new TextDecoder();
+      var txt='';
+      out.innerHTML='';
+      while(true){
+        var res=await reader.read();
+        if(res.done)break;
+        var chunk=dec.decode(res.value,{stream:true});
+        var lines2=chunk.split('\n');
+        for(var li=0;li<lines2.length;li++){
+          var line2=lines2[li].trim();
+          if(!line2||line2==='data: [DONE]')continue;
+          if(line2.startsWith('data: ')){
+            try{var j=JSON.parse(line2.slice(6));if(j.type==='content_block_delta'&&j.delta&&j.delta.text)txt+=j.delta.text;}catch(e){}
+          }
+        }
+        out.innerHTML=renderAIText(txt,true);
+      }
+      out.innerHTML=renderAIText(txt,false);
+      btn.textContent='Opnieuw genereren';btn.disabled=false;
+    }catch(e){
+      out.innerHTML='<div style="color:var(--red)">Fout: '+e.message+'</div>';
+      btn.textContent='Probeer opnieuw';btn.disabled=false;
+    }
   });
   on('callback-btn','click',()=>showCallbackModal());
   on('restart-btn','click',()=>{ST={...ST,screen:'intro',section:0,answers:{},scores:null,scenarios:null,openScenario:null,aiText:null,aiLoading:false,savedScanId:null,profile:{naam:'',naamAnon:false,email:'',regio:'',fte:'',omzet:'',specialisme:'',doelgroep:'',software:'',ambitie:'',context:'',omzetfte:'',ebitda:'',recurring:'',saveConsent:true}};render();window.scrollTo(0,0);});
@@ -1004,72 +1376,45 @@ function bindEvents(){
 
 
 function downloadRapport() {
-  var p = ST.profile || {};
-  var naam = p.naamAnon ? 'Anoniem kantoor' : (p.naam || 'Kantoor');
-  var now = new Date().toLocaleDateString('nl-NL',{year:'numeric',month:'long',day:'numeric'});
-  var ov = ST.scores ? overall(ST.scores) : 0;
-  var vd = verdict(ov);
-  var aiTekst = (ST.aiText && ST.aiText.length > 100 && ST.aiText !== '__ERROR__') ? ST.aiText : '';
-
-  function md2html(txt) {
-    if (!txt) return '';
-    return txt
-      .replace(/^## (.+)$/gm, '<h2 style="font-size:14pt;color:#1a7a5e;margin:1.2rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:3px;font-family:Georgia,serif">$1</h2>')
-      .replace(/^### (.+)$/gm, '<h3 style="font-size:12pt;font-weight:600;margin:.8rem 0 .2rem">$1</h3>')
-      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\n\n/g, '</p><p style="margin-bottom:.6rem">')
-      .replace(/\n/g, '<br>')
-      .replace(/^/, '<p style="margin-bottom:.6rem">')
-      .replace(/$/, '</p>');
-  }
-
-  var scoreRijen = ST.scores ? SECTIONS.map(function(sec) {
-    var v = ST.scores[sec.id];
-    var kleur = v >= 70 ? '#1a7a5e' : v >= 50 ? '#c9a84c' : '#e05252';
-    return '<tr><td style="padding:3px 8px;font-size:10pt;border-bottom:1px solid #f0f0f0">' + sec.label + '</td>'
-      + '<td style="padding:3px 8px;font-weight:600;color:' + kleur + ';font-size:10pt;border-bottom:1px solid #f0f0f0;text-align:right">' + v + '/100</td></tr>';
-  }).join('') : '';
-
-  var rapportcodeBlok = ST.savedScanId
-    ? '<div style="background:#f0f7f4;border:1.5px solid #1a7a5e;border-radius:8px;padding:12px 16px;margin:1.5rem 0">'
-      + '<div style="font-size:10pt;font-weight:600;color:#1a7a5e;margin-bottom:4px">Uw persoonlijke rapportcode</div>'
-      + '<div style="font-family:monospace;font-size:16pt;font-weight:700;letter-spacing:.1em;color:#1a1815">' + ST.savedScanId + '</div>'
-      + '<div style="font-size:9pt;color:#8a8880;margin-top:4px">Bewaar deze code om uw rapport later op te halen via koersvoormorgen.nl</div>'
-      + '</div>' : '';
-
-  var scoreHtml = scoreRijen
-    ? '<h2 style="font-size:13pt;color:#1a7a5e;margin:1rem 0 .4rem;font-family:Georgia,serif">Scores per dimensie</h2>'
-      + '<table style="width:100%;border-collapse:collapse;margin-bottom:1.5rem"><tbody>' + scoreRijen + '</tbody></table>'
-    : '';
-
-  var aiHtml = aiTekst
-    ? '<div style="margin-top:.5rem">' + md2html(aiTekst) + '</div>'
-    : '<p style="color:#8a8880;font-style:italic;margin-top:1rem">Genereer het AI-advies voor een volledig rapport.</p>';
-
-  var doc = '<!DOCTYPE html><html lang="nl"><head><meta charset="UTF-8">'
-    + '<title>KantoorInzicht - ' + naam + '</title>'
-    + '<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">'
-    + '<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:"IBM Plex Sans",sans-serif;font-size:11pt;line-height:1.65;color:#1a1815;background:#fff;padding:1.5cm}'
-    + '@page{margin:2cm;size:A4}h2,h3{page-break-after:avoid}p{orphans:3;widows:3}'
-    + '.disc{font-size:8pt;color:#8a8880;border-top:1px solid #ddd;padding-top:8px;margin-top:2rem;line-height:1.5}'
-    + '</style></head><body>'
-    + '<div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #1a7a5e;padding-bottom:12px;margin-bottom:1.5rem">'
-    + '<div><div style="font-size:9pt;font-weight:600;letter-spacing:.15em;text-transform:uppercase;color:#1a7a5e;margin-bottom:4px">KantoorInzicht</div>'
-    + '<div style="font-family:Georgia,serif;font-size:20pt;font-weight:600;color:#1a1815;margin:.2rem 0">' + naam + '</div>'
-    + '<div style="font-size:10pt;color:#5a5854">' + now + (p.regio ? ' &middot; ' + p.regio : '') + (p.fte ? ' &middot; ' + p.fte + ' fte' : '') + '</div></div>'
-    + '<div style="text-align:right;padding-top:4px"><div style="font-size:32pt;font-weight:700;color:' + vd.color + ';line-height:1">' + ov + '</div>'
-    + '<div style="font-size:9pt;color:#5a5854">/ 100</div>'
-    + '<div style="font-size:9pt;font-weight:600;color:' + vd.color + '">' + vd.label + '</div></div></div>'
-    + rapportcodeBlok
-    + scoreHtml
-    + aiHtml
-    + '<div class="disc">Dit rapport is gegenereerd op basis van zelfrapportage en is uitsluitend bedoeld als indicatief strategisch orientatie-instrument. De uitkomsten, scores en aanbevelingen vormen geen formeel advies, geen waarderings- of due diligence-rapport. &copy; 2026 Bisschops Financing BV - KantoorInzicht. Alle rechten voorbehouden.</div>'
-    + '<scr' + 'ipt>window.onload=function(){window.print();}<\/script>'
+  // Open rapport in nieuw venster en trigger print-naar-PDF
+  const naam = (ST.profile && ST.profile.naam) || 'kantoor';
+  const content = document.getElementById('app').innerHTML;
+  const doc = '<!DOCTYPE html><html lang="nl"><head><meta charset="UTF-8">'
+    + '<title>KantoorInzicht — ' + naam + '</title>'
+    + '<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">'
+    + '<style>' + document.querySelector('style').textContent
+    + '@page{margin:1.5cm;size:A4}'
+    + 'body{background:#fff!important}'
+    + '.btn-gen,.btn-print,.btn-restart,.btn-ghost,.footer-btns,.scan-nav,.route-cards,.intro-wrap{display:none!important}'
+    + '.sc-body{display:block!important}'
+    + '</style></head>'
+    + '<body><div id="app">' + content + '</div>'
+    + '<script>window.onload=function(){window.print();}<\/script>'
     + '</body></html>';
-
-  var w = window.open('', '_blank');
+  const w = window.open('', '_blank');
   if (w) { w.document.write(doc); w.document.close(); }
-  else { alert('Sta pop-ups toe voor de PDF-download.'); }
+  else { alert('Sta pop-ups toe om het rapport te downloaden als PDF.'); }
+}
+
+function downloadRapport() {
+  // Open rapport in nieuw venster en trigger print-naar-PDF
+  const naam = (ST.profile && ST.profile.naam) || 'kantoor';
+  const content = document.getElementById('app').innerHTML;
+  const doc = '<!DOCTYPE html><html lang="nl"><head><meta charset="UTF-8">'
+    + '<title>KantoorInzicht — ' + naam + '</title>'
+    + '<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">'
+    + '<style>' + document.querySelector('style').textContent
+    + '@page{margin:1.5cm;size:A4}'
+    + 'body{background:#fff!important}'
+    + '.btn-gen,.btn-print,.btn-restart,.btn-ghost,.footer-btns,.scan-nav,.route-cards,.intro-wrap{display:none!important}'
+    + '.sc-body{display:block!important}'
+    + '</style></head>'
+    + '<body><div id="app">' + content + '</div>'
+    + '<script>window.onload=function(){window.print();}<\/script>'
+    + '</body></html>';
+  const w = window.open('', '_blank');
+  if (w) { w.document.write(doc); w.document.close(); }
+  else { alert('Sta pop-ups toe om het rapport te downloaden als PDF.'); }
 }
 
 function bellen(){window.location.href="tel:+31638689888";}
@@ -1085,7 +1430,7 @@ function toonFeedbackModal(){
     +'<div><label style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:4px">E-mail of telefoon</label><input id="fb-contact" type="text" placeholder="u@kantoor.nl of 06-..." style="width:100%;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:9px 12px;font-family:IBM Plex Sans,sans-serif;font-size:13px;color:var(--sub);outline:none"></div>'
     +'<div><label style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:4px">Bericht</label><textarea id="fb-bericht" rows="4" placeholder="Uw vraag of opmerking..." style="width:100%;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:9px 12px;font-family:IBM Plex Sans,sans-serif;font-size:13px;color:var(--sub);outline:none;resize:vertical"></textarea></div>'
     +'</div>'
-    +'<div id="fb-status" style="display:none;font-size:13px;color:var(--teal);margin-bottom:1rem;padding:10px;background:var(--teal-bg);border-radius:var(--r)">Dank voor uw feedback! Marcel neemt dit ter harte.</div>'
+    +'<div id="fb-status" style="display:none;font-size:13px;color:var(--teal);margin-bottom:1rem;padding:10px;background:var(--teal-bg);border-radius:var(--r)">Verstuurd! Marcel neemt spoedig contact op.</div>'
     +'<div id="fb-err" style="display:none;font-size:12px;color:var(--red);margin-bottom:.75rem"></div>'
     +'<div style="display:flex;gap:10px">'
     +'<button id="fb-sluit" style="flex:1;background:transparent;border:1px solid var(--border2);color:var(--mid);border-radius:var(--r);padding:10px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:13px">Annuleren</button>'
@@ -1109,7 +1454,7 @@ function toonFeedbackModal(){
           tijd:'',kantoor:{naam:p.naam||'',regio:p.regio||'',fte:p.fte||'',omzet:p.omzet||'',specialisme:p.specialisme||'',ambitie:p.ambitie||''},
           scores:ST.scores||{},totaal:ST.scores?overall(ST.scores):0,
           scenario:ST.scenarios&&ST.scenarios[0]?ST.scenarios[0].name:'',
-          feedback:bericht,type:'feedback'})});
+          feedback:bericht})});
       document.getElementById('fb-status').style.display='block';
       btn.textContent='Verstuurd';
       setTimeout(function(){ov.remove();},2500);
@@ -1134,7 +1479,7 @@ function showCallbackModal(){
     +'<div class="field"><label>E-mailadres</label><input type="email" id="cb-email" placeholder="u@kantoor.nl"></div>'
     +'<div class="field"><label>Beste beltijd (optioneel)</label><input type="text" id="cb-tijd" placeholder="bijv. ochtend of na 14:00"></div>'
     +'</div>'
-    +'<div id="cb-status" style="font-size:12px;color:var(--teal);margin-bottom:1rem;display:none">Verstuurd! Marcel neemt binnen 1 werkdag contact met u op.</div>'
+    +'<div id="cb-status" style="font-size:12px;color:var(--teal);margin-bottom:1rem;display:none">Verstuurd! Marcel neemt spoedig contact op.</div>'
     +'<div style="display:flex;gap:10px;justify-content:flex-end">'
     +'<button id="cb-cancel" class="btn-ghost">Annuleren</button>'
     +'<button id="cb-send" class="btn-adv">Verstuur verzoek</button>'
