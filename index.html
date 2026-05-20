@@ -660,7 +660,7 @@ async function generateAI(){
         rapport_tekst:collected
       })
     }).then(function(r){return r.json();}).then(function(d){
-      if(d&&d.id&&!ST.savedScanId){ST.savedScanId=d.id;render();}
+      if(d&&d.id){ST.savedScanId=d.id;render();}
     }).catch(()=>{});
 
     const profileEmail=(ST.profile&&ST.profile.email)||'';
@@ -692,7 +692,7 @@ async function saveScanToGroup(){
   try{
     const resp=await fetch(`${WORKER}/group/join`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({group_id:ST.groupId||'SOLO',office_name:p.naamAnon?'Anoniem':p.naam,office_email:p.naamAnon?'':p.email,region:p.regio,fte:p.fte,revenue:p.omzet,ebitda:p.ebitda,recurring:p.recurring,ambitie:p.ambitie,specialisme:p.specialisme,scores:ST.scores,top_scenario:ST.scenarios?.[0]?.name||''})});
     const data=await resp.json();
-    if(data.scan_id)ST.savedScanId=data.scan_id;
+    if(data.scan_id){ST.savedScanId=data.scan_id;render();}
   }catch(e){console.warn('Scan niet opgeslagen:',e);}
 }
 
@@ -1375,7 +1375,7 @@ function bindEvents(){
       console.log('Rapport ophalen:',resp.status,JSON.stringify(data).substring(0,200));
       if(!resp.ok||data.error)throw new Error((data.error||'Rapport niet gevonden')+' (code: '+id+')');
       // Herstel state volledig
-      ST.savedScanId=data.scan_id||id;
+      ST.savedScanId=data.id||data.scan_id||id;
       ST.scores=JSON.parse(data.scores||'{}');
       ST.scenarios=[{name:data.top_scenario||'',score:80},{name:'',score:0},{name:'',score:0}];
       ST.profile={
