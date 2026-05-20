@@ -301,18 +301,18 @@ function renderCallbacksTab(el){
 // MNA TAB
 function renderMnaTab(el){
   var html='<div class="table-wrap"><div class="table-hdr"><div class="table-title">M&amp;A Trajecten</div>'
-    +'<div style="display:flex;gap:8px">'
+    +'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
+    +'<button class="btn-red" id="btn-del-sel-mna" style="font-size:12px;padding:7px 14px;display:none">&#10005; Verwijder geselecteerde (<span id="sel-cnt-mna">0</span>)</button>'
     +'<button class="btn" style="font-size:12px;padding:7px 14px" id="btn-ref-m">&#8635; Verversen</button>'
     +'<button class="btn" style="font-size:12px;padding:7px 14px" id="btn-nieuw">+ Nieuw traject</button>'
-
     +'</div></div>';
   if(!mnaList.length){
     html+='<div class="empty">Geen trajecten.</div>';
   } else {
-    html+='<table><thead><tr><th>Kantoor</th><th>Type</th><th>Status</th><th>Verkoperscode</th><th>Koperscode</th><th>Tussenpersoon</th><th>Datum</th><th>Acties</th></tr></thead><tbody>';
+    html+='<table><thead><tr><th style="width:32px"><input type="checkbox" id="cb-all-mna" title="Alles"></th><th>Kantoor</th><th>Type</th><th>Status</th><th>Verkoperscode</th><th>Koperscode</th><th>Tussenpersoon</th><th>Datum</th><th>Acties</th></tr></thead><tbody>';
     mnaList.forEach(function(t,i){
       var verg=t.status==='vergrendeld';
-      html+='<tr>'
+      html+='<tr><td><input type="checkbox" class="mna-cb" data-id="'+esc(t.id)+'"'+(verg?' disabled title="Vergrendeld"':'')+' style="cursor:pointer"></td>'
         +'<td style="font-weight:500;color:var(--head)">'+esc(t.kantoor_naam||'—')+'</td>'
         +'<td>'+esc(t.traject_type||'—')+'</td>'
         +'<td><span class="tag" style="'+(verg?'background:var(--red-bg);color:var(--red);border-color:var(--red)':'')+'">'+esc(t.status||'actief')+'</span></td>'
@@ -346,6 +346,19 @@ function renderMnaTab(el){
   el.querySelectorAll('.btn-verg').forEach(function(b){b.addEventListener('click',function(){vergrendel(b.dataset.id,b.dataset.naam);});});
   el.querySelectorAll('.btn-ontv').forEach(function(b){b.addEventListener('click',function(){ontvergrendel(b.dataset.id);});});
   el.querySelectorAll('.btn-del-mna').forEach(function(b){b.addEventListener('click',function(){deleteMna(b.dataset.id,b.dataset.naam);});});
+  function updSelMna(){var n=el.querySelectorAll('.mna-cb:checked').length;var btn=document.getElementById('btn-del-sel-mna');var cnt=document.getElementById('sel-cnt-mna');if(btn)btn.style.display=n>0?'inline-block':'none';if(cnt)cnt.textContent=n;}
+  var cbAllM=document.getElementById('cb-all-mna');
+  if(cbAllM)cbAllM.addEventListener('change',function(){el.querySelectorAll('.mna-cb:not(:disabled)').forEach(function(cb){cb.checked=cbAllM.checked;});updSelMna();});
+  el.querySelectorAll('.mna-cb').forEach(function(cb){cb.addEventListener('change',updSelMna);});
+  var btnDelM=document.getElementById('btn-del-sel-mna');
+  if(btnDelM)btnDelM.addEventListener('click',async function(){
+    var ids=Array.from(el.querySelectorAll('.mna-cb:checked')).map(function(cb){return cb.dataset.id;});
+    if(!ids.length)return;
+    if(!confirm('Verwijder '+ids.length+' traject(en) inclusief alle data en documenten?'))return;
+    btnDelM.disabled=true;btnDelM.textContent='Verwijderen...';
+    for(var i=0;i<ids.length;i++){try{await fetch(WORKER+'/admin/delete/mna/'+ids[i]+'?key='+encodeURIComponent(adminKey),{method:'POST'});}catch(e){}}
+    await refreshData();
+  });
 }
 
 // DOCUMENTEN TAB
