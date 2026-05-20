@@ -335,12 +335,36 @@ function renderMnaTab(el){
 // DOCUMENTEN TAB
 async function renderDocsTab(el){
   el.innerHTML='<div class="table-wrap"><div class="table-hdr"><div class="table-title">MNA Documenten</div>'
-    +'<div style="display:flex;gap:8px">'
+    +'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
     +'<input class="search-bar" id="doc-search" placeholder="Zoek traject of bestand..." style="width:180px">'
+    +'<button class="btn-red" id="btn-del-selected" style="font-size:12px;padding:7px 14px;display:none">&#10005; Verwijder geselecteerde (<span id="sel-count">0</span>)</button>'
     +'<button class="btn" style="font-size:12px;padding:7px 14px" id="btn-load-docs">&#8635; Laden</button>'
-    
     +'</div></div>'
     +'<div id="docs-body" class="empty">Klik op Laden om alle documenten op te halen.</div></div>';
+
+  function updateSelCount(){
+    var checked=document.querySelectorAll('.doc-cb:checked').length;
+    var btn=document.getElementById('btn-del-selected');
+    var cnt=document.getElementById('sel-count');
+    if(btn){btn.style.display=checked>0?'inline-block':'none';}
+    if(cnt)cnt.textContent=checked;
+  }
+
+  document.getElementById('btn-del-selected').addEventListener('click',async function(){
+    var ids=Array.from(document.querySelectorAll('.doc-cb:checked')).map(function(cb){return cb.dataset.id;});
+    if(!ids.length)return;
+    if(!confirm('Verwijder '+ids.length+' geselecteerde document(en)?'))return;
+    var btn=this;btn.disabled=true;btn.textContent='Verwijderen...';
+    var ok=0,fail=0;
+    for(var i=0;i<ids.length;i++){
+      try{
+        var r=await fetch(WORKER+'/mna/document/delete/'+ids[i]+'?key='+encodeURIComponent(adminKey),{method:'POST'});
+        if(r.ok)ok++;else fail++;
+      }catch(e){fail++;}
+    }
+    alert(ok+' verwijderd'+(fail>0?', '+fail+' mislukt':'')+'.');
+    document.getElementById('btn-load-docs').click();
+  });
 
   document.getElementById('btn-load-docs').addEventListener('click',async function(){
     var db=document.getElementById('docs-body');
@@ -350,12 +374,16 @@ async function renderDocsTab(el){
       if(!r.ok)throw new Error('HTTP '+r.status);
       var docs=await r.json();
       if(!docs.length){db.innerHTML='<div class="empty">Geen documenten gevonden.</div>';return;}
-      var html='<table><thead><tr><th>Traject</th><th>Fase</th><th>Bestand</th><th>Grootte</th><th>Opgeslagen</th><th>Status</th><th>Datum</th><th></th></tr></thead><tbody>';
+      var html='<table><thead><tr>'
+        +'<th style="width:32px"><input type="checkbox" id="cb-all" title="Alles selecteren"></th>'
+        +'<th>Traject</th><th>Fase</th><th>Bestand</th><th>Grootte</th><th>Opgeslagen</th><th>Status</th><th>Datum</th><th></th>'
+        +'</tr></thead><tbody>';
       docs.forEach(function(d){
         var gr=d.bestand_grootte?(d.bestand_grootte/1024/1024).toFixed(1)+'MB':'—';
         var dt=d.uploaded_at?new Date(d.uploaded_at).toLocaleString('nl-NL',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—';
         var vergr=d.vergrendeld||0;
         html+='<tr>'
+          +'<td><input type="checkbox" class="doc-cb" data-id="'+d.id+'"'+(vergr?' disabled title="Vergrendeld"':'')+' style="cursor:pointer"></td>'
           +'<td class="mono" style="font-size:11px;color:var(--teal)">'+esc(d.traject_id||'—')+'</td>'
           +'<td style="font-size:11px">'+esc(d.fase_id||'—')+'</td>'
           +'<td style="font-weight:500;color:var(--head)">'+esc(d.bestand_naam||'—')+'</td>'
@@ -374,14 +402,14 @@ async function renderDocsTab(el){
       });
       html+='</tbody></table>';
       db.innerHTML=html;
+      // Alles-selecteren checkbox
+      var cbAll=document.getElementById('cb-all');
+      if(cbAll){cbAll.addEventListener('change',function(){document.querySelectorAll('.doc-cb:not(:disabled)').forEach(function(cb){cb.checked=cbAll.checked;});updateSelCount();});}
+      db.querySelectorAll('.doc-cb').forEach(function(cb){cb.addEventListener('change',updateSelCount);});
       var ds=document.getElementById('doc-search');if(ds)ds.addEventListener('input',function(){var q=this.value.toLowerCase();db.querySelectorAll('tr').forEach(function(r){r.style.display=r.textContent.toLowerCase().includes(q)?'':'none';});});
       db.querySelectorAll('.btn-del-doc').forEach(function(b){b.addEventListener('click',function(){verwijderDoc(b.dataset.id);});});
-      db.querySelectorAll('.btn-verg-doc').forEach(function(b){
-        b.addEventListener('click',function(){vergrendelDoc(b.dataset.id,true);});
-      });
-      db.querySelectorAll('.btn-ontv-doc').forEach(function(b){
-        b.addEventListener('click',function(){vergrendelDoc(b.dataset.id,false);});
-      });
+      db.querySelectorAll('.btn-verg-doc').forEach(function(b){b.addEventListener('click',function(){vergrendelDoc(b.dataset.id,true);});});
+      db.querySelectorAll('.btn-ontv-doc').forEach(function(b){b.addEventListener('click',function(){vergrendelDoc(b.dataset.id,false);});});
     }catch(e){db.textContent='Fout bij laden: '+e.message;}
   });
 }
