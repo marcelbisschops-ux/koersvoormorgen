@@ -1348,7 +1348,7 @@ function bindEvents(){
     const sec=SECTIONS[ST.section];
     if(!sec.questions.every(q=>ST.answers[q.id]!==undefined))return;
     if(ST.section<SECTIONS.length-1){ST.section++;render();}
-    else{ST.scores=calcScores();ST.scenarios=rankScenarios(ST.scores);ST.screen='results';render();window.scrollTo(0,0);setTimeout(function(){generateAI();},100);saveScanToGroup().catch(()=>{});}
+    else{ST.scores=calcScores();ST.scenarios=rankScenarios(ST.scores);ST.screen='results';render();window.scrollTo(0,0);setTimeout(function(){generateAI();},100);saveScanToGroup().catch(function(e){console.error('saveScanToGroup fout:',e);});}
   });
   document.querySelectorAll('.l-btn').forEach(b=>{b.onclick=()=>{ST.answers[b.dataset.q]=parseInt(b.dataset.v);render();};});
   document.querySelectorAll('.q-select').forEach(s=>{s.onchange=()=>{if(s.value)ST.answers[s.dataset.q]=parseInt(s.value);render();};});
