@@ -586,7 +586,11 @@ async function generateAI(){
     +'Gebruik ALTIJD "uw kantoor" - nooit "dit kantoor" of "het kantoor".\n'
     +'VERBOD eerste persoon: NOOIT "ik", "mijn", "in mijn praktijk", "ik zie", "ik adviseer" of vergelijkbare ik-zinnen.\n'
     +'Schrijf in de derde persoon of onpersoonlijk: "uw kantoor", "de analyse toont", "het rapport concludeert".\n'
-    +'NOOIT beginnen met "Laat ik direct zijn" of vergelijkbare retorische zinnen.\n\n'
+    +'NOOIT beginnen met "Laat ik direct zijn" of vergelijkbare retorische zinnen.\n'
+    +(p.specialisme?'Specialisme "'+p.specialisme+'" meenemen: specifiek advies voor dit segment, geen generieke sector-aanbevelingen.\n':'')
+    +(p.software&&p.software.length>2?'Software "'+p.software+'" is bekend: ga ervan uit dat dit al in gebruik is, adviseer geen alternatieven tenzij er fundamentele problemen zijn.\n':'')
+    +(p.doelgroep?'Doelgroep "'+p.doelgroep+'" meenemen in commercieel en positioneringsadvies.\n':'')
+    +(p.context&&p.context.length>5?'Context van de eigenaar: "'+p.context+'" — dit is de persoonlijke situatie, verwerk dit in de aanbeveling.\n':'')+'\n'
     +'KANTOORPROFIEL:\n'
     +'- Naam: '+naam+' | Type: '+kantoorType+'\n'
     +'- Regio: '+(p.regio||'onbekend')+' | FTE: '+(p.fte||'?')+' | Omzet: \u20ac'+(p.omzet||'?')+'\n'
@@ -859,7 +863,7 @@ function render(){
 }
 
 function rIntro(){return`<div class="intro-wrap"><div class="intro-grid"></div><div class="intro-inner"><div class="wordmark"><div class="wdot"></div>KantoorInzicht<div class="wdot"></div></div><div class="eyebrow">Strategisch analyse-instrument &middot; AI-powered</div><h1 class="intro-h1">Strategische <em>Kantoor</em> Scan</h1><p class="intro-sub">Een PE-ge\xefnspireerde analyse van uw kantoor. In 10 minuten een volledig strategisch profiel, positioneringsmatrix en AI-adviesrapport op maat.</p><div class="kpi-row"><div class="kpi-item"><div class="kpi-num">11</div><div class="kpi-lbl">Dimensies</div></div><div class="kpi-div"></div><div class="kpi-item"><div class="kpi-num">37</div><div class="kpi-lbl">Vragen</div></div><div class="kpi-div"></div><div class="kpi-item"><div class="kpi-num">9</div><div class="kpi-lbl">Scenario&#39;s</div></div><div class="kpi-div"></div><div class="kpi-item"><div class="kpi-num">AI</div><div class="kpi-lbl">Advies</div></div></div><div class="dim-row">${SECTIONS.map(s=>`<span class="dim-chip">${s.label}</span>`).join('')}</div><div style="margin-bottom:2rem">
-<div style="font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--teal);margin-bottom:.75rem">Voor \xe9\xe9n kantoor</div>
+<div style="background:linear-gradient(135deg,var(--teal-bg) 0%,var(--panel) 100%);border:1.5px solid var(--teal);border-radius:var(--r2);padding:1rem 1.25rem;margin-bottom:1.5rem;display:flex;align-items:flex-start;gap:.75rem"><div style="font-size:1.25rem;flex-shrink:0">&#128161;</div><div><div style="font-size:13px;font-weight:600;color:var(--head);margin-bottom:.3rem">Hoe meer context, hoe scherper het advies</div><div style="font-size:12px;color:var(--mid);line-height:1.65">De verplichte velden leveren al een volledig rapport. Door ook uw specialisme, doelgroep, software en context in te vullen wordt het advies specifieker &#8212; afgestemd op uw situatie, niet op de sector als geheel.</div></div></div><div style="font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--teal);margin-bottom:.75rem">Voor \xe9\xe9n kantoor</div>
 <div class="route-cards" style="max-width:580px;margin:0 auto 1.5rem">
 <div class="route-card highlight" id="route-solo" style="border:2px solid var(--teal);background:var(--teal-bg)">
 <div class="route-icon">&#9672;</div>
