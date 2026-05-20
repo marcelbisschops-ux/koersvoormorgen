@@ -1271,11 +1271,18 @@ async function genereerGroepsAI() {
   }).join('\n');
   var dims = SECTIONS.map(function(s){ return s.label + ': ' + (cum[s.id]||0); }).join(', ');
   var prompt =
-    'Je bent Marcel Bisschops, senior M&A-adviseur. Gebruik "uw kantoor" of de kantoornaam direct.\n\n'
+    'Schrijf een uitgebreid strategisch groepsrapport in het Nederlands (800-1000 woorden).\n'
+    + 'Gebruik de kantoornaam of "het kantoor" direct. NOOIT eerste persoon (geen ik/mijn).\n'
+    + 'VERBOD: geen markdown-tabellen (geen |---|). Schrijf alles in lopende tekst.\n\n'
     + 'GROEP: ' + (d.group&&d.group.name||'Onbekend') + ' | Gem. score: ' + avg + '/100\n'
-    + 'Dimensiegemiddelden: ' + dims + '\n\nKANTOREN:\n' + info + '\n\n'
-    + 'Groepsrapport (max 600 woorden) met ## koppen:\n'
-    + '## Groepsprofiel\n## Financieel profiel\n## Sterktes en kansen\n## Aandachtspunten\n## Strategische opties\n## Per kantoor';
+    + 'Dimensiegemiddelden: ' + dims + '\n\nKANTOREN (gesorteerd op score):\n' + info + '\n\n'
+    + 'STRUCTUUR (gebruik exact deze ## koppen):\n'
+    + '## Groepsprofiel\n'
+    + '## Financieel profiel\n'
+    + '## Sterktes en kansen\n'
+    + '## Aandachtspunten\n'
+    + '## Strategische opties\n'
+    + '## Per kantoor (behandel elk kantoor kort met naam en 2-3 specifieke observaties)';
   try {
     var txt = await callAI(prompt);
     d._aiTekst = txt; d._aiLoading = false;
