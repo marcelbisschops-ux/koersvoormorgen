@@ -581,10 +581,11 @@ async function generateAI(){
     :'Onvoldoende data voor berekening. Vul EBITDA% en omzet in.';
 
   const mainPrompt=
-    'Je bent Marcel Bisschops, senior M&A-adviseur gespecialiseerd in accountants- en administratiekantoren.\n'
-    +'Schrijf een uitgebreid, eerlijk en direct strategisch adviesrapport in het Nederlands. Minimaal 1200 woorden.\n'
+    'Schrijf een uitgebreid, eerlijk en direct strategisch adviesrapport in het Nederlands. Minimaal 1200 woorden.\n'
     +'Begin DIRECT met ## Scorekaart en samenvatting. Geen titelpagina, geen "Opgesteld door"-regel.\n'
     +'Gebruik ALTIJD "uw kantoor" - nooit "dit kantoor" of "het kantoor".\n'
+    +'VERBOD eerste persoon: NOOIT "ik", "mijn", "in mijn praktijk", "ik zie", "ik adviseer" of vergelijkbare ik-zinnen.\n'
+    +'Schrijf in de derde persoon of onpersoonlijk: "uw kantoor", "de analyse toont", "het rapport concludeert".\n'
     +'NOOIT beginnen met "Laat ik direct zijn" of vergelijkbare retorische zinnen.\n\n'
     +'KANTOORPROFIEL:\n'
     +'- Naam: '+naam+' | Type: '+kantoorType+'\n'
@@ -648,8 +649,13 @@ async function generateAI(){
       +(signalen.length?'Financiele signalen: '+signalen.join(' | ')+'\n':'');
     const smvTekst=await callAI(smvPrompt);
     ST._smvKlaar=true;
+    // Optie B: post-processing - pak eerste 3 alineas zonder koppen/scores/bullets
+    var smvAlineas=smvTekst.split('\n\n')
+      .map(function(p){return p.replace(/^##[^\n]*/gm,'').replace(/^[\-\*] /gm,'').replace(/\*\*/g,'').replace(/^\|.*$/gm,'').trim();})
+      .filter(function(p){return p.length>40&&!p.startsWith('#')&&!p.startsWith('|');})
+      .slice(0,3);
     if(smvEl)smvEl.innerHTML='<h4>Strategisch profiel op hoofdlijnen</h4>'
-      +smvTekst.split('\n\n').filter(function(p){return p.trim();}).map(function(p){return '<p style="font-size:14px;color:var(--mid);line-height:1.8;margin-bottom:.6rem">'+p.trim()+'</p>';}).join('');
+      +smvAlineas.map(function(p){return '<p style="font-size:14px;color:var(--mid);line-height:1.8;margin-bottom:.6rem">'+p+'</p>';}).join('');
 
     // Call 2: volledig rapport
     let collected=await callAI(mainPrompt);
