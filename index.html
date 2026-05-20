@@ -468,11 +468,11 @@ function df(v){return v>=70?{l:'Sterk',c:'var(--teal)'}:v>=50?{l:'Gemiddeld',c:'
 
 /* ======== API ======== */
 /* ── Centrale AI transport + opschoon ── */
-async function callAI(prompt) {
+async function callAI(prompt, maxTokens) {
   const resp = await fetch(WORKER + '/ai', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ messages: [{ role: 'user', content: prompt }] })
+    body: JSON.stringify({ messages: [{ role: 'user', content: prompt }], max_tokens: maxTokens||4000 })
   });
   if (!resp.ok) {
     const errTxt = await resp.text().catch(() => String(resp.status));
@@ -647,7 +647,7 @@ async function generateAI(){
       +'Sterktes: '+strengths+' | Zwaktes: '+weaknesses+'\n'
       +'Aanbevolen scenario: '+(ST.scenarios&&ST.scenarios[0]?ST.scenarios[0].name:'onbekend')+'\n'
       +(signalen.length?'Financiele signalen: '+signalen.join(' | ')+'\n':'');
-    const smvTekst=await callAI(smvPrompt);
+    const smvTekst=await callAI(smvPrompt, 500);
     ST._smvKlaar=true;
     // Optie B: post-processing - pak eerste 3 alineas zonder koppen/scores/bullets
     var smvAlineas=smvTekst.split('\n\n')
