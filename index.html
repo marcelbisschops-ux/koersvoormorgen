@@ -645,6 +645,8 @@ async function generateAI(){
     if(smvEl)smvEl.innerHTML=renderSummary();
 
     // Opslaan in database en rapportcode ophalen
+    // Wacht 2s zodat saveScanToGroup zeker klaar is en ST.savedScanId gevuld is
+    setTimeout(function(){
     fetch(WORKER+'/rapport/save',{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
         scan_id:ST.savedScanId||'',
@@ -662,6 +664,7 @@ async function generateAI(){
     }).then(function(r){return r.json();}).then(function(d){
       if(d&&d.id){ST.savedScanId=d.id;render();}
     }).catch(()=>{});
+    },2000);
 
     const profileEmail=(ST.profile&&ST.profile.email)||'';
     if(profileEmail){
@@ -1348,7 +1351,7 @@ function bindEvents(){
     const sec=SECTIONS[ST.section];
     if(!sec.questions.every(q=>ST.answers[q.id]!==undefined))return;
     if(ST.section<SECTIONS.length-1){ST.section++;render();}
-    else{ST.scores=calcScores();ST.scenarios=rankScenarios(ST.scores);ST.screen='results';render();window.scrollTo(0,0);saveScanToGroup().catch(function(e){console.error('saveScanToGroup fout:',e);}).finally(function(){setTimeout(function(){generateAI();},100);});}
+    else{ST.scores=calcScores();ST.scenarios=rankScenarios(ST.scores);ST.screen='results';render();window.scrollTo(0,0);setTimeout(function(){generateAI();},100);saveScanToGroup().catch(function(e){console.error('saveScanToGroup fout:',e);});}
   });
   document.querySelectorAll('.l-btn').forEach(b=>{b.onclick=()=>{ST.answers[b.dataset.q]=parseInt(b.dataset.v);render();};});
   document.querySelectorAll('.q-select').forEach(s=>{s.onchange=()=>{if(s.value)ST.answers[s.dataset.q]=parseInt(s.value);render();};});
@@ -1376,8 +1379,17 @@ function bindEvents(){
       if(!resp.ok||data.error)throw new Error((data.error||'Rapport niet gevonden')+' (code: '+id+')');
       // Herstel state volledig
       ST.savedScanId=data.id||data.scan_id||id;
-      ST.scores=JSON.parse(data.scores||'{}');
-      ST.scenarios=[{name:data.top_scenario||'',score:80},{name:'',score:0},{name:'',score:0}];
+      var parsedScores={};
+      try{parsedScores=JSON.parse(data.scores||'{}');}catch(e){parsedScores={};}
+      ST.scores=parsedScores;
+      // Herstel scenarios via rankScenarios zodat rResults correct werkt
+      try{ST.scenarios=rankScenarios(parsedScores);}catch(e){
+        ST.scenarios=Object.values(SCENARIOS).map(function(sc,i){return{k:Object.keys(SCENARIOS)[i],...sc,score:50};});
+      }
+      // Forceer top_scenario als eerste
+      if(data.top_scenario){
+        ST.scenarios.sort(function(a,b){return a.name===data.top_scenario?-1:b.name===data.top_scenario?1:0;});
+      }
       ST.profile={
         naam:data.kantoor_naam||'',
         email:data.email||'',
