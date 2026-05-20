@@ -558,32 +558,36 @@ async function generateAI(){
   try{
     ST.aiLoading=true;
     // Show loading UI
-    const el=document.getElementById('ai-out');
-    if(el)el.innerHTML='<div class="ai-generating"><div class="ai-gen-title">Strategisch rapport wordt opgesteld</div><div style="font-size:12px;color:var(--muted);margin:.25rem 0 1rem">Dit duurt 2\u20133 minuten \u2014 het rapport verschijnt in \xe9\xe9n keer</div><div class="ai-gen-bar-wrap"><div class="ai-gen-bar" id="gen-progress-bar"></div></div><div class="ai-gen-steps"><div class="ai-gen-step active" id="step-0"><div class="ai-gen-dot"></div>Kantoorprofiel en scores analyseren</div><div class="ai-gen-step" id="step-1"><div class="ai-gen-dot"></div>Kritieke inzichten formuleren</div><div class="ai-gen-step" id="step-2"><div class="ai-gen-dot"></div>Strategisch advies per fase schrijven</div><div class="ai-gen-step" id="step-3"><div class="ai-gen-dot"></div>Financi\xeble analyse en scenario&#39;s</div><div class="ai-gen-step" id="step-4"><div class="ai-gen-dot"></div>90-dagen actieplan opstellen</div><div class="ai-gen-step" id="step-5"><div class="ai-gen-dot"></div>Bijlage met vragenlijst samenstellen</div></div></div>';
-
-    // Collect main prompt silently
-    let collected='';
     const resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:mainPrompt}]})});
     if(!resp.ok)throw new Error('HTTP '+resp.status);
-    const reader=resp.body.getReader();
-    setTimeout(()=>setStep(1),5000);
-    setTimeout(()=>setStep(2),12000);
-    setTimeout(()=>setStep(3),22000);
-    setTimeout(()=>setStep(4),35000);
-    while(true){
-      const{done,value}=await reader.read();if(done)break;
-      const chunk=dec.decode(value,{stream:true});
-      for(const line of chunk.split('\n')){
-        if(line.startsWith('data:')){
-          const d=line.slice(5).trim();if(d==='[DONE]')continue;
-          try{const j=JSON.parse(d);if(j.type==='content_block_delta'&&j.delta&&j.delta.text){
-            collected+=j.delta.text;
-            const el2=document.getElementById('ai-out');
-            if(el2)el2.innerHTML=renderAIText(collected,true);
-          }}catch(e){}
-        }
-      }
-    }
+    const data=await resp.json();
+    const collected=data.text||'';
+    if(!collected)throw new Error('Leeg rapport');
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
