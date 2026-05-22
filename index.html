@@ -529,20 +529,28 @@ async function generateAI(){
   const sbi=p.sbi||'';
   const isAdminKantoor=(p.kantoorType||'').toLowerCase().includes('admin')||(p.specialisme||'').toLowerCase().includes('admin')||sbi==='6920.4'||sbi==='6920.5';
   const isBelasting=sbi==='6920.3';
-  // Benchmarks: Full Finance 2024-2025 als primaire bron, D1 als override, Simplicate als fallback
-  // Full Finance sectie 5.3: brutowinst/FTE 2023: klein acc €131K, groot €139K, admin €118K
-  // Simplicate Q3 2025: admin €123K, accountant €133K (gemiddeld, groter steekproef)
+  // ── Benchmark prioriteitvolgorde (expliciet) ──
+  // 1. Full Finance/Novak (primair) — brutowinst/FTE, representatief voor MKB-kantoren 1-250 FTE
+  //    Klein acc ≤20 FTE: €131K | Groot acc >20 FTE: €139K | Admin/bel: €118K (2023)
+  // 2. Simplicate (fallback) — omzet/FTE, steekproef ~400 kantoren 5-120 FTE
+  //    Admin: €123K | Accountant: €133K | Top 20%: €164K (Q3 2025)
+  // 3. CBS (contextueel) — omzet/arbeidsjaar SBI 692, officieel maar deeltijdgecorrigeerd
+  //    Niet gebruikt als primaire benchmark; wel als groeitrend in AI-prompt
   const bm=ST._benchmarks||{};
   const isBelastingAdv=sbi==='6920.3';
-  const defaultFteAdm=isAdminKantoor?120000:0; // FF €118K + ~2% groei 2024
-  const defaultFteAcc=isBelastingAdv?133000:135000; // FF €131-139K + groei
-  const defaultFte=isAdminKantoor?defaultFteAdm:defaultFteAcc;
+  // Hardcoded fallbacks op basis van Full Finance 2024-2025
+  const ffFteAdm=120000;  // FF €118K + ~2% groei 2024
+  const ffFteAcc=isAdminKantoor?ffFteAdm:(p.fte&&parseInt(p.fte)>20?139000:131000); // klein vs groot
+  // Prioriteit: FF uit D1 → Simplicate uit D1 → hardcoded FF
   const benchmarkFte=isAdminKantoor
-    ?(bm['omzet_fte_admin']?bm['omzet_fte_admin'].waarde:defaultFte)
-    :(bm['omzet_fte_accountant']?bm['omzet_fte_accountant'].waarde:bm['omzet_fte_gemiddeld']?bm['omzet_fte_gemiddeld'].waarde:defaultFte);
+    ?(bm['omzet_fte_admin']?.waarde||bm['omzet_fte_admin_av']?.waarde||ffFteAdm)
+    :(bm['omzet_fte_accountant']?.waarde||bm['omzet_fte_accountant_av50']?.waarde||bm['omzet_fte_gemiddeld']?.waarde||ffFteAcc);
   const benchmarkBron=isAdminKantoor
-    ?(bm['omzet_fte_admin']?bm['omzet_fte_admin'].bron:'Full Finance/Novak 2024-2025')
-    :(bm['omzet_fte_accountant']?bm['omzet_fte_accountant'].bron:bm['omzet_fte_gemiddeld']?bm['omzet_fte_gemiddeld'].bron:'Full Finance/Novak 2024-2025');
+    ?(bm['omzet_fte_admin']?.bron||bm['omzet_fte_admin_av']?.bron||'Full Finance/Novak 2024-2025')
+    :(bm['omzet_fte_accountant']?.bron||bm['omzet_fte_accountant_av50']?.bron||bm['omzet_fte_gemiddeld']?.bron||'Full Finance/Novak 2024-2025');
+  // CBS groeitrend ophalen voor contextbericht
+  const cbsGroeiIndex=bm['omzet_index_sbi6920']?.waarde||null;
+  const cbsGroeiPeriode=bm['omzet_index_sbi6920']?.peildatum||'';
   const sbiLabel=sbi?(' | SBI: '+sbi):''; 
   const benchmarkLabel='\u20ac'+(benchmarkFte/1000).toFixed(0)+'K (bron: '+benchmarkBron+')';
 
@@ -643,6 +651,7 @@ async function generateAI(){
     +'KANTOORPROFIEL:\n'
     +'- Naam: '+naam+' | Type: '+kantoorType+(sbi?' | SBI: '+sbi:'')+'\n'
     +'- Sectorale benchmarks (Full Finance/Novak 2024-2025): brutowinst/FTE klein acc €131K, groot €139K, admin €118K. Bedrijfsresultaat klein acc 21,7%, groot 17,4%, admin 18,9%. Uurtarief personeel klein €95, groot €114, admin €93.\n'
+    +(cbsGroeiIndex?'- CBS omzetgroei SBI 6920 ('+cbsGroeiPeriode+'): index '+cbsGroeiIndex+' (2021=100). Gebruik dit als sectorale groeicontext, niet als FTE-benchmark.\n':'')
     +'- Regio: '+(p.regio||'onbekend')+' | FTE: '+(p.fte||'?')+' | Omzet: \u20ac'+(p.omzet||'?')+'\n'
     +'- EBITDA: '+(p.ebitda||'?')+(ebitdaBedrag>0?' (\u20ac'+ebitdaBedrag.toLocaleString('nl-NL')+' absoluut)':'')+'\n'
     +'- Vaste omzet: '+(p.recurring||'?')+'%\n'
