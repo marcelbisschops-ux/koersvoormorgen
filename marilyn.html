@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>KantoorInzicht — Beheer</title>
-<!-- v2.1 -->
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -1137,6 +1136,7 @@ async function toonDetail(id,naam){
         var prompt='Schrijf een professionele Letter of Intent (LoI) in het Nederlands voor een M&A traject in de accountancy/administratie sector.\n\nGEGEVENS:\n- Doelkantoor (verkoper): '+esc(d.traject.kantoor_naam||naam)+'\n- Contactpersoon verkoper: '+esc(verkoperNaam)+'\n- Kopende partij: '+esc(koperNaam)+' ('+esc(koperRv)+')\n- Contactpersoon koper: '+esc(koperContact)+'\n- Trajecttype: '+esc(d.traject.traject_type||'Verkoop')+'\n- Datum: '+datum+'\n- Adviseur: Marcel Bisschops, Bisschops Financing BV\n\nSTRUCTUUR:\n1. Aanhef en introductie (beide partijen met volledige namen)\n2. Intentie en scope van de voorgenomen transactie\n3. Indicatieve transactiewaarde (PM - nader te bepalen na due diligence)\n4. Due diligence proces en tijdlijn (indicatief 8 weken)\n5. Exclusiviteit (60 dagen)\n6. Vertrouwelijkheid\n7. Niet-bindend karakter\n8. Ondertekening beide partijen + adviseur\n\nFormeel, juridisch correct Nederlands. Vul bekende gegevens in, gebruik [INVULLEN] alleen waar echt niets bekend is.';
         var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:2500})});
         var rd=await resp.json();
+        if(!resp.ok)throw new Error('Worker HTTP '+resp.status+': '+(rd.error||JSON.stringify(rd).substring(0,100)));
         var tekst=rd.content&&rd.content[0]?rd.content[0].text:(rd.error||'Fout bij genereren.');
         loiOut.innerHTML='<div style="font-size:11px;font-weight:600;color:var(--gold);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.75rem">Letter of Intent · '+esc(d.traject.kantoor_naam||naam)+'</div>'
           +'<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:1.25rem;font-size:13px;line-height:1.9;color:var(--sub);white-space:pre-wrap;font-family:Georgia,serif;max-height:300px;overflow-y:auto">'+esc(tekst)+'</div>'
@@ -1145,7 +1145,7 @@ async function toonDetail(id,naam){
         document.getElementById('loi-email-btn').addEventListener('click',async function(){var ebtn=this;ebtn.disabled=true;ebtn.textContent='Versturen...';var toList=[d.traject.contact_email||'marcel@bisschopsfinancing.nl'];if(d.traject.begeleider_email&&d.traject.begeleider_email!==toList[0])toList.push(d.traject.begeleider_email);var er=await fetch(WORKER+'/mna/loi/email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:id,loi_tekst:tekst,to:toList})});var ed=await er.json();if(ed.ok){ebtn.textContent='✓ Verstuurd';setTimeout(function(){ebtn.textContent='✉ Stuur';ebtn.disabled=false;},3000);}else{alert('Fout: '+(ed.error||'onbekend'));ebtn.disabled=false;ebtn.textContent='✉ Stuur naar partijen';}});
         fetch(WORKER+'/mna/loi/email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:id,loi_tekst:tekst,to:[]})}).catch(function(){});
         btn.textContent='Opnieuw genereren';btn.disabled=false;
-      }catch(e){loiOut.innerHTML='<div style="color:var(--red);font-size:13px">Fout: '+e.message+'</div>';btn.textContent='Genereer LoI';btn.disabled=false;}
+      }catch(e){loiOut.innerHTML='<div style="color:var(--red);font-size:13px">Fout: '+e.message+'<br><small>'+e.stack+'</small></div>';btn.textContent='Genereer LoI';btn.disabled=false;console.error('LoI fout:',e);}
     });
 
     // AI-analyse knop
