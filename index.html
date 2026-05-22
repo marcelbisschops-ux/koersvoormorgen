@@ -1308,7 +1308,7 @@ async function genereerKantoorAI(o, container) {
     ? Math.round(parseFloat(String(o.revenue).replace(/[^0-9]/g,'')) / parseFloat(o.fte)) : 0;
   var isAdmin = (o.kantoorType||'').toLowerCase().includes('admin') || (o.specialisme||'').toLowerCase().includes('admin');
   var bFte = isAdmin?(ST._benchmarks&&ST._benchmarks['omzet_fte_admin']?ST._benchmarks['omzet_fte_admin'].waarde:120000):(ST._benchmarks&&ST._benchmarks['omzet_fte_accountant']?ST._benchmarks['omzet_fte_accountant'].waarde:ST._benchmarks&&ST._benchmarks['omzet_fte_gemiddeld']?ST._benchmarks['omzet_fte_gemiddeld'].waarde:133000);
-  var bLabel = isAdmin ? '\u20ac'+(bFte/1000).toFixed(0)+'K';
+  var bLabel = isAdmin ? '\u20ac'+(bFte/1000).toFixed(0)+'K (admin)' : '\u20ac'+(bFte/1000).toFixed(0)+'K';
   var prompt =
     'Schrijf een strategisch rapport. Gebruik "uw kantoor". Geen eerste persoon. Begin direct met ## Strategisch profiel.\n\n'
     + 'Kantoor: ' + (o.name||'Anoniem') + ' | Score: ' + o.overall + '/100\n'
