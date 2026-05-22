@@ -232,7 +232,7 @@ function renderScansTab(el){
         +'<td><span class="tag">'+esc((s.top_scenario||'—').split(' ').slice(0,2).join(' '))+'</span></td>'
         +'<td style="font-size:11px;color:var(--muted)">'+esc(s.group_name||s.group_id||'Solo')+'</td>'
         +'<td style="white-space:nowrap;display:flex;gap:4px;align-items:center">'+(openRow===i?'▲':'▼')
-        +' <button class="btn-ghost btn-maak-traject" data-id="'+(s.id||'')+'" data-naam="'+esc(s.office_name||'Anoniem')+'" data-email="'+esc(s.office_email||'')+'" style="font-size:10px;padding:2px 8px;color:var(--teal)">&#43; Traject</button>'
+        +' <button class="btn-ghost btn-maak-traject" data-id="'+(s.id||'')+'" data-naam="'+esc(s.office_name||'Anoniem')+'" data-email="'+esc(s.office_email||'')+'" data-fte="'+esc(s.fte||'')+'" data-revenue="'+esc(s.revenue||'')+'" data-region="'+esc(s.region||'')+'" data-overall="'+(s.overall||'')+'" data-scenario="'+esc(s.top_scenario||'')+'" data-scores="'+esc(typeof s.scores==='string'?s.scores:JSON.stringify(s.scores||{}))+'" style="font-size:10px;padding:2px 8px;color:var(--teal)">&#43; Traject</button>'
         +' <button class="btn-del-scan btn-red" data-id="'+(s.id||'')+'" style="font-size:10px;padding:2px 6px">&#10005;</button></td>'
         +'</tr>'
         +'<tr><td colspan="10" style="padding:0"><div class="detail-panel'+(openRow===i?' open':'')+'"><div class="detail-grid">'
@@ -256,7 +256,7 @@ function renderScansTab(el){
     b.addEventListener('click',function(e){e.stopPropagation();deleteScan(b.dataset.id);});
   });
   el.querySelectorAll('.btn-maak-traject').forEach(function(b){
-    b.addEventListener('click',function(e){e.stopPropagation();maakTrajectVanScan(b.dataset.id,b.dataset.naam,b.dataset.email);});
+    b.addEventListener('click',function(e){e.stopPropagation();maakTrajectVanScan(b.dataset.id,b.dataset.naam,b.dataset.email,b.dataset.fte,b.dataset.revenue,b.dataset.region,b.dataset.overall,b.dataset.scenario,b.dataset.scores);});
   });
   function updSelScans(){var n=el.querySelectorAll('.scan-cb:checked').length;var btn=document.getElementById('btn-del-sel-scans');var cnt=document.getElementById('sel-cnt-scans');if(btn)btn.style.display=n>0?'inline-block':'none';if(cnt)cnt.textContent=n;}
   var cbAllS=document.getElementById('cb-all-scans');
@@ -936,20 +936,58 @@ async function ontvergrendel(id){
   }catch(e){alert('Verbindingsfout.');}
 }
 
-async function maakTrajectVanScan(scanId, naam, email){
-  if(!confirm('M&A traject aanmaken voor '+naam+'?'))return;
+async function maakTrajectVanScan(scanId,naam,email,fte,revenue,region,overall,scenario,scoresStr){
+  if(!confirm('M&A traject aanmaken voor '+naam+'? Scan-data wordt automatisch ingevuld in het traject.'))return;
   try{
+    // Stap 1: traject aanmaken
     var r=await fetch(WORKER+'/mna/scan-to-traject?key='+encodeURIComponent(adminKey),{
       method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({scan_id:scanId,kantoor_naam:naam,contact_email:email,traject_type:'Verkoop'})
     });
     var d=await r.json();
-    if(d.ok){
-      mnaList.unshift({id:d.code,kantoor_naam:naam,traject_type:'Verkoop',koper_code:d.koper_code,tussen_code:d.tussen_code,status:'actief',created_at:Date.now()});
-      alert('Traject aangemaakt!\n\nVerkoperscode: '+d.code+'\nKoperscode: '+d.koper_code);
-      activeTab='mna';renderDashboard();
-    } else alert('Fout: '+(d.error||'onbekend'));
-  }catch(e){alert('Verbindingsfout.');}
+    if(!d.ok){alert('Fout: '+(d.error||'onbekend'));return;}
+    var code=d.code;
+    mnaList.unshift({id:code,kantoor_naam:naam,traject_type:'Verkoop',koper_code:d.koper_code,tussen_code:d.tussen_code,status:'actief',created_at:Date.now()});
+
+    // Stap 2: scan-data doorzetten naar MNA fasen
+    var omzetNum=revenue?parseFloat(String(revenue).replace(/[^0-9]/g,''))||0:0;
+    var fteNum=fte?parseInt(fte)||0:0;
+    var omzetPfte=omzetNum&&fteNum?Math.round(omzetNum/fteNum):0;
+    var scores={};
+    try{scores=JSON.parse(scoresStr||'{}');}catch(e){}
+
+    // Financieel fase
+    var finData={
+      omzet3:{value:revenue||'',label:'Jaaromzet jaar 3 (meest recent)',req:true},
+      declarab:{value:omzetPfte>0?'€'+omzetPfte.toLocaleString('nl-NL')+' per FTE (berekend uit scan)':'',label:'Declarabiliteit (%)',req:false}
+    };
+    await fetch(WORKER+'/mna/save',{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':adminKey},
+      body:JSON.stringify({code:code,fase_id:'financieel',data_json:finData,notitie:'Automatisch ingevuld vanuit KantoorInzicht scan (score: '+overall+'/100)'})
+    }).catch(function(){});
+
+    // Partner fase
+    var partnerData={
+      fte:{value:fte||'',label:'Totaal FTE',req:true}
+    };
+    await fetch(WORKER+'/mna/save',{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':adminKey},
+      body:JSON.stringify({code:code,fase_id:'partner',data_json:partnerData,notitie:''})
+    }).catch(function(){});
+
+    // Strategisch fase
+    var sc=scores||{};
+    var strategischNotitie='KantoorInzicht scan scores:\n'+Object.entries(sc).map(function(kv){return '- '+kv[0]+': '+kv[1]+'/100';}).join('\n')+'\nAanbevolen scenario: '+(scenario||'\u2014')+'\nOverall score: '+(overall||'\u2014')+'/100';
+  
+    var stratData={
+      marktpos:{value:region||'',label:'Marktpositie / regio',req:true},
+      synergie:{value:scenario||'',label:'Gewenste vervolgstap eigenaar',req:true}
+    };
+    await fetch(WORKER+'/mna/save',{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':adminKey},
+      body:JSON.stringify({code:code,fase_id:'strategisch',data_json:stratData,notitie:strategischNotitie})
+    }).catch(function(){});
+
+    alert('Traject aangemaakt en scan-data ingevuld!\n\nVerkoperscode: '+code+'\nKoperscode: '+d.koper_code+'\n\nIngevuld: omzet, FTE, regio, scenario en dimensiescores.');
+    activeTab='mna';renderDashboard();
+  }catch(e){alert('Verbindingsfout: '+e.message);}
 }
 
 renderLogin();
