@@ -132,7 +132,23 @@ async function doLogin(){
 function logout(){
   adminKey='';scans=[];callbacks=[];mnaList=[];
   document.getElementById('hdr-actions').style.display='none';
-  renderLogin();
+  async function maakTrajectVanScan(scanId, naam, email){
+  if(!confirm('M&A traject aanmaken voor '+naam+'?'))return;
+  try{
+    var r=await fetch(WORKER+'/mna/scan-to-traject?key='+encodeURIComponent(adminKey),{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({scan_id:scanId,kantoor_naam:naam,contact_email:email,traject_type:'Verkoop'})
+    });
+    var d=await r.json();
+    if(d.ok){
+      mnaList.unshift({id:d.code,kantoor_naam:naam,traject_type:'Verkoop',koper_code:d.koper_code,tussen_code:d.tussen_code,status:'actief',created_at:Date.now()});
+      alert('Traject aangemaakt!\n\nVerkoperscode: '+d.code+'\nKoperscode: '+d.koper_code);
+      activeTab='mna';renderDashboard();
+    } else alert('Fout: '+(d.error||'onbekend'));
+  }catch(e){alert('Verbindingsfout.');}
+}
+
+renderLogin();
 }
 
 async function refreshData(){
@@ -231,8 +247,9 @@ function renderScansTab(el){
         +'<td><span class="score-badge '+dc(s.overall)+'">'+(s.overall||'—')+'</span></td>'
         +'<td><span class="tag">'+esc((s.top_scenario||'—').split(' ').slice(0,2).join(' '))+'</span></td>'
         +'<td style="font-size:11px;color:var(--muted)">'+esc(s.group_name||s.group_id||'Solo')+'</td>'
-        +'<td style="white-space:nowrap">'+(openRow===i?'▲':'▼')
-        +' <button class="btn-del-scan btn-red" data-id="'+(s.id||'')+'" style="font-size:10px;padding:2px 6px;margin-left:4px">&#10005;</button></td>'
+        +'<td style="white-space:nowrap;display:flex;gap:4px;align-items:center">'+(openRow===i?'▲':'▼')
+        +' <button class="btn-ghost btn-maak-traject" data-id="'+(s.id||'')+'" data-naam="'+esc(s.office_name||'Anoniem')+'" data-email="'+esc(s.office_email||'')+'" style="font-size:10px;padding:2px 8px;color:var(--teal)">&#43; Traject</button>'
+        +' <button class="btn-del-scan btn-red" data-id="'+(s.id||'')+'" style="font-size:10px;padding:2px 6px">&#10005;</button></td>'
         +'</tr>'
         +'<tr><td colspan="10" style="padding:0"><div class="detail-panel'+(openRow===i?' open':'')+'"><div class="detail-grid">'
         +(scores||'<div style="color:var(--muted);font-size:12px">Geen scoredata.</div>')
@@ -253,6 +270,9 @@ function renderScansTab(el){
   });
   el.querySelectorAll('.btn-del-scan').forEach(function(b){
     b.addEventListener('click',function(e){e.stopPropagation();deleteScan(b.dataset.id);});
+  });
+  el.querySelectorAll('.btn-maak-traject').forEach(function(b){
+    b.addEventListener('click',function(e){e.stopPropagation();maakTrajectVanScan(b.dataset.id,b.dataset.naam,b.dataset.email);});
   });
   function updSelScans(){var n=el.querySelectorAll('.scan-cb:checked').length;var btn=document.getElementById('btn-del-sel-scans');var cnt=document.getElementById('sel-cnt-scans');if(btn)btn.style.display=n>0?'inline-block':'none';if(cnt)cnt.textContent=n;}
   var cbAllS=document.getElementById('cb-all-scans');
@@ -755,6 +775,22 @@ async function ontvergrendel(id){
     var d=await r.json();
     if(d.ok){var t=mnaList.find(function(x){return x.id===id;});if(t)t.status='actief';renderTab();}
     else alert('Fout: '+(d.error||'onbekend'));
+  }catch(e){alert('Verbindingsfout.');}
+}
+
+async function maakTrajectVanScan(scanId, naam, email){
+  if(!confirm('M&A traject aanmaken voor '+naam+'?'))return;
+  try{
+    var r=await fetch(WORKER+'/mna/scan-to-traject?key='+encodeURIComponent(adminKey),{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({scan_id:scanId,kantoor_naam:naam,contact_email:email,traject_type:'Verkoop'})
+    });
+    var d=await r.json();
+    if(d.ok){
+      mnaList.unshift({id:d.code,kantoor_naam:naam,traject_type:'Verkoop',koper_code:d.koper_code,tussen_code:d.tussen_code,status:'actief',created_at:Date.now()});
+      alert('Traject aangemaakt!\n\nVerkoperscode: '+d.code+'\nKoperscode: '+d.koper_code);
+      activeTab='mna';renderDashboard();
+    } else alert('Fout: '+(d.error||'onbekend'));
   }catch(e){alert('Verbindingsfout.');}
 }
 

@@ -470,7 +470,7 @@ function df(v){return v>=70?{l:'Sterk',c:'var(--teal)'}:v>=50?{l:'Gemiddeld',c:'
 /* ======== API ======== */
 /* ── Centrale AI transport + opschoon ── */
 async function callAI(prompt, maxTokens) {
-  const resp = await fetch(WORKER + '/ai', {
+  const resp = await fetch(WORKER + '/ai', {signal:AbortSignal.timeout(120000),
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ messages: [{ role: 'user', content: prompt }], max_tokens: maxTokens||4000 })
@@ -765,11 +765,21 @@ async function generateAI(){
     ST.aiText='__ERROR__';
     console.error('generateAI fout:',err);
     const _errEl=document.getElementById('ai-out');
+    const _msg=err.message||'Onbekende fout';
+    const _isNetwork=_msg.toLowerCase().includes('fetch')||_msg.toLowerCase().includes('network')||_msg.toLowerCase().includes('failed')||err.name==='TypeError';
+    const _isTimeout=_msg.toLowerCase().includes('timeout')||_msg.toLowerCase().includes('aborted');
+    const _isServer=_msg.toLowerCase().includes('worker fout 5');
+    const _uitleg=_isTimeout?'De verbinding heeft te lang geduurd. Controleer uw internetverbinding en probeer opnieuw.'
+      :_isNetwork?'Geen verbinding met de server. Controleer uw internetverbinding.'
+      :_isServer?'De server heeft een fout gemeld. Probeer het over een minuut opnieuw.'
+      :'Het rapport kon niet worden gegenereerd. Probeer het opnieuw.';
     if(_errEl)_errEl.innerHTML=
-      '<div style="padding:1.5rem;text-align:center">'
-      +'<div style="font-size:1.5rem;margin-bottom:.5rem">&#9888;</div>'
-      +'<p style="color:var(--red);font-size:13px;margin-bottom:.75rem"><strong>Fout:</strong> '+(err.message||'Onbekende fout')+'</p>'
-      +'<button class="btn-gen" onclick="generateAI()" style="margin:0 auto">Opnieuw proberen</button>'
+      '<div style="padding:2rem;text-align:center;max-width:420px;margin:0 auto">'
+      +'<div style="font-size:2rem;margin-bottom:.75rem">&#9888;&#65039;</div>'
+      +'<p style="color:var(--head);font-size:14px;font-weight:600;margin-bottom:.5rem">Rapport niet beschikbaar</p>'
+      +'<p style="color:var(--mid);font-size:13px;margin-bottom:1.25rem">'+_uitleg+'</p>'
+      +'<button class="btn-gen" onclick="generateAI()" style="margin:0 auto 1rem">&#8635; Opnieuw proberen</button>'
+      +'<br><button class="btn-ghost" onclick="window.location.reload()" style="margin:0 auto;font-size:12px">Pagina herladen</button>'
       +'</div>';
     updateAI(true);
   }
@@ -797,7 +807,12 @@ async function loadGroup(gid){
     const resp=await fetch(`${WORKER}/group/${gid}`);
     if(!resp.ok)throw new Error('niet gevonden');
     ST.groupData=await resp.json();ST.screen='dashboard';
-  }catch(e){ST.groupData=null;ST.screen='dashboard-error';window._dashLoading=false;}
+  }catch(e){
+    console.error('Groep laden fout:',e);
+    ST.groupData=null;
+    ST.screen='dashboard-error';
+    window._dashLoading=false;
+  }
   ST.groupLoading=false;render();
 }
 
@@ -1499,11 +1514,12 @@ function bindEvents(){
     if(errEl)errEl.style.display='none';
     btn.textContent='Laden...';btn.disabled=true;
     try{
-      var resp=await fetch(WORKER+'/rapport/'+id);
+      var resp=await fetch(WORKER+'/rapport/'+id,{signal:AbortSignal.timeout(15000)});
       var data={};
       try{data=await resp.json();}catch(e){}
       console.log('Rapport ophalen:',resp.status,JSON.stringify(data).substring(0,200));
-      if(!resp.ok||data.error)throw new Error((data.error||'Rapport niet gevonden')+' (code: '+id+')');
+      if(resp.status===404)throw new Error('Rapport met code '+id+' bestaat niet. Controleer de code of vraag een nieuw rapport aan.');
+      if(!resp.ok||data.error)throw new Error(data.error||'Rapport niet gevonden (code: '+id+')');
       // Herstel state volledig
       ST.savedScanId=data.id||data.scan_id||id;
       var parsedScores={};
@@ -1536,7 +1552,12 @@ function bindEvents(){
       render();
     }catch(e){
       console.error('Rapport ophalen fout:',e);
-      if(errEl){errEl.style.display='block';errEl.textContent='Rapport niet gevonden: '+e.message;}
+      const _isNet=e.name==='TypeError'||e.message.toLowerCase().includes('fetch')||e.message.toLowerCase().includes('network');
+      const _isNotFound=e.message.toLowerCase().includes('niet gevonden')||e.message.toLowerCase().includes('not found');
+      const _msg=_isNet?'Geen verbinding. Controleer uw internet en probeer opnieuw.'
+        :_isNotFound?'Rapport niet gevonden. Controleer de code — deze is hoofdlettergevoelig. Rapporten worden maximaal 12 maanden bewaard.'
+        :'Er ging iets mis: '+e.message;
+      if(errEl){errEl.style.display='block';errEl.textContent=_msg;}
     }
     btn.textContent='Rapport ophalen →';btn.disabled=false;
   });
