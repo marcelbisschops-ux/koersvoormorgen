@@ -820,7 +820,11 @@ async function renderLogboekScreen(app){
     +'<div id="lb-fases" style="display:flex;gap:6px;margin-bottom:1.25rem;flex-wrap:wrap"></div>'
     +'<div id="lb-entries" style="margin-bottom:1.25rem"><div style="color:var(--muted);font-size:13px">Laden...</div></div>'
     +(isBegOrAdmin?'<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem">'
-      +'<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem">Notitie toevoegen</div>'
+      +'<div style="display:flex;gap:8px;margin-bottom:.75rem">'
+      +'<button id="lb-tab-notitie" class="btn" style="font-size:12px;padding:6px 14px">&#128221; Notitie</button>'
+      +'<button id="lb-tab-meeting" class="btn-ghost" style="font-size:12px;padding:6px 14px">&#127909; Meeting vastleggen</button>'
+      +'</div>'
+      +'<div id="lb-panel-notitie">'
       +'<textarea id="lb-bericht" rows="3" placeholder="Schrijf een logboeknotitie..." style="width:100%;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:IBM Plex Sans,sans-serif;font-size:13px;padding:10px 12px;outline:none;resize:vertical;margin-bottom:.75rem"></textarea>'
       +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
       +'<select id="lb-fase" style="background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:IBM Plex Sans,sans-serif;font-size:12px;padding:7px 10px;flex:1">'
@@ -833,6 +837,25 @@ async function renderLogboekScreen(app){
       +'</select>'
       +'<button class="btn btn-sm" id="lb-submit">&#43; Opslaan</button>'
       +'</div></div>'
+      +'<div id="lb-panel-meeting" style="display:none">'
+      +'<div style="font-size:12px;color:var(--muted);margin-bottom:.5rem">Voer vergadernotities in of plak een transcript. De AI structureert automatisch naar samenvatting, beslissingen en actiepunten.</div>'
+      +'<div style="display:flex;gap:8px;margin-bottom:.5rem">'
+      +'<input type="text" id="lb-meeting-titel" placeholder="Titel (bijv. Kennismaking 22 mei)" style="flex:1;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:IBM Plex Sans,sans-serif;font-size:13px;padding:9px 12px;outline:none">'
+      +'<input type="text" id="lb-meeting-deelnemers" placeholder="Deelnemers" style="flex:1;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:IBM Plex Sans,sans-serif;font-size:13px;padding:9px 12px;outline:none">'
+      +'</div>'
+      +'<textarea id="lb-meeting-tekst" rows="5" placeholder="Plak hier ruwe vergadernotities, opnametranscript of steekwoorden. AI structureert alles..." style="width:100%;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:IBM Plex Sans,sans-serif;font-size:13px;padding:10px 12px;outline:none;resize:vertical;margin-bottom:.75rem"></textarea>'
+      +'<div style="display:flex;gap:8px;align-items:center">'
+      +'<select id="lb-meeting-fase" style="background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:IBM Plex Sans,sans-serif;font-size:12px;padding:7px 10px;flex:1">'
+      +'<option value="">— Fase niet wijzigen —</option>'
+      +'<option value="voorgesprek">Voorgesprek</option>'
+      +'<option value="kennismaking">Kennismaking</option>'
+      +'<option value="pre_dd">Pre-DD (LoI)</option>'
+      +'<option value="due_diligence">Due Diligence</option>'
+      +'<option value="verkoop">Verkoop / Closing</option>'
+      +'</select>'
+      +'<button class="btn btn-sm" id="lb-meeting-submit" style="white-space:nowrap">&#9881; AI structureren &amp; opslaan</button>'
+      +'</div></div>'
+      +'</div>'
     :'<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:.75rem 1rem;font-size:12px;color:var(--muted)">U kunt het logboek inzien. Alleen de begeleider en adviseur kunnen notities toevoegen.</div>')
     +'</div>';
 
@@ -885,6 +908,58 @@ async function renderLogboekScreen(app){
         else alert('Fout: '+(ld.error||'onbekend'));
       }catch(e){alert('Verbindingsfout.');}
       lbBtn.disabled=false;lbBtn.textContent='+ Opslaan';
+    });
+
+    // Tab switching
+    var tabNotitie=document.getElementById('lb-tab-notitie');
+    var tabMeeting=document.getElementById('lb-tab-meeting');
+    var panelNotitie=document.getElementById('lb-panel-notitie');
+    var panelMeeting=document.getElementById('lb-panel-meeting');
+    if(tabNotitie&&tabMeeting){
+      tabNotitie.onclick=function(){
+        panelNotitie.style.display='';panelMeeting.style.display='none';
+        tabNotitie.className='btn';tabMeeting.className='btn-ghost';
+        tabNotitie.style.fontSize='12px';tabNotitie.style.padding='6px 14px';
+        tabMeeting.style.fontSize='12px';tabMeeting.style.padding='6px 14px';
+      };
+      tabMeeting.onclick=function(){
+        panelNotitie.style.display='none';panelMeeting.style.display='';
+        tabMeeting.className='btn';tabNotitie.className='btn-ghost';
+        tabNotitie.style.fontSize='12px';tabNotitie.style.padding='6px 14px';
+        tabMeeting.style.fontSize='12px';tabMeeting.style.padding='6px 14px';
+      };
+    }
+
+    // Meeting AI structureren
+    var meetBtn=document.getElementById('lb-meeting-submit');
+    if(meetBtn)meetBtn.addEventListener('click',async function(){
+      var titel=document.getElementById('lb-meeting-titel').value.trim();
+      var deelnemers=document.getElementById('lb-meeting-deelnemers').value.trim();
+      var tekst=document.getElementById('lb-meeting-tekst').value.trim();
+      var fase=document.getElementById('lb-meeting-fase').value;
+      if(!tekst){alert('Voer vergadernotities in.');return;}
+      meetBtn.disabled=true;meetBtn.textContent='AI verwerkt...';
+      try{
+        var prompt='Structureer de volgende ruwe vergadernotities van een M&A traject in de accountancy-sector naar een professioneel vergaderverslag.\n\nVERGADERING: '+(titel||'Vergadering')+' | Deelnemers: '+(deelnemers||'onbekend')+'\n\nRUWE NOTITIES:\n'+tekst+'\n\nGeef terug in dit formaat:\n\n## Vergadering: [titel]\nDatum: [datum indien bekend]\nDeelnemers: [deelnemers]\n\n### Samenvatting\n[2-4 zinnen kerninhoud]\n\n### Besproken punten\n- [punt 1]\n- [punt 2]\n\n### Beslissingen\n- [beslissing 1]\n\n### Actiepunten\n- [ ] [actie] — [wie] — [wanneer]\n\n### Volgende stap\n[wat staat er gepland]\n\nCompact en professioneel. Alleen wat relevant is voor het M&A traject.';
+        var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:1500})});
+        var rawText=await resp.text();
+        var rd;try{rd=JSON.parse(rawText);}catch(e){throw new Error('Geen JSON: '+rawText.substring(0,150));}
+        if(!resp.ok)throw new Error('Fout: '+(rd.error||''));
+        var gestructureerd=rd.text||'Fout bij verwerken.';
+        // Sla op als logboeknotitie
+        var lr=await fetch(WORKER+'/mna/logboek/'+S.code,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({bericht:gestructureerd,nieuwe_fase:fase||undefined,auteur_naam:S.traject.begeleider_naam||'Begeleider'})});
+        var ld=await lr.json();
+        if(ld.ok){
+          document.getElementById('lb-meeting-titel').value='';
+          document.getElementById('lb-meeting-deelnemers').value='';
+          document.getElementById('lb-meeting-tekst').value='';
+          document.getElementById('lb-meeting-fase').value='';
+          // Ga terug naar notitie tab en herlaad
+          if(tabNotitie)tabNotitie.click();
+          renderLogboekScreen(app);
+        } else alert('Fout: '+(ld.error||'onbekend'));
+      }catch(e){alert('Fout: '+e.message);}
+      meetBtn.disabled=false;meetBtn.textContent='⚙ AI structureren & opslaan';
     });
   }
 }
@@ -984,7 +1059,10 @@ function renderCover(){
     +(S.ndaTekst?'<div style="margin-top:1.5rem;background:#f3f0ff;border:1px solid #7c5cbf;border-radius:var(--r2);padding:1.25rem">'
       +'<div style="font-size:11px;font-weight:600;color:#7c5cbf;letter-spacing:.1em;text-transform:uppercase;margin-bottom:.6rem">&#128274; Non-Disclosure Agreement beschikbaar</div>'
       +'<div style="font-size:12px;color:var(--mid);margin-bottom:.75rem">De NDA is aangemaakt op '+(S.ndaDatum?new Date(S.ndaDatum).toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'}):'-')+'. Lees de NDA door en retourneer de ondertekende versie aan de adviseur.</div>'
+      +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:.5rem">'
       +'<button id="nda-lees-btn" class="btn-ghost" style="font-size:12px;border-color:#7c5cbf;color:#7c5cbf">&#128065; Lees NDA</button>'
+      +(S.ndaGetekend?'<div style="font-size:11px;padding:4px 10px;border-radius:12px;background:#f3f0ff;border:1px solid #7c5cbf;color:#7c5cbf;display:flex;align-items:center;gap:4px">&#10003; Getekend door '+esc(S.ndaGetekend)+'</div>':(!isAdmin()?'<button id="nda-teken-btn" class="btn" style="font-size:12px;padding:6px 14px;background:#7c5cbf">&#9998; Akkoord &amp; onderteken</button>':''))
+      +'</div>'
       +'</div>':'')
     +(isVerkoper()&&S.loiTekst?'<div style="margin-top:1.5rem;background:var(--gold-bg);border:1px solid var(--gold);border-radius:var(--r2);padding:1.25rem">'
       +'<div style="font-size:11px;font-weight:600;color:var(--gold);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.6rem">&#128196; Letter of Intent beschikbaar</div>'
@@ -992,6 +1070,7 @@ function renderCover(){
       +'<div style="display:flex;gap:8px">'
       +'<button id="loi-lees-btn" class="btn-ghost" style="font-size:12px">&#128065; Lees LoI</button>'
       +'<button id="loi-print2-btn" class="btn" style="font-size:12px;background:var(--gold)">&#128196; Download / Print</button>'
+      +(S.loiGetekend?'<div style="font-size:11px;padding:4px 10px;border-radius:12px;background:var(--gold-bg);border:1px solid var(--gold);color:var(--gold);display:flex;align-items:center;gap:4px">&#10003; Getekend door '+esc(S.loiGetekend)+'</div>':(!isAdmin()?'<button id="loi-teken-btn" class="btn-ghost" style="font-size:12px;border-color:var(--gold);color:var(--gold)">&#9998; Akkoord &amp; onderteken</button>':''))
       +'</div></div>':'')
     +(isVerkoper()?'<button class="btn" id="to-main-btn2" style="width:100%;margin-top:1rem">Start met invullen &#8594;</button>':'')
     +'</div>';
@@ -1204,6 +1283,8 @@ function bindAll(){
         if(d.traject&&d.traject.loi_datum)S.loiDatum=d.traject.loi_datum;
         if(d.traject&&d.traject.nda_tekst)S.ndaTekst=d.traject.nda_tekst;
         if(d.traject&&d.traject.nda_datum)S.ndaDatum=d.traject.nda_datum;
+        if(d.traject&&d.traject.nda_getekend)S.ndaGetekend=d.traject.nda_getekend;
+        if(d.traject&&d.traject.loi_getekend)S.loiGetekend=d.traject.loi_getekend;
         renderApp();
       }catch(e){if(err)err.style.display='block';if(load)load.style.display='none';lb.disabled=false;}
     };
@@ -1234,6 +1315,34 @@ function bindAll(){
     ov.appendChild(box);document.body.appendChild(ov);
     ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
     document.getElementById('loi-sluit').addEventListener('click',function(){document.body.removeChild(ov);});
+  };
+
+  // NDA tekenen
+  var ndaTeken=ge('nda-teken-btn');
+  if(ndaTeken)ndaTeken.onclick=async function(){
+    var naam=prompt('Voer uw volledige naam in ter bevestiging van akkoord:');
+    if(!naam||!naam.trim())return;
+    if(!confirm('U gaat akkoord met de Non-Disclosure Agreement namens '+naam.trim()+'. Bevestigen?'))return;
+    try{
+      var r=await fetch(WORKER+'/mna/teken',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:S.code,document:'nda',naam:naam.trim()})});
+      var d=await r.json();
+      if(d.ok){S.ndaGetekend=naam.trim();renderApp();alert('NDA getekend. De adviseur is op de hoogte gesteld.');}
+      else alert('Fout: '+(d.error||'onbekend'));
+    }catch(e){alert('Verbindingsfout.');}
+  };
+
+  // LoI tekenen
+  var loiTeken=ge('loi-teken-btn');
+  if(loiTeken)loiTeken.onclick=async function(){
+    var naam=prompt('Voer uw volledige naam in ter bevestiging van akkoord:');
+    if(!naam||!naam.trim())return;
+    if(!confirm('U gaat akkoord met de Letter of Intent namens '+naam.trim()+'. Bevestigen?'))return;
+    try{
+      var r=await fetch(WORKER+'/mna/teken',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:S.code,document:'loi',naam:naam.trim()})});
+      var d=await r.json();
+      if(d.ok){S.loiGetekend=naam.trim();renderApp();alert('LoI getekend. De adviseur is op de hoogte gesteld.');}
+      else alert('Fout: '+(d.error||'onbekend'));
+    }catch(e){alert('Verbindingsfout.');}
   };
 
   var ndaLees=ge('nda-lees-btn');
