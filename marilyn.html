@@ -319,7 +319,7 @@ function renderMnaTab(el){
   if(!mnaList.length){
     html+='<div class="empty">Geen trajecten.</div>';
   } else {
-    html+='<table><thead><tr><th style="width:32px"><input type="checkbox" id="cb-all-mna" title="Alles"></th><th>Kantoor</th><th>Type</th><th>Status</th><th>Verkoperscode</th><th>Koperscode</th><th>Begeleider</th><th>Datum</th><th>Acties</th></tr></thead><tbody>';
+    html+='<table><thead><tr><th style="width:32px"><input type="checkbox" id="cb-all-mna" title="Alles"></th><th>Kantoor</th><th>Type</th><th>Status</th><th>Verkoperscode</th><th>Koperscode</th><th>Koper</th><th>Begeleider</th><th>Datum</th><th>Acties</th></tr></thead><tbody>';
     mnaList.forEach(function(t,i){
       var verg=t.status==='vergrendeld';
       html+='<tr><td><input type="checkbox" class="mna-cb" data-id="'+esc(t.id)+'"'+(verg?' disabled title="Vergrendeld"':'')+' style="cursor:pointer"></td>'
@@ -328,6 +328,7 @@ function renderMnaTab(el){
         +'<td><span class="tag" style="'+(verg?'background:var(--red-bg);color:var(--red);border-color:var(--red)':'')+'">'+esc(t.status||'actief')+'</span></td>'
         +'<td><span class="code-chip">'+esc(t.id)+'</span><button class="copy-btn" data-copy="'+esc(t.id)+'">⎘</button></td>'
         +'<td><span class="code-chip" style="background:var(--gold-bg);color:var(--gold);border-color:var(--gold)">'+esc(t.koper_code||'—')+'</span><button class="copy-btn" data-copy="'+esc(t.koper_code||'')+'">⎘</button></td>'
+        +'<td><div style="font-size:11px">'+(t.koper_naam?'<div style="font-weight:500;color:var(--sub)">'+esc(t.koper_naam)+'</div>':'<span style="color:var(--muted);font-size:10px;font-style:italic">Nog onbekend</span>')+(t.koper_rechtsvorm?'<div style="color:var(--muted);font-size:10px">'+esc(t.koper_rechtsvorm)+'</div>':'')+'</div></td>'
         +'<td><div style="font-size:11px">'
         +(t.begeleider_naam?'<div style="font-weight:500;color:var(--sub)">'+esc(t.begeleider_naam)+'</div>':'')
         +(t.begeleider_email?'<div style="color:var(--teal);font-size:10px">'+esc(t.begeleider_email)+'</div>':'')
@@ -1085,117 +1086,7 @@ async function toonDetail(id,naam){
   ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
   document.getElementById('det-sluit').addEventListener('click',function(){document.body.removeChild(ov);});
 
-  // LoI knop
-  document.getElementById('det-loi-btn').addEventListener('click',async function(){
-    var btn=this;btn.disabled=true;btn.textContent='Genereren...';
-    var loiOut=document.getElementById('loi-output');
-    loiOut.style.display='block';
-    loiOut.innerHTML='<div style="color:var(--muted);font-size:13px">LoI wordt gegenereerd... (15-30 sec)</div>';
-    try{
-      var r2=await fetch(WORKER+'/mna/admin/detail/'+id+'?key='+encodeURIComponent(adminKey));
-      var d2=await r2.json();var tr=d2.traject||{};
-      var datum=new Date().toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'});
-      var prompt='Schrijf een professionele Letter of Intent (LoI) in het Nederlands voor een M&A traject in de accountancy/administratie sector.\n\nGEGEVENS:\n- Kantoor: '+esc(tr.kantoor_naam||naam)+'\n- Trajecttype: '+esc(tr.traject_type||'Verkoop')+'\n- Datum: '+datum+'\n- Adviseur: Marcel Bisschops, Bisschops Financing BV\n\nSTRUCTUUR:\n1. Aanhef en introductie\n2. Intentie en scope\n3. Indicatieve transactiewaarde (PM - nader te bepalen na due diligence)\n4. Due diligence proces en tijdlijn\n5. Exclusiviteit (standaard 60 dagen)\n6. Vertrouwelijkheid\n7. Niet-bindend karakter\n8. Ondertekening (twee partijen + adviseur)\n\nFormeel, juridisch correct Nederlands. Gebruik [INVULLEN] voor ontbrekende gegevens.';
-      var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:2500})});
-      var rd=await resp.json();
-      var tekst=rd.content&&rd.content[0]?rd.content[0].text:'Fout bij genereren.';
-      loiOut.innerHTML='<div style="font-size:11px;font-weight:600;color:var(--gold);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.75rem">Letter of Intent · '+esc(tr.kantoor_naam||naam)+'</div>'
-        +'<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:1.25rem;font-size:13px;line-height:1.9;color:var(--sub);white-space:pre-wrap;font-family:Georgia,serif;max-height:300px;overflow-y:auto">'+esc(tekst)+'</div>'
-        +'<div style="display:flex;gap:8px;margin-top:.75rem"><button id="loi-print-btn" class="btn-ghost" style="font-size:12px;padding:6px 14px">&#128196; Print / PDF</button><button id="loi-email-btn" class="btn" style="font-size:12px;padding:6px 14px;background:var(--gold)">&#9993; Stuur naar partijen</button></div>';
-      document.getElementById('loi-print-btn').addEventListener('click',function(){var win=window.open('','_blank');win.document.write('<html><body style="font-family:Georgia,serif;font-size:13px;line-height:1.9;max-width:700px;margin:2cm auto"><pre style="white-space:pre-wrap;font-family:Georgia,serif">'+tekst+'</pre></body></html>');win.document.close();win.print();});
-      document.getElementById('loi-email-btn').addEventListener('click',async function(){var ebtn=this;ebtn.disabled=true;ebtn.textContent='Versturen...';var toList=[tr.contact_email||'marcel@bisschopsfinancing.nl'];if(tr.begeleider_email&&tr.begeleider_email!==toList[0])toList.push(tr.begeleider_email);var er=await fetch(WORKER+'/mna/loi/email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:id,loi_tekst:tekst,to:toList})});var ed=await er.json();if(ed.ok){ebtn.textContent='✓ Verstuurd';setTimeout(function(){ebtn.textContent='✉ Stuur';ebtn.disabled=false;},3000);}else{alert('Fout: '+(ed.error||'onbekend'));ebtn.disabled=false;ebtn.textContent='✉ Stuur naar partijen';}});
-      fetch(WORKER+'/mna/loi/email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:id,loi_tekst:tekst,to:[]})}).catch(function(){});
-      btn.textContent='Opnieuw genereren';btn.disabled=false;
-    }catch(e){loiOut.innerHTML='<div style="color:var(--red);font-size:13px">Fout: '+e.message+'</div>';btn.textContent='Genereer LoI';btn.disabled=false;}
-  });
 
-  // AI-analyse knop
-  document.getElementById('det-ai-btn').addEventListener('click',async function(){
-    var btn=this;btn.disabled=true;btn.textContent='Analyseren...';
-    var aiOut=document.getElementById('mna-ai-out');
-    aiOut.style.display='block';
-    aiOut.innerHTML='<div style="color:var(--muted);font-size:13px">AI analyseert... (20-40 sec)</div>';
-    try{
-      var bms={};
-      try{var br=await fetch(WORKER+'/benchmarks');var bd=await br.json();bd.forEach(function(b){bms[b.sleutel]=b;});}catch(e){}
-      var faseLabelsAI={financieel:'Financieel',commercieel:'Klanten & commercieel',partner:'Partners & personeel',compliance:'Compliance & kwaliteit',it:'IT & automatisering',juridisch:'Juridisch & fiscaal',strategisch:'Strategisch & markt'};
-      var dataSamenvatting='';
-      (d.data||[]).forEach(function(row){try{var dj=typeof row.data_json==='string'?JSON.parse(row.data_json):row.data_json;var lbl=faseLabelsAI[row.fase_id]||row.fase_id;var gevuld=Object.values(dj||{}).filter(function(v){return v&&v.value;});if(gevuld.length){dataSamenvatting+='\n## '+lbl+'\n';gevuld.forEach(function(v){dataSamenvatting+='- '+v.label+': '+v.value+'\n';});}}catch(e){}});
-      var bmTekst='BENCHMARKS:\nEBITDA-marge admin '+(bms['ebitda_marge_admin']?bms['ebitda_marge_admin'].waarde:18.7)+'%\nMultiples: '+(bms['multiple_adm_laag']?bms['multiple_adm_laag'].waarde:4.6)+'x - '+(bms['multiple_adm_hoog']?bms['multiple_adm_hoog'].waarde:5.5)+'x\n';
-      var prompt='M&A-adviseur accountancy. Analyseer:\nTRAJECT: '+d.traject.kantoor_naam+' ('+d.traject.traject_type+')\n'+bmTekst+'\nDUE DILIGENCE:'+dataSamenvatting+'\n\n## Samenvatting\n## Financieel profiel & waardering\n## Sterktes\n## Risicos\n## Aanbevelingen\n\nMax 500 woorden.';
-      var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:3000})});
-      var rd=await resp.json();
-      var tekst=rd.content&&rd.content[0]?rd.content[0].text:'Fout.';
-      tekst=tekst.replace(/^## (.+)$/gm,'<h3 style="font-family:Playfair Display,serif;font-size:.95rem;color:var(--head);margin:1rem 0 .4rem">$1</h3>');
-      tekst=tekst.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
-      tekst=tekst.replace(/\n\n/g,'</p><p style="font-size:13px;color:var(--mid);line-height:1.7;margin-bottom:.6rem">');
-      aiOut.innerHTML='<div style="font-size:11px;font-weight:600;color:var(--teal);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.75rem">AI-analyse · '+d.traject.kantoor_naam+'</div><p style="font-size:13px;color:var(--mid);line-height:1.7">'+tekst+'</p>';
-      btn.textContent='Opnieuw';btn.disabled=false;
-    }catch(e){aiOut.innerHTML='<div style="color:var(--red);font-size:13px">Fout: '+e.message+'</div>';btn.textContent='AI-analyse';btn.disabled=false;}
-  });
-
-  // LoI genereren
-  document.getElementById('det-loi-btn').addEventListener('click',async function(){
-    var btn=this;
-    btn.disabled=true;btn.textContent='Genereren...';
-    var loiOut=document.getElementById('loi-output');
-    loiOut.style.display='block';
-    loiOut.innerHTML='<div style="color:var(--muted);font-size:13px">LoI wordt gegenereerd... (15-30 seconden)</div>';
-    try{
-      var r2=await fetch(WORKER+'/mna/admin/detail/'+id+'?key='+encodeURIComponent(adminKey));
-      var d2=await r2.json();
-      var tr=d2.traject||{};
-      var datum=new Date().toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'});
-      var prompt='Schrijf een professionele Letter of Intent (LoI) in het Nederlands voor een M&A traject in de accountancy/administratie sector.\n\n'
-        +'GEGEVENS:\n'
-        +'- Kantoor: '+esc(tr.kantoor_naam||naam)+'\n'
-        +'- Trajecttype: '+esc(tr.traject_type||'Verkoop')+'\n'
-        +'- Datum: '+datum+'\n'
-        +'- Adviseur: Marcel Bisschops, Bisschops Financing BV\n\n'
-        +'STRUCTUUR VAN DE LoI:\n'
-        +'1. Aanhef en introductie\n'
-        +'2. Intentie en scope (verkoop/fusie/opvolging)\n'
-        +'3. Indicatieve transactiewaarde (PM - nader te bepalen na due diligence)\n'
-        +'4. Due diligence proces en tijdlijn\n'
-        +'5. Exclusiviteit (standaard 60 dagen)\n'
-        +'6. Vertrouwelijkheid\n'
-        +'7. Niet-bindend karakter\n'
-        +'8. Ondertekening (twee partijen + adviseur)\n\n'
-        +'Schrijf formeel, juridisch correct Nederlands. Gebruik [INVULLEN] voor ontbrekende gegevens zoals namen partijen, exacte bedragen. Geen markdown, gewone tekst met koppen.';
-      var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:2500})});
-      var rd=await resp.json();
-      var tekst=rd.content&&rd.content[0]?rd.content[0].text:'Fout bij genereren.';
-      // Render LoI
-      var loiHtml='<div style="font-size:11px;font-weight:600;color:var(--gold);letter-spacing:.1em;text-transform:uppercase;margin-bottom:1rem">Letter of Intent · '+esc(tr.kantoor_naam||naam)+'</div>'
-        +'<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:1.25rem;font-size:13px;line-height:1.9;color:var(--sub);white-space:pre-wrap;font-family:Georgia,serif">'+esc(tekst)+'</div>'
-        +'<div style="display:flex;gap:8px;margin-top:1rem">'
-        +'<button id="loi-print-btn" class="btn-ghost" style="font-size:12px;padding:6px 14px">&#128196; Afdrukken / PDF</button>'
-        +'<button id="loi-email-btn" class="btn" style="font-size:12px;padding:6px 14px;background:var(--gold)">&#9993; Stuur naar partijen</button>'
-        +'</div>'
-        +'<div style="margin-top:1rem;background:var(--teal-bg);border:1px solid var(--teal-dark);border-radius:var(--r);padding:.75rem 1rem;font-size:12px;color:var(--mid)">'
-        +'<strong style="color:var(--teal)">Upload ondertekende versie</strong><br>'
-        +'Na ondertekening kunt u de LoI uploaden via mna.html (fase Juridisch & Fiscaal).'
-        +'</div>';
-      loiOut.innerHTML=loiHtml;
-      document.getElementById('loi-print-btn').addEventListener('click',function(){
-        var win=window.open('','_blank');
-        win.document.write('<html><body style="font-family:Georgia,serif;font-size:13px;line-height:1.9;max-width:700px;margin:2cm auto;color:#2a2825"><pre style="white-space:pre-wrap;font-family:Georgia,serif">'+tekst+'</pre></body></html>');
-        win.document.close();win.print();
-      });
-      document.getElementById('loi-email-btn').addEventListener('click',async function(){
-        var ebtn=this;ebtn.disabled=true;ebtn.textContent='Versturen...';
-        var toEmail=tr.contact_email||'';
-        if(!toEmail){alert('Geen e-mailadres bekend voor dit traject.');ebtn.disabled=false;ebtn.textContent='✉ Stuur naar partijen';return;}
-        var toList=[toEmail];
-        if(tr.begeleider_email&&tr.begeleider_email!==toEmail)toList.push(tr.begeleider_email);
-        var emailResp=await fetch(WORKER+'/mna/loi/email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:id,loi_tekst:tekst,to:toList})});
-        var ed=await emailResp.json();
-        if(ed.ok){ebtn.textContent='✓ Verstuurd';setTimeout(function(){ebtn.textContent='✉ Stuur naar partijen';ebtn.disabled=false;},3000);}
-        else{alert('Fout: '+(ed.error||'onbekend'));ebtn.disabled=false;ebtn.textContent='✉ Stuur naar partijen';}
-      });
-      btn.textContent='Opnieuw genereren';btn.disabled=false;
-    }catch(e){loiOut.innerHTML='<div style="color:var(--red);font-size:13px">Fout: '+e.message+'</div>';btn.textContent='Genereer LoI';btn.disabled=false;}
-  });
   try{
     var r=await fetch(WORKER+'/mna/admin/detail/'+id+'?key='+encodeURIComponent(adminKey));
     var d=await r.json();
@@ -1229,6 +1120,58 @@ async function toonDetail(id,naam){
     });
     db.innerHTML=html;
     db.querySelectorAll('.fase-hdr').forEach(function(hdr){hdr.addEventListener('click',function(){var body=db.querySelector('.fase-body[data-fase="'+hdr.dataset.fase+'"]');if(body)body.style.display=body.style.display==='none'?'block':'none';});});
+
+    // LoI knop
+    document.getElementById('det-loi-btn').addEventListener('click',async function(){
+      var btn=this;btn.disabled=true;btn.textContent='Genereren...';
+      var loiOut=document.getElementById('loi-output');
+      loiOut.style.display='block';
+      loiOut.innerHTML='<div style="color:var(--muted);font-size:13px">LoI wordt gegenereerd... (15-30 sec)</div>';
+      try{
+        var datum=new Date().toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'});
+        var koperNaam=d.traject.koper_naam||'[INVULLEN: naam kopende partij]';
+        var koperRv=d.traject.koper_rechtsvorm||'[INVULLEN: rechtsvorm]';
+        var koperContact=d.traject.koper_contact||'[INVULLEN: contactpersoon]';
+        var verkoperNaam=d.traject.contact_naam||'[INVULLEN: naam verkopende partner]';
+        var prompt='Schrijf een professionele Letter of Intent (LoI) in het Nederlands voor een M&A traject in de accountancy/administratie sector.\n\nGEGEVENS:\n- Doelkantoor (verkoper): '+esc(d.traject.kantoor_naam||naam)+'\n- Contactpersoon verkoper: '+esc(verkoperNaam)+'\n- Kopende partij: '+esc(koperNaam)+' ('+esc(koperRv)+')\n- Contactpersoon koper: '+esc(koperContact)+'\n- Trajecttype: '+esc(d.traject.traject_type||'Verkoop')+'\n- Datum: '+datum+'\n- Adviseur: Marcel Bisschops, Bisschops Financing BV\n\nSTRUCTUUR:\n1. Aanhef en introductie (beide partijen met volledige namen)\n2. Intentie en scope van de voorgenomen transactie\n3. Indicatieve transactiewaarde (PM - nader te bepalen na due diligence)\n4. Due diligence proces en tijdlijn (indicatief 8 weken)\n5. Exclusiviteit (60 dagen)\n6. Vertrouwelijkheid\n7. Niet-bindend karakter\n8. Ondertekening beide partijen + adviseur\n\nFormeel, juridisch correct Nederlands. Vul bekende gegevens in, gebruik [INVULLEN] alleen waar echt niets bekend is.';
+        var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:2500})});
+        var rd=await resp.json();
+        var tekst=rd.content&&rd.content[0]?rd.content[0].text:(rd.error||'Fout bij genereren.');
+        loiOut.innerHTML='<div style="font-size:11px;font-weight:600;color:var(--gold);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.75rem">Letter of Intent · '+esc(d.traject.kantoor_naam||naam)+'</div>'
+          +'<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:1.25rem;font-size:13px;line-height:1.9;color:var(--sub);white-space:pre-wrap;font-family:Georgia,serif;max-height:300px;overflow-y:auto">'+esc(tekst)+'</div>'
+          +'<div style="display:flex;gap:8px;margin-top:.75rem"><button id="loi-print-btn" class="btn-ghost" style="font-size:12px;padding:6px 14px">&#128196; Print / PDF</button><button id="loi-email-btn" class="btn" style="font-size:12px;padding:6px 14px;background:var(--gold)">&#9993; Stuur naar partijen</button></div>';
+        document.getElementById('loi-print-btn').addEventListener('click',function(){var win=window.open('','_blank');win.document.write('<html><body style="font-family:Georgia,serif;font-size:13px;line-height:1.9;max-width:700px;margin:2cm auto"><pre style="white-space:pre-wrap;font-family:Georgia,serif">'+tekst+'</pre></body></html>');win.document.close();win.print();});
+        document.getElementById('loi-email-btn').addEventListener('click',async function(){var ebtn=this;ebtn.disabled=true;ebtn.textContent='Versturen...';var toList=[d.traject.contact_email||'marcel@bisschopsfinancing.nl'];if(d.traject.begeleider_email&&d.traject.begeleider_email!==toList[0])toList.push(d.traject.begeleider_email);var er=await fetch(WORKER+'/mna/loi/email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:id,loi_tekst:tekst,to:toList})});var ed=await er.json();if(ed.ok){ebtn.textContent='✓ Verstuurd';setTimeout(function(){ebtn.textContent='✉ Stuur';ebtn.disabled=false;},3000);}else{alert('Fout: '+(ed.error||'onbekend'));ebtn.disabled=false;ebtn.textContent='✉ Stuur naar partijen';}});
+        fetch(WORKER+'/mna/loi/email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:id,loi_tekst:tekst,to:[]})}).catch(function(){});
+        btn.textContent='Opnieuw genereren';btn.disabled=false;
+      }catch(e){loiOut.innerHTML='<div style="color:var(--red);font-size:13px">Fout: '+e.message+'</div>';btn.textContent='Genereer LoI';btn.disabled=false;}
+    });
+
+    // AI-analyse knop
+    document.getElementById('det-ai-btn').addEventListener('click',async function(){
+      var btn=this;btn.disabled=true;btn.textContent='Analyseren...';
+      var aiOut=document.getElementById('mna-ai-out');
+      aiOut.style.display='block';
+      aiOut.innerHTML='<div style="color:var(--muted);font-size:13px">AI analyseert... (20-40 sec)</div>';
+      try{
+        var bms={};
+        try{var br=await fetch(WORKER+'/benchmarks');var bd=await br.json();bd.forEach(function(b){bms[b.sleutel]=b;});}catch(e){}
+        var faseLabelsAI={financieel:'Financieel',commercieel:'Klanten & commercieel',partner:'Partners & personeel',compliance:'Compliance & kwaliteit',it:'IT & automatisering',juridisch:'Juridisch & fiscaal',strategisch:'Strategisch & markt'};
+        var dataSamenvatting='';
+        (d.data||[]).forEach(function(row){try{var dj=typeof row.data_json==='string'?JSON.parse(row.data_json):row.data_json;var lbl=faseLabelsAI[row.fase_id]||row.fase_id;var gevuld=Object.values(dj||{}).filter(function(v){return v&&v.value;});if(gevuld.length){dataSamenvatting+='\n## '+lbl+'\n';gevuld.forEach(function(v){dataSamenvatting+='- '+v.label+': '+v.value+'\n';});}}catch(e){}});
+        var bmTekst='BENCHMARKS:\nEBITDA-marge admin '+(bms['ebitda_marge_admin']?bms['ebitda_marge_admin'].waarde:18.7)+'%\nMultiples: '+(bms['multiple_adm_laag']?bms['multiple_adm_laag'].waarde:4.6)+'x - '+(bms['multiple_adm_hoog']?bms['multiple_adm_hoog'].waarde:5.5)+'x\n';
+        var prompt='M&A-adviseur accountancy. Analyseer:\nTRAJECT: '+d.traject.kantoor_naam+' ('+d.traject.traject_type+')\n'+bmTekst+'\nDUE DILIGENCE:'+dataSamenvatting+'\n\n## Samenvatting\n## Financieel profiel & waardering\n## Sterktes\n## Risicos\n## Aanbevelingen\n\nMax 500 woorden.';
+        var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:3000})});
+        var rd=await resp.json();
+        var tekst=rd.content&&rd.content[0]?rd.content[0].text:(rd.error||'Fout.');
+        tekst=tekst.replace(/^## (.+)$/gm,'<h3 style="font-family:Playfair Display,serif;font-size:.95rem;color:var(--head);margin:1rem 0 .4rem">$1</h3>');
+        tekst=tekst.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+        tekst=tekst.replace(/\n\n/g,'</p><p style="font-size:13px;color:var(--mid);line-height:1.7;margin-bottom:.6rem">');
+        aiOut.innerHTML='<div style="font-size:11px;font-weight:600;color:var(--teal);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.75rem">AI-analyse · '+d.traject.kantoor_naam+'</div><p style="font-size:13px;color:var(--mid);line-height:1.7">'+tekst+'</p>';
+        btn.textContent='Opnieuw';btn.disabled=false;
+      }catch(e){aiOut.innerHTML='<div style="color:var(--red);font-size:13px">Fout: '+e.message+'</div>';btn.textContent='AI-analyse';btn.disabled=false;}
+    });
+
   }catch(e){document.getElementById('detail-body').textContent='Fout: '+e.message;}
 }
 
@@ -1245,6 +1188,11 @@ function toonNieuwModal(){
     +'<div style="border-top:1px solid var(--border);margin:.75rem 0;padding-top:.75rem"><div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem">Begeleider (tussenpersoon)</div></div>'
     +'<div class="field"><label>Naam begeleider</label><input type="text" id="m-bg-naam" placeholder="bijv. Jan de Vries"></div>'
     +'<div class="field"><label>E-mail begeleider</label><input type="email" id="m-bg-email" placeholder="begeleider@kantoor.nl"></div>'
+    +'<div style="border-top:1px solid var(--border);margin:.75rem 0;padding-top:.75rem"><div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem">Kopende partij</div></div>'
+    +'<div class="field"><label>Naam kopende partij</label><input type="text" id="m-koper-naam" placeholder="bijv. Acme Accountants BV"></div>'
+    +'<div class="field"><label>Rechtsvorm koper</label><input type="text" id="m-koper-rv" placeholder="bijv. BV, NV, Coöperatie"></div>'
+    +'<div class="field"><label>Contactpersoon koper</label><input type="text" id="m-koper-contact" placeholder="bijv. Jan de Vries"></div>'
+    +'<div class="field"><label>E-mail koper</label><input type="email" id="m-koper-email" placeholder="koper@bedrijf.nl"></div>'
     +'<div id="m-res" style="display:none;background:var(--teal-bg);border:1px solid var(--teal-dark);border-radius:var(--r);padding:1rem;margin-bottom:1rem;font-size:13px;line-height:2"></div>'
     +'<div id="m-err" style="display:none;color:var(--red);font-size:12px;margin-bottom:.75rem"></div>'
     +'<div style="display:flex;gap:10px;justify-content:flex-end"><button class="btn-ghost" id="m-ann">Annuleren</button><button class="btn" id="m-ok">Traject aanmaken</button></div>';
@@ -1258,7 +1206,7 @@ function toonNieuwModal(){
     document.getElementById('m-err').style.display='none';
     try{
       var r=await fetch(WORKER+'/mna/create',{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':adminKey},
-        body:JSON.stringify({kantoor_naam:kantoor,contact_naam:document.getElementById('m-c').value.trim(),contact_email:document.getElementById('m-e').value.trim(),traject_type:document.getElementById('m-t').value,notitie:document.getElementById('m-n').value.trim(),begeleider_naam:document.getElementById('m-bg-naam').value.trim(),begeleider_email:document.getElementById('m-bg-email').value.trim()})});
+        body:JSON.stringify({kantoor_naam:kantoor,contact_naam:document.getElementById('m-c').value.trim(),contact_email:document.getElementById('m-e').value.trim(),traject_type:document.getElementById('m-t').value,notitie:document.getElementById('m-n').value.trim(),begeleider_naam:document.getElementById('m-bg-naam').value.trim(),begeleider_email:document.getElementById('m-bg-email').value.trim(),koper_naam:document.getElementById('m-koper-naam').value.trim(),koper_rechtsvorm:document.getElementById('m-koper-rv').value.trim(),koper_contact:document.getElementById('m-koper-contact').value.trim(),koper_email:document.getElementById('m-koper-email').value.trim()})});
       var d=await r.json();
       if(d.ok){
         mnaList.unshift({id:d.code,kantoor_naam:kantoor,traject_type:document.getElementById('m-t').value,koper_code:d.koper_code,tussen_code:d.tussen_code,status:'actief',created_at:Date.now()});
