@@ -303,7 +303,7 @@ function saveCurrent(cb){
 
 function getDataForFase(id){var f=FASES.find(function(x){return x.id===id;});if(!f)return {};var out={};f.dataFields.forEach(function(df){if(df.header)return;var v=S.data[id+'_'+df.id];if(v)out[df.id]={value:v,label:df.label,req:df.req||false};});return out;}
 function getChecklistForFase(id){var out={items:{},redflags:{}};var f=FASES.find(function(x){return x.id===id;});if(!f)return out;f.items.forEach(function(_,i){out.items[i]=!!S.checked[id+'_'+i];});f.redflags.forEach(function(_,i){out.redflags[i]=!!S.checked[id+'_rf_'+i];});return out;}
-function loadDataFromDB(dbData){dbData.forEach(function(row){var id=row.fase_id;var dj=typeof row.data_json==='string'?JSON.parse(row.data_json||'{}'):row.data_json||{};var cj=typeof row.checklist_json==='string'?JSON.parse(row.checklist_json||'{}'):row.checklist_json||{};var f=FASES.find(function(x){return x.id===id;});if(!f)return;Object.keys(dj).forEach(function(k){var v=dj[k];if(v&&v.value)S.data[id+'_'+k]=v.value;});if(cj.items)Object.keys(cj.items).forEach(function(i){S.checked[id+'_'+i]=cj.items[i];});if(cj.redflags)Object.keys(cj.redflags).forEach(function(i){S.checked[id+'_rf_'+i]=cj.redflags[i];});if(row.notitie)S.notities[id]=row.notitie;});}
+function loadDataFromDB(dbData){dbData.forEach(function(row){var id=row.fase_id;var dj=typeof row.data_json==='string'?JSON.parse(row.data_json||'{}'):row.data_json||{};var cj=typeof row.checklist_json==='string'?JSON.parse(row.checklist_json||'{}'):row.checklist_json||{};var f=FASES.find(function(x){return x.id===id;});if(!f)return;Object.keys(dj).forEach(function(k){var v=dj[k];if(v&&v.value)S.data[id+'_'+k]=v.value;});if(cj.items)Object.keys(cj.items).forEach(function(i){S.checked[id+'_'+i]=cj.items[i];});if(cj.redflags)Object.keys(cj.redflags).forEach(function(i){S.checked[id+'_rf_'+i]=cj.redflags[i];});if(row.notitie)S.notities[id]=row.notitie;if(row.koper_reactie){if(!S.koperReacties)S.koperReacties={};S.koperReacties[id]=row.koper_reactie;}});}
 function showSaveIndicator(){var el=ge('save-ind');if(!el)return;el.textContent='Opgeslagen';el.classList.add('show');setTimeout(function(){el.classList.remove('show');},2000);}
 function showAlert(msg){alert(msg);}
 function schedSave(){if(S.traject&&S.traject.status==='vergrendeld')return;clearTimeout(S.saveTimer);S.saveTimer=setTimeout(function(){saveCurrent();},1200);}
@@ -789,6 +789,16 @@ function renderMain(){
 
   // Marcel-only: checklist + rode vlaggen + notities + AI
   var extraHtml='';
+  // Toon koper reactie voor tussenpersoon en Marcel
+  if(isTussen()||(!isVerkoper()&&!isKoper())){
+    var kReactie=S.koperReacties&&S.koperReacties[f.id];
+    if(kReactie){
+      extraHtml='<div class="panel" style="border-color:var(--gold);margin-bottom:1rem">'
+        +'<div class="sec-hdr" style="color:var(--gold)">&#128172; Koper opmerking</div>'
+        +'<div style="font-size:13px;color:var(--mid);line-height:1.7;font-style:italic;padding:.75rem;background:var(--gold-bg);border-radius:var(--r)">'+esc(kReactie)+'</div>'
+        +'</div>';
+    }
+  }
   if(!isVerkoper()){
     var chkHtml='<div class="panel"><div class="sec-hdr">Checklist (intern)</div>';
     f.items.forEach(function(item,i){var key=f.id+'_'+i;var on=!!S.checked[key];chkHtml+='<div class="chk-item'+(on?' on':'')+'" data-key="'+key+'"'+(isKoper()?' style="cursor:default"':'')+'><div class="chk-box">'+(on?'&#10003;':'')+'</div><div class="chk-lbl">'+item+'</div></div>';});
@@ -811,6 +821,18 @@ function renderMain(){
     extraHtml=chkHtml+notHtml+aiHtml;
   }
 
+  // Koper reactie sectie
+  if(isKoper()){
+    var reactie=S.koperReacties&&S.koperReacties[f.id]||'';
+    extraHtml+='<div class="panel" style="border-color:var(--gold)">'
+      +'<div class="sec-hdr" style="color:var(--gold)">Uw vragen &amp; opmerkingen</div>'
+      +'<div style="font-size:12px;color:var(--mid);margin-bottom:.75rem;line-height:1.6">Heeft u vragen of opmerkingen bij deze fase? De adviseur ontvangt uw bericht direct.</div>'
+      +'<textarea id="koper-reactie-'+f.id+'" style="width:100%;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:9px 11px;font-family:IBM Plex Sans,sans-serif;font-size:13px;color:var(--sub);resize:vertical;min-height:80px;outline:none" placeholder="Typ hier uw vraag of opmerking...">'+(reactie?esc(reactie):'')+'</textarea>'
+      +'<div style="display:flex;align-items:center;justify-content:space-between;margin-top:.5rem">'
+      +'<div id="koper-reactie-status-'+f.id+'" style="font-size:11px;color:var(--teal);opacity:0;transition:opacity .3s"></div>'
+      +'<button id="koper-reactie-btn-'+f.id+'" class="btn btn-sm" style="font-size:12px">Verstuur opmerking</button>'
+      +'</div></div>';
+  }
   var nav='<div class="fase-nav">'
     +(isVerkoper()?'<button class="btn-ghost btn-sm" id="cover-btn">&#128196; Cover letter</button>':'')
     +(S.fase>0?'<button class="btn-ghost btn-sm" id="prev-btn">&#8592; Vorige</button>':'')
@@ -923,7 +945,7 @@ function bindAll(){
         S={screen:'cover',code:code,rol:d.rol||'verkoper',traject:d.traject,
           fase:0,checked:{},data:{},docRefs:{},notities:{},aiTexts:{},aiLoading:{},
           saveTimer:null,showValidation:false,dataroomLoading:false,dataroom:null,
-          _opy:{},_epy:{},_conflicts:[],_userEdited:{}};
+          _opy:{},_epy:{},_conflicts:[],_userEdited:{},koperReacties:{}};
         if(d.data&&d.data.length)loadDataFromDB(d.data);
         renderApp();
       }catch(e){if(err)err.style.display='block';if(load)load.style.display='none';lb.disabled=false;}
@@ -960,6 +982,30 @@ function bindAll(){
     var r=await fetch(WORKER+'/mna/admin/vrijgeven/'+S.code+'?key='+encodeURIComponent(k),{method:'POST'}).then(function(x){return x.json();}).catch(function(){return{};});
     if(r.ok){S.traject.koper_vrijgegeven=1;renderApp();}else alert('Fout: '+(r.error||'onbekend'));
   };
+  // Koper reactie knoppen
+  if(isKoper()){
+    var f=FASES[S.fase];
+    if(f){
+      var rBtn=ge('koper-reactie-btn-'+f.id);
+      if(rBtn)rBtn.onclick=async function(){
+        var ta=ge('koper-reactie-'+f.id);
+        var status=ge('koper-reactie-status-'+f.id);
+        if(!ta||!ta.value.trim())return;
+        rBtn.disabled=true;rBtn.textContent='Versturen...';
+        try{
+          var resp=await fetch(WORKER+'/mna/koper/reactie',{method:'POST',headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({code:S.code,fase_id:f.id,reactie:ta.value.trim()})});
+          var d=await resp.json();
+          if(d.ok){
+            if(!S.koperReacties)S.koperReacties={};
+            S.koperReacties[f.id]=ta.value.trim();
+            if(status){status.textContent='\u2713 Verstuurd';status.style.opacity='1';setTimeout(function(){status.style.opacity='0';},3000);}
+            rBtn.textContent='Verstuur opmerking';rBtn.disabled=false;
+          }else{alert('Fout bij versturen.');rBtn.disabled=false;rBtn.textContent='Verstuur opmerking';}
+        }catch(e){alert('Verbindingsfout.');rBtn.disabled=false;rBtn.textContent='Verstuur opmerking';}
+      };
+    }
+  }
   var ib=ge('intrekken-btn');
   if(ib)ib.onclick=async function(){
     var k=prompt('Admin sleutel:');if(!k)return;
