@@ -894,7 +894,14 @@ function renderCover(){
     +'<h2>'+( isVerkoper()?'Informatieverzoek due diligence':'Due diligence overzicht')+'</h2>'
     +'<div style="font-size:12px;color:var(--muted);margin-bottom:1.25rem">Trajectcode: <span style="font-family:IBM Plex Mono,monospace;color:var(--teal)">'+esc(S.code)+'</span></div>'
     +intro+'</div>'
-    +(isVerkoper()?'<button class="btn" id="to-main-btn2" style="width:100%">Start met invullen &#8594;</button>':'')
+    +(isVerkoper()&&S.loiTekst?'<div style="margin-top:1.5rem;background:var(--gold-bg);border:1px solid var(--gold);border-radius:var(--r2);padding:1.25rem">'
+      +'<div style="font-size:11px;font-weight:600;color:var(--gold);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.6rem">&#128196; Letter of Intent beschikbaar</div>'
+      +'<div style="font-size:12px;color:var(--mid);margin-bottom:.75rem">De LoI is aangemaakt op '+(S.loiDatum?new Date(S.loiDatum).toLocaleDateString("nl-NL",{day:"numeric",month:"long",year:"numeric"}):"—")+'. Lees de LoI door en upload de ondertekende versie via fase Juridisch &amp; Fiscaal.</div>'
+      +'<div style="display:flex;gap:8px">'
+      +'<button id="loi-lees-btn" class="btn-ghost" style="font-size:12px">&#128065; Lees LoI</button>'
+      +'<button id="loi-print2-btn" class="btn" style="font-size:12px;background:var(--gold)">&#128196; Download / Print</button>'
+      +'</div></div>':'')
+    +(isVerkoper()?'<button class="btn" id="to-main-btn2" style="width:100%;margin-top:1rem">Start met invullen &#8594;</button>':'')
     +'</div>';
 }
 
@@ -1099,8 +1106,10 @@ function bindAll(){
         S={screen:'cover',code:code,rol:d.rol||'verkoper',traject:d.traject,
           fase:0,checked:{},data:{},docRefs:{},notities:{},aiTexts:{},aiLoading:{},
           saveTimer:null,showValidation:false,dataroomLoading:false,dataroom:null,
-          _opy:{},_epy:{},_conflicts:[],_userEdited:{},koperReacties:{}};
+          _opy:{},_epy:{},_conflicts:[],_userEdited:{},koperReacties:{},loiTekst:'',loiDatum:0};
         if(d.data&&d.data.length)loadDataFromDB(d.data);
+        if(d.traject&&d.traject.loi_tekst)S.loiTekst=d.traject.loi_tekst;
+        if(d.traject&&d.traject.loi_datum)S.loiDatum=d.traject.loi_datum;
         renderApp();
       }catch(e){if(err)err.style.display='block';if(load)load.style.display='none';lb.disabled=false;}
     };
@@ -1110,6 +1119,26 @@ function bindAll(){
   var toMain=ge('to-main-btn');if(toMain)toMain.onclick=function(){S.screen='main';var fId=FASES[S.fase]&&FASES[S.fase].id;if(fId&&!DOCS[fId])loadDocsForFase(fId);renderApp();};
   var toMain2=ge('to-main-btn2');if(toMain2)toMain2.onclick=function(){S.screen='main';renderApp();};
   var toWrd=ge('to-waardering-btn');if(toWrd)toWrd.onclick=function(){S.screen='waardering';renderApp();};
+
+  // LoI knoppen op cover
+  var loiLees=ge('loi-lees-btn');
+  if(loiLees)loiLees.onclick=function(){
+    var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;display:flex;align-items:center;justify-content:center;padding:1.5rem';
+    var box=document.createElement('div');box.style.cssText='background:#fff;border-radius:10px;padding:2rem;max-width:700px;width:100%;max-height:90vh;overflow-y:auto';
+    box.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.2rem;font-weight:600;color:#1a1815;margin-bottom:1rem">Letter of Intent</div>'
+      +'<div style="font-family:Georgia,serif;font-size:13px;line-height:1.9;color:#2a2825;white-space:pre-wrap">'+esc(S.loiTekst)+'</div>'
+      +'<div style="display:flex;justify-content:flex-end;margin-top:1.25rem"><button style="background:transparent;border:1px solid #c8c5bc;border-radius:6px;padding:8px 18px;cursor:pointer;font-size:13px" id="loi-sluit">Sluiten</button></div>';
+    ov.appendChild(box);document.body.appendChild(ov);
+    ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
+    document.getElementById('loi-sluit').addEventListener('click',function(){document.body.removeChild(ov);});
+  };
+
+  var loiPrint=ge('loi-print2-btn');
+  if(loiPrint)loiPrint.onclick=function(){
+    var win=window.open('','_blank');
+    win.document.write('<html><body style="font-family:Georgia,serif;font-size:13px;line-height:1.9;max-width:700px;margin:2cm auto;color:#2a2825"><pre style="white-space:pre-wrap;font-family:Georgia,serif">'+S.loiTekst+'</pre></body></html>');
+    win.document.close();win.print();
+  };
   // AI knop in waardering (tussenpersoon)
   var wAiBtn=ge('w-ai-btn');
   if(wAiBtn)wAiBtn.addEventListener('click',async function(){
