@@ -806,7 +806,7 @@ function renderMain(){
     else if(aiText==='__ERROR__')aiBodyHtml='<div style="color:var(--red);font-size:13px">Verbindingsfout. Probeer opnieuw.</div>';
     else{var h=aiText.replace(/## ([^\n]+)/g,function(_,t){return '<h3>'+t+'</h3>';});h=h.replace(/\*\*([^*]+)\*\*/g,function(_,t){return '<strong>'+t+'</strong>';});h=h.split('\n\n').map(function(p){return p.trim()&&p.charAt(0)!=='<'?'<p>'+p+'</p>':p;}).join('');aiBodyHtml=h;}
     var aiHtml='<div class="ai-panel"><div class="ai-hdr"><div><div class="ai-title">AI-advies: '+f.title+'</div><div class="ai-sub">Intern analyse-instrument</div></div>'
-      +(!isKoper()?'<button class="btn-gen" id="gen-btn" '+(aiLoad?'disabled':'')+'>'+(aiLoad?'<div class="spin"></div> Genereren...':aiText&&aiText!=='__ERROR__'?'Opnieuw':'Genereer advies')+'</button>':'')
+      +(!isKoper()&&!isVerkoper()?'<button class="btn-gen" id="gen-btn" '+(aiLoad?'disabled':'')+'>'+(aiLoad?'<div class="spin"></div> Genereren...':aiText&&aiText!=='__ERROR__'?'Opnieuw':'Genereer advies')+'</button>':'')
       +'</div><div class="ai-body">'+aiBodyHtml+'</div></div>';
     extraHtml=chkHtml+notHtml+aiHtml;
   }

@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Legal — KantoorInzicht M&A</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--void:#faf9f6;--panel:#fff;--card:#f0eeea;--border:#dddbd4;--border2:#c8c5bc;--muted:#8a8880;--mid:#5a5854;--sub:#2a2825;--head:#1a1815;--teal:#1a7a5e;--teal-dim:#145f48;--teal-dark:#0a3d2e;--teal-bg:rgba(34,197,160,.1);--gold:#c9a84c;--gold-bg:rgba(201,168,76,.12);--red:#e05252;--red-bg:rgba(224,82,82,.1);--r:6px;--r2:10px}
+body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--sub);min-height:100vh;font-size:14px;line-height:1.6}
+.wrap{max-width:860px;margin:0 auto;padding:0 1.5rem 4rem}
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:1.25rem 0;border-bottom:1px solid var(--border);margin-bottom:2rem}
+.brand{font-size:11px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:8px}
+.wdot{width:6px;height:6px;border-radius:50%;background:var(--teal);flex-shrink:0}
+.btn{background:var(--teal);color:#fff;font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;padding:9px 20px;border-radius:var(--r);border:none;cursor:pointer}
+.btn:hover{background:var(--teal-dim)}
+.btn:disabled{background:var(--border2);color:var(--muted);cursor:default}
+.btn-ghost{background:transparent;border:1px solid var(--border2);color:var(--mid);font-family:'IBM Plex Sans',sans-serif;font-size:13px;padding:9px 18px;border-radius:var(--r);cursor:pointer}
+.btn-ghost:hover{border-color:var(--mid);color:var(--sub)}
+.btn-sm{font-size:12px;padding:6px 14px}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.5rem;margin-bottom:1.25rem}
+.f{margin-bottom:1rem}
+.f label{display:block;font-size:12px;font-weight:600;color:var(--mid);margin-bottom:.35rem;letter-spacing:.03em}
+.f input,.f select{background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:'IBM Plex Sans',sans-serif;font-size:13px;padding:8px 11px;outline:none;width:100%;transition:border-color .12s}
+.f input:focus{border-color:var(--teal)}
+.err{color:var(--red);font-size:12px;margin-bottom:.75rem;display:none}
+.doc-tab{display:flex;gap:8px;margin-bottom:1.5rem;flex-wrap:wrap}
+.doc-btn{background:var(--card);border:1px solid var(--border);color:var(--mid);font-family:'IBM Plex Sans',sans-serif;font-size:12px;font-weight:600;padding:8px 16px;border-radius:var(--r);cursor:pointer;transition:all .12s}
+.doc-btn:hover{border-color:var(--border2);color:var(--sub)}
+.doc-btn.active{background:var(--teal);border-color:var(--teal);color:#fff}
+.doc-status{display:inline-flex;align-items:center;gap:6px;font-size:11px;padding:3px 10px;border-radius:20px;font-weight:600}
+.doc-status.concept{background:var(--gold-bg);color:var(--gold)}
+.doc-status.ondertekend{background:var(--teal-bg);color:var(--teal)}
+.doc-status.leeg{background:var(--card);color:var(--muted)}
+.disclaimer{background:#fff8f0;border:1.5px solid var(--gold);border-radius:var(--r2);padding:1rem 1.25rem;margin-bottom:1.5rem;display:flex;gap:.75rem;align-items:flex-start}
+.disclaimer-icon{font-size:1rem;flex-shrink:0;margin-top:.1rem}
+.disclaimer-text{font-size:12px;color:#5a5030;line-height:1.7}
+.doc-content{font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--sub);line-height:1.85}
+.doc-content h1{font-family:'Playfair Display',serif;font-size:1.4rem;color:var(--head);font-weight:600;margin-bottom:.5rem;text-align:center}
+.doc-content h2{font-family:'Playfair Display',serif;font-size:1rem;color:var(--head);font-weight:600;margin:1.5rem 0 .5rem}
+.doc-content p{margin-bottom:.75rem;color:var(--mid)}
+.doc-content .blank{background:var(--gold-bg);border-bottom:1.5px solid var(--gold);padding:0 4px;color:var(--gold);font-style:italic}
+.doc-content ol,.doc-content ul{margin:.5rem 0 .75rem 1.5rem}
+.doc-content li{margin-bottom:.4rem;color:var(--mid)}
+.upload-zone{border:2px dashed var(--border2);border-radius:var(--r2);padding:1.5rem;text-align:center;cursor:pointer;transition:all .15s;margin-top:1rem}
+.upload-zone:hover{border-color:var(--teal);background:var(--teal-bg)}
+.upload-zone input{display:none}
+.upload-zone p{font-size:13px;color:var(--muted)}
+.uploaded-doc{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--card);border:1px solid var(--border);border-radius:var(--r);margin-top:.5rem;font-size:12px}
+.spin{display:inline-block;width:14px;height:14px;border:2px solid var(--border2);border-top-color:var(--teal);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.traject-info{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1.5rem}
+.traject-chip{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:6px 12px;font-size:12px}
+.traject-chip span{color:var(--muted)}
+.sec-lbl{font-size:10px;font-weight:600;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-bottom:1rem;display:flex;align-items:center;gap:10px}
+.sec-lbl::after{content:'';flex:1;height:1px;background:var(--border)}
+@media print{
+  .hdr .btn,.hdr .btn-ghost,.doc-tab,.upload-zone,.btn-row{display:none!important}
+  .disclaimer{break-inside:avoid}
+  .doc-content{font-size:12px}
+  body{background:#fff}
+}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+const WORKER='https://kantoorinzicht.marcel-bisschops.workers.dev';
+
+var S={
+  screen:'login',
+  code:'',
+  rol:'',       // admin | tussenpersoon
+  traject:null,
+  mnaData:{},
+  activeDoc:'nda',  // nda | loi | koopovereenkomst
+  docTexts:{nda:null,loi:null,koopovereenkomst:null},
+  docLoading:{nda:false,loi:false,koopovereenkomst:false},
+  uploads:{nda:[],loi:[],koopovereenkomst:[]},
+  adminKey:''
+};
+
+var DOC_LABELS={
+  nda:'Non-Disclosure Agreement',
+  loi:'Letter of Intent',
+  koopovereenkomst:'Koopovereenkomst'
+};
+
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function ge(id){return document.getElementById(id);}
+function isAdmin(){return S.rol==='admin';}
+
+function render(){
+  var app=ge('app');
+  if(!app)return;
+  if(S.screen==='login')app.innerHTML=renderLogin();
+  else if(S.screen==='main')app.innerHTML=renderMain();
+  bindEvents();
+}
+
+function renderLogin(){
+  return '<div class="wrap"><div class="hdr"><div class="brand"><div class="wdot"></div>KantoorInzicht &middot; Legal</div></div>'
+    +'<div class="panel" style="max-width:440px;margin:4rem auto">'
+    +'<div style="font-family:\'Playfair Display\',serif;font-size:1.3rem;color:var(--head);font-weight:600;margin-bottom:.5rem">Legal documenten</div>'
+    +'<div style="font-size:13px;color:var(--muted);margin-bottom:1.5rem;line-height:1.6">Voer uw trajectcode (tussenpersoon) of admin-sleutel in om door te gaan.</div>'
+    +'<div class="f"><label>Trajectcode of admin-sleutel</label><input type="password" id="l-code" placeholder="Trajectcode of sleutel" autofocus></div>'
+    +'<div class="err" id="l-err">Code niet herkend. Probeer opnieuw.</div>'
+    +'<button class="btn" id="l-in" style="width:100%">Inloggen</button>'
+    +'</div></div>';
+}
+
+function renderMain(){
+  var t=S.traject;
+  var docLabel=DOC_LABELS[S.activeDoc];
+  var docText=S.docTexts[S.activeDoc];
+  var docLoading=S.docLoading[S.activeDoc];
+  var uploads=S.uploads[S.activeDoc]||[];
+
+  // Status per document
+  function docStatus(key){
+    if(S.uploads[key]&&S.uploads[key].length)return '<span class="doc-status ondertekend">&#10003; Ondertekend</span>';
+    if(S.docTexts[key])return '<span class="doc-status concept">Concept</span>';
+    return '<span class="doc-status leeg">Leeg</span>';
+  }
+
+  var html='<div class="wrap">'
+    +'<div class="hdr"><div class="brand"><div class="wdot"></div>KantoorInzicht &middot; Legal</div>'
+    +'<div style="display:flex;gap:8px">'
+    +(isAdmin()?'':'')
+    +'<button class="btn-ghost btn-sm" onclick="window.print()">&#128438; Print</button>'
+    +'<button class="btn-ghost btn-sm" id="uitloggen-btn">&#8592; Uitloggen</button>'
+    +'</div></div>';
+
+  // Trajectinfo
+  if(t){
+    html+='<div class="traject-info">'
+      +'<div class="traject-chip"><span>Kantoor: </span><strong>'+esc(t.kantoor_naam)+'</strong></div>'
+      +'<div class="traject-chip"><span>Type: </span><strong>'+esc(t.traject_type||'M&A')+'</strong></div>'
+      +'<div class="traject-chip"><span>Status: </span><strong>'+esc(t.status||'actief')+'</strong></div>'
+      +'<div class="traject-chip"><span>Rol: </span><strong>'+(isAdmin()?'Beheerder':'Tussenpersoon')+'</strong></div>'
+      +'</div>';
+  }
+
+  // Document tabs
+  html+='<div class="sec-lbl">Documenten</div>'
+    +'<div class="doc-tab">';
+  ['nda','loi','koopovereenkomst'].forEach(function(key){
+    html+='<button class="doc-btn'+(S.activeDoc===key?' active':'')+'" data-doc="'+key+'">'
+      +DOC_LABELS[key]+' '+docStatus(key)+'</button>';
+  });
+  html+='</div>';
+
+  // Disclaimer
+  html+='<div class="disclaimer"><div class="disclaimer-icon">&#9888;</div>'
+    +'<div class="disclaimer-text"><strong>Juridische disclaimer.</strong> Dit document is een AI-gegenereerd concept op basis van de ingevoerde due diligence gegevens en algemene juridische bronnen. Het is uitsluitend bedoeld als werkinstrument en startpunt. '
+    +'<strong>Dit document vormt geen juridisch advies en is niet rechtsgeldig zonder controle en ondertekening door een gekwalificeerde jurist.</strong> '
+    +'Bisschops Financing BV aanvaardt geen aansprakelijkheid voor de inhoud of het gebruik van dit document.</div></div>';
+
+  // Document content
+  html+='<div class="panel">'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;flex-wrap:wrap;gap:8px">'
+    +'<div style="font-family:\'Playfair Display\',serif;font-size:1.1rem;color:var(--head);font-weight:600">'+esc(docLabel)+'</div>'
+    +'<div class="btn-row" style="display:flex;gap:8px">'
+    +'<button class="btn btn-sm" id="gen-doc-btn" '+(docLoading?'disabled':'')+' style="min-width:160px">'
+    +(docLoading?'<div class="spin"></div> Genereren...':docText?'&#8635; Opnieuw genereren':'&#9881; Genereer concept')
+    +'</button>'
+    +'</div></div>';
+
+  if(docLoading){
+    html+='<div style="text-align:center;padding:3rem;color:var(--muted);font-size:13px"><div class="spin" style="width:24px;height:24px;border-width:3px;margin:0 auto 1rem"></div>Document wordt gegenereerd... (20-40 seconden)</div>';
+  } else if(docText){
+    html+='<div class="doc-content" id="doc-out">'+docText+'</div>';
+  } else {
+    html+='<div style="text-align:center;padding:3rem;color:var(--muted);font-size:13px">'
+      +'<div style="font-size:2rem;margin-bottom:.75rem">&#128196;</div>'
+      +'Klik op "Genereer concept" om een AI-concept te maken op basis van de due diligence data.'
+      +'</div>';
+  }
+  html+='</div>';
+
+  // Upload ondertekend document
+  html+='<div class="sec-lbl">Ondertekend document uploaden</div>'
+    +'<div class="panel">'
+    +'<div style="font-size:13px;color:var(--mid);margin-bottom:1rem">Upload hier het door alle partijen ondertekende document (PDF). Dit wordt opgeslagen in het dossier van dit traject.</div>';
+
+  if(uploads.length){
+    uploads.forEach(function(u){
+      html+='<div class="uploaded-doc"><span>&#128196; '+esc(u.naam)+'</span><span style="color:var(--teal)">&#10003; Opgeslagen</span></div>';
+    });
+  }
+
+  html+='<label class="upload-zone" id="upload-zone-'+S.activeDoc+'">'
+    +'<input type="file" id="upload-input" accept=".pdf,.docx">'
+    +'<p>&#8679; Sleep PDF hier naartoe of klik om te uploaden</p>'
+    +'<p style="font-size:11px;margin-top:.3rem">PDF of Word, max 10MB</p>'
+    +'</label>'
+    +'</div>';
+
+  html+='</div>';
+  return html;
+}
+
+function bindEvents(){
+  var loginBtn=ge('l-in');
+  if(loginBtn)loginBtn.addEventListener('click',doLogin);
+  var codeInput=ge('l-code');
+  if(codeInput)codeInput.addEventListener('keydown',function(e){if(e.key==='Enter')doLogin();});
+
+  var uitlogBtn=ge('uitloggen-btn');
+  if(uitlogBtn)uitlogBtn.addEventListener('click',function(){
+    S={screen:'login',code:'',rol:'',traject:null,mnaData:{},activeDoc:'nda',
+      docTexts:{nda:null,loi:null,koopovereenkomst:null},
+      docLoading:{nda:false,loi:false,koopovereenkomst:false},
+      uploads:{nda:[],loi:[],koopovereenkomst:[]},adminKey:''};
+    render();
+  });
+
+  document.querySelectorAll('.doc-btn').forEach(function(btn){
+    btn.addEventListener('click',function(){S.activeDoc=btn.dataset.doc;render();});
+  });
+
+  var genBtn=ge('gen-doc-btn');
+  if(genBtn)genBtn.addEventListener('click',genDoc);
+
+  var uploadInput=ge('upload-input');
+  if(uploadInput)uploadInput.addEventListener('change',function(){
+    var file=uploadInput.files[0];
+    if(file)uploadDoc(file);
+  });
+}
+
+async function doLogin(){
+  var code=(ge('l-code').value||'').trim();
+  var errEl=ge('l-err');
+  if(!code){errEl.style.display='block';errEl.textContent='Voer een code in.';return;}
+  var btn=ge('l-in');btn.disabled=true;btn.textContent='Laden...';
+  errEl.style.display='none';
+
+  // Probeer als admin key
+  try{
+    var r=await fetch(WORKER+'/mna/admin/lijst?key='+encodeURIComponent(code));
+    if(r.ok){
+      S.rol='admin';S.adminKey=code;S.code=code;
+      // Admin: geen specifiek traject, toon trajectkeuze
+      var lijst=await r.json();
+      S.screen='keuze';S._trajList=lijst||[];
+      renderKeuze();
+      return;
+    }
+  }catch(e){}
+
+  // Probeer als trajectcode (tussenpersoon)
+  try{
+    var r2=await fetch(WORKER+'/mna/traject/'+encodeURIComponent(code.toUpperCase()));
+    if(r2.ok){
+      var d=await r2.json();
+      if(d&&d.traject&&d.rol==='tussenpersoon'){
+        S.rol='tussenpersoon';S.code=code.toUpperCase();S.traject=d.traject;
+        await laadMnaData(d);
+        S.screen='main';render();
+        return;
+      } else {
+        errEl.style.display='block';
+        errEl.textContent='Deze code geeft geen toegang tot Legal. Gebruik uw tussenpersoonscode.';
+        btn.disabled=false;btn.textContent='Inloggen';return;
+      }
+    }
+  }catch(e){}
+
+  errEl.style.display='block';errEl.textContent='Code niet herkend.';
+  btn.disabled=false;btn.textContent='Inloggen';
+}
+
+function renderKeuze(){
+  var lijst=S._trajList||[];
+  var html='<div class="wrap"><div class="hdr"><div class="brand"><div class="wdot"></div>KantoorInzicht &middot; Legal</div>'
+    +'<button class="btn-ghost btn-sm" id="uitloggen-btn">&#8592; Uitloggen</button></div>'
+    +'<div style="font-family:\'Playfair Display\',serif;font-size:1.3rem;color:var(--head);font-weight:600;margin-bottom:1.5rem">Selecteer traject</div>'
+    +'<div style="display:flex;flex-direction:column;gap:8px">';
+
+  if(!lijst.length){
+    html+='<div style="color:var(--muted);font-size:13px">Geen trajecten gevonden.</div>';
+  } else {
+    lijst.forEach(function(t){
+      html+='<div class="panel" style="display:flex;align-items:center;justify-content:space-between;padding:1rem 1.25rem;cursor:pointer" data-id="'+esc(t.id)+'" data-naam="'+esc(t.kantoor_naam)+'">'
+        +'<div><div style="font-weight:600;color:var(--head);font-size:14px">'+esc(t.kantoor_naam)+'</div>'
+        +'<div style="font-size:12px;color:var(--muted)">'+esc(t.traject_type||'M&A')+' &middot; '+esc(t.status||'actief')+'</div></div>'
+        +'<button class="btn btn-sm traj-kies" data-id="'+esc(t.id)+'">Openen &#8594;</button>'
+        +'</div>';
+    });
+  }
+  html+='</div></div>';
+  ge('app').innerHTML=html;
+
+  ge('uitloggen-btn').addEventListener('click',function(){
+    S.screen='login';S.rol='';render();
+  });
+  document.querySelectorAll('.traj-kies').forEach(function(btn){
+    btn.addEventListener('click',async function(){
+      btn.disabled=true;btn.textContent='Laden...';
+      var id=btn.dataset.id;
+      try{
+        var r=await fetch(WORKER+'/mna/admin/detail/'+id+'?key='+encodeURIComponent(S.adminKey));
+        var d=await r.json();
+        S.traject=d.traject;
+        await laadMnaData(d);
+        S.screen='main';render();
+      }catch(e){btn.disabled=false;btn.textContent='Openen &#8594;';alert('Fout: '+e.message);}
+    });
+  });
+}
+
+async function laadMnaData(d){
+  S.mnaData={};
+  (d.data||[]).forEach(function(row){
+    try{
+      var dj=typeof row.data_json==='string'?JSON.parse(row.data_json):row.data_json;
+      S.mnaData[row.fase_id]=dj||{};
+    }catch(e){}
+  });
+}
+
+function bouwMnaSamenvatting(){
+  var faseLabels={financieel:'Financieel',commercieel:'Klanten & commercieel',partner:'Partners & personeel',
+    compliance:'Compliance & kwaliteit',it:'IT & automatisering',juridisch:'Juridisch & fiscaal',strategisch:'Strategisch & markt'};
+  var txt='';
+  Object.keys(faseLabels).forEach(function(faseId){
+    var data=S.mnaData[faseId]||{};
+    var gevuld=Object.values(data).filter(function(v){return v&&v.value;});
+    if(gevuld.length){
+      txt+='\n['+faseLabels[faseId]+']\n';
+      gevuld.forEach(function(v){txt+='- '+v.label+': '+v.value+'\n';});
+    }
+  });
+  return txt||'Geen due diligence data beschikbaar.';
+}
+
+function bouwPrompt(docType){
+  var t=S.traject||{};
+  var kantoor=t.kantoor_naam||'[KANTOORNAAM]';
+  var type=t.traject_type||'Verkoop';
+  var datum=new Date().toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'});
+  var mnaData=bouwMnaSamenvatting();
+
+  var gemeenschappelijk='Datum: '+datum+'\nKantoor: '+kantoor+'\nTrajecttype: '+type+'\n\nDue diligence data:\n'+mnaData;
+
+  var prompts={
+    nda: 'Je bent een Nederlandse M&A-jurist gespecialiseerd in accountants- en administratiekantoren. '
+      +'Stel een Non-Disclosure Agreement (NDA / geheimhoudingsovereenkomst) op voor een M&A-traject. '
+      +'Gebruik de volgende gegevens als context. Waar gegevens ontbreken, gebruik je [INVULLEN] als placeholder.\n\n'
+      +gemeenschappelijk+'\n\n'
+      +'Eisen aan het document:\n'
+      +'- Nederlands recht van toepassing\n'
+      +'- Wederzijdse geheimhouding (verkoper en koper)\n'
+      +'- Looptijd: 2 jaar na ondertekening\n'
+      +'- Boeteclausule bij overtreding\n'
+      +'- Uitzonderingen op geheimhouding (openbare informatie, wettelijke verplichtingen)\n'
+      +'- Contactpersoon: Marcel Bisschops, Bisschops Financing BV\n'
+      +'- Ondertekeningsblok voor beide partijen\n\n'
+      +'Genereer het volledige document in HTML-formaat met h1, h2, p, ol/ul tags. '
+      +'Gebruik <span class="blank">[INVULLEN]</span> voor ontbrekende gegevens. '
+      +'Begin direct met het document, geen inleiding.',
+
+    loi: 'Je bent een Nederlandse M&A-jurist gespecialiseerd in accountants- en administratiekantoren. '
+      +'Stel een Letter of Intent (LoI / intentieverklaring) op voor een M&A-traject. '
+      +'Gebruik de volgende gegevens als context. Waar gegevens ontbreken, gebruik je [INVULLEN] als placeholder.\n\n'
+      +gemeenschappelijk+'\n\n'
+      +'Eisen aan het document:\n'
+      +'- Nederlands recht van toepassing\n'
+      +'- Niet-bindend karakter (behoudens exclusiviteit en geheimhouding)\n'
+      +'- Indicatieve koopprijs op basis van beschikbare EBITDA-data (indien aanwezig)\n'
+      +'- Exclusiviteitsperiode: 8 weken\n'
+      +'- Voorwaarden voor closing (due diligence, financiering)\n'
+      +'- Tijdlijn vervolgstappen\n'
+      +'- Ondertekeningsblok voor beide partijen\n\n'
+      +'Genereer het volledige document in HTML-formaat met h1, h2, p, ol/ul tags. '
+      +'Gebruik <span class="blank">[INVULLEN]</span> voor ontbrekende gegevens. '
+      +'Begin direct met het document, geen inleiding.',
+
+    koopovereenkomst: 'Je bent een Nederlandse M&A-jurist gespecialiseerd in accountants- en administratiekantoren. '
+      +'Stel een concept-koopovereenkomst op voor de overname van een accountants- of administratiekantoor. '
+      +'Gebruik de volgende gegevens als context. Waar gegevens ontbreken, gebruik je [INVULLEN] als placeholder.\n\n'
+      +gemeenschappelijk+'\n\n'
+      +'Eisen aan het document:\n'
+      +'- Nederlands recht, bevoegde rechter arrondissement Oost-Brabant\n'
+      +'- Koopprijs en betaalstructuur (inclusief earn-out indien van toepassing)\n'
+      +'- Garanties en vrijwaringen van verkoper\n'
+      +'- Overgangsbegeleiding: minimaal 12 maanden\n'
+      +'- Non-concurrentiebeding: 3 jaar, regio Nederland\n'
+      +'- Opschortende voorwaarden\n'
+      +'- Closing-voorwaarden\n'
+      +'- Ondertekeningsblok voor beide partijen en notaris\n\n'
+      +'Genereer het volledige document in HTML-formaat met h1, h2, p, ol/ul tags. '
+      +'Gebruik <span class="blank">[INVULLEN]</span> voor ontbrekende gegevens. '
+      +'Dit is een concept — vermeld dit duidelijk bovenaan het document. '
+      +'Begin direct met het document, geen inleiding.'
+  };
+
+  return prompts[docType];
+}
+
+async function genDoc(){
+  var docType=S.activeDoc;
+  S.docLoading[docType]=true;render();
+  try{
+    var prompt=bouwPrompt(docType);
+    var resp=await fetch(WORKER+'/ai',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:6000})
+    });
+    var d=await resp.json();
+    var tekst=d.content&&d.content[0]?d.content[0].text:(d.error||'Fout bij genereren.');
+    // Strip eventuele ```html wrapper
+    tekst=tekst.replace(/^```html\n?/,'').replace(/\n?```$/,'');
+    S.docTexts[docType]=tekst;
+  }catch(e){
+    S.docTexts[docType]='<p style="color:var(--red)">Fout bij genereren: '+esc(e.message)+'</p>';
+  }
+  S.docLoading[docType]=false;render();
+}
+
+async function uploadDoc(file){
+  if(file.size>10*1024*1024){alert('Bestand te groot (max 10MB).');return;}
+  var docType=S.activeDoc;
+  var t=S.traject||{};
+  var formData=new FormData();
+  formData.append('file',file);
+  formData.append('traject_id',t.id||'');
+  formData.append('fase_id','legal_'+docType);
+  var key=isAdmin()?('?key='+encodeURIComponent(S.adminKey)):'';
+  try{
+    var r=await fetch(WORKER+'/mna/document/upload'+key,{method:'POST',body:formData});
+    var d=await r.json();
+    if(d.ok||d.id){
+      S.uploads[docType].push({naam:file.name,id:d.id});
+      render();
+    }else{alert('Upload mislukt: '+(d.error||'onbekend'));}
+  }catch(e){alert('Uploadfout: '+e.message);}
+}
+
+render();
+</script>
+</body>
+</html>
