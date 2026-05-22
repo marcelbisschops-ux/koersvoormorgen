@@ -1078,7 +1078,9 @@ async function toonDetail(id,naam){
   var ov=document.createElement('div');ov.className='overlay';
   var mo=document.createElement('div');mo.className='modal';mo.style.maxWidth='700px';
   mo.innerHTML='<div class="modal-title">'+esc(naam)+' <span class="code-chip" style="font-size:12px">'+esc(id)+'</span></div>'
-    +'<div style="display:flex;gap:8px;margin-bottom:1.25rem;flex-wrap:wrap"><button class="btn" id="det-loi-btn" style="background:var(--gold);font-size:12px;padding:7px 14px">&#128196; Genereer LoI</button><button class="btn" id="det-ai-btn" style="background:var(--teal);font-size:12px;padding:7px 14px">&#9881; AI-analyse</button><div style="flex:1"></div><button class="btn-ghost" id="det-sluit" style="font-size:12px;padding:7px 14px">Sluiten</button></div>'
+    +'<div style="display:flex;gap:8px;margin-bottom:1.25rem;flex-wrap:wrap"><button class="btn" id="det-bem-btn" style="background:#2a5ea0;font-size:12px;padding:7px 14px">&#128203; Bemiddelingsovereenkomst</button><button class="btn" id="det-nda-btn" style="background:#7c5cbf;font-size:12px;padding:7px 14px">&#128274; Genereer NDA</button><button class="btn" id="det-loi-btn" style="background:var(--gold);font-size:12px;padding:7px 14px">&#128196; Genereer LoI</button><button class="btn" id="det-ai-btn" style="background:var(--teal);font-size:12px;padding:7px 14px">&#9881; AI-analyse</button><div style="flex:1"></div><button class="btn-ghost" id="det-sluit" style="font-size:12px;padding:7px 14px">Sluiten</button></div>'
+    +'<div id="bem-output" style="display:none;margin-bottom:1.25rem;border-bottom:1px solid var(--border);padding-bottom:1.25rem"></div>'
+    +'<div id="nda-output" style="display:none;margin-bottom:1.25rem;border-bottom:1px solid var(--border);padding-bottom:1.25rem"></div>'
     +'<div id="loi-output" style="display:none;margin-bottom:1.25rem;border-bottom:1px solid var(--border);padding-bottom:1.25rem"></div>'
     +'<div id="mna-ai-out" style="display:none;margin-bottom:1.25rem;border-bottom:1px solid var(--border);padding-bottom:1.25rem"></div>'
     +'<div id="detail-body" style="color:var(--muted);font-size:13px">Laden...</div>'
@@ -1153,7 +1155,7 @@ async function toonDetail(id,naam){
         var koperRv=d.traject.koper_rechtsvorm||'[INVULLEN: rechtsvorm]';
         var koperContact=d.traject.koper_contact||'[INVULLEN: contactpersoon]';
         var verkoperNaam=d.traject.contact_naam||'[INVULLEN: naam verkopende partner]';
-        var prompt='Schrijf een professionele Letter of Intent (LoI) in het Nederlands voor een M&A traject in de accountancy/administratie sector.\n\nGEGEVENS:\n- Doelkantoor (verkoper): '+esc(d.traject.kantoor_naam||naam)+'\n- Contactpersoon verkoper: '+esc(verkoperNaam)+'\n- Kopende partij: '+esc(koperNaam)+' ('+esc(koperRv)+')\n- Contactpersoon koper: '+esc(koperContact)+'\n- Trajecttype: '+esc(d.traject.traject_type||'Verkoop')+'\n- Datum: '+datum+'\n- Adviseur: Marcel Bisschops, Bisschops Financing BV\n\nSTRUCTUUR:\n1. Aanhef en introductie (beide partijen met volledige namen)\n2. Intentie en scope van de voorgenomen transactie\n3. Indicatieve transactiewaarde (PM - nader te bepalen na due diligence)\n4. Due diligence proces en tijdlijn (indicatief 8 weken)\n5. Exclusiviteit (60 dagen)\n6. Vertrouwelijkheid\n7. Niet-bindend karakter\n8. Ondertekening beide partijen + adviseur\n\nFormeel, juridisch correct Nederlands. Vul bekende gegevens in, gebruik [INVULLEN] alleen waar echt niets bekend is.';
+        var prompt='Stel een volledige Letter of Intent (LoI / Intentieverklaring) op op basis van het volgende Bisschops Financing template. Vul alle bekende gegevens in. Gebruik [INVULLEN] alleen voor werkelijk ontbrekende gegevens.\n\nBEKENDE GEGEVENS:\n- Koper: '+esc(koperNaam)+' ('+esc(koperRv)+')\n- Contactpersoon koper: '+esc(koperContact)+'\n- Verkoper/doelkantoor: '+esc(d.traject.kantoor_naam||naam)+'\n- Contactpersoon verkoper: '+esc(verkoperNaam)+'\n- Trajecttype: '+esc(d.traject.traject_type||'Verkoop')+'\n- Datum: '+datum+'\n- Eerder getekende NDA: ja, van kracht\n\nBISCHOPS FINANCING TEMPLATE:\n\nINTENTIEVERKLARING (LETTER OF INTENT)\n\nPartijen\n- [Naam Koper], gevestigd te [adres], rechtsgeldig vertegenwoordigd door [naam], hierna: "Koper";\n- [Naam Doelkantoor], gevestigd te [adres], rechtsgeldig vertegenwoordigd door [naam], hierna: "Verkoper";\nIn aanwezigheid van en begeleid door Bisschops Financing B.V., Grotestraat 13, 5841AA Oploo.\n\nArtikel 1 – Doel en Transactie\nPartijen hebben de intentie om te komen tot een transactie waarbij Koper 100% van de aandelen in [Naam Target B.V.] zal verwerven van Verkoper (de "Transactie").\n\nArtikel 2 – Indicatieve Koopprijs\nOp basis van de huidige informatie biedt Koper een indicatieve koopprijs van PM (pro memorie — nader te bepalen na due diligence). De definitieve prijs wordt vastgesteld na afronding van het Due Diligence onderzoek op basis van genormaliseerde EBITDA en een marktconforme multiple.\n\nArtikel 3 – Voorwaarden (Conditions Precedent)\nDe definitieve Transactie is afhankelijk van: succesvolle afronding van het Due Diligence onderzoek naar tevredenheid van Koper; het verkrijgen van passende financiering; overeenstemming over de definitieve Koopovereenkomst (SPA).\n\nArtikel 4 – Due Diligence en Tijdlijn\nVerkoper verleent Koper en haar adviseurs toegang tot alle relevante informatie via een dataroom. Start Due Diligence: binnen 2 weken na ondertekening. Indicatieve doorlooptijd: 8 weken.\n\nArtikel 5 – Exclusiviteit\nGedurende 60 dagen na ondertekening verleent Verkoper aan Koper exclusiviteit. Verkoper zal gedurende deze periode niet met derden onderhandelen over een vergelijkbare transactie.\n\nArtikel 6 – Bindend vs. Niet-bindend\nNiet-bindend: de voornemens in Artikel 1, 2 en 3 zijn uitsluitend intenties. Bindend: de bepalingen inzake toegang, exclusiviteit, kosten en geheimhouding zijn juridisch bindend.\n\nArtikel 7 – Kosten\nIedere partij draagt haar eigen kosten. De bemiddelingskosten van Bisschops Financing worden bij closing gedragen door de Kopende Partij.\n\nArtikel 8 – Geheimhouding\nDe eerder getekende NDA blijft onverminderd van kracht.\n\nArtikel 9 – Rechtskeuze\nNederlands recht. Geschillen: Rechtbank Oost-Brabant.\n\nOndertekening\n\nKoper: [Naam Koper]\nNaam: ____________________\nHandtekening: ____________________\nDatum: '+datum+'\n\nVerkoper: [Naam Doelkantoor]\nNaam: ____________________\nHandtekening: ____________________\nDatum: '+datum+'\n\nVoor gezien en begeleiding:\nBisschops Financing B.V. — Marcel Bisschops\nHandtekening: ____________________\n\nVul nu de template in met de bekende gegevens en geef de volledige LoI terug. Geen uitleg, alleen het document.';
         var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:2500})});
         var rd=await resp.json();
         var tekst=rd.text||(rd.error||'Fout bij genereren.');
@@ -1166,6 +1168,93 @@ async function toonDetail(id,naam){
         fetch(WORKER+'/mna/loi/email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:id,loi_tekst:tekst,to:[]})}).catch(function(){});
         btn.textContent='Opnieuw genereren';btn.disabled=false;
       }catch(e){loiOut.innerHTML='<div style="color:var(--red);font-size:13px">Fout: '+e.message+'</div>';btn.textContent='Genereer LoI';btn.disabled=false;}
+    });
+
+    // Bemiddelingsovereenkomst knop
+    document.getElementById('det-bem-btn').addEventListener('click',async function(){
+      var btn=this;btn.disabled=true;btn.textContent='Genereren...';
+      var bemOut=document.getElementById('bem-output');
+      bemOut.style.display='block';
+      bemOut.innerHTML='<div style="color:var(--muted);font-size:13px">Bemiddelingsovereenkomst wordt gegenereerd... (15-30 sec)</div>';
+      try{
+        var isSell=!d.traject.traject_type||d.traject.traject_type==='Verkoop'||d.traject.traject_type==='Opvolging';
+        var opdrachtgever=isSell?(d.traject.kantoor_naam||naam):(koperNaam);
+        var prompt='Stel een volledige Bemiddelingsovereenkomst op op basis van het Bisschops Financing template. Vul alle bekende gegevens in.\n\nBEKENDE GEGEVENS:\n- Opdrachtgever: '+esc(opdrachtgever)+'\n- Contactpersoon: '+esc(isSell?verkoperNaam:koperContact)+'\n- Type opdracht: '+(isSell?'Sell-side (verkoop)':'Buy-side (aankoop)')+'\n- Trajecttype: '+esc(d.traject.traject_type||'Verkoop')+'\n- Datum: '+datum+'\n\nBISCHOPS FINANCING TEMPLATE ('+( isSell?'SELL-SIDE':'BUY-SIDE')+'):\n\nBEMIDDELINGSOVEREENKOMST '+(isSell?'VERKOOP':'AANKOOP')+'\n\nPartijen\n- [Naam Opdrachtgever], gevestigd te [adres], rechtsgeldig vertegenwoordigd door [naam], hierna: "Opdrachtgever";\n- Bisschops Financing B.V., gevestigd te Grotestraat 13, 5841AA Oploo, KvK [invullen], hierna: "Bisschops Financing";\n\nArtikel 1 – Opdracht\nOpdrachtgever verstrekt aan Bisschops Financing de '+(isSell?'exclusieve opdracht tot begeleiding van de verkoop':'opdracht tot identificeren en begeleiden van mogelijke Targets')+'.\n\nDe werkzaamheden omvatten: analyse en strategie, informatiemateriaal, procesbegeleiding, onderhandelingsondersteuning tot en met closing.\n\nArtikel 2 – Exclusiviteit en looptijd\nExclusieve periode: vier (4) maanden, daarna stilzwijgende verlenging met opzegtermijn van één (1) maand.\n\nArtikel 3 – Vergoeding\n'+(isSell?'Opdrachtgever is geen succesfee verschuldigd. Bisschops Financing verhaalt haar honorarium op de Kopende Partij. Extra werkzaamheden op regiebasis à €250/uur excl. btw.':'Voorfasevergoeding verschuldigd na wederzijdse intentie. Optie A: €10.000 eenmalig excl. btw. Optie B: regiebasis. Succesfee bij closing conform Algemene Voorwaarden.')+'\n\nArtikel 4 – Beëindiging zonder transactie\nBreak-fee bij intrekking of weigering marktconform bod: daadwerkelijk bestede uren à €250/uur, minimum €5.000 excl. btw.\n\nArtikel 5 – Rechtskeuze\nNederlands recht. Geschillen: Rechtbank Oost-Brabant.\n\nOndertekening\n\nOpdrachtgever:\nNaam: ____________________\nHandtekening: ____________________\nDatum: '+datum+'\n\nBisschops Financing B.V.:\nNaam: Marcel Bisschops\nHandtekening: ____________________\nDatum: '+datum+'\n\nVul nu de template in met de bekende gegevens en geef de volledige overeenkomst terug. Geen uitleg, alleen het document.';
+        var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:2500})});
+        var rawText=await resp.text();
+        var rd;try{rd=JSON.parse(rawText);}catch(pe){throw new Error('Geen JSON: '+rawText.substring(0,200));}
+        if(!resp.ok)throw new Error('Worker fout '+resp.status+': '+(rd.error||''));
+        var tekst=rd.text||(rd.error||'Fout bij genereren.');
+        var bemHtml=tekst.replace(/^# (.+)$/gm,'<h2 style="font-family:Georgia,serif;font-size:1.1rem;color:var(--head);margin:1rem 0 .4rem;font-weight:700">$1</h2>').replace(/^## (.+)$/gm,'<h3 style="font-family:Georgia,serif;font-size:.95rem;color:var(--head);margin:.9rem 0 .3rem;font-weight:700">$1</h3>').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/^---$/gm,'<hr style="border:none;border-top:1px solid var(--border);margin:.75rem 0">').replace(/\n\n/g,'</p><p style="font-size:13px;line-height:1.9;color:var(--sub);margin:.4rem 0">').replace(/\n/g,'<br>');
+        bemOut.innerHTML='<div style="font-size:11px;font-weight:600;color:#2a5ea0;letter-spacing:.1em;text-transform:uppercase;margin-bottom:.75rem">&#128203; Bemiddelingsovereenkomst · '+esc(d.traject.kantoor_naam||naam)+'</div>'
+          +'<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:1.25rem;font-size:13px;line-height:1.9;color:var(--sub);font-family:Georgia,serif;max-height:350px;overflow-y:auto"><p style="font-size:13px;line-height:1.9;color:var(--sub);margin:.4rem 0">'+bemHtml+'</p></div>'
+          +'<div style="display:flex;gap:8px;margin-top:.75rem">'
+          +'<button id="bem-print-btn" class="btn-ghost" style="font-size:12px;padding:6px 14px">&#128196; Print / PDF</button>'
+          +'<button id="bem-email-btn" class="btn" style="font-size:12px;padding:6px 14px;background:#2a5ea0">&#9993; Stuur naar opdrachtgever</button>'
+          +'</div>';
+        document.getElementById('bem-print-btn').addEventListener('click',function(){
+          var win=window.open('','_blank');
+          var html=tekst.replace(/^# (.+)$/gm,'<h1 style="font-family:Georgia,serif;font-size:1.4rem;margin:1.5rem 0 .5rem">$1</h1>').replace(/^## (.+)$/gm,'<h2 style="font-family:Georgia,serif;font-size:1.1rem;margin:1.2rem 0 .4rem">$2</h2>').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/^---$/gm,'<hr style="border:none;border-top:1px solid #ddd;margin:.75rem 0">').replace(/\n\n/g,'</p><p style="margin:.6rem 0">').replace(/\n/g,'<br>');
+          win.document.write('<html><head><style>body{font-family:Georgia,serif;font-size:13px;line-height:1.9;max-width:700px;margin:2cm auto;color:#2a2825}@media print{body{margin:1.5cm}}</style></head><body><p>'+html+'</p></body></html>');
+          win.document.close();win.print();
+        });
+        document.getElementById('bem-email-btn').addEventListener('click',async function(){
+          var ebtn=this;ebtn.disabled=true;ebtn.textContent='Versturen...';
+          var toList=[d.traject.contact_email||'marcel@bisschopsfinancing.nl'];
+          if(d.traject.begeleider_email&&!toList.includes(d.traject.begeleider_email))toList.push(d.traject.begeleider_email);
+          var er=await fetch(WORKER+'/mna/bem/email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:id,bem_tekst:tekst,to:toList,type:isSell?'verkoop':'aankoop'})});
+          var ed=await er.json();
+          if(ed.ok){ebtn.textContent='✓ Verstuurd';setTimeout(function(){ebtn.textContent='✉ Stuur';ebtn.disabled=false;},3000);}
+          else{alert('Fout: '+(ed.error||'onbekend'));ebtn.disabled=false;ebtn.textContent='✉ Stuur naar opdrachtgever';}
+        });
+        btn.textContent='Opnieuw genereren';btn.disabled=false;
+      }catch(e){bemOut.innerHTML='<div style="color:var(--red);font-size:13px">Fout: '+e.message+'</div>';btn.textContent='Genereer';btn.disabled=false;}
+    });
+
+    // NDA knop
+    document.getElementById('det-nda-btn').addEventListener('click',async function(){
+      var btn=this;btn.disabled=true;btn.textContent='Genereren...';
+      var ndaOut=document.getElementById('nda-output');
+      ndaOut.style.display='block';
+      ndaOut.innerHTML='<div style="color:var(--muted);font-size:13px">NDA wordt gegenereerd... (15-30 sec)</div>';
+      try{
+        var datum=new Date().toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'});
+        var koperNaam=d.traject.koper_naam||'[INVULLEN: naam kopende partij]';
+        var koperRv=d.traject.koper_rechtsvorm||'[INVULLEN: rechtsvorm]';
+        var koperContact=d.traject.koper_contact||'[INVULLEN: contactpersoon]';
+        var verkoperNaam=d.traject.contact_naam||'[INVULLEN: naam verkopende partner]';
+        var prompt='Stel een volledige Geheimhoudingsovereenkomst (NDA) op op basis van het volgende Bisschops Financing template. Vul alle bekende gegevens in. Gebruik [INVULLEN] alleen voor werkelijk ontbrekende gegevens (adressen, KvK-nummers).\n\nBEKENDE GEGEVENS:\n- Verstrekkende partij (verkoper/doelkantoor): '+esc(d.traject.kantoor_naam||naam)+'\n- Contactpersoon verkoper: '+esc(verkoperNaam)+'\n- Ontvangende partij (koper): '+esc(koperNaam)+' ('+esc(koperRv)+')\n- Contactpersoon koper: '+esc(koperContact)+'\n- Datum: '+datum+'\n\nBISCHOPS FINANCING TEMPLATE:\n\nGEHEIMHOUDINGSOVEREENKOMST (NDA)\n\nPartijen\n- [Naam Doelkantoor], gevestigd te [adres], hierna: "Verstrekkende Partij";\n- [Naam Koper], gevestigd te [adres], hierna: "Ontvangende Partij";\nHierna gezamenlijk: "Partijen".\n\nIn aanwezigheid van en begeleid door Bisschops Financing B.V., Grotestraat 13, 5841AA Oploo, hierna: "Adviseur".\n\nArtikel 1 – Doel\nPartijen overwegen een mogelijke Transactie in de accountancy-/administratiesector en zullen in dat kader vertrouwelijke informatie uitwisselen. Deze overeenkomst regelt de geheimhouding en het gebruik van deze informatie.\n\nArtikel 2 – Vertrouwelijke informatie\nOnder vertrouwelijke informatie wordt verstaan alle informatie, ongeacht vorm, waaronder financiële gegevens, bedrijfsinformatie, contracten, klanten- en leveranciersgegevens, strategische plannen en mondeling verstrekte informatie.\n\nArtikel 3 – Verplichtingen Ontvangende Partij\nDe Ontvangende Partij zal vertrouwelijke informatie strikt geheimhouden en uitsluitend gebruiken voor beoordeling van de mogelijke Transactie. Informatie mag niet worden gedeeld met derden, behoudens werknemers, adviseurs en financiers mits gebonden aan gelijkwaardige geheimhouding.\n\nArtikel 4 – Uitzonderingen\nDe geheimhoudingsplicht geldt niet voor informatie die reeds openbaar was, rechtmatig van derden is verkregen, onafhankelijk is ontwikkeld, of openbaar moet worden gemaakt op grond van wet of rechterlijk bevel.\n\nArtikel 5 – Verbod op benadering\nGedurende de looptijd en 12 maanden daarna zal de Ontvangende Partij geen medewerkers, klanten of relaties van de Verstrekkende Partij direct benaderen buiten het kader van deze overeenkomst.\n\nArtikel 6 – Geen verplichting tot transactie\nDeze overeenkomst verplicht geen der partijen tot het aangaan van een Transactie.\n\nArtikel 7 – Duur\nDeze geheimhoudingsverplichtingen gelden gedurende drie (3) jaar na ondertekening. Bedrijfsgeheimen blijven vertrouwelijk zolang zij hun vertrouwelijke karakter behouden.\n\nArtikel 8 – Teruggave informatie\nOp eerste verzoek zal de Ontvangende Partij alle ontvangen informatie retourneren of vernietigen en dit schriftelijk bevestigen.\n\nArtikel 9 – Rechtskeuze\nOp deze overeenkomst is Nederlands recht van toepassing. Geschillen worden exclusief voorgelegd aan de Rechtbank Oost-Brabant.\n\nOndertekening\n\nVerstrekkende Partij: [Naam Doelkantoor]\nNaam: ____________________\nHandtekening: ____________________\nDatum: '+datum+'\n\nOntvangende Partij: [Naam Koper]\nNaam: ____________________\nHandtekening: ____________________\nDatum: '+datum+'\n\nVoor gezien en begeleiding:\nBisschops Financing B.V.\nMarcel Bisschops\nHandtekening: ____________________\n\nVul nu de template in met de bekende gegevens en geef de volledige NDA terug. Geen uitleg, alleen het document.';
+        var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:2500})});
+        var rawText=await resp.text();
+        var rd;try{rd=JSON.parse(rawText);}catch(pe){throw new Error('Geen JSON (HTTP '+resp.status+'): '+rawText.substring(0,200));}
+        if(!resp.ok)throw new Error('Worker fout '+resp.status+': '+(rd.error||rawText.substring(0,200)));
+        var tekst=rd.text||(rd.error||'Fout bij genereren.');
+        var ndaHtml=tekst.replace(/^# (.+)$/gm,'<h2 style="font-family:Georgia,serif;font-size:1.1rem;color:var(--head);margin:1rem 0 .4rem;font-weight:700">$1</h2>').replace(/^## (.+)$/gm,'<h3 style="font-family:Georgia,serif;font-size:.95rem;color:var(--head);margin:.9rem 0 .3rem;font-weight:700">$1</h3>').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/^---$/gm,'<hr style="border:none;border-top:1px solid var(--border);margin:.75rem 0">').replace(/\n\n/g,'</p><p style="font-size:13px;line-height:1.9;color:var(--sub);margin:.4rem 0">').replace(/\n/g,'<br>');
+        ndaOut.innerHTML='<div style="font-size:11px;font-weight:600;color:#7c5cbf;letter-spacing:.1em;text-transform:uppercase;margin-bottom:.75rem">Non-Disclosure Agreement · '+esc(d.traject.kantoor_naam||naam)+'</div>'
+          +'<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:1.25rem;font-size:13px;line-height:1.9;color:var(--sub);font-family:Georgia,serif;max-height:350px;overflow-y:auto"><p style="font-size:13px;line-height:1.9;color:var(--sub);margin:.4rem 0">'+ndaHtml+'</p></div>'
+          +'<div style="display:flex;gap:8px;margin-top:.75rem">'
+          +'<button id="nda-print-btn" class="btn-ghost" style="font-size:12px;padding:6px 14px">&#128196; Print / PDF</button>'
+          +'<button id="nda-email-btn" class="btn" style="font-size:12px;padding:6px 14px;background:#7c5cbf">&#9993; Stuur naar partijen</button>'
+          +'</div>';
+        document.getElementById('nda-print-btn').addEventListener('click',function(){
+          var win=window.open('','_blank');
+          var html=tekst.replace(/^# (.+)$/gm,'<h1 style="font-family:Georgia,serif;font-size:1.4rem;margin:1.5rem 0 .5rem">$1</h1>').replace(/^## (.+)$/gm,'<h2 style="font-family:Georgia,serif;font-size:1.1rem;margin:1.2rem 0 .4rem">$1</h2>').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/^---$/gm,'<hr style="border:none;border-top:1px solid #ddd;margin:.75rem 0">').replace(/\n\n/g,'</p><p style="margin:.6rem 0">').replace(/\n/g,'<br>');
+          win.document.write('<html><head><style>body{font-family:Georgia,serif;font-size:13px;line-height:1.9;max-width:700px;margin:2cm auto;color:#2a2825}@media print{body{margin:1.5cm}}</style></head><body><p>'+html+'</p></body></html>');
+          win.document.close();win.print();
+        });
+        document.getElementById('nda-email-btn').addEventListener('click',async function(){
+          var ebtn=this;ebtn.disabled=true;ebtn.textContent='Versturen...';
+          var toList=[d.traject.contact_email||'marcel@bisschopsfinancing.nl'];
+          if(d.traject.begeleider_email&&d.traject.begeleider_email!==toList[0])toList.push(d.traject.begeleider_email);
+          if(d.traject.koper_email&&!toList.includes(d.traject.koper_email))toList.push(d.traject.koper_email);
+          // Gebruik loi/email endpoint tijdelijk met NDA subject
+          var er=await fetch(WORKER+'/mna/nda/email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:id,nda_tekst:tekst,to:toList})});
+          var ed=await er.json();
+          if(ed.ok){ebtn.textContent='✓ Verstuurd';setTimeout(function(){ebtn.textContent='✉ Stuur';ebtn.disabled=false;},3000);}
+          else{alert('Fout: '+(ed.error||'onbekend'));ebtn.disabled=false;ebtn.textContent='✉ Stuur naar partijen';}
+        });
+        btn.textContent='Opnieuw genereren';btn.disabled=false;
+      }catch(e){ndaOut.innerHTML='<div style="color:var(--red);font-size:13px">Fout: '+e.message+'</div>';btn.textContent='Genereer NDA';btn.disabled=false;}
     });
 
     // AI-analyse knop
@@ -1270,8 +1359,8 @@ function toonNieuwModal(){
     +'<div class="field"><label>Trajecttype</label><select id="m-t"><option value="Verkoop">Verkoop</option><option value="Fusie">Fusie</option><option value="Opvolging">Opvolging</option><option value="PE-traject">PE-traject</option><option value="Overname">Overname</option></select></div>'
     +'<div class="field"><label>Notitie (intern)</label><textarea id="m-n" rows="2" placeholder="Interne aantekeningen..."></textarea></div>'
     +'<div style="border-top:1px solid var(--border);margin:.75rem 0;padding-top:.75rem"><div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem">Begeleider (tussenpersoon)</div></div>'
-    +'<div class="field"><label>Naam begeleider</label><input type="text" id="m-bg-naam" placeholder="bijv. Jan de Vries"></div>'
-    +'<div class="field"><label>E-mail begeleider</label><input type="email" id="m-bg-email" placeholder="begeleider@kantoor.nl"></div>'
+    +'<div class="field"><label>Naam begeleider</label><input type="text" id="m-bg-naam" value="Marcel Bisschops" placeholder="bijv. Jan de Vries"></div>'
+    +'<div class="field"><label>E-mail begeleider</label><input type="email" id="m-bg-email" value="marcel@bisschopsfinancing.nl" placeholder="begeleider@kantoor.nl"></div>'
     +'<div style="border-top:1px solid var(--border);margin:.75rem 0;padding-top:.75rem"><div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem">Kopende partij</div></div>'
     +'<div class="field"><label>Naam kopende partij</label><input type="text" id="m-koper-naam" placeholder="bijv. Acme Accountants BV"></div>'
     +'<div class="field"><label>Rechtsvorm koper</label><input type="text" id="m-koper-rv" placeholder="bijv. BV, NV, Coöperatie"></div>'
