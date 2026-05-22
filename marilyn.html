@@ -1081,7 +1081,27 @@ async function toonDetail(id,naam){
     +'<div style="display:flex;gap:8px;margin-bottom:1.25rem;flex-wrap:wrap"><button class="btn" id="det-loi-btn" style="background:var(--gold);font-size:12px;padding:7px 14px">&#128196; Genereer LoI</button><button class="btn" id="det-ai-btn" style="background:var(--teal);font-size:12px;padding:7px 14px">&#9881; AI-analyse</button><div style="flex:1"></div><button class="btn-ghost" id="det-sluit" style="font-size:12px;padding:7px 14px">Sluiten</button></div>'
     +'<div id="loi-output" style="display:none;margin-bottom:1.25rem;border-bottom:1px solid var(--border);padding-bottom:1.25rem"></div>'
     +'<div id="mna-ai-out" style="display:none;margin-bottom:1.25rem;border-bottom:1px solid var(--border);padding-bottom:1.25rem"></div>'
-    +'<div id="detail-body" style="color:var(--muted);font-size:13px">Laden...</div>';
+    +'<div id="detail-body" style="color:var(--muted);font-size:13px">Laden...</div>'
+    +'<div style="margin-top:1.5rem;border-top:2px solid var(--border);padding-top:1.25rem">'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem">'
+    +'<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">&#128221; Traject logboek</div>'
+    +'<div id="fase-badge" style="font-size:11px;padding:3px 10px;border-radius:12px;background:var(--teal-bg);color:var(--teal);border:1px solid var(--teal-dark);font-weight:600"></div>'
+    +'</div>'
+    +'<div id="logboek-fases" style="display:flex;gap:6px;margin-bottom:1rem;flex-wrap:wrap"></div>'
+    +'<div id="logboek-entries" style="max-height:220px;overflow-y:auto;margin-bottom:1rem"></div>'
+    +'<div style="display:flex;flex-direction:column;gap:8px">'
+    +'<textarea id="log-bericht" rows="2" placeholder="Notitie toevoegen aan logboek..." style="background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:IBM Plex Sans,sans-serif;font-size:13px;padding:10px 12px;outline:none;width:100%;resize:vertical"></textarea>'
+    +'<div style="display:flex;gap:8px;align-items:center">'
+    +'<select id="log-fase" style="background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:IBM Plex Sans,sans-serif;font-size:12px;padding:7px 10px;flex:1">'
+    +'<option value="">— Fase niet wijzigen —</option>'
+    +'<option value="voorgesprek">Voorgesprek</option>'
+    +'<option value="kennismaking">Kennismaking</option>'
+    +'<option value="pre_dd">Pre-DD (LoI)</option>'
+    +'<option value="due_diligence">Due Diligence</option>'
+    +'<option value="verkoop">Verkoop / Closing</option>'
+    +'</select>'
+    +'<button class="btn" id="log-submit" style="font-size:12px;padding:7px 16px;white-space:nowrap">&#43; Toevoegen</button>'
+    +'</div></div></div>';
   ov.appendChild(mo);document.body.appendChild(ov);
   ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
   document.getElementById('det-sluit').addEventListener('click',function(){document.body.removeChild(ov);});
@@ -1171,6 +1191,69 @@ async function toonDetail(id,naam){
         aiOut.innerHTML='<div style="font-size:11px;font-weight:600;color:var(--teal);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.75rem">AI-analyse · '+d.traject.kantoor_naam+'</div><p style="font-size:13px;color:var(--mid);line-height:1.7">'+tekst+'</p>';
         btn.textContent='Opnieuw';btn.disabled=false;
       }catch(e){aiOut.innerHTML='<div style="color:var(--red);font-size:13px">Fout: '+e.message+'</div>';btn.textContent='AI-analyse';btn.disabled=false;}
+    });
+
+    // Laad en render logboek
+    var faseNamen={voorgesprek:'Voorgesprek',kennismaking:'Kennismaking',pre_dd:'Pre-DD (LoI)',due_diligence:'Due Diligence',verkoop:'Verkoop / Closing'};
+    var faseKleuren={voorgesprek:'var(--muted)',kennismaking:'var(--teal)',pre_dd:'var(--gold)',due_diligence:'#7c5cbf',verkoop:'var(--teal)'};
+    async function laadLogboek(){
+      try{
+        var lr=await fetch(WORKER+'/mna/logboek/'+id+'?key='+encodeURIComponent(adminKey));
+        var ld=await lr.json();
+        var huidigeFase=ld.traject_fase||'voorgesprek';
+        // Fase badge
+        var fb=document.getElementById('fase-badge');
+        if(fb)fb.textContent=faseNamen[huidigeFase]||huidigeFase;
+        // Fase stappen
+        var fases=['voorgesprek','kennismaking','pre_dd','due_diligence','verkoop'];
+        var fDiv=document.getElementById('logboek-fases');
+        if(fDiv){
+          fDiv.innerHTML=fases.map(function(f,i){
+            var actief=f===huidigeFase;
+            var geweest=fases.indexOf(huidigeFase)>i;
+            var kleur=actief?'var(--teal)':geweest?'var(--teal-dim)':'var(--border2)';
+            var bg=actief?'var(--teal-bg)':geweest?'rgba(26,122,94,.06)':'transparent';
+            return '<div style="display:flex;align-items:center;gap:4px">'
+              +(i>0?'<div style="width:16px;height:2px;background:'+kleur+';flex-shrink:0"></div>':'')
+              +'<div style="font-size:10px;font-weight:600;padding:4px 10px;border-radius:12px;border:1.5px solid '+kleur+';color:'+(actief?'var(--teal)':geweest?'var(--teal-dim)':'var(--muted)')+';background:'+bg+';white-space:nowrap">'+(faseNamen[f]||f)+'</div>'
+              +'</div>';
+          }).join('');
+        }
+        // Logboek entries
+        var eDiv=document.getElementById('logboek-entries');
+        if(eDiv){
+          var entries=ld.logboek||[];
+          if(!entries.length){eDiv.innerHTML='<div style="color:var(--muted);font-size:12px;font-style:italic;padding:.5rem 0">Nog geen logboeknotities.</div>';}
+          else{
+            eDiv.innerHTML=entries.map(function(e){
+              var dt=new Date(e.created_at).toLocaleString('nl-NL',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+              var isAdm=e.auteur_type==='admin';
+              return '<div style="padding:.6rem .75rem;margin-bottom:.4rem;border-radius:var(--r);background:'+(isAdm?'var(--teal-bg)':'var(--card)')+';border-left:3px solid '+(isAdm?'var(--teal)':'var(--gold)')+'">'
+                +(e.fase_gewijzigd?'<div style="font-size:10px;font-weight:600;color:var(--teal);text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px">&#8594; '+(faseNamen[e.fase]||e.fase)+'</div>':'')
+                +'<div style="font-size:12px;color:var(--sub);line-height:1.6">'+esc(e.bericht)+'</div>'
+                +'<div style="font-size:10px;color:var(--muted);margin-top:3px">'+esc(e.auteur)+' · '+dt+'</div>'
+                +'</div>';
+            }).join('');
+            eDiv.scrollTop=eDiv.scrollHeight;
+          }
+        }
+      }catch(e){console.error('Logboek fout:',e);}
+    }
+    laadLogboek();
+    // Logboek submit
+    var logBtn=document.getElementById('log-submit');
+    if(logBtn)logBtn.addEventListener('click',async function(){
+      var bericht=document.getElementById('log-bericht').value.trim();
+      var fase=document.getElementById('log-fase').value;
+      if(!bericht&&!fase){alert('Voer een notitie in of selecteer een fase.');return;}
+      logBtn.disabled=true;logBtn.textContent='Opslaan...';
+      try{
+        var lr=await fetch(WORKER+'/mna/logboek/'+id,{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':adminKey},body:JSON.stringify({bericht:bericht,nieuwe_fase:fase||undefined,auteur_naam:'Marcel Bisschops'})});
+        var ld=await lr.json();
+        if(ld.ok){document.getElementById('log-bericht').value='';document.getElementById('log-fase').value='';laadLogboek();}
+        else alert('Fout: '+(ld.error||'onbekend'));
+      }catch(e){alert('Verbindingsfout.');}
+      logBtn.disabled=false;logBtn.textContent='+ Toevoegen';
     });
 
   }catch(e){document.getElementById('detail-body').textContent='Fout: '+e.message;}
