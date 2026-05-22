@@ -130,25 +130,9 @@ async function doLogin(){
 }
 
 function logout(){
-  adminKey='';scans=[];callbacks=[];mnaList=[];
+  adminKey='';scans=[];callbacks=[];mnaList=[];rapporten=[];
   document.getElementById('hdr-actions').style.display='none';
-  async function maakTrajectVanScan(scanId, naam, email){
-  if(!confirm('M&A traject aanmaken voor '+naam+'?'))return;
-  try{
-    var r=await fetch(WORKER+'/mna/scan-to-traject?key='+encodeURIComponent(adminKey),{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({scan_id:scanId,kantoor_naam:naam,contact_email:email,traject_type:'Verkoop'})
-    });
-    var d=await r.json();
-    if(d.ok){
-      mnaList.unshift({id:d.code,kantoor_naam:naam,traject_type:'Verkoop',koper_code:d.koper_code,tussen_code:d.tussen_code,status:'actief',created_at:Date.now()});
-      alert('Traject aangemaakt!\n\nVerkoperscode: '+d.code+'\nKoperscode: '+d.koper_code);
-      activeTab='mna';renderDashboard();
-    } else alert('Fout: '+(d.error||'onbekend'));
-  }catch(e){alert('Verbindingsfout.');}
-}
-
-renderLogin();
+  renderLogin();
 }
 
 async function refreshData(){
