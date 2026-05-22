@@ -316,7 +316,7 @@ function renderMnaTab(el){
   if(!mnaList.length){
     html+='<div class="empty">Geen trajecten.</div>';
   } else {
-    html+='<table><thead><tr><th style="width:32px"><input type="checkbox" id="cb-all-mna" title="Alles"></th><th>Kantoor</th><th>Type</th><th>Status</th><th>Verkoperscode</th><th>Koperscode</th><th>Tussenpersoon</th><th>Datum</th><th>Acties</th></tr></thead><tbody>';
+    html+='<table><thead><tr><th style="width:32px"><input type="checkbox" id="cb-all-mna" title="Alles"></th><th>Kantoor</th><th>Type</th><th>Status</th><th>Verkoperscode</th><th>Koperscode</th><th>Begeleider</th><th>Datum</th><th>Acties</th></tr></thead><tbody>';
     mnaList.forEach(function(t,i){
       var verg=t.status==='vergrendeld';
       html+='<tr><td><input type="checkbox" class="mna-cb" data-id="'+esc(t.id)+'"'+(verg?' disabled title="Vergrendeld"':'')+' style="cursor:pointer"></td>'
@@ -325,7 +325,11 @@ function renderMnaTab(el){
         +'<td><span class="tag" style="'+(verg?'background:var(--red-bg);color:var(--red);border-color:var(--red)':'')+'">'+esc(t.status||'actief')+'</span></td>'
         +'<td><span class="code-chip">'+esc(t.id)+'</span><button class="copy-btn" data-copy="'+esc(t.id)+'">⎘</button></td>'
         +'<td><span class="code-chip" style="background:var(--gold-bg);color:var(--gold);border-color:var(--gold)">'+esc(t.koper_code||'—')+'</span><button class="copy-btn" data-copy="'+esc(t.koper_code||'')+'">⎘</button></td>'
-        +'<td><span class="code-chip" style="background:var(--card);color:var(--mid);border-color:var(--border2)">'+esc(t.tussen_code||'—')+'</span><button class="copy-btn" data-copy="'+esc(t.tussen_code||'')+'">⎘</button></td>'
+        +'<td><div style="font-size:11px">'
+        +(t.begeleider_naam?'<div style="font-weight:500;color:var(--sub)">'+esc(t.begeleider_naam)+'</div>':'')
+        +(t.begeleider_email?'<div style="color:var(--teal);font-size:10px">'+esc(t.begeleider_email)+'</div>':'')
+        +'<div style="margin-top:2px"><span class="code-chip" style="background:var(--card);color:var(--mid);border-color:var(--border2);font-size:10px">'+esc(t.tussen_code||'—')+'</span><button class="copy-btn" data-copy="'+esc(t.tussen_code||'')+'">⎘</button></div>'
+        +'</div></td>'
         +'<td class="mono" style="font-size:11px">'+formatDate(t.created_at)+'</td>'
         +'<td style="white-space:nowrap;display:flex;gap:4px;flex-wrap:wrap">'
         +'<button class="btn-ghost btn-detail" data-id="'+esc(t.id)+'" data-naam="'+esc(t.kantoor_naam||t.id)+'" style="font-size:11px;padding:3px 8px">&#128065; Bekijk</button>'
