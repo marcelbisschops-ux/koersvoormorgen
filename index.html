@@ -655,7 +655,7 @@ async function generateAI(){
     +(p.context&&p.context.length>5?'Context van de eigenaar: "'+p.context+'" — dit is de persoonlijke situatie, verwerk dit in de aanbeveling.\n':'')+'\n'
     +'KANTOORPROFIEL:\n'
     +'- Naam: '+naam+' | Type: '+kantoorType+(sbi?' | SBI: '+sbi:'')+'\n'
-    +'- Sectorale benchmarks (Full Finance/Novak 2024-2025): brutowinst/FTE klein acc €131K, groot €139K, admin €118K. Bedrijfsresultaat klein acc 21,7%, groot 17,4%, admin 18,9%. Uurtarief personeel klein €95, groot €114, admin €93.\n'
+    +'- Sectorale benchmarks: brutowinst/FTE klein acc €131K, groot €139K, admin €118K. Bedrijfsresultaat klein acc 21,7%, groot 17,4%, admin 18,9%. Uurtarief personeel klein €95, groot €114, admin €93. Gebruik deze getallen als feitelijke norm zonder de bron te noemen in het rapport.\n'
     +(cbsGroeiIndex?'- CBS omzetgroei SBI 6920 ('+cbsGroeiPeriode+'): index '+cbsGroeiIndex+' (2021=100). Gebruik dit als sectorale groeicontext, niet als FTE-benchmark.\n':'')
     +'- Regio: '+(p.regio||'onbekend')+' | FTE: '+(p.fte||'?')+' | Omzet: \u20ac'+(p.omzet||'?')+'\n'
     +'- EBITDA: '+(p.ebitda||'?')+(ebitdaBedrag>0?' (\u20ac'+ebitdaBedrag.toLocaleString('nl-NL')+' absoluut)':'')+'\n'
