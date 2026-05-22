@@ -542,12 +542,14 @@ async function generateAI(){
   const ffFteAdm=120000;  // FF €118K + ~2% groei 2024
   const ffFteAcc=isAdminKantoor?ffFteAdm:(p.fte&&parseInt(p.fte)>20?139000:131000); // klein vs groot
   // Prioriteit: FF uit D1 → Simplicate uit D1 → hardcoded FF
+  // Prioriteit: FF handmatig D1 → Simplicate D1 → hardcoded FF
+  // AV Top 50 verwijderd — kantoren positie 5-50 zijn te groot voor MKB-benchmark
   const benchmarkFte=isAdminKantoor
     ?(bm['omzet_fte_admin']?.waarde||bm['omzet_fte_admin_av']?.waarde||ffFteAdm)
-    :(bm['omzet_fte_accountant']?.waarde||bm['omzet_fte_accountant_av50']?.waarde||bm['omzet_fte_gemiddeld']?.waarde||ffFteAcc);
+    :(bm['omzet_fte_accountant']?.waarde||bm['omzet_fte_gemiddeld']?.waarde||ffFteAcc);
   const benchmarkBron=isAdminKantoor
     ?(bm['omzet_fte_admin']?.bron||bm['omzet_fte_admin_av']?.bron||'Full Finance/Novak 2024-2025')
-    :(bm['omzet_fte_accountant']?.bron||bm['omzet_fte_accountant_av50']?.bron||bm['omzet_fte_gemiddeld']?.bron||'Full Finance/Novak 2024-2025');
+    :(bm['omzet_fte_accountant']?.bron||bm['omzet_fte_gemiddeld']?.bron||'Full Finance/Novak 2024-2025');
   // CBS groeitrend ophalen voor contextbericht
   const cbsGroeiIndex=bm['omzet_index_sbi6920']?.waarde||null;
   const cbsGroeiPeriode=bm['omzet_index_sbi6920']?.peildatum||'';
@@ -640,15 +642,19 @@ async function generateAI(){
   const mainPrompt=
     'Schrijf een uitgebreid, confronterend en direct strategisch adviesrapport in het Nederlands. Minimaal 1200 woorden.\n'
     +'TOON: De eigenaar weet al hoe zijn kantoor eruitziet. Wat hij niet weet is wat het betekent — financieel, strategisch en persoonlijk. Jouw taak is hem dat te laten voelen, niet te beschrijven.\n'
-    +'VERBOD beschrijvende taal: NOOIT "aandacht verdient", "het is van belang", "overwegen te", "het is raadzaam", "speelt een rol", "relevant is". Vervang altijd door directe consequentie.\n'
+    +'VERBOD beschrijvende taal: NOOIT "aandacht verdient", "het is van belang", "overwegen te", "het is raadzaam", "speelt een rol", "relevant is", "vraagt om", "vereist actief beheer". Vervang altijd door directe consequentie.\n'
+    +'VERBOD vage risico-taal: NOOIT "vormt een risico", "niet mag worden onderschat", "reëel risico", "potentieel risico". Zeg concreet: wat gaat er mis, wanneer, en wat kost het.\n'
+    +'VERBOD zachte aanbevelingen: NOOIT "dient te", "zou moeten", "verdient aanbeveling", "investeer in". Elke aanbeveling is een opdracht met een deadline en een gevolg als hij niet wordt uitgevoerd.\n'
     +'VERPLICHT bij elk alarmsignaal: vertaal naar wat dit de eigenaar concreet kost — in euro\'s, in verkoopprijs, in tijd, of in kansen die hij mist.\n'
     +'VERPLICHT bij elke bevinding: eindig met de consequentie voor zijn ambitie ('+p.ambitie+'). Niet wat het is, maar wat het hem doet.\n'
+    +'VERPLICHT bij elke prioriteit in de aanbeveling: benoem expliciet wat er gebeurt als deze prioriteit NIET wordt uitgevoerd. Maak het concreet: welk scenario valt af, welke euro\'s verdwijnen, welke koper haakt af.\n'
     +'Begin DIRECT met ## Scorekaart en samenvatting. Geen titelpagina, geen "Opgesteld door"-regel.\n'
     +'Gebruik ALTIJD "uw kantoor" - nooit "dit kantoor" of "het kantoor".\n'
     +'VERBOD eerste persoon: NOOIT "ik", "mijn", "in mijn praktijk", "ik zie", "ik adviseer" of vergelijkbare ik-zinnen.\n'
     +'Schrijf in de derde persoon of onpersoonlijk: "uw kantoor", "de analyse toont", "het rapport concludeert".\n'
     +'NOOIT beginnen met "Laat ik direct zijn" of vergelijkbare retorische zinnen.\n'
     +'STIJL: Schrijf zoals een ervaren M&A-adviseur die de eigenaar al tien jaar kent — geen verkooppraatje, geen voorzichtige omwegen, geen beleefde vaagheid. Zeg wat het is.\n'
+    +'STRUCTUUREIS per sectie: elke ## sectie eindigt met een zin die de eigenaar niet kan negeren. Geen samenvatting, geen conclusie — een harde vaststelling of een ongemakkelijke vraag.\n'
     +(p.specialisme?'Specialisme "'+p.specialisme+'" meenemen: specifiek advies voor dit segment, geen generieke sector-aanbevelingen.\n':'')
     +(p.software&&p.software.length>2?'Software "'+p.software+'" is bekend: ga ervan uit dat dit al in gebruik is, adviseer geen alternatieven tenzij er fundamentele problemen zijn.\n':'')
     +(p.doelgroep?'Doelgroep "'+p.doelgroep+'" meenemen in commercieel en positioneringsadvies.\n':'')
@@ -874,7 +880,7 @@ function renderSummary(){
   var fteVal=parseFloat(String(p.fte||'').replace(/[^0-9.]/g,''))||0;
   var omzetPerFte=omzetVal>0&&fteVal>0?Math.round(omzetVal/fteVal):0;
   var isAdmin=(p.kantoorType||'').toLowerCase().includes('admin');
-  var bFte=isAdmin?100000:150000;
+  var bFte=isAdmin?(ST._benchmarks&&ST._benchmarks['omzet_fte_admin']?ST._benchmarks['omzet_fte_admin'].waarde:120000):(ST._benchmarks&&ST._benchmarks['omzet_fte_accountant']?ST._benchmarks['omzet_fte_accountant'].waarde:ST._benchmarks&&ST._benchmarks['omzet_fte_gemiddeld']?ST._benchmarks['omzet_fte_gemiddeld'].waarde:133000);
   if(!isNaN(ebitdaVal)&&ebitdaVal<0)sigs.push({c:'var(--red)',t:'Negatieve EBITDA ('+ebitdaVal+'%)',sub:'Verliesgevend. Verkoopbaarheid nihil zonder directe winstgevendheidsherstel.'});
   else if(!isNaN(ebitdaVal)&&ebitdaVal<15)sigs.push({c:'var(--gold)',t:'EBITDA '+ebitdaVal+'% (benchmark 20-30%)',sub:'Te lage marge voor PE-transacties en serieuze fusiegesprekken.'});
   if(omzetPerFte>0&&omzetPerFte<bFte)sigs.push({c:'var(--gold)',t:'Omzet/FTE €'+omzetPerFte.toLocaleString('nl-NL')+' (benchmark €'+(bFte/1000)+'K)',sub:'Productiviteitspotentieel van €'+((bFte-omzetPerFte)*fteVal).toLocaleString('nl-NL')+' wordt niet benut.'});
@@ -1286,8 +1292,8 @@ async function genereerKantoorAI(o, container) {
   var oPfte = o.fte && o.revenue
     ? Math.round(parseFloat(String(o.revenue).replace(/[^0-9]/g,'')) / parseFloat(o.fte)) : 0;
   var isAdmin = (o.kantoorType||'').toLowerCase().includes('admin') || (o.specialisme||'').toLowerCase().includes('admin');
-  var bFte = isAdmin ? 100000 : 150000;
-  var bLabel = isAdmin ? '\u20ac100K (admin-benchmark)' : '\u20ac150K (accountant-benchmark)';
+  var bFte = isAdmin?(ST._benchmarks&&ST._benchmarks['omzet_fte_admin']?ST._benchmarks['omzet_fte_admin'].waarde:120000):(ST._benchmarks&&ST._benchmarks['omzet_fte_accountant']?ST._benchmarks['omzet_fte_accountant'].waarde:ST._benchmarks&&ST._benchmarks['omzet_fte_gemiddeld']?ST._benchmarks['omzet_fte_gemiddeld'].waarde:133000);
+  var bLabel = isAdmin ? '\u20ac'+(bFte/1000).toFixed(0)+'K';
   var prompt =
     'Schrijf een strategisch rapport. Gebruik "uw kantoor". Geen eerste persoon. Begin direct met ## Strategisch profiel.\n\n'
     + 'Kantoor: ' + (o.name||'Anoniem') + ' | Score: ' + o.overall + '/100\n'
