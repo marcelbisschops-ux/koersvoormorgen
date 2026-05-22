@@ -476,7 +476,7 @@ async function callAI(prompt, maxTokens) {
   const resp = await fetch(WORKER + '/ai', {signal:AbortSignal.timeout(120000),
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ messages: [{ role: 'user', content: prompt }], max_tokens: maxTokens||4000 })
+    body: JSON.stringify({ messages: [{ role: 'user', content: prompt }], max_tokens: maxTokens||10000 })
   });
   if (!resp.ok) {
     const errTxt = await resp.text().catch(() => String(resp.status));
@@ -722,7 +722,7 @@ async function generateAI(){
       +'</div>';
 
     // Één call: volledig rapport
-    let collected=await callAI(mainPrompt);
+    let collected=await callAI(mainPrompt, 10000);
     collected+='\n\n---\n\n## Disclaimer\n\nDit rapport is gegenereerd op basis van zelfrapportage en is uitsluitend bedoeld als indicatief strategisch ori\xebntatie-instrument. De uitkomsten vormen geen formeel advies. \xa9 2026 Bisschops Financing BV.\n\n---\n\n';
 
     ST.aiText=collected;
