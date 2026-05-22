@@ -232,7 +232,7 @@ function renderScansTab(el){
         +'<td><span class="tag">'+esc((s.top_scenario||'—').split(' ').slice(0,2).join(' '))+'</span></td>'
         +'<td style="font-size:11px;color:var(--muted)">'+esc(s.group_name||s.group_id||'Solo')+'</td>'
         +'<td style="white-space:nowrap;display:flex;gap:4px;align-items:center">'+(openRow===i?'▲':'▼')
-        +' <button class="btn-ghost btn-maak-traject" data-id="'+(s.id||'')+'" data-naam="'+esc(s.office_name||'Anoniem')+'" data-email="'+esc(s.office_email||'')+'" data-fte="'+esc(s.fte||'')+'" data-revenue="'+esc(s.revenue||'')+'" data-region="'+esc(s.region||'')+'" data-overall="'+(s.overall||'')+'" data-scenario="'+esc(s.top_scenario||'')+'" data-scores="'+esc(typeof s.scores==='string'?s.scores:JSON.stringify(s.scores||{}))+'" style="font-size:10px;padding:2px 8px;color:var(--teal)">&#43; Traject</button>'
+        +' <button class="btn-ghost btn-maak-traject" data-id="'+(s.id||'')+'" data-naam="'+esc(s.office_name||'Anoniem')+'" data-email="'+esc(s.office_email||'')+'" style="font-size:10px;padding:2px 8px;color:var(--teal)">&#43; Traject</button>'
         +' <button class="btn-del-scan btn-red" data-id="'+(s.id||'')+'" style="font-size:10px;padding:2px 6px">&#10005;</button></td>'
         +'</tr>'
         +'<tr><td colspan="10" style="padding:0"><div class="detail-panel'+(openRow===i?' open':'')+'"><div class="detail-grid">'
@@ -256,7 +256,7 @@ function renderScansTab(el){
     b.addEventListener('click',function(e){e.stopPropagation();deleteScan(b.dataset.id);});
   });
   el.querySelectorAll('.btn-maak-traject').forEach(function(b){
-    b.addEventListener('click',function(e){e.stopPropagation();maakTrajectVanScan(b.dataset.id,b.dataset.naam,b.dataset.email,b.dataset.fte,b.dataset.revenue,b.dataset.region,b.dataset.overall,b.dataset.scenario,b.dataset.scores);});
+    b.addEventListener('click',function(e){e.stopPropagation();maakTrajectVanScan(b.dataset.id,b.dataset.naam,b.dataset.email);});
   });
   function updSelScans(){var n=el.querySelectorAll('.scan-cb:checked').length;var btn=document.getElementById('btn-del-sel-scans');var cnt=document.getElementById('sel-cnt-scans');if(btn)btn.style.display=n>0?'inline-block':'none';if(cnt)cnt.textContent=n;}
   var cbAllS=document.getElementById('cb-all-scans');
@@ -774,8 +774,7 @@ async function toonDetail(id,naam){
   var mo=document.createElement('div');mo.className='modal';mo.style.maxWidth='700px';
   mo.innerHTML='<div class="modal-title">'+esc(naam)+' <span class="code-chip" style="font-size:12px">'+esc(id)+'</span></div>'
     +'<div id="detail-body" style="color:var(--muted);font-size:13px">Laden...</div>'
-    +'<div id="mna-ai-out" style="display:none;margin-top:1.5rem;border-top:1px solid var(--border);padding-top:1.25rem"></div>'
-    +'<div style="margin-top:1.5rem;display:flex;gap:10px;justify-content:flex-end"><button class="btn" id="det-ai-btn" style="background:var(--teal)">&#9881; Genereer AI-analyse</button><button class="btn-ghost" id="det-sluit">Sluiten</button></div>';
+    +'<div style="margin-top:1.5rem;display:flex;justify-content:flex-end"><button class="btn-ghost" id="det-sluit">Sluiten</button></div>';
   ov.appendChild(mo);document.body.appendChild(ov);
   ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
   document.getElementById('det-sluit').addEventListener('click',function(){document.body.removeChild(ov);});
@@ -812,57 +811,6 @@ async function toonDetail(id,naam){
     });
     db.innerHTML=html;
     db.querySelectorAll('.fase-hdr').forEach(function(hdr){hdr.addEventListener('click',function(){var body=db.querySelector('.fase-body[data-fase="'+hdr.dataset.fase+'"]');if(body)body.style.display=body.style.display==='none'?'block':'none';});});
-
-    document.getElementById('det-ai-btn').addEventListener('click',async function(){
-      var btn=this;
-      btn.disabled=true;btn.textContent='Analyseren...';
-      var aiOut=document.getElementById('mna-ai-out');
-      aiOut.style.display='block';
-      aiOut.innerHTML='<div style="color:var(--muted);font-size:13px">AI analyseert het traject... (20-40 seconden)</div>';
-      try{
-        var bms={};
-        try{var br=await fetch(WORKER+'/benchmarks');var bd=await br.json();bd.forEach(function(b){bms[b.sleutel]=b;});}catch(e){}
-        var faseLabelsAI={financieel:'Financieel',commercieel:'Klanten & commercieel',partner:'Partners & personeel',compliance:'Compliance & kwaliteit',it:'IT & automatisering',juridisch:'Juridisch & fiscaal',strategisch:'Strategisch & markt'};
-        var dataSamenvatting='';
-        (d.data||[]).forEach(function(row){
-          try{
-            var dj=typeof row.data_json==='string'?JSON.parse(row.data_json):row.data_json;
-            var lbl=faseLabelsAI[row.fase_id]||row.fase_id;
-            var gevuld=Object.values(dj||{}).filter(function(v){return v&&v.value;});
-            if(gevuld.length){
-              dataSamenvatting+='\n## '+lbl+'\n';
-              gevuld.forEach(function(v){dataSamenvatting+='- '+v.label+': '+v.value+'\n';});
-            }
-          }catch(e){}
-        });
-        var bmTekst='SECTORALE BENCHMARKS (Full Finance 2023 / Simplicate 2025):\n'
-          +'Brutowinst/FTE: admin \u20ac'+(bms['brutowinst_fte_admin']?bms['brutowinst_fte_admin'].waarde:118)+'K, klein acc \u20ac'+(bms['brutowinst_fte_accountant']?bms['brutowinst_fte_accountant'].waarde:131)+'K, groot acc \u20ac'+(bms['brutowinst_fte_accountant_groot']?bms['brutowinst_fte_accountant_groot'].waarde:139)+'K\n'
-          +'Loonkosten/FTE: admin \u20ac'+(bms['loonkosten_fte_admin']?bms['loonkosten_fte_admin'].waarde:51)+'K, klein acc \u20ac'+(bms['loonkosten_fte_klein']?bms['loonkosten_fte_klein'].waarde:52)+'K, groot acc \u20ac'+(bms['loonkosten_fte_groot']?bms['loonkosten_fte_groot'].waarde:58)+'K\n'
-          +'Productiewaarde/FTE: admin \u20ac'+(bms['productiewaarde_fte_admin']?bms['productiewaarde_fte_admin'].waarde:129)+'K, klein acc \u20ac'+(bms['productiewaarde_fte_klein']?bms['productiewaarde_fte_klein'].waarde:139)+'K, groot acc \u20ac'+(bms['productiewaarde_fte_groot']?bms['productiewaarde_fte_groot'].waarde:153)+'K\n'
-          +'Omzet/FTE: admin \u20ac'+(bms['omzet_fte_admin']?bms['omzet_fte_admin'].waarde:136)+'K, alle kantoren \u20ac'+(bms['omzet_fte_accountant']?bms['omzet_fte_accountant'].waarde:133)+'K\n'
-          +'EBITDA-marge: admin '+(bms['ebitda_marge_admin']?bms['ebitda_marge_admin'].waarde:18.7)+'%, klein acc '+(bms['ebitda_marge_accountant']?bms['ebitda_marge_accountant'].waarde:21.3)+'%, groot acc '+(bms['ebitda_marge_accountant_groot']?bms['ebitda_marge_accountant_groot'].waarde:16.8)+'%\n'
-          +'Uurtarief personeel: admin \u20ac'+(bms['uurtarief_personeel_admin']?bms['uurtarief_personeel_admin'].waarde:93)+', klein acc \u20ac'+(bms['uurtarief_personeel_klein']?bms['uurtarief_personeel_klein'].waarde:95)+', groot acc \u20ac'+(bms['uurtarief_personeel_groot']?bms['uurtarief_personeel_groot'].waarde:114)+'\n'
-          +'Uurtarief partner: admin \u20ac'+(bms['uurtarief_partner_admin']?bms['uurtarief_partner_admin'].waarde:126)+', klein acc \u20ac'+(bms['uurtarief_partner_klein']?bms['uurtarief_partner_klein'].waarde:149)+', groot acc \u20ac'+(bms['uurtarief_partner_groot']?bms['uurtarief_partner_groot'].waarde:228)+'\n'
-          +'Afboeking: admin '+(bms['afboeking_admin']?bms['afboeking_admin'].waarde:2.6)+'%, klein acc '+(bms['afboeking_klein']?bms['afboeking_klein'].waarde:4.0)+'%, groot acc '+(bms['afboeking_groot']?bms['afboeking_groot'].waarde:8.1)+'%\n'
-          +'EBITDA-multiples: adm laag '+(bms['multiple_adm_laag']?bms['multiple_adm_laag'].waarde:4.6)+'x, adm hoog '+(bms['multiple_adm_hoog']?bms['multiple_adm_hoog'].waarde:5.5)+'x\n'
-          +'PE recurring ondergrens: 70%\n'
-          +'Salarisindexatie 2024: admin '+(bms['salarisindexatie_2024_admin']?bms['salarisindexatie_2024_admin'].waarde:4.1)+'%, klein '+(bms['salarisindexatie_2024_klein']?bms['salarisindexatie_2024_klein'].waarde:4.5)+'%, groot '+(bms['salarisindexatie_2024_groot']?bms['salarisindexatie_2024_groot'].waarde:4.2)+'%\n'
-          +'Tariefstijging 2024: admin '+(bms['tariefstijging_2024_admin']?bms['tariefstijging_2024_admin'].waarde:5.4)+'%, klein '+(bms['tariefstijging_2024_klein']?bms['tariefstijging_2024_klein'].waarde:5.0)+'%, groot '+(bms['tariefstijging_2024_groot']?bms['tariefstijging_2024_groot'].waarde:6.3)+'%\n';
-        var prompt='Je bent M&A-adviseur gespecialiseerd in accountants- en administratiekantoren. Analyseer de due diligence data en geef een concreet adviesrapport.\n\n'
-          +'TRAJECT: '+d.traject.kantoor_naam+' ('+d.traject.traject_type+')\nStatus: '+d.traject.status+'\n\n'
-          +bmTekst+'\nINGEVULDE DUE DILIGENCE DATA:'+dataSamenvatting+'\n\n'
-          +'Schrijf een rapport (## koppen): ## Samenvatting traject\n## Financieel profiel & waardering\n## Sterktes\n## Risicos & aandachtspunten\n## Aanbevelingen voor de volgende stap\n\n'
-          +'Derde persoon. Concreet, direct. Max 600 woorden.';
-        var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:3000})});
-        var rd=await resp.json();
-        var tekst=rd.content&&rd.content[0]?rd.content[0].text:(rd.error||'Fout bij genereren.');
-        tekst=tekst.replace(/^## (.+)$/gm,'<h3 style="font-family:Playfair Display,serif;font-size:1rem;color:var(--head);margin:1.25rem 0 .5rem">$1</h3>');
-        tekst=tekst.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
-        tekst=tekst.replace(/\n\n/g,'</p><p style="font-size:13px;color:var(--mid);line-height:1.7;margin-bottom:.75rem">');
-        aiOut.innerHTML='<div style="font-size:11px;font-weight:600;color:var(--teal);letter-spacing:.1em;text-transform:uppercase;margin-bottom:1rem">AI-analyse · '+d.traject.kantoor_naam+'</div><p style="font-size:13px;color:var(--mid);line-height:1.7;margin-bottom:.75rem">'+tekst+'</p>';
-        btn.textContent='Opnieuw genereren';btn.disabled=false;
-      }catch(e){aiOut.innerHTML='<div style="color:var(--red);font-size:13px">Fout: '+e.message+'</div>';btn.textContent='Genereer AI-analyse';btn.disabled=false;}
-    });
   }catch(e){document.getElementById('detail-body').textContent='Fout: '+e.message;}
 }
 
@@ -876,6 +824,9 @@ function toonNieuwModal(){
     +'<div class="field"><label>E-mail contactpersoon</label><input type="email" id="m-e" placeholder="partner@kantoor.nl"></div>'
     +'<div class="field"><label>Trajecttype</label><select id="m-t"><option value="Verkoop">Verkoop</option><option value="Fusie">Fusie</option><option value="Opvolging">Opvolging</option><option value="PE-traject">PE-traject</option><option value="Overname">Overname</option></select></div>'
     +'<div class="field"><label>Notitie (intern)</label><textarea id="m-n" rows="2" placeholder="Interne aantekeningen..."></textarea></div>'
+    +'<div style="border-top:1px solid var(--border);margin:.75rem 0;padding-top:.75rem"><div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem">Begeleider (tussenpersoon)</div></div>'
+    +'<div class="field"><label>Naam begeleider</label><input type="text" id="m-bg-naam" placeholder="bijv. Jan de Vries"></div>'
+    +'<div class="field"><label>E-mail begeleider</label><input type="email" id="m-bg-email" placeholder="begeleider@kantoor.nl"></div>'
     +'<div id="m-res" style="display:none;background:var(--teal-bg);border:1px solid var(--teal-dark);border-radius:var(--r);padding:1rem;margin-bottom:1rem;font-size:13px;line-height:2"></div>'
     +'<div id="m-err" style="display:none;color:var(--red);font-size:12px;margin-bottom:.75rem"></div>'
     +'<div style="display:flex;gap:10px;justify-content:flex-end"><button class="btn-ghost" id="m-ann">Annuleren</button><button class="btn" id="m-ok">Traject aanmaken</button></div>';
@@ -889,7 +840,7 @@ function toonNieuwModal(){
     document.getElementById('m-err').style.display='none';
     try{
       var r=await fetch(WORKER+'/mna/create',{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':adminKey},
-        body:JSON.stringify({kantoor_naam:kantoor,contact_naam:document.getElementById('m-c').value.trim(),contact_email:document.getElementById('m-e').value.trim(),traject_type:document.getElementById('m-t').value,notitie:document.getElementById('m-n').value.trim()})});
+        body:JSON.stringify({kantoor_naam:kantoor,contact_naam:document.getElementById('m-c').value.trim(),contact_email:document.getElementById('m-e').value.trim(),traject_type:document.getElementById('m-t').value,notitie:document.getElementById('m-n').value.trim(),begeleider_naam:document.getElementById('m-bg-naam').value.trim(),begeleider_email:document.getElementById('m-bg-email').value.trim()})});
       var d=await r.json();
       if(d.ok){
         mnaList.unshift({id:d.code,kantoor_naam:kantoor,traject_type:document.getElementById('m-t').value,koper_code:d.koper_code,tussen_code:d.tussen_code,status:'actief',created_at:Date.now()});
@@ -897,7 +848,7 @@ function toonNieuwModal(){
         res.innerHTML='<strong style="color:var(--teal-dim)">&#10003; Traject aangemaakt</strong><br>'
           +'<b>Verkoperscode:</b> <span class="code-chip">'+d.code+'</span> <button class="copy-btn res-copy" data-copy="'+d.code+'">⎘ Kopieer</button><br>'
           +'<b>Koperscode:</b> <span class="code-chip" style="background:var(--gold-bg);color:var(--gold);border-color:var(--gold)">'+d.koper_code+'</span> <button class="copy-btn res-copy" data-copy="'+d.koper_code+'">⎘ Kopieer</button><br>'
-          +'<b>Tussenpersoon:</b> <span class="code-chip" style="background:var(--card);color:var(--mid)">'+d.tussen_code+'</span> <button class="copy-btn res-copy" data-copy="'+d.tussen_code+'">⎘ Kopieer</button><br><br>'
+          +'<b>Tussenpersoon:</b> <span class="code-chip" style="background:var(--card);color:var(--mid)">'+d.tussen_code+'</span> <button class="copy-btn res-copy" data-copy="'+d.tussen_code+'">⎘ Kopieer</button>'+(document.getElementById('m-bg-email')&&document.getElementById('m-bg-email').value?' <span style="font-size:11px;color:var(--muted)">→ '+esc(document.getElementById('m-bg-email').value)+'</span>':'')+'<br><br>'
           +'<button id="res-opslaan" style="font-size:12px;padding:5px 12px;border:1px solid var(--teal-dark);border-radius:var(--r);cursor:pointer;background:transparent;color:var(--teal)">&#8681; Opslaan als bestand</button>';
         res.querySelectorAll('.res-copy').forEach(function(b){b.addEventListener('click',function(){navigator.clipboard.writeText(b.dataset.copy).then(function(){var o=b.textContent;b.textContent='✓';setTimeout(function(){b.textContent=o;},1500);});});});
         document.getElementById('res-opslaan').addEventListener('click',function(){slaOp({id:d.code,kantoor_naam:kantoor,traject_type:document.getElementById('m-t').value,koper_code:d.koper_code,tussen_code:d.tussen_code,created_at:Date.now()});});
@@ -936,58 +887,20 @@ async function ontvergrendel(id){
   }catch(e){alert('Verbindingsfout.');}
 }
 
-async function maakTrajectVanScan(scanId,naam,email,fte,revenue,region,overall,scenario,scoresStr){
-  if(!confirm('M&A traject aanmaken voor '+naam+'? Scan-data wordt automatisch ingevuld in het traject.'))return;
+async function maakTrajectVanScan(scanId, naam, email){
+  if(!confirm('M&A traject aanmaken voor '+naam+'?'))return;
   try{
-    // Stap 1: traject aanmaken
     var r=await fetch(WORKER+'/mna/scan-to-traject?key='+encodeURIComponent(adminKey),{
       method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({scan_id:scanId,kantoor_naam:naam,contact_email:email,traject_type:'Verkoop'})
     });
     var d=await r.json();
-    if(!d.ok){alert('Fout: '+(d.error||'onbekend'));return;}
-    var code=d.code;
-    mnaList.unshift({id:code,kantoor_naam:naam,traject_type:'Verkoop',koper_code:d.koper_code,tussen_code:d.tussen_code,status:'actief',created_at:Date.now()});
-
-    // Stap 2: scan-data doorzetten naar MNA fasen
-    var omzetNum=revenue?parseFloat(String(revenue).replace(/[^0-9]/g,''))||0:0;
-    var fteNum=fte?parseInt(fte)||0:0;
-    var omzetPfte=omzetNum&&fteNum?Math.round(omzetNum/fteNum):0;
-    var scores={};
-    try{scores=JSON.parse(scoresStr||'{}');}catch(e){}
-
-    // Financieel fase
-    var finData={
-      omzet3:{value:revenue||'',label:'Jaaromzet jaar 3 (meest recent)',req:true},
-      declarab:{value:omzetPfte>0?'€'+omzetPfte.toLocaleString('nl-NL')+' per FTE (berekend uit scan)':'',label:'Declarabiliteit (%)',req:false}
-    };
-    await fetch(WORKER+'/mna/save',{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':adminKey},
-      body:JSON.stringify({code:code,fase_id:'financieel',data_json:finData,notitie:'Automatisch ingevuld vanuit KantoorInzicht scan (score: '+overall+'/100)'})
-    }).catch(function(){});
-
-    // Partner fase
-    var partnerData={
-      fte:{value:fte||'',label:'Totaal FTE',req:true}
-    };
-    await fetch(WORKER+'/mna/save',{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':adminKey},
-      body:JSON.stringify({code:code,fase_id:'partner',data_json:partnerData,notitie:''})
-    }).catch(function(){});
-
-    // Strategisch fase
-    var sc=scores||{};
-    var strategischNotitie='KantoorInzicht scan scores:\n'+Object.entries(sc).map(function(kv){return '- '+kv[0]+': '+kv[1]+'/100';}).join('\n')+'\nAanbevolen scenario: '+(scenario||'\u2014')+'\nOverall score: '+(overall||'\u2014')+'/100';
-  
-    var stratData={
-      marktpos:{value:region||'',label:'Marktpositie / regio',req:true},
-      synergie:{value:scenario||'',label:'Gewenste vervolgstap eigenaar',req:true}
-    };
-    await fetch(WORKER+'/mna/save',{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':adminKey},
-      body:JSON.stringify({code:code,fase_id:'strategisch',data_json:stratData,notitie:strategischNotitie})
-    }).catch(function(){});
-
-    alert('Traject aangemaakt en scan-data ingevuld!\n\nVerkoperscode: '+code+'\nKoperscode: '+d.koper_code+'\n\nIngevuld: omzet, FTE, regio, scenario en dimensiescores.');
-    activeTab='mna';renderDashboard();
-  }catch(e){alert('Verbindingsfout: '+e.message);}
+    if(d.ok){
+      mnaList.unshift({id:d.code,kantoor_naam:naam,traject_type:'Verkoop',koper_code:d.koper_code,tussen_code:d.tussen_code,status:'actief',created_at:Date.now()});
+      alert('Traject aangemaakt!\n\nVerkoperscode: '+d.code+'\nKoperscode: '+d.koper_code);
+      activeTab='mna';renderDashboard();
+    } else alert('Fout: '+(d.error||'onbekend'));
+  }catch(e){alert('Verbindingsfout.');}
 }
 
 renderLogin();
