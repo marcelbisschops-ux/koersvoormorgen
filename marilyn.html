@@ -927,10 +927,8 @@ function renderWaarderingTab(el){
         +'Schrijf in professionele Nederlandse rapporttaal. Concreet, cijfermatig onderbouwd. Gebruik de benchmarknormen voor de sector.';
       try{
         var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:3000})});
-        var rawText=await resp.text();
-        var rd;try{rd=JSON.parse(rawText);}catch(pe){throw new Error('Geen JSON (HTTP '+resp.status+'): '+rawText.substring(0,300));}
-        if(!resp.ok)throw new Error('Worker fout '+resp.status+': '+(rd.error||rawText.substring(0,200)));
-        var tekst=rd.content&&rd.content[0]?rd.content[0].text:(rd.error||'Fout bij genereren.');
+        var rd=await resp.json();
+        var tekst=rd.text||'Fout bij genereren.';
         tekst=tekst.replace(/^## (.+)$/gm,'<h3 style="font-family:Playfair Display,serif;font-size:1rem;color:var(--head);margin:1.25rem 0 .5rem;border-top:1px solid var(--border);padding-top:1rem">$1</h3>');
         tekst=tekst.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
         tekst=tekst.replace(/\n\n/g,'</p><p style="font-size:13px;color:var(--mid);line-height:1.7;margin-bottom:.75rem">');
@@ -1138,7 +1136,7 @@ async function toonDetail(id,naam){
         var prompt='Schrijf een professionele Letter of Intent (LoI) in het Nederlands voor een M&A traject in de accountancy/administratie sector.\n\nGEGEVENS:\n- Doelkantoor (verkoper): '+esc(d.traject.kantoor_naam||naam)+'\n- Contactpersoon verkoper: '+esc(verkoperNaam)+'\n- Kopende partij: '+esc(koperNaam)+' ('+esc(koperRv)+')\n- Contactpersoon koper: '+esc(koperContact)+'\n- Trajecttype: '+esc(d.traject.traject_type||'Verkoop')+'\n- Datum: '+datum+'\n- Adviseur: Marcel Bisschops, Bisschops Financing BV\n\nSTRUCTUUR:\n1. Aanhef en introductie (beide partijen met volledige namen)\n2. Intentie en scope van de voorgenomen transactie\n3. Indicatieve transactiewaarde (PM - nader te bepalen na due diligence)\n4. Due diligence proces en tijdlijn (indicatief 8 weken)\n5. Exclusiviteit (60 dagen)\n6. Vertrouwelijkheid\n7. Niet-bindend karakter\n8. Ondertekening beide partijen + adviseur\n\nFormeel, juridisch correct Nederlands. Vul bekende gegevens in, gebruik [INVULLEN] alleen waar echt niets bekend is.';
         var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:2500})});
         var rd=await resp.json();
-        var tekst=rd.content&&rd.content[0]?rd.content[0].text:(rd.error||'Fout bij genereren.');
+        var tekst=rd.text||(rd.error||'Fout bij genereren.');
         loiOut.innerHTML='<div style="font-size:11px;font-weight:600;color:var(--gold);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.75rem">Letter of Intent · '+esc(d.traject.kantoor_naam||naam)+'</div>'
           +'<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:1.25rem;font-size:13px;line-height:1.9;color:var(--sub);white-space:pre-wrap;font-family:Georgia,serif;max-height:300px;overflow-y:auto">'+esc(tekst)+'</div>'
           +'<div style="display:flex;gap:8px;margin-top:.75rem"><button id="loi-print-btn" class="btn-ghost" style="font-size:12px;padding:6px 14px">&#128196; Print / PDF</button><button id="loi-email-btn" class="btn" style="font-size:12px;padding:6px 14px;background:var(--gold)">&#9993; Stuur naar partijen</button></div>';
@@ -1165,7 +1163,7 @@ async function toonDetail(id,naam){
         var prompt='M&A-adviseur accountancy. Analyseer:\nTRAJECT: '+d.traject.kantoor_naam+' ('+d.traject.traject_type+')\n'+bmTekst+'\nDUE DILIGENCE:'+dataSamenvatting+'\n\n## Samenvatting\n## Financieel profiel & waardering\n## Sterktes\n## Risicos\n## Aanbevelingen\n\nMax 500 woorden.';
         var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:3000})});
         var rd=await resp.json();
-        var tekst=rd.content&&rd.content[0]?rd.content[0].text:(rd.error||'Fout.');
+        var tekst=rd.text||(rd.error||'Fout.');
         tekst=tekst.replace(/^## (.+)$/gm,'<h3 style="font-family:Playfair Display,serif;font-size:.95rem;color:var(--head);margin:1rem 0 .4rem">$1</h3>');
         tekst=tekst.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
         tekst=tekst.replace(/\n\n/g,'</p><p style="font-size:13px;color:var(--mid);line-height:1.7;margin-bottom:.6rem">');
