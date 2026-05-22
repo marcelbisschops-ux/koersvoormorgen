@@ -503,7 +503,24 @@ async function renderBenchmarksTab(el){
       var status=document.getElementById('pdf-status');
       var preview=document.getElementById('pdf-preview');
       if(!bron||!datum||!file){err.style.display='block';err.textContent='Vul alle velden in en selecteer een PDF.';return;}
-      var btn=document.getElementById('pdf-ok');btn.disabled=true;btn.textContent='Analyseren...';
+      var btn=document.getElementById('pdf-ok');
+      // Als al geanalyseerd en bevestigd: sla op zonder opnieuw analyseren
+      if(btn.dataset.confirmed==='1'){
+        btn.disabled=true;btn.textContent='Opslaan...';
+        var gevonden2=btn._gevonden||[];
+        for(var bi=0;bi<gevonden2.length;bi++){
+          await fetch(WORKER+'/admin/benchmarks/update?key='+encodeURIComponent(adminKey),{
+            method:'POST',headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({sleutel:gevonden2[bi].sleutel,waarde:gevonden2[bi].waarde,categorie:gevonden2[bi].categorie||'algemeen',omschrijving:gevonden2[bi].omschrijving,bron:bron,peildatum:datum})
+          }).catch(function(){});
+        }
+        status.textContent='&#10003; '+gevonden2.length+' benchmarks opgeslagen.';
+        status.style.background='var(--teal-bg)';status.style.color='var(--teal)';
+        btn.textContent='Klaar';btn.dataset.confirmed='';
+        laadBenchmarks();
+        return;
+      }
+      btn.disabled=true;btn.textContent='Analyseren...';
       err.style.display='none';
       status.style.display='block';status.textContent='PDF inlezen...';
       try{
@@ -525,15 +542,37 @@ async function renderBenchmarksTab(el){
         if(!resp.ok||data.error)throw new Error(data.error||'Analyse mislukt');
         var gevonden=data.benchmarks||[];
         if(!gevonden.length)throw new Error('Geen benchmarkwaarden gevonden in dit document.');
-        // Toon preview
-        var pvHtml='<strong style="color:var(--head)">'+gevonden.length+' waarden gevonden:</strong><br>';
+        // Haal huidige benchmarks op voor conflict check
+        var huidig={};
+        try{var br=await fetch(WORKER+'/benchmarks');var bd=await br.json();bd.forEach(function(b){huidig[b.sleutel]=b;});}catch(e){}
+        // Bouw preview met conflict waarschuwingen
+        var conflicten=gevonden.filter(function(b){return huidig[b.sleutel]&&Math.abs(huidig[b.sleutel].waarde-b.waarde)>1;});
+        var pvHtml='<strong style="color:var(--head)">'+gevonden.length+' waarden gevonden'+(conflicten.length?' &mdash; <span style="color:var(--gold)">'+conflicten.length+' conflict(en)</span>':'')+':</strong><br><br>';
         gevonden.forEach(function(b){
-          pvHtml+='&#10003; '+b.omschrijving+': '+(b.waarde>1000?'€'+(b.waarde/1000).toFixed(0)+'K':b.waarde+'x')+' → <code>'+b.sleutel+'</code><br>';
+          var hv=huidig[b.sleutel];
+          var conflict=hv&&Math.abs(hv.waarde-b.waarde)>1;
+          var nvFmt=b.waarde>1000?'€'+(b.waarde/1000).toFixed(0)+'K':b.waarde.toFixed(2)+'x';
+          if(conflict){
+            var ovFmt=hv.waarde>1000?'€'+(hv.waarde/1000).toFixed(0)+'K':hv.waarde.toFixed(2)+'x';
+            pvHtml+='<div style="padding:6px 10px;margin-bottom:4px;background:var(--gold-bg);border-left:3px solid var(--gold);border-radius:0 var(--r) var(--r) 0">'
+              +'<span style="color:var(--gold)">&#9888; Conflict</span> <code>'+b.sleutel+'</code><br>'
+              +'Huidig ('+esc(hv.bron||'onbekend')+'): <strong>'+ovFmt+'</strong> → Nieuw ('+esc(bron)+'): <strong>'+nvFmt+'</strong></div>';
+          } else {
+            pvHtml+='<div style="padding:4px 0;font-size:12px">&#10003; <code>'+b.sleutel+'</code>: '+nvFmt+(hv?' (ongewijzigd)':' (nieuw)')+'</div>';
+          }
         });
         preview.style.display='block';preview.innerHTML=pvHtml;
-        status.textContent='&#10003; '+gevonden.length+' benchmarks opgeslagen in D1.';
-        btn.textContent='Klaar';
-        laadBenchmarks();
+        if(conflicten.length){
+          status.style.display='block';status.textContent='&#9888; Controleer de conflicten hierboven. Klik Opslaan om alle waarden te overschrijven.';
+          status.style.background='var(--gold-bg)';status.style.color='var(--gold)';
+          btn._gevonden=gevonden;
+          btn.disabled=false;btn.textContent='Toch opslaan';
+          btn.dataset.confirmed='1';
+        } else {
+          status.textContent='&#10003; '+gevonden.length+' benchmarks opgeslagen in D1.';
+          btn.textContent='Klaar';
+          laadBenchmarks();
+        }
       }catch(e){
         err.style.display='block';err.textContent='Fout: '+e.message;
         btn.disabled=false;btn.textContent='Opnieuw proberen';
@@ -563,7 +602,26 @@ async function renderBenchmarksTab(el){
       var val=parseFloat(document.getElementById('bm-val').value);
       var err=document.getElementById('bm-err');
       if(!id||isNaN(val)){err.style.display='block';err.textContent='Sleutel en waarde zijn verplicht.';return;}
-      var btn=document.getElementById('bm-ok');btn.disabled=true;btn.textContent='Opslaan...';
+      var btn=document.getElementById('bm-ok');
+      // Conflict check: huidige waarde ophalen
+      if(!btn.dataset.confirmed){
+        try{
+          var chkR=await fetch(WORKER+'/benchmarks');
+          var chkD=await chkR.json();
+          var bestaand=chkD.find(function(b){return b.sleutel===id;});
+          if(bestaand&&Math.abs(bestaand.waarde-val)>0.01){
+            var ovFmt2=bestaand.waarde>1000?'€'+(bestaand.waarde/1000).toFixed(0)+'K':bestaand.waarde.toFixed(2)+'x';
+            var nvFmt2=val>1000?'€'+(val/1000).toFixed(0)+'K':val.toFixed(2)+'x';
+            err.style.display='block';
+            err.style.color='var(--gold)';
+            err.innerHTML='&#9888; Huidige waarde: <strong>'+ovFmt2+'</strong> ('+esc(bestaand.bron||'onbekend')+')<br>Nieuwe waarde: <strong>'+nvFmt2+'</strong><br><br>Klik nogmaals op Opslaan om te overschrijven.';
+            btn.dataset.confirmed='1';
+            return;
+          }
+        }catch(eCk){}
+      }
+      btn.dataset.confirmed='';
+      btn.disabled=true;btn.textContent='Opslaan...';
       try{
         var r=await fetch(WORKER+'/admin/benchmarks/update?key='+encodeURIComponent(adminKey),{
           method:'POST',headers:{'Content-Type':'application/json'},
