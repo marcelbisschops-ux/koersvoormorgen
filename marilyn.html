@@ -169,7 +169,7 @@ function renderDashboard(){
     +'<button class="tab'+(activeTab==='mna'?' active':'')+'" id="t-mna">M&A Trajecten ('+mnaList.length+')</button>'
     +'<button class="tab'+(activeTab==='docs'?' active':'')+'" id="t-docs">Documenten</button>'
     +'<button class="tab'+(activeTab==='rapporten'?' active':'')+'" id="t-rapp">Scan rapporten ('+rapporten.length+')</button>'
-    +'<button class="tab'+(activeTab==="benchmarks"?' active':"")+"' id=\"t-bench\">Benchmarks</button>'
+    +'<button class="tab'+(activeTab==='benchmarks'?' active':'')+'" id="t-bench">Benchmarks</button>'
     +'</div>'
     +'<div id="tc"></div>';
   document.getElementById('t-scans').addEventListener('click',function(){activeTab='scans';scanFilter='';openRow=null;renderDashboard();});
@@ -444,8 +444,7 @@ async function renderBenchmarksTab(el){
           +'<td class="mono" style="font-size:11px;color:var(--teal)">'+esc(b.sleutel)+'</td>'
           +'<td style="font-size:12px">'+esc(b.omschrijving||'--')+'</td>'
           +'<td class="mono" style="font-weight:600;color:var(--head)">'+valFmt+'</td>'
-          +'<td style="font-size:11px;color:var(--muted)">'+esc(b.bron||'--')
-            +(b.bron_url?'<br><a href="'+esc(b.bron_url)+'" target="_blank" style="color:var(--teal);font-size:10px">Bron &#8599;</a>':'')+'</td>'
+          +'<td style="font-size:11px;color:var(--muted)">'+esc(b.bron||'--')+(b.bron_url?'<br><a href="'+esc(b.bron_url)+'" target="_blank" style="color:var(--teal);font-size:10px">Bron &#8599;</a>':'')+'</td>'
           +'<td class="mono" style="font-size:11px">'+esc(b.peildatum||'--')+'</td>'
           +'<td class="mono" style="font-size:11px">'+dt+'</td>'
           +'<td><button class="btn-red btn-del-bench" data-sleutel="'+esc(b.sleutel)+'" style="font-size:10px;padding:2px 6px">&#10005;</button></td>'
@@ -456,7 +455,7 @@ async function renderBenchmarksTab(el){
       db.querySelectorAll('.btn-del-bench').forEach(function(btn){
         btn.addEventListener('click',async function(){
           if(!confirm('Benchmark "'+btn.dataset.sleutel+'" verwijderen?'))return;
-          await fetch(WORKER+'/admin/benchmarks/delete/'+btn.dataset.sleutel+'?key='+encodeURIComponent(adminKey),{method:'POST'}).catch(()=>{});
+          await fetch(WORKER+'/admin/benchmarks/delete/'+btn.dataset.sleutel+'?key='+encodeURIComponent(adminKey),{method:'POST'}).catch(function(){});
           laadBenchmarks();
         });
       });
@@ -500,14 +499,7 @@ async function renderBenchmarksTab(el){
       try{
         var r=await fetch(WORKER+'/admin/benchmarks/update?key='+encodeURIComponent(adminKey),{
           method:'POST',headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({
-            sleutel:id,waarde:val,
-            categorie:document.getElementById('bm-cat').value,
-            omschrijving:document.getElementById('bm-omschr').value.trim(),
-            bron:document.getElementById('bm-bron').value.trim(),
-            bron_url:document.getElementById('bm-url').value.trim(),
-            peildatum:document.getElementById('bm-datum').value.trim()
-          })
+          body:JSON.stringify({sleutel:id,waarde:val,categorie:document.getElementById('bm-cat').value,omschrijving:document.getElementById('bm-omschr').value.trim(),bron:document.getElementById('bm-bron').value.trim(),bron_url:document.getElementById('bm-url').value.trim(),peildatum:document.getElementById('bm-datum').value.trim()})
         });
         var d=await r.json();
         if(d.ok){document.body.removeChild(ov);laadBenchmarks();}
