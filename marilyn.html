@@ -447,6 +447,7 @@ async function renderBenchmarksTab(el){
     +'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
     +'<button class="btn" style="font-size:12px;padding:7px 14px" id="btn-bench-refresh">&#8635; Bronnen updaten</button>'
     +'<button class="btn" style="font-size:12px;padding:7px 14px" id="btn-bench-add">+ Handmatig toevoegen</button>'
+    +'<button class="btn" style="font-size:12px;padding:7px 14px;background:var(--teal-bg);color:var(--teal);border:1px solid var(--teal-dark)" id="btn-bench-pdf">&#128196; PDF analyseren</button>'
     +'</div></div>'
     +'<div id="bench-body" class="empty">Laden...</div></div>';
 
@@ -492,6 +493,69 @@ async function renderBenchmarksTab(el){
       else alert('Fout: '+(d.error||'onbekend'));
     }catch(e){alert('Verbindingsfout.');}
     btn.disabled=false;btn.textContent='↻ Bronnen updaten';
+  });
+
+  document.getElementById('btn-bench-pdf').addEventListener('click',function(){
+    var ov=document.createElement('div');ov.className='overlay';
+    var mo=document.createElement('div');mo.className='modal';
+    mo.style.maxWidth='520px';
+    mo.innerHTML='<div class="modal-title">&#128196; PDF analyseren voor benchmarks</div>'
+      +'<p style="font-size:13px;color:var(--mid);margin-bottom:1rem;line-height:1.6">Upload een PDF met benchmarkdata (bijv. Full Finance, Simplicate, AV Top 20). De AI extraheert automatisch de relevante waarden en slaat ze op als benchmarks.</p>'
+      +'<div class="field"><label>Bron naam <span style="color:var(--red)">*</span></label><input type="text" id="pdf-bron" placeholder="bijv. AV Top 20 Administratiekantoren 2025" style="margin-bottom:.5rem"></div>'
+      +'<div class="field"><label>Peildatum <span style="color:var(--red)">*</span></label><input type="text" id="pdf-datum" placeholder="bijv. 2025" style="margin-bottom:.5rem"></div>'
+      +'<div class="field"><label>PDF bestand <span style="color:var(--red)">*</span></label><input type="file" id="pdf-file" accept=".pdf" style="margin-bottom:.5rem"></div>'
+      +'<div id="pdf-status" style="font-size:12px;color:var(--teal);margin:.75rem 0;display:none;padding:10px;background:var(--teal-bg);border-radius:var(--r)"></div>'
+      +'<div id="pdf-err" style="color:var(--red);font-size:12px;margin-bottom:.5rem;display:none"></div>'
+      +'<div id="pdf-preview" style="font-size:12px;color:var(--mid);margin-bottom:.75rem;display:none"></div>'
+      +'<div style="display:flex;gap:10px;justify-content:flex-end"><button class="btn-ghost" id="pdf-ann">Annuleren</button><button class="btn" id="pdf-ok">Analyseren &amp; opslaan</button></div>';
+    ov.appendChild(mo);document.body.appendChild(ov);
+    ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
+    document.getElementById('pdf-ann').addEventListener('click',function(){document.body.removeChild(ov);});
+    document.getElementById('pdf-ok').addEventListener('click',async function(){
+      var bron=document.getElementById('pdf-bron').value.trim();
+      var datum=document.getElementById('pdf-datum').value.trim();
+      var file=document.getElementById('pdf-file').files[0];
+      var err=document.getElementById('pdf-err');
+      var status=document.getElementById('pdf-status');
+      var preview=document.getElementById('pdf-preview');
+      if(!bron||!datum||!file){err.style.display='block';err.textContent='Vul alle velden in en selecteer een PDF.';return;}
+      var btn=document.getElementById('pdf-ok');btn.disabled=true;btn.textContent='Analyseren...';
+      err.style.display='none';
+      status.style.display='block';status.textContent='PDF inlezen...';
+      try{
+        // PDF naar base64
+        var b64=await new Promise(function(res,rej){
+          var r=new FileReader();
+          r.onload=function(){res(r.result.split(',')[1]);};
+          r.onerror=function(){rej(new Error('Lezen mislukt'));};
+          r.readAsDataURL(file);
+        });
+        status.textContent='AI analyseert PDF... (30-60 seconden)';
+        // Stuur naar worker die AI aanroept
+        var resp=await fetch(WORKER+'/admin/benchmarks/pdf-analyse?key='+encodeURIComponent(adminKey),{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({pdf_base64:b64,bron:bron,peildatum:datum,bestandsnaam:file.name})
+        });
+        var data=await resp.json();
+        if(!resp.ok||data.error)throw new Error(data.error||'Analyse mislukt');
+        var gevonden=data.benchmarks||[];
+        if(!gevonden.length)throw new Error('Geen benchmarkwaarden gevonden in dit document.');
+        // Toon preview
+        var pvHtml='<strong style="color:var(--head)">'+gevonden.length+' waarden gevonden:</strong><br>';
+        gevonden.forEach(function(b){
+          pvHtml+='&#10003; '+b.omschrijving+': '+(b.waarde>1000?'€'+(b.waarde/1000).toFixed(0)+'K':b.waarde+'x')+' → <code>'+b.sleutel+'</code><br>';
+        });
+        preview.style.display='block';preview.innerHTML=pvHtml;
+        status.textContent='&#10003; '+gevonden.length+' benchmarks opgeslagen in D1.';
+        btn.textContent='Klaar';
+        laadBenchmarks();
+      }catch(e){
+        err.style.display='block';err.textContent='Fout: '+e.message;
+        btn.disabled=false;btn.textContent='Opnieuw proberen';
+        status.style.display='none';
+      }
+    });
   });
 
   document.getElementById('btn-bench-add').addEventListener('click',function(){
