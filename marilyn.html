@@ -168,7 +168,8 @@ function renderDashboard(){
     +'<button class="tab'+(activeTab==='callbacks'?' active':'')+'" id="t-cb">Terugbelverzoeken ('+callbacks.length+')</button>'
     +'<button class="tab'+(activeTab==='mna'?' active':'')+'" id="t-mna">M&A Trajecten ('+mnaList.length+')</button>'
     +'<button class="tab'+(activeTab==='docs'?' active':'')+'" id="t-docs">Documenten</button>'
-    +'<button class="tab'+(activeTab==='scans'?' active':'')+'" id="t-rapp">Scan rapporten ('+rapporten.length+')</button>'
+    +'<button class="tab'+(activeTab==='rapporten'?' active':'')+'" id="t-rapp">Scan rapporten ('+rapporten.length+')</button>'
+    +'<button class="tab'+(activeTab==="benchmarks"?' active':"")+"' id=\"t-bench\">Benchmarks</button>'
     +'</div>'
     +'<div id="tc"></div>';
   document.getElementById('t-scans').addEventListener('click',function(){activeTab='scans';scanFilter='';openRow=null;renderDashboard();});
@@ -176,6 +177,7 @@ function renderDashboard(){
   document.getElementById('t-mna').addEventListener('click',function(){activeTab='mna';renderDashboard();});
   document.getElementById('t-docs').addEventListener('click',function(){activeTab='docs';renderDashboard();});
   document.getElementById('t-rapp').addEventListener('click',function(){activeTab='rapporten';renderDashboard();});
+  document.getElementById('t-bench').addEventListener('click',function(){activeTab='benchmarks';renderDashboard();});
   renderTab();
 }
 
@@ -185,6 +187,7 @@ function renderTab(){
   else if(activeTab==='callbacks')renderCallbacksTab(el);
   else if(activeTab==='mna')renderMnaTab(el);
   else if(activeTab==='docs')renderDocsTab(el);
+  else if(activeTab==='benchmarks')renderBenchmarksTab(el);
   else renderRapportenTab(el);
 }
 
@@ -418,6 +421,101 @@ async function renderDocsTab(el){
   });
 }
 
+
+async function renderBenchmarksTab(el){
+  el.innerHTML='<div class="table-wrap"><div class="table-hdr"><div class="table-title">Benchmarks</div>'
+    +'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
+    +'<button class="btn" style="font-size:12px;padding:7px 14px" id="btn-bench-refresh">&#8635; Bronnen updaten</button>'
+    +'<button class="btn" style="font-size:12px;padding:7px 14px" id="btn-bench-add">+ Handmatig toevoegen</button>'
+    +'</div></div>'
+    +'<div id="bench-body" class="empty">Laden...</div></div>';
+
+  async function laadBenchmarks(){
+    var db=document.getElementById('bench-body');
+    try{
+      var r=await fetch(WORKER+'/benchmarks');
+      var data=await r.json();
+      if(!data.length){db.innerHTML='<div class="empty">Nog geen benchmarks. Klik op Bronnen updaten om de eerste data op te halen.</div>';return;}
+      var html='<table><thead><tr><th>Sleutel</th><th>Omschrijving</th><th>Waarde</th><th>Bron</th><th>Peildatum</th><th>Bijgewerkt</th><th></th></tr></thead><tbody>';
+      data.forEach(function(b){
+        var dt=b.updated_at?new Date(b.updated_at).toLocaleString('nl-NL',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'--';
+        var valFmt=b.waarde>1000?'€'+(b.waarde/1000).toFixed(0)+'K':b.waarde.toFixed(2)+'x';
+        html+='<tr>'
+          +'<td class="mono" style="font-size:11px;color:var(--teal)">'+esc(b.sleutel)+'</td>'
+          +'<td style="font-size:12px">'+esc(b.omschrijving||'--')+'</td>'
+          +'<td class="mono" style="font-weight:600;color:var(--head)">'+valFmt+'</td>'
+          +'<td style="font-size:11px;color:var(--muted)">'+esc(b.bron||'--')
+            +(b.bron_url?'<br><a href="'+esc(b.bron_url)+'" target="_blank" style="color:var(--teal);font-size:10px">Bron &#8599;</a>':'')+'</td>'
+          +'<td class="mono" style="font-size:11px">'+esc(b.peildatum||'--')+'</td>'
+          +'<td class="mono" style="font-size:11px">'+dt+'</td>'
+          +'<td><button class="btn-red btn-del-bench" data-sleutel="'+esc(b.sleutel)+'" style="font-size:10px;padding:2px 6px">&#10005;</button></td>'
+          +'</tr>';
+      });
+      html+='</tbody></table>';
+      db.innerHTML=html;
+      db.querySelectorAll('.btn-del-bench').forEach(function(btn){
+        btn.addEventListener('click',async function(){
+          if(!confirm('Benchmark "'+btn.dataset.sleutel+'" verwijderen?'))return;
+          await fetch(WORKER+'/admin/benchmarks/delete/'+btn.dataset.sleutel+'?key='+encodeURIComponent(adminKey),{method:'POST'}).catch(()=>{});
+          laadBenchmarks();
+        });
+      });
+    }catch(e){db.innerHTML='<div class="empty">Fout bij laden: '+e.message+'</div>';}
+  }
+  laadBenchmarks();
+
+  document.getElementById('btn-bench-refresh').addEventListener('click',async function(){
+    var btn=this;btn.disabled=true;btn.textContent='Updaten...';
+    try{
+      var r=await fetch(WORKER+'/admin/benchmarks/refresh?key='+encodeURIComponent(adminKey),{method:'POST'});
+      var d=await r.json();
+      if(d.ok){alert(d.count+' benchmarks bijgewerkt uit bronnen.');laadBenchmarks();}
+      else alert('Fout: '+(d.error||'onbekend'));
+    }catch(e){alert('Verbindingsfout.');}
+    btn.disabled=false;btn.textContent='↻ Bronnen updaten';
+  });
+
+  document.getElementById('btn-bench-add').addEventListener('click',function(){
+    var ov=document.createElement('div');ov.className='overlay';
+    var mo=document.createElement('div');mo.className='modal';
+    mo.innerHTML='<div class="modal-title">Benchmark handmatig toevoegen</div>'
+      +'<div class="field"><label>Sleutel (uniek ID) <span style="color:var(--red)">*</span></label><input type="text" id="bm-id" placeholder="bijv. noab_ebitda_marge"></div>'
+      +'<div class="field"><label>Omschrijving</label><input type="text" id="bm-omschr" placeholder="bijv. EBITDA marge benchmark NOAB 2025"></div>'
+      +'<div class="field"><label>Waarde (getal) <span style="color:var(--red)">*</span></label><input type="number" id="bm-val" step="0.1" placeholder="bijv. 22.5"></div>'
+      +'<div class="field"><label>Categorie</label><select id="bm-cat"><option value="productiviteit">Productiviteit</option><option value="winstgevendheid">Winstgevendheid</option><option value="waardering">Waardering</option><option value="tarieven">Tarieven</option><option value="algemeen">Algemeen</option></select></div>'
+      +'<div class="field"><label>Bron</label><input type="text" id="bm-bron" placeholder="bijv. NOAB/Fiscount Benchmark 2025"></div>'
+      +'<div class="field"><label>Bron URL (optioneel)</label><input type="text" id="bm-url" placeholder="https://..."></div>'
+      +'<div class="field"><label>Peildatum</label><input type="text" id="bm-datum" placeholder="bijv. 2025-Q3 of 2025"></div>'
+      +'<div id="bm-err" style="color:var(--red);font-size:12px;margin-bottom:.5rem;display:none"></div>'
+      +'<div style="display:flex;gap:10px;justify-content:flex-end"><button class="btn-ghost" id="bm-ann">Annuleren</button><button class="btn" id="bm-ok">Opslaan</button></div>';
+    ov.appendChild(mo);document.body.appendChild(ov);
+    ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
+    document.getElementById('bm-ann').addEventListener('click',function(){document.body.removeChild(ov);});
+    document.getElementById('bm-ok').addEventListener('click',async function(){
+      var id=document.getElementById('bm-id').value.trim();
+      var val=parseFloat(document.getElementById('bm-val').value);
+      var err=document.getElementById('bm-err');
+      if(!id||isNaN(val)){err.style.display='block';err.textContent='Sleutel en waarde zijn verplicht.';return;}
+      var btn=document.getElementById('bm-ok');btn.disabled=true;btn.textContent='Opslaan...';
+      try{
+        var r=await fetch(WORKER+'/admin/benchmarks/update?key='+encodeURIComponent(adminKey),{
+          method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({
+            sleutel:id,waarde:val,
+            categorie:document.getElementById('bm-cat').value,
+            omschrijving:document.getElementById('bm-omschr').value.trim(),
+            bron:document.getElementById('bm-bron').value.trim(),
+            bron_url:document.getElementById('bm-url').value.trim(),
+            peildatum:document.getElementById('bm-datum').value.trim()
+          })
+        });
+        var d=await r.json();
+        if(d.ok){document.body.removeChild(ov);laadBenchmarks();}
+        else{err.style.display='block';err.textContent='Fout: '+(d.error||'onbekend');btn.disabled=false;btn.textContent='Opslaan';}
+      }catch(e2){err.style.display='block';err.textContent='Verbindingsfout.';btn.disabled=false;btn.textContent='Opslaan';}
+    });
+  });
+}
 
 function renderRapportenTab(el){
   var html='<div class="table-wrap"><div class="table-hdr"><div class="table-title">Scan rapporten</div>'
