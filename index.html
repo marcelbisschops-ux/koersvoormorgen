@@ -638,12 +638,17 @@ async function generateAI(){
     :'Onvoldoende data voor berekening. Vul EBITDA% en omzet in.';
 
   const mainPrompt=
-    'Schrijf een uitgebreid, eerlijk en direct strategisch adviesrapport in het Nederlands. Minimaal 1200 woorden.\n'
+    'Schrijf een uitgebreid, confronterend en direct strategisch adviesrapport in het Nederlands. Minimaal 1200 woorden.\n'
+    +'TOON: De eigenaar weet al hoe zijn kantoor eruitziet. Wat hij niet weet is wat het betekent — financieel, strategisch en persoonlijk. Jouw taak is hem dat te laten voelen, niet te beschrijven.\n'
+    +'VERBOD beschrijvende taal: NOOIT "aandacht verdient", "het is van belang", "overwegen te", "het is raadzaam", "speelt een rol", "relevant is". Vervang altijd door directe consequentie.\n'
+    +'VERPLICHT bij elk alarmsignaal: vertaal naar wat dit de eigenaar concreet kost — in euro\'s, in verkoopprijs, in tijd, of in kansen die hij mist.\n'
+    +'VERPLICHT bij elke bevinding: eindig met de consequentie voor zijn ambitie ('+p.ambitie+'). Niet wat het is, maar wat het hem doet.\n'
     +'Begin DIRECT met ## Scorekaart en samenvatting. Geen titelpagina, geen "Opgesteld door"-regel.\n'
     +'Gebruik ALTIJD "uw kantoor" - nooit "dit kantoor" of "het kantoor".\n'
     +'VERBOD eerste persoon: NOOIT "ik", "mijn", "in mijn praktijk", "ik zie", "ik adviseer" of vergelijkbare ik-zinnen.\n'
     +'Schrijf in de derde persoon of onpersoonlijk: "uw kantoor", "de analyse toont", "het rapport concludeert".\n'
     +'NOOIT beginnen met "Laat ik direct zijn" of vergelijkbare retorische zinnen.\n'
+    +'STIJL: Schrijf zoals een ervaren M&A-adviseur die de eigenaar al tien jaar kent — geen verkooppraatje, geen voorzichtige omwegen, geen beleefde vaagheid. Zeg wat het is.\n'
     +(p.specialisme?'Specialisme "'+p.specialisme+'" meenemen: specifiek advies voor dit segment, geen generieke sector-aanbevelingen.\n':'')
     +(p.software&&p.software.length>2?'Software "'+p.software+'" is bekend: ga ervan uit dat dit al in gebruik is, adviseer geen alternatieven tenzij er fundamentele problemen zijn.\n':'')
     +(p.doelgroep?'Doelgroep "'+p.doelgroep+'" meenemen in commercieel en positioneringsadvies.\n':'')
@@ -675,9 +680,12 @@ async function generateAI(){
     +'## Risicoprofiel\n'
     +'## Aanbeveling\n'
     +'INSTRUCTIE Aanbeveling: geef 3-5 concrete prioriteiten met tijdshorizon (0-6 maanden / 6-18 maanden / 18+ maanden). '
-    +'Verwerk de indicatieve waardering ('+waardering+') in de aanbeveling. '
-    +'Sluit af met één heldere strategische hoofdboodschap.\n'
+    +'Elke prioriteit heeft een concreet gevolg als hij NIET wordt uitgevoerd — benoem dat expliciet. '
+    +'Verwerk de indicatieve waardering ('+waardering+') in de aanbeveling: wat moet er veranderen om de bovenkant van de bandbreedte te halen? '
+    +'Sluit af met één heldere, onvergetelijke zin die de eigenaar bijblijft als hij het rapport wegslaat.\n'
     +'VERBOD: Gebruik GEEN markdown-tabellen (geen |---| of |kolom|). Schrijf alles in lopende tekst.\n'
+    +'VERBOD samenvatting-taal: NOOIT "samenvattend", "kortom", "al met al", "concluderend", "tot slot kan gesteld worden". Eindig elke sectie met een scherpe zin, geen conclusie-cliché.\n'
+    +'VERBOD wollige kwalificaties: NOOIT "enigszins", "in zekere mate", "relatief", "vrij", "tamelijk", "redelijk goed". Kies positie of benoem het probleem direct.\n'
     +(signalen.length?'VERPLICHT: Adresseer elk van deze alarmsignalen expliciet in het rapport: '+signalen.join(' | ')+'\n':'')
     +(weaknesses!=='geen'?'VERPLICHT: Adresseer de zwakke dimensies expliciet: '+weaknesses+'\n':'');
 
