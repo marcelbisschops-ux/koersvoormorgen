@@ -1879,110 +1879,121 @@ function toonNieuwModal(){
   var ov=document.createElement('div');ov.className='overlay';
   var mo=document.createElement('div');mo.className='modal';
   mo.innerHTML='<div class="modal-title">Nieuw M&amp;A traject aanmaken</div>'
-    +'<div style="border-bottom:1px solid var(--border);margin-bottom:.75rem;padding-bottom:.25rem"><div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)" id="m-sectie1-hdr">Verkopende partij</div></div>'
+    +'<div class="field"><label>Trajecttype <span style="color:var(--red)">*</span></label><select id="m-t"><option value="Verkoop">Verkoop</option><option value="Fusie">Fusie</option><option value="Opvolging">Opvolging</option><option value="PE-traject">PE-traject</option><option value="Overname">Overname</option></select></div>'
+    +'<div style="border-bottom:1px solid var(--border);margin:.75rem 0 .75rem;padding-bottom:.25rem"><div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)" id="m-sectie1-hdr">Verkopende partij</div></div>'
     +'<div class="field"><label id="m-p1-naam-lbl">Kantoornaam <span style="color:var(--red)">*</span></label><div style="display:flex;gap:8px"><input type="text" id="m-k" placeholder="bijv. Accountantskantoor De Vries" style="flex:2"><input type="text" id="m-kvk" placeholder="KvK-nr" style="flex:1"></div></div>'
-    +'<div class="field"><label id="m-p1-adres-lbl">Adres</label><input type="text" id="m-adres" placeholder="bijv. Dorpsstraat 1, 1234AB Amsterdam"></div>'
-    +'<div class="field"><label id="m-p1-contact-lbl">Contactpersoon</label><input type="text" id="m-c" placeholder="Naam verkopende partner"></div>'
-    +'<div class="field"><label id="m-p1-email-lbl">E-mail contactpersoon</label><input type="email" id="m-e" placeholder="partner@kantoor.nl"></div>'
-    +'<div class="field"><label>Trajecttype</label><select id="m-t"><option value="Verkoop">Verkoop</option><option value="Fusie">Fusie</option><option value="Opvolging">Opvolging</option><option value="PE-traject">PE-traject</option><option value="Overname">Overname</option></select></div>'
+    +'<div class="field"><label id="m-p1-rv-lbl">Rechtsvorm <span style="color:var(--red)">*</span></label><select id="m-rv"><option value="">— Kies rechtsvorm —</option><option value="B.V.">B.V. (Besloten Vennootschap)</option><option value="N.V.">N.V. (Naamloze Vennootschap)</option><option value="Eenmanszaak">Eenmanszaak</option><option value="V.O.F.">V.O.F.</option><option value="Maatschap">Maatschap</option><option value="Coöperatie">Coöperatie</option><option value="Stichting">Stichting</option><option value="Holding B.V.">Holding B.V.</option><option value="C.V.">C.V.</option></select></div>'
+    +'<div class="field"><label id="m-p1-adres-lbl">Adres <span style="color:var(--red)">*</span></label><input type="text" id="m-adres" placeholder="bijv. Dorpsstraat 1, 1234AB Amsterdam"></div>'
+    +'<div class="field"><label id="m-p1-contact-lbl">Contactpersoon <span style="color:var(--red)">*</span></label><input type="text" id="m-c" placeholder="Naam contactpersoon"></div>'
+    +'<div class="field"><label id="m-p1-email-lbl">E-mail contactpersoon <span style="color:var(--red)">*</span></label><input type="email" id="m-e" placeholder="partner@kantoor.nl"></div>'
     +'<div class="field"><label>Notitie (intern)</label><textarea id="m-n" rows="2" placeholder="Interne aantekeningen..."></textarea></div>'
     +'<div style="border-top:1px solid var(--border);margin:.75rem 0;padding-top:.75rem"><div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem">Begeleider (tussenpersoon)</div></div>'
-    +'<div class="field"><label>Naam begeleider</label><input type="text" id="m-bg-naam" value="Marcel Bisschops" placeholder="bijv. Jan de Vries"></div>'
-    +'<div class="field"><label>E-mail begeleider</label><input type="email" id="m-bg-email" value="marcel@bisschopsfinancing.nl" placeholder="begeleider@kantoor.nl"></div>'
+    +'<div class="field"><label>Naam begeleider</label><input type="text" id="m-bg-naam" value="Marcel Bisschops"></div>'
+    +'<div class="field"><label>E-mail begeleider</label><input type="email" id="m-bg-email" value="marcel@bisschopsfinancing.nl"></div>'
     +'<div style="border-top:1px solid var(--border);margin:.75rem 0;padding-top:.75rem"><div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem" id="m-sectie2-hdr">Kopende partij</div></div>'
     +'<div class="field"><label id="m-p2-naam-lbl">Naam kopende partij <span style="color:var(--red)">*</span></label><div style="display:flex;gap:8px"><input type="text" id="m-koper-naam" placeholder="bijv. Acme Accountants BV" style="flex:2"><input type="text" id="m-koper-kvk" placeholder="KvK-nr" style="flex:1"></div></div>'
-    +'<div class="field"><label id=\"m-p2-adres-lbl\">Adres koper</label><input type="text" id="m-koper-adres" placeholder="bijv. Hoofdstraat 10, 5678CD Rotterdam"></div>'
-    +'<div class="field"><label id="m-p2-rv-lbl">Rechtsvorm koper <span style="color:var(--red)">*</span></label><select id="m-koper-rv"><option value="">— Kies rechtsvorm —</option><option value="B.V.">B.V. (Besloten Vennootschap)</option><option value="N.V.">N.V. (Naamloze Vennootschap)</option><option value="Eenmanszaak">Eenmanszaak</option><option value="V.O.F.">V.O.F. (Vennootschap onder Firma)</option><option value="Maatschap">Maatschap</option><option value="Coöperatie">Coöperatie</option><option value="Stichting">Stichting</option><option value="Holding B.V.">Holding B.V.</option><option value="C.V.">C.V. (Commanditaire Vennootschap)</option></select></div>'
+    +'<div class="field"><label id="m-p2-rv-lbl">Rechtsvorm koper <span style="color:var(--red)">*</span></label><select id="m-koper-rv"><option value="">— Kies rechtsvorm —</option><option value="B.V.">B.V. (Besloten Vennootschap)</option><option value="N.V.">N.V. (Naamloze Vennootschap)</option><option value="Eenmanszaak">Eenmanszaak</option><option value="V.O.F.">V.O.F.</option><option value="Maatschap">Maatschap</option><option value="Coöperatie">Coöperatie</option><option value="Stichting">Stichting</option><option value="Holding B.V.">Holding B.V.</option><option value="C.V.">C.V.</option></select></div>'
+    +'<div class="field"><label id="m-p2-adres-lbl">Adres koper <span style="color:var(--red)">*</span></label><input type="text" id="m-koper-adres" placeholder="bijv. Hoofdstraat 10, 5678CD Rotterdam"></div>'
     +'<div class="field"><label id="m-p2-contact-lbl">Contactpersoon koper</label><input type="text" id="m-koper-contact" placeholder="bijv. Jan de Vries"></div>'
-    +'<div class="field"><label id=\"m-p2-email-lbl\">E-mail koper</label><input type="email" id="m-koper-email" placeholder="koper@bedrijf.nl"></div>'
-
+    +'<div class="field"><label id="m-p2-email-lbl">E-mail koper <span style="color:var(--red)">*</span></label><input type="email" id="m-koper-email" placeholder="koper@bedrijf.nl"></div>'
     +'<div id="m-res" style="display:none;background:var(--teal-bg);border:1px solid var(--teal-dark);border-radius:var(--r);padding:1rem;margin-bottom:1rem;font-size:13px;line-height:2"></div>'
     +'<div id="m-err" style="display:none;color:var(--red);font-size:12px;margin-bottom:.75rem"></div>'
     +'<div style="display:flex;gap:10px;justify-content:flex-end"><button class="btn-ghost" id="m-ann">Annuleren</button><button class="btn" id="m-ok">Traject aanmaken</button></div>';
   ov.appendChild(mo);document.body.appendChild(ov);
   ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
   document.getElementById('m-ann').addEventListener('click',function(){document.body.removeChild(ov);});
-  // Dynamische labels op basis van trajecttype
+
   function updatePartijLabels(){
     var t=document.getElementById('m-t').value;
     var lb=partijLabels(t);
-    // Sectie 1 (boven dropdown)
     var s1=document.getElementById('m-sectie1-hdr');
-    var p1n=document.getElementById('m-p1-naam-lbl');
-    var p1a=document.getElementById('m-p1-adres-lbl');
-    var p1c=document.getElementById('m-p1-contact-lbl');
-    var p1e=document.getElementById('m-p1-email-lbl');
-    if(s1)s1.textContent=lb.sectie1;
-    if(p1n)p1n.innerHTML=lb.partij1+' <span style="color:var(--red)">*</span>';
-    if(p1a)p1a.textContent=lb.p1adres;
-    if(p1c)p1c.textContent=lb.p1contact;
-    if(p1e)p1e.textContent=lb.p1email;
-    // Sectie 2 (onder dropdown)
     var s2=document.getElementById('m-sectie2-hdr');
-    var n=document.getElementById('m-p2-naam-lbl');
-    var a=document.getElementById('m-p2-adres-lbl');
-    var rv=document.getElementById('m-p2-rv-lbl');
-    var c=document.getElementById('m-p2-contact-lbl');
-    var e=document.getElementById('m-p2-email-lbl');
+    if(s1)s1.textContent=lb.sectie1;
     if(s2)s2.textContent=lb.sectie2;
-    if(n)n.innerHTML=lb.partij2+' <span style="color:var(--red)">*</span>';
-    if(a)a.textContent=lb.p2adres;
-    if(rv)rv.innerHTML='Rechtsvorm '+lb.sectie2.toLowerCase()+' <span style="color:var(--red)">*</span>';
-    if(c)c.textContent=lb.p2contact;
-    if(e)e.textContent=lb.p2email;
+    var map={
+      'm-p1-naam-lbl': lb.partij1+' <span style="color:var(--red)">*</span>',
+      'm-p1-rv-lbl': 'Rechtsvorm '+lb.sectie1.toLowerCase()+' <span style="color:var(--red)">*</span>',
+      'm-p1-adres-lbl': lb.p1adres+' <span style="color:var(--red)">*</span>',
+      'm-p1-contact-lbl': lb.p1contact+' <span style="color:var(--red)">*</span>',
+      'm-p1-email-lbl': lb.p1email+' <span style="color:var(--red)">*</span>',
+      'm-p2-naam-lbl': lb.partij2+' <span style="color:var(--red)">*</span>',
+      'm-p2-rv-lbl': 'Rechtsvorm '+lb.sectie2.toLowerCase()+' <span style="color:var(--red)">*</span>',
+      'm-p2-adres-lbl': lb.p2adres+' <span style="color:var(--red)">*</span>',
+      'm-p2-contact-lbl': lb.p2contact,
+      'm-p2-email-lbl': lb.p2email+' <span style="color:var(--red)">*</span>'
+    };
+    Object.keys(map).forEach(function(id){
+      var el=document.getElementById(id);
+      if(el)el.innerHTML=map[id];
+    });
     window._mPartijLabel=lb;
   }
   document.getElementById('m-t').addEventListener('change',updatePartijLabels);
   updatePartijLabels();
-  document.getElementById('m-ok').addEventListener('click',async function(){    var erDiv=document.getElementById('m-err');
+
+  document.getElementById('m-ok').addEventListener('click',async function(){
+    var erDiv=document.getElementById('m-err');erDiv.style.display='none';
     var emailRe=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     var kvkRe=/^[0-9]{8}$/;
+    var lb=window._mPartijLabel||partijLabels('Verkoop');
     function fout(msg){erDiv.style.display='block';erDiv.textContent=msg;return false;}
     function vv(id){var el=document.getElementById(id);return el?el.value.trim():'';}
-    // Alle velden verplicht
-    if(!vv('m-k'))return fout('Kantoornaam verkoper is verplicht.');
-    if(!vv('m-c'))return fout('Contactpersoon verkoper is verplicht.');
+    if(!vv('m-k'))return fout(lb.partij1+' naam is verplicht.');
+    if(!vv('m-rv'))return fout('Rechtsvorm '+lb.sectie1.toLowerCase()+' is verplicht.');
+    if(!vv('m-c'))return fout('Contactpersoon '+lb.sectie1.toLowerCase()+' is verplicht.');
     if(!vv('m-e'))return fout('E-mail contactpersoon is verplicht.');
-    if(!emailRe.test(vv('m-e')))return fout('E-mail contactpersoon heeft geen geldig formaat (naam@domein.nl).');
-    if(!vv('m-adres'))return fout('Adres verkoper is verplicht.');
-    if(!vv('m-kvk'))return fout('KvK-nummer verkoper is verplicht.');
-    if(!kvkRe.test(vv('m-kvk')))return fout('KvK-nummer verkoper moet exact 8 cijfers zijn.');
+    if(!emailRe.test(vv('m-e')))return fout('E-mail heeft geen geldig formaat.');
+    if(!vv('m-adres'))return fout('Adres '+lb.sectie1.toLowerCase()+' is verplicht.');
+    if(!vv('m-kvk'))return fout('KvK-nummer is verplicht.');
+    if(!kvkRe.test(vv('m-kvk')))return fout('KvK-nummer moet exact 8 cijfers zijn.');
     if(!vv('m-bg-naam'))return fout('Naam begeleider is verplicht.');
     if(!vv('m-bg-email'))return fout('E-mail begeleider is verplicht.');
     if(!emailRe.test(vv('m-bg-email')))return fout('E-mail begeleider heeft geen geldig formaat.');
-    if(!vv('m-koper-naam'))return fout('Naam koper is verplicht.');
-    if(!vv('m-koper-rv'))return fout('Rechtsvorm koper is verplicht.');
-    if(!vv('m-koper-email'))return fout('E-mail koper is verplicht.');
-    if(!emailRe.test(vv('m-koper-email')))return fout('E-mail koper heeft geen geldig formaat.');
-    if(!vv('m-koper-adres'))return fout('Adres koper is verplicht.');
-    if(!vv('m-koper-kvk'))return fout('KvK-nummer koper is verplicht.');
-    if(!kvkRe.test(vv('m-koper-kvk')))return fout('KvK-nummer koper moet exact 8 cijfers zijn.');
-    erDiv.style.display='none';
+    if(!vv('m-koper-naam'))return fout(lb.partij2+' naam is verplicht.');
+    if(!vv('m-koper-rv'))return fout('Rechtsvorm '+lb.sectie2.toLowerCase()+' is verplicht.');
+    if(!vv('m-koper-email'))return fout('E-mail '+lb.sectie2.toLowerCase()+' is verplicht.');
+    if(!emailRe.test(vv('m-koper-email')))return fout('E-mail '+lb.sectie2.toLowerCase()+' heeft geen geldig formaat.');
+    if(!vv('m-koper-adres'))return fout('Adres '+lb.sectie2.toLowerCase()+' is verplicht.');
+    if(!vv('m-koper-kvk'))return fout('KvK-nummer '+lb.sectie2.toLowerCase()+' is verplicht.');
+    if(!kvkRe.test(vv('m-koper-kvk')))return fout('KvK-nummer '+lb.sectie2.toLowerCase()+' moet exact 8 cijfers zijn.');
     var kantoor=vv('m-k');
-    var contactEmail=vv('m-e');
-    var koperEmail=vv('m-koper-email');
-    var bgEmail=vv('m-bg-email');
     var btn=document.getElementById('m-ok');btn.disabled=true;btn.textContent='Aanmaken...';
-    document.getElementById('m-err').style.display='none';
     try{
       var r=await fetch(WORKER+'/mna/create',{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':adminKey},
-        body:JSON.stringify({kantoor_naam:kantoor,contact_naam:document.getElementById('m-c').value.trim(),contact_email:document.getElementById('m-e').value.trim(),traject_type:document.getElementById('m-t').value,notitie:document.getElementById('m-n').value.trim(),begeleider_naam:document.getElementById('m-bg-naam').value.trim()||'Marcel Bisschops',begeleider_email:document.getElementById('m-bg-email').value.trim()||'marcel@bisschopsfinancing.nl',koper_naam:document.getElementById('m-koper-naam').value.trim(),koper_rechtsvorm:document.getElementById('m-koper-rv').value.trim(),koper_contact:document.getElementById('m-koper-contact').value.trim(),koper_email:document.getElementById('m-koper-email').value.trim(),koper_adres:document.getElementById('m-koper-adres')?document.getElementById('m-koper-adres').value.trim():'',koper_kvk:document.getElementById('m-koper-kvk')?document.getElementById('m-koper-kvk').value.trim():'',verkoper_adres:document.getElementById('m-adres')?document.getElementById('m-adres').value.trim():'',verkoper_kvk:document.getElementById('m-kvk')?document.getElementById('m-kvk').value.trim():''})});
+        body:JSON.stringify({
+          kantoor_naam:kantoor,
+          kantoor_rechtsvorm:vv('m-rv'),
+          contact_naam:vv('m-c'),
+          contact_email:vv('m-e'),
+          verkoper_adres:vv('m-adres'),
+          verkoper_kvk:vv('m-kvk'),
+          traject_type:vv('m-t'),
+          notitie:vv('m-n'),
+          begeleider_naam:vv('m-bg-naam')||'Marcel Bisschops',
+          begeleider_email:vv('m-bg-email')||'marcel@bisschopsfinancing.nl',
+          koper_naam:vv('m-koper-naam'),
+          koper_rechtsvorm:vv('m-koper-rv'),
+          koper_contact:vv('m-koper-contact'),
+          koper_email:vv('m-koper-email'),
+          koper_adres:vv('m-koper-adres'),
+          koper_kvk:vv('m-koper-kvk')
+        })});
       var d=await r.json();
       if(d.ok){
-        mnaList.unshift({id:d.code,kantoor_naam:kantoor,traject_type:document.getElementById('m-t').value,koper_code:d.koper_code,tussen_code:d.tussen_code,status:'actief',created_at:Date.now()});
+        mnaList.unshift({id:d.code,kantoor_naam:kantoor,traject_type:vv('m-t'),koper_code:d.koper_code,tussen_code:d.tussen_code,status:'actief',created_at:Date.now()});
         var res=document.getElementById('m-res');res.style.display='block';
         res.innerHTML='<strong style="color:var(--teal-dim)">&#10003; Traject aangemaakt</strong><br>'
-          +'<b>Verkoperscode:</b> <span class="code-chip">'+d.code+'</span> <button class="copy-btn res-copy" data-copy="'+d.code+'">⎘ Kopieer</button><br>'
-          +'<b>Koperscode:</b> <span class="code-chip" style="background:var(--gold-bg);color:var(--gold);border-color:var(--gold)">'+d.koper_code+'</span> <button class="copy-btn res-copy" data-copy="'+d.koper_code+'">⎘ Kopieer</button><br>'
-          +'<b>Tussenpersoon:</b> <span class="code-chip" style="background:var(--card);color:var(--mid)">'+d.tussen_code+'</span> <button class="copy-btn res-copy" data-copy="'+d.tussen_code+'">⎘ Kopieer</button><br><br>'
+          +'<b>Verkoperscode:</b> <span class="code-chip">'+d.code+'</span> <button class="copy-btn res-copy" data-copy="'+d.code+'">&#8690; Kopieer</button><br>'
+          +'<b>Koperscode:</b> <span class="code-chip" style="background:var(--gold-bg);color:var(--gold);border-color:var(--gold)">'+d.koper_code+'</span> <button class="copy-btn res-copy" data-copy="'+d.koper_code+'">&#8690; Kopieer</button><br>'
+          +'<b>Tussenpersoon:</b> <span class="code-chip" style="background:var(--card);color:var(--mid)">'+d.tussen_code+'</span> <button class="copy-btn res-copy" data-copy="'+d.tussen_code+'">&#8690; Kopieer</button><br><br>'
           +'<button id="res-opslaan" style="font-size:12px;padding:5px 12px;border:1px solid var(--teal-dark);border-radius:var(--r);cursor:pointer;background:transparent;color:var(--teal)">&#8681; Opslaan als bestand</button>';
         res.querySelectorAll('.res-copy').forEach(function(b){b.addEventListener('click',function(){navigator.clipboard.writeText(b.dataset.copy).then(function(){var o=b.textContent;b.textContent='✓';setTimeout(function(){b.textContent=o;},1500);});});});
-        document.getElementById('res-opslaan').addEventListener('click',function(){slaOp({id:d.code,kantoor_naam:kantoor,traject_type:document.getElementById('m-t').value,koper_code:d.koper_code,tussen_code:d.tussen_code,created_at:Date.now()});});
+        document.getElementById('res-opslaan').addEventListener('click',function(){slaOp({id:d.code,kantoor_naam:kantoor,traject_type:vv('m-t'),koper_code:d.koper_code,tussen_code:d.tussen_code,created_at:Date.now()});});
         btn.textContent='Aangemaakt';
         document.body.removeChild(ov);
         renderTab();
-      }else{var er2=document.getElementById('m-err');er2.style.display='block';er2.textContent='Fout: '+(d.error||'onbekend');btn.disabled=false;btn.textContent='Traject aanmaken';}
-    }catch(e){var er3=document.getElementById('m-err');er3.style.display='block';er3.textContent='Verbindingsfout.';btn.disabled=false;btn.textContent='Traject aanmaken';}
+      }else{erDiv.style.display='block';erDiv.textContent='Fout: '+(d.error||'onbekend');btn.disabled=false;btn.textContent='Traject aanmaken';}
+    }catch(e){erDiv.style.display='block';erDiv.textContent='Verbindingsfout.';btn.disabled=false;btn.textContent='Traject aanmaken';}
   });
 }
 
