@@ -361,11 +361,11 @@ function renderMnaTab(el){
         +(t.begeleider_naam?'<div style="font-weight:500;color:var(--sub)">'+esc(t.begeleider_naam)+'</div>':'<span style="color:var(--muted);font-size:10px;font-style:italic">Niet ingesteld</span>')
         +(t.begeleider_email?'<div style="color:var(--teal);font-size:10px">'+esc(t.begeleider_email)+'</div>':'')
         +'<div style="margin-top:3px;display:flex;gap:3px;align-items:center"><span class="code-chip" style="background:var(--card);color:var(--mid);border-color:var(--border2);font-size:10px">'+esc(t.tussen_code||'—')+'</span><button class="copy-btn" data-copy="'+esc(t.tussen_code||'')+'">⎘</button></div>'
-        +'<button class="btn-ghost btn-uitnodigen" data-id="'+esc(t.id)+'" data-naam="'+esc(t.kantoor_naam||t.id)+'" data-tcode="'+esc(t.tussen_code||'')+'" style="margin-top:5px;font-size:10px;padding:2px 8px;color:#2a5ea0;border-color:#2a5ea0;display:block;width:100%">&#128231; Uitnodigen</button>'
+
         +'</div></td>'
         +'<td class="mono" style="font-size:11px">'+formatDate(t.created_at)+'</td>'
         +'<td style="white-space:nowrap;display:flex;gap:4px;flex-wrap:wrap">'
-        +'<button class="btn-ghost btn-detail" data-id="'+esc(t.id)+'" data-naam="'+esc(t.kantoor_naam||t.id)+'" style="font-size:11px;padding:3px 8px">&#128065; Bekijk</button>'
+        +'<button class="btn btn-uitnodigen" data-id="'+esc(t.id)+'" data-naam="'+esc(t.kantoor_naam||t.id)+'" data-tcode="'+esc(t.tussen_code||'')+'" style="font-size:11px;padding:3px 10px;background:#2a5ea0">&#128231; Begeleider</button>'        +'<button class="btn-ghost btn-detail" data-id="'+esc(t.id)+'" data-naam="'+esc(t.kantoor_naam||t.id)+'" style="font-size:11px;padding:3px 8px">&#128065; Bekijk</button>'
         +'<button class="btn-ghost btn-bewerk" data-id="'+esc(t.id)+'" data-naam="'+esc(t.kantoor_naam||t.id)+'" style="font-size:11px;padding:3px 8px">&#9999;&#65039; Bewerk</button>'
         +'<button class="btn-ghost btn-opslaan" data-idx="'+i+'" style="font-size:11px;padding:3px 8px">&#8681; Opslaan</button>'
         +(verg
