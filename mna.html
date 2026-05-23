@@ -422,7 +422,7 @@ window.centraalUploadFiles = async function(files) {
     try{
       // 60 seconden timeout per bestand
       var controller=new AbortController();
-      var timeoutId=setTimeout(function(){controller.abort();},60000);
+      var timeoutId=setTimeout(function(){controller.abort();},90000);
       var resp=await fetch(url,{method:'POST',body:formData,signal:controller.signal});
       clearTimeout(timeoutId);
       var d=await resp.json();
@@ -443,7 +443,7 @@ window.centraalUploadFiles = async function(files) {
       }
     }catch(e){
       fouten++;
-      var msg=e.name==='AbortError'?'Timeout — bestand te groot of server te traag':e.message;
+      var msg=e.name==='AbortError'?'Timeout (90s) — probeer een kleiner bestand of upload PDF in plaats van CSV':e.message;
       toonStatus('<span style="color:var(--red)">Fout bij '+file.name+': '+msg+'</span>');
     }
   }
