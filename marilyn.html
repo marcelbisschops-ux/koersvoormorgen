@@ -1259,7 +1259,14 @@ async function toonDetail(id,naam){
         var koperContactB=d.traject.koper_contact||'[INVULLEN]';
         var verkoperNaamB=d.traject.contact_naam||'[INVULLEN]';
         var opdrachtgever=isSell?(d.traject.kantoor_naam||naam):koperNaamB;
-        var prompt='Vul de volgende Bisschops Financing Bemiddelingsovereenkomst '+(isSell?'Verkoop':'Aankoop')+' template in. Vervang ALLE [tekst tussen haakjes]. Geef alleen het ingevulde document terug.\n\nBEKENDE GEGEVENS:\n- Opdrachtgever: '+esc(opdrachtgever)+'\n- Contactpersoon: '+esc(isSell?verkoperNaamB:koperContactB)+'\n- Datum: '+datum+'\n\nTEMPLATE:\n'+bemTplTekst;
+        var trajectType=d.traject.traject_type||'Verkoop';
+        var lb=partijLabels(trajectType);
+        var docTypeLabel=isSell?'Verkoop':'Aankoop';
+        if(trajectType==='Fusie')docTypeLabel='Fusie (begeleiding beide partijen)';
+        else if(trajectType==='Overname')docTypeLabel='Aankoop (buy-side)';
+        else if(trajectType==='Opvolging')docTypeLabel='Bedrijfsopvolging';
+        else if(trajectType==='PE-traject')docTypeLabel='PE-participatie';
+        var prompt='Vul de volgende Bisschops Financing Bemiddelingsovereenkomst template in voor trajecttype: '+docTypeLabel+'. Vervang ALLE [tekst tussen haakjes]. Pas de partijbenamingen aan: '+lb.sectie1+' en '+lb.sectie2+'. Geef alleen het ingevulde document terug.\n\nBEKENDE GEGEVENS:\n- '+lb.sectie1+': '+esc(d.traject.kantoor_naam||naam)+', '+esc(d.traject.verkoper_adres||'[adres]')+', KvK: '+esc(d.traject.verkoper_kvk||'[KvK]')+'\n- Contactpersoon '+lb.sectie1.toLowerCase()+': '+esc(isSell?verkoperNaamB:koperContactB)+'\n- '+lb.sectie2+': '+esc(koperNaamB||'[invullen]')+' ('+esc(d.traject.koper_rechtsvorm||'[rechtsvorm]')+'), '+esc(d.traject.koper_adres||'[adres]')+', KvK: '+esc(d.traject.koper_kvk||'[KvK]')+'\n- Contactpersoon '+lb.sectie2.toLowerCase()+': '+esc(koperContactB||'[invullen]')+'\n- Datum: '+datum+'\n- Adviseur: Bisschops Financing B.V., Marcel Bisschops, Grotestraat 13 5841AA Oploo\n\nTEMPLATE:\n'+bemTplTekst;
         var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:4000})});
         var rawResp=await resp.text();
         var rd;try{rd=JSON.parse(rawResp);}catch(e){throw new Error('Parse fout: '+rawResp.substring(0,100));}
@@ -1318,7 +1325,8 @@ async function toonDetail(id,naam){
         var verkoperKvk=d.traject.verkoper_kvk||'[INVULLEN: KvK]';
         var koperAdres=d.traject.koper_adres||'[INVULLEN: adres]';
         var koperKvk=d.traject.koper_kvk||'[INVULLEN: KvK]';
-        var prompt='Vul de volgende Bisschops Financing NDA template in. Vervang ALLE [tekst tussen haakjes] door de werkelijke gegevens. Geef alleen het ingevulde document terug.\n\nBEKENDE GEGEVENS:\n- Verstrekkende partij: '+esc(d.traject.kantoor_naam||naam)+', '+esc(verkoperAdres)+', KvK: '+esc(verkoperKvk)+'\n- Contactpersoon verkoper: '+esc(verkoperNaam)+'\n- Ontvangende partij: '+esc(koperNaam)+' ('+esc(koperRv)+'), '+esc(koperAdres)+', KvK: '+esc(koperKvk)+'\n- Contactpersoon koper: '+esc(koperContact)+'\n- Datum: '+datum+'\n- Adviseur: Bisschops Financing B.V., Marcel Bisschops, Grotestraat 13 5841AA Oploo\n\nTEMPLATE:\n'+ndaTplTekst;
+        var lbNda=partijLabels(d.traject.traject_type||'Verkoop');
+        var prompt='Vul de volgende Bisschops Financing NDA template in voor trajecttype: '+(d.traject.traject_type||'Verkoop')+'. Vervang ALLE [tekst tussen haakjes] door de werkelijke gegevens. Gebruik als partijbenamingen: '+lbNda.sectie1+' en '+lbNda.sectie2+' (in plaats van Verstrekkende/Ontvangende partij). Geef alleen het ingevulde document terug.\n\nBEKENDE GEGEVENS:\n- '+lbNda.sectie1+': '+esc(d.traject.kantoor_naam||naam)+', '+esc(verkoperAdres)+', KvK: '+esc(verkoperKvk)+'\n- Contactpersoon '+lbNda.sectie1.toLowerCase()+': '+esc(verkoperNaam)+'\n- '+lbNda.sectie2+': '+esc(koperNaam)+' ('+esc(koperRv)+'), '+esc(koperAdres)+', KvK: '+esc(koperKvk)+'\n- Contactpersoon '+lbNda.sectie2.toLowerCase()+': '+esc(koperContact)+'\n- Datum: '+datum+'\n- Adviseur: Bisschops Financing B.V., Marcel Bisschops, Grotestraat 13 5841AA Oploo\n\nTEMPLATE:\n'+ndaTplTekst;
         var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:8000})});
         var rd=await resp.json();
         var tekst=rd.text||(rd.error||'Fout bij genereren.');
@@ -1371,7 +1379,8 @@ async function toonDetail(id,naam){
         var koperRv=d.traject.koper_rechtsvorm||'[INVULLEN: rechtsvorm]';
         var koperContact=d.traject.koper_contact||'[INVULLEN: contactpersoon]';
         var verkoperNaam=d.traject.contact_naam||'[INVULLEN: naam verkopende partner]';
-        var prompt='Vul de volgende Bisschops Financing LoI template in. Vervang ALLE [tekst tussen haakjes]. Geef alleen het ingevulde document terug.\n\nBEKENDE GEGEVENS:\n- Koper: '+esc(koperNaam)+' ('+esc(koperRv)+'), '+esc(koperAdresL)+', KvK: '+esc(koperKvkL)+'\n- Contactpersoon koper: '+esc(koperContact)+'\n- Verkoper: '+esc(d.traject.kantoor_naam||naam)+', '+esc(verkoperAdresL)+', KvK: '+esc(verkoperKvkL)+'\n- Contactpersoon verkoper: '+esc(verkoperNaam)+'\n- Datum: '+datum+'\n\nTEMPLATE:\n'+loiTplTekst;
+        var lbLoi=partijLabels(d.traject.traject_type||'Verkoop');
+        var prompt='Vul de volgende Bisschops Financing LoI template in voor trajecttype: '+(d.traject.traject_type||'Verkoop')+'. Vervang ALLE [tekst tussen haakjes]. Gebruik als partijbenamingen: '+lbLoi.sectie1+' en '+lbLoi.sectie2+' (in plaats van Verkoper/Koper). Geef alleen het ingevulde document terug.\n\nBEKENDE GEGEVENS:\n- '+lbLoi.sectie2+': '+esc(koperNaam)+' ('+esc(koperRv)+'), '+esc(koperAdresL)+', KvK: '+esc(koperKvkL)+'\n- Contactpersoon '+lbLoi.sectie2.toLowerCase()+': '+esc(koperContact)+'\n- '+lbLoi.sectie1+': '+esc(d.traject.kantoor_naam||naam)+', '+esc(verkoperAdresL)+', KvK: '+esc(verkoperKvkL)+'\n- Contactpersoon '+lbLoi.sectie1.toLowerCase()+': '+esc(verkoperNaam)+'\n- Datum: '+datum+'\n\nTEMPLATE:\n'+loiTplTekst;
         var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:8000})});
         var rd=await resp.json();
         var tekst=rd.text||(rd.error||'Fout bij genereren.');
@@ -1670,10 +1679,11 @@ function toonNieuwModal(){
   var ov=document.createElement('div');ov.className='overlay';
   var mo=document.createElement('div');mo.className='modal';
   mo.innerHTML='<div class="modal-title">Nieuw M&amp;A traject aanmaken</div>'
-    +'<div class="field"><label>Kantoornaam <span style="color:var(--red)">*</span></label><div style="display:flex;gap:8px"><input type="text" id="m-k" placeholder="bijv. Accountantskantoor De Vries" style="flex:2"><input type="text" id="m-kvk" placeholder="KvK-nr" style="flex:1"></div></div>'
-    +'<div class="field"><label>Adres verkoper</label><input type="text" id="m-adres" placeholder="bijv. Dorpsstraat 1, 1234AB Amsterdam"></div>'
-    +'<div class="field"><label>Contactpersoon</label><input type="text" id="m-c" placeholder="Naam verkopende partner"></div>'
-    +'<div class="field"><label>E-mail contactpersoon</label><input type="email" id="m-e" placeholder="partner@kantoor.nl"></div>'
+    +'<div style="border-bottom:1px solid var(--border);margin-bottom:.75rem;padding-bottom:.25rem"><div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)" id="m-sectie1-hdr">Verkopende partij</div></div>'
+    +'<div class="field"><label id="m-p1-naam-lbl">Kantoornaam <span style="color:var(--red)">*</span></label><div style="display:flex;gap:8px"><input type="text" id="m-k" placeholder="bijv. Accountantskantoor De Vries" style="flex:2"><input type="text" id="m-kvk" placeholder="KvK-nr" style="flex:1"></div></div>'
+    +'<div class="field"><label id="m-p1-adres-lbl">Adres</label><input type="text" id="m-adres" placeholder="bijv. Dorpsstraat 1, 1234AB Amsterdam"></div>'
+    +'<div class="field"><label id="m-p1-contact-lbl">Contactpersoon</label><input type="text" id="m-c" placeholder="Naam verkopende partner"></div>'
+    +'<div class="field"><label id="m-p1-email-lbl">E-mail contactpersoon</label><input type="email" id="m-e" placeholder="partner@kantoor.nl"></div>'
     +'<div class="field"><label>Trajecttype</label><select id="m-t"><option value="Verkoop">Verkoop</option><option value="Fusie">Fusie</option><option value="Opvolging">Opvolging</option><option value="PE-traject">PE-traject</option><option value="Overname">Overname</option></select></div>'
     +'<div class="field"><label>Notitie (intern)</label><textarea id="m-n" rows="2" placeholder="Interne aantekeningen..."></textarea></div>'
     +'<div style="border-top:1px solid var(--border);margin:.75rem 0;padding-top:.75rem"><div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem">Begeleider (tussenpersoon)</div></div>'
@@ -1696,6 +1706,18 @@ function toonNieuwModal(){
   function updatePartijLabels(){
     var t=document.getElementById('m-t').value;
     var lb=partijLabels(t);
+    // Sectie 1 (boven dropdown)
+    var s1=document.getElementById('m-sectie1-hdr');
+    var p1n=document.getElementById('m-p1-naam-lbl');
+    var p1a=document.getElementById('m-p1-adres-lbl');
+    var p1c=document.getElementById('m-p1-contact-lbl');
+    var p1e=document.getElementById('m-p1-email-lbl');
+    if(s1)s1.textContent=lb.sectie1;
+    if(p1n)p1n.innerHTML=lb.partij1+' <span style="color:var(--red)">*</span>';
+    if(p1a)p1a.textContent=lb.p1adres;
+    if(p1c)p1c.textContent=lb.p1contact;
+    if(p1e)p1e.textContent=lb.p1email;
+    // Sectie 2 (onder dropdown)
     var s2=document.getElementById('m-sectie2-hdr');
     var n=document.getElementById('m-p2-naam-lbl');
     var a=document.getElementById('m-p2-adres-lbl');
@@ -1704,11 +1726,10 @@ function toonNieuwModal(){
     var e=document.getElementById('m-p2-email-lbl');
     if(s2)s2.textContent=lb.sectie2;
     if(n)n.innerHTML=lb.partij2+' <span style="color:var(--red)">*</span>';
-    if(a)a.textContent='Adres '+lb.sectie2.toLowerCase();
+    if(a)a.textContent=lb.p2adres;
     if(rv)rv.innerHTML='Rechtsvorm '+lb.sectie2.toLowerCase()+' <span style="color:var(--red)">*</span>';
-    if(c)c.textContent='Contactpersoon '+lb.sectie2.toLowerCase();
-    if(e)e.textContent='E-mail '+lb.sectie2.toLowerCase();
-    // Ook de validatieberichten aanpassen
+    if(c)c.textContent=lb.p2contact;
+    if(e)e.textContent=lb.p2email;
     window._mPartijLabel=lb;
   }
   document.getElementById('m-t').addEventListener('change',updatePartijLabels);
