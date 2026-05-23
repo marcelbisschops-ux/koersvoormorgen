@@ -1181,6 +1181,7 @@ async function toonDetail(id,naam){
       bemOut.style.display='block';
       bemOut.innerHTML='<div style="color:var(--muted);font-size:13px">Bemiddelingsovereenkomst wordt gegenereerd... (15-30 sec)</div>';
       try{
+        var datum=new Date().toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'});
         var isSell=!d.traject.traject_type||d.traject.traject_type==='Verkoop'||d.traject.traject_type==='Opvolging';
         var koperNaamB=d.traject.koper_naam||'[INVULLEN: naam kopende partij]';
         var koperRvB=d.traject.koper_rechtsvorm||'[INVULLEN: rechtsvorm]';
