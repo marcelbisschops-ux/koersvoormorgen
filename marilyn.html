@@ -1476,20 +1476,20 @@ async function toonBewerkModal(id, naam){
     +'<div style="font-size:11px;color:var(--muted);margin-bottom:1rem">Wijzig partijgegevens, begeleider of contactinfo.</div>'
     +'<div style="border-bottom:1px solid var(--border);margin-bottom:.75rem;padding-bottom:.25rem"><div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">Verkoper</div></div>'
     +'<div class="field"><label>Kantoornaam</label><input type="text" id="bw-k" value="'+esc(t.kantoor_naam||'')+'"></div>'
-    +'<div class="field"><label>Contactpersoon</label><input type="text" id="bw-c" value="'+esc(t.contact_naam||'')+'"></div>'
-    +'<div class="field"><label>E-mail contactpersoon</label><input type="email" id="bw-e" value="'+esc(t.contact_email||'')+'"></div>'
+    +'<div class="field"><label>Contactpersoon <span style="color:var(--red)">*</span></label><input type="text" id="bw-c" value="'+esc(t.contact_naam||'')+'"></div>'
+    +'<div class="field"><label>E-mail contactpersoon <span style="color:var(--red)">*</span></label><input type="email" id="bw-e" value="'+esc(t.contact_email||'')+'"></div>'
     +'<div class="field"><label>KvK-nummer verkoper</label><div style="display:flex;gap:6px"><input type="text" id="bw-kvk" value="'+esc(t.verkoper_kvk||'')+'" style="flex:1"><button type="button" id="bw-btn-kvk-verk" class="btn-ghost" style="font-size:11px;padding:6px 10px">&#128269; KvK</button></div></div>'
-    +'<div class="field"><label>Adres verkoper</label><input type="text" id="bw-adres" value="'+esc(t.verkoper_adres||'')+'"></div>'
+    +'<div class="field"><label>Adres verkoper <span style="color:var(--red)">*</span></label><input type="text" id="bw-adres" value="'+esc(t.verkoper_adres||'')+'"></div>'
     +'<div style="border-bottom:1px solid var(--border);margin:.75rem 0 .75rem;padding-bottom:.25rem"><div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">Begeleider</div></div>'
-    +'<div class="field"><label>Naam begeleider</label><input type="text" id="bw-bg-naam" value="'+esc(t.begeleider_naam||'Marcel Bisschops')+'"></div>'
-    +'<div class="field"><label>E-mail begeleider</label><input type="email" id="bw-bg-email" value="'+esc(t.begeleider_email||'marcel@bisschopsfinancing.nl')+'"></div>'
+    +'<div class="field"><label>Naam begeleider <span style="color:var(--red)">*</span></label><input type="text" id="bw-bg-naam" value="'+esc(t.begeleider_naam||'Marcel Bisschops')+'"></div>'
+    +'<div class="field"><label>E-mail begeleider <span style="color:var(--red)">*</span></label><input type="email" id="bw-bg-email" value="'+esc(t.begeleider_email||'marcel@bisschopsfinancing.nl')+'"></div>'
     +'<div style="border-bottom:1px solid var(--border);margin:.75rem 0 .75rem;padding-bottom:.25rem"><div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">Koper</div></div>'
     +'<div class="field"><label>Naam koper</label><input type="text" id="bw-koper-naam" value="'+esc(t.koper_naam||'')+'"></div>'
     +'<div class="field"><label>Rechtsvorm</label><input type="text" id="bw-koper-rv" value="'+esc(t.koper_rechtsvorm||'')+'"></div>'
     +'<div class="field"><label>Contactpersoon koper</label><input type="text" id="bw-koper-contact" value="'+esc(t.koper_contact||'')+'"></div>'
-    +'<div class="field"><label>E-mail koper</label><input type="email" id="bw-koper-email" value="'+esc(t.koper_email||'')+'"></div>'
+    +'<div class="field"><label>E-mail koper <span style="color:var(--red)">*</span></label><input type="email" id="bw-koper-email" value="'+esc(t.koper_email||'')+'"></div>'
     +'<div class="field"><label>KvK-nummer koper</label><div style="display:flex;gap:6px"><input type="text" id="bw-koper-kvk" value="'+esc(t.koper_kvk||'')+'" style="flex:1"><button type="button" id="bw-btn-kvk-koper" class="btn-ghost" style="font-size:11px;padding:6px 10px">&#128269; KvK</button></div></div>'
-    +'<div class="field"><label>Adres koper</label><input type="text" id="bw-koper-adres" value="'+esc(t.koper_adres||'')+'"></div>'
+    +'<div class="field"><label>Adres koper <span style="color:var(--red)">*</span></label><input type="text" id="bw-koper-adres" value="'+esc(t.koper_adres||'')+'"></div>'
     +'<div id="bw-err" style="display:none;color:var(--red);font-size:12px;margin-bottom:.5rem"></div>'
     +'<div style="display:flex;gap:10px;justify-content:flex-end;margin-top:.5rem"><button class="btn-ghost" id="bw-ann">Annuleren</button><button class="btn" id="bw-ok">&#10003; Opslaan</button></div>';
   ov.appendChild(mo);document.body.appendChild(ov);
@@ -1571,9 +1571,9 @@ function toonNieuwModal(){
     +'<div class="field"><label>Naam begeleider</label><input type="text" id="m-bg-naam" value="Marcel Bisschops" placeholder="bijv. Jan de Vries"></div>'
     +'<div class="field"><label>E-mail begeleider</label><input type="email" id="m-bg-email" value="marcel@bisschopsfinancing.nl" placeholder="begeleider@kantoor.nl"></div>'
     +'<div style="border-top:1px solid var(--border);margin:.75rem 0;padding-top:.75rem"><div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem">Kopende partij</div></div>'
-    +'<div class="field"><label>Naam kopende partij</label><div style="display:flex;gap:8px"><input type="text" id="m-koper-naam" placeholder="bijv. Acme Accountants BV" style="flex:2"><input type="text" id="m-koper-kvk" placeholder="KvK-nr" style="flex:1"></div></div>'
+    +'<div class="field"><label>Naam kopende partij <span style="color:var(--red)">*</span></label><div style="display:flex;gap:8px"><input type="text" id="m-koper-naam" placeholder="bijv. Acme Accountants BV" style="flex:2"><input type="text" id="m-koper-kvk" placeholder="KvK-nr" style="flex:1"></div></div>'
     +'<div class="field"><label>Adres koper</label><input type="text" id="m-koper-adres" placeholder="bijv. Hoofdstraat 10, 5678CD Rotterdam"></div>'
-    +'<div class="field"><label>Rechtsvorm koper</label><input type="text" id="m-koper-rv" placeholder="bijv. BV, NV, Coöperatie"></div>'
+    +'<div class="field"><label>Rechtsvorm koper <span style="color:var(--red)">*</span></label><input type="text" id="m-koper-rv" placeholder="bijv. BV, NV, Coöperatie"></div>'
     +'<div class="field"><label>Contactpersoon koper</label><input type="text" id="m-koper-contact" placeholder="bijv. Jan de Vries"></div>'
     +'<div class="field"><label>E-mail koper</label><input type="email" id="m-koper-email" placeholder="koper@bedrijf.nl"></div>'
 
@@ -1583,24 +1583,34 @@ function toonNieuwModal(){
   ov.appendChild(mo);document.body.appendChild(ov);
   ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
   document.getElementById('m-ann').addEventListener('click',function(){document.body.removeChild(ov);});
-  document.getElementById('m-ok').addEventListener('click',async function(){    var kantoor=document.getElementById('m-k').value.trim();
-    var contactEmail=document.getElementById('m-e').value.trim();
-    var koperEmail=document.getElementById('m-koper-email').value.trim();
-    var bgEmail=document.getElementById('m-bg-email').value.trim();
-    var erDiv=document.getElementById('m-err');
-    // Verplichte velden check
-    if(!kantoor){erDiv.style.display='block';erDiv.textContent='Kantoornaam is verplicht.';return;}
-    // E-mail format check
+  document.getElementById('m-ok').addEventListener('click',async function(){    var erDiv=document.getElementById('m-err');
     var emailRe=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if(contactEmail&&!emailRe.test(contactEmail)){erDiv.style.display='block';erDiv.textContent='E-mail contactpersoon heeft geen geldig formaat.';return;}
-    if(koperEmail&&!emailRe.test(koperEmail)){erDiv.style.display='block';erDiv.textContent='E-mail koper heeft geen geldig formaat.';return;}
-    if(bgEmail&&!emailRe.test(bgEmail)){erDiv.style.display='block';erDiv.textContent='E-mail begeleider heeft geen geldig formaat.';return;}
-    // KvK format check (als ingevuld: 8 cijfers)
-    var kvkVerk=document.getElementById('m-kvk')?document.getElementById('m-kvk').value.trim():'';
-    var kvkKop=document.getElementById('m-koper-kvk')?document.getElementById('m-koper-kvk').value.trim():'';
-    if(kvkVerk&&!/^[0-9]{8}$/.test(kvkVerk)){erDiv.style.display='block';erDiv.textContent='KvK-nummer verkoper moet exact 8 cijfers zijn.';return;}
-    if(kvkKop&&!/^[0-9]{8}$/.test(kvkKop)){erDiv.style.display='block';erDiv.textContent='KvK-nummer koper moet exact 8 cijfers zijn.';return;}
+    var kvkRe=/^[0-9]{8}$/;
+    function fout(msg){erDiv.style.display='block';erDiv.textContent=msg;return false;}
+    function vv(id){var el=document.getElementById(id);return el?el.value.trim():'';}
+    // Alle velden verplicht
+    if(!vv('m-k'))return fout('Kantoornaam verkoper is verplicht.');
+    if(!vv('m-c'))return fout('Contactpersoon verkoper is verplicht.');
+    if(!vv('m-e'))return fout('E-mail contactpersoon is verplicht.');
+    if(!emailRe.test(vv('m-e')))return fout('E-mail contactpersoon heeft geen geldig formaat (naam@domein.nl).');
+    if(!vv('m-adres'))return fout('Adres verkoper is verplicht.');
+    if(!vv('m-kvk'))return fout('KvK-nummer verkoper is verplicht.');
+    if(!kvkRe.test(vv('m-kvk')))return fout('KvK-nummer verkoper moet exact 8 cijfers zijn.');
+    if(!vv('m-bg-naam'))return fout('Naam begeleider is verplicht.');
+    if(!vv('m-bg-email'))return fout('E-mail begeleider is verplicht.');
+    if(!emailRe.test(vv('m-bg-email')))return fout('E-mail begeleider heeft geen geldig formaat.');
+    if(!vv('m-koper-naam'))return fout('Naam koper is verplicht.');
+    if(!vv('m-koper-rv'))return fout('Rechtsvorm koper is verplicht.');
+    if(!vv('m-koper-email'))return fout('E-mail koper is verplicht.');
+    if(!emailRe.test(vv('m-koper-email')))return fout('E-mail koper heeft geen geldig formaat.');
+    if(!vv('m-koper-adres'))return fout('Adres koper is verplicht.');
+    if(!vv('m-koper-kvk'))return fout('KvK-nummer koper is verplicht.');
+    if(!kvkRe.test(vv('m-koper-kvk')))return fout('KvK-nummer koper moet exact 8 cijfers zijn.');
     erDiv.style.display='none';
+    var kantoor=vv('m-k');
+    var contactEmail=vv('m-e');
+    var koperEmail=vv('m-koper-email');
+    var bgEmail=vv('m-bg-email');
     var btn=document.getElementById('m-ok');btn.disabled=true;btn.textContent='Aanmaken...';
     document.getElementById('m-err').style.display='none';
     try{
