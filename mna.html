@@ -379,6 +379,58 @@ async function uploadDocument(faseId, file) {
   renderApp();
 }
 
+// Centrale upload: verwerk bestanden en laat AI alle fases invullen
+window.centraalUploadFiles = async function(files) {
+  if(!files||!files.length)return;
+  var statusEl=document.getElementById('centraal-upload-status');
+  var totaal=files.length;
+  var verwerkt=0;
+
+  for(var i=0;i<files.length;i++){
+    var file=files[i];
+    if(statusEl)statusEl.innerHTML='<span style="color:var(--teal)">&#9881; Verwerken '+file.name+' ('+(i+1)+'/'+totaal+')...</span>';
+
+    // Bepaal beste fase op basis van bestandsnaam
+    var naam=file.name.toLowerCase();
+    var faseId='financieel'; // default
+    if(naam.includes('loon')||naam.includes('salaris')||naam.includes('personeel'))faseId='partner';
+    else if(naam.includes('klant')||naam.includes('debiteur')||naam.includes('crm')||naam.includes('omzet'))faseId='commercieel';
+    else if(naam.includes('contract')||naam.includes('juridisch')||naam.includes('kvk')||naam.includes('akte'))faseId='juridisch';
+    else if(naam.includes('it')||naam.includes('software')||naam.includes('ict')||naam.includes('systeem'))faseId='it';
+    else if(naam.includes('kwaliteit')||naam.includes('audit')||naam.includes('compliance')||naam.includes('avg'))faseId='compliance';
+    else if(naam.includes('strateg')||naam.includes('markt')||naam.includes('plan'))faseId='strategisch';
+
+    // Upload naar worker met AI extractie
+    var formData=new FormData();
+    formData.append('file',file);
+    var bewaar=S.traject&&S.traject.bewaar_docs!==false;
+    var url=WORKER+'/mna/document/upload?code='+S.code+'&fase_id='+faseId+'&bewaar='+bewaar+'&centraal=1';
+
+    try{
+      var resp=await fetch(url,{method:'POST',body:formData});
+      var d=await resp.json();
+      if(d.ok&&d.veld_extractie){
+        if(!DOCS[faseId])DOCS[faseId]=[];
+        DOCS[faseId].unshift({id:d.doc_id,naam:file.name,type:file.type,grootte:file.size,analyse:d.analyse,velden:d.veld_extractie||{},bewaard:!!d.r2_opgeslagen,uploaded_at:Date.now(),uploading:false});
+        // Vul velden in voor de gedetecteerde fase + probeer ook andere fases
+        S._conflicts=[];
+        autoFillFromExtraction(faseId,d.veld_extractie,false);
+        // Probeer ook financieel als het een jaarrekening is
+        if(faseId!=='financieel'&&(naam.includes('jaar')||naam.includes('balans')||naam.includes('winst'))){
+          autoFillFromExtraction('financieel',d.veld_extractie,false);
+        }
+      }
+      verwerkt++;
+    }catch(e){
+      if(statusEl)statusEl.innerHTML='<span style="color:var(--red)">Fout bij '+file.name+': '+e.message+'</span>';
+    }
+  }
+
+  if(statusEl)statusEl.innerHTML='<span style="color:var(--teal)">&#10003; '+verwerkt+' van '+totaal+' bestanden verwerkt. Controleer de ingevulde velden hieronder.</span>';
+  renderApp();
+  schedSave();
+};
+
 function autoFillFromExtraction(faseId, velden, forceOverwrite) {
   function setIfEmpty(key, val) {
     if(val&&val!=='null'&&val!==null&&String(val).trim()!==''&&!(S.data[key]||'').trim())
@@ -1149,7 +1201,7 @@ function renderBegeleiderDashboard(app){
       +'<div class="field"><label>Type</label><select id="bg-gs-type"><option value="gesprek">Gesprek</option><option value="kennismaking">Kennismaking</option><option value="onderhandeling">Onderhandeling</option><option value="vergadering">Vergadering</option><option value="telefonisch">Telefonisch</option></select></div>'
       +'</div>'
       +'<div class="field"><label>Deelnemers</label><input type="text" id="bg-gs-deeln" placeholder="bijv. Marcel, Jan Smit"></div>'
-      +'<div class="field"><label>Notities</label><textarea id="bg-gs-notities" rows="4" placeholder="Ruwe notities..."></textarea></div>'
+      +'<div class="field"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><label style="margin-bottom:0">Notities</label><button id="bg-rec-btn" class="btn-ghost" style="font-size:11px;padding:2px 8px;color:var(--teal);border-color:var(--teal)">&#127908; Opnemen</button><span id="bg-rec-st" style="font-size:11px;color:var(--muted);margin-left:6px"></span></div><textarea id="bg-gs-notities" rows="4" placeholder="Ruwe notities — of klik Opnemen om te dicteren (Chrome)"></textarea></div>'
       +'<div class="field"><label>Verslag</label><textarea id="bg-gs-verslag" rows="4" placeholder="Verslag — of klik AI"></textarea></div>'
       +'<div style="display:flex;gap:8px;margin-bottom:.75rem">'
       +'<button id="bg-gs-ai" class="btn-ghost" style="font-size:12px;padding:6px 14px;color:var(--teal);border-color:var(--teal)">&#9881; AI-verslag</button>'
@@ -1160,6 +1212,28 @@ function renderBegeleiderDashboard(app){
       +'<button id="bg-gs-ann" class="btn-ghost" style="font-size:13px">Annuleren</button>'
       +'</div></div>';
     document.getElementById('bg-gs-ann').onclick=function(){out.style.display='none';};
+
+    // Opname Web Speech API
+    var bgRecBtn=document.getElementById('bg-rec-btn');
+    var bgRecSt=document.getElementById('bg-rec-st');
+    var bgRec=null,bgRecActief=false;
+    var SpeechRec=window.SpeechRecognition||window.webkitSpeechRecognition;
+    if(!SpeechRec){bgRecBtn.disabled=true;bgRecBtn.style.opacity='0.4';bgRecSt.textContent='Chrome vereist';}
+    else{
+      bgRecBtn.onclick=function(){
+        if(!bgRecActief){
+          bgRec=new SpeechRec();bgRec.lang='nl-NL';bgRec.continuous=true;bgRec.interimResults=true;
+          var base=document.getElementById('bg-gs-notities').value,interim='';
+          bgRec.onresult=function(ev){interim='';var fin='';for(var i=ev.resultIndex;i<ev.results.length;i++){if(ev.results[i].isFinal)fin+=ev.results[i][0].transcript+' ';else interim+=ev.results[i][0].transcript;}if(fin){base+=(base&&!base.endsWith(' ')?'\n':'')+fin;}document.getElementById('bg-gs-notities').value=base+interim;};
+          bgRec.onerror=function(e){bgRecSt.textContent='Fout: '+e.error;stopBgRec();};
+          bgRec.onend=function(){if(bgRecActief)bgRec.start();};
+          bgRec.start();bgRecActief=true;
+          bgRecBtn.textContent='⏹ Stop';bgRecBtn.style.color='var(--red)';bgRecBtn.style.borderColor='var(--red)';
+          bgRecSt.innerHTML='<span style="color:var(--red)">● Opname actief</span>';
+        }else{stopBgRec();}
+      };
+      function stopBgRec(){if(bgRec){bgRec.onend=null;bgRec.stop();bgRec=null;}bgRecActief=false;bgRecBtn.textContent='&#127908; Opnemen';bgRecBtn.style.color='var(--teal)';bgRecBtn.style.borderColor='var(--teal)';bgRecSt.textContent='Gestopt';}
+    }
     document.getElementById('bg-gs-ai').onclick=async function(){
       var n=document.getElementById('bg-gs-notities').value.trim();
       if(!n){document.getElementById('bg-gs-st').textContent='Voer notities in.';return;}
@@ -1288,7 +1362,22 @@ function renderMain(){
   var vergrendeld=S.traject&&S.traject.status==='vergrendeld';
   var isRO=isKoper()||vergrendeld;
 
-  var ov='<div class="fase-grid">';
+  // Centrale upload zone bovenaan
+  var centraalUpload='';
+  if(isVerkoper()&&!vergrendeld){
+    centraalUpload='<div id="centraal-upload-zone" style="background:var(--panel);border:2px dashed var(--teal);border-radius:var(--r2);padding:1.5rem;margin-bottom:1.25rem;text-align:center;cursor:pointer;transition:background .15s" '
+      +'ondragover="event.preventDefault();this.style.background=\'var(--teal-bg)\'" '
+      +'ondragleave="this.style.background=\'var(--panel)\'" '
+      +'ondrop="event.preventDefault();this.style.background=\'var(--panel)\';window.centraalUploadFiles(event.dataTransfer.files)">'
+      +'<div style="font-size:1.5rem;margin-bottom:.5rem">&#128196;</div>'
+      +'<div style="font-family:Playfair Display,serif;font-size:1rem;font-weight:600;color:var(--head);margin-bottom:.25rem">Documenten uploaden</div>'
+      +'<div style="font-size:12px;color:var(--muted);margin-bottom:.75rem;line-height:1.6">Sleep bestanden hierheen of klik om te selecteren. De AI leest automatisch alle relevante gegevens uit en vult de velden in.<br>Toegestaan: PDF, Word, Excel, CSV, e-mail — jaarrekening, Exact-export, loonoverzicht, belastingaangifte, etc.</div>'
+      +'<label class="btn" style="cursor:pointer;font-size:13px">&#43; Bestanden kiezen<input type="file" id="centraal-file-input" multiple accept=".pdf,.docx,.doc,.xlsx,.xls,.csv,.txt,.eml" style="display:none"></label>'
+      +'<div id="centraal-upload-status" style="margin-top:.75rem;font-size:12px;color:var(--muted)"></div>'
+      +'</div>';
+  }
+
+  var ov=(centraalUpload?centraalUpload:'')+'<div class="fase-grid">';
   FASES.forEach(function(fase,i){
     var p=isVerkoper()?fillPct(fase.id):pct(fase.id);
     ov+='<div class="fase-card'+(S.fase===i?' active':'')+'" data-fi="'+i+'">'
@@ -1625,6 +1714,10 @@ function bindAll(){
   if(!isKoper()){
     document.querySelectorAll('.chk-item[data-key]').forEach(function(el){el.onclick=function(){saveCurrent();S.checked[el.dataset.key]=!S.checked[el.dataset.key];renderApp();};});
   }
+  // Centrale upload file input listener
+  var cfi=document.getElementById('centraal-file-input');
+  if(cfi)cfi.addEventListener('change',function(){if(this.files&&this.files.length)window.centraalUploadFiles(this.files);this.value='';});
+
   document.querySelectorAll('.upload-zone[data-fase]').forEach(function(el){
     el.onclick=function(){triggerFileUpload(el.dataset.fase);};
   });
