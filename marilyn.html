@@ -163,6 +163,7 @@ function renderDashboard(){
     +'<div class="stat-card"><div class="stat-num">'+callbacks.length+'</div><div class="stat-lbl">Terugbelverzoeken</div></div>'
     +'<div class="stat-card"><div class="stat-num">'+mnaList.length+'</div><div class="stat-lbl">M&A Trajecten</div></div>'
     +'</div>'
+    +'<div id="sys-waarschuwingen" style="margin-bottom:1.5rem"></div>'
     +'<div class="tabs">'
     +'<button class="tab'+(activeTab==='scans'?' active':'')+'" id="t-scans">Scans ('+scans.length+')</button>'
     +'<button class="tab'+(activeTab==='callbacks'?' active':'')+'" id="t-cb">Terugbelverzoeken ('+callbacks.length+')</button>'
@@ -181,6 +182,24 @@ function renderDashboard(){
   document.getElementById('t-bench').addEventListener('click',function(){activeTab='benchmarks';renderDashboard();});
   document.getElementById('t-waardering').addEventListener('click',function(){activeTab='waardering';renderDashboard();});
   renderTab();
+  // Systeem waarschuwingen
+  var swDiv=document.getElementById('sys-waarschuwingen');
+  if(swDiv){
+    var warns=[];
+    // KvK productie key check
+    warns.push('<div style="background:#fff8e1;border:1px solid #f0ad4e;border-radius:var(--r);padding:.6rem 1rem;font-size:12px;display:flex;align-items:center;gap:10px">'
+      +'<span style="font-size:16px">&#9888;&#65039;</span>'
+      +'<span><strong>KvK API:</strong> Draait momenteel op test-key. <a href="https://developers.kvk.nl/" target="_blank" style="color:var(--teal)">Vraag productie key aan</a> en voeg toe als secret <code>KVK_API_KEY</code> in Cloudflare dashboard.</span>'
+      +'<button onclick="this.parentElement.parentElement.remove()" style="margin-left:auto;background:transparent;border:none;cursor:pointer;color:var(--muted);font-size:16px">&times;</button>'
+      +'</div>');
+    // Signhost nog niet gekoppeld
+    warns.push('<div style="background:#f0f4ff;border:1px solid #7c9cbf;border-radius:var(--r);padding:.6rem 1rem;font-size:12px;display:flex;align-items:center;gap:10px">'
+      +'<span style="font-size:16px">&#128394;&#65039;</span>'
+      +'<span><strong>Digitaal ondertekenen:</strong> Signhost nog niet gekoppeld. <a href="https://www.signhost.com/" target="_blank" style="color:var(--teal)">Account aanmaken</a> → API key ophalen → toevoegen als secret <code>SIGNHOST_API_KEY</code>.</span>'
+      +'<button onclick="this.parentElement.parentElement.remove()" style="margin-left:auto;background:transparent;border:none;cursor:pointer;color:var(--muted);font-size:16px">&times;</button>'
+      +'</div>');
+    swDiv.innerHTML=warns.join('');
+  }
 }
 
 function renderTab(){
@@ -337,6 +356,7 @@ function renderMnaTab(el){
         +'<td class="mono" style="font-size:11px">'+formatDate(t.created_at)+'</td>'
         +'<td style="white-space:nowrap;display:flex;gap:4px;flex-wrap:wrap">'
         +'<button class="btn-ghost btn-detail" data-id="'+esc(t.id)+'" data-naam="'+esc(t.kantoor_naam||t.id)+'" style="font-size:11px;padding:3px 8px">&#128065; Bekijk</button>'
+        +'<button class="btn-ghost btn-bewerk" data-id="'+esc(t.id)+'" data-naam="'+esc(t.kantoor_naam||t.id)+'" style="font-size:11px;padding:3px 8px">&#9999;&#65039; Bewerk</button>'
         +'<button class="btn-ghost btn-opslaan" data-idx="'+i+'" style="font-size:11px;padding:3px 8px">&#8681; Opslaan</button>'
         +(verg
           ?'<button class="btn-ghost btn-ontv" data-id="'+esc(t.id)+'" style="font-size:11px;padding:3px 8px;color:var(--teal)">&#128275; Ontgrendel</button>'
@@ -357,6 +377,7 @@ function renderMnaTab(el){
     });
   });
   el.querySelectorAll('.btn-detail').forEach(function(b){b.addEventListener('click',function(){toonDetail(b.dataset.id,b.dataset.naam);});});
+  el.querySelectorAll('.btn-bewerk').forEach(function(b){b.addEventListener('click',function(){toonBewerkModal(b.dataset.id,b.dataset.naam);});});
   el.querySelectorAll('.btn-opslaan').forEach(function(b){b.addEventListener('click',function(){slaOp(mnaList[parseInt(b.dataset.idx)]);});});
   el.querySelectorAll('.btn-verg').forEach(function(b){b.addEventListener('click',function(){vergrendel(b.dataset.id,b.dataset.naam);});});
   el.querySelectorAll('.btn-ontv').forEach(function(b){b.addEventListener('click',function(){ontvergrendel(b.dataset.id);});});
@@ -1350,6 +1371,100 @@ async function toonDetail(id,naam){
 }
 
 // NIEUW TRAJECT
+async function toonBewerkModal(id, naam){
+  // Haal huidige trajectdata op
+  var r=await fetch(WORKER+'/mna/admin/detail/'+id+'?key='+encodeURIComponent(adminKey));
+  var dd=await r.json();
+  if(!dd||!dd.traject){alert('Traject niet gevonden.');return;}
+  var t=dd.traject;
+
+  var ov=document.createElement('div');ov.className='overlay';
+  var mo=document.createElement('div');mo.className='modal';
+  mo.innerHTML='<div class="modal-title">&#9999;&#65039; Bewerk traject: '+esc(naam)+'</div>'
+    +'<div style="font-size:11px;color:var(--muted);margin-bottom:1rem">Wijzig partijgegevens, begeleider of contactinfo.</div>'
+    +'<div style="border-bottom:1px solid var(--border);margin-bottom:.75rem;padding-bottom:.25rem"><div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">Verkoper</div></div>'
+    +'<div class="field"><label>Kantoornaam</label><input type="text" id="bw-k" value="'+esc(t.kantoor_naam||'')+'"></div>'
+    +'<div class="field"><label>Contactpersoon</label><input type="text" id="bw-c" value="'+esc(t.contact_naam||'')+'"></div>'
+    +'<div class="field"><label>E-mail contactpersoon</label><input type="email" id="bw-e" value="'+esc(t.contact_email||'')+'"></div>'
+    +'<div class="field"><label>KvK-nummer verkoper</label><div style="display:flex;gap:6px"><input type="text" id="bw-kvk" value="'+esc(t.verkoper_kvk||'')+'" style="flex:1"><button type="button" id="bw-btn-kvk-verk" class="btn-ghost" style="font-size:11px;padding:6px 10px">&#128269; KvK</button></div></div>'
+    +'<div class="field"><label>Adres verkoper</label><input type="text" id="bw-adres" value="'+esc(t.verkoper_adres||'')+'"></div>'
+    +'<div style="border-bottom:1px solid var(--border);margin:.75rem 0 .75rem;padding-bottom:.25rem"><div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">Begeleider</div></div>'
+    +'<div class="field"><label>Naam begeleider</label><input type="text" id="bw-bg-naam" value="'+esc(t.begeleider_naam||'Marcel Bisschops')+'"></div>'
+    +'<div class="field"><label>E-mail begeleider</label><input type="email" id="bw-bg-email" value="'+esc(t.begeleider_email||'marcel@bisschopsfinancing.nl')+'"></div>'
+    +'<div style="border-bottom:1px solid var(--border);margin:.75rem 0 .75rem;padding-bottom:.25rem"><div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">Koper</div></div>'
+    +'<div class="field"><label>Naam koper</label><input type="text" id="bw-koper-naam" value="'+esc(t.koper_naam||'')+'"></div>'
+    +'<div class="field"><label>Rechtsvorm</label><input type="text" id="bw-koper-rv" value="'+esc(t.koper_rechtsvorm||'')+'"></div>'
+    +'<div class="field"><label>Contactpersoon koper</label><input type="text" id="bw-koper-contact" value="'+esc(t.koper_contact||'')+'"></div>'
+    +'<div class="field"><label>E-mail koper</label><input type="email" id="bw-koper-email" value="'+esc(t.koper_email||'')+'"></div>'
+    +'<div class="field"><label>KvK-nummer koper</label><div style="display:flex;gap:6px"><input type="text" id="bw-koper-kvk" value="'+esc(t.koper_kvk||'')+'" style="flex:1"><button type="button" id="bw-btn-kvk-koper" class="btn-ghost" style="font-size:11px;padding:6px 10px">&#128269; KvK</button></div></div>'
+    +'<div class="field"><label>Adres koper</label><input type="text" id="bw-koper-adres" value="'+esc(t.koper_adres||'')+'"></div>'
+    +'<div id="bw-err" style="display:none;color:var(--red);font-size:12px;margin-bottom:.5rem"></div>'
+    +'<div style="display:flex;gap:10px;justify-content:flex-end;margin-top:.5rem"><button class="btn-ghost" id="bw-ann">Annuleren</button><button class="btn" id="bw-ok">&#10003; Opslaan</button></div>';
+  ov.appendChild(mo);document.body.appendChild(ov);
+  ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
+  document.getElementById('bw-ann').addEventListener('click',function(){document.body.removeChild(ov);});
+
+  // KvK knoppen in bewerk modal
+  document.getElementById('bw-btn-kvk-verk').addEventListener('click',async function(){
+    var kvk=document.getElementById('bw-kvk').value.trim().replace(/[^0-9]/g,'');
+    if(kvk.length!==8){alert('8 cijfers vereist');return;}
+    this.textContent='...';this.disabled=true;
+    var rk=await fetch(WORKER+'/kvk/'+kvk);var dk=await rk.json();
+    if(dk.ok){if(dk.adres)document.getElementById('bw-adres').value=dk.adres;}
+    else alert(dk.error||'Niet gevonden');
+    this.textContent='&#128269; KvK';this.disabled=false;
+  });
+  document.getElementById('bw-btn-kvk-koper').addEventListener('click',async function(){
+    var kvk=document.getElementById('bw-koper-kvk').value.trim().replace(/[^0-9]/g,'');
+    if(kvk.length!==8){alert('8 cijfers vereist');return;}
+    this.textContent='...';this.disabled=true;
+    var rk=await fetch(WORKER+'/kvk/'+kvk);var dk=await rk.json();
+    if(dk.ok){
+      if(dk.adres)document.getElementById('bw-koper-adres').value=dk.adres;
+      if(dk.rechtsvorm&&!document.getElementById('bw-koper-rv').value)document.getElementById('bw-koper-rv').value=dk.rechtsvorm;
+    } else alert(dk.error||'Niet gevonden');
+    this.textContent='&#128269; KvK';this.disabled=false;
+  });
+
+  document.getElementById('bw-ok').addEventListener('click',async function(){
+    var btn=this;btn.disabled=true;btn.textContent='Opslaan...';
+    var err=document.getElementById('bw-err');err.style.display='none';
+    try{
+      var resp=await fetch(WORKER+'/mna/admin/update/'+id+'?key='+encodeURIComponent(adminKey),{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          kantoor_naam:document.getElementById('bw-k').value.trim(),
+          contact_naam:document.getElementById('bw-c').value.trim(),
+          contact_email:document.getElementById('bw-e').value.trim(),
+          verkoper_kvk:document.getElementById('bw-kvk').value.trim(),
+          verkoper_adres:document.getElementById('bw-adres').value.trim(),
+          begeleider_naam:document.getElementById('bw-bg-naam').value.trim(),
+          begeleider_email:document.getElementById('bw-bg-email').value.trim(),
+          koper_naam:document.getElementById('bw-koper-naam').value.trim(),
+          koper_rechtsvorm:document.getElementById('bw-koper-rv').value.trim(),
+          koper_contact:document.getElementById('bw-koper-contact').value.trim(),
+          koper_email:document.getElementById('bw-koper-email').value.trim(),
+          koper_kvk:document.getElementById('bw-koper-kvk').value.trim(),
+          koper_adres:document.getElementById('bw-koper-adres').value.trim()
+        })
+      });
+      var rd=await resp.json();
+      if(rd.ok){
+        // Update lokale mnaList
+        var tIdx=mnaList.findIndex(function(x){return x.id===id;});
+        if(tIdx>=0){
+          mnaList[tIdx].kantoor_naam=document.getElementById('bw-k').value.trim();
+          mnaList[tIdx].begeleider_naam=document.getElementById('bw-bg-naam').value.trim();
+          mnaList[tIdx].begeleider_email=document.getElementById('bw-bg-email').value.trim();
+          mnaList[tIdx].koper_naam=document.getElementById('bw-koper-naam').value.trim();
+        }
+        document.body.removeChild(ov);
+        renderTab();
+      } else {err.style.display='block';err.textContent='Fout: '+(rd.error||'onbekend');btn.disabled=false;btn.textContent='Opslaan';}
+    }catch(e){err.style.display='block';err.textContent='Verbindingsfout.';btn.disabled=false;btn.textContent='Opslaan';}
+  });
+}
+
 function toonNieuwModal(){
   var ov=document.createElement('div');ov.className='overlay';
   var mo=document.createElement('div');mo.className='modal';
