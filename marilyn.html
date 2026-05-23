@@ -1083,7 +1083,14 @@ async function toonDetail(id,naam){
     +'<div id="nda-output" style="display:none;margin-bottom:1.25rem;border-bottom:1px solid var(--border);padding-bottom:1.25rem"></div>'
     +'<div id="loi-output" style="display:none;margin-bottom:1.25rem;border-bottom:1px solid var(--border);padding-bottom:1.25rem"></div>'
     +'<div id="mna-ai-out" style="display:none;margin-bottom:1.25rem;border-bottom:1px solid var(--border);padding-bottom:1.25rem"></div>'
-    +'<div id="detail-body" style="color:var(--muted);font-size:13px">Laden...</div>';
+    +'<div id="detail-body" style="color:var(--muted);font-size:13px">Laden...</div>'
+    +'<div style="margin-top:1.5rem;border-top:2px solid var(--border);padding-top:1.25rem">'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">'
+    +'<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">&#128193; Dataroom & Documentversies</div>'
+    +'<button class="btn-ghost" id="btn-laad-versies" style="font-size:11px;padding:4px 12px">&#8635; Laden</button>'
+    +'</div>'
+    +'<div id="versies-body" style="font-size:12px;color:var(--muted);font-style:italic">Klik op Laden om versiehistorie te tonen.</div>'
+    +'</div>';
   ov.appendChild(mo);document.body.appendChild(ov);
   ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
   document.getElementById('det-sluit').addEventListener('click',function(){document.body.removeChild(ov);});
@@ -1149,7 +1156,7 @@ async function toonDetail(id,naam){
           +'<button id="bem-email-btn" class="btn" style="font-size:12px;padding:6px 14px;background:#2a5ea0">&#9993; Stuur naar opdrachtgever</button>'
           +'</div>';
         document.getElementById('bem-edit').value=tekst;
-        document.getElementById('bem-print-btn').addEventListener('click',function(){var bemEl=document.getElementById('bem-edit');var pt=bemEl?bemEl.value:tekst;var win=window.open('','_blank');win.document.write('<html><head><style>body{font-family:Georgia,serif;font-size:13px;line-height:1.9;max-width:700px;margin:2cm auto;color:#2a2825}@media print{body{margin:1.5cm}}</style></head><body><p>'+pt.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>')+'</p></body></html>');win.document.close();win.print();});
+        document.getElementById('bem-print-btn').addEventListener('click',function(){var bemEl=document.getElementById('bem-edit');var pt=bemEl?bemEl.value:tekst;var win=window.open('','_blank');win.document.write('<html><head><style>body{font-family:Georgia,serif;font-size:13px;line-height:1.9;max-width:700px;margin:2cm auto;color:#2a2825}</style></head><body><p>'+(vd.tekst||'').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>')+'</p></body></html>');win.document.close();win.print();});
         document.getElementById('bem-email-btn').addEventListener('click',async function(){
           var ebtn=this;ebtn.disabled=true;ebtn.textContent='Versturen...';
           var toList=[d.traject.contact_email||'marcel@bisschopsfinancing.nl'];
@@ -1232,7 +1239,7 @@ async function toonDetail(id,naam){
         var prompt='Schrijf een professionele Letter of Intent (LoI) in het Nederlands voor een M&A traject in de accountancy/administratie sector.\n\nGEGEVENS:\n- Doelkantoor (verkoper): '+esc(d.traject.kantoor_naam||naam)+'\n- Contactpersoon verkoper: '+esc(verkoperNaam)+'\n- Kopende partij: '+esc(koperNaam)+' ('+esc(koperRv)+')\n- Contactpersoon koper: '+esc(koperContact)+'\n- Trajecttype: '+esc(d.traject.traject_type||'Verkoop')+'\n- Datum: '+datum+'\n- Adviseur: Marcel Bisschops, Bisschops Financing BV\n\nSTRUCTUUR:\n1. Aanhef en introductie (beide partijen met volledige namen)\n2. Intentie en scope van de voorgenomen transactie\n3. Indicatieve transactiewaarde (PM - nader te bepalen na due diligence)\n4. Due diligence proces en tijdlijn (indicatief 8 weken)\n5. Exclusiviteit (60 dagen)\n6. Vertrouwelijkheid\n7. Niet-bindend karakter\n8. Ondertekening beide partijen + adviseur\n\nFormeel, juridisch correct Nederlands. Vul bekende gegevens in, gebruik [INVULLEN] alleen waar echt niets bekend is.';
         var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:8000})});
         var rd=await resp.json();
-        var tekst=rd.content&&rd.content[0]?rd.content[0].text:(rd.error||'Fout bij genereren.');
+        var tekst=rd.text||(rd.error||'Fout bij genereren.');
         loiOut.innerHTML='<div style="font-size:11px;font-weight:600;color:var(--gold);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.75rem">Letter of Intent · '+esc(d.traject.kantoor_naam||naam)+'</div>'
           +'<div style="font-size:11px;color:var(--muted);margin-bottom:.4rem">Bekijk en bewerk het document voor verzending:</div>'
           +'<textarea id="loi-edit" style="width:100%;height:320px;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:Georgia,serif;font-size:12px;line-height:1.8;padding:1rem;outline:none;resize:vertical"></textarea>'
@@ -1274,13 +1281,64 @@ async function toonDetail(id,naam){
         var prompt='M&A-adviseur accountancy. Analyseer:\nTRAJECT: '+d.traject.kantoor_naam+' ('+d.traject.traject_type+')\n'+bmTekst+'\nDUE DILIGENCE:'+dataSamenvatting+'\n\n## Samenvatting\n## Financieel profiel & waardering\n## Sterktes\n## Risicos\n## Aanbevelingen\n\nMax 500 woorden.';
         var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:3000})});
         var rd=await resp.json();
-        var tekst=rd.content&&rd.content[0]?rd.content[0].text:(rd.error||'Fout.');
+        var tekst=rd.text||(rd.error||'Fout.');
         tekst=tekst.replace(/^## (.+)$/gm,'<h3 style="font-family:Playfair Display,serif;font-size:.95rem;color:var(--head);margin:1rem 0 .4rem">$1</h3>');
         tekst=tekst.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
         tekst=tekst.replace(/\n\n/g,'</p><p style="font-size:13px;color:var(--mid);line-height:1.7;margin-bottom:.6rem">');
         aiOut.innerHTML='<div style="font-size:11px;font-weight:600;color:var(--teal);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.75rem">AI-analyse · '+d.traject.kantoor_naam+'</div><p style="font-size:13px;color:var(--mid);line-height:1.7">'+tekst+'</p>';
         btn.textContent='Opnieuw';btn.disabled=false;
       }catch(e){aiOut.innerHTML='<div style="color:var(--red);font-size:13px">Fout: '+e.message+'</div>';btn.textContent='AI-analyse';btn.disabled=false;}
+    });
+
+    // Versie/dataroom laden
+    var versiesBtn=document.getElementById('btn-laad-versies');
+    if(versiesBtn)versiesBtn.addEventListener('click',async function(){
+      var vBody=document.getElementById('versies-body');
+      vBody.innerHTML='<div style="color:var(--muted);font-size:12px">Laden...</div>';
+      try{
+        var vr=await fetch(WORKER+'/mna/versies/'+id+'?key='+encodeURIComponent(adminKey));
+        var versies=await vr.json();
+        var docLabels={nda:'NDA',loi:'LoI',bem:'Bemiddelingsovereenkomst'};
+        var docKleuren={nda:'#7c5cbf',loi:'var(--gold)',bem:'#2a5ea0'};
+        if(!versies.length){
+          vBody.innerHTML='<div style="color:var(--muted);font-size:12px;font-style:italic">Nog geen documenten verstuurd.</div>';
+          return;
+        }
+        var html='<div style="display:flex;flex-direction:column;gap:6px">';
+        versies.forEach(function(v){
+          var dt=new Date(v.created_at).toLocaleString('nl-NL',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+          var ontvangers=[];try{ontvangers=JSON.parse(v.verstuurd_naar||'[]');}catch(e){}
+          var kleur=docKleuren[v.doc_type]||'var(--teal)';
+          html+='<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:.6rem 1rem;display:flex;align-items:center;gap:10px;flex-wrap:wrap">'
+            +'<span style="font-size:11px;font-weight:600;color:'+kleur+';min-width:140px">'+(docLabels[v.doc_type]||v.doc_type)+' v'+v.versie+'</span>'
+            +'<span style="font-size:11px;color:var(--muted)">'+dt+'</span>'
+            +'<span style="font-size:11px;color:var(--mid)">→ '+esc(ontvangers.join(', '))+'</span>'
+            +'<button class="btn-ghost versie-open-btn" data-id="'+v.id+'" style="font-size:10px;padding:2px 10px;margin-left:auto">&#128065; Bekijk</button>'
+            +'</div>';
+        });
+        html+='</div>';
+        vBody.innerHTML=html;
+        vBody.querySelectorAll('.versie-open-btn').forEach(function(b){
+          b.addEventListener('click',async function(){
+            var vr2=await fetch(WORKER+'/mna/versie/'+b.dataset.id+'?key='+encodeURIComponent(adminKey));
+            var vd=await vr2.json();
+            var ov2=document.createElement('div');ov2.className='overlay';ov2.style.zIndex='200';
+            var mo2=document.createElement('div');mo2.className='modal';mo2.style.maxWidth='750px';
+            var dt2=new Date(vd.created_at).toLocaleString('nl-NL',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+            mo2.innerHTML='<div class="modal-title">'+(docLabels[vd.doc_type]||vd.doc_type)+' — Versie '+vd.versie+'</div>'
+              +'<div style="font-size:11px;color:var(--muted);margin-bottom:1rem">Verstuurd: '+dt2+' door '+esc(vd.verstuurd_door||'onbekend')+'</div>'
+              +'<textarea style="width:100%;height:400px;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:Georgia,serif;font-size:12px;line-height:1.8;padding:1rem;outline:none;resize:vertical" readonly>'+esc(vd.tekst||'')+'</textarea>'
+              +'<div style="display:flex;gap:8px;margin-top:.75rem;justify-content:flex-end">'
+              +'<button class="btn-ghost versie-print" style="font-size:12px;padding:6px 14px">&#128196; Print / PDF</button>'
+              +'<button class="btn-ghost" id="v-sluit" style="font-size:12px;padding:6px 14px">Sluiten</button>'
+              +'</div>';
+            ov2.appendChild(mo2);document.body.appendChild(ov2);
+            ov2.addEventListener('click',function(e){if(e.target===ov2)document.body.removeChild(ov2);});
+            mo2.querySelector('#v-sluit').addEventListener('click',function(){document.body.removeChild(ov2);});
+            mo2.querySelector('.versie-print').addEventListener('click',function(){var win=window.open('','_blank');win.document.write('<html><head><style>body{font-family:Georgia,serif;font-size:13px;line-height:1.9;max-width:700px;margin:2cm auto;color:#2a2825}</style></head><body><p>'+(vd.tekst||'').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>')+'</p></body></html>');win.document.close();win.print();});
+          });
+        });
+      }catch(e){vBody.innerHTML='<div style="color:var(--red);font-size:12px">Fout: '+e.message+'</div>';}
     });
 
   }catch(e){document.getElementById('detail-body').textContent='Fout: '+e.message;}
