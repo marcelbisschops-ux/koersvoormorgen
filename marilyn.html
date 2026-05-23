@@ -1154,6 +1154,8 @@ async function toonDetail(id,naam){
     // Bemiddelingsovereenkomst knop
     document.getElementById('det-bem-btn').addEventListener('click',async function(){
       var btn=this;btn.disabled=true;btn.textContent='Genereren...';
+      // Reset andere outputs om scope lekken te voorkomen
+      ['nda-output','loi-output'].forEach(function(id){var el=document.getElementById(id);if(el){el.style.display='none';el.innerHTML='';}});
       var bemOut=document.getElementById('bem-output');
       bemOut.style.display='block';
       bemOut.innerHTML='<div style="color:var(--muted);font-size:13px">Bemiddelingsovereenkomst wordt gegenereerd... (15-30 sec)</div>';
@@ -1204,6 +1206,7 @@ async function toonDetail(id,naam){
     // NDA knop
     document.getElementById('det-nda-btn').addEventListener('click',async function(){
       var btn=this;btn.disabled=true;btn.textContent='Genereren...';
+      ['bem-output','loi-output'].forEach(function(id){var el=document.getElementById(id);if(el){el.style.display='none';el.innerHTML='';}});
       var ndaOut=document.getElementById('nda-output');
       ndaOut.style.display='block';
       ndaOut.innerHTML='<div style="color:var(--muted);font-size:13px">NDA wordt gegenereerd... (15-30 sec)</div>';
@@ -1253,6 +1256,7 @@ async function toonDetail(id,naam){
     // LoI knop
     document.getElementById('det-loi-btn').addEventListener('click',async function(){
       var btn=this;btn.disabled=true;btn.textContent='Genereren...';
+      ['bem-output','nda-output'].forEach(function(id){var el=document.getElementById(id);if(el){el.style.display='none';el.innerHTML='';}});
       var loiOut=document.getElementById('loi-output');
       loiOut.style.display='block';
       loiOut.innerHTML='<div style="color:var(--muted);font-size:13px">LoI wordt gegenereerd... (15-30 sec)</div>';
@@ -1496,15 +1500,16 @@ function toonNieuwModal(){
   var kvkVerkBtn=document.getElementById('btn-kvk-verk');
   if(kvkVerkBtn)kvkVerkBtn.addEventListener('click',async function(){
     var kvk=document.getElementById('m-kvk').value.trim().replace(/[^0-9]/g,'');
-    if(kvk.length!==8){alert('Voer een geldig 8-cijferig KvK-nummer in.');return;}
+    var naam=document.getElementById('m-k').value.trim();
+    if(!kvk&&!naam){alert('Vul eerst een KvK-nummer of kantoornaam in.');return;}
     kvkVerkBtn.disabled=true;kvkVerkBtn.textContent='Ophalen...';
     try{
-      var r=await fetch(WORKER+'/kvk/'+kvk);
-      var d=await r.json();
-      if(d.ok){
-        if(d.adres)document.getElementById('m-adres').value=d.adres;
-        if(d.naam&&!document.getElementById('m-k').value)document.getElementById('m-k').value=d.naam;
-        if(d.rechtsvorm&&!document.getElementById('m-c').value){}
+      var url=kvk.length===8?WORKER+'/kvk/'+kvk:WORKER+'/kvk/00000000?naam='+encodeURIComponent(naam);
+      var r=await fetch(url);var d=await r.json();
+      if(d.ok&&d.eerste){
+        if(d.eerste.adres)document.getElementById('m-adres').value=d.eerste.adres;
+        if(d.eerste.naam&&!document.getElementById('m-k').value)document.getElementById('m-k').value=d.eerste.naam;
+        if(d.eerste.kvkNummer)document.getElementById('m-kvk').value=d.eerste.kvkNummer;
         kvkVerkBtn.textContent='✓ Ingevuld';
         setTimeout(function(){kvkVerkBtn.textContent='↻ Ophalen';kvkVerkBtn.disabled=false;},2000);
       } else {alert('KvK: '+(d.error||'Niet gevonden'));kvkVerkBtn.disabled=false;kvkVerkBtn.textContent='↻ Ophalen';}
@@ -1515,15 +1520,17 @@ function toonNieuwModal(){
   var kvkKopBtn=document.getElementById('btn-kvk-koper');
   if(kvkKopBtn)kvkKopBtn.addEventListener('click',async function(){
     var kvk=document.getElementById('m-koper-kvk').value.trim().replace(/[^0-9]/g,'');
-    if(kvk.length!==8){alert('Voer een geldig 8-cijferig KvK-nummer in.');return;}
+    var naam=document.getElementById('m-koper-naam').value.trim();
+    if(!kvk&&!naam){alert('Vul eerst een KvK-nummer of naam koper in.');return;}
     kvkKopBtn.disabled=true;kvkKopBtn.textContent='Ophalen...';
     try{
-      var r=await fetch(WORKER+'/kvk/'+kvk);
-      var d=await r.json();
-      if(d.ok){
-        if(d.adres)document.getElementById('m-koper-adres').value=d.adres;
-        if(d.naam&&!document.getElementById('m-koper-naam').value)document.getElementById('m-koper-naam').value=d.naam;
-        if(d.rechtsvorm&&!document.getElementById('m-koper-rv').value)document.getElementById('m-koper-rv').value=d.rechtsvorm;
+      var url=kvk.length===8?WORKER+'/kvk/'+kvk:WORKER+'/kvk/00000000?naam='+encodeURIComponent(naam);
+      var r=await fetch(url);var d=await r.json();
+      if(d.ok&&d.eerste){
+        if(d.eerste.adres)document.getElementById('m-koper-adres').value=d.eerste.adres;
+        if(d.eerste.naam&&!document.getElementById('m-koper-naam').value)document.getElementById('m-koper-naam').value=d.eerste.naam;
+        if(d.eerste.kvkNummer)document.getElementById('m-koper-kvk').value=d.eerste.kvkNummer;
+        if(d.eerste.rechtsvorm&&!document.getElementById('m-koper-rv').value)document.getElementById('m-koper-rv').value=d.eerste.rechtsvorm;
         kvkKopBtn.textContent='✓ Ingevuld';
         setTimeout(function(){kvkKopBtn.textContent='↻ Ophalen';kvkKopBtn.disabled=false;},2000);
       } else {alert('KvK: '+(d.error||'Niet gevonden'));kvkKopBtn.disabled=false;kvkKopBtn.textContent='↻ Ophalen';}
@@ -1537,7 +1544,7 @@ function toonNieuwModal(){
     document.getElementById('m-err').style.display='none';
     try{
       var r=await fetch(WORKER+'/mna/create',{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':adminKey},
-        body:JSON.stringify({kantoor_naam:kantoor,contact_naam:document.getElementById('m-c').value.trim(),contact_email:document.getElementById('m-e').value.trim(),traject_type:document.getElementById('m-t').value,notitie:document.getElementById('m-n').value.trim(),begeleider_naam:document.getElementById('m-bg-naam').value.trim(),begeleider_email:document.getElementById('m-bg-email').value.trim(),koper_naam:document.getElementById('m-koper-naam').value.trim(),koper_rechtsvorm:document.getElementById('m-koper-rv').value.trim(),koper_contact:document.getElementById('m-koper-contact').value.trim(),koper_email:document.getElementById('m-koper-email').value.trim()})});
+        body:JSON.stringify({kantoor_naam:kantoor,contact_naam:document.getElementById('m-c').value.trim(),contact_email:document.getElementById('m-e').value.trim(),traject_type:document.getElementById('m-t').value,notitie:document.getElementById('m-n').value.trim(),begeleider_naam:document.getElementById('m-bg-naam').value.trim()||'Marcel Bisschops',begeleider_email:document.getElementById('m-bg-email').value.trim()||'marcel@bisschopsfinancing.nl',koper_naam:document.getElementById('m-koper-naam').value.trim(),koper_rechtsvorm:document.getElementById('m-koper-rv').value.trim(),koper_contact:document.getElementById('m-koper-contact').value.trim(),koper_email:document.getElementById('m-koper-email').value.trim(),koper_adres:document.getElementById('m-koper-adres')?document.getElementById('m-koper-adres').value.trim():'',koper_kvk:document.getElementById('m-koper-kvk')?document.getElementById('m-koper-kvk').value.trim():'',verkoper_adres:document.getElementById('m-adres')?document.getElementById('m-adres').value.trim():'',verkoper_kvk:document.getElementById('m-kvk')?document.getElementById('m-kvk').value.trim():''})});
       var d=await r.json();
       if(d.ok){
         mnaList.unshift({id:d.code,kantoor_naam:kantoor,traject_type:document.getElementById('m-t').value,koper_code:d.koper_code,tussen_code:d.tussen_code,status:'actief',created_at:Date.now()});
@@ -1550,8 +1557,9 @@ function toonNieuwModal(){
         res.querySelectorAll('.res-copy').forEach(function(b){b.addEventListener('click',function(){navigator.clipboard.writeText(b.dataset.copy).then(function(){var o=b.textContent;b.textContent='✓';setTimeout(function(){b.textContent=o;},1500);});});});
         document.getElementById('res-opslaan').addEventListener('click',function(){slaOp({id:d.code,kantoor_naam:kantoor,traject_type:document.getElementById('m-t').value,koper_code:d.koper_code,tussen_code:d.tussen_code,created_at:Date.now()});});
         btn.textContent='Aangemaakt';
-        document.getElementById('m-ann').textContent='Sluiten';
-        document.getElementById('m-ann').addEventListener('click',function(){document.body.removeChild(ov);renderTab();},{once:true});
+        var annBtn=document.getElementById('m-ann');
+        annBtn.textContent='Sluiten';
+        annBtn.onclick=function(){document.body.removeChild(ov);renderTab();};
       }else{var er2=document.getElementById('m-err');er2.style.display='block';er2.textContent='Fout: '+(d.error||'onbekend');btn.disabled=false;btn.textContent='Traject aanmaken';}
     }catch(e){var er3=document.getElementById('m-err');er3.style.display='block';er3.textContent='Verbindingsfout.';btn.disabled=false;btn.textContent='Traject aanmaken';}
   });
