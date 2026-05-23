@@ -926,7 +926,7 @@ function renderWaarderingTab(el){
         +'## Conclusie en aanbeveling\n\n'
         +'Schrijf in professionele Nederlandse rapporttaal. Concreet, cijfermatig onderbouwd. Gebruik de benchmarknormen voor de sector.';
       try{
-        var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:3000})});
+        var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:4000})});
         var rd=await resp.json();
         var tekst=rd.content&&rd.content[0]?rd.content[0].text:'Fout bij genereren.';
         tekst=tekst.replace(/^## (.+)$/gm,'<h3 style="font-family:Playfair Display,serif;font-size:1rem;color:var(--head);margin:1.25rem 0 .5rem;border-top:1px solid var(--border);padding-top:1rem">$1</h3>');
@@ -1137,23 +1137,27 @@ async function toonDetail(id,naam){
         var verkoperNaamB=d.traject.contact_naam||'[INVULLEN]';
         var opdrachtgever=isSell?(d.traject.kantoor_naam||naam):koperNaamB;
         var prompt='Stel een volledige Bemiddelingsovereenkomst op. Opdrachtgever: '+esc(opdrachtgever)+'. Contactpersoon: '+esc(isSell?verkoperNaamB:koperContactB)+'. Type: '+(isSell?'Sell-side':'Buy-side')+'. Datum: '+datum+'. Bisschops Financing B.V., Grotestraat 13, 5841AA Oploo. Exclusieve opdracht 4 maanden. '+(isSell?'Geen succesfee voor verkoper, €250/uur extra.':'€10.000 voorfase of regie.')+' Break-fee €5.000 min. Rechtbank Oost-Brabant. Geef volledig document terug, geen uitleg.';
-        var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:3000})});
+        var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:4000})});
         var rd=await resp.json();
         var tekst=rd.text||(rd.error||'Fout bij genereren.');
         var bemHtml=tekst.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n\n/g,'</p><p>').replace(/\n/g,'<br>');
         bemOut.innerHTML='<div style="font-size:11px;font-weight:600;color:#2a5ea0;letter-spacing:.1em;text-transform:uppercase;margin-bottom:.75rem">&#128203; Bemiddelingsovereenkomst · '+esc(d.traject.kantoor_naam||naam)+'</div>'
-          +'<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:1.25rem;font-size:13px;line-height:1.9;color:var(--sub);font-family:Georgia,serif;max-height:350px;overflow-y:auto"><p>'+bemHtml+'</p></div>'
+          +'<div style="font-size:11px;color:var(--muted);margin-bottom:.4rem">Bekijk en bewerk het document voor verzending:</div>'
+          +'<textarea id="bem-edit" style="width:100%;height:320px;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:Georgia,serif;font-size:12px;line-height:1.8;padding:1rem;outline:none;resize:vertical"></textarea>'
           +'<div style="display:flex;gap:8px;margin-top:.75rem">'
           +'<button id="bem-print-btn" class="btn-ghost" style="font-size:12px;padding:6px 14px">&#128196; Print / PDF</button>'
           +'<button id="bem-email-btn" class="btn" style="font-size:12px;padding:6px 14px;background:#2a5ea0">&#9993; Stuur naar opdrachtgever</button>'
           +'</div>';
-        document.getElementById('bem-print-btn').addEventListener('click',function(){var win=window.open('','_blank');win.document.write('<html><head><style>body{font-family:Georgia,serif;font-size:13px;line-height:1.9;max-width:700px;margin:2cm auto}</style></head><body><p>'+tekst.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>')+'</p></body></html>');win.document.close();win.print();});
+        document.getElementById('bem-edit').value=tekst;
+        document.getElementById('bem-print-btn').addEventListener('click',function(){var bemEl=document.getElementById('bem-edit');var pt=bemEl?bemEl.value:tekst;var win=window.open('','_blank');win.document.write('<html><head><style>body{font-family:Georgia,serif;font-size:13px;line-height:1.9;max-width:700px;margin:2cm auto;color:#2a2825}@media print{body{margin:1.5cm}}</style></head><body><p>'+pt.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>')+'</p></body></html>');win.document.close();win.print();});
         document.getElementById('bem-email-btn').addEventListener('click',async function(){
           var ebtn=this;ebtn.disabled=true;ebtn.textContent='Versturen...';
           var toList=[d.traject.contact_email||'marcel@bisschopsfinancing.nl'];
           if(d.traject.begeleider_email&&!toList.includes(d.traject.begeleider_email))toList.push(d.traject.begeleider_email);
+          var bemEditEl=document.getElementById('bem-edit');
+          var bemVerzendTekst=bemEditEl?bemEditEl.value:tekst;
           try{
-            var er=await fetch(WORKER+'/mna/bem/email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:id,bem_tekst:tekst,to:toList,type:isSell?'verkoop':'aankoop'})});
+            var er=await fetch(WORKER+'/mna/bem/email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:id,bem_tekst:bemVerzendTekst,to:toList,type:isSell?'verkoop':'aankoop'})});
             var erText=await er.text();
             var ed;try{ed=JSON.parse(erText);}catch(pe){ed={error:'Geen JSON: '+erText.substring(0,150)};}
             if(ed.ok){ebtn.textContent='✓ Verstuurd';setTimeout(function(){ebtn.textContent='✉ Stuur';ebtn.disabled=false;},3000);}
@@ -1181,24 +1185,28 @@ async function toonDetail(id,naam){
         var koperAdres=d.traject.koper_adres||'[INVULLEN: adres]';
         var koperKvk=d.traject.koper_kvk||'[INVULLEN: KvK]';
         var prompt='Stel een volledige NDA op. Verstrekkende partij: '+esc(d.traject.kantoor_naam||naam)+', '+esc(verkoperAdres)+', KvK '+esc(verkoperKvk)+'. Contact: '+esc(verkoperNaam)+'. Ontvangende partij: '+esc(koperNaam)+' ('+esc(koperRv)+'), '+esc(koperAdres)+', KvK '+esc(koperKvk)+'. Contact: '+esc(koperContact)+'. Datum: '+datum+'. Bisschops Financing B.V. begeleidt. 3 jaar geheimhouding, 12 maanden benaderingsverbod, Rechtbank Oost-Brabant. Geef volledig document terug, geen uitleg.';
-        var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:3000})});
+        var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:4000})});
         var rd=await resp.json();
         var tekst=rd.text||(rd.error||'Fout bij genereren.');
         var ndaHtml=tekst.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n\n/g,'</p><p>').replace(/\n/g,'<br>');
         ndaOut.innerHTML='<div style="font-size:11px;font-weight:600;color:#7c5cbf;letter-spacing:.1em;text-transform:uppercase;margin-bottom:.75rem">Non-Disclosure Agreement · '+esc(d.traject.kantoor_naam||naam)+'</div>'
-          +'<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:1.25rem;font-size:13px;line-height:1.9;color:var(--sub);font-family:Georgia,serif;max-height:350px;overflow-y:auto"><p>'+ndaHtml+'</p></div>'
+          +'<div style="font-size:11px;color:var(--muted);margin-bottom:.4rem">Bekijk en bewerk het document voor verzending:</div>'
+          +'<textarea id="nda-edit" style="width:100%;height:320px;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:Georgia,serif;font-size:12px;line-height:1.8;padding:1rem;outline:none;resize:vertical"></textarea>'
           +'<div style="display:flex;gap:8px;margin-top:.75rem">'
           +'<button id="nda-print-btn" class="btn-ghost" style="font-size:12px;padding:6px 14px">&#128196; Print / PDF</button>'
           +'<button id="nda-email-btn" class="btn" style="font-size:12px;padding:6px 14px;background:#7c5cbf">&#9993; Stuur naar partijen</button>'
           +'</div>';
-        document.getElementById('nda-print-btn').addEventListener('click',function(){var win=window.open('','_blank');win.document.write('<html><head><style>body{font-family:Georgia,serif;font-size:13px;line-height:1.9;max-width:700px;margin:2cm auto}</style></head><body><p>'+tekst.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>')+'</p></body></html>');win.document.close();win.print();});
+        document.getElementById('nda-edit').value=tekst;
+        document.getElementById('nda-print-btn').addEventListener('click',function(){var ndaEl=document.getElementById('nda-edit');var pt=ndaEl?ndaEl.value:tekst;var win=window.open('','_blank');win.document.write('<html><head><style>body{font-family:Georgia,serif;font-size:13px;line-height:1.9;max-width:700px;margin:2cm auto;color:#2a2825}@media print{body{margin:1.5cm}}</style></head><body><p>'+pt.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>')+'</p></body></html>');win.document.close();win.print();});
         document.getElementById('nda-email-btn').addEventListener('click',async function(){
           var ebtn=this;ebtn.disabled=true;ebtn.textContent='Versturen...';
           var toList=[d.traject.contact_email||'marcel@bisschopsfinancing.nl'];
           if(d.traject.begeleider_email&&d.traject.begeleider_email!==toList[0])toList.push(d.traject.begeleider_email);
           if(d.traject.koper_email&&!toList.includes(d.traject.koper_email))toList.push(d.traject.koper_email);
+          var ndaEditEl=document.getElementById('nda-edit');
+          var ndaVerzendTekst=ndaEditEl?ndaEditEl.value:tekst;
           try{
-            var er=await fetch(WORKER+'/mna/nda/email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:id,nda_tekst:tekst,to:toList})});
+            var er=await fetch(WORKER+'/mna/nda/email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:id,nda_tekst:ndaVerzendTekst,to:toList})});
             var erText=await er.text();
             var ed;try{ed=JSON.parse(erText);}catch(pe){ed={error:'Geen JSON: '+erText.substring(0,150)};}
             if(ed.ok){ebtn.textContent='✓ Verstuurd';setTimeout(function(){ebtn.textContent='✉ Stuur';ebtn.disabled=false;},3000);}
@@ -1222,15 +1230,30 @@ async function toonDetail(id,naam){
         var koperContact=d.traject.koper_contact||'[INVULLEN: contactpersoon]';
         var verkoperNaam=d.traject.contact_naam||'[INVULLEN: naam verkopende partner]';
         var prompt='Schrijf een professionele Letter of Intent (LoI) in het Nederlands voor een M&A traject in de accountancy/administratie sector.\n\nGEGEVENS:\n- Doelkantoor (verkoper): '+esc(d.traject.kantoor_naam||naam)+'\n- Contactpersoon verkoper: '+esc(verkoperNaam)+'\n- Kopende partij: '+esc(koperNaam)+' ('+esc(koperRv)+')\n- Contactpersoon koper: '+esc(koperContact)+'\n- Trajecttype: '+esc(d.traject.traject_type||'Verkoop')+'\n- Datum: '+datum+'\n- Adviseur: Marcel Bisschops, Bisschops Financing BV\n\nSTRUCTUUR:\n1. Aanhef en introductie (beide partijen met volledige namen)\n2. Intentie en scope van de voorgenomen transactie\n3. Indicatieve transactiewaarde (PM - nader te bepalen na due diligence)\n4. Due diligence proces en tijdlijn (indicatief 8 weken)\n5. Exclusiviteit (60 dagen)\n6. Vertrouwelijkheid\n7. Niet-bindend karakter\n8. Ondertekening beide partijen + adviseur\n\nFormeel, juridisch correct Nederlands. Vul bekende gegevens in, gebruik [INVULLEN] alleen waar echt niets bekend is.';
-        var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:2500})});
+        var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:4000})});
         var rd=await resp.json();
         var tekst=rd.content&&rd.content[0]?rd.content[0].text:(rd.error||'Fout bij genereren.');
         loiOut.innerHTML='<div style="font-size:11px;font-weight:600;color:var(--gold);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.75rem">Letter of Intent · '+esc(d.traject.kantoor_naam||naam)+'</div>'
-          +'<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:1.25rem;font-size:13px;line-height:1.9;color:var(--sub);white-space:pre-wrap;font-family:Georgia,serif;max-height:300px;overflow-y:auto">'+esc(tekst)+'</div>'
+          +'<div style="font-size:11px;color:var(--muted);margin-bottom:.4rem">Bekijk en bewerk het document voor verzending:</div>'
+          +'<textarea id="loi-edit" style="width:100%;height:320px;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:Georgia,serif;font-size:12px;line-height:1.8;padding:1rem;outline:none;resize:vertical"></textarea>'
           +'<div style="display:flex;gap:8px;margin-top:.75rem"><button id="loi-print-btn" class="btn-ghost" style="font-size:12px;padding:6px 14px">&#128196; Print / PDF</button><button id="loi-email-btn" class="btn" style="font-size:12px;padding:6px 14px;background:var(--gold)">&#9993; Stuur naar partijen</button></div>';
-        document.getElementById('loi-print-btn').addEventListener('click',function(){var win=window.open('','_blank');win.document.write('<html><body style="font-family:Georgia,serif;font-size:13px;line-height:1.9;max-width:700px;margin:2cm auto"><pre style="white-space:pre-wrap;font-family:Georgia,serif">'+tekst+'</pre></body></html>');win.document.close();win.print();});
-        document.getElementById('loi-email-btn').addEventListener('click',async function(){var ebtn=this;ebtn.disabled=true;ebtn.textContent='Versturen...';var toList=[d.traject.contact_email||'marcel@bisschopsfinancing.nl'];if(d.traject.begeleider_email&&d.traject.begeleider_email!==toList[0])toList.push(d.traject.begeleider_email);var er=await fetch(WORKER+'/mna/loi/email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:id,loi_tekst:tekst,to:toList})});var ed=await er.json();if(ed.ok){ebtn.textContent='✓ Verstuurd';setTimeout(function(){ebtn.textContent='✉ Stuur';ebtn.disabled=false;},3000);}else{alert('Fout: '+(ed.error||'onbekend'));ebtn.disabled=false;ebtn.textContent='✉ Stuur naar partijen';}});
-        fetch(WORKER+'/mna/loi/email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:id,loi_tekst:tekst,to:[]})}).catch(function(){});
+        document.getElementById('loi-edit').value=tekst;
+        document.getElementById('loi-print-btn').addEventListener('click',function(){var loiEl=document.getElementById('loi-edit');var pt=loiEl?loiEl.value:tekst;var win=window.open('','_blank');win.document.write('<html><head><style>body{font-family:Georgia,serif;font-size:13px;line-height:1.9;max-width:700px;margin:2cm auto;color:#2a2825}@media print{body{margin:1.5cm}}</style></head><body><p>'+pt.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>')+'</p></body></html>');win.document.close();win.print();});
+        document.getElementById('loi-email-btn').addEventListener('click',async function(){
+          var ebtn=this;ebtn.disabled=true;ebtn.textContent='Versturen...';
+          var loiEditEl=document.getElementById('loi-edit');
+          var loiVerzendTekst=loiEditEl?loiEditEl.value:tekst;
+          var toList=[d.traject.contact_email||'marcel@bisschopsfinancing.nl'];
+          if(d.traject.begeleider_email&&d.traject.begeleider_email!==toList[0])toList.push(d.traject.begeleider_email);
+          if(d.traject.koper_email&&!toList.includes(d.traject.koper_email))toList.push(d.traject.koper_email);
+          try{
+            var er=await fetch(WORKER+'/mna/loi/email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:id,loi_tekst:loiVerzendTekst,to:toList})});
+            var erText=await er.text();
+            var ed;try{ed=JSON.parse(erText);}catch(pe){ed={error:'Geen JSON: '+erText.substring(0,150)};}
+            if(ed.ok){ebtn.textContent='✓ Verstuurd';setTimeout(function(){ebtn.textContent='✉ Stuur';ebtn.disabled=false;},3000);}
+            else{alert('Fout ('+er.status+'): '+(ed.error||erText.substring(0,200)));ebtn.disabled=false;ebtn.textContent='✉ Stuur naar partijen';}
+          }catch(fe){alert('Verbindingsfout: '+fe.message);ebtn.disabled=false;ebtn.textContent='✉ Stuur naar partijen';}
+        });
         btn.textContent='Opnieuw genereren';btn.disabled=false;
       }catch(e){loiOut.innerHTML='<div style="color:var(--red);font-size:13px">Fout: '+e.message+'</div>';btn.textContent='Genereer LoI';btn.disabled=false;}
     });
@@ -1249,7 +1272,7 @@ async function toonDetail(id,naam){
         (d.data||[]).forEach(function(row){try{var dj=typeof row.data_json==='string'?JSON.parse(row.data_json):row.data_json;var lbl=faseLabelsAI[row.fase_id]||row.fase_id;var gevuld=Object.values(dj||{}).filter(function(v){return v&&v.value;});if(gevuld.length){dataSamenvatting+='\n## '+lbl+'\n';gevuld.forEach(function(v){dataSamenvatting+='- '+v.label+': '+v.value+'\n';});}}catch(e){}});
         var bmTekst='BENCHMARKS:\nEBITDA-marge admin '+(bms['ebitda_marge_admin']?bms['ebitda_marge_admin'].waarde:18.7)+'%\nMultiples: '+(bms['multiple_adm_laag']?bms['multiple_adm_laag'].waarde:4.6)+'x - '+(bms['multiple_adm_hoog']?bms['multiple_adm_hoog'].waarde:5.5)+'x\n';
         var prompt='M&A-adviseur accountancy. Analyseer:\nTRAJECT: '+d.traject.kantoor_naam+' ('+d.traject.traject_type+')\n'+bmTekst+'\nDUE DILIGENCE:'+dataSamenvatting+'\n\n## Samenvatting\n## Financieel profiel & waardering\n## Sterktes\n## Risicos\n## Aanbevelingen\n\nMax 500 woorden.';
-        var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:3000})});
+        var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:4000})});
         var rd=await resp.json();
         var tekst=rd.content&&rd.content[0]?rd.content[0].text:(rd.error||'Fout.');
         tekst=tekst.replace(/^## (.+)$/gm,'<h3 style="font-family:Playfair Display,serif;font-size:.95rem;color:var(--head);margin:1rem 0 .4rem">$1</h3>');
