@@ -22,8 +22,6 @@
 html{scroll-behavior:smooth}
 body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--body);min-height:100vh;font-size:15px;line-height:1.6}
 .mono{font-family:'IBM Plex Mono',monospace}
-
-/* INTRO */
 .intro-wrap{min-height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:4rem 2rem;position:relative;overflow:hidden}
 .intro-wrap::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 600px 400px at 70% 30%,rgba(34,197,160,.04),transparent 70%),radial-gradient(ellipse 400px 600px at 20% 80%,rgba(201,168,76,.03),transparent 70%);pointer-events:none}
 .intro-grid{position:absolute;inset:0;background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);background-size:60px 60px;opacity:.4;pointer-events:none}
@@ -45,9 +43,7 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--b
 .intro-foot a{color:var(--teal);text-decoration:none}
 .btn-start{background:var(--teal);color:#fff;font-family:'IBM Plex Sans',sans-serif;font-size:14px;font-weight:600;padding:14px 36px;border-radius:var(--r);border:none;cursor:pointer;transition:all .12s;letter-spacing:.02em}
 .btn-start:hover{background:var(--teal-dim);transform:translateY(-1px)}
-
-/* PAGINA GEGEVENS */
-.page-wrap{max-width:680px;margin:0 auto;padding:2rem 2rem 5rem}
+.page-wrap{max-width:720px;margin:0 auto;padding:2rem 2rem 5rem}
 .page-hdr{display:flex;align-items:center;justify-content:space-between;padding:1.5rem 0;border-bottom:1px solid var(--border);margin-bottom:2.5rem}
 .page-brand{font-size:11px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:8px}
 .page-step{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted)}
@@ -57,25 +53,32 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--b
 .prog-track{height:2px;background:var(--border);border-radius:1px;overflow:hidden}
 .prog-fill{height:100%;background:var(--teal);border-radius:1px;transition:width .4s ease}
 .prog-lbl{font-size:11px;color:var(--muted);margin-bottom:.5rem;display:flex;justify-content:space-between}
+/* Velden */
 .veld{width:100%;background:var(--panel);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:'IBM Plex Sans',sans-serif;font-size:13px;padding:10px 12px;outline:none;transition:border-color .12s}
 .veld:focus{border-color:var(--teal)}
 .veld::placeholder{color:var(--muted)}
 .veld-sel{-webkit-appearance:none}
 .veld-rij{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.veld-rij.drie{grid-template-columns:1fr 1fr 1fr}
 .veld-groep{display:flex;flex-direction:column;gap:5px;margin-bottom:1.1rem}
 .veld-lbl{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
 .veld-lbl span{color:var(--red)}
-
-/* VRAGEN */
-.vraag{margin-bottom:1.75rem}
-.vraag-lbl{font-size:13px;font-weight:500;color:var(--sub);margin-bottom:.85rem;line-height:1.5}
-.opties{display:flex;flex-direction:column;gap:8px}
-.optie{display:flex;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--border2);border-radius:var(--r);padding:.75rem 1rem;cursor:pointer;transition:all .12s;font-size:13px;color:var(--mid)}
-.optie:hover{border-color:var(--teal);background:var(--teal-bg);color:var(--sub)}
-.optie.sel{border-color:var(--teal);background:var(--teal-bg);color:var(--sub);font-weight:500}
-.optie-dot{width:14px;height:14px;border-radius:50%;border:1.5px solid var(--border2);flex-shrink:0;transition:all .12s;position:relative}
-.optie.sel .optie-dot{border-color:var(--teal);background:var(--teal)}
-.optie.sel .optie-dot::after{content:'';position:absolute;inset:3px;border-radius:50%;background:#fff}
+.veld-hint{font-size:11px;color:var(--muted);margin-top:2px}
+/* Likert */
+.q-stack{display:flex;flex-direction:column;gap:14px;margin-bottom:2rem}
+.q-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem 1.5rem;transition:border-color .15s}
+.q-card.answered{border-color:var(--border2)}
+.q-text{font-size:14px;color:var(--sub);line-height:1.6;margin-bottom:.25rem}
+.q-hint{font-size:11px;color:var(--muted);font-style:italic;margin-bottom:.85rem}
+.likert{display:flex;gap:6px}
+.l-btn{flex:1;border:1px solid var(--border);background:var(--card);color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:500;padding:9px 4px;border-radius:var(--r);cursor:pointer;transition:all .1s;text-align:center}
+.l-btn:hover{border-color:var(--border2);color:var(--sub);background:var(--panel)}
+.l-btn.sel{background:var(--teal-bg);border-color:var(--teal);color:var(--teal)}
+.likert-axis{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);letter-spacing:.05em;margin-top:6px;padding:0 2px;text-transform:uppercase}
+.q-open{width:100%;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:'IBM Plex Sans',sans-serif;font-size:13px;padding:9px 12px;outline:none;transition:border-color .12s;resize:vertical;min-height:60px;margin-top:.75rem}
+.q-open:focus{border-color:var(--teal)}
+.q-open::placeholder{color:var(--muted)}
+/* Knoppen */
 .btn-adv{background:var(--teal);color:var(--void);font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;padding:10px 24px;border-radius:var(--r);border:none;cursor:pointer;transition:all .12s}
 .btn-adv:hover{background:var(--teal-dim)}
 .btn-adv:disabled{background:var(--border2);color:var(--muted);cursor:default}
@@ -83,8 +86,7 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--b
 .btn-ghost:hover{border-color:var(--mid);color:var(--sub)}
 .nav-row{display:flex;gap:10px;margin-top:2rem;align-items:center}
 .err-msg{font-size:12px;color:var(--red);margin-top:.75rem;display:none}
-
-/* RAPPORT */
+/* Rapport */
 .rapp-kop{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:2rem;margin-bottom:1.25rem}
 .rapp-titel{font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:600;color:var(--head);margin-bottom:.25rem}
 .rapp-meta{font-size:12px;color:var(--muted);margin-bottom:1rem}
@@ -97,73 +99,68 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--b
 .score-val{font-family:'IBM Plex Mono',monospace;font-size:1.1rem;font-weight:500}
 .score-bar{height:2px;background:var(--border);border-radius:1px;margin-top:.5rem;overflow:hidden}
 .score-fill{height:100%;border-radius:1px;transition:width 1s ease}
-.rapp-tekst{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:2rem;line-height:1.8;font-size:14px;color:var(--mid)}
+.rapp-tekst{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:2rem;line-height:1.85;font-size:14px;color:var(--mid)}
 .rapp-tekst h2{font-family:'Playfair Display',serif;font-size:1.05rem;font-weight:600;color:var(--head);margin:1.5rem 0 .5rem;border-top:1px solid var(--border);padding-top:1.25rem}
 .rapp-tekst h2:first-child{border-top:none;margin-top:0;padding-top:0}
-.rapp-tekst p{margin-bottom:.6rem}
+.rapp-tekst p{margin-bottom:.75rem}
 .rapp-tekst strong{color:var(--sub)}
-.cta-blok{background:var(--teal-bg);border:1px solid var(--teal-dark);border-radius:var(--r2);padding:1.25rem 1.5rem;margin-top:1.5rem}
-.cta-link{display:inline-block;margin-top:.75rem;font-size:13px;font-weight:600;color:var(--teal);text-decoration:none}
+.rapp-tekst blockquote{border-left:3px solid var(--teal);padding-left:1rem;color:var(--muted);font-size:13px;margin:.75rem 0}
 .laden{text-align:center;padding:4rem 2rem;color:var(--muted)}
 .laden-dot{display:inline-flex;gap:6px;margin-bottom:1.5rem}
 .laden-dot span{width:8px;height:8px;border-radius:50%;background:var(--teal);animation:pulse 1.4s ease-in-out infinite}
 .laden-dot span:nth-child(2){animation-delay:.2s}
 .laden-dot span:nth-child(3){animation-delay:.4s}
 @keyframes pulse{0%,80%,100%{transform:scale(0.6);opacity:.4}40%{transform:scale(1);opacity:1}}
+@media print{.btn-adv,.btn-ghost{display:none!important}}
 </style>
 </head>
 <body>
 
-<!-- INTRO PAGINA -->
+<!-- INTRO -->
 <div class="intro-wrap" id="pg-intro">
   <div class="intro-grid"></div>
   <div class="intro-inner">
     <div class="wordmark"><div class="wdot"></div>VerhuisScan · Bisschops Financing</div>
     <div class="eyebrow">Gratis strategische scan</div>
     <h1 class="intro-h1">Waar staat uw<br>verhuisbedrijf <em>echt?</em></h1>
-    <p class="intro-sub">In 12 minuten een volledig strategisch rapport op 11 dimensies — van financiën en wagenpark tot circulaire strategie en bedrijfsoverdracht.</p>
+    <p class="intro-sub">In 15 minuten een volledig strategisch rapport op 11 dimensies — gebaseerd op uw eigen cijfers en een eerlijke analyse zonder generiek advies.</p>
     <div class="kpi-row">
       <div class="kpi-item"><div class="kpi-num">11</div><div class="kpi-lbl">Dimensies</div></div>
       <div class="kpi-div"></div>
-      <div class="kpi-item"><div class="kpi-num">12</div><div class="kpi-lbl">Minuten</div></div>
+      <div class="kpi-item"><div class="kpi-num">15</div><div class="kpi-lbl">Minuten</div></div>
       <div class="kpi-div"></div>
       <div class="kpi-item"><div class="kpi-num">100%</div><div class="kpi-lbl">Gratis</div></div>
     </div>
     <div class="dim-row">
-      <span class="dim-chip">Financieel</span>
-      <span class="dim-chip">Markt & Groei</span>
-      <span class="dim-chip">Operationeel</span>
-      <span class="dim-chip">Wagenpark & Duurzaamheid</span>
-      <span class="dim-chip">Personeel</span>
-      <span class="dim-chip">Opslag</span>
-      <span class="dim-chip">Circulair</span>
-      <span class="dim-chip">Zakelijk</span>
-      <span class="dim-chip">Internationaal</span>
-      <span class="dim-chip">Digitalisering</span>
+      <span class="dim-chip">Financieel</span><span class="dim-chip">Wagenpark & Duurzaamheid</span>
+      <span class="dim-chip">Markt & Groei</span><span class="dim-chip">Operationeel</span>
+      <span class="dim-chip">Personeel</span><span class="dim-chip">Opslag</span>
+      <span class="dim-chip">Circulair</span><span class="dim-chip">Zakelijk</span>
+      <span class="dim-chip">Internationaal</span><span class="dim-chip">Digitalisering</span>
       <span class="dim-chip">Strategie & Opvolging</span>
     </div>
     <button class="btn-start" onclick="naarGegevens()">Start de scan →</button>
     <div class="intro-foot">
-      🔒 Versleuteld via HTTPS · Opgeslagen op Cloudflare-servers in Europa (Frankfurt) · Verwerking conform AVG · <a href="https://koersvoormorgen.nl/privacy.html">Privacyverklaring</a>
+      🔒 Versleuteld via HTTPS · Cloudflare Frankfurt EU · AVG-conform · <a href="https://koersvoormorgen.nl/privacy.html">Privacyverklaring</a>
     </div>
     <div style="max-width:560px;margin:2rem auto 0;background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem 1.5rem;text-align:left">
       <div style="font-size:10px;font-weight:600;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">Wat is VerhuisScan?</div>
-      <p style="font-size:13px;color:var(--mid);line-height:1.7;margin-bottom:.6rem">Strategisch zelfanalyse-instrument voor verhuisbedrijven. De scan geeft inzicht in uw positie op elf dimensies en maakt inzichtelijk hoe klaar uw bedrijf is voor de volgende fase — van groei en verduurzaming tot overname of overdracht.</p>
+      <p style="font-size:13px;color:var(--mid);line-height:1.7;margin-bottom:.6rem">Strategisch zelfanalyse-instrument voor verhuisbedrijven. Anders dan generieke scans vraagt VerhuisScan om uw werkelijke cijfers — zodat het rapport niet beschrijft wat u al weet, maar laat zien wat het u kost.</p>
       <p style="font-size:12px;color:var(--muted);border-top:1px solid var(--border);padding-top:.6rem"><strong style="color:var(--sub)">Let op:</strong> Uitsluitend bedoeld voor verhuisbedrijven zelf. Gebruik door adviseurs zonder licentieafspraak met Bisschops Financing B.V. is niet toegestaan.</p>
       <div style="margin-top:.6rem;font-size:11px;color:var(--muted)">Vertrouwelijk · Gebaseerd op M&amp;A- en sectorspecifieke criteria · Powered by Claude AI</div>
     </div>
   </div>
 </div>
 
-<!-- BEDRIJFSGEGEVENS PAGINA -->
+<!-- BEDRIJFSGEGEVENS -->
 <div id="pg-gegevens" style="display:none">
   <div class="page-wrap">
     <div class="page-hdr">
       <div class="page-brand"><div class="wdot"></div>VerhuisScan</div>
       <div class="page-step mono">Bedrijfsgegevens</div>
     </div>
-    <div class="sec-lbl">Stap 1 · Uw bedrijf</div>
-    <p style="font-size:13px;color:var(--mid);margin-bottom:1.75rem;line-height:1.6">Deze gegevens bepalen de context van uw rapport. Alle velden met <span style="color:var(--red)">*</span> zijn verplicht.</p>
+    <div class="sec-lbl">Stap 1 · Uw bedrijf in cijfers</div>
+    <p style="font-size:13px;color:var(--mid);margin-bottom:1.75rem;line-height:1.6">Hoe concreter u invult, hoe specifieker het advies. Velden met <span style="color:var(--red)">*</span> zijn verplicht.</p>
 
     <div class="veld-rij">
       <div class="veld-groep" style="grid-column:1/-1">
@@ -184,36 +181,52 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--b
     <div class="veld-rij">
       <div class="veld-groep">
         <div class="veld-lbl">Aantal medewerkers (FTE) <span>*</span></div>
-        <select class="veld veld-sel" id="g-fte">
-          <option value="">— Kies —</option>
-          <option value="klein">Minder dan 10</option>
-          <option value="middel">10 tot 25</option>
-          <option value="groot">25 tot 50</option>
-          <option value="xlarge">Meer dan 50</option>
-        </select>
+        <input type="number" class="veld" id="g-fte" placeholder="bijv. 18" min="1">
+        <div class="veld-hint">Exacte FTE, inclusief deeltijd omgerekend</div>
       </div>
       <div class="veld-groep">
         <div class="veld-lbl">Jaarlijkse omzet <span>*</span></div>
-        <select class="veld veld-sel" id="g-omzet">
-          <option value="">— Kies —</option>
-          <option value="klein">Minder dan €1 miljoen</option>
-          <option value="middel">€1 tot €3 miljoen</option>
-          <option value="groot">€3 tot €7 miljoen</option>
-          <option value="xlarge">Meer dan €7 miljoen</option>
-        </select>
+        <input type="text" class="veld" id="g-omzet" placeholder="bijv. €4.200.000">
       </div>
     </div>
     <div class="veld-rij">
-
+      <div class="veld-groep">
+        <div class="veld-lbl">EBITDA-marge % <span>*</span></div>
+        <input type="text" class="veld" id="g-ebitda" placeholder="bijv. 9%">
+        <div class="veld-hint">Winst voor rente, belasting en afschrijving</div>
+      </div>
+      <div class="veld-groep">
+        <div class="veld-lbl">Omzet per voertuig per jaar</div>
+        <input type="text" class="veld" id="g-omzet-wagen" placeholder="bijv. €180.000">
+        <div class="veld-hint">Totaalomzet ÷ aantal wagens</div>
+      </div>
+    </div>
+    <div class="veld-rij">
+      <div class="veld-groep">
+        <div class="veld-lbl">Gemiddeld uurtarief personeel</div>
+        <input type="text" class="veld" id="g-uurtarief" placeholder="bijv. €45">
+        <div class="veld-hint">Wat factureert u gemiddeld per arbeidsuur</div>
+      </div>
+      <div class="veld-groep">
+        <div class="veld-lbl">Aandeel vaste/abonnementsomzet</div>
+        <input type="text" class="veld" id="g-recurring" placeholder="bijv. 30%">
+        <div class="veld-hint">Contractklanten, opslag-abonnementen e.d.</div>
+      </div>
+    </div>
+    <div class="veld-rij">
       <div class="veld-groep">
         <div class="veld-lbl">Type bedrijf <span>*</span></div>
         <select class="veld veld-sel" id="g-type">
           <option value="">— Kies —</option>
           <option value="zelfstandig">Zelfstandig verhuisbedrijf</option>
-          <option value="franchise">Onderdeel van franchise/netwerk (bijv. Mondial)</option>
-          <option value="groep">Onderdeel van een groep/holding</option>
+          <option value="franchise">Onderdeel van franchise/netwerk (Mondial)</option>
+          <option value="groep">Onderdeel van groep/holding</option>
           <option value="familiebedrijf">Familiebedrijf</option>
         </select>
+      </div>
+      <div class="veld-groep">
+        <div class="veld-lbl">Aantal voertuigen</div>
+        <input type="number" class="veld" id="g-wagens" placeholder="bijv. 22" min="1">
       </div>
     </div>
     <div class="veld-rij">
@@ -221,18 +234,20 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--b
         <div class="veld-lbl">Aantal vestigingen</div>
         <select class="veld veld-sel" id="g-vestigingen">
           <option value="1">1 vestiging</option>
-          <option value="2-3">2 tot 3 vestigingen</option>
-          <option value="4+">4 of meer vestigingen</option>
+          <option value="2-3">2 tot 3</option>
+          <option value="4+">4 of meer</option>
         </select>
       </div>
       <div class="veld-groep">
-        <div class="veld-lbl">Wagenpark (aantal voertuigen)</div>
-        <select class="veld veld-sel" id="g-wagens">
+        <div class="veld-lbl">Doel komende 2-3 jaar <span>*</span></div>
+        <select class="veld veld-sel" id="g-doel">
           <option value="">— Kies —</option>
-          <option value="klein">1 tot 5 voertuigen</option>
-          <option value="middel">6 tot 15 voertuigen</option>
-          <option value="groot">16 tot 30 voertuigen</option>
-          <option value="xlarge">Meer dan 30 voertuigen</option>
+          <option value="winstoptimalisatie">Winstgevendheid verbeteren</option>
+          <option value="groei">Groeien — meer omzet en marktaandeel</option>
+          <option value="verduurzamen">Verduurzamen — wagenpark, circulair</option>
+          <option value="stabiliseren">Stabiel houden wat er staat</option>
+          <option value="overdracht">Bedrijf overdragen of verkopen</option>
+          <option value="financiering">Financiering aantrekken</option>
         </select>
       </div>
     </div>
@@ -260,115 +275,114 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--b
     <!-- STAP 1: Financieel -->
     <div class="stap" id="stap-1">
       <div class="sec-lbl">Stap 1 · Financieel</div>
-      <div class="vraag">
-        <div class="vraag-lbl">Hoe ontwikkelt uw omzet zich de laatste 2 jaar?</div>
-        <div class="opties">
-          <label class="optie" data-n="omzet_groei" data-v="groei"><div class="optie-dot"></div>Groei (meer dan 5% per jaar)</label>
-          <label class="optie" data-n="omzet_groei" data-v="stabiel"><div class="optie-dot"></div>Stabiel (0–5%)</label>
-          <label class="optie" data-n="omzet_groei" data-v="daling"><div class="optie-dot"></div>Lichte daling</label>
+      <div class="q-stack">
+        <div class="q-card" id="qc-omzet_groei">
+          <div class="q-text">Onze omzet groeit structureel jaar op jaar.</div>
+          <div class="q-hint">1 = dalend · 5 = sterk groeiend (>8% per jaar)</div>
+          <div class="likert" data-q="omzet_groei"></div>
+          <div class="likert-axis"><span>Dalend</span><span>Sterk groeiend</span></div>
+        </div>
+        <div class="q-card" id="qc-marge_kw">
+          <div class="q-text">Onze EBITDA-marge is sterk genoeg om te investeren en schokken op te vangen.</div>
+          <div class="q-hint">1 = onder druk (<5%) · 5 = sterk (>15%)</div>
+          <div class="likert" data-q="marge_kw"></div>
+          <div class="likert-axis"><span>Onder druk</span><span>Sterk</span></div>
+        </div>
+        <div class="q-card" id="qc-debiteur">
+          <div class="q-text">Onze debiteuren betalen op tijd en we hebben weinig openstaande posten.</div>
+          <div class="q-hint">1 = structureel probleem · 5 = uitstekend beheer</div>
+          <div class="likert" data-q="debiteur"></div>
+          <div class="likert-axis"><span>Structureel probleem</span><span>Uitstekend</span></div>
+        </div>
+        <div class="q-card" id="qc-bezetting">
+          <div class="q-text">Onze wagens en mensen zijn goed bezet — we laten weinig capaciteit onbenut.</div>
+          <div class="q-hint">1 = veel leeglopen · 5 = vrijwel altijd op capaciteit</div>
+          <div class="likert" data-q="bezetting"></div>
+          <div class="likert-axis"><span>Veel leeglopen</span><span>Op capaciteit</span></div>
+        </div>
+        <div class="q-card">
+          <div class="q-text">Wat drukt uw marge het meest? (optioneel)</div>
+          <textarea class="q-open" id="open-financieel" placeholder="bijv. hoge loonkosten, veel flexkrachten, lage tarieven particulier segment, dieselkosten..."></textarea>
         </div>
       </div>
-      <div class="vraag">
-        <div class="vraag-lbl">Hoe beoordeelt u uw winstmarge (EBITDA)?</div>
-        <div class="opties">
-          <label class="optie" data-n="marge" data-v="hoog"><div class="optie-dot"></div>Sterk (meer dan 12%)</label>
-          <label class="optie" data-n="marge" data-v="gemiddeld"><div class="optie-dot"></div>Gemiddeld (6–12%)</label>
-          <label class="optie" data-n="marge" data-v="laag"><div class="optie-dot"></div>Onder druk (minder dan 6%)</label>
-        </div>
-      </div>
-      <div class="vraag">
-        <div class="vraag-lbl">Hoe is uw debiteurenbeheer?</div>
-        <div class="opties">
-          <label class="optie" data-n="debiteurenbeheer" data-v="goed"><div class="optie-dot"></div>Goed — weinig openstaande posten</label>
-          <label class="optie" data-n="debiteurenbeheer" data-v="matig"><div class="optie-dot"></div>Matig — regelmatig herinneringen nodig</label>
-          <label class="optie" data-n="debiteurenbeheer" data-v="zwak"><div class="optie-dot"></div>Aandachtspunt — structureel probleem</label>
-        </div>
-      </div>
-      <div class="vraag">
-        <div class="vraag-lbl">Hoe hoog is uw bezettingsgraad (wagens/personeel)?</div>
-        <div class="opties">
-          <label class="optie" data-n="bezettingsgraad" data-v="hoog"><div class="optie-dot"></div>Hoog — regelmatig op capaciteit</label>
-          <label class="optie" data-n="bezettingsgraad" data-v="gemiddeld"><div class="optie-dot"></div>Gemiddeld — ruimte voor meer werk</label>
-          <label class="optie" data-n="bezettingsgraad" data-v="laag"><div class="optie-dot"></div>Laag — overcapaciteit</label>
-        </div>
-      </div>
-      <div class="err-msg" id="err-1">Beantwoord alle vragen in deze stap.</div>
+      <div class="err-msg" id="err-1">Beantwoord alle stellingen in deze stap.</div>
       <div class="nav-row"><button class="btn-adv" onclick="volgende(1)">Volgende →</button></div>
     </div>
 
-    <!-- STAP 2: Wagenpark & Duurzaamheid -->
+    <!-- STAP 2: Wagenpark -->
     <div class="stap" id="stap-2" style="display:none">
       <div class="sec-lbl">Stap 2 · Wagenpark & Duurzaamheid</div>
-      <div class="vraag">
-        <div class="vraag-lbl">Hoe is de samenstelling van uw wagenpark qua brandstof?</div>
-        <div class="opties">
-          <label class="optie" data-n="wagenpark_type" data-v="volledig_electrisch"><div class="optie-dot"></div>Volledig elektrisch</label>
-          <label class="optie" data-n="wagenpark_type" data-v="overwegend_electrisch"><div class="optie-dot"></div>Overwegend elektrisch (meer dan 60%)</label>
-          <label class="optie" data-n="wagenpark_type" data-v="gemengd"><div class="optie-dot"></div>Gemengd — mix van elektrisch en fossiel</label>
-          <label class="optie" data-n="wagenpark_type" data-v="fossiel"><div class="optie-dot"></div>Overwegend fossiel (diesel/benzine)</label>
+      <div class="q-stack">
+        <div class="q-card" id="qc-wagen_type">
+          <div class="q-text">Ons wagenpark is al grotendeels elektrisch of we zijn daar actief mee bezig.</div>
+          <div class="q-hint">1 = volledig fossiel, geen plannen · 5 = volledig elektrisch</div>
+          <div class="likert" data-q="wagen_type"></div>
+          <div class="likert-axis"><span>Volledig fossiel</span><span>Volledig elektrisch</span></div>
+        </div>
+        <div class="q-card" id="qc-wagen_onderhoud">
+          <div class="q-text">Onze onderhoudskosten per voertuig zijn laag en voorspelbaar.</div>
+          <div class="q-hint">1 = hoog en onvoorspelbaar · 5 = laag en planbaar</div>
+          <div class="likert" data-q="wagen_onderhoud"></div>
+          <div class="likert-axis"><span>Hoog / onvoorspelbaar</span><span>Laag / planbaar</span></div>
+        </div>
+        <div class="q-card" id="qc-laadinfra">
+          <div class="q-text">We hebben de laadinfrastructuur om ons elektrische wagenpark optimaal in te zetten.</div>
+          <div class="q-hint">1 = geen laadinfra / niet van toepassing · 5 = volledig eigen laadinfra</div>
+          <div class="likert" data-q="laadinfra"></div>
+          <div class="likert-axis"><span>Geen / n.v.t.</span><span>Volledig eigen</span></div>
+        </div>
+        <div class="q-card" id="qc-wagen_leeftijd">
+          <div class="q-text">Ons wagenpark is jong en heeft nog jaren mee — geen grote vervangingsinvestering nodig.</div>
+          <div class="q-hint">1 = oud (>8 jaar gemiddeld) · 5 = nieuw (<3 jaar)</div>
+          <div class="likert" data-q="wagen_leeftijd"></div>
+          <div class="likert-axis"><span>Oud (>8 jaar)</span><span>Nieuw (<3 jaar)</span></div>
+        </div>
+        <div class="q-card">
+          <div class="q-text">Wat is uw grootste uitdaging rondom wagenpark? (optioneel)</div>
+          <textarea class="q-open" id="open-wagenpark" placeholder="bijv. actieradius elektrisch bij lange ritten, financiering nieuwe wagens, accu-kosten, laadtijd..."></textarea>
         </div>
       </div>
-      <div class="vraag">
-        <div class="vraag-lbl">Hoe beoordeelt u de onderhoudskosten van uw wagenpark?</div>
-        <div class="opties">
-          <label class="optie" data-n="wagenpark_onderhoud" data-v="laag"><div class="optie-dot"></div>Laag — nieuw wagenpark, weinig storingen</label>
-          <label class="optie" data-n="wagenpark_onderhoud" data-v="gemiddeld"><div class="optie-dot"></div>Gemiddeld — normale slijtage</label>
-          <label class="optie" data-n="wagenpark_onderhoud" data-v="hoog"><div class="optie-dot"></div>Hoog — oud wagenpark of accu-issues</label>
-        </div>
-      </div>
-      <div class="vraag">
-        <div class="vraag-lbl">Heeft u eigen laadinfrastructuur voor elektrische voertuigen?</div>
-        <div class="opties">
-          <label class="optie" data-n="laadinfra" data-v="volledig"><div class="optie-dot"></div>Ja — volledig op eigen terrein</label>
-          <label class="optie" data-n="laadinfra" data-v="deels"><div class="optie-dot"></div>Deels — aangevuld met publiek laden</label>
-          <label class="optie" data-n="laadinfra" data-v="niet_nodig"><div class="optie-dot"></div>Niet van toepassing — geen elektrisch wagenpark</label>
-          <label class="optie" data-n="laadinfra" data-v="nee"><div class="optie-dot"></div>Nee — nog geen eigen laadinfra</label>
-        </div>
-      </div>
-      <div class="vraag">
-        <div class="vraag-lbl">Hoe oud is uw wagenpark gemiddeld?</div>
-        <div class="opties">
-          <label class="optie" data-n="wagenpark_leeftijd" data-v="nieuw"><div class="optie-dot"></div>Jong — minder dan 3 jaar oud</label>
-          <label class="optie" data-n="wagenpark_leeftijd" data-v="middel"><div class="optie-dot"></div>Gemiddeld — 3 tot 7 jaar</label>
-          <label class="optie" data-n="wagenpark_leeftijd" data-v="oud"><div class="optie-dot"></div>Oud — meer dan 7 jaar</label>
-        </div>
-      </div>
-      <div class="err-msg" id="err-2">Beantwoord alle vragen in deze stap.</div>
+      <div class="err-msg" id="err-2">Beantwoord alle stellingen in deze stap.</div>
       <div class="nav-row">
         <button class="btn-ghost" onclick="vorige(2)">← Terug</button>
         <button class="btn-adv" onclick="volgende(2)">Volgende →</button>
       </div>
     </div>
 
-    <!-- STAP 3: Diensten & Markt -->
+    <!-- STAP 3: Markt & Diensten -->
     <div class="stap" id="stap-3" style="display:none">
-      <div class="sec-lbl">Stap 3 · Diensten & Markt</div>
-      <div class="vraag">
-        <div class="vraag-lbl">Hoe groot is het zakelijk aandeel in uw omzet?</div>
-        <div class="opties">
-          <label class="optie" data-n="zakelijk_aandeel" data-v="hoog"><div class="optie-dot"></div>Overwegend zakelijk (meer dan 60%)</label>
-          <label class="optie" data-n="zakelijk_aandeel" data-v="gemiddeld"><div class="optie-dot"></div>Mix van zakelijk en particulier</label>
-          <label class="optie" data-n="zakelijk_aandeel" data-v="laag"><div class="optie-dot"></div>Overwegend particulier</label>
+      <div class="sec-lbl">Stap 3 · Markt & Diensten</div>
+      <div class="q-stack">
+        <div class="q-card" id="qc-zakelijk">
+          <div class="q-text">Ons zakelijk segment (bedrijven, instellingen) groeit en levert hogere marges dan particulier.</div>
+          <div class="q-hint">1 = nauwelijks zakelijk · 5 = sterk zakelijk, groeiend</div>
+          <div class="likert" data-q="zakelijk"></div>
+          <div class="likert-axis"><span>Nauwelijks zakelijk</span><span>Sterk zakelijk</span></div>
+        </div>
+        <div class="q-card" id="qc-internationaal">
+          <div class="q-text">Internationale verhuizingen zijn een significante en groeiende inkomstenbron.</div>
+          <div class="q-hint">1 = doen we niet · 5 = significant deel van omzet</div>
+          <div class="likert" data-q="internationaal"></div>
+          <div class="likert-axis"><span>Doen we niet</span><span>Significant</span></div>
+        </div>
+        <div class="q-card" id="qc-online">
+          <div class="q-text">Klanten vinden ons online en vragen direct een offerte aan — we genereren leads zonder te bellen.</div>
+          <div class="q-hint">1 = alles via mond-tot-mond · 5 = sterk online leadgeneratie</div>
+          <div class="likert" data-q="online"></div>
+          <div class="likert-axis"><span>Mond-tot-mond</span><span>Sterk online</span></div>
+        </div>
+        <div class="q-card" id="qc-tarieven">
+          <div class="q-text">Wij kunnen hogere tarieven vragen dan onze directe concurrenten omdat wij aantoonbaar beter zijn.</div>
+          <div class="q-hint">1 = we concurreren op prijs · 5 = premium positie</div>
+          <div class="likert" data-q="tarieven"></div>
+          <div class="likert-axis"><span>Concurreren op prijs</span><span>Premium positie</span></div>
+        </div>
+        <div class="q-card">
+          <div class="q-text">Welke klantgroep of dienst heeft de meeste groeipotentie voor u? (optioneel)</div>
+          <textarea class="q-open" id="open-markt" placeholder="bijv. relocation voor expats, gemeentelijke projecten, opslag, kantorenverhuizingen..."></textarea>
         </div>
       </div>
-      <div class="vraag">
-        <div class="vraag-lbl">Doet u actief aan internationale verhuizingen?</div>
-        <div class="opties">
-          <label class="optie" data-n="internationaal" data-v="actief"><div class="optie-dot"></div>Ja — significant deel van omzet</label>
-          <label class="optie" data-n="internationaal" data-v="incidenteel"><div class="optie-dot"></div>Incidenteel</label>
-          <label class="optie" data-n="internationaal" data-v="nee"><div class="optie-dot"></div>Nee — alleen binnenlands</label>
-        </div>
-      </div>
-
-      <div class="vraag">
-        <div class="vraag-lbl">Hoe is uw online zichtbaarheid en leadgeneratie?</div>
-        <div class="opties">
-          <label class="optie" data-n="online_zichtbaarheid" data-v="sterk"><div class="optie-dot"></div>Sterk — veel online aanvragen</label>
-          <label class="optie" data-n="online_zichtbaarheid" data-v="matig"><div class="optie-dot"></div>Matig — deels online, deels mond-tot-mond</label>
-          <label class="optie" data-n="online_zichtbaarheid" data-v="zwak"><div class="optie-dot"></div>Weinig online aanwezigheid</label>
-        </div>
-      </div>
-      <div class="err-msg" id="err-3">Beantwoord alle vragen in deze stap.</div>
+      <div class="err-msg" id="err-3">Beantwoord alle stellingen in deze stap.</div>
       <div class="nav-row">
         <button class="btn-ghost" onclick="vorige(3)">← Terug</button>
         <button class="btn-adv" onclick="volgende(3)">Volgende →</button>
@@ -378,81 +392,65 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--b
     <!-- STAP 4: Opslag & Circulair -->
     <div class="stap" id="stap-4" style="display:none">
       <div class="sec-lbl">Stap 4 · Opslag & Circulair</div>
-      <div class="vraag">
-        <div class="vraag-lbl">Heeft u opslagfaciliteiten?</div>
-        <div class="opties">
-          <label class="optie" data-n="opslag_aanwezig" data-v="ja_groot"><div class="optie-dot"></div>Ja — eigen opslag, significant</label>
-          <label class="optie" data-n="opslag_aanwezig" data-v="ja_klein"><div class="optie-dot"></div>Ja — beperkte opslag</label>
-          <label class="optie" data-n="opslag_aanwezig" data-v="nee"><div class="optie-dot"></div>Nee — geen eigen opslag</label>
+      <div class="q-stack">
+        <div class="q-card" id="qc-opslag">
+          <div class="q-text">Onze opslagfaciliteiten zijn goed bezet en leveren een substantiële bijdrage aan de omzet.</div>
+          <div class="q-hint">1 = geen opslag · 5 = eigen opslag, >75% bezet</div>
+          <div class="likert" data-q="opslag"></div>
+          <div class="likert-axis"><span>Geen opslag</span><span>Volle bezetting</span></div>
+        </div>
+        <div class="q-card" id="qc-circulair">
+          <div class="q-text">Circulaire dienstverlening (hergebruik, inzameling, tweedehands) is een groeiend onderdeel van ons bedrijf.</div>
+          <div class="q-hint">1 = doen we niets mee · 5 = kernonderdeel van ons bedrijf</div>
+          <div class="likert" data-q="circulair"></div>
+          <div class="likert-axis"><span>Niets mee</span><span>Kernonderdeel</span></div>
+        </div>
+        <div class="q-card" id="qc-certificaat">
+          <div class="q-text">We hebben relevante certificeringen (EV-keurmerk, ISO, circulair) die ons onderscheiden bij aanbestedingen.</div>
+          <div class="q-hint">1 = geen certificering · 5 = volledig gecertificeerd</div>
+          <div class="likert" data-q="certificaat"></div>
+          <div class="likert-axis"><span>Geen</span><span>Volledig</span></div>
+        </div>
+        <div class="q-card">
+          <div class="q-text">Wat doet u al op het gebied van circulair of duurzaamheid? (optioneel)</div>
+          <textarea class="q-open" id="open-circulair" placeholder="bijv. meubeldepot, samenwerking met kringloopwinkels, CO2-rapportage voor opdrachtgevers..."></textarea>
         </div>
       </div>
-      <div class="vraag">
-        <div class="vraag-lbl">Hoe is de bezettingsgraad van uw opslag?</div>
-        <div class="opties">
-          <label class="optie" data-n="opslag_bezetting" data-v="hoog"><div class="optie-dot"></div>Hoog (meer dan 75% bezet)</label>
-          <label class="optie" data-n="opslag_bezetting" data-v="gemiddeld"><div class="optie-dot"></div>Gemiddeld (40–75%)</label>
-          <label class="optie" data-n="opslag_bezetting" data-v="laag"><div class="optie-dot"></div>Laag of niet van toepassing</label>
-        </div>
-      </div>
-      <div class="vraag">
-        <div class="vraag-lbl">In hoeverre bent u actief met circulaire dienstverlening?</div>
-        <div class="opties">
-          <label class="optie" data-n="circulair_actief" data-v="volledig"><div class="optie-dot"></div>Volledig — kernonderdeel van ons bedrijf</label>
-          <label class="optie" data-n="circulair_actief" data-v="deels"><div class="optie-dot"></div>Deels — we zijn ermee bezig</label>
-          <label class="optie" data-n="circulair_actief" data-v="nee"><div class="optie-dot"></div>Nog niet — interessant voor de toekomst</label>
-        </div>
-      </div>
-      <div class="vraag">
-        <div class="vraag-lbl">Heeft u circulaire certificering of keurmerken?</div>
-        <div class="opties">
-          <label class="optie" data-n="circulair_certificaat" data-v="ja"><div class="optie-dot"></div>Ja — gecertificeerd</label>
-          <label class="optie" data-n="circulair_certificaat" data-v="bezig"><div class="optie-dot"></div>In aanvraag / bezig</label>
-          <label class="optie" data-n="circulair_certificaat" data-v="nee"><div class="optie-dot"></div>Nee</label>
-        </div>
-      </div>
-      <div class="err-msg" id="err-4">Beantwoord alle vragen in deze stap.</div>
+      <div class="err-msg" id="err-4">Beantwoord alle stellingen in deze stap.</div>
       <div class="nav-row">
         <button class="btn-ghost" onclick="vorige(4)">← Terug</button>
         <button class="btn-adv" onclick="volgende(4)">Volgende →</button>
       </div>
     </div>
 
-    <!-- STAP 5: Personeel & Digitalisering -->
+    <!-- STAP 5: Personeel & Digitaal -->
     <div class="stap" id="stap-5" style="display:none">
       <div class="sec-lbl">Stap 5 · Personeel & Digitalisering</div>
-      <div class="vraag">
-        <div class="vraag-lbl">Hoe is de verhouding vast versus flex personeel?</div>
-        <div class="opties">
-          <label class="optie" data-n="personeel_vast" data-v="hoog"><div class="optie-dot"></div>Overwegend vast (meer dan 70%)</label>
-          <label class="optie" data-n="personeel_vast" data-v="gemiddeld"><div class="optie-dot"></div>Gemengd (40–70% vast)</label>
-          <label class="optie" data-n="personeel_vast" data-v="laag"><div class="optie-dot"></div>Overwegend flex</label>
+      <div class="q-stack">
+        <div class="q-card" id="qc-personeel">
+          <div class="q-text">We hebben een stabiel, goed opgeleid team — weinig verloop en geen structurele vacatures.</div>
+          <div class="q-hint">1 = veel verloop, moeilijk te vullen · 5 = stabiel en loyaal team</div>
+          <div class="likert" data-q="personeel"></div>
+          <div class="likert-axis"><span>Veel verloop</span><span>Stabiel team</span></div>
+        </div>
+        <div class="q-card" id="qc-software">
+          <div class="q-text">Onze bedrijfsvoering is volledig digitaal — planning, offertes, facturen en klantcommunicatie via geïntegreerde software.</div>
+          <div class="q-hint">1 = veel handmatig werk / Excel · 5 = volledig geïntegreerd digitaal</div>
+          <div class="likert" data-q="software"></div>
+          <div class="likert-axis"><span>Veel handmatig</span><span>Volledig digitaal</span></div>
+        </div>
+        <div class="q-card" id="qc-offerte">
+          <div class="q-text">Klanten kunnen online een offerte aanvragen en accepteren zonder dat wij handmatig iets hoeven te doen.</div>
+          <div class="q-hint">1 = alles handmatig · 5 = volledig geautomatiseerd</div>
+          <div class="likert" data-q="offerte"></div>
+          <div class="likert-axis"><span>Alles handmatig</span><span>Volledig auto</span></div>
+        </div>
+        <div class="q-card">
+          <div class="q-text">Wat is uw grootste personeels- of digitaliseringsuitdaging? (optioneel)</div>
+          <textarea class="q-open" id="open-personeel" placeholder="bijv. moeilijk chauffeurs vinden, hoog ziekteverzuim, oude planningstool, geen koppeling boekhouding..."></textarea>
         </div>
       </div>
-      <div class="vraag">
-        <div class="vraag-lbl">Hoe is het personeelsverloop bij u?</div>
-        <div class="opties">
-          <label class="optie" data-n="verloop" data-v="laag"><div class="optie-dot"></div>Laag — stabiel team</label>
-          <label class="optie" data-n="verloop" data-v="gemiddeld"><div class="optie-dot"></div>Gemiddeld voor de branche</label>
-          <label class="optie" data-n="verloop" data-v="hoog"><div class="optie-dot"></div>Hoog — uitdagend</label>
-        </div>
-      </div>
-      <div class="vraag">
-        <div class="vraag-lbl">Gebruikt u branchesoftware voor planning en administratie?</div>
-        <div class="opties">
-          <label class="optie" data-n="software" data-v="volledig"><div class="optie-dot"></div>Ja — volledig digitaal (bijv. Moveware, Euromovers)</label>
-          <label class="optie" data-n="software" data-v="deels"><div class="optie-dot"></div>Deels — mix van digitaal en handmatig</label>
-          <label class="optie" data-n="software" data-v="nee"><div class="optie-dot"></div>Weinig — overwegend handmatig</label>
-        </div>
-      </div>
-      <div class="vraag">
-        <div class="vraag-lbl">Kunt u online offertes genereren voor klanten?</div>
-        <div class="opties">
-          <label class="optie" data-n="online_offerte" data-v="ja"><div class="optie-dot"></div>Ja — volledig geautomatiseerd</label>
-          <label class="optie" data-n="online_offerte" data-v="deels"><div class="optie-dot"></div>Deels — formulier maar handmatig opvolgen</label>
-          <label class="optie" data-n="online_offerte" data-v="nee"><div class="optie-dot"></div>Nee — altijd persoonlijk contact eerst</label>
-        </div>
-      </div>
-      <div class="err-msg" id="err-5">Beantwoord alle vragen in deze stap.</div>
+      <div class="err-msg" id="err-5">Beantwoord alle stellingen in deze stap.</div>
       <div class="nav-row">
         <button class="btn-ghost" onclick="vorige(5)">← Terug</button>
         <button class="btn-adv" onclick="volgende(5)">Volgende →</button>
@@ -462,53 +460,31 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--b
     <!-- STAP 6: Strategie -->
     <div class="stap" id="stap-6" style="display:none">
       <div class="sec-lbl">Stap 6 · Strategie & Toekomst</div>
-      <div class="vraag">
-        <div class="vraag-lbl">Wat is uw belangrijkste doel voor de komende 2-3 jaar?</div>
-        <div class="opties">
-          <label class="optie" data-n="doel_periode" data-v="winstoptimalisatie"><div class="optie-dot"></div>Winstgevendheid verbeteren — meer marge uit hetzelfde bedrijf</label>
-          <label class="optie" data-n="doel_periode" data-v="groei"><div class="optie-dot"></div>Groeien — meer omzet, meer klanten, meer marktaandeel</label>
-          <label class="optie" data-n="doel_periode" data-v="verduurzamen"><div class="optie-dot"></div>Verduurzamen — wagenpark, certificering, circulair</label>
-          <label class="optie" data-n="doel_periode" data-v="stabiliseren"><div class="optie-dot"></div>Stabiliseren — goed draaiend houden wat er staat</label>
-          <label class="optie" data-n="doel_periode" data-v="overdracht"><div class="optie-dot"></div>Bedrijf overdragen of verkopen</label>
-          <label class="optie" data-n="doel_periode" data-v="financiering"><div class="optie-dot"></div>Financiering aantrekken voor investering of overname</label>
+      <div class="q-stack">
+        <div class="q-card" id="qc-positie">
+          <div class="q-text">We hebben een uitgesproken positie in de markt — klanten kiezen bewust voor ons, niet alleen op prijs.</div>
+          <div class="q-hint">1 = we zijn een van velen · 5 = duidelijk onderscheidend</div>
+          <div class="likert" data-q="positie"></div>
+          <div class="likert-axis"><span>Een van velen</span><span>Duidelijk onderscheidend</span></div>
+        </div>
+        <div class="q-card" id="qc-opvolging">
+          <div class="q-text">De continuïteit van het bedrijf is geborgd als de eigenaar morgen uitvalt.</div>
+          <div class="q-hint">1 = alles hangt aan mij · 5 = bedrijf draait zonder mij · n.v.t. = onderdeel van groep</div>
+          <div class="likert" data-q="opvolging"></div>
+          <div class="likert-axis"><span>Alles hangt aan mij</span><span>Loopt zonder mij</span></div>
+        </div>
+        <div class="q-card" id="qc-strategie">
+          <div class="q-text">Er is een concreet plan voor de komende 3 jaar — niet alleen in mijn hoofd, maar ook op papier.</div>
+          <div class="q-hint">1 = geen plan · 5 = geschreven plan met KPIs en mijlpalen</div>
+          <div class="likert" data-q="strategie"></div>
+          <div class="likert-axis"><span>Geen plan</span><span>Concreet plan</span></div>
+        </div>
+        <div class="q-card">
+          <div class="q-text">Wat houdt u 's nachts wakker als het om uw bedrijf gaat? (optioneel maar waardevol)</div>
+          <textarea class="q-open" id="open-strategie" placeholder="bijv. opvolging niet geregeld, marge blijft maar dalen, grote concurrent in de regio, te afhankelijk van één klant..."></textarea>
         </div>
       </div>
-      <div class="vraag">
-        <div class="vraag-lbl">Is de opvolging van uw bedrijf geregeld?</div>
-        <div class="opties">
-          <label class="optie" data-n="opvolging" data-v="geregeld"><div class="optie-dot"></div>Ja — intern geregeld of al in uitvoering</label>
-          <label class="optie" data-n="opvolging" data-v="in_behandeling"><div class="optie-dot"></div>We zijn ermee bezig</label>
-          <label class="optie" data-n="opvolging" data-v="niet_geregeld"><div class="optie-dot"></div>Nog niet geregeld</label>
-          <label class="optie" data-n="opvolging" data-v="nvt"><div class="optie-dot"></div>N.v.t. — opvolging speelt niet (bijv. groep/holding)</label>
-        </div>
-      </div>
-      <div class="vraag">
-        <div class="vraag-lbl">Wat is uw strategische horizon?</div>
-        <div class="opties">
-          <label class="optie" data-n="horizon" data-v="lang"><div class="optie-dot"></div>Lang termijn — 10+ jaar bouwen</label>
-          <label class="optie" data-n="horizon" data-v="middel"><div class="optie-dot"></div>Middellang — 3–7 jaar</label>
-          <label class="optie" data-n="horizon" data-v="kort"><div class="optie-dot"></div>Kort — oriëntatie op exit of overdracht</label>
-          <label class="optie" data-n="horizon" data-v="nvt"><div class="optie-dot"></div>N.v.t. — onderdeel van groep, geen zelfstandige horizon</label>
-        </div>
-      </div>
-      <div class="vraag">
-        <div class="vraag-lbl">Heeft u een schriftelijk strategisch plan?</div>
-        <div class="opties">
-          <label class="optie" data-n="strategie" data-v="geschreven"><div class="optie-dot"></div>Ja — actueel plan aanwezig</label>
-          <label class="optie" data-n="strategie" data-v="informeel"><div class="optie-dot"></div>Informeel — in hoofd maar niet op papier</label>
-          <label class="optie" data-n="strategie" data-v="nee"><div class="optie-dot"></div>Nee</label>
-        </div>
-      </div>
-      <div class="vraag">
-        <div class="vraag-lbl">Wat is uw grootste strategische prioriteit?</div>
-        <div class="opties">
-          <label class="optie" data-n="prioriteit" data-v="groei"><div class="optie-dot"></div>Groeien — meer omzet en marktaandeel</label>
-          <label class="optie" data-n="prioriteit" data-v="efficiency"><div class="optie-dot"></div>Efficiënter werken — meer marge</label>
-          <label class="optie" data-n="prioriteit" data-v="overdracht"><div class="optie-dot"></div>Bedrijf overdragen of verkopen</label>
-          <label class="optie" data-n="prioriteit" data-v="duurzaam"><div class="optie-dot"></div>Duurzamer en toekomstbestendiger worden</label>
-        </div>
-      </div>
-      <div class="err-msg" id="err-6">Beantwoord alle vragen in deze stap.</div>
+      <div class="err-msg" id="err-6">Beantwoord alle stellingen in deze stap.</div>
       <div class="nav-row">
         <button class="btn-ghost" onclick="vorige(6)">← Terug</button>
         <button class="btn-adv" id="btn-submit" onclick="verstuur()">Genereer mijn rapport →</button>
@@ -533,13 +509,17 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--b
           </div>
         </div>
         <div class="scores-grid" id="rapp-scores"></div>
+        <div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem 1.5rem;margin-bottom:1.25rem">
+          <div style="font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:1rem">Scoreprofiel per dimensie</div>
+          <div id="rapp-grafiek"></div>
+        </div>
         <div class="rapp-tekst" id="rapp-tekst"></div>
         <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:1rem 1.25rem;margin-top:1.5rem;font-size:11px;color:var(--muted);line-height:1.7">
-          <strong style="color:var(--sub)">Disclaimer</strong> &mdash; Dit rapport is gegenereerd op basis van zelfrapportage en is uitsluitend bedoeld als indicatief strategisch ori&euml;ntatie-instrument. De uitkomsten, scores en aanbevelingen vormen geen formeel advies, geen waarderings- of due diligence-rapport en geen juridisch oordeel. Bisschops Financing BV aanvaardt geen aansprakelijkheid voor beslissingen die (mede) worden genomen op basis van dit rapport. Benchmarkdisclaimer: er zijn geen publiek beschikbare gedetailleerde financi&euml;le benchmarks specifiek voor de verhuisbranche. Deze analyse is gebaseerd op CBS SBI 4942-omzetdata en sectorkennis. &copy; 2026 Bisschops Financing BV &mdash; VerhuisScan.
+          <strong style="color:var(--sub)">Disclaimer</strong> &mdash; Dit rapport is gegenereerd op basis van zelfrapportage en is uitsluitend bedoeld als indicatief strategisch oriëntatie-instrument. De uitkomsten vormen geen formeel advies, geen waarderings- of due diligence-rapport en geen juridisch oordeel. Bisschops Financing BV aanvaardt geen aansprakelijkheid voor beslissingen op basis van dit rapport. Benchmarkdisclaimer: er zijn geen publiek beschikbare gedetailleerde financiële benchmarks specifiek voor de verhuisbranche. Deze analyse is gebaseerd op CBS SBI 4942-omzetdata en sectorkennis. &copy; 2026 Bisschops Financing BV &mdash; VerhuisScan.
         </div>
         <div style="background:var(--teal-bg);border:1.5px solid var(--teal);border-radius:var(--r2);padding:1.5rem 2rem;margin-top:1rem;text-align:center">
-          <div style="font-family:Playfair Display,serif;font-size:1.2rem;color:var(--head);font-weight:600;margin-bottom:.5rem">Wilt u de uitkomsten bespreken?</div>
-          <div style="font-size:13px;color:var(--mid);line-height:1.7;margin-bottom:1rem">Marcel Bisschops is M&amp;A-adviseur gespecialiseerd in verhuisbedrijven &mdash; met een achtergrond in bedrijfsoverdracht, groeifinancering en winstoptimalisatie in de sector. Een gesprek duurt 30 minuten en is vrijblijvend.</div>
+          <div style="font-family:'Playfair Display',serif;font-size:1.2rem;color:var(--head);font-weight:600;margin-bottom:.5rem">Wilt u de uitkomsten bespreken?</div>
+          <div style="font-size:13px;color:var(--mid);line-height:1.7;margin-bottom:1rem">Marcel Bisschops is M&amp;A-adviseur bij Bisschops Financing, gespecialiseerd in bedrijfsoverdracht, groeifinancering en winstoptimalisatie voor MKB-ondernemers. Een gesprek duurt 30 minuten en is vrijblijvend.</div>
           <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap">
             <button id="vs-callback-btn" style="display:inline-flex;align-items:center;gap:8px;background:var(--teal);color:var(--void);font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;padding:10px 20px;border-radius:var(--r);border:none;cursor:pointer">&#128203; Stuur terugbelverzoek</button>
             <button onclick="window.location.href='tel:+31638689888'" style="display:inline-flex;align-items:center;gap:8px;background:var(--teal);color:var(--void);font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;padding:10px 20px;border-radius:var(--r);border:none;cursor:pointer">&#128222; 06 - 38 68 98 88</button>
@@ -556,7 +536,7 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--b
           </div>
         </div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:.75rem;justify-content:space-between;align-items:center">
-          <div style="font-size:12px;color:var(--muted)">&copy; 2026 Bisschops Financing BV &mdash; VerhuisScan. Aanbevelingen zijn indicatief.</div>
+          <div style="font-size:12px;color:var(--muted)">&copy; 2026 Bisschops Financing BV &mdash; VerhuisScan.</div>
           <div style="display:flex;gap:8px">
             <button class="btn-ghost" onclick="setTimeout(function(){window.print()},300)">&#128438; Printen</button>
             <button class="btn-ghost" onclick="location.reload()">Nieuwe scan</button>
@@ -569,49 +549,188 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--b
 
 <script>
 const WORKER = 'https://kantoorinzicht.marcel-bisschops.workers.dev';
-const STAP_NAMEN = ['Financieel','Wagenpark & Duurzaamheid','Diensten & Markt','Opslag & Circulair','Personeel & Digitaal','Strategie'];
+const STAP_NAMEN = ['Financieel','Wagenpark & Duurzaamheid','Markt & Diensten','Opslag & Circulair','Personeel & Digitaal','Strategie'];
 const VERPLICHT = {
-  1:['omzet_groei','marge','debiteurenbeheer','bezettingsgraad'],
-  2:['wagenpark_type','wagenpark_onderhoud','laadinfra','wagenpark_leeftijd'],
-  3:['zakelijk_aandeel','internationaal','online_zichtbaarheid'],
-  4:['opslag_aanwezig','opslag_bezetting','circulair_actief','circulair_certificaat'],
-  5:['personeel_vast','verloop','software','online_offerte'],
-  6:['opvolging','horizon','strategie','prioriteit','doel_periode'],
+  1:['omzet_groei','marge_kw','debiteur','bezetting'],
+  2:['wagen_type','wagen_onderhoud','laadinfra','wagen_leeftijd'],
+  3:['zakelijk','internationaal','online','tarieven'],
+  4:['opslag','circulair','certificaat'],
+  5:['personeel','software','offerte'],
+  6:['positie','opvolging','strategie'],
 };
-let huidig=1;
-const A={};
+const A = {};
 
-function naarIntro(){
+// Render likert knoppen
+document.querySelectorAll('.likert[data-q]').forEach(function(div) {
+  var q = div.dataset.q;
+  for (var n = 1; n <= 5; n++) {
+    var btn = document.createElement('button');
+    btn.className = 'l-btn';
+    btn.textContent = n;
+    btn.dataset.q = q;
+    btn.dataset.v = n;
+    div.appendChild(btn);
+  }
+});
+
+document.addEventListener('click', function(e) {
+  if (e.target.classList.contains('l-btn')) {
+    var q = e.target.dataset.q, v = parseInt(e.target.dataset.v);
+    document.querySelectorAll('.l-btn[data-q="'+q+'"]').forEach(function(b){b.classList.remove('sel');});
+    e.target.classList.add('sel');
+    A[q] = v;
+    var card = document.getElementById('qc-'+q);
+    if (card) card.classList.add('answered');
+  }
+  if (e.target.id === 'vs-callback-btn') vsCallbackModal();
+});
+
+function naarIntro() {
   document.getElementById('pg-gegevens').style.display='none';
   document.getElementById('pg-intro').style.display='flex';
   window.scrollTo(0,0);
 }
-
-function naarGegevens(){
+function naarGegevens() {
   document.getElementById('pg-intro').style.display='none';
   document.getElementById('pg-gegevens').style.display='block';
   window.scrollTo(0,0);
 }
-
-function naarScan(){
+function naarScan() {
   var naam=document.getElementById('g-naam').value.trim();
   var email=document.getElementById('g-email').value.trim();
-  var fte=document.getElementById('g-fte').value;
-  var omzet=document.getElementById('g-omzet').value;
+  var fte=document.getElementById('g-fte').value.trim();
+  var omzet=document.getElementById('g-omzet').value.trim();
+  var ebitda=document.getElementById('g-ebitda').value.trim();
   var type=document.getElementById('g-type').value;
+  var doel=document.getElementById('g-doel').value;
   var err=document.getElementById('g-err');
   var emailRe=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if(!naam){err.style.display='block';err.textContent='Vul de naam van uw bedrijf in.';return;}
   if(!email||!emailRe.test(email)){err.style.display='block';err.textContent='Vul een geldig e-mailadres in.';return;}
-  if(!fte){err.style.display='block';err.textContent='Selecteer het aantal medewerkers.';return;}
-  if(!omzet){err.style.display='block';err.textContent='Selecteer uw jaarlijkse omzet.';return;}
+  if(!fte){err.style.display='block';err.textContent='Vul het aantal medewerkers in.';return;}
+  if(!omzet){err.style.display='block';err.textContent='Vul uw jaarlijkse omzet in.';return;}
+  if(!ebitda){err.style.display='block';err.textContent='Vul uw EBITDA-marge in.';return;}
   if(!type){err.style.display='block';err.textContent='Selecteer het type bedrijf.';return;}
+  if(!doel){err.style.display='block';err.textContent='Selecteer uw doel voor de komende periode.';return;}
   err.style.display='none';
-  // Sla gegevens op
-  A.fte=fte; A.omzet=omzet;
+  A.fte=fte; A.omzet=omzet; A.ebitda=ebitda;
+  A.omzet_wagen=document.getElementById('g-omzet-wagen').value.trim();
+  A.uurtarief=document.getElementById('g-uurtarief').value.trim();
+  A.recurring=document.getElementById('g-recurring').value.trim();
+  A.bedrijf_type=type;
+  A.vestigingen=document.getElementById('g-vestigingen').value;
+  A.wagens_aantal=document.getElementById('g-wagens').value.trim();
+  A.doel_periode=doel;
   document.getElementById('pg-gegevens').style.display='none';
   document.getElementById('pg-scan').style.display='block';
   window.scrollTo(0,0);
+}
+
+function prog(nr) {
+  var pct=Math.round(((nr-1)/6)*100);
+  document.getElementById('prog-fill').style.width=Math.max(5,pct)+'%';
+  document.getElementById('prog-pct').textContent=pct+'%';
+  document.getElementById('prog-txt').textContent=STAP_NAMEN[nr-1]||'';
+  document.getElementById('stap-teller').textContent=nr+' / 6';
+}
+function volgende(nr) {
+  var vp=VERPLICHT[nr]||[];
+  for(var i=0;i<vp.length;i++){if(!A[vp[i]]){document.getElementById('err-'+nr).style.display='block';return;}}
+  document.getElementById('err-'+nr).style.display='none';
+  document.getElementById('stap-'+nr).style.display='none';
+  var next=nr+1;
+  document.getElementById('stap-'+next).style.display='block';
+  prog(next);
+  document.querySelector('.page-wrap').scrollIntoView({behavior:'smooth',block:'start'});
+}
+function vorige(nr) {
+  document.getElementById('stap-'+nr).style.display='none';
+  if(nr===1){
+    document.getElementById('pg-scan').style.display='none';
+    document.getElementById('pg-gegevens').style.display='block';
+    window.scrollTo(0,0);
+    return;
+  }
+  var prev=nr-1;
+  document.getElementById('stap-'+prev).style.display='block';
+  prog(prev);
+  document.querySelector('.page-wrap').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+async function verstuur() {
+  var vp=VERPLICHT[6]||[];
+  for(var i=0;i<vp.length;i++){if(!A[vp[i]]){document.getElementById('err-6').style.display='block';return;}}
+  var btn=document.getElementById('btn-submit');btn.disabled=true;btn.textContent='Versturen...';
+  // Open tekstvelden
+  A.open_financieel=document.getElementById('open-financieel').value.trim();
+  A.open_wagenpark=document.getElementById('open-wagenpark').value.trim();
+  A.open_markt=document.getElementById('open-markt').value.trim();
+  A.open_circulair=document.getElementById('open-circulair').value.trim();
+  A.open_personeel=document.getElementById('open-personeel').value.trim();
+  A.open_strategie=document.getElementById('open-strategie').value.trim();
+  var bedrijfsnaam=document.getElementById('g-naam').value.trim();
+  var email=document.getElementById('g-email').value.trim();
+  var regio=document.getElementById('g-regio').value.trim();
+  try {
+    var r1=await fetch(WORKER+'/verhuis/scan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({antwoorden:A,bedrijfsnaam:bedrijfsnaam,email:email,regio:regio})});
+    var d1=await r1.json();
+    if(!d1.ok)throw new Error(d1.error||'Scan opslaan mislukt');
+    document.getElementById('stap-6').style.display='none';
+    document.getElementById('rapport-wrap').style.display='block';
+    document.getElementById('rapp-naam').textContent=bedrijfsnaam||'Uw verhuisbedrijf';
+    document.getElementById('rapp-datum').textContent=new Date().toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'});
+    document.getElementById('rapp-score').textContent=d1.overall;
+    document.getElementById('rapp-scenario').textContent=d1.topScenario;
+    var sc=d1.scores, html='';
+    Object.entries(sc).forEach(function(e){
+      var k=e[0],v=e[1],kleur=v>=70?'var(--teal)':v>=50?'var(--gold)':'var(--red)';
+      html+='<div class="score-card"><div class="score-lbl">'+k+'</div><div class="score-val" style="color:'+kleur+'">'+v+'</div><div class="score-bar"><div class="score-fill" style="width:'+v+'%;background:'+kleur+'"></div></div></div>';
+    });
+    document.getElementById('rapp-scores').innerHTML=html;
+    // Staafgrafiek
+    var grafiekHtml='';
+    Object.entries(sc).forEach(function(e){
+      var k=e[0],v=e[1],kleur=v>=70?'var(--teal)':v>=50?'var(--gold)':'var(--red)';
+      grafiekHtml+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">'
+        +'<div style="font-size:11px;color:var(--mid);width:170px;flex-shrink:0;text-align:right">'+k+'</div>'
+        +'<div style="flex:1;background:var(--border);border-radius:2px;height:14px;overflow:hidden">'
+          +'<div style="width:'+Math.max(v,2)+'%;background:'+kleur+';height:100%;border-radius:2px"></div>'
+        +'</div>'
+        +'<div style="font-family:IBM Plex Mono,monospace;font-size:11px;font-weight:600;color:'+kleur+';width:32px;flex-shrink:0">'+v+'</div>'
+        +'</div>';
+    });
+    document.getElementById('rapp-grafiek').innerHTML=grafiekHtml;
+    var r2=await fetch(WORKER+'/verhuis/rapport',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:d1.id})});
+    var d2=await r2.json();
+    if(!d2.ok)throw new Error(d2.error||'Rapport genereren mislukt');
+    var raw=d2.tekst
+      .replace(/\r\n/g,'\n')
+      .replace(/([^\n])\n([^\n#>*-])/g,'$1 $2')
+      .replace(/^## (.+)$/gm,'<h2>$1</h2>')
+      .replace(/^> \*\*(.+?)\*\*(.*)$/gm,'<blockquote><strong>$1</strong>$2</blockquote>')
+      .replace(/^> (.+)$/gm,'<blockquote>$1</blockquote>')
+      .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+    var tekst=raw.split('\n\n').map(function(p){
+      p=p.trim();
+      if(!p||p.startsWith('<'))return p;
+      return '<p>'+p+'</p>';
+    }).join('');
+    document.getElementById('rapp-tekst').innerHTML=tekst;
+    document.getElementById('laden').style.display='none';
+    document.getElementById('rapport-content').style.display='block';
+    if(d1.id){
+      document.getElementById('vs-scancode-blok').style.display='block';
+      document.getElementById('vs-scancode-val').textContent=d1.id;
+      document.getElementById('vs-copy-code').onclick=function(){
+        navigator.clipboard.writeText(d1.id).then(function(){
+          document.getElementById('vs-copy-code').textContent='Gekopieerd \u2713';
+        });
+      };
+    }
+    document.querySelector('.page-wrap').scrollIntoView({behavior:'smooth',block:'start'});
+  } catch(e) {
+    document.getElementById('laden').innerHTML='<div style="color:var(--red);font-size:14px;text-align:center;padding:2rem">Fout: '+e.message+'<br><br><button class="btn-ghost" onclick="location.reload()">Opnieuw proberen</button></div>';
+  }
 }
 
 function vsCallbackModal(){
@@ -622,8 +741,8 @@ function vsCallbackModal(){
   mo.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.2rem;color:var(--head);font-weight:600;margin-bottom:.4rem">Terugbelverzoek</div>'
     +'<div style="font-size:13px;color:var(--mid);margin-bottom:1.25rem">Marcel Bisschops neemt binnen 1 werkdag contact op.</div>'
     +'<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:1rem">'
-    +'<div><label style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:4px">Naam *</label><input id="vs-cb-naam" type="text" class="veld" placeholder="Uw naam"></div>'
-    +'<div><label style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:4px">Telefoon of e-mail *</label><input id="vs-cb-contact" type="text" class="veld" placeholder="06-... of u@bedrijf.nl"></div>'
+    +'<div><label style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:4px">Naam</label><input id="vs-cb-naam" type="text" class="veld" placeholder="Uw naam"></div>'
+    +'<div><label style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:4px">Telefoon of e-mail</label><input id="vs-cb-contact" type="text" class="veld" placeholder="06-... of u@bedrijf.nl"></div>'
     +'<div><label style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:4px">Beste beltijd</label><input id="vs-cb-tijd" type="text" class="veld" placeholder="bijv. ochtend of na 14:00"></div>'
     +'</div>'
     +'<div id="vs-cb-status" style="display:none;font-size:13px;color:var(--teal);padding:10px;background:var(--teal-bg);border-radius:var(--r);margin-bottom:1rem">Bedankt! Marcel neemt contact op.</div>'
@@ -655,117 +774,6 @@ function vsCallbackModal(){
     }
   });
 }
-
-document.querySelectorAll('.optie').forEach(function(el){
-  el.addEventListener('click',function(){
-    var n=el.dataset.n,v=el.dataset.v;
-    document.querySelectorAll('.optie[data-n="'+n+'"]').forEach(function(o){o.classList.remove('sel');});
-    el.classList.add('sel');
-    A[n]=v;
-  });
-});
-
-function prog(nr){
-  var pct=Math.round(((nr-1)/6)*100);
-  document.getElementById('prog-fill').style.width=Math.max(5,pct)+'%';
-  document.getElementById('prog-pct').textContent=pct+'%';
-  document.getElementById('prog-txt').textContent=STAP_NAMEN[nr-1]||'';
-  document.getElementById('stap-teller').textContent=nr+' / 6';
-}
-
-function volgende(nr){
-  var vp=VERPLICHT[nr]||[];
-  for(var i=0;i<vp.length;i++){if(!A[vp[i]]){document.getElementById('err-'+nr).style.display='block';return;}}
-  document.getElementById('err-'+nr).style.display='none';
-  document.getElementById('stap-'+nr).style.display='none';
-  huidig=nr+1;
-  document.getElementById('stap-'+huidig).style.display='block';
-  prog(huidig);
-  document.querySelector('.page-wrap').scrollIntoView({behavior:'smooth',block:'start'});
-}
-
-function vorige(nr){
-  document.getElementById('stap-'+nr).style.display='none';
-  if(nr===1){
-    document.getElementById('pg-scan').style.display='none';
-    document.getElementById('pg-gegevens').style.display='block';
-    window.scrollTo(0,0);
-    return;
-  }
-  huidig=nr-1;
-  document.getElementById('stap-'+huidig).style.display='block';
-  prog(huidig);
-  document.querySelector('.page-wrap').scrollIntoView({behavior:'smooth',block:'start'});
-}
-
-async function verstuur(){
-  var vp=VERPLICHT[6]||[];
-  for(var i=0;i<vp.length;i++){if(!A[vp[i]]){document.getElementById('err-6').style.display='block';return;}}
-  var btn=document.getElementById('btn-submit');btn.disabled=true;btn.textContent='Versturen...';
-  var bedrijfsnaam=document.getElementById('g-naam').value.trim();
-  var email=document.getElementById('g-email').value.trim();
-  var regio=document.getElementById('g-regio').value.trim();
-  // Extra afgeleide waarden
-  A.circulair_omzet=A.circulair_actief==='volledig'?'significant':A.circulair_actief==='deels'?'klein':'geen';
-  A.internationaal_groei=A.internationaal==='actief'?'ja':'stabiel';
-  A.opslag_digitaal=A.software==='volledig'?'ja':A.software==='deels'?'deels':'nee';
-  A.opslag_groei=A.opslag_bezetting==='hoog'?'stabiel':'ja';
-  A.mondial_lidmaatschap=A.bedrijf_type==='franchise'?'actief':'nee';
-  A.certificering=A.mondial_lidmaatschap==='actief'?'volledig':'nee';
-  A.vaste_klanten=A.zakelijk_aandeel==='hoog'?'veel':A.zakelijk_aandeel==='gemiddeld'?'enkele':'weinig';
-  A.projecten_complex=A.zakelijk_aandeel==='hoog'?'regelmatig':'incidenteel';
-  A.nieuwe_markten=A.prioriteit==='groei'?'actief':'incidenteel';
-  A.marktpositie=A.online_zichtbaarheid==='sterk'&&A.bedrijf_type==='franchise'?'sterk':A.online_zichtbaarheid==='zwak'?'zwak':'gemiddeld';
-  A.data_gebruik=A.software==='volledig'?'actief':'weinig';
-  A.wagenpark=A.wagenpark_type==='volledig_electrisch'||A.wagenpark_type==='overwegend_electrisch'?'modern':'mix';
-  A.planning=A.software==='volledig'?'digitaal':A.software==='deels'?'deels':'handmatig';
-  // Wagenpark profiel voor rapport
-  A.bedrijf_type=document.getElementById('g-type').value;
-  A.vestigingen=document.getElementById('g-vestigingen').value;
-  A.wagens_aantal=document.getElementById('g-wagens').value;
-
-  try{
-    var r1=await fetch(WORKER+'/verhuis/scan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({antwoorden:A,bedrijfsnaam:bedrijfsnaam,email:email,regio:regio})});
-    var d1=await r1.json();
-    if(!d1.ok)throw new Error(d1.error||'Scan opslaan mislukt');
-    document.getElementById('stap-6').style.display='none';
-    document.getElementById('rapport-wrap').style.display='block';
-    document.getElementById('rapp-naam').textContent=bedrijfsnaam||'Uw verhuisbedrijf';
-    document.getElementById('rapp-datum').textContent=new Date().toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'});
-    document.getElementById('rapp-score').textContent=d1.overall;
-    document.getElementById('rapp-scenario').textContent=d1.topScenario;
-    var sc=d1.scores,html='';
-    Object.entries(sc).forEach(function(e){
-      var k=e[0],v=e[1],kleur=v>=70?'var(--teal)':v>=50?'var(--gold)':'var(--red)';
-      html+='<div class="score-card"><div class="score-lbl">'+k+'</div><div class="score-val" style="color:'+kleur+'">'+v+'</div><div class="score-bar"><div class="score-fill" style="width:'+v+'%;background:'+kleur+'"></div></div></div>';
-    });
-    document.getElementById('rapp-scores').innerHTML=html;
-    var r2=await fetch(WORKER+'/verhuis/rapport',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:d1.id})});
-    var d2=await r2.json();
-    if(!d2.ok)throw new Error(d2.error||'Rapport genereren mislukt');
-    var tekst=d2.tekst.replace(/^## (.+)$/gm,'<h2>$1</h2>').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').split('\n\n').map(function(p){p=p.trim();if(!p||p.startsWith('<'))return p;return '<p>'+p+'</p>';}).join('');
-    document.getElementById('rapp-tekst').innerHTML=tekst;
-    document.getElementById('laden').style.display='none';
-    document.getElementById('rapport-content').style.display='block';
-    document.querySelector('.page-wrap').scrollIntoView({behavior:'smooth',block:'start'});
-    // Toon scancode
-    if(d1.id){
-      document.getElementById('vs-scancode-blok').style.display='block';
-      document.getElementById('vs-scancode-val').textContent=d1.id;
-      document.getElementById('vs-copy-code').onclick=function(){
-        navigator.clipboard.writeText(d1.id).then(function(){
-          document.getElementById('vs-copy-code').textContent='Gekopieerd ✓';
-        });
-      };
-    }
-  }catch(e){
-    document.getElementById('laden').innerHTML='<div style="color:var(--red);font-size:14px;text-align:center;padding:2rem">Fout: '+e.message+'<br><br><button class="btn-ghost" onclick="location.reload()">Opnieuw proberen</button></div>';
-  }
-}
-// Koppel callback knop
-document.addEventListener('click', function(e){
-  if(e.target && e.target.id==='vs-callback-btn') vsCallbackModal();
-});
 </script>
 </body>
 </html>
