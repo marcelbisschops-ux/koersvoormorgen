@@ -204,10 +204,7 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--b
       </div>
     </div>
     <div class="veld-rij">
-      <div class="veld-groep">
-        <div class="veld-lbl">Jaar opgericht</div>
-        <input type="text" class="veld" id="g-jaar" placeholder="bijv. 1952">
-      </div>
+
       <div class="veld-groep">
         <div class="veld-lbl">Type bedrijf <span>*</span></div>
         <select class="veld veld-sel" id="g-type">
@@ -654,7 +651,7 @@ async function verstuur(){
   A.bedrijf_type=document.getElementById('g-type').value;
   A.vestigingen=document.getElementById('g-vestigingen').value;
   A.wagens_aantal=document.getElementById('g-wagens').value;
-  A.oprichtingsjaar=document.getElementById('g-jaar').value;
+
   try{
     var r1=await fetch(WORKER+'/verhuis/scan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({antwoorden:A,bedrijfsnaam:bedrijfsnaam,email:email,regio:regio})});
     var d1=await r1.json();
