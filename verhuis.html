@@ -463,6 +463,17 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--b
     <div class="stap" id="stap-6" style="display:none">
       <div class="sec-lbl">Stap 6 · Strategie & Toekomst</div>
       <div class="vraag">
+        <div class="vraag-lbl">Wat is uw belangrijkste doel voor de komende 2-3 jaar?</div>
+        <div class="opties">
+          <label class="optie" data-n="doel_periode" data-v="winstoptimalisatie"><div class="optie-dot"></div>Winstgevendheid verbeteren — meer marge uit hetzelfde bedrijf</label>
+          <label class="optie" data-n="doel_periode" data-v="groei"><div class="optie-dot"></div>Groeien — meer omzet, meer klanten, meer marktaandeel</label>
+          <label class="optie" data-n="doel_periode" data-v="verduurzamen"><div class="optie-dot"></div>Verduurzamen — wagenpark, certificering, circulair</label>
+          <label class="optie" data-n="doel_periode" data-v="stabiliseren"><div class="optie-dot"></div>Stabiliseren — goed draaiend houden wat er staat</label>
+          <label class="optie" data-n="doel_periode" data-v="overdracht"><div class="optie-dot"></div>Bedrijf overdragen of verkopen</label>
+          <label class="optie" data-n="doel_periode" data-v="financiering"><div class="optie-dot"></div>Financiering aantrekken voor investering of overname</label>
+        </div>
+      </div>
+      <div class="vraag">
         <div class="vraag-lbl">Is de opvolging van uw bedrijf geregeld?</div>
         <div class="opties">
           <label class="optie" data-n="opvolging" data-v="geregeld"><div class="optie-dot"></div>Ja — intern geregeld of al in uitvoering</label>
@@ -528,9 +539,15 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--b
           <button class="btn-ghost" onclick="location.reload()">Nieuwe scan</button>
         </div>
         <div class="cta-blok">
-          <div style="font-size:13px;font-weight:600;color:var(--teal);margin-bottom:.4rem">Wilt u verder praten?</div>
-          <div style="font-size:13px;color:var(--mid);line-height:1.6">Bisschops Financing begeleidt verhuisbedrijven bij groei, overname en bedrijfsoverdracht. Neem vrijblijvend contact op.</div>
-          <a class="cta-link" href="mailto:marcel@bisschopsfinancing.nl">&#8594; marcel@bisschopsfinancing.nl</a>
+          <div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--teal);margin-bottom:.5rem">Wilt u verder praten?</div>
+          <div style="font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:600;color:var(--head);margin-bottom:.5rem">Marcel Bisschops — Bisschops Financing</div>
+          <div style="font-size:13px;color:var(--mid);line-height:1.7;margin-bottom:.85rem">M&amp;A-adviseur gespecialiseerd in verhuisbedrijven. Begeleiding bij winstoptimalisatie, groeifinancering, overname en bedrijfsoverdracht. Een gesprek van 30 minuten geeft u concreet inzicht in wat uw bedrijf nu waard is en wat er nodig is om de volgende stap te zetten.</div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <a class="cta-link" style="display:flex;align-items:center;gap:8px" href="mailto:marcel@bisschopsfinancing.nl">&#9993; marcel@bisschopsfinancing.nl</a>
+            <a class="cta-link" style="display:flex;align-items:center;gap:8px" href="tel:+31638689888">&#128222; 06 - 38 68 98 88</a>
+            <a class="cta-link" style="display:flex;align-items:center;gap:8px" href="https://koersvoormorgen.nl">&#127760; koersvoormorgen.nl</a>
+          </div>
+          <div style="margin-top:.85rem;font-size:11px;color:var(--muted);border-top:1px solid var(--teal-dark);padding-top:.6rem">Benchmarkdisclaimer: Er zijn geen publiek beschikbare gedetailleerde financiële benchmarks specifiek voor de verhuisbranche in Nederland. Deze analyse is gebaseerd op CBS SBI 4942-omzetdata, sectorkennis en M&amp;A-transactiepraktijk. Scores zijn indicatief op basis van zelfrapportage, niet op basis van externe audit.</div>
         </div>
       </div>
     </div>
@@ -546,7 +563,7 @@ const VERPLICHT = {
   3:['zakelijk_aandeel','internationaal','online_zichtbaarheid'],
   4:['opslag_aanwezig','opslag_bezetting','circulair_actief','circulair_certificaat'],
   5:['personeel_vast','verloop','software','online_offerte'],
-  6:['opvolging','horizon','strategie','prioriteit'],
+  6:['opvolging','horizon','strategie','prioriteit','doel_periode'],
 };
 let huidig=1;
 const A={};
