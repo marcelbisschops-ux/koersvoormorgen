@@ -1584,7 +1584,23 @@ function toonNieuwModal(){
   ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
   document.getElementById('m-ann').addEventListener('click',function(){document.body.removeChild(ov);});
   document.getElementById('m-ok').addEventListener('click',async function(){    var kantoor=document.getElementById('m-k').value.trim();
-    if(!kantoor){var er=document.getElementById('m-err');er.style.display='block';er.textContent='Kantoornaam is verplicht.';return;}
+    var contactEmail=document.getElementById('m-e').value.trim();
+    var koperEmail=document.getElementById('m-koper-email').value.trim();
+    var bgEmail=document.getElementById('m-bg-email').value.trim();
+    var erDiv=document.getElementById('m-err');
+    // Verplichte velden check
+    if(!kantoor){erDiv.style.display='block';erDiv.textContent='Kantoornaam is verplicht.';return;}
+    // E-mail format check
+    var emailRe=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if(contactEmail&&!emailRe.test(contactEmail)){erDiv.style.display='block';erDiv.textContent='E-mail contactpersoon heeft geen geldig formaat.';return;}
+    if(koperEmail&&!emailRe.test(koperEmail)){erDiv.style.display='block';erDiv.textContent='E-mail koper heeft geen geldig formaat.';return;}
+    if(bgEmail&&!emailRe.test(bgEmail)){erDiv.style.display='block';erDiv.textContent='E-mail begeleider heeft geen geldig formaat.';return;}
+    // KvK format check (als ingevuld: 8 cijfers)
+    var kvkVerk=document.getElementById('m-kvk')?document.getElementById('m-kvk').value.trim():'';
+    var kvkKop=document.getElementById('m-koper-kvk')?document.getElementById('m-koper-kvk').value.trim():'';
+    if(kvkVerk&&!/^[0-9]{8}$/.test(kvkVerk)){erDiv.style.display='block';erDiv.textContent='KvK-nummer verkoper moet exact 8 cijfers zijn.';return;}
+    if(kvkKop&&!/^[0-9]{8}$/.test(kvkKop)){erDiv.style.display='block';erDiv.textContent='KvK-nummer koper moet exact 8 cijfers zijn.';return;}
+    erDiv.style.display='none';
     var btn=document.getElementById('m-ok');btn.disabled=true;btn.textContent='Aanmaken...';
     document.getElementById('m-err').style.display='none';
     try{
