@@ -17,14 +17,7 @@
   --r:6px;--r2:10px;
 }
 @media(prefers-color-scheme:dark){
-  :root{
-    --void:#1a1917;--panel:#242220;--card:#2e2c29;
-    --border:#3a3835;--border2:#4a4845;--muted:#7a7875;--mid:#a0a09c;
-    --body:#c8c5bc;--sub:#d8d5cc;--head:#f0eeea;--white:#faf9f6;
-    --teal:#22c98a;--teal-dim:#1a9a6a;--teal-dark:#0a5a3a;--teal-bg:rgba(34,197,138,.12);
-    --gold:#e0b85a;--gold-bg:rgba(224,184,90,.12);
-    --red:#f07070;--red-bg:rgba(240,112,112,.12);
-  }
+  :root{--void:#1a1917;--panel:#242220;--card:#2e2c29;--border:#3a3835;--border2:#4a4845;--muted:#7a7875;--mid:#a0a09c;--body:#c8c5bc;--sub:#d8d5cc;--head:#f0eeea;--white:#faf9f6;--teal:#22c98a;--teal-dim:#1a9a6a;--teal-dark:#0a5a3a;--teal-bg:rgba(34,197,138,.12);--gold:#e0b85a;--gold-bg:rgba(224,184,90,.12);--red:#f07070;--red-bg:rgba(240,112,112,.12);}
 }
 html{scroll-behavior:smooth}
 body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--body);min-height:100vh;font-size:15px;line-height:1.6}
@@ -48,22 +41,30 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--b
 .kpi-div{width:1px;height:36px;background:var(--border2);align-self:center}
 .dim-row{display:flex;flex-wrap:wrap;justify-content:center;gap:7px;margin-bottom:2.5rem}
 .dim-chip{font-size:11px;font-weight:500;padding:4px 11px;border-radius:3px;border:1px solid var(--border2);color:var(--mid);background:var(--panel)}
-.intro-foot{margin-top:2rem;font-size:11px;color:var(--muted);display:flex;align-items:center;gap:8px;justify-content:center}
-.intro-foot::before,.intro-foot::after{content:'';flex:1;max-width:80px;height:1px;background:var(--border)}
+.intro-foot{margin-top:1.5rem;font-size:11px;color:var(--muted);line-height:1.7;text-align:center}
+.intro-foot a{color:var(--teal);text-decoration:none}
+.btn-start{background:var(--teal);color:#fff;font-family:'IBM Plex Sans',sans-serif;font-size:14px;font-weight:600;padding:14px 36px;border-radius:var(--r);border:none;cursor:pointer;transition:all .12s;letter-spacing:.02em}
+.btn-start:hover{background:var(--teal-dim);transform:translateY(-1px)}
 
-/* SCAN */
+/* PAGINA GEGEVENS */
 .page-wrap{max-width:680px;margin:0 auto;padding:2rem 2rem 5rem}
 .page-hdr{display:flex;align-items:center;justify-content:space-between;padding:1.5rem 0;border-bottom:1px solid var(--border);margin-bottom:2.5rem}
 .page-brand{font-size:11px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:8px}
 .page-step{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted)}
 .sec-lbl{font-size:10px;font-weight:600;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-bottom:1.5rem;display:flex;align-items:center;gap:10px}
 .sec-lbl::after{content:'';flex:1;height:1px;background:var(--border)}
-
-/* PROGRESS */
 .prog-wrap{margin-bottom:2rem}
 .prog-track{height:2px;background:var(--border);border-radius:1px;overflow:hidden}
 .prog-fill{height:100%;background:var(--teal);border-radius:1px;transition:width .4s ease}
 .prog-lbl{font-size:11px;color:var(--muted);margin-bottom:.5rem;display:flex;justify-content:space-between}
+.veld{width:100%;background:var(--panel);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:'IBM Plex Sans',sans-serif;font-size:13px;padding:10px 12px;outline:none;transition:border-color .12s}
+.veld:focus{border-color:var(--teal)}
+.veld::placeholder{color:var(--muted)}
+.veld-sel{-webkit-appearance:none}
+.veld-rij{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.veld-groep{display:flex;flex-direction:column;gap:5px;margin-bottom:1.1rem}
+.veld-lbl{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.veld-lbl span{color:var(--red)}
 
 /* VRAGEN */
 .vraag{margin-bottom:1.75rem}
@@ -75,25 +76,15 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--b
 .optie-dot{width:14px;height:14px;border-radius:50%;border:1.5px solid var(--border2);flex-shrink:0;transition:all .12s;position:relative}
 .optie.sel .optie-dot{border-color:var(--teal);background:var(--teal)}
 .optie.sel .optie-dot::after{content:'';position:absolute;inset:3px;border-radius:50%;background:#fff}
-
-/* TEKSTVELDEN */
-.veld{width:100%;background:var(--panel);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:'IBM Plex Sans',sans-serif;font-size:13px;padding:10px 12px;outline:none;transition:border-color .12s}
-.veld:focus{border-color:var(--teal)}
-.veld::placeholder{color:var(--muted)}
-
-/* KNOPPEN */
 .btn-adv{background:var(--teal);color:var(--void);font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;padding:10px 24px;border-radius:var(--r);border:none;cursor:pointer;transition:all .12s}
 .btn-adv:hover{background:var(--teal-dim)}
 .btn-adv:disabled{background:var(--border2);color:var(--muted);cursor:default}
 .btn-ghost{background:transparent;border:1px solid var(--border2);color:var(--mid);font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:500;padding:10px 20px;border-radius:var(--r);cursor:pointer;transition:all .12s}
 .btn-ghost:hover{border-color:var(--mid);color:var(--sub)}
-.btn-start{background:var(--teal);color:#fff;font-family:'IBM Plex Sans',sans-serif;font-size:14px;font-weight:600;padding:14px 36px;border-radius:var(--r);border:none;cursor:pointer;transition:all .12s;letter-spacing:.02em}
-.btn-start:hover{background:var(--teal-dim);transform:translateY(-1px)}
 .nav-row{display:flex;gap:10px;margin-top:2rem;align-items:center}
 .err-msg{font-size:12px;color:var(--red);margin-top:.75rem;display:none}
 
 /* RAPPORT */
-#rapport-wrap{display:none}
 .rapp-kop{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:2rem;margin-bottom:1.25rem}
 .rapp-titel{font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:600;color:var(--head);margin-bottom:.25rem}
 .rapp-meta{font-size:12px;color:var(--muted);margin-bottom:1rem}
@@ -112,11 +103,7 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--b
 .rapp-tekst p{margin-bottom:.6rem}
 .rapp-tekst strong{color:var(--sub)}
 .cta-blok{background:var(--teal-bg);border:1px solid var(--teal-dark);border-radius:var(--r2);padding:1.25rem 1.5rem;margin-top:1.5rem}
-.cta-titel{font-size:13px;font-weight:600;color:var(--teal);margin-bottom:.4rem}
-.cta-tekst{font-size:13px;color:var(--mid);line-height:1.6}
 .cta-link{display:inline-block;margin-top:.75rem;font-size:13px;font-weight:600;color:var(--teal);text-decoration:none}
-
-/* LADEN */
 .laden{text-align:center;padding:4rem 2rem;color:var(--muted)}
 .laden-dot{display:inline-flex;gap:6px;margin-bottom:1.5rem}
 .laden-dot span{width:8px;height:8px;border-radius:50%;background:var(--teal);animation:pulse 1.4s ease-in-out infinite}
@@ -127,16 +114,16 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--b
 </head>
 <body>
 
-<!-- INTRO -->
-<div class="intro-wrap" id="intro">
+<!-- INTRO PAGINA -->
+<div class="intro-wrap" id="pg-intro">
   <div class="intro-grid"></div>
   <div class="intro-inner">
     <div class="wordmark"><div class="wdot"></div>VerhuisScan · Bisschops Financing</div>
     <div class="eyebrow">Gratis strategische scan</div>
     <h1 class="intro-h1">Waar staat uw<br>verhuisbedrijf <em>echt?</em></h1>
-    <p class="intro-sub">In 12 minuten een volledig strategisch rapport op 10 dimensies — van financiën tot circulaire strategie en bedrijfsoverdracht.</p>
+    <p class="intro-sub">In 12 minuten een volledig strategisch rapport op 11 dimensies — van financiën en wagenpark tot circulaire strategie en bedrijfsoverdracht.</p>
     <div class="kpi-row">
-      <div class="kpi-item"><div class="kpi-num">10</div><div class="kpi-lbl">Dimensies</div></div>
+      <div class="kpi-item"><div class="kpi-num">11</div><div class="kpi-lbl">Dimensies</div></div>
       <div class="kpi-div"></div>
       <div class="kpi-item"><div class="kpi-num">12</div><div class="kpi-lbl">Minuten</div></div>
       <div class="kpi-div"></div>
@@ -146,6 +133,7 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--b
       <span class="dim-chip">Financieel</span>
       <span class="dim-chip">Markt & Groei</span>
       <span class="dim-chip">Operationeel</span>
+      <span class="dim-chip">Wagenpark & Duurzaamheid</span>
       <span class="dim-chip">Personeel</span>
       <span class="dim-chip">Opslag</span>
       <span class="dim-chip">Circulair</span>
@@ -154,76 +142,127 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--b
       <span class="dim-chip">Digitalisering</span>
       <span class="dim-chip">Strategie & Opvolging</span>
     </div>
-    <button class="btn-start" onclick="startScan()">Start de scan →</button>
-    <div class="intro-foot" style="margin-bottom:2rem">🔒 Versleuteld via HTTPS · Opgeslagen op Cloudflare-servers in Europa (Frankfurt, EU) · Verwerking conform AVG · <a href="https://koersvoormorgen.nl/privacy.html" style="color:var(--teal);text-decoration:none">Privacyverklaring</a></div>
-
-    <div style="max-width:580px;margin:0 auto;background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.5rem 1.75rem;text-align:left">
-      <div style="font-size:10px;font-weight:600;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem;display:flex;align-items:center;gap:8px">Wat is VerhuisScan?<span style="flex:1;height:1px;background:var(--border);display:block"></span></div>
-      <p style="font-size:13px;color:var(--mid);line-height:1.7;margin-bottom:.75rem">VerhuisScan is een strategisch zelfanalyse-instrument voor verhuisbedrijven. De scan geeft inzicht in uw positie op tien strategische dimensies — van financiën en operaties tot circulaire dienstverlening, internationalisering en bedrijfsoverdracht.</p>
-      <p style="font-size:12px;color:var(--muted);line-height:1.6;border-top:1px solid var(--border);padding-top:.75rem;margin-top:.75rem"><strong style="color:var(--sub)">Let op:</strong> Deze scan is uitsluitend bedoeld voor verhuisbedrijven zelf. Gebruik door adviseurs of intermediairs voor klantanalyse zonder licentieafspraak met Bisschops Financing B.V. is niet toegestaan.</p>
-      <div style="margin-top:.75rem;font-size:11px;color:var(--muted);display:flex;gap:12px;flex-wrap:wrap">
-        <span>Vertrouwelijk</span>
-        <span>·</span>
-        <span>Gebaseerd op M&amp;A- en sectorspecifieke criteria</span>
-        <span>·</span>
-        <span>Powered by Claude AI</span>
-      </div>
+    <button class="btn-start" onclick="naarGegevens()">Start de scan →</button>
+    <div class="intro-foot">
+      🔒 Versleuteld via HTTPS · Opgeslagen op Cloudflare-servers in Europa (Frankfurt) · Verwerking conform AVG · <a href="https://koersvoormorgen.nl/privacy.html">Privacyverklaring</a>
+    </div>
+    <div style="max-width:560px;margin:2rem auto 0;background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem 1.5rem;text-align:left">
+      <div style="font-size:10px;font-weight:600;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">Wat is VerhuisScan?</div>
+      <p style="font-size:13px;color:var(--mid);line-height:1.7;margin-bottom:.6rem">Strategisch zelfanalyse-instrument voor verhuisbedrijven. De scan geeft inzicht in uw positie op elf dimensies en maakt inzichtelijk hoe klaar uw bedrijf is voor de volgende fase — van groei en verduurzaming tot overname of overdracht.</p>
+      <p style="font-size:12px;color:var(--muted);border-top:1px solid var(--border);padding-top:.6rem"><strong style="color:var(--sub)">Let op:</strong> Uitsluitend bedoeld voor verhuisbedrijven zelf. Gebruik door adviseurs zonder licentieafspraak met Bisschops Financing B.V. is niet toegestaan.</p>
+      <div style="margin-top:.6rem;font-size:11px;color:var(--muted)">Vertrouwelijk · Gebaseerd op M&amp;A- en sectorspecifieke criteria · Powered by Claude AI</div>
     </div>
   </div>
 </div>
 
-<!-- SCAN -->
-<div id="scan-wrap" style="display:none">
+<!-- BEDRIJFSGEGEVENS PAGINA -->
+<div id="pg-gegevens" style="display:none">
+  <div class="page-wrap">
+    <div class="page-hdr">
+      <div class="page-brand"><div class="wdot"></div>VerhuisScan</div>
+      <div class="page-step mono">Bedrijfsgegevens</div>
+    </div>
+    <div class="sec-lbl">Stap 1 · Uw bedrijf</div>
+    <p style="font-size:13px;color:var(--mid);margin-bottom:1.75rem;line-height:1.6">Deze gegevens bepalen de context van uw rapport. Alle velden met <span style="color:var(--red)">*</span> zijn verplicht.</p>
+
+    <div class="veld-rij">
+      <div class="veld-groep" style="grid-column:1/-1">
+        <div class="veld-lbl">Naam verhuisbedrijf <span>*</span></div>
+        <input type="text" class="veld" id="g-naam" placeholder="bijv. Van Dijk Verhuizingen">
+      </div>
+    </div>
+    <div class="veld-rij">
+      <div class="veld-groep">
+        <div class="veld-lbl">E-mailadres <span>*</span></div>
+        <input type="email" class="veld" id="g-email" placeholder="u@bedrijf.nl">
+      </div>
+      <div class="veld-groep">
+        <div class="veld-lbl">Regio</div>
+        <input type="text" class="veld" id="g-regio" placeholder="bijv. Gelderland">
+      </div>
+    </div>
+    <div class="veld-rij">
+      <div class="veld-groep">
+        <div class="veld-lbl">Aantal medewerkers (FTE) <span>*</span></div>
+        <select class="veld veld-sel" id="g-fte">
+          <option value="">— Kies —</option>
+          <option value="klein">Minder dan 10</option>
+          <option value="middel">10 tot 25</option>
+          <option value="groot">25 tot 50</option>
+          <option value="xlarge">Meer dan 50</option>
+        </select>
+      </div>
+      <div class="veld-groep">
+        <div class="veld-lbl">Jaarlijkse omzet <span>*</span></div>
+        <select class="veld veld-sel" id="g-omzet">
+          <option value="">— Kies —</option>
+          <option value="klein">Minder dan €1 miljoen</option>
+          <option value="middel">€1 tot €3 miljoen</option>
+          <option value="groot">€3 tot €7 miljoen</option>
+          <option value="xlarge">Meer dan €7 miljoen</option>
+        </select>
+      </div>
+    </div>
+    <div class="veld-rij">
+      <div class="veld-groep">
+        <div class="veld-lbl">Jaar opgericht</div>
+        <input type="text" class="veld" id="g-jaar" placeholder="bijv. 1952">
+      </div>
+      <div class="veld-groep">
+        <div class="veld-lbl">Type bedrijf <span>*</span></div>
+        <select class="veld veld-sel" id="g-type">
+          <option value="">— Kies —</option>
+          <option value="zelfstandig">Zelfstandig verhuisbedrijf</option>
+          <option value="franchise">Onderdeel van franchise/netwerk (bijv. Mondial)</option>
+          <option value="groep">Onderdeel van een groep/holding</option>
+          <option value="familiebedrijf">Familiebedrijf</option>
+        </select>
+      </div>
+    </div>
+    <div class="veld-rij">
+      <div class="veld-groep">
+        <div class="veld-lbl">Aantal vestigingen</div>
+        <select class="veld veld-sel" id="g-vestigingen">
+          <option value="1">1 vestiging</option>
+          <option value="2-3">2 tot 3 vestigingen</option>
+          <option value="4+">4 of meer vestigingen</option>
+        </select>
+      </div>
+      <div class="veld-groep">
+        <div class="veld-lbl">Wagenpark (aantal voertuigen)</div>
+        <select class="veld veld-sel" id="g-wagens">
+          <option value="">— Kies —</option>
+          <option value="klein">1 tot 5 voertuigen</option>
+          <option value="middel">6 tot 15 voertuigen</option>
+          <option value="groot">16 tot 30 voertuigen</option>
+          <option value="xlarge">Meer dan 30 voertuigen</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="g-err" style="display:none;font-size:12px;color:var(--red);margin-bottom:.75rem"></div>
+    <div class="nav-row">
+      <button class="btn-ghost" onclick="naarIntro()">← Terug</button>
+      <button class="btn-adv" onclick="naarScan()">Naar de vragenlijst →</button>
+    </div>
+  </div>
+</div>
+
+<!-- VRAGENLIJST -->
+<div id="pg-scan" style="display:none">
   <div class="page-wrap">
     <div class="page-hdr">
       <div class="page-brand"><div class="wdot"></div>VerhuisScan</div>
       <div class="page-step mono" id="stap-teller">1 / 6</div>
     </div>
     <div class="prog-wrap">
-      <div class="prog-lbl"><span id="prog-txt">Bedrijfsprofiel</span><span id="prog-pct">0%</span></div>
+      <div class="prog-lbl"><span id="prog-txt">Financieel</span><span id="prog-pct">0%</span></div>
       <div class="prog-track"><div class="prog-fill" id="prog-fill" style="width:5%"></div></div>
     </div>
 
-    <!-- STAP 1 -->
+    <!-- STAP 1: Financieel -->
     <div class="stap" id="stap-1">
-      <div class="sec-lbl">Stap 1 · Bedrijfsprofiel</div>
-      <div class="vraag">
-        <div class="vraag-lbl">Naam van uw verhuisbedrijf <span style="color:var(--red)">*</span></div>
-        <input type="text" class="veld" id="a-bedrijfsnaam" placeholder="bijv. Van Dijk Verhuizingen">
-      </div>
-      <div class="vraag">
-        <div class="vraag-lbl">In welke regio bent u actief?</div>
-        <input type="text" class="veld" id="a-regio" placeholder="bijv. Gelderland / Landelijk">
-      </div>
-      <div class="vraag">
-        <div class="vraag-lbl">E-mailadres voor uw rapport <span style="color:var(--red)">*</span></div>
-        <input type="email" class="veld" id="a-email" placeholder="u@bedrijf.nl">
-      </div>
-      <div class="vraag">
-        <div class="vraag-lbl">Hoe groot is uw bedrijf?</div>
-        <div class="opties">
-          <label class="optie" data-n="fte" data-v="klein"><div class="optie-dot"></div>Minder dan 10 medewerkers</label>
-          <label class="optie" data-n="fte" data-v="middel"><div class="optie-dot"></div>10 tot 25 medewerkers</label>
-          <label class="optie" data-n="fte" data-v="groot"><div class="optie-dot"></div>25 tot 50 medewerkers</label>
-          <label class="optie" data-n="fte" data-v="xlarge"><div class="optie-dot"></div>Meer dan 50 medewerkers</label>
-        </div>
-      </div>
-      <div class="vraag">
-        <div class="vraag-lbl">Wat is uw jaarlijkse omzet?</div>
-        <div class="opties">
-          <label class="optie" data-n="omzet" data-v="klein"><div class="optie-dot"></div>Minder dan €1 miljoen</label>
-          <label class="optie" data-n="omzet" data-v="middel"><div class="optie-dot"></div>€1 tot €3 miljoen</label>
-          <label class="optie" data-n="omzet" data-v="groot"><div class="optie-dot"></div>€3 tot €7 miljoen</label>
-          <label class="optie" data-n="omzet" data-v="xlarge"><div class="optie-dot"></div>Meer dan €7 miljoen</label>
-        </div>
-      </div>
-      <div class="err-msg" id="err-1">Selecteer minimaal bedrijfsgrootte en omzet.</div>
-      <div class="nav-row"><button class="btn-adv" onclick="volgende(1)">Volgende →</button></div>
-    </div>
-
-    <!-- STAP 2 -->
-    <div class="stap" id="stap-2" style="display:none">
-      <div class="sec-lbl">Stap 2 · Financieel & Operationeel</div>
+      <div class="sec-lbl">Stap 1 · Financieel</div>
       <div class="vraag">
         <div class="vraag-lbl">Hoe ontwikkelt uw omzet zich de laatste 2 jaar?</div>
         <div class="opties">
@@ -256,6 +295,47 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--b
           <label class="optie" data-n="bezettingsgraad" data-v="laag"><div class="optie-dot"></div>Laag — overcapaciteit</label>
         </div>
       </div>
+      <div class="err-msg" id="err-1">Beantwoord alle vragen in deze stap.</div>
+      <div class="nav-row"><button class="btn-adv" onclick="volgende(1)">Volgende →</button></div>
+    </div>
+
+    <!-- STAP 2: Wagenpark & Duurzaamheid -->
+    <div class="stap" id="stap-2" style="display:none">
+      <div class="sec-lbl">Stap 2 · Wagenpark & Duurzaamheid</div>
+      <div class="vraag">
+        <div class="vraag-lbl">Hoe is de samenstelling van uw wagenpark qua brandstof?</div>
+        <div class="opties">
+          <label class="optie" data-n="wagenpark_type" data-v="volledig_electrisch"><div class="optie-dot"></div>Volledig elektrisch</label>
+          <label class="optie" data-n="wagenpark_type" data-v="overwegend_electrisch"><div class="optie-dot"></div>Overwegend elektrisch (meer dan 60%)</label>
+          <label class="optie" data-n="wagenpark_type" data-v="gemengd"><div class="optie-dot"></div>Gemengd — mix van elektrisch en fossiel</label>
+          <label class="optie" data-n="wagenpark_type" data-v="fossiel"><div class="optie-dot"></div>Overwegend fossiel (diesel/benzine)</label>
+        </div>
+      </div>
+      <div class="vraag">
+        <div class="vraag-lbl">Hoe beoordeelt u de onderhoudskosten van uw wagenpark?</div>
+        <div class="opties">
+          <label class="optie" data-n="wagenpark_onderhoud" data-v="laag"><div class="optie-dot"></div>Laag — nieuw wagenpark, weinig storingen</label>
+          <label class="optie" data-n="wagenpark_onderhoud" data-v="gemiddeld"><div class="optie-dot"></div>Gemiddeld — normale slijtage</label>
+          <label class="optie" data-n="wagenpark_onderhoud" data-v="hoog"><div class="optie-dot"></div>Hoog — oud wagenpark of accu-issues</label>
+        </div>
+      </div>
+      <div class="vraag">
+        <div class="vraag-lbl">Heeft u eigen laadinfrastructuur voor elektrische voertuigen?</div>
+        <div class="opties">
+          <label class="optie" data-n="laadinfra" data-v="volledig"><div class="optie-dot"></div>Ja — volledig op eigen terrein</label>
+          <label class="optie" data-n="laadinfra" data-v="deels"><div class="optie-dot"></div>Deels — aangevuld met publiek laden</label>
+          <label class="optie" data-n="laadinfra" data-v="niet_nodig"><div class="optie-dot"></div>Niet van toepassing — geen elektrisch wagenpark</label>
+          <label class="optie" data-n="laadinfra" data-v="nee"><div class="optie-dot"></div>Nee — nog geen eigen laadinfra</label>
+        </div>
+      </div>
+      <div class="vraag">
+        <div class="vraag-lbl">Hoe oud is uw wagenpark gemiddeld?</div>
+        <div class="opties">
+          <label class="optie" data-n="wagenpark_leeftijd" data-v="nieuw"><div class="optie-dot"></div>Jong — minder dan 3 jaar oud</label>
+          <label class="optie" data-n="wagenpark_leeftijd" data-v="middel"><div class="optie-dot"></div>Gemiddeld — 3 tot 7 jaar</label>
+          <label class="optie" data-n="wagenpark_leeftijd" data-v="oud"><div class="optie-dot"></div>Oud — meer dan 7 jaar</label>
+        </div>
+      </div>
       <div class="err-msg" id="err-2">Beantwoord alle vragen in deze stap.</div>
       <div class="nav-row">
         <button class="btn-ghost" onclick="vorige(2)">← Terug</button>
@@ -263,7 +343,7 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--b
       </div>
     </div>
 
-    <!-- STAP 3 -->
+    <!-- STAP 3: Diensten & Markt -->
     <div class="stap" id="stap-3" style="display:none">
       <div class="sec-lbl">Stap 3 · Diensten & Markt</div>
       <div class="vraag">
@@ -305,7 +385,7 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--b
       </div>
     </div>
 
-    <!-- STAP 4 -->
+    <!-- STAP 4: Opslag & Circulair -->
     <div class="stap" id="stap-4" style="display:none">
       <div class="sec-lbl">Stap 4 · Opslag & Circulair</div>
       <div class="vraag">
@@ -347,7 +427,7 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--b
       </div>
     </div>
 
-    <!-- STAP 5 -->
+    <!-- STAP 5: Personeel & Digitalisering -->
     <div class="stap" id="stap-5" style="display:none">
       <div class="sec-lbl">Stap 5 · Personeel & Digitalisering</div>
       <div class="vraag">
@@ -389,7 +469,7 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--b
       </div>
     </div>
 
-    <!-- STAP 6 -->
+    <!-- STAP 6: Strategie -->
     <div class="stap" id="stap-6" style="display:none">
       <div class="sec-lbl">Stap 6 · Strategie & Toekomst</div>
       <div class="vraag">
@@ -456,9 +536,9 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--b
           <button class="btn-ghost" onclick="location.reload()">Nieuwe scan</button>
         </div>
         <div class="cta-blok">
-          <div class="cta-titel">Wilt u verder praten?</div>
-          <div class="cta-tekst">Bisschops Financing begeleidt verhuisbedrijven bij groei, overname en bedrijfsoverdracht. Neem vrijblijvend contact op.</div>
-          <a class="cta-link" href="mailto:marcel@bisschopsfinancing.nl">→ marcel@bisschopsfinancing.nl</a>
+          <div style="font-size:13px;font-weight:600;color:var(--teal);margin-bottom:.4rem">Wilt u verder praten?</div>
+          <div style="font-size:13px;color:var(--mid);line-height:1.6">Bisschops Financing begeleidt verhuisbedrijven bij groei, overname en bedrijfsoverdracht. Neem vrijblijvend contact op.</div>
+          <a class="cta-link" href="mailto:marcel@bisschopsfinancing.nl">&#8594; marcel@bisschopsfinancing.nl</a>
         </div>
       </div>
     </div>
@@ -467,43 +547,70 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--b
 
 <script>
 const WORKER = 'https://kantoorinzicht.marcel-bisschops.workers.dev';
-const STAP_NAMEN = ['Bedrijfsprofiel','Financieel','Diensten & Markt','Opslag & Circulair','Personeel','Strategie'];
+const STAP_NAMEN = ['Financieel','Wagenpark & Duurzaamheid','Diensten & Markt','Opslag & Circulair','Personeel & Digitaal','Strategie'];
 const VERPLICHT = {
-  1:['fte','omzet'],
-  2:['omzet_groei','marge','debiteurenbeheer','bezettingsgraad'],
+  1:['omzet_groei','marge','debiteurenbeheer','bezettingsgraad'],
+  2:['wagenpark_type','wagenpark_onderhoud','laadinfra','wagenpark_leeftijd'],
   3:['zakelijk_aandeel','internationaal','mondial_lidmaatschap','online_zichtbaarheid'],
   4:['opslag_aanwezig','opslag_bezetting','circulair_actief','circulair_certificaat'],
   5:['personeel_vast','verloop','software','online_offerte'],
   6:['opvolging','horizon','strategie','prioriteit'],
 };
-let huidig = 1;
-const A = {};
+let huidig=1;
+const A={};
 
-function startScan() {
-  document.getElementById('intro').style.display = 'none';
-  document.getElementById('scan-wrap').style.display = 'block';
-  window.scrollTo(0, 0);
+function naarIntro(){
+  document.getElementById('pg-gegevens').style.display='none';
+  document.getElementById('pg-intro').style.display='flex';
+  window.scrollTo(0,0);
 }
 
-document.querySelectorAll('.optie').forEach(function(el) {
-  el.addEventListener('click', function() {
-    var n = el.dataset.n, v = el.dataset.v;
+function naarGegevens(){
+  document.getElementById('pg-intro').style.display='none';
+  document.getElementById('pg-gegevens').style.display='block';
+  window.scrollTo(0,0);
+}
+
+function naarScan(){
+  var naam=document.getElementById('g-naam').value.trim();
+  var email=document.getElementById('g-email').value.trim();
+  var fte=document.getElementById('g-fte').value;
+  var omzet=document.getElementById('g-omzet').value;
+  var type=document.getElementById('g-type').value;
+  var err=document.getElementById('g-err');
+  var emailRe=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if(!naam){err.style.display='block';err.textContent='Vul de naam van uw bedrijf in.';return;}
+  if(!email||!emailRe.test(email)){err.style.display='block';err.textContent='Vul een geldig e-mailadres in.';return;}
+  if(!fte){err.style.display='block';err.textContent='Selecteer het aantal medewerkers.';return;}
+  if(!omzet){err.style.display='block';err.textContent='Selecteer uw jaarlijkse omzet.';return;}
+  if(!type){err.style.display='block';err.textContent='Selecteer het type bedrijf.';return;}
+  err.style.display='none';
+  // Sla gegevens op
+  A.fte=fte; A.omzet=omzet;
+  document.getElementById('pg-gegevens').style.display='none';
+  document.getElementById('pg-scan').style.display='block';
+  window.scrollTo(0,0);
+}
+
+document.querySelectorAll('.optie').forEach(function(el){
+  el.addEventListener('click',function(){
+    var n=el.dataset.n,v=el.dataset.v;
     document.querySelectorAll('.optie[data-n="'+n+'"]').forEach(function(o){o.classList.remove('sel');});
     el.classList.add('sel');
-    A[n] = v;
+    A[n]=v;
   });
 });
 
-function prog(nr) {
-  var pct = Math.round(((nr-1)/6)*100);
-  document.getElementById('prog-fill').style.width = Math.max(5,pct)+'%';
-  document.getElementById('prog-pct').textContent = pct+'%';
-  document.getElementById('prog-txt').textContent = STAP_NAMEN[nr-1]||'';
-  document.getElementById('stap-teller').textContent = nr+' / 6';
+function prog(nr){
+  var pct=Math.round(((nr-1)/6)*100);
+  document.getElementById('prog-fill').style.width=Math.max(5,pct)+'%';
+  document.getElementById('prog-pct').textContent=pct+'%';
+  document.getElementById('prog-txt').textContent=STAP_NAMEN[nr-1]||'';
+  document.getElementById('stap-teller').textContent=nr+' / 6';
 }
 
-function volgende(nr) {
-  var vp = VERPLICHT[nr]||[];
+function volgende(nr){
+  var vp=VERPLICHT[nr]||[];
   for(var i=0;i<vp.length;i++){if(!A[vp[i]]){document.getElementById('err-'+nr).style.display='block';return;}}
   document.getElementById('err-'+nr).style.display='none';
   document.getElementById('stap-'+nr).style.display='none';
@@ -513,24 +620,28 @@ function volgende(nr) {
   document.querySelector('.page-wrap').scrollIntoView({behavior:'smooth',block:'start'});
 }
 
-function vorige(nr) {
+function vorige(nr){
   document.getElementById('stap-'+nr).style.display='none';
+  if(nr===1){
+    document.getElementById('pg-scan').style.display='none';
+    document.getElementById('pg-gegevens').style.display='block';
+    window.scrollTo(0,0);
+    return;
+  }
   huidig=nr-1;
   document.getElementById('stap-'+huidig).style.display='block';
   prog(huidig);
   document.querySelector('.page-wrap').scrollIntoView({behavior:'smooth',block:'start'});
 }
 
-async function verstuur() {
-  var vp = VERPLICHT[6]||[];
+async function verstuur(){
+  var vp=VERPLICHT[6]||[];
   for(var i=0;i<vp.length;i++){if(!A[vp[i]]){document.getElementById('err-6').style.display='block';return;}}
   var btn=document.getElementById('btn-submit');btn.disabled=true;btn.textContent='Versturen...';
-  var bedrijfsnaam=document.getElementById('a-bedrijfsnaam').value.trim();
-  var email=document.getElementById('a-email').value.trim();
-  var emailRe=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if(!bedrijfsnaam){btn.disabled=false;btn.textContent='Genereer mijn rapport →';alert('Vul de naam van uw bedrijf in.');return;}
-  if(!email||!emailRe.test(email)){btn.disabled=false;btn.textContent='Genereer mijn rapport →';alert('Vul een geldig e-mailadres in.');return;}
-  var regio=document.getElementById('a-regio').value.trim();
+  var bedrijfsnaam=document.getElementById('g-naam').value.trim();
+  var email=document.getElementById('g-email').value.trim();
+  var regio=document.getElementById('g-regio').value.trim();
+  // Extra afgeleide waarden
   A.circulair_omzet=A.circulair_actief==='volledig'?'significant':A.circulair_actief==='deels'?'klein':'geen';
   A.internationaal_groei=A.internationaal==='actief'?'ja':'stabiel';
   A.opslag_digitaal=A.software==='volledig'?'ja':A.software==='deels'?'deels':'nee';
@@ -541,10 +652,15 @@ async function verstuur() {
   A.nieuwe_markten=A.prioriteit==='groei'?'actief':'incidenteel';
   A.marktpositie=A.online_zichtbaarheid==='sterk'&&A.mondial_lidmaatschap==='actief'?'sterk':A.online_zichtbaarheid==='zwak'?'zwak':'gemiddeld';
   A.data_gebruik=A.software==='volledig'?'actief':'weinig';
-  A.wagenpark=A.bezettingsgraad==='hoog'?'modern':'mix';
+  A.wagenpark=A.wagenpark_type==='volledig_electrisch'||A.wagenpark_type==='overwegend_electrisch'?'modern':'mix';
   A.planning=A.software==='volledig'?'digitaal':A.software==='deels'?'deels':'handmatig';
+  // Wagenpark profiel voor rapport
+  A.bedrijf_type=document.getElementById('g-type').value;
+  A.vestigingen=document.getElementById('g-vestigingen').value;
+  A.wagens_aantal=document.getElementById('g-wagens').value;
+  A.oprichtingsjaar=document.getElementById('g-jaar').value;
   try{
-    var r1=await fetch(WORKER+'/verhuis/scan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({antwoorden:A,bedrijfsnaam,email,regio})});
+    var r1=await fetch(WORKER+'/verhuis/scan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({antwoorden:A,bedrijfsnaam:bedrijfsnaam,email:email,regio:regio})});
     var d1=await r1.json();
     if(!d1.ok)throw new Error(d1.error||'Scan opslaan mislukt');
     document.getElementById('stap-6').style.display='none';
