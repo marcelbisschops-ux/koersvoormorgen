@@ -188,7 +188,7 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--b
     <div class="stap" id="stap-1">
       <div class="sec-lbl">Stap 1 · Bedrijfsprofiel</div>
       <div class="vraag">
-        <div class="vraag-lbl">Naam van uw verhuisbedrijf <span style="color:var(--muted);font-weight:400">(optioneel)</span></div>
+        <div class="vraag-lbl">Naam van uw verhuisbedrijf <span style="color:var(--red)">*</span></div>
         <input type="text" class="veld" id="a-bedrijfsnaam" placeholder="bijv. Van Dijk Verhuizingen">
       </div>
       <div class="vraag">
@@ -196,7 +196,7 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--b
         <input type="text" class="veld" id="a-regio" placeholder="bijv. Gelderland / Landelijk">
       </div>
       <div class="vraag">
-        <div class="vraag-lbl">E-mailadres voor uw rapport <span style="color:var(--muted);font-weight:400">(optioneel)</span></div>
+        <div class="vraag-lbl">E-mailadres voor uw rapport <span style="color:var(--red)">*</span></div>
         <input type="email" class="veld" id="a-email" placeholder="u@bedrijf.nl">
       </div>
       <div class="vraag">
@@ -527,6 +527,9 @@ async function verstuur() {
   var btn=document.getElementById('btn-submit');btn.disabled=true;btn.textContent='Versturen...';
   var bedrijfsnaam=document.getElementById('a-bedrijfsnaam').value.trim();
   var email=document.getElementById('a-email').value.trim();
+  var emailRe=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if(!bedrijfsnaam){btn.disabled=false;btn.textContent='Genereer mijn rapport →';alert('Vul de naam van uw bedrijf in.');return;}
+  if(!email||!emailRe.test(email)){btn.disabled=false;btn.textContent='Genereer mijn rapport →';alert('Vul een geldig e-mailadres in.');return;}
   var regio=document.getElementById('a-regio').value.trim();
   A.circulair_omzet=A.circulair_actief==='volledig'?'significant':A.circulair_actief==='deels'?'klein':'geen';
   A.internationaal_groei=A.internationaal==='actief'?'ja':'stabiel';
