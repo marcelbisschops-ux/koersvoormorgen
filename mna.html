@@ -1,0 +1,1640 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>M&A Begeleiding - KantoorInzicht</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--void:#faf9f6;--panel:#fff;--card:#f0eeea;--border:#dddbd4;--border2:#c8c5bc;--muted:#8a8880;--mid:#5a5854;--sub:#2a2825;--head:#1a1815;--teal:#1a7a5e;--teal-dim:#145f48;--teal-dark:#0a3d2e;--teal-bg:rgba(34,197,160,.1);--gold:#c9a84c;--gold-bg:rgba(201,168,76,.12);--red:#e05252;--red-bg:rgba(224,82,82,.1);--r:6px;--r2:10px}
+body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--sub);min-height:100vh;font-size:14px;line-height:1.6}
+#app{min-height:100vh}
+.wrap{max-width:960px;margin:0 auto;padding:2rem 2rem 5rem}
+.narrow{max-width:640px;margin:0 auto}
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:1.25rem 0;border-bottom:1px solid var(--border);margin-bottom:2rem}
+.brand{font-size:11px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:8px}
+.wdot{width:6px;height:6px;border-radius:50%;background:var(--teal)}
+.btn{background:var(--teal);color:#fff;font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;padding:9px 20px;border-radius:var(--r);border:none;cursor:pointer}
+.btn:hover{background:var(--teal-dim)}
+.btn:disabled{background:var(--border2);color:var(--muted);cursor:default}
+.btn-ghost{background:transparent;border:1px solid var(--border2);color:var(--mid);font-family:'IBM Plex Sans',sans-serif;font-size:13px;padding:9px 18px;border-radius:var(--r);cursor:pointer}
+.btn-ghost:hover{border-color:var(--mid);color:var(--sub)}
+.btn-sm{font-size:11px;padding:5px 12px}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.5rem;margin-bottom:1.25rem}
+.f{display:flex;flex-direction:column;gap:4px}
+.f label{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.f label .req{color:var(--red)}
+.f input,.f textarea,.f select{background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:'IBM Plex Sans',sans-serif;font-size:13px;padding:8px 11px;outline:none;width:100%;transition:border-color .12s}
+.f input:focus,.f textarea:focus{border-color:var(--teal)}
+.f input.missing{border-color:var(--red);background:var(--red-bg)}
+.f textarea{resize:vertical;min-height:60px}
+.f input::placeholder,.f textarea::placeholder{color:var(--muted)}
+.data-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:1rem}
+@media(max-width:600px){.data-grid{grid-template-columns:1fr}}
+.sec-hdr{font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem;display:flex;align-items:center;gap:8px}
+.sec-hdr::after{content:'';flex:1;height:1px;background:var(--border)}
+.prog-bar{height:4px;background:var(--border2);border-radius:2px;overflow:hidden;margin-bottom:1.5rem}
+.prog-fill{height:100%;background:var(--teal);border-radius:2px;transition:width .5s}
+/* Checklist - only for MNA view */
+.chk-item{display:flex;align-items:flex-start;gap:9px;padding:8px 11px;background:var(--panel);border:1px solid var(--border);border-radius:var(--r);cursor:pointer;margin-bottom:5px;user-select:none;-webkit-user-select:none}
+.chk-item:hover{border-color:var(--border2)}
+.chk-item.on{border-color:var(--teal);background:var(--teal-bg)}
+.chk-item.rf{border-color:var(--red)}
+.chk-item.rf.on{background:rgba(224,82,82,.1)}
+.chk-box{width:15px;height:15px;border-radius:3px;border:1.5px solid var(--border2);flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700}
+.chk-item.on .chk-box{background:var(--teal);border-color:var(--teal);color:#fff}
+.chk-item.rf .chk-box{border-color:var(--red)}
+.chk-item.rf.on .chk-box{background:var(--red);border-color:var(--red);color:#fff}
+.chk-lbl{font-size:13px;color:var(--sub);line-height:1.5;flex:1}
+.chk-item.on .chk-lbl{color:var(--teal-dim)}
+.chk-item.rf .chk-lbl{color:var(--red)}
+/* AI panel */
+.ai-panel{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);overflow:hidden;margin-top:1.5rem}
+.ai-hdr{display:flex;align-items:center;justify-content:space-between;padding:.9rem 1.25rem;background:var(--card);border-bottom:1px solid var(--border);flex-wrap:wrap;gap:.6rem}
+.ai-title{font-family:'Playfair Display',serif;font-size:.9rem;color:var(--head);font-weight:600}
+.ai-sub{font-size:10px;color:var(--muted)}
+.btn-gen{display:flex;align-items:center;gap:6px;background:var(--teal);color:#fff;font-family:'IBM Plex Sans',sans-serif;font-size:12px;font-weight:600;padding:7px 14px;border-radius:var(--r);border:none;cursor:pointer}
+.btn-gen:hover{background:var(--teal-dim)}
+.btn-gen:disabled{background:var(--border2);color:var(--muted);cursor:default}
+.ai-body{padding:1.1rem 1.25rem;font-size:13px;color:var(--mid);line-height:1.8;min-height:50px}
+.ai-body h3{font-family:'Playfair Display',serif;font-size:.95rem;color:var(--head);margin:1rem 0 .35rem;padding-top:1rem;border-top:1px solid var(--border)}
+.ai-body h3:first-child{margin-top:0;padding-top:0;border-top:none}
+.ai-body p{margin-bottom:.5rem}
+.ai-body strong{color:var(--sub);font-weight:600}
+/* Fase grid */
+.fase-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:1.5rem}
+@media(max-width:680px){.fase-grid{grid-template-columns:repeat(2,1fr)}}
+.fase-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:.9rem;cursor:pointer;transition:all .15s}
+.fase-card:hover,.fase-card.active{border-color:var(--teal);box-shadow:0 0 0 2px var(--teal-bg)}
+.fase-num{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);margin-bottom:.2rem}
+.fase-name{font-size:12px;font-weight:600;color:var(--head);margin-bottom:.35rem;line-height:1.3}
+.fase-bar{height:3px;background:var(--border2);border-radius:2px;overflow:hidden;margin-bottom:.2rem}
+.fase-fill{height:100%;background:var(--teal);border-radius:2px}
+.fase-pct{font-size:10px;color:var(--muted);font-family:'IBM Plex Mono',monospace}
+.fase-nav{display:flex;gap:8px;align-items:center;margin-top:1.5rem;padding-top:1.25rem;border-top:1px solid var(--border)}
+.spin{width:12px;height:12px;border-radius:50%;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;animation:sp .7s linear infinite;display:inline-block}
+@keyframes sp{to{transform:rotate(360deg)}}
+.save-indicator{font-size:11px;color:var(--teal);font-family:'IBM Plex Mono',monospace;opacity:0;transition:opacity .3s}
+.save-indicator.show{opacity:1}
+/* Cover letter */
+.cover-letter{background:var(--panel);border:2px solid var(--teal);border-radius:var(--r2);padding:2rem;margin-bottom:1.5rem}
+.cover-letter h2{font-family:'Playfair Display',serif;font-size:1.3rem;color:var(--head);font-weight:600;margin-bottom:1rem}
+.cover-letter p{font-size:13px;color:var(--mid);margin-bottom:.75rem;line-height:1.75}
+/* Missing fields summary */
+.missing-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1rem;margin-bottom:.75rem}
+.missing-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:.5rem;display:flex;justify-content:space-between;align-items:center}
+.missing-item{font-size:12px;padding:3px 0 3px .75rem;color:var(--red);border-bottom:1px solid var(--border)}
+.missing-item:last-child{border-bottom:none}
+.complete-item{font-size:12px;padding:3px 0 3px .75rem;color:var(--teal);border-bottom:1px solid var(--border)}
+.complete-item:last-child{border-bottom:none}
+/* Koper read-only view */
+.readonly-val{font-size:13px;color:var(--sub);padding:8px 11px;background:var(--card);border:1px solid var(--border);border-radius:var(--r);min-height:36px}
+.readonly-val.empty{color:var(--muted);font-style:italic}
+@keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.anim{animation:fadeUp .25s ease forwards}
+.upload-zone{border:2px dashed var(--border2);border-radius:var(--r2);padding:1.5rem;text-align:center;cursor:pointer;transition:all .2s;margin-bottom:1rem;background:var(--card)}
+.upload-zone:hover,.upload-zone.drag{border-color:var(--teal);background:var(--teal-bg)}
+.upload-zone input{display:none}
+.doc-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--r);padding:.75rem 1rem;margin-bottom:.5rem}
+.doc-card-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:.3rem}
+.doc-naam{font-size:12px;font-weight:600;color:var(--head)}
+.doc-type{font-size:10px;color:var(--muted);font-family:'IBM Plex Mono',monospace}
+.doc-analyse{font-size:12px;color:var(--mid);line-height:1.6;margin-top:.4rem;max-height:200px;overflow-y:auto;padding:.5rem;background:var(--card);border-radius:var(--r);border:1px solid var(--border)}
+.doc-velden{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:.5rem}
+.doc-veld{background:var(--teal-bg);border:1px solid var(--teal-dark);border-radius:4px;padding:4px 8px}
+.doc-veld-lbl{font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--teal-dim);font-weight:600}
+.doc-veld-val{font-size:12px;font-family:'IBM Plex Mono',monospace;color:var(--teal-dark);font-weight:600}
+.upload-progress{height:4px;background:var(--border2);border-radius:2px;overflow:hidden;margin-top:.5rem;display:none}
+.upload-progress-fill{height:100%;background:var(--teal);border-radius:2px;transition:width .3s}
+.btn-del{background:transparent;border:1px solid var(--border2);color:var(--red);font-family:'IBM Plex Sans',sans-serif;cursor:pointer;border-radius:var(--r)}
+.btn-del:hover{background:var(--red-bg);border-color:var(--red)}
+@keyframes prog{from{width:20%}to{width:85%}}
+@media print{
+  @page{margin:2cm;size:A4}
+  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+  .btn,.btn-ghost,.btn-gen,.fase-nav,.fase-grid,.prog-bar{display:none!important}
+  .ai-panel,.panel{break-inside:avoid}
+  body{font-size:11px}
+}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+var WORKER='https://kantoorinzicht.marcel-bisschops.workers.dev';
+
+function triggerFileUpload(faseId) {
+  var inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = '.pdf,.docx,.doc,.xlsx,.xls,.csv'; inp.multiple = true;
+  document.body.appendChild(inp);
+  inp.addEventListener('change', function(e) {
+    var files = e.target.files;
+    for (var i = 0; i < files.length; i++) uploadDocument(faseId, files[i]);
+    document.body.removeChild(inp);
+  });
+  inp.click();
+}
+
+var FASES=[
+{id:'financieel',num:'I',title:'Financieel',desc:'Kwaliteit en duurzaamheid van omzet en winst.',
+ dataFields:[
+  {id:'omzet1',label:'Jaaromzet jaar 1 (oudste)',ph:'',doc:true,req:true},
+  {id:'omzet2',label:'Jaaromzet jaar 2',ph:'',doc:true,req:true},
+  {id:'omzet3',label:'Jaaromzet jaar 3 (meest recent)',ph:'',doc:true,req:true},
+  {id:'omzetYTD',label:'Omzet YTD huidig jaar',ph:'',doc:true,req:true},
+  {id:'ebitda',label:'EBITDA-marge jaar 3 (%)',ph:'',doc:false,req:true},
+  {id:'ebitdaNorm',label:'Genormaliseerde EBITDA',ph:'',doc:true,req:false},
+  {id:'wip',label:'Onderhanden werk / OHW',ph:'',doc:true,req:false},
+  {id:'debiteuren',label:'Debiteuren totaal',ph:'',doc:true,req:false},
+  {id:'debiteurenOud',label:'Debiteuren >90 dagen (%)',ph:'',doc:false,req:false},
+  {id:'declarab',label:'Declarabiliteit (%)',ph:'',doc:false,req:false},
+  {id:'partnerBel',label:'Partnerbeloning (marktconform?)',ph:'',doc:false,req:true},
+  {id:'_hdr_omzet',label:'— Omzetverdeling per dienstlijn (jaar 3)',ph:'',doc:false,req:false,header:true},
+  {id:'omzetJaarwerk',label:'Jaarwerk & samenstellen (%)',ph:'',doc:false,req:false},
+  {id:'omzetAdvies',label:'Advies & begeleiding (%)',ph:'',doc:false,req:false},
+  {id:'omzetLoon',label:'Loonadministratie (%)',ph:'',doc:false,req:false},
+  {id:'omzetFiscaal',label:'Fiscaal (%)',ph:'',doc:false,req:false},
+  {id:'omzetOverig',label:'Overig (%)',ph:'',doc:false,req:false},
+  {id:'_hdr_kosten',label:'— Kostenstructuur (jaar 3)',ph:'',doc:false,req:false,header:true},
+  {id:'kostenPersoneel',label:'Personeelskosten (% omzet)',ph:'',doc:false,req:false},
+  {id:'kostenHuisvesting',label:'Huisvesting & huur (% omzet)',ph:'',doc:false,req:false},
+  {id:'kostenIT',label:'IT & automatisering (% omzet)',ph:'',doc:false,req:false},
+  {id:'kostenMarketing',label:'Marketing & acquisitie (% omzet)',ph:'',doc:false,req:false},
+  {id:'kostenOverig',label:'Overige kosten (% omzet)',ph:'',doc:false,req:false}
+ ],
+ items:['Jaarrekeningen 3 jaar beschikbaar en doorgenomen','YTD-cijfers aangeleverd','Omzet per dienstlijn inzichtelijk','EBITDA-normalisatie opgesteld','Top 20 klanten met omzetbijdrage in kaart','OHW geïnventariseerd','Debiteurenpositie en aging geanalyseerd','Partnerbeloningen vergeleken met marktconform','Declarabiliteit en realisatiegraad bepaald'],
+ redflags:['Hoge WIP en oude debiteuren (>90 dagen)','Lage partnerproductiviteit tov benchmark','Eenmalige omzetpieken vertekenen beeld','Niet-genormaliseerde partnerbeloningen']},
+
+{id:'commercieel',num:'II',title:'Klanten & commercieel',desc:'Concentratie, retentie en commerciele kracht.',
+ dataFields:[
+  {id:'aantalKlanten',label:'Aantal actieve klanten',ph:'',doc:false,req:true},
+  {id:'churn',label:'Klantverloop per jaar (%)',ph:'',doc:false,req:true},
+  {id:'klantduur',label:'Gem. klantduur (jaar)',ph:'',doc:false,req:true},
+  {id:'top1pct',label:'Grootste klant (% omzet)',ph:'',doc:false,req:true},
+  {id:'top10pct',label:'Top 10 klanten (% omzet)',ph:'',doc:false,req:true},
+  {id:'recurring',label:'Vaste/abonnements-omzet (%)',ph:'',doc:false,req:true},
+  {id:'crossSell',label:'Cross-sell (%)',ph:'',doc:false,req:false},
+  {id:'nieuw',label:'Nieuwe klanten per jaar',ph:'',doc:false,req:false},
+  {id:'verlies',label:'Verloren klanten per jaar',ph:'',doc:false,req:false},
+ ],
+ items:['Klantverloop per jaar inzichtelijk (3 jaar)','Nieuwe vs verloren klanten geanalyseerd','Top 10 klanten samen minder dan 40% omzet','Cross-sell percentage vastgesteld','Sectorverdeling geenventariseerd','Contractduur en verlengingsstructuur inzichtelijk'],
+ redflags:['Omzet geconcentreerd bij minder dan 5 klanten','Klantverloop meer dan 10% per jaar','Klantrelaties hangen aan individuele partners','Geen structurele acquisitie']},
+
+{id:'partner',num:'III',title:'Partners & personeel',desc:'Afhankelijkheden, opvolging en cultuur.',
+ dataFields:[
+  {id:'aantalP',label:'Aantal partners/eigenaren',ph:'',doc:false,req:true},
+  {id:'gemLeeftijd',label:'Gem. leeftijd partners',ph:'',doc:false,req:true},
+  {id:'omzetPerP',label:'Omzet per partner',ph:'',doc:false,req:true},
+  {id:'pensioenP',label:'Partners met pensioen <5 jaar',ph:'',doc:false,req:true},
+  {id:'fte',label:'Totaal FTE',ph:'',doc:false,req:true},
+  {id:'verloop',label:'Personeelsverloop (%)',ph:'',doc:false,req:true},
+  {id:'vacatures',label:'Openstaande vacatures',ph:'',doc:false,req:false},
+  {id:'raAa',label:'RA/AA in opleiding',ph:'',doc:false,req:false},
+  {id:'opvolging',label:'Opvolgingskandidaat aanwezig',ph:'',doc:false,req:true},
+  {id:'verandering',label:'Bereidheid partners en medewerkers tot verandering',ph:'',doc:false,req:true},
+  {id:'pContract',label:'Partnerovereenkomsten actueel',ph:'',doc:true,req:true},
+ ],
+ items:['Omzetbijdrage per partner vastgesteld','Leeftijdsopbouw partners in kaart','Exitregelingen en contractduur besproken','Opvolgingsplan sleutelpartners aanwezig','Retentierisico na transactie beoordeeld','Verlooppercentage bepaald (benchmark 15%)'],
+ redflags:['Omzet zit in hoofden van 1-2 partners','Pensioengolf zonder concrete opvolging','Personeelsverloop meer dan 15%','Geen formele partnerovereenkomsten',
+    'Lage veranderbereidheid partners of personeel - risico voor integratie en cultuurfit']},
+
+{id:'compliance',num:'IV',title:'Compliance & kwaliteit',desc:'Regulatory status en dossierkwaliteit.',
+ dataFields:[
+  {id:'nba',label:'NBA-status',ph:'',doc:true,req:true},
+  {id:'afm',label:'AFM-vergunning',ph:'',doc:true,req:true},
+  {id:'toetsDatum',label:'Laatste kwaliteitstoetsing (jaar)',ph:'',doc:true,req:true},
+  {id:'toetsOordeel',label:'Oordeel kwaliteitstoetsing',ph:'',doc:true,req:true},
+  {id:'tuchtzaken',label:'Lopende tuchtzaken',ph:'',doc:false,req:true},
+  {id:'claims',label:'Civiele claims',ph:'',doc:false,req:true},
+  {id:'wwft',label:'Wwft-procedures volledig geimplementeerd en aantoonbaar up-to-date',ph:'',doc:true,req:true},
+  {id:'incidenten',label:'Integriteitsincidenten <5 jaar',ph:'',doc:false,req:true},
+ ],
+ items:['NBA-inschrijving en vergunningsstatus gecontroleerd','Laatste kwaliteitstoetsingen doorgenomen','Bevindingen en herstelmaatregelen beoordeeld','Wwft-procedures en client acceptance gereviewed (volledig, aantoonbaar, up-to-date)','Lopende tuchtzaken geenventariseerd','Compliance handboek actueel'],
+ redflags:['Negatieve kwaliteitstoetsing NBA afgelopen 2 jaar','Lopende tuchtzaken of civiele claims','Wwft zwak, niet aantoonbaar of niet up-to-date ingericht (dealbreaker bij DD en toezicht)','Structurele dossierbevindingen']},
+
+{id:'it',num:'V',title:'IT & automatisering',desc:'Systemen, automatiseringsgraad en AI-readiness.',
+ dataFields:[
+  {id:'software',label:'Primaire software',ph:'',doc:false,req:true},
+  {id:'softwareOverig',label:'Overige systemen',ph:'',doc:false,req:false},
+  {id:'autoGraad',label:'Automatiseringsgraad routinetaken',ph:'',doc:false,req:true},
+  {id:'ai',label:'AI-tooling in gebruik',ph:'',doc:false,req:true},
+  {id:'itKosten',label:'IT-kosten (% omzet)',ph:'',doc:false,req:false},
+  {id:'security',label:'Cybersecurity status',ph:'',doc:true,req:false},
+  {id:'itRisico',label:'Bekende IT-risicos',ph:'',doc:false,req:true},
+ ],
+ items:['Softwarelandschap volledig in kaart','Automatiseringsgraad routinetaken bepaald','AI-tooling aanwezig en in gebruik','Cybersecurity status vastgesteld','Datakwaliteit en rapportagestructuur inzichtelijk'],
+ redflags:['Geen schaalbaar systeemlandschap','Hoge mate van handmatig werk','Lage AI-readiness','Cybersecurity kwetsbaarheden aanwezig']},
+
+{id:'juridisch',num:'VI',title:'Juridisch & fiscaal',desc:'Structuur, contracten en fiscale risico.',
+ dataFields:[
+  {id:'rechtsvorm',label:'Rechtsvorm(en)',ph:'',doc:true,req:true},
+  {id:'structuur',label:'Aandeelhoudersstructuur',ph:'',doc:true,req:true},
+  {id:'huur',label:'Huurcontract looptijd',ph:'',doc:true,req:true},
+  {id:'vpb',label:'VPB openstaande discussies',ph:'',doc:false,req:true},
+  {id:'fiscaalRisico',label:'Fiscale risicos',ph:'',doc:false,req:true},
+  {id:'stak',label:'STAK of bijzondere structuur',ph:'',doc:true,req:false},
+  {id:'overigeClaims',label:'Claims of garanties',ph:'',doc:false,req:true},
+  {id:'lease',label:'Leaseverplichtingen (per jaar)',ph:'',doc:true,req:false},
+ ],
+ items:['Statuten en aandeelhoudersovereenkomst doorgenomen','Groepsstructuur inzichtelijk','Partnerovereenkomsten compleet en actueel','Huurcontracten en looptijden inzichtelijk','VPB-positie 3 jaar beoordeeld','Openstaande Belastingdienstdiscussies vastgesteld'],
+ redflags:['Openstaande fiscale discussies of naheffingen','Gebrekkige partnerovereenkomsten','Huurcontract niet overdraagbaar','Onbekende claims of garantieverplichtingen']},
+
+{id:'strategisch',num:'VII',title:'Strategisch & markt',desc:'Marktpositie, groeipotentieel en strategische fit.',
+ dataFields:[
+  {id:'marktpos',label:'Marktpositie / regio',ph:'',doc:false,req:true},
+  {id:'niche',label:'Niche of specialisme',ph:'',doc:false,req:true},
+  {id:'concurrenten',label:'Belangrijkste concurrenten',ph:'',doc:false,req:false},
+  {id:'aiImpact',label:'AI-impact op dienstenmix',ph:'',doc:false,req:true},
+  {id:'cultuurFit',label:'Cultuuromschrijving',ph:'',doc:false,req:true},
+  {id:'synergie',label:'Gewenste vervolgstap eigenaar',ph:'',doc:false,req:true},
+  {id:'tijdlijn',label:'Gewenste tijdlijn',ph:'',doc:false,req:true},
+ ],
+ items:['Regionale marktpositie en niches vastgesteld','AI-impact op dienstverleningsmodel beoordeeld','Schaalbaarheid vastgesteld','Synergiepotentieel bepaald','Cultuurfit getoetst','PE-readiness indicatief bepaald'],
+ redflags:['Te hoge afhankelijkheid samenstelpraktijk (AI-risico)','Geen duidelijke niche of marktpositie','Cultuurmismatch met koper','Beperkt integratiepotentieel']},
+];
+
+var S={screen:'login',code:'',rol:'',traject:null,fase:0,checked:{},data:{},docRefs:{},notities:{},aiTexts:{},aiLoading:{},saveTimer:null,showValidation:false,dataroomLoading:false,dataroom:null,_opy:{},_epy:{},_conflicts:[],_userEdited:{}};
+
+function pct(id){var f=FASES.find(function(x){return x.id===id;});if(!f)return 0;var d=f.items.filter(function(_,i){return S.checked[id+'_'+i];}).length;return f.items.length?Math.round(d/f.items.length*100):0;}
+function fillPct(id){var f=FASES.find(function(x){return x.id===id;});if(!f)return 0;var req=f.dataFields.filter(function(df){return df.req;});var done=req.filter(function(df){return !!(S.data[id+'_'+df.id]||'').trim();}).length;return req.length?Math.round(done/req.length*100):100;}
+function totalFillPct(){var t=0,d=0;FASES.forEach(function(f){var req=f.dataFields.filter(function(df){return df.req;});t+=req.length;d+=req.filter(function(df){return !!(S.data[f.id+'_'+df.id]||'').trim();}).length;});return t?Math.round(d/t*100):0;}
+function dc(v){return v>=70?'var(--teal)':v>=50?'var(--gold)':'var(--red)';}
+function ge(id){return document.getElementById(id);}
+function esc(s){if(!s)return '';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function isVerkoper(){return S.rol==='verkoper';}
+function isKoper(){return S.rol==='koper';}
+function isTussen(){return S.rol==='tussenpersoon';}
+
+function getMissing(){
+  var missing=[];
+  FASES.forEach(function(f){
+    var missingFields=f.dataFields.filter(function(df){return df.req&&!(S.data[f.id+'_'+df.id]||'').trim();});
+    if(missingFields.length)missing.push({fase:f.num+'. '+f.title,fields:missingFields.map(function(df){return df.label;})});
+  });
+  return missing;
+}
+
+function saveCurrent(cb){
+  var f=FASES[S.fase];
+  if(!f||S.screen!=='main'||isKoper())return;
+  if(S.traject&&S.traject.status==='vergrendeld'){if(cb)cb();return;}
+  f.dataFields.forEach(function(df){
+    if(df.header){return;}
+    var el=ge('df_'+df.id);
+    if(el){
+      var key=f.id+'_'+df.id;
+      if(el.value.trim())S._userEdited[key]=true;
+      S.data[key]=el.value;
+    }
+  });
+  var nel=ge('notitie_'+f.id);if(nel)S.notities[f.id]=nel.value;
+  clearTimeout(S.saveTimer);
+  S.saveTimer=setTimeout(function(){
+    fetch(WORKER+'/mna/save',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({code:S.code,fase_id:f.id,data_json:getDataForFase(f.id),checklist_json:getChecklistForFase(f.id),notitie:S.notities[f.id]||''})
+    }).then(function(r){return r.json();}).then(function(d){
+      if(d.error==='vergrendeld'){showAlert('Dit traject is vergrendeld. Uw wijzigingen zijn niet opgeslagen.');}
+      else{showSaveIndicator();}
+    }).catch(function(){});
+    if(cb)cb();
+  },800);
+}
+
+function getDataForFase(id){var f=FASES.find(function(x){return x.id===id;});if(!f)return {};var out={};f.dataFields.forEach(function(df){if(df.header)return;var v=S.data[id+'_'+df.id];if(v)out[df.id]={value:v,label:df.label,req:df.req||false};});return out;}
+function getChecklistForFase(id){var out={items:{},redflags:{}};var f=FASES.find(function(x){return x.id===id;});if(!f)return out;f.items.forEach(function(_,i){out.items[i]=!!S.checked[id+'_'+i];});f.redflags.forEach(function(_,i){out.redflags[i]=!!S.checked[id+'_rf_'+i];});return out;}
+function loadDataFromDB(dbData){dbData.forEach(function(row){var id=row.fase_id;var dj=typeof row.data_json==='string'?JSON.parse(row.data_json||'{}'):row.data_json||{};var cj=typeof row.checklist_json==='string'?JSON.parse(row.checklist_json||'{}'):row.checklist_json||{};var f=FASES.find(function(x){return x.id===id;});if(!f)return;Object.keys(dj).forEach(function(k){var v=dj[k];if(v&&v.value)S.data[id+'_'+k]=v.value;});if(cj.items)Object.keys(cj.items).forEach(function(i){S.checked[id+'_'+i]=cj.items[i];});if(cj.redflags)Object.keys(cj.redflags).forEach(function(i){S.checked[id+'_rf_'+i]=cj.redflags[i];});if(row.notitie)S.notities[id]=row.notitie;if(row.koper_reactie){if(!S.koperReacties)S.koperReacties={};S.koperReacties[id]=row.koper_reactie;}});}
+function showSaveIndicator(){var el=ge('save-ind');if(!el)return;el.textContent='Opgeslagen';el.classList.add('show');setTimeout(function(){el.classList.remove('show');},2000);}
+function showAlert(msg){alert(msg);}
+function schedSave(){if(S.traject&&S.traject.status==='vergrendeld')return;clearTimeout(S.saveTimer);S.saveTimer=setTimeout(function(){saveCurrent();},1200);}
+
+// -- DOCUMENT STATE ----------------------------------------------
+var DOCS = {};  // { faseId: [{id, naam, type, grootte, analyse, velden, uploading}] }
+
+function getDocsForFase(faseId) {
+  return DOCS[faseId] || [];
+}
+
+function loadDocsForFase(faseId) {
+  if (!S.code || isKoper()) return;
+  fetch(WORKER + '/mna/document/lijst/' + S.code + '/' + faseId)
+    .then(function(r){ return r.json(); })
+    .then(function(docs){
+      DOCS[faseId] = docs.map(function(d){
+        return {
+          id: d.id, naam: d.bestand_naam, type: d.bestand_type,
+          grootte: d.bestand_grootte, analyse: d.analyse,
+          velden: (function(s){try{var r=JSON.parse(s||'{}');return r&&typeof r==='object'&&!Array.isArray(r)?r:{};}catch(e){return {};}})(d.veld_extractie),
+          uploaded_at: d.uploaded_at||null,
+          bewaard: !!d.bewaard, methode: d.methode, uploading: false
+        };
+      });
+      renderApp();
+    }).catch(function(){});
+}
+
+async function uploadDocument(faseId, file) {
+  if (!S.code || isKoper()) return;
+  if (S.traject && S.traject.status === 'vergrendeld') { alert('Traject is vergrendeld.'); return; }
+  var maxSize = 20 * 1024 * 1024;
+  if (file.size > maxSize) { alert('Bestand te groot (max 20MB). Huidig: ' + Math.round(file.size/1024/1024) + 'MB'); return; }
+
+  // Show uploading state
+  if (!DOCS[faseId]) DOCS[faseId] = [];
+  var tempId = 'uploading_' + Date.now();
+  DOCS[faseId].unshift({ id: tempId, naam: file.name, type: file.type, grootte: file.size, analyse: '', velden: {}, uploading: true });
+  renderApp();
+
+  var formData = new FormData();
+  formData.append('file', file);
+  var bewaar = S.traject && S.traject.bewaar_docs !== false;
+  var url = WORKER + '/mna/document/upload?code=' + S.code + '&fase_id=' + faseId + '&bewaar=' + bewaar;
+
+  try {
+    var resp = await fetch(url, { method: 'POST', body: formData });
+    var d = await resp.json();
+    if (d.ok) {
+      // Replace temp with real
+      DOCS[faseId] = DOCS[faseId].filter(function(x){ return x.id !== tempId; });
+      DOCS[faseId].unshift({
+        id: d.doc_id, naam: file.name, type: file.type, grootte: file.size,
+        analyse: d.analyse, velden: d.veld_extractie || {}, bewaard: !!d.r2_opgeslagen,
+        uploaded_at: Date.now(), uploading: false
+      });
+      if (d.veld_extractie) {
+        S._conflicts=[];
+        autoFillFromExtraction(faseId, d.veld_extractie);
+        if(S._conflicts&&S._conflicts.length){
+          renderApp();setTimeout(toonConflictDialog,300);
+        }else{renderApp();schedSave();}
+      }
+    } else {
+      DOCS[faseId] = DOCS[faseId].filter(function(x){ return x.id !== tempId; });
+      alert('Upload fout: ' + (d.error || 'onbekend'));
+    }
+  } catch(e) {
+    DOCS[faseId] = DOCS[faseId].filter(function(x){ return x.id !== tempId; });
+    alert('Verbindingsfout bij uploaden.');
+  }
+  renderApp();
+}
+
+function autoFillFromExtraction(faseId, velden, forceOverwrite) {
+  function setIfEmpty(key, val) {
+    if(val&&val!=='null'&&val!==null&&String(val).trim()!==''&&!(S.data[key]||'').trim())
+      S.data[key]=String(val);
+  }
+  function applyOrConflict(key, val, label) {
+    if(!val||val==='null'||val===null||String(val).trim()==='')return;
+    var newVal=String(val);
+    var existing=(S.data[key]||'').trim();
+    if(!existing){S.data[key]=newVal;return;}
+    if(existing===newVal)return;
+    if(forceOverwrite){S.data[key]=newVal;return;}
+    // Alleen conflict tonen als de gebruiker dit veld zelf heeft ingevuld
+    if(!S._userEdited||!S._userEdited[key]){
+      S.data[key]=newVal;return; // Stil overschrijven als niet user-edited
+    }
+    if(!S._conflicts)S._conflicts=[];
+    S._conflicts.push({key:key,label:label,huidig:existing,nieuw:newVal});
+  }
+  if(faseId==='financieel'){
+    if(!S._opy)S._opy={};
+    var opy=velden.omzet_per_jaar;
+    if(opy&&typeof opy==='object'){
+      Object.keys(opy).forEach(function(jaar){
+        var v=opy[jaar],j=Number(jaar);
+        if(v&&v!=='null'&&v!==null&&!isNaN(j)&&j>1990&&j<2100)S._opy[String(j)]=v;
+      });
+    }
+    if(velden.omzet&&velden.omzet!=='null'&&velden.boekjaar&&!isNaN(Number(velden.boekjaar))){
+      var bj=String(Number(velden.boekjaar));
+      if(!S._opy[bj])S._opy[bj]=velden.omzet;
+    }
+    var yrs=Object.keys(S._opy).map(Number).filter(function(j){return!isNaN(j)&&j>1990&&j<2100;}).sort(function(a,b){return a-b;});
+    if(yrs.length){
+      // Altijd opnieuw mappen - juiste jaar altijd op juiste positie
+      var toFill=yrs.slice(-3);
+      var allFlds=['omzet1','omzet2','omzet3'];
+      var usedFlds=allFlds.slice(3-toFill.length);
+      // Reset alle omzetvelden eerst
+      allFlds.forEach(function(f){
+        if(usedFlds.indexOf(f)<0)delete S.data['financieel_'+f];
+      });
+      // Vul correct in
+      toFill.forEach(function(yr,i){var w=S._opy[String(yr)];if(w)S.data['financieel_'+usedFlds[i]]=String(w);});
+    }
+    if(!S._epy)S._epy={};
+    var ev=velden.ebitda_pct;
+    if(ev&&ev!=='null'&&ev!==null){
+      var ej=velden.boekjaar?String(Number(velden.boekjaar)):'0';
+      if(!S._epy[ej])S._epy[ej]=ev;
+      var eys=Object.keys(S._epy).map(Number).filter(function(j){return!isNaN(j);}).sort(function(a,b){return b-a;});
+      if(eys.length)applyOrConflict('financieel_ebitda',S._epy[String(eys[0])],'EBITDA-marge (%)');
+    }
+    if(velden.ohw&&velden.ohw!=='null')applyOrConflict('financieel_wip',velden.ohw,'Onderhanden werk');
+    if(velden.debiteuren&&velden.debiteuren!=='null')applyOrConflict('financieel_debiteuren',velden.debiteuren,'Debiteuren');
+    setIfEmpty('financieel_ebitdaNorm',velden.resultaat);
+    setIfEmpty('financieel_omzetJaarwerk',velden.omzet_jaarwerk_pct);
+    setIfEmpty('financieel_omzetAdvies',velden.omzet_advies_pct);
+    setIfEmpty('financieel_omzetLoon',velden.omzet_loon_pct);
+    setIfEmpty('financieel_omzetFiscaal',velden.omzet_fiscaal_pct);
+    setIfEmpty('financieel_omzetOverig',velden.omzet_overig_pct);
+    setIfEmpty('financieel_kostenPersoneel',velden.kosten_personeel_pct);
+    setIfEmpty('financieel_kostenHuisvesting',velden.kosten_huisvesting_pct);
+    setIfEmpty('financieel_kostenIT',velden.kosten_it_pct);
+    setIfEmpty('financieel_kostenMarketing',velden.kosten_marketing_pct);
+  }
+  if(faseId==='partner'&&velden.fte&&velden.fte!=='null')applyOrConflict('partner_fte',velden.fte,'Totaal FTE');
+}
+
+async function consolideerAnalyse(faseId){
+  var docs=getDocsForFase(faseId);if(!docs.length)return;
+  var f=FASES.find(function(x){return x.id===faseId;});if(!f)return;
+  var gc={};
+  docs.forEach(function(d){
+    if(!d.velden)return;
+    Object.keys(d.velden).forEach(function(k){var v=d.velden[k];if(v&&v!=='null'&&v!==null&&!gc[k])gc[k]=v;});
+    if(d.velden.omzet_per_jaar&&typeof d.velden.omzet_per_jaar==='object'){
+      if(!gc.omzet_per_jaar)gc.omzet_per_jaar={};
+      Object.keys(d.velden.omzet_per_jaar).forEach(function(jr){var v=d.velden.omzet_per_jaar[jr];if(v&&v!=='null'&&!gc.omzet_per_jaar[jr])gc.omzet_per_jaar[jr]=v;});
+    }
+  });
+  autoFillFromExtraction(faseId,gc);
+  S.aiLoading[faseId]=true;renderApp();
+  var lines=[];f.dataFields.forEach(function(df){var v=S.data[f.id+'_'+df.id];if(v&&!df.header)lines.push(df.label+': '+v);});
+  var analyses=docs.map(function(d,i){return 'Doc '+(i+1)+': '+d.naam+'\n'+(d.analyse||'');}).join('\n---\n');
+  var prompt='Geconsolideerde M&A analyse voor fase '+f.title+' van '+esc(S.traject&&S.traject.kantoor_naam||S.code)+'.\n\nVelden:\n'+(lines.join('\n')||'leeg')+'\n\nAnalyses:\n'+analyses+'\n\nTrends, rode vlaggen, aanbevelingen. Concreet. ## koppen.';
+  try{
+    var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}]})});
+    if(!resp.ok)throw new Error('HTTP '+resp.status);
+    var reader=resp.body.getReader(),dec=new TextDecoder(),col='';
+    while(true){var res=await reader.read();if(res.done)break;
+      dec.decode(res.value,{stream:true}).split('\n').forEach(function(line){
+        if(line.startsWith('data:')){var d=line.slice(5).trim();if(d==='[DONE]')return;
+          try{var j=JSON.parse(d);if(j.type==='content_block_delta'&&j.delta&&j.delta.text)col+=j.delta.text;}catch(e){}
+        }
+      });
+    }
+    S.aiTexts[faseId]=col;
+  }catch(e){S.aiTexts[faseId]='__ERROR__';}
+  S.aiLoading[faseId]=false;renderApp();
+}
+
+async function deleteDocument(docId, faseId) {
+  Object.keys(DOCS).forEach(function(fid){
+    DOCS[fid]=DOCS[fid].filter(function(d){return d.id!==docId;});
+  });
+  renderApp();
+  fetch(WORKER+'/mna/document/delete/'+docId,{method:'POST'}).catch(function(){});
+}
+
+function renderDocumentSectie(faseId) {
+  if(isKoper()) return '';
+  var toonAnalyse = isTussen();
+  var docs = getDocsForFase(faseId);
+  var isReadOnly = (S.traject && S.traject.status === 'vergrendeld');
+  var uploadHtml = '';
+
+  if (!isReadOnly) {
+    uploadHtml = '<div class="upload-zone" id="upload-zone-' + faseId + '" data-fase="' + faseId + '"'
+      + ' ondragover="event.preventDefault();this.classList.add(\'drag\')"'
+      + ' ondragleave="this.classList.remove(\'drag\')"'
+      + ' ondrop="event.preventDefault();this.classList.remove(\'drag\');handleDropUpload(event,' + JSON.stringify(faseId) + ')"'
+      + '>'
+      + '<div style="font-size:18px;margin-bottom:.3rem">&#128196;</div>'
+      + '<div style="font-size:12px;font-weight:600;color:var(--mid);margin-bottom:.1rem">Klik of sleep bestand</div>'
+      + '<div style="font-size:10px;color:var(--muted)">PDF, Word, Excel, CSV &middot; max 20MB</div>'
+      + '</div>';
+  }
+
+  var docsHtml = docs.map(function(doc) {
+    var icon = doc.type && doc.type.includes('pdf') ? '&#128209;' : doc.naam && doc.naam.endsWith('.csv') ? '&#128202;' : doc.naam && (doc.naam.endsWith('.xlsx')||doc.naam.endsWith('.xls')) ? '&#128202;' : '&#128196;';
+    var grootteMb = (doc.grootte / 1024 / 1024).toFixed(1);
+
+    var veldenHtml = '';
+    if (doc.velden && Object.keys(doc.velden).length) {
+      var relevantVelden = Object.entries(doc.velden).filter(function(kv){ return kv[1] && kv[1] !== 'null'; });
+      if (relevantVelden.length) {
+        veldenHtml = '<div class="doc-velden">'
+          + relevantVelden.map(function(kv){
+            var labels = {omzet:'Omzet',ebitda_pct:'EBITDA%',fte:'FTE',resultaat:'Resultaat',eigen_vermogen:'Eigen verm.',vreemd_vermogen:'Vreemd verm.',solvabiliteit:'Solvabiliteit',overige_bevindingen:'Bevinding'};
+            return '<div class="doc-veld"><div class="doc-veld-lbl">' + (labels[kv[0]]||kv[0]) + '</div><div class="doc-veld-val">' + String(kv[1]).substring(0,20) + '</div></div>';
+          }).join('')
+          + '</div>';
+      }
+    }
+
+    var uploadStempel=doc.uploaded_at?new Date(doc.uploaded_at).toLocaleString('nl-NL',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'';
+    var uploadingHtml=doc.uploading?'<div style="margin-top:.6rem;background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:.75rem 1rem"><div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--mid);margin-bottom:.5rem"><div class="spin" style="border-color:var(--border2);border-top-color:var(--teal);width:13px;height:13px;flex-shrink:0"></div><span>Uploaden en analyseren&hellip;</span></div><div style="height:3px;background:var(--border2);border-radius:2px;overflow:hidden"><div style="height:100%;background:var(--teal);border-radius:2px;width:60%;animation:prog 2s ease-in-out infinite alternate"></div></div><div style="font-size:10px;color:var(--muted);margin-top:.35rem">Document wordt verwerkt &middot; 15&ndash;30 seconden</div></div>':'';
+    var analyseHtml=uploadingHtml;
+    if(!doc.uploading&&toonAnalyse){
+      analyseHtml+=doc.analyse?'<div class="doc-analyse">'+doc.analyse.replace(/## ([^\r\n]+)/g,'<strong>$1</strong><br>').replace(/[\r\n]/g,'<br>').substring(0,1500)+(doc.analyse.length>1500?'...':'')+'</div>':'';
+    }
+
+    return '<div class="doc-card">'
+      + '<div class="doc-card-hdr">'
+      + '<div style="flex:1"><span style="font-size:16px;margin-right:6px">'+icon+'</span>'
+      + (doc.bewaard?'<a href="'+WORKER+'/mna/document/download/'+doc.id+'" target="_blank" class="doc-naam" style="color:var(--teal);text-decoration:none">'+esc(doc.naam)+'</a>':'<span class="doc-naam">'+esc(doc.naam)+'</span>')
+      + ' <span class="doc-type">'+grootteMb+'MB'+(doc.bewaard?' &middot; &#8681; download':' &middot; analyse')+(uploadStempel?' &middot; '+uploadStempel:'')+'</span></div>'
+      + (!isReadOnly&&!doc.uploading?(doc.deleting?'<span style="font-size:10px;color:var(--muted)">Verwijderen...</span>':'<button onclick="deleteDocument(\''+doc.id+'\',\''+faseId+'\')" class="btn-del" style="font-size:10px;padding:2px 7px">&#10005; Verwijder</button>'):'')
+      + '</div>'
+      + (toonAnalyse?veldenHtml:'')
+      + analyseHtml
+      + '</div>';
+  }).join('');
+
+  var ch='';
+  if(!isReadOnly&&docs.length>1)ch='<button onclick="consolideerAnalyse('+JSON.stringify(faseId)+')" class="btn btn-sm" style="width:100%;margin-top:.5rem;background:var(--teal-dim)">&#9881; Geconsolideerde analyse ('+docs.length+' docs)</button>';
+  return '<div class="panel" id="doc-sectie-'+faseId+'"><div class="sec-hdr">Documenten &amp; AI-analyse</div>'
+    +uploadHtml+docsHtml+ch
+    +(docs.length===0&&isReadOnly?'<div style="color:var(--muted);font-size:13px;font-style:italic">Geen documenten geupload.</div>':'')
+    +'</div>';;
+}
+
+function handleFileUpload(event, faseId) {
+  var files = event.target.files;
+  for (var i = 0; i < files.length; i++) {
+    uploadDocument(faseId, files[i]);
+  }
+  event.target.value = '';
+}
+
+function handleDropUpload(event, faseId) {
+  var files = event.dataTransfer.files;
+  for (var i = 0; i < files.length; i++) {
+    uploadDocument(faseId, files[i]);
+  }
+}
+
+
+function uitloggen(){
+  clearTimeout(S.saveTimer);
+  Object.keys(DOCS).forEach(function(k){delete DOCS[k];});
+  S={screen:'login',code:'',rol:'',traject:null,fase:0,checked:{},data:{},docRefs:{},notities:{},aiTexts:{},aiLoading:{},saveTimer:null,showValidation:false,dataroomLoading:false,dataroom:null,_opy:{},_epy:{},_conflicts:[]};
+  renderApp();
+}
+
+function toonConflictDialog() {
+  if(!S._conflicts||!S._conflicts.length)return;
+  var conflicts=S._conflicts.slice();S._conflicts=[];
+  var ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;display:flex;align-items:center;justify-content:center;padding:1.5rem';
+  var box=document.createElement('div');
+  box.style.cssText='background:var(--panel);border:1px solid var(--border2);border-radius:var(--r2);padding:1.75rem;max-width:520px;width:100%;max-height:85vh;overflow-y:auto';
+  var title=document.createElement('div');title.style.cssText='font-family:Playfair Display,serif;font-size:1.1rem;color:var(--head);font-weight:600;margin-bottom:.35rem';title.textContent='Afwijkende waarden gevonden';box.appendChild(title);
+  var sub=document.createElement('div');sub.style.cssText='font-size:13px;color:var(--mid);margin-bottom:1.25rem';sub.textContent='Het nieuwe document bevat waarden die afwijken van eerder ingevulde gegevens. Kies per veld welke waarde u wilt gebruiken.';box.appendChild(sub);
+  var list=document.createElement('div');list.style.cssText='display:flex;flex-direction:column;gap:8px;margin-bottom:1.25rem';
+  var radios=[];
+  conflicts.forEach(function(c,i){
+    var row=document.createElement('div');row.style.cssText='background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px';
+    var lbl=document.createElement('div');lbl.style.cssText='font-size:11px;font-weight:600;text-transform:uppercase;color:var(--muted);margin-bottom:6px';lbl.textContent=c.label;row.appendChild(lbl);
+    var opts=document.createElement('div');opts.style.cssText='display:flex;gap:8px;flex-wrap:wrap';
+    var lblH=document.createElement('label');lblH.style.cssText='flex:1;min-width:140px;display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;padding:7px 10px;border:1px solid var(--border2);border-radius:var(--r);background:var(--panel)';
+    var rH=document.createElement('input');rH.type='radio';rH.name='cf_'+i;rH.value='huidig';rH.checked=true;rH.style.accentColor='var(--teal)';lblH.appendChild(rH);
+    var tH=document.createElement('span');tH.style.color='var(--mid)';tH.innerHTML='Huidig: <strong style="color:var(--sub)">'+c.huidig+'</strong>';lblH.appendChild(tH);opts.appendChild(lblH);
+    var lblN=document.createElement('label');lblN.style.cssText='flex:1;min-width:140px;display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;padding:7px 10px;border:1px solid var(--teal-dark);border-radius:var(--r);background:var(--teal-bg)';
+    var rN=document.createElement('input');rN.type='radio';rN.name='cf_'+i;rN.value='nieuw';rN.style.accentColor='var(--teal)';lblN.appendChild(rN);
+    var tN=document.createElement('span');tN.style.color='var(--mid)';tN.innerHTML='Nieuw: <strong style="color:var(--teal-dim)">'+c.nieuw+'</strong>';lblN.appendChild(tN);opts.appendChild(lblN);
+    row.appendChild(opts);list.appendChild(row);radios.push({key:c.key,rH:rH,rN:rN});
+  });
+  box.appendChild(list);
+  var btns=document.createElement('div');btns.style.cssText='display:flex;gap:10px;justify-content:flex-end';
+  var btnB=document.createElement('button');btnB.className='btn-ghost';btnB.style.fontSize='12px';btnB.textContent='Alles behouden';
+  btnB.addEventListener('click',function(){document.body.removeChild(ov);});btns.appendChild(btnB);
+  var btnA=document.createElement('button');btnA.className='btn';btnA.style.fontSize='12px';btnA.textContent='Toepassen';
+  btnA.addEventListener('click',function(){
+    radios.forEach(function(r){if(r.rN.checked)S.data[r.key]=conflicts.find(function(c){return c.key===r.key;}).nieuw;});
+    document.body.removeChild(ov);renderApp();schedSave();
+  });btns.appendChild(btnA);box.appendChild(btns);ov.appendChild(box);document.body.appendChild(ov);
+}
+
+
+async function loadDataroom(){
+  if(!S.code||isKoper())return;
+  S.dataroomLoading=true;renderApp();
+  try{
+    var resp=await fetch(WORKER+'/mna/document/lijst/'+S.code);
+    var docs=await resp.json();
+    S.dataroom=docs.map(function(d){return{id:d.id,naam:d.bestand_naam,type:d.bestand_type,grootte:d.bestand_grootte,fase_id:d.fase_id,bewaard:!!d.bewaard,uploaded_at:d.uploaded_at};});
+  }catch(e){S.dataroom=[];}
+  S.dataroomLoading=false;renderApp();
+}
+
+function renderDataroom(){
+  var fL={financieel:'I. Financieel',commercieel:'II. Klanten & commercieel',partner:'III. Partners & personeel',compliance:'IV. Compliance & kwaliteit',it:'V. IT & automatisering',juridisch:'VI. Juridisch & fiscaal',strategisch:'VII. Strategisch & markt'};
+  if(S.dataroomLoading)return '<div class="wrap anim"><div class="hdr"><div class="brand"><div class="wdot"></div>KantoorInzicht &middot; Dataroom</div></div><div style="color:var(--muted);font-size:13px;padding:2rem 0">Laden...</div></div>';
+  var docs=S.dataroom||[];
+  var byFase={};docs.forEach(function(d){if(!byFase[d.fase_id])byFase[d.fase_id]=[];byFase[d.fase_id].push(d);});
+  var totaal=docs.filter(function(d){return d.bewaard;}).length;
+  var html='<div class="wrap anim"><div class="hdr"><div class="brand"><div class="wdot"></div>KantoorInzicht &middot; Dataroom</div>'
+    +'<div style="display:flex;gap:8px"><button class="btn-ghost btn-sm" onclick="window.print()">PDF</button>'
+    +'<button class="btn-ghost btn-sm" onclick="S.screen=\'main\';renderApp()">&#8592; Terug</button></div></div>'
+    +'<div style="font-family:Playfair Display,serif;font-size:1.4rem;color:var(--head);font-weight:600;margin-bottom:.25rem">Dataroom</div>'
+    +'<div style="font-size:13px;color:var(--muted);margin-bottom:1.5rem">'+esc(S.traject&&S.traject.kantoor_naam||S.code)+' &middot; '+totaal+' document'+(totaal!==1?'en':'')+' opgeslagen</div>';
+  if(!docs.length){html+='<div class="panel" style="text-align:center;padding:2rem;color:var(--muted);font-size:13px;font-style:italic">Geen documenten opgeslagen.</div>';}
+  else{
+    Object.keys(fL).forEach(function(faseId){
+      var fd=(byFase[faseId]||[]).filter(function(d){return d.bewaard;});
+      if(!fd.length)return;
+      html+='<div class="panel" style="margin-bottom:1rem"><div class="sec-hdr">'+fL[faseId]+'</div>';
+      fd.forEach(function(doc){
+        var icon=doc.type&&doc.type.includes('pdf')?'&#128209;':doc.naam&&(doc.naam.endsWith('.xlsx')||doc.naam.endsWith('.xls'))?'&#128202;':'&#128196;';
+        var st=doc.uploaded_at?new Date(doc.uploaded_at).toLocaleString('nl-NL',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'';
+        var gr=(doc.grootte/1024/1024).toFixed(1)+'MB';
+        html+='<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">'
+          +'<span style="font-size:18px">'+icon+'</span>'
+          +'<div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--head)">'+esc(doc.naam)+'</div>'
+          +'<div style="font-size:11px;color:var(--muted);margin-top:2px">'+gr+(st?' &middot; Geupload: '+st:'')+'</div></div>'
+          +'<a href="'+WORKER+'/mna/document/download/'+doc.id+'" target="_blank" class="btn-ghost btn-sm" style="font-size:11px;text-decoration:none">&#8681; Download</a>'
+          +'</div>';
+      });
+      html+='</div>';
+    });
+  }
+  html+='</div>';return html;
+}
+function renderWaardering(){
+  var t=S.traject||{};
+  var isRO=isKoper();
+  function parseGeld(s){if(!s)return 0;var n=String(s).replace(/[^0-9,.]/g,'').replace(',','.');return parseFloat(n)||0;}
+  function fmtGeld(n){if(!n||isNaN(n))return '—';if(n>=1000000)return '\u20ac'+(n/1000000).toFixed(2).replace('.',',')+' mln';if(n>=1000)return '\u20ac'+(n/1000).toFixed(0)+'.000';return '\u20ac'+Math.round(n);}
+
+  // Haal data op uit S.data
+  var o1=parseGeld(S.data['financieel_omzet1']);
+  var o2=parseGeld(S.data['financieel_omzet2']);
+  var o3=parseGeld(S.data['financieel_omzet3']);
+  var ebitdaPct=parseFloat(S.data['financieel_ebitda'])||0;
+  var fte=parseFloat(S.data['partner_fte'])||0;
+  var recurring=parseFloat(S.data['commercieel_recurring'])||0;
+  var churn=parseFloat(S.data['commercieel_churn'])||0;
+
+  // Multiples (sectornorm)
+  var mLaag=4.6,mMid=5.05,mHoog=5.5,omzetFactor=0.8,risico=0;
+
+  // Bereken
+  var ebitdaAmt=o3*(ebitdaPct/100);
+  var wLaag=ebitdaAmt*mLaag;
+  var wMid=ebitdaAmt*mMid;
+  var wHoog=ebitdaAmt*mHoog;
+  var wOmzet=o3*omzetFactor;
+
+  // Groei
+  var groei=0,steps=0;
+  if(o1>0&&o2>0){groei+=(o2-o1)/o1*100;steps++;}
+  if(o2>0&&o3>0){groei+=(o3-o2)/o2*100;steps++;}
+  var gemGroei=steps>0?groei/steps:3;
+  var fc=[o3];
+  for(var i=1;i<=3;i++)fc.push(fc[fc.length-1]*(1+gemGroei/100));
+  var fcE=fc.map(function(o){return o*(ebitdaPct/100);});
+  var fcW=fcE.map(function(e){return e*mMid;});
+
+  // Earn-out default
+  var earnBase=wMid;
+  var earnPct=20,earnTarget=5,earnJaren=3;
+  var fixedKoop=earnBase*(1-earnPct/100);
+  var earnJaarlijks=earnBase*(earnPct/100)/earnJaren;
+
+  var html='<div class="wrap anim">'
+    +'<div class="hdr"><div class="brand"><div class="wdot"></div>KantoorInzicht &middot; Waardering</div>'
+    +'<div style="display:flex;gap:8px">'
+    +'<button class="btn-ghost btn-sm" onclick="window.print()">PDF</button>'
+    +'<button class="btn-ghost btn-sm" onclick="S.screen=\'cover\';renderApp()">&#8592; Terug</button>'
+    +'</div></div>'
+    +'<div style="font-family:Playfair Display,serif;font-size:1.4rem;color:var(--head);font-weight:600;margin-bottom:.25rem">Waardebepaling</div>'
+    +'<div style="font-size:13px;color:var(--muted);margin-bottom:1.5rem">'+esc(t.kantoor_naam||S.code)+' &middot; '+esc(t.traject_type||'M&A')+'</div>';
+
+  // Disclaimer
+  html+='<div style="background:var(--gold-bg);border:1px solid var(--gold);border-radius:var(--r);padding:10px 14px;margin-bottom:1.5rem;font-size:12px;color:var(--mid);line-height:1.6">'
+    +'<strong style="color:var(--gold)">&#9888; Indicatieve waardering</strong> &mdash; Deze berekening is gebaseerd op de ingevoerde due diligence data en sectorale benchmarks. Het betreft een indicatie, geen formeel taxatierapport. Bisschops Financing BV aanvaardt geen aansprakelijkheid voor beslissingen op basis van dit overzicht.'
+    +'</div>';
+
+  // Financieel overzicht
+  html+='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;margin-bottom:1.25rem">'
+    +'<div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)">Financiële basis</div>'
+    +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">'
+    +'<div style="text-align:center"><div style="font-size:10px;color:var(--muted);margin-bottom:.2rem">Omzet jaar 1</div><div style="font-family:IBM Plex Mono,monospace;font-size:13px;font-weight:600;color:var(--sub)">'+fmtGeld(o1)+'</div></div>'
+    +'<div style="text-align:center"><div style="font-size:10px;color:var(--muted);margin-bottom:.2rem">Omzet jaar 2</div><div style="font-family:IBM Plex Mono,monospace;font-size:13px;font-weight:600;color:var(--sub)">'+fmtGeld(o2)+'</div></div>'
+    +'<div style="text-align:center"><div style="font-size:10px;color:var(--muted);margin-bottom:.2rem">Omzet jaar 3</div><div style="font-family:IBM Plex Mono,monospace;font-size:13px;font-weight:600;color:var(--teal)">'+fmtGeld(o3)+'</div></div>'
+    +'<div style="text-align:center"><div style="font-size:10px;color:var(--muted);margin-bottom:.2rem">EBITDA</div><div style="font-family:IBM Plex Mono,monospace;font-size:13px;font-weight:600;color:var(--teal)">'+fmtGeld(ebitdaAmt)+' ('+ebitdaPct+'%)</div></div>'
+    +'</div></div>';
+
+  // Waardebepaling as-is
+  html+='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;margin-bottom:1.25rem">'
+    +'<div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)">Waardebepaling as-is (EBITDA-methode)</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:.75rem">'
+    +'<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r2);padding:1rem;text-align:center">'
+      +'<div style="font-size:10px;color:var(--muted);margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.06em">Laag ('+mLaag+'\xd7)</div>'
+      +'<div style="font-family:Playfair Display,serif;font-size:1.4rem;font-weight:600;color:var(--mid)">'+fmtGeld(wLaag)+'</div></div>'
+    +'<div style="background:var(--teal-bg);border:2px solid var(--teal-dark);border-radius:var(--r2);padding:1rem;text-align:center">'
+      +'<div style="font-size:10px;color:var(--teal-dim);margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.06em;font-weight:600">Midden ('+mMid+'\xd7)</div>'
+      +'<div style="font-family:Playfair Display,serif;font-size:1.8rem;font-weight:600;color:var(--teal)">'+fmtGeld(wMid)+'</div></div>'
+    +'<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r2);padding:1rem;text-align:center">'
+      +'<div style="font-size:10px;color:var(--muted);margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.06em">Hoog ('+mHoog+'\xd7)</div>'
+      +'<div style="font-family:Playfair Display,serif;font-size:1.4rem;font-weight:600;color:var(--mid)">'+fmtGeld(wHoog)+'</div></div>'
+    +'</div>'
+    +'<div style="font-size:12px;color:var(--mid);padding:.6rem .75rem;background:var(--card);border-radius:var(--r)">'
+      +'Omzetmethode ('+omzetFactor+'\xd7): <strong>'+fmtGeld(wOmzet)+'</strong>'
+      +(recurring>0?' &nbsp;|&nbsp; Recurring: <strong>'+recurring+'%</strong>':'')
+      +(churn>0?' &nbsp;|&nbsp; Churn: <strong>'+churn+'%</strong>':'')
+    +'</div></div>';
+
+  // Rolling forecast
+  html+='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;margin-bottom:1.25rem">'
+    +'<div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)">Rolling forecast (3 jaar)</div>'
+    +'<div style="font-size:12px;color:var(--mid);margin-bottom:.75rem">Gem. historische groei: <strong style="color:var(--sub)">'+gemGroei.toFixed(1)+'%</strong>/jaar</div>'
+    +'<table style="width:100%;border-collapse:collapse"><thead><tr>'
+    +'<th style="text-align:left;padding:8px 10px;font-size:10px;text-transform:uppercase;color:var(--muted);border-bottom:2px solid var(--border)">Jaar</th>'
+    +'<th style="text-align:right;padding:8px 10px;font-size:10px;text-transform:uppercase;color:var(--muted);border-bottom:2px solid var(--border)">Omzet</th>'
+    +'<th style="text-align:right;padding:8px 10px;font-size:10px;text-transform:uppercase;color:var(--muted);border-bottom:2px solid var(--border)">EBITDA</th>'
+    +'<th style="text-align:right;padding:8px 10px;font-size:10px;text-transform:uppercase;color:var(--muted);border-bottom:2px solid var(--border)">Waardebandreedte</th>'
+    +'</tr></thead><tbody>';
+  var jLabels=['Huidig','Jaar +1','Jaar +2','Jaar +3'];
+  for(var j=0;j<4;j++){
+    html+='<tr style="'+(j===0?'background:var(--teal-bg)':'')+'">'
+      +'<td style="padding:8px 10px;font-size:12px;font-weight:'+(j===0?'600':'400')+';color:var(--sub);border-bottom:1px solid var(--border)">'+jLabels[j]+'</td>'
+      +'<td style="padding:8px 10px;font-size:12px;font-family:IBM Plex Mono,monospace;text-align:right;border-bottom:1px solid var(--border)">'+fmtGeld(fc[j])+'</td>'
+      +'<td style="padding:8px 10px;font-size:12px;font-family:IBM Plex Mono,monospace;text-align:right;color:var(--teal);border-bottom:1px solid var(--border)">'+fmtGeld(fcE[j])+'</td>'
+      +'<td style="padding:8px 10px;font-size:12px;font-family:IBM Plex Mono,monospace;text-align:right;color:var(--mid);border-bottom:1px solid var(--border)">'+fmtGeld(fcW[j]*(mLaag/mMid))+' \u2013 '+fmtGeld(fcW[j]*(mHoog/mMid))+'</td>'
+      +'</tr>';
+  }
+  html+='</tbody></table></div>';
+
+  // Earn-out
+  html+='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;margin-bottom:1.25rem">'
+    +'<div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)">Earn-out structuur (indicatief)</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:.75rem">'
+    +'<div style="background:var(--teal-bg);border:1px solid var(--teal-dark);border-radius:var(--r);padding:.75rem 1rem">'
+      +'<div style="font-size:10px;color:var(--teal-dim);font-weight:600;text-transform:uppercase;margin-bottom:.3rem">Koopsom bij closing</div>'
+      +'<div style="font-family:Playfair Display,serif;font-size:1.4rem;font-weight:600;color:var(--teal)">'+fmtGeld(fixedKoop)+'</div>'
+      +'<div style="font-size:11px;color:var(--muted);margin-top:.2rem)">'+(100-earnPct)+'% van totale waarde</div>'
+    +'</div>'
+    +'<div style="background:var(--gold-bg);border:1px solid var(--gold);border-radius:var(--r);padding:.75rem 1rem">'
+      +'<div style="font-size:10px;color:var(--gold);font-weight:600;text-transform:uppercase;margin-bottom:.3rem">Earn-out ('+earnJaren+' jaar)</div>'
+      +'<div style="font-family:Playfair Display,serif;font-size:1.4rem;font-weight:600;color:var(--gold)">'+fmtGeld(earnBase*(earnPct/100))+'</div>'
+      +'<div style="font-size:11px;color:var(--muted);margin-top:.2rem">'+earnPct+'% bij '+earnTarget+'% omzetgroei/jaar</div>'
+    +'</div></div>'
+    +'<table style="width:100%;border-collapse:collapse"><thead><tr>'
+    +'<th style="text-align:left;padding:6px 10px;font-size:10px;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border)">Moment</th>'
+    +'<th style="text-align:right;padding:6px 10px;font-size:10px;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border)">Omzet target</th>'
+    +'<th style="text-align:right;padding:6px 10px;font-size:10px;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border)">Uitkering</th>'
+    +'<th style="text-align:right;padding:6px 10px;font-size:10px;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border)">Cumulatief</th>'
+    +'</tr></thead><tbody>';
+  var cumul=fixedKoop;
+  html+='<tr style="background:var(--teal-bg)"><td style="padding:6px 10px;font-size:12px;color:var(--sub);border-bottom:1px solid var(--border)">Closing</td><td style="padding:6px 10px;text-align:right;border-bottom:1px solid var(--border)">—</td><td style="padding:6px 10px;font-size:12px;font-family:IBM Plex Mono,monospace;text-align:right;color:var(--teal);border-bottom:1px solid var(--border)">'+fmtGeld(fixedKoop)+'</td><td style="padding:6px 10px;font-size:12px;font-family:IBM Plex Mono,monospace;text-align:right;color:var(--teal);border-bottom:1px solid var(--border)">'+fmtGeld(cumul)+'</td></tr>';
+  for(var k=1;k<=earnJaren;k++){
+    var tgt=o3*Math.pow(1+earnTarget/100,k);
+    cumul+=earnJaarlijks;
+    html+='<tr><td style="padding:6px 10px;font-size:12px;color:var(--sub);border-bottom:1px solid var(--border)">Jaar '+k+'</td>'
+      +'<td style="padding:6px 10px;font-size:12px;font-family:IBM Plex Mono,monospace;text-align:right;border-bottom:1px solid var(--border)">'+fmtGeld(tgt)+'</td>'
+      +'<td style="padding:6px 10px;font-size:12px;font-family:IBM Plex Mono,monospace;text-align:right;color:var(--gold);border-bottom:1px solid var(--border)">'+fmtGeld(earnJaarlijks)+'</td>'
+      +'<td style="padding:6px 10px;font-size:12px;font-family:IBM Plex Mono,monospace;text-align:right;border-bottom:1px solid var(--border)">'+fmtGeld(cumul)+'</td></tr>';
+  }
+  html+='<tr style="background:var(--card)"><td style="padding:6px 10px;font-size:12px;font-weight:600;color:var(--sub)">Totaal</td><td></td><td style="padding:6px 10px;font-size:12px;font-weight:600;font-family:IBM Plex Mono,monospace;text-align:right;color:var(--sub)">'+fmtGeld(earnBase)+'</td><td></td></tr>';
+  html+='</tbody></table></div>';
+
+  // AI rapport knop (alleen tussenpersoon)
+  if(isTussen()){
+    html+='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;margin-bottom:1.25rem">'
+      +'<div id="w-ai-out" style="display:none;margin-bottom:1rem"></div>'
+      +'<button class="btn" id="w-ai-btn" style="width:100%">&#9881; Genereer AI waarderingsrapport</button>'
+      +'</div>';
+  }
+
+  html+='</div>';
+  return html;
+}
+
+
+var logboekCache=null;
+
+async function renderLogboekScreen(app){
+  var faseNamen={voorgesprek:'Voorgesprek',kennismaking:'Kennismaking',pre_dd:'Pre-DD (LoI)',due_diligence:'Due Diligence',verkoop:'Verkoop / Closing'};
+  var fases=['voorgesprek','kennismaking','pre_dd','due_diligence','verkoop'];
+  var isBegOrAdmin=isTussen()||false;
+  app.innerHTML='<div style="max-width:700px;margin:0 auto;padding:2rem 1rem">'
+    +'<div style="display:flex;align-items:center;gap:12px;margin-bottom:1.5rem">'
+    +'<button class="btn-ghost btn-sm" onclick="S.screen=\'cover\';renderApp()">&#8592; Terug</button>'
+    +'<h2 style="font-family:Playfair Display,serif;font-size:1.2rem;color:var(--head);font-weight:600;margin:0">Traject logboek</h2>'
+    +'</div>'
+    +'<div id="lb-fases" style="display:flex;gap:6px;margin-bottom:1.25rem;flex-wrap:wrap"></div>'
+    +'<div id="lb-entries" style="margin-bottom:1.25rem"><div style="color:var(--muted);font-size:13px">Laden...</div></div>'
+    +(isBegOrAdmin?'<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem">'
+      +'<div style="display:flex;gap:8px;margin-bottom:.75rem">'
+      +'<button id="lb-tab-notitie" class="btn" style="font-size:12px;padding:6px 14px">&#128221; Notitie</button>'
+      +'<button id="lb-tab-meeting" class="btn-ghost" style="font-size:12px;padding:6px 14px">&#127909; Meeting vastleggen</button>'
+      +'</div>'
+      +'<div id="lb-panel-notitie">'
+      +'<textarea id="lb-bericht" rows="3" placeholder="Schrijf een logboeknotitie..." style="width:100%;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:IBM Plex Sans,sans-serif;font-size:13px;padding:10px 12px;outline:none;resize:vertical;margin-bottom:.75rem"></textarea>'
+      +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
+      +'<select id="lb-fase" style="background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:IBM Plex Sans,sans-serif;font-size:12px;padding:7px 10px;flex:1">'
+      +'<option value="">— Fase niet wijzigen —</option>'
+      +'<option value="voorgesprek">Voorgesprek</option>'
+      +'<option value="kennismaking">Kennismaking</option>'
+      +'<option value="pre_dd">Pre-DD (LoI)</option>'
+      +'<option value="due_diligence">Due Diligence</option>'
+      +'<option value="verkoop">Verkoop / Closing</option>'
+      +'</select>'
+      +'<button class="btn btn-sm" id="lb-submit">&#43; Opslaan</button>'
+      +'</div></div>'
+      +'<div id="lb-panel-meeting" style="display:none">'
+      +'<div style="font-size:12px;color:var(--muted);margin-bottom:.5rem">Voer vergadernotities in of plak een transcript. De AI structureert automatisch naar samenvatting, beslissingen en actiepunten.</div>'
+      +'<div style="display:flex;gap:8px;margin-bottom:.5rem">'
+      +'<input type="text" id="lb-meeting-titel" placeholder="Titel (bijv. Kennismaking 22 mei)" style="flex:1;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:IBM Plex Sans,sans-serif;font-size:13px;padding:9px 12px;outline:none">'
+      +'<input type="text" id="lb-meeting-deelnemers" placeholder="Deelnemers" style="flex:1;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:IBM Plex Sans,sans-serif;font-size:13px;padding:9px 12px;outline:none">'
+      +'</div>'
+      +'<textarea id="lb-meeting-tekst" rows="5" placeholder="Plak hier ruwe vergadernotities, opnametranscript of steekwoorden. AI structureert alles..." style="width:100%;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:IBM Plex Sans,sans-serif;font-size:13px;padding:10px 12px;outline:none;resize:vertical;margin-bottom:.75rem"></textarea>'
+      +'<div style="display:flex;gap:8px;align-items:center">'
+      +'<select id="lb-meeting-fase" style="background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:IBM Plex Sans,sans-serif;font-size:12px;padding:7px 10px;flex:1">'
+      +'<option value="">— Fase niet wijzigen —</option>'
+      +'<option value="voorgesprek">Voorgesprek</option>'
+      +'<option value="kennismaking">Kennismaking</option>'
+      +'<option value="pre_dd">Pre-DD (LoI)</option>'
+      +'<option value="due_diligence">Due Diligence</option>'
+      +'<option value="verkoop">Verkoop / Closing</option>'
+      +'</select>'
+      +'<button class="btn btn-sm" id="lb-meeting-submit" style="white-space:nowrap">&#9881; AI structureren &amp; opslaan</button>'
+      +'</div></div>'
+      +'</div>'
+    :'<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:.75rem 1rem;font-size:12px;color:var(--muted)">U kunt het logboek inzien. Alleen de begeleider en adviseur kunnen notities toevoegen.</div>')
+    +'</div>';
+
+  // Laad logboek
+  try{
+    var code=S.code;
+    var lr=await fetch(WORKER+'/mna/logboek/'+code);
+    var ld=await lr.json();
+    logboekCache=ld;
+    var huidigeFase=ld.traject_fase||'voorgesprek';
+    // Fases
+    var fDiv=document.getElementById('lb-fases');
+    if(fDiv){fDiv.innerHTML=fases.map(function(f,i){
+      var actief=f===huidigeFase;var geweest=fases.indexOf(huidigeFase)>i;
+      var kleur=actief?'var(--teal)':geweest?'var(--teal-dim)':'var(--border2)';
+      var bg=actief?'var(--teal-bg)':geweest?'rgba(26,122,94,.06)':'transparent';
+      return '<div style="display:flex;align-items:center;gap:4px">'
+        +(i>0?'<div style="width:16px;height:2px;background:'+kleur+';flex-shrink:0"></div>':'')
+        +'<div style="font-size:10px;font-weight:600;padding:4px 10px;border-radius:12px;border:1.5px solid '+kleur+';color:'+(actief?'var(--teal)':geweest?'var(--teal-dim)':'var(--muted)')+';background:'+bg+';white-space:nowrap">'+(faseNamen[f]||f)+'</div></div>';
+    }).join('');}
+    // Entries
+    var eDiv=document.getElementById('lb-entries');
+    if(eDiv){
+      var entries=ld.logboek||[];
+      if(!entries.length){eDiv.innerHTML='<div style="color:var(--muted);font-size:13px;font-style:italic;padding:1rem 0">Nog geen logboeknotities.</div>';}
+      else{eDiv.innerHTML=entries.map(function(e){
+        var dt=new Date(e.created_at).toLocaleString('nl-NL',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+        var isAdm=e.auteur_type==='admin';
+        return '<div style="padding:.75rem 1rem;margin-bottom:.5rem;border-radius:var(--r);background:'+(isAdm?'var(--teal-bg)':'var(--panel)')+';border:1px solid '+(isAdm?'var(--teal-dark)':'var(--border)')+';border-left:3px solid '+(isAdm?'var(--teal)':'var(--gold)')+'">'
+          +(e.fase_gewijzigd?'<div style="font-size:10px;font-weight:600;color:var(--teal);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">&#8594; Fase: '+(faseNamen[e.fase]||e.fase)+'</div>':'')
+          +'<div style="font-size:13px;color:var(--sub);line-height:1.7;white-space:pre-wrap">'+esc(e.bericht)+'</div>'
+          +'<div style="font-size:11px;color:var(--muted);margin-top:5px">'+esc(e.auteur)+' &middot; '+dt+'</div>'
+          +'</div>';
+      }).join('');eDiv.scrollTop=eDiv.scrollHeight;}
+    }
+  }catch(e){var ed=document.getElementById('lb-entries');if(ed)ed.innerHTML='<div style="color:var(--red);font-size:13px">Fout bij laden: '+e.message+'</div>';}
+
+  // Submit
+  if(isBegOrAdmin){
+    var lbBtn=document.getElementById('lb-submit');
+    if(lbBtn)lbBtn.addEventListener('click',async function(){
+      var bericht=document.getElementById('lb-bericht').value.trim();
+      var fase=document.getElementById('lb-fase').value;
+      if(!bericht&&!fase){alert('Voer een notitie in of selecteer een fase.');return;}
+      lbBtn.disabled=true;lbBtn.textContent='Opslaan...';
+      try{
+        var lr=await fetch(WORKER+'/mna/logboek/'+S.code,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({bericht:bericht,nieuwe_fase:fase||undefined,auteur_naam:S.traject.begeleider_naam||'Begeleider'})});
+        var ld=await lr.json();
+        if(ld.ok){document.getElementById('lb-bericht').value='';document.getElementById('lb-fase').value='';renderLogboekScreen(app);}
+        else alert('Fout: '+(ld.error||'onbekend'));
+      }catch(e){alert('Verbindingsfout.');}
+      lbBtn.disabled=false;lbBtn.textContent='+ Opslaan';
+    });
+
+    // Tab switching
+    var tabNotitie=document.getElementById('lb-tab-notitie');
+    var tabMeeting=document.getElementById('lb-tab-meeting');
+    var panelNotitie=document.getElementById('lb-panel-notitie');
+    var panelMeeting=document.getElementById('lb-panel-meeting');
+    if(tabNotitie&&tabMeeting){
+      tabNotitie.onclick=function(){
+        panelNotitie.style.display='';panelMeeting.style.display='none';
+        tabNotitie.className='btn';tabMeeting.className='btn-ghost';
+        tabNotitie.style.fontSize='12px';tabNotitie.style.padding='6px 14px';
+        tabMeeting.style.fontSize='12px';tabMeeting.style.padding='6px 14px';
+      };
+      tabMeeting.onclick=function(){
+        panelNotitie.style.display='none';panelMeeting.style.display='';
+        tabMeeting.className='btn';tabNotitie.className='btn-ghost';
+        tabNotitie.style.fontSize='12px';tabNotitie.style.padding='6px 14px';
+        tabMeeting.style.fontSize='12px';tabMeeting.style.padding='6px 14px';
+      };
+    }
+
+    // Meeting AI structureren
+    var meetBtn=document.getElementById('lb-meeting-submit');
+    if(meetBtn)meetBtn.addEventListener('click',async function(){
+      var titel=document.getElementById('lb-meeting-titel').value.trim();
+      var deelnemers=document.getElementById('lb-meeting-deelnemers').value.trim();
+      var tekst=document.getElementById('lb-meeting-tekst').value.trim();
+      var fase=document.getElementById('lb-meeting-fase').value;
+      if(!tekst){alert('Voer vergadernotities in.');return;}
+      meetBtn.disabled=true;meetBtn.textContent='AI verwerkt...';
+      try{
+        var prompt='Structureer de volgende ruwe vergadernotities van een M&A traject in de accountancy-sector naar een professioneel vergaderverslag.\n\nVERGADERING: '+(titel||'Vergadering')+' | Deelnemers: '+(deelnemers||'onbekend')+'\n\nRUWE NOTITIES:\n'+tekst+'\n\nGeef terug in dit formaat:\n\n## Vergadering: [titel]\nDatum: [datum indien bekend]\nDeelnemers: [deelnemers]\n\n### Samenvatting\n[2-4 zinnen kerninhoud]\n\n### Besproken punten\n- [punt 1]\n- [punt 2]\n\n### Beslissingen\n- [beslissing 1]\n\n### Actiepunten\n- [ ] [actie] — [wie] — [wanneer]\n\n### Volgende stap\n[wat staat er gepland]\n\nCompact en professioneel. Alleen wat relevant is voor het M&A traject.';
+        var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:1500})});
+        var rawText=await resp.text();
+        var rd;try{rd=JSON.parse(rawText);}catch(e){throw new Error('Geen JSON: '+rawText.substring(0,150));}
+        if(!resp.ok)throw new Error('Fout: '+(rd.error||''));
+        var gestructureerd=rd.text||'Fout bij verwerken.';
+        // Sla op als logboeknotitie
+        var lr=await fetch(WORKER+'/mna/logboek/'+S.code,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({bericht:gestructureerd,nieuwe_fase:fase||undefined,auteur_naam:S.traject.begeleider_naam||'Begeleider'})});
+        var ld=await lr.json();
+        if(ld.ok){
+          document.getElementById('lb-meeting-titel').value='';
+          document.getElementById('lb-meeting-deelnemers').value='';
+          document.getElementById('lb-meeting-tekst').value='';
+          document.getElementById('lb-meeting-fase').value='';
+          // Ga terug naar notitie tab en herlaad
+          if(tabNotitie)tabNotitie.click();
+          renderLogboekScreen(app);
+        } else alert('Fout: '+(ld.error||'onbekend'));
+      }catch(e){alert('Fout: '+e.message);}
+      meetBtn.disabled=false;meetBtn.textContent='⚙ AI structureren & opslaan';
+    });
+  }
+}
+
+function renderApp(){
+  var app=ge('app');
+  if(S.screen==='login')app.innerHTML=renderLogin();
+  else if(S.screen==='cover')app.innerHTML=renderCover();
+  else if(S.screen==='main')app.innerHTML=renderMain();
+  else if(S.screen==='summary')app.innerHTML=renderSummary();
+  else if(S.screen==='dataroom')app.innerHTML=renderDataroom();
+  else if(S.screen==='waardering')app.innerHTML=renderWaardering();
+  else if(S.screen==='logboek')renderLogboekScreen(app);
+  bindAll();
+}
+
+function renderLogin(){
+  return '<div class="wrap narrow anim" style="padding-top:3rem">'
+    +'<div class="hdr"><div class="brand"><div class="wdot"></div>KantoorInzicht</div>'
+    +'<a href="index.html" style="font-size:11px;color:var(--muted);text-decoration:none">&#8592; Terug naar scan</a></div>'
+    +'<div style="min-height:60vh;display:flex;align-items:center;justify-content:center">'
+    +'<div class="panel" style="max-width:420px;width:100%">'
+    +'<div style="font-family:Playfair Display,serif;font-size:1.4rem;color:var(--head);font-weight:600;margin-bottom:.3rem">M&amp;A Begeleiding</div>'
+    +'<div style="font-size:13px;color:var(--muted);line-height:1.65;margin-bottom:1.5rem">Voer uw trajectcode in. Verkopers gebruiken de trajectcode, kopers de koperscode. Beide codes ontvangt u van Bisschops Financing BV.</div>'
+    +'<div class="f" style="margin-bottom:.75rem"><label>Trajectcode of koperscode</label>'
+    +'<input type="text" id="l-code" placeholder="" style="text-transform:uppercase;letter-spacing:.15em;font-size:1.2rem;text-align:center;font-family:IBM Plex Mono,monospace" maxlength="10" autocomplete="off"></div>'
+    +'<div id="l-err" style="color:var(--red);font-size:12px;margin-bottom:.75rem;display:none">Code niet gevonden. Controleer uw code of neem contact op via marcel@bisschopsfinancing.nl.</div>'
+    +'<div id="l-load" style="color:var(--muted);font-size:12px;margin-bottom:.75rem;display:none">Laden...</div>'
+    +'<div style="display:flex;gap:10px"><button class="btn-ghost" onclick="window.location.href=\'index.html\'">Terug</button><button class="btn" id="l-btn">Inloggen</button></div>'
+    +'<div style="margin-top:1.25rem;font-size:11px;color:var(--muted);padding-top:1rem;border-top:1px solid var(--border)">Code ontvangen via Marcel Bisschops &middot; <a href="mailto:marcel@bisschopsfinancing.nl" style="color:var(--teal)">marcel@bisschopsfinancing.nl</a></div>'
+    +'</div></div></div>';
+}
+
+function renderCover(){
+  var t=S.traject;
+  var vergrendeld=t&&t.status==='vergrendeld';
+  var datum=new Date().toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'});
+  var docFields=[];
+  FASES.forEach(function(f){
+    var needed=f.dataFields.filter(function(df){return df.doc;});
+    if(needed.length)docFields.push({fase:f.num+'. '+f.title,items:needed.map(function(df){return df.label;})});
+  });
+  var docHtml=docFields.map(function(d){
+    return '<div style="margin-bottom:.6rem"><div style="font-weight:600;color:var(--sub);font-size:13px;margin-bottom:.2rem">'+esc(d.fase)+'</div>'
+      +d.items.map(function(i){return '<div style="font-size:12px;color:var(--mid);padding:1px 0 1px 1rem">&#8212; '+esc(i)+'</div>';}).join('')+'</div>';
+  }).join('');
+
+  var intro='';
+  if(isVerkoper()){
+    intro='<p>Geachte '+esc(t.contact_naam||'relatie')+',</p>'
+      +'<p>In het kader van het '+esc(t.traject_type||'M&A')+'-traject voor <strong>'+esc(t.kantoor_naam)+'</strong> verzoek ik u onderstaande gegevens in te voeren via dit beveiligde platform. U kunt per fase de informatie invullen en tussentijds opslaan.</p>'
+      +'<p>Documenten uploadt u direct via het uploadvenster naast de velden &mdash; de AI analyseert ze automatisch.</p>'
+          +'<p>Wanneer een veld niet automatisch wordt ingevuld na het uploaden, kunt u dit handmatig doen — het geüploade document dient als ondersteuning.</p>'
+      +'<p>Uw gegevens worden strikt vertrouwelijk behandeld.</p>'
+      +'<div style="margin:1rem 0;padding:.75rem 1rem;background:var(--card);border:1px solid var(--border);border-radius:var(--r);font-size:11px;color:var(--muted);line-height:1.7">&#128274; <strong>Beveiliging &amp; AVG:</strong> Alle gegevens worden versleuteld via HTTPS verstuurd en opgeslagen op Cloudflare-servers in Europa (Frankfurt, EU). Uw gegevens worden uitsluitend gebruikt voor dit M&amp;A-traject en niet gedeeld met derden. Conform AVG heeft u recht op inzage, correctie en verwijdering. Zie ook onze <a href=\"privacy.html\" style=\"color:var(--teal)\">privacyverklaring</a>.</div>'
+    +'<p>Met vriendelijke groet,<br><strong>Marcel Bisschops</strong><br><span style="font-size:12px;color:var(--muted)">Senior M&amp;A-adviseur &middot; Bisschops Financing BV<br>06 - 38 68 98 88 &middot; marcel@bisschopsfinancing.nl</span></p>';
+  }else if(isTussen()){
+    intro='<p>Geachte tussenpersoon,</p>'
+      +'<p>U heeft toegang tot de voortgang van het due diligence traject (trajecttype: <strong>'+esc(t.traject_type||'M&A')+'</strong>). De kantooridentiteit is geanonimiseerd conform de afspraken. U kunt per fase de ingevoerde informatie inzien en een AI-advies genereren op basis van de beschikbare data.</p>'
+      +'<p>Vragen? Neem contact op via <a href="mailto:marcel@bisschopsfinancing.nl" style="color:var(--teal)">marcel@bisschopsfinancing.nl</a>.</p>'
+      +'<p>Met vriendelijke groet,<br><strong>Marcel Bisschops</strong><br><span style="font-size:12px;color:var(--muted)">Senior M&amp;A-adviseur &middot; Bisschops Financing BV</span></p>';
+  }else if(!t.koper_vrijgegeven){
+    return '<div class="wrap anim">'
+      +'<div class="hdr"><div class="brand"><div class="wdot"></div>KantoorInzicht &middot; M&amp;A</div></div>'
+      +'<div class="cover-letter" style="text-align:center;padding:3rem 2rem">'
+      +'<div style="font-size:2rem;margin-bottom:1rem">&#128274;</div>'
+      +'<div style="font-family:Playfair Display,serif;font-size:1.3rem;color:var(--head);font-weight:600;margin-bottom:.75rem">Informatie nog niet beschikbaar</div>'
+      +'<div style="font-size:13px;color:var(--mid);line-height:1.7;max-width:420px;margin:0 auto">De due diligence informatie is nog niet vrijgegeven door de adviseur.</div>'
+      +'</div></div>';
+}else{
+    intro='<p>Geachte relatie,</p>'
+      +'<p>Hieronder vindt u de door het kantoor ingevulde informatie in het kader van het '+esc(t.traject_type||'M&A')+'-traject. U kunt de gegevens inzien. Vragen of opmerkingen kunt u richten aan Marcel Bisschops.</p>'
+      +'<p>Met vriendelijke groet,<br><strong>Marcel Bisschops</strong><br><span style="font-size:12px;color:var(--muted)">Senior M&amp;A-adviseur &middot; Bisschops Financing BV</span></p>';
+  }
+
+  return '<div class="wrap anim">'
+    +'<div class="hdr"><div class="brand"><div class="wdot"></div>KantoorInzicht &middot; M&amp;A</div>'
+    +'<div style="display:flex;gap:8px"><button class="btn-ghost btn-sm" onclick="window.print()">PDF afdrukken</button>'
+    +'<button class="btn-ghost btn-sm" onclick="uitloggen()">&#8592; Uitloggen</button>'
+    +'<button class="btn-ghost btn-sm" id="logboek-btn">&#128221; Logboek</button>'
+    +'</div><div style="display:flex;align-items:center;gap:10px;padding:.5rem 0"><span style="font-size:12px;color:var(--muted)">Huidige fase:</span><span id="cover-fase-badge" style="font-size:11px;font-weight:600;padding:3px 12px;border-radius:12px;background:var(--teal-bg);color:var(--teal);border:1px solid var(--teal-dark)">Laden...</span></div><div style="display:none">'
+    +(isVerkoper()?'<button class="btn btn-sm" id="to-main-btn">Start invullen &#8594;</button>'
+    :isTussen()?(t.koper_vrijgegeven
+        ?'<button class="btn-ghost btn-sm" id="intrekken-btn">&#128275; Vrijgave intrekken</button>'
+        :'<button class="btn btn-sm" id="vrijgeven-btn">&#128275; Koper toegang geven</button>')
+      +' <button class="btn btn-sm" id="to-main-btn">Bekijk data &#8594;</button>'
+      +' <button class="btn btn-sm" id="to-waardering-btn" style="background:var(--gold)">&#9654; Waardering</button>'
+      +' <button class="btn btn-sm" id="doc-knoppen-btn" style="background:#2a5ea0">&#128196; Documenten</button>'
+      +' <button class="btn btn-sm" id="gesprek-btn-cover" style="background:var(--teal-dim)">&#128172; Gesprek vastleggen</button>'
+      +' <button class="btn btn-sm" id="ai-analyse-btn-cover" style="background:#6b7c93">&#9881; AI-analyse</button>'
+    :'<button class="btn btn-sm" id="to-main-btn">Bekijk data &#8594;</button>'
+    +(t.koper_vrijgegeven?'<button class="btn btn-sm" id="to-waardering-btn" style="background:var(--gold)">&#9654; Waardering</button>':''))
+    +'</div></div>'
+    +(vergrendeld?'<div style="background:var(--red-bg);border:1px solid var(--red);border-radius:var(--r);padding:10px 14px;margin-bottom:1rem;font-size:13px;color:var(--red)">&#128274; <strong>Dit traject is vergrendeld op '+(t.vergrendeld_op?new Date(t.vergrendeld_op).toLocaleString('nl-NL'):'onbekend')+'.</strong> Verdere wijzigingen zijn niet meer mogelijk.</div>':'')
+    +'<div class="cover-letter">'
+    +'<div style="font-size:11px;color:var(--muted);margin-bottom:.5rem">Bisschops Financing BV &middot; M&amp;A Begeleiding &middot; '+datum+'</div>'
+    +'<h2>'+( isVerkoper()?'Informatieverzoek due diligence':'Due diligence overzicht')+'</h2>'
+    +'<div style="font-size:12px;color:var(--muted);margin-bottom:1.25rem">Trajectcode: <span style="font-family:IBM Plex Mono,monospace;color:var(--teal)">'+esc(S.code)+'</span></div>'
+    +intro+'</div>'
+    +(S.ndaTekst?'<div style="margin-top:1.5rem;background:#f3f0ff;border:1px solid #7c5cbf;border-radius:var(--r2);padding:1.25rem">'
+      +'<div style="font-size:11px;font-weight:600;color:#7c5cbf;letter-spacing:.1em;text-transform:uppercase;margin-bottom:.6rem">&#128274; Non-Disclosure Agreement beschikbaar</div>'
+      +'<div style="font-size:12px;color:var(--mid);margin-bottom:.75rem">De NDA is aangemaakt op '+(S.ndaDatum?new Date(S.ndaDatum).toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'}):'-')+'. Lees de NDA door en retourneer de ondertekende versie aan de adviseur.</div>'
+      +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:.5rem">'
+      +'<button id="nda-lees-btn" class="btn-ghost" style="font-size:12px;border-color:#7c5cbf;color:#7c5cbf">&#128065; Lees NDA</button>'
+      +(S.ndaGetekend?'<div style="font-size:11px;padding:4px 10px;border-radius:12px;background:#f3f0ff;border:1px solid #7c5cbf;color:#7c5cbf;display:flex;align-items:center;gap:4px">&#10003; Getekend door '+esc(S.ndaGetekend)+'</div>':(!isAdmin()?'<button id="nda-teken-btn" class="btn" style="font-size:12px;padding:6px 14px;background:#7c5cbf">&#9998; Akkoord &amp; onderteken</button>':''))
+      +'</div>'
+      +'</div>':'')
+    +(isVerkoper()&&S.loiTekst?'<div style="margin-top:1.5rem;background:var(--gold-bg);border:1px solid var(--gold);border-radius:var(--r2);padding:1.25rem">'
+      +'<div style="font-size:11px;font-weight:600;color:var(--gold);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.6rem">&#128196; Letter of Intent beschikbaar</div>'
+      +'<div style="font-size:12px;color:var(--mid);margin-bottom:.75rem">De LoI is aangemaakt op '+(S.loiDatum?new Date(S.loiDatum).toLocaleDateString("nl-NL",{day:"numeric",month:"long",year:"numeric"}):"—")+'. Lees de LoI door en upload de ondertekende versie via fase Juridisch &amp; Fiscaal.</div>'
+      +'<div style="display:flex;gap:8px">'
+      +'<button id="loi-lees-btn" class="btn-ghost" style="font-size:12px">&#128065; Lees LoI</button>'
+      +'<button id="loi-print2-btn" class="btn" style="font-size:12px;background:var(--gold)">&#128196; Download / Print</button>'
+      +(S.loiGetekend?'<div style="font-size:11px;padding:4px 10px;border-radius:12px;background:var(--gold-bg);border:1px solid var(--gold);color:var(--gold);display:flex;align-items:center;gap:4px">&#10003; Getekend door '+esc(S.loiGetekend)+'</div>':(!isAdmin()?'<button id="loi-teken-btn" class="btn-ghost" style="font-size:12px;border-color:var(--gold);color:var(--gold)">&#9998; Akkoord &amp; onderteken</button>':''))
+      +'</div></div>':'')
+    +(isVerkoper()?'<button class="btn" id="to-main-btn2" style="width:100%;margin-top:1rem">Start met invullen &#8594;</button>':'')
+    +'</div>';
+}
+
+function renderMain(){
+  var f=FASES[S.fase];
+  var tp=isVerkoper()?totalFillPct():Math.round(FASES.reduce(function(a,fase){return a+pct(fase.id);},0)/FASES.length);
+  var vergrendeld=S.traject&&S.traject.status==='vergrendeld';
+  var isRO=isKoper()||vergrendeld;
+
+  var ov='<div class="fase-grid">';
+  FASES.forEach(function(fase,i){
+    var p=isVerkoper()?fillPct(fase.id):pct(fase.id);
+    ov+='<div class="fase-card'+(S.fase===i?' active':'')+'" data-fi="'+i+'">'
+      +'<div class="fase-num">'+fase.num+'</div>'
+      +'<div class="fase-name">'+fase.title+'</div>'
+      +'<div class="fase-bar"><div class="fase-fill" style="width:'+p+'%;background:'+(p===100?'var(--teal)':p>50?'var(--gold)':'var(--red)')+'"></div></div>'
+      +'<div class="fase-pct">'+p+'%</div>'
+      +'</div>';
+  });
+  ov+='</div>';
+
+  // Data fields
+  var dataHtml='<div class="panel"><div class="sec-hdr">Informatie invullen</div>';
+  var instrTxt=isVerkoper()?'<div style="font-size:11px;color:var(--muted);line-height:1.6;margin-bottom:1rem;padding-bottom:.75rem;border-bottom:1px solid var(--border)">Vul de velden in. Upload rechts de relevante documenten &mdash; velden worden automatisch ingelezen zolang het boekjaar in het document staat. Controleer alle automatisch ingevulde waarden. De ge&uuml;ploade documenten dienen als grondslag voor de due diligence. Ontbrekende velden vult u zelf in.</div>':'';
+  dataHtml+=instrTxt+'<div class="data-grid">';
+  f.dataFields.forEach(function(df){
+    if(df.header){
+      dataHtml+='</div><div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--teal);margin:1.25rem 0 .6rem;padding-top:1rem;border-top:1px solid var(--border);grid-column:1/-1">'+df.label+'</div><div class="data-grid">';
+      return;
+    }
+    var val=S.data[f.id+'_'+df.id]||'';
+    var missing=S.showValidation&&df.req&&!val.trim();
+    dataHtml+='<div>';
+    if(isRO){
+      dataHtml+='<div class="f"><label>'+df.label+(df.req?' <span class="req">*</span>':'')+(df.doc?' &#128196;':'')+'</label>'
+        +'<div class="readonly-val'+(val?'':' empty')+'>'+(val?esc(val):'Niet ingevuld')+(ref?'<span style="color:var(--gold);font-size:11px;margin-left:8px">&#128196; '+esc(ref)+'</span>':'')+'</div></div>';
+    }else{
+      dataHtml+='<div class="f"><label>'+df.label+(df.req?' <span class="req">*</span>':'')+(df.doc?' <span style="color:var(--gold);font-size:9px">&#128196; ref</span>':'')+'</label>'
+        +'<input type="text" id="df_'+df.id+'" value="'+esc(val)+'" placeholder="'+esc(df.ph)+'" class="'+(missing?'missing':'')+'" oninput="schedSave()"></div>';
+
+    }
+    dataHtml+='</div>';
+  });
+  dataHtml+='</div>'+(S.showValidation&&getMissing().find(function(m){return m.fase.startsWith(f.num);})
+    ?'<div style="font-size:12px;color:var(--red);margin-top:.5rem">&#9888; Vul alle verplichte velden (*) in voor een volledig beeld.</div>':'')+'</div>';
+
+  // Marcel-only: checklist + rode vlaggen + notities + AI
+  var extraHtml='';
+  // Toon koper reactie voor tussenpersoon en Marcel
+  if(isTussen()||(!isVerkoper()&&!isKoper())){
+    var kReactie=S.koperReacties&&S.koperReacties[f.id];
+    if(kReactie){
+      extraHtml='<div class="panel" style="border-color:var(--gold);margin-bottom:1rem">'
+        +'<div class="sec-hdr" style="color:var(--gold)">&#128172; Koper opmerking</div>'
+        +'<div style="font-size:13px;color:var(--mid);line-height:1.7;font-style:italic;padding:.75rem;background:var(--gold-bg);border-radius:var(--r)">'+esc(kReactie)+'</div>'
+        +'</div>';
+    }
+  }
+  if(!isVerkoper()){
+    var chkHtml='<div class="panel"><div class="sec-hdr">Checklist (intern)</div>';
+    f.items.forEach(function(item,i){var key=f.id+'_'+i;var on=!!S.checked[key];chkHtml+='<div class="chk-item'+(on?' on':'')+'" data-key="'+key+'"'+(isKoper()?' style="cursor:default"':'')+'><div class="chk-box">'+(on?'&#10003;':'')+'</div><div class="chk-lbl">'+item+'</div></div>';});
+    chkHtml+='<div class="sec-hdr" style="margin-top:1rem;color:var(--red)">Rode vlaggen &mdash; gesignaleerd?</div>';
+    f.redflags.forEach(function(rf,i){var key=f.id+'_rf_'+i;var on=!!S.checked[key];chkHtml+='<div class="chk-item rf'+(on?' on':'')+'" data-key="'+key+'"'+(isKoper()?' style="cursor:default"':'')+'><div class="chk-box">'+(on?'&#10003;':'')+'</div><div class="chk-lbl">'+rf+'</div></div>';});
+    chkHtml+='</div>';
+    var notHtml='<div class="panel"><div class="sec-hdr">Notities (intern)</div>'
+      +((isKoper())?'<div style="font-size:13px;color:var(--mid);font-style:italic">'+(S.notities[f.id]||'Geen notities.')+'</div>'
+        :'<textarea id="notitie_'+f.id+'" style="width:100%;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:9px 11px;font-family:IBM Plex Sans,sans-serif;font-size:13px;color:var(--sub);resize:vertical;min-height:70px;outline:none" placeholder="Interne bevindingen en aandachtspunten..." oninput="schedSave()">'+(S.notities[f.id]||'')+'</textarea>')
+      +'<div style="display:flex;align-items:center;gap:.75rem;margin-top:.3rem"><div style="font-size:11px;color:var(--muted)">'+(isKoper()?'':'Wijzigingen worden automatisch opgeslagen.')+'</div><div id="save-ind" class="save-indicator">&#10003; Opgeslagen</div></div></div>';
+    var aiText=S.aiTexts[f.id];var aiLoad=S.aiLoading[f.id];
+    var aiBodyHtml;
+    if(aiLoad)aiBodyHtml='<div style="display:flex;align-items:center;gap:8px;color:var(--mid);font-size:13px"><div class="spin" style="border-color:var(--border2);border-top-color:var(--teal);width:14px;height:14px"></div>Genereren...</div>';
+    else if(!aiText)aiBodyHtml='<div style="color:var(--muted);font-size:13px">Klik op Genereer advies voor een analyse op basis van de ingevulde data, checklist en notities.</div>';
+    else if(aiText==='__ERROR__')aiBodyHtml='<div style="color:var(--red);font-size:13px">Verbindingsfout. Probeer opnieuw.</div>';
+    else{var h=aiText.replace(/## ([^\n]+)/g,function(_,t){return '<h3>'+t+'</h3>';});h=h.replace(/\*\*([^*]+)\*\*/g,function(_,t){return '<strong>'+t+'</strong>';});h=h.split('\n\n').map(function(p){return p.trim()&&p.charAt(0)!=='<'?'<p>'+p+'</p>':p;}).join('');aiBodyHtml=h;}
+    var aiHtml='<div class="ai-panel"><div class="ai-hdr"><div><div class="ai-title">AI-advies: '+f.title+'</div><div class="ai-sub">Intern analyse-instrument</div></div>'
+      +(!isKoper()&&!isVerkoper()?'<button class="btn-gen" id="gen-btn" '+(aiLoad?'disabled':'')+'>'+(aiLoad?'<div class="spin"></div> Genereren...':aiText&&aiText!=='__ERROR__'?'Opnieuw':'Genereer advies')+'</button>':'')
+      +'</div><div class="ai-body">'+aiBodyHtml+'</div></div>';
+    extraHtml=chkHtml+notHtml+aiHtml;
+  }
+
+  // Koper reactie sectie
+  if(isKoper()){
+    var reactie=S.koperReacties&&S.koperReacties[f.id]||'';
+    extraHtml+='<div class="panel" style="border-color:var(--gold)">'
+      +'<div class="sec-hdr" style="color:var(--gold)">Uw vragen &amp; opmerkingen</div>'
+      +'<div style="font-size:12px;color:var(--mid);margin-bottom:.75rem;line-height:1.6">Heeft u vragen of opmerkingen bij deze fase? De adviseur ontvangt uw bericht direct.</div>'
+      +'<textarea id="koper-reactie-'+f.id+'" style="width:100%;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:9px 11px;font-family:IBM Plex Sans,sans-serif;font-size:13px;color:var(--sub);resize:vertical;min-height:80px;outline:none" placeholder="Typ hier uw vraag of opmerking...">'+(reactie?esc(reactie):'')+'</textarea>'
+      +'<div style="display:flex;align-items:center;justify-content:space-between;margin-top:.5rem">'
+      +'<div id="koper-reactie-status-'+f.id+'" style="font-size:11px;color:var(--teal);opacity:0;transition:opacity .3s"></div>'
+      +'<button id="koper-reactie-btn-'+f.id+'" class="btn btn-sm" style="font-size:12px">Verstuur opmerking</button>'
+      +'</div></div>';
+  }
+  var nav='<div class="fase-nav">'
+    +(isVerkoper()?'<button class="btn-ghost btn-sm" id="cover-btn">&#128196; Cover letter</button>':'')
+    +(S.fase>0?'<button class="btn-ghost btn-sm" id="prev-btn">&#8592; Vorige</button>':'')
+    +'<div style="flex:1"></div>'
+    +'<button class="btn-ghost btn-sm" id="sum-btn">Overzicht</button>'
+    +(S.fase<FASES.length-1?'<button class="btn btn-sm" id="next-btn">Volgende &#8594;</button>':'<button class="btn btn-sm" id="sum-btn2">Afronden &#10003;</button>')
+    +'</div>';
+
+  var lockedBanner=vergrendeld?'<div style="background:var(--red-bg);border:1px solid var(--red);border-radius:var(--r);padding:10px 14px;margin-bottom:1rem;font-size:13px;color:var(--red)">&#128274; <strong>Dit traject is vergrendeld.</strong> U kunt geen wijzigingen meer doorvoeren.</div>':'';
+
+  return '<div class="wrap anim">'
+    +'<div class="hdr"><div class="brand"><div class="wdot"></div>KantoorInzicht &middot; M&amp;A'+(isKoper()?' (koper-view)':isVerkoper()?' (invullen)':isTussen()?' (tussenpersoon-view)':'')+'</div>'
+    +'<div style="display:flex;align-items:center;gap:8px">'
+    +'<span style="font-size:11px;color:var(--muted)">'+esc(S.traject&&S.traject.kantoor_naam||S.code)+'</span>'
+    +'<button class="btn-ghost btn-sm" onclick="window.print()">PDF</button>'
+    +'</div></div>'
+    +lockedBanner
+    +'<div style="font-family:Playfair Display,serif;font-size:1.4rem;color:var(--head);font-weight:600;margin-bottom:.25rem">'+esc(S.traject&&S.traject.kantoor_naam||'')+'</div>'
+    +'<div style="font-size:13px;color:var(--muted);margin-bottom:1rem">Voortgang: <span style="font-family:IBM Plex Mono,monospace;color:'+(tp===100?'var(--teal)':tp>50?'var(--gold)':'var(--red)')+'">'+tp+'%</span></div>'
+    +'<div class="prog-bar"><div class="prog-fill" style="width:'+tp+'%;background:'+(tp===100?'var(--teal)':tp>50?'var(--gold)':'var(--red)')+'"></div></div>'
+    +ov
+    +'<div style="font-family:Playfair Display,serif;font-size:1.1rem;color:var(--head);font-weight:600;margin-bottom:.2rem">'+f.num+'. '+f.title+'</div>'
+    +'<div style="font-size:13px;color:var(--muted);margin-bottom:1.25rem">'+f.desc+'</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 320px;gap:1rem;align-items:start">'
+    +dataHtml+renderDocumentSectie(f.id)+'</div>'
+    +extraHtml+nav+'</div>';
+}
+
+function renderSummary(){
+  var missing=getMissing();
+  var vergrendeld=S.traject&&S.traject.status==='vergrendeld';
+  var completeFases=FASES.filter(function(f){return fillPct(f.id)===100;});
+  var incompleteFases=FASES.filter(function(f){return fillPct(f.id)<100;});
+
+  // Summary cards
+  var cards='';
+  FASES.forEach(function(f){
+    var p=isVerkoper()?fillPct(f.id):pct(f.id);
+    var dataRows='';
+    f.dataFields.forEach(function(df){var v=S.data[f.id+'_'+df.id];var r=S.docRefs[f.id+'_'+df.id];if(v)dataRows+='<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-bottom:1px solid var(--border)"><span style="color:var(--muted)">'+df.label+(df.req?' *':'')+'</span><span style="font-family:IBM Plex Mono,monospace;font-size:11px">'+esc(v)+(r?' <span style="color:var(--gold)">&#128196;'+esc(r)+'</span>':'')+'</span></div>';else if(df.req)dataRows+='<div style="font-size:12px;padding:3px 0;border-bottom:1px solid var(--border);color:var(--red)">&#9888; '+df.label+': niet ingevuld</div>';});
+    var rfHits=f.redflags.filter(function(_,i){return S.checked[f.id+'_rf_'+i];});
+    cards+='<div class="panel" style="border-color:'+(p===100?'var(--teal)':'var(--border)')+'"><div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:.5rem;display:flex;justify-content:space-between"><span>'+(isVerkoper()?'':f.num+'. ')+f.title+'</span><span style="color:'+(p===100?'var(--teal)':p>50?'var(--gold)':'var(--red)')+'">'+p+'%</span></div>'
+      +dataRows+(rfHits.length&&!isVerkoper()?'<div style="margin-top:.4rem">'+rfHits.map(function(rf){return '<div style="font-size:11px;color:var(--red)">&#9888; '+rf+'</div>';}).join('')+'</div>':'')
+      +(S.notities[f.id]&&!isVerkoper()?'<div style="font-size:11px;color:var(--mid);margin-top:.35rem;font-style:italic">'+esc(S.notities[f.id].substring(0,120))+'</div>':'')
+      +'</div>';
+  });
+
+  // Missing fields block
+  var missingHtml='';
+  if(missing.length&&isVerkoper()){
+    missingHtml='<div class="panel" style="border-color:var(--red)">'
+      +'<div style="font-size:13px;font-weight:600;color:var(--red);margin-bottom:.75rem">&#9888; Nog '+missing.reduce(function(a,m){return a+m.fields.length;},0)+' verplichte velden niet ingevuld</div>';
+    missing.forEach(function(m){
+      missingHtml+='<div style="margin-bottom:.6rem"><div style="font-size:12px;font-weight:600;color:var(--sub);margin-bottom:.2rem">'+esc(m.fase)+'</div>';
+      m.fields.forEach(function(field){missingHtml+='<div style="font-size:12px;color:var(--red);padding:2px 0 2px .75rem">&#8212; '+esc(field)+'</div>';});
+      missingHtml+='</div>';
+    });
+    missingHtml+='</div>';
+  }
+
+  var tp=isVerkoper()?totalFillPct():Math.round(FASES.reduce(function(a,f){return a+pct(f.id);},0)/FASES.length);
+  return '<div class="wrap anim">'
+    +'<div class="hdr"><div class="brand"><div class="wdot"></div>KantoorInzicht &middot; M&amp;A</div>'
+    +'<div style="display:flex;gap:8px"><button class="btn-ghost btn-sm" onclick="window.print()">PDF</button><button class="btn-ghost btn-sm" id="back-main">&#8592; Terug</button></div></div>'
+    +(vergrendeld?'<div style="background:var(--red-bg);border:1px solid var(--red);border-radius:var(--r);padding:10px 14px;margin-bottom:1rem;font-size:13px;color:var(--red)">&#128274; Vergrendeld op '+(S.traject.vergrendeld_op?new Date(S.traject.vergrendeld_op).toLocaleString('nl-NL'):'')+'</div>':'')
+    +'<div style="font-family:Playfair Display,serif;font-size:1.4rem;color:var(--head);font-weight:600;margin-bottom:.25rem">DD Samenvatting</div>'
+    +'<div style="font-size:13px;color:var(--muted);margin-bottom:1.5rem">'+esc(S.traject&&S.traject.kantoor_naam||S.code)+' &middot; '+new Date().toLocaleDateString('nl-NL',{day:'2-digit',month:'long',year:'numeric'})+'</div>'
+    +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:1.5rem">'
+    +'<div class="panel" style="text-align:center;padding:1rem"><div style="font-family:Playfair Display,serif;font-size:1.8rem;font-weight:600;color:'+(tp===100?'var(--teal)':tp>50?'var(--gold)':'var(--red)')+'">'+tp+'%</div><div style="font-size:10px;text-transform:uppercase;color:var(--muted)">'+(isVerkoper()?'Ingevuld':'Checklist')+'</div></div>'
+    +'<div class="panel" style="text-align:center;padding:1rem"><div style="font-family:Playfair Display,serif;font-size:1.8rem;font-weight:600;color:var(--teal)">'+completeFases.length+'</div><div style="font-size:10px;text-transform:uppercase;color:var(--muted)">Fasen compleet</div></div>'
+    +'<div class="panel" style="text-align:center;padding:1rem"><div style="font-family:Playfair Display,serif;font-size:1.8rem;font-weight:600;color:var(--red)">'+missing.reduce(function(a,m){return a+m.fields.length;},0)+'</div><div style="font-size:10px;text-transform:uppercase;color:var(--muted)">Velden ontbreken</div></div>'
+    +'</div>'
+    +missingHtml
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'+cards+'</div>'
+    +'</div>';
+}
+
+async function generateAI(faseId){
+  var f=FASES.find(function(x){return x.id===faseId;});if(!f)return;
+  saveCurrent();S.aiLoading[faseId]=true;renderApp();
+  var dataLines=[];f.dataFields.forEach(function(df){var v=S.data[f.id+'_'+df.id];var r=S.docRefs[f.id+'_'+df.id];if(v)dataLines.push(df.label+': '+v+(r?' (doc: '+r+')':''));});
+  var chk=f.items.filter(function(_,i){return S.checked[faseId+'_'+i];});
+  var open=f.items.filter(function(_,i){return !S.checked[faseId+'_'+i];});
+  var rfs=f.redflags.filter(function(_,i){return S.checked[faseId+'_rf_'+i];});
+  var prompt='Je bent Marcel Bisschops, senior M&A-adviseur gespecialiseerd in accountantskantoren en administratiekantoren. Traject: '+esc(S.traject&&S.traject.traject_type||'M&A')+' voor "'+esc(S.traject&&S.traject.kantoor_naam||S.code)+'".\n\nFASE: '+f.title+'\n\nINGEVOERDE DATA:\n'+(dataLines.join('\n')||'Geen data')+'\n\nCHECKLIST:\nGereed: '+(chk.join(', ')||'niets')+'\nOpen: '+(open.join(', ')||'alles gereed')+'\n\nRODE VLAGGEN: '+(rfs.join(', ')||'geen')+'\n\nNOTITIES: '+(S.notities[faseId]||'geen')+'\n\nGeef beknopt strategisch advies. Analyseer de cijfers expliciet en vergelijk met sectorgemiddelden. Bespreek: voortgang en prioriteiten, urgente openstaande punten, impact rode vlaggen, concrete vervolgstappen. Schrijf in ik-vorm. Gebruik ## koppen. Geen tabellen of bullets.';
+  try{
+    var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}]})});
+    if(!resp.ok)throw new Error('HTTP '+resp.status);
+    var reader=resp.body.getReader();var dec=new TextDecoder();var collected='';
+    while(true){var res=await reader.read();if(res.done)break;dec.decode(res.value,{stream:true}).split('\n').forEach(function(line){if(line.startsWith('data:')){var d=line.slice(5).trim();if(d==='[DONE]')return;try{var j=JSON.parse(d);if(j.type==='content_block_delta'&&j.delta&&j.delta.text)collected+=j.delta.text;}catch(e){}}});}
+    S.aiTexts[faseId]=collected;
+  }catch(e){S.aiTexts[faseId]='__ERROR__';}
+  S.aiLoading[faseId]=false;renderApp();
+}
+
+function bindAll(){
+  var lb=ge('l-btn');
+  if(lb){
+    lb.onclick=async function(){
+      var code=((ge('l-code')||{}).value||'').trim().toUpperCase();
+      if(!code)return;
+      var err=ge('l-err');var load=ge('l-load');
+      if(err)err.style.display='none';if(load)load.style.display='block';lb.disabled=true;
+      try{
+        var resp=await fetch(WORKER+'/mna/traject/'+code);
+        if(!resp.ok)throw new Error('not found');
+        var d=await resp.json();
+        // Volledige reset - geen datalek tussen trajecten
+        Object.keys(DOCS).forEach(function(k){delete DOCS[k];});
+        S={screen:'cover',code:code,rol:d.rol||'verkoper',traject:d.traject,
+          fase:0,checked:{},data:{},docRefs:{},notities:{},aiTexts:{},aiLoading:{},
+          saveTimer:null,showValidation:false,dataroomLoading:false,dataroom:null,
+          _opy:{},_epy:{},_conflicts:[],_userEdited:{},koperReacties:{},loiTekst:'',loiDatum:0};
+        if(d.data&&d.data.length){loadDataFromDB(d.data);S._mnaData=d.data;}
+        // Sla tussen_code op als begeleider-auth
+        if(isTussen())S._bgKey=code;
+        if(d.traject&&d.traject.loi_tekst)S.loiTekst=d.traject.loi_tekst;
+        if(d.traject&&d.traject.loi_datum)S.loiDatum=d.traject.loi_datum;
+        if(d.traject&&d.traject.nda_tekst)S.ndaTekst=d.traject.nda_tekst;
+        if(d.traject&&d.traject.nda_datum)S.ndaDatum=d.traject.nda_datum;
+        if(d.traject&&d.traject.nda_getekend)S.ndaGetekend=d.traject.nda_getekend;
+        if(d.traject&&d.traject.loi_getekend)S.loiGetekend=d.traject.loi_getekend;
+        renderApp();
+      }catch(e){if(err)err.style.display='block';if(load)load.style.display='none';lb.disabled=false;}
+    };
+    var cf=ge('l-code');
+    if(cf){cf.oninput=function(){this.value=this.value.toUpperCase();};cf.onkeydown=function(e){if(e.key==='Enter')lb.click();};}
+  }
+  var toMain=ge('to-main-btn');if(toMain)toMain.onclick=function(){S.screen='main';var fId=FASES[S.fase]&&FASES[S.fase].id;if(fId&&!DOCS[fId])loadDocsForFase(fId);renderApp();};
+  var toMain2=ge('to-main-btn2');if(toMain2)toMain2.onclick=function(){S.screen='main';renderApp();};
+  var toWrd=ge('to-waardering-btn');if(toWrd)toWrd.onclick=function(){S.screen='waardering';renderApp();};
+  var toLb=ge('logboek-btn');if(toLb)toLb.onclick=function(){S.screen='logboek';renderApp();};
+  // Laad en toon huidige fase op cover
+  (async function(){
+    var faseNamen={voorgesprek:'Voorgesprek',kennismaking:'Kennismaking',pre_dd:'Pre-DD (LoI)',due_diligence:'Due Diligence',verkoop:'Verkoop / Closing'};
+    try{var lr=await fetch(WORKER+'/mna/logboek/'+S.code);var ld=await lr.json();
+      var badge=ge('cover-fase-badge');
+      if(badge)badge.textContent=faseNamen[ld.traject_fase]||ld.traject_fase||'Voorgesprek';
+    }catch(e){}
+  })();
+
+  // LoI knoppen op cover
+  var loiLees=ge('loi-lees-btn');
+  if(loiLees)loiLees.onclick=function(){
+    var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;display:flex;align-items:center;justify-content:center;padding:1.5rem';
+    var box=document.createElement('div');box.style.cssText='background:#fff;border-radius:10px;padding:2rem;max-width:700px;width:100%;max-height:90vh;overflow-y:auto';
+    box.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.2rem;font-weight:600;color:#1a1815;margin-bottom:1rem">Letter of Intent</div>'
+      +'<div style="font-family:Georgia,serif;font-size:13px;line-height:1.9;color:#2a2825;white-space:pre-wrap">'+esc(S.loiTekst)+'</div>'
+      +'<div style="display:flex;justify-content:flex-end;margin-top:1.25rem"><button style="background:transparent;border:1px solid #c8c5bc;border-radius:6px;padding:8px 18px;cursor:pointer;font-size:13px" id="loi-sluit">Sluiten</button></div>';
+    ov.appendChild(box);document.body.appendChild(ov);
+    ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
+    document.getElementById('loi-sluit').addEventListener('click',function(){document.body.removeChild(ov);});
+  };
+
+  // NDA tekenen
+  var ndaTeken=ge('nda-teken-btn');
+  if(ndaTeken)ndaTeken.onclick=async function(){
+    var naam=prompt('Voer uw volledige naam in ter bevestiging van akkoord:');
+    if(!naam||!naam.trim())return;
+    if(!confirm('U gaat akkoord met de Non-Disclosure Agreement namens '+naam.trim()+'. Bevestigen?'))return;
+    try{
+      var r=await fetch(WORKER+'/mna/teken',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:S.code,document:'nda',naam:naam.trim()})});
+      var d=await r.json();
+      if(d.ok){S.ndaGetekend=naam.trim();renderApp();alert('NDA getekend. De adviseur is op de hoogte gesteld.');}
+      else alert('Fout: '+(d.error||'onbekend'));
+    }catch(e){alert('Verbindingsfout.');}
+  };
+
+  // LoI tekenen
+  var loiTeken=ge('loi-teken-btn');
+  if(loiTeken)loiTeken.onclick=async function(){
+    var naam=prompt('Voer uw volledige naam in ter bevestiging van akkoord:');
+    if(!naam||!naam.trim())return;
+    if(!confirm('U gaat akkoord met de Letter of Intent namens '+naam.trim()+'. Bevestigen?'))return;
+    try{
+      var r=await fetch(WORKER+'/mna/teken',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:S.code,document:'loi',naam:naam.trim()})});
+      var d=await r.json();
+      if(d.ok){S.loiGetekend=naam.trim();renderApp();alert('LoI getekend. De adviseur is op de hoogte gesteld.');}
+      else alert('Fout: '+(d.error||'onbekend'));
+    }catch(e){alert('Verbindingsfout.');}
+  };
+
+  var ndaLees=ge('nda-lees-btn');
+  if(ndaLees)ndaLees.onclick=function(){
+    var ov=document.createElement('div');
+    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;display:flex;align-items:center;justify-content:center;padding:1.5rem';
+    var box=document.createElement('div');
+    box.style.cssText='background:#fff;border-radius:10px;padding:2rem;max-width:700px;width:100%;max-height:90vh;overflow-y:auto';
+    var ndaHtml=(S.ndaTekst||'').replace(/^# (.+)$/gm,'<h2 style="font-family:Georgia,serif;font-size:1.1rem;margin:1rem 0 .4rem;font-weight:700">$1</h2>').replace(/^## (.+)$/gm,'<h3 style="font-family:Georgia,serif;font-size:.95rem;margin:.9rem 0 .3rem;font-weight:700">$1</h3>').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/^---$/gm,'<hr style="border:none;border-top:1px solid #ddd;margin:.75rem 0">').replace(/\n\n/g,'</p><p style="font-size:13px;line-height:1.9;color:#2a2825;margin:.4rem 0">').replace(/\n/g,'<br>');
+    var hdr=document.createElement('div');hdr.style.cssText='display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem';
+    hdr.innerHTML='<div style="font-size:11px;font-weight:600;color:#7c5cbf;letter-spacing:.1em;text-transform:uppercase">Non-Disclosure Agreement</div>';
+    var sluit=document.createElement('button');sluit.textContent='Sluiten';sluit.style.cssText='background:transparent;border:1px solid #ddd;border-radius:6px;padding:4px 12px;cursor:pointer;font-size:12px';
+    sluit.onclick=function(){document.body.removeChild(ov);};
+    hdr.appendChild(sluit);
+    var tekDiv=document.createElement('div');tekDiv.style.cssText='font-family:Georgia,serif;font-size:13px;line-height:1.9;color:#2a2825';
+    tekDiv.innerHTML='<p style="font-size:13px;line-height:1.9;color:#2a2825;margin:.4rem 0">'+ndaHtml+'</p>';
+    var btns=document.createElement('div');btns.style.cssText='margin-top:1rem;display:flex;gap:8px';
+    var printBtn=document.createElement('button');printBtn.textContent='📄 Print / PDF';printBtn.style.cssText='font-size:12px;padding:6px 14px;border:1px solid #ccc;border-radius:6px;cursor:pointer;background:transparent';
+    printBtn.onclick=function(){var win=window.open('','_blank');var h=(S.ndaTekst||'').replace(/^# (.+)$/gm,'<h1 style="font-family:Georgia,serif">$1</h1>').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n\n/g,'</p><p>');win.document.write('<html><head><style>body{font-family:Georgia,serif;font-size:13px;line-height:1.9;max-width:700px;margin:2cm auto}</style></head><body><p>'+h+'</p></body></html>');win.document.close();win.print();};
+    btns.appendChild(printBtn);
+    box.appendChild(hdr);box.appendChild(tekDiv);box.appendChild(btns);
+    ov.appendChild(box);document.body.appendChild(ov);
+    ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
+  };
+
+
+  var loiPrint=ge('loi-print2-btn');
+  if(loiPrint)loiPrint.onclick=function(){
+    var win=window.open('','_blank');
+    win.document.write('<html><body style="font-family:Georgia,serif;font-size:13px;line-height:1.9;max-width:700px;margin:2cm auto;color:#2a2825"><pre style="white-space:pre-wrap;font-family:Georgia,serif">'+S.loiTekst+'</pre></body></html>');
+    win.document.close();win.print();
+  };
+  // AI knop in waardering (tussenpersoon)
+  var wAiBtn=ge('w-ai-btn');
+  if(wAiBtn)wAiBtn.addEventListener('click',async function(){
+    var out=ge('w-ai-out');if(!out)return;
+    wAiBtn.disabled=true;wAiBtn.textContent='Genereren...';
+    out.style.display='block';
+    out.innerHTML='<div style="color:var(--muted);font-size:13px">AI genereert rapport...</div>';
+    function parseGeld(s){if(!s)return 0;var n=String(s).replace(/[^0-9,.]/g,'').replace(',','.');return parseFloat(n)||0;}
+    function fmtGeld(n){if(!n||isNaN(n))return '—';if(n>=1000000)return '€'+(n/1000000).toFixed(2)+' mln';if(n>=1000)return '€'+(n/1000).toFixed(0)+'.000';return '€'+Math.round(n);}
+    var o3=parseGeld(S.data['financieel_omzet3']);
+    var eP=parseFloat(S.data['financieel_ebitda'])||0;
+    var eA=o3*(eP/100);
+    var prompt='Schrijf een professioneel M&A waarderingsrapport voor '+esc(S.traject&&S.traject.kantoor_naam||S.code)+'.\n\nOmzet jaar 3: '+fmtGeld(o3)+'\nEBITDA: '+fmtGeld(eA)+' ('+eP+'%)\nWaardering midden: '+fmtGeld(eA*5.05)+' (5.05x)\nBandreedte: '+fmtGeld(eA*4.6)+' - '+fmtGeld(eA*5.5)+'\n\n## Executive summary\n## Waarderingsmethodiek\n## As-is waardering\n## Groei- en waardepotentieel\n## Transactiestructuur\n## Conclusie';
+    try{
+      var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:2000})});
+      var rd=await resp.json();
+      var tekst=rd.content&&rd.content[0]?rd.content[0].text:'Fout.';
+      tekst=tekst.replace(/^## (.+)$/gm,'<h3 style="font-family:Playfair Display,serif;font-size:.95rem;color:var(--head);margin:1rem 0 .4rem">$1</h3>');
+      tekst=tekst.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+      tekst=tekst.replace(/\n\n/g,'</p><p style="font-size:13px;color:var(--mid);line-height:1.7;margin-bottom:.6rem">');
+      out.innerHTML='<p style="font-size:13px;color:var(--mid);line-height:1.7">'+tekst+'</p>';
+      wAiBtn.textContent='Opnieuw genereren';wAiBtn.disabled=false;
+    }catch(e){out.innerHTML='<div style="color:var(--red);font-size:13px">Fout: '+e.message+'</div>';wAiBtn.disabled=false;wAiBtn.textContent='Genereer AI rapport';}
+  });
+  var coverBtn=ge('cover-btn');if(coverBtn)coverBtn.onclick=function(){saveCurrent();S.screen='cover';renderApp();};
+  var backMain=ge('back-main');if(backMain)backMain.onclick=function(){S.screen='main';renderApp();};
+  var sumBtn=ge('sum-btn');if(sumBtn)sumBtn.onclick=function(){S.showValidation=true;saveCurrent();S.screen='summary';renderApp();};
+  var sumBtn2=ge('sum-btn2');if(sumBtn2)sumBtn2.onclick=function(){S.showValidation=true;saveCurrent();S.screen='summary';renderApp();};
+  var prevBtn=ge('prev-btn');if(prevBtn)prevBtn.onclick=function(){saveCurrent();S.fase--;renderApp();};
+  var nextBtn=ge('next-btn');if(nextBtn)nextBtn.onclick=function(){saveCurrent();S.fase++;renderApp();};
+  var genBtn=ge('gen-btn');if(genBtn)genBtn.onclick=function(){generateAI(FASES[S.fase].id);};
+  document.querySelectorAll('.fase-card[data-fi]').forEach(function(el){el.onclick=function(){
+    saveCurrent();
+    var newFase=parseInt(el.dataset.fi);
+    S.fase=newFase;
+    var faseId=FASES[newFase]&&FASES[newFase].id;
+    if(faseId&&!DOCS[faseId])loadDocsForFase(faseId);
+    renderApp();
+  };});
+  if(!isKoper()){
+    document.querySelectorAll('.chk-item[data-key]').forEach(function(el){el.onclick=function(){saveCurrent();S.checked[el.dataset.key]=!S.checked[el.dataset.key];renderApp();};});
+  }
+  document.querySelectorAll('.upload-zone[data-fase]').forEach(function(el){
+    el.onclick=function(){triggerFileUpload(el.dataset.fase);};
+  });
+  var vb=ge('vrijgeven-btn');
+  if(vb)vb.onclick=async function(){
+    var auth=S._bgKey||'';
+    var r=await fetch(WORKER+'/mna/admin/vrijgeven/'+S.traject.id,{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':auth}}).then(function(x){return x.json();}).catch(function(){return{};});
+    if(r.ok){S.traject.koper_vrijgegeven=1;renderApp();}else alert('Fout: '+(r.error||'onbekend'));
+  };
+  // Koper reactie knoppen
+  if(isKoper()){
+    var f=FASES[S.fase];
+    if(f){
+      var rBtn=ge('koper-reactie-btn-'+f.id);
+      if(rBtn)rBtn.onclick=async function(){
+        var ta=ge('koper-reactie-'+f.id);
+        var status=ge('koper-reactie-status-'+f.id);
+        if(!ta||!ta.value.trim())return;
+        rBtn.disabled=true;rBtn.textContent='Versturen...';
+        try{
+          var resp=await fetch(WORKER+'/mna/koper/reactie',{method:'POST',headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({code:S.code,fase_id:f.id,reactie:ta.value.trim()})});
+          var d=await resp.json();
+          if(d.ok){
+            if(!S.koperReacties)S.koperReacties={};
+            S.koperReacties[f.id]=ta.value.trim();
+            if(status){status.textContent='\u2713 Verstuurd';status.style.opacity='1';setTimeout(function(){status.style.opacity='0';},3000);}
+            rBtn.textContent='Verstuur opmerking';rBtn.disabled=false;
+          }else{alert('Fout bij versturen.');rBtn.disabled=false;rBtn.textContent='Verstuur opmerking';}
+        }catch(e){alert('Verbindingsfout.');rBtn.disabled=false;rBtn.textContent='Verstuur opmerking';}
+      };
+    }
+  }
+  var ib=ge('intrekken-btn');
+  if(ib)ib.onclick=async function(){
+    var auth=S._bgKey||'';
+    var r=await fetch(WORKER+'/mna/admin/intrekken/'+S.traject.id,{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':auth}}).then(function(x){return x.json();}).catch(function(){return{};});
+    if(r.ok){S.traject.koper_vrijgegeven=0;renderApp();}else alert('Fout: '+(r.error||'onbekend'));
+  };
+
+  // ── BEGELEIDER DOCUMENT KNOPPEN ──────────────────────────────
+  var docKnopBtn=ge('doc-knoppen-btn');
+  if(docKnopBtn&&isTussen()){
+    docKnopBtn.onclick=function(){
+      // Toon document modal met NDA/LoI/BEM knoppen
+      var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:200;display:flex;align-items:center;justify-content:center;padding:1.5rem';
+      var mo=document.createElement('div');mo.style.cssText='background:#fff;border-radius:10px;padding:2rem;max-width:560px;width:100%;max-height:90vh;overflow-y:auto';
+      var t2=S.traject;
+      mo.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.1rem;color:#1a1815;font-weight:600;margin-bottom:1.25rem">&#128196; Documenten genereren</div>'
+        +'<p style="font-size:13px;color:#5a5854;margin-bottom:1.25rem">Genereer en verstuur documenten voor traject <strong>'+esc(t2.kantoor_naam||S.code)+'</strong>.</p>'
+        +'<div style="display:flex;flex-direction:column;gap:10px">'
+        +'<button id="bg-nda-btn" style="background:#7c5cbf;color:#fff;border:none;padding:10px 16px;border-radius:6px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:13px;font-weight:600;text-align:left">&#128274; Genereer NDA</button>'
+        +'<button id="bg-loi-btn" style="background:#c9a84c;color:#fff;border:none;padding:10px 16px;border-radius:6px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:13px;font-weight:600;text-align:left">&#128196; Genereer LoI</button>'
+        +'<button id="bg-bem-btn" style="background:#2a5ea0;color:#fff;border:none;padding:10px 16px;border-radius:6px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:13px;font-weight:600;text-align:left">&#128203; Bemiddelingsovereenkomst</button>'
+        +'</div>'
+        +'<div id="bg-doc-output" style="margin-top:1rem"></div>'
+        +'<div style="margin-top:1.25rem;text-align:right"><button id="bg-doc-sluit" style="background:transparent;border:1px solid #c8c5bc;padding:8px 16px;border-radius:6px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:13px">Sluiten</button></div>';
+      ov.appendChild(mo);document.body.appendChild(ov);
+      ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
+      document.getElementById('bg-doc-sluit').addEventListener('click',function(){document.body.removeChild(ov);});
+
+      async function bgGenereerDoc(type){
+        var out=document.getElementById('bg-doc-output');
+        out.innerHTML='<div style="color:#8a8880;font-size:13px">Genereren... (15-30 sec)</div>';
+        var datum=new Date().toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'});
+        var t3=S.traject;
+        var isSell=!t3.traject_type||t3.traject_type==='Verkoop'||t3.traject_type==='Opvolging';
+        var tplType=type==='bem'?(isSell?'bem_verk':'bem_koper'):type;
+        var tplR=await fetch(WORKER+'/mna/template/'+tplType+'?email='+encodeURIComponent(t3.begeleider_email||'')).catch(function(){return{json:function(){return{ok:false};}};});
+        var tplD=await tplR.json().catch(function(){return{ok:false};});
+        var prompt='';
+        if(type==='nda'){
+          prompt='Vul de NDA template in voor trajecttype: '+(t3.traject_type||'Verkoop')+'. Partij 1: '+esc(t3.kantoor_naam||'[verkoper]')+', '+(t3.verkoper_adres||'[adres]')+'. Partij 2: '+esc(t3.koper_naam||'[koper]')+' ('+(t3.koper_rechtsvorm||'')+'). Datum: '+datum+'. Adviseur: Bisschops Financing B.V., '+esc(t3.begeleider_naam||'Begeleider')+'.\n\nTEMPLATE:\n'+(tplD.ok&&tplD.tekst?tplD.tekst:'[standaard NDA template]');
+        }else if(type==='loi'){
+          prompt='Vul de LoI template in voor trajecttype: '+(t3.traject_type||'Verkoop')+'. Partij 1: '+esc(t3.kantoor_naam||'[verkoper]')+'. Partij 2: '+esc(t3.koper_naam||'[koper]')+' ('+(t3.koper_rechtsvorm||'')+'), '+(t3.koper_adres||'')+'. Datum: '+datum+'. Adviseur: '+(t3.begeleider_naam||'Bisschops Financing B.V.')+'.\n\nTEMPLATE:\n'+(tplD.ok&&tplD.tekst?tplD.tekst:'[standaard LoI template]');
+        }else{
+          prompt='Vul de Bemiddelingsovereenkomst template in. Type: '+(isSell?'Verkoop':'Aankoop')+'. Opdrachtgever: '+esc(isSell?t3.kantoor_naam:t3.koper_naam||'[koper]')+'. Datum: '+datum+'. Begeleider/Adviseur: '+(t3.begeleider_naam||'Bisschops Financing B.V.')+'.\n\nTEMPLATE:\n'+(tplD.ok&&tplD.tekst?tplD.tekst:'[standaard BEM template]');
+        }
+        var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:type==='bem'?4000:8000})});
+        var rd=await resp.json();
+        var tekst=rd.text||(rd.error||'Fout');
+        var labels={nda:'NDA',loi:'LoI',bem:'Bemiddelingsovereenkomst'};
+        out.innerHTML='<div style="font-size:11px;font-weight:600;color:#2a5ea0;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.5rem">'+labels[type]+' gegenereerd</div>'
+          +'<textarea style="width:100%;height:280px;background:#f0eeea;border:1px solid #c8c5bc;border-radius:6px;color:#2a2825;font-family:Georgia,serif;font-size:12px;line-height:1.8;padding:1rem;outline:none;resize:vertical" id="bg-doc-tekst">'+esc(tekst)+'</textarea>'
+          +'<div style="display:flex;gap:8px;margin-top:.75rem">'
+          +'<button id="bg-print-btn" style="background:transparent;border:1px solid #c8c5bc;padding:6px 14px;border-radius:6px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:12px">&#128196; Print / PDF</button>'
+          +'<button id="bg-email-btn" style="background:#2a5ea0;color:#fff;border:none;padding:6px 14px;border-radius:6px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:12px;font-weight:600">&#9993; Verstuur naar partijen</button>'
+          +'</div>';
+        document.getElementById('bg-print-btn').onclick=function(){
+          var win=window.open('','_blank');
+          var pt=document.getElementById('bg-doc-tekst').value;
+          win.document.write('<html><head><style>body{font-family:Georgia,serif;font-size:13px;line-height:1.9;max-width:700px;margin:2cm auto;color:#2a2825}</style></head><body><p>'+pt.replace(/\n/g,'<br>')+'</p></body></html>');
+          win.document.close();win.print();
+        };
+        document.getElementById('bg-email-btn').onclick=async function(){
+          var ebtn=this;ebtn.disabled=true;ebtn.textContent='Versturen...';
+          var verzendTekst=document.getElementById('bg-doc-tekst').value;
+          var toList=[t3.contact_email||t3.begeleider_email];
+          if(t3.begeleider_email&&!toList.includes(t3.begeleider_email))toList.push(t3.begeleider_email);
+          if(t3.koper_email&&!toList.includes(t3.koper_email))toList.push(t3.koper_email);
+          var endpoint=type==='nda'?'/mna/nda/email':type==='loi'?'/mna/loi/email':'/mna/bem/email';
+          var payload={code:S.code,to:toList};
+          if(type==='nda')payload.nda_tekst=verzendTekst;
+          else if(type==='loi')payload.loi_tekst=verzendTekst;
+          else{payload.bem_tekst=verzendTekst;payload.type=isSell?'verkoop':'aankoop';}
+          var er=await fetch(WORKER+endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+          var ed=await er.json();
+          if(ed.ok){ebtn.textContent='✓ Verstuurd';setTimeout(function(){ebtn.textContent='✉ Verstuur';ebtn.disabled=false;},2000);}
+          else{alert('Fout: '+(ed.error||'onbekend'));ebtn.disabled=false;ebtn.textContent='✉ Verstuur';}
+        };
+      }
+      document.getElementById('bg-nda-btn').onclick=function(){bgGenereerDoc('nda');};
+      document.getElementById('bg-loi-btn').onclick=function(){bgGenereerDoc('loi');};
+      document.getElementById('bg-bem-btn').onclick=function(){bgGenereerDoc('bem');};
+    };
+  }
+
+  // ── BEGELEIDER GESPREK VASTLEGGEN ────────────────────────────
+  var gesprekCoverBtn=ge('gesprek-btn-cover');
+  if(gesprekCoverBtn&&isTussen()){
+    gesprekCoverBtn.onclick=function(){
+      var vandaag=new Date().toISOString().split('T')[0];
+      var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:200;display:flex;align-items:center;justify-content:center;padding:1.5rem';
+      var mo=document.createElement('div');mo.style.cssText='background:#fff;border-radius:10px;padding:2rem;max-width:580px;width:100%;max-height:90vh;overflow-y:auto';
+      mo.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.1rem;color:#1a1815;font-weight:600;margin-bottom:1.25rem">&#128172; Gesprek vastleggen</div>'
+        +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:1rem">'
+        +'<div><label style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#8a8880;display:block;margin-bottom:4px">Datum</label><input type="date" id="bg-gs-datum" value="'+vandaag+'" style="width:100%;background:#f0eeea;border:1px solid #c8c5bc;border-radius:6px;padding:9px 11px;font-family:IBM Plex Sans,sans-serif;font-size:13px"></div>'
+        +'<div><label style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#8a8880;display:block;margin-bottom:4px">Type</label><select id="bg-gs-type" style="width:100%;background:#f0eeea;border:1px solid #c8c5bc;border-radius:6px;padding:9px 11px;font-family:IBM Plex Sans,sans-serif;font-size:13px"><option value="gesprek">Gesprek</option><option value="kennismaking">Kennismaking</option><option value="onderhandeling">Onderhandeling</option><option value="vergadering">Vergadering</option><option value="telefonisch">Telefonisch overleg</option><option value="andere">Overig</option></select></div>'
+        +'</div>'
+        +'<div style="margin-bottom:1rem"><label style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#8a8880;display:block;margin-bottom:4px">Deelnemers</label><input type="text" id="bg-gs-deelnemers" placeholder="bijv. Jan Smit, Kees de Vries" style="width:100%;background:#f0eeea;border:1px solid #c8c5bc;border-radius:6px;padding:9px 11px;font-family:IBM Plex Sans,sans-serif;font-size:13px"></div>'
+        +'<div style="margin-bottom:1rem"><label style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#8a8880;display:block;margin-bottom:4px">Notities / aantekeningen</label><textarea id="bg-gs-notities" rows="5" placeholder="Ruwe notities..." style="width:100%;background:#f0eeea;border:1px solid #c8c5bc;border-radius:6px;padding:9px 11px;font-family:IBM Plex Sans,sans-serif;font-size:13px;line-height:1.7;resize:vertical"></textarea></div>'
+        +'<div style="margin-bottom:1rem"><label style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#8a8880;display:block;margin-bottom:4px">Verslag</label><textarea id="bg-gs-verslag" rows="5" placeholder="Verslag — of klik AI om te genereren." style="width:100%;background:#f0eeea;border:1px solid #c8c5bc;border-radius:6px;padding:9px 11px;font-family:IBM Plex Mono,monospace;font-size:12px;line-height:1.7;resize:vertical"></textarea></div>'
+        +'<div style="display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap">'
+        +'<button id="bg-gs-ai" style="background:transparent;border:1px solid #1a7a5e;color:#1a7a5e;padding:6px 14px;border-radius:6px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:12px">&#9881; AI-verslag genereren</button>'
+        +'<span id="bg-gs-status" style="font-size:12px;color:#8a8880;align-self:center"></span>'
+        +'</div>'
+        +'<div id="bg-gs-err" style="display:none;color:#e05252;font-size:12px;margin-bottom:.5rem"></div>'
+        +'<div style="display:flex;gap:10px;justify-content:flex-end">'
+        +'<button id="bg-gs-ann" style="background:transparent;border:1px solid #c8c5bc;padding:8px 16px;border-radius:6px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:13px">Annuleren</button>'
+        +'<button id="bg-gs-ok" style="background:#1a7a5e;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:13px;font-weight:600">Opslaan</button>'
+        +'</div>';
+      ov.appendChild(mo);document.body.appendChild(ov);
+      ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
+      document.getElementById('bg-gs-ann').onclick=function(){document.body.removeChild(ov);};
+      document.getElementById('bg-gs-ai').onclick=async function(){
+        var notities=(document.getElementById('bg-gs-notities').value||'').trim();
+        if(!notities){document.getElementById('bg-gs-status').textContent='Voer eerst notities in.';return;}
+        var st=document.getElementById('bg-gs-status');st.textContent='Genereren...';
+        var btn=this;btn.disabled=true;
+        var prompt='Maak een professioneel gespreksverslag van een M&A traject.'
+          +'\n\nGesprek: '+(document.getElementById('bg-gs-type').value)+' | Datum: '+(document.getElementById('bg-gs-datum').value)+' | Deelnemers: '+(document.getElementById('bg-gs-deelnemers').value||'onbekend')
+          +'\n\nNOTITIES:\n'+notities
+          +'\n\nGeef het verslag terug met secties: ## Samenvatting, ## Besproken punten, ## Beslissingen & afspraken, ## Actiepunten, ## Volgende stap. Professioneel, derde persoon.';
+        try{
+          var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:1500})});
+          var rd=await resp.json();
+          document.getElementById('bg-gs-verslag').value=rd.text||'';
+          st.textContent='✓ Verslag gegenereerd';
+        }catch(e){st.textContent='Fout bij genereren';}
+        btn.disabled=false;
+      };
+      document.getElementById('bg-gs-ok').onclick=async function(){
+        var datum=document.getElementById('bg-gs-datum').value;
+        var err=document.getElementById('bg-gs-err');
+        if(!datum){err.style.display='block';err.textContent='Datum is verplicht.';return;}
+        var btn=this;btn.disabled=true;btn.textContent='Opslaan...';
+        var payload={datum:datum,deelnemers:document.getElementById('bg-gs-deelnemers').value.trim(),type:document.getElementById('bg-gs-type').value,ruwe_notities:document.getElementById('bg-gs-notities').value.trim(),verslag:document.getElementById('bg-gs-verslag').value.trim()};
+        var auth=S._bgKey||'';
+        var r=await fetch(WORKER+'/mna/admin/gesprekken/'+S.traject.id,{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':auth},body:JSON.stringify(payload)});
+        var d=await r.json();
+        if(d.ok){document.body.removeChild(ov);alert('Gesprek opgeslagen.');}
+        else{err.style.display='block';err.textContent='Fout: '+(d.error||'onbekend');btn.disabled=false;btn.textContent='Opslaan';}
+      };
+    };
+  }
+
+  // ── BEGELEIDER AI-ANALYSE ────────────────────────────────────
+  var aiAnalyseCoverBtn=ge('ai-analyse-btn-cover');
+  if(aiAnalyseCoverBtn&&isTussen()){
+    aiAnalyseCoverBtn.onclick=async function(){
+      var btn=this;btn.disabled=true;btn.textContent='Analyseren...';
+      var t3=S.traject;
+      var bms={};
+      try{var br=await fetch(WORKER+'/benchmarks');var bd=await br.json();bd.forEach(function(b){bms[b.sleutel]=b;});}catch(e){}
+      var dataSamenvatting='';
+      (S._mnaData||[]).forEach(function(row){
+        try{
+          var dj=typeof row.data_json==='string'?JSON.parse(row.data_json):row.data_json;
+          var gevuld=Object.values(dj||{}).filter(function(v){return v&&v.value;});
+          if(gevuld.length){dataSamenvatting+='\n## '+row.fase_id+'\n';gevuld.forEach(function(v){dataSamenvatting+='- '+v.label+': '+v.value+'\n';});}
+        }catch(e){}
+      });
+      var bmTekst='BENCHMARKS: EBITDA '+(bms['ebitda_marge_admin']?bms['ebitda_marge_admin'].waarde:18.7)+'% | Multiples '+(bms['multiple_adm_laag']?bms['multiple_adm_laag'].waarde:4.6)+'x-'+(bms['multiple_adm_hoog']?bms['multiple_adm_hoog'].waarde:5.5)+'x\n';
+      var prompt='M&A-adviseur accountancy. Analyseer traject: '+esc(t3.kantoor_naam||S.code)+' ('+esc(t3.traject_type||'Verkoop')+')\n'+bmTekst+'\nDUE DILIGENCE:'+dataSamenvatting+'\n\n## Samenvatting\n## Financieel profiel & waardering\n## Sterktes\n## Risicos\n## Aanbevelingen\n\nMax 500 woorden.';
+      try{
+        var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:3000})});
+        var rd=await resp.json();
+        var tekst=(rd.text||'Fout bij genereren.').replace(/## ([^\n]+)/g,'<strong style="display:block;margin:.75rem 0 .25rem;font-size:14px">$1</strong>').replace(/\n/g,'<br>');
+        var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:200;display:flex;align-items:center;justify-content:center;padding:1.5rem';
+        var mo=document.createElement('div');mo.style.cssText='background:#fff;border-radius:10px;padding:2rem;max-width:680px;width:100%;max-height:90vh;overflow-y:auto';
+        mo.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.1rem;color:#1a1815;font-weight:600;margin-bottom:1.25rem">&#9881; AI-analyse · '+esc(t3.kantoor_naam||S.code)+'</div>'
+          +'<div style="font-size:13px;color:#5a5854;line-height:1.8">'+tekst+'</div>'
+          +'<div style="margin-top:1.25rem;text-align:right"><button id="ai-sluit" style="background:transparent;border:1px solid #c8c5bc;padding:8px 16px;border-radius:6px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:13px">Sluiten</button></div>';
+        ov.appendChild(mo);document.body.appendChild(ov);
+        ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
+        document.getElementById('ai-sluit').onclick=function(){document.body.removeChild(ov);};
+      }catch(e){alert('Fout bij AI-analyse: '+e.message);}
+      btn.disabled=false;btn.textContent='&#9881; AI-analyse';
+    };
+  }
+}
+
+renderApp();
+</script>
+</body>
+</html>
