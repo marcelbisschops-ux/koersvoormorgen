@@ -365,6 +365,7 @@ function renderMnaTab(el){
         +'<td style="white-space:nowrap;display:flex;gap:4px;flex-wrap:wrap">'
         +'<button class="btn-ghost btn-detail" data-id="'+esc(t.id)+'" data-naam="'+esc(t.kantoor_naam||t.id)+'" style="font-size:11px;padding:3px 8px">&#128065; Bekijk</button>'
         +'<button class="btn-ghost btn-bewerk" data-id="'+esc(t.id)+'" data-naam="'+esc(t.kantoor_naam||t.id)+'" style="font-size:11px;padding:3px 8px">&#9999;&#65039; Bewerk</button>'
+        +'<button class="btn-ghost btn-uitnodigen" data-id="'+esc(t.id)+'" data-naam="'+esc(t.kantoor_naam||t.id)+'" data-tcode="'+esc(t.tussen_code||'')+'" style="font-size:11px;padding:3px 8px;color:#2a5ea0;border-color:#2a5ea0">&#128231; Begeleider</button>'
         +'<button class="btn-ghost btn-opslaan" data-idx="'+i+'" style="font-size:11px;padding:3px 8px">&#8681; Opslaan</button>'
         +(verg
           ?'<button class="btn-ghost btn-ontv" data-id="'+esc(t.id)+'" style="font-size:11px;padding:3px 8px;color:var(--teal)">&#128275; Ontgrendel</button>'
@@ -386,6 +387,7 @@ function renderMnaTab(el){
   });
   el.querySelectorAll('.btn-detail').forEach(function(b){b.addEventListener('click',function(){toonDetail(b.dataset.id,b.dataset.naam);});});
   el.querySelectorAll('.btn-bewerk').forEach(function(b){b.addEventListener('click',function(){toonBewerkModal(b.dataset.id,b.dataset.naam);});});
+  el.querySelectorAll('.btn-uitnodigen').forEach(function(b){b.addEventListener('click',function(){toonBegeleiderModal(b.dataset.id,b.dataset.naam,b.dataset.tcode);});});
   el.querySelectorAll('.btn-opslaan').forEach(function(b){b.addEventListener('click',function(){slaOp(mnaList[parseInt(b.dataset.idx)]);});});
   el.querySelectorAll('.btn-verg').forEach(function(b){b.addEventListener('click',function(){vergrendel(b.dataset.id,b.dataset.naam);});});
   el.querySelectorAll('.btn-ontv').forEach(function(b){b.addEventListener('click',function(){ontvergrendel(b.dataset.id);});});
@@ -1841,6 +1843,75 @@ function toonGesprekModal(trajectId, bestaand, onSaved){
       if(d.ok){document.body.removeChild(ov2);if(onSaved)onSaved();}
       else{err.style.display='block';err.textContent='Fout: '+(d.error||'onbekend');btn3.disabled=false;btn3.textContent='Opslaan';}
     }catch(e2){err.style.display='block';err.textContent='Verbindingsfout.';btn3.disabled=false;btn3.textContent='Opslaan';}
+  });
+}
+
+function toonBegeleiderModal(trajectId, trajectNaam, tussenCode){
+  var ov=document.createElement('div');ov.className='overlay';
+  var mo=document.createElement('div');mo.className='modal';mo.style.maxWidth='500px';
+  var mnaUrl='https://koersvoormorgen.nl/mna.html';
+  mo.innerHTML='<div class="modal-title">&#128231; Begeleider uitnodigen</div>'
+    +'<p style="font-size:13px;color:var(--mid);margin-bottom:1.25rem;line-height:1.7">Stuur de begeleider toegang tot traject <strong>'+esc(trajectNaam)+'</strong>. Met de tussenpersoon-code kan hij het traject volledig beheren: documenten genereren, gesprekken vastleggen, koper vrijgeven en AI-analyses uitvoeren.</p>'
+    +'<div style="background:var(--teal-bg);border:1px solid var(--teal-dark);border-radius:var(--r2);padding:1rem;margin-bottom:1.25rem">'
+    +'<div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--teal-dim);margin-bottom:.4rem">Tussenpersoon-code</div>'
+    +'<div style="font-family:IBM Plex Mono,monospace;font-size:1.4rem;font-weight:600;color:var(--teal);letter-spacing:.2em">'+esc(tussenCode||'—')+'</div>'
+    +'<div style="font-size:11px;color:var(--muted);margin-top:.3rem">Inloggen op: '+mnaUrl+'</div>'
+    +'</div>'
+    +'<div class="field"><label>E-mail begeleider <span style="color:var(--red)">*</span></label><input type="email" id="bg-email-input" placeholder="begeleider@kantoor.nl"></div>'
+    +'<div class="field"><label>Naam begeleider</label><input type="text" id="bg-naam-input" placeholder="bijv. Petra van der Berg"></div>'
+    +'<div class="field"><label>Persoonlijk bericht (optioneel)</label><textarea id="bg-bericht-input" rows="3" placeholder="Voeg eventueel een persoonlijk bericht toe..."></textarea></div>'
+    +'<div id="bg-err" style="display:none;color:var(--red);font-size:12px;margin-bottom:.5rem"></div>'
+    +'<div id="bg-ok" style="display:none;color:var(--teal);font-size:13px;margin-bottom:.5rem">&#10003; Uitnodiging verstuurd!</div>'
+    +'<div style="display:flex;gap:10px;justify-content:flex-end">'
+    +'<button class="btn-ghost" id="bg-ann">Annuleren</button>'
+    +'<button class="btn-ghost" id="bg-kopieer" style="color:var(--teal);border-color:var(--teal)">&#8690; Kopieer code</button>'
+    +'<button class="btn" id="bg-verstuur">&#9993; Stuur uitnodiging</button>'
+    +'</div>';
+  ov.appendChild(mo);document.body.appendChild(ov);
+  ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
+  document.getElementById('bg-ann').addEventListener('click',function(){document.body.removeChild(ov);});
+  document.getElementById('bg-kopieer').addEventListener('click',function(){
+    var tekst=tussenCode+'\n'+mnaUrl;
+    navigator.clipboard.writeText(tekst).then(function(){var o=document.getElementById('bg-kopieer').textContent;document.getElementById('bg-kopieer').textContent='✓ Gekopieerd';setTimeout(function(){document.getElementById('bg-kopieer').textContent=o;},2000);});
+  });
+  document.getElementById('bg-verstuur').addEventListener('click',async function(){
+    var email=document.getElementById('bg-email-input').value.trim();
+    var naam=document.getElementById('bg-naam-input').value.trim();
+    var bericht=document.getElementById('bg-bericht-input').value.trim();
+    var err=document.getElementById('bg-err');err.style.display='none';
+    if(!email||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){err.style.display='block';err.textContent='Geldig e-mailadres is verplicht.';return;}
+    var btn=this;btn.disabled=true;btn.textContent='Versturen...';
+    try{
+      var html='<div style="font-family:sans-serif;max-width:600px;margin:0 auto">'
+        +'<div style="background:#1a7a5e;color:#fff;padding:1.5rem;border-radius:8px 8px 0 0"><h2 style="margin:0;font-size:1.1rem">KantoorInzicht M&A — Uitnodiging begeleider</h2></div>'
+        +'<div style="background:#fff;border:1px solid #ddd;border-top:none;padding:1.5rem;border-radius:0 0 8px 8px">'
+        +'<p style="font-size:14px;color:#2a2825">Beste '+(naam||'begeleider')+',</p>'
+        +'<p style="font-size:13px;color:#5a5854;line-height:1.7">Je bent uitgenodigd als begeleider voor het M&A traject <strong>'+esc(trajectNaam)+'</strong>.</p>'
+        +(bericht?'<p style="font-size:13px;color:#5a5854;line-height:1.7;border-left:3px solid #1a7a5e;padding-left:1rem;margin:1rem 0">'+esc(bericht)+'</p>':'')
+        +'<div style="background:#f0faf6;border:1px solid #0a3d2e;border-radius:8px;padding:1.25rem;margin:1.25rem 0">'
+        +'<div style="font-size:11px;font-weight:600;color:#145f48;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.4rem">Jouw toegangscode</div>'
+        +'<div style="font-family:monospace;font-size:1.6rem;font-weight:700;color:#1a7a5e;letter-spacing:.2em">'+esc(tussenCode)+'</div>'
+        +'<div style="font-size:12px;color:#8a8880;margin-top:.3rem">Inloggen op: <a href="'+mnaUrl+'" style="color:#1a7a5e">'+mnaUrl+'</a></div>'
+        +'</div>'
+        +'<p style="font-size:12px;color:#8a8880">Met jouw code kun je het traject volledig beheren: documenten genereren, gesprekken vastleggen en de koper toegang geven.</p>'
+        +'<p style="font-size:12px;color:#8a8880;margin-top:1rem">Met vriendelijke groet,<br><strong>Marcel Bisschops</strong><br>Bisschops Financing BV</p>'
+        +'</div></div>';
+      var r=await fetch(WORKER+'/mna/mail-begeleider',{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':adminKey},
+        body:JSON.stringify({to:email,naam:naam,trajectNaam:trajectNaam,tussenCode:tussenCode,html:html})});
+      var d=await r.json();
+      if(d.ok){
+        document.getElementById('bg-ok').style.display='block';
+        btn.textContent='Verstuurd';
+        // Update begeleider in DB als naam/email ingevuld
+        if(naam||email){
+          await fetch(WORKER+'/mna/admin/update/'+trajectId+'?key='+encodeURIComponent(adminKey),{method:'POST',headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({begeleider_naam:naam,begeleider_email:email})}).catch(function(){});
+        }
+      } else {
+        err.style.display='block';err.textContent='Fout bij versturen: '+(d.error||'onbekend');
+        btn.disabled=false;btn.textContent='Stuur uitnodiging';
+      }
+    }catch(e){err.style.display='block';err.textContent='Verbindingsfout.';btn.disabled=false;btn.textContent='Stuur uitnodiging';}
   });
 }
 
