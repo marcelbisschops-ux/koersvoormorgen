@@ -139,7 +139,39 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--b
       <span class="dim-chip">Internationaal</span><span class="dim-chip">Digitalisering</span>
       <span class="dim-chip">Strategie & Opvolging</span>
     </div>
-    <button class="btn-start" onclick="naarGegevens()">Start de scan →</button>
+    <div style="margin-bottom:2rem">
+      <div style="font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--teal);margin-bottom:.75rem">Voor één bedrijf</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:560px;margin:0 auto 1.5rem">
+        <div onclick="naarGegevens()" style="background:var(--teal-bg);border:2px solid var(--teal);border-radius:var(--r2);padding:1.25rem;text-align:left;cursor:pointer;transition:all .15s">
+          <div style="font-size:1.3rem;margin-bottom:.5rem">⬡</div>
+          <div style="font-family:'Playfair Display',serif;font-size:1rem;color:var(--teal);font-weight:600;margin-bottom:.3rem">Start individuele scan</div>
+          <div style="font-size:12px;color:var(--mid);line-height:1.5">Vul de scan in en ontvang direct uw strategisch rapport met AI-advies.</div>
+        </div>
+        <div onclick="naarRapportOphalen()" style="background:var(--panel);border:1px solid var(--border2);border-radius:var(--r2);padding:1.25rem;text-align:left;cursor:pointer;transition:all .15s">
+          <div style="font-size:1.3rem;margin-bottom:.5rem">🔒</div>
+          <div style="font-family:'Playfair Display',serif;font-size:1rem;color:var(--head);font-weight:600;margin-bottom:.3rem">Rapport ophalen</div>
+          <div style="font-size:12px;color:var(--mid);line-height:1.5">Eerder een scan gedaan? Haal uw rapport op met uw persoonlijke scancode.</div>
+        </div>
+      </div>
+      <div style="font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem">Voor meerdere bedrijven</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;max-width:560px;margin:0 auto">
+        <div onclick="naarGroepAanmaken()" style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1rem;text-align:left;cursor:pointer;transition:all .15s">
+          <div style="font-size:1.1rem;margin-bottom:.4rem">⊞</div>
+          <div style="font-size:13px;font-weight:600;color:var(--head);margin-bottom:.3rem">Groep aanmaken</div>
+          <div style="font-size:11px;color:var(--mid);line-height:1.5">Maak een groepscode en nodig bedrijven uit.</div>
+        </div>
+        <div onclick="naarGroepDeelnemen()" style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1rem;text-align:left;cursor:pointer;transition:all .15s">
+          <div style="font-size:1.1rem;margin-bottom:.4rem">⊕</div>
+          <div style="font-size:13px;font-weight:600;color:var(--head);margin-bottom:.3rem">Deelnemen</div>
+          <div style="font-size:11px;color:var(--mid);line-height:1.5">Ontvangen groepscode? Doe mee.</div>
+        </div>
+        <div onclick="naarDashboard()" style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1rem;text-align:left;cursor:pointer;transition:all .15s">
+          <div style="font-size:1.1rem;margin-bottom:.4rem">▤</div>
+          <div style="font-size:13px;font-weight:600;color:var(--head);margin-bottom:.3rem">Dashboard</div>
+          <div style="font-size:11px;color:var(--mid);line-height:1.5">Bekijk alle scans van uw groep.</div>
+        </div>
+      </div>
+    </div>
     <div class="intro-foot">
       🔒 Versleuteld via HTTPS · Cloudflare Frankfurt EU · AVG-conform · <a href="https://koersvoormorgen.nl/privacy.html">Privacyverklaring</a>
     </div>
@@ -723,9 +755,10 @@ async function verstuur() {
       document.getElementById('vs-scancode-val').textContent=d1.id;
       document.getElementById('vs-copy-code').onclick=function(){
         navigator.clipboard.writeText(d1.id).then(function(){
-          document.getElementById('vs-copy-code').textContent='Gekopieerd \u2713';
+          document.getElementById('vs-copy-code').textContent='Gekopieerd ✓';
         });
       };
+      koppelAanGroep(d1.id);
     }
     document.querySelector('.page-wrap').scrollIntoView({behavior:'smooth',block:'start'});
   } catch(e) {
@@ -775,5 +808,118 @@ function vsCallbackModal(){
   });
 }
 </script>
+
+<!-- RAPPORT OPHALEN -->
+<div id="pg-rapport-ophalen" style="display:none">
+  <div class="page-wrap" style="max-width:500px">
+    <div class="page-hdr">
+      <div class="page-brand"><div class="wdot"></div>VerhuisScan</div>
+      <div class="page-step mono">Rapport ophalen</div>
+    </div>
+    <div class="sec-lbl">Uw rapport terugvinden</div>
+    <p style="font-size:13px;color:var(--mid);margin-bottom:1.5rem;line-height:1.6">Voer uw persoonlijke scancode in om uw rapport terug te zien.</p>
+    <div class="veld-groep">
+      <div class="veld-lbl">Scancode</div>
+      <input type="text" class="veld" id="ro-code" placeholder="bijv. VSAB12CD" style="text-transform:uppercase;letter-spacing:.1em;font-size:1.1rem;text-align:center" maxlength="12">
+    </div>
+    <div id="ro-err" style="display:none;font-size:12px;color:var(--red);margin-bottom:.75rem"></div>
+    <div class="nav-row">
+      <button class="btn-ghost" onclick="naarIntro()">← Terug</button>
+      <button class="btn-adv" onclick="rapportOphalen()">Rapport ophalen →</button>
+    </div>
+  </div>
+</div>
+
+<!-- GROEP AANMAKEN -->
+<div id="pg-groep-aanmaken" style="display:none">
+  <div class="page-wrap" style="max-width:500px">
+    <div class="page-hdr">
+      <div class="page-brand"><div class="wdot"></div>VerhuisScan</div>
+      <div class="page-step mono">Groep aanmaken</div>
+    </div>
+    <div class="sec-lbl">Nieuwe groep</div>
+    <div class="veld-groep">
+      <div class="veld-lbl">Naam van de groep <span style="color:var(--red)">*</span></div>
+      <input type="text" class="veld" id="ga-naam" placeholder="bijv. Mondial Movers Netwerk NL">
+    </div>
+    <div class="veld-groep">
+      <div class="veld-lbl">Uw e-mailadres <span style="color:var(--red)">*</span></div>
+      <input type="email" class="veld" id="ga-email" placeholder="u@bedrijf.nl">
+    </div>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:.75rem 1rem;font-size:12px;color:var(--muted);margin-bottom:1rem">
+      <strong style="color:var(--sub)">Let op:</strong> Bewaar de beheerdscode na aanmaken — daarmee kunt u alle scans inzien.
+    </div>
+    <div id="ga-err" style="display:none;font-size:12px;color:var(--red);margin-bottom:.75rem"></div>
+    <div class="nav-row">
+      <button class="btn-ghost" onclick="naarIntro()">← Terug</button>
+      <button class="btn-adv" id="ga-btn" onclick="groepAanmaken()">Groep aanmaken →</button>
+    </div>
+  </div>
+</div>
+
+<!-- GROEP AANGEMAAKT -->
+<div id="pg-groep-aangemaakt" style="display:none">
+  <div class="page-wrap" style="max-width:500px">
+    <div class="page-hdr">
+      <div class="page-brand"><div class="wdot"></div>VerhuisScan</div>
+      <div class="page-step mono">Groep aangemaakt</div>
+    </div>
+    <div style="text-align:center;padding:1rem 0 1.5rem">
+      <div style="font-size:2rem;margin-bottom:.5rem">✓</div>
+      <div style="font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:600;color:var(--head);margin-bottom:.5rem">Groep aangemaakt</div>
+      <p style="font-size:13px;color:var(--mid);line-height:1.6">Deel de deelnemerscode met de bedrijven. Bewaar uw beheerdscode goed.</p>
+    </div>
+    <div style="background:var(--teal-bg);border:1px solid var(--teal);border-radius:var(--r2);padding:1.5rem;text-align:center;margin-bottom:1rem">
+      <div style="font-size:10px;font-weight:600;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-bottom:.4rem">Deelnemerscode</div>
+      <div id="ga-groep-id" style="font-family:'IBM Plex Mono',monospace;font-size:2rem;font-weight:700;color:var(--teal);letter-spacing:.2em"></div>
+    </div>
+    <div style="background:var(--gold-bg);border:1.5px solid var(--gold);border-radius:var(--r2);padding:1.25rem;text-align:center;margin-bottom:1.25rem">
+      <div style="font-size:10px;font-weight:600;letter-spacing:.15em;text-transform:uppercase;color:var(--gold);margin-bottom:.4rem">Beheerdscode (alleen voor u)</div>
+      <div id="ga-admin-code" style="font-family:'IBM Plex Mono',monospace;font-size:1.8rem;font-weight:700;color:var(--gold);letter-spacing:.15em"></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:1rem">
+      <button class="btn-adv" style="flex:1" onclick="kopieerCodes()">Kopieer codes</button>
+      <button class="btn-ghost" style="flex:1" onclick="slaCodesOp()">↓ Opslaan</button>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn-ghost" style="flex:1" onclick="naarGegevensMetGroep()">Start scan →</button>
+      <button class="btn-adv" style="flex:1" onclick="naarDashboardDirectGroep()">Dashboard →</button>
+    </div>
+  </div>
+</div>
+
+<!-- GROEP DEELNEMEN -->
+<div id="pg-groep-deelnemen" style="display:none">
+  <div class="page-wrap" style="max-width:500px">
+    <div class="page-hdr">
+      <div class="page-brand"><div class="wdot"></div>VerhuisScan</div>
+      <div class="page-step mono">Deelnemen aan groep</div>
+    </div>
+    <div class="sec-lbl">Groepscode invoeren</div>
+    <div class="veld-groep">
+      <div class="veld-lbl">Groepscode</div>
+      <input type="text" class="veld" id="gd-code" placeholder="" maxlength="8" style="text-transform:uppercase;letter-spacing:.2em;font-size:1.4rem;text-align:center">
+    </div>
+    <div id="gd-err" style="display:none;font-size:12px;color:var(--red);margin-bottom:.75rem"></div>
+    <div class="nav-row">
+      <button class="btn-ghost" onclick="naarIntro()">← Terug</button>
+      <button class="btn-adv" onclick="groepDeelnemen()">Doorgaan naar scan →</button>
+    </div>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="pg-dashboard" style="display:none">
+  <div class="page-wrap">
+    <div class="page-hdr">
+      <div class="page-brand"><div class="wdot"></div>VerhuisScan</div>
+      <div class="page-step mono" id="dash-titel">Dashboard</div>
+    </div>
+    <div id="dash-content">
+      <div class="laden"><div class="laden-dot"><span></span><span></span><span></span></div><div style="color:var(--mid)">Dashboard laden...</div></div>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
