@@ -1583,4 +1583,77 @@ function toonNieuwModal(){
   ov.appendChild(mo);document.body.appendChild(ov);
   ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
   document.getElementById('m-ann').addEventListener('click',function(){document.body.removeChild(ov);});
-  document.getElementById('m-ok').addEventListener('click',async function(){
+  document.getElementById('m-ok').addEventListener('click',async function(){    var kantoor=document.getElementById('m-k').value.trim();
+    if(!kantoor){var er=document.getElementById('m-err');er.style.display='block';er.textContent='Kantoornaam is verplicht.';return;}
+    var btn=document.getElementById('m-ok');btn.disabled=true;btn.textContent='Aanmaken...';
+    document.getElementById('m-err').style.display='none';
+    try{
+      var r=await fetch(WORKER+'/mna/create',{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':adminKey},
+        body:JSON.stringify({kantoor_naam:kantoor,contact_naam:document.getElementById('m-c').value.trim(),contact_email:document.getElementById('m-e').value.trim(),traject_type:document.getElementById('m-t').value,notitie:document.getElementById('m-n').value.trim(),begeleider_naam:document.getElementById('m-bg-naam').value.trim()||'Marcel Bisschops',begeleider_email:document.getElementById('m-bg-email').value.trim()||'marcel@bisschopsfinancing.nl',koper_naam:document.getElementById('m-koper-naam').value.trim(),koper_rechtsvorm:document.getElementById('m-koper-rv').value.trim(),koper_contact:document.getElementById('m-koper-contact').value.trim(),koper_email:document.getElementById('m-koper-email').value.trim(),koper_adres:document.getElementById('m-koper-adres')?document.getElementById('m-koper-adres').value.trim():'',koper_kvk:document.getElementById('m-koper-kvk')?document.getElementById('m-koper-kvk').value.trim():'',verkoper_adres:document.getElementById('m-adres')?document.getElementById('m-adres').value.trim():'',verkoper_kvk:document.getElementById('m-kvk')?document.getElementById('m-kvk').value.trim():''})});
+      var d=await r.json();
+      if(d.ok){
+        mnaList.unshift({id:d.code,kantoor_naam:kantoor,traject_type:document.getElementById('m-t').value,koper_code:d.koper_code,tussen_code:d.tussen_code,status:'actief',created_at:Date.now()});
+        var res=document.getElementById('m-res');res.style.display='block';
+        res.innerHTML='<strong style="color:var(--teal-dim)">&#10003; Traject aangemaakt</strong><br>'
+          +'<b>Verkoperscode:</b> <span class="code-chip">'+d.code+'</span> <button class="copy-btn res-copy" data-copy="'+d.code+'">⎘ Kopieer</button><br>'
+          +'<b>Koperscode:</b> <span class="code-chip" style="background:var(--gold-bg);color:var(--gold);border-color:var(--gold)">'+d.koper_code+'</span> <button class="copy-btn res-copy" data-copy="'+d.koper_code+'">⎘ Kopieer</button><br>'
+          +'<b>Tussenpersoon:</b> <span class="code-chip" style="background:var(--card);color:var(--mid)">'+d.tussen_code+'</span> <button class="copy-btn res-copy" data-copy="'+d.tussen_code+'">⎘ Kopieer</button><br><br>'
+          +'<button id="res-opslaan" style="font-size:12px;padding:5px 12px;border:1px solid var(--teal-dark);border-radius:var(--r);cursor:pointer;background:transparent;color:var(--teal)">&#8681; Opslaan als bestand</button>';
+        res.querySelectorAll('.res-copy').forEach(function(b){b.addEventListener('click',function(){navigator.clipboard.writeText(b.dataset.copy).then(function(){var o=b.textContent;b.textContent='✓';setTimeout(function(){b.textContent=o;},1500);});});});
+        document.getElementById('res-opslaan').addEventListener('click',function(){slaOp({id:d.code,kantoor_naam:kantoor,traject_type:document.getElementById('m-t').value,koper_code:d.koper_code,tussen_code:d.tussen_code,created_at:Date.now()});});
+        btn.textContent='Aangemaakt';
+        document.body.removeChild(ov);
+        renderTab();
+      }else{var er2=document.getElementById('m-err');er2.style.display='block';er2.textContent='Fout: '+(d.error||'onbekend');btn.disabled=false;btn.textContent='Traject aanmaken';}
+    }catch(e){var er3=document.getElementById('m-err');er3.style.display='block';er3.textContent='Verbindingsfout.';btn.disabled=false;btn.textContent='Traject aanmaken';}
+  });
+}
+
+function slaOp(t){
+  var regels=['KantoorInzicht - M&A Traject','','Kantoor: '+(t.kantoor_naam||'-'),'Type: '+(t.traject_type||'-'),'Status: '+(t.status||'actief'),'Aangemaakt: '+formatDate(t.created_at),'','CODES','Verkoperscode: '+t.id,'Koperscode: '+(t.koper_code||'-'),'Tussenpersoonscode: '+(t.tussen_code||'-'),'','Toegang via: https://koersvoormorgen.nl/mna.html'];
+  var inhoud=regels.join('\n');
+  var blob=new Blob([inhoud],{type:'text/plain;charset=utf-8'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');a.href=url;a.download='traject-'+t.id+'.txt';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
+}
+
+async function vergrendel(id,naam){
+  if(!confirm('Traject '+naam+' vergrendelen?'))return;
+  try{
+    var r=await fetch(WORKER+'/mna/admin/vergrendel/'+id+'?key='+encodeURIComponent(adminKey),{method:'POST'});
+    var d=await r.json();
+    if(d.ok){var t=mnaList.find(function(x){return x.id===id;});if(t)t.status='vergrendeld';renderTab();}
+    else alert('Fout: '+(d.error||'onbekend'));
+  }catch(e){alert('Verbindingsfout.');}
+}
+
+async function ontvergrendel(id){
+  try{
+    var r=await fetch(WORKER+'/mna/admin/status/'+id+'?key='+encodeURIComponent(adminKey),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'actief'})});
+    var d=await r.json();
+    if(d.ok){var t=mnaList.find(function(x){return x.id===id;});if(t)t.status='actief';renderTab();}
+    else alert('Fout: '+(d.error||'onbekend'));
+  }catch(e){alert('Verbindingsfout.');}
+}
+
+async function maakTrajectVanScan(scanId, naam, email){
+  if(!confirm('M&A traject aanmaken voor '+naam+'?'))return;
+  try{
+    var r=await fetch(WORKER+'/mna/scan-to-traject?key='+encodeURIComponent(adminKey),{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({scan_id:scanId,kantoor_naam:naam,contact_email:email,traject_type:'Verkoop'})
+    });
+    var d=await r.json();
+    if(d.ok){
+      mnaList.unshift({id:d.code,kantoor_naam:naam,traject_type:'Verkoop',koper_code:d.koper_code,tussen_code:d.tussen_code,status:'actief',created_at:Date.now()});
+      alert('Traject aangemaakt!\n\nVerkoperscode: '+d.code+'\nKoperscode: '+d.koper_code);
+      activeTab='mna';renderDashboard();
+    } else alert('Fout: '+(d.error||'onbekend'));
+  }catch(e){alert('Verbindingsfout.');}
+}
+
+renderLogin();
+</script>
+</body>
+</html>
