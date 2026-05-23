@@ -617,16 +617,22 @@ document.addEventListener('click', function(e) {
   if (e.target.id === 'vs-callback-btn') vsCallbackModal();
 });
 
-function naarIntro() {
-  document.getElementById('pg-gegevens').style.display='none';
-  document.getElementById('pg-intro').style.display='flex';
-  window.scrollTo(0,0);
+var VS_GROEP_ID = null;
+var VS_ADMIN_CODE = null;
+var VS_IS_ADMIN = false;
+
+function alleHide() {
+  ['pg-intro','pg-gegevens','pg-scan','pg-rapport-ophalen','pg-groep-aanmaken','pg-groep-aangemaakt','pg-groep-deelnemen','pg-dashboard'].forEach(function(id){
+    var el=document.getElementById(id);
+    if(el){el.style.display='none';}
+  });
 }
-function naarGegevens() {
-  document.getElementById('pg-intro').style.display='none';
-  document.getElementById('pg-gegevens').style.display='block';
-  window.scrollTo(0,0);
-}
+function naarIntro(){alleHide();document.getElementById('pg-intro').style.display='flex';window.scrollTo(0,0);}
+function naarGegevens(){alleHide();document.getElementById('pg-gegevens').style.display='block';window.scrollTo(0,0);}
+function naarRapportOphalen(){alleHide();document.getElementById('pg-rapport-ophalen').style.display='block';window.scrollTo(0,0);}
+function naarGroepAanmaken(){alleHide();document.getElementById('pg-groep-aanmaken').style.display='block';window.scrollTo(0,0);}
+function naarGroepDeelnemen(){alleHide();document.getElementById('pg-groep-deelnemen').style.display='block';window.scrollTo(0,0);}
+function naarGegevensMetGroep(){alleHide();document.getElementById('pg-gegevens').style.display='block';window.scrollTo(0,0);}
 function naarScan() {
   var naam=document.getElementById('g-naam').value.trim();
   var email=document.getElementById('g-email').value.trim();
@@ -807,6 +813,194 @@ function vsCallbackModal(){
     }
   });
 }
+
+
+// ============ RAPPORT OPHALEN ============
+async function rapportOphalen() {
+  var code=(document.getElementById('ro-code').value||'').trim().toUpperCase();
+  var err=document.getElementById('ro-err');
+  if(!code){err.style.display='block';err.textContent='Voer uw scancode in.';return;}
+  err.style.display='none';
+  try {
+    var r=await fetch(WORKER+'/verhuis/scan/'+code);
+    if(!r.ok) throw new Error('Scan niet gevonden. Controleer uw code.');
+    var scan=await r.json();
+    if(scan.error) throw new Error(scan.error);
+    alleHide();
+    document.getElementById('pg-scan').style.display='block';
+    document.getElementById('rapport-wrap').style.display='block';
+    for(var i=1;i<=6;i++){var s=document.getElementById('stap-'+i);if(s)s.style.display='none';}
+    document.getElementById('laden').style.display='none';
+    document.getElementById('rapport-content').style.display='block';
+    document.getElementById('rapp-naam').textContent=scan.bedrijfsnaam||'Uw verhuisbedrijf';
+    document.getElementById('rapp-datum').textContent=new Date(scan.created_at).toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'});
+    document.getElementById('rapp-score').textContent=scan.overall||'--';
+    document.getElementById('rapp-scenario').textContent=scan.top_scenario||'';
+    var sc=typeof scan.scores==='string'?JSON.parse(scan.scores):scan.scores||{};
+    var html='';
+    Object.entries(sc).forEach(function(e){
+      var k=e[0],v=e[1],kleur=v>=70?'var(--teal)':v>=50?'var(--gold)':'var(--red)';
+      html+='<div class="score-card"><div class="score-lbl">'+k+'</div><div class="score-val" style="color:'+kleur+'">'+v+'</div><div class="score-bar"><div class="score-fill" style="width:'+v+'%;background:'+kleur+'"></div></div></div>';
+    });
+    document.getElementById('rapp-scores').innerHTML=html;
+    var ghHtml='';
+    Object.entries(sc).forEach(function(e){
+      var k=e[0],v=e[1],kleur=v>=70?'var(--teal)':v>=50?'var(--gold)':'var(--red)';
+      ghHtml+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><div style="font-size:11px;color:var(--mid);width:170px;flex-shrink:0;text-align:right">'+k+'</div><div style="flex:1;background:var(--border);border-radius:2px;height:14px;overflow:hidden"><div style="width:'+Math.max(v,2)+'%;background:'+kleur+';height:100%;border-radius:2px"></div></div><div style="font-family:IBM Plex Mono,monospace;font-size:11px;font-weight:600;color:'+kleur+';width:32px">'+v+'</div></div>';
+    });
+    document.getElementById('rapp-grafiek').innerHTML=ghHtml;
+    var rt=scan.rapport_tekst||'';
+    if(rt){
+      var raw=rt.replace(/^## (.+)$/gm,'<h2>$1</h2>').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+      var tekst=raw.split('\n\n').map(function(p){p=p.trim();if(!p||p.startsWith('<'))return p;return '<p>'+p+'</p>';}).join('');
+      document.getElementById('rapp-tekst').innerHTML=tekst;
+    } else {
+      document.getElementById('rapp-tekst').innerHTML='<p style="color:var(--muted)">Rapport niet beschikbaar.</p>';
+    }
+    document.getElementById('vs-scancode-blok').style.display='block';
+    document.getElementById('vs-scancode-val').textContent=scan.id;
+    window.scrollTo(0,0);
+  } catch(e){err.style.display='block';err.textContent=e.message;}
+}
+
+// ============ GROEP AANMAKEN ============
+async function groepAanmaken() {
+  var naam=document.getElementById('ga-naam').value.trim();
+  var email=document.getElementById('ga-email').value.trim();
+  var err=document.getElementById('ga-err');
+  if(!naam||!email){err.style.display='block';err.textContent='Vul naam en e-mail in.';return;}
+  var btn=document.getElementById('ga-btn');btn.disabled=true;btn.textContent='Aanmaken...';
+  try {
+    var r=await fetch(WORKER+'/verhuis/groep/create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({naam:naam,admin_email:email})});
+    var d=await r.json();
+    if(!d.ok) throw new Error(d.error||'Fout');
+    VS_GROEP_ID=d.groep_id;VS_ADMIN_CODE=d.admin_code;VS_IS_ADMIN=true;
+    document.getElementById('ga-groep-id').textContent=d.groep_id;
+    document.getElementById('ga-admin-code').textContent=d.admin_code;
+    alleHide();document.getElementById('pg-groep-aangemaakt').style.display='block';window.scrollTo(0,0);
+  } catch(e){
+    err.style.display='block';err.textContent='Fout: '+e.message;
+    btn.disabled=false;btn.textContent='Groep aanmaken →';
+  }
+}
+function kopieerCodes(){
+  var txt='VerhuisScan Groepscodes\n\nDeelnemerscode: '+VS_GROEP_ID+'\nBeheerdscode: '+VS_ADMIN_CODE+'\n\nhttps://koersvoormorgen.nl/verhuis.html';
+  navigator.clipboard.writeText(txt).catch(function(){});
+  alert('Codes gekopieerd!');
+}
+function slaCodesOp(){
+  var txt='VerhuisScan Groepscodes\n\nDeelnemerscode: '+VS_GROEP_ID+'\nBeheerdscode: '+VS_ADMIN_CODE+'\n\nhttps://koersvoormorgen.nl/verhuis.html';
+  var blob=new Blob([txt],{type:'text/plain'});
+  var a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='verhuisscan-codes-'+VS_GROEP_ID+'.txt';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+}
+function naarDashboardDirectGroep(){laadDashboard(VS_GROEP_ID,VS_ADMIN_CODE);}
+
+// ============ GROEP DEELNEMEN ============
+function groepDeelnemen(){
+  var code=(document.getElementById('gd-code').value||'').trim().toUpperCase();
+  if(!code||code.length<4){document.getElementById('gd-err').style.display='block';document.getElementById('gd-err').textContent='Voer een geldige code in.';return;}
+  VS_GROEP_ID=code;VS_IS_ADMIN=false;
+  naarGegevensMetGroep();
+}
+
+// ============ DASHBOARD ============
+async function naarDashboard(){
+  var code=prompt('Voer uw groepscode of beheerdscode in:','');
+  if(!code)return;
+  code=code.toUpperCase().trim();
+  alleHide();
+  document.getElementById('pg-dashboard').style.display='block';
+  document.getElementById('dash-content').innerHTML='<div class="laden"><div class="laden-dot"><span></span><span></span><span></span></div><div style="color:var(--mid)">Laden...</div></div>';
+  try {
+    if(code.startsWith('VA')){
+      var r1=await fetch(WORKER+'/verhuis/groep/by-admin/'+code);
+      if(!r1.ok) throw new Error('Beheerdscode niet gevonden');
+      var d1=await r1.json();
+      VS_GROEP_ID=d1.groep_id;VS_ADMIN_CODE=code;VS_IS_ADMIN=true;
+      laadDashboard(VS_GROEP_ID,code);
+    } else {
+      VS_GROEP_ID=code;VS_IS_ADMIN=false;
+      laadDashboard(code,'');
+    }
+  } catch(e){
+    document.getElementById('dash-content').innerHTML='<div style="text-align:center;padding:3rem;color:var(--red)">'+e.message+'<br><br><button class="btn-ghost" onclick="naarIntro()">Terug</button></div>';
+  }
+}
+
+async function laadDashboard(groepId, adminCode){
+  alleHide();
+  document.getElementById('pg-dashboard').style.display='block';
+  document.getElementById('dash-content').innerHTML='<div class="laden"><div class="laden-dot"><span></span><span></span><span></span></div></div>';
+  try {
+    var url=WORKER+'/verhuis/groep/'+groepId+(adminCode?'?admin_code='+adminCode:'');
+    var r=await fetch(url);
+    if(!r.ok) throw new Error('Groep niet gevonden');
+    var data=await r.json();
+    renderDashboard(data);
+  } catch(e){
+    document.getElementById('dash-content').innerHTML='<div style="color:var(--red);padding:2rem;text-align:center">'+e.message+'<br><br><button class="btn-ghost" onclick="naarIntro()">Terug</button></div>';
+  }
+}
+
+function renderDashboard(data){
+  var groep=data.groep||{};
+  var scans=data.scans||[];
+  var cum=data.cumScores||{};
+  var isAdmin=data.is_admin||VS_IS_ADMIN;
+  document.getElementById('dash-titel').textContent=groep.naam||'Dashboard';
+  var avg=scans.length?Math.round(scans.reduce(function(a,s){return a+s.overall;},0)/scans.length):0;
+  function sc(v){return v>=70?'var(--teal)':v>=50?'var(--gold)':'var(--red)';}
+
+  var html='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2rem;flex-wrap:wrap;gap:1rem">'
+    +'<div><div style="font-family:Playfair Display,serif;font-size:1.6rem;font-weight:600;color:var(--head)">'+groep.naam+'</div>'
+    +'<div style="font-size:13px;color:var(--muted);margin-top:2px">Code: <span style="font-family:IBM Plex Mono,monospace;color:var(--teal)">'+VS_GROEP_ID+'</span> &middot; '+scans.length+' bedrijven</div></div>'
+    +'<div style="display:flex;gap:8px">'
+    +'<button class="btn-ghost" id="dash-refresh-btn" style="font-size:12px">&#8634; Verversen</button>'
+    +(isAdmin?'<button class="btn-ghost" onclick="naarGegevensMetGroep()" style="font-size:12px">+ Scan toevoegen</button>':'')
+    +'</div></div>';
+
+  html+='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:2rem">'
+    +'<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;text-align:center"><div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:.4rem">Bedrijven</div><div style="font-family:Playfair Display,serif;font-size:2rem;font-weight:600;color:var(--teal)">'+scans.length+'</div></div>'
+    +'<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;text-align:center"><div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:.4rem">Gem. score</div><div style="font-family:Playfair Display,serif;font-size:2rem;font-weight:600;color:'+sc(avg)+'">'+avg+'</div></div>'
+    +'<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;text-align:center"><div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:.4rem">Hoogste</div><div style="font-family:Playfair Display,serif;font-size:2rem;font-weight:600;color:var(--head)">'+(scans.length?scans[0].overall:'-')+'</div></div>'
+    +'</div>';
+
+  if(Object.keys(cum).length>0){
+    html+='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;margin-bottom:2rem">'
+      +'<div style="font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:1rem">Groepsprofiel per dimensie</div>';
+    Object.entries(cum).forEach(function(e){
+      var k=e[0],v=e[1],kleur=sc(v);
+      html+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:7px"><div style="font-size:11px;color:var(--mid);width:170px;flex-shrink:0;text-align:right">'+k+'</div><div style="flex:1;background:var(--border);border-radius:2px;height:12px;overflow:hidden"><div style="width:'+Math.max(v,2)+'%;background:'+kleur+';height:100%;border-radius:2px"></div></div><div style="font-family:IBM Plex Mono,monospace;font-size:11px;font-weight:600;color:'+kleur+';width:32px">'+v+'</div></div>';
+    });
+    html+='</div>';
+  }
+
+  if(scans.length>0&&(isAdmin||groep.dashboard_public)){
+    scans.sort(function(a,b){return b.overall-a.overall;});
+    html+='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);overflow:hidden;margin-bottom:2rem"><table style="width:100%;border-collapse:collapse"><thead><tr style="background:var(--card)"><th style="padding:10px 14px;text-align:left;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">#</th><th style="padding:10px 14px;text-align:left;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">Bedrijf</th><th style="padding:10px 14px;text-align:left;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">Regio</th><th style="padding:10px 14px;text-align:left;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">Scenario</th><th style="padding:10px 14px;text-align:center;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">Score</th></tr></thead><tbody>';
+    scans.forEach(function(s,i){
+      var kleur=sc(s.overall);
+      html+='<tr style="border-top:1px solid var(--border)"><td style="padding:10px 14px;font-size:12px;color:var(--muted)">'+(i+1)+'</td><td style="padding:10px 14px;font-size:13px;font-weight:600;color:var(--head)">'+s.bedrijfsnaam+'</td><td style="padding:10px 14px;font-size:12px;color:var(--mid)">'+(s.regio||'—')+'</td><td style="padding:10px 14px;font-size:11px;color:var(--mid)">'+(s.top_scenario||'—')+'</td><td style="padding:10px 14px;text-align:center"><span style="font-family:IBM Plex Mono,monospace;font-size:13px;font-weight:600;color:'+kleur+'">'+s.overall+'</span></td></tr>';
+    });
+    html+='</tbody></table></div>';
+  } else if(scans.length===0){
+    html+='<div style="text-align:center;padding:3rem;color:var(--muted);background:var(--panel);border:1px solid var(--border);border-radius:var(--r2)">Nog geen scans ingediend.<br><button class="btn-adv" onclick="naarGegevensMetGroep()" style="margin-top:1rem">Start eerste scan →</button></div>';
+  }
+  html+='<div style="margin-top:1rem"><button class="btn-ghost" onclick="naarIntro()">← Start</button></div>';
+  document.getElementById('dash-content').innerHTML=html;
+  var rb=document.getElementById('dash-refresh-btn');
+  if(rb)rb.onclick=function(){laadDashboard(VS_GROEP_ID,VS_ADMIN_CODE||'');};
+}
+
+// ============ GROEP KOPPELEN NA SCAN ============
+async function koppelAanGroep(scanId){
+  if(!VS_GROEP_ID||!scanId)return;
+  try{await fetch(WORKER+'/verhuis/groep/join',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({groep_id:VS_GROEP_ID,scan_id:scanId})});}
+  catch(e){console.warn('Groep koppeling mislukt:',e);}
+}
+
 </script>
 
 <!-- RAPPORT OPHALEN -->
@@ -866,7 +1060,7 @@ function vsCallbackModal(){
     </div>
     <div style="text-align:center;padding:1rem 0 1.5rem">
       <div style="font-size:2rem;margin-bottom:.5rem">✓</div>
-      <div style="font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:600;color:var(--head);margin-bottom:.5rem">Groep aangemaakt</div>
+      <div style="font-family:Playfair Display,serif;font-size:1.4rem;font-weight:600;color:var(--head);margin-bottom:.5rem">Groep aangemaakt</div>
       <p style="font-size:13px;color:var(--mid);line-height:1.6">Deel de deelnemerscode met de bedrijven. Bewaar uw beheerdscode goed.</p>
     </div>
     <div style="background:var(--teal-bg);border:1px solid var(--teal);border-radius:var(--r2);padding:1.5rem;text-align:center;margin-bottom:1rem">
