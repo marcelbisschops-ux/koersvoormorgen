@@ -362,14 +362,7 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--b
           <label class="optie" data-n="internationaal" data-v="nee"><div class="optie-dot"></div>Nee — alleen binnenlands</label>
         </div>
       </div>
-      <div class="vraag">
-        <div class="vraag-lbl">Bent u aangesloten bij Mondial Movers of EV-netwerk?</div>
-        <div class="opties">
-          <label class="optie" data-n="mondial_lidmaatschap" data-v="actief"><div class="optie-dot"></div>Ja, actief lid (Mondial / EV-certificering)</label>
-          <label class="optie" data-n="mondial_lidmaatschap" data-v="basis"><div class="optie-dot"></div>Basiscertificering aanwezig</label>
-          <label class="optie" data-n="mondial_lidmaatschap" data-v="nee"><div class="optie-dot"></div>Nee</label>
-        </div>
-      </div>
+
       <div class="vraag">
         <div class="vraag-lbl">Hoe is uw online zichtbaarheid en leadgeneratie?</div>
         <div class="opties">
@@ -553,7 +546,7 @@ const STAP_NAMEN = ['Financieel','Wagenpark & Duurzaamheid','Diensten & Markt','
 const VERPLICHT = {
   1:['omzet_groei','marge','debiteurenbeheer','bezettingsgraad'],
   2:['wagenpark_type','wagenpark_onderhoud','laadinfra','wagenpark_leeftijd'],
-  3:['zakelijk_aandeel','internationaal','mondial_lidmaatschap','online_zichtbaarheid'],
+  3:['zakelijk_aandeel','internationaal','online_zichtbaarheid'],
   4:['opslag_aanwezig','opslag_bezetting','circulair_actief','circulair_certificaat'],
   5:['personeel_vast','verloop','software','online_offerte'],
   6:['opvolging','horizon','strategie','prioriteit'],
@@ -648,11 +641,12 @@ async function verstuur(){
   A.internationaal_groei=A.internationaal==='actief'?'ja':'stabiel';
   A.opslag_digitaal=A.software==='volledig'?'ja':A.software==='deels'?'deels':'nee';
   A.opslag_groei=A.opslag_bezetting==='hoog'?'stabiel':'ja';
-  A.certificering=A.mondial_lidmaatschap==='actief'?'volledig':A.mondial_lidmaatschap==='basis'?'deels':'nee';
+  A.mondial_lidmaatschap=A.bedrijf_type==='franchise'?'actief':'nee';
+  A.certificering=A.mondial_lidmaatschap==='actief'?'volledig':'nee';
   A.vaste_klanten=A.zakelijk_aandeel==='hoog'?'veel':A.zakelijk_aandeel==='gemiddeld'?'enkele':'weinig';
   A.projecten_complex=A.zakelijk_aandeel==='hoog'?'regelmatig':'incidenteel';
   A.nieuwe_markten=A.prioriteit==='groei'?'actief':'incidenteel';
-  A.marktpositie=A.online_zichtbaarheid==='sterk'&&A.mondial_lidmaatschap==='actief'?'sterk':A.online_zichtbaarheid==='zwak'?'zwak':'gemiddeld';
+  A.marktpositie=A.online_zichtbaarheid==='sterk'&&A.bedrijf_type==='franchise'?'sterk':A.online_zichtbaarheid==='zwak'?'zwak':'gemiddeld';
   A.data_gebruik=A.software==='volledig'?'actief':'weinig';
   A.wagenpark=A.wagenpark_type==='volledig_electrisch'||A.wagenpark_type==='overwegend_electrisch'?'modern':'mix';
   A.planning=A.software==='volledig'?'digitaal':A.software==='deels'?'deels':'handmatig';
