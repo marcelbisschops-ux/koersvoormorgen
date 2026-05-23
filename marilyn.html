@@ -1818,7 +1818,7 @@ function toonGesprekModal(trajectId, bestaand, onSaved){
       +(bijlagenTekst?'\n\nBIJLAGEN:\n'+bijlagenTekst:'')
       +'\n\nGeef het verslag terug in dit formaat:\n\n## Samenvatting\n[2-3 zinnen]\n\n## Besproken punten\n[per punt]\n\n## Beslissingen & afspraken\n[concreet]\n\n## Actiepunten\n[wie, wat, wanneer]\n\n## Volgende stap\n[gepland]\n\nProfessioneel, derde persoon, bondig.';
     try{
-      var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt:prompt,max_tokens:1500})});
+      var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:1500})});
       var rd=await resp.json();
       document.getElementById('gs-verslag').value=rd.text||rd.content||'';
       st.textContent='✓ Verslag gegenereerd';
