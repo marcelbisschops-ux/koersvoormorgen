@@ -88,6 +88,15 @@ let adminKey='',scans=[],callbacks=[],mnaList=[],rapporten=[],activeTab='scans',
 function dc(v){return v>=70?'score-high':v>=50?'score-mid':'score-low';}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function formatDate(ts){if(!ts)return '—';return new Date(ts).toLocaleDateString('nl-NL',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});}
+function partijLabels(type){
+  var t=type||'Verkoop';
+  if(t==='Fusie')return{partij1:'Fusiepartij A',partij2:'Fusiepartij B',p1adres:'Adres partij A',p2adres:'Adres partij B',p1kvk:'KvK partij A',p2kvk:'KvK partij B',p1contact:'Contactpersoon A',p2contact:'Contactpersoon B',p1email:'E-mail partij A',p2email:'E-mail partij B',p1rv:'Rechtsvorm partij A',sectie1:'Fusiepartij A',sectie2:'Fusiepartij B'};
+  if(t==='Overname')return{partij1:'Over te nemen partij',partij2:'Overnemende partij',p1adres:'Adres target',p2adres:'Adres overnemende partij',p1kvk:'KvK target',p2kvk:'KvK overnemende partij',p1contact:'Contactpersoon target',p2contact:'Contactpersoon overnemende partij',p1email:'E-mail target',p2email:'E-mail overnemende partij',p1rv:'Rechtsvorm overnemende partij',sectie1:'Target',sectie2:'Overnemende partij'};
+  if(t==='PE-traject')return{partij1:'Portfolio bedrijf',partij2:'Investeerder / PE-partij',p1adres:'Adres portfolio bedrijf',p2adres:'Adres investeerder',p1kvk:'KvK portfolio bedrijf',p2kvk:'KvK investeerder',p1contact:'Contactpersoon bedrijf',p2contact:'Contactpersoon investeerder',p1email:'E-mail bedrijf',p2email:'E-mail investeerder',p1rv:'Rechtsvorm investeerder',sectie1:'Portfolio bedrijf',sectie2:'Investeerder'};
+  if(t==='Opvolging')return{partij1:'Overdragende eigenaar',partij2:'Opvolgend eigenaar',p1adres:'Adres overdragende eigenaar',p2adres:'Adres opvolger',p1kvk:'KvK bedrijf',p2kvk:'KvK opvolger',p1contact:'Contactpersoon overdragende eigenaar',p2contact:'Contactpersoon opvolger',p1email:'E-mail overdragende eigenaar',p2email:'E-mail opvolger',p1rv:'Rechtsvorm opvolger',sectie1:'Overdragende eigenaar',sectie2:'Opvolgend eigenaar'};
+  // default: Verkoop / Aankoop
+  return{partij1:'Verkoper',partij2:'Kopende partij',p1adres:'Adres verkoper',p2adres:'Adres koper',p1kvk:'KvK verkoper',p2kvk:'KvK koper',p1contact:'Contactpersoon verkoper',p2contact:'Contactpersoon koper',p1email:'E-mail verkoper',p2email:'E-mail koper',p1rv:'Rechtsvorm koper',sectie1:'Verkoper',sectie2:'Kopende partij'};
+}
 
 // LOGIN
 function renderLogin(){
@@ -1182,6 +1191,13 @@ async function toonDetail(id,naam){
     +'<button class="btn-ghost" id="btn-laad-versies" style="font-size:11px;padding:4px 12px">&#8635; Laden</button>'
     +'</div>'
     +'<div id="versies-body" style="font-size:12px;color:var(--muted);font-style:italic">Klik op Laden om versiehistorie te tonen.</div>'
+    +'</div>'
+    +'<div style="margin-top:1.5rem;border-top:2px solid var(--border);padding-top:1.25rem">'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">'
+    +'<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">&#128172; Gesprekken & verslagen</div>'
+    +'<button class="btn" id="btn-nieuw-gesprek" style="font-size:11px;padding:4px 12px;background:var(--teal)">&#43; Gesprek vastleggen</button>'
+    +'</div>'
+    +'<div id="gesprekken-body" style="font-size:13px;color:var(--muted);font-style:italic">Laden...</div>'
     +'</div>';
   ov.appendChild(mo);document.body.appendChild(ov);
   ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
@@ -1461,6 +1477,47 @@ async function toonDetail(id,naam){
     });
 
   }catch(e){document.getElementById('detail-body').textContent='Fout: '+e.message;}
+
+  // ── GESPREKKEN ──────────────────────────────────────────────
+  var gesprekkenBody=document.getElementById('gesprekken-body');
+  var gesprekTypes={'gesprek':'Gesprek','kennismaking':'Kennismaking','onderhandeling':'Onderhandeling','vergadering':'Vergadering','telefonisch':'Telefonisch overleg','email':'E-mailwisseling','andere':'Overig'};
+
+  async function laadGesprekken(){
+    try{
+      var gr=await fetch(WORKER+'/mna/admin/gesprekken/'+id+'?key='+encodeURIComponent(adminKey));
+      var gd=await gr.json();
+      var lijst=gd.gesprekken||[];
+      if(!lijst.length){gesprekkenBody.innerHTML='<div style="color:var(--muted);font-size:12px;font-style:italic">Nog geen gesprekken vastgelegd.</div>';return;}
+      var html='';
+      lijst.forEach(function(g){
+        var datum=g.datum?new Date(g.datum).toLocaleDateString('nl-NL',{weekday:'short',day:'numeric',month:'short',year:'numeric'}):'Datum onbekend';
+        html+='<div style="border:1px solid var(--border);border-radius:var(--r2);margin-bottom:.75rem;overflow:hidden">'          +'<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--card);cursor:pointer" class="gesprek-hdr" data-gid="'+esc(g.id)+'">'          +'<span style="font-size:11px;background:var(--teal-bg);color:var(--teal-dim);border:1px solid var(--teal-dark);border-radius:10px;padding:1px 8px;font-weight:600">'+(gesprekTypes[g.type]||g.type)+'</span>'          +'<span style="font-size:12px;font-weight:600;color:var(--head)">'+esc(datum)+'</span>'          +(g.deelnemers?'<span style="font-size:11px;color:var(--muted)">&#128100; '+esc(g.deelnemers)+'</span>':'')+'<div style="flex:1"></div>'          +'<button class="btn-ghost gesprek-bewerk-btn" data-gid="'+esc(g.id)+'" style="font-size:10px;padding:2px 8px">&#9999;&#65039;</button>'          +'<button class="btn-ghost gesprek-del-btn" data-gid="'+esc(g.id)+'" style="font-size:10px;padding:2px 8px;color:var(--red)">&#10005;</button>'          +'</div>'          +'<div class="gesprek-body" data-gid="'+esc(g.id)+'" style="display:none;padding:12px">';
+        if(g.verslag){
+          html+='<div style="font-size:12px;line-height:1.8;color:var(--sub)">'+g.verslag.replace(/## ([^\n]+)/g,'<strong style="display:block;margin:.75rem 0 .25rem;font-size:13px;color:var(--head)">$1</strong>').replace(/\n/g,'<br>')+'</div>';
+          if(g.ruwe_notities)html+='<details style="margin-top:.75rem"><summary style="font-size:11px;color:var(--muted);cursor:pointer">Ruwe notities bekijken</summary><div style="font-size:11px;color:var(--mid);margin-top:.5rem;line-height:1.7;white-space:pre-wrap">'+esc(g.ruwe_notities)+'</div></details>';
+        }else if(g.ruwe_notities){
+          html+='<div style="font-size:12px;line-height:1.7;color:var(--sub);white-space:pre-wrap">'+esc(g.ruwe_notities)+'</div>';
+        }else{
+          html+='<div style="color:var(--muted);font-size:12px;font-style:italic">Geen inhoud vastgelegd.</div>';
+        }
+        html+='</div></div>';
+      });
+      gesprekkenBody.innerHTML=html;
+      gesprekkenBody.querySelectorAll('.gesprek-hdr').forEach(function(hdr){
+        hdr.addEventListener('click',function(e){if(e.target.tagName==='BUTTON')return;var b=gesprekkenBody.querySelector('.gesprek-body[data-gid="'+hdr.dataset.gid+'"]');if(b)b.style.display=b.style.display==='none'?'block':'none';});
+      });
+      gesprekkenBody.querySelectorAll('.gesprek-del-btn').forEach(function(btn){
+        btn.addEventListener('click',async function(e){e.stopPropagation();if(!confirm('Gesprek verwijderen?'))return;await fetch(WORKER+'/mna/admin/gesprek/delete/'+btn.dataset.gid+'?key='+encodeURIComponent(adminKey),{method:'POST'});laadGesprekken();});
+      });
+      gesprekkenBody.querySelectorAll('.gesprek-bewerk-btn').forEach(function(btn){
+        btn.addEventListener('click',function(e){e.stopPropagation();var g2=lijst.find(function(x){return x.id===btn.dataset.gid;});if(g2)toonGesprekModal(id,g2,laadGesprekken);});
+      });
+    }catch(e){gesprekkenBody.innerHTML='<div style="color:var(--red);font-size:12px">Fout: '+e.message+'</div>';}
+  }
+  laadGesprekken();
+
+  var nieuwGesprekBtn=document.getElementById('btn-nieuw-gesprek');
+  if(nieuwGesprekBtn)nieuwGesprekBtn.addEventListener('click',function(){toonGesprekModal(id,null,laadGesprekken);});
 }
 
 // NIEUW TRAJECT
@@ -1487,7 +1544,7 @@ async function toonBewerkModal(id, naam){
     +'<div style="border-bottom:1px solid var(--border);margin:.75rem 0 .75rem;padding-bottom:.25rem"><div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">Koper</div></div>'
     +'<div class="field"><label>Naam koper</label><input type="text" id="bw-koper-naam" value="'+esc(t.koper_naam||'')+'"></div>'
     +'<div class="field"><label>Rechtsvorm</label><select id="bw-koper-rv"><option value="">— Kies rechtsvorm —</option><option value="B.V."'+(t.koper_rechtsvorm==='B.V.'?' selected':'')+'>B.V. (Besloten Vennootschap)</option><option value="N.V."'+(t.koper_rechtsvorm==='N.V.'?' selected':'')+'>N.V. (Naamloze Vennootschap)</option><option value="Eenmanszaak"'+(t.koper_rechtsvorm==='Eenmanszaak'?' selected':'')+'>Eenmanszaak</option><option value="V.O.F."'+(t.koper_rechtsvorm==='V.O.F.'?' selected':'')+'>V.O.F.</option><option value="Maatschap"'+(t.koper_rechtsvorm==='Maatschap'?' selected':'')+'>Maatschap</option><option value="Coöperatie"'+(t.koper_rechtsvorm==='Coöperatie'?' selected':'')+'>Coöperatie</option><option value="Stichting"'+(t.koper_rechtsvorm==='Stichting'?' selected':'')+'>Stichting</option><option value="Holding B.V."'+(t.koper_rechtsvorm==='Holding B.V.'?' selected':'')+'>Holding B.V.</option><option value="C.V."'+(t.koper_rechtsvorm==='C.V.'?' selected':'')+'>C.V.</option></select></div>'
-    +'<div class="field"><label>Contactpersoon koper</label><input type="text" id="bw-koper-contact" value="'+esc(t.koper_contact||'')+'"></div>'
+    +'<div class="field"><label id=\"m-p2-contact-lbl\">Contactpersoon koper</label><input type="text" id="bw-koper-contact" value="'+esc(t.koper_contact||'')+'"></div>'
     +'<div class="field"><label>E-mail koper <span style="color:var(--red)">*</span></label><input type="email" id="bw-koper-email" value="'+esc(t.koper_email||'')+'"></div>'
     +'<div class="field"><label>KvK-nummer koper</label><div style="display:flex;gap:6px"><input type="text" id="bw-koper-kvk" value="'+esc(t.koper_kvk||'')+'" style="flex:1"><button type="button" id="bw-btn-kvk-koper" class="btn-ghost" style="font-size:11px;padding:6px 10px">&#128269; KvK</button></div></div>'
     +'<div class="field"><label>Adres koper <span style="color:var(--red)">*</span></label><input type="text" id="bw-koper-adres" value="'+esc(t.koper_adres||'')+'"></div>'
@@ -1558,6 +1615,57 @@ async function toonBewerkModal(id, naam){
   });
 }
 
+
+function toonGesprekModal(trajectId, bestaand, onSaved){
+  var ov2=document.createElement('div');ov2.className='overlay';
+  var mo2=document.createElement('div');mo2.className='modal';mo2.style.maxWidth='620px';
+  var g=bestaand||{};
+  var vandaag=new Date().toISOString().split('T')[0];
+  mo2.innerHTML='<div class="modal-title">'+(bestaand?'Gesprek bewerken':'Nieuw gesprek vastleggen')+'</div>'    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'    +'<div class="field"><label>Datum</label><input type="date" id="gs-datum" value="'+(g.datum||vandaag)+'"></div>'    +'<div class="field"><label>Type</label><select id="gs-type">'    +'<option value="gesprek"'+(g.type==='gesprek'?' selected':'')+'>Gesprek</option>'    +'<option value="kennismaking"'+(g.type==='kennismaking'?' selected':'')+'>Kennismaking</option>'    +'<option value="onderhandeling"'+(g.type==='onderhandeling'?' selected':'')+'>Onderhandeling</option>'    +'<option value="vergadering"'+(g.type==='vergadering'?' selected':'')+'>Vergadering</option>'    +'<option value="telefonisch"'+(g.type==='telefonisch'?' selected':'')+'>Telefonisch overleg</option>'    +'<option value="email"'+(g.type==='email'?' selected':'')+'>E-mailwisseling</option>'    +'<option value="andere"'+(g.type==='andere'?' selected':'')+'>Overig</option>'    +'</select></div></div>'    +'<div class="field"><label>Deelnemers</label><input type="text" id="gs-deelnemers" placeholder="bijv. Marcel Bisschops, Jan Smit, Kees de Vries" value="'+esc(g.deelnemers||'')+'"></div>'    +'<div class="field"><label>Notities / aantekeningen</label><textarea id="gs-notities" rows="6" placeholder="Typ hier de ruwe gespreksnotities. Trefwoorden, zinnen of complete aantekeningen — AI maakt er een verslag van." style="font-size:13px;line-height:1.7">'+esc(g.ruwe_notities||'')+'</textarea></div>'    +'<div class="field" style="margin-bottom:0"><label>Verslag (optioneel — vul in of genereer met AI)</label><textarea id="gs-verslag" rows="6" placeholder="Hier komt het gestructureerde verslag. Klik op AI-verslag om het automatisch te laten opmaken." style="font-size:12px;line-height:1.7;font-family:IBM Plex Mono,monospace">'+esc(g.verslag||'')+'</textarea></div>'    +'<div style="display:flex;gap:8px;margin:10px 0;flex-wrap:wrap">'    +'<button class="btn-ghost" id="gs-ai-btn" style="font-size:12px;padding:6px 14px;color:var(--teal);border-color:var(--teal)">&#9881; AI-verslag genereren</button>'    +'<span id="gs-ai-status" style="font-size:12px;color:var(--muted);align-self:center"></span>'    +'</div>'    +'<div id="gs-err" style="display:none;color:var(--red);font-size:12px;margin-bottom:.5rem"></div>'    +'<div style="display:flex;gap:10px;justify-content:flex-end">'    +'<button class="btn-ghost" id="gs-ann">Annuleren</button>'    +'<button class="btn" id="gs-ok">Opslaan</button>'    +'</div>';
+  ov2.appendChild(mo2);document.body.appendChild(ov2);
+  ov2.addEventListener('click',function(e){if(e.target===ov2)document.body.removeChild(ov2);});
+  document.getElementById('gs-ann').addEventListener('click',function(){document.body.removeChild(ov2);});
+
+  document.getElementById('gs-ai-btn').addEventListener('click',async function(){
+    var notities=(document.getElementById('gs-notities').value||'').trim();
+    if(!notities){document.getElementById('gs-err').style.display='block';document.getElementById('gs-err').textContent='Voer eerst notities in.';return;}
+    document.getElementById('gs-err').style.display='none';
+    var st=document.getElementById('gs-ai-status');st.textContent='Verslag wordt gegenereerd...';
+    var btn2=this;btn2.disabled=true;
+    var deelnemers=(document.getElementById('gs-deelnemers').value||'').trim();
+    var datum=(document.getElementById('gs-datum').value||'');
+    var type=(document.getElementById('gs-type').value||'gesprek');
+    var typeLabels={gesprek:'Gesprek',kennismaking:'Kennismaking',onderhandeling:'Onderhandeling',vergadering:'Vergadering',telefonisch:'Telefonisch overleg',email:'E-mailwisseling',andere:'Overig'};
+    var prompt='Maak een professioneel en overzichtelijk gespreksverslag van de volgende ruwe notities van een M&A traject.'
+      +'\n\nGesprek: '+(typeLabels[type]||type)+' | Datum: '+(datum||'onbekend')+' | Deelnemers: '+(deelnemers||'onbekend')
+      +'\n\nRUWE NOTITIES:\n'+notities
+      +'\n\nGeef het verslag terug in dit formaat:\n\n## Samenvatting\n[2-3 zinnen kerninhoud]\n\n## Besproken punten\n[per punt een korte alinea of bulletpoint]\n\n## Beslissingen & afspraken\n[concreet wat is besloten]\n\n## Actiepunten\n[wie doet wat wanneer]\n\n## Volgende stap\n[wat staat gepland]\n\nSchrijf professioneel, in de derde persoon, bondig. Geen overbodige inleiding.';
+    try{
+      var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt:prompt,max_tokens:1200})});
+      var rd=await resp.json();
+      var tekst=rd.text||rd.content||'';
+      document.getElementById('gs-verslag').value=tekst;
+      st.textContent='✓ Verslag gegenereerd';
+    }catch(err){st.textContent='Fout bij genereren';}
+    btn2.disabled=false;
+  });
+
+  document.getElementById('gs-ok').addEventListener('click',async function(){
+    var err=document.getElementById('gs-err');err.style.display='none';
+    var datum=document.getElementById('gs-datum').value;
+    if(!datum){err.style.display='block';err.textContent='Datum is verplicht.';return;}
+    var btn3=this;btn3.disabled=true;btn3.textContent='Opslaan...';
+    try{
+      var payload={datum:datum,deelnemers:document.getElementById('gs-deelnemers').value.trim(),type:document.getElementById('gs-type').value,ruwe_notities:document.getElementById('gs-notities').value.trim(),verslag:document.getElementById('gs-verslag').value.trim()};
+      if(bestaand&&bestaand.id)payload.id=bestaand.id;
+      var r=await fetch(WORKER+'/mna/admin/gesprekken/'+trajectId,{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':adminKey},body:JSON.stringify(payload)});
+      var d=await r.json();
+      if(d.ok){document.body.removeChild(ov2);if(onSaved)onSaved();}
+      else{err.style.display='block';err.textContent='Fout: '+(d.error||'onbekend');btn3.disabled=false;btn3.textContent='Opslaan';}
+    }catch(e2){err.style.display='block';err.textContent='Verbindingsfout.';btn3.disabled=false;btn3.textContent='Opslaan';}
+  });
+}
+
 function toonNieuwModal(){
   var ov=document.createElement('div');ov.className='overlay';
   var mo=document.createElement('div');mo.className='modal';
@@ -1571,12 +1679,12 @@ function toonNieuwModal(){
     +'<div style="border-top:1px solid var(--border);margin:.75rem 0;padding-top:.75rem"><div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem">Begeleider (tussenpersoon)</div></div>'
     +'<div class="field"><label>Naam begeleider</label><input type="text" id="m-bg-naam" value="Marcel Bisschops" placeholder="bijv. Jan de Vries"></div>'
     +'<div class="field"><label>E-mail begeleider</label><input type="email" id="m-bg-email" value="marcel@bisschopsfinancing.nl" placeholder="begeleider@kantoor.nl"></div>'
-    +'<div style="border-top:1px solid var(--border);margin:.75rem 0;padding-top:.75rem"><div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem">Kopende partij</div></div>'
-    +'<div class="field"><label>Naam kopende partij <span style="color:var(--red)">*</span></label><div style="display:flex;gap:8px"><input type="text" id="m-koper-naam" placeholder="bijv. Acme Accountants BV" style="flex:2"><input type="text" id="m-koper-kvk" placeholder="KvK-nr" style="flex:1"></div></div>'
-    +'<div class="field"><label>Adres koper</label><input type="text" id="m-koper-adres" placeholder="bijv. Hoofdstraat 10, 5678CD Rotterdam"></div>'
-    +'<div class="field"><label>Rechtsvorm koper <span style="color:var(--red)">*</span></label><select id="m-koper-rv"><option value="">— Kies rechtsvorm —</option><option value="B.V.">B.V. (Besloten Vennootschap)</option><option value="N.V.">N.V. (Naamloze Vennootschap)</option><option value="Eenmanszaak">Eenmanszaak</option><option value="V.O.F.">V.O.F. (Vennootschap onder Firma)</option><option value="Maatschap">Maatschap</option><option value="Coöperatie">Coöperatie</option><option value="Stichting">Stichting</option><option value="Holding B.V.">Holding B.V.</option><option value="C.V.">C.V. (Commanditaire Vennootschap)</option></select></div>'
+    +'<div style="border-top:1px solid var(--border);margin:.75rem 0;padding-top:.75rem"><div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem"" id="m-sectie2-hdr">Kopende partij</div></div>'
+    +'<div class="field"><label id="m-p2-naam-lbl">Naam kopende partij <span style="color:var(--red)">*</span></label><div style="display:flex;gap:8px"><input type="text" id="m-koper-naam" placeholder="bijv. Acme Accountants BV" style="flex:2"><input type="text" id="m-koper-kvk" placeholder="KvK-nr" style="flex:1"></div></div>'
+    +'<div class="field"><label id=\"m-p2-adres-lbl\">Adres koper</label><input type="text" id="m-koper-adres" placeholder="bijv. Hoofdstraat 10, 5678CD Rotterdam"></div>'
+    +'<div class="field"><label id="m-p2-rv-lbl">Rechtsvorm koper <span style="color:var(--red)">*</span></label><select id="m-koper-rv"><option value="">— Kies rechtsvorm —</option><option value="B.V.">B.V. (Besloten Vennootschap)</option><option value="N.V.">N.V. (Naamloze Vennootschap)</option><option value="Eenmanszaak">Eenmanszaak</option><option value="V.O.F.">V.O.F. (Vennootschap onder Firma)</option><option value="Maatschap">Maatschap</option><option value="Coöperatie">Coöperatie</option><option value="Stichting">Stichting</option><option value="Holding B.V.">Holding B.V.</option><option value="C.V.">C.V. (Commanditaire Vennootschap)</option></select></div>'
     +'<div class="field"><label>Contactpersoon koper</label><input type="text" id="m-koper-contact" placeholder="bijv. Jan de Vries"></div>'
-    +'<div class="field"><label>E-mail koper</label><input type="email" id="m-koper-email" placeholder="koper@bedrijf.nl"></div>'
+    +'<div class="field"><label id=\"m-p2-email-lbl\">E-mail koper</label><input type="email" id="m-koper-email" placeholder="koper@bedrijf.nl"></div>'
 
     +'<div id="m-res" style="display:none;background:var(--teal-bg);border:1px solid var(--teal-dark);border-radius:var(--r);padding:1rem;margin-bottom:1rem;font-size:13px;line-height:2"></div>'
     +'<div id="m-err" style="display:none;color:var(--red);font-size:12px;margin-bottom:.75rem"></div>'
@@ -1584,6 +1692,27 @@ function toonNieuwModal(){
   ov.appendChild(mo);document.body.appendChild(ov);
   ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
   document.getElementById('m-ann').addEventListener('click',function(){document.body.removeChild(ov);});
+  // Dynamische labels op basis van trajecttype
+  function updatePartijLabels(){
+    var t=document.getElementById('m-t').value;
+    var lb=partijLabels(t);
+    var s2=document.getElementById('m-sectie2-hdr');
+    var n=document.getElementById('m-p2-naam-lbl');
+    var a=document.getElementById('m-p2-adres-lbl');
+    var rv=document.getElementById('m-p2-rv-lbl');
+    var c=document.getElementById('m-p2-contact-lbl');
+    var e=document.getElementById('m-p2-email-lbl');
+    if(s2)s2.textContent=lb.sectie2;
+    if(n)n.innerHTML=lb.partij2+' <span style="color:var(--red)">*</span>';
+    if(a)a.textContent='Adres '+lb.sectie2.toLowerCase();
+    if(rv)rv.innerHTML='Rechtsvorm '+lb.sectie2.toLowerCase()+' <span style="color:var(--red)">*</span>';
+    if(c)c.textContent='Contactpersoon '+lb.sectie2.toLowerCase();
+    if(e)e.textContent='E-mail '+lb.sectie2.toLowerCase();
+    // Ook de validatieberichten aanpassen
+    window._mPartijLabel=lb;
+  }
+  document.getElementById('m-t').addEventListener('change',updatePartijLabels);
+  updatePartijLabels();
   document.getElementById('m-ok').addEventListener('click',async function(){    var erDiv=document.getElementById('m-err');
     var emailRe=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     var kvkRe=/^[0-9]{8}$/;
