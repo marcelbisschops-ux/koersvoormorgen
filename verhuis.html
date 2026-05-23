@@ -534,20 +534,33 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--b
         </div>
         <div class="scores-grid" id="rapp-scores"></div>
         <div class="rapp-tekst" id="rapp-tekst"></div>
-        <div style="margin-top:1.25rem;display:flex;gap:10px;flex-wrap:wrap">
-          <button class="btn-adv" onclick="window.print()">&#128196; Opslaan als PDF</button>
-          <button class="btn-ghost" onclick="location.reload()">Nieuwe scan</button>
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:1rem 1.25rem;margin-top:1.5rem;font-size:11px;color:var(--muted);line-height:1.7">
+          <strong style="color:var(--sub)">Disclaimer</strong> &mdash; Dit rapport is gegenereerd op basis van zelfrapportage en is uitsluitend bedoeld als indicatief strategisch ori&euml;ntatie-instrument. De uitkomsten, scores en aanbevelingen vormen geen formeel advies, geen waarderings- of due diligence-rapport en geen juridisch oordeel. Bisschops Financing BV aanvaardt geen aansprakelijkheid voor beslissingen die (mede) worden genomen op basis van dit rapport. Benchmarkdisclaimer: er zijn geen publiek beschikbare gedetailleerde financi&euml;le benchmarks specifiek voor de verhuisbranche. Deze analyse is gebaseerd op CBS SBI 4942-omzetdata en sectorkennis. &copy; 2026 Bisschops Financing BV &mdash; VerhuisScan.
         </div>
-        <div class="cta-blok">
-          <div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--teal);margin-bottom:.5rem">Wilt u verder praten?</div>
-          <div style="font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:600;color:var(--head);margin-bottom:.5rem">Marcel Bisschops — Bisschops Financing</div>
-          <div style="font-size:13px;color:var(--mid);line-height:1.7;margin-bottom:.85rem">M&amp;A-adviseur gespecialiseerd in verhuisbedrijven. Begeleiding bij winstoptimalisatie, groeifinancering, overname en bedrijfsoverdracht. Een gesprek van 30 minuten geeft u concreet inzicht in wat uw bedrijf nu waard is en wat er nodig is om de volgende stap te zetten.</div>
-          <div style="display:flex;flex-direction:column;gap:6px">
-            <a class="cta-link" style="display:flex;align-items:center;gap:8px" href="mailto:marcel@bisschopsfinancing.nl">&#9993; marcel@bisschopsfinancing.nl</a>
-            <a class="cta-link" style="display:flex;align-items:center;gap:8px" href="tel:+31638689888">&#128222; 06 - 38 68 98 88</a>
-            <a class="cta-link" style="display:flex;align-items:center;gap:8px" href="https://koersvoormorgen.nl">&#127760; koersvoormorgen.nl</a>
+        <div style="background:var(--teal-bg);border:1.5px solid var(--teal);border-radius:var(--r2);padding:1.5rem 2rem;margin-top:1rem;text-align:center">
+          <div style="font-family:Playfair Display,serif;font-size:1.2rem;color:var(--head);font-weight:600;margin-bottom:.5rem">Wilt u de uitkomsten bespreken?</div>
+          <div style="font-size:13px;color:var(--mid);line-height:1.7;margin-bottom:1rem">Marcel Bisschops is M&amp;A-adviseur gespecialiseerd in verhuisbedrijven &mdash; met een achtergrond in bedrijfsoverdracht, groeifinancering en winstoptimalisatie in de sector. Een gesprek duurt 30 minuten en is vrijblijvend.</div>
+          <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap">
+            <button id="vs-callback-btn" style="display:inline-flex;align-items:center;gap:8px;background:var(--teal);color:var(--void);font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;padding:10px 20px;border-radius:var(--r);border:none;cursor:pointer">&#128203; Stuur terugbelverzoek</button>
+            <button onclick="window.location.href='tel:+31638689888'" style="display:inline-flex;align-items:center;gap:8px;background:var(--teal);color:var(--void);font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;padding:10px 20px;border-radius:var(--r);border:none;cursor:pointer">&#128222; 06 - 38 68 98 88</button>
           </div>
-          <div style="margin-top:.85rem;font-size:11px;color:var(--muted);border-top:1px solid var(--teal-dark);padding-top:.6rem">Benchmarkdisclaimer: Er zijn geen publiek beschikbare gedetailleerde financiële benchmarks specifiek voor de verhuisbranche in Nederland. Deze analyse is gebaseerd op CBS SBI 4942-omzetdata, sectorkennis en M&amp;A-transactiepraktijk. Scores zijn indicatief op basis van zelfrapportage, niet op basis van externe audit.</div>
+        </div>
+        <div id="vs-scancode-blok" style="display:none;background:var(--teal-bg);border:1px solid var(--teal-dark);border-radius:var(--r);padding:.75rem 1rem;margin-top:.75rem">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+            <div>
+              <div style="font-size:12px;font-weight:600;color:var(--teal);margin-bottom:2px">&#128274; Uw persoonlijke scancode</div>
+              <div id="vs-scancode-val" style="font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:700;letter-spacing:.12em;color:var(--head)"></div>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px">Bewaar deze code om uw rapport later terug te zien.</div>
+            </div>
+            <button id="vs-copy-code" style="background:var(--teal);color:#fff;border:none;border-radius:var(--r);padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer;font-family:'IBM Plex Sans',sans-serif">Kopieer code</button>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:.75rem;justify-content:space-between;align-items:center">
+          <div style="font-size:12px;color:var(--muted)">&copy; 2026 Bisschops Financing BV &mdash; VerhuisScan. Aanbevelingen zijn indicatief.</div>
+          <div style="display:flex;gap:8px">
+            <button class="btn-ghost" onclick="setTimeout(function(){window.print()},300)">&#128438; Printen</button>
+            <button class="btn-ghost" onclick="location.reload()">Nieuwe scan</button>
+          </div>
         </div>
       </div>
     </div>
@@ -599,6 +612,48 @@ function naarScan(){
   document.getElementById('pg-gegevens').style.display='none';
   document.getElementById('pg-scan').style.display='block';
   window.scrollTo(0,0);
+}
+
+function vsCallbackModal(){
+  var ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:500;display:flex;align-items:center;justify-content:center;padding:1.5rem';
+  var mo=document.createElement('div');
+  mo.style.cssText='background:var(--panel);border:1px solid var(--border2);border-radius:var(--r2);padding:2rem;max-width:440px;width:100%';
+  mo.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.2rem;color:var(--head);font-weight:600;margin-bottom:.4rem">Terugbelverzoek</div>'
+    +'<div style="font-size:13px;color:var(--mid);margin-bottom:1.25rem">Marcel Bisschops neemt binnen 1 werkdag contact op.</div>'
+    +'<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:1rem">'
+    +'<div><label style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:4px">Naam *</label><input id="vs-cb-naam" type="text" class="veld" placeholder="Uw naam"></div>'
+    +'<div><label style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:4px">Telefoon of e-mail *</label><input id="vs-cb-contact" type="text" class="veld" placeholder="06-... of u@bedrijf.nl"></div>'
+    +'<div><label style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:4px">Beste beltijd</label><input id="vs-cb-tijd" type="text" class="veld" placeholder="bijv. ochtend of na 14:00"></div>'
+    +'</div>'
+    +'<div id="vs-cb-status" style="display:none;font-size:13px;color:var(--teal);padding:10px;background:var(--teal-bg);border-radius:var(--r);margin-bottom:1rem">Bedankt! Marcel neemt contact op.</div>'
+    +'<div id="vs-cb-err" style="display:none;font-size:12px;color:var(--red);margin-bottom:.75rem"></div>'
+    +'<div style="display:flex;gap:10px">'
+    +'<button id="vs-cb-cancel" class="btn-ghost" style="flex:1">Annuleren</button>'
+    +'<button id="vs-cb-send" class="btn-adv" style="flex:1">Verstuur</button>'
+    +'</div>';
+  ov.appendChild(mo);document.body.appendChild(ov);
+  ov.addEventListener('click',function(e){if(e.target===ov)ov.remove();});
+  document.getElementById('vs-cb-cancel').addEventListener('click',function(){ov.remove();});
+  document.getElementById('vs-cb-send').addEventListener('click',async function(){
+    var naam=document.getElementById('vs-cb-naam').value.trim();
+    var contact=document.getElementById('vs-cb-contact').value.trim();
+    var tijd=document.getElementById('vs-cb-tijd').value.trim();
+    var err=document.getElementById('vs-cb-err');
+    if(!naam||!contact){err.style.display='block';err.textContent='Vul naam en contact in.';return;}
+    var btn=document.getElementById('vs-cb-send');btn.disabled=true;btn.textContent='Versturen...';
+    try{
+      await fetch(WORKER+'/callback',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({naam:naam,tel:contact.includes('@')?'':contact,email:contact.includes('@')?contact:'',tijd:tijd,
+          kantoor:{naam:document.getElementById('g-naam').value,regio:document.getElementById('g-regio').value},
+          scores:{},totaal:0,scenario:'VerhuisScan',type:'verhuis'})});
+      document.getElementById('vs-cb-status').style.display='block';
+      btn.textContent='Verstuurd';setTimeout(function(){ov.remove();},2500);
+    }catch(e){
+      err.style.display='block';err.textContent='Fout. Bel direct: 06 - 38 68 98 88';
+      btn.disabled=false;btn.textContent='Verstuur';
+    }
+  });
 }
 
 document.querySelectorAll('.optie').forEach(function(el){
@@ -693,10 +748,24 @@ async function verstuur(){
     document.getElementById('laden').style.display='none';
     document.getElementById('rapport-content').style.display='block';
     document.querySelector('.page-wrap').scrollIntoView({behavior:'smooth',block:'start'});
+    // Toon scancode
+    if(d1.id){
+      document.getElementById('vs-scancode-blok').style.display='block';
+      document.getElementById('vs-scancode-val').textContent=d1.id;
+      document.getElementById('vs-copy-code').onclick=function(){
+        navigator.clipboard.writeText(d1.id).then(function(){
+          document.getElementById('vs-copy-code').textContent='Gekopieerd ✓';
+        });
+      };
+    }
   }catch(e){
     document.getElementById('laden').innerHTML='<div style="color:var(--red);font-size:14px;text-align:center;padding:2rem">Fout: '+e.message+'<br><br><button class="btn-ghost" onclick="location.reload()">Opnieuw proberen</button></div>';
   }
 }
+// Koppel callback knop
+document.addEventListener('click', function(e){
+  if(e.target && e.target.id==='vs-callback-btn') vsCallbackModal();
+});
 </script>
 </body>
 </html>
