@@ -1143,9 +1143,11 @@ async function toonDetail(id,naam){
         var koperContactB=d.traject.koper_contact||'[INVULLEN]';
         var verkoperNaamB=d.traject.contact_naam||'[INVULLEN]';
         var opdrachtgever=isSell?(d.traject.kantoor_naam||naam):koperNaamB;
-        var prompt='Stel een volledige Bemiddelingsovereenkomst op. Opdrachtgever: '+esc(opdrachtgever)+'. Contactpersoon: '+esc(isSell?verkoperNaamB:koperContactB)+'. Type: '+(isSell?'Sell-side':'Buy-side')+'. Datum: '+datum+'. Bisschops Financing B.V., Grotestraat 13, 5841AA Oploo. Exclusieve opdracht 4 maanden. '+(isSell?'Geen succesfee voor verkoper, €250/uur extra.':'€10.000 voorfase of regie.')+' Break-fee €5.000 min. Rechtbank Oost-Brabant. Geef volledig document terug, geen uitleg.';
-        var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:8000})});
-        var rd=await resp.json();
+        var prompt='Schrijf een professionele Bemiddelingsovereenkomst '+(isSell?'Verkoop':'Aankoop')+' in het Nederlands.\n\nPARTIJEN:\nOpdrachtgever: '+esc(opdrachtgever)+' | Contactpersoon: '+esc(isSell?verkoperNaamB:koperContactB)+'\nBisschops Financing B.V., Grotestraat 13, 5841AA Oploo (Opdrachtnemer)\n\nARTIKELEN:\n1. Opdracht: '+(isSell?'Exclusieve verkoopopdracht':'Zoekopdracht kopende partij')+' — analyse, strategie, begeleiding tot closing\n2. Exclusiviteit: 4 maanden, stilzwijgende verlenging, opzegtermijn 1 maand\n3. Vergoeding: '+(isSell?'Geen succesfee voor verkoper. Bisschops Financing verhaalt honorarium op koper. Extra werkzaamheden €250/uur excl. btw.':'Voorfasevergoeding: Optie A €10.000 excl. btw OF Optie B regie €250/uur. Succesfee bij closing conform AV.')+' Kosten doorbelast mits vooraf akkoord.\n4. Break-fee bij intrekking/weigering marktconform bod: bestede uren à €250/uur, minimum €5.000 excl. btw\n5. Vertrouwelijkheid: conform eerder getekende NDA\n6. Toepasselijk recht: Nederlands recht, Rechtbank Oost-Brabant\n\nOndertekening: '+datum+'\nOpdrachtgever (naam/handtekening/datum) en Bisschops Financing B.V. — Marcel Bisschops (handtekening/datum)\n\nSchrijf het volledige document professioneel en juridisch correct. Geen uitleg, alleen het document.';
+        var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:4000})});
+        var rawResp=await resp.text();
+        var rd;try{rd=JSON.parse(rawResp);}catch(e){throw new Error('Parse fout: '+rawResp.substring(0,100));}
+        if(!resp.ok)throw new Error('AI fout '+resp.status+': '+(rd.error||rawResp.substring(0,150)));
         var tekst=rd.text||(rd.error||'Fout bij genereren.');
         var bemHtml=tekst.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n\n/g,'</p><p>').replace(/\n/g,'<br>');
         bemOut.innerHTML='<div style="font-size:11px;font-weight:600;color:#2a5ea0;letter-spacing:.1em;text-transform:uppercase;margin-bottom:.75rem">&#128203; Bemiddelingsovereenkomst · '+esc(d.traject.kantoor_naam||naam)+'</div>'
@@ -1155,7 +1157,10 @@ async function toonDetail(id,naam){
           +'<button id="bem-print-btn" class="btn-ghost" style="font-size:12px;padding:6px 14px">&#128196; Print / PDF</button>'
           +'<button id="bem-email-btn" class="btn" style="font-size:12px;padding:6px 14px;background:#2a5ea0">&#9993; Stuur naar opdrachtgever</button>'
           +'</div>';
-        document.getElementById('bem-edit').value=tekst;
+        var bemEditEl2=document.getElementById('bem-edit');
+        bemEditEl2.value=tekst;
+        bemEditEl2.dataset.tekst=''; // clear
+        document.getElementById('bem-email-btn').dataset.ready='1';
         document.getElementById('bem-print-btn').addEventListener('click',function(){var bemEl=document.getElementById('bem-edit');var pt=bemEl?bemEl.value:tekst;var win=window.open('','_blank');win.document.write('<html><head><style>body{font-family:Georgia,serif;font-size:13px;line-height:1.9;max-width:700px;margin:2cm auto;color:#2a2825}</style></head><body><p>'+(vd.tekst||'').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>')+'</p></body></html>');win.document.close();win.print();});
         document.getElementById('bem-email-btn').addEventListener('click',async function(){
           var ebtn=this;ebtn.disabled=true;ebtn.textContent='Versturen...';
@@ -1352,22 +1357,64 @@ function toonNieuwModal(){
     +'<div class="field"><label>Kantoornaam <span style="color:var(--red)">*</span></label><input type="text" id="m-k" placeholder="bijv. Accountantskantoor De Vries"></div>'
     +'<div class="field"><label>Contactpersoon</label><input type="text" id="m-c" placeholder="Naam verkopende partner"></div>'
     +'<div class="field"><label>E-mail contactpersoon</label><input type="email" id="m-e" placeholder="partner@kantoor.nl"></div>'
+    +'<div class="field"><label>KvK-nummer verkoper</label><div style="display:flex;gap:6px"><input type="text" id="m-kvk" placeholder="bijv. 12345678" style="flex:1"><button type="button" id="btn-kvk-verk" class="btn-ghost" style="font-size:11px;padding:6px 10px;white-space:nowrap">&#128269; KvK</button></div></div>'
+    +'<div class="field"><label>Adres verkoper</label><input type="text" id="m-adres" placeholder="automatisch via KvK of handmatig"></div>'
     +'<div class="field"><label>Trajecttype</label><select id="m-t"><option value="Verkoop">Verkoop</option><option value="Fusie">Fusie</option><option value="Opvolging">Opvolging</option><option value="PE-traject">PE-traject</option><option value="Overname">Overname</option></select></div>'
     +'<div class="field"><label>Notitie (intern)</label><textarea id="m-n" rows="2" placeholder="Interne aantekeningen..."></textarea></div>'
     +'<div style="border-top:1px solid var(--border);margin:.75rem 0;padding-top:.75rem"><div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem">Begeleider (tussenpersoon)</div></div>'
-    +'<div class="field"><label>Naam begeleider</label><input type="text" id="m-bg-naam" placeholder="bijv. Jan de Vries"></div>'
-    +'<div class="field"><label>E-mail begeleider</label><input type="email" id="m-bg-email" placeholder="begeleider@kantoor.nl"></div>'
+    +'<div class="field"><label>Naam begeleider</label><input type="text" id="m-bg-naam" value="Marcel Bisschops" placeholder="bijv. Jan de Vries"></div>'
+    +'<div class="field"><label>E-mail begeleider</label><input type="email" id="m-bg-email" value="marcel@bisschopsfinancing.nl" placeholder="begeleider@kantoor.nl"></div>'
     +'<div style="border-top:1px solid var(--border);margin:.75rem 0;padding-top:.75rem"><div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem">Kopende partij</div></div>'
     +'<div class="field"><label>Naam kopende partij</label><input type="text" id="m-koper-naam" placeholder="bijv. Acme Accountants BV"></div>'
     +'<div class="field"><label>Rechtsvorm koper</label><input type="text" id="m-koper-rv" placeholder="bijv. BV, NV, Coöperatie"></div>'
     +'<div class="field"><label>Contactpersoon koper</label><input type="text" id="m-koper-contact" placeholder="bijv. Jan de Vries"></div>'
     +'<div class="field"><label>E-mail koper</label><input type="email" id="m-koper-email" placeholder="koper@bedrijf.nl"></div>'
+    +'<div class="field"><label>KvK-nummer koper</label><div style="display:flex;gap:6px"><input type="text" id="m-koper-kvk" placeholder="bijv. 87654321" style="flex:1"><button type="button" id="btn-kvk-koper" class="btn-ghost" style="font-size:11px;padding:6px 10px;white-space:nowrap">&#128269; KvK</button></div></div>'
+    +'<div class="field"><label>Adres koper</label><input type="text" id="m-koper-adres" placeholder="automatisch via KvK of handmatig"></div>'
     +'<div id="m-res" style="display:none;background:var(--teal-bg);border:1px solid var(--teal-dark);border-radius:var(--r);padding:1rem;margin-bottom:1rem;font-size:13px;line-height:2"></div>'
     +'<div id="m-err" style="display:none;color:var(--red);font-size:12px;margin-bottom:.75rem"></div>'
     +'<div style="display:flex;gap:10px;justify-content:flex-end"><button class="btn-ghost" id="m-ann">Annuleren</button><button class="btn" id="m-ok">Traject aanmaken</button></div>';
   ov.appendChild(mo);document.body.appendChild(ov);
   ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
   document.getElementById('m-ann').addEventListener('click',function(){document.body.removeChild(ov);});
+  // KvK ophalen verkoper
+  var kvkVerkBtn=document.getElementById('btn-kvk-verk');
+  if(kvkVerkBtn)kvkVerkBtn.addEventListener('click',async function(){
+    var kvk=document.getElementById('m-kvk').value.trim().replace(/[^0-9]/g,'');
+    if(kvk.length!==8){alert('Voer een geldig 8-cijferig KvK-nummer in.');return;}
+    kvkVerkBtn.disabled=true;kvkVerkBtn.textContent='Ophalen...';
+    try{
+      var r=await fetch(WORKER+'/kvk/'+kvk);
+      var d=await r.json();
+      if(d.ok){
+        if(d.adres)document.getElementById('m-adres').value=d.adres;
+        if(d.naam&&!document.getElementById('m-k').value)document.getElementById('m-k').value=d.naam;
+        if(d.rechtsvorm&&!document.getElementById('m-c').value){}
+        kvkVerkBtn.textContent='✓ Ingevuld';
+        setTimeout(function(){kvkVerkBtn.textContent='↻ Ophalen';kvkVerkBtn.disabled=false;},2000);
+      } else {alert('KvK: '+(d.error||'Niet gevonden'));kvkVerkBtn.disabled=false;kvkVerkBtn.textContent='↻ Ophalen';}
+    }catch(e){alert('Fout: '+e.message);kvkVerkBtn.disabled=false;kvkVerkBtn.textContent='↻ Ophalen';}
+  });
+
+  // KvK ophalen koper
+  var kvkKopBtn=document.getElementById('btn-kvk-koper');
+  if(kvkKopBtn)kvkKopBtn.addEventListener('click',async function(){
+    var kvk=document.getElementById('m-koper-kvk').value.trim().replace(/[^0-9]/g,'');
+    if(kvk.length!==8){alert('Voer een geldig 8-cijferig KvK-nummer in.');return;}
+    kvkKopBtn.disabled=true;kvkKopBtn.textContent='Ophalen...';
+    try{
+      var r=await fetch(WORKER+'/kvk/'+kvk);
+      var d=await r.json();
+      if(d.ok){
+        if(d.adres)document.getElementById('m-koper-adres').value=d.adres;
+        if(d.naam&&!document.getElementById('m-koper-naam').value)document.getElementById('m-koper-naam').value=d.naam;
+        if(d.rechtsvorm&&!document.getElementById('m-koper-rv').value)document.getElementById('m-koper-rv').value=d.rechtsvorm;
+        kvkKopBtn.textContent='✓ Ingevuld';
+        setTimeout(function(){kvkKopBtn.textContent='↻ Ophalen';kvkKopBtn.disabled=false;},2000);
+      } else {alert('KvK: '+(d.error||'Niet gevonden'));kvkKopBtn.disabled=false;kvkKopBtn.textContent='↻ Ophalen';}
+    }catch(e){alert('Fout: '+e.message);kvkKopBtn.disabled=false;kvkKopBtn.textContent='↻ Ophalen';}
+  });
+
   document.getElementById('m-ok').addEventListener('click',async function(){
     var kantoor=document.getElementById('m-k').value.trim();
     if(!kantoor){var er=document.getElementById('m-err');er.style.display='block';er.textContent='Kantoornaam is verplicht.';return;}
