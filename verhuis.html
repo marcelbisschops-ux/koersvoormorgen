@@ -217,32 +217,47 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--b
         <div class="veld-hint">Exacte FTE, inclusief deeltijd omgerekend</div>
       </div>
       <div class="veld-groep">
-        <div class="veld-lbl">Jaarlijkse omzet <span>*</span></div>
+        <div class="veld-lbl">Totale jaaromzet <span>*</span></div>
         <input type="text" class="veld" id="g-omzet" placeholder="bijv. €4.200.000">
+      </div>
+    </div>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:.75rem 1rem;margin-bottom:1rem;font-size:12px;color:var(--muted)">
+      💡 <strong style="color:var(--sub)">Omzetstromen:</strong> Vul de stromen apart in voor een specifieker rapport. Niet exact? Een schatting volstaat.
+    </div>
+    <div class="veld-rij drie">
+      <div class="veld-groep">
+        <div class="veld-lbl">Omzet verhuizen</div>
+        <input type="text" class="veld" id="g-omzet-verhuis" placeholder="bijv. €2.800.000">
+        <div class="veld-hint">Particulier + zakelijk transport</div>
+      </div>
+      <div class="veld-groep">
+        <div class="veld-lbl">Omzet opslag</div>
+        <input type="text" class="veld" id="g-omzet-opslag" placeholder="bijv. €900.000">
+        <div class="veld-hint">Self-storage, meubeldepot, archief</div>
+      </div>
+      <div class="veld-groep">
+        <div class="veld-lbl">Omzet circulair/overig</div>
+        <input type="text" class="veld" id="g-omzet-circulair" placeholder="bijv. €500.000">
+        <div class="veld-hint">Hergebruik, inzameling, overige diensten</div>
       </div>
     </div>
     <div class="veld-rij">
       <div class="veld-groep">
         <div class="veld-lbl">EBITDA-marge % <span>*</span></div>
         <input type="text" class="veld" id="g-ebitda" placeholder="bijv. 9%">
-        <div class="veld-hint">Winst voor rente, belasting en afschrijving</div>
+        <div class="veld-hint">Winst vóór rente, belasting en afschrijving</div>
       </div>
       <div class="veld-groep">
-        <div class="veld-lbl">Omzet per voertuig per jaar</div>
-        <input type="text" class="veld" id="g-omzet-wagen" placeholder="bijv. €180.000">
-        <div class="veld-hint">Totaalomzet ÷ aantal wagens</div>
+        <div class="veld-lbl">Kostprijs grote opdrachten</div>
+        <input type="text" class="veld" id="g-kostprijs" placeholder="bijv. €1.800 per dag">
+        <div class="veld-hint">Dagprijs bij zakelijke/institutionele projecten</div>
       </div>
     </div>
     <div class="veld-rij">
       <div class="veld-groep">
-        <div class="veld-lbl">Gemiddeld uurtarief personeel</div>
-        <input type="text" class="veld" id="g-uurtarief" placeholder="bijv. €45">
-        <div class="veld-hint">Wat factureert u gemiddeld per arbeidsuur</div>
-      </div>
-      <div class="veld-groep">
-        <div class="veld-lbl">Aandeel vaste/abonnementsomzet</div>
+        <div class="veld-lbl">Aandeel vaste/terugkerende omzet</div>
         <input type="text" class="veld" id="g-recurring" placeholder="bijv. 30%">
-        <div class="veld-hint">Contractklanten, opslag-abonnementen e.d.</div>
+        <div class="veld-hint">Opslag-abonnementen, vaste contractklanten</div>
       </div>
     </div>
     <div class="veld-rij">
@@ -652,8 +667,10 @@ function naarScan() {
   if(!doel){err.style.display='block';err.textContent='Selecteer uw doel voor de komende periode.';return;}
   err.style.display='none';
   A.fte=fte; A.omzet=omzet; A.ebitda=ebitda;
-  A.omzet_wagen=document.getElementById('g-omzet-wagen').value.trim();
-  A.uurtarief=document.getElementById('g-uurtarief').value.trim();
+  A.omzet_verhuis=document.getElementById('g-omzet-verhuis').value.trim();
+  A.omzet_opslag=document.getElementById('g-omzet-opslag').value.trim();
+  A.omzet_circulair=document.getElementById('g-omzet-circulair').value.trim();
+  A.kostprijs=document.getElementById('g-kostprijs').value.trim();
   A.recurring=document.getElementById('g-recurring').value.trim();
   A.bedrijf_type=type;
   A.vestigingen=document.getElementById('g-vestigingen').value;
