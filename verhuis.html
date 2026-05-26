@@ -140,30 +140,30 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--b
       <span class="dim-chip">Strategie & Opvolging</span>
     </div>
     <div style="margin-bottom:2rem">
-      <div style="font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--teal);margin-bottom:.75rem">Voor één bedrijf</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:560px;margin:0 auto 1.5rem">
+      <!-- Rij 1: Start scan + Groep aanmaken naast elkaar -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:560px;margin:0 auto 12px">
         <div onclick="naarGegevens()" style="background:var(--teal-bg);border:2px solid var(--teal);border-radius:var(--r2);padding:1.25rem;text-align:left;cursor:pointer;transition:all .15s">
           <div style="font-size:1.3rem;margin-bottom:.5rem">⬡</div>
           <div style="font-family:'Playfair Display',serif;font-size:1rem;color:var(--teal);font-weight:600;margin-bottom:.3rem">Start individuele scan</div>
           <div style="font-size:12px;color:var(--mid);line-height:1.5">Vul de scan in en ontvang direct uw strategisch rapport met AI-advies.</div>
         </div>
-        <div onclick="naarRapportOphalen()" style="background:var(--panel);border:1px solid var(--border2);border-radius:var(--r2);padding:1.25rem;text-align:left;cursor:pointer;transition:all .15s">
-          <div style="font-size:1.3rem;margin-bottom:.5rem">🔒</div>
-          <div style="font-family:'Playfair Display',serif;font-size:1rem;color:var(--head);font-weight:600;margin-bottom:.3rem">Rapport ophalen</div>
-          <div style="font-size:12px;color:var(--mid);line-height:1.5">Eerder een scan gedaan? Haal uw rapport op met uw persoonlijke scancode.</div>
+        <div onclick="naarGroepAanmaken()" style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;text-align:left;cursor:pointer;transition:all .15s">
+          <div style="font-size:1.3rem;margin-bottom:.5rem">⊞</div>
+          <div style="font-family:'Playfair Display',serif;font-size:1rem;color:var(--head);font-weight:600;margin-bottom:.3rem">Groep aanmaken</div>
+          <div style="font-size:12px;color:var(--mid);line-height:1.5">Maak een groepscode en nodig meerdere bedrijven uit.</div>
         </div>
       </div>
-      <div style="font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem">Voor meerdere bedrijven</div>
+      <!-- Rij 2: Rapport ophalen + Deelnemen + Dashboard kleiner -->
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;max-width:560px;margin:0 auto">
-        <div onclick="naarGroepAanmaken()" style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1rem;text-align:left;cursor:pointer;transition:all .15s">
-          <div style="font-size:1.1rem;margin-bottom:.4rem">⊞</div>
-          <div style="font-size:13px;font-weight:600;color:var(--head);margin-bottom:.3rem">Groep aanmaken</div>
-          <div style="font-size:11px;color:var(--mid);line-height:1.5">Maak een groepscode en nodig bedrijven uit.</div>
+        <div onclick="naarRapportOphalen()" style="background:var(--panel);border:1px solid var(--border2);border-radius:var(--r2);padding:1rem;text-align:left;cursor:pointer;transition:all .15s">
+          <div style="font-size:1.1rem;margin-bottom:.4rem">🔒</div>
+          <div style="font-size:13px;font-weight:600;color:var(--head);margin-bottom:.3rem">Rapport ophalen</div>
+          <div style="font-size:11px;color:var(--mid);line-height:1.5">Eerder gedaan? Haal op met scancode.</div>
         </div>
         <div onclick="naarGroepDeelnemen()" style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1rem;text-align:left;cursor:pointer;transition:all .15s">
           <div style="font-size:1.1rem;margin-bottom:.4rem">⊕</div>
           <div style="font-size:13px;font-weight:600;color:var(--head);margin-bottom:.3rem">Deelnemen</div>
-          <div style="font-size:11px;color:var(--mid);line-height:1.5">Ontvangen groepscode? Doe mee.</div>
+          <div style="font-size:11px;color:var(--mid);line-height:1.5">Groepscode ontvangen? Doe mee.</div>
         </div>
         <div onclick="naarDashboard()" style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1rem;text-align:left;cursor:pointer;transition:all .15s">
           <div style="font-size:1.1rem;margin-bottom:.4rem">▤</div>
@@ -213,12 +213,12 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--b
     <div class="veld-rij">
       <div class="veld-groep">
         <div class="veld-lbl">Aantal medewerkers (FTE) <span>*</span></div>
-        <input type="number" class="veld" id="g-fte" placeholder="bijv. 18" min="1">
+        <input type="number" class="veld" id="g-fte" placeholder="bijv. 18" min="1" oninput="checkVerhuisCijfers()">
         <div class="veld-hint">Exacte FTE, inclusief deeltijd omgerekend</div>
       </div>
       <div class="veld-groep">
         <div class="veld-lbl">Totale jaaromzet <span>*</span></div>
-        <input type="text" class="veld" id="g-omzet" placeholder="bijv. €4.200.000" oninput="checkVerhuisOmzet()">
+        <input type="text" class="veld" id="g-omzet" placeholder="bijv. €4.200.000" oninput="checkVerhuisOmzet();checkVerhuisCijfers()">
       </div>
     </div>
     <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:.75rem 1rem;margin-bottom:1rem;font-size:12px;color:var(--muted)">
@@ -245,7 +245,7 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--b
     <div class="veld-rij">
       <div class="veld-groep">
         <div class="veld-lbl">EBITDA-marge % <span>*</span></div>
-        <input type="text" class="veld" id="g-ebitda" placeholder="bijv. 9%">
+        <input type="text" class="veld" id="g-ebitda" placeholder="bijv. 9%" oninput="checkVerhuisCijfers()">
         <div class="veld-hint">Winst vóór rente, belasting en afschrijving</div>
       </div>
       <div class="veld-groep">
@@ -300,6 +300,7 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--b
       </div>
     </div>
 
+    <div id="verhuis-cijfer-check" style="display:none;margin-bottom:.75rem;padding:8px 12px;border-radius:6px;font-size:12px"></div>
     <div id="g-err" style="display:none;font-size:12px;color:var(--red);margin-bottom:.75rem"></div>
     <div class="nav-row">
       <button class="btn-ghost" onclick="naarIntro()">← Terug</button>
@@ -642,6 +643,33 @@ function parseGeld(s){
   var n=String(s).replace(/[€\s.]/g,'').replace(',','.');
   var v=parseFloat(n);
   return isNaN(v)?null:v;
+}
+
+function checkVerhuisCijfers(){
+  var el=document.getElementById('verhuis-cijfer-check');
+  if(!el)return;
+  var omzet=parseGeld(document.getElementById('g-omzet').value);
+  var fte=parseFloat(document.getElementById('g-fte').value);
+  var ebitda=parseFloat((document.getElementById('g-ebitda').value||'').replace('%','').replace(',','.'));
+  var meldingen=[];
+
+  if(omzet&&fte&&!isNaN(fte)&&fte>0){
+    var perFte=omzet/fte;
+    if(perFte<50000)meldingen.push('⚠ Omzet per FTE €'+Math.round(perFte/1000)+'K — lager dan gebruikelijk (norm: €80K–€200K voor verhuisbedrijven)');
+    else if(perFte>500000)meldingen.push('⚠ Omzet per FTE €'+Math.round(perFte/1000)+'K — opvallend hoog, controleer FTE-opgave');
+  }
+  if(!isNaN(ebitda)){
+    if(ebitda<0)meldingen.push('⚠ Negatieve EBITDA-marge — verliesgevend bedrijf');
+    else if(ebitda>35)meldingen.push('⚠ EBITDA-marge '+ebitda+'% — opvallend hoog voor verhuissector (norm: 5–20%)');
+    else if(ebitda>0&&ebitda<3)meldingen.push('⚠ EBITDA-marge '+ebitda+'% — zeer krap, weinig buffer voor tegenslagen');
+  }
+
+  if(!meldingen.length){el.style.display='none';return;}
+  el.style.display='block';
+  el.style.background='rgba(201,168,76,.12)';
+  el.style.border='1px solid #c9a84c';
+  el.style.color='#8a5a00';
+  el.innerHTML=meldingen.join('<br>');
 }
 
 function checkVerhuisOmzet(){
