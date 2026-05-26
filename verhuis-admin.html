@@ -108,9 +108,12 @@ function renderDashboard() {
   if (!scans.length) {
     html += '<div style="text-align:center;padding:3rem;color:var(--muted)">Nog geen scans.</div>';
   } else {
-    html += '<table><thead><tr><th>Datum</th><th>Bedrijf</th><th>Regio</th><th>Score</th><th>Scenario</th><th>Email</th><th></th></tr></thead><tbody>';
+    html += '<table><thead><tr>'
+      + '<th style="width:32px"><input type="checkbox" id="cb-all" onclick="toggleAll(this)"></th>'
+      + '<th>Datum</th><th>Bedrijf</th><th>Regio</th><th>Score</th><th>Scenario</th><th>Email</th><th></th></tr></thead><tbody>';
     scans.forEach(function(s) {
       html += '<tr>'
+        + '<td><input type="checkbox" class="scan-cb" data-id="' + s.id + '"></td>'
         + '<td style="font-size:11px;font-family:IBM Plex Mono,monospace">' + fd(s.created_at) + '</td>'
         + '<td style="font-weight:500;color:var(--sub)">' + (s.bedrijfsnaam || 'Anoniem') + '</td>'
         + '<td>' + (s.regio || '—') + '</td>'
@@ -126,6 +129,9 @@ function renderDashboard() {
   html += '</div>';
   document.getElementById('app').innerHTML = html;
 
+  document.querySelectorAll('.scan-cb').forEach(function(c) {
+    c.addEventListener('change', updateSelCount);
+  });
   document.querySelectorAll('.btn-lees').forEach(function(b) {
     b.addEventListener('click', function() { leesRapport(b.dataset.id); });
   });
@@ -137,6 +143,32 @@ function renderDashboard() {
       renderDashboard();
     });
   });
+}
+
+function toggleAll(cb) {
+  document.querySelectorAll('.scan-cb').forEach(function(c) { c.checked = cb.checked; });
+  updateSelCount();
+}
+
+function updateSelCount() {
+  var n = document.querySelectorAll('.scan-cb:checked').length;
+  var btn = document.getElementById('btn-del-sel');
+  var cnt = document.getElementById('sel-count');
+  if (btn) btn.style.display = n > 0 ? 'inline-block' : 'none';
+  if (cnt) cnt.textContent = n;
+}
+
+async function verwijderGeselecteerde() {
+  var ids = Array.from(document.querySelectorAll('.scan-cb:checked')).map(function(c) { return c.dataset.id; });
+  if (!ids.length) return;
+  if (!confirm('Verwijder ' + ids.length + ' scan(s)?')) return;
+  var btn = document.getElementById('btn-del-sel');
+  btn.disabled = true; btn.textContent = 'Verwijderen...';
+  for (var i = 0; i < ids.length; i++) {
+    await fetch(WORKER + '/verhuis/admin/delete/' + ids[i] + '?key=' + encodeURIComponent(adminKey), { method: 'POST' }).catch(function(){});
+  }
+  scans = scans.filter(function(s) { return !ids.includes(s.id); });
+  renderDashboard();
 }
 
 async function leesRapport(id) {
