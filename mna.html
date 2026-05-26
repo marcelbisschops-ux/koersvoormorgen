@@ -1670,7 +1670,7 @@ function renderMain(){
     +'</div></div>'
     +lockedBanner
     +'<div style="font-family:Playfair Display,serif;font-size:1.4rem;color:var(--head);font-weight:600;margin-bottom:.25rem">'+esc(S.traject&&S.traject.kantoor_naam||'')+'</div>'
-    +'<div style="font-size:13px;color:var(--muted);margin-bottom:1rem">Voortgang: <span style="font-family:IBM Plex Mono,monospace;color:'+(tp===100?'var(--teal)':tp>50?'var(--gold)':'var(--red)')+'">'+tp+'%</span></div>'
+    +'<div style="font-size:13px;color:var(--muted);margin-bottom:1rem">Verplichte velden ingevuld: <span style="font-family:IBM Plex Mono,monospace;font-weight:600;color:'+(tp===100?'var(--teal)':tp>50?'var(--gold)':'var(--red)')+'">'+tp+'%</span><span style="font-size:11px;color:var(--muted);margin-left:6px">(alle 7 fases)</span></div>'
     +'<div class="prog-bar"><div class="prog-fill" style="width:'+tp+'%;background:'+(tp===100?'var(--teal)':tp>50?'var(--gold)':'var(--red)')+'"></div></div>'
     +ov
     +'<div style="font-family:Playfair Display,serif;font-size:1.1rem;color:var(--head);font-weight:600;margin-bottom:.2rem">'+f.num+'. '+f.title+'</div>'
