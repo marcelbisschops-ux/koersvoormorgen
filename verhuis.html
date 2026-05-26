@@ -218,7 +218,7 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--b
       </div>
       <div class="veld-groep">
         <div class="veld-lbl">Totale jaaromzet <span>*</span></div>
-        <input type="text" class="veld" id="g-omzet" placeholder="bijv. €4.200.000">
+        <input type="text" class="veld" id="g-omzet" placeholder="bijv. €4.200.000" oninput="checkVerhuisOmzet()">
       </div>
     </div>
     <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:.75rem 1rem;margin-bottom:1rem;font-size:12px;color:var(--muted)">
@@ -227,12 +227,12 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--b
     <div class="veld-rij drie">
       <div class="veld-groep">
         <div class="veld-lbl">Omzet verhuizen</div>
-        <input type="text" class="veld" id="g-omzet-verhuis" placeholder="bijv. €2.800.000">
+        <input type="text" class="veld" id="g-omzet-verhuis" placeholder="bijv. €2.800.000" oninput="checkVerhuisOmzet()">
         <div class="veld-hint">Particulier + zakelijk transport</div>
       </div>
       <div class="veld-groep">
         <div class="veld-lbl">Omzet opslag</div>
-        <input type="text" class="veld" id="g-omzet-opslag" placeholder="bijv. €900.000">
+        <input type="text" class="veld" id="g-omzet-opslag" placeholder="bijv. €900.000" oninput="checkVerhuisOmzet()">
         <div class="veld-hint">Self-storage, meubeldepot, archief</div>
       </div>
       <div class="veld-groep">
@@ -636,6 +636,40 @@ var VS_GROEP_ID = null;
 var VS_ADMIN_CODE = null;
 var VS_IS_ADMIN = false;
 
+function parseGeld(s){
+  if(!s)return null;
+  var n=String(s).replace(/[€\s.]/g,'').replace(',','.');
+  var v=parseFloat(n);
+  return isNaN(v)?null:v;
+}
+
+function checkVerhuisOmzet(){
+  var totaal=parseGeld(document.getElementById('g-omzet').value);
+  var verhuis=parseGeld(document.getElementById('g-omzet-verhuis').value);
+  var opslag=parseGeld(document.getElementById('g-omzet-opslag').value);
+  var circulair=parseGeld(document.getElementById('g-omzet-circulair').value);
+  var el=document.getElementById('verhuis-omzet-check');
+  if(!el)return;
+  var ingevuld=[verhuis,opslag,circulair].filter(function(v){return v!==null;});
+  if(ingevuld.length<2){el.style.display='none';return;}
+  var som=ingevuld.reduce(function(a,v){return a+v;},0);
+  el.style.display='block';
+  if(totaal===null){
+    el.style.background='#f0f4ff';el.style.border='1px solid #7c9cbf';el.style.color='#2a4a6b';
+    el.textContent='Som omzetstromen: €'+som.toLocaleString('nl-NL')+' — vul ook de totale jaaromzet in voor de check.';
+    return;
+  }
+  var verschil=Math.abs(som-totaal);
+  var pct=totaal>0?Math.round(verschil/totaal*100):0;
+  if(pct<=2){
+    el.style.background='rgba(34,197,160,.1)';el.style.border='1px solid #0a3d2e';el.style.color='#1a7a5e';
+    el.textContent='✓ Omzetstromen kloppen: €'+som.toLocaleString('nl-NL')+' = jaaromzet';
+  }else{
+    el.style.background='rgba(224,82,82,.1)';el.style.border='1px solid #e05252';el.style.color='#e05252';
+    el.textContent='⚠ Som stromen €'+som.toLocaleString('nl-NL')+' ≠ jaaromzet €'+totaal.toLocaleString('nl-NL')+' (verschil: €'+verschil.toLocaleString('nl-NL')+')';
+  }
+}
+
 function alleHide() {
   ['pg-intro','pg-gegevens','pg-scan','pg-rapport-ophalen','pg-groep-aanmaken','pg-groep-aangemaakt','pg-groep-deelnemen','pg-dashboard'].forEach(function(id){
     var el=document.getElementById(id);
@@ -755,10 +789,25 @@ async function verstuur() {
         +'</div>';
     });
     document.getElementById('rapp-grafiek').innerHTML=grafiekHtml;
-    var r2=await fetch(WORKER+'/verhuis/rapport',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:d1.id})});
+    // Genereer rapport via /ai endpoint
+    var prompt='Je bent een strategisch adviseur gespecialiseerd in verhuisbedrijven. Schrijf een professioneel scan-rapport voor '+bedrijfsnaam+' (regio: '+regio+').\n\n'
+      +'Scores:\n'+Object.entries(d1.scores||{}).map(function(e){return e[0]+': '+e[1]+'/100';}).join('\n')+'\n'
+      +'Overall: '+d1.overall+'/100\n'
+      +'Top scenario: '+d1.topScenario+'\n\n'
+      +'Bedrijfsgegevens:\n'
+      +'- FTE: '+(A.fte||'onbekend')+'\n'
+      +'- Jaaromzet: '+(A.omzet||'onbekend')+'\n'
+      +'- Omzet verhuizen: '+(A.omzet_verhuis||'—')+'\n'
+      +'- Omzet opslag: '+(A.omzet_opslag||'—')+'\n'
+      +'- Omzet circulair/overig: '+(A.omzet_circulair||'—')+'\n'
+      +'- EBITDA-marge: '+(A.ebitda||'—')+'\n'
+      +'- Recurring omzet: '+(A.recurring||'—')+'\n'
+      +'- Type bedrijf: '+(A.type||'—')+'\n'
+      +'- Doel 2-3 jaar: '+(A.doel||'—')+'\n\n'
+      +'Schrijf een rapport met:\n## Managementsamenvatting\n## Sterke punten\n## Aandachtspunten\n## Strategisch advies\n## Volgende stappen\n\nMax 600 woorden. Professioneel, concreet, op basis van de scores.';
+    var r2=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:2000})});
     var d2=await r2.json();
-    if(!d2.ok)throw new Error(d2.error||'Rapport genereren mislukt');
-    var raw=d2.tekst
+    var raw=(d2.text||d2.content||'Rapport kon niet worden gegenereerd.')
       .replace(/\r\n/g,'\n')
       .replace(/([^\n])\n([^\n#>*-])/g,'$1 $2')
       .replace(/^## (.+)$/gm,'<h2>$1</h2>')
