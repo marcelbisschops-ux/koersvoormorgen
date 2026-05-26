@@ -397,7 +397,7 @@ async function uploadDocument(faseId, file) {
       DOCS[faseId].unshift({
         id: d.doc_id, naam: file.name, type: file.type, grootte: file.size,
         analyse: d.analyse, velden: d.veld_extractie || {}, bewaard: !!d.r2_opgeslagen,
-        uploaded_at: Date.now(), uploading: false
+        uploaded_at: Date.now(), uploading: false, verworpen: !!d.verworpen, verworpen_reden: d.verworpen_reden||null
       });
       if (d.veld_extractie) {
         S._conflicts=[];
@@ -495,6 +495,11 @@ window.centraalUploadFiles = async function(files) {
           }
         }
         verwerkt++;
+        // Toon verworpen melding
+        if(d.verworpen&&d.verworpen_reden){
+          var statusEl3=document.getElementById('centraal-upload-status');
+          if(statusEl3)statusEl3.innerHTML=(statusEl3.innerHTML||'')+'<div style="background:#fff0f0;border:1px solid var(--red);border-radius:6px;padding:.5rem .75rem;margin-top:.4rem;font-size:12px;color:var(--red)">⚠ <strong>'+esc(file.name)+'</strong> verworpen: '+esc(d.verworpen_reden)+'</div>';
+        }
         // Toon crosscheck waarschuwingen als die er zijn
         if(d.crosschecks&&d.crosschecks.length){
           var warnHtml='<div style="background:#fff8f0;border:1px solid #e8a84c;border-radius:6px;padding:.75rem;margin-top:.5rem">'
@@ -714,8 +719,9 @@ function renderDocumentSectie(faseId) {
 
     var uploadStempel=doc.uploaded_at?new Date(doc.uploaded_at).toLocaleString('nl-NL',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'';
     var uploadingHtml=doc.uploading?'<div style="margin-top:.6rem;background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:.75rem 1rem"><div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--mid);margin-bottom:.5rem"><div class="spin" style="border-color:var(--border2);border-top-color:var(--teal);width:13px;height:13px;flex-shrink:0"></div><span>Uploaden en analyseren&hellip;</span></div><div style="height:3px;background:var(--border2);border-radius:2px;overflow:hidden"><div style="height:100%;background:var(--teal);border-radius:2px;width:60%;animation:prog 2s ease-in-out infinite alternate"></div></div><div style="font-size:10px;color:var(--muted);margin-top:.35rem">Document wordt verwerkt &middot; 15&ndash;30 seconden</div></div>':'';
-    var analyseHtml=uploadingHtml;
-    if(!doc.uploading&&toonAnalyse){
+    var verworpenHtml=doc.verworpen?'<div style="margin-top:.4rem;padding:.4rem .6rem;background:var(--red-bg);border:1px solid var(--red);border-radius:var(--r);font-size:11px;color:var(--red)">⚠ Verworpen: '+esc(doc.verworpen_reden||'niet ondersteund')+'</div>':'';
+    var analyseHtml=uploadingHtml+verworpenHtml;
+    if(!doc.uploading&&!doc.verworpen&&toonAnalyse){
       analyseHtml+=doc.analyse?'<div class="doc-analyse">'+doc.analyse.replace(/## ([^\r\n]+)/g,'<strong>$1</strong><br>').replace(/[\r\n]/g,'<br>').substring(0,1500)+(doc.analyse.length>1500?'...':'')+'</div>':'';
     }
 
