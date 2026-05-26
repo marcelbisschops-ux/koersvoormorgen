@@ -303,11 +303,12 @@ function saveCurrent(cb){
   f.dataFields.forEach(function(df){
     if(df.header){return;}
     var el=ge('df_'+df.id);
+    var key=f.id+'_'+df.id;
     if(el){
-      var key=f.id+'_'+df.id;
       if(el.value.trim())S._userEdited[key]=true;
       S.data[key]=el.value;
     }
+    // Als element niet in DOM is, behoud bestaande S.data waarde
   });
   var nel=ge('notitie_'+f.id);if(nel)S.notities[f.id]=nel.value;
   clearTimeout(S.saveTimer);
@@ -522,17 +523,13 @@ window.centraalUploadFiles = async function(files) {
     }
   }
 
-  // Sla op en render één keer aan het einde
-  console.log('[Upload] S.data na extractie:', JSON.stringify(S.data).substring(0,500));
-  console.log('[Upload] verwerkt:', verwerkt, 'fouten:', fouten);
-  if(Object.keys(S.data).length){
-    saveAll();
-  }
+  // Render eerst zodat gebruiker velden ziet, dan opslaan
   renderApp();
-  // Status na render opnieuw zetten - wacht langer
+  // Kleine delay zodat render klaar is, dan opslaan naar server
   setTimeout(function(){
+    if(Object.keys(S.data).length) saveAll();
     toonStatus('<span style="color:var(--teal)">&#10003; '+verwerkt+' van '+totaal+' bestanden verwerkt'+(fouten?' ('+fouten+' fout)':'')+'. Controleer de velden hieronder.</span>');
-  },500);
+  },300);
 };
 
 function autoFillFromExtraction(faseId, velden, forceOverwrite) {
