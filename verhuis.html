@@ -651,9 +651,9 @@ function checkVerhuisOmzet(){
   var circulair=parseGeld(document.getElementById('g-omzet-circulair').value);
   var el=document.getElementById('verhuis-omzet-check');
   if(!el)return;
-  var ingevuld=[verhuis,opslag,circulair].filter(function(v){return v!==null;});
-  if(ingevuld.length<2){el.style.display='none';return;}
-  var som=ingevuld.reduce(function(a,v){return a+v;},0);
+  // Alleen tonen als alle 3 stromen ingevuld zijn
+  if(verhuis===null||opslag===null||circulair===null){el.style.display='none';return;}
+  var som=verhuis+opslag+circulair;
   el.style.display='block';
   if(totaal===null){
     el.style.background='#f0f4ff';el.style.border='1px solid #7c9cbf';el.style.color='#2a4a6b';
@@ -808,13 +808,43 @@ async function verstuur() {
       +'Schrijf een rapport met:\n## Managementsamenvatting\n## Sterke punten\n## Aandachtspunten\n## Strategisch advies\n## Volgende stappen\n\nMax 600 woorden. Professioneel, concreet, op basis van de scores.';
     var r2=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:2000})});
     var d2=await r2.json();
-    var raw=(d2.text||(d2.content&&d2.content[0]&&d2.content[0].text)||'Rapport kon niet worden gegenereerd.')
+    var rawTxt=(d2.text||(d2.content&&d2.content[0]&&d2.content[0].text)||'Rapport kon niet worden gegenereerd.');
+    // Converteer markdown tabellen naar HTML
+    function mdTabelNaarHtml(txt){
+      var lines=txt.split('\n');
+      var out=[];
+      var i=0;
+      while(i<lines.length){
+        var line=lines[i];
+        var isTabelRij=line.trim().charAt(0)==='|'&&line.trim().charAt(line.trim().length-1)==='|';
+        var volgendeIsSep=i+1<lines.length&&lines[i+1].replace(/[|:\s\-]/g,'')==='';
+        if(isTabelRij&&volgendeIsSep){
+          var thCols=line.trim().split('|').filter(function(c){return c.trim()!=='';});
+          var tbl='<table style="width:100%;border-collapse:collapse;margin:.75rem 0"><thead><tr>';
+          tbl+=thCols.map(function(c){return '<th style="padding:6px 12px;text-align:left;font-size:12px;font-weight:600;color:#8a8880;border-bottom:2px solid #dddbd4">'+c.trim()+'</th>';}).join('');
+          tbl+='</tr></thead><tbody>';
+          i+=2;
+          while(i<lines.length&&lines[i].trim().charAt(0)==='|'){
+            var cols=lines[i].trim().split('|').filter(function(c){return c.trim()!=='';});
+            tbl+='<tr>'+cols.map(function(c){return '<td style="padding:6px 12px;font-size:13px;border-bottom:1px solid #dddbd4">'+c.trim()+'</td>';}).join('')+'</tr>';
+            i++;
+          }
+          tbl+='</tbody></table>';
+          out.push(tbl);
+        } else {
+          out.push(line);
+          i++;
+        }
+      }
+      return out.join('\n');
+    }
+    var raw=mdTabelNaarHtml(rawTxt)
       .replace(/\r\n/g,'\n')
-      .replace(/([^\n])\n([^\n#>*-])/g,'$1 $2')
       .replace(/^## (.+)$/gm,'<h2>$1</h2>')
       .replace(/^> \*\*(.+?)\*\*(.*)$/gm,'<blockquote><strong>$1</strong>$2</blockquote>')
       .replace(/^> (.+)$/gm,'<blockquote>$1</blockquote>')
-      .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+      .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+      .replace(/^\| .+$/gm,'');
     var tekst=raw.split('\n\n').map(function(p){
       p=p.trim();
       if(!p||p.startsWith('<'))return p;
