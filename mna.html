@@ -329,6 +329,22 @@ function showSaveIndicator(){var el=ge('save-ind');if(!el)return;el.textContent=
 function showAlert(msg){alert(msg);}
 function schedSave(){if(S.traject&&S.traject.status==='vergrendeld')return;clearTimeout(S.saveTimer);S.saveTimer=setTimeout(function(){saveCurrent();},1200);}
 
+function saveAll(){
+  // Sla alle fases op die data hebben in S.data
+  if(!S.code||S.traject&&S.traject.status==='vergrendeld')return;
+  var fasesMetData=FASES.filter(function(f){
+    return f.dataFields.some(function(df){return !df.header&&(S.data[f.id+'_'+df.id]||'').trim();});
+  });
+  fasesMetData.forEach(function(f){
+    fetch(WORKER+'/mna/save',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({code:S.code,fase_id:f.id,data_json:getDataForFase(f.id),checklist_json:getChecklistForFase(f.id),notitie:S.notities[f.id]||''})
+    }).then(function(r){return r.json();}).then(function(d){
+      if(d.error==='vergrendeld')showAlert('Dit traject is vergrendeld.');
+      else showSaveIndicator();
+    }).catch(function(){});
+  });
+}
+
 // -- DOCUMENT STATE ----------------------------------------------
 var DOCS = {};  // { faseId: [{id, naam, type, grootte, analyse, velden, uploading}] }
 
