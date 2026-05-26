@@ -449,16 +449,21 @@ window.centraalUploadFiles = async function(files) {
   }
 
   // Sla op en render één keer aan het einde
-  if(Object.keys(S.data).length)saveAll();
+  console.log('[Upload] S.data na extractie:', JSON.stringify(S.data).substring(0,500));
+  console.log('[Upload] verwerkt:', verwerkt, 'fouten:', fouten);
+  if(Object.keys(S.data).length){
+    saveAll();
+  }
   renderApp();
-  // Status na render opnieuw zetten
+  // Status na render opnieuw zetten - wacht langer
   setTimeout(function(){
     toonStatus('<span style="color:var(--teal)">&#10003; '+verwerkt+' van '+totaal+' bestanden verwerkt'+(fouten?' ('+fouten+' fout)':'')+'. Controleer de velden hieronder.</span>');
-  },100);
+  },500);
 };
 
 function autoFillFromExtraction(faseId, velden, forceOverwrite) {
   // Directe keys (fase_id_veld_id formaat van CSV upload) direct in S.data zetten
+  console.log('[autoFill] faseId:', faseId, 'velden keys:', Object.keys(velden).slice(0,10));
   Object.keys(velden).forEach(function(k){
     if(k.includes('_')&&!['omzet_per_jaar','ebitda_pct','omzet_jaarwerk_pct','omzet_advies_pct','omzet_loon_pct','omzet_fiscaal_pct','omzet_overig_pct','kosten_personeel_pct','kosten_huisvesting_pct','kosten_it_pct','kosten_marketing_pct'].includes(k)){
       var parts=k.split('_');

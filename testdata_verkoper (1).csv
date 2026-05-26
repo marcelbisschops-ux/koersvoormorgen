@@ -1,0 +1,24 @@
+fase_id,veld_id,label,waarde
+financieel,omzet1,Jaaromzet jaar 1 (oudste),320000
+financieel,omzet2,Jaaromzet jaar 2,355000
+financieel,omzet3,Jaaromzet jaar 3 (meest recent),388000
+financieel,omzetYTD,Omzet YTD huidig jaar,198000
+financieel,ebitda,EBITDA-marge jaar 3 (%),26
+financieel,ebitdaNorm,Genormaliseerde EBITDA,24
+financieel,omzetJaarwerk,Jaarwerk & samenstellen (%),45
+financieel,omzetAdvies,Advies & begeleiding (%),22
+financieel,omzetLoon,Loonadministratie (%),18
+financieel,omzetFiscaal,Fiscaal (%),12
+financieel,omzetOverig,Overig (%),3
+financieel,wip,Onderhanden werk (€),85000
+financieel,debiteuren,Debiteuren totaal (€),42000
+commercieel,aantalKlanten,Aantal actieve klanten,187
+commercieel,recurring,Vaste/abonnements-omzet (%),84
+commercieel,topKlantPct,Grootste klant als % van omzet,9
+commercieel,top10Pct,Top 10 klanten als % van omzet,31
+partner,fte,Totaal FTE,6.5
+partner,fteProductief,Productief FTE excl. eigenaar,4.5
+partner,eigenaarUren,Uren eigenaar per week,42
+partner,overdrachtPeriode,Overdrachtsperiode eigenaar (maanden),12
+it,software,Primaire software,Exact Online
+it,softwareOverig,Overige systemen,Fiscaal Gemak - Teamleader
