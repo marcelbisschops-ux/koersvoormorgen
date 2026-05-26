@@ -458,6 +458,21 @@ window.centraalUploadFiles = async function(files) {
 };
 
 function autoFillFromExtraction(faseId, velden, forceOverwrite) {
+  // Directe keys (fase_id_veld_id formaat van CSV upload) direct in S.data zetten
+  Object.keys(velden).forEach(function(k){
+    if(k.includes('_')&&!['omzet_per_jaar','ebitda_pct','omzet_jaarwerk_pct','omzet_advies_pct','omzet_loon_pct','omzet_fiscaal_pct','omzet_overig_pct','kosten_personeel_pct','kosten_huisvesting_pct','kosten_it_pct','kosten_marketing_pct'].includes(k)){
+      var parts=k.split('_');
+      // Check of het een fase_veld key is (bijv. financieel_omzet1)
+      var knownFases=['financieel','commercieel','partner','compliance','it','juridisch','strategisch'];
+      if(knownFases.includes(parts[0])){
+        var val=velden[k];
+        if(val&&val!=='null'&&String(val).trim()!==''){
+          if(forceOverwrite||!(S.data[k]||'').trim())S.data[k]=String(val);
+        }
+      }
+    }
+  });
+
   function setIfEmpty(key, val) {
     if(val&&val!=='null'&&val!==null&&String(val).trim()!==''&&!(S.data[key]||'').trim())
       S.data[key]=String(val);
@@ -523,7 +538,25 @@ function autoFillFromExtraction(faseId, velden, forceOverwrite) {
     setIfEmpty('financieel_kostenIT',velden.kosten_it_pct);
     setIfEmpty('financieel_kostenMarketing',velden.kosten_marketing_pct);
   }
-  if(faseId==='partner'&&velden.fte&&velden.fte!=='null')applyOrConflict('partner_fte',velden.fte,'Totaal FTE');
+  if(faseId==='partner'||velden.fte){
+    if(velden.fte&&velden.fte!=='null')applyOrConflict('partner_fte',velden.fte,'Totaal FTE');
+  }
+  if(faseId==='commercieel'||velden.aantal_klanten){
+    if(velden.aantal_klanten&&velden.aantal_klanten!=='null')applyOrConflict('commercieel_aantalKlanten',velden.aantal_klanten,'Aantal klanten');
+    if(velden.recurring&&velden.recurring!=='null')applyOrConflict('commercieel_recurringPct',velden.recurring,'Recurring %');
+    if(velden.churn&&velden.churn!=='null')applyOrConflict('commercieel_churnPct',velden.churn,'Churn %');
+    if(velden.top10_pct&&velden.top10_pct!=='null')applyOrConflict('commercieel_top10Pct',velden.top10_pct,'Top 10 klanten %');
+    if(velden.grootste_klant_pct&&velden.grootste_klant_pct!=='null')applyOrConflict('commercieel_topKlantPct',velden.grootste_klant_pct,'Grootste klant %');
+    if(velden.nps&&velden.nps!=='null')applyOrConflict('commercieel_nps',velden.nps,'NPS');
+  }
+  if(faseId==='it'||velden.software_primair){
+    if(velden.software_primair&&velden.software_primair!=='null')applyOrConflict('it_softwarePrimair',velden.software_primair,'Primair software');
+    if(velden.automatiseringsgraad&&velden.automatiseringsgraad!=='null')applyOrConflict('it_automPct',velden.automatiseringsgraad,'Automatiseringsgraad');
+    if(velden.cloud_pct&&velden.cloud_pct!=='null')applyOrConflict('it_cloudPct',velden.cloud_pct,'Cloud %');
+  }
+  if(faseId==='juridisch'||velden.rechtsvorm){
+    if(velden.rechtsvorm&&velden.rechtsvorm!=='null')applyOrConflict('juridisch_rechtsvorm',velden.rechtsvorm,'Rechtsvorm');
+  }
 }
 
 async function consolideerAnalyse(faseId){
