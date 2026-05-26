@@ -389,6 +389,26 @@ async function uploadDocument(faseId, file) {
           renderApp();setTimeout(toonConflictDialog,300);
         }else{renderApp();schedSave();}
       }
+      // Toon crosscheck waarschuwingen
+      if((d.crosschecks&&d.crosschecks.length)||(d.entiteit_naam&&S.traject&&S.traject.kantoor_naam)){
+        var msgs=[];
+        // Entiteit check
+        if(d.entiteit_naam&&S.traject&&S.traject.kantoor_naam){
+          var n1=(d.entiteit_naam||'').toLowerCase(),n2=(S.traject.kantoor_naam||'').toLowerCase();
+          if(!n1.includes(n2.split(' ')[0])&&!n2.includes(n1.split(' ')[0]))
+            msgs.push('⚠ Entiteit in document ("'+d.entiteit_naam+'") wijkt af van kantoornaam ("'+S.traject.kantoor_naam+'")');
+        }
+        if(d.crosschecks)msgs=msgs.concat(d.crosschecks);
+        if(msgs.length){
+          var md='<div style="background:#fff8f0;border:1px solid #e8a84c;border-radius:6px;padding:.75rem;margin:.5rem 0">'
+            +'<div style="font-size:11px;font-weight:600;color:#8a5a00;margin-bottom:.4rem">⚠ Aandachtspunten bij '+esc(file.name)+'</div>'
+            +msgs.map(function(m){return '<div style="font-size:12px;color:#5a4010;padding:2px 0">• '+esc(m)+'</div>';}).join('')
+            +'</div>';
+          // Toon onder de upload zone
+          var uz=document.getElementById('upload-zone-'+faseId);
+          if(uz){var w=document.createElement('div');w.innerHTML=md;uz.parentNode.insertBefore(w,uz.nextSibling);}
+        }
+      }
     } else {
       DOCS[faseId] = DOCS[faseId].filter(function(x){ return x.id !== tempId; });
       alert('Upload fout: ' + (d.error || 'onbekend'));
@@ -458,6 +478,23 @@ window.centraalUploadFiles = async function(files) {
           }
         }
         verwerkt++;
+        // Toon crosscheck waarschuwingen als die er zijn
+        if(d.crosschecks&&d.crosschecks.length){
+          var warnHtml='<div style="background:#fff8f0;border:1px solid #e8a84c;border-radius:6px;padding:.75rem;margin-top:.5rem">'
+            +'<div style="font-size:11px;font-weight:600;color:#8a5a00;margin-bottom:.4rem">⚠ '+file.name+' — '+d.crosschecks.length+' aandachtspunt(en)</div>';
+          d.crosschecks.forEach(function(w){warnHtml+='<div style="font-size:12px;color:#5a4010;padding:2px 0">• '+esc(w)+'</div>';});
+          // Entiteit check
+          if(d.entiteit_naam&&S.traject&&S.traject.kantoor_naam){
+            var naam1=(d.entiteit_naam||'').toLowerCase();
+            var naam2=(S.traject.kantoor_naam||'').toLowerCase();
+            if(!naam1.includes(naam2.split(' ')[0])&&!naam2.includes(naam1.split(' ')[0])){
+              warnHtml+='<div style="font-size:12px;color:#c0392b;padding:2px 0;font-weight:500">⚠ Entiteit in document ("'+esc(d.entiteit_naam)+'") wijkt af van kantoornaam ("'+esc(S.traject.kantoor_naam)+'") — controleer of dit het juiste bestand is.</div>';
+            }
+          }
+          warnHtml+='</div>';
+          var statusEl2=document.getElementById('centraal-upload-status');
+          if(statusEl2)statusEl2.innerHTML=(statusEl2.innerHTML||'')+warnHtml;
+        }
       } else {
         fouten++;
         toonStatus('<span style="color:var(--red)">Fout bij '+file.name+': '+(d.error||'onbekend')+'</span>');
