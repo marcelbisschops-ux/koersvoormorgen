@@ -378,6 +378,7 @@ function renderMnaTab(el){
         +'<button class="btn btn-uitnodigen" data-id="'+esc(t.id)+'" data-naam="'+esc(t.kantoor_naam||t.id)+'" data-tcode="'+esc(t.tussen_code||'')+'" style="font-size:11px;padding:3px 10px;background:#2a5ea0">&#128231; Begeleider</button>'        +'<button class="btn-ghost btn-detail" data-id="'+esc(t.id)+'" data-naam="'+esc(t.kantoor_naam||t.id)+'" style="font-size:11px;padding:3px 8px">&#128065; Bekijk</button>'
         +'<button class="btn-ghost btn-bewerk" data-id="'+esc(t.id)+'" data-naam="'+esc(t.kantoor_naam||t.id)+'" style="font-size:11px;padding:3px 8px">&#9999;&#65039; Bewerk</button>'
         +'<button class="btn-ghost btn-opslaan" data-idx="'+i+'" style="font-size:11px;padding:3px 8px">&#8681; Opslaan</button>'
+        +'<a href="'+WORKER+'/mna/admin/export/'+esc(t.id)+'?key='+adminKey+'" target="_blank" class="btn-ghost" style="font-size:11px;padding:3px 8px;text-decoration:none" title="Dossier exporteren">&#128230; Export</a>'
         +(verg
           ?'<button class="btn-ghost btn-ontv" data-id="'+esc(t.id)+'" style="font-size:11px;padding:3px 8px;color:var(--teal)">&#128275; Ontgrendel</button>'
           :'<button class="btn-ghost btn-verg" data-id="'+esc(t.id)+'" data-naam="'+esc(t.kantoor_naam||t.id)+'" style="font-size:11px;padding:3px 8px;color:var(--gold)">&#128274; Vergrendel</button>')
@@ -1222,6 +1223,13 @@ async function toonDetail(id,naam){
     +'<button class="btn-ghost" id="btn-laad-audit" style="font-size:11px;padding:4px 12px">&#8635; Laden</button>'
     +'</div>'
     +'<div id="audit-body" style="font-size:12px;color:var(--muted);font-style:italic">Klik op Laden om de toegangslog te tonen.</div>'
+    +'</div>'
+    +'<div style="margin-top:1.5rem;border-top:2px solid var(--border);padding-top:1.25rem">'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">'
+    +'<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">&#10067; Q&A Register</div>'
+    +'<button class="btn-ghost" id="btn-laad-qa" style="font-size:11px;padding:4px 12px">&#8635; Laden</button>'
+    +'</div>'
+    +'<div id="qa-register-body" style="font-size:12px;color:var(--muted);font-style:italic">Klik op Laden om de Q&A te tonen.</div>'
     +'</div>';
   ov.appendChild(mo);document.body.appendChild(ov);
   ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
@@ -1669,6 +1677,54 @@ async function toonDetail(id,naam){
 
   var nieuwGesprekBtn=document.getElementById('btn-nieuw-gesprek');
   if(nieuwGesprekBtn)nieuwGesprekBtn.addEventListener('click',function(){toonGesprekModal(id,null,laadGesprekken);});
+
+  // Q&A laden en beantwoorden
+  var qaBtn=document.getElementById('btn-laad-qa');
+  if(qaBtn)qaBtn.addEventListener('click',async function(){
+    var qaBody=document.getElementById('qa-register-body');
+    qaBody.textContent='Laden...';
+    try{
+      var qaR=await fetch(WORKER+'/mna/qa/'+id+'?key='+encodeURIComponent(adminKey));
+      var lijst=await qaR.json();
+      if(!lijst.length){qaBody.textContent='Nog geen vragen gesteld.';return;}
+      var html='<div style="display:flex;flex-direction:column;gap:8px">';
+      lijst.forEach(function(q){
+        html+='<div style="border:1px solid var(--border);border-radius:var(--r2);overflow:hidden">'
+          +'<div style="display:flex;gap:8px;align-items:flex-start;padding:10px 12px;background:var(--card)">'
+          +'<span style="font-family:IBM Plex Mono,monospace;font-size:10px;background:var(--gold-bg);color:var(--gold);padding:1px 6px;border-radius:3px;flex-shrink:0">#'+q.vraag_nr+'</span>'
+          +(q.fase_id?'<span style="font-size:10px;color:var(--muted);flex-shrink:0">['+esc(q.fase_id)+']</span>':'')
+          +'<span style="font-size:13px;color:var(--sub);flex:1">'+esc(q.vraag)+'</span>'
+          +'<span style="font-size:10px;color:var(--muted);flex-shrink:0">'+new Date(q.created_at).toLocaleDateString('nl-NL')+'</span>'
+          +'</div>'
+          +(q.antwoord
+            ?'<div style="padding:8px 12px;background:var(--teal-bg);font-size:12px;color:var(--teal-dim)">&#10003; <strong>'+esc(q.beantwoord_door||'Adviseur')+':</strong> '+esc(q.antwoord)+'</div>'
+            :'<div style="padding:8px 12px">'
+              +'<textarea class="qa-antwoord-inp" data-id="'+esc(q.id)+'" style="width:100%;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:7px 10px;font-family:IBM Plex Sans,sans-serif;font-size:12px;color:var(--sub);resize:vertical;min-height:60px;outline:none" placeholder="Typ uw antwoord..."></textarea>'
+              +'<div style="display:flex;justify-content:flex-end;margin-top:.4rem">'
+              +'<button class="qa-antwoord-btn btn" data-id="'+esc(q.id)+'" style="font-size:11px;padding:5px 14px">Antwoord versturen</button>'
+              +'</div></div>')
+          +'</div>';
+      });
+      html+='</div>';
+      qaBody.innerHTML=html;
+      qaBody.querySelectorAll('.qa-antwoord-btn').forEach(function(btn){
+        btn.addEventListener('click',async function(){
+          var qId=btn.dataset.id;
+          var inp=qaBody.querySelector('.qa-antwoord-inp[data-id="'+qId+'"]');
+          if(!inp||!inp.value.trim()){toast('Antwoord is leeg.','warn');return;}
+          btn.disabled=true;btn.textContent='Versturen...';
+          try{
+            var ar=await fetch(WORKER+'/mna/admin/qa/antwoord/'+qId,{method:'POST',
+              headers:{'Content-Type':'application/json','x-admin-key':adminKey},
+              body:JSON.stringify({antwoord:inp.value.trim(),beantwoord_door:'Marcel Bisschops'})});
+            var ad=await ar.json();
+            if(ad.ok){toast('Antwoord verstuurd.','ok');qaBtn.click();}
+            else{toast('Fout: '+(ad.error||'onbekend'),'err');btn.disabled=false;btn.textContent='Antwoord versturen';}
+          }catch(e){toast('Verbindingsfout.','err');btn.disabled=false;btn.textContent='Antwoord versturen';}
+        });
+      });
+    }catch(e){qaBody.textContent='Fout bij laden: '+e.message;}
+  });
 
   // Toegangslog laden
   var auditBtn=document.getElementById('btn-laad-audit');
