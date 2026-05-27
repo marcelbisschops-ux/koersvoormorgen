@@ -563,6 +563,7 @@ async function renderBenchmarksTab(el){
     var btn=this;btn.disabled=true;btn.textContent='Updaten...';
     try{
       var r=await fetch(WORKER+'/admin/benchmarks/refresh?key='+encodeURIComponent(adminKey),{method:'POST'});
+      if(!r.ok&&r.status!==400){var errTxt=await r.text().catch(()=>'');throw new Error('Server fout '+r.status+': '+errTxt.substring(0,100));}
       var d=await r.json();
       if(d.ok){toast(d.count+' benchmarks bijgewerkt uit bronnen.','ok');laadBenchmarks();}
       else toast('Fout: '+(d.error||'onbekend'),'err');
@@ -2203,20 +2204,20 @@ function toonNieuwModal(){
     +'<div class="field" style="flex:1"><label>Sector <span style="color:var(--red)">*</span></label><select id="m-sector"><option value="accountancy">Accountancy & administratie</option><option value="mkb">MKB — Retail / Horeca / Handel</option><option value="zorg">Zorg — Huisarts / Tandarts / Fysiotherapie</option><option value="itsoftware">IT & Software</option></select></div>'
     +'</div>'
     +'<div style="border-bottom:1px solid var(--border);margin:.75rem 0 .75rem;padding-bottom:.25rem"><div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)" id="m-sectie1-hdr">Verkopende partij</div></div>'
-    +'<div class="field"><label id="m-p1-naam-lbl">Kantoornaam <span style="color:var(--red)">*</span></label><div style="display:flex;gap:8px"><input type="text" id="m-k" placeholder="bijv. Accountantskantoor De Vries" style="flex:2"><input type="text" id="m-kvk" placeholder="KvK-nr" style="flex:1"></div></div>'
+    +'<div class="field"><label id="m-p1-naam-lbl">Kantoornaam <span style="color:var(--red)">*</span></label><div style="display:flex;gap:8px"><input type="text" id="m-k" placeholder="Naam van het kantoor" style="flex:2"><input type="text" id="m-kvk" placeholder="KvK-nr" style="flex:1"></div></div>'
     +'<div class="field"><label id="m-p1-rv-lbl">Rechtsvorm <span style="color:var(--red)">*</span></label><select id="m-rv"><option value="">— Kies rechtsvorm —</option><option value="B.V.">B.V. (Besloten Vennootschap)</option><option value="N.V.">N.V. (Naamloze Vennootschap)</option><option value="Eenmanszaak">Eenmanszaak</option><option value="V.O.F.">V.O.F.</option><option value="Maatschap">Maatschap</option><option value="Coöperatie">Coöperatie</option><option value="Stichting">Stichting</option><option value="Holding B.V.">Holding B.V.</option><option value="C.V.">C.V.</option></select></div>'
-    +'<div class="field"><label id="m-p1-adres-lbl">Adres <span style="color:var(--red)">*</span></label><input type="text" id="m-adres" placeholder="bijv. Dorpsstraat 1, 1234AB Amsterdam"></div>'
+    +'<div class="field"><label id="m-p1-adres-lbl">Adres <span style="color:var(--red)">*</span></label><input type="text" id="m-adres" placeholder="Adres"></div>'
     +'<div class="field"><label id="m-p1-contact-lbl">Contactpersoon <span style="color:var(--red)">*</span></label><input type="text" id="m-c" placeholder="Naam contactpersoon"></div>'
-    +'<div class="field"><label id="m-p1-email-lbl">E-mail contactpersoon <span style="color:var(--red)">*</span></label><input type="email" id="m-e" placeholder="partner@kantoor.nl"></div>'
+    +'<div class="field"><label id="m-p1-email-lbl">E-mail contactpersoon <span style="color:var(--red)">*</span></label><input type="email" id="m-e" placeholder="E-mailadres"></div>'
     +'<div class="field"><label>Notitie (intern)</label><textarea id="m-n" rows="2" placeholder="Interne aantekeningen..."></textarea></div>'
     +'<div style="border-top:1px solid var(--border);margin:.75rem 0;padding-top:.75rem"><div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem">Begeleider (tussenpersoon)</div></div>'
-    +'<div class="field"><label>Naam begeleider</label><input type="text" id="m-bg-naam" value="Marcel Bisschops"></div>'
-    +'<div class="field"><label>E-mail begeleider</label><input type="email" id="m-bg-email" value="marcel@bisschopsfinancing.nl"></div>'
+    +'<div class="field"><label>Naam begeleider</label><input type="text" id="m-bg-naam" placeholder="Naam adviseur"></div>'
+    +'<div class="field"><label>E-mail begeleider</label><input type="email" id="m-bg-email" placeholder="e-mail adviseur"></div>'
     +'<div style="border-top:1px solid var(--border);margin:.75rem 0;padding-top:.75rem"><div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem" id="m-sectie2-hdr">Kopende partij</div></div>'
-    +'<div class="field"><label id="m-p2-naam-lbl">Naam kopende partij <span style="color:var(--red)">*</span></label><div style="display:flex;gap:8px"><input type="text" id="m-koper-naam" placeholder="bijv. Acme Accountants BV" style="flex:2"><input type="text" id="m-koper-kvk" placeholder="KvK-nr" style="flex:1"></div></div>'
+    +'<div class="field"><label id="m-p2-naam-lbl">Naam kopende partij <span style="color:var(--red)">*</span></label><div style="display:flex;gap:8px"><input type="text" id="m-koper-naam" placeholder="Naam kopende partij" style="flex:2"><input type="text" id="m-koper-kvk" placeholder="KvK-nr" style="flex:1"></div></div>'
     +'<div class="field"><label id="m-p2-rv-lbl">Rechtsvorm koper <span style="color:var(--red)">*</span></label><select id="m-koper-rv"><option value="">— Kies rechtsvorm —</option><option value="B.V.">B.V. (Besloten Vennootschap)</option><option value="N.V.">N.V. (Naamloze Vennootschap)</option><option value="Eenmanszaak">Eenmanszaak</option><option value="V.O.F.">V.O.F.</option><option value="Maatschap">Maatschap</option><option value="Coöperatie">Coöperatie</option><option value="Stichting">Stichting</option><option value="Holding B.V.">Holding B.V.</option><option value="C.V.">C.V.</option></select></div>'
-    +'<div class="field"><label id="m-p2-adres-lbl">Adres koper <span style="color:var(--red)">*</span></label><input type="text" id="m-koper-adres" placeholder="bijv. Hoofdstraat 10, 5678CD Rotterdam"></div>'
-    +'<div class="field"><label id="m-p2-contact-lbl">Contactpersoon koper</label><input type="text" id="m-koper-contact" placeholder="bijv. Jan de Vries"></div>'
+    +'<div class="field"><label id="m-p2-adres-lbl">Adres koper <span style="color:var(--red)">*</span></label><input type="text" id="m-koper-adres" placeholder="Adres"></div>'
+    +'<div class="field"><label id="m-p2-contact-lbl">Contactpersoon koper</label><input type="text" id="m-koper-contact" placeholder="Naam contactpersoon"></div>'
     +'<div class="field"><label id="m-p2-email-lbl">E-mail koper <span style="color:var(--red)">*</span></label><input type="email" id="m-koper-email" placeholder="koper@bedrijf.nl"></div>'
     +'<div id="m-res" style="display:none;background:var(--teal-bg);border:1px solid var(--teal-dark);border-radius:var(--r);padding:1rem;margin-bottom:1rem;font-size:13px;line-height:2"></div>'
     +'<div id="m-err" style="display:none;color:var(--red);font-size:12px;margin-bottom:.75rem"></div>'
@@ -2251,6 +2252,13 @@ function toonNieuwModal(){
     window._mPartijLabel=lb;
   }
   document.getElementById('m-t').addEventListener('change',updatePartijLabels);
+  // Adviseur: vul begeleider automatisch in met eigen gegevens
+  if(gebruikerInfo){
+    var bgNaam=document.getElementById('m-bg-naam');
+    var bgEmail=document.getElementById('m-bg-email');
+    if(bgNaam&&!bgNaam.value)bgNaam.value=gebruikerInfo.naam||'';
+    if(bgEmail&&!bgEmail.value)bgEmail.value=gebruikerInfo.email||'';
+  }
   updatePartijLabels();
 
   document.getElementById('m-ok').addEventListener('click',async function(){
@@ -2292,8 +2300,8 @@ function toonNieuwModal(){
           traject_type:vv('m-t'),
           sector:vv('m-sector')||'accountancy',
           notitie:vv('m-n'),
-          begeleider_naam:vv('m-bg-naam')||'Marcel Bisschops',
-          begeleider_email:vv('m-bg-email')||'marcel@bisschopsfinancing.nl',
+          begeleider_naam:vv('m-bg-naam')||'',
+          begeleider_email:vv('m-bg-email')||'',
           koper_naam:vv('m-koper-naam'),
           koper_rechtsvorm:vv('m-koper-rv'),
           koper_contact:vv('m-koper-contact'),
@@ -2316,7 +2324,7 @@ function toonNieuwModal(){
         document.body.removeChild(ov);
         renderTab();
       }else{erDiv.style.display='block';erDiv.textContent='Fout: '+(d.error||'onbekend');btn.disabled=false;btn.textContent='Traject aanmaken';}
-    }catch(e){erDiv.style.display='block';erDiv.textContent='Verbindingsfout.';btn.disabled=false;btn.textContent='Traject aanmaken';}
+    }catch(e){erDiv.style.display='block';erDiv.textContent='Fout: '+e.message;btn.disabled=false;btn.textContent='Traject aanmaken';}
   });
 }
 
