@@ -686,66 +686,51 @@ async function deleteDocument(docId, faseId) {
 
 function renderDocumentSectie(faseId) {
   if(isKoper()) return '';
-  var toonAnalyse = isTussen();
   var docs = getDocsForFase(faseId);
   var isReadOnly = (S.traject && S.traject.status === 'vergrendeld');
-  var uploadHtml = '';
 
+  // Compacte upload knop
+  var uploadHtml = '';
   if (!isReadOnly) {
-    uploadHtml = '<div class="upload-zone" id="upload-zone-' + faseId + '" data-fase="' + faseId + '"'
-      + ' ondragover="event.preventDefault();this.classList.add(\'drag\')"'
-      + ' ondragleave="this.classList.remove(\'drag\')"'
-      + ' ondrop="event.preventDefault();this.classList.remove(\'drag\');handleDropUpload(event,' + JSON.stringify(faseId) + ')"'
-      + '>'
-      + '<div style="font-size:18px;margin-bottom:.3rem">&#128196;</div>'
-      + '<div style="font-size:12px;font-weight:600;color:var(--mid);margin-bottom:.1rem">Klik of sleep bestand</div>'
-      + '<div style="font-size:10px;color:var(--muted)">PDF, Word, Excel, CSV &middot; max 20MB</div>'
+    uploadHtml = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:.75rem;flex-wrap:wrap">'
+      + '<label style="display:flex;align-items:center;gap:6px;background:var(--teal);color:#fff;font-family:IBM Plex Sans,sans-serif;font-size:12px;font-weight:600;padding:6px 14px;border-radius:var(--r);cursor:pointer">'
+      + '&#128196; Document toevoegen'
+      + '<input type="file" multiple accept=".pdf,.docx,.doc,.xlsx,.xls,.csv,.txt,.eml" style="display:none" onchange="for(var i=0;i<this.files.length;i++)uploadDocument(\''+faseId+'\',this.files[i]);this.value=\'\';">'
+      + '</label>'
+      + '<div id="upload-status-'+faseId+'" style="font-size:11px;color:var(--muted)"></div>'
       + '</div>';
   }
 
-  var docsHtml = docs.map(function(doc) {
-    var icon = doc.type && doc.type.includes('pdf') ? '&#128209;' : doc.naam && doc.naam.endsWith('.csv') ? '&#128202;' : doc.naam && (doc.naam.endsWith('.xlsx')||doc.naam.endsWith('.xls')) ? '&#128202;' : '&#128196;';
-    var grootteMb = (doc.grootte / 1024 / 1024).toFixed(1);
-
-    var veldenHtml = '';
-    if (doc.velden && Object.keys(doc.velden).length) {
-      var relevantVelden = Object.entries(doc.velden).filter(function(kv){ return kv[1] && kv[1] !== 'null'; });
-      if (relevantVelden.length) {
-        veldenHtml = '<div class="doc-velden">'
-          + relevantVelden.map(function(kv){
-            var labels = {omzet:'Omzet',ebitda_pct:'EBITDA%',fte:'FTE',resultaat:'Resultaat',eigen_vermogen:'Eigen verm.',vreemd_vermogen:'Vreemd verm.',solvabiliteit:'Solvabiliteit',overige_bevindingen:'Bevinding'};
-            return '<div class="doc-veld"><div class="doc-veld-lbl">' + (labels[kv[0]]||kv[0]) + '</div><div class="doc-veld-val">' + String(kv[1]).substring(0,20) + '</div></div>';
-          }).join('')
+  // Documenten lijst — compact
+  var docsHtml = '';
+  if (docs.length) {
+    docsHtml = '<div style="display:flex;flex-direction:column;gap:4px;margin-bottom:.75rem">';
+    docsHtml += docs.map(function(doc) {
+      var icon = doc.type && doc.type.includes('pdf') ? '📄' : (doc.naam && (doc.naam.endsWith('.xlsx')||doc.naam.endsWith('.xls')||doc.naam.endsWith('.csv'))) ? '📊' : '📃';
+      if (doc.uploading) {
+        return '<div style="display:flex;align-items:center;gap:8px;padding:5px 8px;background:var(--card);border-radius:var(--r);border:1px solid var(--border)">'
+          + '<div class="spin" style="border-color:var(--border2);border-top-color:var(--teal);width:11px;height:11px;flex-shrink:0"></div>'
+          + '<span style="font-size:11px;color:var(--muted)">'+esc(doc.naam)+'</span>'
           + '</div>';
       }
-    }
+      if (doc.verworpen) {
+        return '<div style="display:flex;align-items:center;gap:6px;padding:5px 8px;background:var(--red-bg);border-radius:var(--r);border:1px solid var(--red)">'
+          + '<span style="font-size:11px">🚫</span>'
+          + '<span style="font-size:11px;color:var(--red);flex:1">'+esc(doc.naam)+'</span>'
+          + '<span style="font-size:10px;color:var(--red);font-style:italic">'+esc(doc.verworpen_reden||'verworpen')+'</span>'
+          + '</div>';
+      }
+      return '<div style="display:flex;align-items:center;gap:6px;padding:5px 8px;background:var(--card);border-radius:var(--r);border:1px solid var(--border)">'
+        + '<span style="font-size:13px">'+icon+'</span>'
+        + '<span style="font-size:11px;color:var(--teal);flex:1">'+(doc.bewaard?'<a href="'+WORKER+'/mna/document/download/'+doc.id+'" target="_blank" style="color:var(--teal);text-decoration:none">'+esc(doc.naam)+'</a>':esc(doc.naam))+'</span>'
+        + '<span style="font-size:10px;color:var(--muted)">'+(doc.grootte/1024/1024).toFixed(1)+'MB</span>'
+        + (!isReadOnly?'<button onclick="deleteDocument(\''+doc.id+'\',\''+faseId+'\')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:10px;padding:0 2px">✕</button>':'')
+        + '</div>';
+    }).join('');
+    docsHtml += '</div>';
+  }
 
-    var uploadStempel=doc.uploaded_at?new Date(doc.uploaded_at).toLocaleString('nl-NL',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'';
-    var uploadingHtml=doc.uploading?'<div style="margin-top:.6rem;background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:.75rem 1rem"><div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--mid);margin-bottom:.5rem"><div class="spin" style="border-color:var(--border2);border-top-color:var(--teal);width:13px;height:13px;flex-shrink:0"></div><span>Uploaden en analyseren&hellip;</span></div><div style="height:3px;background:var(--border2);border-radius:2px;overflow:hidden"><div style="height:100%;background:var(--teal);border-radius:2px;width:60%;animation:prog 2s ease-in-out infinite alternate"></div></div><div style="font-size:10px;color:var(--muted);margin-top:.35rem">Document wordt verwerkt &middot; 15&ndash;30 seconden</div></div>':'';
-    var verworpenHtml=doc.verworpen?'<div style="margin-top:.4rem;padding:.4rem .6rem;background:var(--red-bg);border:1px solid var(--red);border-radius:var(--r);font-size:11px;color:var(--red)">⚠ Verworpen: '+esc(doc.verworpen_reden||'niet ondersteund')+'</div>':'';
-    var analyseHtml=uploadingHtml+verworpenHtml;
-    if(!doc.uploading&&!doc.verworpen&&toonAnalyse){
-      analyseHtml+=doc.analyse?'<div class="doc-analyse">'+doc.analyse.replace(/## ([^\r\n]+)/g,'<strong>$1</strong><br>').replace(/[\r\n]/g,'<br>').substring(0,1500)+(doc.analyse.length>1500?'...':'')+'</div>':'';
-    }
-
-    return '<div class="doc-card">'
-      + '<div class="doc-card-hdr">'
-      + '<div style="flex:1"><span style="font-size:16px;margin-right:6px">'+icon+'</span>'
-      + (doc.bewaard?'<a href="'+WORKER+'/mna/document/download/'+doc.id+'" target="_blank" class="doc-naam" style="color:var(--teal);text-decoration:none">'+esc(doc.naam)+'</a>':'<span class="doc-naam">'+esc(doc.naam)+'</span>')
-      + ' <span class="doc-type">'+grootteMb+'MB'+(doc.bewaard?' &middot; &#8681; download':' &middot; analyse')+(uploadStempel?' &middot; '+uploadStempel:'')+'</span></div>'
-      + (!isReadOnly&&!doc.uploading?(doc.deleting?'<span style="font-size:10px;color:var(--muted)">Verwijderen...</span>':'<button onclick="deleteDocument(\''+doc.id+'\',\''+faseId+'\')" class="btn-del" style="font-size:10px;padding:2px 7px">&#10005; Verwijder</button>'):'')
-      + '</div>'
-      + (toonAnalyse?veldenHtml:'')
-      + analyseHtml
-      + '</div>';
-  }).join('');
-
-  var ch='';
-  if(!isReadOnly&&docs.length>1)ch='<button onclick="consolideerAnalyse('+JSON.stringify(faseId)+')" class="btn btn-sm" style="width:100%;margin-top:.5rem;background:var(--teal-dim)">&#9881; Geconsolideerde analyse ('+docs.length+' docs)</button>';
-  return '<div class="panel" id="doc-sectie-'+faseId+'"><div class="sec-hdr">Documenten &amp; AI-analyse</div>'
-    +uploadHtml+docsHtml+ch
-    +(docs.length===0&&isReadOnly?'<div style="color:var(--muted);font-size:13px;font-style:italic">Geen documenten geupload.</div>':'')
-    +'</div>';;
+  return '<div style="margin-bottom:1rem">'+uploadHtml+docsHtml+'</div>';
 }
 
 function handleFileUpload(event, faseId) {
@@ -1684,8 +1669,7 @@ function renderMain(){
     +ov
     +'<div style="font-family:Playfair Display,serif;font-size:1.1rem;color:var(--head);font-weight:600;margin-bottom:.2rem">'+f.num+'. '+f.title+'</div>'
     +'<div style="font-size:13px;color:var(--muted);margin-bottom:1.25rem">'+f.desc+'</div>'
-    +'<div style="display:grid;grid-template-columns:1fr 320px;gap:1rem;align-items:start">'
-    +dataHtml+renderDocumentSectie(f.id)+'</div>'
+    +'<div>'+renderDocumentSectie(f.id)+dataHtml+'</div>'
     +extraHtml+nav+'</div>';
 }
 
