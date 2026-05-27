@@ -362,7 +362,7 @@ function renderMnaTab(el){
       var verg=t.status==='vergrendeld';
       html+='<tr><td><input type="checkbox" class="mna-cb" data-id="'+esc(t.id)+'"'+(verg?' disabled title="Vergrendeld"':'')+' style="cursor:pointer"></td>'
         +'<td style="font-weight:500;color:var(--head)">'+esc(t.kantoor_naam||'—')+'</td>'
-        +'<td>'+esc(t.traject_type||'—')+'</td>'
+        +'<td>'+esc(t.traject_type||'—')+(t.sector&&t.sector!=='accountancy'?'<br><span style="font-size:10px;background:var(--teal-bg);color:var(--teal-dim);border:1px solid var(--teal-dark);border-radius:3px;padding:1px 5px">'+esc({mkb:'MKB',zorg:'Zorg',itsoftware:'IT/SW'}[t.sector]||t.sector)+'</span>':'')+'</td>'
         +'<td><span class="tag" style="'+(verg?'background:var(--red-bg);color:var(--red);border-color:var(--red)':'')+'">'+esc(t.status||'actief')+'</span></td>'
         +'<td><span class="code-chip">'+esc(t.id)+'</span><button class="copy-btn" data-copy="'+esc(t.id)+'">⎘</button></td>'
         +'<td><span class="code-chip" style="background:var(--gold-bg);color:var(--gold);border-color:var(--gold)">'+esc(t.koper_code||'—')+'</span><button class="copy-btn" data-copy="'+esc(t.koper_code||'')+'">⎘</button></td>'
@@ -1010,7 +1010,9 @@ function renderWaarderingTab(el){
       out.innerHTML='<div style="color:var(--muted);font-size:13px;padding:1rem 0">AI genereert waarderingsrapport... (20-40 seconden)</div>';
       var res3=bereken();
       var trajectNaam=selectedTraject?(mnaList.find(function(t){return t.id===selectedTraject;})||{}).kantoor_naam||selectedTraject:'(geen traject geselecteerd)';
-      var prompt='Je bent Marcel Bisschops, senior M&A-adviseur gespecialiseerd in accountants- en administratiekantoren.\n\n'
+      var sectorRap={accountancy:'Accountancy & administratie',mkb:'MKB',zorg:'Zorg',itsoftware:'IT & Software'};
+      var sectorRapLabel=sectorRap[traject3.sector]||'MKB';
+      var prompt='Je bent Marcel Bisschops, senior M&A-adviseur. Sector: '+sectorRapLabel+'.\n\n'
         +'Schrijf een professioneel waarderingsrapport voor traject: '+trajectNaam+'\n\n'
         +'FINANCIËLE DATA:\n'
         +'- Omzet jaar 1: '+fmtGeld(W.omzet1)+'\n'
@@ -1256,6 +1258,7 @@ async function toonDetail(id,naam){
     });
     var html='<div style="display:flex;gap:10px;margin-bottom:1.25rem;flex-wrap:wrap">'
       +'<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:8px 14px;font-size:12px"><span style="color:var(--muted)">Status:</span> <strong>'+esc(d.traject.status||'actief')+'</strong></div>'
+      +'<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:8px 14px;font-size:12px"><span style="color:var(--muted)">Sector:</span> <strong>'+esc({accountancy:'Accountancy',mkb:'MKB',zorg:'Zorg',itsoftware:'IT & Software'}[d.traject.sector]||d.traject.sector||'Accountancy')+'</strong></div>'
       +'<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:8px 14px;font-size:12px"><span style="color:var(--muted)">Voortgang:</span> <strong style="color:var(--teal)">'+filled+'/'+total+'</strong></div>'
       +'<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:8px 14px;font-size:12px"><span style="color:var(--muted)">Koper vrijgegeven:</span> <strong>'+(d.traject.koper_vrijgegeven?'Ja':'Nee')+'</strong></div>'
       +'<div style="background:'+(d.traject.nda_getekend?'var(--teal-bg)':'var(--red-bg)')+';border:1px solid '+(d.traject.nda_getekend?'var(--teal-dark)':'var(--red)')+';border-radius:var(--r);padding:8px 14px;font-size:12px"><span style="color:var(--muted)">NDA getekend:</span> <strong style="color:'+(d.traject.nda_getekend?'var(--teal)':'var(--red)')+'">'+(d.traject.nda_getekend?'✓ '+esc(d.traject.nda_getekend):'✕ Nog niet getekend')+'</strong></div>'
@@ -1571,8 +1574,11 @@ async function toonDetail(id,naam){
         var faseLabelsAI={financieel:'Financieel',commercieel:'Klanten & commercieel',partner:'Partners & personeel',compliance:'Compliance & kwaliteit',it:'IT & automatisering',juridisch:'Juridisch & fiscaal',strategisch:'Strategisch & markt'};
         var dataSamenvatting='';
         (d.data||[]).forEach(function(row){try{var dj=typeof row.data_json==='string'?JSON.parse(row.data_json):row.data_json;var lbl=faseLabelsAI[row.fase_id]||row.fase_id;var gevuld=Object.values(dj||{}).filter(function(v){return v&&v.value;});if(gevuld.length){dataSamenvatting+='\n## '+lbl+'\n';gevuld.forEach(function(v){dataSamenvatting+='- '+v.label+': '+v.value+'\n';});}}catch(e){}});
-        var bmTekst='BENCHMARKS:\nEBITDA-marge admin '+(bms['ebitda_marge_admin']?bms['ebitda_marge_admin'].waarde:18.7)+'%\nMultiples: '+(bms['multiple_adm_laag']?bms['multiple_adm_laag'].waarde:4.6)+'x - '+(bms['multiple_adm_hoog']?bms['multiple_adm_hoog'].waarde:5.5)+'x\n';
-        var prompt='M&A-adviseur accountancy. Analyseer:\nTRAJECT: '+d.traject.kantoor_naam+' ('+d.traject.traject_type+')\n'+bmTekst+'\nDUE DILIGENCE:'+dataSamenvatting+'\n\n## Samenvatting\n## Financieel profiel & waardering\n## Sterktes\n## Risicos\n## Aanbevelingen\n\nMax 500 woorden.';
+        var sectorNormsM={accountancy:'EBITDA 15-25%, omzet/FTE €80k-€140k, multiple 4.5-5.5x EBITDA',mkb:'EBITDA 5-15%, brutomarge sector-afhankelijk, multiple 2.5-4.5x',zorg:'EBITDA 15-25%, praktijkwaarde 1-3x omzet, goodwill conform LHV-richtlijn',itsoftware:'SaaS ARR-multiple 3-8x, churn <5%, LTV/CAC >3; maatwerk EBITDA 4-6x'};
+        var sectorKeyM=d.traject.sector||'accountancy';
+        var sectorLabelM={accountancy:'Accountancy & administratie',mkb:'MKB',zorg:'Zorg',itsoftware:'IT & Software'}[sectorKeyM]||'Accountancy';
+        var bmTekst='SECTOR: '+sectorLabelM+'\nNORMEN: '+(sectorNormsM[sectorKeyM]||sectorNormsM.accountancy)+'\n'+(bms&&bms['ebitda_marge_admin']?'Benchmark EBITDA: '+bms['ebitda_marge_admin'].waarde+'%\n':'');
+        var prompt='Je bent Marcel Bisschops, senior M&A-adviseur. Sector: '+sectorLabelM+'. Analyseer:\nTRAJECT: '+d.traject.kantoor_naam+' ('+d.traject.traject_type+')\n'+bmTekst+'\nDUE DILIGENCE:'+dataSamenvatting+'\n\n## Samenvatting\n## Financieel profiel & waardering\n## Sterktes\n## Risicos\n## Aanbevelingen\n\nMax 500 woorden. Gebruik de sectornormen als referentie.';
         var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:3000})});
         var rd=await resp.json();
         var tekst=rd.text||(rd.error||'Fout.');
@@ -2154,7 +2160,10 @@ function toonNieuwModal(){
   var ov=document.createElement('div');ov.className='overlay';
   var mo=document.createElement('div');mo.className='modal';
   mo.innerHTML='<div class="modal-title">Nieuw M&amp;A traject aanmaken</div>'
-    +'<div class="field"><label>Trajecttype <span style="color:var(--red)">*</span></label><select id="m-t"><option value="Verkoop">Verkoop</option><option value="Fusie">Fusie</option><option value="Opvolging">Opvolging</option><option value="PE-traject">PE-traject</option><option value="Overname">Overname</option></select></div>'
+    +'<div style="display:flex;gap:12px">'
+    +'<div class="field" style="flex:1"><label>Trajecttype <span style="color:var(--red)">*</span></label><select id="m-t"><option value="Verkoop">Verkoop</option><option value="Fusie">Fusie</option><option value="Opvolging">Opvolging</option><option value="PE-traject">PE-traject</option><option value="Overname">Overname</option></select></div>'
+    +'<div class="field" style="flex:1"><label>Sector <span style="color:var(--red)">*</span></label><select id="m-sector"><option value="accountancy">Accountancy & administratie</option><option value="mkb">MKB — Retail / Horeca / Handel</option><option value="zorg">Zorg — Huisarts / Tandarts / Fysiotherapie</option><option value="itsoftware">IT & Software</option></select></div>'
+    +'</div>'
     +'<div style="border-bottom:1px solid var(--border);margin:.75rem 0 .75rem;padding-bottom:.25rem"><div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)" id="m-sectie1-hdr">Verkopende partij</div></div>'
     +'<div class="field"><label id="m-p1-naam-lbl">Kantoornaam <span style="color:var(--red)">*</span></label><div style="display:flex;gap:8px"><input type="text" id="m-k" placeholder="bijv. Accountantskantoor De Vries" style="flex:2"><input type="text" id="m-kvk" placeholder="KvK-nr" style="flex:1"></div></div>'
     +'<div class="field"><label id="m-p1-rv-lbl">Rechtsvorm <span style="color:var(--red)">*</span></label><select id="m-rv"><option value="">— Kies rechtsvorm —</option><option value="B.V.">B.V. (Besloten Vennootschap)</option><option value="N.V.">N.V. (Naamloze Vennootschap)</option><option value="Eenmanszaak">Eenmanszaak</option><option value="V.O.F.">V.O.F.</option><option value="Maatschap">Maatschap</option><option value="Coöperatie">Coöperatie</option><option value="Stichting">Stichting</option><option value="Holding B.V.">Holding B.V.</option><option value="C.V.">C.V.</option></select></div>'
@@ -2243,6 +2252,7 @@ function toonNieuwModal(){
           verkoper_adres:vv('m-adres'),
           verkoper_kvk:vv('m-kvk'),
           traject_type:vv('m-t'),
+          sector:vv('m-sector')||'accountancy',
           notitie:vv('m-n'),
           begeleider_naam:vv('m-bg-naam')||'Marcel Bisschops',
           begeleider_email:vv('m-bg-email')||'marcel@bisschopsfinancing.nl',
