@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>M&A Begeleiding - KantoorInzicht</title>
-<!-- BUILD: 27 May 10:45 -->
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -122,11 +121,11 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--s
 </head>
 <body>
 <div id="app"></div>
-<div id="build-stamp" style="position:fixed;bottom:4px;right:8px;font-size:10px;font-family:monospace;color:#aaa;pointer-events:none;z-index:9999">27 May 10:45</div>
+<div id="build-stamp" style="position:fixed;bottom:4px;right:8px;font-size:10px;font-family:monospace;color:#aaa;pointer-events:none;z-index:9999">27 May 10:53</div>
 <script>
 var WORKER='https://kantoorinzicht.marcel-bisschops.workers.dev';
 
-function versieLabel(){return '<span style="font-size:10px;font-weight:600;font-family:IBM Plex Mono,monospace;color:var(--muted);margin-left:8px">v'+(window._versie||'27 May 10:45')+'</span>';}
+function versieLabel(){return '<span style="font-size:10px;font-weight:600;font-family:IBM Plex Mono,monospace;color:var(--muted);margin-left:8px">v'+(window._versie||'27 May 10:53')+'</span>';}
 
 // Laad versie bij startup
 fetch(WORKER+'/mna/versie').then(function(r){return r.json();}).then(function(d){
@@ -412,7 +411,7 @@ async function uploadDocument(faseId, file) {
       });
       if (d.veld_extractie) {
         S._conflicts=[];
-        autoFillFromExtraction(faseId, d.veld_extractie);
+        autoFillFromExtraction(faseId, d.veld_extractie, false, file.name);
         if(S._conflicts&&S._conflicts.length){
           renderApp();setTimeout(toonConflictDialog,300);
         }else{renderApp();schedSave();}
@@ -500,9 +499,9 @@ window.centraalUploadFiles = async function(files) {
         DOCS[faseId].unshift({id:d.doc_id,naam:file.name,type:file.type,grootte:file.size,analyse:d.analyse||'',velden:d.veld_extractie||{},bewaard:!!d.r2_opgeslagen,uploaded_at:Date.now(),uploading:false});
         if(d.veld_extractie&&Object.keys(d.veld_extractie).length&&!d.verworpen){
           S._conflicts=[];
-          autoFillFromExtraction(faseId,d.veld_extractie,false);
+          autoFillFromExtraction(faseId,d.veld_extractie,false,file.name);
           if(faseId!=='financieel'&&(naam.includes('jaar')||naam.includes('balans')||naam.includes('winst'))){
-            autoFillFromExtraction('financieel',d.veld_extractie,false);
+            autoFillFromExtraction('financieel',d.veld_extractie,false,file.name);
           }
         }
         verwerkt++;
@@ -552,7 +551,8 @@ window.centraalUploadFiles = async function(files) {
   },500);
 };
 
-function autoFillFromExtraction(faseId, velden, forceOverwrite) {
+function autoFillFromExtraction(faseId, velden, forceOverwrite, docNaam) {
+  var currentDocNaam = docNaam || 'onbekend document';
   // Directe keys (fase_id_veld_id formaat van CSV upload) direct in S.data zetten
   console.log('[autoFill] faseId:', faseId, 'velden keys:', Object.keys(velden).slice(0,10));
   Object.keys(velden).forEach(function(k){
@@ -585,8 +585,8 @@ function autoFillFromExtraction(faseId, velden, forceOverwrite) {
       S.data[key]=newVal;return; // Stil overschrijven als niet user-edited
     }
     if(!S._conflicts)S._conflicts=[];
-    S._conflicts.push({key:key,label:label,huidig:existing,nieuw:newVal});
-    // Onthoud de conflicterende documentwaarde voor visuele indicatie
+    if(!S._conflicts)S._conflicts=[];
+    S._conflicts.push({key:key,label:label,huidig:existing,nieuw:newVal,bron:currentDocNaam});
     if(!S._pendingConflicts)S._pendingConflicts={};
     S._pendingConflicts[key]=newVal;
   }
@@ -774,41 +774,59 @@ function uitloggen(){
 function toonConflictDialog() {
   if(!S._conflicts||!S._conflicts.length)return;
   var conflicts=S._conflicts.slice();S._conflicts=[];
+  if(!S._choiceLog)S._choiceLog=[];
   var ov=document.createElement('div');
   ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;display:flex;align-items:center;justify-content:center;padding:1.5rem';
   var box=document.createElement('div');
-  box.style.cssText='background:var(--panel);border:1px solid var(--border2);border-radius:var(--r2);padding:1.75rem;max-width:520px;width:100%;max-height:85vh;overflow-y:auto';
+  box.style.cssText='background:var(--panel);border:1px solid var(--border2);border-radius:var(--r2);padding:1.75rem;max-width:560px;width:100%;max-height:85vh;overflow-y:auto';
   var title=document.createElement('div');title.style.cssText='font-family:Playfair Display,serif;font-size:1.1rem;color:var(--head);font-weight:600;margin-bottom:.35rem';title.textContent='Afwijkende waarden gevonden';box.appendChild(title);
-  var sub=document.createElement('div');sub.style.cssText='font-size:13px;color:var(--mid);margin-bottom:1.25rem';sub.textContent='Het nieuwe document bevat waarden die afwijken van eerder ingevulde gegevens. Kies per veld welke waarde u wilt gebruiken.';box.appendChild(sub);
+  // Toon brondocumenten
+  var bronnen=[...new Set(conflicts.map(function(c){return c.bron||'onbekend';}))];
+  var sub=document.createElement('div');sub.style.cssText='font-size:12px;color:var(--mid);margin-bottom:1.25rem;padding:.6rem .75rem;background:var(--card);border-radius:var(--r);border-left:3px solid var(--gold)';
+  sub.innerHTML='<strong>Bron:</strong> '+bronnen.map(function(b){return '<span style="font-family:IBM Plex Mono,monospace;font-size:11px">'+esc(b)+'</span>';}).join(', ')+'<br><span style="color:var(--muted)">Kies per veld welke waarde u wilt gebruiken. Uw keuze wordt vastgelegd.</span>';
+  box.appendChild(sub);
   var list=document.createElement('div');list.style.cssText='display:flex;flex-direction:column;gap:8px;margin-bottom:1.25rem';
   var radios=[];
   conflicts.forEach(function(c,i){
     var row=document.createElement('div');row.style.cssText='background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px';
-    var lbl=document.createElement('div');lbl.style.cssText='font-size:11px;font-weight:600;text-transform:uppercase;color:var(--muted);margin-bottom:6px';lbl.textContent=c.label;row.appendChild(lbl);
+    var lbl=document.createElement('div');lbl.style.cssText='font-size:11px;font-weight:600;text-transform:uppercase;color:var(--muted);margin-bottom:4px';lbl.textContent=c.label;row.appendChild(lbl);
+    // Toon brondocument per veld
+    if(c.bron){var bronLbl=document.createElement('div');bronLbl.style.cssText='font-size:10px;color:var(--gold);margin-bottom:6px';bronLbl.innerHTML='&#128196; Uit: <em>'+esc(c.bron)+'</em>';row.appendChild(bronLbl);}
     var opts=document.createElement('div');opts.style.cssText='display:flex;gap:8px;flex-wrap:wrap';
     var lblH=document.createElement('label');lblH.style.cssText='flex:1;min-width:140px;display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;padding:7px 10px;border:1px solid var(--border2);border-radius:var(--r);background:var(--panel)';
     var rH=document.createElement('input');rH.type='radio';rH.name='cf_'+i;rH.value='huidig';rH.checked=true;rH.style.accentColor='var(--teal)';lblH.appendChild(rH);
-    var tH=document.createElement('span');tH.style.color='var(--mid)';tH.innerHTML='Huidig: <strong style="color:var(--sub)">'+c.huidig+'</strong>';lblH.appendChild(tH);opts.appendChild(lblH);
+    var tH=document.createElement('span');tH.style.color='var(--mid)';tH.innerHTML='Huidig: <strong style="color:var(--sub)">'+c.huidig+'</strong><div style="font-size:10px;color:var(--muted);margin-top:2px">handmatig ingevoerd</div>';lblH.appendChild(tH);opts.appendChild(lblH);
     var lblN=document.createElement('label');lblN.style.cssText='flex:1;min-width:140px;display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;padding:7px 10px;border:1px solid var(--teal-dark);border-radius:var(--r);background:var(--teal-bg)';
     var rN=document.createElement('input');rN.type='radio';rN.name='cf_'+i;rN.value='nieuw';rN.style.accentColor='var(--teal)';lblN.appendChild(rN);
-    var tN=document.createElement('span');tN.style.color='var(--mid)';tN.innerHTML='Nieuw: <strong style="color:var(--teal-dim)">'+c.nieuw+'</strong>';lblN.appendChild(tN);opts.appendChild(lblN);
-    row.appendChild(opts);list.appendChild(row);radios.push({key:c.key,rH:rH,rN:rN});
+    var tN=document.createElement('span');tN.style.color='var(--mid)';tN.innerHTML='Document: <strong style="color:var(--teal-dim)">'+c.nieuw+'</strong><div style="font-size:10px;color:var(--muted);margin-top:2px">uit '+esc(c.bron||'document')+'</div>';lblN.appendChild(tN);opts.appendChild(lblN);
+    row.appendChild(opts);list.appendChild(row);radios.push({key:c.key,rH:rH,rN:rN,conflict:c});
   });
   box.appendChild(list);
   var btns=document.createElement('div');btns.style.cssText='display:flex;gap:10px;justify-content:flex-end';
   var btnB=document.createElement('button');btnB.className='btn-ghost';btnB.style.fontSize='12px';btnB.textContent='Alles behouden';
   btnB.addEventListener('click',function(){
-    // Conflict afgewezen - verwijder visuele indicatoren
-    conflicts.forEach(function(c){if(S._pendingConflicts)delete S._pendingConflicts[c.key];});
+    conflicts.forEach(function(c){
+      if(S._pendingConflicts)delete S._pendingConflicts[c.key];
+      S._choiceLog.push({key:c.key,label:c.label,gekozen:'huidig',waarde:c.huidig,bron:'handmatig ingevoerd',ts:new Date().toLocaleString('nl-NL')});
+    });
     document.body.removeChild(ov);renderApp();
   });btns.appendChild(btnB);
   var btnA=document.createElement('button');btnA.className='btn';btnA.style.fontSize='12px';btnA.textContent='Toepassen';
   btnA.addEventListener('click',function(){
     radios.forEach(function(r){
-      var c=conflicts.find(function(c){return c.key===r.key;});
-      if(r.rN.checked)S.data[r.key]=c.nieuw;
-      // Conflict opgelost - verwijder visuele indicator
+      var c=r.conflict;
+      var gekozenHuidig=r.rH.checked;
+      if(!gekozenHuidig)S.data[r.key]=c.nieuw;
       if(S._pendingConflicts)delete S._pendingConflicts[r.key];
+      // Leg keuze vast in log
+      S._choiceLog.push({
+        key:c.key,label:c.label,
+        gekozen:gekozenHuidig?'huidig':'document',
+        waarde:gekozenHuidig?c.huidig:c.nieuw,
+        verworpen:gekozenHuidig?c.nieuw:c.huidig,
+        bron:c.bron||'onbekend',
+        ts:new Date().toLocaleString('nl-NL')
+      });
     });
     document.body.removeChild(ov);renderApp();schedSave();
   });btns.appendChild(btnA);box.appendChild(btns);ov.appendChild(box);document.body.appendChild(ov);
@@ -1198,7 +1216,7 @@ function renderLogin(){
     +'<div style="margin-top:1.25rem;font-size:11px;color:var(--muted);padding-top:1rem;border-top:1px solid var(--border)">Code ontvangen via Marcel Bisschops &middot; <a href="mailto:marcel@bisschopsfinancing.nl" style="color:var(--teal)">marcel@bisschopsfinancing.nl</a></div>'
     +'</div></div>'
     +'<div style="position:fixed;bottom:1.25rem;left:1.5rem;right:1.5rem;display:flex;justify-content:space-between;align-items:flex-end;pointer-events:none">'
-    +'<div style="pointer-events:auto"><span id="versie-label" style="font-size:15px;font-weight:700;font-family:IBM Plex Mono,monospace;color:var(--mid)">27 May 10:45</span></div>'
+    +'<div style="pointer-events:auto"><span id="versie-label" style="font-size:15px;font-weight:700;font-family:IBM Plex Mono,monospace;color:var(--mid)">27 May 10:53</span></div>'
     +'<div style="pointer-events:auto;text-align:right"><a href="privacy.html" style="font-size:12px;font-weight:600;color:var(--teal);text-decoration:underline;display:block;margin-bottom:2px">Privacyverklaring</a><span style="font-size:10px;color:var(--muted)">Gegevens vertrouwelijk behandeld conform AVG</span></div>'
     +'</div>'
     +'</div>';
@@ -1636,10 +1654,28 @@ function renderMain(){
     chkHtml+='<div class="sec-hdr" style="margin-top:1rem;color:var(--red)">Rode vlaggen &mdash; gesignaleerd?</div>';
     f.redflags.forEach(function(rf,i){var key=f.id+'_rf_'+i;var on=!!S.checked[key];chkHtml+='<div class="chk-item rf'+(on?' on':'')+'" data-key="'+key+'"'+(isKoper()?' style="cursor:default"':'')+'><div class="chk-box">'+(on?'&#10003;':'')+'</div><div class="chk-lbl">'+rf+'</div></div>';});
     chkHtml+='</div>';
+    // Keuzelog: toon gemaakte keuzes bij conflicten voor deze fase
+    var faseChoices=(S._choiceLog||[]).filter(function(c){return c.key.startsWith(f.id+'_');});
+    var choiceLogHtml='';
+    if(faseChoices.length){
+      choiceLogHtml='<div style="margin-top:.75rem;padding:.6rem .75rem;background:#fffbf0;border:1px solid var(--gold);border-radius:var(--r);font-size:11px">'
+        +'<div style="font-weight:600;color:var(--gold);margin-bottom:.4rem">&#128221; Gemaakte keuzes bij conflicten</div>'
+        +faseChoices.map(function(c){
+          return '<div style="padding:3px 0;border-bottom:1px solid var(--border);color:var(--mid)">'
+            +'<strong>'+esc(c.label)+'</strong>: gekozen <strong style="color:'+(c.gekozen==='document'?'var(--teal)':'var(--sub)')+'">'+esc(c.waarde)+'</strong>'
+            +' <span style="color:var(--muted)">('+esc(c.gekozen==='document'?'uit '+c.bron:'handmatig ingevoerd')+')</span>'
+            +(c.verworpen?' &mdash; verworpen: <span style="text-decoration:line-through;color:var(--muted)">'+esc(c.verworpen)+'</span>':'')
+            +' <span style="color:var(--muted);font-size:10px">'+esc(c.ts)+'</span>'
+            +'</div>';
+        }).join('')
+        +'</div>';
+    }
     var notHtml='<div class="panel"><div class="sec-hdr">Notities (intern)</div>'
       +((isKoper())?'<div style="font-size:13px;color:var(--mid);font-style:italic">'+(S.notities[f.id]||'Geen notities.')+'</div>'
         :'<textarea id="notitie_'+f.id+'" style="width:100%;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:9px 11px;font-family:IBM Plex Sans,sans-serif;font-size:13px;color:var(--sub);resize:vertical;min-height:70px;outline:none" placeholder="Interne bevindingen en aandachtspunten..." oninput="schedSave()">'+(S.notities[f.id]||'')+'</textarea>')
-      +'<div style="display:flex;align-items:center;gap:.75rem;margin-top:.3rem"><div style="font-size:11px;color:var(--muted)">'+(isKoper()?'':'Wijzigingen worden automatisch opgeslagen.')+'</div><div id="save-ind" class="save-indicator">&#10003; Opgeslagen</div></div></div>';
+      +'<div style="display:flex;align-items:center;gap:.75rem;margin-top:.3rem"><div style="font-size:11px;color:var(--muted)">'+(isKoper()?'':'Wijzigingen worden automatisch opgeslagen.')+'</div><div id="save-ind" class="save-indicator">&#10003; Opgeslagen</div></div>'
+      +choiceLogHtml
+      +'</div>';
     var aiText=S.aiTexts[f.id];var aiLoad=S.aiLoading[f.id];
     var aiBodyHtml;
     if(aiLoad)aiBodyHtml='<div style="display:flex;align-items:center;gap:8px;color:var(--mid);font-size:13px"><div class="spin" style="border-color:var(--border2);border-top-color:var(--teal);width:14px;height:14px;border-width:2px"></div>Genereren...</div>';
