@@ -2587,7 +2587,7 @@ function bindAll(){
     try{
       var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:2000})});
       var rd=await resp.json();
-      var tekst=rd.content&&rd.content[0]?rd.content[0].text:'Fout.';
+      var tekst=rd.text||(rd.error?('AI fout: '+rd.error):'Fout bij genereren.');
       tekst=tekst.replace(/^## (.+)$/gm,'<h3 style="font-family:Playfair Display,serif;font-size:.95rem;color:var(--head);margin:1rem 0 .4rem">$1</h3>');
       tekst=tekst.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
       tekst=tekst.replace(/\n\n/g,'</p><p style="font-size:13px;color:var(--mid);line-height:1.7;margin-bottom:.6rem">');
