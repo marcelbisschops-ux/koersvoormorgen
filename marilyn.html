@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>KantoorInzicht — Beheer</title>
-<!-- BUILD: 27 May 13:04 -->
+<!-- BUILD: 27 May 13:38 -->
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -81,7 +81,7 @@ tr:hover td{background:rgba(26,122,94,.04)}
     </div>
   </div>
   <div id="app"></div>
-<div id="build-stamp" style="position:fixed;bottom:4px;right:8px;font-size:10px;font-family:monospace;color:#aaa;pointer-events:none;z-index:9999">27 May 13:04</div>
+<div id="build-stamp" style="position:fixed;bottom:4px;right:8px;font-size:10px;font-family:monospace;color:#aaa;pointer-events:none;z-index:9999">27 May 13:38</div>
 </div>
 <script>
 
@@ -373,7 +373,7 @@ function renderMnaTab(el){
         +(verg
           ?'<button class="btn-ghost btn-ontv" data-id="'+esc(t.id)+'" style="font-size:11px;padding:3px 8px;color:var(--teal)">&#128275; Ontgrendel</button>'
           :'<button class="btn-ghost btn-verg" data-id="'+esc(t.id)+'" data-naam="'+esc(t.kantoor_naam||t.id)+'" style="font-size:11px;padding:3px 8px;color:var(--gold)">&#128274; Vergrendel</button>')
-        +'<button class="btn-red btn-del-mna" data-id="'+esc(t.id)+'" data-naam="'+esc(t.kantoor_naam||t.id)+'" style="font-size:11px;padding:3px 8px">&#10005;</button>'
+        +'<button class="btn-red btn-del-mna" data-id="'+esc(t.id)+'" data-naam="'+esc(t.kantoor_naam||t.id)+'" style="font-size:13px;padding:3px 8px;color:var(--red)" title="Traject verwijderen">&#128465;</button>'
         +'</td></tr>';
     });
     html+='</tbody></table>';
