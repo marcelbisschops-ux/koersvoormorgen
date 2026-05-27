@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>M&A Begeleiding - KantoorInzicht</title>
-<!-- BUILD: 27 May 10:33 -->
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -122,7 +121,7 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--s
 </head>
 <body>
 <div id="app"></div>
-<div id="build-stamp" style="position:fixed;bottom:4px;right:8px;font-size:10px;font-family:monospace;color:#aaa;pointer-events:none;z-index:9999">27 May 10:33</div>
+<div id="build-stamp" style="position:fixed;bottom:4px;right:8px;font-size:10px;font-family:monospace;color:#aaa;pointer-events:none;z-index:9999">27 May 10:34</div>
 <script>
 var WORKER='https://kantoorinzicht.marcel-bisschops.workers.dev';
 
@@ -315,9 +314,11 @@ function saveCurrent(cb){
     var key=f.id+'_'+df.id;
     if(el){
       if(el.value.trim())S._userEdited[key]=true;
-      S.data[key]=el.value;
+      // Overschrijf bestaande waarde alleen als DOM element een waarde heeft,
+      // of als de gebruiker dit veld zelf heeft bewerkt
+      if(el.value.trim()||S._userEdited[key])S.data[key]=el.value;
     }
-    // Als element niet in DOM is, behoud bestaande S.data waarde
+    // Als element niet in DOM is, behoud altijd bestaande S.data waarde
   });
   var nel=ge('notitie_'+f.id);if(nel)S.notities[f.id]=nel.value;
   clearTimeout(S.saveTimer);
@@ -540,13 +541,14 @@ window.centraalUploadFiles = async function(files) {
     }
   }
 
-  // Render eerst zodat gebruiker velden ziet, dan opslaan
+  // Sla eerst alle data op naar server VOORDAT renderApp de DOM overschrijft
+  if(Object.keys(S.data).length) saveAll();
+
+  // Render zodat gebruiker velden ziet
   renderApp();
-  // Kleine delay zodat render klaar is, dan opslaan naar server
   setTimeout(function(){
-    if(Object.keys(S.data).length) saveAll();
     toonStatus('<span style="color:var(--teal)">&#10003; '+verwerkt+' van '+totaal+' bestanden verwerkt'+(fouten?' ('+fouten+' fout)':'')+'. Controleer de velden hieronder.</span>');
-  },300);
+  },500);
 };
 
 function autoFillFromExtraction(faseId, velden, forceOverwrite) {
