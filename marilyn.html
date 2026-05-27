@@ -371,6 +371,7 @@ function renderMnaTab(el){
         +(verg
           ?'<button class="btn-ghost btn-ontv" data-id="'+esc(t.id)+'" style="font-size:11px;padding:3px 8px;color:var(--teal)">&#128275; Ontgrendel</button>'
           :'<button class="btn-ghost btn-verg" data-id="'+esc(t.id)+'" data-naam="'+esc(t.kantoor_naam||t.id)+'" style="font-size:11px;padding:3px 8px;color:var(--gold)">&#128274; Vergrendel</button>')
+        +'<button class="btn-ghost btn-wis-data" data-id="'+esc(t.id)+'" data-naam="'+esc(t.kantoor_naam||t.id)+'" style="font-size:11px;padding:3px 8px;color:var(--red)" title="Wis alle ingevulde DD-data (velden leeg, documenten blijven)">&#128465; Data</button>'
         +'<button class="btn-red btn-del-mna" data-id="'+esc(t.id)+'" data-naam="'+esc(t.kantoor_naam||t.id)+'" style="font-size:11px;padding:3px 8px">&#10005;</button>'
         +'</td></tr>';
     });
@@ -393,6 +394,7 @@ function renderMnaTab(el){
   el.querySelectorAll('.btn-verg').forEach(function(b){b.addEventListener('click',function(){vergrendel(b.dataset.id,b.dataset.naam);});});
   el.querySelectorAll('.btn-ontv').forEach(function(b){b.addEventListener('click',function(){ontvergrendel(b.dataset.id);});});
   el.querySelectorAll('.btn-del-mna').forEach(function(b){b.addEventListener('click',function(){deleteMna(b.dataset.id,b.dataset.naam);});});
+  el.querySelectorAll('.btn-wis-data').forEach(function(b){b.addEventListener('click',function(){wisData(b.dataset.id,b.dataset.naam);});});
   function updSelMna(){var n=el.querySelectorAll('.mna-cb:checked').length;var btn=document.getElementById('btn-del-sel-mna');var cnt=document.getElementById('sel-cnt-mna');if(btn)btn.style.display=n>0?'inline-block':'none';if(cnt)cnt.textContent=n;}
   var cbAllM=document.getElementById('cb-all-mna');
   if(cbAllM)cbAllM.addEventListener('change',function(){el.querySelectorAll('.mna-cb:not(:disabled)').forEach(function(cb){cb.checked=cbAllM.checked;});updSelMna();});
@@ -1173,6 +1175,16 @@ async function deleteMna(id,naam){
     var r=await fetch(WORKER+'/admin/delete/mna/'+id+'?key='+encodeURIComponent(adminKey),{method:'POST'});
     var d=await r.json();
     if(d.ok){mnaList=mnaList.filter(function(t){return t.id!==id;});renderDashboard();}
+    else alert('Fout: '+(d.error||'onbekend'));
+  }catch(e){alert('Verbindingsfout.');}
+}
+
+async function wisData(id,naam){
+  if(!confirm('Alle ingevulde DD-velden van "'+naam+'" wissen?\n\nDocumenten blijven bewaard. Alleen de ingevulde tekstvelden worden geleegd.\n\nDit kan niet ongedaan worden gemaakt.'))return;
+  try{
+    var r=await fetch(WORKER+'/admin/wis-data/'+id+'?key='+encodeURIComponent(adminKey),{method:'POST'});
+    var d=await r.json();
+    if(d.ok){alert('✓ DD-data gewist voor '+naam+'. Documenten zijn bewaard.');refreshData();}
     else alert('Fout: '+(d.error||'onbekend'));
   }catch(e){alert('Verbindingsfout.');}
 }
