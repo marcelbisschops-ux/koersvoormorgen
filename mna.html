@@ -1735,7 +1735,77 @@ function renderSummary(){
     +'</div>'
     +missingHtml
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'+cards+'</div>'
+    +'<div style="margin-top:1.5rem;background:var(--panel);border:2px solid var(--teal);border-radius:var(--r2);padding:1.5rem">'
+    +'<div style="font-family:Playfair Display,serif;font-size:1rem;font-weight:600;color:var(--head);margin-bottom:.25rem">&#9989; Finale check</div>'
+    +'<div style="font-size:12px;color:var(--muted);margin-bottom:1rem">Vergelijkt alle ingevulde velden met de aangeleverde documenten. Detecteert inconsistenties, ontbrekende onderbouwing en verdachte afwijkingen.</div>'
+    +'<button class="btn" id="finale-check-btn" style="width:100%">&#9881; Voer finale check uit</button>'
+    +'<div id="finale-check-out" style="margin-top:1rem"></div>'
+    +'</div>'
     +'</div>';
+}
+
+async function finaleCheck(){
+  var btn=ge('finale-check-btn');
+  var out=ge('finale-check-out');
+  if(!btn||!out)return;
+  btn.disabled=true;btn.textContent='Bezig met controleren...';
+  out.innerHTML='<div style="color:var(--muted);font-size:13px;padding:1rem;background:var(--card);border-radius:var(--r)">AI vergelijkt velden met documenten... (20-40 sec)</div>';
+
+  // Bouw overzicht van alle ingevulde velden
+  var veldenSamenvatting='';
+  FASES.forEach(function(f){
+    var gevuld=f.dataFields.filter(function(df){return !df.header&&(S.data[f.id+'_'+df.id]||'').trim();});
+    if(gevuld.length){
+      veldenSamenvatting+='\n## '+f.num+'. '+f.title+'\n';
+      gevuld.forEach(function(df){veldenSamenvatting+='- '+df.label+': '+S.data[f.id+'_'+df.id]+'\n';});
+    }
+  });
+
+  // Bouw overzicht van alle geüploade documenten en hun analyses
+  var docSamenvatting='';
+  Object.keys(DOCS).forEach(function(faseId){
+    var docs=(DOCS[faseId]||[]).filter(function(d){return !d.uploading&&!d.verworpen&&d.analyse;});
+    if(docs.length){
+      var faseNaam=FASES.find(function(f){return f.id===faseId;});
+      docSamenvatting+='\n## '+(faseNaam?faseNaam.num+'. '+faseNaam.title:faseId)+'\n';
+      docs.forEach(function(d){
+        docSamenvatting+='Document: '+d.naam+'\n';
+        docSamenvatting+='Analyse: '+d.analyse.substring(0,400)+'\n\n';
+      });
+    }
+  });
+
+  if(!docSamenvatting){
+    out.innerHTML='<div style="color:var(--gold);font-size:13px;padding:.75rem;background:var(--gold-bg);border-radius:var(--r);border:1px solid var(--gold)">⚠ Geen documenten geüpload — finale check vereist minimaal één geüpload document per fase.</div>';
+    btn.disabled=false;btn.textContent='&#9881; Voer finale check uit';
+    return;
+  }
+
+  var prompt='Je bent een forensische M&A-auditor voor een accountantskantoor due diligence.\n\n'
+    +'Traject: '+esc(S.traject&&S.traject.kantoor_naam||S.code)+'\n\n'
+    +'INGEVULDE VELDEN:\n'+veldenSamenvatting+'\n\n'
+    +'AANGELEVERDE DOCUMENTEN EN ANALYSES:\n'+docSamenvatting+'\n\n'
+    +'Voer een finale cross-check uit:\n'
+    +'1. Welke ingevulde velden worden BEVESTIGD door documenten?\n'
+    +'2. Welke ingevulde velden worden TEGENGESPROKEN of wijken af van de documenten?\n'
+    +'3. Welke verplichte velden hebben GEEN documentaire onderbouwing?\n'
+    +'4. Welke rode vlaggen of inconsistenties zie je?\n'
+    +'5. Eindoordeel: is het dossier gereed voor DD?\n\n'
+    +'Wees concreet en noem specifieke velden en bedragen. Gebruik ## koppen. Markeer problemen duidelijk met ⚠.';
+
+  try{
+    var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:2500})});
+    var rd=await resp.json();
+    var tekst=(rd.text||'Fout bij genereren.')
+      .replace(/## ([^\n]+)/g,'<h3 style="font-family:Playfair Display,serif;font-size:.95rem;color:var(--head);margin:1rem 0 .35rem;padding-top:.75rem;border-top:1px solid var(--border)">$1</h3>')
+      .replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>')
+      .replace(/⚠/g,'<span style="color:var(--red)">⚠</span>')
+      .split('\n\n').map(function(p){return p.trim()&&p.charAt(0)!=='<'?'<p style="font-size:13px;color:var(--mid);line-height:1.7;margin-bottom:.5rem">'+p+'</p>':p;}).join('');
+    out.innerHTML='<div style="padding-top:.5rem">'+tekst+'</div>';
+  }catch(e){
+    out.innerHTML='<div style="color:var(--red);font-size:13px">Fout: '+e.message+'</div>';
+  }
+  btn.disabled=false;btn.textContent='&#9881; Opnieuw controleren';
 }
 
 async function generateAI(faseId){
@@ -1899,6 +1969,7 @@ function bindAll(){
   });
   var coverBtn=ge('cover-btn');if(coverBtn)coverBtn.onclick=function(){saveCurrent();S.screen='cover';renderApp();};
   var backMain=ge('back-main');if(backMain)backMain.onclick=function(){S.screen='main';renderApp();};
+  var finaleCheckBtn=ge('finale-check-btn');if(finaleCheckBtn)finaleCheckBtn.onclick=finaleCheck;
   var sumBtn=ge('sum-btn');if(sumBtn)sumBtn.onclick=function(){S.showValidation=true;saveCurrent();S.screen='summary';renderApp();};
   var sumBtn2=ge('sum-btn2');if(sumBtn2)sumBtn2.onclick=function(){S.showValidation=true;saveCurrent();S.screen='summary';renderApp();};
   var prevBtn=ge('prev-btn');if(prevBtn)prevBtn.onclick=function(){saveCurrent();S.fase--;renderApp();};
