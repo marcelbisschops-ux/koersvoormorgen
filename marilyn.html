@@ -113,66 +113,42 @@ function partijLabels(type){
 // LOGIN
 function renderLogin(){
   document.getElementById('app').innerHTML='<div class="login-wrap"><div class="login-box">'
-    +'<div class="login-title">KantoorInzicht M&A</div>'
-    +'<div class="login-sub" style="margin-bottom:1.25rem">Inloggen als adviseur of beheerder.</div>'
-    +'<select id="login-mode" style="width:100%;margin-bottom:1rem;padding:10px 12px;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:IBM Plex Sans,sans-serif;outline:none;font-size:13px"><option value="adviseur">Adviseur (e-mail + wachtwoord)</option><option value="admin">Beheerder (sleutel)</option></select>'
-    +'<div id="admin-fields" style="display:none"><input type="password" id="ak" placeholder="Beheerder-sleutel" style="width:100%;margin-bottom:1rem;padding:10px 12px;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:IBM Plex Mono,monospace;outline:none;font-size:14px"></div>'
-    +'<div id="adviseur-fields"><input type="email" id="ak-email" placeholder="E-mailadres" style="width:100%;margin-bottom:.6rem;padding:10px 12px;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:IBM Plex Sans,sans-serif;outline:none;font-size:13px"><input type="password" id="ak-ww" placeholder="Wachtwoord" style="width:100%;margin-bottom:1rem;padding:10px 12px;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:IBM Plex Sans,sans-serif;outline:none;font-size:13px"></div>'
+    +'<div class="login-title">KantoorInzicht Beheer</div>'
+    +'<div class="login-sub">Beheerder-toegang. Bent u adviseur? Gebruik <a href="adviseur.html" style="color:var(--teal)">adviseur.html</a>.</div>'
+    +'<div class="field" style="margin-top:1rem"><label>Beheerder-sleutel</label><input type="password" id="ak" placeholder="••••••••" autofocus></div>'
     +'<button class="btn" id="login-btn" style="width:100%">Inloggen</button>'
-    +'<div id="login-err" style="color:var(--red);font-size:12px;margin-top:.75rem;display:none">Inloggegevens onjuist.</div>'
+    +'<div id="login-err" style="color:var(--red);font-size:12px;margin-top:.75rem;display:none">Sleutel incorrect.</div>'
+    +'<div id="login-mode" style="display:none"></div>'
+    +'<div id="admin-fields" style="display:none"></div>'
+    +'<div id="adviseur-fields" style="display:none"></div>'
     +'</div></div>';
-  // Login mode wisselen
-  document.getElementById('login-mode').addEventListener('change',function(){
-    var isAdm=this.value==='admin';
-    document.getElementById('admin-fields').style.display=isAdm?'block':'none';
-    document.getElementById('adviseur-fields').style.display=isAdm?'none':'block';
-  });
   document.getElementById('login-btn').addEventListener('click',doLogin);
   document.getElementById('ak').addEventListener('keydown',function(e){if(e.key==='Enter')doLogin();});
-  document.querySelectorAll('#ak-email,#ak-ww').forEach(function(el){el.addEventListener('keydown',function(e){if(e.key==='Enter')doLogin();});});
 }
 
 async function doLogin(){
   var btn=document.getElementById('login-btn');btn.disabled=true;btn.textContent='Laden...';
   var err=document.getElementById('login-err');err.style.display='none';
-  var loginMode=document.getElementById('login-mode').value;
+  var key=document.getElementById('ak').value.trim();
+  if(!key){btn.disabled=false;btn.textContent='Inloggen';return;}
   try{
-    if(loginMode==='admin'){
-      // Super-admin login met sleutel
-      var key=document.getElementById('ak').value.trim();
-      if(!key){btn.disabled=false;btn.textContent='Inloggen';return;}
-      var [r1,r2,r3,r4]=await Promise.all([
-        fetch(WORKER+'/admin/scans?key='+encodeURIComponent(key)),
-        fetch(WORKER+'/admin/callbacks?key='+encodeURIComponent(key)),
-        fetch(WORKER+'/mna/admin/lijst?key='+encodeURIComponent(key)),
-        fetch(WORKER+'/admin/rapporten?key='+encodeURIComponent(key))
-      ]);
-      if(!r1.ok)throw new Error('unauthorized');
-      scans=await r1.json();callbacks=await r2.json();
-      mnaList=r3.ok?await r3.json():[];
-      try{var r4data=r4.ok?await r4.json().catch(()=>[]):[];rapporten=Array.isArray(r4data)?r4data:[];}catch(e){rapporten=[];}
-      adminKey=key;isSuperAdmin=true;gebruikerInfo=null;
-    } else {
-      // Adviseur login met e-mail + wachtwoord
-      var email=document.getElementById('ak-email').value.trim();
-      var ww=document.getElementById('ak-ww').value;
-      if(!email||!ww){btn.disabled=false;btn.textContent='Inloggen';return;}
-      var lr=await fetch(WORKER+'/gebruikers/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email,wachtwoord:ww})});
-      var ld=await lr.json();
-      if(!lr.ok||!ld.ok)throw new Error(ld.error||'unauthorized');
-      gebruikerToken=ld.sessie_token;
-      gebruikerInfo={naam:ld.naam,bedrijf:ld.bedrijf,email:ld.email,id:ld.id,plan:ld.plan};
-      isSuperAdmin=false;adminKey='';scans=[];callbacks=[];rapporten=[];
-      // Laad eigen trajecten
-      var mr=await fetch(WORKER+'/mna/admin/lijst',{headers:{'x-gebruiker-token':gebruikerToken}});
-      mnaList=mr.ok?await mr.json():[];
-    }
+    var [r1,r2,r3,r4]=await Promise.all([
+      fetch(WORKER+'/admin/scans?key='+encodeURIComponent(key)),
+      fetch(WORKER+'/admin/callbacks?key='+encodeURIComponent(key)),
+      fetch(WORKER+'/mna/admin/lijst?key='+encodeURIComponent(key)),
+      fetch(WORKER+'/admin/rapporten?key='+encodeURIComponent(key))
+    ]);
+    if(!r1.ok)throw new Error('unauthorized');
+    scans=await r1.json();callbacks=await r2.json();
+    mnaList=r3.ok?await r3.json():[];
+    try{var r4data=r4.ok?await r4.json().catch(()=>[]):[];rapporten=Array.isArray(r4data)?r4data:[];}catch(e){rapporten=[];}
+    adminKey=key;isSuperAdmin=true;gebruikerInfo=null;gebruikerToken='';
     document.getElementById('hdr-actions').style.display='flex';
     document.getElementById('btn-refresh').addEventListener('click',refreshData);
     document.getElementById('btn-logout').addEventListener('click',logout);
     renderDashboard();
   }catch(e){
-    err.textContent=e.message==='unauthorized'?'Inloggegevens onjuist.':'Verbindingsfout.';
+    err.textContent='Sleutel incorrect of verbindingsfout.';
     err.style.display='block';
     btn.disabled=false;btn.textContent='Inloggen';
   }
@@ -187,20 +163,15 @@ function logout(){
 
 async function refreshData(){
   try{
-    if(isSuperAdmin){
-      var [r1,r2,r3,r4]=await Promise.all([
-        fetch(WORKER+'/admin/scans?key='+encodeURIComponent(adminKey)),
-        fetch(WORKER+'/admin/callbacks?key='+encodeURIComponent(adminKey)),
-        fetch(WORKER+'/mna/admin/lijst?key='+encodeURIComponent(adminKey)),
-        fetch(WORKER+'/admin/rapporten?key='+encodeURIComponent(adminKey))
-      ]);
-      scans=await r1.json();callbacks=await r2.json();
-      mnaList=r3.ok?await r3.json():[];
-      try{var r4data=r4.ok?await r4.json().catch(()=>[]):[];rapporten=Array.isArray(r4data)?r4data:[];}catch(e){rapporten=[];}
-    } else {
-      var mr=await fetch(WORKER+'/mna/admin/lijst',{headers:{'x-gebruiker-token':gebruikerToken}});
-      mnaList=mr.ok?await mr.json():[];
-    }
+    var [r1,r2,r3,r4]=await Promise.all([
+      fetch(WORKER+'/admin/scans?key='+encodeURIComponent(adminKey)),
+      fetch(WORKER+'/admin/callbacks?key='+encodeURIComponent(adminKey)),
+      fetch(WORKER+'/mna/admin/lijst?key='+encodeURIComponent(adminKey)),
+      fetch(WORKER+'/admin/rapporten?key='+encodeURIComponent(adminKey))
+    ]);
+    scans=await r1.json();callbacks=await r2.json();
+    mnaList=r3.ok?await r3.json():[];
+    try{var r4data=r4.ok?await r4.json().catch(()=>[]):[];rapporten=Array.isArray(r4data)?r4data:[];}catch(e){rapporten=[];}
     renderDashboard();
   }catch(e){toast('Kon niet verversen.','err');}
 }
