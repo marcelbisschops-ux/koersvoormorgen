@@ -93,6 +93,7 @@ tr:hover td{background:rgba(26,122,94,.04)}
 
 const WORKER='https://kantoorinzicht.marcel-bisschops.workers.dev';
 let adminKey='',scans=[],callbacks=[],mnaList=[],rapporten=[],activeTab='scans',scanFilter='',openRow=null;
+let gebruikerToken='',gebruikerInfo=null,isSuperAdmin=false;
 
 function toast(msg,type,dur){type=type||'ok';dur=dur||3500;var c=document.getElementById('toast-container');if(!c){c=document.createElement('div');c.id='toast-container';c.className='toast-container';document.body.appendChild(c);}var t=document.createElement('div');t.className='toast toast-'+type;var ico=type==='ok'?'✓':type==='err'?'✕':type==='warn'?'⚠':'ℹ';t.innerHTML='<span style="font-size:15px;flex-shrink:0;color:'+(type==='ok'?'var(--teal)':type==='err'?'var(--red)':type==='warn'?'var(--gold)':'#2a5ea0')+'">'+ico+'</span><span style="flex:1;line-height:1.5">'+String(msg).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</span><button onclick="this.parentElement.remove()" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px;padding:0;line-height:1;flex-shrink:0">&times;</button>';c.appendChild(t);setTimeout(function(){t.classList.add('hide');setTimeout(function(){if(t.parentElement)t.parentElement.removeChild(t);},220);},dur);return t;}
 
@@ -112,61 +113,94 @@ function partijLabels(type){
 // LOGIN
 function renderLogin(){
   document.getElementById('app').innerHTML='<div class="login-wrap"><div class="login-box">'
-    +'<div class="login-title">Beheer toegang</div>'
-    +'<div class="login-sub">Voer uw admin-sleutel in om door te gaan.</div>'
-    +'<div class="field"><label>Admin-sleutel</label><input type="password" id="ak" placeholder="••••••••" autofocus></div>'
+    +'<div class="login-title">KantoorInzicht M&A</div>'
+    +'<div class="login-sub" style="margin-bottom:1.25rem">Inloggen als adviseur of beheerder.</div>'
+    +'<select id="login-mode" style="width:100%;margin-bottom:1rem;padding:10px 12px;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:IBM Plex Sans,sans-serif;outline:none;font-size:13px"><option value="adviseur">Adviseur (e-mail + wachtwoord)</option><option value="admin">Beheerder (sleutel)</option></select>'
+    +'<div id="admin-fields" style="display:none"><input type="password" id="ak" placeholder="Beheerder-sleutel" style="width:100%;margin-bottom:1rem;padding:10px 12px;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:IBM Plex Mono,monospace;outline:none;font-size:14px"></div>'
+    +'<div id="adviseur-fields"><input type="email" id="ak-email" placeholder="E-mailadres" style="width:100%;margin-bottom:.6rem;padding:10px 12px;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:IBM Plex Sans,sans-serif;outline:none;font-size:13px"><input type="password" id="ak-ww" placeholder="Wachtwoord" style="width:100%;margin-bottom:1rem;padding:10px 12px;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:IBM Plex Sans,sans-serif;outline:none;font-size:13px"></div>'
     +'<button class="btn" id="login-btn" style="width:100%">Inloggen</button>'
-    +'<div id="login-err" style="color:var(--red);font-size:12px;margin-top:.75rem;display:none">Sleutel incorrect of verbindingsfout.</div>'
+    +'<div id="login-err" style="color:var(--red);font-size:12px;margin-top:.75rem;display:none">Inloggegevens onjuist.</div>'
     +'</div></div>';
+  // Login mode wisselen
+  document.getElementById('login-mode').addEventListener('change',function(){
+    var isAdm=this.value==='admin';
+    document.getElementById('admin-fields').style.display=isAdm?'block':'none';
+    document.getElementById('adviseur-fields').style.display=isAdm?'none':'block';
+  });
   document.getElementById('login-btn').addEventListener('click',doLogin);
   document.getElementById('ak').addEventListener('keydown',function(e){if(e.key==='Enter')doLogin();});
+  document.querySelectorAll('#ak-email,#ak-ww').forEach(function(el){el.addEventListener('keydown',function(e){if(e.key==='Enter')doLogin();});});
 }
 
 async function doLogin(){
-  var key=document.getElementById('ak').value.trim();
-  if(!key)return;
   var btn=document.getElementById('login-btn');btn.disabled=true;btn.textContent='Laden...';
+  var err=document.getElementById('login-err');err.style.display='none';
+  var loginMode=document.getElementById('login-mode').value;
   try{
-    var [r1,r2,r3,r4]=await Promise.all([
-      fetch(WORKER+'/admin/scans?key='+encodeURIComponent(key)),
-      fetch(WORKER+'/admin/callbacks?key='+encodeURIComponent(key)),
-      fetch(WORKER+'/mna/admin/lijst?key='+encodeURIComponent(key)),
-      fetch(WORKER+'/admin/rapporten?key='+encodeURIComponent(key))
-    ]);
-    if(!r1.ok)throw new Error('unauthorized');
-    scans=await r1.json();
-    callbacks=await r2.json();
-    mnaList=r3.ok?await r3.json():[];
-    try{var r4data=r4.ok?await r4.json().catch(()=>[]):[];rapporten=Array.isArray(r4data)?r4data:[];}catch(e){rapporten=[];}
-    adminKey=key;
+    if(loginMode==='admin'){
+      // Super-admin login met sleutel
+      var key=document.getElementById('ak').value.trim();
+      if(!key){btn.disabled=false;btn.textContent='Inloggen';return;}
+      var [r1,r2,r3,r4]=await Promise.all([
+        fetch(WORKER+'/admin/scans?key='+encodeURIComponent(key)),
+        fetch(WORKER+'/admin/callbacks?key='+encodeURIComponent(key)),
+        fetch(WORKER+'/mna/admin/lijst?key='+encodeURIComponent(key)),
+        fetch(WORKER+'/admin/rapporten?key='+encodeURIComponent(key))
+      ]);
+      if(!r1.ok)throw new Error('unauthorized');
+      scans=await r1.json();callbacks=await r2.json();
+      mnaList=r3.ok?await r3.json():[];
+      try{var r4data=r4.ok?await r4.json().catch(()=>[]):[];rapporten=Array.isArray(r4data)?r4data:[];}catch(e){rapporten=[];}
+      adminKey=key;isSuperAdmin=true;gebruikerInfo=null;
+    } else {
+      // Adviseur login met e-mail + wachtwoord
+      var email=document.getElementById('ak-email').value.trim();
+      var ww=document.getElementById('ak-ww').value;
+      if(!email||!ww){btn.disabled=false;btn.textContent='Inloggen';return;}
+      var lr=await fetch(WORKER+'/gebruikers/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email,wachtwoord:ww})});
+      var ld=await lr.json();
+      if(!lr.ok||!ld.ok)throw new Error(ld.error||'unauthorized');
+      gebruikerToken=ld.sessie_token;
+      gebruikerInfo={naam:ld.naam,bedrijf:ld.bedrijf,email:ld.email,id:ld.id,plan:ld.plan};
+      isSuperAdmin=false;adminKey='';scans=[];callbacks=[];rapporten=[];
+      // Laad eigen trajecten
+      var mr=await fetch(WORKER+'/mna/admin/lijst',{headers:{'x-gebruiker-token':gebruikerToken}});
+      mnaList=mr.ok?await mr.json():[];
+    }
     document.getElementById('hdr-actions').style.display='flex';
     document.getElementById('btn-refresh').addEventListener('click',refreshData);
     document.getElementById('btn-logout').addEventListener('click',logout);
     renderDashboard();
   }catch(e){
-    document.getElementById('login-err').style.display='block';
+    err.textContent=e.message==='unauthorized'?'Inloggegevens onjuist.':'Verbindingsfout.';
+    err.style.display='block';
     btn.disabled=false;btn.textContent='Inloggen';
   }
 }
 
 function logout(){
   adminKey='';scans=[];callbacks=[];mnaList=[];rapporten=[];
+  gebruikerToken='';gebruikerInfo=null;isSuperAdmin=false;
   document.getElementById('hdr-actions').style.display='none';
   renderLogin();
 }
 
 async function refreshData(){
   try{
-    var [r1,r2,r3,r4]=await Promise.all([
-      fetch(WORKER+'/admin/scans?key='+encodeURIComponent(adminKey)),
-      fetch(WORKER+'/admin/callbacks?key='+encodeURIComponent(adminKey)),
-      fetch(WORKER+'/mna/admin/lijst?key='+encodeURIComponent(adminKey)),
-      fetch(WORKER+'/admin/rapporten?key='+encodeURIComponent(adminKey))
-    ]);
-    scans=await r1.json();
-    callbacks=await r2.json();
-    mnaList=r3.ok?await r3.json():[];
-    try{var r4data=r4.ok?await r4.json().catch(()=>[]):[];rapporten=Array.isArray(r4data)?r4data:[];}catch(e){rapporten=[];}
+    if(isSuperAdmin){
+      var [r1,r2,r3,r4]=await Promise.all([
+        fetch(WORKER+'/admin/scans?key='+encodeURIComponent(adminKey)),
+        fetch(WORKER+'/admin/callbacks?key='+encodeURIComponent(adminKey)),
+        fetch(WORKER+'/mna/admin/lijst?key='+encodeURIComponent(adminKey)),
+        fetch(WORKER+'/admin/rapporten?key='+encodeURIComponent(adminKey))
+      ]);
+      scans=await r1.json();callbacks=await r2.json();
+      mnaList=r3.ok?await r3.json():[];
+      try{var r4data=r4.ok?await r4.json().catch(()=>[]):[];rapporten=Array.isArray(r4data)?r4data:[];}catch(e){rapporten=[];}
+    } else {
+      var mr=await fetch(WORKER+'/mna/admin/lijst',{headers:{'x-gebruiker-token':gebruikerToken}});
+      mnaList=mr.ok?await mr.json():[];
+    }
     renderDashboard();
   }catch(e){toast('Kon niet verversen.','err');}
 }
@@ -181,12 +215,13 @@ function renderDashboard(){
     +'<div class="stat-card"><div class="stat-num">'+recent+'</div><div class="stat-lbl">7 dagen</div></div>'
     +'<div class="stat-card"><div class="stat-num">'+(avg||'—')+'</div><div class="stat-lbl">Gem. score</div></div>'
     +'<div class="stat-card"><div class="stat-num">'+callbacks.length+'</div><div class="stat-lbl">Terugbelverzoeken</div></div>'
+    +(gebruikerInfo?'<div class="stat-card"><div style="font-size:12px;color:var(--muted)">Ingelogd als</div><div style="font-size:14px;font-weight:600;color:var(--head)">'+esc(gebruikerInfo.naam)+'</div><div style="font-size:11px;color:var(--muted)">'+esc(gebruikerInfo.bedrijf||'')+'</div></div>':'')
     +'<div class="stat-card"><div class="stat-num">'+mnaList.length+'</div><div class="stat-lbl">M&A Trajecten</div></div>'
     +'</div>'
     +'<div id="sys-waarschuwingen" style="margin-bottom:1.5rem"></div>'
     +'<div class="tabs">'
-    +'<button class="tab'+(activeTab==='scans'?' active':'')+'" id="t-scans">Scans ('+scans.length+')</button>'
-    +'<button class="tab'+(activeTab==='callbacks'?' active':'')+'" id="t-cb">Terugbelverzoeken ('+callbacks.length+')</button>'
+    +(isSuperAdmin?'<button class="tab'+(activeTab==='scans'?' active':'')+'" id="t-scans">Scans ('+scans.length+')</button>':'')
+    +(isSuperAdmin?'<button class="tab'+(activeTab==='callbacks'?' active':'')+'" id="t-cb">Terugbelverzoeken ('+callbacks.length+')</button>':'')
     +'<button class="tab'+(activeTab==='mna'?' active':'')+'" id="t-mna">M&A Trajecten ('+mnaList.length+')</button>'
     +'<button class="tab'+(activeTab==='docs'?' active':'')+'" id="t-docs">Documenten</button>'
     +'<button class="tab'+(activeTab==='rapporten'?' active':'')+'" id="t-rapp">Scan rapporten ('+rapporten.length+')</button>'
@@ -194,16 +229,17 @@ function renderDashboard(){
     +'<button class="tab'+(activeTab==='waardering'?' active':'')+'" id="t-waardering">&#9654; Waardering</button>'
     
     +'<button class="tab'+(activeTab==='templates'?' active':'')+'" id="t-templates">&#128196; Templates</button>'
+    +(isSuperAdmin?'<button class="tab'+(activeTab==='gebruikers'?' active':'')+'" id="t-geb" style="border-left:2px solid var(--gold)">&#128101; Gebruikers</button>':'')
     +'</div>'
     +'<div id="tc"></div>';
-  document.getElementById('t-scans').addEventListener('click',function(){activeTab='scans';scanFilter='';openRow=null;renderDashboard();});
-  document.getElementById('t-cb').addEventListener('click',function(){activeTab='callbacks';renderDashboard();});
+  if(isSuperAdmin){var ts=document.getElementById('t-scans');if(ts)ts.addEventListener('click',function(){activeTab='scans';scanFilter='';openRow=null;renderDashboard();});var tc2=document.getElementById('t-cb');if(tc2)tc2.addEventListener('click',function(){activeTab='callbacks';renderDashboard();});}
   document.getElementById('t-mna').addEventListener('click',function(){activeTab='mna';renderDashboard();});
   document.getElementById('t-docs').addEventListener('click',function(){activeTab='docs';renderDashboard();});
   document.getElementById('t-rapp').addEventListener('click',function(){activeTab='rapporten';renderDashboard();});
   document.getElementById('t-bench').addEventListener('click',function(){activeTab='benchmarks';renderDashboard();});
   document.getElementById('t-waardering').addEventListener('click',function(){activeTab='waardering';renderDashboard();});
   document.getElementById('t-templates').addEventListener('click',function(){activeTab='templates';renderDashboard();});
+  if(isSuperAdmin){var gtb=document.getElementById('t-geb');if(gtb)gtb.addEventListener('click',function(){activeTab='gebruikers';renderDashboard();});}
   renderTab();
   // Systeem waarschuwingen
   var swDiv=document.getElementById('sys-waarschuwingen');
@@ -229,6 +265,7 @@ function renderTab(){
   else if(activeTab==='benchmarks')renderBenchmarksTab(el);
   else if(activeTab==='waardering')renderWaarderingTab(el);
   else if(activeTab==='templates')renderTemplatesTab(el);
+  else if(activeTab==='gebruikers')renderGebruikersTab(el);
   else renderRapportenTab(el);
 }
 
@@ -1011,7 +1048,8 @@ function renderWaarderingTab(el){
       var res3=bereken();
       var trajectNaam=selectedTraject?(mnaList.find(function(t){return t.id===selectedTraject;})||{}).kantoor_naam||selectedTraject:'(geen traject geselecteerd)';
       var sectorRap={accountancy:'Accountancy & administratie',mkb:'MKB',zorg:'Zorg',itsoftware:'IT & Software'};
-      var sectorRapLabel=sectorRap[traject3.sector]||'MKB';
+      var _t3=selectedTraject?mnaList.find(function(t){return t.id===selectedTraject;})||{}:{};
+      var sectorRapLabel=sectorRap[_t3.sector]||'Accountancy';
       var prompt='Je bent Marcel Bisschops, senior M&A-adviseur. Sector: '+sectorRapLabel+'.\n\n'
         +'Schrijf een professioneel waarderingsrapport voor traject: '+trajectNaam+'\n\n'
         +'FINANCIËLE DATA:\n'
@@ -1048,7 +1086,7 @@ function renderWaarderingTab(el){
       try{
         var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:8000})});
         var rd=await resp.json();
-        var tekst=rd.content&&rd.content[0]?rd.content[0].text:'Fout bij genereren.';
+        var tekst=rd.text||(rd.error?('AI fout: '+rd.error):'Fout bij genereren.');
         tekst=tekst.replace(/^## (.+)$/gm,'<h3 style="font-family:Playfair Display,serif;font-size:1rem;color:var(--head);margin:1.25rem 0 .5rem;border-top:1px solid var(--border);padding-top:1rem">$1</h3>');
         tekst=tekst.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
         tekst=tekst.replace(/\n\n/g,'</p><p style="font-size:13px;color:var(--mid);line-height:1.7;margin-bottom:.75rem">');
@@ -1721,7 +1759,7 @@ async function toonDetail(id,naam){
           btn.disabled=true;btn.textContent='Versturen...';
           try{
             var ar=await fetch(WORKER+'/mna/admin/qa/antwoord/'+qId,{method:'POST',
-              headers:{'Content-Type':'application/json','x-admin-key':adminKey},
+              headers:{'Content-Type':'application/json','x-admin-key':adminKey,'x-gebruiker-token':gebruikerToken},
               body:JSON.stringify({antwoord:inp.value.trim(),beantwoord_door:'Marcel Bisschops'})});
             var ad=await ar.json();
             if(ad.ok){toast('Antwoord verstuurd.','ok');qaBtn.click();}
@@ -2243,7 +2281,7 @@ function toonNieuwModal(){
     var kantoor=vv('m-k');
     var btn=document.getElementById('m-ok');btn.disabled=true;btn.textContent='Aanmaken...';
     try{
-      var r=await fetch(WORKER+'/mna/create',{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':adminKey},
+      var r=await fetch(gebruikerToken?WORKER+'/gebruikers/mna/create':WORKER+'/mna/create',{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':adminKey,'x-gebruiker-token':gebruikerToken||''},
         body:JSON.stringify({
           kantoor_naam:kantoor,
           kantoor_rechtsvorm:vv('m-rv'),
@@ -2612,6 +2650,143 @@ function toonVeldenDebug(trajectId, naam, d) {
   document.getElementById('debug-sluit').addEventListener('click', function() { document.body.removeChild(ov); });
 }
 // ────────────────────────────────────────────────────────────
+
+
+// ── GEBRUIKERS TAB (super-admin) ─────────────────────────────────────────────
+async function renderGebruikersTab(el) {
+  el.innerHTML = '<div style="padding:1rem;color:var(--muted);font-size:13px">Laden...</div>';
+  try {
+    var r = await fetch(WORKER + '/gebruikers/lijst?key=' + encodeURIComponent(adminKey));
+    var lijst = await r.json();
+    var html = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem">'
+      + '<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">'
+      + '&#128101; Adviseurs &amp; gebruikers (' + lijst.length + ')</div>'
+      + '<button class="btn" id="btn-uitnodigen" style="font-size:12px;padding:7px 14px">&#9993; Uitnodigen</button>'
+      + '</div>';
+    if (!lijst.length) {
+      html += '<div style="color:var(--muted);font-size:13px;font-style:italic;padding:1rem 0">Nog geen gebruikers uitgenodigd.</div>';
+    } else {
+      html += '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">'
+        + '<thead><tr>'
+        + '<th style="text-align:left;padding:8px 12px;font-size:11px;color:var(--muted);border-bottom:1px solid var(--border);font-weight:600">Naam</th>'
+        + '<th style="text-align:left;padding:8px 12px;font-size:11px;color:var(--muted);border-bottom:1px solid var(--border);font-weight:600">Bedrijf</th>'
+        + '<th style="text-align:left;padding:8px 12px;font-size:11px;color:var(--muted);border-bottom:1px solid var(--border);font-weight:600">E-mail</th>'
+        + '<th style="text-align:left;padding:8px 12px;font-size:11px;color:var(--muted);border-bottom:1px solid var(--border);font-weight:600">Status</th>'
+        + '<th style="text-align:left;padding:8px 12px;font-size:11px;color:var(--muted);border-bottom:1px solid var(--border);font-weight:600">Trajecten</th>'
+        + '<th style="text-align:left;padding:8px 12px;font-size:11px;color:var(--muted);border-bottom:1px solid var(--border);font-weight:600">Laatste login</th>'
+        + '<th style="padding:8px 12px;border-bottom:1px solid var(--border)"></th>'
+        + '</tr></thead><tbody>';
+      lijst.forEach(function(g) {
+        var statusKleur = g.status==='actief'?'var(--teal)':g.status==='uitgenodigd'?'var(--gold)':'var(--red)';
+        var statusLabel = g.status==='actief'?'✓ Actief':g.status==='uitgenodigd'?'⏳ Uitgenodigd':'✕ Inactief';
+        var llDatum = g.last_login ? new Date(g.last_login).toLocaleDateString('nl-NL') : '—';
+        var aanDatum = new Date(g.created_at).toLocaleDateString('nl-NL');
+        html += '<tr style="border-bottom:1px solid var(--border)">'
+          + '<td style="padding:10px 12px;font-weight:600;color:var(--sub)">' + esc(g.naam) + '</td>'
+          + '<td style="padding:10px 12px;color:var(--mid)">' + esc(g.bedrijf||'—') + '</td>'
+          + '<td style="padding:10px 12px;color:var(--mid);font-family:IBM Plex Mono,monospace;font-size:11px">' + esc(g.email) + '</td>'
+          + '<td style="padding:10px 12px"><span style="font-size:11px;font-weight:600;color:'+statusKleur+'">' + statusLabel + '</span></td>'
+          + '<td style="padding:10px 12px;font-family:IBM Plex Mono,monospace;font-size:12px;color:var(--teal)">' + (g.traject_count||0) + '</td>'
+          + '<td style="padding:10px 12px;font-size:11px;color:var(--muted)">' + llDatum + '</td>'
+          + '<td style="padding:10px 12px;display:flex;gap:6px">'
+          + (g.status==='uitgenodigd'?'<button class="btn-ghost btn-resend" data-id="'+esc(g.id)+'" data-email="'+esc(g.email)+'" data-naam="'+esc(g.naam)+'" style="font-size:10px;padding:3px 8px">&#9993; Opnieuw sturen</button>':'')
+          + (g.status!=='inactief'?'<button class="btn-ghost btn-deact" data-id="'+esc(g.id)+'" style="font-size:10px;padding:3px 8px;color:var(--red)">Deactiveren</button>':'')
+          + '</td>'
+          + '</tr>';
+      });
+      html += '</tbody></table></div>';
+    }
+    el.innerHTML = html;
+
+    // Uitnodigen knop
+    var uitnBtn = document.getElementById('btn-uitnodigen');
+    if (uitnBtn) uitnBtn.addEventListener('click', function() { toonUitnodigenModal(); });
+
+    // Deactiveren knoppen
+    el.querySelectorAll('.btn-deact').forEach(function(btn) {
+      btn.addEventListener('click', async function() {
+        if (!confirm('Gebruiker deactiveren? Ze kunnen dan niet meer inloggen.')) return;
+        btn.disabled = true;
+        var dr = await fetch(WORKER + '/gebruikers/deactiveer/' + btn.dataset.id + '?key=' + encodeURIComponent(adminKey), {method:'POST'});
+        var dd = await dr.json();
+        if (dd.ok) { toast('Gebruiker gedeactiveerd.', 'ok'); renderGebruikersTab(el); }
+        else { toast('Fout: ' + (dd.error||'onbekend'), 'err'); btn.disabled = false; }
+      });
+    });
+
+    // Opnieuw versturen knoppen
+    el.querySelectorAll('.btn-resend').forEach(function(btn) {
+      btn.addEventListener('click', async function() {
+        btn.disabled = true; btn.textContent = 'Versturen...';
+        // Goede aanpak: opnieuw uitnodigen via deactiveer + nieuw uitnodigen
+        var rr = await fetch(WORKER + '/gebruikers/uitnodigen?key=' + encodeURIComponent(adminKey), {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({naam: btn.dataset.naam, email: btn.dataset.email, _resend: btn.dataset.id})
+        });
+        var rd = await rr.json();
+        if (rd.ok) { toast('Uitnodiging opnieuw verstuurd.', 'ok'); }
+        else { toast('Fout: ' + (rd.error||'onbekend'), 'err'); }
+        btn.disabled = false; btn.textContent = '✉ Opnieuw sturen';
+      });
+    });
+  } catch(e) {
+    el.innerHTML = '<div style="color:var(--red);font-size:13px;padding:1rem">Fout bij laden: ' + esc(e.message) + '</div>';
+  }
+}
+
+function toonUitnodigenModal() {
+  var ov = document.createElement('div'); ov.className = 'overlay';
+  var mo = document.createElement('div'); mo.className = 'modal'; mo.style.maxWidth = '480px';
+  mo.innerHTML = '<div class="modal-title">&#9993; Adviseur uitnodigen</div>'
+    + '<div style="font-size:13px;color:var(--mid);margin-bottom:1.25rem;line-height:1.7">De adviseur ontvangt een e-mail met een activatielink. Na activatie kan hij inloggen en eigen trajecten aanmaken.</div>'
+    + '<div class="field"><label>Naam <span style="color:var(--red)">*</span></label><input type="text" id="inv-naam" placeholder="Voornaam achternaam"></div>'
+    + '<div class="field"><label>Bedrijf</label><input type="text" id="inv-bedrijf" placeholder="Naam kantoor of bedrijf"></div>'
+    + '<div class="field"><label>E-mailadres <span style="color:var(--red)">*</span></label><input type="email" id="inv-email" placeholder="adviseur@kantoor.nl"></div>'
+    + '<div id="inv-err" style="color:var(--red);font-size:12px;margin-bottom:.75rem;display:none"></div>'
+    + '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem">'
+    + '<button class="btn-ghost" id="inv-ann">Annuleren</button>'
+    + '<button class="btn" id="inv-ok" style="background:var(--teal)">&#9993; Uitnodiging versturen</button>'
+    + '</div>';
+  ov.appendChild(mo);
+  document.body.appendChild(ov);
+  ov.addEventListener('click', function(e) { if (e.target === ov) document.body.removeChild(ov); });
+  document.getElementById('inv-ann').addEventListener('click', function() { document.body.removeChild(ov); });
+  document.getElementById('inv-ok').addEventListener('click', async function() {
+    var btn = this; btn.disabled = true; btn.textContent = 'Versturen...';
+    var naam = document.getElementById('inv-naam').value.trim();
+    var bedrijf = document.getElementById('inv-bedrijf').value.trim();
+    var email = document.getElementById('inv-email').value.trim();
+    var errDiv = document.getElementById('inv-err');
+    errDiv.style.display = 'none';
+    if (!naam || !email) { errDiv.textContent = 'Naam en e-mail zijn verplicht.'; errDiv.style.display = 'block'; btn.disabled = false; btn.textContent = '✉ Uitnodiging versturen'; return; }
+    try {
+      var r = await fetch(WORKER + '/gebruikers/uitnodigen?key=' + encodeURIComponent(adminKey), {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({naam, bedrijf, email})
+      });
+      var d = await r.json();
+      if (d.ok) {
+        document.body.removeChild(ov);
+        toast('Uitnodiging verstuurd naar ' + email + '.', 'ok');
+        // Refresh gebruikerslijst
+        var tc = document.getElementById('tc');
+        if (tc) renderGebruikersTab(tc);
+      } else {
+        errDiv.textContent = d.error || 'Fout bij versturen.';
+        errDiv.style.display = 'block';
+        btn.disabled = false; btn.textContent = '✉ Uitnodiging versturen';
+      }
+    } catch(e) {
+      errDiv.textContent = 'Verbindingsfout.';
+      errDiv.style.display = 'block';
+      btn.disabled = false; btn.textContent = '✉ Uitnodiging versturen';
+    }
+  });
+  document.getElementById('inv-naam').focus();
+}
+// ─────────────────────────────────────────────────────────────────────────────
 
 
 renderLogin();
