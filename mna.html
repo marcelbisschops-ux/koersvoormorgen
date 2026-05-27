@@ -647,17 +647,39 @@ window.centraalUploadFiles = async function(files) {
   },500);
 };
 
+function cleanGetal(v) {
+  if (!v || v === 'null') return v;
+  var s = String(v).trim();
+  // Nederlandse notatie: 2.847.000 → 2847000, of 24.8 → 24.8
+  // Patroon: als er meerdere punten zijn, zijn het duizendtalscheiders
+  if (/^\d{1,3}(\.\d{3})+$/.test(s)) return s.replace(/\./g, '');
+  // Komma als decimaalscheider: 24,8 → 24.8
+  if (/^\d+,\d+$/.test(s)) return s.replace(',', '.');
+  return s;
+}
+
 function autoFillFromExtraction(faseId, velden, forceOverwrite, docNaam) {
   var currentDocNaam = docNaam || 'onbekend document';
+  var knownFases = ['financieel','commercieel','partner','compliance','it','juridisch','strategisch'];
+
+  // Pre-pass: omzet_per_jaar_YYYY losse velden samenvoegen tot _opy object
+  if (!S._opy) S._opy = {};
+  Object.keys(velden).forEach(function(k) {
+    var m = k.match(/^omzet_per_jaar_(\d{4})$/);
+    if (m) {
+      var jaar = m[1];
+      var val = cleanGetal(velden[k]);
+      if (val && val !== 'null') S._opy[jaar] = val;
+    }
+  });
+
   // Directe keys (fase_id_veld_id formaat van CSV upload) direct in S.data zetten
-  console.log('[autoFill] faseId:', faseId, 'velden keys:', Object.keys(velden).slice(0,10));
   Object.keys(velden).forEach(function(k){
     if(k.includes('_')&&!['omzet_per_jaar','ebitda_pct','omzet_jaarwerk_pct','omzet_advies_pct','omzet_loon_pct','omzet_fiscaal_pct','omzet_overig_pct','kosten_personeel_pct','kosten_huisvesting_pct','kosten_it_pct','kosten_marketing_pct'].includes(k)){
       var parts=k.split('_');
       // Check of het een fase_veld key is (bijv. financieel_omzet1)
-      var knownFases=['financieel','commercieel','partner','compliance','it','juridisch','strategisch'];
       if(knownFases.includes(parts[0])){
-        var val=velden[k];
+        var val=cleanGetal(velden[k]);
         if(val&&val!=='null'&&String(val).trim()!==''){
           if(forceOverwrite||!(S.data[k]||'').trim())S.data[k]=String(val);
         }
@@ -695,7 +717,7 @@ function autoFillFromExtraction(faseId, velden, forceOverwrite, docNaam) {
         if(v&&v!=='null'&&v!==null&&!isNaN(j)&&j>1990&&j<2100)S._opy[String(j)]=v;
       });
     }
-    if(velden.omzet&&velden.omzet!=='null'&&velden.boekjaar&&!isNaN(Number(velden.boekjaar))){
+    if(velden.omzet&&velden.omzet!=='null'&&velden.boekjaar&&!isNaN(Number(velden.boekjaar))){velden.omzet=cleanGetal(velden.omzet);
       var bj=String(Number(velden.boekjaar));
       if(!S._opy[bj])S._opy[bj]=velden.omzet;
     }
@@ -716,15 +738,15 @@ function autoFillFromExtraction(faseId, velden, forceOverwrite, docNaam) {
       var eys=Object.keys(S._epy).map(Number).filter(function(j){return!isNaN(j);}).sort(function(a,b){return b-a;});
       if(eys.length)applyOrConflict('financieel_ebitda',S._epy[String(eys[0])],'EBITDA-marge (%)');
     }
-    if(velden.ohw&&velden.ohw!=='null')applyOrConflict('financieel_wip',velden.ohw,'Onderhanden werk');
-    if(velden.debiteuren&&velden.debiteuren!=='null')applyOrConflict('financieel_debiteuren',velden.debiteuren,'Debiteuren');
-    setIfEmpty('financieel_ebitdaNorm',velden.resultaat);
+    if(velden.ohw&&velden.ohw!=='null')applyOrConflict('financieel_wip',cleanGetal(velden.ohw),'Onderhanden werk');
+    if(velden.debiteuren&&velden.debiteuren!=='null')applyOrConflict('financieel_debiteuren',cleanGetal(velden.debiteuren),'Debiteuren');
+    setIfEmpty('financieel_ebitdaNorm',cleanGetal(velden.resultaat));
     setIfEmpty('financieel_omzetJaarwerk',velden.omzet_jaarwerk_pct);
     setIfEmpty('financieel_omzetAdvies',velden.omzet_advies_pct);
     setIfEmpty('financieel_omzetLoon',velden.omzet_loon_pct);
     setIfEmpty('financieel_omzetFiscaal',velden.omzet_fiscaal_pct);
     setIfEmpty('financieel_omzetOverig',velden.omzet_overig_pct);
-    setIfEmpty('financieel_omzetYTD',velden.omzet_ytd||velden.ytd_omzet||velden.omzet_huidig_jaar);
+    setIfEmpty('financieel_omzetYTD',cleanGetal(velden.omzet_ytd||velden.ytd_omzet||velden.omzet_huidig_jaar));
     setIfEmpty('financieel_debiteurenOud',velden.debiteuren_oud||velden.debiteuren_90_dagen||velden.old_debiteuren_pct);
     setIfEmpty('financieel_declarab',velden.declarabiliteit||velden.declarab_pct);
     setIfEmpty('financieel_partnerBel',velden.partnerbeloning||velden.partner_beloning||velden.beloning_partners);
@@ -1446,7 +1468,17 @@ function renderBegeleiderDashboard(app){
   var vbBtn=document.getElementById('bg-vrijgeven');
   if(vbBtn)vbBtn.onclick=async function(){
     var r=await fetch(WORKER+'/mna/admin/vrijgeven/'+S.traject.id,{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey}}).then(function(x){return x.json();}).catch(function(){return{};});
-    if(r.ok){S.traject.koper_vrijgegeven=1;secAuditLog('koper_vrijgegeven');renderBegeleiderDashboard(app);}else toast('Fout: '+(r.error||'onbekend'),'err');
+    if(r.ok){S.traject.koper_vrijgegeven=1;secAuditLog('koper_vrijgegeven');renderBegeleiderDashboard(app);}
+    else if(r.nda_niet_getekend){
+      // NDA niet getekend — vraag bevestiging
+      var doorgaan=confirm("\u26a0 Let op: de NDA is nog NIET getekend.\n\nKoper krijgt toegang zonder geheimhoudingsovereenkomst. Toch vrijgeven?");
+      if(doorgaan){
+        var r2=await fetch(WORKER+'/mna/admin/vrijgeven/'+S.traject.id+'?force=1',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey}}).then(function(x){return x.json();}).catch(function(){return{};});
+        if(r2.ok){S.traject.koper_vrijgegeven=1;secAuditLog('koper_vrijgegeven_zonder_nda');renderBegeleiderDashboard(app);}
+        else toast('Fout: '+(r2.error||'onbekend'),'err');
+      }
+    }
+    else toast('Fout: '+(r.error||'onbekend'),'err');
   };
   var ibBtn=document.getElementById('bg-intrekken');
   if(ibBtn)ibBtn.onclick=async function(){
@@ -2213,7 +2245,16 @@ function bindAll(){
   if(vb)vb.onclick=async function(){
     var auth=S._bgKey||'';
     var r=await fetch(WORKER+'/mna/admin/vrijgeven/'+S.traject.id,{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':auth}}).then(function(x){return x.json();}).catch(function(){return{};});
-    if(r.ok){S.traject.koper_vrijgegeven=1;renderApp();}else toast('Fout: '+(r.error||'onbekend'),'err');
+    if(r.ok){S.traject.koper_vrijgegeven=1;renderApp();}
+    else if(r.nda_niet_getekend){
+      var doorgaan=confirm("\u26a0 De NDA is nog NIET getekend.\n\nKoper krijgt toegang zonder geheimhoudingsovereenkomst. Toch vrijgeven?");
+      if(doorgaan){
+        var r2=await fetch(WORKER+'/mna/admin/vrijgeven/'+S.traject.id+'?force=1',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':auth}}).then(function(x){return x.json();}).catch(function(){return{};});
+        if(r2.ok){S.traject.koper_vrijgegeven=1;renderApp();}
+        else toast('Fout: '+(r2.error||'onbekend'),'err');
+      }
+    }
+    else toast('Fout: '+(r.error||'onbekend'),'err');
   };
   // Koper reactie knoppen
   if(isKoper()){
