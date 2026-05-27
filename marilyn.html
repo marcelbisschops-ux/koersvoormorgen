@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>KantoorInzicht — Beheer</title>
-<!-- BUILD: 27 May 14:20 · v1.10 -->
+<!-- BUILD: 27 May 15:10 · v1.11 -->
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -87,7 +87,7 @@ tr:hover td{background:rgba(26,122,94,.04)}
     </div>
   </div>
   <div id="app"></div>
-<div id="build-stamp" style="position:fixed;bottom:4px;right:8px;font-size:10px;font-family:monospace;color:#aaa;pointer-events:none;z-index:9999">v1.10 · 27 May 14:20</div>
+<div id="build-stamp" style="position:fixed;bottom:4px;right:8px;font-size:10px;font-family:monospace;color:#aaa;pointer-events:none;z-index:9999">v1.11 · 27 May 15:10</div>
 </div>
 <script>
 
@@ -1214,6 +1214,13 @@ async function toonDetail(id,naam){
     +'<button class="btn" id="btn-nieuw-gesprek" style="font-size:11px;padding:4px 12px;background:var(--teal)">&#43; Gesprek vastleggen</button>'
     +'</div>'
     +'<div id="gesprekken-body" style="font-size:13px;color:var(--muted);font-style:italic">Laden...</div>'
+    +'</div>'
+    +'<div style="margin-top:1.5rem;border-top:2px solid var(--border);padding-top:1.25rem">'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">'
+    +'<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">&#128274; Toegangslog</div>'
+    +'<button class="btn-ghost" id="btn-laad-audit" style="font-size:11px;padding:4px 12px">&#8635; Laden</button>'
+    +'</div>'
+    +'<div id="audit-body" style="font-size:12px;color:var(--muted);font-style:italic">Klik op Laden om de toegangslog te tonen.</div>'
     +'</div>';
   ov.appendChild(mo);document.body.appendChild(ov);
   ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
@@ -1609,6 +1616,45 @@ async function toonDetail(id,naam){
 
   var nieuwGesprekBtn=document.getElementById('btn-nieuw-gesprek');
   if(nieuwGesprekBtn)nieuwGesprekBtn.addEventListener('click',function(){toonGesprekModal(id,null,laadGesprekken);});
+
+  // Toegangslog laden
+  var auditBtn=document.getElementById('btn-laad-audit');
+  if(auditBtn)auditBtn.addEventListener('click',async function(){
+    var auditBody=document.getElementById('audit-body');
+    auditBody.textContent='Laden...';
+    try{
+      var ar=await fetch(WORKER+'/mna/admin/audit/'+id+'?key='+encodeURIComponent(adminKey));
+      var logs=await ar.json();
+      if(!logs.length){auditBody.textContent='Geen activiteit geregistreerd.';return;}
+      var actieLbl={
+        login:'&#128273; Ingelogd',
+        logout:'&#128682; Uitgelogd',
+        document_download:'&#8681; Document gedownload',
+        koper_vrijgegeven:'&#10003; Koper vrijgegeven',
+        koper_toegang_ingetrokken:'&#10005; Koper toegang ingetrokken'
+      };
+      var html='<table style="width:100%;border-collapse:collapse;font-size:11px">'
+        +'<thead><tr>'
+        +'<th style="text-align:left;padding:4px 8px;color:var(--muted);border-bottom:1px solid var(--border);white-space:nowrap">Tijdstip</th>'
+        +'<th style="text-align:left;padding:4px 8px;color:var(--muted);border-bottom:1px solid var(--border)">Rol</th>'
+        +'<th style="text-align:left;padding:4px 8px;color:var(--muted);border-bottom:1px solid var(--border)">Actie</th>'
+        +'<th style="text-align:left;padding:4px 8px;color:var(--muted);border-bottom:1px solid var(--border)">IP</th>'
+        +'</tr></thead><tbody>';
+      logs.forEach(function(l){
+        var dt=new Date(l.ts).toLocaleString('nl-NL',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'});
+        var extra='';
+        if(l.extra){try{var ex=JSON.parse(l.extra);extra=ex.doc_naam?' &mdash; '+esc(ex.doc_naam):'';if(ex.kantoor)extra=' &mdash; '+esc(ex.kantoor);}catch(e){}}
+        html+='<tr>'
+          +'<td style="padding:4px 8px;color:var(--mid);font-family:monospace;white-space:nowrap">'+dt+'</td>'
+          +'<td style="padding:4px 8px;color:var(--muted)">'+esc(l.rol||'—')+'</td>'
+          +'<td style="padding:4px 8px;color:var(--sub)">'+(actieLbl[l.actie]||esc(l.actie||'—'))+extra+'</td>'
+          +'<td style="padding:4px 8px;color:var(--muted);font-family:monospace;font-size:10px">'+esc(l.ip||'—')+'</td>'
+          +'</tr>';
+      });
+      html+='</tbody></table>';
+      auditBody.innerHTML=html;
+    }catch(e){auditBody.textContent='Fout bij laden: '+e.message;}
+  });
 }
 
 // NIEUW TRAJECT
