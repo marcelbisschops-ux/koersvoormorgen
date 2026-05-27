@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KantoorInzicht — Adviseur</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0f0e0c;--card:#1a1815;--card2:#222019;--border:#2e2b27;--border2:#3a3733;
+  --head:#f5f0e8;--sub:#c8bfb0;--mid:#9a9080;--muted:#6a6050;
+  --teal:#2db88a;--teal-bg:rgba(45,184,138,.08);--teal-dark:rgba(45,184,138,.25);--teal-dim:#1a9a6a;
+  --gold:#c9a84c;--gold-bg:rgba(201,168,76,.1);
+  --red:#d64a3a;--red-bg:rgba(214,74,58,.08);
+  --r:6px;--r2:10px;
+}
+body{font-family:'IBM Plex Sans',sans-serif;background:var(--bg);color:var(--sub);min-height:100vh;font-size:14px}
+/* Header */
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:0 2rem;height:54px;border-bottom:1px solid var(--border);background:var(--card)}
+.hdr-brand{font-size:10px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:8px}
+.wdot{width:6px;height:6px;border-radius:50%;background:var(--teal);flex-shrink:0}
+.hdr-right{display:flex;align-items:center;gap:10px}
+.hdr-user{font-size:12px;color:var(--muted)}
+/* Buttons */
+.btn{background:var(--teal);color:#fff;border:none;border-radius:var(--r);font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;padding:8px 18px;cursor:pointer;transition:opacity .15s}
+.btn:hover{opacity:.88}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn-ghost{background:transparent;border:1px solid var(--border2);color:var(--mid);font-family:'IBM Plex Sans',sans-serif;font-size:12px;padding:7px 14px;border-radius:var(--r);cursor:pointer;transition:all .15s}
+.btn-ghost:hover{border-color:var(--mid);color:var(--sub)}
+/* Layout */
+.wrap{max-width:960px;margin:0 auto;padding:2rem}
+/* Login */
+.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:2rem}
+.login-box{background:var(--card);border:1px solid var(--border);border-radius:var(--r2);padding:2.5rem;width:100%;max-width:400px}
+.login-title{font-family:'Playfair Display',serif;font-size:1.4rem;color:var(--head);margin-bottom:.25rem}
+.login-sub{font-size:13px;color:var(--muted);margin-bottom:1.75rem;line-height:1.6}
+.field{margin-bottom:1rem}
+.field label{display:block;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:.4rem}
+.field input,.field select,.field textarea{width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:'IBM Plex Sans',sans-serif;font-size:13px;padding:9px 11px;outline:none;transition:border .15s}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--teal)}
+.field textarea{resize:vertical;min-height:70px}
+/* Cards */
+.stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:2rem}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r2);padding:1rem 1.25rem}
+.stat-num{font-family:'IBM Plex Mono',monospace;font-size:1.6rem;font-weight:500;color:var(--teal);line-height:1;margin-bottom:.25rem}
+.stat-lbl{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+/* Table */
+.tbl-wrap{background:var(--card);border:1px solid var(--border);border-radius:var(--r2);overflow:hidden}
+.tbl-hdr{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.25rem;border-bottom:1px solid var(--border)}
+.tbl-title{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;padding:8px 14px;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border)}
+td{padding:11px 14px;border-bottom:1px solid var(--border);color:var(--sub);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(255,255,255,.02)}
+.badge{display:inline-block;font-size:10px;font-weight:600;padding:2px 8px;border-radius:3px;letter-spacing:.04em;text-transform:uppercase}
+.badge-actief{background:var(--teal-bg);color:var(--teal);border:1px solid var(--teal-dark)}
+.badge-concept{background:var(--gold-bg);color:var(--gold);border:1px solid rgba(201,168,76,.3)}
+/* Modal */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;display:flex;align-items:center;justify-content:center;padding:1.5rem}
+.modal{background:var(--card);border:1px solid var(--border2);border-radius:var(--r2);padding:2rem;width:100%;max-width:560px;max-height:90vh;overflow-y:auto}
+.modal-title{font-family:'Playfair Display',serif;font-size:1.1rem;color:var(--head);margin-bottom:1.25rem}
+/* Toast */
+.toast-container{position:fixed;bottom:1.5rem;right:1.5rem;z-index:999;display:flex;flex-direction:column;gap:8px}
+.toast{display:flex;align-items:flex-start;gap:10px;background:var(--card2);border:1px solid var(--border2);border-radius:var(--r);padding:10px 14px;font-size:13px;color:var(--sub);min-width:220px;max-width:360px;animation:slideIn .2s ease}
+.toast.hide{animation:slideOut .2s ease forwards}
+@keyframes slideIn{from{transform:translateX(20px);opacity:0}to{transform:translateX(0);opacity:1}}
+@keyframes slideOut{to{transform:translateX(20px);opacity:0}}
+/* Sectie */
+.sec-hdr{font-size:10px;font-weight:600;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-bottom:1rem;display:flex;align-items:center;gap:10px}
+.sec-hdr::after{content:'';flex:1;height:1px;background:var(--border)}
+/* Code chips */
+.code-chip{font-family:'IBM Plex Mono',monospace;font-size:12px;background:var(--teal-bg);color:var(--teal);border:1px solid var(--teal-dark);border-radius:3px;padding:2px 8px;letter-spacing:.08em}
+/* Leeg */
+.empty{text-align:center;padding:3rem;color:var(--muted);font-size:13px;font-style:italic}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="toast-container" class="toast-container"></div>
+
+<script>
+const WORKER = 'https://kantoorinzicht.marcel-bisschops.workers.dev';
+
+// ── State ────────────────────────────────────────────────────────────────────
+let G = { token: '', info: null, trajecten: [] };
+
+// ── Utils ────────────────────────────────────────────────────────────────────
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function formatDate(ts){ if(!ts)return '—'; return new Date(ts).toLocaleDateString('nl-NL',{day:'2-digit',month:'short',year:'numeric'}); }
+function toast(msg,type,dur){
+  type=type||'ok'; dur=dur||3500;
+  var c=document.getElementById('toast-container');
+  var t=document.createElement('div'); t.className='toast';
+  var ico=type==='ok'?'✓':type==='err'?'✕':type==='warn'?'⚠':'ℹ';
+  var kleur=type==='ok'?'var(--teal)':type==='err'?'var(--red)':type==='warn'?'var(--gold)':'#5a9fd4';
+  t.innerHTML='<span style="font-size:15px;flex-shrink:0;color:'+kleur+'">'+ico+'</span><span style="flex:1;line-height:1.5">'+esc(msg)+'</span><button onclick="this.parentElement.remove()" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px;padding:0;line-height:1">&times;</button>';
+  c.appendChild(t);
+  setTimeout(function(){t.classList.add('hide');setTimeout(function(){if(t.parentElement)t.parentElement.removeChild(t);},220);},dur);
+}
+function authHeaders(){
+  return {'Content-Type':'application/json','x-gebruiker-token':G.token};
+}
+
+// ── Render ───────────────────────────────────────────────────────────────────
+function render(html){ document.getElementById('app').innerHTML = html; }
+
+// ── LOGIN ────────────────────────────────────────────────────────────────────
+function renderLogin(){
+  render('<div class="login-wrap"><div class="login-box">'
+    +'<div class="login-title">KantoorInzicht M&A</div>'
+    +'<div class="login-sub">Adviseur portaal — log in met uw e-mailadres en wachtwoord.</div>'
+    +'<div class="field"><label>E-mailadres</label><input type="email" id="l-email" placeholder="u@kantoor.nl" autofocus></div>'
+    +'<div class="field"><label>Wachtwoord</label><input type="password" id="l-ww" placeholder="••••••••"></div>'
+    +'<div id="l-err" style="color:var(--red);font-size:12px;margin-bottom:.75rem;display:none"></div>'
+    +'<button class="btn" id="l-btn" style="width:100%">Inloggen</button>'
+    +'<div style="margin-top:1rem;font-size:11px;color:var(--muted);text-align:center">Nog geen account? U ontvangt een uitnodiging van uw beheerder.</div>'
+    +'</div></div>');
+  document.getElementById('l-btn').addEventListener('click', doLogin);
+  document.getElementById('l-ww').addEventListener('keydown', function(e){ if(e.key==='Enter') doLogin(); });
+  document.getElementById('l-email').addEventListener('keydown', function(e){ if(e.key==='Enter') document.getElementById('l-ww').focus(); });
+}
+
+async function doLogin(){
+  var btn=document.getElementById('l-btn'); btn.disabled=true; btn.textContent='Laden...';
+  var err=document.getElementById('l-err'); err.style.display='none';
+  var email=document.getElementById('l-email').value.trim();
+  var ww=document.getElementById('l-ww').value;
+  if(!email||!ww){ err.textContent='Vul e-mail en wachtwoord in.'; err.style.display='block'; btn.disabled=false; btn.textContent='Inloggen'; return; }
+  try{
+    var r=await fetch(WORKER+'/gebruikers/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,wachtwoord:ww})});
+    var d=await r.json();
+    if(!r.ok||!d.ok){ err.textContent=d.error||'Inloggegevens onjuist.'; err.style.display='block'; btn.disabled=false; btn.textContent='Inloggen'; return; }
+    G.token=d.sessie_token;
+    G.info={naam:d.naam,bedrijf:d.bedrijf,email:d.email,id:d.id};
+    sessionStorage.setItem('adv_token',G.token);
+    sessionStorage.setItem('adv_info',JSON.stringify(G.info));
+    await laadTrajecten();
+    renderDashboard();
+  }catch(e){
+    err.textContent='Verbindingsfout. Probeer opnieuw.'; err.style.display='block';
+    btn.disabled=false; btn.textContent='Inloggen';
+  }
+}
+
+async function laadTrajecten(){
+  try{
+    var r=await fetch(WORKER+'/mna/admin/lijst',{headers:authHeaders()});
+    G.trajecten=r.ok?await r.json():[];
+  }catch(e){ G.trajecten=[]; }
+}
+
+// ── DASHBOARD ─────────────────────────────────────────────────────────────────
+function renderDashboard(){
+  var actief=G.trajecten.filter(function(t){return t.status!=='vergrendeld';}).length;
+  render('<div class="hdr">'
+    +'<div class="hdr-brand"><div class="wdot"></div>KantoorInzicht · Adviseur</div>'
+    +'<div class="hdr-right">'
+    +'<span class="hdr-user">'+esc(G.info&&G.info.naam||'')+(G.info&&G.info.bedrijf?' &middot; '+esc(G.info.bedrijf):'')+'</span>'
+    +'<button class="btn-ghost" onclick="uitloggen()">Uitloggen</button>'
+    +'</div></div>'
+    +'<div class="wrap">'
+    +'<div class="stat-row">'
+    +'<div class="stat-card"><div class="stat-num">'+G.trajecten.length+'</div><div class="stat-lbl">Trajecten</div></div>'
+    +'<div class="stat-card"><div class="stat-num">'+actief+'</div><div class="stat-lbl">Actief</div></div>'
+    +'</div>'
+    +'<div class="tbl-wrap">'
+    +'<div class="tbl-hdr"><div class="tbl-title">M&A Trajecten</div>'
+    +'<div style="display:flex;gap:8px">'
+    +'<button class="btn-ghost" onclick="ververs()">&#8635; Verversen</button>'
+    +'<button class="btn" onclick="nieuwTraject()">+ Nieuw traject</button>'
+    +'</div></div>'
+    +renderTrajectTabel()
+    +'</div></div>');
+}
+
+function renderTrajectTabel(){
+  if(!G.trajecten.length) return '<div class="empty">Nog geen trajecten. Klik op "+ Nieuw traject" om te beginnen.</div>';
+  var sectorLabels={accountancy:'Acc.',mkb:'MKB',zorg:'Zorg',itsoftware:'IT/SW'};
+  var html='<table><thead><tr>'
+    +'<th>Kantoor</th><th>Type</th><th>Sector</th><th>Status</th><th>Aangemaakt</th><th></th>'
+    +'</tr></thead><tbody>';
+  G.trajecten.forEach(function(t){
+    var statusKleur=t.status==='actief'?'badge-actief':'badge-concept';
+    html+='<tr>'
+      +'<td style="font-weight:600;color:var(--head)">'+esc(t.kantoor_naam||'—')+'</td>'
+      +'<td style="color:var(--mid)">'+esc(t.traject_type||'—')+'</td>'
+      +'<td style="color:var(--mid)">'+esc(sectorLabels[t.sector]||t.sector||'Acc.')+'</td>'
+      +'<td><span class="badge '+statusKleur+'">'+esc(t.status||'actief')+'</span></td>'
+      +'<td style="font-size:12px;color:var(--muted)">'+formatDate(t.created_at)+'</td>'
+      +'<td style="text-align:right"><button class="btn-ghost" onclick="bekijkTraject(\''+esc(t.id)+'\',\''+esc(t.kantoor_naam||'')+'\')">Bekijk →</button></td>'
+      +'</tr>';
+  });
+  return html+'</tbody></table>';
+}
+
+async function ververs(){
+  await laadTrajecten();
+  renderDashboard();
+  toast('Verversen gedaan.','ok');
+}
+
+function uitloggen(){
+  G={token:'',info:null,trajecten:[]};
+  sessionStorage.removeItem('adv_token');
+  sessionStorage.removeItem('adv_info');
+  renderLogin();
+}
+
+// ── NIEUW TRAJECT ─────────────────────────────────────────────────────────────
+function nieuwTraject(){
+  var ov=document.createElement('div'); ov.className='overlay';
+  var mo=document.createElement('div'); mo.className='modal';
+  mo.innerHTML='<div class="modal-title">Nieuw traject aanmaken</div>'
+    +'<div style="display:flex;gap:12px">'
+    +'<div class="field" style="flex:1"><label>Trajecttype <span style="color:var(--red)">*</span></label>'
+    +'<select id="n-type"><option value="Verkoop">Verkoop</option><option value="Fusie">Fusie</option><option value="Opvolging">Opvolging</option><option value="PE-traject">PE-traject</option><option value="Overname">Overname</option></select></div>'
+    +'<div class="field" style="flex:1"><label>Sector <span style="color:var(--red)">*</span></label>'
+    +'<select id="n-sector"><option value="accountancy">Accountancy</option><option value="mkb">MKB</option><option value="zorg">Zorg</option><option value="itsoftware">IT & Software</option></select></div>'
+    +'</div>'
+    +'<div class="field"><label>Kantoornaam <span style="color:var(--red)">*</span></label><input type="text" id="n-naam" placeholder="Naam van de te verkopen onderneming"></div>'
+    +'<div style="display:flex;gap:12px">'
+    +'<div class="field" style="flex:2"><label>Rechtsvorm</label><select id="n-rv"><option value="">— Kies —</option><option value="BV">B.V.</option><option value="NV">N.V.</option><option value="VOF">V.O.F.</option><option value="Maatschap">Maatschap</option><option value="Eenmanszaak">Eenmanszaak</option></select></div>'
+    +'<div class="field" style="flex:1"><label>KvK-nummer</label><input type="text" id="n-kvk" placeholder="KvK-nr"></div>'
+    +'</div>'
+    +'<div style="display:flex;gap:12px">'
+    +'<div class="field" style="flex:1"><label>Contactpersoon <span style="color:var(--red)">*</span></label><input type="text" id="n-contact" placeholder="Naam contactpersoon"></div>'
+    +'<div class="field" style="flex:1"><label>E-mail contactpersoon <span style="color:var(--red)">*</span></label><input type="email" id="n-email" placeholder="E-mailadres"></div>'
+    +'</div>'
+    +'<div class="field"><label>Adres</label><input type="text" id="n-adres" placeholder="Straat, postcode, plaats"></div>'
+    +'<div style="border-top:1px solid var(--border);margin:.75rem 0;padding-top:.75rem">'
+    +'<div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.75rem">Kopende partij</div>'
+    +'<div style="display:flex;gap:12px">'
+    +'<div class="field" style="flex:2"><label>Naam koper</label><input type="text" id="n-koper-naam" placeholder="Naam kopende partij"></div>'
+    +'<div class="field" style="flex:1"><label>KvK koper</label><input type="text" id="n-koper-kvk" placeholder="KvK-nr"></div>'
+    +'</div>'
+    +'<div style="display:flex;gap:12px">'
+    +'<div class="field" style="flex:1"><label>Contactpersoon koper</label><input type="text" id="n-koper-contact" placeholder="Naam"></div>'
+    +'<div class="field" style="flex:1"><label>E-mail koper</label><input type="email" id="n-koper-email" placeholder="E-mailadres"></div>'
+    +'</div></div>'
+    +'<div class="field"><label>Notitie (intern)</label><textarea id="n-notitie" placeholder="Interne aantekeningen..."></textarea></div>'
+    +'<div id="n-err" style="color:var(--red);font-size:12px;margin-bottom:.75rem;display:none"></div>'
+    +'<div id="n-ok" style="display:none;background:var(--teal-bg);border:1px solid var(--teal-dark);border-radius:var(--r);padding:1rem;margin-bottom:.75rem;font-size:13px"></div>'
+    +'<div style="display:flex;gap:8px;justify-content:flex-end">'
+    +'<button class="btn-ghost" id="n-ann">Annuleren</button>'
+    +'<button class="btn" id="n-ok-btn">Traject aanmaken</button>'
+    +'</div>';
+  ov.appendChild(mo); document.body.appendChild(ov);
+  ov.addEventListener('click',function(e){if(e.target===ov&&!document.getElementById('n-ok').style.display==='block')document.body.removeChild(ov);});
+  document.getElementById('n-ann').addEventListener('click',function(){document.body.removeChild(ov);});
+  document.getElementById('n-ok-btn').addEventListener('click',async function(){
+    var btn=this; btn.disabled=true; btn.textContent='Aanmaken...';
+    var err=document.getElementById('n-err'); err.style.display='none';
+    var naam=document.getElementById('n-naam').value.trim();
+    var contact=document.getElementById('n-contact').value.trim();
+    var email=document.getElementById('n-email').value.trim();
+    if(!naam||!contact||!email){ err.textContent='Kantoornaam, contactpersoon en e-mail zijn verplicht.'; err.style.display='block'; btn.disabled=false; btn.textContent='Traject aanmaken'; return; }
+    try{
+      var r=await fetch(WORKER+'/gebruikers/mna/create',{method:'POST',headers:authHeaders(),body:JSON.stringify({
+        kantoor_naam:naam, kantoor_rechtsvorm:document.getElementById('n-rv').value,
+        contact_naam:contact, contact_email:email,
+        verkoper_adres:document.getElementById('n-adres').value.trim(),
+        verkoper_kvk:document.getElementById('n-kvk').value.trim(),
+        traject_type:document.getElementById('n-type').value,
+        sector:document.getElementById('n-sector').value,
+        notitie:document.getElementById('n-notitie').value.trim(),
+        begeleider_naam:G.info&&G.info.naam||'',
+        begeleider_email:G.info&&G.info.email||'',
+        koper_naam:document.getElementById('n-koper-naam').value.trim(),
+        koper_kvk:document.getElementById('n-koper-kvk').value.trim(),
+        koper_contact:document.getElementById('n-koper-contact').value.trim(),
+        koper_email:document.getElementById('n-koper-email').value.trim()
+      })});
+      var d=await r.json();
+      if(!d.ok){ err.textContent=d.error||'Fout bij aanmaken.'; err.style.display='block'; btn.disabled=false; btn.textContent='Traject aanmaken'; return; }
+      // Toon codes
+      document.getElementById('n-ok').style.display='block';
+      document.getElementById('n-ok').innerHTML='<div style="font-weight:600;color:var(--teal);margin-bottom:.75rem">✓ Traject aangemaakt</div>'
+        +'<div style="display:flex;flex-direction:column;gap:6px;font-size:13px">'
+        +'<div><span style="color:var(--muted);min-width:140px;display:inline-block">Verkoperscode:</span> <span class="code-chip">'+esc(d.code)+'</span></div>'
+        +'<div><span style="color:var(--muted);min-width:140px;display:inline-block">Koperscode:</span> <span class="code-chip" style="background:var(--gold-bg);color:var(--gold);border-color:rgba(201,168,76,.3)">'+esc(d.koper_code)+'</span></div>'
+        +'<div><span style="color:var(--muted);min-width:140px;display:inline-block">Tussenpersoon:</span> <span class="code-chip" style="background:var(--card);color:var(--mid);border-color:var(--border2)">'+esc(d.tussen_code)+'</span></div>'
+        +'</div>'
+        +'<div style="margin-top:.75rem;font-size:12px;color:var(--muted)">Stuur de verkoperscode naar de verkoper, en de koperscode naar de koper. Zij loggen in via <strong style="color:var(--sub)">koersvoormorgen.nl/mna.html</strong>.</div>';
+      document.getElementById('n-ann').textContent='Sluiten';
+      btn.textContent='Aangemaakt ✓';
+      G.trajecten.unshift({id:d.code,kantoor_naam:naam,traject_type:document.getElementById('n-type').value,sector:document.getElementById('n-sector').value,status:'actief',created_at:Date.now()});
+    }catch(e){ err.textContent='Fout: '+e.message; err.style.display='block'; btn.disabled=false; btn.textContent='Traject aanmaken'; }
+  });
+  document.getElementById('n-naam').focus();
+}
+
+// ── TRAJECT DETAIL ────────────────────────────────────────────────────────────
+async function bekijkTraject(id, naam){
+  render('<div class="hdr"><div class="hdr-brand"><div class="wdot"></div>KantoorInzicht</div>'
+    +'<div class="hdr-right"><button class="btn-ghost" onclick="renderDashboard()">← Terug</button></div></div>'
+    +'<div class="wrap"><div style="color:var(--muted);font-size:13px;padding:2rem;text-align:center">Laden...</div></div>');
+  try{
+    var r=await fetch(WORKER+'/gebruikers/mna/detail/'+id,{headers:authHeaders()});
+    var d=await r.json();
+    if(!r.ok){ toast(d.error||'Laden mislukt','err'); renderDashboard(); return; }
+    renderDetail(d);
+  }catch(e){ toast('Verbindingsfout: '+e.message,'err'); renderDashboard(); }
+}
+
+function renderDetail(d){
+  var t=d.traject||{};
+  var dataTotaal=0,dataGevuld=0;
+  (d.data||[]).forEach(function(row){
+    try{var dj=typeof row.data_json==='string'?JSON.parse(row.data_json):row.data_json;
+    Object.values(dj||{}).forEach(function(v){dataTotaal++;if(v&&v.value)dataGevuld++;});}catch(e){}
+  });
+  var pct=dataTotaal>0?Math.round(dataGevuld/dataTotaal*100):0;
+  var sectorLabel={accountancy:'Accountancy',mkb:'MKB',zorg:'Zorg',itsoftware:'IT & Software'}[t.sector]||t.sector||'—';
+
+  render('<div class="hdr">'
+    +'<div class="hdr-brand"><div class="wdot"></div>'+esc(t.kantoor_naam||'Traject')+'</div>'
+    +'<div class="hdr-right">'
+    +'<button class="btn-ghost" onclick="renderDashboard()">← Terug</button>'
+    +'</div></div>'
+    +'<div class="wrap">'
+    // Info blokken
+    +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:2rem">'
+    +'<div class="stat-card"><div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:.3rem">Status</div><div style="font-size:14px;font-weight:600;color:var(--teal)">'+esc(t.status||'actief')+'</div></div>'
+    +'<div class="stat-card"><div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:.3rem">Type</div><div style="font-size:14px;font-weight:600;color:var(--head)">'+esc(t.traject_type||'—')+'</div></div>'
+    +'<div class="stat-card"><div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:.3rem">Sector</div><div style="font-size:14px;font-weight:600;color:var(--head)">'+esc(sectorLabel)+'</div></div>'
+    +'<div class="stat-card"><div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:.3rem">DD-voortgang</div><div style="font-size:14px;font-weight:600;color:'+(pct>=70?'var(--teal)':pct>=40?'var(--gold)':'var(--red)')+'">'+pct+'%</div></div>'
+    +'</div>'
+    // Codes
+    +'<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;margin-bottom:1.5rem">'
+    +'<div class="sec-hdr">Toegangscodes</div>'
+    +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;font-size:13px">'
+    +'<div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Verkoperscode</div><span class="code-chip">'+esc(t.id)+'</span></div>'
+    +'<div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Koperscode</div><span class="code-chip" style="background:var(--gold-bg);color:var(--gold);border-color:rgba(201,168,76,.3)">'+esc(t.koper_code||'—')+'</span></div>'
+    +'<div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Tussenpersoon</div><span class="code-chip" style="background:var(--card);color:var(--mid);border-color:var(--border2)">'+esc(t.tussen_code||'—')+'</span></div>'
+    +'</div></div>'
+    // Partijen
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:1.5rem">'
+    +'<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem">'
+    +'<div class="sec-hdr">Verkoper</div>'
+    +'<div style="font-size:13px;display:flex;flex-direction:column;gap:5px">'
+    +'<div><span style="color:var(--muted)">Naam:</span> '+esc(t.kantoor_naam||'—')+'</div>'
+    +'<div><span style="color:var(--muted)">Contact:</span> '+esc(t.contact_naam||'—')+'</div>'
+    +'<div><span style="color:var(--muted)">E-mail:</span> '+esc(t.contact_email||'—')+'</div>'
+    +'</div></div>'
+    +'<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem">'
+    +'<div class="sec-hdr">Koper</div>'
+    +'<div style="font-size:13px;display:flex;flex-direction:column;gap:5px">'
+    +'<div><span style="color:var(--muted)">Naam:</span> '+esc(t.koper_naam||'—')+'</div>'
+    +'<div><span style="color:var(--muted)">Contact:</span> '+esc(t.koper_contact||'—')+'</div>'
+    +'<div><span style="color:var(--muted)">E-mail:</span> '+esc(t.koper_email||'—')+'</div>'
+    +'<div><span style="color:var(--muted)">NDA:</span> <span style="color:'+(t.nda_getekend?'var(--teal)':'var(--red)')+'">'+( t.nda_getekend?'✓ Getekend':'✕ Nog niet')+'</span></div>'
+    +'<div><span style="color:var(--muted)">Vrijgegeven:</span> <span style="color:'+(t.koper_vrijgegeven?'var(--teal)':'var(--muted)')+'">'+( t.koper_vrijgegeven?'✓ Ja':'Nee')+'</span></div>'
+    +'</div></div></div>'
+    // DD Data samenvatting
+    +renderDDSamenvatting(d.data||[])
+    // Q&A laden knop
+    +'<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;margin-top:1.5rem">'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">'
+    +'<div class="sec-hdr" style="margin-bottom:0">Q&A Register</div>'
+    +'<button class="btn-ghost" id="qa-laden-btn" style="font-size:11px;padding:4px 12px">&#8635; Laden</button>'
+    +'</div>'
+    +'<div id="qa-content" style="font-size:12px;color:var(--muted);font-style:italic">Klik op Laden om de Q&A te tonen.</div>'
+    +'</div>'
+    +'</div>');
+
+  // Q&A laden
+  document.getElementById('qa-laden-btn').addEventListener('click', function(){ laadQA(t.id); });
+}
+
+function renderDDSamenvatting(data){
+  if(!data.length) return '<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;color:var(--muted);font-size:13px;font-style:italic">Nog geen due diligence data ingevuld.</div>';
+  var faseLabels={financieel:'Financieel',commercieel:'Klanten',partner:'Partners',compliance:'Compliance',it:'IT',juridisch:'Juridisch',strategisch:'Strategisch'};
+  var html='<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r2);overflow:hidden">'
+    +'<div style="padding:1rem 1.25rem;border-bottom:1px solid var(--border)"><div class="sec-hdr" style="margin-bottom:0">Due Diligence voortgang</div></div>'
+    +'<div style="padding:1rem 1.25rem;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px">';
+  data.forEach(function(row){
+    try{
+      var dj=typeof row.data_json==='string'?JSON.parse(row.data_json):row.data_json;
+      var gevuld=Object.values(dj||{}).filter(function(v){return v&&v.value;}).length;
+      var totaal=Object.keys(dj||{}).length;
+      var pct=totaal>0?Math.round(gevuld/totaal*100):0;
+      var kleur=pct>=70?'var(--teal)':pct>=40?'var(--gold)':'var(--red)';
+      html+='<div style="display:flex;align-items:center;gap:8px">'
+        +'<div style="font-size:12px;color:var(--mid);min-width:90px">'+esc(faseLabels[row.fase_id]||row.fase_id)+'</div>'
+        +'<div style="flex:1;background:var(--border);border-radius:2px;height:6px;overflow:hidden">'
+        +'<div style="width:'+pct+'%;background:'+kleur+';height:100%;border-radius:2px"></div></div>'
+        +'<div style="font-family:IBM Plex Mono,monospace;font-size:11px;font-weight:600;color:'+kleur+';width:32px;text-align:right">'+pct+'%</div>'
+        +'</div>';
+    }catch(e){}
+  });
+  return html+'</div></div>';
+}
+
+async function laadQA(trajectId){
+  var div=document.getElementById('qa-content');
+  div.innerHTML='<div style="color:var(--muted)">Laden...</div>';
+  try{
+    var r=await fetch(WORKER+'/mna/qa/'+trajectId,{headers:authHeaders()});
+    var lijst=await r.json();
+    if(!lijst.length){ div.innerHTML='<div style="font-style:italic">Nog geen vragen gesteld.</div>'; return; }
+    var html='<div style="display:flex;flex-direction:column;gap:8px">';
+    lijst.forEach(function(q){
+      html+='<div style="border:1px solid var(--border);border-radius:var(--r);overflow:hidden">'
+        +'<div style="display:flex;gap:8px;align-items:flex-start;padding:8px 12px;background:var(--card2)">'
+        +'<span style="font-family:IBM Plex Mono,monospace;font-size:10px;background:var(--gold-bg);color:var(--gold);padding:1px 6px;border-radius:3px;flex-shrink:0">#'+q.vraag_nr+'</span>'
+        +'<span style="font-size:13px;color:var(--sub);flex:1">'+esc(q.vraag)+'</span>'
+        +'<span style="font-size:10px;color:var(--muted)">'+formatDate(q.created_at)+'</span>'
+        +'</div>'
+        +(q.antwoord
+          ?'<div style="padding:8px 12px;background:var(--teal-bg);font-size:12px;color:var(--teal-dim)">✓ <strong>'+esc(q.beantwoord_door||'Adviseur')+':</strong> '+esc(q.antwoord)+'</div>'
+          +'<div id="qa-antw-form-'+q.id+'">'
+          +'<textarea id="qa-inp-'+q.id+'" style="width:100%;background:var(--card);border:none;border-top:1px solid var(--border);padding:8px 12px;font-family:IBM Plex Sans,sans-serif;font-size:12px;color:var(--sub);resize:vertical;min-height:60px;outline:none" placeholder="Antwoord toevoegen..."></textarea>'
+          +'<div style="display:flex;justify-content:flex-end;padding:6px 12px;border-top:1px solid var(--border)">'
+          +'<button class="btn qa-antw-btn" data-id="'+esc(q.id)+'" style="font-size:11px;padding:5px 14px">Antwoord opslaan</button>'
+          +'</div></div>'
+          :'<div style="padding:8px 12px">'
+          +'<textarea id="qa-inp-'+q.id+'" style="width:100%;background:var(--card);border:none;border-top:1px solid var(--border);padding:8px 12px;font-family:IBM Plex Sans,sans-serif;font-size:12px;color:var(--sub);resize:vertical;min-height:60px;outline:none" placeholder="Typ uw antwoord..."></textarea>'
+          +'<div style="display:flex;justify-content:flex-end;padding:6px 12px;border-top:1px solid var(--border)">'
+          +'<button class="btn qa-antw-btn" data-id="'+esc(q.id)+'" style="font-size:11px;padding:5px 14px">Antwoord versturen</button>'
+          +'</div></div>')
+        +'</div>';
+    });
+    div.innerHTML=html+'</div>';
+    div.querySelectorAll('.qa-antw-btn').forEach(function(btn){
+      btn.addEventListener('click',async function(){
+        var qId=btn.dataset.id;
+        var inp=document.getElementById('qa-inp-'+qId);
+        if(!inp||!inp.value.trim()){toast('Antwoord is leeg.','warn');return;}
+        btn.disabled=true; btn.textContent='Versturen...';
+        try{
+          var ar=await fetch(WORKER+'/mna/admin/qa/antwoord/'+qId,{method:'POST',headers:authHeaders(),body:JSON.stringify({antwoord:inp.value.trim(),beantwoord_door:G.info&&G.info.naam||'Adviseur'})});
+          var ad=await ar.json();
+          if(ad.ok){toast('Antwoord verstuurd.','ok');laadQA(trajectId);}
+          else{toast('Fout: '+(ad.error||'onbekend'),'err');btn.disabled=false;btn.textContent='Antwoord versturen';}
+        }catch(e){toast('Fout: '+e.message,'err');btn.disabled=false;btn.textContent='Antwoord versturen';}
+      });
+    });
+  }catch(e){ div.innerHTML='<div style="color:var(--red)">Laden mislukt: '+esc(e.message)+'</div>'; }
+}
+
+// ── Boot ─────────────────────────────────────────────────────────────────────
+(function init(){
+  // Probeer sessie te herstellen
+  var tok=sessionStorage.getItem('adv_token');
+  var inf=sessionStorage.getItem('adv_info');
+  if(tok&&inf){
+    try{
+      G.token=tok;
+      G.info=JSON.parse(inf);
+      laadTrajecten().then(renderDashboard);
+      return;
+    }catch(e){}
+  }
+  renderLogin();
+})();
+</script>
+</body>
+</html>
