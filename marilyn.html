@@ -1195,10 +1195,11 @@ async function toonDetail(id,naam){
   var ov=document.createElement('div');ov.className='overlay';
   var mo=document.createElement('div');mo.className='modal';mo.style.maxWidth='700px';
   mo.innerHTML='<div class="modal-title">'+esc(naam)+' <span class="code-chip" style="font-size:12px">'+esc(id)+'</span></div>'
-    +'<div style="display:flex;gap:8px;margin-bottom:1.25rem;flex-wrap:wrap"><button class="btn" id="det-bem-btn" style="background:#2a5ea0;font-size:12px;padding:7px 14px">&#128203; Bemiddelingsovereenkomst</button><button class="btn" id="det-nda-btn" style="background:#7c5cbf;font-size:12px;padding:7px 14px">&#128274; Genereer NDA</button><button class="btn" id="det-loi-btn" style="background:var(--gold);font-size:12px;padding:7px 14px">&#128196; Genereer LoI</button><button class="btn" id="det-ai-btn" style="background:var(--teal);font-size:12px;padding:7px 14px">&#9881; AI-analyse</button><button class="btn-ghost" id="det-wis-data-btn" style="font-size:12px;padding:7px 14px;color:var(--red);border-color:var(--red)">&#128465; DD-data wissen</button><button class="btn-ghost" id="det-debug-btn" style="font-size:12px;padding:7px 14px">&#128269; Veldendebug</button><div style="flex:1"></div><button class="btn-ghost" id="det-sluit" style="font-size:12px;padding:7px 14px">Sluiten</button></div>'
+    +'<div style="display:flex;gap:8px;margin-bottom:1.25rem;flex-wrap:wrap"><button class="btn" id="det-bem-btn" style="background:#2a5ea0;font-size:12px;padding:7px 14px">&#128203; Bemiddelingsovereenkomst</button><button class="btn" id="det-nda-btn" style="background:#7c5cbf;font-size:12px;padding:7px 14px">&#128274; Genereer NDA</button><button class="btn" id="det-loi-btn" style="background:var(--gold);font-size:12px;padding:7px 14px">&#128196; Genereer LoI</button><button class="btn" id="det-excl-btn" style="background:var(--teal);font-size:12px;padding:7px 14px">&#128196; Exclusiviteitsbrief</button><button class="btn" id="det-ai-btn" style="background:var(--teal);font-size:12px;padding:7px 14px">&#9881; AI-analyse</button><button class="btn-ghost" id="det-wis-data-btn" style="font-size:12px;padding:7px 14px;color:var(--red);border-color:var(--red)">&#128465; DD-data wissen</button><button class="btn-ghost" id="det-debug-btn" style="font-size:12px;padding:7px 14px">&#128269; Veldendebug</button><div style="flex:1"></div><button class="btn-ghost" id="det-sluit" style="font-size:12px;padding:7px 14px">Sluiten</button></div>'
     +'<div id="bem-output" style="display:none;margin-bottom:1.25rem;border-bottom:1px solid var(--border);padding-bottom:1.25rem"></div>'
     +'<div id="nda-output" style="display:none;margin-bottom:1.25rem;border-bottom:1px solid var(--border);padding-bottom:1.25rem"></div>'
     +'<div id="loi-output" style="display:none;margin-bottom:1.25rem;border-bottom:1px solid var(--border);padding-bottom:1.25rem"></div>'
+    +'<div id="excl-output" style="display:none;margin-bottom:1.25rem;border-bottom:1px solid var(--border);padding-bottom:1.25rem"></div>'
     +'<div id="mna-ai-out" style="display:none;margin-bottom:1.25rem;border-bottom:1px solid var(--border);padding-bottom:1.25rem"></div>'
     +'<div id="detail-body" style="color:var(--muted);font-size:13px">Laden...</div>'
     +'<div style="margin-top:1.5rem;border-top:2px solid var(--border);padding-top:1.25rem">'
@@ -1249,6 +1250,7 @@ async function toonDetail(id,naam){
       +'<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:8px 14px;font-size:12px"><span style="color:var(--muted)">Status:</span> <strong>'+esc(d.traject.status||'actief')+'</strong></div>'
       +'<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:8px 14px;font-size:12px"><span style="color:var(--muted)">Voortgang:</span> <strong style="color:var(--teal)">'+filled+'/'+total+'</strong></div>'
       +'<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:8px 14px;font-size:12px"><span style="color:var(--muted)">Koper vrijgegeven:</span> <strong>'+(d.traject.koper_vrijgegeven?'Ja':'Nee')+'</strong></div>'
+      +'<div style="background:'+(d.traject.nda_getekend?'var(--teal-bg)':'var(--red-bg)')+';border:1px solid '+(d.traject.nda_getekend?'var(--teal-dark)':'var(--red)')+';border-radius:var(--r);padding:8px 14px;font-size:12px"><span style="color:var(--muted)">NDA getekend:</span> <strong style="color:'+(d.traject.nda_getekend?'var(--teal)':'var(--red)')+'">'+(d.traject.nda_getekend?'✓ '+esc(d.traject.nda_getekend):'✕ Nog niet getekend')+'</strong></div>'
       +'</div>';
     Object.keys(faseLabels).forEach(function(faseId){
       var row=(d.data||[]).find(function(r){return r.fase_id===faseId;});
@@ -1315,7 +1317,7 @@ async function toonDetail(id,naam){
         bemEditEl2.value=tekst;
         bemEditEl2.dataset.tekst=''; // clear
         document.getElementById('bem-email-btn').dataset.ready='1';
-        document.getElementById('bem-print-btn').addEventListener('click',function(){var bemEl=document.getElementById('bem-edit');var pt=bemEl?bemEl.value:tekst;var win=window.open('','_blank');win.document.write('<html><head><style>body{font-family:Georgia,serif;font-size:13px;line-height:1.9;max-width:700px;margin:2cm auto;color:#2a2825}</style></head><body><p>'+pt.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>')+'</p></body></html>');win.document.close();win.print();});
+        document.getElementById('bem-print-btn').addEventListener('click',function(){var bemEl=document.getElementById('bem-edit');var pt=bemEl?bemEl.value:tekst;var win=window.open('','_blank');win.document.write('<html><head><style>body{font-family:Georgia,serif;font-size:13px;line-height:1.9;max-width:700px;margin:2cm auto;color:#2a2825}@media print{body{margin:1.5cm}}</style></head><body><p>'+pt.replace(/\n/g,'<br>')+'</p></body></html>');win.document.close();win.print();});
         document.getElementById('bem-email-btn').addEventListener('click',async function(){
           var ebtn=this;ebtn.disabled=true;ebtn.textContent='Versturen...';
           var toList=[d.traject.contact_email||'marcel@bisschopsfinancing.nl'];
@@ -1500,6 +1502,53 @@ async function toonDetail(id,naam){
         });
         btn.textContent='Opnieuw genereren';btn.disabled=false;
       }catch(e){loiOut.innerHTML='<div style="color:var(--red);font-size:13px">Fout: '+e.message+'</div>';btn.textContent='Genereer LoI';btn.disabled=false;}
+    });
+
+    // Exclusiviteitsbrief knop
+    document.getElementById('det-excl-btn').addEventListener('click',async function(){
+      var btn=this;btn.disabled=true;btn.textContent='Genereren...';
+      ['bem-output','nda-output','loi-output','mna-ai-out'].forEach(function(eid){var el=document.getElementById(eid);if(el){el.style.display='none';el.innerHTML='';}});
+      var exclOut=document.getElementById('excl-output');
+      exclOut.style.display='block';
+      exclOut.innerHTML='<div style="color:var(--muted);font-size:13px">Exclusiviteitsbrief wordt gegenereerd... (15-30 sec)</div>';
+      try{
+        var datum=new Date().toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'});
+        // Datumvoorstel: start vandaag, einde over 8 weken
+        var startDatum=new Date();
+        var eindDatum=new Date();eindDatum.setDate(eindDatum.getDate()+56);
+        var startStr=startDatum.toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'});
+        var eindStr=eindDatum.toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'});
+        var exclTpl='EXCLUSIVITEITSBRIEF\nArtikel 1 \u2013 Verlening exclusiviteit\nVerkoper verleent aan Koper exclusiviteit voor onderhandelingen inzake een mogelijke Transactie met betrekking tot [Naam Target/Onderneming].\nDe exclusiviteitsperiode loopt van [Startdatum] tot en met [Einddatum].\nArtikel 2 \u2013 Verbod onderhandelingen met derden\nGedurende deze periode zal Verkoper:\ngeen gesprekken voeren met derden over verkoop of participatie;\ngeen informatie verstrekken aan derden (due diligence);\ngeen alternatieve transactiestructuren aangaan of initiëren.\nArtikel 3 \u2013 Schending\nBij schending van de exclusiviteit is Verkoper gehouden tot vergoeding van:\nalle door Koper gemaakte adviseurs- en onderzoekskosten;\naantoonbare directe schade.\nArtikel 4 \u2013 Rechtskeuze\nOp deze overeenkomst is Nederlands recht van toepassing. Geschillen worden voorgelegd aan de Rechtbank Oost-Brabant.\nOndertekening\nPlaats: ____________________ Datum: ____________________\nVerkoper (Verleent exclusiviteit)\nNaam: ____________________\nHandtekening: ____________________\nKoper (Ontvangt exclusiviteit)\nNaam: ____________________\nHandtekening: ____________________\nVoor gezien en begeleiding:\nBisschops Financing B.V.\nNaam: ____________________\nHandtekening: ____________________';
+        var lb=partijLabels(d.traject.traject_type||'Verkoop');
+        var prompt='Vul de volgende Bisschops Financing Exclusiviteitsbrief in. Vervang ALLE [tekst tussen haakjes] door de werkelijke gegevens. Geef alleen het ingevulde document terug, geen toelichting.\n\nBEKENDE GEGEVENS:\n- '+lb.sectie1+' (verleent exclusiviteit): '+esc(d.traject.kantoor_naam||naam)+', '+esc(d.traject.verkoper_adres||'[adres]')+'\n- Contactpersoon '+lb.sectie1.toLowerCase()+': '+esc(d.traject.contact_naam||'[invullen]')+'\n- '+lb.sectie2+' (ontvangt exclusiviteit): '+esc(d.traject.koper_naam||'[invullen]')+', '+esc(d.traject.koper_adres||'[adres]')+'\n- Contactpersoon '+lb.sectie2.toLowerCase()+': '+esc(d.traject.koper_contact||'[invullen]')+'\n- Startdatum exclusiviteit: '+startStr+'\n- Einddatum exclusiviteit: '+eindStr+' (8 weken)\n- Datum: '+datum+'\n- Begeleider: Bisschops Financing B.V., Marcel Bisschops, Grotestraat 13 5841AA Oploo\n\nTEMPLATE:\n'+exclTpl;
+        var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:3000})});
+        var rd=await resp.json();
+        var tekst=rd.text||(rd.error||'Fout bij genereren.');
+        exclOut.innerHTML='<div style="font-size:11px;font-weight:600;color:var(--teal);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.75rem">&#128196; Exclusiviteitsbrief &middot; '+esc(d.traject.kantoor_naam||naam)+'</div>'
+          +'<div style="font-size:11px;color:var(--muted);margin-bottom:.4rem">Exclusiviteitsperiode: '+esc(startStr)+' t/m '+esc(eindStr)+'. Bekijk en bewerk voor verzending:</div>'
+          +'<textarea id="excl-edit" style="width:100%;height:300px;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:Georgia,serif;font-size:12px;line-height:1.8;padding:1rem;outline:none;resize:vertical"></textarea>'
+          +'<div style="display:flex;gap:8px;margin-top:.75rem">'
+          +'<button id="excl-print-btn" class="btn-ghost" style="font-size:12px;padding:6px 14px">&#128196; Print / PDF</button>'
+          +'<button id="excl-email-btn" class="btn" style="font-size:12px;padding:6px 14px;background:var(--teal)">&#9993; Stuur naar partijen</button>'
+          +'</div>';
+        document.getElementById('excl-edit').value=tekst;
+        document.getElementById('excl-print-btn').addEventListener('click',function(){var el=document.getElementById('excl-edit');var pt=el?el.value:tekst;var win=window.open('','_blank');win.document.write('<html><head><style>body{font-family:Georgia,serif;font-size:13px;line-height:1.9;max-width:700px;margin:2cm auto;color:#2a2825}@media print{body{margin:1.5cm}}</style></head><body><p>'+pt.replace(/\n/g,'<br>')+'</p></body></html>');win.document.close();win.print();});
+        document.getElementById('excl-email-btn').addEventListener('click',async function(){
+          var ebtn=this;ebtn.disabled=true;ebtn.textContent='Versturen...';
+          var toList=[d.traject.contact_email||'marcel@bisschopsfinancing.nl'];
+          if(d.traject.begeleider_email&&!toList.includes(d.traject.begeleider_email))toList.push(d.traject.begeleider_email);
+          if(d.traject.koper_email&&!toList.includes(d.traject.koper_email))toList.push(d.traject.koper_email);
+          var exclEditEl=document.getElementById('excl-edit');
+          var exclTekst=exclEditEl?exclEditEl.value:tekst;
+          try{
+            var er=await fetch(WORKER+'/mna/exclusief/email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:id,excl_tekst:exclTekst,to:toList})});
+            var ed=await er.json();
+            if(ed.ok){ebtn.textContent='✓ Verstuurd';setTimeout(function(){ebtn.textContent='✉ Stuur';ebtn.disabled=false;},3000);}
+            else{toast('Fout: '+(ed.error||'onbekend'),'err');ebtn.disabled=false;ebtn.textContent='✉ Stuur naar partijen';}
+          }catch(fe){toast('Verbindingsfout: '+esc(fe.message),'err');ebtn.disabled=false;ebtn.textContent='✉ Stuur naar partijen';}
+        });
+        btn.textContent='Opnieuw genereren';btn.disabled=false;
+      }catch(e){exclOut.innerHTML='<div style="color:var(--red);font-size:13px">Fout: '+e.message+'</div>';btn.textContent='Exclusiviteitsbrief';btn.disabled=false;}
     });
 
     // AI-analyse knop
