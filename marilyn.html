@@ -1195,7 +1195,7 @@ async function toonDetail(id,naam){
   var ov=document.createElement('div');ov.className='overlay';
   var mo=document.createElement('div');mo.className='modal';mo.style.maxWidth='700px';
   mo.innerHTML='<div class="modal-title">'+esc(naam)+' <span class="code-chip" style="font-size:12px">'+esc(id)+'</span></div>'
-    +'<div style="display:flex;gap:8px;margin-bottom:1.25rem;flex-wrap:wrap"><button class="btn" id="det-bem-btn" style="background:#2a5ea0;font-size:12px;padding:7px 14px">&#128203; Bemiddelingsovereenkomst</button><button class="btn" id="det-nda-btn" style="background:#7c5cbf;font-size:12px;padding:7px 14px">&#128274; Genereer NDA</button><button class="btn" id="det-loi-btn" style="background:var(--gold);font-size:12px;padding:7px 14px">&#128196; Genereer LoI</button><button class="btn" id="det-ai-btn" style="background:var(--teal);font-size:12px;padding:7px 14px">&#9881; AI-analyse</button><button class="btn-ghost" id="det-wis-data-btn" style="font-size:12px;padding:7px 14px;color:var(--red);border-color:var(--red)">&#128465; DD-data wissen</button><div style="flex:1"></div><button class="btn-ghost" id="det-sluit" style="font-size:12px;padding:7px 14px">Sluiten</button></div>'
+    +'<div style="display:flex;gap:8px;margin-bottom:1.25rem;flex-wrap:wrap"><button class="btn" id="det-bem-btn" style="background:#2a5ea0;font-size:12px;padding:7px 14px">&#128203; Bemiddelingsovereenkomst</button><button class="btn" id="det-nda-btn" style="background:#7c5cbf;font-size:12px;padding:7px 14px">&#128274; Genereer NDA</button><button class="btn" id="det-loi-btn" style="background:var(--gold);font-size:12px;padding:7px 14px">&#128196; Genereer LoI</button><button class="btn" id="det-ai-btn" style="background:var(--teal);font-size:12px;padding:7px 14px">&#9881; AI-analyse</button><button class="btn-ghost" id="det-wis-data-btn" style="font-size:12px;padding:7px 14px;color:var(--red);border-color:var(--red)">&#128465; DD-data wissen</button><button class="btn-ghost" id="det-debug-btn" style="font-size:12px;padding:7px 14px">&#128269; Veldendebug</button><div style="flex:1"></div><button class="btn-ghost" id="det-sluit" style="font-size:12px;padding:7px 14px">Sluiten</button></div>'
     +'<div id="bem-output" style="display:none;margin-bottom:1.25rem;border-bottom:1px solid var(--border);padding-bottom:1.25rem"></div>'
     +'<div id="nda-output" style="display:none;margin-bottom:1.25rem;border-bottom:1px solid var(--border);padding-bottom:1.25rem"></div>'
     +'<div id="loi-output" style="display:none;margin-bottom:1.25rem;border-bottom:1px solid var(--border);padding-bottom:1.25rem"></div>'
@@ -1228,6 +1228,10 @@ async function toonDetail(id,naam){
   document.getElementById('det-wis-data-btn').addEventListener('click',function(){
     document.body.removeChild(ov);
     wisTrajectData(id, naam);
+  });
+
+  document.getElementById('det-debug-btn').addEventListener('click',function(){
+    toonVeldenDebug(id, naam, d);
   });
 
 
@@ -2303,6 +2307,197 @@ function wisTrajectData(id, naam) {
     toast((ok ? 'Data gewist voor traject ' : 'Data gedeeltelijk gewist voor traject ') + naam, ok ? 'ok' : 'warn');
   });
 }
+
+// ── VELDENDEBUG ─────────────────────────────────────────────
+function toonVeldenDebug(trajectId, naam, d) {
+  // Volledige veld-definitie per fase (spiegelt FASES in mna.html)
+  var FASE_DEF = {
+    financieel: { label: 'I. Financieel', velden: [
+      {id:'omzet1',label:'Jaaromzet jaar 1',req:true},{id:'omzet2',label:'Jaaromzet jaar 2',req:true},
+      {id:'omzet3',label:'Jaaromzet jaar 3',req:true},{id:'omzetYTD',label:'Omzet YTD',req:true},
+      {id:'ebitda',label:'EBITDA-marge (%)',req:true},{id:'ebitdaNorm',label:'Genormaliseerde EBITDA',req:false},
+      {id:'wip',label:'OHW',req:false},{id:'debiteuren',label:'Debiteuren totaal',req:false},
+      {id:'debiteurenOud',label:'Debiteuren >90 dagen (%)',req:false},{id:'declarab',label:'Declarabiliteit (%)',req:false},
+      {id:'partnerBel',label:'Partnerbeloning',req:true},{id:'omzetJaarwerk',label:'Jaarwerk (%)',req:false},
+      {id:'omzetAdvies',label:'Advies (%)',req:false},{id:'omzetLoon',label:'Loon (%)',req:false},
+      {id:'omzetFiscaal',label:'Fiscaal (%)',req:false},{id:'omzetOverig',label:'Overig (%)',req:false},
+      {id:'kostenPersoneel',label:'Personeelskosten (%)',req:false},{id:'kostenHuisvesting',label:'Huisvesting (%)',req:false},
+      {id:'kostenIT',label:'IT-kosten (%)',req:false},{id:'kostenMarketing',label:'Marketing (%)',req:false},
+      {id:'kostenOverig',label:'Overige kosten (%)',req:false}
+    ]},
+    commercieel: { label: 'II. Klanten & commercieel', velden: [
+      {id:'aantalKlanten',label:'Aantal klanten',req:true},{id:'churn',label:'Klantverloop (%)',req:true},
+      {id:'klantduur',label:'Gem. klantduur',req:true},{id:'top1pct',label:'Grootste klant (%)',req:true},
+      {id:'top10pct',label:'Top 10 (%)',req:true},{id:'recurring',label:'Recurring (%)',req:true},
+      {id:'crossSell',label:'Cross-sell (%)',req:false},{id:'nieuw',label:'Nieuwe klanten/jaar',req:false},
+      {id:'verlies',label:'Verloren klanten/jaar',req:false}
+    ]},
+    partner: { label: 'III. Partners & personeel', velden: [
+      {id:'aantalP',label:'Aantal partners',req:true},{id:'gemLeeftijd',label:'Gem. leeftijd partners',req:true},
+      {id:'omzetPerP',label:'Omzet per partner',req:true},{id:'pensioenP',label:'Pensioen <5 jaar',req:true},
+      {id:'fte',label:'Totaal FTE',req:true},{id:'verloop',label:'Personeelsverloop (%)',req:true},
+      {id:'vacatures',label:'Vacatures',req:false},{id:'raAa',label:'RA/AA in opleiding',req:false},
+      {id:'opvolging',label:'Opvolgingskandidaat',req:true},{id:'verandering',label:'Veranderbereidheid',req:true},
+      {id:'pContract',label:'Partnerovereenkomsten',req:true}
+    ]},
+    compliance: { label: 'IV. Compliance & kwaliteit', velden: [
+      {id:'nba',label:'NBA-status',req:true},{id:'afm',label:'AFM-vergunning',req:true},
+      {id:'toetsDatum',label:'Laatste toetsing (jaar)',req:true},{id:'toetsOordeel',label:'Oordeel toetsing',req:true},
+      {id:'tuchtzaken',label:'Tuchtzaken',req:true},{id:'claims',label:'Civiele claims',req:true},
+      {id:'wwft',label:'Wwft-status',req:true},{id:'incidenten',label:'Incidenten <5 jaar',req:true}
+    ]},
+    it: { label: 'V. IT & automatisering', velden: [
+      {id:'software',label:'Primaire software',req:true},{id:'softwareOverig',label:'Overige systemen',req:false},
+      {id:'autoGraad',label:'Automatiseringsgraad',req:true},{id:'ai',label:'AI-tooling',req:true},
+      {id:'itKosten',label:'IT-kosten (%)',req:false},{id:'security',label:'Cybersecurity',req:false},
+      {id:'itRisico',label:'IT-risicos',req:true}
+    ]},
+    juridisch: { label: 'VI. Juridisch & fiscaal', velden: [
+      {id:'rechtsvorm',label:'Rechtsvorm',req:true},{id:'structuur',label:'Aandeelhoudersstructuur',req:true},
+      {id:'huur',label:'Huurcontract looptijd',req:true},{id:'vpb',label:'VPB discussies',req:true},
+      {id:'fiscaalRisico',label:'Fiscale risicos',req:true},{id:'stak',label:'STAK/bijzondere structuur',req:false},
+      {id:'overigeClaims',label:'Claims/garanties',req:true},{id:'lease',label:'Leaseverplichtingen',req:false}
+    ]},
+    strategisch: { label: 'VII. Strategisch & markt', velden: [
+      {id:'marktpos',label:'Marktpositie/regio',req:true},{id:'niche',label:'Niche/specialisme',req:true},
+      {id:'concurrenten',label:'Concurrenten',req:false},{id:'aiImpact',label:'AI-impact',req:true},
+      {id:'cultuurFit',label:'Cultuuromschrijving',req:true},{id:'synergie',label:'Gewenste vervolgstap',req:true},
+      {id:'tijdlijn',label:'Tijdlijn',req:true}
+    ]}
+  };
+
+  // Bouw bron-index: veld_key → bestandsnaam (welk doc vulde dit veld in)
+  var bronIndex = {};
+  (d.documenten || []).forEach(function(doc) {
+    if (!doc.veld_extractie) return;
+    try {
+      var ve = typeof doc.veld_extractie === 'string' ? JSON.parse(doc.veld_extractie) : doc.veld_extractie;
+      // De extractie-keys zijn de raw AI-keys (omzet, fte, etc.)
+      // We slaan het document op als bron voor alle keys die het bevat
+      Object.keys(ve || {}).forEach(function(k) {
+        if (ve[k] !== null && ve[k] !== undefined && String(ve[k]).trim() !== '' && String(ve[k]) !== 'null') {
+          if (!bronIndex[doc.fase_id + '::' + k]) bronIndex[doc.fase_id + '::' + k] = [];
+          bronIndex[doc.fase_id + '::' + k].push(doc.bestand_naam);
+        }
+      });
+    } catch(e) {}
+  });
+
+  // Bouw data-index: fase_id_veld_id → waarde
+  var dataIndex = {};
+  (d.data || []).forEach(function(row) {
+    try {
+      var dj = typeof row.data_json === 'string' ? JSON.parse(row.data_json) : row.data_json;
+      Object.entries(dj || {}).forEach(function(entry) {
+        var vId = entry[0]; var vData = entry[1];
+        if (vData && vData.value) dataIndex[row.fase_id + '_' + vId] = vData.value;
+      });
+    } catch(e) {}
+  });
+
+  // Render modal
+  var ov = document.createElement('div'); ov.className = 'overlay';
+  var mo = document.createElement('div'); mo.className = 'modal';
+  mo.style.maxWidth = '900px';
+  mo.style.fontFamily = 'IBM Plex Sans, sans-serif';
+
+  var totaalVeld = 0, gevuldVeld = 0, leegReq = 0;
+  var html = '<div class="modal-title">&#128269; Veldendebug — ' + esc(naam) + '</div>';
+
+  // Samenvatting
+  Object.keys(FASE_DEF).forEach(function(faseId) {
+    FASE_DEF[faseId].velden.forEach(function(v) {
+      totaalVeld++;
+      if (dataIndex[faseId + '_' + v.id]) gevuldVeld++;
+      else if (v.req) leegReq++;
+    });
+  });
+
+  var pct = Math.round(gevuldVeld / totaalVeld * 100);
+  var pctReq = totaalVeld > 0 ? Math.round((totaalVeld - leegReq) / totaalVeld * 100) : 0;
+
+  html += '<div style="display:flex;gap:10px;margin-bottom:1.25rem;flex-wrap:wrap">'
+    + '<div style="background:var(--teal-bg);border:1px solid var(--teal-dark);border-radius:var(--r);padding:8px 14px;font-size:12px">'
+    + '<span style="color:var(--muted)">Gevuld:</span> <strong style="color:var(--teal)">' + gevuldVeld + '/' + totaalVeld + ' (' + pct + '%)</strong></div>'
+    + '<div style="background:var(--red-bg);border:1px solid var(--red);border-radius:var(--r);padding:8px 14px;font-size:12px">'
+    + '<span style="color:var(--muted)">Leeg verplicht:</span> <strong style="color:var(--red)">' + leegReq + '</strong></div>'
+    + '<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:8px 14px;font-size:12px">'
+    + '<span style="color:var(--muted)">Documenten geanalyseerd:</span> <strong>' + (d.documenten || []).length + '</strong></div>'
+    + '</div>';
+
+  // Legenda
+  html += '<div style="display:flex;gap:16px;margin-bottom:1rem;font-size:11px">'
+    + '<span style="color:var(--teal)">&#10003; Gevuld</span>'
+    + '<span style="color:var(--red)">&#10005; Leeg verplicht</span>'
+    + '<span style="color:var(--muted)">&#8212; Leeg optioneel</span>'
+    + '</div>';
+
+  // Per fase
+  Object.keys(FASE_DEF).forEach(function(faseId) {
+    var fase = FASE_DEF[faseId];
+    var faseFilled = fase.velden.filter(function(v) { return !!dataIndex[faseId + '_' + v.id]; }).length;
+    var faseReq = fase.velden.filter(function(v) { return v.req; }).length;
+    var faseReqFilled = fase.velden.filter(function(v) { return v.req && !!dataIndex[faseId + '_' + v.id]; }).length;
+    var fasePct = faseReq > 0 ? Math.round(faseReqFilled / faseReq * 100) : 100;
+    var faseKleur = fasePct === 100 ? 'var(--teal)' : fasePct >= 50 ? 'var(--gold)' : 'var(--red)';
+
+    // Documenten voor deze fase
+    var faseDocs = (d.documenten || []).filter(function(doc) { return doc.fase_id === faseId; });
+
+    html += '<div style="margin-bottom:1rem;border:1px solid var(--border);border-radius:var(--r2);overflow:hidden">'
+      + '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--card)">'
+      + '<span style="font-size:12px;font-weight:600;color:var(--head)">' + fase.label + '</span>'
+      + '<div style="display:flex;gap:12px;align-items:center">'
+      + (faseDocs.length ? '<span style="font-size:10px;color:var(--muted)">' + faseDocs.map(function(d) { return esc(d.bestand_naam); }).join(', ') + '</span>' : '<span style="font-size:10px;color:var(--red)">Geen documenten</span>')
+      + '<span style="font-family:IBM Plex Mono,monospace;font-size:11px;color:' + faseKleur + '">' + fasePct + '%</span>'
+      + '</div></div>'
+      + '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:0">';
+
+    fase.velden.forEach(function(v) {
+      var key = faseId + '_' + v.id;
+      var waarde = dataIndex[key];
+      var gevuld = !!waarde;
+      var bg = gevuld ? 'var(--teal-bg)' : v.req ? 'var(--red-bg)' : 'transparent';
+      var icoon = gevuld ? '&#10003;' : v.req ? '&#10005;' : '&#8212;';
+      var icoonKleur = gevuld ? 'var(--teal)' : v.req ? 'var(--red)' : 'var(--muted)';
+      var labelKleur = gevuld ? 'var(--sub)' : v.req ? 'var(--red)' : 'var(--muted)';
+
+      // Bron opzoeken
+      var bronnen = bronIndex[faseId + '::' + v.id] || [];
+      // Ook proberen met alternatieven (bijv. 'fte' voor 'partner_fte')
+      if (!bronnen.length) {
+        var altKeys = [v.id, v.id.replace(/([A-Z])/g, '_$1').toLowerCase()];
+        altKeys.forEach(function(ak) {
+          var b2 = bronIndex[faseId + '::' + ak];
+          if (b2 && b2.length) bronnen = bronnen.concat(b2);
+        });
+      }
+      var bronTekst = bronnen.length ? bronnen[bronnen.length-1] : (gevuld ? 'handmatig' : '');
+
+      html += '<div style="padding:6px 10px;border-bottom:1px solid var(--border);border-right:1px solid var(--border);background:' + bg + '">'
+        + '<div style="display:flex;align-items:flex-start;gap:6px">'
+        + '<span style="color:' + icoonKleur + ';font-size:12px;flex-shrink:0;margin-top:1px">' + icoon + '</span>'
+        + '<div style="min-width:0">'
+        + '<div style="font-size:10px;color:' + labelKleur + ';font-weight:' + (v.req ? '600' : '400') + '">' + esc(v.label) + (v.req ? '' : ' <span style="opacity:.5;font-weight:400">(opt)</span>') + '</div>'
+        + (gevuld ? '<div style="font-size:11px;font-family:IBM Plex Mono,monospace;color:var(--teal-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px" title="' + esc(waarde) + '">' + esc(String(waarde).length > 35 ? String(waarde).substring(0, 35) + '…' : waarde) + '</div>' : '')
+        + (bronTekst ? '<div style="font-size:9px;color:var(--muted);margin-top:1px">&#128196; ' + esc(bronTekst) + '</div>' : '')
+        + '</div></div></div>';
+    });
+
+    html += '</div></div>';
+  });
+
+  html += '<div style="display:flex;justify-content:flex-end;margin-top:1rem">'
+    + '<button class="btn-ghost" id="debug-sluit">Sluiten</button></div>';
+
+  mo.innerHTML = html;
+  ov.appendChild(mo);
+  document.body.appendChild(ov);
+  ov.addEventListener('click', function(e) { if (e.target === ov) document.body.removeChild(ov); });
+  document.getElementById('debug-sluit').addEventListener('click', function() { document.body.removeChild(ov); });
+}
+// ────────────────────────────────────────────────────────────
+
 
 renderLogin();
 
