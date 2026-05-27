@@ -121,11 +121,11 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--s
 </head>
 <body>
 <div id="app"></div>
-<div id="build-stamp" style="position:fixed;bottom:4px;right:8px;font-size:10px;font-family:monospace;color:#aaa;pointer-events:none;z-index:9999">27 May 11:35</div>
+<div id="build-stamp" style="position:fixed;bottom:4px;right:8px;font-size:10px;font-family:monospace;color:#aaa;pointer-events:none;z-index:9999">27 May 11:42</div>
 <script>
 var WORKER='https://kantoorinzicht.marcel-bisschops.workers.dev';
 
-function versieLabel(){return '<span style="font-size:10px;font-weight:600;font-family:IBM Plex Mono,monospace;color:var(--muted);margin-left:8px">v'+(window._versie||'27 May 11:35')+'</span>';}
+function versieLabel(){return '<span style="font-size:10px;font-weight:600;font-family:IBM Plex Mono,monospace;color:var(--muted);margin-left:8px">v'+(window._versie||'27 May 11:42')+'</span>';}
 
 // Laad versie bij startup
 fetch(WORKER+'/mna/versie').then(function(r){return r.json();}).then(function(d){
@@ -350,18 +350,21 @@ function userEdit(el){
 }
 
 function saveAll(){
-  // Sla alle fases op die data hebben in S.data
   if(!S.code||S.traject&&S.traject.status==='vergrendeld')return;
   var fasesMetData=FASES.filter(function(f){
     return f.dataFields.some(function(df){return !df.header&&(S.data[f.id+'_'+df.id]||'').trim();});
   });
+  console.log('[SAVEALL] opslaan', fasesMetData.length, 'fases:', fasesMetData.map(function(f){return f.id;}));
   fasesMetData.forEach(function(f){
+    var payload={code:S.code,fase_id:f.id,data_json:getDataForFase(f.id),checklist_json:getChecklistForFase(f.id),notitie:S.notities[f.id]||''};
+    console.log('[SAVEALL]', f.id, Object.keys(payload.data_json).length, 'velden');
     fetch(WORKER+'/mna/save',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({code:S.code,fase_id:f.id,data_json:getDataForFase(f.id),checklist_json:getChecklistForFase(f.id),notitie:S.notities[f.id]||''})
+      body:JSON.stringify(payload)
     }).then(function(r){return r.json();}).then(function(d){
       if(d.error==='vergrendeld')showAlert('Dit traject is vergrendeld.');
-      else showSaveIndicator();
-    }).catch(function(){});
+      else if(d.error){console.error('[SAVEALL] fout bij '+f.id+':', d.error);}
+      else{console.log('[SAVEALL] opgeslagen:', f.id);showSaveIndicator();}
+    }).catch(function(e){console.error('[SAVEALL] netwerkfout bij '+f.id+':', e.message);});
   });
 }
 
@@ -1232,7 +1235,7 @@ function renderLogin(){
     +'<div style="margin-top:1.25rem;font-size:11px;color:var(--muted);padding-top:1rem;border-top:1px solid var(--border)">Code ontvangen via Marcel Bisschops &middot; <a href="mailto:marcel@bisschopsfinancing.nl" style="color:var(--teal)">marcel@bisschopsfinancing.nl</a></div>'
     +'</div></div>'
     +'<div style="position:fixed;bottom:1.25rem;left:1.5rem;right:1.5rem;display:flex;justify-content:space-between;align-items:flex-end;pointer-events:none">'
-    +'<div style="pointer-events:auto"><span id="versie-label" style="font-size:15px;font-weight:700;font-family:IBM Plex Mono,monospace;color:var(--mid)">27 May 11:35</span></div>'
+    +'<div style="pointer-events:auto"><span id="versie-label" style="font-size:15px;font-weight:700;font-family:IBM Plex Mono,monospace;color:var(--mid)">27 May 11:42</span></div>'
     +'<div style="pointer-events:auto;text-align:right"><a href="privacy.html" style="font-size:12px;font-weight:600;color:var(--teal);text-decoration:underline;display:block;margin-bottom:2px">Privacyverklaring</a><span style="font-size:10px;color:var(--muted)">Gegevens vertrouwelijk behandeld conform AVG</span></div>'
     +'</div>'
     +'</div>';
