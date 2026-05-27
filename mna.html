@@ -121,11 +121,11 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--s
 </head>
 <body>
 <div id="app"></div>
-<div id="build-stamp" style="position:fixed;bottom:4px;right:8px;font-size:10px;font-family:monospace;color:#aaa;pointer-events:none;z-index:9999">27 May 10:53</div>
+<div id="build-stamp" style="position:fixed;bottom:4px;right:8px;font-size:10px;font-family:monospace;color:#aaa;pointer-events:none;z-index:9999">27 May 10:56</div>
 <script>
 var WORKER='https://kantoorinzicht.marcel-bisschops.workers.dev';
 
-function versieLabel(){return '<span style="font-size:10px;font-weight:600;font-family:IBM Plex Mono,monospace;color:var(--muted);margin-left:8px">v'+(window._versie||'27 May 10:53')+'</span>';}
+function versieLabel(){return '<span style="font-size:10px;font-weight:600;font-family:IBM Plex Mono,monospace;color:var(--muted);margin-left:8px">v'+(window._versie||'27 May 10:56')+'</span>';}
 
 // Laad versie bij startup
 fetch(WORKER+'/mna/versie').then(function(r){return r.json();}).then(function(d){
@@ -368,15 +368,18 @@ function loadDocsForFase(faseId) {
   fetch(WORKER + '/mna/document/lijst/' + S.code + '/' + faseId)
     .then(function(r){ return r.json(); })
     .then(function(docs){
-      DOCS[faseId] = docs.map(function(d){
-        return {
-          id: d.id, naam: d.bestand_naam, type: d.bestand_type,
-          grootte: d.bestand_grootte, analyse: d.analyse,
-          velden: (function(s){try{var r=JSON.parse(s||'{}');return r&&typeof r==='object'&&!Array.isArray(r)?r:{};}catch(e){return {};}})(d.veld_extractie),
-          uploaded_at: d.uploaded_at||null,
-          bewaard: !!d.bewaard, methode: d.methode, uploading: false
-        };
-      });
+      // Dedupliceer op id — server kan dubbele records hebben
+      var seen={};
+      DOCS[faseId] = docs.filter(function(d){ if(seen[d.id])return false; seen[d.id]=true; return true; })
+        .map(function(d){
+          return {
+            id: d.id, naam: d.bestand_naam, type: d.bestand_type,
+            grootte: d.bestand_grootte, analyse: d.analyse,
+            velden: (function(s){try{var r=JSON.parse(s||'{}');return r&&typeof r==='object'&&!Array.isArray(r)?r:{};}catch(e){return {};}})(d.veld_extractie),
+            uploaded_at: d.uploaded_at||null,
+            bewaard: !!d.bewaard, methode: d.methode, uploading: false
+          };
+        });
       renderApp();
     }).catch(function(){});
 }
@@ -766,6 +769,8 @@ function handleDropUpload(event, faseId) {
 
 function uitloggen(){
   clearTimeout(S.saveTimer);
+  // Sla huidige staat op voor uitloggen
+  if(S.code&&S.screen==='main')saveAll();
   Object.keys(DOCS).forEach(function(k){delete DOCS[k];});
   S={screen:'login',code:'',rol:'',traject:null,fase:0,checked:{},data:{},docRefs:{},notities:{},aiTexts:{},aiLoading:{},saveTimer:null,showValidation:false,dataroomLoading:false,dataroom:null,_opy:{},_epy:{},_conflicts:[],_pendingConflicts:{}};
   renderApp();
@@ -1216,7 +1221,7 @@ function renderLogin(){
     +'<div style="margin-top:1.25rem;font-size:11px;color:var(--muted);padding-top:1rem;border-top:1px solid var(--border)">Code ontvangen via Marcel Bisschops &middot; <a href="mailto:marcel@bisschopsfinancing.nl" style="color:var(--teal)">marcel@bisschopsfinancing.nl</a></div>'
     +'</div></div>'
     +'<div style="position:fixed;bottom:1.25rem;left:1.5rem;right:1.5rem;display:flex;justify-content:space-between;align-items:flex-end;pointer-events:none">'
-    +'<div style="pointer-events:auto"><span id="versie-label" style="font-size:15px;font-weight:700;font-family:IBM Plex Mono,monospace;color:var(--mid)">27 May 10:53</span></div>'
+    +'<div style="pointer-events:auto"><span id="versie-label" style="font-size:15px;font-weight:700;font-family:IBM Plex Mono,monospace;color:var(--mid)">27 May 10:56</span></div>'
     +'<div style="pointer-events:auto;text-align:right"><a href="privacy.html" style="font-size:12px;font-weight:600;color:var(--teal);text-decoration:underline;display:block;margin-bottom:2px">Privacyverklaring</a><span style="font-size:10px;color:var(--muted)">Gegevens vertrouwelijk behandeld conform AVG</span></div>'
     +'</div>'
     +'</div>';
@@ -2014,7 +2019,24 @@ function bindAll(){
   var nextBtn=ge('next-btn');if(nextBtn)nextBtn.onclick=function(){saveCurrent();S.fase++;renderApp();};
   var genBtn=ge('gen-btn');if(genBtn)genBtn.onclick=function(){generateAI(FASES[S.fase].id);};
   document.querySelectorAll('.fase-card[data-fi]').forEach(function(el){el.onclick=function(){
-    saveCurrent();
+    // Sla huidige fase DIRECT op naar server (geen timer) voor navigatie
+    var f=FASES[S.fase];
+    if(f&&S.screen==='main'&&!isKoper()&&!(S.traject&&S.traject.status==='vergrendeld')){
+      f.dataFields.forEach(function(df){
+        if(df.header)return;
+        var domEl=ge('df_'+df.id);
+        var key=f.id+'_'+df.id;
+        if(domEl){
+          if(domEl.value.trim())S._userEdited[key]=true;
+          if(domEl.value.trim()||S._userEdited[key])S.data[key]=domEl.value;
+        }
+      });
+      var nel=ge('notitie_'+f.id);if(nel)S.notities[f.id]=nel.value;
+      clearTimeout(S.saveTimer);
+      fetch(WORKER+'/mna/save',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({code:S.code,fase_id:f.id,data_json:getDataForFase(f.id),checklist_json:getChecklistForFase(f.id),notitie:S.notities[f.id]||''})
+      }).catch(function(){});
+    }
     var newFase=parseInt(el.dataset.fi);
     S.fase=newFase;
     var faseId=FASES[newFase]&&FASES[newFase].id;
