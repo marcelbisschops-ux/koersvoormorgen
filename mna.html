@@ -121,11 +121,11 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--s
 </head>
 <body>
 <div id="app"></div>
-<div id="build-stamp" style="position:fixed;bottom:4px;right:8px;font-size:10px;font-family:monospace;color:#aaa;pointer-events:none;z-index:9999">27 May 11:42</div>
+<div id="build-stamp" style="position:fixed;bottom:4px;right:8px;font-size:10px;font-family:monospace;color:#aaa;pointer-events:none;z-index:9999">27 May 12:04</div>
 <script>
 var WORKER='https://kantoorinzicht.marcel-bisschops.workers.dev';
 
-function versieLabel(){return '<span style="font-size:10px;font-weight:600;font-family:IBM Plex Mono,monospace;color:var(--muted);margin-left:8px">v'+(window._versie||'27 May 11:42')+'</span>';}
+function versieLabel(){return '<span style="font-size:10px;font-weight:600;font-family:IBM Plex Mono,monospace;color:var(--muted);margin-left:8px">v'+(window._versie||'27 May 12:04')+'</span>';}
 
 // Laad versie bij startup
 fetch(WORKER+'/mna/versie').then(function(r){return r.json();}).then(function(d){
@@ -647,29 +647,72 @@ function autoFillFromExtraction(faseId, velden, forceOverwrite, docNaam) {
     setIfEmpty('financieel_omzetLoon',velden.omzet_loon_pct);
     setIfEmpty('financieel_omzetFiscaal',velden.omzet_fiscaal_pct);
     setIfEmpty('financieel_omzetOverig',velden.omzet_overig_pct);
-    setIfEmpty('financieel_kostenPersoneel',velden.kosten_personeel_pct);
-    setIfEmpty('financieel_kostenHuisvesting',velden.kosten_huisvesting_pct);
-    setIfEmpty('financieel_kostenIT',velden.kosten_it_pct);
-    setIfEmpty('financieel_kostenMarketing',velden.kosten_marketing_pct);
+    setIfEmpty('financieel_omzetYTD',velden.omzet_ytd||velden.ytd_omzet||velden.omzet_huidig_jaar);
+    setIfEmpty('financieel_debiteurenOud',velden.debiteuren_oud||velden.debiteuren_90_dagen||velden.old_debiteuren_pct);
+    setIfEmpty('financieel_declarab',velden.declarabiliteit||velden.declarab_pct);
+    setIfEmpty('financieel_partnerBel',velden.partnerbeloning||velden.partner_beloning||velden.beloning_partners);
   }
-  if(faseId==='partner'||velden.fte){
-    if(velden.fte&&velden.fte!=='null')applyOrConflict('partner_fte',velden.fte,'Totaal FTE');
+  if(faseId==='partner'||velden.fte||velden.aantal_partners||velden.personeel_fte){
+    setIfEmpty('partner_fte',velden.fte||velden.personeel_fte);
+    setIfEmpty('partner_aantalP',velden.aantal_partners||velden.partners);
+    setIfEmpty('partner_gemLeeftijd',velden.gem_leeftijd_partners||velden.leeftijd_partners);
+    setIfEmpty('partner_omzetPerP',velden.omzet_per_partner);
+    setIfEmpty('partner_pensioenP',velden.pensioen_partners||velden.partners_pensioen);
+    setIfEmpty('partner_verloop',velden.personeelsverloop||velden.verloop_pct);
+    setIfEmpty('partner_vacatures',velden.vacatures||velden.openstaande_vacatures);
+    setIfEmpty('partner_raAa',velden.ra_aa_opleiding||velden.accountants_opleiding);
+    setIfEmpty('partner_opvolging',velden.opvolgingskandidaat||velden.opvolging);
+    setIfEmpty('partner_verandering',velden.veranderbereidheid||velden.bereidheid_verandering);
+    setIfEmpty('partner_pContract',velden.partnerovereenkomsten||velden.partner_contract);
   }
   if(faseId==='commercieel'||velden.aantal_klanten){
-    if(velden.aantal_klanten&&velden.aantal_klanten!=='null')applyOrConflict('commercieel_aantalKlanten',velden.aantal_klanten,'Aantal klanten');
-    if(velden.recurring&&velden.recurring!=='null')applyOrConflict('commercieel_recurringPct',velden.recurring,'Recurring %');
-    if(velden.churn&&velden.churn!=='null')applyOrConflict('commercieel_churnPct',velden.churn,'Churn %');
-    if(velden.top10_pct&&velden.top10_pct!=='null')applyOrConflict('commercieel_top10Pct',velden.top10_pct,'Top 10 klanten %');
-    if(velden.grootste_klant_pct&&velden.grootste_klant_pct!=='null')applyOrConflict('commercieel_topKlantPct',velden.grootste_klant_pct,'Grootste klant %');
-    if(velden.nps&&velden.nps!=='null')applyOrConflict('commercieel_nps',velden.nps,'NPS');
+    setIfEmpty('commercieel_aantalKlanten',velden.aantal_klanten||velden.actieve_klanten);
+    setIfEmpty('commercieel_churn',velden.churn||velden.klantverloop||velden.churn_pct);
+    setIfEmpty('commercieel_klantduur',velden.klantduur||velden.gem_klantduur||velden.gemiddelde_klantduur);
+    setIfEmpty('commercieel_top1pct',velden.grootste_klant_pct||velden.top1_pct||velden.top_klant_pct);
+    setIfEmpty('commercieel_top10pct',velden.top10_pct||velden.top10_klanten_pct);
+    setIfEmpty('commercieel_recurring',velden.recurring||velden.recurring_pct||velden.abonnements_omzet);
+    setIfEmpty('commercieel_crossSell',velden.cross_sell||velden.crosssell_pct);
+    setIfEmpty('commercieel_nieuw',velden.nieuwe_klanten||velden.klanten_nieuw);
+    setIfEmpty('commercieel_verlies',velden.verloren_klanten||velden.klanten_verlies);
   }
-  if(faseId==='it'||velden.software_primair){
-    if(velden.software_primair&&velden.software_primair!=='null')applyOrConflict('it_softwarePrimair',velden.software_primair,'Primair software');
-    if(velden.automatiseringsgraad&&velden.automatiseringsgraad!=='null')applyOrConflict('it_automPct',velden.automatiseringsgraad,'Automatiseringsgraad');
-    if(velden.cloud_pct&&velden.cloud_pct!=='null')applyOrConflict('it_cloudPct',velden.cloud_pct,'Cloud %');
+  if(faseId==='compliance'||velden.nba_status||velden.kwaliteitstoetsing){
+    setIfEmpty('compliance_nba',velden.nba_status||velden.nba||velden.nba_inschrijving);
+    setIfEmpty('compliance_afm',velden.afm_vergunning||velden.afm||velden.vergunning);
+    setIfEmpty('compliance_toetsDatum',velden.kwaliteitstoetsing_jaar||velden.toetsing_datum||velden.laatste_toetsing);
+    setIfEmpty('compliance_toetsOordeel',velden.kwaliteitstoetsing_oordeel||velden.toetsing_oordeel||velden.oordeel_toetsing);
+    setIfEmpty('compliance_tuchtzaken',velden.tuchtzaken||velden.lopende_tuchtzaken);
+    setIfEmpty('compliance_claims',velden.claims||velden.civiele_claims);
+    setIfEmpty('compliance_wwft',velden.wwft||velden.wwft_procedures||velden.wwft_status);
+    setIfEmpty('compliance_incidenten',velden.integriteitsincidenten||velden.incidenten);
   }
-  if(faseId==='juridisch'||velden.rechtsvorm){
-    if(velden.rechtsvorm&&velden.rechtsvorm!=='null')applyOrConflict('juridisch_rechtsvorm',velden.rechtsvorm,'Rechtsvorm');
+  if(faseId==='it'||velden.software_primair||velden.primaire_software){
+    setIfEmpty('it_software',velden.software_primair||velden.primaire_software||velden.software);
+    setIfEmpty('it_softwareOverig',velden.overige_systemen||velden.software_overig||velden.systemen);
+    setIfEmpty('it_autoGraad',velden.automatiseringsgraad||velden.automgraad||velden.automatisering_pct);
+    setIfEmpty('it_ai',velden.ai_tooling||velden.ai_gebruik||velden.ai_tools);
+    setIfEmpty('it_itKosten',velden.it_kosten||velden.it_kosten_pct||velden.kosten_it_pct);
+    setIfEmpty('it_security',velden.cybersecurity||velden.security_status||velden.beveiliging);
+    setIfEmpty('it_itRisico',velden.it_risicos||velden.bekende_risicos||velden.it_risico);
+  }
+  if(faseId==='juridisch'||velden.rechtsvorm||velden.structuur){
+    setIfEmpty('juridisch_rechtsvorm',velden.rechtsvorm||velden.rechtsvorm_en);
+    setIfEmpty('juridisch_structuur',velden.aandeelhoudersstructuur||velden.structuur||velden.eigendomsstructuur);
+    setIfEmpty('juridisch_huur',velden.huurcontract||velden.huur_looptijd||velden.huurcontract_looptijd);
+    setIfEmpty('juridisch_vpb',velden.vpb_discussies||velden.vpb||velden.belastingdienst_discussies);
+    setIfEmpty('juridisch_fiscaalRisico',velden.fiscale_risicos||velden.fiscaal_risico);
+    setIfEmpty('juridisch_stak',velden.stak||velden.bijzondere_structuur);
+    setIfEmpty('juridisch_overigeClaims',velden.claims||velden.garanties||velden.overige_claims);
+    setIfEmpty('juridisch_lease',velden.leaseverplichtingen||velden.lease||velden.lease_per_jaar);
+  }
+  if(faseId==='strategisch'||velden.marktpositie||velden.niche){
+    setIfEmpty('strategisch_marktpos',velden.marktpositie||velden.marktpos||velden.regio);
+    setIfEmpty('strategisch_niche',velden.niche||velden.specialisme||velden.niche_specialisme);
+    setIfEmpty('strategisch_concurrenten',velden.concurrenten||velden.belangrijkste_concurrenten);
+    setIfEmpty('strategisch_aiImpact',velden.ai_impact||velden.impact_ai||velden.ai_dienstenmix);
+    setIfEmpty('strategisch_cultuurFit',velden.cultuur||velden.cultuuromschrijving||velden.cultuurfit);
+    setIfEmpty('strategisch_synergie',velden.vervolgstap||velden.gewenste_stap||velden.synergie);
+    setIfEmpty('strategisch_tijdlijn',velden.tijdlijn||velden.gewenste_tijdlijn||velden.closing_datum);
   }
 }
 
@@ -1235,7 +1278,7 @@ function renderLogin(){
     +'<div style="margin-top:1.25rem;font-size:11px;color:var(--muted);padding-top:1rem;border-top:1px solid var(--border)">Code ontvangen via Marcel Bisschops &middot; <a href="mailto:marcel@bisschopsfinancing.nl" style="color:var(--teal)">marcel@bisschopsfinancing.nl</a></div>'
     +'</div></div>'
     +'<div style="position:fixed;bottom:1.25rem;left:1.5rem;right:1.5rem;display:flex;justify-content:space-between;align-items:flex-end;pointer-events:none">'
-    +'<div style="pointer-events:auto"><span id="versie-label" style="font-size:15px;font-weight:700;font-family:IBM Plex Mono,monospace;color:var(--mid)">27 May 11:42</span></div>'
+    +'<div style="pointer-events:auto"><span id="versie-label" style="font-size:15px;font-weight:700;font-family:IBM Plex Mono,monospace;color:var(--mid)">27 May 12:04</span></div>'
     +'<div style="pointer-events:auto;text-align:right"><a href="privacy.html" style="font-size:12px;font-weight:600;color:var(--teal);text-decoration:underline;display:block;margin-bottom:2px">Privacyverklaring</a><span style="font-size:10px;color:var(--muted)">Gegevens vertrouwelijk behandeld conform AVG</span></div>'
     +'</div>'
     +'</div>';
@@ -1723,6 +1766,7 @@ function renderMain(){
     +(isVerkoper()?'<button class="btn-ghost btn-sm" id="cover-btn">&#128196; Cover letter</button>':'')
     +(S.fase>0?'<button class="btn-ghost btn-sm" id="prev-btn">&#8592; Vorige</button>':'')
     +'<div style="flex:1"></div>'
+    +(!isKoper()&&!vergrendeld?'<button class="btn-ghost btn-sm" id="opslaan-btn" style="color:var(--teal);border-color:var(--teal)">&#128190; Opslaan</button>':'')
     +'<button class="btn-ghost btn-sm" id="sum-btn">Overzicht</button>'
     +(S.fase<FASES.length-1?'<button class="btn btn-sm" id="next-btn">Volgende &#8594;</button>':'<button class="btn btn-sm" id="sum-btn2">Afronden &#10003;</button>')
     +'</div>';
@@ -2029,6 +2073,14 @@ function bindAll(){
       wAiBtn.textContent='Opnieuw genereren';wAiBtn.disabled=false;
     }catch(e){out.innerHTML='<div style="color:var(--red);font-size:13px">Fout: '+e.message+'</div>';wAiBtn.disabled=false;wAiBtn.textContent='Genereer AI rapport';}
   });
+  var opslaanBtn=ge('opslaan-btn');if(opslaanBtn)opslaanBtn.onclick=function(){
+    saveCurrent(function(){
+      var btn=ge('opslaan-btn');
+      if(btn){btn.textContent='✓ Opgeslagen';btn.style.background='var(--teal)';btn.style.color='#fff';
+        setTimeout(function(){if(ge('opslaan-btn')){btn.textContent='💾 Opslaan';btn.style.background='';btn.style.color='var(--teal)';}},2000);}
+    });
+    saveAll();
+  };
   var coverBtn=ge('cover-btn');if(coverBtn)coverBtn.onclick=function(){saveCurrent();S.screen='cover';renderApp();};
   var backMain=ge('back-main');if(backMain)backMain.onclick=function(){S.screen='main';renderApp();};
   var finaleCheckBtn=ge('finale-check-btn');if(finaleCheckBtn)finaleCheckBtn.onclick=finaleCheck;
