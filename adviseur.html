@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>KantoorInzicht — Adviseur</title>
+<!-- v2 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -102,7 +103,10 @@ function toast(msg,type,dur){
   setTimeout(function(){t.classList.add('hide');setTimeout(function(){if(t.parentElement)t.parentElement.removeChild(t);},220);},dur);
 }
 function authHeaders(){
-  return {'Content-Type':'application/json','x-gebruiker-token':G.token||''};
+  return {'Content-Type':'application/json'};
+}
+function tokenUrl(url){
+  return url + (url.includes('?')?'&':'?') + 'token=' + encodeURIComponent(G.token||'');
 }
 
 // ── Render ───────────────────────────────────────────────────────────────────
@@ -149,7 +153,7 @@ async function doLogin(){
 async function laadTrajecten(){
   try{
     if(!G.token)return;
-    var r=await fetch(WORKER+'/mna/admin/lijst',{headers:authHeaders()});
+    var r=await fetch(tokenUrl(WORKER+'/mna/admin/lijst'));
     if(r.status===401){renderLogin();return;}
     G.trajecten=r.ok?await r.json():[];
   }catch(e){ G.trajecten=[]; }
@@ -261,7 +265,7 @@ function nieuwTraject(){
     var email=document.getElementById('n-email').value.trim();
     if(!naam||!contact||!email){ err.textContent='Kantoornaam, contactpersoon en e-mail zijn verplicht.'; err.style.display='block'; btn.disabled=false; btn.textContent='Traject aanmaken'; return; }
     try{
-      var r=await fetch(WORKER+'/gebruikers/mna/create',{method:'POST',headers:authHeaders(),body:JSON.stringify({
+      var r=await fetch(tokenUrl(WORKER+'/gebruikers/mna/create'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
         kantoor_naam:naam, kantoor_rechtsvorm:document.getElementById('n-rv').value,
         contact_naam:contact, contact_email:email,
         verkoper_adres:document.getElementById('n-adres').value.trim(),
@@ -302,7 +306,7 @@ async function bekijkTraject(id, naam){
     +'<div class="hdr-right"><button class="btn-ghost" onclick="renderDashboard()">← Terug</button></div></div>'
     +'<div class="wrap"><div style="color:var(--muted);font-size:13px;padding:2rem;text-align:center">Laden...</div></div>');
   try{
-    var r=await fetch(WORKER+'/gebruikers/mna/detail/'+id,{headers:authHeaders()});
+    var r=await fetch(tokenUrl(WORKER+'/gebruikers/mna/detail/'+id));
     var d=await r.json();
     if(!r.ok){ toast(d.error||'Laden mislukt','err'); renderDashboard(); return; }
     renderDetail(d);
@@ -402,7 +406,7 @@ async function laadQA(trajectId){
   var div=document.getElementById('qa-content');
   div.innerHTML='<div style="color:var(--muted)">Laden...</div>';
   try{
-    var r=await fetch(WORKER+'/mna/qa/'+trajectId,{headers:authHeaders()});
+    var r=await fetch(tokenUrl(WORKER+'/mna/qa/'+trajectId));
     var lijst=await r.json();
     if(!lijst.length){ div.innerHTML='<div style="font-style:italic">Nog geen vragen gesteld.</div>'; return; }
     var html='<div style="display:flex;flex-direction:column;gap:8px">';
@@ -435,7 +439,7 @@ async function laadQA(trajectId){
         if(!inp||!inp.value.trim()){toast('Antwoord is leeg.','warn');return;}
         btn.disabled=true; btn.textContent='Versturen...';
         try{
-          var ar=await fetch(WORKER+'/mna/admin/qa/antwoord/'+qId,{method:'POST',headers:authHeaders(),body:JSON.stringify({antwoord:inp.value.trim(),beantwoord_door:G.info&&G.info.naam||'Adviseur'})});
+          var ar=await fetch(tokenUrl(WORKER+'/mna/admin/qa/antwoord/'+qId),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({antwoord:inp.value.trim(),beantwoord_door:G.info&&G.info.naam||'Adviseur'})});
           var ad=await ar.json();
           if(ad.ok){toast('Antwoord verstuurd.','ok');laadQA(trajectId);}
           else{toast('Fout: '+(ad.error||'onbekend'),'err');btn.disabled=false;btn.textContent='Antwoord versturen';}
