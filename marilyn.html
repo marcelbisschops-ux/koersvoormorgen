@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>KantoorInzicht — Beheer</title>
+<!-- BUILD: 27 May 10:29 -->
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -343,7 +344,6 @@ function renderMnaTab(el){
     +'<button class="btn-red" id="btn-del-sel-mna" style="font-size:12px;padding:7px 14px;display:none">&#10005; Verwijder geselecteerde (<span id="sel-cnt-mna">0</span>)</button>'
     +'<button class="btn" style="font-size:12px;padding:7px 14px" id="btn-ref-m">&#8635; Verversen</button>'
     +'<button class="btn" style="font-size:12px;padding:7px 14px" id="btn-nieuw">+ Nieuw traject</button>'
-    +'<button class="btn-ghost" style="font-size:12px;padding:7px 14px" id="btn-versie-reset">&#9881; Versie</button>'
     +'</div></div>';
   if(!mnaList.length){
     html+='<div class="empty">Geen trajecten.</div>';
@@ -372,7 +372,6 @@ function renderMnaTab(el){
         +(verg
           ?'<button class="btn-ghost btn-ontv" data-id="'+esc(t.id)+'" style="font-size:11px;padding:3px 8px;color:var(--teal)">&#128275; Ontgrendel</button>'
           :'<button class="btn-ghost btn-verg" data-id="'+esc(t.id)+'" data-naam="'+esc(t.kantoor_naam||t.id)+'" style="font-size:11px;padding:3px 8px;color:var(--gold)">&#128274; Vergrendel</button>')
-        +'<button class="btn-ghost btn-wis-data" data-id="'+esc(t.id)+'" data-naam="'+esc(t.kantoor_naam||t.id)+'" style="font-size:11px;padding:3px 8px;color:var(--red)" title="Wis alle ingevulde DD-data (velden leeg, documenten blijven)">&#128465; Data</button>'
         +'<button class="btn-red btn-del-mna" data-id="'+esc(t.id)+'" data-naam="'+esc(t.kantoor_naam||t.id)+'" style="font-size:11px;padding:3px 8px">&#10005;</button>'
         +'</td></tr>';
     });
@@ -381,20 +380,6 @@ function renderMnaTab(el){
   html+='</div>';
   el.innerHTML=html;
   var rb=document.getElementById('btn-ref-m');if(rb)rb.addEventListener('click',refreshData);
-  var vb=document.getElementById('btn-versie-reset');
-  if(vb)vb.addEventListener('click',async function(){
-    // Toon huidige versie
-    var huidig='';
-    try{var r=await fetch(WORKER+'/mna/versie');var d=await r.json();huidig=d.versie||'1.0';}catch(e){}
-    var nieuw=prompt('Huidig versienummer: v'+huidig+'\n\nVoer nieuw versienummer in (bijv. 1.1 of 2.0):',huidig);
-    if(!nieuw||!nieuw.trim())return;
-    try{
-      var r2=await fetch(WORKER+'/admin/versie-reset',{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':adminKey},body:JSON.stringify({versie:nieuw.trim()})});
-      var d2=await r2.json();
-      if(d2.ok)alert('✓ Versienummer bijgewerkt naar v'+d2.versie);
-      else alert('Fout: '+(d2.error||'onbekend'));
-    }catch(e){alert('Verbindingsfout.');}
-  });
   var bn=document.getElementById('btn-nieuw');if(bn)bn.addEventListener('click',toonNieuwModal);
 
   el.querySelectorAll('.copy-btn').forEach(function(b){
@@ -409,7 +394,6 @@ function renderMnaTab(el){
   el.querySelectorAll('.btn-verg').forEach(function(b){b.addEventListener('click',function(){vergrendel(b.dataset.id,b.dataset.naam);});});
   el.querySelectorAll('.btn-ontv').forEach(function(b){b.addEventListener('click',function(){ontvergrendel(b.dataset.id);});});
   el.querySelectorAll('.btn-del-mna').forEach(function(b){b.addEventListener('click',function(){deleteMna(b.dataset.id,b.dataset.naam);});});
-  el.querySelectorAll('.btn-wis-data').forEach(function(b){b.addEventListener('click',function(){wisData(b.dataset.id,b.dataset.naam);});});
   function updSelMna(){var n=el.querySelectorAll('.mna-cb:checked').length;var btn=document.getElementById('btn-del-sel-mna');var cnt=document.getElementById('sel-cnt-mna');if(btn)btn.style.display=n>0?'inline-block':'none';if(cnt)cnt.textContent=n;}
   var cbAllM=document.getElementById('cb-all-mna');
   if(cbAllM)cbAllM.addEventListener('change',function(){el.querySelectorAll('.mna-cb:not(:disabled)').forEach(function(cb){cb.checked=cbAllM.checked;});updSelMna();});
@@ -1194,16 +1178,6 @@ async function deleteMna(id,naam){
   }catch(e){alert('Verbindingsfout.');}
 }
 
-async function wisData(id,naam){
-  if(!confirm('Alle ingevulde DD-velden van "'+naam+'" wissen?\n\nDocumenten blijven bewaard. Alleen de ingevulde tekstvelden worden geleegd.\n\nDit kan niet ongedaan worden gemaakt.'))return;
-  try{
-    var r=await fetch(WORKER+'/admin/wis-data/'+id+'?key='+encodeURIComponent(adminKey),{method:'POST'});
-    var d=await r.json();
-    if(d.ok){alert('✓ DD-data gewist voor '+naam+'. Documenten zijn bewaard.');refreshData();}
-    else alert('Fout: '+(d.error||'onbekend'));
-  }catch(e){alert('Verbindingsfout.');}
-}
-
 // MNA DETAIL
 async function toonDetail(id,naam){
   var ov=document.createElement('div');ov.className='overlay';
@@ -1314,7 +1288,8 @@ async function toonDetail(id,naam){
         bemEditEl2.value=tekst;
         bemEditEl2.dataset.tekst=''; // clear
         document.getElementById('bem-email-btn').dataset.ready='1';
-        document.getElementById('bem-print-btn').addEventListener('click',function(){var bemEl=document.getElementById('bem-edit');var pt=bemEl?bemEl.value:tekst;var win=window.open('','_blank');win.document.write('<html><head><style>body{font-family:Georgia,serif;font-size:13px;line-height:1.9;max-width:700px;margin:2cm auto;color:#2a2825}</style></head><body><p>'+pt.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>')+'</p></body></html>');win.document.close();win.print();});
+        document.getElementById('bem-print-btn').addEventListener('click',function(){var bemEl=document.getElementById('bem-edit');var pt=bemEl?bemEl.value:tekst;var win=window.open('','_blank');win.document.write('<html><head><style>body{font-family:Georgia,serif;font-size:13px;line-height:1.9;max-width:700px;margin:2cm auto;color:#2a2825}</style></head><body><p>'+pt.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>')+'</p><div style="position:fixed;bottom:6px;right:10px;font-size:9px;color:#ccc;font-family:monospace;pointer-events:none;z-index:9999">27 May 10:29</div>
+</body></html>');win.document.close();win.print();});
         document.getElementById('bem-email-btn').addEventListener('click',async function(){
           var ebtn=this;ebtn.disabled=true;ebtn.textContent='Versturen...';
           var toList=[d.traject.contact_email||'marcel@bisschopsfinancing.nl'];
@@ -1369,7 +1344,8 @@ async function toonDetail(id,naam){
           +'<button id="nda-email-btn" class="btn" style="font-size:12px;padding:6px 14px;background:#7c5cbf">&#9993; Stuur naar partijen</button>'
           +'</div>';
         document.getElementById('nda-edit').value=tekst;
-        document.getElementById('nda-print-btn').addEventListener('click',function(){var ndaEl=document.getElementById('nda-edit');var pt=ndaEl?ndaEl.value:tekst;var win=window.open('','_blank');win.document.write('<html><head><style>body{font-family:Georgia,serif;font-size:13px;line-height:1.9;max-width:700px;margin:2cm auto;color:#2a2825}@media print{body{margin:1.5cm}}</style></head><body><p>'+pt.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>')+'</p></body></html>');win.document.close();win.print();});
+        document.getElementById('nda-print-btn').addEventListener('click',function(){var ndaEl=document.getElementById('nda-edit');var pt=ndaEl?ndaEl.value:tekst;var win=window.open('','_blank');win.document.write('<html><head><style>body{font-family:Georgia,serif;font-size:13px;line-height:1.9;max-width:700px;margin:2cm auto;color:#2a2825}@media print{body{margin:1.5cm}}</style></head><body><p>'+pt.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>')+'</p><div style="position:fixed;bottom:6px;right:10px;font-size:9px;color:#ccc;font-family:monospace;pointer-events:none;z-index:9999">27 May 10:29</div>
+</body></html>');win.document.close();win.print();});
         document.getElementById('nda-email-btn').addEventListener('click',async function(){
           var ebtn=this;ebtn.disabled=true;ebtn.textContent='Versturen...';
           var toList=[d.traject.contact_email||'marcel@bisschopsfinancing.nl'];
@@ -1481,7 +1457,8 @@ async function toonDetail(id,naam){
           +'<textarea id="loi-edit" style="width:100%;height:320px;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:Georgia,serif;font-size:12px;line-height:1.8;padding:1rem;outline:none;resize:vertical"></textarea>'
           +'<div style="display:flex;gap:8px;margin-top:.75rem"><button id="loi-print-btn" class="btn-ghost" style="font-size:12px;padding:6px 14px">&#128196; Print / PDF</button><button id="loi-email-btn" class="btn" style="font-size:12px;padding:6px 14px;background:var(--gold)">&#9993; Stuur naar partijen</button></div>';
         document.getElementById('loi-edit').value=tekst;
-        document.getElementById('loi-print-btn').addEventListener('click',function(){var loiEl=document.getElementById('loi-edit');var pt=loiEl?loiEl.value:tekst;var win=window.open('','_blank');win.document.write('<html><head><style>body{font-family:Georgia,serif;font-size:13px;line-height:1.9;max-width:700px;margin:2cm auto;color:#2a2825}@media print{body{margin:1.5cm}}</style></head><body><p>'+pt.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>')+'</p></body></html>');win.document.close();win.print();});
+        document.getElementById('loi-print-btn').addEventListener('click',function(){var loiEl=document.getElementById('loi-edit');var pt=loiEl?loiEl.value:tekst;var win=window.open('','_blank');win.document.write('<html><head><style>body{font-family:Georgia,serif;font-size:13px;line-height:1.9;max-width:700px;margin:2cm auto;color:#2a2825}@media print{body{margin:1.5cm}}</style></head><body><p>'+pt.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>')+'</p><div style="position:fixed;bottom:6px;right:10px;font-size:9px;color:#ccc;font-family:monospace;pointer-events:none;z-index:9999">27 May 10:29</div>
+</body></html>');win.document.close();win.print();});
         document.getElementById('loi-email-btn').addEventListener('click',async function(){
           var ebtn=this;ebtn.disabled=true;ebtn.textContent='Versturen...';
           var loiEditEl=document.getElementById('loi-edit');
@@ -1571,7 +1548,8 @@ async function toonDetail(id,naam){
             ov2.appendChild(mo2);document.body.appendChild(ov2);
             ov2.addEventListener('click',function(e){if(e.target===ov2)document.body.removeChild(ov2);});
             mo2.querySelector('#v-sluit').addEventListener('click',function(){document.body.removeChild(ov2);});
-            mo2.querySelector('.versie-print').addEventListener('click',function(){var win=window.open('','_blank');win.document.write('<html><head><style>body{font-family:Georgia,serif;font-size:13px;line-height:1.9;max-width:700px;margin:2cm auto;color:#2a2825}</style></head><body><p>'+(vd.tekst||'').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>')+'</p></body></html>');win.document.close();win.print();});
+            mo2.querySelector('.versie-print').addEventListener('click',function(){var win=window.open('','_blank');win.document.write('<html><head><style>body{font-family:Georgia,serif;font-size:13px;line-height:1.9;max-width:700px;margin:2cm auto;color:#2a2825}</style></head><body><p>'+(vd.tekst||'').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>')+'</p><div style="position:fixed;bottom:6px;right:10px;font-size:9px;color:#ccc;font-family:monospace;pointer-events:none;z-index:9999">27 May 10:29</div>
+</body></html>');win.document.close();win.print();});
           });
         });
       }catch(e){vBody.innerHTML='<div style="color:var(--red);font-size:12px">Fout: '+e.message+'</div>';}
@@ -2174,5 +2152,6 @@ async function maakTrajectVanScan(scanId, naam, email){
 renderLogin();
 
 </script>
+<div style="position:fixed;bottom:6px;right:10px;font-size:9px;color:#ccc;font-family:monospace;pointer-events:none;z-index:9999">27 May 10:29</div>
 </body>
 </html>
