@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>KantoorInzicht — Beheer</title>
-<!-- BUILD: 27 May 13:38 -->
+<!-- BUILD: 27 May 14:20 · v1.10 -->
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -69,6 +69,12 @@ tr:hover td{background:rgba(26,122,94,.04)}
 .modal-title{font-family:'Playfair Display',serif;font-size:1.2rem;color:var(--head);font-weight:600;margin-bottom:1.25rem}
 .copy-btn{font-size:10px;padding:1px 6px;border:1px solid var(--border2);border-radius:3px;cursor:pointer;background:transparent;color:var(--muted);margin-left:4px}
 .copy-btn:hover{border-color:var(--mid);color:var(--sub)}
+.toast-container{position:fixed;top:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.toast{background:var(--panel);border:1px solid var(--border2);border-radius:var(--r2);padding:12px 16px;font-size:13px;color:var(--sub);box-shadow:0 4px 20px rgba(0,0,0,.15);display:flex;align-items:flex-start;gap:10px;max-width:340px;pointer-events:auto;animation:toastIn .25s ease forwards;border-left:4px solid var(--teal)}
+.toast.toast-ok{border-left-color:var(--teal)}.toast.toast-err{border-left-color:var(--red)}.toast.toast-warn{border-left-color:var(--gold)}.toast.toast-info{border-left-color:#2a5ea0}
+.toast.hide{animation:toastOut .2s ease forwards}
+@keyframes toastIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+@keyframes toastOut{to{opacity:0;transform:translateX(20px)}}
 </style>
 </head>
 <body>
@@ -81,12 +87,14 @@ tr:hover td{background:rgba(26,122,94,.04)}
     </div>
   </div>
   <div id="app"></div>
-<div id="build-stamp" style="position:fixed;bottom:4px;right:8px;font-size:10px;font-family:monospace;color:#aaa;pointer-events:none;z-index:9999">27 May 13:38</div>
+<div id="build-stamp" style="position:fixed;bottom:4px;right:8px;font-size:10px;font-family:monospace;color:#aaa;pointer-events:none;z-index:9999">v1.10 · 27 May 14:20</div>
 </div>
 <script>
 
 const WORKER='https://kantoorinzicht.marcel-bisschops.workers.dev';
 let adminKey='',scans=[],callbacks=[],mnaList=[],rapporten=[],activeTab='scans',scanFilter='',openRow=null;
+
+function toast(msg,type,dur){type=type||'ok';dur=dur||3500;var c=document.getElementById('toast-container');if(!c){c=document.createElement('div');c.id='toast-container';c.className='toast-container';document.body.appendChild(c);}var t=document.createElement('div');t.className='toast toast-'+type;var ico=type==='ok'?'✓':type==='err'?'✕':type==='warn'?'⚠':'ℹ';t.innerHTML='<span style="font-size:15px;flex-shrink:0;color:'+(type==='ok'?'var(--teal)':type==='err'?'var(--red)':type==='warn'?'var(--gold)':'#2a5ea0')+'">'+ico+'</span><span style="flex:1;line-height:1.5">'+String(msg).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</span><button onclick="this.parentElement.remove()" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px;padding:0;line-height:1;flex-shrink:0">&times;</button>';c.appendChild(t);setTimeout(function(){t.classList.add('hide');setTimeout(function(){if(t.parentElement)t.parentElement.removeChild(t);},220);},dur);return t;}
 
 function dc(v){return v>=70?'score-high':v>=50?'score-mid':'score-low';}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
@@ -160,7 +168,7 @@ async function refreshData(){
     mnaList=r3.ok?await r3.json():[];
     try{var r4data=r4.ok?await r4.json().catch(()=>[]):[];rapporten=Array.isArray(r4data)?r4data:[];}catch(e){rapporten=[];}
     renderDashboard();
-  }catch(e){alert('Kon niet verversen.');}
+  }catch(e){toast('Kon niet verversen.','err');}
 }
 
 // DASHBOARD
@@ -373,7 +381,8 @@ function renderMnaTab(el){
         +(verg
           ?'<button class="btn-ghost btn-ontv" data-id="'+esc(t.id)+'" style="font-size:11px;padding:3px 8px;color:var(--teal)">&#128275; Ontgrendel</button>'
           :'<button class="btn-ghost btn-verg" data-id="'+esc(t.id)+'" data-naam="'+esc(t.kantoor_naam||t.id)+'" style="font-size:11px;padding:3px 8px;color:var(--gold)">&#128274; Vergrendel</button>')
-        +'<button class="btn-red btn-del-mna" data-id="'+esc(t.id)+'" data-naam="'+esc(t.kantoor_naam||t.id)+'" style="font-size:13px;padding:3px 8px;color:var(--red)" title="Traject verwijderen">&#128465;</button>'
+        +'<button class="btn-ghost btn-wis-data" data-id="'+esc(t.id)+'" data-naam="'+esc(t.kantoor_naam||t.id)+'" style="font-size:11px;padding:3px 8px;color:var(--red);border-color:var(--red)" title="Data wissen (traject blijft)">&#129529; Wis data</button>'
+        +'<button class="btn-red btn-del-mna" data-id="'+esc(t.id)+'" data-naam="'+esc(t.kantoor_naam||t.id)+'" style="font-size:13px;padding:3px 8px;color:var(--red)" title="Traject permanent verwijderen">&#128465;</button>'
         +'</td></tr>';
     });
     html+='</tbody></table>';
@@ -385,7 +394,7 @@ function renderMnaTab(el){
 
   el.querySelectorAll('.copy-btn').forEach(function(b){
     b.addEventListener('click',function(){
-      navigator.clipboard.writeText(b.dataset.copy).then(function(){var o=b.textContent;b.textContent='✓';setTimeout(function(){b.textContent=o;},1500);}).catch(function(){alert(b.dataset.copy);});
+      navigator.clipboard.writeText(b.dataset.copy).then(function(){var o=b.textContent;b.textContent='✓';setTimeout(function(){b.textContent=o;},1500);}).catch(function(){toast('Kopieer handmatig: '+b.dataset.copy,'info',6000);});;
     });
   });
   el.querySelectorAll('.btn-detail').forEach(function(b){b.addEventListener('click',function(){toonDetail(b.dataset.id,b.dataset.naam);});});
@@ -395,6 +404,7 @@ function renderMnaTab(el){
   el.querySelectorAll('.btn-verg').forEach(function(b){b.addEventListener('click',function(){vergrendel(b.dataset.id,b.dataset.naam);});});
   el.querySelectorAll('.btn-ontv').forEach(function(b){b.addEventListener('click',function(){ontvergrendel(b.dataset.id);});});
   el.querySelectorAll('.btn-del-mna').forEach(function(b){b.addEventListener('click',function(){deleteMna(b.dataset.id,b.dataset.naam);});});
+  el.querySelectorAll('.btn-wis-data').forEach(function(b){b.addEventListener('click',function(){wisTrajectData(b.dataset.id,b.dataset.naam);});});
   function updSelMna(){var n=el.querySelectorAll('.mna-cb:checked').length;var btn=document.getElementById('btn-del-sel-mna');var cnt=document.getElementById('sel-cnt-mna');if(btn)btn.style.display=n>0?'inline-block':'none';if(cnt)cnt.textContent=n;}
   var cbAllM=document.getElementById('cb-all-mna');
   if(cbAllM)cbAllM.addEventListener('change',function(){el.querySelectorAll('.mna-cb:not(:disabled)').forEach(function(cb){cb.checked=cbAllM.checked;});updSelMna();});
@@ -422,7 +432,8 @@ async function renderDocsTab(el){
 
   function updateSelCount(){var checked=document.querySelectorAll('.doc-cb:checked').length;var btn=document.getElementById('btn-del-selected');var cnt=document.getElementById('sel-count');if(btn){btn.style.display=checked>0?'inline-block':'none';}if(cnt)cnt.textContent=checked;}
 
-  document.getElementById('btn-del-selected').addEventListener('click',async function(){var ids=Array.from(document.querySelectorAll('.doc-cb:checked')).map(function(cb){return cb.dataset.id;});if(!ids.length)return;if(!confirm('Verwijder '+ids.length+' geselecteerde document(en)?'))return;var btn=this;btn.disabled=true;btn.textContent='Verwijderen...';var ok=0,fail=0;for(var i=0;i<ids.length;i++){try{var r=await fetch(WORKER+'/mna/document/delete/'+ids[i]+'?key='+encodeURIComponent(adminKey),{method:'POST'});if(r.ok)ok++;else fail++;}catch(e){fail++;}}alert(ok+' verwijderd'+(fail>0?', '+fail+' mislukt':'')+'.'); document.getElementById('btn-load-docs').click();});
+  document.getElementById('btn-del-selected').addEventListener('click',async function(){var ids=Array.from(document.querySelectorAll('.doc-cb:checked')).map(function(cb){return cb.dataset.id;});if(!ids.length)return;if(!confirm('Verwijder '+ids.length+' geselecteerde document(en)?'))return;var btn=this;btn.disabled=true;btn.textContent='Verwijderen...';var ok=0,fail=0;for(var i=0;i<ids.length;i++){try{var r=await fetch(WORKER+'/mna/document/delete/'+ids[i]+'?key='+encodeURIComponent(adminKey),{method:'POST'});if(r.ok)ok++;else fail++;}catch(e){fail++;}}toast(ok+' document(en) verwijderd'+(fail>0?', '+fail+' mislukt':''),'err');
+ document.getElementById('btn-load-docs').click();});
 
   document.getElementById('btn-load-docs').addEventListener('click',async function(){
     var db=document.getElementById('docs-body');
@@ -515,9 +526,9 @@ async function renderBenchmarksTab(el){
     try{
       var r=await fetch(WORKER+'/admin/benchmarks/refresh?key='+encodeURIComponent(adminKey),{method:'POST'});
       var d=await r.json();
-      if(d.ok){alert(d.count+' benchmarks bijgewerkt uit bronnen.');laadBenchmarks();}
-      else alert('Fout: '+(d.error||'onbekend'));
-    }catch(e){alert('Verbindingsfout.');}
+      if(d.ok){toast(d.count+' benchmarks bijgewerkt uit bronnen.','ok');laadBenchmarks();}
+      else toast('Fout: '+(d.error||'onbekend'),'err');
+    }catch(e){toast('Verbindingsfout.','err');}
     btn.disabled=false;btn.textContent='↻ Bronnen updaten';
   });
 
@@ -729,11 +740,11 @@ function renderTemplatesTab(el){
       var reader=new FileReader();
       reader.onload=async function(e){
         var tekst=e.target.result;
-        if(file.name.endsWith('.docx')){alert('Upload als .txt bestand (kopieer tekst uit Word en sla op als .txt)');return;}
+        if(file.name.endsWith('.docx')){toast('Upload als .txt bestand (kopieer tekst uit Word en sla op als .txt)','warn');return;}
         var r=await fetch(WORKER+'/mna/template/upload',{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':adminKey},body:JSON.stringify({doc_type:type,tekst:tekst,begeleider_naam:'Marcel Bisschops',begeleider_email:'marcel@bisschopsfinancing.nl'})});
         var d=await r.json();
-        if(d.ok){alert('Template opgeslagen!');renderTemplatesTab(el);}
-        else alert('Fout: '+(d.error||'onbekend'));
+        if(d.ok){toast('Template opgeslagen!','ok');renderTemplatesTab(el);}
+        else toast('Fout: '+(d.error||'onbekend'),'err');
       };
       reader.readAsText(file,'utf-8');
     });
@@ -1123,8 +1134,8 @@ async function verwijderRapport(id){
     var r=await fetch(WORKER+'/admin/delete/rapport/'+id+'?key='+encodeURIComponent(adminKey),{method:'POST'});
     var d=await r.json();
     if(d.ok){rapporten=rapporten.filter(function(x){return x.id!==id;});renderDashboard();}
-    else alert('Fout: '+(d.error||'onbekend'));
-  }catch(e){alert('Verbindingsfout.');}
+    else toast('Fout: '+(d.error||'onbekend'),'err');
+  }catch(e){toast('Verbindingsfout.','err');}
 }
 
 async function verwijderDoc(id){
@@ -1133,8 +1144,8 @@ async function verwijderDoc(id){
     var r=await fetch(WORKER+'/mna/document/delete/'+id+'?key='+encodeURIComponent(adminKey),{method:'POST'});
     var d=await r.json();
     if(d.ok){document.getElementById('btn-load-docs').click();}
-    else alert('Fout: '+(d.error||'onbekend'));
-  }catch(e){alert('Verbindingsfout.');}
+    else toast('Fout: '+(d.error||'onbekend'),'err');
+  }catch(e){toast('Verbindingsfout.','err');}
 }
 
 async function vergrendelDoc(id,lock){
@@ -1142,31 +1153,31 @@ async function vergrendelDoc(id,lock){
     var r=await fetch(WORKER+'/mna/admin/vergrendel-document/'+id+'?key='+encodeURIComponent(adminKey),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({vergrendeld:lock?1:0})});
     var d=await r.json();
     if(d.ok){document.getElementById('btn-load-docs').click();}
-    else alert('Fout: '+(d.error||'onbekend'));
-  }catch(e){alert('Verbindingsfout.');}
+    else toast('Fout: '+(d.error||'onbekend'),'err');
+  }catch(e){toast('Verbindingsfout.','err');}
 }
 
 // DELETE FUNCTIES
 async function deleteScan(id){
-  if(!id){alert('Geen ID voor deze scan.');return;}
+  if(!id){toast('Geen ID voor deze scan.','err');return;}
   if(!confirm('Scan permanent verwijderen?'))return;
   try{
     var r=await fetch(WORKER+'/admin/delete/scan/'+id+'?key='+encodeURIComponent(adminKey),{method:'POST'});
     var d=await r.json();
     if(d.ok){scans=scans.filter(function(s){return String(s.id)!==String(id);});openRow=null;renderDashboard();}
-    else alert('Fout: '+(d.error||'onbekend'));
-  }catch(e){alert('Verbindingsfout.');}
+    else toast('Fout: '+(d.error||'onbekend'),'err');
+  }catch(e){toast('Verbindingsfout.','err');}
 }
 
 async function deleteCallback(id){
-  if(!id){alert('Geen ID.');return;}
+  if(!id){toast('Geen ID.','err');return;}
   if(!confirm('Terugbelverzoek permanent verwijderen?'))return;
   try{
     var r=await fetch(WORKER+'/admin/delete/callback/'+id+'?key='+encodeURIComponent(adminKey),{method:'POST'});
     var d=await r.json();
     if(d.ok){callbacks=callbacks.filter(function(c){return String(c.id)!==String(id);});renderDashboard();}
-    else alert('Fout: '+(d.error||'onbekend'));
-  }catch(e){alert('Verbindingsfout.');}
+    else toast('Fout: '+(d.error||'onbekend'),'err');
+  }catch(e){toast('Verbindingsfout.','err');}
 }
 
 async function deleteMna(id,naam){
@@ -1175,8 +1186,8 @@ async function deleteMna(id,naam){
     var r=await fetch(WORKER+'/admin/delete/mna/'+id+'?key='+encodeURIComponent(adminKey),{method:'POST'});
     var d=await r.json();
     if(d.ok){mnaList=mnaList.filter(function(t){return t.id!==id;});renderDashboard();}
-    else alert('Fout: '+(d.error||'onbekend'));
-  }catch(e){alert('Verbindingsfout.');}
+    else toast('Fout: '+(d.error||'onbekend'),'err');
+  }catch(e){toast('Verbindingsfout.','err');}
 }
 
 // MNA DETAIL
@@ -1207,32 +1218,9 @@ async function toonDetail(id,naam){
   ov.appendChild(mo);document.body.appendChild(ov);
   ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
   document.getElementById('det-sluit').addEventListener('click',function(){document.body.removeChild(ov);});
-  document.getElementById('det-wis-data-btn').addEventListener('click',async function(){
-    if(!confirm('Alle DD-data van traject '+naam+' wissen? Documenten blijven bewaard. Dit kan niet ongedaan worden gemaakt.'))return;
-    var btn=this;btn.disabled=true;btn.textContent='Bezig...';
-    try{
-      var r=await fetch(WORKER+'/mna/admin/wis-data/'+id+'?key='+encodeURIComponent(adminKey),{method:'POST'});
-      var d=await r.json();
-      if(d.ok){
-        alert('DD-data gewist. Traject staat nu op 0%.');
-        document.body.removeChild(ov);
-        await refreshData();
-      } else {
-        // Fallback: wis per fase via bestaande save-route met lege data
-        var fases=['financieel','commercieel','partner','compliance','it','juridisch','strategisch'];
-        var ok=0;
-        for(var i=0;i<fases.length;i++){
-          try{
-            await fetch(WORKER+'/mna/save',{method:'POST',headers:{'Content-Type':'application/json'},
-              body:JSON.stringify({code:id,fase_id:fases[i],data_json:{},checklist_json:{},notitie:''})});
-            ok++;
-          }catch(e){}
-        }
-        alert('DD-data gewist via '+ok+' fases.');
-        document.body.removeChild(ov);
-        await refreshData();
-      }
-    }catch(e){alert('Fout: '+e.message);btn.disabled=false;btn.textContent='&#128465; DD-data wissen';}
+  document.getElementById('det-wis-data-btn').addEventListener('click',function(){
+    document.body.removeChild(ov);
+    wisTrajectData(id, naam);
   });
 
 
@@ -1328,8 +1316,8 @@ async function toonDetail(id,naam){
             var erText=await er.text();
             var ed;try{ed=JSON.parse(erText);}catch(pe){ed={error:'Geen JSON: '+erText.substring(0,150)};}
             if(ed.ok){ebtn.textContent='✓ Verstuurd';setTimeout(function(){ebtn.textContent='✉ Stuur';ebtn.disabled=false;},3000);}
-            else{alert('Fout ('+er.status+'): '+(ed.error||erText.substring(0,200)));ebtn.disabled=false;ebtn.textContent='✉ Stuur naar opdrachtgever';}
-          }catch(fe){alert('Verbindingsfout: '+fe.message);ebtn.disabled=false;ebtn.textContent='✉ Stuur naar opdrachtgever';}
+            else{toast('Fout ('+er.status+'): '+(ed.error||erText.substring(0,200)),'err');ebtn.disabled=false;ebtn.textContent='✉ Stuur naar opdrachtgever';}
+          }catch(fe){toast('Verbindingsfout: '+esc(fe.message),'err');ebtn.disabled=false;ebtn.textContent='✉ Stuur naar opdrachtgever';}
         });
         btn.textContent='Opnieuw genereren';btn.disabled=false;
       }catch(e){bemOut.innerHTML='<div style="color:var(--red);font-size:13px">Fout: '+e.message+'</div>';btn.textContent='Genereer';btn.disabled=false;}
@@ -1384,8 +1372,8 @@ async function toonDetail(id,naam){
             var erText=await er.text();
             var ed;try{ed=JSON.parse(erText);}catch(pe){ed={error:'Geen JSON: '+erText.substring(0,150)};}
             if(ed.ok){ebtn.textContent='✓ Verstuurd';setTimeout(function(){ebtn.textContent='✉ Stuur';ebtn.disabled=false;},3000);}
-            else{alert('Fout ('+er.status+'): '+(ed.error||erText.substring(0,200)));ebtn.disabled=false;ebtn.textContent='✉ Stuur naar partijen';}
-          }catch(fe){alert('Verbindingsfout: '+fe.message);ebtn.disabled=false;ebtn.textContent='✉ Stuur naar partijen';}
+            else{toast('Fout ('+er.status+'): '+(ed.error||erText.substring(0,200)),'err');ebtn.disabled=false;ebtn.textContent='✉ Stuur naar partijen';}
+          }catch(fe){toast('Verbindingsfout: '+esc(fe.message),'err');ebtn.disabled=false;ebtn.textContent='✉ Stuur naar partijen';}
         });
         // Informatieverzoek knop
         document.getElementById('nda-infoverzoek-btn').addEventListener('click',async function(){
@@ -1442,7 +1430,7 @@ async function toonDetail(id,naam){
               var er=await fetch(WORKER+'/mna/mail-begeleider',{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':adminKey},
                 body:JSON.stringify({to:email,naam:t3.contact_naam,trajectNaam:t3.kantoor_naam,tussenCode:verkoperCode,html:html,subject:'Informatieverzoek M&A — '+esc(t3.kantoor_naam||'uw kantoor')})});
               var ed=await er.json();
-              if(ed.ok){document.body.removeChild(ov2);alert('Informatieverzoek verstuurd naar '+email);}
+              if(ed.ok){document.body.removeChild(ov2);toast('Informatieverzoek verstuurd naar '+email,'ok');}
               else{ivErr.style.display='block';ivErr.textContent='Fout: '+(ed.error||'onbekend');sb.disabled=false;sb.textContent='Verstuur';}
             }catch(fe){ivErr.style.display='block';ivErr.textContent='Verbindingsfout.';sb.disabled=false;sb.textContent='Verstuur';}
           };
@@ -1496,8 +1484,8 @@ async function toonDetail(id,naam){
             var erText=await er.text();
             var ed;try{ed=JSON.parse(erText);}catch(pe){ed={error:'Geen JSON: '+erText.substring(0,150)};}
             if(ed.ok){ebtn.textContent='✓ Verstuurd';setTimeout(function(){ebtn.textContent='✉ Stuur';ebtn.disabled=false;},3000);}
-            else{alert('Fout ('+er.status+'): '+(ed.error||erText.substring(0,200)));ebtn.disabled=false;ebtn.textContent='✉ Stuur naar partijen';}
-          }catch(fe){alert('Verbindingsfout: '+fe.message);ebtn.disabled=false;ebtn.textContent='✉ Stuur naar partijen';}
+            else{toast('Fout ('+er.status+'): '+(ed.error||erText.substring(0,200)),'err');ebtn.disabled=false;ebtn.textContent='✉ Stuur naar partijen';}
+          }catch(fe){toast('Verbindingsfout: '+esc(fe.message),'err');ebtn.disabled=false;ebtn.textContent='✉ Stuur naar partijen';}
         });
         btn.textContent='Opnieuw genereren';btn.disabled=false;
       }catch(e){loiOut.innerHTML='<div style="color:var(--red);font-size:13px">Fout: '+e.message+'</div>';btn.textContent='Genereer LoI';btn.disabled=false;}
@@ -1628,7 +1616,7 @@ async function toonBewerkModal(id, naam){
   // Haal huidige trajectdata op
   var r=await fetch(WORKER+'/mna/admin/detail/'+id+'?key='+encodeURIComponent(adminKey));
   var dd=await r.json();
-  if(!dd||!dd.traject){alert('Traject niet gevonden.');return;}
+  if(!dd||!dd.traject){toast('Traject niet gevonden.','err');return;}
   var t=dd.traject;
 
   var ov=document.createElement('div');ov.className='overlay';
@@ -1660,22 +1648,22 @@ async function toonBewerkModal(id, naam){
   // KvK knoppen in bewerk modal
   document.getElementById('bw-btn-kvk-verk').addEventListener('click',async function(){
     var kvk=document.getElementById('bw-kvk').value.trim().replace(/[^0-9]/g,'');
-    if(kvk.length!==8){alert('8 cijfers vereist');return;}
+    if(kvk.length!==8){toast('8 cijfers vereist','warn');return;}
     this.textContent='...';this.disabled=true;
     var rk=await fetch(WORKER+'/kvk/'+kvk);var dk=await rk.json();
     if(dk.ok){if(dk.adres)document.getElementById('bw-adres').value=dk.adres;}
-    else alert(dk.error||'Niet gevonden');
+    else toast(dk.error||'Niet gevonden','warn');
     this.textContent='&#128269; KvK';this.disabled=false;
   });
   document.getElementById('bw-btn-kvk-koper').addEventListener('click',async function(){
     var kvk=document.getElementById('bw-koper-kvk').value.trim().replace(/[^0-9]/g,'');
-    if(kvk.length!==8){alert('8 cijfers vereist');return;}
+    if(kvk.length!==8){toast('8 cijfers vereist','warn');return;}
     this.textContent='...';this.disabled=true;
     var rk=await fetch(WORKER+'/kvk/'+kvk);var dk=await rk.json();
     if(dk.ok){
       if(dk.adres)document.getElementById('bw-koper-adres').value=dk.adres;
       if(dk.rechtsvorm&&!document.getElementById('bw-koper-rv').value)document.getElementById('bw-koper-rv').value=dk.rechtsvorm;
-    } else alert(dk.error||'Niet gevonden');
+    } else toast(dk.error||'Niet gevonden','warn');
     this.textContent='&#128269; KvK';this.disabled=false;
   });
 
@@ -2144,8 +2132,8 @@ async function vergrendel(id,naam){
     var r=await fetch(WORKER+'/mna/admin/vergrendel/'+id+'?key='+encodeURIComponent(adminKey),{method:'POST'});
     var d=await r.json();
     if(d.ok){var t=mnaList.find(function(x){return x.id===id;});if(t)t.status='vergrendeld';renderTab();}
-    else alert('Fout: '+(d.error||'onbekend'));
-  }catch(e){alert('Verbindingsfout.');}
+    else toast('Fout: '+(d.error||'onbekend'),'err');
+  }catch(e){toast('Verbindingsfout.','err');}
 }
 
 async function ontvergrendel(id){
@@ -2153,8 +2141,8 @@ async function ontvergrendel(id){
     var r=await fetch(WORKER+'/mna/admin/status/'+id+'?key='+encodeURIComponent(adminKey),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'actief'})});
     var d=await r.json();
     if(d.ok){var t=mnaList.find(function(x){return x.id===id;});if(t)t.status='actief';renderTab();}
-    else alert('Fout: '+(d.error||'onbekend'));
-  }catch(e){alert('Verbindingsfout.');}
+    else toast('Fout: '+(d.error||'onbekend'),'err');
+  }catch(e){toast('Verbindingsfout.','err');}
 }
 
 async function maakTrajectVanScan(scanId, naam, email){
@@ -2167,10 +2155,107 @@ async function maakTrajectVanScan(scanId, naam, email){
     var d=await r.json();
     if(d.ok){
       mnaList.unshift({id:d.code,kantoor_naam:naam,traject_type:'Verkoop',koper_code:d.koper_code,tussen_code:d.tussen_code,status:'actief',created_at:Date.now()});
-      alert('Traject aangemaakt!\n\nVerkoperscode: '+d.code+'\nKoperscode: '+d.koper_code);
+      toast('Traject aangemaakt! Verkoperscode: '+d.code,' ok');
       activeTab='mna';renderDashboard();
-    } else alert('Fout: '+(d.error||'onbekend'));
-  }catch(e){alert('Verbindingsfout.');}
+    } else toast('Fout: '+(d.error||'onbekend'),'err');
+  }catch(e){toast('Verbindingsfout.','err');}
+}
+
+// WIS TRAJECT DATA — data wissen zonder traject te verwijderen
+function wisTrajectData(id, naam) {
+  var ov = document.createElement('div'); ov.className = 'overlay';
+  var mo = document.createElement('div'); mo.className = 'modal'; mo.style.maxWidth = '480px';
+  mo.innerHTML = '<div class="modal-title">&#129529; Data wissen — ' + esc(naam) + '</div>'
+    + '<p style="font-size:13px;color:var(--mid);line-height:1.65;margin-bottom:1.25rem">Kies welke data gewist moet worden. Het traject zelf en de toegangscodes blijven bewaard.</p>'
+    + '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:1.25rem">'
+    + '<label style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--card);border:1px solid var(--border);border-radius:var(--r);cursor:pointer">'
+    + '<input type="checkbox" id="wis-dd" checked style="width:15px;height:15px;cursor:pointer">'
+    + '<div><div style="font-size:13px;font-weight:600;color:var(--sub)">DD-velden (alle 7 fases)</div>'
+    + '<div style="font-size:11px;color:var(--muted)">Alle ingevulde formuliervelden worden leeggemaakt. Voortgang wordt 0%.</div></div></label>'
+    + '<label style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--card);border:1px solid var(--border);border-radius:var(--r);cursor:pointer">'
+    + '<input type="checkbox" id="wis-chk" checked style="width:15px;height:15px;cursor:pointer">'
+    + '<div><div style="font-size:13px;font-weight:600;color:var(--sub)">Checklist-statussen</div>'
+    + '<div style="font-size:11px;color:var(--muted)">Alle vinkjes in de checklists worden gereset.</div></div></label>'
+    + '<label style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--card);border:1px solid var(--border);border-radius:var(--r);cursor:pointer">'
+    + '<input type="checkbox" id="wis-docs" style="width:15px;height:15px;cursor:pointer">'
+    + '<div><div style="font-size:13px;font-weight:600;color:var(--sub)">Geüploade documenten</div>'
+    + '<div style="font-size:11px;color:var(--muted)">Alle bestanden in de dataroom worden permanent verwijderd.</div></div></label>'
+    + '</div>'
+    + '<div id="wis-progress" style="display:none;background:var(--teal-bg);border:1px solid var(--teal-dark);border-radius:var(--r);padding:10px 12px;font-size:12px;color:var(--teal);margin-bottom:.75rem"></div>'
+    + '<div id="wis-err" style="display:none;color:var(--red);font-size:12px;margin-bottom:.75rem"></div>'
+    + '<div style="display:flex;gap:10px;justify-content:flex-end">'
+    + '<button class="btn-ghost" id="wis-ann">Annuleren</button>'
+    + '<button class="btn" id="wis-ok" style="background:var(--red);border:none">&#129529; Wissen</button>'
+    + '</div>';
+  ov.appendChild(mo); document.body.appendChild(ov);
+  ov.addEventListener('click', function(e) { if (e.target === ov) document.body.removeChild(ov); });
+  document.getElementById('wis-ann').addEventListener('click', function() { document.body.removeChild(ov); });
+  document.getElementById('wis-ok').addEventListener('click', async function() {
+    var wisDD = document.getElementById('wis-dd').checked;
+    var wisChk = document.getElementById('wis-chk').checked;
+    var wisDocs = document.getElementById('wis-docs').checked;
+    if (!wisDD && !wisChk && !wisDocs) {
+      document.getElementById('wis-err').style.display = 'block';
+      document.getElementById('wis-err').textContent = 'Selecteer minimaal één optie.';
+      return;
+    }
+    var confirmMsg = 'Data van traject ' + naam + ' wissen:\n';
+    if (wisDD) confirmMsg += '✓ DD-velden (alle fases)\n';
+    if (wisChk) confirmMsg += '✓ Checklist-statussen\n';
+    if (wisDocs) confirmMsg += '✓ Geüploade documenten\n';
+    confirmMsg += '\nDit kan NIET ongedaan worden gemaakt. Doorgaan?';
+    if (!confirm(confirmMsg)) return;
+    var btn = this; btn.disabled = true; btn.textContent = 'Bezig...';
+    var prog = document.getElementById('wis-progress'); prog.style.display = 'block';
+    var stappen = []; var ok = true;
+    // Stap 1: DD-velden + checklist wissen
+    if (wisDD || wisChk) {
+      prog.textContent = '⏳ DD-data wissen...';
+      try {
+        var r = await fetch(WORKER + '/mna/admin/wis-data/' + id + '?key=' + encodeURIComponent(adminKey), { method: 'POST' });
+        var d = await r.json();
+        if (d.ok) {
+          stappen.push('✓ DD-data gewist via worker');
+        } else {
+          // Fallback: fase voor fase leegmaken
+          var fases = ['financieel','commercieel','partner','compliance','it','juridisch','strategisch'];
+          var gedaan = 0;
+          for (var i = 0; i < fases.length; i++) {
+            try {
+              await fetch(WORKER + '/mna/save', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code: id, fase_id: fases[i], data_json: {}, checklist_json: {}, notitie: '' }) });
+              gedaan++;
+            } catch(e2) {}
+          }
+          stappen.push('✓ DD-data gewist via ' + gedaan + '/7 fases');
+        }
+      } catch(e) { stappen.push('✕ DD-data fout: ' + esc(e.message)); ok = false; }
+    }
+    // Stap 2: Documenten verwijderen
+    if (wisDocs) {
+      prog.textContent = '⏳ Documenten verwijderen...';
+      try {
+        var rd = await fetch(WORKER + '/mna/admin/documenten?key=' + encodeURIComponent(adminKey));
+        var docs = await rd.json();
+        var trajectDocs = docs.filter(function(doc) { return doc.traject_id === id && !doc.vergrendeld; });
+        var verw = 0;
+        for (var j = 0; j < trajectDocs.length; j++) {
+          try {
+            var dr = await fetch(WORKER + '/mna/document/delete/' + trajectDocs[j].id + '?key=' + encodeURIComponent(adminKey), { method: 'POST' });
+            if (dr.ok) verw++;
+          } catch(e3) {}
+        }
+        stappen.push('✓ ' + verw + '/' + trajectDocs.length + ' documenten verwijderd');
+      } catch(e) { stappen.push('✕ Documenten fout: ' + esc(e.message)); ok = false; }
+    }
+    prog.innerHTML = stappen.join('<br>') + '<br><br>' + (ok ? '<strong style="color:var(--teal)">✓ Klaar!</strong>' : '<strong style="color:var(--gold)">⚠ Voltooid met fouten</strong>');
+    btn.textContent = 'Sluiten';
+    btn.style.background = 'var(--teal)';
+    btn.onclick = function() { document.body.removeChild(ov); refreshData(); };
+    document.getElementById('wis-ann').textContent = 'Sluiten';
+    document.getElementById('wis-ann').onclick = function() { document.body.removeChild(ov); refreshData(); };
+    toast((ok ? 'Data gewist voor traject ' : 'Data gedeeltelijk gewist voor traject ') + naam, ok ? 'ok' : 'warn');
+  });
 }
 
 renderLogin();

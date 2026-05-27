@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>M&A Begeleiding - KantoorInzicht</title>
+<!-- BUILD: 27 May 14:20 · v1.10 -->
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -117,6 +118,12 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--s
   .ai-panel,.panel{break-inside:avoid}
   body{font-size:11px}
 }
+.toast-container{position:fixed;top:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.toast{background:var(--panel);border:1px solid var(--border2);border-radius:var(--r2);padding:12px 16px;font-size:13px;color:var(--sub);box-shadow:0 4px 20px rgba(0,0,0,.15);display:flex;align-items:flex-start;gap:10px;max-width:340px;pointer-events:auto;animation:toastIn .25s ease forwards;border-left:4px solid var(--teal)}
+.toast.toast-ok{border-left-color:var(--teal)}.toast.toast-err{border-left-color:var(--red)}.toast.toast-warn{border-left-color:var(--gold)}.toast.toast-info{border-left-color:#2a5ea0}
+.toast.hide{animation:toastOut .2s ease forwards}
+@keyframes toastIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+@keyframes toastOut{to{opacity:0;transform:translateX(20px)}}
 </style>
 </head>
 <body>
@@ -125,7 +132,7 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--s
 <script>
 var WORKER='https://kantoorinzicht.marcel-bisschops.workers.dev';
 
-function versieLabel(){return '<span style="font-size:10px;font-weight:600;font-family:IBM Plex Mono,monospace;color:var(--muted);margin-left:8px">v'+(window._versie||'27 May 13:44')+'</span>';}
+function versieLabel(){return '<span style="font-size:10px;font-weight:600;font-family:IBM Plex Mono,monospace;color:var(--muted);margin-left:8px">v'+(window._versie||'v1.10')+'</span>';}
 
 // Laad versie bij startup
 fetch(WORKER+'/mna/versie').then(function(r){return r.json();}).then(function(d){
@@ -335,7 +342,9 @@ function getDataForFase(id){var f=FASES.find(function(x){return x.id===id;});if(
 function getChecklistForFase(id){var out={items:{},redflags:{}};var f=FASES.find(function(x){return x.id===id;});if(!f)return out;f.items.forEach(function(_,i){out.items[i]=!!S.checked[id+'_'+i];});f.redflags.forEach(function(_,i){out.redflags[i]=!!S.checked[id+'_rf_'+i];});return out;}
 function loadDataFromDB(dbData){dbData.forEach(function(row){var id=row.fase_id;var dj=typeof row.data_json==='string'?JSON.parse(row.data_json||'{}'):row.data_json||{};var cj=typeof row.checklist_json==='string'?JSON.parse(row.checklist_json||'{}'):row.checklist_json||{};var f=FASES.find(function(x){return x.id===id;});if(!f)return;Object.keys(dj).forEach(function(k){var v=dj[k];if(v&&v.value)S.data[id+'_'+k]=v.value;});if(cj.items)Object.keys(cj.items).forEach(function(i){S.checked[id+'_'+i]=cj.items[i];});if(cj.redflags)Object.keys(cj.redflags).forEach(function(i){S.checked[id+'_rf_'+i]=cj.redflags[i];});if(row.notitie)S.notities[id]=row.notitie;if(row.koper_reactie){if(!S.koperReacties)S.koperReacties={};S.koperReacties[id]=row.koper_reactie;}});}
 function showSaveIndicator(){var el=ge('save-ind');if(!el)return;el.textContent='Opgeslagen';el.classList.add('show');setTimeout(function(){el.classList.remove('show');},2000);}
-function showAlert(msg){alert(msg);}
+function showAlert(msg){toast(msg,"warn");}
+function toast(msg,type,dur){type=type||'ok';dur=dur||3500;var c=document.getElementById('toast-container');if(!c){c=document.createElement('div');c.id='toast-container';c.className='toast-container';document.body.appendChild(c);}var t=document.createElement('div');t.className='toast toast-'+type;var ico=type==='ok'?'✓':type==='err'?'✕':type==='warn'?'⚠':'ℹ';t.innerHTML='<span style="font-size:15px;flex-shrink:0;color:'+(type==='ok'?'var(--teal)':type==='err'?'var(--red)':type==='warn'?'var(--gold)':'#2a5ea0')+'">'+ico+'</span><span style="flex:1;line-height:1.5">'+String(msg).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</span><button onclick="this.parentElement.remove()" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px;padding:0;line-height:1;flex-shrink:0">&times;</button>';c.appendChild(t);setTimeout(function(){t.classList.add('hide');setTimeout(function(){if(t.parentElement)t.parentElement.removeChild(t);},220);},dur);return t;}
+
 function schedSave(){if(S.traject&&S.traject.status==='vergrendeld')return;clearTimeout(S.saveTimer);S.saveTimer=setTimeout(function(){saveCurrent();},1200);}
 function userEdit(el){
   // Markeer veld als handmatig bewerkt door gebruiker
@@ -398,9 +407,9 @@ function loadDocsForFase(faseId) {
 
 async function uploadDocument(faseId, file) {
   if (!S.code || isKoper()) return;
-  if (S.traject && S.traject.status === 'vergrendeld') { alert('Traject is vergrendeld.'); return; }
+  if (S.traject && S.traject.status === 'vergrendeld') { toast('Traject is vergrendeld.','warn'); return; }
   var maxSize = 20 * 1024 * 1024;
-  if (file.size > maxSize) { alert('Bestand te groot (max 20MB). Huidig: ' + Math.round(file.size/1024/1024) + 'MB'); return; }
+  if (file.size > maxSize) { toast('Bestand te groot (max 20MB). Huidig: ' + Math.round(file.size/1024/1024) + 'MB','warn'); return; }
 
   // Show uploading state
   if (!DOCS[faseId]) DOCS[faseId] = [];
@@ -453,11 +462,11 @@ async function uploadDocument(faseId, file) {
       }
     } else {
       DOCS[faseId] = DOCS[faseId].filter(function(x){ return x.id !== tempId; });
-      alert('Upload fout: ' + (d.error || 'onbekend'));
+      toast('Upload fout: ' + (d.error || 'onbekend'),'err');
     }
   } catch(e) {
     DOCS[faseId] = DOCS[faseId].filter(function(x){ return x.id !== tempId; });
-    alert('Verbindingsfout bij uploaden.');
+    toast('Verbindingsfout bij uploaden.','err');
   }
   renderApp();
 }
@@ -1180,14 +1189,14 @@ async function renderLogboekScreen(app){
     if(lbBtn)lbBtn.addEventListener('click',async function(){
       var bericht=document.getElementById('lb-bericht').value.trim();
       var fase=document.getElementById('lb-fase').value;
-      if(!bericht&&!fase){alert('Voer een notitie in of selecteer een fase.');return;}
+      if(!bericht&&!fase){toast('Voer een notitie in of selecteer een fase.','warn');return;}
       lbBtn.disabled=true;lbBtn.textContent='Opslaan...';
       try{
         var lr=await fetch(WORKER+'/mna/logboek/'+S.code,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({bericht:bericht,nieuwe_fase:fase||undefined,auteur_naam:S.traject.begeleider_naam||'Begeleider'})});
         var ld=await lr.json();
         if(ld.ok){document.getElementById('lb-bericht').value='';document.getElementById('lb-fase').value='';renderLogboekScreen(app);}
-        else alert('Fout: '+(ld.error||'onbekend'));
-      }catch(e){alert('Verbindingsfout.');}
+        else toast('Fout: '+(ld.error||'onbekend'),'err');
+      }catch(e){toast('Verbindingsfout.','err');}
       lbBtn.disabled=false;lbBtn.textContent='+ Opslaan';
     });
 
@@ -1218,7 +1227,7 @@ async function renderLogboekScreen(app){
       var deelnemers=document.getElementById('lb-meeting-deelnemers').value.trim();
       var tekst=document.getElementById('lb-meeting-tekst').value.trim();
       var fase=document.getElementById('lb-meeting-fase').value;
-      if(!tekst){alert('Voer vergadernotities in.');return;}
+      if(!tekst){toast('Voer vergadernotities in.','warn');return;}
       meetBtn.disabled=true;meetBtn.textContent='AI verwerkt...';
       try{
         var prompt='Structureer de volgende ruwe vergadernotities van een M&A traject in de accountancy-sector naar een professioneel vergaderverslag.\n\nVERGADERING: '+(titel||'Vergadering')+' | Deelnemers: '+(deelnemers||'onbekend')+'\n\nRUWE NOTITIES:\n'+tekst+'\n\nGeef terug in dit formaat:\n\n## Vergadering: [titel]\nDatum: [datum indien bekend]\nDeelnemers: [deelnemers]\n\n### Samenvatting\n[2-4 zinnen kerninhoud]\n\n### Besproken punten\n- [punt 1]\n- [punt 2]\n\n### Beslissingen\n- [beslissing 1]\n\n### Actiepunten\n- [ ] [actie] — [wie] — [wanneer]\n\n### Volgende stap\n[wat staat er gepland]\n\nCompact en professioneel. Alleen wat relevant is voor het M&A traject.';
@@ -1238,8 +1247,8 @@ async function renderLogboekScreen(app){
           // Ga terug naar notitie tab en herlaad
           if(tabNotitie)tabNotitie.click();
           renderLogboekScreen(app);
-        } else alert('Fout: '+(ld.error||'onbekend'));
-      }catch(e){alert('Fout: '+e.message);}
+        } else toast('Fout: '+(ld.error||'onbekend'),'err');
+      }catch(e){toast('Fout: '+e.message,'err');}
       meetBtn.disabled=false;meetBtn.textContent='⚙ AI structureren & opslaan';
     });
   }
@@ -1363,12 +1372,12 @@ function renderBegeleiderDashboard(app){
   var vbBtn=document.getElementById('bg-vrijgeven');
   if(vbBtn)vbBtn.onclick=async function(){
     var r=await fetch(WORKER+'/mna/admin/vrijgeven/'+S.traject.id,{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey}}).then(function(x){return x.json();}).catch(function(){return{};});
-    if(r.ok){S.traject.koper_vrijgegeven=1;renderBegeleiderDashboard(app);}else alert('Fout: '+(r.error||'onbekend'));
+    if(r.ok){S.traject.koper_vrijgegeven=1;renderBegeleiderDashboard(app);}else toast('Fout: '+(r.error||'onbekend'),'err');
   };
   var ibBtn=document.getElementById('bg-intrekken');
   if(ibBtn)ibBtn.onclick=async function(){
     var r=await fetch(WORKER+'/mna/admin/intrekken/'+S.traject.id,{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey}}).then(function(x){return x.json();}).catch(function(){return{};});
-    if(r.ok){S.traject.koper_vrijgegeven=0;renderBegeleiderDashboard(app);}else alert('Fout: '+(r.error||'onbekend'));
+    if(r.ok){S.traject.koper_vrijgegeven=0;renderBegeleiderDashboard(app);}else toast('Fout: '+(r.error||'onbekend'),'err');
   };
 
   // Document genereren helper
@@ -1416,7 +1425,7 @@ function renderBegeleiderDashboard(app){
       else{payload.bem_tekst=vt;payload.type=isSell?'verkoop':'aankoop';}
       var er=await fetch(WORKER+ep,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
       var ed=await er.json();
-      if(ed.ok){ebtn.textContent='✓ Verstuurd';}else{alert('Fout: '+(ed.error||'onbekend'));ebtn.disabled=false;ebtn.textContent='✉ Verstuur';}
+      if(ed.ok){ebtn.textContent='✓ Verstuurd';}else{toast('Fout: '+(ed.error||'onbekend'),'err');ebtn.disabled=false;ebtn.textContent='✉ Verstuur';}
     };
   }
 
@@ -1480,12 +1489,12 @@ function renderBegeleiderDashboard(app){
     };
     document.getElementById('bg-gs-ok').onclick=async function(){
       var datum=document.getElementById('bg-gs-datum').value;
-      if(!datum){alert('Datum verplicht.');return;}
+      if(!datum){toast('Datum verplicht.','warn');return;}
       var btn=this;btn.disabled=true;btn.textContent='Opslaan...';
       var payload={datum:datum,deelnemers:document.getElementById('bg-gs-deeln').value.trim(),type:document.getElementById('bg-gs-type').value,ruwe_notities:document.getElementById('bg-gs-notities').value.trim(),verslag:document.getElementById('bg-gs-verslag').value.trim()};
       var r=await fetch(WORKER+'/mna/admin/gesprekken/'+S.traject.id,{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey},body:JSON.stringify(payload)}).then(function(x){return x.json();}).catch(function(){return{};});
-      if(r.ok){out.style.display='none';alert('Gesprek opgeslagen.');}
-      else{alert('Fout: '+(r.error||'onbekend'));btn.disabled=false;btn.textContent='Opslaan';}
+      if(r.ok){out.style.display='none';toast('Gesprek opgeslagen.','ok');}
+      else{toast('Fout: '+(r.error||'onbekend'),'err');btn.disabled=false;btn.textContent='Opslaan';}
     };
   };
 
@@ -1540,7 +1549,7 @@ function renderBegeleiderDashboard(app){
       var sb=this;sb.disabled=true;sb.textContent='Versturen...';
       var er=await fetch(WORKER+'/mna/mail-begeleider',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey},
         body:JSON.stringify({to:email,naam:t2.contact_naam,trajectNaam:t2.kantoor_naam,tussenCode:verkoperCode,html:html})}).then(function(r){return r.json();}).catch(function(){return{};});
-      if(er.ok){document.body.removeChild(ov);alert('Informatieverzoek verstuurd.');}
+      if(er.ok){document.body.removeChild(ov);toast('Informatieverzoek verstuurd.','ok');}
       else{ivErr.style.display='block';ivErr.textContent='Fout: '+(er.error||'onbekend');sb.disabled=false;sb.textContent='Verstuur';}
     };
     ibtn.disabled=false;ibtn.textContent='&#128203; Informatieverzoek';
@@ -1996,9 +2005,9 @@ function bindAll(){
     try{
       var r=await fetch(WORKER+'/mna/teken',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:S.code,document:'nda',naam:naam.trim()})});
       var d=await r.json();
-      if(d.ok){S.ndaGetekend=naam.trim();renderApp();alert('NDA getekend. De adviseur is op de hoogte gesteld.');}
-      else alert('Fout: '+(d.error||'onbekend'));
-    }catch(e){alert('Verbindingsfout.');}
+      if(d.ok){S.ndaGetekend=naam.trim();renderApp();toast('NDA getekend. De adviseur is op de hoogte gesteld.','ok');}
+      else toast('Fout: '+(d.error||'onbekend'),'err');
+    }catch(e){toast('Verbindingsfout.','err');}
   };
 
   // LoI tekenen
@@ -2010,9 +2019,9 @@ function bindAll(){
     try{
       var r=await fetch(WORKER+'/mna/teken',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:S.code,document:'loi',naam:naam.trim()})});
       var d=await r.json();
-      if(d.ok){S.loiGetekend=naam.trim();renderApp();alert('LoI getekend. De adviseur is op de hoogte gesteld.');}
-      else alert('Fout: '+(d.error||'onbekend'));
-    }catch(e){alert('Verbindingsfout.');}
+      if(d.ok){S.loiGetekend=naam.trim();renderApp();toast('LoI getekend. De adviseur is op de hoogte gesteld.','ok');}
+      else toast('Fout: '+(d.error||'onbekend'),'err');
+    }catch(e){toast('Verbindingsfout.','err');}
   };
 
   var ndaLees=ge('nda-lees-btn');
@@ -2124,7 +2133,7 @@ function bindAll(){
   if(vb)vb.onclick=async function(){
     var auth=S._bgKey||'';
     var r=await fetch(WORKER+'/mna/admin/vrijgeven/'+S.traject.id,{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':auth}}).then(function(x){return x.json();}).catch(function(){return{};});
-    if(r.ok){S.traject.koper_vrijgegeven=1;renderApp();}else alert('Fout: '+(r.error||'onbekend'));
+    if(r.ok){S.traject.koper_vrijgegeven=1;renderApp();}else toast('Fout: '+(r.error||'onbekend'),'err');
   };
   // Koper reactie knoppen
   if(isKoper()){
@@ -2145,8 +2154,8 @@ function bindAll(){
             S.koperReacties[f.id]=ta.value.trim();
             if(status){status.textContent='\u2713 Verstuurd';status.style.opacity='1';setTimeout(function(){status.style.opacity='0';},3000);}
             rBtn.textContent='Verstuur opmerking';rBtn.disabled=false;
-          }else{alert('Fout bij versturen.');rBtn.disabled=false;rBtn.textContent='Verstuur opmerking';}
-        }catch(e){alert('Verbindingsfout.');rBtn.disabled=false;rBtn.textContent='Verstuur opmerking';}
+          }else{toast('Fout bij versturen.','err');rBtn.disabled=false;rBtn.textContent='Verstuur opmerking';}
+        }catch(e){toast('Verbindingsfout.','err');rBtn.disabled=false;rBtn.textContent='Verstuur opmerking';}
       };
     }
   }
@@ -2154,7 +2163,7 @@ function bindAll(){
   if(ib)ib.onclick=async function(){
     var auth=S._bgKey||'';
     var r=await fetch(WORKER+'/mna/admin/intrekken/'+S.traject.id,{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':auth}}).then(function(x){return x.json();}).catch(function(){return{};});
-    if(r.ok){S.traject.koper_vrijgegeven=0;renderApp();}else alert('Fout: '+(r.error||'onbekend'));
+    if(r.ok){S.traject.koper_vrijgegeven=0;renderApp();}else toast('Fout: '+(r.error||'onbekend'),'err');
   };
 
   // ── BEGELEIDER DOCUMENT KNOPPEN ──────────────────────────────
@@ -2225,7 +2234,7 @@ function bindAll(){
           var er=await fetch(WORKER+endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
           var ed=await er.json();
           if(ed.ok){ebtn.textContent='✓ Verstuurd';setTimeout(function(){ebtn.textContent='✉ Verstuur';ebtn.disabled=false;},2000);}
-          else{alert('Fout: '+(ed.error||'onbekend'));ebtn.disabled=false;ebtn.textContent='✉ Verstuur';}
+          else{toast('Fout: '+(ed.error||'onbekend'),'err');ebtn.disabled=false;ebtn.textContent='✉ Verstuur';}
         };
       }
       document.getElementById('bg-nda-btn').onclick=function(){bgGenereerDoc('nda');};
@@ -2287,7 +2296,7 @@ function bindAll(){
         var auth=S._bgKey||'';
         var r=await fetch(WORKER+'/mna/admin/gesprekken/'+S.traject.id,{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':auth},body:JSON.stringify(payload)});
         var d=await r.json();
-        if(d.ok){document.body.removeChild(ov);alert('Gesprek opgeslagen.');}
+        if(d.ok){document.body.removeChild(ov);toast('Gesprek opgeslagen.','ok');}
         else{err.style.display='block';err.textContent='Fout: '+(d.error||'onbekend');btn.disabled=false;btn.textContent='Opslaan';}
       };
     };
@@ -2323,7 +2332,7 @@ function bindAll(){
         ov.appendChild(mo);document.body.appendChild(ov);
         ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
         document.getElementById('ai-sluit').onclick=function(){document.body.removeChild(ov);};
-      }catch(e){alert('Fout bij AI-analyse: '+e.message);}
+      }catch(e){toast('Fout bij AI-analyse: '+e.message,'err');}
       btn.disabled=false;btn.textContent='&#9881; AI-analyse';
     };
   }
