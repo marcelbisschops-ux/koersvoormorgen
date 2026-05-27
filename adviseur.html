@@ -102,8 +102,7 @@ function toast(msg,type,dur){
   setTimeout(function(){t.classList.add('hide');setTimeout(function(){if(t.parentElement)t.parentElement.removeChild(t);},220);},dur);
 }
 function authHeaders(){
-  if(!G.token){ renderLogin(); throw new Error('Sessie verlopen — log opnieuw in.'); }
-  return {'Content-Type':'application/json','x-gebruiker-token':G.token};
+  return {'Content-Type':'application/json','x-gebruiker-token':G.token||''};
 }
 
 // ── Render ───────────────────────────────────────────────────────────────────
@@ -149,7 +148,9 @@ async function doLogin(){
 
 async function laadTrajecten(){
   try{
+    if(!G.token)return;
     var r=await fetch(WORKER+'/mna/admin/lijst',{headers:authHeaders()});
+    if(r.status===401){renderLogin();return;}
     G.trajecten=r.ok?await r.json():[];
   }catch(e){ G.trajecten=[]; }
 }
@@ -275,6 +276,7 @@ function nieuwTraject(){
         koper_contact:document.getElementById('n-koper-contact').value.trim(),
         koper_email:document.getElementById('n-koper-email').value.trim()
       })});
+      if(r.status===401){ renderLogin(); return; }
       var d=await r.json();
       if(!d.ok){ err.textContent=d.error||'Fout bij aanmaken.'; err.style.display='block'; btn.disabled=false; btn.textContent='Traject aanmaken'; return; }
       // Toon codes
@@ -289,7 +291,7 @@ function nieuwTraject(){
       document.getElementById('n-ann').textContent='Sluiten';
       btn.textContent='Aangemaakt ✓';
       G.trajecten.unshift({id:d.code,kantoor_naam:naam,traject_type:document.getElementById('n-type').value,sector:document.getElementById('n-sector').value,status:'actief',created_at:Date.now()});
-    }catch(e){ err.textContent='Verbindingsfout: '+(e.message||'onbekend')+'. Controleer of u bent ingelogd.'; err.style.display='block'; btn.disabled=false; btn.textContent='Traject aanmaken'; }
+    }catch(e){ err.textContent=(e.message||'Netwerkfout')+' — probeer opnieuw of herlaad de pagina.'; err.style.display='block'; btn.disabled=false; btn.textContent='Traject aanmaken'; }
   });
   document.getElementById('n-naam').focus();
 }
