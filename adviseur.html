@@ -58,7 +58,6 @@ var G={email:'',ww:'',naam:'',bedrijf:'',trajecten:[]};
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function fmt(ts){if(!ts)return '—';return new Date(ts).toLocaleDateString('nl-NL',{day:'2-digit',month:'short',year:'numeric'});}
 function render(h){document.getElementById('app').innerHTML=h;}
-// Alle fetches gebruiken alleen Content-Type header — geen custom headers
 function post(url,body){return fetch(WORKER+url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});}
 
 function renderLogin(){
