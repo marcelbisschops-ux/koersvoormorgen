@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>M&A Begeleiding - KantoorInzicht v2</title>
+<title>M&A Begeleiding - KantoorInzicht</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -123,6 +123,13 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--s
 <div id="app"></div>
 <script>
 var WORKER='https://kantoorinzicht.marcel-bisschops.workers.dev';
+
+function versieLabel(){return '<span style="font-size:10px;font-weight:600;font-family:IBM Plex Mono,monospace;color:var(--muted);margin-left:8px">v'+(window._versie||'1.0')+'</span>';}
+
+// Laad versie bij startup
+fetch(WORKER+'/mna/versie').then(function(r){return r.json();}).then(function(d){
+  if(d.versie){window._versie=d.versie;var el=document.getElementById('versie-label');if(el)el.textContent='v'+d.versie;}
+}).catch(function(){});
 
 function triggerFileUpload(faseId) {
   var inp = document.createElement('input');
@@ -255,14 +262,7 @@ var FASES=[
  redflags:['Te hoge afhankelijkheid samenstelpraktijk (AI-risico)','Geen duidelijke niche of marktpositie','Cultuurmismatch met koper','Beperkt integratiepotentieel']},
 ];
 
-var S={screen:'login',code:'',rol:'',traject:null,fase:0,checked:{},data:{},docRefs:{},notities:{},aiTexts:{},aiLoading:{},saveTimer:null,showValidation:false,dataroomLoading:false,dataroom:null,_opy:{},_epy:{},_conflicts:[],_userEdited:{},versie:'1.0'};
-
-function versieLabel(){return '<span style="font-size:10px;font-weight:600;font-family:IBM Plex Mono,monospace;color:var(--muted);margin-left:8px">v'+S.versie+'</span>';}
-
-// Laad versie bij startup
-fetch(WORKER+'/mna/versie').then(function(r){return r.json();}).then(function(d){
-  if(d.versie){S.versie=d.versie;var el=document.getElementById('versie-label');if(el)el.textContent='v'+d.versie;}
-}).catch(function(){});
+var S={screen:'login',code:'',rol:'',traject:null,fase:0,checked:{},data:{},docRefs:{},notities:{},aiTexts:{},aiLoading:{},saveTimer:null,showValidation:false,dataroomLoading:false,dataroom:null,_opy:{},_epy:{},_conflicts:[],_userEdited:{}};
 
 function pct(id){var f=FASES.find(function(x){return x.id===id;});if(!f)return 0;var d=f.items.filter(function(_,i){return S.checked[id+'_'+i];}).length;return f.items.length?Math.round(d/f.items.length*100):0;}
 function checkOmzetSom(){
@@ -471,33 +471,6 @@ window.centraalUploadFiles = async function(files) {
     toonVoortgang(i+1,totaal,file.name);
 
     var naam=file.name.toLowerCase();
-
-    // CLIENT-SIDE PRE-CHECK voor TXT en CSV: lees eerste 2000 tekens en check kantoornaam
-    // Dit voorkomt dat fout-bedrijf documenten überhaupt naar de worker gaan
-    var kantoorNaam=S.traject&&S.traject.kantoor_naam||'';
-    if(kantoorNaam&&(naam.endsWith('.txt')||naam.endsWith('.csv')||naam.endsWith('.eml'))){
-      try{
-        var previewTekst=await new Promise(function(res){
-          var r=new FileReader();
-          r.onload=function(e){res((e.target.result||'').substring(0,2000).toLowerCase());};
-          r.onerror=function(){res('');};
-          r.readAsText(file.slice(0,2000));
-        });
-        var kantoorWoorden=kantoorNaam.toLowerCase().split(/\s+/).filter(function(w){return w.replace(/[^a-z0-9]/g,'').length>3;});
-        var heeftMatch=kantoorWoorden.some(function(w){return previewTekst.includes(w.replace(/[^a-z0-9]/g,''));});
-        if(!heeftMatch&&kantoorWoorden.length>0){
-          var reden='Document bevat geen verwijzing naar "'+kantoorNaam+'" — overgeslagen.';
-          if(!DOCS[faseId||'financieel'])DOCS[faseId||'financieel']=[];
-          DOCS[faseId||'financieel'].unshift({id:'rejected_'+Date.now(),naam:file.name,type:file.type,grootte:file.size,uploading:false,verworpen:true,verworpen_reden:reden});
-          var statusEl0=document.getElementById('centraal-upload-status');
-          if(statusEl0)statusEl0.innerHTML=(statusEl0.innerHTML||'')+'<div style="background:#fff0f0;border:1px solid var(--red);border-radius:6px;padding:.5rem .75rem;margin-top:.4rem;font-size:12px;color:var(--red)">🚫 <strong>'+esc(file.name)+'</strong> genegeerd: '+esc(reden)+'</div>';
-          verwerkt++;
-          renderApp();
-          continue;
-        }
-      }catch(e){/* pre-check fout — gewoon uploaden */}
-    }
-
     var faseId='financieel';
     if(naam.includes('loon')||naam.includes('salaris')||naam.includes('personeel'))faseId='partner';
     else if(naam.includes('klant')||naam.includes('debiteur')||naam.includes('crm')||naam.includes('omzet'))faseId='commercieel';
@@ -723,45 +696,48 @@ function renderDocumentSectie(faseId) {
   var docs = getDocsForFase(faseId);
   var isReadOnly = (S.traject && S.traject.status === 'vergrendeld');
 
+  // Compacte upload knop
   var uploadHtml = '';
   if (!isReadOnly) {
-    uploadHtml = '<label style="display:flex;align-items:center;gap:6px;background:var(--teal);color:#fff;font-family:IBM Plex Sans,sans-serif;font-size:11px;font-weight:600;padding:5px 12px;border-radius:var(--r);cursor:pointer;margin-bottom:.6rem;width:fit-content">'
+    uploadHtml = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:.75rem;flex-wrap:wrap">'
+      + '<label style="display:flex;align-items:center;gap:6px;background:var(--teal);color:#fff;font-family:IBM Plex Sans,sans-serif;font-size:12px;font-weight:600;padding:6px 14px;border-radius:var(--r);cursor:pointer">'
       + '&#128196; Document toevoegen'
       + '<input type="file" multiple accept=".pdf,.docx,.doc,.xlsx,.xls,.csv,.txt,.eml" style="display:none" onchange="for(var i=0;i<this.files.length;i++)uploadDocument(\''+faseId+'\',this.files[i]);this.value=\'\';">'
-      + '</label>';
+      + '</label>'
+      + '<div id="upload-status-'+faseId+'" style="font-size:11px;color:var(--muted)"></div>'
+      + '</div>';
   }
 
+  // Documenten lijst — compact
   var docsHtml = '';
   if (docs.length) {
-    docsHtml = docs.map(function(doc) {
+    docsHtml = '<div style="display:flex;flex-direction:column;gap:4px;margin-bottom:.75rem">';
+    docsHtml += docs.map(function(doc) {
+      var icon = doc.type && doc.type.includes('pdf') ? '📄' : (doc.naam && (doc.naam.endsWith('.xlsx')||doc.naam.endsWith('.xls')||doc.naam.endsWith('.csv'))) ? '📊' : '📃';
       if (doc.uploading) {
-        return '<div style="display:flex;align-items:center;gap:6px;padding:4px 6px;background:var(--card);border-radius:var(--r);border:1px solid var(--border);margin-bottom:3px">'
-          + '<div class="spin" style="border-color:var(--border2);border-top-color:var(--teal);width:10px;height:10px;flex-shrink:0;border-width:1.5px"></div>'
-          + '<span style="font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px">'+esc(doc.naam)+'</span>'
+        return '<div style="display:flex;align-items:center;gap:8px;padding:5px 8px;background:var(--card);border-radius:var(--r);border:1px solid var(--border)">'
+          + '<div class="spin" style="border-color:var(--border2);border-top-color:var(--teal);width:11px;height:11px;flex-shrink:0"></div>'
+          + '<span style="font-size:11px;color:var(--muted)">'+esc(doc.naam)+'</span>'
           + '</div>';
       }
       if (doc.verworpen) {
-        return '<div style="display:flex;align-items:center;gap:5px;padding:4px 6px;background:var(--red-bg);border-radius:var(--r);border:1px solid var(--red);margin-bottom:3px" title="'+esc(doc.verworpen_reden||'verworpen')+'">'
-          + '<span style="font-size:10px;flex-shrink:0">🚫</span>'
-          + '<span style="font-size:10px;color:var(--red);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:170px;text-decoration:line-through">'+esc(doc.naam)+'</span>'
+        return '<div style="display:flex;align-items:center;gap:6px;padding:5px 8px;background:var(--red-bg);border-radius:var(--r);border:1px solid var(--red)">'
+          + '<span style="font-size:11px">🚫</span>'
+          + '<span style="font-size:11px;color:var(--red);flex:1">'+esc(doc.naam)+'</span>'
+          + '<span style="font-size:10px;color:var(--red);font-style:italic">'+esc(doc.verworpen_reden||'verworpen')+'</span>'
           + '</div>';
       }
-      var icon = doc.type && doc.type.includes('pdf') ? '📄' : (doc.naam && (doc.naam.endsWith('.xlsx')||doc.naam.endsWith('.xls')||doc.naam.endsWith('.csv'))) ? '📊' : '📃';
-      return '<div style="display:flex;align-items:center;gap:5px;padding:4px 6px;background:var(--card);border-radius:var(--r);border:1px solid var(--border);margin-bottom:3px">'
-        + '<span style="font-size:11px;flex-shrink:0">'+icon+'</span>'
-        + '<span style="font-size:10px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:170px">'+(doc.bewaard?'<a href="'+WORKER+'/mna/document/download/'+doc.id+'" target="_blank" style="color:var(--teal);text-decoration:none">'+esc(doc.naam)+'</a>':esc(doc.naam))+'</span>'
-        + (!isReadOnly?'<button onclick="deleteDocument(\''+doc.id+'\',\''+faseId+'\')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:9px;padding:0;flex-shrink:0;line-height:1">✕</button>':'')
+      return '<div style="display:flex;align-items:center;gap:6px;padding:5px 8px;background:var(--card);border-radius:var(--r);border:1px solid var(--border)">'
+        + '<span style="font-size:13px">'+icon+'</span>'
+        + '<span style="font-size:11px;color:var(--teal);flex:1">'+(doc.bewaard?'<a href="'+WORKER+'/mna/document/download/'+doc.id+'" target="_blank" style="color:var(--teal);text-decoration:none">'+esc(doc.naam)+'</a>':esc(doc.naam))+'</span>'
+        + '<span style="font-size:10px;color:var(--muted)">'+(doc.grootte/1024/1024).toFixed(1)+'MB</span>'
+        + (!isReadOnly?'<button onclick="deleteDocument(\''+doc.id+'\',\''+faseId+'\')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:10px;padding:0 2px">✕</button>':'')
         + '</div>';
     }).join('');
-  } else if (!isReadOnly) {
-    docsHtml = '<div style="font-size:10px;color:var(--muted);font-style:italic;padding:4px 0">Geen documenten geladen</div>';
+    docsHtml += '</div>';
   }
 
-  return '<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:.85rem">'
-    + '<div style="font-size:9px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem">Documenten</div>'
-    + uploadHtml
-    + docsHtml
-    + '</div>';
+  return '<div style="margin-bottom:1rem">'+uploadHtml+docsHtml+'</div>';
 }
 
 function handleFileUpload(event, faseId) {
@@ -1205,8 +1181,8 @@ function renderLogin(){
     +'<div style="margin-top:1.25rem;font-size:11px;color:var(--muted);padding-top:1rem;border-top:1px solid var(--border)">Code ontvangen via Marcel Bisschops &middot; <a href="mailto:marcel@bisschopsfinancing.nl" style="color:var(--teal)">marcel@bisschopsfinancing.nl</a></div>'
     +'</div></div>'
     +'<div style="position:fixed;bottom:1.25rem;left:1.5rem;right:1.5rem;display:flex;justify-content:space-between;align-items:flex-end;pointer-events:none">'
-    +'<div style="pointer-events:auto"><span id="versie-label" style="font-size:13px;font-weight:600;font-family:IBM Plex Mono,monospace;color:var(--mid)">v1.0</span></div>'
-    +'<div style="pointer-events:auto;text-align:right"><a href="privacy.html" style="font-size:11px;font-weight:600;color:var(--teal);text-decoration:underline;display:block;margin-bottom:2px">Privacyverklaring</a><span style="font-size:10px;color:var(--muted)">Gegevens worden vertrouwelijk behandeld conform AVG.</span></div>'
+    +'<div style="pointer-events:auto"><span id="versie-label" style="font-size:15px;font-weight:700;font-family:IBM Plex Mono,monospace;color:var(--mid)">v1.0</span></div>'
+    +'<div style="pointer-events:auto;text-align:right"><a href="privacy.html" style="font-size:12px;font-weight:600;color:var(--teal);text-decoration:underline;display:block;margin-bottom:2px">Privacyverklaring</a><span style="font-size:10px;color:var(--muted)">Gegevens vertrouwelijk behandeld conform AVG</span></div>'
     +'</div>'
     +'</div>';
 }
@@ -1660,7 +1636,7 @@ function renderMain(){
       +'<div style="display:flex;align-items:center;gap:.75rem;margin-top:.3rem"><div style="font-size:11px;color:var(--muted)">'+(isKoper()?'':'Wijzigingen worden automatisch opgeslagen.')+'</div><div id="save-ind" class="save-indicator">&#10003; Opgeslagen</div></div></div>';
     var aiText=S.aiTexts[f.id];var aiLoad=S.aiLoading[f.id];
     var aiBodyHtml;
-    if(aiLoad)aiBodyHtml='<div style="display:flex;align-items:center;gap:8px;color:var(--mid);font-size:13px"><div class="spin" style="border-color:var(--border2);border-top-color:var(--teal);width:14px;height:14px"></div>Genereren...</div>';
+    if(aiLoad)aiBodyHtml='<div style="display:flex;align-items:center;gap:8px;color:var(--mid);font-size:13px"><div class="spin" style="border-color:var(--border2);border-top-color:var(--teal);width:14px;height:14px;border-width:2px"></div>Genereren...</div>';
     else if(!aiText)aiBodyHtml='<div style="color:var(--muted);font-size:13px">Klik op Genereer advies voor een analyse op basis van de ingevulde data, checklist en notities.</div>';
     else if(aiText==='__ERROR__')aiBodyHtml='<div style="color:var(--red);font-size:13px">Verbindingsfout. Probeer opnieuw.</div>';
     else{var h=aiText.replace(/## ([^\n]+)/g,function(_,t){return '<h3>'+t+'</h3>';});h=h.replace(/\*\*([^*]+)\*\*/g,function(_,t){return '<strong>'+t+'</strong>';});h=h.split('\n\n').map(function(p){return p.trim()&&p.charAt(0)!=='<'?'<p>'+p+'</p>':p;}).join('');aiBodyHtml=h;}
@@ -1849,7 +1825,8 @@ async function generateAI(faseId){
 function bindAll(){
   var lb=ge('l-btn');
   if(lb){
-    lb.onclick=async function(){\n      var code=((ge('l-code')||{}).value||'').trim().toUpperCase();
+    lb.onclick=async function(){
+      var code=((ge('l-code')||{}).value||'').trim().toUpperCase();
       if(!code)return;
       var err=ge('l-err');var load=ge('l-load');
       if(err)err.style.display='none';if(load)load.style.display='block';lb.disabled=true;
@@ -2226,4 +2203,3 @@ renderApp();
 </script>
 </body>
 </html>
-
