@@ -581,6 +581,9 @@ function autoFillFromExtraction(faseId, velden, forceOverwrite) {
     }
     if(!S._conflicts)S._conflicts=[];
     S._conflicts.push({key:key,label:label,huidig:existing,nieuw:newVal});
+    // Onthoud de conflicterende documentwaarde voor visuele indicatie
+    if(!S._pendingConflicts)S._pendingConflicts={};
+    S._pendingConflicts[key]=newVal;
   }
   if(faseId==='financieel'){
     if(!S._opy)S._opy={};
@@ -759,7 +762,7 @@ function handleDropUpload(event, faseId) {
 function uitloggen(){
   clearTimeout(S.saveTimer);
   Object.keys(DOCS).forEach(function(k){delete DOCS[k];});
-  S={screen:'login',code:'',rol:'',traject:null,fase:0,checked:{},data:{},docRefs:{},notities:{},aiTexts:{},aiLoading:{},saveTimer:null,showValidation:false,dataroomLoading:false,dataroom:null,_opy:{},_epy:{},_conflicts:[]};
+  S={screen:'login',code:'',rol:'',traject:null,fase:0,checked:{},data:{},docRefs:{},notities:{},aiTexts:{},aiLoading:{},saveTimer:null,showValidation:false,dataroomLoading:false,dataroom:null,_opy:{},_epy:{},_conflicts:[],_pendingConflicts:{}};
   renderApp();
 }
 
@@ -789,10 +792,19 @@ function toonConflictDialog() {
   box.appendChild(list);
   var btns=document.createElement('div');btns.style.cssText='display:flex;gap:10px;justify-content:flex-end';
   var btnB=document.createElement('button');btnB.className='btn-ghost';btnB.style.fontSize='12px';btnB.textContent='Alles behouden';
-  btnB.addEventListener('click',function(){document.body.removeChild(ov);});btns.appendChild(btnB);
+  btnB.addEventListener('click',function(){
+    // Conflict afgewezen - verwijder visuele indicatoren
+    conflicts.forEach(function(c){if(S._pendingConflicts)delete S._pendingConflicts[c.key];});
+    document.body.removeChild(ov);renderApp();
+  });btns.appendChild(btnB);
   var btnA=document.createElement('button');btnA.className='btn';btnA.style.fontSize='12px';btnA.textContent='Toepassen';
   btnA.addEventListener('click',function(){
-    radios.forEach(function(r){if(r.rN.checked)S.data[r.key]=conflicts.find(function(c){return c.key===r.key;}).nieuw;});
+    radios.forEach(function(r){
+      var c=conflicts.find(function(c){return c.key===r.key;});
+      if(r.rN.checked)S.data[r.key]=c.nieuw;
+      // Conflict opgelost - verwijder visuele indicator
+      if(S._pendingConflicts)delete S._pendingConflicts[r.key];
+    });
     document.body.removeChild(ov);renderApp();schedSave();
   });btns.appendChild(btnA);box.appendChild(btns);ov.appendChild(box);document.body.appendChild(ov);
 }
@@ -1560,22 +1572,7 @@ function renderMain(){
   var vergrendeld=S.traject&&S.traject.status==='vergrendeld';
   var isRO=isKoper()||vergrendeld;
 
-  // Centrale upload zone bovenaan
-  var centraalUpload='';
-  if(isVerkoper()&&!vergrendeld){
-    centraalUpload='<div id="centraal-upload-zone" style="background:var(--panel);border:2px dashed var(--teal);border-radius:var(--r2);padding:1.5rem;margin-bottom:1.25rem;text-align:center;cursor:pointer;transition:background .15s" '
-      +'ondragover="event.preventDefault();this.style.background=\'var(--teal-bg)\'" '
-      +'ondragleave="this.style.background=\'var(--panel)\'" '
-      +'ondrop="event.preventDefault();this.style.background=\'var(--panel)\';window.centraalUploadFiles(event.dataTransfer.files)">'
-      +'<div style="font-size:1.5rem;margin-bottom:.5rem">&#128196;</div>'
-      +'<div style="font-family:Playfair Display,serif;font-size:1rem;font-weight:600;color:var(--head);margin-bottom:.25rem">Documenten uploaden</div>'
-      +'<div style="font-size:12px;color:var(--muted);margin-bottom:.75rem;line-height:1.6">Sleep bestanden hierheen of klik om te selecteren. De AI leest automatisch alle relevante gegevens uit en vult de velden in.<br>Toegestaan: PDF, Word, Excel, CSV, e-mail — jaarrekening, Exact-export, loonoverzicht, belastingaangifte, etc.</div>'
-      +'<label class="btn" style="cursor:pointer;font-size:13px">&#43; Bestanden kiezen<input type="file" id="centraal-file-input" multiple accept=".pdf,.docx,.doc,.xlsx,.xls,.csv,.txt,.eml" style="display:none"></label>'
-      +'<div id="centraal-upload-status" style="margin-top:.75rem;font-size:12px;color:var(--muted)"></div>'
-      +'</div>';
-  }
-
-  var ov=(centraalUpload?centraalUpload:'')+'<div class="fase-grid">';
+  var ov='<div class="fase-grid">';
   FASES.forEach(function(fase,i){
     var p=isVerkoper()?fillPct(fase.id):pct(fase.id);
     ov+='<div class="fase-card'+(S.fase===i?' active':'')+'" data-fi="'+i+'">'
@@ -1598,14 +1595,18 @@ function renderMain(){
     }
     var val=S.data[f.id+'_'+df.id]||'';
     var missing=S.showValidation&&df.req&&!val.trim();
+    // Check of dit veld een openstaand conflict heeft
+    var hasConflict=S._pendingConflicts&&S._pendingConflicts[f.id+'_'+df.id];
     dataHtml+='<div>';
     if(isRO){
       dataHtml+='<div class="f"><label>'+df.label+(df.req?' <span class="req">*</span>':'')+(df.doc?' &#128196;':'')+'</label>'
-        +'<div class="readonly-val'+(val?'':' empty')+'>'+(val?esc(val):'Niet ingevuld')+(ref?'<span style="color:var(--gold);font-size:11px;margin-left:8px">&#128196; '+esc(ref)+'</span>':'')+'</div></div>';
+        +'<div class="readonly-val'+(val?'':' empty')+'">'+(val?esc(val):'Niet ingevuld')+(ref?'<span style="color:var(--gold);font-size:11px;margin-left:8px">&#128196; '+esc(ref)+'</span>':'')+'</div></div>';
     }else{
-      dataHtml+='<div class="f"><label>'+df.label+(df.req?' <span class="req">*</span>':'')+(df.doc?' <span style="color:var(--gold);font-size:9px">&#128196; ref</span>':'')+'</label>'
-        +'<input type="text" id="df_'+df.id+'" value="'+esc(val)+'" placeholder="'+esc(df.ph)+'" class="'+(missing?'missing':'')+'" oninput="schedSave();checkOmzetSom()"></div>';
-
+      var conflictStyle=hasConflict?'border-color:var(--gold);background:#fffbf0':'';
+      var conflictTitle=hasConflict?(' title="Document zegt: '+esc(hasConflict)+'"'):'';
+      dataHtml+='<div class="f"><label>'+df.label+(df.req?' <span class="req">*</span>':'')+(df.doc?' <span style="color:var(--gold);font-size:9px">&#128196; ref</span>':'')
+        +(hasConflict?' <span style="color:var(--gold);font-size:9px;font-weight:600" title="Document geeft andere waarde: '+esc(hasConflict)+'">&#9888; afwijking</span>':'')+'</label>'
+        +'<input type="text" id="df_'+df.id+'" value="'+esc(val)+'" placeholder="'+esc(df.ph)+'" class="'+(missing?'missing':'')+'" style="'+conflictStyle+'"'+conflictTitle+' oninput="schedSave();checkOmzetSom()"></div>';
     }
     dataHtml+='</div>';
   });
