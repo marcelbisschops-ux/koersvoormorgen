@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>KantoorInzicht — Beheer</title>
-<!-- BUILD: 27 May 10:45 -->
+<!-- BUILD: 27 May 13:04 -->
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -81,7 +81,7 @@ tr:hover td{background:rgba(26,122,94,.04)}
     </div>
   </div>
   <div id="app"></div>
-<div id="build-stamp" style="position:fixed;bottom:4px;right:8px;font-size:10px;font-family:monospace;color:#aaa;pointer-events:none;z-index:9999">27 May 10:45</div>
+<div id="build-stamp" style="position:fixed;bottom:4px;right:8px;font-size:10px;font-family:monospace;color:#aaa;pointer-events:none;z-index:9999">27 May 13:04</div>
 </div>
 <script>
 
@@ -1184,7 +1184,7 @@ async function toonDetail(id,naam){
   var ov=document.createElement('div');ov.className='overlay';
   var mo=document.createElement('div');mo.className='modal';mo.style.maxWidth='700px';
   mo.innerHTML='<div class="modal-title">'+esc(naam)+' <span class="code-chip" style="font-size:12px">'+esc(id)+'</span></div>'
-    +'<div style="display:flex;gap:8px;margin-bottom:1.25rem;flex-wrap:wrap"><button class="btn" id="det-bem-btn" style="background:#2a5ea0;font-size:12px;padding:7px 14px">&#128203; Bemiddelingsovereenkomst</button><button class="btn" id="det-nda-btn" style="background:#7c5cbf;font-size:12px;padding:7px 14px">&#128274; Genereer NDA</button><button class="btn" id="det-loi-btn" style="background:var(--gold);font-size:12px;padding:7px 14px">&#128196; Genereer LoI</button><button class="btn" id="det-ai-btn" style="background:var(--teal);font-size:12px;padding:7px 14px">&#9881; AI-analyse</button><div style="flex:1"></div><button class="btn-ghost" id="det-sluit" style="font-size:12px;padding:7px 14px">Sluiten</button></div>'
+    +'<div style="display:flex;gap:8px;margin-bottom:1.25rem;flex-wrap:wrap"><button class="btn" id="det-bem-btn" style="background:#2a5ea0;font-size:12px;padding:7px 14px">&#128203; Bemiddelingsovereenkomst</button><button class="btn" id="det-nda-btn" style="background:#7c5cbf;font-size:12px;padding:7px 14px">&#128274; Genereer NDA</button><button class="btn" id="det-loi-btn" style="background:var(--gold);font-size:12px;padding:7px 14px">&#128196; Genereer LoI</button><button class="btn" id="det-ai-btn" style="background:var(--teal);font-size:12px;padding:7px 14px">&#9881; AI-analyse</button><button class="btn-ghost" id="det-wis-data-btn" style="font-size:12px;padding:7px 14px;color:var(--red);border-color:var(--red)">&#128465; DD-data wissen</button><div style="flex:1"></div><button class="btn-ghost" id="det-sluit" style="font-size:12px;padding:7px 14px">Sluiten</button></div>'
     +'<div id="bem-output" style="display:none;margin-bottom:1.25rem;border-bottom:1px solid var(--border);padding-bottom:1.25rem"></div>'
     +'<div id="nda-output" style="display:none;margin-bottom:1.25rem;border-bottom:1px solid var(--border);padding-bottom:1.25rem"></div>'
     +'<div id="loi-output" style="display:none;margin-bottom:1.25rem;border-bottom:1px solid var(--border);padding-bottom:1.25rem"></div>'
@@ -1207,6 +1207,33 @@ async function toonDetail(id,naam){
   ov.appendChild(mo);document.body.appendChild(ov);
   ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
   document.getElementById('det-sluit').addEventListener('click',function(){document.body.removeChild(ov);});
+  document.getElementById('det-wis-data-btn').addEventListener('click',async function(){
+    if(!confirm('Alle DD-data van traject '+naam+' wissen? Documenten blijven bewaard. Dit kan niet ongedaan worden gemaakt.'))return;
+    var btn=this;btn.disabled=true;btn.textContent='Bezig...';
+    try{
+      var r=await fetch(WORKER+'/mna/admin/wis-data/'+id+'?key='+encodeURIComponent(adminKey),{method:'POST'});
+      var d=await r.json();
+      if(d.ok){
+        alert('DD-data gewist. Traject staat nu op 0%.');
+        document.body.removeChild(ov);
+        await refreshData();
+      } else {
+        // Fallback: wis per fase via bestaande save-route met lege data
+        var fases=['financieel','commercieel','partner','compliance','it','juridisch','strategisch'];
+        var ok=0;
+        for(var i=0;i<fases.length;i++){
+          try{
+            await fetch(WORKER+'/mna/save',{method:'POST',headers:{'Content-Type':'application/json'},
+              body:JSON.stringify({code:id,fase_id:fases[i],data_json:{},checklist_json:{},notitie:''})});
+            ok++;
+          }catch(e){}
+        }
+        alert('DD-data gewist via '+ok+' fases.');
+        document.body.removeChild(ov);
+        await refreshData();
+      }
+    }catch(e){alert('Fout: '+e.message);btn.disabled=false;btn.textContent='&#128465; DD-data wissen';}
+  });
 
 
   try{
