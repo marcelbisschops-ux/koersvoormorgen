@@ -2182,8 +2182,8 @@ function toonNieuwModal(){
     +'<div class="field"><label id="m-p1-email-lbl">E-mail contactpersoon <span style="color:var(--red)">*</span></label><input type="email" id="m-e" placeholder="E-mailadres"></div>'
     +'<div class="field"><label>Notitie (intern)</label><textarea id="m-n" rows="2" placeholder="Interne aantekeningen..."></textarea></div>'
     +'<div style="border-top:1px solid var(--border);margin:.75rem 0;padding-top:.75rem"><div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem">Begeleider (tussenpersoon)</div></div>'
-    +'<div class="field"><label>Naam begeleider</label><input type="text" id="m-bg-naam" placeholder="Naam adviseur"></div>'
-    +'<div class="field"><label>E-mail begeleider</label><input type="email" id="m-bg-email" placeholder="e-mail adviseur"></div>'
+    +'<div class="field"><label>Naam begeleider</label><input type="text" id="m-bg-naam" value="Marcel Bisschops"></div>'
+    +'<div class="field"><label>E-mail begeleider</label><input type="email" id="m-bg-email" value="marcel@bisschopsfinancing.nl"></div>'
     +'<div style="border-top:1px solid var(--border);margin:.75rem 0;padding-top:.75rem"><div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem" id="m-sectie2-hdr">Kopende partij</div></div>'
     +'<div class="field"><label id="m-p2-naam-lbl">Naam kopende partij <span style="color:var(--red)">*</span></label><div style="display:flex;gap:8px"><input type="text" id="m-koper-naam" placeholder="Naam kopende partij" style="flex:2"><input type="text" id="m-koper-kvk" placeholder="KvK-nr" style="flex:1"></div></div>'
     +'<div class="field"><label id="m-p2-rv-lbl">Rechtsvorm koper <span style="color:var(--red)">*</span></label><select id="m-koper-rv"><option value="">— Kies rechtsvorm —</option><option value="B.V.">B.V. (Besloten Vennootschap)</option><option value="N.V.">N.V. (Naamloze Vennootschap)</option><option value="Eenmanszaak">Eenmanszaak</option><option value="V.O.F.">V.O.F.</option><option value="Maatschap">Maatschap</option><option value="Coöperatie">Coöperatie</option><option value="Stichting">Stichting</option><option value="Holding B.V.">Holding B.V.</option><option value="C.V.">C.V.</option></select></div>'
@@ -2223,13 +2223,7 @@ function toonNieuwModal(){
     window._mPartijLabel=lb;
   }
   document.getElementById('m-t').addEventListener('change',updatePartijLabels);
-  // Adviseur: vul begeleider automatisch in met eigen gegevens
-  if(gebruikerInfo){
-    var bgNaam=document.getElementById('m-bg-naam');
-    var bgEmail=document.getElementById('m-bg-email');
-    if(bgNaam&&!bgNaam.value)bgNaam.value=gebruikerInfo.naam||'';
-    if(bgEmail&&!bgEmail.value)bgEmail.value=gebruikerInfo.email||'';
-  }
+
   updatePartijLabels();
 
   document.getElementById('m-ok').addEventListener('click',async function(){
