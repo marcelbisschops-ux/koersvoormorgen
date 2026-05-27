@@ -1172,7 +1172,12 @@ function renderLogin(){
     +'<div id="l-load" style="color:var(--muted);font-size:12px;margin-bottom:.75rem;display:none">Laden...</div>'
     +'<div style="display:flex;gap:10px"><button class="btn-ghost" onclick="window.location.href=\'index.html\'">Terug</button><button class="btn" id="l-btn">Inloggen</button></div>'
     +'<div style="margin-top:1.25rem;font-size:11px;color:var(--muted);padding-top:1rem;border-top:1px solid var(--border)">Code ontvangen via Marcel Bisschops &middot; <a href="mailto:marcel@bisschopsfinancing.nl" style="color:var(--teal)">marcel@bisschopsfinancing.nl</a></div>'
-    +'</div></div></div>';
+    +'</div></div>'
+    +'<div style="position:fixed;bottom:1.25rem;left:1.5rem;right:1.5rem;display:flex;justify-content:space-between;align-items:flex-end;pointer-events:none">'
+    +'<div style="pointer-events:auto"><span id="versie-label" style="font-size:10px;font-family:IBM Plex Mono,monospace;color:var(--muted)">v1.0</span></div>'
+    +'<div style="pointer-events:auto;max-width:280px;text-align:right"><a href="privacy.html" style="font-size:10px;color:var(--muted);text-decoration:none;line-height:1.5">Privacyverklaring &middot; Bisschops Financing BV behandelt uw gegevens conform AVG. Gegevens worden uitsluitend gebruikt voor het M&amp;A-traject en niet gedeeld met derden.</a></div>'
+    +'</div>'
+    +'</div>';
 }
 
 function renderBegeleiderDashboard(app){
@@ -1813,6 +1818,10 @@ async function generateAI(faseId){
 function bindAll(){
   var lb=ge('l-btn');
   if(lb){
+    // Laad versienummer
+    fetch(WORKER+'/mna/versie').then(function(r){return r.json();}).then(function(d){
+      var el=ge('versie-label');if(el&&d.versie)el.textContent='v'+d.versie;
+    }).catch(function(){});
     lb.onclick=async function(){
       var code=((ge('l-code')||{}).value||'').trim().toUpperCase();
       if(!code)return;

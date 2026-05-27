@@ -343,6 +343,7 @@ function renderMnaTab(el){
     +'<button class="btn-red" id="btn-del-sel-mna" style="font-size:12px;padding:7px 14px;display:none">&#10005; Verwijder geselecteerde (<span id="sel-cnt-mna">0</span>)</button>'
     +'<button class="btn" style="font-size:12px;padding:7px 14px" id="btn-ref-m">&#8635; Verversen</button>'
     +'<button class="btn" style="font-size:12px;padding:7px 14px" id="btn-nieuw">+ Nieuw traject</button>'
+    +'<button class="btn-ghost" style="font-size:12px;padding:7px 14px" id="btn-versie-reset">&#9881; Versie</button>'
     +'</div></div>';
   if(!mnaList.length){
     html+='<div class="empty">Geen trajecten.</div>';
@@ -380,6 +381,20 @@ function renderMnaTab(el){
   html+='</div>';
   el.innerHTML=html;
   var rb=document.getElementById('btn-ref-m');if(rb)rb.addEventListener('click',refreshData);
+  var vb=document.getElementById('btn-versie-reset');
+  if(vb)vb.addEventListener('click',async function(){
+    // Toon huidige versie
+    var huidig='';
+    try{var r=await fetch(WORKER+'/mna/versie');var d=await r.json();huidig=d.versie||'1.0';}catch(e){}
+    var nieuw=prompt('Huidig versienummer: v'+huidig+'\n\nVoer nieuw versienummer in (bijv. 1.1 of 2.0):',huidig);
+    if(!nieuw||!nieuw.trim())return;
+    try{
+      var r2=await fetch(WORKER+'/admin/versie-reset',{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':adminKey},body:JSON.stringify({versie:nieuw.trim()})});
+      var d2=await r2.json();
+      if(d2.ok)alert('✓ Versienummer bijgewerkt naar v'+d2.versie);
+      else alert('Fout: '+(d2.error||'onbekend'));
+    }catch(e){alert('Verbindingsfout.');}
+  });
   var bn=document.getElementById('btn-nieuw');if(bn)bn.addEventListener('click',toonNieuwModal);
 
   el.querySelectorAll('.copy-btn').forEach(function(b){
