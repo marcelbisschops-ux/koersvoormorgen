@@ -117,6 +117,7 @@ function renderLogin(){
     +'<div class="login-sub">Beheerder-toegang. Bent u adviseur? Log in via <a href="adv.html" style="color:var(--teal)">adv.html</a>.</div>'
     +'<div class="field" style="margin-top:1rem"><label>Beheerder-sleutel</label><input type="password" id="ak" placeholder="••••••••" autofocus></div>'
     +'<button class="btn" id="login-btn" style="width:100%">Inloggen</button>'
+    +'<div style="margin-top:1rem;padding:.75rem 1rem;background:var(--teal-bg);border:1px solid var(--teal-dark);border-radius:var(--r);font-size:11px;color:var(--muted);line-height:1.7">&#128274; <strong style="color:var(--sub)">Beveiliging & privacy</strong><br>Verbinding versleuteld (HTTPS). Gegevens in Cloudflare EU (Frankfurt). Geen gegevensverkoop. <a href="privacy.html" style="color:var(--teal)">Privacyverklaring</a></div>'
     +'<div id="login-err" style="color:var(--red);font-size:12px;margin-top:.75rem;display:none">Sleutel incorrect.</div>'
     +'<div id="login-mode" style="display:none"></div>'
     +'<div id="admin-fields" style="display:none"></div>'
@@ -1019,10 +1020,21 @@ function renderWaarderingTab(el){
       out.innerHTML='<div style="color:var(--muted);font-size:13px;padding:1rem 0">AI genereert waarderingsrapport... (20-40 seconden)</div>';
       var res3=bereken();
       var trajectNaam=selectedTraject?(mnaList.find(function(t){return t.id===selectedTraject;})||{}).kantoor_naam||selectedTraject:'(geen traject geselecteerd)';
-      var sectorRap={accountancy:'Accountancy & administratie',mkb:'MKB',zorg:'Zorg',itsoftware:'IT & Software'};
+      var sectorRap={
+        accountancy:'Accountancy & administratie',
+        mkb:'MKB',
+        zorg:'Zorg',
+        itsoftware:'IT & Software'
+      };
+      var sectorBenchmarks={
+        accountancy:'BENCHMARKS (Dealsuite H1-2025; Accountancy Vanmorgen/FD mei 2025; CBS/ING Research): MKB gemiddeld 4,9x EBITDA (Dealsuite H1-2025). Grote kantoren PE-deal: 10–11x (Baker Tilly/Grant Thornton, mei 2025). Omzet/FTE norm €80k–€140k. EBITDA-marge gezond 15–25%. Gebruik Novak-benchmarkdata als primaire bron indien beschikbaar.',
+        mkb:'BENCHMARKS (Dealsuite H1-2025 en H2-2024, CBS): MKB-gemiddelde 4,9x EBITDA. Detailhandel 2,4x; horeca 2,5–3,5x; handel 3,5–5,0x. EBITDA-marge retail 3–8%; horeca 5–12%; handel 5–10%.',
+        zorg:'BENCHMARKS ZORG: Huisarts — NZa inschrijftarief 2026 €21,59/kwartaal; consulttarief €13,18 (NZa TB/REG-26611-01). Tandarts — klein: 1,5–4x EBITDA; middelgroot: 5–7x EBITDA; keten: tot 10x EBITDA (Aeternus 2024/ABN Amro 2025). Omzet per patiënt 2024: €220–€250 (dentalinfo.nl). Fysiotherapie — marge ~15%; personeelskosten norm 55% (Fact4Fysio 2024/MedischOndernemen 2024).',
+        itsoftware:'BENCHMARKS (Dealsuite H1-2025): Software/SaaS EBITDA-multiple 7,3x (hoogste sector NL). SaaS ARR-multiple 3–8x. Churn <5% gezond. Maatwerk IT EBITDA-marge 12–20%.'
+      };
       var _t3=selectedTraject?mnaList.find(function(t){return t.id===selectedTraject;})||{}:{};
       var sectorRapLabel=sectorRap[_t3.sector]||'Accountancy';
-      var prompt='Je bent Marcel Bisschops, senior M&A-adviseur. Sector: '+sectorRapLabel+'.\n\n'
+      var prompt='Je bent Marcel Bisschops, senior M&A-adviseur. Sector: '+sectorRapLabel+'. '+( sectorBenchmarks[_t3.sector]||'')+'.\n\n'
         +'Schrijf een professioneel waarderingsrapport voor traject: '+trajectNaam+'\n\n'
         +'FINANCIËLE DATA:\n'
         +'- Omzet jaar 1: '+fmtGeld(W.omzet1)+'\n'
