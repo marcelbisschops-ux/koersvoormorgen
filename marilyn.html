@@ -2180,7 +2180,7 @@ function toonNieuwModal(){
     +'<div class="field"><label id="m-p1-adres-lbl">Adres <span style="color:var(--red)">*</span></label><input type="text" id="m-adres" placeholder="Adres"></div>'
     +'<div class="field"><label id="m-p1-contact-lbl">Contactpersoon <span style="color:var(--red)">*</span></label><input type="text" id="m-c" placeholder="Naam contactpersoon"></div>'
     +'<div class="field"><label id="m-p1-email-lbl">E-mail contactpersoon <span style="color:var(--red)">*</span></label><input type="email" id="m-e" placeholder="E-mailadres"></div>'
-    +'<div class="field"><label>Notitie (intern)</label><textarea id="m-n" rows="2" placeholder="Interne aantekeningen..."></textarea></div>'
+    +'<div class="field"><label>Notitie (intern) <span style="font-weight:400;color:var(--muted)">(optioneel)</span></label><textarea id="m-n" rows="2" placeholder="Interne aantekeningen..."></textarea></div>'
     +'<div style="border-top:1px solid var(--border);margin:.75rem 0;padding-top:.75rem"><div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem">Begeleider (tussenpersoon)</div></div>'
     +'<div class="field"><label>Naam begeleider</label><input type="text" id="m-bg-naam" value="Marcel Bisschops"></div>'
     +'<div class="field"><label>E-mail begeleider</label><input type="email" id="m-bg-email" value="marcel@bisschopsfinancing.nl"></div>'
@@ -2188,7 +2188,7 @@ function toonNieuwModal(){
     +'<div class="field"><label id="m-p2-naam-lbl">Naam kopende partij <span style="color:var(--red)">*</span></label><div style="display:flex;gap:8px"><input type="text" id="m-koper-naam" placeholder="Naam kopende partij" style="flex:2"><input type="text" id="m-koper-kvk" placeholder="KvK-nr" style="flex:1"></div></div>'
     +'<div class="field"><label id="m-p2-rv-lbl">Rechtsvorm koper <span style="color:var(--red)">*</span></label><select id="m-koper-rv"><option value="">— Kies rechtsvorm —</option><option value="B.V.">B.V. (Besloten Vennootschap)</option><option value="N.V.">N.V. (Naamloze Vennootschap)</option><option value="Eenmanszaak">Eenmanszaak</option><option value="V.O.F.">V.O.F.</option><option value="Maatschap">Maatschap</option><option value="Coöperatie">Coöperatie</option><option value="Stichting">Stichting</option><option value="Holding B.V.">Holding B.V.</option><option value="C.V.">C.V.</option></select></div>'
     +'<div class="field"><label id="m-p2-adres-lbl">Adres koper <span style="color:var(--red)">*</span></label><input type="text" id="m-koper-adres" placeholder="Adres"></div>'
-    +'<div class="field"><label id="m-p2-contact-lbl">Contactpersoon koper</label><input type="text" id="m-koper-contact" placeholder="Naam contactpersoon"></div>'
+    +'<div class="field"><label id="m-p2-contact-lbl">Contactpersoon koper <span style="color:var(--red)">*</span></label><input type="text" id="m-koper-contact" placeholder="Naam contactpersoon"></div>'
     +'<div class="field"><label id="m-p2-email-lbl">E-mail koper <span style="color:var(--red)">*</span></label><input type="email" id="m-koper-email" placeholder="koper@bedrijf.nl"></div>'
     +'<div id="m-res" style="display:none;background:var(--teal-bg);border:1px solid var(--teal-dark);border-radius:var(--r);padding:1rem;margin-bottom:1rem;font-size:13px;line-height:2"></div>'
     +'<div id="m-err" style="display:none;color:var(--red);font-size:12px;margin-bottom:.75rem"></div>'
@@ -2245,6 +2245,7 @@ function toonNieuwModal(){
     if(!vv('m-bg-email'))return fout('E-mail begeleider is verplicht.');
     if(!emailRe.test(vv('m-bg-email')))return fout('E-mail begeleider heeft geen geldig formaat.');
     if(!vv('m-koper-naam'))return fout(lb.partij2+' naam is verplicht.');
+    if(!vv('m-koper-contact'))return fout('Contactpersoon '+lb.sectie2.toLowerCase()+' is verplicht.');
     if(!vv('m-koper-rv'))return fout('Rechtsvorm '+lb.sectie2.toLowerCase()+' is verplicht.');
     if(!vv('m-koper-email'))return fout('E-mail '+lb.sectie2.toLowerCase()+' is verplicht.');
     if(!emailRe.test(vv('m-koper-email')))return fout('E-mail '+lb.sectie2.toLowerCase()+' heeft geen geldig formaat.');
