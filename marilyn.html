@@ -1273,10 +1273,7 @@ async function toonDetail(id,naam){
       try{
         var fd=new FormData();
         fd.append('file',file);
-        fd.append('traject_id',id);
-        fd.append('fase_id',fase);
-        fd.append('bewaard','1');
-        var r=await fetch(WORKER+'/mna/document/upload?key='+encodeURIComponent(adminKey),{method:'POST',body:fd});
+        var r=await fetch(WORKER+'/mna/document/upload?key='+encodeURIComponent(adminKey)+'&code='+encodeURIComponent(id)+'&fase_id='+encodeURIComponent(fase)+'&bewaar=1',{method:'POST',body:fd});
         var d=await r.json();
         if(d.ok||d.id){toast('Document geüpload: '+file.name,'ok');}
         else{toast(d.error||'Upload mislukt.','err');}
