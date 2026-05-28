@@ -1218,6 +1218,55 @@ async function deleteMna(id,naam){
   }catch(e){toast('Verbindingsfout.','err');}
 }
 
+// SIGNHOST STUUR FUNCTIE
+async function stuurSignhost(id, docType, tekst, d) {
+  var t = d.traject;
+  var docLabels = {nda:'NDA', loi:'LoI', bem:'Bemiddelingsovereenkomst', excl:'Exclusiviteitsbrief'};
+  var docLabel = docLabels[docType] || docType;
+  // Bepaal standaard ondertekenaar op basis van doc type
+  var defaultEmail = docType === 'bem' ? (t.koper_email||'') : (t.contact_email||'');
+  var defaultNaam = docType === 'bem' ? (t.koper_contact||t.koper_naam||'') : (t.contact_naam||'');
+
+  var ov = document.createElement('div'); ov.className = 'overlay';
+  var mo = document.createElement('div'); mo.className = 'modal'; mo.style.maxWidth = '420px';
+  mo.innerHTML = '<div class="modal-title">&#9998; Verstuur ter ondertekening — '+esc(docLabel)+'</div>'
+    + '<div style="font-size:12px;color:var(--muted);margin-bottom:1rem;padding:.6rem;background:var(--card);border-radius:var(--r);border-left:3px solid var(--teal)">Signhost verstuurt een e-mail naar de ondertekenaar met een beveiligde tekenlink. U ontvangt een bevestiging zodra getekend.</div>'
+    + '<div class="field"><label>Naam ondertekenaar</label><input type="text" id="sh-naam" value="'+esc(defaultNaam)+'" placeholder="Voor- en achternaam"></div>'
+    + '<div class="field"><label>E-mailadres ondertekenaar</label><input type="email" id="sh-email" value="'+esc(defaultEmail)+'" placeholder="naam@bedrijf.nl"></div>'
+    + '<div id="sh-err" style="display:none;color:var(--red);font-size:12px;margin-bottom:.5rem"></div>'
+    + '<div style="display:flex;gap:8px;justify-content:flex-end">'
+    + '<button class="btn-ghost" id="sh-ann">Annuleren</button>'
+    + '<button class="btn" id="sh-stuur" style="background:var(--teal)">&#9998; Verstuur via Signhost</button>'
+    + '</div>';
+  ov.appendChild(mo); document.body.appendChild(ov);
+  ov.addEventListener('click', function(e){if(e.target===ov)document.body.removeChild(ov);});
+  document.getElementById('sh-ann').onclick = function(){document.body.removeChild(ov);};
+
+  document.getElementById('sh-stuur').onclick = async function() {
+    var btn = this; btn.disabled = true; btn.textContent = 'Versturen...';
+    var naam = document.getElementById('sh-naam').value.trim();
+    var email = document.getElementById('sh-email').value.trim();
+    var errEl = document.getElementById('sh-err');
+    if (!email) { errEl.style.display='block'; errEl.textContent='E-mailadres verplicht'; btn.disabled=false; btn.textContent='Verstuur'; return; }
+    var r = await fetch(WORKER+'/mna/signhost/stuur', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-admin-key':adminKey},
+      body:JSON.stringify({code:id, doc_type:docType, ondertekenaar_naam:naam, ondertekenaar_email:email, doc_tekst:tekst})
+    });
+    var rd = await r.json();
+    if (rd.ok) {
+      document.body.removeChild(ov);
+      toast('✅ '+docLabel+' verstuurd via Signhost naar '+email, 'ok', 5000);
+    } else if (rd.error && rd.error.includes('niet geconfigureerd')) {
+      errEl.style.display='block';
+      errEl.innerHTML='⚠ Signhost nog niet geconfigureerd.<br><span style="font-size:11px">Voeg SIGNHOST_API_KEY en SIGNHOST_APP_KEY toe als environment variables in Cloudflare.</span>';
+      btn.disabled=false; btn.textContent='Verstuur via Signhost';
+    } else {
+      errEl.style.display='block'; errEl.textContent=rd.error||'Fout'; btn.disabled=false; btn.textContent='Verstuur';
+    }
+  };
+}
+
 // INFO FASE PANEEL
 async function renderInfoFasePaneel(id, adminKey) {
   var el = document.getElementById('infofase-paneel');
@@ -1749,9 +1798,12 @@ async function toonDetail(id,naam){
           +'<div style="display:flex;gap:8px;margin-top:.75rem">'
           +'<button id="bem-print-btn" class="btn-ghost" style="font-size:12px;padding:6px 14px">&#128196; Print / PDF</button>'
           +'<button id="bem-email-btn" class="btn" style="font-size:12px;padding:6px 14px;background:#2a5ea0">&#9993; Stuur naar opdrachtgever</button>'
+          +'<button id="bem-signhost-btn" class="btn" style="font-size:12px;padding:6px 14px;background:var(--teal)">&#9998; Signhost</button>'
           +'</div>';
         var bemEditEl2=document.getElementById('bem-edit');
         bemEditEl2.value=tekst;
+        // BEM Signhost
+        var bemShBtn=document.getElementById('bem-signhost-btn');if(bemShBtn)bemShBtn.addEventListener('click',function(){stuurSignhost(id,'bem',bemEditEl2.value||'',d);});
         bemEditEl2.dataset.tekst=''; // clear
         document.getElementById('bem-email-btn').dataset.ready='1';
         document.getElementById('bem-print-btn').addEventListener('click',function(){var bemEl=document.getElementById('bem-edit');var pt=bemEl?bemEl.value:tekst;var win=window.open('','_blank');win.document.write('<html><head><style>body{font-family:Georgia,serif;font-size:13px;line-height:1.9;max-width:700px;margin:2cm auto;color:#2a2825}@media print{body{margin:1.5cm}}</style></head><body><p>'+pt.replace(/\n/g,'<br>')+'</p></body></html>');win.document.close();win.print();});
@@ -1807,6 +1859,7 @@ async function toonDetail(id,naam){
           +'<div style="display:flex;gap:8px;margin-top:.75rem">'
           +'<button id="nda-print-btn" class="btn-ghost" style="font-size:12px;padding:6px 14px">&#128196; Print / PDF</button>'
           +'<button id="nda-email-btn" class="btn" style="font-size:12px;padding:6px 14px;background:#7c5cbf">&#9993; Stuur naar partijen</button>'
+          +'<button id="nda-signhost-btn" class="btn" style="font-size:12px;padding:6px 14px;background:var(--teal)">&#9998; Signhost</button>'
           +'</div>';
         document.getElementById('nda-edit').value=tekst;
         document.getElementById('nda-print-btn').addEventListener('click',function(){var ndaEl=document.getElementById('nda-edit');var pt=ndaEl?ndaEl.value:tekst;var win=window.open('','_blank');win.document.write('<html><head><style>body{font-family:Georgia,serif;font-size:13px;line-height:1.9;max-width:700px;margin:2cm auto;color:#2a2825}@media print{body{margin:1.5cm}}</style></head><body><p>'+pt.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>')+'</p></body></html>');win.document.close();win.print();});
@@ -1891,6 +1944,13 @@ async function toonDetail(id,naam){
       }catch(e){ndaOut.innerHTML='<div style="color:var(--red);font-size:13px">Fout: '+e.message+'</div>';btn.textContent='Genereer NDA';btn.disabled=false;}
     });
 
+    // NDA Signhost
+    var ndaShBtn=document.getElementById('nda-signhost-btn');
+    if(ndaShBtn)ndaShBtn.addEventListener('click',function(){
+      var tekst=document.getElementById('nda-edit')&&document.getElementById('nda-edit').value||'';
+      stuurSignhost(id,'nda',tekst,d);
+    });
+
     // LoI knop
     document.getElementById('det-loi-btn').addEventListener('click',async function(){
       var btn=this;btn.disabled=true;btn.textContent='Genereren...';
@@ -1938,7 +1998,15 @@ async function toonDetail(id,naam){
           }catch(fe){toast('Verbindingsfout: '+esc(fe.message),'err');ebtn.disabled=false;ebtn.textContent='✉ Stuur naar partijen';}
         });
         btn.textContent='Opnieuw genereren';btn.disabled=false;
-      }catch(e){loiOut.innerHTML='<div style="color:var(--red);font-size:13px">Fout: '+e.message+'</div>';btn.textContent='Genereer LoI';btn.disabled=false;}
+      }catch(e){loiOut.innerHTML='<div style="color:var(--red);font-size:13px">Fout: '+e.message+'</div>';btn.textContent='Genereer LoI';btn.disabled=false;
+      var loiShBtn=document.getElementById('loi-signhost-btn');if(loiShBtn)loiShBtn.addEventListener('click',function(){var tekst=document.getElementById('loi-edit')&&document.getElementById('loi-edit').value||'';stuurSignhost(id,'loi',tekst,d);});}
+    });
+
+    // LoI Signhost
+    var loiShBtn=document.getElementById('loi-signhost-btn');
+    if(loiShBtn)loiShBtn.addEventListener('click',function(){
+      var tekst=document.getElementById('loi-edit')&&document.getElementById('loi-edit').value||'';
+      stuurSignhost(id,'loi',tekst,d);
     });
 
     // Exclusiviteitsbrief knop
@@ -1967,6 +2035,7 @@ async function toonDetail(id,naam){
           +'<div style="display:flex;gap:8px;margin-top:.75rem">'
           +'<button id="excl-print-btn" class="btn-ghost" style="font-size:12px;padding:6px 14px">&#128196; Print / PDF</button>'
           +'<button id="excl-email-btn" class="btn" style="font-size:12px;padding:6px 14px;background:var(--teal)">&#9993; Stuur naar partijen</button>'
+          +'<button id="excl-signhost-btn" class="btn" style="font-size:12px;padding:6px 14px;background:var(--teal-dim)">&#9998; Signhost</button>'
           +'</div>';
         document.getElementById('excl-edit').value=tekst;
         document.getElementById('excl-print-btn').addEventListener('click',function(){var el=document.getElementById('excl-edit');var pt=el?el.value:tekst;var win=window.open('','_blank');win.document.write('<html><head><style>body{font-family:Georgia,serif;font-size:13px;line-height:1.9;max-width:700px;margin:2cm auto;color:#2a2825}@media print{body{margin:1.5cm}}</style></head><body><p>'+pt.replace(/\n/g,'<br>')+'</p></body></html>');win.document.close();win.print();});
