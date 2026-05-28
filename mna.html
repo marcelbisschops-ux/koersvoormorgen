@@ -1320,7 +1320,7 @@ function uitloggen(){
   secAuditLog('logout');
   secReset();
   Object.keys(DOCS).forEach(function(k){delete DOCS[k];});
-  S={screen:'login',code:'',rol:'',traject:null,fase:0,checked:{},data:{},docRefs:{},notities:{},aiTexts:{},aiLoading:{},saveTimer:null,showValidation:false,dataroomLoading:false,dataroom:null,_opy:{},_epy:{},_conflicts:[],_pendingConflicts:{}};
+  S={screen:'login',code:'',rol:'',traject:null,fase:0,checked:{},data:{},docRefs:{},notities:{},aiTexts:{},aiLoading:{},saveTimer:null,showValidation:false,dataroomLoading:false,dataroom:null,_opy:{},_epy:{},_conflicts:[],_pendingConflicts:{},bemTekst:'',bemDatum:0,bemGetekend:'',exclTekst:'',exclDatum:0,exclGetekend:''};
   renderApp();
 }
 
@@ -2355,6 +2355,20 @@ function renderCover(){
       +'<button id="loi-print2-btn" class="btn" style="font-size:12px;background:var(--gold)">&#128196; Download / Print</button>'
       +(S.loiGetekend?'<div style="font-size:11px;padding:4px 10px;border-radius:12px;background:var(--gold-bg);border:1px solid var(--gold);color:var(--gold);display:flex;align-items:center;gap:4px">&#10003; Getekend door '+esc(S.loiGetekend)+'</div>':(!isAdmin()?'<button id="loi-teken-btn" class="btn-ghost" style="font-size:12px;border-color:var(--gold);color:var(--gold)">&#9998; Akkoord &amp; onderteken</button>':''))
       +'</div></div>':'')
+    +(isKoper()&&S.bemTekst?'<div style="margin-top:1.5rem;background:#eef3fa;border:1px solid #2a5ea0;border-radius:var(--r2);padding:1.25rem">'
+      +'<div style="font-size:11px;font-weight:600;color:#2a5ea0;letter-spacing:.1em;text-transform:uppercase;margin-bottom:.6rem">&#128203; Bemiddelingsovereenkomst beschikbaar</div>'
+      +'<div style="font-size:12px;color:var(--mid);margin-bottom:.75rem">De Bemiddelingsovereenkomst is opgesteld door uw adviseur. Lees het document door en onderteken digitaal.</div>'
+      +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
+      +'<button id="bem-lees-btn" class="btn-ghost" style="font-size:12px;border-color:#2a5ea0;color:#2a5ea0">&#128065; Lees BEM</button>'
+      +(S.bemGetekend?'<div style="font-size:11px;padding:4px 10px;border-radius:12px;background:#eef3fa;border:1px solid #2a5ea0;color:#2a5ea0;display:flex;align-items:center;gap:4px">&#10003; Getekend door '+esc(S.bemGetekend)+'</div>':'<button id="bem-teken-btn" class="btn" style="font-size:12px;padding:6px 14px;background:#2a5ea0">&#9998; Akkoord &amp; onderteken</button>')
+      +'</div></div>':'')
+    +(isVerkoper()&&S.exclTekst?'<div style="margin-top:1.5rem;background:var(--teal-bg);border:1px solid var(--teal-dark);border-radius:var(--r2);padding:1.25rem">'
+      +'<div style="font-size:11px;font-weight:600;color:var(--teal);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.6rem">&#128196; Exclusiviteitsbrief beschikbaar</div>'
+      +'<div style="font-size:12px;color:var(--mid);margin-bottom:.75rem">De Exclusiviteitsbrief is opgesteld. Lees het document door en onderteken digitaal ter bevestiging van de exclusiviteitsperiode.</div>'
+      +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
+      +'<button id="excl-lees-btn" class="btn-ghost" style="font-size:12px;border-color:var(--teal);color:var(--teal)">&#128065; Lees Exclusiviteitsbrief</button>'
+      +(S.exclGetekend?'<div style="font-size:11px;padding:4px 10px;border-radius:12px;background:var(--teal-bg);border:1px solid var(--teal-dark);color:var(--teal);display:flex;align-items:center;gap:4px">&#10003; Getekend door '+esc(S.exclGetekend)+'</div>':'<button id="excl-teken-btn" class="btn" style="font-size:12px;padding:6px 14px;background:var(--teal)">&#9998; Akkoord &amp; onderteken</button>')
+      +'</div></div>':'')
     +(isVerkoper()?'<button class="btn" id="to-main-btn2" style="width:100%;margin-top:1rem">Start met invullen &#8594;</button>':'')
     +'</div>';
 }
@@ -2683,6 +2697,12 @@ function bindAll(){
         if(d.traject&&d.traject.nda_datum)S.ndaDatum=d.traject.nda_datum;
         if(d.traject&&d.traject.nda_getekend)S.ndaGetekend=d.traject.nda_getekend;
         if(d.traject&&d.traject.loi_getekend)S.loiGetekend=d.traject.loi_getekend;
+        if(d.traject&&d.traject.bem_tekst)S.bemTekst=d.traject.bem_tekst;
+        if(d.traject&&d.traject.bem_datum)S.bemDatum=d.traject.bem_datum;
+        if(d.traject&&d.traject.bem_getekend)S.bemGetekend=d.traject.bem_getekend;
+        if(d.traject&&d.traject.excl_tekst)S.exclTekst=d.traject.excl_tekst;
+        if(d.traject&&d.traject.excl_datum)S.exclDatum=d.traject.excl_datum;
+        if(d.traject&&d.traject.excl_getekend)S.exclGetekend=d.traject.excl_getekend;
         renderApp();
       }catch(e){if(err)err.style.display='block';if(load)load.style.display='none';lb.disabled=false;}
     };
@@ -2741,6 +2761,60 @@ function bindAll(){
       var r=await fetch(WORKER+'/mna/teken',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:S.code,document:'loi',naam:naam.trim()})});
       var d=await r.json();
       if(d.ok){S.loiGetekend=naam.trim();renderApp();toast('LoI getekend. De adviseur is op de hoogte gesteld.','ok');}
+      else toast('Fout: '+(d.error||'onbekend'),'err');
+    }catch(e){toast('Verbindingsfout.','err');}
+  };
+
+  // BEM lees (koper)
+  var bemLees=ge('bem-lees-btn');
+  if(bemLees)bemLees.onclick=function(){
+    var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;display:flex;align-items:center;justify-content:center;padding:1.5rem';
+    var box=document.createElement('div');box.style.cssText='background:#fff;border-radius:10px;padding:2rem;max-width:700px;width:100%;max-height:90vh;overflow-y:auto';
+    box.innerHTML='<div style="font-size:11px;font-weight:600;color:#2a5ea0;letter-spacing:.1em;text-transform:uppercase;margin-bottom:1rem">&#128203; Bemiddelingsovereenkomst</div>'
+      +'<div style="font-family:Georgia,serif;font-size:13px;line-height:1.9;color:#2a2825;white-space:pre-wrap">'+esc(S.bemTekst)+'</div>'
+      +'<div style="display:flex;justify-content:flex-end;margin-top:1.25rem"><button style="background:transparent;border:1px solid #c8c5bc;border-radius:6px;padding:8px 18px;cursor:pointer;font-size:13px" id="bem-lees-sluit">Sluiten</button></div>';
+    ov.appendChild(box);document.body.appendChild(ov);
+    ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
+    document.getElementById('bem-lees-sluit').addEventListener('click',function(){document.body.removeChild(ov);});
+  };
+
+  // BEM tekenen (koper)
+  var bemTeken=ge('bem-teken-btn');
+  if(bemTeken)bemTeken.onclick=async function(){
+    var naam=prompt('Voer uw volledige naam in ter bevestiging van akkoord:');
+    if(!naam||!naam.trim())return;
+    if(!confirm('U gaat akkoord met de Bemiddelingsovereenkomst namens '+naam.trim()+'. Bevestigen?'))return;
+    try{
+      var r=await fetch(WORKER+'/mna/teken',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:S.code,document:'bem',naam:naam.trim()})});
+      var d=await r.json();
+      if(d.ok){S.bemGetekend=naam.trim();renderApp();toast('BEM getekend. De adviseur is op de hoogte gesteld.','ok');}
+      else toast('Fout: '+(d.error||'onbekend'),'err');
+    }catch(e){toast('Verbindingsfout.','err');}
+  };
+
+  // Exclusiviteitsbrief lees (verkoper)
+  var exclLees=ge('excl-lees-btn');
+  if(exclLees)exclLees.onclick=function(){
+    var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;display:flex;align-items:center;justify-content:center;padding:1.5rem';
+    var box=document.createElement('div');box.style.cssText='background:#fff;border-radius:10px;padding:2rem;max-width:700px;width:100%;max-height:90vh;overflow-y:auto';
+    box.innerHTML='<div style="font-size:11px;font-weight:600;color:#1a7a5e;letter-spacing:.1em;text-transform:uppercase;margin-bottom:1rem">&#128196; Exclusiviteitsbrief</div>'
+      +'<div style="font-family:Georgia,serif;font-size:13px;line-height:1.9;color:#2a2825;white-space:pre-wrap">'+esc(S.exclTekst)+'</div>'
+      +'<div style="display:flex;justify-content:flex-end;margin-top:1.25rem"><button style="background:transparent;border:1px solid #c8c5bc;border-radius:6px;padding:8px 18px;cursor:pointer;font-size:13px" id="excl-lees-sluit">Sluiten</button></div>';
+    ov.appendChild(box);document.body.appendChild(ov);
+    ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
+    document.getElementById('excl-lees-sluit').addEventListener('click',function(){document.body.removeChild(ov);});
+  };
+
+  // Exclusiviteitsbrief tekenen (verkoper)
+  var exclTeken=ge('excl-teken-btn');
+  if(exclTeken)exclTeken.onclick=async function(){
+    var naam=prompt('Voer uw volledige naam in ter bevestiging van akkoord:');
+    if(!naam||!naam.trim())return;
+    if(!confirm('U gaat akkoord met de Exclusiviteitsbrief namens '+naam.trim()+'. Bevestigen?'))return;
+    try{
+      var r=await fetch(WORKER+'/mna/teken',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:S.code,document:'excl',naam:naam.trim()})});
+      var d=await r.json();
+      if(d.ok){S.exclGetekend=naam.trim();renderApp();toast('Exclusiviteitsbrief getekend. De adviseur is op de hoogte gesteld.','ok');}
       else toast('Fout: '+(d.error||'onbekend'),'err');
     }catch(e){toast('Verbindingsfout.','err');}
   };
