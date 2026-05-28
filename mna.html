@@ -2320,6 +2320,25 @@ function renderCover(){
       +'<div style="font-size:13px;color:var(--mid);line-height:1.7;max-width:420px;margin:0 auto">De due diligence informatie is nog niet vrijgegeven door de adviseur.</div>'
       +'</div>'
       +bemBlok
+      +'<div style="margin:1.5rem 2rem;border-top:1px solid var(--border);padding-top:1.25rem">'
+      +'<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem">&#128193; Document uploaden</div>'
+      +'<div style="font-size:12px;color:var(--muted);margin-bottom:.75rem">Upload een document en geef aan om welke categorie het gaat.</div>'
+      +'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:.5rem">'
+      +'<select id="cover-upload-fase" style="background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:IBM Plex Sans,sans-serif;font-size:12px;padding:7px 10px">'
+      +'<option value="financieel">Financieel</option>'
+      +'<option value="juridisch">Juridisch</option>'
+      +'<option value="commercieel">Klanten & commercieel</option>'
+      +'<option value="partner">Personeel</option>'
+      +'<option value="compliance">Compliance & kwaliteit</option>'
+      +'<option value="it">IT & systemen</option>'
+      +'<option value="strategisch">Strategisch</option>'
+      +'<option value="algemeen" selected>Diversen</option>'
+      +'</select>'
+      +'<label style="display:inline-flex;align-items:center;gap:6px;background:var(--teal);color:#fff;font-family:IBM Plex Sans,sans-serif;font-size:12px;font-weight:600;padding:7px 16px;border-radius:var(--r);cursor:pointer">'
+      +'&#8679; Bestand kiezen<input type="file" id="cover-upload-input" multiple style="display:none"></label>'
+      +'</div>'
+      +'<div id="cover-upload-status"></div>'
+      +'</div>'
       +'</div>';
 }else{
     intro='<p>Geachte relatie,</p>'
@@ -2386,6 +2405,25 @@ function renderCover(){
       +(S.exclDocId||S.exclGetekend?'<div style="font-size:11px;padding:4px 10px;border-radius:12px;background:var(--teal-bg);border:1px solid var(--teal-dark);color:var(--teal);display:flex;align-items:center;gap:4px">&#10003; '+(S.exclGetekend?'Getekend door '+esc(S.exclGetekend):'Document aanwezig — reeds ondertekend')+'</div>':'<button id="excl-teken-btn" class="btn" style="font-size:12px;padding:6px 14px;background:var(--teal)">&#9998; Akkoord &amp; onderteken</button>')
       +'</div></div>':'')
     +(isVerkoper()?'<button class="btn" id="to-main-btn2" style="width:100%;margin-top:1rem">Start met invullen &#8594;</button>':'')
+    +'<div style="margin-top:1.5rem;border-top:1px solid var(--border);padding-top:1.25rem">'
+    +'<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem">&#128193; Document uploaden</div>'
+    +'<div style="font-size:12px;color:var(--muted);margin-bottom:.75rem">Upload een document en geef aan om welke categorie het gaat. De adviseur ontvangt direct een melding.</div>'
+    +'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:.5rem">'
+    +'<select id="cover-upload-fase" style="background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:IBM Plex Sans,sans-serif;font-size:12px;padding:7px 10px">'
+    +'<option value="financieel">Financieel</option>'
+    +'<option value="juridisch">Juridisch</option>'
+    +'<option value="commercieel">Klanten & commercieel</option>'
+    +'<option value="partner">Personeel</option>'
+    +'<option value="compliance">Compliance & kwaliteit</option>'
+    +'<option value="it">IT & systemen</option>'
+    +'<option value="strategisch">Strategisch</option>'
+    +'<option value="algemeen" selected>Diversen</option>'
+    +'</select>'
+    +'<label style="display:inline-flex;align-items:center;gap:6px;background:var(--teal);color:#fff;font-family:IBM Plex Sans,sans-serif;font-size:12px;font-weight:600;padding:7px 16px;border-radius:var(--r);cursor:pointer">'
+    +'&#8679; Bestand kiezen<input type="file" id="cover-upload-input" multiple style="display:none"></label>'
+    +'</div>'
+    +'<div id="cover-upload-status"></div>'
+    +'</div>'
     +'</div>';
 }
 
@@ -2736,6 +2774,70 @@ function bindAll(){
   }
   var toMain=ge('to-main-btn');if(toMain)toMain.onclick=function(){S.screen='main';var fId=FASES[S.fase]&&FASES[S.fase].id;if(fId&&!DOCS[fId])loadDocsForFase(fId);renderApp();};
   var toMain2=ge('to-main-btn2');if(toMain2)toMain2.onclick=function(){S.screen='main';renderApp();};
+
+  // Vrije upload op cover — alle rollen
+  var coverUpload=ge('cover-upload-input');
+  if(coverUpload){
+    coverUpload.addEventListener('change',async function(){
+      var files=Array.from(this.files);if(!files.length)return;
+      var statusEl=ge('cover-upload-status');
+      var faseSelect=ge('cover-upload-fase');
+      var faseId=faseSelect?faseSelect.value:'algemeen';
+      var faseLabels={financieel:'Financieel',juridisch:'Juridisch',commercieel:'Klanten & commercieel',partner:'Personeel',compliance:'Compliance & kwaliteit',it:'IT & systemen',strategisch:'Strategisch',algemeen:'Diversen'};
+      var faseLabel=faseLabels[faseId]||faseId;
+      var uploaderRol=isVerkoper()?'Verkoper':isKoper()?'Koper':'Tussenpersoon';
+      var uploaderNaam=S.traject&&(isVerkoper()?S.traject.contact_naam:isKoper()?S.traject.koper_contact:S.traject.begeleider_naam)||uploaderRol;
+      var code=S.code;
+      var geupload=[];
+      for(var i=0;i<files.length;i++){
+        var file=files[i];
+        if(statusEl)statusEl.innerHTML='<span style="font-size:12px;color:var(--muted)">&#9881; Uploaden: '+esc(file.name)+'...</span>';
+        try{
+          var b64=await new Promise(function(res,rej){
+            var reader=new FileReader();
+            reader.onload=function(){res(reader.result.split(',')[1]);};
+            reader.onerror=function(){rej(new Error('Lezen mislukt'));};
+            reader.readAsDataURL(file);
+          });
+          var params=new URLSearchParams();
+          params.append('data',JSON.stringify({
+            code:code,fase_id:faseId,bewaar:true,skip_analyse:false,
+            bestand_naam:file.name,bestand_type:file.type||'application/octet-stream',base64:b64
+          }));
+          var r=await fetch(WORKER+'/mna/document/upload-base64',{method:'POST',body:params});
+          var d=await r.json();
+          if(d.ok||d.id){
+            geupload.push({naam:file.name,id:d.id||d.doc_id});
+            if(statusEl)statusEl.innerHTML='<span style="font-size:12px;color:var(--teal)">&#10003; '+esc(file.name)+' geüpload als '+esc(faseLabel)+'</span>';
+          } else {
+            toast(d.error||'Upload mislukt','err');
+            if(statusEl)statusEl.innerHTML='<span style="font-size:12px;color:var(--red)">Fout: '+esc(d.error||'onbekend')+'</span>';
+          }
+        }catch(e){
+          toast('Fout: '+e.message,'err');
+          if(statusEl)statusEl.innerHTML='<span style="font-size:12px;color:var(--red)">Fout: '+esc(e.message)+'</span>';
+        }
+      }
+      this.value='';
+      // Stuur melding naar adviseur als er docs zijn geupload
+      if(geupload.length&&S.traject){
+        var t2=S.traject;
+        var docLijst=geupload.map(function(d){return '• '+d.naam;}).join('\n');
+        fetch(WORKER+'/mna/doc-melding',{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({
+            code:code,
+            fase_label:faseLabel,
+            bestanden:geupload.map(function(d){return d.naam;}),
+            uploader_naam:uploaderNaam,
+            uploader_rol:uploaderRol
+          })
+        }).catch(function(){});
+        toast(geupload.length+' document(en) geüpload als '+faseLabel+' — adviseur ontvangt melding','ok');
+      }
+    });
+  }
   var toWrd=ge('to-waardering-btn');if(toWrd)toWrd.onclick=function(){S.screen='waardering';renderApp();};
   var toIf=ge('to-infofase-btn');if(toIf)toIf.onclick=function(){S.screen='infofase';renderApp();};
   var toIfK=ge('to-infofase-koper-btn');if(toIfK)toIfK.onclick=function(){S.screen='infofase';renderApp();};
