@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Account activeren — KantoorInzicht M&A</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#0f0e0c;--card:#1a1815;--border:#2e2b27;--border2:#3a3733;
+    --head:#f5f0e8;--sub:#c8bfb0;--mid:#9a9080;--muted:#6a6050;
+    --teal:#2db88a;--teal-bg:rgba(45,184,138,.08);--teal-dark:rgba(45,184,138,.25);
+    --red:#d64a3a;--red-bg:rgba(214,74,58,.08);--gold:#c9a84c;
+    --r:6px;--r2:10px;
+  }
+  body{font-family:'IBM Plex Sans',sans-serif;background:var(--bg);color:var(--sub);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:2rem}
+  .box{background:var(--card);border:1px solid var(--border);border-radius:var(--r2);padding:2.5rem;max-width:420px;width:100%}
+  .logo{font-family:'Playfair Display',serif;font-size:1.2rem;color:var(--head);margin-bottom:.25rem}
+  .sub{font-size:13px;color:var(--muted);margin-bottom:2rem;line-height:1.6}
+  .field{margin-bottom:1rem}
+  label{display:block;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:.4rem}
+  input{width:100%;padding:10px 12px;background:var(--bg);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:'IBM Plex Sans',sans-serif;font-size:13px;outline:none;transition:border .2s}
+  input:focus{border-color:var(--teal)}
+  .btn{width:100%;padding:11px 0;background:var(--teal);color:#fff;border:none;border-radius:var(--r);font-family:'IBM Plex Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:opacity .2s}
+  .btn:hover{opacity:.88}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .err{color:var(--red);font-size:12px;margin-bottom:.75rem;display:none;line-height:1.5}
+  .ok{color:var(--teal);font-size:13px;display:none;line-height:1.7;padding:1rem;background:var(--teal-bg);border:1px solid var(--teal-dark);border-radius:var(--r);margin-bottom:1rem}
+  .loading{color:var(--muted);font-size:13px;text-align:center;padding:2rem 0}
+  .info-row{background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:10px 14px;margin-bottom:1.5rem;font-size:13px}
+  .hint{font-size:11px;color:var(--muted);margin-top:.3rem}
+</style>
+</head>
+<body>
+<div class="box" id="app">
+  <div class="loading">Uitnodiging valideren...</div>
+</div>
+<script>
+var WORKER='https://kantoorinzicht.marcel-bisschops.workers.dev';
+
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+async function init(){
+  var params=new URLSearchParams(window.location.search);
+  var token=params.get('token')||'';
+  var resetToken=params.get('reset')||'';
+  var app=document.getElementById('app');
+
+  // Reset-flow
+  if(resetToken){
+    app.innerHTML='<div class="logo">KantoorInzicht M&A</div>'
+      +'<div class="sub">Stel een nieuw wachtwoord in voor uw account.</div>'
+      +'<div id="err" class="err"></div>'
+      +'<div class="field"><label>Nieuw wachtwoord <span style="color:var(--red)">*</span></label><input type="password" id="ww1" placeholder="Minimaal 8 tekens" autofocus></div>'
+      +'<div class="field"><label>Wachtwoord bevestigen <span style="color:var(--red)">*</span></label><input type="password" id="ww2" placeholder="Herhaal wachtwoord"></div>'
+      +'<button class="btn" id="act-btn">Wachtwoord instellen</button>';
+    document.getElementById('act-btn').addEventListener('click',async function(){
+      var btn=this;
+      var ww1=document.getElementById('ww1').value;
+      var ww2=document.getElementById('ww2').value;
+      var err=document.getElementById('err');
+      err.style.display='none';
+      if(ww1.length<8){err.textContent='Wachtwoord minimaal 8 tekens.';err.style.display='block';return;}
+      if(ww1!==ww2){err.textContent='Wachtwoorden komen niet overeen.';err.style.display='block';return;}
+      btn.disabled=true;btn.textContent='Instellen...';
+      try{
+        var ar=await fetch(WORKER+'/gebruikers/ww-reset',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:resetToken,wachtwoord:ww1})});
+        var ad=await ar.json();
+        if(!ar.ok||!ad.ok){err.textContent=ad.error||'Fout.';err.style.display='block';btn.disabled=false;btn.textContent='Wachtwoord instellen';return;}
+        app.innerHTML='<div class="logo">KantoorInzicht M&A</div>'
+          +'<div style="color:var(--teal);font-size:1.1rem;font-weight:600;margin:1rem 0">&#10003; Wachtwoord ingesteld!</div>'
+          +'<div style="font-size:13px;color:var(--mid);margin-bottom:1.5rem">U kunt nu inloggen met uw nieuwe wachtwoord.</div>'
+          +'<a href="marilyn.html" class="btn" style="display:inline-block;text-decoration:none;text-align:center">Naar inloggen</a>';
+      }catch(e){err.textContent='Verbindingsfout. Probeer opnieuw.';err.style.display='block';btn.disabled=false;btn.textContent='Wachtwoord instellen';}
+    });
+    document.getElementById('ww2').addEventListener('keydown',function(e){if(e.key==='Enter')document.getElementById('act-btn').click();});
+    return;
+  }
+
+  if(!token){
+    app.innerHTML='<div class="logo">KantoorInzicht M&A</div><div class="sub" style="color:var(--red);margin-top:.5rem">Ongeldige activatielink. Neem contact op met uw adviseur.</div>';
+    return;
+  }
+  try{
+    var r=await fetch(WORKER+'/gebruikers/invite?token='+encodeURIComponent(token));
+    var d=await r.json();
+    if(!r.ok||!d.ok){
+      app.innerHTML='<div class="logo">KantoorInzicht M&A</div><div class="sub" style="color:var(--red);margin-top:.5rem">'+esc(d.error||'Ongeldige of verlopen uitnodiging.')+'</div><div style="font-size:12px;color:var(--muted);margin-top:1rem">Neem contact op met Marcel Bisschops via <a href="mailto:marcel@bisschopsfinancing.nl" style="color:var(--teal)">marcel@bisschopsfinancing.nl</a>.</div>';
+      return;
+    }
+    // Toon activatieformulier
+    app.innerHTML='<div class="logo">KantoorInzicht M&A</div>'
+      +'<div class="sub">Welkom, '+esc(d.naam)+'! Stel een wachtwoord in om uw account te activeren.</div>'
+      +'<div class="info-row"><strong style="color:var(--head)">'+esc(d.naam)+'</strong>'+(d.bedrijf?'<br><span style="color:var(--muted)">'+esc(d.bedrijf)+'</span>':'')+'<br><span style="font-family:monospace;font-size:11px;color:var(--mid)">'+esc(d.email)+'</span></div>'
+      +'<div id="err" class="err">Fout bij activeren.</div>'
+      +'<div class="field"><label>Wachtwoord <span style="color:var(--red)">*</span></label><input type="password" id="ww1" placeholder="Minimaal 8 tekens" autofocus><div class="hint">Minimaal 8 tekens, kies iets wat u onthoudt.</div></div>'
+      +'<div class="field"><label>Wachtwoord bevestigen <span style="color:var(--red)">*</span></label><input type="password" id="ww2" placeholder="Herhaal wachtwoord"></div>'
+      +'<button class="btn" id="act-btn">Account activeren</button>';
+
+    document.getElementById('act-btn').addEventListener('click',async function(){
+      var btn=this;
+      var ww1=document.getElementById('ww1').value;
+      var ww2=document.getElementById('ww2').value;
+      var err=document.getElementById('err');
+      err.style.display='none';
+      if(ww1.length<8){err.textContent='Wachtwoord moet minimaal 8 tekens zijn.';err.style.display='block';return;}
+      if(ww1!==ww2){err.textContent='Wachtwoorden komen niet overeen.';err.style.display='block';return;}
+      btn.disabled=true;btn.textContent='Activeren...';
+      try{
+        var ar=await fetch(WORKER+'/gebruikers/activeer',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:token,wachtwoord:ww1})});
+        var ad=await ar.json();
+        if(!ar.ok||!ad.ok){err.textContent=ad.error||'Fout bij activeren.';err.style.display='block';btn.disabled=false;btn.textContent='Account activeren';return;}
+        // Succes — sla sessie op en stuur door naar Marilyn
+        localStorage.setItem('ki_sessie_token', ad.sessie_token);
+        localStorage.setItem('ki_sessie_email', ad.email);
+        app.innerHTML='<div class="logo">KantoorInzicht M&A</div>'
+          +'<div style="color:var(--teal);font-size:1.1rem;font-weight:600;margin:1rem 0">&#10003; Account geactiveerd!</div>'
+          +'<div style="font-size:13px;color:var(--mid);margin-bottom:1.5rem;line-height:1.7">Uw account is actief. U wordt doorgestuurd naar het dashboard...</div>'
+          +'<div style="font-size:12px;color:var(--muted)">Wordt niet doorgestuurd? <a href="marilyn.html" style="color:var(--teal)">Klik hier</a>.</div>';
+        setTimeout(function(){window.location.href='marilyn.html';},2500);
+      }catch(e){err.textContent='Verbindingsfout. Probeer opnieuw.';err.style.display='block';btn.disabled=false;btn.textContent='Account activeren';}
+    });
+
+    document.getElementById('ww2').addEventListener('keydown',function(e){if(e.key==='Enter')document.getElementById('act-btn').click();});
+
+  }catch(e){
+    app.innerHTML='<div class="logo">KantoorInzicht M&A</div><div style="color:var(--red);font-size:13px;margin-top:.5rem">Verbindingsfout. Controleer uw internetverbinding en probeer opnieuw.</div>';
+  }
+}
+
+init();
+</script>
+</body>
+</html>
