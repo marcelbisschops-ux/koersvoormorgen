@@ -1281,7 +1281,14 @@ async function toonDetail(id,naam){
       var file=inp.files[0];if(!file)return;
       // Toon fase-keuze dialog
       var faseOv=document.createElement('div');faseOv.className='overlay';
-      faseOv.innerHTML='<div class="modal" style="max-width:380px"><div class="modal-title">Kies fase voor upload</div>'        +'<div class="field"><label>Fase</label><select id="fase-keuze-sel">'        +faseKeuze.map(function(f){return'<option value="'+f+'">'+f.charAt(0).toUpperCase()+f.slice(1)+'</option>';}).join('')        +'</select></div>'        +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:.75rem">'        +'<button class="btn-ghost" id="fase-ann">Annuleren</button>'        +'<button class="btn" id="fase-ok">Uploaden</button>'        +'</div></div>';
+      faseOv.innerHTML='<div class="modal" style="max-width:380px"><div class="modal-title">Kies fase voor upload</div>'
+        +'<div class="field"><label>Fase</label><select id="fase-keuze-sel">'
+        +faseKeuze.map(function(f){return'<option value="'+f+'">'+f.charAt(0).toUpperCase()+f.slice(1)+'</option>';}).join('')
+        +'</select></div>'
+        +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:.75rem">'
+        +'<button class="btn-ghost" id="fase-ann">Annuleren</button>'
+        +'<button class="btn" id="fase-ok">Uploaden</button>'
+        +'</div></div>';
       document.body.appendChild(faseOv);
       var fase=await new Promise(function(resolve){
         document.getElementById('fase-ok').onclick=function(){
@@ -1292,14 +1299,25 @@ async function toonDetail(id,naam){
           document.body.removeChild(faseOv);resolve(null);
         };
       });
-      if(!fase){btn.disabled=false;btn.textContent='&#8679; Document uploaden';return;}
+      if(!fase)return;
       var btn=document.getElementById('btn-upload-doc');
-      btn.disabled=true;btn.textContent='Uploaden...';
+      btn.disabled=true;btn.textContent='Lezen...';
       try{
-        var fd=new FormData();
-        fd.append('file',file);
-        // Gebruik tussenpersoonscode — zelfde flow als mna.html, geen CORS preflight issues
-        var r=await fetch(WORKER+'/mna/document/upload?code='+encodeURIComponent(tussenCode)+'&fase_id='+encodeURIComponent(fase)+'&bewaar=1',{method:'POST',body:fd});
+        // Lees bestand als base64 — geen multipart, geen CORS preflight
+        var b64=await new Promise(function(res,rej){
+          var reader=new FileReader();
+          reader.onload=function(){res(reader.result.split(',')[1]);};
+          reader.onerror=function(){rej(new Error('Lezen mislukt'));};
+          reader.readAsDataURL(file);
+        });
+        btn.textContent='Uploaden...';
+        var params=new URLSearchParams();
+        params.append('data',JSON.stringify({
+          code:tussenCode,fase_id:fase,bewaar:true,
+          bestand_naam:file.name,bestand_type:file.type||'application/octet-stream',
+          base64:b64
+        }));
+        var r=await fetch(WORKER+'/mna/document/upload-base64',{method:'POST',body:params});
         var d=await r.json();
         if(d.ok||d.id){toast('Document geüpload: '+file.name,'ok');}
         else{toast(d.error||'Upload mislukt.','err');}
