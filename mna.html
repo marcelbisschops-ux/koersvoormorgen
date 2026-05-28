@@ -2087,6 +2087,9 @@ async function renderInfoFaseScherm(app) {
     var isV = isVerkoper();
     var isK = isKoper();
 
+    // Laad welke items al geüpload zijn vanuit DOCS
+    if (!S._uploadedItems) S._uploadedItems = {};
+
     var html = '';
 
     // VERKOPER: actieve fase(s) tonen met checklist + upload
@@ -2106,7 +2109,14 @@ async function renderInfoFaseScherm(app) {
           var dl = af.fase.deadline ? ('<div style="font-size:11px;color:var(--gold);margin-bottom:.75rem">&#9201; Deadline: '+af.fase.deadline+'</div>') : '';
           html += '<div style="margin-bottom:1.5rem">';
           html += '<div style="font-family:Playfair Display,serif;font-size:1.1rem;color:var(--head);font-weight:600;margin-bottom:.25rem">'+af.label+'</div>';
-          html += '<div style="font-size:12px;color:var(--muted);margin-bottom:.75rem">Upload de gevraagde documenten per categorie. Klik op &#8679; Upload naast een item.</div>';
+          var totaalItems = (af.checklist||[]).reduce(function(a,c){return a+(c.items||[]).length;},0);
+          var geuploadItems = Object.keys(S._uploadedItems||{}).filter(function(k){return k.startsWith(af.faseKey+'_');}).length;
+          var pctDone = totaalItems ? Math.round(geuploadItems/totaalItems*100) : 0;
+          html += '<div style="display:flex;align-items:center;gap:12px;margin-bottom:.75rem">'
+            + '<div style="font-size:12px;color:var(--muted);flex:1">Upload de gevraagde documenten per categorie. Klik op &#8679; Upload naast een item.</div>'
+            + '<div style="text-align:right;flex-shrink:0"><div style="font-size:11px;font-weight:600;color:'+(pctDone===100?'var(--teal)':'var(--gold)')+'">'+geuploadItems+'/'+totaalItems+'</div>'
+            + '<div style="width:80px;height:4px;background:var(--border);border-radius:2px;overflow:hidden;margin-top:2px"><div style="height:100%;background:'+(pctDone===100?'var(--teal)':'var(--gold)')+';width:'+pctDone+'%;border-radius:2px"></div></div>'
+            + '</div></div>';
           html += dl;
           (af.checklist||[]).forEach(function(cat) {
             html += '<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);margin-bottom:.5rem;overflow:hidden">';
@@ -2117,11 +2127,25 @@ async function renderInfoFaseScherm(app) {
               html += '<div><div style="font-size:12px;color:var(--sub)">'+esc(item.label)+'</div>';
               if (item.toelichting) html += '<div style="font-size:10px;color:var(--muted)">'+esc(item.toelichting)+'</div>';
               html += '</div>';
-              html += '<label style="background:var(--teal);color:#fff;font-size:10px;padding:3px 10px;border-radius:var(--r);cursor:pointer;white-space:nowrap;font-family:IBM Plex Sans,sans-serif;font-weight:600">&#8679; Upload<input type="file" data-fase="'+af.faseKey+'" data-label="'+esc(item.label)+'" class="ifs-upload" style="display:none"></label>';
+              var itemKey = af.faseKey+'_'+item.label;
+              var isUploaded = S._uploadedItems && S._uploadedItems[itemKey];
+              if (isUploaded) {
+                html += '<div style="display:flex;align-items:center;gap:6px">'
+                  + '<span style="font-size:10px;color:var(--teal);font-weight:600;white-space:nowrap">✓ '+esc(isUploaded)+'</span>'
+                  + '<label style="background:var(--card);border:1px solid var(--border);color:var(--muted);font-size:10px;padding:3px 8px;border-radius:var(--r);cursor:pointer;white-space:nowrap">&#8679;<input type="file" data-fase="'+af.faseKey+'" data-label="'+esc(item.label)+'" class="ifs-upload" style="display:none"></label>'
+                  + '</div>';
+              } else {
+                html += '<label style="background:var(--teal);color:#fff;font-size:10px;padding:3px 10px;border-radius:var(--r);cursor:pointer;white-space:nowrap;font-family:IBM Plex Sans,sans-serif;font-weight:600">&#8679; Upload<input type="file" data-fase="'+af.faseKey+'" data-label="'+esc(item.label)+'" class="ifs-upload" style="display:none"></label>';
+              }
               html += '</div>';
             });
             html += '</div>';
           });
+          // Knop naar DD-invulscherm
+          html += '<div style="margin-top:.75rem;padding:.75rem;background:var(--teal-bg);border:1px solid var(--teal-dark);border-radius:var(--r);display:flex;align-items:center;justify-content:space-between">'
+            + '<div style="font-size:12px;color:var(--teal-dim);line-height:1.5">Geüploade documenten worden automatisch geanalyseerd en ingevuld in het invulscherm.</div>'
+            + '<button onclick="S.screen=\'main\';renderApp();" style="background:var(--teal);color:#fff;border:none;padding:6px 14px;border-radius:var(--r);font-family:IBM Plex Sans,sans-serif;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;margin-left:12px">Bekijk ingevulde velden &#8594;</button>'
+            + '</div>';
           html += '</div>';
         });
       }
@@ -2167,7 +2191,7 @@ async function renderInfoFaseScherm(app) {
         var label = inp.dataset.label;
         var lbl = inp.parentElement;
         var origText = lbl.childNodes[0].nodeValue;
-        lbl.childNodes[0].nodeValue = 'Laden...';
+        lbl.childNodes[0].nodeValue = 'Uploaden...';
         try {
           var b64 = await new Promise(function(res,rej){
             var reader = new FileReader();
@@ -2175,16 +2199,65 @@ async function renderInfoFaseScherm(app) {
             reader.onerror = function(){rej(new Error('Lezen mislukt'));};
             reader.readAsDataURL(file);
           });
+          // Bepaal DD-fase op basis van checklist-fase en bestandsnaam
+          var ddFaseMap = {
+            'indicatief': 'financieel',
+            'dd': 'financieel'
+          };
+          var naam = file.name.toLowerCase();
+          var ddFase = fase === 'indicatief' || fase === 'dd' ? (
+            (naam.includes('loon')||naam.includes('salaris')||naam.includes('personeel')) ? 'partner' :
+            (naam.includes('klant')||naam.includes('debiteur')||naam.includes('crm')) ? 'commercieel' :
+            (naam.includes('contract')||naam.includes('juridisch')||naam.includes('kvk')||naam.includes('akte')) ? 'juridisch' :
+            (naam.includes('it')||naam.includes('software')||naam.includes('systeem')) ? 'it' :
+            (naam.includes('kwaliteit')||naam.includes('compliance')||naam.includes('avg')) ? 'compliance' :
+            (naam.includes('strateg')||naam.includes('markt')) ? 'strategisch' :
+            'financieel'
+          ) : fase;
           var bestandNaam = fase+'_'+label.substring(0,30)+'_'+file.name;
-          var params = new URLSearchParams();
-          params.append('data', JSON.stringify({
-            code: S.code, fase_id: fase, bewaar: true, skip_analyse: true,
-            bestand_naam: bestandNaam, bestand_type: file.type||'application/octet-stream', base64: b64
-          }));
-          var r2 = await fetch(WORKER+'/mna/document/upload-base64', {method:'POST', body:params});
+          // Eerst uploaden naar de DD-fase MET analyse (skip_analyse: false)
+          lbl.childNodes[0].nodeValue = 'Analyseren...';
+          var formData = new FormData();
+          formData.append('file', file);
+          var uploadUrl = WORKER+'/mna/document/upload?code='+encodeURIComponent(S.code)+'&fase_id='+ddFase+'&bewaar=true';
+          var r2 = await fetch(uploadUrl, {method:'POST', body:formData});
           var rd = await r2.json();
-          if (rd.ok||rd.id) { toast('Geüpload: '+file.name, 'ok'); lbl.childNodes[0].nodeValue = '✓ Geüpload'; }
-          else { toast(rd.error||'Upload mislukt','err'); lbl.childNodes[0].nodeValue = origText; }
+          if (rd.ok) {
+            // Markeer item als geüpload (voor groene vinkjes)
+            if (!S._uploadedItems) S._uploadedItems = {};
+            S._uploadedItems[fase+'_'+label] = file.name;
+            lbl.childNodes[0].nodeValue = '✓ Geüpload';
+            // Zet in DOCS zodat de AI-analyse beschikbaar is
+            if (!DOCS[ddFase]) DOCS[ddFase] = [];
+            DOCS[ddFase].unshift({
+              id: rd.doc_id, naam: file.name, type: file.type,
+              grootte: file.size, analyse: rd.analyse,
+              velden: rd.veld_extractie || {}, bewaard: !!rd.r2_opgeslagen,
+              uploaded_at: Date.now(), uploading: false
+            });
+            // Auto-fill velden als er extractie is
+            if (rd.veld_extractie && Object.keys(rd.veld_extractie).length) {
+              S._conflicts = [];
+              autoFillFromExtraction(ddFase, rd.veld_extractie, false, file.name);
+              // Bij jaarrekeningen ook financieel proberen
+              if (ddFase !== 'financieel') {
+                autoFillFromExtraction('financieel', rd.veld_extractie, false, file.name);
+              }
+              if (S._conflicts && S._conflicts.length) {
+                setTimeout(toonConflictDialog, 300);
+              } else {
+                markDirty();
+                saveAll();
+              }
+              var aangevuld = Object.keys(rd.veld_extractie).length;
+              toast('✓ '+file.name+' geüpload — '+aangevuld+' velden geanalyseerd', 'ok');
+            } else {
+              toast('✓ '+file.name+' geüpload', 'ok');
+            }
+          } else {
+            toast(rd.error||'Upload mislukt','err');
+            lbl.childNodes[0].nodeValue = origText;
+          }
         } catch(e) { toast('Fout: '+e.message,'err'); lbl.childNodes[0].nodeValue = origText; }
         inp.value = '';
       });
