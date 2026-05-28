@@ -1687,14 +1687,74 @@ async function toonDetail(id,naam){
       var vBody=document.getElementById('versies-body');
       vBody.innerHTML='<div style="color:var(--muted);font-size:12px">Laden...</div>';
       try{
-        var vr=await fetch(WORKER+'/mna/versies/'+id+'?key='+encodeURIComponent(adminKey));
-        var versies=await vr.json();
+        // Laad BEIDE: geüploade bestanden + gegenereerde versies
+        var [docsResp, versiesResp] = await Promise.all([
+          fetch(WORKER+'/mna/admin/documenten?key='+encodeURIComponent(adminKey)),
+          fetch(WORKER+'/mna/versies/'+id+'?key='+encodeURIComponent(adminKey))
+        ]);
+        var alleDocs = docsResp.ok ? await docsResp.json() : [];
+        var versies = versiesResp.ok ? await versiesResp.json() : [];
+        // Filter geüploade bestanden op dit traject
+        var trajectDocs = alleDocs.filter(function(d){ return d.traject_id === id; });
         var docLabels={nda:'NDA',loi:'LoI',bem:'Bemiddelingsovereenkomst'};
         var docKleuren={nda:'#7c5cbf',loi:'var(--gold)',bem:'#2a5ea0'};
-        if(!versies.length){
-          vBody.innerHTML='<div style="color:var(--muted);font-size:12px;font-style:italic">Nog geen documenten verstuurd.</div>';
+        var html='';
+        // Sectie 1: Geüploade bestanden
+        if(trajectDocs.length){
+          var faseKleuren={juridisch:'#2a5ea0',financieel:'var(--teal)',strategisch:'var(--gold)',voorgesprek:'var(--mid)',commercieel:'#7c5cbf',operationeel:'var(--teal)',personeel:'#c47a3a',compliance:'var(--red)'};
+          html+='<div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem">Geüploade bestanden ('+trajectDocs.length+')</div>';
+          html+='<div style="display:flex;flex-direction:column;gap:5px;margin-bottom:1rem">';
+          trajectDocs.forEach(function(d){
+            var dt=d.uploaded_at?new Date(d.uploaded_at).toLocaleString('nl-NL',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—';
+            var gr=d.bestand_grootte?(d.bestand_grootte/1024/1024).toFixed(1)+'MB':'—';
+            var faseKleur=faseKleuren[d.fase_id]||'var(--mid)';
+            html+='<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:.5rem .875rem;display:flex;align-items:center;gap:10px;flex-wrap:wrap">'
+              +'<span style="font-size:10px;font-weight:600;color:'+faseKleur+';min-width:90px;text-transform:uppercase">'+esc(d.fase_id||'—')+'</span>'
+              +'<span style="font-size:12px;font-weight:500;color:var(--head);flex:1">'+esc(d.bestand_naam||'—')+'</span>'
+              +'<span style="font-size:10px;color:var(--muted)">'+gr+'</span>'
+              +'<span style="font-size:10px;color:var(--muted)">'+dt+'</span>'
+              +(d.bewaard?'<a href="'+WORKER+'/mna/document/download/'+d.id+'?key='+encodeURIComponent(adminKey)+'" target="_blank" class="btn-ghost" style="font-size:10px;padding:2px 8px;text-decoration:none">↓ Download</a>':'')
+              +'<button class="btn-ghost doc-del-btn" data-id="'+esc(d.id)+'" style="font-size:10px;padding:2px 6px;color:var(--red);border-color:var(--red)">✕</button>'
+              +'</div>';
+          });
+          html+='</div>';
+        } else {
+          html+='<div style="color:var(--muted);font-size:12px;font-style:italic;margin-bottom:1rem">Nog geen bestanden geüpload voor dit traject.</div>';
+        }
+        // Sectie 2: Gegenereerde overeenkomsten
+        if(versies.length){
+          html+='<div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:.75rem 0 .5rem;padding-top:.75rem;border-top:1px solid var(--border)">Gegenereerde overeenkomsten ('+versies.length+')</div>';
+          html+='<div style="display:flex;flex-direction:column;gap:5px">';
+          versies.forEach(function(v){
+            var dt=new Date(v.created_at).toLocaleString('nl-NL',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+            var ontvangers=[];try{ontvangers=JSON.parse(v.verstuurd_naar||'[]');}catch(e){}
+            var kleur=docKleuren[v.doc_type]||'var(--teal)';
+            html+='<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:.5rem .875rem;display:flex;align-items:center;gap:10px;flex-wrap:wrap">'
+              +'<span style="font-size:11px;font-weight:600;color:'+kleur+';min-width:140px">'+(docLabels[v.doc_type]||v.doc_type)+' v'+v.versie+'</span>'
+              +'<span style="font-size:11px;color:var(--muted)">'+dt+'</span>'
+              +'<span style="font-size:11px;color:var(--mid)">→ '+esc(ontvangers.join(', '))+'</span>'
+              +'<button class="btn-ghost versie-open-btn" data-id="'+v.id+'" style="font-size:10px;padding:2px 10px;margin-left:auto">👁 Bekijk</button>'
+              +'</div>';
+          });
+          html+='</div>';
+        }
+        if(!trajectDocs.length && !versies.length){
+          vBody.innerHTML='<div style="color:var(--muted);font-size:12px;font-style:italic">Nog geen documenten.</div>';
           return;
         }
+        vBody.innerHTML=html;
+        // Delete handlers
+        vBody.querySelectorAll('.doc-del-btn').forEach(function(b){
+          b.addEventListener('click',async function(){
+            if(!confirm('Document verwijderen?'))return;
+            var r=await fetch(WORKER+'/mna/document/delete/'+b.dataset.id+'?key='+encodeURIComponent(adminKey),{method:'POST'});
+            var d=await r.json();
+            if(d.ok){toast('Document verwijderd.','ok');versiesBtn.click();}
+            else toast(d.error||'Fout.','err');
+          });
+        });
+        if(!versies.length) return;
+        var docLabels2=docLabels;
         var html='<div style="display:flex;flex-direction:column;gap:6px">';
         versies.forEach(function(v){
           var dt=new Date(v.created_at).toLocaleString('nl-NL',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
