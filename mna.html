@@ -1750,6 +1750,7 @@ function renderApp(){
   else if(S.screen==='summary')app.innerHTML=renderSummary();
   else if(S.screen==='dataroom')app.innerHTML=renderDataroom();
   else if(S.screen==='waardering')app.innerHTML=renderWaardering();
+  else if(S.screen==='infofase')renderInfoFaseScherm(app);
   else if(S.screen==='logboek')renderLogboekScreen(app);
   else if(S.screen==='begeleider')renderBegeleiderDashboard(app);
   bindAll();
@@ -2070,6 +2071,130 @@ function renderBegeleiderDashboard(app){
   };
 }
 
+async function renderInfoFaseScherm(app) {
+  app.innerHTML = '<div class="wrap anim"><div class="hdr"><div class="brand"><div class="wdot"></div>KantoorInzicht &middot; M&A</div>'
+    + '<button class="btn-ghost btn-sm" onclick="S.screen='cover';renderApp()">&#8592; Terug</button></div>'
+    + '<div id="ifs-body" style="padding:1rem 0"><div style="font-size:13px;color:var(--muted)">Laden...</div></div></div>';
+
+  try {
+    var r = await fetch(WORKER+'/mna/infofase/'+S.code);
+    var d = await r.json();
+    if (!d.ok) { document.getElementById('ifs-body').innerHTML='<div style="color:var(--red);font-size:13px">'+esc(d.error||'Fout')+'</div>'; return; }
+
+    var faseA = (d.fases||[]).find(function(f){return f.fase==='indicatief';});
+    var faseB = (d.fases||[]).find(function(f){return f.fase==='dd';});
+    var w = d.waardering;
+    var isV = isVerkoper();
+    var isK = isKoper();
+
+    var html = '';
+
+    // VERKOPER: actieve fase(s) tonen met checklist + upload
+    if (isV) {
+      var actieveFases = [];
+      if (faseA && faseA.status === 'actief') actieveFases.push({fase: faseA, label: 'Fase A — Indicatieve waardering', checklist: faseA.checklist_override ? JSON.parse(faseA.checklist_override) : d.globaalA, faseKey: 'indicatief'});
+      if (faseB && faseB.status === 'actief') actieveFases.push({fase: faseB, label: 'Fase B — Full Due Diligence', checklist: faseB.checklist_override ? JSON.parse(faseB.checklist_override) : d.globaalB, faseKey: 'dd'});
+
+      if (!actieveFases.length) {
+        html = '<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r2);padding:2rem;text-align:center">'
+          + '<div style="font-size:2rem;margin-bottom:.75rem">&#9202;</div>'
+          + '<div style="font-size:14px;font-weight:600;color:var(--sub);margin-bottom:.5rem">Nog geen informatieverzoek actief</div>'
+          + '<div style="font-size:12px;color:var(--muted)">Uw adviseur heeft nog geen informatieverzoek opengesteld. U ontvangt bericht zodra dit gereed is.</div>'
+          + '</div>';
+      } else {
+        actieveFases.forEach(function(af) {
+          var dl = af.fase.deadline ? ('<div style="font-size:11px;color:var(--gold);margin-bottom:.75rem">&#9201; Deadline: '+af.fase.deadline+'</div>') : '';
+          html += '<div style="margin-bottom:1.5rem">';
+          html += '<div style="font-family:Playfair Display,serif;font-size:1.1rem;color:var(--head);font-weight:600;margin-bottom:.25rem">'+af.label+'</div>';
+          html += '<div style="font-size:12px;color:var(--muted);margin-bottom:.75rem">Upload de gevraagde documenten per categorie. Klik op &#8679; Upload naast een item.</div>';
+          html += dl;
+          (af.checklist||[]).forEach(function(cat) {
+            html += '<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);margin-bottom:.5rem;overflow:hidden">';
+            html += '<div style="padding:.6rem .875rem;background:rgba(0,0,0,.03);font-size:11px;font-weight:700;color:var(--sub)">'+esc(cat.categorie)+'</div>';
+            (cat.items||[]).forEach(function(item) {
+              var itemId = af.faseKey+'_'+cat.categorie.replace(/\s+/g,'_')+'_'+item.label.substring(0,20).replace(/\s+/g,'_');
+              html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:.5rem .875rem;border-top:1px solid var(--border)">';
+              html += '<div><div style="font-size:12px;color:var(--sub)">'+esc(item.label)+'</div>';
+              if (item.toelichting) html += '<div style="font-size:10px;color:var(--muted)">'+esc(item.toelichting)+'</div>';
+              html += '</div>';
+              html += '<label style="background:var(--teal);color:#fff;font-size:10px;padding:3px 10px;border-radius:var(--r);cursor:pointer;white-space:nowrap;font-family:IBM Plex Sans,sans-serif;font-weight:600">&#8679; Upload<input type="file" data-fase="'+af.faseKey+'" data-label="'+esc(item.label)+'" class="ifs-upload" style="display:none"></label>';
+              html += '</div>';
+            });
+            html += '</div>';
+          });
+          html += '</div>';
+        });
+      }
+    }
+
+    // KOPER: waardering + status tonen
+    if (isK) {
+      html = '<div style="margin-bottom:1.25rem"><div style="font-family:Playfair Display,serif;font-size:1.1rem;color:var(--head);font-weight:600;margin-bottom:.5rem">Informatiestatus & Waardering</div></div>';
+      if (w && w.adviseur_akkoord) {
+        var fmt = function(n){return n?'€'+Number(n).toLocaleString('nl-NL'):null;};
+        var ai = {}; try{ai=JSON.parse(w.ai_voorstel||'{}');}catch(e){}
+        html += '<div style="background:var(--card);border:1px solid var(--teal);border-radius:var(--r2);padding:1.25rem;margin-bottom:1rem">';
+        html += '<div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--teal);margin-bottom:.75rem">&#9878; Indicatieve Waardering</div>';
+        html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:.75rem">';
+        html += '<div style="text-align:center"><div style="font-size:10px;color:var(--muted)">Bandbreedte laag</div><div style="font-size:14px;font-weight:700;color:var(--sub)">'+(fmt(w.range_laag)||'—')+'</div></div>';
+        html += '<div style="text-align:center"><div style="font-size:10px;color:var(--muted)">Indicatief midden</div><div style="font-size:18px;font-weight:700;color:var(--teal)">'+(fmt(w.range_midden)||'—')+'</div></div>';
+        html += '<div style="text-align:center"><div style="font-size:10px;color:var(--muted)">Bandbreedte hoog</div><div style="font-size:14px;font-weight:700;color:var(--sub)">'+(fmt(w.range_hoog)||'—')+'</div></div>';
+        html += '</div>';
+        if (w.onderbouwing) html += '<div style="font-size:12px;color:var(--mid);line-height:1.7;margin-bottom:.5rem">'+esc(w.onderbouwing)+'</div>';
+        if (ai.risicofactoren) html += '<div style="font-size:11px;color:var(--muted);padding:.6rem;background:rgba(0,0,0,.04);border-radius:var(--r)"><strong>Risicofactoren:</strong> '+esc(ai.risicofactoren)+'</div>';
+        html += '</div>';
+        html += '<div style="font-size:11px;color:var(--muted);padding:.75rem;background:var(--gold-bg);border:1px solid var(--gold);border-radius:var(--r)">&#9888; Dit betreft een indicatieve waardering op basis van beschikbare informatie. Geen formeel taxatierapport. Bisschops Financing BV aanvaardt geen aansprakelijkheid voor beslissingen op basis van dit overzicht.</div>';
+      } else {
+        html += '<div style="text-align:center;padding:2rem;background:var(--card);border:1px solid var(--border);border-radius:var(--r2)">';
+        html += '<div style="font-size:2rem;margin-bottom:.75rem">&#9202;</div>';
+        html += '<div style="font-size:13px;color:var(--mid)">De indicatieve waardering is nog niet vrijgegeven door uw adviseur.</div>';
+        html += '</div>';
+      }
+    }
+
+    // Tussenpersoon
+    if (!isV && !isK) {
+      html = '<div style="font-size:13px;color:var(--muted)">Fase-overzicht beschikbaar via Marilyn.</div>';
+    }
+
+    document.getElementById('ifs-body').innerHTML = html;
+
+    // Upload handlers
+    document.querySelectorAll('.ifs-upload').forEach(function(inp) {
+      inp.addEventListener('change', async function() {
+        var file = inp.files[0]; if (!file) return;
+        var fase = inp.dataset.fase;
+        var label = inp.dataset.label;
+        var lbl = inp.parentElement;
+        var origText = lbl.childNodes[0].nodeValue;
+        lbl.childNodes[0].nodeValue = 'Laden...';
+        try {
+          var b64 = await new Promise(function(res,rej){
+            var reader = new FileReader();
+            reader.onload = function(){res(reader.result.split(',')[1]);};
+            reader.onerror = function(){rej(new Error('Lezen mislukt'));};
+            reader.readAsDataURL(file);
+          });
+          var bestandNaam = fase+'_'+label.substring(0,30)+'_'+file.name;
+          var params = new URLSearchParams();
+          params.append('data', JSON.stringify({
+            code: S.code, fase_id: fase, bewaar: true, skip_analyse: true,
+            bestand_naam: bestandNaam, bestand_type: file.type||'application/octet-stream', base64: b64
+          }));
+          var r2 = await fetch(WORKER+'/mna/document/upload-base64', {method:'POST', body:params});
+          var rd = await r2.json();
+          if (rd.ok||rd.id) { toast('Geüpload: '+file.name, 'ok'); lbl.childNodes[0].nodeValue = '✓ Geüpload'; }
+          else { toast(rd.error||'Upload mislukt','err'); lbl.childNodes[0].nodeValue = origText; }
+        } catch(e) { toast('Fout: '+e.message,'err'); lbl.childNodes[0].nodeValue = origText; }
+        inp.value = '';
+      });
+    });
+
+  } catch(e) {
+    document.getElementById('ifs-body').innerHTML = '<div style="color:var(--red);font-size:13px">Fout: '+esc(e.message)+'</div>';
+  }
+}
+
 function renderCover(){
   var t=S.traject;
   var vergrendeld=t&&t.status==='vergrendeld';
@@ -2119,6 +2244,7 @@ function renderCover(){
     +'<button class="btn-ghost btn-sm" id="logboek-btn">&#128221; Logboek</button>'
     +'</div><div style="display:flex;align-items:center;gap:10px;padding:.5rem 0"><span style="font-size:12px;color:var(--muted)">Huidige fase:</span><span id="cover-fase-badge" style="font-size:11px;font-weight:600;padding:3px 12px;border-radius:12px;background:var(--teal-bg);color:var(--teal);border:1px solid var(--teal-dark)">Laden...</span></div><div style="display:none">'
     +(isVerkoper()?'<button class="btn btn-sm" id="to-main-btn">Start invullen &#8594;</button>'
+    +'<button class="btn btn-sm" id="to-infofase-btn" style="background:var(--gold)">&#9654; Aangeleverde informatie</button>'
     :isTussen()?(t.koper_vrijgegeven
         ?'<button class="btn-ghost btn-sm" id="intrekken-btn">&#128275; Vrijgave intrekken</button>'
         :'<button class="btn btn-sm" id="vrijgeven-btn">&#128275; Koper toegang geven</button>')
@@ -2129,6 +2255,7 @@ function renderCover(){
       +' <button class="btn btn-sm" id="ai-analyse-btn-cover" style="background:#6b7c93">&#9881; AI-analyse</button>'
     :'<button class="btn btn-sm" id="to-main-btn">Bekijk data &#8594;</button>'
     +(t.koper_vrijgegeven?'<button class="btn btn-sm" id="to-waardering-btn" style="background:var(--gold)">&#9654; Waardering</button>':''))
+    +(t.koper_vrijgegeven?'<button class="btn btn-sm" id="to-infofase-koper-btn" style="background:#2a5ea0">&#128196; Informatiestatus</button>':'')
     +'</div></div>'
     +(vergrendeld?'<div style="background:var(--red-bg);border:1px solid var(--red);border-radius:var(--r);padding:10px 14px;margin-bottom:1rem;font-size:13px;color:var(--red)">&#128274; <strong>Dit traject is vergrendeld op '+(t.vergrendeld_op?new Date(t.vergrendeld_op).toLocaleString('nl-NL'):'onbekend')+'.</strong> Verdere wijzigingen zijn niet meer mogelijk.</div>':'')
     +'<div class="cover-letter">'
@@ -2489,6 +2616,8 @@ function bindAll(){
   var toMain=ge('to-main-btn');if(toMain)toMain.onclick=function(){S.screen='main';var fId=FASES[S.fase]&&FASES[S.fase].id;if(fId&&!DOCS[fId])loadDocsForFase(fId);renderApp();};
   var toMain2=ge('to-main-btn2');if(toMain2)toMain2.onclick=function(){S.screen='main';renderApp();};
   var toWrd=ge('to-waardering-btn');if(toWrd)toWrd.onclick=function(){S.screen='waardering';renderApp();};
+  var toIf=ge('to-infofase-btn');if(toIf)toIf.onclick=function(){S.screen='infofase';renderApp();};
+  var toIfK=ge('to-infofase-koper-btn');if(toIfK)toIfK.onclick=function(){S.screen='infofase';renderApp();};
   var toLb=ge('logboek-btn');if(toLb)toLb.onclick=function(){S.screen='logboek';renderApp();};
   // Laad en toon huidige fase op cover
   (async function(){
