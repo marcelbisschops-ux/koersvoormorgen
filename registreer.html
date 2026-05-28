@@ -72,7 +72,7 @@ async function init(){
         app.innerHTML='<div class="logo">KantoorInzicht M&A</div>'
           +'<div style="color:var(--teal);font-size:1.1rem;font-weight:600;margin:1rem 0">&#10003; Wachtwoord ingesteld!</div>'
           +'<div style="font-size:13px;color:var(--mid);margin-bottom:1.5rem">U kunt nu inloggen met uw nieuwe wachtwoord.</div>'
-          +'<a href="marilyn.html" class="btn" style="display:inline-block;text-decoration:none;text-align:center">Naar inloggen</a>';
+          +'<a href="adv.html" class="btn" style="display:inline-block;text-decoration:none;text-align:center">Naar inloggen</a>';
       }catch(e){err.textContent='Verbindingsfout. Probeer opnieuw.';err.style.display='block';btn.disabled=false;btn.textContent='Wachtwoord instellen';}
     });
     document.getElementById('ww2').addEventListener('keydown',function(e){if(e.key==='Enter')document.getElementById('act-btn').click();});
@@ -118,8 +118,8 @@ async function init(){
         app.innerHTML='<div class="logo">KantoorInzicht M&A</div>'
           +'<div style="color:var(--teal);font-size:1.1rem;font-weight:600;margin:1rem 0">&#10003; Account geactiveerd!</div>'
           +'<div style="font-size:13px;color:var(--mid);margin-bottom:1.5rem;line-height:1.7">Uw account is actief. U wordt doorgestuurd naar het dashboard...</div>'
-          +'<div style="font-size:12px;color:var(--muted)">Wordt niet doorgestuurd? <a href="marilyn.html" style="color:var(--teal)">Klik hier</a>.</div>';
-        setTimeout(function(){window.location.href='marilyn.html';},2500);
+          +'<div style="font-size:12px;color:var(--muted)">Wordt niet doorgestuurd? <a href="adv.html" style="color:var(--teal)">Klik hier</a>.</div>';
+        setTimeout(function(){window.location.href='adv.html';},2500);
       }catch(e){err.textContent='Verbindingsfout. Probeer opnieuw.';err.style.display='block';btn.disabled=false;btn.textContent='Account activeren';}
     });
 
