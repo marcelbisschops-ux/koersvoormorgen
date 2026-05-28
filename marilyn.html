@@ -104,7 +104,7 @@ function partijLabels(type){
   var t=type||'Verkoop';
   if(t==='Fusie')return{partij1:'Fusiepartij A',partij2:'Fusiepartij B',p1adres:'Adres partij A',p2adres:'Adres partij B',p1kvk:'KvK partij A',p2kvk:'KvK partij B',p1contact:'Contactpersoon A',p2contact:'Contactpersoon B',p1email:'E-mail partij A',p2email:'E-mail partij B',p1rv:'Rechtsvorm partij A',sectie1:'Fusiepartij A',sectie2:'Fusiepartij B'};
   if(t==='Overname')return{partij1:'Over te nemen partij',partij2:'Overnemende partij',p1adres:'Adres target',p2adres:'Adres overnemende partij',p1kvk:'KvK target',p2kvk:'KvK overnemende partij',p1contact:'Contactpersoon target',p2contact:'Contactpersoon overnemende partij',p1email:'E-mail target',p2email:'E-mail overnemende partij',p1rv:'Rechtsvorm overnemende partij',sectie1:'Target',sectie2:'Overnemende partij'};
-  if(t==='PE-traject')return{partij1:'Portfolio bedrijf',partij2:'Investeerder / PE-partij',p1adres:'Adres portfolio bedrijf',p2adres:'Adres investeerder',p1kvk:'KvK portfolio bedrijf',p2kvk:'KvK investeerder',p1contact:'Contactpersoon bedrijf',p2contact:'Contactpersoon investeerder',p1email:'E-mail bedrijf',p2email:'E-mail investeerder',p1rv:'Rechtsvorm investeerder',sectie1:'Portfolio bedrijf',sectie2:'Investeerder'};
+  if(t==='PE-traject')return{partij1:'Te verkopen onderneming',partij2:'PE-partij / Investeerder',p1adres:'Adres onderneming',p2adres:'Adres PE-partij',p1kvk:'KvK onderneming',p2kvk:'KvK PE-partij',p1contact:'Contactpersoon onderneming',p2contact:'Contactpersoon PE-partij',p1email:'E-mail onderneming',p2email:'E-mail PE-partij',p1rv:'Rechtsvorm PE-partij',sectie1:'Onderneming',sectie2:'PE-partij'};
   if(t==='Opvolging')return{partij1:'Overdragende eigenaar',partij2:'Opvolgend eigenaar',p1adres:'Adres overdragende eigenaar',p2adres:'Adres opvolger',p1kvk:'KvK bedrijf',p2kvk:'KvK opvolger',p1contact:'Contactpersoon overdragende eigenaar',p2contact:'Contactpersoon opvolger',p1email:'E-mail overdragende eigenaar',p2email:'E-mail opvolger',p1rv:'Rechtsvorm opvolger',sectie1:'Overdragende eigenaar',sectie2:'Opvolgend eigenaar'};
   // default: Verkoop / Aankoop
   return{partij1:'Verkoper',partij2:'Kopende partij',p1adres:'Adres verkoper',p2adres:'Adres koper',p1kvk:'KvK verkoper',p2kvk:'KvK koper',p1contact:'Contactpersoon verkoper',p2contact:'Contactpersoon koper',p1email:'E-mail verkoper',p2email:'E-mail koper',p1rv:'Rechtsvorm koper',sectie1:'Verkoper',sectie2:'Kopende partij'};
@@ -1066,7 +1066,10 @@ function renderWaarderingTab(el){
         +'## Transactiestructuur en earn-out advies\n'
         +'## Risicofactoren en correcties\n'
         +'## Conclusie en aanbeveling\n\n'
-        +'Schrijf in professionele Nederlandse rapporttaal. Concreet, cijfermatig onderbouwd. Gebruik de benchmarknormen voor de sector.';
+        +(_t3.traject_type==='PE-traject'
+          ?'CONTEXT: Dit betreft een PE-traject waarbij een private equity partij een meerderheidsbelang verwerft. Gebruik PE-specifieke waarderingslogica: EBITDA-multiple als primaire methode, aandacht voor management buy-in/buy-out structuur, earn-out mogelijkheden, en recurring revenue kwaliteit. Voor accountantskantoren: PE-deals worden momenteel gewaardeerd op 10–11x EBITDA (Baker Tilly/Grant Thornton precedenten, mei 2025). Bespreek platformstrategie, add-on potentieel en exitstrategie.'
+          :'')
+        +'\n\nSchrijf in professionele Nederlandse rapporttaal. Concreet, cijfermatig onderbouwd. Gebruik de benchmarknormen voor de sector.';
       try{
         var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:8000})});
         var rd=await resp.json();
