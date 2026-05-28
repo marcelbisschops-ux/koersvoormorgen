@@ -114,7 +114,7 @@ function partijLabels(type){
 function renderLogin(){
   document.getElementById('app').innerHTML='<div class="login-wrap"><div class="login-box">'
     +'<div class="login-title">KantoorInzicht Beheer</div>'
-    +'<div class="login-sub">Beheerder-toegang. Bent u adviseur? Log in via <a href="adv.html" style="color:var(--teal)">adv.html</a>.</div>'
+    +'<div class="login-sub">Beheerder-toegang. Alleen voor beheerder.</div>'
     +'<div class="field" style="margin-top:1rem"><label>Beheerder-sleutel</label><input type="password" id="ak" placeholder="••••••••" autofocus></div>'
     +'<button class="btn" id="login-btn" style="width:100%">Inloggen</button>'
     +'<div style="margin-top:1rem;padding:.75rem 1rem;background:var(--teal-bg);border:1px solid var(--teal-dark);border-radius:var(--r);font-size:11px;color:var(--muted);line-height:1.7">&#128274; <strong style="color:var(--sub)">Beveiliging & privacy</strong><br>Verbinding versleuteld (HTTPS). Gegevens in Cloudflare EU (Frankfurt). Geen gegevensverkoop. <a href="privacy.html" style="color:var(--teal)">Privacyverklaring</a></div>'
@@ -2676,7 +2676,10 @@ async function renderGebruikersTab(el) {
           + '<td style="padding:10px 12px;font-size:11px;color:var(--muted)">' + llDatum + '</td>'
           + '<td style="padding:10px 12px;display:flex;gap:6px">'
           + (g.status==='uitgenodigd'?'<button class="btn-ghost btn-resend" data-id="'+esc(g.id)+'" data-email="'+esc(g.email)+'" data-naam="'+esc(g.naam)+'" style="font-size:10px;padding:3px 8px">&#9993; Opnieuw sturen</button>':'')
-          + (g.status!=='inactief'?'<button class="btn-ghost btn-deact" data-id="'+esc(g.id)+'" style="font-size:10px;padding:3px 8px;color:var(--red)">Deactiveren</button>':'')
+          + '<button class="btn-ghost btn-reset" data-id="'+esc(g.id)+'" data-email="'+esc(g.email)+'" style="font-size:10px;padding:3px 8px">Reset ww</button>'
+          + (g.status==='inactief'
+              ?'<button class="btn-ghost btn-act" data-id="'+esc(g.id)+'" style="font-size:10px;padding:3px 8px;color:var(--teal)">Activeren</button>'
+              :'<button class="btn-ghost btn-deact" data-id="'+esc(g.id)+'" style="font-size:10px;padding:3px 8px;color:var(--red)">Deactiveren</button>')
           + '</td>'
           + '</tr>';
       });
@@ -2689,6 +2692,25 @@ async function renderGebruikersTab(el) {
     if (uitnBtn) uitnBtn.addEventListener('click', function() { toonUitnodigenModal(); });
 
     // Deactiveren knoppen
+    el.querySelectorAll('.btn-act').forEach(function(btn) {
+      btn.addEventListener('click', async function() {
+        if (!confirm('Gebruiker activeren?')) return;
+        var dr = await fetch(WORKER + '/gebruikers/activeer/' + btn.dataset.id + '?key=' + encodeURIComponent(adminKey), {method:'POST'});
+        var dd = await dr.json();
+        if (dd.ok) { toast('Gebruiker geactiveerd.', 'ok'); renderGebruikersTab(el); }
+        else toast(dd.error || 'Fout bij activeren.', 'err');
+      });
+    });
+    el.querySelectorAll('.btn-reset').forEach(function(btn) {
+      btn.addEventListener('click', async function() {
+        var nieuwWw = prompt('Nieuw wachtwoord voor ' + btn.dataset.email + ':');
+        if (!nieuwWw || nieuwWw.length < 8) { toast('Wachtwoord minimaal 8 tekens.', 'err'); return; }
+        var dr = await fetch(WORKER + '/gebruikers/reset-ww/' + btn.dataset.id + '?key=' + encodeURIComponent(adminKey), {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({wachtwoord:nieuwWw})});
+        var dd = await dr.json();
+        if (dd.ok) toast('Wachtwoord gereset voor ' + btn.dataset.email + '.', 'ok');
+        else toast(dd.error || 'Fout bij resetten.', 'err');
+      });
+    });
     el.querySelectorAll('.btn-deact').forEach(function(btn) {
       btn.addEventListener('click', async function() {
         if (!confirm('Gebruiker deactiveren? Ze kunnen dan niet meer inloggen.')) return;
