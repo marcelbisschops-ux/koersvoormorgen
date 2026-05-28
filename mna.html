@@ -3043,7 +3043,11 @@ function bindAll(){
             if((nm.includes('exclusiviteit')||nm.includes('excl'))&&!S.exclDocId){S.exclDocId=doc.id;S.exclDocNaam=doc.bestand_naam;S.exclGetekend=S.exclGetekend||'';}
           });
         }catch(e){}
-        renderApp();
+        // Laad Signhost status
+        fetch(WORKER+'/mna/signhost/status/'+code).then(function(r){return r.json();}).then(function(d){
+          if(d.ok)S._signhostTx=d.transactions||[];
+          renderApp();
+        }).catch(function(){renderApp();});
       }catch(e){if(err)err.style.display='block';if(load)load.style.display='none';lb.disabled=false;}
     };
     var cf=ge('l-code');
