@@ -1803,7 +1803,7 @@ async function toonDetail(id,naam){
         var bemEditEl2=document.getElementById('bem-edit');
         bemEditEl2.value=tekst;
         // BEM Signhost
-        var bemShBtn=document.getElementById('bem-signhost-btn');if(bemShBtn)bemShBtn.addEventListener('click',function(){stuurSignhost(id,'bem',bemEditEl2.value||'',d);});
+        var bemShBtn=document.getElementById('bem-signhost-btn');if(bemShBtn)bemShBtn.addEventListener('click',function(){if(!bemEditEl2||!bemEditEl2.value){alert('Genereer eerst de BEM.');return;}stuurSignhost(id,'bem',bemEditEl2.value,d);});
         bemEditEl2.dataset.tekst=''; // clear
         document.getElementById('bem-email-btn').dataset.ready='1';
         document.getElementById('bem-print-btn').addEventListener('click',function(){var bemEl=document.getElementById('bem-edit');var pt=bemEl?bemEl.value:tekst;var win=window.open('','_blank');win.document.write('<html><head><style>body{font-family:Georgia,serif;font-size:13px;line-height:1.9;max-width:700px;margin:2cm auto;color:#2a2825}@media print{body{margin:1.5cm}}</style></head><body><p>'+pt.replace(/\n/g,'<br>')+'</p></body></html>');win.document.close();win.print();});
@@ -1849,7 +1849,7 @@ async function toonDetail(id,naam){
         var koperKvk=d.traject.koper_kvk||'[INVULLEN: KvK]';
         var lbNda=partijLabels(d.traject.traject_type||'Verkoop');
         var prompt='Genereer een volledig ingevulde Bisschops Financing NDA voor trajecttype: '+(d.traject.traject_type||'Verkoop')+'. Partijbenamingen: '+lbNda.sectie1+' (Verstrekkende Partij) en '+lbNda.sectie2+' (Ontvangende Partij). Geef alleen het document, geen toelichting.\\n\\nGEGEVENS:\\n- '+lbNda.sectie1+': '+esc(d.traject.kantoor_naam||naam)+', '+esc(verkoperAdres)+', KvK: '+esc(verkoperKvk)+'\\n- Contactpersoon: '+esc(verkoperNaam)+'\\n- '+lbNda.sectie2+': '+esc(koperNaam)+' ('+esc(koperRv)+'), '+esc(koperAdres)+', KvK: '+esc(koperKvk)+'\\n- Contactpersoon: '+esc(koperContact)+'\\n- Datum: '+datum+'\\n- Bemiddelaar: Bisschops Financing B.V., Marcel Bisschops, Grotestraat 13 5841AA Oploo\\n\\nNeem op: doel (mogelijke transactie), definitie vertrouwelijke informatie, verplichtingen ontvangende partij, uitzonderingen, duur 3 jaar, teruggave op verzoek, geen transactieplicht, boetebeding €25k + €2.500/dag, rechtskeuze Nederlands recht Rechtbank Oost-Brabant, ondertekeningsblok beide partijen.';
-        var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:8000})});
+        var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:4000})});
         var rd=await resp.json();
         var tekst=rd.text||(rd.error||'Fout bij genereren.');
         var ndaHtml=tekst.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n\n/g,'</p><p>').replace(/\n/g,'<br>');
@@ -1947,7 +1947,9 @@ async function toonDetail(id,naam){
     // NDA Signhost
     var ndaShBtn=document.getElementById('nda-signhost-btn');
     if(ndaShBtn)ndaShBtn.addEventListener('click',function(){
-      var tekst=document.getElementById('nda-edit')&&document.getElementById('nda-edit').value||'';
+      var ndaEditEl=document.getElementById('nda-edit');
+      var tekst=ndaEditEl?ndaEditEl.value:'';
+      if(!tekst){alert('Genereer eerst de NDA voordat je hem via Signhost verstuurt.');return;}
       stuurSignhost(id,'nda',tekst,d);
     });
 
@@ -1999,7 +2001,7 @@ async function toonDetail(id,naam){
         });
         btn.textContent='Opnieuw genereren';btn.disabled=false;
       }catch(e){loiOut.innerHTML='<div style="color:var(--red);font-size:13px">Fout: '+e.message+'</div>';btn.textContent='Genereer LoI';btn.disabled=false;
-      var loiShBtn=document.getElementById('loi-signhost-btn');if(loiShBtn)loiShBtn.addEventListener('click',function(){var tekst=document.getElementById('loi-edit')&&document.getElementById('loi-edit').value||'';stuurSignhost(id,'loi',tekst,d);});}
+      var loiShBtn=document.getElementById('loi-signhost-btn');if(loiShBtn)loiShBtn.addEventListener('click',function(){var tekst=document.getElementById('loi-edit')&&document.getElementById('loi-edit').value||'';if(!tekst){alert('Genereer eerst de LoI.');return;}stuurSignhost(id,'loi',tekst,d);});}
     });
 
     // LoI Signhost
