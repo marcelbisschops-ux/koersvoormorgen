@@ -2701,7 +2701,7 @@ async function renderGebruikersTab(el) {
         if (!confirm('Gebruiker activeren?')) return;
         var dr = await fetch(WORKER + '/gebruikers/activeer/' + btn.dataset.id + '?key=' + encodeURIComponent(adminKey), {method:'POST'});
         var dd = await dr.json();
-        if (dd.ok) { toast('Gebruiker geactiveerd.', 'ok'); renderGebruikersTab(el); }
+        if (dd.ok) { toast('Gebruiker geactiveerd.', 'ok'); var tc2=document.querySelector('.tab-content'); if(tc2)renderGebruikersTab(tc2); }
         else toast(dd.error || 'Fout bij activeren.', 'err');
       });
     });
@@ -2720,7 +2720,7 @@ async function renderGebruikersTab(el) {
         if (!confirm('Gebruiker "'+btn.dataset.naam+'" definitief verwijderen? Dit kan niet ongedaan worden gemaakt.')) return;
         var dr = await fetch(WORKER + '/gebruikers/verwijder/' + btn.dataset.id + '?key=' + encodeURIComponent(adminKey), {method:'POST'});
         var dd = await dr.json();
-        if (dd.ok) { toast('Gebruiker verwijderd.', 'ok'); renderGebruikersTab(el); }
+        if (dd.ok) { toast('Gebruiker verwijderd.', 'ok'); var tc3=document.querySelector('.tab-content'); if(tc3)renderGebruikersTab(tc3); }
         else toast(dd.error || 'Fout bij verwijderen.', 'err');
       });
     });
@@ -2730,7 +2730,7 @@ async function renderGebruikersTab(el) {
         btn.disabled = true;
         var dr = await fetch(WORKER + '/gebruikers/deactiveer/' + btn.dataset.id + '?key=' + encodeURIComponent(adminKey), {method:'POST'});
         var dd = await dr.json();
-        if (dd.ok) { toast('Gebruiker gedeactiveerd.', 'ok'); renderGebruikersTab(el); }
+        if (dd.ok) { toast('Gebruiker gedeactiveerd.', 'ok'); var tc4=document.querySelector('.tab-content'); if(tc4)renderGebruikersTab(tc4); }
         else { toast('Fout: ' + (dd.error||'onbekend'), 'err'); btn.disabled = false; }
       });
     });
