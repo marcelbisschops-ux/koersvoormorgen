@@ -1802,8 +1802,8 @@ async function toonDetail(id,naam){
           +'</div>';
         var bemEditEl2=document.getElementById('bem-edit');
         bemEditEl2.value=tekst;
-        // BEM Signhost
-        var bemShBtn=document.getElementById('bem-signhost-btn');if(bemShBtn)bemShBtn.addEventListener('click',function(){if(!bemEditEl2||!bemEditEl2.value){alert('Genereer eerst de BEM.');return;}stuurSignhost(id,'bem',bemEditEl2.value,d);});
+        var bemShBtn=document.getElementById('bem-signhost-btn');
+        if(bemShBtn)bemShBtn.onclick=function(){stuurSignhost(id,'bem',bemEditEl2.value,d);};
         bemEditEl2.dataset.tekst=''; // clear
         document.getElementById('bem-email-btn').dataset.ready='1';
         document.getElementById('bem-print-btn').addEventListener('click',function(){var bemEl=document.getElementById('bem-edit');var pt=bemEl?bemEl.value:tekst;var win=window.open('','_blank');win.document.write('<html><head><style>body{font-family:Georgia,serif;font-size:13px;line-height:1.9;max-width:700px;margin:2cm auto;color:#2a2825}@media print{body{margin:1.5cm}}</style></head><body><p>'+pt.replace(/\n/g,'<br>')+'</p></body></html>');win.document.close();win.print();});
@@ -1848,7 +1848,7 @@ async function toonDetail(id,naam){
         var koperAdres=d.traject.koper_adres||'[INVULLEN: adres]';
         var koperKvk=d.traject.koper_kvk||'[INVULLEN: KvK]';
         var lbNda=partijLabels(d.traject.traject_type||'Verkoop');
-        var prompt='Genereer een volledig ingevulde Bisschops Financing NDA voor trajecttype: '+(d.traject.traject_type||'Verkoop')+'. Partijbenamingen: '+lbNda.sectie1+' (Verstrekkende Partij) en '+lbNda.sectie2+' (Ontvangende Partij). Geef alleen het document, geen toelichting.\\n\\nGEGEVENS:\\n- '+lbNda.sectie1+': '+esc(d.traject.kantoor_naam||naam)+', '+esc(verkoperAdres)+', KvK: '+esc(verkoperKvk)+'\\n- Contactpersoon: '+esc(verkoperNaam)+'\\n- '+lbNda.sectie2+': '+esc(koperNaam)+' ('+esc(koperRv)+'), '+esc(koperAdres)+', KvK: '+esc(koperKvk)+'\\n- Contactpersoon: '+esc(koperContact)+'\\n- Datum: '+datum+'\\n- Bemiddelaar: Bisschops Financing B.V., Marcel Bisschops, Grotestraat 13 5841AA Oploo\\n\\nNeem op: doel (mogelijke transactie), definitie vertrouwelijke informatie, verplichtingen ontvangende partij, uitzonderingen, duur 3 jaar, teruggave op verzoek, geen transactieplicht, boetebeding €25k + €2.500/dag, rechtskeuze Nederlands recht Rechtbank Oost-Brabant, ondertekeningsblok beide partijen.';
+        var prompt='Genereer een NDA (geheimhoudingsovereenkomst) voor M&A-traject. Geef alleen het document zonder toelichting.\\n'+lbNda.sectie1+': '+esc(d.traject.kantoor_naam||naam)+', KvK: '+esc(verkoperKvk)+', contactpersoon: '+esc(verkoperNaam)+'\\n'+lbNda.sectie2+': '+esc(koperNaam)+', KvK: '+esc(koperKvk)+', contactpersoon: '+esc(koperContact)+'\\nDatum: '+datum+'. Bemiddelaar: Bisschops Financing B.V.\\nBepaling: doel mogelijke transactie, duur 3 jaar, boete €25k+€2.500/dag, Nederlands recht, ondertekeningsblok beide partijen.';
         var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:4000})});
         var rd=await resp.json();
         var tekst=rd.text||(rd.error||'Fout bij genereren.');
@@ -1862,6 +1862,9 @@ async function toonDetail(id,naam){
           +'<button id="nda-signhost-btn" class="btn" style="font-size:12px;padding:6px 14px;background:var(--teal)">&#9998; Signhost</button>'
           +'</div>';
         document.getElementById('nda-edit').value=tekst;
+        // Signhost handler — nu tekst beschikbaar
+        var ndaShBtn2=document.getElementById('nda-signhost-btn');
+        if(ndaShBtn2)ndaShBtn2.onclick=function(){stuurSignhost(id,'nda',document.getElementById('nda-edit').value,d);};
         document.getElementById('nda-print-btn').addEventListener('click',function(){var ndaEl=document.getElementById('nda-edit');var pt=ndaEl?ndaEl.value:tekst;var win=window.open('','_blank');win.document.write('<html><head><style>body{font-family:Georgia,serif;font-size:13px;line-height:1.9;max-width:700px;margin:2cm auto;color:#2a2825}@media print{body{margin:1.5cm}}</style></head><body><p>'+pt.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>')+'</p></body></html>');win.document.close();win.print();});
         document.getElementById('nda-email-btn').addEventListener('click',async function(){
           var ebtn=this;ebtn.disabled=true;ebtn.textContent='Versturen...';
@@ -1944,14 +1947,6 @@ async function toonDetail(id,naam){
       }catch(e){ndaOut.innerHTML='<div style="color:var(--red);font-size:13px">Fout: '+e.message+'</div>';btn.textContent='Genereer NDA';btn.disabled=false;}
     });
 
-    // NDA Signhost
-    var ndaShBtn=document.getElementById('nda-signhost-btn');
-    if(ndaShBtn)ndaShBtn.addEventListener('click',function(){
-      var ndaEditEl=document.getElementById('nda-edit');
-      var tekst=ndaEditEl?ndaEditEl.value:'';
-      if(!tekst){alert('Genereer eerst de NDA voordat je hem via Signhost verstuurt.');return;}
-      stuurSignhost(id,'nda',tekst,d);
-    });
 
     // LoI knop
     document.getElementById('det-loi-btn').addEventListener('click',async function(){
@@ -1983,6 +1978,8 @@ async function toonDetail(id,naam){
           +'<textarea id="loi-edit" style="width:100%;height:320px;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:Georgia,serif;font-size:12px;line-height:1.8;padding:1rem;outline:none;resize:vertical"></textarea>'
           +'<div style="display:flex;gap:8px;margin-top:.75rem"><button id="loi-print-btn" class="btn-ghost" style="font-size:12px;padding:6px 14px">&#128196; Print / PDF</button><button id="loi-email-btn" class="btn" style="font-size:12px;padding:6px 14px;background:var(--gold)">&#9993; Stuur naar partijen</button></div>';
         document.getElementById('loi-edit').value=tekst;
+        var loiShBtn2=document.getElementById('loi-signhost-btn');
+        if(loiShBtn2)loiShBtn2.onclick=function(){stuurSignhost(id,'loi',document.getElementById('loi-edit').value,d);};
         document.getElementById('loi-print-btn').addEventListener('click',function(){var loiEl=document.getElementById('loi-edit');var pt=loiEl?loiEl.value:tekst;var win=window.open('','_blank');win.document.write('<html><head><style>body{font-family:Georgia,serif;font-size:13px;line-height:1.9;max-width:700px;margin:2cm auto;color:#2a2825}@media print{body{margin:1.5cm}}</style></head><body><p>'+pt.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>')+'</p></body></html>');win.document.close();win.print();});
         document.getElementById('loi-email-btn').addEventListener('click',async function(){
           var ebtn=this;ebtn.disabled=true;ebtn.textContent='Versturen...';
@@ -2001,15 +1998,10 @@ async function toonDetail(id,naam){
         });
         btn.textContent='Opnieuw genereren';btn.disabled=false;
       }catch(e){loiOut.innerHTML='<div style="color:var(--red);font-size:13px">Fout: '+e.message+'</div>';btn.textContent='Genereer LoI';btn.disabled=false;
-      var loiShBtn=document.getElementById('loi-signhost-btn');if(loiShBtn)loiShBtn.addEventListener('click',function(){var tekst=document.getElementById('loi-edit')&&document.getElementById('loi-edit').value||'';if(!tekst){alert('Genereer eerst de LoI.');return;}stuurSignhost(id,'loi',tekst,d);});}
+      }
     });
 
     // LoI Signhost
-    var loiShBtn=document.getElementById('loi-signhost-btn');
-    if(loiShBtn)loiShBtn.addEventListener('click',function(){
-      var tekst=document.getElementById('loi-edit')&&document.getElementById('loi-edit').value||'';
-      stuurSignhost(id,'loi',tekst,d);
-    });
 
     // Exclusiviteitsbrief knop
     document.getElementById('det-excl-btn').addEventListener('click',async function(){
@@ -2040,6 +2032,8 @@ async function toonDetail(id,naam){
           +'<button id="excl-signhost-btn" class="btn" style="font-size:12px;padding:6px 14px;background:var(--teal-dim)">&#9998; Signhost</button>'
           +'</div>';
         document.getElementById('excl-edit').value=tekst;
+        var exclShBtn2=document.getElementById('excl-signhost-btn');
+        if(exclShBtn2)exclShBtn2.onclick=function(){stuurSignhost(id,'excl',document.getElementById('excl-edit').value,d);};
         document.getElementById('excl-print-btn').addEventListener('click',function(){var el=document.getElementById('excl-edit');var pt=el?el.value:tekst;var win=window.open('','_blank');win.document.write('<html><head><style>body{font-family:Georgia,serif;font-size:13px;line-height:1.9;max-width:700px;margin:2cm auto;color:#2a2825}@media print{body{margin:1.5cm}}</style></head><body><p>'+pt.replace(/\n/g,'<br>')+'</p></body></html>');win.document.close();win.print();});
         document.getElementById('excl-email-btn').addEventListener('click',async function(){
           var ebtn=this;ebtn.disabled=true;ebtn.textContent='Versturen...';
