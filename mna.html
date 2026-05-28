@@ -1803,12 +1803,13 @@ function renderBegeleiderDashboard(app){
       :'<button class="btn btn-sm" id="bg-vrijgeven">&#128275; Koper toegang geven</button>')
     +'<span style="display:inline-block;padding:4px 12px;border-radius:12px;font-size:11px;font-weight:600;background:'+(t.status==='vergrendeld'?'var(--red-bg)':'var(--teal-bg)')+';color:'+(t.status==='vergrendeld'?'var(--red)':'var(--teal)')+';border:1px solid '+(t.status==='vergrendeld'?'var(--red)':'var(--teal-dark)')+'">'+esc(t.status||'actief')+'</span>'
     +'</div></div></div>'
-    // Actie knoppen
+    // Actie knoppen — BEM: tussenpersoon+adviseur+koper | Exclusiviteit: verkoper+tussenpersoon+adviseur
     +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1.25rem">'
     +'<button class="btn" id="bg-nda-actie" style="background:#7c5cbf;padding:12px;font-size:13px">&#128274; NDA</button>'
     +'<button class="btn" id="bg-loi-actie" style="background:var(--gold);padding:12px;font-size:13px">&#128196; LoI</button>'
     +'<button class="btn" id="bg-bem-actie" style="background:#2a5ea0;padding:12px;font-size:13px">&#128203; BEM</button>'
-    +'<button class="btn" id="bg-gesprek-actie" style="background:var(--teal);padding:12px;font-size:13px">&#128172; Gesprek</button>'
+    +'<button class="btn" id="bg-excl-actie" style="background:var(--teal);padding:12px;font-size:13px">&#128196; Exclusiviteit</button>'
+    +'<button class="btn" id="bg-gesprek-actie" style="background:var(--teal-dim);padding:12px;font-size:13px">&#128172; Gesprek</button>'
     +'<button class="btn" id="bg-infoverzoek-actie" style="background:var(--teal-dim);padding:12px;font-size:13px">&#128203; Informatieverzoek</button>'
     +'</div>'
     // Doc output
@@ -1901,8 +1902,8 @@ function renderBegeleiderDashboard(app){
     var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:type==='bem'?4000:8000})});
     var rd=await resp.json();
     var tekst=rd.text||'Fout bij genereren';
-    var kleuren={nda:'#7c5cbf',loi:'var(--gold)',bem:'#2a5ea0'};
-    var labels={nda:'NDA',loi:'LoI',bem:'Bemiddelingsovereenkomst'};
+    var kleuren={nda:'#7c5cbf',loi:'var(--gold)',bem:'#2a5ea0',exclusief:'var(--teal)'};
+    var labels={nda:'NDA',loi:'LoI',bem:'Bemiddelingsovereenkomst',exclusief:'Exclusiviteitsbrief'};
     out.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem">'
       +'<div style="font-size:11px;font-weight:600;color:'+kleuren[type]+';text-transform:uppercase;letter-spacing:.1em;margin-bottom:.75rem">'+labels[type]+' gegenereerd</div>'
       +'<textarea id="bg-doc-tekst" style="width:100%;height:280px;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:Georgia,serif;font-size:12px;line-height:1.8;padding:1rem;outline:none;resize:vertical">'+esc(tekst)+'</textarea>'
@@ -1919,10 +1920,11 @@ function renderBegeleiderDashboard(app){
       var ebtn=this;ebtn.disabled=true;ebtn.textContent='Versturen...';
       var vt=document.getElementById('bg-doc-tekst').value;
       var toList=[t2.contact_email,t2.begeleider_email,t2.koper_email].filter(Boolean);
-      var ep=type==='nda'?'/mna/nda/email':type==='loi'?'/mna/loi/email':'/mna/bem/email';
+      var ep=type==='nda'?'/mna/nda/email':type==='loi'?'/mna/loi/email':type==='exclusief'?'/mna/exclusief/email':'/mna/bem/email';
       var payload={code:S.traject.id,to:toList};
       if(type==='nda')payload.nda_tekst=vt;
       else if(type==='loi')payload.loi_tekst=vt;
+      else if(type==='exclusief')payload.excl_tekst=vt;
       else{payload.bem_tekst=vt;payload.type=isSell?'verkoop':'aankoop';}
       var er=await fetch(WORKER+ep,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
       var ed=await er.json();
@@ -1933,6 +1935,7 @@ function renderBegeleiderDashboard(app){
   document.getElementById('bg-nda-actie').onclick=function(){bgDoc('nda');};
   document.getElementById('bg-loi-actie').onclick=function(){bgDoc('loi');};
   document.getElementById('bg-bem-actie').onclick=function(){bgDoc('bem');};
+  document.getElementById('bg-excl-actie').onclick=function(){bgDoc('exclusief');};
 
   // Gesprek vastleggen
   document.getElementById('bg-gesprek-actie').onclick=function(){
@@ -2929,6 +2932,7 @@ function bindAll(){
         +'<button id="bg-nda-btn" style="background:#7c5cbf;color:#fff;border:none;padding:10px 16px;border-radius:6px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:13px;font-weight:600;text-align:left">&#128274; Genereer NDA</button>'
         +'<button id="bg-loi-btn" style="background:#c9a84c;color:#fff;border:none;padding:10px 16px;border-radius:6px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:13px;font-weight:600;text-align:left">&#128196; Genereer LoI</button>'
         +'<button id="bg-bem-btn" style="background:#2a5ea0;color:#fff;border:none;padding:10px 16px;border-radius:6px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:13px;font-weight:600;text-align:left">&#128203; Bemiddelingsovereenkomst</button>'
+        +'<button id="bg-excl-modal-btn" style="background:#1a7a5e;color:#fff;border:none;padding:10px 16px;border-radius:6px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:13px;font-weight:600;text-align:left">&#128196; Exclusiviteitsbrief</button>'
         +'</div>'
         +'<div id="bg-doc-output" style="margin-top:1rem"></div>'
         +'<div style="margin-top:1.25rem;text-align:right"><button id="bg-doc-sluit" style="background:transparent;border:1px solid #c8c5bc;padding:8px 16px;border-radius:6px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:13px">Sluiten</button></div>';
@@ -2942,12 +2946,14 @@ function bindAll(){
         var datum=new Date().toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'});
         var t3=S.traject;
         var isSell=!t3.traject_type||t3.traject_type==='Verkoop'||t3.traject_type==='Opvolging';
-        var tplType=type==='bem'?(isSell?'bem_verk':'bem_koper'):type;
+        var tplType=type==='bem'?(isSell?'bem_verk':'bem_koper'):type==='exclusief'?'exclusief':type;
         var tplR=await fetch(WORKER+'/mna/template/'+tplType+'?email='+encodeURIComponent(t3.begeleider_email||'')).catch(function(){return{json:function(){return{ok:false};}};});
         var tplD=await tplR.json().catch(function(){return{ok:false};});
         var prompt='';
         if(type==='nda'){
           prompt='Vul de NDA template in voor trajecttype: '+(t3.traject_type||'Verkoop')+'. Partij 1: '+esc(t3.kantoor_naam||'[verkoper]')+', '+(t3.verkoper_adres||'[adres]')+'. Partij 2: '+esc(t3.koper_naam||'[koper]')+' ('+(t3.koper_rechtsvorm||'')+'). Datum: '+datum+'. Adviseur: Bisschops Financing B.V., '+esc(t3.begeleider_naam||'Begeleider')+'.\n\nTEMPLATE:\n'+(tplD.ok&&tplD.tekst?tplD.tekst:'[standaard NDA template]');
+        }else if(type==='exclusief'){
+          prompt='Genereer een Exclusiviteitsbrief voor trajecttype: '+(t3.traject_type||'Verkoop')+'. '+lb.sectie1+': '+esc(t3.kantoor_naam||'[verkoper]')+'. '+lb.sectie2+': '+esc(t3.koper_naam||'[koper]')+'. Datum: '+datum+'. Looptijd: 4 weken. Adviseur: '+(t3.begeleider_naam||'Bisschops Financing B.V.')+'. Neem op: exclusiviteitsperiode, verbod op parallelle onderhandelingen, boetebeding €25.000, ondertekeningsblok beide partijen.';
         }else if(type==='loi'){
           prompt='Vul de LoI template in voor trajecttype: '+(t3.traject_type||'Verkoop')+'. Partij 1: '+esc(t3.kantoor_naam||'[verkoper]')+'. Partij 2: '+esc(t3.koper_naam||'[koper]')+' ('+(t3.koper_rechtsvorm||'')+'), '+(t3.koper_adres||'')+'. Datum: '+datum+'. Adviseur: '+(t3.begeleider_naam||'Bisschops Financing B.V.')+'.\n\nTEMPLATE:\n'+(tplD.ok&&tplD.tekst?tplD.tekst:'[standaard LoI template]');
         }else{
@@ -2956,7 +2962,7 @@ function bindAll(){
         var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:type==='bem'?4000:8000})});
         var rd=await resp.json();
         var tekst=rd.text||(rd.error||'Fout');
-        var labels={nda:'NDA',loi:'LoI',bem:'Bemiddelingsovereenkomst'};
+        var labels={nda:'NDA',loi:'LoI',bem:'Bemiddelingsovereenkomst',exclusief:'Exclusiviteitsbrief'};
         out.innerHTML='<div style="font-size:11px;font-weight:600;color:#2a5ea0;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.5rem">'+labels[type]+' gegenereerd</div>'
           +'<textarea style="width:100%;height:280px;background:#f0eeea;border:1px solid #c8c5bc;border-radius:6px;color:#2a2825;font-family:Georgia,serif;font-size:12px;line-height:1.8;padding:1rem;outline:none;resize:vertical" id="bg-doc-tekst">'+esc(tekst)+'</textarea>'
           +'<div style="display:flex;gap:8px;margin-top:.75rem">'
@@ -2975,10 +2981,11 @@ function bindAll(){
           var toList=[t3.contact_email||t3.begeleider_email];
           if(t3.begeleider_email&&!toList.includes(t3.begeleider_email))toList.push(t3.begeleider_email);
           if(t3.koper_email&&!toList.includes(t3.koper_email))toList.push(t3.koper_email);
-          var endpoint=type==='nda'?'/mna/nda/email':type==='loi'?'/mna/loi/email':'/mna/bem/email';
+          var endpoint=type==='nda'?'/mna/nda/email':type==='loi'?'/mna/loi/email':type==='exclusief'?'/mna/exclusief/email':'/mna/bem/email';
           var payload={code:S.code,to:toList};
           if(type==='nda')payload.nda_tekst=verzendTekst;
           else if(type==='loi')payload.loi_tekst=verzendTekst;
+          else if(type==='exclusief')payload.excl_tekst=verzendTekst;
           else{payload.bem_tekst=verzendTekst;payload.type=isSell?'verkoop':'aankoop';}
           var er=await fetch(WORKER+endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
           var ed=await er.json();
@@ -2989,6 +2996,7 @@ function bindAll(){
       document.getElementById('bg-nda-btn').onclick=function(){bgGenereerDoc('nda');};
       document.getElementById('bg-loi-btn').onclick=function(){bgGenereerDoc('loi');};
       document.getElementById('bg-bem-btn').onclick=function(){bgGenereerDoc('bem');};
+      document.getElementById('bg-excl-modal-btn').onclick=function(){bgGenereerDoc('exclusief');};
     };
   }
 
