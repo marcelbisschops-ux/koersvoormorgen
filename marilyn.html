@@ -2755,7 +2755,8 @@ async function renderGebruikersTab(el) {
     el.querySelectorAll('.btn-act').forEach(function(btn) {
       btn.addEventListener('click', async function() {
         if (!confirm('Gebruiker activeren?')) return;
-        var dr = await fetch(WORKER + '/gebruikers/activeer/' + btn.dataset.id + '?key=' + encodeURIComponent(adminKey), {method:'POST'});
+        var drBody=new URLSearchParams();drBody.append('key',adminKey);
+        var dr = await fetch(WORKER + '/gebruikers/activeer/' + btn.dataset.id, {method:'POST',body:drBody});
         var dd = await dr.json();
         if (dd.ok) { toast('Gebruiker geactiveerd.', 'ok'); var tc2=document.querySelector('.tab-content'); if(tc2)renderGebruikersTab(tc2); }
         else toast(dd.error || 'Fout bij activeren.', 'err');
@@ -2774,7 +2775,8 @@ async function renderGebruikersTab(el) {
     el.querySelectorAll('.btn-del-user').forEach(function(btn) {
       btn.addEventListener('click', async function() {
         if (!confirm('Gebruiker "'+btn.dataset.naam+'" definitief verwijderen? Dit kan niet ongedaan worden gemaakt.')) return;
-        var dr = await fetch(WORKER + '/gebruikers/verwijder/' + btn.dataset.id + '?key=' + encodeURIComponent(adminKey), {method:'POST'});
+        var drBody2=new URLSearchParams();drBody2.append('key',adminKey);
+        var dr = await fetch(WORKER + '/gebruikers/verwijder/' + btn.dataset.id, {method:'POST',body:drBody2});
         var dd = await dr.json();
         if (dd.ok) { toast('Gebruiker verwijderd.', 'ok'); var tc3=document.querySelector('.tab-content'); if(tc3)renderGebruikersTab(tc3); }
         else toast(dd.error || 'Fout bij verwijderen.', 'err');
@@ -2784,7 +2786,8 @@ async function renderGebruikersTab(el) {
       btn.addEventListener('click', async function() {
         if (!confirm('Gebruiker deactiveren? Ze kunnen dan niet meer inloggen.')) return;
         btn.disabled = true;
-        var dr = await fetch(WORKER + '/gebruikers/deactiveer/' + btn.dataset.id + '?key=' + encodeURIComponent(adminKey), {method:'POST'});
+        var drBody3=new URLSearchParams();drBody3.append('key',adminKey);
+        var dr = await fetch(WORKER + '/gebruikers/deactiveer/' + btn.dataset.id, {method:'POST',body:drBody3});
         var dd = await dr.json();
         if (dd.ok) { toast('Gebruiker gedeactiveerd.', 'ok'); var tc4=document.querySelector('.tab-content'); if(tc4)renderGebruikersTab(tc4); }
         else { toast('Fout: ' + (dd.error||'onbekend'), 'err'); btn.disabled = false; }
