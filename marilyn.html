@@ -1807,7 +1807,7 @@ async function toonBewerkModal(id, naam){
   mo.innerHTML='<div class="modal-title">&#9999;&#65039; Bewerk traject: '+esc(naam)+'</div>'
     +'<div style="font-size:11px;color:var(--muted);margin-bottom:1rem">Wijzig partijgegevens, begeleider of contactinfo.</div>'
     +'<div style="border-bottom:1px solid var(--border);margin-bottom:.75rem;padding-bottom:.25rem"><div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">Verkoper</div></div>'
-    +'<div class="field"><label>Kantoornaam</label><input type="text" id="bw-k" value="'+esc(t.kantoor_naam||'')+'"></div>'
+    +'<div class="field"><label>Naam onderneming</label><input type="text" id="bw-k" value="'+esc(t.kantoor_naam||'')+'"></div>'
     +'<div class="field"><label>Contactpersoon <span style="color:var(--red)">*</span></label><input type="text" id="bw-c" value="'+esc(t.contact_naam||'')+'"></div>'
     +'<div class="field"><label>E-mail contactpersoon <span style="color:var(--red)">*</span></label><input type="email" id="bw-e" value="'+esc(t.contact_email||'')+'"></div>'
     +'<div class="field"><label>KvK-nummer verkoper</label><div style="display:flex;gap:6px"><input type="text" id="bw-kvk" value="'+esc(t.verkoper_kvk||'')+'" style="flex:1"><button type="button" id="bw-btn-kvk-verk" class="btn-ghost" style="font-size:11px;padding:6px 10px">&#128269; KvK</button></div></div>'
@@ -2187,7 +2187,7 @@ function toonNieuwModal(){
     +'<div class="field" style="flex:1"><label>Sector <span style="color:var(--red)">*</span></label><select id="m-sector"><option value="accountancy">Accountancy & administratie</option><option value="mkb">MKB — Retail / Horeca / Handel</option><option value="zorg">Zorg — Huisarts / Tandarts / Fysiotherapie</option><option value="itsoftware">IT & Software</option></select></div>'
     +'</div>'
     +'<div style="border-bottom:1px solid var(--border);margin:.75rem 0 .75rem;padding-bottom:.25rem"><div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)" id="m-sectie1-hdr">Verkopende partij</div></div>'
-    +'<div class="field"><label id="m-p1-naam-lbl">Kantoornaam <span style="color:var(--red)">*</span></label><div style="display:flex;gap:8px"><input type="text" id="m-k" placeholder="Naam van het kantoor" style="flex:2"><input type="text" id="m-kvk" placeholder="KvK-nr" style="flex:1"></div></div>'
+    +'<div class="field"><label id="m-p1-naam-lbl">Naam onderneming <span style="color:var(--red)">*</span></label><div style="display:flex;gap:8px"><input type="text" id="m-k" placeholder="Naam van de onderneming" style="flex:2"><input type="text" id="m-kvk" placeholder="KvK-nr" style="flex:1"></div></div>'
     +'<div class="field"><label id="m-p1-rv-lbl">Rechtsvorm <span style="color:var(--red)">*</span></label><select id="m-rv"><option value="">— Kies rechtsvorm —</option><option value="B.V.">B.V. (Besloten Vennootschap)</option><option value="N.V.">N.V. (Naamloze Vennootschap)</option><option value="Eenmanszaak">Eenmanszaak</option><option value="V.O.F.">V.O.F.</option><option value="Maatschap">Maatschap</option><option value="Coöperatie">Coöperatie</option><option value="Stichting">Stichting</option><option value="Holding B.V.">Holding B.V.</option><option value="C.V.">C.V.</option></select></div>'
     +'<div class="field"><label id="m-p1-adres-lbl">Adres <span style="color:var(--red)">*</span></label><input type="text" id="m-adres" placeholder="Adres"></div>'
     +'<div class="field"><label id="m-p1-contact-lbl">Contactpersoon <span style="color:var(--red)">*</span></label><input type="text" id="m-c" placeholder="Naam contactpersoon"></div>'
@@ -2245,7 +2245,7 @@ function toonNieuwModal(){
     var lb=window._mPartijLabel||partijLabels('Verkoop');
     function fout(msg){erDiv.style.display='block';erDiv.textContent=msg;return false;}
     function vv(id){var el=document.getElementById(id);return el?el.value.trim():'';}
-    if(!vv('m-k'))return fout(lb.partij1+' naam is verplicht.');
+    if(!vv('m-k'))return fout('Naam onderneming is verplicht.');
     if(!vv('m-rv'))return fout('Rechtsvorm '+lb.sectie1.toLowerCase()+' is verplicht.');
     if(!vv('m-c'))return fout('Contactpersoon '+lb.sectie1.toLowerCase()+' is verplicht.');
     if(!vv('m-e'))return fout('E-mail contactpersoon is verplicht.');
