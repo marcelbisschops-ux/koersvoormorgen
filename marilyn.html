@@ -380,6 +380,7 @@ function renderMnaTab(el){
         +(t.begeleider_naam?'<div style="font-weight:500;color:var(--sub)">'+esc(t.begeleider_naam)+'</div>':'<span style="color:var(--muted);font-size:10px;font-style:italic">Niet ingesteld</span>')
         +(t.begeleider_email?'<div style="color:var(--teal);font-size:10px">'+esc(t.begeleider_email)+'</div>':'')
         +'<div style="margin-top:3px;display:flex;gap:3px;align-items:center"><span class="code-chip" style="background:var(--card);color:var(--mid);border-color:var(--border2);font-size:10px">'+esc(t.tussen_code||'—')+'</span><button class="copy-btn" data-copy="'+esc(t.tussen_code||'')+'">⎘</button></div>'
+        +'<div style="margin-top:4px" class="vok-badge" data-code="'+esc(t.tussen_code||'')+'"><span style="font-size:10px;color:var(--muted);font-style:italic">VOK laden...</span></div>'
 
         +'</div></td>'
         +'<td class="mono" style="font-size:11px">'+formatDate(t.created_at)+'</td>'
@@ -419,6 +420,22 @@ function renderMnaTab(el){
   var cbAllM=document.getElementById('cb-all-mna');
   if(cbAllM)cbAllM.addEventListener('change',function(){el.querySelectorAll('.mna-cb:not(:disabled)').forEach(function(cb){cb.checked=cbAllM.checked;});updSelMna();});
   el.querySelectorAll('.mna-cb').forEach(function(cb){cb.addEventListener('change',updSelMna);});
+  // Laad VOK-status per traject
+  el.querySelectorAll('.vok-badge[data-code]').forEach(function(badge){
+    var tCode=badge.dataset.code;
+    if(!tCode||tCode==='—')return;
+    fetch(WORKER+'/mna/vok/status?code='+encodeURIComponent(tCode))
+      .then(function(r){return r.json();})
+      .then(function(d){
+        if(d.getekend){
+          var datum=d.datum?new Date(d.datum).toLocaleDateString('nl-NL',{day:'2-digit',month:'short',year:'numeric'}):'';
+          badge.innerHTML='<span style="font-size:10px;color:var(--teal)">&#10003; VOK getekend door '+esc(d.naam||'onbekend')+(datum?' &middot; '+datum:'')+'</span>';
+        } else {
+          badge.innerHTML='<span style="font-size:10px;color:var(--gold)">&#9888; VOK nog niet getekend</span>';
+        }
+      }).catch(function(){badge.innerHTML='';});
+  });
+
   var btnDelM=document.getElementById('btn-del-sel-mna');
   if(btnDelM)btnDelM.addEventListener('click',async function(){
     var ids=Array.from(el.querySelectorAll('.mna-cb:checked')).map(function(cb){return cb.dataset.id;});
