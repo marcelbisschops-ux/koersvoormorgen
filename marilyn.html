@@ -385,7 +385,8 @@ function renderMnaTab(el){
         +'</div></td>'
         +'<td class="mono" style="font-size:11px">'+formatDate(t.created_at)+'</td>'
         +'<td style="white-space:nowrap;display:flex;gap:4px;flex-wrap:wrap">'
-        +'<button class="btn btn-uitnodigen" data-id="'+esc(t.id)+'" data-naam="'+esc(t.kantoor_naam||t.id)+'" data-tcode="'+esc(t.tussen_code||'')+'" style="font-size:11px;padding:3px 10px;background:#2a5ea0">&#128231; Begeleider</button>'        +'<button class="btn-ghost btn-detail" data-id="'+esc(t.id)+'" data-naam="'+esc(t.kantoor_naam||t.id)+'" style="font-size:11px;padding:3px 8px">&#128065; Bekijk</button>'
+        +'<button class="btn btn-uitnodigen" data-id="'+esc(t.id)+'" data-naam="'+esc(t.kantoor_naam||t.id)+'" data-tcode="'+esc(t.tussen_code||'')+'" style="font-size:11px;padding:3px 10px;background:#2a5ea0">&#128231; Begeleider</button>'
+        +'<button class="btn btn-inv" data-id="'+esc(t.id)+'" data-naam="'+esc(t.kantoor_naam||t.id)+'" style="font-size:11px;padding:3px 10px;background:var(--teal-dim)">&#9993; Uitnodigen</button>'        +'<button class="btn-ghost btn-detail" data-id="'+esc(t.id)+'" data-naam="'+esc(t.kantoor_naam||t.id)+'" style="font-size:11px;padding:3px 8px">&#128065; Bekijk</button>'
         +'<button class="btn-ghost btn-bewerk" data-id="'+esc(t.id)+'" data-naam="'+esc(t.kantoor_naam||t.id)+'" style="font-size:11px;padding:3px 8px">&#9999;&#65039; Bewerk</button>'
         +'<button class="btn-ghost btn-opslaan" data-idx="'+i+'" style="font-size:11px;padding:3px 8px">&#8681; Opslaan</button>'
         +'<a href="'+WORKER+'/mna/admin/export/'+esc(t.id)+'?key='+encodeURIComponent(adminKey)+'" target="_blank" class="btn-ghost" style="font-size:11px;padding:3px 8px;text-decoration:none" title="Dossier exporteren">&#128230; Export</a>'
@@ -411,6 +412,7 @@ function renderMnaTab(el){
   el.querySelectorAll('.btn-detail').forEach(function(b){b.addEventListener('click',function(){toonDetail(b.dataset.id,b.dataset.naam);});});
   el.querySelectorAll('.btn-bewerk').forEach(function(b){b.addEventListener('click',function(){toonBewerkModal(b.dataset.id,b.dataset.naam);});});
   el.querySelectorAll('.btn-uitnodigen').forEach(function(b){b.addEventListener('click',function(){toonBegeleiderModal(b.dataset.id,b.dataset.naam,b.dataset.tcode);});});
+  el.querySelectorAll('.btn-inv').forEach(function(b){b.addEventListener('click',function(){toonUitnodigingModal(b.dataset.id,b.dataset.naam);});});
   el.querySelectorAll('.btn-opslaan').forEach(function(b){b.addEventListener('click',function(){slaOp(mnaList[parseInt(b.dataset.idx)]);});});
   el.querySelectorAll('.btn-verg').forEach(function(b){b.addEventListener('click',function(){vergrendel(b.dataset.id,b.dataset.naam);});});
   el.querySelectorAll('.btn-ontv').forEach(function(b){b.addEventListener('click',function(){ontvergrendel(b.dataset.id);});});
@@ -1268,6 +1270,93 @@ async function stuurSignhost(id, docType, tekst, d) {
     else if (rd.error && rd.error.includes('niet geconfigureerd')) { errEl.style.display='block'; errEl.innerHTML='⚠ Signhost niet geconfigureerd.'; btn.disabled=false; btn.textContent='Verstuur'; }
     else { errEl.style.display='block'; errEl.textContent=rd.error||'Fout'; btn.disabled=false; btn.textContent='Verstuur'; }
   };
+}
+
+
+async function toonUitnodigingModal(trajectId, trajectNaam) {
+  // Haal trajectdata op
+  var r = await fetch(WORKER+'/mna/admin/detail/'+trajectId+'?key='+encodeURIComponent(adminKey));
+  var dd = await r.json().catch(function(){return{};});
+  var t = (dd && dd.traject) ? dd.traject : {id: trajectId, kantoor_naam: trajectNaam};
+
+  var ov = document.createElement('div'); ov.className = 'overlay';
+  var mo = document.createElement('div'); mo.className = 'modal'; mo.style.maxWidth = '520px';
+  mo.innerHTML = '<div class="modal-title">&#9993; Uitnodigingsmail versturen</div>'
+    + '<p style="font-size:13px;color:var(--mid);line-height:1.7;margin-bottom:1.25rem">Stuur een professionele uitnodigingsmail met platforminformatie, toegangscode en stappenplan.</p>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:1.25rem">'
+
+    // Verkoper blok
+    + '<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r2);padding:1rem">'
+    + '<div style="font-size:11px;font-weight:700;color:var(--teal);text-transform:uppercase;letter-spacing:.1em;margin-bottom:.6rem">&#128203; Verkoper</div>'
+    + '<div style="font-family:IBM Plex Mono,monospace;font-size:1rem;font-weight:700;color:var(--teal);letter-spacing:.1em;margin-bottom:.75rem">'+esc(t.id||trajectId)+'</div>'
+    + '<div style="margin-bottom:.6rem"><label style="font-size:10px;font-weight:600;color:var(--muted);display:block;margin-bottom:3px">E-mail verkoper</label>'
+    + '<input type="email" id="inv-verk-email" value="'+esc(t.contact_email||'')+'" placeholder="verkoper@kantoor.nl" style="width:100%;background:var(--panel);border:1px solid var(--border2);border-radius:var(--r);padding:7px 10px;font-size:12px;font-family:IBM Plex Sans,sans-serif;color:var(--sub);outline:none"></div>'
+    + '<div style="margin-bottom:.6rem"><label style="font-size:10px;font-weight:600;color:var(--muted);display:block;margin-bottom:3px">Naam (optioneel)</label>'
+    + '<input type="text" id="inv-verk-naam" value="'+esc(t.contact_naam||'')+'" placeholder="Contactpersoon" style="width:100%;background:var(--panel);border:1px solid var(--border2);border-radius:var(--r);padding:7px 10px;font-size:12px;font-family:IBM Plex Sans,sans-serif;color:var(--sub);outline:none"></div>'
+    + '<button id="inv-verk-btn" class="btn" style="width:100%;font-size:12px;padding:7px;background:var(--teal)">&#9993; Verstuur naar verkoper</button>'
+    + '<div id="inv-verk-st" style="font-size:11px;margin-top:.4rem;min-height:16px"></div>'
+    + '</div>'
+
+    // Koper blok
+    + '<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r2);padding:1rem">'
+    + '<div style="font-size:11px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.1em;margin-bottom:.6rem">&#128203; Koper</div>'
+    + '<div style="font-family:IBM Plex Mono,monospace;font-size:1rem;font-weight:700;color:var(--gold);letter-spacing:.1em;margin-bottom:.75rem">'+esc(t.koper_code||'—')+'</div>'
+    + '<div style="margin-bottom:.6rem"><label style="font-size:10px;font-weight:600;color:var(--muted);display:block;margin-bottom:3px">E-mail koper</label>'
+    + '<input type="email" id="inv-kop-email" value="'+esc(t.koper_email||'')+'" placeholder="koper@bedrijf.nl" style="width:100%;background:var(--panel);border:1px solid var(--border2);border-radius:var(--r);padding:7px 10px;font-size:12px;font-family:IBM Plex Sans,sans-serif;color:var(--sub);outline:none"></div>'
+    + '<div style="margin-bottom:.6rem"><label style="font-size:10px;font-weight:600;color:var(--muted);display:block;margin-bottom:3px">Naam (optioneel)</label>'
+    + '<input type="text" id="inv-kop-naam" value="'+esc(t.koper_contact||t.koper_naam||'')+'" placeholder="Contactpersoon koper" style="width:100%;background:var(--panel);border:1px solid var(--border2);border-radius:var(--r);padding:7px 10px;font-size:12px;font-family:IBM Plex Sans,sans-serif;color:var(--sub);outline:none"></div>'
+    + '<button id="inv-kop-btn" class="btn" style="width:100%;font-size:12px;padding:7px;background:var(--gold)">&#9993; Verstuur naar koper</button>'
+    + '<div id="inv-kop-st" style="font-size:11px;margin-top:.4rem;min-height:16px"></div>'
+    + '</div>'
+
+    + '</div>'
+    + '<div style="display:flex;justify-content:flex-end"><button class="btn-ghost" id="inv-sluit">Sluiten</button></div>';
+
+  ov.appendChild(mo); document.body.appendChild(ov);
+  ov.addEventListener('click', function(e){if(e.target===ov)document.body.removeChild(ov);});
+  document.getElementById('inv-sluit').onclick = function(){document.body.removeChild(ov);};
+
+  async function stuurUitnodiging(type) {
+    var emailEl = document.getElementById('inv-'+type+'-email');
+    var naamEl = document.getElementById('inv-'+type+'-naam');
+    var stEl = document.getElementById('inv-'+type+'-st');
+    var btnEl = document.getElementById('inv-'+type+'-btn');
+    var email = emailEl.value.trim();
+    if (!email) { stEl.innerHTML='<span style="color:var(--red)">E-mailadres verplicht</span>'; return; }
+    btnEl.disabled=true; btnEl.textContent='Versturen...';
+    stEl.innerHTML='';
+    var code = type==='verk' ? (t.id||trajectId) : t.koper_code;
+    try {
+      var res = await fetch(WORKER+'/mna/uitnodiging', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-admin-key': adminKey },
+        body: JSON.stringify({
+          code: code,
+          type: type==='verk' ? 'verkoper' : 'koper',
+          to: email,
+          naam: naamEl.value.trim(),
+          trajectNaam: t.kantoor_naam||trajectNaam,
+          adviseur_naam: t.begeleider_naam||'Marcel Bisschops',
+          adviseur_email: t.begeleider_email||'marcel@bisschopsfinancing.nl',
+          adviseur_tel: '06 - 38 68 98 88'
+        })
+      });
+      var rd = await res.json();
+      if (rd.ok) {
+        stEl.innerHTML='<span style="color:var(--teal)">&#10003; Verstuurd naar '+esc(email)+'</span>';
+        btnEl.textContent='&#10003; Verstuurd'; btnEl.style.background='var(--teal-dim)';
+      } else {
+        stEl.innerHTML='<span style="color:var(--red)">'+esc(rd.error||'Fout')+'</span>';
+        btnEl.disabled=false; btnEl.textContent='&#9993; Opnieuw';
+      }
+    } catch(e) {
+      stEl.innerHTML='<span style="color:var(--red)">Verbindingsfout</span>';
+      btnEl.disabled=false; btnEl.textContent='&#9993; Opnieuw';
+    }
+  }
+
+  document.getElementById('inv-verk-btn').onclick = function(){ stuurUitnodiging('verk'); };
+  document.getElementById('inv-kop-btn').onclick = function(){ stuurUitnodiging('kop'); };
 }
 
 async function toonDetail(id,naam){
