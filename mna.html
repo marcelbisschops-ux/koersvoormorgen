@@ -2353,16 +2353,19 @@ async function laadPartijDocs() {
   if (!el) return;
   // Bepaal welke doc types zichtbaar zijn per rol
   var rolFilter = isVerkoper()
-    ? ['nda','loi','bem','excl']
-    : ['nda','loi','bem'];  // koper
-  var labels = {nda:'NDA',loi:'Letter of Intent',bem:'Bemiddelingsovereenkomst',excl:'Exclusiviteitsbrief'};
-  var kleuren = {nda:'#7c5cbf',loi:'#c9a84c',bem:'#2a5ea0',excl:'#1a7a5e'};
+    ? ['nda','loi','bem','bem_verk','bem_koper','exclusief','excl']
+    : ['nda','loi','bem','bem_koper','bem_verk'];  // koper
+  var labels = {nda:'NDA',loi:'Letter of Intent',bem:'Bemiddelingsovereenkomst',bem_verk:'Bemiddelingsovereenkomst',bem_koper:'Bemiddelingsovereenkomst',excl:'Exclusiviteitsbrief',exclusief:'Exclusiviteitsbrief'};
+  var kleuren = {nda:'#7c5cbf',loi:'#c9a84c',bem:'#2a5ea0',bem_verk:'#2a5ea0',bem_koper:'#2a5ea0',excl:'#1a7a5e',exclusief:'#1a7a5e'};
   try {
     var r = await fetch(WORKER+'/mna/versies/'+S.code);
     var versies = await r.json();
     // Filter op relevante doc types voor deze rol
     versies = versies.filter(function(v){ return rolFilter.indexOf(v.doc_type) !== -1; });
-    if (!versies.length) { el.innerHTML=''; return; }
+    if (!versies.length) {
+      el.innerHTML='<div style="margin-top:1.5rem;font-size:12px;color:var(--muted);font-style:italic">Nog geen documenten beschikbaar.</div>';
+      return;
+    }
     var html = '<div style="margin-top:1.5rem;background:var(--card);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem">'
       + '<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem">&#128196; Uw documenten</div>'
       + '<div style="display:flex;flex-direction:column;gap:6px">';
