@@ -2307,13 +2307,28 @@ function renderCover(){
       +'<p>Vragen? Neem contact op via <a href="mailto:marcel@bisschopsfinancing.nl" style="color:var(--teal)">marcel@bisschopsfinancing.nl</a>.</p>'
       +'<p>Met vriendelijke groet,<br><strong>Marcel Bisschops</strong><br><span style="font-size:12px;color:var(--muted)">Senior M&amp;A-adviseur &middot; Bisschops Financing BV</span></p>';
   }else if(!t.koper_vrijgegeven){
+    // Koper zonder vrijgave — toon BEM als die beschikbaar is
+    var bemBlokKoper='';
+    if(S.bemDocId||S.bemTekst){
+      bemBlokKoper='<div style="margin:1.5rem;background:#eef3fa;border:1px solid #2a5ea0;border-radius:var(--r2);padding:1.25rem">'
+        +'<div style="font-size:11px;font-weight:600;color:#2a5ea0;letter-spacing:.1em;text-transform:uppercase;margin-bottom:.6rem">&#128203; Bemiddelingsovereenkomst beschikbaar</div>'
+        +'<div style="font-size:12px;color:var(--mid);margin-bottom:.75rem">De Bemiddelingsovereenkomst is opgesteld door uw adviseur.'+(S.bemDocId||S.bemGetekend?' &mdash; <strong style="color:#2a5ea0">Reeds ondertekend.</strong>':' Lees en onderteken het document.')+' </div>'
+        +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
+        +(S.bemDocId?'<a href="'+WORKER+'/mna/document/download/'+S.bemDocId+'?code='+encodeURIComponent(S.code)+'" target="_blank" class="btn-ghost" style="font-size:12px;border-color:#2a5ea0;color:#2a5ea0;text-decoration:none">&#8681; Download BEM</a>':'')
+        +(S.bemTekst&&!S.bemDocId?'<button id="bem-lees-btn2" class="btn-ghost" style="font-size:12px;border-color:#2a5ea0;color:#2a5ea0">&#128065; Lees BEM</button>':'')
+        +(S.bemDocId||S.bemGetekend?'<div style="font-size:11px;padding:4px 10px;border-radius:12px;background:#eef3fa;border:1px solid #2a5ea0;color:#2a5ea0">&#10003; '+(S.bemGetekend?'Getekend door '+esc(S.bemGetekend):'Reeds ondertekend')+'</div>':'<button id="bem-teken-btn" class="btn" style="font-size:12px;padding:6px 14px;background:#2a5ea0">&#9998; Akkoord &amp; onderteken</button>')
+        +'</div></div>';
+    }
     return '<div class="wrap anim">'
-      +'<div class="hdr"><div class="brand"><div class="wdot"></div>KantoorInzicht &middot; M&amp;A'+versieLabel()+'</div></div>'
+      +'<div class="hdr"><div class="brand"><div class="wdot"></div>KantoorInzicht &middot; M&amp;A'+versieLabel()+'</div>'
+      +'<button class="btn-ghost btn-sm" style="margin-left:auto" onclick="uitloggen()">&#8592; Uitloggen</button></div>'
       +'<div class="cover-letter" style="text-align:center;padding:3rem 2rem">'
       +'<div style="font-size:2rem;margin-bottom:1rem">&#128274;</div>'
       +'<div style="font-family:Playfair Display,serif;font-size:1.3rem;color:var(--head);font-weight:600;margin-bottom:.75rem">Informatie nog niet beschikbaar</div>'
-      +'<div style="font-size:13px;color:var(--mid);line-height:1.7;max-width:420px;margin:0 auto">De due diligence informatie is nog niet vrijgegeven door de adviseur.</div>'
-      +'</div></div>';
+      +'<div style="font-size:13px;color:var(--mid);line-height:1.7;max-width:420px;margin:0 auto">De due diligence informatie is nog niet vrijgegeven door de adviseur. U ontvangt bericht zodra u toegang heeft.</div>'
+      +'</div>'
+      +bemBlokKoper
+      +'</div>';
 }else{
     intro='<p>Geachte relatie,</p>'
       +'<p>Hieronder vindt u de door het kantoor ingevulde informatie in het kader van het '+esc(t.traject_type||'M&A')+'-traject. U kunt de gegevens inzien. Vragen of opmerkingen kunt u richten aan Marcel Bisschops.</p>'
