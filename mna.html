@@ -1744,58 +1744,142 @@ async function renderLogboekScreen(app){
 
 
 function toonNieuwTrajectModalTussen(){
+  // Genereer een suggestie voor codenaam
+  var adjectieven=['Amber','Blauw','Groen','Zilver','Goud','Wit','Robijn','Kobalt','Mist','Storm'];
+  var zelfstandigen=['Eik','Beuk','Rots','Rivier','Berg','Dal','Ster','Maan','Bron','Haven'];
+  var willekeurig=adjectieven[Math.floor(Math.random()*adjectieven.length)]+'-'+zelfstandigen[Math.floor(Math.random()*zelfstandigen.length)];
+
   var ov=document.createElement('div');ov.className='overlay';
-  var mo=document.createElement('div');mo.className='modal';mo.style.maxWidth='520px';
+  var mo=document.createElement('div');mo.className='modal';mo.style.maxWidth='500px';
   mo.innerHTML='<div class="modal-title">&#43; Nieuw traject aanmaken</div>'
-    +'<div style="font-size:12px;color:var(--muted);margin-bottom:1rem;line-height:1.6">Vul de basisgegevens in. Codes worden automatisch aangemaakt.</div>'
-    +'<div class="field"><label>Naam onderneming <span style="color:var(--red)">*</span></label><input type="text" id="nt-naam" placeholder="bijv. De Vries & Partners"></div>'
-    +'<div class="field"><label>Trajecttype</label><select id="nt-type"><option value="Verkoop">Verkoop</option><option value="PE-traject">PE-traject</option><option value="Overname">Overname</option><option value="Fusie">Fusie</option><option value="Opvolging">Opvolging</option></select></div>'
-    +'<div class="field"><label>Contactpersoon verkoper <span style="color:var(--red)">*</span></label><input type="text" id="nt-contact" placeholder="Naam contactpersoon"></div>'
-    +'<div class="field"><label>E-mail verkoper <span style="color:var(--red)">*</span></label><input type="email" id="nt-email" placeholder="contact@bedrijf.nl"></div>'
-    +'<div class="field"><label>Naam koper</label><input type="text" id="nt-koper" placeholder="Naam kopende partij"></div>'
-    +'<div class="field"><label>E-mail koper</label><input type="email" id="nt-koper-email" placeholder="koper@bedrijf.nl"></div>'
+    +'<div style="background:var(--teal-bg);border:1px solid var(--teal-dark);border-radius:var(--r);padding:.75rem 1rem;margin-bottom:1.25rem;font-size:12px;color:var(--teal-dim);line-height:1.7">'
+    +'<strong>Privacy-eerste aanpak:</strong> Gebruik een codenaam in plaats van echte namen. '
+    +'Geen persoonsgegevens nodig — de verkoper vult zijn eigen gegevens in na inloggen met zijn code.'
+    +'</div>'
+    +'<div class="field"><label>Codenaam traject <span style="color:var(--red)">*</span>'
+    +'<span style="font-size:10px;font-weight:400;color:var(--muted);margin-left:6px">bijv. een codenaam, geen echte bedrijfsnaam</span></label>'
+    +'<div style="display:flex;gap:6px">'
+    +'<input type="text" id="nt-naam" placeholder="bijv. Project Amber-Eik" value="'+willekeurig+'" style="flex:1">'
+    +'<button type="button" id="nt-shuffle" class="btn-ghost" style="font-size:12px;padding:6px 10px" title="Genereer nieuwe suggestie">&#8635;</button>'
+    +'</div></div>'
+    +'<div class="field"><label>Trajecttype</label>'
+    +'<select id="nt-type">'
+    +'<option value="Verkoop">Verkoop</option>'
+    +'<option value="PE-traject">PE-traject</option>'
+    +'<option value="Overname">Overname</option>'
+    +'<option value="Fusie">Fusie</option>'
+    +'<option value="Opvolging">Opvolging</option>'
+    +'</select></div>'
+    +'<div style="border-top:1px solid var(--border);margin:.75rem 0;padding-top:.75rem">'
+    +'<div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:.6rem">Optioneel — alleen als je nu al codes wil versturen</div>'
+    +'<div class="field"><label>E-mail verkoper</label><input type="email" id="nt-email" placeholder="Wordt niet opgeslagen — alleen voor directe verzending"></div>'
+    +'<div class="field"><label>E-mail koper</label><input type="email" id="nt-koper-email" placeholder="Optioneel"></div>'
+    +'</div>'
     +'<div id="nt-err" style="display:none;color:var(--red);font-size:12px;margin-bottom:.5rem"></div>'
-    +'<div id="nt-res" style="display:none;background:var(--teal-bg);border:1px solid var(--teal-dark);border-radius:var(--r);padding:1rem;margin-bottom:.75rem;font-size:13px;line-height:2"></div>'
+    +'<div id="nt-res" style="display:none;background:var(--teal-bg);border:1px solid var(--teal-dark);border-radius:var(--r);padding:1.25rem;margin-bottom:.75rem"></div>'
     +'<div style="display:flex;gap:8px;justify-content:flex-end">'
     +'<button class="btn-ghost" id="nt-ann">Annuleren</button>'
-    +'<button class="btn" id="nt-ok">Traject aanmaken</button>'
+    +'<button class="btn" id="nt-ok">Codes aanmaken</button>'
     +'</div>';
   ov.appendChild(mo);document.body.appendChild(ov);
   ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
   document.getElementById('nt-ann').onclick=function(){document.body.removeChild(ov);};
+
+  // Shuffle knop
+  var adjectieven2=['Amber','Blauw','Groen','Zilver','Goud','Wit','Robijn','Kobalt','Mist','Storm','Saffier','Koraal'];
+  var zelfstandigen2=['Eik','Beuk','Rots','Rivier','Berg','Dal','Ster','Maan','Bron','Haven','Veld','Kust'];
+  document.getElementById('nt-shuffle').onclick=function(){
+    document.getElementById('nt-naam').value=adjectieven2[Math.floor(Math.random()*adjectieven2.length)]+'-'+zelfstandigen2[Math.floor(Math.random()*zelfstandigen2.length)];
+  };
+
   document.getElementById('nt-ok').onclick=async function(){
     var btn=this;btn.disabled=true;btn.textContent='Aanmaken...';
     var err=document.getElementById('nt-err');err.style.display='none';
-    var naam=document.getElementById('nt-naam').value.trim();
-    var contact=document.getElementById('nt-contact').value.trim();
-    var email=document.getElementById('nt-email').value.trim();
-    if(!naam||!contact||!email){err.style.display='block';err.textContent='Naam, contactpersoon en e-mail zijn verplicht.';btn.disabled=false;btn.textContent='Traject aanmaken';return;}
+    var codenaam=document.getElementById('nt-naam').value.trim();
+    if(!codenaam){err.style.display='block';err.textContent='Codenaam is verplicht.';btn.disabled=false;btn.textContent='Codes aanmaken';return;}
     try{
-      var r=await fetch(WORKER+'/mna/create',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S.code},
+      var r=await fetch(WORKER+'/mna/create',{method:'POST',headers:{'Content-Type':'application/json'},
         body:JSON.stringify({
-          kantoor_naam:naam,
+          kantoor_naam:codenaam,
           traject_type:document.getElementById('nt-type').value,
-          contact_naam:contact,
-          contact_email:email,
-          koper_naam:document.getElementById('nt-koper').value.trim(),
-          koper_email:document.getElementById('nt-koper-email').value.trim(),
+          contact_naam:'',
+          contact_email:'',
+          koper_naam:'',
+          koper_email:'',
           begeleider_naam:S.traject&&S.traject.begeleider_naam||'',
-          begeleider_email:S.traject&&S.traject.begeleider_email||''
+          begeleider_email:S.traject&&S.traject.begeleider_email||'',
+          tussen_code_vast:S.code  // koppel aan deze tussenpersoon
         })});
       var d=await r.json();
       if(d.ok){
         var res=document.getElementById('nt-res');res.style.display='block';
-        res.innerHTML='<strong style="color:var(--teal)">&#10003; Traject aangemaakt</strong><br>'
-          +'Verkoperscode: <strong style="font-family:monospace">'+d.code+'</strong><br>'
-          +'Koperscode: <strong style="font-family:monospace">'+d.koper_code+'</strong><br>'
-          +'Tussenpersoonscode: <strong style="font-family:monospace">'+d.tussen_code+'</strong>';
+        res.innerHTML='<div style="font-size:11px;font-weight:600;color:var(--teal);text-transform:uppercase;letter-spacing:.1em;margin-bottom:.75rem">&#10003; Codes aangemaakt — '+esc(codenaam)+'</div>'
+          +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:.75rem">'
+          +'<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r);padding:.6rem .875rem">'
+          +'<div style="font-size:10px;color:var(--muted);margin-bottom:3px">Verkoperscode</div>'
+          +'<div style="font-family:IBM Plex Mono,monospace;font-size:1.1rem;font-weight:600;color:var(--teal);letter-spacing:.1em">'+d.code+'</div>'
+          +(document.getElementById('nt-email').value?'<div style="font-size:10px;color:var(--muted);margin-top:3px">Sturen naar: '+esc(document.getElementById('nt-email').value)+'</div>':'')
+          +'</div>'
+          +'<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r);padding:.6rem .875rem">'
+          +'<div style="font-size:10px;color:var(--muted);margin-bottom:3px">Koperscode</div>'
+          +'<div style="font-family:IBM Plex Mono,monospace;font-size:1.1rem;font-weight:600;color:var(--gold);letter-spacing:.1em">'+d.koper_code+'</div>'
+          +(document.getElementById('nt-koper-email').value?'<div style="font-size:10px;color:var(--muted);margin-top:3px">Sturen naar: '+esc(document.getElementById('nt-koper-email').value)+'</div>':'')
+          +'</div>'
+          +'</div>'
+          +'<div style="font-size:11px;color:var(--muted);line-height:1.6;margin-bottom:.75rem">'
+          +'Inloggen op: <strong>koersvoormorgen.nl/mna.html</strong><br>'
+          +'De verkoper vult zelf zijn gegevens in — jij beheert het traject met je eigen code <strong>'+S.code+'</strong>.'
+          +'</div>'
+          +'<div style="display:flex;gap:6px">'
+          +'<button id="nt-kopieer" class="btn-ghost" style="font-size:11px;padding:5px 12px">&#8690; Kopieer codes</button>'
+          +(document.getElementById('nt-email').value||document.getElementById('nt-koper-email').value
+            ?'<button id="nt-stuur-email" class="btn" style="font-size:11px;padding:5px 12px;background:var(--teal)">&#9993; Stuur codes per e-mail</button>':'')
+          +'</div>';
+
+        // Kopieer knop
+        document.getElementById('nt-kopieer').onclick=function(){
+          var tekst='Traject: '+codenaam+'
+Verkoperscode: '+d.code+'
+Koperscode: '+d.koper_code+'
+Inloggen: koersvoormorgen.nl/mna.html';
+          navigator.clipboard.writeText(tekst).then(function(){toast('Codes gekopieerd','ok');});
+        };
+
+        // Stuur e-mail als adressen zijn ingevuld
+        var stuurBtn=document.getElementById('nt-stuur-email');
+        if(stuurBtn)stuurBtn.onclick=async function(){
+          stuurBtn.disabled=true;stuurBtn.textContent='Versturen...';
+          var verkEmail=document.getElementById('nt-email').value.trim();
+          var kopEmail=document.getElementById('nt-koper-email').value.trim();
+          var mnaUrl='https://koersvoormorgen.nl/mna.html';
+          // Stuur verkoper e-mail
+          if(verkEmail){
+            var htmlVerk='<div style="font-family:sans-serif;max-width:600px">'
+              +'<div style="background:#1a7a5e;color:#fff;padding:1.5rem;border-radius:8px 8px 0 0"><h2 style="margin:0;font-size:1.1rem">M&A Traject — Uw toegangscode</h2></div>'
+              +'<div style="background:#fff;border:1px solid #ddd;border-top:none;padding:1.5rem;border-radius:0 0 8px 8px">'
+              +'<p style="font-size:13px;color:#5a5854;line-height:1.7">U bent uitgenodigd om deel te nemen aan een vertrouwelijk M&A-traject. Via onderstaande code heeft u toegang tot een beveiligde omgeving.</p>'
+              +'<div style="background:#f0faf6;border:1px solid #0a3d2e;border-radius:8px;padding:1.25rem;margin:1.25rem 0;text-align:center">'
+              +'<div style="font-size:11px;color:#145f48;font-weight:600;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.4rem">Uw toegangscode</div>'
+              +'<div style="font-family:monospace;font-size:1.8rem;font-weight:700;color:#1a7a5e;letter-spacing:.2em">'+d.code+'</div>'
+              +'<div style="font-size:12px;color:#8a8880;margin-top:.4rem">Inloggen op: <a href="'+mnaUrl+'" style="color:#1a7a5e">'+mnaUrl+'</a></div>'
+              +'</div>'
+              +'<p style="font-size:12px;color:#8a8880">Uw gegevens worden verwerkt conform de AVG. Voor vragen: neem contact op met uw adviseur.</p>'
+              +'</div></div>';
+            await fetch(WORKER+'/mna/doc-melding',{method:'POST',headers:{'Content-Type':'application/json'},
+              body:JSON.stringify({code:d.code,fase_label:'Toegangscode',bestanden:[],uploader_naam:'Systeem',uploader_rol:'systeem',
+                _override_subject:'Uw toegangscode voor het M&A-traject',_override_to:verkEmail,_override_html:htmlVerk})}).catch(function(){});
+          }
+          toast('Codes verstuurd','ok');
+          stuurBtn.textContent='Verstuurd &#10003;';
+        };
+
         btn.textContent='Klaar';
-        toast('Traject aangemaakt: '+naam,'ok',5000);
+        toast('Traject aangemaakt: '+codenaam,'ok',5000);
       } else {
         err.style.display='block';err.textContent=d.error||'Fout bij aanmaken';
-        btn.disabled=false;btn.textContent='Traject aanmaken';
+        btn.disabled=false;btn.textContent='Codes aanmaken';
       }
-    }catch(e2){err.style.display='block';err.textContent='Verbindingsfout';btn.disabled=false;btn.textContent='Traject aanmaken';}
+    }catch(e2){err.style.display='block';err.textContent='Verbindingsfout';btn.disabled=false;btn.textContent='Codes aanmaken';}
   };
 }
 
