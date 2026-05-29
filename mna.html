@@ -2165,21 +2165,9 @@ function renderBegeleiderDashboard(app){
     };
   }
 
-  document.getElementById('bg-nda-actie').onclick=function(){
-    if(S.traject && S.traject.nda_getekend) {
-      var doorgaan=confirm('Er is al een NDA ondertekend door '+S.traject.nda_getekend+'. Weet u zeker dat u opnieuw genereert?');
-      if(!doorgaan) return;
-    }
-    bgDoc('nda');
-  };
-  document.getElementById('bg-loi-actie').onclick=function(){bgDoc('loi');};
-  document.getElementById('bg-bem-actie').onclick=function(){
-    if(S.traject && (S.traject.bem_tekst || S.traject.bem_getekend)) {
-      var doorgaan=confirm('Er is al een Bemiddelingsovereenkomst aangemaakt'+(S.traject.bem_getekend?' en ondertekend door '+S.traject.bem_getekend:'')+'. Weet u zeker dat u opnieuw genereert?');
-      if(!doorgaan) return;
-    }
-    bgDoc('bem');
-  };
+  document.getElementById('bg-nda-actie').onclick=function(){ toonDocWaarschuwing('nda', function(){ bgDoc('nda'); }); };
+  document.getElementById('bg-loi-actie').onclick=function(){ toonDocWaarschuwing('loi', function(){ bgDoc('loi'); }); };
+  document.getElementById('bg-bem-actie').onclick=function(){ toonDocWaarschuwing('bem', function(){ bgDoc('bem'); }); };
 
   // Gesprek vastleggen
   document.getElementById('bg-gesprek-actie').onclick=function(){
@@ -2438,13 +2426,132 @@ function printDoc(tekst, titel, docType) {
 }
 
 
+
+function docProcesCheck(docType) {
+  // Bepaal opdrachtgever_rol — default 'verkoper' voor legacy trajecten
+  var rol = (S.traject && S.traject.opdrachtgever_rol) ? S.traject.opdrachtgever_rol : 'verkoper';
+  var t = S.traject || {};
+  var waarschuwingen = [];
+  var geblokkeerd = false;
+
+  // Proceslogica: Informatiebrief → BEM → Excl → NDA → LoI
+  if (docType === 'bem') {
+    // BEM: altijd als eerste mogelijk, geen vereiste
+    // Maar check wel of er al een is
+    if (t.bem_tekst || t.bem_datum) {
+      waarschuwingen.push('Er is al een Bemiddelingsovereenkomst aangemaakt' +
+        (t.bem_getekend ? ' (getekend door ' + t.bem_getekend + ')' : ' (nog niet getekend)') + '.');
+    }
+  }
+
+  if (docType === 'excl') {
+    if (!t.bem_tekst && !t.bem_datum) {
+      waarschuwingen.push('⚠ De Bemiddelingsovereenkomst is nog niet aangemaakt. Verstuur eerst de BEM.');
+      geblokkeerd = true;
+    } else if (!t.bem_getekend) {
+      waarschuwingen.push('⚠ De Bemiddelingsovereenkomst is nog niet getekend door de opdrachtgever. Overweeg of u toch wilt doorgaan.');
+    }
+    if (t.excl_tekst || t.excl_datum) {
+      waarschuwingen.push('Er is al een Exclusiviteitsbrief aangemaakt' +
+        (t.excl_getekend ? ' (getekend door ' + t.excl_getekend + ')' : ' (nog niet getekend)') + '.');
+    }
+  }
+
+  if (docType === 'nda') {
+    if (!t.bem_tekst && !t.bem_datum) {
+      waarschuwingen.push('⚠ De Bemiddelingsovereenkomst is nog niet aangemaakt. Verstuur eerst de BEM.');
+      geblokkeerd = true;
+    } else if (!t.bem_getekend) {
+      waarschuwingen.push('⚠ De Bemiddelingsovereenkomst is nog niet getekend. Overweeg of u toch wilt doorgaan.');
+    }
+    if (t.nda_tekst || t.nda_datum) {
+      waarschuwingen.push('Er is al een NDA aangemaakt' +
+        (t.nda_getekend ? ' (getekend door ' + t.nda_getekend + ')' : ' (nog niet getekend)') + '.');
+    }
+  }
+
+  if (docType === 'loi') {
+    var ndaOk = t.nda_getekend || (t.nda_tekst && t.nda_datum);
+    var exclOk = t.excl_getekend || (t.excl_tekst && t.excl_datum);
+    if (!ndaOk) {
+      waarschuwingen.push('⚠ De NDA is nog niet ' + (t.nda_datum ? 'getekend' : 'aangemaakt') + '. Verstuur eerst de NDA.');
+      geblokkeerd = true;
+    }
+    if (!exclOk) {
+      waarschuwingen.push('⚠ De Exclusiviteitsbrief is nog niet ' + (t.excl_datum ? 'getekend' : 'aangemaakt') + '. Verstuur eerst de Excl.');
+      geblokkeerd = true;
+    }
+    if (t.loi_tekst || t.loi_datum) {
+      waarschuwingen.push('Er is al een LoI aangemaakt' +
+        (t.loi_getekend ? ' (getekend door ' + t.loi_getekend + ')' : ' (nog niet getekend)') + '.');
+    }
+  }
+
+  return { waarschuwingen: waarschuwingen, geblokkeerd: geblokkeerd };
+}
+
+function toonDocWaarschuwing(docType, onDoorgaan) {
+  var check = docProcesCheck(docType);
+  if (!check.waarschuwingen.length) { onDoorgaan(); return; }
+
+  var ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:3000;display:flex;align-items:center;justify-content:center;padding:1.5rem';
+  var mo = document.createElement('div');
+  mo.style.cssText = 'background:var(--panel);border:1px solid var(--border2);border-radius:var(--r2);padding:1.75rem;max-width:440px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.25)';
+
+  var labels = {nda:'NDA',loi:'Letter of Intent',bem:'Bemiddelingsovereenkomst',excl:'Exclusiviteitsbrief'};
+  var kleuren = {nda:'#7c5cbf',loi:'var(--gold)',bem:'#2a5ea0',excl:'var(--teal)'};
+  var kleur = kleuren[docType] || 'var(--teal)';
+
+  mo.innerHTML = '<div style="font-family:Playfair Display,serif;font-size:1.1rem;font-weight:600;color:var(--head);margin-bottom:1rem">'
+    + (check.geblokkeerd ? '⛔ ' : '⚠️ ') + labels[docType] + '</div>'
+    + '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:1.25rem">'
+    + check.waarschuwingen.map(function(w) {
+        var isBlocker = w.startsWith('⚠');
+        return '<div style="padding:.6rem .875rem;background:' + (isBlocker ? 'var(--red-bg)' : 'var(--gold-bg)')
+          + ';border-left:3px solid ' + (isBlocker ? 'var(--red)' : 'var(--gold)')
+          + ';border-radius:0 var(--r) var(--r) 0;font-size:12px;color:var(--sub);line-height:1.6">'
+          + esc(w) + '</div>';
+      }).join('')
+    + '</div>'
+    + '<div style="display:flex;gap:8px;justify-content:flex-end">'
+    + '<button class="btn-ghost" id="dw-ann">Annuleren</button>'
+    + (!check.geblokkeerd ? '<button class="btn" id="dw-door" style="background:' + kleur + '">Toch doorgaan</button>' : '')
+    + '</div>';
+
+  ov.appendChild(mo); document.body.appendChild(ov);
+  ov.addEventListener('click', function(e) { if(e.target===ov) document.body.removeChild(ov); });
+  document.getElementById('dw-ann').onclick = function() { document.body.removeChild(ov); };
+  if (!check.geblokkeerd) {
+    document.getElementById('dw-door').onclick = function() {
+      document.body.removeChild(ov);
+      onDoorgaan();
+    };
+  }
+}
+
 async function laadPartijDocs() {
   var el = document.getElementById('partij-docs-sectie');
   if (!el) return;
   // Bepaal welke doc types zichtbaar zijn per rol
-  var rolFilter = isVerkoper()
-    ? ['nda','loi','bem','bem_verk','bem_koper','exclusief','excl']
-    : ['nda','loi','bem','bem_koper','bem_verk'];  // koper
+  // Documentzichtbaarheid op basis van opdrachtgever_rol
+  var opdRol = (S.traject && S.traject.opdrachtgever_rol) ? S.traject.opdrachtgever_rol : 'verkoper';
+  var rolFilter;
+  if (isVerkoper()) {
+    // Verkoper ziet: altijd NDA + LoI
+    // + BEM als verkoper de opdrachtgever is OF dual mandate
+    // + Excl als koper de opdrachtgever is OF dual mandate
+    rolFilter = ['nda','loi'];
+    if (opdRol === 'verkoper' || opdRol === 'beide') rolFilter.push('bem','bem_verk');
+    if (opdRol === 'koper' || opdRol === 'beide') rolFilter.push('excl','exclusief');
+  } else {
+    // Koper ziet: altijd NDA + LoI
+    // + BEM als koper de opdrachtgever is OF dual mandate
+    // + Excl als verkoper de opdrachtgever is OF dual mandate
+    rolFilter = ['nda','loi'];
+    if (opdRol === 'koper' || opdRol === 'beide') rolFilter.push('bem','bem_koper');
+    if (opdRol === 'verkoper' || opdRol === 'beide') rolFilter.push('excl','exclusief');
+  }
   var labels = {nda:'NDA',loi:'Letter of Intent',bem:'Bemiddelingsovereenkomst',bem_verk:'Bemiddelingsovereenkomst',bem_koper:'Bemiddelingsovereenkomst',excl:'Exclusiviteitsbrief',exclusief:'Exclusiviteitsbrief'};
   var kleuren = {nda:'#7c5cbf',loi:'#c9a84c',bem:'#2a5ea0',bem_verk:'#2a5ea0',bem_koper:'#2a5ea0',excl:'#1a7a5e',exclusief:'#1a7a5e'};
   try {
