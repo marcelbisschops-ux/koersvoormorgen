@@ -1314,6 +1314,21 @@ function handleDropUpload(event, faseId) {
 }
 
 
+async function refreshData(){
+  var oldScreen = S.screen;
+  try {
+    var r = await fetch(WORKER+'/mna/login', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({code:S.code})});
+    var d = await r.json();
+    if(d.ok) {
+      S.traject = d.traject;
+      S.data = d.data || {};
+      S.rol = d.rol;
+      renderApp();
+      toast('Verversen gelukt','ok',2000);
+    }
+  } catch(e) { toast('Verbindingsfout','err',2000); }
+}
+
 function uitloggen(){
   clearTimeout(S.saveTimer);
   if(S.code&&S.screen==='main')saveAll();
@@ -1802,7 +1817,7 @@ function toonNieuwTrajectModalTussen(){
   var zn=['Eik','Beuk','Rots','Rivier','Berg','Dal','Ster','Maan','Bron','Haven','Veld','Kust'];
   function nieuweCode(){return adj[Math.floor(Math.random()*adj.length)]+'-'+zn[Math.floor(Math.random()*zn.length)];}
   var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:3000;display:flex;align-items:center;justify-content:center;padding:1.5rem';
-  var mo=document.createElement('div');mo.className='modal';mo.style.maxWidth='500px';
+  var mo=document.createElement('div');mo.style.cssText='background:var(--panel,#fff);border:1px solid #c8c5bc;border-radius:10px;padding:1.75rem;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.25);max-height:90vh;overflow-y:auto;max-width:500px';
   mo.innerHTML='<div class="modal-title">&#43; Nieuw traject — privacy-eerste</div>'
     +'<div style="background:var(--teal-bg);border:1px solid var(--teal-dark);border-radius:var(--r);padding:.75rem 1rem;margin-bottom:1.25rem;font-size:12px;color:var(--teal-dim);line-height:1.7">'
     +'Gebruik een codenaam. Geen persoonsgegevens nodig — de verkoper vult zijn eigen gegevens in na inloggen.'
@@ -2453,7 +2468,10 @@ function renderCover(){
     }
     return '<div class="wrap anim">'
       +'<div class="hdr"><div class="brand"><div class="wdot"></div>KantoorInzicht &middot; M&amp;A'+versieLabel()+'</div>'
-      +'<button class="btn-ghost btn-sm" style="margin-left:auto" onclick="uitloggen()">&#8592; Uitloggen</button></div>'
+      +'<div style="display:flex;gap:8px;margin-left:auto">'
+    +'<button class="btn-ghost btn-sm" onclick="refreshData()">&#8635;</button>'
+    +'<button class="btn-ghost btn-sm" onclick="uitloggen()">&#8592; Uitloggen</button>'
+    +'</div></div>'
       +'<div class="cover-letter" style="text-align:center;padding:3rem 2rem">'
       +'<div style="font-size:2rem;margin-bottom:1rem">&#128274;</div>'
       +'<div style="font-family:Playfair Display,serif;font-size:1.3rem;color:var(--head);font-weight:600;margin-bottom:.75rem">Informatie nog niet beschikbaar</div>'
@@ -2471,7 +2489,7 @@ function renderCover(){
     +'<div class="hdr"><div class="brand"><div class="wdot"></div>KantoorInzicht &middot; M&amp;A'+versieLabel()+'</div>'
     +'<div style="display:flex;gap:8px"><button class="btn-ghost btn-sm" onclick="window.print()">PDF afdrukken</button>'
     +'<button class="btn-ghost btn-sm" onclick="uitloggen()">&#8592; Uitloggen</button>'
-    +'<button class="btn-ghost btn-sm" id="logboek-btn">&#128221; Logboek</button>'
+    +(S.rol==='tussen'?'<button class="btn-ghost btn-sm" id="logboek-btn">&#128221; Logboek</button>':'')
     +'</div><div style="display:flex;align-items:center;gap:10px;padding:.5rem 0"><span style="font-size:12px;color:var(--muted)">Huidige fase:</span><span id="cover-fase-badge" style="font-size:11px;font-weight:600;padding:3px 12px;border-radius:12px;background:var(--teal-bg);color:var(--teal);border:1px solid var(--teal-dark)">Laden...</span></div><div style="display:none">'
     +(isVerkoper()?'<button class="btn btn-sm" id="to-main-btn">Start invullen &#8594;</button>'
     :isTussen()?(t.koper_vrijgegeven

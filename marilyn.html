@@ -567,8 +567,7 @@ async function renderBenchmarksTab(el){
 
   document.getElementById('btn-bench-pdf').addEventListener('click',function(){
     var ov=document.createElement('div');ov.className='overlay';
-    var mo=document.createElement('div');mo.className='modal';
-    mo.style.maxWidth='520px';
+    var mo=document.createElement('div');mo.style.cssText='background:#fff;border:1px solid #c8c5bc;border-radius:10px;padding:1.75rem;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.25);max-height:90vh;overflow-y:auto;max-width:520px';
     mo.innerHTML='<div class="modal-title">&#128196; PDF analyseren voor benchmarks</div>'
       +'<p style="font-size:13px;color:var(--mid);margin-bottom:1rem;line-height:1.6">Upload een PDF met benchmarkdata (bijv. Full Finance, Simplicate, AV Top 20). De AI extraheert automatisch de relevante waarden en slaat ze op als benchmarks.</p>'
       +'<div class="field"><label>Bron naam <span style="color:var(--red)">*</span></label><input type="text" id="pdf-bron" placeholder="bijv. AV Top 20 Administratiekantoren 2025" style="margin-bottom:.5rem"></div>'
@@ -669,7 +668,7 @@ async function renderBenchmarksTab(el){
 
   document.getElementById('btn-bench-add').addEventListener('click',function(){
     var ov=document.createElement('div');ov.className='overlay';
-    var mo=document.createElement('div');mo.className='modal';
+    var mo=document.createElement('div');mo.style.cssText='background:#fff;border:1px solid #c8c5bc;border-radius:10px;padding:1.75rem;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.25);max-height:90vh;overflow-y:auto;max-width:560px';
     mo.innerHTML='<div class="modal-title">Benchmark handmatig toevoegen</div>'
       +'<div class="field"><label>Sleutel (uniek ID) <span style="color:var(--red)">*</span></label><input type="text" id="bm-id" placeholder="bijv. noab_ebitda_marge"></div>'
       +'<div class="field"><label>Omschrijving</label><input type="text" id="bm-omschr" placeholder="bijv. EBITDA marge benchmark NOAB 2025"></div>'
@@ -1152,7 +1151,7 @@ function renderRapportenTab(el){
 
 async function leesRapport(id){
   var ov=document.createElement('div');ov.className='overlay';
-  var mo=document.createElement('div');mo.className='modal';mo.style.maxWidth='800px';
+  var mo=document.createElement('div');mo.style.cssText='background:#fff;border:1px solid #c8c5bc;border-radius:10px;padding:1.75rem;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.25);max-height:90vh;overflow-y:auto;max-width:800px';
   mo.innerHTML='<div class="modal-title">Laden...</div>'
     +'<div id="rapp-body" style="font-size:13px;color:var(--mid);line-height:1.8;max-height:65vh;overflow-y:auto;margin-bottom:1rem"></div>'
     +'<div style="display:flex;justify-content:flex-end"><button class="btn-ghost" id="rapp-sluit">Sluiten</button></div>';
@@ -1374,7 +1373,7 @@ async function toonUitnodigingModal(trajectId, trajectNaam) {
 
 async function toonDetail(id,naam){
   var ov=document.createElement('div');ov.className='overlay';
-  var mo=document.createElement('div');mo.className='modal';mo.style.maxWidth='700px';
+  var mo=document.createElement('div');mo.style.cssText='background:#fff;border:1px solid #c8c5bc;border-radius:10px;padding:1.75rem;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.25);max-height:90vh;overflow-y:auto;max-width:700px';
   mo.innerHTML='<div class="modal-title">'+esc(naam)+' <span class="code-chip" style="font-size:12px">'+esc(id)+'</span></div>'
     +'<div style="display:flex;gap:8px;margin-bottom:1.25rem;flex-wrap:wrap"><button class="btn" id="det-bem-btn" style="background:#2a5ea0;font-size:12px;padding:7px 14px">&#128203; Bemiddelingsovereenkomst</button><button class="btn" id="det-nda-btn" style="background:#7c5cbf;font-size:12px;padding:7px 14px">&#128274; Genereer NDA</button><button class="btn" id="det-loi-btn" style="background:var(--gold);font-size:12px;padding:7px 14px">&#128196; Genereer LoI</button><button class="btn" id="det-excl-btn" style="background:var(--teal);font-size:12px;padding:7px 14px">&#128196; Exclusiviteitsbrief</button><button class="btn" id="det-ai-btn" style="background:var(--teal);font-size:12px;padding:7px 14px">&#9881; AI-analyse</button><button class="btn-ghost" id="det-wis-data-btn" style="font-size:12px;padding:7px 14px;color:var(--red);border-color:var(--red)">&#128465; DD-data wissen</button><button class="btn-ghost" id="det-debug-btn" style="font-size:12px;padding:7px 14px">&#128269; Veldendebug</button><div style="flex:1"></div><button class="btn-ghost" id="det-sluit" style="font-size:12px;padding:7px 14px">Sluiten</button></div>'
     +'<div id="bem-output" style="display:none;margin-bottom:1.25rem;border-bottom:1px solid var(--border);padding-bottom:1.25rem"></div>'
@@ -1582,7 +1581,7 @@ async function toonDetail(id,naam){
           var defaultTo=[d.traject.contact_email||'',d.traject.koper_email||''].filter(Boolean).join(', ');
           if(!defaultTo)defaultTo='marcel@bisschopsfinancing.nl';
           var ov=document.createElement('div');ov.className='overlay';
-          var mo=document.createElement('div');mo.className='modal';mo.style.maxWidth='420px';
+          var mo=document.createElement('div');mo.style.cssText='background:#fff;border:1px solid #c8c5bc;border-radius:10px;padding:1.75rem;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.25);max-height:90vh;overflow-y:auto;max-width:420px';
           mo.innerHTML='<div class="modal-title">&#9993; BEM versturen</div>'
             +'<div class="field"><label>Ontvangers (gescheiden door komma)</label><input type="text" id="bem-to-input" value="'+esc(defaultTo)+'" style="width:100%"></div>'
             +'<div id="bem-send-err" style="display:none;color:var(--red);font-size:12px;margin:.5rem 0"></div>'
@@ -1656,7 +1655,7 @@ async function toonDetail(id,naam){
           var defaultTo=[d.traject.contact_email||'',d.traject.koper_email||''].filter(Boolean).join(', ');
           if(!defaultTo)defaultTo='marcel@bisschopsfinancing.nl';
           var ov=document.createElement('div');ov.className='overlay';
-          var mo=document.createElement('div');mo.className='modal';mo.style.maxWidth='420px';
+          var mo=document.createElement('div');mo.style.cssText='background:#fff;border:1px solid #c8c5bc;border-radius:10px;padding:1.75rem;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.25);max-height:90vh;overflow-y:auto;max-width:420px';
           mo.innerHTML='<div class="modal-title">&#9993; NDA versturen</div>'
             +'<div class="field"><label>Ontvangers (gescheiden door komma)</label><input type="text" id="nda-to-input" value="'+esc(defaultTo)+'" style="width:100%"></div>'
             +'<div id="nda-send-err" style="display:none;color:var(--red);font-size:12px;margin:.5rem 0"></div>'
@@ -1785,7 +1784,7 @@ async function toonDetail(id,naam){
           var defaultTo=[d.traject.contact_email||'',d.traject.koper_email||''].filter(Boolean).join(', ');
           if(!defaultTo)defaultTo='marcel@bisschopsfinancing.nl';
           var ov=document.createElement('div');ov.className='overlay';
-          var mo=document.createElement('div');mo.className='modal';mo.style.maxWidth='420px';
+          var mo=document.createElement('div');mo.style.cssText='background:#fff;border:1px solid #c8c5bc;border-radius:10px;padding:1.75rem;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.25);max-height:90vh;overflow-y:auto;max-width:420px';
           mo.innerHTML='<div class="modal-title">&#9993; LoI versturen</div>'
             +'<div class="field"><label>Ontvangers (gescheiden door komma)</label><input type="text" id="loi-to-input" value="'+esc(defaultTo)+'" style="width:100%"></div>'
             +'<div id="loi-send-err" style="display:none;color:var(--red);font-size:12px;margin:.5rem 0"></div>'
@@ -1851,7 +1850,7 @@ async function toonDetail(id,naam){
           var defaultTo=[d.traject.contact_email||'',d.traject.koper_email||''].filter(Boolean).join(', ');
           if(!defaultTo)defaultTo='marcel@bisschopsfinancing.nl';
           var ov=document.createElement('div');ov.className='overlay';
-          var mo=document.createElement('div');mo.className='modal';mo.style.maxWidth='420px';
+          var mo=document.createElement('div');mo.style.cssText='background:#fff;border:1px solid #c8c5bc;border-radius:10px;padding:1.75rem;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.25);max-height:90vh;overflow-y:auto;max-width:420px';
           mo.innerHTML='<div class="modal-title">&#9993; Exclusiviteitsbrief versturen</div>'
             +'<div class="field"><label>Ontvangers (gescheiden door komma)</label><input type="text" id="excl-to-input" value="'+esc(defaultTo)+'" style="width:100%"></div>'
             +'<div id="excl-send-err" style="display:none;color:var(--red);font-size:12px;margin:.5rem 0"></div>'
@@ -2158,7 +2157,7 @@ async function toonBewerkModal(id, naam){
   var t=dd.traject;
 
   var ov=document.createElement('div');ov.className='overlay';
-  var mo=document.createElement('div');mo.className='modal';
+  var mo=document.createElement('div');mo.style.cssText='background:#fff;border:1px solid #c8c5bc;border-radius:10px;padding:1.75rem;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.25);max-height:90vh;overflow-y:auto;max-width:560px';
   mo.innerHTML='<div class="modal-title">&#9999;&#65039; Bewerk traject: '+esc(naam)+'</div>'
     +'<div style="font-size:11px;color:var(--muted);margin-bottom:1rem">Wijzig partijgegevens, begeleider of contactinfo.</div>'
     +'<div style="border-bottom:1px solid var(--border);margin-bottom:.75rem;padding-bottom:.25rem"><div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">Verkoper</div></div>'
@@ -2474,7 +2473,7 @@ function toonGesprekModal(trajectId, bestaand, onSaved){
 
 function toonBegeleiderModal(trajectId, trajectNaam, tussenCode){
   var ov=document.createElement('div');ov.className='overlay';
-  var mo=document.createElement('div');mo.className='modal';mo.style.maxWidth='500px';
+  var mo=document.createElement('div');mo.style.cssText='background:#fff;border:1px solid #c8c5bc;border-radius:10px;padding:1.75rem;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.25);max-height:90vh;overflow-y:auto;max-width:500px';
   var mnaUrl='https://koersvoormorgen.nl/mna.html';
   mo.innerHTML='<div class="modal-title">&#128231; Begeleider uitnodigen</div>'
     +'<p style="font-size:13px;color:var(--mid);margin-bottom:1.25rem;line-height:1.7">Stuur de begeleider toegang tot traject <strong>'+esc(trajectNaam)+'</strong>. Met de tussenpersoon-code kan hij het traject volledig beheren: documenten genereren, gesprekken vastleggen, koper vrijgeven en AI-analyses uitvoeren.</p>'
@@ -2543,7 +2542,7 @@ function toonBegeleiderModal(trajectId, trajectNaam, tussenCode){
 
 function toonNieuwModal(){
   var ov=document.createElement('div');ov.className='overlay';
-  var mo=document.createElement('div');mo.className='modal';
+  var mo=document.createElement('div');mo.style.cssText='background:#fff;border:1px solid #c8c5bc;border-radius:10px;padding:1.75rem;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.25);max-height:90vh;overflow-y:auto;max-width:560px';
   mo.innerHTML='<div class="modal-title">Nieuw M&amp;A traject aanmaken</div>'
     +'<div style="display:flex;gap:12px">'
     +'<div class="field" style="flex:1"><label>Trajecttype <span style="color:var(--red)">*</span></label><select id="m-t"><option value="Verkoop">Verkoop</option><option value="Fusie">Fusie</option><option value="Opvolging">Opvolging</option><option value="PE-traject">PE-traject</option><option value="Overname">Overname</option></select></div>'
