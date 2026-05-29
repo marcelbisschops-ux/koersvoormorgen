@@ -883,6 +883,77 @@ function checkLoginLimit(ip) {
 }
 
 
+
+const DEFAULT_CHECKLIST_INDICATIEF = [
+  { categorie: 'Financieel (basis)', items: [
+    { label: 'Jaarrekeningen laatste 3 jaar (PDF)', toelichting: 'Inclusief balans en V&W-rekening' },
+    { label: 'Aangifte VPB laatste 2 jaar', toelichting: '' },
+    { label: 'Management-rapportage huidig boekjaar', toelichting: 'Actuele cijfers YTD' },
+    { label: 'Omzet uitgesplitst per dienst/segment', toelichting: 'Bijv. samenstellen / advies / aangifte' },
+    { label: 'Overzicht recurring vs. eenmalige omzet', toelichting: 'Percentage vaste klanten' }
+  ]},
+  { categorie: 'Klanten', items: [
+    { label: 'Top-20 klanten op omzet (anoniem mag)', toelichting: 'Naam of code + omzet per jaar' },
+    { label: 'Klantverloop laatste 2 jaar', toelichting: 'Hoeveel klanten gewonnen/verloren' },
+    { label: 'Gemiddelde klantduur', toelichting: '' }
+  ]},
+  { categorie: 'Personeel', items: [
+    { label: 'Organogram met FTE per functie', toelichting: '' },
+    { label: 'Totale loonsom (bruto)', toelichting: 'Inclusief werkgeverslasten' },
+    { label: 'Afhankelijkheid eigenaar/directeur', toelichting: 'Hoeveel uur per week actief in operatie?' }
+  ]},
+  { categorie: 'Bijzonderheden', items: [
+    { label: 'Lopende financieringen / schulden', toelichting: '' },
+    { label: 'Bekende claims of geschillen', toelichting: 'Ja/nee, beknopte toelichting' },
+    { label: 'Aflopende contracten of samenwerkingen', toelichting: 'Huur, software, key leveranciers' }
+  ]}
+];
+
+const DEFAULT_CHECKLIST_DD = [
+  { categorie: 'I. Financieel', items: [
+    { label: 'Jaarrekeningen 5 jaar (gecontroleerd)', toelichting: '' },
+    { label: 'Aangiften VPB 5 jaar', toelichting: '' },
+    { label: 'Management-rapportages huidig jaar (maandelijks)', toelichting: '' },
+    { label: 'Liquiditeitsprognose komende 12 maanden', toelichting: '' },
+    { label: 'Debiteurenlijst met ouderdomsanalyse', toelichting: '' },
+    { label: 'OHW-overzicht (onderhanden werk)', toelichting: '' },
+    { label: 'Investeringsoverzicht laatste 3 jaar', toelichting: '' }
+  ]},
+  { categorie: 'II. Klanten & commercieel', items: [
+    { label: 'Volledige klantenlijst met omzet per klant', toelichting: 'Export uit boekhoudpakket' },
+    { label: 'Contractenoverzicht (looptijd, opzegtermijn)', toelichting: '' },
+    { label: 'NPS of klanttevredenheidsdata', toelichting: '' },
+    { label: 'Pijplijn / offerte-overzicht', toelichting: '' }
+  ]},
+  { categorie: 'III. Personeel', items: [
+    { label: 'Salarisadministratie (geanonimiseerd)', toelichting: '' },
+    { label: 'Arbeidscontracten key-personen', toelichting: '' },
+    { label: 'Cao-toepasselijkheid', toelichting: '' },
+    { label: 'Pensioenoverzicht', toelichting: '' },
+    { label: 'Ziekteverzuimcijfers 2 jaar', toelichting: '' }
+  ]},
+  { categorie: 'IV. Juridisch & compliance', items: [
+    { label: 'Uittreksel KvK + statuten', toelichting: '' },
+    { label: 'Huurcontract(en) kantoor', toelichting: 'Looptijd en opzegmogelijkheden' },
+    { label: 'Verzekeringspolissen', toelichting: 'Beroepsaansprakelijkheid verplicht' },
+    { label: 'Vergunningen (NBA, NOB, etc.)', toelichting: '' },
+    { label: 'AVG-documentatie', toelichting: 'Verwerkersovereenkomsten, register' },
+    { label: 'Lopende procedures / geschillen', toelichting: '' }
+  ]},
+  { categorie: 'V. IT & automatisering', items: [
+    { label: 'Overzicht softwarelicenties + kosten', toelichting: '' },
+    { label: 'Beschrijving werkprocessen', toelichting: '' },
+    { label: 'Koppelingen / integraties', toelichting: '' },
+    { label: 'IT-beveiligingsbeleid', toelichting: '' }
+  ]},
+  { categorie: 'VI. Kwaliteit & organisatie', items: [
+    { label: 'Kwaliteitshandboek of -certificaat', toelichting: '' },
+    { label: 'Dossierbeheer-beschrijving', toelichting: '' },
+    { label: 'Organogram + functiebeschrijvingen', toelichting: '' },
+    { label: 'Dossier toezichthouder (AFM/BFT)', toelichting: 'Indien van toepassing' }
+  ]}
+];
+
 export default {
   // Dagelijkse AVG cleanup: verwijdert data ouder dan bewaartermijn
   async scheduled(event, env, ctx) {
@@ -940,8 +1011,8 @@ export default {
       if (Date.now() - (g.sessie_ts || 0) > 8 * 60 * 60 * 1000) return null;
       return g;
     };
-    const isSuperAdmin = (req) => {
-      const key = req.headers.get('x-admin-key') || new URL(req.url).searchParams.get('key') || '';
+    const isSuperAdmin = (req, bodyKey) => {
+      const key = req.headers.get('x-admin-key') || new URL(req.url).searchParams.get('key') || bodyKey || '';
       return key === (env.ADMIN_KEY || '') && !!env.ADMIN_KEY;
     };
     // ────────────────────────────────────────────────────────────────
@@ -1152,8 +1223,8 @@ Bron: ${bron}`;
           'anthropic-version': '2023-06-01',
         },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-6',
-          max_tokens: Math.min(body.max_tokens || 16000, 16000),
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: Math.min(body.max_tokens || 4000, 6000),
           stream: false,
           messages: body.messages,
         }),
@@ -1366,10 +1437,19 @@ ${scoreLines}
 
     /* ADMIN: ALLE RAPPORTEN (alleen voor Marcel) */
     if (path === '/admin/scans' && request.method === 'GET') {
+      // Brute-force bescherming op admin-login: max 10 pogingen per 5 min per IP
+      if (checkRateLimit(clientIP + ':admin', 10, 5 * 60 * 1000)) {
+        // Alert loggen
+        console.warn('[SECURITY] Admin brute-force poging van IP:', clientIP, new Date().toISOString());
+        return new Response(JSON.stringify({ error: 'Te veel pogingen. Wacht 5 minuten.' }), { status: 429, headers: { ...getCORS(request), 'Content-Type': 'application/json', 'Retry-After': '300' } });
+      }
       const url2 = new URL(request.url);
       const adminKey = request.headers.get('x-admin-key') || url2.searchParams.get('key') || '';
       const validKey1 = env.ADMIN_KEY || '';
-      if (!validKey1 || adminKey !== validKey1) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
+      if (!validKey1 || adminKey !== validKey1) {
+        console.warn('[SECURITY] Ongeldige admin-key poging van IP:', clientIP, new Date().toISOString());
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
+      }
       if (!env.DB) return new Response(JSON.stringify({ error: 'DB niet beschikbaar' }), { headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
       const scans = await env.DB.prepare('SELECT s.*, g.name as group_name FROM scans s LEFT JOIN groups g ON s.group_id=g.id ORDER BY s.created_at DESC LIMIT 100').all().catch(() => ({ results: [] }));
       return new Response(JSON.stringify(scans.results), { headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
@@ -1463,7 +1543,7 @@ ${scoreLines}
       const validKey = env.ADMIN_KEY || '';
       if (key !== validKey) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
       const body = await request.json().catch(() => ({}));
-      const { kantoor_naam, kantoor_rechtsvorm, contact_naam, contact_email, traject_type, sector, notitie, begeleider_naam, begeleider_email, koper_naam, koper_rechtsvorm, koper_contact, koper_email, koper_adres, koper_kvk, verkoper_adres, verkoper_kvk } = body;
+      const { kantoor_naam, kantoor_rechtsvorm, contact_naam, contact_email, traject_type, sector, notitie, begeleider_naam, begeleider_email, koper_naam, koper_rechtsvorm, koper_contact, koper_email, koper_adres, koper_kvk, verkoper_adres, verkoper_kvk, opdrachtgever_rol } = body;
       // Normaliseer rechtsvorm
       const rechtsvormen = {'bv':'B.V.','b.v.':'B.V.','nv':'N.V.','n.v.':'N.V.','vof':'V.O.F.','v.o.f.':'V.O.F.','eenmanszaak':'Eenmanszaak','stichting':'Stichting','cooperatie':'Coöperatie','coöperatie':'Coöperatie','holding':'Holding B.V.','maatschap':'Maatschap'};
       const rvNorm = koper_rechtsvorm ? (rechtsvormen[(koper_rechtsvorm||'').toLowerCase()] || koper_rechtsvorm) : '';
@@ -1474,7 +1554,7 @@ ${scoreLines}
       // Create tables if needed
       await env.DB.prepare(`CREATE TABLE IF NOT EXISTS mna_trajecten (
         id TEXT PRIMARY KEY, kantoor_naam TEXT, contact_naam TEXT, contact_email TEXT,
-        traject_type TEXT, notitie TEXT, status TEXT DEFAULT 'actief',
+        traject_type TEXT, notitie TEXT, status TEXT DEFAULT 'actief', opdrachtgever_rol TEXT DEFAULT 'verkoper',
         created_at INTEGER, updated_at INTEGER
       )`).run().catch(() => {});
       await env.DB.prepare(`CREATE TABLE IF NOT EXISTS mna_data (
@@ -1501,9 +1581,9 @@ ${scoreLines}
       await env.DB.prepare('ALTER TABLE mna_trajecten ADD COLUMN koper_code TEXT').run().catch(() => {});
       await env.DB.prepare('ALTER TABLE mna_trajecten ADD COLUMN tussen_code TEXT').run().catch(() => {});
       const koper_code = 'K' + Math.random().toString(36).slice(2,9).toUpperCase();
-      const tussen_code = 'T' + Math.random().toString(36).slice(2,9).toUpperCase();
-      await env.DB.prepare('INSERT INTO mna_trajecten (id,kantoor_naam,kantoor_rechtsvorm,contact_naam,contact_email,traject_type,sector,notitie,status,created_at,updated_at,koper_code,tussen_code,begeleider_naam,begeleider_email,koper_naam,koper_rechtsvorm,koper_contact,koper_email,koper_adres,koper_kvk,verkoper_adres,verkoper_kvk) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)')
-        .bind(code, kantoor_naam, kantoor_rechtsvorm||'', contact_naam||'', contact_email||'', traject_type||'Verkoop', sector||'accountancy', notitie||'', 'actief', Date.now(), Date.now(), koper_code, tussen_code, begeleider_naam||'', begeleider_email||'', koper_naam||'', rvNorm||'', koper_contact||'', koper_email||'', koper_adres||'', koper_kvk||'', verkoper_adres||'', verkoper_kvk||'').run();
+      const tussen_code = (body.tussen_code_vast || ('T' + Math.random().toString(36).slice(2,9).toUpperCase())).toUpperCase();
+      await env.DB.prepare('INSERT INTO mna_trajecten (id,kantoor_naam,kantoor_rechtsvorm,contact_naam,contact_email,traject_type,sector,notitie,status,created_at,updated_at,koper_code,tussen_code,begeleider_naam,begeleider_email,koper_naam,koper_rechtsvorm,koper_contact,koper_email,koper_adres,koper_kvk,verkoper_adres,verkoper_kvk,opdrachtgever_rol) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)')
+        .bind(code, kantoor_naam, kantoor_rechtsvorm||'', contact_naam||'', contact_email||'', traject_type||'Verkoop', sector||'accountancy', notitie||'', 'actief', Date.now(), Date.now(), koper_code, tussen_code, begeleider_naam||'', begeleider_email||'', koper_naam||'', rvNorm||'', koper_contact||'', koper_email||'', koper_adres||'', koper_kvk||'', verkoper_adres||'', verkoper_kvk||'', opdrachtgever_rol||'verkoper').run();
       // Stuur e-mail naar begeleider met toegangscode
       if (begeleider_email && env.RESEND_API_KEY) {
         await fetch('https://api.resend.com/emails', {
@@ -1524,15 +1604,22 @@ ${scoreLines}
     if (path === '/mna/mail-begeleider' && request.method === 'POST') {
       const url = new URL(request.url);
       const key = request.headers.get('x-admin-key') || url.searchParams.get('key') || '';
-      if (key !== (env.ADMIN_KEY || '')) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
+      const tussenKeyMB = request.headers.get('x-tussen-key') || '';
+      const isAdminMB = key === (env.ADMIN_KEY || '');
+      let isTussenMB = false;
+      if (!isAdminMB && tussenKeyMB) {
+        const tkMB = await env.DB.prepare('SELECT id FROM mna_trajecten WHERE tussen_code=?').bind(tussenKeyMB.toUpperCase()).first().catch(() => null);
+        isTussenMB = !!tkMB;
+      }
+      if (!isAdminMB && !isTussenMB) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
       const body = await request.json().catch(() => ({}));
-      const { to, naam, trajectNaam, tussenCode, html } = body;
+      const { to, naam, trajectNaam, tussenCode, html, subject: mailSubject } = body;
       if (!to || !tussenCode) return new Response(JSON.stringify({ error: 'to en tussenCode verplicht' }), { headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
       if (!env.RESEND_API_KEY) return new Response(JSON.stringify({ error: 'Resend niet geconfigureerd' }), { headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
       const r = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + env.RESEND_API_KEY },
-        body: JSON.stringify({ from: 'KantoorInzicht M&A <noreply@koersvoormorgen.nl>', to: [to], subject: 'Uitnodiging begeleider — ' + (trajectNaam || 'M&A traject'), html: html || '<p>Uw toegangscode: ' + tussenCode + '</p>' })
+        body: JSON.stringify({ from: 'KantoorInzicht M&A <noreply@koersvoormorgen.nl>', to: [to], cc: ['marcel@bisschopsfinancing.nl'], subject: mailSubject || ('Uitnodiging begeleider — ' + (trajectNaam || 'M&A traject')), html: html || '<p>Uw toegangscode: ' + tussenCode + '</p>' })
       }).catch(() => null);
       if (!r || !r.ok) return new Response(JSON.stringify({ error: 'E-mail versturen mislukt' }), { headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
       return new Response(JSON.stringify({ ok: true }), { headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
@@ -1661,7 +1748,9 @@ ${scoreLines}
       const ndaResendResp = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + env.RESEND_API_KEY },
-        body: JSON.stringify({ from: 'KantoorInzicht M&A <noreply@koersvoormorgen.nl>', to: toList, subject: ndaEmail.subject, html: ndaEmail.html })
+        body: JSON.stringify({ from: 'KantoorInzicht M&A <noreply@koersvoormorgen.nl>', to: toList, subject: ndaEmail.subject, html: ndaEmail.html,
+          attachments: [{ filename: 'NDA_' + kantoor.replace(/[^a-zA-Z0-9]/g,'_') + '.pdf', content: pdfNaarBase64(nda_tekst, 'Non-Disclosure Agreement — ' + kantoor), content_type: 'application/pdf' }]
+        })
       }).catch((e) => null);
       if (!ndaResendResp || !ndaResendResp.ok) {
         const errBody = ndaResendResp ? await ndaResendResp.text().catch(()=>'') : 'netwerkfout';
@@ -1700,12 +1789,16 @@ ${scoreLines}
         body: JSON.stringify({
           from: 'KantoorInzicht M&A <noreply@koersvoormorgen.nl>',
           to: toList,
-          ...maakDocEmail(type || 'bem', kantoor, bem_tekst + avTekst)
+          ...maakDocEmail(type || 'bem', kantoor, bem_tekst + avTekst),
+          attachments: [{ filename: 'BEM_' + kantoor.replace(/[^a-zA-Z0-9]/g,'_') + '.pdf', content: pdfNaarBase64(bem_tekst + avTekst, 'Bemiddelingsovereenkomst — ' + kantoor), content_type: 'application/pdf' }]
         })
       });
       await env.DB.prepare('CREATE TABLE IF NOT EXISTS mna_doc_versies (id TEXT PRIMARY KEY, traject_id TEXT, doc_type TEXT, versie INTEGER, tekst TEXT, verstuurd_naar TEXT, verstuurd_door TEXT, created_at INTEGER)').run().catch(() => {});
       const bemVId = 'V' + Date.now() + Math.random().toString(36).slice(2,5).toUpperCase();
       const bemVCount = await env.DB.prepare('SELECT COUNT(*) as n FROM mna_doc_versies WHERE traject_id=? AND doc_type=?').bind(code.toUpperCase(), 'bem').first().catch(() => ({n:0}));
+      await env.DB.prepare('ALTER TABLE mna_trajecten ADD COLUMN bem_tekst TEXT').run().catch(() => {});
+      await env.DB.prepare('ALTER TABLE mna_trajecten ADD COLUMN bem_datum INTEGER').run().catch(() => {});
+      await env.DB.prepare('UPDATE mna_trajecten SET bem_tekst=?, bem_datum=? WHERE id=?').bind(bem_tekst, Date.now(), code.toUpperCase()).run().catch(() => {});
       await env.DB.prepare('INSERT INTO mna_doc_versies (id,traject_id,doc_type,versie,tekst,verstuurd_naar,verstuurd_door,created_at) VALUES (?,?,?,?,?,?,?,?)').bind(bemVId, code.toUpperCase(), 'bem', (bemVCount?.n||0)+1, bem_tekst, JSON.stringify(Array.isArray(to)&&to.length?to:[]), 'Marcel Bisschops', Date.now()).run().catch(() => {});
       return new Response(JSON.stringify({ ok: true }), { headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
       } catch(bemErr) { return new Response(JSON.stringify({ error: 'Server fout: ' + bemErr.message }), { headers: { ...getCORS(request), 'Content-Type': 'application/json' } }); }
@@ -1727,12 +1820,17 @@ ${scoreLines}
         const exclResp = await fetch('https://api.resend.com/emails', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + env.RESEND_API_KEY },
-          body: JSON.stringify({ from: 'KantoorInzicht M&A <noreply@koersvoormorgen.nl>', to: toList, subject: exclResp?.subject || 'Exclusiviteitsbrief — ' + kantoor, html: exclEmail.html })
+          body: JSON.stringify({ from: 'KantoorInzicht M&A <noreply@koersvoormorgen.nl>', to: toList, subject: exclResp?.subject || 'Exclusiviteitsbrief — ' + kantoor, html: exclEmail.html,
+            attachments: [{ filename: 'Exclusiviteitsbrief_' + kantoor.replace(/[^a-zA-Z0-9]/g,'_') + '.pdf', content: pdfNaarBase64(excl_tekst, 'Exclusiviteitsbrief — ' + kantoor), content_type: 'application/pdf' }]
+          })
         }).catch(() => null);
         // Sla op in versies
         await env.DB.prepare('CREATE TABLE IF NOT EXISTS mna_doc_versies (id TEXT PRIMARY KEY, traject_id TEXT, doc_type TEXT, versie INTEGER, tekst TEXT, verstuurd_naar TEXT, verstuurd_door TEXT, created_at INTEGER)').run().catch(() => {});
         const exclVId = 'V' + Date.now() + Math.random().toString(36).slice(2,5).toUpperCase();
         const exclVCount = await env.DB.prepare('SELECT COUNT(*) as n FROM mna_doc_versies WHERE traject_id=? AND doc_type=?').bind(code.toUpperCase(), 'exclusief').first().catch(() => ({n:0}));
+        await env.DB.prepare('ALTER TABLE mna_trajecten ADD COLUMN excl_tekst TEXT').run().catch(() => {});
+        await env.DB.prepare('ALTER TABLE mna_trajecten ADD COLUMN excl_datum INTEGER').run().catch(() => {});
+        await env.DB.prepare('UPDATE mna_trajecten SET excl_tekst=?, excl_datum=? WHERE id=?').bind(excl_tekst, Date.now(), code.toUpperCase()).run().catch(() => {});
         await env.DB.prepare('INSERT INTO mna_doc_versies (id,traject_id,doc_type,versie,tekst,verstuurd_naar,verstuurd_door,created_at) VALUES (?,?,?,?,?,?,?,?)').bind(exclVId, code.toUpperCase(), 'exclusief', (exclVCount?.n||0)+1, excl_tekst, JSON.stringify(toList), 'Marcel Bisschops', Date.now()).run().catch(() => {});
         // Sla exclusiviteitsbrief op in traject
         await env.DB.prepare('ALTER TABLE mna_trajecten ADD COLUMN excl_tekst TEXT').run().catch(() => {});
@@ -1754,6 +1852,12 @@ ${scoreLines}
       await env.DB.prepare('ALTER TABLE mna_trajecten ADD COLUMN loi_getekend TEXT').run().catch(() => {});
       await env.DB.prepare('ALTER TABLE mna_trajecten ADD COLUMN nda_getekend_datum INTEGER').run().catch(() => {});
       await env.DB.prepare('ALTER TABLE mna_trajecten ADD COLUMN loi_getekend_datum INTEGER').run().catch(() => {});
+      await env.DB.prepare('ALTER TABLE mna_trajecten ADD COLUMN bem_tekst TEXT').run().catch(() => {});
+      await env.DB.prepare('ALTER TABLE mna_trajecten ADD COLUMN bem_datum INTEGER').run().catch(() => {});
+      await env.DB.prepare('ALTER TABLE mna_trajecten ADD COLUMN bem_getekend TEXT').run().catch(() => {});
+      await env.DB.prepare('ALTER TABLE mna_trajecten ADD COLUMN excl_tekst TEXT').run().catch(() => {});
+      await env.DB.prepare('ALTER TABLE mna_trajecten ADD COLUMN excl_datum INTEGER').run().catch(() => {});
+      await env.DB.prepare('ALTER TABLE mna_trajecten ADD COLUMN excl_getekend TEXT').run().catch(() => {});
       // Zoek traject + verificeer rol via code
       const upperCode = code.toUpperCase();
       let traject = null;
@@ -1769,16 +1873,22 @@ ${scoreLines}
         if (tTuss) { traject = tTuss; tekenRol = 'begeleider'; }
       }
       if (!traject) return new Response(JSON.stringify({ error: 'Traject niet gevonden' }), { status: 404, headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
-      // Koper mag alleen LoI tekenen, verkoper mag NDA en LoI tekenen
-      if (tekenRol === 'koper' && document === 'nda') {
-        return new Response(JSON.stringify({ error: 'Koper tekent NDA niet via koperscode' }), { status: 403, headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
+      // Tekenrechten: koper=LoI+BEM, verkoper=NDA+LoI+Exclusiviteit, begeleider=alles
+      const tekenRechten = { koper: ['loi','bem'], verkoper: ['nda','loi','excl'], begeleider: ['nda','loi','bem','excl'] };
+      if (tekenRol && tekenRechten[tekenRol] && !tekenRechten[tekenRol].includes(document)) {
+        return new Response(JSON.stringify({ error: tekenRol + ' heeft geen tekenrecht voor ' + document }), { status: 403, headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
       }
       const now = Date.now();
-      const docLabel = document === 'nda' ? 'NDA (Geheimhoudingsovereenkomst)' : 'Letter of Intent (LoI)';
+      const docLabels2 = { nda:'NDA (Geheimhoudingsovereenkomst)', loi:'Letter of Intent (LoI)', bem:'Bemiddelingsovereenkomst', excl:'Exclusiviteitsbrief' };
+      const docLabel = docLabels2[document] || document;
       if (document === 'nda') {
         await env.DB.prepare('UPDATE mna_trajecten SET nda_getekend=?, nda_getekend_datum=? WHERE id=?').bind(naam + ' (' + tekenRol + ')', now, traject.id).run();
       } else if (document === 'loi') {
         await env.DB.prepare('UPDATE mna_trajecten SET loi_getekend=?, loi_getekend_datum=? WHERE id=?').bind(naam + ' (' + tekenRol + ')', now, traject.id).run();
+      } else if (document === 'bem') {
+        await env.DB.prepare('UPDATE mna_trajecten SET bem_getekend=?, bem_datum=? WHERE id=?').bind(naam + ' (' + tekenRol + ')', now, traject.id).run();
+      } else if (document === 'excl') {
+        await env.DB.prepare('UPDATE mna_trajecten SET excl_getekend=?, excl_datum=? WHERE id=?').bind(naam + ' (' + tekenRol + ')', now, traject.id).run();
       }
       // Logboek notitie
       await env.DB.prepare('CREATE TABLE IF NOT EXISTS mna_logboek (id TEXT PRIMARY KEY, traject_id TEXT NOT NULL, auteur TEXT, auteur_type TEXT, bericht TEXT, fase TEXT, fase_gewijzigd INTEGER DEFAULT 0, created_at INTEGER NOT NULL)').run().catch(() => {});
@@ -1809,19 +1919,23 @@ ${scoreLines}
       if (!adminKeyU || adminKeyU !== (env.ADMIN_KEY || '')) return new Response(JSON.stringify({ error: 'Geen toegang' }), { status: 403, headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
       const updateId = path.replace('/mna/admin/update/', '').toUpperCase();
       const updateBody = await request.json().catch(() => ({}));
-      const { kantoor_naam, contact_naam, contact_email, verkoper_kvk, verkoper_adres, begeleider_naam, begeleider_email, koper_naam, koper_rechtsvorm, koper_contact, koper_email, koper_kvk, koper_adres } = updateBody;
+      const { kantoor_naam, contact_naam, contact_email, verkoper_kvk, verkoper_adres, begeleider_naam, begeleider_email, koper_naam, koper_rechtsvorm, koper_contact, koper_email, koper_kvk, koper_adres, verkoper_teken, verkoper_teken_grond, verkoper_teken2, koper_teken, koper_teken_grond, teken_status, notitie, volgend_overleg, extra_contact, opdrachtgever_rol: updateOpdRol } = updateBody;
       // Voeg kolommen toe als ze ontbreken
-      for (const col of ['verkoper_kvk', 'verkoper_adres', 'koper_kvk', 'koper_adres', 'koper_naam', 'koper_rechtsvorm', 'koper_contact', 'koper_email', 'begeleider_naam', 'begeleider_email']) {
+      for (const col of ['verkoper_kvk', 'verkoper_adres', 'koper_kvk', 'koper_adres', 'koper_naam', 'koper_rechtsvorm', 'koper_contact', 'koper_email', 'begeleider_naam', 'begeleider_email', 'verkoper_teken', 'verkoper_teken_grond', 'verkoper_teken2', 'koper_teken', 'koper_teken_grond', 'teken_status', 'notitie', 'volgend_overleg', 'extra_contact', 'opdrachtgever_rol']) {
         await env.DB.prepare('ALTER TABLE mna_trajecten ADD COLUMN ' + col + ' TEXT').run().catch(() => {});
       }
       await env.DB.prepare(
-        'UPDATE mna_trajecten SET kantoor_naam=?, contact_naam=?, contact_email=?, verkoper_kvk=?, verkoper_adres=?, begeleider_naam=?, begeleider_email=?, koper_naam=?, koper_rechtsvorm=?, koper_contact=?, koper_email=?, koper_kvk=?, koper_adres=?, updated_at=? WHERE id=?'
+        'UPDATE mna_trajecten SET kantoor_naam=?, contact_naam=?, contact_email=?, verkoper_kvk=?, verkoper_adres=?, begeleider_naam=?, begeleider_email=?, koper_naam=?, koper_rechtsvorm=?, koper_contact=?, koper_email=?, koper_kvk=?, koper_adres=?, verkoper_teken=?, verkoper_teken_grond=?, verkoper_teken2=?, koper_teken=?, koper_teken_grond=?, teken_status=?, notitie=?, volgend_overleg=?, extra_contact=?, opdrachtgever_rol=COALESCE(?,opdrachtgever_rol,\'verkoper\'), updated_at=? WHERE id=?'
       ).bind(
         kantoor_naam || '', contact_naam || '', contact_email || '',
         verkoper_kvk || '', verkoper_adres || '',
         begeleider_naam || '', begeleider_email || '',
         koper_naam || '', koper_rechtsvorm || '', koper_contact || '', koper_email || '',
         koper_kvk || '', koper_adres || '',
+        verkoper_teken || '', verkoper_teken_grond || '', verkoper_teken2 || '',
+        koper_teken || '', koper_teken_grond || '', teken_status || '',
+        notitie || '', volgend_overleg || '', extra_contact || '',
+        updateOpdRol || null,
         Date.now(), updateId
       ).run();
       return new Response(JSON.stringify({ ok: true }), { headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
@@ -1855,11 +1969,30 @@ ${scoreLines}
             from: 'KantoorInzicht M&A <noreply@koersvoormorgen.nl>',
             to: toList,
             subject: 'Koper reactie: ' + kantoor + ' — ' + (faseLabels[fase_id]||fase_id),
-            html: '<p>De koper heeft een reactie geplaatst bij <strong>' + (faseLabels[fase_id]||fase_id) + '</strong> voor traject <strong>' + kantoor + '</strong>.</p><blockquote style="border-left:3px solid #1a7a5e;padding:8px 12px;color:#5a5854;font-style:italic">' + (reactie||'').replace(/\n/g,'<br>') + '</blockquote><p><a href="https://koersvoormorgen.nl/marilyn.html">Bekijk in Marilyn</a></p>'
+            html: '<p>De koper heeft een reactie geplaatst bij <strong>' + (faseLabels[fase_id]||fase_id) + '</strong> voor traject <strong>' + kantoor + '</strong>.</p><blockquote style="border-left:3px solid #1a7a5e;padding:8px 12px;color:#5a5854;font-style:italic">' + (reactie||'').replace(/\n/g,'<br>') + '</blockquote><p><a href="https://koersvoormorgen.nl/mna.html">Bekijk in KantoorInzicht</a></p>'
           })
         }).catch(() => {});
       }
       return new Response(JSON.stringify({ ok: true }), { headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
+    }
+
+    /* SECURITY: LOG OPHALEN */
+    if (path === '/admin/security-log' && request.method === 'GET') {
+      const secKey = request.headers.get('x-admin-key') || url.searchParams.get('key') || '';
+      if (!secKey || secKey !== (env.ADMIN_KEY||'')) return new Response(JSON.stringify({error:'Unauthorized'}),{status:401,headers:{...getCORS(request),'Content-Type':'application/json'}});
+      // Haal rate limit status op
+      const adminAttempts = _rateMap.get(clientIP + ':admin');
+      const advAttempts = _rateMap.get(clientIP + ':advlogin');
+      const stats = {
+        timestamp: new Date().toISOString(),
+        rate_limits: {
+          admin_attempts_this_window: adminAttempts ? adminAttempts.count : 0,
+          adv_attempts_this_window: advAttempts ? advAttempts.count : 0,
+          total_tracked_ips: _rateMap.size
+        },
+        info: 'Security events worden gelogd via Cloudflare Worker logs (dashboard.cloudflare.com → Workers → kantoorinzicht → Logs)'
+      };
+      return new Response(JSON.stringify(stats),{headers:{...getCORS(request),'Content-Type':'application/json'}});
     }
 
     /* MNA: TRAJECT OPHALEN (kantoor login) */
@@ -1875,18 +2008,32 @@ ${scoreLines}
       const rawCode = path.replace('/mna/traject/', '').trim();
       if (rawCode.length < 5 || rawCode.length > 12) return new Response(JSON.stringify({ error: 'Ongeldige code' }), { status: 400, headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
       if (!env.DB) return new Response(JSON.stringify({ error: 'DB niet beschikbaar' }), { headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
-      // Try as verkoper code first
-      let traject = await env.DB.prepare('SELECT * FROM mna_trajecten WHERE id=?').bind(rawCode.toUpperCase()).first().catch(() => null);
+      // Genereer varianten: O↔0 verwarring voorkomen
+      const baseCode = rawCode.toUpperCase();
+      const codeVariants = [baseCode];
+      if (baseCode.includes('O')) codeVariants.push(baseCode.replace(/O/g,'0'));
+      if (baseCode.includes('0')) codeVariants.push(baseCode.replace(/0/g,'O'));
+      let traject = null;
+      let usedCode = baseCode;
       let rol = 'verkoper';
+      // Try as verkoper code (alle varianten)
+      for (const v of codeVariants) {
+        traject = await env.DB.prepare('SELECT * FROM mna_trajecten WHERE id=?').bind(v).first().catch(() => null);
+        if (traject) { usedCode = v; break; }
+      }
       // Try as koper code
       if (!traject) {
-        traject = await env.DB.prepare('SELECT * FROM mna_trajecten WHERE koper_code=?').bind(rawCode.toUpperCase()).first().catch(() => null);
-        if (traject) rol = 'koper';
+        for (const v of codeVariants) {
+          traject = await env.DB.prepare('SELECT * FROM mna_trajecten WHERE koper_code=?').bind(v).first().catch(() => null);
+          if (traject) { usedCode = v; rol = 'koper'; break; }
+        }
       }
       // Try as tussenpersoon code
       if (!traject) {
-        traject = await env.DB.prepare('SELECT * FROM mna_trajecten WHERE tussen_code=?').bind(rawCode.toUpperCase()).first().catch(() => null);
-        if (traject) rol = 'tussenpersoon';
+        for (const v of codeVariants) {
+          traject = await env.DB.prepare('SELECT * FROM mna_trajecten WHERE tussen_code=?').bind(v).first().catch(() => null);
+          if (traject) { usedCode = v; rol = 'tussenpersoon'; break; }
+        }
       }
       if (!traject) return new Response(JSON.stringify({ error: 'Code niet gevonden' }), { status: 404, headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
       const trajectId = traject.id;
@@ -2047,6 +2194,29 @@ ${scoreLines}
     }
 
     /* MNA: GESPREKKEN - OPHALEN (admin) */
+    // GESPREKKEN via tussenpersoonscode (voor adviseurs zonder admin-key)
+    if (path.startsWith('/mna/gesprekken/') && request.method === 'GET') {
+      const tCode = path.replace('/mna/gesprekken/', '').split('?')[0].toUpperCase();
+      const tGesp = await env.DB.prepare('SELECT id FROM mna_trajecten WHERE id=? OR koper_code=? OR tussen_code=?').bind(tCode,tCode,tCode).first().catch(()=>null);
+      if (!tGesp) return new Response(JSON.stringify({error:'Niet gevonden'}),{status:404,headers:{...getCORS(request),'Content-Type':'application/json'}});
+      const trajId = tGesp.id;
+      const gesprekken = await env.DB.prepare('SELECT * FROM mna_gesprekken WHERE traject_id=? ORDER BY datum DESC, created_at DESC').bind(trajId).all().catch(()=>({results:[]}));
+      return new Response(JSON.stringify(gesprekken.results||[]),{headers:{...getCORS(request),'Content-Type':'application/json'}});
+    }
+    // GESPREK OPSLAAN via tussenpersoonscode
+    if (path === '/mna/gesprek/opslaan' && request.method === 'POST') {
+      const gBody = await request.json().catch(()=>({}));
+      const tCode = (gBody.code||'').toUpperCase();
+      const tGesp2 = await env.DB.prepare('SELECT id FROM mna_trajecten WHERE id=? OR koper_code=? OR tussen_code=?').bind(tCode,tCode,tCode).first().catch(()=>null);
+      if (!tGesp2) return new Response(JSON.stringify({error:'Traject niet gevonden'}),{status:404,headers:{...getCORS(request),'Content-Type':'application/json'}});
+      const trajId = tGesp2.id;
+      await env.DB.prepare('CREATE TABLE IF NOT EXISTS mna_gesprekken (id TEXT PRIMARY KEY, traject_id TEXT, datum TEXT, deelnemers TEXT, type TEXT, ruwe_notities TEXT, verslag TEXT, created_at INTEGER, updated_at INTEGER)').run().catch(()=>{});
+      const gId = 'G' + Date.now() + Math.random().toString(36).slice(2,6).toUpperCase();
+      await env.DB.prepare('INSERT INTO mna_gesprekken (id,traject_id,datum,deelnemers,type,ruwe_notities,verslag,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?)')
+        .bind(gId, trajId, gBody.datum||new Date().toISOString().split('T')[0], gBody.deelnemers||'', gBody.type||'overig', gBody.ruwe_notities||'', gBody.verslag||'', Date.now(), Date.now())
+        .run().catch(()=>{});
+      return new Response(JSON.stringify({ok:true,id:gId}),{headers:{...getCORS(request),'Content-Type':'application/json'}});
+    }
     if (path.startsWith('/mna/admin/gesprekken/') && request.method === 'GET') {
       const code = path.replace('/mna/admin/gesprekken/', '').split('?')[0].toUpperCase();
       const auth = await begeleiderAuth(request, code);
@@ -2598,6 +2768,55 @@ ${scoreLines}
     }
 
         /* == DOCUMENT: UPLOAD EN ANALYSEER == */
+    /* UPLOAD VIA BASE64 — geen multipart, werkt door Bot Fight Mode */
+    if (path === '/mna/document/upload-base64' && request.method === 'POST') {
+      const b64Params = await request.text().catch(()=>'');
+      let b64Body = {};
+      try { b64Body = JSON.parse(new URLSearchParams(b64Params).get('data') || '{}'); } catch(e) {}
+      const { code, fase_id, bewaar, bestand_naam, bestand_type, base64, skip_analyse } = b64Body;
+      if (!code || !fase_id || !base64) return new Response(JSON.stringify({error:'code, fase_id en base64 verplicht'}),{headers:{...getCORS(request),'Content-Type':'application/json'}});
+      // Zoek traject op id, koper_code of tussen_code
+      const tB64 = await env.DB.prepare('SELECT id, status FROM mna_trajecten WHERE id=? OR koper_code=? OR tussen_code=?').bind(code.toUpperCase(), code.toUpperCase(), code.toUpperCase()).first().catch(()=>null);
+      if (!tB64) return new Response(JSON.stringify({error:'Traject niet gevonden'}),{status:404,headers:{...getCORS(request),'Content-Type':'application/json'}});
+      if (tB64.status === 'vergrendeld') return new Response(JSON.stringify({error:'Traject vergrendeld'}),{status:403,headers:{...getCORS(request),'Content-Type':'application/json'}});
+      // Decodeer base64
+      const binStr = atob(base64);
+      const fileBytes = new Uint8Array(binStr.length);
+      for (let i = 0; i < binStr.length; i++) fileBytes[i] = binStr.charCodeAt(i);
+      const fileSize = fileBytes.length;
+      if (fileSize > 20 * 1024 * 1024) return new Response(JSON.stringify({error:'Bestand te groot (max 20MB)'}),{headers:{...getCORS(request),'Content-Type':'application/json'}});
+      const fileName = bestand_naam || 'document';
+      const fileType = bestand_type || 'application/octet-stream';
+      // Whitelist veilige bestandstypen
+      const ALLOWED_EXTENSIONS = ['pdf','doc','docx','txt','jpg','jpeg','png','gif','webp','heic','heif','xlsx','xls','csv','eml','msg','html','zip','pptx','ppt','ods','odt','pages','numbers','key'];
+      const fileExt = (fileName.split('.').pop() || '').toLowerCase();
+      if (!ALLOWED_EXTENSIONS.includes(fileExt)) {
+        return new Response(JSON.stringify({error:'Bestandstype niet toegestaan. Toegestaan: PDF, Word, Excel, afbeeldingen, tekst.'}),{status:400,headers:{...getCORS(request),'Content-Type':'application/json'}});
+      }
+      const trajectId = tB64.id;
+      const docId = 'D' + Date.now() + Math.random().toString(36).slice(2,6).toUpperCase();
+      const r2Key = trajectId + '/' + docId + '/' + fileName;
+      let bewaard = (bewaar !== false && bewaar !== 'false');
+      if (bewaard && env.DOCS_BUCKET) {
+        try { await env.DOCS_BUCKET.put(r2Key, fileBytes, {httpMetadata:{contentType:fileType}}); } catch(e) { bewaard = false; }
+      }
+      const ext = fileName.split('.').pop().toLowerCase();
+      const isPdf = ext === 'pdf' || fileType.includes('pdf');
+      let extractedText = '';
+      if (!skip_analyse && isPdf && fileBytes.length < 5*1024*1024) {
+        try {
+          const pdfResp = await fetch('https://api.anthropic.com/v1/messages', {
+            method:'POST', headers:{'Content-Type':'application/json','x-api-key':env.ANTHROPIC_API_KEY,'anthropic-version':'2023-06-01','anthropic-beta':'pdfs-2024-09-25'},
+            body: JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:2000,messages:[{role:'user',content:[{type:'document',source:{type:'base64',media_type:'application/pdf',data:base64}},{type:'text',text:'Extraheer alle tekst en financiële gegevens uit dit document. Geef een JSON object met alle gevonden waarden.'}]}]})
+          });
+          const pdfData = await pdfResp.json().catch(()=>({}));
+          extractedText = pdfData.content?.[0]?.text || '';
+        } catch(e) {}
+      }
+      await env.DB.prepare('CREATE TABLE IF NOT EXISTS mna_documenten (id TEXT PRIMARY KEY, traject_id TEXT, fase_id TEXT, bestand_naam TEXT, bestand_type TEXT, bestand_grootte INTEGER, r2_key TEXT, bewaard INTEGER, vergrendeld INTEGER DEFAULT 0, analyse TEXT, veld_extractie TEXT, methode TEXT, uploaded_at INTEGER)').run().catch(()=>{});
+      await env.DB.prepare('INSERT INTO mna_documenten (id,traject_id,fase_id,bestand_naam,bestand_type,bestand_grootte,r2_key,bewaard,vergrendeld,analyse,uploaded_at) VALUES (?,?,?,?,?,?,?,?,0,?,?)').bind(docId,trajectId,fase_id,fileName,fileType,fileSize,bewaard?r2Key:'',bewaard?1:0,extractedText,Date.now()).run().catch(()=>{});
+      return new Response(JSON.stringify({ok:true,id:docId,naam:fileName,bewaard}),{headers:{...getCORS(request),'Content-Type':'application/json'}});
+    }
     if (path === '/mna/document/upload' && request.method === 'POST') {
       const url = new URL(request.url);
       const code = (url.searchParams.get('code') || '').toUpperCase();
@@ -2608,10 +2827,11 @@ ${scoreLines}
       if (!env.DB) return new Response(JSON.stringify({ error: 'DB niet beschikbaar' }), { headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
       if (!env.DB) return new Response(JSON.stringify({ error: 'DB niet beschikbaar' }), { headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
 
-      // Check traject exists
-      const traject = await env.DB.prepare('SELECT id, status FROM mna_trajecten WHERE id=?').bind(code).first().catch(() => null);
+      // Check traject exists — zoek op id, koper_code of tussen_code
+      const traject = await env.DB.prepare('SELECT id, status FROM mna_trajecten WHERE id=? OR koper_code=? OR tussen_code=?').bind(code, code, code).first().catch(() => null);
       if (!traject) return new Response(JSON.stringify({ error: 'Traject niet gevonden' }), { status: 404, headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
       if (traject.status === 'vergrendeld') return new Response(JSON.stringify({ error: 'Traject vergrendeld' }), { status: 403, headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
+      const trajectId = traject.id; // gebruik altijd de echte traject id
 
       // Read file from form data
       let fileBytes, fileName, fileType, fileSize;
@@ -2631,8 +2851,12 @@ ${scoreLines}
       // Size limit: 20MB
       if (fileSize > 20 * 1024 * 1024) return new Response(JSON.stringify({ error: 'Bestand te groot (max 20MB)' }), { headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
 
-      // Determine file category
+      // Whitelist veilige bestandstypen
+      const ALLOWED_EXT = ['pdf','doc','docx','txt','jpg','jpeg','png','xlsx','xls','csv','eml','msg','html','zip'];
       const ext = fileName.split('.').pop().toLowerCase();
+      if (!ALLOWED_EXT.includes(ext)) {
+        return new Response(JSON.stringify({ error: 'Bestandstype niet toegestaan.' }), { status: 400, headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
+      }
       const isPdf = ext === 'pdf' || fileType.includes('pdf');
       const isExcel = ['xlsx','xls','csv'].includes(ext) || fileType.includes('spreadsheet') || fileType.includes('excel') || fileType.includes('csv');
       const isWord = ['docx','doc'].includes(ext) || fileType.includes('word');
@@ -2737,7 +2961,7 @@ BENCHMARKS (Dealsuite Overname Barometer H1-2025):
             // Geen enkel woord gevonden — verwerp direct, geen Haiku call nodig
             const reden = `Document bevat geen verwijzing naar "${kantoorNaamCheck}" — verworpen zonder verdere analyse.`;
             await env.DB.prepare('INSERT INTO mna_documenten (id,traject_id,fase_id,bestand_naam,bestand_type,bestand_grootte,r2_key,bewaard,analyse,veld_extractie,methode,uploaded_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)')
-              .bind(docId, code, fase_id, fileName, fileType, fileSize, '', 0, reden, '{}', 'verworpen', Date.now()).run().catch(()=>{});
+              .bind(docId, trajectId||code, fase_id, fileName, fileType, fileSize, '', 0, reden, '{}', 'verworpen', Date.now()).run().catch(()=>{});
             return new Response(JSON.stringify({
               ok: true, doc_id: docId, analyse: reden,
               veld_extractie: {}, r2_opgeslagen: false,
@@ -2972,15 +3196,18 @@ BENCHMARKS (Dealsuite Overname Barometer H1-2025):
     /* == DOCUMENT: LIJST PER FASE == */
     if (path.startsWith('/mna/document/lijst/') && request.method === 'GET') {
       const parts = path.replace('/mna/document/lijst/', '').split('/');
-      const code = (parts[0] || '').toUpperCase();
+      const rawCode = (parts[0] || '').toUpperCase();
       const fase_id = parts[1] || '';
       if (!env.DB) return new Response(JSON.stringify([]), { headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
+      // Zoek traject_id op — werkt voor verkoper-, koper- én tussenpersoonscode
+      const tRow = await env.DB.prepare('SELECT id FROM mna_trajecten WHERE id=? OR koper_code=? OR tussen_code=?').bind(rawCode, rawCode, rawCode).first().catch(() => null);
+      const trajectId = tRow ? tRow.id : rawCode;
       const query = fase_id
         ? 'SELECT id,bestand_naam,bestand_type,bestand_grootte,bewaard,analyse,veld_extractie,methode,uploaded_at FROM mna_documenten WHERE traject_id=? AND fase_id=? ORDER BY uploaded_at DESC'
         : 'SELECT id,bestand_naam,bestand_type,bestand_grootte,bewaard,analyse,veld_extractie,methode,uploaded_at,fase_id FROM mna_documenten WHERE traject_id=? ORDER BY uploaded_at DESC';
       const docs = fase_id
-        ? await env.DB.prepare(query).bind(code, fase_id).all().catch(() => ({ results: [] }))
-        : await env.DB.prepare(query).bind(code).all().catch(() => ({ results: [] }));
+        ? await env.DB.prepare(query).bind(trajectId, fase_id).all().catch(() => ({ results: [] }))
+        : await env.DB.prepare(query).bind(trajectId).all().catch(() => ({ results: [] }));
       return new Response(JSON.stringify(docs.results), { headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
     }
 
@@ -3122,7 +3349,19 @@ BENCHMARKS (Dealsuite Overname Barometer H1-2025):
         const dlT = await env.DB.prepare('SELECT id, koper_vrijgegeven, koper_code, tussen_code FROM mna_trajecten WHERE id=? OR koper_code=? OR tussen_code=?').bind(dlCode.toUpperCase(), dlCode.toUpperCase(), dlCode.toUpperCase()).first().catch(() => null);
         if (dlT) {
           if (dlCode.toUpperCase() === dlT.id) dlRol = 'verkoper';
-          else if (dlCode.toUpperCase() === dlT.koper_code) dlRol = dlT.koper_vrijgegeven ? 'koper' : null;
+          else if (dlCode.toUpperCase() === dlT.koper_code) {
+            // Koper mag altijd BEM/excl downloaden, ook zonder vrijgave
+            if (dlT.koper_vrijgegeven) {
+              dlRol = 'koper';
+            } else {
+              // Controleer of het een BEM of exclusiviteitsbrief is
+              const docCheck = await env.DB.prepare('SELECT bestand_naam FROM mna_documenten WHERE id=?').bind(docId).first().catch(()=>null);
+              const naam = (docCheck?.bestand_naam||'').toLowerCase();
+              if (naam.includes('bem') || naam.includes('exclusiviteit') || naam.includes('excl')) {
+                dlRol = 'koper';
+              }
+            }
+          }
           else if (dlCode.toUpperCase() === dlT.tussen_code) dlRol = 'tussenpersoon';
         }
       }
@@ -3340,14 +3579,15 @@ BENCHMARKS (Dealsuite Overname Barometer H1-2025):
       const body = await parseBody(request);
       const email = (body.email||'').toLowerCase().trim();
       if (!email) return new Response(JSON.stringify({ok:false,error:'E-mail verplicht'}),{status:400,headers:{...getCORS(request),'Content-Type':'application/json'}});
-      const g = await env.DB.prepare("SELECT * FROM bf_gebruikers WHERE email=? AND status='actief'").bind(email).first().catch(()=>null);
+      const g = await env.DB.prepare("SELECT * FROM bf_gebruikers WHERE email=? AND status IN ('actief','uitgenodigd')").bind(email).first().catch(()=>null);
       // Altijd ok teruggeven (geen user enumeration)
       if (g) {
         const token = crypto.randomUUID().replace(/-/g,'');
         const expires = Date.now() + 3600000; // 1 uur
         await env.DB.prepare("UPDATE bf_gebruikers SET invite_token=?, sessie_ts=? WHERE id=?").bind('reset_' + token, expires, g.id).run().catch(()=>{});
         if (env.RESEND_API_KEY) {
-          const resetUrl = 'https://koersvoormorgen.nl/registreer.html?reset=' + token;
+          const isAdviseur = !!(g.gebruiker_id || g.bedrijf); // adviseurs hebben bedrijf of zijn via /gebruikers/uitnodigen aangemaakt
+          const resetUrl = 'https://koersvoormorgen.nl/registreer.html?reset=' + token + '&redirect=adv';
           await fetch('https://api.resend.com/emails', {
             method: 'POST',
             headers: {'Content-Type':'application/json','Authorization':'Bearer ' + env.RESEND_API_KEY},
@@ -3369,15 +3609,36 @@ BENCHMARKS (Dealsuite Overname Barometer H1-2025):
       const wachtwoord = (body.wachtwoord||'').trim();
       if (!token || !wachtwoord || wachtwoord.length < 8) return new Response(JSON.stringify({ok:false,error:'Token en wachtwoord (min. 8 tekens) verplicht'}),{status:400,headers:{...getCORS(request),'Content-Type':'application/json'}});
       const g = await env.DB.prepare("SELECT * FROM bf_gebruikers WHERE invite_token=?").bind('reset_' + token).first().catch(()=>null);
+      // Als status uitgenodigd is, activeer ook meteen
+      const wasUitgenodigd = g && g.status === 'uitgenodigd';
       if (!g) return new Response(JSON.stringify({ok:false,error:'Ongeldige of verlopen resetlink.'}),{status:400,headers:{...getCORS(request),'Content-Type':'application/json'}});
       if (g.sessie_ts < Date.now()) return new Response(JSON.stringify({ok:false,error:'Resetlink verlopen. Vraag een nieuwe aan.'}),{status:400,headers:{...getCORS(request),'Content-Type':'application/json'}});
       const hash = await hashWW(wachtwoord);
-      await env.DB.prepare("UPDATE bf_gebruikers SET ww_hash=?, invite_token=NULL, sessie_ts=NULL WHERE id=?").bind(hash, g.id).run().catch(()=>{});
+      if (wasUitgenodigd) {
+        await env.DB.prepare("UPDATE bf_gebruikers SET ww_hash=?, status='actief', invite_token=NULL, sessie_ts=NULL WHERE id=?").bind(hash, g.id).run().catch(()=>{});
+      } else {
+        await env.DB.prepare("UPDATE bf_gebruikers SET ww_hash=?, invite_token=NULL, sessie_ts=NULL WHERE id=?").bind(hash, g.id).run().catch(()=>{});
+      }
       return new Response(JSON.stringify({ok:true,msg:'Wachtwoord succesvol ingesteld. U kunt nu inloggen.'}),{headers:{...getCORS(request),'Content-Type':'application/json'}});
     }
-    if (path.startsWith('/gebruikers/activeer/') && request.method === 'POST' && sleutel) {
+    if (path.startsWith('/gebruikers/activeer/') && request.method === 'POST') {
+      const actParams = await request.text().catch(()=>'');
+      const actKey = new URLSearchParams(actParams).get('key') || new URL(request.url).searchParams.get('key') || '';
+      if (!actKey || actKey !== (env.ADMIN_KEY||'')) return new Response(JSON.stringify({error:'Unauthorized'}),{status:401,headers:{...getCORS(request),'Content-Type':'application/json'}});
       const gId = path.replace('/gebruikers/activeer/','');
+      const gToActivate = await env.DB.prepare('SELECT id,status FROM bf_gebruikers WHERE id=?').bind(gId).first().catch(()=>null);
+      if (!gToActivate) return new Response(JSON.stringify({ok:false,error:'Gebruiker niet gevonden'}),{status:404,headers:{...getCORS(request),'Content-Type':'application/json'}});
       await env.DB.prepare("UPDATE bf_gebruikers SET status='actief' WHERE id=?").bind(gId).run().catch(()=>{});
+      return new Response(JSON.stringify({ok:true}),{headers:{...getCORS(request),'Content-Type':'application/json'}});
+    }
+    if (path.startsWith('/gebruikers/verwijder/') && request.method === 'POST') {
+      const delParams = await request.text().catch(()=>'');
+      const delKey = new URLSearchParams(delParams).get('key') || new URL(request.url).searchParams.get('key') || '';
+      if (!delKey || delKey !== (env.ADMIN_KEY||'')) return new Response(JSON.stringify({error:'Unauthorized'}),{status:401,headers:{...getCORS(request),'Content-Type':'application/json'}});
+      const gId = path.replace('/gebruikers/verwijder/','');
+      const gName = await env.DB.prepare('SELECT naam,email FROM bf_gebruikers WHERE id=?').bind(gId).first().catch(()=>null);
+      await env.DB.prepare('DELETE FROM bf_gebruikers WHERE id=?').bind(gId).run().catch(()=>{});
+      console.log('[AUDIT] Gebruiker verwijderd:', gId, gName?.email, 'door IP:', clientIP, new Date().toISOString());
       return new Response(JSON.stringify({ok:true}),{headers:{...getCORS(request),'Content-Type':'application/json'}});
     }
     if (path.startsWith('/gebruikers/reset-ww/') && request.method === 'POST' && sleutel) {
@@ -3389,6 +3650,9 @@ BENCHMARKS (Dealsuite Overname Barometer H1-2025):
       return new Response(JSON.stringify({ok:true}),{headers:{...getCORS(request),'Content-Type':'application/json'}});
     }
     if (path.startsWith('/gebruikers/deactiveer/') && request.method === 'POST') {
+      const deactParams = await request.text().catch(()=>'');
+      const deactKey = new URLSearchParams(deactParams).get('key') || new URL(request.url).searchParams.get('key') || '';
+      if (!deactKey || deactKey !== (env.ADMIN_KEY||'')) return new Response(JSON.stringify({error:'Unauthorized'}),{status:401,headers:{...getCORS(request),'Content-Type':'application/json'}});
       if (!isSuperAdmin(request)) return new Response(JSON.stringify({error:'Unauthorized'}),{status:401,headers:{...getCORS(request),'Content-Type':'application/json'}});
       const gId = path.replace('/gebruikers/deactiveer/','');
       await env.DB.prepare('UPDATE bf_gebruikers SET status=? WHERE id=?').bind('inactief', gId).run();
@@ -3437,7 +3701,13 @@ BENCHMARKS (Dealsuite Overname Barometer H1-2025):
     if (path === '/gebruikers/mna/lijst' && request.method === 'GET') {
       const g = await gebruikerViaToken(request);
       if (!g) return new Response(JSON.stringify({error:'Unauthorized'}),{status:401,headers:{...getCORS(request),'Content-Type':'application/json'}});
-      const lijst = await env.DB.prepare('SELECT * FROM mna_trajecten WHERE gebruiker_id=? ORDER BY created_at DESC').bind(g.id).all().catch(()=>({results:[]}));
+      // Haal trajecten op via gebruiker_id EN via begeleider_email (voor accounts aangemaakt via Marilyn)
+      const lijst1 = await env.DB.prepare('SELECT * FROM mna_trajecten WHERE gebruiker_id=? ORDER BY created_at DESC').bind(g.id).all().catch(()=>({results:[]}));
+      const lijst2 = await env.DB.prepare('SELECT * FROM mna_trajecten WHERE begeleider_email=? ORDER BY created_at DESC').bind(email.toLowerCase()).all().catch(()=>({results:[]}));
+      // Dedupliceer op id
+      const alleIds = new Set(lijst1.results.map(t => t.id));
+      const extra = (lijst2.results || []).filter(t => !alleIds.has(t.id));
+      const lijst = { results: [...(lijst1.results || []), ...extra].sort((a,b) => b.created_at - a.created_at) };
       return new Response(JSON.stringify(lijst.results||[]),{headers:{...getCORS(request),'Content-Type':'application/json'}});
     }
 
@@ -3476,10 +3746,17 @@ BENCHMARKS (Dealsuite Overname Barometer H1-2025):
 
     /* == ADVISEUR: TRAJECTEN OVERZICHT == */
     if (path === '/adviseur/trajecten' && request.method === 'POST') {
+      // Brute-force beveiliging adviseur login
+      if (checkRateLimit(clientIP + ':advlogin', 10, 5 * 60 * 1000)) {
+        console.warn('[SECURITY] Adviseur brute-force van IP:', clientIP, new Date().toISOString());
+        return new Response(JSON.stringify({error:'Te veel inlogpogingen. Wacht 5 minuten.'}),{status:429,headers:{...getCORS(request),'Content-Type':'application/json','Retry-After':'300'}});
+      }
       const body = await parseBody(request);
       const { email, wachtwoord } = body;
       if (!email || !wachtwoord) return new Response(JSON.stringify({error:'E-mail en wachtwoord verplicht'}),{headers:{...getCORS(request),'Content-Type':'application/json'}});
       await env.DB.prepare('CREATE TABLE IF NOT EXISTS bf_gebruikers (id TEXT PRIMARY KEY, naam TEXT NOT NULL, bedrijf TEXT, email TEXT NOT NULL UNIQUE, ww_hash TEXT, status TEXT DEFAULT \'uitgenodigd\', invite_token TEXT, sessie_token TEXT, sessie_ts INTEGER, plan TEXT DEFAULT \'basis\', created_at INTEGER NOT NULL, last_login INTEGER)').run().catch(()=>{});
+      const gCheck = await env.DB.prepare('SELECT * FROM bf_gebruikers WHERE email=?').bind(email.toLowerCase()).first().catch(()=>null);
+      if (gCheck && gCheck.status === 'inactief') return new Response(JSON.stringify({error:'Uw account is gedeactiveerd. Neem contact op met uw beheerder.'}),{status:401,headers:{...getCORS(request),'Content-Type':'application/json'}});
       const g = await env.DB.prepare('SELECT * FROM bf_gebruikers WHERE email=? AND status=\'actief\'').bind(email.toLowerCase()).first().catch(()=>null);
       if (!g) return new Response(JSON.stringify({error:'E-mail of wachtwoord onjuist'}),{status:401,headers:{...getCORS(request),'Content-Type':'application/json'}});
       const hash = await hashWW(wachtwoord);
@@ -3774,6 +4051,989 @@ BENCHMARKS (Dealsuite Overname Barometer H1-2025):
       await env.DB.prepare('INSERT INTO verhuis_scans (id,bedrijfsnaam,email,regio,scores,overall,top_scenario,rapport_tekst,antwoorden_json,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)')
         .bind(vid2, body2.bedrijfsnaam||'', body2.email||'', body2.regio||'', JSON.stringify(scores), overall, topScenario, '', JSON.stringify(A), Date.now()).run();
       return new Response(JSON.stringify({ ok: true, id: vid2, scores, overall, topScenario }), { headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
+    }
+
+
+    /* ============================================================
+       INFO-FASES MODULE
+       Beheert indicatieve fase (A) en full DD fase (B) per traject
+       met checklists, beoordelingen en waarderingen
+    ============================================================ */
+
+    /* Globale checklists ophalen/opslaan */
+    if (path === '/mna/checklist/globaal' && request.method === 'GET') {
+      const type = url.searchParams.get('type') || 'indicatief';
+      await env.DB.prepare('CREATE TABLE IF NOT EXISTS kv_store (sleutel TEXT PRIMARY KEY, waarde TEXT)').run().catch(()=>{});
+      const row = await env.DB.prepare('SELECT waarde FROM kv_store WHERE sleutel=?').bind('checklist_'+type).first().catch(()=>null);
+      let lijst = row ? JSON.parse(row.waarde) : (type === 'indicatief' ? DEFAULT_CHECKLIST_INDICATIEF : DEFAULT_CHECKLIST_DD);
+      return new Response(JSON.stringify({ ok: true, type, lijst }), { headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
+    }
+
+    if (path === '/mna/checklist/globaal' && request.method === 'POST') {
+      const key = request.headers.get('x-admin-key') || url.searchParams.get('key') || '';
+      if (key !== (env.ADMIN_KEY || '')) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
+      const body = await request.json().catch(()=>({}));
+      const { type, lijst } = body;
+      if (!type || !lijst) return new Response(JSON.stringify({ error: 'type en lijst verplicht' }), { status: 400, headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
+      await env.DB.prepare('CREATE TABLE IF NOT EXISTS kv_store (sleutel TEXT PRIMARY KEY, waarde TEXT)').run().catch(()=>{});
+      await env.DB.prepare('INSERT OR REPLACE INTO kv_store (sleutel, waarde) VALUES (?,?)').bind('checklist_'+type, JSON.stringify(lijst)).run();
+      return new Response(JSON.stringify({ ok: true }), { headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
+    }
+
+    /* Traject info-fase ophalen */
+    if (path.startsWith('/mna/infofase/') && request.method === 'GET') {
+      const fCode = path.replace('/mna/infofase/', '').toUpperCase();
+      await env.DB.prepare(`CREATE TABLE IF NOT EXISTS mna_info_fases (
+        id TEXT PRIMARY KEY, traject_id TEXT NOT NULL, fase TEXT NOT NULL,
+        checklist_override TEXT, deadline TEXT, status TEXT DEFAULT 'open',
+        vrijgegeven_aan TEXT DEFAULT 'geen', created_at INTEGER, updated_at INTEGER
+      )`).run().catch(()=>{});
+      await env.DB.prepare(`CREATE TABLE IF NOT EXISTS mna_beoordelingen (
+        id TEXT PRIMARY KEY, traject_id TEXT NOT NULL, fase TEXT NOT NULL,
+        categorie TEXT, bevinding TEXT, score INTEGER, ai_analyse TEXT,
+        adviseur_notitie TEXT, created_at INTEGER, updated_at INTEGER
+      )`).run().catch(()=>{});
+      await env.DB.prepare(`CREATE TABLE IF NOT EXISTS mna_waarderingen (
+        id TEXT PRIMARY KEY, traject_id TEXT NOT NULL,
+        methode TEXT, range_laag REAL, range_midden REAL, range_hoog REAL,
+        onderbouwing TEXT, ai_voorstel TEXT, adviseur_akkoord INTEGER DEFAULT 0,
+        created_at INTEGER, updated_at INTEGER
+      )`).run().catch(()=>{});
+      const tRow = await env.DB.prepare('SELECT id FROM mna_trajecten WHERE id=? OR koper_code=? OR tussen_code=?').bind(fCode,fCode,fCode).first().catch(()=>null);
+      if (!tRow) return new Response(JSON.stringify({ error: 'Traject niet gevonden' }), { status: 404, headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
+      const tid = tRow.id;
+      const fases = await env.DB.prepare('SELECT * FROM mna_info_fases WHERE traject_id=? ORDER BY created_at ASC').bind(tid).all().catch(()=>({results:[]}));
+      const beoordelingen = await env.DB.prepare('SELECT * FROM mna_beoordelingen WHERE traject_id=? ORDER BY created_at ASC').bind(tid).all().catch(()=>({results:[]}));
+      const waardering = await env.DB.prepare('SELECT * FROM mna_waarderingen WHERE traject_id=? ORDER BY created_at DESC LIMIT 1').bind(tid).first().catch(()=>null);
+      // Haal checklists op
+      const rowA = await env.DB.prepare('SELECT waarde FROM kv_store WHERE sleutel=?').bind('checklist_indicatief').first().catch(()=>null);
+      const rowB = await env.DB.prepare('SELECT waarde FROM kv_store WHERE sleutel=?').bind('checklist_dd').first().catch(()=>null);
+      const globaalA = rowA ? JSON.parse(rowA.waarde) : DEFAULT_CHECKLIST_INDICATIEF;
+      const globaalB = rowB ? JSON.parse(rowB.waarde) : DEFAULT_CHECKLIST_DD;
+      return new Response(JSON.stringify({ ok: true, traject_id: tid, fases: fases.results, beoordelingen: beoordelingen.results, waardering, globaalA, globaalB }), { headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
+    }
+
+    /* Fase activeren/updaten (admin) */
+    if (path === '/mna/infofase/set' && request.method === 'POST') {
+      const key = request.headers.get('x-admin-key') || url.searchParams.get('key') || '';
+      if (key !== (env.ADMIN_KEY || '')) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
+      const body = await request.json().catch(()=>({}));
+      const { code, fase, checklist_override, deadline, status: fStatus, vrijgegeven_aan } = body;
+      if (!code || !fase) return new Response(JSON.stringify({ error: 'code en fase verplicht' }), { status: 400, headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
+      await env.DB.prepare(`CREATE TABLE IF NOT EXISTS mna_info_fases (
+        id TEXT PRIMARY KEY, traject_id TEXT NOT NULL, fase TEXT NOT NULL,
+        checklist_override TEXT, deadline TEXT, status TEXT DEFAULT 'open',
+        vrijgegeven_aan TEXT DEFAULT 'geen', created_at INTEGER, updated_at INTEGER
+      )`).run().catch(()=>{});
+      const tid = code.toUpperCase();
+      const existing = await env.DB.prepare('SELECT id FROM mna_info_fases WHERE traject_id=? AND fase=?').bind(tid, fase).first().catch(()=>null);
+      const now = Date.now();
+      if (existing) {
+        await env.DB.prepare('UPDATE mna_info_fases SET checklist_override=?, deadline=?, status=?, vrijgegeven_aan=?, updated_at=? WHERE traject_id=? AND fase=?')
+          .bind(checklist_override ? JSON.stringify(checklist_override) : null, deadline||null, fStatus||'open', vrijgegeven_aan||'geen', now, tid, fase).run();
+      } else {
+        const fId = 'F' + Date.now() + Math.random().toString(36).slice(2,5).toUpperCase();
+        await env.DB.prepare('INSERT INTO mna_info_fases (id,traject_id,fase,checklist_override,deadline,status,vrijgegeven_aan,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?)')
+          .bind(fId, tid, fase, checklist_override ? JSON.stringify(checklist_override) : null, deadline||null, fStatus||'open', vrijgegeven_aan||'geen', now, now).run();
+      }
+      return new Response(JSON.stringify({ ok: true }), { headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
+    }
+
+    /* Beoordeling opslaan (admin) */
+    if (path === '/mna/beoordeling/opslaan' && request.method === 'POST') {
+      const key = request.headers.get('x-admin-key') || url.searchParams.get('key') || '';
+      if (key !== (env.ADMIN_KEY || '')) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
+      const body = await request.json().catch(()=>({}));
+      const { code, fase, categorie, bevinding, score, adviseur_notitie } = body;
+      if (!code || !fase || !categorie) return new Response(JSON.stringify({ error: 'code, fase en categorie verplicht' }), { status: 400, headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
+      await env.DB.prepare(`CREATE TABLE IF NOT EXISTS mna_beoordelingen (
+        id TEXT PRIMARY KEY, traject_id TEXT NOT NULL, fase TEXT NOT NULL,
+        categorie TEXT, bevinding TEXT, score INTEGER, ai_analyse TEXT,
+        adviseur_notitie TEXT, created_at INTEGER, updated_at INTEGER
+      )`).run().catch(()=>{});
+      const tid = code.toUpperCase();
+      const existing = await env.DB.prepare('SELECT id FROM mna_beoordelingen WHERE traject_id=? AND fase=? AND categorie=?').bind(tid, fase, categorie).first().catch(()=>null);
+      const now = Date.now();
+      if (existing) {
+        await env.DB.prepare('UPDATE mna_beoordelingen SET bevinding=?, score=?, adviseur_notitie=?, updated_at=? WHERE traject_id=? AND fase=? AND categorie=?')
+          .bind(bevinding||'', score||null, adviseur_notitie||'', now, tid, fase, categorie).run();
+      } else {
+        const bId = 'B' + Date.now() + Math.random().toString(36).slice(2,5).toUpperCase();
+        await env.DB.prepare('INSERT INTO mna_beoordelingen (id,traject_id,fase,categorie,bevinding,score,ai_analyse,adviseur_notitie,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)')
+          .bind(bId, tid, fase, categorie, bevinding||'', score||null, '', adviseur_notitie||'', now, now).run();
+      }
+      return new Response(JSON.stringify({ ok: true }), { headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
+    }
+
+    /* AI-analyse per categorie/fase aanroepen */
+    if (path === '/mna/beoordeling/ai' && request.method === 'POST') {
+      const key = request.headers.get('x-admin-key') || url.searchParams.get('key') || '';
+      if (key !== (env.ADMIN_KEY || '')) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
+      const body = await request.json().catch(()=>({}));
+      const { code, fase, categorie, context_docs } = body;
+      if (!code || !fase || !categorie) return new Response(JSON.stringify({ error: 'code, fase en categorie verplicht' }), { status: 400, headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
+      const tid = code.toUpperCase();
+      const traject = await env.DB.prepare('SELECT * FROM mna_trajecten WHERE id=?').bind(tid).first().catch(()=>null);
+      if (!traject) return new Response(JSON.stringify({ error: 'Traject niet gevonden' }), { status: 404, headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
+      // Haal geüploade documenten op voor deze categorie/fase
+      const docs = await env.DB.prepare('SELECT bestand_naam, analyse, veld_extractie FROM mna_documenten WHERE traject_id=? AND fase_id=? ORDER BY uploaded_at ASC').bind(tid, fase === 'A' ? 'financieel' : fase).all().catch(()=>({results:[]}));
+      const docSummary = (docs.results||[]).map(d => `- ${d.bestand_naam}: ${d.analyse||d.veld_extractie||'geen extractie'}`).join('\n').substring(0, 4000);
+      const prompt = `Analyseer de volgende informatie voor categorie "${categorie}" van een accountantskantoor M&A traject (fase: ${fase === 'A' ? 'indicatief' : 'full DD'}).
+
+Kantoor: ${traject.kantoor_naam || 'onbekend'}
+Sector: ${traject.sector || 'accountancy'}
+Extra context: ${context_docs || ''}
+
+Geüploade documenten en extracties:
+${docSummary || 'Nog geen documenten geüpload voor deze fase.'}
+
+Geef een beknopte analyse (max 200 woorden) van:
+1. Wat is aangeleverd en wat ontbreekt nog
+2. Bevindingen en risico's in deze categorie
+3. Score 1-10 met korte onderbouwing
+
+Antwoord in JSON: {"analyse": "...", "ontbreekt": "...", "score": 7, "risicos": "..."}`;
+
+      const aiResp = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 1000, messages: [{ role: 'user', content: prompt }] })
+      });
+      const aiData = await aiResp.json().catch(()=>({content:[{text:'{}'}]}));
+      const aiText = (aiData.content||[]).find(b=>b.type==='text')?.text || '{}';
+      let aiJson; try { aiJson = JSON.parse(aiText); } catch(e) { aiJson = { analyse: aiText, score: null }; }
+      // Sla op in beoordelingen
+      await env.DB.prepare(`CREATE TABLE IF NOT EXISTS mna_beoordelingen (
+        id TEXT PRIMARY KEY, traject_id TEXT NOT NULL, fase TEXT NOT NULL,
+        categorie TEXT, bevinding TEXT, score INTEGER, ai_analyse TEXT,
+        adviseur_notitie TEXT, created_at INTEGER, updated_at INTEGER
+      )`).run().catch(()=>{});
+      const existing = await env.DB.prepare('SELECT id FROM mna_beoordelingen WHERE traject_id=? AND fase=? AND categorie=?').bind(tid, fase, categorie).first().catch(()=>null);
+      const now = Date.now();
+      if (existing) {
+        await env.DB.prepare('UPDATE mna_beoordelingen SET ai_analyse=?, score=?, updated_at=? WHERE traject_id=? AND fase=? AND categorie=?')
+          .bind(JSON.stringify(aiJson), aiJson.score||null, now, tid, fase, categorie).run();
+      } else {
+        const bId = 'B' + Date.now() + Math.random().toString(36).slice(2,5).toUpperCase();
+        await env.DB.prepare('INSERT INTO mna_beoordelingen (id,traject_id,fase,categorie,bevinding,score,ai_analyse,adviseur_notitie,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)')
+          .bind(bId, tid, fase, categorie, '', aiJson.score||null, JSON.stringify(aiJson), '', now, now).run();
+      }
+      return new Response(JSON.stringify({ ok: true, analyse: aiJson }), { headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
+    }
+
+    /* Waardering genereren (AI voorstel) */
+    if (path === '/mna/waardering/genereer' && request.method === 'POST') {
+      const key = request.headers.get('x-admin-key') || url.searchParams.get('key') || '';
+      if (key !== (env.ADMIN_KEY || '')) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
+      const body = await request.json().catch(()=>({}));
+      const { code } = body;
+      if (!code) return new Response(JSON.stringify({ error: 'code verplicht' }), { status: 400, headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
+      const tid = code.toUpperCase();
+      const traject = await env.DB.prepare('SELECT * FROM mna_trajecten WHERE id=?').bind(tid).first().catch(()=>null);
+      if (!traject) return new Response(JSON.stringify({ error: 'Traject niet gevonden' }), { status: 404, headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
+      const beoordelingen = await env.DB.prepare('SELECT categorie, fase, bevinding, score, ai_analyse FROM mna_beoordelingen WHERE traject_id=? AND fase=?').bind(tid, 'A').all().catch(()=>({results:[]}));
+      const data = await env.DB.prepare('SELECT fase_id, data_json FROM mna_data WHERE traject_id=?').bind(tid).all().catch(()=>({results:[]}));
+      const dataStr = (data.results||[]).map(d => `${d.fase_id}: ${d.data_json||''}`).join('\n').substring(0,3000);
+      const beordStr = (beoordelingen.results||[]).map(b => {
+        let ai = {}; try { ai = JSON.parse(b.ai_analyse||'{}'); } catch(e){}
+        return `${b.categorie}: score ${b.score||'?'}/10 — ${ai.analyse||b.bevinding||''}`;
+      }).join('\n');
+      const prompt = `Genereer een indicatieve waardering voor dit accountantskantoor op basis van de beschikbare informatie.
+
+Kantoor: ${traject.kantoor_naam}
+Type: ${traject.traject_type || 'Verkoop'}
+Sector: ${traject.sector || 'accountancy'}
+
+Ingevoerde DD-data:
+${dataStr || 'Nog niet ingevuld.'}
+
+Beoordelingen per categorie:
+${beordStr || 'Nog geen beoordelingen.'}
+
+Geef een professioneel waarderingsvoorstel. Antwoord alleen in JSON:
+{
+  "methode": "EBITDA-multiple / omzetmultiple / DCF",
+  "range_laag": 850000,
+  "range_midden": 1050000,
+  "range_hoog": 1250000,
+  "onderbouwing": "2-3 zinnen toelichting op de waardering",
+  "risicofactoren": "belangrijkste risico's die de prijs beïnvloeden",
+  "loi_prijsclausule": "Concept-tekst voor in de LoI: 'De koopprijs bedraagt indicatief...'",
+  "loi_voorwaarden": "Concept-tekst voor voorbehouden en voorwaarden in de LoI"
+}`;
+
+      const aiResp = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 1500, messages: [{ role: 'user', content: prompt }] })
+      });
+      const aiData = await aiResp.json().catch(()=>({content:[{text:'{}'}]}));
+      const aiText = (aiData.content||[]).find(b=>b.type==='text')?.text || '{}';
+      let aiJson; try { aiJson = JSON.parse(aiText); } catch(e) { aiJson = { onderbouwing: aiText }; }
+      // Opslaan
+      await env.DB.prepare(`CREATE TABLE IF NOT EXISTS mna_waarderingen (
+        id TEXT PRIMARY KEY, traject_id TEXT NOT NULL,
+        methode TEXT, range_laag REAL, range_midden REAL, range_hoog REAL,
+        onderbouwing TEXT, ai_voorstel TEXT, adviseur_akkoord INTEGER DEFAULT 0,
+        created_at INTEGER, updated_at INTEGER
+      )`).run().catch(()=>{});
+      const wId = 'W' + Date.now() + Math.random().toString(36).slice(2,5).toUpperCase();
+      await env.DB.prepare('INSERT INTO mna_waarderingen (id,traject_id,methode,range_laag,range_midden,range_hoog,onderbouwing,ai_voorstel,adviseur_akkoord,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,0,?,?)')
+        .bind(wId, tid, aiJson.methode||'', aiJson.range_laag||0, aiJson.range_midden||0, aiJson.range_hoog||0, aiJson.onderbouwing||'', JSON.stringify(aiJson), Date.now(), Date.now()).run();
+      return new Response(JSON.stringify({ ok: true, waardering: aiJson, id: wId }), { headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
+    }
+
+    /* Waardering adviseur akkoord + vul LoI */
+    if (path === '/mna/waardering/akkoord' && request.method === 'POST') {
+      const key = request.headers.get('x-admin-key') || url.searchParams.get('key') || '';
+      if (key !== (env.ADMIN_KEY || '')) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
+      const body = await request.json().catch(()=>({}));
+      const { waardering_id, code } = body;
+      if (!waardering_id) return new Response(JSON.stringify({ error: 'waardering_id verplicht' }), { status: 400, headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
+      await env.DB.prepare('UPDATE mna_waarderingen SET adviseur_akkoord=1, updated_at=? WHERE id=?').bind(Date.now(), waardering_id).run();
+      // Genereer LoI-tekst op basis van waardering
+      const w = await env.DB.prepare('SELECT * FROM mna_waarderingen WHERE id=?').bind(waardering_id).first().catch(()=>null);
+      if (w && code) {
+        let aiVoorstel = {}; try { aiVoorstel = JSON.parse(w.ai_voorstel||'{}'); } catch(e) {}
+        const loiTekst = aiVoorstel.loi_prijsclausule ? `${aiVoorstel.loi_prijsclausule}\n\nVoorwaarden:\n${aiVoorstel.loi_voorwaarden||''}` : '';
+        if (loiTekst) {
+          await env.DB.prepare('CREATE TABLE IF NOT EXISTS mna_doc_versies (id TEXT PRIMARY KEY, traject_id TEXT, doc_type TEXT, versie INTEGER, tekst TEXT, verstuurd_naar TEXT, verstuurd_door TEXT, created_at INTEGER)').run().catch(()=>{});
+          const vCount = await env.DB.prepare('SELECT COUNT(*) as n FROM mna_doc_versies WHERE traject_id=? AND doc_type=?').bind(code.toUpperCase(), 'loi').first().catch(()=>({n:0}));
+          const vId = 'V' + Date.now() + Math.random().toString(36).slice(2,5).toUpperCase();
+          await env.DB.prepare('INSERT INTO mna_doc_versies (id,traject_id,doc_type,versie,tekst,verstuurd_naar,verstuurd_door,created_at) VALUES (?,?,?,?,?,?,?,?)')
+            .bind(vId, code.toUpperCase(), 'loi_concept', (vCount?.n||0)+1, loiTekst, '[]', 'AI waardering', Date.now()).run().catch(()=>{});
+        }
+      }
+      return new Response(JSON.stringify({ ok: true }), { headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
+    }
+
+    /* Informatieverzoek e-mail sturen (fase-aware) */
+    if (path === '/mna/infoverzoek/stuur' && request.method === 'POST') {
+      const body = await request.json().catch(()=>({}));
+      const { code, fase, to, naam_ontvanger } = body;
+      if (!code || !fase || !to) return new Response(JSON.stringify({ error: 'code, fase en to verplicht' }), { status: 400, headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
+      const tid = code.toUpperCase();
+      const traject = await env.DB.prepare('SELECT * FROM mna_trajecten WHERE id=?').bind(tid).first().catch(()=>null);
+      if (!traject) return new Response(JSON.stringify({ error: 'Traject niet gevonden' }), { status: 404, headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
+      // Haal checklist op (override of globaal)
+      const faseRow = await env.DB.prepare('SELECT checklist_override FROM mna_info_fases WHERE traject_id=? AND fase=?').bind(tid, fase).first().catch(()=>null);
+      const rowGlobaal = await env.DB.prepare('SELECT waarde FROM kv_store WHERE sleutel=?').bind('checklist_'+fase).first().catch(()=>null);
+      let checklist = faseRow?.checklist_override ? JSON.parse(faseRow.checklist_override) : (rowGlobaal ? JSON.parse(rowGlobaal.waarde) : (fase === 'indicatief' ? DEFAULT_CHECKLIST_INDICATIEF : DEFAULT_CHECKLIST_DD));
+      const faseLabel = fase === 'indicatief' ? 'Fase A — Indicatieve waardering' : 'Fase B — Full Due Diligence';
+      const mnaUrl = 'https://koersvoormorgen.nl/mna.html';
+      const deadline = new Date(Date.now()+14*24*3600*1000).toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'});
+      // Bouw HTML checklist
+      const checklistHtml = checklist.map(cat =>
+        `<tr style="background:#f0eeea"><td colspan="2" style="padding:8px 12px;font-weight:700;color:#1a1815;border:1px solid #ddd;font-size:13px">${cat.categorie}</td></tr>` +
+        (cat.items||[]).map(item => `<tr><td style="padding:6px 12px;color:#5a5854;border:1px solid #ddd;font-size:12px">• ${item.label}</td><td style="padding:6px 12px;color:#8a8880;border:1px solid #ddd;font-size:11px">${item.toelichting||''}</td></tr>`).join('')
+      ).join('');
+      const html = `<div style="font-family:sans-serif;max-width:680px;margin:0 auto">
+        <div style="background:#1a7a5e;color:#fff;padding:1.5rem;border-radius:8px 8px 0 0">
+          <h2 style="margin:0;font-size:1.1rem">Informatieverzoek M&A — ${traject.kantoor_naam} (${faseLabel})</h2>
+        </div>
+        <div style="background:#fff;border:1px solid #ddd;border-top:none;padding:1.5rem;border-radius:0 0 8px 8px">
+          <p style="font-size:14px;color:#2a2825">Beste ${naam_ontvanger||traject.contact_naam||'relatie'},</p>
+          <p style="font-size:13px;color:#5a5854;line-height:1.7">In het kader van het M&A-traject verzoeken wij u onderstaande informatie en documenten aan te leveren vóór <strong>${deadline}</strong>.</p>
+          <div style="background:#f0faf6;border:1px solid #0a3d2e;border-radius:8px;padding:1.25rem;margin:1.25rem 0">
+            <div style="font-size:11px;font-weight:600;color:#145f48;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.5rem">Uw persoonlijke uploadomgeving</div>
+            <div style="font-family:monospace;background:#fff;border:1px solid #ddd;padding:.75rem;border-radius:6px;font-size:13px;margin-bottom:.5rem"><a href="${mnaUrl}" style="color:#1a7a5e">${mnaUrl}</a></div>
+            <div style="font-size:12px;color:#8a8880">Uw toegangscode: <strong style="font-family:monospace;color:#1a7a5e;font-size:14px">${traject.id}</strong></div>
+          </div>
+          <table style="width:100%;border-collapse:collapse;margin-bottom:1.25rem">${checklistHtml}</table>
+          <p style="font-size:12px;color:#8a8880">Vragen? Neem contact op via <a href="mailto:${traject.begeleider_email||'marcel@bisschopsfinancing.nl'}" style="color:#1a7a5e">${traject.begeleider_email||'marcel@bisschopsfinancing.nl'}</a></p>
+          <p style="font-size:12px;color:#8a8880;margin-top:1rem">Met vriendelijke groet,<br><strong>${traject.begeleider_naam||'Marcel Bisschops'}</strong><br>Bisschops Financing BV</p>
+        </div></div>`;
+      const toList = Array.isArray(to) ? to : [to];
+      const emailResp = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + (env.RESEND_API_KEY||''), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ from: 'KantoorInzicht M&A <noreply@koersvoormorgen.nl>', to: toList, subject: `Informatieverzoek M&A ${faseLabel} — ${traject.kantoor_naam}`, html })
+      });
+      if (!emailResp.ok) {
+        const errText = await emailResp.text().catch(()=>'');
+        return new Response(JSON.stringify({ error: 'E-mail mislukt: ' + errText.substring(0,200) }), { status: 500, headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
+      }
+      return new Response(JSON.stringify({ ok: true }), { headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
+    }
+
+
+    /* MNA: DOCUMENT UPLOAD MELDING (open — verifieert via trajectcode) */
+    if (path === '/mna/doc-melding' && request.method === 'POST') {
+      const body = await request.json().catch(() => ({}));
+      const { code, fase_label, bestanden, uploader_naam, uploader_rol } = body;
+      if (!code || !bestanden) return new Response(JSON.stringify({ error: 'code en bestanden verplicht' }), { headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
+      // Verificeer dat code geldig is
+      const t = await env.DB.prepare('SELECT id, kantoor_naam, begeleider_naam, begeleider_email, tussen_code FROM mna_trajecten WHERE id=? OR koper_code=? OR tussen_code=?')
+        .bind(code.toUpperCase(), code.toUpperCase(), code.toUpperCase()).first().catch(() => null);
+      if (!t) return new Response(JSON.stringify({ error: 'Traject niet gevonden' }), { status: 404, headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
+      if (!env.RESEND_API_KEY) return new Response(JSON.stringify({ ok: true, skipped: 'no_resend' }), { headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
+      const to = t.begeleider_email || 'marcel@bisschopsfinancing.nl';
+      const docLijst = Array.isArray(bestanden) ? bestanden.map(function(n) { return '<li style="font-size:12px;color:#5a5854;font-family:monospace">'+n+'</li>'; }).join('') : '';
+      const html = `<div style="font-family:sans-serif;max-width:600px">
+        <div style="background:#1a7a5e;color:#fff;padding:1.25rem;border-radius:8px 8px 0 0">
+          <h2 style="margin:0;font-size:1rem">&#128196; Nieuw document geüpload — ${t.kantoor_naam}</h2>
+        </div>
+        <div style="background:#fff;border:1px solid #ddd;border-top:none;padding:1.5rem;border-radius:0 0 8px 8px">
+          <p style="font-size:13px;color:#2a2825"><strong>${uploader_naam||uploader_rol||'Onbekend'}</strong> (${uploader_rol||'onbekend'}) heeft ${Array.isArray(bestanden)?bestanden.length:1} document(en) geüpload.</p>
+          <p style="font-size:13px;color:#2a2825"><strong>Classificatie:</strong> ${fase_label||'Diversen'}</p>
+          <ul style="margin:.75rem 0;padding-left:1.5rem">${docLijst}</ul>
+          <p style="font-size:12px;color:#8a8880;margin-top:1rem">Controleer en herclassificeer indien nodig via <strong>Marilyn → traject ${t.kantoor_naam} → Dataroom</strong>.</p>
+          <p style="font-size:11px;color:#aaa;margin-top:.5rem">Trajectcode: ${t.id}</p>
+        </div>
+      </div>`;
+      await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + env.RESEND_API_KEY },
+        body: JSON.stringify({
+          from: 'KantoorInzicht M&A <noreply@koersvoormorgen.nl>',
+          to: [to],
+          subject: `Nieuw document geüpload — ${t.kantoor_naam} (${fase_label||'Diversen'})`,
+          html
+        })
+      }).catch(() => {});
+      return new Response(JSON.stringify({ ok: true }), { headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
+    }
+
+
+    /* MNA: DOCUMENT HERCLASSIFICEREN */
+    if (path.startsWith('/mna/document/herclassificeer/') && request.method === 'POST') {
+      const key = request.headers.get('x-admin-key') || url.searchParams.get('key') || '';
+      const auth = await begeleiderAuth(request, env, '');
+      if (!auth.ok && key !== (env.ADMIN_KEY || '')) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
+      const docId = path.replace('/mna/document/herclassificeer/', '');
+      const body = await request.json().catch(() => ({}));
+      const { fase_id } = body;
+      if (!fase_id) return new Response(JSON.stringify({ error: 'fase_id verplicht' }), { status: 400, headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
+      await env.DB.prepare('UPDATE mna_documenten SET fase_id=? WHERE id=?').bind(fase_id, docId).run();
+      return new Response(JSON.stringify({ ok: true }), { headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
+    }
+
+
+
+    /* PDF GENERATOR — maakt een valide PDF van plain tekst */
+    function maakPDF(tekst, titel) {
+      // Splits tekst in regels, max 90 chars per regel
+      const regels = [];
+      tekst.split('\n').forEach(function(regel) {
+        if (regel.length <= 90) {
+          regels.push(regel);
+        } else {
+          // Wrap lange regels
+          let rest = regel;
+          while (rest.length > 90) {
+            let cut = rest.lastIndexOf(' ', 90);
+            if (cut < 0) cut = 90;
+            regels.push(rest.substring(0, cut));
+            rest = rest.substring(cut + 1);
+          }
+          if (rest) regels.push(rest);
+        }
+      });
+
+      // Escape speciale PDF tekens
+      function pdfEsc(s) {
+        return s.replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)').replace(/[^\x20-\x7E]/g, ' ');
+      }
+
+      const PAGINA_HOOGTE = 842; // A4 punten
+      const MARGE_TOP = 780;
+      const MARGE_BOTTOM = 60;
+      const REGEL_HOOGTE = 14;
+      const REGELS_PER_PAGINA = Math.floor((MARGE_TOP - MARGE_BOTTOM) / REGEL_HOOGTE);
+
+      // Verdeel regels over pagina's
+      const paginas = [];
+      for (let i = 0; i < regels.length; i += REGELS_PER_PAGINA) {
+        paginas.push(regels.slice(i, i + REGELS_PER_PAGINA));
+      }
+      if (paginas.length === 0) paginas.push([]);
+
+      let pdf = '%PDF-1.4\n';
+      const offsets = [];
+      let offset = pdf.length;
+
+      // Object 1: catalog (wordt later ingevuld)
+      // Object 2: pages (wordt later ingevuld)
+      // Objecten 3+: page content streams
+      // Dan pages object, dan catalog
+
+      const pageObjNrs = [];
+      const contentObjNrs = [];
+      let objNr = 3;
+
+      const objects = [];
+
+      // Content streams per pagina
+      paginas.forEach(function(paginaRegels, pi) {
+        let stream = 'BT\n/F1 10 Tf\n';
+        // Titel op eerste pagina
+        if (pi === 0 && titel) {
+          stream += `50 ${MARGE_TOP + 20} Td\n/F1 12 Tf\n(${pdfEsc(titel)}) Tj\n/F1 10 Tf\n`;
+          stream += `0 -${REGEL_HOOGTE * 2} Td\n`;
+        } else {
+          stream += `50 ${MARGE_TOP} Td\n`;
+        }
+        paginaRegels.forEach(function(regel, ri) {
+          if (ri === 0) {
+            stream += `(${pdfEsc(regel)}) Tj\n`;
+          } else {
+            stream += `0 -${REGEL_HOOGTE} TD\n(${pdfEsc(regel)}) Tj\n`;
+          }
+        });
+        stream += 'ET\n';
+
+        const contentNr = objNr++;
+        contentObjNrs.push(contentNr);
+        objects.push({ nr: contentNr, data: `${contentNr} 0 obj\n<< /Length ${stream.length} >>\nstream\n${stream}\nendstream\nendobj\n` });
+
+        const pageNr = objNr++;
+        pageObjNrs.push(pageNr);
+        objects.push({ nr: pageNr, data: null, isPage: true, contentNr });
+      });
+
+      const pagesNr = objNr++;
+      const catalogNr = objNr++;
+      const fontNr = objNr++;
+
+      // Font object
+      objects.push({ nr: fontNr, data: `${fontNr} 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>\nendobj\n` });
+
+      // Pages object
+      const kidsStr = pageObjNrs.map(n => `${n} 0 R`).join(' ');
+      objects.push({ nr: pagesNr, data: `${pagesNr} 0 obj\n<< /Type /Pages /Kids [${kidsStr}] /Count ${paginas.length} >>\nendobj\n` });
+
+      // Catalog object
+      objects.push({ nr: catalogNr, data: `${catalogNr} 0 obj\n<< /Type /Catalog /Pages ${pagesNr} 0 R >>\nendobj\n` });
+
+      // Update page data nu we pagesNr en fontNr weten
+      objects.forEach(function(obj) {
+        if (obj.isPage) {
+          obj.data = `${obj.nr} 0 obj\n<< /Type /Page /Parent ${pagesNr} 0 R /MediaBox [0 0 595 ${PAGINA_HOOGTE}] /Contents ${obj.contentNr} 0 R /Resources << /Font << /F1 ${fontNr} 0 R >> >> >>\nendobj\n`;
+        }
+      });
+
+      // Sorteer op objectnummer
+      objects.sort(function(a, b) { return a.nr - b.nr; });
+
+      // Bouw cross-reference table
+      const xrefOffsets = {};
+      objects.forEach(function(obj) {
+        xrefOffsets[obj.nr] = pdf.length;
+        pdf += obj.data;
+      });
+
+      const xrefOffset = pdf.length;
+      const maxNr = Math.max(...objects.map(o => o.nr));
+      pdf += 'xref\n';
+      pdf += `0 ${maxNr + 1}\n`;
+      pdf += '0000000000 65535 f \n';
+      for (let i = 1; i <= maxNr; i++) {
+        const off = xrefOffsets[i];
+        pdf += off !== undefined ? `${String(off).padStart(10, '0')} 00000 n \n` : '0000000000 65535 f \n';
+      }
+      pdf += 'trailer\n';
+      pdf += `<< /Size ${maxNr + 1} /Root ${catalogNr} 0 R >>\n`;
+      pdf += 'startxref\n';
+      pdf += `${xrefOffset}\n`;
+      pdf += '%%EOF\n';
+
+      return pdf;
+    }
+
+
+    /* PDF naar base64 voor e-mail bijlagen */
+    function pdfNaarBase64(tekst, titel) {
+      const pdfTekst = maakPDF(tekst, titel);
+      const bytes = new TextEncoder().encode(pdfTekst);
+      let binary = '';
+      bytes.forEach(b => binary += String.fromCharCode(b));
+      return btoa(binary);
+    }
+
+    /* ============================================================
+       SIGNHOST INTEGRATIE
+       Vereist env vars: SIGNHOST_API_KEY, SIGNHOST_APP_KEY
+       Stap 1: Maak transactie aan
+       Stap 2: Upload document
+       Stap 3: Start transactie (verstuurt e-mail naar ondertekenaar)
+       Stap 4: Webhook ontvangt status updates
+    ============================================================ */
+
+    /* Signhost: verstuur document ter ondertekening */
+    if (path === '/mna/signhost/stuur' && request.method === 'POST') {
+      const key = request.headers.get('x-admin-key') || url.searchParams.get('key') || '';
+      const tussenKeySH = request.headers.get('x-tussen-key') || '';
+      const isAdminSH = key === (env.ADMIN_KEY || '');
+      let authSH = isAdminSH;
+      if (!authSH && tussenKeySH) {
+        const tkSH = await env.DB.prepare('SELECT id FROM mna_trajecten WHERE tussen_code=?').bind(tussenKeySH.toUpperCase()).first().catch(() => null);
+        authSH = !!tkSH;
+      }
+      if (!authSH) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
+      if (!env.SIGNHOST_API_KEY || !env.SIGNHOST_APP_KEY) {
+        return new Response(JSON.stringify({ error: 'Signhost niet geconfigureerd. Voeg SIGNHOST_API_KEY en SIGNHOST_APP_KEY toe als environment variables.' }), { status: 503, headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
+      }
+      const body = await request.json().catch(() => ({}));
+      const { code, doc_type, ondertekenaar_naam, ondertekenaar_email, doc_tekst } = body;
+      if (!code || !doc_type || !ondertekenaar_email || !doc_tekst) {
+        return new Response(JSON.stringify({ error: 'code, doc_type, ondertekenaar_email en doc_tekst verplicht' }), { status: 400, headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
+      }
+      const traject = await env.DB.prepare('SELECT * FROM mna_trajecten WHERE id=?').bind(code.toUpperCase()).first().catch(() => null);
+      if (!traject) return new Response(JSON.stringify({ error: 'Traject niet gevonden' }), { status: 404, headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
+
+      // Duplicate check: blokkeer tweede verzoek voor zelfde traject + doc_type + email binnen 10 minuten
+      await env.DB.prepare('ALTER TABLE mna_trajecten ADD COLUMN signhost_transactions TEXT').run().catch(() => {});
+      const existingTx = await env.DB.prepare('SELECT signhost_transactions FROM mna_trajecten WHERE id=?').bind(code.toUpperCase()).first().catch(() => null);
+      let txList = [];
+      try { txList = JSON.parse(existingTx?.signhost_transactions || '[]'); } catch(e) {}
+      const tenMin = 10 * 60 * 1000;
+      const duplicate = txList.find(tx =>
+        tx.doc_type === doc_type &&
+        tx.ondertekenaar_email === ondertekenaar_email &&
+        tx.status === 'pending' &&
+        (Date.now() - tx.created_at) < tenMin
+      );
+      if (duplicate) {
+        return new Response(JSON.stringify({ error: 'Er is al een tekenverzoek verstuurd naar ' + ondertekenaar_email + ' voor dit document (aangemaakt ' + Math.round((Date.now()-duplicate.created_at)/60000) + ' minuten geleden). Wacht 10 minuten of controleer de inbox.' }), { status: 409, headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
+      }
+
+      const docLabels = { nda: 'Non-Disclosure Agreement', loi: 'Letter of Intent', bem: 'Bemiddelingsovereenkomst', excl: 'Exclusiviteitsbrief' };
+      const docLabel = docLabels[doc_type] || doc_type;
+      const signMessage = `Geachte ${ondertekenaar_naam||'relatie'}, hierbij ontvangt u de ${docLabel} voor het M&A-traject inzake ${traject.kantoor_naam}. Verzoek dit document digitaal te ondertekenen. Met vriendelijke groet, ${traject.begeleider_naam||'Bisschops Financing BV'}`;
+
+      const shHeaders = {
+        'Content-Type': 'application/json',
+        'Authorization': `APIKey ${env.SIGNHOST_API_KEY}`,
+        'Application': `APPKey ${env.SIGNHOST_APP_KEY}`
+      };
+
+      // Stap 1: Transactie aanmaken
+      const txResp = await fetch('https://api.signhost.com/api/transaction', {
+        method: 'POST',
+        headers: shHeaders,
+        body: JSON.stringify({
+          Signers: [{
+            Email: ondertekenaar_email,
+            RequireScribble: true,
+            SendSignRequest: true,
+            SignRequestMessage: signMessage,
+            DaysToRemind: 3,
+            ScribbleName: ondertekenaar_naam || '',
+            ScribbleNameFixed: false,
+            Verifications: [{ Type: 'Consent' }]
+          }],
+          SendEmailNotifications: false, // Wij sturen zelf mails via Resend
+          Reference: `${code.toUpperCase()}_${doc_type}`,
+          PostbackUrl: `https://kantoorinzicht.marcel-bisschops.workers.dev/mna/signhost/webhook`
+        })
+      });
+      if (!txResp.ok) {
+        const errText = await txResp.text().catch(() => '');
+        return new Response(JSON.stringify({ error: 'Signhost transactie mislukt: ' + errText.substring(0, 200) }), { status: 500, headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
+      }
+      const tx = await txResp.json();
+      const transactionId = tx.Id;
+
+      // Stap 2: Genereer echte PDF en upload met correcte SHA-256 Digest header
+      const docLabelsForPdf = { nda: 'Non-Disclosure Agreement', loi: 'Letter of Intent', bem: 'Bemiddelingsovereenkomst', excl: 'Exclusiviteitsbrief' };
+      const pdfTekst = maakPDF(doc_tekst, docLabelsForPdf[doc_type] || doc_type);
+      const encoder = new TextEncoder();
+      const docBytes = encoder.encode(pdfTekst);
+      // Bereken SHA-256 hash voor Digest header
+      const hashBuffer = await crypto.subtle.digest('SHA-256', docBytes);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      const hashBase64 = btoa(String.fromCharCode(...hashArray));
+      const fileResp = await fetch(`https://api.signhost.com/api/transaction/${transactionId}/file/${doc_type}.pdf`, {
+        method: 'PUT',
+        headers: { ...shHeaders, 'Content-Type': 'application/pdf', 'Digest': `SHA-256=${hashBase64}` },
+        body: docBytes
+      });
+      if (!fileResp.ok) {
+        const errText = await fileResp.text().catch(() => '');
+        return new Response(JSON.stringify({ error: 'Document upload naar Signhost mislukt: ' + errText.substring(0, 200) }), { status: 500, headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
+      }
+
+      // Stap 3: Transactie starten
+      const startResp = await fetch(`https://api.signhost.com/api/transaction/${transactionId}/start`, {
+        method: 'PUT',
+        headers: shHeaders
+      });
+
+      // Sla transaction_id op in DB
+      await env.DB.prepare('ALTER TABLE mna_trajecten ADD COLUMN signhost_transactions TEXT').run().catch(() => {});
+      const existing = await env.DB.prepare('SELECT signhost_transactions FROM mna_trajecten WHERE id=?').bind(code.toUpperCase()).first().catch(() => null);
+      let transactions = [];
+      try { transactions = JSON.parse(existing?.signhost_transactions || '[]'); } catch(e) {}
+      transactions.push({ id: transactionId, doc_type, ondertekenaar_email, status: 'pending', created_at: Date.now() });
+      await env.DB.prepare('UPDATE mna_trajecten SET signhost_transactions=? WHERE id=?').bind(JSON.stringify(transactions), code.toUpperCase()).run().catch(() => {});
+
+      // Logboek
+      await env.DB.prepare('CREATE TABLE IF NOT EXISTS mna_logboek (id TEXT PRIMARY KEY, traject_id TEXT NOT NULL, auteur TEXT, auteur_type TEXT, bericht TEXT, fase TEXT, fase_gewijzigd INTEGER DEFAULT 0, created_at INTEGER NOT NULL)').run().catch(() => {});
+      const logId = 'LOG' + Date.now() + Math.random().toString(36).slice(2, 5).toUpperCase();
+      await env.DB.prepare('INSERT INTO mna_logboek (id,traject_id,auteur,auteur_type,bericht,fase,fase_gewijzigd,created_at) VALUES (?,?,?,?,?,?,?,?)')
+        .bind(logId, code.toUpperCase(), 'Systeem', 'admin', `📨 ${docLabel} verstuurd ter ondertekening via Signhost naar ${ondertekenaar_email}`, 'juridisch', 0, Date.now()).run().catch(() => {});
+
+      return new Response(JSON.stringify({ ok: true, transaction_id: transactionId, status: 'verstuurd' }), { headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
+    }
+
+    /* Signhost: webhook — status updates ontvangen */
+    if (path === '/mna/signhost/webhook' && request.method === 'POST') {
+      const body = await request.json().catch(() => ({}));
+      const { Id: transactionId, Status, Reference, Signers } = body;
+      if (!transactionId || !Reference) return new Response('ok', { headers: getCORS(request) });
+      const parts = Reference.split('_');
+      const trajectCode = parts[0];
+      const docType = parts.slice(1).join('_');
+      const traject = await env.DB.prepare('SELECT * FROM mna_trajecten WHERE id=?').bind(trajectCode).first().catch(() => null);
+      if (!traject) return new Response('ok', { headers: getCORS(request) });
+
+      // Status: 5=wacht, 10=bekeken, 20=ondertekend, 30=geweigerd, 40=gestopt
+      const statusLabel = { 5: 'In afwachting', 10: 'Document bekeken', 20: 'Ondertekend ✅', 30: 'Geweigerd ❌', 40: 'Gestopt' };
+      const label = statusLabel[Status] || `Status ${Status}`;
+      const ondertekend = Status === 20;
+
+      // Update transactions in DB
+      const existing = await env.DB.prepare('SELECT signhost_transactions FROM mna_trajecten WHERE id=?').bind(trajectCode).first().catch(() => null);
+      let transactions = [];
+      try { transactions = JSON.parse(existing?.signhost_transactions || '[]'); } catch(e) {}
+      transactions = transactions.map(function(tx) {
+        if (tx.id === transactionId) return { ...tx, status: ondertekend ? 'ondertekend' : label.toLowerCase(), updated_at: Date.now() };
+        return tx;
+      });
+      await env.DB.prepare('UPDATE mna_trajecten SET signhost_transactions=? WHERE id=?').bind(JSON.stringify(transactions), trajectCode).run().catch(() => {});
+
+      // Alleen actie bij status 20 (ondertekend), 30 (geweigerd) of 40 (gestopt)
+      if (Status !== 20 && Status !== 30 && Status !== 40) {
+        return new Response('ok', { headers: getCORS(request) });
+      }
+      // Als ondertekend: sla naam op zoals bij /mna/teken
+      if (ondertekend) {
+        const signerNaam = Signers?.[0]?.ScribbleName || Signers?.[0]?.Email || 'Ondertekenaar';
+        const docField = docType === 'nda' ? 'nda_getekend' : docType === 'loi' ? 'loi_getekend' : docType === 'bem' ? 'bem_getekend' : 'excl_getekend';
+        await env.DB.prepare(`UPDATE mna_trajecten SET ${docField}=? WHERE id=?`).bind(`${signerNaam} (Signhost)`, trajectCode).run().catch(() => {});
+        // E-mail notificatie naar adviseur
+        if (env.RESEND_API_KEY && traject.begeleider_email) {
+          const docLabels2 = { nda: 'NDA', loi: 'LoI', bem: 'Bemiddelingsovereenkomst', excl: 'Exclusiviteitsbrief' };
+          await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + env.RESEND_API_KEY },
+            body: JSON.stringify({
+              from: 'KantoorInzicht M&A <noreply@koersvoormorgen.nl>',
+              to: [traject.begeleider_email, 'marcel@bisschopsfinancing.nl'].filter((v,i,a)=>a.indexOf(v)===i),
+              subject: `✅ ${docLabels2[docType]||docType} ondertekend — ${traject.kantoor_naam}`,
+              html: `<div style="font-family:sans-serif;max-width:600px"><div style="background:#1a7a5e;color:#fff;padding:1.5rem;border-radius:8px 8px 0 0"><h2 style="margin:0;font-size:1.1rem">✅ Document ondertekend via Signhost</h2></div><div style="background:#fff;border:1px solid #ddd;border-top:none;padding:1.5rem;border-radius:0 0 8px 8px"><p style="font-size:13px"><strong>${signerNaam}</strong> heeft de <strong>${docLabels2[docType]||docType}</strong> digitaal ondertekend voor traject <strong>${traject.kantoor_naam}</strong>.</p><p style="font-size:12px;color:#8a8880">Transactie ID: ${transactionId}<br>Datum: ${new Date().toLocaleString('nl-NL')}</p><p style="font-size:12px;color:#8a8880">Download het getekende document via het Signhost dashboard of via de API.</p></div></div>`
+            })
+          }).catch(() => {});
+        }
+      }
+
+      // Logboek
+      await env.DB.prepare('INSERT INTO mna_logboek (id,traject_id,auteur,auteur_type,bericht,fase,fase_gewijzigd,created_at) VALUES (?,?,?,?,?,?,?,?)')
+        .bind('LOG'+Date.now()+Math.random().toString(36).slice(2,5).toUpperCase(), trajectCode, 'Signhost', 'systeem', `📋 Signhost status update: ${label} — ${docType}`, 'juridisch', 0, Date.now()).run().catch(() => {});
+
+      return new Response('ok', { headers: getCORS(request) });
+    }
+
+    /* Signhost: status ophalen voor een traject */
+    if (path.startsWith('/mna/signhost/status/') && request.method === 'GET') {
+      const sCode = path.replace('/mna/signhost/status/', '').toUpperCase();
+      const t = await env.DB.prepare('SELECT id, signhost_transactions FROM mna_trajecten WHERE id=? OR koper_code=? OR tussen_code=?').bind(sCode, sCode, sCode).first().catch(() => null);
+      if (!t) return new Response(JSON.stringify({ error: 'Niet gevonden' }), { status: 404, headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
+      let transactions = [];
+      try { transactions = JSON.parse(t.signhost_transactions || '[]'); } catch(e) {}
+      return new Response(JSON.stringify({ ok: true, transactions }), { headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
+    }
+
+
+    /* VERWERKERSOVEREENKOMST — status ophalen en opslaan */
+    if (path === '/mna/vok/status' && request.method === 'GET') {
+      const vokCode = url.searchParams.get('code') || '';
+      if (!vokCode) return new Response(JSON.stringify({ getekend: false }), { headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
+      await env.DB.prepare('CREATE TABLE IF NOT EXISTS mna_vok (id TEXT PRIMARY KEY, tussen_code TEXT NOT NULL, naam TEXT, datum INTEGER, versie TEXT, ip TEXT)').run().catch(() => {});
+      const vok = await env.DB.prepare('SELECT naam, datum, versie FROM mna_vok WHERE tussen_code=?').bind(vokCode.toUpperCase()).first().catch(() => null);
+      return new Response(JSON.stringify({ getekend: !!vok, naam: vok?.naam, datum: vok?.datum, versie: vok?.versie }), { headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
+    }
+
+    if (path === '/mna/vok/teken' && request.method === 'POST') {
+      const body = await request.json().catch(() => ({}));
+      const { code, naam, versie, email } = body;
+      if (!code || !naam) return new Response(JSON.stringify({ error: 'code en naam verplicht' }), { status: 400, headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
+      await env.DB.prepare('CREATE TABLE IF NOT EXISTS mna_vok (id TEXT PRIMARY KEY, tussen_code TEXT NOT NULL, naam TEXT, datum INTEGER, versie TEXT, ip TEXT)').run().catch(() => {});
+      const ip = request.headers.get('CF-Connecting-IP') || '';
+      const ts = Date.now();
+      const id = 'VOK' + ts + Math.random().toString(36).slice(2,5).toUpperCase();
+      const vokVersie = versie || '1.0';
+      await env.DB.prepare('INSERT OR REPLACE INTO mna_vok (id, tussen_code, naam, datum, versie, ip) VALUES (?,?,?,?,?,?)')
+        .bind(id, code.toUpperCase(), naam, ts, vokVersie, ip).run();
+
+      // Bevestigingsmail sturen
+      if (env.RESEND_API_KEY) {
+        const datumStr = new Date(ts).toLocaleString('nl-NL', { timeZone: 'Europe/Amsterdam', day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+        const vokTekst = `VERWERKERSOVEREENKOMST
+Bisschops Financing B.V. — KantoorInzicht Platform
+Versie ${vokVersie} | Mei 2026
+
+Partijen
+Verwerkingsverantwoordelijke: De tussenpersoon/adviseur die gebruik maakt van het KantoorInzicht-platform.
+Verwerker: Bisschops Financing B.V., Grotestraat 13, 5841AA Oploo.
+
+Artikel 1 — Doel en grondslag
+Bisschops Financing verwerkt persoonsgegevens uitsluitend ten behoeve van de dienstverlening via het KantoorInzicht-platform. Gebruiker blijft te allen tijde verwerkingsverantwoordelijke voor de gegevens van zijn klanten.
+
+Artikel 2 — Aard van de verwerking
+Bisschops Financing verwerkt uitsluitend de persoonsgegevens die door of namens Gebruiker worden ingevoerd. Dit omvat: contactgegevens, financiële bedrijfsdata, documenten en communicatie in het kader van M&A-trajecten.
+
+Artikel 3 — Beveiliging
+Bisschops Financing treft passende technische en organisatorische maatregelen. Gegevens worden opgeslagen in Cloudflare-datacenters binnen de EU (Frankfurt). Verbindingen zijn versleuteld via HTTPS.
+
+Artikel 4 — Bewaartermijn
+Persoonsgegevens worden bewaard zolang het traject actief is en maximaal 7 jaar daarna, tenzij Gebruiker eerder verzoekt tot verwijdering.
+
+Artikel 5 — Sub-verwerkers
+Cloudflare Inc. (infrastructuur, EU), Anthropic PBC (AI, VS), Resend Inc. (e-mail), Signhost/Entrust (handtekeningen).
+
+Artikel 6 — Rechten betrokkenen
+Gebruiker is verantwoordelijk voor het faciliteren van de rechten van betrokkenen. Bisschops Financing verleent hiertoe medewerking op verzoek.
+
+Artikel 7 — Datalekken
+Bisschops Financing informeert Gebruiker zonder onredelijke vertraging na ontdekking van een datalek.
+
+Artikel 8 — Toepasselijk recht
+Nederlands recht. Geschillen: Rechtbank Oost-Brabant.`;
+
+        const htmlMail = `<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body style="margin:0;padding:0;background:#f4f4f0;font-family:'IBM Plex Sans',Helvetica,Arial,sans-serif">
+<div style="max-width:620px;margin:32px auto;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,.10)">
+  <div style="background:#1a7a5e;padding:1.75rem 2.5rem">
+    <div style="font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.7);margin-bottom:.4rem">KantoorInzicht — Bevestiging</div>
+    <h1 style="margin:0;font-size:1.3rem;font-weight:600;color:#fff">Verwerkersovereenkomst geaccepteerd</h1>
+  </div>
+  <div style="padding:2rem 2.5rem">
+    <p style="font-size:14px;color:#2a2825;margin-bottom:1rem">Beste ${naam},</p>
+    <p style="font-size:13px;color:#5a5854;line-height:1.75;margin-bottom:1.25rem">
+      U heeft de Verwerkersovereenkomst van Bisschops Financing B.V. digitaal geaccepteerd. Hieronder vindt u de bevestigingsgegevens en de volledige tekst van de overeenkomst.
+    </p>
+    <div style="background:#f0faf6;border:1px solid #0a3d2e;border-radius:8px;padding:1.25rem;margin-bottom:1.5rem">
+      <div style="font-size:11px;font-weight:700;color:#145f48;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.75rem">Ondertekeningsdetails</div>
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <tr><td style="padding:4px 0;color:#8a8880;width:140px">Naam</td><td style="padding:4px 0;font-weight:600;color:#1a1815">${naam}</td></tr>
+        <tr><td style="padding:4px 0;color:#8a8880">Datum &amp; tijd</td><td style="padding:4px 0;font-weight:600;color:#1a1815">${datumStr}</td></tr>
+        <tr><td style="padding:4px 0;color:#8a8880">Versie</td><td style="padding:4px 0;font-weight:600;color:#1a1815">Verwerkersovereenkomst v${vokVersie}</td></tr>
+        <tr><td style="padding:4px 0;color:#8a8880">Referentie</td><td style="padding:4px 0;font-family:monospace;font-size:12px;color:#1a7a5e">${id}</td></tr>
+        <tr><td style="padding:4px 0;color:#8a8880">IP-adres</td><td style="padding:4px 0;font-family:monospace;font-size:12px;color:#8a8880">${ip}</td></tr>
+      </table>
+    </div>
+    <div style="font-size:11px;font-weight:700;color:#5a5854;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.75rem">Tekst van de overeenkomst</div>
+    <div style="background:#fafaf8;border:1px solid #dddbd4;border-radius:6px;padding:1rem;font-size:11px;font-family:monospace;line-height:1.8;color:#5a5854;white-space:pre-wrap;max-height:none">${vokTekst.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
+    <p style="font-size:12px;color:#8a8880;margin-top:1.5rem;line-height:1.7">
+      Bewaar deze e-mail als bewijs van acceptatie. De overeenkomst is ook geregistreerd in het KantoorInzicht-systeem onder uw tussenpersoonscode.
+    </p>
+  </div>
+  <div style="background:#f0eeea;border-top:1px solid #dddbd4;padding:1rem 2.5rem;text-align:center">
+    <div style="font-size:10px;color:#c8c5bc;line-height:1.6">
+      Bisschops Financing B.V. · Grotestraat 13, 5841AA Oploo · KantoorInzicht<br>
+      <a href="https://koersvoormorgen.nl/privacy.html" style="color:#aaa">Privacyverklaring</a>
+    </div>
+  </div>
+</div>
+</body></html>`;
+
+        const toList = ['marcel@bisschopsfinancing.nl'];
+        if (email && email.includes('@')) toList.unshift(email);
+
+        await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + env.RESEND_API_KEY },
+          body: JSON.stringify({
+            from: 'KantoorInzicht <noreply@koersvoormorgen.nl>',
+            to: toList,
+            subject: `Bevestiging: Verwerkersovereenkomst geaccepteerd — ${naam}`,
+            html: htmlMail
+          })
+        }).catch(() => null);
+      }
+
+      return new Response(JSON.stringify({ ok: true }), { headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
+    }
+
+
+
+    /* VOK RESET (test only) */
+    if (path === '/mna/vok/reset' && request.method === 'POST') {
+      const key = url.searchParams.get('key') || request.headers.get('x-admin-key') || '';
+      if (key !== (env.ADMIN_KEY || '')) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
+      const resetCode = url.searchParams.get('code')?.toUpperCase();
+      if (!resetCode) return new Response(JSON.stringify({ error: 'code verplicht' }), { headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
+      await env.DB.prepare('DELETE FROM mna_vok WHERE tussen_code=?').bind(resetCode).run().catch(() => {});
+      return new Response(JSON.stringify({ ok: true }), { headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
+    }
+
+    /* UITNODIGINGSMAIL VERKOPER / KOPER */
+    if (path === '/mna/uitnodiging' && request.method === 'POST') {
+      const body = await request.json().catch(() => ({}));
+      const { code, type, to, naam, trajectNaam, adviseur_naam, adviseur_email, adviseur_tel } = body;
+      // Auth: admin-key OF tussen-key
+      const adminKey = request.headers.get('x-admin-key') || '';
+      const tussenKey = request.headers.get('x-tussen-key') || '';
+      const isAdmin = adminKey && adminKey === (env.ADMIN_KEY || '');
+      let isTussen = false;
+      if (!isAdmin && tussenKey) {
+        const tk = await env.DB.prepare('SELECT id FROM mna_trajecten WHERE tussen_code=?').bind(tussenKey.toUpperCase()).first().catch(() => null);
+        isTussen = !!tk;
+      }
+      if (!isAdmin && !isTussen) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
+      if (!to || !code) return new Response(JSON.stringify({ error: 'to en code verplicht' }), { headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
+      if (!env.RESEND_API_KEY) return new Response(JSON.stringify({ error: 'Resend niet geconfigureerd' }), { headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
+
+      const mnaUrl = 'https://koersvoormorgen.nl/mna.html';
+      const adv_naam = adviseur_naam || 'Marcel Bisschops';
+      const adv_email = adviseur_email || 'marcel@bisschopsfinancing.nl';
+      const adv_tel = adviseur_tel || '06 - 38 68 98 88';
+      const tNaam = trajectNaam || code;
+      const isVerkoper = type === 'verkoper';
+
+      const subject = isVerkoper
+        ? 'Uitnodiging — M&A Due Diligence platform voor ' + tNaam
+        : 'Uitnodiging — M&A informatieportaal voor ' + tNaam;
+
+      const rolLabel = isVerkoper ? 'verkoper/aanbieder' : 'koper/investeerder';
+      const toegangLabel = isVerkoper ? 'verkoperscode' : 'koperscode';
+      const uitlegRol = isVerkoper
+        ? 'Via dit platform kunt u alle relevante informatie over uw onderneming aanleveren. U uploadt documenten, vult financiële en operationele gegevens in, en volgt de voortgang van het traject. De AI-analyse helpt uw adviseur bij de due diligence.'
+        : 'Via dit platform heeft u toegang tot de door de verkoper aangeleverde informatie en due diligence data. U kunt vragen stellen via het Q&A-register en documenten inzien zodra de adviseur toegang heeft verleend.';
+
+      const stappenVerkoper = `
+        <table style="width:100%;border-collapse:collapse;margin:1.25rem 0">
+          <tr style="background:#f0faf6">
+            <td style="padding:10px 14px;border:1px solid #c8e6d4;font-weight:700;color:#1a7a5e;width:32px;text-align:center">1</td>
+            <td style="padding:10px 14px;border:1px solid #c8e6d4"><strong>Inloggen</strong><br><span style="font-size:12px;color:#5a5854">Ga naar koersvoormorgen.nl/mna.html en voer uw persoonlijke trajectcode in.</span></td>
+          </tr>
+          <tr>
+            <td style="padding:10px 14px;border:1px solid #ddd;font-weight:700;color:#1a7a5e;text-align:center">2</td>
+            <td style="padding:10px 14px;border:1px solid #ddd"><strong>Documenten uploaden</strong><br><span style="font-size:12px;color:#5a5854">Upload uw jaarrekeningen, KvK-uittreksel en overige stukken. De AI analyseert ze automatisch en vult velden voor u in.</span></td>
+          </tr>
+          <tr style="background:#f0faf6">
+            <td style="padding:10px 14px;border:1px solid #c8e6d4;font-weight:700;color:#1a7a5e;text-align:center">3</td>
+            <td style="padding:10px 14px;border:1px solid #c8e6d4"><strong>Gegevens controleren & aanvullen</strong><br><span style="font-size:12px;color:#5a5854">Loop de 7 informatiefases door (Financieel, Klanten, Personeel, Compliance, IT, Juridisch, Strategisch) en vul aan waar nodig.</span></td>
+          </tr>
+          <tr>
+            <td style="padding:10px 14px;border:1px solid #ddd;font-weight:700;color:#1a7a5e;text-align:center">4</td>
+            <td style="padding:10px 14px;border:1px solid #ddd"><strong>Documenten ondertekenen</strong><br><span style="font-size:12px;color:#5a5854">Uw adviseur stuurt u de NDA, LoI of Bemiddelingsovereenkomst ter ondertekening. U ontvangt hiervoor een apart verzoek.</span></td>
+          </tr>
+          <tr style="background:#f0faf6">
+            <td style="padding:10px 14px;border:1px solid #c8e6d4;font-weight:700;color:#1a7a5e;text-align:center">5</td>
+            <td style="padding:10px 14px;border:1px solid #c8e6d4"><strong>Afstemming met adviseur</strong><br><span style="font-size:12px;color:#5a5854">Uw begeleider analyseert de ingevoerde gegevens en neemt contact met u op voor verdere stappen.</span></td>
+          </tr>
+        </table>`;
+
+      const stappenKoper = `
+        <table style="width:100%;border-collapse:collapse;margin:1.25rem 0">
+          <tr style="background:#f0faf6">
+            <td style="padding:10px 14px;border:1px solid #c8e6d4;font-weight:700;color:#1a7a5e;width:32px;text-align:center">1</td>
+            <td style="padding:10px 14px;border:1px solid #c8e6d4"><strong>NDA ondertekenen</strong><br><span style="font-size:12px;color:#5a5854">U ontvangt apart de geheimhoudingsovereenkomst. Na ondertekening verleent uw adviseur toegang tot de informatie.</span></td>
+          </tr>
+          <tr>
+            <td style="padding:10px 14px;border:1px solid #ddd;font-weight:700;color:#1a7a5e;text-align:center">2</td>
+            <td style="padding:10px 14px;border:1px solid #ddd"><strong>Inloggen</strong><br><span style="font-size:12px;color:#5a5854">Ga naar koersvoormorgen.nl/mna.html en voer uw koperscode in zodra uw adviseur toegang heeft verleend.</span></td>
+          </tr>
+          <tr style="background:#f0faf6">
+            <td style="padding:10px 14px;border:1px solid #c8e6d4;font-weight:700;color:#1a7a5e;text-align:center">3</td>
+            <td style="padding:10px 14px;border:1px solid #c8e6d4"><strong>Due diligence informatie inzien</strong><br><span style="font-size:12px;color:#5a5854">U heeft toegang tot de financiële, commerciële en operationele data van de verkoper, inclusief geüploade documenten.</span></td>
+          </tr>
+          <tr>
+            <td style="padding:10px 14px;border:1px solid #ddd;font-weight:700;color:#1a7a5e;text-align:center">4</td>
+            <td style="padding:10px 14px;border:1px solid #ddd"><strong>Q&A stellen</strong><br><span style="font-size:12px;color:#5a5854">U kunt per informatiefase vragen stellen via het Q&A-register. Uw adviseur beantwoordt deze vragen en voegt antwoorden toe aan het dossier.</span></td>
+          </tr>
+          <tr style="background:#f0faf6">
+            <td style="padding:10px 14px;border:1px solid #c8e6d4;font-weight:700;color:#1a7a5e;text-align:center">5</td>
+            <td style="padding:10px 14px;border:1px solid #c8e6d4"><strong>Letter of Intent</strong><br><span style="font-size:12px;color:#5a5854">Na akkoord op de hoofdpunten stelt uw adviseur een LoI op ter ondertekening door beide partijen.</span></td>
+          </tr>
+        </table>`;
+
+      const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body style="margin:0;padding:0;background:#f4f4f0;font-family:'IBM Plex Sans',Helvetica,Arial,sans-serif">
+<div style="max-width:640px;margin:32px auto;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,.10)">
+
+  <!-- Header -->
+  <div style="background:#1a7a5e;padding:2rem 2.5rem">
+    <div style="font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.7);margin-bottom:.5rem">KantoorInzicht — M&amp;A Begeleiding</div>
+    <h1 style="margin:0;font-size:1.4rem;font-weight:600;color:#fff;line-height:1.3">Uitnodiging voor het<br>M&amp;A due diligence platform</h1>
+  </div>
+
+  <!-- Body -->
+  <div style="padding:2rem 2.5rem">
+    <p style="font-size:14px;color:#2a2825;margin-bottom:1.25rem">Beste ${naam ? naam : 'relatie'},</p>
+    <p style="font-size:13px;color:#5a5854;line-height:1.75;margin-bottom:1rem">
+      U bent uitgenodigd als <strong>${rolLabel}</strong> voor het M&amp;A-traject begeleid door <strong>${adv_naam}</strong> van Bisschops Financing.
+      ${uitlegRol}
+    </p>
+
+    <!-- Toegangscode -->
+    <div style="background:#f0faf6;border:1px solid #0a3d2e;border-radius:8px;padding:1.5rem;margin:1.5rem 0;text-align:center">
+      <div style="font-size:11px;font-weight:700;color:#145f48;text-transform:uppercase;letter-spacing:.12em;margin-bottom:.5rem">Uw persoonlijke ${toegangLabel}</div>
+      <div style="font-family:'IBM Plex Mono',monospace,Courier;font-size:2rem;font-weight:700;color:#1a7a5e;letter-spacing:.25em;margin-bottom:.5rem">${code}</div>
+      <div style="font-size:12px;color:#8a8880">Inloggen op: <a href="${mnaUrl}" style="color:#1a7a5e">${mnaUrl}</a></div>
+    </div>
+
+    <!-- Stappen -->
+    <h2 style="font-size:14px;font-weight:700;color:#1a1815;margin:1.5rem 0 .5rem">Hoe werkt het?</h2>
+    ${isVerkoper ? stappenVerkoper : stappenKoper}
+
+    <!-- Platform uitleg -->
+    <div style="background:#fafaf8;border:1px solid #dddbd4;border-radius:8px;padding:1.25rem;margin:1.5rem 0">
+      <div style="font-size:11px;font-weight:700;color:#5a5854;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.75rem">Over het platform</div>
+      <table style="width:100%;border-collapse:collapse">
+        <tr><td style="padding:5px 0;font-size:12px;color:#8a8880;width:28px">🔒</td><td style="padding:5px 0;font-size:12px;color:#5a5854"><strong>Beveiligd</strong> — Versleuteld via HTTPS, EU-servers (Frankfurt). Gegevens uitsluitend voor dit traject.</td></tr>
+        <tr><td style="padding:5px 0;font-size:12px;color:#8a8880">🤖</td><td style="padding:5px 0;font-size:12px;color:#5a5854"><strong>AI-analyse</strong> — Geüploade documenten worden automatisch geanalyseerd en relevante velden ingevuld.</td></tr>
+        <tr><td style="padding:5px 0;font-size:12px;color:#8a8880">📱</td><td style="padding:5px 0;font-size:12px;color:#5a5854"><strong>Altijd toegankelijk</strong> — Via desktop of mobiel, geen installatie nodig.</td></tr>
+        <tr><td style="padding:5px 0;font-size:12px;color:#8a8880">✍️</td><td style="padding:5px 0;font-size:12px;color:#5a5854"><strong>Digitaal ondertekenen</strong> — NDA, LoI en overeenkomsten worden digitaal aangeboden via Signhost.</td></tr>
+        <tr><td style="padding:5px 0;font-size:12px;color:#8a8880">📋</td><td style="padding:5px 0;font-size:12px;color:#5a5854"><strong>Volledig dossier</strong> — Alle documenten, gesprekken en communicatie op één plek.</td></tr>
+      </table>
+    </div>
+
+    <p style="font-size:13px;color:#5a5854;line-height:1.75">
+      Heeft u vragen over het platform of het traject? Neem dan contact op met uw adviseur.
+    </p>
+
+    <!-- CTA knop -->
+    <div style="text-align:center;margin:2rem 0">
+      <a href="${mnaUrl}" style="display:inline-block;background:#1a7a5e;color:#fff;font-family:Helvetica,Arial,sans-serif;font-size:14px;font-weight:700;padding:14px 32px;border-radius:6px;text-decoration:none;letter-spacing:.03em">Naar het platform →</a>
+    </div>
+  </div>
+
+  <!-- Adviseur footer -->
+  <div style="background:#f0eeea;border-top:1px solid #dddbd4;padding:1.25rem 2.5rem">
+    <div style="font-size:11px;font-weight:700;color:#8a8880;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.5rem">Uw adviseur</div>
+    <div style="font-size:13px;font-weight:600;color:#2a2825">${adv_naam}</div>
+    <div style="font-size:12px;color:#8a8880;margin-top:.2rem">Bisschops Financing B.V.</div>
+    <div style="font-size:12px;color:#8a8880">${adv_tel} &nbsp;·&nbsp; <a href="mailto:${adv_email}" style="color:#1a7a5e">${adv_email}</a></div>
+  </div>
+
+  <!-- Legal footer -->
+  <div style="padding:.875rem 2.5rem;text-align:center">
+    <div style="font-size:10px;color:#c8c5bc;line-height:1.6">
+      Deze uitnodiging is persoonlijk en vertrouwelijk. Deel uw toegangscode niet met derden.<br>
+      Gegevens worden verwerkt conform de AVG. <a href="https://koersvoormorgen.nl/privacy.html" style="color:#aaa">Privacyverklaring</a> &nbsp;·&nbsp; <a href="https://koersvoormorgen.nl/voorwaarden.html" style="color:#aaa">Voorwaarden</a>
+    </div>
+  </div>
+
+</div>
+</body></html>`;
+
+      const r = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + env.RESEND_API_KEY },
+        body: JSON.stringify({
+          from: 'Bisschops Financing M&A <noreply@koersvoormorgen.nl>',
+          to: [to],
+          subject,
+          html
+        })
+      }).catch(() => null);
+
+      if (!r || !r.ok) {
+        const errTxt = r ? await r.text().catch(() => '') : 'fetch failed';
+        return new Response(JSON.stringify({ error: 'E-mail versturen mislukt: ' + errTxt.substring(0, 100) }), { headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
+      }
+      return new Response(JSON.stringify({ ok: true }), { headers: { ...getCORS(request), 'Content-Type': 'application/json' } });
     }
 
         return new Response(JSON.stringify({ status: 'KantoorInzicht Worker actief', path }), {
