@@ -3041,9 +3041,10 @@ async function renderComplianceTab(el) {
 
   var html = '<div class="table-wrap">'
     + '<div class="table-hdr"><div class="table-title">&#128274; Verwerkersovereenkomsten (VOK) & AVG-compliance</div>'
-    + '<div style="display:flex;gap:8px">'
+    + '<div style="display:flex;gap:8px;align-items:center">'
     + '<span style="font-size:12px;padding:4px 12px;border-radius:12px;background:var(--teal-bg);color:var(--teal);border:1px solid var(--teal-dark)">&#10003; '+getekend.length+' getekend</span>'
     + '<span style="font-size:12px;padding:4px 12px;border-radius:12px;background:var(--gold-bg);color:var(--gold);border:1px solid var(--gold)">&#9888; '+ongetekend.length+' ontbreekt</span>'
+    + '<button id="vok-reset-btn" class="btn-red" style="font-size:11px;padding:4px 10px;margin-left:8px">&#128465; Reset VOK (test)</button>'
     + '</div></div>'
     + '<div style="padding:1.25rem">';
 
@@ -3117,6 +3118,25 @@ async function renderComplianceTab(el) {
   html += '</div></div>';
 
   el.innerHTML = html;
+
+  // VOK reset knop handler
+  var vokResetBtn = document.getElementById('vok-reset-btn');
+  if (vokResetBtn) {
+    vokResetBtn.addEventListener('click', async function() {
+      if (!confirm('Alle VOK-records verwijderen? Alleen doen in testomgeving.')) return;
+      vokResetBtn.disabled = true; vokResetBtn.textContent = 'Bezig...';
+      var fouten = 0;
+      for (var i = 0; i < mnaList.length; i++) {
+        var tCode = mnaList[i].tussen_code;
+        if (!tCode || tCode === '—') continue;
+        try {
+          await fetch(WORKER + '/mna/vok/reset?code=' + encodeURIComponent(tCode) + '&key=' + encodeURIComponent(adminKey), { method: 'POST' });
+        } catch(e) { fouten++; }
+      }
+      toast(fouten === 0 ? '&#10003; VOK records gewist' : '⚠ ' + fouten + ' fouten', fouten === 0 ? 'ok' : 'warn');
+      renderComplianceTab(el);
+    });
+  }
 }
 
 async function renderGebruikersTab(el) {
