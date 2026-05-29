@@ -130,7 +130,7 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--s
 <script>
 var WORKER='https://kantoorinzicht.marcel-bisschops.workers.dev';
 
-function versieLabel(){return '';}
+function versieLabel(){var v=window._versie||'v1.11';return '<span style="font-size:10px;font-weight:600;font-family:IBM Plex Mono,monospace;color:var(--muted);margin-left:8px">'+(v.startsWith('v')?v:'v'+v)+'</span>';}
 
 // Laad versie bij startup
 fetch(WORKER+'/mna/versie').then(function(r){return r.json();}).then(function(d){
@@ -1320,7 +1320,7 @@ function uitloggen(){
   secAuditLog('logout');
   secReset();
   Object.keys(DOCS).forEach(function(k){delete DOCS[k];});
-  S={screen:'login',code:'',rol:'',traject:null,fase:0,checked:{},data:{},docRefs:{},notities:{},aiTexts:{},aiLoading:{},saveTimer:null,showValidation:false,dataroomLoading:false,dataroom:null,_opy:{},_epy:{},_conflicts:[],_pendingConflicts:{},bemTekst:'',bemDatum:0,bemGetekend:'',bemDocId:'',bemDocNaam:'',exclTekst:'',exclDatum:0,exclGetekend:'',exclDocId:'',exclDocNaam:''};
+  S={screen:'login',code:'',rol:'',traject:null,fase:0,checked:{},data:{},docRefs:{},notities:{},aiTexts:{},aiLoading:{},saveTimer:null,showValidation:false,dataroomLoading:false,dataroom:null,_opy:{},_epy:{},_conflicts:[],_pendingConflicts:{}};
   renderApp();
 }
 
@@ -1405,7 +1405,7 @@ function renderDataroom(){
   var docs=S.dataroom||[];
   var byFase={};docs.forEach(function(d){if(!byFase[d.fase_id])byFase[d.fase_id]=[];byFase[d.fase_id].push(d);});
   var totaal=docs.filter(function(d){return d.bewaard;}).length;
-  var html='<div class="wrap anim"><div class="hdr"><div class="brand"><div class="wdot"></div>KantoorInzicht &middot; Dataroom'+'</div>'
+  var html='<div class="wrap anim"><div class="hdr"><div class="brand"><div class="wdot"></div>KantoorInzicht &middot; Dataroom'+versieLabel()+'</div>'
     +'<div style="display:flex;gap:8px"><button class="btn-ghost btn-sm" onclick="window.print()">PDF</button>'
     +'<button class="btn-ghost btn-sm" onclick="S.screen=\'main\';renderApp()">&#8592; Terug</button></div></div>'
     +'<div style="font-family:Playfair Display,serif;font-size:1.4rem;color:var(--head);font-weight:600;margin-bottom:.25rem">Dataroom</div>'
@@ -1474,7 +1474,7 @@ function renderWaardering(){
   var earnJaarlijks=earnBase*(earnPct/100)/earnJaren;
 
   var html='<div class="wrap anim">'
-    +'<div class="hdr"><div class="brand"><div class="wdot"></div>KantoorInzicht &middot; Waardering'+'</div>'
+    +'<div class="hdr"><div class="brand"><div class="wdot"></div>KantoorInzicht &middot; Waardering'+versieLabel()+'</div>'
     +'<div style="display:flex;gap:8px">'
     +'<button class="btn-ghost btn-sm" onclick="window.print()">PDF</button>'
     +'<button class="btn-ghost btn-sm" onclick="S.screen=\'cover\';renderApp()">&#8592; Terug</button>'
@@ -1743,182 +1743,9 @@ async function renderLogboekScreen(app){
 }
 
 
-function toonNieuwTrajectModalTussen(){
-  // Genereer een suggestie voor codenaam
-  var adjectieven=['Amber','Blauw','Groen','Zilver','Goud','Wit','Robijn','Kobalt','Mist','Storm'];
-  var zelfstandigen=['Eik','Beuk','Rots','Rivier','Berg','Dal','Ster','Maan','Bron','Haven'];
-  var willekeurig=adjectieven[Math.floor(Math.random()*adjectieven.length)]+'-'+zelfstandigen[Math.floor(Math.random()*zelfstandigen.length)];
-
-  var ov=document.createElement('div');ov.className='overlay';
-  var mo=document.createElement('div');mo.className='modal';mo.style.maxWidth='500px';
-  mo.innerHTML='<div class="modal-title">&#43; Nieuw traject aanmaken</div>'
-    +'<div style="background:var(--teal-bg);border:1px solid var(--teal-dark);border-radius:var(--r);padding:.75rem 1rem;margin-bottom:1.25rem;font-size:12px;color:var(--teal-dim);line-height:1.7">'
-    +'<strong>Privacy-eerste aanpak:</strong> Gebruik een codenaam in plaats van echte namen. '
-    +'Geen persoonsgegevens nodig — de verkoper vult zijn eigen gegevens in na inloggen met zijn code.'
-    +'</div>'
-    +'<div class="field"><label>Codenaam traject <span style="color:var(--red)">*</span>'
-    +'<span style="font-size:10px;font-weight:400;color:var(--muted);margin-left:6px">bijv. een codenaam, geen echte bedrijfsnaam</span></label>'
-    +'<div style="display:flex;gap:6px">'
-    +'<input type="text" id="nt-naam" placeholder="bijv. Project Amber-Eik" value="'+willekeurig+'" style="flex:1">'
-    +'<button type="button" id="nt-shuffle" class="btn-ghost" style="font-size:12px;padding:6px 10px" title="Genereer nieuwe suggestie">&#8635;</button>'
-    +'</div></div>'
-    +'<div class="field"><label>Trajecttype</label>'
-    +'<select id="nt-type">'
-    +'<option value="Verkoop">Verkoop</option>'
-    +'<option value="PE-traject">PE-traject</option>'
-    +'<option value="Overname">Overname</option>'
-    +'<option value="Fusie">Fusie</option>'
-    +'<option value="Opvolging">Opvolging</option>'
-    +'</select></div>'
-    +'<div style="border-top:1px solid var(--border);margin:.75rem 0;padding-top:.75rem">'
-    +'<div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:.6rem">Optioneel — alleen als je nu al codes wil versturen</div>'
-    +'<div class="field"><label>E-mail verkoper</label><input type="email" id="nt-email" placeholder="Wordt niet opgeslagen — alleen voor directe verzending"></div>'
-    +'<div class="field"><label>E-mail koper</label><input type="email" id="nt-koper-email" placeholder="Optioneel"></div>'
-    +'</div>'
-    +'<div id="nt-err" style="display:none;color:var(--red);font-size:12px;margin-bottom:.5rem"></div>'
-    +'<div id="nt-res" style="display:none;background:var(--teal-bg);border:1px solid var(--teal-dark);border-radius:var(--r);padding:1.25rem;margin-bottom:.75rem"></div>'
-    +'<div style="display:flex;gap:8px;justify-content:flex-end">'
-    +'<button class="btn-ghost" id="nt-ann">Annuleren</button>'
-    +'<button class="btn" id="nt-ok">Codes aanmaken</button>'
-    +'</div>';
-  ov.appendChild(mo);document.body.appendChild(ov);
-  ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
-  document.getElementById('nt-ann').onclick=function(){document.body.removeChild(ov);};
-
-  // Shuffle knop
-  var adjectieven2=['Amber','Blauw','Groen','Zilver','Goud','Wit','Robijn','Kobalt','Mist','Storm','Saffier','Koraal'];
-  var zelfstandigen2=['Eik','Beuk','Rots','Rivier','Berg','Dal','Ster','Maan','Bron','Haven','Veld','Kust'];
-  document.getElementById('nt-shuffle').onclick=function(){
-    document.getElementById('nt-naam').value=adjectieven2[Math.floor(Math.random()*adjectieven2.length)]+'-'+zelfstandigen2[Math.floor(Math.random()*zelfstandigen2.length)];
-  };
-
-  document.getElementById('nt-ok').onclick=async function(){
-    var btn=this;btn.disabled=true;btn.textContent='Aanmaken...';
-    var err=document.getElementById('nt-err');err.style.display='none';
-    var codenaam=document.getElementById('nt-naam').value.trim();
-    if(!codenaam){err.style.display='block';err.textContent='Codenaam is verplicht.';btn.disabled=false;btn.textContent='Codes aanmaken';return;}
-    try{
-      var r=await fetch(WORKER+'/mna/create',{method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({
-          kantoor_naam:codenaam,
-          traject_type:document.getElementById('nt-type').value,
-          contact_naam:'',
-          contact_email:'',
-          koper_naam:'',
-          koper_email:'',
-          begeleider_naam:S.traject&&S.traject.begeleider_naam||'',
-          begeleider_email:S.traject&&S.traject.begeleider_email||'',
-          tussen_code_vast:S.code  // koppel aan deze tussenpersoon
-        })});
-      var d=await r.json();
-      if(d.ok){
-        var res=document.getElementById('nt-res');res.style.display='block';
-        res.innerHTML='<div style="font-size:11px;font-weight:600;color:var(--teal);text-transform:uppercase;letter-spacing:.1em;margin-bottom:.75rem">&#10003; Codes aangemaakt — '+esc(codenaam)+'</div>'
-          +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:.75rem">'
-          +'<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r);padding:.6rem .875rem">'
-          +'<div style="font-size:10px;color:var(--muted);margin-bottom:3px">Verkoperscode</div>'
-          +'<div style="font-family:IBM Plex Mono,monospace;font-size:1.1rem;font-weight:600;color:var(--teal);letter-spacing:.1em">'+d.code+'</div>'
-          +(document.getElementById('nt-email').value?'<div style="font-size:10px;color:var(--muted);margin-top:3px">Sturen naar: '+esc(document.getElementById('nt-email').value)+'</div>':'')
-          +'</div>'
-          +'<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r);padding:.6rem .875rem">'
-          +'<div style="font-size:10px;color:var(--muted);margin-bottom:3px">Koperscode</div>'
-          +'<div style="font-family:IBM Plex Mono,monospace;font-size:1.1rem;font-weight:600;color:var(--gold);letter-spacing:.1em">'+d.koper_code+'</div>'
-          +(document.getElementById('nt-koper-email').value?'<div style="font-size:10px;color:var(--muted);margin-top:3px">Sturen naar: '+esc(document.getElementById('nt-koper-email').value)+'</div>':'')
-          +'</div>'
-          +'</div>'
-          +'<div style="font-size:11px;color:var(--muted);line-height:1.6;margin-bottom:.75rem">'
-          +'Inloggen op: <strong>koersvoormorgen.nl/mna.html</strong><br>'
-          +'De verkoper vult zelf zijn gegevens in — jij beheert het traject met je eigen code <strong>'+S.code+'</strong>.'
-          +'</div>'
-          +'<div style="display:flex;gap:6px">'
-          +'<button id="nt-kopieer" class="btn-ghost" style="font-size:11px;padding:5px 12px">&#8690; Kopieer codes</button>'
-          +(document.getElementById('nt-email').value||document.getElementById('nt-koper-email').value
-            ?'<button id="nt-stuur-email" class="btn" style="font-size:11px;padding:5px 12px;background:var(--teal)">&#9993; Stuur codes per e-mail</button>':'')
-          +'</div>';
-
-        // Kopieer knop
-        document.getElementById('nt-kopieer').onclick=function(){
-          var tekst='Traject: '+codenaam+'
-Verkoperscode: '+d.code+'
-Koperscode: '+d.koper_code+'
-Inloggen: koersvoormorgen.nl/mna.html';
-          navigator.clipboard.writeText(tekst).then(function(){toast('Codes gekopieerd','ok');});
-        };
-
-        // Stuur e-mail als adressen zijn ingevuld
-        var stuurBtn=document.getElementById('nt-stuur-email');
-        if(stuurBtn)stuurBtn.onclick=async function(){
-          stuurBtn.disabled=true;stuurBtn.textContent='Versturen...';
-          var verkEmail=document.getElementById('nt-email').value.trim();
-          var kopEmail=document.getElementById('nt-koper-email').value.trim();
-          var mnaUrl='https://koersvoormorgen.nl/mna.html';
-          // Stuur verkoper e-mail
-          if(verkEmail){
-            var htmlVerk='<div style="font-family:sans-serif;max-width:600px">'
-              +'<div style="background:#1a7a5e;color:#fff;padding:1.5rem;border-radius:8px 8px 0 0"><h2 style="margin:0;font-size:1.1rem">M&A Traject — Uw toegangscode</h2></div>'
-              +'<div style="background:#fff;border:1px solid #ddd;border-top:none;padding:1.5rem;border-radius:0 0 8px 8px">'
-              +'<p style="font-size:13px;color:#5a5854;line-height:1.7">U bent uitgenodigd om deel te nemen aan een vertrouwelijk M&A-traject. Via onderstaande code heeft u toegang tot een beveiligde omgeving.</p>'
-              +'<div style="background:#f0faf6;border:1px solid #0a3d2e;border-radius:8px;padding:1.25rem;margin:1.25rem 0;text-align:center">'
-              +'<div style="font-size:11px;color:#145f48;font-weight:600;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.4rem">Uw toegangscode</div>'
-              +'<div style="font-family:monospace;font-size:1.8rem;font-weight:700;color:#1a7a5e;letter-spacing:.2em">'+d.code+'</div>'
-              +'<div style="font-size:12px;color:#8a8880;margin-top:.4rem">Inloggen op: <a href="'+mnaUrl+'" style="color:#1a7a5e">'+mnaUrl+'</a></div>'
-              +'</div>'
-              +'<p style="font-size:12px;color:#8a8880">Uw gegevens worden verwerkt conform de AVG. Voor vragen: neem contact op met uw adviseur.</p>'
-              +'</div></div>';
-            await fetch(WORKER+'/mna/doc-melding',{method:'POST',headers:{'Content-Type':'application/json'},
-              body:JSON.stringify({code:d.code,fase_label:'Toegangscode',bestanden:[],uploader_naam:'Systeem',uploader_rol:'systeem',
-                _override_subject:'Uw toegangscode voor het M&A-traject',_override_to:verkEmail,_override_html:htmlVerk})}).catch(function(){});
-          }
-          toast('Codes verstuurd','ok');
-          stuurBtn.textContent='Verstuurd &#10003;';
-        };
-
-        btn.textContent='Klaar';
-        toast('Traject aangemaakt: '+codenaam,'ok',5000);
-      } else {
-        err.style.display='block';err.textContent=d.error||'Fout bij aanmaken';
-        btn.disabled=false;btn.textContent='Codes aanmaken';
-      }
-    }catch(e2){err.style.display='block';err.textContent='Verbindingsfout';btn.disabled=false;btn.textContent='Codes aanmaken';}
-  };
-}
-
-
 // VERWERKERSOVEREENKOMST
 var VOK_VERSIE = '1.0';
-var VOK_TEKST = [
-  'VERWERKERSOVEREENKOMST',
-  'Bisschops Financing B.V. — KantoorInzicht Platform',
-  'Versie 1.0 | Mei 2026',
-  '',
-  'Partijen',
-  'Verwerkingsverantwoordelijke: De tussenpersoon/adviseur die gebruik maakt van het KantoorInzicht-platform (hierna: Gebruiker).',
-  'Verwerker: Bisschops Financing B.V., Grotestraat 13, 5841AA Oploo (hierna: Bisschops Financing).',
-  '',
-  'Artikel 1 — Doel en grondslag',
-  'Bisschops Financing verwerkt persoonsgegevens uitsluitend ten behoeve van de dienstverlening via het KantoorInzicht-platform. Gebruiker blijft te allen tijde verwerkingsverantwoordelijke voor de gegevens van zijn klanten.',
-  '',
-  'Artikel 2 — Aard van de verwerking',
-  'Bisschops Financing verwerkt uitsluitend de persoonsgegevens die door of namens Gebruiker worden ingevoerd in het platform. Dit omvat: contactgegevens, financiële bedrijfsdata, documenten en communicatie in het kader van M&A-trajecten.',
-  '',
-  'Artikel 3 — Beveiliging',
-  'Bisschops Financing treft passende technische en organisatorische maatregelen ter beveiliging van persoonsgegevens. Gegevens worden opgeslagen in Cloudflare-datacenters binnen de EU (Frankfurt, Duitsland). Verbindingen zijn versleuteld via HTTPS.',
-  '',
-  'Artikel 4 — Bewaartermijn',
-  'Persoonsgegevens worden bewaard zolang het traject actief is en maximaal 7 jaar daarna conform wettelijke bewaartermijnen, tenzij Gebruiker eerder verzoekt tot verwijdering.',
-  '',
-  'Artikel 5 — Sub-verwerkers',
-  'Bisschops Financing maakt gebruik van de volgende sub-verwerkers: Cloudflare Inc. (infrastructuur, EU), Anthropic PBC (AI-verwerking, VS — onder EU-adequaatheidsbesluit), Resend Inc. (e-mail), Signhost/Entrust (elektronische handtekeningen).',
-  '',
-  'Artikel 6 — Rechten betrokkenen',
-  'Gebruiker is verantwoordelijk voor het faciliteren van de rechten van betrokkenen (inzage, rectificatie, verwijdering). Bisschops Financing verleent hiertoe medewerking op verzoek.',
-  '',
-  'Artikel 7 — Datalekken',
-  'Bisschops Financing informeert Gebruiker zonder onredelijke vertraging na ontdekking van een datalek dat de persoonsgegevens van Gebruikers klanten betreft.',
-  '',
-  'Artikel 8 — Toepasselijk recht',
-  'Op deze verwerkersovereenkomst is Nederlands recht van toepassing. Geschillen worden voorgelegd aan de Rechtbank Oost-Brabant.',
-].join('\n');
+var VOK_TEKST = 'VERWERKERSOVEREENKOMST\nBisschops Financing B.V. — KantoorInzicht Platform\nVersie 1.0 | Mei 2026\n\nPartijen\nVerwerkingsverantwoordelijke: De tussenpersoon/adviseur die gebruik maakt van het KantoorInzicht-platform.\nVerwerker: Bisschops Financing B.V., Grotestraat 13, 5841AA Oploo.\n\nArtikel 1 — Doel en grondslag\nBisschops Financing verwerkt persoonsgegevens uitsluitend ten behoeve van de dienstverlening via het KantoorInzicht-platform. Gebruiker blijft te allen tijde verwerkingsverantwoordelijke voor de gegevens van zijn klanten.\n\nArtikel 2 — Aard van de verwerking\nBisschops Financing verwerkt uitsluitend de persoonsgegevens die door of namens Gebruiker worden ingevoerd. Dit omvat: contactgegevens, financiële bedrijfsdata, documenten en communicatie in het kader van M&A-trajecten.\n\nArtikel 3 — Beveiliging\nBisschops Financing treft passende technische en organisatorische maatregelen. Gegevens worden opgeslagen in Cloudflare-datacenters binnen de EU (Frankfurt). Verbindingen zijn versleuteld via HTTPS.\n\nArtikel 4 — Bewaartermijn\nPersoonsgegevens worden bewaard zolang het traject actief is en maximaal 7 jaar daarna, tenzij Gebruiker eerder verzoekt tot verwijdering.\n\nArtikel 5 — Sub-verwerkers\nCloudflare Inc. (infrastructuur, EU), Anthropic PBC (AI, VS), Resend Inc. (e-mail), Signhost/Entrust (handtekeningen).\n\nArtikel 6 — Rechten betrokkenen\nGebruiker is verantwoordelijk voor het faciliteren van de rechten van betrokkenen. Bisschops Financing verleent hiertoe medewerking op verzoek.\n\nArtikel 7 — Datalekken\nBisschops Financing informeert Gebruiker zonder onredelijke vertraging na ontdekking van een datalek.\n\nArtikel 8 — Toepasselijk recht\nNederlands recht. Geschillen: Rechtbank Oost-Brabant.';
 
 async function checkVOK(code) {
   try {
@@ -1928,61 +1755,105 @@ async function checkVOK(code) {
   } catch(e) { return { getekend: false }; }
 }
 
-async function toonVOKPopup(code, onAkkoord) {
+function toonVOKPopup(code, onAkkoord) {
   var ov = document.createElement('div');
-  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:2000;display:flex;align-items:center;justify-content:center;padding:1.5rem';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:2000;display:flex;align-items:center;justify-content:center;padding:1.5rem';
   var mo = document.createElement('div');
-  mo.style.cssText = 'background:var(--panel);border:1px solid var(--border2);border-radius:var(--r2);padding:2rem;max-width:620px;width:100%;max-height:90vh;overflow-y:auto';
+  mo.style.cssText = 'background:var(--panel);border:1px solid var(--border2);border-radius:var(--r2);padding:2rem;max-width:600px;width:100%;max-height:90vh;overflow-y:auto';
   mo.innerHTML = '<div style="font-family:Playfair Display,serif;font-size:1.2rem;color:var(--head);font-weight:600;margin-bottom:.4rem">Verwerkersovereenkomst</div>'
-    + '<div style="font-size:11px;color:var(--muted);margin-bottom:1.25rem">Versie 1.0 · Bisschops Financing B.V. · Vereist voor gebruik van KantoorInzicht</div>'
-    + '<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:1rem;max-height:280px;overflow-y:auto;font-size:12px;font-family:Georgia,serif;line-height:1.8;color:var(--sub);white-space:pre-wrap;margin-bottom:1.25rem">' + esc(VOK_TEKST) + '</div>'
+    + '<div style="font-size:11px;color:var(--muted);margin-bottom:1rem">Versie 1.0 · Bisschops Financing B.V. · Vereist voor gebruik van KantoorInzicht</div>'
+    + '<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:1rem;max-height:260px;overflow-y:auto;font-size:12px;line-height:1.8;color:var(--sub);white-space:pre-wrap;margin-bottom:1rem">' + esc(VOK_TEKST) + '</div>'
     + '<div style="background:var(--teal-bg);border:1px solid var(--teal-dark);border-radius:var(--r);padding:.75rem 1rem;margin-bottom:1rem;font-size:12px;color:var(--teal-dim);line-height:1.6">'
-    + '<strong>Akkoord geven:</strong> Door uw naam in te vullen en op "Akkoord & doorgaan" te klikken, bevestigt u dat u deze verwerkersovereenkomst heeft gelezen en namens uw organisatie accepteert.'
+    + 'Door uw naam in te vullen en op Akkoord te klikken bevestigt u dat u deze verwerkersovereenkomst heeft gelezen en accepteert.'
     + '</div>'
-    + '<div class="field"><label>Uw volledige naam <span style="color:var(--red)">*</span></label><input type="text" id="vok-naam" placeholder="Voor- en achternaam" style="background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:9px 12px;font-size:13px;width:100%"></div>'
+    + '<div style="margin-bottom:.75rem"><label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Uw volledige naam</label>'
+    + '<input type="text" id="vok-naam" placeholder="Voor- en achternaam" style="width:100%;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:9px 12px;font-size:13px;font-family:IBM Plex Sans,sans-serif;color:var(--sub);outline:none"></div>'
     + '<div id="vok-err" style="display:none;color:var(--red);font-size:12px;margin-bottom:.5rem"></div>'
-    + '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:.75rem">'
-    + '<button id="vok-download" class="btn-ghost" style="font-size:12px;padding:7px 14px">&#128196; Download PDF</button>'
+    + '<div style="display:flex;gap:8px;justify-content:flex-end">'
+    + '<button id="vok-dl" class="btn-ghost" style="font-size:12px;padding:7px 14px">&#128196; Download</button>'
     + '<button id="vok-ok" class="btn" style="font-size:12px;padding:7px 18px">&#10003; Akkoord &amp; doorgaan</button>'
     + '</div>';
   ov.appendChild(mo);
   document.body.appendChild(ov);
-
-  // Download als tekstbestand
-  document.getElementById('vok-download').onclick = function() {
+  document.getElementById('vok-dl').onclick = function() {
     var blob = new Blob([VOK_TEKST], { type: 'text/plain;charset=utf-8' });
     var url = URL.createObjectURL(blob);
-    var a = document.createElement('a'); a.href = url;
-    a.download = 'Verwerkersovereenkomst_KantoorInzicht_v1.0.txt';
-    document.body.appendChild(a); a.click();
-    document.body.removeChild(a); URL.revokeObjectURL(url);
+    var a = document.createElement('a'); a.href = url; a.download = 'VOK_KantoorInzicht_v1.0.txt';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
   };
-
   document.getElementById('vok-ok').onclick = async function() {
     var btn = this; btn.disabled = true; btn.textContent = 'Opslaan...';
     var naam = document.getElementById('vok-naam').value.trim();
     var errEl = document.getElementById('vok-err');
-    if (!naam) {
-      errEl.style.display = 'block'; errEl.textContent = 'Naam is verplicht.';
-      btn.disabled = false; btn.textContent = '✓ Akkoord & doorgaan'; return;
-    }
+    if (!naam) { errEl.style.display='block'; errEl.textContent='Naam is verplicht.'; btn.disabled=false; btn.textContent='Akkoord & doorgaan'; return; }
     try {
-      var r = await fetch(WORKER + '/mna/vok/teken', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: code, naam: naam, versie: VOK_VERSIE })
-      });
+      var r = await fetch(WORKER + '/mna/vok/teken', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ code:code, naam:naam, versie:VOK_VERSIE }) });
       var d = await r.json();
-      if (d.ok) {
-        document.body.removeChild(ov);
-        onAkkoord();
-      } else {
-        errEl.style.display = 'block'; errEl.textContent = d.error || 'Fout bij opslaan.';
-        btn.disabled = false; btn.textContent = '✓ Akkoord & doorgaan';
-      }
-    } catch(e) {
-      errEl.style.display = 'block'; errEl.textContent = 'Verbindingsfout.';
-      btn.disabled = false; btn.textContent = '✓ Akkoord & doorgaan';
-    }
+      if (d.ok) { document.body.removeChild(ov); onAkkoord(); }
+      else { errEl.style.display='block'; errEl.textContent=d.error||'Fout.'; btn.disabled=false; btn.textContent='Akkoord & doorgaan'; }
+    } catch(e) { errEl.style.display='block'; errEl.textContent='Verbindingsfout.'; btn.disabled=false; btn.textContent='Akkoord & doorgaan'; }
+  };
+}
+
+function toonNieuwTrajectModalTussen(){
+  var adj=['Amber','Blauw','Groen','Zilver','Goud','Wit','Robijn','Kobalt','Mist','Storm','Saffier','Koraal'];
+  var zn=['Eik','Beuk','Rots','Rivier','Berg','Dal','Ster','Maan','Bron','Haven','Veld','Kust'];
+  function nieuweCode(){return adj[Math.floor(Math.random()*adj.length)]+'-'+zn[Math.floor(Math.random()*zn.length)];}
+  var ov=document.createElement('div');ov.className='overlay';
+  var mo=document.createElement('div');mo.className='modal';mo.style.maxWidth='500px';
+  mo.innerHTML='<div class="modal-title">&#43; Nieuw traject — privacy-eerste</div>'
+    +'<div style="background:var(--teal-bg);border:1px solid var(--teal-dark);border-radius:var(--r);padding:.75rem 1rem;margin-bottom:1.25rem;font-size:12px;color:var(--teal-dim);line-height:1.7">'
+    +'Gebruik een codenaam. Geen persoonsgegevens nodig — de verkoper vult zijn eigen gegevens in na inloggen.'
+    +'</div>'
+    +'<div style="margin-bottom:.75rem"><label style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:4px">Codenaam <span style="color:var(--red)">*</span></label>'
+    +'<div style="display:flex;gap:6px"><input type="text" id="nt-naam" value="'+nieuweCode()+'" style="flex:1;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:9px 12px;font-size:13px;font-family:IBM Plex Mono,monospace;color:var(--sub);outline:none">'
+    +'<button type="button" id="nt-shuffle" class="btn-ghost" style="font-size:12px;padding:6px 10px">&#8635;</button></div></div>'
+    +'<div style="margin-bottom:.75rem"><label style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:4px">Trajecttype</label>'
+    +'<select id="nt-type" style="width:100%;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:9px 12px;font-size:13px;font-family:IBM Plex Sans,sans-serif;color:var(--sub)">'
+    +'<option value="Verkoop">Verkoop</option><option value="PE-traject">PE-traject</option>'
+    +'<option value="Overname">Overname</option><option value="Fusie">Fusie</option><option value="Opvolging">Opvolging</option>'
+    +'</select></div>'
+    +'<div style="border-top:1px solid var(--border);margin:.75rem 0;padding-top:.75rem;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:.6rem">Optioneel — codes direct versturen</div>'
+    +'<div style="margin-bottom:.75rem"><label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">E-mail verkoper</label>'
+    +'<input type="email" id="nt-email" placeholder="Wordt alleen gebruikt voor directe verzending" style="width:100%;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:8px 12px;font-size:13px;font-family:IBM Plex Sans,sans-serif;color:var(--sub);outline:none"></div>'
+    +'<div id="nt-err" style="display:none;color:var(--red);font-size:12px;margin-bottom:.5rem"></div>'
+    +'<div id="nt-res" style="display:none;background:var(--teal-bg);border:1px solid var(--teal-dark);border-radius:var(--r);padding:1.25rem;margin-bottom:.75rem"></div>'
+    +'<div style="display:flex;gap:8px;justify-content:flex-end">'
+    +'<button class="btn-ghost" id="nt-ann">Annuleren</button>'
+    +'<button class="btn" id="nt-ok">Codes aanmaken</button></div>';
+  ov.appendChild(mo);document.body.appendChild(ov);
+  ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
+  document.getElementById('nt-ann').onclick=function(){document.body.removeChild(ov);};
+  document.getElementById('nt-shuffle').onclick=function(){document.getElementById('nt-naam').value=nieuweCode();};
+  document.getElementById('nt-ok').onclick=async function(){
+    var btn=this;btn.disabled=true;btn.textContent='Aanmaken...';
+    var err=document.getElementById('nt-err');err.style.display='none';
+    var codenaam=document.getElementById('nt-naam').value.trim();
+    if(!codenaam){err.style.display='block';err.textContent='Codenaam is verplicht.';btn.disabled=false;btn.textContent='Codes aanmaken';return;}
+    try{
+      var r=await fetch(WORKER+'/mna/create',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({kantoor_naam:codenaam,traject_type:document.getElementById('nt-type').value,
+          contact_naam:'',contact_email:'',koper_naam:'',koper_email:'',
+          begeleider_naam:S.traject&&S.traject.begeleider_naam||'',
+          begeleider_email:S.traject&&S.traject.begeleider_email||'',
+          tussen_code_vast:S.code})});
+      var d=await r.json();
+      if(d.ok){
+        var res=document.getElementById('nt-res');res.style.display='block';
+        res.innerHTML='<div style="font-size:11px;font-weight:600;color:var(--teal);margin-bottom:.6rem">&#10003; Aangemaakt — '+esc(codenaam)+'</div>'
+          +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:.6rem">'
+          +'<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r);padding:.6rem .875rem">'
+          +'<div style="font-size:10px;color:var(--muted);margin-bottom:2px">Verkoperscode</div>'
+          +'<div style="font-family:IBM Plex Mono,monospace;font-size:1.1rem;font-weight:600;color:var(--teal)">'+d.code+'</div></div>'
+          +'<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r);padding:.6rem .875rem">'
+          +'<div style="font-size:10px;color:var(--muted);margin-bottom:2px">Koperscode</div>'
+          +'<div style="font-family:IBM Plex Mono,monospace;font-size:1.1rem;font-weight:600;color:var(--gold)">'+d.koper_code+'</div></div>'
+          +'</div>'
+          +'<div style="font-size:11px;color:var(--muted)">Inloggen op: koersvoormorgen.nl/mna.html &nbsp;|&nbsp; Beheer via je eigen code <strong>'+S.code+'</strong></div>';
+        btn.textContent='Klaar';
+        toast('Traject aangemaakt: '+codenaam,'ok');
+      } else { err.style.display='block';err.textContent=d.error||'Fout';btn.disabled=false;btn.textContent='Codes aanmaken'; }
+    }catch(e2){err.style.display='block';err.textContent='Verbindingsfout';btn.disabled=false;btn.textContent='Codes aanmaken';}
   };
 }
 
@@ -1994,7 +1865,6 @@ function renderApp(){
   else if(S.screen==='summary')app.innerHTML=renderSummary();
   else if(S.screen==='dataroom')app.innerHTML=renderDataroom();
   else if(S.screen==='waardering')app.innerHTML=renderWaardering();
-  else if(S.screen==='infofase')renderInfoFaseScherm(app);
   else if(S.screen==='logboek')renderLogboekScreen(app);
   else if(S.screen==='begeleider')renderBegeleiderDashboard(app);
   bindAll();
@@ -2026,348 +1896,74 @@ function renderLogin(){
 
 function renderBegeleiderDashboard(app){
   var t=S.traject||{};
-  var activeTab=S._bgTab||'overzicht';
-
-  var faseLabels={financieel:'I. Financieel',commercieel:'II. Klanten & commercieel',partner:'III. Partners & personeel',compliance:'IV. Compliance & kwaliteit',it:'V. IT & automatisering',juridisch:'VI. Juridisch & fiscaal',strategisch:'VII. Strategisch & markt',algemeen:'Diversen'};
-
-  // Tabbladen
-  var tabs=[
-    {id:'overzicht',label:'&#128200; Overzicht'},
-    {id:'dd',label:'&#128196; DD-data'},
-    {id:'documenten',label:'&#128193; Documenten'},
-    {id:'docs-versies',label:'&#128203; Contracten'},
-    {id:'gesprekken',label:'&#128172; Gesprekken'},
-    {id:'logboek',label:'&#128221; Logboek'},
-    {id:'acties',label:'&#9881; Acties'}
-  ];
-
-  var tabHtml=tabs.map(function(tab){
-    var active=tab.id===activeTab;
-    return '<button class="bg-tab-btn'+(active?' bg-tab-active':'')+'" data-tab="'+tab.id+'" style="font-size:12px;padding:7px 14px;border:none;border-bottom:2px solid '+(active?'var(--teal)':'transparent')+';background:transparent;cursor:pointer;color:'+(active?'var(--teal)':'var(--mid)')+';font-family:IBM Plex Sans,sans-serif;font-weight:'+(active?'600':'400')+'">'+tab.label+'</button>';
-  }).join('');
-
+  var lb=window.partijLabels?window.partijLabels(t.traject_type||'Verkoop'):{sectie1:'Verkoper',sectie2:'Koper'};
   var html='<div class="wrap anim">'
-    +'<div class="hdr"><div class="brand"><div class="wdot"></div>KantoorInzicht &middot; M&A Begeleider</div>'
+    +'<div class="hdr"><div class="brand"><div class="wdot"></div>KantoorInzicht &middot; M&A Begeleider'+versieLabel()+'</div>'
     +'<div style="display:flex;gap:8px">'
-    +'<button class="btn btn-sm" id="bg-nieuw-traject-btn" style="font-size:12px;padding:6px 14px">&#43; Nieuw traject</button>'
     +'<button class="btn-ghost btn-sm" onclick="window.print()">&#128196; PDF</button>'
     +'<button class="btn-ghost btn-sm" onclick="uitloggen()">&#8592; Uitloggen</button>'
     +'</div></div>'
-    // Traject header
-    +'<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;margin-bottom:1rem">'
-    +'<div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:.75rem">'
+    // Traject info
+    +'<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;margin-bottom:1.25rem">'
+    +'<div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:1rem">'
     +'<div>'
-    +'<div style="font-family:Playfair Display,serif;font-size:1.2rem;font-weight:600;color:var(--head)">'+esc(t.kantoor_naam||'Traject')+'</div>'
-    +'<div style="font-size:12px;color:var(--muted);margin-top:.2rem">'+esc(t.traject_type||'M&A')+' &middot; '
-    +'Verkoper: <span style="font-family:IBM Plex Mono,monospace;color:var(--teal)">'+esc(t.id||'')+'</span> &middot; '
-    +'Koper: <span style="font-family:IBM Plex Mono,monospace;color:var(--gold)">'+esc(t.koper_code||'')+'</span> &middot; '
-    +'Tussen: <span style="font-family:IBM Plex Mono,monospace;color:var(--mid)">'+esc(S.code||'')+'</span>'
+    +'<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.25rem">Traject</div>'
+    +'<div style="font-family:Playfair Display,serif;font-size:1.3rem;font-weight:600;color:var(--head)">'+esc(t.kantoor_naam||'Traject')+'</div>'
+    +'<div style="font-size:12px;color:var(--muted);margin-top:.25rem">'+esc(t.traject_type||'M&A')+' &middot; Code: <span style="font-family:IBM Plex Mono,monospace;color:var(--teal)">'+esc(S.code)+'</span></div>'
     +'</div>'
-    +'<div style="font-size:11px;color:var(--muted);margin-top:.2rem">'
-    +esc(t.contact_naam||'')+' &middot; '+(t.contact_email?'<a href="mailto:'+esc(t.contact_email)+'" style="color:var(--teal)">'+esc(t.contact_email)+'</a>':'—')
-    +(t.koper_naam?' &nbsp;|&nbsp; Koper: '+esc(t.koper_naam)+(t.koper_contact?' ('+esc(t.koper_contact)+')':''):'')
-    +'</div></div>'
-    +'<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
     +(t.koper_vrijgegeven
       ?'<button class="btn-ghost btn-sm" id="bg-intrekken" style="color:var(--red);border-color:var(--red)">&#128275; Vrijgave intrekken</button>'
       :'<button class="btn btn-sm" id="bg-vrijgeven">&#128275; Koper toegang geven</button>')
-    +'<span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:12px;background:'+(t.status==='vergrendeld'?'var(--red-bg)':'var(--teal-bg)')+';color:'+(t.status==='vergrendeld'?'var(--red)':'var(--teal)')+';border:1px solid '+(t.status==='vergrendeld'?'var(--red)':'var(--teal-dark)')+'">'+esc(t.status||'actief')+'</span>'
+    +'<span style="display:inline-block;padding:4px 12px;border-radius:12px;font-size:11px;font-weight:600;background:'+(t.status==='vergrendeld'?'var(--red-bg)':'var(--teal-bg)')+';color:'+(t.status==='vergrendeld'?'var(--red)':'var(--teal)')+';border:1px solid '+(t.status==='vergrendeld'?'var(--red)':'var(--teal-dark)')+'">'+esc(t.status||'actief')+'</span>'
     +'</div></div></div>'
-    // Tabbladen
-    +'<div style="display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:1.25rem;overflow-x:auto">'+tabHtml+'</div>'
-    +'<div id="bg-tab-content">';
+    // Actie knoppen
+    +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1.25rem">'
+    +'<button class="btn" id="bg-nda-actie" style="background:#7c5cbf;padding:12px;font-size:13px">&#128274; NDA</button>'
+    +'<button class="btn" id="bg-loi-actie" style="background:var(--gold);padding:12px;font-size:13px">&#128196; LoI</button>'
+    +'<button class="btn" id="bg-bem-actie" style="background:#2a5ea0;padding:12px;font-size:13px">&#128203; BEM</button>'
+    +'<button class="btn" id="bg-gesprek-actie" style="background:var(--teal);padding:12px;font-size:13px">&#128172; Gesprek</button>'
+    +'<button class="btn" id="bg-infoverzoek-actie" style="background:var(--teal-dim);padding:12px;font-size:13px">&#128203; Informatieverzoek</button>'
+    +'</div>'
+    // Doc output
+    +'<div id="bg-doc-out" style="display:none;margin-bottom:1.25rem"></div>'
+    // Gesprek output
+    +'<div id="bg-gesp-out" style="display:none;margin-bottom:1.25rem"></div>'
+    // DD data per fase
+    +'<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem">Due diligence voortgang</div>';
 
-  // ── TAB: OVERZICHT ──────────────────────────────────────
-  if(activeTab==='overzicht'){
-    var totaalVelden=0,gevuldeVelden=0;
-    (S._mnaData||[]).forEach(function(row){
-      try{var dj=typeof row.data_json==='string'?JSON.parse(row.data_json):row.data_json||{};
-        var vals=Object.values(dj);totaalVelden+=vals.length;gevuldeVelden+=vals.filter(function(v){return v&&v.value;}).length;
-      }catch(e){}
-    });
-    var fillPctTot=totaalVelden?Math.round(gevuldeVelden/totaalVelden*100):0;
-
-    html+='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1.25rem">'
-      +'<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1rem;text-align:center"><div style="font-size:1.6rem;font-weight:700;color:var(--teal)">'+fillPctTot+'%</div><div style="font-size:10px;color:var(--muted);text-transform:uppercase">DD ingevuld</div></div>'
-      +'<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1rem;text-align:center"><div style="font-size:1.6rem;font-weight:700;color:var(--sub)">'+(S._bgDocs?S._bgDocs.length:0)+'</div><div style="font-size:10px;color:var(--muted);text-transform:uppercase">Documenten</div></div>'
-      +'<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1rem;text-align:center"><div style="font-size:1.6rem;font-weight:700;color:var(--gold)">'+(S._bgVersies?S._bgVersies.length:0)+'</div><div style="font-size:10px;color:var(--muted);text-transform:uppercase">Contracten</div></div>'
-      +'<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1rem;text-align:center"><div style="font-size:1.6rem;font-weight:700;color:#7c5cbf">'+(S._bgGesprekken?S._bgGesprekken.length:0)+'</div><div style="font-size:10px;color:var(--muted);text-transform:uppercase">Gesprekken</div></div>'
-      +'</div>';
-
-    // Snelle samenvatting per fase
-    html+='<div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:.5rem">DD voortgang per fase</div>';
-    html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:1.25rem">';
-    Object.keys(faseLabels).slice(0,7).forEach(function(faseId){
-      var row=(S._mnaData||[]).find(function(r){return r.fase_id===faseId;});
-      var items=0,total=0;
-      if(row){try{var dj=typeof row.data_json==='string'?JSON.parse(row.data_json):row.data_json||{};var vals=Object.values(dj);total=vals.length;items=vals.filter(function(v){return v&&v.value;}).length;}catch(e){}}
-      var p=total?Math.round(items/total*100):0;
-      var kleur=p>=80?'var(--teal)':p>=40?'var(--gold)':'var(--border2)';
-      html+='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r);padding:.6rem .875rem;display:flex;align-items:center;justify-content:space-between">'
-        +'<span style="font-size:12px;color:var(--sub)">'+faseLabels[faseId]+'</span>'
-        +'<div style="display:flex;align-items:center;gap:8px">'
-        +'<div style="width:60px;height:4px;background:var(--border);border-radius:2px;overflow:hidden"><div style="height:100%;background:'+kleur+';width:'+p+'%"></div></div>'
-        +'<span style="font-size:11px;font-weight:600;color:'+kleur+';min-width:28px;text-align:right">'+p+'%</span>'
-        +'</div></div>';
-    });
-    html+='</div>';
-
-    // Recente documenten
-    if(S._bgDocs&&S._bgDocs.length){
-      html+='<div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:.5rem">Recente uploads</div>';
-      html+='<div style="display:flex;flex-direction:column;gap:4px;margin-bottom:1.25rem">';
-      S._bgDocs.slice(0,5).forEach(function(doc){
-        var dt=doc.uploaded_at?new Date(doc.uploaded_at).toLocaleDateString('nl-NL',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'';
-        html+='<div style="display:flex;align-items:center;gap:10px;padding:6px 10px;background:var(--panel);border:1px solid var(--border);border-radius:var(--r)">'
-          +'<span style="font-size:11px;font-weight:600;padding:2px 7px;border-radius:3px;background:var(--card);color:var(--muted)">'+esc(faseLabels[doc.fase_id]||doc.fase_id||'—')+'</span>'
-          +'<span style="font-size:12px;color:var(--sub);flex:1">'+esc(doc.bestand_naam||'')+'</span>'
-          +'<span style="font-size:11px;color:var(--muted)">'+dt+'</span>'
-          +(doc.bewaard?'<a href="'+WORKER+'/mna/document/download/'+doc.id+'?key="+S._bgKey" target="_blank" style="font-size:11px;color:var(--teal)">&#8681;</a>':'')
-          +'</div>';
-      });
+  var faseLabels={financieel:'I. Financieel',commercieel:'II. Klanten & commercieel',partner:'III. Partners & personeel',compliance:'IV. Compliance & kwaliteit',it:'V. IT & automatisering',juridisch:'VI. Juridisch & fiscaal',strategisch:'VII. Strategisch & markt'};
+  Object.keys(faseLabels).forEach(function(faseId){
+    var row=(S._mnaData||[]).find(function(r){return r.fase_id===faseId;});
+    var items=[];
+    if(row){try{var dj=typeof row.data_json==='string'?JSON.parse(row.data_json):row.data_json;items=Object.values(dj||{}).filter(function(v){return v&&v.value;});}catch(e){}}
+    var pct=row?Math.round(items.length/Math.max(1,Object.keys(row.data_json&&typeof row.data_json==='string'?JSON.parse(row.data_json||'{}'):row.data_json||{}).length)*100):0;
+    var kleur=pct>=80?'var(--teal)':pct>=40?'var(--gold)':'var(--red)';
+    html+='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);margin-bottom:.5rem;overflow:hidden">'
+      +'<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;cursor:pointer;background:var(--card)" class="bg-fase-hdr" data-fase="'+faseId+'">'
+      +'<span style="font-size:13px;font-weight:500;color:var(--head)">'+faseLabels[faseId]+'</span>'
+      +'<div style="display:flex;align-items:center;gap:10px">'
+      +'<span style="font-size:11px;font-weight:600;color:'+kleur+'">'+items.length+' velden ingevuld</span>'
+      +'<span style="font-size:12px;color:var(--muted)">&#9660;</span>'
+      +'</div></div>'
+      +'<div class="bg-fase-body" data-fase="'+faseId+'" style="display:none;padding:12px 14px">';
+    if(!items.length){html+='<div style="color:var(--muted);font-size:12px;font-style:italic">Nog niets ingevuld door verkoper.</div>';}
+    else{
+      html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">';
+      items.forEach(function(v){html+='<div style="background:var(--card);border-radius:var(--r);padding:6px 10px"><div style="font-size:10px;color:var(--muted);margin-bottom:2px">'+esc(v.label||'')+'</div><div style="font-size:12px;font-family:IBM Plex Mono,monospace;color:var(--sub)">'+esc(v.value||'')+'</div></div>';});
       html+='</div>';
     }
-    html+='<div style="display:flex;gap:8px"><button class="btn" id="bg-ai-actie" style="background:#6b7c93;font-size:12px">&#9881; AI-analyse genereren</button></div>';
-    html+='<div id="bg-ai-out" style="display:none;margin-top:1rem"></div>';
-  }
+    html+='</div></div>';
+  });
 
-  // ── TAB: DD-DATA ────────────────────────────────────────
-  else if(activeTab==='dd'){
-    Object.keys(faseLabels).slice(0,7).forEach(function(faseId){
-      var row=(S._mnaData||[]).find(function(r){return r.fase_id===faseId;});
-      var items=[];
-      if(row){try{var dj=typeof row.data_json==='string'?JSON.parse(row.data_json):row.data_json;items=Object.values(dj||{}).filter(function(v){return v&&v.value;});}catch(e){}}
-      var kleur=items.length>=5?'var(--teal)':items.length>0?'var(--gold)':'var(--border2)';
-      html+='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);margin-bottom:.5rem;overflow:hidden">'
-        +'<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;cursor:pointer;background:var(--card)" class="bg-fase-hdr" data-fase="'+faseId+'">'
-        +'<span style="font-size:13px;font-weight:500;color:var(--head)">'+faseLabels[faseId]+'</span>'
-        +'<div style="display:flex;align-items:center;gap:10px">'
-        +'<span style="font-size:11px;font-weight:600;color:'+kleur+'">'+items.length+' velden</span>'
-        +'<span style="font-size:12px;color:var(--muted)">&#9660;</span>'
-        +'</div></div>'
-        +'<div class="bg-fase-body" data-fase="'+faseId+'" style="display:none;padding:12px 14px">';
-      if(!items.length){html+='<div style="color:var(--muted);font-size:12px;font-style:italic">Nog niets ingevuld.</div>';}
-      else{
-        html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">';
-        items.forEach(function(v){html+='<div style="background:var(--card);border-radius:var(--r);padding:6px 10px"><div style="font-size:10px;color:var(--muted);margin-bottom:2px">'+esc(v.label||'')+'</div><div style="font-size:12px;font-family:IBM Plex Mono,monospace;color:var(--sub)">'+esc(v.value||'')+'</div></div>';});
-        html+='</div>';
-      }
-      html+='</div></div>';
-    });
-  }
-
-  // ── TAB: DOCUMENTEN ─────────────────────────────────────
-  else if(activeTab==='documenten'){
-    html+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">'
-      +'<div style="font-size:13px;color:var(--muted)">'+(S._bgDocs?S._bgDocs.length:0)+' document(en) in dataroom</div>'
-      +'<button id="bg-docs-refresh" class="btn-ghost" style="font-size:11px;padding:4px 10px">&#8635; Vernieuwen</button>'
-      +'</div>';
-    if(!S._bgDocs||!S._bgDocs.length){
-      html+='<div style="color:var(--muted);font-size:13px;font-style:italic;padding:1rem 0">Nog geen documenten geüpload.</div>';
-    } else {
-      // Groepeer per fase
-      var perFase={};
-      S._bgDocs.forEach(function(doc){
-        var f=doc.fase_id||'algemeen';
-        if(!perFase[f])perFase[f]=[];
-        perFase[f].push(doc);
-      });
-      Object.keys(perFase).forEach(function(faseId){
-        var docs=perFase[faseId];
-        html+='<div style="margin-bottom:1rem">'
-          +'<div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:.4rem">'+esc(faseLabels[faseId]||faseId)+'</div>';
-        docs.forEach(function(doc){
-          var dt=doc.uploaded_at?new Date(doc.uploaded_at).toLocaleDateString('nl-NL',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'';
-          var gr=doc.bestand_grootte?(doc.bestand_grootte/1024).toFixed(0)+'KB':'';
-          html+='<div style="display:flex;align-items:center;gap:10px;padding:7px 10px;background:var(--panel);border:1px solid var(--border);border-radius:var(--r);margin-bottom:3px">'
-            +'<span style="font-size:15px">'+(doc.bestand_type&&doc.bestand_type.includes('pdf')?'📄':'📃')+'</span>'
-            +'<div style="flex:1;min-width:0">'
-            +'<div style="font-size:12px;font-weight:500;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(doc.bestand_naam||'')+'</div>'
-            +'<div style="font-size:10px;color:var(--muted)">'+dt+(gr?' &middot; '+gr:'')+'</div>'
-            +'</div>'
-            +'<select data-docid="'+doc.id+'" class="bg-herclassificeer" style="font-size:11px;background:var(--card);border:1px solid var(--border2);border-radius:3px;padding:2px 6px;color:var(--sub)">'
-            +Object.keys(faseLabels).map(function(f){return '<option value="'+f+'"'+(f===faseId?' selected':'')+'>'+faseLabels[f]+'</option>';}).join('')
-            +'</select>'
-            +(doc.bewaard?'<a href="'+WORKER+'/mna/document/download/'+doc.id+'?key='+encodeURIComponent(S._bgKey)+'" target="_blank" class="btn-ghost" style="font-size:11px;padding:3px 8px;text-decoration:none;white-space:nowrap">&#8681; Open</a>':'')
-            +'</div>';
-        });
-        html+='</div>';
-      });
-    }
-  }
-
-  // ── TAB: CONTRACTEN ─────────────────────────────────────
-  else if(activeTab==='docs-versies'){
-    var docKleuren={nda:'#7c5cbf',loi:'var(--gold)',bem:'#2a5ea0',bem_verk:'#2a5ea0',bem_koper:'#2a5ea0',exclusief:'var(--teal)'};
-    var docNamen={nda:'NDA',loi:'LoI',bem:'BEM',bem_verk:'BEM Verkoop',bem_koper:'BEM Aankoop',exclusief:'Exclusiviteitsbrief'};
-    if(!S._bgVersies||!S._bgVersies.length){
-      html+='<div style="color:var(--muted);font-size:13px;font-style:italic;padding:1rem 0">Nog geen contracten gegenereerd of verstuurd.</div>';
-    } else {
-      S._bgVersies.forEach(function(v){
-        var kleur=docKleuren[v.doc_type]||'var(--teal)';
-        var dt=v.created_at?new Date(v.created_at).toLocaleString('nl-NL',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'';
-        var naar=v.verstuurd_naar?JSON.parse(v.verstuurd_naar||'[]').join(', '):'—';
-        html+='<div style="background:var(--panel);border:1px solid var(--border);border-left:3px solid '+kleur+';border-radius:var(--r);padding:.75rem 1rem;margin-bottom:.5rem;cursor:pointer" class="bg-versie-row" data-vid="'+v.id+'">'
-          +'<div style="display:flex;align-items:center;justify-content:space-between">'
-          +'<div style="display:flex;align-items:center;gap:10px">'
-          +'<span style="font-size:11px;font-weight:600;color:'+kleur+';padding:2px 8px;border-radius:3px;background:rgba(0,0,0,.05)">'+esc(docNamen[v.doc_type]||v.doc_type)+' v'+v.versie+'</span>'
-          +'<span style="font-size:11px;color:var(--muted)">'+dt+'</span>'
-          +'</div>'
-          +'<span style="font-size:11px;color:var(--muted)">naar: '+esc(naar.substring(0,40))+'</span>'
-          +'</div></div>';
-      });
-    }
-    // Actie knoppen voor nieuwe contracten
-    html+='<div style="margin-top:1rem;border-top:1px solid var(--border);padding-top:1rem">'
-      +'<div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:.75rem">Nieuw document genereren</div>'
-      +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
-      +'<button class="btn" id="bg-nda-actie" style="background:#7c5cbf;font-size:12px;padding:7px 14px">&#128274; NDA</button>'
-      +'<button class="btn" id="bg-loi-actie" style="background:var(--gold);font-size:12px;padding:7px 14px">&#128196; LoI</button>'
-      +'<button class="btn" id="bg-bem-actie" style="background:#2a5ea0;font-size:12px;padding:7px 14px">&#128203; BEM</button>'
-      +'<button class="btn" id="bg-excl-actie" style="background:var(--teal);font-size:12px;padding:7px 14px">&#128196; Exclusiviteit</button>'
-      +'</div>'
-      +'<div id="bg-doc-out" style="display:none;margin-top:1rem"></div>'
-      +'</div>';
-  }
-
-  // ── TAB: GESPREKKEN ─────────────────────────────────────
-  else if(activeTab==='gesprekken'){
-    html+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">'
-      +'<div style="font-size:13px;color:var(--muted)">'+(S._bgGesprekken?S._bgGesprekken.length:0)+' gesprek(ken) vastgelegd</div>'
-      +'<button id="bg-gesprek-actie" class="btn" style="font-size:12px;padding:6px 14px;background:var(--teal)">&#128172; Gesprek vastleggen</button>'
-      +'</div><div id="bg-gesp-out" style="display:none;margin-bottom:1rem"></div>';
-    if(!S._bgGesprekken||!S._bgGesprekken.length){
-      html+='<div style="color:var(--muted);font-size:13px;font-style:italic">Nog geen gesprekken vastgelegd.</div>';
-    } else {
-      S._bgGesprekken.forEach(function(g){
-        html+='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1rem;margin-bottom:.75rem">'
-          +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">'
-          +'<div style="font-size:12px;font-weight:600;color:var(--sub)">'+esc(g.datum||'')+(g.type?' &middot; '+esc(g.type):'')+'</div>'
-          +'<div style="font-size:11px;color:var(--muted)">'+esc(g.deelnemers||'')+'</div>'
-          +'</div>'
-          +(g.verslag?'<div style="font-size:12px;color:var(--mid);line-height:1.7;white-space:pre-wrap;max-height:200px;overflow-y:auto">'+esc(g.verslag)+'</div>'
-            :g.ruwe_notities?'<div style="font-size:12px;color:var(--muted);font-style:italic;max-height:100px;overflow-y:auto">'+esc(g.ruwe_notities)+'</div>':'')
-          +'</div>';
-      });
-    }
-  }
-
-  // ── TAB: LOGBOEK ─────────────────────────────────────────
-  else if(activeTab==='logboek'){
-    html+='<div style="display:flex;justify-content:flex-end;margin-bottom:.75rem">'
-      +'<button id="bg-logboek-refresh" class="btn-ghost" style="font-size:11px;padding:4px 10px">&#8635; Vernieuwen</button>'
-      +'</div>';
-    if(!S._bgLogboek||!S._bgLogboek.length){
-      html+='<div style="color:var(--muted);font-size:13px;font-style:italic">Nog geen logboeknotities.</div>';
-    } else {
-      S._bgLogboek.forEach(function(e){
-        var dt=new Date(e.created_at).toLocaleString('nl-NL',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
-        var isAdm=e.auteur_type==='admin'||e.auteur_type==='begeleider'||e.auteur_type==='extern';
-        html+='<div style="padding:.75rem 1rem;margin-bottom:.5rem;border-radius:var(--r);background:var(--panel);border:1px solid var(--border);border-left:3px solid '+(isAdm?'var(--teal)':'var(--gold)')+'">'
-          +(e.fase_gewijzigd?'<div style="font-size:10px;font-weight:600;color:var(--teal);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">&#8594; Fase gewijzigd</div>':'')
-          +'<div style="font-size:13px;color:var(--sub);line-height:1.7;white-space:pre-wrap">'+esc(e.bericht)+'</div>'
-          +'<div style="font-size:11px;color:var(--muted);margin-top:5px">'+esc(e.auteur||'')+(e.auteur_type?' &middot; '+esc(e.auteur_type):'')+' &middot; '+dt+'</div>'
-          +'</div>';
-      });
-    }
-    // Nieuwe notitie
-    html+='<div style="margin-top:1rem;border-top:1px solid var(--border);padding-top:1rem">'
-      +'<textarea id="bg-lb-notitie" rows="3" placeholder="Nieuwe logboeknotitie..." style="width:100%;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);font-family:IBM Plex Sans,sans-serif;font-size:13px;color:var(--sub);padding:9px 11px;outline:none;resize:vertical;margin-bottom:.5rem"></textarea>'
-      +'<button id="bg-lb-opslaan" class="btn" style="font-size:12px">Opslaan</button>'
-      +'</div>';
-  }
-
-  // ── TAB: ACTIES ──────────────────────────────────────────
-  else if(activeTab==='acties'){
-    html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
-      +'<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem">'
-      +'<div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:.75rem">Toegang</div>'
-      +(t.koper_vrijgegeven
-        ?'<button class="btn-ghost" id="bg-intrekken2" style="width:100%;color:var(--red);border-color:var(--red);margin-bottom:.5rem">&#128275; Vrijgave intrekken</button>'
-        :'<button class="btn" id="bg-vrijgeven2" style="width:100%;margin-bottom:.5rem">&#128275; Koper toegang geven</button>')
-      +'</div>'
-      +'<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem">'
-      +'<div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:.75rem">Informatieverzoek</div>'
-      +'<button class="btn" id="bg-infoverzoek-actie" style="width:100%;font-size:12px;background:var(--teal-dim)">&#128203; Stuur informatieverzoek</button>'
-      +'</div>'
-      +'</div>';
-    html+='<div style="margin-top:1rem"><div id="bg-doc-out" style="display:none"></div></div>';
-  }
-
-  html+='</div></div>';
+  // AI analyse knop
+  html+='<div style="margin-top:1rem;display:flex;gap:8px">'
+    +'<button class="btn" id="bg-ai-actie" style="background:#6b7c93">&#9881; AI-analyse genereren</button>'
+    +'</div>'
+    +'<div id="bg-ai-out" style="display:none;margin-top:1rem"></div>'
+    +'</div>';
 
   app.innerHTML=html;
-
-  // Nieuw traject knop
-  var bgNieuwBtn=document.getElementById('bg-nieuw-traject-btn');
-  if(bgNieuwBtn)bgNieuwBtn.onclick=function(){toonNieuwTrajectModalTussen();};
-
-  // Tab navigatie
-  app.querySelectorAll('.bg-tab-btn').forEach(function(btn){
-    btn.addEventListener('click',function(){
-      S._bgTab=btn.dataset.tab;
-      // Herlaad data per tab
-      if(btn.dataset.tab==='documenten'){
-        fetch(WORKER+'/mna/admin/detail/'+S.traject.id+'?key='+encodeURIComponent(S._bgKey)).then(function(r){return r.json();}).then(function(d){if(d.documenten)S._bgDocs=d.documenten;renderBegeleiderDashboard(app);}).catch(function(){renderBegeleiderDashboard(app);});
-      } else if(btn.dataset.tab==='docs-versies'){
-        fetch(WORKER+'/mna/versies/'+S.traject.id).then(function(r){return r.json();}).then(function(d){S._bgVersies=Array.isArray(d)?d:[];renderBegeleiderDashboard(app);}).catch(function(){renderBegeleiderDashboard(app);});
-      } else if(btn.dataset.tab==='gesprekken'){
-        fetch(WORKER+'/mna/admin/gesprekken/'+S.traject.id+'?key='+encodeURIComponent(S._bgKey)).then(function(r){return r.json();}).then(function(d){S._bgGesprekken=d.gesprekken||[];renderBegeleiderDashboard(app);}).catch(function(){renderBegeleiderDashboard(app);});
-      } else if(btn.dataset.tab==='logboek'){
-        fetch(WORKER+'/mna/logboek/'+S._bgKey).then(function(r){return r.json();}).then(function(d){S._bgLogboek=d.logboek||[];renderBegeleiderDashboard(app);}).catch(function(){renderBegeleiderDashboard(app);});
-      } else { renderBegeleiderDashboard(app); }
-    });
-  });
-
-  // Herclassificeer document
-  app.querySelectorAll('.bg-herclassificeer').forEach(function(sel){
-    sel.addEventListener('change',async function(){
-      var docId=sel.dataset.docid;var nieuweFase=sel.value;
-      var r=await fetch(WORKER+'/mna/document/herclassificeer/'+docId,{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':S._bgKey},body:JSON.stringify({fase_id:nieuweFase})});
-      var d=await r.json();
-      if(d.ok){toast('Geclassificeerd als '+nieuweFase,'ok');fetch(WORKER+'/mna/admin/detail/'+S.traject.id+'?key='+encodeURIComponent(S._bgKey)).then(function(r2){return r2.json();}).then(function(d2){if(d2.documenten)S._bgDocs=d2.documenten;renderBegeleiderDashboard(app);});}
-      else toast(d.error||'Fout','err');
-    });
-  });
-
-  // Docs refresh
-  var docsRefresh=ge('bg-docs-refresh');
-  if(docsRefresh)docsRefresh.onclick=function(){
-    fetch(WORKER+'/mna/admin/detail/'+S.traject.id+'?key='+encodeURIComponent(S._bgKey)).then(function(r){return r.json();}).then(function(d){if(d.documenten)S._bgDocs=d.documenten;renderBegeleiderDashboard(app);});
-  };
-
-  // Versie rij click — toon tekst
-  app.querySelectorAll('.bg-versie-row').forEach(function(row){
-    row.addEventListener('click',function(){
-      var vid=row.dataset.vid;
-      fetch(WORKER+'/mna/versie/'+vid).then(function(r){return r.json();}).then(function(v){
-        var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;display:flex;align-items:center;justify-content:center;padding:1.5rem';
-        var box=document.createElement('div');box.style.cssText='background:#fff;border-radius:10px;padding:2rem;max-width:700px;width:100%;max-height:90vh;overflow-y:auto';
-        box.innerHTML='<div style="font-size:13px;font-weight:600;color:#1a1815;margin-bottom:1rem">'+esc(v.doc_type||'')+' v'+v.versie+'</div>'
-          +'<pre style="font-family:Georgia,serif;font-size:12px;line-height:1.8;color:#2a2825;white-space:pre-wrap;max-height:60vh;overflow-y:auto">'+esc(v.tekst||'')+'</pre>'
-          +'<div style="margin-top:1rem;text-align:right"><button style="background:transparent;border:1px solid #ccc;border-radius:6px;padding:6px 16px;cursor:pointer" id="versie-sluit">Sluiten</button></div>';
-        ov.appendChild(box);document.body.appendChild(ov);
-        ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
-        document.getElementById('versie-sluit').onclick=function(){document.body.removeChild(ov);};
-      }).catch(function(){toast('Kon versie niet laden','err');});
-    });
-  });
-
-  // Logboek opslaan
-  var lbOpslaan=ge('bg-lb-opslaan');
-  if(lbOpslaan)lbOpslaan.onclick=async function(){
-    var tekst=ge('bg-lb-notitie')&&ge('bg-lb-notitie').value.trim();
-    if(!tekst)return;
-    lbOpslaan.disabled=true;lbOpslaan.textContent='Opslaan...';
-    var r=await fetch(WORKER+'/mna/logboek/'+S._bgKey,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({bericht:tekst,auteur_naam:S.traject.begeleider_naam||'Begeleider'})});
-    var d=await r.json();
-    if(d.ok){fetch(WORKER+'/mna/logboek/'+S._bgKey).then(function(r2){return r2.json();}).then(function(d2){S._bgLogboek=d2.logboek||[];renderBegeleiderDashboard(app);});}
-    else{toast(d.error||'Fout','err');lbOpslaan.disabled=false;lbOpslaan.textContent='Opslaan';}
-  };
-
-  // Vrijgeven knoppen (acties tab)
-  var vb2=ge('bg-vrijgeven2');if(vb2)vb2.onclick=ge('bg-vrijgeven')&&ge('bg-vrijgeven').onclick;
-  var ib2=ge('bg-intrekken2');if(ib2)ib2.onclick=ge('bg-intrekken')&&ge('bg-intrekken').onclick;
 
   // Fase accordeon
   app.querySelectorAll('.bg-fase-hdr').forEach(function(hdr){
@@ -2419,8 +2015,8 @@ function renderBegeleiderDashboard(app){
     var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:type==='bem'?4000:8000})});
     var rd=await resp.json();
     var tekst=rd.text||'Fout bij genereren';
-    var kleuren={nda:'#7c5cbf',loi:'var(--gold)',bem:'#2a5ea0',exclusief:'var(--teal)'};
-    var labels={nda:'NDA',loi:'LoI',bem:'Bemiddelingsovereenkomst',exclusief:'Exclusiviteitsbrief'};
+    var kleuren={nda:'#7c5cbf',loi:'var(--gold)',bem:'#2a5ea0'};
+    var labels={nda:'NDA',loi:'LoI',bem:'Bemiddelingsovereenkomst'};
     out.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem">'
       +'<div style="font-size:11px;font-weight:600;color:'+kleuren[type]+';text-transform:uppercase;letter-spacing:.1em;margin-bottom:.75rem">'+labels[type]+' gegenereerd</div>'
       +'<textarea id="bg-doc-tekst" style="width:100%;height:280px;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:Georgia,serif;font-size:12px;line-height:1.8;padding:1rem;outline:none;resize:vertical">'+esc(tekst)+'</textarea>'
@@ -2437,11 +2033,10 @@ function renderBegeleiderDashboard(app){
       var ebtn=this;ebtn.disabled=true;ebtn.textContent='Versturen...';
       var vt=document.getElementById('bg-doc-tekst').value;
       var toList=[t2.contact_email,t2.begeleider_email,t2.koper_email].filter(Boolean);
-      var ep=type==='nda'?'/mna/nda/email':type==='loi'?'/mna/loi/email':type==='exclusief'?'/mna/exclusief/email':'/mna/bem/email';
+      var ep=type==='nda'?'/mna/nda/email':type==='loi'?'/mna/loi/email':'/mna/bem/email';
       var payload={code:S.traject.id,to:toList};
       if(type==='nda')payload.nda_tekst=vt;
       else if(type==='loi')payload.loi_tekst=vt;
-      else if(type==='exclusief')payload.excl_tekst=vt;
       else{payload.bem_tekst=vt;payload.type=isSell?'verkoop':'aankoop';}
       var er=await fetch(WORKER+ep,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
       var ed=await er.json();
@@ -2452,7 +2047,6 @@ function renderBegeleiderDashboard(app){
   document.getElementById('bg-nda-actie').onclick=function(){bgDoc('nda');};
   document.getElementById('bg-loi-actie').onclick=function(){bgDoc('loi');};
   document.getElementById('bg-bem-actie').onclick=function(){bgDoc('bem');};
-  document.getElementById('bg-excl-actie').onclick=function(){bgDoc('exclusief');};
 
   // Gesprek vastleggen
   document.getElementById('bg-gesprek-actie').onclick=function(){
@@ -2591,203 +2185,6 @@ function renderBegeleiderDashboard(app){
   };
 }
 
-async function renderInfoFaseScherm(app) {
-  app.innerHTML = '<div class="wrap anim"><div class="hdr"><div class="brand"><div class="wdot"></div>KantoorInzicht &middot; M&A</div>'
-    + '<button class="btn-ghost btn-sm" onclick="S.screen=\'cover\';renderApp()">&#8592; Terug</button></div>'
-    + '<div id="ifs-body" style="padding:1rem 0"><div style="font-size:13px;color:var(--muted)">Laden...</div></div></div>';
-
-  try {
-    var r = await fetch(WORKER+'/mna/infofase/'+S.code);
-    var d = await r.json();
-    if (!d.ok) { document.getElementById('ifs-body').innerHTML='<div style="color:var(--red);font-size:13px">'+esc(d.error||'Fout')+'</div>'; return; }
-
-    var faseA = (d.fases||[]).find(function(f){return f.fase==='indicatief';});
-    var faseB = (d.fases||[]).find(function(f){return f.fase==='dd';});
-    var w = d.waardering;
-    var isV = isVerkoper();
-    var isK = isKoper();
-
-    // Laad welke items al geüpload zijn vanuit DOCS
-    if (!S._uploadedItems) S._uploadedItems = {};
-
-    var html = '';
-
-    // VERKOPER: actieve fase(s) tonen met checklist + upload
-    if (isV) {
-      var actieveFases = [];
-      if (faseA && faseA.status === 'actief') actieveFases.push({fase: faseA, label: 'Fase A — Indicatieve waardering', checklist: faseA.checklist_override ? JSON.parse(faseA.checklist_override) : d.globaalA, faseKey: 'indicatief'});
-      if (faseB && faseB.status === 'actief') actieveFases.push({fase: faseB, label: 'Fase B — Full Due Diligence', checklist: faseB.checklist_override ? JSON.parse(faseB.checklist_override) : d.globaalB, faseKey: 'dd'});
-
-      if (!actieveFases.length) {
-        html = '<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r2);padding:2rem;text-align:center">'
-          + '<div style="font-size:2rem;margin-bottom:.75rem">&#9202;</div>'
-          + '<div style="font-size:14px;font-weight:600;color:var(--sub);margin-bottom:.5rem">Nog geen informatieverzoek actief</div>'
-          + '<div style="font-size:12px;color:var(--muted)">Uw adviseur heeft nog geen informatieverzoek opengesteld. U ontvangt bericht zodra dit gereed is.</div>'
-          + '</div>';
-      } else {
-        actieveFases.forEach(function(af) {
-          var dl = af.fase.deadline ? ('<div style="font-size:11px;color:var(--gold);margin-bottom:.75rem">&#9201; Deadline: '+af.fase.deadline+'</div>') : '';
-          html += '<div style="margin-bottom:1.5rem">';
-          html += '<div style="font-family:Playfair Display,serif;font-size:1.1rem;color:var(--head);font-weight:600;margin-bottom:.25rem">'+af.label+'</div>';
-          var totaalItems = (af.checklist||[]).reduce(function(a,c){return a+(c.items||[]).length;},0);
-          var geuploadItems = Object.keys(S._uploadedItems||{}).filter(function(k){return k.startsWith(af.faseKey+'_');}).length;
-          var pctDone = totaalItems ? Math.round(geuploadItems/totaalItems*100) : 0;
-          html += '<div style="display:flex;align-items:center;gap:12px;margin-bottom:.75rem">'
-            + '<div style="font-size:12px;color:var(--muted);flex:1">Upload de gevraagde documenten per categorie. Klik op &#8679; Upload naast een item.</div>'
-            + '<div style="text-align:right;flex-shrink:0"><div style="font-size:11px;font-weight:600;color:'+(pctDone===100?'var(--teal)':'var(--gold)')+'">'+geuploadItems+'/'+totaalItems+'</div>'
-            + '<div style="width:80px;height:4px;background:var(--border);border-radius:2px;overflow:hidden;margin-top:2px"><div style="height:100%;background:'+(pctDone===100?'var(--teal)':'var(--gold)')+';width:'+pctDone+'%;border-radius:2px"></div></div>'
-            + '</div></div>';
-          html += dl;
-          (af.checklist||[]).forEach(function(cat) {
-            html += '<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);margin-bottom:.5rem;overflow:hidden">';
-            html += '<div style="padding:.6rem .875rem;background:rgba(0,0,0,.03);font-size:11px;font-weight:700;color:var(--sub)">'+esc(cat.categorie)+'</div>';
-            (cat.items||[]).forEach(function(item) {
-              var itemId = af.faseKey+'_'+cat.categorie.replace(/\s+/g,'_')+'_'+item.label.substring(0,20).replace(/\s+/g,'_');
-              html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:.5rem .875rem;border-top:1px solid var(--border)">';
-              html += '<div><div style="font-size:12px;color:var(--sub)">'+esc(item.label)+'</div>';
-              if (item.toelichting) html += '<div style="font-size:10px;color:var(--muted)">'+esc(item.toelichting)+'</div>';
-              html += '</div>';
-              var itemKey = af.faseKey+'_'+item.label;
-              var isUploaded = S._uploadedItems && S._uploadedItems[itemKey];
-              if (isUploaded) {
-                html += '<div style="display:flex;align-items:center;gap:6px">'
-                  + '<span style="font-size:10px;color:var(--teal);font-weight:600;white-space:nowrap">✓ '+esc(isUploaded)+'</span>'
-                  + '<label style="background:var(--card);border:1px solid var(--border);color:var(--muted);font-size:10px;padding:3px 8px;border-radius:var(--r);cursor:pointer;white-space:nowrap">&#8679;<input type="file" data-fase="'+af.faseKey+'" data-label="'+esc(item.label)+'" class="ifs-upload" style="display:none"></label>'
-                  + '</div>';
-              } else {
-                html += '<label style="background:var(--teal);color:#fff;font-size:10px;padding:3px 10px;border-radius:var(--r);cursor:pointer;white-space:nowrap;font-family:IBM Plex Sans,sans-serif;font-weight:600">&#8679; Upload<input type="file" data-fase="'+af.faseKey+'" data-label="'+esc(item.label)+'" class="ifs-upload" style="display:none"></label>';
-              }
-              html += '</div>';
-            });
-            html += '</div>';
-          });
-          // Knop naar DD-invulscherm
-          html += '<div style="margin-top:.75rem;padding:.75rem;background:var(--teal-bg);border:1px solid var(--teal-dark);border-radius:var(--r);display:flex;align-items:center;justify-content:space-between">'
-            + '<div style="font-size:12px;color:var(--teal-dim);line-height:1.5">Geüploade documenten worden automatisch geanalyseerd en ingevuld in het invulscherm.</div>'
-            + '<button onclick="S.screen=\'main\';renderApp();" style="background:var(--teal);color:#fff;border:none;padding:6px 14px;border-radius:var(--r);font-family:IBM Plex Sans,sans-serif;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;margin-left:12px">Bekijk ingevulde velden &#8594;</button>'
-            + '</div>';
-          html += '</div>';
-        });
-      }
-    }
-
-    // KOPER: waardering + status tonen
-    if (isK) {
-      html = '<div style="margin-bottom:1.25rem"><div style="font-family:Playfair Display,serif;font-size:1.1rem;color:var(--head);font-weight:600;margin-bottom:.5rem">Informatiestatus & Waardering</div></div>';
-      if (w && w.adviseur_akkoord) {
-        var fmt = function(n){return n?'€'+Number(n).toLocaleString('nl-NL'):null;};
-        var ai = {}; try{ai=JSON.parse(w.ai_voorstel||'{}');}catch(e){}
-        html += '<div style="background:var(--card);border:1px solid var(--teal);border-radius:var(--r2);padding:1.25rem;margin-bottom:1rem">';
-        html += '<div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--teal);margin-bottom:.75rem">&#9878; Indicatieve Waardering</div>';
-        html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:.75rem">';
-        html += '<div style="text-align:center"><div style="font-size:10px;color:var(--muted)">Bandbreedte laag</div><div style="font-size:14px;font-weight:700;color:var(--sub)">'+(fmt(w.range_laag)||'—')+'</div></div>';
-        html += '<div style="text-align:center"><div style="font-size:10px;color:var(--muted)">Indicatief midden</div><div style="font-size:18px;font-weight:700;color:var(--teal)">'+(fmt(w.range_midden)||'—')+'</div></div>';
-        html += '<div style="text-align:center"><div style="font-size:10px;color:var(--muted)">Bandbreedte hoog</div><div style="font-size:14px;font-weight:700;color:var(--sub)">'+(fmt(w.range_hoog)||'—')+'</div></div>';
-        html += '</div>';
-        if (w.onderbouwing) html += '<div style="font-size:12px;color:var(--mid);line-height:1.7;margin-bottom:.5rem">'+esc(w.onderbouwing)+'</div>';
-        if (ai.risicofactoren) html += '<div style="font-size:11px;color:var(--muted);padding:.6rem;background:rgba(0,0,0,.04);border-radius:var(--r)"><strong>Risicofactoren:</strong> '+esc(ai.risicofactoren)+'</div>';
-        html += '</div>';
-        html += '<div style="font-size:11px;color:var(--muted);padding:.75rem;background:var(--gold-bg);border:1px solid var(--gold);border-radius:var(--r)">&#9888; Dit betreft een indicatieve waardering op basis van beschikbare informatie. Geen formeel taxatierapport. Bisschops Financing BV aanvaardt geen aansprakelijkheid voor beslissingen op basis van dit overzicht.</div>';
-      } else {
-        html += '<div style="text-align:center;padding:2rem;background:var(--card);border:1px solid var(--border);border-radius:var(--r2)">';
-        html += '<div style="font-size:2rem;margin-bottom:.75rem">&#9202;</div>';
-        html += '<div style="font-size:13px;color:var(--mid)">De indicatieve waardering is nog niet vrijgegeven door uw adviseur.</div>';
-        html += '</div>';
-      }
-    }
-
-    // Tussenpersoon
-    if (!isV && !isK) {
-      html = '<div style="font-size:13px;color:var(--muted)">Fase-overzicht beschikbaar via Marilyn.</div>';
-    }
-
-    document.getElementById('ifs-body').innerHTML = html;
-
-    // Upload handlers
-    document.querySelectorAll('.ifs-upload').forEach(function(inp) {
-      inp.addEventListener('change', async function() {
-        var file = inp.files[0]; if (!file) return;
-        var fase = inp.dataset.fase;
-        var label = inp.dataset.label;
-        var lbl = inp.parentElement;
-        var origText = lbl.childNodes[0].nodeValue;
-        lbl.childNodes[0].nodeValue = 'Uploaden...';
-        try {
-          var b64 = await new Promise(function(res,rej){
-            var reader = new FileReader();
-            reader.onload = function(){res(reader.result.split(',')[1]);};
-            reader.onerror = function(){rej(new Error('Lezen mislukt'));};
-            reader.readAsDataURL(file);
-          });
-          // Bepaal DD-fase op basis van checklist-fase en bestandsnaam
-          var ddFaseMap = {
-            'indicatief': 'financieel',
-            'dd': 'financieel'
-          };
-          var naam = file.name.toLowerCase();
-          var ddFase = fase === 'indicatief' || fase === 'dd' ? (
-            (naam.includes('loon')||naam.includes('salaris')||naam.includes('personeel')) ? 'partner' :
-            (naam.includes('klant')||naam.includes('debiteur')||naam.includes('crm')) ? 'commercieel' :
-            (naam.includes('contract')||naam.includes('juridisch')||naam.includes('kvk')||naam.includes('akte')) ? 'juridisch' :
-            (naam.includes('it')||naam.includes('software')||naam.includes('systeem')) ? 'it' :
-            (naam.includes('kwaliteit')||naam.includes('compliance')||naam.includes('avg')) ? 'compliance' :
-            (naam.includes('strateg')||naam.includes('markt')) ? 'strategisch' :
-            'financieel'
-          ) : fase;
-          var bestandNaam = fase+'_'+label.substring(0,30)+'_'+file.name;
-          // Eerst uploaden naar de DD-fase MET analyse (skip_analyse: false)
-          lbl.childNodes[0].nodeValue = 'Analyseren...';
-          var formData = new FormData();
-          formData.append('file', file);
-          var uploadUrl = WORKER+'/mna/document/upload?code='+encodeURIComponent(S.code)+'&fase_id='+ddFase+'&bewaar=true';
-          var r2 = await fetch(uploadUrl, {method:'POST', body:formData});
-          var rd = await r2.json();
-          if (rd.ok) {
-            // Markeer item als geüpload (voor groene vinkjes)
-            if (!S._uploadedItems) S._uploadedItems = {};
-            S._uploadedItems[fase+'_'+label] = file.name;
-            lbl.childNodes[0].nodeValue = '✓ Geüpload';
-            // Zet in DOCS zodat de AI-analyse beschikbaar is
-            if (!DOCS[ddFase]) DOCS[ddFase] = [];
-            DOCS[ddFase].unshift({
-              id: rd.doc_id, naam: file.name, type: file.type,
-              grootte: file.size, analyse: rd.analyse,
-              velden: rd.veld_extractie || {}, bewaard: !!rd.r2_opgeslagen,
-              uploaded_at: Date.now(), uploading: false
-            });
-            // Auto-fill velden als er extractie is
-            if (rd.veld_extractie && Object.keys(rd.veld_extractie).length) {
-              S._conflicts = [];
-              autoFillFromExtraction(ddFase, rd.veld_extractie, false, file.name);
-              // Bij jaarrekeningen ook financieel proberen
-              if (ddFase !== 'financieel') {
-                autoFillFromExtraction('financieel', rd.veld_extractie, false, file.name);
-              }
-              if (S._conflicts && S._conflicts.length) {
-                setTimeout(toonConflictDialog, 300);
-              } else {
-                markDirty();
-                saveAll();
-              }
-              var aangevuld = Object.keys(rd.veld_extractie).length;
-              toast('✓ '+file.name+' geüpload — '+aangevuld+' velden geanalyseerd', 'ok');
-            } else {
-              toast('✓ '+file.name+' geüpload', 'ok');
-            }
-          } else {
-            toast(rd.error||'Upload mislukt','err');
-            lbl.childNodes[0].nodeValue = origText;
-          }
-        } catch(e) { toast('Fout: '+e.message,'err'); lbl.childNodes[0].nodeValue = origText; }
-        inp.value = '';
-      });
-    });
-
-  } catch(e) {
-    document.getElementById('ifs-body').innerHTML = '<div style="color:var(--red);font-size:13px">Fout: '+esc(e.message)+'</div>';
-  }
-}
-
 function renderCover(){
   var t=S.traject;
   var vergrendeld=t&&t.status==='vergrendeld';
@@ -2817,46 +2214,13 @@ function renderCover(){
       +'<p>Vragen? Neem contact op via <a href="mailto:marcel@bisschopsfinancing.nl" style="color:var(--teal)">marcel@bisschopsfinancing.nl</a>.</p>'
       +'<p>Met vriendelijke groet,<br><strong>Marcel Bisschops</strong><br><span style="font-size:12px;color:var(--muted)">Senior M&amp;A-adviseur &middot; Bisschops Financing BV</span></p>';
   }else if(!t.koper_vrijgegeven){
-    // Wel BEM tonen als die beschikbaar is, ook zonder vrijgave
-    var bemBlok='';
-    if(S.bemDocId||S.bemTekst){
-      bemBlok='<div style="margin-top:1.5rem;background:#eef3fa;border:1px solid #2a5ea0;border-radius:var(--r2);padding:1.25rem">'
-        +'<div style="font-size:11px;font-weight:600;color:#2a5ea0;letter-spacing:.1em;text-transform:uppercase;margin-bottom:.6rem">&#128203; Bemiddelingsovereenkomst beschikbaar</div>'
-        +'<div style="font-size:12px;color:var(--mid);margin-bottom:.75rem">De Bemiddelingsovereenkomst is opgesteld door uw adviseur.'+(S.bemDocId?' &mdash; <strong style="color:#2a5ea0">Reeds ondertekend.</strong>':'')+' </div>'
-        +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
-        +(S.bemDocId?'<a href="'+WORKER+'/mna/document/download/'+S.bemDocId+'?code='+encodeURIComponent(S.code)+'" target="_blank" class="btn-ghost" style="font-size:12px;border-color:#2a5ea0;color:#2a5ea0;text-decoration:none">&#8681; Download BEM</a>':'')
-        +(S.bemTekst&&!S.bemDocId?'<button id="bem-lees-btn" class="btn-ghost" style="font-size:12px;border-color:#2a5ea0;color:#2a5ea0">&#128065; Lees BEM</button>':'')
-        +(S.bemDocId?'<div style="font-size:11px;padding:4px 10px;border-radius:12px;background:#eef3fa;border:1px solid #2a5ea0;color:#2a5ea0;display:flex;align-items:center;gap:4px">&#10003; Document aanwezig — reeds ondertekend</div>':(!S.bemGetekend?'<button id="bem-teken-btn" class="btn" style="font-size:12px;padding:6px 14px;background:#2a5ea0">&#9998; Akkoord &amp; onderteken</button>':''))
-        +'</div></div>';
-    }
     return '<div class="wrap anim">'
-      +'<div class="hdr"><div class="brand"><div class="wdot"></div>KantoorInzicht &middot; M&amp;A'+'</div></div>'
+      +'<div class="hdr"><div class="brand"><div class="wdot"></div>KantoorInzicht &middot; M&amp;A'+versieLabel()+'</div></div>'
       +'<div class="cover-letter" style="text-align:center;padding:3rem 2rem">'
       +'<div style="font-size:2rem;margin-bottom:1rem">&#128274;</div>'
       +'<div style="font-family:Playfair Display,serif;font-size:1.3rem;color:var(--head);font-weight:600;margin-bottom:.75rem">Informatie nog niet beschikbaar</div>'
       +'<div style="font-size:13px;color:var(--mid);line-height:1.7;max-width:420px;margin:0 auto">De due diligence informatie is nog niet vrijgegeven door de adviseur.</div>'
-      +'</div>'
-      +bemBlok
-      +'<div style="margin:1.5rem 2rem;border-top:1px solid var(--border);padding-top:1.25rem">'
-      +'<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem">&#128193; Document uploaden</div>'
-      +'<div style="font-size:12px;color:var(--muted);margin-bottom:.75rem">Upload een document en geef aan om welke categorie het gaat.</div>'
-      +'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:.5rem">'
-      +'<select id="cover-upload-fase" style="background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:IBM Plex Sans,sans-serif;font-size:12px;padding:7px 10px">'
-      +'<option value="financieel">Financieel</option>'
-      +'<option value="juridisch">Juridisch</option>'
-      +'<option value="commercieel">Klanten & commercieel</option>'
-      +'<option value="partner">Personeel</option>'
-      +'<option value="compliance">Compliance & kwaliteit</option>'
-      +'<option value="it">IT & systemen</option>'
-      +'<option value="strategisch">Strategisch</option>'
-      +'<option value="algemeen" selected>Diversen</option>'
-      +'</select>'
-      +'<label style="display:inline-flex;align-items:center;gap:6px;background:var(--teal);color:#fff;font-family:IBM Plex Sans,sans-serif;font-size:12px;font-weight:600;padding:7px 16px;border-radius:var(--r);cursor:pointer">'
-      +'&#8679; Bestand kiezen<input type="file" id="cover-upload-input" multiple style="display:none"></label>'
-      +'</div>'
-      +'<div id="cover-upload-status"></div>'
-      +'</div>'
-      +'</div>';
+      +'</div></div>';
 }else{
     intro='<p>Geachte relatie,</p>'
       +'<p>Hieronder vindt u de door het kantoor ingevulde informatie in het kader van het '+esc(t.traject_type||'M&A')+'-traject. U kunt de gegevens inzien. Vragen of opmerkingen kunt u richten aan Marcel Bisschops.</p>'
@@ -2864,13 +2228,12 @@ function renderCover(){
   }
 
   return '<div class="wrap anim">'
-    +'<div class="hdr"><div class="brand"><div class="wdot"></div>KantoorInzicht &middot; M&amp;A'+'</div>'
+    +'<div class="hdr"><div class="brand"><div class="wdot"></div>KantoorInzicht &middot; M&amp;A'+versieLabel()+'</div>'
     +'<div style="display:flex;gap:8px"><button class="btn-ghost btn-sm" onclick="window.print()">PDF afdrukken</button>'
     +'<button class="btn-ghost btn-sm" onclick="uitloggen()">&#8592; Uitloggen</button>'
     +'<button class="btn-ghost btn-sm" id="logboek-btn">&#128221; Logboek</button>'
     +'</div><div style="display:flex;align-items:center;gap:10px;padding:.5rem 0"><span style="font-size:12px;color:var(--muted)">Huidige fase:</span><span id="cover-fase-badge" style="font-size:11px;font-weight:600;padding:3px 12px;border-radius:12px;background:var(--teal-bg);color:var(--teal);border:1px solid var(--teal-dark)">Laden...</span></div><div style="display:none">'
     +(isVerkoper()?'<button class="btn btn-sm" id="to-main-btn">Start invullen &#8594;</button>'
-    +'<button class="btn btn-sm" id="to-infofase-btn" style="background:var(--gold)">&#9654; Aangeleverde informatie</button>'
     :isTussen()?(t.koper_vrijgegeven
         ?'<button class="btn-ghost btn-sm" id="intrekken-btn">&#128275; Vrijgave intrekken</button>'
         :'<button class="btn btn-sm" id="vrijgeven-btn">&#128275; Koper toegang geven</button>')
@@ -2881,7 +2244,6 @@ function renderCover(){
       +' <button class="btn btn-sm" id="ai-analyse-btn-cover" style="background:#6b7c93">&#9881; AI-analyse</button>'
     :'<button class="btn btn-sm" id="to-main-btn">Bekijk data &#8594;</button>'
     +(t.koper_vrijgegeven?'<button class="btn btn-sm" id="to-waardering-btn" style="background:var(--gold)">&#9654; Waardering</button>':''))
-    +(t.koper_vrijgegeven?'<button class="btn btn-sm" id="to-infofase-koper-btn" style="background:#2a5ea0">&#128196; Informatiestatus</button>':'')
     +'</div></div>'
     +(vergrendeld?'<div style="background:var(--red-bg);border:1px solid var(--red);border-radius:var(--r);padding:10px 14px;margin-bottom:1rem;font-size:13px;color:var(--red)">&#128274; <strong>Dit traject is vergrendeld op '+(t.vergrendeld_op?new Date(t.vergrendeld_op).toLocaleString('nl-NL'):'onbekend')+'.</strong> Verdere wijzigingen zijn niet meer mogelijk.</div>':'')
     +'<div class="cover-letter">'
@@ -2905,42 +2267,7 @@ function renderCover(){
       +'<button id="loi-print2-btn" class="btn" style="font-size:12px;background:var(--gold)">&#128196; Download / Print</button>'
       +(S.loiGetekend?'<div style="font-size:11px;padding:4px 10px;border-radius:12px;background:var(--gold-bg);border:1px solid var(--gold);color:var(--gold);display:flex;align-items:center;gap:4px">&#10003; Getekend door '+esc(S.loiGetekend)+'</div>':(!isAdmin()?'<button id="loi-teken-btn" class="btn-ghost" style="font-size:12px;border-color:var(--gold);color:var(--gold)">&#9998; Akkoord &amp; onderteken</button>':''))
       +'</div></div>':'')
-    +(isKoper()&&(S.bemTekst||S.bemDocId)?'<div style="margin-top:1.5rem;background:#eef3fa;border:1px solid #2a5ea0;border-radius:var(--r2);padding:1.25rem">'
-      +'<div style="font-size:11px;font-weight:600;color:#2a5ea0;letter-spacing:.1em;text-transform:uppercase;margin-bottom:.6rem">&#128203; Bemiddelingsovereenkomst beschikbaar</div>'
-      +'<div style="font-size:12px;color:var(--mid);margin-bottom:.75rem">De Bemiddelingsovereenkomst is opgesteld door uw adviseur.'+(S.bemDocId||S.bemGetekend?' &mdash; <strong style="color:#2a5ea0">Reeds ondertekend.</strong>':' Lees het document door en onderteken digitaal.')+' </div>'
-      +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
-      +(S.bemDocId?'<a href="'+WORKER+'/mna/document/download/'+S.bemDocId+'?code='+encodeURIComponent(S.code)+'" target="_blank" class="btn-ghost" style="font-size:12px;border-color:#2a5ea0;color:#2a5ea0;text-decoration:none">&#8681; Download BEM</a>':'')
-      +(S.bemTekst&&!S.bemDocId?'<button id="bem-lees-btn" class="btn-ghost" style="font-size:12px;border-color:#2a5ea0;color:#2a5ea0">&#128065; Lees BEM</button>':'')
-      +(S.bemDocId||S.bemGetekend?'<div style="font-size:11px;padding:4px 10px;border-radius:12px;background:#eef3fa;border:1px solid #2a5ea0;color:#2a5ea0;display:flex;align-items:center;gap:4px">&#10003; '+(S.bemGetekend?'Getekend door '+esc(S.bemGetekend):'Document aanwezig — reeds ondertekend')+'</div>':'<button id="bem-teken-btn" class="btn" style="font-size:12px;padding:6px 14px;background:#2a5ea0">&#9998; Akkoord &amp; onderteken</button>')
-      +'</div></div>':'')
-    +(isVerkoper()&&(S.exclTekst||S.exclDocId)?'<div style="margin-top:1.5rem;background:var(--teal-bg);border:1px solid var(--teal-dark);border-radius:var(--r2);padding:1.25rem">'
-      +'<div style="font-size:11px;font-weight:600;color:var(--teal);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.6rem">&#128196; Exclusiviteitsbrief beschikbaar</div>'
-      +'<div style="font-size:12px;color:var(--mid);margin-bottom:.75rem">De Exclusiviteitsbrief is opgesteld.'+(S.exclDocId||S.exclGetekend?' &mdash; <strong style="color:var(--teal)">Reeds ondertekend.</strong>':' Lees het document door en onderteken digitaal.')+' </div>'
-      +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
-      +(S.exclDocId?'<a href="'+WORKER+'/mna/document/download/'+S.exclDocId+'?code='+encodeURIComponent(S.code)+'" target="_blank" class="btn-ghost" style="font-size:12px;border-color:var(--teal);color:var(--teal);text-decoration:none">&#8681; Download Exclusiviteitsbrief</a>':'')
-      +(S.exclTekst&&!S.exclDocId?'<button id="excl-lees-btn" class="btn-ghost" style="font-size:12px;border-color:var(--teal);color:var(--teal)">&#128065; Lees Exclusiviteitsbrief</button>':'')
-      +(S.exclDocId||S.exclGetekend?'<div style="font-size:11px;padding:4px 10px;border-radius:12px;background:var(--teal-bg);border:1px solid var(--teal-dark);color:var(--teal);display:flex;align-items:center;gap:4px">&#10003; '+(S.exclGetekend?'Getekend door '+esc(S.exclGetekend):'Document aanwezig — reeds ondertekend')+'</div>':'<button id="excl-teken-btn" class="btn" style="font-size:12px;padding:6px 14px;background:var(--teal)">&#9998; Akkoord &amp; onderteken</button>')
-      +'</div></div>':'')
     +(isVerkoper()?'<button class="btn" id="to-main-btn2" style="width:100%;margin-top:1rem">Start met invullen &#8594;</button>':'')
-    +'<div style="margin-top:1.5rem;border-top:1px solid var(--border);padding-top:1.25rem">'
-    +'<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem">&#128193; Document uploaden</div>'
-    +'<div style="font-size:12px;color:var(--muted);margin-bottom:.75rem">Upload een document en geef aan om welke categorie het gaat. De adviseur ontvangt direct een melding.</div>'
-    +'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:.5rem">'
-    +'<select id="cover-upload-fase" style="background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:IBM Plex Sans,sans-serif;font-size:12px;padding:7px 10px">'
-    +'<option value="financieel">Financieel</option>'
-    +'<option value="juridisch">Juridisch</option>'
-    +'<option value="commercieel">Klanten & commercieel</option>'
-    +'<option value="partner">Personeel</option>'
-    +'<option value="compliance">Compliance & kwaliteit</option>'
-    +'<option value="it">IT & systemen</option>'
-    +'<option value="strategisch">Strategisch</option>'
-    +'<option value="algemeen" selected>Diversen</option>'
-    +'</select>'
-    +'<label style="display:inline-flex;align-items:center;gap:6px;background:var(--teal);color:#fff;font-family:IBM Plex Sans,sans-serif;font-size:12px;font-weight:600;padding:7px 16px;border-radius:var(--r);cursor:pointer">'
-    +'&#8679; Bestand kiezen<input type="file" id="cover-upload-input" multiple style="display:none"></label>'
-    +'</div>'
-    +'<div id="cover-upload-status"></div>'
-    +'</div>'
     +'</div>';
 }
 
@@ -3068,7 +2395,7 @@ function renderMain(){
   var lockedBanner=vergrendeld?'<div style="background:var(--red-bg);border:1px solid var(--red);border-radius:var(--r);padding:10px 14px;margin-bottom:1rem;font-size:13px;color:var(--red)">&#128274; <strong>Dit traject is vergrendeld.</strong> U kunt geen wijzigingen meer doorvoeren.</div>':'';
 
   return '<div class="wrap anim">'
-    +'<div class="hdr"><div class="brand"><div class="wdot"></div>KantoorInzicht &middot; M&amp;A'+'</div>'
+    +'<div class="hdr"><div class="brand"><div class="wdot"></div>KantoorInzicht &middot; M&amp;A'+versieLabel()+'</div>'
     +'<div style="display:flex;align-items:center;gap:8px">'
     +'<span style="font-size:11px;color:var(--muted)">'+esc(S.traject&&S.traject.kantoor_naam||S.code)+'</span>'
     +'<button class="btn-ghost btn-sm" onclick="window.print()">PDF</button>'
@@ -3118,7 +2445,7 @@ function renderSummary(){
 
   var tp=isVerkoper()?totalFillPct():Math.round(FASES.reduce(function(a,f){return a+pct(f.id);},0)/FASES.length);
   return '<div class="wrap anim">'
-    +'<div class="hdr"><div class="brand"><div class="wdot"></div>KantoorInzicht &middot; M&amp;A'+'</div>'
+    +'<div class="hdr"><div class="brand"><div class="wdot"></div>KantoorInzicht &middot; M&amp;A'+versieLabel()+'</div>'
     +'<div style="display:flex;gap:8px"><button class="btn-ghost btn-sm" onclick="window.print()">PDF</button><button class="btn-ghost btn-sm" id="back-main">&#8592; Terug</button></div></div>'
     +(vergrendeld?'<div style="background:var(--red-bg);border:1px solid var(--red);border-radius:var(--r);padding:10px 14px;margin-bottom:1rem;font-size:13px;color:var(--red)">&#128274; Vergrendeld op '+(S.traject.vergrendeld_op?new Date(S.traject.vergrendeld_op).toLocaleString('nl-NL'):'')+'</div>':'')
     +'<div style="font-family:Playfair Display,serif;font-size:1.4rem;color:var(--head);font-weight:600;margin-bottom:.25rem">DD Samenvatting</div>'
@@ -3263,22 +2590,11 @@ function bindAll(){
         // Sla tussen_code op als begeleider-auth
         if(isTussen()){
           S._bgKey=code;S.screen='begeleider';
-          // Check VOK eerst
-          var vokStatus=await checkVOK(code);
-          var doLaadData=function(){
-          // Laad alle data parallel
-          Promise.all([
-            fetch(WORKER+'/mna/admin/detail/'+S.traject.id+'?key='+encodeURIComponent(code)).then(function(r){return r.json();}).catch(function(){return{};}).then(function(d){if(d.documenten)S._bgDocs=d.documenten;}),
-            fetch(WORKER+'/mna/versies/'+S.traject.id).then(function(r){return r.json();}).catch(function(){return[];}).then(function(d){S._bgVersies=Array.isArray(d)?d:[];}),
-            fetch(WORKER+'/mna/admin/gesprekken/'+S.traject.id+'?key='+encodeURIComponent(code)).then(function(r){return r.json();}).catch(function(){return{gesprekken:[]};}).then(function(d){S._bgGesprekken=d.gesprekken||[];}),
-            fetch(WORKER+'/mna/logboek/'+code).then(function(r){return r.json();}).catch(function(){return{logboek:[]};}).then(function(d){S._bgLogboek=d.logboek||[];})
-          ]).then(function(){renderApp();}).catch(function(){renderApp();});
-          }; // einde doLaadData
-          if(!vokStatus.getekend){
-            toonVOKPopup(code, doLaadData);
-          } else {
-            doLaadData();
-          }
+          checkVOK(code).then(function(vokStatus){
+            if(!vokStatus.getekend){ toonVOKPopup(code, function(){ renderApp(); }); }
+            else { renderApp(); }
+          }).catch(function(){ renderApp(); });
+          return; // renderApp wordt via checkVOK afgehandeld
         }
         if(d.traject&&d.traject.loi_tekst)S.loiTekst=d.traject.loi_tekst;
         if(d.traject&&d.traject.loi_datum)S.loiDatum=d.traject.loi_datum;
@@ -3286,26 +2602,7 @@ function bindAll(){
         if(d.traject&&d.traject.nda_datum)S.ndaDatum=d.traject.nda_datum;
         if(d.traject&&d.traject.nda_getekend)S.ndaGetekend=d.traject.nda_getekend;
         if(d.traject&&d.traject.loi_getekend)S.loiGetekend=d.traject.loi_getekend;
-        if(d.traject&&d.traject.bem_tekst)S.bemTekst=d.traject.bem_tekst;
-        if(d.traject&&d.traject.bem_datum)S.bemDatum=d.traject.bem_datum;
-        if(d.traject&&d.traject.bem_getekend)S.bemGetekend=d.traject.bem_getekend;
-        if(d.traject&&d.traject.excl_tekst)S.exclTekst=d.traject.excl_tekst;
-        if(d.traject&&d.traject.excl_datum)S.exclDatum=d.traject.excl_datum;
-        if(d.traject&&d.traject.excl_getekend)S.exclGetekend=d.traject.excl_getekend;
-        // Haal juridische documenten op — zoek geüploade BEM en Exclusiviteitsbrief
-        try{
-          var jDocs=await fetch(WORKER+'/mna/document/lijst/'+code).then(function(r){return r.json();}).catch(function(){return[];});
-          jDocs.forEach(function(doc){
-            var nm=(doc.bestand_naam||'').toLowerCase();
-            if(nm.includes('bem')&&!S.bemDocId){S.bemDocId=doc.id;S.bemDocNaam=doc.bestand_naam;S.bemGetekend=S.bemGetekend||'';}
-            if((nm.includes('exclusiviteit')||nm.includes('excl'))&&!S.exclDocId){S.exclDocId=doc.id;S.exclDocNaam=doc.bestand_naam;S.exclGetekend=S.exclGetekend||'';}
-          });
-        }catch(e){}
-        // Laad Signhost status
-        fetch(WORKER+'/mna/signhost/status/'+code).then(function(r){return r.json();}).then(function(d){
-          if(d.ok)S._signhostTx=d.transactions||[];
-          renderApp();
-        }).catch(function(){renderApp();});
+        renderApp();
       }catch(e){if(err)err.style.display='block';if(load)load.style.display='none';lb.disabled=false;}
     };
     var cf=ge('l-code');
@@ -3313,73 +2610,7 @@ function bindAll(){
   }
   var toMain=ge('to-main-btn');if(toMain)toMain.onclick=function(){S.screen='main';var fId=FASES[S.fase]&&FASES[S.fase].id;if(fId&&!DOCS[fId])loadDocsForFase(fId);renderApp();};
   var toMain2=ge('to-main-btn2');if(toMain2)toMain2.onclick=function(){S.screen='main';renderApp();};
-
-  // Vrije upload op cover — alle rollen
-  var coverUpload=ge('cover-upload-input');
-  if(coverUpload){
-    coverUpload.addEventListener('change',async function(){
-      var files=Array.from(this.files);if(!files.length)return;
-      var statusEl=ge('cover-upload-status');
-      var faseSelect=ge('cover-upload-fase');
-      var faseId=faseSelect?faseSelect.value:'algemeen';
-      var faseLabels={financieel:'Financieel',juridisch:'Juridisch',commercieel:'Klanten & commercieel',partner:'Personeel',compliance:'Compliance & kwaliteit',it:'IT & systemen',strategisch:'Strategisch',algemeen:'Diversen'};
-      var faseLabel=faseLabels[faseId]||faseId;
-      var uploaderRol=isVerkoper()?'Verkoper':isKoper()?'Koper':'Tussenpersoon';
-      var uploaderNaam=S.traject&&(isVerkoper()?S.traject.contact_naam:isKoper()?S.traject.koper_contact:S.traject.begeleider_naam)||uploaderRol;
-      var code=S.code;
-      var geupload=[];
-      for(var i=0;i<files.length;i++){
-        var file=files[i];
-        if(statusEl)statusEl.innerHTML='<span style="font-size:12px;color:var(--muted)">&#9881; Uploaden: '+esc(file.name)+'...</span>';
-        try{
-          var b64=await new Promise(function(res,rej){
-            var reader=new FileReader();
-            reader.onload=function(){res(reader.result.split(',')[1]);};
-            reader.onerror=function(){rej(new Error('Lezen mislukt'));};
-            reader.readAsDataURL(file);
-          });
-          var params=new URLSearchParams();
-          params.append('data',JSON.stringify({
-            code:code,fase_id:faseId,bewaar:true,skip_analyse:false,
-            bestand_naam:file.name,bestand_type:file.type||'application/octet-stream',base64:b64
-          }));
-          var r=await fetch(WORKER+'/mna/document/upload-base64',{method:'POST',body:params});
-          var d=await r.json();
-          if(d.ok||d.id){
-            geupload.push({naam:file.name,id:d.id||d.doc_id});
-            if(statusEl)statusEl.innerHTML='<span style="font-size:12px;color:var(--teal)">&#10003; '+esc(file.name)+' geüpload als '+esc(faseLabel)+'</span>';
-          } else {
-            toast(d.error||'Upload mislukt','err');
-            if(statusEl)statusEl.innerHTML='<span style="font-size:12px;color:var(--red)">Fout: '+esc(d.error||'onbekend')+'</span>';
-          }
-        }catch(e){
-          toast('Fout: '+e.message,'err');
-          if(statusEl)statusEl.innerHTML='<span style="font-size:12px;color:var(--red)">Fout: '+esc(e.message)+'</span>';
-        }
-      }
-      this.value='';
-      // Stuur melding naar adviseur als er docs zijn geupload
-      if(geupload.length&&S.traject){
-        var t2=S.traject;
-        var docLijst=geupload.map(function(d){return '• '+d.naam;}).join('\n');
-        fetch(WORKER+'/mna/doc-melding',{
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({
-            code:code,
-            fase_label:faseLabel,
-            bestanden:geupload.map(function(d){return d.naam;}),
-            uploader_naam:uploaderNaam,
-            uploader_rol:uploaderRol
-          })
-        }).catch(function(){});
-        toast(geupload.length+' document(en) geüpload als '+faseLabel+' — adviseur ontvangt melding','ok');
-      }
-    });
-  }
   var toWrd=ge('to-waardering-btn');if(toWrd)toWrd.onclick=function(){S.screen='waardering';renderApp();};
-  var toIf=ge('to-infofase-btn');if(toIf)toIf.onclick=function(){S.screen='infofase';renderApp();};
-  var toIfK=ge('to-infofase-koper-btn');if(toIfK)toIfK.onclick=function(){S.screen='infofase';renderApp();};
   var toLb=ge('logboek-btn');if(toLb)toLb.onclick=function(){S.screen='logboek';renderApp();};
   // Laad en toon huidige fase op cover
   (async function(){
@@ -3427,60 +2658,6 @@ function bindAll(){
       var r=await fetch(WORKER+'/mna/teken',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:S.code,document:'loi',naam:naam.trim()})});
       var d=await r.json();
       if(d.ok){S.loiGetekend=naam.trim();renderApp();toast('LoI getekend. De adviseur is op de hoogte gesteld.','ok');}
-      else toast('Fout: '+(d.error||'onbekend'),'err');
-    }catch(e){toast('Verbindingsfout.','err');}
-  };
-
-  // BEM lees (koper)
-  var bemLees=ge('bem-lees-btn');
-  if(bemLees)bemLees.onclick=function(){
-    var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;display:flex;align-items:center;justify-content:center;padding:1.5rem';
-    var box=document.createElement('div');box.style.cssText='background:#fff;border-radius:10px;padding:2rem;max-width:700px;width:100%;max-height:90vh;overflow-y:auto';
-    box.innerHTML='<div style="font-size:11px;font-weight:600;color:#2a5ea0;letter-spacing:.1em;text-transform:uppercase;margin-bottom:1rem">&#128203; Bemiddelingsovereenkomst</div>'
-      +'<div style="font-family:Georgia,serif;font-size:13px;line-height:1.9;color:#2a2825;white-space:pre-wrap">'+esc(S.bemTekst)+'</div>'
-      +'<div style="display:flex;justify-content:flex-end;margin-top:1.25rem"><button style="background:transparent;border:1px solid #c8c5bc;border-radius:6px;padding:8px 18px;cursor:pointer;font-size:13px" id="bem-lees-sluit">Sluiten</button></div>';
-    ov.appendChild(box);document.body.appendChild(ov);
-    ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
-    document.getElementById('bem-lees-sluit').addEventListener('click',function(){document.body.removeChild(ov);});
-  };
-
-  // BEM tekenen (koper)
-  var bemTeken=ge('bem-teken-btn');
-  if(bemTeken)bemTeken.onclick=async function(){
-    var naam=prompt('Voer uw volledige naam in ter bevestiging van akkoord:');
-    if(!naam||!naam.trim())return;
-    if(!confirm('U gaat akkoord met de Bemiddelingsovereenkomst namens '+naam.trim()+'. Bevestigen?'))return;
-    try{
-      var r=await fetch(WORKER+'/mna/teken',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:S.code,document:'bem',naam:naam.trim()})});
-      var d=await r.json();
-      if(d.ok){S.bemGetekend=naam.trim();renderApp();toast('BEM getekend. De adviseur is op de hoogte gesteld.','ok');}
-      else toast('Fout: '+(d.error||'onbekend'),'err');
-    }catch(e){toast('Verbindingsfout.','err');}
-  };
-
-  // Exclusiviteitsbrief lees (verkoper)
-  var exclLees=ge('excl-lees-btn');
-  if(exclLees)exclLees.onclick=function(){
-    var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;display:flex;align-items:center;justify-content:center;padding:1.5rem';
-    var box=document.createElement('div');box.style.cssText='background:#fff;border-radius:10px;padding:2rem;max-width:700px;width:100%;max-height:90vh;overflow-y:auto';
-    box.innerHTML='<div style="font-size:11px;font-weight:600;color:#1a7a5e;letter-spacing:.1em;text-transform:uppercase;margin-bottom:1rem">&#128196; Exclusiviteitsbrief</div>'
-      +'<div style="font-family:Georgia,serif;font-size:13px;line-height:1.9;color:#2a2825;white-space:pre-wrap">'+esc(S.exclTekst)+'</div>'
-      +'<div style="display:flex;justify-content:flex-end;margin-top:1.25rem"><button style="background:transparent;border:1px solid #c8c5bc;border-radius:6px;padding:8px 18px;cursor:pointer;font-size:13px" id="excl-lees-sluit">Sluiten</button></div>';
-    ov.appendChild(box);document.body.appendChild(ov);
-    ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
-    document.getElementById('excl-lees-sluit').addEventListener('click',function(){document.body.removeChild(ov);});
-  };
-
-  // Exclusiviteitsbrief tekenen (verkoper)
-  var exclTeken=ge('excl-teken-btn');
-  if(exclTeken)exclTeken.onclick=async function(){
-    var naam=prompt('Voer uw volledige naam in ter bevestiging van akkoord:');
-    if(!naam||!naam.trim())return;
-    if(!confirm('U gaat akkoord met de Exclusiviteitsbrief namens '+naam.trim()+'. Bevestigen?'))return;
-    try{
-      var r=await fetch(WORKER+'/mna/teken',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:S.code,document:'excl',naam:naam.trim()})});
-      var d=await r.json();
-      if(d.ok){S.exclGetekend=naam.trim();renderApp();toast('Exclusiviteitsbrief getekend. De adviseur is op de hoogte gesteld.','ok');}
       else toast('Fout: '+(d.error||'onbekend'),'err');
     }catch(e){toast('Verbindingsfout.','err');}
   };
@@ -3672,7 +2849,6 @@ function bindAll(){
         +'<button id="bg-nda-btn" style="background:#7c5cbf;color:#fff;border:none;padding:10px 16px;border-radius:6px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:13px;font-weight:600;text-align:left">&#128274; Genereer NDA</button>'
         +'<button id="bg-loi-btn" style="background:#c9a84c;color:#fff;border:none;padding:10px 16px;border-radius:6px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:13px;font-weight:600;text-align:left">&#128196; Genereer LoI</button>'
         +'<button id="bg-bem-btn" style="background:#2a5ea0;color:#fff;border:none;padding:10px 16px;border-radius:6px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:13px;font-weight:600;text-align:left">&#128203; Bemiddelingsovereenkomst</button>'
-        +'<button id="bg-excl-modal-btn" style="background:#1a7a5e;color:#fff;border:none;padding:10px 16px;border-radius:6px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:13px;font-weight:600;text-align:left">&#128196; Exclusiviteitsbrief</button>'
         +'</div>'
         +'<div id="bg-doc-output" style="margin-top:1rem"></div>'
         +'<div style="margin-top:1.25rem;text-align:right"><button id="bg-doc-sluit" style="background:transparent;border:1px solid #c8c5bc;padding:8px 16px;border-radius:6px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:13px">Sluiten</button></div>';
@@ -3686,14 +2862,12 @@ function bindAll(){
         var datum=new Date().toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'});
         var t3=S.traject;
         var isSell=!t3.traject_type||t3.traject_type==='Verkoop'||t3.traject_type==='Opvolging';
-        var tplType=type==='bem'?(isSell?'bem_verk':'bem_koper'):type==='exclusief'?'exclusief':type;
+        var tplType=type==='bem'?(isSell?'bem_verk':'bem_koper'):type;
         var tplR=await fetch(WORKER+'/mna/template/'+tplType+'?email='+encodeURIComponent(t3.begeleider_email||'')).catch(function(){return{json:function(){return{ok:false};}};});
         var tplD=await tplR.json().catch(function(){return{ok:false};});
         var prompt='';
         if(type==='nda'){
           prompt='Vul de NDA template in voor trajecttype: '+(t3.traject_type||'Verkoop')+'. Partij 1: '+esc(t3.kantoor_naam||'[verkoper]')+', '+(t3.verkoper_adres||'[adres]')+'. Partij 2: '+esc(t3.koper_naam||'[koper]')+' ('+(t3.koper_rechtsvorm||'')+'). Datum: '+datum+'. Adviseur: Bisschops Financing B.V., '+esc(t3.begeleider_naam||'Begeleider')+'.\n\nTEMPLATE:\n'+(tplD.ok&&tplD.tekst?tplD.tekst:'[standaard NDA template]');
-        }else if(type==='exclusief'){
-          prompt='Genereer een Exclusiviteitsbrief voor trajecttype: '+(t3.traject_type||'Verkoop')+'. '+lb.sectie1+': '+esc(t3.kantoor_naam||'[verkoper]')+'. '+lb.sectie2+': '+esc(t3.koper_naam||'[koper]')+'. Datum: '+datum+'. Looptijd: 4 weken. Adviseur: '+(t3.begeleider_naam||'Bisschops Financing B.V.')+'. Neem op: exclusiviteitsperiode, verbod op parallelle onderhandelingen, boetebeding €25.000, ondertekeningsblok beide partijen.';
         }else if(type==='loi'){
           prompt='Vul de LoI template in voor trajecttype: '+(t3.traject_type||'Verkoop')+'. Partij 1: '+esc(t3.kantoor_naam||'[verkoper]')+'. Partij 2: '+esc(t3.koper_naam||'[koper]')+' ('+(t3.koper_rechtsvorm||'')+'), '+(t3.koper_adres||'')+'. Datum: '+datum+'. Adviseur: '+(t3.begeleider_naam||'Bisschops Financing B.V.')+'.\n\nTEMPLATE:\n'+(tplD.ok&&tplD.tekst?tplD.tekst:'[standaard LoI template]');
         }else{
@@ -3702,7 +2876,7 @@ function bindAll(){
         var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:type==='bem'?4000:8000})});
         var rd=await resp.json();
         var tekst=rd.text||(rd.error||'Fout');
-        var labels={nda:'NDA',loi:'LoI',bem:'Bemiddelingsovereenkomst',exclusief:'Exclusiviteitsbrief'};
+        var labels={nda:'NDA',loi:'LoI',bem:'Bemiddelingsovereenkomst'};
         out.innerHTML='<div style="font-size:11px;font-weight:600;color:#2a5ea0;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.5rem">'+labels[type]+' gegenereerd</div>'
           +'<textarea style="width:100%;height:280px;background:#f0eeea;border:1px solid #c8c5bc;border-radius:6px;color:#2a2825;font-family:Georgia,serif;font-size:12px;line-height:1.8;padding:1rem;outline:none;resize:vertical" id="bg-doc-tekst">'+esc(tekst)+'</textarea>'
           +'<div style="display:flex;gap:8px;margin-top:.75rem">'
@@ -3721,11 +2895,10 @@ function bindAll(){
           var toList=[t3.contact_email||t3.begeleider_email];
           if(t3.begeleider_email&&!toList.includes(t3.begeleider_email))toList.push(t3.begeleider_email);
           if(t3.koper_email&&!toList.includes(t3.koper_email))toList.push(t3.koper_email);
-          var endpoint=type==='nda'?'/mna/nda/email':type==='loi'?'/mna/loi/email':type==='exclusief'?'/mna/exclusief/email':'/mna/bem/email';
+          var endpoint=type==='nda'?'/mna/nda/email':type==='loi'?'/mna/loi/email':'/mna/bem/email';
           var payload={code:S.code,to:toList};
           if(type==='nda')payload.nda_tekst=verzendTekst;
           else if(type==='loi')payload.loi_tekst=verzendTekst;
-          else if(type==='exclusief')payload.excl_tekst=verzendTekst;
           else{payload.bem_tekst=verzendTekst;payload.type=isSell?'verkoop':'aankoop';}
           var er=await fetch(WORKER+endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
           var ed=await er.json();
@@ -3736,7 +2909,6 @@ function bindAll(){
       document.getElementById('bg-nda-btn').onclick=function(){bgGenereerDoc('nda');};
       document.getElementById('bg-loi-btn').onclick=function(){bgGenereerDoc('loi');};
       document.getElementById('bg-bem-btn').onclick=function(){bgGenereerDoc('bem');};
-      document.getElementById('bg-excl-modal-btn').onclick=function(){bgGenereerDoc('exclusief');};
     };
   }
 
