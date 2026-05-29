@@ -443,7 +443,9 @@ function renderMnaTab(el){
         +'<td style="font-weight:500;color:var(--head)">'+esc(t.kantoor_naam||'—')+'</td>'
         +'<td>'+esc(t.traject_type||'—')+(t.sector&&t.sector!=='accountancy'?'<br><span style="font-size:10px;background:var(--teal-bg);color:var(--teal-dim);border:1px solid var(--teal-dark);border-radius:3px;padding:1px 5px">'+esc({mkb:'MKB',zorg:'Zorg',itsoftware:'IT/SW'}[t.sector]||t.sector)+'</span>':'')+'</td>'
         +'<td><span class="tag" style="'+(verg?'background:var(--red-bg);color:var(--red);border-color:var(--red)':'')+'">'+esc(t.status||'actief')+'</span></td>'
-        +'<td><span class="code-chip">'+esc(t.id)+'</span><button class="copy-btn" data-copy="'+esc(t.id)+'">⎘</button></td>'
+        +'<td><span class="code-chip">'+esc(t.id)+'</span>'
++'<button class="copy-btn" data-copy="'+esc(t.id)+'">⎘</button>'
++'<button class="btn-ghost btn-refresh-code" data-id="'+esc(t.id)+'" style="font-size:10px;padding:2px 7px;color:var(--gold);border-color:var(--gold)" title="Nieuwe code genereren">&#8635;</button></td>'
         +'<td><span class="code-chip" style="background:var(--gold-bg);color:var(--gold);border-color:var(--gold)">'+esc(t.koper_code||'—')+'</span><button class="copy-btn" data-copy="'+esc(t.koper_code||'')+'">⎘</button></td>'
         +'<td><div style="font-size:11px">'+(t.koper_naam?'<div style="font-weight:500;color:var(--sub)">'+esc(t.koper_naam)+'</div>':'<span style="color:var(--muted);font-size:10px;font-style:italic">Nog onbekend</span>')+(t.koper_rechtsvorm?'<div style="color:var(--muted);font-size:10px">'+esc(t.koper_rechtsvorm)+'</div>':'')+'</div></td>'
         +'<td><div style="font-size:11px">'
@@ -475,6 +477,24 @@ function renderMnaTab(el){
   var bn=document.getElementById('btn-nieuw');if(bn)bn.addEventListener('click',toonNieuwModal);
 
   el.querySelectorAll('.copy-btn').forEach(function(b){
+  el.querySelectorAll('.btn-refresh-code').forEach(function(b){
+    b.addEventListener('click', async function(e){
+      e.stopPropagation();
+      var oudCode = b.dataset.id;
+      if(!confirm('Nieuwe verkoperscode genereren voor '+oudCode+'?\nDe oude code werkt daarna NIET meer.')) return;
+      b.disabled=true; b.textContent='...';
+      try {
+        var r = await fetch(WORKER+'/mna/admin/refresh-code/'+encodeURIComponent(oudCode)+'?key='+encodeURIComponent(adminKey), {method:'POST'});
+        var d = await r.json();
+        if(d.ok) {
+          toast('✓ Nieuwe code: '+d.nieuwe_code+' (oude code werkt niet meer)', 'ok', 8000);
+          var t = mnaList.find(function(x){return x.id===oudCode;});
+          if(t) t.id = d.nieuwe_code;
+          renderDashboard();
+        } else { toast('Fout: '+(d.error||'onbekend'), 'err'); b.disabled=false; b.textContent='\u21bb'; }
+      } catch(err) { toast('Verbindingsfout', 'err'); b.disabled=false; b.textContent='\u21bb'; }
+    });
+  });
     b.addEventListener('click',function(){
       navigator.clipboard.writeText(b.dataset.copy).then(function(){var o=b.textContent;b.textContent='✓';setTimeout(function(){b.textContent=o;},1500);}).catch(function(){toast('Kopieer handmatig: '+b.dataset.copy,'info',6000);});;
     });
