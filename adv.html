@@ -537,6 +537,11 @@ function nieuwTraject(){
         <option value="zorg">Zorg</option><option value="itsoftware">IT & Software</option>
       </select></div>
     </div>
+    <div class="field"><label>Opdrachtgever *</label><select id="n-opdrgever">
+      <option value="verkoper">Verkoper (sell-side) — BEM naar verkoper, Excl naar koper</option>
+      <option value="koper">Koper (buy-side) — BEM naar koper, Excl naar verkoper</option>
+      <option value="beide">Beide partijen (dual mandate)</option>
+    </select></div>
     <div class="field"><label>Naam onderneming *</label><input type="text" id="n-naam" placeholder="Naam van de onderneming"></div>
     <div class="row2">
       <div class="field"><label>Contactpersoon *</label><input type="text" id="n-contact" placeholder="Naam"></div>
@@ -567,6 +572,7 @@ function nieuwTraject(){
         email:G.email,wachtwoord:G.ww,
         traject:{kantoor_naam:naam,contact_naam:contact,contact_email:email,
           traject_type:ge('n-type').value,sector:ge('n-sector').value,
+          opdrachtgever_rol:ge('n-opdrgever')?ge('n-opdrgever').value:'verkoper',
           verkoper_adres:ge('n-adres').value.trim(),
           koper_naam:ge('n-koper-naam').value.trim(),
           koper_email:ge('n-koper-email').value.trim()}
