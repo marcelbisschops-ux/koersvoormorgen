@@ -1768,6 +1768,8 @@ function toonVOKPopup(code, onAkkoord) {
     + '</div>'
     + '<div style="margin-bottom:.75rem"><label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Uw volledige naam</label>'
     + '<input type="text" id="vok-naam" placeholder="Voor- en achternaam" style="width:100%;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:9px 12px;font-size:13px;font-family:IBM Plex Sans,sans-serif;color:var(--sub);outline:none"></div>'
+    + '<div style="margin-bottom:.75rem"><label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Uw e-mailadres <span style="font-weight:400">(voor bevestiging)</span></label>'
+    + '<input type="email" id="vok-email" placeholder="uw@emailadres.nl" style="width:100%;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:9px 12px;font-size:13px;font-family:IBM Plex Sans,sans-serif;color:var(--sub);outline:none"></div>'
     + '<div id="vok-err" style="display:none;color:var(--red);font-size:12px;margin-bottom:.5rem"></div>'
     + '<div style="display:flex;gap:8px;justify-content:flex-end">'
     + '<button id="vok-dl" class="btn-ghost" style="font-size:12px;padding:7px 14px">&#128196; Download</button>'
@@ -1787,7 +1789,7 @@ function toonVOKPopup(code, onAkkoord) {
     var errEl = document.getElementById('vok-err');
     if (!naam) { errEl.style.display='block'; errEl.textContent='Naam is verplicht.'; btn.disabled=false; btn.textContent='Akkoord & doorgaan'; return; }
     try {
-      var r = await fetch(WORKER + '/mna/vok/teken', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ code:code, naam:naam, versie:VOK_VERSIE }) });
+      var r = await fetch(WORKER + '/mna/vok/teken', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ code:code, naam:naam, versie:VOK_VERSIE, email:(document.getElementById('vok-email')?document.getElementById('vok-email').value.trim():'') }) });
       var d = await r.json();
       if (d.ok) { document.body.removeChild(ov); onAkkoord(); }
       else { errEl.style.display='block'; errEl.textContent=d.error||'Fout.'; btn.disabled=false; btn.textContent='Akkoord & doorgaan'; }
