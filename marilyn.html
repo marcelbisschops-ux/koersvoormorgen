@@ -1486,7 +1486,7 @@ async function toonDetail(id,naam){
               else{errEl.style.display='block';errEl.textContent=ed.error||'Fout';btn.disabled=false;btn.textContent='Verstuur';}
             }catch(fe){errEl.style.display='block';errEl.textContent='Verbindingsfout';btn.disabled=false;btn.textContent='Verstuur';}
           };
-        }));
+        });
         btn.textContent='Opnieuw genereren';btn.disabled=false;
       }catch(e){bemOut.innerHTML='<div style="color:var(--red);font-size:13px">Fout: '+e.message+'</div>';btn.textContent='Genereer';btn.disabled=false;}
     });
@@ -1689,7 +1689,7 @@ async function toonDetail(id,naam){
               else{errEl.style.display='block';errEl.textContent=ed.error||'Fout';btn.disabled=false;btn.textContent='Verstuur';}
             }catch(fe){errEl.style.display='block';errEl.textContent='Verbindingsfout';btn.disabled=false;btn.textContent='Verstuur';}
           };
-        }));
+        });
         btn.textContent='Opnieuw genereren';btn.disabled=false;
       }catch(e){loiOut.innerHTML='<div style="color:var(--red);font-size:13px">Fout: '+e.message+'</div>';btn.textContent='Genereer LoI';btn.disabled=false;}
     });
@@ -1755,7 +1755,7 @@ async function toonDetail(id,naam){
               else{errEl.style.display='block';errEl.textContent=ed.error||'Fout';btn.disabled=false;btn.textContent='Verstuur';}
             }catch(fe){errEl.style.display='block';errEl.textContent='Verbindingsfout';btn.disabled=false;btn.textContent='Verstuur';}
           };
-        }));
+        });
         btn.textContent='Opnieuw genereren';btn.disabled=false;
       }catch(e){exclOut.innerHTML='<div style="color:var(--red);font-size:13px">Fout: '+e.message+'</div>';btn.textContent='Exclusiviteitsbrief';btn.disabled=false;}
     });
