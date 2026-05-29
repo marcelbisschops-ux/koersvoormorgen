@@ -9,9 +9,9 @@
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
   :root{
-    --bg:#0f0e0c;--card:#1a1815;--border:#2e2b27;--border2:#3a3733;
-    --head:#f5f0e8;--sub:#c8bfb0;--mid:#9a9080;--muted:#6a6050;
-    --teal:#2db88a;--teal-bg:rgba(45,184,138,.08);--teal-dark:rgba(45,184,138,.25);
+    --bg:#f7f5f2;--card:#ffffff;--border:#e4e0db;--border2:#d0cbc4;
+    --head:#f5f0e8;--sub:#2a2825;--mid:#5a5450;--muted:#8a8480;
+    --teal:#1a7a5e;--teal-bg:rgba(45,184,138,.08);--teal-dark:rgba(45,184,138,.25);
     --red:#d64a3a;--red-bg:rgba(214,74,58,.08);--gold:#c9a84c;
     --r:6px;--r2:10px;
   }
@@ -21,7 +21,7 @@
   .sub{font-size:13px;color:var(--muted);margin-bottom:2rem;line-height:1.6}
   .field{margin-bottom:1rem}
   label{display:block;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:.4rem}
-  input{width:100%;padding:10px 12px;background:var(--bg);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:'IBM Plex Sans',sans-serif;font-size:13px;outline:none;transition:border .2s}
+  input{width:100%;padding:10px 12px;background:#fff;border:1.5px solid var(--border);border-radius:var(--r);color:var(--sub);font-family:'IBM Plex Sans',sans-serif;font-size:13px;outline:none;transition:border .2s}
   input:focus{border-color:var(--teal)}
   .btn{width:100%;padding:11px 0;background:var(--teal);color:#fff;border:none;border-radius:var(--r);font-family:'IBM Plex Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:opacity .2s}
   .btn:hover{opacity:.88}
@@ -72,7 +72,7 @@ async function init(){
         app.innerHTML='<div class="logo">KantoorInzicht M&A</div>'
           +'<div style="color:var(--teal);font-size:1.1rem;font-weight:600;margin:1rem 0">&#10003; Wachtwoord ingesteld!</div>'
           +'<div style="font-size:13px;color:var(--mid);margin-bottom:1.5rem">U kunt nu inloggen met uw nieuwe wachtwoord.</div>'
-          +'<a href="adv.html" class="btn" style="display:inline-block;text-decoration:none;text-align:center">Naar inloggen</a>';
+          +'<a href="marilyn.html" class="btn" style="display:inline-block;text-decoration:none;text-align:center">Naar inloggen</a>';
       }catch(e){err.textContent='Verbindingsfout. Probeer opnieuw.';err.style.display='block';btn.disabled=false;btn.textContent='Wachtwoord instellen';}
     });
     document.getElementById('ww2').addEventListener('keydown',function(e){if(e.key==='Enter')document.getElementById('act-btn').click();});
@@ -118,8 +118,8 @@ async function init(){
         app.innerHTML='<div class="logo">KantoorInzicht M&A</div>'
           +'<div style="color:var(--teal);font-size:1.1rem;font-weight:600;margin:1rem 0">&#10003; Account geactiveerd!</div>'
           +'<div style="font-size:13px;color:var(--mid);margin-bottom:1.5rem;line-height:1.7">Uw account is actief. U wordt doorgestuurd naar het dashboard...</div>'
-          +'<div style="font-size:12px;color:var(--muted)">Wordt niet doorgestuurd? <a href="adv.html" style="color:var(--teal)">Klik hier</a>.</div>';
-        setTimeout(function(){window.location.href='adv.html';},2500);
+          +'<div style="font-size:12px;color:var(--muted)">Wordt niet doorgestuurd? <a href="marilyn.html" style="color:var(--teal)">Klik hier</a>.</div>';
+        setTimeout(function(){window.location.href='marilyn.html';},2500);
       }catch(e){err.textContent='Verbindingsfout. Probeer opnieuw.';err.style.display='block';btn.disabled=false;btn.textContent='Account activeren';}
     });
 
