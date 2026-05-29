@@ -1949,7 +1949,7 @@ function renderLogin(){
     +'<div style="min-height:60vh;display:flex;align-items:center;justify-content:center">'
     +'<div class="panel" style="max-width:420px;width:100%">'
     +'<div style="font-family:Playfair Display,serif;font-size:1.4rem;color:var(--head);font-weight:600;margin-bottom:.3rem">M&amp;A Begeleiding</div>'
-    +'<div style="font-size:13px;color:var(--muted);line-height:1.65;margin-bottom:1.5rem">Voer uw trajectcode in. Verkopers gebruiken de trajectcode, kopers de koperscode. Beide codes ontvangt u van Bisschops Financing BV.</div>'
+    +'<div style="font-size:13px;color:var(--muted);line-height:1.65;margin-bottom:1.5rem">Voer uw toegangscode in. U ontvangt uw persoonlijke code van Bisschops Financing BV.</div>'
     +'<div class="f" style="margin-bottom:.75rem"><label>Trajectcode of koperscode</label>'
     +'<input type="text" id="l-code" placeholder="" style="text-transform:uppercase;letter-spacing:.15em;font-size:1.2rem;text-align:center;font-family:IBM Plex Mono,monospace" maxlength="10" autocomplete="off"></div>'
     +'<div id="l-err" style="color:var(--red);font-size:12px;margin-bottom:.75rem;display:none">Code niet gevonden. Controleer uw code of neem contact op via marcel@bisschopsfinancing.nl.</div>'
@@ -3006,8 +3006,11 @@ function bindAll(){
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ ts: Date.now() })
         });
-        if(!resp.ok)throw new Error('not found');
         var d=await resp.json();
+        if(!resp.ok){
+          if(d&&d.error&&d.error.includes('verzoeken'))throw new Error('Te veel verzoeken. Wacht even en probeer opnieuw.');
+          throw new Error('not found');
+        }
         // Volledige reset - geen datalek tussen trajecten
         Object.keys(DOCS).forEach(function(k){delete DOCS[k];});
         S={screen:'cover',code:code,rol:d.rol||'verkoper',traject:d.traject,
