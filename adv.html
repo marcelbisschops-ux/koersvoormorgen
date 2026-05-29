@@ -186,7 +186,7 @@ function renderForgot(){
     var email=ge('f-e').value.trim();
     if(!email){ge('f-err').textContent='Vul uw e-mailadres in.';ge('f-err').style.display='block';btn.disabled=false;btn.textContent='Verstuur resetlink';return;}
     try{
-      var r=await fetch(WORKER+'/gebruikers/ww-vergeten',{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({email:email})});
+      var r=await fetch(WORKER+'/gebruikers/ww-vergeten',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email})});
       var d=await r.json();
       ge('f-ok').textContent=d.msg||'Controleer uw e-mail.';ge('f-ok').style.display='block';
       btn.textContent='Verstuurd ✓';
