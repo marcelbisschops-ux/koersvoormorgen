@@ -1767,7 +1767,7 @@ async function toonDetail(id,naam){
           };
         });
         // Informatieverzoek knop
-        document.getElementById('nda-infoverzoek-btn').addEventListener('click',async function(){
+        var ndaInfoBtn=document.getElementById('nda-infoverzoek-btn');if(ndaInfoBtn)ndaInfoBtn.addEventListener('click',async function(){
           var ibtn=this;ibtn.disabled=true;ibtn.textContent='Genereren...';
           var t3=d.traject;
           var mnaUrl='https://koersvoormorgen.nl/mna.html';
