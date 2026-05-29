@@ -1742,6 +1742,63 @@ async function renderLogboekScreen(app){
   }
 }
 
+
+function toonNieuwTrajectModalTussen(){
+  var ov=document.createElement('div');ov.className='overlay';
+  var mo=document.createElement('div');mo.className='modal';mo.style.maxWidth='520px';
+  mo.innerHTML='<div class="modal-title">&#43; Nieuw traject aanmaken</div>'
+    +'<div style="font-size:12px;color:var(--muted);margin-bottom:1rem;line-height:1.6">Vul de basisgegevens in. Codes worden automatisch aangemaakt.</div>'
+    +'<div class="field"><label>Naam onderneming <span style="color:var(--red)">*</span></label><input type="text" id="nt-naam" placeholder="bijv. De Vries & Partners"></div>'
+    +'<div class="field"><label>Trajecttype</label><select id="nt-type"><option value="Verkoop">Verkoop</option><option value="PE-traject">PE-traject</option><option value="Overname">Overname</option><option value="Fusie">Fusie</option><option value="Opvolging">Opvolging</option></select></div>'
+    +'<div class="field"><label>Contactpersoon verkoper <span style="color:var(--red)">*</span></label><input type="text" id="nt-contact" placeholder="Naam contactpersoon"></div>'
+    +'<div class="field"><label>E-mail verkoper <span style="color:var(--red)">*</span></label><input type="email" id="nt-email" placeholder="contact@bedrijf.nl"></div>'
+    +'<div class="field"><label>Naam koper</label><input type="text" id="nt-koper" placeholder="Naam kopende partij"></div>'
+    +'<div class="field"><label>E-mail koper</label><input type="email" id="nt-koper-email" placeholder="koper@bedrijf.nl"></div>'
+    +'<div id="nt-err" style="display:none;color:var(--red);font-size:12px;margin-bottom:.5rem"></div>'
+    +'<div id="nt-res" style="display:none;background:var(--teal-bg);border:1px solid var(--teal-dark);border-radius:var(--r);padding:1rem;margin-bottom:.75rem;font-size:13px;line-height:2"></div>'
+    +'<div style="display:flex;gap:8px;justify-content:flex-end">'
+    +'<button class="btn-ghost" id="nt-ann">Annuleren</button>'
+    +'<button class="btn" id="nt-ok">Traject aanmaken</button>'
+    +'</div>';
+  ov.appendChild(mo);document.body.appendChild(ov);
+  ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
+  document.getElementById('nt-ann').onclick=function(){document.body.removeChild(ov);};
+  document.getElementById('nt-ok').onclick=async function(){
+    var btn=this;btn.disabled=true;btn.textContent='Aanmaken...';
+    var err=document.getElementById('nt-err');err.style.display='none';
+    var naam=document.getElementById('nt-naam').value.trim();
+    var contact=document.getElementById('nt-contact').value.trim();
+    var email=document.getElementById('nt-email').value.trim();
+    if(!naam||!contact||!email){err.style.display='block';err.textContent='Naam, contactpersoon en e-mail zijn verplicht.';btn.disabled=false;btn.textContent='Traject aanmaken';return;}
+    try{
+      var r=await fetch(WORKER+'/mna/create',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S.code},
+        body:JSON.stringify({
+          kantoor_naam:naam,
+          traject_type:document.getElementById('nt-type').value,
+          contact_naam:contact,
+          contact_email:email,
+          koper_naam:document.getElementById('nt-koper').value.trim(),
+          koper_email:document.getElementById('nt-koper-email').value.trim(),
+          begeleider_naam:S.traject&&S.traject.begeleider_naam||'',
+          begeleider_email:S.traject&&S.traject.begeleider_email||''
+        })});
+      var d=await r.json();
+      if(d.ok){
+        var res=document.getElementById('nt-res');res.style.display='block';
+        res.innerHTML='<strong style="color:var(--teal)">&#10003; Traject aangemaakt</strong><br>'
+          +'Verkoperscode: <strong style="font-family:monospace">'+d.code+'</strong><br>'
+          +'Koperscode: <strong style="font-family:monospace">'+d.koper_code+'</strong><br>'
+          +'Tussenpersoonscode: <strong style="font-family:monospace">'+d.tussen_code+'</strong>';
+        btn.textContent='Klaar';
+        toast('Traject aangemaakt: '+naam,'ok',5000);
+      } else {
+        err.style.display='block';err.textContent=d.error||'Fout bij aanmaken';
+        btn.disabled=false;btn.textContent='Traject aanmaken';
+      }
+    }catch(e2){err.style.display='block';err.textContent='Verbindingsfout';btn.disabled=false;btn.textContent='Traject aanmaken';}
+  };
+}
+
 function renderApp(){
   var app=ge('app');
   if(S.screen==='login')app.innerHTML=renderLogin();
@@ -1805,6 +1862,7 @@ function renderBegeleiderDashboard(app){
   var html='<div class="wrap anim">'
     +'<div class="hdr"><div class="brand"><div class="wdot"></div>KantoorInzicht &middot; M&A Begeleider</div>'
     +'<div style="display:flex;gap:8px">'
+    +'<button class="btn btn-sm" id="bg-nieuw-traject-btn" style="font-size:12px;padding:6px 14px">&#43; Nieuw traject</button>'
     +'<button class="btn-ghost btn-sm" onclick="window.print()">&#128196; PDF</button>'
     +'<button class="btn-ghost btn-sm" onclick="uitloggen()">&#8592; Uitloggen</button>'
     +'</div></div>'
@@ -2052,6 +2110,10 @@ function renderBegeleiderDashboard(app){
   html+='</div></div>';
 
   app.innerHTML=html;
+
+  // Nieuw traject knop
+  var bgNieuwBtn=document.getElementById('bg-nieuw-traject-btn');
+  if(bgNieuwBtn)bgNieuwBtn.onclick=function(){toonNieuwTrajectModalTussen();};
 
   // Tab navigatie
   app.querySelectorAll('.bg-tab-btn').forEach(function(btn){
@@ -3036,7 +3098,7 @@ function bindAll(){
         if(d.traject&&d.traject.excl_getekend)S.exclGetekend=d.traject.excl_getekend;
         // Haal juridische documenten op — zoek geüploade BEM en Exclusiviteitsbrief
         try{
-          var jDocs=await fetch(WORKER+'/mna/document/lijst/'+code+'/juridisch').then(function(r){return r.json();}).catch(function(){return[];});
+          var jDocs=await fetch(WORKER+'/mna/document/lijst/'+code).then(function(r){return r.json();}).catch(function(){return[];});
           jDocs.forEach(function(doc){
             var nm=(doc.bestand_naam||'').toLowerCase();
             if(nm.includes('bem')&&!S.bemDocId){S.bemDocId=doc.id;S.bemDocNaam=doc.bestand_naam;S.bemGetekend=S.bemGetekend||'';}
