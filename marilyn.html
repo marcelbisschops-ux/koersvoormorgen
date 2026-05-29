@@ -1247,8 +1247,8 @@ async function stuurSignhost(id, docType, tekst, d) {
   var docLabel = docLabels[docType] || docType;
   var defaultEmail = docType === 'bem' ? (t.koper_email||'') : (t.contact_email||'');
   var defaultNaam = docType === 'bem' ? (t.koper_contact||t.koper_naam||'') : (t.contact_naam||'');
-  var ov = document.createElement('div'); ov.className = 'overlay';
-  var mo = document.createElement('div'); mo.className = 'modal'; mo.style.maxWidth = '420px';
+  var ov = document.createElement('div'); ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:3000;display:flex;align-items:center;justify-content:center;padding:1.5rem';
+  var mo = document.createElement('div'); mo.style.cssText='background:#fff;border:1px solid #c8c5bc;border-radius:10px;padding:2rem;max-width:420px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.25);max-height:90vh;overflow-y:auto';
   mo.innerHTML = '<div class="modal-title">&#9998; Verstuur ter ondertekening — '+esc(docLabel)+'</div>'
     + '<div style="font-size:12px;color:var(--muted);margin-bottom:1rem;padding:.6rem;background:var(--card);border-radius:var(--r);border-left:3px solid var(--teal)">Signhost verstuurt een e-mail met een beveiligde tekenlink.</div>'
     + '<div class="field"><label>Naam ondertekenaar</label><input type="text" id="sh-naam" value="'+esc(defaultNaam)+'" placeholder="Voor- en achternaam"></div>'
@@ -1287,8 +1287,8 @@ async function toonUitnodigingModal(trajectId, trajectNaam) {
   var dd = await r.json().catch(function(){return{};});
   var t = (dd && dd.traject) ? dd.traject : {id: trajectId, kantoor_naam: trajectNaam};
 
-  var ov = document.createElement('div'); ov.className = 'overlay';
-  var mo = document.createElement('div'); mo.className = 'modal'; mo.style.maxWidth = '520px';
+  var ov = document.createElement('div'); ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:3000;display:flex;align-items:center;justify-content:center;padding:1.5rem';
+  var mo = document.createElement('div'); mo.style.cssText='background:#fff;border:1px solid #c8c5bc;border-radius:10px;padding:2rem;max-width:520px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.25);max-height:90vh;overflow-y:auto';
   mo.style.maxWidth='580px';
   mo.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem"><div class="modal-title" style="margin-bottom:0">&#9993; Uitnodigingsmail versturen</div><button class="btn-ghost" id="inv-sluit-top" style="font-size:12px;padding:4px 12px">&#10005; Sluiten</button></div>'
     + '<p style="font-size:13px;color:var(--mid);line-height:1.7;margin-bottom:1.25rem">Vul het e-mailadres in en klik op Verstuur.</p>'
@@ -2715,7 +2715,7 @@ async function maakTrajectVanScan(scanId, naam, email){
 
 // WIS TRAJECT DATA — data wissen zonder traject te verwijderen
 function wisTrajectData(id, naam) {
-  var ov = document.createElement('div'); ov.className = 'overlay';
+  var ov = document.createElement('div'); ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:3000;display:flex;align-items:center;justify-content:center;padding:1.5rem';
   var mo = document.createElement('div'); mo.className = 'modal'; mo.style.maxWidth = '480px';
   mo.innerHTML = '<div class="modal-title">&#129529; Data wissen — ' + esc(naam) + '</div>'
     + '<p style="font-size:13px;color:var(--mid);line-height:1.65;margin-bottom:1.25rem">Kies welke data gewist moet worden. Het traject zelf en de toegangscodes blijven bewaard.</p>'
@@ -2898,7 +2898,7 @@ function toonVeldenDebug(trajectId, naam, d) {
   });
 
   // Render modal
-  var ov = document.createElement('div'); ov.className = 'overlay';
+  var ov = document.createElement('div'); ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:3000;display:flex;align-items:center;justify-content:center;padding:1.5rem';
   var mo = document.createElement('div'); mo.className = 'modal';
   mo.style.maxWidth = '900px';
   mo.style.fontFamily = 'IBM Plex Sans, sans-serif';
@@ -3219,7 +3219,7 @@ async function renderGebruikersTab(el) {
 }
 
 function toonUitnodigenModal() {
-  var ov = document.createElement('div'); ov.className = 'overlay';
+  var ov = document.createElement('div'); ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:3000;display:flex;align-items:center;justify-content:center;padding:1.5rem';
   var mo = document.createElement('div'); mo.className = 'modal'; mo.style.maxWidth = '480px';
   mo.innerHTML = '<div class="modal-title">&#9993; Adviseur uitnodigen</div>'
     + '<div style="font-size:13px;color:var(--mid);margin-bottom:1.25rem;line-height:1.7">De adviseur ontvangt een e-mail met een activatielink. Na activatie kan hij inloggen en eigen trajecten aanmaken.</div>'
