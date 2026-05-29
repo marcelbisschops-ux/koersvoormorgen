@@ -200,8 +200,8 @@ function renderDashboard(){
     +'<button class="tab'+(activeTab==='benchmarks'?' active':'')+'" id="t-bench">Benchmarks</button>'
     +'<button class="tab'+(activeTab==='waardering'?' active':'')+'" id="t-waardering">&#9654; Waardering</button>'
     
-    +'<button class="tab'+(activeTab==\'compliance\'?\' active\':\'\')+'" id="t-compliance">&#128274; VOK &amp; AVG</button>'
-    +'<button class="tab'+(activeTab===\'templates\'?\' active\':\'\')+'" id="t-templates">&#128196; Templates</button>'
+    +'<button class="tab'+(activeTab==='compliance'?' active':'')+'" id="t-compliance">&#128274; VOK &amp; AVG</button>'
+    +'<button class="tab'+(activeTab==='templates'?' active':'')+'" id="t-templates">&#128196; Templates</button>'
     +(isSuperAdmin?'<button class="tab'+(activeTab==='gebruikers'?' active':'')+'" id="t-geb" style="border-left:2px solid var(--gold)">&#128101; Gebruikers</button>':'')
     +'</div>'
     +'<div id="tc"></div>';
