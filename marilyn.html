@@ -1269,7 +1269,12 @@ async function stuurSignhost(id, docType, tekst, d) {
     if (!email) { errEl.style.display='block'; errEl.textContent='E-mailadres verplicht'; btn.disabled=false; btn.textContent='Verstuur'; return; }
     var r = await fetch(WORKER+'/mna/signhost/stuur', {method:'POST', headers:{'Content-Type':'application/json','x-admin-key':adminKey}, body:JSON.stringify({code:id, doc_type:docType, ondertekenaar_naam:naam, ondertekenaar_email:email, doc_tekst:tekst})});
     var rd = await r.json();
-    if (rd.ok) { document.body.removeChild(ov); toast('✅ '+docLabel+' verstuurd via Signhost naar '+email, 'ok', 5000); }
+    if (rd.ok) {
+      document.body.removeChild(ov);
+      toast('✅ '+docLabel+' verstuurd via Signhost naar '+email, 'ok', 5000);
+      // Disable alle Signhost knoppen voor dit document om dubbel versturen te voorkomen
+      document.querySelectorAll('[id$="-signhost-btn"],[id="nda-signhost-btn"],[id="loi-signhost-btn"],[id="bem-signhost-btn"],[id="excl-signhost-btn"]').forEach(function(b){b.disabled=true;b.textContent='✓ Verstuurd';b.style.opacity='.5';});
+    }
     else if (rd.error && rd.error.includes('niet geconfigureerd')) { errEl.style.display='block'; errEl.innerHTML='⚠ Signhost niet geconfigureerd.'; btn.disabled=false; btn.textContent='Verstuur'; }
     else { errEl.style.display='block'; errEl.textContent=rd.error||'Fout'; btn.disabled=false; btn.textContent='Verstuur'; }
   };
@@ -1284,8 +1289,9 @@ async function toonUitnodigingModal(trajectId, trajectNaam) {
 
   var ov = document.createElement('div'); ov.className = 'overlay';
   var mo = document.createElement('div'); mo.className = 'modal'; mo.style.maxWidth = '520px';
-  mo.innerHTML = '<div class="modal-title">&#9993; Uitnodigingsmail versturen</div>'
-    + '<p style="font-size:13px;color:var(--mid);line-height:1.7;margin-bottom:1.25rem">Stuur een professionele uitnodigingsmail met platforminformatie, toegangscode en stappenplan.</p>'
+  mo.style.maxWidth='580px';
+  mo.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem"><div class="modal-title" style="margin-bottom:0">&#9993; Uitnodigingsmail versturen</div><button class="btn-ghost" id="inv-sluit-top" style="font-size:12px;padding:4px 12px">&#10005; Sluiten</button></div>'
+    + '<p style="font-size:13px;color:var(--mid);line-height:1.7;margin-bottom:1.25rem">Vul het e-mailadres in en klik op Verstuur.</p>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:1.25rem">'
 
     // Verkoper blok
@@ -1313,11 +1319,15 @@ async function toonUitnodigingModal(trajectId, trajectNaam) {
     + '</div>'
 
     + '</div>'
-    + '<div style="display:flex;justify-content:flex-end"><button class="btn-ghost" id="inv-sluit">Sluiten</button></div>';
+    + '';
 
   ov.appendChild(mo); document.body.appendChild(ov);
   ov.addEventListener('click', function(e){if(e.target===ov)document.body.removeChild(ov);});
-  document.getElementById('inv-sluit').onclick = function(){document.body.removeChild(ov);};
+  var invSluitFn = function(){document.body.removeChild(ov);};
+  var invSluitTop = document.getElementById('inv-sluit-top');
+  if(invSluitTop) invSluitTop.onclick = invSluitFn;
+  var invSluit = document.getElementById('inv-sluit');
+  if(invSluit) invSluit.onclick = invSluitFn;
 
   async function stuurUitnodiging(type) {
     var emailEl = document.getElementById('inv-'+type+'-email');

@@ -1975,13 +1975,17 @@ function renderBegeleiderDashboard(app){
     +'<span style="display:inline-block;padding:4px 12px;border-radius:12px;font-size:11px;font-weight:600;background:'+(t.status==='vergrendeld'?'var(--red-bg)':'var(--teal-bg)')+';color:'+(t.status==='vergrendeld'?'var(--red)':'var(--teal)')+';border:1px solid '+(t.status==='vergrendeld'?'var(--red)':'var(--teal-dark)')+'">'+esc(t.status||'actief')+'</span>'
     +'</div></div></div>'
     // Actie knoppen
-    +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1.25rem">'
-    +'<button class="btn" id="bg-nda-actie" style="background:#7c5cbf;padding:12px;font-size:13px">&#128274; NDA</button>'
-    +'<button class="btn" id="bg-loi-actie" style="background:var(--gold);padding:12px;font-size:13px">&#128196; LoI</button>'
-    +'<button class="btn" id="bg-bem-actie" style="background:#2a5ea0;padding:12px;font-size:13px">&#128203; BEM</button>'
-    +'<button class="btn" id="bg-gesprek-actie" style="background:var(--teal);padding:12px;font-size:13px">&#128172; Gesprek</button>'
-    +'<button class="btn" id="bg-uitnodigen-btn" style="background:var(--teal);padding:12px;font-size:13px;margin-bottom:.5rem">&#9993; Uitnodigingsmail</button>'
-    +'<button class="btn" id="bg-infoverzoek-actie" style="background:var(--teal-dim);padding:12px;font-size:13px">&#128203; Informatieverzoek</button>'
+    +'<div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.4rem">Documenten</div>'
+    +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:.75rem">'
+    +'<button class="btn" id="bg-nda-actie" style="background:#7c5cbf;padding:10px;font-size:12px">&#128274; NDA</button>'
+    +'<button class="btn" id="bg-loi-actie" style="background:var(--gold);padding:10px;font-size:12px">&#128196; LoI</button>'
+    +'<button class="btn" id="bg-bem-actie" style="background:#2a5ea0;padding:10px;font-size:12px">&#128203; BEM</button>'
+    +'</div>'
+    +'<div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.4rem">Communicatie</div>'
+    +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:1.25rem">'
+    +'<button class="btn" id="bg-gesprek-actie" style="background:var(--teal);padding:10px;font-size:12px">&#128172; Gesprek</button>'
+    +'<button class="btn" id="bg-uitnodigen-btn" style="background:var(--teal-dim);padding:10px;font-size:12px">&#9993; Uitnodigen</button>'
+    +'<button class="btn" id="bg-infoverzoek-actie" style="background:var(--teal-dim);padding:10px;font-size:12px">&#128203; Informatieverzoek</button>'
     +'</div>'
     // Doc output
     +'<div id="bg-doc-out" style="display:none;margin-bottom:1.25rem"></div>'
@@ -2088,6 +2092,9 @@ function renderBegeleiderDashboard(app){
       win.document.write('<html><head><style>body{font-family:Georgia,serif;font-size:13px;line-height:1.9;max-width:700px;margin:2cm auto}</style></head><body><p>'+document.getElementById('bg-doc-tekst').value.replace(/\n/g,'<br>')+'</p></body></html>');
       win.document.close();win.print();
     };
+    // Scroll naar doc output zodat knoppen zichtbaar zijn
+    var docOutEl=document.getElementById('bg-doc-out');
+    if(docOutEl)setTimeout(function(){docOutEl.scrollIntoView({behavior:'smooth',block:'nearest'});},100);
     document.getElementById('bg-email').onclick=async function(){
       var ebtn=this;ebtn.disabled=true;ebtn.textContent='Versturen...';
       var vt=document.getElementById('bg-doc-tekst').value;
@@ -2131,7 +2138,13 @@ function renderBegeleiderDashboard(app){
           headers:{'Content-Type':'application/json','x-tussen-key':S.code},
           body:JSON.stringify({code:S.traject.id,doc_type:type,ondertekenaar_naam:naam,ondertekenaar_email:email,doc_tekst:tekst})});
         var rd=await r.json();
-        if(rd.ok){document.body.removeChild(ov);toast('&#10003; '+(labels[type]||type)+' verstuurd via Signhost naar '+email,'ok',5000);}
+        if(rd.ok){
+          document.body.removeChild(ov);
+          toast('&#10003; '+(labels[type]||type)+' verstuurd via Signhost naar '+email,'ok',5000);
+          // Disable Signhost knop om dubbel versturen te voorkomen
+          var shBtnEl=document.getElementById('bg-signhost');
+          if(shBtnEl){shBtnEl.disabled=true;shBtnEl.textContent='&#10003; Verstuurd';shBtnEl.style.opacity='.5';}
+        }
         else{errEl.style.display='block';errEl.textContent=rd.error||'Fout';btn.disabled=false;btn.textContent='Verstuur';}
       };
     };
