@@ -1883,6 +1883,109 @@ Inloggen: koersvoormorgen.nl/mna.html';
   };
 }
 
+
+// VERWERKERSOVEREENKOMST
+var VOK_VERSIE = '1.0';
+var VOK_TEKST = [
+  'VERWERKERSOVEREENKOMST',
+  'Bisschops Financing B.V. — KantoorInzicht Platform',
+  'Versie 1.0 | Mei 2026',
+  '',
+  'Partijen',
+  'Verwerkingsverantwoordelijke: De tussenpersoon/adviseur die gebruik maakt van het KantoorInzicht-platform (hierna: Gebruiker).',
+  'Verwerker: Bisschops Financing B.V., Grotestraat 13, 5841AA Oploo (hierna: Bisschops Financing).',
+  '',
+  'Artikel 1 — Doel en grondslag',
+  'Bisschops Financing verwerkt persoonsgegevens uitsluitend ten behoeve van de dienstverlening via het KantoorInzicht-platform. Gebruiker blijft te allen tijde verwerkingsverantwoordelijke voor de gegevens van zijn klanten.',
+  '',
+  'Artikel 2 — Aard van de verwerking',
+  'Bisschops Financing verwerkt uitsluitend de persoonsgegevens die door of namens Gebruiker worden ingevoerd in het platform. Dit omvat: contactgegevens, financiële bedrijfsdata, documenten en communicatie in het kader van M&A-trajecten.',
+  '',
+  'Artikel 3 — Beveiliging',
+  'Bisschops Financing treft passende technische en organisatorische maatregelen ter beveiliging van persoonsgegevens. Gegevens worden opgeslagen in Cloudflare-datacenters binnen de EU (Frankfurt, Duitsland). Verbindingen zijn versleuteld via HTTPS.',
+  '',
+  'Artikel 4 — Bewaartermijn',
+  'Persoonsgegevens worden bewaard zolang het traject actief is en maximaal 7 jaar daarna conform wettelijke bewaartermijnen, tenzij Gebruiker eerder verzoekt tot verwijdering.',
+  '',
+  'Artikel 5 — Sub-verwerkers',
+  'Bisschops Financing maakt gebruik van de volgende sub-verwerkers: Cloudflare Inc. (infrastructuur, EU), Anthropic PBC (AI-verwerking, VS — onder EU-adequaatheidsbesluit), Resend Inc. (e-mail), Signhost/Entrust (elektronische handtekeningen).',
+  '',
+  'Artikel 6 — Rechten betrokkenen',
+  'Gebruiker is verantwoordelijk voor het faciliteren van de rechten van betrokkenen (inzage, rectificatie, verwijdering). Bisschops Financing verleent hiertoe medewerking op verzoek.',
+  '',
+  'Artikel 7 — Datalekken',
+  'Bisschops Financing informeert Gebruiker zonder onredelijke vertraging na ontdekking van een datalek dat de persoonsgegevens van Gebruikers klanten betreft.',
+  '',
+  'Artikel 8 — Toepasselijk recht',
+  'Op deze verwerkersovereenkomst is Nederlands recht van toepassing. Geschillen worden voorgelegd aan de Rechtbank Oost-Brabant.',
+].join('\n');
+
+async function checkVOK(code) {
+  try {
+    var r = await fetch(WORKER + '/mna/vok/status?code=' + encodeURIComponent(code));
+    var d = await r.json();
+    return d;
+  } catch(e) { return { getekend: false }; }
+}
+
+async function toonVOKPopup(code, onAkkoord) {
+  var ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:2000;display:flex;align-items:center;justify-content:center;padding:1.5rem';
+  var mo = document.createElement('div');
+  mo.style.cssText = 'background:var(--panel);border:1px solid var(--border2);border-radius:var(--r2);padding:2rem;max-width:620px;width:100%;max-height:90vh;overflow-y:auto';
+  mo.innerHTML = '<div style="font-family:Playfair Display,serif;font-size:1.2rem;color:var(--head);font-weight:600;margin-bottom:.4rem">Verwerkersovereenkomst</div>'
+    + '<div style="font-size:11px;color:var(--muted);margin-bottom:1.25rem">Versie 1.0 · Bisschops Financing B.V. · Vereist voor gebruik van KantoorInzicht</div>'
+    + '<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:1rem;max-height:280px;overflow-y:auto;font-size:12px;font-family:Georgia,serif;line-height:1.8;color:var(--sub);white-space:pre-wrap;margin-bottom:1.25rem">' + esc(VOK_TEKST) + '</div>'
+    + '<div style="background:var(--teal-bg);border:1px solid var(--teal-dark);border-radius:var(--r);padding:.75rem 1rem;margin-bottom:1rem;font-size:12px;color:var(--teal-dim);line-height:1.6">'
+    + '<strong>Akkoord geven:</strong> Door uw naam in te vullen en op "Akkoord & doorgaan" te klikken, bevestigt u dat u deze verwerkersovereenkomst heeft gelezen en namens uw organisatie accepteert.'
+    + '</div>'
+    + '<div class="field"><label>Uw volledige naam <span style="color:var(--red)">*</span></label><input type="text" id="vok-naam" placeholder="Voor- en achternaam" style="background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:9px 12px;font-size:13px;width:100%"></div>'
+    + '<div id="vok-err" style="display:none;color:var(--red);font-size:12px;margin-bottom:.5rem"></div>'
+    + '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:.75rem">'
+    + '<button id="vok-download" class="btn-ghost" style="font-size:12px;padding:7px 14px">&#128196; Download PDF</button>'
+    + '<button id="vok-ok" class="btn" style="font-size:12px;padding:7px 18px">&#10003; Akkoord &amp; doorgaan</button>'
+    + '</div>';
+  ov.appendChild(mo);
+  document.body.appendChild(ov);
+
+  // Download als tekstbestand
+  document.getElementById('vok-download').onclick = function() {
+    var blob = new Blob([VOK_TEKST], { type: 'text/plain;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a'); a.href = url;
+    a.download = 'Verwerkersovereenkomst_KantoorInzicht_v1.0.txt';
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a); URL.revokeObjectURL(url);
+  };
+
+  document.getElementById('vok-ok').onclick = async function() {
+    var btn = this; btn.disabled = true; btn.textContent = 'Opslaan...';
+    var naam = document.getElementById('vok-naam').value.trim();
+    var errEl = document.getElementById('vok-err');
+    if (!naam) {
+      errEl.style.display = 'block'; errEl.textContent = 'Naam is verplicht.';
+      btn.disabled = false; btn.textContent = '✓ Akkoord & doorgaan'; return;
+    }
+    try {
+      var r = await fetch(WORKER + '/mna/vok/teken', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: code, naam: naam, versie: VOK_VERSIE })
+      });
+      var d = await r.json();
+      if (d.ok) {
+        document.body.removeChild(ov);
+        onAkkoord();
+      } else {
+        errEl.style.display = 'block'; errEl.textContent = d.error || 'Fout bij opslaan.';
+        btn.disabled = false; btn.textContent = '✓ Akkoord & doorgaan';
+      }
+    } catch(e) {
+      errEl.style.display = 'block'; errEl.textContent = 'Verbindingsfout.';
+      btn.disabled = false; btn.textContent = '✓ Akkoord & doorgaan';
+    }
+  };
+}
+
 function renderApp(){
   var app=ge('app');
   if(S.screen==='login')app.innerHTML=renderLogin();
@@ -3160,6 +3263,9 @@ function bindAll(){
         // Sla tussen_code op als begeleider-auth
         if(isTussen()){
           S._bgKey=code;S.screen='begeleider';
+          // Check VOK eerst
+          var vokStatus=await checkVOK(code);
+          var doLaadData=function(){
           // Laad alle data parallel
           Promise.all([
             fetch(WORKER+'/mna/admin/detail/'+S.traject.id+'?key='+encodeURIComponent(code)).then(function(r){return r.json();}).catch(function(){return{};}).then(function(d){if(d.documenten)S._bgDocs=d.documenten;}),
@@ -3167,6 +3273,12 @@ function bindAll(){
             fetch(WORKER+'/mna/admin/gesprekken/'+S.traject.id+'?key='+encodeURIComponent(code)).then(function(r){return r.json();}).catch(function(){return{gesprekken:[]};}).then(function(d){S._bgGesprekken=d.gesprekken||[];}),
             fetch(WORKER+'/mna/logboek/'+code).then(function(r){return r.json();}).catch(function(){return{logboek:[]};}).then(function(d){S._bgLogboek=d.logboek||[];})
           ]).then(function(){renderApp();}).catch(function(){renderApp();});
+          }; // einde doLaadData
+          if(!vokStatus.getekend){
+            toonVOKPopup(code, doLaadData);
+          } else {
+            doLaadData();
+          }
         }
         if(d.traject&&d.traject.loi_tekst)S.loiTekst=d.traject.loi_tekst;
         if(d.traject&&d.traject.loi_datum)S.loiDatum=d.traject.loi_datum;
