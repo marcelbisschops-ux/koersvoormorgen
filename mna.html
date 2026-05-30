@@ -2341,47 +2341,143 @@ function renderBegeleiderDashboard(app){
     var t2=S.traject;
     var mnaUrl='https://koersvoormorgen.nl/mna.html';
     var verkoperCode=t2.id||S.code;
-    var deadline=new Date(Date.now()+14*24*3600*1000).toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'});
-    var html='<div style="font-family:sans-serif;max-width:620px;margin:0 auto">'
-      +'<div style="background:#1a7a5e;color:#fff;padding:1.5rem;border-radius:8px 8px 0 0"><h2 style="margin:0;font-size:1.1rem">Informatieverzoek M&A — '+esc(t2.kantoor_naam||'Uw kantoor')+'</h2></div>'
-      +'<div style="background:#fff;border:1px solid #ddd;border-top:none;padding:1.5rem;border-radius:0 0 8px 8px">'
-      +'<p style="font-size:14px;color:#2a2825">Beste '+esc(t2.contact_naam||'relatie')+',</p>'
-      +'<p style="font-size:13px;color:#5a5854;line-height:1.7">Nu de geheimhoudingsovereenkomst is ondertekend, starten we met de due diligence. Vóór <strong>'+deadline+'</strong> ontvangen we graag onderstaande informatie.</p>'
-      +'<div style="background:#f0faf6;border:1px solid #0a3d2e;border-radius:8px;padding:1.25rem;margin:1.25rem 0">'
-      +'<div style="font-size:11px;font-weight:600;color:#145f48;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.5rem">Uw persoonlijke uploadomgeving</div>'
-      +'<div style="font-family:monospace;background:#fff;border:1px solid #ddd;padding:.75rem;border-radius:6px;font-size:13px;margin-bottom:.5rem"><a href="'+mnaUrl+'" style="color:#1a7a5e">'+mnaUrl+'</a></div>'
-      +'<div style="font-size:12px;color:#8a8880">Toegangscode: <strong style="font-family:monospace;color:#1a7a5e;font-size:14px">'+esc(verkoperCode)+'</strong></div>'
-      +'</div>'
-      +'<table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:1.25rem">'
-      +'<tr style="background:#f0eeea"><td style="padding:8px 12px;font-weight:600;border:1px solid #ddd">Financieel</td><td style="padding:8px 12px;color:#5a5854;border:1px solid #ddd">Jaarrekeningen 3 jaar, VPB-aangifte, management-rapportage huidig jaar, debiteuren, OHW</td></tr>'
-      +'<tr><td style="padding:8px 12px;font-weight:600;border:1px solid #ddd">Klanten</td><td style="padding:8px 12px;color:#5a5854;border:1px solid #ddd">Klantenlijst met omzet (Excel/CSV), contractenoverzicht</td></tr>'
-      +'<tr style="background:#f0eeea"><td style="padding:8px 12px;font-weight:600;border:1px solid #ddd">Personeel</td><td style="padding:8px 12px;color:#5a5854;border:1px solid #ddd">Salarisoverzicht (geanonimiseerd), organogram, arbeidscontracten key-personen</td></tr>'
-      +'<tr><td style="padding:8px 12px;font-weight:600;border:1px solid #ddd">Juridisch</td><td style="padding:8px 12px;color:#5a5854;border:1px solid #ddd">KvK-uittreksel, oprichtingsakte, huurcontract, verzekeringspolissen</td></tr>'
-      +'<tr style="background:#f0eeea"><td style="padding:8px 12px;font-weight:600;border:1px solid #ddd">IT & Systemen</td><td style="padding:8px 12px;color:#5a5854;border:1px solid #ddd">Softwareoverzicht, licenties, werkprocesbeschrijving</td></tr>'
-      +'<tr><td style="padding:8px 12px;font-weight:600;border:1px solid #ddd">Kwaliteit</td><td style="padding:8px 12px;color:#5a5854;border:1px solid #ddd">Kwaliteitshandboek, certificaten, AVG-documentatie</td></tr>'
-      +'</table>'
-      +'<p style="font-size:12px;color:#8a8880">Vragen? '+esc(t2.begeleider_naam||'Uw begeleider')+' — <a href="mailto:'+esc(t2.begeleider_email||'')+'" style="color:#1a7a5e">'+esc(t2.begeleider_email||'')+'</a></p>'
-      +'<p style="font-size:12px;color:#8a8880;margin-top:.75rem">Met vriendelijke groet,<br><strong>'+esc(t2.begeleider_naam||'Uw begeleider')+'</strong></p>'
-      +'</div></div>';
-    // Preview modal
+
+    // Bouw categorielijst op basis van FASES fase:1 velden
+    var sectoren = {
+      accountancy: [{id:'financieel',titel:'Financieel',items:['P&L 3 jaar + YTD (jaarrekeningen)','EBITDA absoluut + marge','Partnerbeloning (normalisatie)','Omzetforecast komend jaar','Recurring omzet (%)']},
+        {id:'commercieel',titel:'Klanten & omzet',items:['Aantal actieve klanten','Top-10 klanten (% omzet)','Gemiddelde omzet per klant','Pipeline / nieuwe opdrachten']},
+        {id:'partners',titel:'Partners & personeel',items:['Organogram / FTE-overzicht','Eigendomsstructuur + aandelenverhouding','Opvolgingskandidaat aanwezig','Veranderbereidheid partners']},
+        {id:'compliance',titel:'Compliance & kwaliteit',items:['NBA-status en inschrijving','Laatste kwaliteitstoetsing + oordeel','Lopende tuchtzaken of claims']},
+        {id:'it',titel:'IT & systemen',items:['Primaire software (accountancy)','Automatiseringsgraad','AI-tooling in gebruik']},
+        {id:'juridisch',titel:'Juridisch & fiscaal',items:['Rechtsvorm + aandeelhoudersstructuur','VPB openstaande discussies','Lopende claims of geschillen']},
+        {id:'strategisch',titel:'Strategie & markt',items:['Marktpositie en regio','Niche of specialisme','Gewenste vervolgstap eigenaar','Tijdlijn transactie']}],
+      mkb: [{id:'financieel',titel:'Financieel',items:['P&L 3 jaar + YTD','EBITDA + brutomarge','DGA-salaris / normalisaties','Voorraadwaarde (indicatief)','Orderportefeuille']},
+        {id:'commercieel',titel:'Klanten & leveranciers',items:['Top-10 klanten + top-10 leveranciers','Grootste klant (% omzet)','Recurring omzet (%)','Seizoensgevoeligheid']},
+        {id:'partners',titel:'Personeel & organisatie',items:['Organogram + FTE','Eigenaar-afhankelijkheid','Sleutelpersonen buiten eigenaar','Interne opvolger aanwezig']},
+        {id:'compliance',titel:'Vergunningen',items:['Bedrijfsvergunningen (overdraagbaar?)','Lopende claims / geschillen','Huurcontract overdraagbaar (dealbreaker)']},
+        {id:'it',titel:'Systemen',items:['Kassasysteem / ERP / e-commerce','Automatiseringsgraad']},
+        {id:'juridisch',titel:'Juridisch & fiscaal',items:['Rechtsvorm + eigendomsstructuur','VPB / BTW openstaande discussies','Lopende claims']},
+        {id:'strategisch',titel:'Strategie',items:['Marktpositie + onderscheidend vermogen','Groeimogelijkheden','Gewenste vervolgstap','Tijdlijn']}],
+      zorg: [{id:'financieel',titel:'Financieel',items:['P&L 3 jaar + YTD','EBITDA + eigenaarssalaris','Omzet per financieringsstroom (Wlz/Wmo/Zvw)','Bezettingsgraad']},
+        {id:'patienten',titel:'Patiënten & praktijkprofiel',items:['Aantal ingeschreven patiënten','Wachttijd nieuwe patiënten','Specialisaties / aanvullende diensten','Aantal behandellocaties']},
+        {id:'personeel',titel:'Personeel & BIG',items:['FTE-overzicht','BIG-registraties actueel','ZZP-inhuur (%)','Ziekteverzuim','Opvolger praktijkhouder']},
+        {id:'compliance',titel:'Kwaliteit & regelgeving',items:['Laatste IGJ-inspectie + oordeel','Lopende claims / tuchtrecht','NZa-registratie + zorgverzekeraarcontracten']},
+        {id:'it',titel:'IT & systemen',items:['HIS/TIS systeem + overdraagbaarheid','Gegevensmigratie mogelijk']},
+        {id:'juridisch',titel:'Juridisch & structuur',items:['Rechtsvorm + eigendomsstructuur','Goodwill-afspraken (LHV/NMa)','Zorgcontracten looptijd','Lopende claims']},
+        {id:'strategisch',titel:'Strategie',items:['Werkgebied + specialisaties','Groeimogelijkheden','Gewenste overdrachtstijdlijn']}]
+    };
+
+    var sector = (t2.sector||'accountancy').toLowerCase();
+    if(!sectoren[sector]) sector = 'accountancy';
+    var categorieen = sectoren[sector];
+
+    // Modal met aanvinkbare categorieën
     var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:200;display:flex;align-items:center;justify-content:center;padding:1.5rem';
-    var mo=document.createElement('div');mo.style.cssText='background:#fff;border-radius:10px;padding:2rem;max-width:680px;width:100%;max-height:90vh;overflow-y:auto';
-    mo.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.1rem;color:#1a1815;font-weight:600;margin-bottom:1rem">&#128203; Informatieverzoek — preview</div>'
-      +'<div style="border:1px solid #ddd;border-radius:6px;padding:1rem;max-height:50vh;overflow-y:auto;margin-bottom:1rem">'+html+'</div>'
-      +'<div style="margin-bottom:1rem"><label style="font-size:10px;font-weight:600;text-transform:uppercase;color:#8a8880;display:block;margin-bottom:4px">Stuur naar</label>'
+    var mo=document.createElement('div');mo.style.cssText='background:#fff;border-radius:10px;padding:2rem;max-width:720px;width:100%;max-height:92vh;overflow-y:auto';
+
+    var catHtml = '';
+    categorieen.forEach(function(cat, ci){
+      catHtml += '<div style="margin-bottom:12px;border:1px solid #e4e0db;border-radius:8px;overflow:hidden">'
+        + '<label style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#f7f5f2;cursor:pointer;font-weight:600;font-size:13px">'
+        + '<input type="checkbox" class="iv-cat-check" data-ci="'+ci+'" checked style="width:15px;height:15px;accent-color:#1a7a5e"> '
+        + cat.titel + '</label>'
+        + '<div class="iv-items-'+ci+'" style="padding:8px 14px 10px 38px">';
+      cat.items.forEach(function(item, ii){
+        catHtml += '<label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#5a5854;padding:2px 0;cursor:pointer">'
+          + '<input type="checkbox" class="iv-item-check" data-ci="'+ci+'" data-ii="'+ii+'" checked style="accent-color:#1a7a5e"> '
+          + esc(item) + '</label>';
+      });
+      catHtml += '<textarea class="iv-extra-'+ci+'" placeholder="Aanvullende toelichting of specifieke documenten voor deze categorie (optioneel)..." style="width:100%;margin-top:6px;font-size:11px;color:#8a8880;background:#fafaf8;border:1px solid #e4e0db;border-radius:4px;padding:6px 8px;font-family:IBM Plex Sans,sans-serif;resize:vertical;min-height:40px"></textarea>'
+        + '</div></div>';
+    });
+
+    var deadline=new Date(Date.now()+14*24*3600*1000).toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'});
+
+    mo.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.1rem;color:#1a1815;font-weight:600;margin-bottom:.25rem">&#128203; Informatieverzoek samenstellen</div>'
+      +'<div style="font-size:12px;color:#8a8880;margin-bottom:1.25rem">Vink aan welke categorieën en vragen u wilt meesturen. U kunt per categorie een toelichting toevoegen.</div>'
+      +'<div style="margin-bottom:1rem"><label style="font-size:10px;font-weight:600;text-transform:uppercase;color:#8a8880;display:block;margin-bottom:4px">Deadline (aanpasbaar)</label>'
+      +'<input type="text" id="iv-deadline" value="'+deadline+'" style="background:#f0eeea;border:1px solid #c8c5bc;border-radius:6px;padding:7px 11px;font-family:IBM Plex Sans,sans-serif;font-size:13px;width:200px"></div>'
+      +'<div style="margin-bottom:1rem"><label style="font-size:10px;font-weight:600;text-transform:uppercase;color:#8a8880;display:block;margin-bottom:4px">Persoonlijk bericht (optioneel)</label>'
+      +'<textarea id="iv-bericht" rows="2" placeholder="Voeg een persoonlijk bericht toe..." style="width:100%;background:#f0eeea;border:1px solid #c8c5bc;border-radius:6px;padding:7px 11px;font-family:IBM Plex Sans,sans-serif;font-size:13px;resize:vertical"></textarea></div>'
+      +catHtml
+      +'<div style="margin-bottom:1rem;margin-top:1rem"><label style="font-size:10px;font-weight:600;text-transform:uppercase;color:#8a8880;display:block;margin-bottom:4px">Stuur naar</label>'
       +'<input type="email" id="bg-iv-email" value="'+esc(t2.contact_email||'')+'" style="width:100%;background:#f0eeea;border:1px solid #c8c5bc;border-radius:6px;padding:9px 11px;font-family:IBM Plex Sans,sans-serif;font-size:13px"></div>'
       +'<div id="bg-iv-err" style="display:none;color:#e05252;font-size:12px;margin-bottom:.5rem"></div>'
       +'<div style="display:flex;gap:8px;justify-content:flex-end">'
+      +'<button id="bg-iv-preview" style="background:transparent;border:1px solid #c8c5bc;padding:8px 16px;border-radius:6px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:13px">&#128065; Preview</button>'
       +'<button id="bg-iv-ann" style="background:transparent;border:1px solid #c8c5bc;padding:8px 16px;border-radius:6px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:13px">Annuleren</button>'
       +'<button id="bg-iv-ok" style="background:#1a7a5e;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:13px;font-weight:600">&#9993; Verstuur</button>'
       +'</div>';
+
     ov.appendChild(mo);document.body.appendChild(ov);
     ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
     document.getElementById('bg-iv-ann').onclick=function(){document.body.removeChild(ov);};
+
+    // Helper: bouw HTML mail op basis van selecties
+    function bouwMailHtml(){
+      var dl = document.getElementById('iv-deadline').value || deadline;
+      var bericht = document.getElementById('iv-bericht').value.trim();
+      var geselecteerd = [];
+      categorieen.forEach(function(cat, ci){
+        var catCheck = mo.querySelector('.iv-cat-check[data-ci="'+ci+'"]');
+        if(!catCheck||!catCheck.checked) return;
+        var items = [];
+        cat.items.forEach(function(item, ii){
+          var itemCheck = mo.querySelector('.iv-item-check[data-ci="'+ci+'"][data-ii="'+ii+'"]');
+          if(itemCheck&&itemCheck.checked) items.push(item);
+        });
+        var extra = (mo.querySelector('.iv-extra-'+ci)||{}).value||'';
+        if(items.length||extra) geselecteerd.push({titel:cat.titel, items:items, extra:extra.trim()});
+      });
+      var tabelRows = '';
+      geselecteerd.forEach(function(g, gi){
+        var bg = gi%2===0?'#f0eeea':'#fff';
+        var itemsHtml = g.items.map(function(i){return '<li style="margin:2px 0">'+esc(i)+'</li>';}).join('');
+        if(g.extra) itemsHtml += '<li style="margin:4px 0;color:#8a8880;font-style:italic">'+esc(g.extra)+'</li>';
+        tabelRows += '<tr style="background:'+bg+'"><td style="padding:10px 14px;font-weight:600;border:1px solid #ddd;vertical-align:top;white-space:nowrap">'+esc(g.titel)+'</td>'
+          +'<td style="padding:10px 14px;border:1px solid #ddd"><ul style="margin:0;padding-left:16px;font-size:13px;color:#5a5854">'+itemsHtml+'</ul></td></tr>';
+      });
+      var html='<div style="font-family:sans-serif;max-width:640px;margin:0 auto">'
+        +'<div style="background:#1a7a5e;color:#fff;padding:1.5rem;border-radius:8px 8px 0 0"><h2 style="margin:0;font-size:1.1rem">Informatieverzoek M&A — '+esc(t2.kantoor_naam||'Uw kantoor')+'</h2></div>'
+        +'<div style="background:#fff;border:1px solid #ddd;border-top:none;padding:1.5rem;border-radius:0 0 8px 8px">'
+        +'<p style="font-size:14px;color:#2a2825">Beste '+esc(t2.contact_naam||'relatie')+',</p>'
+        +(bericht?'<p style="font-size:13px;color:#5a5854;line-height:1.7">'+esc(bericht)+'</p>':'')
+        +'<p style="font-size:13px;color:#5a5854;line-height:1.7">In het kader van het M&A-traject ontvangen wij graag onderstaande informatie vóór <strong>'+esc(dl)+'</strong>.</p>'
+        +'<p style="font-size:13px;color:#5a5854;line-height:1.7">U kunt de documenten en gegevens direct uploaden via uw persoonlijke omgeving:</p>'
+        +'<div style="background:#f0faf6;border:1px solid #0a3d2e;border-radius:8px;padding:1.25rem;margin:1.25rem 0">'
+        +'<div style="font-size:11px;font-weight:600;color:#145f48;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.5rem">Uw persoonlijke uploadomgeving</div>'
+        +'<div style="font-family:monospace;background:#fff;border:1px solid #ddd;padding:.75rem;border-radius:6px;font-size:13px;margin-bottom:.5rem"><a href="'+mnaUrl+'" style="color:#1a7a5e">'+mnaUrl+'</a></div>'
+        +'<div style="font-size:12px;color:#8a8880">Toegangscode: <strong style="font-family:monospace;color:#1a7a5e;font-size:14px">'+esc(verkoperCode)+'</strong></div>'
+        +'</div>'
+        +(tabelRows?'<p style="font-size:13px;font-weight:600;color:#2a2825;margin-bottom:.5rem">Benodigde informatie:</p>'
+        +'<table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:1.25rem">'+tabelRows+'</table>':'')
+        +'<p style="font-size:12px;color:#8a8880">Heeft u vragen? Neem gerust contact op.<br>'
+        +esc(t2.begeleider_naam||'Uw begeleider')+' — <a href="mailto:'+esc(t2.begeleider_email||'')+'" style="color:#1a7a5e">'+esc(t2.begeleider_email||'')+'</a></p>'
+        +'<p style="font-size:12px;color:#8a8880;margin-top:.75rem">Met vriendelijke groet,<br><strong>'+esc(t2.begeleider_naam||'Uw begeleider')+'</strong><br>'
+        +'<span style="color:#aaa">Senior M&A-adviseur · Bisschops Financing BV</span></p>'
+        +'</div></div>';
+      return html;
+    }
+
+    // Preview knop
+    document.getElementById('bg-iv-preview').onclick=function(){
+      var html = bouwMailHtml();
+      var pvOv=document.createElement('div');pvOv.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:300;display:flex;align-items:center;justify-content:center;padding:1.5rem';
+      var pvMo=document.createElement('div');pvMo.style.cssText='background:#fff;border-radius:10px;padding:1.5rem;max-width:680px;width:100%;max-height:90vh;overflow-y:auto';
+      pvMo.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">'
+        +'<div style="font-weight:600;font-size:13px">Preview e-mail</div>'
+        +'<button id="pv-sluit" style="background:none;border:none;font-size:18px;cursor:pointer;color:#8a8880">&times;</button></div>'
+        +'<div style="border:1px solid #ddd;border-radius:6px;padding:1rem">'+html+'</div>';
+      pvOv.appendChild(pvMo);document.body.appendChild(pvOv);
+      pvOv.addEventListener('click',function(e){if(e.target===pvOv)document.body.removeChild(pvOv);});
+      pvMo.querySelector('#pv-sluit').onclick=function(){document.body.removeChild(pvOv);};
+    };
+
     document.getElementById('bg-iv-ok').onclick=async function(){
       var email=document.getElementById('bg-iv-email').value.trim();
       var ivErr=document.getElementById('bg-iv-err');
       if(!email){ivErr.style.display='block';ivErr.textContent='E-mailadres verplicht.';return;}
+      var html = bouwMailHtml();
       var sb=this;sb.disabled=true;sb.textContent='Versturen...';
       var er=await fetch(WORKER+'/mna/mail-begeleider',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey},
         body:JSON.stringify({to:email,naam:t2.contact_naam,trajectNaam:t2.kantoor_naam,tussenCode:verkoperCode,html:html})}).then(function(r){return r.json();}).catch(function(){return{};});
@@ -2451,23 +2547,172 @@ function renderBegeleiderDashboard(app){
         var r = await fetch(WORKER+'/mna/admin/gesprekken/'+S.traject.id, {headers:{'x-tussen-key': S._bgKey||''}});
         var data = await r.json();
         var gesprekken = data.gesprekken || [];
-        if (!gesprekken.length) {
-          gsEl.innerHTML = '<div style="font-style:italic">Nog geen gesprekken vastgelegd.</div>';
-          return;
-        }
         var typeLabels = {gesprek:'Gesprek',kennismaking:'Kennismaking',onderhandeling:'Onderhandeling',vergadering:'Vergadering',telefonisch:'Telefonisch',email:'E-mail',andere:'Overig'};
         var zichtLabels = {begeleider:'Intern',verkoper:'Verkoper',koper:'Koper',iedereen:'Alle partijen'};
         var zichtKleuren = {begeleider:'var(--muted)',verkoper:'var(--teal)',koper:'#2a5ea0',iedereen:'var(--gold)'};
-        var html = '<div style="display:flex;flex-direction:column;gap:8px">';
-        gesprekken.forEach(function(g) {
-          var dt = g.datum ? new Date(g.datum).toLocaleDateString('nl-NL',{day:'2-digit',month:'short',year:'numeric'}) : '—';
-          var zicht = g.zichtbaar_voor || 'begeleider';
-          html += '<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:.75rem .875rem">'            + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:.35rem">'            + '<span style="font-size:11px;font-weight:600;color:var(--teal)">'+(typeLabels[g.type]||g.type)+'</span>'            + '<span style="font-size:11px;color:var(--muted)">'+dt+'</span>'            + '<span style="font-size:9px;padding:2px 8px;border-radius:10px;background:var(--panel);border:1px solid var(--border);color:'+(zichtKleuren[zicht]||'var(--muted)')+'">'+(zichtLabels[zicht]||zicht)+'</span>'            + (g.deelnemers?'<span style="font-size:10px;color:var(--muted);margin-left:auto">'+esc(g.deelnemers)+'</span>':'')            + '</div>'            + (g.verslag?'<div style="font-size:12px;color:var(--sub);line-height:1.6">'+esc(g.verslag.substring(0,200))+(g.verslag.length>200?'…':'')+'</div>':'')            + '</div>';
-        });
-        html += '</div>';
+
+        var html = '<div style="display:flex;justify-content:flex-end;margin-bottom:8px">'
+          + '<button id="bg-nieuw-gesprek-btn" style="background:#1a7a5e;color:#fff;border:none;padding:6px 14px;border-radius:6px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:12px;font-weight:600">+ Gesprek vastleggen</button>'
+          + '</div>';
+
+        if (!gesprekken.length) {
+          html += '<div style="font-style:italic;font-size:12px;color:var(--muted)">Nog geen gesprekken vastgelegd.</div>';
+        } else {
+          html += '<div style="display:flex;flex-direction:column;gap:8px">';
+          gesprekken.forEach(function(g) {
+            var dt = g.datum ? new Date(g.datum).toLocaleDateString('nl-NL',{day:'2-digit',month:'short',year:'numeric'}) : '—';
+            var zicht = g.zichtbaar_voor || 'begeleider';
+            html += '<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:.75rem .875rem">'
+              + '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:.35rem">'
+              + '<span style="font-size:11px;font-weight:600;color:var(--teal)">'+(typeLabels[g.type]||g.type)+'</span>'
+              + '<span style="font-size:11px;color:var(--muted)">'+dt+'</span>'
+              + '<span style="font-size:9px;padding:2px 8px;border-radius:10px;background:var(--panel);border:1px solid var(--border);color:'+(zichtKleuren[zicht]||'var(--muted)')+'">&#128065; '+(zichtLabels[zicht]||zicht)+'</span>'
+              + (g.deelnemers?'<span style="font-size:10px;color:var(--muted)">'+esc(g.deelnemers)+'</span>':'')
+              + '<div style="margin-left:auto;display:flex;gap:6px">'
+              + '<select class="bg-gs-zicht-sel" data-id="'+esc(g.id)+'" style="font-size:10px;padding:2px 6px;border:1px solid var(--border);border-radius:4px;background:var(--card);color:var(--sub);cursor:pointer">'
+              + '<option value="begeleider"'+(zicht==='begeleider'?' selected':'')+'>Intern</option>'
+              + '<option value="verkoper"'+(zicht==='verkoper'?' selected':'')+'>Verkoper</option>'
+              + '<option value="koper"'+(zicht==='koper'?' selected':'')+'>Koper</option>'
+              + '<option value="iedereen"'+(zicht==='iedereen'?' selected':'')+'>Alle partijen</option>'
+              + '</select>'
+              + '<button class="bg-gs-open-btn" data-id="'+esc(g.id)+'" data-verslag="'+esc(g.verslag||'')+'" data-datum="'+esc(g.datum||'')+'" data-type="'+esc(g.type||'')+'" data-deelnemers="'+esc(g.deelnemers||'')+'" data-zicht="'+esc(zicht)+'" style="font-size:10px;padding:2px 10px;border:1px solid var(--border);border-radius:4px;background:var(--panel);cursor:pointer">&#9998; Bewerken</button>'
+              + '</div></div>'
+              + (g.verslag?'<div style="font-size:12px;color:var(--sub);line-height:1.6">'+esc(g.verslag.substring(0,200))+(g.verslag.length>200?'…':'')+'</div>':'')
+              + '</div>';
+          });
+          html += '</div>';
+        }
+
         gsEl.innerHTML = html;
+
+        // Nieuw gesprek knop
+        gsEl.querySelector('#bg-nieuw-gesprek-btn').onclick = function(){
+          openBgGesprekForm(null);
+        };
+
+        // Zichtbaarheid direct aanpassen
+        gsEl.querySelectorAll('.bg-gs-zicht-sel').forEach(function(sel){
+          sel.onchange = async function(){
+            var gId = sel.dataset.id;
+            var nieuweZicht = sel.value;
+            await fetch(WORKER+'/mna/admin/gesprekken/'+S.traject.id, {
+              method:'POST',
+              headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||''},
+              body:JSON.stringify({id:gId, zichtbaar_voor:nieuweZicht})
+            }).catch(function(){});
+            toast('Zichtbaarheid bijgewerkt.','ok');
+            laadBgGesprekken();
+          };
+        });
+
+        // Bewerken knop
+        gsEl.querySelectorAll('.bg-gs-open-btn').forEach(function(btn){
+          btn.onclick = function(){
+            openBgGesprekForm({
+              id: btn.dataset.id,
+              verslag: btn.dataset.verslag,
+              datum: btn.dataset.datum,
+              type: btn.dataset.type,
+              deelnemers: btn.dataset.deelnemers,
+              zichtbaar_voor: btn.dataset.zicht
+            });
+          };
+        });
+
       } catch(e) { gsEl.innerHTML = '<div style="color:var(--red);font-size:12px">Fout: '+e.message+'</div>'; }
     }
+
+    // Gesprek formulier voor begeleider in mna.html
+    function openBgGesprekForm(bestaand) {
+      var vandaag = new Date().toISOString().split('T')[0];
+      var g = bestaand || {};
+      var ov = document.createElement('div');
+      ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:3000;display:flex;align-items:center;justify-content:center;padding:1.5rem';
+      var mo = document.createElement('div');
+      mo.style.cssText = 'background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.75rem;max-width:600px;width:100%;max-height:90vh;overflow-y:auto';
+      mo.innerHTML = '<div style="font-family:Playfair Display,serif;font-size:1rem;font-weight:600;color:var(--head);margin-bottom:1.25rem">'+(g.id?'Gesprek bewerken':'Gesprek vastleggen')+'</div>'
+        + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">'
+        + '<div><label style="font-size:10px;font-weight:600;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:4px">Datum</label>'
+        + '<input type="date" id="bgg-datum" value="'+(g.datum||vandaag)+'" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:8px 10px;font-family:IBM Plex Sans,sans-serif;font-size:13px"></div>'
+        + '<div><label style="font-size:10px;font-weight:600;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:4px">Type</label>'
+        + '<select id="bgg-type" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:8px 10px;font-family:IBM Plex Sans,sans-serif;font-size:13px">'
+        + ['gesprek','kennismaking','onderhandeling','vergadering','telefonisch','email','andere'].map(function(t){
+            var labels={gesprek:'Gesprek',kennismaking:'Kennismaking',onderhandeling:'Onderhandeling',vergadering:'Vergadering',telefonisch:'Telefonisch',email:'E-mail',andere:'Overig'};
+            return '<option value="'+t+'"'+(g.type===t?' selected':'')+'>'+labels[t]+'</option>';
+          }).join('')
+        + '</select></div></div>'
+        + '<div style="margin-bottom:10px"><label style="font-size:10px;font-weight:600;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:4px">Deelnemers</label>'
+        + '<input type="text" id="bgg-deelnemers" value="'+esc(g.deelnemers||'')+'" placeholder="bijv. Marcel Bisschops, Barry Sutin" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:8px 10px;font-family:IBM Plex Sans,sans-serif;font-size:13px"></div>'
+        + '<div style="margin-bottom:10px"><label style="font-size:10px;font-weight:600;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:4px">Zichtbaar voor</label>'
+        + '<select id="bgg-zicht" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:8px 10px;font-family:IBM Plex Sans,sans-serif;font-size:13px">'
+        + '<option value="begeleider"'+((!g.zichtbaar_voor||g.zichtbaar_voor==="begeleider")?' selected':'')+'>Alleen begeleider (intern)</option>'
+        + '<option value="verkoper"'+(g.zichtbaar_voor==="verkoper"?' selected':'')+'>Verkoper</option>'
+        + '<option value="koper"'+(g.zichtbaar_voor==="koper"?' selected':'')+'>Koper</option>'
+        + '<option value="iedereen"'+(g.zichtbaar_voor==="iedereen"?' selected':'')+'>Alle partijen</option>'
+        + '</select></div>'
+        + '<div style="margin-bottom:10px"><label style="font-size:10px;font-weight:600;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:4px">Verslag</label>'
+        + '<textarea id="bgg-verslag" rows="6" placeholder="Gespreksverslag..." style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:8px 10px;font-family:IBM Plex Mono,monospace;font-size:12px;line-height:1.7;resize:vertical">'+esc(g.verslag||'')+'</textarea></div>'
+        + '<div id="bgg-concept-ind" style="font-size:10px;color:var(--muted);margin-bottom:.25rem;font-style:italic"></div>'
+        + '<div id="bgg-err" style="display:none;color:var(--red);font-size:12px;margin-bottom:.5rem"></div>'
+        + '<div style="display:flex;gap:8px;justify-content:flex-end">'
+        + '<button id="bgg-ann" style="background:transparent;border:1px solid var(--border);padding:7px 14px;border-radius:var(--r);cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:13px">Annuleren</button>'
+        + '<button id="bgg-ok" style="background:#1a7a5e;color:#fff;border:none;padding:7px 14px;border-radius:var(--r);cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:13px;font-weight:600">&#128190; Definitief opslaan</button>'
+        + '</div>';
+      ov.appendChild(mo); document.body.appendChild(ov);
+      ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
+      mo.querySelector('#bgg-ann').onclick = function(){document.body.removeChild(ov);};
+
+      // Concept auto-opslaan
+      var bggTimer = null;
+      ['bgg-datum','bgg-type','bgg-deelnemers','bgg-zicht','bgg-verslag'].forEach(function(id){
+        var el = document.getElementById(id);
+        if(el) el.addEventListener('input',function(){
+          clearTimeout(bggTimer);
+          bggTimer = setTimeout(function(){
+            var ind = document.getElementById('bgg-concept-ind');
+            fetch(WORKER+'/mna/gesprek/concept',{method:'POST',headers:{'Content-Type':'application/json'},
+              body:JSON.stringify({code:S.code,datum:document.getElementById('bgg-datum').value,
+                deelnemers:document.getElementById('bgg-deelnemers').value,
+                type:document.getElementById('bgg-type').value,
+                verslag:document.getElementById('bgg-verslag').value,
+                zichtbaar_voor:document.getElementById('bgg-zicht').value,
+                auteur:S.traject&&S.traject.begeleider_naam||'Begeleider'})
+            });
+            if(ind) ind.textContent = 'Concept opgeslagen '+new Date().toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'});
+          }, 2000);
+        });
+      });
+
+      // Definitief opslaan
+      mo.querySelector('#bgg-ok').onclick = async function(){
+        var datum = document.getElementById('bgg-datum').value;
+        var err = document.getElementById('bgg-err');
+        if(!datum){err.style.display='block';err.textContent='Datum is verplicht.';return;}
+        var payload = {
+          datum: datum,
+          deelnemers: document.getElementById('bgg-deelnemers').value.trim(),
+          type: document.getElementById('bgg-type').value,
+          verslag: document.getElementById('bgg-verslag').value.trim(),
+          zichtbaar_voor: document.getElementById('bgg-zicht').value
+        };
+        if(g.id) payload.id = g.id;
+        var btn = this; btn.disabled=true; btn.textContent='Opslaan...';
+        var r = await fetch(WORKER+'/mna/admin/gesprekken/'+S.traject.id,{
+          method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||''},
+          body:JSON.stringify(payload)
+        }).then(function(x){return x.json();}).catch(function(){return{};});
+        if(r.ok){
+          fetch(WORKER+'/mna/gesprek/concept/delete/'+S.code,{method:'POST'}).catch(function(){});
+          document.body.removeChild(ov);
+          toast('Gesprek opgeslagen.','ok');
+          laadBgGesprekken();
+        } else {
+          err.style.display='block';err.textContent='Fout: '+(r.error||'onbekend');
+          btn.disabled=false;btn.textContent='&#128190; Definitief opslaan';
+        }
+      };
+    }
+
     laadBgGesprekken();
   }
 
