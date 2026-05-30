@@ -164,109 +164,109 @@ var SECTOR_PROFIELEN = {
     fases: [
       {id:'financieel',num:'I',title:'Financieel',desc:'Kwaliteit en duurzaamheid van omzet en winst.',
        dataFields:[
-        {id:'omzet1',label:'Jaaromzet jaar 1 (oudste)',ph:'',doc:true,req:true},
-        {id:'omzet2',label:'Jaaromzet jaar 2',ph:'',doc:true,req:true},
-        {id:'omzet3',label:'Jaaromzet jaar 3 (meest recent)',ph:'',doc:true,req:true},
-        {id:'omzetYTD',label:'Omzet YTD huidig jaar',ph:'',doc:true,req:true},
-        {id:'ebitda',label:'EBITDA-marge jaar 3 (%)',ph:'',doc:false,req:true},
-        {id:'ebitdaNorm',label:'Genormaliseerde EBITDA',ph:'',doc:true,req:false},
-        {id:'wip',label:'Onderhanden werk / OHW',ph:'',doc:true,req:false},
-        {id:'debiteuren',label:'Debiteuren totaal',ph:'',doc:true,req:false},
-        {id:'debiteurenOud',label:'Debiteuren >90 dagen (%)',ph:'',doc:false,req:false},
-        {id:'declarab',label:'Declarabiliteit (%)',ph:'',doc:false,req:false},
-        {id:'partnerBel',label:'Partnerbeloning (marktconform?)',ph:'',doc:false,req:true},
-        {id:'_hdr_omzet',label:'— Omzetverdeling per dienstlijn (jaar 3)',ph:'',doc:false,req:false,header:true},
-        {id:'omzetJaarwerk',label:'Jaarwerk & samenstellen (%)',ph:'',doc:false,req:false},
-        {id:'omzetAdvies',label:'Advies & begeleiding (%)',ph:'',doc:false,req:false},
-        {id:'omzetLoon',label:'Loonadministratie (%)',ph:'',doc:false,req:false},
-        {id:'omzetFiscaal',label:'Fiscaal (%)',ph:'',doc:false,req:false},
-        {id:'omzetOverig',label:'Overig (%)',ph:'',doc:false,req:false},
-        {id:'_hdr_kosten',label:'— Kostenstructuur (jaar 3)',ph:'',doc:false,req:false,header:true},
-        {id:'kostenPersoneel',label:'Personeelskosten (% omzet)',ph:'',doc:false,req:false},
-        {id:'kostenHuisvesting',label:'Huisvesting & huur (% omzet)',ph:'',doc:false,req:false},
-        {id:'kostenIT',label:'IT & automatisering (% omzet)',ph:'',doc:false,req:false},
-        {id:'kostenMarketing',label:'Marketing & acquisitie (% omzet)',ph:'',doc:false,req:false},
-        {id:'kostenOverig',label:'Overige kosten (% omzet)',ph:'',doc:false,req:false}
+        {id:'omzet1',label:'Jaaromzet jaar 1 (oudste)',ph:'',doc:true,req:true,fase:'1'},
+        {id:'omzet2',label:'Jaaromzet jaar 2',ph:'',doc:true,req:true,fase:'1'},
+        {id:'omzet3',label:'Jaaromzet jaar 3 (meest recent)',ph:'',doc:true,req:true,fase:'1'},
+        {id:'omzetYTD',label:'Omzet YTD huidig jaar',ph:'',doc:true,req:false,fase:'1'},
+        {id:'ebitda',label:'EBITDA-marge jaar 3 (%)',ph:'',doc:false,req:true,fase:'1'},
+        {id:'partnerBel',label:'Partnerbeloning (marktconform?)',ph:'',doc:false,req:true,fase:'1'},
+        {id:'ebitdaNorm',label:'Genormaliseerde EBITDA',ph:'',doc:true,req:false,fase:'2'},
+        {id:'wip',label:'Onderhanden werk / OHW',ph:'',doc:true,req:false,fase:'2'},
+        {id:'debiteuren',label:'Debiteuren totaal',ph:'',doc:true,req:false,fase:'2'},
+        {id:'debiteurenOud',label:'Debiteuren >90 dagen (%)',ph:'',doc:false,req:false,fase:'2'},
+        {id:'declarab',label:'Declarabiliteit (%)',ph:'',doc:false,req:false,fase:'2'},
+        {id:'_hdr_omzet',label:'— Omzetverdeling per dienstlijn (jaar 3)',ph:'',doc:false,req:false,header:true,fase:'2'},
+        {id:'omzetJaarwerk',label:'Jaarwerk & samenstellen (%)',ph:'',doc:false,req:false,fase:'2'},
+        {id:'omzetAdvies',label:'Advies & begeleiding (%)',ph:'',doc:false,req:false,fase:'2'},
+        {id:'omzetLoon',label:'Loonadministratie (%)',ph:'',doc:false,req:false,fase:'2'},
+        {id:'omzetFiscaal',label:'Fiscaal (%)',ph:'',doc:false,req:false,fase:'2'},
+        {id:'omzetOverig',label:'Overig (%)',ph:'',doc:false,req:false,fase:'2'},
+        {id:'_hdr_kosten',label:'— Kostenstructuur (jaar 3)',ph:'',doc:false,req:false,header:true,fase:'2'},
+        {id:'kostenPersoneel',label:'Personeelskosten (% omzet)',ph:'',doc:false,req:false,fase:'2'},
+        {id:'kostenHuisvesting',label:'Huisvesting & huur (% omzet)',ph:'',doc:false,req:false,fase:'2'},
+        {id:'kostenIT',label:'IT & automatisering (% omzet)',ph:'',doc:false,req:false,fase:'2'},
+        {id:'kostenMarketing',label:'Marketing & acquisitie (% omzet)',ph:'',doc:false,req:false,fase:'2'},
+        {id:'kostenOverig',label:'Overige kosten (% omzet)',ph:'',doc:false,req:false,fase:'2'}
        ],
        items:['Jaarrekeningen 3 jaar beschikbaar','YTD-cijfers aangeleverd','Omzet per dienstlijn inzichtelijk','EBITDA-normalisatie opgesteld','OHW geïnventariseerd','Debiteurenpositie geanalyseerd','Partnerbeloningen vergeleken met marktconform','Declarabiliteit bepaald'],
        redflags:['Hoge WIP en oude debiteuren (>90 dagen)','Lage partnerproductiviteit tov benchmark','Eenmalige omzetpieken vertekenen beeld','Niet-genormaliseerde partnerbeloningen']},
       {id:'commercieel',num:'II',title:'Klanten & commercieel',desc:'Concentratie, retentie en commerciële kracht.',
        dataFields:[
-        {id:'aantalKlanten',label:'Aantal actieve klanten',ph:'',doc:false,req:true},
-        {id:'churn',label:'Klantverloop per jaar (%)',ph:'',doc:false,req:true},
-        {id:'klantduur',label:'Gem. klantduur (jaar)',ph:'',doc:false,req:true},
-        {id:'top1pct',label:'Grootste klant (% omzet)',ph:'',doc:false,req:true},
-        {id:'top10pct',label:'Top 10 klanten (% omzet)',ph:'',doc:false,req:true},
-        {id:'recurring',label:'Vaste/abonnements-omzet (%)',ph:'',doc:false,req:true},
-        {id:'crossSell',label:'Cross-sell (%)',ph:'',doc:false,req:false},
-        {id:'nieuw',label:'Nieuwe klanten per jaar',ph:'',doc:false,req:false},
-        {id:'verlies',label:'Verloren klanten per jaar',ph:'',doc:false,req:false}
+        {id:'aantalKlanten',label:'Aantal actieve klanten',ph:'',doc:false,req:true,fase:'1'},
+        {id:'recurring',label:'Vaste/abonnements-omzet (%)',ph:'',doc:false,req:true,fase:'1'},
+        {id:'top1pct',label:'Grootste klant (% omzet)',ph:'',doc:false,req:true,fase:'1'},
+        {id:'top10pct',label:'Top 10 klanten (% omzet)',ph:'',doc:false,req:false,fase:'1'},
+        {id:'churn',label:'Klantverloop per jaar (%)',ph:'',doc:false,req:false,fase:'2'},
+        {id:'klantduur',label:'Gem. klantduur (jaar)',ph:'',doc:false,req:false,fase:'2'},
+        {id:'crossSell',label:'Cross-sell (%)',ph:'',doc:false,req:false,fase:'2'},
+        {id:'nieuw',label:'Nieuwe klanten per jaar',ph:'',doc:false,req:false,fase:'2'},
+        {id:'verlies',label:'Verloren klanten per jaar',ph:'',doc:false,req:false,fase:'2'}
        ],
        items:['Klantverloop inzichtelijk (3 jaar)','Top 10 klanten samen <40% omzet','Cross-sell percentage vastgesteld','Contractduur inzichtelijk'],
        redflags:['Omzet geconcentreerd bij <5 klanten','Klantverloop >10% per jaar','Klantrelaties hangen aan individuele partners','Geen structurele acquisitie']},
       {id:'partner',num:'III',title:'Partners & personeel',desc:'Afhankelijkheden, opvolging en cultuur.',
        dataFields:[
-        {id:'aantalP',label:'Aantal partners/eigenaren',ph:'',doc:false,req:true},
-        {id:'gemLeeftijd',label:'Gem. leeftijd partners',ph:'',doc:false,req:true},
-        {id:'omzetPerP',label:'Omzet per partner',ph:'',doc:false,req:true},
-        {id:'pensioenP',label:'Partners met pensioen <5 jaar',ph:'',doc:false,req:true},
-        {id:'fte',label:'Totaal FTE',ph:'',doc:false,req:true},
-        {id:'verloop',label:'Personeelsverloop (%)',ph:'',doc:false,req:true},
-        {id:'vacatures',label:'Openstaande vacatures',ph:'',doc:false,req:false},
-        {id:'raAa',label:'RA/AA in opleiding',ph:'',doc:false,req:false},
-        {id:'opvolging',label:'Opvolgingskandidaat aanwezig',ph:'',doc:false,req:true},
-        {id:'verandering',label:'Veranderbereidheid',ph:'',doc:false,req:true},
-        {id:'pContract',label:'Partnerovereenkomsten actueel',ph:'',doc:true,req:true}
+        {id:'aantalP',label:'Aantal partners/eigenaren',ph:'',doc:false,req:true,fase:'1'},
+        {id:'gemLeeftijd',label:'Gem. leeftijd partners',ph:'',doc:false,req:true,fase:'1'},
+        {id:'fte',label:'Totaal FTE',ph:'',doc:false,req:true,fase:'1'},
+        {id:'opvolging',label:'Opvolgingskandidaat aanwezig',ph:'',doc:false,req:true,fase:'1'},
+        {id:'verandering',label:'Veranderbereidheid',ph:'',doc:false,req:true,fase:'1'},
+        {id:'omzetPerP',label:'Omzet per partner',ph:'',doc:false,req:false,fase:'2'},
+        {id:'pensioenP',label:'Partners met pensioen <5 jaar',ph:'',doc:false,req:false,fase:'2'},
+        {id:'verloop',label:'Personeelsverloop (%)',ph:'',doc:false,req:false,fase:'2'},
+        {id:'vacatures',label:'Openstaande vacatures',ph:'',doc:false,req:false,fase:'2'},
+        {id:'raAa',label:'RA/AA in opleiding',ph:'',doc:false,req:false,fase:'2'},
+        {id:'pContract',label:'Partnerovereenkomsten actueel',ph:'',doc:true,req:false,fase:'2'}
        ],
        items:['Omzetbijdrage per partner vastgesteld','Leeftijdsopbouw in kaart','Opvolgingsplan aanwezig','Verlooppercentage bepaald (norm <15%)'],
        redflags:['Omzet zit in 1-2 partners','Pensioengolf zonder opvolging','Verloop >15%','Geen formele partnerovereenkomsten']},
       {id:'compliance',num:'IV',title:'Compliance & kwaliteit',desc:'Regulatory status en dossierkwaliteit.',
        dataFields:[
-        {id:'nba',label:'NBA-status',ph:'',doc:true,req:true},
-        {id:'afm',label:'AFM-vergunning',ph:'',doc:true,req:true},
-        {id:'toetsDatum',label:'Laatste kwaliteitstoetsing (jaar)',ph:'',doc:true,req:true},
-        {id:'toetsOordeel',label:'Oordeel kwaliteitstoetsing',ph:'',doc:true,req:true},
-        {id:'tuchtzaken',label:'Lopende tuchtzaken',ph:'',doc:false,req:true},
-        {id:'claims',label:'Civiele claims',ph:'',doc:false,req:true},
-        {id:'wwft',label:'Wwft-procedures up-to-date',ph:'',doc:true,req:true},
-        {id:'incidenten',label:'Integriteitsincidenten <5 jaar',ph:'',doc:false,req:true}
+        {id:'nba',label:'NBA-status',ph:'',doc:true,req:true,fase:'1'},
+        {id:'toetsDatum',label:'Laatste kwaliteitstoetsing (jaar)',ph:'',doc:false,req:true,fase:'1'},
+        {id:'toetsOordeel',label:'Oordeel kwaliteitstoetsing',ph:'',doc:false,req:true,fase:'1'},
+        {id:'tuchtzaken',label:'Lopende tuchtzaken',ph:'',doc:false,req:true,fase:'1'},
+        {id:'afm',label:'AFM-vergunning',ph:'',doc:true,req:false,fase:'2'},
+        {id:'claims',label:'Civiele claims',ph:'',doc:false,req:false,fase:'2'},
+        {id:'wwft',label:'Wwft-procedures up-to-date',ph:'',doc:true,req:false,fase:'2'},
+        {id:'incidenten',label:'Integriteitsincidenten <5 jaar',ph:'',doc:false,req:false,fase:'2'}
        ],
        items:['NBA-inschrijving gecontroleerd','Kwaliteitstoetsingen doorgenomen','Wwft-procedures gereviewed','Tuchtzaken geïnventariseerd'],
        redflags:['Negatieve kwaliteitstoetsing NBA','Lopende tuchtzaken of claims','Wwft niet op orde','Structurele dossierbevindingen']},
       {id:'it',num:'V',title:'IT & automatisering',desc:'Systemen, automatiseringsgraad en AI-readiness.',
        dataFields:[
-        {id:'software',label:'Primaire software',ph:'',doc:false,req:true},
-        {id:'softwareOverig',label:'Overige systemen',ph:'',doc:false,req:false},
-        {id:'autoGraad',label:'Automatiseringsgraad routinetaken',ph:'',doc:false,req:true},
-        {id:'ai',label:'AI-tooling in gebruik',ph:'',doc:false,req:true},
-        {id:'itKosten',label:'IT-kosten (% omzet)',ph:'',doc:false,req:false},
-        {id:'security',label:'Cybersecurity status',ph:'',doc:true,req:false},
-        {id:'itRisico',label:'Bekende IT-risicos',ph:'',doc:false,req:true}
+        {id:'software',label:'Primaire software',ph:'',doc:false,req:true,fase:'1'},
+        {id:'autoGraad',label:'Automatiseringsgraad routinetaken',ph:'',doc:false,req:true,fase:'1'},
+        {id:'ai',label:'AI-tooling in gebruik',ph:'',doc:false,req:false,fase:'1'},
+        {id:'softwareOverig',label:'Overige systemen',ph:'',doc:false,req:false,fase:'2'},
+        {id:'itKosten',label:'IT-kosten (% omzet)',ph:'',doc:false,req:false,fase:'2'},
+        {id:'security',label:'Cybersecurity status',ph:'',doc:true,req:false,fase:'2'},
+        {id:'itRisico',label:'Bekende IT-risicos',ph:'',doc:false,req:false,fase:'2'}
        ],
        items:['Softwarelandschap in kaart','Automatiseringsgraad bepaald','AI-tooling aanwezig','Cybersecurity vastgesteld'],
        redflags:['Geen schaalbaar systeemlandschap','Hoge mate handmatig werk','Lage AI-readiness','Cybersecurity kwetsbaarheden']},
       {id:'juridisch',num:'VI',title:'Juridisch & fiscaal',desc:'Structuur, contracten en fiscale risico.',
        dataFields:[
-        {id:'rechtsvorm',label:'Rechtsvorm(en)',ph:'',doc:true,req:true},
-        {id:'structuur',label:'Aandeelhoudersstructuur',ph:'',doc:true,req:true},
-        {id:'huur',label:'Huurcontract looptijd',ph:'',doc:true,req:true},
-        {id:'vpb',label:'VPB openstaande discussies',ph:'',doc:false,req:true},
-        {id:'fiscaalRisico',label:'Fiscale risicos',ph:'',doc:false,req:true},
-        {id:'stak',label:'STAK of bijzondere structuur',ph:'',doc:true,req:false},
-        {id:'overigeClaims',label:'Claims of garanties',ph:'',doc:false,req:true},
-        {id:'lease',label:'Leaseverplichtingen (per jaar)',ph:'',doc:true,req:false}
+        {id:'rechtsvorm',label:'Rechtsvorm(en)',ph:'',doc:true,req:true,fase:'1'},
+        {id:'structuur',label:'Aandeelhoudersstructuur',ph:'',doc:true,req:true,fase:'1'},
+        {id:'vpb',label:'VPB openstaande discussies',ph:'',doc:false,req:true,fase:'1'},
+        {id:'fiscaalRisico',label:'Fiscale risicos',ph:'',doc:false,req:false,fase:'1'},
+        {id:'huur',label:'Huurcontract looptijd',ph:'',doc:true,req:false,fase:'2'},
+        {id:'stak',label:'STAK of bijzondere structuur',ph:'',doc:true,req:false,fase:'2'},
+        {id:'overigeClaims',label:'Claims of garanties',ph:'',doc:false,req:false,fase:'2'},
+        {id:'lease',label:'Leaseverplichtingen (per jaar)',ph:'',doc:true,req:false,fase:'2'}
        ],
        items:['Statuten doorgenomen','Huurcontracten inzichtelijk','VPB-positie 3 jaar beoordeeld','Claims vastgesteld'],
        redflags:['Openstaande fiscale discussies','Huurcontract niet overdraagbaar','Onbekende claims']},
       {id:'strategisch',num:'VII',title:'Strategisch & markt',desc:'Marktpositie, groeipotentieel en strategische fit.',
        dataFields:[
-        {id:'marktpos',label:'Marktpositie / regio',ph:'',doc:false,req:true},
-        {id:'niche',label:'Niche of specialisme',ph:'',doc:false,req:true},
-        {id:'concurrenten',label:'Belangrijkste concurrenten',ph:'',doc:false,req:false},
-        {id:'aiImpact',label:'AI-impact op dienstenmix',ph:'',doc:false,req:true},
-        {id:'cultuurFit',label:'Cultuuromschrijving',ph:'',doc:false,req:true},
-        {id:'synergie',label:'Gewenste vervolgstap eigenaar',ph:'',doc:false,req:true},
-        {id:'tijdlijn',label:'Gewenste tijdlijn',ph:'',doc:false,req:true}
+        {id:'marktpos',label:'Marktpositie / regio',ph:'',doc:false,req:true,fase:'1'},
+        {id:'niche',label:'Niche of specialisme',ph:'',doc:false,req:true,fase:'1'},
+        {id:'synergie',label:'Gewenste vervolgstap eigenaar',ph:'',doc:false,req:true,fase:'1'},
+        {id:'tijdlijn',label:'Gewenste tijdlijn',ph:'',doc:false,req:true,fase:'1'},
+        {id:'concurrenten',label:'Belangrijkste concurrenten',ph:'',doc:false,req:false,fase:'2'},
+        {id:'aiImpact',label:'AI-impact op dienstenmix',ph:'',doc:false,req:false,fase:'2'},
+        {id:'cultuurFit',label:'Cultuuromschrijving',ph:'',doc:false,req:false,fase:'2'}
        ],
        items:['Marktpositie vastgesteld','AI-impact beoordeeld','Synergiepotentieel bepaald','Cultuurfit getoetst'],
        redflags:['Afhankelijkheid samenstelpraktijk (AI-risico)','Geen duidelijke niche','Cultuurmismatch koper','Beperkt integratiepotentieel']}
@@ -2894,14 +2894,48 @@ function renderMain(){
   });
   ov+='</div>';
 
+  // Bepaal DD-fase: fase 1 (pre-LOI) of fase 2 (post-LOI)
+  var loiGetekend = !!(S.loiGetekend || (S.traject && (S.traject.loi_getekend || S.traject.loi_datum)));
+  var huidigeDDFase = loiGetekend ? '2' : '1';
+
   // Data fields
-  var dataHtml='<div class="panel"><div class="sec-hdr">Informatie invullen</div>';
+  var dataHtml='<div class="panel">';
+  // DD fase banner
+  if(isVerkoper()){
+    if(!loiGetekend){
+      dataHtml+='<div style="background:var(--teal-bg);border:1px solid var(--teal);border-radius:var(--r);padding:.75rem 1rem;margin-bottom:1rem;display:flex;align-items:center;gap:10px">'        +'<span style="font-size:16px">📋</span>'        +'<div><div style="font-size:12px;font-weight:600;color:var(--teal)">Fase 1 — Oriëntatie (pre-LoI)</div>'        +'<div style="font-size:11px;color:var(--teal-dim)">Na ondertekening van de LoI ontvangt u aanvullende vragen voor de volledige due diligence.</div></div>'        +'</div>';
+    } else {
+      dataHtml+='<div style="background:#eef3fa;border:1px solid #2a5ea0;border-radius:var(--r);padding:.75rem 1rem;margin-bottom:1rem;display:flex;align-items:center;gap:10px">'        +'<span style="font-size:16px">🔍</span>'        +'<div><div style="font-size:12px;font-weight:600;color:#2a5ea0">Fase 2 — Volledige due diligence (post-LoI)</div>'        +'<div style="font-size:11px;color:#4a6ea0">De LoI is ondertekend. Vul de aanvullende velden in voor de volledige due diligence.</div></div>'        +'</div>';
+    }
+  }
+  dataHtml+='<div class="sec-hdr">Informatie invullen</div>';
   var instrTxt=isVerkoper()?'<div style="font-size:11px;color:var(--muted);line-height:1.6;margin-bottom:1rem;padding-bottom:.75rem;border-bottom:1px solid var(--border)">Vul de velden in. Upload rechts de relevante documenten &mdash; velden worden automatisch ingelezen zolang het boekjaar in het document staat. Controleer alle automatisch ingevulde waarden. De ge&uuml;ploade documenten dienen als grondslag voor de due diligence. Ontbrekende velden vult u zelf in.</div>':'';
   dataHtml+=instrTxt+'<div class="data-grid">';
+  var fase2GetoondHeader=false;
   f.dataFields.forEach(function(df){
+    // Fase 2 velden: toon als vergrendeld als LoI nog niet getekend
+    var isFase2 = df.fase === '2';
+    var blokkeer = isFase2 && !loiGetekend && isVerkoper();
+
     if(df.header){
+      // Header altijd tonen maar met fade als fase 2 geblokkeerd
+      if(isFase2 && !loiGetekend && isVerkoper()){
+        if(!fase2GetoondHeader){
+          dataHtml+='</div><div style="margin:1.5rem 0 .75rem;padding:.6rem 1rem;background:#f5f5f3;border:1px solid var(--border);border-radius:var(--r);grid-column:1/-1;display:flex;align-items:center;gap:8px">'            +'<span style="font-size:13px">🔒</span>'            +'<span style="font-size:11px;font-weight:600;color:var(--muted)">Aanvullende vragen beschikbaar na ondertekening LoI</span>'            +'</div><div class="data-grid">';
+          fase2GetoondHeader=true;
+        }
+        return;
+      }
       dataHtml+='</div><div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--teal);margin:1.25rem 0 .6rem;padding-top:1rem;border-top:1px solid var(--border);grid-column:1/-1">'+df.label+'</div><div class="data-grid">';
       return;
+    }
+    // Blokkeer fase 2 velden als LoI niet getekend
+    if(blokkeer){
+      if(!fase2GetoondHeader){
+        dataHtml+='</div><div style="margin:1.5rem 0 .75rem;padding:.6rem 1rem;background:#f5f5f3;border:1px solid var(--border);border-radius:var(--r);grid-column:1/-1;display:flex;align-items:center;gap:8px">'          +'<span style="font-size:13px">🔒</span>'          +'<span style="font-size:11px;font-weight:600;color:var(--muted)">Aanvullende vragen beschikbaar na ondertekening LoI</span>'          +'</div><div class="data-grid">';
+        fase2GetoondHeader=true;
+      }
+      return; // Sla geblokkeerde velden over
     }
     var val=S.data[f.id+'_'+df.id]||'';
     var missing=S.showValidation&&df.req&&!val.trim();
