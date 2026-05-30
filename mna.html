@@ -2045,6 +2045,10 @@ function renderBegeleiderDashboard(app){
     +'<button class="btn" id="bg-ai-actie" style="background:#6b7c93">&#9881; AI-analyse genereren</button>'
     +'</div>'
     +'<div id="bg-ai-out" style="display:none;margin-top:1rem"></div>'
+    +'<div style="margin-top:1.25rem">'
+    +'<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem">&#128172; Gesprekken &amp; verslagen</div>'
+    +'<div id="bg-gesprekken-sectie" style="font-size:12px;color:var(--muted);font-style:italic">Laden...</div>'
+    +'</div>'
     +'</div>';
 
   app.innerHTML=html;
@@ -2353,6 +2357,33 @@ function renderBegeleiderDashboard(app){
       } catch(e) { bgDocsEl.innerHTML='<div style="font-size:12px;color:var(--red)">Fout: '+e.message+'</div>'; }
     }
     laadBgDocs();
+
+    // Laad gesprekken voor begeleider
+    async function laadBgGesprekken() {
+      var gsEl = document.getElementById('bg-gesprekken-sectie');
+      if (!gsEl) return;
+      try {
+        var r = await fetch(WORKER+'/mna/admin/gesprekken/'+S.traject.id, {headers:{'x-tussen-key': S._bgKey||''}});
+        var data = await r.json();
+        var gesprekken = data.gesprekken || [];
+        if (!gesprekken.length) {
+          gsEl.innerHTML = '<div style="font-style:italic">Nog geen gesprekken vastgelegd.</div>';
+          return;
+        }
+        var typeLabels = {gesprek:'Gesprek',kennismaking:'Kennismaking',onderhandeling:'Onderhandeling',vergadering:'Vergadering',telefonisch:'Telefonisch',email:'E-mail',andere:'Overig'};
+        var zichtLabels = {begeleider:'Intern',verkoper:'Verkoper',koper:'Koper',iedereen:'Alle partijen'};
+        var zichtKleuren = {begeleider:'var(--muted)',verkoper:'var(--teal)',koper:'#2a5ea0',iedereen:'var(--gold)'};
+        var html = '<div style="display:flex;flex-direction:column;gap:8px">';
+        gesprekken.forEach(function(g) {
+          var dt = g.datum ? new Date(g.datum).toLocaleDateString('nl-NL',{day:'2-digit',month:'short',year:'numeric'}) : '—';
+          var zicht = g.zichtbaar_voor || 'begeleider';
+          html += '<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:.75rem .875rem">'            + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:.35rem">'            + '<span style="font-size:11px;font-weight:600;color:var(--teal)">'+(typeLabels[g.type]||g.type)+'</span>'            + '<span style="font-size:11px;color:var(--muted)">'+dt+'</span>'            + '<span style="font-size:9px;padding:2px 8px;border-radius:10px;background:var(--panel);border:1px solid var(--border);color:'+(zichtKleuren[zicht]||'var(--muted)')+'">'+(zichtLabels[zicht]||zicht)+'</span>'            + (g.deelnemers?'<span style="font-size:10px;color:var(--muted);margin-left:auto">'+esc(g.deelnemers)+'</span>':'')            + '</div>'            + (g.verslag?'<div style="font-size:12px;color:var(--sub);line-height:1.6">'+esc(g.verslag.substring(0,200))+(g.verslag.length>200?'…':'')+'</div>':'')            + '</div>';
+        });
+        html += '</div>';
+        gsEl.innerHTML = html;
+      } catch(e) { gsEl.innerHTML = '<div style="color:var(--red);font-size:12px">Fout: '+e.message+'</div>'; }
+    }
+    laadBgGesprekken();
   }
 
   document.getElementById('bg-ai-actie').onclick=async function(){
