@@ -1629,7 +1629,7 @@ async function toonDetail(id,naam){
       try{
         var vCheck=await fetch(WORKER+'/mna/versies/'+id+'?key='+encodeURIComponent(adminKey));
         var vList=await vCheck.json();
-        var bestaandeBem=vList.filter(function(v){return v.doc_type==='bem'||v.doc_type==='bem_verk'||v.doc_type==='bem_koper';});
+        var bestaandeBem=vList.filter(function(v){return v.doc_type==='bem'||v.doc_type==='bem_verk'||v.doc_type==='bem_koper'||v.doc_type==='bem_upload';});
         if(bestaandeBem.length>0){
           var ontv='';try{ontv=JSON.parse(bestaandeBem[0].verstuurd_naar||'[]').filter(Boolean).join(', ');}catch(e){}
           var extra=ontv?' — verstuurd naar '+ontv:'';
@@ -1729,7 +1729,7 @@ async function toonDetail(id,naam){
       try{
         var vCheck2=await fetch(WORKER+'/mna/versies/'+id+'?key='+encodeURIComponent(adminKey));
         var vList2=await vCheck2.json();
-        var bestaandeNda=vList2.filter(function(v){return v.doc_type==='nda';});
+        var bestaandeNda=vList2.filter(function(v){return v.doc_type==='nda'||v.doc_type==='nda_upload';});
         if(bestaandeNda.length>0){
           if(!confirm('Er is al een NDA aangemaakt.\n\nOpnieuw genereren?'))return;
         }
@@ -1876,8 +1876,8 @@ async function toonDetail(id,naam){
       try{
         var vCheckL=await fetch(WORKER+'/mna/versies/'+id+'?key='+encodeURIComponent(adminKey));
         var vListL=await vCheckL.json();
-        var heeftNda=vListL.some(function(v){return v.doc_type==='nda';});
-        var heeftExcl=vListL.some(function(v){return v.doc_type==='exclusief'||v.doc_type==='excl';});
+        var heeftNda=vListL.some(function(v){return v.doc_type==='nda'||v.doc_type==='nda_upload';});
+        var heeftExcl=vListL.some(function(v){return v.doc_type==='exclusief'||v.doc_type==='excl'||v.doc_type==='excl_upload';});
         var bestaandeLoi=vListL.filter(function(v){return v.doc_type==='loi';});
         var waarsch=[];
         if(!heeftNda)waarsch.push('⚠ NDA is nog niet aangemaakt. Verstuur eerst de NDA.');
@@ -1963,7 +1963,7 @@ async function toonDetail(id,naam){
       try{
         var vCheckE=await fetch(WORKER+'/mna/versies/'+id+'?key='+encodeURIComponent(adminKey));
         var vListE=await vCheckE.json();
-        var bestaandeExcl=vListE.filter(function(v){return v.doc_type==='exclusief'||v.doc_type==='excl';});
+        var bestaandeExcl=vListE.filter(function(v){return v.doc_type==='exclusief'||v.doc_type==='excl'||v.doc_type==='excl_upload';});
         if(bestaandeExcl.length>0){
           if(!confirm('Er is al een Exclusiviteitsbrief aangemaakt.\n\nOpnieuw genereren?'))return;
         }
@@ -2075,7 +2075,7 @@ async function toonDetail(id,naam){
         ]);
         var trajectDocs = docsResp.ok ? await docsResp.json() : [];
         var versies = versiesResp.ok ? await versiesResp.json() : [];
-        var docLabels={nda:'NDA',loi:'LoI',bem:'Bemiddelingsovereenkomst'};
+        var docLabels={nda:'NDA',loi:'LoI',bem:'Bemiddelingsovereenkomst',bem_verk:'Bemiddelingsovereenkomst',bem_koper:'Bemiddelingsovereenkomst',excl:'Exclusiviteitsbrief',exclusief:'Exclusiviteitsbrief',bem_upload:'BEM (geüpload)',excl_upload:'Excl (geüpload)',nda_upload:'NDA (geüpload)',loi_upload:'LoI (geüpload)'};
         var docKleuren={nda:'#7c5cbf',loi:'var(--gold)',bem:'#2a5ea0'};
         var html='';
         // Sectie 1: Geüploade bestanden
