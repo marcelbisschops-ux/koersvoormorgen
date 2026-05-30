@@ -2070,13 +2070,11 @@ async function toonDetail(id,naam){
       try{
         // Laad BEIDE: geüploade bestanden + gegenereerde versies
         var [docsResp, versiesResp] = await Promise.all([
-          fetch(WORKER+'/mna/admin/documenten?key='+encodeURIComponent(adminKey)),
+          fetch(WORKER+'/mna/document/lijst/'+id+'?key='+encodeURIComponent(adminKey)),
           fetch(WORKER+'/mna/versies/'+id+'?key='+encodeURIComponent(adminKey))
         ]);
-        var alleDocs = docsResp.ok ? await docsResp.json() : [];
+        var trajectDocs = docsResp.ok ? await docsResp.json() : [];
         var versies = versiesResp.ok ? await versiesResp.json() : [];
-        // Filter geüploade bestanden op dit traject
-        var trajectDocs = alleDocs.filter(function(d){ return d.traject_id === id; });
         var docLabels={nda:'NDA',loi:'LoI',bem:'Bemiddelingsovereenkomst'};
         var docKleuren={nda:'#7c5cbf',loi:'var(--gold)',bem:'#2a5ea0'};
         var html='';
