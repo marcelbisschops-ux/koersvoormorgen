@@ -2100,7 +2100,8 @@ async function toonDetail(id,naam){
         } else {
           html+='<div style="color:var(--muted);font-size:12px;font-style:italic;margin-bottom:1rem">Nog geen bestanden geüpload voor dit traject.</div>';
         }
-        // Sectie 2: Gegenereerde overeenkomsten
+        // Sectie 2: Alleen gegenereerde overeenkomsten (geen uploads — die staan al in sectie 1)
+        versies = versies.filter(function(v){ return !v.is_upload; });
         if(versies.length){
           html+='<div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:.75rem 0 .5rem;padding-top:.75rem;border-top:1px solid var(--border)">Gegenereerde overeenkomsten ('+versies.length+')</div>';
           html+='<div style="display:flex;flex-direction:column;gap:5px">';
