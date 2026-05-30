@@ -2650,6 +2650,8 @@ async function laadPartijDocs() {
       var naam=(d.bestand_naam||'').toLowerCase();
       // BEM nooit tonen aan verkoper
       if(isVerkoper()&&(naam.includes('bem')||naam.includes('bemiddelingsovereenkomst')))return false;
+      // Excl niet tonen aan koper als koper de opdrachtgever is (Excl is dan voor de verkoper)
+      if(!isVerkoper()&&(naam.includes('excl')||naam.includes('exclusiviteit'))&&(opdRol==='koper'||opdRol==='beide'))return false;
       return true;
     });
     if (dataroomDocs.length) {
@@ -2660,7 +2662,14 @@ async function laadPartijDocs() {
         var gr = d.bestand_grootte ? (d.bestand_grootte/1024/1024).toFixed(1)+'MB' : '';
         html += '<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r);padding:.6rem .875rem;display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
           + '<span style="font-size:14px">'+icon+'</span>'
-          + '<span style="font-size:12px;color:var(--sub);flex:1">'+esc(d.bestand_naam||'document')+'</span>'
+          + '<span style="font-size:12px;color:var(--sub);flex:1">'+(function(naam){
+              var n=naam.toLowerCase();
+              if(n.includes('bem')||n.includes('bemiddelingsovereenkomst'))return 'Bemiddelingsovereenkomst';
+              if(n.includes('excl')||n.includes('exclusiviteit'))return 'Exclusiviteitsbrief';
+              if(n.includes('nda')||n.includes('geheimhouding'))return 'NDA';
+              if(n.includes('loi')||n.includes('intentieverklaring'))return 'Letter of Intent';
+              return esc(naam);
+            })(d.bestand_naam||'document')+'</span>'
           + (gr ? '<span style="font-size:10px;color:var(--muted)">'+gr+'</span>' : '')
           + '<span style="font-size:11px;color:var(--muted)">'+dt+'</span>'
           + '<a href="'+WORKER+'/mna/document/download/'+d.id+'?code='+encodeURIComponent(S.code)+'" target="_blank" class="btn-ghost" style="font-size:11px;padding:4px 12px;text-decoration:none">&#8681; Download</a>'
