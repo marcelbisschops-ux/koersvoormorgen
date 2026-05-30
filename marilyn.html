@@ -2426,6 +2426,43 @@ function toonGesprekModal(trajectId, bestaand, onSaved){
   var vandaag=new Date().toISOString().split('T')[0];
   var gesprekId=g.id||null;
   var bijlagenLijst=[];
+  var conceptTimer=null;
+
+  // Concept auto-opslaan functie
+  async function slaConceptGesprekOp(){
+    try{
+      var datum=document.getElementById('gs-datum')?.value||'';
+      var deelnemers=document.getElementById('gs-deelnemers')?.value||'';
+      var type=document.getElementById('gs-type')?.value||'';
+      var notities=document.getElementById('gs-notities')?.value||'';
+      var verslag=document.getElementById('gs-verslag')?.value||'';
+      if(!datum&&!notities&&!verslag)return; // Niets te opslaan
+      await fetch(WORKER+'/mna/gesprek/concept',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','x-admin-key':adminKey},
+        body:JSON.stringify({code:trajectId,datum:datum,deelnemers:deelnemers,type:type,ruwe_notities:notities,verslag:verslag,auteur:'Marcel Bisschops'})
+      });
+      var ind=document.getElementById('gs-concept-ind');
+      if(ind)ind.textContent='Concept opgeslagen '+new Date().toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'});
+    }catch(e){}
+  }
+
+  // Laad concept als er geen bestaand gesprek is
+  if(!bestaand){
+    fetch(WORKER+'/mna/gesprek/concept/'+trajectId+'?key='+encodeURIComponent(adminKey))
+      .then(function(r){return r.json();})
+      .then(function(concept){
+        if(!concept)return;
+        if(concept.datum){var el=document.getElementById('gs-datum');if(el)el.value=concept.datum;}
+        if(concept.deelnemers){var el=document.getElementById('gs-deelnemers');if(el)el.value=concept.deelnemers;}
+        if(concept.type){var el=document.getElementById('gs-type');if(el)el.value=concept.type;}
+        if(concept.ruwe_notities){var el=document.getElementById('gs-notities');if(el)el.value=concept.ruwe_notities;}
+        if(concept.verslag){var el=document.getElementById('gs-verslag');if(el)el.value=concept.verslag;}
+        var ind=document.getElementById('gs-concept-ind');
+        var dt=new Date(concept.updated_at).toLocaleString('nl-NL',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+        if(ind)ind.textContent='Concept geladen van '+dt;
+      }).catch(function(){});
+  }
 
   mo2.innerHTML='<div class="modal-title">'+(bestaand?'Gesprek bewerken':'Nieuw gesprek vastleggen')+'</div>'
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
@@ -2440,6 +2477,12 @@ function toonGesprekModal(trajectId, bestaand, onSaved){
     +'<option value="andere"'+(g.type==='andere'?' selected':'')+'>Overig</option>'
     +'</select></div></div>'
     +'<div class="field"><label>Deelnemers</label><input type="text" id="gs-deelnemers" placeholder="bijv. Marcel Bisschops, Jan Smit, Kees de Vries" value="'+esc(g.deelnemers||'')+'"></div>'
+    +'<div class="field"><label>Zichtbaar voor</label><select id="gs-zichtbaar">'
+    +'<option value="begeleider"'+((!g.zichtbaar_voor||g.zichtbaar_voor==="begeleider")?" selected":"")+'>Alleen begeleider (intern)</option>'
+    +'<option value="verkoper"'+(g.zichtbaar_voor==="verkoper"?" selected":"")+'>Verkoper</option>'
+    +'<option value="koper"'+(g.zichtbaar_voor==="koper"?" selected":"")+'>Koper</option>'
+    +'<option value="iedereen"'+(g.zichtbaar_voor==="iedereen"?" selected":"")+'>Alle partijen</option>'
+    +'</select></div>'
 
     // Notities + opname
     +'<div class="field">'
@@ -2470,12 +2513,21 @@ function toonGesprekModal(trajectId, bestaand, onSaved){
     +'<div id="gs-err" style="display:none;color:var(--red);font-size:12px;margin-bottom:.5rem"></div>'
     +'<div style="display:flex;gap:10px;justify-content:flex-end">'
     +'<button class="btn-ghost" id="gs-ann">Annuleren</button>'
-    +'<button class="btn" id="gs-ok">Opslaan</button>'
+    +'<div id="gs-concept-ind" style="font-size:10px;color:var(--muted);margin-bottom:.25rem;font-style:italic"></div>'
+    +'<button class="btn" id="gs-ok">&#128190; Definitief opslaan</button>'
     +'</div>';
 
   ov2.appendChild(mo2);document.body.appendChild(ov2);
   ov2.addEventListener('click',function(e){if(e.target===ov2)document.body.removeChild(ov2);});
   document.getElementById('gs-ann').addEventListener('click',function(){document.body.removeChild(ov2);});
+  // Auto-opslaan bij typen (debounced 2 sec)
+  ['gs-datum','gs-deelnemers','gs-type','gs-notities','gs-verslag'].forEach(function(elId){
+    var el=document.getElementById(elId);
+    if(el)el.addEventListener('input',function(){
+      clearTimeout(conceptTimer);
+      conceptTimer=setTimeout(slaConceptGesprekOp,2000);
+    });
+  });
 
   // ── OPNAME (Web Speech API) ──────────────────────────────────
   var recognition=null;
@@ -2628,11 +2680,14 @@ function toonGesprekModal(trajectId, bestaand, onSaved){
     if(!datum){err.style.display='block';err.textContent='Datum is verplicht.';return;}
     var btn3=this;btn3.disabled=true;btn3.textContent='Opslaan...';
     try{
-      var payload={datum:datum,deelnemers:document.getElementById('gs-deelnemers').value.trim(),type:document.getElementById('gs-type').value,ruwe_notities:document.getElementById('gs-notities').value.trim(),verslag:document.getElementById('gs-verslag').value.trim()};
+      var payload={datum:datum,deelnemers:document.getElementById('gs-deelnemers').value.trim(),type:document.getElementById('gs-type').value,ruwe_notities:document.getElementById('gs-notities').value.trim(),verslag:document.getElementById('gs-verslag').value.trim(),zichtbaar_voor:document.getElementById('gs-zichtbaar').value};
       if(gesprekId)payload.id=gesprekId;
       var r=await fetch(WORKER+'/mna/admin/gesprekken/'+trajectId,{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':adminKey},body:JSON.stringify(payload)});
       var d=await r.json();
-      if(d.ok){document.body.removeChild(ov2);if(onSaved)onSaved();}
+      if(d.ok){
+        // Concept verwijderen na definitief opslaan
+        fetch(WORKER+'/mna/gesprek/concept/delete/'+trajectId,{method:'POST',headers:{'x-admin-key':adminKey}}).catch(function(){});
+        document.body.removeChild(ov2);if(onSaved)onSaved();}
       else{err.style.display='block';err.textContent='Fout: '+(d.error||'onbekend');btn3.disabled=false;btn3.textContent='Opslaan';}
     }catch(e2){err.style.display='block';err.textContent='Verbindingsfout.';btn3.disabled=false;btn3.textContent='Opslaan';}
   });
