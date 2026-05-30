@@ -2083,6 +2083,7 @@ function renderBegeleiderDashboard(app){
     +'<button class="btn" id="bg-nda-actie" style="background:#7c5cbf;padding:10px;font-size:12px">&#128274; NDA</button>'
     +'<button class="btn" id="bg-loi-actie" style="background:var(--gold);padding:10px;font-size:12px">&#128196; LoI</button>'
     +'<button class="btn" id="bg-bem-actie" style="background:#2a5ea0;padding:10px;font-size:12px">&#128203; BEM</button>'
+    +'<button class="btn" id="bg-excl-actie" style="background:#1a7a5e;padding:10px;font-size:12px">&#128221; Excl</button>'
     +'</div>'
     +'<div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.4rem">Communicatie</div>'
     +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:1.25rem">'
@@ -2175,12 +2176,14 @@ function renderBegeleiderDashboard(app){
     out.innerHTML='<div style="color:var(--muted);font-size:13px;padding:1rem;background:var(--card);border-radius:var(--r2)">Genereren... (15-30 sec)</div>';
     var t2=S.traject;
     var datum=new Date().toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'});
-    var isSell=!t2.traject_type||t2.traject_type==='Verkoop'||t2.traject_type==='Opvolging';
+    // isSell bepaald door opdrachtgever_rol: koper=buy-side, anders sell-side
+    var isSell=(t2.opdrachtgever_rol==='koper')?false:(!t2.traject_type||t2.traject_type==='Verkoop'||t2.traject_type==='Opvolging');
     var tplType=type==='bem'?(isSell?'bem_verk':'bem_koper'):type;
     var tplD=await fetch(WORKER+'/mna/template/'+tplType+'?email='+encodeURIComponent(t2.begeleider_email||'')).then(function(r){return r.json();}).catch(function(){return{ok:false};});
     var prompts={
       nda:'Vul de NDA template in voor trajecttype: '+(t2.traject_type||'Verkoop')+'. '+lb.sectie1+': '+esc(t2.kantoor_naam||'[verkoper]')+', '+(t2.verkoper_adres||'[adres]')+', KvK: '+(t2.verkoper_kvk||'[KvK]')+'. '+lb.sectie2+': '+esc(t2.koper_naam||'[koper]')+' ('+(t2.koper_rechtsvorm||'')+'), '+(t2.koper_adres||'')+', KvK: '+(t2.koper_kvk||'')+'. Datum: '+datum+'. Adviseur: '+(t2.begeleider_naam||'Bisschops Financing B.V.')+'.',
       loi:'Vul de LoI template in voor trajecttype: '+(t2.traject_type||'Verkoop')+'. '+lb.sectie1+': '+esc(t2.kantoor_naam||'[verkoper]')+', '+(t2.verkoper_adres||'')+'. '+lb.sectie2+': '+esc(t2.koper_naam||'[koper]')+' ('+(t2.koper_rechtsvorm||'')+'), '+(t2.koper_adres||'')+'. Datum: '+datum+'. Adviseur: '+(t2.begeleider_naam||'Bisschops Financing B.V.')+'.',
+      excl:'Genereer een Exclusiviteitsbrief voor trajecttype: '+(t2.traject_type||'Verkoop')+'. Opdrachtgever: '+esc(isSell?t2.kantoor_naam:t2.koper_naam||'[koper]')+'. Koper/tegenpartij: '+esc(isSell?t2.koper_naam||'[koper]':t2.kantoor_naam)+'. Datum: '+datum+'. Exclusiviteitsperiode: 6 weken. Begeleider: '+(t2.begeleider_naam||'Bisschops Financing B.V.')+'. Geef alleen het ingevulde document terug.',
       bem:'Vul de Bemiddelingsovereenkomst template in. Type: '+(isSell?'Verkoop':'Aankoop')+'. Opdrachtgever: '+esc(isSell?t2.kantoor_naam:t2.koper_naam||'[koper]')+'. Datum: '+datum+'. Begeleider: '+(t2.begeleider_naam||'Bisschops Financing B.V.')+'.'
     };
     var tplTekst=tplD.ok&&tplD.tekst?tplD.tekst:'[standaard template]';
@@ -2193,8 +2196,8 @@ function renderBegeleiderDashboard(app){
     // Sla concept op voor blokkadecheck
     var conceptType=type==='bem'?(isSell?'bem_verk':'bem_koper'):type;
     slaConceptOp(S.code, conceptType, tekst);
-    var kleuren={nda:'#7c5cbf',loi:'var(--gold)',bem:'#2a5ea0'};
-    var labels={nda:'NDA',loi:'LoI',bem:'Bemiddelingsovereenkomst'};
+    var kleuren={nda:'#7c5cbf',loi:'var(--gold)',bem:'#2a5ea0',excl:'#1a7a5e'};
+    var labels={nda:'NDA',loi:'LoI',bem:'Bemiddelingsovereenkomst',excl:'Exclusiviteitsbrief'};
     out.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem">'
       +'<div style="font-size:11px;font-weight:600;color:'+kleuren[type]+';text-transform:uppercase;letter-spacing:.1em;margin-bottom:.75rem">'+labels[type]+' gegenereerd</div>'
       +'<textarea id="bg-doc-tekst" style="width:100%;height:280px;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:Georgia,serif;font-size:12px;line-height:1.8;padding:1rem;outline:none;resize:vertical">'+esc(tekst)+'</textarea>'
@@ -2265,6 +2268,7 @@ function renderBegeleiderDashboard(app){
   document.getElementById('bg-nda-actie').onclick=function(){ toonDocWaarschuwing('nda', function(){ bgDoc('nda'); }); };
   document.getElementById('bg-loi-actie').onclick=function(){ toonDocWaarschuwing('loi', function(){ bgDoc('loi'); }); };
   document.getElementById('bg-bem-actie').onclick=function(){ toonDocWaarschuwing('bem', function(){ bgDoc('bem'); }); };
+  document.getElementById('bg-excl-actie').onclick=function(){ toonDocWaarschuwing('excl', function(){ bgDoc('excl'); }); };
 
   // Gesprek vastleggen
   document.getElementById('bg-gesprek-actie').onclick=function(){
@@ -3817,6 +3821,7 @@ function bindAll(){
         +'<button id="bg-nda-btn" style="background:#7c5cbf;color:#fff;border:none;padding:10px 16px;border-radius:6px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:13px;font-weight:600;text-align:left">&#128274; Genereer NDA</button>'
         +'<button id="bg-loi-btn" style="background:#c9a84c;color:#fff;border:none;padding:10px 16px;border-radius:6px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:13px;font-weight:600;text-align:left">&#128196; Genereer LoI</button>'
         +'<button id="bg-bem-btn" style="background:#2a5ea0;color:#fff;border:none;padding:10px 16px;border-radius:6px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:13px;font-weight:600;text-align:left">&#128203; Bemiddelingsovereenkomst</button>'
+        +'<button id="bg-excl-btn" style="background:#1a7a5e;color:#fff;border:none;padding:10px 16px;border-radius:6px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:13px;font-weight:600;text-align:left">&#128221; Exclusiviteitsbrief</button>'
         +'</div>'
         +'<div id="bg-doc-output" style="margin-top:1rem"></div>'
         +'<div style="margin-top:1.25rem;text-align:right"><button id="bg-doc-sluit" style="background:transparent;border:1px solid #c8c5bc;padding:8px 16px;border-radius:6px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:13px">Sluiten</button></div>';
@@ -3829,7 +3834,7 @@ function bindAll(){
         out.innerHTML='<div style="color:#8a8880;font-size:13px">Genereren... (15-30 sec)</div>';
         var datum=new Date().toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'});
         var t3=S.traject;
-        var isSell=!t3.traject_type||t3.traject_type==='Verkoop'||t3.traject_type==='Opvolging';
+        var isSell=(t3.opdrachtgever_rol==='koper')?false:(!t3.traject_type||t3.traject_type==='Verkoop'||t3.traject_type==='Opvolging');
         var tplType=type==='bem'?(isSell?'bem_verk':'bem_koper'):type;
         var tplR=await fetch(WORKER+'/mna/template/'+tplType+'?email='+encodeURIComponent(t3.begeleider_email||'')).catch(function(){return{json:function(){return{ok:false};}};});
         var tplD=await tplR.json().catch(function(){return{ok:false};});
@@ -3875,6 +3880,7 @@ function bindAll(){
         };
       }
       document.getElementById('bg-nda-btn').onclick=function(){bgGenereerDoc('nda');};
+      document.getElementById('bg-excl-btn').onclick=function(){bgGenereerDoc('excl');};
       document.getElementById('bg-loi-btn').onclick=function(){bgGenereerDoc('loi');};
       document.getElementById('bg-bem-btn').onclick=function(){bgGenereerDoc('bem');};
     };
@@ -3893,6 +3899,7 @@ function bindAll(){
         +'<div><label style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#8a8880;display:block;margin-bottom:4px">Type</label><select id="bg-gs-type" style="width:100%;background:#f0eeea;border:1px solid #c8c5bc;border-radius:6px;padding:9px 11px;font-family:IBM Plex Sans,sans-serif;font-size:13px"><option value="gesprek">Gesprek</option><option value="kennismaking">Kennismaking</option><option value="onderhandeling">Onderhandeling</option><option value="vergadering">Vergadering</option><option value="telefonisch">Telefonisch overleg</option><option value="andere">Overig</option></select></div>'
         +'</div>'
         +'<div style="margin-bottom:1rem"><label style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#8a8880;display:block;margin-bottom:4px">Deelnemers</label><input type="text" id="bg-gs-deelnemers" placeholder="bijv. Jan Smit, Kees de Vries" style="width:100%;background:#f0eeea;border:1px solid #c8c5bc;border-radius:6px;padding:9px 11px;font-family:IBM Plex Sans,sans-serif;font-size:13px"></div>'
+        +'<div style="margin-bottom:1rem"><label style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#8a8880;display:block;margin-bottom:4px">Zichtbaar voor</label><select id="bg-gs-zichtbaar" style="width:100%;background:#f0eeea;border:1px solid #c8c5bc;border-radius:6px;padding:9px 11px;font-family:IBM Plex Sans,sans-serif;font-size:13px"><option value="begeleider">Alleen begeleider (intern)</option><option value="verkoper">Verkoper</option><option value="koper">Koper</option><option value="iedereen">Alle partijen</option></select></div>'
         +'<div style="margin-bottom:1rem"><label style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#8a8880;display:block;margin-bottom:4px">Notities / aantekeningen</label><textarea id="bg-gs-notities" rows="5" placeholder="Ruwe notities..." style="width:100%;background:#f0eeea;border:1px solid #c8c5bc;border-radius:6px;padding:9px 11px;font-family:IBM Plex Sans,sans-serif;font-size:13px;line-height:1.7;resize:vertical"></textarea></div>'
         +'<div style="margin-bottom:1rem"><label style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#8a8880;display:block;margin-bottom:4px">Verslag</label><textarea id="bg-gs-verslag" rows="5" placeholder="Verslag — of klik AI om te genereren." style="width:100%;background:#f0eeea;border:1px solid #c8c5bc;border-radius:6px;padding:9px 11px;font-family:IBM Plex Mono,monospace;font-size:12px;line-height:1.7;resize:vertical"></textarea></div>'
         +'<div style="display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap">'
