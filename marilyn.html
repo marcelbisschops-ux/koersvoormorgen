@@ -2114,6 +2114,7 @@ async function toonDetail(id,naam){
               +'<span style="font-size:11px;color:var(--muted)">'+dt+'</span>'
               +'<span style="font-size:11px;color:var(--mid)">→ '+esc(ontvangers.join(', '))+'</span>'
               +'<button class="btn-ghost versie-open-btn" data-id="'+v.id+'" data-upload="'+(v.is_upload?'1':'0')+'" style="font-size:10px;padding:2px 10px;margin-left:auto">'+(v.is_upload?'&#8681; Download':'&#128065; Bekijk')+'</button>'
+            +'<button class="btn-ghost versie-del-btn" data-id="'+v.id+'" style="font-size:10px;padding:2px 6px;color:var(--red);border-color:var(--red);margin-left:4px">✕</button>'
               +'</div>';
           });
           html+='</div>';
@@ -2131,6 +2132,17 @@ async function toonDetail(id,naam){
             var d=await r.json();
             if(d.ok){toast('Document verwijderd.','ok');versiesBtn.click();}
             else toast(d.error||'Fout.','err');
+          });
+        });
+
+        // Delete handlers voor gegenereerde versies
+        vBody.querySelectorAll('.versie-del-btn').forEach(function(b){
+          b.addEventListener('click',async function(){
+            if(!confirm('Documentversie verwijderen?'))return;
+            var r=await fetch(WORKER+'/mna/versie/delete/'+b.dataset.id+'?key='+encodeURIComponent(adminKey),{method:'POST'});
+            var d=await r.json();
+            if(d.ok){toast('Versie verwijderd.','ok');versiesBtn.click();}
+            else toast(d.error||'Fout bij verwijderen.','err');
           });
         });
 
