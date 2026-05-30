@@ -1935,7 +1935,7 @@ function toonUitnodigingModalTussen() {
 function renderApp(){
   var app=ge('app');
   if(S.screen==='login')app.innerHTML=renderLogin();
-  else if(S.screen==='cover'){app.innerHTML=renderCover();laadPartijDocs();}
+  else if(S.screen==='cover'){app.innerHTML=renderCover();laadPartijDocs();laadPartijGesprekken();}
   else if(S.screen==='main')app.innerHTML=renderMain();
   else if(S.screen==='summary')app.innerHTML=renderSummary();
   else if(S.screen==='dataroom')app.innerHTML=renderDataroom();
@@ -2196,7 +2196,8 @@ function renderBegeleiderDashboard(app){
       +'<span id="bg-gs-st" style="font-size:12px;color:var(--muted);align-self:center"></span>'
       +'</div>'
       +'<div style="display:flex;gap:8px">'
-      +'<button id="bg-gs-ok" class="btn" style="font-size:13px">Opslaan</button>'
+      +'<div id="bg-gs-concept-ind" style="font-size:10px;color:#8a8480;margin-bottom:.25rem;font-style:italic"></div>'
+      +'<button id="bg-gs-ok" class="btn" style="font-size:13px">&#128190; Definitief opslaan</button>'
       +'<button id="bg-gs-ann" class="btn-ghost" style="font-size:13px">Annuleren</button>'
       +'</div></div>';
     document.getElementById('bg-gs-ann').onclick=function(){out.style.display='none';};
@@ -2708,6 +2709,36 @@ async function laadPartijDocs() {
   } catch(e) { el.innerHTML=''; }
 }
 
+async function laadPartijGesprekken() {
+  var el = document.getElementById('partij-gesprekken-sectie');
+  if (!el) return;
+  var rol = S.rol || 'verkoper'; // verkoper of koper
+  try {
+    var r = await fetch(WORKER+'/mna/gesprekken/'+S.code+'?rol='+encodeURIComponent(rol));
+    var data = await r.json();
+    var gesprekken = data.gesprekken || data || [];
+    if (!gesprekken.length) return;
+    var html = '<div style="margin-top:1rem;background:var(--card);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem">'
+      + '<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem">&#128172; Gesprekken & verslagen</div>'
+      + '<div style="display:flex;flex-direction:column;gap:8px">';
+    gesprekken.forEach(function(g) {
+      var dt = g.datum ? new Date(g.datum).toLocaleDateString('nl-NL',{day:'2-digit',month:'long',year:'numeric'}) : '—';
+      var typeLabels = {gesprek:'Gesprek',kennismaking:'Kennismaking',onderhandeling:'Onderhandeling',vergadering:'Vergadering',telefonisch:'Telefonisch overleg',email:'E-mailwisseling',andere:'Overig'};
+      html += '<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r);padding:.75rem .875rem">'
+        + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:.4rem">'
+        + '<span style="font-size:11px;font-weight:600;color:var(--teal)">'+(typeLabels[g.type]||g.type||'Gesprek')+'</span>'
+        + '<span style="font-size:11px;color:var(--muted)">'+dt+'</span>'
+        + (g.deelnemers?'<span style="font-size:10px;color:var(--muted);margin-left:auto">'+esc(g.deelnemers)+'</span>':'')
+        + '</div>'
+        + (g.verslag?'<div style="font-size:12px;color:var(--sub);line-height:1.6;white-space:pre-wrap">'+esc(g.verslag.substring(0,300))+(g.verslag.length>300?'…':'')+'</div>':'')
+        + '</div>';
+    });
+    html += '</div></div>';
+    el.innerHTML = html;
+  } catch(e) {}
+}
+
+
 function renderCover(){
   var t=S.traject;
   var vergrendeld=t&&t.status==='vergrendeld';
@@ -2809,6 +2840,7 @@ function renderCover(){
       +(S.loiGetekend?'<div style="font-size:11px;padding:4px 10px;border-radius:12px;background:var(--gold-bg);border:1px solid var(--gold);color:var(--gold);display:flex;align-items:center;gap:4px">&#10003; Getekend door '+esc(S.loiGetekend)+'</div>':(!isAdmin()?'<button id="loi-teken-btn" class="btn-ghost" style="font-size:12px;border-color:var(--gold);color:var(--gold)">&#9998; Akkoord &amp; onderteken</button>':''))
       +'</div></div>':'')
     +'<div id="partij-docs-sectie" style="margin-top:1.5rem"></div>'
+    +'<div id="partij-gesprekken-sectie" style="margin-top:1rem"></div>'
     +(isVerkoper()?'<button class="btn" id="to-main-btn2" style="width:100%;margin-top:1rem">Start met invullen &#8594;</button>':'')
     +'</div>';
 }
@@ -3475,7 +3507,8 @@ function bindAll(){
         +'<div id="bg-gs-err" style="display:none;color:#e05252;font-size:12px;margin-bottom:.5rem"></div>'
         +'<div style="display:flex;gap:10px;justify-content:flex-end">'
         +'<button id="bg-gs-ann" style="background:transparent;border:1px solid #c8c5bc;padding:8px 16px;border-radius:6px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:13px">Annuleren</button>'
-        +'<button id="bg-gs-ok" style="background:#1a7a5e;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:13px;font-weight:600">Opslaan</button>'
+        +'<div id="bg-gs-concept-ind" style="font-size:10px;color:#8a8480;margin-bottom:.25rem;font-style:italic"></div>'
+        +'<button id="bg-gs-ok" style="background:#1a7a5e;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:13px;font-weight:600">&#128190; Definitief opslaan</button>'
         +'</div>';
       ov.appendChild(mo);document.body.appendChild(ov);
       ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
@@ -3497,16 +3530,54 @@ function bindAll(){
         }catch(e){st.textContent='Fout bij genereren';}
         btn.disabled=false;
       };
+      // Laad concept bij openen
+      fetch(WORKER+'/mna/gesprek/concept/'+S.code)
+        .then(function(r){return r.json();})
+        .then(function(concept){
+          if(!concept)return;
+          if(concept.datum){var el=document.getElementById('bg-gs-datum');if(el)el.value=concept.datum;}
+          if(concept.deelnemers){var el=document.getElementById('bg-gs-deelnemers');if(el)el.value=concept.deelnemers;}
+          if(concept.type){var el=document.getElementById('bg-gs-type');if(el)el.value=concept.type;}
+          if(concept.ruwe_notities){var el=document.getElementById('bg-gs-notities');if(el)el.value=concept.ruwe_notities;}
+          if(concept.verslag){var el=document.getElementById('bg-gs-verslag');if(el)el.value=concept.verslag;}
+          var ind=document.getElementById('bg-gs-concept-ind');
+          if(ind){var dt=new Date(concept.updated_at).toLocaleString('nl-NL',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});ind.textContent='Concept geladen van '+dt;}
+        }).catch(function(){});
+
+      // Auto-opslaan debounced
+      var bgConceptTimer=null;
+      function bgSlaConceptOp(){
+        try{
+          var datum=document.getElementById('bg-gs-datum')?.value||'';
+          var notities=document.getElementById('bg-gs-notities')?.value||'';
+          var verslag=document.getElementById('bg-gs-verslag')?.value||'';
+          if(!datum&&!notities&&!verslag)return;
+          fetch(WORKER+'/mna/gesprek/concept',{method:'POST',headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({code:S.code,datum:datum,deelnemers:document.getElementById('bg-gs-deelnemers')?.value||'',type:document.getElementById('bg-gs-type')?.value||'',ruwe_notities:notities,verslag:verslag,auteur:S.traject&&S.traject.begeleider_naam||'Begeleider'})
+          });
+          var ind=document.getElementById('bg-gs-concept-ind');
+          if(ind)ind.textContent='Concept opgeslagen '+new Date().toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'});
+        }catch(e){}
+      }
+      ['bg-gs-datum','bg-gs-deelnemers','bg-gs-type','bg-gs-notities','bg-gs-verslag'].forEach(function(elId){
+        var el=document.getElementById(elId);
+        if(el)el.addEventListener('input',function(){clearTimeout(bgConceptTimer);bgConceptTimer=setTimeout(bgSlaConceptOp,2000);});
+      });
+
       document.getElementById('bg-gs-ok').onclick=async function(){
         var datum=document.getElementById('bg-gs-datum').value;
         var err=document.getElementById('bg-gs-err');
         if(!datum){err.style.display='block';err.textContent='Datum is verplicht.';return;}
         var btn=this;btn.disabled=true;btn.textContent='Opslaan...';
-        var payload={datum:datum,deelnemers:document.getElementById('bg-gs-deelnemers').value.trim(),type:document.getElementById('bg-gs-type').value,ruwe_notities:document.getElementById('bg-gs-notities').value.trim(),verslag:document.getElementById('bg-gs-verslag').value.trim()};
+        var payload={datum:datum,deelnemers:document.getElementById('bg-gs-deelnemers').value.trim(),type:document.getElementById('bg-gs-type').value,ruwe_notities:document.getElementById('bg-gs-notities').value.trim(),verslag:document.getElementById('bg-gs-verslag').value.trim(),zichtbaar_voor:(document.getElementById('bg-gs-zichtbaar')?.value||'begeleider')};
         var auth=S._bgKey||'';
         var r=await fetch(WORKER+'/mna/admin/gesprekken/'+S.traject.id,{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':auth},body:JSON.stringify(payload)});
         var d=await r.json();
-        if(d.ok){document.body.removeChild(ov);toast('Gesprek opgeslagen.','ok');}
+        if(d.ok){
+          // Verwijder concept na definitief opslaan
+          fetch(WORKER+'/mna/gesprek/concept/delete/'+S.code,{method:'POST'}).catch(function(){});
+          document.body.removeChild(ov);toast('Gesprek definitief opgeslagen.','ok');
+        }
         else{err.style.display='block';err.textContent='Fout: '+(d.error||'onbekend');btn.disabled=false;btn.textContent='Opslaan';}
       };
     };
