@@ -1599,6 +1599,7 @@ async function toonDetail(id,naam){
     });
     var html='<div style="display:flex;gap:10px;margin-bottom:1.25rem;flex-wrap:wrap">'
       +'<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:8px 14px;font-size:12px"><span style="color:var(--muted)">Status:</span> <strong>'+esc(d.traject.status||'actief')+'</strong></div>'
+      +(d.traject.fase2_gereed?'<div style="background:var(--teal-bg);border:1px solid var(--teal);border-radius:var(--r);padding:8px 14px;font-size:12px;font-weight:600;color:var(--teal)">&#128203; LoI getekend — Fase 2 DD gereed. Stuur nieuw informatieverzoek met uitgebreide vragenset.</div>':'')
       +'<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:8px 14px;font-size:12px"><span style="color:var(--muted)">Sector:</span> <strong>'+esc({accountancy:'Accountancy',mkb:'MKB',zorg:'Zorg',itsoftware:'IT & Software'}[d.traject.sector]||d.traject.sector||'Accountancy')+'</strong></div>'
       +'<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:8px 14px;font-size:12px"><span style="color:var(--muted)">Voortgang:</span> <strong style="color:var(--teal)">'+filled+'/'+total+'</strong></div>'
       +'<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:8px 14px;font-size:12px"><span style="color:var(--muted)">Koper vrijgegeven:</span> <strong>'+(d.traject.koper_vrijgegeven?'Ja':'Nee')+'</strong></div>'
