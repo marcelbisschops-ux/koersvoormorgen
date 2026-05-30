@@ -2476,7 +2476,7 @@ function toonGesprekModal(trajectId, bestaand, onSaved){
     +'<option value="email"'+(g.type==='email'?' selected':'')+'>E-mailwisseling</option>'
     +'<option value="andere"'+(g.type==='andere'?' selected':'')+'>Overig</option>'
     +'</select></div></div>'
-    +'<div class="field"><label>Deelnemers</label><input type="text" id="gs-deelnemers" placeholder="bijv. Marcel Bisschops, Jan Smit, Kees de Vries" value="'+esc(g.deelnemers||'')+'"></div>'
+    +'<div class="field"><label>Deelnemers</label><input type="text" id="gs-deelnemers" placeholder="bijv. naam deelnemer" value="'+esc(g.deelnemers||'')+'"></div>'
     +'<div class="field"><label>Zichtbaar voor</label><select id="gs-zichtbaar">'
     +'<option value="begeleider"'+((!g.zichtbaar_voor||g.zichtbaar_voor==="begeleider")?" selected":"")+'>Alleen begeleider (intern)</option>'
     +'<option value="verkoper"'+(g.zichtbaar_voor==="verkoper"?" selected":"")+'>Verkoper</option>'
