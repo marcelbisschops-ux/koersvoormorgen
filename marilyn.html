@@ -2075,7 +2075,7 @@ async function toonDetail(id,naam){
         ]);
         var trajectDocs = docsResp.ok ? await docsResp.json() : [];
         var versies = versiesResp.ok ? await versiesResp.json() : [];
-        var docLabels={nda:'NDA',loi:'LoI',bem:'Bemiddelingsovereenkomst',bem_verk:'Bemiddelingsovereenkomst',bem_koper:'Bemiddelingsovereenkomst',excl:'Exclusiviteitsbrief',exclusief:'Exclusiviteitsbrief',bem_upload:'BEM (geüpload)',excl_upload:'Excl (geüpload)',nda_upload:'NDA (geüpload)',loi_upload:'LoI (geüpload)'};
+        var docLabels={nda:'NDA',loi:'LoI',bem:'Bemiddelingsovereenkomst',bem_verk:'Bemiddelingsovereenkomst',bem_koper:'Bemiddelingsovereenkomst',excl:'Exclusiviteitsbrief',exclusief:'Exclusiviteitsbrief',bem_upload:'Bemiddelingsovereenkomst',excl_upload:'Exclusiviteitsbrief',nda_upload:'NDA',loi_upload:'Letter of Intent'};
         var docKleuren={nda:'#7c5cbf',loi:'var(--gold)',bem:'#2a5ea0'};
         var html='';
         // Sectie 1: Geüploade bestanden
