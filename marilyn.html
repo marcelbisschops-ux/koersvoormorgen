@@ -1614,15 +1614,17 @@ async function toonDetail(id,naam){
 
     // Bemiddelingsovereenkomst knop
     document.getElementById('det-bem-btn').addEventListener('click',async function(){
-      // Check of er al een BEM bestaat
+      // Check via traject detail (bem_datum) én versies
       try{
+        var tCheck=await fetch(WORKER+'/mna/admin/detail/'+id+'?key='+encodeURIComponent(adminKey));
+        var tData=await tCheck.json();
+        var heeftBem=(tData&&tData.traject&&tData.traject.bem_datum)||false;
         var vCheck=await fetch(WORKER+'/mna/versies/'+id+'?key='+encodeURIComponent(adminKey));
         var vList=await vCheck.json();
         var bestaandeBem=vList.filter(function(v){return v.doc_type==='bem'||v.doc_type==='bem_verk'||v.doc_type==='bem_koper';});
-        if(bestaandeBem.length>0){
-          var door=bestaandeBem[0].verstuurd_naar;
-          var ontv='';try{ontv=JSON.parse(door||'[]').join(', ');}catch(e){}
-          if(!confirm('Er is al een Bemiddelingsovereenkomst (v'+bestaandeBem[0].versie+') aangemaakt'+(ontv?' en verstuurd naar '+ontv:'')+'.\n\nNieuw document genereren en de oude overschrijven?'))return;
+        if(heeftBem||bestaandeBem.length>0){
+          var extra=bestaandeBem.length>0?' (verstuurd naar '+JSON.parse(bestaandeBem[0].verstuurd_naar||'[]').join(', ')+')':'';
+          if(!confirm('Er is al een Bemiddelingsovereenkomst aangemaakt'+extra+'.\n\nOpnieuw genereren en overschrijven?'))return;
         }
       }catch(e){}
       var btn=this;btn.disabled=true;btn.textContent='Genereren...';
@@ -1713,11 +1715,14 @@ async function toonDetail(id,naam){
     // NDA knop
     document.getElementById('det-nda-btn').addEventListener('click',async function(){
       try{
+        var tCheck2=await fetch(WORKER+'/mna/admin/detail/'+id+'?key='+encodeURIComponent(adminKey));
+        var tData2=await tCheck2.json();
+        var heeftNda2=(tData2&&tData2.traject&&tData2.traject.nda_datum)||false;
         var vCheck2=await fetch(WORKER+'/mna/versies/'+id+'?key='+encodeURIComponent(adminKey));
         var vList2=await vCheck2.json();
         var bestaandeNda=vList2.filter(function(v){return v.doc_type==='nda';});
-        if(bestaandeNda.length>0){
-          if(!confirm('Er is al een NDA (v'+bestaandeNda[0].versie+') aangemaakt.\n\nOpnieuw genereren?'))return;
+        if(heeftNda2||bestaandeNda.length>0){
+          if(!confirm('Er is al een NDA aangemaakt.\n\nOpnieuw genereren?'))return;
         }
       }catch(e){}
       var btn=this;btn.disabled=true;btn.textContent='Genereren...';
@@ -1861,8 +1866,10 @@ async function toonDetail(id,naam){
       try{
         var vCheckL=await fetch(WORKER+'/mna/versies/'+id+'?key='+encodeURIComponent(adminKey));
         var vListL=await vCheckL.json();
-        var heeftNda=vListL.some(function(v){return v.doc_type==='nda';});
-        var heeftExcl=vListL.some(function(v){return v.doc_type==='exclusief'||v.doc_type==='excl';});
+        var tCheckL2=await fetch(WORKER+'/mna/admin/detail/'+id+'?key='+encodeURIComponent(adminKey)).then(function(r){return r.json();}).catch(function(){return{};});
+        var tL=tCheckL2.traject||{};
+        var heeftNda=(tL.nda_datum)||vListL.some(function(v){return v.doc_type==='nda';});
+        var heeftExcl=(tL.excl_datum)||vListL.some(function(v){return v.doc_type==='exclusief'||v.doc_type==='excl';});
         var bestaandeLoi=vListL.filter(function(v){return v.doc_type==='loi';});
         var waarsch=[];
         if(!heeftNda)waarsch.push('⚠ NDA is nog niet aangemaakt. Verstuur eerst de NDA.');
@@ -1945,11 +1952,14 @@ async function toonDetail(id,naam){
     // Exclusiviteitsbrief knop
     document.getElementById('det-excl-btn').addEventListener('click',async function(){
       try{
+        var tCheckE=await fetch(WORKER+'/mna/admin/detail/'+id+'?key='+encodeURIComponent(adminKey));
+        var tDataE=await tCheckE.json();
+        var heeftExcl2=(tDataE&&tDataE.traject&&tDataE.traject.excl_datum)||false;
         var vCheckE=await fetch(WORKER+'/mna/versies/'+id+'?key='+encodeURIComponent(adminKey));
         var vListE=await vCheckE.json();
         var bestaandeExcl=vListE.filter(function(v){return v.doc_type==='exclusief'||v.doc_type==='excl';});
-        if(bestaandeExcl.length>0){
-          if(!confirm('Er is al een Exclusiviteitsbrief (v'+bestaandeExcl[0].versie+') aangemaakt.\n\nOpnieuw genereren?'))return;
+        if(heeftExcl2||bestaandeExcl.length>0){
+          if(!confirm('Er is al een Exclusiviteitsbrief aangemaakt.\n\nOpnieuw genereren?'))return;
         }
       }catch(e){}
       var btn=this;btn.disabled=true;btn.textContent='Genereren...';
