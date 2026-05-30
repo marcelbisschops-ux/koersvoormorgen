@@ -2594,23 +2594,16 @@ async function laadPartijDocs() {
   var opdRol = (S.traject && S.traject.opdrachtgever_rol) ? S.traject.opdrachtgever_rol : 'verkoper';
   var rolFilter;
   if (isVerkoper()) {
-    // Verkoper ziet: altijd NDA + LoI
-    // + BEM als verkoper de opdrachtgever is OF dual mandate
-    // + Excl als koper de opdrachtgever is OF dual mandate
-    rolFilter = ['nda','loi'];
-    if (opdRol === 'verkoper' || opdRol === 'beide') rolFilter.push('bem','bem_verk','bem_upload');
+    // Verkoper ziet: NDA + LoI + Excl (als verkoper opdrachtgever is = Excl naar koper)
+    // Verkoper ziet NOOIT de BEM — dat is een contract tussen Bisschops Financing en opdrachtgever
+    rolFilter = ['nda','loi','nda_upload','loi_upload'];
     if (opdRol === 'koper' || opdRol === 'beide') rolFilter.push('excl','exclusief','excl_upload');
   } else {
-    // Koper ziet: altijd NDA + LoI
-    // + BEM als koper de opdrachtgever is OF dual mandate
-    // + Excl als verkoper de opdrachtgever is OF dual mandate
-    rolFilter = ['nda','loi'];
+    // Koper ziet: NDA + LoI + Excl (als koper opdrachtgever is = Excl naar verkoper)
+    // Koper ziet NOOIT de BEM tenzij koper zelf opdrachtgever is
+    rolFilter = ['nda','loi','nda_upload','loi_upload'];
     if (opdRol === 'koper' || opdRol === 'beide') rolFilter.push('bem','bem_koper','bem_upload');
     if (opdRol === 'verkoper' || opdRol === 'beide') rolFilter.push('excl','exclusief','excl_upload');
-    // 'bem' zonder suffix (sell-side) nooit tonen aan koper tenzij koper opdrachtgever
-    if (opdRol !== 'koper' && opdRol !== 'beide') {
-      rolFilter = rolFilter.filter(function(t){ return t !== 'bem'; });
-    }
   }
   var labels = {nda:'NDA',loi:'Letter of Intent',bem:'Bemiddelingsovereenkomst',bem_verk:'Bemiddelingsovereenkomst',bem_koper:'Bemiddelingsovereenkomst',excl:'Exclusiviteitsbrief',exclusief:'Exclusiviteitsbrief',bem_upload:'BEM',excl_upload:'Exclusiviteitsbrief',nda_upload:'NDA',loi_upload:'Letter of Intent'};
   var kleuren = {nda:'#7c5cbf',loi:'#c9a84c',bem:'#2a5ea0',bem_verk:'#2a5ea0',bem_koper:'#2a5ea0',excl:'#1a7a5e',exclusief:'#1a7a5e'};
@@ -2643,11 +2636,15 @@ async function laadPartijDocs() {
       html += '<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r);padding:.6rem .875rem;display:flex;align-items:center;gap:10px;flex-wrap:wrap">'
         + '<span style="font-size:12px;font-weight:600;color:'+kleur+';flex:1">'+(labels[v.doc_type]||v.doc_type)+'</span>'
         + '<span style="font-size:11px;color:var(--muted)">'+dt+'</span>'
-        + '<button class="btn-ghost partij-doc-open" data-id="'+v.id+'" style="font-size:11px;padding:4px 12px">&#128065; Lezen</button>'
+        + (v.is_upload
+          ? '<a href="'+WORKER+'/mna/document/download/'+v.id+'?code='+encodeURIComponent(S.code)+'" target="_blank" class="btn-ghost" style="font-size:11px;padding:4px 12px;text-decoration:none">&#8681; Download</a>'
+          : '<button class="btn-ghost partij-doc-open" data-id="'+v.id+'" style="font-size:11px;padding:4px 12px">&#128065; Lezen</button>')
         + '</div>';
     });
 
-    // Geüploade dataroom-bestanden
+    // Geüploade dataroom-bestanden (alleen niet-contract bestanden)
+    var contractBestandsnamen = versies.filter(function(v){return v.is_upload;}).map(function(v){return v.bestand_naam||v.id;});
+    dataroomDocs = dataroomDocs.filter(function(d){return !contractBestandsnamen.some(function(n){return n===d.bestand_naam;});});
     if (dataroomDocs.length) {
       if (versies.length) html += '<div style="margin:.5rem 0;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)">Dataroom</div>';
       dataroomDocs.forEach(function(d) {
