@@ -2554,6 +2554,10 @@ async function laadPartijDocs() {
     rolFilter = ['nda','loi'];
     if (opdRol === 'koper' || opdRol === 'beide') rolFilter.push('bem','bem_koper');
     if (opdRol === 'verkoper' || opdRol === 'beide') rolFilter.push('excl','exclusief');
+    // 'bem' zonder suffix (sell-side) nooit tonen aan koper tenzij koper opdrachtgever
+    if (opdRol !== 'koper' && opdRol !== 'beide') {
+      rolFilter = rolFilter.filter(function(t){ return t !== 'bem'; });
+    }
   }
   var labels = {nda:'NDA',loi:'Letter of Intent',bem:'Bemiddelingsovereenkomst',bem_verk:'Bemiddelingsovereenkomst',bem_koper:'Bemiddelingsovereenkomst',excl:'Exclusiviteitsbrief',exclusief:'Exclusiviteitsbrief'};
   var kleuren = {nda:'#7c5cbf',loi:'#c9a84c',bem:'#2a5ea0',bem_verk:'#2a5ea0',bem_koper:'#2a5ea0',excl:'#1a7a5e',exclusief:'#1a7a5e'};
