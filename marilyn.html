@@ -97,6 +97,17 @@ let gebruikerToken='',gebruikerInfo=null,isSuperAdmin=false;
 
 
 
+
+  async function slaConceptOp(trajectId, docType, tekst, auteur) {
+    try {
+      await fetch(WORKER+'/mna/doc/concept', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json','x-admin-key':adminKey},
+        body: JSON.stringify({code: trajectId, doc_type: docType, tekst: tekst, auteur: auteur||'Marcel Bisschops'})
+      });
+    } catch(e) {}
+  }
+
 function printDoc(tekst, titel, docType) {
   var kleuren = {nda:'#7c5cbf',loi:'#c9a84c',bem:'#2a5ea0',bem_verk:'#2a5ea0',bem_koper:'#2a5ea0',excl:'#1a7a5e',exclusief:'#1a7a5e'};
   var kleur = kleuren[docType] || '#1a7a5e';
@@ -1616,14 +1627,12 @@ async function toonDetail(id,naam){
     document.getElementById('det-bem-btn').addEventListener('click',async function(){
       // Check via traject detail (bem_datum) én versies
       try{
-        var tCheck=await fetch(WORKER+'/mna/admin/detail/'+id+'?key='+encodeURIComponent(adminKey));
-        var tData=await tCheck.json();
-        var heeftBem=(tData&&tData.traject&&tData.traject.bem_datum)||false;
         var vCheck=await fetch(WORKER+'/mna/versies/'+id+'?key='+encodeURIComponent(adminKey));
         var vList=await vCheck.json();
         var bestaandeBem=vList.filter(function(v){return v.doc_type==='bem'||v.doc_type==='bem_verk'||v.doc_type==='bem_koper';});
-        if(heeftBem||bestaandeBem.length>0){
-          var extra=bestaandeBem.length>0?' (verstuurd naar '+JSON.parse(bestaandeBem[0].verstuurd_naar||'[]').join(', ')+')':'';
+        if(bestaandeBem.length>0){
+          var ontv='';try{ontv=JSON.parse(bestaandeBem[0].verstuurd_naar||'[]').filter(Boolean).join(', ');}catch(e){}
+          var extra=ontv?' — verstuurd naar '+ontv:'';
           if(!confirm('Er is al een Bemiddelingsovereenkomst aangemaakt'+extra+'.\n\nOpnieuw genereren en overschrijven?'))return;
         }
       }catch(e){}
@@ -1661,6 +1670,9 @@ async function toonDetail(id,naam){
         var rd;try{rd=JSON.parse(rawResp);}catch(e){throw new Error('Parse fout: '+rawResp.substring(0,100));}
         if(!resp.ok)throw new Error('AI fout '+resp.status+': '+(rd.error||rawResp.substring(0,150)));
         var tekst=rd.text||(rd.error||'Fout bij genereren.');
+        // Sla concept op in database voor blokkadecheck
+        var bemDocType=isSell?'bem_verk':'bem_koper';
+        slaConceptOp(id, bemDocType, tekst, 'Marcel Bisschops');
         var bemHtml=tekst.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n\n/g,'</p><p>').replace(/\n/g,'<br>');
         bemOut.innerHTML='<div style="font-size:11px;font-weight:600;color:#2a5ea0;letter-spacing:.1em;text-transform:uppercase;margin-bottom:.75rem">&#128203; Bemiddelingsovereenkomst · '+esc(d.traject.kantoor_naam||naam)+'</div>'
           +'<div style="background:var(--gold-bg);border:1px solid var(--gold);border-radius:var(--r);padding:.6rem .875rem;margin-bottom:.75rem;font-size:11px;color:var(--mid);line-height:1.6">&#9888; <strong style=\'color:var(--gold)\'>AI-gegenereerd document</strong> &mdash; Controleer de inhoud zorgvuldig voor verzending. Bisschops Financing BV is niet aansprakelijk voor fouten in door AI gegenereerde documenten. Laat juridische documenten bij twijfel reviewen door een advocaat.</div>'
@@ -1715,13 +1727,10 @@ async function toonDetail(id,naam){
     // NDA knop
     document.getElementById('det-nda-btn').addEventListener('click',async function(){
       try{
-        var tCheck2=await fetch(WORKER+'/mna/admin/detail/'+id+'?key='+encodeURIComponent(adminKey));
-        var tData2=await tCheck2.json();
-        var heeftNda2=(tData2&&tData2.traject&&tData2.traject.nda_datum)||false;
         var vCheck2=await fetch(WORKER+'/mna/versies/'+id+'?key='+encodeURIComponent(adminKey));
         var vList2=await vCheck2.json();
         var bestaandeNda=vList2.filter(function(v){return v.doc_type==='nda';});
-        if(heeftNda2||bestaandeNda.length>0){
+        if(bestaandeNda.length>0){
           if(!confirm('Er is al een NDA aangemaakt.\n\nOpnieuw genereren?'))return;
         }
       }catch(e){}
@@ -1751,6 +1760,7 @@ async function toonDetail(id,naam){
         var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:8000})});
         var rd=await resp.json();
         var tekst=rd.text||(rd.error||'Fout bij genereren.');
+        slaConceptOp(id, 'nda', tekst, 'Marcel Bisschops');
         var ndaHtml=tekst.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n\n/g,'</p><p>').replace(/\n/g,'<br>');
         ndaOut.innerHTML='<div style="font-size:11px;font-weight:600;color:#7c5cbf;letter-spacing:.1em;text-transform:uppercase;margin-bottom:.75rem">Non-Disclosure Agreement · '+esc(d.traject.kantoor_naam||naam)+'</div>'
           +'<div style="background:var(--gold-bg);border:1px solid var(--gold);border-radius:var(--r);padding:.6rem .875rem;margin-bottom:.75rem;font-size:11px;color:var(--mid);line-height:1.6">&#9888; <strong style=\'color:var(--gold)\'>AI-gegenereerd document</strong> &mdash; Controleer de inhoud zorgvuldig voor verzending. Bisschops Financing BV is niet aansprakelijk voor fouten in door AI gegenereerde documenten. Laat juridische documenten bij twijfel reviewen door een advocaat.</div>'
@@ -1866,10 +1876,8 @@ async function toonDetail(id,naam){
       try{
         var vCheckL=await fetch(WORKER+'/mna/versies/'+id+'?key='+encodeURIComponent(adminKey));
         var vListL=await vCheckL.json();
-        var tCheckL2=await fetch(WORKER+'/mna/admin/detail/'+id+'?key='+encodeURIComponent(adminKey)).then(function(r){return r.json();}).catch(function(){return{};});
-        var tL=tCheckL2.traject||{};
-        var heeftNda=(tL.nda_datum)||vListL.some(function(v){return v.doc_type==='nda';});
-        var heeftExcl=(tL.excl_datum)||vListL.some(function(v){return v.doc_type==='exclusief'||v.doc_type==='excl';});
+        var heeftNda=vListL.some(function(v){return v.doc_type==='nda';});
+        var heeftExcl=vListL.some(function(v){return v.doc_type==='exclusief'||v.doc_type==='excl';});
         var bestaandeLoi=vListL.filter(function(v){return v.doc_type==='loi';});
         var waarsch=[];
         if(!heeftNda)waarsch.push('⚠ NDA is nog niet aangemaakt. Verstuur eerst de NDA.');
@@ -1906,6 +1914,7 @@ async function toonDetail(id,naam){
         var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:8000})});
         var rd=await resp.json();
         var tekst=rd.text||(rd.error||'Fout bij genereren.');
+        slaConceptOp(id, 'loi', tekst, 'Marcel Bisschops');
         loiOut.innerHTML='<div style="font-size:11px;font-weight:600;color:var(--gold);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.75rem">Letter of Intent · '+esc(d.traject.kantoor_naam||naam)+'</div>'
           +'<div style="background:var(--gold-bg);border:1px solid var(--gold);border-radius:var(--r);padding:.6rem .875rem;margin-bottom:.75rem;font-size:11px;color:var(--mid);line-height:1.6">&#9888; <strong style=\'color:var(--gold)\'>AI-gegenereerd document</strong> &mdash; Controleer de inhoud zorgvuldig voor verzending. Bisschops Financing BV is niet aansprakelijk voor fouten in door AI gegenereerde documenten. Laat juridische documenten bij twijfel reviewen door een advocaat.</div>'
           +'<div style="font-size:11px;color:var(--muted);margin-bottom:.4rem">Bekijk en bewerk het document voor verzending:</div>'
@@ -1952,13 +1961,10 @@ async function toonDetail(id,naam){
     // Exclusiviteitsbrief knop
     document.getElementById('det-excl-btn').addEventListener('click',async function(){
       try{
-        var tCheckE=await fetch(WORKER+'/mna/admin/detail/'+id+'?key='+encodeURIComponent(adminKey));
-        var tDataE=await tCheckE.json();
-        var heeftExcl2=(tDataE&&tDataE.traject&&tDataE.traject.excl_datum)||false;
         var vCheckE=await fetch(WORKER+'/mna/versies/'+id+'?key='+encodeURIComponent(adminKey));
         var vListE=await vCheckE.json();
         var bestaandeExcl=vListE.filter(function(v){return v.doc_type==='exclusief'||v.doc_type==='excl';});
-        if(heeftExcl2||bestaandeExcl.length>0){
+        if(bestaandeExcl.length>0){
           if(!confirm('Er is al een Exclusiviteitsbrief aangemaakt.\n\nOpnieuw genereren?'))return;
         }
       }catch(e){}
@@ -1980,6 +1986,7 @@ async function toonDetail(id,naam){
         var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:2000})});
         var rd=await resp.json();
         var tekst=rd.text||(rd.error||'Fout bij genereren.');
+        slaConceptOp(id, 'exclusief', tekst, 'Marcel Bisschops');
         exclOut.innerHTML='<div style="font-size:11px;font-weight:600;color:var(--teal);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.75rem">&#128196; Exclusiviteitsbrief &middot; '+esc(d.traject.kantoor_naam||naam)+'</div>'
           +'<div style="background:var(--gold-bg);border:1px solid var(--gold);border-radius:var(--r);padding:.6rem .875rem;margin-bottom:.75rem;font-size:11px;color:var(--mid);line-height:1.6">&#9888; <strong style=\'color:var(--gold)\'>AI-gegenereerd document</strong> &mdash; Controleer de inhoud zorgvuldig voor verzending. Bisschops Financing BV is niet aansprakelijk voor fouten in door AI gegenereerde documenten. Laat juridische documenten bij twijfel reviewen door een advocaat.</div>'
           +'<div style="font-size:11px;color:var(--muted);margin-bottom:.4rem">Exclusiviteitsperiode: '+esc(startStr)+' t/m '+esc(eindStr)+'. Bekijk en bewerk voor verzending:</div>'
