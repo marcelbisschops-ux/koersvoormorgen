@@ -2270,71 +2270,8 @@ function renderBegeleiderDashboard(app){
   document.getElementById('bg-bem-actie').onclick=function(){ toonDocWaarschuwing('bem', function(){ bgDoc('bem'); }); };
   document.getElementById('bg-excl-actie').onclick=function(){ toonDocWaarschuwing('excl', function(){ bgDoc('excl'); }); };
 
-  // Gesprek vastleggen
-  document.getElementById('bg-gesprek-actie').onclick=function(){
-    var out=document.getElementById('bg-gesp-out');
-    out.style.display='block';
-    var vandaag=new Date().toISOString().split('T')[0];
-    out.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem">'
-      +'<div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:1rem">&#128172; Gesprek vastleggen</div>'
-      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:.75rem">'
-      +'<div class="field"><label>Datum</label><input type="date" id="bg-gs-datum" value="'+vandaag+'"></div>'
-      +'<div class="field"><label>Type</label><select id="bg-gs-type"><option value="gesprek">Gesprek</option><option value="kennismaking">Kennismaking</option><option value="onderhandeling">Onderhandeling</option><option value="vergadering">Vergadering</option><option value="telefonisch">Telefonisch</option></select></div>'
-      +'</div>'
-      +'<div class="field"><label>Deelnemers</label><input type="text" id="bg-gs-deeln" placeholder="bijv. naam deelnemer"></div>'
-      +'<div class="field"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><label style="margin-bottom:0">Notities</label><button id="bg-rec-btn" class="btn-ghost" style="font-size:11px;padding:2px 8px;color:var(--teal);border-color:var(--teal)">&#127908; Opnemen</button><span id="bg-rec-st" style="font-size:11px;color:var(--muted);margin-left:6px"></span></div><textarea id="bg-gs-notities" rows="4" placeholder="Ruwe notities — of klik Opnemen om te dicteren (Chrome)"></textarea></div>'
-      +'<div class="field"><label>Verslag</label><textarea id="bg-gs-verslag" rows="4" placeholder="Verslag — of klik AI"></textarea></div>'
-      +'<div style="display:flex;gap:8px;margin-bottom:.75rem">'
-      +'<button id="bg-gs-ai" class="btn-ghost" style="font-size:12px;padding:6px 14px;color:var(--teal);border-color:var(--teal)">&#9881; AI-verslag</button>'
-      +'<span id="bg-gs-st" style="font-size:12px;color:var(--muted);align-self:center"></span>'
-      +'</div>'
-      +'<div style="display:flex;gap:8px">'
-      +'<div id="bg-gs-concept-ind" style="font-size:10px;color:#8a8480;margin-bottom:.25rem;font-style:italic"></div>'
-      +'<button id="bg-gs-ok" class="btn" style="font-size:13px">&#128190; Definitief opslaan</button>'
-      +'<button id="bg-gs-ann" class="btn-ghost" style="font-size:13px">Annuleren</button>'
-      +'</div></div>';
-    document.getElementById('bg-gs-ann').onclick=function(){out.style.display='none';};
+  document.getElementById('bg-gesprek-actie').onclick=function(){ openBgGesprekForm(null); };
 
-    // Opname Web Speech API
-    var bgRecBtn=document.getElementById('bg-rec-btn');
-    var bgRecSt=document.getElementById('bg-rec-st');
-    var bgRec=null,bgRecActief=false;
-    var SpeechRec=window.SpeechRecognition||window.webkitSpeechRecognition;
-    if(!SpeechRec){bgRecBtn.disabled=true;bgRecBtn.style.opacity='0.4';bgRecSt.textContent='Chrome vereist';}
-    else{
-      bgRecBtn.onclick=function(){
-        if(!bgRecActief){
-          bgRec=new SpeechRec();bgRec.lang='nl-NL';bgRec.continuous=true;bgRec.interimResults=true;
-          var base=document.getElementById('bg-gs-notities').value,interim='';
-          bgRec.onresult=function(ev){interim='';var fin='';for(var i=ev.resultIndex;i<ev.results.length;i++){if(ev.results[i].isFinal)fin+=ev.results[i][0].transcript+' ';else interim+=ev.results[i][0].transcript;}if(fin){base+=(base&&!base.endsWith(' ')?'\n':'')+fin;}document.getElementById('bg-gs-notities').value=base+interim;};
-          bgRec.onerror=function(e){bgRecSt.textContent='Fout: '+e.error;stopBgRec();};
-          bgRec.onend=function(){if(bgRecActief)bgRec.start();};
-          bgRec.start();bgRecActief=true;
-          bgRecBtn.textContent='⏹ Stop';bgRecBtn.style.color='var(--red)';bgRecBtn.style.borderColor='var(--red)';
-          bgRecSt.innerHTML='<span style="color:var(--red)">● Opname actief</span>';
-        }else{stopBgRec();}
-      };
-      function stopBgRec(){if(bgRec){bgRec.onend=null;bgRec.stop();bgRec=null;}bgRecActief=false;bgRecBtn.textContent='&#127908; Opnemen';bgRecBtn.style.color='var(--teal)';bgRecBtn.style.borderColor='var(--teal)';bgRecSt.textContent='Gestopt';}
-    }
-    document.getElementById('bg-gs-ai').onclick=async function(){
-      var n=document.getElementById('bg-gs-notities').value.trim();
-      if(!n){document.getElementById('bg-gs-st').textContent='Voer notities in.';return;}
-      var btn=this;btn.disabled=true;document.getElementById('bg-gs-st').textContent='Genereren...';
-      var prompt='Maak professioneel gespreksverslag M&A traject.\n\nGesprek: '+document.getElementById('bg-gs-type').value+' | Datum: '+document.getElementById('bg-gs-datum').value+' | Deelnemers: '+(document.getElementById('bg-gs-deeln').value||'onbekend')+'\n\nNOTITIES:\n'+n+'\n\nFormaat: ## Samenvatting, ## Besproken punten, ## Beslissingen, ## Actiepunten, ## Volgende stap';
-      var rd=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:1500})}).then(function(r){return r.json();}).catch(function(){return{};});
-      document.getElementById('bg-gs-verslag').value=rd.text||'';
-      document.getElementById('bg-gs-st').textContent='✓ Klaar';btn.disabled=false;
-    };
-    document.getElementById('bg-gs-ok').onclick=async function(){
-      var datum=document.getElementById('bg-gs-datum').value;
-      if(!datum){toast('Datum verplicht.','warn');return;}
-      var btn=this;btn.disabled=true;btn.textContent='Opslaan...';
-      var payload={datum:datum,deelnemers:document.getElementById('bg-gs-deeln').value.trim(),type:document.getElementById('bg-gs-type').value,ruwe_notities:document.getElementById('bg-gs-notities').value.trim(),verslag:document.getElementById('bg-gs-verslag').value.trim()};
-      var r=await fetch(WORKER+'/mna/admin/gesprekken/'+S.traject.id,{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey},body:JSON.stringify(payload)}).then(function(x){return x.json();}).catch(function(){return{};});
-      if(r.ok){out.style.display='none';toast('Gesprek opgeslagen.','ok');}
-      else{toast('Fout: '+(r.error||'onbekend'),'err');btn.disabled=false;btn.textContent='Opslaan';}
-    };
-  };
 
   // AI analyse
   // Informatieverzoek knop
@@ -3889,49 +3826,9 @@ function bindAll(){
   // ── BEGELEIDER GESPREK VASTLEGGEN ────────────────────────────
   var gesprekCoverBtn=ge('gesprek-btn-cover');
   if(gesprekCoverBtn&&isTussen()){
-    gesprekCoverBtn.onclick=function(){
-      var vandaag=new Date().toISOString().split('T')[0];
-      var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:200;display:flex;align-items:center;justify-content:center;padding:1.5rem';
-      var mo=document.createElement('div');mo.style.cssText='background:#fff;border-radius:10px;padding:2rem;max-width:580px;width:100%;max-height:90vh;overflow-y:auto';
-      mo.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.1rem;color:#1a1815;font-weight:600;margin-bottom:1.25rem">&#128172; Gesprek vastleggen</div>'
-        +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:1rem">'
-        +'<div><label style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#8a8880;display:block;margin-bottom:4px">Datum</label><input type="date" id="bg-gs-datum" value="'+vandaag+'" style="width:100%;background:#f0eeea;border:1px solid #c8c5bc;border-radius:6px;padding:9px 11px;font-family:IBM Plex Sans,sans-serif;font-size:13px"></div>'
-        +'<div><label style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#8a8880;display:block;margin-bottom:4px">Type</label><select id="bg-gs-type" style="width:100%;background:#f0eeea;border:1px solid #c8c5bc;border-radius:6px;padding:9px 11px;font-family:IBM Plex Sans,sans-serif;font-size:13px"><option value="gesprek">Gesprek</option><option value="kennismaking">Kennismaking</option><option value="onderhandeling">Onderhandeling</option><option value="vergadering">Vergadering</option><option value="telefonisch">Telefonisch overleg</option><option value="andere">Overig</option></select></div>'
-        +'</div>'
-        +'<div style="margin-bottom:1rem"><label style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#8a8880;display:block;margin-bottom:4px">Deelnemers</label><input type="text" id="bg-gs-deelnemers" placeholder="bijv. naam deelnemer" style="width:100%;background:#f0eeea;border:1px solid #c8c5bc;border-radius:6px;padding:9px 11px;font-family:IBM Plex Sans,sans-serif;font-size:13px"></div>'
-        +'<div style="margin-bottom:1rem"><label style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#8a8880;display:block;margin-bottom:4px">Zichtbaar voor</label><select id="bg-gs-zichtbaar" style="width:100%;background:#f0eeea;border:1px solid #c8c5bc;border-radius:6px;padding:9px 11px;font-family:IBM Plex Sans,sans-serif;font-size:13px"><option value="begeleider">Alleen begeleider (intern)</option><option value="verkoper">Verkoper</option><option value="koper">Koper</option><option value="iedereen">Alle partijen</option></select></div>'
-        +'<div style="margin-bottom:1rem"><label style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#8a8880;display:block;margin-bottom:4px">Notities / aantekeningen</label><textarea id="bg-gs-notities" rows="5" placeholder="Ruwe notities..." style="width:100%;background:#f0eeea;border:1px solid #c8c5bc;border-radius:6px;padding:9px 11px;font-family:IBM Plex Sans,sans-serif;font-size:13px;line-height:1.7;resize:vertical"></textarea></div>'
-        +'<div style="margin-bottom:1rem"><label style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#8a8880;display:block;margin-bottom:4px">Verslag</label><textarea id="bg-gs-verslag" rows="5" placeholder="Verslag — of klik AI om te genereren." style="width:100%;background:#f0eeea;border:1px solid #c8c5bc;border-radius:6px;padding:9px 11px;font-family:IBM Plex Mono,monospace;font-size:12px;line-height:1.7;resize:vertical"></textarea></div>'
-        +'<div style="display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap">'
-        +'<button id="bg-gs-ai" style="background:transparent;border:1px solid #1a7a5e;color:#1a7a5e;padding:6px 14px;border-radius:6px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:12px">&#9881; AI-verslag genereren</button>'
-        +'<span id="bg-gs-status" style="font-size:12px;color:#8a8880;align-self:center"></span>'
-        +'</div>'
-        +'<div id="bg-gs-err" style="display:none;color:#e05252;font-size:12px;margin-bottom:.5rem"></div>'
-        +'<div style="display:flex;gap:10px;justify-content:flex-end">'
-        +'<button id="bg-gs-ann" style="background:transparent;border:1px solid #c8c5bc;padding:8px 16px;border-radius:6px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:13px">Annuleren</button>'
-        +'<div id="bg-gs-concept-ind" style="font-size:10px;color:#8a8480;margin-bottom:.25rem;font-style:italic"></div>'
-        +'<button id="bg-gs-ok" style="background:#1a7a5e;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:13px;font-weight:600">&#128190; Definitief opslaan</button>'
-        +'</div>';
-      ov.appendChild(mo);document.body.appendChild(ov);
-      ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
-      document.getElementById('bg-gs-ann').onclick=function(){document.body.removeChild(ov);};
-      document.getElementById('bg-gs-ai').onclick=async function(){
-        var notities=(document.getElementById('bg-gs-notities').value||'').trim();
-        if(!notities){document.getElementById('bg-gs-status').textContent='Voer eerst notities in.';return;}
-        var st=document.getElementById('bg-gs-status');st.textContent='Genereren...';
-        var btn=this;btn.disabled=true;
-        var prompt='Maak een professioneel gespreksverslag van een M&A traject.'
-          +'\n\nGesprek: '+(document.getElementById('bg-gs-type').value)+' | Datum: '+(document.getElementById('bg-gs-datum').value)+' | Deelnemers: '+(document.getElementById('bg-gs-deelnemers').value||'onbekend')
-          +'\n\nNOTITIES:\n'+notities
-          +'\n\nGeef het verslag terug met secties: ## Samenvatting, ## Besproken punten, ## Beslissingen & afspraken, ## Actiepunten, ## Volgende stap. Professioneel, derde persoon.';
-        try{
-          var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:1500})});
-          var rd=await resp.json();
-          document.getElementById('bg-gs-verslag').value=rd.text||'';
-          st.textContent='✓ Verslag gegenereerd';
-        }catch(e){st.textContent='Fout bij genereren';}
-        btn.disabled=false;
-      };
+    gesprekCoverBtn.onclick=function(){ openBgGesprekForm(null); };
+  }
+
       // Laad concept bij openen
       fetch(WORKER+'/mna/gesprek/concept/'+S.code)
         .then(function(r){return r.json();})
@@ -3983,7 +3880,6 @@ function bindAll(){
         else{err.style.display='block';err.textContent='Fout: '+(d.error||'onbekend');btn.disabled=false;btn.textContent='Opslaan';}
       };
     };
-  }
 
   // ── BEGELEIDER AI-ANALYSE ────────────────────────────────────
   var aiAnalyseCoverBtn=ge('ai-analyse-btn-cover');
@@ -4019,7 +3915,6 @@ function bindAll(){
       btn.disabled=false;btn.textContent='&#9881; AI-analyse';
     };
   }
-}
 
 renderApp();
 
