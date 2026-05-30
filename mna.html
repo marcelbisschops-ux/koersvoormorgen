@@ -2596,8 +2596,8 @@ async function laadPartijDocs() {
   if (isVerkoper()) {
     // Verkoper ziet: NDA + LoI + Excl (als verkoper opdrachtgever is = Excl naar koper)
     // Verkoper ziet NOOIT de BEM — dat is een contract tussen Bisschops Financing en opdrachtgever
-    rolFilter = ['nda','loi','nda_upload','loi_upload'];
-    if (opdRol === 'koper' || opdRol === 'beide') rolFilter.push('excl','exclusief','excl_upload');
+    // Verkoper ziet altijd Excl — die is immers gericht aan de verkoper
+    rolFilter = ['nda','loi','nda_upload','loi_upload','excl','exclusief','excl_upload'];
   } else {
     // Koper ziet: NDA + LoI + Excl (als koper opdrachtgever is = Excl naar verkoper)
     // Koper ziet NOOIT de BEM tenzij koper zelf opdrachtgever is
@@ -2642,9 +2642,16 @@ async function laadPartijDocs() {
         + '</div>';
     });
 
-    // Geüploade dataroom-bestanden (alleen niet-contract bestanden)
+    // Geüploade dataroom-bestanden — filter contracten eruit + BEM nooit tonen aan verkoper
     var contractBestandsnamen = versies.filter(function(v){return v.is_upload;}).map(function(v){return v.bestand_naam||v.id;});
-    dataroomDocs = dataroomDocs.filter(function(d){return !contractBestandsnamen.some(function(n){return n===d.bestand_naam;});});
+    dataroomDocs = dataroomDocs.filter(function(d){
+      // Verwijder als het al als contract-upload getoond wordt
+      if(contractBestandsnamen.some(function(n){return n===d.bestand_naam;}))return false;
+      var naam=(d.bestand_naam||'').toLowerCase();
+      // BEM nooit tonen aan verkoper
+      if(isVerkoper()&&(naam.includes('bem')||naam.includes('bemiddelingsovereenkomst')))return false;
+      return true;
+    });
     if (dataroomDocs.length) {
       if (versies.length) html += '<div style="margin:.5rem 0;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)">Dataroom</div>';
       dataroomDocs.forEach(function(d) {
