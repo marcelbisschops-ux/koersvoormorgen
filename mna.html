@@ -2308,9 +2308,37 @@ function renderBegeleiderDashboard(app){
         {id:'strategisch',titel:'Strategie',items:['Werkgebied + specialisaties','Groeimogelijkheden','Gewenste overdrachtstijdlijn']}]
     };
 
+    // Bepaal fase op basis van LoI status
+    var ivFase = (S.loiGetekend || (t2.loi_getekend) || (t2.loi_datum)) ? '2' : '1';
+    var ivFaseLabel = ivFase === '2' ? 'Fase 2 — Volledige Due Diligence (post-LoI)' : 'Fase 1 — Oriëntatie (pre-LoI)';
+
     var sector = (t2.sector||'accountancy').toLowerCase();
     if(!sectoren[sector]) sector = 'accountancy';
-    var categorieen = sectoren[sector];
+
+    // Fase-2 categorieen zijn uitgebreider
+    var sectoren2 = {
+      accountancy: [{id:'financieel',titel:'Financial DD',items:['Genormaliseerde EBITDA (gevalideerd)','Onderhanden werk / OHW','Debiteurenanalyse (>90 dagen)','WKR-controle','Dividendhistorie 3 jaar','Kostenstructuur jaar 3 (volledig)']},
+        {id:'commercieel',titel:'Commercial DD',items:['Klantverloop (churn) per jaar','Gemiddelde klantduur','Cross-sell percentage','Retentierisico sleutelklanten bij overname']},
+        {id:'partners',titel:'HR DD',items:['Partners met pensioen <5 jaar','Personeelsverloop (%)','RA/AA in opleiding','Partnerovereenkomsten + concurrentiebedingen','Pensioenregeling (soort + kosten)']},
+        {id:'compliance',titel:'Compliance DD',items:['Beroepsaansprakelijkheidsclaims (details)','Wwft-procedures up-to-date','Klachtenregister','Toetsingsrapporten NBA']},
+        {id:'it',titel:'IT DD',items:['Licenties overdraagbaar bij overname','Datamigratierisico','IT-kosten (% omzet)','Cybersecurity / incidenten','AVG-documentatie']},
+        {id:'juridisch',titel:'Legal & Tax DD',items:['Huurcontracten (looptijd + overdraagbaarheid)','Change-of-control clausules','Claims + garanties (details)','Leaseverplichtingen','Tax DD: BTW, loonheffing, VPB-aangiften 3 jaar','Beroepsaansprakelijkheidsverzekering']},
+        {id:'strategisch',titel:'Operational DD',items:['Concurrenten + marktaandeel','AI-impact op dienstenmix (kwantitatief)','Operationele schaalbaarheid','Cultuurfit + integratieplan','Voorkeur dealstructuur (lock-box vs completion accounts)']}],
+      mkb: [{id:'financieel',titel:'Financial & Tax DD',items:['Genormaliseerde EBITDA (gevalideerd)','Werkkapitaalanalyse (NWC)','Capex-historie + investeringsbehoefte','Voorraadomzetsnelheid','Tax DD: BTW, loonheffing, VPB']},
+        {id:'commercieel',titel:'Commercial DD',items:['Klant- en leverancierscontracten','Leveranciersafhankelijkheid','Change-of-control clausules','Marktaandeel validatie','Operationele schaalbaarheid']},
+        {id:'partners',titel:'HR DD',items:['Arbeidscontracten volledig','Pensioenregeling','CAO-verplichtingen','Ziekteverzuim','IP / intellectueel eigendom']},
+        {id:'compliance',titel:'Legal DD',items:['Huurcontract (looptijd + overdraagbaarheid)','Milieu-/omgevingsvergunning','Alle claims + garanties','Vastgoed taxatie']},
+        {id:'it',titel:'IT DD',items:['Licenties overdraagbaar','Cybersecurity','AVG-compliance']},
+        {id:'strategisch',titel:'Operational DD',items:['Concurrenten + marktaandeel','Schaalbaarheid supply chain','Cultuurfit + integratieplan','Dealstructuur voorkeur']}],
+      zorg: [{id:'financieel',titel:'Financial DD',items:['Rechtmatigheidsonderzoek zorgverantwoording','BTW-vrijstellingen analyse','Subsidiecontroles','Werkkapitaalanalyse']},
+        {id:'patienten',titel:'Cliënt DD',items:['Patiëntuitstroom per jaar','Wachtlijstanalyse','Overdraagbaarheid patiëntenbestand (BIG)']},
+        {id:'personeel',titel:'HR DD',items:['Wet DBA / ZZP-risicos','CAO + verplichtingen','Pensioenregeling','Arbeidscontracten volledig']},
+        {id:'compliance',titel:'Compliance DD',items:['IGJ-rapportages volledig','Wkkgz-audit','AVG/privacy patiëntgegevens (details)','WTZa-vergunning']},
+        {id:'it',titel:'IT DD',items:['Cybersecurity + NEN 7510','AVG patiëntgegevens (details)','EPD contracten']},
+        {id:'juridisch',titel:'Legal & Tax DD',items:['Huurcontract + overdraagbaarheid','BTW-vrijstellingen','Goodwill-onderbouwing','Claims + garanties details']}]
+    };
+
+    var categorieen = ivFase === '2' ? (sectoren2[sector]||sectoren2.accountancy) : sectoren[sector];
 
     // Modal met aanvinkbare categorieën
     var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:200;display:flex;align-items:center;justify-content:center;padding:1.5rem';
@@ -2335,6 +2363,7 @@ function renderBegeleiderDashboard(app){
     var deadline=new Date(Date.now()+14*24*3600*1000).toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'});
 
     mo.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.1rem;color:#1a1815;font-weight:600;margin-bottom:.25rem">&#128203; Informatieverzoek samenstellen</div>'
+      +'<div style="display:inline-block;background:'+(ivFase==="2"?"#eef3fa":"#edf7f3")+';border:1px solid '+(ivFase==="2"?"#2a5ea0":"#1a7a5e")+';color:'+(ivFase==="2"?"#2a5ea0":"#1a7a5e")+';font-size:11px;font-weight:600;padding:3px 10px;border-radius:12px;margin-bottom:1rem">'+(ivFase==="2"?"🔍 Fase 2 — Volledige DD (post-LoI)":"📋 Fase 1 — Oriëntatie (pre-LoI)")+'</div>'
       +'<div style="font-size:12px;color:#8a8880;margin-bottom:1.25rem">Vink aan welke categorieën en vragen u wilt meesturen. U kunt per categorie een toelichting toevoegen.</div>'
       +'<div style="margin-bottom:1rem"><label style="font-size:10px;font-weight:600;text-transform:uppercase;color:#8a8880;display:block;margin-bottom:4px">Deadline (aanpasbaar)</label>'
       +'<input type="text" id="iv-deadline" value="'+deadline+'" style="background:#f0eeea;border:1px solid #c8c5bc;border-radius:6px;padding:7px 11px;font-family:IBM Plex Sans,sans-serif;font-size:13px;width:200px"></div>'
@@ -2422,7 +2451,24 @@ function renderBegeleiderDashboard(app){
       var sb=this;sb.disabled=true;sb.textContent='Versturen...';
       var er=await fetch(WORKER+'/mna/mail-begeleider',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey},
         body:JSON.stringify({to:email,naam:t2.contact_naam,trajectNaam:t2.kantoor_naam,tussenCode:verkoperCode,html:html})}).then(function(r){return r.json();}).catch(function(){return{};});
-      if(er.ok){document.body.removeChild(ov);toast('Informatieverzoek verstuurd.','ok');}
+      if(er.ok){
+        // Sla selectie op zodat formulier velden kan filteren
+        var selectieData = {};
+        categorieen.forEach(function(cat, ci){
+          var catCheck = mo.querySelector('.iv-cat-check[data-ci="'+ci+'"]');
+          if(!catCheck||!catCheck.checked) return;
+          var items = [];
+          cat.items.forEach(function(item, ii){
+            var itemCheck = mo.querySelector('.iv-item-check[data-ci="'+ci+'"][data-ii="'+ii+'"]');
+            if(itemCheck&&itemCheck.checked) items.push(item);
+          });
+          if(items.length) selectieData[cat.id] = items;
+        });
+        fetch(WORKER+'/mna/infoverzoek/opslaan',{method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({code:S.code,selectie:selectieData,fase:ivFase,auteur:S.traject&&S.traject.begeleider_naam||'Begeleider'})
+        }).catch(function(){});
+        document.body.removeChild(ov);toast('Informatieverzoek verstuurd.','ok');
+      }
       else{ivErr.style.display='block';ivErr.textContent='Fout: '+(er.error||'onbekend');sb.disabled=false;sb.textContent='Verstuur';}
     };
     ibtn.disabled=false;ibtn.textContent='&#128203; Informatieverzoek';
@@ -3238,6 +3284,14 @@ function renderMain(){
     var blokkeer = isFase2 && !loiGetekend && isVerkoper();
 
     if(df.header){
+      // Voeg IV-badge toe als categorie in informatieverzoek staat
+      if(isVerkoper() && S._ivSelectie && df.fase==='1'){
+        var catId = f.id;
+        var gevraagd = S._ivSelectie[catId] && S._ivSelectie[catId].length > 0;
+        if(df.label && !df.label.startsWith('—') && gevraagd){
+          // skip — badge staat al op sectie header
+        }
+      }
       // Header altijd tonen maar met fade als fase 2 geblokkeerd
       if(isFase2 && !loiGetekend && isVerkoper()){
         if(!fase2GetoondHeader){
@@ -3532,7 +3586,7 @@ function bindAll(){
         }
         // Volledige reset - geen datalek tussen trajecten
         Object.keys(DOCS).forEach(function(k){delete DOCS[k];});
-        S={screen:'cover',code:code,rol:d.rol||'verkoper',traject:d.traject,
+        S={screen:'cover',code:code,rol:d.rol||'verkoper',traject:d.traject,_ivSelectie:null,
           fase:0,checked:{},data:{},docRefs:{},notities:{},aiTexts:{},aiLoading:{},
           saveTimer:null,showValidation:false,dataroomLoading:false,dataroom:null,
           _opy:{},_epy:{},_conflicts:[],_userEdited:{},_docSource:{},koperReacties:{},loiTekst:'',loiDatum:0};
@@ -3540,6 +3594,12 @@ function bindAll(){
         SEC.attempts = 0;
         secStartSession();
         secAuditLog('login', { kantoor: d.traject && d.traject.kantoor_naam });
+        // Laad infoverzoek selectie voor veldfiltering
+        if(d.rol==='verkoper'){
+          fetch(WORKER+'/mna/infoverzoek/'+code+'/1').then(function(r){return r.json();}).then(function(sel){
+            S._ivSelectie = sel;
+          }).catch(function(){});
+        }
         // FASES dynamisch laden op basis van sector
         if(d.traject&&d.traject.sector&&SECTOR_PROFIELEN[d.traject.sector]){
           FASES=SECTOR_PROFIELEN[d.traject.sector].fases;
