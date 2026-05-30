@@ -3325,7 +3325,9 @@ function bindAll(){
         document.getElementById('bg-print-btn').onclick=function(){
           var win=window.open('','_blank');
           var pt=document.getElementById('bg-doc-tekst').value;
-          win.document.write('<html><head><style>body{font-family:Georgia,serif;font-size:13px;line-height:1.9;max-width:700px;margin:2cm auto;color:#2a2825}</style></head><body><p>'+pt.replace(/\n/g,'<br>')+'</p></body></html>');
+          win.document.write('<html><head><style>body{font-family:Georgia,serif;font-size:13px;line-height:1.9;max-width:700px;margin:2cm auto;color:#2a2825}.overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;display:flex;align-items:center;justify-content:center;padding:1.5rem}
+.modal{background:#fff;border:1px solid #c8c5bc;border-radius:10px;padding:1.75rem;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.2);max-height:90vh;overflow-y:auto}
+</style></head><body><p>'+pt.replace(/\n/g,'<br>')+'</p></body></html>');
           win.document.close();win.print();
         };
         document.getElementById('bg-email-btn').onclick=async function(){
