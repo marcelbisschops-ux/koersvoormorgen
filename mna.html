@@ -2307,19 +2307,22 @@ function renderBegeleiderDashboard(app){
     async function laadBgDocs() {
       bgDocsEl.innerHTML = '<div style="font-size:12px;color:var(--muted)">Laden...</div>';
       try {
-        var r = await fetch(WORKER+'/mna/versies/'+S.traject.id+'?key='+encodeURIComponent(S.code));
+        var r = await fetch(WORKER+'/mna/versies/'+S.code);
         var versies = await r.json();
-        if (!versies.length) { bgDocsEl.innerHTML='<div style="font-size:12px;color:var(--muted);font-style:italic">Nog geen documenten gegenereerd.</div>'; return; }
-        var labels={nda:'NDA',loi:'LoI',bem:'Bemiddelingsovereenkomst',excl:'Exclusiviteitsbrief'};
-        var kleuren={nda:'#7c5cbf',loi:'var(--gold)',bem:'#2a5ea0',excl:'var(--teal)'};
+        if (!versies.length) { bgDocsEl.innerHTML='<div style="font-size:12px;color:var(--muted);font-style:italic">Nog geen documenten.</div>'; return; }
+        var labels={nda:'NDA',loi:'LoI',bem:'Bemiddelingsovereenkomst',bem_verk:'Bemiddelingsovereenkomst',bem_koper:'Bemiddelingsovereenkomst',excl:'Exclusiviteitsbrief',exclusief:'Exclusiviteitsbrief',bem_upload:'BEM (geüpload)',excl_upload:'Excl (geüpload)',nda_upload:'NDA (geüpload)',loi_upload:'LoI (geüpload)'};
+        var kleuren={nda:'#7c5cbf',loi:'var(--gold)',bem:'#2a5ea0',bem_verk:'#2a5ea0',bem_koper:'#2a5ea0',excl:'var(--teal)',exclusief:'var(--teal)',bem_upload:'#2a5ea0',excl_upload:'var(--teal)',nda_upload:'#7c5cbf',loi_upload:'var(--gold)'};
         var html='<div style="display:flex;flex-direction:column;gap:6px">';
         versies.forEach(function(v){
           var dt=new Date(v.created_at).toLocaleString('nl-NL',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
           var kleur=kleuren[v.doc_type]||'var(--teal)';
+          var isUpload=!!v.is_upload;
           html+='<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:.5rem .875rem;display:flex;align-items:center;gap:10px;flex-wrap:wrap">'
-            +'<span style="font-size:11px;font-weight:600;color:'+kleur+';min-width:160px">'+(labels[v.doc_type]||v.doc_type)+' v'+v.versie+'</span>'
+            +'<span style="font-size:11px;font-weight:600;color:'+kleur+';min-width:160px">'+(labels[v.doc_type]||v.doc_type)+(isUpload?' <span style="font-size:9px;opacity:.6">(geüpload)</span>':' v'+v.versie)+'</span>'
             +'<span style="font-size:11px;color:var(--muted)">'+dt+'</span>'
-            +'<button class="btn-ghost bg-versie-open" data-id="'+esc(v.id)+'" style="font-size:10px;padding:2px 10px;margin-left:auto">&#128065; Lezen</button>'
+            +(isUpload
+              ?'<a href="'+WORKER+'/mna/document/download/'+esc(v.id)+'?code='+encodeURIComponent(S.code)+'" target="_blank" class="btn-ghost" style="font-size:10px;padding:2px 10px;margin-left:auto;text-decoration:none">&#8681; Download</a>'
+              :'<button class="btn-ghost bg-versie-open" data-id="'+esc(v.id)+'" style="font-size:10px;padding:2px 10px;margin-left:auto">&#128065; Lezen</button>')
             +'</div>';
         });
         html+='</div>';
