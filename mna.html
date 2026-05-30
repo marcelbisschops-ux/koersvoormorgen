@@ -2095,6 +2095,8 @@ function renderBegeleiderDashboard(app){
       bem:'Vul de Bemiddelingsovereenkomst template in. Type: '+(isSell?'Verkoop':'Aankoop')+'. Opdrachtgever: '+esc(isSell?t2.kantoor_naam:t2.koper_naam||'[koper]')+'. Datum: '+datum+'. Begeleider: '+(t2.begeleider_naam||'Bisschops Financing B.V.')+'.'
     };
     var tplTekst=tplD.ok&&tplD.tekst?tplD.tekst:'[standaard template]';
+    // Afkappen om prompt te lang te voorkomen
+    if(tplTekst.length>3000)tplTekst=tplTekst.substring(0,3000)+'\n[...verdere standaardbepalingen van toepassing]';
     var prompt=prompts[type]+'\n\nTEMPLATE:\n'+tplTekst;
     var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:type==='bem'?4000:8000})});
     var rd=await resp.json();
