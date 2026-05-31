@@ -2971,8 +2971,8 @@ async function toonDocWaarschuwing(docType, onDoorgaan) {
 
   var t = S.traject || {};
   var heeftBem = versies.some(function(v){return v.doc_type==='bem'||v.doc_type==='bem_verk'||v.doc_type==='bem_koper'||v.doc_type==='bem_upload';});
-  var heeftNda = versies.some(function(v){return v.doc_type==='nda'||v.doc_type==='nda_upload';});
-  var heeftExcl = versies.some(function(v){return v.doc_type==='exclusief'||v.doc_type==='excl'||v.doc_type==='excl_upload';});
+  var heeftNda = versies.some(function(v){return v.doc_type==='nda'||v.doc_type==='nda_upload';}) || !!t.nda_getekend;
+  var heeftExcl = versies.some(function(v){return v.doc_type==='exclusief'||v.doc_type==='excl'||v.doc_type==='excl_upload';}) || !!t.excl_getekend;
   var heeftLoi = versies.some(function(v){return v.doc_type==='loi'||v.doc_type==='loi_upload';});
 
   var waarschuwingen = [];
@@ -2991,7 +2991,7 @@ async function toonDocWaarschuwing(docType, onDoorgaan) {
   }
   if (docType === 'loi') {
     if (!heeftNda) { waarschuwingen.push('⚠ De NDA is nog niet aangemaakt.'); geblokkeerd = true; }
-    if (!heeftExcl) { waarschuwingen.push('⚠ De Exclusiviteitsbrief is nog niet aangemaakt.'); geblokkeerd = true; }
+    if (!heeftExcl) waarschuwingen.push('ℹ De Exclusiviteitsbrief is nog niet verstuurd (optioneel).');
     if (heeftLoi) waarschuwingen.push('Er is al een LoI aangemaakt.');
   }
 
