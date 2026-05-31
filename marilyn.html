@@ -1928,11 +1928,11 @@ async function toonDetail(id,naam){
         var bestaandeLoi=vListL.filter(function(v){return v.doc_type==='loi';});
         var waarsch=[];
         if(!heeftNda)waarsch.push('⚠ NDA is nog niet aangemaakt. Verstuur eerst de NDA.');
-        if(!heeftExcl)waarsch.push('⚠ Exclusiviteitsbrief is nog niet aangemaakt. Verstuur eerst de Excl.');
+        if(!heeftExcl)waarsch.push('ℹ Exclusiviteitsbrief is nog niet verstuurd (optioneel).');
         if(bestaandeLoi.length>0)waarsch.push('Er is al een LoI (v'+bestaandeLoi[0].versie+') aangemaakt.');
         if(waarsch.length>0){
-          var geblokkeerd=!heeftNda||!heeftExcl;
-          var msg=waarsch.join('\n')+'\n\n'+(geblokkeerd?'LoI kan niet worden gegenereerd zonder NDA en Exclusiviteitsbrief.':'Toch doorgaan?');
+          var geblokkeerd=!heeftNda; // alleen NDA is verplicht, Excl niet
+          var msg=waarsch.join('\n')+'\n\n'+(geblokkeerd?'LoI kan niet worden gegenereerd zonder NDA.':'Toch doorgaan?');
           if(geblokkeerd){alert(msg);return;}
           if(!confirm(msg))return;
         }
