@@ -1607,7 +1607,7 @@ async function toonDetail(id,naam){
       +(d.traject.fase2_gereed?'<div style="background:var(--teal-bg);border:1px solid var(--teal);border-radius:var(--r);padding:8px 14px;font-size:12px;font-weight:600;color:var(--teal)">&#128203; LoI getekend — Fase 2 DD gereed. Stuur nieuw informatieverzoek met uitgebreide vragenset.</div>':'')
       +'<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:8px 14px;font-size:12px"><span style="color:var(--muted)">Sector:</span> <strong>'+esc({accountancy:'Accountancy',mkb:'MKB',zorg:'Zorg',itsoftware:'IT & Software'}[d.traject.sector]||d.traject.sector||'Accountancy')+'</strong></div>'
       +'<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:8px 14px;font-size:12px"><span style="color:var(--muted)">Voortgang:</span> <strong style="color:var(--teal)">'+filled+'/'+total+'</strong></div>'
-      +'<div style="display:flex;gap:8px;flex-wrap:wrap">'      +'<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:8px 14px;font-size:12px;display:flex;align-items:center;gap:8px">'      +'<span style="color:var(--muted)">Verkoper toegang:</span> '      +'<strong style="color:'+(d.traject.verkoper_vrijgegeven?'var(--teal)':'var(--red)')+'">'+(d.traject.verkoper_vrijgegeven?'✓ Actief':'✗ Geblokkeerd')+'</strong>'      +'<button id="verk-vrijgave-btn" style="font-size:10px;padding:2px 8px;border:1px solid var(--border);border-radius:4px;background:var(--panel);cursor:pointer;margin-left:4px">'+(d.traject.verkoper_vrijgegeven?'Blokkeren':'Vrijgeven')+'</button>'      +'</div>'      +'<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:8px 14px;font-size:12px"><span style="color:var(--muted)">Koper vrijgegeven:</span> <strong>'+(d.traject.koper_vrijgegeven?'Ja':'Nee')+'</strong></div>'      +'</div>'
+      +'<div style="display:flex;gap:8px;flex-wrap:wrap">'      +'<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:8px 14px;font-size:12px;display:flex;align-items:center;gap:8px">'      +'<span style="color:var(--muted)">Verkoper toegang:</span> '      +'<strong style="color:'+(d.traject.verkoper_vrijgegeven?'var(--teal)':'var(--red)')+'">'+(d.traject.verkoper_vrijgegeven?'✓ Actief':'✗ Geblokkeerd')+'</strong>'      +'<button id="verk-vrijgave-btn" style="font-size:10px;padding:2px 8px;border:1px solid var(--border);border-radius:4px;background:var(--panel);cursor:pointer;margin-left:4px">'+(d.traject.verkoper_vrijgegeven?'Blokkeren':'Vrijgeven')+'</button>'      +'</div>'      +'<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:8px 14px;font-size:12px;display:flex;align-items:center;gap:8px">'      +'<span style="color:var(--muted)">Koper toegang:</span> '      +'<strong style="color:'+(d.traject.koper_vrijgegeven?'var(--teal)':'var(--red)')+'">'+(d.traject.koper_vrijgegeven?'✓ Actief':'✗ Geblokkeerd')+'</strong>'      +'<button id="koper-vrijgave-btn" style="font-size:10px;padding:2px 8px;border:1px solid var(--border);border-radius:4px;background:var(--panel);cursor:pointer;margin-left:4px">'+(d.traject.koper_vrijgegeven?'Blokkeren':'Vrijgeven')+'</button>'      +'</div>'      +'</div>'
       +'<div style="background:'+(d.traject.nda_getekend?'var(--teal-bg)':'var(--red-bg)')+';border:1px solid '+(d.traject.nda_getekend?'var(--teal-dark)':'var(--red)')+';border-radius:var(--r);padding:8px 14px;font-size:12px"><span style="color:var(--muted)">NDA getekend:</span> <strong style="color:'+(d.traject.nda_getekend?'var(--teal)':'var(--red)')+'">'+(d.traject.nda_getekend?'✓ '+esc(d.traject.nda_getekend):'✕ Nog niet getekend')+'</strong></div>'
       +'</div>';
     Object.keys(faseLabels).forEach(function(faseId){
@@ -2254,6 +2254,23 @@ async function toonDetail(id,naam){
       }).then(function(r){return r.json();}).catch(function(){return{};});
       if(r.ok){toast('Verkoper toegang '+actie+'d.','ok');detailBtn.click();}
       else toast('Fout bij opslaan.','err');
+    });
+  }
+
+  // ── KOPER VRIJGAVE ──────────────────────────────────────────
+  var koperVrijBtn = document.getElementById('koper-vrijgave-btn');
+  if(koperVrijBtn){
+    koperVrijBtn.addEventListener('click', async function(){
+      var huidig = !!d.traject.koper_vrijgegeven;
+      var actie = huidig ? 'blokkeren' : 'vrijgeven';
+      if(!confirm('Koper toegang '+actie+'?'))return;
+      var ep = huidig ? '/mna/admin/intrekken/' : '/mna/admin/vrijgeven/';
+      var r = await fetch(WORKER+ep+id+'?key='+encodeURIComponent(adminKey)+'&force=1', {
+        method:'POST',
+        headers:{'x-tussen-key':adminKey}
+      }).then(function(r){return r.json();}).catch(function(){return{};});
+      if(r.ok){toast('Koper toegang '+actie+'d.','ok');detailBtn.click();}
+      else toast((r.error||'Fout bij opslaan.'),'err');
     });
   }
 
