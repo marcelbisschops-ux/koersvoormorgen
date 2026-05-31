@@ -1923,8 +1923,8 @@ async function toonDetail(id,naam){
       try{
         var vCheckL=await fetch(WORKER+'/mna/versies/'+id+'?key='+encodeURIComponent(adminKey));
         var vListL=await vCheckL.json();
-        var heeftNda=vListL.some(function(v){return v.doc_type==='nda'||v.doc_type==='nda_upload';});
-        var heeftExcl=vListL.some(function(v){return v.doc_type==='exclusief'||v.doc_type==='excl'||v.doc_type==='excl_upload';});
+        var heeftNda=vListL.some(function(v){return v.doc_type==='nda'||v.doc_type==='nda_upload';}) || !!d.traject.nda_getekend;
+        var heeftExcl=vListL.some(function(v){return v.doc_type==='exclusief'||v.doc_type==='excl'||v.doc_type==='excl_upload';}) || !!d.traject.excl_getekend;
         var bestaandeLoi=vListL.filter(function(v){return v.doc_type==='loi';});
         var waarsch=[];
         if(!heeftNda)waarsch.push('⚠ NDA is nog niet aangemaakt. Verstuur eerst de NDA.');
@@ -2131,7 +2131,10 @@ async function toonDetail(id,naam){
         document.getElementById('intro-email-btn').addEventListener('click',async function(){
           var ebtn=this;ebtn.disabled=true;ebtn.textContent='Versturen...';
           var vt=document.getElementById('intro-edit').value;
-          var toList=[d.traject.contact_email,d.traject.begeleider_email].filter(Boolean);
+          // Introductie altijd naar de VERKOPER (wederpartij die geïntroduceerd wordt), niet naar opdrachtgever
+          var isSellT = !d.traject.opdrachtgever_rol || d.traject.opdrachtgever_rol === 'verkoper';
+          var introEmail = isSellT ? (d.traject.contact_email||'') : (d.traject.verkoper_email||d.traject.contact_email||'');
+          var toList=[introEmail,d.traject.begeleider_email].filter(Boolean);
           var er=await fetch(WORKER+'/mna/introductie/email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:d.traject.id,introductie_tekst:vt,to:toList})});
           var ed2=await er.json().catch(function(){return{error:'Fout'};});
           if(ed2.ok){ebtn.textContent='✓ Verstuurd';}else{toast('Fout: '+(ed2.error||'onbekend'),'err');ebtn.disabled=false;ebtn.textContent='Stuur naar verkoper';}
@@ -2139,8 +2142,9 @@ async function toonDetail(id,naam){
         // Signhost
         document.getElementById('intro-signhost-btn').addEventListener('click',function(){
           var tekst=document.getElementById('intro-edit').value;
-          var defEmail=d.traject.contact_email||'';
-          var defNaam=d.traject.contact_naam||d.traject.kantoor_naam||'';
+          var isSellT = !d.traject.opdrachtgever_rol || d.traject.opdrachtgever_rol === 'verkoper';
+          var defEmail = isSellT ? (d.traject.contact_email||'') : (d.traject.verkoper_email||'');
+          var defNaam = isSellT ? (d.traject.contact_naam||d.traject.kantoor_naam||'') : (d.traject.verkoper_naam||'');
           var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:3000;display:flex;align-items:center;justify-content:center;padding:1.5rem';
           var mo=document.createElement('div');mo.style.cssText='background:var(--panel);border:1px solid var(--border2);border-radius:var(--r2);padding:1.75rem;max-width:400px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.25)';
           mo.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.1rem;color:var(--head);font-weight:600;margin-bottom:1rem">&#9998; Signhost — Introductieverklaring</div>'
