@@ -1645,7 +1645,7 @@ async function toonDetail(id,naam){
       bemOut.innerHTML='<div style="color:var(--muted);font-size:13px">Bemiddelingsovereenkomst wordt gegenereerd... (15-30 sec)</div>';
       try{
         var datum=new Date().toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'});
-        var isSell=!d.traject.traject_type||d.traject.traject_type==='Verkoop'||d.traject.traject_type==='Opvolging';
+        var isSell=(d.traject.opdrachtgever_rol==='koper')?false:(!d.traject.traject_type||d.traject.traject_type==='Verkoop'||d.traject.traject_type==='Opvolging');
         // Template ophalen
         var bemTplType=isSell?'bem_verk':'bem_koper';
         var bemTplResp=await fetch(WORKER+'/mna/template/'+bemTplType+'?email='+encodeURIComponent(d.traject.begeleider_email||'marcel@bisschopsfinancing.nl')).catch(function(){return {json:function(){return {ok:false};}};});
@@ -1694,7 +1694,8 @@ async function toonDetail(id,naam){
         document.getElementById('bem-email-btn').addEventListener('click',function(){
           var editEl=document.getElementById('bem-edit');
           var verzendTekst=editEl?editEl.value:tekst;
-          var defaultTo=[d.traject.contact_email||'',d.traject.koper_email||''].filter(Boolean).join(', ');
+          // BEM naar opdrachtgever: koper als buy-side, verkoper als sell-side
+          var defaultTo=isSell?(d.traject.contact_email||''):(d.traject.koper_email||'');
           if(!defaultTo)defaultTo='marcel@bisschopsfinancing.nl';
           var ov=document.createElement('div');ov.className='overlay';
           var mo=document.createElement('div');mo.style.cssText='background:#fff;border:1px solid #c8c5bc;border-radius:10px;padding:1.75rem;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.25);max-height:90vh;overflow-y:auto;max-width:420px';
