@@ -3125,14 +3125,25 @@ async function laadPartijDocs() {
 
     // Geüploade dataroom-bestanden — filter contracten eruit + BEM nooit tonen aan verkoper
     var contractBestandsnamen = versies.filter(function(v){return v.is_upload;}).map(function(v){return v.bestand_naam||v.id;});
+    // Verzamel getekende doc-types uit versies zodat we weten welke signhost-PDFs al getoond worden
+    var getoondAlsGetekend = [];
+    versies.forEach(function(v){
+      var normT = (v.doc_type==='bem_verk'||v.doc_type==='bem_koper'||v.doc_type==='bem_upload')?'bem':(v.doc_type==='exclusief'||v.doc_type==='excl_upload')?'excl':(v.doc_type==='nda_upload')?'nda':(v.doc_type==='loi_upload')?'loi':v.doc_type;
+      if(getoondAlsGetekend.indexOf(normT)===-1) getoondAlsGetekend.push(normT);
+    });
     dataroomDocs = dataroomDocs.filter(function(d){
       // Verwijder als het al als contract-upload getoond wordt
       if(contractBestandsnamen.some(function(n){return n===d.bestand_naam;}))return false;
       var naam=(d.bestand_naam||'').toLowerCase();
       // BEM nooit tonen aan verkoper
       if(isVerkoper()&&(naam.includes('bem')||naam.includes('bemiddelingsovereenkomst')))return false;
-      // Excl niet tonen aan koper als koper de opdrachtgever is (Excl is dan voor de verkoper)
+      // Excl niet tonen aan koper als koper de opdrachtgever is
       if(!isVerkoper()&&(naam.includes('excl')||naam.includes('exclusiviteit'))&&(opdRol==='koper'||opdRol==='beide'))return false;
+      // Signhost getekende docs die al via contract-versies getoond worden: niet dubbel tonen
+      if(d.methode==='signhost'){
+        var isAlGetoond = getoondAlsGetekend.some(function(t){ return naam.indexOf(t)!==-1; });
+        if(isAlGetoond) return false;
+      }
       return true;
     });
     if (dataroomDocs.length) {
@@ -3141,19 +3152,23 @@ async function laadPartijDocs() {
         var dt = d.uploaded_at ? new Date(d.uploaded_at).toLocaleDateString('nl-NL',{day:'2-digit',month:'short',year:'numeric'}) : '';
         var icon = d.bestand_naam&&d.bestand_naam.endsWith('.pdf') ? '📄' : d.bestand_naam&&(d.bestand_naam.endsWith('.xlsx')||d.bestand_naam.endsWith('.xls')||d.bestand_naam.endsWith('.csv')) ? '📊' : '📃';
         var gr = d.bestand_grootte ? (d.bestand_grootte/1024/1024).toFixed(1)+'MB' : '';
-        html += '<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r);padding:.6rem .875rem;display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
+        var isSignhostDoc = d.methode === 'signhost';
+        var docNaam = (function(naam){
+          var n=naam.toLowerCase();
+          if(n.includes('bem')||n.includes('bemiddelingsovereenkomst'))return 'Bemiddelingsovereenkomst'+(isSignhostDoc?' (getekend)':'');
+          if(n.includes('excl')||n.includes('exclusiviteit'))return 'Exclusiviteitsbrief'+(isSignhostDoc?' (getekend)':'');
+          if(n.includes('nda')||n.includes('geheimhouding'))return 'NDA'+(isSignhostDoc?' (getekend)':'');
+          if(n.includes('loi')||n.includes('intentieverklaring'))return 'Letter of Intent'+(isSignhostDoc?' (getekend)':'');
+          if(n.includes('introductie'))return 'Introductieverklaring'+(isSignhostDoc?' (getekend)':'');
+          return esc(naam);
+        })(d.bestand_naam||'document');
+        html += '<div style="background:var(--panel);border:1px solid '+(isSignhostDoc?'var(--teal)':'var(--border)')+';border-radius:var(--r);padding:.6rem .875rem;display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
           + '<span style="font-size:14px">'+icon+'</span>'
-          + '<span style="font-size:12px;color:var(--sub);flex:1">'+(function(naam){
-              var n=naam.toLowerCase();
-              if(n.includes('bem')||n.includes('bemiddelingsovereenkomst'))return 'Bemiddelingsovereenkomst';
-              if(n.includes('excl')||n.includes('exclusiviteit'))return 'Exclusiviteitsbrief';
-              if(n.includes('nda')||n.includes('geheimhouding'))return 'NDA';
-              if(n.includes('loi')||n.includes('intentieverklaring'))return 'Letter of Intent';
-              return esc(naam);
-            })(d.bestand_naam||'document')+'</span>'
+          + '<span style="font-size:12px;color:var(--sub);flex:1">'+docNaam+'</span>'
+          + (isSignhostDoc ? '<span style="font-size:10px;background:#edf7f3;color:var(--teal);border:1px solid var(--teal);border-radius:10px;padding:1px 8px;font-weight:600">✓ Getekend</span>' : '')
           + (gr ? '<span style="font-size:10px;color:var(--muted)">'+gr+'</span>' : '')
           + '<span style="font-size:11px;color:var(--muted)">'+dt+'</span>'
-          + '<a href="'+WORKER+'/mna/document/download/'+d.id+'?code='+encodeURIComponent(S.code)+'" target="_blank" class="btn-ghost" style="font-size:11px;padding:4px 12px;text-decoration:none">&#8681; Download</a>'
+          + '<a href="'+WORKER+'/mna/document/download/'+d.id+'?code='+encodeURIComponent(S.code)+'" target="_blank" class="btn-ghost" style="font-size:11px;padding:4px 12px;text-decoration:none'+(isSignhostDoc?';color:var(--teal);border-color:var(--teal)':'')+'">'+(isSignhostDoc?'&#8681; Download getekend':'&#8681; Download')+'</a>'
           + (isTussen() ? '<button class="partij-doc-del btn-del" data-id="'+esc(d.id)+'" style="font-size:11px;padding:4px 8px">&#10005;</button>' : '')
           + '</div>';
       });

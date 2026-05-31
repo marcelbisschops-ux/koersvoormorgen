@@ -2211,15 +2211,18 @@ async function toonDetail(id,naam){
         ]);
         var trajectDocs = docsResp.ok ? await docsResp.json() : [];
         var versies = versiesResp.ok ? await versiesResp.json() : [];
+        // Signhost getekende docs worden getoond via de versies-sectie — niet dubbel tonen in geüploade bestanden
+        var signhostDocs = trajectDocs.filter(function(d){ return d.methode === 'signhost'; });
+        var uploadedDocs = trajectDocs.filter(function(d){ return d.methode !== 'signhost'; });
         var docLabels={nda:'NDA',loi:'LoI',bem:'Bemiddelingsovereenkomst',bem_verk:'Bemiddelingsovereenkomst',bem_koper:'Bemiddelingsovereenkomst',excl:'Exclusiviteitsbrief',exclusief:'Exclusiviteitsbrief',bem_upload:'Bemiddelingsovereenkomst',excl_upload:'Exclusiviteitsbrief',nda_upload:'NDA',loi_upload:'Letter of Intent'};
         var docKleuren={nda:'#7c5cbf',loi:'var(--gold)',bem:'#2a5ea0'};
         var html='';
-        // Sectie 1: Geüploade bestanden
-        if(trajectDocs.length){
+        // Sectie 1: Geüploade bestanden (exclusief Signhost getekende docs — die staan in sectie 2)
+        if(uploadedDocs.length){
           var faseKleuren={juridisch:'#2a5ea0',financieel:'var(--teal)',strategisch:'var(--gold)',voorgesprek:'var(--mid)',commercieel:'#7c5cbf',operationeel:'var(--teal)',personeel:'#c47a3a',compliance:'var(--red)'};
-          html+='<div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem">Geüploade bestanden ('+trajectDocs.length+')</div>';
+          html+='<div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem">Geüploade bestanden ('+uploadedDocs.length+')</div>';
           html+='<div style="display:flex;flex-direction:column;gap:5px;margin-bottom:1rem">';
-          trajectDocs.forEach(function(d){
+          uploadedDocs.forEach(function(d){
             var dt=d.uploaded_at?new Date(d.uploaded_at).toLocaleString('nl-NL',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—';
             var gr=d.bestand_grootte?(d.bestand_grootte/1024/1024).toFixed(1)+'MB':'—';
             var faseKleur=faseKleuren[d.fase_id]||'var(--mid)';
@@ -2247,7 +2250,7 @@ async function toonDetail(id,naam){
             var kleur=docKleuren[v.doc_type]||'var(--teal)';
             // Zoek getekende versie in trajectDocs
             var normType=(v.doc_type==='bem_verk'||v.doc_type==='bem_koper')?'bem':(v.doc_type==='exclusief')?'excl':v.doc_type;
-            var getekendDoc=trajectDocs.find(function(d){return d.methode==='signhost'&&(d.bestand_naam||'').toLowerCase().indexOf(normType)!==-1;});
+            var getekendDoc=signhostDocs.find(function(d){return (d.bestand_naam||'').toLowerCase().indexOf(normType)!==-1;});
             html+='<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:.5rem .875rem;display:flex;align-items:center;gap:10px;flex-wrap:wrap">'
               +'<span style="font-size:11px;font-weight:600;color:'+kleur+';min-width:140px">'+(docLabels[v.doc_type]||v.doc_type)+' v'+v.versie+'</span>'
               +'<span style="font-size:11px;color:var(--muted)">'+dt+'</span>'
