@@ -133,7 +133,7 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--s
 <script>
 var WORKER='https://kantoorinzicht.marcel-bisschops.workers.dev';
 
-function versieLabel(){var v=window._versie||'v1.11';return '<span style="font-size:10px;font-weight:600;font-family:IBM Plex Mono,monospace;color:var(--muted);margin-left:8px">'+(v.startsWith('v')?v:'v'+v)+'</span>';}
+function versieLabel(){return '';}
 
 // Laad versie bij startup
 fetch(WORKER+'/mna/versie').then(function(r){return r.json();}).then(function(d){
