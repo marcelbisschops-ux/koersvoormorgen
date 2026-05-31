@@ -2245,7 +2245,7 @@ function renderBegeleiderDashboard(app){
     document.getElementById('bg-email').onclick=async function(){
       var ebtn=this;ebtn.disabled=true;ebtn.textContent='Versturen...';
       var vt=document.getElementById('bg-doc-tekst').value;
-      // BEM naar opdrachtgever: koper als koper opdrachtgever is, anders verkoper
+      // NDA → koper (ontvangende partij), BEM → opdrachtgever, LoI/Excl → beide, Introductie → verkoper
       var toList;
       if(type==='bem'){
         if(isSell){
@@ -2253,11 +2253,15 @@ function renderBegeleiderDashboard(app){
         } else {
           toList=[t2.koper_email,t2.begeleider_email].filter(Boolean);
         }
+      } else if(type==='nda'){
+        // NDA: koper tekent geheimhouding vóór toegang dataroom
+        toList=[t2.koper_email,t2.begeleider_email].filter(Boolean);
       } else if(type==='introductie'){
         // Introductieverklaring alleen naar verkoper (contact)
         toList=[t2.contact_email,t2.begeleider_email].filter(Boolean);
       } else {
-        toList=[t2.contact_email,t2.begeleider_email,t2.koper_email].filter(Boolean);
+        // LoI, Excl: naar beide partijen
+        toList=[t2.contact_email,t2.koper_email,t2.begeleider_email].filter(Boolean);
       }
       var ep=type==='nda'?'/mna/nda/email':type==='loi'?'/mna/loi/email':type==='introductie'?'/mna/introductie/email':'/mna/bem/email';
       var payload={code:S.traject.id,to:toList};
@@ -2274,8 +2278,8 @@ function renderBegeleiderDashboard(app){
     if(shBtn)shBtn.onclick=function(){
       var tekst=document.getElementById('bg-doc-tekst').value;
       var labels={nda:'NDA',loi:'LoI',bem:'Bemiddelingsovereenkomst',exclusief:'Exclusiviteitsbrief'};
-      var defEmail=type==='bem'?(t2.koper_email||''):(t2.contact_email||'');
-      var defNaam=type==='bem'?(t2.koper_contact||t2.koper_naam||''):(t2.contact_naam||'');
+      var defEmail=type==='bem'?(isSell?(t2.contact_email||''):(t2.koper_email||'')):type==='nda'?(t2.koper_email||''):type==='introductie'?(t2.contact_email||''):(t2.contact_email||'');
+      var defNaam=type==='bem'?(isSell?(t2.contact_naam||''):(t2.koper_contact||t2.koper_naam||'')):type==='nda'?(t2.koper_contact||t2.koper_naam||''):type==='introductie'?(t2.contact_naam||''):(t2.contact_naam||'');
       var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:3000;display:flex;align-items:center;justify-content:center;padding:1.5rem';
       var mo=document.createElement('div');mo.style.cssText='background:var(--panel);border:1px solid var(--border2);border-radius:var(--r2);padding:1.75rem;max-width:400px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.25)';
       mo.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.1rem;color:var(--head);font-weight:600;margin-bottom:1rem">&#9998; Verstuur via Signhost &mdash; '+(labels[type]||type)+'</div>'

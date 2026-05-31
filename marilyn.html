@@ -1347,8 +1347,13 @@ async function stuurSignhost(id, docType, tekst, d) {
   var t = d.traject;
   var docLabels = {nda:'NDA', loi:'LoI', bem:'Bemiddelingsovereenkomst', excl:'Exclusiviteitsbrief'};
   var docLabel = docLabels[docType] || docType;
-  var defaultEmail = docType === 'bem' ? (t.koper_email||'') : (t.contact_email||'');
-  var defaultNaam = docType === 'bem' ? (t.koper_contact||t.koper_naam||'') : (t.contact_naam||'');
+  // NDA → koper (ontvangende/geheimhoudende partij), BEM → opdrachtgever, Excl/LoI → verkoper
+  var defaultEmail = docType === 'nda' ? (t.koper_email||'')
+                   : docType === 'bem' ? (t.koper_email||'')
+                   : (t.contact_email||'');
+  var defaultNaam  = docType === 'nda' ? (t.koper_contact||t.koper_naam||'')
+                   : docType === 'bem' ? (t.koper_contact||t.koper_naam||'')
+                   : (t.contact_naam||'');
   var ov = document.createElement('div'); ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:3000;display:flex;align-items:center;justify-content:center;padding:1.5rem';
   var mo = document.createElement('div'); mo.style.cssText='background:#fff;border:1px solid #c8c5bc;border-radius:10px;padding:2rem;max-width:420px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.25);max-height:90vh;overflow-y:auto';
   mo.innerHTML = '<div class="modal-title">&#9998; Verstuur ter ondertekening — '+esc(docLabel)+'</div>'
@@ -1819,7 +1824,8 @@ async function toonDetail(id,naam){
         document.getElementById('nda-email-btn').addEventListener('click',function(){
           var ndaEditEl=document.getElementById('nda-edit');
           var ndaVerzendTekst=ndaEditEl?ndaEditEl.value:tekst;
-          var defaultTo=[d.traject.contact_email||'',d.traject.koper_email||''].filter(Boolean).join(', ');
+          // NDA → koper (ontvangende partij die geheimhouding belooft)
+          var defaultTo=[d.traject.koper_email||''].filter(Boolean).join(', ');
           if(!defaultTo)defaultTo='marcel@bisschopsfinancing.nl';
           var ov=document.createElement('div');ov.className='overlay';
           var mo=document.createElement('div');mo.style.cssText='background:#fff;border:1px solid #c8c5bc;border-radius:10px;padding:1.75rem;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.25);max-height:90vh;overflow-y:auto;max-width:420px';
