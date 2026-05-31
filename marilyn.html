@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>KantoorInzicht — Beheer</title>
 <!-- BUILD: 27 May 15:10 · v1.11 -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -192,6 +193,119 @@ function partijLabels(type, opdRol){
   }
   return{partij1:'Verkoper',partij2:'Kopende partij',p1adres:'Adres verkoper',p2adres:'Adres koper',p1kvk:'KvK verkoper',p2kvk:'KvK koper',p1contact:'Contactpersoon verkoper',p2contact:'Contactpersoon koper',p1email:'E-mail verkoper',p2email:'E-mail koper',p1rv:'Rechtsvorm koper',sectie1:'Verkoper (Opdrachtgever)',sectie2:'Kopende partij'};
 }
+
+
+async function downloadDossierZip(trajectId, trajectNaam, alleenJuridisch) {
+  toast('ZIP wordt samengesteld...', 'info', 8000);
+  try {
+    var zip = new JSZip();
+    var datum = new Date().toISOString().split('T')[0];
+
+    // 1. Haal DD-data + traject op als tekst
+    var detailResp = await fetch(WORKER+'/mna/admin/detail/'+trajectId+'?key='+encodeURIComponent(adminKey));
+    var detail = await detailResp.json();
+    var t = detail.traject || {};
+
+    // Bouw dossier.txt
+    var faseLabels = {financieel:'I. Financieel',commercieel:'II. Klanten & commercieel',partner:'III. Partners & personeel',compliance:'IV. Compliance & kwaliteit',it:'V. IT & automatisering',juridisch:'VI. Juridisch & fiscaal',strategisch:'VII. Strategisch & markt'};
+    var txt = '='.repeat(60) + '\n';
+    txt += 'KANTOORINZICHT M&A — DOSSIER EXPORT\n';
+    txt += 'Traject: ' + (t.kantoor_naam || trajectId) + '\n';
+    txt += 'Code: ' + trajectId + ' | Type: ' + (t.traject_type||'—') + '\n';
+    txt += 'Export: ' + new Date().toLocaleString('nl-NL') + '\n';
+    txt += '='.repeat(60) + '\n\n';
+    txt += 'PARTIJGEGEVENS\n' + '-'.repeat(40) + '\n';
+    txt += 'Verkoper: ' + (t.kantoor_naam||'—') + ' | Contact: ' + (t.contact_naam||'—') + ' | ' + (t.contact_email||'—') + '\n';
+    txt += 'Koper: ' + (t.koper_naam||'—') + ' | ' + (t.koper_email||'—') + '\n';
+    txt += 'Begeleider: ' + (t.begeleider_naam||'—') + ' | ' + (t.begeleider_email||'—') + '\n\n';
+    if (!alleenJuridisch) {
+      txt += 'DUE DILIGENCE DATA\n' + '='.repeat(60) + '\n';
+      (detail.data || []).forEach(function(row) {
+        try {
+          var dj = typeof row.data_json === 'string' ? JSON.parse(row.data_json) : row.data_json;
+          var gevuld = Object.values(dj||{}).filter(function(v){return v&&v.value;});
+          if (gevuld.length) {
+            txt += '\n' + (faseLabels[row.fase_id]||row.fase_id) + '\n' + '-'.repeat(40) + '\n';
+            gevuld.forEach(function(v){ txt += (v.label||'?') + ': ' + v.value + '\n'; });
+          }
+        } catch(e) {}
+      });
+    }
+    zip.file('dossier-' + trajectId + '-' + datum + '.txt', txt);
+
+    // 2. Haal documentenlijst op
+    var docsResp = await fetch(WORKER+'/mna/admin/documenten?key='+encodeURIComponent(adminKey));
+    var alleDocs = await docsResp.json();
+    var trajectDocs = alleDocs.filter(function(d){ return d.traject_id === trajectId && d.bewaard; });
+
+    // Juridische doc-types (voor beperkte download)
+    var juridischeTypes = ['nda','loi','excl','exclusief','bem','bem_verk','bem_koper','introductie'];
+    var juridischeNamen = ['nda','loi','excl','exclusiviteit','bem','bemiddelings','introductie'];
+    function isJuridisch(doc) {
+      var naam = (doc.bestand_naam||'').toLowerCase();
+      return juridischeNamen.some(function(n){ return naam.includes(n); }) || doc.fase_id === 'juridisch';
+    }
+
+    // Filter op basis van rol
+    var teDownloaden = alleenJuridisch
+      ? trajectDocs.filter(isJuridisch)
+      : trajectDocs;
+
+    // Haal ook doc-versies op (gegenereerde overeenkomsten)
+    var versiesResp = await fetch(WORKER+'/mna/versies/'+trajectId+'?key='+encodeURIComponent(adminKey));
+    var versies = await versiesResp.json();
+    var teTonenVersies = alleenJuridisch ? versies : versies;
+
+    // 3. Download elk bestand en voeg toe aan ZIP
+    var mapNamen = {financieel:'01-Financieel', commercieel:'02-Klanten', partner:'03-Personeel',
+      compliance:'04-Compliance', it:'05-IT', juridisch:'06-Juridisch', strategisch:'07-Strategisch'};
+    var downloaded = 0;
+    for (var i = 0; i < teDownloaden.length; i++) {
+      var doc = teDownloaden[i];
+      try {
+        var resp = await fetch(WORKER+'/mna/document/download/'+doc.id+'?key='+encodeURIComponent(adminKey));
+        if (!resp.ok) continue;
+        var buf = await resp.arrayBuffer();
+        var map = mapNamen[doc.fase_id] || doc.fase_id || 'Overig';
+        zip.folder(map).file(doc.bestand_naam||('doc-'+doc.id), buf);
+        downloaded++;
+      } catch(e) {}
+    }
+
+    // 4. Voeg gegenereerde overeenkomsten toe als TXT (alleen juridisch relevant)
+    var juriDir = zip.folder('06-Juridisch');
+    var docLabels = {nda:'NDA',loi:'LoI',bem:'Bemiddelingsovereenkomst',bem_verk:'BEM-Verkoop',bem_koper:'BEM-Aankoop',excl:'Exclusiviteitsbrief',exclusief:'Exclusiviteitsbrief',introductie:'Introductieverklaring'};
+    var gezien = {};
+    versies.forEach(function(v) {
+      var label = docLabels[v.doc_type];
+      if (!label || gezien[v.doc_type]) return;
+      gezien[v.doc_type] = true;
+      if (v.tekst) {
+        juriDir.file(label + '-v' + v.versie + '.txt', v.tekst);
+        downloaded++;
+      }
+    });
+
+    if (downloaded === 0) {
+      toast('Geen bestanden beschikbaar voor download.', 'warn');
+      return;
+    }
+
+    // 5. Genereer ZIP
+    var zipBlob = await zip.generateAsync({type:'blob', compression:'DEFLATE'});
+    var url = URL.createObjectURL(zipBlob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = (alleenJuridisch ? 'juridisch-' : 'dossier-') + trajectId + '-' + datum + '.zip';
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast('ZIP gedownload: ' + downloaded + ' bestanden.', 'ok');
+  } catch(e) {
+    toast('Fout bij ZIP download: ' + e.message, 'err');
+  }
+}
+
 
 // LOGIN
 function renderLogin(){
@@ -478,7 +592,8 @@ function renderMnaTab(el){
         +'<button class="btn btn-infoverzoek" data-id="'+esc(t.id)+'" data-naam="'+esc(t.kantoor_naam||t.id)+'" style="font-size:11px;padding:3px 10px;background:var(--teal-dark)">&#128203; Informatieverzoek</button>'        +'<button class="btn-ghost btn-detail" data-id="'+esc(t.id)+'" data-naam="'+esc(t.kantoor_naam||t.id)+'" style="font-size:11px;padding:3px 8px">&#128065; Bekijk</button>'
         +'<button class="btn-ghost btn-bewerk" data-id="'+esc(t.id)+'" data-naam="'+esc(t.kantoor_naam||t.id)+'" style="font-size:11px;padding:3px 8px">&#9999;&#65039; Bewerk</button>'
         +'<button class="btn-ghost btn-opslaan" data-idx="'+i+'" style="font-size:11px;padding:3px 8px">&#8681; Opslaan</button>'
-        +'<a href="'+WORKER+'/mna/admin/export/'+esc(t.id)+'?key='+encodeURIComponent(adminKey)+'" target="_blank" class="btn-ghost" style="font-size:11px;padding:3px 8px;text-decoration:none" title="Dossier exporteren">&#128230; Export</a>'
+        +'<a href="'+WORKER+'/mna/admin/export/'+esc(t.id)+'?key='+encodeURIComponent(adminKey)+'" target="_blank" class="btn-ghost" style="font-size:11px;padding:3px 8px;text-decoration:none" title="Dossier exporteren (TXT)">&#128196; Export</a>'
+        +'<button class="btn-ghost btn-zip-full" data-id="'+esc(t.id)+'" data-naam="'+esc(t.kantoor_naam||t.id)+'" style="font-size:11px;padding:3px 8px;color:var(--teal);border-color:var(--teal)" title="Download volledig dossier als ZIP">&#128230; ZIP</button>'
         +(verg
           ?'<button class="btn-ghost btn-ontv" data-id="'+esc(t.id)+'" style="font-size:11px;padding:3px 8px;color:var(--teal)">&#128275; Ontgrendel</button>'
           :'<button class="btn-ghost btn-verg" data-id="'+esc(t.id)+'" data-naam="'+esc(t.kantoor_naam||t.id)+'" style="font-size:11px;padding:3px 8px;color:var(--gold)">&#128274; Vergrendel</button>')
@@ -526,6 +641,7 @@ function renderMnaTab(el){
   el.querySelectorAll('.btn-ontv').forEach(function(b){b.addEventListener('click',function(){ontvergrendel(b.dataset.id);});});
   el.querySelectorAll('.btn-del-mna').forEach(function(b){b.addEventListener('click',function(){deleteMna(b.dataset.id,b.dataset.naam);});});
   el.querySelectorAll('.btn-wis-data').forEach(function(b){b.addEventListener('click',function(){wisTrajectData(b.dataset.id,b.dataset.naam);});});
+  el.querySelectorAll('.btn-zip-full').forEach(function(b){b.addEventListener('click',function(){downloadDossierZip(b.dataset.id,b.dataset.naam,false);});});
   function updSelMna(){var n=el.querySelectorAll('.mna-cb:checked').length;var btn=document.getElementById('btn-del-sel-mna');var cnt=document.getElementById('sel-cnt-mna');if(btn)btn.style.display=n>0?'inline-block':'none';if(cnt)cnt.textContent=n;}
   var cbAllM=document.getElementById('cb-all-mna');
   if(cbAllM)cbAllM.addEventListener('change',function(){el.querySelectorAll('.mna-cb:not(:disabled)').forEach(function(cb){cb.checked=cbAllM.checked;});updSelMna();});
