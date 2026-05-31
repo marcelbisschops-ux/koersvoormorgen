@@ -178,14 +178,19 @@ function toast(msg,type,dur){type=type||'ok';dur=dur||3500;var c=document.getEle
 function dc(v){return v>=70?'score-high':v>=50?'score-mid':'score-low';}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function formatDate(ts){if(!ts)return '—';return new Date(ts).toLocaleDateString('nl-NL',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});}
-function partijLabels(type){
+function partijLabels(type, opdRol){
   var t=type||'Verkoop';
+  // Bij koper als opdrachtgever: koper is sectie1 (opdrachtgever), verkoper is sectie2 (target)
+  var kopIsOpdr = opdRol === 'koper';
   if(t==='Fusie')return{partij1:'Fusiepartij A',partij2:'Fusiepartij B',p1adres:'Adres partij A',p2adres:'Adres partij B',p1kvk:'KvK partij A',p2kvk:'KvK partij B',p1contact:'Contactpersoon A',p2contact:'Contactpersoon B',p1email:'E-mail partij A',p2email:'E-mail partij B',p1rv:'Rechtsvorm partij A',sectie1:'Fusiepartij A',sectie2:'Fusiepartij B'};
   if(t==='Overname')return{partij1:'Over te nemen partij',partij2:'Overnemende partij',p1adres:'Adres target',p2adres:'Adres overnemende partij',p1kvk:'KvK target',p2kvk:'KvK overnemende partij',p1contact:'Contactpersoon target',p2contact:'Contactpersoon overnemende partij',p1email:'E-mail target',p2email:'E-mail overnemende partij',p1rv:'Rechtsvorm overnemende partij',sectie1:'Target',sectie2:'Overnemende partij'};
   if(t==='PE-traject')return{partij1:'Te verkopen onderneming',partij2:'Koper',p1adres:'Adres onderneming',p2adres:'Adres koper',p1kvk:'KvK onderneming',p2kvk:'KvK koper',p1contact:'Contactpersoon onderneming',p2contact:'Contactpersoon koper',p1email:'E-mail onderneming',p2email:'E-mail koper',p1rv:'Rechtsvorm koper',sectie1:'Onderneming',sectie2:'Koper'};
   if(t==='Opvolging')return{partij1:'Overdragende eigenaar',partij2:'Opvolgend eigenaar',p1adres:'Adres overdragende eigenaar',p2adres:'Adres opvolger',p1kvk:'KvK bedrijf',p2kvk:'KvK opvolger',p1contact:'Contactpersoon overdragende eigenaar',p2contact:'Contactpersoon opvolger',p1email:'E-mail overdragende eigenaar',p2email:'E-mail opvolger',p1rv:'Rechtsvorm opvolger',sectie1:'Overdragende eigenaar',sectie2:'Opvolgend eigenaar'};
-  // default: Verkoop / Aankoop
-  return{partij1:'Verkoper',partij2:'Kopende partij',p1adres:'Adres verkoper',p2adres:'Adres koper',p1kvk:'KvK verkoper',p2kvk:'KvK koper',p1contact:'Contactpersoon verkoper',p2contact:'Contactpersoon koper',p1email:'E-mail verkoper',p2email:'E-mail koper',p1rv:'Rechtsvorm koper',sectie1:'Verkoper',sectie2:'Kopende partij'};
+  // default: Verkoop / Aankoop — maar pas aan voor buy-side
+  if(kopIsOpdr){
+    return{partij1:'Koper',partij2:'Doelonderneming',p1adres:'Adres koper',p2adres:'Adres doelonderneming',p1kvk:'KvK koper',p2kvk:'KvK doelonderneming',p1contact:'Contactpersoon koper',p2contact:'Contactpersoon doelonderneming',p1email:'E-mail koper',p2email:'E-mail doelonderneming',p1rv:'Rechtsvorm koper',sectie1:'Koper (Opdrachtgever)',sectie2:'Doelonderneming'};
+  }
+  return{partij1:'Verkoper',partij2:'Kopende partij',p1adres:'Adres verkoper',p2adres:'Adres koper',p1kvk:'KvK verkoper',p2kvk:'KvK koper',p1contact:'Contactpersoon verkoper',p2contact:'Contactpersoon koper',p1email:'E-mail verkoper',p2email:'E-mail koper',p1rv:'Rechtsvorm koper',sectie1:'Verkoper (Opdrachtgever)',sectie2:'Kopende partij'};
 }
 
 // LOGIN
@@ -1659,13 +1664,39 @@ async function toonDetail(id,naam){
         var verkoperNaamB=d.traject.contact_naam||'[INVULLEN]';
         var opdrachtgever=isSell?(d.traject.kantoor_naam||naam):koperNaamB;
         var trajectType=d.traject.traject_type||'Verkoop';
-        var lb=partijLabels(trajectType);
+        var lb=partijLabels(trajectType, d.traject.opdrachtgever_rol);
         var docTypeLabel=isSell?'Verkoop':'Aankoop';
         if(trajectType==='Fusie')docTypeLabel='Fusie (begeleiding beide partijen)';
         else if(trajectType==='Overname')docTypeLabel='Aankoop (buy-side)';
         else if(trajectType==='Opvolging')docTypeLabel='Bedrijfsopvolging';
         else if(trajectType==='PE-traject')docTypeLabel='PE-participatie';
-        var prompt='Vul de volgende Bisschops Financing Bemiddelingsovereenkomst template in voor trajecttype: '+docTypeLabel+'. Vervang ALLE [tekst tussen haakjes]. Pas de partijbenamingen aan: '+lb.sectie1+' en '+lb.sectie2+'. Geef alleen het ingevulde document terug.\n\nBEKENDE GEGEVENS:\n- '+lb.sectie1+': '+esc(d.traject.kantoor_naam||naam)+', '+esc(d.traject.verkoper_adres||'[adres]')+', KvK: '+esc(d.traject.verkoper_kvk||'[KvK]')+'\n- Contactpersoon '+lb.sectie1.toLowerCase()+': '+esc(isSell?verkoperNaamB:koperContactB)+'\n- '+lb.sectie2+': '+esc(koperNaamB||'[invullen]')+' ('+esc(d.traject.koper_rechtsvorm||'[rechtsvorm]')+'), '+esc(d.traject.koper_adres||'[adres]')+', KvK: '+esc(d.traject.koper_kvk||'[KvK]')+'\n- Contactpersoon '+lb.sectie2.toLowerCase()+': '+esc(koperContactB||'[invullen]')+'\n- Datum: '+datum+'\n- Adviseur: Bisschops Financing B.V., Marcel Bisschops, Grotestraat 13 5841AA Oploo\n\nTEMPLATE:\n'+bemTplTekst;
+        // Bepaal wie opdrachtgever is en wie wederpartij
+        var opdrachtgeverNaam = isSell ? (d.traject.kantoor_naam||naam) : (koperNaamB||'[invullen]');
+        var opdrachtgeverAdres = isSell ? (d.traject.verkoper_adres||'[adres]') : (d.traject.koper_adres||'[adres]');
+        var opdrachtgeverKvk = isSell ? (d.traject.verkoper_kvk||'[KvK]') : (d.traject.koper_kvk||'[KvK]');
+        var opdrachtgeverContact = isSell ? verkoperNaamB : koperContactB;
+        var wederpartijNaam = isSell ? (koperNaamB||'[invullen]') : (d.traject.kantoor_naam||naam);
+        var wederpartijAdres = isSell ? (d.traject.koper_adres||'[adres]') : (d.traject.verkoper_adres||'[adres]');
+        var wederpartijKvk = isSell ? (d.traject.koper_kvk||'[KvK]') : (d.traject.verkoper_kvk||'[KvK]');
+        var wederpartijContact = isSell ? koperContactB : verkoperNaamB;
+        var wederpartijRv = isSell ? (d.traject.koper_rechtsvorm||'[rechtsvorm]') : (d.traject.kantoor_rechtsvorm||'[rechtsvorm]');
+
+        var prompt='Vul de Bisschops Financing Bemiddelingsovereenkomst in. Type: '+docTypeLabel+(isSell?' (sell-side)':' (buy-side)')+'.\n\n'
+          +'INSTRUCTIES:\n'
+          +'- Vervang ALLE [tekst tussen haakjes] door de werkelijke gegevens\n'
+          +'- De OPDRACHTGEVER is '+opdrachtgeverNaam+' — dit is de partij die Bisschops Financing inschakelt\n'
+          +'- De WEDERPARTIJ is '+wederpartijNaam+(isSell?' (de kopende partij)':' (de te acquireren onderneming)')+'\n'
+          +'- Bisschops Financing treedt op als M&A-adviseur/bemiddelaar\n'
+          +'- Gebruik '+lb.sectie1+' voor de opdrachtgever en '+lb.sectie2+' voor de wederpartij doorheen het hele document\n'
+          +'- Geef alleen het ingevulde document terug, geen toelichting\n\n'
+          +'BEKENDE GEGEVENS:\n'
+          +'- Opdrachtgever ('+lb.sectie1+'): '+esc(opdrachtgeverNaam)+', '+esc(opdrachtgeverAdres)+', KvK: '+esc(opdrachtgeverKvk)+'\n'
+          +'- Contactpersoon opdrachtgever: '+esc(opdrachtgeverContact)+'\n'
+          +'- Wederpartij ('+lb.sectie2+'): '+esc(wederpartijNaam)+' ('+esc(wederpartijRv)+'), '+esc(wederpartijAdres)+', KvK: '+esc(wederpartijKvk)+'\n'
+          +'- Contactpersoon wederpartij: '+esc(wederpartijContact)+'\n'
+          +'- Datum: '+datum+'\n'
+          +'- Adviseur: Bisschops Financing B.V., Marcel Bisschops, Grotestraat 13 5841AA Oploo\n\n'
+          +'TEMPLATE:\n'+bemTplTekst;
         var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:4000})});
         var rawResp=await resp.text();
         var rd;try{rd=JSON.parse(rawResp);}catch(e){throw new Error('Parse fout: '+rawResp.substring(0,100));}
@@ -1757,7 +1788,7 @@ async function toonDetail(id,naam){
         var verkoperKvk=d.traject.verkoper_kvk||'[INVULLEN: KvK]';
         var koperAdres=d.traject.koper_adres||'[INVULLEN: adres]';
         var koperKvk=d.traject.koper_kvk||'[INVULLEN: KvK]';
-        var lbNda=partijLabels(d.traject.traject_type||'Verkoop');
+        var lbNda=partijLabels(d.traject.traject_type||'Verkoop', d.traject.opdrachtgever_rol);
         var prompt='Vul de volgende Bisschops Financing NDA template in voor trajecttype: '+(d.traject.traject_type||'Verkoop')+'. Vervang ALLE [tekst tussen haakjes] door de werkelijke gegevens. Gebruik als partijbenamingen: '+lbNda.sectie1+' en '+lbNda.sectie2+' (in plaats van Verstrekkende/Ontvangende partij). Geef alleen het ingevulde document terug.\n\nBEKENDE GEGEVENS:\n- '+lbNda.sectie1+': '+esc(d.traject.kantoor_naam||naam)+', '+esc(verkoperAdres)+', KvK: '+esc(verkoperKvk)+'\n- Contactpersoon '+lbNda.sectie1.toLowerCase()+': '+esc(verkoperNaam)+'\n- '+lbNda.sectie2+': '+esc(koperNaam)+' ('+esc(koperRv)+'), '+esc(koperAdres)+', KvK: '+esc(koperKvk)+'\n- Contactpersoon '+lbNda.sectie2.toLowerCase()+': '+esc(koperContact)+'\n- Datum: '+datum+'\n- Adviseur: Bisschops Financing B.V., Marcel Bisschops, Grotestraat 13 5841AA Oploo\n\nTEMPLATE:\n'+ndaTplTekst;
         var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:8000})});
         var rd=await resp.json();
@@ -1911,7 +1942,7 @@ async function toonDetail(id,naam){
         var koperRv=d.traject.koper_rechtsvorm||'[INVULLEN: rechtsvorm]';
         var koperContact=d.traject.koper_contact||'[INVULLEN: contactpersoon]';
         var verkoperNaam=d.traject.contact_naam||'[INVULLEN: naam verkopende partner]';
-        var lbLoi=partijLabels(d.traject.traject_type||'Verkoop');
+        var lbLoi=partijLabels(d.traject.traject_type||'Verkoop', d.traject.opdrachtgever_rol);
         var prompt='Vul de volgende Bisschops Financing LoI template in voor trajecttype: '+(d.traject.traject_type||'Verkoop')+'. Vervang ALLE [tekst tussen haakjes]. Gebruik als partijbenamingen: '+lbLoi.sectie1+' en '+lbLoi.sectie2+' (in plaats van Verkoper/Koper). Geef alleen het ingevulde document terug.\n\nBEKENDE GEGEVENS:\n- '+lbLoi.sectie2+': '+esc(koperNaam)+' ('+esc(koperRv)+'), '+esc(koperAdresL)+', KvK: '+esc(koperKvkL)+'\n- Contactpersoon '+lbLoi.sectie2.toLowerCase()+': '+esc(koperContact)+'\n- '+lbLoi.sectie1+': '+esc(d.traject.kantoor_naam||naam)+', '+esc(verkoperAdresL)+', KvK: '+esc(verkoperKvkL)+'\n- Contactpersoon '+lbLoi.sectie1.toLowerCase()+': '+esc(verkoperNaam)+'\n- Datum: '+datum+'\n\nTEMPLATE:\n'+loiTplTekst;
         var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:8000})});
         var rd=await resp.json();
@@ -1983,8 +2014,30 @@ async function toonDetail(id,naam){
         var startStr=startDatum.toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'});
         var eindStr=eindDatum.toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'});
         var exclTpl='EXCLUSIVITEITSBRIEF\nArtikel 1 \u2013 Verlening exclusiviteit\nVerkoper verleent aan Koper exclusiviteit voor onderhandelingen inzake een mogelijke Transactie met betrekking tot [Naam Target/Onderneming].\nDe exclusiviteitsperiode loopt van [Startdatum] tot en met [Einddatum].\nArtikel 2 \u2013 Verbod onderhandelingen met derden\nGedurende deze periode zal Verkoper:\ngeen gesprekken voeren met derden over verkoop of participatie;\ngeen informatie verstrekken aan derden (due diligence);\ngeen alternatieve transactiestructuren aangaan of initiëren.\nArtikel 3 \u2013 Schending\nBij schending van de exclusiviteit is Verkoper gehouden tot vergoeding van:\nalle door Koper gemaakte adviseurs- en onderzoekskosten;\naantoonbare directe schade.\nArtikel 4 \u2013 Rechtskeuze\nOp deze overeenkomst is Nederlands recht van toepassing. Geschillen worden voorgelegd aan de Rechtbank Oost-Brabant.\nOndertekening\nPlaats: ____________________ Datum: ____________________\nVerkoper (Verleent exclusiviteit)\nNaam: ____________________\nHandtekening: ____________________\nKoper (Ontvangt exclusiviteit)\nNaam: ____________________\nHandtekening: ____________________\nVoor gezien en begeleiding:\nBisschops Financing B.V.\nNaam: ____________________\nHandtekening: ____________________';
-        var lb=partijLabels(d.traject.traject_type||'Verkoop');
-        var prompt='Vul de volgende Bisschops Financing Exclusiviteitsbrief in. Vervang ALLE [tekst tussen haakjes] door de werkelijke gegevens. Geef alleen het ingevulde document terug, geen toelichting.\n\nBEKENDE GEGEVENS:\n- '+lb.sectie1+' (verleent exclusiviteit): '+esc(d.traject.kantoor_naam||naam)+', '+esc(d.traject.verkoper_adres||'[adres]')+'\n- Contactpersoon '+lb.sectie1.toLowerCase()+': '+esc(d.traject.contact_naam||'[invullen]')+'\n- '+lb.sectie2+' (ontvangt exclusiviteit): '+esc(d.traject.koper_naam||'[invullen]')+', '+esc(d.traject.koper_adres||'[adres]')+'\n- Contactpersoon '+lb.sectie2.toLowerCase()+': '+esc(d.traject.koper_contact||'[invullen]')+'\n- Startdatum exclusiviteit: '+startStr+'\n- Einddatum exclusiviteit: '+eindStr+' (8 weken)\n- Datum: '+datum+'\n- Begeleider: Bisschops Financing B.V., Marcel Bisschops, Grotestraat 13 5841AA Oploo\n\nTEMPLATE:\n'+exclTpl;
+        var lb=partijLabels(d.traject.traject_type||'Verkoop', d.traject.opdrachtgever_rol);
+        // Excl: altijd de verkoper die exclusiviteit verleent aan koper (ongeacht opdrachtgever)
+        var exclVerlener = d.traject.kantoor_naam||naam; // verkoper verleent exclusiviteit
+        var exclOntvanger = d.traject.koper_naam||'[invullen]'; // koper ontvangt exclusiviteit
+        var exclVerlenerAdres = d.traject.verkoper_adres||'[adres]';
+        var exclOntvangerAdres = d.traject.koper_adres||'[adres]';
+
+        var prompt='Vul de Bisschops Financing Exclusiviteitsbrief in.\n\n'
+          +'INSTRUCTIES:\n'
+          +'- Vervang ALLE [tekst tussen haakjes] door de werkelijke gegevens\n'
+          +'- '+esc(exclVerlener)+' VERLEENT exclusiviteit — dit is de verkopende partij\n'
+          +'- '+esc(exclOntvanger)+' ONTVANGT exclusiviteit — dit is de kopende partij\n'
+          +'- De exclusiviteit geldt voor de potentiële overname/transactie\n'
+          +'- Geef alleen het ingevulde document terug, geen toelichting\n\n'
+          +'BEKENDE GEGEVENS:\n'
+          +'- Verlenende partij (verleent exclusiviteit): '+esc(exclVerlener)+', '+esc(exclVerlenerAdres)+'\n'
+          +'- Contactpersoon verlenende partij: '+esc(d.traject.contact_naam||'[invullen]')+'\n'
+          +'- Ontvangende partij (ontvangt exclusiviteit): '+esc(exclOntvanger)+', '+esc(exclOntvangerAdres)+'\n'
+          +'- Contactpersoon ontvangende partij: '+esc(d.traject.koper_contact||'[invullen]')+'\n'
+          +'- Startdatum exclusiviteit: '+startStr+'\n'
+          +'- Einddatum exclusiviteit: '+eindStr+' (8 weken)\n'
+          +'- Datum: '+datum+'\n'
+          +'- Begeleider: Bisschops Financing B.V., Marcel Bisschops, Grotestraat 13 5841AA Oploo\n\n'
+          +'TEMPLATE:\n'+exclTpl;
         var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:2000})});
         var rd=await resp.json();
         var tekst=rd.text||(rd.error||'Fout bij genereren.');
@@ -2803,7 +2856,7 @@ function toonNieuwModal(){
 
   function updatePartijLabels(){
     var t=document.getElementById('m-t').value;
-    var lb=partijLabels(t);
+    var lb=partijLabels(t, window._mOpdRol);
     var s1=document.getElementById('m-sectie1-hdr');
     var s2=document.getElementById('m-sectie2-hdr');
     if(s1)s1.textContent=lb.sectie1;
@@ -2834,7 +2887,7 @@ function toonNieuwModal(){
     var erDiv=document.getElementById('m-err');erDiv.style.display='none';
     var emailRe=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     var kvkRe=/^[0-9]{8}$/;
-    var lb=window._mPartijLabel||partijLabels('Verkoop');
+    var lb=window._mPartijLabel||partijLabels('Verkoop', window._mOpdRol);
     function fout(msg){erDiv.style.display='block';erDiv.textContent=msg;return false;}
     function vv(id){var el=document.getElementById(id);return el?el.value.trim():'';}
     if(!vv('m-k'))return fout('Naam onderneming is verplicht.');
