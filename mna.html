@@ -2278,8 +2278,8 @@ function renderBegeleiderDashboard(app){
     if(shBtn)shBtn.onclick=function(){
       var tekst=document.getElementById('bg-doc-tekst').value;
       var labels={nda:'NDA',loi:'LoI',bem:'Bemiddelingsovereenkomst',exclusief:'Exclusiviteitsbrief'};
-      var defEmail=type==='bem'?(isSell?(t2.contact_email||''):(t2.koper_email||'')):type==='nda'?(t2.koper_email||''):type==='introductie'?(t2.contact_email||''):(t2.contact_email||'');
-      var defNaam=type==='bem'?(isSell?(t2.contact_naam||''):(t2.koper_contact||t2.koper_naam||'')):type==='nda'?(t2.koper_contact||t2.koper_naam||''):type==='introductie'?(t2.contact_naam||''):(t2.contact_naam||'');
+      var defEmail=type==='bem'?(isSell?(t2.contact_email||''):(t2.koper_email||'')):type==='nda'?(t2.koper_email||''):type==='introductie'?(isSell?(t2.contact_email||''):(t2.verkoper_email||'')):(t2.contact_email||'');
+      var defNaam=type==='bem'?(isSell?(t2.contact_naam||''):(t2.koper_contact||t2.koper_naam||'')):type==='nda'?(t2.koper_contact||t2.koper_naam||''):type==='introductie'?(isSell?(t2.contact_naam||''):(t2.verkoper_naam||'')):(t2.contact_naam||'');
       var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:3000;display:flex;align-items:center;justify-content:center;padding:1.5rem';
       var mo=document.createElement('div');mo.style.cssText='background:var(--panel);border:1px solid var(--border2);border-radius:var(--r2);padding:1.75rem;max-width:400px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.25)';
       mo.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.1rem;color:var(--head);font-weight:600;margin-bottom:1rem">&#9998; Verstuur via Signhost &mdash; '+(labels[type]||type)+'</div>'
