@@ -2082,6 +2082,7 @@ function renderBegeleiderDashboard(app){
     +'<button class="btn" id="bg-loi-actie" style="background:var(--gold);padding:10px;font-size:12px">&#128196; LoI</button>'
     +'<button class="btn" id="bg-bem-actie" style="background:#2a5ea0;padding:10px;font-size:12px">&#128203; BEM</button>'
     +'<button class="btn" id="bg-excl-actie" style="background:#1a7a5e;padding:10px;font-size:12px">&#128221; Excl</button>'
+    +'<button class="btn" id="bg-intro-actie" style="background:#8a5a2a;padding:10px;font-size:12px">&#128203; Introductie</button>'
     +'</div>'
     +'<div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.4rem">Communicatie</div>'
     +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:1.25rem">'
@@ -2207,7 +2208,11 @@ function renderBegeleiderDashboard(app){
         +'INSTRUCTIE: De OPDRACHTGEVER heeft Bisschops Financing ingeschakeld. De WEDERPARTIJ is de andere transactiepartij.\n'
         +'Opdrachtgever ('+lb.sectie1+'): '+esc(opdrNaam)+' ('+(opdrRv||'[rechtsvorm]')+'), '+esc(opdrAdres)+', KvK: '+esc(opdrKvk)+'.\n'
         +'Wederpartij ('+lb.sectie2+'): '+esc(wpartNaam)+' ('+(wpartRv||'[rechtsvorm]')+'), '+esc(wpartAdres)+', KvK: '+esc(wpartKvk)+'.\n'
-        +'Datum: '+datum+'. Adviseur/Bemiddelaar: Bisschops Financing B.V., Marcel Bisschops, Grotestraat 13 5841AA Oploo. Geef alleen het ingevulde document terug.'
+        +'Datum: '+datum+'. Adviseur/Bemiddelaar: Bisschops Financing B.V., Marcel Bisschops, Grotestraat 13 5841AA Oploo. Geef alleen het ingevulde document terug.',
+      introductie:'Vul de Introductieverklaring in. Vervang ALLE [tekst tussen haakjes].\n'
+        +'INSTRUCTIE: Dit document beschermt Bisschops Financing als introducerende partij. De Verkoper erkent hiermee dat Bisschops Financing hem een potentiële koper zal introduceren.\n'
+        +'Verkoper: '+esc(t2.kantoor_naam||'[naam verkoper]')+' ('+(t2.verkoper_rechtsvorm||'B.V.')+'), gevestigd te '+(t2.verkoper_adres||'[adres]')+', vertegenwoordigd door '+(t2.contact_naam||'[naam]')+'.\n'
+        +'Datum: '+datum+'. Geef alleen het ingevulde document terug, geen uitleg.'
     };
     var tplTekst=tplD.ok&&tplD.tekst?tplD.tekst:'[standaard template]';
     // BUG 5 FIX: strip AV-sectie uit template vóór afkappen — AV worden automatisch toegevoegd bij email/verzending
@@ -2244,19 +2249,21 @@ function renderBegeleiderDashboard(app){
       var toList;
       if(type==='bem'){
         if(isSell){
-          // Sell-side: BEM naar verkoper (contact)
           toList=[t2.contact_email,t2.begeleider_email].filter(Boolean);
         } else {
-          // Buy-side: BEM naar koper
           toList=[t2.koper_email,t2.begeleider_email].filter(Boolean);
         }
+      } else if(type==='introductie'){
+        // Introductieverklaring alleen naar verkoper (contact)
+        toList=[t2.contact_email,t2.begeleider_email].filter(Boolean);
       } else {
         toList=[t2.contact_email,t2.begeleider_email,t2.koper_email].filter(Boolean);
       }
-      var ep=type==='nda'?'/mna/nda/email':type==='loi'?'/mna/loi/email':'/mna/bem/email';
+      var ep=type==='nda'?'/mna/nda/email':type==='loi'?'/mna/loi/email':type==='introductie'?'/mna/introductie/email':'/mna/bem/email';
       var payload={code:S.traject.id,to:toList};
       if(type==='nda')payload.nda_tekst=vt;
       else if(type==='loi')payload.loi_tekst=vt;
+      else if(type==='introductie'){payload.introductie_tekst=vt;}
       else{payload.bem_tekst=vt;payload.type=isSell?'verkoop':'aankoop';}
       var er=await fetch(WORKER+ep,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
       var ed=await er.json();
@@ -2308,6 +2315,7 @@ function renderBegeleiderDashboard(app){
   document.getElementById('bg-loi-actie').onclick=function(){ toonDocWaarschuwing('loi', function(){ bgDoc('loi'); }); };
   document.getElementById('bg-bem-actie').onclick=function(){ toonDocWaarschuwing('bem', function(){ bgDoc('bem'); }); };
   document.getElementById('bg-excl-actie').onclick=function(){ toonDocWaarschuwing('excl', function(){ bgDoc('excl'); }); };
+  document.getElementById('bg-intro-actie').onclick=function(){ bgDoc('introductie'); };
 
   document.getElementById('bg-gesprek-actie').onclick=function(){ openBgGesprekForm(null); };
 
