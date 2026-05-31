@@ -1538,8 +1538,6 @@ function renderDataroom(){
 function renderWaardering(){
   var t=S.traject||{};
   var isRO=isKoper();
-  function parseGeld(s){if(!s)return 0;var n=String(s).replace(/[^0-9,.]/g,'').replace(',','.');return parseFloat(n)||0;}
-  function fmtGeld(n){if(!n||isNaN(n))return '—';if(n>=1000000)return '\u20ac'+(n/1000000).toFixed(2).replace('.',',')+' mln';if(n>=1000)return '\u20ac'+(n/1000).toFixed(0)+'.000';return '\u20ac'+Math.round(n);}
 
   // Haal data op uit S.data
   var o1=parseGeld(S.data['financieel_omzet1']);
