@@ -2178,11 +2178,36 @@ function renderBegeleiderDashboard(app){
     var isSell=(t2.opdrachtgever_rol==='koper')?false:(!t2.traject_type||t2.traject_type==='Verkoop'||t2.traject_type==='Opvolging');
     var tplType=type==='bem'?(isSell?'bem_verk':'bem_koper'):type;
     var tplD=await fetch(WORKER+'/mna/template/'+tplType+'?email='+encodeURIComponent(t2.begeleider_email||'')).then(function(r){return r.json();}).catch(function(){return{ok:false};});
+    // Bepaal partijgegevens op basis van opdrachtgever_rol
+    var opdrNaam   = isSell ? (t2.kantoor_naam||'[verkoper]') : (t2.koper_naam||'[koper]');
+    var opdrAdres  = isSell ? (t2.verkoper_adres||'[adres]') : (t2.koper_adres||'[adres]');
+    var opdrKvk    = isSell ? (t2.verkoper_kvk||'[KvK]') : (t2.koper_kvk||'[KvK]');
+    var opdrRv     = isSell ? (t2.kantoor_rechtsvorm||'') : (t2.koper_rechtsvorm||'');
+    var wpartNaam  = isSell ? (t2.koper_naam||'[koper]') : (t2.kantoor_naam||'[verkoper]');
+    var wpartAdres = isSell ? (t2.koper_adres||'[adres]') : (t2.verkoper_adres||'[adres]');
+    var wpartKvk   = isSell ? (t2.koper_kvk||'[KvK]') : (t2.verkoper_kvk||'[KvK]');
+    var wpartRv    = isSell ? (t2.koper_rechtsvorm||'') : (t2.kantoor_rechtsvorm||'');
+    var adviseur   = t2.begeleider_naam||'Bisschops Financing B.V.';
+
     var prompts={
-      nda:'Vul de NDA template in voor trajecttype: '+(t2.traject_type||'Verkoop')+'. '+lb.sectie1+': '+esc(t2.kantoor_naam||'[verkoper]')+', '+(t2.verkoper_adres||'[adres]')+', KvK: '+(t2.verkoper_kvk||'[KvK]')+'. '+lb.sectie2+': '+esc(t2.koper_naam||'[koper]')+' ('+(t2.koper_rechtsvorm||'')+'), '+(t2.koper_adres||'')+', KvK: '+(t2.koper_kvk||'')+'. Datum: '+datum+'. Adviseur: '+(t2.begeleider_naam||'Bisschops Financing B.V.')+'.',
-      loi:'Vul de LoI template in voor trajecttype: '+(t2.traject_type||'Verkoop')+'. '+lb.sectie1+': '+esc(t2.kantoor_naam||'[verkoper]')+', '+(t2.verkoper_adres||'')+'. '+lb.sectie2+': '+esc(t2.koper_naam||'[koper]')+' ('+(t2.koper_rechtsvorm||'')+'), '+(t2.koper_adres||'')+'. Datum: '+datum+'. Adviseur: '+(t2.begeleider_naam||'Bisschops Financing B.V.')+'.',
-      excl:'Genereer een Exclusiviteitsbrief voor trajecttype: '+(t2.traject_type||'Verkoop')+'. Opdrachtgever: '+esc(isSell?t2.kantoor_naam:t2.koper_naam||'[koper]')+'. Koper/tegenpartij: '+esc(isSell?t2.koper_naam||'[koper]':t2.kantoor_naam)+'. Datum: '+datum+'. Exclusiviteitsperiode: 6 weken. Begeleider: '+(t2.begeleider_naam||'Bisschops Financing B.V.')+'. Geef alleen het ingevulde document terug.',
-      bem:'Vul de Bemiddelingsovereenkomst template in. Type: '+(isSell?'Verkoop':'Aankoop')+'. Opdrachtgever: '+esc(isSell?t2.kantoor_naam:t2.koper_naam||'[koper]')+'. Datum: '+datum+'. Begeleider: '+(t2.begeleider_naam||'Bisschops Financing B.V.')+'.'
+      nda:'Vul de NDA template in. Vervang ALLE [tekst tussen haakjes].\n'
+        +'Partij 1 ('+lb.sectie1+'): '+esc(t2.kantoor_naam||'[verkoper]')+', '+(t2.verkoper_adres||'[adres]')+', KvK: '+(t2.verkoper_kvk||'[KvK]')+'.\n'
+        +'Partij 2 ('+lb.sectie2+'): '+esc(t2.koper_naam||'[koper]')+' ('+(t2.koper_rechtsvorm||'')+'), '+(t2.koper_adres||'')+', KvK: '+(t2.koper_kvk||'')+'.\n'
+        +'Datum: '+datum+'. Adviseur: '+adviseur+'. Geef alleen het ingevulde document terug.',
+      loi:'Vul de LoI template in. Vervang ALLE [tekst tussen haakjes].\n'
+        +'Verkopende partij: '+esc(t2.kantoor_naam||'[verkoper]')+', '+(t2.verkoper_adres||'')+'.\n'
+        +'Kopende partij: '+esc(t2.koper_naam||'[koper]')+' ('+(t2.koper_rechtsvorm||'')+'), '+(t2.koper_adres||'')+'.\n'
+        +'Datum: '+datum+'. Adviseur: '+adviseur+'. Geef alleen het ingevulde document terug.',
+      excl:'Vul de Exclusiviteitsbrief in. Vervang ALLE [tekst tussen haakjes].\n'
+        +'INSTRUCTIE: De VERKOPENDE partij verleent exclusiviteit. De KOPENDE partij ontvangt exclusiviteit.\n'
+        +'Verlenende partij (verkoper): '+esc(t2.kantoor_naam||'[verkoper]')+', '+(t2.verkoper_adres||'[adres]')+'.\n'
+        +'Ontvangende partij (koper): '+esc(t2.koper_naam||'[koper]')+', '+(t2.koper_adres||'[adres]')+'.\n'
+        +'Exclusiviteitsperiode: 6 weken. Datum: '+datum+'. Begeleider: '+adviseur+'. Geef alleen het ingevulde document terug.',
+      bem:'Vul de Bemiddelingsovereenkomst in. Type: '+(isSell?'Verkoop (sell-side)':'Aankoop (buy-side)')+'. Vervang ALLE [tekst tussen haakjes].\n'
+        +'INSTRUCTIE: De OPDRACHTGEVER heeft Bisschops Financing ingeschakeld. De WEDERPARTIJ is de andere transactiepartij.\n'
+        +'Opdrachtgever ('+lb.sectie1+'): '+esc(opdrNaam)+' ('+(opdrRv||'[rechtsvorm]')+'), '+esc(opdrAdres)+', KvK: '+esc(opdrKvk)+'.\n'
+        +'Wederpartij ('+lb.sectie2+'): '+esc(wpartNaam)+' ('+(wpartRv||'[rechtsvorm]')+'), '+esc(wpartAdres)+', KvK: '+esc(wpartKvk)+'.\n'
+        +'Datum: '+datum+'. Adviseur/Bemiddelaar: Bisschops Financing B.V., Marcel Bisschops, Grotestraat 13 5841AA Oploo. Geef alleen het ingevulde document terug.'
     };
     var tplTekst=tplD.ok&&tplD.tekst?tplD.tekst:'[standaard template]';
     // Afkappen om prompt te lang te voorkomen
