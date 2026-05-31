@@ -2210,8 +2210,12 @@ function renderBegeleiderDashboard(app){
         +'Datum: '+datum+'. Adviseur/Bemiddelaar: Bisschops Financing B.V., Marcel Bisschops, Grotestraat 13 5841AA Oploo. Geef alleen het ingevulde document terug.'
     };
     var tplTekst=tplD.ok&&tplD.tekst?tplD.tekst:'[standaard template]';
-    // Afkappen om prompt te lang te voorkomen
-    if(tplTekst.length>6000)tplTekst=tplTekst.substring(0,6000)+'\n[...verdere standaardbepalingen van toepassing]';
+    // BUG 5 FIX: strip AV-sectie uit template vóór afkappen — AV worden automatisch toegevoegd bij email/verzending
+    var avIdx=tplTekst.indexOf('\nALGEMENE VOORWAARDEN');
+    if(avIdx===-1) avIdx=tplTekst.indexOf('\n---\n\nALGEMENE VOORWAARDEN');
+    if(avIdx>0) tplTekst=tplTekst.substring(0,avIdx).trim();
+    // Afkappen op hogere limiet nu AV eruit zijn
+    if(tplTekst.length>7000)tplTekst=tplTekst.substring(0,7000)+'\n[...verdere standaardbepalingen van toepassing]';
     var prompt=prompts[type]+'\n\nTEMPLATE:\n'+tplTekst;
     var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:8000})});
     var rd=await resp.json();
@@ -3130,12 +3134,22 @@ async function laadPartijDocs() {
           + (gr ? '<span style="font-size:10px;color:var(--muted)">'+gr+'</span>' : '')
           + '<span style="font-size:11px;color:var(--muted)">'+dt+'</span>'
           + '<a href="'+WORKER+'/mna/document/download/'+d.id+'?code='+encodeURIComponent(S.code)+'" target="_blank" class="btn-ghost" style="font-size:11px;padding:4px 12px;text-decoration:none">&#8681; Download</a>'
+          + (isTussen() ? '<button class="partij-doc-del btn-del" data-id="'+esc(d.id)+'" style="font-size:11px;padding:4px 8px">&#10005;</button>' : '')
           + '</div>';
       });
     }
 
     html += '</div></div>';
     el.innerHTML = html;
+    // FEATURE B: verwijder-handlers voor dataroom docs (tussenpersoon only)
+    el.querySelectorAll('.partij-doc-del').forEach(function(btn) {
+      btn.addEventListener('click', async function() {
+        if(!confirm('Document verwijderen uit dataroom?')) return;
+        btn.disabled = true;
+        await fetch(WORKER+'/mna/document/delete/'+btn.dataset.id, {method:'POST'}).catch(function(){});
+        laadPartijDataroom();
+      });
+    });
     el.querySelectorAll('.partij-doc-open').forEach(function(btn) {
       btn.addEventListener('click', async function() {
         var vr = await fetch(WORKER+'/mna/versie/'+btn.dataset.id);
