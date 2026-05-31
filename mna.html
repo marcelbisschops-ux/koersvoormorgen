@@ -2213,7 +2213,7 @@ function renderBegeleiderDashboard(app){
     // Afkappen om prompt te lang te voorkomen
     if(tplTekst.length>6000)tplTekst=tplTekst.substring(0,6000)+'\n[...verdere standaardbepalingen van toepassing]';
     var prompt=prompts[type]+'\n\nTEMPLATE:\n'+tplTekst;
-    var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:type==='bem'?4000:8000})});
+    var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:8000})});
     var rd=await resp.json();
     var tekst=rd.text||'Fout bij genereren';
     // Sla concept op voor blokkadecheck
@@ -3077,10 +3077,18 @@ async function laadPartijDocs() {
       // Zoek Signhost transactie voor dit doc type
       var shTx = shTransacties.find(function(tx){ return tx.doc_type === v.doc_type || (tx.reference && tx.reference.includes(v.doc_type)); });
       var shStatus = shTx ? shTx.status : null;
+      // Check ook trajectvelden voor tekenstatus
+      var t = S.traject || {};
+      var trajectGetekend = false;
+      if(v.doc_type === 'bem' || v.doc_type === 'bem_verk' || v.doc_type === 'bem_koper' || v.doc_type === 'bem_upload') trajectGetekend = !!t.bem_getekend;
+      else if(v.doc_type === 'nda' || v.doc_type === 'nda_upload') trajectGetekend = !!t.nda_getekend;
+      else if(v.doc_type === 'loi' || v.doc_type === 'loi_upload') trajectGetekend = !!t.loi_getekend;
+      else if(v.doc_type === 'excl' || v.doc_type === 'exclusief' || v.doc_type === 'excl_upload') trajectGetekend = !!t.excl_getekend;
+      var isGetekend = shStatus === 'ondertekend' || trajectGetekend;
       var shBadge = '';
-      if(shStatus === 'ondertekend') shBadge = '<span style="font-size:10px;background:#edf7f3;color:var(--teal);border:1px solid var(--teal);border-radius:10px;padding:1px 8px;font-weight:600">✓ Getekend</span>';
-      else if(shStatus) shBadge = '<span style="font-size:10px;background:#f5f5f3;color:var(--muted);border:1px solid var(--border);border-radius:10px;padding:1px 8px">' + esc(shStatus) + '</span>';
-      else if(!v.is_upload) shBadge = '<span style="font-size:10px;background:#fdf8ee;color:var(--gold);border:1px solid var(--gold);border-radius:10px;padding:1px 8px">Nog niet getekend</span>';
+      if(isGetekend) shBadge = '<span style="font-size:10px;background:#edf7f3;color:var(--teal);border:1px solid var(--teal);border-radius:10px;padding:1px 8px;font-weight:600">✓ Getekend</span>';
+      else if(shStatus && shStatus !== 'ondertekend') shBadge = '<span style="font-size:10px;background:#f5f5f3;color:var(--muted);border:1px solid var(--border);border-radius:10px;padding:1px 8px">' + esc(shStatus) + '</span>';
+      else if(!v.is_upload) shBadge = '<span style="font-size:10px;background:#fdf8ee;color:var(--gold);border:1px solid var(--gold);border-radius:10px;padding:1px 8px">Niet getekend</span>';
       html += '<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r);padding:.6rem .875rem;display:flex;align-items:center;gap:10px;flex-wrap:wrap">'
         + '<span style="font-size:12px;font-weight:600;color:'+kleur+';flex:1">'+(labels[v.doc_type]||v.doc_type)+'</span>'
         + '<span style="font-size:11px;color:var(--muted)">'+dt+'</span>'
@@ -3943,7 +3951,7 @@ function bindAll(){
         }else{
           prompt='Vul de Bemiddelingsovereenkomst template in. Type: '+(isSell?'Verkoop':'Aankoop')+'. Opdrachtgever: '+esc(isSell?t3.kantoor_naam:t3.koper_naam||'[koper]')+'. Datum: '+datum+'. Begeleider/Adviseur: '+(t3.begeleider_naam||'Bisschops Financing B.V.')+'.\n\nTEMPLATE:\n'+(tplD.ok&&tplD.tekst?tplD.tekst:'[standaard BEM template]');
         }
-        var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:type==='bem'?4000:8000})});
+        var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:8000})});
         var rd=await resp.json();
         var tekst=rd.text||(rd.error||'Fout');
         var labels={nda:'NDA',loi:'LoI',bem:'Bemiddelingsovereenkomst'};

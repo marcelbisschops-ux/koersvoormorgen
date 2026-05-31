@@ -2244,10 +2244,13 @@ async function toonDetail(id,naam){
       var huidig = !!d.traject.verkoper_vrijgegeven;
       var actie = huidig ? 'blokkeren' : 'vrijgeven';
       if(!confirm('Verkoper toegang '+actie+'?'))return;
-      var r = await fetch(WORKER+'/mna/admin/patch/'+id, {
+      // Gebruik directe UPDATE via admin update endpoint
+      var updatePayload = {};
+      updatePayload.verkoper_vrijgegeven = huidig ? 0 : 1;
+      var r = await fetch(WORKER+'/mna/admin/update/'+id+'?key='+encodeURIComponent(adminKey), {
         method:'POST',
         headers:{'Content-Type':'application/json','x-admin-key':adminKey},
-        body:JSON.stringify({verkoper_vrijgegeven: huidig ? 0 : 1})
+        body:JSON.stringify(updatePayload)
       }).then(function(r){return r.json();}).catch(function(){return{};});
       if(r.ok){toast('Verkoper toegang '+actie+'d.','ok');detailBtn.click();}
       else toast('Fout bij opslaan.','err');
