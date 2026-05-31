@@ -1388,7 +1388,49 @@ async function stuurSignhost(id, docType, tekst, d) {
 }
 
 
-async function toonUitnodigingModal(trajectId, trajectNaam) {
+async function stuurSignhostLoi(id, tekst, d) {
+  var t = d.traject;
+  var ov = document.createElement('div'); ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:3000;display:flex;align-items:center;justify-content:center;padding:1.5rem';
+  var mo = document.createElement('div'); mo.style.cssText='background:#fff;border:1px solid #c8c5bc;border-radius:10px;padding:2rem;max-width:480px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.25);max-height:90vh;overflow-y:auto';
+  mo.innerHTML = '<div class="modal-title">&#9998; Verstuur ter ondertekening &mdash; LoI</div>'
+    + '<div style="font-size:12px;color:var(--muted);margin-bottom:1rem;padding:.6rem;background:var(--card);border-radius:var(--r);border-left:3px solid var(--gold)">LoI wordt naar beide partijen gestuurd. Beide ontvangen een aparte tekenlink.</div>'
+    + '<div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.5rem">Verkoper</div>'
+    + '<div class="field"><label>Naam</label><input type="text" id="loi-sh-naam1" value="'+esc(t.contact_naam||'')+'" placeholder="Voor- en achternaam"></div>'
+    + '<div class="field"><label>E-mail</label><input type="email" id="loi-sh-email1" value="'+esc(t.contact_email||'')+'" placeholder="naam@bedrijf.nl"></div>'
+    + '<div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin:.75rem 0 .5rem">Koper</div>'
+    + '<div class="field"><label>Naam</label><input type="text" id="loi-sh-naam2" value="'+esc(t.koper_contact||t.koper_naam||'')+'" placeholder="Voor- en achternaam"></div>'
+    + '<div class="field"><label>E-mail</label><input type="email" id="loi-sh-email2" value="'+esc(t.koper_email||'')+'" placeholder="naam@bedrijf.nl"></div>'
+    + '<div id="loi-sh-err" style="display:none;color:var(--red);font-size:12px;margin-bottom:.5rem"></div>'
+    + '<div style="display:flex;gap:8px;justify-content:flex-end">'
+    + '<button class="btn-ghost" id="loi-sh-ann">Annuleren</button>'
+    + '<button class="btn" id="loi-sh-stuur" style="background:var(--teal)">&#9998; Verstuur naar beide partijen</button>'
+    + '</div>';
+  ov.appendChild(mo); document.body.appendChild(ov);
+  ov.addEventListener('click', function(e){if(e.target===ov)document.body.removeChild(ov);});
+  document.getElementById('loi-sh-ann').onclick = function(){document.body.removeChild(ov);};
+  document.getElementById('loi-sh-stuur').onclick = async function() {
+    var btn = this; btn.disabled = true; btn.textContent = 'Versturen...';
+    var email1 = document.getElementById('loi-sh-email1').value.trim();
+    var email2 = document.getElementById('loi-sh-email2').value.trim();
+    var errEl = document.getElementById('loi-sh-err');
+    if (!email1) { errEl.textContent='E-mail verkoper verplicht.'; errEl.style.display='block'; btn.disabled=false; btn.textContent='Verstuur'; return; }
+    // Stuur naar verkoper
+    var r1 = await fetch(WORKER+'/mna/signhost/stuur', {method:'POST', headers:{'Content-Type':'application/json','x-admin-key':adminKey},
+      body:JSON.stringify({code:id, doc_type:'loi', ondertekenaar_naam:document.getElementById('loi-sh-naam1').value.trim(), ondertekenaar_email:email1, doc_tekst:tekst})});
+    var d1 = await r1.json();
+    if (!d1.ok) { errEl.textContent=d1.error||'Fout bij versturen naar verkoper.'; errEl.style.display='block'; btn.disabled=false; btn.textContent='Verstuur'; return; }
+    // Stuur naar koper (als ingevuld)
+    if (email2) {
+      await fetch(WORKER+'/mna/signhost/stuur', {method:'POST', headers:{'Content-Type':'application/json','x-admin-key':adminKey},
+        body:JSON.stringify({code:id, doc_type:'loi', ondertekenaar_naam:document.getElementById('loi-sh-naam2').value.trim(), ondertekenaar_email:email2, doc_tekst:tekst})});
+    }
+    document.body.removeChild(ov);
+    toast('✅ LoI verstuurd via Signhost naar beide partijen', 'ok', 5000);
+    document.querySelectorAll('#loi-signhost-btn').forEach(function(b){b.disabled=true;b.textContent='✓ Verstuurd';b.style.opacity='.5';});
+  };
+}
+
+
   // Haal trajectdata op
   var r = await fetch(WORKER+'/mna/admin/detail/'+trajectId+'?key='+encodeURIComponent(adminKey));
   var dd = await r.json().catch(function(){return{};});
@@ -1969,7 +2011,7 @@ async function toonDetail(id,naam){
           +'<div style="display:flex;gap:8px;margin-top:.75rem"><button id="loi-print-btn" class="btn-ghost" style="font-size:12px;padding:6px 14px">&#128196; Print / PDF</button><button id="loi-email-btn" class="btn" style="font-size:12px;padding:6px 14px;background:var(--gold)">&#9993; Stuur naar partijen</button><button id="loi-signhost-btn" class="btn" style="font-size:12px;padding:6px 14px;background:var(--teal)">&#9998; Signhost</button></div>';
         document.getElementById('loi-edit').value=tekst;
         var loiShBtn=document.getElementById('loi-signhost-btn');
-        if(loiShBtn)loiShBtn.onclick=function(){stuurSignhost(id,'loi',document.getElementById('loi-edit').value,d);};
+        if(loiShBtn)loiShBtn.onclick=function(){stuurSignhostLoi(id,document.getElementById('loi-edit').value,d);};
         document.getElementById('loi-print-btn').addEventListener('click',function(){ printDoc(document.getElementById('loi-edit')?document.getElementById('loi-edit').value:tekst,'Letter of Intent','loi'); });
         document.getElementById('loi-email-btn').addEventListener('click',function(){
           var editEl=document.getElementById('loi-edit');

@@ -2277,14 +2277,20 @@ function renderBegeleiderDashboard(app){
     var shBtn=document.getElementById('bg-signhost');
     if(shBtn)shBtn.onclick=function(){
       var tekst=document.getElementById('bg-doc-tekst').value;
-      var labels={nda:'NDA',loi:'LoI',bem:'Bemiddelingsovereenkomst',exclusief:'Exclusiviteitsbrief'};
+      var labels={nda:'NDA',loi:'LoI',bem:'Bemiddelingsovereenkomst',exclusief:'Exclusiviteitsbrief',introductie:'Introductieverklaring'};
+      var isLoi = type==='loi';
       var defEmail=type==='bem'?(isSell?(t2.contact_email||''):(t2.koper_email||'')):type==='nda'?(t2.koper_email||''):type==='introductie'?(isSell?(t2.contact_email||''):(t2.verkoper_email||'')):(t2.contact_email||'');
       var defNaam=type==='bem'?(isSell?(t2.contact_naam||''):(t2.koper_contact||t2.koper_naam||'')):type==='nda'?(t2.koper_contact||t2.koper_naam||''):type==='introductie'?(isSell?(t2.contact_naam||''):(t2.verkoper_naam||'')):(t2.contact_naam||'');
       var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:3000;display:flex;align-items:center;justify-content:center;padding:1.5rem';
-      var mo=document.createElement('div');mo.style.cssText='background:var(--panel);border:1px solid var(--border2);border-radius:var(--r2);padding:1.75rem;max-width:400px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.25)';
+      var mo=document.createElement('div');mo.style.cssText='background:var(--panel);border:1px solid var(--border2);border-radius:var(--r2);padding:1.75rem;max-width:420px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.25)';
       mo.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.1rem;color:var(--head);font-weight:600;margin-bottom:1rem">&#9998; Verstuur via Signhost &mdash; '+(labels[type]||type)+'</div>'
-        +'<div class="field"><label>Naam ondertekenaar</label><input type="text" id="bg-sh-naam" value="'+esc(defNaam)+'" placeholder="Voor- en achternaam"></div>'
-        +'<div class="field"><label>E-mail ondertekenaar</label><input type="email" id="bg-sh-email" value="'+esc(defEmail)+'" placeholder="naam@bedrijf.nl"></div>'
+        +(isLoi?'<div style="font-size:12px;color:var(--muted);margin-bottom:1rem;background:var(--card);padding:.6rem .875rem;border-radius:var(--r)">LoI wordt naar beide partijen gestuurd ter ondertekening.</div>':'')
+        +'<div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.5rem">'+(isLoi?'Verkoper':'Ondertekenaar')+'</div>'
+        +'<div class="field"><label>Naam</label><input type="text" id="bg-sh-naam" value="'+esc(defNaam)+'" placeholder="Voor- en achternaam"></div>'
+        +'<div class="field"><label>E-mail</label><input type="email" id="bg-sh-email" value="'+esc(defEmail)+'" placeholder="naam@bedrijf.nl"></div>'
+        +(isLoi?'<div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin:.75rem 0 .5rem">Koper</div>'
+          +'<div class="field"><label>Naam</label><input type="text" id="bg-sh-naam2" value="'+esc(t2.koper_contact||t2.koper_naam||'')+'" placeholder="Voor- en achternaam"></div>'
+          +'<div class="field"><label>E-mail</label><input type="email" id="bg-sh-email2" value="'+esc(t2.koper_email||'')+'" placeholder="naam@bedrijf.nl"></div>':'')
         +'<div id="bg-sh-err" style="display:none;color:var(--red);font-size:12px;margin-bottom:.5rem"></div>'
         +'<div style="display:flex;gap:8px;justify-content:flex-end">'
         +'<button class="btn-ghost" id="bg-sh-ann">Annuleren</button>'
@@ -2299,18 +2305,26 @@ function renderBegeleiderDashboard(app){
         var email=document.getElementById('bg-sh-email').value.trim();
         var errEl=document.getElementById('bg-sh-err');
         if(!email){errEl.style.display='block';errEl.textContent='E-mail verplicht';btn.disabled=false;btn.textContent='Verstuur';return;}
+        // Stuur eerste verzoek
         var r=await fetch(WORKER+'/mna/signhost/stuur',{method:'POST',
           headers:{'Content-Type':'application/json','x-tussen-key':S.code},
           body:JSON.stringify({code:S.traject.id,doc_type:type,ondertekenaar_naam:naam,ondertekenaar_email:email,doc_tekst:tekst})});
         var rd=await r.json();
-        if(rd.ok){
-          document.body.removeChild(ov);
-          toast('&#10003; '+(labels[type]||type)+' verstuurd via Signhost naar '+email,'ok',5000);
-          // Disable Signhost knop om dubbel versturen te voorkomen
-          var shBtnEl=document.getElementById('bg-signhost');
-          if(shBtnEl){shBtnEl.disabled=true;shBtnEl.textContent='&#10003; Verstuurd';shBtnEl.style.opacity='.5';}
+        if(!rd.ok){errEl.style.display='block';errEl.textContent=rd.error||'Fout';btn.disabled=false;btn.textContent='Verstuur';return;}
+        // LoI: stuur ook naar koper
+        if(isLoi){
+          var naam2=document.getElementById('bg-sh-naam2').value.trim();
+          var email2=document.getElementById('bg-sh-email2').value.trim();
+          if(email2){
+            await fetch(WORKER+'/mna/signhost/stuur',{method:'POST',
+              headers:{'Content-Type':'application/json','x-tussen-key':S.code},
+              body:JSON.stringify({code:S.traject.id,doc_type:type,ondertekenaar_naam:naam2,ondertekenaar_email:email2,doc_tekst:tekst})});
+          }
         }
-        else{errEl.style.display='block';errEl.textContent=rd.error||'Fout';btn.disabled=false;btn.textContent='Verstuur';}
+        document.body.removeChild(ov);
+        toast('&#10003; '+(labels[type]||type)+' verstuurd via Signhost'+(isLoi?' naar beide partijen':'  naar '+email),'ok',5000);
+        var shBtnEl=document.getElementById('bg-signhost');
+        if(shBtnEl){shBtnEl.disabled=true;shBtnEl.textContent='&#10003; Verstuurd';shBtnEl.style.opacity='.5';}
       };
     };
   }
