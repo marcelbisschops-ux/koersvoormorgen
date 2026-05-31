@@ -1440,77 +1440,228 @@ async function toonInfoverzoekModal(trajectId, trajectNaam) {
 
   var loiGetekend = !!(t.loi_getekend || t.loi_datum);
   var ivFase = loiGetekend ? '2' : '1';
-  var ivFaseLabel = loiGetekend ? 'Fase 2 — Volledige DD (post-LoI)' : 'Fase 1 — Oriëntatie (pre-LoI)';
   var deadline = new Date(Date.now()+14*24*3600*1000).toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'});
   var mnaUrl = 'https://koersvoormorgen.nl/mna.html';
 
-  var ov = document.createElement('div'); ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:3000;display:flex;align-items:center;justify-content:center;padding:1.5rem';
-  var mo = document.createElement('div'); mo.className = 'modal'; mo.style.maxWidth = '560px';
-  mo.innerHTML = '<div class="modal-title">&#128203; Informatieverzoek — '+esc(trajectNaam)+'</div>'
-    + '<div style="display:inline-block;background:'+(loiGetekend?'#eef3fa':'#edf7f3')+';border:1px solid '+(loiGetekend?'#2a5ea0':'#1a7a5e')+';color:'+(loiGetekend?'#2a5ea0':'#1a7a5e')+';font-size:11px;font-weight:600;padding:3px 10px;border-radius:12px;margin-bottom:1rem">'+(loiGetekend?'🔍 Fase 2 — Volledige DD (post-LoI)':'📋 Fase 1 — Oriëntatie (pre-LoI)')+'</div>'
-    + '<div style="font-size:12px;color:var(--muted);margin-bottom:1rem">Stel de deadline in en verstuur het informatieverzoek naar de verkoper.</div>'
+  // Standaard vragenlijsten per fase — aanpasbaar
+  var defaultCats1 = [
+    { titel: 'Financieel', items: [
+      { label: 'Jaarrekeningen 2022, 2023, 2024 (PDF)', toelichting: 'Inclusief balans + W&V rekening' },
+      { label: 'Managementrapportage YTD huidig jaar', toelichting: 'Zo actueel mogelijk' },
+      { label: 'EBITDA-berekening en normalisaties', toelichting: 'Inclusief partnerbeloningen' },
+    ]},
+    { titel: 'Personeel & organisatie', items: [
+      { label: 'Organogram', toelichting: 'Inclusief FTE en functies' },
+      { label: 'Salarisoverzicht (geanonimiseerd)', toelichting: 'Per functieniveau' },
+      { label: 'Eigendomsstructuur / aandeelhouders', toelichting: 'Huidig en beoogd na transactie' },
+    ]},
+    { titel: 'Klanten & omzet', items: [
+      { label: 'Klantenlijst met omzet per klant', toelichting: 'Geanonimiseerd is OK' },
+      { label: 'Omzetverdeling per dienstlijn', toelichting: 'Bijv. jaarwerk / advies / loonadmin' },
+    ]},
+    { titel: 'Compliance & juridisch', items: [
+      { label: 'NBA-status en laatste kwaliteitstoetsing', toelichting: '' },
+      { label: 'Huurcontract(en) kantoor', toelichting: 'Inclusief looptijd' },
+    ]},
+  ];
+
+  var defaultCats2 = [
+    { titel: 'Financial DD', items: [
+      { label: 'Jaarrekeningen 3 jaar incl. accountantsverklaring', toelichting: 'Inclusief toelichtingen' },
+      { label: 'Belastingaangiften VPB 3 jaar + aanslagen', toelichting: '' },
+      { label: 'Debiteurenlijst met ouderdomsanalyse', toelichting: 'Per klant, per leeftijdscategorie' },
+      { label: 'OHW-overzicht (onderhanden werk)', toelichting: '' },
+    ]},
+    { titel: 'HR DD', items: [
+      { label: 'Arbeidscontracten key-personen', toelichting: 'Partners + sleutelfuncties' },
+      { label: 'Pensioenregeling documentatie', toelichting: '' },
+      { label: 'Concurrentiebedingen sleutelfiguren', toelichting: '' },
+    ]},
+    { titel: 'Legal & Tax DD', items: [
+      { label: 'Huurcontract(en) kantoor', toelichting: 'Incl. looptijd + overdraagbaarheid' },
+      { label: 'Uittreksel KvK + statuten', toelichting: 'Recente versie' },
+      { label: 'Verzekeringspolissen', toelichting: 'Incl. beroepsaansprakelijkheid' },
+      { label: 'Lopende claims of procedures', toelichting: '' },
+    ]},
+    { titel: 'Compliance DD', items: [
+      { label: 'Wwft-procedures', toelichting: '' },
+      { label: 'Toetsingsrapporten NBA', toelichting: 'Laatste 2 toetsingen' },
+    ]},
+  ];
+
+  var cats = ivFase === '1' ? defaultCats1 : defaultCats2;
+
+  var ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:3000;display:flex;align-items:center;justify-content:center;padding:1.5rem';
+  var mo = document.createElement('div');
+  mo.style.cssText = 'background:var(--panel);border:1px solid var(--border2);border-radius:var(--r2);padding:2rem;max-width:760px;width:100%;max-height:92vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,.25)';
+
+  function bouwCatHtml() {
+    return cats.map(function(cat, ci) {
+      return '<div style="margin-bottom:10px;border:1px solid var(--border);border-radius:var(--r2);overflow:hidden">'
+        + '<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--card)">'
+        + '<input type="text" class="iv-cat-titel" data-ci="'+ci+'" value="'+esc(cat.titel)+'" style="flex:1;background:transparent;border:none;font-size:13px;font-weight:600;color:var(--head);font-family:IBM Plex Sans,sans-serif;outline:none">'
+        + '<button class="iv-cat-del btn-red" data-ci="'+ci+'" style="font-size:10px;padding:2px 8px" title="Categorie verwijderen">✕</button>'
+        + '</div>'
+        + '<div style="padding:8px 12px">'
+        + cat.items.map(function(item, ii) {
+            return '<div class="iv-item-row" style="display:flex;gap:6px;align-items:flex-start;margin-bottom:6px">'
+              + '<div style="display:flex;flex-direction:column;gap:3px;flex:1">'
+              + '<input type="text" class="iv-item-label" data-ci="'+ci+'" data-ii="'+ii+'" value="'+esc(item.label)+'" placeholder="Document / informatie" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:4px;padding:5px 8px;font-size:12px;font-family:IBM Plex Sans,sans-serif;color:var(--sub);outline:none">'
+              + '<input type="text" class="iv-item-toel" data-ci="'+ci+'" data-ii="'+ii+'" value="'+esc(item.toelichting||'')+'" placeholder="Toelichting (optioneel)" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:4px;padding:4px 8px;font-size:11px;font-family:IBM Plex Sans,sans-serif;color:var(--muted);outline:none">'
+              + '</div>'
+              + '<button class="iv-item-del btn-red" data-ci="'+ci+'" data-ii="'+ii+'" style="font-size:10px;padding:2px 6px;flex-shrink:0;margin-top:2px" title="Rij verwijderen">✕</button>'
+              + '</div>';
+          }).join('')
+        + '<button class="iv-item-add btn-ghost" data-ci="'+ci+'" style="font-size:11px;padding:3px 10px;margin-top:4px">+ Regel toevoegen</button>'
+        + '</div></div>';
+    }).join('') + '<button id="iv-cat-add" class="btn-ghost" style="font-size:11px;padding:5px 14px;width:100%;margin-top:4px">+ Categorie toevoegen</button>';
+  }
+
+  mo.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">'
+    + '<div class="modal-title" style="margin-bottom:0">&#128203; Informatieverzoek — '+esc(trajectNaam)+'</div>'
+    + '<span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:12px;background:'+(loiGetekend?'#eef3fa':'#edf7f3')+';border:1px solid '+(loiGetekend?'#2a5ea0':'#1a7a5e')+';color:'+(loiGetekend?'#2a5ea0':'#1a7a5e')+'">'+(loiGetekend?'🔍 Fase 2 — post-LoI':'📋 Fase 1 — pre-LoI')+'</span>'
+    + '</div>'
+    + '<div style="font-size:12px;color:var(--muted);margin-bottom:1rem">Pas de vragenlijst aan en verstuur. Titels en regels zijn direct bewerkbaar.</div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:1rem">'
     + '<div class="field"><label>Deadline</label><input type="text" id="iv-deadline" value="'+esc(deadline)+'" style="width:100%"></div>'
-    + '<div class="field"><label>Persoonlijk bericht (optioneel)</label><textarea id="iv-bericht" rows="2" placeholder="Voeg een persoonlijk bericht toe..." style="width:100%"></textarea></div>'
     + '<div class="field"><label>E-mail verkoper <span style="color:var(--red)">*</span></label><input type="email" id="iv-email" value="'+esc(t.contact_email||'')+'" style="width:100%"></div>'
-    + '<div id="iv-err" style="display:none;color:var(--red);font-size:12px;margin-bottom:.5rem"></div>'
-    + '<div style="display:flex;gap:8px;justify-content:flex-end">'
+    + '</div>'
+    + '<div class="field" style="margin-bottom:1rem"><label>Persoonlijk bericht (optioneel)</label><textarea id="iv-bericht" rows="2" placeholder="Voeg een persoonlijk bericht toe..." style="width:100%"></textarea></div>'
+    + '<div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem">Vragenlijst (aanpasbaar)</div>'
+    + '<div id="iv-cats-wrapper">'+bouwCatHtml()+'</div>'
+    + '<div id="iv-err" style="display:none;color:var(--red);font-size:12px;margin:.75rem 0"></div>'
+    + '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem">'
     + '<button class="btn-ghost" id="iv-ann">Annuleren</button>'
+    + '<button class="btn-ghost" id="iv-preview" style="color:var(--teal);border-color:var(--teal)">&#128065; Preview e-mail</button>'
     + '<button class="btn" id="iv-ok">&#9993; Verstuur informatieverzoek</button>'
     + '</div>';
-  ov.appendChild(mo); document.body.appendChild(ov);
-  ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
+
+  ov.appendChild(mo);
+  document.body.appendChild(ov);
+  ov.addEventListener('click', function(e){if(e.target===ov)document.body.removeChild(ov);});
   document.getElementById('iv-ann').onclick = function(){document.body.removeChild(ov);};
 
-  document.getElementById('iv-ok').onclick = async function(){
-    var email = document.getElementById('iv-email').value.trim();
-    var dl = document.getElementById('iv-deadline').value.trim();
-    var bericht = document.getElementById('iv-bericht').value.trim();
-    var errEl = document.getElementById('iv-err');
-    if (!email) { errEl.style.display='block'; errEl.textContent='E-mailadres is verplicht.'; return; }
-    var btn = this; btn.disabled=true; btn.textContent='Versturen...';
+  // Live editing: lees DOM terug naar cats array bij versturen
+  function leesDomsTerug() {
+    mo.querySelectorAll('.iv-cat-titel').forEach(function(el) {
+      var ci = parseInt(el.dataset.ci);
+      if (cats[ci]) cats[ci].titel = el.value;
+    });
+    mo.querySelectorAll('.iv-item-label').forEach(function(el) {
+      var ci = parseInt(el.dataset.ci), ii = parseInt(el.dataset.ii);
+      if (cats[ci] && cats[ci].items[ii]) cats[ci].items[ii].label = el.value;
+    });
+    mo.querySelectorAll('.iv-item-toel').forEach(function(el) {
+      var ci = parseInt(el.dataset.ci), ii = parseInt(el.dataset.ii);
+      if (cats[ci] && cats[ci].items[ii]) cats[ci].items[ii].toelichting = el.value;
+    });
+  }
 
-    // Bouw HTML
+  function herrender() {
+    document.getElementById('iv-cats-wrapper').innerHTML = bouwCatHtml();
+    bindCatHandlers();
+  }
+
+  function bindCatHandlers() {
+    // Categorie verwijderen
+    mo.querySelectorAll('.iv-cat-del').forEach(function(btn) {
+      btn.onclick = function() {
+        leesDomsTerug();
+        cats.splice(parseInt(btn.dataset.ci), 1);
+        herrender();
+      };
+    });
+    // Item verwijderen
+    mo.querySelectorAll('.iv-item-del').forEach(function(btn) {
+      btn.onclick = function() {
+        leesDomsTerug();
+        var ci = parseInt(btn.dataset.ci), ii = parseInt(btn.dataset.ii);
+        if (cats[ci]) cats[ci].items.splice(ii, 1);
+        herrender();
+      };
+    });
+    // Item toevoegen aan categorie
+    mo.querySelectorAll('.iv-item-add').forEach(function(btn) {
+      btn.onclick = function() {
+        leesDomsTerug();
+        var ci = parseInt(btn.dataset.ci);
+        if (cats[ci]) cats[ci].items.push({label:'', toelichting:''});
+        herrender();
+        // Focus nieuw veld
+        setTimeout(function(){
+          var rows = mo.querySelectorAll('.iv-item-label[data-ci="'+ci+'"]');
+          if (rows.length) rows[rows.length-1].focus();
+        }, 50);
+      };
+    });
+    // Categorie toevoegen
+    var addCat = document.getElementById('iv-cat-add');
+    if (addCat) addCat.onclick = function() {
+      leesDomsTerug();
+      cats.push({titel:'Nieuwe categorie', items:[{label:'', toelichting:''}]});
+      herrender();
+      setTimeout(function(){
+        var titels = mo.querySelectorAll('.iv-cat-titel');
+        if (titels.length) titels[titels.length-1].focus();
+      }, 50);
+    };
+  }
+  bindCatHandlers();
+
+  function bouwMailHtml() {
+    leesDomsTerug();
+    var dl = document.getElementById('iv-deadline').value;
+    var bericht = document.getElementById('iv-bericht').value.trim();
+    var tabelRows = '';
+    cats.forEach(function(cat, gi) {
+      var itemsHtml = cat.items.filter(function(i){return i.label.trim();}).map(function(item){
+        return '<tr'+(gi%2===0?' style="background:#f0eeea"':'')+'>'+
+          '<td style="padding:6px 12px;border:1px solid #ddd;color:#5a5854">'+esc(item.label)+'</td>'+
+          '<td style="padding:6px 12px;border:1px solid #ddd;color:#8a8880">'+esc(item.toelichting||'')+'</td></tr>';
+      }).join('');
+      if (!itemsHtml) return;
+      tabelRows += '<tr><td colspan="2" style="padding:8px 12px;font-weight:700;border:1px solid #ddd;background:#e8e4de">'+esc(cat.titel)+'</td></tr>' + itemsHtml;
+    });
     var html = '<div style="font-family:sans-serif;max-width:640px;margin:0 auto">'
       + '<div style="background:#1a7a5e;color:#fff;padding:1.5rem;border-radius:8px 8px 0 0"><h2 style="margin:0;font-size:1.1rem">Informatieverzoek M&A — '+esc(t.kantoor_naam||trajectNaam)+'</h2></div>'
       + '<div style="background:#fff;border:1px solid #ddd;border-top:none;padding:1.5rem;border-radius:0 0 8px 8px">'
       + '<p style="font-size:14px;color:#2a2825">Beste '+esc(t.contact_naam||'relatie')+',</p>'
       + (bericht ? '<p style="font-size:13px;color:#5a5854;line-height:1.7">'+esc(bericht)+'</p>' : '')
-      + '<p style="font-size:13px;color:#5a5854;line-height:1.7">In het kader van het M&A-traject ontvangen wij graag onderstaande informatie vóór <strong>'+esc(dl)+'</strong>.</p>'
+      + '<p style="font-size:13px;color:#5a5854;line-height:1.7">In het kader van het M&A-traject ontvangen wij graag onderstaande informatie vóór <strong>'+esc(dl)+'</strong>. U kunt de documenten uploaden via uw persoonlijke omgeving:</p>'
       + '<div style="background:#f0faf6;border:1px solid #0a3d2e;border-radius:8px;padding:1.25rem;margin:1.25rem 0">'
-      + '<div style="font-size:11px;font-weight:600;color:#145f48;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.5rem">Uw persoonlijke uploadomgeving</div>'
+      + '<div style="font-size:11px;font-weight:600;color:#145f48;text-transform:uppercase;margin-bottom:.5rem">Uw persoonlijke uploadomgeving</div>'
       + '<div style="font-family:monospace;background:#fff;border:1px solid #ddd;padding:.75rem;border-radius:6px;font-size:13px;margin-bottom:.5rem"><a href="'+mnaUrl+'" style="color:#1a7a5e">'+mnaUrl+'</a></div>'
       + '<div style="font-size:12px;color:#8a8880">Toegangscode: <strong style="font-family:monospace;color:#1a7a5e;font-size:14px">'+esc(t.id||trajectId)+'</strong></div>'
-      + '</div>';
-
-    if (ivFase === '1') {
-      html += '<table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:1.25rem">'
-        + '<tr style="background:#f0eeea"><td colspan="2" style="padding:8px 12px;font-weight:700;border:1px solid #ddd">Financieel</td></tr>'
-        + '<tr><td style="padding:6px 12px;border:1px solid #ddd;color:#5a5854">Jaarrekeningen 2022, 2023, 2024 (PDF)</td><td style="padding:6px 12px;border:1px solid #ddd;color:#8a8880">Inclusief balans + W&V</td></tr>'
-        + '<tr style="background:#f0eeea"><td style="padding:6px 12px;border:1px solid #ddd;color:#5a5854">Managementrapportage YTD huidig jaar</td><td style="padding:6px 12px;border:1px solid #ddd;color:#8a8880">Zo actueel mogelijk</td></tr>'
-        + '<tr><td colspan="2" style="padding:8px 12px;font-weight:700;border:1px solid #ddd;background:#f0eeea">Personeel & organisatie</td></tr>'
-        + '<tr><td style="padding:6px 12px;border:1px solid #ddd;color:#5a5854">Organogram</td><td style="padding:6px 12px;border:1px solid #ddd;color:#8a8880">Incl. FTE en functies</td></tr>'
-        + '<tr style="background:#f0eeea"><td style="padding:6px 12px;border:1px solid #ddd;color:#5a5854">Salarisoverzicht (geanonimiseerd)</td><td style="padding:6px 12px;border:1px solid #ddd;color:#8a8880">Per functieniveau</td></tr>'
-        + '<tr><td colspan="2" style="padding:8px 12px;font-weight:700;border:1px solid #ddd;background:#f0eeea">Klanten</td></tr>'
-        + '<tr><td style="padding:6px 12px;border:1px solid #ddd;color:#5a5854">Klantenlijst met omzet per klant</td><td style="padding:6px 12px;border:1px solid #ddd;color:#8a8880">Geanonimiseerd is OK</td></tr>'
-        + '</table>';
-    } else {
-      html += '<p style="font-size:13px;font-weight:600;color:#2a2825">Aanvullende due diligence documenten (post-LoI):</p>'
-        + '<table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:1.25rem">'
-        + '<tr style="background:#f0eeea"><td colspan="2" style="padding:8px 12px;font-weight:700;border:1px solid #ddd">Financial DD</td></tr>'
-        + '<tr><td style="padding:6px 12px;border:1px solid #ddd;color:#5a5854">Jaarrekeningen 3 jaar (volledig, incl. accountantsverklaring)</td><td style="padding:6px 12px;border:1px solid #ddd;color:#8a8880">Inclusief toelichtingen</td></tr>'
-        + '<tr style="background:#f0eeea"><td style="padding:6px 12px;border:1px solid #ddd;color:#5a5854">Belastingaangiften VPB 3 jaar</td><td style="padding:6px 12px;border:1px solid #ddd;color:#8a8880">Inclusief aanslagen</td></tr>'
-        + '<tr><td style="padding:6px 12px;border:1px solid #ddd;color:#5a5854">Debiteurenlijst (ouderdomsanalyse)</td><td style="padding:6px 12px;border:1px solid #ddd;color:#8a8880">Per klant, per leeftijdscategorie</td></tr>'
-        + '<tr><td colspan="2" style="padding:8px 12px;font-weight:700;border:1px solid #ddd;background:#f0eeea">Juridisch</td></tr>'
-        + '<tr><td style="padding:6px 12px;border:1px solid #ddd;color:#5a5854">Huurcontract(en) kantoor</td><td style="padding:6px 12px;border:1px solid #ddd;color:#8a8880">Incl. looptijd en opzegtermijn</td></tr>'
-        + '<tr style="background:#f0eeea"><td style="padding:6px 12px;border:1px solid #ddd;color:#5a5854">Arbeidscontracten key-personen</td><td style="padding:6px 12px;border:1px solid #ddd;color:#8a8880">Partners + sleutelfuncties</td></tr>'
-        + '<tr><td style="padding:6px 12px;border:1px solid #ddd;color:#5a5854">Uittreksel KvK + statuten</td><td style="padding:6px 12px;border:1px solid #ddd;color:#8a8880">Recente versie</td></tr>'
-        + '</table>';
-    }
-
-    html += '<p style="font-size:12px;color:#8a8880">Vragen? Neem contact op via <a href="mailto:'+esc(t.begeleider_email||'marcel@bisschopsfinancing.nl')+'" style="color:#1a7a5e">'+esc(t.begeleider_email||'marcel@bisschopsfinancing.nl')+'</a></p>'
+      + '</div>'
+      + (tabelRows ? '<table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:1.25rem">'+tabelRows+'</table>' : '')
+      + '<p style="font-size:12px;color:#8a8880">Vragen? Neem contact op via <a href="mailto:'+esc(t.begeleider_email||'marcel@bisschopsfinancing.nl')+'" style="color:#1a7a5e">'+esc(t.begeleider_email||'marcel@bisschopsfinancing.nl')+'</a></p>'
       + '<p style="font-size:12px;color:#8a8880;margin-top:.75rem">Met vriendelijke groet,<br><strong>'+esc(t.begeleider_naam||'Marcel Bisschops')+'</strong><br>Bisschops Financing BV</p>'
       + '</div></div>';
+    return html;
+  }
 
+  // Preview
+  document.getElementById('iv-preview').onclick = function() {
+    var html = bouwMailHtml();
+    var pvOv = document.createElement('div');
+    pvOv.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:4000;display:flex;align-items:center;justify-content:center;padding:1.5rem';
+    var pvMo = document.createElement('div');
+    pvMo.style.cssText = 'background:#fff;border-radius:10px;padding:1.5rem;max-width:680px;width:100%;max-height:90vh;overflow-y:auto';
+    pvMo.innerHTML = '<div style="display:flex;justify-content:space-between;margin-bottom:1rem"><strong>Preview e-mail</strong><button id="pv-sluit" style="background:none;border:none;font-size:18px;cursor:pointer">&times;</button></div>'
+      + '<div style="border:1px solid #ddd;border-radius:6px;padding:1rem">'+html+'</div>';
+    pvOv.appendChild(pvMo); document.body.appendChild(pvOv);
+    pvOv.addEventListener('click',function(e){if(e.target===pvOv)document.body.removeChild(pvOv);});
+    pvMo.querySelector('#pv-sluit').onclick = function(){document.body.removeChild(pvOv);};
+  };
+
+  // Versturen
+  document.getElementById('iv-ok').onclick = async function() {
+    var email = document.getElementById('iv-email').value.trim();
+    var errEl = document.getElementById('iv-err');
+    if (!email) { errEl.style.display='block'; errEl.textContent='E-mailadres is verplicht.'; return; }
+    var btn = this; btn.disabled=true; btn.textContent='Versturen...';
+    var html = bouwMailHtml();
     try {
       var er = await fetch(WORKER+'/mna/mail-begeleider', {
         method:'POST', headers:{'Content-Type':'application/json','x-admin-key':adminKey},
@@ -1522,6 +1673,7 @@ async function toonInfoverzoekModal(trajectId, trajectNaam) {
     } catch(e) { errEl.style.display='block'; errEl.textContent='Verbindingsfout.'; btn.disabled=false; btn.textContent='Verstuur'; }
   };
 }
+
 
 async function toonUitnodigingModal(trajectId, trajectNaam) {
   // Haal trajectdata op
