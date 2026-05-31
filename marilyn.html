@@ -2215,9 +2215,19 @@ async function toonDetail(id,naam){
         ]);
         var trajectDocs = docsResp.ok ? await docsResp.json() : [];
         var versies = versiesResp.ok ? await versiesResp.json() : [];
-        // Signhost getekende docs worden getoond via de versies-sectie — niet dubbel tonen in geüploade bestanden
+        // Signhost getekende docs: alleen weghalen uit uploads als er ook een versie-rij voor bestaat
+        var versieDocTypes = versies.map(function(v){
+          var n=(v.doc_type||'').replace('_verk','').replace('_koper','').replace('_upload','');
+          return n;
+        });
         var signhostDocs = trajectDocs.filter(function(d){ return d.methode === 'signhost'; });
-        var uploadedDocs = trajectDocs.filter(function(d){ return d.methode !== 'signhost'; });
+        var uploadedDocs = trajectDocs.filter(function(d){
+          if(d.methode !== 'signhost') return true;
+          // Signhost doc: verberg alleen als er ook een versie-rij is voor dit doc-type
+          var naam=(d.bestand_naam||'').toLowerCase();
+          var docType=naam.includes('nda')||naam.includes('geheimhouding')?'nda':naam.includes('bem')||naam.includes('bemiddelings')?'bem':naam.includes('loi')||naam.includes('intentie')?'loi':naam.includes('excl')||naam.includes('exclusiviteit')?'excl':naam.includes('introductie')?'introductie':'';
+          return docType && !versieDocTypes.includes(docType);
+        });
         var docLabels={nda:'NDA',loi:'LoI',bem:'Bemiddelingsovereenkomst',bem_verk:'Bemiddelingsovereenkomst',bem_koper:'Bemiddelingsovereenkomst',excl:'Exclusiviteitsbrief',exclusief:'Exclusiviteitsbrief',bem_upload:'Bemiddelingsovereenkomst',excl_upload:'Exclusiviteitsbrief',nda_upload:'NDA',loi_upload:'Letter of Intent'};
         var docKleuren={nda:'#7c5cbf',loi:'var(--gold)',bem:'#2a5ea0'};
         var html='';
