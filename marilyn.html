@@ -1431,6 +1431,7 @@ async function stuurSignhostLoi(id, tekst, d) {
 }
 
 
+async function toonUitnodigingModal(trajectId, trajectNaam) {
   // Haal trajectdata op
   var r = await fetch(WORKER+'/mna/admin/detail/'+trajectId+'?key='+encodeURIComponent(adminKey));
   var dd = await r.json().catch(function(){return{};});
