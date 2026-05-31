@@ -2211,7 +2211,19 @@ function renderBegeleiderDashboard(app){
     document.getElementById('bg-email').onclick=async function(){
       var ebtn=this;ebtn.disabled=true;ebtn.textContent='Versturen...';
       var vt=document.getElementById('bg-doc-tekst').value;
-      var toList=[t2.contact_email,t2.begeleider_email,t2.koper_email].filter(Boolean);
+      // BEM naar opdrachtgever: koper als koper opdrachtgever is, anders verkoper
+      var toList;
+      if(type==='bem'){
+        if(isSell){
+          // Sell-side: BEM naar verkoper (contact)
+          toList=[t2.contact_email,t2.begeleider_email].filter(Boolean);
+        } else {
+          // Buy-side: BEM naar koper
+          toList=[t2.koper_email,t2.begeleider_email].filter(Boolean);
+        }
+      } else {
+        toList=[t2.contact_email,t2.begeleider_email,t2.koper_email].filter(Boolean);
+      }
       var ep=type==='nda'?'/mna/nda/email':type==='loi'?'/mna/loi/email':'/mna/bem/email';
       var payload={code:S.traject.id,to:toList};
       if(type==='nda')payload.nda_tekst=vt;
@@ -3909,9 +3921,19 @@ function bindAll(){
         document.getElementById('bg-email-btn').onclick=async function(){
           var ebtn=this;ebtn.disabled=true;ebtn.textContent='Versturen...';
           var verzendTekst=document.getElementById('bg-doc-tekst').value;
-          var toList=[t3.contact_email||t3.begeleider_email];
-          if(t3.begeleider_email&&!toList.includes(t3.begeleider_email))toList.push(t3.begeleider_email);
-          if(t3.koper_email&&!toList.includes(t3.koper_email))toList.push(t3.koper_email);
+          // BEM naar opdrachtgever
+          var toList;
+          if(type==='bem'){
+            if(isSell){
+              toList=[t3.contact_email,t3.begeleider_email].filter(Boolean);
+            } else {
+              toList=[t3.koper_email,t3.begeleider_email].filter(Boolean);
+            }
+          } else {
+            toList=[t3.contact_email||t3.begeleider_email];
+            if(t3.begeleider_email&&!toList.includes(t3.begeleider_email))toList.push(t3.begeleider_email);
+            if(t3.koper_email&&!toList.includes(t3.koper_email))toList.push(t3.koper_email);
+          }
           var endpoint=type==='nda'?'/mna/nda/email':type==='loi'?'/mna/loi/email':'/mna/bem/email';
           var payload={code:S.code,to:toList};
           if(type==='nda')payload.nda_tekst=verzendTekst;
