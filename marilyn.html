@@ -1478,7 +1478,7 @@ async function toonDetail(id,naam){
   var ov=document.createElement('div');ov.className='overlay';
   var mo=document.createElement('div');mo.style.cssText='background:#fff;border:1px solid #c8c5bc;border-radius:10px;padding:1.75rem;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.25);max-height:90vh;overflow-y:auto;max-width:700px';
   mo.innerHTML='<div class="modal-title">'+esc(naam)+' <span class="code-chip" style="font-size:12px">'+esc(id)+'</span></div>'
-    +'<div style="display:flex;gap:8px;margin-bottom:1.25rem;flex-wrap:wrap"><button class="btn" id="det-bem-btn" style="background:#2a5ea0;font-size:12px;padding:7px 14px">&#128203; Bemiddelingsovereenkomst</button><button class="btn" id="det-nda-btn" style="background:#7c5cbf;font-size:12px;padding:7px 14px">&#128274; Genereer NDA</button><button class="btn" id="det-loi-btn" style="background:var(--gold);font-size:12px;padding:7px 14px">&#128196; Genereer LoI</button><button class="btn" id="det-excl-btn" style="background:var(--teal);font-size:12px;padding:7px 14px">&#128196; Exclusiviteitsbrief</button><button class="btn" id="det-ai-btn" style="background:var(--teal);font-size:12px;padding:7px 14px">&#9881; AI-analyse</button><button class="btn-ghost" id="det-wis-data-btn" style="font-size:12px;padding:7px 14px;color:var(--red);border-color:var(--red)">&#128465; DD-data wissen</button><button class="btn-ghost" id="det-debug-btn" style="font-size:12px;padding:7px 14px">&#128269; Veldendebug</button><div style="flex:1"></div><button class="btn-ghost" id="det-sluit" style="font-size:12px;padding:7px 14px">Sluiten</button></div>'
+    +'<div style="display:flex;gap:8px;margin-bottom:1.25rem;flex-wrap:wrap"><button class="btn" id="det-bem-btn" style="background:#2a5ea0;font-size:12px;padding:7px 14px">&#128203; Bemiddelingsovereenkomst</button><button class="btn" id="det-nda-btn" style="background:#7c5cbf;font-size:12px;padding:7px 14px">&#128274; Genereer NDA</button><button class="btn" id="det-loi-btn" style="background:var(--gold);font-size:12px;padding:7px 14px">&#128196; Genereer LoI</button><button class="btn" id="det-excl-btn" style="background:var(--teal);font-size:12px;padding:7px 14px">&#128196; Exclusiviteitsbrief</button><button class="btn" id="det-intro-btn" style="background:#8a5a2a;font-size:12px;padding:7px 14px">&#128203; Introductieverklaring</button><button class="btn" id="det-ai-btn" style="background:var(--teal);font-size:12px;padding:7px 14px">&#9881; AI-analyse</button><button class="btn-ghost" id="det-wis-data-btn" style="font-size:12px;padding:7px 14px;color:var(--red);border-color:var(--red)">&#128465; DD-data wissen</button><button class="btn-ghost" id="det-debug-btn" style="font-size:12px;padding:7px 14px">&#128269; Veldendebug</button><div style="flex:1"></div><button class="btn-ghost" id="det-sluit" style="font-size:12px;padding:7px 14px">Sluiten</button></div>'
     +'<div id="bem-output" style="display:none;margin-bottom:1.25rem;border-bottom:1px solid var(--border);padding-bottom:1.25rem"></div>'
     +'<div id="nda-output" style="display:none;margin-bottom:1.25rem;border-bottom:1px solid var(--border);padding-bottom:1.25rem"></div>'
     +'<div id="loi-output" style="display:none;margin-bottom:1.25rem;border-bottom:1px solid var(--border);padding-bottom:1.25rem"></div>'
@@ -2095,6 +2095,73 @@ async function toonDetail(id,naam){
         });
         btn.textContent='Opnieuw genereren';btn.disabled=false;
       }catch(e){exclOut.innerHTML='<div style="color:var(--red);font-size:13px">Fout: '+e.message+'</div>';btn.textContent='Exclusiviteitsbrief';btn.disabled=false;}
+    });
+
+    // Introductieverklaring knop
+    document.getElementById('det-intro-btn').addEventListener('click',async function(){
+      var btn=this;btn.disabled=true;btn.textContent='Genereren...';
+      var introOut=document.getElementById('mna-ai-out');
+      introOut.style.display='block';
+      introOut.innerHTML='<div style="color:var(--muted);font-size:13px">Introductieverklaring wordt gegenereerd...</div>';
+      try{
+        var tplResp=await fetch(WORKER+'/mna/template/introductie?email='+encodeURIComponent(d.traject.begeleider_email||'marcel@bisschopsfinancing.nl')).catch(function(){return{json:function(){return{ok:false};}};});
+        var tplData=await tplResp.json().catch(function(){return{ok:false};});
+        var tplTekst=tplData.ok&&tplData.tekst?tplData.tekst:(BF_TEMPLATES&&BF_TEMPLATES.introductie?BF_TEMPLATES.introductie:'[standaard template]');
+        var datum=new Date().toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'});
+        var prompt='Vul de Introductieverklaring in. Vervang ALLE [tekst tussen haakjes].\n'
+          +'Verkoper: '+esc(d.traject.kantoor_naam||'[naam]')+' (B.V.), gevestigd te '+(d.traject.verkoper_adres||'[adres]')+', vertegenwoordigd door '+(d.traject.contact_naam||'[naam]')+'.\n'
+          +'Datum: '+datum+'. Geef alleen het ingevulde document terug, geen uitleg.\n\nTEMPLATE:\n'+tplTekst;
+        var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:3000})});
+        var rd=await resp.json();
+        var tekst=rd.text||'Fout bij genereren';
+        introOut.innerHTML='<div style="font-size:11px;font-weight:600;color:#8a5a2a;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.75rem">Introductieverklaring gegenereerd</div>'
+          +'<textarea id="intro-edit" style="width:100%;height:280px;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:Georgia,serif;font-size:12px;line-height:1.8;padding:1rem;outline:none;resize:vertical">'+esc(tekst)+'</textarea>'
+          +'<div style="display:flex;gap:8px;margin-top:.75rem">'
+          +'<button id="intro-print-btn" class="btn-ghost" style="font-size:12px;padding:6px 14px">&#128196; Print / PDF</button>'
+          +'<button id="intro-email-btn" class="btn" style="font-size:12px;padding:6px 14px;background:#8a5a2a">&#9993; Stuur naar verkoper</button>'
+          +'<button id="intro-signhost-btn" class="btn" style="font-size:12px;padding:6px 14px;background:var(--teal)">&#9998; Signhost</button>'
+          +'</div>';
+        document.getElementById('intro-print-btn').addEventListener('click',function(){ printDoc(document.getElementById('intro-edit').value,'Introductieverklaring','introductie'); });
+        document.getElementById('intro-email-btn').addEventListener('click',async function(){
+          var ebtn=this;ebtn.disabled=true;ebtn.textContent='Versturen...';
+          var vt=document.getElementById('intro-edit').value;
+          var toList=[d.traject.contact_email,d.traject.begeleider_email].filter(Boolean);
+          var er=await fetch(WORKER+'/mna/introductie/email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:d.traject.id,introductie_tekst:vt,to:toList})});
+          var ed2=await er.json().catch(function(){return{error:'Fout'};});
+          if(ed2.ok){ebtn.textContent='✓ Verstuurd';}else{toast('Fout: '+(ed2.error||'onbekend'),'err');ebtn.disabled=false;ebtn.textContent='Stuur naar verkoper';}
+        });
+        // Signhost
+        document.getElementById('intro-signhost-btn').addEventListener('click',function(){
+          var tekst=document.getElementById('intro-edit').value;
+          var defEmail=d.traject.contact_email||'';
+          var defNaam=d.traject.contact_naam||d.traject.kantoor_naam||'';
+          var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:3000;display:flex;align-items:center;justify-content:center;padding:1.5rem';
+          var mo=document.createElement('div');mo.style.cssText='background:var(--panel);border:1px solid var(--border2);border-radius:var(--r2);padding:1.75rem;max-width:400px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.25)';
+          mo.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.1rem;color:var(--head);font-weight:600;margin-bottom:1rem">&#9998; Signhost — Introductieverklaring</div>'
+            +'<div class="field"><label>Naam ondertekenaar (verkoper)</label><input type="text" id="intro-sh-naam" value="'+esc(defNaam)+'" placeholder="Voor- en achternaam"></div>'
+            +'<div class="field"><label>E-mail ondertekenaar</label><input type="email" id="intro-sh-email" value="'+esc(defEmail)+'" placeholder="naam@bedrijf.nl"></div>'
+            +'<div id="intro-sh-err" style="display:none;color:var(--red);font-size:12px;margin-bottom:.5rem"></div>'
+            +'<div style="display:flex;gap:8px;justify-content:flex-end">'
+            +'<button class="btn-ghost" id="intro-sh-ann">Annuleren</button>'
+            +'<button class="btn" id="intro-sh-ok" style="background:var(--teal)">&#9998; Verstuur via Signhost</button>'
+            +'</div>';
+          ov.appendChild(mo);document.body.appendChild(ov);
+          ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
+          document.getElementById('intro-sh-ann').onclick=function(){document.body.removeChild(ov);};
+          document.getElementById('intro-sh-ok').onclick=async function(){
+            var naam=document.getElementById('intro-sh-naam').value.trim();
+            var email=document.getElementById('intro-sh-email').value.trim();
+            var errEl=document.getElementById('intro-sh-err');
+            if(!naam||!email){errEl.textContent='Naam en e-mail verplicht.';errEl.style.display='block';return;}
+            this.disabled=true;this.textContent='Versturen...';
+            var sr=await fetch(WORKER+'/mna/signhost/stuur',{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':ADMIN_KEY||''},body:JSON.stringify({code:d.traject.id,doc_type:'introductie',ondertekenaar_naam:naam,ondertekenaar_email:email,doc_tekst:tekst})});
+            var sd=await sr.json().catch(function(){return{error:'Fout'};});
+            if(sd.ok){document.body.removeChild(ov);toast('Introductieverklaring verstuurd via Signhost naar '+email,'ok',4000);}
+            else{errEl.textContent=sd.error||'Fout bij versturen.';errEl.style.display='block';this.disabled=false;this.textContent='Verstuur via Signhost';}
+          };
+        });
+        btn.textContent='Opnieuw genereren';btn.disabled=false;
+      }catch(e){introOut.innerHTML='<div style="color:var(--red);font-size:13px">Fout: '+e.message+'</div>';btn.textContent='Introductieverklaring';btn.disabled=false;}
     });
 
     // AI-analyse knop
