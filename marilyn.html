@@ -3064,12 +3064,18 @@ function toonGesprekModal(trajectId, bestaand, onSaved){
   ov2.addEventListener('click', function(e){ if(e.target===ov2) ov2.remove(); });
   mo2.querySelector('#gs-ann').addEventListener('click', function(){ ov2.remove(); });
 
-  // Laad concept bij nieuw gesprek
+  // Laad concept bij nieuw gesprek — alleen als het concept voor DIT traject is
   if (!bestaand) {
     fetch(WORKER+'/mna/gesprek/concept/'+trajectId)
       .then(function(r){ return r.json(); })
       .then(function(c){
+        // Controleer dat het concept echt bij dit traject hoort
         if (!c || (!c.datum && !c.ruwe_notities && !c.verslag)) return;
+        if (c.code && c.code.toUpperCase() !== trajectId.toUpperCase()) {
+          // Concept is van een ander traject — niet laden, verwijder het
+          fetch(WORKER+'/mna/gesprek/concept/delete/'+trajectId, {method:'POST'}).catch(function(){});
+          return;
+        }
         if (c.datum) mo2.querySelector('#gs-datum').value = c.datum;
         if (c.deelnemers) mo2.querySelector('#gs-deelnemers').value = c.deelnemers;
         if (c.type) mo2.querySelector('#gs-type').value = c.type;
