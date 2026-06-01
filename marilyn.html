@@ -3061,8 +3061,8 @@ function toonGesprekModal(trajectId, bestaand, onSaved){
     + '</div>';
 
   ov2.appendChild(mo2); document.body.appendChild(ov2);
-  ov2.addEventListener('click', function(e){ if(e.target===ov2) document.body.removeChild(ov2); });
-  mo2.querySelector('#gs-ann').addEventListener('click', function(){ document.body.removeChild(ov2); });
+  ov2.addEventListener('click', function(e){ if(e.target===ov2) ov2.remove(); });
+  mo2.querySelector('#gs-ann').addEventListener('click', function(){ ov2.remove(); });
 
   // Laad concept bij nieuw gesprek
   if (!bestaand) {
@@ -3163,7 +3163,7 @@ function toonGesprekModal(trajectId, bestaand, onSaved){
       var d = await r.json();
       if (d.ok) {
         fetch(WORKER+'/mna/gesprek/concept/delete/'+trajectId, {method:'POST'}).catch(function(){});
-        document.body.removeChild(ov2);
+        ov2.remove();
         if (onSaved) onSaved();
       } else {
         err.style.display='block'; err.textContent='Fout: '+(d.error||'onbekend');
