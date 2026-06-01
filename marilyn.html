@@ -3045,23 +3045,6 @@ function toonGesprekModal(trajectId, bestaand, onSaved){
     }catch(e){}
   }
 
-  // Laad concept als er geen bestaand gesprek is
-  if(!bestaand){
-    fetch(WORKER+'/mna/gesprek/concept/'+trajectId+'?key='+encodeURIComponent(adminKey))
-      .then(function(r){return r.json();})
-      .then(function(concept){
-        if(!concept)return;
-        if(concept.datum){var el=document.getElementById('gs-datum');if(el)el.value=concept.datum;}
-        if(concept.deelnemers){var el=document.getElementById('gs-deelnemers');if(el)el.value=concept.deelnemers;}
-        if(concept.type){var el=document.getElementById('gs-type');if(el)el.value=concept.type;}
-        if(concept.ruwe_notities){var el=document.getElementById('gs-notities');if(el)el.value=concept.ruwe_notities;}
-        if(concept.verslag){var el=document.getElementById('gs-verslag');if(el)el.value=concept.verslag;}
-        var ind=document.getElementById('gs-concept-ind');
-        var dt=new Date(concept.updated_at).toLocaleString('nl-NL',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
-        if(ind)ind.textContent='Concept geladen van '+dt;
-      }).catch(function(){});
-  }
-
   mo2.innerHTML='<div class="modal-title">'+(bestaand?'Gesprek bewerken':'Nieuw gesprek vastleggen')+'</div>'
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
     +'<div class="field"><label>Datum</label><input type="date" id="gs-datum" value="'+(g.datum||vandaag)+'"></div>'
@@ -3111,13 +3094,43 @@ function toonGesprekModal(trajectId, bestaand, onSaved){
     +'<div id="gs-err" style="display:none;color:var(--red);font-size:12px;margin-bottom:.5rem"></div>'
     +'<div style="display:flex;gap:10px;justify-content:flex-end">'
     +'<button class="btn-ghost" id="gs-ann">Annuleren</button>'
-    +'<div id="gs-concept-ind" style="font-size:10px;color:var(--muted);margin-bottom:.25rem;font-style:italic"></div>'
+    +'<div id="gs-concept-ind" style="font-size:10px;color:var(--muted);align-self:center;font-style:italic"></div>'
+    +'<button class="btn-ghost" id="gs-concept-btn" style="border-color:var(--teal);color:var(--teal)">&#128396; Opslaan als concept</button>'
     +'<button class="btn" id="gs-ok">&#128190; Definitief opslaan</button>'
     +'</div>';
 
   ov2.appendChild(mo2);document.body.appendChild(ov2);
   ov2.addEventListener('click',function(e){if(e.target===ov2)document.body.removeChild(ov2);});
   document.getElementById('gs-ann').addEventListener('click',function(){document.body.removeChild(ov2);});
+
+  // Laad concept NA renderen modal (DOM-elementen bestaan nu)
+  if(!bestaand){
+    fetch(WORKER+'/mna/gesprek/concept/'+trajectId)
+      .then(function(r){return r.json();})
+      .then(function(concept){
+        if(!concept||!concept.datum)return;
+        var el;
+        el=document.getElementById('gs-datum');if(el&&concept.datum)el.value=concept.datum;
+        el=document.getElementById('gs-deelnemers');if(el&&concept.deelnemers)el.value=concept.deelnemers;
+        el=document.getElementById('gs-type');if(el&&concept.type)el.value=concept.type;
+        el=document.getElementById('gs-notities');if(el&&concept.ruwe_notities)el.value=concept.ruwe_notities;
+        el=document.getElementById('gs-verslag');if(el&&concept.verslag)el.value=concept.verslag;
+        var ind=document.getElementById('gs-concept-ind');
+        if(ind&&concept.updated_at){
+          var dt=new Date(concept.updated_at).toLocaleString('nl-NL',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+          ind.textContent='Concept herladen van '+dt;
+        }
+      }).catch(function(){});
+  }
+  // Concept knop handler
+  var gsConceptBtn=document.getElementById('gs-concept-btn');
+  if(gsConceptBtn)gsConceptBtn.addEventListener('click',async function(){
+    var btn=this;btn.disabled=true;btn.textContent='Opslaan...';
+    await slaConceptGesprekOp();
+    toast('Concept opgeslagen.','ok');
+    btn.disabled=false;btn.textContent='&#128396; Opslaan als concept';
+  });
+
   // Auto-opslaan bij typen (debounced 2 sec)
   ['gs-datum','gs-deelnemers','gs-type','gs-notities','gs-verslag'].forEach(function(elId){
     var el=document.getElementById(elId);
