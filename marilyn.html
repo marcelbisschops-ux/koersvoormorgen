@@ -3056,7 +3056,8 @@ function toonGesprekModal(trajectId, bestaand, onSaved){
     + '<div id="gs-err" style="display:none;color:var(--red);font-size:12px;margin-bottom:.5rem"></div>'
     + '<div style="display:flex;gap:10px;justify-content:flex-end">'
     + '<button class="btn-ghost" id="gs-ann">Annuleren</button>'
-    + '<button class="btn-ghost" id="gs-concept-btn" style="border-color:var(--teal);color:var(--teal)">&#128396; Opslaan als concept</button>'
+    + '<button class="btn-ghost" id="gs-concept-btn" style="border-color:var(--teal);color:var(--teal)">✎ Opslaan als concept</button>'
+    + '<button class="btn-ghost" id="gs-vergrendel" style="border-color:var(--gold);color:var(--gold)" title="Gesprek op slot zetten — niet meer bewerkbaar">&#128274; Op slot</button>'
     + '<button class="btn" id="gs-ok">&#128190; Definitief opslaan</button>'
     + '</div>';
 
@@ -3105,16 +3106,20 @@ function toonGesprekModal(trajectId, bestaand, onSaved){
 
   // Concept knop
   mo2.querySelector('#gs-concept-btn').addEventListener('click', async function(){
-    var btn = this; btn.disabled=true; btn.textContent='Opslaan...';
+    var btn = this;
+    btn.style.opacity='.5'; btn.style.pointerEvents='none'; btn.textContent='Opslaan...';
     var r = await fetch(WORKER+'/mna/gesprek/concept', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify(leesVelden())
     }).then(function(x){ return x.json(); }).catch(function(){ return {}; });
     if (r.ok) {
       mo2.querySelector('#gs-concept-ind').textContent = 'Concept opgeslagen — ' + new Date().toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'});
-      toast('Concept opgeslagen.','ok');
-    } else { toast('Fout bij opslaan.','err'); }
-    btn.disabled=false; btn.textContent='&#128396; Opslaan als concept';
+      btn.textContent='✓ Opgeslagen';
+      setTimeout(function(){ btn.textContent='✎ Opslaan als concept'; btn.style.opacity=''; btn.style.pointerEvents=''; }, 2000);
+    } else {
+      toast('Fout bij opslaan.','err');
+      btn.textContent='✎ Opslaan als concept'; btn.style.opacity=''; btn.style.pointerEvents='';
+    }
   });
 
   // Auto-save bij typen
@@ -3178,6 +3183,35 @@ function toonGesprekModal(trajectId, bestaand, onSaved){
     } catch(e) {
       err.style.display='block'; err.textContent='Verbindingsfout.';
       btn.disabled=false; btn.textContent='&#128190; Definitief opslaan';
+    }
+  });
+
+  // Op slot zetten
+  mo2.querySelector('#gs-vergrendel').addEventListener('click', async function(){
+    if (!confirm('Dit gesprek op slot zetten? Het blijft zichtbaar maar is niet meer bewerkbaar.')) return;
+    var btn = this; btn.style.opacity='.5'; btn.style.pointerEvents='none';
+    var payload = leesVelden();
+    delete payload.code;
+    if (g.id) payload.id = g.id;
+    payload.vergrendeld = true;
+    try {
+      var r = await fetch(WORKER+'/mna/admin/gesprekken/'+trajectId, {
+        method:'POST', headers:{'Content-Type':'application/json','x-admin-key':adminKey},
+        body: JSON.stringify(payload)
+      });
+      var d = await r.json();
+      if (d.ok) {
+        fetch(WORKER+'/mna/gesprek/concept/delete/'+trajectId, {method:'POST'}).catch(function(){});
+        ov2.remove();
+        toast('Gesprek op slot gezet.','ok');
+        if (onSaved) onSaved();
+      } else {
+        toast('Fout: '+(d.error||'onbekend'),'err');
+        btn.style.opacity=''; btn.style.pointerEvents='';
+      }
+    } catch(e) {
+      toast('Verbindingsfout.','err');
+      btn.style.opacity=''; btn.style.pointerEvents='';
     }
   });
 }
