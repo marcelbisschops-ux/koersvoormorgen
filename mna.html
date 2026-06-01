@@ -2664,7 +2664,7 @@ function renderBegeleiderDashboard(app){
     }
 
     // Gesprek formulier voor begeleider in mna.html
-    function openBgGesprekForm(bestaand) {
+    window.openBgGesprekForm = function(bestaand) {
       var vandaag = new Date().toISOString().split('T')[0];
       var g = bestaand || {};
       var ov = document.createElement('div');
