@@ -3034,7 +3034,7 @@ function toonGesprekModal(trajectId, bestaand, onSaved){
       var type=document.getElementById('gs-type')?.value||'';
       var notities=document.getElementById('gs-notities')?.value||'';
       var verslag=document.getElementById('gs-verslag')?.value||'';
-      if(!datum&&!notities&&!verslag)return; // Niets te opslaan
+      if(!datum&&!notities&&!verslag&&!deelnemers)return; // Niets te opslaan
       await fetch(WORKER+'/mna/gesprek/concept',{
         method:'POST',
         headers:{'Content-Type':'application/json','x-admin-key':adminKey},
@@ -3108,7 +3108,7 @@ function toonGesprekModal(trajectId, bestaand, onSaved){
     fetch(WORKER+'/mna/gesprek/concept/'+trajectId)
       .then(function(r){return r.json();})
       .then(function(concept){
-        if(!concept||!concept.datum)return;
+        if(!concept||(concept.datum===undefined&&!concept.ruwe_notities&&!concept.verslag))return;
         var el;
         el=document.getElementById('gs-datum');if(el&&concept.datum)el.value=concept.datum;
         el=document.getElementById('gs-deelnemers');if(el&&concept.deelnemers)el.value=concept.deelnemers;
