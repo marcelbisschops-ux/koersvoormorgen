@@ -2802,6 +2802,26 @@ function renderBegeleiderDashboard(app){
       ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
       mo.querySelector('#bgg-ann').onclick = function(){document.body.removeChild(ov);};
 
+      // Laad opgeslagen concept als dit een nieuw gesprek is (geen bestaand id)
+      if (!g.id) {
+        fetch(WORKER+'/mna/gesprek/concept/'+S.code)
+          .then(function(r){return r.json();})
+          .then(function(concept){
+            if(!concept||!concept.datum)return;
+            var el;
+            el=document.getElementById('bgg-datum');if(el&&concept.datum)el.value=concept.datum;
+            el=document.getElementById('bgg-deelnemers');if(el&&concept.deelnemers)el.value=concept.deelnemers;
+            el=document.getElementById('bgg-type');if(el&&concept.type)el.value=concept.type;
+            el=document.getElementById('bgg-notities');if(el&&concept.ruwe_notities)el.value=concept.ruwe_notities;
+            el=document.getElementById('bgg-verslag');if(el&&concept.verslag)el.value=concept.verslag;
+            var ind=document.getElementById('bgg-concept-ind');
+            if(ind&&concept.updated_at){
+              var dt=new Date(concept.updated_at).toLocaleString('nl-NL',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+              ind.textContent='Concept herladen van '+dt;
+            }
+          }).catch(function(){});
+      }
+
       // Opname (Web Speech API)
       var bggRec=null, bggRecActief=false;
       var SpeechRec=window.SpeechRecognition||window.webkitSpeechRecognition;
@@ -4178,39 +4198,7 @@ function bindAll(){
     gesprekCoverBtn.onclick=function(){ openBgGesprekForm(null); };
   }
 
-      // Laad concept bij openen
-      fetch(WORKER+'/mna/gesprek/concept/'+S.code)
-        .then(function(r){return r.json();})
-        .then(function(concept){
-          if(!concept)return;
-          if(concept.datum){var el=document.getElementById('bg-gs-datum');if(el)el.value=concept.datum;}
-          if(concept.deelnemers){var el=document.getElementById('bg-gs-deelnemers');if(el)el.value=concept.deelnemers;}
-          if(concept.type){var el=document.getElementById('bg-gs-type');if(el)el.value=concept.type;}
-          if(concept.ruwe_notities){var el=document.getElementById('bg-gs-notities');if(el)el.value=concept.ruwe_notities;}
-          if(concept.verslag){var el=document.getElementById('bg-gs-verslag');if(el)el.value=concept.verslag;}
-          var ind=document.getElementById('bg-gs-concept-ind');
-          if(ind){var dt=new Date(concept.updated_at).toLocaleString('nl-NL',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});ind.textContent='Concept geladen van '+dt;}
-        }).catch(function(){});
 
-      // Auto-opslaan debounced
-      var bgConceptTimer=null;
-      function bgSlaConceptOp(){
-        try{
-          var datum=document.getElementById('bg-gs-datum')?.value||'';
-          var notities=document.getElementById('bg-gs-notities')?.value||'';
-          var verslag=document.getElementById('bg-gs-verslag')?.value||'';
-          if(!datum&&!notities&&!verslag)return;
-          fetch(WORKER+'/mna/gesprek/concept',{method:'POST',headers:{'Content-Type':'application/json'},
-            body:JSON.stringify({code:S.code,datum:datum,deelnemers:document.getElementById('bg-gs-deelnemers')?.value||'',type:document.getElementById('bg-gs-type')?.value||'',ruwe_notities:notities,verslag:verslag,auteur:S.traject&&S.traject.begeleider_naam||'Begeleider'})
-          });
-          var ind=document.getElementById('bg-gs-concept-ind');
-          if(ind)ind.textContent='Concept opgeslagen '+new Date().toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'});
-        }catch(e){}
-      }
-      ['bg-gs-datum','bg-gs-deelnemers','bg-gs-type','bg-gs-notities','bg-gs-verslag'].forEach(function(elId){
-        var el=document.getElementById(elId);
-        if(el)el.addEventListener('input',function(){clearTimeout(bgConceptTimer);bgConceptTimer=setTimeout(bgSlaConceptOp,2000);});
-      });
 
       document.getElementById('bg-gs-ok').onclick=async function(){
         var datum=document.getElementById('bg-gs-datum').value;
