@@ -2791,18 +2791,11 @@ function renderBegeleiderDashboard(app){
         var st = mo.querySelector('#bgg-ai-st');
         if (!notities) { st.textContent='Voer eerst notities in.'; return; }
         this.disabled=true; st.textContent='Genereren...';
-        var prompt = 'Maak professioneel gespreksverslag M&A traject.
-
-Gesprek: '
+                var prompt = 'Maak professioneel gespreksverslag M&A traject.\n\nGesprek: '
           + mo.querySelector('#bgg-type').value + ' | Datum: ' + mo.querySelector('#bgg-datum').value
           + ' | Deelnemers: ' + (mo.querySelector('#bgg-deelnemers').value||'onbekend')
-          + '
-
-NOTITIES:
-' + notities
-          + '
-
-Formaat: ## Samenvatting, ## Besproken punten, ## Beslissingen, ## Actiepunten, ## Volgende stap';
+          + '\n\nNOTITIES:\n' + notities
+          + '\n\nFormaat: ## Samenvatting, ## Besproken punten, ## Beslissingen, ## Actiepunten, ## Volgende stap';
         var rd = await fetch(WORKER+'/ai', {method:'POST',headers:{'Content-Type':'application/json'},
           body: JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:1500})
         }).then(function(r){ return r.json(); }).catch(function(){ return {}; });
@@ -2833,7 +2826,7 @@ Formaat: ## Samenvatting, ## Besproken punten, ## Beslissingen, ## Actiepunten, 
           btn.disabled=false; btn.textContent='&#128190; Definitief opslaan';
         }
       };
-    }    }
+    }
 
     laadBgGesprekken();
   }
