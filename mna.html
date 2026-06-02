@@ -2305,7 +2305,7 @@ function renderBegeleiderDashboard(app){
   document.getElementById('bg-bem-actie').onclick=function(){ toonDocWaarschuwing('bem', function(){ bgDoc('bem'); }); };
   document.getElementById('bg-excl-actie').onclick=function(){ toonDocWaarschuwing('excl', function(){ bgDoc('excl'); }); };
 
-  document.getElementById('bg-gesprek-actie').onclick=function(){ openBgGesprekForm(null); };
+  // gesprek knop tijdelijk verwijderd
 
 
   // AI analyse
@@ -2627,9 +2627,7 @@ function renderBegeleiderDashboard(app){
         gsEl.innerHTML = html;
 
         // Nieuw gesprek knop
-        gsEl.querySelector('#bg-nieuw-gesprek-btn').onclick = function(){
-          openBgGesprekForm(null);
-        };
+        // bg-nieuw-gesprek-btn tijdelijk verwijderd
 
         // Zichtbaarheid direct aanpassen
         gsEl.querySelectorAll('.bg-gs-zicht-sel').forEach(function(sel){
@@ -4034,10 +4032,7 @@ function bindAll(){
   }
 
   // ── BEGELEIDER GESPREK VASTLEGGEN ────────────────────────────
-  var gesprekCoverBtn=ge('gesprek-btn-cover');
-  if(gesprekCoverBtn&&isTussen()){
-    gesprekCoverBtn.onclick=function(){ openBgGesprekForm(null); };
-  }
+  // gesprek-btn-cover tijdelijk verwijderd
 
       // Laad concept bij openen
       fetch(WORKER+'/mna/gesprek/concept/'+(S.traject&&S.traject.id||S.code))

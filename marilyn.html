@@ -2807,15 +2807,13 @@ async function toonDetail(id,naam){
       gesprekkenBody.querySelectorAll('.gesprek-del-btn').forEach(function(btn){
         btn.addEventListener('click',async function(e){e.stopPropagation();if(!confirm('Gesprek verwijderen?'))return;await fetch(WORKER+'/mna/admin/gesprek/delete/'+btn.dataset.gid+'?key='+encodeURIComponent(adminKey),{method:'POST'});laadGesprekken();});
       });
-      gesprekkenBody.querySelectorAll('.gesprek-bewerk-btn').forEach(function(btn){
-        btn.addEventListener('click',function(e){e.stopPropagation();var g2=lijst.find(function(x){return x.id===btn.dataset.gid;});if(g2)toonGesprekModal(id,g2,laadGesprekken);});
-      });
+      // bewerk knop tijdelijk verwijderd
     }catch(e){gesprekkenBody.innerHTML='<div style="color:var(--red);font-size:12px">Fout: '+e.message+'</div>';}
   }
   laadGesprekken();
 
   var nieuwGesprekBtn=document.getElementById('btn-nieuw-gesprek');
-  if(nieuwGesprekBtn)nieuwGesprekBtn.addEventListener('click',function(){toonGesprekModal(id,null,laadGesprekken);});
+  // nieuwGesprekBtn tijdelijk verwijderd
 
   // Q&A laden en beantwoorden
   var qaBtn=document.getElementById('btn-laad-qa');
@@ -3017,172 +3015,7 @@ async function toonBewerkModal(id, naam){
 }
 
 
-function toonGesprekModal(trajectId, bestaand, onSaved){
-  var vandaag = new Date().toISOString().split('T')[0];
-  var g = bestaand || {};
-
-  var ov2 = document.createElement('div'); ov2.className = 'overlay';
-  var mo2 = document.createElement('div'); mo2.className = 'modal'; mo2.style.maxWidth = '680px';
-
-  mo2.innerHTML = ''
-    + '<div class="modal-title">' + (g.id ? 'Gesprek bewerken' : 'Nieuw gesprek vastleggen') + '</div>'
-    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
-    + '<div class="field"><label>Datum</label><input type="date" id="gs-datum" value="' + (g.datum||vandaag) + '"></div>'
-    + '<div class="field"><label>Type</label><select id="gs-type">'
-    + '<option value="gesprek"'+(g.type==='gesprek'?' selected':'')+'>Gesprek</option>'
-    + '<option value="kennismaking"'+(g.type==='kennismaking'?' selected':'')+'>Kennismaking</option>'
-    + '<option value="onderhandeling"'+(g.type==='onderhandeling'?' selected':'')+'>Onderhandeling</option>'
-    + '<option value="vergadering"'+(g.type==='vergadering'?' selected':'')+'>Vergadering</option>'
-    + '<option value="telefonisch"'+(g.type==='telefonisch'?' selected':'')+'>Telefonisch overleg</option>'
-    + '<option value="email"'+(g.type==='email'?' selected':'')+'>E-mailwisseling</option>'
-    + '<option value="andere"'+(g.type==='andere'?' selected':'')+'>Overig</option>'
-    + '</select></div></div>'
-    + '<div class="field"><label>Deelnemers</label><input type="text" id="gs-deelnemers" placeholder="bijv. naam deelnemer" value="'+esc(g.deelnemers||'')+'"></div>'
-    + '<div class="field"><label>Zichtbaar voor</label><select id="gs-zichtbaar">'
-    + '<option value="begeleider"'+((!g.zichtbaar_voor||g.zichtbaar_voor==="begeleider")?" selected":"")+'>Alleen begeleider (intern)</option>'
-    + '<option value="verkoper"'+(g.zichtbaar_voor==="verkoper"?" selected":"")+'>Verkoper</option>'
-    + '<option value="koper"'+(g.zichtbaar_voor==="koper"?" selected":"")+'>Koper</option>'
-    + '<option value="iedereen"'+(g.zichtbaar_voor==="iedereen"?" selected":"")+'>Alle partijen</option>'
-    + '</select></div>'
-    + '<div class="field"><label>Notities / aantekeningen</label>'
-    + '<textarea id="gs-notities" rows="5" placeholder="Ruwe notities..." style="font-size:13px;line-height:1.7">'+esc(g.ruwe_notities||'')+'</textarea></div>'
-    + '<div class="field"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><label style="margin-bottom:0">Verslag</label><button id="gs-wis-verslag" style="font-size:10px;padding:2px 8px;border:1px solid var(--red);border-radius:var(--r);background:transparent;color:var(--red);cursor:pointer">&#128465; Wissen</button></div>'
-    + '<textarea id="gs-verslag" rows="6" placeholder="Gespreksverslag..." style="font-size:12px;line-height:1.7;font-family:IBM Plex Mono,monospace">'+esc(g.verslag||'')+'</textarea></div>'
-    + '<div style="display:flex;gap:8px;margin:10px 0">'
-    + '<button class="btn-ghost" id="gs-ai-btn" style="font-size:12px;padding:6px 14px;color:var(--teal);border-color:var(--teal)">&#9881; AI-verslag genereren</button>'
-    + '<span id="gs-ai-status" style="font-size:12px;color:var(--muted);align-self:center"></span>'
-    + '</div>'
-
-    + '<div id="gs-err" style="display:none;color:var(--red);font-size:12px;margin-bottom:.5rem"></div>'
-    + '<div style="display:flex;gap:10px;justify-content:flex-end">'
-    + '<button class="btn-ghost" id="gs-ann">Annuleren</button>'
-    + '<button class="btn-ghost" id="gs-vergrendel" style="border-color:var(--gold);color:var(--gold)" title="Op slot zetten">&#128274; Op slot</button>'
-    + '<button class="btn" id="gs-ok">&#128190; Opslaan</button>'
-    + '</div>';
-
-  ov2.appendChild(mo2); document.body.appendChild(ov2);
-  ov2.addEventListener('click', function(e){ if(e.target===ov2) ov2.remove(); });
-  mo2.querySelector('#gs-ann').addEventListener('click', function(){ ov2.remove(); });
-
-  // Laad concept bij nieuw gesprek
-  if (!bestaand) {
-    fetch(WORKER+'/mna/gesprek/concept/'+trajectId)
-      .then(function(r){ return r.json(); })
-      .then(function(c){
-        if (!c || (!c.datum && !c.ruwe_notities && !c.verslag)) return;
-        if (c.datum) mo2.querySelector('#gs-datum').value = c.datum;
-        if (c.deelnemers) mo2.querySelector('#gs-deelnemers').value = c.deelnemers;
-        if (c.type) mo2.querySelector('#gs-type').value = c.type;
-        if (c.ruwe_notities) mo2.querySelector('#gs-notities').value = c.ruwe_notities;
-        if (c.verslag) mo2.querySelector('#gs-verslag').value = c.verslag;
-        var ind = mo2.querySelector('#gs-concept-ind');
-        if (ind && c.updated_at) {
-          var dt = new Date(c.updated_at).toLocaleString('nl-NL',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
-          ind.textContent = 'Concept herladen van ' + dt;
-        }
-      }).catch(function(){});
-  }
-
-  // Helper: lees velden
-  function leesVelden() {
-    return {
-      code: trajectId,
-      datum: mo2.querySelector('#gs-datum').value,
-      deelnemers: mo2.querySelector('#gs-deelnemers').value.trim(),
-      type: mo2.querySelector('#gs-type').value,
-      ruwe_notities: mo2.querySelector('#gs-notities').value.trim(),
-      verslag: mo2.querySelector('#gs-verslag').value.trim(),
-      zichtbaar_voor: mo2.querySelector('#gs-zichtbaar').value,
-      auteur: 'Marcel Bisschops'
-    };
-  }
-
-  // Verslag wissen
-  mo2.querySelector('#gs-wis-verslag').addEventListener('click', function(){
-    if (!confirm('Verslag leegmaken?')) return;
-    mo2.querySelector('#gs-verslag').value = '';
-  });
-
-  // AI-verslag genereren
-  mo2.querySelector('#gs-ai-btn').addEventListener('click', async function(){
-    var notities = mo2.querySelector('#gs-notities').value.trim();
-    var st = mo2.querySelector('#gs-ai-status');
-    if (!notities) { st.textContent='Voer notities in.'; return; }
-    this.disabled=true; st.textContent='Genereren...';
-    var prompt = 'Maak professioneel gespreksverslag M&A traject.\n\nGesprek: '
-      + mo2.querySelector('#gs-type').value + ' | Datum: ' + mo2.querySelector('#gs-datum').value
-      + ' | Deelnemers: ' + (mo2.querySelector('#gs-deelnemers').value||'onbekend')
-      + '\n\nNOTITIES:\n' + notities
-      + '\n\nFormaat: ## Samenvatting, ## Besproken punten, ## Beslissingen, ## Actiepunten, ## Volgende stap';
-    var rd = await fetch(WORKER+'/ai', {method:'POST',headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:1500})
-    }).then(function(r){ return r.json(); }).catch(function(){ return {}; });
-    mo2.querySelector('#gs-verslag').value = rd.text||'';
-    this.disabled=false; st.textContent='✓ Verslag gegenereerd';
-  });
-
-  // Definitief opslaan
-  mo2.querySelector('#gs-ok').addEventListener('click', async function(){
-    var datum = mo2.querySelector('#gs-datum').value;
-    var err = mo2.querySelector('#gs-err'); err.style.display='none';
-    if (!datum) { err.style.display='block'; err.textContent='Datum is verplicht.'; return; }
-    var btn = this; btn.disabled=true; btn.textContent='Opslaan...';
-    var payload = leesVelden();
-    delete payload.code;
-    if (g.id) payload.id = g.id;
-    try {
-      var r = await fetch(WORKER+'/mna/admin/gesprekken/'+trajectId, {
-        method:'POST', headers:{'Content-Type':'application/json','x-admin-key':adminKey},
-        body: JSON.stringify(payload)
-      });
-      var d = await r.json();
-      if (d.ok) {
-        fetch(WORKER+'/mna/gesprek/concept/delete/'+trajectId, {method:'POST'}).catch(function(){});
-        ov2.remove();
-        if (onSaved) onSaved();
-      } else {
-        err.style.display='block'; err.textContent='Fout: '+(d.error||'onbekend');
-        btn.disabled=false; btn.textContent='&#128190; Opslaan';
-      }
-    } catch(e) {
-      err.style.display='block'; err.textContent='Verbindingsfout.';
-      btn.disabled=false; btn.textContent='&#128190; Opslaan';
-    }
-  });
-
-  // Op slot zetten
-  mo2.querySelector('#gs-vergrendel').addEventListener('click', async function(){
-    if (!confirm('Dit gesprek op slot zetten? Het blijft zichtbaar maar is niet meer bewerkbaar.')) return;
-    var datum = mo2.querySelector('#gs-datum').value;
-    var err = mo2.querySelector('#gs-err'); err.style.display='none';
-    if (!datum) { err.style.display='block'; err.textContent='Datum is verplicht.'; return; }
-    var btn = this; btn.style.opacity='.6'; btn.style.pointerEvents='none';
-    var payload = leesVelden();
-    delete payload.code;
-    payload.vergrendeld = true;
-    if (g.id) payload.id = g.id;
-    try {
-      var r = await fetch(WORKER+'/mna/admin/gesprekken/'+trajectId, {
-        method:'POST', headers:{'Content-Type':'application/json','x-admin-key':adminKey},
-        body: JSON.stringify(payload)
-      });
-      var d = await r.json();
-      if (d.ok) {
-        fetch(WORKER+'/mna/gesprek/concept/delete/'+trajectId, {method:'POST'}).catch(function(){});
-        ov2.remove();
-        toast('Gesprek op slot gezet.','ok');
-        if (onSaved) onSaved();
-      } else {
-        err.style.display='block'; err.textContent='Fout: '+(d.error||'onbekend');
-        btn.style.opacity=''; btn.style.pointerEvents='';
-      }
-    } catch(e) {
-      err.style.display='block'; err.textContent='Verbindingsfout.';
-      btn.style.opacity=''; btn.style.pointerEvents='';
-    }
-  });
-}
-
+// toonGesprekModal verwijderd
 function toonBegeleiderModal(trajectId, trajectNaam, tussenCode){
   var ov=document.createElement('div');ov.className='overlay';
   var mo=document.createElement('div');mo.style.cssText='background:#fff;border:1px solid #c8c5bc;border-radius:10px;padding:1.75rem;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.25);max-height:90vh;overflow-y:auto;max-width:500px';
