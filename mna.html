@@ -964,7 +964,7 @@ async function uploadDocument(faseId, file) {
   var maxSize = 20 * 1024 * 1024;
   if (file.size > maxSize) { toast('Bestand te groot (max 20MB). Huidig: ' + Math.round(file.size/1024/1024) + 'MB','warn'); return; }
 
-  // Show uploading state
+  // Toon uploading spinner
   if (!DOCS[faseId]) DOCS[faseId] = [];
   var tempId = 'uploading_' + Date.now();
   DOCS[faseId].unshift({ id: tempId, naam: file.name, type: file.type, grootte: file.size, analyse: '', velden: {}, uploading: true });
@@ -973,55 +973,74 @@ async function uploadDocument(faseId, file) {
   var formData = new FormData();
   formData.append('file', file);
   var bewaar = S.traject && S.traject.bewaar_docs !== false;
-  var url = WORKER + '/mna/document/upload?code=' + S.code + '&fase_id=' + faseId + '&bewaar=' + bewaar;
+  var uploadUrl = WORKER + '/mna/document/upload?code=' + S.code + '&fase_id=' + faseId + '&bewaar=' + bewaar;
 
   try {
-    var resp = await fetch(url, { method: 'POST', body: formData });
+    var resp = await fetch(uploadUrl, { method: 'POST', body: formData });
     var d = await resp.json();
-    if (d.ok) {
-      // Replace temp with real
+
+    if (!d.ok) {
       DOCS[faseId] = DOCS[faseId].filter(function(x){ return x.id !== tempId; });
-      DOCS[faseId].unshift({
-        id: d.doc_id, naam: file.name, type: file.type, grootte: file.size,
-        analyse: d.analyse, velden: d.veld_extractie || {}, bewaard: !!d.r2_opgeslagen,
-        uploaded_at: Date.now(), uploading: false, verworpen: !!d.verworpen, verworpen_reden: d.verworpen_reden||null
-      });
-      if (d.veld_extractie) {
-        S._conflicts=[];
-        autoFillFromExtraction(faseId, d.veld_extractie, false, file.name);
-        if(S._conflicts&&S._conflicts.length){
-          renderApp();setTimeout(toonConflictDialog,300);
-        }else{markDirty();renderApp();schedSave();}
-      }
-      // Toon crosscheck waarschuwingen
-      if((d.crosschecks&&d.crosschecks.length)||(d.entiteit_naam&&S.traject&&S.traject.kantoor_naam)){
-        var msgs=[];
-        // Entiteit check
-        if(d.entiteit_naam&&S.traject&&S.traject.kantoor_naam){
-          var n1=(d.entiteit_naam||'').toLowerCase(),n2=(S.traject.kantoor_naam||'').toLowerCase();
-          if(!n1.includes(n2.split(' ')[0])&&!n2.includes(n1.split(' ')[0]))
-            msgs.push('⚠ Entiteit in document ("'+d.entiteit_naam+'") wijkt af van kantoornaam ("'+S.traject.kantoor_naam+'")');
-        }
-        if(d.crosschecks)msgs=msgs.concat(d.crosschecks);
-        if(msgs.length){
-          var md='<div style="background:#fff8f0;border:1px solid #e8a84c;border-radius:6px;padding:.75rem;margin:.5rem 0">'
-            +'<div style="font-size:11px;font-weight:600;color:#8a5a00;margin-bottom:.4rem">⚠ Aandachtspunten bij '+esc(file.name)+'</div>'
-            +msgs.map(function(m){return '<div style="font-size:12px;color:#5a4010;padding:2px 0">• '+esc(m)+'</div>';}).join('')
-            +'</div>';
-          // Toon onder de upload zone
-          var uz=document.getElementById('upload-zone-'+faseId);
-          if(uz){var w=document.createElement('div');w.innerHTML=md;uz.parentNode.insertBefore(w,uz.nextSibling);}
-        }
-      }
-    } else {
-      DOCS[faseId] = DOCS[faseId].filter(function(x){ return x.id !== tempId; });
-      toast('Upload fout: ' + (d.error || 'onbekend'),'err');
+      toast('Upload fout: ' + (d.error || 'onbekend'), 'err');
+      renderApp();
+      return;
     }
+
+    // Upload gelukt — vervang temp door doc met 'analyseren...' staat
+    var docId = d.doc_id;
+    DOCS[faseId] = DOCS[faseId].filter(function(x){ return x.id !== tempId; });
+    DOCS[faseId].unshift({
+      id: docId, naam: file.name, type: file.type, grootte: file.size,
+      analyse: 'analyseren...', velden: {}, bewaard: !!d.r2_opgeslagen,
+      uploaded_at: Date.now(), uploading: true // blijft spinning totdat analyse klaar is
+    });
+    renderApp();
+
+    // Poll totdat analyse klaar is (max 60 sec, elke 2 sec)
+    var maxPolls = 30;
+    var polls = 0;
+    var pollInterval = setInterval(async function() {
+      polls++;
+      try {
+        var sr = await fetch(WORKER + '/mna/document/status/' + docId);
+        var sd = await sr.json();
+
+        if (!sd.pending || polls >= maxPolls) {
+          clearInterval(pollInterval);
+
+          // Update doc in DOCS
+          var idx = DOCS[faseId] ? DOCS[faseId].findIndex(function(x){ return x.id === docId; }) : -1;
+          if (idx > -1) {
+            DOCS[faseId][idx].uploading = false;
+            DOCS[faseId][idx].analyse = sd.analyse || '';
+            DOCS[faseId][idx].velden = sd.veld_extractie || {};
+          }
+
+          // Vul velden in als er extractie is
+          if (sd.veld_extractie && Object.keys(sd.veld_extractie).length) {
+            S._conflicts = [];
+            autoFillFromExtraction(faseId, sd.veld_extractie, false, file.name);
+            if (S._conflicts && S._conflicts.length) {
+              renderApp(); setTimeout(toonConflictDialog, 300);
+            } else {
+              markDirty(); renderApp(); schedSave();
+            }
+          } else {
+            renderApp();
+          }
+
+          if (polls >= maxPolls) toast('Analyse duurde te lang — document opgeslagen, probeer later opnieuw.', 'warn');
+        }
+      } catch(e) {
+        // poll fout — gewoon doorgaan
+      }
+    }, 2000);
+
   } catch(e) {
     DOCS[faseId] = DOCS[faseId].filter(function(x){ return x.id !== tempId; });
-    toast('Verbindingsfout bij uploaden.','err');
+    toast('Verbindingsfout bij uploaden.', 'err');
+    renderApp();
   }
-  renderApp();
 }
 
 // Centrale upload: verwerk bestanden en laat AI alle fases invullen
