@@ -964,7 +964,6 @@ async function uploadDocument(faseId, file) {
   var maxSize = 20 * 1024 * 1024;
   if (file.size > maxSize) { toast('Bestand te groot (max 20MB). Huidig: ' + Math.round(file.size/1024/1024) + 'MB','warn'); return; }
 
-  // Toon uploading spinner
   if (!DOCS[faseId]) DOCS[faseId] = [];
   var tempId = 'uploading_' + Date.now();
   DOCS[faseId].unshift({ id: tempId, naam: file.name, type: file.type, grootte: file.size, analyse: '', velden: {}, uploading: true });
@@ -973,69 +972,34 @@ async function uploadDocument(faseId, file) {
   var formData = new FormData();
   formData.append('file', file);
   var bewaar = S.traject && S.traject.bewaar_docs !== false;
-  var uploadUrl = WORKER + '/mna/document/upload?code=' + S.code + '&fase_id=' + faseId + '&bewaar=' + bewaar;
+  var url = WORKER + '/mna/document/upload?code=' + S.code + '&fase_id=' + faseId + '&bewaar=' + bewaar;
 
   try {
-    var resp = await fetch(uploadUrl, { method: 'POST', body: formData });
+    var resp = await fetch(url, { method: 'POST', body: formData });
     var d = await resp.json();
-
-    if (!d.ok) {
+    if (d.ok) {
+      DOCS[faseId] = DOCS[faseId].filter(function(x){ return x.id !== tempId; });
+      DOCS[faseId].unshift({
+        id: d.doc_id, naam: file.name, type: file.type, grootte: file.size,
+        analyse: d.analyse, velden: d.veld_extractie || {}, bewaard: !!d.r2_opgeslagen,
+        uploaded_at: Date.now(), uploading: false
+      });
+      if (d.veld_extractie && Object.keys(d.veld_extractie).length) {
+        S._conflicts = [];
+        autoFillFromExtraction(faseId, d.veld_extractie, false, file.name);
+        if (S._conflicts && S._conflicts.length) {
+          renderApp(); setTimeout(toonConflictDialog, 300);
+        } else {
+          markDirty(); renderApp(); schedSave();
+        }
+      } else {
+        renderApp();
+      }
+    } else {
       DOCS[faseId] = DOCS[faseId].filter(function(x){ return x.id !== tempId; });
       toast('Upload fout: ' + (d.error || 'onbekend'), 'err');
       renderApp();
-      return;
     }
-
-    // Upload gelukt — vervang temp door doc met 'analyseren...' staat
-    var docId = d.doc_id;
-    DOCS[faseId] = DOCS[faseId].filter(function(x){ return x.id !== tempId; });
-    DOCS[faseId].unshift({
-      id: docId, naam: file.name, type: file.type, grootte: file.size,
-      analyse: 'analyseren...', velden: {}, bewaard: !!d.r2_opgeslagen,
-      uploaded_at: Date.now(), uploading: true // blijft spinning totdat analyse klaar is
-    });
-    renderApp();
-
-    // Poll totdat analyse klaar is (max 60 sec, elke 2 sec)
-    var maxPolls = 30;
-    var polls = 0;
-    var pollInterval = setInterval(async function() {
-      polls++;
-      try {
-        var sr = await fetch(WORKER + '/mna/document/status/' + docId);
-        var sd = await sr.json();
-
-        if (!sd.pending || polls >= maxPolls) {
-          clearInterval(pollInterval);
-
-          // Update doc in DOCS
-          var idx = DOCS[faseId] ? DOCS[faseId].findIndex(function(x){ return x.id === docId; }) : -1;
-          if (idx > -1) {
-            DOCS[faseId][idx].uploading = false;
-            DOCS[faseId][idx].analyse = sd.analyse || '';
-            DOCS[faseId][idx].velden = sd.veld_extractie || {};
-          }
-
-          // Vul velden in als er extractie is
-          if (sd.veld_extractie && Object.keys(sd.veld_extractie).length) {
-            S._conflicts = [];
-            autoFillFromExtraction(faseId, sd.veld_extractie, false, file.name);
-            if (S._conflicts && S._conflicts.length) {
-              renderApp(); setTimeout(toonConflictDialog, 300);
-            } else {
-              markDirty(); renderApp(); schedSave();
-            }
-          } else {
-            renderApp();
-          }
-
-          if (polls >= maxPolls) toast('Analyse duurde te lang — document opgeslagen, probeer later opnieuw.', 'warn');
-        }
-      } catch(e) {
-        // poll fout — gewoon doorgaan
-      }
-    }, 2000);
-
   } catch(e) {
     DOCS[faseId] = DOCS[faseId].filter(function(x){ return x.id !== tempId; });
     toast('Verbindingsfout bij uploaden.', 'err');
