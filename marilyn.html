@@ -4066,6 +4066,21 @@ function gesprekkenModule(config) {
     }
 
     // Handlers
+
+    // Verwijderen — ook bij vergrendeld gesprek (admin/marilyn only)
+    var delBtn = wrap.querySelector('#gm-delete');
+    if (delBtn) delBtn.onclick = async function() {
+      if (!confirm('Gesprek verwijderen? Dit kan niet ongedaan worden gemaakt.')) return;
+      try {
+        await fetch(WORKER+'/mna/admin/gesprek/delete/'+g.id+'?key='+encodeURIComponent(authValue), {method:'POST'});
+        alleGesprekken = alleGesprekken.filter(function(x){ return x.id !== g.id; });
+        huidigGesprek = null;
+        renderLijst();
+        wrap.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--muted,#888);font-size:13px">Selecteer een gesprek of maak een nieuw aan</div>';
+        toast('Gesprek verwijderd','ok');
+      } catch(e) { toast('Fout bij verwijderen','err'); }
+    };
+
     if (vergrendeld) return;
 
     // AI verslag
@@ -4103,20 +4118,6 @@ function gesprekkenModule(config) {
         await uploadBijlage(g.id, this.files[i]);
       }
       this.value = '';
-    };
-
-    // Verwijderen
-    var delBtn = wrap.querySelector('#gm-delete');
-    if (delBtn) delBtn.onclick = async function() {
-      if (!confirm('Gesprek verwijderen? Dit kan niet ongedaan worden gemaakt.')) return;
-      try {
-        await fetch(WORKER+'/mna/admin/gesprek/delete/'+g.id+'?key='+encodeURIComponent(authValue), {method:'POST'});
-        alleGesprekken = alleGesprekken.filter(function(x){ return x.id !== g.id; });
-        huidigGesprek = null;
-        renderLijst();
-        wrap.querySelector('#gm-form-wrap') ? wrap.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--muted,#888);font-size:13px">Selecteer een gesprek of maak een nieuw aan</div>' : null;
-        toast('Gesprek verwijderd','ok');
-      } catch(e) { toast('Fout bij verwijderen','err'); }
     };
 
     // Opslaan
