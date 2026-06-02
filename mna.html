@@ -3248,6 +3248,7 @@ function renderMain(){
       return; // Sla geblokkeerde velden over
     }
     var val=S.data[f.id+'_'+df.id]||'';
+    var ref=S.docRefs&&S.docRefs[f.id+'_'+df.id]||null;
     var missing=S.showValidation&&df.req&&!val.trim();
     // Check of dit veld een openstaand conflict heeft
     var hasConflict=S._pendingConflicts&&S._pendingConflicts[f.id+'_'+df.id];
