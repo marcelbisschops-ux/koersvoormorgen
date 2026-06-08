@@ -1747,42 +1747,7 @@ async function toonDetail(id,naam){
             else toast(d.error||'Fout bij verwijderen.','err');
           });
         });
-        if(!versies.length) return;
-        var docLabels2=docLabels;
-        var html='<div style="display:flex;flex-direction:column;gap:6px">';
-        versies.forEach(function(v){
-          var dt=new Date(v.created_at).toLocaleString('nl-NL',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
-          var ontvangers=[];try{ontvangers=JSON.parse(v.verstuurd_naar||'[]');}catch(e){}
-          var kleur=docKleuren[v.doc_type]||'var(--teal)';
-          html+='<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:.6rem 1rem;display:flex;align-items:center;gap:10px;flex-wrap:wrap">'
-            +'<span style="font-size:11px;font-weight:600;color:'+kleur+';min-width:140px">'+(docLabels[v.doc_type]||v.doc_type)+' v'+v.versie+'</span>'
-            +'<span style="font-size:11px;color:var(--muted)">'+dt+'</span>'
-            +'<span style="font-size:11px;color:var(--mid)">→ '+esc(ontvangers.join(', '))+'</span>'
-            +'<button class="btn-ghost versie-open-btn" data-id="'+v.id+'" style="font-size:10px;padding:2px 10px;margin-left:auto">&#128065; Bekijk</button>'
-            +'</div>';
-        });
-        html+='</div>';
-        vBody.innerHTML=html;
-        vBody.querySelectorAll('.versie-open-btn').forEach(function(b){
-          b.addEventListener('click',async function(){
-            var vr2=await fetch(WORKER+'/mna/versie/'+b.dataset.id+'?key='+encodeURIComponent(adminKey));
-            var vd=await vr2.json();
-            var ov2=document.createElement('div');ov2.className='overlay';ov2.style.zIndex='200';
-            var mo2=document.createElement('div');mo2.className='modal';mo2.style.maxWidth='750px';
-            var dt2=new Date(vd.created_at).toLocaleString('nl-NL',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
-            mo2.innerHTML='<div class="modal-title">'+(docLabels[vd.doc_type]||vd.doc_type)+' — Versie '+vd.versie+'</div>'
-              +'<div style="font-size:11px;color:var(--muted);margin-bottom:1rem">Verstuurd: '+dt2+' door '+esc(vd.verstuurd_door||'onbekend')+'</div>'
-              +'<textarea style="width:100%;height:400px;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:Georgia,serif;font-size:12px;line-height:1.8;padding:1rem;outline:none;resize:vertical" readonly>'+esc(vd.tekst||'')+'</textarea>'
-              +'<div style="display:flex;gap:8px;margin-top:.75rem;justify-content:flex-end">'
-              +'<button class="btn-ghost versie-print" style="font-size:12px;padding:6px 14px">&#128196; Print / PDF</button>'
-              +'<button class="btn-ghost" id="v-sluit" style="font-size:12px;padding:6px 14px">Sluiten</button>'
-              +'</div>';
-            ov2.appendChild(mo2);document.body.appendChild(ov2);
-            ov2.addEventListener('click',function(e){if(e.target===ov2)document.body.removeChild(ov2);});
-            mo2.querySelector('#v-sluit').addEventListener('click',function(){document.body.removeChild(ov2);});
-            mo2.querySelector('.versie-print').addEventListener('click',function(){var win=window.open('','_blank');win.document.write('<html><head><style>body{font-family:Georgia,serif;font-size:13px;line-height:1.9;max-width:700px;margin:2cm auto;color:#2a2825}</style></head><body><p>'+(vd.tekst||'').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>')+'</p></body></html>');win.document.close();win.print();});
-          });
-        });
+
       }catch(e){vBody.innerHTML='<div style="color:var(--red);font-size:12px">Fout: '+e.message+'</div>';}
     });
 
