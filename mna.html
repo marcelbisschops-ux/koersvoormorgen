@@ -968,10 +968,11 @@ async function uploadDocument(faseId, file) {
   if (!DOCS[faseId]) DOCS[faseId] = [];
   var tempId = 'uploading_' + Date.now();
   DOCS[faseId].unshift({ id: tempId, naam: file.name, type: file.type, grootte: file.size, analyse: '', velden: {}, uploading: true });
-  renderApp();
+  try { renderApp(); } catch(renderErr) { toast('renderApp fout: ' + renderErr.message, 'err', 8000); }
 
   var bewaar = S.traject && S.traject.bewaar_docs !== false;
   var url = WORKER + '/mna/document/upload?code=' + S.code + '&fase_id=' + faseId + '&bewaar=' + bewaar;
+  toast('Fetch start: ' + url, 'info', 8000);
 
   try {
     var formData = new FormData();
