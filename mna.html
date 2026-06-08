@@ -968,12 +968,10 @@ async function uploadDocument(faseId, file) {
   if (!DOCS[faseId]) DOCS[faseId] = [];
   var tempId = 'uploading_' + Date.now();
   DOCS[faseId].unshift({ id: tempId, naam: file.name, type: file.type, grootte: file.size, analyse: '', velden: {}, uploading: true });
-  try { renderApp(); } catch(renderErr) { toast('renderApp fout: ' + renderErr.message, 'err', 8000); }
+  renderApp();
 
   var bewaar = S.traject && S.traject.bewaar_docs !== false;
   var url = WORKER + '/mna/document/upload?code=' + S.code + '&fase_id=' + faseId + '&bewaar=' + bewaar;
-  toast('Fetch start: ' + url, 'info', 8000);
-
   try {
     var formData = new FormData();
     formData.append('file', file);
@@ -1869,13 +1867,13 @@ function toonVOKPopup(code, onAkkoord) {
     + '</div>';
   ov.appendChild(mo);
   document.body.appendChild(ov);
-  document.getElementById('vok-dl').onclick = function() {
+  var _el_vok_dl=document.getElementById('vok-dl');if(_el_vok_dl){_el_vok_dl.onclick = function() {}
     var blob = new Blob([VOK_TEKST], { type: 'text/plain;charset=utf-8' });
     var url = URL.createObjectURL(blob);
     var a = document.createElement('a'); a.href = url; a.download = 'VOK_KantoorInzicht_v1.0.txt';
     document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
   };
-  document.getElementById('vok-ok').onclick = async function() {
+  var _el_vok_ok=document.getElementById('vok-ok');if(_el_vok_ok){_el_vok_ok.onclick = async function() {}
     var btn = this; btn.disabled = true; btn.textContent = 'Opslaan...';
     var naam = document.getElementById('vok-naam').value.trim();
     var errEl = document.getElementById('vok-err');
@@ -1917,9 +1915,9 @@ function toonNieuwTrajectModalTussen(){
     +'<button class="btn" id="nt-ok">Codes aanmaken</button></div>';
   ov.appendChild(mo);document.body.appendChild(ov);
   ov.addEventListener('click',function(e){if(e.target===ov)ov.remove();});
-  document.getElementById('nt-ann').onclick=function(){ov.remove();};
-  document.getElementById('nt-shuffle').onclick=function(){document.getElementById('nt-naam').value=nieuweCode();};
-  document.getElementById('nt-ok').onclick=async function(){
+  var _el_nt_ann=document.getElementById('nt-ann');if(_el_nt_ann){_el_nt_ann.onclick=function(){ov.remove();};}
+  var _el_nt_shuffle=document.getElementById('nt-shuffle');if(_el_nt_shuffle){_el_nt_shuffle.onclick=function(){document.getElementById('nt-naam').value=nieuweCode();};}
+  var _el_nt_ok=document.getElementById('nt-ok');if(_el_nt_ok){_el_nt_ok.onclick=async function(){}
     var btn=this;btn.disabled=true;btn.textContent='Aanmaken...';
     var err=document.getElementById('nt-err');err.style.display='none';
     var codenaam=document.getElementById('nt-naam').value.trim();
@@ -1977,7 +1975,7 @@ function toonUitnodigingModalTussen() {
     + '<div style="display:flex;justify-content:flex-end"><button class="btn-ghost" id="inv-t-sluit">Sluiten</button></div>';
   ov.appendChild(mo); document.body.appendChild(ov);
   ov.addEventListener('click', function(e){if(e.target===ov)ov.remove();});
-  document.getElementById('inv-t-sluit').onclick = function(){ov.remove();};
+  var _el_inv_t_sluit=document.getElementById('inv-t-sluit');if(_el_inv_t_sluit){_el_inv_t_sluit.onclick = function(){ov.remove();};}
 
   async function stuurTussen(type) {
     var emailEl = document.getElementById('inv-'+type+'t-email');
@@ -2002,8 +2000,8 @@ function toonUitnodigingModalTussen() {
       else { stEl.innerHTML='<span style="color:var(--red)">'+esc(rd.error||'Fout')+'</span>'; btnEl.disabled=false; btnEl.textContent='Opnieuw'; }
     } catch(e) { stEl.innerHTML='<span style="color:var(--red)">Verbindingsfout</span>'; btnEl.disabled=false; }
   }
-  document.getElementById('inv-vt-btn').onclick = function(){ stuurTussen('v'); };
-  document.getElementById('inv-kt-btn').onclick = function(){ stuurTussen('k'); };
+  var _el_inv_vt_btn=document.getElementById('inv-vt-btn');if(_el_inv_vt_btn){_el_inv_vt_btn.onclick = function(){ stuurTussen('v'); };}
+  var _el_inv_kt_btn=document.getElementById('inv-kt-btn');if(_el_inv_kt_btn){_el_inv_kt_btn.onclick = function(){ stuurTussen('k'); };}
 }
 
 function renderApp(){
@@ -2221,11 +2219,11 @@ function renderBegeleiderDashboard(app){
       +'<button id="bg-email" class="btn" style="font-size:12px;padding:6px 14px;background:'+kleuren[type]+'">&#9993; Verstuur naar partijen</button>'
       +'<button id="bg-signhost" class="btn" style="font-size:12px;padding:6px 14px;background:var(--teal)">&#9998; Signhost</button>'
       +'</div></div>';
-    document.getElementById('bg-print').onclick=function(){ printDoc(document.getElementById('bg-doc-tekst').value, {nda:'NDA',loi:'Letter of Intent',bem:'Bemiddelingsovereenkomst',excl:'Exclusiviteitsbrief'}[type]||type, type); };
+    var _el_bg_print=document.getElementById('bg-print');if(_el_bg_print){_el_bg_print.onclick=function(){ printDoc(document.getElementById('bg-doc-tekst').value, {nda:'NDA',loi:'Letter of Intent',bem:'Bemiddelingsovereenkomst',excl:'Exclusiviteitsbrief'}[type]||type, type); };}
     // Scroll naar doc output zodat knoppen zichtbaar zijn
     var docOutEl=document.getElementById('bg-doc-out');
     if(docOutEl)setTimeout(function(){docOutEl.scrollIntoView({behavior:'smooth',block:'nearest'});},100);
-    document.getElementById('bg-email').onclick=async function(){
+    var _el_bg_email=document.getElementById('bg-email');if(_el_bg_email){_el_bg_email.onclick=async function(){}
       var ebtn=this;ebtn.disabled=true;ebtn.textContent='Versturen...';
       var vt=document.getElementById('bg-doc-tekst').value;
       // BEM naar opdrachtgever: koper als koper opdrachtgever is, anders verkoper
@@ -2269,8 +2267,8 @@ function renderBegeleiderDashboard(app){
         +'</div>';
       ov.appendChild(mo);document.body.appendChild(ov);
       ov.addEventListener('click',function(e){if(e.target===ov)ov.remove();});
-      document.getElementById('bg-sh-ann').onclick=function(){ov.remove();};
-      document.getElementById('bg-sh-ok').onclick=async function(){
+      var _el_bg_sh_ann=document.getElementById('bg-sh-ann');if(_el_bg_sh_ann){_el_bg_sh_ann.onclick=function(){ov.remove();};}
+      var _el_bg_sh_ok=document.getElementById('bg-sh-ok');if(_el_bg_sh_ok){_el_bg_sh_ok.onclick=async function(){}
         var btn=this;btn.disabled=true;btn.textContent='Versturen...';
         var naam=document.getElementById('bg-sh-naam').value.trim();
         var email=document.getElementById('bg-sh-email').value.trim();
@@ -2292,20 +2290,20 @@ function renderBegeleiderDashboard(app){
     };
   }
 
-  document.getElementById('bg-nda-actie').onclick=function(){ toonDocWaarschuwing('nda', function(){ bgDoc('nda'); }); };
-  document.getElementById('bg-loi-actie').onclick=function(){ toonDocWaarschuwing('loi', function(){ bgDoc('loi'); }); };
-  document.getElementById('bg-bem-actie').onclick=function(){ toonDocWaarschuwing('bem', function(){ bgDoc('bem'); }); };
-  document.getElementById('bg-excl-actie').onclick=function(){ toonDocWaarschuwing('excl', function(){ bgDoc('excl'); }); };
-  document.getElementById('bg-im-actie').onclick=function(){ openIMFormulier(); };
+  var _el_bg_nda_actie=document.getElementById('bg-nda-actie');if(_el_bg_nda_actie){_el_bg_nda_actie.onclick=function(){ toonDocWaarschuwing('nda', function(){ bgDoc('nda'); }); };}
+  var _el_bg_loi_actie=document.getElementById('bg-loi-actie');if(_el_bg_loi_actie){_el_bg_loi_actie.onclick=function(){ toonDocWaarschuwing('loi', function(){ bgDoc('loi'); }); };}
+  var _el_bg_bem_actie=document.getElementById('bg-bem-actie');if(_el_bg_bem_actie){_el_bg_bem_actie.onclick=function(){ toonDocWaarschuwing('bem', function(){ bgDoc('bem'); }); };}
+  var _el_bg_excl_actie=document.getElementById('bg-excl-actie');if(_el_bg_excl_actie){_el_bg_excl_actie.onclick=function(){ toonDocWaarschuwing('excl', function(){ bgDoc('excl'); }); };}
+  var _el_bg_im_actie=document.getElementById('bg-im-actie');if(_el_bg_im_actie){_el_bg_im_actie.onclick=function(){ openIMFormulier(); };}
 
-  document.getElementById('bg-gesprek-actie').onclick=function(){ openBgGesprekForm(null); };
+  var _el_bg_gesprek_actie=document.getElementById('bg-gesprek-actie');if(_el_bg_gesprek_actie){_el_bg_gesprek_actie.onclick=function(){ openBgGesprekForm(null); };}
 
 
   // AI analyse
   // Informatieverzoek knop
   var bgUitnBtn=document.getElementById('bg-uitnodigen-btn');
   if(bgUitnBtn)bgUitnBtn.onclick=function(){toonUitnodigingModalTussen();};
-  document.getElementById('bg-infoverzoek-actie').onclick=async function(){
+  var _el_bg_infoverzoek_actie=document.getElementById('bg-infoverzoek-actie');if(_el_bg_infoverzoek_actie){_el_bg_infoverzoek_actie.onclick=async function(){}
     var ibtn=this;ibtn.disabled=true;ibtn.textContent='Laden...';
     var t2=S.traject;
     var mnaUrl='https://koersvoormorgen.nl/mna.html';
@@ -2409,7 +2407,7 @@ function renderBegeleiderDashboard(app){
 
     ov.appendChild(mo);document.body.appendChild(ov);
     ov.addEventListener('click',function(e){if(e.target===ov)ov.remove();});
-    document.getElementById('bg-iv-ann').onclick=function(){ov.remove();};
+    var _el_bg_iv_ann=document.getElementById('bg-iv-ann');if(_el_bg_iv_ann){_el_bg_iv_ann.onclick=function(){ov.remove();};}
 
     // Helper: bouw HTML mail op basis van selecties
     function bouwMailHtml(){
@@ -2458,7 +2456,7 @@ function renderBegeleiderDashboard(app){
     }
 
     // Preview knop
-    document.getElementById('bg-iv-preview').onclick=function(){
+    var _el_bg_iv_preview=document.getElementById('bg-iv-preview');if(_el_bg_iv_preview){_el_bg_iv_preview.onclick=function(){}
       var html = bouwMailHtml();
       var pvOv=document.createElement('div');pvOv.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:300;display:flex;align-items:center;justify-content:center;padding:1.5rem';
       var pvMo=document.createElement('div');pvMo.style.cssText='background:#fff;border-radius:10px;padding:1.5rem;max-width:680px;width:100%;max-height:90vh;overflow-y:auto';
@@ -2471,7 +2469,7 @@ function renderBegeleiderDashboard(app){
       pvMo.querySelector('#pv-sluit').onclick=function(){pvOv.remove();};
     };
 
-    document.getElementById('bg-iv-ok').onclick=async function(){
+    var _el_bg_iv_ok=document.getElementById('bg-iv-ok');if(_el_bg_iv_ok){_el_bg_iv_ok.onclick=async function(){}
       var email=document.getElementById('bg-iv-email').value.trim();
       var ivErr=document.getElementById('bg-iv-err');
       if(!email){ivErr.style.display='block';ivErr.textContent='E-mailadres verplicht.';return;}
@@ -2671,7 +2669,7 @@ function renderBegeleiderDashboard(app){
     laadBgGesprekken();
   }
 
-  document.getElementById('bg-ai-actie').onclick=async function(){
+  var _el_bg_ai_actie=document.getElementById('bg-ai-actie');if(_el_bg_ai_actie){_el_bg_ai_actie.onclick=async function(){}
     var btn=this;btn.disabled=true;btn.textContent='Analyseren...';
     var out=document.getElementById('bg-ai-out');out.style.display='block';
     out.innerHTML='<div style="color:var(--muted);font-size:13px;padding:1rem;background:var(--card);border-radius:var(--r2)">AI analyseert... (20-40 sec)</div>';
@@ -2894,9 +2892,9 @@ async function toonDocWaarschuwing(docType, onDoorgaan) {
 
   ov.appendChild(mo); document.body.appendChild(ov);
   ov.addEventListener('click', function(e) { if(e.target===ov) ov.remove(); });
-  document.getElementById('dw-ann').onclick = function() { ov.remove(); };
+  var _el_dw_ann=document.getElementById('dw-ann');if(_el_dw_ann){_el_dw_ann.onclick = function() { ov.remove(); };}
   if (!check.geblokkeerd) {
-    document.getElementById('dw-door').onclick = function() {
+    var _el_dw_door=document.getElementById('dw-door');if(_el_dw_door){_el_dw_door.onclick = function() {}
       ov.remove();
       onDoorgaan();
     };
@@ -3846,13 +3844,13 @@ function bindAll(){
           +'<button id="bg-print-btn" style="background:transparent;border:1px solid #c8c5bc;padding:6px 14px;border-radius:6px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:12px">&#128196; Print / PDF</button>'
           +'<button id="bg-email-btn" style="background:#2a5ea0;color:#fff;border:none;padding:6px 14px;border-radius:6px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:12px;font-weight:600">&#9993; Verstuur naar partijen</button>'
           +'</div>';
-        document.getElementById('bg-print-btn').onclick=function(){
+        var _el_bg_print_btn=document.getElementById('bg-print-btn');if(_el_bg_print_btn){_el_bg_print_btn.onclick=function(){}
           var win=window.open('','_blank');
           var pt=document.getElementById('bg-doc-tekst').value;
           win.document.write('<html><head><style>body{font-family:Georgia,serif;font-size:13px;line-height:1.9;max-width:700px;margin:2cm auto;color:#2a2825}</style></head><body><p>'+pt.replace(/\n/g,'<br>')+'</p></body></html>');
           win.document.close();win.print();
         };
-        document.getElementById('bg-email-btn').onclick=async function(){
+        var _el_bg_email_btn=document.getElementById('bg-email-btn');if(_el_bg_email_btn){_el_bg_email_btn.onclick=async function(){}
           var ebtn=this;ebtn.disabled=true;ebtn.textContent='Versturen...';
           var verzendTekst=document.getElementById('bg-doc-tekst').value;
           // BEM naar opdrachtgever
@@ -3879,10 +3877,10 @@ function bindAll(){
           else{toast('Fout: '+(ed.error||'onbekend'),'err');ebtn.disabled=false;ebtn.textContent='✉ Verstuur';}
         };
       }
-      document.getElementById('bg-nda-btn').onclick=function(){bgGenereerDoc('nda');};
-      document.getElementById('bg-excl-btn').onclick=function(){bgGenereerDoc('excl');};
-      document.getElementById('bg-loi-btn').onclick=function(){bgGenereerDoc('loi');};
-      document.getElementById('bg-bem-btn').onclick=function(){bgGenereerDoc('bem');};
+      var _el_bg_nda_btn=document.getElementById('bg-nda-btn');if(_el_bg_nda_btn){_el_bg_nda_btn.onclick=function(){bgGenereerDoc('nda');};}
+      var _el_bg_excl_btn=document.getElementById('bg-excl-btn');if(_el_bg_excl_btn){_el_bg_excl_btn.onclick=function(){bgGenereerDoc('excl');};}
+      var _el_bg_loi_btn=document.getElementById('bg-loi-btn');if(_el_bg_loi_btn){_el_bg_loi_btn.onclick=function(){bgGenereerDoc('loi');};}
+      var _el_bg_bem_btn=document.getElementById('bg-bem-btn');if(_el_bg_bem_btn){_el_bg_bem_btn.onclick=function(){bgGenereerDoc('bem');};}
     };
   }
 
@@ -3926,7 +3924,7 @@ function bindAll(){
         if(el)el.addEventListener('input',function(){clearTimeout(bgConceptTimer);bgConceptTimer=setTimeout(bgSlaConceptOp,2000);});
       });
 
-      document.getElementById('bg-gs-ok').onclick=async function(){
+      var _el_bg_gs_ok=document.getElementById('bg-gs-ok');if(_el_bg_gs_ok){_el_bg_gs_ok.onclick=async function(){}
         var datum=document.getElementById('bg-gs-datum').value;
         var err=document.getElementById('bg-gs-err');
         if(!datum){err.style.display='block';err.textContent='Datum is verplicht.';return;}
@@ -3973,7 +3971,7 @@ function bindAll(){
           +'<div style="margin-top:1.25rem;text-align:right"><button id="ai-sluit" style="background:transparent;border:1px solid #c8c5bc;padding:8px 16px;border-radius:6px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:13px">Sluiten</button></div>';
         ov.appendChild(mo);document.body.appendChild(ov);
         ov.addEventListener('click',function(e){if(e.target===ov)ov.remove();});
-        document.getElementById('ai-sluit').onclick=function(){ov.remove();};
+        var _el_ai_sluit=document.getElementById('ai-sluit');if(_el_ai_sluit){_el_ai_sluit.onclick=function(){ov.remove();};}
       }catch(e){toast('Fout bij AI-analyse: '+e.message,'err');}
       btn.disabled=false;btn.textContent='&#9881; AI-analyse';
     };
