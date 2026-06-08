@@ -1280,6 +1280,8 @@ async function toonDetail(id,naam){
     }
 
     var inp=document.createElement('input');inp.type='file';inp.accept='.pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.xlsx,.xls';
+    inp.style.display='none';
+    document.body.appendChild(inp);
     inp.onchange=async function(){
       var file=inp.files[0];if(!file)return;
       // Toon fase-keuze dialog
@@ -1332,6 +1334,7 @@ async function toonDetail(id,naam){
         } else{toast(d.error||'Upload mislukt.','err');}
       }catch(e){toast('Fout: '+e.message,'err');}
       btn.disabled=false;btn.textContent='↑ Document uploaden';
+      document.body.removeChild(inp);
     };
     inp.click();
   });
