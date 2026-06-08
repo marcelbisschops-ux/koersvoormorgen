@@ -1273,7 +1273,11 @@ async function toonDetail(id,naam){
         if(dd&&dd.traject)tussenCode=dd.traject.tussen_code||'';
       }catch(e){}
     }
-    if(!tussenCode){toast('Geen tussenpersoonscode gevonden voor dit traject.','err');return;}
+    if(!tussenCode){
+      // Fallback: gebruik verkoperscode (id) — worker accepteert ook id
+      tussenCode=id;
+      toast('Tussenpersoonscode niet gevonden, verkoperscode wordt gebruikt.','warn');
+    }
 
     var inp=document.createElement('input');inp.type='file';inp.accept='.pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.xlsx,.xls';
     inp.onchange=async function(){
@@ -1691,15 +1695,13 @@ async function toonDetail(id,naam){
       var vBody=document.getElementById('versies-body');
       vBody.innerHTML='<div style="color:var(--muted);font-size:12px">Laden...</div>';
       try{
-        // Laad BEIDE: geüploade bestanden + gegenereerde versies
+        // Laad BEIDE: geüploade bestanden (direct per traject) + gegenereerde versies
         var [docsResp, versiesResp] = await Promise.all([
-          fetch(WORKER+'/mna/admin/documenten?key='+encodeURIComponent(adminKey)),
+          fetch(WORKER+'/mna/traject-docs/'+id+'?key='+encodeURIComponent(adminKey)),
           fetch(WORKER+'/mna/versies/'+id+'?key='+encodeURIComponent(adminKey))
         ]);
-        var alleDocs = docsResp.ok ? await docsResp.json() : [];
+        var trajectDocs = docsResp.ok ? await docsResp.json() : [];
         var versies = versiesResp.ok ? await versiesResp.json() : [];
-        // Filter geüploade bestanden op dit traject
-        var trajectDocs = alleDocs.filter(function(d){ return d.traject_id === id; });
         var docLabels={nda:'NDA',loi:'LoI',bem:'Bemiddelingsovereenkomst'};
         var docKleuren={nda:'#7c5cbf',loi:'var(--gold)',bem:'#2a5ea0'};
         var html='';
