@@ -973,7 +973,6 @@ async function uploadDocument(faseId, file) {
   var bewaar = S.traject && S.traject.bewaar_docs !== false;
 
   try {
-    // Base64 upload — geen multipart, werkt door Bot Fight Mode
     var b64 = await new Promise(function(res,rej){
       var reader = new FileReader();
       reader.onload = function(){ res(reader.result.split(',')[1]); };
@@ -1074,7 +1073,7 @@ window.centraalUploadFiles = async function(files) {
       var resp=await fetch(WORKER+'/mna/document/upload-base64',{method:'POST',body:paramsc,signal:controller.signal});
       clearTimeout(timeoutId);
       var d=await resp.json();
-      if(d.ok){
+      if(d.ok||d.id){
         if(!DOCS[faseId])DOCS[faseId]=[];
         DOCS[faseId].unshift({id:d.id||d.doc_id,naam:file.name,type:file.type,grootte:file.size,analyse:d.analyse||'',velden:d.veld_extractie||{},bewaard:!!d.bewaard||!!d.r2_opgeslagen,uploaded_at:Date.now(),uploading:false});
         if(d.veld_extractie&&Object.keys(d.veld_extractie).length&&!d.verworpen){
