@@ -960,7 +960,8 @@ function loadDocsForFase(faseId) {
 }
 
 async function uploadDocument(faseId, file) {
-  if (!S.code || isKoper()) return;
+  toast('Upload gestart: ' + (file ? file.name : 'geen bestand') + ' | fase: ' + faseId + ' | code: ' + S.code + ' | koper: ' + isKoper(), 'info', 8000);
+  if (!S.code || isKoper()) { toast('Geblokkeerd: geen code of koper', 'err'); return; }
   if (S.traject && S.traject.status === 'vergrendeld') { toast('Traject is vergrendeld.','warn'); return; }
   var maxSize = 20 * 1024 * 1024;
   if (file.size > maxSize) { toast('Bestand te groot (max 20MB). Huidig: ' + Math.round(file.size/1024/1024) + 'MB','warn'); return; }
