@@ -14,54 +14,74 @@
   --teal:#1a7a5e;--teal-light:#edf7f3;--teal-border:#b8ddd2;--teal-dark:#145f48;
   --gold:#c9a84c;--gold-bg:#fdf8ee;--gold-border:#e8d99a;
   --red:#c0392b;--red-light:#fdf2f0;
-  --purple:#7c5cbf;--blue:#2a5ea0;--brown:#8a5a2a;
   --r:5px;--r2:8px;
   --shadow:0 1px 3px rgba(0,0,0,.06),0 4px 12px rgba(0,0,0,.04);
   --shadow-lg:0 4px 16px rgba(0,0,0,.08),0 1px 4px rgba(0,0,0,.04);
 }
 body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--sub);min-height:100vh;font-size:14px;line-height:1.5}
 #app{min-height:100vh}
-.login-outer{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:2rem}
+
+/* LOGIN */
+.login-outer{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:2rem;background:var(--void)}
 .login-card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:2.5rem 2.25rem;width:100%;max-width:400px;box-shadow:var(--shadow-lg)}
 .login-brand{display:flex;align-items:center;gap:8px;margin-bottom:2rem}
 .login-dot{width:7px;height:7px;border-radius:50%;background:var(--teal)}
 .login-brand-name{font-size:11px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}
 .login-title{font-family:'Playfair Display',serif;font-size:1.5rem;color:var(--head);font-weight:600;margin-bottom:.35rem}
 .login-sub{font-size:13px;color:var(--muted);margin-bottom:1.75rem;line-height:1.6}
+
+/* FORMS */
 .field{margin-bottom:1rem}
 .field label{display:block;font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin-bottom:.4rem}
-.field input,.field select,.field textarea{width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:var(--r);color:var(--sub);font-family:'IBM Plex Sans',sans-serif;font-size:13px;padding:9px 11px;outline:none;transition:border-color .15s}
-.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--teal)}
+.field input,.field select,.field textarea{width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:var(--r);color:var(--sub);font-family:'IBM Plex Sans',sans-serif;font-size:13px;padding:9px 11px;outline:none;transition:border-color .15s,box-shadow .15s}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--teal);box-shadow:0 0 0 3px rgba(26,122,94,.08)}
 .field textarea{resize:vertical;min-height:80px}
-.row2{display:flex;gap:12px}.row2 .field{flex:1}
+.row2{display:flex;gap:12px}
+.row2 .field{flex:1}
+
+/* BUTTONS */
 .btn{background:var(--teal);color:#fff;border:none;border-radius:var(--r);font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;padding:9px 18px;cursor:pointer;transition:background .15s}
-.btn:hover{background:var(--teal-dark)}.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn:hover{background:var(--teal-dark)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
 .btn-sm{font-size:11px;padding:5px 12px}
-.btn-ghost{background:transparent;color:var(--mid);border:1.5px solid var(--border2);font-family:'IBM Plex Sans',sans-serif;font-size:12px;font-weight:500;padding:7px 14px;border-radius:var(--r);cursor:pointer;transition:all .15s}
-.btn-ghost:hover{border-color:var(--mid);color:var(--sub)}
-.btn-ghost.sm{font-size:11px;padding:4px 10px}
+.btn-outline{background:transparent;color:var(--mid);border:1.5px solid var(--border2);font-family:'IBM Plex Sans',sans-serif;font-size:12px;font-weight:500;padding:7px 14px;border-radius:var(--r);cursor:pointer;transition:all .15s}
+.btn-outline:hover{border-color:var(--mid);color:var(--sub);background:var(--bg)}
+.btn-outline.sm{font-size:11px;padding:4px 10px}
+
+/* MESSAGES */
 .err-msg{color:var(--red);font-size:12px;background:var(--red-light);border:1px solid #f5c6c0;border-radius:var(--r);padding:8px 10px;margin-bottom:.75rem;display:none}
 .ok-msg{color:var(--teal);font-size:12px;background:var(--teal-light);border:1px solid var(--teal-border);border-radius:var(--r);padding:8px 10px;margin-bottom:.75rem;display:none}
 .sec-notice{margin-top:1.25rem;padding:.75rem 1rem;background:var(--teal-light);border:1px solid var(--teal-border);border-radius:var(--r);font-size:11px;color:var(--muted);line-height:1.7}
-.link-subtle{font-size:12px;color:var(--muted);text-decoration:none;cursor:pointer}
+.sec-notice strong{color:var(--sub)}
+.link-subtle{font-size:12px;color:var(--muted);text-decoration:none;transition:color .15s;cursor:pointer}
 .link-subtle:hover{color:var(--teal)}
+
+/* HEADER */
 .hdr{display:flex;align-items:center;justify-content:space-between;padding:0 2rem;height:56px;background:var(--panel);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:10}
 .hdr-brand{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
 .hdr-dot{width:6px;height:6px;border-radius:50%;background:var(--teal)}
 .hdr-right{display:flex;align-items:center;gap:.75rem}
 .hdr-user{font-size:12px;color:var(--muted)}
 .hdr-name{font-weight:600;color:var(--sub)}
+
+/* MAIN / LAYOUT */
 .main{max-width:1000px;margin:0 auto;padding:2rem}
-.back-btn{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);cursor:pointer;margin-bottom:1.5rem}
+.back-btn{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);cursor:pointer;margin-bottom:1.5rem;transition:color .15s}
 .back-btn:hover{color:var(--teal)}
+
+/* STATS */
 .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:2rem}
-.stat{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.1rem 1.25rem}
+.stat{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.1rem 1.25rem;box-shadow:var(--shadow)}
 .stat-n{font-family:'IBM Plex Mono',monospace;font-size:1.75rem;font-weight:500;color:var(--teal);line-height:1;margin-bottom:.2rem}
 .stat-l{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
-.card{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);overflow:hidden;margin-bottom:1.5rem}
+
+/* CARDS */
+.card{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);overflow:hidden;box-shadow:var(--shadow);margin-bottom:1.5rem}
 .card-hdr{display:flex;align-items:center;justify-content:space-between;padding:.875rem 1.25rem;border-bottom:1px solid var(--border);background:var(--bg)}
 .card-title{font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
 .card-body{padding:1.25rem}
+
+/* TABLE */
 table{width:100%;border-collapse:collapse}
 th{text-align:left;padding:8px 14px;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);background:var(--bg)}
 td{padding:11px 14px;border-bottom:1px solid var(--border);color:var(--sub);vertical-align:middle}
@@ -71,31 +91,34 @@ tr:hover td{background:#faf8f5;cursor:pointer}
 .td-sec{font-size:12px;color:var(--muted)}
 .badge{display:inline-block;font-size:10px;font-weight:600;padding:2px 8px;border-radius:3px;letter-spacing:.04em;text-transform:uppercase}
 .badge-actief{background:var(--teal-light);color:var(--teal);border:1px solid var(--teal-border)}
-.badge-getekend{background:var(--teal-light);color:var(--teal);border:1px solid var(--teal-border)}
-.badge-open{background:var(--gold-bg);color:var(--gold);border:1px solid var(--gold-border)}
 .empty{text-align:center;padding:3rem 1rem;color:var(--muted);font-size:13px}
+.empty-icon{font-size:1.75rem;margin-bottom:.75rem;opacity:.4}
+
+/* DETAIL SECTIONS */
+.section{margin-bottom:1.5rem}
+.section-title{font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)}
 .code-box{display:inline-flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--border2);border-radius:var(--r);padding:6px 12px}
 .code-val{font-family:'IBM Plex Mono',monospace;font-size:14px;color:var(--teal);font-weight:500;letter-spacing:.1em}
 .code-val-gold{font-family:'IBM Plex Mono',monospace;font-size:14px;color:var(--gold);font-weight:500;letter-spacing:.1em}
-.copy-btn{font-size:10px;color:var(--muted);background:none;border:1px solid var(--border);border-radius:3px;padding:2px 7px;cursor:pointer;font-family:'IBM Plex Sans',sans-serif}
+.copy-btn{font-size:10px;color:var(--muted);background:none;border:1px solid var(--border);border-radius:3px;padding:2px 7px;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;transition:all .15s}
 .copy-btn:hover{border-color:var(--teal);color:var(--teal)}
 .info-box{background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:.75rem 1rem;font-size:12px;color:var(--muted);line-height:1.6;margin-bottom:1rem}
-.doc-btn{border:none;border-radius:var(--r);font-family:'IBM Plex Sans',sans-serif;font-size:12px;font-weight:600;padding:7px 14px;cursor:pointer;transition:opacity .15s}
-.doc-btn:disabled{opacity:.4;cursor:not-allowed}
-.doc-btn:hover{opacity:.85}
-.overlay{position:fixed;inset:0;background:rgba(26,24,21,.55);z-index:100;display:flex;align-items:center;justify-content:center;padding:1.5rem;backdrop-filter:blur(2px)}
-.modal{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:2rem;width:100%;max-width:560px;max-height:90vh;overflow-y:auto;box-shadow:var(--shadow-lg)}
-.modal-lg{max-width:720px}
-.modal-title{font-family:'Playfair Display',serif;font-size:1.15rem;color:var(--head);font-weight:600;margin-bottom:1.25rem}
-.modal-footer{display:flex;gap:8px;justify-content:flex-end;margin-top:1rem}
-#toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:var(--head);color:#fff;font-size:12px;padding:8px 18px;border-radius:20px;opacity:0;transition:opacity .2s;z-index:999;pointer-events:none}
-#toast.show{opacity:1}
+
+/* GESPREK */
 .gesprek-item{border:1px solid var(--border);border-radius:var(--r2);margin-bottom:.75rem;overflow:hidden}
 .gesprek-hdr{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--bg);cursor:pointer}
-.gesprek-body{padding:12px 14px;font-size:13px;color:var(--sub);line-height:1.7;display:none;border-top:1px solid var(--border);white-space:pre-wrap}
+.gesprek-body{padding:12px 14px;font-size:13px;color:var(--sub);line-height:1.7;display:none;border-top:1px solid var(--border)}
 .gesprek-body.open{display:block}
-.doc-row{display:flex;align-items:center;gap:8px;padding:.6rem .875rem;background:var(--panel);border:1px solid var(--border);border-radius:var(--r);margin-bottom:6px;flex-wrap:wrap}
-.vok-box{background:var(--teal-light);border:1px solid var(--teal-border);border-radius:var(--r2);padding:1rem 1.25rem;margin-bottom:1rem;font-size:13px}
+
+/* OVERLAY / MODAL */
+.overlay{position:fixed;inset:0;background:rgba(26,24,21,.5);z-index:100;display:flex;align-items:center;justify-content:center;padding:1.5rem;backdrop-filter:blur(2px)}
+.modal{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:2rem;width:100%;max-width:560px;max-height:90vh;overflow-y:auto;box-shadow:var(--shadow-lg)}
+.modal-title{font-family:'Playfair Display',serif;font-size:1.15rem;color:var(--head);font-weight:600;margin-bottom:1.5rem}
+.modal-footer{display:flex;gap:8px;justify-content:flex-end;margin-top:1rem}
+
+/* TOAST */
+#toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:var(--head);color:#fff;font-size:12px;padding:8px 18px;border-radius:20px;opacity:0;transition:opacity .2s;z-index:999;pointer-events:none}
+#toast.show{opacity:1}
 </style>
 </head>
 <body>
@@ -103,7 +126,8 @@ tr:hover td{background:#faf8f5;cursor:pointer}
 <div id="toast"></div>
 <script>
 var WORKER='https://kantoorinzicht.marcel-bisschops.workers.dev';
-var G={email:'',ww:'',naam:'',bedrijf:'',gebruiker_id:'',trajecten:[]};
+var G={email:'',ww:'',naam:'',bedrijf:'',trajecten:[]};
+var VIEW='dashboard'; // dashboard | detail
 var TRAJECT=null;
 
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
@@ -117,51 +141,58 @@ function toast(msg,type){
   el.classList.add('show');setTimeout(function(){el.classList.remove('show');},2800);
 }
 
-async function apiPost(url,body){
-  var r=await fetch(WORKER+url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-  return r.json();
+function post(url,body){
+  var params=new URLSearchParams();
+  params.append('data',JSON.stringify(body));
+  return fetch(WORKER+url,{method:'POST',body:params});
 }
 
 // ===== LOGIN =====
 function renderLogin(){
-  render('<div class="login-outer"><div class="login-card">'
-    +'<div class="login-brand"><div class="login-dot"></div><span class="login-brand-name">KantoorInzicht M&A</span></div>'
-    +'<div class="login-title">Adviseur portaal</div>'
-    +'<div class="login-sub">Log in met uw e-mailadres en wachtwoord.</div>'
-    +'<div class="field"><label>E-mailadres</label><input type="email" id="l-e" placeholder="u@kantoor.nl" autofocus></div>'
-    +'<div class="field"><label>Wachtwoord</label><input type="password" id="l-w" placeholder="••••••••"></div>'
-    +'<div id="l-err" class="err-msg"></div>'
-    +'<button class="btn" id="l-btn" style="width:100%;margin-bottom:1rem">Inloggen</button>'
-    +'<div style="text-align:right;margin-bottom:1.25rem"><a class="link-subtle" id="l-forgot">Wachtwoord vergeten?</a></div>'
-    +'<div class="sec-notice">&#128274; <strong>Beveiliging & privacy</strong><br>Verbinding versleuteld (HTTPS). Gegevens in Cloudflare EU. <a href="privacy.html" style="color:var(--teal)">Privacyverklaring</a></div>'
-    +'</div></div>');
+  render(`<div class="login-outer"><div class="login-card">
+    <div class="login-brand"><div class="login-dot"></div><span class="login-brand-name">KantoorInzicht M&A</span></div>
+    <div class="login-title">Adviseur portaal</div>
+    <div class="login-sub">Log in met uw e-mailadres en wachtwoord.</div>
+    <div class="field"><label>E-mailadres</label><input type="email" id="l-e" placeholder="u@kantoor.nl" autofocus></div>
+    <div class="field"><label>Wachtwoord</label><input type="password" id="l-w" placeholder="••••••••"></div>
+    <div id="l-err" class="err-msg"></div>
+    <button class="btn" id="l-btn" style="width:100%;margin-bottom:1rem">Inloggen</button>
+    <div style="text-align:right;margin-bottom:1.25rem">
+      <a class="link-subtle" id="l-forgot">Wachtwoord vergeten?</a>
+    </div>
+    <div class="sec-notice">&#128274; <strong>Beveiliging & privacy</strong><br>
+    Verbinding versleuteld (HTTPS). Gegevens in Cloudflare EU (Frankfurt). Geen gegevensverkoop.
+    <a href="privacy.html" style="color:var(--teal)">Privacyverklaring</a></div>
+  </div></div>`);
   ge('l-btn').onclick=doLogin;
   ge('l-w').onkeydown=function(e){if(e.key==='Enter')doLogin();};
   ge('l-e').onkeydown=function(e){if(e.key==='Enter')ge('l-w').focus();};
-  ge('l-forgot').onclick=renderForgot;
+  ge('l-forgot').onclick=function(){renderForgot();};
 }
 
 function renderForgot(){
-  render('<div class="login-outer"><div class="login-card">'
-    +'<div class="login-brand"><div class="login-dot"></div><span class="login-brand-name">KantoorInzicht M&A</span></div>'
-    +'<div class="login-title">Wachtwoord vergeten</div>'
-    +'<div class="login-sub">Vul uw e-mailadres in. U ontvangt een resetlink.</div>'
-    +'<div class="field"><label>E-mailadres</label><input type="email" id="f-e" placeholder="u@kantoor.nl" autofocus></div>'
-    +'<div id="f-ok" class="ok-msg"></div><div id="f-err" class="err-msg"></div>'
-    +'<button class="btn" id="f-btn" style="width:100%;margin-bottom:1rem">Verstuur resetlink</button>'
-    +'<div style="text-align:center"><a class="link-subtle" id="f-back">← Terug naar inloggen</a></div>'
-    +'</div></div>');
+  render(`<div class="login-outer"><div class="login-card">
+    <div class="login-brand"><div class="login-dot"></div><span class="login-brand-name">KantoorInzicht M&A</span></div>
+    <div class="login-title">Wachtwoord vergeten</div>
+    <div class="login-sub">Vul uw e-mailadres in. Als het bekend is ontvangt u een resetlink.</div>
+    <div class="field"><label>E-mailadres</label><input type="email" id="f-e" placeholder="u@kantoor.nl" autofocus></div>
+    <div id="f-ok" class="ok-msg"></div>
+    <div id="f-err" class="err-msg"></div>
+    <button class="btn" id="f-btn" style="width:100%;margin-bottom:1rem">Verstuur resetlink</button>
+    <div style="text-align:center"><a class="link-subtle" id="f-back">← Terug naar inloggen</a></div>
+  </div></div>`);
   ge('f-btn').onclick=async function(){
     var btn=this;btn.disabled=true;btn.textContent='Versturen...';
     var email=ge('f-e').value.trim();
     if(!email){ge('f-err').textContent='Vul uw e-mailadres in.';ge('f-err').style.display='block';btn.disabled=false;btn.textContent='Verstuur resetlink';return;}
     try{
-      var d=await apiPost('/gebruikers/ww-vergeten',{email:email,redirect:'adv'});
+      var r=await fetch(WORKER+'/gebruikers/ww-vergeten',{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({email:email})});
+      var d=await r.json();
       ge('f-ok').textContent=d.msg||'Controleer uw e-mail.';ge('f-ok').style.display='block';
       btn.textContent='Verstuurd ✓';
     }catch(e){ge('f-err').textContent='Fout: '+e.message;ge('f-err').style.display='block';btn.disabled=false;btn.textContent='Verstuur resetlink';}
   };
-  ge('f-back').onclick=renderLogin;
+  ge('f-back').onclick=function(){renderLogin();};
   ge('f-e').onkeydown=function(e){if(e.key==='Enter')ge('f-btn').click();};
 }
 
@@ -171,510 +202,484 @@ async function doLogin(){
   var email=ge('l-e').value.trim(),ww=ge('l-w').value;
   if(!email||!ww){err.textContent='Vul e-mail en wachtwoord in.';err.style.display='block';btn.disabled=false;btn.textContent='Inloggen';return;}
   try{
-    // Probeer eerst gebruikers/login (nieuw systeem), dan adviseur/trajecten (legacy)
-    var r=await fetch(WORKER+'/gebruikers/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email,wachtwoord:ww})});
+    var r=await post('/adviseur/trajecten',{email:email,wachtwoord:ww});
     var d=await r.json();
-    if(r.ok&&d.ok){
-      G.email=email;G.ww=ww;G.naam=d.naam;G.bedrijf=d.bedrijf||'';G.sessie=d.sessie_token;
-      // Laad trajecten via tussenpersoonscode
-      await laadTrajectenNaLogin(email,ww);
-      return;
-    }
-    // Legacy: adviseur/trajecten
-    var r2=await fetch(WORKER+'/adviseur/trajecten',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email,wachtwoord:ww})});
-    var d2=await r2.json();
-    if(!r2.ok||!d2.ok){err.textContent=d2.error||'Inloggegevens onjuist.';err.style.display='block';btn.disabled=false;btn.textContent='Inloggen';return;}
-    G.email=email;G.ww=ww;G.naam=d2.naam;G.bedrijf=d2.bedrijf||'';G.trajecten=d2.trajecten||[];
+    if(!r.ok||!d.ok){err.textContent=d.error||'Inloggegevens onjuist.';err.style.display='block';btn.disabled=false;btn.textContent='Inloggen';return;}
+    G.email=email;G.ww=ww;G.naam=d.naam;G.bedrijf=d.bedrijf;G.trajecten=d.trajecten||[];
     renderDashboard();
   }catch(e){err.textContent='Verbindingsfout — probeer opnieuw.';err.style.display='block';btn.disabled=false;btn.textContent='Inloggen';}
 }
 
-async function laadTrajectenNaLogin(email,ww){
-  try{
-    var d=await apiPost('/adviseur/trajecten',{email:email,wachtwoord:ww});
-    if(d.ok){G.trajecten=d.trajecten||[];renderDashboard();}
-    else{G.trajecten=[];renderDashboard();}
-  }catch(e){G.trajecten=[];renderDashboard();}
-}
-
 // ===== DASHBOARD =====
 function renderDashboard(){
-  TRAJECT=null;
+  VIEW='dashboard';
   var actief=G.trajecten.filter(function(t){return t.status==='actief';}).length;
+  var sl={accountancy:'Accountancy',mkb:'MKB',zorg:'Zorg',itsoftware:'IT/Software'};
   var rows='';
   if(!G.trajecten.length){
-    rows='<tr><td colspan="5"><div class="empty">&#128193; Nog geen trajecten.<br><span style="font-size:12px">Klik op &ldquo;+ Nieuw traject&rdquo; om te beginnen.</span></div></td></tr>';
+    rows='<tr><td colspan="6"><div class="empty"><div class="empty-icon">📁</div>Nog geen trajecten.<br>Klik op "+ Nieuw traject" om te beginnen.</div></td></tr>';
   } else {
     G.trajecten.forEach(function(t){
-      var statusBadge=t.status==='actief'?'<span class="badge badge-actief">actief</span>':'<span class="badge" style="background:var(--bg);color:var(--muted);border:1px solid var(--border)">'+esc(t.status||'—')+'</span>';
-      rows+='<tr onclick="openTraject(\''+esc(t.id)+'\')">'
-        +'<td class="td-name">'+esc(t.kantoor_naam||'—')+'</td>'
-        +'<td class="td-sec">'+esc(t.traject_type||'—')+'</td>'
-        +'<td>'+statusBadge+'</td>'
-        +'<td class="td-sec">'+fmt(t.created_at)+'</td>'
-        +'<td style="text-align:right;font-size:11px;color:var(--teal)">Bekijk →</td>'
-        +'</tr>';
+      rows+=`<tr onclick="openTraject('${esc(t.id)}')">
+        <td class="td-name">${esc(t.kantoor_naam||'—')}</td>
+        <td class="td-sec">${esc(t.traject_type||'—')}</td>
+        <td class="td-sec">${esc(sl[t.sector]||'—')}</td>
+        <td><span class="badge badge-actief">${esc(t.status||'actief')}</span></td>
+        <td class="td-sec">${fmt(t.created_at)}</td>
+        <td style="text-align:right"><span style="font-size:11px;color:var(--teal)">Bekijk →</span></td>
+      </tr>`;
     });
   }
-  render(hdrHTML()
-    +'<div class="main">'
-    +'<div class="stats">'
-    +'<div class="stat"><div class="stat-n">'+G.trajecten.length+'</div><div class="stat-l">Trajecten</div></div>'
-    +'<div class="stat"><div class="stat-n">'+actief+'</div><div class="stat-l">Actief</div></div>'
-    +'</div>'
-    +'<div class="card">'
-    +'<div class="card-hdr"><div class="card-title">M&A Trajecten</div>'
-    +'<div style="display:flex;gap:8px">'
-    +'<button class="btn-ghost" onclick="ververs()">↻ Verversen</button>'
-    +'<button class="btn btn-sm" onclick="nieuwTraject()">+ Nieuw traject</button>'
-    +'</div></div>'
-    +'<table><thead><tr><th>Onderneming</th><th>Type</th><th>Status</th><th>Aangemaakt</th><th></th></tr></thead>'
-    +'<tbody>'+rows+'</tbody></table>'
-    +'</div>'
-    +'<div class="vok-box" id="vok-sectie">&#128274; <strong>Verwerkersovereenkomst (VOK)</strong> — <span id="vok-status">laden...</span></div>'
-    +'</div>');
-  laadVokStatus();
-}
-
-function hdrHTML(){
-  return '<div class="hdr">'
-    +'<div class="hdr-brand"><div class="hdr-dot"></div>KantoorInzicht M&A — Adviseur</div>'
-    +'<div class="hdr-right">'
-    +'<span class="hdr-user">Ingelogd als <span class="hdr-name">'+esc(G.naam)+'</span>'+(G.bedrijf?' &middot; '+esc(G.bedrijf):'')+'</span>'
-    +'<button class="btn-ghost" onclick="renderLogin()">Uitloggen</button>'
-    +'</div></div>';
+  render(`
+    <div class="hdr">
+      <div class="hdr-brand"><div class="hdr-dot"></div>KantoorInzicht M&A</div>
+      <div class="hdr-right">
+        <span class="hdr-user">Ingelogd als <span class="hdr-name">${esc(G.naam)}</span>${G.bedrijf?' &middot; '+esc(G.bedrijf):''}</span>
+        <button class="btn-outline" onclick="renderLogin()">Uitloggen</button>
+      </div>
+    </div>
+    <div class="main">
+      <div class="stats">
+        <div class="stat"><div class="stat-n">${G.trajecten.length}</div><div class="stat-l">Trajecten</div></div>
+        <div class="stat"><div class="stat-n">${actief}</div><div class="stat-l">Actief</div></div>
+      </div>
+      <div class="card">
+        <div class="card-hdr">
+          <div class="card-title">M&A Trajecten</div>
+          <div style="display:flex;gap:8px">
+            <button class="btn-outline" onclick="ververs()">↻ Verversen</button>
+            <button class="btn btn-sm" onclick="nieuwTraject()">+ Nieuw traject</button>
+          </div>
+        </div>
+        <table>
+          <thead><tr><th>Onderneming</th><th>Type</th><th>Sector</th><th>Status</th><th>Aangemaakt</th><th></th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>
+  `);
 }
 
 async function ververs(){
-  var d=await apiPost('/adviseur/trajecten',{email:G.email,wachtwoord:G.ww}).catch(function(){return{ok:false};});
-  if(d.ok){G.trajecten=d.trajecten||[];renderDashboard();toast('Bijgewerkt','ok');}
-}
-
-async function laadVokStatus(){
-  // Zoek tussenpersoonscode van eerste traject
-  var tc=G.trajecten.length?G.trajecten[0].tussen_code:'';
-  if(!tc){ge('vok-sectie')&&(ge('vok-sectie').style.display='none');return;}
   try{
-    var r=await fetch(WORKER+'/mna/vok/status?code='+encodeURIComponent(tc));
+    var r=await post('/adviseur/trajecten',{email:G.email,wachtwoord:G.ww});
     var d=await r.json();
-    var el=ge('vok-status');if(!el)return;
-    if(d.getekend){
-      el.innerHTML='<span style="color:var(--teal);font-weight:600">✓ Getekend</span> door '+esc(d.naam||'')+(d.datum?' op '+fmt(d.datum):'');
-    } else {
-      el.innerHTML='<span style="color:var(--red)">Nog niet getekend.</span> <button class="btn-sm btn" style="margin-left:8px" onclick="tekenVok(\''+esc(tc)+'\')">Nu tekenen</button>';
-    }
-  }catch(e){ge('vok-sectie')&&(ge('vok-sectie').style.display='none');}
-}
-
-function tekenVok(tc){
-  var ov=document.createElement('div');ov.className='overlay';
-  ov.innerHTML='<div class="modal"><div class="modal-title">&#128274; Verwerkersovereenkomst tekenen</div>'
-    +'<div class="info-box">Door deze overeenkomst te accepteren bevestigt u dat Bisschops Financing B.V. uw gegevens verwerkt conform de AVG als verwerker.</div>'
-    +'<div class="field"><label>Uw naam (voor acceptatie)</label><input type="text" id="vok-naam" placeholder="Voor- en achternaam" autofocus></div>'
-    +'<div id="vok-err" class="err-msg"></div>'
-    +'<div class="modal-footer"><button class="btn-ghost" id="vok-ann">Annuleren</button><button class="btn" id="vok-ok">Accepteren &amp; tekenen</button></div>'
-    +'</div>';
-  document.body.appendChild(ov);
-  ge('vok-ann').onclick=function(){document.body.removeChild(ov);};
-  ge('vok-ok').onclick=async function(){
-    var naam=ge('vok-naam').value.trim();
-    if(!naam){ge('vok-err').textContent='Vul uw naam in.';ge('vok-err').style.display='block';return;}
-    this.disabled=true;this.textContent='Tekenen...';
-    var d=await apiPost('/mna/vok/teken',{code:tc,naam:naam,email:G.email,versie:'1.0'}).catch(function(){return{ok:false};});
-    if(d.ok){document.body.removeChild(ov);toast('VOK getekend — bevestiging per e-mail','ok');laadVokStatus();}
-    else{ge('vok-err').textContent=d.error||'Fout';ge('vok-err').style.display='block';this.disabled=false;this.textContent='Accepteren & tekenen';}
-  };
+    if(d.ok){G.trajecten=d.trajecten||[];renderDashboard();}
+  }catch(e){}
 }
 
 // ===== TRAJECT DETAIL =====
-function openTraject(id){
-  TRAJECT=G.trajecten.find(function(x){return x.id===id;})||{id:id};
-  renderDetail(TRAJECT);
-}
+async function openTraject(id){
+  VIEW='detail';
+  var t=G.trajecten.find(function(x){return x.id===id;})||{id:id};
+  TRAJECT=t;
 
-function renderDetail(t){
-  var id=t.id;
-  var isSell=!t.opdrachtgever_rol||t.opdrachtgever_rol==='verkoper';
-  render(hdrHTML()
-    +'<div class="main">'
-    +'<div class="back-btn" onclick="renderDashboard()">← Terug naar overzicht</div>'
-    +'<div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem">'
-    +'<div><div style="font-family:\'Playfair Display\',serif;font-size:1.4rem;color:var(--head);font-weight:600">'+esc(t.kantoor_naam||id)+'</div>'
-    +'<div style="font-size:12px;color:var(--muted);margin-top:4px">'+esc(t.traject_type||'—')+' &middot; <span style="font-family:monospace">'+esc(id)+'</span>'
-    +(t.opdrachtgever_rol?' &middot; opdrachtgever: '+esc(t.opdrachtgever_rol):'')+'</div></div>'
-    +'</div>'
+  render(`
+    <div class="hdr">
+      <div class="hdr-brand"><div class="hdr-dot"></div>KantoorInzicht M&A</div>
+      <div class="hdr-right">
+        <span class="hdr-user"><span class="hdr-name">${esc(G.naam)}</span></span>
+        <button class="btn-outline" onclick="renderLogin()">Uitloggen</button>
+      </div>
+    </div>
+    <div class="main">
+      <div class="back-btn" onclick="renderDashboard()">← Terug naar overzicht</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem">
+        <div>
+          <div style="font-family:'Playfair Display',serif;font-size:1.4rem;color:var(--head);font-weight:600">${esc(t.kantoor_naam||id)}</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px">${esc(t.traject_type||'—')} &middot; ${esc(t.sector||'—')} &middot; <span style="font-family:monospace">${esc(id)}</span></div>
+        </div>
+      </div>
 
-    // Codes
-    +'<div class="card"><div class="card-hdr"><div class="card-title">&#128273; Toegangscodes</div></div><div class="card-body">'
-    +'<div style="display:flex;flex-wrap:wrap;gap:1rem">'
-    +'<div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Verkoperscode</div>'
-    +'<div class="code-box"><span class="code-val">'+esc(id)+'</span><button class="copy-btn" onclick="navigator.clipboard.writeText(\''+esc(id)+'\');this.textContent=\'✓\'">Kopieer</button></div></div>'
-    +(t.koper_code?'<div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Koperscode</div>'
-    +'<div class="code-box"><span class="code-val-gold">'+esc(t.koper_code)+'</span><button class="copy-btn" onclick="navigator.clipboard.writeText(\''+esc(t.koper_code)+'\');this.textContent=\'✓\'">Kopieer</button></div></div>':'')
-    +(t.tussen_code?'<div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Uw tussenpersoonscode</div>'
-    +'<div class="code-box"><span class="code-val" style="color:var(--mid)">'+esc(t.tussen_code)+'</span><button class="copy-btn" onclick="navigator.clipboard.writeText(\''+esc(t.tussen_code)+'\');this.textContent=\'✓\'">Kopieer</button></div></div>':'')
-    +'</div><div class="info-box" style="margin-top:1rem">Partijen loggen in via <strong>koersvoormorgen.nl/mna.html</strong></div>'
-    +'</div></div>'
+      <!-- TOEGANGSCODES -->
+      <div class="card">
+        <div class="card-hdr"><div class="card-title">🔑 Toegangscodes</div></div>
+        <div class="card-body">
+          <div style="display:flex;flex-wrap:wrap;gap:1rem">
+            <div>
+              <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Verkoperscode</div>
+              <div class="code-box">
+                <span class="code-val">${esc(id)}</span>
+                <button class="copy-btn" onclick="navigator.clipboard.writeText('${esc(id)}');this.textContent='✓'">Kopieer</button>
+              </div>
+            </div>
+            ${t.koper_code?`<div>
+              <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Koperscode</div>
+              <div class="code-box">
+                <span class="code-val-gold">${esc(t.koper_code)}</span>
+                <button class="copy-btn" onclick="navigator.clipboard.writeText('${esc(t.koper_code)}');this.textContent='✓'">Kopieer</button>
+              </div>
+            </div>`:''}
+            ${t.tussen_code?`<div>
+              <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Tussenpersoonscode</div>
+              <div class="code-box">
+                <span class="code-val" style="color:var(--mid)">${esc(t.tussen_code)}</span>
+                <button class="copy-btn" onclick="navigator.clipboard.writeText('${esc(t.tussen_code)}');this.textContent='✓'">Kopieer</button>
+              </div>
+            </div>`:''}
+          </div>
+          <div class="info-box" style="margin-top:1rem">Verkoper en koper loggen in via <strong>koersvoormorgen.nl/mna.html</strong></div>
+        </div>
+      </div>
 
-    // Documenten
-    +'<div class="card"><div class="card-hdr"><div class="card-title">&#128196; Documenten</div>'
-    +'<div style="display:flex;gap:6px;flex-wrap:wrap">'
-    +'<button class="doc-btn" style="background:var(--purple);color:#fff" onclick="genDoc(\'nda\')">NDA</button>'
-    +'<button class="doc-btn" style="background:var(--blue);color:#fff" onclick="genDoc(\'bem\')">BEM</button>'
-    +'<button class="doc-btn" style="background:var(--gold);color:#fff" onclick="genDoc(\'loi\')">LoI</button>'
-    +'<button class="doc-btn" style="background:var(--teal);color:#fff" onclick="genDoc(\'excl\')">Excl</button>'
-    +'<button class="doc-btn" style="background:var(--brown);color:#fff" onclick="genDoc(\'introductie\')">Introductie</button>'
-    +'<button class="btn-ghost sm" onclick="uploadDocument()">↑ Upload</button>'
-    +'</div></div>'
-    +'<div id="doc-output" style="padding:1rem;display:none"></div>'
-    +'<div id="docs-lijst" class="card-body"><div style="color:var(--muted);font-size:13px">Laden...</div></div>'
-    +'</div>'
+      <!-- DOCUMENTEN -->
+      <div class="card">
+        <div class="card-hdr">
+          <div class="card-title">📁 Dataroom — Documenten</div>
+          <button class="btn btn-sm" id="btn-upload">↑ Document uploaden</button>
+        </div>
+        <div id="docs-body" class="card-body" style="color:var(--muted);font-size:13px">
+          <button class="btn-outline" onclick="laadDocumenten('${esc(id)}','${esc(t.tussen_code||'')}')">Laden</button>
+        </div>
+      </div>
 
-    // Gesprekken
-    +'<div class="card"><div class="card-hdr"><div class="card-title">&#128172; Gesprekken</div>'
-    +'<button class="btn btn-sm" onclick="nieuwGesprek()">+ Vastleggen</button></div>'
-    +'<div id="gesp-body" class="card-body"><div style="color:var(--muted);font-size:13px">Laden...</div></div>'
-    +'</div>'
+      <!-- GESPREKKEN -->
+      <div class="card">
+        <div class="card-hdr">
+          <div class="card-title">💬 Gesprekken & verslagen</div>
+          <button class="btn btn-sm" onclick="nieuwGesprek('${esc(id)}','${esc(t.tussen_code||'')}')">+ Gesprek vastleggen</button>
+        </div>
+        <div id="gesp-body" class="card-body" style="color:var(--muted);font-size:13px">
+          <button class="btn-outline" onclick="laadGesprekken('${esc(id)}','${esc(t.tussen_code||'')}')">Laden</button>
+        </div>
+      </div>
 
-    // Notitie
-    +'<div class="card"><div class="card-hdr"><div class="card-title">&#128221; Interne notitie</div></div>'
-    +'<div class="card-body">'
-    +'<textarea id="notitie-txt" rows="4" style="width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:var(--r);font-family:\'IBM Plex Sans\',sans-serif;font-size:13px;padding:9px 11px;color:var(--sub);resize:vertical;outline:none" placeholder="Interne aantekeningen...">'+esc(t.notitie||'')+'</textarea>'
-    +'<div style="text-align:right;margin-top:.5rem"><button class="btn btn-sm" onclick="slaNotitieOp()">Opslaan</button></div>'
-    +'</div></div>'
-    +'</div>');
+      <!-- NOTITIE -->
+      <div class="card">
+        <div class="card-hdr"><div class="card-title">📝 Interne notitie</div></div>
+        <div class="card-body">
+          <textarea id="notitie-txt" rows="4" style="width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:var(--r);font-family:'IBM Plex Sans',sans-serif;font-size:13px;padding:9px 11px;color:var(--sub);resize:vertical" placeholder="Interne aantekeningen, afspraken, context...">${esc(t.notitie||'')}</textarea>
+          <div style="text-align:right;margin-top:.5rem">
+            <button class="btn btn-sm" onclick="slaNotitieOp('${esc(id)}')">Opslaan</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `);
 
-  laadDocumentenLijst();
-  laadGesprekken();
-}
+  // Upload handler
+  ge('btn-upload').onclick=function(){uploadDocument(id, t.tussen_code||'');};
 
-// ===== DOCUMENT GENEREREN =====
-async function genDoc(type){
-  var t=TRAJECT;if(!t)return;
-  var out=ge('doc-output');
-  out.style.display='block';
-  out.innerHTML='<div style="color:var(--muted);font-size:13px">Genereren... (15-30 sec)</div>';
-
-  var tc=t.tussen_code||'';
-  var isSell=!t.opdrachtgever_rol||t.opdrachtgever_rol==='verkoper';
-  var datum=new Date().toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'});
-  var kleuren={nda:'var(--purple)',bem:'var(--blue)',loi:'var(--gold)',excl:'var(--teal)',introductie:'var(--brown)'};
-  var labels={nda:'NDA',bem:'Bemiddelingsovereenkomst',loi:'Letter of Intent',excl:'Exclusiviteitsbrief',introductie:'Introductieverklaring'};
-
-  try{
-    // Template ophalen
-    var tplR=await fetch(WORKER+'/mna/template/'+(type==='bem'?(isSell?'bem_verk':'bem_koper'):type)+'?email='+encodeURIComponent('marcel@bisschopsfinancing.nl'));
-    var tplD=await tplR.json().catch(function(){return{ok:false};});
-    var tplTekst=tplD.ok&&tplD.tekst?tplD.tekst:'[standaard template]';
-
-    // Strip AV voor generatie
-    var avIdx=tplTekst.indexOf('\nALGEMENE VOORWAARDEN');
-    if(avIdx===-1)avIdx=tplTekst.indexOf('\n---\n\nALGEMENE VOORWAARDEN');
-    if(avIdx>0)tplTekst=tplTekst.substring(0,avIdx).trim();
-    if(tplTekst.length>7000)tplTekst=tplTekst.substring(0,7000)+'[...]';
-
-    // Prompt
-    var prompts={
-      nda:'Vul de NDA in. De KOPER is de ontvangende/geheimhoudende partij.\n'
-        +'Koper: '+esc(t.koper_naam||'[koper]')+', '+esc(t.koper_adres||'[adres]')+'.\n'
-        +'Verkoper (verstrekkende partij): '+esc(t.kantoor_naam||'[verkoper]')+'.\n'
-        +'Datum: '+datum+'. Geef alleen het ingevulde document terug.',
-      bem:'Vul de BEM in. Type: '+(isSell?'Verkoop (sell-side)':'Aankoop (buy-side)')+'.\n'
-        +'Opdrachtgever: '+esc(isSell?t.kantoor_naam:t.koper_naam||'[koper]')+', '+esc(isSell?t.verkoper_adres||'[adres]':t.koper_adres||'[adres]')+'.\n'
-        +'Datum: '+datum+'. Adviseur: Bisschops Financing B.V., Marcel Bisschops. Geef alleen het ingevulde document terug.',
-      loi:'Vul de LoI in.\n'
-        +'Verkoper: '+esc(t.kantoor_naam||'[verkoper]')+', '+esc(t.verkoper_adres||'[adres]')+'.\n'
-        +'Koper: '+esc(t.koper_naam||'[koper]')+', '+esc(t.koper_adres||'[adres]')+'.\n'
-        +'Datum: '+datum+'. Geef alleen het ingevulde document terug.',
-      excl:'Vul de Exclusiviteitsbrief in. Alleen de VERKOPER tekent.\n'
-        +'Verkoper (verleent exclusiviteit): '+esc(t.kantoor_naam||'[verkoper]')+', '+esc(t.verkoper_adres||'[adres]')+'.\n'
-        +'Koper (ontvangt exclusiviteit): '+esc(t.koper_naam||'[koper]')+'.\n'
-        +'Datum: '+datum+'. Geef alleen het ingevulde document terug.',
-      introductie:'Vul de Introductieverklaring in.\n'
-        +'Verkoper (ontvangt introductie): '+esc(t.kantoor_naam||'[verkoper]')+', '+esc(t.verkoper_adres||'[adres]')+', vertegenwoordigd door '+esc(t.contact_naam||'[naam]')+'.\n'
-        +'Datum: '+datum+'. Geef alleen het ingevulde document terug.'
-    };
-
-    var prompt=prompts[type]+'\n\nTEMPLATE:\n'+tplTekst;
-    var aiR=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:8000})});
-    var aiD=await aiR.json();
-    var tekst=aiD.text||'Fout bij genereren';
-
-    out.innerHTML='<div style="font-size:11px;font-weight:600;color:'+kleuren[type]+';text-transform:uppercase;letter-spacing:.1em;margin-bottom:.75rem">'+labels[type]+' gegenereerd</div>'
-      +'<textarea id="adv-doc-tekst" style="width:100%;height:260px;background:#faf9f7;border:1.5px solid var(--border);border-radius:var(--r);font-family:Georgia,serif;font-size:12px;line-height:1.8;padding:1rem;outline:none;resize:vertical;color:var(--sub)">'+esc(tekst)+'</textarea>'
-      +'<div style="display:flex;gap:8px;margin-top:.75rem;flex-wrap:wrap">'
-      +'<button class="btn-ghost sm" onclick="printAdvDoc(\''+type+'\',\''+labels[type]+'\')">&#128196; Print</button>'
-      +'<button class="btn-ghost sm" onclick="stuurAdvDocEmail(\''+type+'\')">&#9993; Verstuur per mail</button>'
-      +'<button class="doc-btn sm" style="background:var(--teal);color:#fff;border-radius:var(--r);border:none;font-family:\'IBM Plex Sans\',sans-serif;font-size:11px;padding:5px 12px;cursor:pointer" onclick="stuurAdvSignhost(\''+type+'\',\''+labels[type]+'\')">&#9998; Signhost</button>'
-      +'<button class="btn-ghost sm" onclick="ge(\'doc-output\').style.display=\'none\'">Sluiten</button>'
-      +'</div>';
-  }catch(e){out.innerHTML='<div style="color:var(--red);font-size:13px">Fout: '+esc(e.message)+'</div>';}
-}
-
-function printAdvDoc(type,label){
-  var tekst=ge('adv-doc-tekst')&&ge('adv-doc-tekst').value;
-  if(!tekst)return;
-  var win=window.open('','_blank');
-  var datum=new Date().toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'});
-  var kleur={nda:'#7c5cbf',bem:'#2a5ea0',loi:'#c9a84c',excl:'#1a7a5e',introductie:'#8a5a2a'}[type]||'#1a7a5e';
-  function fmt2(t){
-    t=t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    t=t.replace(/^(ARTIKEL \d+[^\n]*)/gm,'<h3>$1</h3>');
-    t=t.replace(/^(Artikel \d+[^\n]*)/gm,'<h3>$1</h3>');
-    t=t.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
-    return t.split(/\n\n+/).map(function(p){
-      p=p.trim();if(!p)return'';
-      if(p.startsWith('<h3>'))return p;
-      return'<p>'+p.replace(/\n/g,'<br>')+'</p>';
-    }).join('');
+  // Auto-laad documenten en gesprekken
+  if(t.tussen_code){
+    laadDocumenten(id, t.tussen_code);
+    laadGesprekken(id, t.tussen_code);
   }
-  win.document.write('<!DOCTYPE html><html lang="nl"><head><meta charset="UTF-8"><title>'+label+'</title>'
-    +'<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">'
-    +'<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:IBM Plex Sans,Helvetica,sans-serif;font-size:11pt;line-height:1.75;color:#1a1815}'
-    +'.page{max-width:720px;margin:0 auto;padding:2cm}'
-    +'.hdr{display:flex;justify-content:space-between;align-items:flex-end;padding-bottom:1.25rem;border-bottom:3px solid '+kleur+';margin-bottom:2rem}'
-    +'.title{font-family:Playfair Display,serif;font-size:22pt;font-weight:600;color:'+kleur+'}'
-    +'.meta{text-align:right;font-size:9pt;color:#8a8880;line-height:1.7}'
-    +'h3{font-size:10pt;font-weight:600;text-transform:uppercase;color:'+kleur+';margin:1.75rem 0 .5rem;padding-bottom:.3rem;border-bottom:1px solid #e8e5df}'
-    +'p{margin-bottom:.75rem;font-size:10.5pt}'
-    +'@media print{@page{margin:2cm;size:A4}}</style></head><body>'
-    +'<div class="page"><div class="hdr"><div class="title">'+label+'</div>'
-    +'<div class="meta">'+datum+'<br>Vertrouwelijk</div></div>'
-    +'<div>'+fmt2(tekst)+'</div>'
-    +'<div style="margin-top:3rem;padding-top:1rem;border-top:1px solid #e8e5df;font-size:8pt;color:#aaa">Bisschops Financing B.V. &middot; Grotestraat 13, 5841AA Oploo &middot; Vertrouwelijk</div>'
-    +'</div><script>window.onload=function(){window.print();}<\/script></body></html>');
-  win.document.close();
 }
 
-async function stuurAdvDocEmail(type){
-  var tekst=ge('adv-doc-tekst')&&ge('adv-doc-tekst').value;
-  if(!tekst||!TRAJECT)return;
-  var t=TRAJECT;
-  var isSell=!t.opdrachtgever_rol||t.opdrachtgever_rol==='verkoper';
-  var toList;
-  if(type==='nda') toList=[t.koper_email,t.begeleider_email||'marcel@bisschopsfinancing.nl'].filter(Boolean);
-  else if(type==='bem') toList=[(isSell?t.contact_email:t.koper_email),t.begeleider_email||'marcel@bisschopsfinancing.nl'].filter(Boolean);
-  else if(type==='introductie') toList=[(isSell?t.contact_email:t.verkoper_email||''),t.begeleider_email||'marcel@bisschopsfinancing.nl'].filter(Boolean);
-  else toList=[t.contact_email,t.koper_email,t.begeleider_email||'marcel@bisschopsfinancing.nl'].filter(Boolean);
-
-  var ep=type==='nda'?'/mna/nda/email':type==='loi'?'/mna/loi/email':type==='introductie'?'/mna/introductie/email':'/mna/bem/email';
-  var payload={code:t.id,to:toList};
-  if(type==='nda')payload.nda_tekst=tekst;
-  else if(type==='loi')payload.loi_tekst=tekst;
-  else if(type==='introductie')payload.introductie_tekst=tekst;
-  else{payload.bem_tekst=tekst;payload.type=isSell?'verkoop':'aankoop';}
-
-  try{
-    var d=await apiPost(ep,payload);
-    if(d.ok)toast(({nda:'NDA',bem:'BEM',loi:'LoI',excl:'Excl',introductie:'Introductie'}[type]||type)+' verstuurd per mail','ok');
-    else toast(d.error||'Fout bij versturen','err');
-  }catch(e){toast('Verbindingsfout','err');}
-}
-
-function stuurAdvSignhost(type,label){
-  var tekst=ge('adv-doc-tekst')&&ge('adv-doc-tekst').value;
-  if(!tekst||!TRAJECT)return;
-  var t=TRAJECT;
-  var isSell=!t.opdrachtgever_rol||t.opdrachtgever_rol==='verkoper';
-  var defEmail=type==='nda'?(t.koper_email||''):type==='bem'?(isSell?(t.contact_email||''):(t.koper_email||'')):type==='introductie'?(isSell?(t.contact_email||''):(t.verkoper_email||'')):(t.contact_email||'');
-  var defNaam=type==='nda'?(t.koper_contact||t.koper_naam||''):type==='bem'?(isSell?(t.contact_naam||''):(t.koper_contact||t.koper_naam||'')):(t.contact_naam||'');
-  var ov=document.createElement('div');ov.className='overlay';
-  ov.innerHTML='<div class="modal"><div class="modal-title">&#9998; Signhost &mdash; '+esc(label)+'</div>'
-    +'<div style="font-size:12px;color:var(--muted);margin-bottom:1rem;padding:.6rem;background:var(--bg);border-radius:var(--r)">Signhost verstuurt een beveiligde tekenlink per e-mail.</div>'
-    +'<div class="field"><label>Naam ondertekenaar</label><input type="text" id="sh-naam" value="'+esc(defNaam)+'" placeholder="Voor- en achternaam"></div>'
-    +'<div class="field"><label>E-mailadres ondertekenaar</label><input type="email" id="sh-email" value="'+esc(defEmail)+'" placeholder="naam@bedrijf.nl"></div>'
-    +'<div id="sh-err" class="err-msg"></div>'
-    +'<div class="modal-footer"><button class="btn-ghost" id="sh-ann">Annuleren</button><button class="btn" id="sh-ok">&#9998; Verstuur via Signhost</button></div>'
-    +'</div>';
-  document.body.appendChild(ov);
-  ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
-  ge('sh-ann').onclick=function(){document.body.removeChild(ov);};
-  ge('sh-ok').onclick=async function(){
-    var naam=ge('sh-naam').value.trim();
-    var email=ge('sh-email').value.trim();
-    if(!email){ge('sh-err').textContent='E-mailadres verplicht.';ge('sh-err').style.display='block';return;}
-    this.disabled=true;this.textContent='Versturen...';
-    var d=await apiPost('/mna/signhost/stuur',{code:t.id,doc_type:type,ondertekenaar_naam:naam,ondertekenaar_email:email,doc_tekst:tekst});
-    if(d.ok){document.body.removeChild(ov);toast(label+' verstuurd via Signhost naar '+email,'ok');}
-    else{ge('sh-err').textContent=d.error||'Fout';ge('sh-err').style.display='block';this.disabled=false;this.textContent='Verstuur via Signhost';}
-  };
-}
-
-// ===== DOCUMENTEN LIJST =====
-async function laadDocumentenLijst(){
-  var body=ge('docs-lijst');if(!body)return;
-  var t=TRAJECT;if(!t||!t.tussen_code)return;
+// ===== DOCUMENTEN =====
+async function laadDocumenten(id, tussenCode){
+  var body=ge('docs-body');
   body.innerHTML='<div style="color:var(--muted);font-size:13px">Laden...</div>';
   try{
-    var r=await fetch(WORKER+'/mna/document/lijst/'+t.id+'?code='+encodeURIComponent(t.tussen_code));
-    var docs=await r.json();
-    if(!Array.isArray(docs)||!docs.length){body.innerHTML='<div class="empty" style="padding:1.5rem">Nog geen documenten.</div>';return;}
-    var html='';
-    docs.forEach(function(d){
-      var dt=d.uploaded_at?new Date(d.uploaded_at).toLocaleDateString('nl-NL',{day:'2-digit',month:'short',year:'numeric'}):'';
-      var isGetekend=d.methode==='signhost';
-      html+='<div class="doc-row">'
-        +'<span style="font-size:14px">'+(d.bestand_naam&&d.bestand_naam.endsWith('.pdf')?'📄':'📃')+'</span>'
-        +'<span style="font-size:12px;flex:1;color:var(--sub)">'+esc(d.bestand_naam||'—')+'</span>'
-        +(isGetekend?'<span class="badge badge-getekend">✓ Getekend</span>':'')
-        +'<span style="font-size:11px;color:var(--muted)">'+dt+'</span>'
-        +(d.bewaard?'<a href="'+WORKER+'/mna/document/download/'+d.id+'?code='+encodeURIComponent(t.tussen_code)+'" target="_blank" class="btn-ghost sm" style="text-decoration:none">↓</a>':'')
-        +'</div>';
+    var r=await fetch(WORKER+'/mna/traject/'+tussenCode,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ts:Date.now()})});
+    var d=await r.json();
+    var docs=(d.documenten||[]);
+    if(!docs.length){body.innerHTML='<div class="empty" style="padding:1.5rem">Nog geen documenten geüpload.</div>';return;}
+    var html='<table><thead><tr><th>Fase</th><th>Bestand</th><th>Datum</th><th></th></tr></thead><tbody>';
+    docs.forEach(function(doc){
+      var dt=doc.uploaded_at?new Date(doc.uploaded_at).toLocaleDateString('nl-NL',{day:'2-digit',month:'short',year:'numeric'}):'—';
+      html+='<tr>'
+        +'<td class="td-sec">'+esc(doc.fase_id||'—')+'</td>'
+        +'<td class="td-name" style="font-size:13px">'+esc(doc.bestand_naam||'—')+'</td>'
+        +'<td class="td-sec">'+dt+'</td>'
+        +'<td style="text-align:right">'
+        +(doc.bewaard?'<a href="'+WORKER+'/mna/document/download/'+doc.id+'?code='+encodeURIComponent(tussenCode)+'" target="_blank" class="btn-outline sm">↓ Download</a>':'')
+        +'<button class="btn-outline sm adv-doc-del" data-id="'+doc.id+'" style="color:var(--red);border-color:var(--red)">✕</button>'
+        +'</td></tr>';
     });
+    html+='</tbody></table>';
     body.innerHTML=html;
-  }catch(e){body.innerHTML='<div style="color:var(--red);font-size:13px">Fout: '+esc(e.message)+'</div>';}
+    // Verwijder handlers
+    body.querySelectorAll('.adv-doc-del').forEach(function(btn){
+      btn.addEventListener('click',async function(){
+        if(!confirm('Document verwijderen?'))return;
+        var delBody=new URLSearchParams();delBody.append('code',tussenCode);
+        var r=await fetch(WORKER+'/mna/document/delete/'+btn.dataset.id,{method:'POST',body:delBody});
+        var d=await r.json();
+        if(d.ok){toast('Document verwijderd.','ok');laadDocumenten(id,tussenCode);}
+        else toast(d.error||'Fout.','err');
+      });
+    });
+  }catch(e){body.innerHTML='<div style="color:var(--red);font-size:13px">Fout bij laden: '+esc(e.message)+'</div>';}
 }
 
-function uploadDocument(){
-  var t=TRAJECT;if(!t||!t.tussen_code){toast('Geen tussenpersoonscode','err');return;}
+function uploadDocument(id, tussenCode){
+  if(!tussenCode){toast('Geen tussenpersoonscode beschikbaar.','err');return;}
   var faseKeuze=['voorgesprek','financieel','juridisch','commercieel','operationeel','personeel','strategisch','compliance'];
+
   var ov=document.createElement('div');ov.className='overlay';
-  ov.innerHTML='<div class="modal"><div class="modal-title">Document uploaden</div>'
-    +'<div class="field"><label>Bestand</label><input type="file" id="up-file" accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.xlsx,.xls" style="background:var(--bg);border:1.5px solid var(--border);border-radius:var(--r);padding:8px;width:100%"></div>'
-    +'<div class="field"><label>Fase</label><select id="up-fase">'+faseKeuze.map(function(f){return'<option value="'+f+'">'+f.charAt(0).toUpperCase()+f.slice(1)+'</option>';}).join('')+'</select></div>'
-    +'<div id="up-err" class="err-msg"></div>'
-    +'<div class="modal-footer"><button class="btn-ghost" id="up-ann">Annuleren</button><button class="btn" id="up-ok">↑ Uploaden</button></div>'
-    +'</div>';
+  ov.innerHTML=`<div class="modal">
+    <div class="modal-title">Document uploaden</div>
+    <div class="field"><label>Bestand</label><input type="file" id="up-file" accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.xlsx,.xls" style="background:var(--bg);border:1.5px solid var(--border);border-radius:var(--r);padding:8px;width:100%"></div>
+    <div class="field"><label>Fase</label><select id="up-fase">
+      ${faseKeuze.map(function(f){return'<option value="'+f+'">'+f.charAt(0).toUpperCase()+f.slice(1)+'</option>';}).join('')}
+    </select></div>
+    <div id="up-err" class="err-msg"></div>
+    <div class="modal-footer">
+      <button class="btn-outline" id="up-ann">Annuleren</button>
+      <button class="btn" id="up-ok">↑ Uploaden</button>
+    </div>
+  </div>`;
   document.body.appendChild(ov);
-  ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
   ge('up-ann').onclick=function(){document.body.removeChild(ov);};
   ge('up-ok').onclick=async function(){
     var file=ge('up-file').files[0];
     var fase=ge('up-fase').value;
     if(!file){ge('up-err').textContent='Kies een bestand.';ge('up-err').style.display='block';return;}
-    var btn=this;btn.disabled=true;btn.textContent='Uploaden...';
-    var fd=new FormData();fd.append('file',file);
-    var r=await fetch(WORKER+'/mna/document/upload?code='+encodeURIComponent(t.tussen_code)+'&fase_id='+fase+'&bewaar=1',{method:'POST',body:fd});
-    var d=await r.json();
-    if(d.ok||d.id){toast('Geüpload: '+file.name,'ok');document.body.removeChild(ov);laadDocumentenLijst();}
-    else{ge('up-err').textContent=d.error||'Upload mislukt.';ge('up-err').style.display='block';btn.disabled=false;btn.textContent='↑ Uploaden';}
+    var btn=this;btn.disabled=true;btn.textContent='Lezen...';
+    try{
+      // Base64 — geen multipart, werkt door Bot Fight Mode
+      var b64=await new Promise(function(res,rej){
+        var reader=new FileReader();
+        reader.onload=function(){res(reader.result.split(',')[1]);};
+        reader.onerror=function(){rej(new Error('Lezen mislukt'));};
+        reader.readAsDataURL(file);
+      });
+      btn.textContent='Uploaden...';
+      var params=new URLSearchParams();
+      params.append('data',JSON.stringify({
+        code:tussenCode,fase_id:fase,bewaar:true,
+        bestand_naam:file.name,bestand_type:file.type||'application/octet-stream',
+        base64:b64
+      }));
+      var r=await fetch(WORKER+'/mna/document/upload-base64',{method:'POST',body:params});
+      var d=await r.json();
+      if(d.ok||d.id){
+        toast('Geüpload: '+file.name,'ok');
+        document.body.removeChild(ov);
+        laadDocumenten(id, tussenCode);
+      } else {
+        ge('up-err').textContent=d.error||'Upload mislukt.';ge('up-err').style.display='block';
+        btn.disabled=false;btn.textContent='↑ Uploaden';
+      }
+    }catch(e){ge('up-err').textContent='Verbindingsfout: '+e.message;ge('up-err').style.display='block';btn.disabled=false;btn.textContent='↑ Uploaden';}
   };
 }
 
 // ===== GESPREKKEN =====
-async function laadGesprekken(){
-  var body=ge('gesp-body');if(!body)return;
-  var t=TRAJECT;if(!t)return;
+async function laadGesprekken(id, tussenCode){
+  var body=ge('gesp-body');
   body.innerHTML='<div style="color:var(--muted);font-size:13px">Laden...</div>';
   try{
-    var r=await fetch(WORKER+'/mna/gesprekken/'+t.id+(t.tussen_code?'?code='+encodeURIComponent(t.tussen_code):''));
+    var r=await fetch(WORKER+'/mna/gesprekken/'+id+'?code='+encodeURIComponent(tussenCode));
     if(!r.ok)throw new Error('HTTP '+r.status);
-    var gs=await r.json();
-    if(!gs.length){body.innerHTML='<div class="empty" style="padding:1.5rem">Nog geen gesprekken vastgelegd.</div>';return;}
-    var typenL={intake:'Intake',voortgang:'Voortgang',onderhandeling:'Onderhandeling',presentatie:'Presentatie',overig:'Overig',gesprek:'Gesprek',kennismaking:'Kennismaking',telefonisch:'Telefonisch'};
+    var gesprekken=await r.json();
+    if(!gesprekken.length){body.innerHTML='<div class="empty" style="padding:1.5rem">Nog geen gesprekken vastgelegd.</div>';return;}
+    var typenL={intake:'Intake',voortgang:'Voortgang',onderhandeling:'Onderhandeling',presentatie:'Presentatie',overig:'Overig'};
     var html='';
-    gs.forEach(function(g){
+    gesprekken.forEach(function(g){
       var dt=g.datum?new Date(g.datum).toLocaleDateString('nl-NL',{day:'2-digit',month:'long',year:'numeric'}):fmt(g.created_at);
       html+='<div class="gesprek-item">'
-        +'<div class="gesprek-hdr" onclick="this.nextElementSibling.classList.toggle(\'open\')">'
+        +'<div class="gesprek-hdr" onclick="this.nextSibling.classList.toggle(\'open\')">'
         +'<span class="badge badge-actief" style="font-size:9px">'+esc(typenL[g.type]||g.type||'Gesprek')+'</span>'
         +'<span style="font-size:13px;font-weight:600;color:var(--head)">'+esc(dt)+'</span>'
         +(g.deelnemers?'<span style="font-size:11px;color:var(--muted)">'+esc(g.deelnemers)+'</span>':'')
         +'</div>'
-        +'<div class="gesprek-body">'+(g.verslag?esc(g.verslag):'<em style="color:var(--muted)">Geen verslag.</em>')+'</div>'
-        +'</div>';
+        +'<div class="gesprek-body">'
+        +(g.verslag?'<div style="white-space:pre-wrap">'+esc(g.verslag)+'</div>':'<div style="color:var(--muted);font-style:italic">Geen verslag.</div>')
+        +'</div></div>';
     });
     body.innerHTML=html;
   }catch(e){body.innerHTML='<div style="color:var(--red);font-size:13px">Fout: '+esc(e.message)+'</div>';}
 }
 
-function nieuwGesprek(){
-  var t=TRAJECT;if(!t)return;
+function nieuwGesprek(id, tussenCode){
+  var typen=['intake','voortgang','onderhandeling','presentatie','overig'];
   var vandaag=new Date().toISOString().split('T')[0];
   var ov=document.createElement('div');ov.className='overlay';
-  ov.innerHTML='<div class="modal modal-lg"><div class="modal-title">Gesprek vastleggen</div>'
-    +'<div class="row2">'
-    +'<div class="field"><label>Type</label><select id="gs-type"><option value="gesprek">Gesprek</option><option value="kennismaking">Kennismaking</option><option value="onderhandeling">Onderhandeling</option><option value="telefonisch">Telefonisch</option><option value="overig">Overig</option></select></div>'
-    +'<div class="field"><label>Datum</label><input type="date" id="gs-datum" value="'+vandaag+'"></div>'
-    +'</div>'
-    +'<div class="field"><label>Deelnemers</label><input type="text" id="gs-deeln" placeholder="bijv. Marcel Bisschops, Barry Sutin"></div>'
-    +'<div class="field"><label>Notities / verslag</label><textarea id="gs-verslag" rows="6" placeholder="Bespreekpunten, beslissingen, actiepunten..."></textarea></div>'
-    +'<div id="gs-err" class="err-msg"></div>'
-    +'<div class="modal-footer"><button class="btn-ghost" id="gs-ann">Annuleren</button><button class="btn" id="gs-ok">Opslaan</button></div>'
-    +'</div>';
+  ov.innerHTML=`<div class="modal" style="max-width:620px">
+    <div class="modal-title">Gesprek vastleggen</div>
+    <div class="row2">
+      <div class="field"><label>Type</label><select id="gs-type">
+        ${typen.map(function(t){return'<option value="'+t+'">'+t.charAt(0).toUpperCase()+t.slice(1)+'</option>';}).join('')}
+      </select></div>
+      <div class="field"><label>Datum</label><input type="date" id="gs-datum" value="${vandaag}"></div>
+    </div>
+    <div class="field"><label>Deelnemers</label><input type="text" id="gs-deeln" placeholder="bijv. Marcel Bisschops, Barry Sutin"></div>
+    <div class="field"><label>Notities / verslag</label><textarea id="gs-verslag" rows="6" placeholder="Bespreekpunten, beslissingen, actiepunten..."></textarea></div>
+    <div id="gs-err" class="err-msg"></div>
+    <div class="modal-footer">
+      <button class="btn-outline" id="gs-ann">Annuleren</button>
+      <button class="btn" id="gs-ok">Opslaan</button>
+    </div>
+  </div>`;
   document.body.appendChild(ov);
-  ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
   ge('gs-ann').onclick=function(){document.body.removeChild(ov);};
   ge('gs-ok').onclick=async function(){
+    var btn=this;btn.disabled=true;btn.textContent='Opslaan...';
     var datum=ge('gs-datum').value;
-    if(!datum){ge('gs-err').textContent='Datum is verplicht.';ge('gs-err').style.display='block';return;}
-    this.disabled=true;this.textContent='Opslaan...';
-    var d=await apiPost('/mna/gesprek/opslaan',{
-      code:t.tussen_code||t.id,traject_id:t.id,
-      type:ge('gs-type').value,datum:datum,
-      deelnemers:ge('gs-deeln').value.trim(),
-      ruwe_notities:ge('gs-verslag').value.trim(),
-      verslag:ge('gs-verslag').value.trim()
-    });
-    if(d.ok||d.id){toast('Gesprek opgeslagen.','ok');document.body.removeChild(ov);laadGesprekken();}
-    else{ge('gs-err').textContent=d.error||'Fout.';ge('gs-err').style.display='block';this.disabled=false;this.textContent='Opslaan';}
+    var verslag=ge('gs-verslag').value.trim();
+    if(!datum){ge('gs-err').textContent='Datum is verplicht.';ge('gs-err').style.display='block';btn.disabled=false;btn.textContent='Opslaan';return;}
+    try{
+      var r=await fetch(WORKER+'/mna/gesprek/opslaan',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          code:tussenCode,traject_id:id,
+          type:ge('gs-type').value,datum:datum,
+          deelnemers:ge('gs-deeln').value.trim(),
+          ruwe_notities:verslag,verslag:verslag
+        })
+      });
+      var d=await r.json();
+      if(d.ok||d.id){toast('Gesprek opgeslagen.','ok');document.body.removeChild(ov);laadGesprekken(id,tussenCode);}
+      else{ge('gs-err').textContent=d.error||'Fout.';ge('gs-err').style.display='block';btn.disabled=false;btn.textContent='Opslaan';}
+    }catch(e){ge('gs-err').textContent='Verbindingsfout.';ge('gs-err').style.display='block';btn.disabled=false;btn.textContent='Opslaan';}
   };
 }
 
 // ===== NOTITIE =====
-async function slaNotitieOp(){
-  var t=TRAJECT;if(!t)return;
-  var tekst=ge('notitie-txt')&&ge('notitie-txt').value.trim();
-  var d=await apiPost('/mna/save',{code:t.tussen_code||t.id,fase_id:'voorgesprek',data_json:{adv_notitie:{label:'Adviseur notitie',value:tekst}}});
-  if(d.ok)toast('Notitie opgeslagen.','ok');
-  else toast(d.error||'Fout bij opslaan.','err');
+async function slaNotitieOp(id){
+  var tekst=ge('notitie-txt').value.trim();
+  // Sla op via mna/save als data_json veld
+  try{
+    var t=G.trajecten.find(function(x){return x.id===id;})||{};
+    var code=t.tussen_code||id;
+    var r=await fetch(WORKER+'/mna/save',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({code:code,fase_id:'voorgesprek',data_json:{adv_notitie:{label:'Adviseur notitie',value:tekst}}})
+    });
+    var d=await r.json();
+    if(d.ok)toast('Notitie opgeslagen.','ok');
+    else toast(d.error||'Fout bij opslaan.','err');
+  }catch(e){toast('Verbindingsfout.','err');}
 }
 
 // ===== NIEUW TRAJECT =====
 function nieuwTraject(){
   var ov=document.createElement('div');ov.className='overlay';
-  ov.innerHTML='<div class="modal modal-lg"><div class="modal-title">Nieuw traject aanmaken</div>'
-    +'<div class="row2">'
-    +'<div class="field"><label>Type *</label><select id="n-type"><option value="Verkoop">Verkoop</option><option value="Fusie">Fusie</option><option value="Opvolging">Opvolging</option><option value="PE-traject">PE-traject</option><option value="Overname">Overname</option></select></div>'
-    +'<div class="field"><label>Opdrachtgever *</label><select id="n-opdr"><option value="verkoper">Verkoper (sell-side)</option><option value="koper">Koper (buy-side)</option><option value="beide">Beide partijen</option></select></div>'
-    +'</div>'
-    +'<div class="field"><label>Naam onderneming *</label><input type="text" id="n-naam" placeholder="Naam van de onderneming" autofocus></div>'
-    +'<div class="row2">'
-    +'<div class="field"><label>Contactpersoon *</label><input type="text" id="n-contact" placeholder="Naam"></div>'
-    +'<div class="field"><label>E-mail contactpersoon *</label><input type="email" id="n-email" placeholder="naam@bedrijf.nl"></div>'
-    +'</div>'
-    +'<div class="field"><label>Adres onderneming</label><input type="text" id="n-adres" placeholder="Straat, postcode, plaats"></div>'
-    +'<div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin:.75rem 0 .5rem">Kopende partij (optioneel)</div>'
-    +'<div class="row2">'
-    +'<div class="field"><label>Naam koper</label><input type="text" id="n-koper-naam" placeholder="Naam"></div>'
-    +'<div class="field"><label>E-mail koper</label><input type="email" id="n-koper-email" placeholder="naam@bedrijf.nl"></div>'
-    +'</div>'
-    +'<div id="n-err" class="err-msg"></div>'
-    +'<div id="n-ok" class="ok-msg"></div>'
-    +'<div class="modal-footer"><button class="btn-ghost" id="n-ann">Annuleren</button><button class="btn" id="n-maak">Aanmaken</button></div>'
-    +'</div>';
+  ov.innerHTML=`<div class="modal">
+    <div class="modal-title">Nieuw traject aanmaken</div>
+    <div class="row2">
+      <div class="field"><label>Type *</label><select id="n-type">
+        <option value="Verkoop">Verkoop</option><option value="Fusie">Fusie</option>
+        <option value="Opvolging">Opvolging</option><option value="PE-traject">PE-traject</option>
+        <option value="Overname">Overname</option>
+      </select></div>
+      <div class="field"><label>Sector *</label><select id="n-sector">
+        <option value="accountancy">Accountancy</option><option value="mkb">MKB</option>
+        <option value="zorg">Zorg</option><option value="itsoftware">IT & Software</option>
+      </select></div>
+    </div>
+    <div class="field"><label>Naam onderneming *</label><input type="text" id="n-naam" placeholder="Naam van de onderneming"></div>
+    <div class="row2">
+      <div class="field"><label>Contactpersoon *</label><input type="text" id="n-contact" placeholder="Naam"></div>
+      <div class="field"><label>E-mail contactpersoon *</label><input type="email" id="n-email" placeholder="E-mailadres"></div>
+    </div>
+    <div class="field"><label>Adres</label><input type="text" id="n-adres" placeholder="Straat, postcode, plaats"></div>
+    <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.75rem;margin-top:.25rem">Kopende partij (optioneel)</div>
+    <div class="row2">
+      <div class="field"><label>Naam koper</label><input type="text" id="n-koper-naam" placeholder="Naam"></div>
+      <div class="field"><label>E-mail koper</label><input type="email" id="n-koper-email" placeholder="E-mailadres"></div>
+    </div>
+    <div id="n-err" class="err-msg"></div>
+    <div id="n-ok" class="ok-msg"></div>
+    <div class="modal-footer">
+      <button class="btn-outline" id="n-ann">Annuleren</button>
+      <button class="btn" id="n-maak">Aanmaken</button>
+    </div>
+  </div>`;
   document.body.appendChild(ov);
-  ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
   ge('n-ann').onclick=function(){document.body.removeChild(ov);};
   ge('n-maak').onclick=async function(){
     var btn=this;btn.disabled=true;btn.textContent='Aanmaken...';
     var err=ge('n-err');err.style.display='none';
-    var naam=ge('n-naam').value.trim();
-    var contact=ge('n-contact').value.trim();
-    var email=ge('n-email').value.trim();
+    var naam=ge('n-naam').value.trim(),contact=ge('n-contact').value.trim(),email=ge('n-email').value.trim();
     if(!naam||!contact||!email){err.textContent='Naam, contactpersoon en e-mail zijn verplicht.';err.style.display='block';btn.disabled=false;btn.textContent='Aanmaken';return;}
-    var d=await apiPost('/adviseur/create',{
-      email:G.email,wachtwoord:G.ww,
-      traject:{
-        kantoor_naam:naam,contact_naam:contact,contact_email:email,
-        traject_type:ge('n-type').value,
-        opdrachtgever_rol:ge('n-opdr').value,
-        verkoper_adres:ge('n-adres').value.trim(),
-        koper_naam:ge('n-koper-naam').value.trim(),
-        koper_email:ge('n-koper-email').value.trim()
-      }
-    });
-    if(!d.ok){err.textContent=d.error||'Fout.';err.style.display='block';btn.disabled=false;btn.textContent='Aanmaken';return;}
-    ge('n-ok').innerHTML='<strong>✓ Aangemaakt</strong> &nbsp;Verkoperscode: <strong>'+esc(d.code)+'</strong> &nbsp;Koperscode: <strong>'+esc(d.koper_code||'—')+'</strong>';
-    ge('n-ok').style.display='block';
-    ge('n-ann').textContent='Sluiten';btn.textContent='Aangemaakt ✓';btn.disabled=true;
-    G.trajecten.unshift({
-      id:d.code,kantoor_naam:naam,traject_type:ge('n-type').value,
-      opdrachtgever_rol:ge('n-opdr').value,status:'actief',
-      koper_code:d.koper_code,tussen_code:d.tussen_code,created_at:Date.now()
-    });
+    try{
+      var r=await post('/adviseur/create',{
+        email:G.email,wachtwoord:G.ww,
+        traject:{kantoor_naam:naam,contact_naam:contact,contact_email:email,
+          traject_type:ge('n-type').value,sector:ge('n-sector').value,
+          verkoper_adres:ge('n-adres').value.trim(),
+          koper_naam:ge('n-koper-naam').value.trim(),
+          koper_email:ge('n-koper-email').value.trim()}
+      });
+      var d=await r.json();
+      if(!d.ok){err.textContent=d.error||'Fout.';err.style.display='block';btn.disabled=false;btn.textContent='Aanmaken';return;}
+      ge('n-ok').innerHTML='<strong>✓ Aangemaakt</strong> &nbsp;Code: <strong>'+esc(d.code)+'</strong> &nbsp;Koperscode: <strong>'+esc(d.koper_code)+'</strong>';
+      ge('n-ok').style.display='block';
+      ge('n-ann').textContent='Sluiten';btn.textContent='Aangemaakt ✓';
+      G.trajecten.unshift({id:d.code,kantoor_naam:naam,traject_type:ge('n-type').value,sector:ge('n-sector').value,status:'actief',koper_code:d.koper_code,tussen_code:d.tussen_code,created_at:Date.now()});
+    }catch(e){err.textContent=e.message;err.style.display='block';btn.disabled=false;btn.textContent='Aanmaken';}
   };
   ge('n-naam').focus();
+}
+
+function openTraject(id){
+  var t=G.trajecten.find(function(x){return x.id===id;})||{id:id};
+  TRAJECT=t;
+  VIEW='detail';
+  renderDetail(t);
+}
+
+function renderDetail(t){
+  var id=t.id;
+  VIEW='detail';
+  var sl={accountancy:'Accountancy',mkb:'MKB',zorg:'Zorg',itsoftware:'IT/Software'};
+  render(`
+    <div class="hdr">
+      <div class="hdr-brand"><div class="hdr-dot"></div>KantoorInzicht M&A</div>
+      <div class="hdr-right">
+        <span class="hdr-user"><span class="hdr-name">${esc(G.naam)}</span></span>
+        <button class="btn-outline" onclick="renderLogin()">Uitloggen</button>
+      </div>
+    </div>
+    <div class="main">
+      <div class="back-btn" onclick="renderDashboard()">← Terug naar overzicht</div>
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem">
+        <div>
+          <div style="font-family:'Playfair Display',serif;font-size:1.4rem;color:var(--head);font-weight:600">${esc(t.kantoor_naam||id)}</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:4px">${esc(t.traject_type||'—')} &middot; ${esc(sl[t.sector]||'—')} &middot; <span style="font-family:monospace">${esc(id)}</span></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-hdr"><div class="card-title">🔑 Toegangscodes</div></div>
+        <div class="card-body">
+          <div style="display:flex;flex-wrap:wrap;gap:1rem">
+            <div>
+              <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Verkoperscode</div>
+              <div class="code-box"><span class="code-val">${esc(id)}</span><button class="copy-btn" onclick="navigator.clipboard.writeText('${esc(id)}');this.textContent='✓'">Kopieer</button></div>
+            </div>
+            ${t.koper_code?`<div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Koperscode</div><div class="code-box"><span class="code-val-gold">${esc(t.koper_code)}</span><button class="copy-btn" onclick="navigator.clipboard.writeText('${esc(t.koper_code)}');this.textContent='✓'">Kopieer</button></div></div>`:''}
+            ${t.tussen_code?`<div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Uw tussenpersoonscode</div><div class="code-box"><span class="code-val" style="color:var(--mid)">${esc(t.tussen_code)}</span><button class="copy-btn" onclick="navigator.clipboard.writeText('${esc(t.tussen_code)}');this.textContent='✓'">Kopieer</button></div></div>`:''}
+          </div>
+          <div class="info-box" style="margin-top:1rem">Verkoper en koper loggen in via <strong>koersvoormorgen.nl/mna.html</strong></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-hdr">
+          <div class="card-title">📁 Dataroom — Documenten</div>
+          <button class="btn btn-sm" id="btn-upload">↑ Document uploaden</button>
+        </div>
+        <div id="docs-body" class="card-body"><div style="color:var(--muted);font-size:13px">Laden...</div></div>
+      </div>
+
+      <div class="card">
+        <div class="card-hdr">
+          <div class="card-title">💬 Gesprekken & verslagen</div>
+          <button class="btn btn-sm" onclick="nieuwGesprek('${esc(id)}','${esc(t.tussen_code||'')}')">+ Gesprek vastleggen</button>
+        </div>
+        <div id="gesp-body" class="card-body"><div style="color:var(--muted);font-size:13px">Laden...</div></div>
+      </div>
+
+      <div class="card">
+        <div class="card-hdr"><div class="card-title">📝 Interne notitie</div></div>
+        <div class="card-body">
+          <textarea id="notitie-txt" rows="4" style="width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:var(--r);font-family:'IBM Plex Sans',sans-serif;font-size:13px;padding:9px 11px;color:var(--sub);resize:vertical;outline:none" placeholder="Interne aantekeningen, afspraken, context...">${esc(t.notitie||'')}</textarea>
+          <div style="text-align:right;margin-top:.5rem"><button class="btn btn-sm" onclick="slaNotitieOp('${esc(id)}')">Opslaan</button></div>
+        </div>
+      </div>
+    </div>
+  `);
+
+  ge('btn-upload').onclick=function(){uploadDocument(id, t.tussen_code||'');};
+  if(t.tussen_code){
+    laadDocumenten(id, t.tussen_code);
+    laadGesprekken(id, t.tussen_code);
+  }
 }
 
 renderLogin();
