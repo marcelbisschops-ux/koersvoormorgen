@@ -987,7 +987,9 @@ async function uploadDocument(faseId, file) {
       base64: b64
     }));
     var resp = await fetch(WORKER + '/mna/document/upload-base64', { method: 'POST', body: params });
+    toast('Response status: ' + resp.status, 'info', 5000);
     var d = await resp.json();
+    toast('Response: ok=' + d.ok + ' id=' + d.id + ' error=' + d.error, 'info', 8000);
     if (d.ok || d.id) {
       DOCS[faseId] = DOCS[faseId].filter(function(x){ return x.id !== tempId; });
       DOCS[faseId].unshift({
@@ -1013,7 +1015,7 @@ async function uploadDocument(faseId, file) {
     }
   } catch(e) {
     DOCS[faseId] = DOCS[faseId].filter(function(x){ return x.id !== tempId; });
-    toast('Verbindingsfout bij uploaden.', 'err');
+    toast('CATCH FOUT: ' + e.message + ' | ' + e.name, 'err', 10000);
     renderApp();
   }
 }
