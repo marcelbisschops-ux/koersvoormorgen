@@ -1167,7 +1167,8 @@ async function verwijderRapport(id){
 async function verwijderDoc(id){
   if(!confirm('Document permanent verwijderen?'))return;
   try{
-    var r=await fetch(WORKER+'/mna/document/delete/'+id+'?key='+encodeURIComponent(adminKey),{method:'POST'});
+    var delBody2=new URLSearchParams();delBody2.append('key',adminKey);
+            var r=await fetch(WORKER+'/mna/document/delete/'+id,{method:'POST',body:delBody2});
     var d=await r.json();
     if(d.ok){document.getElementById('btn-load-docs').click();}
     else toast('Fout: '+(d.error||'onbekend'),'err');
@@ -1745,7 +1746,8 @@ async function toonDetail(id,naam){
         vBody.querySelectorAll('.doc-del-btn').forEach(function(b){
           b.addEventListener('click',async function(){
             if(!confirm('Document verwijderen?'))return;
-            var r=await fetch(WORKER+'/mna/document/delete/'+b.dataset.id+'?key='+encodeURIComponent(adminKey),{method:'POST'});
+            var delBody=new URLSearchParams();delBody.append('key',adminKey);
+            var r=await fetch(WORKER+'/mna/document/delete/'+b.dataset.id,{method:'POST',body:delBody});
             var d=await r.json();
             if(d.ok){toast('Document verwijderd.','ok');versiesBtn.click();}
             else toast(d.error||'Fout.','err');
