@@ -972,23 +972,12 @@ async function uploadDocument(faseId, file) {
   renderApp();
 
   var bewaar = S.traject && S.traject.bewaar_docs !== false;
+  var url = WORKER + '/mna/document/upload?code=' + S.code + '&fase_id=' + faseId + '&bewaar=' + bewaar;
 
   try {
-    var b64 = await new Promise(function(res,rej){
-      var reader = new FileReader();
-      reader.onload = function(){ res(reader.result.split(',')[1]); };
-      reader.onerror = function(){ rej(new Error('Lezen mislukt')); };
-      reader.readAsDataURL(file);
-    });
-    var resp = await fetch(WORKER + '/mna/doc', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        code: S.code, fase_id: faseId, bewaar: bewaar,
-        bestand_naam: file.name, bestand_type: file.type || 'application/octet-stream',
-        base64: b64
-      })
-    });
+    var formData = new FormData();
+    formData.append('file', file);
+    var resp = await fetch(url, { method: 'POST', body: formData });
     toast('Response status: ' + resp.status, 'info', 5000);
     var d = await resp.json();
     toast('Response: ok=' + d.ok + ' id=' + d.id + ' error=' + d.error, 'info', 8000);
