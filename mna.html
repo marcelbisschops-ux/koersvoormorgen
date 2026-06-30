@@ -4045,7 +4045,8 @@ function bindAll(){
         if(el)el.addEventListener('input',function(){clearTimeout(bgConceptTimer);bgConceptTimer=setTimeout(bgSlaConceptOp,2000);});
       });
 
-      document.getElementById('bg-gs-ok').onclick=async function(){
+      var bgGsOkBtn=document.getElementById('bg-gs-ok');
+      if(bgGsOkBtn)bgGsOkBtn.onclick=async function(){
         var datum=document.getElementById('bg-gs-datum').value;
         var err=document.getElementById('bg-gs-err');
         if(!datum){err.style.display='block';err.textContent='Datum is verplicht.';return;}
