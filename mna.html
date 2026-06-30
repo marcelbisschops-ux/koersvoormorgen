@@ -1218,7 +1218,7 @@ function autoFillFromExtraction(faseId, velden, forceOverwrite, docNaam) {
       var ej=velden.boekjaar?String(Number(velden.boekjaar)):'0';
       if(!S._epy[ej])S._epy[ej]=ev;
       var eys=Object.keys(S._epy).map(Number).filter(function(j){return!isNaN(j);}).sort(function(a,b){return b-a;});
-      if(eys.length)applyOrConflict('financieel_ebitda',S._epy[String(eys[0])],'EBITDA-marge (%)');
+      if(eys.length)applyOrConflict('financieel_ebitdaMarge',S._epy[String(eys[0])],'EBITDA-marge (%)');
     }
     if(velden.ohw&&velden.ohw!=='null')applyOrConflict('financieel_wip',cleanGetal(velden.ohw),'Onderhanden werk');
     if(velden.debiteuren&&velden.debiteuren!=='null')applyOrConflict('financieel_debiteuren',cleanGetal(velden.debiteuren),'Debiteuren');
