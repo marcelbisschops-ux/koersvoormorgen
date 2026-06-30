@@ -801,6 +801,7 @@ function esc(s){if(!s)return '';return String(s).replace(/&/g,'&amp;').replace(/
 function isVerkoper(){return S.rol==='verkoper';}
 function isKoper(){return S.rol==='koper';}
 function isTussen(){return S.rol==='tussenpersoon';}
+function isAdmin(){return isTussen();}
 
 function getMissing(){
   var missing=[];
@@ -1535,6 +1536,8 @@ function renderDataroom(){
   }
   html+='</div>';return html;
 }
+function parseGeld(s){if(!s)return 0;var n=String(s).replace(/[^0-9,.]/g,'').replace(',','.');return parseFloat(n)||0;}
+function fmtGeld(n){if(!n||isNaN(n))return '—';if(n>=1000000)return '€'+(n/1000000).toFixed(2)+' mln';if(n>=1000)return '€'+(n/1000).toFixed(0)+'.000';return '€'+Math.round(n);}
 function renderWaardering(){
   var t=S.traject||{};
   var isRO=isKoper();
