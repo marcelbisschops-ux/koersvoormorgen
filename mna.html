@@ -1232,7 +1232,7 @@ function autoFillFromExtraction(faseId, velden, forceOverwrite, docNaam) {
     setIfEmpty('financieel_declarab',velden.declarabiliteit||velden.declarab_pct);
     setIfEmpty('financieel_partnerBel',velden.partnerbeloning||velden.partner_beloning||velden.beloning_partners);
   }
-  if(faseId==='partner'||velden.fte||velden.aantal_partners||velden.personeel_fte){
+  if(true){
     setIfEmpty('partner_fte',velden.fte||velden.personeel_fte);
     setIfEmpty('partner_aantalP',velden.aantal_partners||velden.partners);
     setIfEmpty('partner_gemLeeftijd',velden.gem_leeftijd_partners||velden.leeftijd_partners);
@@ -1245,7 +1245,7 @@ function autoFillFromExtraction(faseId, velden, forceOverwrite, docNaam) {
     setIfEmpty('partner_verandering',velden.veranderbereidheid||velden.bereidheid_verandering);
     setIfEmpty('partner_pContract',velden.partnerovereenkomsten||velden.partner_contract);
   }
-  if(faseId==='commercieel'||velden.aantal_klanten){
+  if(true){
     setIfEmpty('commercieel_aantalKlanten',velden.aantal_klanten||velden.actieve_klanten);
     setIfEmpty('commercieel_churn',velden.churn||velden.klantverloop||velden.churn_pct);
     setIfEmpty('commercieel_klantduur',velden.klantduur||velden.gem_klantduur||velden.gemiddelde_klantduur);
@@ -1256,7 +1256,7 @@ function autoFillFromExtraction(faseId, velden, forceOverwrite, docNaam) {
     setIfEmpty('commercieel_nieuw',velden.nieuwe_klanten||velden.klanten_nieuw);
     setIfEmpty('commercieel_verlies',velden.verloren_klanten||velden.klanten_verlies);
   }
-  if(faseId==='compliance'||velden.nba_status||velden.kwaliteitstoetsing){
+  if(true){
     setIfEmpty('compliance_nba',velden.nba_status||velden.nba||velden.nba_inschrijving);
     setIfEmpty('compliance_afm',velden.afm_vergunning||velden.afm||velden.vergunning);
     setIfEmpty('compliance_toetsDatum',velden.kwaliteitstoetsing_jaar||velden.toetsing_datum||velden.laatste_toetsing);
@@ -1266,7 +1266,7 @@ function autoFillFromExtraction(faseId, velden, forceOverwrite, docNaam) {
     setIfEmpty('compliance_wwft',velden.wwft||velden.wwft_procedures||velden.wwft_status);
     setIfEmpty('compliance_incidenten',velden.integriteitsincidenten||velden.incidenten);
   }
-  if(faseId==='it'||velden.software_primair||velden.primaire_software){
+  if(true){
     setIfEmpty('it_software',velden.software_primair||velden.primaire_software||velden.software);
     setIfEmpty('it_softwareOverig',velden.overige_systemen||velden.software_overig||velden.systemen);
     setIfEmpty('it_autoGraad',velden.automatiseringsgraad||velden.automgraad||velden.automatisering_pct);
@@ -1275,7 +1275,7 @@ function autoFillFromExtraction(faseId, velden, forceOverwrite, docNaam) {
     setIfEmpty('it_security',velden.cybersecurity||velden.security_status||velden.beveiliging);
     setIfEmpty('it_itRisico',velden.it_risicos||velden.bekende_risicos||velden.it_risico);
   }
-  if(faseId==='juridisch'||velden.rechtsvorm||velden.structuur){
+  if(true){
     setIfEmpty('juridisch_rechtsvorm',velden.rechtsvorm||velden.rechtsvorm_en);
     setIfEmpty('juridisch_structuur',velden.aandeelhoudersstructuur||velden.structuur||velden.eigendomsstructuur);
     setIfEmpty('juridisch_huur',velden.huurcontract||velden.huur_looptijd||velden.huurcontract_looptijd);
@@ -1285,13 +1285,18 @@ function autoFillFromExtraction(faseId, velden, forceOverwrite, docNaam) {
     setIfEmpty('juridisch_overigeClaims',velden.claims||velden.garanties||velden.overige_claims);
     setIfEmpty('juridisch_lease',velden.leaseverplichtingen||velden.lease||velden.lease_per_jaar);
   }
-  if(faseId==='strategisch'||velden.marktpositie||velden.niche){
+  if(true){
     setIfEmpty('strategisch_marktpos',velden.marktpositie||velden.marktpos||velden.regio);
     setIfEmpty('strategisch_niche',velden.niche||velden.specialisme||velden.niche_specialisme);
     setIfEmpty('strategisch_concurrenten',velden.concurrenten||velden.belangrijkste_concurrenten);
     setIfEmpty('strategisch_aiImpact',velden.ai_impact||velden.impact_ai||velden.ai_dienstenmix);
     setIfEmpty('strategisch_cultuurFit',velden.cultuur||velden.cultuuromschrijving||velden.cultuurfit);
-    setIfEmpty('strategisch_synergie',velden.vervolgstap||velden.gewenste_stap||velden.synergie);
+    var vervolgstapVal = velden.vervolgstap||velden.gewenste_stap||velden.synergie;
+    if(vervolgstapVal && typeof vervolgstapVal === 'string') {
+      var blocked = ['aanleveren','csv','platte tekst','instructie','invullen','upload','bestand'];
+      var isBlocked = blocked.some(function(b){ return vervolgstapVal.toLowerCase().indexOf(b) !== -1; });
+      if(!isBlocked) setIfEmpty('strategisch_synergie', vervolgstapVal);
+    }
     setIfEmpty('strategisch_tijdlijn',velden.tijdlijn||velden.gewenste_tijdlijn||velden.closing_datum);
   }
 }
