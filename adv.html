@@ -186,7 +186,7 @@ function renderForgot(){
     var email=ge('f-e').value.trim();
     if(!email){ge('f-err').textContent='Vul uw e-mailadres in.';ge('f-err').style.display='block';btn.disabled=false;btn.textContent='Verstuur resetlink';return;}
     try{
-      var r=await fetch(WORKER+'/gebruikers/ww-vergeten',{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({email:email})});
+      var r=await fetch(WORKER+'/gebruikers/ww-vergeten',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email})});
       var d=await r.json();
       ge('f-ok').textContent=d.msg||'Controleer uw e-mail.';ge('f-ok').style.display='block';
       btn.textContent='Verstuurd ✓';
@@ -385,22 +385,10 @@ async function laadDocumenten(id, tussenCode){
         +'<td class="td-sec">'+dt+'</td>'
         +'<td style="text-align:right">'
         +(doc.bewaard?'<a href="'+WORKER+'/mna/document/download/'+doc.id+'?code='+encodeURIComponent(tussenCode)+'" target="_blank" class="btn-outline sm">↓ Download</a>':'')
-        +'<button class="btn-outline sm adv-doc-del" data-id="'+doc.id+'" style="color:var(--red);border-color:var(--red)">✕</button>'
         +'</td></tr>';
     });
     html+='</tbody></table>';
     body.innerHTML=html;
-    // Verwijder handlers
-    body.querySelectorAll('.adv-doc-del').forEach(function(btn){
-      btn.addEventListener('click',async function(){
-        if(!confirm('Document verwijderen?'))return;
-        var delBody=new URLSearchParams();delBody.append('code',tussenCode);
-        var r=await fetch(WORKER+'/mna/document/delete/'+btn.dataset.id,{method:'POST',body:delBody});
-        var d=await r.json();
-        if(d.ok){toast('Document verwijderd.','ok');laadDocumenten(id,tussenCode);}
-        else toast(d.error||'Fout.','err');
-      });
-    });
   }catch(e){body.innerHTML='<div style="color:var(--red);font-size:13px">Fout bij laden: '+esc(e.message)+'</div>';}
 }
 
@@ -427,23 +415,11 @@ function uploadDocument(id, tussenCode){
     var file=ge('up-file').files[0];
     var fase=ge('up-fase').value;
     if(!file){ge('up-err').textContent='Kies een bestand.';ge('up-err').style.display='block';return;}
-    var btn=this;btn.disabled=true;btn.textContent='Lezen...';
+    var btn=this;btn.disabled=true;btn.textContent='Uploaden...';
     try{
-      // Base64 — geen multipart, werkt door Bot Fight Mode
-      var b64=await new Promise(function(res,rej){
-        var reader=new FileReader();
-        reader.onload=function(){res(reader.result.split(',')[1]);};
-        reader.onerror=function(){rej(new Error('Lezen mislukt'));};
-        reader.readAsDataURL(file);
-      });
-      btn.textContent='Uploaden...';
-      var params=new URLSearchParams();
-      params.append('data',JSON.stringify({
-        code:tussenCode,fase_id:fase,bewaar:true,
-        bestand_naam:file.name,bestand_type:file.type||'application/octet-stream',
-        base64:b64
-      }));
-      var r=await fetch(WORKER+'/mna/document/upload-base64',{method:'POST',body:params});
+      var fd=new FormData();
+      fd.append('file',file);
+      var r=await fetch(WORKER+'/mna/document/upload?code='+encodeURIComponent(tussenCode)+'&fase_id='+encodeURIComponent(fase)+'&bewaar=1',{method:'POST',body:fd});
       var d=await r.json();
       if(d.ok||d.id){
         toast('Geüpload: '+file.name,'ok');
@@ -561,6 +537,11 @@ function nieuwTraject(){
         <option value="zorg">Zorg</option><option value="itsoftware">IT & Software</option>
       </select></div>
     </div>
+    <div class="field"><label>Opdrachtgever *</label><select id="n-opdrgever">
+      <option value="verkoper">Verkoper (sell-side) — BEM naar verkoper, Excl naar koper</option>
+      <option value="koper">Koper (buy-side) — BEM naar koper, Excl naar verkoper</option>
+      <option value="beide">Beide partijen (dual mandate)</option>
+    </select></div>
     <div class="field"><label>Naam onderneming *</label><input type="text" id="n-naam" placeholder="Naam van de onderneming"></div>
     <div class="row2">
       <div class="field"><label>Contactpersoon *</label><input type="text" id="n-contact" placeholder="Naam"></div>
@@ -591,6 +572,7 @@ function nieuwTraject(){
         email:G.email,wachtwoord:G.ww,
         traject:{kantoor_naam:naam,contact_naam:contact,contact_email:email,
           traject_type:ge('n-type').value,sector:ge('n-sector').value,
+          opdrachtgever_rol:ge('n-opdrgever')?ge('n-opdrgever').value:'verkoper',
           verkoper_adres:ge('n-adres').value.trim(),
           koper_naam:ge('n-koper-naam').value.trim(),
           koper_email:ge('n-koper-email').value.trim()}
@@ -633,6 +615,16 @@ function renderDetail(t){
           <div style="font-size:12px;color:var(--muted);margin-top:4px">${esc(t.traject_type||'—')} &middot; ${esc(sl[t.sector]||'—')} &middot; <span style="font-family:monospace">${esc(id)}</span></div>
         </div>
       </div>
+
+      ${t.verkoper_klaar ? `<div style="background:#edf7f3;border:2px solid #1a7a5e;border-radius:8px;padding:1rem 1.25rem;margin-bottom:1.5rem;display:flex;align-items:center;gap:12px">
+        <span style="font-size:1.5rem">📨</span>
+        <div>
+          <div style="font-size:13px;font-weight:600;color:#1a7a5e">Verkoper heeft dossier vrijgegeven</div>
+          <div style="font-size:11px;color:#5a5854;margin-top:2px">${t.verkoper_klaar_naam ? 'Door: ' + esc(t.verkoper_klaar_naam) + ' · ' : ''}${t.verkoper_klaar_at ? new Date(t.verkoper_klaar_at).toLocaleString('nl-NL',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : ''}</div>
+        </div>
+      </div>` : `<div style="background:#fdf8ee;border:1px solid #c9a84c;border-radius:8px;padding:.75rem 1rem;margin-bottom:1.5rem;font-size:12px;color:#8a5a00">
+        ⏳ Verkoper heeft het dossier nog niet vrijgegeven
+      </div>`}
 
       <div class="card">
         <div class="card-hdr"><div class="card-title">🔑 Toegangscodes</div></div>
