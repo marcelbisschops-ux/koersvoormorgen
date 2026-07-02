@@ -3504,6 +3504,82 @@ function renderSummary(){
   var completeFases=FASES.filter(function(f){return fillPct(f.id)===100;});
   var incompleteFases=FASES.filter(function(f){return fillPct(f.id)<100;});
 
+  // ── KRITIEKE DISCREPANTIE-CHECK (geen API, puur rekenen) ────────────────
+  var kritiekeDiscrepanties=[];
+
+  function parseGeldCheck(v){
+    if(!v)return null;
+    var n=String(v).replace(/[^0-9,.]/g,'').replace(',','.');
+    var parsed=parseFloat(n);
+    return isNaN(parsed)?null:parsed;
+  }
+
+  var o1=parseGeldCheck(S.data['financieel_omzet1']);
+  var o2=parseGeldCheck(S.data['financieel_omzet2']);
+  var o3=parseGeldCheck(S.data['financieel_omzet3']);
+  var ebitdaAbs=parseGeldCheck(S.data['financieel_ebitda']);
+  var ebitdaMarge=parseGeldCheck(S.data['financieel_ebitdaMarge']);
+  var partnerBel=parseGeldCheck(S.data['financieel_partnerBel']);
+
+  // 1. Ontbrekende kritieke financiële velden
+  if(!o1||!o2||!o3) kritiekeDiscrepanties.push('Jaaromzet voor alle drie jaren is verplicht voor een indicatieve waardering. Vul omzet jaar 1, 2 en 3 in.');
+  if(!ebitdaAbs&&!ebitdaMarge) kritiekeDiscrepanties.push('EBITDA ontbreekt volledig (zowel absoluut als marge). Dit is de basis voor de waarderingsberekening.');
+  if(!partnerBel) kritiekeDiscrepanties.push('Partnerbeloning ontbreekt. Zonder dit gegeven kan de EBITDA niet genormaliseerd worden.');
+
+  // 2. EBITDA-marge buiten realistisch bereik
+  if(ebitdaMarge!==null){
+    if(ebitdaMarge<0) kritiekeDiscrepanties.push('EBITDA-marge is negatief ('+ebitdaMarge+'%). Een verlieslatend kantoor kan niet gewaardeerd worden zonder toelichting. Controleer de invoer.');
+    if(ebitdaMarge>50) kritiekeDiscrepanties.push('EBITDA-marge is '+ebitdaMarge+'% — onrealistisch hoog voor de sector (norm 15-25%). Controleer of het percentage correct is ingevoerd (niet als decimaal 0.168 in plaats van 16.8%).');
+  }
+
+  // 3. Consistentiecheck EBITDA-absoluut vs marge × omzet
+  if(o3&&ebitdaAbs&&ebitdaMarge){
+    var berekendEbitda=o3*(ebitdaMarge/100);
+    var afwijking=Math.abs(berekendEbitda-ebitdaAbs)/ebitdaAbs;
+    if(afwijking>0.15){
+      kritiekeDiscrepanties.push(
+        'EBITDA-inconsistentie: EBITDA absoluut ('+ebitdaAbs.toLocaleString('nl-NL')+') wijkt meer dan 15% af van '
+        +'marge × omzet ('+ebitdaMarge+'% × '+o3.toLocaleString('nl-NL')+' = '+Math.round(berekendEbitda).toLocaleString('nl-NL')+'). '
+        +'Controleer of absoluut bedrag en percentage bij hetzelfde boekjaar horen.'
+      );
+    }
+  }
+
+  // 4. Onverklaarbare omzetsprong (>50% jaar op jaar)
+  if(o1&&o2){
+    var groei12=((o2-o1)/o1)*100;
+    if(Math.abs(groei12)>50) kritiekeDiscrepanties.push(
+      'Omzetgroei jaar 1→2 is '+Math.round(groei12)+'% — ongebruikelijk groot. '
+      +'Controleer of de juiste jaren zijn ingevoerd of voeg een toelichting toe.'
+    );
+  }
+  if(o2&&o3){
+    var groei23=((o3-o2)/o2)*100;
+    if(Math.abs(groei23)>50) kritiekeDiscrepanties.push(
+      'Omzetgroei jaar 2→3 is '+Math.round(groei23)+'% — ongebruikelijk groot. '
+      +'Controleer of de juiste jaren zijn ingevoerd of voeg een toelichting toe.'
+    );
+  }
+
+  // 5. Dalende omzettrend (jaar 3 < jaar 1) zonder toelichting
+  if(o1&&o3&&o3<o1){
+    kritiekeDiscrepanties.push(
+      'Omzet jaar 3 ('+o3.toLocaleString('nl-NL')+') is lager dan omzet jaar 1 ('+o1.toLocaleString('nl-NL')+'). '
+      +'Een dalende trend vereist een toelichting in de notitie van fase Strategisch voordat het dossier kan worden vrijgegeven.'
+    );
+  }
+
+  // 6. Partnerbeloning hoger dan EBITDA (normalisatie-probleem)
+  if(partnerBel&&ebitdaAbs&&partnerBel>ebitdaAbs){
+    kritiekeDiscrepanties.push(
+      'Partnerbeloning ('+partnerBel.toLocaleString('nl-NL')+') is hoger dan EBITDA absoluut ('+ebitdaAbs.toLocaleString('nl-NL')+'). '
+      +'Dit leidt tot een negatieve genormaliseerde EBITDA en maakt waardering onmogelijk. Controleer de invoer.'
+    );
+  }
+
+  var heeftKritiek=kritiekeDiscrepanties.length>0;
+  // ── EINDE CHECK ─────────────────────────────────────────────────────────
+
   // Summary cards
   var cards='';
   FASES.forEach(function(f){
@@ -3544,7 +3620,28 @@ function renderSummary(){
     +'</div>'
     +missingHtml
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'+cards+'</div>'
-    +'<div style="margin-top:1.5rem;background:var(--panel);border:2px solid '+(S.dossierVrijgegeven?'var(--teal)':'var(--gold)')+';border-radius:var(--r2);padding:1.5rem">'
+    +(heeftKritiek&&isVerkoper()?
+      '<div style="background:var(--red-bg);border:2px solid var(--red);border-radius:var(--r2);padding:1.25rem;margin-top:1.5rem">'
+      +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:.75rem">'
+      +'<span style="font-size:1.5rem">&#9940;</span>'
+      +'<div style="font-family:Playfair Display,serif;font-size:1rem;font-weight:600;color:var(--red)">Dossier kan niet worden vrijgegeven</div>'
+      +'</div>'
+      +'<div style="font-size:12px;color:var(--red);margin-bottom:.75rem;line-height:1.6">'
+      +'Er zijn <strong>'+kritiekeDiscrepanties.length+' kritieke discrepantie(s)</strong> gevonden die een betrouwbare indicatieve waardering onmogelijk maken. '
+      +'Los deze op voordat u het dossier kunt vrijgeven. Er is geen uitzondering mogelijk.'
+      +'</div>'
+      +'<div style="display:flex;flex-direction:column;gap:8px">'
+      +kritiekeDiscrepanties.map(function(d,i){
+        return '<div style="background:#fff;border:1px solid var(--red);border-radius:var(--r);padding:.75rem 1rem;display:flex;gap:10px">'
+          +'<span style="color:var(--red);font-weight:700;flex-shrink:0">'+(i+1)+'.</span>'
+          +'<span style="font-size:12px;color:var(--sub);line-height:1.6">'+esc(d)+'</span>'
+          +'</div>';
+      }).join('')
+      +'</div>'
+      +'<div style="margin-top:.875rem;padding:.6rem .875rem;background:#fff;border-radius:var(--r);font-size:11px;color:var(--muted)">&#128270; Ga terug naar de betreffende fase, corrigeer de invoer en kom terug naar dit overzicht.</div>'
+      +'</div>'
+    :'')
+    +'<div style="margin-top:1.5rem;background:var(--panel);border:2px solid '+(S.dossierVrijgegeven?'var(--teal)':heeftKritiek?'var(--border)':'var(--gold)')+';border-radius:var(--r2);padding:1.5rem">'
     +(S.dossierVrijgegeven
       ?'<div style="display:flex;align-items:center;gap:12px">'
         +'<div style="font-size:2rem">&#10003;</div>'
@@ -3554,7 +3651,6 @@ function renderSummary(){
         ?'<div style="font-family:Playfair Display,serif;font-size:1rem;font-weight:600;color:var(--head);margin-bottom:.25rem">&#128274; Dossier vrijgeven</div>'
           +'<div style="font-size:12px;color:var(--muted);margin-bottom:1rem">Controleer alle fases. Wanneer u klaar bent, geeft u het dossier formeel vrij. De begeleider ontvangt dan automatisch een melding en kan aan de slag.</div>'
           +(function(){
-            var alleAfgerond=FASES.every(function(f){return S.faseStatus&&S.faseStatus[f.id]&&S.faseStatus[f.id].afgerond;});
             var aantalAfgerond=FASES.filter(function(f){return S.faseStatus&&S.faseStatus[f.id]&&S.faseStatus[f.id].afgerond;}).length;
             var pct=totalFillPct();
             var html='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:.75rem">';
@@ -3564,10 +3660,13 @@ function renderSummary(){
             });
             html+='</div>';
             html+='<div style="font-size:12px;color:var(--mid);margin-bottom:.75rem">'+aantalAfgerond+' van '+FASES.length+' fases afgerond &middot; '+pct+'% ingevuld</div>';
-            if(pct<50){
+            if(heeftKritiek){
+              html+='<div style="font-size:13px;color:var(--red);font-weight:600;padding:.75rem 1rem;background:var(--red-bg);border-radius:var(--r);text-align:center">&#9940; Vrijgave geblokkeerd — los de discrepanties hierboven op</div>';
+            } else if(pct<50){
               html+='<div style="font-size:12px;color:var(--red);padding:.5rem .75rem;background:var(--red-bg);border-radius:var(--r);margin-bottom:.75rem">&#9888; Vul minimaal 50% van de velden in voordat u het dossier kunt vrijgeven.</div>';
+            } else {
+              html+='<button class="btn" id="dossier-vrijgeven-btn" style="width:100%">&#128228; Dossier vrijgeven aan begeleider</button>';
             }
-            html+='<button class="btn" id="dossier-vrijgeven-btn" '+(pct<50?'disabled style="opacity:.5"':'')+'style="width:100%">&#128228; Dossier vrijgeven aan begeleider</button>';
             return html;
           })()
         :''))
