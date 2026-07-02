@@ -169,20 +169,20 @@ var SECTOR_PROFIELEN = {
         {id:'omzet2',label:'Jaaromzet jaar 2',ph:'',doc:true,req:true,fase:'1'},
         {id:'omzet3',label:'Jaaromzet jaar 3 (meest recent)',ph:'',doc:true,req:true,fase:'1'},
         {id:'omzetYTD',label:'Omzet YTD huidig jaar',ph:'',doc:true,req:true,fase:'1'},
-        {id:'ebitda',label:'EBITDA jaar 3 (absoluut)',ph:'',doc:false,req:true,fase:'1'},
-        {id:'ebitdaMarge',label:'EBITDA-marge jaar 3 (%)',ph:'',doc:false,req:true,fase:'1'},
-        {id:'partnerBel',label:'Partnerbeloning totaal p/j',ph:'',doc:false,req:true,fase:'1'},
-        {id:'normalisatie',label:'Normalisatie managementfee / eenmalige posten',ph:'',doc:false,req:false,fase:'1'},
-        {id:'forecast',label:'Omzetforecast komend jaar',ph:'',doc:false,req:false,fase:'1'},
+        {id:'ebitda',label:'EBITDA jaar 3 — absoluut bedrag (€)',ph:'',doc:false,req:true,fase:'1'},
+        {id:'ebitdaMarge',label:'EBITDA-marge jaar 3 — percentage van omzet (%)',ph:'',doc:false,req:true,fase:'1'},
+        {id:'partnerBel',label:'Partnerbeloning totaal per jaar (€)',ph:'',doc:false,req:true,fase:'1'},
+        {id:'normalisatie',label:'Normalisatie eenmalige posten — + of - bedrag (€)',ph:'',doc:false,req:false,fase:'1'},
+        {id:'forecast',label:'Omzetforecast komend jaar (€)',ph:'',doc:false,req:false,fase:'1'},
         {id:'_hdr_recurring',label:'— Omzetopbouw & recurring',ph:'',doc:false,req:false,header:true,fase:'1'},
-        {id:'recurring',label:'Recurring / abonnements-omzet (%)',ph:'',doc:false,req:true,fase:'1'},
-        {id:'omzetPerDienst',label:'Omzet per dienstlijn (globaal)',ph:'',doc:false,req:false,fase:'1'},
+        {id:'recurring',label:'Recurring omzet — vaste abonnementen (%)',ph:'',doc:false,req:true,fase:'1'},
+        {id:'omzetPerDienst',label:'Omzet per dienstlijn — bijv. 40% jaarwerk, 25% advies, 20% loon, 15% fiscaal',ph:'',doc:false,req:false,fase:'1'},
         {id:'_hdr_fin2',label:'— Financial DD (post-LOI)',ph:'',doc:false,req:false,header:true,fase:'2'},
         {id:'ebitdaNorm',label:'Genormaliseerde EBITDA (gevalideerd)',ph:'',doc:true,req:true,fase:'2'},
         {id:'wip',label:'Onderhanden werk / OHW',ph:'',doc:true,req:true,fase:'2'},
         {id:'debiteuren',label:'Debiteuren totaal',ph:'',doc:true,req:true,fase:'2'},
-        {id:'debiteurenOud',label:'Debiteuren >90 dagen (%)',ph:'',doc:false,req:false,fase:'2'},
-        {id:'declarab',label:'Declarabiliteit (%)',ph:'',doc:false,req:false,fase:'2'},
+        {id:'debiteurenOud',label:'Debiteuren ouder dan 90 dagen (% van totaal debiteurensaldo)',ph:'',doc:false,req:false,fase:'2'},
+        {id:'declarab',label:'Declarabiliteit — urendeclaratie fee-personeel (%)',ph:'',doc:false,req:false,fase:'2'},
         {id:'wkr',label:'WKR-controle uitgevoerd',ph:'',doc:false,req:false,fase:'2'},
         {id:'dividendHist',label:'Dividendhistorie 3 jaar',ph:'',doc:true,req:false,fase:'2'},
         {id:'_hdr_kost2',label:'— Kostenstructuur (jaar 3)',ph:'',doc:false,req:false,header:true,fase:'2'},
@@ -197,14 +197,14 @@ var SECTOR_PROFIELEN = {
       {id:'commercieel',num:'II',title:'Klanten & commercieel',desc:'Concentratie, retentie en commerciële kracht.',
        dataFields:[
         {id:'aantalKlanten',label:'Aantal actieve klanten',ph:'',doc:false,req:true,fase:'1'},
-        {id:'top1pct',label:'Grootste klant (% omzet)',ph:'',doc:false,req:true,fase:'1'},
-        {id:'top10pct',label:'Top 10 klanten samen (% omzet)',ph:'',doc:false,req:true,fase:'1'},
-        {id:'omzetPerKlant',label:'Gem. omzet per klant (p/j)',ph:'',doc:false,req:false,fase:'1'},
+        {id:'top1pct',label:'Grootste klant — aandeel in totale omzet (%)',ph:'',doc:false,req:true,fase:'1'},
+        {id:'top10pct',label:'Top 10 klanten samen — aandeel in totale omzet (%)',ph:'',doc:false,req:true,fase:'1'},
+        {id:'omzetPerKlant',label:'Gemiddelde omzet per klant per jaar (€)',ph:'',doc:false,req:false,fase:'1'},
         {id:'pipeline',label:'Pipeline / nieuwe opdrachten in beeld',ph:'',doc:false,req:false,fase:'1'},
         {id:'_hdr_com2',label:'— Commercial DD (post-LOI)',ph:'',doc:false,req:false,header:true,fase:'2'},
-        {id:'churn',label:'Klantverloop per jaar (%)',ph:'',doc:false,req:false,fase:'2'},
+        {id:'churn',label:'Klantverloop — verloren klanten per jaar (%)',ph:'',doc:false,req:false,fase:'2'},
         {id:'klantduur',label:'Gem. klantduur (jaar)',ph:'',doc:false,req:false,fase:'2'},
-        {id:'crossSell',label:'Cross-sell (%)',ph:'',doc:false,req:false,fase:'2'},
+        {id:'crossSell',label:'Cross-sell — klanten met meerdere diensten (%)',ph:'',doc:false,req:false,fase:'2'},
         {id:'nieuw',label:'Nieuwe klanten per jaar',ph:'',doc:false,req:false,fase:'2'},
         {id:'verlies',label:'Verloren klanten per jaar',ph:'',doc:false,req:false,fase:'2'},
         {id:'retentieRisico',label:'Retentierisico sleutelklanten bij overname',ph:'',doc:false,req:false,fase:'2'}
@@ -214,15 +214,15 @@ var SECTOR_PROFIELEN = {
       {id:'partner',num:'III',title:'Partners & personeel',desc:'Afhankelijkheden, opvolging en cultuur.',
        dataFields:[
         {id:'aantalP',label:'Aantal partners / eigenaren',ph:'',doc:false,req:true,fase:'1'},
-        {id:'gemLeeftijd',label:'Gem. leeftijd partners',ph:'',doc:false,req:true,fase:'1'},
+        {id:'gemLeeftijd',label:'Gemiddelde leeftijd partners (jaren)',ph:'',doc:false,req:true,fase:'1'},
         {id:'fte',label:'Totaal FTE',ph:'',doc:false,req:true,fase:'1'},
-        {id:'omzetPerP',label:'Omzet per partner',ph:'',doc:false,req:true,fase:'1'},
+        {id:'omzetPerP',label:'Omzet per partner (€)',ph:'',doc:false,req:true,fase:'1'},
         {id:'eigendomsStructuur',label:'Eigendomsstructuur (verdeling aandelen)',ph:'',doc:false,req:true,fase:'1'},
         {id:'opvolging',label:'Opvolgingskandidaat aanwezig',ph:'',doc:false,req:true,fase:'1'},
         {id:'verandering',label:'Veranderbereidheid partners',ph:'',doc:false,req:true,fase:'1'},
         {id:'_hdr_hr2',label:'— HR DD (post-LOI)',ph:'',doc:false,req:false,header:true,fase:'2'},
         {id:'pensioenP',label:'Partners met pensioen <5 jaar',ph:'',doc:false,req:false,fase:'2'},
-        {id:'verloop',label:'Personeelsverloop (%)',ph:'',doc:false,req:false,fase:'2'},
+        {id:'verloop',label:'Personeelsverloop — medewerkers uit dienst per jaar (%)',ph:'',doc:false,req:false,fase:'2'},
         {id:'vacatures',label:'Openstaande vacatures',ph:'',doc:false,req:false,fase:'2'},
         {id:'raAa',label:'RA/AA in opleiding',ph:'',doc:false,req:false,fase:'2'},
         {id:'pContract',label:'Partnerovereenkomsten actueel',ph:'',doc:true,req:false,fase:'2'},
@@ -251,7 +251,7 @@ var SECTOR_PROFIELEN = {
        dataFields:[
         {id:'software',label:'Primaire software (accountancy)',ph:'',doc:false,req:true,fase:'1'},
         {id:'softwareCRM',label:'CRM / klantbeheer',ph:'',doc:false,req:false,fase:'1'},
-        {id:'autoGraad',label:'Automatiseringsgraad routinetaken',ph:'',doc:false,req:true,fase:'1'},
+        {id:'autoGraad',label:'Automatiseringsgraad — Laag / Gemiddeld / Hoog',ph:'',doc:false,req:true,fase:'1'},
         {id:'ai',label:'AI-tooling in gebruik',ph:'',doc:false,req:false,fase:'1'},
         {id:'_hdr_it2',label:'— IT DD (post-LOI)',ph:'',doc:false,req:false,header:true,fase:'2'},
         {id:'softwareOverig',label:'Overige systemen (volledig overzicht)',ph:'',doc:false,req:false,fase:'2'},
@@ -312,14 +312,14 @@ var SECTOR_PROFIELEN = {
         {id:'omzet2',label:'Jaaromzet jaar 2',ph:'',doc:true,req:true,fase:'1'},
         {id:'omzet3',label:'Jaaromzet jaar 3 (meest recent)',ph:'',doc:true,req:true,fase:'1'},
         {id:'omzetYTD',label:'Omzet YTD huidig jaar',ph:'',doc:true,req:true,fase:'1'},
-        {id:'ebitda',label:'EBITDA jaar 3 (absoluut)',ph:'',doc:false,req:true,fase:'1'},
-        {id:'ebitdaMarge',label:'EBITDA-marge jaar 3 (%)',ph:'',doc:false,req:true,fase:'1'},
-        {id:'brutomarge',label:'Brutomarge (%)',ph:'',doc:false,req:true,fase:'1'},
-        {id:'dgaSalaris',label:'DGA-salaris / eigenaarsonttrekking p/j',ph:'',doc:false,req:true,fase:'1'},
+        {id:'ebitda',label:'EBITDA jaar 3 — absoluut bedrag (€)',ph:'',doc:false,req:true,fase:'1'},
+        {id:'ebitdaMarge',label:'EBITDA-marge jaar 3 — percentage van omzet (%)',ph:'',doc:false,req:true,fase:'1'},
+        {id:'brutomarge',label:'Brutomarge — omzet minus inkoopkosten (%)',ph:'',doc:false,req:true,fase:'1'},
+        {id:'dgaSalaris',label:'DGA-salaris / eigenaarsonttrekking per jaar (€)',ph:'',doc:false,req:true,fase:'1'},
         {id:'normalisatie',label:'Normalisaties (eenmalige posten)',ph:'',doc:false,req:false,fase:'1'},
-        {id:'voorraad',label:'Voorraadwaarde (indicatief)',ph:'',doc:true,req:true,fase:'1'},
+        {id:'voorraad',label:'Voorraadwaarde indicatief (€)',ph:'',doc:true,req:true,fase:'1'},
         {id:'orderportefeuille',label:'Orderportefeuille / pipeline',ph:'',doc:false,req:false,fase:'1'},
-        {id:'forecast',label:'Omzetforecast komend jaar',ph:'',doc:false,req:false,fase:'1'},
+        {id:'forecast',label:'Omzetforecast komend jaar (€)',ph:'',doc:false,req:false,fase:'1'},
         {id:'_hdr_wk2',label:'— Werkkapitaal & balans (post-LOI)',ph:'',doc:false,req:false,header:true,fase:'2'},
         {id:'ebitdaNorm',label:'Genormaliseerde EBITDA (gevalideerd)',ph:'',doc:true,req:true,fase:'2'},
         {id:'voorraadomzet',label:'Voorraadomzetsnelheid (x per jaar)',ph:'',doc:false,req:false,fase:'2'},
@@ -339,9 +339,9 @@ var SECTOR_PROFIELEN = {
       {id:'commercieel',num:'II',title:'Omzet & klanten',desc:'Omzetmix, klantenbasis en marktpositie.',
        dataFields:[
         {id:'aantalKlanten',label:'Aantal actieve klanten / transacties p/j',ph:'',doc:false,req:true,fase:'1'},
-        {id:'top10Leveranciers',label:'Top 10 leveranciers (% inkoop)',ph:'',doc:false,req:true,fase:'1'},
-        {id:'top1pct',label:'Grootste klant (% omzet)',ph:'',doc:false,req:true,fase:'1'},
-        {id:'top10pct',label:'Top 10 klanten samen (% omzet)',ph:'',doc:false,req:false,fase:'1'},
+        {id:'top10Leveranciers',label:'Top 10 leveranciers — aandeel in totale inkoop (%)',ph:'',doc:false,req:true,fase:'1'},
+        {id:'top1pct',label:'Grootste klant — aandeel in totale omzet (%)',ph:'',doc:false,req:true,fase:'1'},
+        {id:'top10pct',label:'Top 10 klanten samen — aandeel in totale omzet (%)',ph:'',doc:false,req:false,fase:'1'},
         {id:'recurring',label:'Vaste/terugkerende omzet (%)',ph:'',doc:false,req:true,fase:'1'},
         {id:'seizoen',label:'Seizoensgevoeligheid',ph:'',doc:false,req:true,fase:'1'},
         {id:'locaties',label:'Aantal locaties / vestigingen',ph:'',doc:false,req:true,fase:'1'},
@@ -365,7 +365,7 @@ var SECTOR_PROFIELEN = {
         {id:'organogram',label:'Organogram / structuur',ph:'',doc:true,req:false,fase:'1'},
         {id:'opvolging',label:'Interne opvolger aanwezig',ph:'',doc:false,req:true,fase:'1'},
         {id:'_hdr_hr2',label:'— HR DD (post-LOI)',ph:'',doc:false,req:false,header:true,fase:'2'},
-        {id:'verloop',label:'Personeelsverloop (%)',ph:'',doc:false,req:false,fase:'2'},
+        {id:'verloop',label:'Personeelsverloop — medewerkers uit dienst per jaar (%)',ph:'',doc:false,req:false,fase:'2'},
         {id:'parttime',label:'Parttime medewerkers (%)',ph:'',doc:false,req:false,fase:'2'},
         {id:'cao',label:'CAO van toepassing',ph:'',doc:true,req:false,fase:'2'},
         {id:'vakkennis',label:'Specifieke vakkennis / certificeringen',ph:'',doc:false,req:false,fase:'2'},
@@ -394,7 +394,7 @@ var SECTOR_PROFIELEN = {
        dataFields:[
         {id:'software',label:'Kassasysteem / ERP / POS',ph:'',doc:false,req:true,fase:'1'},
         {id:'ecommerce',label:'E-commerce platform',ph:'',doc:false,req:false,fase:'1'},
-        {id:'autoGraad',label:'Automatiseringsgraad administratieve processen',ph:'',doc:false,req:false,fase:'1'},
+        {id:'autoGraad',label:'Automatiseringsgraad — Laag / Gemiddeld / Hoog',ph:'',doc:false,req:false,fase:'1'},
         {id:'_hdr_it2',label:'— IT DD (post-LOI)',ph:'',doc:false,req:false,header:true,fase:'2'},
         {id:'softwareOverig',label:'Overige systemen (inkoop, voorraad, HR)',ph:'',doc:false,req:false,fase:'2'},
         {id:'licentiesOverdraagbaar',label:'Licenties overdraagbaar bij overname',ph:'',doc:false,req:false,fase:'2'},
@@ -454,8 +454,8 @@ var SECTOR_PROFIELEN = {
         {id:'omzet2',label:'Praktijkomzet jaar 2',ph:'',doc:true,req:true,fase:'1'},
         {id:'omzet3',label:'Praktijkomzet jaar 3 (meest recent)',ph:'',doc:true,req:true,fase:'1'},
         {id:'omzetYTD',label:'Omzet YTD huidig jaar',ph:'',doc:true,req:true,fase:'1'},
-        {id:'ebitda',label:'EBITDA jaar 3 (absoluut)',ph:'',doc:false,req:true,fase:'1'},
-        {id:'ebitdaMarge',label:'EBITDA-marge jaar 3 (%)',ph:'',doc:false,req:true,fase:'1'},
+        {id:'ebitda',label:'EBITDA jaar 3 — absoluut bedrag (€)',ph:'',doc:false,req:true,fase:'1'},
+        {id:'ebitdaMarge',label:'EBITDA-marge jaar 3 — percentage van omzet (%)',ph:'',doc:false,req:true,fase:'1'},
         {id:'partnerBel',label:'Eigenaarssalaris p/j',ph:'',doc:false,req:true,fase:'1'},
         {id:'zorgverzekeraars',label:'Omzet per financieringsstroom',ph:'',doc:false,req:true,fase:'1'},
         {id:'bezettingsgraad',label:'Bezettingsgraad (%)',ph:'',doc:false,req:true,fase:'1'},
@@ -498,7 +498,7 @@ var SECTOR_PROFIELEN = {
         {id:'zzpAandeel',label:'ZZP-inhuur (% van personeelskosten)',ph:'',doc:false,req:true,fase:'1'},
         {id:'ziekteverzuim',label:'Ziekteverzuim (%)',ph:'',doc:false,req:true,fase:'1'},
         {id:'_hdr_hr2',label:'— HR DD (post-LOI)',ph:'',doc:false,req:false,header:true,fase:'2'},
-        {id:'verloop',label:'Personeelsverloop (%)',ph:'',doc:false,req:false,fase:'2'},
+        {id:'verloop',label:'Personeelsverloop — medewerkers uit dienst per jaar (%)',ph:'',doc:false,req:false,fase:'2'},
         {id:'pensioenP',label:'Behandelaars met pensioen <5 jaar',ph:'',doc:false,req:false,fase:'2'},
         {id:'cao',label:'CAO + cao-verplichtingen',ph:'',doc:true,req:false,fase:'2'},
         {id:'pContract',label:'Arbeidscontracten + waarneemafspraken',ph:'',doc:true,req:false,fase:'2'},
@@ -585,7 +585,7 @@ var SECTOR_PROFIELEN = {
         {id:'omzetYTD',label:'Omzet YTD huidig jaar',ph:'',doc:true,req:true},
         {id:'arr',label:'ARR (Annual Recurring Revenue)',ph:'',doc:false,req:true},
         {id:'mrr',label:'MRR (Monthly Recurring Revenue)',ph:'',doc:false,req:false},
-        {id:'ebitda',label:'EBITDA-marge jaar 3 (%)',ph:'',doc:false,req:true},
+        {id:'ebitda',label:'EBITDA-marge jaar 3 — percentage van omzet (%)',ph:'',doc:false,req:true},
         {id:'ebitdaNorm',label:'Genormaliseerde EBITDA',ph:'',doc:true,req:false},
         {id:'churnMrr',label:'MRR Churn (%)',ph:'',doc:false,req:true},
         {id:'ltv',label:'LTV (Customer Lifetime Value)',ph:'',doc:false,req:false},
@@ -3439,7 +3439,35 @@ function renderMain(){
     if(aiLoad)aiBodyHtml='<div style="display:flex;align-items:center;gap:8px;color:var(--mid);font-size:13px"><div class="spin" style="border-color:var(--border2);border-top-color:var(--teal);width:14px;height:14px;border-width:2px"></div>Genereren...</div>';
     else if(!aiText)aiBodyHtml='<div style="color:var(--muted);font-size:13px">Klik op Genereer advies voor een analyse op basis van de ingevulde data, checklist en notities.</div>';
     else if(aiText==='__ERROR__')aiBodyHtml='<div style="color:var(--red);font-size:13px">Verbindingsfout. Probeer opnieuw.</div>';
-    else{var h=aiText.replace(/## ([^\n]+)/g,function(_,t){return '<h3>'+t+'</h3>';});h=h.replace(/\*\*([^*]+)\*\*/g,function(_,t){return '<strong>'+t+'</strong>';});h=h.split('\n\n').map(function(p){return p.trim()&&p.charAt(0)!=='<'?'<p>'+p+'</p>':p;}).join('');aiBodyHtml=h;}
+    else{
+      var h=aiText;
+      // Verwijder pipe-tabellen (| Veld | Status | ... |)
+      h=h.replace(/^\|[-| ]+\|$/gm,'');
+      h=h.replace(/^\|.+\|$/gm,function(line){
+        // Zet pipe-rijen om naar gewone tekst zonder pipes
+        return line.replace(/^\||\|$/g,'').split('|').map(function(s){return s.trim();}).filter(Boolean).join(' — ');
+      });
+      // Verwijder technische statuswoorden
+      h=h.replace(/\b(NIET GEVERIFIEERD|ONVOLLEDIG GEDOCUMENTEERD|ONVOLLEDIG|NIET GEVERIFIEERD|HOOG|MIDDELMATIG|LAAG|KRITIEK)\b/g,'');
+      // Verwijder dubbele spaties en lege regels
+      h=h.replace(/  +/g,' ').replace(/\n{3,}/g,'\n\n');
+      // Markdown naar HTML
+      h=h.replace(/## ([^\n]+)/g,function(_,t){return '<h3>'+t+'</h3>';});
+      h=h.replace(/\*\*([^*]+)\*\*/g,function(_,t){return '<strong>'+t+'</strong>';});
+      h=h.split('\n\n').map(function(p){
+        p=p.trim();
+        if(!p)return '';
+        if(p.charAt(0)==='<')return p;
+        // Bullets omzetten naar leesbare zinnen
+        if(/^[-•]\s/m.test(p)){
+          return '<ul>'+p.split('\n').filter(function(l){return l.trim();}).map(function(l){
+            return '<li>'+l.replace(/^[-•]\s*/,'')+'</li>';
+          }).join('')+'</ul>';
+        }
+        return '<p>'+p+'</p>';
+      }).join('');
+      aiBodyHtml=h;
+    }
     var aiHtml='<div class="ai-panel"><div class="ai-hdr"><div><div class="ai-title">AI-advies: '+f.title+'</div><div class="ai-sub">Intern analyse-instrument</div></div>'
       +(!isKoper()&&!isVerkoper()?'<button class="btn-gen" id="gen-btn" '+(aiLoad?'disabled':'')+'>'+(aiLoad?'<div class="spin"></div> Genereren...':aiText&&aiText!=='__ERROR__'?'Opnieuw':'Genereer advies')+'</button>':'')
       +'</div><div class="ai-body">'+aiBodyHtml+'</div></div>';
