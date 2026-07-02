@@ -1222,6 +1222,7 @@ function autoFillFromExtraction(faseId, velden, forceOverwrite, docNaam) {
     if(velden.ohw&&velden.ohw!=='null')applyOrConflict('financieel_wip',cleanGetal(velden.ohw),'Onderhanden werk');
     if(velden.debiteuren&&velden.debiteuren!=='null')applyOrConflict('financieel_debiteuren',cleanGetal(velden.debiteuren),'Debiteuren');
     setIfEmpty('financieel_ebitdaNorm',cleanGetal(velden.resultaat));
+    setIfEmpty('financieel_ebitda',cleanGetal(velden.ebitda_abs));
     setIfEmpty('financieel_omzetJaarwerk',velden.omzet_jaarwerk_pct);
     setIfEmpty('financieel_omzetAdvies',velden.omzet_advies_pct);
     setIfEmpty('financieel_omzetLoon',velden.omzet_loon_pct);
@@ -1244,6 +1245,7 @@ function autoFillFromExtraction(faseId, velden, forceOverwrite, docNaam) {
     setIfEmpty('partner_opvolging',velden.opvolgingskandidaat||velden.opvolging);
     setIfEmpty('partner_verandering',velden.veranderbereidheid||velden.bereidheid_verandering);
     setIfEmpty('partner_pContract',velden.partnerovereenkomsten||velden.partner_contract);
+    setIfEmpty('partner_eigendomsStructuur',velden.eigendomsstructuur||velden.aandeelhoudersstructuur);
   }
   if(true){
     setIfEmpty('commercieel_aantalKlanten',velden.aantal_klanten||velden.actieve_klanten);
@@ -1283,6 +1285,7 @@ function autoFillFromExtraction(faseId, velden, forceOverwrite, docNaam) {
     setIfEmpty('juridisch_fiscaalRisico',velden.fiscale_risicos||velden.fiscaal_risico);
     setIfEmpty('juridisch_stak',velden.stak||velden.bijzondere_structuur);
     setIfEmpty('juridisch_overigeClaims',velden.claims||velden.garanties||velden.overige_claims);
+    setIfEmpty('juridisch_lopendeClaims',velden.claims||velden.lopende_claims||velden.geschillen);
     setIfEmpty('juridisch_lease',velden.leaseverplichtingen||velden.lease||velden.lease_per_jaar);
   }
   if(true){
