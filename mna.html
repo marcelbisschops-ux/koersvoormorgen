@@ -3706,64 +3706,68 @@ async function finaleCheck(){
   var btn=ge('finale-check-btn');
   var out=ge('finale-check-out');
   if(!btn||!out)return;
-  btn.disabled=true;btn.textContent='Bezig met controleren...';
-  out.innerHTML='<div style="color:var(--muted);font-size:13px;padding:1rem;background:var(--card);border-radius:var(--r)">AI vergelijkt velden met documenten... (20-40 sec)</div>';
+  btn.disabled=true;btn.textContent='Bezig...';
+  out.innerHTML='<div style="color:var(--muted);font-size:13px;padding:1rem;background:var(--card);border-radius:var(--r)">Analyse loopt... (20-40 sec)</div>';
 
-  // Bouw overzicht van alle ingevulde velden
+  // Alleen fase-1 velden — relevant voor indicatieve waardering, niet de volledige fase-2 DD
   var veldenSamenvatting='';
   FASES.forEach(function(f){
-    var gevuld=f.dataFields.filter(function(df){return !df.header&&(S.data[f.id+'_'+df.id]||'').trim();});
+    var gevuld=f.dataFields.filter(function(df){
+      return !df.header && df.fase==='1' && (S.data[f.id+'_'+df.id]||'').trim();
+    });
     if(gevuld.length){
-      veldenSamenvatting+='\n## '+f.num+'. '+f.title+'\n';
-      gevuld.forEach(function(df){veldenSamenvatting+='- '+df.label+': '+S.data[f.id+'_'+df.id]+'\n';});
+      veldenSamenvatting+='\n'+f.num+'. '+f.title+'\n';
+      gevuld.forEach(function(df){veldenSamenvatting+='  '+df.label+': '+S.data[f.id+'_'+df.id]+'\n';});
     }
   });
 
-  // Bouw overzicht van alle geüploade documenten en hun analyses
-  var docSamenvatting='';
+  var docNamen=[];
   Object.keys(DOCS).forEach(function(faseId){
-    var docs=(DOCS[faseId]||[]).filter(function(d){return !d.uploading&&!d.verworpen&&d.analyse;});
-    if(docs.length){
-      var faseNaam=FASES.find(function(f){return f.id===faseId;});
-      docSamenvatting+='\n## '+(faseNaam?faseNaam.num+'. '+faseNaam.title:faseId)+'\n';
-      docs.forEach(function(d){
-        docSamenvatting+='Document: '+d.naam+'\n';
-        docSamenvatting+='Analyse: '+d.analyse.substring(0,400)+'\n\n';
-      });
-    }
+    (DOCS[faseId]||[]).filter(function(d){return !d.uploading&&!d.verworpen;}).forEach(function(d){
+      docNamen.push(d.naam);
+    });
   });
 
-  if(!docSamenvatting){
-    out.innerHTML='<div style="color:var(--gold);font-size:13px;padding:.75rem;background:var(--gold-bg);border-radius:var(--r);border:1px solid var(--gold)">⚠ Geen documenten geüpload — finale check vereist minimaal één geüpload document per fase.</div>';
+  if(!docNamen.length){
+    out.innerHTML='<div style="color:var(--gold);font-size:13px;padding:.75rem;background:var(--gold-bg);border-radius:var(--r);border:1px solid var(--gold)">⚠ Geen documenten geüpload.</div>';
     btn.disabled=false;btn.textContent='&#9881; Voer finale check uit';
     return;
   }
 
-  var prompt='Je bent een forensische M&A-auditor voor een accountantskantoor due diligence.\n\n'
-    +'Traject: '+esc(S.traject&&S.traject.kantoor_naam||S.code)+'\n\n'
-    +'INGEVULDE VELDEN:\n'+veldenSamenvatting+'\n\n'
-    +'AANGELEVERDE DOCUMENTEN EN ANALYSES:\n'+docSamenvatting+'\n\n'
-    +'Voer een finale cross-check uit:\n'
-    +'1. Welke ingevulde velden worden BEVESTIGD door documenten?\n'
-    +'2. Welke ingevulde velden worden TEGENGESPROKEN of wijken af van de documenten?\n'
-    +'3. Welke verplichte velden hebben GEEN documentaire onderbouwing?\n'
-    +'4. Welke rode vlaggen of inconsistenties zie je?\n'
-    +'5. Eindoordeel: is het dossier gereed voor DD?\n\n'
-    +'Wees concreet en noem specifieke velden en bedragen. Gebruik ## koppen. Markeer problemen duidelijk met ⚠.';
+  var prompt='Je bent een M&A-adviseur die beoordeelt of de basisinformatie klopt voor een indicatieve waardering.\n\n'
+    +'Kantoor: '+esc(S.traject&&S.traject.kantoor_naam||S.code)+'\n'
+    +'Geüploade documenten: '+docNamen.join(', ')+'\n\n'
+    +'INGEVULDE BASISVELDEN (fase 1 — pre-LoI):\n'+veldenSamenvatting+'\n\n'
+    +'Beoordeel uitsluitend of de ingevulde basisvelden intern consistent zijn en voldoende zijn voor een indicatieve waardering. '
+    +'NIET beoordelen: ontbrekende fase-2 DD-documenten, arbeidscontracten, debiteurenadministratie, huurcontracten — die zijn pas relevant na de LoI.\n\n'
+    +'Schrijf maximaal 3 korte alineas in gewoon Nederlands:\n'
+    +'1. Wat klopt en consistent is (noem de cijfers)\n'
+    +'2. Wat afwijkt of intern inconsistent is (maximaal 2 punten)\n'
+    +'3. Eén zin eindoordeel: zijn de basisvelden voldoende voor een indicatieve waardering?\n\n'
+    +'Geen tabellen, geen lijsten, geen pipe-tekens. Maximaal 200 woorden.';
 
   try{
-    var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:2500})});
+    var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:1000})});
     var rd=await resp.json();
     var tekst=(rd.text||'Fout bij genereren.')
-      .replace(/## ([^\n]+)/g,'<h3 style="font-family:Playfair Display,serif;font-size:.95rem;color:var(--head);margin:1rem 0 .35rem;padding-top:.75rem;border-top:1px solid var(--border)">$1</h3>')
+      .replace(/## ([^\n]+)/g,'<h3 style="font-family:Playfair Display,serif;font-size:.95rem;color:var(--head);margin:1rem 0 .35rem">$1</h3>')
       .replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>')
-      .replace(/⚠/g,'<span style="color:var(--red)">⚠</span>')
-      .split('\n\n').map(function(p){return p.trim()&&p.charAt(0)!=='<'?'<p style="font-size:13px;color:var(--mid);line-height:1.7;margin-bottom:.5rem">'+p+'</p>':p;}).join('');
-    out.innerHTML='<div style="padding-top:.5rem">'+tekst+'</div>';
+      // Verwijder eventuele pipe-tabellen
+      .replace(/^\|[-| ]+\|$/gm,'')
+      .replace(/^\|.+\|$/gm,function(line){
+        return line.replace(/^\||\|$/g,'').split('|').map(function(s){return s.trim();}).filter(Boolean).join(' — ');
+      })
+      .split('\n\n').map(function(p){
+        p=p.trim();
+        if(!p)return '';
+        if(p.charAt(0)==='<')return p;
+        return '<p style="font-size:13px;color:var(--mid);line-height:1.7;margin-bottom:.75rem">'+p.replace(/\n/g,'<br>')+'</p>';
+      }).join('');
+    out.innerHTML='<div style="padding:.5rem 0">'+tekst+'</div>';
   }catch(e){
     out.innerHTML='<div style="color:var(--red);font-size:13px">Fout: '+e.message+'</div>';
   }
-  btn.disabled=false;btn.textContent='&#9881; Opnieuw controleren';
+  btn.disabled=false;btn.textContent='&#9881; Opnieuw';
 }
 
 async function generateAI(faseId){
