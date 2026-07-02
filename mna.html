@@ -793,8 +793,23 @@ function checkOmzetSom(){
   }
 }
 
-function fillPct(id){var f=FASES.find(function(x){return x.id===id;});if(!f)return 0;var req=f.dataFields.filter(function(df){return df.req;});var done=req.filter(function(df){return !!(S.data[id+'_'+df.id]||'').trim();}).length;return req.length?Math.round(done/req.length*100):100;}
-function totalFillPct(){var t=0,d=0;FASES.forEach(function(f){var req=f.dataFields.filter(function(df){return df.req;});t+=req.length;d+=req.filter(function(df){return !!(S.data[f.id+'_'+df.id]||'').trim();}).length;});return t?Math.round(d/t*100):0;}
+function fillPct(id){
+  var f=FASES.find(function(x){return x.id===id;});if(!f)return 0;
+  var loiGetekend=!!(S.loiGetekend||(S.traject&&(S.traject.loi_getekend||S.traject.loi_datum)));
+  var req=f.dataFields.filter(function(df){return df.req&&!df.header&&(loiGetekend||df.fase==='1');});
+  var done=req.filter(function(df){return !!(S.data[id+'_'+df.id]||'').trim();}).length;
+  return req.length?Math.round(done/req.length*100):100;
+}
+function totalFillPct(){
+  var t=0,d=0;
+  var loiGetekend=!!(S.loiGetekend||(S.traject&&(S.traject.loi_getekend||S.traject.loi_datum)));
+  FASES.forEach(function(f){
+    var req=f.dataFields.filter(function(df){return df.req&&!df.header&&(loiGetekend||df.fase==='1');});
+    t+=req.length;
+    d+=req.filter(function(df){return !!(S.data[f.id+'_'+df.id]||'').trim();}).length;
+  });
+  return t?Math.round(d/t*100):0;
+}
 function dc(v){return v>=70?'var(--teal)':v>=50?'var(--gold)':'var(--red)';}
 function ge(id){return document.getElementById(id);}
 function esc(s){if(!s)return '';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
@@ -805,8 +820,11 @@ function isAdmin(){return isTussen();}
 
 function getMissing(){
   var missing=[];
+  var loiGetekend=!!(S.loiGetekend||(S.traject&&(S.traject.loi_getekend||S.traject.loi_datum)));
   FASES.forEach(function(f){
-    var missingFields=f.dataFields.filter(function(df){return df.req&&!(S.data[f.id+'_'+df.id]||'').trim();});
+    var missingFields=f.dataFields.filter(function(df){
+      return df.req&&!df.header&&(loiGetekend||df.fase==='1')&&!(S.data[f.id+'_'+df.id]||'').trim();
+    });
     if(missingFields.length)missing.push({fase:f.num+'. '+f.title,fields:missingFields.map(function(df){return df.label;})});
   });
   return missing;
