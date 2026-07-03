@@ -2768,9 +2768,10 @@ async function renderGebruikersTab(el) {
           + '<td style="padding:10px 12px;color:var(--mid)">' + esc(g.bedrijf||'—') + '</td>'
           + '<td style="padding:10px 12px;color:var(--mid);font-family:IBM Plex Mono,monospace;font-size:11px">' + esc(g.email) + '</td>'
           + '<td style="padding:10px 12px"><span style="font-size:11px;font-weight:600;color:'+statusKleur+'">' + statusLabel + '</span></td>'
-          + '<td style="padding:10px 12px;font-family:IBM Plex Mono,monospace;font-size:12px;color:var(--teal)">' + (g.traject_count||0) + '</td>'
+          + '<td style="padding:10px 12px;font-family:IBM Plex Mono,monospace;font-size:12px;color:var(--teal)">' + (g.traject_count||0) + ' / ' + (g.traject_limiet||1) + '</td>'
           + '<td style="padding:10px 12px;font-size:11px;color:var(--muted)">' + llDatum + '</td>'
           + '<td style="padding:10px 12px;display:flex;gap:6px">'
+          + '<button class="btn-ghost btn-verkoop" data-id="'+esc(g.id)+'" style="font-size:10px;padding:3px 8px;color:var(--gold);border-color:var(--gold)">&euro; Verkoop</button>'
           + (g.status==='uitgenodigd'?'<button class="btn-ghost btn-resend" data-id="'+esc(g.id)+'" data-email="'+esc(g.email)+'" data-naam="'+esc(g.naam)+'" style="font-size:10px;padding:3px 8px">&#9993; Opnieuw sturen</button>':'')
           + '<button class="btn-ghost btn-reset" data-id="'+esc(g.id)+'" data-email="'+esc(g.email)+'" style="font-size:10px;padding:3px 8px">Reset ww</button>'
           + (g.status==='inactief'
@@ -2787,6 +2788,49 @@ async function renderGebruikersTab(el) {
     // Uitnodigen knop
     var uitnBtn = document.getElementById('btn-uitnodigen');
     if (uitnBtn) uitnBtn.addEventListener('click', function() { toonUitnodigenModal(); });
+
+    // Verkoop knoppen: limiet + modules per adviseur
+    el.querySelectorAll('.btn-verkoop').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var g = lijst.filter(function(x){ return x.id === btn.dataset.id; })[0];
+        if (!g) return;
+        var mods = {};
+        try { mods = JSON.parse(g.modules || '{}'); } catch(e) {}
+        var modDefs = [['traject','Traject (basis)'],['contracten','Contracten & ondertekening'],['ai_analyse','AI-analyse'],['qa','Q&A'],['export','Export & rapportage']];
+        var chk = modDefs.map(function(md){
+          var aan = md[0]==='traject' ? (mods[md[0]]!==false) : !!mods[md[0]];
+          return '<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--sub);padding:4px 0;cursor:pointer">'
+            + '<input type="checkbox" class="vk-mod" data-mod="'+md[0]+'" '+(aan?'checked':'')+'> '+md[1]+'</label>';
+        }).join('');
+        var ov = document.createElement('div');
+        ov.id = 'vk-overlay';
+        ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center';
+        ov.innerHTML = '<div style="background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:1.75rem;width:100%;max-width:420px">'
+          + '<div style="font-size:15px;font-weight:600;color:var(--head);margin-bottom:2px">&euro; Verkoop &mdash; ' + esc(g.naam) + '</div>'
+          + '<div style="font-size:11px;color:var(--muted);margin-bottom:1rem">' + esc(g.email) + ' &middot; ' + (g.traject_count||0) + ' traject(en) in gebruik</div>'
+          + '<div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:4px">Trajectlimiet</div>'
+          + '<input type="number" id="vk-limiet" min="1" value="' + (g.traject_limiet||1) + '" style="width:100px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--sub);font-size:14px;margin-bottom:1rem">'
+          + '<div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:4px">Modules</div>'
+          + chk
+          + '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1.25rem">'
+          + '<button class="btn-ghost" id="vk-annuleer" style="font-size:12px;padding:7px 14px">Annuleren</button>'
+          + '<button class="btn" id="vk-opslaan" style="font-size:12px;padding:7px 14px">Opslaan</button>'
+          + '</div></div>';
+        document.body.appendChild(ov);
+        document.getElementById('vk-annuleer').addEventListener('click', function(){ ov.remove(); });
+        document.getElementById('vk-opslaan').addEventListener('click', async function() {
+          var nm = {};
+          ov.querySelectorAll('.vk-mod').forEach(function(c){ nm[c.dataset.mod] = c.checked; });
+          var lim = Math.max(1, parseInt(document.getElementById('vk-limiet').value, 10) || 1);
+          try {
+            var vr = await fetch(WORKER + '/gebruikers/verkoop/' + encodeURIComponent(g.id), { method: 'POST', headers: { 'x-admin-key': adminKey, 'Content-Type': 'application/json' }, body: JSON.stringify({ traject_limiet: lim, modules: nm }) });
+            var vd = await vr.json();
+            if (vd.ok) { toast('Verkoopinstellingen opgeslagen: limiet ' + vd.traject_limiet + '.', 'ok'); ov.remove(); var tcv = document.querySelector('.tab-content'); if (tcv) renderGebruikersTab(tcv); }
+            else toast(vd.error || 'Fout bij opslaan.', 'err');
+          } catch(e) { toast('Verbindingsfout.', 'err'); }
+        });
+      });
+    });
 
     // Deactiveren knoppen
     el.querySelectorAll('.btn-act').forEach(function(btn) {
