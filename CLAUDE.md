@@ -1,0 +1,61 @@
+# KantoorInzicht — projectinstructies voor Claude Code
+
+## Taal en stijl
+- Communiceer in het Nederlands.
+- Compact en direct. Geen lange uitleg vooraf; eerst doen, dan kort rapporteren.
+- Marcel is geen programmeur: leg wijzigingen uit in gewone taal (wat het doet, niet hoe de code werkt), tenzij hij om detail vraagt.
+
+## Wat is dit project
+KantoorInzicht: AI-gedreven M&A due-diligence platform voor overnames van accountantskantoren.
+Eigenaar: Marcel Bisschops (Bisschops Financing B.V.).
+
+## Bestanden en rollen
+- `cloudflare-worker.js` — backend (Cloudflare Worker): alle API-endpoints, AI-documentextractie, e-mail (Resend), ondertekening (Signhost)
+- `mna.html` — verkoper/koper-portaal (het hoofdproduct)
+- `marilyn.html` — admin-paneel van Marcel
+- `adv.html` — adviseursportaal (betaalde externe adviseurs; login met e-mail + wachtwoord)
+- `index.html` — scan-tool
+- `hugo.html` — VerhuisScan (aparte module, andere sector)
+
+## Infrastructuur
+- Worker live op: https://kantoorinzicht.marcel-bisschops.workers.dev
+- Frontend: GitHub Pages op koersvoormorgen.nl (repo `marcelbisschops-ux/koersvoormorgen`, branch `main`)
+- Database: Cloudflare D1 `kantoorinzicht` · Documenten: R2 `kantoorinzicht-docs`
+- AI-model in de worker: `claude-sonnet-4-6`
+
+## Deployen
+- **Worker:** `npx wrangler deploy cloudflare-worker.js` — draaien vanuit de map waar de wrangler-configuratie staat (historisch: ~/Downloads). Vraag Marcel om bevestiging vóór elke deploy.
+- **Frontend:** commit + push naar `main` (GitHub Desktop of `git push`); GitHub Pages publiceert automatisch binnen 1-2 min. Herinner Marcel aan hard-refresh (Cmd+Shift+R) na publicatie.
+- **Secrets** (ADMIN_KEY, ANTHROPIC_API_KEY, RESEND_API_KEY) staan in Cloudflare. NOOIT een secret in een bestand of commit zetten. Nieuwe secret: `npx wrangler secret put NAAM`.
+
+## Werkregels (hard, niet onderhandelbaar)
+1. **Eén wijziging tegelijk.** Bevestig werkend (echte test, niet alleen "geen error") vóór de volgende stap.
+2. **Nooit reverten — fix forward.**
+3. **Test het hele systeem**, niet alleen het gewijzigde deel.
+4. **Diff tegen de huidige versie** vóór opleveren; alleen de gevraagde scope wijzigen, niets erbuiten.
+5. **Geen diagnose zonder data.** Niet gokken; eerst code of logs lezen (`npx wrangler tail` voor live worker-logs).
+6. **Elke fix in `mna.html` ook doorvoeren in `adv.html`** (en omgekeerd waar relevant), tenzij aantoonbaar specifiek voor één van beide.
+7. **Bij elke code-wijziging een test meeleveren:** curl-commando's, een checklist, of een testscript — iets waarmee Marcel zelf kan verifiëren.
+
+## Technische valkuilen (eerder geleerd)
+- `node --check` op elk JS-bestand vóór opleveren; voor HTML-bestanden: het `<script>`-blok extraheren en checken.
+- docx/xlsx zijn ZIP-bestanden met DEFLATE-compressie: uitpakken via de bestaande `unzipEntryText`-helper in de worker, nooit tekst-zoeken in de rauwe bytes.
+- Geneste template-literals in de worker veroorzaken syntaxfouten; gebruik string-concatenatie in gegenereerde HTML.
+- DELETE-methode wordt door CORS geblokkeerd; gebruik POST.
+- Bij traject-verwijdering NOOIT platformbrede data (zoals `mna_templates`) meewissen.
+
+## Verkoopmodel adviseurs (adv.html)
+- Gebruikers in tabel `bf_gebruikers` met `traject_limiet` en `modules` (JSON: traject, contracten, ai_analyse, qa, export).
+- Limiet/modules beheert Marcel via marilyn → Gebruikers → € Verkoop, of endpoint `/gebruikers/verkoop/{id}` (admin-key).
+- Geblokkeerde acties tonen altijd: "Neem contact op met Bisschops Financing".
+
+## Testtrajecten
+- De Vries & Partners: verkoper `UZ24377` — het gevalideerde demonstratiedossier. NOOIT verwijderen.
+- [dossier]: verkoper `[traject-code]`, koper `[traject-code]`, tussenpersoon `[traject-code]`.
+
+## Openstaande punten (juli 2026)
+- Eigen document-templates (NDA/LoI/BEM) opnieuw uploaden in marilyn (gewist door inmiddels gefixte bug)
+- Stap 3 adviseursportaal: contracten-flow (NDA/LoI/BEM/Excl) achter het module-slot `contracten`
+- Prompt caching in de worker (API-kosten drukken) — na stap 3
+- EBITDA-correctie De Vries: marge 13.0 + genormaliseerd 310000, daarna vrijgave-flow end-to-end testen
+- UptimeRobot instellen op /health
