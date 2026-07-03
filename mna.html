@@ -1413,14 +1413,20 @@ function handleDropUpload(event, faseId) {
 async function refreshData(){
   var oldScreen = S.screen;
   try {
-    var r = await fetch(WORKER+'/mna/login', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({code:S.code})});
+    var r = await fetch(WORKER+'/mna/traject/'+S.code, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ts:Date.now()})});
     var d = await r.json();
-    if(d.ok) {
+    if(r.ok && !d.error) {
       S.traject = d.traject;
-      S.data = d.data || {};
+      S.data = {};
+      S.checked = {};
+      if(d.data && d.data.length) loadDataFromDB(d.data);
       S.rol = d.rol;
+      S.modules = d.modules || S.modules || null;
+      S.screen = oldScreen;
       renderApp();
       toast('Verversen gelukt','ok',2000);
+    } else {
+      toast(d.error||'Verversen mislukt','err',2000);
     }
   } catch(e) { toast('Verbindingsfout','err',2000); }
 }
@@ -1431,7 +1437,7 @@ function uitloggen(){
   secAuditLog('logout');
   secReset();
   Object.keys(DOCS).forEach(function(k){delete DOCS[k];});
-  S={screen:'login',code:'',rol:'',traject:null,fase:0,checked:{},data:{},docRefs:{},notities:{},aiTexts:{},aiLoading:{},saveTimer:null,showValidation:false,dataroomLoading:false,dataroom:null,_opy:{},_epy:{},_conflicts:[],_pendingConflicts:{}};
+  S={screen:'login',code:'',rol:'',traject:null,modules:null,fase:0,checked:{},data:{},docRefs:{},notities:{},aiTexts:{},aiLoading:{},saveTimer:null,showValidation:false,dataroomLoading:false,dataroom:null,_opy:{},_epy:{},_conflicts:[],_pendingConflicts:{}};
   renderApp();
 }
 
@@ -2064,6 +2070,7 @@ function renderLogin(){
 
 function renderBegeleiderDashboard(app){
   var t=S.traject||{};
+  var contractenAan=!S.modules||S.modules.contracten!==false;
   var lb=window.partijLabels?window.partijLabels(t.traject_type||'Verkoop'):{sectie1:'Verkoper',sectie2:'Koper'};
   var html='<div class="wrap anim">'
     +'<div class="hdr"><div class="brand"><div class="wdot"></div>KantoorInzicht &middot; M&A Begeleider'+versieLabel()+'</div>'
@@ -2089,11 +2096,20 @@ function renderBegeleiderDashboard(app){
     // Actie knoppen
     +'<div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.4rem">Documenten</div>'
     +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:.75rem">'
-    +'<button class="btn" id="bg-nda-actie" style="background:#7c5cbf;padding:10px;font-size:12px">&#128274; NDA</button>'
-    +'<button class="btn" id="bg-loi-actie" style="background:var(--gold);padding:10px;font-size:12px">&#128196; LoI</button>'
-    +'<button class="btn" id="bg-bem-actie" style="background:#2a5ea0;padding:10px;font-size:12px">&#128203; BEM</button>'
-    +'<button class="btn" id="bg-excl-actie" style="background:#1a7a5e;padding:10px;font-size:12px">&#128221; Excl</button>'
+    +(contractenAan
+      ?'<button class="btn" id="bg-nda-actie" style="background:#7c5cbf;padding:10px;font-size:12px">&#128274; NDA</button>'
+      :'<button class="btn" id="bg-nda-actie" disabled title="Module Contracten niet actief — neem contact op met Bisschops Financing" style="background:#7c5cbf;padding:10px;font-size:12px;opacity:.45;cursor:not-allowed">&#128274; NDA</button>')
+    +(contractenAan
+      ?'<button class="btn" id="bg-loi-actie" style="background:var(--gold);padding:10px;font-size:12px">&#128196; LoI</button>'
+      :'<button class="btn" id="bg-loi-actie" disabled title="Module Contracten niet actief — neem contact op met Bisschops Financing" style="background:var(--gold);padding:10px;font-size:12px;opacity:.45;cursor:not-allowed">&#128196; LoI</button>')
+    +(contractenAan
+      ?'<button class="btn" id="bg-bem-actie" style="background:#2a5ea0;padding:10px;font-size:12px">&#128203; BEM</button>'
+      :'<button class="btn" id="bg-bem-actie" disabled title="Module Contracten niet actief — neem contact op met Bisschops Financing" style="background:#2a5ea0;padding:10px;font-size:12px;opacity:.45;cursor:not-allowed">&#128203; BEM</button>')
+    +(contractenAan
+      ?'<button class="btn" id="bg-excl-actie" style="background:#1a7a5e;padding:10px;font-size:12px">&#128221; Excl</button>'
+      :'<button class="btn" id="bg-excl-actie" disabled title="Module Contracten niet actief — neem contact op met Bisschops Financing" style="background:#1a7a5e;padding:10px;font-size:12px;opacity:.45;cursor:not-allowed">&#128221; Excl</button>')
     +'</div>'
+    +(contractenAan?'':'<div style="font-size:11px;color:var(--muted);margin-top:-.5rem;margin-bottom:.75rem">&#128274; Module Contracten niet actief — neem contact op met Bisschops Financing om deze module te activeren.</div>')
     +'<div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.4rem">Communicatie</div>'
     +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:1.25rem">'
     +'<button class="btn" id="bg-gesprek-actie" style="background:var(--teal);padding:10px;font-size:12px">&#128172; Gesprek</button>'
@@ -2311,10 +2327,10 @@ function renderBegeleiderDashboard(app){
     };
   }
 
-  document.getElementById('bg-nda-actie').onclick=function(){ toonDocWaarschuwing('nda', function(){ bgDoc('nda'); }); };
-  document.getElementById('bg-loi-actie').onclick=function(){ toonDocWaarschuwing('loi', function(){ bgDoc('loi'); }); };
-  document.getElementById('bg-bem-actie').onclick=function(){ toonDocWaarschuwing('bem', function(){ bgDoc('bem'); }); };
-  document.getElementById('bg-excl-actie').onclick=function(){ toonDocWaarschuwing('excl', function(){ bgDoc('excl'); }); };
+  document.getElementById('bg-nda-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op met Bisschops Financing.','err');return;} toonDocWaarschuwing('nda', function(){ bgDoc('nda'); }); };
+  document.getElementById('bg-loi-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op met Bisschops Financing.','err');return;} toonDocWaarschuwing('loi', function(){ bgDoc('loi'); }); };
+  document.getElementById('bg-bem-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op met Bisschops Financing.','err');return;} toonDocWaarschuwing('bem', function(){ bgDoc('bem'); }); };
+  document.getElementById('bg-excl-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op met Bisschops Financing.','err');return;} toonDocWaarschuwing('excl', function(){ bgDoc('excl'); }); };
 
   document.getElementById('bg-gesprek-actie').onclick=function(){ openBgGesprekForm(null); };
 
@@ -3821,7 +3837,7 @@ function bindAll(){
         }
         // Volledige reset - geen datalek tussen trajecten
         Object.keys(DOCS).forEach(function(k){delete DOCS[k];});
-        S={screen:'cover',code:code,rol:d.rol||'verkoper',traject:d.traject,_ivSelectie:null,
+        S={screen:'cover',code:code,rol:d.rol||'verkoper',traject:d.traject,modules:d.modules||null,_ivSelectie:null,
           fase:0,checked:{},data:{},docRefs:{},notities:{},aiTexts:{},aiLoading:{},
           saveTimer:null,showValidation:false,dataroomLoading:false,dataroom:null,
           _opy:{},_epy:{},_conflicts:[],_userEdited:{},_docSource:{},koperReacties:{},loiTekst:'',loiDatum:0};
