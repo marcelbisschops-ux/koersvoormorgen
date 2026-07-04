@@ -597,6 +597,17 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--b
 
 <script>
 const WORKER = 'https://kantoorinzicht.marcel-bisschops.workers.dev';
+// White-label basis — centrale merkconfig voor de publieke VerhuisScan (zelfde patroon als de rest).
+const BRAND = { platform:'VerhuisScan', bedrijf:'Bisschops Financing B.V.', bedrijfKort:'Bisschops Financing' };
+// De koppen staan in statische (toon/verberg) secties; zet ze allemaal in één keer bij het laden.
+function applyBrand(){
+  try{
+    document.title = BRAND.platform + ' — Strategisch inzicht voor verhuisbedrijven';
+    document.querySelectorAll('.wordmark').forEach(function(el){ el.innerHTML = '<div class="wdot"></div>' + BRAND.platform + ' · ' + BRAND.bedrijfKort; });
+    document.querySelectorAll('.page-brand').forEach(function(el){ el.innerHTML = '<div class="wdot"></div>' + BRAND.platform; });
+  }catch(e){}
+}
+document.addEventListener('DOMContentLoaded', applyBrand);
 const STAP_NAMEN = ['Financieel','Wagenpark & Duurzaamheid','Markt & Diensten','Opslag & Circulair','Personeel & Digitaal','Strategie'];
 const VERPLICHT = {
   1:['omzet_groei','marge_kw','debiteur','bezetting'],
