@@ -51,11 +51,12 @@ Eigenaar: Marcel Bisschops (Bisschops Financing B.V.).
 
 ## Testtrajecten
 - De Vries & Partners: verkoper `UZ24377` — het gevalideerde demonstratiedossier. NOOIT verwijderen.
-- [dossier]: verkoper `[traject-code]`, koper `[traject-code]`, tussenpersoon `[traject-code]`.
 
 ## Openstaande punten (juli 2026)
-- Eigen document-templates (NDA/LoI/BEM) opnieuw uploaden in marilyn (gewist door inmiddels gefixte bug)
-- Stap 3 adviseursportaal: contracten-flow (NDA/LoI/BEM/Excl) achter het module-slot `contracten`
-- Prompt caching in de worker (API-kosten drukken) — na stap 3
-- EBITDA-correctie De Vries: marge 13.0 + genormaliseerd 310000, daarna vrijgave-flow end-to-end testen
-- UptimeRobot instellen op /health
+- Eigen document-templates (NDA/LoI/BEM) opnieuw uploaden in marilyn (gewist door inmiddels gefixte bug) — bewust uitgesteld door Marcel
+
+### Afgerond (juli 2026)
+- Stap 3 adviseursportaal: contracten-flow (NDA/LoI/BEM/Excl) achter het module-slot `contracten` — knoppen in het begeleider-dashboard van mna.html checken nu `modules.contracten`
+- Prompt caching in de worker: vaste instructies + JSON-extractieschema van de documentanalyse gaan als cachebaar `system`-block mee (bevestigd: cache-hits in productie)
+- EBITDA-correctie De Vries: marge 13.0 + genormaliseerd 310000 — vrijgave-flow end-to-end getest
+- UptimeRobot ingesteld op `/health` (nieuw endpoint, checkt ook DB-verbinding)
