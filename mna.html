@@ -2348,6 +2348,9 @@ function renderBegeleiderDashboard(app){
     +(contractenAan
       ?'<button class="btn" id="bg-dealvoorstel-actie" style="background:#8a5a00;padding:10px;font-size:12px">&#128202; Dealvoorstel</button>'
       :'<button class="btn" id="bg-dealvoorstel-actie" disabled title="Module Contracten niet actief — neem contact op met Bisschops Financing" style="background:#8a5a00;padding:10px;font-size:12px;opacity:.45;cursor:not-allowed">&#128202; Dealvoorstel</button>')
+    +(contractenAan
+      ?'<button class="btn" id="bg-bieding-actie" style="background:#a0522d;padding:10px;font-size:12px">&#128233; Indicatieve bieding</button>'
+      :'<button class="btn" id="bg-bieding-actie" disabled title="Module Contracten niet actief — neem contact op met Bisschops Financing" style="background:#a0522d;padding:10px;font-size:12px;opacity:.45;cursor:not-allowed">&#128233; Indicatieve bieding</button>')
     +'</div>'
     +(contractenAan?'':'<div style="font-size:11px;color:var(--muted);margin-top:-.5rem;margin-bottom:.75rem">&#128274; Module Contracten niet actief — neem contact op met Bisschops Financing om deze module te activeren.</div>')
     +'<div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.4rem">Communicatie</div>'
@@ -2694,11 +2697,117 @@ function renderBegeleiderDashboard(app){
     };
   }
 
+  // ===== INDICATIEVE BIEDING: parametermodal + generatie =====
+  function dvEuro(n){return '€ '+Math.round(n||0).toLocaleString('nl-NL');}
+  function toonBiedingModal(){
+    var t2=S.traject||{};
+    var d=dvGetDefaults();
+    var multMid=((d.multipleBasis+d.multipleBovengrens)/2);
+    var lbl='font-size:10px;font-weight:600;text-transform:uppercase;color:#8a8880;display:block;margin-bottom:4px';
+    var inp='width:100%;background:#f0eeea;border:1px solid #c8c5bc;border-radius:6px;padding:7px 11px;font-family:IBM Plex Sans,sans-serif;font-size:13px';
+    function veld(id,label,val,step,type){
+      return '<div style="flex:1"><label style="'+lbl+'">'+label+'</label><input type="'+(type||'number')+'" id="'+id+'" value="'+val+'" '+(step?'step="'+step+'"':'')+' style="'+inp+'"></div>';
+    }
+    var geldigTot=new Date(Date.now()+30*24*3600*1000).toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'});
+    var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:400;display:flex;align-items:center;justify-content:center;padding:1.5rem';
+    var mo=document.createElement('div');mo.style.cssText='background:#fff;border-radius:10px;padding:2rem;max-width:560px;width:100%;max-height:92vh;overflow-y:auto';
+    mo.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.15rem;color:#1a1815;font-weight:600;margin-bottom:.25rem">&#128233; Indicatieve bieding</div>'
+      +'<div style="font-size:12px;color:#8a8880;margin-bottom:1.25rem">Niet-bindend bod. Het bod (bandbreedte) wordt berekend uit EBITDA × multiple en exact zo in de brief overgenomen.</div>'
+      +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('bd-ebitda','Genormaliseerde EBITDA (€)',d.ebitdaBewezen)+'</div>'
+      +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('bd-mult-laag','Multiple laag',d.multipleBasis,0.1)+veld('bd-mult-hoog','Multiple hoog',d.multipleBovengrens,0.1)+'</div>'
+      +'<div style="margin-bottom:1rem"><label style="'+lbl+'">Betalingsstructuur</label><input type="text" id="bd-betaling" value="100% contant bij closing (cash-and-debt-free)" style="'+inp+'"></div>'
+      +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('bd-excl','Exclusiviteit (weken)',6)+veld('bd-geldig','Geldig tot',geldigTot,null,'text')+'</div>'
+      +'<div id="bd-err" style="display:none;color:#e05252;font-size:12px;margin-bottom:.75rem"></div>'
+      +'<div style="display:flex;gap:8px;justify-content:flex-end">'
+      +'<button id="bd-ann" style="background:transparent;border:1px solid #c8c5bc;padding:8px 16px;border-radius:6px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:13px">Annuleren</button>'
+      +'<button id="bd-ok" style="background:#a0522d;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:13px;font-weight:600">&#128233; Genereren</button>'
+      +'</div>';
+    ov.appendChild(mo);document.body.appendChild(ov);
+    ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
+    document.getElementById('bd-ann').onclick=function(){document.body.removeChild(ov);};
+
+    document.getElementById('bd-ok').onclick=async function(){
+      var btn=this;btn.disabled=true;btn.textContent='Genereren... (15-30 sec)';
+      var errEl=document.getElementById('bd-err');errEl.style.display='none';
+      var ebitda=parseFloat(document.getElementById('bd-ebitda').value)||0;
+      var multLaag=parseFloat(document.getElementById('bd-mult-laag').value)||0;
+      var multHoog=parseFloat(document.getElementById('bd-mult-hoog').value)||0;
+      var betaling=document.getElementById('bd-betaling').value.trim()||'100% contant bij closing';
+      var exclWeken=parseInt(document.getElementById('bd-excl').value)||6;
+      var geldigTotV=document.getElementById('bd-geldig').value.trim()||geldigTot;
+      if(!ebitda||!multLaag){errEl.textContent='Vul EBITDA en minimaal de lage multiple in.';errEl.style.display='block';btn.disabled=false;btn.textContent='📩 Genereren';return;}
+      if(!multHoog||multHoog<multLaag)multHoog=multLaag;
+      var bodLaag=ebitda*multLaag, bodHoog=ebitda*multHoog;
+      var bodTekst = (multHoog>multLaag) ? ('een bandbreedte van '+dvEuro(bodLaag)+' tot '+dvEuro(bodHoog)) : (dvEuro(bodLaag));
+      var multTekst = (multHoog>multLaag) ? (multLaag.toLocaleString('nl-NL')+'× tot '+multHoog.toLocaleString('nl-NL')+'×') : (multLaag.toLocaleString('nl-NL')+'×');
+      try{
+        var isSell=(t2.opdrachtgever_rol==='koper')?false:(!t2.traject_type||t2.traject_type==='Verkoop'||t2.traject_type==='Opvolging');
+        var datum=new Date().toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'});
+        var tplD=await fetch(WORKER+'/mna/template/bieding?email='+encodeURIComponent(t2.begeleider_email||'')).then(function(r){return r.json();}).catch(function(){return{ok:false};});
+        var tplTekst=tplD.ok&&tplD.tekst?tplD.tekst:'[standaard biedingsbrief]';
+        if(tplTekst.length>6000)tplTekst=tplTekst.substring(0,6000);
+        var prompt='Vul de onderstaande indicatieve-biedingsbrief in. Vervang ALLE [tekst tussen haakjes]. Gebruik UITSLUITEND de cijfers hieronder; verzin geen eigen bedragen, EBITDA of multiples.\n'
+          +'Kopende partij (uitbrengende partij): '+esc(t2.koper_naam||'[koper]')+(t2.koper_contact?', t.a.v. '+esc(t2.koper_contact):'')+', '+(t2.koper_adres||'')+'.\n'
+          +'Verkopende partij / target: '+esc(t2.kantoor_naam||'[verkoper]')+(t2.contact_naam?', t.a.v. '+esc(t2.contact_naam):'')+', '+(t2.verkoper_adres||'')+'.\n'
+          +'Bisschops Financing begeleidt '+(isSell?'de verkopende':'de kopende')+' partij.\n'
+          +'Indicatief bod: '+bodTekst+' op cash-and-debt-free basis.\n'
+          +'Onderbouwing: genormaliseerde EBITDA van '+dvEuro(ebitda)+' en een multiple van '+multTekst+'.\n'
+          +'Betalingsstructuur: '+betaling+'.\n'
+          +'Exclusiviteitsperiode: '+exclWeken+' weken.\n'
+          +'Geldig tot: '+geldigTotV+'.\n'
+          +'Datum: '+datum+'. Plaats: Oploo.\n\n'
+          +'Geef alleen het volledig ingevulde document terug, zonder toelichting.\n\nTEMPLATE:\n'+tplTekst;
+        var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:8000})});
+        var rd=await resp.json();
+        var tekst=rd.text||'Fout bij genereren';
+        document.body.removeChild(ov);
+        var out=document.getElementById('bg-doc-out');out.style.display='block';
+        var titel='Indicatieve bieding — '+(t2.kantoor_naam||S.code);
+        out.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem">'
+          +'<div style="font-size:11px;font-weight:600;color:#a0522d;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.75rem">Indicatieve bieding gegenereerd</div>'
+          +'<textarea id="bd-doc-tekst" style="width:100%;height:320px;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:Georgia,serif;font-size:12px;line-height:1.8;padding:1rem;outline:none;resize:vertical">'+esc(tekst)+'</textarea>'
+          +'<div style="display:flex;gap:8px;margin-top:.75rem">'
+          +'<button id="bd-print" class="btn-ghost" style="font-size:12px;padding:6px 14px">&#128196; Print</button>'
+          +'<button id="bd-email" class="btn" style="font-size:12px;padding:6px 14px;background:#a0522d">&#9993; Verstuur naar partijen</button>'
+          +'</div>'
+          +'<div style="margin-top:1.25rem;padding-top:1rem;border-top:1px solid var(--border)">'
+          +'<div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:.6rem">Volgende stappen</div>'
+          +'<div style="font-size:12px;color:var(--muted);margin-bottom:.6rem">Na het bod: start de due-diligence-fase en vraag de volledige DD-informatie op.</div>'
+          +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
+          +'<button id="bd-naar-dd" class="btn-ghost" style="font-size:12px;padding:6px 14px">&#128260; Zet traject op Due Diligence</button>'
+          +'<button id="bd-infoverzoek" class="btn" style="font-size:12px;padding:6px 14px;background:var(--teal-dim)">&#128203; Informatieverzoek — volledige DD</button>'
+          +'</div></div>'
+          +'</div>';
+        var docOutEl=document.getElementById('bg-doc-out');
+        if(docOutEl)setTimeout(function(){docOutEl.scrollIntoView({behavior:'smooth',block:'nearest'});},100);
+        document.getElementById('bd-print').onclick=function(){printDoc(document.getElementById('bd-doc-tekst').value,titel,'bieding');};
+        document.getElementById('bd-email').onclick=async function(){
+          var ebtn=this;ebtn.disabled=true;ebtn.textContent='Versturen...';
+          var toList=[t2.contact_email,t2.begeleider_email,t2.koper_email].filter(Boolean);
+          var er=await fetch(WORKER+'/mna/bieding/email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:S.traject.id,bieding_tekst:document.getElementById('bd-doc-tekst').value,to:toList})});
+          var ed=await er.json();
+          if(ed.ok){ebtn.textContent='✓ Verstuurd';}else{toast('Fout: '+(ed.error||'onbekend'),'err');ebtn.disabled=false;ebtn.textContent='✉ Verstuur naar partijen';}
+        };
+        document.getElementById('bd-naar-dd').onclick=async function(){
+          var nbtn=this;nbtn.disabled=true;nbtn.textContent='Bezig...';
+          var lr=await fetch(WORKER+'/mna/logboek/'+S.code,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nieuwe_fase:'due_diligence',auteur_naam:S.traject&&S.traject.begeleider_naam||'Begeleider'})}).then(function(r){return r.json();}).catch(function(){return{};});
+          if(lr.ok){nbtn.textContent='✓ Fase: Due Diligence';if(S.traject)S.traject.traject_fase='due_diligence';toast('Traject staat nu op Due Diligence.','ok');}
+          else{toast('Fout: '+(lr.error||'onbekend'),'err');nbtn.disabled=false;nbtn.textContent='🔄 Zet traject op Due Diligence';}
+        };
+        document.getElementById('bd-infoverzoek').onclick=function(){ openInformatieverzoek('2'); };
+      }catch(e){
+        errEl.textContent='Fout bij genereren: '+e.message;errEl.style.display='block';
+        btn.disabled=false;btn.textContent='📩 Genereren';
+      }
+    };
+  }
+
   document.getElementById('bg-nda-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op met Bisschops Financing.','err');return;} toonDocWaarschuwing('nda', function(){ bgDoc('nda'); }); };
   document.getElementById('bg-loi-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op met Bisschops Financing.','err');return;} toonDocWaarschuwing('loi', function(){ bgDoc('loi'); }); };
   document.getElementById('bg-bem-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op met Bisschops Financing.','err');return;} toonDocWaarschuwing('bem', function(){ bgDoc('bem'); }); };
   document.getElementById('bg-excl-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op met Bisschops Financing.','err');return;} toonDocWaarschuwing('excl', function(){ bgDoc('excl'); }); };
   document.getElementById('bg-dealvoorstel-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op met Bisschops Financing.','err');return;} toonDealvoorstelModal(); };
+  document.getElementById('bg-bieding-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op met Bisschops Financing.','err');return;} toonBiedingModal(); };
 
   document.getElementById('bg-gesprek-actie').onclick=function(){ openBgGesprekForm(null); };
 
@@ -2707,8 +2816,8 @@ function renderBegeleiderDashboard(app){
   // Informatieverzoek knop
   var bgUitnBtn=document.getElementById('bg-uitnodigen-btn');
   if(bgUitnBtn)bgUitnBtn.onclick=function(){toonUitnodigingModalTussen();};
-  document.getElementById('bg-infoverzoek-actie').onclick=async function(){
-    var ibtn=this;ibtn.disabled=true;ibtn.textContent='Laden...';
+  async function openInformatieverzoek(forcedFase, triggerBtn){
+    var ibtn=triggerBtn||null;if(ibtn){ibtn.disabled=true;ibtn.textContent='Laden...';}
     var t2=S.traject;
     var mnaUrl='https://koersvoormorgen.nl/mna.html';
     var verkoperCode=t2.id||S.code;
@@ -2739,7 +2848,7 @@ function renderBegeleiderDashboard(app){
     };
 
     // Bepaal fase op basis van LoI status
-    var ivFase = (S.loiGetekend || (t2.loi_getekend) || (t2.loi_datum)) ? '2' : '1';
+    var ivFase = forcedFase || ((S.loiGetekend || (t2.loi_getekend) || (t2.loi_datum)) ? '2' : '1');
     var ivFaseLabel = ivFase === '2' ? 'Fase 2 — Volledige Due Diligence (post-LoI)' : 'Fase 1 — Oriëntatie (pre-LoI)';
 
     var sector = (t2.sector||'accountancy').toLowerCase();
@@ -2901,8 +3010,9 @@ function renderBegeleiderDashboard(app){
       }
       else{ivErr.style.display='block';ivErr.textContent='Fout: '+(er.error||'onbekend');sb.disabled=false;sb.textContent='Verstuur';}
     };
-    ibtn.disabled=false;ibtn.textContent='&#128203; Informatieverzoek';
-  };
+    if(ibtn){ibtn.disabled=false;ibtn.textContent='&#128203; Informatieverzoek';}
+  }
+  document.getElementById('bg-infoverzoek-actie').onclick=function(){ openInformatieverzoek(null, this); };
 
   // ── Documenten sectie begeleider ──
   var bgDocsEl = document.getElementById('bg-docs-sectie');
@@ -3214,7 +3324,7 @@ function renderBegeleiderDashboard(app){
   }
 
 function printDoc(tekst, titel, docType) {
-  var kleuren = {nda:'#7c5cbf',loi:'#c9a84c',bem:'#2a5ea0',bem_verk:'#2a5ea0',bem_koper:'#2a5ea0',excl:'#1a7a5e',exclusief:'#1a7a5e'};
+  var kleuren = {nda:'#7c5cbf',loi:'#c9a84c',bem:'#2a5ea0',bem_verk:'#2a5ea0',bem_koper:'#2a5ea0',excl:'#1a7a5e',exclusief:'#1a7a5e',bieding:'#a0522d'};
   var kleur = kleuren[docType] || '#1a7a5e';
   function fmt(t) {
     if(!t) return '';
