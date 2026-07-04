@@ -90,6 +90,10 @@ tr:hover td{background:rgba(26,122,94,.04)}
 <script>
 
 const WORKER='https://kantoorinzicht.marcel-bisschops.workers.dev';
+// White-label basis — centrale merkconfig voor de beheerkant (zelfde patroon als de rest).
+const BRAND={platform:'KantoorInzicht',bedrijf:'Bisschops Financing B.V.',suffix:'Beheer'};
+document.title=BRAND.platform+' — '+BRAND.suffix;
+(function(){var b=document.querySelector('.brand');if(b)b.innerHTML='<div class="wdot"></div>'+BRAND.platform+' <span style="color:var(--teal);margin-left:4px">'+BRAND.suffix+'</span>';})();
 let adminKey='',scans=[],callbacks=[],mnaList=[],rapporten=[],activeTab='scans',scanFilter='',openRow=null;
 let gebruikerToken='',gebruikerInfo=null,isSuperAdmin=false;
 
@@ -111,7 +115,7 @@ function partijLabels(type){
 // LOGIN
 function renderLogin(){
   document.getElementById('app').innerHTML='<div class="login-wrap"><div class="login-box">'
-    +'<div class="login-title">KantoorInzicht Beheer</div>'
+    +'<div class="login-title">'+BRAND.platform+' '+BRAND.suffix+'</div>'
     +'<div class="login-sub">Beheerder-toegang. Alleen voor beheerder.</div>'
     +'<div class="field" style="margin-top:1rem"><label>Beheerder-sleutel</label><input type="password" id="ak" placeholder="••••••••" autofocus></div>'
     +'<button class="btn" id="login-btn" style="width:100%">Inloggen</button>'
