@@ -13,7 +13,7 @@ Geordend van eenvoudig naar moeilijk. **Uren** = geschatte bouw- en testtijd met
 | 1 | Waarschuwing in modals als kopernaam ontbreekt | Sonnet | 0,5–1 u | €50–100 | Voorkomt brieven met generieke partijnamen |
 | 2 | Bevestigingsstap vóór versturen AI-documenten | Sonnet | 2–3 u | €200–300 | Verplichte controle-stap + evt. CONCEPT-watermerk; systeem dwingt review af |
 | 3 | Buy-and-build aannames instelbaar | Sonnet | 1–2 u | €100–200 | Vaste aannames (55% acquisitieschuld, 15% aflossing) als invulvelden |
-| 4 | **Geautomatiseerde end-to-end testsuite** | Opus (testontwerp evt. Fable) | 8–16 u | €800–1.600 | Zie testplan hieronder. Voorwaarde voor #12 |
+| 4 | ~~**Geautomatiseerde end-to-end testsuite**~~ ✅ AFGEROND | Opus | 8–16 u | €800–1.600 | Zie `tests/README.md`. Deel A (API) + Deel B (Playwright UI) draaien groen. Vond+fixte meteen een waardering-bug. Voorwaarde voor #12/refactor is hiermee vervuld |
 | 5 | Gefaseerde dataroom-toegang koper | Opus | 6–10 u | €600–1.000 | Vrijgave per DD-fase i.p.v. alles-of-niets |
 | 6 | Concept-SPA-generator (werkdocument jurist) | Opus | 4–6 u | €400–600 + €500–1.500 eenmalige juridische template-review | Download/print-only, nadrukkelijk concept-label |
 | 7 | Branding neutraliseren (white-label basis) | Sonnet | 6–10 u | €600–1.000 | KantoorInzicht/kantoor_naam/accountancy-teksten configureerbaar |

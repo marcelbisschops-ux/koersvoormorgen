@@ -1,0 +1,17 @@
+{
+  "name": "kantoorinzicht-tests",
+  "version": "1.0.0",
+  "private": true,
+  "description": "End-to-end testsuite voor het KantoorInzicht M&A-platform (API + UI).",
+  "type": "module",
+  "scripts": {
+    "test:api": "node tests/e2e-api.mjs",
+    "test:api:ai": "node tests/e2e-api.mjs --ai",
+    "test:api:full": "node tests/e2e-api.mjs --full",
+    "test:ui": "playwright test",
+    "test:ui:headed": "playwright test --headed"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.61.1"
+  }
+}
