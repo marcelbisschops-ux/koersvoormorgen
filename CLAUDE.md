@@ -54,6 +54,7 @@ Eigenaar: Marcel Bisschops (Bisschops Financing B.V.).
 
 ## Openstaande punten (juli 2026)
 - Eigen document-templates (NDA/LoI/BEM) opnieuw uploaden in marilyn (gewist door inmiddels gefixte bug) — bewust uitgesteld door Marcel
+- Volledige backlog (12 taken, eenvoudig → moeilijk, met kosteninschatting) + geautomatiseerd E2E-testplan: zie `BACKLOG.md`
 
 ### Afgerond (juli 2026)
 - Stap 3 adviseursportaal: contracten-flow (NDA/LoI/BEM/Excl) achter het module-slot `contracten` — knoppen in het begeleider-dashboard van mna.html checken nu `modules.contracten`
