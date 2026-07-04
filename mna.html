@@ -1551,6 +1551,241 @@ function renderDataroom(){
 }
 function parseGeld(s){if(!s)return 0;var n=String(s).replace(/[^0-9,.]/g,'').replace(',','.');return parseFloat(n)||0;}
 function fmtGeld(n){if(!n||isNaN(n))return '—';if(n>=1000000)return '€'+(n/1000000).toFixed(2)+' mln';if(n>=1000)return '€'+(n/1000).toFixed(0)+'.000';return '€'+Math.round(n);}
+
+// ===== DEALVOORSTEL: parameters, berekeningen, weergave =====
+function dvMln(n){return (n/1000000).toLocaleString('nl-NL',{minimumFractionDigits:2,maximumFractionDigits:2});}
+function dvPct(n){return n.toLocaleString('nl-NL',{minimumFractionDigits:1,maximumFractionDigits:1})+'%';}
+function dvMultiple(n){return n.toLocaleString('nl-NL',{minimumFractionDigits:1,maximumFractionDigits:1})+'×';}
+
+function dvGetDefaults(){
+  var t=S.traject||{};
+  var sectorProfiel=getSectorProfiel();
+  var normen=sectorProfiel.aiNormen||'';
+  var mMatch=normen.match(/multiple\s*([\d.,]+)\s*[-–]\s*([\d.,]+)x/i);
+  var mLaag=mMatch?parseFloat(mMatch[1].replace(',','.')):4.5;
+  var mHoog=mMatch?parseFloat(mMatch[2].replace(',','.')):5.5;
+  var ebBasis=parseGeld(S.data['financieel_ebitdaNorm']||S.data['financieel_ebitda']||'0');
+  return {
+    koperNaam:t.koper_naam||'',
+    belangPct:51,
+    ebitdaBewezen:ebBasis||0,
+    ebitdaPrognose:ebBasis?Math.round(ebBasis*1.3):0,
+    multipleBasis:mLaag,
+    multipleBovengrens:mHoog,
+    cliffPct:70,
+    escrowPct:12,
+    escrowMaanden:18,
+    bankLeverage:2,
+    rentePct:5,
+    vpbPct:25.8,
+    capexPct:1.5,
+    groeiPct:4,
+    horizonJaren:5,
+    buyAndBuild:false,
+    baOvernamesPerJaar:2,
+    baOmvangEbitda:1.4,
+    baAcqMultiple:5.5,
+    baPlatformMultipleMax:9.5
+  };
+}
+
+// Glijdende-schaal prijsmechanisme: multiple loopt lineair van multipleBasis (bij de cliff-drempel)
+// naar multipleBovengrens (bij of boven de prognose); onder de cliff geldt de vaste basis-multiple als
+// harde ondergrens, boven de prognose wordt de bovengrens niet verder verhoogd.
+function dvBerekenPrijsmechanisme(p){
+  var cliff=p.ebitdaPrognose*(p.cliffPct/100);
+  function multipleVoor(ebitda){
+    if(!p.ebitdaPrognose||ebitda<=cliff) return p.multipleBasis;
+    if(ebitda>=p.ebitdaPrognose) return p.multipleBovengrens;
+    var frac=(ebitda-cliff)/(p.ebitdaPrognose-cliff);
+    return p.multipleBasis+frac*(p.multipleBovengrens-p.multipleBasis);
+  }
+  var scenarios=[
+    {label:'Cliff — serieuze misser',ebitda:cliff*0.9},
+    {label:'Deels gerealiseerd',ebitda:cliff+(p.ebitdaPrognose-cliff)*0.5},
+    {label:'Prognose gehaald',ebitda:p.ebitdaPrognose},
+    {label:'Ruim boven prognose',ebitda:p.ebitdaPrognose*1.12}
+  ];
+  return scenarios.map(function(s){
+    var mult=multipleVoor(s.ebitda);
+    var ev=s.ebitda*mult;
+    var deelKoper=ev*(p.belangPct/100);
+    var deelVerkoper=ev*(1-p.belangPct/100);
+    return {label:s.label,ebitda:s.ebitda,multiple:mult,ev:ev,deelKoper:deelKoper,deelVerkoper:deelVerkoper};
+  });
+}
+
+// Bedrag bij closing (op bewezen EBITDA × basis-multiple) en de earn-up (verschil met het prognose-scenario)
+function dvBerekenClosing(p){
+  var evBasis=p.ebitdaBewezen*p.multipleBasis;
+  var deelKoperBasis=evBasis*(p.belangPct/100);
+  var deelVerkoperBasis=evBasis*(1-p.belangPct/100);
+  var evPrognose=p.ebitdaPrognose*p.multipleBovengrens;
+  var deelKoperPrognose=evPrognose*(p.belangPct/100);
+  var earnUp=Math.max(0,deelKoperPrognose-deelKoperBasis);
+  return {evBasis:evBasis,deelKoperBasis:deelKoperBasis,deelVerkoperBasis:deelVerkoperBasis,evPrognose:evPrognose,deelKoperPrognose:deelKoperPrognose,earnUp:earnUp};
+}
+
+// Meerjarig kasstroom-/schuldafbouwmodel (realisatie-scenario: prognose wordt gehaald, earn-up in jaar 1 uitgekeerd).
+// Capex is vereenvoudigd als percentage van EBITDA (geen aparte omzetprognose beschikbaar in dit model).
+function dvBerekenSchuldafbouw(p,closing){
+  var rows=[];
+  var huidigJaar=new Date().getFullYear();
+  var nettoSchuld=p.ebitdaBewezen*p.bankLeverage;
+  var ebitda=p.ebitdaBewezen;
+  rows.push({jaar:'Closing ('+huidigJaar+')',ebitda:ebitda,rente:0,vpb:0,capex:0,fcf:0,earnUp:0,nettoSchuld:nettoSchuld,leverage:ebitda?nettoSchuld/ebitda:0});
+  for(var j=1;j<=p.horizonJaren;j++){
+    ebitda = j===1 ? (p.ebitdaPrognose||ebitda) : ebitda*(1+p.groeiPct/100);
+    var rente=nettoSchuld*(p.rentePct/100);
+    var vpb=Math.max(0,ebitda-rente)*(p.vpbPct/100);
+    var capex=ebitda*(p.capexPct/100);
+    var earnUp=j===1?closing.earnUp:0;
+    var fcf=ebitda-rente-vpb-capex;
+    nettoSchuld=Math.max(0,nettoSchuld-fcf+earnUp);
+    rows.push({jaar:String(huidigJaar+j),ebitda:ebitda,rente:rente,vpb:vpb,capex:capex,fcf:fcf,earnUp:earnUp,nettoSchuld:nettoSchuld,leverage:ebitda?nettoSchuld/ebitda:0});
+  }
+  return rows;
+}
+
+// Vereenvoudigd buy-and-build platformscenario: N overnames/jaar van gemiddelde omvang, platformmultiple
+// loopt lineair op naar het opgegeven maximum. Acquisitieschuld is een vast percentage van de acquisitiewaarde;
+// bestaande schuld wordt jaarlijks met een indicatief percentage afgelost.
+function dvBerekenBuyAndBuild(p,laatsteSchuldRow){
+  var rows=[];
+  var groepsEbitda=laatsteSchuldRow.ebitda;
+  var nettoSchuld=laatsteSchuldRow.nettoSchuld;
+  var multipleStart=p.multipleBovengrens;
+  var huidigJaar=new Date().getFullYear()+p.horizonJaren;
+  for(var j=1;j<=5;j++){
+    var acqEbitda=p.baOvernamesPerJaar*p.baOmvangEbitda;
+    var acqSchuld=acqEbitda*p.baAcqMultiple*0.55;
+    groepsEbitda+=acqEbitda;
+    nettoSchuld=Math.max(0,nettoSchuld*0.85+acqSchuld);
+    var multiple=Math.min(p.baPlatformMultipleMax, multipleStart+(p.baPlatformMultipleMax-multipleStart)*(j/5));
+    var ev=groepsEbitda*multiple;
+    var koperWaarde=ev*(p.belangPct/100);
+    rows.push({jaar:String(huidigJaar+j),deals:p.baOvernamesPerJaar,acqEbitda:acqEbitda,groepsEbitda:groepsEbitda,nettoSchuld:nettoSchuld,leverage:nettoSchuld/groepsEbitda,multiple:multiple,ev:ev,koperWaarde:koperWaarde});
+  }
+  return rows;
+}
+
+function dvRenderTabelHtml(kolommen,rows){
+  var head='<tr>'+kolommen.map(function(k,i){return '<th style="padding:6px 10px;text-align:'+(i===0?'left':'right')+';font-size:9pt;text-transform:uppercase;letter-spacing:.05em;color:#8a8880;border-bottom:2px solid #ccc;white-space:nowrap">'+k+'</th>';}).join('')+'</tr>';
+  var body=rows.map(function(r){
+    return '<tr>'+r.map(function(c,i){return '<td style="padding:5px 10px;text-align:'+(i===0?'left':'right')+';border-bottom:1px solid #eee;font-size:10pt;white-space:nowrap">'+esc(String(c))+'</td>';}).join('')+'</tr>';
+  }).join('');
+  return '<table style="width:100%;border-collapse:collapse;margin:.5rem 0 1.25rem">'+head+body+'</table>';
+}
+
+function dvTabelCijfers(){
+  var jaren=[
+    parseGeld(S.data['financieel_omzet1']),
+    parseGeld(S.data['financieel_omzet2']),
+    parseGeld(S.data['financieel_omzet3'])
+  ];
+  var ebitda=parseGeld(S.data['financieel_ebitdaNorm']||S.data['financieel_ebitda']||'0');
+  var marge=jaren[2]?(ebitda/jaren[2]*100):0;
+  return dvRenderTabelHtml(['','Jaar 1','Jaar 2','Jaar 3 (bewezen)'],[
+    ['Omzet (€ mln)',dvMln(jaren[0]),dvMln(jaren[1]),dvMln(jaren[2])],
+    ['EBITDA jaar 3 (€ mln)','','',dvMln(ebitda)],
+    ['EBITDA-marge jaar 3','','',dvPct(marge)]
+  ]);
+}
+
+function dvTabelPrijsmechanisme(scenarios){
+  return dvRenderTabelHtml(['Scenario','EBITDA (€ mln)','Multiple','EV (€ mln)','Deel koper (€ mln)','Deel verkoper (€ mln)'],
+    scenarios.map(function(s){return [s.label,dvMln(s.ebitda),dvMultiple(s.multiple),dvMln(s.ev),dvMln(s.deelKoper),dvMln(s.deelVerkoper)];}));
+}
+
+function dvTabelClosing(closing){
+  return dvRenderTabelHtml(['','€ mln'],[
+    ['Ondernemingswaarde (bewezen basis)',dvMln(closing.evBasis)],
+    ['Deel koper bij closing',dvMln(closing.deelKoperBasis)],
+    ['Behouden belang verkoper',dvMln(closing.deelVerkoperBasis)],
+    ['Ondernemingswaarde bij volledige realisatie',dvMln(closing.evPrognose)],
+    ['Earn-up (extra bij realisatie)',dvMln(closing.earnUp)]
+  ]);
+}
+
+function dvTabelSchuldafbouw(rows){
+  return dvRenderTabelHtml(['Jaar','EBITDA','Rente','VpB','Capex','FCF','Earn-up','Netto schuld','ND/EBITDA'],
+    rows.map(function(r){return [r.jaar,dvMln(r.ebitda),dvMln(r.rente),dvMln(r.vpb),dvMln(r.capex),dvMln(r.fcf),dvMln(r.earnUp),dvMln(r.nettoSchuld),dvMultiple(r.leverage)];}));
+}
+
+function dvTabelBuyAndBuild(rows){
+  return dvRenderTabelHtml(['Jaar','Deals','Acq. EBITDA','Groeps-EBITDA','Netto schuld','ND/EBITDA','Multiple','EV','Koperswaarde'],
+    rows.map(function(r){return [r.jaar,r.deals,dvMln(r.acqEbitda),dvMln(r.groepsEbitda),dvMln(r.nettoSchuld),dvMultiple(r.leverage),dvMultiple(r.multiple),dvMln(r.ev),dvMln(r.koperWaarde)];}));
+}
+
+function dvFmtTekst(t){
+  if(!t) return '';
+  t=t.replace(/^(##+ .+)/gm,function(m){return '<h3>'+m.replace(/^#+\s*/,'')+'</h3>';});
+  t=t.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+  return t.split(/\n\n+/).map(function(p){
+    p=p.trim();if(!p)return '';
+    if(p.indexOf('<h3>')===0)return p;
+    if(/^[-•]\s/m.test(p)){
+      var items=p.split(/\n/).map(function(l){return l.replace(/^[-•]\s/,'');}).filter(Boolean);
+      return '<ul>'+items.map(function(i){return '<li>'+i+'</li>';}).join('')+'</ul>';
+    }
+    return '<p>'+p.replace(/\n/g,'<br>')+'</p>';
+  }).join('\n');
+}
+
+// Vervangt [TABEL:xxx]-markeringen in de AI-tekst door de echte, JS-berekende tabellen.
+function dvBouwRapportHtml(aiTekst,tabelMap){
+  var parts=(aiTekst||'').split(/\[TABEL:(\w+)\]/);
+  var html='';
+  for(var i=0;i<parts.length;i++){
+    html += (i%2===0) ? dvFmtTekst(parts[i]) : (tabelMap[parts[i]]||'');
+  }
+  return html;
+}
+
+function dvHtmlNaarTekst(html){
+  return html
+    .replace(/<h3>(.*?)<\/h3>/g,'\n\n## $1\n')
+    .replace(/<\/tr>/g,'\n')
+    .replace(/<\/t[hd]>/g,'  |  ')
+    .replace(/<li>(.*?)<\/li>/g,'- $1\n')
+    .replace(/<\/p>/g,'\n')
+    .replace(/<br>/g,'\n')
+    .replace(/<[^>]+>/g,'')
+    .replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"')
+    .replace(/\n{3,}/g,'\n\n')
+    .trim();
+}
+
+function printDealvoorstel(bodyHtml,titel){
+  var datum=new Date().toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'});
+  var kleur='#8a5a00';
+  var win=window.open('','_blank');
+  win.document.write('<!DOCTYPE html><html lang="nl"><head><meta charset="UTF-8"><title>'+titel+'<\/title>'
+    +'<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">'
+    +'<style>'
+    +'*{box-sizing:border-box;margin:0;padding:0}'
+    +'body{font-family:IBM Plex Sans,Helvetica,Arial,sans-serif;font-size:11pt;line-height:1.75;color:#1a1815;background:#fff}'
+    +'.page{max-width:780px;margin:0 auto;padding:2cm}'
+    +'.doc-header{padding-bottom:1.25rem;border-bottom:3px solid '+kleur+';margin-bottom:2rem}'
+    +'.doc-title{font-family:Playfair Display,serif;font-size:20pt;font-weight:600;color:'+kleur+'}'
+    +'.doc-sub{font-size:9pt;color:#8a8880;margin-top:.4rem}'
+    +'h3{font-size:10pt;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:'+kleur+';margin:1.75rem 0 .5rem;padding-bottom:.3rem;border-bottom:1px solid #e8e5df}'
+    +'p{margin-bottom:.75rem;color:#2a2825;font-size:10.5pt}'
+    +'ul{margin:.5rem 0 .75rem 1.75rem}'
+    +'li{margin-bottom:.35rem;color:#2a2825;font-size:10.5pt}'
+    +'strong{font-weight:600}'
+    +'table{width:100%}'
+    +'.doc-footer{margin-top:3rem;padding-top:1rem;border-top:1px solid #e8e5df;font-size:8pt;color:#aaa8a2;display:flex;justify-content:space-between}'
+    +'@media print{ body{padding:0} .page{max-width:100%;padding:0} @page{margin:2cm;size:A4} }'
+    +'</style></head><body><div class="page">'
+    +'<div class="doc-header"><div class="doc-title">'+esc(titel)+'</div><div class="doc-sub">Bisschops Financing B.V. &middot; '+datum+' &middot; Vertrouwelijk &mdash; denkrichting, geen waardering, geen bod</div></div>'
+    +bodyHtml
+    +'<div class="doc-footer"><span>Bisschops Financing B.V.</span><span>'+datum+'</span></div>'
+    +'</div></body></html>');
+  win.document.close();
+  win.focus();
+}
+
 function renderWaardering(){
   var t=S.traject||{};
   var isRO=isKoper();
@@ -2095,7 +2330,7 @@ function renderBegeleiderDashboard(app){
     +'</div></div></div>'
     // Actie knoppen
     +'<div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.4rem">Documenten</div>'
-    +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:.75rem">'
+    +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px">'
     +(contractenAan
       ?'<button class="btn" id="bg-nda-actie" style="background:#7c5cbf;padding:10px;font-size:12px">&#128274; NDA</button>'
       :'<button class="btn" id="bg-nda-actie" disabled title="Module Contracten niet actief — neem contact op met Bisschops Financing" style="background:#7c5cbf;padding:10px;font-size:12px;opacity:.45;cursor:not-allowed">&#128274; NDA</button>')
@@ -2105,9 +2340,14 @@ function renderBegeleiderDashboard(app){
     +(contractenAan
       ?'<button class="btn" id="bg-bem-actie" style="background:#2a5ea0;padding:10px;font-size:12px">&#128203; BEM</button>'
       :'<button class="btn" id="bg-bem-actie" disabled title="Module Contracten niet actief — neem contact op met Bisschops Financing" style="background:#2a5ea0;padding:10px;font-size:12px;opacity:.45;cursor:not-allowed">&#128203; BEM</button>')
+    +'</div>'
+    +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:.75rem">'
     +(contractenAan
       ?'<button class="btn" id="bg-excl-actie" style="background:#1a7a5e;padding:10px;font-size:12px">&#128221; Excl</button>'
       :'<button class="btn" id="bg-excl-actie" disabled title="Module Contracten niet actief — neem contact op met Bisschops Financing" style="background:#1a7a5e;padding:10px;font-size:12px;opacity:.45;cursor:not-allowed">&#128221; Excl</button>')
+    +(contractenAan
+      ?'<button class="btn" id="bg-dealvoorstel-actie" style="background:#8a5a00;padding:10px;font-size:12px">&#128202; Dealvoorstel</button>'
+      :'<button class="btn" id="bg-dealvoorstel-actie" disabled title="Module Contracten niet actief — neem contact op met Bisschops Financing" style="background:#8a5a00;padding:10px;font-size:12px;opacity:.45;cursor:not-allowed">&#128202; Dealvoorstel</button>')
     +'</div>'
     +(contractenAan?'':'<div style="font-size:11px;color:var(--muted);margin-top:-.5rem;margin-bottom:.75rem">&#128274; Module Contracten niet actief — neem contact op met Bisschops Financing om deze module te activeren.</div>')
     +'<div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.4rem">Communicatie</div>'
@@ -2327,10 +2567,138 @@ function renderBegeleiderDashboard(app){
     };
   }
 
+  // ===== DEALVOORSTEL: parameterformulier + generatie =====
+  function toonDealvoorstelModal(){
+    var t2=S.traject||{};
+    var d=dvGetDefaults();
+    var lbl='font-size:10px;font-weight:600;text-transform:uppercase;color:#8a8880;display:block;margin-bottom:4px';
+    var inp='width:100%;background:#f0eeea;border:1px solid #c8c5bc;border-radius:6px;padding:7px 11px;font-family:IBM Plex Sans,sans-serif;font-size:13px';
+    function veld(id,label,val,step){
+      return '<div style="flex:1"><label style="'+lbl+'">'+label+'</label><input type="number" id="'+id+'" value="'+val+'" '+(step?'step="'+step+'"':'')+' style="'+inp+'"></div>';
+    }
+    var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:400;display:flex;align-items:center;justify-content:center;padding:1.5rem';
+    var mo=document.createElement('div');mo.style.cssText='background:#fff;border-radius:10px;padding:2rem;max-width:640px;width:100%;max-height:92vh;overflow-y:auto';
+    mo.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.15rem;color:#1a1815;font-weight:600;margin-bottom:.25rem">&#128202; Dealvoorstel — dealparameters</div>'
+      +'<div style="font-size:12px;color:#8a8880;margin-bottom:1.25rem">Deze cijfers worden exact zo berekend en meegenomen — de AI verzint geen eigen bedragen of multiples.</div>'
+      +'<div style="margin-bottom:1rem"><label style="'+lbl+'">Tegenpartij (koper)</label><input type="text" id="dv-koper" value="'+esc(d.koperNaam)+'" placeholder="Naam kopende partij" style="'+inp+'"></div>'
+      +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('dv-belang','Belang koper bij closing (%)',d.belangPct)+veld('dv-ebitda-bewezen','Bewezen EBITDA laatste boekjaar (€)',d.ebitdaBewezen)+'</div>'
+      +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('dv-ebitda-prognose','Prognose-EBITDA komend jaar (€)',d.ebitdaPrognose)+veld('dv-cliff','Cliff-drempel (% van prognose)',d.cliffPct)+'</div>'
+      +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('dv-mult-basis','Basis-multiple (bewezen)',d.multipleBasis,0.1)+veld('dv-mult-boven','Bovengrens-multiple (bij prognose)',d.multipleBovengrens,0.1)+'</div>'
+      +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('dv-escrow-pct','Escrow (%)',d.escrowPct)+veld('dv-escrow-mnd','Escrow-duur (maanden)',d.escrowMaanden)+'</div>'
+      +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('dv-leverage','Bankfinanciering (× bewezen EBITDA)',d.bankLeverage,0.1)+veld('dv-rente','Rente (%)',d.rentePct,0.1)+'</div>'
+      +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('dv-vpb','VpB-tarief (%)',d.vpbPct,0.1)+veld('dv-capex','Capex (% van EBITDA)',d.capexPct,0.1)+'</div>'
+      +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('dv-groei','Organische groei (%/jaar)',d.groeiPct,0.1)+veld('dv-horizon','Horizon schuldafbouw (jaren)',d.horizonJaren)+'</div>'
+      +'<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#2a2825;margin-bottom:1rem;cursor:pointer"><input type="checkbox" id="dv-bab-aan" style="width:15px;height:15px;accent-color:#8a5a00"> Buy-and-build platformscenario meenemen</label>'
+      +'<div id="dv-bab-velden" style="display:none">'
+      +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('dv-bab-nper','Overnames per jaar',d.baOvernamesPerJaar)+veld('dv-bab-omvang','Gem. EBITDA per overname (€)',d.baOmvangEbitda*1000000)+'</div>'
+      +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('dv-bab-mult','Acquisitiemultiple',d.baAcqMultiple,0.1)+veld('dv-bab-max','Doel-platformmultiple bij schaal',d.baPlatformMultipleMax,0.1)+'</div>'
+      +'</div>'
+      +'<div id="dv-err" style="display:none;color:#e05252;font-size:12px;margin-bottom:.75rem"></div>'
+      +'<div style="display:flex;gap:8px;justify-content:flex-end">'
+      +'<button id="dv-ann" style="background:transparent;border:1px solid #c8c5bc;padding:8px 16px;border-radius:6px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:13px">Annuleren</button>'
+      +'<button id="dv-ok" style="background:#8a5a00;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:13px;font-weight:600">&#128202; Genereren</button>'
+      +'</div>';
+    ov.appendChild(mo);document.body.appendChild(ov);
+    ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
+    document.getElementById('dv-ann').onclick=function(){document.body.removeChild(ov);};
+    document.getElementById('dv-bab-aan').onchange=function(){document.getElementById('dv-bab-velden').style.display=this.checked?'block':'none';};
+
+    document.getElementById('dv-ok').onclick=async function(){
+      var btn=this;btn.disabled=true;btn.textContent='Genereren... (20-40 sec)';
+      var errEl=document.getElementById('dv-err');errEl.style.display='none';
+      var p={
+        koperNaam:document.getElementById('dv-koper').value.trim()||'de koper',
+        belangPct:parseFloat(document.getElementById('dv-belang').value)||51,
+        ebitdaBewezen:parseFloat(document.getElementById('dv-ebitda-bewezen').value)||0,
+        ebitdaPrognose:parseFloat(document.getElementById('dv-ebitda-prognose').value)||0,
+        cliffPct:parseFloat(document.getElementById('dv-cliff').value)||70,
+        multipleBasis:parseFloat(document.getElementById('dv-mult-basis').value)||4.5,
+        multipleBovengrens:parseFloat(document.getElementById('dv-mult-boven').value)||5.5,
+        escrowPct:parseFloat(document.getElementById('dv-escrow-pct').value)||12,
+        escrowMaanden:parseFloat(document.getElementById('dv-escrow-mnd').value)||18,
+        bankLeverage:parseFloat(document.getElementById('dv-leverage').value)||2,
+        rentePct:parseFloat(document.getElementById('dv-rente').value)||5,
+        vpbPct:parseFloat(document.getElementById('dv-vpb').value)||25.8,
+        capexPct:parseFloat(document.getElementById('dv-capex').value)||1.5,
+        groeiPct:parseFloat(document.getElementById('dv-groei').value)||4,
+        horizonJaren:parseInt(document.getElementById('dv-horizon').value)||5,
+        buyAndBuild:document.getElementById('dv-bab-aan').checked,
+        baOvernamesPerJaar:parseFloat(document.getElementById('dv-bab-nper').value)||2,
+        baOmvangEbitda:(parseFloat(document.getElementById('dv-bab-omvang').value)||1400000)/1000000,
+        baAcqMultiple:parseFloat(document.getElementById('dv-bab-mult').value)||5.5,
+        baPlatformMultipleMax:parseFloat(document.getElementById('dv-bab-max').value)||9.5
+      };
+      if(!p.ebitdaBewezen||!p.ebitdaPrognose){
+        errEl.textContent='Vul zowel de bewezen als de prognose-EBITDA in.';errEl.style.display='block';
+        btn.disabled=false;btn.textContent='📊 Genereren';return;
+      }
+      try{
+        var prijsmechanisme=dvBerekenPrijsmechanisme(p);
+        var closing=dvBerekenClosing(p);
+        var schuldafbouw=dvBerekenSchuldafbouw(p,closing);
+        var buyAndBuildRows=p.buyAndBuild?dvBerekenBuyAndBuild(p,schuldafbouw[schuldafbouw.length-1]):null;
+        var tabelMap={
+          CIJFERS:dvTabelCijfers(),
+          PRIJSMECHANISME:dvTabelPrijsmechanisme(prijsmechanisme),
+          CLOSING:dvTabelClosing(closing),
+          SCHULDAFBOUW:dvTabelSchuldafbouw(schuldafbouw),
+          BUYANDBUILD:buyAndBuildRows?dvTabelBuyAndBuild(buyAndBuildRows):''
+        };
+        var sectorProfiel=getSectorProfiel();
+        var contextBlok='Sector: '+(sectorProfiel.label||'MKB')+'. Verkopende partij: '+(t2.kantoor_naam||S.code)+'. Kopende partij: '+p.koperNaam+'.\n'
+          +'Bewezen EBITDA laatste boekjaar: €'+Math.round(p.ebitdaBewezen)+'. Prognose-EBITDA komend jaar: €'+Math.round(p.ebitdaPrognose)+'.\n'
+          +'Gewenst belang koper bij closing: '+p.belangPct+'%. Basis-multiple: '+p.multipleBasis+'×. Bovengrens-multiple: '+p.multipleBovengrens+'×. Cliff-drempel: '+p.cliffPct+'% van de prognose.\n'
+          +'Escrow: '+p.escrowPct+'% gedurende '+p.escrowMaanden+' maanden. Bankfinanciering bij closing: '+p.bankLeverage+'× de bewezen EBITDA.\n'
+          +'Bedrag bij closing (koper, op bewezen basis): €'+Math.round(closing.deelKoperBasis)+'. Mogelijke earn-up bij volledige realisatie: €'+Math.round(closing.earnUp)+'.';
+        var koppen='## Managementsamenvatting\n(3-5 bullets over de kern van het voorstel, dan één alinea "In één zin")\n\n'
+          +'## Uitgangspunten & de cijfers\n(korte toelichting op de omzet-/EBITDA-ontwikkeling)\n[TABEL:CIJFERS]\n\n'
+          +'## Waardering: marktonderbouwing\n(leg uit waarom deze multiple-range past bij de sector en de EBITDA-marge; gebruik de sectornormen)\n\n'
+          +'## Prijsmechanisme\n(leg uit hoe de multiple meebeweegt met de gerealiseerde EBITDA, en waarom de cliff-drempel de koper beschermt)\n[TABEL:PRIJSMECHANISME]\n\n'
+          +'## Bedrag bij closing en earn-up\n(toelichting op het bedrag bij closing en de gefaseerde afrekening bij realisatie)\n[TABEL:CLOSING]\n\n'
+          +'## Closing-mechanismen\n(kort: locked box, escrow, garanties — gebruik de escrow-cijfers hierboven)\n\n'
+          +'## Financiering en kasstroom\n(toelichting op het schuldafbouwmodel)\n[TABEL:SCHULDAFBOUW]\n\n'
+          +(p.buyAndBuild?'## Buy-and-build: platformscenario\n(korte toelichting op het groeiscenario via overnames)\n[TABEL:BUYANDBUILD]\n\n':'')
+          +'## Risico\'s & aandachtspunten\n(4-6 concrete, genummerde aandachtspunten)';
+        var prompt='Je bent Marcel Bisschops, senior M&A-adviseur bij Bisschops Financing B.V. Schrijf de verhalende hoofdstukken van een vertrouwelijk dealvoorstel.\n\n'
+          +'BELANGRIJK: gebruik uitsluitend de cijfers hieronder. Verzin GEEN eigen bedragen, percentages of multiples — die liggen al vast in de berekende tabellen die apart worden ingevoegd op de plek van [TABEL:xxx]-markeringen. Laat die markeringen exact zo staan (op een eigen regel), vervang ze niet door eigen tekst of tabellen.\n\n'
+          +'CONTEXT:\n'+contextBlok+'\n\n'
+          +'Schrijf onderstaande hoofdstukken met ## koppen, zakelijk Nederlands, geen overdreven bijvoeglijke naamwoorden, max 600 woorden tekst in totaal (exclusief tabelmarkeringen):\n\n'+koppen;
+        var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:4000})});
+        var rd=await resp.json();
+        var bodyHtml=dvBouwRapportHtml(rd.text||'',tabelMap);
+        document.body.removeChild(ov);
+        var out=document.getElementById('bg-doc-out');
+        out.style.display='block';
+        var titel='Dealvoorstel — '+(t2.kantoor_naam||S.code);
+        out.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem">'
+          +'<div style="font-size:11px;font-weight:600;color:#8a5a00;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.75rem">Dealvoorstel gegenereerd</div>'
+          +'<div id="dv-preview" style="max-height:400px;overflow-y:auto;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:1.25rem;font-family:Georgia,serif;font-size:12px;line-height:1.7;color:var(--sub)">'+bodyHtml+'</div>'
+          +'<div style="display:flex;gap:8px;margin-top:.75rem">'
+          +'<button id="dv-print" class="btn-ghost" style="font-size:12px;padding:6px 14px">&#128196; Print</button>'
+          +'<button id="dv-email" class="btn" style="font-size:12px;padding:6px 14px;background:#8a5a00">&#9993; Verstuur naar partijen</button>'
+          +'</div></div>';
+        var docOutEl=document.getElementById('bg-doc-out');
+        if(docOutEl)setTimeout(function(){docOutEl.scrollIntoView({behavior:'smooth',block:'nearest'});},100);
+        document.getElementById('dv-print').onclick=function(){printDealvoorstel(bodyHtml,titel);};
+        document.getElementById('dv-email').onclick=async function(){
+          var ebtn=this;ebtn.disabled=true;ebtn.textContent='Versturen...';
+          var toList=[t2.contact_email,t2.begeleider_email].filter(Boolean);
+          var er=await fetch(WORKER+'/mna/dealvoorstel/email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:S.traject.id,dealvoorstel_tekst:dvHtmlNaarTekst(bodyHtml),to:toList})});
+          var ed=await er.json();
+          if(ed.ok){ebtn.textContent='✓ Verstuurd';}else{toast('Fout: '+(ed.error||'onbekend'),'err');ebtn.disabled=false;ebtn.textContent='✉ Verstuur naar partijen';}
+        };
+      }catch(e){
+        errEl.textContent='Fout bij genereren: '+e.message;errEl.style.display='block';
+        btn.disabled=false;btn.textContent='📊 Genereren';
+      }
+    };
+  }
+
   document.getElementById('bg-nda-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op met Bisschops Financing.','err');return;} toonDocWaarschuwing('nda', function(){ bgDoc('nda'); }); };
   document.getElementById('bg-loi-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op met Bisschops Financing.','err');return;} toonDocWaarschuwing('loi', function(){ bgDoc('loi'); }); };
   document.getElementById('bg-bem-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op met Bisschops Financing.','err');return;} toonDocWaarschuwing('bem', function(){ bgDoc('bem'); }); };
   document.getElementById('bg-excl-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op met Bisschops Financing.','err');return;} toonDocWaarschuwing('excl', function(){ bgDoc('excl'); }); };
+  document.getElementById('bg-dealvoorstel-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op met Bisschops Financing.','err');return;} toonDealvoorstelModal(); };
 
   document.getElementById('bg-gesprek-actie').onclick=function(){ openBgGesprekForm(null); };
 
