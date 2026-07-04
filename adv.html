@@ -127,7 +127,7 @@ tr:hover td{background:#faf8f5;cursor:pointer}
 <script>
 var WORKER='https://kantoorinzicht.marcel-bisschops.workers.dev';
 // White-label basis — centrale merkconfig (zelfde patroon als mna.html). Eén plek wijzigen = overal.
-var BRAND = { platform:'KantoorInzicht', bedrijf:'Bisschops Financing B.V.', bedrijfKort:'Bisschops Financing BV', suffix:'M&A' };
+var BRAND = { platform:'KantoorInzicht', bedrijf:'Bisschops Financing B.V.', bedrijfKort:'Bisschops Financing BV', suffix:'M&A', kort:'Bisschops Financing' };
 document.title = BRAND.platform + ' — Adviseur';
 var G={email:'',ww:'',naam:'',bedrijf:'',trajecten:[]};
 var VIEW='dashboard'; // dashboard | detail
@@ -219,7 +219,7 @@ function modChips(){
   var lbl={traject:'Traject',contracten:'Contracten & ondertekening',ai_analyse:'AI-analyse',qa:'Q&A',export:'Export & rapportage'};
   return Object.keys(lbl).map(function(k){
     var aan=!!m[k];
-    return '<span title="'+(aan?'Module actief':'Activeren via Bisschops Financing — neem contact op')+'" style="font-size:11px;padding:3px 10px;border-radius:12px;border:1px solid var(--border);'+(aan?'color:var(--teal)':'color:var(--muted);opacity:.65')+'">'+(aan?'&#10003; ':'&#128274; ')+lbl[k]+'</span>';
+    return '<span title="'+(aan?'Module actief':'Activeren via '+BRAND.kort+' — neem contact op')+'" style="font-size:11px;padding:3px 10px;border-radius:12px;border:1px solid var(--border);'+(aan?'color:var(--teal)':'color:var(--muted);opacity:.65')+'">'+(aan?'&#10003; ':'&#128274; ')+lbl[k]+'</span>';
   }).join('');
 }
 
@@ -262,7 +262,7 @@ function renderDashboard(){
             <span style="font-size:12px;color:var(--muted)">${G.trajecten.length} van ${G.limiet||1} trajecten</span>
             <button class="btn-outline" onclick="ververs()">↻ Verversen</button>
             ${(G.trajecten.length>=(G.limiet||1))
-              ?`<button class="btn btn-sm" disabled style="opacity:.55;cursor:not-allowed" title="Trajectlimiet bereikt — neem contact op met Bisschops Financing voor uitbreiding">&#128274; Limiet bereikt</button>`
+              ?`<button class="btn btn-sm" disabled style="opacity:.55;cursor:not-allowed" title="Trajectlimiet bereikt — neem contact op met ${BRAND.kort} voor uitbreiding">&#128274; Limiet bereikt</button>`
               :`<button class="btn btn-sm" onclick="nieuwTraject()">+ Nieuw traject</button>`}
           </div>
         </div>
