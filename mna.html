@@ -2305,6 +2305,66 @@ function renderLogin(){
     +'</div>';
 }
 
+// Gefaseerde koper-toegang: vrijgegeven categorieën uit het traject lezen.
+// null = "alles vrij" (oude trajecten, backward compat); array = alleen die fase_id's.
+function koperCatsVan(t){
+  if(!t || t.koper_categorieen==null) return null;
+  try{ var c=JSON.parse(t.koper_categorieen); return Array.isArray(c)?c:[]; }catch(e){ return []; }
+}
+
+// Modal: begeleider vinkt per DD-categorie aan wat de koper mag inzien
+function toonKoperToegangModal(app){
+  var t=S.traject||{};
+  var fases=(window.FASES&&FASES.length)?FASES:[];
+  var huidige=koperCatsVan(t);
+  // null (alles) → bij binaire oude vrijgave alles aangevinkt; anders de opgeslagen selectie
+  var voorGeselecteerd = huidige===null ? (t.koper_vrijgegeven?fases.map(function(f){return f.id;}):[]) : huidige;
+  var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:400;display:flex;align-items:center;justify-content:center;padding:1.5rem';
+  var mo=document.createElement('div');mo.style.cssText='background:#fff;border-radius:10px;padding:1.75rem;max-width:520px;width:100%;max-height:90vh;overflow-y:auto';
+  var rijen=fases.map(function(f){
+    var aan=voorGeselecteerd.indexOf(f.id)>=0;
+    return '<label style="display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid #e0ddd6;border-radius:7px;margin-bottom:7px;cursor:pointer;font-size:13px;color:#2a2825">'
+      +'<input type="checkbox" class="kt-cat" value="'+f.id+'"'+(aan?' checked':'')+' style="width:16px;height:16px;accent-color:#1a7a5e">'
+      +'<span style="font-weight:600;color:#8a8880;min-width:24px">'+esc(f.num||'')+'</span><span>'+esc(f.title||f.id)+'</span></label>';
+  }).join('');
+  mo.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.15rem;color:#1a1815;font-weight:600;margin-bottom:.25rem">&#128275; Koper-toegang per categorie</div>'
+    +'<div style="font-size:12px;color:#8a8880;margin-bottom:1rem">Vink aan welke DD-categorieën de koper mag inzien (velden én documenten). De koper ziet uitsluitend wat hier is vrijgegeven.</div>'
+    +'<div style="display:flex;gap:8px;margin-bottom:.85rem"><button id="kt-alles" style="background:transparent;border:1px solid #c8c5bc;padding:5px 12px;border-radius:6px;cursor:pointer;font-size:12px">Alles</button><button id="kt-niets" style="background:transparent;border:1px solid #c8c5bc;padding:5px 12px;border-radius:6px;cursor:pointer;font-size:12px">Niets</button></div>'
+    +rijen
+    +'<div id="kt-err" style="display:none;color:#e05252;font-size:12px;margin:.5rem 0"></div>'
+    +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem">'
+    +'<button id="kt-ann" style="background:transparent;border:1px solid #c8c5bc;padding:8px 16px;border-radius:6px;cursor:pointer;font-size:13px">Annuleren</button>'
+    +'<button id="kt-ok" style="background:#1a7a5e;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600">Opslaan</button>'
+    +'</div>';
+  ov.appendChild(mo);document.body.appendChild(ov);
+  ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
+  document.getElementById('kt-ann').onclick=function(){document.body.removeChild(ov);};
+  document.getElementById('kt-alles').onclick=function(){mo.querySelectorAll('.kt-cat').forEach(function(c){c.checked=true;});};
+  document.getElementById('kt-niets').onclick=function(){mo.querySelectorAll('.kt-cat').forEach(function(c){c.checked=false;});};
+  document.getElementById('kt-ok').onclick=async function(){
+    var btn=this;btn.disabled=true;btn.textContent='Opslaan...';
+    var errEl=document.getElementById('kt-err');errEl.style.display='none';
+    var cats=Array.prototype.slice.call(mo.querySelectorAll('.kt-cat:checked')).map(function(c){return c.value;});
+    async function verstuur(force){
+      var url=WORKER+'/mna/koper-categorieen/'+S.traject.id+(force?'?force=1':'');
+      return fetch(url,{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey},body:JSON.stringify({categorieen:cats})}).then(function(x){return x.json();}).catch(function(){return{};});
+    }
+    var r=await verstuur(false);
+    if(r.nda_niet_getekend){
+      if(confirm('⚠ De NDA is nog NIET getekend.\n\nKoper krijgt toegang zonder geheimhoudingsovereenkomst. Toch vrijgeven?')){ r=await verstuur(true); }
+      else { btn.disabled=false;btn.textContent='Opslaan';return; }
+    }
+    if(r.ok){
+      S.traject.koper_categorieen=JSON.stringify(cats);
+      S.traject.koper_vrijgegeven=cats.length?1:0;
+      secAuditLog('koper_categorieen_bijgewerkt',{aantal:cats.length});
+      document.body.removeChild(ov);
+      toast(cats.length?('Koper-toegang bijgewerkt ('+cats.length+' categorie'+(cats.length===1?'':'ën')+')'):'Koper-toegang volledig ingetrokken','ok');
+      renderBegeleiderDashboard(app);
+    } else { errEl.style.display='block';errEl.textContent=r.error||'Fout bij opslaan';btn.disabled=false;btn.textContent='Opslaan'; }
+  };
+}
+
 function renderBegeleiderDashboard(app){
   var t=S.traject||{};
   var contractenAan=!S.modules||S.modules.contracten!==false;
@@ -2324,10 +2384,9 @@ function renderBegeleiderDashboard(app){
     +'<div style="font-family:Playfair Display,serif;font-size:1.3rem;font-weight:600;color:var(--head)">'+esc(t.kantoor_naam||'Traject')+'</div>'
     +'<div style="font-size:12px;color:var(--muted);margin-top:.25rem">'+esc(t.traject_type||'M&A')+' &middot; Code: <span style="font-family:IBM Plex Mono,monospace;color:var(--teal)">'+esc(S.code)+'</span></div>'
     +'</div>'
-    +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
-    +(t.koper_vrijgegeven
-      ?'<button class="btn-ghost btn-sm" id="bg-intrekken" style="color:var(--red);border-color:var(--red)">&#128275; Vrijgave intrekken</button>'
-      :'<button class="btn btn-sm" id="bg-vrijgeven">&#128275; Koper toegang geven</button>')
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
+    +'<button class="btn btn-sm" id="bg-toegang" style="background:var(--teal)">&#128275; Koper-toegang</button>'
+    +(function(){ var kc=koperCatsVan(t); var tot=(window.FASES&&FASES.length)||7; var lbl,kl; if(kc===null){ lbl=t.koper_vrijgegeven?'Alles vrijgegeven':'Geen toegang'; kl=t.koper_vrijgegeven?'var(--teal)':'var(--muted)'; } else if(kc.length){ lbl=kc.length+'/'+tot+' categorieën vrij'; kl='var(--teal)'; } else { lbl='Geen toegang'; kl='var(--muted)'; } return '<span style="font-size:11px;font-weight:600;color:'+kl+'">'+lbl+'</span>'; })()
     +'<span style="display:inline-block;padding:4px 12px;border-radius:12px;font-size:11px;font-weight:600;background:'+(t.status==='vergrendeld'?'var(--red-bg)':'var(--teal-bg)')+';color:'+(t.status==='vergrendeld'?'var(--red)':'var(--teal)')+';border:1px solid '+(t.status==='vergrendeld'?'var(--red)':'var(--teal-dark)')+'">'+esc(t.status||'actief')+'</span>'
     +'</div></div></div>'
     // Actie knoppen
@@ -2417,27 +2476,9 @@ function renderBegeleiderDashboard(app){
     });
   });
 
-  // Vrijgeven / intrekken
-  var vbBtn=document.getElementById('bg-vrijgeven');
-  if(vbBtn)vbBtn.onclick=async function(){
-    var r=await fetch(WORKER+'/mna/admin/vrijgeven/'+S.traject.id,{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey}}).then(function(x){return x.json();}).catch(function(){return{};});
-    if(r.ok){S.traject.koper_vrijgegeven=1;secAuditLog('koper_vrijgegeven');renderBegeleiderDashboard(app);}
-    else if(r.nda_niet_getekend){
-      // NDA niet getekend — vraag bevestiging
-      var doorgaan=confirm("\u26a0 Let op: de NDA is nog NIET getekend.\n\nKoper krijgt toegang zonder geheimhoudingsovereenkomst. Toch vrijgeven?");
-      if(doorgaan){
-        var r2=await fetch(WORKER+'/mna/admin/vrijgeven/'+S.traject.id+'?force=1',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey}}).then(function(x){return x.json();}).catch(function(){return{};});
-        if(r2.ok){S.traject.koper_vrijgegeven=1;secAuditLog('koper_vrijgegeven_zonder_nda');renderBegeleiderDashboard(app);}
-        else toast('Fout: '+(r2.error||'onbekend'),'err');
-      }
-    }
-    else toast('Fout: '+(r.error||'onbekend'),'err');
-  };
-  var ibBtn=document.getElementById('bg-intrekken');
-  if(ibBtn)ibBtn.onclick=async function(){
-    var r=await fetch(WORKER+'/mna/admin/intrekken/'+S.traject.id,{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey}}).then(function(x){return x.json();}).catch(function(){return{};});
-    if(r.ok){S.traject.koper_vrijgegeven=0;secAuditLog('koper_toegang_ingetrokken');renderBegeleiderDashboard(app);}else toast('Fout: '+(r.error||'onbekend'),'err');
-  };
+  // Koper-toegang beheren (gefaseerd, per DD-categorie)
+  var tgBtn=document.getElementById('bg-toegang');
+  if(tgBtn)tgBtn.onclick=function(){ toonKoperToegangModal(app); };
 
   // Verplichte controlestap vóór versturen: checkbox-html + koppel disable/enable aan verstuurknoppen
   function akkoordHtml(id){
