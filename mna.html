@@ -4996,6 +4996,19 @@ function bindAll(){
   }
 
 document.title = 'M&A Begeleiding - ' + BRAND.platform;
+
+// Sectorprofielen uit de database laden — overschrijft de hardgecodeerde defaults hierboven.
+// Faalt de fetch (offline/error), dan blijven de hardgecodeerde profielen gelden (fallback).
+(function laadSectorProfielen(){
+  fetch(WORKER + '/mna/sectorprofielen').then(function(r){ return r.json(); }).then(function(d){
+    if (!d || !d.ok || !d.profielen || !Object.keys(d.profielen).length) return;
+    Object.keys(d.profielen).forEach(function(k){ SECTOR_PROFIELEN[k] = d.profielen[k]; });
+    FASES = getSectorFases();
+    // Al voorbij het loginscherm? Herteken zodat de nieuwste velden/labels meteen kloppen.
+    if (S && S.screen && S.screen !== 'login') { try { renderApp(); } catch(e){} }
+  }).catch(function(){ /* offline-fallback: hardgecodeerde profielen blijven gelden */ });
+})();
+
 renderApp();
 
 // ============================================================
