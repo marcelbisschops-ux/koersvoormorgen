@@ -132,6 +132,14 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--s
 <div id="app"></div>
 <script>
 var WORKER='https://kantoorinzicht.marcel-bisschops.workers.dev';
+// White-label basis — centrale merkconfig. Eén plek om de productnaam/exploitant te wijzigen.
+// Later uitbreidbaar naar per-adviseur (uit de DB). Wijzig hier = overal in de UI-chrome.
+var BRAND = {
+  platform: 'KantoorInzicht',            // productnaam in de headers en paginatitel
+  bedrijf: 'Bisschops Financing B.V.',   // exploiterende onderneming
+  bedrijfKort: 'Bisschops Financing BV', // korte vorm voor footers
+  suffix: 'M&A'                          // subtitel naast de merknaam
+};
 
 function versieLabel(){var v=window._versie||'v1.11';return '<span style="font-size:10px;font-weight:600;font-family:IBM Plex Mono,monospace;color:var(--muted);margin-left:8px">'+(v.startsWith('v')?v:'v'+v)+'</span>';}
 
@@ -1518,11 +1526,11 @@ async function loadDataroom(){
 
 function renderDataroom(){
   var fL={financieel:'I. Financieel',commercieel:'II. Klanten & commercieel',partner:'III. Partners & personeel',compliance:'IV. Compliance & kwaliteit',it:'V. IT & automatisering',juridisch:'VI. Juridisch & fiscaal',strategisch:'VII. Strategisch & markt'};
-  if(S.dataroomLoading)return '<div class="wrap anim"><div class="hdr"><div class="brand"><div class="wdot"></div>KantoorInzicht &middot; Dataroom</div></div><div style="color:var(--muted);font-size:13px;padding:2rem 0">Laden...</div></div>';
+  if(S.dataroomLoading)return '<div class="wrap anim"><div class="hdr"><div class="brand"><div class="wdot"></div>'+BRAND.platform+' &middot; Dataroom</div></div><div style="color:var(--muted);font-size:13px;padding:2rem 0">Laden...</div></div>';
   var docs=S.dataroom||[];
   var byFase={};docs.forEach(function(d){if(!byFase[d.fase_id])byFase[d.fase_id]=[];byFase[d.fase_id].push(d);});
   var totaal=docs.filter(function(d){return d.bewaard;}).length;
-  var html='<div class="wrap anim"><div class="hdr"><div class="brand"><div class="wdot"></div>KantoorInzicht &middot; Dataroom'+versieLabel()+'</div>'
+  var html='<div class="wrap anim"><div class="hdr"><div class="brand"><div class="wdot"></div>'+BRAND.platform+' &middot; Dataroom'+versieLabel()+'</div>'
     +'<div style="display:flex;gap:8px"><button class="btn-ghost btn-sm" onclick="window.print()">PDF</button>'
     +'<button class="btn-ghost btn-sm" onclick="S.screen=\'main\';renderApp()">&#8592; Terug</button></div></div>'
     +'<div style="font-family:Playfair Display,serif;font-size:1.4rem;color:var(--head);font-weight:600;margin-bottom:.25rem">Dataroom</div>'
@@ -1828,7 +1836,7 @@ function renderWaardering(){
   var earnJaarlijks=earnBase*(earnPct/100)/earnJaren;
 
   var html='<div class="wrap anim">'
-    +'<div class="hdr"><div class="brand"><div class="wdot"></div>KantoorInzicht &middot; Waardering'+versieLabel()+'</div>'
+    +'<div class="hdr"><div class="brand"><div class="wdot"></div>'+BRAND.platform+' &middot; Waardering'+versieLabel()+'</div>'
     +'<div style="display:flex;gap:8px">'
     +'<button class="btn-ghost btn-sm" onclick="window.print()">PDF</button>'
     +'<button class="btn-ghost btn-sm" onclick="S.screen=\'cover\';renderApp()">&#8592; Terug</button>'
@@ -2283,7 +2291,7 @@ function renderApp(){
 
 function renderLogin(){
   return '<div class="wrap narrow anim" style="padding-top:3rem">'
-    +'<div class="hdr"><div class="brand"><div class="wdot"></div>KantoorInzicht</div>'
+    +'<div class="hdr"><div class="brand"><div class="wdot"></div>'+BRAND.platform+'</div>'
     +'<a href="index.html" style="font-size:11px;color:var(--muted);text-decoration:none">&#8592; Terug naar scan</a></div>'
     +'<div style="min-height:60vh;display:flex;align-items:center;justify-content:center">'
     +'<div class="panel" style="max-width:420px;width:100%">'
@@ -2299,7 +2307,7 @@ function renderLogin(){
     +'<div style="margin-top:.5rem;font-size:10px;color:var(--muted);display:flex;align-items:center;gap:5px">&#128274; Sessie verloopt automatisch na 8 uur inactiviteit. Max. 10 inlogpogingen per sessie.</div>'
     +'</div></div>'
     +'<div style="position:fixed;bottom:1.25rem;left:1.5rem;right:1.5rem;display:flex;justify-content:space-between;align-items:flex-end;pointer-events:none">'
-    +'<div style="pointer-events:auto"><span style="font-size:11px;color:var(--muted)">KantoorInzicht M&amp;A &middot; Bisschops Financing BV</span></div>'
+    +'<div style="pointer-events:auto"><span style="font-size:11px;color:var(--muted)">'+BRAND.platform+' '+BRAND.suffix+' &middot; '+BRAND.bedrijfKort+'</span></div>'
     +'<div style="pointer-events:auto;text-align:right"><a href="privacy.html" style="font-size:11px;color:var(--muted);text-decoration:none">Privacyverklaring</a> &middot; <a href="voorwaarden.html" style="font-size:11px;color:var(--muted);text-decoration:none">Voorwaarden</a></div>'
     +'</div>'
     +'</div>';
@@ -2370,7 +2378,7 @@ function renderBegeleiderDashboard(app){
   var contractenAan=!S.modules||S.modules.contracten!==false;
   var lb=window.partijLabels?window.partijLabels(t.traject_type||'Verkoop'):{sectie1:'Verkoper',sectie2:'Koper'};
   var html='<div class="wrap anim">'
-    +'<div class="hdr"><div class="brand"><div class="wdot"></div>KantoorInzicht &middot; M&A Begeleider'+versieLabel()+'</div>'
+    +'<div class="hdr"><div class="brand"><div class="wdot"></div>'+BRAND.platform+' &middot; M&A Begeleider'+versieLabel()+'</div>'
     +'<div style="display:flex;gap:8px">'
     +'<button class="btn-ghost btn-sm" onclick="window.print()">&#128196; PDF</button>'
     +'<button class="btn-ghost btn-sm" onclick="uitloggen()">&#8592; Uitloggen</button>'
@@ -3899,7 +3907,7 @@ function renderCover(){
         +'</div></div>';
     }
     return '<div class="wrap anim">'
-      +'<div class="hdr"><div class="brand"><div class="wdot"></div>KantoorInzicht &middot; M&amp;A'+versieLabel()+'</div>'
+      +'<div class="hdr"><div class="brand"><div class="wdot"></div>'+BRAND.platform+' &middot; M&amp;A'+versieLabel()+'</div>'
       +'<div style="display:flex;gap:8px;margin-left:auto">'
     +'<button class="btn-ghost btn-sm" onclick="refreshData()">&#8635;</button>'
     +'<button class="btn-ghost btn-sm" onclick="uitloggen()">&#8592; Uitloggen</button>'
@@ -3918,7 +3926,7 @@ function renderCover(){
   }
 
   return '<div class="wrap anim">'
-    +'<div class="hdr"><div class="brand"><div class="wdot"></div>KantoorInzicht &middot; M&amp;A'+versieLabel()+'</div>'
+    +'<div class="hdr"><div class="brand"><div class="wdot"></div>'+BRAND.platform+' &middot; M&amp;A'+versieLabel()+'</div>'
     +'<div style="display:flex;gap:8px"><button class="btn-ghost btn-sm" onclick="window.print()">PDF afdrukken</button>'
     +'<button class="btn-ghost btn-sm" onclick="uitloggen()">&#8592; Uitloggen</button>'
     +(S.rol==='tussen'?'<button class="btn-ghost btn-sm" id="logboek-btn">&#128221; Logboek</button>':'')
@@ -4169,7 +4177,7 @@ function renderMain(){
   var lockedBanner=vergrendeld?'<div style="background:var(--red-bg);border:1px solid var(--red);border-radius:var(--r);padding:10px 14px;margin-bottom:1rem;font-size:13px;color:var(--red)">&#128274; <strong>Dit traject is vergrendeld.</strong> U kunt geen wijzigingen meer doorvoeren.</div>':'';
 
   return '<div class="wrap anim">'
-    +'<div class="hdr"><div class="brand"><div class="wdot"></div>KantoorInzicht &middot; M&amp;A'+versieLabel()+'</div>'
+    +'<div class="hdr"><div class="brand"><div class="wdot"></div>'+BRAND.platform+' &middot; M&amp;A'+versieLabel()+'</div>'
     +'<div style="display:flex;align-items:center;gap:8px">'
     +'<span style="font-size:11px;color:var(--muted)">'+esc(S.traject&&S.traject.kantoor_naam||S.code)+'</span>'
     +'<button class="btn-ghost btn-sm" onclick="window.print()">PDF</button>'
@@ -4295,7 +4303,7 @@ function renderSummary(){
 
   var tp=isVerkoper()?totalFillPct():Math.round(FASES.reduce(function(a,f){return a+pct(f.id);},0)/FASES.length);
   return '<div class="wrap anim">'
-    +'<div class="hdr"><div class="brand"><div class="wdot"></div>KantoorInzicht &middot; M&amp;A'+versieLabel()+'</div>'
+    +'<div class="hdr"><div class="brand"><div class="wdot"></div>'+BRAND.platform+' &middot; M&amp;A'+versieLabel()+'</div>'
     +'<div style="display:flex;gap:8px"><button class="btn-ghost btn-sm" onclick="window.print()">PDF</button><button class="btn-ghost btn-sm" id="back-main">&#8592; Terug</button></div></div>'
     +(vergrendeld?'<div style="background:var(--red-bg);border:1px solid var(--red);border-radius:var(--r);padding:10px 14px;margin-bottom:1rem;font-size:13px;color:var(--red)">&#128274; Vergrendeld op '+(S.traject.vergrendeld_op?new Date(S.traject.vergrendeld_op).toLocaleString('nl-NL'):'')+'</div>':'')
     +'<div style="font-family:Playfair Display,serif;font-size:1.4rem;color:var(--head);font-weight:600;margin-bottom:.25rem">DD Samenvatting</div>'
@@ -4982,6 +4990,7 @@ function bindAll(){
     };
   }
 
+document.title = 'M&A Begeleiding - ' + BRAND.platform;
 renderApp();
 
 // ============================================================
