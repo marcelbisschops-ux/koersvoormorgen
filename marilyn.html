@@ -203,6 +203,7 @@ function renderDashboard(){
     +'<button class="tab'+(activeTab==='waardering'?' active':'')+'" id="t-waardering">&#9654; Waardering</button>'
     
     +'<button class="tab'+(activeTab==='templates'?' active':'')+'" id="t-templates">&#128196; Templates</button>'
+    +(isSuperAdmin?'<button class="tab'+(activeTab==='sectoren'?' active':'')+'" id="t-sectoren">&#127970; Sectoren</button>':'')
     +(isSuperAdmin?'<button class="tab'+(activeTab==='gebruikers'?' active':'')+'" id="t-geb" style="border-left:2px solid var(--gold)">&#128101; Gebruikers</button>':'')
     +'</div>'
     +'<div id="tc"></div>';
@@ -213,6 +214,7 @@ function renderDashboard(){
   document.getElementById('t-bench').addEventListener('click',function(){activeTab='benchmarks';renderDashboard();});
   document.getElementById('t-waardering').addEventListener('click',function(){activeTab='waardering';renderDashboard();});
   document.getElementById('t-templates').addEventListener('click',function(){activeTab='templates';renderDashboard();});
+  if(isSuperAdmin){var stb=document.getElementById('t-sectoren');if(stb)stb.addEventListener('click',function(){activeTab='sectoren';renderDashboard();});}
   if(isSuperAdmin){var gtb=document.getElementById('t-geb');if(gtb)gtb.addEventListener('click',function(){activeTab='gebruikers';renderDashboard();});}
   renderTab();
   // Systeem waarschuwingen
@@ -239,6 +241,7 @@ function renderTab(){
   else if(activeTab==='benchmarks')renderBenchmarksTab(el);
   else if(activeTab==='waardering')renderWaarderingTab(el);
   else if(activeTab==='templates')renderTemplatesTab(el);
+  else if(activeTab==='sectoren')renderSectorenTab(el);
   else if(activeTab==='gebruikers')renderGebruikersTab(el);
   else renderRapportenTab(el);
 }
@@ -771,6 +774,110 @@ function renderTemplatesTab(el){
       renderTemplatesTab(el);
     });
   });
+}
+
+// SECTOREN TAB — beheer van sectorprofielen (globaal). Stuurt de DD-velden,
+// benchmarks (aiNormen) en AI-analyse aan die adviseurs in mna.html gebruiken.
+function renderSectorenTab(el){
+  el.innerHTML='<div class="table-wrap"><div class="table-hdr"><div class="table-title">&#127970; Sectorprofielen</div>'
+    +'<button class="btn-ghost" id="sec-reset" style="font-size:11px;padding:4px 12px;color:var(--red);border-color:var(--red)">&#8635; Alles terug naar standaard</button></div>'
+    +'<div style="padding:1.25rem">'
+    +'<div style="font-size:13px;color:var(--mid);margin-bottom:1.25rem;line-height:1.7">'
+    +'Deze profielen bepalen per sector de <strong>DD-velden</strong>, de <strong>benchmarks/normen</strong> (voor de AI-analyse) en de checklists. '
+    +'Wijzigingen hier gelden meteen voor alle adviseurs. Zolang je niets wijzigt, gelden de ingebouwde standaardprofielen.'
+    +'</div>'
+    +'<div id="sec-lijst" style="display:flex;flex-direction:column;gap:14px"><div style="color:var(--muted);font-size:13px">Laden...</div></div>'
+    +'<div style="margin-top:1.5rem;padding-top:1.25rem;border-top:1px solid var(--border)">'
+    +'<div style="font-size:12px;font-weight:600;color:var(--head);margin-bottom:.5rem">Nieuwe sector toevoegen</div>'
+    +'<div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">'
+    +'<div style="flex:1;min-width:140px"><label style="font-size:10px;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:3px">Sleutel (bijv. bouw)</label><input id="sec-new-key" placeholder="kleine letters, geen spaties" style="width:100%;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:7px 10px;font-size:13px"></div>'
+    +'<div style="flex:1;min-width:160px"><label style="font-size:10px;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:3px">Kopiëren van</label><select id="sec-new-base" style="width:100%;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:7px 10px;font-size:13px"></select></div>'
+    +'<button class="btn" id="sec-new-add" style="font-size:12px;padding:8px 14px">+ Toevoegen</button>'
+    +'</div><div style="font-size:11px;color:var(--muted);margin-top:6px">Start van een kopie van een bestaande sector; pas daarna de velden/benchmarks aan.</div>'
+    +'</div></div></div>';
+
+  var profielen={};
+
+  function laad(){
+    fetch(WORKER+'/mna/sectorprofielen').then(function(r){return r.json();}).then(function(d){
+      profielen=(d&&d.profielen)||{};
+      teken(d&&d.bron);
+    }).catch(function(){document.getElementById('sec-lijst').innerHTML='<div style="color:var(--red);font-size:13px">Kon profielen niet laden.</div>';});
+  }
+
+  function teken(bron){
+    var lijst=document.getElementById('sec-lijst');
+    var keys=Object.keys(profielen);
+    // Vul de "kopiëren van"-select
+    var sel=document.getElementById('sec-new-base');
+    if(sel)sel.innerHTML=keys.map(function(k){return '<option value="'+esc(k)+'">'+esc((profielen[k]&&profielen[k].label)||k)+'</option>';}).join('');
+    lijst.innerHTML=keys.map(function(k){
+      var p=profielen[k]||{};
+      var aantalVelden=(p.fases||[]).reduce(function(a,f){return a+((f.dataFields||[]).filter(function(x){return !x.header;}).length);},0);
+      return '<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r2);padding:1rem 1.25rem">'
+        +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:.75rem"><span style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--teal);background:var(--teal-bg);padding:2px 8px;border-radius:10px">'+esc(k)+'</span>'
+        +'<span style="font-size:11px;color:var(--muted)">'+((p.fases||[]).length)+' fases · '+aantalVelden+' velden</span></div>'
+        +'<div style="margin-bottom:.6rem"><label style="font-size:10px;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:3px">Weergavenaam</label><input class="sec-label" data-k="'+esc(k)+'" value="'+esc(p.label||'')+'" style="width:100%;background:var(--panel);border:1px solid var(--border2);border-radius:var(--r);padding:7px 10px;font-size:13px"></div>'
+        +'<div style="margin-bottom:.6rem"><label style="font-size:10px;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:3px">Benchmarks / normen (voor AI-analyse)</label><textarea class="sec-normen" data-k="'+esc(k)+'" style="width:100%;height:60px;background:var(--panel);border:1px solid var(--border2);border-radius:var(--r);padding:7px 10px;font-size:12px;font-family:IBM Plex Sans,sans-serif;resize:vertical">'+esc(p.aiNormen||'')+'</textarea></div>'
+        +'<details style="margin-bottom:.6rem"><summary style="font-size:11px;color:var(--muted);cursor:pointer">&#9881; Geavanceerd — volledig profiel (JSON: fases, velden, checklists)</summary>'
+        +'<textarea class="sec-json" data-k="'+esc(k)+'" style="width:100%;height:220px;background:var(--panel);border:1px solid var(--border2);border-radius:var(--r);padding:8px 10px;font-size:11px;font-family:IBM Plex Mono,monospace;line-height:1.5;margin-top:6px;resize:vertical">'+esc(JSON.stringify(p,null,2))+'</textarea>'
+        +'<div style="font-size:11px;color:var(--muted);margin-top:4px">Bij opslaan telt de JSON hierboven. De velden Weergavenaam/Benchmarks worden erin verwerkt.</div></details>'
+        +'<div style="display:flex;gap:8px"><button class="btn sec-save" data-k="'+esc(k)+'" style="font-size:12px;padding:6px 14px">&#128190; Opslaan</button>'
+        +'<button class="btn-ghost sec-del" data-k="'+esc(k)+'" style="font-size:12px;padding:6px 14px;color:var(--red);border-color:var(--red)">&#128465; Verwijderen</button></div>'
+        +'</div>';
+    }).join('') || '<div style="color:var(--muted);font-size:13px">Geen sectoren.</div>';
+
+    // Opslaan per sector
+    lijst.querySelectorAll('.sec-save').forEach(function(btn){
+      btn.onclick=async function(){
+        var k=btn.dataset.k;
+        var jsonEl=lijst.querySelector('.sec-json[data-k="'+k+'"]');
+        var labelEl=lijst.querySelector('.sec-label[data-k="'+k+'"]');
+        var normenEl=lijst.querySelector('.sec-normen[data-k="'+k+'"]');
+        var prof;
+        try{ prof=JSON.parse(jsonEl.value); }catch(e){ toast('Ongeldige JSON in het geavanceerde veld: '+e.message,'err',6000); return; }
+        // Quick-edit velden hebben voorrang op de JSON
+        prof.label=labelEl.value.trim();
+        prof.aiNormen=normenEl.value.trim();
+        btn.disabled=true;btn.textContent='Opslaan...';
+        var body={};body[k]=prof;
+        var r=await fetch(WORKER+'/mna/admin/sectorprofielen',{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':adminKey},body:JSON.stringify({profielen:body})}).then(function(x){return x.json();}).catch(function(){return{};});
+        if(r.ok){toast('Sector "'+k+'" opgeslagen','ok');laad();}else{toast('Fout: '+(r.error||'onbekend'),'err');btn.disabled=false;btn.textContent='💾 Opslaan';}
+      };
+    });
+    // Verwijderen
+    lijst.querySelectorAll('.sec-del').forEach(function(btn){
+      btn.onclick=async function(){
+        var k=btn.dataset.k;
+        if(!confirm('Sector "'+k+'" verwijderen uit de database? De ingebouwde standaard (indien aanwezig) komt dan weer terug; een eigen toegevoegde sector verdwijnt.'))return;
+        var body={};body[k]=null;
+        var r=await fetch(WORKER+'/mna/admin/sectorprofielen',{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':adminKey},body:JSON.stringify({profielen:body})}).then(function(x){return x.json();}).catch(function(){return{};});
+        if(r.ok){toast('Sector "'+k+'" verwijderd','ok');laad();}else toast('Fout: '+(r.error||'onbekend'),'err');
+      };
+    });
+  }
+
+  // Reset alles
+  document.getElementById('sec-reset').onclick=async function(){
+    if(!confirm('Alle sectorprofielen terugzetten naar de ingebouwde standaard? Je eigen wijzigingen en toegevoegde sectoren gaan verloren.'))return;
+    var r=await fetch(WORKER+'/mna/admin/sectorprofielen',{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':adminKey},body:JSON.stringify({reset:true})}).then(function(x){return x.json();}).catch(function(){return{};});
+    if(r.ok){toast('Teruggezet naar standaard','ok');laad();}else toast('Fout: '+(r.error||'onbekend'),'err');
+  };
+  // Nieuwe sector toevoegen
+  document.getElementById('sec-new-add').onclick=async function(){
+    var key=(document.getElementById('sec-new-key').value||'').trim().toLowerCase().replace(/[^a-z0-9_]/g,'');
+    var base=document.getElementById('sec-new-base').value;
+    if(!key){toast('Geef een sleutel op','err');return;}
+    if(profielen[key]){toast('Sector "'+key+'" bestaat al','err');return;}
+    if(!profielen[base]){toast('Basissector niet gevonden','err');return;}
+    var nieuw=JSON.parse(JSON.stringify(profielen[base]));
+    nieuw.label=key.charAt(0).toUpperCase()+key.slice(1)+' (nieuw)';
+    var body={};body[key]=nieuw;
+    var r=await fetch(WORKER+'/mna/admin/sectorprofielen',{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':adminKey},body:JSON.stringify({profielen:body})}).then(function(x){return x.json();}).catch(function(){return{};});
+    if(r.ok){toast('Sector "'+key+'" toegevoegd (kopie van '+base+')','ok');document.getElementById('sec-new-key').value='';laad();}else toast('Fout: '+(r.error||'onbekend'),'err');
+  };
+
+  laad();
 }
 
 function renderWaarderingTab(el){
