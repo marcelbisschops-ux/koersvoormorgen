@@ -818,7 +818,8 @@ function renderSectorenTab(el){
         +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:.75rem"><span style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--teal);background:var(--teal-bg);padding:2px 8px;border-radius:10px">'+esc(k)+'</span>'
         +'<span style="font-size:11px;color:var(--muted)">'+((p.fases||[]).length)+' fases · '+aantalVelden+' velden</span></div>'
         +'<div style="margin-bottom:.6rem"><label style="font-size:10px;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:3px">Weergavenaam</label><input class="sec-label" data-k="'+esc(k)+'" value="'+esc(p.label||'')+'" style="width:100%;background:var(--panel);border:1px solid var(--border2);border-radius:var(--r);padding:7px 10px;font-size:13px"></div>'
-        +'<div style="margin-bottom:.6rem"><label style="font-size:10px;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:3px">Benchmarks / normen (voor AI-analyse)</label><textarea class="sec-normen" data-k="'+esc(k)+'" style="width:100%;height:60px;background:var(--panel);border:1px solid var(--border2);border-radius:var(--r);padding:7px 10px;font-size:12px;font-family:IBM Plex Sans,sans-serif;resize:vertical">'+esc(p.aiNormen||'')+'</textarea></div>'
+        +'<div style="margin-bottom:.6rem"><label style="font-size:10px;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:3px">Benchmarks / normen — kort (DD-formulier, chat, waardering)</label><textarea class="sec-normen" data-k="'+esc(k)+'" style="width:100%;height:60px;background:var(--panel);border:1px solid var(--border2);border-radius:var(--r);padding:7px 10px;font-size:12px;font-family:IBM Plex Sans,sans-serif;resize:vertical">'+esc(p.aiNormen||'')+'</textarea></div>'
+        +'<div style="margin-bottom:.6rem"><label style="font-size:10px;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:3px">Documentanalyse-benchmarks — uitgebreid (bij uploaden van documenten)</label><textarea class="sec-docbench" data-k="'+esc(k)+'" style="width:100%;height:120px;background:var(--panel);border:1px solid var(--border2);border-radius:var(--r);padding:7px 10px;font-size:12px;font-family:IBM Plex Sans,sans-serif;resize:vertical">'+esc(p.docBenchmarks||'')+'</textarea></div>'
         +'<details style="margin-bottom:.6rem"><summary style="font-size:11px;color:var(--muted);cursor:pointer">&#9881; Geavanceerd — volledig profiel (JSON: fases, velden, checklists)</summary>'
         +'<textarea class="sec-json" data-k="'+esc(k)+'" style="width:100%;height:220px;background:var(--panel);border:1px solid var(--border2);border-radius:var(--r);padding:8px 10px;font-size:11px;font-family:IBM Plex Mono,monospace;line-height:1.5;margin-top:6px;resize:vertical">'+esc(JSON.stringify(p,null,2))+'</textarea>'
         +'<div style="font-size:11px;color:var(--muted);margin-top:4px">Bij opslaan telt de JSON hierboven. De velden Weergavenaam/Benchmarks worden erin verwerkt.</div></details>'
@@ -834,11 +835,13 @@ function renderSectorenTab(el){
         var jsonEl=lijst.querySelector('.sec-json[data-k="'+k+'"]');
         var labelEl=lijst.querySelector('.sec-label[data-k="'+k+'"]');
         var normenEl=lijst.querySelector('.sec-normen[data-k="'+k+'"]');
+        var docbenchEl=lijst.querySelector('.sec-docbench[data-k="'+k+'"]');
         var prof;
         try{ prof=JSON.parse(jsonEl.value); }catch(e){ toast('Ongeldige JSON in het geavanceerde veld: '+e.message,'err',6000); return; }
         // Quick-edit velden hebben voorrang op de JSON
         prof.label=labelEl.value.trim();
         prof.aiNormen=normenEl.value.trim();
+        prof.docBenchmarks=docbenchEl.value.trim();
         btn.disabled=true;btn.textContent='Opslaan...';
         var body={};body[k]=prof;
         var r=await fetch(WORKER+'/mna/admin/sectorprofielen',{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':adminKey},body:JSON.stringify({profielen:body})}).then(function(x){return x.json();}).catch(function(){return{};});
