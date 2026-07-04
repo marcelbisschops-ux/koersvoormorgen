@@ -50,12 +50,17 @@ tr:hover td{background:rgba(232,80,10,.03)}
 </div>
 <script>
 const WORKER = 'https://kantoorinzicht.marcel-bisschops.workers.dev';
+// White-label basis — centrale merkconfig voor de VerhuisScan-beheerkant (zelfde patroon als de rest).
+const BRAND = { platform:'VerhuisScan', beheer:'Hugo', bedrijf:'Bisschops Financing B.V.' };
+document.title = BRAND.beheer + ' — ' + BRAND.platform + ' Beheer';
+// De statische header staat al in de DOM (boven dit script), dus direct te zetten.
+(function(){ var b=document.querySelector('.brand'); if(b) b.textContent = BRAND.platform + ' · Admin'; })();
 let adminKey = '', scans = [];
 
 function renderLogin() {
   document.getElementById('app').innerHTML = '<div class="login-wrap"><div class="login-box">'
     + '<div style="font-size:1.3rem;font-weight:700;margin-bottom:.25rem">Beheer</div>'
-    + '<div style="font-size:13px;color:var(--muted);margin-bottom:1.5rem">VerhuisScan administratie</div>'
+    + '<div style="font-size:13px;color:var(--muted);margin-bottom:1.5rem">' + BRAND.platform + ' administratie</div>'
     + '<div class="field"><label>Admin sleutel</label><input type="password" id="ak" autofocus></div>'
     + '<button class="btn" id="login-btn" style="width:100%">Inloggen</button>'
     + '<div id="login-err" style="color:var(--red);font-size:12px;margin-top:.75rem;display:none">Sleutel onjuist.</div>'
