@@ -768,9 +768,26 @@ function bindAll(){
       tekst=tekst.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
       tekst=tekst.replace(/\n\n/g,'</p><p style="font-size:13px;color:var(--mid);line-height:1.7;margin-bottom:.6rem">');
       out.innerHTML='<p style="font-size:13px;color:var(--mid);line-height:1.7">'+tekst+'</p>';
-      wAiBtn.textContent='Opnieuw genereren';wAiBtn.disabled=false;
+      // Bewaar lokaal zodat het rapport na herladen terugkomt en de knop de juiste staat toont
+      try{ localStorage.setItem('ki_waardering_rapport_'+S.code, JSON.stringify({tekst:tekst, ts:Date.now()})); }catch(e){}
+      wAiBtn.textContent='↻ Opnieuw genereren';wAiBtn.disabled=false;
     }catch(e){out.innerHTML='<div style="color:var(--red);font-size:13px">Fout: '+e.message+'</div>';wAiBtn.disabled=false;wAiBtn.textContent='Genereer AI rapport';}
   });
+  // Eerder gegenereerd waarderingsrapport terughalen: toon 'm en zet de knop op "Opnieuw"
+  if(wAiBtn){
+    try{
+      var wOpgeslagen=JSON.parse(localStorage.getItem('ki_waardering_rapport_'+S.code)||'null');
+      if(wOpgeslagen&&wOpgeslagen.tekst){
+        var wOut=ge('w-ai-out');
+        if(wOut){
+          wOut.style.display='block';
+          wOut.innerHTML='<div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">Waarderingsrapport &middot; gegenereerd '+new Date(wOpgeslagen.ts||Date.now()).toLocaleString('nl-NL',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})+'</div>'
+            +'<p style="font-size:13px;color:var(--mid);line-height:1.7">'+wOpgeslagen.tekst+'</p>';
+        }
+        wAiBtn.textContent='↻ Opnieuw genereren';
+      }
+    }catch(e){}
+  }
   var opslaanBtn=ge('opslaan-btn');if(opslaanBtn)opslaanBtn.onclick=function(){
     saveCurrent(function(){
       var btn=ge('opslaan-btn');
