@@ -1583,7 +1583,7 @@ function dvGetDefaults(){
     horizonJaren:5,
     buyAndBuild:false,
     baOvernamesPerJaar:2,
-    baOmvangEbitda:1.4,
+    baOmvangEbitda:1400000,
     baAcqMultiple:5.5,
     baPlatformMultipleMax:9.5
   };
@@ -2590,7 +2590,7 @@ function renderBegeleiderDashboard(app){
       +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('dv-groei','Organische groei (%/jaar)',d.groeiPct,0.1)+veld('dv-horizon','Horizon schuldafbouw (jaren)',d.horizonJaren)+'</div>'
       +'<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#2a2825;margin-bottom:1rem;cursor:pointer"><input type="checkbox" id="dv-bab-aan" style="width:15px;height:15px;accent-color:#8a5a00"> Buy-and-build platformscenario meenemen</label>'
       +'<div id="dv-bab-velden" style="display:none">'
-      +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('dv-bab-nper','Overnames per jaar',d.baOvernamesPerJaar)+veld('dv-bab-omvang','Gem. EBITDA per overname (€)',d.baOmvangEbitda*1000000)+'</div>'
+      +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('dv-bab-nper','Overnames per jaar',d.baOvernamesPerJaar)+veld('dv-bab-omvang','Gem. EBITDA per overname (€)',d.baOmvangEbitda)+'</div>'
       +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('dv-bab-mult','Acquisitiemultiple',d.baAcqMultiple,0.1)+veld('dv-bab-max','Doel-platformmultiple bij schaal',d.baPlatformMultipleMax,0.1)+'</div>'
       +'</div>'
       +'<div id="dv-err" style="display:none;color:#e05252;font-size:12px;margin-bottom:.75rem"></div>'
@@ -2624,7 +2624,7 @@ function renderBegeleiderDashboard(app){
         horizonJaren:parseInt(document.getElementById('dv-horizon').value)||5,
         buyAndBuild:document.getElementById('dv-bab-aan').checked,
         baOvernamesPerJaar:parseFloat(document.getElementById('dv-bab-nper').value)||2,
-        baOmvangEbitda:(parseFloat(document.getElementById('dv-bab-omvang').value)||1400000)/1000000,
+        baOmvangEbitda:parseFloat(document.getElementById('dv-bab-omvang').value)||1400000,
         baAcqMultiple:parseFloat(document.getElementById('dv-bab-mult').value)||5.5,
         baPlatformMultipleMax:parseFloat(document.getElementById('dv-bab-max').value)||9.5
       };
