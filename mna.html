@@ -2821,7 +2821,9 @@ function renderBegeleiderDashboard(app){
     var dataSam='';
     var faseL={financieel:'Financieel',commercieel:'Klanten',partner:'Partners',compliance:'Compliance',it:'IT',juridisch:'Juridisch',strategisch:'Strategisch'};
     (S._mnaData||[]).forEach(function(row){try{var dj=typeof row.data_json==='string'?JSON.parse(row.data_json):row.data_json;var gevuld=Object.values(dj||{}).filter(function(v){return v&&v.value;});if(gevuld.length){dataSam+='\n## '+(faseL[row.fase_id]||row.fase_id)+'\n';gevuld.forEach(function(v){dataSam+='- '+v.label+': '+v.value+'\n';});}}catch(e){}});
-    var prompt='M&A adviseur. Analyseer traject: '+esc(S.traject.kantoor_naam||S.code)+' ('+esc(S.traject.traject_type||'Verkoop')+')\n\nDUE DILIGENCE:'+dataSam+'\n\n## Samenvatting\n## Financieel\n## Sterktes\n## Risicos\n## Aanbevelingen\n\nMax 400 woorden.';
+    var sectorProfielAi=getSectorProfiel();
+    var sectorNormenAi=sectorProfielAi.aiNormen||'';
+    var prompt='M&A adviseur. Sector: '+(sectorProfielAi.label||'MKB')+'. SECTOR NORMEN: '+sectorNormenAi+'. Analyseer traject: '+esc(S.traject.kantoor_naam||S.code)+' ('+esc(S.traject.traject_type||'Verkoop')+')\n\nDUE DILIGENCE:'+dataSam+'\n\n## Samenvatting\n## Financieel\n## Sterktes\n## Risicos\n## Aanbevelingen\n\nNoem GEEN eigen waarderingsmultiple of concreet waarderingsbedrag — waardering gebeurt uitsluitend via de aparte functie "Waardering genereren". Als je de multiple uit de sectornormen wilt noemen, gebruik dan exact de range hierboven. Max 400 woorden.';
     var rd=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:3000})}).then(function(r){return r.json();}).catch(function(){return{};});
     var tekst=(rd.text||'Fout').replace(/## ([^\n]+)/g,'<strong style="display:block;margin:.75rem 0 .25rem;color:var(--head)">$1</strong>').replace(/\n/g,'<br>');
     out.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;font-size:13px;color:var(--mid);line-height:1.8">'+tekst+'</div>';
