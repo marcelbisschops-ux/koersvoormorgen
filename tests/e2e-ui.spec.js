@@ -91,7 +91,7 @@ test.describe('Login en rollen (De Vries-demodossier)', () => {
     await login(page, DE_VRIES_TUSSEN);
     await page.waitForFunction(() => window.S && S.traject && S.rol === 'tussenpersoon', null, { timeout: 15000 });
     // Alle zes documentknoppen aanwezig en (De Vries heeft geen adviseur → contractenAan) actief
-    for (const id of ['bg-nda-actie', 'bg-loi-actie', 'bg-bem-actie', 'bg-excl-actie', 'bg-dealvoorstel-actie', 'bg-bieding-actie']) {
+    for (const id of ['bg-nda-actie', 'bg-loi-actie', 'bg-bem-actie', 'bg-excl-actie', 'bg-dealvoorstel-actie', 'bg-bieding-actie', 'bg-spa-actie']) {
       await expect(page.locator('#' + id)).toBeVisible();
       await expect(page.locator('#' + id)).toBeEnabled();
     }
@@ -131,7 +131,7 @@ test.describe('Documentknoppen module-gating', () => {
     await login(page, tussenCode);
     await page.waitForFunction(() => window.S && S.traject && S.rol === 'tussenpersoon', null, { timeout: 15000 });
     // Knoppen bestaan maar zijn disabled (vergrendelde variant)
-    for (const id of ['bg-nda-actie', 'bg-dealvoorstel-actie', 'bg-bieding-actie']) {
+    for (const id of ['bg-nda-actie', 'bg-dealvoorstel-actie', 'bg-bieding-actie', 'bg-spa-actie']) {
       await expect(page.locator('#' + id)).toBeVisible();
       await expect(page.locator('#' + id)).toBeDisabled();
     }

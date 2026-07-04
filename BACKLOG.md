@@ -15,7 +15,7 @@ Geordend van eenvoudig naar moeilijk. **Uren** = geschatte bouw- en testtijd met
 | 3 | Buy-and-build aannames instelbaar | Sonnet | 1–2 u | €100–200 | Vaste aannames (55% acquisitieschuld, 15% aflossing) als invulvelden |
 | 4 | ~~**Geautomatiseerde end-to-end testsuite**~~ ✅ AFGEROND | Opus | 8–16 u | €800–1.600 | Zie `tests/README.md`. Deel A (API) + Deel B (Playwright UI) draaien groen. Vond+fixte meteen een waardering-bug. Voorwaarde voor #12/refactor is hiermee vervuld |
 | 5 | ~~Gefaseerde dataroom-toegang koper~~ ✅ AFGEROND | Opus | 6–10 u | €600–1.000 | Vrijgave per DD-categorie (aanvinken) i.p.v. alles-of-niets; velden én documenten, server-side gefilterd. Begeleider-modal "🔓 Koper-toegang". Backward-compatible (bestaande trajecten = alles). Getest via e2e-suite STAP 7b |
-| 6 | Concept-SPA-generator (werkdocument jurist) | Opus | 4–6 u | €400–600 + €500–1.500 eenmalige juridische template-review | Download/print-only, nadrukkelijk concept-label |
+| 6 | ~~Concept-SPA-generator (werkdocument jurist)~~ ✅ AFGEROND | Opus | 4–6 u | €400–600 + €500–1.500 eenmalige juridische template-review | Knop "📜 Concept-SPA" in begeleider-dashboard, print-only, nadrukkelijk CONCEPT-label. Template in marilyn (upload eigen getoetste versie). **Nog te doen: jurist het BF-standaard SPA-template laten reviewen vóór echt gebruik** |
 | 7 | Branding neutraliseren (white-label basis) | Sonnet | 6–10 u | €600–1.000 | KantoorInzicht/kantoor_naam/accountancy-teksten configureerbaar |
 | 8 | AI-extractieschema's per sector | Opus | 4–6 u | €400–600 | Raakt AI-prompts + caching in de worker |
 | 9 | Benchmarks & AI-prompts per sector | Sonnet | 4–8 u | €400–800 | Techniek; benchmarkinhoud is Marcels domeinwerk |
