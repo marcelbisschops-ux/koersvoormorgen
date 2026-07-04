@@ -4,3 +4,8 @@ test-results/
 playwright-report/
 playwright/.cache/
 .DS_Store
+
+# Back-ups met KLANTDATA — NOOIT naar GitHub (blijven lokaal / iCloud / externe schijf)
+*.sql
+KantoorInzicht-Backups/
+backups/

@@ -126,6 +126,9 @@ tr:hover td{background:#faf8f5;cursor:pointer}
 <div id="toast"></div>
 <script>
 var WORKER='https://kantoorinzicht.marcel-bisschops.workers.dev';
+// White-label basis — centrale merkconfig (zelfde patroon als mna.html). Eén plek wijzigen = overal.
+var BRAND = { platform:'KantoorInzicht', bedrijf:'Bisschops Financing B.V.', bedrijfKort:'Bisschops Financing BV', suffix:'M&A' };
+document.title = BRAND.platform + ' — Adviseur';
 var G={email:'',ww:'',naam:'',bedrijf:'',trajecten:[]};
 var VIEW='dashboard'; // dashboard | detail
 var TRAJECT=null;
@@ -150,7 +153,7 @@ function post(url,body){
 // ===== LOGIN =====
 function renderLogin(){
   render(`<div class="login-outer"><div class="login-card">
-    <div class="login-brand"><div class="login-dot"></div><span class="login-brand-name">KantoorInzicht M&A</span></div>
+    <div class="login-brand"><div class="login-dot"></div><span class="login-brand-name">${BRAND.platform} ${BRAND.suffix}</span></div>
     <div class="login-title">Adviseur portaal</div>
     <div class="login-sub">Log in met uw e-mailadres en wachtwoord.</div>
     <div class="field"><label>E-mailadres</label><input type="email" id="l-e" placeholder="u@kantoor.nl" autofocus></div>
@@ -172,7 +175,7 @@ function renderLogin(){
 
 function renderForgot(){
   render(`<div class="login-outer"><div class="login-card">
-    <div class="login-brand"><div class="login-dot"></div><span class="login-brand-name">KantoorInzicht M&A</span></div>
+    <div class="login-brand"><div class="login-dot"></div><span class="login-brand-name">${BRAND.platform} ${BRAND.suffix}</span></div>
     <div class="login-title">Wachtwoord vergeten</div>
     <div class="login-sub">Vul uw e-mailadres in. Als het bekend is ontvangt u een resetlink.</div>
     <div class="field"><label>E-mailadres</label><input type="email" id="f-e" placeholder="u@kantoor.nl" autofocus></div>
@@ -241,7 +244,7 @@ function renderDashboard(){
   }
   render(`
     <div class="hdr">
-      <div class="hdr-brand"><div class="hdr-dot"></div>KantoorInzicht M&A</div>
+      <div class="hdr-brand"><div class="hdr-dot"></div>${BRAND.platform} ${BRAND.suffix}</div>
       <div class="hdr-right">
         <span class="hdr-user">Ingelogd als <span class="hdr-name">${esc(G.naam)}</span>${G.bedrijf?' &middot; '+esc(G.bedrijf):''}</span>
         <button class="btn-outline" onclick="renderLogin()">Uitloggen</button>
@@ -289,7 +292,7 @@ async function openTraject(id){
 
   render(`
     <div class="hdr">
-      <div class="hdr-brand"><div class="hdr-dot"></div>KantoorInzicht M&A</div>
+      <div class="hdr-brand"><div class="hdr-dot"></div>${BRAND.platform} ${BRAND.suffix}</div>
       <div class="hdr-right">
         <span class="hdr-user"><span class="hdr-name">${esc(G.naam)}</span></span>
         <button class="btn-outline" onclick="renderLogin()">Uitloggen</button>
@@ -614,7 +617,7 @@ function renderDetail(t){
   var sl={accountancy:'Accountancy',mkb:'MKB',zorg:'Zorg',itsoftware:'IT/Software'};
   render(`
     <div class="hdr">
-      <div class="hdr-brand"><div class="hdr-dot"></div>KantoorInzicht M&A</div>
+      <div class="hdr-brand"><div class="hdr-dot"></div>${BRAND.platform} ${BRAND.suffix}</div>
       <div class="hdr-right">
         <span class="hdr-user"><span class="hdr-name">${esc(G.naam)}</span></span>
         <button class="btn-outline" onclick="renderLogin()">Uitloggen</button>
