@@ -698,8 +698,8 @@ async function renderBenchmarksTab(el){
 }
 
 function renderTemplatesTab(el){
-  var docLabels={nda:'NDA (Geheimhoudingsovereenkomst)',loi:'Letter of Intent (LoI)',bem_verk:'Bemiddelingsovereenkomst Verkoop',bem_koper:'Bemiddelingsovereenkomst Aankoop',exclusief:'Exclusiviteitsbrief'};
-  var docKleuren={nda:'#7c5cbf',loi:'var(--gold)',bem_verk:'#2a5ea0',bem_koper:'#2a5ea0',exclusief:'var(--teal)'};
+  var docLabels={nda:'NDA (Geheimhoudingsovereenkomst)',loi:'Letter of Intent (LoI)',bem_verk:'Bemiddelingsovereenkomst Verkoop',bem_koper:'Bemiddelingsovereenkomst Aankoop',exclusief:'Exclusiviteitsbrief',bieding:'Indicatieve bieding'};
+  var docKleuren={nda:'#7c5cbf',loi:'var(--gold)',bem_verk:'#2a5ea0',bem_koper:'#2a5ea0',exclusief:'var(--teal)',bieding:'#a0522d'};
 
   el.innerHTML='<div class="table-wrap"><div class="table-hdr"><div class="table-title">&#128196; Document Templates</div></div>'
     +'<div style="padding:1.25rem">'
@@ -729,9 +729,9 @@ function renderTemplatesTab(el){
     lijst.appendChild(div);
 
     // Laad status
-    fetch(WORKER+'/mna/template/'+type).then(function(r){return r.json();}).then(function(d){
+    fetch(WORKER+'/mna/template/'+type+'?email='+encodeURIComponent('marcel@bisschopsfinancing.nl')).then(function(r){return r.json();}).then(function(d){
       var s=document.getElementById('tpl-status-'+type);
-      if(s)s.innerHTML=d.ok?'<span style="color:var(--teal)">&#10003; Eigen template actief</span> (door '+esc(d.begeleider_naam||'onbekend')+')':'<span style="color:var(--muted)">BF standaard actief</span>';
+      if(s)s.innerHTML=(d.ok&&d.bron!=='bf_standaard')?'<span style="color:var(--teal)">&#10003; Eigen template actief</span> (door '+esc(d.begeleider_naam||'onbekend')+')':'<span style="color:var(--muted)">BF standaard actief</span>';
     }).catch(function(){});
 
     // Bekijk knop
