@@ -2412,6 +2412,9 @@ function renderBegeleiderDashboard(app){
     +(contractenAan
       ?'<button class="btn" id="bg-bieding-actie" style="background:#a0522d;padding:10px;font-size:12px">&#128233; Indicatieve bieding</button>'
       :'<button class="btn" id="bg-bieding-actie" disabled title="Module Contracten niet actief — neem contact op met Bisschops Financing" style="background:#a0522d;padding:10px;font-size:12px;opacity:.45;cursor:not-allowed">&#128233; Indicatieve bieding</button>')
+    +(contractenAan
+      ?'<button class="btn" id="bg-spa-actie" style="background:#5a5470;padding:10px;font-size:12px">&#128220; Concept-SPA</button>'
+      :'<button class="btn" id="bg-spa-actie" disabled title="Module Contracten niet actief — neem contact op met Bisschops Financing" style="background:#5a5470;padding:10px;font-size:12px;opacity:.45;cursor:not-allowed">&#128220; Concept-SPA</button>')
     +'</div>'
     +(contractenAan?'':'<div style="font-size:11px;color:var(--muted);margin-top:-.5rem;margin-bottom:.75rem">&#128274; Module Contracten niet actief — neem contact op met Bisschops Financing om deze module te activeren.</div>')
     +'<div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.4rem">Communicatie</div>'
@@ -2869,12 +2872,93 @@ function renderBegeleiderDashboard(app){
     };
   }
 
+  // ===== CONCEPT-SPA (koopovereenkomst): werkdocument voor de jurist, print-only =====
+  function toonSpaModal(){
+    var t2=S.traject||{};
+    var d=dvGetDefaults();
+    var multMid=((d.multipleBasis+d.multipleBovengrens)/2);
+    var koopprijsDefault=d.ebitdaBewezen?Math.round(d.ebitdaBewezen*multMid):0;
+    var lbl='font-size:10px;font-weight:600;text-transform:uppercase;color:#8a8880;display:block;margin-bottom:4px';
+    var inp='width:100%;background:#f0eeea;border:1px solid #c8c5bc;border-radius:6px;padding:7px 11px;font-family:IBM Plex Sans,sans-serif;font-size:13px';
+    function veld(id,label,val,type){
+      return '<div style="flex:1"><label style="'+lbl+'">'+label+'</label><input type="'+(type||'text')+'" id="'+id+'" value="'+val+'" style="'+inp+'"></div>';
+    }
+    var closingDefault=new Date(Date.now()+45*24*3600*1000).toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'});
+    var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:400;display:flex;align-items:center;justify-content:center;padding:1.5rem';
+    var mo=document.createElement('div');mo.style.cssText='background:#fff;border-radius:10px;padding:2rem;max-width:560px;width:100%;max-height:92vh;overflow-y:auto';
+    mo.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.15rem;color:#1a1815;font-weight:600;margin-bottom:.25rem">&#128220; Concept-koopovereenkomst (SPA)</div>'
+      +'<div style="font-size:12px;color:#a04b2d;background:#fbeee8;border:1px solid #e6b8a5;border-radius:6px;padding:.55rem .75rem;margin-bottom:1rem;line-height:1.5">&#9888; Werkdocument. Genereert een <strong>concept</strong> ter voorbereiding — laat dit altijd juridisch toetsen vóór ondertekening.</div>'
+      +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('spa-koopprijs','Koopprijs (€)',koopprijsDefault,'number')+veld('spa-closing','Beoogde closingdatum',closingDefault)+'</div>'
+      +'<div style="margin-bottom:1rem"><label style="'+lbl+'">Betalingsstructuur</label><input type="text" id="spa-betaling" value="Volledig bedrag bij closing (cash-and-debt-free)" style="'+inp+'"></div>'
+      +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('spa-escrow','Escrow (bedrag, optioneel)','','number')+veld('spa-escrowduur','Escrow-duur (maanden)','18','number')+'</div>'
+      +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('spa-concur','Concurrentiebeding (maanden)','24','number')+veld('spa-notaris','Notaris (optioneel)','')+'</div>'
+      +'<div id="spa-err" style="display:none;color:#e05252;font-size:12px;margin-bottom:.75rem"></div>'
+      +'<div style="display:flex;gap:8px;justify-content:flex-end">'
+      +'<button id="spa-ann" style="background:transparent;border:1px solid #c8c5bc;padding:8px 16px;border-radius:6px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:13px">Annuleren</button>'
+      +'<button id="spa-ok" style="background:#5a5470;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:13px;font-weight:600">&#128220; Genereren</button>'
+      +'</div>';
+    ov.appendChild(mo);document.body.appendChild(ov);
+    ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
+    document.getElementById('spa-ann').onclick=function(){document.body.removeChild(ov);};
+
+    document.getElementById('spa-ok').onclick=async function(){
+      var btn=this;btn.disabled=true;btn.textContent='Genereren... (20-40 sec)';
+      var errEl=document.getElementById('spa-err');errEl.style.display='none';
+      var koopprijs=parseFloat(document.getElementById('spa-koopprijs').value)||0;
+      var closing=document.getElementById('spa-closing').value.trim()||closingDefault;
+      var betaling=document.getElementById('spa-betaling').value.trim()||'Volledig bedrag bij closing';
+      var escrow=parseFloat(document.getElementById('spa-escrow').value)||0;
+      var escrowduur=parseInt(document.getElementById('spa-escrowduur').value)||18;
+      var concur=parseInt(document.getElementById('spa-concur').value)||24;
+      var notaris=document.getElementById('spa-notaris').value.trim();
+      if(!koopprijs){errEl.textContent='Vul minimaal een koopprijs in.';errEl.style.display='block';btn.disabled=false;btn.textContent='📜 Genereren';return;}
+      try{
+        var datum=new Date().toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'});
+        var tplD=await fetch(WORKER+'/mna/template/spa?email='+encodeURIComponent(t2.begeleider_email||'')).then(function(r){return r.json();}).catch(function(){return{ok:false};});
+        var tplTekst=tplD.ok&&tplD.tekst?tplD.tekst:'[standaard concept-SPA]';
+        if(tplTekst.length>8000)tplTekst=tplTekst.substring(0,8000);
+        var prompt='Vul het onderstaande CONCEPT van een aandelenkoopovereenkomst in. Vervang ALLE [tekst tussen haakjes] met de bekende gegevens; laat placeholders die je niet kent staan als [nader te bepalen]. Gebruik UITSLUITEND de gegevens hieronder; verzin geen eigen bedragen of voorwaarden. Behoud de CONCEPT-waarschuwing bovenaan.\n'
+          +'Verkoper: '+esc(t2.kantoor_naam||'[verkoper]')+' ('+(t2.kantoor_rechtsvorm||'')+'), '+(t2.verkoper_adres||'')+', KvK '+(t2.verkoper_kvk||'')+', t.a.v. '+esc(t2.contact_naam||'[vertegenwoordiger]')+'.\n'
+          +'Koper: '+esc(t2.koper_naam||'[koper]')+' ('+(t2.koper_rechtsvorm||'')+'), '+(t2.koper_adres||'')+', KvK '+(t2.koper_kvk||'')+', t.a.v. '+esc(t2.koper_contact||'[vertegenwoordiger]')+'.\n'
+          +'Vennootschap/target: '+esc(t2.kantoor_naam||'[target]')+'.\n'
+          +'Koopprijs: '+dvEuro(koopprijs)+' op cash-and-debt-free basis.\n'
+          +'Betalingsstructuur: '+betaling+'.\n'
+          +(escrow?('Escrow: '+dvEuro(escrow)+' gedurende '+escrowduur+' maanden.\n'):'Geen escrow tenzij nader overeengekomen.\n')
+          +'Concurrentiebeding: '+concur+' maanden.\n'
+          +'Beoogde closingdatum: '+closing+'.\n'
+          +(notaris?('Notaris: '+notaris+'.\n'):'')
+          +'Datum concept: '+datum+'. Plaats: Oploo.\n\n'
+          +'Geef alleen het volledig ingevulde conceptdocument terug, zonder toelichting.\n\nTEMPLATE:\n'+tplTekst;
+        var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:8000})});
+        var rd=await resp.json();
+        var tekst=rd.text||'Fout bij genereren';
+        document.body.removeChild(ov);
+        var out=document.getElementById('bg-doc-out');out.style.display='block';
+        var titel='CONCEPT Koopovereenkomst — '+(t2.kantoor_naam||S.code);
+        out.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem">'
+          +'<div style="font-size:11px;font-weight:600;color:#5a5470;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.5rem">Concept-koopovereenkomst gegenereerd</div>'
+          +'<div style="font-size:12px;color:#a04b2d;background:#fbeee8;border:1px solid #e6b8a5;border-radius:6px;padding:.5rem .75rem;margin-bottom:.75rem;line-height:1.5">&#9888; <strong>CONCEPT — nog niet juridisch getoetst.</strong> Uitsluitend als werkdocument. Print of kopieer voor de jurist; niet versturen als definitief stuk.</div>'
+          +'<textarea id="spa-doc-tekst" style="width:100%;height:340px;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:Georgia,serif;font-size:12px;line-height:1.8;padding:1rem;outline:none;resize:vertical">'+esc(tekst)+'</textarea>'
+          +'<div style="display:flex;gap:8px;margin-top:.75rem">'
+          +'<button id="spa-print" class="btn-ghost" style="font-size:12px;padding:6px 14px">&#128196; Print / PDF (concept)</button>'
+          +'</div></div>';
+        var docOutEl=document.getElementById('bg-doc-out');
+        if(docOutEl)setTimeout(function(){docOutEl.scrollIntoView({behavior:'smooth',block:'nearest'});},100);
+        document.getElementById('spa-print').onclick=function(){printDoc(document.getElementById('spa-doc-tekst').value,titel,'spa');};
+      }catch(e){
+        errEl.textContent='Fout bij genereren: '+e.message;errEl.style.display='block';
+        btn.disabled=false;btn.textContent='📜 Genereren';
+      }
+    };
+  }
+
   document.getElementById('bg-nda-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op met Bisschops Financing.','err');return;} toonDocWaarschuwing('nda', function(){ bgDoc('nda'); }); };
   document.getElementById('bg-loi-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op met Bisschops Financing.','err');return;} toonDocWaarschuwing('loi', function(){ bgDoc('loi'); }); };
   document.getElementById('bg-bem-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op met Bisschops Financing.','err');return;} toonDocWaarschuwing('bem', function(){ bgDoc('bem'); }); };
   document.getElementById('bg-excl-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op met Bisschops Financing.','err');return;} toonDocWaarschuwing('excl', function(){ bgDoc('excl'); }); };
   document.getElementById('bg-dealvoorstel-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op met Bisschops Financing.','err');return;} toonDocWaarschuwing('dealvoorstel', function(){ toonDealvoorstelModal(); }); };
   document.getElementById('bg-bieding-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op met Bisschops Financing.','err');return;} toonDocWaarschuwing('bieding', function(){ toonBiedingModal(); }); };
+  document.getElementById('bg-spa-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op met Bisschops Financing.','err');return;} toonDocWaarschuwing('spa', function(){ toonSpaModal(); }); };
 
   document.getElementById('bg-gesprek-actie').onclick=function(){ openBgGesprekForm(null); };
 
@@ -3391,7 +3475,7 @@ function renderBegeleiderDashboard(app){
   }
 
 function printDoc(tekst, titel, docType) {
-  var kleuren = {nda:'#7c5cbf',loi:'#c9a84c',bem:'#2a5ea0',bem_verk:'#2a5ea0',bem_koper:'#2a5ea0',excl:'#1a7a5e',exclusief:'#1a7a5e',bieding:'#a0522d'};
+  var kleuren = {nda:'#7c5cbf',loi:'#c9a84c',bem:'#2a5ea0',bem_verk:'#2a5ea0',bem_koper:'#2a5ea0',excl:'#1a7a5e',exclusief:'#1a7a5e',bieding:'#a0522d',spa:'#5a5470'};
   var kleur = kleuren[docType] || '#1a7a5e';
   function fmt(t) {
     if(!t) return '';
@@ -3566,8 +3650,8 @@ async function toonDocWaarschuwing(docType, onDoorgaan) {
   var mo = document.createElement('div');
   mo.style.cssText = 'background:var(--panel);border:1px solid var(--border2);border-radius:var(--r2);padding:1.75rem;max-width:440px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.25)';
 
-  var labels = {nda:'NDA',loi:'Letter of Intent',bem:'Bemiddelingsovereenkomst',excl:'Exclusiviteitsbrief',dealvoorstel:'Dealvoorstel',bieding:'Indicatieve bieding'};
-  var kleuren = {nda:'#7c5cbf',loi:'var(--gold)',bem:'#2a5ea0',excl:'var(--teal)',dealvoorstel:'#8a5a00',bieding:'#a0522d'};
+  var labels = {nda:'NDA',loi:'Letter of Intent',bem:'Bemiddelingsovereenkomst',excl:'Exclusiviteitsbrief',dealvoorstel:'Dealvoorstel',bieding:'Indicatieve bieding',spa:'Concept-koopovereenkomst'};
+  var kleuren = {nda:'#7c5cbf',loi:'var(--gold)',bem:'#2a5ea0',excl:'var(--teal)',dealvoorstel:'#8a5a00',bieding:'#a0522d',spa:'#5a5470'};
   var kleur = kleuren[docType] || 'var(--teal)';
 
   mo.innerHTML = '<div style="font-family:Playfair Display,serif;font-size:1.1rem;font-weight:600;color:var(--head);margin-bottom:1rem">'
