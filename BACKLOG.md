@@ -2,22 +2,29 @@
 
 Geordend van eenvoudig naar moeilijk. **Uren** = geschatte bouw- en testtijd met Claude Code (Marcels tijd aan de sessie; API-kosten verwaarloosbaar, valt binnen abonnement). **€-indicatie** = referentie wat dit extern zou kosten bij ~€100/uur, als zakelijk vergelijkingskader.
 
-| # | Taak | Inspanning | €-indicatie extern | Toelichting |
-|---|------|-----------|--------------------|-------------|
-| 1 | Waarschuwing in modals als kopernaam ontbreekt | 0,5–1 u | €50–100 | Voorkomt brieven met generieke partijnamen |
-| 2 | Bevestigingsstap vóór versturen AI-documenten | 2–3 u | €200–300 | Verplichte controle-stap + evt. CONCEPT-watermerk; systeem dwingt review af |
-| 3 | Buy-and-build aannames instelbaar | 1–2 u | €100–200 | Vaste aannames (55% acquisitieschuld, 15% aflossing) als invulvelden |
-| 4 | **Geautomatiseerde end-to-end testsuite** | 8–16 u | €800–1.600 | Zie testplan hieronder. Voorwaarde voor #12 |
-| 5 | Gefaseerde dataroom-toegang koper | 6–10 u | €600–1.000 | Vrijgave per DD-fase i.p.v. alles-of-niets |
-| 6 | Concept-SPA-generator (werkdocument jurist) | 4–6 u | €400–600 + €500–1.500 eenmalige juridische template-review | Download/print-only, nadrukkelijk concept-label |
-| 7 | Branding neutraliseren (white-label basis) | 6–10 u | €600–1.000 | KantoorInzicht/kantoor_naam/accountancy-teksten configureerbaar |
-| 8 | AI-extractieschema's per sector | 4–6 u | €400–600 | Documentanalyse-schema per sector; caching blijft werken |
-| 9 | Benchmarks & AI-prompts per sector | 4–8 u | €400–800 | Techniek; benchmarkinhoud is Marcels domeinwerk |
-| 10 | Nieuwe sectorprofielen (inhoud + inbouw) | 2–4 u techniek per sector | €200–400 per sector | DD-velden/checklists/normen/infoverzoek — inhoud = Marcels expertise |
-| 11 | Pilot algemene DD-tool (MKB afronden) | 2–3 dagen | €1.600–2.400 | Bundelt #7+#8+#9 voor sector MKB → verkoopbaar algemeen product |
-| 12 | mna.html opsplitsen (refactor) | 2–4 dagen | €1.600–3.200 | **Alleen ná #4** (testsuite als vangnet) |
+**Model per taak — vóór de start van elke taak het juiste model inschakelen:**
+- Sonnet: `/model claude-sonnet-5` — routinewerk, snelst/goedkoopst in verbruik
+- Opus: `/model claude-opus-4-8` — ontwerp- en integratiewerk
+- Fable: `/model claude-fable-5` — alleen voor de grote refactor (#12); dubbel tokenverbruik, dus niet voor routinetaken
+
+| # | Taak | Model | Inspanning | €-indicatie extern | Toelichting |
+|---|------|-------|-----------|--------------------|-------------|
+| 1 | Waarschuwing in modals als kopernaam ontbreekt | Sonnet | 0,5–1 u | €50–100 | Voorkomt brieven met generieke partijnamen |
+| 2 | Bevestigingsstap vóór versturen AI-documenten | Sonnet | 2–3 u | €200–300 | Verplichte controle-stap + evt. CONCEPT-watermerk; systeem dwingt review af |
+| 3 | Buy-and-build aannames instelbaar | Sonnet | 1–2 u | €100–200 | Vaste aannames (55% acquisitieschuld, 15% aflossing) als invulvelden |
+| 4 | **Geautomatiseerde end-to-end testsuite** | Opus (testontwerp evt. Fable) | 8–16 u | €800–1.600 | Zie testplan hieronder. Voorwaarde voor #12 |
+| 5 | Gefaseerde dataroom-toegang koper | Opus | 6–10 u | €600–1.000 | Vrijgave per DD-fase i.p.v. alles-of-niets |
+| 6 | Concept-SPA-generator (werkdocument jurist) | Opus | 4–6 u | €400–600 + €500–1.500 eenmalige juridische template-review | Download/print-only, nadrukkelijk concept-label |
+| 7 | Branding neutraliseren (white-label basis) | Sonnet | 6–10 u | €600–1.000 | KantoorInzicht/kantoor_naam/accountancy-teksten configureerbaar |
+| 8 | AI-extractieschema's per sector | Opus | 4–6 u | €400–600 | Raakt AI-prompts + caching in de worker |
+| 9 | Benchmarks & AI-prompts per sector | Sonnet | 4–8 u | €400–800 | Techniek; benchmarkinhoud is Marcels domeinwerk |
+| 10 | Nieuwe sectorprofielen (inhoud + inbouw) | Sonnet | 2–4 u techniek per sector | €200–400 per sector | DD-velden/checklists/normen/infoverzoek — inhoud = Marcels expertise |
+| 11 | Pilot algemene DD-tool (MKB afronden) | Opus | 2–3 dagen | €1.600–2.400 | Bundelt #7+#8+#9 voor sector MKB → verkoopbaar algemeen product |
+| 12 | mna.html opsplitsen (refactor) | **Fable 5** | 2–4 dagen | €1.600–3.200 | **Alleen ná #4** (testsuite als vangnet); lange-adem werk waar Fable het verschil maakt |
 
 **Quick wins (#1–3):** samen ~4–6 uur. **Hele backlog:** ruwweg 60–90 uur (extern €6.000–9.000).
+
+NB: het AI-model **ín het platform** (documentanalyse in de worker: `claude-sonnet-4-6`) is een aparte keuze en blijft ongewijzigd — dit gaat alleen over het bouwmodel in Claude Code.
 
 Eerder bewust geparkeerd (staat los van deze lijst): eigen document-templates (NDA/LoI/BEM) opnieuw uploaden in marilyn.
 
