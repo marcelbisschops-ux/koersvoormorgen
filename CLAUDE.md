@@ -11,7 +11,7 @@ Eigenaar: Marcel Bisschops (Bisschops Financing B.V.).
 
 ## Bestanden en rollen
 - `cloudflare-worker.js` — backend (Cloudflare Worker): alle API-endpoints, AI-documentextractie, e-mail (Resend), ondertekening (Signhost)
-- `mna.html` — verkoper/koper-portaal (het hoofdproduct)
+- `mna.html` + `mna/*.js` — verkoper/koper-portaal (het hoofdproduct). Sinds juli 2026 opgesplitst: mna.html is alleen nog HTML/CSS-skelet; de applicatiecode staat in 7 genummerde modules in `mna/` (01-config-sectorprofielen t/m 07-start-chat). **Laadvolgorde is belangrijk** — latere modules gebruiken functies uit eerdere; nieuwe code toevoegen in de module waar het thematisch hoort, of achteraan
 - `marilyn.html` — admin-paneel van Marcel
 - `adv.html` — adviseursportaal (betaalde externe adviseurs; login met e-mail + wachtwoord)
 - `index.html` — scan-tool
@@ -38,7 +38,7 @@ Eigenaar: Marcel Bisschops (Bisschops Financing B.V.).
 7. **Bij elke code-wijziging een test meeleveren:** curl-commando's, een checklist, of een testscript — iets waarmee Marcel zelf kan verifiëren.
 
 ## Technische valkuilen (eerder geleerd)
-- `node --check` op elk JS-bestand vóór opleveren; voor HTML-bestanden: het `<script>`-blok extraheren en checken.
+- `node --check` op elk JS-bestand vóór opleveren; voor HTML-bestanden met inline script (marilyn/adv/index/hugo/verhuis): het `<script>`-blok extraheren en checken. Voor mna: direct `node --check mna/*.js`.
 - docx/xlsx zijn ZIP-bestanden met DEFLATE-compressie: uitpakken via de bestaande `unzipEntryText`-helper in de worker, nooit tekst-zoeken in de rauwe bytes.
 - Geneste template-literals in de worker veroorzaken syntaxfouten; gebruik string-concatenatie in gegenereerde HTML.
 - DELETE-methode wordt door CORS geblokkeerd; gebruik POST.

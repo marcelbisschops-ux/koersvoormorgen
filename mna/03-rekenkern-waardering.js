@@ -1,0 +1,549 @@
+function parseGeld(s){if(!s)return 0;var n=String(s).replace(/[^0-9,.]/g,'').replace(',','.');return parseFloat(n)||0;}
+function fmtGeld(n){if(!n||isNaN(n))return '—';if(n>=1000000)return '€'+(n/1000000).toFixed(2)+' mln';if(n>=1000)return '€'+(n/1000).toFixed(0)+'.000';return '€'+Math.round(n);}
+
+// ===== DEALVOORSTEL: parameters, berekeningen, weergave =====
+function dvMln(n){return (n/1000000).toLocaleString('nl-NL',{minimumFractionDigits:2,maximumFractionDigits:2});}
+function dvPct(n){return n.toLocaleString('nl-NL',{minimumFractionDigits:1,maximumFractionDigits:1})+'%';}
+function dvMultiple(n){return n.toLocaleString('nl-NL',{minimumFractionDigits:1,maximumFractionDigits:1})+'×';}
+
+function dvGetDefaults(){
+  var t=S.traject||{};
+  var sectorProfiel=getSectorProfiel();
+  var normen=sectorProfiel.aiNormen||'';
+  var mMatch=normen.match(/multiple\s*([\d.,]+)\s*[-–]\s*([\d.,]+)x/i);
+  var mLaag=mMatch?parseFloat(mMatch[1].replace(',','.')):4.5;
+  var mHoog=mMatch?parseFloat(mMatch[2].replace(',','.')):5.5;
+  var ebBasis=parseGeld(S.data['financieel_ebitdaNorm']||S.data['financieel_ebitda']||'0');
+  return {
+    koperNaam:t.koper_naam||'',
+    belangPct:51,
+    ebitdaBewezen:ebBasis||0,
+    ebitdaPrognose:ebBasis?Math.round(ebBasis*1.3):0,
+    multipleBasis:mLaag,
+    multipleBovengrens:mHoog,
+    cliffPct:70,
+    escrowPct:12,
+    escrowMaanden:18,
+    bankLeverage:2,
+    rentePct:5,
+    vpbPct:25.8,
+    capexPct:1.5,
+    groeiPct:4,
+    horizonJaren:5,
+    buyAndBuild:false,
+    baOvernamesPerJaar:2,
+    baOmvangEbitda:1400000,
+    baAcqMultiple:5.5,
+    baPlatformMultipleMax:9.5,
+    baAcqSchuldPct:55,
+    baAflossingPct:15
+  };
+}
+
+// Glijdende-schaal prijsmechanisme: multiple loopt lineair van multipleBasis (bij de cliff-drempel)
+// naar multipleBovengrens (bij of boven de prognose); onder de cliff geldt de vaste basis-multiple als
+// harde ondergrens, boven de prognose wordt de bovengrens niet verder verhoogd.
+function dvBerekenPrijsmechanisme(p){
+  var cliff=p.ebitdaPrognose*(p.cliffPct/100);
+  function multipleVoor(ebitda){
+    if(!p.ebitdaPrognose||ebitda<=cliff) return p.multipleBasis;
+    if(ebitda>=p.ebitdaPrognose) return p.multipleBovengrens;
+    var frac=(ebitda-cliff)/(p.ebitdaPrognose-cliff);
+    return p.multipleBasis+frac*(p.multipleBovengrens-p.multipleBasis);
+  }
+  var scenarios=[
+    {label:'Cliff — serieuze misser',ebitda:cliff*0.9},
+    {label:'Deels gerealiseerd',ebitda:cliff+(p.ebitdaPrognose-cliff)*0.5},
+    {label:'Prognose gehaald',ebitda:p.ebitdaPrognose},
+    {label:'Ruim boven prognose',ebitda:p.ebitdaPrognose*1.12}
+  ];
+  return scenarios.map(function(s){
+    var mult=multipleVoor(s.ebitda);
+    var ev=s.ebitda*mult;
+    var deelKoper=ev*(p.belangPct/100);
+    var deelVerkoper=ev*(1-p.belangPct/100);
+    return {label:s.label,ebitda:s.ebitda,multiple:mult,ev:ev,deelKoper:deelKoper,deelVerkoper:deelVerkoper};
+  });
+}
+
+// Bedrag bij closing (op bewezen EBITDA × basis-multiple) en de earn-up (verschil met het prognose-scenario)
+function dvBerekenClosing(p){
+  var evBasis=p.ebitdaBewezen*p.multipleBasis;
+  var deelKoperBasis=evBasis*(p.belangPct/100);
+  var deelVerkoperBasis=evBasis*(1-p.belangPct/100);
+  var evPrognose=p.ebitdaPrognose*p.multipleBovengrens;
+  var deelKoperPrognose=evPrognose*(p.belangPct/100);
+  var earnUp=Math.max(0,deelKoperPrognose-deelKoperBasis);
+  return {evBasis:evBasis,deelKoperBasis:deelKoperBasis,deelVerkoperBasis:deelVerkoperBasis,evPrognose:evPrognose,deelKoperPrognose:deelKoperPrognose,earnUp:earnUp};
+}
+
+// Meerjarig kasstroom-/schuldafbouwmodel (realisatie-scenario: prognose wordt gehaald, earn-up in jaar 1 uitgekeerd).
+// Capex is vereenvoudigd als percentage van EBITDA (geen aparte omzetprognose beschikbaar in dit model).
+function dvBerekenSchuldafbouw(p,closing){
+  var rows=[];
+  var huidigJaar=new Date().getFullYear();
+  var nettoSchuld=p.ebitdaBewezen*p.bankLeverage;
+  var ebitda=p.ebitdaBewezen;
+  rows.push({jaar:'Closing ('+huidigJaar+')',ebitda:ebitda,rente:0,vpb:0,capex:0,fcf:0,earnUp:0,nettoSchuld:nettoSchuld,leverage:ebitda?nettoSchuld/ebitda:0});
+  for(var j=1;j<=p.horizonJaren;j++){
+    ebitda = j===1 ? (p.ebitdaPrognose||ebitda) : ebitda*(1+p.groeiPct/100);
+    var rente=nettoSchuld*(p.rentePct/100);
+    var vpb=Math.max(0,ebitda-rente)*(p.vpbPct/100);
+    var capex=ebitda*(p.capexPct/100);
+    var earnUp=j===1?closing.earnUp:0;
+    var fcf=ebitda-rente-vpb-capex;
+    nettoSchuld=Math.max(0,nettoSchuld-fcf+earnUp);
+    rows.push({jaar:String(huidigJaar+j),ebitda:ebitda,rente:rente,vpb:vpb,capex:capex,fcf:fcf,earnUp:earnUp,nettoSchuld:nettoSchuld,leverage:ebitda?nettoSchuld/ebitda:0});
+  }
+  return rows;
+}
+
+// Vereenvoudigd buy-and-build platformscenario: N overnames/jaar van gemiddelde omvang, platformmultiple
+// loopt lineair op naar het opgegeven maximum. Acquisitieschuld is een vast percentage van de acquisitiewaarde;
+// bestaande schuld wordt jaarlijks met een indicatief percentage afgelost.
+function dvBerekenBuyAndBuild(p,laatsteSchuldRow){
+  var rows=[];
+  var groepsEbitda=laatsteSchuldRow.ebitda;
+  var nettoSchuld=laatsteSchuldRow.nettoSchuld;
+  var multipleStart=p.multipleBovengrens;
+  var huidigJaar=new Date().getFullYear()+p.horizonJaren;
+  for(var j=1;j<=5;j++){
+    var acqEbitda=p.baOvernamesPerJaar*p.baOmvangEbitda;
+    var acqSchuld=acqEbitda*p.baAcqMultiple*(p.baAcqSchuldPct/100);
+    groepsEbitda+=acqEbitda;
+    nettoSchuld=Math.max(0,nettoSchuld*(1-p.baAflossingPct/100)+acqSchuld);
+    var multiple=Math.min(p.baPlatformMultipleMax, multipleStart+(p.baPlatformMultipleMax-multipleStart)*(j/5));
+    var ev=groepsEbitda*multiple;
+    var koperWaarde=ev*(p.belangPct/100);
+    rows.push({jaar:String(huidigJaar+j),deals:p.baOvernamesPerJaar,acqEbitda:acqEbitda,groepsEbitda:groepsEbitda,nettoSchuld:nettoSchuld,leverage:nettoSchuld/groepsEbitda,multiple:multiple,ev:ev,koperWaarde:koperWaarde});
+  }
+  return rows;
+}
+
+function dvRenderTabelHtml(kolommen,rows){
+  var head='<tr>'+kolommen.map(function(k,i){return '<th style="padding:6px 10px;text-align:'+(i===0?'left':'right')+';font-size:9pt;text-transform:uppercase;letter-spacing:.05em;color:#8a8880;border-bottom:2px solid #ccc;white-space:nowrap">'+k+'</th>';}).join('')+'</tr>';
+  var body=rows.map(function(r){
+    return '<tr>'+r.map(function(c,i){return '<td style="padding:5px 10px;text-align:'+(i===0?'left':'right')+';border-bottom:1px solid #eee;font-size:10pt;white-space:nowrap">'+esc(String(c))+'</td>';}).join('')+'</tr>';
+  }).join('');
+  return '<table style="width:100%;border-collapse:collapse;margin:.5rem 0 1.25rem">'+head+body+'</table>';
+}
+
+function dvTabelCijfers(){
+  var jaren=[
+    parseGeld(S.data['financieel_omzet1']),
+    parseGeld(S.data['financieel_omzet2']),
+    parseGeld(S.data['financieel_omzet3'])
+  ];
+  var ebitda=parseGeld(S.data['financieel_ebitdaNorm']||S.data['financieel_ebitda']||'0');
+  var marge=jaren[2]?(ebitda/jaren[2]*100):0;
+  return dvRenderTabelHtml(['','Jaar 1','Jaar 2','Jaar 3 (bewezen)'],[
+    ['Omzet (€ mln)',dvMln(jaren[0]),dvMln(jaren[1]),dvMln(jaren[2])],
+    ['EBITDA jaar 3 (€ mln)','','',dvMln(ebitda)],
+    ['EBITDA-marge jaar 3','','',dvPct(marge)]
+  ]);
+}
+
+function dvTabelPrijsmechanisme(scenarios){
+  return dvRenderTabelHtml(['Scenario','EBITDA (€ mln)','Multiple','EV (€ mln)','Deel koper (€ mln)','Deel verkoper (€ mln)'],
+    scenarios.map(function(s){return [s.label,dvMln(s.ebitda),dvMultiple(s.multiple),dvMln(s.ev),dvMln(s.deelKoper),dvMln(s.deelVerkoper)];}));
+}
+
+function dvTabelClosing(closing){
+  return dvRenderTabelHtml(['','€ mln'],[
+    ['Ondernemingswaarde (bewezen basis)',dvMln(closing.evBasis)],
+    ['Deel koper bij closing',dvMln(closing.deelKoperBasis)],
+    ['Behouden belang verkoper',dvMln(closing.deelVerkoperBasis)],
+    ['Ondernemingswaarde bij volledige realisatie',dvMln(closing.evPrognose)],
+    ['Earn-up (extra bij realisatie)',dvMln(closing.earnUp)]
+  ]);
+}
+
+function dvTabelSchuldafbouw(rows){
+  return dvRenderTabelHtml(['Jaar','EBITDA','Rente','VpB','Capex','FCF','Earn-up','Netto schuld','ND/EBITDA'],
+    rows.map(function(r){return [r.jaar,dvMln(r.ebitda),dvMln(r.rente),dvMln(r.vpb),dvMln(r.capex),dvMln(r.fcf),dvMln(r.earnUp),dvMln(r.nettoSchuld),dvMultiple(r.leverage)];}));
+}
+
+function dvTabelBuyAndBuild(rows){
+  return dvRenderTabelHtml(['Jaar','Deals','Acq. EBITDA','Groeps-EBITDA','Netto schuld','ND/EBITDA','Multiple','EV','Koperswaarde'],
+    rows.map(function(r){return [r.jaar,r.deals,dvMln(r.acqEbitda),dvMln(r.groepsEbitda),dvMln(r.nettoSchuld),dvMultiple(r.leverage),dvMultiple(r.multiple),dvMln(r.ev),dvMln(r.koperWaarde)];}));
+}
+
+function dvFmtTekst(t){
+  if(!t) return '';
+  t=t.replace(/^(##+ .+)/gm,function(m){return '<h3>'+m.replace(/^#+\s*/,'')+'</h3>';});
+  t=t.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+  return t.split(/\n\n+/).map(function(p){
+    p=p.trim();if(!p)return '';
+    if(p.indexOf('<h3>')===0)return p;
+    if(/^[-•]\s/m.test(p)){
+      var items=p.split(/\n/).map(function(l){return l.replace(/^[-•]\s/,'');}).filter(Boolean);
+      return '<ul>'+items.map(function(i){return '<li>'+i+'</li>';}).join('')+'</ul>';
+    }
+    return '<p>'+p.replace(/\n/g,'<br>')+'</p>';
+  }).join('\n');
+}
+
+// Vervangt [TABEL:xxx]-markeringen in de AI-tekst door de echte, JS-berekende tabellen.
+function dvBouwRapportHtml(aiTekst,tabelMap){
+  var parts=(aiTekst||'').split(/\[TABEL:(\w+)\]/);
+  var html='';
+  for(var i=0;i<parts.length;i++){
+    html += (i%2===0) ? dvFmtTekst(parts[i]) : (tabelMap[parts[i]]||'');
+  }
+  return html;
+}
+
+function dvHtmlNaarTekst(html){
+  return html
+    .replace(/<h3>(.*?)<\/h3>/g,'\n\n## $1\n')
+    .replace(/<\/tr>/g,'\n')
+    .replace(/<\/t[hd]>/g,'  |  ')
+    .replace(/<li>(.*?)<\/li>/g,'- $1\n')
+    .replace(/<\/p>/g,'\n')
+    .replace(/<br>/g,'\n')
+    .replace(/<[^>]+>/g,'')
+    .replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"')
+    .replace(/\n{3,}/g,'\n\n')
+    .trim();
+}
+
+function printDealvoorstel(bodyHtml,titel){
+  var datum=new Date().toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'});
+  var kleur='#8a5a00';
+  var win=window.open('','_blank');
+  win.document.write('<!DOCTYPE html><html lang="nl"><head><meta charset="UTF-8"><title>'+titel+'<\/title>'
+    +'<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">'
+    +'<style>'
+    +'*{box-sizing:border-box;margin:0;padding:0}'
+    +'body{font-family:IBM Plex Sans,Helvetica,Arial,sans-serif;font-size:11pt;line-height:1.75;color:#1a1815;background:#fff}'
+    +'.page{max-width:780px;margin:0 auto;padding:2cm}'
+    +'.doc-header{padding-bottom:1.25rem;border-bottom:3px solid '+kleur+';margin-bottom:2rem}'
+    +'.doc-title{font-family:Playfair Display,serif;font-size:20pt;font-weight:600;color:'+kleur+'}'
+    +'.doc-sub{font-size:9pt;color:#8a8880;margin-top:.4rem}'
+    +'h3{font-size:10pt;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:'+kleur+';margin:1.75rem 0 .5rem;padding-bottom:.3rem;border-bottom:1px solid #e8e5df}'
+    +'p{margin-bottom:.75rem;color:#2a2825;font-size:10.5pt}'
+    +'ul{margin:.5rem 0 .75rem 1.75rem}'
+    +'li{margin-bottom:.35rem;color:#2a2825;font-size:10.5pt}'
+    +'strong{font-weight:600}'
+    +'table{width:100%}'
+    +'.doc-footer{margin-top:3rem;padding-top:1rem;border-top:1px solid #e8e5df;font-size:8pt;color:#aaa8a2;display:flex;justify-content:space-between}'
+    +'@media print{ body{padding:0} .page{max-width:100%;padding:0} @page{margin:2cm;size:A4} }'
+    +'</style></head><body><div class="page">'
+    +'<div class="doc-header"><div class="doc-title">'+esc(titel)+'</div><div class="doc-sub">' + BRAND.bedrijf + ' &middot; '+datum+' &middot; Vertrouwelijk &mdash; denkrichting, geen waardering, geen bod</div></div>'
+    +bodyHtml
+    +'<div class="doc-footer"><span>' + BRAND.bedrijf + '</span><span>'+datum+'</span></div>'
+    +'</div></body></html>');
+  win.document.close();
+  win.focus();
+}
+
+function renderWaardering(){
+  var t=S.traject||{};
+  var isRO=isKoper();
+
+  // Haal data op uit S.data
+  var o1=parseGeld(S.data['financieel_omzet1']);
+  var o2=parseGeld(S.data['financieel_omzet2']);
+  var o3=parseGeld(S.data['financieel_omzet3']);
+  var ebitdaPct=parseFloat(S.data['financieel_ebitda'])||0;
+  var fte=parseFloat(S.data['partner_fte'])||0;
+  var recurring=parseFloat(S.data['commercieel_recurring'])||0;
+  var churn=parseFloat(S.data['commercieel_churn'])||0;
+
+  // Multiples (sectornorm)
+  var mLaag=4.6,mMid=5.05,mHoog=5.5,omzetFactor=0.8,risico=0;
+
+  // Bereken
+  var ebitdaAmt=o3*(ebitdaPct/100);
+  var wLaag=ebitdaAmt*mLaag;
+  var wMid=ebitdaAmt*mMid;
+  var wHoog=ebitdaAmt*mHoog;
+  var wOmzet=o3*omzetFactor;
+
+  // Groei
+  var groei=0,steps=0;
+  if(o1>0&&o2>0){groei+=(o2-o1)/o1*100;steps++;}
+  if(o2>0&&o3>0){groei+=(o3-o2)/o2*100;steps++;}
+  var gemGroei=steps>0?groei/steps:3;
+  var fc=[o3];
+  for(var i=1;i<=3;i++)fc.push(fc[fc.length-1]*(1+gemGroei/100));
+  var fcE=fc.map(function(o){return o*(ebitdaPct/100);});
+  var fcW=fcE.map(function(e){return e*mMid;});
+
+  // Earn-out default
+  var earnBase=wMid;
+  var earnPct=20,earnTarget=5,earnJaren=3;
+  var fixedKoop=earnBase*(1-earnPct/100);
+  var earnJaarlijks=earnBase*(earnPct/100)/earnJaren;
+
+  var html='<div class="wrap anim">'
+    +'<div class="hdr"><div class="brand"><div class="wdot"></div>'+BRAND.platform+' &middot; Waardering'+versieLabel()+'</div>'
+    +'<div style="display:flex;gap:8px">'
+    +'<button class="btn-ghost btn-sm" onclick="window.print()">PDF</button>'
+    +'<button class="btn-ghost btn-sm" onclick="S.screen=\'cover\';renderApp()">&#8592; Terug</button>'
+    +'</div></div>'
+    +'<div style="font-family:Playfair Display,serif;font-size:1.4rem;color:var(--head);font-weight:600;margin-bottom:.25rem">Waardebepaling</div>'
+    +'<div style="font-size:13px;color:var(--muted);margin-bottom:1.5rem">'+esc(t.kantoor_naam||S.code)+' &middot; '+esc(t.traject_type||'M&A')+'</div>';
+
+  // Disclaimer
+  html+='<div style="background:var(--gold-bg);border:1px solid var(--gold);border-radius:var(--r);padding:10px 14px;margin-bottom:1.5rem;font-size:12px;color:var(--mid);line-height:1.6">'
+    +'<strong style="color:var(--gold)">&#9888; Indicatieve waardering</strong> &mdash; Deze berekening is gebaseerd op de ingevoerde due diligence data en sectorale benchmarks. Het betreft een indicatie, geen formeel taxatierapport. ' + BRAND.bedrijfKort + ' aanvaardt geen aansprakelijkheid voor beslissingen op basis van dit overzicht.'
+    +'</div>';
+
+  // Financieel overzicht
+  html+='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;margin-bottom:1.25rem">'
+    +'<div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)">Financiële basis</div>'
+    +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">'
+    +'<div style="text-align:center"><div style="font-size:10px;color:var(--muted);margin-bottom:.2rem">Omzet jaar 1</div><div style="font-family:IBM Plex Mono,monospace;font-size:13px;font-weight:600;color:var(--sub)">'+fmtGeld(o1)+'</div></div>'
+    +'<div style="text-align:center"><div style="font-size:10px;color:var(--muted);margin-bottom:.2rem">Omzet jaar 2</div><div style="font-family:IBM Plex Mono,monospace;font-size:13px;font-weight:600;color:var(--sub)">'+fmtGeld(o2)+'</div></div>'
+    +'<div style="text-align:center"><div style="font-size:10px;color:var(--muted);margin-bottom:.2rem">Omzet jaar 3</div><div style="font-family:IBM Plex Mono,monospace;font-size:13px;font-weight:600;color:var(--teal)">'+fmtGeld(o3)+'</div></div>'
+    +'<div style="text-align:center"><div style="font-size:10px;color:var(--muted);margin-bottom:.2rem">EBITDA</div><div style="font-family:IBM Plex Mono,monospace;font-size:13px;font-weight:600;color:var(--teal)">'+fmtGeld(ebitdaAmt)+' ('+ebitdaPct+'%)</div></div>'
+    +'</div></div>';
+
+  // Waardebepaling as-is
+  html+='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;margin-bottom:1.25rem">'
+    +'<div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)">Waardebepaling as-is (EBITDA-methode)</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:.75rem">'
+    +'<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r2);padding:1rem;text-align:center">'
+      +'<div style="font-size:10px;color:var(--muted);margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.06em">Laag ('+mLaag+'\xd7)</div>'
+      +'<div style="font-family:Playfair Display,serif;font-size:1.4rem;font-weight:600;color:var(--mid)">'+fmtGeld(wLaag)+'</div></div>'
+    +'<div style="background:var(--teal-bg);border:2px solid var(--teal-dark);border-radius:var(--r2);padding:1rem;text-align:center">'
+      +'<div style="font-size:10px;color:var(--teal-dim);margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.06em;font-weight:600">Midden ('+mMid+'\xd7)</div>'
+      +'<div style="font-family:Playfair Display,serif;font-size:1.8rem;font-weight:600;color:var(--teal)">'+fmtGeld(wMid)+'</div></div>'
+    +'<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r2);padding:1rem;text-align:center">'
+      +'<div style="font-size:10px;color:var(--muted);margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.06em">Hoog ('+mHoog+'\xd7)</div>'
+      +'<div style="font-family:Playfair Display,serif;font-size:1.4rem;font-weight:600;color:var(--mid)">'+fmtGeld(wHoog)+'</div></div>'
+    +'</div>'
+    +'<div style="font-size:12px;color:var(--mid);padding:.6rem .75rem;background:var(--card);border-radius:var(--r)">'
+      +'Omzetmethode ('+omzetFactor+'\xd7): <strong>'+fmtGeld(wOmzet)+'</strong>'
+      +(recurring>0?' &nbsp;|&nbsp; Recurring: <strong>'+recurring+'%</strong>':'')
+      +(churn>0?' &nbsp;|&nbsp; Churn: <strong>'+churn+'%</strong>':'')
+    +'</div></div>';
+
+  // Rolling forecast
+  html+='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;margin-bottom:1.25rem">'
+    +'<div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)">Rolling forecast (3 jaar)</div>'
+    +'<div style="font-size:12px;color:var(--mid);margin-bottom:.75rem">Gem. historische groei: <strong style="color:var(--sub)">'+gemGroei.toFixed(1)+'%</strong>/jaar</div>'
+    +'<table style="width:100%;border-collapse:collapse"><thead><tr>'
+    +'<th style="text-align:left;padding:8px 10px;font-size:10px;text-transform:uppercase;color:var(--muted);border-bottom:2px solid var(--border)">Jaar</th>'
+    +'<th style="text-align:right;padding:8px 10px;font-size:10px;text-transform:uppercase;color:var(--muted);border-bottom:2px solid var(--border)">Omzet</th>'
+    +'<th style="text-align:right;padding:8px 10px;font-size:10px;text-transform:uppercase;color:var(--muted);border-bottom:2px solid var(--border)">EBITDA</th>'
+    +'<th style="text-align:right;padding:8px 10px;font-size:10px;text-transform:uppercase;color:var(--muted);border-bottom:2px solid var(--border)">Waardebandreedte</th>'
+    +'</tr></thead><tbody>';
+  var jLabels=['Huidig','Jaar +1','Jaar +2','Jaar +3'];
+  for(var j=0;j<4;j++){
+    html+='<tr style="'+(j===0?'background:var(--teal-bg)':'')+'">'
+      +'<td style="padding:8px 10px;font-size:12px;font-weight:'+(j===0?'600':'400')+';color:var(--sub);border-bottom:1px solid var(--border)">'+jLabels[j]+'</td>'
+      +'<td style="padding:8px 10px;font-size:12px;font-family:IBM Plex Mono,monospace;text-align:right;border-bottom:1px solid var(--border)">'+fmtGeld(fc[j])+'</td>'
+      +'<td style="padding:8px 10px;font-size:12px;font-family:IBM Plex Mono,monospace;text-align:right;color:var(--teal);border-bottom:1px solid var(--border)">'+fmtGeld(fcE[j])+'</td>'
+      +'<td style="padding:8px 10px;font-size:12px;font-family:IBM Plex Mono,monospace;text-align:right;color:var(--mid);border-bottom:1px solid var(--border)">'+fmtGeld(fcW[j]*(mLaag/mMid))+' \u2013 '+fmtGeld(fcW[j]*(mHoog/mMid))+'</td>'
+      +'</tr>';
+  }
+  html+='</tbody></table></div>';
+
+  // Earn-out
+  html+='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;margin-bottom:1.25rem">'
+    +'<div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)">Earn-out structuur (indicatief)</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:.75rem">'
+    +'<div style="background:var(--teal-bg);border:1px solid var(--teal-dark);border-radius:var(--r);padding:.75rem 1rem">'
+      +'<div style="font-size:10px;color:var(--teal-dim);font-weight:600;text-transform:uppercase;margin-bottom:.3rem">Koopsom bij closing</div>'
+      +'<div style="font-family:Playfair Display,serif;font-size:1.4rem;font-weight:600;color:var(--teal)">'+fmtGeld(fixedKoop)+'</div>'
+      +'<div style="font-size:11px;color:var(--muted);margin-top:.2rem)">'+(100-earnPct)+'% van totale waarde</div>'
+    +'</div>'
+    +'<div style="background:var(--gold-bg);border:1px solid var(--gold);border-radius:var(--r);padding:.75rem 1rem">'
+      +'<div style="font-size:10px;color:var(--gold);font-weight:600;text-transform:uppercase;margin-bottom:.3rem">Earn-out ('+earnJaren+' jaar)</div>'
+      +'<div style="font-family:Playfair Display,serif;font-size:1.4rem;font-weight:600;color:var(--gold)">'+fmtGeld(earnBase*(earnPct/100))+'</div>'
+      +'<div style="font-size:11px;color:var(--muted);margin-top:.2rem">'+earnPct+'% bij '+earnTarget+'% omzetgroei/jaar</div>'
+    +'</div></div>'
+    +'<table style="width:100%;border-collapse:collapse"><thead><tr>'
+    +'<th style="text-align:left;padding:6px 10px;font-size:10px;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border)">Moment</th>'
+    +'<th style="text-align:right;padding:6px 10px;font-size:10px;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border)">Omzet target</th>'
+    +'<th style="text-align:right;padding:6px 10px;font-size:10px;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border)">Uitkering</th>'
+    +'<th style="text-align:right;padding:6px 10px;font-size:10px;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border)">Cumulatief</th>'
+    +'</tr></thead><tbody>';
+  var cumul=fixedKoop;
+  html+='<tr style="background:var(--teal-bg)"><td style="padding:6px 10px;font-size:12px;color:var(--sub);border-bottom:1px solid var(--border)">Closing</td><td style="padding:6px 10px;text-align:right;border-bottom:1px solid var(--border)">—</td><td style="padding:6px 10px;font-size:12px;font-family:IBM Plex Mono,monospace;text-align:right;color:var(--teal);border-bottom:1px solid var(--border)">'+fmtGeld(fixedKoop)+'</td><td style="padding:6px 10px;font-size:12px;font-family:IBM Plex Mono,monospace;text-align:right;color:var(--teal);border-bottom:1px solid var(--border)">'+fmtGeld(cumul)+'</td></tr>';
+  for(var k=1;k<=earnJaren;k++){
+    var tgt=o3*Math.pow(1+earnTarget/100,k);
+    cumul+=earnJaarlijks;
+    html+='<tr><td style="padding:6px 10px;font-size:12px;color:var(--sub);border-bottom:1px solid var(--border)">Jaar '+k+'</td>'
+      +'<td style="padding:6px 10px;font-size:12px;font-family:IBM Plex Mono,monospace;text-align:right;border-bottom:1px solid var(--border)">'+fmtGeld(tgt)+'</td>'
+      +'<td style="padding:6px 10px;font-size:12px;font-family:IBM Plex Mono,monospace;text-align:right;color:var(--gold);border-bottom:1px solid var(--border)">'+fmtGeld(earnJaarlijks)+'</td>'
+      +'<td style="padding:6px 10px;font-size:12px;font-family:IBM Plex Mono,monospace;text-align:right;border-bottom:1px solid var(--border)">'+fmtGeld(cumul)+'</td></tr>';
+  }
+  html+='<tr style="background:var(--card)"><td style="padding:6px 10px;font-size:12px;font-weight:600;color:var(--sub)">Totaal</td><td></td><td style="padding:6px 10px;font-size:12px;font-weight:600;font-family:IBM Plex Mono,monospace;text-align:right;color:var(--sub)">'+fmtGeld(earnBase)+'</td><td></td></tr>';
+  html+='</tbody></table></div>';
+
+  // AI rapport knop (alleen tussenpersoon)
+  if(isTussen()){
+    html+='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;margin-bottom:1.25rem">'
+      +'<div id="w-ai-out" style="display:none;margin-bottom:1rem"></div>'
+      +'<button class="btn" id="w-ai-btn" style="width:100%">&#9881; Genereer AI waarderingsrapport</button>'
+      +'</div>';
+  }
+
+  html+='</div>';
+  return html;
+}
+
+
+var logboekCache=null;
+
+async function renderLogboekScreen(app){
+  var faseNamen={voorgesprek:'Voorgesprek',kennismaking:'Kennismaking',pre_dd:'Pre-DD (LoI)',due_diligence:'Due Diligence',verkoop:'Verkoop / Closing'};
+  var fases=['voorgesprek','kennismaking','pre_dd','due_diligence','verkoop'];
+  var isBegOrAdmin=isTussen()||false;
+  app.innerHTML='<div style="max-width:700px;margin:0 auto;padding:2rem 1rem">'
+    +'<div style="display:flex;align-items:center;gap:12px;margin-bottom:1.5rem">'
+    +'<button class="btn-ghost btn-sm" onclick="S.screen=\'cover\';renderApp()">&#8592; Terug</button>'
+    +'<h2 style="font-family:Playfair Display,serif;font-size:1.2rem;color:var(--head);font-weight:600;margin:0">Traject logboek</h2>'
+    +'</div>'
+    +'<div id="lb-fases" style="display:flex;gap:6px;margin-bottom:1.25rem;flex-wrap:wrap"></div>'
+    +'<div id="lb-entries" style="margin-bottom:1.25rem"><div style="color:var(--muted);font-size:13px">Laden...</div></div>'
+    +(isBegOrAdmin?'<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem">'
+      +'<div style="display:flex;gap:8px;margin-bottom:.75rem">'
+      +'<button id="lb-tab-notitie" class="btn" style="font-size:12px;padding:6px 14px">&#128221; Notitie</button>'
+      +'<button id="lb-tab-meeting" class="btn-ghost" style="font-size:12px;padding:6px 14px">&#127909; Meeting vastleggen</button>'
+      +'</div>'
+      +'<div id="lb-panel-notitie">'
+      +'<textarea id="lb-bericht" rows="3" placeholder="Schrijf een logboeknotitie..." style="width:100%;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:IBM Plex Sans,sans-serif;font-size:13px;padding:10px 12px;outline:none;resize:vertical;margin-bottom:.75rem"></textarea>'
+      +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
+      +'<select id="lb-fase" style="background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:IBM Plex Sans,sans-serif;font-size:12px;padding:7px 10px;flex:1">'
+      +'<option value="">— Fase niet wijzigen —</option>'
+      +'<option value="voorgesprek">Voorgesprek</option>'
+      +'<option value="kennismaking">Kennismaking</option>'
+      +'<option value="pre_dd">Pre-DD (LoI)</option>'
+      +'<option value="due_diligence">Due Diligence</option>'
+      +'<option value="verkoop">Verkoop / Closing</option>'
+      +'</select>'
+      +'<button class="btn btn-sm" id="lb-submit">&#43; Opslaan</button>'
+      +'</div></div>'
+      +'<div id="lb-panel-meeting" style="display:none">'
+      +'<div style="font-size:12px;color:var(--muted);margin-bottom:.5rem">Voer vergadernotities in of plak een transcript. De AI structureert automatisch naar samenvatting, beslissingen en actiepunten.</div>'
+      +'<div style="display:flex;gap:8px;margin-bottom:.5rem">'
+      +'<input type="text" id="lb-meeting-titel" placeholder="Titel (bijv. Kennismaking 22 mei)" style="flex:1;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:IBM Plex Sans,sans-serif;font-size:13px;padding:9px 12px;outline:none">'
+      +'<input type="text" id="lb-meeting-deelnemers" placeholder="Deelnemers" style="flex:1;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:IBM Plex Sans,sans-serif;font-size:13px;padding:9px 12px;outline:none">'
+      +'</div>'
+      +'<textarea id="lb-meeting-tekst" rows="5" placeholder="Plak hier ruwe vergadernotities, opnametranscript of steekwoorden. AI structureert alles..." style="width:100%;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:IBM Plex Sans,sans-serif;font-size:13px;padding:10px 12px;outline:none;resize:vertical;margin-bottom:.75rem"></textarea>'
+      +'<div style="display:flex;gap:8px;align-items:center">'
+      +'<select id="lb-meeting-fase" style="background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:IBM Plex Sans,sans-serif;font-size:12px;padding:7px 10px;flex:1">'
+      +'<option value="">— Fase niet wijzigen —</option>'
+      +'<option value="voorgesprek">Voorgesprek</option>'
+      +'<option value="kennismaking">Kennismaking</option>'
+      +'<option value="pre_dd">Pre-DD (LoI)</option>'
+      +'<option value="due_diligence">Due Diligence</option>'
+      +'<option value="verkoop">Verkoop / Closing</option>'
+      +'</select>'
+      +'<button class="btn btn-sm" id="lb-meeting-submit" style="white-space:nowrap">&#9881; AI structureren &amp; opslaan</button>'
+      +'</div></div>'
+      +'</div>'
+    :'<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:.75rem 1rem;font-size:12px;color:var(--muted)">U kunt het logboek inzien. Alleen de begeleider en adviseur kunnen notities toevoegen.</div>')
+    +'</div>';
+
+  // Laad logboek
+  try{
+    var code=S.code;
+    var lr=await fetch(WORKER+'/mna/logboek/'+code);
+    var ld=await lr.json();
+    logboekCache=ld;
+    var huidigeFase=ld.traject_fase||'voorgesprek';
+    // Fases
+    var fDiv=document.getElementById('lb-fases');
+    if(fDiv){fDiv.innerHTML=fases.map(function(f,i){
+      var actief=f===huidigeFase;var geweest=fases.indexOf(huidigeFase)>i;
+      var kleur=actief?'var(--teal)':geweest?'var(--teal-dim)':'var(--border2)';
+      var bg=actief?'var(--teal-bg)':geweest?'rgba(26,122,94,.06)':'transparent';
+      return '<div style="display:flex;align-items:center;gap:4px">'
+        +(i>0?'<div style="width:16px;height:2px;background:'+kleur+';flex-shrink:0"></div>':'')
+        +'<div style="font-size:10px;font-weight:600;padding:4px 10px;border-radius:12px;border:1.5px solid '+kleur+';color:'+(actief?'var(--teal)':geweest?'var(--teal-dim)':'var(--muted)')+';background:'+bg+';white-space:nowrap">'+(faseNamen[f]||f)+'</div></div>';
+    }).join('');}
+    // Entries
+    var eDiv=document.getElementById('lb-entries');
+    if(eDiv){
+      var entries=ld.logboek||[];
+      if(!entries.length){eDiv.innerHTML='<div style="color:var(--muted);font-size:13px;font-style:italic;padding:1rem 0">Nog geen logboeknotities.</div>';}
+      else{eDiv.innerHTML=entries.map(function(e){
+        var dt=new Date(e.created_at).toLocaleString('nl-NL',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+        var isAdm=e.auteur_type==='admin';
+        return '<div style="padding:.75rem 1rem;margin-bottom:.5rem;border-radius:var(--r);background:'+(isAdm?'var(--teal-bg)':'var(--panel)')+';border:1px solid '+(isAdm?'var(--teal-dark)':'var(--border)')+';border-left:3px solid '+(isAdm?'var(--teal)':'var(--gold)')+'">'
+          +(e.fase_gewijzigd?'<div style="font-size:10px;font-weight:600;color:var(--teal);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">&#8594; Fase: '+(faseNamen[e.fase]||e.fase)+'</div>':'')
+          +'<div style="font-size:13px;color:var(--sub);line-height:1.7;white-space:pre-wrap">'+esc(e.bericht)+'</div>'
+          +'<div style="font-size:11px;color:var(--muted);margin-top:5px">'+esc(e.auteur)+' &middot; '+dt+'</div>'
+          +'</div>';
+      }).join('');eDiv.scrollTop=eDiv.scrollHeight;}
+    }
+  }catch(e){var ed=document.getElementById('lb-entries');if(ed)ed.innerHTML='<div style="color:var(--red);font-size:13px">Fout bij laden: '+e.message+'</div>';}
+
+  // Submit
+  if(isBegOrAdmin){
+    var lbBtn=document.getElementById('lb-submit');
+    if(lbBtn)lbBtn.addEventListener('click',async function(){
+      var bericht=document.getElementById('lb-bericht').value.trim();
+      var fase=document.getElementById('lb-fase').value;
+      if(!bericht&&!fase){toast('Voer een notitie in of selecteer een fase.','warn');return;}
+      lbBtn.disabled=true;lbBtn.textContent='Opslaan...';
+      try{
+        var lr=await fetch(WORKER+'/mna/logboek/'+S.code,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({bericht:bericht,nieuwe_fase:fase||undefined,auteur_naam:S.traject.begeleider_naam||'Begeleider'})});
+        var ld=await lr.json();
+        if(ld.ok){document.getElementById('lb-bericht').value='';document.getElementById('lb-fase').value='';renderLogboekScreen(app);}
+        else toast('Fout: '+(ld.error||'onbekend'),'err');
+      }catch(e){toast('Verbindingsfout.','err');}
+      lbBtn.disabled=false;lbBtn.textContent='+ Opslaan';
+    });
+
+    // Tab switching
+    var tabNotitie=document.getElementById('lb-tab-notitie');
+    var tabMeeting=document.getElementById('lb-tab-meeting');
+    var panelNotitie=document.getElementById('lb-panel-notitie');
+    var panelMeeting=document.getElementById('lb-panel-meeting');
+    if(tabNotitie&&tabMeeting){
+      tabNotitie.onclick=function(){
+        panelNotitie.style.display='';panelMeeting.style.display='none';
+        tabNotitie.className='btn';tabMeeting.className='btn-ghost';
+        tabNotitie.style.fontSize='12px';tabNotitie.style.padding='6px 14px';
+        tabMeeting.style.fontSize='12px';tabMeeting.style.padding='6px 14px';
+      };
+      tabMeeting.onclick=function(){
+        panelNotitie.style.display='none';panelMeeting.style.display='';
+        tabMeeting.className='btn';tabNotitie.className='btn-ghost';
+        tabNotitie.style.fontSize='12px';tabNotitie.style.padding='6px 14px';
+        tabMeeting.style.fontSize='12px';tabMeeting.style.padding='6px 14px';
+      };
+    }
+
+    // Meeting AI structureren
+    var meetBtn=document.getElementById('lb-meeting-submit');
+    if(meetBtn)meetBtn.addEventListener('click',async function(){
+      var titel=document.getElementById('lb-meeting-titel').value.trim();
+      var deelnemers=document.getElementById('lb-meeting-deelnemers').value.trim();
+      var tekst=document.getElementById('lb-meeting-tekst').value.trim();
+      var fase=document.getElementById('lb-meeting-fase').value;
+      if(!tekst){toast('Voer vergadernotities in.','warn');return;}
+      meetBtn.disabled=true;meetBtn.textContent='AI verwerkt...';
+      try{
+        var prompt='Structureer de volgende ruwe vergadernotities van een M&A traject in de accountancy-sector naar een professioneel vergaderverslag.\n\nVERGADERING: '+(titel||'Vergadering')+' | Deelnemers: '+(deelnemers||'onbekend')+'\n\nRUWE NOTITIES:\n'+tekst+'\n\nGeef terug in dit formaat:\n\n## Vergadering: [titel]\nDatum: [datum indien bekend]\nDeelnemers: [deelnemers]\n\n### Samenvatting\n[2-4 zinnen kerninhoud]\n\n### Besproken punten\n- [punt 1]\n- [punt 2]\n\n### Beslissingen\n- [beslissing 1]\n\n### Actiepunten\n- [ ] [actie] — [wie] — [wanneer]\n\n### Volgende stap\n[wat staat er gepland]\n\nCompact en professioneel. Alleen wat relevant is voor het M&A traject.';
+        var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:1500})});
+        var rawText=await resp.text();
+        var rd;try{rd=JSON.parse(rawText);}catch(e){throw new Error('Geen JSON: '+rawText.substring(0,150));}
+        if(!resp.ok)throw new Error('Fout: '+(rd.error||''));
+        var gestructureerd=rd.text||'Fout bij verwerken.';
+        // Sla op als logboeknotitie
+        var lr=await fetch(WORKER+'/mna/logboek/'+S.code,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({bericht:gestructureerd,nieuwe_fase:fase||undefined,auteur_naam:S.traject.begeleider_naam||'Begeleider'})});
+        var ld=await lr.json();
+        if(ld.ok){
+          document.getElementById('lb-meeting-titel').value='';
+          document.getElementById('lb-meeting-deelnemers').value='';
+          document.getElementById('lb-meeting-tekst').value='';
+          document.getElementById('lb-meeting-fase').value='';
+          // Ga terug naar notitie tab en herlaad
+          if(tabNotitie)tabNotitie.click();
+          renderLogboekScreen(app);
+        } else toast('Fout: '+(ld.error||'onbekend'),'err');
+      }catch(e){toast('Fout: '+e.message,'err');}
+      meetBtn.disabled=false;meetBtn.textContent='⚙ AI structureren & opslaan';
+    });
+  }
+}
+
+
+// VERWERKERSOVEREENKOMST
