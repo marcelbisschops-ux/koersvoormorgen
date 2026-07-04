@@ -22,7 +22,7 @@ Geordend van eenvoudig naar moeilijk. **Uren** = geschatte bouw- en testtijd met
 | 10 | Nieuwe sectorprofielen (inhoud + inbouw) | Sonnet | 2–4 u techniek per sector | €200–400 per sector | DD-velden/checklists/normen/infoverzoek — inhoud = Marcels expertise |
 | 11 | Pilot algemene DD-tool (MKB afronden) | Opus | 2–3 dagen | €1.600–2.400 | Bundelt #7+#8+#9 voor sector MKB → verkoopbaar algemeen product |
 | 12 | mna.html opsplitsen (refactor) | **Fable 5** | 2–4 dagen | €1.600–3.200 | **Alleen ná #4** (testsuite als vangnet); lange-adem werk waar Fable het verschil maakt |
-| 13 | Sectorparameters zelf-service voor adviseurs | Opus | 1–2 dagen | €800–1.600 | Sectorprofielen (DD-velden/checklists/AI-normen/prompts) van code naar database; adviseur vult/verifieert zelf de parameters voor zijn sector i.p.v. Marcel die per sector inbouwt (bouwt voort op #8–#10) |
+| 13 | ~~Sectorparameters zelf-service voor adviseurs~~ ✅ AFGEROND (globaal beheer) | Opus | 1–2 dagen | €800–1.600 | Sectorprofielen (label/aiNormen/fases/velden/checklists) van code → database. Worker: `DEFAULT_SECTOR_PROFIELEN` + tabel `sector_profielen` + GET `/mna/sectorprofielen` (merge defaults+DB) + admin POST. mna.html laadt uit DB (hardgecodeerde fallback). **Marilyn → Sectoren-tab**: label/benchmarks per sector bewerken, volledig profiel via JSON, sector toevoegen/verwijderen, reset naar standaard. Live end-to-end getest (opslaan → mna.html pikt op → reset). Backward-compatible, testsuite groen. Scope: globaal (admin). Per-adviseur = latere uitbreiding |
 
 **Quick wins (#1–3):** samen ~4–6 uur. **Hele backlog:** ruwweg 60–90 uur (extern €6.000–9.000).
 
