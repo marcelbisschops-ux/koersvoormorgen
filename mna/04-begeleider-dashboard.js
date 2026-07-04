@@ -447,9 +447,8 @@ function renderBegeleiderDashboard(app){
     var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:8000})});
     var rd=await resp.json();
     var tekst=rd.text||'Fout bij genereren';
-    // Sla concept op voor blokkadecheck
-    var conceptType=type==='bem'?(isSell?'bem_verk':'bem_koper'):type;
-    slaConceptOp(S.code, conceptType, tekst);
+    // (Concept-opslag verwijderd juli 2026: het endpoint bestond niet en de
+    //  blokkadecheck leest uit mna_doc_versies, niet uit concepten.)
     var kleuren={nda:'#7c5cbf',loi:'var(--gold)',bem:'#2a5ea0',excl:'#1a7a5e'};
     var labels={nda:'NDA',loi:'LoI',bem:'Bemiddelingsovereenkomst',excl:'Exclusiviteitsbrief'};
     out.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem">'
@@ -1355,22 +1354,34 @@ function renderBegeleiderDashboard(app){
     var prompt='M&A adviseur. Sector: '+(sectorProfielAi.label||'MKB')+'. SECTOR NORMEN: '+sectorNormenAi+'. Analyseer traject: '+esc(S.traject.kantoor_naam||S.code)+' ('+esc(S.traject.traject_type||'Verkoop')+')\n\nDUE DILIGENCE:'+dataSam+'\n\n## Samenvatting\n## Financieel\n## Sterktes\n## Risicos\n## Aanbevelingen\n\nNoem GEEN eigen waarderingsmultiple of concreet waarderingsbedrag — waardering gebeurt uitsluitend via de aparte functie "Waardering genereren". Als je de multiple uit de sectornormen wilt noemen, gebruik dan exact de range hierboven. Max 400 woorden.';
     var rd=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:3000})}).then(function(r){return r.json();}).catch(function(){return{};});
     var tekst=(rd.text||'Fout').replace(/## ([^\n]+)/g,'<strong style="display:block;margin:.75rem 0 .25rem;color:var(--head)">$1</strong>').replace(/\n/g,'<br>');
-    out.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;font-size:13px;color:var(--mid);line-height:1.8">'+tekst+'</div>';
-    btn.disabled=false;btn.textContent='&#9881; AI-analyse genereren';
+    out.innerHTML=bgAiBlok(tekst, Date.now());
+    // Bewaar lokaal zodat de analyse na herladen terugkomt en de knop de juiste staat toont
+    try{ localStorage.setItem('ki_ai_analyse_'+S.code, JSON.stringify({tekst:tekst, ts:Date.now()})); }catch(e){}
+    btn.disabled=false;btn.textContent='↻ Opnieuw analyseren';
   };
+
+  // Eerder gegenereerde analyse terughalen: toon 'm meteen en zet de knop op "Opnieuw"
+  function bgAiBlok(tekstHtml, ts){
+    return '<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;font-size:13px;color:var(--mid);line-height:1.8">'
+      +'<div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">AI-analyse &middot; gegenereerd '+new Date(ts).toLocaleString('nl-NL',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})+'</div>'
+      +tekstHtml+'</div>';
+  }
+  (function herstelBgAi(){
+    try{
+      var opgeslagen=JSON.parse(localStorage.getItem('ki_ai_analyse_'+S.code)||'null');
+      if(!opgeslagen||!opgeslagen.tekst)return;
+      var out=document.getElementById('bg-ai-out');
+      var btn=document.getElementById('bg-ai-actie');
+      if(out){out.style.display='block';out.innerHTML=bgAiBlok(opgeslagen.tekst, opgeslagen.ts||Date.now());}
+      if(btn)btn.textContent='↻ Opnieuw analyseren';
+    }catch(e){}
+  })();
 }
 
 
 
 
 
-  async function slaConceptOp(code, docType, tekst) {
-    try {
-      await fetch(WORKER+'/mna/doc/concept', {
-        method: 'POST',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({code: code, doc_type: docType, tekst: tekst, auteur: S.traject&&S.traject.begeleider_naam||'Begeleider'})
-      });
-    } catch(e) {}
-  }
+  // (slaConceptOp verwijderd juli 2026 — dood gewicht: het endpoint bestond niet
+  //  en niets las de concepten terug.)
 

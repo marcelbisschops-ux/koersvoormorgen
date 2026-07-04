@@ -217,19 +217,8 @@ function renderDashboard(){
   if(isSuperAdmin){var stb=document.getElementById('t-sectoren');if(stb)stb.addEventListener('click',function(){activeTab='sectoren';renderDashboard();});}
   if(isSuperAdmin){var gtb=document.getElementById('t-geb');if(gtb)gtb.addEventListener('click',function(){activeTab='gebruikers';renderDashboard();});}
   renderTab();
-  // Systeem waarschuwingen
-  var swDiv=document.getElementById('sys-waarschuwingen');
-  if(swDiv){
-    var warns=[];
-    // KvK API: niet in gebruik
-    // Signhost nog niet gekoppeld
-    warns.push('<div style="background:#f0f4ff;border:1px solid #7c9cbf;border-radius:var(--r);padding:.6rem 1rem;font-size:12px;display:flex;align-items:center;gap:10px">'
-      +'<span style="font-size:16px">&#128394;&#65039;</span>'
-      +'<span><strong>Digitaal ondertekenen:</strong> Signhost nog niet gekoppeld. <a href="https://www.signhost.com/" target="_blank" style="color:var(--teal)">Account aanmaken</a> → API key ophalen → toevoegen als secret <code>SIGNHOST_API_KEY</code>.</span>'
-      +'<button onclick="this.parentElement.parentElement.remove()" style="margin-left:auto;background:transparent;border:none;cursor:pointer;color:var(--muted);font-size:16px">&times;</button>'
-      +'</div>');
-    swDiv.innerHTML=warns.join('');
-  }
+  // Systeemwaarschuwingen: Signhost-herinnering bewust verwijderd (verzoek Marcel, juli 2026).
+  // De container #sys-waarschuwingen blijft beschikbaar voor eventuele toekomstige meldingen.
 }
 
 function renderTab(){
@@ -2012,7 +2001,7 @@ async function toonBewerkModal(id, naam){
     +'<div class="field"><label>Naam onderneming</label><input type="text" id="bw-k" value="'+esc(t.kantoor_naam||'')+'"></div>'
     +'<div class="field"><label>Contactpersoon <span style="color:var(--red)">*</span></label><input type="text" id="bw-c" value="'+esc(t.contact_naam||'')+'"></div>'
     +'<div class="field"><label>E-mail contactpersoon <span style="color:var(--red)">*</span></label><input type="email" id="bw-e" value="'+esc(t.contact_email||'')+'"></div>'
-    +'<div class="field"><label>KvK-nummer verkoper</label><div style="display:flex;gap:6px"><input type="text" id="bw-kvk" value="'+esc(t.verkoper_kvk||'')+'" style="flex:1"><button type="button" id="bw-btn-kvk-verk" class="btn-ghost" style="font-size:11px;padding:6px 10px">&#128269; KvK</button></div></div>'
+    +'<div class="field"><label>KvK-nummer verkoper</label><input type="text" id="bw-kvk" value="'+esc(t.verkoper_kvk||'')+'"></div>'
     +'<div class="field"><label>Adres verkoper <span style="color:var(--red)">*</span></label><input type="text" id="bw-adres" value="'+esc(t.verkoper_adres||'')+'"></div>'
     +'<div style="border-bottom:1px solid var(--border);margin:.75rem 0 .75rem;padding-bottom:.25rem"><div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">Begeleider</div></div>'
     +'<div class="field"><label>Naam begeleider <span style="color:var(--red)">*</span></label><input type="text" id="bw-bg-naam" value="'+esc(t.begeleider_naam||'Marcel Bisschops')+'"></div>'
@@ -2022,34 +2011,16 @@ async function toonBewerkModal(id, naam){
     +'<div class="field"><label>Rechtsvorm</label><select id="bw-koper-rv"><option value="">— Kies rechtsvorm —</option><option value="B.V."'+(t.koper_rechtsvorm==='B.V.'?' selected':'')+'>B.V. (Besloten Vennootschap)</option><option value="N.V."'+(t.koper_rechtsvorm==='N.V.'?' selected':'')+'>N.V. (Naamloze Vennootschap)</option><option value="Eenmanszaak"'+(t.koper_rechtsvorm==='Eenmanszaak'?' selected':'')+'>Eenmanszaak</option><option value="V.O.F."'+(t.koper_rechtsvorm==='V.O.F.'?' selected':'')+'>V.O.F.</option><option value="Maatschap"'+(t.koper_rechtsvorm==='Maatschap'?' selected':'')+'>Maatschap</option><option value="Coöperatie"'+(t.koper_rechtsvorm==='Coöperatie'?' selected':'')+'>Coöperatie</option><option value="Stichting"'+(t.koper_rechtsvorm==='Stichting'?' selected':'')+'>Stichting</option><option value="Holding B.V."'+(t.koper_rechtsvorm==='Holding B.V.'?' selected':'')+'>Holding B.V.</option><option value="C.V."'+(t.koper_rechtsvorm==='C.V.'?' selected':'')+'>C.V.</option></select></div>'
     +'<div class="field"><label id=\"m-p2-contact-lbl\">Contactpersoon koper</label><input type="text" id="bw-koper-contact" value="'+esc(t.koper_contact||'')+'"></div>'
     +'<div class="field"><label>E-mail koper <span style="color:var(--red)">*</span></label><input type="email" id="bw-koper-email" value="'+esc(t.koper_email||'')+'"></div>'
-    +'<div class="field"><label>KvK-nummer koper</label><div style="display:flex;gap:6px"><input type="text" id="bw-koper-kvk" value="'+esc(t.koper_kvk||'')+'" style="flex:1"><button type="button" id="bw-btn-kvk-koper" class="btn-ghost" style="font-size:11px;padding:6px 10px">&#128269; KvK</button></div></div>'
+    +'<div class="field"><label>KvK-nummer koper</label><input type="text" id="bw-koper-kvk" value="'+esc(t.koper_kvk||'')+'"></div>'
     +'<div class="field"><label>Adres koper <span style="color:var(--red)">*</span></label><input type="text" id="bw-koper-adres" value="'+esc(t.koper_adres||'')+'"></div>'
     +'<div style="border-bottom:1px solid var(--border);margin:.75rem 0;padding-bottom:.25rem"><div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">Tekenbevoegdheid</div></div>'    +'<div style="font-size:11px;color:var(--muted);margin-bottom:.75rem;line-height:1.6">Leg vast wie namens welke partij bevoegd is te tekenen. Dit wordt gebruikt bij het opstellen en verzenden van overeenkomsten.</div>'    +'<div style="display:flex;gap:12px">'    +'<div class="field" style="flex:1"><label>Tekenbevoegde verkoper</label><input type="text" id="bw-verk-teken" value="'+esc(t.verkoper_teken||t.contact_naam||'')+'" placeholder="Naam(en) bevoegd te tekenen"></div>'    +'<div class="field" style="flex:1"><label>Functie / grondslag</label><input type="text" id="bw-verk-teken-grond" value="'+esc(t.verkoper_teken_grond||'')+'" placeholder="bijv. bestuurder, gevolmachtigde"></div>'    +'</div>'    +'<div class="field"><label>Overige tekenaars verkoper <span style="font-weight:400;color:var(--muted)">(optioneel)</span></label><input type="text" id="bw-verk-teken2" value="'+esc(t.verkoper_teken2||'')+'" placeholder="bijv. ook handtekening overige vennoten vereist?"></div>'    +'<div style="display:flex;gap:12px">'    +'<div class="field" style="flex:1"><label>Tekenbevoegde koper</label><input type="text" id="bw-koper-teken" value="'+esc(t.koper_teken||t.koper_contact||'')+'" placeholder="Naam bevoegd te tekenen"></div>'    +'<div class="field" style="flex:1"><label>Functie / grondslag</label><input type="text" id="bw-koper-teken-grond" value="'+esc(t.koper_teken_grond||'')+'" placeholder="bijv. directeur, op basis van volmacht"></div>'    +'</div>'    +'<div class="field"><label>Tekeningsstatus</label><select id="bw-teken-status"><option value="">— Niet gecheckt —</option><option value="geverifieerd"'+(t.teken_status==='geverifieerd'?' selected':'')+'>✓ Geverifieerd (KvK / volmacht gezien)</option><option value="op_basis_volmacht"'+(t.teken_status==='op_basis_volmacht'?' selected':'')+'>Op basis van volmacht (niet geverifieerd)</option><option value="actie_vereist"'+(t.teken_status==='actie_vereist'?' selected':'')+'>⚠ Actie vereist — bevoegdheid nog te bevestigen</option></select></div>'    +'<div style="border-bottom:1px solid var(--border);margin:.75rem 0;padding-bottom:.25rem"><div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">Notities & context</div></div>'    +'<div class="field"><label>Interne notitie</label><textarea id="bw-notitie" rows="4" placeholder="Context, afspraken, bijzonderheden, contacten buiten het systeem...">'+esc(t.notitie||'')+'</textarea></div>'    +'<div style="display:flex;gap:12px">'    +'<div class="field" style="flex:1"><label>Volgend overleg</label><input type="text" id="bw-volgend-overleg" value="'+esc(t.volgend_overleg||'')+'" placeholder="datum, tijd, locatie"></div>'    +'<div class="field" style="flex:1"><label>Extra contactpersoon verkoper</label><input type="text" id="bw-extra-contact" value="'+esc(t.extra_contact||'')+'" placeholder="naam + e-mail"></div>'    +'</div>'    +'<div id="bw-err" style="display:none;color:var(--red);font-size:12px;margin-bottom:.5rem"></div>'    +'<div style="display:flex;gap:10px;justify-content:flex-end;margin-top:.5rem"><button class="btn-ghost" id="bw-ann">Annuleren</button><button class="btn" id="bw-ok">&#10003; Opslaan</button></div>';
   ov.appendChild(mo);document.body.appendChild(ov);
   ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
   document.getElementById('bw-ann').addEventListener('click',function(){document.body.removeChild(ov);});
 
-  // KvK knoppen in bewerk modal
-  document.getElementById('bw-btn-kvk-verk').addEventListener('click',async function(){
-    var kvk=document.getElementById('bw-kvk').value.trim().replace(/[^0-9]/g,'');
-    if(kvk.length!==8){toast('8 cijfers vereist','warn');return;}
-    this.textContent='...';this.disabled=true;
-    var rk=await fetch(WORKER+'/kvk/'+kvk);var dk=await rk.json();
-    if(dk.ok){if(dk.adres)document.getElementById('bw-adres').value=dk.adres;}
-    else toast(dk.error||'Niet gevonden','warn');
-    this.textContent='&#128269; KvK';this.disabled=false;
-  });
-  document.getElementById('bw-btn-kvk-koper').addEventListener('click',async function(){
-    var kvk=document.getElementById('bw-koper-kvk').value.trim().replace(/[^0-9]/g,'');
-    if(kvk.length!==8){toast('8 cijfers vereist','warn');return;}
-    this.textContent='...';this.disabled=true;
-    var rk=await fetch(WORKER+'/kvk/'+kvk);var dk=await rk.json();
-    if(dk.ok){
-      if(dk.adres)document.getElementById('bw-koper-adres').value=dk.adres;
-      if(dk.rechtsvorm&&!document.getElementById('bw-koper-rv').value)document.getElementById('bw-koper-rv').value=dk.rechtsvorm;
-    } else toast(dk.error||'Niet gevonden','warn');
-    this.textContent='&#128269; KvK';this.disabled=false;
-  });
+  // KvK-opzoekknoppen verwijderd (juli 2026): het /kvk/-endpoint bestond niet in de
+  // worker, dus de knoppen gaven altijd "Niet gevonden". KvK-nummers blijven gewoon
+  // handmatig invulbaar.
 
   document.getElementById('bw-ok').addEventListener('click',async function(){
     var btn=this;btn.disabled=true;btn.textContent='Opslaan...';

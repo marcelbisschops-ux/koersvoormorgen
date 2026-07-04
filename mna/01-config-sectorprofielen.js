@@ -13,12 +13,9 @@ var BRAND = {
   adres: 'Grotestraat 13, 5841AA Oploo'
 };
 
-function versieLabel(){var v=window._versie||'v1.11';return '<span style="font-size:10px;font-weight:600;font-family:IBM Plex Mono,monospace;color:var(--muted);margin-left:8px">'+(v.startsWith('v')?v:'v'+v)+'</span>';}
-
-// Laad versie bij startup
-fetch(WORKER+'/mna/versie').then(function(r){return r.json();}).then(function(d){
-  if(d.versie){window._versie=d.versie;}
-}).catch(function(){});
+// Versienummer bewust niet meer getoond in de UI (verzoek Marcel, juli 2026).
+// De functie blijft bestaan omdat headers 'm aanroepen; hij levert nu niets op.
+function versieLabel(){return '';}
 
 function triggerFileUpload(faseId) {
   var inp = document.createElement('input');
