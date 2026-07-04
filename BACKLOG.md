@@ -6,6 +6,7 @@ Geordend van eenvoudig naar moeilijk. **Uren** = geschatte bouw- en testtijd met
 - Sonnet: `/model claude-sonnet-5` — routinewerk, snelst/goedkoopst in verbruik
 - Opus: `/model claude-opus-4-8` — ontwerp- en integratiewerk
 - Fable: `/model claude-fable-5` — alleen voor de grote refactor (#12); dubbel tokenverbruik, dus niet voor routinetaken
+- NB: Fable 5 zit t/m **7 juli 2026** gratis in Marcels Pro-abonnement ("Included until July 7"). Als Fable daarna niet meer beschikbaar is: gebruik voor #12 gewoon Opus 4.8 — met de E2E-testsuite (#4) als vangnet is dat een prima alternatief. De refactor NIET haasten om de actieperiode te halen.
 
 | # | Taak | Model | Inspanning | €-indicatie extern | Toelichting |
 |---|------|-------|-----------|--------------------|-------------|
