@@ -181,6 +181,31 @@ async function main() {
     await api('POST', '/mna/logboek/' + hoofdTraject.tussen_code, { body: { nieuwe_fase: 'voorgesprek', auteur_naam: 'E2E Test' } });
   }
 
+  // ─────────────── STAP 7b: GEFASEERDE KOPER-TOEGANG (per categorie) ───────────────
+  kop('STAP 7b · Gefaseerde koper-toegang per DD-categorie');
+  {
+    // Tweede categorie met data zodat we filtering kunnen aantonen (financieel bestaat al uit stap 6)
+    await api('POST', '/mna/save', { body: { code: hoofdTraject.code, fase_id: 'commercieel', data_json: { commercieel_klanten: { label: 'Aantal klanten', value: '120' } } } });
+
+    // Alleen 'financieel' vrijgeven (force=1 omslaat de NDA-check voor de test)
+    const zet = await api('POST', '/mna/koper-categorieen/' + hoofdTraject.code + '?force=1', { adminKey: ADMIN, body: { categorieen: ['financieel'] } });
+    check('categorie-vrijgave ok:true', zet.json && zet.json.ok === true, JSON.stringify(zet.json));
+    check('endpoint zet koper_vrijgegeven=1', zet.json && zet.json.koper_vrijgegeven === 1, JSON.stringify(zet.json));
+
+    // Koper logt in: moet ALLEEN financieel zien, niet commercieel
+    const kLogin = await api('POST', '/mna/traject/' + hoofdTraject.koper_code, { body: {} });
+    const faseIds = (kLogin.json && Array.isArray(kLogin.json.data)) ? kLogin.json.data.map(d => d.fase_id) : [];
+    check('koper ontvangt financieel-data', faseIds.includes('financieel'), JSON.stringify(faseIds));
+    check('koper ontvangt GEEN niet-vrijgegeven commercieel-data', !faseIds.includes('commercieel'), JSON.stringify(faseIds));
+    check('login geeft koper_categorieen mee', kLogin.json && Array.isArray(kLogin.json.koper_categorieen) && kLogin.json.koper_categorieen[0] === 'financieel', JSON.stringify(kLogin.json && kLogin.json.koper_categorieen));
+
+    // Volledig intrekken → koper ziet niets meer
+    const leeg = await api('POST', '/mna/koper-categorieen/' + hoofdTraject.code, { adminKey: ADMIN, body: { categorieen: [] } });
+    check('intrekken zet koper_vrijgegeven=0', leeg.json && leeg.json.koper_vrijgegeven === 0, JSON.stringify(leeg.json));
+    const kLeeg = await api('POST', '/mna/traject/' + hoofdTraject.koper_code, { body: {} });
+    check('koper ziet geen enkele DD-data na intrekken', kLeeg.json && Array.isArray(kLeeg.json.data) && kLeeg.json.data.length === 0, JSON.stringify(kLeeg.json && kLeeg.json.data && kLeeg.json.data.length));
+  }
+
   // ─────────────── STAP 8: DOCUMENTUPLOAD + AI-EXTRACTIE (--ai) ───────────────
   kop('STAP 8 · Documentupload + AI-extractie');
   if (DOE_AI) {
