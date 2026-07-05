@@ -864,6 +864,63 @@ function renderBegeleiderDashboard(app){
     };
   }
 
+  // ===== EIGEN DOCUMENT VERSTUREN: los van de contracten-module, puur bestand delen =====
+  function toonEigenDocumentModal(){
+    var t2=S.traject||{};
+    var ontvangers=[];
+    if(t2.contact_email)ontvangers.push({label:'Verkoper ('+esc(t2.contact_email)+')',email:t2.contact_email,checked:true});
+    if(t2.koper_email)ontvangers.push({label:'Koper ('+esc(t2.koper_email)+')',email:t2.koper_email,checked:false});
+    var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:400;display:flex;align-items:center;justify-content:center;padding:1.5rem';
+    var mo=document.createElement('div');mo.style.cssText='background:#fff;border-radius:10px;padding:2rem;max-width:480px;width:100%;max-height:92vh;overflow-y:auto';
+    mo.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.15rem;color:#1a1815;font-weight:600;margin-bottom:.25rem">&#128206; Eigen document versturen</div>'
+      +'<div style="font-size:12px;color:#8a8880;margin-bottom:1.25rem">Upload een bestaand PDF- of Word-bestand en verstuur het rechtstreeks — geen AI, geen sjabloon.</div>'
+      +'<div style="margin-bottom:1rem"><label style="font-size:10px;font-weight:600;text-transform:uppercase;color:#8a8880;display:block;margin-bottom:4px">Bestand</label>'
+      +'<input type="file" id="ed-file" accept=".pdf,.docx,.doc,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword" style="font-size:13px;width:100%"></div>'
+      +'<div style="margin-bottom:1rem"><label style="font-size:10px;font-weight:600;text-transform:uppercase;color:#8a8880;display:block;margin-bottom:6px">Versturen naar</label>'
+      +ontvangers.map(function(o,i){return '<label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-bottom:4px;cursor:pointer"><input type="checkbox" class="ed-ontvanger" value="'+esc(o.email)+'" '+(o.checked?'checked':'')+'> '+o.label+'</label>';}).join('')
+      +(ontvangers.length?'':'<div style="font-size:12px;color:#e05252">Geen e-mailadressen bekend voor dit traject.</div>')
+      +'</div>'
+      +'<div style="margin-bottom:1rem"><label style="font-size:10px;font-weight:600;text-transform:uppercase;color:#8a8880;display:block;margin-bottom:4px">Bericht (optioneel)</label>'
+      +'<textarea id="ed-bericht" rows="3" style="width:100%;background:#f0eeea;border:1px solid #c8c5bc;border-radius:6px;padding:7px 11px;font-family:IBM Plex Sans,sans-serif;font-size:13px;resize:vertical" placeholder="Korte toelichting bij het document..."></textarea></div>'
+      +'<div id="ed-err" style="display:none;color:#e05252;font-size:12px;margin-bottom:.75rem"></div>'
+      +'<div style="display:flex;gap:8px;justify-content:flex-end">'
+      +'<button id="ed-ann" style="background:transparent;border:1px solid #c8c5bc;padding:8px 16px;border-radius:6px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:13px">Annuleren</button>'
+      +'<button id="ed-ok" style="background:#1a7a5e;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:13px;font-weight:600">&#9993; Versturen</button>'
+      +'</div>';
+    ov.appendChild(mo);document.body.appendChild(ov);
+    ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
+    document.getElementById('ed-ann').onclick=function(){document.body.removeChild(ov);};
+
+    document.getElementById('ed-ok').onclick=async function(){
+      var btn=this;var errEl=document.getElementById('ed-err');errEl.style.display='none';
+      var fileInput=document.getElementById('ed-file');
+      var f=fileInput.files[0];
+      if(!f){errEl.textContent='Kies eerst een bestand.';errEl.style.display='block';return;}
+      if(!eigenDocTypeOk(f)){errEl.textContent='Alleen PDF- of Word-bestanden (.pdf, .docx, .doc) zijn toegestaan.';errEl.style.display='block';return;}
+      if(f.size>8000000){errEl.textContent='Bestand te groot (max 8 MB).';errEl.style.display='block';return;}
+      var toList=Array.prototype.slice.call(document.querySelectorAll('.ed-ontvanger:checked')).map(function(c){return c.value;});
+      if(!toList.length){errEl.textContent='Kies minstens één ontvanger.';errEl.style.display='block';return;}
+      btn.disabled=true;btn.textContent='Versturen...';
+      try{
+        var dataUrl=await new Promise(function(resolve,reject){
+          var reader=new FileReader();
+          reader.onload=function(e){resolve(String(e.target.result));};
+          reader.onerror=reject;
+          reader.readAsDataURL(f);
+        });
+        var base64=dataUrl.split(',')[1]||'';
+        var mime=f.type||(f.name.toLowerCase().endsWith('.docx')?'application/vnd.openxmlformats-officedocument.wordprocessingml.document':f.name.toLowerCase().endsWith('.doc')?'application/msword':'application/pdf');
+        var r=await fetch(WORKER+'/mna/document/eigen/versturen',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+          code:S.code, bestand_base64:base64, bestand_naam:f.name, bestand_mime:mime, to:toList, bericht:document.getElementById('ed-bericht').value.trim()
+        })});
+        var d=await r.json();
+        if(!d.ok){errEl.textContent=d.error||'Versturen mislukt.';errEl.style.display='block';btn.disabled=false;btn.textContent='✉ Versturen';return;}
+        document.body.removeChild(ov);
+        toast('Document verstuurd.','ok');
+      }catch(e){errEl.textContent='Verbindingsfout — probeer opnieuw.';errEl.style.display='block';btn.disabled=false;btn.textContent='✉ Versturen';}
+    };
+  }
+
   // ===== CONCEPT-SPA (koopovereenkomst): werkdocument voor de jurist, print-only =====
   function toonSpaModal(){
     var t2=S.traject||{};
@@ -951,6 +1008,7 @@ function renderBegeleiderDashboard(app){
   document.getElementById('bg-dealvoorstel-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op met ' + BRAND.kort + '.','err');return;} toonDocWaarschuwing('dealvoorstel', function(){ toonDealvoorstelModal(); }); };
   document.getElementById('bg-bieding-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op met ' + BRAND.kort + '.','err');return;} toonDocWaarschuwing('bieding', function(){ toonBiedingModal(); }); };
   document.getElementById('bg-spa-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op met ' + BRAND.kort + '.','err');return;} toonDocWaarschuwing('spa', function(){ toonSpaModal(); }); };
+  document.getElementById('bg-eigendoc-actie').onclick=function(){ toonEigenDocumentModal(); };
 
   document.getElementById('bg-gesprek-actie').onclick=function(){ openBgGesprekForm(null); };
 
