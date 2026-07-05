@@ -457,7 +457,11 @@ async function openTraject(id){
               </div>
             </div>`:''}
           </div>
-          <div class="info-box" style="margin-top:1rem">Verkoper en koper loggen in via <strong>koersvoormorgen.nl/mna.html</strong></div>
+          ${t.tussen_code?`<div class="info-box" style="margin-top:1rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap">
+            <span>Hier beheert u trajecten. Om dít traject te <strong>begeleiden</strong> (NDA/LoI, waardering, AI-analyse, informatieverzoek) logt u zelf ook in op mna.html.</span>
+            <a href="mna.html?code=${esc(t.tussen_code)}" target="_blank" class="btn btn-sm" style="text-decoration:none;white-space:nowrap">Open als begeleider &rarr;</a>
+          </div>`:''}
+          <div class="info-box" style="margin-top:.5rem">Verkoper en koper loggen in via <strong>koersvoormorgen.nl/mna.html</strong></div>
         </div>
       </div>
 
@@ -783,7 +787,11 @@ function renderDetail(t){
             ${t.koper_code?`<div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Koperscode</div><div class="code-box"><span class="code-val-gold">${esc(t.koper_code)}</span><button class="copy-btn" onclick="navigator.clipboard.writeText('${esc(t.koper_code)}');this.textContent='✓'">Kopieer</button></div></div>`:''}
             ${t.tussen_code?`<div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Uw tussenpersoonscode</div><div class="code-box"><span class="code-val" style="color:var(--mid)">${esc(t.tussen_code)}</span><button class="copy-btn" onclick="navigator.clipboard.writeText('${esc(t.tussen_code)}');this.textContent='✓'">Kopieer</button></div></div>`:''}
           </div>
-          <div class="info-box" style="margin-top:1rem">Verkoper en koper loggen in via <strong>koersvoormorgen.nl/mna.html</strong></div>
+          ${t.tussen_code?`<div class="info-box" style="margin-top:1rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap">
+            <span>Hier beheert u trajecten. Om dít traject te <strong>begeleiden</strong> (NDA/LoI, waardering, AI-analyse, informatieverzoek) logt u zelf ook in op mna.html.</span>
+            <a href="mna.html?code=${esc(t.tussen_code)}" target="_blank" class="btn btn-sm" style="text-decoration:none;white-space:nowrap">Open als begeleider &rarr;</a>
+          </div>`:''}
+          <div class="info-box" style="margin-top:.5rem">Verkoper en koper loggen in via <strong>koersvoormorgen.nl/mna.html</strong></div>
         </div>
       </div>
 
