@@ -341,8 +341,12 @@ function renderHuisstijlModal(){
     <div style="font-family:Playfair Display,serif;font-size:1.15rem;color:var(--head);font-weight:600;margin-bottom:.25rem">&#127912; Eigen huisstijl</div>
     <div style="font-size:12px;color:var(--muted);margin-bottom:1.25rem;line-height:1.6">Deze instellingen gelden voor de trajecten die u aanmaakt — uw verkoper en koper zien uw eigen naam/kleur/logo in plaats van "${esc(BRAND.platform)}". Laat een veld leeg om de standaard te gebruiken.</div>
     <div class="field" style="margin-bottom:1rem"><label>Eigen platformnaam</label><input type="text" id="hs-naam" value="${esc(b.brand_naam)}" placeholder="${esc(BRAND.platform)}" maxlength="60"></div>
-    <div class="field" style="margin-bottom:1rem"><label>Accentkleur (hex)</label><input type="text" id="hs-kleur" value="${esc(b.brand_kleur)}" placeholder="#1a7a5e"></div>
-    <div class="field" style="margin-bottom:1.25rem"><label>Logo-URL (https, vierkant/breed beeld werkt het best)</label><input type="text" id="hs-logo" value="${esc(b.brand_logo_url)}" placeholder="https://uwdomein.nl/logo.png"></div>
+    <div class="field" style="margin-bottom:1rem"><label>Accentkleur</label><div style="display:flex;align-items:center;gap:10px"><input type="color" id="hs-kleur" value="${esc(b.brand_kleur)||'#1a7a5e'}" style="width:48px;height:36px;padding:2px;border:1px solid var(--border);border-radius:6px;cursor:pointer"><span style="font-size:12px;color:var(--muted)">Klik op het vlak om een kleur te kiezen</span></div></div>
+    <div class="field" style="margin-bottom:1.25rem"><label>Logo</label>
+      <div id="hs-logo-preview" style="margin-bottom:.5rem;${b.brand_logo_url?'':'display:none'}"><img id="hs-logo-img" src="${esc(b.brand_logo_url||'')}" style="height:40px;max-width:160px;object-fit:contain;border:1px solid var(--border);border-radius:6px;padding:4px;background:#fafafa"></div>
+      <input type="file" id="hs-logo-file" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml" style="font-size:12px">
+      <div style="font-size:11px;color:var(--muted);margin-top:4px">PNG, JPG, WEBP, GIF of SVG — max 1,5 MB.${b.brand_logo_url?' <a href="#" id="hs-logo-verwijder" style="color:var(--teal)">Logo verwijderen</a>':''}</div>
+    </div>
     <div id="hs-err" class="err-msg"></div>
     <div style="display:flex;gap:8px;justify-content:flex-end">
       <button id="hs-ann" class="btn-outline">Annuleren</button>
@@ -351,19 +355,45 @@ function renderHuisstijlModal(){
   ov.appendChild(mo);document.body.appendChild(ov);
   ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
   ge('hs-ann').onclick=function(){document.body.removeChild(ov);};
+
+  var nieuwLogoBase64=null, nieuwLogoMime=null, logoVerwijderen=false;
+  ge('hs-logo-file').onchange=function(){
+    var f=this.files[0];
+    if(!f)return;
+    if(f.size>1500000){toast('Bestand te groot (max 1,5 MB).','err');this.value='';return;}
+    var reader=new FileReader();
+    reader.onload=function(e){
+      var dataUrl=String(e.target.result);
+      nieuwLogoBase64=dataUrl.split(',')[1]||'';
+      nieuwLogoMime=f.type||'image/png';
+      logoVerwijderen=false;
+      ge('hs-logo-img').src=dataUrl;
+      ge('hs-logo-preview').style.display='block';
+    };
+    reader.readAsDataURL(f);
+  };
+  var verwijderLink=document.getElementById('hs-logo-verwijder');
+  if(verwijderLink)verwijderLink.onclick=function(e){
+    e.preventDefault();
+    logoVerwijderen=true;nieuwLogoBase64=null;nieuwLogoMime=null;
+    ge('hs-logo-preview').style.display='none';
+    ge('hs-logo-file').value='';
+    toast('Logo wordt verwijderd bij opslaan.','ok');
+  };
+
   ge('hs-ok').onclick=async function(){
     var btn=this;var err=ge('hs-err');err.style.display='none';
     var naam=ge('hs-naam').value.trim();
     var kleur=ge('hs-kleur').value.trim();
-    var logo=ge('hs-logo').value.trim();
-    if(kleur&&!/^#[0-9a-fA-F]{6}$/.test(kleur)){err.textContent='Kleur moet een hex-code zijn, bijv. #1a7a5e';err.style.display='block';return;}
-    if(logo&&!/^https:\/\//.test(logo)){err.textContent='Logo-URL moet met https:// beginnen';err.style.display='block';return;}
     btn.disabled=true;btn.textContent='Opslaan...';
     try{
-      var r=await fetch(WORKER+'/adviseur/branding',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:G.email,wachtwoord:G.ww,brand_naam:naam,brand_kleur:kleur,brand_logo_url:logo})});
+      var payload={email:G.email,wachtwoord:G.ww,brand_naam:naam,brand_kleur:kleur};
+      if(nieuwLogoBase64){payload.logo_base64=nieuwLogoBase64;payload.logo_mime=nieuwLogoMime;}
+      if(logoVerwijderen)payload.verwijder_logo=true;
+      var r=await fetch(WORKER+'/adviseur/branding',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
       var d=await r.json();
       if(!r.ok||!d.ok){err.textContent=d.error||'Opslaan mislukt.';err.style.display='block';btn.disabled=false;btn.textContent='Opslaan';return;}
-      G.branding={brand_naam:naam,brand_kleur:kleur,brand_logo_url:logo};
+      G.branding={brand_naam:naam,brand_kleur:kleur,brand_logo_url:d.logo_url||''};
       document.body.removeChild(ov);
       toast('Huisstijl opgeslagen.','ok');
     }catch(e){err.textContent='Verbindingsfout — probeer opnieuw.';err.style.display='block';btn.disabled=false;btn.textContent='Opslaan';}
