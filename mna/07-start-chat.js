@@ -14,6 +14,19 @@ document.title = 'M&A Begeleiding - ' + BRAND.platform;
 
 renderApp();
 
+// Vanuit adv.html kan een begeleider direct doorklikken naar zijn eigen traject
+// (mna.html?code=XXXX) — vult de toegangscode automatisch in en logt meteen in.
+(function autoLoginViaUrl(){
+  var codeParam = new URLSearchParams(location.search).get('code');
+  if (!codeParam) return;
+  var codeInput = document.getElementById('l-code');
+  var loginBtn = document.getElementById('l-btn');
+  if (codeInput && loginBtn) {
+    codeInput.value = codeParam.toUpperCase();
+    loginBtn.click();
+  }
+})();
+
 // ============================================================
 // CHAT SYSTEEM
 // ============================================================
