@@ -660,7 +660,9 @@ function bindAll(){
         if(isTussen()){
           S._bgKey=code;S.screen='begeleider';
           checkVOK(code).then(function(vokStatus){
-            if(!vokStatus.getekend){ toonVOKPopup(code, function(){ renderApp(); }); }
+            // Ook opnieuw tonen als er een nieuwere versie is dan wat eerder getekend is —
+            // anders wordt een tekstwijziging (bv. bewaartermijn) nooit meer voorgelegd.
+            if(!vokStatus.getekend||vokStatus.versie!==VOK_VERSIE){ toonVOKPopup(code, function(){ renderApp(); }); }
             else { renderApp(); }
           }).catch(function(){ renderApp(); });
           return; // renderApp wordt via checkVOK afgehandeld
