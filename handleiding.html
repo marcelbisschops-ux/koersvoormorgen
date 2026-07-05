@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Handleiding voor adviseurs - KantoorInzicht</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--void:#faf9f6;--panel:#fff;--border:#dddbd4;--muted:#8a8880;--mid:#5a5854;--sub:#2a2825;--head:#1a1815;--teal:#1a7a5e;--teal-bg:rgba(26,122,94,.08);--r:6px;--r2:10px}
+body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--sub);font-size:15px;line-height:1.75}
+.wrap{max-width:760px;margin:0 auto;padding:3rem 2rem 6rem}
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:1.25rem 0;border-bottom:1px solid var(--border);margin-bottom:3rem}
+.brand{font-size:11px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:8px}
+.wdot{width:6px;height:6px;border-radius:50%;background:var(--teal)}
+h1{font-family:'Playfair Display',serif;font-size:2rem;color:var(--head);font-weight:600;margin-bottom:.5rem}
+h2{font-family:'Playfair Display',serif;font-size:1.2rem;color:var(--head);font-weight:600;margin:2rem 0 .75rem;padding-top:2rem;border-top:1px solid var(--border)}
+h2:first-of-type{border-top:none;padding-top:0}
+p{color:var(--mid);margin-bottom:.75rem}
+ul,ol{color:var(--mid);margin:.5rem 0 .75rem 1.5rem}
+li{margin-bottom:.4rem}
+.meta{font-size:12px;color:var(--muted);margin-bottom:2rem}
+.step{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem 1.5rem;margin:1rem 0}
+.step p{margin-bottom:.5rem}
+.step p:last-child{margin-bottom:0}
+code{background:var(--teal-bg);color:var(--teal);padding:2px 6px;border-radius:4px;font-family:monospace;font-size:.9em}
+a{color:var(--teal)}
+.cta{display:inline-block;background:var(--teal);color:#fff;padding:9px 20px;border-radius:var(--r);text-decoration:none;font-weight:600;font-size:14px;margin-top:.5rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="hdr">
+  <div class="brand"><div class="wdot"></div>KantoorInzicht</div>
+  <a href="adv.html" style="font-size:12px;color:var(--muted);text-decoration:none">&#8592; Naar adviseursportaal</a>
+</div>
+
+<h1>Handleiding voor adviseurs</h1>
+<div class="meta">Korte praktische handleiding &middot; KantoorInzicht M&amp;A Platform</div>
+
+<h2>1. Account activeren en inloggen</h2>
+<div class="step">
+<p>U ontvangt een uitnodigingsmail met de knop <strong>"Account activeren"</strong>. Klik erop en stel een wachtwoord in.</p>
+<p>Na activering komt u automatisch in uw <strong>eigen adviseursportaal</strong>: <code>koersvoormorgen.nl/adv.html</code></p>
+<p>Bewaar deze link — dit is waar u voortaan altijd inlogt (e-mailadres + wachtwoord). Wachtwoord vergeten? Gebruik "Wachtwoord vergeten?" op het inlogscherm.</p>
+</div>
+
+<h2>2. Een traject starten en codes doorgeven</h2>
+<div class="step">
+<ol>
+  <li>Log in op <code>adv.html</code> → klik <strong>"+ Nieuw traject"</strong>.</li>
+  <li>Vul de gegevens van de onderneming (en eventueel de koper) in en klik <strong>Aanmaken</strong>.</li>
+  <li>U krijgt nu twee of drie codes te zien, elk met een kopieerknop:
+    <ul>
+      <li><strong>Verkopercode</strong> — voor uw cliënt (de verkopende partij)</li>
+      <li><strong>Kopercode</strong> — voor de kopende partij, zodra bekend</li>
+      <li><strong>Uw eigen tussenpersoonscode</strong> — voor uzelf als begeleider</li>
+    </ul>
+  </li>
+</ol>
+<p>Alle drie de rollen loggen in op <strong>dezelfde pagina</strong>: <code>koersvoormorgen.nl/mna.html</code> — het platform herkent aan de code welke rol iemand heeft.</p>
+<p><strong>Kort gezegd:</strong> u beheert trajecten op <code>adv.html</code>; u en uw cliënten werken ín een traject op <code>mna.html</code>.</p>
+</div>
+
+<h2>3. Eigen huisstijl instellen (optioneel)</h2>
+<div class="step">
+<p>Wilt u dat uw cliënten uw eigen naam/kleur zien in plaats van "KantoorInzicht"?</p>
+<ol>
+  <li>Log in op <code>adv.html</code> → klik rechtsboven op <strong>"&#127912; Huisstijl"</strong>.</li>
+  <li>Vul in: uw eigen platformnaam, een accentkleur (hex-code, bijv. <code>#1a7a5e</code>) en eventueel een logo-URL (moet met <code>https://</code> beginnen).</li>
+  <li>Opslaan — dit geldt automatisch voor alle trajecten die u vanaf nu aanmaakt.</li>
+</ol>
+<p>Laat een veld leeg om de standaard-huisstijl te gebruiken.</p>
+</div>
+
+<h2>4. Modules en limieten</h2>
+<div class="step">
+<p>Uw account heeft een <strong>trajectlimiet</strong> en een set <strong>modules</strong> (Contracten, AI-analyse, Q&amp;A, Export) — zichtbaar als chips boven uw trajectenlijst. Een module met een slotje &#128274; is niet actief; neem contact op met uw beheerder om deze te activeren.</p>
+</div>
+
+<h2>5. Voorwaarden</h2>
+<div class="step">
+<p>Bij eerste gebruik accepteert u de <a href="platformvoorwaarden.html">Gebruiksvoorwaarden</a> (platformgebruik — AI-output is indicatief, u blijft zelf verantwoordelijk voor verificatie). Zie ook de <a href="privacy.html">Privacyverklaring</a>.</p>
+</div>
+
+<a class="cta" href="adv.html">Naar het adviseursportaal &rarr;</a>
+
+<div style="margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border);font-size:12px;color:var(--muted)">
+Vragen? Neem contact op met uw platformbeheerder &middot;
+<a href="privacy.html" style="color:var(--teal)">Privacyverklaring</a> &middot;
+<a href="platformvoorwaarden.html" style="color:var(--teal)">Gebruiksvoorwaarden</a>
+</div>
+</div>
+</body>
+</html>

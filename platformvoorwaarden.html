@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gebruiksvoorwaarden Platform - KantoorInzicht</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--void:#faf9f6;--panel:#fff;--border:#dddbd4;--muted:#8a8880;--mid:#5a5854;--sub:#2a2825;--head:#1a1815;--teal:#1a7a5e;--r:6px;--r2:10px}
+body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--sub);font-size:15px;line-height:1.75}
+.wrap{max-width:760px;margin:0 auto;padding:3rem 2rem 6rem}
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:1.25rem 0;border-bottom:1px solid var(--border);margin-bottom:3rem}
+.brand{font-size:11px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:8px}
+.wdot{width:6px;height:6px;border-radius:50%;background:var(--teal)}
+h1{font-family:'Playfair Display',serif;font-size:2rem;color:var(--head);font-weight:600;margin-bottom:.5rem}
+p{color:var(--mid);margin-bottom:.75rem;white-space:pre-wrap}
+.meta{font-size:12px;color:var(--muted);margin-bottom:2rem}
+.tekst{font-size:14px;line-height:1.9;color:var(--mid);white-space:pre-wrap}
+a{color:var(--teal)}
+.laden{color:var(--muted);font-size:13px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="hdr">
+  <div class="brand"><div class="wdot"></div>KantoorInzicht</div>
+  <a href="adv.html" style="font-size:12px;color:var(--muted);text-decoration:none">&#8592; Terug naar adviseursportaal</a>
+</div>
+
+<h1>Gebruiksvoorwaarden Platform</h1>
+<div class="meta" id="meta">Voor adviseurs die gebruikmaken van het M&amp;A-platform &middot; Laden...</div>
+
+<div id="inhoud" class="laden">Bezig met laden...</div>
+
+<div style="margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border);font-size:12px;color:var(--muted)">
+KantoorInzicht is een product van Bisschops Financing B.V. (KvK 82085200) &middot; Alle rechten voorbehouden &middot;
+<a href="privacy.html" style="color:var(--teal)">Privacyverklaring</a>
+</div>
+</div>
+<script>
+fetch('https://kantoorinzicht.marcel-bisschops.workers.dev/gebruiker/voorwaarden').then(function(r){return r.json();}).then(function(d){
+  var gv=(d&&d.gv)||{};
+  document.getElementById('meta').textContent='Voor adviseurs die gebruikmaken van het M&A-platform · Versie '+(gv.versie||'-');
+  var tekst=String(gv.tekst||'Kon de tekst niet laden.');
+  document.getElementById('inhoud').className='tekst';
+  document.getElementById('inhoud').textContent=tekst;
+}).catch(function(){
+  document.getElementById('inhoud').textContent='Kon de voorwaarden niet laden. Probeer het later opnieuw.';
+});
+</script>
+</body>
+</html>
