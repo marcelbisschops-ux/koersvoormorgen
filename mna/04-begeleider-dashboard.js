@@ -183,7 +183,7 @@ function renderApp(){
 
 function renderLogin(){
   return '<div class="wrap narrow anim" style="padding-top:3rem">'
-    +'<div class="hdr"><div class="brand"><div class="wdot"></div>'+BRAND.platform+'</div>'
+    +'<div class="hdr"><div class="brand">'+brandMerkHtml()+BRAND.platform+'</div>'
     +'<a href="index.html" style="font-size:11px;color:var(--muted);text-decoration:none">&#8592; Terug naar scan</a></div>'
     +'<div style="min-height:60vh;display:flex;align-items:center;justify-content:center">'
     +'<div class="panel" style="max-width:420px;width:100%">'
@@ -270,7 +270,7 @@ function renderBegeleiderDashboard(app){
   var contractenAan=!S.modules||S.modules.contracten!==false;
   var lb=window.partijLabels?window.partijLabels(t.traject_type||'Verkoop'):{sectie1:'Verkoper',sectie2:'Koper'};
   var html='<div class="wrap anim">'
-    +'<div class="hdr"><div class="brand"><div class="wdot"></div>'+BRAND.platform+' &middot; M&A Begeleider'+versieLabel()+'</div>'
+    +'<div class="hdr"><div class="brand">'+brandMerkHtml()+BRAND.platform+' &middot; M&A Begeleider'+versieLabel()+'</div>'
     +'<div style="display:flex;gap:8px">'
     +'<button class="btn-ghost btn-sm" onclick="window.print()">&#128196; PDF</button>'
     +'<button class="btn-ghost btn-sm" onclick="uitloggen()">&#8592; Uitloggen</button>'

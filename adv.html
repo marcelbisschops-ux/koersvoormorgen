@@ -208,7 +208,7 @@ async function doLogin(){
     var r=await post('/adviseur/trajecten',{email:email,wachtwoord:ww});
     var d=await r.json();
     if(!r.ok||!d.ok){err.textContent=d.error||'Inloggegevens onjuist.';err.style.display='block';btn.disabled=false;btn.textContent='Inloggen';return;}
-    G.email=email;G.ww=ww;G.naam=d.naam;G.bedrijf=d.bedrijf;G.trajecten=d.trajecten||[];G.limiet=d.traject_limiet||1;G.modules=d.modules||{traject:true};
+    G.email=email;G.ww=ww;G.naam=d.naam;G.bedrijf=d.bedrijf;G.trajecten=d.trajecten||[];G.limiet=d.traject_limiet||1;G.modules=d.modules||{traject:true};G.branding=d.branding||{brand_naam:'',brand_kleur:'',brand_logo_url:''};
     var vw=d.voorwaarden||{gv_akkoord:true};
     if(!vw.gv_akkoord){ renderVoorwaardenAcceptatie(vw); return; }
     renderDashboard();
@@ -291,6 +291,7 @@ function renderDashboard(){
       <div class="hdr-brand"><div class="hdr-dot"></div>${BRAND.platform} ${BRAND.suffix}</div>
       <div class="hdr-right">
         <span class="hdr-user">Ingelogd als <span class="hdr-name">${esc(G.naam)}</span>${G.bedrijf?' &middot; '+esc(G.bedrijf):''}</span>
+        <button class="btn-outline" onclick="renderHuisstijlModal()">&#127912; Huisstijl</button>
         <button class="btn-outline" onclick="renderLogin()">Uitloggen</button>
       </div>
     </div>
@@ -326,6 +327,47 @@ async function ververs(){
     var d=await r.json();
     if(d.ok){G.trajecten=d.trajecten||[];G.limiet=d.traject_limiet||G.limiet||1;G.modules=d.modules||G.modules;renderDashboard();}
   }catch(e){}
+}
+
+// ===== EIGEN HUISSTIJL (v1: naam, accentkleur, logo-URL) =====
+// Werkt door naar de mna.html-trajecten die deze adviseur aanmaakt — niet naar dit adv-portaal zelf.
+function renderHuisstijlModal(){
+  var b=G.branding||{brand_naam:'',brand_kleur:'',brand_logo_url:''};
+  var ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:400;display:flex;align-items:center;justify-content:center;padding:1.5rem';
+  var mo=document.createElement('div');
+  mo.style.cssText='background:#fff;border-radius:10px;padding:2rem;max-width:440px;width:100%;max-height:92vh;overflow-y:auto';
+  mo.innerHTML=`
+    <div style="font-family:Playfair Display,serif;font-size:1.15rem;color:var(--head);font-weight:600;margin-bottom:.25rem">&#127912; Eigen huisstijl</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:1.25rem;line-height:1.6">Deze instellingen gelden voor de trajecten die u aanmaakt — uw verkoper en koper zien uw eigen naam/kleur/logo in plaats van "${esc(BRAND.platform)}". Laat een veld leeg om de standaard te gebruiken.</div>
+    <div class="field" style="margin-bottom:1rem"><label>Eigen platformnaam</label><input type="text" id="hs-naam" value="${esc(b.brand_naam)}" placeholder="${esc(BRAND.platform)}" maxlength="60"></div>
+    <div class="field" style="margin-bottom:1rem"><label>Accentkleur (hex)</label><input type="text" id="hs-kleur" value="${esc(b.brand_kleur)}" placeholder="#1a7a5e"></div>
+    <div class="field" style="margin-bottom:1.25rem"><label>Logo-URL (https, vierkant/breed beeld werkt het best)</label><input type="text" id="hs-logo" value="${esc(b.brand_logo_url)}" placeholder="https://uwdomein.nl/logo.png"></div>
+    <div id="hs-err" class="err-msg"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button id="hs-ann" class="btn-outline">Annuleren</button>
+      <button id="hs-ok" class="btn">Opslaan</button>
+    </div>`;
+  ov.appendChild(mo);document.body.appendChild(ov);
+  ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
+  ge('hs-ann').onclick=function(){document.body.removeChild(ov);};
+  ge('hs-ok').onclick=async function(){
+    var btn=this;var err=ge('hs-err');err.style.display='none';
+    var naam=ge('hs-naam').value.trim();
+    var kleur=ge('hs-kleur').value.trim();
+    var logo=ge('hs-logo').value.trim();
+    if(kleur&&!/^#[0-9a-fA-F]{6}$/.test(kleur)){err.textContent='Kleur moet een hex-code zijn, bijv. #1a7a5e';err.style.display='block';return;}
+    if(logo&&!/^https:\/\//.test(logo)){err.textContent='Logo-URL moet met https:// beginnen';err.style.display='block';return;}
+    btn.disabled=true;btn.textContent='Opslaan...';
+    try{
+      var r=await fetch(WORKER+'/adviseur/branding',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:G.email,wachtwoord:G.ww,brand_naam:naam,brand_kleur:kleur,brand_logo_url:logo})});
+      var d=await r.json();
+      if(!r.ok||!d.ok){err.textContent=d.error||'Opslaan mislukt.';err.style.display='block';btn.disabled=false;btn.textContent='Opslaan';return;}
+      G.branding={brand_naam:naam,brand_kleur:kleur,brand_logo_url:logo};
+      document.body.removeChild(ov);
+      toast('Huisstijl opgeslagen.','ok');
+    }catch(e){err.textContent='Verbindingsfout — probeer opnieuw.';err.style.display='block';btn.disabled=false;btn.textContent='Opslaan';}
+  };
 }
 
 // ===== TRAJECT DETAIL =====
