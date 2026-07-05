@@ -318,6 +318,7 @@ function renderBegeleiderDashboard(app){
       :'<button class="btn" id="bg-spa-actie" disabled title="Module Contracten niet actief — neem contact op met ' + BRAND.kort + '" style="background:#5a5470;padding:10px;font-size:12px;opacity:.45;cursor:not-allowed">&#128220; Concept-SPA</button>')
     +'</div>'
     +(contractenAan?'':'<div style="font-size:11px;color:var(--muted);margin-top:-.5rem;margin-bottom:.75rem">&#128274; Module Contracten niet actief — neem contact op met ' + BRAND.kort + ' om deze module te activeren.</div>')
+    +'<div style="margin-bottom:1.25rem"><button class="btn-outline btn-sm" id="bg-eigendoc-actie">&#128206; Eigen document versturen</button><div style="font-size:11px;color:var(--muted);margin-top:4px">Upload een PDF of Word-bestand en deel het rechtstreeks met verkoper en/of koper — werkt ook zonder de module Contracten.</div></div>'
     +'<div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.4rem">Communicatie</div>'
     +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:1.25rem">'
     +'<button class="btn" id="bg-gesprek-actie" style="background:var(--teal);padding:10px;font-size:12px">&#128172; Gesprek</button>'
@@ -425,15 +426,21 @@ function renderBegeleiderDashboard(app){
   }
 
   // Eigen PDF-upload: alternatief voor het gegenereerde document. Herbruikbaar voor elk documenttype.
+  var EIGEN_DOC_MIMES=['application/pdf','application/vnd.openxmlformats-officedocument.wordprocessingml.document','application/msword'];
+  function eigenDocTypeOk(f){
+    if(EIGEN_DOC_MIMES.indexOf(f.type)!==-1)return true;
+    var naam=(f.name||'').toLowerCase();
+    return naam.endsWith('.pdf')||naam.endsWith('.docx')||naam.endsWith('.doc');
+  }
   function eigenPdfHtml(id){
     return '<div style="margin-top:.75rem;padding-top:.75rem;border-top:1px dashed var(--border2)">'
       +'<label style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:6px;cursor:pointer">'
-      +'<input type="file" accept="application/pdf" id="'+id+'-file" style="font-size:11px;max-width:220px">'
-      +'<span>Of: eigen PDF gebruiken i.p.v. dit document</span></label>'
+      +'<input type="file" accept=".pdf,.docx,.doc,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword" id="'+id+'-file" style="font-size:11px;max-width:220px">'
+      +'<span>Of: eigen PDF/Word-bestand gebruiken i.p.v. dit document</span></label>'
       +'<div id="'+id+'-naam" style="font-size:11px;color:var(--teal);margin-top:4px;display:none"></div>'
       +'</div>';
   }
-  // staat = {base64:null,naam:null} — gedeeld object dat de verstuur-handler leest.
+  // staat = {base64:null,naam:null,mime:null} — gedeeld object dat de verstuur-handler leest.
   // onWissel(actief) wordt aangeroepen zodra een bestand gekozen/verwijderd wordt (bv. om Print uit te schakelen).
   function wireEigenPdf(id, staat, onWissel){
     var fileInput=document.getElementById(id+'-file');
@@ -441,12 +448,13 @@ function renderBegeleiderDashboard(app){
     fileInput.onchange=function(){
       var f=fileInput.files[0];
       var naamDiv=document.getElementById(id+'-naam');
-      if(!f){ staat.base64=null; staat.naam=null; if(naamDiv)naamDiv.style.display='none'; if(onWissel)onWissel(false); return; }
-      if(f.type!=='application/pdf'){ toast('Alleen PDF-bestanden zijn toegestaan.','err'); fileInput.value=''; return; }
+      if(!f){ staat.base64=null; staat.naam=null; staat.mime=null; if(naamDiv)naamDiv.style.display='none'; if(onWissel)onWissel(false); return; }
+      if(!eigenDocTypeOk(f)){ toast('Alleen PDF- of Word-bestanden (.pdf, .docx, .doc) zijn toegestaan.','err'); fileInput.value=''; return; }
       var reader=new FileReader();
       reader.onload=function(e){
         staat.base64=String(e.target.result).split(',')[1]||'';
         staat.naam=f.name;
+        staat.mime=f.type||(f.name.toLowerCase().endsWith('.docx')?'application/vnd.openxmlformats-officedocument.wordprocessingml.document':f.name.toLowerCase().endsWith('.doc')?'application/msword':'application/pdf');
         if(naamDiv){naamDiv.style.display='block';naamDiv.textContent='✓ '+f.name+' geselecteerd — wordt verstuurd in plaats van het gegenereerde document.';}
         if(onWissel)onWissel(true);
       };
@@ -551,7 +559,7 @@ function renderBegeleiderDashboard(app){
       else if(type==='loi')payload.loi_tekst=vt;
       else if(type==='excl')payload.excl_tekst=vt;
       else{payload.bem_tekst=vt;payload.type=isSell?'verkoop':'aankoop';}
-      if(bgPdfStaat.base64){payload.eigen_pdf_base64=bgPdfStaat.base64;payload.eigen_pdf_naam=bgPdfStaat.naam;}
+      if(bgPdfStaat.base64){payload.eigen_pdf_base64=bgPdfStaat.base64;payload.eigen_pdf_naam=bgPdfStaat.naam;payload.eigen_pdf_mime=bgPdfStaat.mime;}
       var er=await fetch(WORKER+ep,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
       var ed=await er.json();
       if(ed.ok){ebtn.textContent='✓ Verstuurd';}else{toast('Fout: '+(ed.error||'onbekend'),'err');ebtn.disabled=false;ebtn.textContent='✉ Verstuur';}
@@ -729,7 +737,7 @@ function renderBegeleiderDashboard(app){
           var toList=[t2.contact_email,t2.begeleider_email].filter(Boolean);
           var levendeHtml=document.getElementById('dv-preview').innerHTML;
           var payload={code:S.traject.id,dealvoorstel_tekst:dvHtmlNaarTekst(levendeHtml),to:toList};
-          if(dvPdfStaat.base64){payload.eigen_pdf_base64=dvPdfStaat.base64;payload.eigen_pdf_naam=dvPdfStaat.naam;}
+          if(dvPdfStaat.base64){payload.eigen_pdf_base64=dvPdfStaat.base64;payload.eigen_pdf_naam=dvPdfStaat.naam;payload.eigen_pdf_mime=dvPdfStaat.mime;}
           var er=await fetch(WORKER+'/mna/dealvoorstel/email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
           var ed=await er.json();
           if(ed.ok){ebtn.textContent='✓ Verstuurd';}else{toast('Fout: '+(ed.error||'onbekend'),'err');ebtn.disabled=false;ebtn.textContent='✉ Verstuur naar partijen';}
@@ -837,7 +845,7 @@ function renderBegeleiderDashboard(app){
           var ebtn=this;ebtn.disabled=true;ebtn.textContent='Versturen...';
           var toList=[t2.contact_email,t2.begeleider_email,t2.koper_email].filter(Boolean);
           var payload={code:S.traject.id,bieding_tekst:document.getElementById('bd-doc-tekst').value,to:toList};
-          if(bdPdfStaat.base64){payload.eigen_pdf_base64=bdPdfStaat.base64;payload.eigen_pdf_naam=bdPdfStaat.naam;}
+          if(bdPdfStaat.base64){payload.eigen_pdf_base64=bdPdfStaat.base64;payload.eigen_pdf_naam=bdPdfStaat.naam;payload.eigen_pdf_mime=bdPdfStaat.mime;}
           var er=await fetch(WORKER+'/mna/bieding/email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
           var ed=await er.json();
           if(ed.ok){ebtn.textContent='✓ Verstuurd';}else{toast('Fout: '+(ed.error||'onbekend'),'err');ebtn.disabled=false;ebtn.textContent='✉ Verstuur naar partijen';}
