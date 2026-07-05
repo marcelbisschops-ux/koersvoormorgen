@@ -711,7 +711,14 @@ function nieuwTraject(){
       });
       var d=await r.json();
       if(!d.ok){err.textContent=d.error||'Fout.';err.style.display='block';btn.disabled=false;btn.textContent='Aanmaken';return;}
-      ge('n-ok').innerHTML='<strong>✓ Aangemaakt</strong> &nbsp;Code: <strong>'+esc(d.code)+'</strong> &nbsp;Koperscode: <strong>'+esc(d.koper_code)+'</strong>';
+      var uitn=d.uitnodigingen||{};
+      var uitnHtml='';
+      if(uitn.verkoper==='verzonden')uitnHtml+='<br>✉ Uitnodiging verstuurd naar verkoper ('+esc(email)+')';
+      else if(uitn.verkoper)uitnHtml+='<br><span style="color:var(--red)">⚠ Uitnodiging verkoper niet verzonden: '+esc(uitn.verkoper)+'</span>';
+      var koperEmailVal=ge('n-koper-email').value.trim();
+      if(uitn.koper==='verzonden')uitnHtml+='<br>✉ Uitnodiging verstuurd naar koper ('+esc(koperEmailVal)+')';
+      else if(uitn.koper)uitnHtml+='<br><span style="color:var(--red)">⚠ Uitnodiging koper niet verzonden: '+esc(uitn.koper)+'</span>';
+      ge('n-ok').innerHTML='<strong>✓ Aangemaakt</strong> &nbsp;Code: <strong>'+esc(d.code)+'</strong> &nbsp;Koperscode: <strong>'+esc(d.koper_code)+'</strong>'+uitnHtml;
       ge('n-ok').style.display='block';
       ge('n-ann').textContent='Sluiten';btn.textContent='Aangemaakt ✓';
       G.trajecten.unshift({id:d.code,kantoor_naam:naam,traject_type:ge('n-type').value,sector:ge('n-sector').value,status:'actief',koper_code:d.koper_code,tussen_code:d.tussen_code,created_at:Date.now()});
