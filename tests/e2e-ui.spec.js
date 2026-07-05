@@ -120,8 +120,10 @@ test.describe('Documentknoppen module-gating', () => {
     const c = await api('POST', '/adviseur/create', { body: { email, wachtwoord: WW, traject: { kantoor_naam: 'E2E UI Gating Kantoor BV', traject_type: 'Verkoop' } } });
     trajectCode = c.json.code;
     tussenCode = c.json.tussen_code;
-    // Verwerkersovereenkomst vooraf tekenen, anders blokkeert de VOK-popup het dashboard
-    await api('POST', '/mna/vok/teken', { body: { code: tussenCode, naam: 'E2E Test', versie: '1.1', email } });
+    // Verwerkersovereenkomst vooraf tekenen, anders blokkeert de VOK-popup het dashboard.
+    // LET OP: versie moet gelijk zijn aan VOK_VERSIE in mna/04-begeleider-dashboard.js — anders
+    // wordt de popup (terecht) opnieuw getoond en faalt deze test.
+    await api('POST', '/mna/vok/teken', { body: { code: tussenCode, naam: 'E2E Test', versie: '1.2', email } });
   });
 
   test.afterAll(async () => {
