@@ -113,6 +113,8 @@ test.describe('Documentknoppen module-gating', () => {
     const uit = await api('POST', '/gebruikers/uitnodigen', { adminKey: ADMIN, body: { naam: 'E2E UI', bedrijf: 'E2E UI BV', email } });
     gid = uit.json.id;
     await api('POST', '/gebruikers/activeer', { body: { token: uit.json.token, wachtwoord: WW } });
+    // AV + Gebruiksvoorwaarden accepteren (verplicht sinds 5 juli 2026, anders blokkeert /adviseur/create)
+    await api('POST', '/gebruiker/voorwaarden/accepteren', { body: { email, wachtwoord: WW } });
     // Limiet 1, module traject AAN maar contracten UIT
     await api('POST', '/gebruikers/verkoop/' + gid, { adminKey: ADMIN, body: { traject_limiet: 1, modules: { traject: true, contracten: false } } });
     const c = await api('POST', '/adviseur/create', { body: { email, wachtwoord: WW, traject: { kantoor_naam: 'E2E UI Gating Kantoor BV', traject_type: 'Verkoop' } } });

@@ -74,6 +74,9 @@ async function main() {
     if (token) {
       const act = await api('POST', '/gebruikers/activeer', { body: { token, wachtwoord: WW } });
       check('account activeren ok', act.json && act.json.ok === true, JSON.stringify(act.json));
+      // AV + Gebruiksvoorwaarden accepteren (verplicht sinds 5 juli 2026, anders blokkeert /adviseur/create)
+      const vw = await api('POST', '/gebruiker/voorwaarden/accepteren', { body: { email, wachtwoord: WW } });
+      check('voorwaarden geaccepteerd', vw.json && vw.json.ok === true, JSON.stringify(vw.json));
     }
 
     // Verkoop: limiet 3, alle modules aan (nodig voor contracten/ai_analyse-tests verderop)
