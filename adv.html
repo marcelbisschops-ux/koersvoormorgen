@@ -332,7 +332,7 @@ async function ververs(){
 // ===== EIGEN HUISSTIJL (v1: naam, accentkleur, logo-URL) =====
 // Werkt door naar de mna.html-trajecten die deze adviseur aanmaakt — niet naar dit adv-portaal zelf.
 function renderHuisstijlModal(){
-  var b=G.branding||{brand_naam:'',brand_kleur:'',brand_logo_url:''};
+  var b=G.branding||{brand_naam:'',brand_kleur:'',brand_logo_url:'',brand_adres:'',brand_kvk:''};
   var ov=document.createElement('div');
   ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:400;display:flex;align-items:center;justify-content:center;padding:1.5rem';
   var mo=document.createElement('div');
@@ -347,6 +347,10 @@ function renderHuisstijlModal(){
       <input type="file" id="hs-logo-file" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml" style="font-size:12px">
       <div style="font-size:11px;color:var(--muted);margin-top:4px">PNG, JPG, WEBP, GIF of SVG — max 1,5 MB.${b.brand_logo_url?' <a href="#" id="hs-logo-verwijder" style="color:var(--teal)">Logo verwijderen</a>':''}</div>
     </div>
+    <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.5rem">Bedrijfsgegevens voor documenten (optioneel)</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:.75rem;line-height:1.5">Vult u dit in, dan noemen NDA/LoI/bemiddelingsovereenkomst e.d. uw eigen kantoor als begeleidende partij in plaats van ${esc(BRAND.platform)}. Laat leeg om de standaardtekst te gebruiken.</div>
+    <div class="field" style="margin-bottom:1rem"><label>Vestigingsadres</label><input type="text" id="hs-adres" value="${esc(b.brand_adres||'')}" placeholder="Straat 1, 1234 AB Plaats" maxlength="120"></div>
+    <div class="field" style="margin-bottom:1.25rem"><label>KvK-nummer</label><input type="text" id="hs-kvk" value="${esc(b.brand_kvk||'')}" placeholder="12345678" maxlength="8"></div>
     <div id="hs-err" class="err-msg"></div>
     <div style="display:flex;gap:8px;justify-content:flex-end">
       <button id="hs-ann" class="btn-outline">Annuleren</button>
@@ -385,15 +389,18 @@ function renderHuisstijlModal(){
     var btn=this;var err=ge('hs-err');err.style.display='none';
     var naam=ge('hs-naam').value.trim();
     var kleur=ge('hs-kleur').value.trim();
+    var adres=ge('hs-adres').value.trim();
+    var kvk=ge('hs-kvk').value.trim();
+    if(kvk&&!/^\d{8}$/.test(kvk)){err.textContent='KvK-nummer moet 8 cijfers zijn.';err.style.display='block';return;}
     btn.disabled=true;btn.textContent='Opslaan...';
     try{
-      var payload={email:G.email,wachtwoord:G.ww,brand_naam:naam,brand_kleur:kleur};
+      var payload={email:G.email,wachtwoord:G.ww,brand_naam:naam,brand_kleur:kleur,brand_adres:adres,brand_kvk:kvk};
       if(nieuwLogoBase64){payload.logo_base64=nieuwLogoBase64;payload.logo_mime=nieuwLogoMime;}
       if(logoVerwijderen)payload.verwijder_logo=true;
       var r=await fetch(WORKER+'/adviseur/branding',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
       var d=await r.json();
       if(!r.ok||!d.ok){err.textContent=d.error||'Opslaan mislukt.';err.style.display='block';btn.disabled=false;btn.textContent='Opslaan';return;}
-      G.branding={brand_naam:naam,brand_kleur:kleur,brand_logo_url:d.logo_url||''};
+      G.branding={brand_naam:naam,brand_kleur:kleur,brand_logo_url:d.logo_url||'',brand_adres:adres,brand_kvk:kvk};
       document.body.removeChild(ov);
       toast('Huisstijl opgeslagen.','ok');
     }catch(e){err.textContent='Verbindingsfout — probeer opnieuw.';err.style.display='block';btn.disabled=false;btn.textContent='Opslaan';}
