@@ -277,7 +277,7 @@ function renderWaardering(){
   var earnJaarlijks=earnBase*(earnPct/100)/earnJaren;
 
   var html='<div class="wrap anim">'
-    +'<div class="hdr"><div class="brand"><div class="wdot"></div>'+BRAND.platform+' &middot; Waardering'+versieLabel()+'</div>'
+    +'<div class="hdr"><div class="brand">'+brandMerkHtml()+BRAND.platform+' &middot; Waardering'+versieLabel()+'</div>'
     +'<div style="display:flex;gap:8px">'
     +'<button class="btn-ghost btn-sm" onclick="window.print()">PDF</button>'
     +'<button class="btn-ghost btn-sm" onclick="S.screen=\'cover\';renderApp()">&#8592; Terug</button>'

@@ -40,7 +40,7 @@ function renderCover(){
         +'</div></div>';
     }
     return '<div class="wrap anim">'
-      +'<div class="hdr"><div class="brand"><div class="wdot"></div>'+BRAND.platform+' &middot; M&amp;A'+versieLabel()+'</div>'
+      +'<div class="hdr"><div class="brand">'+brandMerkHtml()+BRAND.platform+' &middot; M&amp;A'+versieLabel()+'</div>'
       +'<div style="display:flex;gap:8px;margin-left:auto">'
     +'<button class="btn-ghost btn-sm" onclick="refreshData()">&#8635;</button>'
     +'<button class="btn-ghost btn-sm" onclick="uitloggen()">&#8592; Uitloggen</button>'
@@ -59,7 +59,7 @@ function renderCover(){
   }
 
   return '<div class="wrap anim">'
-    +'<div class="hdr"><div class="brand"><div class="wdot"></div>'+BRAND.platform+' &middot; M&amp;A'+versieLabel()+'</div>'
+    +'<div class="hdr"><div class="brand">'+brandMerkHtml()+BRAND.platform+' &middot; M&amp;A'+versieLabel()+'</div>'
     +'<div style="display:flex;gap:8px"><button class="btn-ghost btn-sm" onclick="window.print()">PDF afdrukken</button>'
     +'<button class="btn-ghost btn-sm" onclick="uitloggen()">&#8592; Uitloggen</button>'
     +(S.rol==='tussen'?'<button class="btn-ghost btn-sm" id="logboek-btn">&#128221; Logboek</button>':'')
@@ -310,7 +310,7 @@ function renderMain(){
   var lockedBanner=vergrendeld?'<div style="background:var(--red-bg);border:1px solid var(--red);border-radius:var(--r);padding:10px 14px;margin-bottom:1rem;font-size:13px;color:var(--red)">&#128274; <strong>Dit traject is vergrendeld.</strong> U kunt geen wijzigingen meer doorvoeren.</div>':'';
 
   return '<div class="wrap anim">'
-    +'<div class="hdr"><div class="brand"><div class="wdot"></div>'+BRAND.platform+' &middot; M&amp;A'+versieLabel()+'</div>'
+    +'<div class="hdr"><div class="brand">'+brandMerkHtml()+BRAND.platform+' &middot; M&amp;A'+versieLabel()+'</div>'
     +'<div style="display:flex;align-items:center;gap:8px">'
     +'<span style="font-size:11px;color:var(--muted)">'+esc(S.traject&&S.traject.kantoor_naam||S.code)+'</span>'
     +'<button class="btn-ghost btn-sm" onclick="window.print()">PDF</button>'
@@ -436,7 +436,7 @@ function renderSummary(){
 
   var tp=isVerkoper()?totalFillPct():Math.round(FASES.reduce(function(a,f){return a+pct(f.id);},0)/FASES.length);
   return '<div class="wrap anim">'
-    +'<div class="hdr"><div class="brand"><div class="wdot"></div>'+BRAND.platform+' &middot; M&amp;A'+versieLabel()+'</div>'
+    +'<div class="hdr"><div class="brand">'+brandMerkHtml()+BRAND.platform+' &middot; M&amp;A'+versieLabel()+'</div>'
     +'<div style="display:flex;gap:8px"><button class="btn-ghost btn-sm" onclick="window.print()">PDF</button><button class="btn-ghost btn-sm" id="back-main">&#8592; Terug</button></div></div>'
     +(vergrendeld?'<div style="background:var(--red-bg);border:1px solid var(--red);border-radius:var(--r);padding:10px 14px;margin-bottom:1rem;font-size:13px;color:var(--red)">&#128274; Vergrendeld op '+(S.traject.vergrendeld_op?new Date(S.traject.vergrendeld_op).toLocaleString('nl-NL'):'')+'</div>':'')
     +'<div style="font-family:Playfair Display,serif;font-size:1.4rem;color:var(--head);font-weight:600;margin-bottom:.25rem">DD Samenvatting</div>'

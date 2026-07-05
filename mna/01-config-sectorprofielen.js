@@ -17,6 +17,13 @@ var BRAND = {
 // De functie blijft bestaan omdat headers 'm aanroepen; hij levert nu niets op.
 function versieLabel(){return '';}
 
+// Eigen huisstijl van de adviseur (BRAND._logoUrl, gezet bij traject-login als de adviseur een
+// logo heeft ingesteld): toont het logo i.p.v. de standaard-merkstip in de headers.
+function brandMerkHtml(){
+  if(BRAND._logoUrl) return '<img src="'+String(BRAND._logoUrl).replace(/"/g,'&quot;')+'" alt="" style="height:16px;width:auto;max-width:70px;border-radius:2px;vertical-align:middle;object-fit:contain">';
+  return '<div class="wdot"></div>';
+}
+
 function triggerFileUpload(faseId) {
   var inp = document.createElement('input');
   inp.type = 'file'; inp.accept = '.pdf,.docx,.doc,.xlsx,.xls,.csv,.txt,.eml'; inp.multiple = true;

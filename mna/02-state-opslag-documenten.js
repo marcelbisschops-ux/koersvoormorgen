@@ -818,11 +818,11 @@ async function loadDataroom(){
 
 function renderDataroom(){
   var fL={financieel:'I. Financieel',commercieel:'II. Klanten & commercieel',partner:'III. Partners & personeel',compliance:'IV. Compliance & kwaliteit',it:'V. IT & automatisering',juridisch:'VI. Juridisch & fiscaal',strategisch:'VII. Strategisch & markt'};
-  if(S.dataroomLoading)return '<div class="wrap anim"><div class="hdr"><div class="brand"><div class="wdot"></div>'+BRAND.platform+' &middot; Dataroom</div></div><div style="color:var(--muted);font-size:13px;padding:2rem 0">Laden...</div></div>';
+  if(S.dataroomLoading)return '<div class="wrap anim"><div class="hdr"><div class="brand">'+brandMerkHtml()+BRAND.platform+' &middot; Dataroom</div></div><div style="color:var(--muted);font-size:13px;padding:2rem 0">Laden...</div></div>';
   var docs=S.dataroom||[];
   var byFase={};docs.forEach(function(d){if(!byFase[d.fase_id])byFase[d.fase_id]=[];byFase[d.fase_id].push(d);});
   var totaal=docs.filter(function(d){return d.bewaard;}).length;
-  var html='<div class="wrap anim"><div class="hdr"><div class="brand"><div class="wdot"></div>'+BRAND.platform+' &middot; Dataroom'+versieLabel()+'</div>'
+  var html='<div class="wrap anim"><div class="hdr"><div class="brand">'+brandMerkHtml()+BRAND.platform+' &middot; Dataroom'+versieLabel()+'</div>'
     +'<div style="display:flex;gap:8px"><button class="btn-ghost btn-sm" onclick="window.print()">PDF</button>'
     +'<button class="btn-ghost btn-sm" onclick="S.screen=\'main\';renderApp()">&#8592; Terug</button></div></div>'
     +'<div style="font-family:Playfair Display,serif;font-size:1.4rem;color:var(--head);font-weight:600;margin-bottom:.25rem">Dataroom</div>'
