@@ -53,7 +53,7 @@ mkdir -p "$DOCS_DIR"
 # De database is de bron van waarheid voor welke bestanden in R2 staan (r2_key).
 KEYS=$( ( cd "$HOME/Downloads" && npx wrangler d1 execute kantoorinzicht --remote --json \
   --command "SELECT r2_key FROM mna_documenten WHERE r2_key IS NOT NULL AND r2_key != ''" ) 2>/dev/null \
-  | grep -o '"r2_key": "[^"]*"' | sed 's/"r2_key": "//;s/"//' )
+  | { grep -o '"r2_key": "[^"]*"' || true; } | sed 's/"r2_key": "//;s/"//' )
 DOC_OK=0; DOC_SKIP=0
 if [ -n "$KEYS" ]; then
   while IFS= read -r KEY; do
