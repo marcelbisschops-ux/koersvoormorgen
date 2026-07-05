@@ -633,6 +633,16 @@ function bindAll(){
         } else {
           FASES=SECTOR_PROFIELEN.accountancy.fases; // fallback
         }
+        // Eigen huisstijl van de adviseur (indien ingesteld) toepassen op dit traject.
+        if(d.branding){
+          if(d.branding.naam){ BRAND.platform=d.branding.naam; }
+          if(d.branding.kleur){
+            document.documentElement.style.setProperty('--teal',d.branding.kleur);
+            document.documentElement.style.setProperty('--teal-bg',d.branding.kleur+'1a');
+          }
+          if(d.branding.logo_url){ BRAND._logoUrl=d.branding.logo_url; }
+          document.title='M&A Begeleiding - '+BRAND.platform;
+        }
         if(d.data&&d.data.length){
           loadDataFromDB(d.data);S._mnaData=d.data;S._dirty=false;
         }
