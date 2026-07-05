@@ -2,7 +2,8 @@ var WORKER='https://kantoorinzicht.marcel-bisschops.workers.dev';
 // White-label basis — centrale merkconfig. Eén plek om de productnaam/exploitant te wijzigen.
 // Later uitbreidbaar naar per-adviseur (uit de DB). Wijzig hier = overal in de UI-chrome.
 var BRAND = {
-  platform: 'KantoorInzicht',            // productnaam in de headers en paginatitel
+  platform: 'KantoorInzicht',            // productnaam in de headers en paginatitel (kan per adviseur overschreven worden)
+  platformEcht: 'KantoorInzicht',        // vaste, niet-overschrijfbare productnaam — gebruik dit voor de verplichte verwerkersvermelding/"mogelijk gemaakt door"
   bedrijf: 'Bisschops Financing B.V.',   // exploiterende onderneming
   bedrijfKort: 'Bisschops Financing BV', // korte vorm voor footers
   suffix: 'M&A',                         // subtitel naast de merknaam

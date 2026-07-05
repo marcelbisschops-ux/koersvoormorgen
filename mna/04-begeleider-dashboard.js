@@ -464,7 +464,7 @@ function renderBegeleiderDashboard(app){
     // isSell bepaald door opdrachtgever_rol: koper=buy-side, anders sell-side
     var isSell=(t2.opdrachtgever_rol==='koper')?false:(!t2.traject_type||t2.traject_type==='Verkoop'||t2.traject_type==='Opvolging');
     var tplType=type==='bem'?(isSell?'bem_verk':'bem_koper'):type;
-    var tplD=await fetch(WORKER+'/mna/template/'+tplType+'?email='+encodeURIComponent(t2.begeleider_email||'')).then(function(r){return r.json();}).catch(function(){return{ok:false};});
+    var tplD=await fetch(WORKER+'/mna/template/'+tplType+'?email='+encodeURIComponent(t2.begeleider_email||'')+'&code='+encodeURIComponent(S.code)).then(function(r){return r.json();}).catch(function(){return{ok:false};});
     // Bepaal partijgegevens op basis van opdrachtgever_rol
     var opdrNaam   = isSell ? (t2.kantoor_naam||'[verkoper]') : (t2.koper_naam||'[koper]');
     var opdrAdres  = isSell ? (t2.verkoper_adres||'[adres]') : (t2.koper_adres||'[adres]');
@@ -787,7 +787,7 @@ function renderBegeleiderDashboard(app){
       try{
         var isSell=(t2.opdrachtgever_rol==='koper')?false:(!t2.traject_type||t2.traject_type==='Verkoop'||t2.traject_type==='Opvolging');
         var datum=new Date().toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'});
-        var tplD=await fetch(WORKER+'/mna/template/bieding?email='+encodeURIComponent(t2.begeleider_email||'')).then(function(r){return r.json();}).catch(function(){return{ok:false};});
+        var tplD=await fetch(WORKER+'/mna/template/bieding?email='+encodeURIComponent(t2.begeleider_email||'')+'&code='+encodeURIComponent(S.code)).then(function(r){return r.json();}).catch(function(){return{ok:false};});
         var tplTekst=tplD.ok&&tplD.tekst?tplD.tekst:'[standaard biedingsbrief]';
         if(tplTekst.length>6000)tplTekst=tplTekst.substring(0,6000);
         var prompt='Vul de onderstaande indicatieve-biedingsbrief in. Vervang ALLE [tekst tussen haakjes]. Gebruik UITSLUITEND de cijfers hieronder; verzin geen eigen bedragen, EBITDA of multiples.\n'
@@ -898,7 +898,7 @@ function renderBegeleiderDashboard(app){
       if(!koopprijs){errEl.textContent='Vul minimaal een koopprijs in.';errEl.style.display='block';btn.disabled=false;btn.textContent='📜 Genereren';return;}
       try{
         var datum=new Date().toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'});
-        var tplD=await fetch(WORKER+'/mna/template/spa?email='+encodeURIComponent(t2.begeleider_email||'')).then(function(r){return r.json();}).catch(function(){return{ok:false};});
+        var tplD=await fetch(WORKER+'/mna/template/spa?email='+encodeURIComponent(t2.begeleider_email||'')+'&code='+encodeURIComponent(S.code)).then(function(r){return r.json();}).catch(function(){return{ok:false};});
         var tplTekst=tplD.ok&&tplD.tekst?tplD.tekst:'[standaard concept-SPA]';
         if(tplTekst.length>8000)tplTekst=tplTekst.substring(0,8000);
         var prompt='Vul het onderstaande CONCEPT van een aandelenkoopovereenkomst in. Vervang ALLE [tekst tussen haakjes] met de bekende gegevens; laat placeholders die je niet kent staan als [nader te bepalen]. Gebruik UITSLUITEND de gegevens hieronder; verzin geen eigen bedragen of voorwaarden. Behoud de CONCEPT-waarschuwing bovenaan.\n'
