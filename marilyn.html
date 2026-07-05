@@ -757,9 +757,9 @@ function renderTemplatesTab(el){
     // Reset naar BF standaard
     div.querySelector('.tpl-reset').addEventListener('click',async function(){
       if(!confirm('Reset naar BF standaard template voor '+label+'?'))return;
-      var r=await fetch(WORKER+'/mna/template/upload',{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':adminKey},body:JSON.stringify({doc_type:type,tekst:'',begeleider_naam:''})});
+      var r=await fetch(WORKER+'/mna/template/upload',{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':adminKey},body:JSON.stringify({doc_type:type,tekst:'',begeleider_naam:'',begeleider_email:'marcel@bisschopsfinancing.nl'})});
       var d=await r.json();
-      // Verwijder uit DB
+      if(d.ok)toast('Teruggezet naar BF standaard.','ok');else toast('Fout: '+(d.error||'onbekend'),'err');
       renderTemplatesTab(el);
     });
   });

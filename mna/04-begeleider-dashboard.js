@@ -424,6 +424,36 @@ function renderBegeleiderDashboard(app){
     };
   }
 
+  // Eigen PDF-upload: alternatief voor het gegenereerde document. Herbruikbaar voor elk documenttype.
+  function eigenPdfHtml(id){
+    return '<div style="margin-top:.75rem;padding-top:.75rem;border-top:1px dashed var(--border2)">'
+      +'<label style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:6px;cursor:pointer">'
+      +'<input type="file" accept="application/pdf" id="'+id+'-file" style="font-size:11px;max-width:220px">'
+      +'<span>Of: eigen PDF gebruiken i.p.v. dit document</span></label>'
+      +'<div id="'+id+'-naam" style="font-size:11px;color:var(--teal);margin-top:4px;display:none"></div>'
+      +'</div>';
+  }
+  // staat = {base64:null,naam:null} — gedeeld object dat de verstuur-handler leest.
+  // onWissel(actief) wordt aangeroepen zodra een bestand gekozen/verwijderd wordt (bv. om Print uit te schakelen).
+  function wireEigenPdf(id, staat, onWissel){
+    var fileInput=document.getElementById(id+'-file');
+    if(!fileInput)return;
+    fileInput.onchange=function(){
+      var f=fileInput.files[0];
+      var naamDiv=document.getElementById(id+'-naam');
+      if(!f){ staat.base64=null; staat.naam=null; if(naamDiv)naamDiv.style.display='none'; if(onWissel)onWissel(false); return; }
+      if(f.type!=='application/pdf'){ toast('Alleen PDF-bestanden zijn toegestaan.','err'); fileInput.value=''; return; }
+      var reader=new FileReader();
+      reader.onload=function(e){
+        staat.base64=String(e.target.result).split(',')[1]||'';
+        staat.naam=f.name;
+        if(naamDiv){naamDiv.style.display='block';naamDiv.textContent='✓ '+f.name+' geselecteerd — wordt verstuurd in plaats van het gegenereerde document.';}
+        if(onWissel)onWissel(true);
+      };
+      reader.readAsDataURL(f);
+    };
+  }
+
   // Document genereren helper
   async function bgDoc(type){
     var out=document.getElementById('bg-doc-out');
@@ -485,8 +515,15 @@ function renderBegeleiderDashboard(app){
       +'<button id="bg-print" class="btn-ghost" style="font-size:12px;padding:6px 14px">&#128196; Print</button>'
       +'<button id="bg-email" class="btn" style="font-size:12px;padding:6px 14px;background:'+kleuren[type]+'">&#9993; Verstuur naar partijen</button>'
       +'<button id="bg-signhost" class="btn" style="font-size:12px;padding:6px 14px;background:var(--teal)">&#9998; Signhost</button>'
-      +'</div></div>';
+      +'</div>'
+      +eigenPdfHtml('bg-pdf')
+      +'</div>';
     wireAkkoord('bg-doc-akkoord', ['bg-email','bg-signhost']);
+    var bgPdfStaat={base64:null,naam:null};
+    wireEigenPdf('bg-pdf', bgPdfStaat, function(actief){
+      document.getElementById('bg-print').disabled=actief;
+      document.getElementById('bg-print').style.opacity=actief?'.4':'1';
+    });
     document.getElementById('bg-print').onclick=function(){ printDoc(document.getElementById('bg-doc-tekst').value, {nda:'NDA',loi:'Letter of Intent',bem:'Bemiddelingsovereenkomst',excl:'Exclusiviteitsbrief'}[type]||type, type); };
     // Scroll naar doc output zodat knoppen zichtbaar zijn
     var docOutEl=document.getElementById('bg-doc-out');
@@ -507,11 +544,14 @@ function renderBegeleiderDashboard(app){
       } else {
         toList=[t2.contact_email,t2.begeleider_email,t2.koper_email].filter(Boolean);
       }
-      var ep=type==='nda'?'/mna/nda/email':type==='loi'?'/mna/loi/email':'/mna/bem/email';
+      var epMap={nda:'/mna/nda/email',loi:'/mna/loi/email',bem:'/mna/bem/email',excl:'/mna/exclusief/email'};
+      var ep=epMap[type]||'/mna/bem/email';
       var payload={code:S.traject.id,to:toList};
       if(type==='nda')payload.nda_tekst=vt;
       else if(type==='loi')payload.loi_tekst=vt;
+      else if(type==='excl')payload.excl_tekst=vt;
       else{payload.bem_tekst=vt;payload.type=isSell?'verkoop':'aankoop';}
+      if(bgPdfStaat.base64){payload.eigen_pdf_base64=bgPdfStaat.base64;payload.eigen_pdf_naam=bgPdfStaat.naam;}
       var er=await fetch(WORKER+ep,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
       var ed=await er.json();
       if(ed.ok){ebtn.textContent='✓ Verstuurd';}else{toast('Fout: '+(ed.error||'onbekend'),'err');ebtn.disabled=false;ebtn.textContent='✉ Verstuur';}
@@ -666,20 +706,31 @@ function renderBegeleiderDashboard(app){
         var titel='Dealvoorstel — '+(t2.kantoor_naam||S.code);
         out.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem">'
           +'<div style="font-size:11px;font-weight:600;color:#8a5a00;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.75rem">Dealvoorstel gegenereerd</div>'
-          +'<div id="dv-preview" style="max-height:400px;overflow-y:auto;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:1.25rem;font-family:Georgia,serif;font-size:12px;line-height:1.7;color:var(--sub)">'+bodyHtml+'</div>'
+          +'<div style="font-size:11px;color:var(--teal);margin-bottom:.5rem">&#9998; Klik in de tekst hieronder om aan te passen vóór verzending.</div>'
+          +'<div id="dv-preview" contenteditable="true" style="max-height:400px;overflow-y:auto;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:1.25rem;font-family:Georgia,serif;font-size:12px;line-height:1.7;color:var(--sub);outline:none" onfocus="this.style.borderColor=\'var(--teal)\'" onblur="this.style.borderColor=\'var(--border2)\'">'+bodyHtml+'</div>'
           +akkoordHtml('dv-doc-akkoord')
           +'<div style="display:flex;gap:8px;margin-top:.75rem">'
           +'<button id="dv-print" class="btn-ghost" style="font-size:12px;padding:6px 14px">&#128196; Print</button>'
           +'<button id="dv-email" class="btn" style="font-size:12px;padding:6px 14px;background:#8a5a00">&#9993; Verstuur naar partijen</button>'
-          +'</div></div>';
+          +'</div>'
+          +eigenPdfHtml('dv-pdf')
+          +'</div>';
         var docOutEl=document.getElementById('bg-doc-out');
         if(docOutEl)setTimeout(function(){docOutEl.scrollIntoView({behavior:'smooth',block:'nearest'});},100);
         wireAkkoord('dv-doc-akkoord', ['dv-email']);
-        document.getElementById('dv-print').onclick=function(){printDealvoorstel(bodyHtml,titel);};
+        var dvPdfStaat={base64:null,naam:null};
+        wireEigenPdf('dv-pdf', dvPdfStaat, function(actief){
+          document.getElementById('dv-print').disabled=actief;
+          document.getElementById('dv-print').style.opacity=actief?'.4':'1';
+        });
+        document.getElementById('dv-print').onclick=function(){printDealvoorstel(document.getElementById('dv-preview').innerHTML,titel);};
         document.getElementById('dv-email').onclick=async function(){
           var ebtn=this;ebtn.disabled=true;ebtn.textContent='Versturen...';
           var toList=[t2.contact_email,t2.begeleider_email].filter(Boolean);
-          var er=await fetch(WORKER+'/mna/dealvoorstel/email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:S.traject.id,dealvoorstel_tekst:dvHtmlNaarTekst(bodyHtml),to:toList})});
+          var levendeHtml=document.getElementById('dv-preview').innerHTML;
+          var payload={code:S.traject.id,dealvoorstel_tekst:dvHtmlNaarTekst(levendeHtml),to:toList};
+          if(dvPdfStaat.base64){payload.eigen_pdf_base64=dvPdfStaat.base64;payload.eigen_pdf_naam=dvPdfStaat.naam;}
+          var er=await fetch(WORKER+'/mna/dealvoorstel/email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
           var ed=await er.json();
           if(ed.ok){ebtn.textContent='✓ Verstuurd';}else{toast('Fout: '+(ed.error||'onbekend'),'err');ebtn.disabled=false;ebtn.textContent='✉ Verstuur naar partijen';}
         };
@@ -771,15 +822,23 @@ function renderBegeleiderDashboard(app){
           +'<button id="bd-naar-dd" class="btn-ghost" style="font-size:12px;padding:6px 14px">&#128260; Zet traject op Due Diligence</button>'
           +'<button id="bd-infoverzoek" class="btn" style="font-size:12px;padding:6px 14px;background:var(--teal-dim)">&#128203; Informatieverzoek — volledige DD</button>'
           +'</div></div>'
+          +eigenPdfHtml('bd-pdf')
           +'</div>';
         var docOutEl=document.getElementById('bg-doc-out');
         if(docOutEl)setTimeout(function(){docOutEl.scrollIntoView({behavior:'smooth',block:'nearest'});},100);
         wireAkkoord('bd-doc-akkoord', ['bd-email']);
+        var bdPdfStaat={base64:null,naam:null};
+        wireEigenPdf('bd-pdf', bdPdfStaat, function(actief){
+          document.getElementById('bd-print').disabled=actief;
+          document.getElementById('bd-print').style.opacity=actief?'.4':'1';
+        });
         document.getElementById('bd-print').onclick=function(){printDoc(document.getElementById('bd-doc-tekst').value,titel,'bieding');};
         document.getElementById('bd-email').onclick=async function(){
           var ebtn=this;ebtn.disabled=true;ebtn.textContent='Versturen...';
           var toList=[t2.contact_email,t2.begeleider_email,t2.koper_email].filter(Boolean);
-          var er=await fetch(WORKER+'/mna/bieding/email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:S.traject.id,bieding_tekst:document.getElementById('bd-doc-tekst').value,to:toList})});
+          var payload={code:S.traject.id,bieding_tekst:document.getElementById('bd-doc-tekst').value,to:toList};
+          if(bdPdfStaat.base64){payload.eigen_pdf_base64=bdPdfStaat.base64;payload.eigen_pdf_naam=bdPdfStaat.naam;}
+          var er=await fetch(WORKER+'/mna/bieding/email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
           var ed=await er.json();
           if(ed.ok){ebtn.textContent='✓ Verstuurd';}else{toast('Fout: '+(ed.error||'onbekend'),'err');ebtn.disabled=false;ebtn.textContent='✉ Verstuur naar partijen';}
         };
