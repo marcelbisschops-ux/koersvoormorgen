@@ -286,6 +286,7 @@ function renderBegeleiderDashboard(app){
     +'</div>'
     +'<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
     +'<button class="btn btn-sm" id="bg-toegang" style="background:var(--teal)">&#128275; Koper-toegang</button>'
+    +(t.status==='afgesloten'?'':'<button class="btn-ghost btn-sm" id="bg-afsluiten" style="color:var(--red);border-color:var(--red)">&#127937; Traject afsluiten</button>')
     +(function(){ var kc=koperCatsVan(t); var tot=(window.FASES&&FASES.length)||7; var lbl,kl; if(kc===null){ lbl=t.koper_vrijgegeven?'Alles vrijgegeven':'Geen toegang'; kl=t.koper_vrijgegeven?'var(--teal)':'var(--muted)'; } else if(kc.length){ lbl=kc.length+'/'+tot+' categorieën vrij'; kl='var(--teal)'; } else { lbl='Geen toegang'; kl='var(--muted)'; } return '<span style="font-size:11px;font-weight:600;color:'+kl+'">'+lbl+'</span>'; })()
     +'<span style="display:inline-block;padding:4px 12px;border-radius:12px;font-size:11px;font-weight:600;background:'+(t.status==='vergrendeld'?'var(--red-bg)':'var(--teal-bg)')+';color:'+(t.status==='vergrendeld'?'var(--red)':'var(--teal)')+';border:1px solid '+(t.status==='vergrendeld'?'var(--red)':'var(--teal-dark)')+'">'+esc(t.status||'actief')+'</span>'
     +'</div></div></div>'
@@ -382,6 +383,31 @@ function renderBegeleiderDashboard(app){
   // Koper-toegang beheren (gefaseerd, per DD-categorie)
   var tgBtn=document.getElementById('bg-toegang');
   if(tgBtn)tgBtn.onclick=function(){ toonKoperToegangModal(app); };
+
+  // Traject afsluiten: dossier-export (ZIP + DD-rapport), downloadmail, daarna 14 dagen tot verwijdering
+  var afsBtn=document.getElementById('bg-afsluiten');
+  if(afsBtn)afsBtn.onclick=async function(){
+    var uitleg='Weet u zeker dat u dit traject wilt AFSLUITEN?\n\n'
+      +'Wat er dan gebeurt:\n'
+      +'1. Het volledige dossier (alle documenten + DD-eindrapport) wordt als ZIP klaargezet.\n'
+      +'2. U ontvangt per e-mail een downloadlink die 14 dagen geldig is.\n'
+      +'3. Na 14 dagen worden de documenten DEFINITIEF van het platform verwijderd.\n'
+      +'4. Het traject kan daarna niet meer worden gewijzigd.\n\n'
+      +'U bent na download zelf verantwoordelijk voor archivering.';
+    if(!confirm(uitleg))return;
+    if(!confirm('Laatste bevestiging: traject "'+(S.traject.kantoor_naam||S.code)+'" definitief afsluiten?'))return;
+    afsBtn.disabled=true;afsBtn.textContent='Dossier wordt samengesteld...';
+    var r=await fetch(WORKER+'/mna/traject/afsluiten/'+S.code,{method:'POST',headers:{'x-tussen-key':S.code}}).then(function(x){return x.json();}).catch(function(){return{};});
+    if(r.ok){
+      toast('Traject afgesloten. De downloadlink ('+r.documenten+' documenten + DD-rapport) is per e-mail verstuurd en 14 dagen geldig.','ok',9000);
+      if(r.download_url){ try{ window.open(r.download_url,'_blank'); }catch(e){} }
+      S.traject.status='afgesloten';
+      renderApp();
+    } else {
+      toast('Afsluiten mislukt: '+(r.error||'onbekende fout'),'err',6000);
+      afsBtn.disabled=false;afsBtn.textContent='🏁 Traject afsluiten';
+    }
+  };
 
   // Verplichte controlestap vóór versturen: checkbox-html + koppel disable/enable aan verstuurknoppen
   function akkoordHtml(id){

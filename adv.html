@@ -209,8 +209,57 @@ async function doLogin(){
     var d=await r.json();
     if(!r.ok||!d.ok){err.textContent=d.error||'Inloggegevens onjuist.';err.style.display='block';btn.disabled=false;btn.textContent='Inloggen';return;}
     G.email=email;G.ww=ww;G.naam=d.naam;G.bedrijf=d.bedrijf;G.trajecten=d.trajecten||[];G.limiet=d.traject_limiet||1;G.modules=d.modules||{traject:true};
+    var vw=d.voorwaarden||{av_akkoord:true,gv_akkoord:true};
+    if(!vw.av_akkoord||!vw.gv_akkoord){ renderVoorwaardenAcceptatie(vw); return; }
     renderDashboard();
   }catch(e){err.textContent='Verbindingsfout — probeer opnieuw.';err.style.display='block';btn.disabled=false;btn.textContent='Inloggen';}
+}
+
+// ===== VERPLICHTE ACCEPTATIE AV + GEBRUIKSVOORWAARDEN =====
+// Blokkeert de rest van het portaal totdat beide documenten (op de huidige versie) zijn geaccepteerd.
+function renderVoorwaardenAcceptatie(vw){
+  render(`<div class="login-outer"><div class="login-card" style="max-width:640px">
+    <div class="login-brand"><div class="login-dot"></div><span class="login-brand-name">${BRAND.platform} ${BRAND.suffix}</span></div>
+    <div class="login-title">Voorwaarden accepteren</div>
+    <div class="login-sub">Voordat u verder kunt, dient u de Algemene Voorwaarden en de Gebruiksvoorwaarden van het platform te accepteren.</div>
+    <div id="vw-tekst" style="font-size:12px;color:var(--muted);padding:2rem 0;text-align:center">Laden...</div>
+    <div id="vw-vakjes" style="display:none">
+      <label style="display:flex;align-items:flex-start;gap:8px;font-size:13px;color:var(--sub);margin-bottom:.75rem;cursor:pointer">
+        <input type="checkbox" id="vw-av" style="margin-top:3px">
+        <span>Ik heb de <a href="#" id="vw-av-link" style="color:var(--teal)">Algemene Voorwaarden</a> gelezen en ga hiermee akkoord.</span>
+      </label>
+      <label style="display:flex;align-items:flex-start;gap:8px;font-size:13px;color:var(--sub);margin-bottom:1.25rem;cursor:pointer">
+        <input type="checkbox" id="vw-gv" style="margin-top:3px">
+        <span>Ik heb de <a href="#" id="vw-gv-link" style="color:var(--teal)">Gebruiksvoorwaarden</a> gelezen en ga hiermee akkoord.</span>
+      </label>
+      <div id="vw-err" class="err-msg"></div>
+      <button class="btn" id="vw-ok" style="width:100%" disabled>Ga akkoord en verder</button>
+    </div>
+  </div></div>`);
+
+  fetch(WORKER+'/gebruiker/voorwaarden').then(function(r){return r.json();}).then(function(d){
+    var tekstDiv=ge('vw-tekst');
+    var av=(d.av&&d.av.tekst)||'';
+    var gv=(d.gv&&d.gv.tekst)||'';
+    tekstDiv.innerHTML='<div style="max-height:220px;overflow-y:auto;text-align:left;background:var(--void);border:1px solid var(--border);border-radius:var(--r);padding:1rem;font-size:11px;color:var(--mid);white-space:pre-wrap;line-height:1.6;margin-bottom:1rem" id="vw-doc-av">'+av.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</div>'
+      +'<div style="max-height:220px;overflow-y:auto;text-align:left;background:var(--void);border:1px solid var(--border);border-radius:var(--r);padding:1rem;font-size:11px;color:var(--mid);white-space:pre-wrap;line-height:1.6;display:none" id="vw-doc-gv">'+gv.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</div>';
+    tekstDiv.style.textAlign='left';tekstDiv.style.padding='0';
+    ge('vw-vakjes').style.display='block';
+    ge('vw-av-link').onclick=function(e){e.preventDefault();ge('vw-doc-av').style.display='block';ge('vw-doc-gv').style.display='none';ge('vw-doc-av').scrollIntoView({behavior:'smooth'});};
+    ge('vw-gv-link').onclick=function(e){e.preventDefault();ge('vw-doc-gv').style.display='block';ge('vw-doc-av').style.display='none';ge('vw-doc-gv').scrollIntoView({behavior:'smooth'});};
+    function checkKlaar(){ge('vw-ok').disabled=!(ge('vw-av').checked&&ge('vw-gv').checked);}
+    ge('vw-av').onchange=checkKlaar;ge('vw-gv').onchange=checkKlaar;
+    ge('vw-ok').onclick=async function(){
+      var btn=this;btn.disabled=true;btn.textContent='Verwerken...';
+      var err=ge('vw-err');err.style.display='none';
+      try{
+        var r=await fetch(WORKER+'/gebruiker/voorwaarden/accepteren',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:G.email,wachtwoord:G.ww})});
+        var rd=await r.json();
+        if(!r.ok||!rd.ok){err.textContent=rd.error||'Kon niet worden verwerkt.';err.style.display='block';btn.disabled=false;btn.textContent='Ga akkoord en verder';return;}
+        renderDashboard();
+      }catch(e){err.textContent='Verbindingsfout — probeer opnieuw.';err.style.display='block';btn.disabled=false;btn.textContent='Ga akkoord en verder';}
+    };
+  }).catch(function(){ ge('vw-tekst').textContent='Kon de voorwaarden niet laden. Ververs de pagina.'; });
 }
 
 // ===== DASHBOARD =====
