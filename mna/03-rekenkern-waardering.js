@@ -287,7 +287,7 @@ function renderWaardering(){
 
   // Disclaimer
   html+='<div style="background:var(--gold-bg);border:1px solid var(--gold);border-radius:var(--r);padding:10px 14px;margin-bottom:1.5rem;font-size:12px;color:var(--mid);line-height:1.6">'
-    +'<strong style="color:var(--gold)">&#9888; Indicatieve waardering</strong> &mdash; Deze berekening is gebaseerd op de ingevoerde due diligence data en sectorale benchmarks. Het betreft een indicatie, geen formeel taxatierapport. ' + BRAND.bedrijfKort + ' aanvaardt geen aansprakelijkheid voor beslissingen op basis van dit overzicht.'
+    +'<strong style="color:var(--gold)">&#9888; Indicatieve waardering</strong> &mdash; Deze berekening is gebaseerd op de ingevoerde due diligence data en sectorale benchmarks. Het betreft een indicatie, geen formeel taxatierapport. ' + esc(t.begeleider_bedrijf||BRAND.bedrijfKort) + ' aanvaardt geen aansprakelijkheid voor beslissingen op basis van dit overzicht.'
     +'</div>';
 
   // Financieel overzicht

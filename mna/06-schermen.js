@@ -21,13 +21,13 @@ function renderCover(){
       +'<p>Uw gegevens worden strikt vertrouwelijk behandeld.</p>'
       +'<div style="margin:1rem 0;padding:.75rem 1rem;background:var(--card);border:1px solid var(--border);border-radius:var(--r);font-size:11px;color:var(--muted);line-height:1.7">&#128274; <strong>Beveiliging &amp; AVG:</strong> Alle gegevens worden versleuteld via HTTPS verstuurd en opgeslagen op Cloudflare-servers in Europa (Frankfurt, EU) en uitsluitend gebruikt voor dit M&amp;A-traject. <strong>'+esc(t.begeleider_naam||'Uw adviseur')+'</strong> is de verwerkingsverantwoordelijke voor uw gegevens conform de AVG — voor vragen over inzage, correctie of verwijdering van úw gegevens kunt u het beste rechtstreeks contact opnemen'+(t.begeleider_email?' via <a href=\"mailto:'+esc(t.begeleider_email)+'\" style=\"color:var(--teal)\">'+esc(t.begeleider_email)+'</a>':'')+'.'
       +'<div style="margin-top:.5rem;font-size:10px;color:#b8b6ac">Verwerkt via het '+BRAND.platformEcht+'-platform, techniek verzorgd door '+BRAND.kort+' — zie de <a href=\"privacy.html\" style=\"color:#b8b6ac\">verwerkersinformatie</a>.</div></div>'
-    +'<p>Met vriendelijke groet,<br><strong>' + BRAND.contactpersoon + '</strong><br><span style="font-size:12px;color:var(--muted)">Senior M&amp;A-adviseur &middot; ' + BRAND.bedrijfKort + '<br>' + BRAND.telefoon + ' &middot; ' + BRAND.email + '</span></p>'
+    +'<p>Met vriendelijke groet,<br><strong>'+esc(t.begeleider_naam||BRAND.contactpersoon)+'</strong><br><span style="font-size:12px;color:var(--muted)">Senior M&amp;A-adviseur &middot; '+esc(t.begeleider_bedrijf||BRAND.bedrijfKort)+'<br>'+(t.begeleider_email?'<a href="mailto:'+esc(t.begeleider_email)+'" style="color:var(--muted)">'+esc(t.begeleider_email)+'</a>':BRAND.telefoon+' &middot; '+BRAND.email)+'</span></p>'
       +'<div style="margin-top:.75rem;font-size:10px;color:#c8c5bc">Mogelijk gemaakt door '+BRAND.platformEcht+'</div>';
   }else if(isTussen()){
     intro='<p>Geachte tussenpersoon,</p>'
       +'<p>U heeft toegang tot de voortgang van het due diligence traject (trajecttype: <strong>'+esc(t.traject_type||'M&A')+'</strong>). De kantooridentiteit is geanonimiseerd conform de afspraken. U kunt per fase de ingevoerde informatie inzien en een AI-advies genereren op basis van de beschikbare data.</p>'
-      +'<p>Vragen? Neem contact op via <a href="mailto:' + BRAND.email + '" style="color:var(--teal)">' + BRAND.email + '</a>.</p>'
-      +'<p>Met vriendelijke groet,<br><strong>' + BRAND.contactpersoon + '</strong><br><span style="font-size:12px;color:var(--muted)">Senior M&amp;A-adviseur &middot; ' + BRAND.bedrijfKort + '</span></p>';
+      +'<p>Vragen? Neem contact op via <a href="mailto:' + esc(t.begeleider_email||BRAND.email) + '" style="color:var(--teal)">' + esc(t.begeleider_email||BRAND.email) + '</a>.</p>'
+      +'<p>Met vriendelijke groet,<br><strong>'+esc(t.begeleider_naam||BRAND.contactpersoon)+'</strong><br><span style="font-size:12px;color:var(--muted)">Senior M&amp;A-adviseur &middot; '+esc(t.begeleider_bedrijf||BRAND.bedrijfKort)+'</span></p>';
   }else if(!t.koper_vrijgegeven){
     // Koper zonder vrijgave — toon BEM als die beschikbaar is
     var bemBlokKoper='';
@@ -56,10 +56,10 @@ function renderCover(){
       +'</div>';
 }else{
     intro='<p>Geachte relatie,</p>'
-      +'<p>Hieronder vindt u de door het kantoor ingevulde informatie in het kader van het '+esc(t.traject_type||'M&A')+'-traject. U kunt de gegevens inzien. Vragen of opmerkingen kunt u richten aan ' + BRAND.contactpersoon + '.</p>'
+      +'<p>Hieronder vindt u de door het kantoor ingevulde informatie in het kader van het '+esc(t.traject_type||'M&A')+'-traject. U kunt de gegevens inzien. Vragen of opmerkingen kunt u richten aan ' + esc(t.begeleider_naam||BRAND.contactpersoon) + '.</p>'
       +'<div style="margin:1rem 0;padding:.75rem 1rem;background:var(--card);border:1px solid var(--border);border-radius:var(--r);font-size:11px;color:var(--muted);line-height:1.7">&#128274; <strong>Beveiliging &amp; AVG:</strong> <strong>'+esc(t.begeleider_naam||'Uw adviseur')+'</strong> is de verwerkingsverantwoordelijke voor de gegevens in dit traject conform de AVG'+(t.begeleider_email?' — voor vragen kunt u contact opnemen via <a href=\"mailto:'+esc(t.begeleider_email)+'\" style=\"color:var(--teal)\">'+esc(t.begeleider_email)+'</a>':'')+'.'
       +'<div style="margin-top:.5rem;font-size:10px;color:#b8b6ac">Verwerkt via het '+BRAND.platformEcht+'-platform, techniek verzorgd door '+BRAND.kort+' — zie de <a href=\"privacy.html\" style=\"color:#b8b6ac\">verwerkersinformatie</a>.</div></div>'
-      +'<p>Met vriendelijke groet,<br><strong>' + BRAND.contactpersoon + '</strong><br><span style="font-size:12px;color:var(--muted)">Senior M&amp;A-adviseur &middot; ' + BRAND.bedrijfKort + '</span></p>'
+      +'<p>Met vriendelijke groet,<br><strong>'+esc(t.begeleider_naam||BRAND.contactpersoon)+'</strong><br><span style="font-size:12px;color:var(--muted)">Senior M&amp;A-adviseur &middot; '+esc(t.begeleider_bedrijf||BRAND.bedrijfKort)+'</span></p>'
       +'<div style="margin-top:.75rem;font-size:10px;color:#c8c5bc">Mogelijk gemaakt door '+BRAND.platformEcht+'</div>';
   }
 
@@ -83,7 +83,7 @@ function renderCover(){
     +'</div></div>'
     +(vergrendeld?'<div style="background:var(--red-bg);border:1px solid var(--red);border-radius:var(--r);padding:10px 14px;margin-bottom:1rem;font-size:13px;color:var(--red)">&#128274; <strong>Dit traject is vergrendeld op '+(t.vergrendeld_op?new Date(t.vergrendeld_op).toLocaleString('nl-NL'):'onbekend')+'.</strong> Verdere wijzigingen zijn niet meer mogelijk.</div>':'')
     +'<div class="cover-letter">'
-    +'<div style="font-size:11px;color:var(--muted);margin-bottom:.5rem">' + BRAND.bedrijfKort + ' &middot; M&amp;A Begeleiding &middot; '+datum+'</div>'
+    +'<div style="font-size:11px;color:var(--muted);margin-bottom:.5rem">' + esc(t.begeleider_bedrijf||BRAND.bedrijfKort) + ' &middot; M&amp;A Begeleiding &middot; '+datum+'</div>'
     +'<h2>'+( isVerkoper()?'Informatieverzoek due diligence':'Due diligence overzicht')+'</h2>'
     +'<div style="font-size:12px;color:var(--muted);margin-bottom:1.25rem">Trajectcode: <span style="font-family:IBM Plex Mono,monospace;color:var(--teal)">'+esc(S.code)+'</span></div>'
     +intro+'</div>'
@@ -585,7 +585,7 @@ async function generateAI(faseId){
   var sectorProfiel=getSectorProfiel();
   var sectorLabel=sectorProfiel.label||'MKB';
   var sectorNormen=sectorProfiel.aiNormen||'';
-  var prompt='Je bent ' + BRAND.contactpersoon + ', senior M&A-adviseur. Sector: '+sectorLabel+'. Traject: '+esc(S.traject&&S.traject.traject_type||'M&A')+' voor "'+esc(S.traject&&S.traject.kantoor_naam||S.code)+'".\n\nSECTOR NORMEN:\n'+sectorNormen+'\n\nFASE: '+f.title+'\n\nINGEVOERDE DATA:\n'+(dataLines.join('\n')||'Geen data')+'\n\nCHECKLIST:\nGereed: '+(chk.join(', ')||'niets')+'\nOpen: '+(open.join(', ')||'alles gereed')+'\n\nRODE VLAGGEN: '+(rfs.join(', ')||'geen')+'\n\nNOTITIES: '+(S.notities[faseId]||'geen')+'\n\nGeef beknopt strategisch advies voor deze sector. Analyseer de cijfers expliciet en vergelijk met de sectorgemiddelden hierboven. Bespreek: voortgang en prioriteiten, urgente openstaande punten, impact rode vlaggen, concrete vervolgstappen. Schrijf in ik-vorm. Gebruik ## koppen. Geen tabellen of bullets.';
+  var prompt='Je bent ' + esc(S.traject&&S.traject.begeleider_naam||BRAND.contactpersoon) + ', senior M&A-adviseur. Sector: '+sectorLabel+'. Traject: '+esc(S.traject&&S.traject.traject_type||'M&A')+' voor "'+esc(S.traject&&S.traject.kantoor_naam||S.code)+'".\n\nSECTOR NORMEN:\n'+sectorNormen+'\n\nFASE: '+f.title+'\n\nINGEVOERDE DATA:\n'+(dataLines.join('\n')||'Geen data')+'\n\nCHECKLIST:\nGereed: '+(chk.join(', ')||'niets')+'\nOpen: '+(open.join(', ')||'alles gereed')+'\n\nRODE VLAGGEN: '+(rfs.join(', ')||'geen')+'\n\nNOTITIES: '+(S.notities[faseId]||'geen')+'\n\nGeef beknopt strategisch advies voor deze sector. Analyseer de cijfers expliciet en vergelijk met de sectorgemiddelden hierboven. Bespreek: voortgang en prioriteiten, urgente openstaande punten, impact rode vlaggen, concrete vervolgstappen. Schrijf in ik-vorm. Gebruik ## koppen. Geen tabellen of bullets.';
   try{
     var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}]})});
     if(!resp.ok)throw new Error('HTTP '+resp.status);

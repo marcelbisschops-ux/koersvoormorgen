@@ -188,18 +188,18 @@ function renderLogin(){
     +'<div style="min-height:60vh;display:flex;align-items:center;justify-content:center">'
     +'<div class="panel" style="max-width:420px;width:100%">'
     +'<div style="font-family:Playfair Display,serif;font-size:1.4rem;color:var(--head);font-weight:600;margin-bottom:.3rem">M&amp;A Begeleiding</div>'
-    +'<div style="font-size:13px;color:var(--muted);line-height:1.65;margin-bottom:1.5rem">Voer uw toegangscode in. U ontvangt uw persoonlijke code van ' + BRAND.bedrijfKort + '.</div>'
+    +'<div style="font-size:13px;color:var(--muted);line-height:1.65;margin-bottom:1.5rem">Voer uw toegangscode in. U ontvangt uw persoonlijke code van uw adviseur.</div>'
     +'<div class="f" style="margin-bottom:.75rem"><label>Toegangscode</label>'
     +'<input type="text" id="l-code" placeholder="" style="text-transform:uppercase;letter-spacing:.15em;font-size:1.2rem;text-align:center;font-family:IBM Plex Mono,monospace" maxlength="10" autocomplete="off"></div>'
-    +'<div id="l-err" style="color:var(--red);font-size:12px;margin-bottom:.75rem;display:none">Code niet gevonden. Controleer uw code of neem contact op via ' + BRAND.email + '.</div>'
+    +'<div id="l-err" style="color:var(--red);font-size:12px;margin-bottom:.75rem;display:none">Code niet gevonden. Controleer uw code of neem contact op met uw adviseur.</div>'
     +'<div id="l-load" style="color:var(--muted);font-size:12px;margin-bottom:.75rem;display:none">Laden...</div>'
     +'<div style="display:flex;gap:10px"><button class="btn-ghost" onclick="window.location.href=\'index.html\'">Terug</button><button class="btn" id="l-btn">Inloggen</button></div>'
     +'<div style="margin-top:1rem;padding:.75rem 1rem;background:rgba(26,122,94,.07);border:1px solid rgba(26,122,94,.2);border-radius:6px;font-size:11px;color:#6a6a60;line-height:1.7">&#128274; <strong style="color:#2a2825">Beveiliging & privacy</strong><br>Uw verbinding is versleuteld (HTTPS). Gegevens opgeslagen in Cloudflare EU-datacenters (Frankfurt, Duitsland). Toegang alleen met uw persoonlijke code. Geen gegevensverkoop aan derden. <a href="privacy.html" style="color:#1a7a5e">Privacyverklaring</a> &middot; <a href="platformvoorwaarden.html" style="color:#1a7a5e">Voorwaarden</a></div>'
-    +'<div style="margin-top:1.25rem;font-size:11px;color:var(--muted);padding-top:1rem;border-top:1px solid var(--border)">Code ontvangen via ' + BRAND.contactpersoon + ' &middot; <a href="mailto:' + BRAND.email + '" style="color:var(--teal)">' + BRAND.email + '</a></div>'
+    +'<div style="margin-top:1.25rem;font-size:11px;color:var(--muted);padding-top:1rem;border-top:1px solid var(--border)">Code ontvangen via uw adviseur.</div>'
     +'<div style="margin-top:.5rem;font-size:10px;color:var(--muted);display:flex;align-items:center;gap:5px">&#128274; Sessie verloopt automatisch na 8 uur inactiviteit. Max. 10 inlogpogingen per sessie.</div>'
     +'</div></div>'
     +'<div style="position:fixed;bottom:1.25rem;left:1.5rem;right:1.5rem;display:flex;justify-content:space-between;align-items:flex-end;pointer-events:none">'
-    +'<div style="pointer-events:auto"><span style="font-size:11px;color:var(--muted)">'+BRAND.platform+' '+BRAND.suffix+' &middot; '+BRAND.bedrijfKort+'</span></div>'
+    +'<div style="pointer-events:auto"><span style="font-size:11px;color:var(--muted)">'+BRAND.platform+' '+BRAND.suffix+'</span></div>'
     +'<div style="pointer-events:auto;text-align:right"><a href="privacy.html" style="font-size:11px;color:var(--muted);text-decoration:none">Privacyverklaring</a> &middot; <a href="platformvoorwaarden.html" style="font-size:11px;color:var(--muted);text-decoration:none">Voorwaarden</a></div>'
     +'</div>'
     +'</div>';
@@ -491,10 +491,10 @@ function renderBegeleiderDashboard(app){
         +'Ontvangende partij (koper): '+esc(t2.koper_naam||'[koper]')+', '+(t2.koper_adres||'[adres]')+'.\n'
         +'Exclusiviteitsperiode: 6 weken. Datum: '+datum+'. Begeleider: '+adviseur+'. Geef alleen het ingevulde document terug.',
       bem:'Vul de Bemiddelingsovereenkomst in. Type: '+(isSell?'Verkoop (sell-side)':'Aankoop (buy-side)')+'. Vervang ALLE [tekst tussen haakjes].\n'
-        +'INSTRUCTIE: De OPDRACHTGEVER heeft ' + BRAND.kort + ' ingeschakeld. De WEDERPARTIJ is de andere transactiepartij.\n'
+        +'INSTRUCTIE: De OPDRACHTGEVER heeft ' + (t2.begeleider_bedrijf||BRAND.kort) + ' ingeschakeld. De WEDERPARTIJ is de andere transactiepartij.\n'
         +'Opdrachtgever ('+lb.sectie1+'): '+esc(opdrNaam)+' ('+(opdrRv||'[rechtsvorm]')+'), '+esc(opdrAdres)+', KvK: '+esc(opdrKvk)+'.\n'
         +'Wederpartij ('+lb.sectie2+'): '+esc(wpartNaam)+' ('+(wpartRv||'[rechtsvorm]')+'), '+esc(wpartAdres)+', KvK: '+esc(wpartKvk)+'.\n'
-        +'Datum: '+datum+'. Adviseur/Bemiddelaar: ' + BRAND.bedrijf + ', ' + BRAND.contactpersoon + ', ' + BRAND.adres + '. Geef alleen het ingevulde document terug.'
+        +'Datum: '+datum+'. Adviseur/Bemiddelaar: ' + (t2.begeleider_bedrijf||BRAND.bedrijf) + ', ' + adviseur + ', ' + (t2.begeleider_adres||BRAND.adres) + '. Geef alleen het ingevulde document terug.'
     };
     var tplTekst=tplD.ok&&tplD.tekst?tplD.tekst:'[standaard template]';
     // Afkappen om prompt te lang te voorkomen
@@ -693,7 +693,7 @@ function renderBegeleiderDashboard(app){
           +'## Financiering en kasstroom\n(toelichting op het schuldafbouwmodel)\n[TABEL:SCHULDAFBOUW]\n\n'
           +(p.buyAndBuild?'## Buy-and-build: platformscenario\n(korte toelichting op het groeiscenario via overnames)\n[TABEL:BUYANDBUILD]\n\n':'')
           +'## Risico\'s & aandachtspunten\n(4-6 concrete, genummerde aandachtspunten)';
-        var prompt='Je bent ' + BRAND.contactpersoon + ', senior M&A-adviseur bij ' + BRAND.bedrijf + ' Schrijf de verhalende hoofdstukken van een vertrouwelijk dealvoorstel.\n\n'
+        var prompt='Je bent ' + (t2.begeleider_naam||BRAND.contactpersoon) + ', senior M&A-adviseur bij ' + (t2.begeleider_bedrijf||BRAND.bedrijf) + '. Schrijf de verhalende hoofdstukken van een vertrouwelijk dealvoorstel.\n\n'
           +'BELANGRIJK: gebruik uitsluitend de cijfers hieronder. Verzin GEEN eigen bedragen, percentages of multiples — die liggen al vast in de berekende tabellen die apart worden ingevoegd op de plek van [TABEL:xxx]-markeringen. Laat die markeringen exact zo staan (op een eigen regel), vervang ze niet door eigen tekst of tabellen.\n\n'
           +'CONTEXT:\n'+contextBlok+'\n\n'
           +'Schrijf onderstaande hoofdstukken met ## koppen, zakelijk Nederlands, geen overdreven bijvoeglijke naamwoorden, max 600 woorden tekst in totaal (exclusief tabelmarkeringen):\n\n'+koppen;
@@ -1098,7 +1098,7 @@ function renderBegeleiderDashboard(app){
         +'<p style="font-size:12px;color:#8a8880">Heeft u vragen? Neem gerust contact op.<br>'
         +esc(t2.begeleider_naam||'Uw begeleider')+' — <a href="mailto:'+esc(t2.begeleider_email||'')+'" style="color:#1a7a5e">'+esc(t2.begeleider_email||'')+'</a></p>'
         +'<p style="font-size:12px;color:#8a8880;margin-top:.75rem">Met vriendelijke groet,<br><strong>'+esc(t2.begeleider_naam||'Uw begeleider')+'</strong><br>'
-        +'<span style="color:#aaa">Senior M&A-adviseur · ' + BRAND.bedrijfKort + '</span></p>'
+        +'<span style="color:#aaa">Senior M&A-adviseur · ' + esc(t2.begeleider_bedrijf||BRAND.bedrijfKort) + '</span></p>'
         +'</div></div>';
       return html;
     }
