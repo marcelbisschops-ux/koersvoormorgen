@@ -419,8 +419,10 @@ function renderBegeleiderDashboard(app){
     +'</div>'
     +'<div style="margin-top:.5rem;display:flex;gap:8px">'
     +'<button class="btn" id="bg-ai-actie" style="background:#6b7c93">&#9881; AI-analyse genereren</button>'
+    +'<button class="btn-outline btn-sm" id="bg-ai-status-actie">&#129302; AI-verificatiestatus</button>'
     +'</div>'
     +'<div id="bg-ai-out" style="display:none;margin-top:1rem"></div>'
+    +'<div id="bg-ai-status-out" style="display:none;margin-top:1rem"></div>'
     +'<div style="margin-top:1.25rem">'
     +'<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem">&#128172; Gesprekken &amp; verslagen</div>'
     +'<div id="bg-gesprekken-sectie" style="font-size:12px;color:var(--muted);font-style:italic">Laden...</div>'
@@ -1566,6 +1568,42 @@ function renderBegeleiderDashboard(app){
 
     laadBgGesprekken();
   }
+
+  var aiStatusBtn=document.getElementById('bg-ai-status-actie');
+  if(aiStatusBtn)aiStatusBtn.onclick=function(){
+    var out=document.getElementById('bg-ai-status-out');
+    var zichtbaar=out.style.display==='block';
+    if(zichtbaar){out.style.display='none';return;}
+    var st=berekenAiVerificatiestatus();
+    var t=st.telling;
+    var faseL={financieel:'I. Financieel',commercieel:'II. Klanten & commercieel',partner:'III. Partners & personeel',compliance:'IV. Compliance & kwaliteit',it:'V. IT & automatisering',juridisch:'VI. Juridisch & fiscaal',strategisch:'VII. Strategisch & markt'};
+    var html='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem">';
+    html+='<div style="font-size:13px;font-weight:600;color:var(--head);margin-bottom:.75rem">&#129302; AI-verificatiestatus — wat is er automatisch gedaan, wat niet</div>';
+    html+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:1rem">'
+      +'<div style="background:var(--teal-bg);border:1px solid var(--teal-dark);border-radius:var(--r);padding:8px 10px"><div style="font-size:18px;font-weight:700;color:var(--teal-dim)">'+t.ai_document+'</div><div style="font-size:10px;color:var(--muted)">velden via AI uit documenten</div></div>'
+      +(st.entiteitenActief?'<div style="background:#eef3fa;border:1px solid #2a5ea0;border-radius:var(--r);padding:8px 10px"><div style="font-size:18px;font-weight:700;color:#2a5ea0">'+t.auto_consolidatie+'</div><div style="font-size:10px;color:var(--muted)">velden automatisch geconsolideerd</div></div>':'')
+      +'<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:8px 10px"><div style="font-size:18px;font-weight:700;color:var(--sub)">'+t.handmatig+'</div><div style="font-size:10px;color:var(--muted)">velden handmatig ingevoerd</div></div>'
+      +'<div style="background:#fff8f0;border:1px solid var(--gold);border-radius:var(--r);padding:8px 10px"><div style="font-size:18px;font-weight:700;color:#8a5a00">'+t.onbekend+'</div><div style="font-size:10px;color:var(--muted)">herkomst onbekend (ouder dan deze functie)</div></div>'
+      +'</div>';
+    if(t.totaal){
+      html+='<div style="font-size:11px;color:var(--muted);margin-bottom:1rem">Van de '+t.totaal+' ingevulde velden op groepsniveau is '+Math.round((t.ai_document+t.auto_consolidatie)/t.totaal*100)+'% automatisch tot stand gekomen (document-extractie of consolidatie) — controleer deze altijd, AI verzint geen bedragen maar leest ze over uit de brondocumenten, wat fouten in het brondocument zelf niet uitsluit.</div>';
+    }
+    html+='<div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.4rem">Documenten</div>';
+    html+='<div style="font-size:12px;color:var(--sub);margin-bottom:.75rem">'+st.docsGeanalyseerd.length+' document(en) succesvol geanalyseerd. '+st.docsVerworpen.length+' document(en) afgewezen door de entiteitscheck.</div>';
+    if(st.docsVerworpen.length){
+      html+='<div style="margin-bottom:1rem">'+st.docsVerworpen.map(function(d){return '<div style="font-size:11px;color:var(--red);padding:3px 0">&#128683; '+esc(d.naam)+' — '+esc(d.verworpen_reden||'geen reden bekend')+'</div>';}).join('')+'</div>';
+    }
+    html+='<div style="background:#fff0f0;border:1px solid var(--red);border-radius:var(--r);padding:.75rem 1rem">'
+      +'<div style="font-size:11px;font-weight:600;color:var(--red);margin-bottom:.4rem">&#9888; Wat AI NIET heeft gedaan — controleer dit zelf</div>'
+      +'<div style="font-size:11px;color:var(--sub);line-height:1.7">'
+      +'&bull; Geen feitelijke controle van de inhoud van brondocumenten — AI leest over wat er staat, beoordeelt niet of het klopt.<br>'
+      +(st.entiteitenActief?'&bull; Geen eliminatie van onderlinge transacties tussen entiteiten in de automatische som (bijv. intercompany-huur) — corrigeer dit zelf, bijv. via het veld Normalisatie.<br>':'')
+      +'&bull; Klantconcentratie (top1/top10), pipeline en vergelijkbare groepsniveau-inschattingen zijn nooit automatisch ingevuld — altijd handmatige beoordeling.<br>'
+      +'&bull; Rode vlaggen en checklist-items zijn niet automatisch afgevinkt — dat blijft een bewuste keuze van de begeleider.'
+      +'</div></div>';
+    html+='</div>';
+    out.innerHTML=html;out.style.display='block';
+  };
 
   document.getElementById('bg-ai-actie').onclick=async function(){
     var btn=this;btn.disabled=true;btn.textContent='Analyseren...';
