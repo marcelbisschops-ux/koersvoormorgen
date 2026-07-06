@@ -657,6 +657,8 @@ function bindAll(){
           .then(function(fs){
             if(fs.status)S.faseStatus=fs.status;
           }).catch(function(){});
+        // Groepsstructuur: geregistreerde entiteiten laden (voor upload-toewijzing en dataroom-labels)
+        loadEntiteiten();
         // Laad dossier-vrijgave status
         if(d.traject&&d.traject.verkoper_klaar){
           S.dossierVrijgegeven=true;
