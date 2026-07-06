@@ -824,7 +824,7 @@ function renderDataroom(){
   var totaal=docs.filter(function(d){return d.bewaard;}).length;
   var html='<div class="wrap anim"><div class="hdr"><div class="brand">'+brandMerkHtml()+BRAND.platform+' &middot; Dataroom'+versieLabel()+'</div>'
     +'<div style="display:flex;gap:8px"><button class="btn-ghost btn-sm" onclick="window.print()">PDF</button>'
-    +'<button class="btn-ghost btn-sm" onclick="S.screen=\'main\';renderApp()">&#8592; Terug</button></div></div>'
+    +'<button class="btn-ghost btn-sm" onclick="S.screen=(isTussen()?\'begeleider\':\'main\');renderApp()">&#8592; Terug</button></div></div>'
     +'<div style="font-family:Playfair Display,serif;font-size:1.4rem;color:var(--head);font-weight:600;margin-bottom:.25rem">Dataroom</div>'
     +'<div style="font-size:13px;color:var(--muted);margin-bottom:1.5rem">'+esc(S.traject&&S.traject.kantoor_naam||S.code)+' &middot; '+totaal+' document'+(totaal!==1?'en':'')+' opgeslagen</div>';
   if(!docs.length){html+='<div class="panel" style="text-align:center;padding:2rem;color:var(--muted);font-size:13px;font-style:italic">Geen documenten opgeslagen.</div>';}
