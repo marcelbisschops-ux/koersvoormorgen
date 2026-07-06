@@ -630,6 +630,7 @@ function renderBegeleiderDashboard(app){
       +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('dv-leverage','Bankfinanciering (× bewezen EBITDA)',d.bankLeverage,0.1)+veld('dv-rente','Rente (%)',d.rentePct,0.1)+'</div>'
       +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('dv-vpb','VpB-tarief (%)',d.vpbPct,0.1)+veld('dv-capex','Capex (% van EBITDA)',d.capexPct,0.1)+'</div>'
       +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('dv-groei','Organische groei (%/jaar)',d.groeiPct,0.1)+veld('dv-horizon','Horizon schuldafbouw (jaren)',d.horizonJaren)+'</div>'
+      +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('dv-discontovoet','Discontovoet / WACC (%) — voor DCF-kruiscontrole',d.discontovoetPct,0.1)+'<div style="flex:1"></div></div>'
       +'<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#2a2825;margin-bottom:1rem;cursor:pointer"><input type="checkbox" id="dv-bab-aan" style="width:15px;height:15px;accent-color:#8a5a00"> Buy-and-build platformscenario meenemen</label>'
       +'<div id="dv-bab-velden" style="display:none">'
       +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('dv-bab-nper','Overnames per jaar',d.baOvernamesPerJaar)+veld('dv-bab-omvang','Gem. EBITDA per overname (€)',d.baOmvangEbitda)+'</div>'
@@ -665,6 +666,7 @@ function renderBegeleiderDashboard(app){
         capexPct:parseFloat(document.getElementById('dv-capex').value)||1.5,
         groeiPct:parseFloat(document.getElementById('dv-groei').value)||4,
         horizonJaren:parseInt(document.getElementById('dv-horizon').value)||5,
+        discontovoetPct:parseFloat(document.getElementById('dv-discontovoet').value)||12,
         buyAndBuild:document.getElementById('dv-bab-aan').checked,
         baOvernamesPerJaar:parseFloat(document.getElementById('dv-bab-nper').value)||2,
         baOmvangEbitda:parseFloat(document.getElementById('dv-bab-omvang').value)||1400000,
@@ -682,10 +684,17 @@ function renderBegeleiderDashboard(app){
         var closing=dvBerekenClosing(p);
         var schuldafbouw=dvBerekenSchuldafbouw(p,closing);
         var buyAndBuildRows=p.buyAndBuild?dvBerekenBuyAndBuild(p,schuldafbouw[schuldafbouw.length-1]):null;
+        var gevoeligheid=dvBerekenGevoeligheid(p);
+        var dcf=dvBerekenDCF(p,schuldafbouw);
         var tabelMap={
           CIJFERS:dvTabelCijfers(),
+          CIJFEROVERZICHT:dvTabelCijferoverzicht(),
+          GEVOELIGHEID:dvTabelGevoeligheid(gevoeligheid),
+          TREND:dvTabelTrend(),
+          VERGELIJKBAAR:dvBlokVergelijkbareTransacties(),
           PRIJSMECHANISME:dvTabelPrijsmechanisme(prijsmechanisme),
           CLOSING:dvTabelClosing(closing),
+          DCF:dvTabelDCF(dcf),
           SCHULDAFBOUW:dvTabelSchuldafbouw(schuldafbouw),
           BUYANDBUILD:buyAndBuildRows?dvTabelBuyAndBuild(buyAndBuildRows):''
         };
@@ -694,21 +703,27 @@ function renderBegeleiderDashboard(app){
           +'Bewezen EBITDA laatste boekjaar: €'+Math.round(p.ebitdaBewezen)+'. Prognose-EBITDA komend jaar: €'+Math.round(p.ebitdaPrognose)+'.\n'
           +'Gewenst belang koper bij closing: '+p.belangPct+'%. Basis-multiple: '+p.multipleBasis+'×. Bovengrens-multiple: '+p.multipleBovengrens+'×. Cliff-drempel: '+p.cliffPct+'% van de prognose.\n'
           +'Escrow: '+p.escrowPct+'% gedurende '+p.escrowMaanden+' maanden. Bankfinanciering bij closing: '+p.bankLeverage+'× de bewezen EBITDA.\n'
-          +'Bedrag bij closing (koper, op bewezen basis): €'+Math.round(closing.deelKoperBasis)+'. Mogelijke earn-up bij volledige realisatie: €'+Math.round(closing.earnUp)+'.';
+          +'Bedrag bij closing (koper, op bewezen basis): €'+Math.round(closing.deelKoperBasis)+'. Mogelijke earn-up bij volledige realisatie: €'+Math.round(closing.earnUp)+'.\n'
+          +'DCF-kruiscontrole (discontovoet '+p.discontovoetPct+'%): ondernemingswaarde DCF €'+Math.round(dcf.evDcf)+' t.o.v. ondernemingswaarde EBITDA-multiple (bewezen) €'+Math.round(closing.evBasis)+'.';
         var koppen='## Managementsamenvatting\n(3-5 bullets over de kern van het voorstel, dan één alinea "In één zin")\n\n'
           +'## Uitgangspunten & de cijfers\n(korte toelichting op de omzet-/EBITDA-ontwikkeling)\n[TABEL:CIJFERS]\n\n'
+          +'## Cijferoverzicht & interpretatie\n(bespreek feitelijk wat de aangeleverde cijfers hieronder betekenen voor risico en waardering — klantconcentratie, recurring omzet, partnerafhankelijkheid, personeelskosten; herhaal en duid alleen wat er staat, verzin niets)\n[TABEL:CIJFEROVERZICHT]\n\n'
           +'## Waardering: marktonderbouwing\n(leg uit waarom deze multiple-range past bij de sector en de EBITDA-marge; gebruik de sectornormen)\n\n'
+          +'## Gevoeligheidsanalyse\n(korte toelichting hoe de ondernemingswaarde varieert met EBITDA-realisatie en multiple)\n[TABEL:GEVOELIGHEID]\n\n'
+          +'## Meerjarige trend\n(korte toelichting op de omzetgroei over de jaren; vermeld expliciet dat de EBITDA-marge maar over één jaar bekend is)\n[TABEL:TREND]\n\n'
+          +'## Vergelijkbare transacties\n(leg in 2-3 zinnen uit hoe de gekozen multiple-range zich verhoudt tot onderstaande sectorreferenties; verzin geen eigen transacties, gebruik uitsluitend de tekst hieronder)\n[TABEL:VERGELIJKBAAR]\n\n'
           +'## Prijsmechanisme\n(leg uit hoe de multiple meebeweegt met de gerealiseerde EBITDA, en waarom de cliff-drempel de koper beschermt)\n[TABEL:PRIJSMECHANISME]\n\n'
           +'## Bedrag bij closing en earn-up\n(toelichting op het bedrag bij closing en de gefaseerde afrekening bij realisatie)\n[TABEL:CLOSING]\n\n'
+          +'## Kruiscontrole: DCF versus EBITDA-multiple\n(leg uit hoe de DCF-uitkomst zich verhoudt tot de multiple-waardering — noem beide bedragen uit de context en interpreteer het verschil, verzin geen eigen bedragen)\n[TABEL:DCF]\n\n'
           +'## Closing-mechanismen\n(kort: locked box, escrow, garanties — gebruik de escrow-cijfers hierboven)\n\n'
           +'## Financiering en kasstroom\n(toelichting op het schuldafbouwmodel)\n[TABEL:SCHULDAFBOUW]\n\n'
           +(p.buyAndBuild?'## Buy-and-build: platformscenario\n(korte toelichting op het groeiscenario via overnames)\n[TABEL:BUYANDBUILD]\n\n':'')
           +'## Risico\'s & aandachtspunten\n(4-6 concrete, genummerde aandachtspunten)';
         var prompt='Je bent ' + (t2.begeleider_naam||BRAND.contactpersoon) + ', senior M&A-adviseur bij ' + (t2.begeleider_bedrijf||BRAND.bedrijf) + '. Schrijf de verhalende hoofdstukken van een vertrouwelijk dealvoorstel.\n\n'
-          +'BELANGRIJK: gebruik uitsluitend de cijfers hieronder. Verzin GEEN eigen bedragen, percentages of multiples — die liggen al vast in de berekende tabellen die apart worden ingevoegd op de plek van [TABEL:xxx]-markeringen. Laat die markeringen exact zo staan (op een eigen regel), vervang ze niet door eigen tekst of tabellen.\n\n'
+          +'BELANGRIJK: gebruik uitsluitend de cijfers hieronder. Verzin GEEN eigen bedragen, percentages, multiples of vergelijkbare transacties — die liggen al vast in de berekende tabellen die apart worden ingevoegd op de plek van [TABEL:xxx]-markeringen. Laat die markeringen exact zo staan (op een eigen regel), vervang ze niet door eigen tekst of tabellen.\n\n'
           +'CONTEXT:\n'+contextBlok+'\n\n'
-          +'Schrijf onderstaande hoofdstukken met ## koppen, zakelijk Nederlands, geen overdreven bijvoeglijke naamwoorden, max 600 woorden tekst in totaal (exclusief tabelmarkeringen):\n\n'+koppen;
-        var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:4000})});
+          +'Schrijf onderstaande hoofdstukken met ## koppen, zakelijk Nederlands, geen overdreven bijvoeglijke naamwoorden, max 950 woorden tekst in totaal (exclusief tabelmarkeringen):\n\n'+koppen;
+        var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:6000})});
         var rd=await resp.json();
         var bodyHtml=dvBouwRapportHtml(rd.text||'',tabelMap);
         document.body.removeChild(ov);
