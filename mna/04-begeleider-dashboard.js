@@ -265,6 +265,58 @@ function toonKoperToegangModal(app){
   };
 }
 
+function toonGroepsstructuurModal(app){
+  var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:400;display:flex;align-items:center;justify-content:center;padding:1.5rem';
+  var mo=document.createElement('div');mo.style.cssText='background:#fff;border-radius:10px;padding:1.75rem;max-width:520px;width:100%;max-height:90vh;overflow-y:auto';
+  mo.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.15rem;color:#1a1815;font-weight:600;margin-bottom:.25rem">&#127970; Groepsstructuur</div>'
+    +'<div style="font-size:12px;color:#8a8880;margin-bottom:1rem">Betreft dit traject een holding met meerdere werkmaatschappijen? Registreer hier de aparte entiteiten — documenten van deze bedrijven worden dan niet meer afgewezen als "ander bedrijf", en blijven traceerbaar in de dataroom.</div>'
+    +'<div id="gs-lijst" style="margin-bottom:1rem;font-size:13px;color:#8a8880;font-style:italic">Laden...</div>'
+    +'<div style="display:flex;gap:8px;margin-bottom:.5rem">'
+    +'<input type="text" id="gs-naam" placeholder="Naam entiteit, bijv. Dealmkrs B.V." style="flex:2;background:#f0eeea;border:1px solid #c8c5bc;border-radius:6px;padding:7px 11px;font-size:13px">'
+    +'<input type="text" id="gs-kvk" placeholder="KvK (optioneel)" style="flex:1;background:#f0eeea;border:1px solid #c8c5bc;border-radius:6px;padding:7px 11px;font-size:13px">'
+    +'<button id="gs-toevoegen" style="background:#1a7a5e;color:#fff;border:none;padding:7px 14px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;white-space:nowrap">+ Toevoegen</button>'
+    +'</div>'
+    +'<div id="gs-err" style="display:none;color:#e05252;font-size:12px;margin:.5rem 0"></div>'
+    +'<div style="display:flex;justify-content:flex-end;margin-top:1rem">'
+    +'<button id="gs-sluiten" style="background:transparent;border:1px solid #c8c5bc;padding:8px 16px;border-radius:6px;cursor:pointer;font-size:13px">Sluiten</button>'
+    +'</div>';
+  ov.appendChild(mo);document.body.appendChild(ov);
+  ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
+  document.getElementById('gs-sluiten').onclick=function(){document.body.removeChild(ov);};
+
+  async function laadLijst(){
+    var lijstEl=document.getElementById('gs-lijst');
+    lijstEl.textContent='Laden...';
+    var rows=await fetch(WORKER+'/mna/entiteiten/'+S.code).then(function(r){return r.json();}).catch(function(){return [];});
+    if(!rows||!rows.length){lijstEl.innerHTML='<span style="font-style:italic">Nog geen entiteiten geregistreerd — dit traject wordt behandeld als één bedrijf.</span>';return;}
+    lijstEl.style.fontStyle='normal';
+    lijstEl.innerHTML=rows.map(function(r){
+      return '<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid #e0ddd6;border-radius:7px;margin-bottom:6px">'
+        +'<div style="flex:1"><div style="font-size:13px;color:#2a2825">'+esc(r.naam)+'</div>'+(r.kvk?'<div style="font-size:11px;color:#8a8880">KvK '+esc(r.kvk)+'</div>':'')+'</div>'
+        +'<button class="gs-verwijder" data-id="'+esc(r.id)+'" style="background:transparent;border:1px solid #c8c5bc;color:#e05252;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px">Verwijderen</button>'
+        +'</div>';
+    }).join('');
+    lijstEl.querySelectorAll('.gs-verwijder').forEach(function(btn){
+      btn.onclick=async function(){
+        await fetch(WORKER+'/mna/entiteiten/'+S.code,{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey},body:JSON.stringify({actie:'verwijderen',id:btn.dataset.id})});
+        laadLijst();
+      };
+    });
+  }
+  document.getElementById('gs-toevoegen').onclick=async function(){
+    var btn=this;var naamEl=document.getElementById('gs-naam');var kvkEl=document.getElementById('gs-kvk');var errEl=document.getElementById('gs-err');
+    errEl.style.display='none';
+    var naam=naamEl.value.trim();
+    if(!naam){errEl.textContent='Naam is verplicht.';errEl.style.display='block';return;}
+    btn.disabled=true;btn.textContent='...';
+    var r=await fetch(WORKER+'/mna/entiteiten/'+S.code,{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey},body:JSON.stringify({naam:naam,kvk:kvkEl.value.trim()})}).then(function(x){return x.json();}).catch(function(){return {};});
+    btn.disabled=false;btn.textContent='+ Toevoegen';
+    if(r.ok){naamEl.value='';kvkEl.value='';laadLijst();}
+    else{errEl.textContent=r.error||'Fout bij opslaan';errEl.style.display='block';}
+  };
+  laadLijst();
+}
+
 function renderBegeleiderDashboard(app){
   var t=S.traject||{};
   var contractenAan=!S.modules||S.modules.contracten!==false;
@@ -286,6 +338,7 @@ function renderBegeleiderDashboard(app){
     +'</div>'
     +'<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
     +'<button class="btn btn-sm" id="bg-toegang" style="background:var(--teal)">&#128275; Koper-toegang</button>'
+    +'<button class="btn-outline btn-sm" id="bg-groepsstructuur">&#127970; Groepsstructuur</button>'
     +(t.status==='afgesloten'?'':'<button class="btn-ghost btn-sm" id="bg-afsluiten" style="color:var(--red);border-color:var(--red)">&#127937; Traject afsluiten</button>')
     +(function(){ var kc=koperCatsVan(t); var tot=(window.FASES&&FASES.length)||7; var lbl,kl; if(kc===null){ lbl=t.koper_vrijgegeven?'Alles vrijgegeven':'Geen toegang'; kl=t.koper_vrijgegeven?'var(--teal)':'var(--muted)'; } else if(kc.length){ lbl=kc.length+'/'+tot+' categorieën vrij'; kl='var(--teal)'; } else { lbl='Geen toegang'; kl='var(--muted)'; } return '<span style="font-size:11px;font-weight:600;color:'+kl+'">'+lbl+'</span>'; })()
     +'<span style="display:inline-block;padding:4px 12px;border-radius:12px;font-size:11px;font-weight:600;background:'+(t.status==='vergrendeld'?'var(--red-bg)':'var(--teal-bg)')+';color:'+(t.status==='vergrendeld'?'var(--red)':'var(--teal)')+';border:1px solid '+(t.status==='vergrendeld'?'var(--red)':'var(--teal-dark)')+'">'+esc(t.status||'actief')+'</span>'
@@ -387,6 +440,8 @@ function renderBegeleiderDashboard(app){
   // Koper-toegang beheren (gefaseerd, per DD-categorie)
   var tgBtn=document.getElementById('bg-toegang');
   if(tgBtn)tgBtn.onclick=function(){ toonKoperToegangModal(app); };
+  var gsBtn=document.getElementById('bg-groepsstructuur');
+  if(gsBtn)gsBtn.onclick=function(){ toonGroepsstructuurModal(app); };
 
   // Traject afsluiten: dossier-export (ZIP + DD-rapport), downloadmail, daarna 14 dagen tot verwijdering
   var afsBtn=document.getElementById('bg-afsluiten');
