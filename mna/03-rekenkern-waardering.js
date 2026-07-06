@@ -30,6 +30,7 @@ function dvGetDefaults(){
     capexPct:1.5,
     groeiPct:4,
     horizonJaren:5,
+    discontovoetPct:12,
     buyAndBuild:false,
     baOvernamesPerJaar:2,
     baOmvangEbitda:1400000,
@@ -166,6 +167,140 @@ function dvTabelSchuldafbouw(rows){
 function dvTabelBuyAndBuild(rows){
   return dvRenderTabelHtml(['Jaar','Deals','Acq. EBITDA','Groeps-EBITDA','Netto schuld','ND/EBITDA','Multiple','EV','Koperswaarde'],
     rows.map(function(r){return [r.jaar,r.deals,dvMln(r.acqEbitda),dvMln(r.groepsEbitda),dvMln(r.nettoSchuld),dvMultiple(r.leverage),dvMultiple(r.multiple),dvMln(r.ev),dvMln(r.koperWaarde)];}));
+}
+
+// Label-waarde tabel met wrappende waardekolom (voor vrije tekstvelden uit de due diligence, i.t.t.
+// dvRenderTabelHtml dat nowrap gebruikt en lange teksten dus zou afkappen in de print-weergave).
+function dvRenderKenmerkTabel(rows){
+  var body=rows.map(function(r){
+    return '<tr><td style="padding:5px 10px;text-align:left;border-bottom:1px solid #eee;font-size:10pt;white-space:nowrap;color:#8a8880">'+esc(r[0])+'</td>'
+      +'<td style="padding:5px 10px;text-align:left;border-bottom:1px solid #eee;font-size:10pt">'+esc(String(r[1]))+'</td></tr>';
+  }).join('');
+  return '<table style="width:100%;border-collapse:collapse;margin:.5rem 0 1.25rem">'+body+'</table>';
+}
+function dvVeld(key){var v=S.data[key];return (v&&String(v).trim())?String(v).trim():'niet ingevuld';}
+function dvVeldGeld(key){var v=S.data[key];return (v&&String(v).trim())?fmtGeld(parseGeld(v)):'niet ingevuld';}
+function dvVeldPct(key){var v=S.data[key];return (v&&String(v).trim())?(String(v).trim()+'%'):'niet ingevuld';}
+
+// Cijferoverzicht & interpretatie: toont de daadwerkelijk door de verkoper aangeleverde DD-cijfers
+// (financieel + commercieel + partners), zodat de AI-duiding erna aantoonbaar op echte invoer is gebaseerd.
+function dvTabelCijferoverzicht(){
+  var rows=[
+    ['Jaaromzet jaar 1',dvVeldGeld('financieel_omzet1')],
+    ['Jaaromzet jaar 2',dvVeldGeld('financieel_omzet2')],
+    ['Jaaromzet jaar 3 (bewezen)',dvVeldGeld('financieel_omzet3')],
+    ['Omzet YTD huidig jaar',dvVeldGeld('financieel_omzetYTD')],
+    ['Omzetforecast komend jaar',dvVeldGeld('financieel_forecast')],
+    ['EBITDA jaar 3 (absoluut)',dvVeldGeld('financieel_ebitda')],
+    ['EBITDA-marge jaar 3',dvVeldPct('financieel_ebitdaMarge')],
+    ['Genormaliseerde EBITDA',dvVeldGeld('financieel_ebitdaNorm')],
+    ['Normalisatie eenmalige posten',dvVeldGeld('financieel_normalisatie')],
+    ['Recurring omzet',dvVeldPct('financieel_recurring')],
+    ['Partnerbeloning per jaar',dvVeldGeld('financieel_partnerBel')],
+    ['Onderhanden werk (OHW)',dvVeldGeld('financieel_wip')],
+    ['Debiteuren totaal',dvVeldGeld('financieel_debiteuren')],
+    ['Personeelskosten (% omzet)',dvVeldPct('financieel_kostenPersoneel')],
+    ['Aantal actieve klanten',dvVeld('commercieel_aantalKlanten')],
+    ['Grootste klant — aandeel omzet',dvVeldPct('commercieel_top1pct')],
+    ['Top 10 klanten — aandeel omzet',dvVeldPct('commercieel_top10pct')],
+    ['Klantverloop per jaar',dvVeldPct('commercieel_churn')],
+    ['Cross-sell (klanten met meerdere diensten)',dvVeldPct('commercieel_crossSell')],
+    ['Aantal partners/eigenaren',dvVeld('partner_aantalP')],
+    ['Omzet per partner',dvVeldGeld('partner_omzetPerP')],
+    ['Opvolgingskandidaat aanwezig',dvVeld('partner_opvolging')],
+    ['Concurrentiebeding sleutelfiguren',dvVeld('partner_concurrentieBeding')]
+  ];
+  return dvRenderKenmerkTabel(rows);
+}
+
+// Gevoeligheidstabel: EBITDA-scenario's (bewezen/prognose ±10%) tegen de gekozen multiple-range,
+// zodat de impact van de aannames op de waardering direct zichtbaar is.
+function dvBerekenGevoeligheid(p){
+  var ebitdaScenarios=[
+    {label:'Bewezen −10%',ebitda:p.ebitdaBewezen*0.9},
+    {label:'Bewezen',ebitda:p.ebitdaBewezen},
+    {label:'Prognose',ebitda:p.ebitdaPrognose},
+    {label:'Prognose +10%',ebitda:p.ebitdaPrognose*1.1}
+  ];
+  var multiples=[
+    {label:'Laag ('+dvMultiple(p.multipleBasis)+')',m:p.multipleBasis},
+    {label:'Midden ('+dvMultiple((p.multipleBasis+p.multipleBovengrens)/2)+')',m:(p.multipleBasis+p.multipleBovengrens)/2},
+    {label:'Hoog ('+dvMultiple(p.multipleBovengrens)+')',m:p.multipleBovengrens}
+  ];
+  return {ebitdaScenarios:ebitdaScenarios,multiples:multiples};
+}
+function dvTabelGevoeligheid(g){
+  var kolommen=['EBITDA-scenario (€ mln)'].concat(g.multiples.map(function(m){return m.label;}));
+  var rows=g.ebitdaScenarios.map(function(s){
+    var row=[s.label+' — '+dvMln(s.ebitda)];
+    g.multiples.forEach(function(m){row.push(dvMln(s.ebitda*m.m));});
+    return row;
+  });
+  return dvRenderTabelHtml(kolommen,rows);
+}
+
+// Meerjarige trendanalyse op basis van de aangeleverde omzetcijfers (3 jaar + YTD + forecast).
+// EBITDA-marge is maar over 1 jaar uitgevraagd — expliciet zo gelabeld, geen verzonnen historie.
+function dvTabelTrend(){
+  var o1=parseGeld(S.data['financieel_omzet1']);
+  var o2=parseGeld(S.data['financieel_omzet2']);
+  var o3=parseGeld(S.data['financieel_omzet3']);
+  var oYTD=parseGeld(S.data['financieel_omzetYTD']);
+  var forecast=parseGeld(S.data['financieel_forecast']);
+  function groei(van,naar){return van?dvPct((naar-van)/van*100):'—';}
+  var rows=[
+    ['Jaar 1',dvMln(o1),'—'],
+    ['Jaar 2',dvMln(o2),groei(o1,o2)],
+    ['Jaar 3 (bewezen)',dvMln(o3),groei(o2,o3)],
+    ['YTD huidig jaar',oYTD?dvMln(oYTD):'—','—'],
+    ['Forecast komend jaar',forecast?dvMln(forecast):'—',groei(o3,forecast)]
+  ];
+  var margeRaw=S.data['financieel_ebitdaMarge'];
+  var margeNoot='<div style="font-size:10px;color:#8a8880;margin-top:.35rem">EBITDA-marge: '
+    +(margeRaw?esc(String(margeRaw).trim())+'% (jaar 3 — enige beschikbare meetpunt; geen meerjarige margereeks ingevuld)':'niet ingevuld')+'</div>';
+  return dvRenderTabelHtml(['Periode','Omzet (€ mln)','Groei t.o.v. vorig'],rows)+margeNoot;
+}
+
+// Vergelijkbare transacties: toont de door de adviseur zelf onderhouden sectorbenchmarks (met bron)
+// letterlijk — de AI schrijft hier geen eigen tekst over, om verzonnen "comparables" te voorkomen.
+function dvBlokVergelijkbareTransacties(){
+  var sp=getSectorProfiel();
+  var tekst=(sp&&sp.docBenchmarks)?sp.docBenchmarks:'Geen sectorreferenties beschikbaar voor deze sector.';
+  return '<div style="background:#f7f5f0;border:1px solid #e0ddd4;border-radius:6px;padding:12px 16px;margin:.5rem 0 1.25rem;font-size:10pt;color:#2a2825;white-space:pre-line">'+esc(tekst)+'</div>';
+}
+
+// DCF als kruiscontrole op de EBITDA-multiple-waardering: contante waarde van de al berekende
+// FCF-projectie (dvBerekenSchuldafbouw) + terminal value o.b.v. de bestaande groei-aanname.
+function dvBerekenDCF(p,schuldafbouwRows){
+  var d=p.discontovoetPct/100;
+  var g=p.groeiPct/100;
+  var projRows=schuldafbouwRows.slice(1);
+  var pvSom=0,detail=[];
+  projRows.forEach(function(r,i){
+    var jaarIdx=i+1;
+    var factor=Math.pow(1+d,jaarIdx);
+    var pv=r.fcf/factor;
+    pvSom+=pv;
+    detail.push({jaar:r.jaar,fcf:r.fcf,factor:factor,pv:pv});
+  });
+  var laatsteFcf=projRows.length?projRows[projRows.length-1].fcf:0;
+  var terminalValueEind=(d>g)?(laatsteFcf*(1+g))/(d-g):0;
+  var terminalValuePv=terminalValueEind/Math.pow(1+d,projRows.length);
+  var evDcf=pvSom+terminalValuePv;
+  var deelKoperDcf=evDcf*(p.belangPct/100);
+  return {detail:detail,pvSom:pvSom,terminalValueEind:terminalValueEind,terminalValuePv:terminalValuePv,evDcf:evDcf,deelKoperDcf:deelKoperDcf};
+}
+function dvTabelDCF(dcf){
+  var tabel=dvRenderTabelHtml(['Jaar','FCF (€ mln)','Discontofactor','Contante waarde (€ mln)'],
+    dcf.detail.map(function(r){return [r.jaar,dvMln(r.fcf),dvMultiple(r.factor),dvMln(r.pv)];}));
+  var samenvatting=dvRenderTabelHtml(['DCF-uitkomst','€ mln'],[
+    ['Som contante waarde FCF-periode',dvMln(dcf.pvSom)],
+    ['Terminal value (eindejaar)',dvMln(dcf.terminalValueEind)],
+    ['Terminal value (contant gemaakt)',dvMln(dcf.terminalValuePv)],
+    ['Ondernemingswaarde (DCF)',dvMln(dcf.evDcf)],
+    ['Deel koper (DCF-methode)',dvMln(dcf.deelKoperDcf)]
+  ]);
+  return tabel+samenvatting;
 }
 
 function dvFmtTekst(t){
