@@ -174,14 +174,49 @@ function saveCurrent(cb){
   },800);
 }
 
-function getDataForFase(id){var f=FASES.find(function(x){return x.id===id;});if(!f)return {};var out={};f.dataFields.forEach(function(df){if(df.header)return;var v=S.data[id+'_'+df.id];if(v)out[df.id]={value:v,label:df.label,req:df.req||false};});return out;}
+// AI-verificatiestatus: waar komt een veldwaarde vandaan? 'ai_document' (uit documentextractie,
+// S._docSource houdt de bestandsnaam bij), 'handmatig' (getypt door gebruiker, S._userEdited),
+// 'auto_consolidatie' (Fase 2 — automatisch opgeteld/gemiddeld uit entiteiten, server-side gezet),
+// of onbekend (bijv. data van vóór deze functionaliteit).
+function veldBron(key){
+  if(S._docSource&&S._docSource[key])return {bron:'ai_document',bron_doc:S._docSource[key]};
+  if(S._userEdited&&S._userEdited[key])return {bron:'handmatig'};
+  return null;
+}
+function getDataForFase(id){var f=FASES.find(function(x){return x.id===id;});if(!f)return {};var out={};f.dataFields.forEach(function(df){if(df.header)return;var v=S.data[id+'_'+df.id];if(v){var obj={value:v,label:df.label,req:df.req||false};var b=veldBron(id+'_'+df.id);if(b)Object.assign(obj,b);out[df.id]=obj;}});return out;}
 function getChecklistForFase(id){var out={items:{},redflags:{}};var f=FASES.find(function(x){return x.id===id;});if(!f)return out;f.items.forEach(function(_,i){out.items[i]=!!S.checked[id+'_'+i];});f.redflags.forEach(function(_,i){out.redflags[i]=!!S.checked[id+'_rf_'+i];});return out;}
 function loadDataFromDB(dbData){dbData.forEach(function(row){var id=row.fase_id;var dj=typeof row.data_json==='string'?JSON.parse(row.data_json||'{}'):row.data_json||{};var cj=typeof row.checklist_json==='string'?JSON.parse(row.checklist_json||'{}'):row.checklist_json||{};var f=FASES.find(function(x){return x.id===id;});if(!f)return;
   // Groepsstructuur (Fase 2): rijen met entiteit_id gaan naar de per-entiteit-opslag, niet naar S._groepData
   var doel=row.entiteit_id?(S.dataPerEntiteit[row.entiteit_id]=S.dataPerEntiteit[row.entiteit_id]||{}):S._groepData;
-  Object.keys(dj).forEach(function(k){var v=dj[k];if(v&&v.value)doel[id+'_'+k]=v.value;});
+  Object.keys(dj).forEach(function(k){var v=dj[k];if(v&&v.value){doel[id+'_'+k]=v.value;
+    // Herkomst herstellen zodat de AI-verificatiestatus ook na herladen nog klopt
+    if(v.bron==='ai_document'&&v.bron_doc){if(!S._docSource)S._docSource={};S._docSource[id+'_'+k]=v.bron_doc;}
+    else if(v.bron==='handmatig'){if(!S._userEdited)S._userEdited={};S._userEdited[id+'_'+k]=true;}
+  }});
   if(row.entiteit_id)return; // checklist/notitie/koper_reactie blijven groepsniveau — niet per entiteit
   if(cj.items)Object.keys(cj.items).forEach(function(i){S.checked[id+'_'+i]=cj.items[i];});if(cj.redflags)Object.keys(cj.redflags).forEach(function(i){S.checked[id+'_rf_'+i]=cj.redflags[i];});if(row.notitie)S.notities[id]=row.notitie;if(row.koper_reactie){if(!S.koperReacties)S.koperReacties={};S.koperReacties[id]=row.koper_reactie;}});}
+// Overzicht "wat heeft AI gedaan" per traject — telt velden per herkomst en documentstatus,
+// zodat de adviseur in één oogopslag ziet wat AI wel heeft geverifieerd/ingevuld en wat niet.
+function berekenAiVerificatiestatus(){
+  var telling={ai_document:0,handmatig:0,auto_consolidatie:0,onbekend:0,totaal:0};
+  var perFase={};
+  (S._mnaData||[]).forEach(function(row){
+    if(row.entiteit_id)return; // rapport gaat over het groepsniveau — de weergave die adviseur/koper/AI gebruiken
+    var dj;try{dj=typeof row.data_json==='string'?JSON.parse(row.data_json||'{}'):row.data_json||{};}catch(e){dj={};}
+    var f={ai_document:0,handmatig:0,auto_consolidatie:0,onbekend:0};
+    Object.keys(dj).forEach(function(k){
+      var v=dj[k];if(!v||!v.value)return;
+      telling.totaal++;
+      var cat=v.auto?'auto_consolidatie':(v.bron==='ai_document'?'ai_document':(v.bron==='handmatig'?'handmatig':'onbekend'));
+      telling[cat]++;f[cat]++;
+    });
+    perFase[row.fase_id]=f;
+  });
+  var docs=[];Object.keys(DOCS||{}).forEach(function(fid){(DOCS[fid]||[]).forEach(function(d){docs.push(Object.assign({fase_id:fid},d));});});
+  var docsGeanalyseerd=docs.filter(function(d){return !d.verworpen&&!d.uploading;});
+  var docsVerworpen=docs.filter(function(d){return d.verworpen;});
+  return {telling:telling,perFase:perFase,docsGeanalyseerd:docsGeanalyseerd,docsVerworpen:docsVerworpen,entiteitenActief:!!(S._entiteiten&&S._entiteiten.length)};
+}
 function showSaveIndicator(tekst){var el=ge('save-ind');if(!el)return;el.textContent=tekst||'Opgeslagen ✓';el.classList.add('show');setTimeout(function(){el.classList.remove('show');},2500);}
 function showAlert(msg){toast(msg,"warn");}
 function toast(msg,type,dur){type=type||'ok';dur=dur||3500;var c=document.getElementById('toast-container');if(!c){c=document.createElement('div');c.id='toast-container';c.className='toast-container';document.body.appendChild(c);}var t=document.createElement('div');t.className='toast toast-'+type;var ico=type==='ok'?'✓':type==='err'?'✕':type==='warn'?'⚠':'ℹ';t.innerHTML='<span style="font-size:15px;flex-shrink:0;color:'+(type==='ok'?'var(--teal)':type==='err'?'var(--red)':type==='warn'?'var(--gold)':'#2a5ea0')+'">'+ico+'</span><span style="flex:1;line-height:1.5">'+String(msg).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</span><button onclick="this.parentElement.remove()" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px;padding:0;line-height:1;flex-shrink:0">&times;</button>';c.appendChild(t);setTimeout(function(){t.classList.add('hide');setTimeout(function(){if(t.parentElement)t.parentElement.removeChild(t);},220);},dur);return t;}
