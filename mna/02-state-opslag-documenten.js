@@ -1,4 +1,19 @@
-var S={screen:'login',code:'',rol:'',traject:null,fase:0,checked:{},data:{},docRefs:{},notities:{},aiTexts:{},aiLoading:{},saveTimer:null,showValidation:false,dataroomLoading:false,dataroom:null,_opy:{},_epy:{},_conflicts:[],_userEdited:{},_docSource:{},faseStatus:{},dossierVrijgegeven:false,_entiteiten:[]};
+var S={screen:'login',code:'',rol:'',traject:null,fase:0,checked:{},data:{},docRefs:{},notities:{},aiTexts:{},aiLoading:{},saveTimer:null,showValidation:false,dataroomLoading:false,dataroom:null,_opy:{},_epy:{},_conflicts:[],_userEdited:{},_docSource:{},faseStatus:{},dossierVrijgegeven:false,_entiteiten:[],dataPerEntiteit:{},_actieveEntiteit:null};
+// Groepsdata (S._groepData) en S.data wijzen initieel naar hetzelfde object — bij het wisselen van
+// entiteit (switchEntiteit) wordt S.data omgezet naar de data van die entiteit, en weer terug. Alle
+// bestaande code die S.data[...] leest/schrijft (fillPct, saveCurrent, getDataForFase, enz.) werkt
+// hierdoor ongewijzigd door, ongeacht welke entiteit actief is — geen aparte parameter nodig.
+S._groepData=S.data;
+function switchEntiteit(entiteitId){
+  if(entiteitId){
+    if(!S.dataPerEntiteit[entiteitId])S.dataPerEntiteit[entiteitId]={};
+    S._actieveEntiteit=entiteitId;
+    S.data=S.dataPerEntiteit[entiteitId];
+  }else{
+    S._actieveEntiteit=null;
+    S.data=S._groepData;
+  }
+}
 
 // Groepsstructuur: geregistreerde entiteiten (holding + werkmaatschappijen) voor dit traject ophalen.
 function loadEntiteiten(){
@@ -145,10 +160,15 @@ function saveCurrent(cb){
   clearTimeout(S.saveTimer);
   S.saveTimer=setTimeout(function(){
     fetch(WORKER+'/mna/save',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({code:S.code,fase_id:f.id,data_json:getDataForFase(f.id),checklist_json:getChecklistForFase(f.id),notitie:S.notities[f.id]||''})
+      body:JSON.stringify({code:S.code,fase_id:f.id,data_json:getDataForFase(f.id),checklist_json:getChecklistForFase(f.id),notitie:S.notities[f.id]||'',entiteit_id:S._actieveEntiteit||undefined})
     }).then(function(r){return r.json();}).then(function(d){
       if(d.error==='vergrendeld'){showAlert('Dit traject is vergrendeld. Uw wijzigingen zijn niet opgeslagen.');}
-      else{showSaveIndicator();}
+      else{
+        showSaveIndicator();
+        // Groepsstructuur: bij een entiteit-save stuurt de server de bijgewerkte groepswaarden mee terug —
+        // direct verwerken in S._groepData zodat "Groep"-weergave meteen klopt, ook zonder herfetch.
+        if(d.groepswaarden)Object.keys(d.groepswaarden).forEach(function(k){var v=d.groepswaarden[k];if(v&&v.value!==undefined)S._groepData[f.id+'_'+k]=v.value;});
+      }
     }).catch(function(){});
     if(cb)cb();
   },800);
@@ -156,7 +176,12 @@ function saveCurrent(cb){
 
 function getDataForFase(id){var f=FASES.find(function(x){return x.id===id;});if(!f)return {};var out={};f.dataFields.forEach(function(df){if(df.header)return;var v=S.data[id+'_'+df.id];if(v)out[df.id]={value:v,label:df.label,req:df.req||false};});return out;}
 function getChecklistForFase(id){var out={items:{},redflags:{}};var f=FASES.find(function(x){return x.id===id;});if(!f)return out;f.items.forEach(function(_,i){out.items[i]=!!S.checked[id+'_'+i];});f.redflags.forEach(function(_,i){out.redflags[i]=!!S.checked[id+'_rf_'+i];});return out;}
-function loadDataFromDB(dbData){dbData.forEach(function(row){var id=row.fase_id;var dj=typeof row.data_json==='string'?JSON.parse(row.data_json||'{}'):row.data_json||{};var cj=typeof row.checklist_json==='string'?JSON.parse(row.checklist_json||'{}'):row.checklist_json||{};var f=FASES.find(function(x){return x.id===id;});if(!f)return;Object.keys(dj).forEach(function(k){var v=dj[k];if(v&&v.value)S.data[id+'_'+k]=v.value;});if(cj.items)Object.keys(cj.items).forEach(function(i){S.checked[id+'_'+i]=cj.items[i];});if(cj.redflags)Object.keys(cj.redflags).forEach(function(i){S.checked[id+'_rf_'+i]=cj.redflags[i];});if(row.notitie)S.notities[id]=row.notitie;if(row.koper_reactie){if(!S.koperReacties)S.koperReacties={};S.koperReacties[id]=row.koper_reactie;}});}
+function loadDataFromDB(dbData){dbData.forEach(function(row){var id=row.fase_id;var dj=typeof row.data_json==='string'?JSON.parse(row.data_json||'{}'):row.data_json||{};var cj=typeof row.checklist_json==='string'?JSON.parse(row.checklist_json||'{}'):row.checklist_json||{};var f=FASES.find(function(x){return x.id===id;});if(!f)return;
+  // Groepsstructuur (Fase 2): rijen met entiteit_id gaan naar de per-entiteit-opslag, niet naar S._groepData
+  var doel=row.entiteit_id?(S.dataPerEntiteit[row.entiteit_id]=S.dataPerEntiteit[row.entiteit_id]||{}):S._groepData;
+  Object.keys(dj).forEach(function(k){var v=dj[k];if(v&&v.value)doel[id+'_'+k]=v.value;});
+  if(row.entiteit_id)return; // checklist/notitie/koper_reactie blijven groepsniveau — niet per entiteit
+  if(cj.items)Object.keys(cj.items).forEach(function(i){S.checked[id+'_'+i]=cj.items[i];});if(cj.redflags)Object.keys(cj.redflags).forEach(function(i){S.checked[id+'_rf_'+i]=cj.redflags[i];});if(row.notitie)S.notities[id]=row.notitie;if(row.koper_reactie){if(!S.koperReacties)S.koperReacties={};S.koperReacties[id]=row.koper_reactie;}});}
 function showSaveIndicator(tekst){var el=ge('save-ind');if(!el)return;el.textContent=tekst||'Opgeslagen ✓';el.classList.add('show');setTimeout(function(){el.classList.remove('show');},2500);}
 function showAlert(msg){toast(msg,"warn");}
 function toast(msg,type,dur){type=type||'ok';dur=dur||3500;var c=document.getElementById('toast-container');if(!c){c=document.createElement('div');c.id='toast-container';c.className='toast-container';document.body.appendChild(c);}var t=document.createElement('div');t.className='toast toast-'+type;var ico=type==='ok'?'✓':type==='err'?'✕':type==='warn'?'⚠':'ℹ';t.innerHTML='<span style="font-size:15px;flex-shrink:0;color:'+(type==='ok'?'var(--teal)':type==='err'?'var(--red)':type==='warn'?'var(--gold)':'#2a5ea0')+'">'+ico+'</span><span style="flex:1;line-height:1.5">'+String(msg).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</span><button onclick="this.parentElement.remove()" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px;padding:0;line-height:1;flex-shrink:0">&times;</button>';c.appendChild(t);setTimeout(function(){t.classList.add('hide');setTimeout(function(){if(t.parentElement)t.parentElement.removeChild(t);},220);},dur);return t;}
@@ -198,7 +223,7 @@ function saveAll(opts){
   });
   if(!fasesMetData.length)return;
   fasesMetData.forEach(function(f){
-    var payload={code:S.code,fase_id:f.id,data_json:getDataForFase(f.id),checklist_json:getChecklistForFase(f.id),notitie:S.notities[f.id]||''};
+    var payload={code:S.code,fase_id:f.id,data_json:getDataForFase(f.id),checklist_json:getChecklistForFase(f.id),notitie:S.notities[f.id]||'',entiteit_id:S._actieveEntiteit||undefined};
     var body=JSON.stringify(payload);
     if(useBeacon&&navigator.sendBeacon){
       // sendBeacon: gegarandeerd verstuurd ook als tabblad sluit
@@ -273,6 +298,25 @@ function loadDocsForFase(faseId) {
     }).catch(function(){});
 }
 
+// Groepsstructuur (Fase 2): slaat de data van één entiteit op voor de opgegeven fases (gebruikt na
+// document-extractie die aan een entiteit is gekoppeld) en verwerkt de teruggekomen groepswaarden.
+function saveEntiteitData(entiteitId, faseIds){
+  if(!entiteitId)return;
+  var origData=S.data;
+  S.data=S.dataPerEntiteit[entiteitId]=S.dataPerEntiteit[entiteitId]||{};
+  faseIds.forEach(function(faseId){
+    var payload=getDataForFase(faseId);
+    if(!Object.keys(payload).length)return;
+    fetch(WORKER+'/mna/save',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({code:S.code,fase_id:faseId,data_json:payload,entiteit_id:entiteitId})
+    }).then(function(r){return r.json();}).then(function(d){
+      if(d.groepswaarden)Object.keys(d.groepswaarden).forEach(function(k){var v=d.groepswaarden[k];if(v&&v.value!==undefined)S._groepData[faseId+'_'+k]=v.value;});
+      renderApp();
+    }).catch(function(){});
+  });
+  S.data=origData;
+}
+
 async function uploadDocument(faseId, file) {
   if (!S.code || isKoper()) return;
   if (S.traject && S.traject.status === 'vergrendeld') { toast('Traject is vergrendeld.','warn'); return; }
@@ -306,9 +350,11 @@ async function uploadDocument(faseId, file) {
       if (d.veld_extractie) {
         S._conflicts=[];
         var alleFases=['financieel','commercieel','partner','compliance','it','juridisch','strategisch'];
-        alleFases.forEach(function(fid){ autoFillFromExtraction(fid, d.veld_extractie, false, file.name); });
+        alleFases.forEach(function(fid){ autoFillFromExtraction(fid, d.veld_extractie, false, file.name, entiteitId); });
         if(S._conflicts&&S._conflicts.length){
           renderApp();setTimeout(toonConflictDialog,300);
+        }else if(entiteitId){
+          renderApp();saveEntiteitData(entiteitId,alleFases);
         }else{markDirty();renderApp();schedSave();}
       }
       // Toon crosscheck waarschuwingen
@@ -455,7 +501,19 @@ function cleanGetal(v) {
   return s;
 }
 
-function autoFillFromExtraction(faseId, velden, forceOverwrite, docNaam) {
+function autoFillFromExtraction(faseId, velden, forceOverwrite, docNaam, entiteitId) {
+  // Groepsstructuur (Fase 2): als deze upload aan een entiteit is gekoppeld, alle S.data-lezingen/
+  // -schrijvingen hieronder tijdelijk omleiden naar die entiteit se eigen dataopslag — zonder de
+  // huidige formulier-context (S._actieveEntiteit) te wijzigen. Aan het eind altijd terugzetten.
+  var _origData = S.data;
+  if (entiteitId) { S.dataPerEntiteit[entiteitId] = S.dataPerEntiteit[entiteitId] || {}; S.data = S.dataPerEntiteit[entiteitId]; }
+  try {
+    _autoFillFromExtractionBody(faseId, velden, forceOverwrite, docNaam);
+  } finally {
+    S.data = _origData;
+  }
+}
+function _autoFillFromExtractionBody(faseId, velden, forceOverwrite, docNaam) {
   var currentDocNaam = docNaam || 'onbekend document';
   var knownFases = ['financieel','commercieel','partner','compliance','it','juridisch','strategisch'];
 

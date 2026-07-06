@@ -142,6 +142,15 @@ function renderMain(){
     }
   }
   dataHtml+='<div class="sec-hdr">Informatie invullen</div>';
+  // Groepsstructuur (Fase 2): kiezer om cijfers per entiteit in te vullen i.p.v. alleen op groepsniveau
+  if(!isKoper()&&S._entiteiten&&S._entiteiten.length){
+    dataHtml+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:1rem;padding:.6rem .85rem;background:var(--card);border:1px solid var(--border);border-radius:var(--r)">'
+      +'<span style="font-size:11px;font-weight:600;color:var(--muted);white-space:nowrap">Invullen voor:</span>'
+      +'<select id="entiteit-kiezer-form" style="flex:1;font-size:12px;background:#fff;border:1px solid var(--border2);border-radius:6px;padding:5px 8px">'
+      +'<option value=""'+(S._actieveEntiteit?'':' selected')+'>Groep (geconsolideerd)</option>'
+      +S._entiteiten.map(function(e){return '<option value="'+esc(e.id)+'"'+(S._actieveEntiteit===e.id?' selected':'')+'>'+esc(e.naam)+'</option>';}).join('')
+      +'</select></div>';
+  }
   var instrTxt=isVerkoper()?'<div style="font-size:11px;color:var(--muted);line-height:1.6;margin-bottom:1rem;padding-bottom:.75rem;border-bottom:1px solid var(--border)">Vul de velden in. Upload rechts de relevante documenten &mdash; velden worden automatisch ingelezen zolang het boekjaar in het document staat. Controleer alle automatisch ingevulde waarden. De ge&uuml;ploade documenten dienen als grondslag voor de due diligence. Ontbrekende velden vult u zelf in.</div>':'';
   dataHtml+=instrTxt+'<div class="data-grid">';
   var fase2GetoondHeader=false;
@@ -183,10 +192,16 @@ function renderMain(){
     var missing=S.showValidation&&df.req&&!val.trim();
     // Check of dit veld een openstaand conflict heeft
     var hasConflict=S._pendingConflicts&&S._pendingConflicts[f.id+'_'+df.id];
+    // Groepsstructuur (Fase 2): op groepsniveau (geen actieve entiteit) zijn geaggregeerde velden
+    // read-only — automatisch berekend uit de entiteiten, niet handmatig te overschrijven.
+    var isGeaggregeerdInGroep=!S._actieveEntiteit&&S._entiteiten&&S._entiteiten.length&&isGeaggregeerdVeld(f.id,df.id);
     dataHtml+='<div>';
     if(isRO){
       dataHtml+='<div class="f"><label>'+df.label+(df.req?' <span class="req">*</span>':'')+(df.doc?' &#128196;':'')+'</label>'
         +'<div class="readonly-val'+(val?'':' empty')+'">'+(val?esc(val):'Niet ingevuld')+(ref?'<span style="color:var(--gold);font-size:11px;margin-left:8px">&#128196; '+esc(ref)+'</span>':'')+'</div></div>';
+    }else if(isGeaggregeerdInGroep){
+      dataHtml+='<div class="f"><label>'+df.label+(df.req?' <span class="req">*</span>':'')+' <span style="color:var(--teal);font-size:9px;font-weight:600">&#128279; som van entiteiten</span></label>'
+        +'<div class="readonly-val" style="background:var(--teal-bg);border-color:var(--teal-dark)" title="Automatisch berekend uit de geregistreerde entiteiten — vóór eliminatie van onderlinge transacties. Wijzig per entiteit via de kiezer hierboven.">'+(val?esc(val):'Nog geen entiteitsdata')+'</div></div>';
     }else{
       var conflictStyle=hasConflict?'border-color:var(--gold);background:#fffbf0':'';
       var conflictTitle=hasConflict?(' title="Document zegt: '+esc(hasConflict)+'"'):'';
@@ -873,6 +888,12 @@ function bindAll(){
   var prevBtn=ge('prev-btn');if(prevBtn)prevBtn.onclick=function(){saveCurrent();S.fase--;renderApp();};
   var nextBtn=ge('next-btn');if(nextBtn)nextBtn.onclick=function(){saveCurrent();S.fase++;renderApp();};
   var genBtn=ge('gen-btn');if(genBtn)genBtn.onclick=function(){generateAI(FASES[S.fase].id);};
+  var entKiezer=ge('entiteit-kiezer-form');
+  if(entKiezer)entKiezer.onchange=function(){
+    saveCurrent(); // huidige (nu nog actieve) context eerst opslaan vóór het wisselen
+    switchEntiteit(this.value||null);
+    renderApp();
+  };
   document.querySelectorAll('.fase-card[data-fi]').forEach(function(el){el.onclick=function(){
     // Sla huidige fase DIRECT op naar server (geen timer) voor navigatie
     var f=FASES[S.fase];
@@ -888,7 +909,9 @@ function bindAll(){
       var nel=ge('notitie_'+f.id);if(nel)S.notities[f.id]=nel.value;
       clearTimeout(S.saveTimer);
       fetch(WORKER+'/mna/save',{method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({code:S.code,fase_id:f.id,data_json:getDataForFase(f.id),checklist_json:getChecklistForFase(f.id),notitie:S.notities[f.id]||''})
+        body:JSON.stringify({code:S.code,fase_id:f.id,data_json:getDataForFase(f.id),checklist_json:getChecklistForFase(f.id),notitie:S.notities[f.id]||'',entiteit_id:S._actieveEntiteit||undefined})
+      }).then(function(r){return r.json();}).then(function(d){
+        if(d&&d.groepswaarden)Object.keys(d.groepswaarden).forEach(function(k){var v=d.groepswaarden[k];if(v&&v.value!==undefined)S._groepData[f.id+'_'+k]=v.value;});
       }).catch(function(){});
     }
     var newFase=parseInt(el.dataset.fi);

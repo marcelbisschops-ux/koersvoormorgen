@@ -1,6 +1,17 @@
 function parseGeld(s){if(!s)return 0;var n=String(s).replace(/[^0-9,.]/g,'').replace(',','.');return parseFloat(n)||0;}
 function fmtGeld(n){if(!n||isNaN(n))return '—';if(n>=1000000)return '€'+(n/1000000).toFixed(2)+' mln';if(n>=1000)return '€'+(n/1000).toFixed(0)+'.000';return '€'+Math.round(n);}
 
+// Groepsstructuur (Fase 2): welke velden op groepsniveau automatisch berekend worden uit de
+// entiteiten (en dus read-only zijn in de "Groep"-weergave) — spiegelbeeld van VELD_AGGREGATIE in de
+// worker. Alleen gebruikt om read-only vs. invoerbaar te bepalen in de UI; de daadwerkelijke berekening
+// gebeurt server-side bij het opslaan van entiteit-data.
+var VELD_AGGREGATIE = {
+  financieel: ['omzet1','omzet2','omzet3','omzetYTD','forecast','ebitda','partnerBel','normalisatie','ebitdaNorm','wip','debiteuren',
+    'ebitdaMarge','recurring','debiteurenOud','declarab','kostenPersoneel','kostenHuisvesting','kostenIT','kostenMarketing','kostenOverig'],
+  commercieel: ['aantalKlanten','nieuw','verlies','omzetPerKlant','churn','crossSell','klantduur'],
+};
+function isGeaggregeerdVeld(faseId, veldId){ return !!(VELD_AGGREGATIE[faseId]&&VELD_AGGREGATIE[faseId].indexOf(veldId)>=0); }
+
 // ===== DEALVOORSTEL: parameters, berekeningen, weergave =====
 function dvMln(n){return (n/1000000).toLocaleString('nl-NL',{minimumFractionDigits:2,maximumFractionDigits:2});}
 function dvPct(n){return n.toLocaleString('nl-NL',{minimumFractionDigits:1,maximumFractionDigits:1})+'%';}
