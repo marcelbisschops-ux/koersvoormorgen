@@ -358,7 +358,10 @@ function renderBegeleiderDashboard(app){
 
   // AI analyse knop
   html+='<div style="margin-bottom:1rem">'
-    +'<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem">&#128196; Documenten</div>'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">'
+    +'<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">&#128196; Documenten</div>'
+    +'<button class="btn-outline btn-sm" id="bg-dataroom-actie" style="font-size:11px">&#128193; Alle documenten (dataroom)</button>'
+    +'</div>'
     +'<div id="bg-docs-sectie" style="font-size:12px;color:var(--muted);font-style:italic">Laden...</div>'
     +'</div>'
     +'<div style="margin-top:.5rem;display:flex;gap:8px">'
@@ -1009,6 +1012,7 @@ function renderBegeleiderDashboard(app){
   document.getElementById('bg-bieding-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op met ' + BRAND.kort + '.','err');return;} toonDocWaarschuwing('bieding', function(){ toonBiedingModal(); }); };
   document.getElementById('bg-spa-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op met ' + BRAND.kort + '.','err');return;} toonDocWaarschuwing('spa', function(){ toonSpaModal(); }); };
   document.getElementById('bg-eigendoc-actie').onclick=function(){ toonEigenDocumentModal(); };
+  document.getElementById('bg-dataroom-actie').onclick=function(){ S.screen='dataroom'; loadDataroom(); };
 
   document.getElementById('bg-gesprek-actie').onclick=function(){ openBgGesprekForm(null); };
 
