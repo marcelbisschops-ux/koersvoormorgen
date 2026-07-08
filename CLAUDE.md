@@ -24,7 +24,7 @@ Eigenaar: Marcel Bisschops (Bisschops Financing B.V.).
 - AI-model in de worker: `claude-sonnet-4-6`
 
 ## Deployen
-- **Worker:** `npx wrangler deploy cloudflare-worker.js` — draaien vanuit de map waar de wrangler-configuratie staat (historisch: ~/Downloads). Vraag Marcel om bevestiging vóór elke deploy.
+- **Worker:** `npx wrangler deploy cloudflare-worker.js` — draaien vanuit de map waar de wrangler-configuratie staat (historisch: ~/Downloads). Marcel heeft staand akkoord gegeven voor workerdeploys (7 juli 2026) — geen bevestiging per keer meer nodig; wel altijd eerst `node --check` en een lokale test.
 - **Frontend:** commit + push naar `main` (GitHub Desktop of `git push`); GitHub Pages publiceert automatisch binnen 1-2 min. Herinner Marcel aan hard-refresh (Cmd+Shift+R) na publicatie.
 - **Secrets** (ADMIN_KEY, ANTHROPIC_API_KEY, RESEND_API_KEY) staan in Cloudflare. NOOIT een secret in een bestand of commit zetten. Nieuwe secret: `npx wrangler secret put NAAM`.
 
@@ -50,7 +50,8 @@ Eigenaar: Marcel Bisschops (Bisschops Financing B.V.).
 - Geblokkeerde acties tonen altijd: "Neem contact op met Bisschops Financing".
 
 ## Testtrajecten
-- De Vries & Partners: verkoper `UZ24377` — het gevalideerde demonstratiedossier. NOOIT verwijderen.
+- De Vries & Partners (`UZ24377`) is door Marcel zelf verwijderd (juli 2026) en wordt bewust NIET meer aangemaakt. De E2E-testsuite (`tests/e2e-ui.spec.js`) leunt hier niet meer op — die maakt en ruimt een eigen tijdelijk testtraject op.
+- Marilyn en Co / Bisschops & Co: realistische testsets (echte jaarrekening-PDF's met kloppende balans) staan lokaal op het bureaublad, voor handmatig testen van uploads/extractie/groepsstructuur.
 
 ## Openstaande punten (juli 2026)
 - Eigen document-templates (NDA/LoI/BEM) opnieuw uploaden in marilyn (gewist door inmiddels gefixte bug) — bewust uitgesteld door Marcel
