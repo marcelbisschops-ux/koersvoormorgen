@@ -420,6 +420,7 @@ function renderBegeleiderDashboard(app){
     +'<div style="margin-top:.5rem;display:flex;gap:8px">'
     +'<button class="btn" id="bg-ai-actie" style="background:#6b7c93">&#9881; AI-analyse genereren</button>'
     +'<button class="btn-outline btn-sm" id="bg-ai-status-actie">&#129302; AI-verificatiestatus</button>'
+    +'<button class="btn-outline btn-sm" id="bg-waardering-actie">&#9654; Waardering</button>'
     +'</div>'
     +'<div id="bg-ai-out" style="display:none;margin-top:1rem"></div>'
     +'<div id="bg-ai-status-out" style="display:none;margin-top:1rem"></div>'
@@ -1604,6 +1605,9 @@ function renderBegeleiderDashboard(app){
     html+='</div>';
     out.innerHTML=html;out.style.display='block';
   };
+
+  var wrdBtn=document.getElementById('bg-waardering-actie');
+  if(wrdBtn)wrdBtn.onclick=function(){S.screen='waardering';renderApp();};
 
   document.getElementById('bg-ai-actie').onclick=async function(){
     var btn=this;btn.disabled=true;btn.textContent='Analyseren...';
