@@ -106,6 +106,8 @@ function renderCover(){
     +'<div id="partij-docs-sectie" style="margin-top:1.5rem"></div>'
     +'<div id="partij-gesprekken-sectie" style="margin-top:1rem"></div>'
     +(isVerkoper()?'<button class="btn" id="to-main-btn2" style="width:100%;margin-top:1rem">Start met invullen &#8594;</button>':'')
+    +(isKoper()?'<button class="btn" id="to-main-btn2" style="width:100%;margin-top:1rem">Bekijk due diligence-informatie &#8594;</button>':'')
+    +(isKoper()&&t.koper_vrijgegeven?'<button class="btn-outline" id="to-waardering-btn2" style="width:100%;margin-top:.5rem">&#9654; Waardering</button>':'')
     +'</div>';
 }
 
@@ -708,6 +710,7 @@ function bindAll(){
   var toMain=ge('to-main-btn');if(toMain)toMain.onclick=function(){S.screen='main';var fId=FASES[S.fase]&&FASES[S.fase].id;if(fId&&!DOCS[fId])loadDocsForFase(fId);renderApp();};
   var toMain2=ge('to-main-btn2');if(toMain2)toMain2.onclick=function(){S.screen='main';renderApp();};
   var toWrd=ge('to-waardering-btn');if(toWrd)toWrd.onclick=function(){S.screen='waardering';renderApp();};
+  var toWrd2=ge('to-waardering-btn2');if(toWrd2)toWrd2.onclick=function(){S.screen='waardering';renderApp();};
   var toLb=ge('logboek-btn');if(toLb)toLb.onclick=function(){S.screen='logboek';renderApp();};
   // Laad en toon huidige fase op cover
   (async function(){

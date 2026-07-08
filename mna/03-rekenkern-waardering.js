@@ -391,7 +391,8 @@ function renderWaardering(){
   var o1=parseGeld(S.data['financieel_omzet1']);
   var o2=parseGeld(S.data['financieel_omzet2']);
   var o3=parseGeld(S.data['financieel_omzet3']);
-  var ebitdaPct=parseFloat(S.data['financieel_ebitda'])||0;
+  var ebitdaAbs=parseGeld(S.data['financieel_ebitda']);
+  var ebitdaPct=parseFloat(S.data['financieel_ebitdaMarge'])||(o3?ebitdaAbs/o3*100:0);
   var fte=parseFloat(S.data['partner_fte'])||0;
   var recurring=parseFloat(S.data['commercieel_recurring'])||0;
   var churn=parseFloat(S.data['commercieel_churn'])||0;
@@ -400,7 +401,7 @@ function renderWaardering(){
   var mLaag=4.6,mMid=5.05,mHoog=5.5,omzetFactor=0.8,risico=0;
 
   // Bereken
-  var ebitdaAmt=o3*(ebitdaPct/100);
+  var ebitdaAmt=ebitdaAbs||(o3*(ebitdaPct/100));
   var wLaag=ebitdaAmt*mLaag;
   var wMid=ebitdaAmt*mMid;
   var wHoog=ebitdaAmt*mHoog;
@@ -426,7 +427,7 @@ function renderWaardering(){
     +'<div class="hdr"><div class="brand">'+brandMerkHtml()+BRAND.platform+' &middot; Waardering'+versieLabel()+'</div>'
     +'<div style="display:flex;gap:8px">'
     +'<button class="btn-ghost btn-sm" onclick="window.print()">PDF</button>'
-    +'<button class="btn-ghost btn-sm" onclick="S.screen=\'cover\';renderApp()">&#8592; Terug</button>'
+    +'<button class="btn-ghost btn-sm" onclick="S.screen=(isTussen()?\'begeleider\':\'cover\');renderApp()">&#8592; Terug</button>'
     +'</div></div>'
     +'<div style="font-family:Playfair Display,serif;font-size:1.4rem;color:var(--head);font-weight:600;margin-bottom:.25rem">Waardebepaling</div>'
     +'<div style="font-size:13px;color:var(--muted);margin-bottom:1.5rem">'+esc(t.kantoor_naam||S.code)+' &middot; '+esc(t.traject_type||'M&A')+'</div>';
