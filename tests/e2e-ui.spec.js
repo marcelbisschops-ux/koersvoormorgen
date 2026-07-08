@@ -4,20 +4,21 @@
 // Draait tegen lokale mna.html (static-server op :8799) + de LIVE worker.
 // Drie groepen:
 //   1. Rekenkern      — pure dealvoorstel-functies, exacte waarden (geen kosten)
-//   2. Login & rollen  — De Vries-demodossier (verkoper + begeleider), foutpad
+//   2. Login & rollen  — eigen tijdelijk testtraject (verkoper + begeleider), foutpad
 //   3. Dashboard-gating — module "contracten" uit → documentknoppen vergrendeld
 //
-// De gating-groep maakt eigen testdata via de worker-API en ruimt die op.
-// Vereist een admin-key (ADMIN_KEY env of --key=); anders wordt die groep
-// overgeslagen. Raakt NOOIT De Vries (UZ24377).
+// Groep 2 en 3 maken hun eigen testdata via de worker-API en ruimen die aan het
+// eind volledig op. Beide vereisen een admin-key (ADMIN_KEY env of --key=);
+// anders worden ze overgeslagen. Er wordt GEEN vast demodossier meer gebruikt —
+// eerder draaide dit op het De Vries-dossier (UZ24377), maar dat traject is
+// niet meer beschikbaar en hoeft niet opnieuw aangemaakt te worden.
 // ══════════════════════════════════════════════════════════════════
 
 import { test, expect } from '@playwright/test';
 import { api, leesAdminKey } from './lib.mjs';
 
-const DE_VRIES_VERKOPER = 'UZ24377';
-const DE_VRIES_TUSSEN = 'T2E5YTHA';
 const ADMIN = leesAdminKey();
+const WW = 'TestWachtwoord123!';
 
 async function login(page, code) {
   await page.goto('/mna.html');
@@ -72,14 +73,46 @@ test.describe('Rekenkern dealvoorstel', () => {
 });
 
 // ───────────────────── 2. LOGIN & ROLLEN ─────────────────────
-test.describe('Login en rollen (De Vries-demodossier)', () => {
+// Het foutpad heeft geen testtraject nodig en draait altijd.
+test.describe('Login — foutpad', () => {
   test('ongeldige code toont foutmelding', async ({ page }) => {
     await login(page, 'ZZZZ9999');
     await expect(page.locator('#l-err')).toBeVisible({ timeout: 10000 });
   });
+});
+
+// De rollen-tests (verkoper/begeleider-weergave) hebben een echt traject nodig.
+// Maakt een eigen adviseur + traject (module "contracten" AAN, zodat alle zes
+// documentknoppen actief horen te zijn) en ruimt alles aan het eind weer op —
+// zelfde patroon als de module-gating-groep hieronder. Overgeslagen zonder
+// admin-key.
+test.describe('Login en rollen (eigen testtraject)', () => {
+  test.skip(!ADMIN, 'Geen admin-key (ADMIN_KEY / --key=) — rollen-test overgeslagen');
+
+  let email, gid, verkoperCode, tussenCode;
+
+  test.beforeAll(async () => {
+    email = 'e2e-ui-rollen-' + Date.now() + '@bisschopsfinancing.test';
+    const uit = await api('POST', '/gebruikers/uitnodigen', { adminKey: ADMIN, body: { naam: 'E2E Rollen', bedrijf: 'E2E Rollen BV', email } });
+    gid = uit.json.id;
+    await api('POST', '/gebruikers/activeer', { body: { token: uit.json.token, wachtwoord: WW } });
+    await api('POST', '/gebruiker/voorwaarden/accepteren', { body: { email, wachtwoord: WW } });
+    // Limiet 1, alle modules aan (dit is de rollen-test, geen gating-test)
+    await api('POST', '/gebruikers/verkoop/' + gid, { adminKey: ADMIN, body: { traject_limiet: 1, modules: { traject: true, contracten: true } } });
+    const c = await api('POST', '/adviseur/create', { body: { email, wachtwoord: WW, traject: { kantoor_naam: 'E2E Rollen Kantoor BV', traject_type: 'Verkoop' } } });
+    verkoperCode = c.json.code;
+    tussenCode = c.json.tussen_code;
+    // Verwerkersovereenkomst vooraf tekenen, anders blokkeert de VOK-popup het dashboard.
+    await api('POST', '/mna/vok/teken', { body: { code: tussenCode, naam: 'E2E Test', versie: '1.2', email } });
+  });
+
+  test.afterAll(async () => {
+    if (verkoperCode) await api('POST', '/admin/delete/mna/' + verkoperCode, { adminKey: ADMIN });
+    if (gid) await api('POST', '/gebruikers/verwijder/' + gid, { adminKey: ADMIN, body: {} });
+  });
 
   test('verkoper-code opent verkopersweergave', async ({ page }) => {
-    await login(page, DE_VRIES_VERKOPER);
+    await login(page, verkoperCode);
     await page.waitForFunction(() => window.S && S.traject && S.rol, null, { timeout: 15000 });
     const rol = await page.evaluate(() => S.rol);
     expect(rol).toBe('verkoper');
@@ -88,9 +121,9 @@ test.describe('Login en rollen (De Vries-demodossier)', () => {
   });
 
   test('begeleider-code opent dashboard met alle documentknoppen', async ({ page }) => {
-    await login(page, DE_VRIES_TUSSEN);
+    await login(page, tussenCode);
     await page.waitForFunction(() => window.S && S.traject && S.rol === 'tussenpersoon', null, { timeout: 15000 });
-    // Alle zes documentknoppen aanwezig en (De Vries heeft geen adviseur → contractenAan) actief
+    // Alle zeven documentknoppen aanwezig en (module contracten AAN) actief
     for (const id of ['bg-nda-actie', 'bg-loi-actie', 'bg-bem-actie', 'bg-excl-actie', 'bg-dealvoorstel-actie', 'bg-bieding-actie', 'bg-spa-actie']) {
       await expect(page.locator('#' + id)).toBeVisible();
       await expect(page.locator('#' + id)).toBeEnabled();
@@ -106,7 +139,6 @@ test.describe('Documentknoppen module-gating', () => {
   test.skip(!ADMIN, 'Geen admin-key (ADMIN_KEY / --key=) — gating-test overgeslagen');
 
   let email, gid, tussenCode, trajectCode;
-  const WW = 'TestWachtwoord123!';
 
   test.beforeAll(async () => {
     email = 'e2e-ui-' + Date.now() + '@bisschopsfinancing.test';
