@@ -572,7 +572,7 @@ async function renderBenchmarksTab(el){
             body:JSON.stringify({sleutel:gevonden2[bi].sleutel,waarde:gevonden2[bi].waarde,categorie:gevonden2[bi].categorie||'algemeen',omschrijving:gevonden2[bi].omschrijving,bron:bron,peildatum:datum})
           }).catch(function(){});
         }
-        status.textContent='&#10003; '+gevonden2.length+' benchmarks opgeslagen.';
+        status.innerHTML='&#10003; '+gevonden2.length+' benchmarks opgeslagen.';
         status.style.background='var(--teal-bg)';status.style.color='var(--teal)';
         btn.textContent='Klaar';btn.dataset.confirmed='';
         laadBenchmarks();
@@ -621,13 +621,13 @@ async function renderBenchmarksTab(el){
         });
         preview.style.display='block';preview.innerHTML=pvHtml;
         if(conflicten.length){
-          status.style.display='block';status.textContent='&#9888; Controleer de conflicten hierboven. Klik Opslaan om alle waarden te overschrijven.';
+          status.style.display='block';status.innerHTML='&#9888; Controleer de conflicten hierboven. Klik Opslaan om alle waarden te overschrijven.';
           status.style.background='var(--gold-bg)';status.style.color='var(--gold)';
           btn._gevonden=gevonden;
           btn.disabled=false;btn.textContent='Toch opslaan';
           btn.dataset.confirmed='1';
         } else {
-          status.textContent='&#10003; '+gevonden.length+' benchmarks opgeslagen in D1.';
+          status.innerHTML='&#10003; '+gevonden.length+' benchmarks opgeslagen in D1.';
           btn.textContent='Klaar';
           laadBenchmarks();
         }
@@ -1635,7 +1635,7 @@ async function toonDetail(id,naam){
               else{ivErr.style.display='block';ivErr.textContent='Fout: '+(ed.error||'onbekend');sb.disabled=false;sb.textContent='Verstuur';}
             }catch(fe){ivErr.style.display='block';ivErr.textContent='Verbindingsfout.';sb.disabled=false;sb.textContent='Verstuur';}
           };
-          ibtn.disabled=false;ibtn.textContent='&#128203; Informatieverzoek sturen';
+          ibtn.disabled=false;ibtn.innerHTML='&#128203; Informatieverzoek sturen';
         });
 
         btn.textContent='Opnieuw genereren';btn.disabled=false;
@@ -2175,7 +2175,7 @@ function toonGesprekModal(trajectId, bestaand, onSaved){
   function stopRec(){
     if(recognition){recognition.onend=null;recognition.stop();recognition=null;}
     recActief=false;
-    recBtn.textContent='&#127908; Opnemen';recBtn.style.color='var(--teal)';recBtn.style.borderColor='var(--teal)';
+    recBtn.innerHTML='&#127908; Opnemen';recBtn.style.color='var(--teal)';recBtn.style.borderColor='var(--teal)';
     recStatus.textContent='Opname gestopt';
   }
 

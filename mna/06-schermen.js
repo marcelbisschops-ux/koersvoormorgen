@@ -91,7 +91,7 @@ function renderCover(){
       +'<div style="font-size:11px;font-weight:600;color:#7c5cbf;letter-spacing:.1em;text-transform:uppercase;margin-bottom:.6rem">&#128274; Non-Disclosure Agreement beschikbaar</div>'
       +'<div style="font-size:12px;color:var(--mid);margin-bottom:.75rem">De NDA is aangemaakt op '+(S.ndaDatum?new Date(S.ndaDatum).toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'}):'-')+'. Lees de NDA door en retourneer de ondertekende versie aan de adviseur.</div>'
       +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:.5rem">'
-      +'<button id="nda-lees-btn" class="btn-ghost" style="font-size:12px;border-color:#7c5cbf;color:#7c5cbf">&#128065; Lees NDA</button>'
+      +(S.ndaDocId?'<a href="'+WORKER+'/mna/document/download/'+S.ndaDocId+'?code='+encodeURIComponent(S.code)+'" target="_blank" class="btn-ghost" style="font-size:12px;border-color:#7c5cbf;color:#7c5cbf;text-decoration:none">&#8681; Download NDA</a>':'<button id="nda-lees-btn" class="btn-ghost" style="font-size:12px;border-color:#7c5cbf;color:#7c5cbf">&#128065; Lees NDA</button>')
       +(S.ndaGetekend?'<div style="font-size:11px;padding:4px 10px;border-radius:12px;background:#f3f0ff;border:1px solid #7c5cbf;color:#7c5cbf;display:flex;align-items:center;gap:4px">&#10003; Getekend door '+esc(S.ndaGetekend)+'</div>':(!isAdmin()?'<button id="nda-teken-btn" class="btn" style="font-size:12px;padding:6px 14px;background:#7c5cbf">&#9998; Akkoord &amp; onderteken</button>':''))
       +'</div>'
       +'</div>':'')
@@ -99,8 +99,7 @@ function renderCover(){
       +'<div style="font-size:11px;font-weight:600;color:var(--gold);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.6rem">&#128196; Letter of Intent beschikbaar</div>'
       +'<div style="font-size:12px;color:var(--mid);margin-bottom:.75rem">De LoI is aangemaakt op '+(S.loiDatum?new Date(S.loiDatum).toLocaleDateString("nl-NL",{day:"numeric",month:"long",year:"numeric"}):"—")+'. Lees de LoI door en upload de ondertekende versie via fase Juridisch &amp; Fiscaal.</div>'
       +'<div style="display:flex;gap:8px">'
-      +'<button id="loi-lees-btn" class="btn-ghost" style="font-size:12px">&#128065; Lees LoI</button>'
-      +'<button id="loi-print2-btn" class="btn" style="font-size:12px;background:var(--gold)">&#128196; Download / Print</button>'
+      +(S.loiDocId?'<a href="'+WORKER+'/mna/document/download/'+S.loiDocId+'?code='+encodeURIComponent(S.code)+'" target="_blank" class="btn-ghost" style="font-size:12px;text-decoration:none">&#8681; Download LoI</a>':('<button id="loi-lees-btn" class="btn-ghost" style="font-size:12px">&#128065; Lees LoI</button>'+'<button id="loi-print2-btn" class="btn" style="font-size:12px;background:var(--gold)">&#128196; Download / Print</button>'))
       +(S.loiGetekend?'<div style="font-size:11px;padding:4px 10px;border-radius:12px;background:var(--gold-bg);border:1px solid var(--gold);color:var(--gold);display:flex;align-items:center;gap:4px">&#10003; Getekend door '+esc(S.loiGetekend)+'</div>':(!isAdmin()?'<button id="loi-teken-btn" class="btn-ghost" style="font-size:12px;border-color:var(--gold);color:var(--gold)">&#9998; Akkoord &amp; onderteken</button>':''))
       +'</div></div>':'')
     +'<div id="partij-docs-sectie" style="margin-top:1.5rem"></div>'
@@ -129,8 +128,12 @@ function renderMain(){
   });
   ov+='</div>';
 
-  // Bepaal DD-fase: fase 1 (pre-LOI) of fase 2 (post-LOI)
-  var loiGetekend = !!(S.loiGetekend || (S.traject && (S.traject.loi_getekend || S.traject.loi_datum)));
+  // Bepaal DD-fase: fase 1 (pre-LOI) of fase 2 (post-LOI). LET OP: loi_datum betekent alleen dat
+  // de LoI is aangemaakt/verstuurd door de begeleider, niet dat de verkoper 'm heeft ondertekend —
+  // alleen S.loiGetekend/t.loi_getekend (echte handtekening via /mna/teken) mag fase 2 ontgrendelen.
+  // Regressie juli 2026: loi_datum werd hier ten onrechte ook als "getekend" behandeld, waardoor
+  // fase-2-velden al vrijkwamen zodra de begeleider een LoI verstuurde.
+  var loiGetekend = !!(S.loiGetekend || (S.traject && S.traject.loi_getekend));
   var huidigeDDFase = loiGetekend ? '2' : '1';
 
   // Data fields
@@ -446,7 +449,7 @@ function renderSummary(){
   // Missing fields block
   var missingHtml='';
   if(missing.length&&isVerkoper()){
-    missingHtml='<div class="panel" style="border-color:var(--red)">'
+    missingHtml='<div class="panel" id="dd-missing-velden" style="border-color:var(--red)">'
       +'<div style="font-size:13px;font-weight:600;color:var(--red);margin-bottom:.75rem">&#9888; Nog '+missing.reduce(function(a,m){return a+m.fields.length;},0)+' verplichte velden niet ingevuld</div>';
     missing.forEach(function(m){
       missingHtml+='<div style="margin-bottom:.6rem"><div style="font-size:12px;font-weight:600;color:var(--sub);margin-bottom:.2rem">'+esc(m.fase)+'</div>';
@@ -513,7 +516,11 @@ function renderSummary(){
             if(heeftKritiek){
               html+='<div style="font-size:13px;color:var(--red);font-weight:600;padding:.75rem 1rem;background:var(--red-bg);border-radius:var(--r);text-align:center">&#9940; Vrijgave geblokkeerd — los de discrepanties hierboven op</div>';
             } else if(pct<50){
-              html+='<div style="font-size:12px;color:var(--red);padding:.5rem .75rem;background:var(--red-bg);border-radius:var(--r);margin-bottom:.75rem">&#9888; Vul minimaal 50% van de velden in voordat u het dossier kunt vrijgeven.</div>';
+              html+='<div style="font-size:12px;color:var(--red);padding:.5rem .75rem;background:var(--red-bg);border-radius:var(--r);margin-bottom:.75rem">'
+                +'&#9888; Vul minimaal 50% van de velden in voordat u het dossier kunt vrijgeven. '
+                +'Niet alle velden zijn automatisch uit documenten af te leiden — vul de ontbrekende velden hieronder handmatig aan.'
+                +'<div style="margin-top:.5rem"><a href="#dd-missing-velden" style="color:var(--red);font-weight:600;text-decoration:underline">&#8593; Bekijk welke velden nog ontbreken</a></div>'
+                +'</div>';
             } else {
               html+='<button class="btn" id="dossier-vrijgeven-btn" style="width:100%">&#128228; Dossier vrijgeven aan begeleider</button>';
             }
@@ -552,7 +559,7 @@ async function finaleCheck(){
 
   if(!docNamen.length){
     out.innerHTML='<div style="color:var(--gold);font-size:13px;padding:.75rem;background:var(--gold-bg);border-radius:var(--r);border:1px solid var(--gold)">⚠ Geen documenten geüpload.</div>';
-    btn.disabled=false;btn.textContent='&#9881; Voer finale check uit';
+    btn.disabled=false;btn.innerHTML='&#9881; Voer finale check uit';
     return;
   }
 
@@ -589,7 +596,7 @@ async function finaleCheck(){
   }catch(e){
     out.innerHTML='<div style="color:var(--red);font-size:13px">Fout: '+e.message+'</div>';
   }
-  btn.disabled=false;btn.textContent='&#9881; Opnieuw';
+  btn.disabled=false;btn.innerHTML='&#9881; Opnieuw';
 }
 
 async function generateAI(faseId){
@@ -697,10 +704,14 @@ function bindAll(){
         }
         if(d.traject&&d.traject.loi_tekst)S.loiTekst=d.traject.loi_tekst;
         if(d.traject&&d.traject.loi_datum)S.loiDatum=d.traject.loi_datum;
+        if(d.traject&&d.traject.loi_doc_id)S.loiDocId=d.traject.loi_doc_id;
         if(d.traject&&d.traject.nda_tekst)S.ndaTekst=d.traject.nda_tekst;
         if(d.traject&&d.traject.nda_datum)S.ndaDatum=d.traject.nda_datum;
+        if(d.traject&&d.traject.nda_doc_id)S.ndaDocId=d.traject.nda_doc_id;
         if(d.traject&&d.traject.nda_getekend)S.ndaGetekend=d.traject.nda_getekend;
         if(d.traject&&d.traject.loi_getekend)S.loiGetekend=d.traject.loi_getekend;
+        if(d.traject&&d.traject.bem_doc_id)S.bemDocId=d.traject.bem_doc_id;
+        if(d.traject&&d.traject.bem_tekst&&!d.traject.bem_doc_id)S.bemTekst=d.traject.bem_tekst;
         renderApp();
       }catch(e){if(err)err.style.display='block';if(load)load.style.display='none';lb.disabled=false;}
     };
@@ -886,7 +897,7 @@ function bindAll(){
         renderApp();
       } else {
         toast('Fout: '+(d.error||'onbekend'),'err');
-        dossierVrijgevenBtn.disabled=false;dossierVrijgevenBtn.textContent='&#128228; Dossier vrijgeven aan begeleider';
+        dossierVrijgevenBtn.disabled=false;dossierVrijgevenBtn.innerHTML='&#128228; Dossier vrijgeven aan begeleider';
       }
     }catch(e){toast('Verbindingsfout','err');dossierVrijgevenBtn.disabled=false;}
   };
@@ -1185,7 +1196,7 @@ function bindAll(){
         ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
         document.getElementById('ai-sluit').onclick=function(){document.body.removeChild(ov);};
       }catch(e){toast('Fout bij AI-analyse: '+e.message,'err');}
-      btn.disabled=false;btn.textContent='&#9881; AI-analyse';
+      btn.disabled=false;btn.innerHTML='&#9881; AI-analyse';
     };
   }
 
