@@ -160,7 +160,7 @@ function toonUitnodigingModalTussen() {
         })
       });
       var rd = await res.json();
-      if (rd.ok) { stEl.innerHTML='<span style="color:var(--teal)">&#10003; Verstuurd</span>'; btnEl.textContent='&#10003; Ok'; }
+      if (rd.ok) { stEl.innerHTML='<span style="color:var(--teal)">&#10003; Verstuurd</span>'; btnEl.innerHTML='&#10003; Ok'; }
       else { stEl.innerHTML='<span style="color:var(--red)">'+esc(rd.error||'Fout')+'</span>'; btnEl.disabled=false; btnEl.textContent='Opnieuw'; }
     } catch(e) { stEl.innerHTML='<span style="color:var(--red)">Verbindingsfout</span>'; btnEl.disabled=false; }
   }
@@ -320,10 +320,11 @@ function toonGroepsstructuurModal(app){
 function renderBegeleiderDashboard(app){
   var t=S.traject||{};
   var contractenAan=!S.modules||S.modules.contracten!==false;
-  var lb=window.partijLabels?window.partijLabels(t.traject_type||'Verkoop'):{sectie1:'Verkoper',sectie2:'Koper'};
+  var lb=partijLabels(t.traject_type||'Verkoop');
   var html='<div class="wrap anim">'
     +'<div class="hdr"><div class="brand">'+brandMerkHtml()+BRAND.platform+' &middot; M&A Begeleider'+versieLabel()+'</div>'
     +'<div style="display:flex;gap:8px">'
+    +'<button class="btn-ghost btn-sm" onclick="refreshData()">&#8635; Ververs</button>'
     +'<button class="btn-ghost btn-sm" onclick="window.print()">&#128196; PDF</button>'
     +'<button class="btn-ghost btn-sm" onclick="uitloggen()">&#8592; Uitloggen</button>'
     +'</div></div>'
@@ -475,15 +476,20 @@ function renderBegeleiderDashboard(app){
   function akkoordHtml(id){
     return '<label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);margin-top:.85rem;cursor:pointer"><input type="checkbox" id="'+id+'" style="width:15px;height:15px"> Ik heb dit document gecontroleerd (namen, bedragen en datum kloppen)</label>';
   }
+  // Retourneert een controller met setOverride(bool) — nodig omdat de checkbox-eis ("ik heb dit
+  // document gecontroleerd") niet zinvol is bij een eigen geüpload bestand: er is dan niets
+  // gegenereerds om te controleren, dus schakelt wireEigenPdf hieronder 'm dan uit.
   function wireAkkoord(checkboxId, buttonIds){
     var cb=document.getElementById(checkboxId);
-    if(!cb)return;
     var btns=buttonIds.map(function(id){return document.getElementById(id);}).filter(Boolean);
-    btns.forEach(function(b){b.disabled=true;b.style.opacity='.45';b.style.cursor='not-allowed';});
-    cb.onchange=function(){
-      var ok=cb.checked;
+    var override=false;
+    function toepassen(){
+      var ok=override||(cb&&cb.checked);
       btns.forEach(function(b){b.disabled=!ok;b.style.opacity=ok?'1':'.45';b.style.cursor=ok?'pointer':'not-allowed';});
-    };
+    }
+    if(cb)cb.onchange=toepassen;
+    toepassen();
+    return {setOverride:function(actief){override=actief;toepassen();}};
   }
 
   // Eigen PDF-upload: alternatief voor het gegenereerde document. Herbruikbaar voor elk documenttype.
@@ -561,13 +567,14 @@ function renderBegeleiderDashboard(app){
         +'Exclusiviteitsperiode: 6 weken. Datum: '+datum+'. Begeleider: '+adviseur+'. Geef alleen het ingevulde document terug.',
       bem:'Vul de Bemiddelingsovereenkomst in. Type: '+(isSell?'Verkoop (sell-side)':'Aankoop (buy-side)')+'. Vervang ALLE [tekst tussen haakjes].\n'
         +'INSTRUCTIE: De OPDRACHTGEVER heeft ' + (t2.begeleider_bedrijf||BRAND.kort) + ' ingeschakeld. De WEDERPARTIJ is de andere transactiepartij.\n'
-        +'Opdrachtgever ('+lb.sectie1+'): '+esc(opdrNaam)+' ('+(opdrRv||'[rechtsvorm]')+'), '+esc(opdrAdres)+', KvK: '+esc(opdrKvk)+'.\n'
-        +'Wederpartij ('+lb.sectie2+'): '+esc(wpartNaam)+' ('+(wpartRv||'[rechtsvorm]')+'), '+esc(wpartAdres)+', KvK: '+esc(wpartKvk)+'.\n'
+        +'Opdrachtgever ('+(isSell?lb.sectie1:lb.sectie2)+'): '+esc(opdrNaam)+' ('+(opdrRv||'[rechtsvorm]')+'), '+esc(opdrAdres)+', KvK: '+esc(opdrKvk)+'.\n'
+        +'Wederpartij ('+(isSell?lb.sectie2:lb.sectie1)+'): '+esc(wpartNaam)+' ('+(wpartRv||'[rechtsvorm]')+'), '+esc(wpartAdres)+', KvK: '+esc(wpartKvk)+'.\n'
         +'Datum: '+datum+'. Adviseur/Bemiddelaar: ' + (t2.begeleider_bedrijf||BRAND.bedrijf) + ', ' + adviseur + ', ' + (t2.begeleider_adres||BRAND.adres) + '. Geef alleen het ingevulde document terug.'
     };
     var tplTekst=tplD.ok&&tplD.tekst?tplD.tekst:'[standaard template]';
-    // Afkappen om prompt te lang te voorkomen
-    if(tplTekst.length>6000)tplTekst=tplTekst.substring(0,6000)+'\n[...verdere standaardbepalingen van toepassing]';
+    // Afkappen om prompt te lang te voorkomen — limiet ruim boven de langste template (incl. AV-blok,
+    // ca. 9700 tekens) zodat artikelen nooit halverwege worden afgesneden (regressie: AV stopte bij Artikel 2).
+    if(tplTekst.length>14000)tplTekst=tplTekst.substring(0,14000)+'\n[...verdere standaardbepalingen van toepassing]';
     var prompt=prompts[type]+'\n\nTEMPLATE:\n'+tplTekst;
     var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:8000})});
     var rd=await resp.json();
@@ -584,14 +591,16 @@ function renderBegeleiderDashboard(app){
       +'<button id="bg-print" class="btn-ghost" style="font-size:12px;padding:6px 14px">&#128196; Print</button>'
       +'<button id="bg-email" class="btn" style="font-size:12px;padding:6px 14px;background:'+kleuren[type]+'">&#9993; Verstuur naar partijen</button>'
       +'<button id="bg-signhost" class="btn" style="font-size:12px;padding:6px 14px;background:var(--teal)">&#9998; Signhost</button>'
+      +'<button id="bg-handmatig-getekend" class="btn-ghost" style="font-size:12px;padding:6px 14px">&#128221; Buiten Signhost om getekend</button>'
       +'</div>'
       +eigenPdfHtml('bg-pdf')
       +'</div>';
-    wireAkkoord('bg-doc-akkoord', ['bg-email','bg-signhost']);
+    var bgAkkoordCtrl=wireAkkoord('bg-doc-akkoord', ['bg-email','bg-signhost']);
     var bgPdfStaat={base64:null,naam:null};
     wireEigenPdf('bg-pdf', bgPdfStaat, function(actief){
       document.getElementById('bg-print').disabled=actief;
       document.getElementById('bg-print').style.opacity=actief?'.4':'1';
+      bgAkkoordCtrl.setOverride(actief);
     });
     document.getElementById('bg-print').onclick=function(){ printDoc(document.getElementById('bg-doc-tekst').value, {nda:'NDA',loi:'Letter of Intent',bem:'Bemiddelingsovereenkomst',excl:'Exclusiviteitsbrief'}[type]||type, type); };
     // Scroll naar doc output zodat knoppen zichtbaar zijn
@@ -625,13 +634,27 @@ function renderBegeleiderDashboard(app){
       var ed=await er.json();
       if(ed.ok){ebtn.textContent='✓ Verstuurd';}else{toast('Fout: '+(ed.error||'onbekend'),'err');ebtn.disabled=false;ebtn.textContent='✉ Verstuur';}
     };
+    // Handmatig markeren als getekend buiten Signhost om (bijv. per post of los ondertekend) —
+    // hergebruikt het bestaande /mna/teken-endpoint dat de begeleider-rol al volledig tekenrecht geeft.
+    var handmatigBtn=document.getElementById('bg-handmatig-getekend');
+    if(handmatigBtn)handmatigBtn.onclick=async function(){
+      var naam=prompt('Naam van degene die buiten Signhost om heeft getekend (bijv. namens beide partijen):');
+      if(!naam||!naam.trim())return;
+      if(!confirm('Markeer '+(labels[type]||type)+' als getekend door '+naam.trim()+', buiten Signhost om?'))return;
+      var btn=this;btn.disabled=true;btn.textContent='Vastleggen...';
+      var r=await fetch(WORKER+'/mna/teken',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:S.code,document:type,naam:naam.trim()})}).then(function(x){return x.json();}).catch(function(){return{};});
+      if(r.ok){btn.textContent='✓ Getekend vastgelegd';toast('Vastgelegd: '+(labels[type]||type)+' getekend door '+naam.trim(),'ok');}
+      else{btn.disabled=false;btn.textContent='📝 Buiten Signhost om getekend';toast('Fout: '+(r.error||'onbekend'),'err');}
+    };
     // Signhost handler
     var shBtn=document.getElementById('bg-signhost');
     if(shBtn)shBtn.onclick=function(){
       var tekst=document.getElementById('bg-doc-tekst').value;
       var labels={nda:'NDA',loi:'LoI',bem:'Bemiddelingsovereenkomst',exclusief:'Exclusiviteitsbrief'};
-      var defEmail=type==='bem'?(t2.koper_email||''):(t2.contact_email||'');
-      var defNaam=type==='bem'?(t2.koper_contact||t2.koper_naam||''):(t2.contact_naam||'');
+      // BEM naar de daadwerkelijke opdrachtgever: bij sell-side is dat de verkoper (contact),
+      // bij buy-side de koper — zelfde isSell-logica als bij het e-mail-versturen hierboven.
+      var defEmail=type==='bem'?(isSell?(t2.contact_email||''):(t2.koper_email||'')):(t2.contact_email||'');
+      var defNaam=type==='bem'?(isSell?(t2.contact_naam||''):(t2.koper_contact||t2.koper_naam||'')):(t2.contact_naam||'');
       var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:3000;display:flex;align-items:center;justify-content:center;padding:1.5rem';
       var mo=document.createElement('div');mo.style.cssText='background:var(--panel);border:1px solid var(--border2);border-radius:var(--r2);padding:1.75rem;max-width:400px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.25)';
       mo.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.1rem;color:var(--head);font-weight:600;margin-bottom:1rem">&#9998; Verstuur via Signhost &mdash; '+(labels[type]||type)+'</div>'
@@ -660,7 +683,7 @@ function renderBegeleiderDashboard(app){
           toast('&#10003; '+(labels[type]||type)+' verstuurd via Signhost naar '+email,'ok',5000);
           // Disable Signhost knop om dubbel versturen te voorkomen
           var shBtnEl=document.getElementById('bg-signhost');
-          if(shBtnEl){shBtnEl.disabled=true;shBtnEl.textContent='&#10003; Verstuurd';shBtnEl.style.opacity='.5';}
+          if(shBtnEl){shBtnEl.disabled=true;shBtnEl.innerHTML='&#10003; Verstuurd';shBtnEl.style.opacity='.5';}
         }
         else{errEl.style.display='block';errEl.textContent=rd.error||'Fout';btn.disabled=false;btn.textContent='Verstuur';}
       };
@@ -801,11 +824,12 @@ function renderBegeleiderDashboard(app){
           +'</div>';
         var docOutEl=document.getElementById('bg-doc-out');
         if(docOutEl)setTimeout(function(){docOutEl.scrollIntoView({behavior:'smooth',block:'nearest'});},100);
-        wireAkkoord('dv-doc-akkoord', ['dv-email']);
+        var dvAkkoordCtrl=wireAkkoord('dv-doc-akkoord', ['dv-email']);
         var dvPdfStaat={base64:null,naam:null};
         wireEigenPdf('dv-pdf', dvPdfStaat, function(actief){
           document.getElementById('dv-print').disabled=actief;
           document.getElementById('dv-print').style.opacity=actief?'.4':'1';
+          dvAkkoordCtrl.setOverride(actief);
         });
         document.getElementById('dv-print').onclick=function(){printDealvoorstel(document.getElementById('dv-preview').innerHTML,titel);};
         document.getElementById('dv-email').onclick=async function(){
@@ -873,7 +897,7 @@ function renderBegeleiderDashboard(app){
         var datum=new Date().toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'});
         var tplD=await fetch(WORKER+'/mna/template/bieding?email='+encodeURIComponent(t2.begeleider_email||'')+'&code='+encodeURIComponent(S.code)).then(function(r){return r.json();}).catch(function(){return{ok:false};});
         var tplTekst=tplD.ok&&tplD.tekst?tplD.tekst:'[standaard biedingsbrief]';
-        if(tplTekst.length>6000)tplTekst=tplTekst.substring(0,6000);
+        if(tplTekst.length>14000)tplTekst=tplTekst.substring(0,14000);
         var prompt='Vul de onderstaande indicatieve-biedingsbrief in. Vervang ALLE [tekst tussen haakjes]. Gebruik UITSLUITEND de cijfers hieronder; verzin geen eigen bedragen, EBITDA of multiples.\n'
           +'Kopende partij (uitbrengende partij): '+esc(t2.koper_naam||'[koper]')+(t2.koper_contact?', t.a.v. '+esc(t2.koper_contact):'')+', '+(t2.koper_adres||'')+'.\n'
           +'Verkopende partij / target: '+esc(t2.kantoor_naam||'[verkoper]')+(t2.contact_naam?', t.a.v. '+esc(t2.contact_naam):'')+', '+(t2.verkoper_adres||'')+'.\n'
@@ -910,11 +934,12 @@ function renderBegeleiderDashboard(app){
           +'</div>';
         var docOutEl=document.getElementById('bg-doc-out');
         if(docOutEl)setTimeout(function(){docOutEl.scrollIntoView({behavior:'smooth',block:'nearest'});},100);
-        wireAkkoord('bd-doc-akkoord', ['bd-email']);
+        var bdAkkoordCtrl=wireAkkoord('bd-doc-akkoord', ['bd-email']);
         var bdPdfStaat={base64:null,naam:null};
         wireEigenPdf('bd-pdf', bdPdfStaat, function(actief){
           document.getElementById('bd-print').disabled=actief;
           document.getElementById('bd-print').style.opacity=actief?'.4':'1';
+          bdAkkoordCtrl.setOverride(actief);
         });
         document.getElementById('bd-print').onclick=function(){printDoc(document.getElementById('bd-doc-tekst').value,titel,'bieding');};
         document.getElementById('bd-email').onclick=async function(){
@@ -1041,7 +1066,7 @@ function renderBegeleiderDashboard(app){
         var datum=new Date().toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'});
         var tplD=await fetch(WORKER+'/mna/template/spa?email='+encodeURIComponent(t2.begeleider_email||'')+'&code='+encodeURIComponent(S.code)).then(function(r){return r.json();}).catch(function(){return{ok:false};});
         var tplTekst=tplD.ok&&tplD.tekst?tplD.tekst:'[standaard concept-SPA]';
-        if(tplTekst.length>8000)tplTekst=tplTekst.substring(0,8000);
+        if(tplTekst.length>14000)tplTekst=tplTekst.substring(0,14000);
         var prompt='Vul het onderstaande CONCEPT van een aandelenkoopovereenkomst in. Vervang ALLE [tekst tussen haakjes] met de bekende gegevens; laat placeholders die je niet kent staan als [nader te bepalen]. Gebruik UITSLUITEND de gegevens hieronder; verzin geen eigen bedragen of voorwaarden. Behoud de CONCEPT-waarschuwing bovenaan.\n'
           +'Verkoper: '+esc(t2.kantoor_naam||'[verkoper]')+' ('+(t2.kantoor_rechtsvorm||'')+'), '+(t2.verkoper_adres||'')+', KvK '+(t2.verkoper_kvk||'')+', t.a.v. '+esc(t2.contact_naam||'[vertegenwoordiger]')+'.\n'
           +'Koper: '+esc(t2.koper_naam||'[koper]')+' ('+(t2.koper_rechtsvorm||'')+'), '+(t2.koper_adres||'')+', KvK '+(t2.koper_kvk||'')+', t.a.v. '+esc(t2.koper_contact||'[vertegenwoordiger]')+'.\n'
@@ -1125,8 +1150,10 @@ function renderBegeleiderDashboard(app){
         {id:'strategisch',titel:'Strategie',items:['Werkgebied + specialisaties','Groeimogelijkheden','Gewenste overdrachtstijdlijn']}]
     };
 
-    // Bepaal fase op basis van LoI status
-    var ivFase = forcedFase || ((S.loiGetekend || (t2.loi_getekend) || (t2.loi_datum)) ? '2' : '1');
+    // Bepaal fase op basis van LoI-status — alleen een echte handtekening (loi_getekend) telt,
+    // niet loi_datum (dat betekent slechts "aangemaakt/verstuurd"), zelfde correctie als in
+    // mna/06-schermen.js (regressie juli 2026).
+    var ivFase = forcedFase || ((S.loiGetekend || t2.loi_getekend) ? '2' : '1');
     var ivFaseLabel = ivFase === '2' ? 'Fase 2 — Volledige Due Diligence (post-LoI)' : 'Fase 1 — Oriëntatie (pre-LoI)';
 
     var sector = (t2.sector||'accountancy').toLowerCase();
@@ -1288,7 +1315,7 @@ function renderBegeleiderDashboard(app){
       }
       else{ivErr.style.display='block';ivErr.textContent='Fout: '+(er.error||'onbekend');sb.disabled=false;sb.textContent='Verstuur';}
     };
-    if(ibtn){ibtn.disabled=false;ibtn.textContent='&#128203; Informatieverzoek';}
+    if(ibtn){ibtn.disabled=false;ibtn.innerHTML='&#128203; Informatieverzoek';}
   }
   document.getElementById('bg-infoverzoek-actie').onclick=function(){ openInformatieverzoek(null, this); };
 
@@ -1475,6 +1502,7 @@ function renderBegeleiderDashboard(app){
         + '<option value="iedereen"'+(g.zichtbaar_voor==="iedereen"?' selected':'')+'>Alle partijen</option>'
         + '</select></div>'
         + '<div style="margin-bottom:10px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">'        + '<label style="font-size:10px;font-weight:600;text-transform:uppercase;color:var(--muted)">Notities / aantekeningen</label>'        + '<button id="bgg-rec-btn" style="font-size:11px;padding:2px 8px;border:1px solid var(--teal);border-radius:4px;background:transparent;color:var(--teal);cursor:pointer">&#127908; Opnemen</button>'        + '<span id="bgg-rec-st" style="font-size:11px;color:var(--muted);margin-left:6px"></span></div>'        + '<textarea id="bgg-notities" rows="4" placeholder="Ruwe notities — of klik Opnemen om te dicteren (Chrome). AI maakt er een gestructureerd verslag van." style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:8px 10px;font-family:IBM Plex Sans,sans-serif;font-size:13px;line-height:1.7;resize:vertical">'+esc(g.ruwe_notities||'')+'</textarea></div>'        + '<div style="margin-bottom:10px"><label style="font-size:10px;font-weight:600;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:4px">Verslag <span style="font-weight:400">(of genereer met AI)</span></label>'        + '<textarea id="bgg-verslag" rows="5" placeholder="Gespreksverslag..." style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:8px 10px;font-family:IBM Plex Mono,monospace;font-size:12px;line-height:1.7;resize:vertical">'+esc(g.verslag||'')+'</textarea></div>'        + '<div style="display:flex;gap:8px;margin-bottom:10px">'        + '<button id="bgg-ai-btn" style="font-size:12px;padding:6px 14px;border:1px solid var(--teal);border-radius:var(--r);background:transparent;color:var(--teal);cursor:pointer">&#9881; AI-verslag genereren</button>'        + '<span id="bgg-ai-st" style="font-size:12px;color:var(--muted);align-self:center"></span>'        + '</div>'        + '<div id="bgg-concept-ind" style="font-size:10px;color:var(--muted);margin-bottom:.25rem;font-style:italic"></div>'        + '<div id="bgg-err" style="display:none;color:var(--red);font-size:12px;margin-bottom:.5rem"></div>'        + '<div style="display:flex;gap:8px;justify-content:flex-end">'        + '<button id="bgg-ann" style="background:transparent;border:1px solid var(--border);padding:7px 14px;border-radius:var(--r);cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:13px">Annuleren</button>'        + '<button id="bgg-ok" style="background:#1a7a5e;color:#fff;border:none;padding:7px 14px;border-radius:var(--r);cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:13px;font-weight:600">&#128190; Definitief opslaan</button>'        + '</div>';
+      ov.appendChild(mo);
       document.body.appendChild(ov);
       ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
       mo.querySelector('#bgg-ann').onclick = function(){document.body.removeChild(ov);};
@@ -1491,11 +1519,11 @@ function renderBegeleiderDashboard(app){
             bggRec=new SpeechRec();bggRec.lang='nl-NL';bggRec.continuous=true;bggRec.interimResults=true;
             var base=document.getElementById('bgg-notities').value,interim='';
             bggRec.onresult=function(ev){interim='';var fin='';for(var i=ev.resultIndex;i<ev.results.length;i++){if(ev.results[i].isFinal)fin+=ev.results[i][0].transcript+' ';else interim+=ev.results[i][0].transcript;}if(fin){base+=(base&&!base.endsWith(' ')?'\n':'')+fin;}document.getElementById('bgg-notities').value=base+interim;};
-            bggRec.onerror=function(e){if(recSt)recSt.textContent='Fout: '+e.error;bggRecActief=false;if(recBtn)recBtn.textContent='&#127908; Opnemen';};
+            bggRec.onerror=function(e){if(recSt)recSt.textContent='Fout: '+e.error;bggRecActief=false;if(recBtn)recBtn.innerHTML='&#127908; Opnemen';};
             bggRec.onend=function(){if(bggRecActief){bggRec.start();}};
             bggRec.start();bggRecActief=true;recBtn.textContent='⏹ Stop opname';if(recSt)recSt.textContent='Opname actief...';
           } else {
-            bggRec.stop();bggRecActief=false;recBtn.textContent='&#127908; Opnemen';if(recSt)recSt.textContent='';
+            bggRec.stop();bggRecActief=false;recBtn.innerHTML='&#127908; Opnemen';if(recSt)recSt.textContent='';
           }
         };
       }
@@ -1562,7 +1590,7 @@ function renderBegeleiderDashboard(app){
           laadBgGesprekken();
         } else {
           err.style.display='block';err.textContent='Fout: '+(r.error||'onbekend');
-          btn.disabled=false;btn.textContent='&#128190; Definitief opslaan';
+          btn.disabled=false;btn.innerHTML='&#128190; Definitief opslaan';
         }
       };
     }
