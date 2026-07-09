@@ -687,10 +687,6 @@ function bindAll(){
           }).catch(function(){});
         // Groepsstructuur: geregistreerde entiteiten laden (voor upload-toewijzing en dataroom-labels)
         loadEntiteiten();
-        // Laad dossier-vrijgave status
-        if(d.traject&&d.traject.verkoper_klaar){
-          S.dossierVrijgegeven=true;
-        }
         // Sla tussen_code op als begeleider-auth
         if(isTussen()){
           S._bgKey=code;S.screen='begeleider';
@@ -702,16 +698,7 @@ function bindAll(){
           }).catch(function(){ renderApp(); });
           return; // renderApp wordt via checkVOK afgehandeld
         }
-        if(d.traject&&d.traject.loi_tekst)S.loiTekst=d.traject.loi_tekst;
-        if(d.traject&&d.traject.loi_datum)S.loiDatum=d.traject.loi_datum;
-        if(d.traject&&d.traject.loi_doc_id)S.loiDocId=d.traject.loi_doc_id;
-        if(d.traject&&d.traject.nda_tekst)S.ndaTekst=d.traject.nda_tekst;
-        if(d.traject&&d.traject.nda_datum)S.ndaDatum=d.traject.nda_datum;
-        if(d.traject&&d.traject.nda_doc_id)S.ndaDocId=d.traject.nda_doc_id;
-        if(d.traject&&d.traject.nda_getekend)S.ndaGetekend=d.traject.nda_getekend;
-        if(d.traject&&d.traject.loi_getekend)S.loiGetekend=d.traject.loi_getekend;
-        if(d.traject&&d.traject.bem_doc_id)S.bemDocId=d.traject.bem_doc_id;
-        if(d.traject&&d.traject.bem_tekst&&!d.traject.bem_doc_id)S.bemTekst=d.traject.bem_tekst;
+        syncDocVeldenVanTraject(d);
         renderApp();
       }catch(e){if(err)err.style.display='block';if(load)load.style.display='none';lb.disabled=false;}
     };

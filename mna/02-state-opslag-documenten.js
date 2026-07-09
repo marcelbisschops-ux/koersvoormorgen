@@ -832,6 +832,25 @@ function handleDropUpload(event, faseId) {
 }
 
 
+// Zet de doc-tekst/handtekenstatus-velden (NDA/LoI/BEM) over van het traject-object naar de losse
+// S.xxxTekst/S.xxxGetekend state die renderCover() leest. Gedeeld door de loginflow en refreshData()
+// — stond eerder alleen in de loginflow, waardoor de ververs-knop deze velden liet verdwijnen/verouderen.
+function syncDocVeldenVanTraject(d){
+  if(!d||!d.traject)return;
+  var t=d.traject;
+  if(t.loi_tekst)S.loiTekst=t.loi_tekst;
+  if(t.loi_datum)S.loiDatum=t.loi_datum;
+  if(t.loi_doc_id)S.loiDocId=t.loi_doc_id;
+  if(t.nda_tekst)S.ndaTekst=t.nda_tekst;
+  if(t.nda_datum)S.ndaDatum=t.nda_datum;
+  if(t.nda_doc_id)S.ndaDocId=t.nda_doc_id;
+  if(t.nda_getekend)S.ndaGetekend=t.nda_getekend;
+  if(t.loi_getekend)S.loiGetekend=t.loi_getekend;
+  if(t.bem_doc_id)S.bemDocId=t.bem_doc_id;
+  if(t.bem_tekst&&!t.bem_doc_id)S.bemTekst=t.bem_tekst;
+  if(t.verkoper_klaar)S.dossierVrijgegeven=true;
+}
+
 async function refreshData(){
   var oldScreen = S.screen;
   try {
@@ -844,6 +863,7 @@ async function refreshData(){
       if(d.data && d.data.length) loadDataFromDB(d.data);
       S.rol = d.rol;
       S.modules = d.modules || S.modules || null;
+      syncDocVeldenVanTraject(d);
       S.screen = oldScreen;
       renderApp();
       toast('Verversen gelukt','ok',2000);
