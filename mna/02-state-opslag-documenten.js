@@ -545,12 +545,24 @@ function autoFillFromExtraction(faseId, velden, forceOverwrite, docNaam, entitei
   // Groepsstructuur (Fase 2): als deze upload aan een entiteit is gekoppeld, alle S.data-lezingen/
   // -schrijvingen hieronder tijdelijk omleiden naar die entiteit se eigen dataopslag — zonder de
   // huidige formulier-context (S._actieveEntiteit) te wijzigen. Aan het eind altijd terugzetten.
-  var _origData = S.data;
-  if (entiteitId) { S.dataPerEntiteit[entiteitId] = S.dataPerEntiteit[entiteitId] || {}; S.data = S.dataPerEntiteit[entiteitId]; }
+  // S._opy/S._epy (jaaromzet/EBITDA-marge per boekjaar) moeten ook per entiteit — anders lopen de
+  // boekjaren van verschillende bedrijfsonderdelen door elkaar (dit veroorzaakte de omzet3-bug bij
+  // Marilyn en Co: een klein onderdeel schoof de groepscijfers uit het venster).
+  var _origData = S.data, _origOpy = S._opy, _origEpy = S._epy;
+  if (entiteitId) {
+    S.dataPerEntiteit[entiteitId] = S.dataPerEntiteit[entiteitId] || {};
+    S.data = S.dataPerEntiteit[entiteitId];
+    if (!S._opyPerEntiteit) S._opyPerEntiteit = {};
+    if (!S._epyPerEntiteit) S._epyPerEntiteit = {};
+    S._opyPerEntiteit[entiteitId] = S._opyPerEntiteit[entiteitId] || {};
+    S._epyPerEntiteit[entiteitId] = S._epyPerEntiteit[entiteitId] || {};
+    S._opy = S._opyPerEntiteit[entiteitId];
+    S._epy = S._epyPerEntiteit[entiteitId];
+  }
   try {
     _autoFillFromExtractionBody(faseId, velden, forceOverwrite, docNaam);
   } finally {
-    S.data = _origData;
+    S.data = _origData; S._opy = _origOpy; S._epy = _origEpy;
   }
 }
 function _autoFillFromExtractionBody(faseId, velden, forceOverwrite, docNaam) {
@@ -593,11 +605,11 @@ function _autoFillFromExtractionBody(faseId, velden, forceOverwrite, docNaam) {
     if(!existing){S.data[key]=newVal;if(!S._docSource)S._docSource={};S._docSource[key]=currentDocNaam;return;}
     if(existing===newVal)return;
     if(forceOverwrite){S.data[key]=newVal;if(!S._docSource)S._docSource={};S._docSource[key]=currentDocNaam;return;}
-    // Alleen conflict tonen als de gebruiker dit veld zelf heeft ingevuld
-    if(!S._userEdited||!S._userEdited[key]){
-      S.data[key]=newVal;if(!S._docSource)S._docSource={};S._docSource[key]=currentDocNaam;return; // Stil overschrijven als niet user-edited
-    }
-    if(!S._conflicts)S._conflicts=[];
+    // Zelfde document dat dit veld eerder al zette (bijv. herverwerking) — gewoon bijwerken, geen conflict.
+    if(S._docSource&&S._docSource[key]===currentDocNaam){S.data[key]=newVal;return;}
+    // Andere waarde dan wat er al stond — altijd laten kiezen, ook als het huidige veld zelf
+    // automatisch is ingevuld door een ander document. Stilzwijgend overschrijven leidde ertoe dat
+    // een later document (bijv. van een ander bedrijfsonderdeel) correcte cijfers ongemerkt verving.
     if(!S._conflicts)S._conflicts=[];
     S._conflicts.push({key:key,label:label,huidig:existing,nieuw:newVal,bron:currentDocNaam});
     if(!S._pendingConflicts)S._pendingConflicts={};
@@ -618,12 +630,14 @@ function _autoFillFromExtractionBody(faseId, velden, forceOverwrite, docNaam) {
     }
     var yrs=Object.keys(S._opy).map(Number).filter(function(j){return!isNaN(j)&&j>1990&&j<2100;}).sort(function(a,b){return a-b;});
     if(yrs.length){
-      // Altijd opnieuw mappen - juiste jaar altijd op juiste positie
+      // Meest recente 3 jaar op omzet1/2/3, maar via applyOrConflict — nooit stilzwijgend
+      // een al ingevuld jaar met een andere waarde overschrijven (zie toelichting hierboven).
       var toFill=yrs.slice(-3);
       var allFlds=['omzet1','omzet2','omzet3'];
       var usedFlds=allFlds.slice(3-toFill.length);
-      // Vul correct in — maar wis NOOIT bestaande velden die al gevuld zijn
-      toFill.forEach(function(yr,i){var w=S._opy[String(yr)];if(w)S.data['financieel_'+usedFlds[i]]=String(w);});
+      var fldLabel=['Jaaromzet jaar 1 (oudste)','Jaaromzet jaar 2','Jaaromzet jaar 3 (meest recent)'];
+      var labelOffset=3-toFill.length;
+      toFill.forEach(function(yr,i){var w=S._opy[String(yr)];if(w)applyOrConflict('financieel_'+usedFlds[i],String(w),fldLabel[labelOffset+i]+' ('+yr+')');});
     }
     if(!S._epy)S._epy={};
     var ev=velden.ebitda_pct;
