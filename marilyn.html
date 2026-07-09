@@ -364,12 +364,12 @@ function renderMnaTab(el){
     mnaList.forEach(function(t,i){
       var verg=t.status==='vergrendeld';
       html+='<tr><td><input type="checkbox" class="mna-cb" data-id="'+esc(t.id)+'"'+(verg?' disabled title="Vergrendeld"':'')+' style="cursor:pointer"></td>'
-        +'<td style="font-weight:500;color:var(--head)">'+esc(t.kantoor_naam||'—')+(t.inhoud_afgeschermd?' <span title="Extern adviseurstraject — inhoud afgeschermd voor Bisschops Financing" style="font-size:11px">&#128274;</span>':'')+'</td>'
+        +'<td style="font-weight:500;color:'+(t.inhoud_afgeschermd?'var(--muted)':'var(--head)')+'" title="'+(t.inhoud_afgeschermd?'Extern adviseurstraject — bedrijfsnaam en overige identiteitsvelden afgeschermd voor Bisschops Financing':'')+'">'+esc(t.kantoor_naam||'—')+'</td>'
         +'<td>'+esc(t.traject_type||'—')+(t.sector&&t.sector!=='accountancy'?'<br><span style="font-size:10px;background:var(--teal-bg);color:var(--teal-dim);border:1px solid var(--teal-dark);border-radius:3px;padding:1px 5px">'+esc({mkb:'MKB',zorg:'Zorg',itsoftware:'IT/SW'}[t.sector]||t.sector)+'</span>':'')+'</td>'
         +'<td><span class="tag" style="'+(verg?'background:var(--red-bg);color:var(--red);border-color:var(--red)':'')+'">'+esc(t.status||'actief')+'</span></td>'
         +'<td><span class="code-chip">'+esc(t.id)+'</span><button class="copy-btn" data-copy="'+esc(t.id)+'">⎘</button></td>'
         +'<td><span class="code-chip" style="background:var(--gold-bg);color:var(--gold);border-color:var(--gold)">'+esc(t.koper_code||'—')+'</span><button class="copy-btn" data-copy="'+esc(t.koper_code||'')+'">⎘</button></td>'
-        +'<td><div style="font-size:11px">'+(t.koper_naam?'<div style="font-weight:500;color:var(--sub)">'+esc(t.koper_naam)+'</div>':'<span style="color:var(--muted);font-size:10px;font-style:italic">Nog onbekend</span>')+(t.koper_rechtsvorm?'<div style="color:var(--muted);font-size:10px">'+esc(t.koper_rechtsvorm)+'</div>':'')+'</div></td>'
+        +'<td><div style="font-size:11px">'+(t.inhoud_afgeschermd?'<span style="color:var(--muted);font-size:10px;font-style:italic">&#128274; Afgeschermd</span>':(t.koper_naam?'<div style="font-weight:500;color:var(--sub)">'+esc(t.koper_naam)+'</div>':'<span style="color:var(--muted);font-size:10px;font-style:italic">Nog onbekend</span>')+(t.koper_rechtsvorm?'<div style="color:var(--muted);font-size:10px">'+esc(t.koper_rechtsvorm)+'</div>':''))+'</div></td>'
         +'<td><div style="font-size:11px">'
         +(t.begeleider_naam?'<div style="font-weight:500;color:var(--sub)">'+esc(t.begeleider_naam)+'</div>':'<span style="color:var(--muted);font-size:10px;font-style:italic">Niet ingesteld</span>')
         +(t.begeleider_email?'<div style="color:var(--teal);font-size:10px">'+esc(t.begeleider_email)+'</div>':'')
