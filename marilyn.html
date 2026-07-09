@@ -364,7 +364,7 @@ function renderMnaTab(el){
     mnaList.forEach(function(t,i){
       var verg=t.status==='vergrendeld';
       html+='<tr><td><input type="checkbox" class="mna-cb" data-id="'+esc(t.id)+'"'+(verg?' disabled title="Vergrendeld"':'')+' style="cursor:pointer"></td>'
-        +'<td style="font-weight:500;color:var(--head)">'+esc(t.kantoor_naam||'—')+'</td>'
+        +'<td style="font-weight:500;color:var(--head)">'+esc(t.kantoor_naam||'—')+(t.inhoud_afgeschermd?' <span title="Extern adviseurstraject — inhoud afgeschermd voor Bisschops Financing" style="font-size:11px">&#128274;</span>':'')+'</td>'
         +'<td>'+esc(t.traject_type||'—')+(t.sector&&t.sector!=='accountancy'?'<br><span style="font-size:10px;background:var(--teal-bg);color:var(--teal-dim);border:1px solid var(--teal-dark);border-radius:3px;padding:1px 5px">'+esc({mkb:'MKB',zorg:'Zorg',itsoftware:'IT/SW'}[t.sector]||t.sector)+'</span>':'')+'</td>'
         +'<td><span class="tag" style="'+(verg?'background:var(--red-bg);color:var(--red);border-color:var(--red)':'')+'">'+esc(t.status||'actief')+'</span></td>'
         +'<td><span class="code-chip">'+esc(t.id)+'</span><button class="copy-btn" data-copy="'+esc(t.id)+'">⎘</button></td>'
@@ -381,7 +381,9 @@ function renderMnaTab(el){
         +'<button class="btn btn-uitnodigen" data-id="'+esc(t.id)+'" data-naam="'+esc(t.kantoor_naam||t.id)+'" data-tcode="'+esc(t.tussen_code||'')+'" style="font-size:11px;padding:3px 10px;background:#2a5ea0">&#128231; Begeleider</button>'        +'<button class="btn-ghost btn-detail" data-id="'+esc(t.id)+'" data-naam="'+esc(t.kantoor_naam||t.id)+'" style="font-size:11px;padding:3px 8px">&#128065; Bekijk</button>'
         +'<button class="btn-ghost btn-bewerk" data-id="'+esc(t.id)+'" data-naam="'+esc(t.kantoor_naam||t.id)+'" style="font-size:11px;padding:3px 8px">&#9999;&#65039; Bewerk</button>'
         +'<button class="btn-ghost btn-opslaan" data-idx="'+i+'" style="font-size:11px;padding:3px 8px">&#8681; Opslaan</button>'
-        +'<a href="'+WORKER+'/mna/admin/export/'+esc(t.id)+'?key='+encodeURIComponent(adminKey)+'" target="_blank" class="btn-ghost" style="font-size:11px;padding:3px 8px;text-decoration:none" title="Dossier exporteren">&#128230; Export</a>'
+        +(t.inhoud_afgeschermd
+          ?'<span class="btn-ghost" style="font-size:11px;padding:3px 8px;opacity:.5;cursor:not-allowed" title="Afgeschermd — traject van externe adviseur">&#128230; Export</span>'
+          :'<a href="'+WORKER+'/mna/admin/export/'+esc(t.id)+'?key='+encodeURIComponent(adminKey)+'" target="_blank" class="btn-ghost" style="font-size:11px;padding:3px 8px;text-decoration:none" title="Dossier exporteren">&#128230; Export</a>')
         +(verg
           ?'<button class="btn-ghost btn-ontv" data-id="'+esc(t.id)+'" style="font-size:11px;padding:3px 8px;color:var(--teal)">&#128275; Ontgrendel</button>'
           :'<button class="btn-ghost btn-verg" data-id="'+esc(t.id)+'" data-naam="'+esc(t.kantoor_naam||t.id)+'" style="font-size:11px;padding:3px 8px;color:var(--gold)">&#128274; Vergrendel</button>')
@@ -1428,7 +1430,21 @@ async function toonDetail(id,naam){
     var d=await r.json();
     var db=document.getElementById('detail-body');
     if(!d||!d.traject){db.textContent='Traject niet gevonden.';return;}
+    if(d.inhoud_afgeschermd){
+      db.innerHTML='<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;color:var(--sub);font-size:13px;line-height:1.6">'
+        +'&#128274; <strong>Inhoud afgeschermd</strong><br>'
+        +'Dit is een traject van een externe adviseur. Bisschops Financing heeft geen toegang tot de prijsgevoelige inhoud (DD-cijfers, documentteksten, gesprekken, Q&A) van klanten van andere adviseurs.'
+        +'</div>';
+      ['det-bem-btn','det-nda-btn','det-loi-btn','det-excl-btn','det-ai-btn','det-debug-btn'].forEach(function(bid){var b=document.getElementById(bid);if(b)b.style.display='none';});
+      var gb=document.getElementById('gesprekken-body');if(gb)gb.innerHTML='<span style="color:var(--muted);font-style:italic">&#128274; Afgeschermd — extern adviseurstraject.</span>';
+      var ngb=document.getElementById('btn-nieuw-gesprek');if(ngb)ngb.style.display='none';
+      var qab=document.getElementById('qa-register-body');if(qab)qab.innerHTML='<span style="color:var(--muted);font-style:italic">&#128274; Afgeschermd — extern adviseurstraject.</span>';
+      var qabtn=document.getElementById('btn-laad-qa');if(qabtn)qabtn.style.display='none';
+      var vb=document.getElementById('versies-body');if(vb)vb.innerHTML='<span style="color:var(--muted);font-style:italic">&#128274; Afgeschermd — extern adviseurstraject.</span>';
+      var vbtn=document.getElementById('btn-laad-versies');if(vbtn)vbtn.style.display='none';
+    }
     var faseLabels={financieel:'I. Financieel',commercieel:'II. Klanten & commercieel',partner:'III. Partners & personeel',compliance:'IV. Compliance & kwaliteit',it:'V. IT & automatisering',juridisch:'VI. Juridisch & fiscaal',strategisch:'VII. Strategisch & markt'};
+    if(!d.inhoud_afgeschermd){
     var filled=0,total=0;
     (d.data||[]).forEach(function(row){
       try{var dj=typeof row.data_json==='string'?JSON.parse(row.data_json):row.data_json;Object.values(dj||{}).forEach(function(v){total++;if(v&&v.value)filled++;});}catch(e){}
@@ -1458,6 +1474,7 @@ async function toonDetail(id,naam){
     });
     db.innerHTML=html;
     db.querySelectorAll('.fase-hdr').forEach(function(hdr){hdr.addEventListener('click',function(){var body=db.querySelector('.fase-body[data-fase="'+hdr.dataset.fase+'"]');if(body)body.style.display=body.style.display==='none'?'block':'none';});});
+    }
 
     // Bemiddelingsovereenkomst knop
     document.getElementById('det-bem-btn').addEventListener('click',async function(){
@@ -2841,6 +2858,7 @@ async function renderGebruikersTab(el) {
         + '<th style="text-align:left;padding:8px 12px;font-size:11px;color:var(--muted);border-bottom:1px solid var(--border);font-weight:600">Status</th>'
         + '<th style="text-align:left;padding:8px 12px;font-size:11px;color:var(--muted);border-bottom:1px solid var(--border);font-weight:600">Trajecten</th>'
         + '<th style="text-align:left;padding:8px 12px;font-size:11px;color:var(--muted);border-bottom:1px solid var(--border);font-weight:600">Laatste login</th>'
+        + '<th style="text-align:left;padding:8px 12px;font-size:11px;color:var(--muted);border-bottom:1px solid var(--border);font-weight:600" title="Bepaalt of Bisschops Financing (beheerder) de prijsgevoelige inhoud van trajecten van deze gebruiker mag inzien">Eigen</th>'
         + '<th style="padding:8px 12px;border-bottom:1px solid var(--border)"></th>'
         + '</tr></thead><tbody>';
       lijst.forEach(function(g) {
@@ -2855,6 +2873,10 @@ async function renderGebruikersTab(el) {
           + '<td style="padding:10px 12px"><span style="font-size:11px;font-weight:600;color:'+statusKleur+'">' + statusLabel + '</span></td>'
           + '<td style="padding:10px 12px;font-family:IBM Plex Mono,monospace;font-size:12px;color:var(--teal)">' + (g.traject_count||0) + ' / ' + (g.traject_limiet||1) + '</td>'
           + '<td style="padding:10px 12px;font-size:11px;color:var(--muted)">' + llDatum + '</td>'
+          + '<td style="padding:10px 12px">' + (g.is_eigen
+              ? '<button class="btn-ghost btn-eigen" data-id="'+esc(g.id)+'" data-waarde="0" style="font-size:10px;padding:3px 8px;color:var(--teal);border-color:var(--teal)" title="Bisschops Financing kan prijsgevoelige inhoud van deze gebruiker inzien. Klik om af te schermen.">&#128275; Eigen</button>'
+              : '<button class="btn-ghost btn-eigen" data-id="'+esc(g.id)+'" data-waarde="1" style="font-size:10px;padding:3px 8px" title="Prijsgevoelige inhoud van deze gebruiker is afgeschermd voor Bisschops Financing. Klik om als eigen te markeren.">&#128274; Extern</button>')
+            + '</td>'
           + '<td style="padding:10px 12px;display:flex;gap:6px">'
           + '<button class="btn-ghost btn-verkoop" data-id="'+esc(g.id)+'" style="font-size:10px;padding:3px 8px;color:var(--gold);border-color:var(--gold)">&euro; Verkoop</button>'
           + (g.status==='uitgenodigd'?'<button class="btn-ghost btn-resend" data-id="'+esc(g.id)+'" data-email="'+esc(g.email)+'" data-naam="'+esc(g.naam)+'" style="font-size:10px;padding:3px 8px">&#9993; Opnieuw sturen</button>':'')
@@ -2914,6 +2936,25 @@ async function renderGebruikersTab(el) {
             else toast(vd.error || 'Fout bij opslaan.', 'err');
           } catch(e) { toast('Verbindingsfout.', 'err'); }
         });
+      });
+    });
+
+    // Eigen/extern-toggle (muur): bepaalt of Bisschops Financing prijsgevoelige inhoud mag inzien
+    el.querySelectorAll('.btn-eigen').forEach(function(btn) {
+      btn.addEventListener('click', async function() {
+        var nieuweWaarde = btn.dataset.waarde === '1';
+        var g = lijst.filter(function(x){ return x.id === btn.dataset.id; })[0];
+        var naam = g ? g.naam : '';
+        var msg = nieuweWaarde
+          ? 'Trajecten van ' + naam + ' als EIGEN markeren? Bisschops Financing krijgt dan volledige inzage in de prijsgevoelige inhoud (DD-cijfers, documenten, gesprekken).'
+          : 'Trajecten van ' + naam + ' als EXTERN markeren? Bisschops Financing verliest dan alle inzage in de prijsgevoelige inhoud van deze gebruiker.';
+        if (!confirm(msg)) return;
+        try {
+          var er = await fetch(WORKER + '/gebruikers/eigen/' + encodeURIComponent(btn.dataset.id), { method: 'POST', headers: { 'x-admin-key': adminKey, 'Content-Type': 'application/json' }, body: JSON.stringify({ is_eigen: nieuweWaarde }) });
+          var ed = await er.json();
+          if (ed.ok) { toast(nieuweWaarde ? 'Gemarkeerd als eigen — inhoud zichtbaar.' : 'Gemarkeerd als extern — inhoud afgeschermd.', 'ok'); var tce = document.querySelector('.tab-content'); if (tce) renderGebruikersTab(tce); }
+          else toast(ed.error || 'Fout bij opslaan.', 'err');
+        } catch(e) { toast('Verbindingsfout.', 'err'); }
       });
     });
 
