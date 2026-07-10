@@ -125,13 +125,16 @@ mnaFiles.forEach(file => {
   lines.forEach((line, idx) => {
     if (/<option value=/.test(line)) return; // dropdown-configuratie, geen getoond contentblok
     if (!/\(intern\)|Intern[e]?\s+(notitie|analyse|advies|instrument)/i.test(line)) return;
-    // Zoek terug naar de dichtstbijzijnde if(...)-conditie die dit blok bewaakt (ruime marge, want
-    // de bewakende conditie kan tientallen regels vóór het label staan).
-    let gevonden = false;
-    for (let back = idx; back >= Math.max(0, idx - 100); back--) {
-      const m = /if\s*\(([^{]*)\)\s*\{/.exec(lines[back]);
-      if (m) { gevonden = /!isKoper\(\)/.test(m[1]); break; }
+    // Bepaal de omvattende functie (terugzoeken naar 'function naam(' als grens) en check of
+    // ÉRGENS daarbinnen, vóór dit label, een '!isKoper()'-conditie voorkomt. Niet de dichtstbijzijnde
+    // if(...) nemen — nabijgelegen, ongerelateerde if's (bv. een forEach met een eigen if) geven dan
+    // valse meldingen terwijl de échte bewakende conditie verderop terug wél klopt.
+    let functieStart = 0;
+    for (let back = idx; back >= Math.max(0, idx - 300); back--) {
+      if (/^function\s+\w+\s*\(/.test(lines[back])) { functieStart = back; break; }
     }
+    const venster = lines.slice(functieStart, idx + 1).join('\n');
+    const gevonden = /!isKoper\(\)/.test(venster);
     if (!gevonden) internIssues.push({ file, line: idx + 1, text: line.trim().slice(0, 100) });
   });
 });
