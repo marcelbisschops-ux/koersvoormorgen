@@ -672,6 +672,11 @@ function _autoFillFromExtractionBody(faseId, velden, forceOverwrite, docNaam) {
     setIfEmpty('financieel_debiteurenOud',velden.debiteuren_oud||velden.debiteuren_90_dagen||velden.old_debiteuren_pct);
     setIfEmpty('financieel_declarab',velden.declarabiliteit||velden.declarab_pct);
     setIfEmpty('financieel_partnerBel',velden.partnerbeloning||velden.partner_beloning||velden.beloning_partners);
+    setIfEmpty('financieel_kostenPersoneel',velden.kosten_personeel_pct);
+    setIfEmpty('financieel_kostenHuisvesting',velden.kosten_huisvesting_pct);
+    setIfEmpty('financieel_kostenIT',velden.kosten_it_pct);
+    setIfEmpty('financieel_kostenMarketing',velden.kosten_marketing_pct);
+    setIfEmpty('financieel_kostenOverig',velden.kosten_overig_pct);
   }
   if(true){
     setIfEmpty('partner_fte',velden.fte||velden.personeel_fte);
