@@ -251,9 +251,7 @@ async function laadPartijDocs() {
       el.innerHTML='<div style="margin-top:1.5rem;font-size:12px;color:var(--muted);font-style:italic">Nog geen documenten beschikbaar.</div>';
       return;
     }
-    var html = '<div style="margin-top:1.5rem;background:var(--card);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem">'
-      + '<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem">&#128196; Uw documenten</div>'
-      + '<div style="display:flex;flex-direction:column;gap:6px">';
+    var html = '<div style="display:flex;flex-direction:column;gap:6px">';
 
     // Haal Signhost transacties op
     var shTransacties = [];
@@ -327,8 +325,25 @@ async function laadPartijDocs() {
       });
     }
 
-    html += '</div></div>';
-    el.innerHTML = html;
+    html += '</div>';
+    var aantalItems = versies.length + dataroomDocs.length;
+    el.innerHTML = '<div style="margin-top:1.5rem;background:var(--card);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem">'
+      + '<div id="docs-toggle-hdr" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none">'
+      + '<span style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">&#128196; Uw documenten &amp; dataroom ('+aantalItems+')</span>'
+      + '<span id="docs-toggle-ic" style="font-size:11px;color:var(--muted);transition:transform .15s">&#9656;</span>'
+      + '</div>'
+      + '<div id="docs-toggle-body" style="display:none;margin-top:.75rem">' + html + '</div>'
+      + '</div>';
+    var toggleHdr = document.getElementById('docs-toggle-hdr');
+    if (toggleHdr) {
+      toggleHdr.addEventListener('click', function() {
+        var body = document.getElementById('docs-toggle-body');
+        var ic = document.getElementById('docs-toggle-ic');
+        var open = body.style.display !== 'none';
+        body.style.display = open ? 'none' : 'block';
+        if (ic) ic.style.transform = open ? 'rotate(0deg)' : 'rotate(90deg)';
+      });
+    }
     el.querySelectorAll('.partij-doc-open').forEach(function(btn) {
       btn.addEventListener('click', async function() {
         var vr = await fetch(WORKER+'/mna/versie/'+btn.dataset.id);
