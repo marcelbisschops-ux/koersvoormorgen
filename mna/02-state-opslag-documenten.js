@@ -15,6 +15,42 @@ function switchEntiteit(entiteitId){
   }
 }
 
+// Gedeelde markdown-achtige-tekst → HTML-omzetting, gebruikt door elk AI-gegenereerd rapport
+// (per-fase AI-advies, dashboard AI-analyse, waarderingsrapport) zodat opmaak overal consistent en
+// leesbaar is — koppen, vetgedrukte tekst, bullet- en genummerde lijsten, alinea's. Géén tabellen
+// (die worden elders al vóór aanroep verwijderd/omgezet, zie generateAI).
+function mdToHtml(text){
+  if(!text)return '';
+  var h=String(text);
+  // Pipe-tabellen (| Veld | Status |) omzetten naar leesbare tekst zonder pipes
+  h=h.replace(/^\|[-| ]+\|$/gm,'');
+  h=h.replace(/^\|.+\|$/gm,function(line){
+    return line.replace(/^\||\|$/g,'').split('|').map(function(s){return s.trim();}).filter(Boolean).join(' — ');
+  });
+  h=h.replace(/  +/g,' ').replace(/\n{3,}/g,'\n\n');
+  // Horizontale-lijn-markeringen (---) weglaten — de kaartranden in de app doen al dienst als scheiding
+  h=h.replace(/^-{3,}$/gm,'');
+  // Koppen (#, ## en ###)
+  h=h.replace(/^#{1,3} (.+)$/gm,function(_,t){return '<h3>'+t.trim()+'</h3>';});
+  // Vetgedrukt
+  h=h.replace(/\*\*([^*]+)\*\*/g,function(_,t){return '<strong>'+t+'</strong>';});
+  // Alinea's/lijsten per blok (gescheiden door lege regel)
+  h=h.split('\n\n').map(function(p){
+    p=p.trim();
+    if(!p)return '';
+    if(p.charAt(0)==='<')return p;
+    var lines=p.split('\n').filter(function(l){return l.trim();});
+    if(lines.length&&lines.every(function(l){return /^[-•]\s/.test(l.trim());})){
+      return '<ul>'+lines.map(function(l){return '<li>'+l.replace(/^[-•]\s*/,'')+'</li>';}).join('')+'</ul>';
+    }
+    if(lines.length&&lines.every(function(l){return /^\d+[.)]\s/.test(l.trim());})){
+      return '<ol>'+lines.map(function(l){return '<li>'+l.replace(/^\d+[.)]\s*/,'')+'</li>';}).join('')+'</ol>';
+    }
+    return '<p>'+lines.join('<br>')+'</p>';
+  }).join('');
+  return h;
+}
+
 // Groepsstructuur: geregistreerde entiteiten (holding + werkmaatschappijen) voor dit traject ophalen.
 function loadEntiteiten(){
   if(!S.code||isKoper())return;
@@ -129,6 +165,17 @@ function checkOmzetSom(){
 function loiIsGetekend(){return !!(S.loiGetekend||(S.traject&&S.traject.loi_getekend));}
 function fillPct(id,dataBron){var f=FASES.find(function(x){return x.id===id;});if(!f)return 0;var bron=dataBron||S.data;var getekend=loiIsGetekend();var req=f.dataFields.filter(function(df){return df.req&&!df.header&&(getekend||df.fase!=='2');});var done=req.filter(function(df){return !!(bron[id+'_'+df.id]||'').trim();}).length;return req.length?Math.round(done/req.length*100):100;}
 function totalFillPct(dataBron){var bron=dataBron||S.data;var getekend=loiIsGetekend();var t=0,d=0;FASES.forEach(function(f){var req=f.dataFields.filter(function(df){return df.req&&!df.header&&(getekend||df.fase!=='2');});t+=req.length;d+=req.filter(function(df){return !!(bron[f.id+'_'+df.id]||'').trim();}).length;});return t?Math.round(d/t*100):0;}
+// Uitsluitend fase-1-velden checken (los van of de LoI al getekend is) — nodig om bij het inloggen
+// te bepalen of "deel 1" af is, ook nadat fase 2 al is ontgrendeld en dus meetelt in fillPct/totalFillPct.
+function fase1Compleet(){
+  var t=0,d=0;
+  FASES.forEach(function(f){
+    var req=f.dataFields.filter(function(df){return df.req&&!df.header&&df.fase!=='2';});
+    t+=req.length;
+    d+=req.filter(function(df){return !!(S.data[f.id+'_'+df.id]||'').trim();}).length;
+  });
+  return t>0&&d===t;
+}
 // Per-entiteitoverzicht (Marcel, juli 2026: "hoe kan ik per onderdeel zien hoe ver het staat" —
 // het samenvattingsscherm toonde alleen het groepspercentage, geen overzicht per entiteit).
 function entiteitFillOverzicht(){

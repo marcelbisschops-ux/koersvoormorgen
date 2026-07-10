@@ -383,22 +383,33 @@ function printDealvoorstel(bodyHtml,titel){
   win.focus();
 }
 
-function renderWaardering(){
-  var t=S.traject||{};
-  var isRO=isKoper();
-
-  // Haal data op uit S.data
+// Eén centrale berekening voor de waardering — gebruikt door zowel renderWaardering() (het scherm)
+// als de AI-waarderingsrapport-generator (06-schermen.js). Voorheen berekende het AI-rapport deze
+// cijfers zelf opnieuw, met een fout (EBITDA-marge-veld werd verward met het EBITDA-bedrag-veld) en
+// zonder de extra indicatoren — met als gevolg een rapport dat andere/verkeerde cijfers noemde dan
+// het waarderingsscherm zelf. Nu is er precies één bron van waarheid.
+function dvBerekenWaardering(){
   var o1=parseGeld(S.data['financieel_omzet1']);
   var o2=parseGeld(S.data['financieel_omzet2']);
   var o3=parseGeld(S.data['financieel_omzet3']);
+  var omzetYTD=parseGeld(S.data['financieel_omzetYTD']);
   var ebitdaAbs=parseGeld(S.data['financieel_ebitda']);
   var ebitdaPct=parseFloat(S.data['financieel_ebitdaMarge'])||(o3?ebitdaAbs/o3*100:0);
+  var partnerBel=parseGeld(S.data['financieel_partnerBel']);
+  var recurring=parseFloat(S.data['financieel_recurring'])||0;
+  var declarab=parseFloat(S.data['financieel_declarab'])||0;
+  var wip=parseGeld(S.data['financieel_wip']);
+  var debiteuren=parseGeld(S.data['financieel_debiteuren']);
   var fte=parseFloat(S.data['partner_fte'])||0;
-  var recurring=parseFloat(S.data['commercieel_recurring'])||0;
+  var aantalP=parseFloat(S.data['partner_aantalP'])||0;
+  var omzetPerP=parseGeld(S.data['partner_omzetPerP']);
+  var aantalKlanten=parseFloat(S.data['commercieel_aantalKlanten'])||0;
+  var top1pct=parseFloat(S.data['commercieel_top1pct'])||0;
+  var top10pct=parseFloat(S.data['commercieel_top10pct'])||0;
   var churn=parseFloat(S.data['commercieel_churn'])||0;
 
   // Multiples (sectornorm)
-  var mLaag=4.6,mMid=5.05,mHoog=5.5,omzetFactor=0.8,risico=0;
+  var mLaag=4.6,mMid=5.05,mHoog=5.5,omzetFactor=0.8;
 
   // Bereken
   var ebitdaAmt=ebitdaAbs||(o3*(ebitdaPct/100));
@@ -423,6 +434,53 @@ function renderWaardering(){
   var fixedKoop=earnBase*(1-earnPct/100);
   var earnJaarlijks=earnBase*(earnPct/100)/earnJaren;
 
+  return {
+    o1:o1,o2:o2,o3:o3,omzetYTD:omzetYTD,ebitdaAbs:ebitdaAbs,ebitdaPct:ebitdaPct,ebitdaAmt:ebitdaAmt,
+    partnerBel:partnerBel,recurring:recurring,declarab:declarab,wip:wip,debiteuren:debiteuren,
+    fte:fte,aantalP:aantalP,omzetPerP:omzetPerP,aantalKlanten:aantalKlanten,top1pct:top1pct,top10pct:top10pct,churn:churn,
+    mLaag:mLaag,mMid:mMid,mHoog:mHoog,omzetFactor:omzetFactor,
+    wLaag:wLaag,wMid:wMid,wHoog:wHoog,wOmzet:wOmzet,
+    gemGroei:gemGroei,fc:fc,fcE:fcE,fcW:fcW,
+    earnBase:earnBase,earnPct:earnPct,earnTarget:earnTarget,earnJaren:earnJaren,fixedKoop:fixedKoop,earnJaarlijks:earnJaarlijks
+  };
+}
+
+// Extra kengetallen naast omzet/EBITDA — toont alleen wat daadwerkelijk is ingevuld, zodat het
+// waarderingsscherm niet vervuild raakt met een rij nullen bij een net gestart traject.
+function dvIndicatorenRij(v){
+  var items=[
+    {label:'Recurring omzet',val:v.recurring,fmt:function(x){return x.toFixed(1)+'%';}},
+    {label:'Klantverloop (churn)',val:v.churn,fmt:function(x){return x.toFixed(1)+'%';}},
+    {label:'Grootste klant',val:v.top1pct,fmt:function(x){return x.toFixed(1)+'%';}},
+    {label:'Top 10 klanten',val:v.top10pct,fmt:function(x){return x.toFixed(1)+'%';}},
+    {label:'Aantal klanten',val:v.aantalKlanten,fmt:function(x){return Math.round(x).toLocaleString('nl-NL');}},
+    {label:'Totaal FTE',val:v.fte,fmt:function(x){return x.toLocaleString('nl-NL');}},
+    {label:'Aantal partners',val:v.aantalP,fmt:function(x){return Math.round(x).toLocaleString('nl-NL');}},
+    {label:'Omzet per partner',val:v.omzetPerP,fmt:fmtGeld},
+    {label:'Partnerbeloning',val:v.partnerBel,fmt:fmtGeld},
+    {label:'Debiteuren',val:v.debiteuren,fmt:fmtGeld},
+    {label:'Onderhanden werk',val:v.wip,fmt:fmtGeld},
+    {label:'Declarabiliteit',val:v.declarab,fmt:function(x){return x.toFixed(1)+'%';}}
+  ].filter(function(it){return it.val&&it.val>0;});
+  if(!items.length)return '';
+  return '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-top:.85rem;padding-top:.85rem;border-top:1px solid var(--border)">'
+    +items.map(function(it){
+      return '<div style="text-align:center"><div style="font-size:9px;color:var(--muted);margin-bottom:.15rem;text-transform:uppercase;letter-spacing:.04em">'+it.label+'</div><div style="font-family:IBM Plex Mono,monospace;font-size:12px;font-weight:600;color:var(--sub)">'+it.fmt(it.val)+'</div></div>';
+    }).join('')
+    +'</div>';
+}
+
+function renderWaardering(){
+  var t=S.traject||{};
+  var isRO=isKoper();
+  var v=dvBerekenWaardering();
+  var o1=v.o1,o2=v.o2,o3=v.o3,ebitdaAbs=v.ebitdaAbs,ebitdaPct=v.ebitdaPct,ebitdaAmt=v.ebitdaAmt,
+    fte=v.fte,recurring=v.recurring,churn=v.churn,
+    mLaag=v.mLaag,mMid=v.mMid,mHoog=v.mHoog,omzetFactor=v.omzetFactor,
+    wLaag=v.wLaag,wMid=v.wMid,wHoog=v.wHoog,wOmzet=v.wOmzet,
+    gemGroei=v.gemGroei,fc=v.fc,fcE=v.fcE,fcW=v.fcW,
+    earnBase=v.earnBase,earnPct=v.earnPct,earnTarget=v.earnTarget,earnJaren=v.earnJaren,fixedKoop=v.fixedKoop,earnJaarlijks=v.earnJaarlijks;
+
   var html='<div class="wrap anim">'
     +'<div class="hdr"><div class="brand">'+brandMerkHtml()+BRAND.platform+' &middot; Waardering'+versieLabel()+'</div>'
     +'<div style="display:flex;gap:8px">'
@@ -444,8 +502,10 @@ function renderWaardering(){
     +'<div style="text-align:center"><div style="font-size:10px;color:var(--muted);margin-bottom:.2rem">Omzet jaar 1</div><div style="font-family:IBM Plex Mono,monospace;font-size:13px;font-weight:600;color:var(--sub)">'+fmtGeld(o1)+'</div></div>'
     +'<div style="text-align:center"><div style="font-size:10px;color:var(--muted);margin-bottom:.2rem">Omzet jaar 2</div><div style="font-family:IBM Plex Mono,monospace;font-size:13px;font-weight:600;color:var(--sub)">'+fmtGeld(o2)+'</div></div>'
     +'<div style="text-align:center"><div style="font-size:10px;color:var(--muted);margin-bottom:.2rem">Omzet jaar 3</div><div style="font-family:IBM Plex Mono,monospace;font-size:13px;font-weight:600;color:var(--teal)">'+fmtGeld(o3)+'</div></div>'
-    +'<div style="text-align:center"><div style="font-size:10px;color:var(--muted);margin-bottom:.2rem">EBITDA</div><div style="font-family:IBM Plex Mono,monospace;font-size:13px;font-weight:600;color:var(--teal)">'+fmtGeld(ebitdaAmt)+' ('+ebitdaPct+'%)</div></div>'
-    +'</div></div>';
+    +'<div style="text-align:center"><div style="font-size:10px;color:var(--muted);margin-bottom:.2rem">EBITDA</div><div style="font-family:IBM Plex Mono,monospace;font-size:13px;font-weight:600;color:var(--teal)">'+fmtGeld(ebitdaAmt)+' ('+ebitdaPct.toFixed(1)+'%)</div></div>'
+    +'</div>'
+    +dvIndicatorenRij(v)
+    +'</div>';
 
   // Waardebepaling as-is
   html+='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;margin-bottom:1.25rem">'
@@ -523,9 +583,12 @@ function renderWaardering(){
 
   // AI rapport knop (alleen tussenpersoon)
   if(isTussen()){
-    html+='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;margin-bottom:1.25rem">'
+    html+='<div id="w-ai-sectie" style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;margin-bottom:1.25rem">'
+      +'<div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)">AI-waarderingsrapport</div>'
+      +'<div style="font-size:11px;color:var(--muted);margin-bottom:.85rem;line-height:1.6">Elk rapport wordt bewaard en gekoppeld aan de cijfers waarmee het is opgesteld. Draait u het rapport opnieuw, dan blijft de vorige versie zichtbaar in de geschiedenis — zo ziet u altijd of een nieuw rapport dezelfde cijfers vanuit een andere invalshoek belicht, of dat de onderliggende cijfers zelf zijn gewijzigd.</div>'
       +'<div id="w-ai-out" style="display:none;margin-bottom:1rem"></div>'
       +'<button class="btn" id="w-ai-btn" style="width:100%">&#9881; Genereer AI waarderingsrapport</button>'
+      +'<div id="w-ai-hist" style="margin-top:1rem"></div>'
       +'</div>';
   }
 
