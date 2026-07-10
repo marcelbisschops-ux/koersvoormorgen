@@ -1648,7 +1648,7 @@ function renderBegeleiderDashboard(app){
     var sectorNormenAi=sectorProfielAi.aiNormen||'';
     var prompt='M&A adviseur. Sector: '+(sectorProfielAi.label||'MKB')+'. SECTOR NORMEN: '+sectorNormenAi+'. Analyseer traject: '+esc(S.traject.kantoor_naam||S.code)+' ('+esc(S.traject.traject_type||'Verkoop')+')\n\nDUE DILIGENCE:'+dataSam+'\n\n## Samenvatting\n## Financieel\n## Sterktes\n## Risicos\n## Aanbevelingen\n\nNoem GEEN eigen waarderingsmultiple of concreet waarderingsbedrag — waardering gebeurt uitsluitend via de aparte functie "Waardering genereren". Als je de multiple uit de sectornormen wilt noemen, gebruik dan exact de range hierboven. Max 400 woorden.';
     var rd=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:3000})}).then(function(r){return r.json();}).catch(function(){return{};});
-    var tekst=(rd.text||'Fout').replace(/## ([^\n]+)/g,'<strong style="display:block;margin:.75rem 0 .25rem;color:var(--head)">$1</strong>').replace(/\n/g,'<br>');
+    var tekst=mdToHtml(rd.text||'Fout bij genereren.');
     out.innerHTML=bgAiBlok(tekst, Date.now());
     // Bewaar lokaal zodat de analyse na herladen terugkomt en de knop de juiste staat toont
     try{ localStorage.setItem('ki_ai_analyse_'+S.code, JSON.stringify({tekst:tekst, ts:Date.now()})); }catch(e){}
@@ -1657,9 +1657,9 @@ function renderBegeleiderDashboard(app){
 
   // Eerder gegenereerde analyse terughalen: toon 'm meteen en zet de knop op "Opnieuw"
   function bgAiBlok(tekstHtml, ts){
-    return '<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;font-size:13px;color:var(--mid);line-height:1.8">'
+    return '<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem">'
       +'<div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">AI-analyse &middot; gegenereerd '+new Date(ts).toLocaleString('nl-NL',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})+'</div>'
-      +tekstHtml+'</div>';
+      +'<div class="ai-body" style="padding:0">'+tekstHtml+'</div></div>';
   }
   (function herstelBgAi(){
     try{

@@ -719,6 +719,18 @@ function bindAll(){
           return; // renderApp wordt via checkVOK afgehandeld
         }
         syncDocVeldenVanTraject(d);
+        // Verkoper: fase 1 volledig afgerond én LoI getekend (fase 2 ontgrendeld) → direct naar het
+        // invoerscherm i.p.v. opnieuw bij de cover-brief te beginnen. Terug naar fase 1/cover kan
+        // altijd via de "Cover letter"-knop, die blijft gewoon staan.
+        if(isVerkoper()&&loiIsGetekend()&&fase1Compleet()){
+          S.screen='main';
+          var eersteOpenFase=FASES.findIndex(function(f){
+            return f.dataFields.some(function(df){return df.req&&!df.header&&df.fase==='2'&&!(S.data[f.id+'_'+df.id]||'').trim();});
+          });
+          S.fase=eersteOpenFase>=0?eersteOpenFase:0;
+          var fId2=FASES[S.fase]&&FASES[S.fase].id;
+          if(fId2&&!DOCS[fId2])loadDocsForFase(fId2);
+        }
         renderApp();
       }catch(e){if(err)err.style.display='block';if(load)load.style.display='none';lb.disabled=false;}
     };
@@ -806,46 +818,97 @@ function bindAll(){
 
   var loiPrint=ge('loi-print2-btn');
   if(loiPrint)loiPrint.onclick=function(){ printDoc(S.loiTekst||'','Letter of Intent','loi'); };
-  // AI knop in waardering (tussenpersoon)
+  // AI-waarderingsrapport (alleen tussenpersoon) — één bron van waarheid (dvBerekenWaardering),
+  // rijker aan indicatoren, server-side bewaard mét cijfer-snapshot en versiegeschiedenis, zodat
+  // duidelijk is of een nieuw rapport dezelfde cijfers herformuleert of dat de cijfers zijn gewijzigd.
   var wAiBtn=ge('w-ai-btn');
+  function wToonRapport(tekstHtml, ts, versie){
+    var out=ge('w-ai-out');if(!out)return;
+    out.style.display='block';
+    out.innerHTML='<div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">Waarderingsrapport'+(versie?' &middot; versie '+versie:'')+' &middot; gegenereerd '+new Date(ts).toLocaleString('nl-NL',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})+'</div>'
+      +'<div class="ai-body" style="padding:0">'+tekstHtml+'</div>';
+  }
+  async function wLaadGeschiedenis(){
+    var histEl=ge('w-ai-hist');if(!histEl)return;
+    try{
+      var lijst=await fetch(WORKER+'/mna/versies/'+S.code+'/waarderingsrapport').then(function(r){return r.json();});
+      if(!Array.isArray(lijst)||lijst.length<2){histEl.innerHTML='';return;}
+      var actueel=dvBerekenWaardering();
+      var vorige=lijst.slice(1);
+      histEl.innerHTML='<div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:1rem 0 .5rem;padding-top:.75rem;border-top:1px solid var(--border)">Eerdere versies ('+vorige.length+')</div>'
+        +vorige.map(function(rv){
+          var cj={};try{cj=JSON.parse(rv.cijfers_json||'{}');}catch(e){}
+          var gewijzigd=cj.wMid&&Math.round(cj.wMid)!==Math.round(actueel.wMid);
+          return '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:.5rem .75rem;background:var(--card);border-radius:var(--r);margin-bottom:6px;flex-wrap:wrap">'
+            +'<span style="font-size:12px;color:var(--sub)">Versie '+rv.versie+' &middot; '+new Date(rv.created_at).toLocaleDateString('nl-NL',{day:'2-digit',month:'short',year:'numeric'})+' &middot; '+(gewijzigd?'<span style="color:var(--gold)">cijfers zijn sindsdien gewijzigd</span>':'<span style="color:var(--muted)">zelfde cijfers, andere formulering</span>')+'</span>'
+            +'<button class="btn-ghost btn-sm" data-vid="'+rv.id+'" style="font-size:11px">Bekijk</button>'
+            +'</div>';
+        }).join('');
+      histEl.querySelectorAll('button[data-vid]').forEach(function(btn){
+        btn.addEventListener('click',async function(){
+          var vd=await fetch(WORKER+'/mna/versie/'+btn.dataset.vid).then(function(r){return r.json();});
+          if(vd&&vd.tekst)wToonRapport(vd.tekst, vd.created_at, vd.versie);
+        });
+      });
+    }catch(e){histEl.innerHTML='';}
+  }
   if(wAiBtn)wAiBtn.addEventListener('click',async function(){
     var out=ge('w-ai-out');if(!out)return;
     wAiBtn.disabled=true;wAiBtn.textContent='Genereren...';
     out.style.display='block';
-    out.innerHTML='<div style="color:var(--muted);font-size:13px">AI genereert rapport...</div>';
-    function parseGeld(s){if(!s)return 0;var n=String(s).replace(/[^0-9,.]/g,'').replace(',','.');return parseFloat(n)||0;}
-    function fmtGeld(n){if(!n||isNaN(n))return '—';if(n>=1000000)return '€'+(n/1000000).toFixed(2)+' mln';if(n>=1000)return '€'+(n/1000).toFixed(0)+'.000';return '€'+Math.round(n);}
-    var o3=parseGeld(S.data['financieel_omzet3']);
-    var eP=parseFloat(S.data['financieel_ebitda'])||0;
-    var eA=o3*(eP/100);
-    var prompt='Schrijf een professioneel M&A waarderingsrapport voor '+esc(S.traject&&S.traject.kantoor_naam||S.code)+'.\n\nOmzet jaar 3: '+fmtGeld(o3)+'\nEBITDA: '+fmtGeld(eA)+' ('+eP+'%)\nWaardering midden: '+fmtGeld(eA*5.05)+' (5.05x)\nBandreedte: '+fmtGeld(eA*4.6)+' - '+fmtGeld(eA*5.5)+'\n\n## Executive summary\n## Waarderingsmethodiek\n## As-is waardering\n## Groei- en waardepotentieel\n## Transactiestructuur\n## Conclusie';
+    out.innerHTML='<div style="color:var(--muted);font-size:13px">AI genereert rapport... (kan 20-40 sec duren)</div>';
+    var v=dvBerekenWaardering();
+    var lijnen=['Omzet jaar 1: '+fmtGeld(v.o1),'Omzet jaar 2: '+fmtGeld(v.o2),'Omzet jaar 3: '+fmtGeld(v.o3)];
+    if(v.omzetYTD)lijnen.push('Omzet YTD lopend jaar: '+fmtGeld(v.omzetYTD));
+    lijnen.push('EBITDA: '+fmtGeld(v.ebitdaAmt)+' ('+v.ebitdaPct.toFixed(1)+'% van omzet)');
+    if(v.partnerBel)lijnen.push('Partnerbeloning: '+fmtGeld(v.partnerBel));
+    if(v.recurring)lijnen.push('Recurring omzet: '+v.recurring.toFixed(1)+'%');
+    if(v.churn)lijnen.push('Klantverloop (churn): '+v.churn.toFixed(1)+'%');
+    if(v.top1pct)lijnen.push('Aandeel grootste klant: '+v.top1pct.toFixed(1)+'%');
+    if(v.top10pct)lijnen.push('Aandeel top 10 klanten: '+v.top10pct.toFixed(1)+'%');
+    if(v.aantalKlanten)lijnen.push('Aantal klanten: '+Math.round(v.aantalKlanten));
+    if(v.fte)lijnen.push('Totaal FTE: '+v.fte);
+    if(v.aantalP)lijnen.push('Aantal partners: '+Math.round(v.aantalP));
+    if(v.omzetPerP)lijnen.push('Omzet per partner: '+fmtGeld(v.omzetPerP));
+    if(v.debiteuren)lijnen.push('Debiteuren: '+fmtGeld(v.debiteuren));
+    if(v.wip)lijnen.push('Onderhanden werk: '+fmtGeld(v.wip));
+    if(v.declarab)lijnen.push('Declarabiliteit: '+v.declarab.toFixed(1)+'%');
+    lijnen.push('Groeitempo (gem. historisch): '+v.gemGroei.toFixed(1)+'%/jaar');
+    lijnen.push('Waardering laag ('+v.mLaag+'x EBITDA): '+fmtGeld(v.wLaag));
+    lijnen.push('Waardering midden ('+v.mMid+'x EBITDA): '+fmtGeld(v.wMid));
+    lijnen.push('Waardering hoog ('+v.mHoog+'x EBITDA): '+fmtGeld(v.wHoog));
+    lijnen.push('Omzetmethode ('+v.omzetFactor+'x): '+fmtGeld(v.wOmzet));
+    lijnen.push('Koopsom bij closing (indicatief): '+fmtGeld(v.fixedKoop)+', earn-out '+v.earnPct+'% over '+v.earnJaren+' jaar bij '+v.earnTarget+'% omzetgroei/jaar');
+    var sectorProfielW=getSectorProfiel();
+    var prompt='Schrijf een professioneel, cijfermatig onderbouwd M&A-waarderingsrapport voor '+esc(S.traject&&S.traject.kantoor_naam||S.code)+' (sector: '+(sectorProfielW.label||'')+').\n\nSECTOR NORMEN: '+(sectorProfielW.aiNormen||'')+'\n\nCIJFERS:\n'+lijnen.join('\n')+'\n\nGebruik uitsluitend bovenstaande cijfers — verzin geen andere bedragen of percentages. Ga expliciet in op wat de cijfers zeggen over de kwaliteit en het risico van de omzet (concentratie, recurring, churn) waar die zijn aangeleverd.\n\nBegin DIRECT met de eerste ## kop hieronder — geen eigen titel, geen bedrijfsnaam als kop, geen horizontale lijnen (---).\n\n## Executive summary\n## Waarderingsmethodiek\n## As-is waardering\n## Kwaliteit van de cijfers\n## Groei- en waardepotentieel\n## Transactiestructuur\n## Conclusie\n\nGebruik bullets (met -) waar een opsomming duidelijker is dan lopende tekst. Max 500 woorden.';
     try{
-      var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:2000})});
+      var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:2200})});
       var rd=await resp.json();
-      var tekst=rd.text||(rd.error?('AI fout: '+rd.error):'Fout bij genereren.');
-      tekst=tekst.replace(/^## (.+)$/gm,'<h3 style="font-family:Playfair Display,serif;font-size:.95rem;color:var(--head);margin:1rem 0 .4rem">$1</h3>');
-      tekst=tekst.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
-      tekst=tekst.replace(/\n\n/g,'</p><p style="font-size:13px;color:var(--mid);line-height:1.7;margin-bottom:.6rem">');
-      out.innerHTML='<p style="font-size:13px;color:var(--mid);line-height:1.7">'+tekst+'</p>';
-      // Bewaar lokaal zodat het rapport na herladen terugkomt en de knop de juiste staat toont
-      try{ localStorage.setItem('ki_waardering_rapport_'+S.code, JSON.stringify({tekst:tekst, ts:Date.now()})); }catch(e){}
+      var ruweTekst=rd.text||(rd.error?('AI fout: '+rd.error):'Fout bij genereren.');
+      var tekstHtml=mdToHtml(ruweTekst);
+      var snapshot={o1:v.o1,o2:v.o2,o3:v.o3,ebitdaAmt:v.ebitdaAmt,ebitdaPct:v.ebitdaPct,wLaag:v.wLaag,wMid:v.wMid,wHoog:v.wHoog};
+      var nu=Date.now();
+      var saveResp=await fetch(WORKER+'/mna/waardering/rapport',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:S.code,rapport_tekst:tekstHtml,cijfers_json:snapshot})}).then(function(r){return r.json();}).catch(function(){return null;});
+      wToonRapport(tekstHtml, nu, saveResp&&saveResp.versie);
+      wLaadGeschiedenis();
       wAiBtn.textContent='↻ Opnieuw genereren';wAiBtn.disabled=false;
     }catch(e){out.innerHTML='<div style="color:var(--red);font-size:13px">Fout: '+e.message+'</div>';wAiBtn.disabled=false;wAiBtn.textContent='Genereer AI rapport';}
   });
-  // Eerder gegenereerd waarderingsrapport terughalen: toon 'm en zet de knop op "Opnieuw"
+  // Eerder gegenereerd waarderingsrapport ophalen (server, niet meer lokaal) en tonen
   if(wAiBtn){
-    try{
-      var wOpgeslagen=JSON.parse(localStorage.getItem('ki_waardering_rapport_'+S.code)||'null');
-      if(wOpgeslagen&&wOpgeslagen.tekst){
-        var wOut=ge('w-ai-out');
-        if(wOut){
-          wOut.style.display='block';
-          wOut.innerHTML='<div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">Waarderingsrapport &middot; gegenereerd '+new Date(wOpgeslagen.ts||Date.now()).toLocaleString('nl-NL',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})+'</div>'
-            +'<p style="font-size:13px;color:var(--mid);line-height:1.7">'+wOpgeslagen.tekst+'</p>';
+    (async function(){
+      try{
+        var lijst=await fetch(WORKER+'/mna/versies/'+S.code+'/waarderingsrapport').then(function(r){return r.json();});
+        if(!Array.isArray(lijst)||!lijst.length)return;
+        var laatste=lijst[0];
+        var vd=await fetch(WORKER+'/mna/versie/'+laatste.id).then(function(r){return r.json();});
+        if(vd&&vd.tekst){
+          wToonRapport(vd.tekst, vd.created_at, vd.versie);
+          wAiBtn.textContent='↻ Opnieuw genereren';
+          wLaadGeschiedenis();
         }
-        wAiBtn.textContent='↻ Opnieuw genereren';
-      }
-    }catch(e){}
+      }catch(e){}
+    })();
   }
   var opslaanBtn=ge('opslaan-btn');if(opslaanBtn)opslaanBtn.onclick=function(){
     saveCurrent(function(){
