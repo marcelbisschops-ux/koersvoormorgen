@@ -783,7 +783,8 @@ function renderBegeleiderDashboard(app){
           +'Gewenst belang koper bij closing: '+p.belangPct+'%. Basis-multiple: '+p.multipleBasis+'×. Bovengrens-multiple: '+p.multipleBovengrens+'×. Cliff-drempel: '+p.cliffPct+'% van de prognose.\n'
           +'Escrow: '+p.escrowPct+'% gedurende '+p.escrowMaanden+' maanden. Bankfinanciering bij closing: '+p.bankLeverage+'× de bewezen EBITDA.\n'
           +'Bedrag bij closing (koper, op bewezen basis): €'+Math.round(closing.deelKoperBasis)+'. Mogelijke earn-up bij volledige realisatie: €'+Math.round(closing.earnUp)+'.\n'
-          +'DCF-kruiscontrole (discontovoet '+p.discontovoetPct+'%): ondernemingswaarde DCF €'+Math.round(dcf.evDcf)+' t.o.v. ondernemingswaarde EBITDA-multiple (bewezen) €'+Math.round(closing.evBasis)+'.';
+          +'DCF-kruiscontrole (discontovoet '+p.discontovoetPct+'%): ondernemingswaarde DCF €'+Math.round(dcf.evDcf)+' t.o.v. ondernemingswaarde EBITDA-multiple (bewezen) €'+Math.round(closing.evBasis)+'.\n'
+          +'Transactiestructuur: koper verwerft '+p.belangPct+'% bij closing; de verkopende partij behoudt '+(100-p.belangPct)+'%.';
         var koppen='## Managementsamenvatting\n(3-5 bullets over de kern van het voorstel, dan één alinea "In één zin")\n\n'
           +'## Uitgangspunten & de cijfers\n(korte toelichting op de omzet-/EBITDA-ontwikkeling)\n[TABEL:CIJFERS]\n\n'
           +'## Cijferoverzicht & interpretatie\n(bespreek feitelijk wat de aangeleverde cijfers hieronder betekenen voor risico en waardering — klantconcentratie, recurring omzet, partnerafhankelijkheid, personeelskosten; herhaal en duid alleen wat er staat, verzin niets)\n[TABEL:CIJFEROVERZICHT]\n\n'
@@ -797,12 +798,18 @@ function renderBegeleiderDashboard(app){
           +'## Closing-mechanismen\n(kort: locked box, escrow, garanties — gebruik de escrow-cijfers hierboven)\n\n'
           +'## Financiering en kasstroom\n(toelichting op het schuldafbouwmodel)\n[TABEL:SCHULDAFBOUW]\n\n'
           +(p.buyAndBuild?'## Buy-and-build: platformscenario\n(korte toelichting op het groeiscenario via overnames)\n[TABEL:BUYANDBUILD]\n\n':'')
-          +'## Risico\'s & aandachtspunten\n(4-6 concrete, genummerde aandachtspunten)';
+          +'## Transactiestructuur\n(beschrijf beknopt de aandelenverhouding bij closing op basis van het belang-percentage in de context, en het gangbare gebruik van een acquisitievehikel/holding zodat de overnamefinanciering niet drukt op het belang van de achterblijvende verkoper; geen eigen bedragen verzinnen buiten de context)\n\n'
+          +'## Retentie & alignment van de verkopende partij\n(leg uit — in algemene, standaard M&A-termen — waarom het gefaseerd uitkeren van de earn-up, een lock-up op het achtergebleven belang, en het koppelen van de einduitkering aan aanblijven/integratie de continuïteit van de onderneming beschermt; generiek, geen nieuwe cijfers)\n\n'
+          +'## Governance & exit\n(kort: reguliere meerderheid voor de dagelijkse gang van zaken bij de koper, een versterkte meerderheid voor de verkopende partij op kernbesluiten, en een geordend exit-pad na een aantal jaren via vooraf afgesproken voorwaarden; generiek, geen nieuwe cijfers)\n\n'
+          +'## Risicodekking samengevat\n(vat in bullets samen hoe de eerdere hoofdstukken het risico van de koper afdekken: de meebewegende prijs met ondergrens, betalen op bewezen basis, de escrow, en de EBITDA-definitie/controle — verwijs terug naar wat al genoemd is, verzin niets nieuws)\n\n'
+          +'## Waarom dit werkt voor beide partijen\n(twee korte alinea\'s: perspectief verkopende partij, perspectief koper — gebruik de bedragen uit de context)\n\n'
+          +'## Risico\'s & aandachtspunten\n(4-6 concrete, genummerde aandachtspunten)\n\n'
+          +'## Aandachtspunten & vervolgstappen\n(genummerde praktische checklist voor de komende stappen: termsheet, due diligence, uitwerken retentiepakket, SPA en closing-mechanismen, financiering regelen — generiek maar concreet)';
         var prompt='Je bent ' + (t2.begeleider_naam||BRAND.contactpersoon) + ', senior M&A-adviseur bij ' + (t2.begeleider_bedrijf||BRAND.bedrijf) + '. Schrijf de verhalende hoofdstukken van een vertrouwelijk dealvoorstel.\n\n'
           +'BELANGRIJK: gebruik uitsluitend de cijfers hieronder. Verzin GEEN eigen bedragen, percentages, multiples of vergelijkbare transacties — die liggen al vast in de berekende tabellen die apart worden ingevoegd op de plek van [TABEL:xxx]-markeringen. Laat die markeringen exact zo staan (op een eigen regel), vervang ze niet door eigen tekst of tabellen.\n\n'
           +'CONTEXT:\n'+contextBlok+'\n\n'
-          +'Schrijf onderstaande hoofdstukken met ## koppen, zakelijk Nederlands, geen overdreven bijvoeglijke naamwoorden, max 950 woorden tekst in totaal (exclusief tabelmarkeringen):\n\n'+koppen;
-        var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:6000})});
+          +'Schrijf onderstaande hoofdstukken met ## koppen, zakelijk Nederlands, geen overdreven bijvoeglijke naamwoorden, max 1500 woorden tekst in totaal (exclusief tabelmarkeringen):\n\n'+koppen;
+        var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:8000})});
         var rd=await resp.json();
         var bodyHtml=dvBouwRapportHtml(rd.text||'',tabelMap);
         document.body.removeChild(ov);
@@ -1357,7 +1364,8 @@ function renderBegeleiderDashboard(app){
         bgDocsEl.querySelectorAll('.bg-versie-del').forEach(function(btn){
           btn.addEventListener('click',async function(){
             if(!confirm('Documentversie verwijderen?'))return;
-            await fetch(WORKER+'/mna/versie/delete/'+btn.dataset.id+'?key='+encodeURIComponent(S._bgKey||''),{method:'POST'});
+            var delResp=await fetch(WORKER+'/mna/versie/delete/'+btn.dataset.id+'?key='+encodeURIComponent(S._bgKey||''),{method:'POST'}).then(function(r){return r.json();}).catch(function(){return{error:'Verbindingsfout'};});
+            if(delResp&&delResp.error){toast('Verwijderen mislukt: '+delResp.error,'err');return;}
             laadBgDocs();
           });
         });

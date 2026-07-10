@@ -57,6 +57,13 @@ function renderCover(){
 }else{
     intro='<p>Geachte relatie,</p>'
       +'<p>Hieronder vindt u de door het kantoor ingevulde informatie in het kader van het '+esc(t.traject_type||'M&A')+'-traject. U kunt de gegevens inzien. Vragen of opmerkingen kunt u richten aan ' + esc(t.begeleider_naam||BRAND.contactpersoon) + '.</p>'
+      +'<div style="margin:1rem 0;padding:.85rem 1rem;background:var(--teal-bg);border:1px solid var(--teal-dark);border-radius:var(--r);font-size:12px;color:var(--sub);line-height:1.8">'
+      +'<div style="font-weight:600;color:var(--teal);margin-bottom:.4rem">&#128064; Zo werkt dit overzicht</div>'
+      +'<div><strong>1.</strong> Klik hieronder op "Bekijk due diligence-informatie" — u komt in een overzicht met 7 onderwerpen (financieel, klanten, personeel, etc.).</div>'
+      +'<div><strong>2.</strong> Klik op een tegel om de details van dat onderwerp te lezen; boven de gegevens staat steeds kort waarom dat onderdeel relevant is.</div>'
+      +'<div><strong>3.</strong> Heeft u een vraag of wilt u een tegenvoorstel doen over een onderwerp? Gebruik het Q&amp;A-blok onderaan dat onderwerp.</div>'
+      +'<div><strong>4.</strong> Zodra de adviseur de waardering deelt, vindt u die via de knop "Waardering".</div>'
+      +'</div>'
       +'<div style="margin:1rem 0;padding:.75rem 1rem;background:var(--card);border:1px solid var(--border);border-radius:var(--r);font-size:11px;color:var(--muted);line-height:1.7">&#128274; <strong>Beveiliging &amp; AVG:</strong> <strong>'+esc(t.begeleider_naam||'Uw adviseur')+'</strong> is de verwerkingsverantwoordelijke voor de gegevens in dit traject conform de AVG'+(t.begeleider_email?' — voor vragen kunt u contact opnemen via <a href=\"mailto:'+esc(t.begeleider_email)+'\" style=\"color:var(--teal)\">'+esc(t.begeleider_email)+'</a>':'')+'.'
       +'<div style="margin-top:.5rem;font-size:10px;color:#b8b6ac">Verwerkt via het '+BRAND.platformEcht+'-platform, techniek verzorgd door '+BRAND.kort+' — zie de <a href=\"privacy.html\" style=\"color:#b8b6ac\">verwerkersinformatie</a>.</div></div>'
       +'<p>Met vriendelijke groet,<br><strong>'+esc(t.begeleider_naam||BRAND.contactpersoon)+'</strong><br><span style="font-size:12px;color:var(--muted)">Senior M&amp;A-adviseur &middot; '+esc(t.begeleider_bedrijf||BRAND.bedrijfKort)+'</span></p>'
@@ -110,6 +117,19 @@ function renderCover(){
     +'</div>';
 }
 
+// Korte, sectoronafhankelijke uitleg per fase-onderdeel — waarom dit voor een koper relevant is.
+// Losstaand van de (per sector wisselende) f.desc-labels, die zijn bedoeld als korte analist-titel,
+// niet als uitleg voor een koper die deze omgeving voor het eerst ziet.
+var KOPER_FASE_UITLEG={
+  financieel:'Deze cijfers zijn de basis van de waardering en het dealvoorstel. Let op de opbouw van de omzet, de winstmarge en of die consistent is over de jaren.',
+  commercieel:'Dit laat zien hoe afhankelijk de onderneming is van individuele klanten en hoe voorspelbaar de omzet blijft na overname.',
+  partner:'Bij een mensenbedrijf hangt de continuïteit vaak af van sleutelpersonen. Hier ziet u wie dat zijn, of zij aanblijven en hoe groot die afhankelijkheid is.',
+  compliance:'Regelgeving en dossierkwaliteit bepalen mede het risico dat u overneemt — hier staat of het kantoor aan de vereisten voldoet en of er lopende issues zijn.',
+  it:'De systemen en automatiseringsgraad bepalen hoe efficiënt het kantoor werkt en hoe eenvoudig het te integreren is met uw eigen organisatie.',
+  juridisch:'Dit onderdeel toont de juridische en fiscale structuur — belangrijk om te weten welke risico’s, verplichtingen of geschillen u mogelijk overneemt.',
+  strategisch:'Hier vindt u de marktpositie en groeipotentie van de onderneming — relevant voor de vraag of de aankoop op langere termijn waarde toevoegt.'
+};
+
 function renderMain(){
   var f=FASES[S.fase];
   var tp=isVerkoper()?totalFillPct():Math.round(FASES.reduce(function(a,fase){return a+pct(fase.id);},0)/FASES.length);
@@ -156,7 +176,8 @@ function renderMain(){
       +S._entiteiten.map(function(e){return '<option value="'+esc(e.id)+'"'+(S._actieveEntiteit===e.id?' selected':'')+'>'+esc(e.naam)+'</option>';}).join('')
       +'</select></div>';
   }
-  var instrTxt=isVerkoper()?'<div style="font-size:11px;color:var(--muted);line-height:1.6;margin-bottom:1rem;padding-bottom:.75rem;border-bottom:1px solid var(--border)">Vul de velden in. Upload rechts de relevante documenten &mdash; velden worden automatisch ingelezen zolang het boekjaar in het document staat. Controleer alle automatisch ingevulde waarden. De ge&uuml;ploade documenten dienen als grondslag voor de due diligence. Ontbrekende velden vult u zelf in.</div>':'';
+  var instrTxt=isVerkoper()?'<div style="font-size:11px;color:var(--muted);line-height:1.6;margin-bottom:1rem;padding-bottom:.75rem;border-bottom:1px solid var(--border)">Vul de velden in. Upload rechts de relevante documenten &mdash; velden worden automatisch ingelezen zolang het boekjaar in het document staat. Controleer alle automatisch ingevulde waarden. De ge&uuml;ploade documenten dienen als grondslag voor de due diligence. Ontbrekende velden vult u zelf in.</div>'
+    :isKoper()&&KOPER_FASE_UITLEG[f.id]?'<div style="font-size:12px;color:var(--sub);line-height:1.7;margin-bottom:1rem;padding:.6rem .85rem;background:var(--card);border:1px solid var(--border);border-radius:var(--r)">&#128161; '+esc(KOPER_FASE_UITLEG[f.id])+'</div>':'';
   dataHtml+=instrTxt+'<div class="data-grid">';
   var fase2GetoondHeader=false;
   f.dataFields.forEach(function(df){
@@ -651,6 +672,17 @@ async function generateAI(faseId){
   S.aiLoading[faseId]=false;renderApp();
 }
 
+// Herkent de interne opslagmarkering van een eigen-PDF-upload (bijv. '[EIGEN PDF GEÜPLOAD: bestand.pdf]').
+// Als deze in een documenttekst voorkomt zonder bijbehorende docId, is het bestand zelf niet
+// teruggevonden — dan mag deze marker nooit als was het de echte inhoud getoond worden.
+function eigenUploadTekst(tekst){
+  var m=/^\[EIGEN PDF GEÜPLOAD:\s*(.+)\]$/.exec((tekst||'').trim());
+  return m?m[1]:null;
+}
+function docNietBeschikbaarHtml(bestandsnaam){
+  return '<div style="padding:1rem;background:#fff3f0;border:1px solid var(--red);border-radius:8px;color:var(--red);font-size:13px;line-height:1.6">Dit document ('+esc(bestandsnaam)+') is als eigen bestand geüpload, maar kan hier niet worden getoond — de koppeling naar het bestand ontbreekt. Neem contact op met uw adviseur voor een nieuwe versie.</div>';
+}
+
 function bindAll(){
   var lb=ge('l-btn');
   if(lb){
@@ -767,8 +799,9 @@ function bindAll(){
   if(loiLees)loiLees.onclick=function(){
     var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;display:flex;align-items:center;justify-content:center;padding:1.5rem';
     var box=document.createElement('div');box.style.cssText='background:#fff;border-radius:10px;padding:2rem;max-width:700px;width:100%;max-height:90vh;overflow-y:auto';
+    var loiEigen=eigenUploadTekst(S.loiTekst);
     box.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.2rem;font-weight:600;color:#1a1815;margin-bottom:1rem">Letter of Intent</div>'
-      +'<div style="font-family:Georgia,serif;font-size:13px;line-height:1.9;color:#2a2825;white-space:pre-wrap">'+esc(S.loiTekst)+'</div>'
+      +(loiEigen?docNietBeschikbaarHtml(loiEigen):'<div style="font-family:Georgia,serif;font-size:13px;line-height:1.9;color:#2a2825;white-space:pre-wrap">'+esc(S.loiTekst)+'</div>')
       +'<div style="display:flex;justify-content:flex-end;margin-top:1.25rem"><button style="background:transparent;border:1px solid #c8c5bc;border-radius:6px;padding:8px 18px;cursor:pointer;font-size:13px" id="loi-sluit">Sluiten</button></div>';
     ov.appendChild(box);document.body.appendChild(ov);
     ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
@@ -803,12 +836,39 @@ function bindAll(){
     }catch(e){toast('Verbindingsfout.','err');}
   };
 
+  var bemTeken=ge('bem-teken-btn');
+  if(bemTeken)bemTeken.onclick=async function(){
+    var naam=prompt('Voer uw volledige naam in ter bevestiging van akkoord:');
+    if(!naam||!naam.trim())return;
+    if(!confirm('U gaat akkoord met de Bemiddelingsovereenkomst namens '+naam.trim()+'. Bevestigen?'))return;
+    try{
+      var r=await fetch(WORKER+'/mna/teken',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:S.code,document:'bem',naam:naam.trim()})});
+      var d=await r.json();
+      if(d.ok){S.bemGetekend=naam.trim();renderApp();toast('Bemiddelingsovereenkomst getekend. De adviseur is op de hoogte gesteld.','ok');}
+      else toast('Fout: '+(d.error||'onbekend'),'err');
+    }catch(e){toast('Verbindingsfout.','err');}
+  };
+
+  var bemLees=ge('bem-lees-btn2');
+  if(bemLees)bemLees.onclick=function(){
+    var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;display:flex;align-items:center;justify-content:center;padding:1.5rem';
+    var box=document.createElement('div');box.style.cssText='background:#fff;border-radius:10px;padding:2rem;max-width:700px;width:100%;max-height:90vh;overflow-y:auto';
+    var bemEigen=eigenUploadTekst(S.bemTekst);
+    box.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.2rem;font-weight:600;color:#1a1815;margin-bottom:1rem">Bemiddelingsovereenkomst</div>'
+      +(bemEigen?docNietBeschikbaarHtml(bemEigen):'<div style="font-family:Georgia,serif;font-size:13px;line-height:1.9;color:#2a2825;white-space:pre-wrap">'+esc(S.bemTekst)+'</div>')
+      +'<div style="display:flex;justify-content:flex-end;margin-top:1.25rem"><button style="background:transparent;border:1px solid #c8c5bc;border-radius:6px;padding:8px 18px;cursor:pointer;font-size:13px" id="bem-sluit">Sluiten</button></div>';
+    ov.appendChild(box);document.body.appendChild(ov);
+    ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
+    document.getElementById('bem-sluit').addEventListener('click',function(){document.body.removeChild(ov);});
+  };
+
   var ndaLees=ge('nda-lees-btn');
   if(ndaLees)ndaLees.onclick=function(){
     var ov=document.createElement('div');
     ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;display:flex;align-items:center;justify-content:center;padding:1.5rem';
     var box=document.createElement('div');
     box.style.cssText='background:#fff;border-radius:10px;padding:2rem;max-width:700px;width:100%;max-height:90vh;overflow-y:auto';
+    var ndaEigen=eigenUploadTekst(S.ndaTekst);
     var ndaHtml=(S.ndaTekst||'').replace(/^# (.+)$/gm,'<h2 style="font-family:Georgia,serif;font-size:1.1rem;margin:1rem 0 .4rem;font-weight:700">$1</h2>').replace(/^## (.+)$/gm,'<h3 style="font-family:Georgia,serif;font-size:.95rem;margin:.9rem 0 .3rem;font-weight:700">$1</h3>').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/^---$/gm,'<hr style="border:none;border-top:1px solid #ddd;margin:.75rem 0">').replace(/\n\n/g,'</p><p style="font-size:13px;line-height:1.9;color:#2a2825;margin:.4rem 0">').replace(/\n/g,'<br>');
     var hdr=document.createElement('div');hdr.style.cssText='display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem';
     hdr.innerHTML='<div style="font-size:11px;font-weight:600;color:#7c5cbf;letter-spacing:.1em;text-transform:uppercase">Non-Disclosure Agreement</div>';
@@ -816,11 +876,13 @@ function bindAll(){
     sluit.onclick=function(){document.body.removeChild(ov);};
     hdr.appendChild(sluit);
     var tekDiv=document.createElement('div');tekDiv.style.cssText='font-family:Georgia,serif;font-size:13px;line-height:1.9;color:#2a2825';
-    tekDiv.innerHTML='<p style="font-size:13px;line-height:1.9;color:#2a2825;margin:.4rem 0">'+ndaHtml+'</p>';
+    tekDiv.innerHTML=ndaEigen?docNietBeschikbaarHtml(ndaEigen):'<p style="font-size:13px;line-height:1.9;color:#2a2825;margin:.4rem 0">'+ndaHtml+'</p>';
     var btns=document.createElement('div');btns.style.cssText='margin-top:1rem;display:flex;gap:8px';
-    var printBtn=document.createElement('button');printBtn.textContent='📄 Print / PDF';printBtn.style.cssText='font-size:12px;padding:6px 14px;border:1px solid #ccc;border-radius:6px;cursor:pointer;background:transparent';
-    printBtn.onclick=function(){ printDoc(S.ndaTekst||'', 'Non-Disclosure Agreement', 'nda'); };
-    btns.appendChild(printBtn);
+    if(!ndaEigen){
+      var printBtn=document.createElement('button');printBtn.textContent='📄 Print / PDF';printBtn.style.cssText='font-size:12px;padding:6px 14px;border:1px solid #ccc;border-radius:6px;cursor:pointer;background:transparent';
+      printBtn.onclick=function(){ printDoc(S.ndaTekst||'', 'Non-Disclosure Agreement', 'nda'); };
+      btns.appendChild(printBtn);
+    }
     box.appendChild(hdr);box.appendChild(tekDiv);box.appendChild(btns);
     ov.appendChild(box);document.body.appendChild(ov);
     ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
