@@ -198,9 +198,9 @@ function isAdmin(){return isTussen();}
 
 function getMissing(){
   var missing=[];
-  FASES.forEach(function(f){
+  FASES.forEach(function(f,idx){
     var missingFields=f.dataFields.filter(function(df){return df.req&&!df.header&&!(S.data[f.id+'_'+df.id]||'').trim();});
-    if(missingFields.length)missing.push({fase:f.num+'. '+f.title,fields:missingFields.map(function(df){return df.label;})});
+    if(missingFields.length)missing.push({fase:f.num+'. '+f.title,faseId:f.id,faseIdx:idx,fields:missingFields.map(function(df){return {id:df.id,label:df.label};})});
   });
   return missing;
 }
