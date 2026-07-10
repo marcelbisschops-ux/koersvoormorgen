@@ -56,22 +56,33 @@ Wat wordt gecheckt:
 
 ## Deel C — Consistentie- en veiligheidsaudit (`tests/audit-consistentie.mjs`)
 Statische, lokale check — geen live traffic, geen kosten. Vangt bugklasses die
-de functionele tests niet raken: verkeerde/vergeten veld-referenties (mna/*.js
-tegen de sectorprofielen), functies die per ongeluk een gelijknamige
-module-level function shadowen, en `begeleiderAuth(...)`-aanroepen met een
-leeg/verdacht trajectCode-argument (het exacte patroon achter het
-cross-traject-lek van 10 juli 2026, zie memory
-`project_begeleiderauth_crosstraject_lek`).
+de functionele tests niet raken:
+1. verkeerde/vergeten veld-referenties (mna/*.js tegen de sectorprofielen)
+2. functies die per ongeluk een gelijknamige module-level function shadowen
+3. `begeleiderAuth(...)`-aanroepen met een leeg/verdacht trajectCode-argument
+   (het patroon achter het cross-traject-lek van 10 juli 2026, zie memory
+   `project_begeleiderauth_crosstraject_lek`)
+4. `"(intern)"`-gelabelde UI-blokken (checklist/notities/AI-advies) die niet
+   aantoonbaar zijn afgeschermd voor de koper-rol (het patroon achter het
+   rolgrens-lek van 10 juli 2026 — koper zag de interne werkaantekeningen
+   van de begeleider, zie memory `project_rolgrens_lek_koper_intern`)
+5. `SELECT *` op `mna_trajecten`/`mna_gesprekken` buiten een `/admin/`-route
+   die binnen dezelfde handler ook `JSON.stringify(...)` teruggeeft — kandidaat
+   voor een veldenlek naar een rol die daar geen recht op heeft (het patroon
+   achter hetzelfde lek: `/mna/traject/` en `/mna/gesprekken/` stuurden alle
+   kolommen naar elke rol, ongeacht wat die rol hoorde te zien)
 
 ```
 node tests/audit-consistentie.mjs
 ```
 
 Vereist dat `backend/cloudflare-worker.js` gesynct is vanuit `~/Downloads/cloudflare-worker.js`
-(check 2 en 3 draaien op dat bestand). Exit code 1 bij bevindingen.
+(checks 2, 3 en 5 draaien op dat bestand). Exit code 1 bij bevindingen. Checks 4
+en 5 zijn heuristisch (regelvenster-gebaseerd, geen echte parser) — een melding
+betekent "controleer dit handmatig", niet automatisch "dit is stuk".
 
 ## Afspraak
-Alle drie de checks groen vóór elke worker-deploy en vóór elke frontend-push.
+Alle vijf checks groen vóór elke worker-deploy en vóór elke frontend-push.
 Draait ook **wekelijks automatisch** (geplande taak, zie hieronder) — bij
 bevindingen worden kleine/duidelijke fixes zelfstandig doorgevoerd en gemeld;
 bij twijfel of impact wordt eerst gewacht op Marcels akkoord in de eerstvolgende sessie.

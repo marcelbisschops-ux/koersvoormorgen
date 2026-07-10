@@ -379,6 +379,13 @@ function renderBegeleiderDashboard(app){
     +'<button class="btn" id="bg-uitnodigen-btn" style="background:var(--teal-dim);padding:10px;font-size:12px">&#9993; Uitnodigen</button>'
     +'<button class="btn" id="bg-infoverzoek-actie" style="background:var(--teal-dim);padding:10px;font-size:12px">&#128203; Informatieverzoek</button>'
     +'</div>'
+    +'<div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.4rem">Analyse</div>'
+    +'<div style="display:flex;gap:8px;margin-bottom:1.25rem">'
+    +'<button class="btn" id="bg-waardering-actie" style="background:#6b7c93">&#9881; AI-analyse &amp; waardering</button>'
+    +'<button class="btn-outline btn-sm" id="bg-ai-status-actie">&#129302; AI-verificatiestatus</button>'
+    +'<button class="btn-outline btn-sm" id="bg-feedback-actie" style="border-color:var(--gold);color:var(--gold)">&#128172; Feedback / bug melden</button>'
+    +'</div>'
+    +'<div id="bg-ai-status-out" style="display:none;margin-bottom:1.25rem"></div>'
     // Doc output
     +'<div id="bg-doc-out" style="display:none;margin-bottom:1.25rem"></div>'
     // Gesprek output
@@ -410,7 +417,7 @@ function renderBegeleiderDashboard(app){
     html+='</div></div>';
   });
 
-  // AI analyse knop
+  // Documenten
   html+='<div style="margin-bottom:1rem">'
     +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">'
     +'<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">&#128196; Documenten</div>'
@@ -418,11 +425,6 @@ function renderBegeleiderDashboard(app){
     +'</div>'
     +'<div id="bg-docs-sectie" style="font-size:12px;color:var(--muted);font-style:italic">Laden...</div>'
     +'</div>'
-    +'<div style="margin-top:.5rem;display:flex;gap:8px">'
-    +'<button class="btn" id="bg-waardering-actie" style="background:#6b7c93">&#9881; AI-analyse &amp; waardering</button>'
-    +'<button class="btn-outline btn-sm" id="bg-ai-status-actie">&#129302; AI-verificatiestatus</button>'
-    +'</div>'
-    +'<div id="bg-ai-status-out" style="display:none;margin-top:1rem"></div>'
     +'<div style="margin-top:1.25rem">'
     +'<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem">&#128172; Gesprekken &amp; verslagen</div>'
     +'<div id="bg-gesprekken-sectie" style="font-size:12px;color:var(--muted);font-style:italic">Laden...</div>'
@@ -1408,10 +1410,7 @@ function renderBegeleiderDashboard(app){
         var zichtLabels = {begeleider:'Intern',verkoper:'Verkoper',koper:'Koper',iedereen:'Alle partijen'};
         var zichtKleuren = {begeleider:'var(--muted)',verkoper:'var(--teal)',koper:'#2a5ea0',iedereen:'var(--gold)'};
 
-        var html = '<div style="display:flex;justify-content:flex-end;margin-bottom:8px">'
-          + '<button id="bg-nieuw-gesprek-btn" style="background:#1a7a5e;color:#fff;border:none;padding:6px 14px;border-radius:6px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:12px;font-weight:600">+ Gesprek vastleggen</button>'
-          + '</div>';
-
+        var html = '';
         if (!gesprekken.length) {
           html += '<div style="font-style:italic;font-size:12px;color:var(--muted)">Nog geen gesprekken vastgelegd.</div>';
         } else {
@@ -1441,11 +1440,6 @@ function renderBegeleiderDashboard(app){
         }
 
         gsEl.innerHTML = html;
-
-        // Nieuw gesprek knop
-        gsEl.querySelector('#bg-nieuw-gesprek-btn').onclick = function(){
-          openBgGesprekForm(null);
-        };
 
         // Zichtbaarheid direct aanpassen
         gsEl.querySelectorAll('.bg-gs-zicht-sel').forEach(function(sel){
@@ -1603,6 +1597,34 @@ function renderBegeleiderDashboard(app){
 
     laadBgGesprekken();
   }
+
+  var feedbackBtn=document.getElementById('bg-feedback-actie');
+  if(feedbackBtn)feedbackBtn.onclick=function(){
+    var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:400;display:flex;align-items:center;justify-content:center;padding:1.5rem';
+    var mo=document.createElement('div');mo.style.cssText='background:#fff;border-radius:10px;padding:2rem;max-width:480px;width:100%';
+    mo.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.1rem;color:#1a1815;font-weight:600;margin-bottom:.5rem">&#128172; Feedback of een bug melden</div>'
+      +'<div style="font-size:12px;color:#8a8880;margin-bottom:1rem">Kort omschrijven wat je zag en wat je verwachtte. Komt direct binnen bij Marcel — reken op een reactie binnen 24 uur.</div>'
+      +'<textarea id="fb-tekst" rows="6" style="width:100%;background:#f0eeea;border:1px solid #c8c5bc;border-radius:6px;padding:9px 11px;font-family:IBM Plex Sans,sans-serif;font-size:13px;resize:vertical" placeholder="Bijv.: Op het scherm Waardering klik ik op X en dan gebeurt Y, terwijl ik Z verwachtte..."></textarea>'
+      +'<div id="fb-err" style="display:none;color:#e05252;font-size:12px;margin-top:.5rem"></div>'
+      +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem">'
+      +'<button id="fb-ann" style="background:transparent;border:1px solid #c8c5bc;padding:8px 16px;border-radius:6px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:13px">Annuleren</button>'
+      +'<button id="fb-ok" style="background:var(--gold);color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:13px;font-weight:600">Versturen</button>'
+      +'</div>';
+    ov.appendChild(mo);document.body.appendChild(ov);
+    ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
+    document.getElementById('fb-ann').onclick=function(){document.body.removeChild(ov);};
+    document.getElementById('fb-ok').onclick=async function(){
+      var btn=this;var tekst=document.getElementById('fb-tekst').value.trim();var errEl=document.getElementById('fb-err');
+      if(!tekst){errEl.textContent='Vul een omschrijving in.';errEl.style.display='block';return;}
+      btn.disabled=true;btn.textContent='Versturen...';
+      try{
+        var r=await fetch(WORKER+'/mna/feedback',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:S.code,bericht:tekst,scherm:'begeleider-dashboard'})});
+        var d=await r.json();
+        if(d.ok){mo.innerHTML='<div style="text-align:center;padding:1rem 0"><div style="font-size:2rem;margin-bottom:.75rem">&#10003;</div><div style="font-family:Playfair Display,serif;font-size:1.05rem;color:#1a1815;font-weight:600;margin-bottom:.5rem">Bedankt!</div><div style="font-size:13px;color:#5a5854">Je melding is verstuurd. We pakken dit binnen 24 uur op.</div><button id="fb-sluit" style="margin-top:1.25rem;background:var(--gold);color:#fff;border:none;padding:8px 20px;border-radius:6px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:13px;font-weight:600">Sluiten</button></div>';document.getElementById('fb-sluit').onclick=function(){document.body.removeChild(ov);};}
+        else{errEl.textContent='Fout: '+(d.error||'onbekend');errEl.style.display='block';btn.disabled=false;btn.textContent='Versturen';}
+      }catch(e){errEl.textContent='Verbindingsfout.';errEl.style.display='block';btn.disabled=false;btn.textContent='Versturen';}
+    };
+  };
 
   var aiStatusBtn=document.getElementById('bg-ai-status-actie');
   if(aiStatusBtn)aiStatusBtn.onclick=function(){
