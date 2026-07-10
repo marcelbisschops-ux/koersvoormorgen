@@ -54,8 +54,27 @@ Wat wordt gecheckt:
 - **Module-gating** — met module "contracten" uit zijn de zes documentknoppen
   vergrendeld. (Maakt eigen testdata; vereist admin-key.)
 
+## Deel C — Consistentie- en veiligheidsaudit (`tests/audit-consistentie.mjs`)
+Statische, lokale check — geen live traffic, geen kosten. Vangt bugklasses die
+de functionele tests niet raken: verkeerde/vergeten veld-referenties (mna/*.js
+tegen de sectorprofielen), functies die per ongeluk een gelijknamige
+module-level function shadowen, en `begeleiderAuth(...)`-aanroepen met een
+leeg/verdacht trajectCode-argument (het exacte patroon achter het
+cross-traject-lek van 10 juli 2026, zie memory
+`project_begeleiderauth_crosstraject_lek`).
+
+```
+node tests/audit-consistentie.mjs
+```
+
+Vereist dat `backend/cloudflare-worker.js` gesynct is vanuit `~/Downloads/cloudflare-worker.js`
+(check 2 en 3 draaien op dat bestand). Exit code 1 bij bevindingen.
+
 ## Afspraak
-Beide suites groen vóór elke worker-deploy en vóór elke frontend-push.
+Alle drie de checks groen vóór elke worker-deploy en vóór elke frontend-push.
+Draait ook **wekelijks automatisch** (geplande taak, zie hieronder) — bij
+bevindingen worden kleine/duidelijke fixes zelfstandig doorgevoerd en gemeld;
+bij twijfel of impact wordt eerst gewacht op Marcels akkoord in de eerstvolgende sessie.
 
 ## Bekende beperking
 De module-gating-test tekent een verwerkersovereenkomst (VOK) voor zijn
