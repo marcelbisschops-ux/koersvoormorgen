@@ -878,7 +878,7 @@ async function deleteDocument(docId, faseId) {
     DOCS[fid]=DOCS[fid].filter(function(d){return d.id!==docId;});
   });
   renderApp();
-  fetch(WORKER+'/mna/document/delete/'+docId,{method:'POST'}).catch(function(){});
+  fetch(WORKER+'/mna/document/delete/'+docId+'?code='+encodeURIComponent(S.code||''),{method:'POST'}).catch(function(){});
 }
 
 function renderDocumentSectie(faseId) {

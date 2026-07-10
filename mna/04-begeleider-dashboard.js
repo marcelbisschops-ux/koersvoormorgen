@@ -331,6 +331,13 @@ function renderBegeleiderDashboard(app){
     // Traject info
     +'<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;margin-bottom:1.25rem">'
     +(t.verkoper_klaar?'<div style="background:var(--teal-bg);border:1px solid var(--teal);border-radius:var(--r);padding:.75rem 1rem;margin-bottom:1rem;display:flex;align-items:center;gap:10px"><span style="font-size:1.5rem">&#128228;</span><div><div style="font-size:13px;font-weight:600;color:var(--teal)">Verkoper heeft dossier vrijgegeven</div><div style="font-size:11px;color:var(--muted);margin-top:2px">'+(t.verkoper_klaar_naam?'Door: '+esc(t.verkoper_klaar_naam)+' &middot; ':'')+( t.verkoper_klaar_at?new Date(t.verkoper_klaar_at).toLocaleString('nl-NL',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'')+'</div></div></div>':'')
+    +'<div class="panel" id="wz-panel" style="margin-bottom:1rem;padding:0">'
+    +'<div id="wz-toggle-hdr" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;padding:.75rem 1rem">'
+    +'<div style="display:flex;align-items:center;gap:8px">'
+    +'<span style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">&#128221; Wijzigingen (dataintegriteit)</span>'
+    +'<span id="wz-badge" style="display:none;background:var(--red);color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px"></span>'
+    +'</div><span id="wz-chevron" style="font-size:12px;color:var(--muted)">&#9660;</span>'
+    +'</div><div id="wz-body" style="display:none;padding:0 1rem 1rem"></div></div>'
     +'<div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:1rem">'
     +'<div>'
     +'<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.25rem">Traject</div>'
@@ -1397,6 +1404,65 @@ function renderBegeleiderDashboard(app){
       } catch(e) { bgDocsEl.innerHTML='<div style="font-size:12px;color:var(--red)">Fout: '+e.message+'</div>'; }
     }
     laadBgDocs();
+
+    // Wijzigingen-overzicht (dataintegriteit): pull-down paneel + meldingsbadge voor wat de
+    // verkoper heeft aangepast (veldwijzigingen, documentuploads, documentverwijderingen).
+    (function initWijzigingenPanel(){
+      var hdr=document.getElementById('wz-toggle-hdr');
+      var body=document.getElementById('wz-body');
+      var badge=document.getElementById('wz-badge');
+      var chevron=document.getElementById('wz-chevron');
+      if(!hdr)return;
+      var wijzigingenData=[];
+      var gezienKey='ki_wz_gezien_'+S.code;
+      var faseLabels={financieel:'Financieel',commercieel:'Klanten',partner:'Partners',compliance:'Compliance',it:'IT',juridisch:'Juridisch',strategisch:'Strategisch'};
+      var typeIcons={veld:'&#9998;',document_upload:'&#128196;',document_verwijderd:'&#128465;'};
+      var rolLabels={verkoper:'Verkoper',koper:'Koper',tussenpersoon:'Begeleider',admin:'Beheer'};
+      function laadWijzigingen(){
+        fetch(WORKER+'/mna/wijzigingen/'+S.code,{headers:{'x-tussen-key':S._bgKey||''}})
+          .then(function(r){return r.json();})
+          .then(function(d){
+            wijzigingenData=d.wijzigingen||[];
+            var laatstGezien=parseInt(localStorage.getItem(gezienKey)||'0',10);
+            var nieuw=wijzigingenData.filter(function(w){return w.created_at>laatstGezien;}).length;
+            if(nieuw>0){badge.textContent=nieuw+' nieuw';badge.style.display='inline-block';}
+            else{badge.style.display='none';}
+          }).catch(function(){});
+      }
+      function renderLijst(){
+        if(!wijzigingenData.length){body.innerHTML='<div style="font-size:12px;color:var(--muted);font-style:italic;padding-top:.5rem">Nog geen wijzigingen vastgelegd.</div>';return;}
+        var html='<div style="display:flex;flex-direction:column;gap:6px;padding-top:.5rem;max-height:340px;overflow-y:auto">';
+        wijzigingenData.forEach(function(w){
+          var dt=new Date(w.created_at).toLocaleString('nl-NL',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+          var inhoud='';
+          if(w.type==='veld'){
+            inhoud='<strong>'+esc(w.veld_label)+'</strong>'+(faseLabels[w.fase_id]?' ('+faseLabels[w.fase_id]+')':'')+'<br><span style="color:var(--muted)">'+(w.oude_waarde?esc(w.oude_waarde)+' &#8594; ':'')+'<strong style="color:var(--sub)">'+esc(w.nieuwe_waarde)+'</strong></span>';
+          } else if(w.type==='document_upload'){
+            inhoud='Document geüpload: <strong>'+esc(w.document_naam)+'</strong>'+(faseLabels[w.fase_id]?' ('+faseLabels[w.fase_id]+')':'');
+          } else if(w.type==='document_verwijderd'){
+            inhoud='Document verwijderd: <strong>'+esc(w.document_naam)+'</strong>'+(faseLabels[w.fase_id]?' ('+faseLabels[w.fase_id]+')':'');
+          }
+          html+='<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:.6rem .75rem;font-size:12px">'
+            +'<div style="display:flex;justify-content:space-between;gap:8px;margin-bottom:.3rem">'
+            +'<span style="font-weight:600;color:var(--teal)">'+(typeIcons[w.type]||'')+' '+(rolLabels[w.rol]||w.rol)+(w.auteur_naam?' ('+esc(w.auteur_naam)+')':'')+'</span>'
+            +'<span style="color:var(--muted);font-size:11px">'+dt+'</span>'
+            +'</div><div style="color:var(--sub);line-height:1.5">'+inhoud+'</div></div>';
+        });
+        html+='</div>';
+        body.innerHTML=html;
+      }
+      hdr.onclick=function(){
+        var open=body.style.display!=='none';
+        if(open){body.style.display='none';chevron.innerHTML='&#9660;';}
+        else{
+          body.style.display='block';chevron.innerHTML='&#9650;';
+          renderLijst();
+          localStorage.setItem(gezienKey,String(Date.now()));
+          badge.style.display='none';
+        }
+      };
+      laadWijzigingen();
+    })();
 
     // Laad gesprekken voor begeleider
     async function laadBgGesprekken() {
