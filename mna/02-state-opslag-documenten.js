@@ -742,6 +742,50 @@ function _autoFillFromExtractionBody(faseId, velden, forceOverwrite, docNaam) {
     }
     setIfEmpty('strategisch_tijdlijn',velden.tijdlijn||velden.gewenste_tijdlijn||velden.closing_datum);
   }
+  // Sectorspecifieke extractievelden (MKB/Zorg/IT — zie SECTOR_EXTRACTIE_EXTRA in de worker).
+  // Altijd proberen te mappen: bij een andere sector bestaat het doelveld simpelweg niet in het
+  // profiel en heeft setIfEmpty geen effect; onschadelijk om dit sectoronafhankelijk te draaien.
+  if(true){
+    // MKB
+    setIfEmpty('financieel_brutomarge',velden.brutomarge_pct);
+    setIfEmpty('financieel_dgaSalaris',cleanGetal(velden.dga_salaris));
+    setIfEmpty('financieel_voorraad',cleanGetal(velden.voorraadwaarde));
+    setIfEmpty('commercieel_top10Leveranciers',velden.top10_leveranciers_pct);
+    setIfEmpty('commercieel_locaties',velden.aantal_locaties);
+    setIfEmpty('it_ecommerce',velden.ecommerce_platform);
+    // Zorg
+    setIfEmpty('financieel_zorgverzekeraars',velden.omzet_per_financieringsstroom);
+    setIfEmpty('financieel_bezettingsgraad',velden.bezettingsgraad_pct);
+    setIfEmpty('commercieel_aantalPatient',velden.aantal_patienten);
+    setIfEmpty('commercieel_wachttijd',velden.wachttijd_nieuwe_patienten);
+    setIfEmpty('commercieel_specialisaties',velden.specialisaties);
+    setIfEmpty('partner_bigRegistraties',velden.big_registraties_status||(velden.big_registraties_aantal?velden.big_registraties_aantal+' geregistreerd':null));
+    setIfEmpty('partner_zzpAandeel',velden.zzp_aandeel_pct);
+    setIfEmpty('partner_ziekteverzuim',velden.ziekteverzuim_pct);
+    setIfEmpty('compliance_igj',velden.igj_inspectie);
+    setIfEmpty('compliance_nza',velden.nza_registratie);
+    setIfEmpty('it_epd',velden.epd_systeem);
+    setIfEmpty('it_gegevensmigratie',velden.epd_overdraagbaarheid);
+    setIfEmpty('juridisch_goodwill',velden.goodwill_afspraken);
+    setIfEmpty('juridisch_zorgcontracten',velden.zorgverzekeraar_contracten);
+    // IT & Software
+    setIfEmpty('financieel_arr',cleanGetal(velden.arr));
+    setIfEmpty('financieel_churnMrr',velden.mrr_churn_pct);
+    setIfEmpty('commercieel_productMaturity',velden.product_status);
+    setIfEmpty('commercieel_techDebt',velden.technische_schuld);
+    setIfEmpty('partner_devFte',velden.dev_fte);
+    setIfEmpty('partner_ipOwnership',velden.ip_eigendom);
+    setIfEmpty('compliance_avg',velden.avg_compliance);
+    setIfEmpty('compliance_pentest',velden.laatste_pentest_jaar);
+    setIfEmpty('compliance_incidenten',velden.security_incidenten);
+    setIfEmpty('compliance_licenties',velden.open_source_licenties);
+    setIfEmpty('it_techStack',velden.tech_stack);
+    setIfEmpty('it_hosting',velden.hosting_provider);
+    setIfEmpty('it_schaalbaarheid',velden.schaalbaarheid_architectuur);
+    setIfEmpty('juridisch_ipRegistraties',velden.ip_registraties);
+    setIfEmpty('juridisch_klantcontracten',velden.klantcontracten_looptijd);
+    setIfEmpty('strategisch_groei',velden.groeimotor);
+  }
 }
 
 async function consolideerAnalyse(faseId){
