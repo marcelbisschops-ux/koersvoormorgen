@@ -351,6 +351,25 @@ function renderMain(){
     +extraHtml+nav+'</div>';
 }
 
+// Compact overzicht "hoe ver staat elk onderdeel" op het samenvattingsscherm — anders is alleen
+// het groepspercentage zichtbaar en moet je per entiteit apart het invulscherm openen om te zien
+// hoe ver dat onderdeel staat (Marcel, juli 2026).
+function entiteitOverzichtHtml(){
+  var lijst=entiteitFillOverzicht();
+  if(!lijst.length)return '';
+  var kleur=function(p){return p===100?'var(--teal)':p>50?'var(--gold)':'var(--red)';};
+  var rijen=lijst.map(function(r){
+    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 12px;border-bottom:1px solid var(--border)">'
+      +'<span style="font-size:12px;color:'+(r.id?'var(--sub)':'var(--head)')+';font-weight:'+(r.id?'400':'600')+'">'+esc(r.naam)+'</span>'
+      +'<span style="font-family:IBM Plex Mono,monospace;font-size:12px;font-weight:600;color:'+kleur(r.pct)+'">'+r.pct+'%</span>'
+      +'</div>';
+  }).join('');
+  return '<div class="panel" style="margin-bottom:1.5rem;padding:0">'
+    +'<div style="padding:.75rem 12px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);border-bottom:1px solid var(--border)">Invulling per onderdeel</div>'
+    +rijen
+    +'</div>';
+}
+
 function renderSummary(){
   var missing=getMissing();
   var vergrendeld=S.traject&&S.traject.status==='vergrendeld';
@@ -471,6 +490,7 @@ function renderSummary(){
     +'<div class="panel" style="text-align:center;padding:1rem"><div style="font-family:Playfair Display,serif;font-size:1.8rem;font-weight:600;color:var(--teal)">'+completeFases.length+'</div><div style="font-size:10px;text-transform:uppercase;color:var(--muted)">Fasen compleet</div></div>'
     +'<div class="panel" style="text-align:center;padding:1rem"><div style="font-family:Playfair Display,serif;font-size:1.8rem;font-weight:600;color:var(--red)">'+missing.reduce(function(a,m){return a+m.fields.length;},0)+'</div><div style="font-size:10px;text-transform:uppercase;color:var(--muted)">Velden ontbreken</div></div>'
     +'</div>'
+    +entiteitOverzichtHtml()
     +missingHtml
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'+cards+'</div>'
     +(heeftKritiek&&isVerkoper()?
