@@ -970,6 +970,7 @@ function syncDocVeldenVanTraject(d){
   if(t.loi_getekend)S.loiGetekend=t.loi_getekend;
   if(t.bem_doc_id)S.bemDocId=t.bem_doc_id;
   if(t.bem_tekst&&!t.bem_doc_id)S.bemTekst=t.bem_tekst;
+  if(t.bem_getekend)S.bemGetekend=t.bem_getekend;
   if(t.verkoper_klaar)S.dossierVrijgegeven=true;
 }
 
