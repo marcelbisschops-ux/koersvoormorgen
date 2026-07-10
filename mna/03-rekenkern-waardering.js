@@ -584,10 +584,10 @@ function renderWaardering(){
   // AI rapport knop (alleen tussenpersoon)
   if(isTussen()){
     html+='<div id="w-ai-sectie" style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;margin-bottom:1.25rem">'
-      +'<div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)">AI-waarderingsrapport</div>'
-      +'<div style="font-size:11px;color:var(--muted);margin-bottom:.85rem;line-height:1.6">Elk rapport wordt bewaard en gekoppeld aan de cijfers waarmee het is opgesteld. Draait u het rapport opnieuw, dan blijft de vorige versie zichtbaar in de geschiedenis — zo ziet u altijd of een nieuw rapport dezelfde cijfers vanuit een andere invalshoek belicht, of dat de onderliggende cijfers zelf zijn gewijzigd.</div>'
+      +'<div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)">AI-analyse &amp; waardering</div>'
+      +'<div style="font-size:11px;color:var(--muted);margin-bottom:.85rem;line-height:1.6">Eén rapport: de due-diligence-bevindingen en de daarop gebaseerde waardering samen, zodat de waardering direct herleidbaar is naar wat er in de dossiers staat. Elk rapport wordt bewaard en gekoppeld aan de cijfers waarmee het is opgesteld. Draait u het opnieuw, dan blijft de vorige versie zichtbaar in de geschiedenis — zo ziet u altijd of een nieuw rapport dezelfde cijfers vanuit een andere invalshoek belicht, of dat de onderliggende cijfers zelf zijn gewijzigd.</div>'
       +'<div id="w-ai-out" style="display:none;margin-bottom:1rem"></div>'
-      +'<button class="btn" id="w-ai-btn" style="width:100%">&#9881; Genereer AI waarderingsrapport</button>'
+      +'<button class="btn" id="w-ai-btn" style="width:100%">&#9881; Genereer AI-analyse &amp; waardering</button>'
       +'<div id="w-ai-hist" style="margin-top:1rem"></div>'
       +'</div>';
   }

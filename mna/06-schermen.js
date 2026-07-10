@@ -891,9 +891,12 @@ function bindAll(){
     lijnen.push('Omzetmethode ('+v.omzetFactor+'x): '+fmtGeld(v.wOmzet));
     lijnen.push('Koopsom bij closing (indicatief): '+fmtGeld(v.fixedKoop)+', earn-out '+v.earnPct+'% over '+v.earnJaren+' jaar bij '+v.earnTarget+'% omzetgroei/jaar');
     var sectorProfielW=getSectorProfiel();
-    var prompt='Schrijf een professioneel, cijfermatig onderbouwd M&A-waarderingsrapport voor '+esc(S.traject&&S.traject.kantoor_naam||S.code)+' (sector: '+(sectorProfielW.label||'')+').\n\nSECTOR NORMEN: '+(sectorProfielW.aiNormen||'')+'\n\nCIJFERS:\n'+lijnen.join('\n')+'\n\nGebruik uitsluitend bovenstaande cijfers — verzin geen andere bedragen of percentages. Ga expliciet in op wat de cijfers zeggen over de kwaliteit en het risico van de omzet (concentratie, recurring, churn) waar die zijn aangeleverd.\n\nBegin DIRECT met de eerste ## kop hieronder — geen eigen titel, geen bedrijfsnaam als kop, geen horizontale lijnen (---).\n\n## Executive summary\n## Waarderingsmethodiek\n## As-is waardering\n## Kwaliteit van de cijfers\n## Groei- en waardepotentieel\n## Transactiestructuur\n## Conclusie\n\nGebruik bullets (met -) waar een opsomming duidelijker is dan lopende tekst. Max 500 woorden.';
+    var dataSamW='';
+    var faseLW={financieel:'Financieel',commercieel:'Klanten',partner:'Partners',compliance:'Compliance',it:'IT',juridisch:'Juridisch',strategisch:'Strategisch'};
+    (S._mnaData||[]).forEach(function(row){try{var dj=typeof row.data_json==='string'?JSON.parse(row.data_json):row.data_json;var gevuld=Object.values(dj||{}).filter(function(v2){return v2&&v2.value;});if(gevuld.length){dataSamW+='\n## '+(faseLW[row.fase_id]||row.fase_id)+'\n';gevuld.forEach(function(v2){dataSamW+='- '+v2.label+': '+v2.value+'\n';});}}catch(e){}});
+    var prompt='Schrijf één samenhangend, professioneel M&A-rapport voor '+esc(S.traject&&S.traject.kantoor_naam||S.code)+' (sector: '+(sectorProfielW.label||'')+') — zowel de due-diligence-analyse als de daarop gebaseerde waardering, als één geheel.\n\nSECTOR NORMEN: '+(sectorProfielW.aiNormen||'')+'\n\nDUE DILIGENCE DATA:'+dataSamW+'\n\nCIJFERS VOOR DE WAARDERING (uitsluitend deze gebruiken, geen andere bedragen of percentages verzinnen):\n'+lijnen.join('\n')+'\n\nGa expliciet in op wat de cijfers zeggen over de kwaliteit en het risico van de omzet (concentratie, recurring, churn) waar die zijn aangeleverd. De waarderingssectie moet aantoonbaar voortbouwen op de bevindingen uit de due-diligence-sectie (bijv. risicos die de multiple drukken, sterktes die hem rechtvaardigen).\n\nBegin DIRECT met de eerste ## kop hieronder — geen eigen titel, geen bedrijfsnaam als kop, geen horizontale lijnen (---).\n\n## Samenvatting\n## Financieel\n## Sterktes\n## Risicos\n## Waarderingsmethodiek\n## As-is waardering\n## Kwaliteit van de cijfers\n## Groei- en waardepotentieel\n## Transactiestructuur\n## Conclusie en aanbevelingen\n\nGebruik bullets (met -) waar een opsomming duidelijker is dan lopende tekst. Max 800 woorden.';
     try{
-      var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:2200})});
+      var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:3600})});
       var rd=await resp.json();
       var ruweTekst=rd.text||(rd.error?('AI fout: '+rd.error):'Fout bij genereren.');
       var tekstHtml=mdToHtml(ruweTekst);
@@ -903,7 +906,7 @@ function bindAll(){
       wToonRapport(tekstHtml, nu, saveResp&&saveResp.versie);
       wLaadGeschiedenis();
       wAiBtn.textContent='↻ Opnieuw genereren';wAiBtn.disabled=false;
-    }catch(e){out.innerHTML='<div style="color:var(--red);font-size:13px">Fout: '+e.message+'</div>';wAiBtn.disabled=false;wAiBtn.textContent='Genereer AI rapport';}
+    }catch(e){out.innerHTML='<div style="color:var(--red);font-size:13px">Fout: '+e.message+'</div>';wAiBtn.disabled=false;wAiBtn.textContent='Genereer AI-analyse & waardering';}
   });
   // Eerder gegenereerd waarderingsrapport ophalen (server, niet meer lokaal) en tonen
   if(wAiBtn){
