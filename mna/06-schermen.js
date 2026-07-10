@@ -132,13 +132,13 @@ var KOPER_FASE_UITLEG={
 
 function renderMain(){
   var f=FASES[S.fase];
-  var tp=isVerkoper()?totalFillPct():Math.round(FASES.reduce(function(a,fase){return a+pct(fase.id);},0)/FASES.length);
+  var tp=(isVerkoper()||isKoper())?totalFillPct():Math.round(FASES.reduce(function(a,fase){return a+pct(fase.id);},0)/FASES.length);
   var vergrendeld=S.traject&&S.traject.status==='vergrendeld';
   var isRO=isKoper()||vergrendeld;
 
   var ov='<div class="fase-grid">';
   FASES.forEach(function(fase,i){
-    var p=isVerkoper()?fillPct(fase.id):pct(fase.id);
+    var p=(isVerkoper()||isKoper())?fillPct(fase.id):pct(fase.id);
     ov+='<div class="fase-card'+(S.fase===i?' active':'')+'" data-fi="'+i+'">'
       +'<div class="fase-num">'+fase.num+'</div>'
       +'<div class="fase-name">'+fase.title+'</div>'
@@ -175,6 +175,11 @@ function renderMain(){
       +'<option value=""'+(S._actieveEntiteit?'':' selected')+'>Groep (geconsolideerd)</option>'
       +S._entiteiten.map(function(e){return '<option value="'+esc(e.id)+'"'+(S._actieveEntiteit===e.id?' selected':'')+'>'+esc(e.naam)+'</option>';}).join('')
       +'</select></div>';
+  }else if(isKoper()&&S._entiteiten&&S._entiteiten.length){
+    dataHtml+='<div style="margin-bottom:1rem;padding:.6rem .85rem;background:var(--card);border:1px solid var(--border);border-radius:var(--r);font-size:11px;color:var(--sub);line-height:1.6">'
+      +'<strong style="color:var(--muted);text-transform:uppercase;letter-spacing:.05em;font-size:10px">Geconsolideerde cijfers</strong><br>'
+      +'De onderstaande gegevens zijn de som van '+S._entiteiten.length+' entiteiten binnen de groep: '+S._entiteiten.map(function(e){return esc(e.naam);}).join(', ')+'.'
+      +'</div>';
   }
   var instrTxt=isVerkoper()?'<div style="font-size:11px;color:var(--muted);line-height:1.6;margin-bottom:1rem;padding-bottom:.75rem;border-bottom:1px solid var(--border)">Vul de velden in. Upload rechts de relevante documenten &mdash; velden worden automatisch ingelezen zolang het boekjaar in het document staat. Controleer alle automatisch ingevulde waarden. De ge&uuml;ploade documenten dienen als grondslag voor de due diligence. Ontbrekende velden vult u zelf in.</div>'
     :isKoper()&&KOPER_FASE_UITLEG[f.id]?'<div style="font-size:12px;color:var(--sub);line-height:1.7;margin-bottom:1rem;padding:.6rem .85rem;background:var(--card);border:1px solid var(--border);border-radius:var(--r)">&#128161; '+esc(KOPER_FASE_UITLEG[f.id])+'</div>':'';
@@ -252,7 +257,7 @@ function renderMain(){
         +'</div>';
     }
   }
-  if(!isVerkoper()){
+  if(isTussen()||(!isVerkoper()&&!isKoper())){
     var chkHtml='<div class="panel"><div class="sec-hdr">Checklist (intern)</div>';
     f.items.forEach(function(item,i){var key=f.id+'_'+i;var on=!!S.checked[key];chkHtml+='<div class="chk-item'+(on?' on':'')+'" data-key="'+key+'"'+(isKoper()?' style="cursor:default"':'')+'><div class="chk-box">'+(on?'&#10003;':'')+'</div><div class="chk-lbl">'+item+'</div></div>';});
     chkHtml+='<div class="sec-hdr" style="margin-top:1rem;color:var(--red)">Rode vlaggen &mdash; gesignaleerd?</div>';
@@ -317,7 +322,7 @@ function renderMain(){
     var aiHtml='<div class="ai-panel"><div class="ai-hdr"><div><div class="ai-title">AI-advies: '+f.title+'</div><div class="ai-sub">Intern analyse-instrument</div></div>'
       +(!isKoper()&&!isVerkoper()?'<button class="btn-gen" id="gen-btn" '+(aiLoad?'disabled':'')+'>'+(aiLoad?'<div class="spin"></div> Genereren...':aiText&&aiText!=='__ERROR__'?'Opnieuw':'Genereer advies')+'</button>':'')
       +'</div><div class="ai-body">'+aiBodyHtml+'</div></div>';
-    extraHtml=chkHtml+notHtml+aiHtml;
+    extraHtml+=chkHtml+notHtml+aiHtml;
   }
 
   // Q&A module (koper stelt vragen of tegenvoorstellen, begeleider beantwoordt — iedereen ziet antwoorden)
@@ -481,13 +486,13 @@ function renderSummary(){
   // Summary cards
   var cards='';
   FASES.forEach(function(f){
-    var p=isVerkoper()?fillPct(f.id):pct(f.id);
+    var p=(isVerkoper()||isKoper())?fillPct(f.id):pct(f.id);
     var dataRows='';
     f.dataFields.forEach(function(df){var v=S.data[f.id+'_'+df.id];var r=S.docRefs[f.id+'_'+df.id];if(v)dataRows+='<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-bottom:1px solid var(--border)"><span style="color:var(--muted)">'+df.label+(df.req?' *':'')+'</span><span style="font-family:IBM Plex Mono,monospace;font-size:11px">'+esc(v)+(r?' <span style="color:var(--gold)">&#128196;'+esc(r)+'</span>':'')+'</span></div>';else if(df.req)dataRows+='<div style="font-size:12px;padding:3px 0;border-bottom:1px solid var(--border);color:var(--red)">&#9888; '+df.label+': niet ingevuld</div>';});
     var rfHits=f.redflags.filter(function(_,i){return S.checked[f.id+'_rf_'+i];});
     cards+='<div class="panel" style="border-color:'+(p===100?'var(--teal)':'var(--border)')+'"><div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:.5rem;display:flex;justify-content:space-between"><span>'+(isVerkoper()?'':f.num+'. ')+f.title+'</span><span style="color:'+(p===100?'var(--teal)':p>50?'var(--gold)':'var(--red)')+'">'+p+'%</span></div>'
-      +dataRows+(rfHits.length&&!isVerkoper()?'<div style="margin-top:.4rem">'+rfHits.map(function(rf){return '<div style="font-size:11px;color:var(--red)">&#9888; '+rf+'</div>';}).join('')+'</div>':'')
-      +(S.notities[f.id]&&!isVerkoper()?'<div style="font-size:11px;color:var(--mid);margin-top:.35rem;font-style:italic">'+esc(S.notities[f.id].substring(0,120))+'</div>':'')
+      +dataRows+(rfHits.length&&!isVerkoper()&&!isKoper()?'<div style="margin-top:.4rem">'+rfHits.map(function(rf){return '<div style="font-size:11px;color:var(--red)">&#9888; '+rf+'</div>';}).join('')+'</div>':'')
+      +(S.notities[f.id]&&!isVerkoper()&&!isKoper()?'<div style="font-size:11px;color:var(--mid);margin-top:.35rem;font-style:italic">'+esc(S.notities[f.id].substring(0,120))+'</div>':'')
       +'</div>';
   });
 
@@ -509,7 +514,7 @@ function renderSummary(){
     missingHtml+='</div>';
   }
 
-  var tp=isVerkoper()?totalFillPct():Math.round(FASES.reduce(function(a,f){return a+pct(f.id);},0)/FASES.length);
+  var tp=(isVerkoper()||isKoper())?totalFillPct():Math.round(FASES.reduce(function(a,f){return a+pct(f.id);},0)/FASES.length);
   return '<div class="wrap anim">'
     +'<div class="hdr"><div class="brand">'+brandMerkHtml()+BRAND.platform+' &middot; M&amp;A'+versieLabel()+'</div>'
     +'<div style="display:flex;gap:8px"><button class="btn-ghost btn-sm" onclick="window.print()">PDF</button><button class="btn-ghost btn-sm" id="back-main">&#8592; Terug</button></div></div>'
@@ -517,7 +522,7 @@ function renderSummary(){
     +'<div style="font-family:Playfair Display,serif;font-size:1.4rem;color:var(--head);font-weight:600;margin-bottom:.25rem">DD Samenvatting</div>'
     +'<div style="font-size:13px;color:var(--muted);margin-bottom:1.5rem">'+esc(S.traject&&S.traject.kantoor_naam||S.code)+' &middot; '+new Date().toLocaleDateString('nl-NL',{day:'2-digit',month:'long',year:'numeric'})+'</div>'
     +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:1.5rem">'
-    +'<div class="panel" style="text-align:center;padding:1rem"><div style="font-family:Playfair Display,serif;font-size:1.8rem;font-weight:600;color:'+(tp===100?'var(--teal)':tp>50?'var(--gold)':'var(--red)')+'">'+tp+'%</div><div style="font-size:10px;text-transform:uppercase;color:var(--muted)">'+(isVerkoper()?'Ingevuld':'Checklist')+'</div></div>'
+    +'<div class="panel" style="text-align:center;padding:1rem"><div style="font-family:Playfair Display,serif;font-size:1.8rem;font-weight:600;color:'+(tp===100?'var(--teal)':tp>50?'var(--gold)':'var(--red)')+'">'+tp+'%</div><div style="font-size:10px;text-transform:uppercase;color:var(--muted)">'+((isVerkoper()||isKoper())?'Ingevuld':'Checklist')+'</div></div>'
     +'<div class="panel" style="text-align:center;padding:1rem"><div style="font-family:Playfair Display,serif;font-size:1.8rem;font-weight:600;color:var(--teal)">'+completeFases.length+'</div><div style="font-size:10px;text-transform:uppercase;color:var(--muted)">Fasen compleet</div></div>'
     +'<div class="panel" style="text-align:center;padding:1rem"><div style="font-family:Playfair Display,serif;font-size:1.8rem;font-weight:600;color:var(--red)">'+missing.reduce(function(a,m){return a+m.fields.length;},0)+'</div><div style="font-size:10px;text-transform:uppercase;color:var(--muted)">Velden ontbreken</div></div>'
     +'</div>'
