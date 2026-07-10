@@ -127,8 +127,20 @@ function checkOmzetSom(){
 // mna/06-schermen.js), dus meetellen als "verplicht maar leeg" gaf een onterecht laag/verwarrend
 // percentage (regressie juli 2026: verkoper zag 34% terwijl alle bereikbare velden al klaar waren).
 function loiIsGetekend(){return !!(S.loiGetekend||(S.traject&&S.traject.loi_getekend));}
-function fillPct(id){var f=FASES.find(function(x){return x.id===id;});if(!f)return 0;var getekend=loiIsGetekend();var req=f.dataFields.filter(function(df){return df.req&&!df.header&&(getekend||df.fase!=='2');});var done=req.filter(function(df){return !!(S.data[id+'_'+df.id]||'').trim();}).length;return req.length?Math.round(done/req.length*100):100;}
-function totalFillPct(){var getekend=loiIsGetekend();var t=0,d=0;FASES.forEach(function(f){var req=f.dataFields.filter(function(df){return df.req&&!df.header&&(getekend||df.fase!=='2');});t+=req.length;d+=req.filter(function(df){return !!(S.data[f.id+'_'+df.id]||'').trim();}).length;});return t?Math.round(d/t*100):0;}
+function fillPct(id,dataBron){var f=FASES.find(function(x){return x.id===id;});if(!f)return 0;var bron=dataBron||S.data;var getekend=loiIsGetekend();var req=f.dataFields.filter(function(df){return df.req&&!df.header&&(getekend||df.fase!=='2');});var done=req.filter(function(df){return !!(bron[id+'_'+df.id]||'').trim();}).length;return req.length?Math.round(done/req.length*100):100;}
+function totalFillPct(dataBron){var bron=dataBron||S.data;var getekend=loiIsGetekend();var t=0,d=0;FASES.forEach(function(f){var req=f.dataFields.filter(function(df){return df.req&&!df.header&&(getekend||df.fase!=='2');});t+=req.length;d+=req.filter(function(df){return !!(bron[f.id+'_'+df.id]||'').trim();}).length;});return t?Math.round(d/t*100):0;}
+// Per-entiteitoverzicht (Marcel, juli 2026: "hoe kan ik per onderdeel zien hoe ver het staat" —
+// het samenvattingsscherm toonde alleen het groepspercentage, geen overzicht per entiteit).
+function entiteitFillOverzicht(){
+  if(!S._entiteiten||!S._entiteiten.length)return [];
+  var groep=S._groepData||S.data;
+  var lijst=[{naam:'Groep (geconsolideerd)',id:null,pct:totalFillPct(groep)}];
+  S._entiteiten.forEach(function(e){
+    var bron=S.dataPerEntiteit[e.id]||{};
+    lijst.push({naam:e.naam,id:e.id,pct:totalFillPct(bron)});
+  });
+  return lijst;
+}
 function dc(v){return v>=70?'var(--teal)':v>=50?'var(--gold)':'var(--red)';}
 function ge(id){return document.getElementById(id);}
 function esc(s){if(!s)return '';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
