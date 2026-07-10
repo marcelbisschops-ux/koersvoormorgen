@@ -53,7 +53,7 @@ function mdToHtml(text){
 
 // Groepsstructuur: geregistreerde entiteiten (holding + werkmaatschappijen) voor dit traject ophalen.
 function loadEntiteiten(){
-  if(!S.code||isKoper())return;
+  if(!S.code)return;
   fetch(WORKER+'/mna/entiteiten/'+S.code).then(function(r){return r.json();}).then(function(rows){
     S._entiteiten=Array.isArray(rows)?rows:[];
     renderApp();
