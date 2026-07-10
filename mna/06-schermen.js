@@ -299,16 +299,21 @@ function renderMain(){
     extraHtml=chkHtml+notHtml+aiHtml;
   }
 
-  // Q&A module (koper stelt vragen, iedereen ziet antwoorden)
+  // Q&A module (koper stelt vragen of tegenvoorstellen, begeleider beantwoordt — iedereen ziet antwoorden)
   if(isKoper()||isTussen()){
     extraHtml+='<div class="panel" style="border-color:var(--gold)" id="qa-panel-'+f.id+'">'
-      +'<div class="sec-hdr" style="color:var(--gold)">&#10067; Q&A — vragen &amp; antwoorden</div>'
+      +'<div class="sec-hdr" style="color:var(--gold)">&#10067; Q&A — vragen, voorstellen &amp; antwoorden</div>'
       +'<div id="qa-lijst-'+f.id+'" style="margin-bottom:1rem"><div style="font-size:12px;color:var(--muted);font-style:italic">Laden...</div></div>'
       +(isKoper()?'<div style="border-top:1px solid var(--border);padding-top:.75rem;margin-top:.5rem">'
-        +'<div style="font-size:11px;font-weight:600;color:var(--gold);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.5rem">Stel een vraag</div>'
+        +'<div style="font-size:11px;font-weight:600;color:var(--gold);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.5rem">Nieuw bericht</div>'
+        +'<div style="display:flex;gap:14px;margin-bottom:.5rem">'
+        +'<label style="font-size:12px;color:var(--sub);display:flex;align-items:center;gap:5px;cursor:pointer"><input type="radio" name="qa-type-'+f.id+'" value="vraag" checked> Vraag</label>'
+        +'<label style="font-size:12px;color:var(--sub);display:flex;align-items:center;gap:5px;cursor:pointer"><input type="radio" name="qa-type-'+f.id+'" value="voorstel"> Tegenvoorstel</label>'
+        +'</div>'
+        +'<input type="text" id="qa-bedrag-'+f.id+'" style="display:none;width:100%;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:9px 11px;font-family:IBM Plex Mono,monospace;font-size:13px;color:var(--sub);outline:none;margin-bottom:.5rem" placeholder="Bedrag van uw tegenvoorstel, bijv. € 2.750.000">'
         +'<textarea id="qa-input-'+f.id+'" style="width:100%;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:9px 11px;font-family:IBM Plex Sans,sans-serif;font-size:13px;color:var(--sub);resize:vertical;min-height:70px;outline:none" placeholder="Typ uw vraag over deze fase..."></textarea>'
         +'<div style="display:flex;justify-content:flex-end;margin-top:.5rem">'
-        +'<button id="qa-btn-'+f.id+'" class="btn btn-sm" style="background:var(--gold);font-size:12px">Vraag stellen</button>'
+        +'<button id="qa-btn-'+f.id+'" class="btn btn-sm" style="background:var(--gold);font-size:12px">Versturen</button>'
         +'</div></div>':'')
       +'</div>';
   }
@@ -1038,41 +1043,94 @@ function bindAll(){
     else toast('Fout: '+(r.error||'onbekend'),'err');
   };
   // Koper reactie knoppen
-  // Q&A laden en versturen
+  // Q&A laden en versturen — vraag óf tegenvoorstel; begeleider kan direct vanuit dit scherm reageren
   var qaCurFase=FASES[S.fase];
   if(qaCurFase&&(isKoper()||isTussen())){
     (function(faseId){
-      // Laad bestaande Q&A
-      fetch(WORKER+'/mna/qa/'+S.code).then(function(r){return r.json();}).then(function(lijst){
-        var div=ge('qa-lijst-'+faseId);
-        if(!div)return;
-        var faseLijst=(lijst||[]).filter(function(q){return !q.fase_id||q.fase_id===faseId;});
-        if(!faseLijst.length){div.innerHTML='<div style="font-size:12px;color:var(--muted);font-style:italic">Nog geen vragen voor deze fase.</div>';return;}
-        div.innerHTML=faseLijst.map(function(q){
-          return '<div style="margin-bottom:.75rem;padding:.75rem;background:var(--card);border-radius:var(--r);border-left:3px solid '+(q.antwoord?'var(--teal)':'var(--gold)')+'">'
-            +'<div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:.3rem">'
-            +'<span style="font-family:IBM Plex Mono,monospace;font-size:10px;background:var(--gold-bg);color:var(--gold);padding:1px 6px;border-radius:3px;flex-shrink:0">#'+q.vraag_nr+'</span>'
-            +'<span style="font-size:13px;color:var(--sub)">'+esc(q.vraag)+'</span></div>'
-            +(q.antwoord
-              ?'<div style="margin-top:.5rem;padding:.5rem .75rem;background:var(--teal-bg);border-radius:var(--r);font-size:12px;color:var(--teal-dim)">&#10003; <strong>'+esc(q.beantwoord_door||'Adviseur')+':</strong> '+esc(q.antwoord)+'</div>'
-              :'<div style="font-size:11px;color:var(--muted);margin-top:.25rem;font-style:italic">&#8987; Wacht op antwoord...</div>')
-            +'</div>';
-        }).join('');
-      }).catch(function(){});
+      var qaStatusBadge={
+        beantwoord:{kleur:'var(--teal)',label:'Beantwoord'},
+        geaccepteerd:{kleur:'var(--teal)',label:'&#10003; Geaccepteerd'},
+        afgewezen:{kleur:'var(--red)',label:'&#10005; Afgewezen'}
+      };
+      function qaLaad(){
+        fetch(WORKER+'/mna/qa/'+S.code).then(function(r){return r.json();}).then(function(lijst){
+          var div=ge('qa-lijst-'+faseId);
+          if(!div)return;
+          var faseLijst=(lijst||[]).filter(function(q){return !q.fase_id||q.fase_id===faseId;});
+          if(!faseLijst.length){div.innerHTML='<div style="font-size:12px;color:var(--muted);font-style:italic">Nog geen vragen voor deze fase.</div>';return;}
+          div.innerHTML=faseLijst.map(function(q){
+            var isVoorstel=q.type==='voorstel';
+            var badge=qaStatusBadge[q.status];
+            return '<div style="margin-bottom:.75rem;padding:.75rem;background:var(--card);border-radius:var(--r);border-left:3px solid '+(q.antwoord?'var(--teal)':'var(--gold)')+'">'
+              +'<div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:.3rem;flex-wrap:wrap">'
+              +'<span style="font-family:IBM Plex Mono,monospace;font-size:10px;background:var(--gold-bg);color:var(--gold);padding:1px 6px;border-radius:3px;flex-shrink:0">#'+q.vraag_nr+'</span>'
+              +(isVoorstel?'<span style="font-size:10px;font-weight:600;background:var(--gold);color:#fff;padding:1px 8px;border-radius:10px">VOORSTEL'+(q.bedrag?': '+esc(q.bedrag):'')+'</span>':'')
+              +(badge?'<span style="font-size:10px;font-weight:600;color:'+badge.kleur+'">'+badge.label+'</span>':'')
+              +'<span style="font-size:13px;color:var(--sub);flex:1 1 100%">'+esc(q.vraag)+'</span></div>'
+              +(q.antwoord
+                ?'<div style="margin-top:.5rem;padding:.5rem .75rem;background:var(--teal-bg);border-radius:var(--r);font-size:12px;color:var(--teal-dim)">&#10003; <strong>'+esc(q.beantwoord_door||'Adviseur')+':</strong> '+esc(q.antwoord)+'</div>'
+                :(isTussen()
+                  ?'<div style="margin-top:.5rem;padding-top:.5rem;border-top:1px dashed var(--border2)">'
+                    +'<textarea id="qa-ant-'+q.id+'" style="width:100%;background:var(--panel);border:1px solid var(--border2);border-radius:var(--r);padding:7px 9px;font-family:IBM Plex Sans,sans-serif;font-size:12px;color:var(--sub);resize:vertical;min-height:50px;outline:none" placeholder="Uw antwoord..."></textarea>'
+                    +'<div style="display:flex;gap:6px;margin-top:.4rem;flex-wrap:wrap">'
+                    +'<button class="btn btn-sm qa-ant-btn" data-id="'+q.id+'" style="font-size:11px">Beantwoorden</button>'
+                    +(isVoorstel?'<button class="btn-sm qa-ant-btn" data-id="'+q.id+'" data-status="geaccepteerd" style="font-size:11px;background:var(--teal);color:#fff;border:none;border-radius:var(--r);padding:5px 12px;cursor:pointer">Accepteren</button>'
+                      +'<button class="btn-sm qa-ant-btn" data-id="'+q.id+'" data-status="afgewezen" style="font-size:11px;background:var(--red);color:#fff;border:none;border-radius:var(--r);padding:5px 12px;cursor:pointer">Afwijzen</button>':'')
+                    +'</div></div>'
+                  :'<div style="font-size:11px;color:var(--muted);margin-top:.25rem;font-style:italic">&#8987; Wacht op antwoord...</div>'))
+              +'</div>';
+          }).join('');
+          if(isTussen()){
+            div.querySelectorAll('.qa-ant-btn').forEach(function(btn){
+              btn.addEventListener('click',async function(){
+                var qId=btn.dataset.id;
+                var statusOverride=btn.dataset.status||null;
+                var ta=ge('qa-ant-'+qId);
+                var tekst=(ta?ta.value.trim():'');
+                if(!tekst&&statusOverride)tekst=statusOverride==='geaccepteerd'?'Voorstel geaccepteerd.':'Voorstel afgewezen.';
+                if(!tekst){toast('Vul een antwoord in.','err');return;}
+                btn.disabled=true;
+                try{
+                  var body={antwoord:tekst,beantwoord_door:S.traject&&S.traject.begeleider_naam||BRAND.contactpersoon};
+                  if(statusOverride)body.status=statusOverride;
+                  var r=await fetch(WORKER+'/mna/admin/qa/antwoord/'+qId,{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||''},body:JSON.stringify(body)});
+                  var d=await r.json();
+                  if(d.ok){toast('Antwoord verstuurd.','ok');qaLaad();}
+                  else{toast('Fout: '+(d.error||'onbekend'),'err');btn.disabled=false;}
+                }catch(e){toast('Verbindingsfout.','err');btn.disabled=false;}
+              });
+            });
+          }
+        }).catch(function(){});
+      }
+      qaLaad();
+      // Type-toggle (Vraag / Tegenvoorstel) — toont/verbergt het bedragveld
+      var qaTypeRadios=document.querySelectorAll('input[name="qa-type-'+faseId+'"]');
+      qaTypeRadios.forEach(function(r){
+        r.addEventListener('change',function(){
+          var bedragInp=ge('qa-bedrag-'+faseId);
+          var gekozen=document.querySelector('input[name="qa-type-'+faseId+'"]:checked');
+          if(bedragInp)bedragInp.style.display=(gekozen&&gekozen.value==='voorstel')?'block':'none';
+        });
+      });
       // Verstuur knop
       var qaBtn=ge('qa-btn-'+faseId);
       if(qaBtn)qaBtn.onclick=async function(){
         var inp=ge('qa-input-'+faseId);
         if(!inp||!inp.value.trim())return;
+        var typeRadio=document.querySelector('input[name="qa-type-'+faseId+'"]:checked');
+        var qaType=typeRadio?typeRadio.value:'vraag';
+        var bedragInp=ge('qa-bedrag-'+faseId);
+        var bedrag=(qaType==='voorstel'&&bedragInp)?bedragInp.value.trim():'';
         qaBtn.disabled=true;qaBtn.textContent='Versturen...';
         try{
           var r=await fetch(WORKER+'/mna/qa/'+S.code,{method:'POST',headers:{'Content-Type':'application/json'},
-            body:JSON.stringify({vraag:inp.value.trim(),fase_id:faseId,gesteld_door:S.traject&&S.traject.koper_naam||'Koper'})});
+            body:JSON.stringify({vraag:inp.value.trim(),fase_id:faseId,type:qaType,bedrag:bedrag,gesteld_door:S.traject&&S.traject.koper_naam||'Koper'})});
           var d=await r.json();
-          if(d.ok){inp.value='';toast('Vraag #'+d.vraag_nr+' verstuurd. De adviseur ontvangt een melding.','ok');renderApp();}
+          if(d.ok){inp.value='';if(bedragInp)bedragInp.value='';toast((qaType==='voorstel'?'Voorstel':'Vraag')+' #'+d.vraag_nr+' verstuurd. De adviseur ontvangt een melding.','ok');qaLaad();}
           else{toast('Fout: '+(d.error||'onbekend'),'err');}
         }catch(e){toast('Verbindingsfout.','err');}
-        qaBtn.disabled=false;qaBtn.textContent='Vraag stellen';
+        qaBtn.disabled=false;qaBtn.textContent='Versturen';
       };
     })(qaCurFase.id);
   }
