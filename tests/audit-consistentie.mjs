@@ -113,6 +113,67 @@ if (!workerPath) {
   else verdachteCalls.forEach(c => warn('regel ' + c.lineNr + ': begeleiderAuth(request, ' + c.arg + ') — leeg of verdacht argument. Zorg dat dit het traject_id/code van de daadwerkelijke resource is (zie hoe /mna/admin/qa/antwoord/{id} en /mna/document/herclassificeer/{id} dit doen: eerst de resource opzoeken, dán pas begeleiderAuth aanroepen met het GEVONDEN traject_id).'));
 }
 
+// ── 5. "Intern" gelabelde UI-blokken die mogelijk niet zijn afgeschermd voor koper ──
+// (het patroon van 10 juli 2026: Checklist/Notities/AI-advies-panelen droegen het label
+// "(intern)" maar werden toch aan de koper-rol getoond omdat de if-conditie alleen op
+// !isVerkoper() checkte in plaats van ook koper uit te sluiten.)
+log('4. "Intern" gelabelde UI-blokken vs. koper-afscherming (mna/*.js)');
+const internIssues = [];
+mnaFiles.forEach(file => {
+  const src = fs.readFileSync(path.join(ROOT, file), 'utf8');
+  const lines = src.split('\n');
+  lines.forEach((line, idx) => {
+    if (/<option value=/.test(line)) return; // dropdown-configuratie, geen getoond contentblok
+    if (!/\(intern\)|Intern[e]?\s+(notitie|analyse|advies|instrument)/i.test(line)) return;
+    // Zoek terug naar de dichtstbijzijnde if(...)-conditie die dit blok bewaakt (ruime marge, want
+    // de bewakende conditie kan tientallen regels vóór het label staan).
+    let gevonden = false;
+    for (let back = idx; back >= Math.max(0, idx - 100); back--) {
+      const m = /if\s*\(([^{]*)\)\s*\{/.exec(lines[back]);
+      if (m) { gevonden = /!isKoper\(\)/.test(m[1]); break; }
+    }
+    if (!gevonden) internIssues.push({ file, line: idx + 1, text: line.trim().slice(0, 100) });
+  });
+});
+if (!internIssues.length) ok('Alle "(intern)"-gelabelde blokken staan achter een conditie die koper expliciet uitsluit.');
+else internIssues.forEach(i => warn(i.file + ':' + i.line + ' — label "intern" gevonden, geen nabije "!isKoper()"-conditie herkend — controleer handmatig\n      ' + i.text));
+
+// ── 5. SELECT * op gevoelige tabellen buiten /admin/-routes (backend) ──────
+// (het patroon achter de twee lekken van 10 juli 2026: /mna/gesprekken/ en /mna/traject/
+// deden SELECT * en stuurden het resultaat ongefilterd terug naar élke rol die een geldige
+// eigen code had, inclusief koper — óók velden die uitsluitend voor de begeleider bedoeld zijn.
+// Regel-venster i.p.v. blok-splitsen, zodat een SELECT * niet per ongeluk gekoppeld wordt aan een
+// JSON.stringify() die eigenlijk bij een heel andere, latere route hoort.)
+log('5. SELECT * op mna_trajecten/mna_gesprekken buiten /admin/-routes (backend)');
+if (workerPath) {
+  const workerSrc2 = fs.readFileSync(workerPath, 'utf8');
+  const wLines = workerSrc2.split('\n');
+  const selectRe = /SELECT \* FROM mna_(trajecten|gesprekken)\b/;
+  const selectStarIssues = [];
+  wLines.forEach((line, idx) => {
+    if (!selectRe.test(line)) return;
+    // Route-pad: zoek terug naar de dichtstbijzijnde 'if (path...' regel.
+    let routePath = null;
+    for (let back = idx; back >= Math.max(0, idx - 80); back--) {
+      const m = /if\s*\(\s*path(?:\.startsWith)?\(?['"]([^'"]+)['"]/.exec(wLines[back]);
+      if (m) { routePath = m[1]; break; }
+    }
+    if (!routePath || routePath.includes('/admin/')) return;
+    // Stuurt dit dezelfde route-handler het resultaat ook echt terug? Loop vooruit tot óf een
+    // JSON.stringify (= mogelijk lek), óf de volgende route ('if (path...') begint (= dit SELECT-
+    // resultaat wordt binnen zijn eigen handler nooit gestringified, dus geen lek).
+    for (let fwd = idx; fwd <= Math.min(wLines.length - 1, idx + 60); fwd++) {
+      if (fwd > idx && /if\s*\(\s*path(?:\.startsWith)?\(/.test(wLines[fwd])) break;
+      if (/JSON\.stringify\(/.test(wLines[fwd])) { selectStarIssues.push(routePath); break; }
+    }
+  });
+  const uniekeIssues = [...new Set(selectStarIssues)];
+  if (!uniekeIssues.length) ok('Geen ongefilterde SELECT * op mna_trajecten/mna_gesprekken buiten /admin/-routes gevonden.');
+  else uniekeIssues.forEach(p => warn(p + ' — doet SELECT * op mna_trajecten/mna_gesprekken én stuurt binnen dezelfde route JSON terug, buiten een /admin/-pad. Controleer of alle teruggegeven velden voor élke rol die dit endpoint mag aanroepen (incl. koper) bedoeld zijn.'));
+} else {
+  warn('backend/cloudflare-worker.js niet gevonden — check 5 overgeslagen.');
+}
+
 // ── Samenvatting ──────────────────────────────────────────────────────────
 log('Samenvatting');
 if (!bevindingen) {
