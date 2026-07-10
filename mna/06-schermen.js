@@ -104,7 +104,7 @@ function renderCover(){
       +'</div></div>':'')
     +'<div id="partij-docs-sectie" style="margin-top:1.5rem"></div>'
     +'<div id="partij-gesprekken-sectie" style="margin-top:1rem"></div>'
-    +(isVerkoper()?'<button class="btn" id="to-main-btn2" style="width:100%;margin-top:1rem">Start met invullen &#8594;</button>':'')
+    +(isVerkoper()?'<button class="btn" id="to-main-btn2" style="width:100%;margin-top:1rem">'+(totalFillPct()>0?'Verder met invullen':'Start met invullen')+' &#8594;</button>':'')
     +(isKoper()?'<button class="btn" id="to-main-btn2" style="width:100%;margin-top:1rem">Bekijk due diligence-informatie &#8594;</button>':'')
     +(isKoper()&&t.koper_vrijgegeven?'<button class="btn-outline" id="to-waardering-btn2" style="width:100%;margin-top:.5rem">&#9654; Waardering</button>':'')
     +'</div>';
@@ -491,7 +491,7 @@ function renderSummary(){
           +'</div>';
       }).join('')
       +'</div>'
-      +'<div style="margin-top:.875rem;padding:.6rem .875rem;background:#fff;border-radius:var(--r);font-size:11px;color:var(--muted)">&#128270; Ga terug naar de betreffende fase, corrigeer de invoer en kom terug naar dit overzicht.</div>'
+      +'<button class="btn" id="naar-financieel-btn" style="margin-top:.875rem;font-size:12px;padding:8px 16px;background:var(--red)">&#128270; Naar fase Financieel &#8594;</button>'
       +'</div>'
     :'')
     +'<div style="margin-top:1.5rem;background:var(--panel);border:2px solid '+(S.dossierVrijgegeven?'var(--teal)':heeftKritiek?'var(--border)':'var(--gold)')+';border-radius:var(--r2);padding:1.5rem">'
@@ -837,6 +837,9 @@ function bindAll(){
   };
   var coverBtn=ge('cover-btn');if(coverBtn)coverBtn.onclick=function(){saveCurrent();S.screen='cover';renderApp();};
   var backMain=ge('back-main');if(backMain)backMain.onclick=function(){S.screen='main';renderApp();};
+  // Alle huidige kritieke-discrepantiechecks gaan uitsluitend over Financieel-velden — als daar
+  // ooit checks voor andere fases bijkomen, moet deze knop per discrepantie de juiste fase kiezen.
+  var naarFinancieelBtn=ge('naar-financieel-btn');if(naarFinancieelBtn)naarFinancieelBtn.onclick=function(){S.screen='main';var fi=FASES.findIndex(function(f){return f.id==='financieel';});S.fase=fi>=0?fi:0;renderApp();};
   var finaleCheckBtn=ge('finale-check-btn');if(finaleCheckBtn)finaleCheckBtn.onclick=finaleCheck;
 
   // ── FASE AFRONDEN / HEROPENEN ────────────────────────────────
