@@ -419,11 +419,9 @@ function renderBegeleiderDashboard(app){
     +'<div id="bg-docs-sectie" style="font-size:12px;color:var(--muted);font-style:italic">Laden...</div>'
     +'</div>'
     +'<div style="margin-top:.5rem;display:flex;gap:8px">'
-    +'<button class="btn" id="bg-ai-actie" style="background:#6b7c93">&#9881; AI-analyse genereren</button>'
+    +'<button class="btn" id="bg-waardering-actie" style="background:#6b7c93">&#9881; AI-analyse &amp; waardering</button>'
     +'<button class="btn-outline btn-sm" id="bg-ai-status-actie">&#129302; AI-verificatiestatus</button>'
-    +'<button class="btn-outline btn-sm" id="bg-waardering-actie">&#9654; Waardering</button>'
     +'</div>'
-    +'<div id="bg-ai-out" style="display:none;margin-top:1rem"></div>'
     +'<div id="bg-ai-status-out" style="display:none;margin-top:1rem"></div>'
     +'<div style="margin-top:1.25rem">'
     +'<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem">&#128172; Gesprekken &amp; verslagen</div>'
@@ -1637,40 +1635,6 @@ function renderBegeleiderDashboard(app){
   var wrdBtn=document.getElementById('bg-waardering-actie');
   if(wrdBtn)wrdBtn.onclick=function(){S.screen='waardering';renderApp();};
 
-  document.getElementById('bg-ai-actie').onclick=async function(){
-    var btn=this;btn.disabled=true;btn.textContent='Analyseren...';
-    var out=document.getElementById('bg-ai-out');out.style.display='block';
-    out.innerHTML='<div style="color:var(--muted);font-size:13px;padding:1rem;background:var(--card);border-radius:var(--r2)">AI analyseert... (20-40 sec)</div>';
-    var dataSam='';
-    var faseL={financieel:'Financieel',commercieel:'Klanten',partner:'Partners',compliance:'Compliance',it:'IT',juridisch:'Juridisch',strategisch:'Strategisch'};
-    (S._mnaData||[]).forEach(function(row){try{var dj=typeof row.data_json==='string'?JSON.parse(row.data_json):row.data_json;var gevuld=Object.values(dj||{}).filter(function(v){return v&&v.value;});if(gevuld.length){dataSam+='\n## '+(faseL[row.fase_id]||row.fase_id)+'\n';gevuld.forEach(function(v){dataSam+='- '+v.label+': '+v.value+'\n';});}}catch(e){}});
-    var sectorProfielAi=getSectorProfiel();
-    var sectorNormenAi=sectorProfielAi.aiNormen||'';
-    var prompt='M&A adviseur. Sector: '+(sectorProfielAi.label||'MKB')+'. SECTOR NORMEN: '+sectorNormenAi+'. Analyseer traject: '+esc(S.traject.kantoor_naam||S.code)+' ('+esc(S.traject.traject_type||'Verkoop')+')\n\nDUE DILIGENCE:'+dataSam+'\n\n## Samenvatting\n## Financieel\n## Sterktes\n## Risicos\n## Aanbevelingen\n\nNoem GEEN eigen waarderingsmultiple of concreet waarderingsbedrag — waardering gebeurt uitsluitend via de aparte functie "Waardering genereren". Als je de multiple uit de sectornormen wilt noemen, gebruik dan exact de range hierboven. Max 400 woorden.';
-    var rd=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:3000})}).then(function(r){return r.json();}).catch(function(){return{};});
-    var tekst=mdToHtml(rd.text||'Fout bij genereren.');
-    out.innerHTML=bgAiBlok(tekst, Date.now());
-    // Bewaar lokaal zodat de analyse na herladen terugkomt en de knop de juiste staat toont
-    try{ localStorage.setItem('ki_ai_analyse_'+S.code, JSON.stringify({tekst:tekst, ts:Date.now()})); }catch(e){}
-    btn.disabled=false;btn.textContent='↻ Opnieuw analyseren';
-  };
-
-  // Eerder gegenereerde analyse terughalen: toon 'm meteen en zet de knop op "Opnieuw"
-  function bgAiBlok(tekstHtml, ts){
-    return '<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem">'
-      +'<div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">AI-analyse &middot; gegenereerd '+new Date(ts).toLocaleString('nl-NL',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})+'</div>'
-      +'<div class="ai-body" style="padding:0">'+tekstHtml+'</div></div>';
-  }
-  (function herstelBgAi(){
-    try{
-      var opgeslagen=JSON.parse(localStorage.getItem('ki_ai_analyse_'+S.code)||'null');
-      if(!opgeslagen||!opgeslagen.tekst)return;
-      var out=document.getElementById('bg-ai-out');
-      var btn=document.getElementById('bg-ai-actie');
-      if(out){out.style.display='block';out.innerHTML=bgAiBlok(opgeslagen.tekst, opgeslagen.ts||Date.now());}
-      if(btn)btn.textContent='↻ Opnieuw analyseren';
-    }catch(e){}
-  })();
 }
 
 
