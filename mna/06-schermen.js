@@ -477,7 +477,12 @@ function renderSummary(){
       +'<div style="font-size:13px;font-weight:600;color:var(--red);margin-bottom:.75rem">&#9888; Nog '+missing.reduce(function(a,m){return a+m.fields.length;},0)+' verplichte velden niet ingevuld</div>';
     missing.forEach(function(m){
       missingHtml+='<div style="margin-bottom:.6rem"><div style="font-size:12px;font-weight:600;color:var(--sub);margin-bottom:.2rem">'+esc(m.fase)+'</div>';
-      m.fields.forEach(function(field){missingHtml+='<div style="font-size:12px;color:var(--red);padding:2px 0 2px .75rem">&#8212; '+esc(field)+'</div>';});
+      m.fields.forEach(function(field){
+        missingHtml+='<div style="font-size:12px;color:var(--red);padding:2px 0 2px .75rem;display:flex;align-items:center;justify-content:space-between;gap:8px">'
+          +'<span>&#8212; '+esc(field.label)+'</span>'
+          +'<button class="missing-veld-link" data-fase-idx="'+m.faseIdx+'" data-veld-id="'+field.id+'" style="font-size:11px;color:var(--teal);background:none;border:none;cursor:pointer;text-decoration:underline;flex-shrink:0;padding:0">Ga naar veld &#8594;</button>'
+          +'</div>';
+      });
       missingHtml+='</div>';
     });
     missingHtml+='</div>';
@@ -540,10 +545,11 @@ function renderSummary(){
             html+='<div style="font-size:12px;color:var(--mid);margin-bottom:.75rem">'+aantalAfgerond+' van '+FASES.length+' fases afgerond &middot; '+pct+'% ingevuld</div>';
             if(heeftKritiek){
               html+='<div style="font-size:13px;color:var(--red);font-weight:600;padding:.75rem 1rem;background:var(--red-bg);border-radius:var(--r);text-align:center">&#9940; Vrijgave geblokkeerd — los de discrepanties hierboven op</div>';
-            } else if(pct<50){
+            } else if(missing.length){
+              var aantalOpen=missing.reduce(function(a,m){return a+m.fields.length;},0);
               html+='<div style="font-size:12px;color:var(--red);padding:.5rem .75rem;background:var(--red-bg);border-radius:var(--r);margin-bottom:.75rem">'
-                +'&#9888; Vul minimaal 50% van de velden in voordat u het dossier kunt vrijgeven. '
-                +'Niet alle velden zijn automatisch uit documenten af te leiden — vul de ontbrekende velden hieronder handmatig aan.'
+                +'&#9888; Nog '+aantalOpen+' verplichte veld(en) niet ingevuld — vul deze eerst aan voordat u het dossier kunt vrijgeven. '
+                +'Niet alle velden zijn automatisch uit documenten af te leiden.'
                 +'<div style="margin-top:.5rem"><a href="#dd-missing-velden" style="color:var(--red);font-weight:600;text-decoration:underline">&#8593; Bekijk welke velden nog ontbreken</a></div>'
                 +'</div>';
             } else {
@@ -979,6 +985,19 @@ function bindAll(){
       }
     }catch(e){toast('Verbindingsfout','err');dossierVrijgevenBtn.disabled=false;}
   };
+  // Missing-velden-lijst: direct naar het betreffende veld springen i.p.v. alleen de naam te tonen
+  document.querySelectorAll('.missing-veld-link').forEach(function(btn){
+    btn.addEventListener('click',function(){
+      S.showValidation=true;
+      S.fase=parseInt(btn.dataset.faseIdx,10);
+      S.screen='main';
+      renderApp();
+      setTimeout(function(){
+        var el=ge('df_'+btn.dataset.veldId);
+        if(el){el.scrollIntoView({behavior:'smooth',block:'center'});el.focus();}
+      },50);
+    });
+  });
   var sumBtn=ge('sum-btn');if(sumBtn)sumBtn.onclick=function(){S.showValidation=true;saveCurrent();S.screen='summary';renderApp();};
   var sumBtn2=ge('sum-btn2');if(sumBtn2)sumBtn2.onclick=function(){S.showValidation=true;saveCurrent();S.screen='summary';renderApp();};
   var prevBtn=ge('prev-btn');if(prevBtn)prevBtn.onclick=function(){saveCurrent();S.fase--;renderApp();};

@@ -117,7 +117,11 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--s
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
   .btn,.btn-ghost,.btn-gen,.fase-nav,.fase-grid,.prog-bar{display:none!important}
   #chat-fab,#chat-venster,.toast-container,#toast,#docs-toggle-ic{display:none!important}
-  .ai-panel,.panel{break-inside:avoid}
+  /* break-inside:avoid op .panel is bewust verwijderd — het hoofd-invulpaneel per fase (ook class
+     .panel) is vaak hoger dan één pagina; "niet afbreken" dwong dan de hele pagina 1 leeg te laten
+     terwijl het paneel in zijn geheel naar pagina 2 verhuisde. Losse regelblokken mogen gewoon
+     over een paginagrens heen lopen. */
+  .doc-veld{break-inside:avoid}
   #w-ai-hist,#w-ai-hist *{display:none!important}
   body{font-size:11px}
 }
