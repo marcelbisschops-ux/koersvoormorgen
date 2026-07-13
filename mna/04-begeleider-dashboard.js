@@ -643,15 +643,37 @@ function renderBegeleiderDashboard(app){
     };
     // Handmatig markeren als getekend buiten Signhost om (bijv. per post of los ondertekend) —
     // hergebruikt het bestaande /mna/teken-endpoint dat de begeleider-rol al volledig tekenrecht geeft.
+    // Let op: geen native prompt()/confirm() gebruiken — die worden in sommige browsercontexten
+    // stilzwijgend geblokkeerd (knop lijkt dan "geen reactie" te geven); vaste in-pagina modal i.p.v.
     var handmatigBtn=document.getElementById('bg-handmatig-getekend');
-    if(handmatigBtn)handmatigBtn.onclick=async function(){
-      var naam=prompt('Naam van degene die buiten Signhost om heeft getekend (bijv. namens beide partijen):');
-      if(!naam||!naam.trim())return;
-      if(!confirm('Markeer '+(labels[type]||type)+' als getekend door '+naam.trim()+', buiten Signhost om?'))return;
-      var btn=this;btn.disabled=true;btn.textContent='Vastleggen...';
-      var r=await fetch(WORKER+'/mna/teken',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:S.code,document:type,naam:naam.trim()})}).then(function(x){return x.json();}).catch(function(){return{};});
-      if(r.ok){btn.textContent='✓ Getekend vastgelegd';toast('Vastgelegd: '+(labels[type]||type)+' getekend door '+naam.trim(),'ok');}
-      else{btn.disabled=false;btn.textContent='📝 Buiten Signhost om getekend';toast('Fout: '+(r.error||'onbekend'),'err');}
+    if(handmatigBtn)handmatigBtn.onclick=function(){
+      var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:3000;display:flex;align-items:center;justify-content:center;padding:1.5rem';
+      var mo=document.createElement('div');mo.style.cssText='background:var(--panel);border:1px solid var(--border2);border-radius:var(--r2);padding:1.75rem;max-width:400px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.25)';
+      mo.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.1rem;color:var(--head);font-weight:600;margin-bottom:1rem">&#128221; Buiten Signhost om getekend &mdash; '+(labels[type]||type)+'</div>'
+        +'<div class="field"><label>Naam van degene die getekend heeft</label><input type="text" id="bg-hg-naam" placeholder="Bijv. namens beide partijen"></div>'
+        +'<div id="bg-hg-err" style="display:none;color:var(--red);font-size:12px;margin-bottom:.5rem"></div>'
+        +'<div style="display:flex;gap:8px;justify-content:flex-end">'
+        +'<button class="btn-ghost" id="bg-hg-ann">Annuleren</button>'
+        +'<button class="btn" id="bg-hg-ok">Vastleggen</button>'
+        +'</div>';
+      ov.appendChild(mo);document.body.appendChild(ov);
+      ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
+      document.getElementById('bg-hg-ann').onclick=function(){document.body.removeChild(ov);};
+      var naamInput=document.getElementById('bg-hg-naam');
+      naamInput.focus();
+      document.getElementById('bg-hg-ok').onclick=async function(){
+        var naam=naamInput.value.trim();
+        var errEl=document.getElementById('bg-hg-err');
+        if(!naam){errEl.style.display='block';errEl.textContent='Naam verplicht';return;}
+        var btn=this;btn.disabled=true;btn.textContent='Vastleggen...';
+        var r=await fetch(WORKER+'/mna/teken',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:S.code,document:type,naam:naam})}).then(function(x){return x.json();}).catch(function(){return{};});
+        if(r.ok){
+          document.body.removeChild(ov);
+          toast('Vastgelegd: '+(labels[type]||type)+' getekend door '+naam,'ok');
+          handmatigBtn.disabled=true;handmatigBtn.textContent='✓ Getekend vastgelegd';handmatigBtn.style.opacity='.5';
+        }
+        else{errEl.style.display='block';errEl.textContent=r.error||'Onbekende fout';btn.disabled=false;btn.textContent='Vastleggen';}
+      };
     };
     // Signhost handler
     var shBtn=document.getElementById('bg-signhost');
