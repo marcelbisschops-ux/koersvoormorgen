@@ -336,7 +336,7 @@ function renderMain(){
         +'<label style="font-size:12px;color:var(--sub);display:flex;align-items:center;gap:5px;cursor:pointer"><input type="radio" name="qa-type-'+f.id+'" value="vraag" checked> Vraag</label>'
         +'<label style="font-size:12px;color:var(--sub);display:flex;align-items:center;gap:5px;cursor:pointer"><input type="radio" name="qa-type-'+f.id+'" value="voorstel"> Tegenvoorstel</label>'
         +'</div>'
-        +'<input type="text" id="qa-bedrag-'+f.id+'" style="display:none;width:100%;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:9px 11px;font-family:IBM Plex Mono,monospace;font-size:13px;color:var(--sub);outline:none;margin-bottom:.5rem" placeholder="Bedrag van uw tegenvoorstel, bijv. € 2.750.000">'
+        +'<input type="text" id="qa-bedrag-'+f.id+'" style="display:none;width:100%;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:9px 11px;font-family:IBM Plex Mono,monospace;font-size:13px;color:var(--sub);outline:none;margin-bottom:.5rem" placeholder="Bedrag van uw tegenvoorstel">'
         +'<textarea id="qa-input-'+f.id+'" style="width:100%;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:9px 11px;font-family:IBM Plex Sans,sans-serif;font-size:13px;color:var(--sub);resize:vertical;min-height:70px;outline:none" placeholder="Typ uw vraag over deze fase..."></textarea>'
         +'<div style="display:flex;justify-content:flex-end;margin-top:.5rem">'
         +'<button id="qa-btn-'+f.id+'" class="btn btn-sm" style="background:var(--gold);font-size:12px">Versturen</button>'

@@ -631,7 +631,7 @@ async function renderLogboekScreen(app){
       +'<div id="lb-panel-meeting" style="display:none">'
       +'<div style="font-size:12px;color:var(--muted);margin-bottom:.5rem">Voer vergadernotities in of plak een transcript. De AI structureert automatisch naar samenvatting, beslissingen en actiepunten.</div>'
       +'<div style="display:flex;gap:8px;margin-bottom:.5rem">'
-      +'<input type="text" id="lb-meeting-titel" placeholder="Titel (bijv. Kennismaking 22 mei)" style="flex:1;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:IBM Plex Sans,sans-serif;font-size:13px;padding:9px 12px;outline:none">'
+      +'<input type="text" id="lb-meeting-titel" placeholder="Titel" style="flex:1;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:IBM Plex Sans,sans-serif;font-size:13px;padding:9px 12px;outline:none">'
       +'<input type="text" id="lb-meeting-deelnemers" placeholder="Deelnemers" style="flex:1;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:IBM Plex Sans,sans-serif;font-size:13px;padding:9px 12px;outline:none">'
       +'</div>'
       +'<textarea id="lb-meeting-tekst" rows="5" placeholder="Plak hier ruwe vergadernotities, opnametranscript of steekwoorden. AI structureert alles..." style="width:100%;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:IBM Plex Sans,sans-serif;font-size:13px;padding:10px 12px;outline:none;resize:vertical;margin-bottom:.75rem"></textarea>'

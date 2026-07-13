@@ -198,28 +198,28 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--b
     <div class="veld-rij">
       <div class="veld-groep" style="grid-column:1/-1">
         <div class="veld-lbl">Naam verhuisbedrijf <span>*</span></div>
-        <input type="text" class="veld" id="g-naam" placeholder="bijv. Van Dijk Verhuizingen">
+        <input type="text" class="veld" id="g-naam">
       </div>
     </div>
     <div class="veld-rij">
       <div class="veld-groep">
         <div class="veld-lbl">E-mailadres <span>*</span></div>
-        <input type="email" class="veld" id="g-email" placeholder="u@bedrijf.nl">
+        <input type="email" class="veld" id="g-email" placeholder="E-mailadres">
       </div>
       <div class="veld-groep">
         <div class="veld-lbl">Regio</div>
-        <input type="text" class="veld" id="g-regio" placeholder="bijv. Gelderland">
+        <input type="text" class="veld" id="g-regio">
       </div>
     </div>
     <div class="veld-rij">
       <div class="veld-groep">
         <div class="veld-lbl">Aantal medewerkers (FTE) <span>*</span></div>
-        <input type="number" class="veld" id="g-fte" placeholder="bijv. 18" min="1">
+        <input type="number" class="veld" id="g-fte" min="1">
         <div class="veld-hint">Exacte FTE, inclusief deeltijd omgerekend</div>
       </div>
       <div class="veld-groep">
         <div class="veld-lbl">Totale jaaromzet <span>*</span></div>
-        <input type="text" class="veld" id="g-omzet" placeholder="bijv. €4.200.000">
+        <input type="text" class="veld" id="g-omzet">
       </div>
     </div>
     <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:.75rem 1rem;margin-bottom:1rem;font-size:12px;color:var(--muted)">
@@ -228,36 +228,36 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--b
     <div class="veld-rij drie">
       <div class="veld-groep">
         <div class="veld-lbl">Omzet verhuizen</div>
-        <input type="text" class="veld" id="g-omzet-verhuis" placeholder="bijv. €2.800.000">
+        <input type="text" class="veld" id="g-omzet-verhuis">
         <div class="veld-hint">Particulier + zakelijk transport</div>
       </div>
       <div class="veld-groep">
         <div class="veld-lbl">Omzet opslag</div>
-        <input type="text" class="veld" id="g-omzet-opslag" placeholder="bijv. €900.000">
+        <input type="text" class="veld" id="g-omzet-opslag">
         <div class="veld-hint">Self-storage, meubeldepot, archief</div>
       </div>
       <div class="veld-groep">
         <div class="veld-lbl">Omzet circulair/overig</div>
-        <input type="text" class="veld" id="g-omzet-circulair" placeholder="bijv. €500.000">
+        <input type="text" class="veld" id="g-omzet-circulair">
         <div class="veld-hint">Hergebruik, inzameling, overige diensten</div>
       </div>
     </div>
     <div class="veld-rij">
       <div class="veld-groep">
         <div class="veld-lbl">EBITDA-marge % <span>*</span></div>
-        <input type="text" class="veld" id="g-ebitda" placeholder="bijv. 9%">
+        <input type="text" class="veld" id="g-ebitda">
         <div class="veld-hint">Winst vóór rente, belasting en afschrijving</div>
       </div>
       <div class="veld-groep">
         <div class="veld-lbl">Kostprijs grote opdrachten</div>
-        <input type="text" class="veld" id="g-kostprijs" placeholder="bijv. €1.800 per dag">
+        <input type="text" class="veld" id="g-kostprijs">
         <div class="veld-hint">Dagprijs bij zakelijke/institutionele projecten</div>
       </div>
     </div>
     <div class="veld-rij">
       <div class="veld-groep">
         <div class="veld-lbl">Aandeel vaste/terugkerende omzet</div>
-        <input type="text" class="veld" id="g-recurring" placeholder="bijv. 30%">
+        <input type="text" class="veld" id="g-recurring">
         <div class="veld-hint">Opslag-abonnementen, vaste contractklanten</div>
       </div>
     </div>
@@ -274,7 +274,7 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--b
       </div>
       <div class="veld-groep">
         <div class="veld-lbl">Aantal voertuigen</div>
-        <input type="number" class="veld" id="g-wagens" placeholder="bijv. 22" min="1">
+        <input type="number" class="veld" id="g-wagens" min="1">
       </div>
     </div>
     <div class="veld-rij">
@@ -350,7 +350,7 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--b
         </div>
         <div class="q-card">
           <div class="q-text">Wat drukt uw marge het meest? (optioneel)</div>
-          <textarea class="q-open" id="open-financieel" placeholder="bijv. hoge loonkosten, veel flexkrachten, lage tarieven particulier segment, dieselkosten..."></textarea>
+          <textarea class="q-open" id="open-financieel"></textarea>
         </div>
       </div>
       <div class="err-msg" id="err-1">Beantwoord alle stellingen in deze stap.</div>
@@ -387,7 +387,7 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--b
         </div>
         <div class="q-card">
           <div class="q-text">Wat is uw grootste uitdaging rondom wagenpark? (optioneel)</div>
-          <textarea class="q-open" id="open-wagenpark" placeholder="bijv. actieradius elektrisch bij lange ritten, financiering nieuwe wagens, accu-kosten, laadtijd..."></textarea>
+          <textarea class="q-open" id="open-wagenpark"></textarea>
         </div>
       </div>
       <div class="err-msg" id="err-2">Beantwoord alle stellingen in deze stap.</div>
@@ -427,7 +427,7 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--b
         </div>
         <div class="q-card">
           <div class="q-text">Welke klantgroep of dienst heeft de meeste groeipotentie voor u? (optioneel)</div>
-          <textarea class="q-open" id="open-markt" placeholder="bijv. relocation voor expats, gemeentelijke projecten, opslag, kantorenverhuizingen..."></textarea>
+          <textarea class="q-open" id="open-markt"></textarea>
         </div>
       </div>
       <div class="err-msg" id="err-3">Beantwoord alle stellingen in deze stap.</div>
@@ -461,7 +461,7 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--b
         </div>
         <div class="q-card">
           <div class="q-text">Wat doet u al op het gebied van circulair of duurzaamheid? (optioneel)</div>
-          <textarea class="q-open" id="open-circulair" placeholder="bijv. meubeldepot, samenwerking met kringloopwinkels, CO2-rapportage voor opdrachtgevers..."></textarea>
+          <textarea class="q-open" id="open-circulair"></textarea>
         </div>
       </div>
       <div class="err-msg" id="err-4">Beantwoord alle stellingen in deze stap.</div>
@@ -495,7 +495,7 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--b
         </div>
         <div class="q-card">
           <div class="q-text">Wat is uw grootste personeels- of digitaliseringsuitdaging? (optioneel)</div>
-          <textarea class="q-open" id="open-personeel" placeholder="bijv. moeilijk chauffeurs vinden, hoog ziekteverzuim, oude planningstool, geen koppeling boekhouding..."></textarea>
+          <textarea class="q-open" id="open-personeel"></textarea>
         </div>
       </div>
       <div class="err-msg" id="err-5">Beantwoord alle stellingen in deze stap.</div>
@@ -529,7 +529,7 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--b
         </div>
         <div class="q-card">
           <div class="q-text">Wat houdt u 's nachts wakker als het om uw bedrijf gaat? (optioneel maar waardevol)</div>
-          <textarea class="q-open" id="open-strategie" placeholder="bijv. opvolging niet geregeld, marge blijft maar dalen, grote concurrent in de regio, te afhankelijk van één klant..."></textarea>
+          <textarea class="q-open" id="open-strategie"></textarea>
         </div>
       </div>
       <div class="err-msg" id="err-6">Beantwoord alle stellingen in deze stap.</div>
@@ -811,7 +811,7 @@ function vsCallbackModal(){
     +'<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:1rem">'
     +'<div><label style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:4px">Naam</label><input id="vs-cb-naam" type="text" class="veld" placeholder="Uw naam"></div>'
     +'<div><label style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:4px">Telefoon of e-mail</label><input id="vs-cb-contact" type="text" class="veld" placeholder="06-... of u@bedrijf.nl"></div>'
-    +'<div><label style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:4px">Beste beltijd</label><input id="vs-cb-tijd" type="text" class="veld" placeholder="bijv. ochtend of na 14:00"></div>'
+    +'<div><label style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:4px">Beste beltijd</label><input id="vs-cb-tijd" type="text" class="veld" placeholder="Beste beltijd"></div>'
     +'</div>'
     +'<div id="vs-cb-status" style="display:none;font-size:13px;color:var(--teal);padding:10px;background:var(--teal-bg);border-radius:var(--r);margin-bottom:1rem">Bedankt! Marcel neemt contact op.</div>'
     +'<div id="vs-cb-err" style="display:none;font-size:12px;color:var(--red);margin-bottom:.75rem"></div>'
@@ -1043,7 +1043,7 @@ async function koppelAanGroep(scanId){
     <p style="font-size:13px;color:var(--mid);margin-bottom:1.5rem;line-height:1.6">Voer uw persoonlijke scancode in om uw rapport terug te zien.</p>
     <div class="veld-groep">
       <div class="veld-lbl">Scancode</div>
-      <input type="text" class="veld" id="ro-code" placeholder="bijv. VSAB12CD" style="text-transform:uppercase;letter-spacing:.1em;font-size:1.1rem;text-align:center" maxlength="12">
+      <input type="text" class="veld" id="ro-code" placeholder="Scancode" style="text-transform:uppercase;letter-spacing:.1em;font-size:1.1rem;text-align:center" maxlength="12">
     </div>
     <div id="ro-err" style="display:none;font-size:12px;color:var(--red);margin-bottom:.75rem"></div>
     <div class="nav-row">
@@ -1063,11 +1063,11 @@ async function koppelAanGroep(scanId){
     <div class="sec-lbl">Nieuwe groep</div>
     <div class="veld-groep">
       <div class="veld-lbl">Naam van de groep <span style="color:var(--red)">*</span></div>
-      <input type="text" class="veld" id="ga-naam" placeholder="bijv. Mondial Movers Netwerk NL">
+      <input type="text" class="veld" id="ga-naam" placeholder="Naam van de groep">
     </div>
     <div class="veld-groep">
       <div class="veld-lbl">Uw e-mailadres <span style="color:var(--red)">*</span></div>
-      <input type="email" class="veld" id="ga-email" placeholder="u@bedrijf.nl">
+      <input type="email" class="veld" id="ga-email" placeholder="E-mailadres">
     </div>
     <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:.75rem 1rem;font-size:12px;color:var(--muted);margin-bottom:1rem">
       <strong style="color:var(--sub)">Let op:</strong> Bewaar de beheerdscode na aanmaken — daarmee kunt u alle scans inzien.

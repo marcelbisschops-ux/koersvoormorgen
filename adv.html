@@ -156,7 +156,7 @@ function renderLogin(){
     <div class="login-brand"><div class="login-dot"></div><span class="login-brand-name">${BRAND.platform} ${BRAND.suffix}</span></div>
     <div class="login-title">Adviseur portaal</div>
     <div class="login-sub">Log in met uw e-mailadres en wachtwoord.</div>
-    <div class="field"><label>E-mailadres</label><input type="email" id="l-e" placeholder="u@kantoor.nl" autofocus></div>
+    <div class="field"><label>E-mailadres</label><input type="email" id="l-e" placeholder="E-mailadres" autofocus></div>
     <div class="field"><label>Wachtwoord</label><input type="password" id="l-w" placeholder="••••••••"></div>
     <div id="l-err" class="err-msg"></div>
     <button class="btn" id="l-btn" style="width:100%;margin-bottom:1rem">Inloggen</button>
@@ -178,7 +178,7 @@ function renderForgot(){
     <div class="login-brand"><div class="login-dot"></div><span class="login-brand-name">${BRAND.platform} ${BRAND.suffix}</span></div>
     <div class="login-title">Wachtwoord vergeten</div>
     <div class="login-sub">Vul uw e-mailadres in. Als het bekend is ontvangt u een resetlink.</div>
-    <div class="field"><label>E-mailadres</label><input type="email" id="f-e" placeholder="u@kantoor.nl" autofocus></div>
+    <div class="field"><label>E-mailadres</label><input type="email" id="f-e" placeholder="E-mailadres" autofocus></div>
     <div id="f-ok" class="ok-msg"></div>
     <div id="f-err" class="err-msg"></div>
     <button class="btn" id="f-btn" style="width:100%;margin-bottom:1rem">Verstuur resetlink</button>
@@ -349,8 +349,8 @@ function renderHuisstijlModal(){
     </div>
     <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.5rem">Bedrijfsgegevens voor documenten (optioneel)</div>
     <div style="font-size:12px;color:var(--muted);margin-bottom:.75rem;line-height:1.5">Vult u dit in, dan noemen NDA/LoI/bemiddelingsovereenkomst e.d. uw eigen kantoor als begeleidende partij in plaats van ${esc(BRAND.platform)}. Laat leeg om de standaardtekst te gebruiken.</div>
-    <div class="field" style="margin-bottom:1rem"><label>Vestigingsadres</label><input type="text" id="hs-adres" value="${esc(b.brand_adres||'')}" placeholder="Straat 1, 1234 AB Plaats" maxlength="120"></div>
-    <div class="field" style="margin-bottom:1.25rem"><label>KvK-nummer</label><input type="text" id="hs-kvk" value="${esc(b.brand_kvk||'')}" placeholder="12345678" maxlength="8"></div>
+    <div class="field" style="margin-bottom:1rem"><label>Vestigingsadres</label><input type="text" id="hs-adres" value="${esc(b.brand_adres||'')}" placeholder="Vestigingsadres" maxlength="120"></div>
+    <div class="field" style="margin-bottom:1.25rem"><label>KvK-nummer</label><input type="text" id="hs-kvk" value="${esc(b.brand_kvk||'')}" placeholder="KvK-nummer" maxlength="8"></div>
     <div id="hs-err" class="err-msg"></div>
     <div style="display:flex;gap:8px;justify-content:flex-end">
       <button id="hs-ann" class="btn-outline">Annuleren</button>
@@ -615,7 +615,7 @@ function nieuwGesprek(id, tussenCode){
       </select></div>
       <div class="field"><label>Datum</label><input type="date" id="gs-datum" value="${vandaag}"></div>
     </div>
-    <div class="field"><label>Deelnemers</label><input type="text" id="gs-deeln" placeholder="bijv. namen van deelnemers"></div>
+    <div class="field"><label>Deelnemers</label><input type="text" id="gs-deeln" placeholder="Namen van deelnemers"></div>
     <div class="field"><label>Notities / verslag</label><textarea id="gs-verslag" rows="6" placeholder="Bespreekpunten, beslissingen, actiepunten..."></textarea></div>
     <div id="gs-err" class="err-msg"></div>
     <div class="modal-footer">
