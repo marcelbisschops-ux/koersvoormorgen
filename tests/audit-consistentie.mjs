@@ -148,6 +148,20 @@ else internIssues.forEach(i => warn(i.file + ':' + i.line + ' — label "intern"
 // Regel-venster i.p.v. blok-splitsen, zodat een SELECT * niet per ongeluk gekoppeld wordt aan een
 // JSON.stringify() die eigenlijk bij een heel andere, latere route hoort.)
 log('5. SELECT * op mna_trajecten/mna_gesprekken buiten /admin/-routes (backend)');
+// Handmatig nagelopen op 13-07-2026 (na het /adviseur/trajecten-notitielek) — elk van deze routes
+// filtert/beschermt de gevoelige velden al, alleen niet op een manier die deze regel-heuristiek kan
+// zien (bijv. maar 1 veld uit het object gehaald, of een inline admin-key-check i.p.v. een /admin/-pad).
+// Nieuwe routes horen hier NIET automatisch bij te komen — eerst zelf naar de handler kijken en
+// bevestigen dat elk teruggegeven veld voor elke aanroepende rol bedoeld is, dán pas toevoegen.
+const GEVERIFIEERD_VEILIG_CHECK5 = new Set([
+  '/mna/traject/',           // /mna/save-achtige login-respons: strip alle 8 interne/tekenbevoegdheid-velden vóór JSON.stringify
+  '/mna/logboek/',           // geeft alleen traject_fase + logboek terug, nooit het volledige traject-object
+  '/mna/traject/afsluiten/', // begeleiderAuth-only (vertrouwde rol), bundelt DD-eindrapport voor de eigen begeleider
+  '/mna/groep/detail/',      // harde ADMIN_KEY-check vóór elke query (13-07-2026 toegevoegd)
+  '/gebruikers/deactiveer/', // ADMIN_KEY + isSuperAdmin, response is alleen {ok:true}
+  '/gebruikers/mna/detail/', // eigenaarscheck (gebruiker_id) + strip dezelfde 8 velden als /mna/traject/ (13-07-2026)
+  '/adviseur/trajecten',     // idem strip (13-07-2026) — dit was het echte, live lek dat deze regel miste (zie hieronder)
+]);
 if (workerPath) {
   const workerSrc2 = fs.readFileSync(workerPath, 'utf8');
   const wLines = workerSrc2.split('\n');
@@ -157,8 +171,12 @@ if (workerPath) {
     if (!selectRe.test(line)) return;
     // Route-pad: zoek terug naar de dichtstbijzijnde 'if (path...' regel.
     let routePath = null;
+    // Herkent zowel 'path.startsWith(\'...\')' als het exacte 'path === \'...\''-patroon — de eerste
+    // versie van deze regel zag alleen de eerste vorm en miste zo elke exact-match route (93 stuks in
+    // de worker, incl. /adviseur/trajecten — precies de route achter het notitielek van 13-07-2026).
+    const routeRe = /if\s*\(\s*path\s*(?:\.startsWith\(|===\s*)['"]([^'"]+)['"]/;
     for (let back = idx; back >= Math.max(0, idx - 80); back--) {
-      const m = /if\s*\(\s*path(?:\.startsWith)?\(?['"]([^'"]+)['"]/.exec(wLines[back]);
+      const m = routeRe.exec(wLines[back]);
       if (m) { routePath = m[1]; break; }
     }
     if (!routePath || routePath.includes('/admin/')) return;
@@ -166,13 +184,15 @@ if (workerPath) {
     // JSON.stringify (= mogelijk lek), óf de volgende route ('if (path...') begint (= dit SELECT-
     // resultaat wordt binnen zijn eigen handler nooit gestringified, dus geen lek).
     for (let fwd = idx; fwd <= Math.min(wLines.length - 1, idx + 60); fwd++) {
-      if (fwd > idx && /if\s*\(\s*path(?:\.startsWith)?\(/.test(wLines[fwd])) break;
+      if (fwd > idx && /if\s*\(\s*path\s*(?:\.startsWith\(|===)/.test(wLines[fwd])) break;
       if (/JSON\.stringify\(/.test(wLines[fwd])) { selectStarIssues.push(routePath); break; }
     }
   });
-  const uniekeIssues = [...new Set(selectStarIssues)];
-  if (!uniekeIssues.length) ok('Geen ongefilterde SELECT * op mna_trajecten/mna_gesprekken buiten /admin/-routes gevonden.');
-  else uniekeIssues.forEach(p => warn(p + ' — doet SELECT * op mna_trajecten/mna_gesprekken én stuurt binnen dezelfde route JSON terug, buiten een /admin/-pad. Controleer of alle teruggegeven velden voor élke rol die dit endpoint mag aanroepen (incl. koper) bedoeld zijn.'));
+  const uniekeIssues = [...new Set(selectStarIssues)].filter(p => !GEVERIFIEERD_VEILIG_CHECK5.has(p));
+  const genegeerd = [...new Set(selectStarIssues)].filter(p => GEVERIFIEERD_VEILIG_CHECK5.has(p));
+  if (genegeerd.length) ok(genegeerd.length + ' eerder handmatig geverifieerd en veilig bevonden: ' + genegeerd.join(', '));
+  if (!uniekeIssues.length) ok('Geen nieuwe, nog niet gecontroleerde SELECT * op mna_trajecten/mna_gesprekken buiten /admin/-routes gevonden.');
+  else uniekeIssues.forEach(p => warn(p + ' — NIEUW — doet SELECT * op mna_trajecten/mna_gesprekken én stuurt binnen dezelfde route JSON terug, buiten een /admin/-pad. Controleer of alle teruggegeven velden voor élke rol die dit endpoint mag aanroepen (incl. koper) bedoeld zijn.'));
 } else {
   warn('backend/cloudflare-worker.js niet gevonden — check 5 overgeslagen.');
 }
