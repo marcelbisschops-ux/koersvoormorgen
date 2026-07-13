@@ -1090,6 +1090,18 @@ function uitloggen(){
   renderApp();
 }
 
+// Groot getal leesbaar maken (3725150 -> 3.725.150); niet-numerieke waarden (bv. "besloten
+// vennootschap") ongewijzigd laten.
+function fmtConflictWaarde(v){
+  var s=String(v==null?'':v).trim();
+  if(/^-?\d+(\.\d+)?$/.test(s)){
+    var neg=s[0]==='-';if(neg)s=s.slice(1);
+    var delen=s.split('.');
+    delen[0]=delen[0].replace(/\B(?=(\d{3})+(?!\d))/g,'.');
+    return (neg?'-':'')+delen.join(',');
+  }
+  return s;
+}
 function toonConflictDialog() {
   if(!S._conflicts||!S._conflicts.length)return;
   var conflicts=S._conflicts.slice();S._conflicts=[];
@@ -1099,8 +1111,11 @@ function toonConflictDialog() {
   var box=document.createElement('div');
   box.style.cssText='background:var(--panel);border:1px solid var(--border2);border-radius:var(--r2);padding:1.75rem;max-width:560px;width:100%;max-height:85vh;overflow-y:auto';
   var title=document.createElement('div');title.style.cssText='font-family:Playfair Display,serif;font-size:1.1rem;color:var(--head);font-weight:600;margin-bottom:.35rem';title.textContent='Afwijkende waarden gevonden';box.appendChild(title);
-  // Toon brondocumenten
+  // Toon brondocumenten — als alle conflicten uit hetzelfde ene document komen (het gangbare
+  // geval), dat maar één keer bovenaan noemen i.p.v. per veld en per optie te herhalen: dat maakte
+  // de lijst vooral lang en moeilijk te scannen zonder extra informatie toe te voegen.
   var bronnen=[...new Set(conflicts.map(function(c){return c.bron||'onbekend';}))];
+  var eenBron=bronnen.length===1;
   var sub=document.createElement('div');sub.style.cssText='font-size:12px;color:var(--mid);margin-bottom:1.25rem;padding:.6rem .75rem;background:var(--card);border-radius:var(--r);border-left:3px solid var(--gold)';
   sub.innerHTML='<strong>Bron:</strong> '+bronnen.map(function(b){return '<span style="font-family:IBM Plex Mono,monospace;font-size:11px">'+esc(b)+'</span>';}).join(', ')+'<br><span style="color:var(--muted)">Kies per veld welke waarde u wilt gebruiken. Uw keuze wordt vastgelegd.</span>';
   box.appendChild(sub);
@@ -1108,18 +1123,26 @@ function toonConflictDialog() {
   var radios=[];
   conflicts.forEach(function(c,i){
     var row=document.createElement('div');row.style.cssText='background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px';
-    var lbl=document.createElement('div');lbl.style.cssText='font-size:11px;font-weight:600;text-transform:uppercase;color:var(--muted);margin-bottom:4px';lbl.textContent=c.label;row.appendChild(lbl);
-    // Toon brondocument per veld
-    if(c.bron){var bronLbl=document.createElement('div');bronLbl.style.cssText='font-size:10px;color:var(--gold);margin-bottom:6px';bronLbl.innerHTML='&#128196; Uit: <em>'+esc(c.bron)+'</em>';row.appendChild(bronLbl);}
+    var lbl=document.createElement('div');lbl.style.cssText='font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.02em;color:var(--head);margin-bottom:4px';lbl.textContent=c.label;row.appendChild(lbl);
+    // Brondocument per veld alleen tonen als het afwijkt van de ene bron die al bovenaan staat.
+    if(c.bron&&!eenBron){var bronLbl=document.createElement('div');bronLbl.style.cssText='font-size:10px;color:var(--gold);margin-bottom:6px';bronLbl.innerHTML='&#128196; Uit: <em>'+esc(c.bron)+'</em>';row.appendChild(bronLbl);}
     var opts=document.createElement('div');opts.style.cssText='display:flex;gap:8px;flex-wrap:wrap';
-    var lblH=document.createElement('label');lblH.style.cssText='flex:1;min-width:140px;display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;padding:7px 10px;border:1px solid var(--border2);border-radius:var(--r);background:var(--panel)';
+    var lblH=document.createElement('label');
     var rH=document.createElement('input');rH.type='radio';rH.name='cf_'+i;rH.value='huidig';rH.checked=true;rH.style.accentColor='var(--teal)';lblH.appendChild(rH);
     var tH=document.createElement('span');tH.style.color='var(--mid)';
     var bronHuidig=S._docSource&&S._docSource[c.key]?'uit '+S._docSource[c.key]:'handmatig ingevoerd';
-    tH.innerHTML='Huidig: <strong style="color:var(--sub)">'+c.huidig+'</strong><div style="font-size:10px;color:var(--muted);margin-top:2px">'+esc(bronHuidig)+'</div>';lblH.appendChild(tH);opts.appendChild(lblH);
-    var lblN=document.createElement('label');lblN.style.cssText='flex:1;min-width:140px;display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;padding:7px 10px;border:1px solid var(--teal-dark);border-radius:var(--r);background:var(--teal-bg)';
+    tH.innerHTML='<div style="font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-bottom:2px">Huidig</div><strong style="font-size:15px;color:var(--sub)">'+esc(fmtConflictWaarde(c.huidig))+'</strong><div style="font-size:10px;color:var(--muted);margin-top:2px">'+esc(bronHuidig)+'</div>';lblH.appendChild(tH);opts.appendChild(lblH);
+    var lblN=document.createElement('label');
     var rN=document.createElement('input');rN.type='radio';rN.name='cf_'+i;rN.value='nieuw';rN.style.accentColor='var(--teal)';lblN.appendChild(rN);
-    var tN=document.createElement('span');tN.style.color='var(--mid)';tN.innerHTML='Document: <strong style="color:var(--teal-dim)">'+c.nieuw+'</strong><div style="font-size:10px;color:var(--muted);margin-top:2px">uit '+esc(c.bron||'document')+'</div>';lblN.appendChild(tN);opts.appendChild(lblN);
+    var tN=document.createElement('span');tN.style.color='var(--mid)';tN.innerHTML='<div style="font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-bottom:2px">Nieuw (document)</div><strong style="font-size:15px;color:var(--sub)">'+esc(fmtConflictWaarde(c.nieuw))+'</strong>'+(eenBron?'':'<div style="font-size:10px;color:var(--muted);margin-top:2px">uit '+esc(c.bron||'document')+'</div>');lblN.appendChild(tN);opts.appendChild(lblN);
+    // Visueel duidelijk maken welke optie daadwerkelijk gekozen is (voorheen kreeg "Document"
+    // altijd een teal-accent, ook als "Huidig" geselecteerd was — dat oogde tegenstrijdig).
+    var stijlBasis='flex:1;min-width:140px;display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;padding:7px 10px;border-radius:var(--r);border:1px solid ';
+    function updateOptieStijl(){
+      lblH.style.cssText=stijlBasis+(rH.checked?'var(--teal-dark);background:var(--teal-bg)':'var(--border2);background:var(--panel)');
+      lblN.style.cssText=stijlBasis+(rN.checked?'var(--teal-dark);background:var(--teal-bg)':'var(--border2);background:var(--panel)');
+    }
+    rH.addEventListener('change',updateOptieStijl);rN.addEventListener('change',updateOptieStijl);updateOptieStijl();
     row.appendChild(opts);list.appendChild(row);radios.push({key:c.key,rH:rH,rN:rN,conflict:c});
   });
   box.appendChild(list);
