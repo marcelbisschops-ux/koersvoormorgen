@@ -591,7 +591,11 @@ function renderBegeleiderDashboard(app){
     var kleuren={nda:'#7c5cbf',loi:'var(--gold)',bem:'#2a5ea0',excl:'#1a7a5e'};
     var labels={nda:'NDA',loi:'LoI',bem:'Bemiddelingsovereenkomst',excl:'Exclusiviteitsbrief'};
     out.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem">'
-      +'<div style="font-size:11px;font-weight:600;color:'+kleuren[type]+';text-transform:uppercase;letter-spacing:.1em;margin-bottom:.75rem">'+labels[type]+' gegenereerd</div>'
+      +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">'
+      +'<div style="font-size:11px;font-weight:600;color:'+kleuren[type]+';text-transform:uppercase;letter-spacing:.1em">'+labels[type]+' gegenereerd</div>'
+      +'<button id="bg-doc-toggle" class="btn-ghost" style="font-size:11px;padding:3px 10px;white-space:nowrap">&#9650; Inklappen</button>'
+      +'</div>'
+      +'<div id="bg-doc-body">'
       +'<textarea id="bg-doc-tekst" style="width:100%;height:280px;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:Georgia,serif;font-size:12px;line-height:1.8;padding:1rem;outline:none;resize:vertical">'+esc(tekst)+'</textarea>'
       +akkoordHtml('bg-doc-akkoord')
       +'<div style="display:flex;gap:8px;margin-top:.75rem">'
@@ -601,7 +605,15 @@ function renderBegeleiderDashboard(app){
       +'<button id="bg-handmatig-getekend" class="btn-ghost" style="font-size:12px;padding:6px 14px">&#128221; Buiten Signhost om getekend</button>'
       +'</div>'
       +eigenPdfHtml('bg-pdf')
+      +'</div>'
       +'</div>';
+    var bgDocToggle=document.getElementById('bg-doc-toggle');
+    var bgDocBody=document.getElementById('bg-doc-body');
+    if(bgDocToggle)bgDocToggle.onclick=function(){
+      var open=bgDocBody.style.display!=='none';
+      bgDocBody.style.display=open?'none':'block';
+      bgDocToggle.innerHTML=open?'&#9660; Uitklappen':'&#9650; Inklappen';
+    };
     var bgAkkoordCtrl=wireAkkoord('bg-doc-akkoord', ['bg-email','bg-signhost']);
     var bgPdfStaat={base64:null,naam:null};
     wireEigenPdf('bg-pdf', bgPdfStaat, function(actief){
@@ -671,6 +683,7 @@ function renderBegeleiderDashboard(app){
           document.body.removeChild(ov);
           toast('Vastgelegd: '+(labels[type]||type)+' getekend door '+naam,'ok');
           handmatigBtn.disabled=true;handmatigBtn.textContent='✓ Getekend vastgelegd';handmatigBtn.style.opacity='.5';
+          if(bgDocToggle&&bgDocBody&&bgDocBody.style.display!=='none')bgDocToggle.click();
         }
         else{errEl.style.display='block';errEl.textContent=r.error||'Onbekende fout';btn.disabled=false;btn.textContent='Vastleggen';}
       };
@@ -713,6 +726,7 @@ function renderBegeleiderDashboard(app){
           // Disable Signhost knop om dubbel versturen te voorkomen
           var shBtnEl=document.getElementById('bg-signhost');
           if(shBtnEl){shBtnEl.disabled=true;shBtnEl.innerHTML='&#10003; Verstuurd';shBtnEl.style.opacity='.5';}
+          if(bgDocToggle&&bgDocBody&&bgDocBody.style.display!=='none')bgDocToggle.click();
         }
         else{errEl.style.display='block';errEl.textContent=rd.error||'Fout';btn.disabled=false;btn.textContent='Verstuur';}
       };
