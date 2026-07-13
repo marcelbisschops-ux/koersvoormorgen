@@ -9,6 +9,8 @@ var VELD_AGGREGATIE = {
   financieel: ['omzet1','omzet2','omzet3','omzetYTD','forecast','ebitda','partnerBel','normalisatie','ebitdaNorm','wip','debiteuren',
     'ebitdaMarge','recurring','debiteurenOud','declarab','kostenPersoneel','kostenHuisvesting','kostenIT','kostenMarketing','kostenOverig'],
   commercieel: ['aantalKlanten','nieuw','verlies','omzetPerKlant','churn','crossSell','klantduur'],
+  // Alleen 'fte' — aantalP/gemLeeftijd zijn groepsniveau-velden (df.groepsniveau), geen som.
+  partner: ['fte'],
 };
 function isGeaggregeerdVeld(faseId, veldId){ return !!(VELD_AGGREGATIE[faseId]&&VELD_AGGREGATIE[faseId].indexOf(veldId)>=0); }
 
