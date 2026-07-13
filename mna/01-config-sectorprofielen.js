@@ -18,6 +18,18 @@ var BRAND = {
 // De functie blijft bestaan omdat headers 'm aanroepen; hij levert nu niets op.
 function versieLabel(){return '';}
 
+// Marcels privé-inlogmail (het account waarmee hij eigen test-/demotrajecten aanmaakt) mag
+// nooit aan verkoper/koper getoond worden — daar hoort altijd het zakelijke BRAND.email te staan.
+// Gebruik deze helper bij elke plek waar begeleider_email aan een externe partij wordt LATEN ZIEN
+// (mailto-links, ondertekeningen, AVG-contactblokken). Niet gebruiken voor daadwerkelijke
+// e-mailverzending (toList-arrays) — daar moet Marcel zijn eigen berichten wél op zijn echte adres
+// ontvangen.
+var MARCEL_PRIVE_EMAIL = 'marcel.bisschops@gmail.com';
+function begeleiderWeergaveEmail(email){
+  if(!email || email.toLowerCase()===MARCEL_PRIVE_EMAIL) return BRAND.email;
+  return email;
+}
+
 // Partij-labels per traject_type — identiek aan marilyn.html (die alleen in het adminpaneel leefde;
 // hier gekopieerd omdat mna.html 'm ook nodig heeft voor documentprompts, bijv. de BEM-partijaanduiding).
 function partijLabels(type){

@@ -1302,7 +1302,7 @@ function renderBegeleiderDashboard(app){
         +(tabelRows?'<p style="font-size:13px;font-weight:600;color:#2a2825;margin-bottom:.5rem">Benodigde informatie:</p>'
         +'<table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:1.25rem">'+tabelRows+'</table>':'')
         +'<p style="font-size:12px;color:#8a8880">Heeft u vragen? Neem gerust contact op.<br>'
-        +esc(t2.begeleider_naam||'Uw begeleider')+' — <a href="mailto:'+esc(t2.begeleider_email||'')+'" style="color:#1a7a5e">'+esc(t2.begeleider_email||'')+'</a></p>'
+        +esc(t2.begeleider_naam||'Uw begeleider')+' — <a href="mailto:'+esc(begeleiderWeergaveEmail(t2.begeleider_email))+'" style="color:#1a7a5e">'+esc(begeleiderWeergaveEmail(t2.begeleider_email))+'</a></p>'
         +'<p style="font-size:12px;color:#8a8880;margin-top:.75rem">Met vriendelijke groet,<br><strong>'+esc(t2.begeleider_naam||'Uw begeleider')+'</strong><br>'
         +'<span style="color:#aaa">Senior M&A-adviseur · ' + esc(t2.begeleider_bedrijf||BRAND.bedrijfKort) + '</span></p>'
         +'</div></div>';

@@ -367,18 +367,27 @@ function renderMnaTab(el){
         +'<td style="font-weight:500;color:'+(t.inhoud_afgeschermd?'var(--muted)':'var(--head)')+'" title="'+(t.inhoud_afgeschermd?'Extern adviseurstraject — bedrijfsnaam en overige identiteitsvelden afgeschermd voor Bisschops Financing':'')+'">'+esc(t.kantoor_naam||'—')+'</td>'
         +'<td>'+esc(t.traject_type||'—')+(t.sector&&t.sector!=='accountancy'?'<br><span style="font-size:10px;background:var(--teal-bg);color:var(--teal-dim);border:1px solid var(--teal-dark);border-radius:3px;padding:1px 5px">'+esc({mkb:'MKB',zorg:'Zorg',itsoftware:'IT/SW'}[t.sector]||t.sector)+'</span>':'')+'</td>'
         +'<td><span class="tag" style="'+(verg?'background:var(--red-bg);color:var(--red);border-color:var(--red)':'')+'">'+esc(t.status||'actief')+'</span></td>'
-        +'<td><span class="code-chip">'+esc(t.id)+'</span><button class="copy-btn" data-copy="'+esc(t.id)+'">⎘</button></td>'
-        +'<td><span class="code-chip" style="background:var(--gold-bg);color:var(--gold);border-color:var(--gold)">'+esc(t.koper_code||'—')+'</span><button class="copy-btn" data-copy="'+esc(t.koper_code||'')+'">⎘</button></td>'
+        +(t.inhoud_afgeschermd
+          ?'<td><span class="code-chip" style="opacity:.5" title="Afgeschermd — traject van externe adviseur">&#128274;</span></td>'
+          :'<td><span class="code-chip">'+esc(t.id)+'</span><button class="copy-btn" data-copy="'+esc(t.id)+'">⎘</button></td>')
+        +(t.inhoud_afgeschermd
+          ?'<td><span class="code-chip" style="opacity:.5" title="Afgeschermd — traject van externe adviseur">&#128274;</span></td>'
+          :'<td><span class="code-chip" style="background:var(--gold-bg);color:var(--gold);border-color:var(--gold)">'+esc(t.koper_code||'—')+'</span><button class="copy-btn" data-copy="'+esc(t.koper_code||'')+'">⎘</button></td>')
         +'<td><div style="font-size:11px">'+(t.inhoud_afgeschermd?'<span style="color:var(--muted);font-size:10px;font-style:italic">&#128274; Afgeschermd</span>':(t.koper_naam?'<div style="font-weight:500;color:var(--sub)">'+esc(t.koper_naam)+'</div>':'<span style="color:var(--muted);font-size:10px;font-style:italic">Nog onbekend</span>')+(t.koper_rechtsvorm?'<div style="color:var(--muted);font-size:10px">'+esc(t.koper_rechtsvorm)+'</div>':''))+'</div></td>'
         +'<td><div style="font-size:11px">'
         +(t.begeleider_naam?'<div style="font-weight:500;color:var(--sub)">'+esc(t.begeleider_naam)+'</div>':'<span style="color:var(--muted);font-size:10px;font-style:italic">Niet ingesteld</span>')
         +(t.begeleider_email?'<div style="color:var(--teal);font-size:10px">'+esc(t.begeleider_email)+'</div>':'')
-        +'<div style="margin-top:3px;display:flex;gap:3px;align-items:center"><span class="code-chip" style="background:var(--card);color:var(--mid);border-color:var(--border2);font-size:10px">'+esc(t.tussen_code||'—')+'</span><button class="copy-btn" data-copy="'+esc(t.tussen_code||'')+'">⎘</button></div>'
+        +(t.inhoud_afgeschermd
+          ?'<div style="margin-top:3px"><span class="code-chip" style="background:var(--card);color:var(--mid);border-color:var(--border2);font-size:10px;opacity:.5" title="Afgeschermd — traject van externe adviseur">&#128274;</span></div>'
+          :'<div style="margin-top:3px;display:flex;gap:3px;align-items:center"><span class="code-chip" style="background:var(--card);color:var(--mid);border-color:var(--border2);font-size:10px">'+esc(t.tussen_code||'—')+'</span><button class="copy-btn" data-copy="'+esc(t.tussen_code||'')+'">⎘</button></div>')
 
         +'</div></td>'
         +'<td class="mono" style="font-size:11px">'+formatDate(t.created_at)+'</td>'
         +'<td style="white-space:nowrap;display:flex;gap:4px;flex-wrap:wrap">'
-        +'<button class="btn btn-uitnodigen" data-id="'+esc(t.id)+'" data-naam="'+esc(t.kantoor_naam||t.id)+'" data-tcode="'+esc(t.tussen_code||'')+'" style="font-size:11px;padding:3px 10px;background:#2a5ea0">&#128231; Begeleider</button>'        +'<button class="btn-ghost btn-detail" data-id="'+esc(t.id)+'" data-naam="'+esc(t.kantoor_naam||t.id)+'" style="font-size:11px;padding:3px 8px">&#128065; Bekijk</button>'
+        +(t.inhoud_afgeschermd
+          ?'<span class="btn-ghost" style="font-size:11px;padding:3px 10px;opacity:.5;cursor:not-allowed" title="Afgeschermd — traject van externe adviseur">&#128231; Begeleider</span>'
+          :'<button class="btn btn-uitnodigen" data-id="'+esc(t.id)+'" data-naam="'+esc(t.kantoor_naam||t.id)+'" data-tcode="'+esc(t.tussen_code||'')+'" style="font-size:11px;padding:3px 10px;background:#2a5ea0">&#128231; Begeleider</button>')
+        +'<button class="btn-ghost btn-detail" data-id="'+esc(t.id)+'" data-naam="'+esc(t.kantoor_naam||t.id)+'" style="font-size:11px;padding:3px 8px">&#128065; Bekijk</button>'
         +'<button class="btn-ghost btn-bewerk" data-id="'+esc(t.id)+'" data-naam="'+esc(t.kantoor_naam||t.id)+'" style="font-size:11px;padding:3px 8px">&#9999;&#65039; Bewerk</button>'
         +'<button class="btn-ghost btn-opslaan" data-idx="'+i+'" style="font-size:11px;padding:3px 8px">&#8681; Opslaan</button>'
         +(t.inhoud_afgeschermd
@@ -1622,7 +1631,7 @@ async function toonDetail(id,naam){
             +'<tr style="background:#f0eeea"><td style="padding:8px 12px;font-weight:600;color:#2a2825;border:1px solid #ddd">IT & Systemen</td><td style="padding:8px 12px;color:#5a5854;border:1px solid #ddd">Overzicht software en licenties, beschrijving werkprocessen, automatiseringsgraad</td></tr>'
             +'<tr><td style="padding:8px 12px;font-weight:600;color:#2a2825;border:1px solid #ddd">Kwaliteit</td><td style="padding:8px 12px;color:#5a5854;border:1px solid #ddd">Kwaliteitshandboek of -certificaat, dossierbeheer-beschrijving, AVG-documentatie</td></tr>'
             +'</table>'
-            +'<p style="font-size:12px;color:#8a8880;line-height:1.7">U kunt documenten uploaden via de persoonlijke link hierboven. Heeft u vragen of lukt het uploaden niet? Neem dan contact op via <a href="mailto:'+esc(t3.begeleider_email||'marcel@bisschopsfinancing.nl')+'" style="color:#1a7a5e">'+esc(t3.begeleider_email||'marcel@bisschopsfinancing.nl')+'</a> of bel '+esc(t3.begeleider_naam||'Marcel Bisschops')+'.</p>'
+            +'<p style="font-size:12px;color:#8a8880;line-height:1.7">U kunt documenten uploaden via de persoonlijke link hierboven. Heeft u vragen of lukt het uploaden niet? Neem dan contact op via <a href="mailto:'+esc((t3.begeleider_email&&t3.begeleider_email.toLowerCase()!=='marcel.bisschops@gmail.com')?t3.begeleider_email:'marcel@bisschopsfinancing.nl')+'" style="color:#1a7a5e">'+esc((t3.begeleider_email&&t3.begeleider_email.toLowerCase()!=='marcel.bisschops@gmail.com')?t3.begeleider_email:'marcel@bisschopsfinancing.nl')+'</a> of bel '+esc(t3.begeleider_naam||'Marcel Bisschops')+'.</p>'
             +'<p style="font-size:12px;color:#8a8880;margin-top:1rem">Met vriendelijke groet,<br><strong>'+esc(t3.begeleider_naam||'Marcel Bisschops')+'</strong><br>' + BRAND.kort + ' BV</p>'
             +'</div></div>';
           // Toon preview modal
