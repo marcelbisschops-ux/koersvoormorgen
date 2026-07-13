@@ -1403,7 +1403,7 @@ function renderBegeleiderDashboard(app){
 
         bgDocsEl.querySelectorAll('.bg-versie-open').forEach(function(btn){
           btn.addEventListener('click', async function(){
-            var vr=await fetch(WORKER+'/mna/versie/'+btn.dataset.id);
+            var vr=await fetch(WORKER+'/mna/versie/'+btn.dataset.id+'?code='+encodeURIComponent(S.code));
             var vd=await vr.json();
             var ov2=document.createElement('div');ov2.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:3000;display:flex;align-items:center;justify-content:center;padding:1.5rem';
             var mo2=document.createElement('div');mo2.style.cssText='background:var(--panel);border:1px solid var(--border2);border-radius:var(--r2);padding:1.75rem;max-width:700px;width:100%;max-height:85vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,.25)';
