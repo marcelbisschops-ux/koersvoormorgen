@@ -389,7 +389,7 @@ function loadDocsForFase(faseId) {
             id: d.id, naam: d.bestand_naam, type: d.bestand_type,
             grootte: d.bestand_grootte, analyse: d.analyse,
             velden: (function(s){try{var r=JSON.parse(s||'{}');return r&&typeof r==='object'&&!Array.isArray(r)?r:{};}catch(e){return {};}})(d.veld_extractie),
-            uploaded_at: d.uploaded_at||null,
+            uploaded_at: d.uploaded_at||null, entiteit_id: d.entiteit_id||'',
             bewaard: !!d.bewaard, methode: d.methode, uploading: false
           };
         });
@@ -925,10 +925,13 @@ function renderDocumentSectie(faseId) {
           + '<span style="font-size:10px;color:var(--red);font-style:italic">'+esc(doc.verworpen_reden||'verworpen')+'</span>'
           + '</div>';
       }
-      return '<div style="display:flex;align-items:center;gap:6px;padding:5px 8px;background:var(--card);border-radius:var(--r);border:1px solid var(--border)">'
+      var entNaamDoc = entiteitNaam(doc.entiteit_id);
+      var toonKoppelenDoc = !isReadOnly && !doc.entiteit_id && S._entiteiten && S._entiteiten.length;
+      return '<div style="display:flex;align-items:center;gap:6px;padding:5px 8px;background:var(--card);border-radius:var(--r);border:1px solid var(--border);flex-wrap:wrap">'
         + '<span style="font-size:13px">'+icon+'</span>'
-        + '<span style="font-size:11px;color:var(--teal);flex:1">'+(doc.bewaard?'<a href="'+WORKER+'/mna/document/download/'+doc.id+'?code='+encodeURIComponent(S.code)+'" target="_blank" style="color:var(--teal);text-decoration:none">'+esc(doc.naam)+'</a>':esc(doc.naam))+'</span>'
+        + '<span style="font-size:11px;color:var(--teal);flex:1">'+(doc.bewaard?'<a href="'+WORKER+'/mna/document/download/'+doc.id+'?code='+encodeURIComponent(S.code)+'" target="_blank" style="color:var(--teal);text-decoration:none">'+esc(doc.naam)+'</a>':esc(doc.naam))+(entNaamDoc?' <span style="font-size:9px;font-weight:600;color:var(--teal);background:var(--teal-bg);border-radius:8px;padding:1px 6px;margin-left:2px">'+esc(entNaamDoc)+'</span>':'')+'</span>'
         + '<span style="font-size:10px;color:var(--muted)">'+(doc.grootte/1024/1024).toFixed(1)+'MB</span>'
+        + (toonKoppelenDoc?'<select id="fd-ent-'+doc.id+'" style="font-size:10px;background:var(--panel);border:1px solid var(--border2);border-radius:var(--r);padding:2px 4px"><option value="">— Koppel aan entiteit —</option>'+S._entiteiten.map(function(e){return '<option value="'+esc(e.id)+'">'+esc(e.naam)+'</option>';}).join('')+'</select><button onclick="koppelDocumentAanEntiteit(\''+doc.id+'\',\'fd-ent-\')" style="background:none;border:1px solid var(--teal);color:var(--teal);border-radius:var(--r);cursor:pointer;font-size:10px;padding:1px 6px">&#128279;</button>':'')
         + (!isReadOnly?'<button onclick="deleteDocument(\''+doc.id+'\',\''+faseId+'\')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:10px;padding:0 2px">✕</button>':'')
         + '</div>';
     }).join('');
@@ -1127,11 +1130,18 @@ function renderDataroom(){
 // Koppelt een op groepsniveau geüpload document alsnog aan een entiteit — en herverwerkt de al
 // opgeslagen veld_extractie naar de entiteit-eigen dataopslag (geen nieuwe AI-call). De worker
 // consolideert daarna automatisch de groepstotalen o.b.v. alle entiteiten (consolideerFase()).
-window.koppelDocumentAanEntiteit = async function(docId){
-  var sel=document.getElementById('dr-ent-'+docId);
+window.koppelDocumentAanEntiteit = async function(docId, selectPrefix){
+  var sel=document.getElementById((selectPrefix||'dr-ent-')+docId);
   var entiteitId=sel?sel.value:'';
   if(!entiteitId){toast('Kies eerst een entiteit.','warn');return;}
   var doc=(S.dataroom||[]).find(function(d){return d.id===docId;});
+  if(!doc){
+    Object.keys(DOCS||{}).some(function(fid){
+      var found=(DOCS[fid]||[]).find(function(d){return d.id===docId;});
+      if(found){doc=found;return true;}
+      return false;
+    });
+  }
   if(!doc)return;
   var r=await fetch(WORKER+'/mna/document/koppel-entiteit/'+docId,{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S.code},body:JSON.stringify({entiteit_id:entiteitId})}).then(function(x){return x.json();}).catch(function(){return{};});
   if(!r.ok){toast('Koppelen mislukt: '+(r.error||'onbekend'),'err');return;}
