@@ -346,7 +346,7 @@ async function laadPartijDocs() {
     }
     el.querySelectorAll('.partij-doc-open').forEach(function(btn) {
       btn.addEventListener('click', async function() {
-        var vr = await fetch(WORKER+'/mna/versie/'+btn.dataset.id);
+        var vr = await fetch(WORKER+'/mna/versie/'+btn.dataset.id+'?code='+encodeURIComponent(S.code));
         var vd = await vr.json();
         var ov2 = document.createElement('div');
         ov2.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:3000;display:flex;align-items:center;justify-content:center;padding:1.5rem';

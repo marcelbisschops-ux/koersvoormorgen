@@ -924,7 +924,7 @@ function bindAll(){
         }).join('');
       histEl.querySelectorAll('button[data-vid]').forEach(function(btn){
         btn.addEventListener('click',async function(){
-          var vd=await fetch(WORKER+'/mna/versie/'+btn.dataset.vid).then(function(r){return r.json();});
+          var vd=await fetch(WORKER+'/mna/versie/'+btn.dataset.vid+'?code='+encodeURIComponent(S.code)).then(function(r){return r.json();});
           if(vd&&vd.tekst)wToonRapport(vd.tekst, vd.created_at, vd.versie);
         });
       });
@@ -982,7 +982,7 @@ function bindAll(){
         var lijst=await fetch(WORKER+'/mna/versies/'+S.code+'/waarderingsrapport').then(function(r){return r.json();});
         if(!Array.isArray(lijst)||!lijst.length)return;
         var laatste=lijst[0];
-        var vd=await fetch(WORKER+'/mna/versie/'+laatste.id).then(function(r){return r.json();});
+        var vd=await fetch(WORKER+'/mna/versie/'+laatste.id+'?code='+encodeURIComponent(S.code)).then(function(r){return r.json();});
         if(vd&&vd.tekst){
           wToonRapport(vd.tekst, vd.created_at, vd.versie);
           wAiBtn.textContent='↻ Opnieuw genereren';
