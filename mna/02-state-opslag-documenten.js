@@ -1076,7 +1076,7 @@ async function loadDataroom(){
   try{
     var resp=await fetch(WORKER+'/mna/document/lijst/'+S.code);
     var docs=await resp.json();
-    S.dataroom=docs.map(function(d){return{id:d.id,naam:d.bestand_naam,type:d.bestand_type,grootte:d.bestand_grootte,fase_id:d.fase_id,bewaard:!!d.bewaard,uploaded_at:d.uploaded_at,entiteit_id:d.entiteit_id||''};});
+    S.dataroom=docs.map(function(d){var velden={};try{velden=d.veld_extractie?JSON.parse(d.veld_extractie):{};}catch(e){}return{id:d.id,naam:d.bestand_naam,type:d.bestand_type,grootte:d.bestand_grootte,fase_id:d.fase_id,bewaard:!!d.bewaard,uploaded_at:d.uploaded_at,entiteit_id:d.entiteit_id||'',velden:velden};});
   }catch(e){S.dataroom=[];}
   S.dataroomLoading=false;renderApp();
 }
@@ -1103,10 +1103,18 @@ function renderDataroom(){
         var st=doc.uploaded_at?new Date(doc.uploaded_at).toLocaleString('nl-NL',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'';
         var gr=(doc.grootte/1024/1024).toFixed(1)+'MB';
         var entNaam=entiteitNaam(doc.entiteit_id);
+        var toonKoppelen=!isKoper()&&!doc.entiteit_id&&S._entiteiten&&S._entiteiten.length;
         html+='<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">'
           +'<span style="font-size:18px">'+icon+'</span>'
           +'<div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--head)">'+esc(doc.naam)+(entNaam?' <span style="font-size:10px;font-weight:600;color:var(--teal);background:var(--teal-bg);border-radius:8px;padding:2px 8px;margin-left:4px">'+esc(entNaam)+'</span>':'')+'</div>'
-          +'<div style="font-size:11px;color:var(--muted);margin-top:2px">'+gr+(st?' &middot; Geupload: '+st:'')+'</div></div>'
+          +'<div style="font-size:11px;color:var(--muted);margin-top:2px">'+gr+(st?' &middot; Geupload: '+st:'')+'</div>'
+          +(toonKoppelen?'<div style="margin-top:6px;display:flex;gap:6px;align-items:center">'
+            +'<select id="dr-ent-'+doc.id+'" style="font-size:11px;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:4px 6px"><option value="">— Koppel aan entiteit —</option>'
+            +S._entiteiten.map(function(e){return '<option value="'+esc(e.id)+'">'+esc(e.naam)+'</option>';}).join('')
+            +'</select>'
+            +'<button class="btn-ghost btn-sm" style="font-size:11px" onclick="koppelDocumentAanEntiteit(\''+doc.id+'\')">&#128279; Koppelen</button>'
+            +'</div>':'')
+          +'</div>'
           +'<a href="'+WORKER+'/mna/document/download/'+doc.id+'?code='+encodeURIComponent(S.code)+'" target="_blank" class="btn-ghost btn-sm" style="font-size:11px;text-decoration:none" onclick="secAuditLog(\'document_bekeken\',{doc_naam:\''+doc.naam.replace(/'/g,'')+'\'})">&#8681; '+(isKoper()?'Bekijken':'Download')+'</a>'
           +'</div>';
       });
@@ -1115,3 +1123,31 @@ function renderDataroom(){
   }
   html+='</div>';return html;
 }
+
+// Koppelt een op groepsniveau geüpload document alsnog aan een entiteit — en herverwerkt de al
+// opgeslagen veld_extractie naar de entiteit-eigen dataopslag (geen nieuwe AI-call). De worker
+// consolideert daarna automatisch de groepstotalen o.b.v. alle entiteiten (consolideerFase()).
+window.koppelDocumentAanEntiteit = async function(docId){
+  var sel=document.getElementById('dr-ent-'+docId);
+  var entiteitId=sel?sel.value:'';
+  if(!entiteitId){toast('Kies eerst een entiteit.','warn');return;}
+  var doc=(S.dataroom||[]).find(function(d){return d.id===docId;});
+  if(!doc)return;
+  var r=await fetch(WORKER+'/mna/document/koppel-entiteit/'+docId,{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S.code},body:JSON.stringify({entiteit_id:entiteitId})}).then(function(x){return x.json();}).catch(function(){return{};});
+  if(!r.ok){toast('Koppelen mislukt: '+(r.error||'onbekend'),'err');return;}
+  doc.entiteit_id=entiteitId;
+  if(doc.velden&&Object.keys(doc.velden).length){
+    S._conflicts=[];
+    var alleFases=['financieel','commercieel','partner','compliance','it','juridisch','strategisch'];
+    alleFases.forEach(function(fid){ autoFillFromExtraction(fid, doc.velden, false, doc.naam, entiteitId); });
+    if(S._conflicts&&S._conflicts.length){
+      renderApp();setTimeout(toonConflictDialog,300);
+    }else{
+      renderApp();saveEntiteitData(entiteitId,alleFases);
+      toast('Gekoppeld aan '+entiteitNaam(entiteitId)+' — cijfers herverwerkt.','ok');
+    }
+  }else{
+    renderApp();
+    toast('Gekoppeld aan '+entiteitNaam(entiteitId)+' (geen cijfers om te herverwerken).','ok');
+  }
+};
