@@ -82,6 +82,28 @@ function gokEntiteitId(entiteitNaamAI){
   return bevat.length===1?bevat[0].id:'';
 }
 
+// Groepsstructuur: sommige velden zijn een eigenschap van de mensen/groep, niet van één
+// werkmaatschappij (bv. aantal partners, gemiddelde leeftijd — vaak dezelfde partners via
+// persoonlijke holdings in meerdere BV's). Zulke velden (df.groepsniveau in het sectorschema)
+// horen altijd bij S._groepData, ook als er een entiteit actief is — nooit dubbel/anders per BV.
+function isGroepsniveauVeld(key){
+  var faseIds=['financieel','commercieel','partner','compliance','it','juridisch','strategisch'];
+  for(var i=0;i<faseIds.length;i++){
+    var prefix=faseIds[i]+'_';
+    if(key.indexOf(prefix)===0){
+      var f=(typeof FASES!=='undefined'?FASES:[]).find(function(x){return x.id===faseIds[i];});
+      if(!f)return false;
+      var veldId=key.slice(prefix.length);
+      var df=f.dataFields.find(function(d){return d.id===veldId;});
+      return !!(df&&df.groepsniveau);
+    }
+  }
+  return false;
+}
+// Retourneert het juiste opslagobject voor een veld-key — S._groepData voor groepsniveau-velden,
+// anders de actief geswapte S.data (kan groep of een specifieke entiteit zijn).
+function doelData(key){ return isGroepsniveauVeld(key)?S._groepData:S.data; }
+
 // ── BEVEILIGING ─────────────────────────────────────────────────────────────
 var SEC = {
   SESSION_MS: 8 * 60 * 60 * 1000,   // 8 uur sessieduur
@@ -180,8 +202,11 @@ function checkOmzetSom(){
 // mna/06-schermen.js), dus meetellen als "verplicht maar leeg" gaf een onterecht laag/verwarrend
 // percentage (regressie juli 2026: verkoper zag 34% terwijl alle bereikbare velden al klaar waren).
 function loiIsGetekend(){return !!(S.loiGetekend||(S.traject&&S.traject.loi_getekend));}
-function fillPct(id,dataBron){var f=FASES.find(function(x){return x.id===id;});if(!f)return 0;var bron=dataBron||S.data;var getekend=loiIsGetekend();var req=f.dataFields.filter(function(df){return df.req&&!df.header&&(getekend||df.fase!=='2');});var done=req.filter(function(df){return !!(bron[id+'_'+df.id]||'').trim();}).length;return req.length?Math.round(done/req.length*100):100;}
-function totalFillPct(dataBron){var bron=dataBron||S.data;var getekend=loiIsGetekend();var t=0,d=0;FASES.forEach(function(f){var req=f.dataFields.filter(function(df){return df.req&&!df.header&&(getekend||df.fase!=='2');});t+=req.length;d+=req.filter(function(df){return !!(bron[f.id+'_'+df.id]||'').trim();}).length;});return t?Math.round(d/t*100):0;}
+// Groepsniveau-velden (df.groepsniveau) tellen mee voor ELKE entiteit op basis van S._groepData —
+// die zitten nooit in een entiteit-eigen dataBron (zie getDataForFase), dus zonder deze uitzondering
+// zou geen enkele entiteit ooit 100% kunnen halen zolang zo'n veld verplicht is.
+function fillPct(id,dataBron){var f=FASES.find(function(x){return x.id===id;});if(!f)return 0;var bron=dataBron||S.data;var getekend=loiIsGetekend();var req=f.dataFields.filter(function(df){return df.req&&!df.header&&(getekend||df.fase!=='2');});var done=req.filter(function(df){var b=df.groepsniveau?S._groepData:bron;return !!(b[id+'_'+df.id]||'').trim();}).length;return req.length?Math.round(done/req.length*100):100;}
+function totalFillPct(dataBron){var bron=dataBron||S.data;var getekend=loiIsGetekend();var t=0,d=0;FASES.forEach(function(f){var req=f.dataFields.filter(function(df){return df.req&&!df.header&&(getekend||df.fase!=='2');});t+=req.length;d+=req.filter(function(df){var b=df.groepsniveau?S._groepData:bron;return !!(b[f.id+'_'+df.id]||'').trim();}).length;});return t?Math.round(d/t*100):0;}
 // Uitsluitend fase-1-velden checken (los van of de LoI al getekend is) — nodig om bij het inloggen
 // te bepalen of "deel 1" af is, ook nadat fase 2 al is ontgrendeld en dus meetelt in fillPct/totalFillPct.
 function fase1Compleet(){
@@ -189,7 +214,7 @@ function fase1Compleet(){
   FASES.forEach(function(f){
     var req=f.dataFields.filter(function(df){return df.req&&!df.header&&df.fase!=='2';});
     t+=req.length;
-    d+=req.filter(function(df){return !!(S.data[f.id+'_'+df.id]||'').trim();}).length;
+    d+=req.filter(function(df){var b=df.groepsniveau?S._groepData:S.data;return !!(b[f.id+'_'+df.id]||'').trim();}).length;
   });
   return t>0&&d===t;
 }
@@ -216,7 +241,7 @@ function isAdmin(){return isTussen();}
 function getMissing(){
   var missing=[];
   FASES.forEach(function(f,idx){
-    var missingFields=f.dataFields.filter(function(df){return df.req&&!df.header&&!(S.data[f.id+'_'+df.id]||'').trim();});
+    var missingFields=f.dataFields.filter(function(df){return df.req&&!df.header&&!((df.groepsniveau?S._groepData:S.data)[f.id+'_'+df.id]||'').trim();});
     if(missingFields.length)missing.push({fase:f.num+'. '+f.title,faseId:f.id,faseIdx:idx,fields:missingFields.map(function(df){return {id:df.id,label:df.label};})});
   });
   return missing;
@@ -227,15 +252,20 @@ function saveCurrent(cb){
   if(!f||S.screen!=='main'||isKoper())return;
   markDirty();
   if(S.traject&&S.traject.status==='vergrendeld'){if(cb)cb();return;}
+  var inEntiteitContext=(S.data!==S._groepData);
+  var groepsniveauGewijzigd=false;
   f.dataFields.forEach(function(df){
     if(df.header){return;}
     var el=ge('df_'+df.id);
     var key=f.id+'_'+df.id;
     if(el){
       // _userEdited wordt alleen gezet via oninput, NIET hier
-      if(el.value.trim()||S._userEdited[key])S.data[key]=el.value;
+      if(el.value.trim()||S._userEdited[key]){
+        if(df.groepsniveau){S._groepData[key]=el.value;if(inEntiteitContext)groepsniveauGewijzigd=true;}
+        else S.data[key]=el.value;
+      }
     }
-    // Als element niet in DOM is, behoud altijd bestaande S.data waarde
+    // Als element niet in DOM is, behoud altijd bestaande waarde
   });
   var nel=ge('notitie_'+f.id);if(nel)S.notities[f.id]=nel.value;
   clearTimeout(S.saveTimer);
@@ -251,6 +281,9 @@ function saveCurrent(cb){
         if(d.groepswaarden)Object.keys(d.groepswaarden).forEach(function(k){var v=d.groepswaarden[k];if(v&&v.value!==undefined)S._groepData[f.id+'_'+k]=v.value;});
       }
     }).catch(function(){});
+    // Groepsniveau-veld gewijzigd terwijl een entiteit actief was: die hoort niet in de
+    // entiteit-eigen save hierboven (getDataForFase sluit 'm al uit) — apart naar de groepsrij.
+    if(groepsniveauGewijzigd)saveGroepsniveauVelden(f.id);
     if(cb)cb();
   },800);
 }
@@ -264,7 +297,34 @@ function veldBron(key){
   if(S._userEdited&&S._userEdited[key])return {bron:'handmatig'};
   return null;
 }
-function getDataForFase(id){var f=FASES.find(function(x){return x.id===id;});if(!f)return {};var out={};f.dataFields.forEach(function(df){if(df.header)return;var v=S.data[id+'_'+df.id];if(v){var obj={value:v,label:df.label,req:df.req||false};var b=veldBron(id+'_'+df.id);if(b)Object.assign(obj,b);out[df.id]=obj;}});return out;}
+function getDataForFase(id){
+  var f=FASES.find(function(x){return x.id===id;});if(!f)return {};
+  var out={};
+  var inEntiteitContext=(S.data!==S._groepData);
+  f.dataFields.forEach(function(df){
+    if(df.header)return;
+    // Groepsniveau-velden horen nooit in de entiteit-eigen payload — die worden apart naar de
+    // groepsrij opgeslagen (zie saveGroepsniveauVelden), anders staat dezelfde "aantal partners"
+    // straks dubbel/anders in elke BV.
+    if(df.groepsniveau&&inEntiteitContext)return;
+    var key=id+'_'+df.id;
+    var v=(df.groepsniveau?S._groepData:S.data)[key];
+    if(v){var obj={value:v,label:df.label,req:df.req||false};var b=veldBron(key);if(b)Object.assign(obj,b);out[df.id]=obj;}
+  });
+  return out;
+}
+// Bouwt en verstuurt (los van de huidige entiteit-save) de volledige, actuele groepsrij voor een
+// fase — nodig omdat /mna/save de hele data_json vervangt, dus een groepsniveau-veld wijzigen
+// terwijl je een entiteit bekijkt mag nooit de rest van de groepsrij overschrijven.
+function saveGroepsniveauVelden(faseId){
+  var origData=S.data;
+  S.data=S._groepData;
+  var payload=getDataForFase(faseId);
+  S.data=origData;
+  fetch(WORKER+'/mna/save',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({code:S.code,fase_id:faseId,data_json:payload,checklist_json:getChecklistForFase(faseId),notitie:S.notities[faseId]||''})
+  }).catch(function(){});
+}
 function getChecklistForFase(id){var out={items:{},redflags:{}};var f=FASES.find(function(x){return x.id===id;});if(!f)return out;f.items.forEach(function(_,i){out.items[i]=!!S.checked[id+'_'+i];});f.redflags.forEach(function(_,i){out.redflags[i]=!!S.checked[id+'_rf_'+i];});return out;}
 function loadDataFromDB(dbData){dbData.forEach(function(row){var id=row.fase_id;var dj=typeof row.data_json==='string'?JSON.parse(row.data_json||'{}'):row.data_json||{};var cj=typeof row.checklist_json==='string'?JSON.parse(row.checklist_json||'{}'):row.checklist_json||{};var f=FASES.find(function(x){return x.id===id;});if(!f)return;
   // Groepsstructuur (Fase 2): rijen met entiteit_id gaan naar de per-entiteit-opslag, niet naar S._groepData
@@ -664,25 +724,28 @@ function _autoFillFromExtractionBody(faseId, velden, forceOverwrite, docNaam) {
       if(knownFases.includes(parts[0])){
         var val=cleanGetal(velden[k]);
         if(val&&val!=='null'&&String(val).trim()!==''){
-          if(forceOverwrite||!(S.data[k]||'').trim())S.data[k]=String(val);
+          var doelDirect=doelData(k);
+          if(forceOverwrite||!(doelDirect[k]||'').trim())doelDirect[k]=String(val);
         }
       }
     }
   });
 
   function setIfEmpty(key, val) {
-    if(val&&val!=='null'&&val!==null&&String(val).trim()!==''&&!(S.data[key]||'').trim())
-      S.data[key]=String(val);
+    var d=doelData(key);
+    if(val&&val!=='null'&&val!==null&&String(val).trim()!==''&&!(d[key]||'').trim())
+      d[key]=String(val);
   }
   function applyOrConflict(key, val, label) {
     if(!val||val==='null'||val===null||String(val).trim()==='')return;
+    var d=doelData(key);
     var newVal=String(val);
-    var existing=(S.data[key]||'').trim();
-    if(!existing){S.data[key]=newVal;if(!S._docSource)S._docSource={};S._docSource[key]=currentDocNaam;return;}
+    var existing=(d[key]||'').trim();
+    if(!existing){d[key]=newVal;if(!S._docSource)S._docSource={};S._docSource[key]=currentDocNaam;return;}
     if(existing===newVal)return;
-    if(forceOverwrite){S.data[key]=newVal;if(!S._docSource)S._docSource={};S._docSource[key]=currentDocNaam;return;}
+    if(forceOverwrite){d[key]=newVal;if(!S._docSource)S._docSource={};S._docSource[key]=currentDocNaam;return;}
     // Zelfde document dat dit veld eerder al zette (bijv. herverwerking) — gewoon bijwerken, geen conflict.
-    if(S._docSource&&S._docSource[key]===currentDocNaam){S.data[key]=newVal;return;}
+    if(S._docSource&&S._docSource[key]===currentDocNaam){d[key]=newVal;return;}
     // Andere waarde dan wat er al stond — altijd laten kiezen, ook als het huidige veld zelf
     // automatisch is ingevuld door een ander document. Stilzwijgend overschrijven leidde ertoe dat
     // een later document (bijv. van een ander bedrijfsonderdeel) correcte cijfers ongemerkt verving.

@@ -218,7 +218,9 @@ function renderMain(){
       }
       return; // Sla geblokkeerde velden over
     }
-    var val=S.data[f.id+'_'+df.id]||'';
+    // Groepsniveau-velden (bv. aantal partners) horen altijd bij de groep, ook als er een
+    // entiteit actief is — anders lijkt hetzelfde partnerteam per BV een ander antwoord te geven.
+    var val=(df.groepsniveau?S._groepData:S.data)[f.id+'_'+df.id]||'';
     var ref=S.docRefs&&S.docRefs[f.id+'_'+df.id]||null;
     var missing=S.showValidation&&df.req&&!val.trim();
     // Check of dit veld een openstaand conflict heeft
@@ -226,6 +228,7 @@ function renderMain(){
     // Groepsstructuur (Fase 2): op groepsniveau (geen actieve entiteit) zijn geaggregeerde velden
     // read-only — automatisch berekend uit de entiteiten, niet handmatig te overschrijven.
     var isGeaggregeerdInGroep=!S._actieveEntiteit&&S._entiteiten&&S._entiteiten.length&&isGeaggregeerdVeld(f.id,df.id);
+    var toontGroepsniveauBadge=df.groepsniveau&&S._actieveEntiteit&&S._entiteiten&&S._entiteiten.length;
     dataHtml+='<div>';
     if(isRO){
       dataHtml+='<div class="f"><label>'+df.label+(df.req?' <span class="req">*</span>':'')+(df.doc?' &#128196;':'')+'</label>'
@@ -237,7 +240,8 @@ function renderMain(){
       var conflictStyle=hasConflict?'border-color:var(--gold);background:#fffbf0':'';
       var conflictTitle=hasConflict?(' title="Document zegt: '+esc(hasConflict)+'"'):'';
       dataHtml+='<div class="f"><label>'+df.label+(df.req?' <span class="req">*</span>':'')+(df.doc?' <span style="color:var(--gold);font-size:9px">&#128196; ref</span>':'')
-        +(hasConflict?' <span style="color:var(--gold);font-size:9px;font-weight:600" title="Document geeft andere waarde: '+esc(hasConflict)+'">&#9888; afwijking</span>':'')+'</label>'
+        +(hasConflict?' <span style="color:var(--gold);font-size:9px;font-weight:600" title="Document geeft andere waarde: '+esc(hasConflict)+'">&#9888; afwijking</span>':'')
+        +(toontGroepsniveauBadge?' <span style="color:var(--muted);font-size:9px;font-weight:600" title="Dit veld geldt voor de hele groep, niet alleen voor de geselecteerde entiteit — wijzigingen gelden overal.">&#128279; geldt voor hele groep</span>':'')+'</label>'
         +'<input type="text" id="df_'+df.id+'" value="'+esc(val)+'" placeholder="'+esc(df.ph)+'" class="'+(missing?'missing':'')+'" style="'+conflictStyle+'"'+conflictTitle+' oninput="userEdit(this)"></div>';
     }
     dataHtml+='</div>';
