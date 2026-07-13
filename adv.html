@@ -764,6 +764,7 @@ function renderDetail(t){
           <div style="font-family:'Playfair Display',serif;font-size:1.4rem;color:var(--head);font-weight:600">${esc(t.kantoor_naam||id)}</div>
           <div style="font-size:12px;color:var(--muted);margin-top:4px">${esc(t.traject_type||'—')} &middot; ${esc(sl[t.sector]||'—')} &middot; <span style="font-family:monospace">${esc(id)}</span></div>
         </div>
+        <button class="btn-outline btn-sm" onclick="toonAdvBewerkModal('${esc(id)}')">&#9999;&#65039; Bewerk gegevens</button>
       </div>
 
       ${t.verkoper_klaar ? `<div style="background:#edf7f3;border:2px solid #1a7a5e;border-radius:8px;padding:1rem 1.25rem;margin-bottom:1.5rem;display:flex;align-items:center;gap:12px">
@@ -826,6 +827,77 @@ function renderDetail(t){
     laadDocumenten(id, t.tussen_code);
     laadGesprekken(id, t.tussen_code);
   }
+}
+
+// ===== VERKOPER/KOPER-GEGEVENS BEWERKEN (zelf-service, i.p.v. via Marcel) =====
+function toonAdvBewerkModal(id){
+  var t=G.trajecten.find(function(x){return x.id===id;})||{};
+  var ov=document.createElement('div');ov.className='overlay';
+  ov.innerHTML=`<div class="modal">
+    <div class="modal-title">&#9999;&#65039; Bewerk gegevens</div>
+    <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.5rem">Verkoper</div>
+    <div class="field"><label>Naam onderneming</label><input type="text" id="bw-k" value="${esc(t.kantoor_naam||'')}"></div>
+    <div class="row2">
+      <div class="field"><label>Contactpersoon</label><input type="text" id="bw-c" value="${esc(t.contact_naam||'')}"></div>
+      <div class="field"><label>E-mail contactpersoon</label><input type="email" id="bw-e" value="${esc(t.contact_email||'')}"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>KvK-nummer</label><input type="text" id="bw-kvk" value="${esc(t.verkoper_kvk||'')}"></div>
+      <div class="field"><label>Adres</label><input type="text" id="bw-adres" value="${esc(t.verkoper_adres||'')}"></div>
+    </div>
+    <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin:1rem 0 .5rem">Koper</div>
+    <div class="field"><label>Naam koper</label><input type="text" id="bw-koper-naam" value="${esc(t.koper_naam||'')}"></div>
+    <div class="row2">
+      <div class="field"><label>Contactpersoon koper</label><input type="text" id="bw-koper-contact" value="${esc(t.koper_contact||'')}"></div>
+      <div class="field"><label>E-mail koper</label><input type="email" id="bw-koper-email" value="${esc(t.koper_email||'')}"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>KvK-nummer koper</label><input type="text" id="bw-koper-kvk" value="${esc(t.koper_kvk||'')}"></div>
+      <div class="field"><label>Adres koper</label><input type="text" id="bw-koper-adres" value="${esc(t.koper_adres||'')}"></div>
+    </div>
+    <div class="field"><label>Rechtsvorm koper</label><select id="bw-koper-rv">
+      <option value="">— Kies rechtsvorm —</option>
+      <option value="B.V."${t.koper_rechtsvorm==='B.V.'?' selected':''}>B.V.</option>
+      <option value="N.V."${t.koper_rechtsvorm==='N.V.'?' selected':''}>N.V.</option>
+      <option value="Eenmanszaak"${t.koper_rechtsvorm==='Eenmanszaak'?' selected':''}>Eenmanszaak</option>
+      <option value="V.O.F."${t.koper_rechtsvorm==='V.O.F.'?' selected':''}>V.O.F.</option>
+      <option value="Holding B.V."${t.koper_rechtsvorm==='Holding B.V.'?' selected':''}>Holding B.V.</option>
+    </select></div>
+    <div id="bw-err" class="err-msg"></div>
+    <div class="modal-footer">
+      <button class="btn-outline" id="bw-ann">Annuleren</button>
+      <button class="btn" id="bw-ok">&#10003; Opslaan</button>
+    </div>
+  </div>`;
+  document.body.appendChild(ov);
+  ge('bw-ann').onclick=function(){document.body.removeChild(ov);};
+  ge('bw-ok').onclick=async function(){
+    var btn=this;btn.disabled=true;btn.textContent='Opslaan...';
+    var err=ge('bw-err');err.style.display='none';
+    var payload={
+      email:G.email,wachtwoord:G.ww,
+      kantoor_naam:ge('bw-k').value.trim(),
+      contact_naam:ge('bw-c').value.trim(),
+      contact_email:ge('bw-e').value.trim(),
+      verkoper_kvk:ge('bw-kvk').value.trim(),
+      verkoper_adres:ge('bw-adres').value.trim(),
+      koper_naam:ge('bw-koper-naam').value.trim(),
+      koper_contact:ge('bw-koper-contact').value.trim(),
+      koper_email:ge('bw-koper-email').value.trim(),
+      koper_kvk:ge('bw-koper-kvk').value.trim(),
+      koper_adres:ge('bw-koper-adres').value.trim(),
+      koper_rechtsvorm:ge('bw-koper-rv').value
+    };
+    try{
+      var r=await fetch(WORKER+'/adviseur/traject/update/'+id,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      var d=await r.json();
+      if(!d.ok){err.textContent=d.error||'Fout bij opslaan.';err.style.display='block';btn.disabled=false;btn.textContent='Opslaan';return;}
+      Object.assign(t,{kantoor_naam:payload.kantoor_naam,contact_naam:payload.contact_naam,contact_email:payload.contact_email,verkoper_kvk:payload.verkoper_kvk,verkoper_adres:payload.verkoper_adres,koper_naam:payload.koper_naam,koper_contact:payload.koper_contact,koper_email:payload.koper_email,koper_kvk:payload.koper_kvk,koper_adres:payload.koper_adres,koper_rechtsvorm:payload.koper_rechtsvorm});
+      document.body.removeChild(ov);
+      toast('Gegevens opgeslagen.','ok');
+      renderDetail(t);
+    }catch(e){err.textContent='Verbindingsfout — probeer opnieuw.';err.style.display='block';btn.disabled=false;btn.textContent='Opslaan';}
+  };
 }
 
 renderLogin();
