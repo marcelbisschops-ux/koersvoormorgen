@@ -1138,12 +1138,20 @@ function toonConflictDialog() {
     // Visueel duidelijk maken welke optie daadwerkelijk gekozen is (voorheen kreeg "Document"
     // altijd een teal-accent, ook als "Huidig" geselecteerd was — dat oogde tegenstrijdig).
     var stijlBasis='flex:1;min-width:140px;display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;padding:7px 10px;border-radius:var(--r);border:1px solid ';
+    // Derde optie: soms kloppen huidig én document allebei niet voor dit specifieke veld (bv. een
+    // periodebalans met een ander boekjaar dan verwacht). Dan niets overschrijven, maar wel het
+    // "⚠ afwijking"-label op het veld laten staan — dat is dan bewust nog onopgelost, geen
+    // stilzwijgend "huidig was toch goed".
+    var lblG=document.createElement('label');lblG.style.cssText='display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);cursor:pointer;margin-top:6px';
+    var rG=document.createElement('input');rG.type='radio';rG.name='cf_'+i;rG.value='geen';rG.style.accentColor='var(--red)';lblG.appendChild(rG);
+    lblG.appendChild(document.createTextNode('Geen van beide juist — veld blijft openstaan'));
     function updateOptieStijl(){
       lblH.style.cssText=stijlBasis+(rH.checked?'var(--teal-dark);background:var(--teal-bg)':'var(--border2);background:var(--panel)');
       lblN.style.cssText=stijlBasis+(rN.checked?'var(--teal-dark);background:var(--teal-bg)':'var(--border2);background:var(--panel)');
+      lblG.style.color=rG.checked?'var(--red)':'var(--muted)';lblG.style.fontWeight=rG.checked?'600':'400';
     }
-    rH.addEventListener('change',updateOptieStijl);rN.addEventListener('change',updateOptieStijl);updateOptieStijl();
-    row.appendChild(opts);list.appendChild(row);radios.push({key:c.key,rH:rH,rN:rN,conflict:c});
+    rH.addEventListener('change',updateOptieStijl);rN.addEventListener('change',updateOptieStijl);rG.addEventListener('change',updateOptieStijl);updateOptieStijl();
+    row.appendChild(opts);row.appendChild(lblG);list.appendChild(row);radios.push({key:c.key,rH:rH,rN:rN,rG:rG,conflict:c});
   });
   box.appendChild(list);
   var btns=document.createElement('div');btns.style.cssText='display:flex;gap:10px;justify-content:flex-end';
@@ -1159,6 +1167,12 @@ function toonConflictDialog() {
   btnA.addEventListener('click',function(){
     radios.forEach(function(r){
       var c=r.conflict;
+      if(r.rG.checked){
+        // Geen van beide juist: niets overschrijven, en het "⚠ afwijking"-label bewust laten
+        // staan (pendingConflicts niet wissen) — dit veld is nog steeds onopgelost.
+        S._choiceLog.push({key:c.key,label:c.label,gekozen:'geen',waarde:'',verworpen:c.huidig+' / '+c.nieuw,bron:c.bron||'onbekend',ts:new Date().toLocaleString('nl-NL')});
+        return;
+      }
       var gekozenHuidig=r.rH.checked;
       if(!gekozenHuidig)S.data[r.key]=c.nieuw;
       if(S._pendingConflicts)delete S._pendingConflicts[r.key];
