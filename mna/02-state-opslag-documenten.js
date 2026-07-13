@@ -65,6 +65,23 @@ function entiteitNaam(id){
   return e?e.naam:'';
 }
 
+// AI vult per document al een entiteit_naam-veld (herkende bedrijfsnaam), maar dat werd alleen
+// gebruikt voor een afwijkingswaarschuwing tegen de kantoornaam — nooit om de koppel-dropdown voor
+// te selecteren. Eerst een exacte match op genormaliseerde naam (dekt "BV"/"B.V."/"bv"), pas als
+// dat niets oplevert een bevat-check. Bewust GEEN losse-voorvoegsel-matching (zoals de worker voor
+// de afwijs-validatie gebruikt) — bij namen die een lang gedeeld voorvoegsel delen (hier: "[dossier]
+// ...") maakte dat elke zustervennootschap onterecht gelijk.
+function gokEntiteitId(entiteitNaamAI){
+  if(!entiteitNaamAI||!S._entiteiten||!S._entiteiten.length)return '';
+  function norm(s){return String(s||'').toLowerCase().replace(/[^a-z0-9]/g,'');}
+  var doel=norm(entiteitNaamAI);
+  if(!doel)return '';
+  var exact=S._entiteiten.filter(function(e){return norm(e.naam)===doel;});
+  if(exact.length===1)return exact[0].id;
+  var bevat=S._entiteiten.filter(function(e){var n=norm(e.naam);return n&&(doel.indexOf(n)!==-1||n.indexOf(doel)!==-1);});
+  return bevat.length===1?bevat[0].id:'';
+}
+
 // ── BEVEILIGING ─────────────────────────────────────────────────────────────
 var SEC = {
   SESSION_MS: 8 * 60 * 60 * 1000,   // 8 uur sessieduur
@@ -927,11 +944,12 @@ function renderDocumentSectie(faseId) {
       }
       var entNaamDoc = entiteitNaam(doc.entiteit_id);
       var toonKoppelenDoc = !isReadOnly && !doc.entiteit_id && S._entiteiten && S._entiteiten.length;
+      var gokIdDoc = toonKoppelenDoc?gokEntiteitId((doc.velden||{}).entiteit_naam):'';
       return '<div style="display:flex;align-items:center;gap:6px;padding:5px 8px;background:var(--card);border-radius:var(--r);border:1px solid var(--border);flex-wrap:wrap">'
         + '<span style="font-size:13px">'+icon+'</span>'
         + '<span style="font-size:11px;color:var(--teal);flex:1">'+(doc.bewaard?'<a href="'+WORKER+'/mna/document/download/'+doc.id+'?code='+encodeURIComponent(S.code)+'" target="_blank" style="color:var(--teal);text-decoration:none">'+esc(doc.naam)+'</a>':esc(doc.naam))+(entNaamDoc?' <span style="font-size:9px;font-weight:600;color:var(--teal);background:var(--teal-bg);border-radius:8px;padding:1px 6px;margin-left:2px">'+esc(entNaamDoc)+'</span>':'')+'</span>'
         + '<span style="font-size:10px;color:var(--muted)">'+(doc.grootte/1024/1024).toFixed(1)+'MB</span>'
-        + (toonKoppelenDoc?'<select id="fd-ent-'+doc.id+'" style="font-size:10px;background:var(--panel);border:1px solid var(--border2);border-radius:var(--r);padding:2px 4px"><option value="">— Koppel aan entiteit —</option>'+S._entiteiten.map(function(e){return '<option value="'+esc(e.id)+'">'+esc(e.naam)+'</option>';}).join('')+'</select><button onclick="koppelDocumentAanEntiteit(\''+doc.id+'\',\'fd-ent-\')" style="background:none;border:1px solid var(--teal);color:var(--teal);border-radius:var(--r);cursor:pointer;font-size:10px;padding:1px 6px">&#128279;</button>':'')
+        + (toonKoppelenDoc?'<select id="fd-ent-'+doc.id+'" style="font-size:10px;background:var(--panel);border:1px solid var(--border2);border-radius:var(--r);padding:2px 4px"><option value="">— Koppel aan entiteit —</option>'+S._entiteiten.map(function(e){return '<option value="'+esc(e.id)+'"'+(e.id===gokIdDoc?' selected':'')+'>'+esc(e.naam)+(e.id===gokIdDoc?' (AI-suggestie)':'')+'</option>';}).join('')+'</select><button onclick="koppelDocumentAanEntiteit(\''+doc.id+'\',\'fd-ent-\')" style="background:none;border:1px solid var(--teal);color:var(--teal);border-radius:var(--r);cursor:pointer;font-size:10px;padding:1px 6px">&#128279;</button>':'')
         + (!isReadOnly?'<button onclick="deleteDocument(\''+doc.id+'\',\''+faseId+'\')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:10px;padding:0 2px">✕</button>':'')
         + '</div>';
     }).join('');
@@ -1107,13 +1125,14 @@ function renderDataroom(){
         var gr=(doc.grootte/1024/1024).toFixed(1)+'MB';
         var entNaam=entiteitNaam(doc.entiteit_id);
         var toonKoppelen=!isKoper()&&!doc.entiteit_id&&S._entiteiten&&S._entiteiten.length;
+        var gokId=toonKoppelen?gokEntiteitId((doc.velden||{}).entiteit_naam):'';
         html+='<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">'
           +'<span style="font-size:18px">'+icon+'</span>'
           +'<div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--head)">'+esc(doc.naam)+(entNaam?' <span style="font-size:10px;font-weight:600;color:var(--teal);background:var(--teal-bg);border-radius:8px;padding:2px 8px;margin-left:4px">'+esc(entNaam)+'</span>':'')+'</div>'
           +'<div style="font-size:11px;color:var(--muted);margin-top:2px">'+gr+(st?' &middot; Geupload: '+st:'')+'</div>'
           +(toonKoppelen?'<div style="margin-top:6px;display:flex;gap:6px;align-items:center">'
             +'<select id="dr-ent-'+doc.id+'" style="font-size:11px;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:4px 6px"><option value="">— Koppel aan entiteit —</option>'
-            +S._entiteiten.map(function(e){return '<option value="'+esc(e.id)+'">'+esc(e.naam)+'</option>';}).join('')
+            +S._entiteiten.map(function(e){return '<option value="'+esc(e.id)+'"'+(e.id===gokId?' selected':'')+'>'+esc(e.naam)+(e.id===gokId?' (AI-suggestie)':'')+'</option>';}).join('')
             +'</select>'
             +'<button class="btn-ghost btn-sm" style="font-size:11px" onclick="koppelDocumentAanEntiteit(\''+doc.id+'\')">&#128279; Koppelen</button>'
             +'</div>':'')
