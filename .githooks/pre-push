@@ -1,0 +1,38 @@
+#!/bin/bash
+# ══════════════════════════════════════════════════════════════════
+# KantoorInzicht — rem vóór elke push naar GitHub
+#
+# Draait bij elke "git push" (terminal én GitHub Desktop, beide gebruiken
+# deze git-hooks) automatisch de statische veiligheidsaudit en de
+# UI-testsuite. Faalt een van de twee, dan wordt de push geweigerd.
+#
+# Dit is het frontend-equivalent van scripts/deploy-worker.sh (die dekt de
+# worker-deploy; deze hook dekt mna.html/adv.html/marilyn.html-pushes).
+#
+# Noodgeval (bewust overslaan): git push --no-verify
+# ══════════════════════════════════════════════════════════════════
+set -euo pipefail
+REPO_DIR="$(git rev-parse --show-toplevel)"
+cd "$REPO_DIR"
+
+echo "── Rem vóór push: veiligheidsaudit + UI-testsuite ──"
+
+if ! node tests/audit-consistentie.mjs; then
+  echo "" >&2
+  echo "✗ Veiligheidsaudit heeft bevindingen — push geweigerd. Zie hierboven." >&2
+  echo "  Noodgeval? git push --no-verify (alleen met expliciete reden)." >&2
+  exit 1
+fi
+
+if [ -z "${ADMIN_KEY:-}" ]; then
+  echo "⚠ Geen ADMIN_KEY in environment — module-gating-test wordt overgeslagen, rest draait gewoon."
+fi
+
+if ! npx playwright test; then
+  echo "" >&2
+  echo "✗ UI-testsuite gefaald — push geweigerd. Zie hierboven." >&2
+  echo "  Noodgeval? git push --no-verify (alleen met expliciete reden)." >&2
+  exit 1
+fi
+
+echo "✓ Audit en testsuite groen — push gaat door."
