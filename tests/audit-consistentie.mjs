@@ -161,6 +161,14 @@ const GEVERIFIEERD_VEILIG_CHECK5 = new Set([
   '/gebruikers/deactiveer/', // ADMIN_KEY + isSuperAdmin, response is alleen {ok:true}
   '/gebruikers/mna/detail/', // eigenaarscheck (gebruiker_id) + strip dezelfde 8 velden als /mna/traject/ (13-07-2026)
   '/adviseur/trajecten',     // idem strip (13-07-2026) — dit was het echte, live lek dat deze regel miste (zie hieronder)
+  '/gebruikers/mna/lijst',   // idem strip (13-07-2026) — had ook een losse bug (ongedefinieerde 'email'-variabele), meteen gefixt
+  '/mna/document/eigen/versturen', // retourneert alleen {ok:true}; SELECT * wordt enkel gebruikt voor e-mailtekst
+  '/mna/teken',                    // retourneert alleen {ok:true}; SELECT * wordt enkel gebruikt voor e-mailtekst/logboek
+  '/mna/beoordeling/ai',           // ADMIN_KEY-gated, retourneert alleen {ok,analyse}
+  '/mna/waardering/genereer',      // ADMIN_KEY-gated, retourneert alleen het AI-waarderingsvoorstel
+  '/mna/infoverzoek/stuur',        // retourneert alleen {ok:true}; SELECT * wordt enkel gebruikt voor e-mailtekst
+  '/mna/signhost/stuur',           // ADMIN_KEY- of geldige tussen_code-gated, retourneert alleen transactiestatus
+  '/mna/signhost/webhook',         // inkomend vanaf Signhost zelf, retourneert altijd platte tekst 'ok', nooit JSON
 ]);
 if (workerPath) {
   const workerSrc2 = fs.readFileSync(workerPath, 'utf8');
