@@ -194,7 +194,7 @@ function renderLogin(){
     +'<div id="l-err" style="color:var(--red);font-size:12px;margin-bottom:.75rem;display:none">Code niet gevonden. Controleer uw code of neem contact op met uw adviseur.</div>'
     +'<div id="l-load" style="color:var(--muted);font-size:12px;margin-bottom:.75rem;display:none">Laden...</div>'
     +'<div style="display:flex;gap:10px"><button class="btn-ghost" onclick="window.location.href=\'index.html\'">Terug</button><button class="btn" id="l-btn">Inloggen</button></div>'
-    +'<div style="margin-top:1rem;padding:.75rem 1rem;background:rgba(26,122,94,.07);border:1px solid rgba(26,122,94,.2);border-radius:6px;font-size:11px;color:#6a6a60;line-height:1.7">&#128274; <strong style="color:#2a2825">Beveiliging & privacy</strong><br>Uw verbinding is versleuteld (HTTPS). Gegevens opgeslagen in Cloudflare EU-datacenters (Frankfurt, Duitsland). Toegang alleen met uw persoonlijke code. Geen gegevensverkoop aan derden. <a href="privacy.html" style="color:#1a7a5e">Privacyverklaring</a> &middot; <a href="platformvoorwaarden.html" style="color:#1a7a5e">Voorwaarden</a></div>'
+    +'<div style="margin-top:1rem;padding:.75rem 1rem;background:rgba(26,122,94,.07);border:1px solid rgba(26,122,94,.2);border-radius:6px;font-size:11px;color:var(--mid);line-height:1.7">&#128274; <strong style="color:var(--head)">Beveiliging & privacy</strong><br>Uw verbinding is versleuteld (HTTPS). Gegevens opgeslagen in Cloudflare EU-datacenters (Frankfurt, Duitsland). Toegang alleen met uw persoonlijke code. Geen gegevensverkoop aan derden. <a href="privacy.html" style="color:var(--teal)">Privacyverklaring</a> &middot; <a href="platformvoorwaarden.html" style="color:var(--teal)">Voorwaarden</a></div>'
     +'<div style="margin-top:1.25rem;font-size:11px;color:var(--muted);padding-top:1rem;border-top:1px solid var(--border)">Code ontvangen via uw adviseur.</div>'
     +'<div style="margin-top:.5rem;font-size:10px;color:var(--muted);display:flex;align-items:center;gap:5px">&#128274; Sessie verloopt automatisch na 8 uur inactiviteit. Max. 10 inlogpogingen per sessie.</div>'
     +'</div></div>'
@@ -220,11 +220,11 @@ function toonKoperToegangModal(app){
   // null (alles) → bij binaire oude vrijgave alles aangevinkt; anders de opgeslagen selectie
   var voorGeselecteerd = huidige===null ? (t.koper_vrijgegeven?fases.map(function(f){return f.id;}):[]) : huidige;
   var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:400;display:flex;align-items:center;justify-content:center;padding:1.5rem';
-  var mo=document.createElement('div');mo.style.cssText='background:#fff;border-radius:10px;padding:1.75rem;max-width:520px;width:100%;max-height:90vh;overflow-y:auto';
+  var mo=document.createElement('div');mo.style.cssText='background:var(--panel);border-radius:10px;padding:1.75rem;max-width:520px;width:100%;max-height:90vh;overflow-y:auto';
   var rijen=fases.map(function(f){
     var aan=voorGeselecteerd.indexOf(f.id)>=0;
-    return '<label style="display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid #e0ddd6;border-radius:7px;margin-bottom:7px;cursor:pointer;font-size:13px;color:#2a2825">'
-      +'<input type="checkbox" class="kt-cat" value="'+f.id+'"'+(aan?' checked':'')+' style="width:16px;height:16px;accent-color:#1a7a5e">'
+    return '<label style="display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid var(--border);border-radius:7px;margin-bottom:7px;cursor:pointer;font-size:13px;color:var(--sub)">'
+      +'<input type="checkbox" class="kt-cat" value="'+f.id+'"'+(aan?' checked':'')+' style="width:16px;height:16px;accent-color:var(--teal)">'
       +'<span style="font-weight:600;color:#8a8880;min-width:24px">'+esc(f.num||'')+'</span><span>'+esc(f.title||f.id)+'</span></label>';
   }).join('');
   mo.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.15rem;color:#1a1815;font-weight:600;margin-bottom:.25rem">&#128275; Koper-toegang per categorie</div>'
@@ -267,7 +267,7 @@ function toonKoperToegangModal(app){
 
 function toonGroepsstructuurModal(app){
   var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:400;display:flex;align-items:center;justify-content:center;padding:1.5rem';
-  var mo=document.createElement('div');mo.style.cssText='background:#fff;border-radius:10px;padding:1.75rem;max-width:520px;width:100%;max-height:90vh;overflow-y:auto';
+  var mo=document.createElement('div');mo.style.cssText='background:var(--panel);border-radius:10px;padding:1.75rem;max-width:520px;width:100%;max-height:90vh;overflow-y:auto';
   mo.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.15rem;color:#1a1815;font-weight:600;margin-bottom:.25rem">&#127970; Groepsstructuur</div>'
     +'<div style="font-size:12px;color:#8a8880;margin-bottom:1rem">Betreft dit traject een holding met meerdere werkmaatschappijen? Registreer hier de aparte entiteiten — documenten van deze bedrijven worden dan niet meer afgewezen als "ander bedrijf", en blijven traceerbaar in de dataroom.</div>'
     +'<div id="gs-lijst" style="margin-bottom:1rem;font-size:13px;color:#8a8880;font-style:italic">Laden...</div>'
@@ -291,8 +291,8 @@ function toonGroepsstructuurModal(app){
     if(!rows||!rows.length){lijstEl.innerHTML='<span style="font-style:italic">Nog geen entiteiten geregistreerd — dit traject wordt behandeld als één bedrijf.</span>';return;}
     lijstEl.style.fontStyle='normal';
     lijstEl.innerHTML=rows.map(function(r){
-      return '<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid #e0ddd6;border-radius:7px;margin-bottom:6px">'
-        +'<div style="flex:1"><div style="font-size:13px;color:#2a2825">'+esc(r.naam)+'</div>'+(r.kvk?'<div style="font-size:11px;color:#8a8880">KvK '+esc(r.kvk)+'</div>':'')+'</div>'
+      return '<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid var(--border);border-radius:7px;margin-bottom:6px">'
+        +'<div style="flex:1"><div style="font-size:13px;color:var(--sub)">'+esc(r.naam)+'</div>'+(r.kvk?'<div style="font-size:11px;color:var(--muted)">KvK '+esc(r.kvk)+'</div>':'')+'</div>'
         +'<button class="gs-verwijder" data-id="'+esc(r.id)+'" style="background:transparent;border:1px solid #c8c5bc;color:#e05252;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px">Verwijderen</button>'
         +'</div>';
     }).join('');
@@ -743,7 +743,7 @@ function renderBegeleiderDashboard(app){
       return '<div style="flex:1"><label style="'+lbl+'">'+label+'</label><input type="number" id="'+id+'" value="'+val+'" '+(step?'step="'+step+'"':'')+' style="'+inp+'"></div>';
     }
     var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:400;display:flex;align-items:center;justify-content:center;padding:1.5rem';
-    var mo=document.createElement('div');mo.style.cssText='background:#fff;border-radius:10px;padding:2rem;max-width:640px;width:100%;max-height:92vh;overflow-y:auto';
+    var mo=document.createElement('div');mo.style.cssText='background:var(--panel);border-radius:10px;padding:2rem;max-width:640px;width:100%;max-height:92vh;overflow-y:auto';
     mo.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.15rem;color:#1a1815;font-weight:600;margin-bottom:.25rem">&#128202; Dealvoorstel — dealparameters</div>'
       +'<div style="font-size:12px;color:#8a8880;margin-bottom:1.25rem">Deze cijfers worden exact zo berekend en meegenomen — de AI verzint geen eigen bedragen of multiples.</div>'
       +'<div style="margin-bottom:1rem"><label style="'+lbl+'">Tegenpartij (koper)</label><input type="text" id="dv-koper" value="'+esc(d.koperNaam)+'" placeholder="Naam kopende partij" style="'+inp+'"></div>'
@@ -755,7 +755,7 @@ function renderBegeleiderDashboard(app){
       +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('dv-vpb','VpB-tarief (%)',d.vpbPct,0.1)+veld('dv-capex','Capex (% van EBITDA)',d.capexPct,0.1)+'</div>'
       +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('dv-groei','Organische groei (%/jaar)',d.groeiPct,0.1)+veld('dv-horizon','Horizon schuldafbouw (jaren)',d.horizonJaren)+'</div>'
       +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('dv-discontovoet','Discontovoet / WACC (%) — voor DCF-kruiscontrole',d.discontovoetPct,0.1)+'<div style="flex:1"></div></div>'
-      +'<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#2a2825;margin-bottom:1rem;cursor:pointer"><input type="checkbox" id="dv-bab-aan" style="width:15px;height:15px;accent-color:#8a5a00"> Buy-and-build platformscenario meenemen</label>'
+      +'<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--sub);margin-bottom:1rem;cursor:pointer"><input type="checkbox" id="dv-bab-aan" style="width:15px;height:15px;accent-color:var(--gold-dark)"> Buy-and-build platformscenario meenemen</label>'
       +'<div id="dv-bab-velden" style="display:none">'
       +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('dv-bab-nper','Overnames per jaar',d.baOvernamesPerJaar)+veld('dv-bab-omvang','Gem. EBITDA per overname (€)',d.baOmvangEbitda)+'</div>'
       +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('dv-bab-mult','Acquisitiemultiple',d.baAcqMultiple,0.1)+veld('dv-bab-max','Doel-platformmultiple bij schaal',d.baPlatformMultipleMax,0.1)+'</div>'
@@ -862,7 +862,7 @@ function renderBegeleiderDashboard(app){
         out.style.display='block';
         var titel='Dealvoorstel — '+(t2.kantoor_naam||S.code);
         out.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem">'
-          +'<div style="font-size:11px;font-weight:600;color:#8a5a00;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.75rem">Dealvoorstel gegenereerd</div>'
+          +'<div style="font-size:11px;font-weight:600;color:var(--gold-dark);text-transform:uppercase;letter-spacing:.1em;margin-bottom:.75rem">Dealvoorstel gegenereerd</div>'
           +'<div style="font-size:11px;color:var(--teal);margin-bottom:.5rem">&#9998; Klik in de tekst hieronder om aan te passen vóór verzending.</div>'
           +'<div id="dv-preview" contenteditable="true" style="max-height:400px;overflow-y:auto;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:1.25rem;font-family:Georgia,serif;font-size:12px;line-height:1.7;color:var(--sub);outline:none" onfocus="this.style.borderColor=\'var(--teal)\'" onblur="this.style.borderColor=\'var(--border2)\'">'+bodyHtml+'</div>'
           +akkoordHtml('dv-doc-akkoord')
@@ -912,7 +912,7 @@ function renderBegeleiderDashboard(app){
     }
     var geldigTot=new Date(Date.now()+30*24*3600*1000).toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'});
     var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:400;display:flex;align-items:center;justify-content:center;padding:1.5rem';
-    var mo=document.createElement('div');mo.style.cssText='background:#fff;border-radius:10px;padding:2rem;max-width:560px;width:100%;max-height:92vh;overflow-y:auto';
+    var mo=document.createElement('div');mo.style.cssText='background:var(--panel);border-radius:10px;padding:2rem;max-width:560px;width:100%;max-height:92vh;overflow-y:auto';
     mo.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.15rem;color:#1a1815;font-weight:600;margin-bottom:.25rem">&#128233; Indicatieve bieding</div>'
       +'<div style="font-size:12px;color:#8a8880;margin-bottom:1.25rem">Niet-bindend bod. Het bod (bandbreedte) wordt berekend uit EBITDA × multiple en exact zo in de brief overgenomen.</div>'
       +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('bd-ebitda','Genormaliseerde EBITDA (€)',d.ebitdaBewezen)+'</div>'
@@ -1022,7 +1022,7 @@ function renderBegeleiderDashboard(app){
     if(t2.contact_email)ontvangers.push({label:'Verkoper ('+esc(t2.contact_email)+')',email:t2.contact_email,checked:true});
     if(t2.koper_email)ontvangers.push({label:'Koper ('+esc(t2.koper_email)+')',email:t2.koper_email,checked:false});
     var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:400;display:flex;align-items:center;justify-content:center;padding:1.5rem';
-    var mo=document.createElement('div');mo.style.cssText='background:#fff;border-radius:10px;padding:2rem;max-width:480px;width:100%;max-height:92vh;overflow-y:auto';
+    var mo=document.createElement('div');mo.style.cssText='background:var(--panel);border-radius:10px;padding:2rem;max-width:480px;width:100%;max-height:92vh;overflow-y:auto';
     mo.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.15rem;color:#1a1815;font-weight:600;margin-bottom:.25rem">&#128206; Eigen document versturen</div>'
       +'<div style="font-size:12px;color:#8a8880;margin-bottom:1.25rem">Upload een bestaand PDF- of Word-bestand en verstuur het rechtstreeks — geen AI, geen sjabloon.</div>'
       +'<div style="margin-bottom:1rem"><label style="font-size:10px;font-weight:600;text-transform:uppercase;color:#8a8880;display:block;margin-bottom:4px">Bestand</label>'
@@ -1085,9 +1085,9 @@ function renderBegeleiderDashboard(app){
     }
     var closingDefault=new Date(Date.now()+45*24*3600*1000).toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'});
     var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:400;display:flex;align-items:center;justify-content:center;padding:1.5rem';
-    var mo=document.createElement('div');mo.style.cssText='background:#fff;border-radius:10px;padding:2rem;max-width:560px;width:100%;max-height:92vh;overflow-y:auto';
+    var mo=document.createElement('div');mo.style.cssText='background:var(--panel);border-radius:10px;padding:2rem;max-width:560px;width:100%;max-height:92vh;overflow-y:auto';
     mo.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.15rem;color:#1a1815;font-weight:600;margin-bottom:.25rem">&#128220; Concept-koopovereenkomst (SPA)</div>'
-      +'<div style="font-size:12px;color:#a04b2d;background:#fbeee8;border:1px solid #e6b8a5;border-radius:6px;padding:.55rem .75rem;margin-bottom:1rem;line-height:1.5">&#9888; Werkdocument. Genereert een <strong>concept</strong> ter voorbereiding — laat dit altijd juridisch toetsen vóór ondertekening.</div>'
+      +'<div style="font-size:12px;color:var(--gold-dark);background:var(--gold-bg);border:1px solid var(--gold);border-radius:6px;padding:.55rem .75rem;margin-bottom:1rem;line-height:1.5">&#9888; Werkdocument. Genereert een <strong>concept</strong> ter voorbereiding — laat dit altijd juridisch toetsen vóór ondertekening.</div>'
       +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('spa-koopprijs','Koopprijs (€)',koopprijsDefault,'number')+veld('spa-closing','Beoogde closingdatum',closingDefault)+'</div>'
       +'<div style="margin-bottom:1rem"><label style="'+lbl+'">Betalingsstructuur</label><input type="text" id="spa-betaling" value="Volledig bedrag bij closing (cash-and-debt-free)" style="'+inp+'"></div>'
       +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('spa-escrow','Escrow (bedrag, optioneel)','','number')+veld('spa-escrowduur','Escrow-duur (maanden)','18','number')+'</div>'
@@ -1137,7 +1137,7 @@ function renderBegeleiderDashboard(app){
         var titel='CONCEPT Koopovereenkomst — '+(t2.kantoor_naam||S.code);
         out.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem">'
           +'<div style="font-size:11px;font-weight:600;color:#5a5470;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.5rem">Concept-koopovereenkomst gegenereerd</div>'
-          +'<div style="font-size:12px;color:#a04b2d;background:#fbeee8;border:1px solid #e6b8a5;border-radius:6px;padding:.5rem .75rem;margin-bottom:.75rem;line-height:1.5">&#9888; <strong>CONCEPT — nog niet juridisch getoetst.</strong> Uitsluitend als werkdocument. Print of kopieer voor de jurist; niet versturen als definitief stuk.</div>'
+          +'<div style="font-size:12px;color:var(--gold-dark);background:var(--gold-bg);border:1px solid var(--gold);border-radius:6px;padding:.5rem .75rem;margin-bottom:.75rem;line-height:1.5">&#9888; <strong>CONCEPT — nog niet juridisch getoetst.</strong> Uitsluitend als werkdocument. Print of kopieer voor de jurist; niet versturen als definitief stuk.</div>'
           +'<textarea id="spa-doc-tekst" style="width:100%;height:340px;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:Georgia,serif;font-size:12px;line-height:1.8;padding:1rem;outline:none;resize:vertical">'+esc(tekst)+'</textarea>'
           +'<div style="display:flex;gap:8px;margin-top:.75rem">'
           +'<button id="spa-print" class="btn-ghost" style="font-size:12px;padding:6px 14px">&#128196; Print / PDF (concept)</button>'
@@ -1236,7 +1236,7 @@ function renderBegeleiderDashboard(app){
 
     // Modal met aanvinkbare categorieën
     var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:200;display:flex;align-items:center;justify-content:center;padding:1.5rem';
-    var mo=document.createElement('div');mo.style.cssText='background:#fff;border-radius:10px;padding:2rem;max-width:720px;width:100%;max-height:92vh;overflow-y:auto';
+    var mo=document.createElement('div');mo.style.cssText='background:var(--panel);border-radius:10px;padding:2rem;max-width:720px;width:100%;max-height:92vh;overflow-y:auto';
 
     var catHtml = '';
     categorieen.forEach(function(cat, ci){
@@ -1257,7 +1257,7 @@ function renderBegeleiderDashboard(app){
     var deadline=new Date(Date.now()+14*24*3600*1000).toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'});
 
     mo.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.1rem;color:#1a1815;font-weight:600;margin-bottom:.25rem">&#128203; Informatieverzoek samenstellen</div>'
-      +'<div style="display:inline-block;background:'+(ivFase==="2"?"#eef3fa":"#edf7f3")+';border:1px solid '+(ivFase==="2"?"#2a5ea0":"#1a7a5e")+';color:'+(ivFase==="2"?"#2a5ea0":"#1a7a5e")+';font-size:11px;font-weight:600;padding:3px 10px;border-radius:12px;margin-bottom:1rem">'+(ivFase==="2"?"🔍 Fase 2 — Volledige DD (post-LoI)":"📋 Fase 1 — Oriëntatie (pre-LoI)")+'</div>'
+      +'<div style="display:inline-block;background:'+(ivFase==="2"?"var(--info-bg)":"var(--teal-bg)")+';border:1px solid '+(ivFase==="2"?"var(--info)":"var(--teal)")+';color:'+(ivFase==="2"?"var(--info)":"var(--teal)")+';font-size:11px;font-weight:600;padding:3px 10px;border-radius:12px;margin-bottom:1rem">'+(ivFase==="2"?"🔍 Fase 2 — Volledige DD (post-LoI)":"📋 Fase 1 — Oriëntatie (pre-LoI)")+'</div>'
       +'<div style="font-size:12px;color:#8a8880;margin-bottom:1.25rem">Vink aan welke categorieën en vragen u wilt meesturen. U kunt per categorie een toelichting toevoegen.</div>'
       +'<div style="margin-bottom:1rem"><label style="font-size:10px;font-weight:600;text-transform:uppercase;color:#8a8880;display:block;margin-bottom:4px">Deadline (aanpasbaar)</label>'
       +'<input type="text" id="iv-deadline" value="'+deadline+'" style="background:#f0eeea;border:1px solid #c8c5bc;border-radius:6px;padding:7px 11px;font-family:IBM Plex Sans,sans-serif;font-size:13px;width:200px"></div>'
@@ -1327,7 +1327,7 @@ function renderBegeleiderDashboard(app){
     document.getElementById('bg-iv-preview').onclick=function(){
       var html = bouwMailHtml();
       var pvOv=document.createElement('div');pvOv.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:300;display:flex;align-items:center;justify-content:center;padding:1.5rem';
-      var pvMo=document.createElement('div');pvMo.style.cssText='background:#fff;border-radius:10px;padding:1.5rem;max-width:680px;width:100%;max-height:90vh;overflow-y:auto';
+      var pvMo=document.createElement('div');pvMo.style.cssText='background:var(--panel);border-radius:10px;padding:1.5rem;max-width:680px;width:100%;max-height:90vh;overflow-y:auto';
       pvMo.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">'
         +'<div style="font-weight:600;font-size:13px">Preview e-mail</div>'
         +'<button id="pv-sluit" style="background:none;border:none;font-size:18px;cursor:pointer;color:#8a8880">&times;</button></div>'
@@ -1703,7 +1703,7 @@ function renderBegeleiderDashboard(app){
   var feedbackBtn=document.getElementById('bg-feedback-actie');
   if(feedbackBtn)feedbackBtn.onclick=function(){
     var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:400;display:flex;align-items:center;justify-content:center;padding:1.5rem';
-    var mo=document.createElement('div');mo.style.cssText='background:#fff;border-radius:10px;padding:2rem;max-width:480px;width:100%';
+    var mo=document.createElement('div');mo.style.cssText='background:var(--panel);border-radius:10px;padding:2rem;max-width:480px;width:100%';
     mo.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.1rem;color:#1a1815;font-weight:600;margin-bottom:.5rem">&#128172; Feedback of een bug melden</div>'
       +'<div style="font-size:12px;color:#8a8880;margin-bottom:1rem">Kort omschrijven wat je zag en wat je verwachtte. Komt direct binnen bij Marcel — reken op een reactie binnen 24 uur.</div>'
       +'<textarea id="fb-tekst" rows="6" style="width:100%;background:#f0eeea;border:1px solid #c8c5bc;border-radius:6px;padding:9px 11px;font-family:IBM Plex Sans,sans-serif;font-size:13px;resize:vertical" placeholder="Wat zag je en wat verwachtte je?"></textarea>'
@@ -1740,9 +1740,9 @@ function renderBegeleiderDashboard(app){
     html+='<div style="font-size:13px;font-weight:600;color:var(--head);margin-bottom:.75rem">&#129302; AI-verificatiestatus — wat is er automatisch gedaan, wat niet</div>';
     html+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:1rem">'
       +'<div style="background:var(--teal-bg);border:1px solid var(--teal-dark);border-radius:var(--r);padding:8px 10px"><div style="font-size:18px;font-weight:700;color:var(--teal-dim)">'+t.ai_document+'</div><div style="font-size:10px;color:var(--muted)">velden via AI uit documenten</div></div>'
-      +(st.entiteitenActief?'<div style="background:#eef3fa;border:1px solid #2a5ea0;border-radius:var(--r);padding:8px 10px"><div style="font-size:18px;font-weight:700;color:#2a5ea0">'+t.auto_consolidatie+'</div><div style="font-size:10px;color:var(--muted)">velden automatisch geconsolideerd</div></div>':'')
+      +(st.entiteitenActief?'<div style="background:var(--info-bg);border:1px solid var(--info);border-radius:var(--r);padding:8px 10px"><div style="font-size:18px;font-weight:700;color:var(--info)">'+t.auto_consolidatie+'</div><div style="font-size:10px;color:var(--muted)">velden automatisch geconsolideerd</div></div>':'')
       +'<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:8px 10px"><div style="font-size:18px;font-weight:700;color:var(--sub)">'+t.handmatig+'</div><div style="font-size:10px;color:var(--muted)">velden handmatig ingevoerd</div></div>'
-      +'<div style="background:#fff8f0;border:1px solid var(--gold);border-radius:var(--r);padding:8px 10px"><div style="font-size:18px;font-weight:700;color:#8a5a00">'+t.onbekend+'</div><div style="font-size:10px;color:var(--muted)">herkomst onbekend (ouder dan deze functie)</div></div>'
+      +'<div style="background:var(--gold-bg);border:1px solid var(--gold);border-radius:var(--r);padding:8px 10px"><div style="font-size:18px;font-weight:700;color:var(--gold-dark)">'+t.onbekend+'</div><div style="font-size:10px;color:var(--muted)">herkomst onbekend (ouder dan deze functie)</div></div>'
       +'</div>';
     if(t.totaal){
       html+='<div style="font-size:11px;color:var(--muted);margin-bottom:1rem">Van de '+t.totaal+' ingevulde velden op groepsniveau is '+Math.round((t.ai_document+t.auto_consolidatie)/t.totaal*100)+'% automatisch tot stand gekomen (document-extractie of consolidatie) — controleer deze altijd, AI verzint geen bedragen maar leest ze over uit de brondocumenten, wat fouten in het brondocument zelf niet uitsluit.</div>';
@@ -1752,7 +1752,7 @@ function renderBegeleiderDashboard(app){
     if(st.docsVerworpen.length){
       html+='<div style="margin-bottom:1rem">'+st.docsVerworpen.map(function(d){return '<div style="font-size:11px;color:var(--red);padding:3px 0">&#128683; '+esc(d.naam)+' — '+esc(d.verworpen_reden||'geen reden bekend')+'</div>';}).join('')+'</div>';
     }
-    html+='<div style="background:#fff0f0;border:1px solid var(--red);border-radius:var(--r);padding:.75rem 1rem">'
+    html+='<div style="background:var(--red-bg);border:1px solid var(--red);border-radius:var(--r);padding:.75rem 1rem">'
       +'<div style="font-size:11px;font-weight:600;color:var(--red);margin-bottom:.4rem">&#9888; Wat AI NIET heeft gedaan — controleer dit zelf</div>'
       +'<div style="font-size:11px;color:var(--sub);line-height:1.7">'
       +'&bull; Geen feitelijke controle van de inhoud van brondocumenten — AI leest over wat er staat, beoordeelt niet of het klopt.<br>'

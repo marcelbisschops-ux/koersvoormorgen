@@ -7,7 +7,15 @@
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-:root{--void:#faf9f6;--panel:#fff;--card:#f0eeea;--border:#dddbd4;--border2:#c8c5bc;--muted:#8a8880;--mid:#5a5854;--sub:#2a2825;--head:#1a1815;--teal:#1a7a5e;--teal-dim:#145f48;--teal-dark:#0a3d2e;--teal-bg:rgba(34,197,160,.1);--gold:#c9a84c;--gold-bg:rgba(201,168,76,.12);--red:#e05252;--red-bg:rgba(224,82,82,.1);--r:6px;--r2:10px}
+:root{--void:#faf9f6;--panel:#fff;--card:#f0eeea;--border:#dddbd4;--border2:#c8c5bc;--muted:#8a8880;--mid:#5a5854;--sub:#2a2825;--head:#1a1815;--teal:#1a7a5e;--teal-dim:#145f48;--teal-dark:#0a3d2e;--teal-bg:rgba(34,197,160,.1);--gold:#c9a84c;--gold-bg:rgba(201,168,76,.12);--gold-dark:#8a6d00;--red:#e05252;--red-bg:rgba(224,82,82,.1);--info:#2a5ea0;--info-bg:#eef3fa;--info-dim:#4a6ea0;--purple:#7c5cbf;--purple-bg:#f3f0ff;--purple-border:#c8b8f0;--r:6px;--r2:10px}
+/* Nachtmodus: volgt de systeeminstelling van het apparaat (dag/avond), geen aparte knop nodig.
+   Alleen de kleurvariabelen wisselen — de rest van de CSS/JS gebruikt overal var(--x), dus dat
+   verft automatisch mee. De vaste merkkleuren van documentknoppen (bieding/SPA/waardering) en de
+   afgedrukte contract-/waarderingsdocumenten blijven bewust ongewijzigd — die horen altijd hetzelfde
+   te ogen, ongeacht dag- of nachtmodus. */
+@media(prefers-color-scheme:dark){
+  :root{--void:#1b1a17;--panel:#252320;--card:#2f2c27;--border:#3d3a34;--border2:#4d4940;--muted:#938f86;--mid:#b8b4aa;--sub:#e9e7e1;--head:#f6f4ef;--teal:#2fae87;--teal-dim:#3fc49a;--teal-dark:#8fe0c0;--teal-bg:rgba(47,174,135,.16);--gold:#e0c06a;--gold-bg:rgba(224,192,106,.14);--gold-dark:#f0d68c;--red:#e8746b;--red-bg:rgba(232,116,107,.14);--info:#6ea8e0;--info-bg:rgba(110,168,224,.14);--info-dim:#8fb8e8;--purple:#b39ce0;--purple-bg:rgba(179,156,224,.16);--purple-border:#8f74b8}
+}
 body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--sub);min-height:100vh;font-size:14px;line-height:1.6}
 #app{min-height:100vh}
 .wrap{max-width:960px;margin:0 auto;padding:2rem 2rem 5rem}
@@ -132,7 +140,7 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--s
 @keyframes toastIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
 @keyframes toastOut{to{opacity:0;transform:translateX(20px)}}
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;display:flex;align-items:center;justify-content:center;padding:1.5rem}
-.modal{background:#fff;border:1px solid #c8c5bc;border-radius:10px;padding:1.75rem;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.2);max-height:90vh;overflow-y:auto}
+.modal{background:var(--panel);border:1px solid var(--border2);border-radius:10px;padding:1.75rem;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.2);max-height:90vh;overflow-y:auto}
 .modal-title{font-family:'Playfair Display',serif;font-size:1.2rem;color:var(--head);font-weight:600;margin-bottom:1.25rem}
 </style>
 </head>
