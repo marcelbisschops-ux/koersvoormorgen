@@ -521,14 +521,16 @@ async function uploadDocument(faseId, file) {
       DOCS[faseId].unshift({
         id: d.doc_id, naam: file.name, type: file.type, grootte: file.size,
         analyse: d.analyse, velden: d.veld_extractie || {}, bewaard: !!d.r2_opgeslagen,
-        uploaded_at: Date.now(), uploading: false, verworpen: !!d.verworpen, verworpen_reden: d.verworpen_reden||null
+        uploaded_at: Date.now(), uploading: false, verworpen: !!d.verworpen, verworpen_reden: d.verworpen_reden||null,
+        entiteit_id: entiteitId || ''
       });
       if (d.veld_extractie) {
         S._conflicts=[];
         var alleFases=['financieel','commercieel','partner','compliance','it','juridisch','strategisch'];
         alleFases.forEach(function(fid){ autoFillFromExtraction(fid, d.veld_extractie, false, file.name, entiteitId); });
         if(S._conflicts&&S._conflicts.length){
-          renderApp();setTimeout(toonConflictDialog,300);
+          var ctxLbl=entiteitId?('Voor: '+entiteitNaam(entiteitId)):'Voor: Groep (geconsolideerd)';
+          renderApp();setTimeout(function(){toonConflictDialog(ctxLbl);},300);
         }else if(entiteitId){
           renderApp();saveEntiteitData(entiteitId,alleFases);
         }else{markDirty();renderApp();schedSave();}
@@ -1104,7 +1106,7 @@ function fmtConflictWaarde(v){
   }
   return s;
 }
-function toonConflictDialog() {
+function toonConflictDialog(contextLabel) {
   if(!S._conflicts||!S._conflicts.length)return;
   var conflicts=S._conflicts.slice();S._conflicts=[];
   if(!S._choiceLog)S._choiceLog=[];
@@ -1113,6 +1115,11 @@ function toonConflictDialog() {
   var box=document.createElement('div');
   box.style.cssText='background:var(--panel);border:1px solid var(--border2);border-radius:var(--r2);padding:1.75rem;max-width:560px;width:100%;max-height:85vh;overflow-y:auto';
   var title=document.createElement('div');title.style.cssText='font-family:Playfair Display,serif;font-size:1.1rem;color:var(--head);font-weight:600;margin-bottom:.35rem';title.textContent='Afwijkende waarden gevonden';box.appendChild(title);
+  // Onduidelijk welke entiteit/periode het betreft was zelf al een gemeld pijnpunt — de veld-labels
+  // tonen al het jaartal (zie de dynamische omzetPerJaar-labels), maar de entiteit ontbrak volledig.
+  if(contextLabel){
+    var ctxEl=document.createElement('div');ctxEl.style.cssText='font-size:12px;font-weight:600;color:var(--teal);margin-bottom:.6rem';ctxEl.textContent=contextLabel;box.appendChild(ctxEl);
+  }
   // Toon brondocumenten — als alle conflicten uit hetzelfde ene document komen (het gangbare
   // geval), dat maar één keer bovenaan noemen i.p.v. per veld en per optie te herhalen: dat maakte
   // de lijst vooral lang en moeilijk te scannen zonder extra informatie toe te voegen.
@@ -1288,7 +1295,8 @@ window.koppelDocumentAanEntiteit = async function(docId, selectPrefix){
     var alleFases=['financieel','commercieel','partner','compliance','it','juridisch','strategisch'];
     alleFases.forEach(function(fid){ autoFillFromExtraction(fid, doc.velden, false, doc.naam, entiteitId); });
     if(S._conflicts&&S._conflicts.length){
-      renderApp();setTimeout(toonConflictDialog,300);
+      var ctxLbl=entiteitId?('Voor: '+entiteitNaam(entiteitId)):'Voor: Groep (geconsolideerd)';
+      renderApp();setTimeout(function(){toonConflictDialog(ctxLbl);},300);
     }else{
       renderApp();saveEntiteitData(entiteitId,alleFases);
       toast('Gekoppeld aan '+entiteitNaam(entiteitId)+' — cijfers herverwerkt.','ok');
