@@ -3,11 +3,17 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light dark">
 <title>KantoorInzicht — Beheer</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-:root{--void:#faf9f6;--panel:#fff;--card:#f0eeea;--border:#dddbd4;--border2:#c8c5bc;--muted:#8a8880;--mid:#5a5854;--sub:#2a2825;--head:#1a1815;--teal:#1a7a5e;--teal-dim:#145f48;--teal-dark:#0a3d2e;--teal-bg:rgba(34,197,160,.1);--gold:#c9a84c;--gold-bg:rgba(201,168,76,.12);--red:#e05252;--red-bg:rgba(224,82,82,.1);--r:6px;--r2:10px}
+html{color-scheme:light dark}
+:root{--void:#faf9f6;--panel:#fff;--card:#f0eeea;--border:#dddbd4;--border2:#c8c5bc;--muted:#8a8880;--mid:#5a5854;--sub:#2a2825;--head:#1a1815;--teal:#1a7a5e;--teal-dim:#145f48;--teal-dark:#0a3d2e;--teal-bg:rgba(34,197,160,.1);--gold:#c9a84c;--gold-bg:rgba(201,168,76,.12);--gold-dark:#8a6d00;--red:#e05252;--red-bg:rgba(224,82,82,.1);--info:#2a5ea0;--info-bg:#eef3fa;--info-dim:#4a6ea0;--purple:#7c5cbf;--purple-bg:#f3f0ff;--purple-border:#c8b8f0;--r:6px;--r2:10px}
+/* Nachtmodus: volgt de systeeminstelling van het apparaat, zoals in mna.html/adv.html. */
+@media(prefers-color-scheme:dark){
+  :root{--void:#1b1a17;--panel:#252320;--card:#2f2c27;--border:#3d3a34;--border2:#4d4940;--muted:#938f86;--mid:#b8b4aa;--sub:#e9e7e1;--head:#f6f4ef;--teal:#2fae87;--teal-dim:#3fc49a;--teal-dark:#8fe0c0;--teal-bg:rgba(47,174,135,.16);--gold:#e0c06a;--gold-bg:rgba(224,192,106,.14);--gold-dark:#f0d68c;--red:#e8746b;--red-bg:rgba(232,116,107,.14);--info:#6ea8e0;--info-bg:rgba(110,168,224,.14);--info-dim:#8fb8e8;--purple:#b39ce0;--purple-bg:rgba(179,156,224,.16);--purple-border:#8f74b8}
+}
 body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--sub);min-height:100vh;font-size:14px;line-height:1.6}
 .mono{font-family:'IBM Plex Mono',monospace}
 .wrap{max-width:1400px;margin:0 auto;padding:2rem}
@@ -70,7 +76,7 @@ tr:hover td{background:rgba(26,122,94,.04)}
 .copy-btn:hover{border-color:var(--mid);color:var(--sub)}
 .toast-container{position:fixed;top:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none}
 .toast{background:var(--panel);border:1px solid var(--border2);border-radius:var(--r2);padding:12px 16px;font-size:13px;color:var(--sub);box-shadow:0 4px 20px rgba(0,0,0,.15);display:flex;align-items:flex-start;gap:10px;max-width:340px;pointer-events:auto;animation:toastIn .25s ease forwards;border-left:4px solid var(--teal)}
-.toast.toast-ok{border-left-color:var(--teal)}.toast.toast-err{border-left-color:var(--red)}.toast.toast-warn{border-left-color:var(--gold)}.toast.toast-info{border-left-color:#2a5ea0}
+.toast.toast-ok{border-left-color:var(--teal)}.toast.toast-err{border-left-color:var(--red)}.toast.toast-warn{border-left-color:var(--gold)}.toast.toast-info{border-left-color:var(--info)}
 .toast.hide{animation:toastOut .2s ease forwards}
 @keyframes toastIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
 @keyframes toastOut{to{opacity:0;transform:translateX(20px)}}
@@ -386,7 +392,7 @@ function renderMnaTab(el){
         +'<td style="white-space:nowrap;display:flex;gap:4px;flex-wrap:wrap">'
         +(t.inhoud_afgeschermd
           ?'<span class="btn-ghost" style="font-size:11px;padding:3px 10px;opacity:.5;cursor:not-allowed" title="Afgeschermd — traject van externe adviseur">&#128231; Begeleider</span>'
-          :'<button class="btn btn-uitnodigen" data-id="'+esc(t.id)+'" data-naam="'+esc(t.kantoor_naam||t.id)+'" data-tcode="'+esc(t.tussen_code||'')+'" style="font-size:11px;padding:3px 10px;background:#2a5ea0">&#128231; Begeleider</button>')
+          :'<button class="btn btn-uitnodigen" data-id="'+esc(t.id)+'" data-naam="'+esc(t.kantoor_naam||t.id)+'" data-tcode="'+esc(t.tussen_code||'')+'" style="font-size:11px;padding:3px 10px;background:var(--info)">&#128231; Begeleider</button>')
         +'<button class="btn-ghost btn-detail" data-id="'+esc(t.id)+'" data-naam="'+esc(t.kantoor_naam||t.id)+'" style="font-size:11px;padding:3px 8px">&#128065; Bekijk</button>'
         +'<button class="btn-ghost btn-bewerk" data-id="'+esc(t.id)+'" data-naam="'+esc(t.kantoor_naam||t.id)+'" style="font-size:11px;padding:3px 8px">&#9999;&#65039; Bewerk</button>'
         +'<button class="btn-ghost btn-opslaan" data-idx="'+i+'" style="font-size:11px;padding:3px 8px">&#8681; Opslaan</button>'
@@ -1336,7 +1342,7 @@ async function toonDetail(id,naam){
   var ov=document.createElement('div');ov.className='overlay';
   var mo=document.createElement('div');mo.className='modal';mo.style.maxWidth='700px';
   mo.innerHTML='<div class="modal-title">'+esc(naam)+' <span class="code-chip" style="font-size:12px">'+esc(id)+'</span></div>'
-    +'<div style="display:flex;gap:8px;margin-bottom:1.25rem;flex-wrap:wrap"><button class="btn" id="det-bem-btn" style="background:#2a5ea0;font-size:12px;padding:7px 14px">&#128203; Bemiddelingsovereenkomst</button><button class="btn" id="det-nda-btn" style="background:#7c5cbf;font-size:12px;padding:7px 14px">&#128274; Genereer NDA</button><button class="btn" id="det-loi-btn" style="background:var(--gold);font-size:12px;padding:7px 14px">&#128196; Genereer LoI</button><button class="btn" id="det-excl-btn" style="background:var(--teal);font-size:12px;padding:7px 14px">&#128196; Exclusiviteitsbrief</button><button class="btn" id="det-ai-btn" style="background:var(--teal);font-size:12px;padding:7px 14px">&#9881; AI-analyse</button><button class="btn-ghost" id="det-wis-data-btn" style="font-size:12px;padding:7px 14px;color:var(--red);border-color:var(--red)">&#128465; DD-data wissen</button><button class="btn-ghost" id="det-debug-btn" style="font-size:12px;padding:7px 14px">&#128269; Veldendebug</button><div style="flex:1"></div><button class="btn-ghost" id="det-sluit" style="font-size:12px;padding:7px 14px">Sluiten</button></div>'
+    +'<div style="display:flex;gap:8px;margin-bottom:1.25rem;flex-wrap:wrap"><button class="btn" id="det-bem-btn" style="background:var(--info);font-size:12px;padding:7px 14px">&#128203; Bemiddelingsovereenkomst</button><button class="btn" id="det-nda-btn" style="background:var(--purple);font-size:12px;padding:7px 14px">&#128274; Genereer NDA</button><button class="btn" id="det-loi-btn" style="background:var(--gold);font-size:12px;padding:7px 14px">&#128196; Genereer LoI</button><button class="btn" id="det-excl-btn" style="background:var(--teal);font-size:12px;padding:7px 14px">&#128196; Exclusiviteitsbrief</button><button class="btn" id="det-ai-btn" style="background:var(--teal);font-size:12px;padding:7px 14px">&#9881; AI-analyse</button><button class="btn-ghost" id="det-wis-data-btn" style="font-size:12px;padding:7px 14px;color:var(--red);border-color:var(--red)">&#128465; DD-data wissen</button><button class="btn-ghost" id="det-debug-btn" style="font-size:12px;padding:7px 14px">&#128269; Veldendebug</button><div style="flex:1"></div><button class="btn-ghost" id="det-sluit" style="font-size:12px;padding:7px 14px">Sluiten</button></div>'
     +'<div id="bem-output" style="display:none;margin-bottom:1.25rem;border-bottom:1px solid var(--border);padding-bottom:1.25rem"></div>'
     +'<div id="nda-output" style="display:none;margin-bottom:1.25rem;border-bottom:1px solid var(--border);padding-bottom:1.25rem"></div>'
     +'<div id="loi-output" style="display:none;margin-bottom:1.25rem;border-bottom:1px solid var(--border);padding-bottom:1.25rem"></div>'
@@ -1520,12 +1526,12 @@ async function toonDetail(id,naam){
         if(!resp.ok)throw new Error('AI fout '+resp.status+': '+(rd.error||rawResp.substring(0,150)));
         var tekst=rd.text||(rd.error||'Fout bij genereren.');
         var bemHtml=tekst.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n\n/g,'</p><p>').replace(/\n/g,'<br>');
-        bemOut.innerHTML='<div style="font-size:11px;font-weight:600;color:#2a5ea0;letter-spacing:.1em;text-transform:uppercase;margin-bottom:.75rem">&#128203; Bemiddelingsovereenkomst · '+esc(d.traject.kantoor_naam||naam)+'</div>'
+        bemOut.innerHTML='<div style="font-size:11px;font-weight:600;color:var(--info);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.75rem">&#128203; Bemiddelingsovereenkomst · '+esc(d.traject.kantoor_naam||naam)+'</div>'
           +'<div style="font-size:11px;color:var(--muted);margin-bottom:.4rem">Bekijk en bewerk het document voor verzending:</div>'
           +'<textarea id="bem-edit" style="width:100%;height:320px;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:Georgia,serif;font-size:12px;line-height:1.8;padding:1rem;outline:none;resize:vertical"></textarea>'
           +'<div style="display:flex;gap:8px;margin-top:.75rem">'
           +'<button id="bem-print-btn" class="btn-ghost" style="font-size:12px;padding:6px 14px">&#128196; Print / PDF</button>'
-          +'<button id="bem-email-btn" class="btn" style="font-size:12px;padding:6px 14px;background:#2a5ea0">&#9993; Stuur naar opdrachtgever</button>'
+          +'<button id="bem-email-btn" class="btn" style="font-size:12px;padding:6px 14px;background:var(--info)">&#9993; Stuur naar opdrachtgever</button>'
           +'</div>';
         var bemEditEl2=document.getElementById('bem-edit');
         bemEditEl2.value=tekst;
@@ -1578,12 +1584,12 @@ async function toonDetail(id,naam){
         var rd=await resp.json();
         var tekst=rd.text||(rd.error||'Fout bij genereren.');
         var ndaHtml=tekst.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n\n/g,'</p><p>').replace(/\n/g,'<br>');
-        ndaOut.innerHTML='<div style="font-size:11px;font-weight:600;color:#7c5cbf;letter-spacing:.1em;text-transform:uppercase;margin-bottom:.75rem">Non-Disclosure Agreement · '+esc(d.traject.kantoor_naam||naam)+'</div>'
+        ndaOut.innerHTML='<div style="font-size:11px;font-weight:600;color:var(--purple);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.75rem">Non-Disclosure Agreement · '+esc(d.traject.kantoor_naam||naam)+'</div>'
           +'<div style="font-size:11px;color:var(--muted);margin-bottom:.4rem">Bekijk en bewerk het document voor verzending:</div>'
           +'<textarea id="nda-edit" style="width:100%;height:320px;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:Georgia,serif;font-size:12px;line-height:1.8;padding:1rem;outline:none;resize:vertical"></textarea>'
           +'<div style="display:flex;gap:8px;margin-top:.75rem">'
           +'<button id="nda-print-btn" class="btn-ghost" style="font-size:12px;padding:6px 14px">&#128196; Print / PDF</button>'
-          +'<button id="nda-email-btn" class="btn" style="font-size:12px;padding:6px 14px;background:#7c5cbf">&#9993; Stuur naar partijen</button>'
+          +'<button id="nda-email-btn" class="btn" style="font-size:12px;padding:6px 14px;background:var(--purple)">&#9993; Stuur naar partijen</button>'
           +'</div>';
         document.getElementById('nda-edit').value=tekst;
         document.getElementById('nda-print-btn').addEventListener('click',function(){var ndaEl=document.getElementById('nda-edit');var pt=ndaEl?ndaEl.value:tekst;var win=window.open('','_blank');win.document.write('<html><head><style>body{font-family:Georgia,serif;font-size:13px;line-height:1.9;max-width:700px;margin:2cm auto;color:#2a2825}@media print{body{margin:1.5cm}}</style></head><body><p>'+pt.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>')+'</p></body></html>');win.document.close();win.print();});
