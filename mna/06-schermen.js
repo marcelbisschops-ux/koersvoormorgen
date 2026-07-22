@@ -175,6 +175,21 @@ function renderMain(){
       +'<option value=""'+(S._actieveEntiteit?'':' selected')+'>Groep (geconsolideerd)</option>'
       +S._entiteiten.map(function(e){return '<option value="'+esc(e.id)+'"'+(S._actieveEntiteit===e.id?' selected':'')+'>'+esc(e.naam)+'</option>';}).join('')
       +'</select></div>';
+    // Consolidatiecheck: als er een handmatig/document-aangeleverd groepscijfer bestaat dat >5%
+    // afwijkt van de som van de losse entiteiten, wordt dat hier zichtbaar — anders verdween dat
+    // verschil stilzwijgend (de document-waarde wint altijd, zie consolideerFase() in de worker).
+    if(!S._actieveEntiteit){
+      var consolCheckRaw=S._groepData[f.id+'_consolidatieCheck'];
+      var consolAfwijkingen=[];
+      if(consolCheckRaw){try{consolAfwijkingen=JSON.parse(consolCheckRaw)||[];}catch(e){}}
+      if(consolAfwijkingen.length){
+        dataHtml+='<div style="background:var(--gold-bg,#fdf6e3);border:1px solid var(--gold);border-radius:var(--r);padding:.75rem 1rem;margin-bottom:1rem">'
+          +'<div style="font-size:12px;font-weight:600;color:var(--gold-dark,#8a6d00);margin-bottom:4px">&#9888; Aangeleverde groepscijfers wijken af van de som van de entiteiten</div>'
+          +consolAfwijkingen.map(function(a){return '<div style="font-size:11px;color:var(--sub);line-height:1.6">'+esc(a.label)+': aangeleverd '+Number(a.documentWaarde).toLocaleString('nl-NL')+' vs. som entiteiten '+Number(a.somEntiteiten).toLocaleString('nl-NL')+' ('+a.verschilPct+'% verschil)</div>';}).join('')
+          +'<div style="font-size:10px;color:var(--muted);margin-top:4px;font-style:italic">Het aangeleverde cijfer wordt gebruikt. Controleer op ontbrekende entiteitsdata of onderlinge (intercompany-)posten.</div>'
+          +'</div>';
+      }
+    }
   }else if(isKoper()&&S._entiteiten&&S._entiteiten.length){
     dataHtml+='<div style="margin-bottom:1rem;padding:.6rem .85rem;background:var(--card);border:1px solid var(--border);border-radius:var(--r);font-size:11px;color:var(--sub);line-height:1.6">'
       +'<strong style="color:var(--muted);text-transform:uppercase;letter-spacing:.05em;font-size:10px">Geconsolideerde cijfers</strong><br>'
