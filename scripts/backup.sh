@@ -76,7 +76,15 @@ echo "▶ 3/4  Backend-code in repo verversen ..."
 if [ -f "$DOWNLOADS_WORKER" ]; then
   cp "$DOWNLOADS_WORKER" "$REPO_DIR/backend/cloudflare-worker.js"
   [ -f "$HOME/Downloads/wrangler.toml" ] && cp "$HOME/Downloads/wrangler.toml" "$REPO_DIR/backend/wrangler.toml"
-  echo "   ✓ backend/cloudflare-worker.js bijgewerkt (commit + push om te backuppen naar GitHub)"
+  # Sinds de gefaseerde workeropsplitsing (juli 2026) staat een deel van de backend ook als
+  # losse modules in ~/Downloads/worker/ — die horen bij dezelfde backup mee te gaan.
+  if [ -d "$HOME/Downloads/worker" ]; then
+    mkdir -p "$REPO_DIR/backend/worker"
+    cp "$HOME/Downloads"/worker/*.js "$REPO_DIR/backend/worker/" 2>/dev/null || true
+    echo "   ✓ backend/cloudflare-worker.js + backend/worker/*.js bijgewerkt (commit + push om te backuppen naar GitHub)"
+  else
+    echo "   ✓ backend/cloudflare-worker.js bijgewerkt (commit + push om te backuppen naar GitHub)"
+  fi
 else
   echo "   ⊘ ~/Downloads/cloudflare-worker.js niet gevonden — backend-kopie overgeslagen"
 fi
