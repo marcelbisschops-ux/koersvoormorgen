@@ -493,6 +493,17 @@ function saveEntiteitData(entiteitId, faseIds){
   S.data=origData;
 }
 
+// Meerdere bestanden tegelijk geselecteerd (multi-select in "Document toevoegen") ÉÉN voor ÉÉN
+// verwerken i.p.v. gelijktijdig — bij gelijktijdige uploads liep S._conflicts (gedeelde state)
+// door elkaar tussen bestanden, waardoor de afwijkende-waarden-dialoog het verkeerde brondocument
+// toonde of conflicten kwijtraakte, en meerdere dialogen tegelijk konden opstapelen (scherm werd
+// zwart door de gestapelde halftransparante overlays). Gevonden 22 juli 2026.
+window.uploadDocumentenSequentieel = async function(faseId, files) {
+  for (var i = 0; i < files.length; i++) {
+    await uploadDocument(faseId, files[i]);
+  }
+};
+
 async function uploadDocument(faseId, file) {
   if (!S.code || isKoper()) return;
   if (S.traject && S.traject.status === 'vergrendeld') { toast('Traject is vergrendeld.','warn'); return; }
@@ -525,14 +536,30 @@ async function uploadDocument(faseId, file) {
         entiteit_id: entiteitId || ''
       });
       if (d.veld_extractie) {
+        // Geen entiteit gekozen bij upload, maar de AI herkent wél zeker één geregistreerde entiteit
+        // in de documentnaam/-inhoud? Dan de cijfers NIET op groepsniveau laten belanden (dat mengde
+        // cijfers van duidelijk verschillende BV's door elkaar tot onzinnige groepstotalen), maar
+        // automatisch naar die entiteit routeren — zelfde matching als de koppel-suggestie, nu ook
+        // toegepast op de dataverwerking zelf. Gevonden 22 juli 2026 na een test met veel documenten.
+        var effectiefEntiteitId = entiteitId;
+        if (!effectiefEntiteitId && S._entiteiten && S._entiteiten.length) {
+          var gokIdUpload = gokEntiteitId(d.veld_extractie.entiteit_naam);
+          if (gokIdUpload) {
+            effectiefEntiteitId = gokIdUpload;
+            fetch(WORKER+'/mna/document/koppel-entiteit/'+d.doc_id,{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S.code},body:JSON.stringify({entiteit_id:gokIdUpload})}).catch(function(){});
+            var docRefUpload=DOCS[faseId].find(function(x){return x.id===d.doc_id;});
+            if(docRefUpload)docRefUpload.entiteit_id=gokIdUpload;
+          }
+        }
         S._conflicts=[];
         var alleFases=['financieel','commercieel','partner','compliance','it','juridisch','strategisch'];
-        alleFases.forEach(function(fid){ autoFillFromExtraction(fid, d.veld_extractie, false, file.name, entiteitId); });
+        alleFases.forEach(function(fid){ autoFillFromExtraction(fid, d.veld_extractie, false, file.name, effectiefEntiteitId); });
         if(S._conflicts&&S._conflicts.length){
-          var ctxLbl=entiteitId?('Voor: '+entiteitNaam(entiteitId)):'Voor: Groep (geconsolideerd)';
-          renderApp();setTimeout(function(){toonConflictDialog(ctxLbl);},300);
-        }else if(entiteitId){
-          renderApp();saveEntiteitData(entiteitId,alleFases);
+          var ctxLbl=effectiefEntiteitId?('Voor: '+entiteitNaam(effectiefEntiteitId)):'Voor: Groep (geconsolideerd)';
+          var conflictenBatch=S._conflicts.slice();S._conflicts=[];
+          renderApp();setTimeout(function(){toonConflictDialog(conflictenBatch,ctxLbl);},300);
+        }else if(effectiefEntiteitId){
+          renderApp();saveEntiteitData(effectiefEntiteitId,alleFases);
         }else{markDirty();renderApp();schedSave();}
       }
       // Toon crosscheck waarschuwingen
@@ -752,7 +779,12 @@ function _autoFillFromExtractionBody(faseId, velden, forceOverwrite, docNaam) {
     // automatisch is ingevuld door een ander document. Stilzwijgend overschrijven leidde ertoe dat
     // een later document (bijv. van een ander bedrijfsonderdeel) correcte cijfers ongemerkt verving.
     if(!S._conflicts)S._conflicts=[];
-    S._conflicts.push({key:key,label:label,huidig:existing,nieuw:newVal,bron:currentDocNaam});
+    // 'doel' legt de daadwerkelijke opslag-bucket vast (S.data, S._groepData of een specifieke
+    // S.dataPerEntiteit[x], al naar gelang welke actief was tijdens deze extractie) — niet later
+    // opnieuw via S.data aanroepen bij het toepassen van de keuze: autoFillFromExtraction zet S.data
+    // ondertussen alweer terug naar de oorspronkelijke formuliercontext, dus "S.data[key]=..." bij het
+    // toepassen schreef de keuze soms in de verkeerde (groeps- i.p.v. entiteit-)bucket.
+    S._conflicts.push({key:key,label:label,huidig:existing,nieuw:newVal,bron:currentDocNaam,doel:d});
     if(!S._pendingConflicts)S._pendingConflicts={};
     S._pendingConflicts[key]=newVal;
   }
@@ -981,7 +1013,7 @@ function renderDocumentSectie(faseId) {
     uploadHtml = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:.75rem;flex-wrap:wrap">'
       + '<label style="display:flex;align-items:center;gap:6px;background:var(--teal);color:#fff;font-family:IBM Plex Sans,sans-serif;font-size:12px;font-weight:600;padding:6px 14px;border-radius:var(--r);cursor:pointer">'
       + '&#128196; Document toevoegen'
-      + '<input type="file" multiple accept=".pdf,.docx,.doc,.xlsx,.xls,.csv,.txt,.eml" style="display:none" onchange="for(var i=0;i<this.files.length;i++)uploadDocument(\''+faseId+'\',this.files[i]);this.value=\'\';">'
+      + '<input type="file" multiple accept=".pdf,.docx,.doc,.xlsx,.xls,.csv,.txt,.eml" style="display:none" onchange="uploadDocumentenSequentieel(\''+faseId+'\',this.files);this.value=\'\';">'
       + '</label>'
       + entiteitKiezer
       + '<div id="upload-status-'+faseId+'" style="font-size:11px;color:var(--muted)"></div>'
@@ -1106,9 +1138,19 @@ function fmtConflictWaarde(v){
   }
   return s;
 }
-function toonConflictDialog(contextLabel) {
-  if(!S._conflicts||!S._conflicts.length)return;
-  var conflicts=S._conflicts.slice();S._conflicts=[];
+// Neemt de conflicten-array expliciet als argument (niet opnieuw uit S._conflicts lezen) — bij
+// meerdere gelijktijdige/snel opeenvolgende documenten liep die gedeelde state anders door elkaar
+// tussen documenten. Is er al een dialoog open, dan wordt deze batch in de wachtrij gezet i.p.v.
+// er nog een overlay overheen te stapelen (dat maakte het scherm zwart — meerdere halftransparante
+// overlays op elkaar). Gevonden 22 juli 2026 na een test met veel documenten tegelijk.
+function toonConflictDialog(conflicts, contextLabel) {
+  if(!conflicts||!conflicts.length)return;
+  if(S._conflictDialoogOpen){
+    if(!S._conflictWachtrij)S._conflictWachtrij=[];
+    S._conflictWachtrij.push({conflicts:conflicts,contextLabel:contextLabel});
+    return;
+  }
+  S._conflictDialoogOpen=true;
   if(!S._choiceLog)S._choiceLog=[];
   var ov=document.createElement('div');
   ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;display:flex;align-items:center;justify-content:center;padding:1.5rem';
@@ -1143,7 +1185,7 @@ function toonConflictDialog(contextLabel) {
     tH.innerHTML='<div style="font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-bottom:2px">Huidig</div><strong style="font-size:15px;color:var(--sub)">'+esc(fmtConflictWaarde(c.huidig))+'</strong><div style="font-size:10px;color:var(--muted);margin-top:2px">'+esc(bronHuidig)+'</div>';lblH.appendChild(tH);opts.appendChild(lblH);
     var lblN=document.createElement('label');
     var rN=document.createElement('input');rN.type='radio';rN.name='cf_'+i;rN.value='nieuw';rN.style.accentColor='var(--teal)';lblN.appendChild(rN);
-    var tN=document.createElement('span');tN.style.color='var(--mid)';tN.innerHTML='<div style="font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-bottom:2px">Nieuw (document)</div><strong style="font-size:15px;color:var(--sub)">'+esc(fmtConflictWaarde(c.nieuw))+'</strong><div style="font-size:10px;color:var(--muted);margin-top:2px">uit '+esc(c.bron||'document')+'</div>';lblN.appendChild(tN);opts.appendChild(lblN);
+    var tN=document.createElement('span');tN.style.color='var(--mid)';tN.innerHTML='<div style="font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-bottom:2px">Uit document</div><strong style="font-size:15px;color:var(--sub)">'+esc(fmtConflictWaarde(c.nieuw))+'</strong><div style="font-size:10px;color:var(--muted);margin-top:2px">uit '+esc(c.bron||'document')+'</div>';lblN.appendChild(tN);opts.appendChild(lblN);
     // Visueel duidelijk maken welke optie daadwerkelijk gekozen is (voorheen kreeg "Document"
     // altijd een teal-accent, ook als "Huidig" geselecteerd was — dat oogde tegenstrijdig).
     var stijlBasis='flex:1;min-width:140px;display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;padding:7px 10px;border-radius:var(--r);border:1px solid ';
@@ -1170,7 +1212,7 @@ function toonConflictDialog(contextLabel) {
       if(S._pendingConflicts)delete S._pendingConflicts[c.key];
       S._choiceLog.push({key:c.key,label:c.label,gekozen:'huidig',waarde:c.huidig,bron:'handmatig ingevoerd',ts:new Date().toLocaleString('nl-NL')});
     });
-    document.body.removeChild(ov);renderApp();
+    document.body.removeChild(ov);renderApp();sluitConflictDialoogEnGaVerder();
   });btns.appendChild(btnB);
   var btnA=document.createElement('button');btnA.className='btn';btnA.style.fontSize='12px';btnA.textContent='Toepassen';
   btnA.addEventListener('click',function(){
@@ -1183,7 +1225,7 @@ function toonConflictDialog(contextLabel) {
         return;
       }
       var gekozenHuidig=r.rH.checked;
-      if(!gekozenHuidig)S.data[r.key]=c.nieuw;
+      if(!gekozenHuidig)(c.doel||S.data)[r.key]=c.nieuw;
       if(S._pendingConflicts)delete S._pendingConflicts[r.key];
       // Leg keuze vast in log
       S._choiceLog.push({
@@ -1195,8 +1237,17 @@ function toonConflictDialog(contextLabel) {
         ts:new Date().toLocaleString('nl-NL')
       });
     });
-    document.body.removeChild(ov);renderApp();schedSave();
+    document.body.removeChild(ov);renderApp();schedSave();sluitConflictDialoogEnGaVerder();
   });btns.appendChild(btnA);box.appendChild(btns);ov.appendChild(box);document.body.appendChild(ov);
+}
+// Na het sluiten van een conflict-dialoog: vlag vrijgeven en, als er ondertussen meer batches in de
+// wachtrij zijn beland (van andere documenten), de eerstvolgende meteen tonen — nooit tegelijk.
+function sluitConflictDialoogEnGaVerder(){
+  S._conflictDialoogOpen=false;
+  if(S._conflictWachtrij&&S._conflictWachtrij.length){
+    var volgende=S._conflictWachtrij.shift();
+    toonConflictDialog(volgende.conflicts,volgende.contextLabel);
+  }
 }
 
 
@@ -1296,7 +1347,8 @@ window.koppelDocumentAanEntiteit = async function(docId, selectPrefix){
     alleFases.forEach(function(fid){ autoFillFromExtraction(fid, doc.velden, false, doc.naam, entiteitId); });
     if(S._conflicts&&S._conflicts.length){
       var ctxLbl=entiteitId?('Voor: '+entiteitNaam(entiteitId)):'Voor: Groep (geconsolideerd)';
-      renderApp();setTimeout(function(){toonConflictDialog(ctxLbl);},300);
+      var conflictenBatch=S._conflicts.slice();S._conflicts=[];
+      renderApp();setTimeout(function(){toonConflictDialog(conflictenBatch,ctxLbl);},300);
     }else{
       renderApp();saveEntiteitData(entiteitId,alleFases);
       toast('Gekoppeld aan '+entiteitNaam(entiteitId)+' — cijfers herverwerkt.','ok');
