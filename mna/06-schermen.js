@@ -32,13 +32,13 @@ function renderCover(){
     // Koper zonder vrijgave — toon BEM als die beschikbaar is
     var bemBlokKoper='';
     if(S.bemDocId||S.bemTekst){
-      bemBlokKoper='<div style="margin:1.5rem;background:#eef3fa;border:1px solid #2a5ea0;border-radius:var(--r2);padding:1.25rem">'
-        +'<div style="font-size:11px;font-weight:600;color:#2a5ea0;letter-spacing:.1em;text-transform:uppercase;margin-bottom:.6rem">&#128203; Bemiddelingsovereenkomst beschikbaar</div>'
-        +'<div style="font-size:12px;color:var(--mid);margin-bottom:.75rem">De Bemiddelingsovereenkomst is opgesteld door uw adviseur.'+(S.bemDocId||S.bemGetekend?' &mdash; <strong style="color:#2a5ea0">Reeds ondertekend.</strong>':' Lees en onderteken het document.')+' </div>'
+      bemBlokKoper='<div style="margin:1.5rem;background:var(--info-bg);border:1px solid var(--info);border-radius:var(--r2);padding:1.25rem">'
+        +'<div style="font-size:11px;font-weight:600;color:var(--info);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.6rem">&#128203; Bemiddelingsovereenkomst beschikbaar</div>'
+        +'<div style="font-size:12px;color:var(--mid);margin-bottom:.75rem">De Bemiddelingsovereenkomst is opgesteld door uw adviseur.'+(S.bemDocId||S.bemGetekend?' &mdash; <strong style="color:var(--info)">Reeds ondertekend.</strong>':' Lees en onderteken het document.')+' </div>'
         +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
-        +(S.bemDocId?'<a href="'+WORKER+'/mna/document/download/'+S.bemDocId+'?code='+encodeURIComponent(S.code)+'" target="_blank" class="btn-ghost" style="font-size:12px;border-color:#2a5ea0;color:#2a5ea0;text-decoration:none">&#8681; Download BEM</a>':'')
-        +(S.bemTekst&&!S.bemDocId?'<button id="bem-lees-btn2" class="btn-ghost" style="font-size:12px;border-color:#2a5ea0;color:#2a5ea0">&#128065; Lees BEM</button>':'')
-        +(S.bemDocId||S.bemGetekend?'<div style="font-size:11px;padding:4px 10px;border-radius:12px;background:#eef3fa;border:1px solid #2a5ea0;color:#2a5ea0">&#10003; '+(S.bemGetekend?'Getekend door '+esc(S.bemGetekend):'Reeds ondertekend')+'</div>':'<button id="bem-teken-btn" class="btn" style="font-size:12px;padding:6px 14px;background:#2a5ea0">&#9998; Akkoord &amp; onderteken</button>')
+        +(S.bemDocId?'<a href="'+WORKER+'/mna/document/download/'+S.bemDocId+'?code='+encodeURIComponent(S.code)+'" target="_blank" class="btn-ghost" style="font-size:12px;border-color:var(--info);color:var(--info);text-decoration:none">&#8681; Download BEM</a>':'')
+        +(S.bemTekst&&!S.bemDocId?'<button id="bem-lees-btn2" class="btn-ghost" style="font-size:12px;border-color:var(--info);color:var(--info)">&#128065; Lees BEM</button>':'')
+        +(S.bemDocId||S.bemGetekend?'<div style="font-size:11px;padding:4px 10px;border-radius:12px;background:var(--info-bg);border:1px solid var(--info);color:var(--info)">&#10003; '+(S.bemGetekend?'Getekend door '+esc(S.bemGetekend):'Reeds ondertekend')+'</div>':'<button id="bem-teken-btn" class="btn" style="font-size:12px;padding:6px 14px;background:var(--info)">&#9998; Akkoord &amp; onderteken</button>')
         +'</div></div>';
     }
     return '<div class="wrap anim">'
@@ -163,7 +163,7 @@ function renderMain(){
     if(!loiGetekend){
       dataHtml+='<div style="background:var(--teal-bg);border:1px solid var(--teal);border-radius:var(--r);padding:.75rem 1rem;margin-bottom:1rem;display:flex;align-items:center;gap:10px">'        +'<span style="font-size:16px">📋</span>'        +'<div><div style="font-size:12px;font-weight:600;color:var(--teal)">Fase 1 — Oriëntatie (pre-LoI)</div>'        +'<div style="font-size:11px;color:var(--teal-dim)">Na ondertekening van de LoI ontvangt u aanvullende vragen voor de volledige due diligence.</div></div>'        +'</div>';
     } else {
-      dataHtml+='<div style="background:#eef3fa;border:1px solid #2a5ea0;border-radius:var(--r);padding:.75rem 1rem;margin-bottom:1rem;display:flex;align-items:center;gap:10px">'        +'<span style="font-size:16px">🔍</span>'        +'<div><div style="font-size:12px;font-weight:600;color:#2a5ea0">Fase 2 — Volledige due diligence (post-LoI)</div>'        +'<div style="font-size:11px;color:#4a6ea0">De LoI is ondertekend. Vul de aanvullende velden in voor de volledige due diligence.</div></div>'        +'</div>';
+      dataHtml+='<div style="background:var(--info-bg);border:1px solid var(--info);border-radius:var(--r);padding:.75rem 1rem;margin-bottom:1rem;display:flex;align-items:center;gap:10px">'        +'<span style="font-size:16px">🔍</span>'        +'<div><div style="font-size:12px;font-weight:600;color:var(--info)">Fase 2 — Volledige due diligence (post-LoI)</div>'        +'<div style="font-size:11px;color:var(--info-dim)">De LoI is ondertekend. Vul de aanvullende velden in voor de volledige due diligence.</div></div>'        +'</div>';
     }
   }
   dataHtml+='<div class="sec-hdr">Informatie invullen</div>';
@@ -171,7 +171,7 @@ function renderMain(){
   if(!isKoper()&&S._entiteiten&&S._entiteiten.length){
     dataHtml+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:1rem;padding:.6rem .85rem;background:var(--card);border:1px solid var(--border);border-radius:var(--r)">'
       +'<span style="font-size:11px;font-weight:600;color:var(--muted);white-space:nowrap">Invullen voor:</span>'
-      +'<select id="entiteit-kiezer-form" style="flex:1;font-size:12px;background:#fff;border:1px solid var(--border2);border-radius:6px;padding:5px 8px">'
+      +'<select id="entiteit-kiezer-form" style="flex:1;font-size:12px;background:var(--card);border:1px solid var(--border2);border-radius:6px;padding:5px 8px">'
       +'<option value=""'+(S._actieveEntiteit?'':' selected')+'>Groep (geconsolideerd)</option>'
       +S._entiteiten.map(function(e){return '<option value="'+esc(e.id)+'"'+(S._actieveEntiteit===e.id?' selected':'')+'>'+esc(e.naam)+'</option>';}).join('')
       +'</select></div>';
@@ -183,8 +183,8 @@ function renderMain(){
       var consolAfwijkingen=[];
       if(consolCheckRaw){try{consolAfwijkingen=JSON.parse(consolCheckRaw)||[];}catch(e){}}
       if(consolAfwijkingen.length){
-        dataHtml+='<div style="background:var(--gold-bg,#fdf6e3);border:1px solid var(--gold);border-radius:var(--r);padding:.75rem 1rem;margin-bottom:1rem">'
-          +'<div style="font-size:12px;font-weight:600;color:var(--gold-dark,#8a6d00);margin-bottom:4px">&#9888; Aangeleverde groepscijfers wijken af van de som van de entiteiten</div>'
+        dataHtml+='<div style="background:var(--gold-bg);border:1px solid var(--gold);border-radius:var(--r);padding:.75rem 1rem;margin-bottom:1rem">'
+          +'<div style="font-size:12px;font-weight:600;color:var(--gold-dark);margin-bottom:4px">&#9888; Aangeleverde groepscijfers wijken af van de som van de entiteiten</div>'
           +consolAfwijkingen.map(function(a){return '<div style="font-size:11px;color:var(--sub);line-height:1.6">'+esc(a.label)+': aangeleverd '+Number(a.documentWaarde).toLocaleString('nl-NL')+' vs. som entiteiten '+Number(a.somEntiteiten).toLocaleString('nl-NL')+' ('+a.verschilPct+'% verschil)</div>';}).join('')
           +'<div style="font-size:10px;color:var(--muted);margin-top:4px;font-style:italic">Het aangeleverde cijfer wordt gebruikt. Controleer op ontbrekende entiteitsdata of onderlinge (intercompany-)posten.</div>'
           +'</div>';
@@ -252,7 +252,7 @@ function renderMain(){
       dataHtml+='<div class="f"><label>'+df.label+(df.req?' <span class="req">*</span>':'')+' <span style="color:var(--teal);font-size:9px;font-weight:600">&#128279; som van entiteiten</span></label>'
         +'<div class="readonly-val" style="background:var(--teal-bg);border-color:var(--teal-dark)" title="Automatisch berekend uit de geregistreerde entiteiten — vóór eliminatie van onderlinge transacties. Wijzig per entiteit via de kiezer hierboven.">'+(val?esc(val):'Nog geen entiteitsdata')+'</div></div>';
     }else{
-      var conflictStyle=hasConflict?'border-color:var(--gold);background:#fffbf0':'';
+      var conflictStyle=hasConflict?'border-color:var(--gold);background:var(--gold-bg)':'';
       var conflictTitle=hasConflict?(' title="Document zegt: '+esc(hasConflict)+'"'):'';
       dataHtml+='<div class="f"><label>'+df.label+(df.req?' <span class="req">*</span>':'')+(df.doc?' <span style="color:var(--gold);font-size:9px">&#128196; ref</span>':'')
         +(hasConflict?' <span style="color:var(--gold);font-size:9px;font-weight:600" title="Document geeft andere waarde: '+esc(hasConflict)+'">&#9888; afwijking</span>':'')
@@ -286,7 +286,7 @@ function renderMain(){
     var faseChoices=(S._choiceLog||[]).filter(function(c){return c.key.startsWith(f.id+'_');});
     var choiceLogHtml='';
     if(faseChoices.length){
-      choiceLogHtml='<div style="margin-top:.75rem;padding:.6rem .75rem;background:#fffbf0;border:1px solid var(--gold);border-radius:var(--r);font-size:11px">'
+      choiceLogHtml='<div style="margin-top:.75rem;padding:.6rem .75rem;background:var(--gold-bg);border:1px solid var(--gold);border-radius:var(--r);font-size:11px">'
         +'<div style="font-weight:600;color:var(--gold);margin-bottom:.4rem">&#128221; Gemaakte keuzes bij conflicten</div>'
         +faseChoices.map(function(c){
           return '<div style="padding:3px 0;border-bottom:1px solid var(--border);color:var(--mid)">'
@@ -560,7 +560,7 @@ function renderSummary(){
       +'</div>'
       +'<div style="display:flex;flex-direction:column;gap:8px">'
       +kritiekeDiscrepanties.map(function(d,i){
-        return '<div style="background:#fff;border:1px solid var(--red);border-radius:var(--r);padding:.75rem 1rem;display:flex;gap:10px">'
+        return '<div style="background:var(--red-bg);border:1px solid var(--red);border-radius:var(--r);padding:.75rem 1rem;display:flex;gap:10px">'
           +'<span style="color:var(--red);font-weight:700;flex-shrink:0">'+(i+1)+'.</span>'
           +'<span style="font-size:12px;color:var(--sub);line-height:1.6">'+esc(d)+'</span>'
           +'</div>';
@@ -704,7 +704,7 @@ function eigenUploadTekst(tekst){
   return m?m[1]:null;
 }
 function docNietBeschikbaarHtml(bestandsnaam){
-  return '<div style="padding:1rem;background:#fff3f0;border:1px solid var(--red);border-radius:8px;color:var(--red);font-size:13px;line-height:1.6">Dit document ('+esc(bestandsnaam)+') is als eigen bestand geüpload, maar kan hier niet worden getoond — de koppeling naar het bestand ontbreekt. Neem contact op met uw adviseur voor een nieuwe versie.</div>';
+  return '<div style="padding:1rem;background:var(--red-bg);border:1px solid var(--red);border-radius:8px;color:var(--red);font-size:13px;line-height:1.6">Dit document ('+esc(bestandsnaam)+') is als eigen bestand geüpload, maar kan hier niet worden getoond — de koppeling naar het bestand ontbreekt. Neem contact op met uw adviseur voor een nieuwe versie.</div>';
 }
 
 function bindAll(){
@@ -822,7 +822,7 @@ function bindAll(){
   var loiLees=ge('loi-lees-btn');
   if(loiLees)loiLees.onclick=function(){
     var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;display:flex;align-items:center;justify-content:center;padding:1.5rem';
-    var box=document.createElement('div');box.style.cssText='background:#fff;border-radius:10px;padding:2rem;max-width:700px;width:100%;max-height:90vh;overflow-y:auto';
+    var box=document.createElement('div');box.style.cssText='background:var(--panel);border-radius:10px;padding:2rem;max-width:700px;width:100%;max-height:90vh;overflow-y:auto';
     var loiEigen=eigenUploadTekst(S.loiTekst);
     box.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.2rem;font-weight:600;color:#1a1815;margin-bottom:1rem">Letter of Intent</div>'
       +(loiEigen?docNietBeschikbaarHtml(loiEigen):'<div style="font-family:Georgia,serif;font-size:13px;line-height:1.9;color:#2a2825;white-space:pre-wrap">'+esc(S.loiTekst)+'</div>')
@@ -876,7 +876,7 @@ function bindAll(){
   var bemLees=ge('bem-lees-btn2');
   if(bemLees)bemLees.onclick=function(){
     var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;display:flex;align-items:center;justify-content:center;padding:1.5rem';
-    var box=document.createElement('div');box.style.cssText='background:#fff;border-radius:10px;padding:2rem;max-width:700px;width:100%;max-height:90vh;overflow-y:auto';
+    var box=document.createElement('div');box.style.cssText='background:var(--panel);border-radius:10px;padding:2rem;max-width:700px;width:100%;max-height:90vh;overflow-y:auto';
     var bemEigen=eigenUploadTekst(S.bemTekst);
     box.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.2rem;font-weight:600;color:#1a1815;margin-bottom:1rem">Bemiddelingsovereenkomst</div>'
       +(bemEigen?docNietBeschikbaarHtml(bemEigen):'<div style="font-family:Georgia,serif;font-size:13px;line-height:1.9;color:#2a2825;white-space:pre-wrap">'+esc(S.bemTekst)+'</div>')
@@ -891,7 +891,7 @@ function bindAll(){
     var ov=document.createElement('div');
     ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;display:flex;align-items:center;justify-content:center;padding:1.5rem';
     var box=document.createElement('div');
-    box.style.cssText='background:#fff;border-radius:10px;padding:2rem;max-width:700px;width:100%;max-height:90vh;overflow-y:auto';
+    box.style.cssText='background:var(--panel);border-radius:10px;padding:2rem;max-width:700px;width:100%;max-height:90vh;overflow-y:auto';
     var ndaEigen=eigenUploadTekst(S.ndaTekst);
     var ndaHtml=(S.ndaTekst||'').replace(/^# (.+)$/gm,'<h2 style="font-family:Georgia,serif;font-size:1.1rem;margin:1rem 0 .4rem;font-weight:700">$1</h2>').replace(/^## (.+)$/gm,'<h3 style="font-family:Georgia,serif;font-size:.95rem;margin:.9rem 0 .3rem;font-weight:700">$1</h3>').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/^---$/gm,'<hr style="border:none;border-top:1px solid #ddd;margin:.75rem 0">').replace(/\n\n/g,'</p><p style="font-size:13px;line-height:1.9;color:#2a2825;margin:.4rem 0">').replace(/\n/g,'<br>');
     var hdr=document.createElement('div');hdr.style.cssText='display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem';
@@ -1262,7 +1262,7 @@ function bindAll(){
     docKnopBtn.onclick=function(){
       // Toon document modal met NDA/LoI/BEM knoppen
       var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:200;display:flex;align-items:center;justify-content:center;padding:1.5rem';
-      var mo=document.createElement('div');mo.style.cssText='background:#fff;border-radius:10px;padding:2rem;max-width:560px;width:100%;max-height:90vh;overflow-y:auto';
+      var mo=document.createElement('div');mo.style.cssText='background:var(--panel);border-radius:10px;padding:2rem;max-width:560px;width:100%;max-height:90vh;overflow-y:auto';
       var t2=S.traject;
       mo.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.1rem;color:#1a1815;font-weight:600;margin-bottom:1.25rem">&#128196; Documenten genereren</div>'
         +'<p style="font-size:13px;color:#5a5854;margin-bottom:1.25rem">Genereer en verstuur documenten voor traject <strong>'+esc(t2.kantoor_naam||S.code)+'</strong>.</p>'
@@ -1299,8 +1299,8 @@ function bindAll(){
         var rd=await resp.json();
         var tekst=rd.text||(rd.error||'Fout');
         var labels={nda:'NDA',loi:'LoI',bem:'Bemiddelingsovereenkomst'};
-        out.innerHTML='<div style="font-size:11px;font-weight:600;color:#2a5ea0;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.5rem">'+labels[type]+' gegenereerd</div>'
-          +'<textarea style="width:100%;height:280px;background:#f0eeea;border:1px solid #c8c5bc;border-radius:6px;color:#2a2825;font-family:Georgia,serif;font-size:12px;line-height:1.8;padding:1rem;outline:none;resize:vertical" id="bg-doc-tekst">'+esc(tekst)+'</textarea>'
+        out.innerHTML='<div style="font-size:11px;font-weight:600;color:var(--info);text-transform:uppercase;letter-spacing:.1em;margin-bottom:.5rem">'+labels[type]+' gegenereerd</div>'
+          +'<textarea style="width:100%;height:280px;background:var(--card);border:1px solid var(--border2);border-radius:6px;color:var(--sub);font-family:Georgia,serif;font-size:12px;line-height:1.8;padding:1rem;outline:none;resize:vertical" id="bg-doc-tekst">'+esc(tekst)+'</textarea>'
           +'<div style="display:flex;gap:8px;margin-top:.75rem">'
           +'<button id="bg-print-btn" style="background:transparent;border:1px solid #c8c5bc;padding:6px 14px;border-radius:6px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:12px">&#128196; Print / PDF</button>'
           +'<button id="bg-email-btn" style="background:#2a5ea0;color:#fff;border:none;padding:6px 14px;border-radius:6px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:12px;font-weight:600">&#9993; Verstuur naar partijen</button>'
@@ -1427,7 +1427,7 @@ function bindAll(){
         var rd=await resp.json();
         var tekst=(rd.text||'Fout bij genereren.').replace(/## ([^\n]+)/g,'<strong style="display:block;margin:.75rem 0 .25rem;font-size:14px">$1</strong>').replace(/\n/g,'<br>');
         var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:200;display:flex;align-items:center;justify-content:center;padding:1.5rem';
-        var mo=document.createElement('div');mo.style.cssText='background:#fff;border-radius:10px;padding:2rem;max-width:680px;width:100%;max-height:90vh;overflow-y:auto';
+        var mo=document.createElement('div');mo.style.cssText='background:var(--panel);border-radius:10px;padding:2rem;max-width:680px;width:100%;max-height:90vh;overflow-y:auto';
         mo.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.1rem;color:#1a1815;font-weight:600;margin-bottom:1.25rem">&#9881; AI-analyse · '+esc(t3.kantoor_naam||S.code)+'</div>'
           +'<div style="font-size:13px;color:#5a5854;line-height:1.8">'+tekst+'</div>'
           +'<div style="margin-top:1.25rem;text-align:right"><button id="ai-sluit" style="background:transparent;border:1px solid #c8c5bc;padding:8px 16px;border-radius:6px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:13px">Sluiten</button></div>';

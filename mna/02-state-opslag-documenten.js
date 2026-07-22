@@ -546,9 +546,9 @@ async function uploadDocument(faseId, file) {
         }
         if(d.crosschecks)msgs=msgs.concat(d.crosschecks);
         if(msgs.length){
-          var md='<div style="background:#fff8f0;border:1px solid #e8a84c;border-radius:6px;padding:.75rem;margin:.5rem 0">'
-            +'<div style="font-size:11px;font-weight:600;color:#8a5a00;margin-bottom:.4rem">⚠ Aandachtspunten bij '+esc(file.name)+'</div>'
-            +msgs.map(function(m){return '<div style="font-size:12px;color:#5a4010;padding:2px 0">• '+esc(m)+'</div>';}).join('')
+          var md='<div style="background:var(--gold-bg);border:1px solid var(--gold);border-radius:6px;padding:.75rem;margin:.5rem 0">'
+            +'<div style="font-size:11px;font-weight:600;color:var(--gold-dark);margin-bottom:.4rem">⚠ Aandachtspunten bij '+esc(file.name)+'</div>'
+            +msgs.map(function(m){return '<div style="font-size:12px;color:var(--gold-dark);padding:2px 0">• '+esc(m)+'</div>';}).join('')
             +'</div>';
           // Toon onder de upload zone
           var uz=document.getElementById('upload-zone-'+faseId);
@@ -625,22 +625,22 @@ window.centraalUploadFiles = async function(files) {
         // Toon verworpen melding direct en ga door
         if(d.verworpen&&d.verworpen_reden){
           var statusEl3=document.getElementById('centraal-upload-status');
-          if(statusEl3)statusEl3.innerHTML=(statusEl3.innerHTML||'')+'<div style="background:#fff0f0;border:1px solid var(--red);border-radius:6px;padding:.5rem .75rem;margin-top:.4rem;font-size:12px;color:var(--red)">🚫 <strong>'+esc(file.name)+'</strong> genegeerd: '+esc(d.verworpen_reden)+'</div>';
+          if(statusEl3)statusEl3.innerHTML=(statusEl3.innerHTML||'')+'<div style="background:var(--red-bg);border:1px solid var(--red);border-radius:6px;padding:.5rem .75rem;margin-top:.4rem;font-size:12px;color:var(--red)">🚫 <strong>'+esc(file.name)+'</strong> genegeerd: '+esc(d.verworpen_reden)+'</div>';
           // Direct doorgaan naar volgend bestand
           renderApp();
           continue;
         }
         // Toon crosscheck waarschuwingen als die er zijn
         if(d.crosschecks&&d.crosschecks.length){
-          var warnHtml='<div style="background:#fff8f0;border:1px solid #e8a84c;border-radius:6px;padding:.75rem;margin-top:.5rem">'
-            +'<div style="font-size:11px;font-weight:600;color:#8a5a00;margin-bottom:.4rem">⚠ '+file.name+' — '+d.crosschecks.length+' aandachtspunt(en)</div>';
-          d.crosschecks.forEach(function(w){warnHtml+='<div style="font-size:12px;color:#5a4010;padding:2px 0">• '+esc(w)+'</div>';});
+          var warnHtml='<div style="background:var(--gold-bg);border:1px solid var(--gold);border-radius:6px;padding:.75rem;margin-top:.5rem">'
+            +'<div style="font-size:11px;font-weight:600;color:var(--gold-dark);margin-bottom:.4rem">⚠ '+file.name+' — '+d.crosschecks.length+' aandachtspunt(en)</div>';
+          d.crosschecks.forEach(function(w){warnHtml+='<div style="font-size:12px;color:var(--gold-dark);padding:2px 0">• '+esc(w)+'</div>';});
           // Entiteit check
           if(d.entiteit_naam&&S.traject&&S.traject.kantoor_naam){
             var naam1=(d.entiteit_naam||'').toLowerCase();
             var naam2=(S.traject.kantoor_naam||'').toLowerCase();
             if(!naam1.includes(naam2.split(' ')[0])&&!naam2.includes(naam1.split(' ')[0])){
-              warnHtml+='<div style="font-size:12px;color:#c0392b;padding:2px 0;font-weight:500">⚠ Entiteit in document ("'+esc(d.entiteit_naam)+'") wijkt af van kantoornaam ("'+esc(S.traject.kantoor_naam)+'") — controleer of dit het juiste bestand is.</div>';
+              warnHtml+='<div style="font-size:12px;color:var(--red);padding:2px 0;font-weight:500">⚠ Entiteit in document ("'+esc(d.entiteit_naam)+'") wijkt af van kantoornaam ("'+esc(S.traject.kantoor_naam)+'") — controleer of dit het juiste bestand is.</div>';
             }
           }
           warnHtml+='</div>';

@@ -143,11 +143,11 @@ function chatRenderBerichten() {
     var isAI = b.auteur === 'ai';
     var isBeg = b.auteur === 'begeleider';
     var dt = b.ts ? new Date(b.ts).toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'}) : '';
-    var bg = isEigen ? 'var(--teal)' : isAI ? 'var(--card)' : isBeg ? '#f3f0ff' : 'var(--card)';
+    var bg = isEigen ? 'var(--teal)' : isAI ? 'var(--card)' : isBeg ? 'var(--purple-bg)' : 'var(--card)';
     var kleur = isEigen ? '#fff' : 'var(--sub)';
     var align = isEigen ? 'flex-end' : 'flex-start';
-    var border = isAI ? '1px solid var(--border)' : isBeg ? '1px solid #c8b8f0' : 'none';
-    var naamKleur = isAI ? 'var(--teal)' : isBeg ? '#7c5cbf' : 'var(--muted)';
+    var border = isAI ? '1px solid var(--border)' : isBeg ? '1px solid var(--purple-border)' : 'none';
+    var naamKleur = isAI ? 'var(--teal)' : isBeg ? 'var(--purple)' : 'var(--muted)';
     var naamHtml = isEigen ? '' : '<div style="font-size:10px;font-weight:600;color:'+naamKleur+';margin-bottom:3px">' + (b.naam||b.auteur) + '</div>';
     var radius = isEigen ? '12px 12px 2px 12px' : '12px 12px 12px 2px';
     if (b.typing) return '<div style="display:flex;justify-content:flex-start;margin-bottom:8px"><div style="background:var(--card);border:1px solid var(--border);border-radius:'+radius+';padding:8px 14px;max-width:80%">'+naamHtml+'<div style="display:flex;gap:4px;align-items:center;height:18px"><div style="width:6px;height:6px;border-radius:50%;background:var(--muted);animation:chatdot .8s infinite 0s"></div><div style="width:6px;height:6px;border-radius:50%;background:var(--muted);animation:chatdot .8s infinite .2s"></div><div style="width:6px;height:6px;border-radius:50%;background:var(--muted);animation:chatdot .8s infinite .4s"></div></div></div></div>';
