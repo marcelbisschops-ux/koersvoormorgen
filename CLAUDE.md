@@ -10,7 +10,7 @@ KantoorInzicht: AI-gedreven M&A due-diligence platform voor overnames van accoun
 Eigenaar: Marcel Bisschops (Bisschops Financing B.V.).
 
 ## Bestanden en rollen
-- `cloudflare-worker.js` — backend (Cloudflare Worker): alle API-endpoints, AI-documentextractie, e-mail (Resend), ondertekening (Signhost)
+- `cloudflare-worker.js` — backend (Cloudflare Worker): alle API-endpoints, AI-documentextractie, e-mail (Resend), ondertekening (Signhost). Sinds juli 2026 deels opgesplitst (Fase 1+2 van een gefaseerde opsplitsing, zie plan `ethereal-wobbling-stardust.md`): mechanische/losstaande delen staan in genummerde modules onder `worker/` (01-verhuisscan t/m 06-scantool — config/constanten, parsers, AI-extractie, benchmarks, VerhuisScan, legacy scan-tool). De MNA-kern (165 routes, ~5000 regels) staat bewust nog in het hoofdbestand — die opsplitsing hangt af van het eerst hijsen van de auth-closures (`begeleiderAuth` e.d.) naar top-level functies, wat vanwege het eerdere cross-traject-lek apart moet worden goedgekeurd.
 - `mna.html` + `mna/*.js` — verkoper/koper-portaal (het hoofdproduct). Sinds juli 2026 opgesplitst: mna.html is alleen nog HTML/CSS-skelet; de applicatiecode staat in 7 genummerde modules in `mna/` (01-config-sectorprofielen t/m 07-start-chat). **Laadvolgorde is belangrijk** — latere modules gebruiken functies uit eerdere; nieuwe code toevoegen in de module waar het thematisch hoort, of achteraan
 - `marilyn.html` — admin-paneel van Marcel
 - `adv.html` — adviseursportaal (betaalde externe adviseurs; login met e-mail + wachtwoord)
