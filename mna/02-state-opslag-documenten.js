@@ -1006,13 +1006,15 @@ function renderDocumentSectie(faseId) {
           + '</div>';
       }
       var entNaamDoc = entiteitNaam(doc.entiteit_id);
-      var toonKoppelenDoc = !isReadOnly && !doc.entiteit_id && S._entiteiten && S._entiteiten.length;
-      var gokIdDoc = toonKoppelenDoc?gokEntiteitId((doc.velden||{}).entiteit_naam):'';
+      var toonKoppelenDoc = !isReadOnly && S._entiteiten && S._entiteiten.length;
+      var gokIdDoc = (toonKoppelenDoc && !doc.entiteit_id) ? gokEntiteitId((doc.velden||{}).entiteit_naam) : '';
+      var geselecteerdDoc = doc.entiteit_id || gokIdDoc;
+      var groepsniveauBadgeDoc = (toonKoppelenDoc && !doc.entiteit_id) ? ' <span style="font-size:9px;font-weight:600;color:var(--muted);background:var(--panel);border-radius:8px;padding:1px 6px;margin-left:2px">Groepsniveau</span>' : '';
       return '<div style="display:flex;align-items:center;gap:6px;padding:5px 8px;background:var(--card);border-radius:var(--r);border:1px solid var(--border);flex-wrap:wrap">'
         + '<span style="font-size:13px">'+icon+'</span>'
-        + '<span style="font-size:11px;color:var(--teal);flex:1">'+(doc.bewaard?'<a href="'+WORKER+'/mna/document/download/'+doc.id+'?code='+encodeURIComponent(S.code)+'" target="_blank" style="color:var(--teal);text-decoration:none">'+esc(doc.naam)+'</a>':esc(doc.naam))+(entNaamDoc?' <span style="font-size:9px;font-weight:600;color:var(--teal);background:var(--teal-bg);border-radius:8px;padding:1px 6px;margin-left:2px">'+esc(entNaamDoc)+'</span>':'')+'</span>'
+        + '<span style="font-size:11px;color:var(--teal);flex:1">'+(doc.bewaard?'<a href="'+WORKER+'/mna/document/download/'+doc.id+'?code='+encodeURIComponent(S.code)+'" target="_blank" style="color:var(--teal);text-decoration:none">'+esc(doc.naam)+'</a>':esc(doc.naam))+(entNaamDoc?' <span style="font-size:9px;font-weight:600;color:var(--teal);background:var(--teal-bg);border-radius:8px;padding:1px 6px;margin-left:2px">'+esc(entNaamDoc)+'</span>':groepsniveauBadgeDoc)+'</span>'
         + '<span style="font-size:10px;color:var(--muted)">'+(doc.grootte/1024/1024).toFixed(1)+'MB</span>'
-        + (toonKoppelenDoc?'<select id="fd-ent-'+doc.id+'" style="font-size:10px;background:var(--panel);border:1px solid var(--border2);border-radius:var(--r);padding:2px 4px"><option value="">— Koppel aan entiteit —</option>'+S._entiteiten.map(function(e){return '<option value="'+esc(e.id)+'"'+(e.id===gokIdDoc?' selected':'')+'>'+esc(e.naam)+(e.id===gokIdDoc?' (AI-suggestie)':'')+'</option>';}).join('')+'</select><button onclick="koppelDocumentAanEntiteit(\''+doc.id+'\',\'fd-ent-\')" style="background:none;border:1px solid var(--teal);color:var(--teal);border-radius:var(--r);cursor:pointer;font-size:10px;padding:1px 6px">&#128279;</button>':'')
+        + (toonKoppelenDoc?'<select id="fd-ent-'+doc.id+'" style="font-size:10px;background:var(--panel);border:1px solid var(--border2);border-radius:var(--r);padding:2px 4px"><option value="">'+(doc.entiteit_id?'— Groepsniveau (ontkoppelen) —':'— Koppel aan entiteit —')+'</option>'+S._entiteiten.map(function(e){return '<option value="'+esc(e.id)+'"'+(e.id===geselecteerdDoc?' selected':'')+'>'+esc(e.naam)+(e.id===gokIdDoc&&!doc.entiteit_id?' (AI-suggestie)':'')+'</option>';}).join('')+'</select><button onclick="koppelDocumentAanEntiteit(\''+doc.id+'\',\'fd-ent-\')" style="background:none;border:1px solid var(--teal);color:var(--teal);border-radius:var(--r);cursor:pointer;font-size:10px;padding:1px 6px">&#128279;</button>':'')
         + (!isReadOnly?'<button onclick="deleteDocument(\''+doc.id+'\',\''+faseId+'\')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:10px;padding:0 2px">✕</button>':'')
         + '</div>';
     }).join('');
@@ -1224,17 +1226,19 @@ function renderDataroom(){
         var st=doc.uploaded_at?new Date(doc.uploaded_at).toLocaleString('nl-NL',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'';
         var gr=(doc.grootte/1024/1024).toFixed(1)+'MB';
         var entNaam=entiteitNaam(doc.entiteit_id);
-        var toonKoppelen=!isKoper()&&!doc.entiteit_id&&S._entiteiten&&S._entiteiten.length;
-        var gokId=toonKoppelen?gokEntiteitId((doc.velden||{}).entiteit_naam):'';
+        var toonKoppelen=!isKoper()&&S._entiteiten&&S._entiteiten.length;
+        var gokId=(toonKoppelen&&!doc.entiteit_id)?gokEntiteitId((doc.velden||{}).entiteit_naam):'';
+        var geselecteerd=doc.entiteit_id||gokId;
+        var groepsniveauBadge=(toonKoppelen&&!doc.entiteit_id)?' <span style="font-size:10px;font-weight:600;color:var(--muted);background:var(--panel);border-radius:8px;padding:2px 8px;margin-left:4px">Groepsniveau</span>':'';
         html+='<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">'
           +'<span style="font-size:18px">'+icon+'</span>'
-          +'<div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--head)">'+esc(doc.naam)+(entNaam?' <span style="font-size:10px;font-weight:600;color:var(--teal);background:var(--teal-bg);border-radius:8px;padding:2px 8px;margin-left:4px">'+esc(entNaam)+'</span>':'')+'</div>'
+          +'<div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--head)">'+esc(doc.naam)+(entNaam?' <span style="font-size:10px;font-weight:600;color:var(--teal);background:var(--teal-bg);border-radius:8px;padding:2px 8px;margin-left:4px">'+esc(entNaam)+'</span>':groepsniveauBadge)+'</div>'
           +'<div style="font-size:11px;color:var(--muted);margin-top:2px">'+gr+(st?' &middot; Geupload: '+st:'')+'</div>'
           +(toonKoppelen?'<div style="margin-top:6px;display:flex;gap:6px;align-items:center">'
-            +'<select id="dr-ent-'+doc.id+'" style="font-size:11px;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:4px 6px"><option value="">— Koppel aan entiteit —</option>'
-            +S._entiteiten.map(function(e){return '<option value="'+esc(e.id)+'"'+(e.id===gokId?' selected':'')+'>'+esc(e.naam)+(e.id===gokId?' (AI-suggestie)':'')+'</option>';}).join('')
+            +'<select id="dr-ent-'+doc.id+'" style="font-size:11px;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:4px 6px"><option value="">'+(doc.entiteit_id?'— Groepsniveau (ontkoppelen) —':'— Koppel aan entiteit —')+'</option>'
+            +S._entiteiten.map(function(e){return '<option value="'+esc(e.id)+'"'+(e.id===geselecteerd?' selected':'')+'>'+esc(e.naam)+(e.id===gokId&&!doc.entiteit_id?' (AI-suggestie)':'')+'</option>';}).join('')
             +'</select>'
-            +'<button class="btn-ghost btn-sm" style="font-size:11px" onclick="koppelDocumentAanEntiteit(\''+doc.id+'\')">&#128279; Koppelen</button>'
+            +'<button class="btn-ghost btn-sm" style="font-size:11px" onclick="koppelDocumentAanEntiteit(\''+doc.id+'\')">&#128279; '+(doc.entiteit_id?'Wijzigen':'Koppelen')+'</button>'
             +'</div>':'')
           +'</div>'
           +'<a href="'+WORKER+'/mna/document/download/'+doc.id+'?code='+encodeURIComponent(S.code)+'" target="_blank" class="btn-ghost btn-sm" style="font-size:11px;text-decoration:none" onclick="secAuditLog(\'document_bekeken\',{doc_naam:\''+doc.naam.replace(/'/g,'')+'\'})">&#8681; '+(isKoper()?'Bekijken':'Download')+'</a>'
@@ -1249,10 +1253,11 @@ function renderDataroom(){
 // Koppelt een op groepsniveau geüpload document alsnog aan een entiteit — en herverwerkt de al
 // opgeslagen veld_extractie naar de entiteit-eigen dataopslag (geen nieuwe AI-call). De worker
 // consolideert daarna automatisch de groepstotalen o.b.v. alle entiteiten (consolideerFase()).
+// Ook bruikbaar om een bestaande koppeling te wijzigen of terug te zetten op groepsniveau (leeg
+// gekozen) — de dropdown blijft daarom altijd zichtbaar, ook als er al een entiteit gekozen is.
 window.koppelDocumentAanEntiteit = async function(docId, selectPrefix){
   var sel=document.getElementById((selectPrefix||'dr-ent-')+docId);
   var entiteitId=sel?sel.value:'';
-  if(!entiteitId){toast('Kies eerst een entiteit.','warn');return;}
   var doc=(S.dataroom||[]).find(function(d){return d.id===docId;});
   if(!doc){
     Object.keys(DOCS||{}).some(function(fid){
@@ -1262,9 +1267,22 @@ window.koppelDocumentAanEntiteit = async function(docId, selectPrefix){
     });
   }
   if(!doc)return;
+  var vorigeEntiteitId=doc.entiteit_id||'';
+  if(!entiteitId&&!vorigeEntiteitId){toast('Kies eerst een entiteit.','warn');return;}
+  if(vorigeEntiteitId&&entiteitId!==vorigeEntiteitId){
+    var boodschap=entiteitId
+      ? 'Dit document was al gekoppeld aan '+entiteitNaam(vorigeEntiteitId)+'. De cijfers die het daar eerder invulde worden NIET automatisch teruggehaald — controleer dat handmatig bij '+entiteitNaam(vorigeEntiteitId)+' als die koppeling onterecht was.\n\nDoorgaan met koppelen aan '+entiteitNaam(entiteitId)+'?'
+      : 'Dit document was gekoppeld aan '+entiteitNaam(vorigeEntiteitId)+'. Ontkoppelen zet het terug op groepsniveau, maar de cijfers die het daar eerder invulde worden NIET automatisch gewist — controleer dat handmatig.\n\nDoorgaan met ontkoppelen?';
+    if(!confirm(boodschap))return;
+  }
   var r=await fetch(WORKER+'/mna/document/koppel-entiteit/'+docId,{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S.code},body:JSON.stringify({entiteit_id:entiteitId})}).then(function(x){return x.json();}).catch(function(){return{};});
   if(!r.ok){toast('Koppelen mislukt: '+(r.error||'onbekend'),'err');return;}
   doc.entiteit_id=entiteitId;
+  if(!entiteitId){
+    renderApp();
+    toast('Ontkoppeld — document staat weer op groepsniveau.','ok');
+    return;
+  }
   if(doc.velden&&Object.keys(doc.velden).length){
     S._conflicts=[];
     var alleFases=['financieel','commercieel','partner','compliance','it','juridisch','strategisch'];
