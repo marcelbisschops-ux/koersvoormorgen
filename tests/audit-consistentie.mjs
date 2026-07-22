@@ -77,40 +77,60 @@ else refIssues.forEach(i => warn(i.file + ':' + i.line + ' — "' + i.key + '" b
 // (het exacte patroon van de begeleiderAuth-bug: een lokale const shadowt een gelijknamige
 // module-level function, en alle aanroepen binnen dat bereik gebruiken zonder het te weten de
 // verkeerde/andere versie.)
+//
+// Sinds de opsplitsing van cloudflare-worker.js in worker/*.js-modules (juli 2026) draaien
+// checks 2/3/5 over ALLE backend-bestanden (entry + elke module), niet alleen het entry-bestand —
+// anders verdwijnt precies de dekking die deze checks moeten bieden zodra route-code verhuist.
 log('2. Functies die zowel als "function X" én als "const X = (...) =>" bestaan (shadowing-risico)');
 const workerPath = fs.existsSync(path.join(ROOT, 'backend/cloudflare-worker.js'))
   ? path.join(ROOT, 'backend/cloudflare-worker.js')
   : null;
-if (!workerPath) {
+const workerModulesDir = path.join(ROOT, 'backend/worker');
+const backendFiles = [];
+if (workerPath) backendFiles.push({ name: 'backend/cloudflare-worker.js', src: fs.readFileSync(workerPath, 'utf8') });
+if (fs.existsSync(workerModulesDir)) {
+  fs.readdirSync(workerModulesDir).filter(f => f.endsWith('.js')).forEach(f => {
+    backendFiles.push({ name: 'backend/worker/' + f, src: fs.readFileSync(path.join(workerModulesDir, f), 'utf8') });
+  });
+}
+if (!backendFiles.length) {
   warn('backend/cloudflare-worker.js niet gevonden — sync eerst vanuit ~/Downloads/cloudflare-worker.js voordat je deze check draait.');
 } else {
-  const workerSrc = fs.readFileSync(workerPath, 'utf8');
-  const functionNames = new Set();
-  const constArrowNames = new Set();
   const funcRe = /^\s*(?:async )?function ([A-Za-z_][A-Za-z0-9_]*)/gm;
   const constFnRe = /^\s*const ([A-Za-z_][A-Za-z0-9_]*) = (?:async )?\(/gm;
-  let fm2;
-  while ((fm2 = funcRe.exec(workerSrc))) functionNames.add(fm2[1]);
-  while ((fm2 = constFnRe.exec(workerSrc))) constArrowNames.add(fm2[1]);
-  const overlap = [...functionNames].filter(n => constArrowNames.has(n));
-  if (!overlap.length) ok('Geen overlap tussen function- en const-arrow-namen gevonden.');
-  else overlap.forEach(name => warn('"' + name + '" bestaat zowel als "function ' + name + '" als "const ' + name + ' = (...) =>" — controleer welke versie waar wordt gebruikt (grep "' + name + '(" ), dit is exact het patroon dat begeleiderAuth brak.'));
+  const overlapFindings = [];
+  backendFiles.forEach(({ name, src }) => {
+    const functionNames = new Set();
+    const constArrowNames = new Set();
+    let fm2;
+    const fRe = new RegExp(funcRe.source, 'gm');
+    const cRe = new RegExp(constFnRe.source, 'gm');
+    while ((fm2 = fRe.exec(src))) functionNames.add(fm2[1]);
+    while ((fm2 = cRe.exec(src))) constArrowNames.add(fm2[1]);
+    const overlap = [...functionNames].filter(n => constArrowNames.has(n));
+    overlap.forEach(n => overlapFindings.push({ name, n }));
+  });
+  if (!overlapFindings.length) ok('Geen overlap tussen function- en const-arrow-namen gevonden.');
+  else overlapFindings.forEach(f => warn(f.name + ': "' + f.n + '" bestaat zowel als "function ' + f.n + '" als "const ' + f.n + ' = (...) =>" — controleer welke versie waar wordt gebruikt (grep "' + f.n + '(" ), dit is exact het patroon dat begeleiderAuth brak.'));
 
   // ── 4. begeleiderAuth-aanroepen met een verdacht trajectCode-argument ──────
   log('3. begeleiderAuth(...)-aanroepen met een leeg/verdacht trajectCode-argument');
   const callRe = /begeleiderAuth\(request,\s*([^)]*)\)/g;
-  let cm;
   const verdachteCalls = [];
-  while ((cm = callRe.exec(workerSrc))) {
-    const arg = cm[1].trim();
-    const lineNr = workerSrc.slice(0, cm.index).split('\n').length;
-    // Verdacht: een lege string-literal, of een tweede argument (env) waar er maar 2 params horen.
-    if (arg === "''" || arg === '""' || arg.startsWith('env')) {
-      verdachteCalls.push({ lineNr, arg });
+  backendFiles.forEach(({ name, src }) => {
+    let cm;
+    const re = new RegExp(callRe.source, 'g');
+    while ((cm = re.exec(src))) {
+      const arg = cm[1].trim();
+      const lineNr = src.slice(0, cm.index).split('\n').length;
+      // Verdacht: een lege string-literal, of een tweede argument (env) waar er maar 2 params horen.
+      if (arg === "''" || arg === '""' || arg.startsWith('env')) {
+        verdachteCalls.push({ name, lineNr, arg });
+      }
     }
-  }
+  });
   if (!verdachteCalls.length) ok('Alle begeleiderAuth-aanroepen geven een niet-triviaal trajectCode-argument mee.');
-  else verdachteCalls.forEach(c => warn('regel ' + c.lineNr + ': begeleiderAuth(request, ' + c.arg + ') — leeg of verdacht argument. Zorg dat dit het traject_id/code van de daadwerkelijke resource is (zie hoe /mna/admin/qa/antwoord/{id} en /mna/document/herclassificeer/{id} dit doen: eerst de resource opzoeken, dán pas begeleiderAuth aanroepen met het GEVONDEN traject_id).'));
+  else verdachteCalls.forEach(c => warn(c.name + ':' + c.lineNr + ': begeleiderAuth(request, ' + c.arg + ') — leeg of verdacht argument. Zorg dat dit het traject_id/code van de daadwerkelijke resource is (zie hoe /mna/admin/qa/antwoord/{id} en /mna/document/herclassificeer/{id} dit doen: eerst de resource opzoeken, dán pas begeleiderAuth aanroepen met het GEVONDEN traject_id).'));
 }
 
 // ── 5. "Intern" gelabelde UI-blokken die mogelijk niet zijn afgeschermd voor koper ──
@@ -170,31 +190,32 @@ const GEVERIFIEERD_VEILIG_CHECK5 = new Set([
   '/mna/signhost/stuur',           // ADMIN_KEY- of geldige tussen_code-gated, retourneert alleen transactiestatus
   '/mna/signhost/webhook',         // inkomend vanaf Signhost zelf, retourneert altijd platte tekst 'ok', nooit JSON
 ]);
-if (workerPath) {
-  const workerSrc2 = fs.readFileSync(workerPath, 'utf8');
-  const wLines = workerSrc2.split('\n');
+if (backendFiles.length) {
   const selectRe = /SELECT \* FROM mna_(trajecten|gesprekken)\b/;
   const selectStarIssues = [];
-  wLines.forEach((line, idx) => {
-    if (!selectRe.test(line)) return;
-    // Route-pad: zoek terug naar de dichtstbijzijnde 'if (path...' regel.
-    let routePath = null;
-    // Herkent zowel 'path.startsWith(\'...\')' als het exacte 'path === \'...\''-patroon — de eerste
-    // versie van deze regel zag alleen de eerste vorm en miste zo elke exact-match route (93 stuks in
-    // de worker, incl. /adviseur/trajecten — precies de route achter het notitielek van 13-07-2026).
-    const routeRe = /if\s*\(\s*path\s*(?:\.startsWith\(|===\s*)['"]([^'"]+)['"]/;
-    for (let back = idx; back >= Math.max(0, idx - 80); back--) {
-      const m = routeRe.exec(wLines[back]);
-      if (m) { routePath = m[1]; break; }
-    }
-    if (!routePath || routePath.includes('/admin/')) return;
-    // Stuurt dit dezelfde route-handler het resultaat ook echt terug? Loop vooruit tot óf een
-    // JSON.stringify (= mogelijk lek), óf de volgende route ('if (path...') begint (= dit SELECT-
-    // resultaat wordt binnen zijn eigen handler nooit gestringified, dus geen lek).
-    for (let fwd = idx; fwd <= Math.min(wLines.length - 1, idx + 60); fwd++) {
-      if (fwd > idx && /if\s*\(\s*path\s*(?:\.startsWith\(|===)/.test(wLines[fwd])) break;
-      if (/JSON\.stringify\(/.test(wLines[fwd])) { selectStarIssues.push(routePath); break; }
-    }
+  backendFiles.forEach(({ src }) => {
+    const wLines = src.split('\n');
+    wLines.forEach((line, idx) => {
+      if (!selectRe.test(line)) return;
+      // Route-pad: zoek terug naar de dichtstbijzijnde 'if (path...' regel.
+      let routePath = null;
+      // Herkent zowel 'path.startsWith(\'...\')' als het exacte 'path === \'...\''-patroon — de eerste
+      // versie van deze regel zag alleen de eerste vorm en miste zo elke exact-match route (93 stuks in
+      // de worker, incl. /adviseur/trajecten — precies de route achter het notitielek van 13-07-2026).
+      const routeRe = /if\s*\(\s*path\s*(?:\.startsWith\(|===\s*)['"]([^'"]+)['"]/;
+      for (let back = idx; back >= Math.max(0, idx - 80); back--) {
+        const m = routeRe.exec(wLines[back]);
+        if (m) { routePath = m[1]; break; }
+      }
+      if (!routePath || routePath.includes('/admin/')) return;
+      // Stuurt dit dezelfde route-handler het resultaat ook echt terug? Loop vooruit tot óf een
+      // JSON.stringify (= mogelijk lek), óf de volgende route ('if (path...') begint (= dit SELECT-
+      // resultaat wordt binnen zijn eigen handler nooit gestringified, dus geen lek).
+      for (let fwd = idx; fwd <= Math.min(wLines.length - 1, idx + 60); fwd++) {
+        if (fwd > idx && /if\s*\(\s*path\s*(?:\.startsWith\(|===)/.test(wLines[fwd])) break;
+        if (/JSON\.stringify\(/.test(wLines[fwd])) { selectStarIssues.push(routePath); break; }
+      }
+    });
   });
   const uniekeIssues = [...new Set(selectStarIssues)].filter(p => !GEVERIFIEERD_VEILIG_CHECK5.has(p));
   const genegeerd = [...new Set(selectStarIssues)].filter(p => GEVERIFIEERD_VEILIG_CHECK5.has(p));
