@@ -12,11 +12,23 @@
   --border:#e4e0db;--border2:#d0cbc4;
   --head:#1a1815;--sub:#2a2825;--mid:#5a5450;--muted:#8a8480;
   --teal:#1a7a5e;--teal-light:#edf7f3;--teal-border:#b8ddd2;--teal-dark:#145f48;
-  --gold:#c9a84c;--gold-bg:#fdf8ee;--gold-border:#e8d99a;
+  --gold:#c9a84c;--gold-bg:#fdf8ee;--gold-border:#e8d99a;--gold-dark:#8a6d00;
   --red:#c0392b;--red-light:#fdf2f0;
   --r:5px;--r2:8px;
   --shadow:0 1px 3px rgba(0,0,0,.06),0 4px 12px rgba(0,0,0,.04);
   --shadow-lg:0 4px 16px rgba(0,0,0,.08),0 1px 4px rgba(0,0,0,.04);
+}
+/* Nachtmodus: volgt de systeeminstelling van het apparaat, zoals in mna.html. De toastmelding
+   (#toast) gebruikt bewust een vaste donkere pil ongeacht thema — die staat los van --head. */
+@media(prefers-color-scheme:dark){
+  :root{
+    --void:#1b1a17;--bg:#221f1c;--panel:#252320;
+    --border:#3d3a34;--border2:#4d4940;
+    --head:#f6f4ef;--sub:#e9e7e1;--mid:#b8b4aa;--muted:#938f86;
+    --teal:#2fae87;--teal-light:#1c352c;--teal-border:#2f5c4a;--teal-dark:#8fe0c0;
+    --gold:#e0c06a;--gold-bg:#332c1a;--gold-border:#5c4f2a;--gold-dark:#f0d68c;
+    --red:#e8746b;--red-light:#3a211f;
+  }
 }
 body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--sub);min-height:100vh;font-size:14px;line-height:1.5}
 #app{min-height:100vh}
@@ -86,7 +98,7 @@ table{width:100%;border-collapse:collapse}
 th{text-align:left;padding:8px 14px;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);background:var(--bg)}
 td{padding:11px 14px;border-bottom:1px solid var(--border);color:var(--sub);vertical-align:middle}
 tr:last-child td{border-bottom:none}
-tr:hover td{background:#faf8f5;cursor:pointer}
+tr:hover td{background:var(--bg);cursor:pointer}
 .td-name{font-weight:600;color:var(--head)}
 .td-sec{font-size:12px;color:var(--muted)}
 .badge{display:inline-block;font-size:10px;font-weight:600;padding:2px 8px;border-radius:3px;letter-spacing:.04em;text-transform:uppercase}
@@ -117,7 +129,7 @@ tr:hover td{background:#faf8f5;cursor:pointer}
 .modal-footer{display:flex;gap:8px;justify-content:flex-end;margin-top:1rem}
 
 /* TOAST */
-#toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:var(--head);color:#fff;font-size:12px;padding:8px 18px;border-radius:20px;opacity:0;transition:opacity .2s;z-index:999;pointer-events:none}
+#toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:#1a1815;color:#fff;font-size:12px;padding:8px 18px;border-radius:20px;opacity:0;transition:opacity .2s;z-index:999;pointer-events:none}
 #toast.show{opacity:1}
 </style>
 </head>
@@ -336,14 +348,14 @@ function renderHuisstijlModal(){
   var ov=document.createElement('div');
   ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:400;display:flex;align-items:center;justify-content:center;padding:1.5rem';
   var mo=document.createElement('div');
-  mo.style.cssText='background:#fff;border-radius:10px;padding:2rem;max-width:440px;width:100%;max-height:92vh;overflow-y:auto';
+  mo.style.cssText='background:var(--panel);border-radius:10px;padding:2rem;max-width:440px;width:100%;max-height:92vh;overflow-y:auto';
   mo.innerHTML=`
     <div style="font-family:Playfair Display,serif;font-size:1.15rem;color:var(--head);font-weight:600;margin-bottom:.25rem">&#127912; Eigen huisstijl</div>
     <div style="font-size:12px;color:var(--muted);margin-bottom:1.25rem;line-height:1.6">Deze instellingen gelden voor de trajecten die u aanmaakt — uw verkoper en koper zien uw eigen naam/kleur/logo in plaats van "${esc(BRAND.platform)}". Laat een veld leeg om de standaard te gebruiken.</div>
     <div class="field" style="margin-bottom:1rem"><label>Eigen platformnaam</label><input type="text" id="hs-naam" value="${esc(b.brand_naam)}" placeholder="${esc(BRAND.platform)}" maxlength="60"></div>
     <div class="field" style="margin-bottom:1rem"><label>Accentkleur</label><div style="display:flex;align-items:center;gap:10px"><input type="color" id="hs-kleur" value="${esc(b.brand_kleur)||'#1a7a5e'}" style="width:48px;height:36px;padding:2px;border:1px solid var(--border);border-radius:6px;cursor:pointer"><span style="font-size:12px;color:var(--muted)">Klik op het vlak om een kleur te kiezen</span></div></div>
     <div class="field" style="margin-bottom:1.25rem"><label>Logo</label>
-      <div id="hs-logo-preview" style="margin-bottom:.5rem;${b.brand_logo_url?'':'display:none'}"><img id="hs-logo-img" src="${esc(b.brand_logo_url||'')}" style="height:40px;max-width:160px;object-fit:contain;border:1px solid var(--border);border-radius:6px;padding:4px;background:#fafafa"></div>
+      <div id="hs-logo-preview" style="margin-bottom:.5rem;${b.brand_logo_url?'':'display:none'}"><img id="hs-logo-img" src="${esc(b.brand_logo_url||'')}" style="height:40px;max-width:160px;object-fit:contain;border:1px solid var(--border);border-radius:6px;padding:4px;background:var(--bg)"></div>
       <input type="file" id="hs-logo-file" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml" style="font-size:12px">
       <div style="font-size:11px;color:var(--muted);margin-top:4px">PNG, JPG, WEBP, GIF of SVG — max 1,5 MB.${b.brand_logo_url?' <a href="#" id="hs-logo-verwijder" style="color:var(--teal)">Logo verwijderen</a>':''}</div>
     </div>
@@ -767,13 +779,13 @@ function renderDetail(t){
         <button class="btn-outline btn-sm" onclick="toonAdvBewerkModal('${esc(id)}')">&#9999;&#65039; Bewerk gegevens</button>
       </div>
 
-      ${t.verkoper_klaar ? `<div style="background:#edf7f3;border:2px solid #1a7a5e;border-radius:8px;padding:1rem 1.25rem;margin-bottom:1.5rem;display:flex;align-items:center;gap:12px">
+      ${t.verkoper_klaar ? `<div style="background:var(--teal-light);border:2px solid var(--teal);border-radius:8px;padding:1rem 1.25rem;margin-bottom:1.5rem;display:flex;align-items:center;gap:12px">
         <span style="font-size:1.5rem">📨</span>
         <div>
-          <div style="font-size:13px;font-weight:600;color:#1a7a5e">Verkoper heeft dossier vrijgegeven</div>
-          <div style="font-size:11px;color:#5a5854;margin-top:2px">${t.verkoper_klaar_naam ? 'Door: ' + esc(t.verkoper_klaar_naam) + ' · ' : ''}${t.verkoper_klaar_at ? new Date(t.verkoper_klaar_at).toLocaleString('nl-NL',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : ''}</div>
+          <div style="font-size:13px;font-weight:600;color:var(--teal)">Verkoper heeft dossier vrijgegeven</div>
+          <div style="font-size:11px;color:var(--mid);margin-top:2px">${t.verkoper_klaar_naam ? 'Door: ' + esc(t.verkoper_klaar_naam) + ' · ' : ''}${t.verkoper_klaar_at ? new Date(t.verkoper_klaar_at).toLocaleString('nl-NL',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : ''}</div>
         </div>
-      </div>` : `<div style="background:#fdf8ee;border:1px solid #c9a84c;border-radius:8px;padding:.75rem 1rem;margin-bottom:1.5rem;font-size:12px;color:#8a5a00">
+      </div>` : `<div style="background:var(--gold-bg);border:1px solid var(--gold);border-radius:8px;padding:.75rem 1rem;margin-bottom:1.5rem;font-size:12px;color:var(--gold-dark)">
         ⏳ Verkoper heeft het dossier nog niet vrijgegeven
       </div>`}
 
