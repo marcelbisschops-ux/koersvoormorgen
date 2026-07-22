@@ -543,7 +543,7 @@ async function uploadDocument(faseId, file) {
         // toegepast op de dataverwerking zelf. Gevonden 22 juli 2026 na een test met veel documenten.
         var effectiefEntiteitId = entiteitId;
         if (!effectiefEntiteitId && S._entiteiten && S._entiteiten.length) {
-          var gokIdUpload = gokEntiteitId(d.veld_extractie.entiteit_naam);
+          var gokIdUpload = gokEntiteitId(d.entiteit_naam);
           if (gokIdUpload) {
             effectiefEntiteitId = gokIdUpload;
             fetch(WORKER+'/mna/document/koppel-entiteit/'+d.doc_id,{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S.code},body:JSON.stringify({entiteit_id:gokIdUpload})}).catch(function(){});
