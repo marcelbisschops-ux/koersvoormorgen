@@ -81,20 +81,28 @@ else refIssues.forEach(i => warn(i.file + ':' + i.line + ' — "' + i.key + '" b
 // Sinds de opsplitsing van cloudflare-worker.js in worker/*.js-modules (juli 2026) draaien
 // checks 2/3/5 over ALLE backend-bestanden (entry + elke module), niet alleen het entry-bestand —
 // anders verdwijnt precies de dekking die deze checks moeten bieden zodra route-code verhuist.
+//
+// Sinds 23 juli 2026 leeft backend/ NIET meer in deze (publieke) repo — verplaatst naar de
+// aparte privé-repo koersvoormorgen-backend (zie memory reference-worker-buiten-git). Deze
+// checks proberen backend/ eerst hier, dan in de gebruikelijke sibling-map te vinden; ontbreekt
+// het overal, dan is dat de verwachte, permanente staat hier — geen waarschuwing, gewoon overslaan.
 log('2. Functies die zowel als "function X" én als "const X = (...) =>" bestaan (shadowing-risico)');
-const workerPath = fs.existsSync(path.join(ROOT, 'backend/cloudflare-worker.js'))
-  ? path.join(ROOT, 'backend/cloudflare-worker.js')
-  : null;
-const workerModulesDir = path.join(ROOT, 'backend/worker');
+const BACKEND_CANDIDATES = [
+  path.join(ROOT, 'backend'),
+  path.join(ROOT, '..', 'koersvoormorgen-backend', 'backend'),
+];
+const backendDir = BACKEND_CANDIDATES.find(p => fs.existsSync(path.join(p, 'cloudflare-worker.js')));
+const workerPath = backendDir ? path.join(backendDir, 'cloudflare-worker.js') : null;
+const workerModulesDir = backendDir ? path.join(backendDir, 'worker') : null;
 const backendFiles = [];
 if (workerPath) backendFiles.push({ name: 'backend/cloudflare-worker.js', src: fs.readFileSync(workerPath, 'utf8') });
-if (fs.existsSync(workerModulesDir)) {
+if (workerModulesDir && fs.existsSync(workerModulesDir)) {
   fs.readdirSync(workerModulesDir).filter(f => f.endsWith('.js')).forEach(f => {
     backendFiles.push({ name: 'backend/worker/' + f, src: fs.readFileSync(path.join(workerModulesDir, f), 'utf8') });
   });
 }
 if (!backendFiles.length) {
-  warn('backend/cloudflare-worker.js niet gevonden — sync eerst vanuit ~/Downloads/cloudflare-worker.js voordat je deze check draait.');
+  ok('backend/ niet gevonden (leeft sinds 23 juli 2026 in de privé-repo koersvoormorgen-backend) — checks 2/3/5 overgeslagen. Draai dit script vanuit die repo voor volledige dekking.');
 } else {
   const funcRe = /^\s*(?:async )?function ([A-Za-z_][A-Za-z0-9_]*)/gm;
   const constFnRe = /^\s*const ([A-Za-z_][A-Za-z0-9_]*) = (?:async )?\(/gm;
@@ -223,7 +231,7 @@ if (backendFiles.length) {
   if (!uniekeIssues.length) ok('Geen nieuwe, nog niet gecontroleerde SELECT * op mna_trajecten/mna_gesprekken buiten /admin/-routes gevonden.');
   else uniekeIssues.forEach(p => warn(p + ' — NIEUW — doet SELECT * op mna_trajecten/mna_gesprekken én stuurt binnen dezelfde route JSON terug, buiten een /admin/-pad. Controleer of alle teruggegeven velden voor élke rol die dit endpoint mag aanroepen (incl. koper) bedoeld zijn.'));
 } else {
-  warn('backend/cloudflare-worker.js niet gevonden — check 5 overgeslagen.');
+  ok('backend/ niet gevonden (leeft sinds 23 juli 2026 in de privé-repo koersvoormorgen-backend) — check 5 overgeslagen.');
 }
 
 // ── Samenvatting ──────────────────────────────────────────────────────────
