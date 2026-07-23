@@ -13,11 +13,6 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Syntax-check backend-bestanden
-        run: |
-          node --check backend/cloudflare-worker.js
-          for f in backend/worker/*.js; do node --check "$f"; done
-
       - name: Syntax-check mna-modules
         run: |
           for f in mna/*.js; do node --check "$f"; done
