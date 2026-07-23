@@ -1,0 +1,29 @@
+name: Statische checks
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Syntax-check backend-bestanden
+        run: |
+          node --check backend/cloudflare-worker.js
+          for f in backend/worker/*.js; do node --check "$f"; done
+
+      - name: Syntax-check mna-modules
+        run: |
+          for f in mna/*.js; do node --check "$f"; done
+
+      - name: Veiligheids- en consistentie-audit
+        run: node tests/audit-consistentie.mjs
+
+      - name: Publieke e2e-checks (health-check, geen admin-key nodig)
+        run: node tests/e2e-api.mjs
