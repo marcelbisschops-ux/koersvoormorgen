@@ -6,8 +6,10 @@
 #   1. Exporteert de VOLLEDIGE database (alle trajecten, DD-data, gebruikers,
 #      documenten-metadata, waarderingen, audit) naar een gedateerd .sql-bestand.
 #   2. Haalt de geüploade documenten uit R2 op (incrementeel — alleen nieuwe).
-#   3. Ververst de backend-codekopie in de repo (backend/) vanuit ~/Downloads,
-#      zodat de git-backup van de worker actueel blijft.
+#   3. Ververst de backend-codekopie vanuit ~/Downloads in de APARTE PRIVÉ-repo
+#      (~/Documents/GitHub/koersvoormorgen-backend/backend/) — niet meer in deze
+#      publieke repo, sinds backend/ hier is verwijderd (ook uit de geschiedenis,
+#      juli 2026) omdat deze repo public staat op GitHub.
 #   4. Ruimt database-back-ups ouder dan 60 dagen op.
 #
 # De .sql-dump bevat KLANTDATA en wordt bewust BUITEN de git-repo opgeslagen
@@ -31,6 +33,7 @@ if [ -z "${BACKUP_DIR:-}" ]; then
 fi
 DOWNLOADS_WORKER="$HOME/Downloads/cloudflare-worker.js"
 REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+BACKEND_REPO_DIR="$HOME/Documents/GitHub/koersvoormorgen-backend"
 STAMP="$(date +%Y-%m-%d_%H%M)"
 
 mkdir -p "$BACKUP_DIR"
@@ -72,18 +75,21 @@ else
   echo "   ⊘ geen documenten in R2 (of database niet bereikbaar)"
 fi
 
-echo "▶ 3/4  Backend-code in repo verversen ..."
-if [ -f "$DOWNLOADS_WORKER" ]; then
-  cp "$DOWNLOADS_WORKER" "$REPO_DIR/backend/cloudflare-worker.js"
-  [ -f "$HOME/Downloads/wrangler.toml" ] && cp "$HOME/Downloads/wrangler.toml" "$REPO_DIR/backend/wrangler.toml"
+echo "▶ 3/4  Backend-code in privé-repo verversen ..."
+if [ ! -d "$BACKEND_REPO_DIR/.git" ]; then
+  echo "   ⊘ $BACKEND_REPO_DIR bestaat niet (of is geen git-repo) — backend-kopie overgeslagen"
+elif [ -f "$DOWNLOADS_WORKER" ]; then
+  mkdir -p "$BACKEND_REPO_DIR/backend"
+  cp "$DOWNLOADS_WORKER" "$BACKEND_REPO_DIR/backend/cloudflare-worker.js"
+  [ -f "$HOME/Downloads/wrangler.toml" ] && cp "$HOME/Downloads/wrangler.toml" "$BACKEND_REPO_DIR/backend/wrangler.toml"
   # Sinds de gefaseerde workeropsplitsing (juli 2026) staat een deel van de backend ook als
   # losse modules in ~/Downloads/worker/ — die horen bij dezelfde backup mee te gaan.
   if [ -d "$HOME/Downloads/worker" ]; then
-    mkdir -p "$REPO_DIR/backend/worker"
-    cp "$HOME/Downloads"/worker/*.js "$REPO_DIR/backend/worker/" 2>/dev/null || true
-    echo "   ✓ backend/cloudflare-worker.js + backend/worker/*.js bijgewerkt (commit + push om te backuppen naar GitHub)"
+    mkdir -p "$BACKEND_REPO_DIR/backend/worker"
+    cp "$HOME/Downloads"/worker/*.js "$BACKEND_REPO_DIR/backend/worker/" 2>/dev/null || true
+    echo "   ✓ backend/cloudflare-worker.js + backend/worker/*.js bijgewerkt in $BACKEND_REPO_DIR (commit + push daar om te backuppen naar GitHub)"
   else
-    echo "   ✓ backend/cloudflare-worker.js bijgewerkt (commit + push om te backuppen naar GitHub)"
+    echo "   ✓ backend/cloudflare-worker.js bijgewerkt in $BACKEND_REPO_DIR (commit + push daar om te backuppen naar GitHub)"
   fi
 else
   echo "   ⊘ ~/Downloads/cloudflare-worker.js niet gevonden — backend-kopie overgeslagen"
