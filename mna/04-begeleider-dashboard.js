@@ -481,7 +481,7 @@ function renderBegeleiderDashboard(app){
 
   // Verplichte controlestap vóór versturen: checkbox-html + koppel disable/enable aan verstuurknoppen
   function akkoordHtml(id){
-    return '<label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);margin-top:.85rem;cursor:pointer"><input type="checkbox" id="'+id+'" style="width:15px;height:15px"> Ik heb dit document gecontroleerd (namen, bedragen en datum kloppen)</label>';
+    return '<label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);margin-top:.85rem;cursor:pointer"><input type="checkbox" id="'+id+'" style="width:15px;height:15px"> Ik heb dit document gecontroleerd en aangepast waar nodig (namen, bedragen, datum én de tekst passend bij deze specifieke situatie — dit is een uitgangspunt, geen kant-en-klaar juridisch advies)</label>';
   }
   // Retourneert een controller met setOverride(bool) — nodig omdat de checkbox-eis ("ik heb dit
   // document gecontroleerd") niet zinvol is bij een eigen geüpload bestand: er is dan niets
