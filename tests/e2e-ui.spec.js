@@ -16,6 +16,9 @@
 
 import { test, expect } from '@playwright/test';
 import { api, leesAdminKey } from './lib.mjs';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
 
 const ADMIN = leesAdminKey();
 const WW = 'TestWachtwoord123!';
@@ -171,5 +174,98 @@ test.describe('Documentknoppen module-gating', () => {
       await expect(page.locator('#' + id)).toBeVisible();
       await expect(page.locator('#' + id)).toBeDisabled();
     }
+  });
+});
+
+// ───────────────────── 4. GELIJKTIJDIGE MULTI-UPLOAD ─────────────────────
+// Regressietest voor de batchupload-bug (juli 2026): bij meerdere bestanden
+// tegelijk selecteren liep gedeelde state (S._conflicts) door elkaar en konden
+// meerdere conflict-dialogen tegelijk opstapelen (zwart scherm). Inmiddels
+// gefixt door bestanden sequentieel te verwerken (uploadDocumentenSequentieel)
+// + een wachtrij voor conflict-dialogen (S._conflictWachtrij). Deze test
+// simuleert exact het oorspronkelijke scenario: één multi-file-select met
+// bestanden die elkaar tegenspreken.
+//
+// Bewust GEEN echte AI-documenten (kost geld, niet-deterministisch) — de drie
+// testbestanden zijn CSV's in het "veld,waarde"-formaat, dat de worker 100%
+// deterministisch parst zonder AI-aanroep (zie backend/worker/14-document-
+// upload-analyse.js). Ze geven bewust een oplopend afwijkend cijfer voor
+// dezelfde jaaromzet (boekjaar 2025), zodat bestand 2 conflicteert met
+// bestand 1 én bestand 3 conflicteert met bestand 2 — twee conflict-dialogen
+// die vlak na elkaar zouden willen openen.
+test.describe('Gelijktijdige multi-upload', () => {
+  test.skip(!ADMIN, 'Geen admin-key (ADMIN_KEY / --key=) — multi-upload-test overgeslagen');
+
+  let email, gid, verkoperCode, tussenCode, tmpDir;
+
+  test.beforeAll(async () => {
+    email = 'e2e-ui-multiupload-' + Date.now() + '@bisschopsfinancing.test';
+    const uit = await api('POST', '/gebruikers/uitnodigen', { adminKey: ADMIN, body: { naam: 'E2E MultiUpload', bedrijf: 'E2E MultiUpload BV', email } });
+    gid = uit.json.id;
+    await api('POST', '/gebruikers/activeer', { body: { token: uit.json.token, wachtwoord: WW } });
+    await api('POST', '/gebruiker/voorwaarden/accepteren', { body: { email, wachtwoord: WW } });
+    await api('POST', '/gebruikers/verkoop/' + gid, { adminKey: ADMIN, body: { traject_limiet: 1, modules: { traject: true, contracten: true } } });
+    const c = await api('POST', '/adviseur/create', { body: { email, wachtwoord: WW, traject: { kantoor_naam: 'E2E MultiUpload Kantoor BV', traject_type: 'Verkoop' } } });
+    verkoperCode = c.json.code;
+    tussenCode = c.json.tussen_code;
+    await api('POST', '/mna/vok/teken', { body: { code: tussenCode, naam: 'E2E Test', versie: '1.2', email } });
+
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-multiupload-'));
+    const inhoud = (omzet) => `veld,waarde\nomzet,${omzet}\nboekjaar,2025\n`;
+    fs.writeFileSync(path.join(tmpDir, 'doc1.csv'), inhoud(1000000));
+    fs.writeFileSync(path.join(tmpDir, 'doc2.csv'), inhoud(1200000));
+    fs.writeFileSync(path.join(tmpDir, 'doc3.csv'), inhoud(1500000));
+  });
+
+  test.afterAll(async () => {
+    if (verkoperCode) await api('POST', '/admin/delete/mna/' + verkoperCode, { adminKey: ADMIN });
+    if (gid) await api('POST', '/gebruikers/verwijder/' + gid, { adminKey: ADMIN, body: {} });
+    if (tmpDir) fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  test('drie bestanden tegelijk: geen dropped bestand, dialogen stapelen niet op', async ({ page }) => {
+    await login(page, verkoperCode);
+    await page.waitForFunction(() => window.S && S.traject && S.rol, null, { timeout: 15000 });
+    await page.evaluate(() => {
+      S.screen = 'main';
+      var fi = FASES.findIndex(function (f) { return f.id === 'financieel'; });
+      S.fase = fi >= 0 ? fi : 0;
+      renderApp();
+    });
+
+    const input = page.locator('input[type="file"][multiple]');
+    await input.setInputFiles([
+      path.join(tmpDir, 'doc1.csv'),
+      path.join(tmpDir, 'doc2.csv'),
+      path.join(tmpDir, 'doc3.csv'),
+    ]);
+
+    // Alle drie bestanden verwerkt (sequentieel) — status-tekst is dan weer leeg.
+    await page.waitForFunction(() => {
+      var el = document.getElementById('upload-status-financieel');
+      return el && el.textContent === '';
+    }, null, { timeout: 30000 });
+
+    // Geen enkel bestand kwijtgeraakt (het oorspronkelijke batchupload-bug-symptoom).
+    const aantalDocs = await page.evaluate(() => (DOCS['financieel'] || []).length);
+    expect(aantalDocs).toBe(3);
+
+    // Twee echte conflicten verwacht (doc2 vs doc1, doc3 vs doc2) — maar nooit meer dan
+    // één dialoog gelijktijdig op het scherm; de tweede moet in de wachtrij staan.
+    await expect(page.getByText('Afwijkende waarden gevonden')).toHaveCount(1);
+    let wachtrijLengte = await page.evaluate(() => (S._conflictWachtrij || []).length);
+    expect(wachtrijLengte).toBeGreaterThanOrEqual(1);
+
+    // Eerste dialoog wegklikken → de gewachte tweede dialoog moet nu verschijnen.
+    await page.getByRole('button', { name: 'Alles behouden' }).click();
+    await expect(page.getByText('Afwijkende waarden gevonden')).toHaveCount(1);
+    wachtrijLengte = await page.evaluate(() => (S._conflictWachtrij || []).length);
+    expect(wachtrijLengte).toBe(0);
+
+    // Tweede dialoog ook wegklikken → alles opgelost, geen dialoog meer over.
+    await page.getByRole('button', { name: 'Alles behouden' }).click();
+    await expect(page.getByText('Afwijkende waarden gevonden')).toHaveCount(0);
+    const dialoogOpen = await page.evaluate(() => !!S._conflictDialoogOpen);
+    expect(dialoogOpen).toBe(false);
   });
 });
