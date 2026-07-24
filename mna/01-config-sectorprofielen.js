@@ -52,14 +52,20 @@ function brandMerkHtml(){
 function triggerFileUpload(faseId) {
   var inp = document.createElement('input');
   inp.type = 'file'; inp.accept = '.pdf,.docx,.doc,.xlsx,.xls,.csv,.txt,.eml'; inp.multiple = true;
+  inp.style.display = 'none';
   document.body.appendChild(inp);
   inp.addEventListener('change', function(e) {
     var files = e.target.files;
     // Eén voor één verwerken i.p.v. gelijktijdig — zelfde reden als uploadDocumentenSequentieel:
     // bij gelijktijdige uploads liep gedeelde state (S._conflicts) door elkaar tussen bestanden,
     // waardoor van een hele reeks maar 1 bestand goed verwerkt terugkwam. Gevonden 23 juli 2026.
-    window.uploadDocumentenSequentieel(faseId, files);
-    document.body.removeChild(inp);
+    // BELANGRIJK: het <input>-element pas verwijderen ná afloop van de hele reeks — werd het
+    // eerder synchroon meteen verwijderd, dan verloor de browser de toegang tot de bestandsdata
+    // van alle bestanden ná het eerste (dat toevallig al onderweg was), waardoor van een hele
+    // batch tegelijk geselecteerde bestanden alleen het eerste werd geüpload. Gevonden 24 juli 2026.
+    window.uploadDocumentenSequentieel(faseId, files).then(function(){
+      document.body.removeChild(inp);
+    });
   });
   inp.click();
 }

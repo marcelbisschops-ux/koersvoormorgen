@@ -1129,7 +1129,11 @@ function bindAll(){
   }
   // Centrale upload file input listener
   var cfi=document.getElementById('centraal-file-input');
-  if(cfi)cfi.addEventListener('change',function(){if(this.files&&this.files.length)window.centraalUploadFiles(this.files);this.value='';});
+  if(cfi)cfi.addEventListener('change',function(){
+    var _inp=this;
+    if(this.files&&this.files.length)window.centraalUploadFiles(this.files).then(function(){_inp.value='';});
+    else this.value='';
+  });
   checkOmzetSom();
 
   document.querySelectorAll('.upload-zone[data-fase]').forEach(function(el){
