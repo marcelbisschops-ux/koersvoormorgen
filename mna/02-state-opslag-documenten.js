@@ -498,23 +498,39 @@ function saveEntiteitData(entiteitId, faseIds){
 // door elkaar tussen bestanden, waardoor de afwijkende-waarden-dialoog het verkeerde brondocument
 // toonde of conflicten kwijtraakte, en meerdere dialogen tegelijk konden opstapelen (scherm werd
 // zwart door de gestapelde halftransparante overlays). Gevonden 22 juli 2026.
+// Elk bestand gaat door een echte AI-analyse (10-30+ sec per bestand) — bij een reeks van meerdere
+// documenten kan dat in totaal enkele minuten duren. Zonder directe feedback lijkt het dan alsof
+// alleen het eerste bestand is opgepakt: er verscheen pas een "bezig"-regel voor bestand 2 zodra
+// bestand 1 helemaal klaar was. Nu meteen bij de start een wachtrij-plek voor ALLE geselecteerde
+// bestanden + een voortgangstekst, zodat direct zichtbaar is dat de rest ook nog komt. Gevonden
+// (opnieuw gemeld door Marcel als "pakt maar 1 document") 24 juli 2026.
 window.uploadDocumentenSequentieel = async function(faseId, files) {
-  for (var i = 0; i < files.length; i++) {
-    await uploadDocument(faseId, files[i]);
+  if (!DOCS[faseId]) DOCS[faseId] = [];
+  var wachtrijIds = [];
+  for (var q = files.length - 1; q >= 0; q--) {
+    var qid = 'wachtrij_' + Date.now() + '_' + q;
+    wachtrijIds[q] = qid;
+    DOCS[faseId].unshift({ id: qid, naam: files[q].name, type: files[q].type, grootte: files[q].size, analyse: '', velden: {}, uploading: true });
   }
+  renderApp();
+  var statusEl = document.getElementById('upload-status-' + faseId);
+  for (var i = 0; i < files.length; i++) {
+    if (statusEl) statusEl.textContent = files.length > 1 ? ('Bestand ' + (i + 1) + ' van ' + files.length + ' verwerken...') : 'Bestand verwerken...';
+    await uploadDocument(faseId, files[i], wachtrijIds[i]);
+  }
+  if (statusEl) statusEl.textContent = '';
 };
 
-async function uploadDocument(faseId, file) {
+async function uploadDocument(faseId, file, existingId) {
   if (!S.code || isKoper()) return;
-  if (S.traject && S.traject.status === 'vergrendeld') { toast('Traject is vergrendeld.','warn'); return; }
+  if (S.traject && S.traject.status === 'vergrendeld') { toast('Traject is vergrendeld.','warn'); if (existingId) DOCS[faseId] = DOCS[faseId].filter(function(x){ return x.id !== existingId; }); return; }
   var maxSize = 20 * 1024 * 1024;
-  if (file.size > maxSize) { toast('Bestand te groot (max 20MB). Huidig: ' + Math.round(file.size/1024/1024) + 'MB','warn'); return; }
+  if (file.size > maxSize) { toast('Bestand te groot (max 20MB). Huidig: ' + Math.round(file.size/1024/1024) + 'MB','warn'); if (existingId) DOCS[faseId] = DOCS[faseId].filter(function(x){ return x.id !== existingId; }); return; }
 
-  // Show uploading state
+  // Show uploading state — hergebruik de wachtrij-plek als die er al is (batch-upload), anders nieuw.
   if (!DOCS[faseId]) DOCS[faseId] = [];
-  var tempId = 'uploading_' + Date.now();
-  DOCS[faseId].unshift({ id: tempId, naam: file.name, type: file.type, grootte: file.size, analyse: '', velden: {}, uploading: true });
-  renderApp();
+  var tempId = existingId || ('uploading_' + Date.now());
+  if (!existingId) { DOCS[faseId].unshift({ id: tempId, naam: file.name, type: file.type, grootte: file.size, analyse: '', velden: {}, uploading: true }); renderApp(); }
 
   var formData = new FormData();
   formData.append('file', file);
