@@ -54,7 +54,7 @@ function brandMerkHtml(){
 
 function triggerFileUpload(faseId) {
   var inp = document.createElement('input');
-  inp.type = 'file'; inp.accept = '.pdf,.docx,.doc,.xlsx,.xls,.csv,.txt,.eml'; inp.multiple = true;
+  inp.type = 'file'; inp.accept = '.pdf,.docx,.doc,.xlsx,.xls,.csv,.txt,.eml,.xml,.xbrl'; inp.multiple = true;
   inp.style.display = 'none';
   document.body.appendChild(inp);
   inp.addEventListener('change', function(e) {
