@@ -1,4 +1,4 @@
-var S={screen:'login',code:'',rol:'',traject:null,fase:0,checked:{},data:{},docRefs:{},notities:{},aiTexts:{},aiLoading:{},saveTimer:null,showValidation:false,dataroomLoading:false,dataroom:null,_opy:{},_epy:{},_conflicts:[],_userEdited:{},_docSource:{},faseStatus:{},dossierVrijgegeven:false,_entiteiten:[],dataPerEntiteit:{},_actieveEntiteit:null};
+var S={screen:'login',code:'',rol:'',traject:null,fase:0,checked:{},data:{},docRefs:{},notities:{},aiTexts:{},aiLoading:{},saveTimer:null,showValidation:false,dataroomLoading:false,dataroom:null,_opy:{},_epy:{},_opySlotJaar:{},_conflicts:[],_userEdited:{},_docSource:{},faseStatus:{},dossierVrijgegeven:false,_entiteiten:[],dataPerEntiteit:{},_actieveEntiteit:null};
 // Groepsdata (S._groepData) en S.data wijzen initieel naar hetzelfde object — bij het wisselen van
 // entiteit (switchEntiteit) wordt S.data omgezet naar de data van die entiteit, en weer terug. Alle
 // bestaande code die S.data[...] leest/schrijft (fillPct, saveCurrent, getDataForFase, enz.) werkt
@@ -731,21 +731,25 @@ function autoFillFromExtraction(faseId, velden, forceOverwrite, docNaam, entitei
   // S._opy/S._epy (jaaromzet/EBITDA-marge per boekjaar) moeten ook per entiteit — anders lopen de
   // boekjaren van verschillende bedrijfsonderdelen door elkaar (dit veroorzaakte de omzet3-bug bij
   // Marilyn en Co: een klein onderdeel schoof de groepscijfers uit het venster).
-  var _origData = S.data, _origOpy = S._opy, _origEpy = S._epy;
+  // S._opySlotJaar (welk boekjaar er nu in omzet1/2/3 zit) hoort om dezelfde reden ook per entiteit.
+  var _origData = S.data, _origOpy = S._opy, _origEpy = S._epy, _origOpySlotJaar = S._opySlotJaar;
   if (entiteitId) {
     S.dataPerEntiteit[entiteitId] = S.dataPerEntiteit[entiteitId] || {};
     S.data = S.dataPerEntiteit[entiteitId];
     if (!S._opyPerEntiteit) S._opyPerEntiteit = {};
     if (!S._epyPerEntiteit) S._epyPerEntiteit = {};
+    if (!S._opySlotJaarPerEntiteit) S._opySlotJaarPerEntiteit = {};
     S._opyPerEntiteit[entiteitId] = S._opyPerEntiteit[entiteitId] || {};
     S._epyPerEntiteit[entiteitId] = S._epyPerEntiteit[entiteitId] || {};
+    S._opySlotJaarPerEntiteit[entiteitId] = S._opySlotJaarPerEntiteit[entiteitId] || {};
     S._opy = S._opyPerEntiteit[entiteitId];
     S._epy = S._epyPerEntiteit[entiteitId];
+    S._opySlotJaar = S._opySlotJaarPerEntiteit[entiteitId];
   }
   try {
     _autoFillFromExtractionBody(faseId, velden, forceOverwrite, docNaam);
   } finally {
-    S.data = _origData; S._opy = _origOpy; S._epy = _origEpy;
+    S.data = _origData; S._opy = _origOpy; S._epy = _origEpy; S._opySlotJaar = _origOpySlotJaar;
   }
 }
 function _autoFillFromExtractionBody(faseId, velden, forceOverwrite, docNaam) {
@@ -817,18 +821,42 @@ function _autoFillFromExtractionBody(faseId, velden, forceOverwrite, docNaam) {
     }
     if(velden.omzet&&velden.omzet!=='null'&&velden.boekjaar&&!isNaN(Number(velden.boekjaar))){velden.omzet=cleanGetal(velden.omzet);
       var bj=String(Number(velden.boekjaar));
-      if(!S._opy[bj])S._opy[bj]=velden.omzet;
+      // Altijd bijwerken (niet alleen als nog leeg) — anders werd een tweede document dat een
+      // ANDERE waarde voor hetzelfde boekjaar aanlevert stilzwijgend genegeerd, vóórdat het
+      // hieronder ooit als conflict aan de gebruiker kon worden voorgelegd. Gevonden 24 juli 2026.
+      S._opy[bj]=velden.omzet;
     }
     var yrs=Object.keys(S._opy).map(Number).filter(function(j){return!isNaN(j)&&j>1990&&j<2100;}).sort(function(a,b){return a-b;});
     if(yrs.length){
-      // Meest recente 3 jaar op omzet1/2/3, maar via applyOrConflict — nooit stilzwijgend
-      // een al ingevuld jaar met een andere waarde overschrijven (zie toelichting hierboven).
+      // Meest recente 3 jaar op omzet1/2/3. LET OP: welk boekjaar in welk vak (jaar1/2/3) hoort,
+      // schuift op zodra een nieuwer jaar binnenkomt (bijv. 2025 duwt 2023 uit het venster van
+      // jaar3 naar jaar2). Dat opschuiven is GEEN inhoudelijk conflict — het is dezelfde,
+      // eerder al geaccepteerde waarde die nu correct onder een ander vaknaam hoort. Alleen
+      // wanneer hetzelfde boekjaar een ANDERE waarde krijgt (twee documenten die het niet eens
+      // zijn over bijv. 2024) is het een echt conflict en moet de gebruiker kiezen. S._opySlotJaar
+      // onthoudt welk boekjaar er momenteel in elk vak zit om dit onderscheid te maken. Vóór deze
+      // fix werd bij elke venster-verschuiving stilzwijgend een vals conflict opgeworpen tussen
+      // twee verschillende boekjaren, met een misleidend jaartal in het label. Gevonden 24 juli 2026.
+      if(!S._opySlotJaar)S._opySlotJaar={};
       var toFill=yrs.slice(-3);
       var allFlds=['omzet1','omzet2','omzet3'];
       var usedFlds=allFlds.slice(3-toFill.length);
       var fldLabel=['Jaaromzet jaar 1 (oudste)','Jaaromzet jaar 2','Jaaromzet jaar 3 (meest recent)'];
       var labelOffset=3-toFill.length;
-      toFill.forEach(function(yr,i){var w=S._opy[String(yr)];if(w)applyOrConflict('financieel_'+usedFlds[i],String(w),fldLabel[labelOffset+i]+' ('+yr+')');});
+      toFill.forEach(function(yr,i){
+        var w=S._opy[String(yr)];if(!w)return;
+        var slot=usedFlds[i],slotKey='financieel_'+slot,prevJaar=S._opySlotJaar[slot];
+        if(prevJaar!==undefined&&String(prevJaar)!==String(yr)){
+          // Venster is opgeschoven: dit vak stelt nu een ander boekjaar voor dan voorheen —
+          // geen gebruikersconflict, gewoon bijwerken.
+          var d=doelData(slotKey);d[slotKey]=String(w);
+          if(!S._docSource)S._docSource={};S._docSource[slotKey]=currentDocNaam;
+          S._opySlotJaar[slot]=yr;
+        }else{
+          applyOrConflict(slotKey,String(w),fldLabel[labelOffset+i]+' ('+yr+')');
+          S._opySlotJaar[slot]=yr;
+        }
+      });
     }
     if(!S._epy)S._epy={};
     var ev=velden.ebitda_pct;
@@ -1125,7 +1153,7 @@ function uitloggen(){
   secAuditLog('logout');
   secReset();
   Object.keys(DOCS).forEach(function(k){delete DOCS[k];});
-  S={screen:'login',code:'',rol:'',traject:null,modules:null,fase:0,checked:{},data:{},docRefs:{},notities:{},aiTexts:{},aiLoading:{},saveTimer:null,showValidation:false,dataroomLoading:false,dataroom:null,_opy:{},_epy:{},_conflicts:[],_pendingConflicts:{}};
+  S={screen:'login',code:'',rol:'',traject:null,modules:null,fase:0,checked:{},data:{},docRefs:{},notities:{},aiTexts:{},aiLoading:{},saveTimer:null,showValidation:false,dataroomLoading:false,dataroom:null,_opy:{},_epy:{},_opySlotJaar:{},_conflicts:[],_pendingConflicts:{}};
   renderApp();
 }
 
