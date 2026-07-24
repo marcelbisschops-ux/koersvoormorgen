@@ -33,8 +33,12 @@ function printDoc(tekst, titel, docType) {
     +'<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">'
     +'<style>'
     +'*{box-sizing:border-box;margin:0;padding:0}'
-    +'body{font-family:IBM Plex Sans,Helvetica,Arial,sans-serif;font-size:11pt;line-height:1.75;color:#1a1815;background:#fff}'
-    +'.page{max-width:720px;margin:0 auto;padding:2cm}'
+    +'body{font-family:IBM Plex Sans,Helvetica,Arial,sans-serif;font-size:11pt;line-height:1.75;color:#1a1815;background:#fff;position:relative}'
+    // Watermerk: dit printvenster toont altijd een concept-tekst (gegenereerd of nog niet definitief
+    // ondertekend) — nooit het daadwerkelijk ondertekende document (dat loopt via Signhost). Een
+    // duidelijk "CONCEPT"-watermerk voorkomt dat een printout per ongeluk als definitief circuleert.
+    +'body::before{content:"CONCEPT";position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-35deg);font-size:110pt;font-weight:700;color:rgba(0,0,0,.06);z-index:0;pointer-events:none;white-space:nowrap;font-family:IBM Plex Sans,sans-serif}'
+    +'.page{max-width:720px;margin:0 auto;padding:2cm;position:relative;z-index:1}'
     +'.doc-header{display:flex;align-items:flex-end;justify-content:space-between;padding-bottom:1.25rem;border-bottom:3px solid '+kleur+';margin-bottom:2rem}'
     +'.doc-header-left .doc-title{font-family:Playfair Display,serif;font-size:22pt;font-weight:600;color:'+kleur+';line-height:1.2}'
     +'.doc-header-right{text-align:right;font-size:9pt;color:#6b6862;line-height:1.7;flex-shrink:0;max-width:200px}'
@@ -153,6 +157,12 @@ async function toonDocWaarschuwing(docType, onDoorgaan) {
 
   if (!t.koper_naam || !t.koper_naam.trim()) {
     waarschuwingen.push('⚠ Kopernaam is nog niet ingevuld. Het document gebruikt dan de generieke aanduiding "[koper]" in plaats van een naam.');
+  }
+  // Dezelfde placeholder-check voor de andere partij — kantoornaam ontbreekt minder vaak (dit is
+  // het eigen traject), maar bij een buy-side traject (opdrachtgever is de koper) is dít juist de
+  // naam van de wederpartij/target, die net zo goed kan ontbreken.
+  if (!t.kantoor_naam || !t.kantoor_naam.trim()) {
+    waarschuwingen.push('⚠ Kantoornaam is nog niet ingevuld. Het document gebruikt dan de generieke aanduiding "[verkoper]" in plaats van een naam.');
   }
 
   if (docType === 'bem') {
