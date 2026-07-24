@@ -1058,21 +1058,6 @@ function renderDocumentSectie(faseId) {
   return '<div style="margin-bottom:1rem">'+uploadHtml+docsHtml+'</div>';
 }
 
-function handleFileUpload(event, faseId) {
-  var files = event.target.files;
-  for (var i = 0; i < files.length; i++) {
-    uploadDocument(faseId, files[i]);
-  }
-  event.target.value = '';
-}
-
-function handleDropUpload(event, faseId) {
-  var files = event.dataTransfer.files;
-  for (var i = 0; i < files.length; i++) {
-    uploadDocument(faseId, files[i]);
-  }
-}
-
 
 // Zet de doc-tekst/handtekenstatus-velden (NDA/LoI/BEM) over van het traject-object naar de losse
 // S.xxxTekst/S.xxxGetekend state die renderCover() leest. Gedeeld door de loginflow en refreshData()
