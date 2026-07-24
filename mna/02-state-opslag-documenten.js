@@ -71,13 +71,18 @@ function entiteitNaam(id){
 // dat niets oplevert een bevat-check. Bewust GEEN losse-voorvoegsel-matching (zoals de worker voor
 // de afwijs-validatie gebruikt) — bij namen die een lang gedeeld voorvoegsel delen (hier: "[dossier]
 // ...") maakte dat elke zustervennootschap onterecht gelijk.
-function gokEntiteitId(entiteitNaamAI){
+// alleenZeker=true: alleen de exacte-naam-match (nooit de "bevat"-heuristiek) — gebruikt op de plek
+// waar het resultaat AUTOMATISCH wordt toegepast (geen mens die nog akkoord geeft). GOUDEN STANDAARD
+// (Marcel, 24 juli 2026): het systeem mag nooit gokken — een niet-exacte match is een suggestie voor
+// de mens (koppel-dropdown), nooit een automatische classificatie.
+function gokEntiteitId(entiteitNaamAI, alleenZeker){
   if(!entiteitNaamAI||!S._entiteiten||!S._entiteiten.length)return '';
   function norm(s){return String(s||'').toLowerCase().replace(/[^a-z0-9]/g,'');}
   var doel=norm(entiteitNaamAI);
   if(!doel)return '';
   var exact=S._entiteiten.filter(function(e){return norm(e.naam)===doel;});
   if(exact.length===1)return exact[0].id;
+  if(alleenZeker)return '';
   var bevat=S._entiteiten.filter(function(e){var n=norm(e.naam);return n&&(doel.indexOf(n)!==-1||n.indexOf(doel)!==-1);});
   return bevat.length===1?bevat[0].id:'';
 }
@@ -545,38 +550,59 @@ async function uploadDocument(faseId, file, existingId) {
     if (d.ok) {
       // Replace temp with real
       DOCS[faseId] = DOCS[faseId].filter(function(x){ return x.id !== tempId; });
+      // d.entiteit_naam is een los top-level responsveld (de server verwijdert het uit veld_extractie
+      // vóórdat die als losse velden teruggaat) — voor de "handmatig koppelen"-badge (die op elk
+      // render-moment, ook ná een pagina-herlaad, opnieuw uit doc.velden.entiteit_naam herberekent)
+      // moet het hier alsnog in velden terechtkomen, anders klopt de badge alleen bij deze ene render.
+      var veldenMetEntNaam = Object.assign({}, d.veld_extractie || {});
+      if (d.entiteit_naam) veldenMetEntNaam.entiteit_naam = d.entiteit_naam;
       DOCS[faseId].unshift({
         id: d.doc_id, naam: file.name, type: file.type, grootte: file.size,
-        analyse: d.analyse, velden: d.veld_extractie || {}, bewaard: !!d.r2_opgeslagen,
+        analyse: d.analyse, velden: veldenMetEntNaam, bewaard: !!d.r2_opgeslagen,
         uploaded_at: Date.now(), uploading: false, verworpen: !!d.verworpen, verworpen_reden: d.verworpen_reden||null,
         entiteit_id: entiteitId || ''
       });
       if (d.veld_extractie) {
-        // Geen entiteit gekozen bij upload, maar de AI herkent wél zeker één geregistreerde entiteit
-        // in de documentnaam/-inhoud? Dan de cijfers NIET op groepsniveau laten belanden (dat mengde
-        // cijfers van duidelijk verschillende BV's door elkaar tot onzinnige groepstotalen), maar
-        // automatisch naar die entiteit routeren — zelfde matching als de koppel-suggestie, nu ook
-        // toegepast op de dataverwerking zelf. Gevonden 22 juli 2026 na een test met veel documenten.
+        // Geen entiteit gekozen bij upload. Als de AI zeker (exacte naam-match) één geregistreerde
+        // entiteit herkent, routeren we automatisch daarnaartoe. GOUDEN STANDAARD (Marcel, 24 juli
+        // 2026): bij twijfel NOOIT gokken — dus als er meerdere entiteiten zijn en de AI wél een
+        // bedrijfsnaam herkende maar die niet zeker (exact) overeenkomt met precies één geregistreerde
+        // entiteit, dan NIET automatisch verwerken (ook niet stilzwijgend op groepsniveau, dat mengt
+        // onzekere cijfers alsnog in de groepstotalen) — het document wordt gemarkeerd "handmatig
+        // koppelen nodig" en de begeleider kiest zelf de juiste entiteit (koppel-dropdown verwerkt de
+        // extractie dan alsnog, zie koppelDocumentAanEntiteit). Vóór deze regel werd een niet-zekere
+        // match ofwel geraden (bevat-heuristiek) ofwel stilzwijgend in de groep gemengd — beide zijn
+        // precies het soort onzichtbare aanname die tot de groepscijfer-discrepanties leidde.
         var effectiefEntiteitId = entiteitId;
+        var behoeftHandmatigeKoppeling = false;
         if (!effectiefEntiteitId && S._entiteiten && S._entiteiten.length) {
-          var gokIdUpload = gokEntiteitId(d.entiteit_naam);
+          var gokIdUpload = gokEntiteitId(d.entiteit_naam, true);
           if (gokIdUpload) {
             effectiefEntiteitId = gokIdUpload;
             fetch(WORKER+'/mna/document/koppel-entiteit/'+d.doc_id,{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S.code},body:JSON.stringify({entiteit_id:gokIdUpload})}).catch(function(){});
             var docRefUpload=DOCS[faseId].find(function(x){return x.id===d.doc_id;});
             if(docRefUpload)docRefUpload.entiteit_id=gokIdUpload;
+          } else if (S._entiteiten.length > 1 && d.entiteit_naam) {
+            behoeftHandmatigeKoppeling = true;
+            var docRefOnzeker=DOCS[faseId].find(function(x){return x.id===d.doc_id;});
+            if(docRefOnzeker)docRefOnzeker.behoeftHandmatigeKoppeling=true;
           }
         }
-        S._conflicts=[];
-        var alleFases=['financieel','commercieel','partner','compliance','it','juridisch','strategisch'];
-        alleFases.forEach(function(fid){ autoFillFromExtraction(fid, d.veld_extractie, false, file.name, effectiefEntiteitId); });
-        if(S._conflicts&&S._conflicts.length){
-          var ctxLbl=effectiefEntiteitId?('Voor: '+entiteitNaam(effectiefEntiteitId)):'Voor: Groep (geconsolideerd)';
-          var conflictenBatch=S._conflicts.slice();S._conflicts=[];
-          renderApp();setTimeout(function(){toonConflictDialog(conflictenBatch,ctxLbl);},300);
-        }else if(effectiefEntiteitId){
-          renderApp();saveEntiteitData(effectiefEntiteitId,alleFases);
-        }else{markDirty();renderApp();schedSave();}
+        if (behoeftHandmatigeKoppeling) {
+          toast('⚠ "'+file.name+'": entiteit niet zeker herkend ("'+d.entiteit_naam+'") — cijfers zijn NIET verwerkt. Koppel het document handmatig aan de juiste entiteit via de dataroom.','warn',8000);
+          renderApp();
+        } else {
+          S._conflicts=[];
+          var alleFases=['financieel','commercieel','partner','compliance','it','juridisch','strategisch'];
+          alleFases.forEach(function(fid){ autoFillFromExtraction(fid, d.veld_extractie, false, file.name, effectiefEntiteitId); });
+          if(S._conflicts&&S._conflicts.length){
+            var ctxLbl=effectiefEntiteitId?('Voor: '+entiteitNaam(effectiefEntiteitId)):'Voor: Groep (geconsolideerd)';
+            var conflictenBatch=S._conflicts.slice();S._conflicts=[];
+            renderApp();setTimeout(function(){toonConflictDialog(conflictenBatch,ctxLbl);},300);
+          }else if(effectiefEntiteitId){
+            renderApp();saveEntiteitData(effectiefEntiteitId,alleFases);
+          }else{markDirty();renderApp();schedSave();}
+        }
       }
       // Toon crosscheck waarschuwingen (AI-zelfrapportage + deterministische sanity-check)
       if((d.crosschecks&&d.crosschecks.length)||(d.sanity_waarschuwingen&&d.sanity_waarschuwingen.length)||(d.entiteit_naam&&S.traject&&S.traject.kantoor_naam)){
@@ -1089,8 +1115,17 @@ function renderDocumentSectie(faseId) {
       var toonKoppelenDoc = !isReadOnly && S._entiteiten && S._entiteiten.length;
       var gokIdDoc = (toonKoppelenDoc && !doc.entiteit_id) ? gokEntiteitId((doc.velden||{}).entiteit_naam) : '';
       var geselecteerdDoc = doc.entiteit_id || gokIdDoc;
-      var groepsniveauBadgeDoc = (toonKoppelenDoc && !doc.entiteit_id) ? ' <span style="font-size:9px;font-weight:600;color:var(--muted);background:var(--panel);border-radius:8px;padding:1px 6px;margin-left:2px">Groepsniveau</span>' : '';
-      return '<div style="display:flex;align-items:center;gap:6px;padding:5px 8px;background:var(--card);border-radius:var(--r);border:1px solid var(--border);flex-wrap:wrap">'
+      // GOUDEN STANDAARD: bij onzekere entiteitsherkenning (AI noemde wél een bedrijfsnaam, maar die
+      // matcht niet zeker/exact met precies één geregistreerde entiteit) is niets automatisch
+      // verwerkt — herberekend uit de opgeslagen extractie (dus ook kloppend ná een pagina-herlaad,
+      // niet afhankelijk van in-memory state van het moment van uploaden).
+      var behoeftKoppelingDoc = toonKoppelenDoc && !doc.entiteit_id && (doc.velden||{}).entiteit_naam && !gokEntiteitId((doc.velden||{}).entiteit_naam, true);
+      var groepsniveauBadgeDoc = (toonKoppelenDoc && !doc.entiteit_id)
+        ? (behoeftKoppelingDoc
+          ? ' <span style="font-size:9px;font-weight:700;color:#fff;background:var(--red);border-radius:8px;padding:1px 6px;margin-left:2px">&#9888; Handmatig koppelen</span>'
+          : ' <span style="font-size:9px;font-weight:600;color:var(--muted);background:var(--panel);border-radius:8px;padding:1px 6px;margin-left:2px">Groepsniveau</span>')
+        : '';
+      return '<div style="display:flex;align-items:center;gap:6px;padding:5px 8px;background:'+(behoeftKoppelingDoc?'var(--red-bg)':'var(--card)')+';border-radius:var(--r);border:1px solid '+(behoeftKoppelingDoc?'var(--red)':'var(--border)')+';flex-wrap:wrap">'
         + '<span style="font-size:13px">'+icon+'</span>'
         + '<span style="font-size:11px;color:var(--teal);flex:1">'+(doc.bewaard?'<a href="'+WORKER+'/mna/document/download/'+doc.id+'?code='+encodeURIComponent(S.code)+'" target="_blank" style="color:var(--teal);text-decoration:none">'+esc(doc.naam)+'</a>':esc(doc.naam))+(entNaamDoc?' <span style="font-size:9px;font-weight:600;color:var(--teal);background:var(--teal-bg);border-radius:8px;padding:1px 6px;margin-left:2px">'+esc(entNaamDoc)+'</span>':groepsniveauBadgeDoc)+'</span>'
         + '<span style="font-size:10px;color:var(--muted)">'+(doc.grootte/1024/1024).toFixed(1)+'MB</span>'
@@ -1318,7 +1353,12 @@ function renderDataroom(){
         var toonKoppelen=!isKoper()&&S._entiteiten&&S._entiteiten.length;
         var gokId=(toonKoppelen&&!doc.entiteit_id)?gokEntiteitId((doc.velden||{}).entiteit_naam):'';
         var geselecteerd=doc.entiteit_id||gokId;
-        var groepsniveauBadge=(toonKoppelen&&!doc.entiteit_id)?' <span style="font-size:10px;font-weight:600;color:var(--muted);background:var(--panel);border-radius:8px;padding:2px 8px;margin-left:4px">Groepsniveau</span>':'';
+        var behoeftKoppeling=toonKoppelen&&!doc.entiteit_id&&(doc.velden||{}).entiteit_naam&&!gokEntiteitId((doc.velden||{}).entiteit_naam,true);
+        var groepsniveauBadge=(toonKoppelen&&!doc.entiteit_id)
+          ?(behoeftKoppeling
+            ?' <span style="font-size:10px;font-weight:700;color:#fff;background:var(--red);border-radius:8px;padding:2px 8px;margin-left:4px">&#9888; Handmatig koppelen</span>'
+            :' <span style="font-size:10px;font-weight:600;color:var(--muted);background:var(--panel);border-radius:8px;padding:2px 8px;margin-left:4px">Groepsniveau</span>')
+          :'';
         html+='<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">'
           +'<span style="font-size:18px">'+icon+'</span>'
           +'<div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--head)">'+esc(doc.naam)+(entNaam?' <span style="font-size:10px;font-weight:600;color:var(--teal);background:var(--teal-bg);border-radius:8px;padding:2px 8px;margin-left:4px">'+esc(entNaam)+'</span>':groepsniveauBadge)+'</div>'
