@@ -257,8 +257,9 @@ function renderMain(){
     var toontGroepsniveauBadge=df.groepsniveau&&S._actieveEntiteit&&S._entiteiten&&S._entiteiten.length;
     dataHtml+='<div>';
     if(isRO){
+      var roFragTitle=veldBronInfo&&veldBronInfo.bron_fragment?(' title="Uit het document: &quot;'+esc(veldBronInfo.bron_fragment)+'&quot;"'):'';
       dataHtml+='<div class="f"><label>'+df.label+(df.req?' <span class="req">*</span>':'')+(df.doc?' &#128196;':'')+'</label>'
-        +'<div class="readonly-val'+(val?'':' empty')+'">'+(val?esc(val):'Niet ingevuld')+(ref?'<span style="color:var(--gold);font-size:11px;margin-left:8px">&#128196; '+esc(ref)+'</span>':'')+'</div></div>';
+        +'<div class="readonly-val'+(val?'':' empty')+'">'+(val?esc(val):'Niet ingevuld')+(ref?'<span style="color:var(--gold);font-size:11px;margin-left:8px;cursor:help"'+roFragTitle+'>&#128196; '+esc(ref)+'</span>':'')+'</div></div>';
     }else if(isGeaggregeerdInGroep){
       dataHtml+='<div class="f"><label>'+df.label+(df.req?' <span class="req">*</span>':'')+' <span style="color:var(--teal);font-size:9px;font-weight:600">&#128279; som van entiteiten</span></label>'
         +'<div class="readonly-val" style="background:var(--teal-bg);border-color:var(--teal-dark)" title="Automatisch berekend uit de geregistreerde entiteiten — vóór eliminatie van onderlinge transacties. Wijzig per entiteit via de kiezer hierboven.">'+(val?esc(val):'Nog geen entiteitsdata')+'</div></div>';
@@ -267,7 +268,10 @@ function renderMain(){
       var conflictTitle=hasConflict?(' title="Document zegt: '+esc(hasConflict)+'"'):'';
       // Herkomst tonen zodra AI het veld daadwerkelijk heeft ingevuld (niet alleen "kan uit een
       // document komen" — df.doc/"ref" hierboven is alleen die generieke capaciteits-indicator).
-      var bronTag=(val&&ref)?' <span style="color:var(--gold-dark);font-size:9px;font-weight:600" title="Automatisch ingevuld uit dit document — controleer de waarde.">&#128196; uit: '+esc(ref)+'</span>':'';
+      // bron_fragment (letterlijk citaat uit het brondocument) is alleen gekoppeld voor de
+      // belangrijkste financiële cijfervelden — zie setIfEmpty/applyOrConflict-aanroepen.
+      var bronFragTitle=veldBronInfo&&veldBronInfo.bron_fragment?('Uit het document: &quot;'+esc(veldBronInfo.bron_fragment)+'&quot;'):'Automatisch ingevuld uit dit document — controleer de waarde.';
+      var bronTag=(val&&ref)?' <span style="color:var(--gold-dark);font-size:9px;font-weight:600;cursor:help" title="'+bronFragTitle+'">&#128196; uit: '+esc(ref)+(veldBronInfo&&veldBronInfo.bron_fragment?' &#128172;':'')+'</span>':'';
       dataHtml+='<div class="f"><label>'+df.label+(df.req?' <span class="req">*</span>':'')+(df.doc?' <span style="color:var(--gold);font-size:9px">&#128196; ref</span>':'')+bronTag
         +(hasConflict?' <span style="color:var(--gold);font-size:9px;font-weight:600" title="Document geeft andere waarde: '+esc(hasConflict)+'">&#9888; afwijking</span>':'')
         +(toontGroepsniveauBadge?' <span style="color:var(--muted);font-size:9px;font-weight:600" title="Dit veld geldt voor de hele groep, niet alleen voor de geselecteerde entiteit — wijzigingen gelden overal.">&#128279; geldt voor hele groep</span>':'')+'</label>'
@@ -746,7 +750,7 @@ function bindAll(){
         S={screen:'cover',code:code,rol:d.rol||'verkoper',traject:d.traject,modules:d.modules||null,_ivSelectie:null,
           fase:0,checked:{},data:{},docRefs:{},notities:{},aiTexts:{},aiLoading:{},
           saveTimer:null,showValidation:false,dataroomLoading:false,dataroom:null,
-          _opy:{},_epy:{},_opySlotJaar:{},_conflicts:[],_userEdited:{},_docSource:{},koperReacties:{},loiTekst:'',loiDatum:0,
+          _opy:{},_epy:{},_opySlotJaar:{},_conflicts:[],_userEdited:{},_docSource:{},_docFragment:{},koperReacties:{},loiTekst:'',loiDatum:0,
           dataPerEntiteit:{},_actieveEntiteit:null,_entiteiten:[]};
         // Groepsstructuur (Fase 2): S is hierboven volledig herbouwd — de groepsdata-alias opnieuw
         // vastzetten vóórdat loadDataFromDB hieronder de opgehaalde rijen erin gaat wegschrijven.

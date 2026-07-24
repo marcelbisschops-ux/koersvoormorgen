@@ -1,4 +1,4 @@
-var S={screen:'login',code:'',rol:'',traject:null,fase:0,checked:{},data:{},docRefs:{},notities:{},aiTexts:{},aiLoading:{},saveTimer:null,showValidation:false,dataroomLoading:false,dataroom:null,_opy:{},_epy:{},_opySlotJaar:{},_conflicts:[],_userEdited:{},_docSource:{},faseStatus:{},dossierVrijgegeven:false,_entiteiten:[],dataPerEntiteit:{},_actieveEntiteit:null};
+var S={screen:'login',code:'',rol:'',traject:null,fase:0,checked:{},data:{},docRefs:{},notities:{},aiTexts:{},aiLoading:{},saveTimer:null,showValidation:false,dataroomLoading:false,dataroom:null,_opy:{},_epy:{},_opySlotJaar:{},_conflicts:[],_userEdited:{},_docSource:{},_docFragment:{},faseStatus:{},dossierVrijgegeven:false,_entiteiten:[],dataPerEntiteit:{},_actieveEntiteit:null};
 // Groepsdata (S._groepData) en S.data wijzen initieel naar hetzelfde object — bij het wisselen van
 // entiteit (switchEntiteit) wordt S.data omgezet naar de data van die entiteit, en weer terug. Alle
 // bestaande code die S.data[...] leest/schrijft (fillPct, saveCurrent, getDataForFase, enz.) werkt
@@ -298,7 +298,11 @@ function saveCurrent(cb){
 // 'auto_consolidatie' (Fase 2 — automatisch opgeteld/gemiddeld uit entiteiten, server-side gezet),
 // of onbekend (bijv. data van vóór deze functionaliteit).
 function veldBron(key){
-  if(S._docSource&&S._docSource[key])return {bron:'ai_document',bron_doc:S._docSource[key]};
+  if(S._docSource&&S._docSource[key]){
+    var out={bron:'ai_document',bron_doc:S._docSource[key]};
+    if(S._docFragment&&S._docFragment[key])out.bron_fragment=S._docFragment[key];
+    return out;
+  }
   if(S._userEdited&&S._userEdited[key])return {bron:'handmatig'};
   return null;
 }
@@ -336,7 +340,8 @@ function loadDataFromDB(dbData){dbData.forEach(function(row){var id=row.fase_id;
   var doel=row.entiteit_id?(S.dataPerEntiteit[row.entiteit_id]=S.dataPerEntiteit[row.entiteit_id]||{}):S._groepData;
   Object.keys(dj).forEach(function(k){var v=dj[k];if(v&&v.value){doel[id+'_'+k]=v.value;
     // Herkomst herstellen zodat de AI-verificatiestatus ook na herladen nog klopt
-    if(v.bron==='ai_document'&&v.bron_doc){if(!S._docSource)S._docSource={};S._docSource[id+'_'+k]=v.bron_doc;}
+    if(v.bron==='ai_document'&&v.bron_doc){if(!S._docSource)S._docSource={};S._docSource[id+'_'+k]=v.bron_doc;
+      if(v.bron_fragment){if(!S._docFragment)S._docFragment={};S._docFragment[id+'_'+k]=v.bron_fragment;}}
     else if(v.bron==='handmatig'){if(!S._userEdited)S._userEdited={};S._userEdited[id+'_'+k]=true;}
   }});
   if(row.entiteit_id)return; // checklist/notitie/koper_reactie blijven groepsniveau — niet per entiteit
@@ -808,19 +813,34 @@ function _autoFillFromExtractionBody(faseId, velden, forceOverwrite, docNaam) {
     }
   });
 
-  function setIfEmpty(key, val) {
+  // rawVeldNaam (optioneel): de oorspronkelijke AI-veldnaam (bijv. 'ebitda_abs'), gebruikt om
+  // herkomst (welk document) en het letterlijke brontekst-fragment te koppelen. Alleen meegegeven
+  // bij de belangrijkste financiële cijfervelden — niet bij elke aanroep (zie toelichting bij de
+  // aanroepen zelf): dat zou 70+ call sites raken voor velden die niet expliciet gevraagd zijn.
+  function setIfEmpty(key, val, rawVeldNaam) {
     var d=doelData(key);
-    if(val&&val!=='null'&&val!==null&&String(val).trim()!==''&&!(d[key]||'').trim())
+    if(val&&val!=='null'&&val!==null&&String(val).trim()!==''&&!(d[key]||'').trim()){
       d[key]=String(val);
+      if(rawVeldNaam){
+        if(!S._docSource)S._docSource={};S._docSource[key]=currentDocNaam;
+        var frag=(velden._bron_fragmenten||{})[rawVeldNaam];
+        if(frag){if(!S._docFragment)S._docFragment={};S._docFragment[key]=frag;}
+      }
+    }
   }
-  function applyOrConflict(key, val, label) {
+  function applyOrConflict(key, val, label, rawVeldNaam) {
     if(!val||val==='null'||val===null||String(val).trim()==='')return;
     var d=doelData(key);
     var newVal=String(val);
     var existing=(d[key]||'').trim();
-    if(!existing){d[key]=newVal;if(!S._docSource)S._docSource={};S._docSource[key]=currentDocNaam;return;}
+    function zetFragment(){
+      if(!rawVeldNaam)return;
+      var frag=(velden._bron_fragmenten||{})[rawVeldNaam];
+      if(frag){if(!S._docFragment)S._docFragment={};S._docFragment[key]=frag;}
+    }
+    if(!existing){d[key]=newVal;if(!S._docSource)S._docSource={};S._docSource[key]=currentDocNaam;zetFragment();return;}
     if(existing===newVal)return;
-    if(forceOverwrite){d[key]=newVal;if(!S._docSource)S._docSource={};S._docSource[key]=currentDocNaam;return;}
+    if(forceOverwrite){d[key]=newVal;if(!S._docSource)S._docSource={};S._docSource[key]=currentDocNaam;zetFragment();return;}
     // Zelfde document dat dit veld eerder al zette (bijv. herverwerking) — gewoon bijwerken, geen conflict.
     if(S._docSource&&S._docSource[key]===currentDocNaam){d[key]=newVal;return;}
     // Andere waarde dan wat er al stond — altijd laten kiezen, ook als het huidige veld zelf
@@ -892,19 +912,22 @@ function _autoFillFromExtractionBody(faseId, velden, forceOverwrite, docNaam) {
       var eys=Object.keys(S._epy).map(Number).filter(function(j){return!isNaN(j);}).sort(function(a,b){return b-a;});
       if(eys.length)applyOrConflict('financieel_ebitdaMarge',S._epy[String(eys[0])],'EBITDA-marge (%)');
     }
-    if(velden.ohw&&velden.ohw!=='null')applyOrConflict('financieel_wip',cleanGetal(velden.ohw),'Onderhanden werk');
-    if(velden.debiteuren&&velden.debiteuren!=='null')applyOrConflict('financieel_debiteuren',cleanGetal(velden.debiteuren),'Debiteuren');
-    setIfEmpty('financieel_ebitdaNorm',cleanGetal(velden.resultaat));
-    setIfEmpty('financieel_ebitda',cleanGetal(velden.ebitda_abs));
+    if(velden.ohw&&velden.ohw!=='null')applyOrConflict('financieel_wip',cleanGetal(velden.ohw),'Onderhanden werk','ohw');
+    if(velden.debiteuren&&velden.debiteuren!=='null')applyOrConflict('financieel_debiteuren',cleanGetal(velden.debiteuren),'Debiteuren','debiteuren');
+    // Herkomst+brontekstfragment gekoppeld voor de belangrijkste financiële cijfervelden (zie
+    // toelichting bij setIfEmpty) — bij een OR-keten (bijv. resultaat||afgeleid) alleen de eerste
+    // (meest voorkomende) AI-veldnaam als rawVeldNaam, dus geen fragment bij de fallback-synoniemen.
+    setIfEmpty('financieel_ebitdaNorm',cleanGetal(velden.resultaat),'resultaat');
+    setIfEmpty('financieel_ebitda',cleanGetal(velden.ebitda_abs),'ebitda_abs');
     setIfEmpty('financieel_omzetJaarwerk',velden.omzet_jaarwerk_pct);
     setIfEmpty('financieel_omzetAdvies',velden.omzet_advies_pct);
     setIfEmpty('financieel_omzetLoon',velden.omzet_loon_pct);
     setIfEmpty('financieel_omzetFiscaal',velden.omzet_fiscaal_pct);
     setIfEmpty('financieel_omzetOverig',velden.omzet_overig_pct);
-    setIfEmpty('financieel_omzetYTD',cleanGetal(velden.omzet_ytd||velden.ytd_omzet||velden.omzet_huidig_jaar));
-    setIfEmpty('financieel_debiteurenOud',velden.debiteuren_oud||velden.debiteuren_90_dagen||velden.old_debiteuren_pct);
+    setIfEmpty('financieel_omzetYTD',cleanGetal(velden.omzet_ytd||velden.ytd_omzet||velden.omzet_huidig_jaar),'omzet_ytd');
+    setIfEmpty('financieel_debiteurenOud',velden.debiteuren_oud||velden.debiteuren_90_dagen||velden.old_debiteuren_pct,'debiteuren_oud');
     setIfEmpty('financieel_declarab',velden.declarabiliteit||velden.declarab_pct);
-    setIfEmpty('financieel_partnerBel',velden.partnerbeloning||velden.partner_beloning||velden.beloning_partners);
+    setIfEmpty('financieel_partnerBel',velden.partnerbeloning||velden.partner_beloning||velden.beloning_partners,'partnerbeloning');
     setIfEmpty('financieel_kostenPersoneel',velden.kosten_personeel_pct);
     setIfEmpty('financieel_kostenHuisvesting',velden.kosten_huisvesting_pct);
     setIfEmpty('financieel_kostenIT',velden.kosten_it_pct);
