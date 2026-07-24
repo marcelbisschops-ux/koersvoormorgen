@@ -1223,13 +1223,14 @@ function renderDocumentSectie(faseId) {
     uploadHtml = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:.75rem;flex-wrap:wrap">'
       + '<label style="display:flex;align-items:center;gap:6px;background:var(--teal);color:#fff;font-family:IBM Plex Sans,sans-serif;font-size:12px;font-weight:600;padding:6px 14px;border-radius:var(--r);cursor:pointer">'
       + '&#128196; Document toevoegen'
-      + '<input type="file" multiple accept=".pdf,.docx,.doc,.xlsx,.xls,.csv,.txt,.eml" style="display:none" onchange="var _inp=this;uploadDocumentenSequentieel(\''+faseId+'\',this.files).then(function(){_inp.value=\'\';});">'
+      + '<input type="file" multiple accept=".pdf,.docx,.doc,.xlsx,.xls,.csv,.txt,.eml,.xml,.xbrl" style="display:none" onchange="var _inp=this;uploadDocumentenSequentieel(\''+faseId+'\',this.files).then(function(){_inp.value=\'\';});">'
       + '</label>'
       + entiteitKiezer
       + '<label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);cursor:pointer" title="Leest het document twee keer onafhankelijk met AI en vergelijkt de uitkomst. Komen de twee lezingen niet overeen, dan wordt u gevraagd de juiste waarde te kiezen. Kost meer en duurt langer — daarom standaard uit.">'
       + '<input type="checkbox" id="dubbele-check-'+faseId+'" style="margin:0"> Extra controle (dubbele AI-analyse)'
       + '</label>'
       + '<div id="upload-status-'+faseId+'" style="font-size:11px;color:var(--muted)"></div>'
+      + (faseId==='financieel'?'<div style="font-size:10px;color:var(--muted);flex-basis:100%">Ook een SBR/XBRL-jaarrekeningbestand kan hier geüpload worden — de officiële cijfers worden dan automatisch uitgelezen. Let op: bij kleine/middelgrote rechtspersonen bevat dit wettelijk geen apart omzetcijfer (pas vanaf brutomarge).</div>':'')
       + '</div>';
   }
 
