@@ -355,7 +355,7 @@ function renderHuisstijlModal(){
     <div style="font-family:Playfair Display,serif;font-size:1.15rem;color:var(--head);font-weight:600;margin-bottom:.25rem">&#127912; Eigen huisstijl</div>
     <div style="font-size:12px;color:var(--muted);margin-bottom:1.25rem;line-height:1.6">Deze instellingen gelden voor de trajecten die u aanmaakt — uw verkoper en koper zien uw eigen naam/kleur/logo in plaats van "${esc(BRAND.platform)}". Laat een veld leeg om de standaard te gebruiken.</div>
     <div class="field" style="margin-bottom:1rem"><label>Eigen platformnaam</label><input type="text" id="hs-naam" value="${esc(b.brand_naam)}" placeholder="${esc(BRAND.platform)}" maxlength="60"></div>
-    <div class="field" style="margin-bottom:1rem"><label>Accentkleur</label><div style="display:flex;align-items:center;gap:10px"><input type="color" id="hs-kleur" value="${esc(b.brand_kleur)||'#1a7a5e'}" style="width:48px;height:36px;padding:2px;border:1px solid var(--border);border-radius:6px;cursor:pointer"><span style="font-size:12px;color:var(--muted)">Klik op het vlak om een kleur te kiezen</span></div></div>
+    <div class="field" style="margin-bottom:1rem"><label>Accentkleur</label><div style="display:flex;align-items:center;gap:10px"><input type="color" id="hs-kleur" value="${esc(b.brand_kleur)||'#1a7a5e'}" style="width:48px;height:36px;padding:2px;border:1px solid var(--border);border-radius:6px;cursor:pointer"><span style="font-size:12px;color:var(--muted)">Klik op het vlak om een kleur te kiezen</span></div><div id="hs-kleur-waarschuwing" style="font-size:11px;color:var(--gold-dark);margin-top:6px;line-height:1.5;display:none">&#8505; Deze kleur is op een donkere achtergrond moeilijk leesbaar als tekst — uw verkoper/koper ziet in donkere modus automatisch een lichtere versie ervan.</div></div>
     <div class="field" style="margin-bottom:1.25rem"><label>Logo</label>
       <div id="hs-logo-preview" style="margin-bottom:.5rem;${b.brand_logo_url?'':'display:none'}"><img id="hs-logo-img" src="${esc(b.brand_logo_url||'')}" style="height:40px;max-width:160px;object-fit:contain;border:1px solid var(--border);border-radius:6px;padding:4px;background:var(--bg)"></div>
       <input type="file" id="hs-logo-file" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml" style="font-size:12px">
@@ -373,6 +373,27 @@ function renderHuisstijlModal(){
   ov.appendChild(mo);document.body.appendChild(ov);
   ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
   ge('hs-ann').onclick=function(){document.body.removeChild(ov);};
+
+  // Live waarschuwing: dezelfde contrastberekening als mna/06-schermen.js (contrastveiligeHuisstijlkleur)
+  // — hier alleen om de adviseur meteen te laten zien dat zijn/haar keuze straks automatisch wordt
+  // aangepast, niet om de kleur hier al te wijzigen (dat gebeurt pas bij mna.html zelf).
+  function contrastTegenDonker(hex){
+    if(!/^#[0-9a-f]{6}$/i.test(hex))return 99;
+    function relLuminantie(h){
+      var r=parseInt(h.slice(1,3),16)/255,g=parseInt(h.slice(3,5),16)/255,b=parseInt(h.slice(5,7),16)/255;
+      function lin(c){return c<=0.03928?c/12.92:Math.pow((c+0.055)/1.055,2.4);}
+      return 0.2126*lin(r)+0.7152*lin(g)+0.0722*lin(b);
+    }
+    var l1=relLuminantie(hex),l2=relLuminantie('#1b1a17');
+    return (Math.max(l1,l2)+0.05)/(Math.min(l1,l2)+0.05);
+  }
+  function toonKleurWaarschuwingIndienNodig(){
+    var w=ge('hs-kleur-waarschuwing');
+    if(!w)return;
+    w.style.display=(contrastTegenDonker(ge('hs-kleur').value)<4.5)?'block':'none';
+  }
+  ge('hs-kleur').addEventListener('input',toonKleurWaarschuwingIndienNodig);
+  toonKleurWaarschuwingIndienNodig();
 
   var nieuwLogoBase64=null, nieuwLogoMime=null, logoVerwijderen=false;
   ge('hs-logo-file').onchange=function(){

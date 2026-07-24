@@ -725,6 +725,41 @@ function docNietBeschikbaarHtml(bestandsnaam){
   return '<div style="padding:1rem;background:var(--red-bg);border:1px solid var(--red);border-radius:8px;color:var(--red);font-size:13px;line-height:1.6">Dit document ('+esc(bestandsnaam)+') is als eigen bestand geüpload, maar kan hier niet worden getoond — de koppeling naar het bestand ontbreekt. Neem contact op met uw adviseur voor een nieuwe versie.</div>';
 }
 
+// Huisstijlkleur van een adviseur vervangt site-breed --teal (zie het gebruik hieronder bij
+// d.branding.kleur) — die kleur wordt zowel als KNOP-achtergrond (met wit erop) als los als TEKST/
+// badge-kleur op de paginakleur gebruikt. Een kleur die prima is als knop kan als tekst op een
+// donkere pagina volledig onleesbaar zijn (gevonden 24 juli 2026: eigen testkleur #371a7a). Deze
+// helper meet het daadwerkelijke contrast (WCAG-relatieve-luminantie, zelfde methode als de browser
+// zelf gebruikt) tegen de paginakleur van het ACTIEVE thema, en mengt de kleur zo nodig naar wit
+// (donker thema) of zwart (licht thema) totdat er minimaal 4.5:1 contrast is — de door de adviseur
+// gekozen kleur blijft ongewijzigd zolang die al leesbaar genoeg is.
+function contrastveiligeHuisstijlkleur(hex){
+  if(!/^#[0-9a-f]{6}$/i.test(hex))return hex;
+  function relLuminantie(h){
+    var r=parseInt(h.slice(1,3),16)/255,g=parseInt(h.slice(3,5),16)/255,b=parseInt(h.slice(5,7),16)/255;
+    function lin(c){return c<=0.03928?c/12.92:Math.pow((c+0.055)/1.055,2.4);}
+    return 0.2126*lin(r)+0.7152*lin(g)+0.0722*lin(b);
+  }
+  function mengNaar(h,doel,pct){
+    var r=parseInt(h.slice(1,3),16),g=parseInt(h.slice(3,5),16),b=parseInt(h.slice(5,7),16);
+    var dr=parseInt(doel.slice(1,3),16),dg=parseInt(doel.slice(3,5),16),db=parseInt(doel.slice(5,7),16);
+    var nr=Math.round(r+(dr-r)*pct),ng=Math.round(g+(dg-g)*pct),nb=Math.round(b+(db-b)*pct);
+    return '#'+[nr,ng,nb].map(function(v){return v.toString(16).padStart(2,'0');}).join('');
+  }
+  var donker=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches;
+  var achtergrondLum=relLuminantie(donker?'#1b1a17':'#faf9f6');
+  var doelKleur=donker?'#ffffff':'#000000';
+  var resultaat=hex;
+  for(var pct=0;pct<=1;pct+=0.1){
+    var test=pct===0?hex:mengNaar(hex,doelKleur,pct);
+    var l1=relLuminantie(test);
+    var contrast=(Math.max(l1,achtergrondLum)+0.05)/(Math.min(l1,achtergrondLum)+0.05);
+    if(contrast>=4.5){resultaat=test;break;}
+    resultaat=test;
+  }
+  return resultaat;
+}
+
 function bindAll(){
   var lb=ge('l-btn');
   if(lb){
@@ -775,8 +810,9 @@ function bindAll(){
         if(d.branding){
           if(d.branding.naam){ BRAND.platform=d.branding.naam; }
           if(d.branding.kleur){
-            document.documentElement.style.setProperty('--teal',d.branding.kleur);
-            document.documentElement.style.setProperty('--teal-bg',d.branding.kleur+'1a');
+            var tealVeilig=contrastveiligeHuisstijlkleur(d.branding.kleur);
+            document.documentElement.style.setProperty('--teal',tealVeilig);
+            document.documentElement.style.setProperty('--teal-bg',tealVeilig+'1a');
           }
           if(d.branding.logo_url){ BRAND._logoUrl=d.branding.logo_url; }
           document.title='M&A Begeleiding - '+BRAND.platform;
