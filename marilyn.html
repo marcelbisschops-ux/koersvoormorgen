@@ -95,7 +95,9 @@ tr:hover td{background:rgba(26,122,94,.04)}
 </div>
 <script>
 
-const WORKER='https://kantoorinzicht.marcel-bisschops.workers.dev';
+// Standaard altijd productie. Alleen overschrijfbaar via ?worker=... in de URL — bedoeld om tegen
+// de staging-omgeving te testen, nooit als permanente instelling.
+const WORKER=new URLSearchParams(location.search).get('worker')||'https://kantoorinzicht.marcel-bisschops.workers.dev';
 // White-label basis — centrale merkconfig voor de beheerkant (zelfde patroon als de rest).
 const BRAND={platform:'KantoorInzicht',bedrijf:'Bisschops Financing B.V.',suffix:'Beheer',kort:'Bisschops Financing',adres:'Grotestraat 13, 5841AA Oploo'};
 document.title=BRAND.platform+' — '+BRAND.suffix;

@@ -139,7 +139,9 @@ tr:hover td{background:var(--bg);cursor:pointer}
 <div id="app"></div>
 <div id="toast"></div>
 <script>
-var WORKER='https://kantoorinzicht.marcel-bisschops.workers.dev';
+// Standaard altijd productie. Alleen overschrijfbaar via ?worker=... in de URL — bedoeld om tegen
+// de staging-omgeving te testen, nooit als permanente instelling.
+var WORKER=new URLSearchParams(location.search).get('worker')||'https://kantoorinzicht.marcel-bisschops.workers.dev';
 // White-label basis — centrale merkconfig (zelfde patroon als mna.html). Eén plek wijzigen = overal.
 var BRAND = { platform:'KantoorInzicht', bedrijf:'Bisschops Financing B.V.', bedrijfKort:'Bisschops Financing BV', suffix:'M&A', kort:'Bisschops Financing' };
 document.title = BRAND.platform + ' — Adviseur';
