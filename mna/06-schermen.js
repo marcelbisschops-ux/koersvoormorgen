@@ -740,7 +740,7 @@ function bindAll(){
         S={screen:'cover',code:code,rol:d.rol||'verkoper',traject:d.traject,modules:d.modules||null,_ivSelectie:null,
           fase:0,checked:{},data:{},docRefs:{},notities:{},aiTexts:{},aiLoading:{},
           saveTimer:null,showValidation:false,dataroomLoading:false,dataroom:null,
-          _opy:{},_epy:{},_conflicts:[],_userEdited:{},_docSource:{},koperReacties:{},loiTekst:'',loiDatum:0,
+          _opy:{},_epy:{},_opySlotJaar:{},_conflicts:[],_userEdited:{},_docSource:{},koperReacties:{},loiTekst:'',loiDatum:0,
           dataPerEntiteit:{},_actieveEntiteit:null,_entiteiten:[]};
         // Groepsstructuur (Fase 2): S is hierboven volledig herbouwd — de groepsdata-alias opnieuw
         // vastzetten vóórdat loadDataFromDB hieronder de opgehaalde rijen erin gaat wegschrijven.
