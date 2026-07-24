@@ -592,6 +592,18 @@ function renderWaardering(){
       +'<button class="btn" id="w-ai-btn" style="width:100%">&#9881; Genereer AI-analyse &amp; waardering</button>'
       +'<div id="w-ai-hist" style="margin-top:1rem"></div>'
       +'</div>';
+
+    // Onafhankelijke "second opinion": hierboven schrijft de AI alleen een verhaal bij de cijfers die
+    // de rekenkern al berekend heeft (expliciet geen eigen bedragen mogen verzinnen); hier bepaalt de
+    // AI zelf een eigen multiple/range op basis van de sectorbenchmarks, los van de rekenkern. Een
+    // verschil tussen de twee is juist nuttig signaal — vandaar apart en duidelijk gelabeld, met een
+    // deterministische sanity-check + bronvermelding erbij (nooit blind overnemen).
+    html+='<div id="w-ai2-sectie" style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;margin-bottom:1.25rem">'
+      +'<div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)">AI-waardering &middot; second opinion</div>'
+      +'<div style="font-size:11px;color:var(--muted);margin-bottom:.85rem;line-height:1.6">Onafhankelijk van de rekenkern hierboven: de AI bepaalt hier zélf een multiple en waarderingsrange op basis van de sectorbenchmarks en ingevoerde data. Bedoeld als tweede blik, niet als vervanging &mdash; wijkt dit af van de rekenkern hierboven, dan is dát zelf al een signaal om nader te bekijken.</div>'
+      +'<div id="w-ai2-out" style="display:none;margin-bottom:1rem"></div>'
+      +'<button class="btn-ghost" id="w-ai2-btn" style="width:100%">&#129302; Genereer AI-waardering (second opinion)</button>'
+      +'</div>';
   }
 
   html+='</div>';
