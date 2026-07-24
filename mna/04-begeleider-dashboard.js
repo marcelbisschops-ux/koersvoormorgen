@@ -808,7 +808,7 @@ function renderBegeleiderDashboard(app){
         var prijsmechanisme=dvBerekenPrijsmechanisme(p);
         var closing=dvBerekenClosing(p);
         var schuldafbouw=dvBerekenSchuldafbouw(p,closing);
-        var buyAndBuildRows=p.buyAndBuild?dvBerekenBuyAndBuild(p,schuldafbouw[schuldafbouw.length-1]):null;
+        var buyAndBuildRows=p.buyAndBuild?dvBerekenBuyAndBuild(p,schuldafbouw[schuldafbouw.length-1],closing.deelKoperBasis):null;
         var gevoeligheid=dvBerekenGevoeligheid(p);
         var dcf=dvBerekenDCF(p,schuldafbouw);
         var tabelMap={
