@@ -115,12 +115,21 @@ function dvBerekenSchuldafbouw(p,closing){
 // Vereenvoudigd buy-and-build platformscenario: N overnames/jaar van gemiddelde omvang, platformmultiple
 // loopt lineair op naar het opgegeven maximum. Acquisitieschuld is een vast percentage van de acquisitiewaarde;
 // bestaande schuld wordt jaarlijks met een indicatief percentage afgelost.
-function dvBerekenBuyAndBuild(p,laatsteSchuldRow){
+// initieleInzetKoper (optioneel): het eigen vermogen dat de koper bij closing heeft ingelegd
+// (closing.deelKoperBasis) — nodig om IRR/MoM te berekenen. Zonder dit param blijven IRR/MoM leeg
+// i.p.v. een fout te geven (bijv. bij hergebruik van deze functie zonder closing-context).
+// LET OP — vereenvoudigde IRR: dit model houdt geen jaarlijkse eigen-vermogen-kasstroom bij (alleen
+// schuld en EBITDA/EV-opbouw); er is dus geen record van extra eigen-vermogen-inleg per add-on.
+// De IRR hieronder is daarom een CAGR-achtige jaarlijkse-rendementsindicatie (begin- vs eindwaarde
+// van het koperbelang), GEEN volledige kasstroom-IRR met tussentijdse in-/uitleg. Duidelijk zo
+// gelabeld in de UI (dvTabelBuyAndBuild) — nooit een precisie suggereren die de data niet heeft.
+function dvBerekenBuyAndBuild(p,laatsteSchuldRow,initieleInzetKoper){
   var rows=[];
   var groepsEbitda=laatsteSchuldRow.ebitda;
   var nettoSchuld=laatsteSchuldRow.nettoSchuld;
   var multipleStart=p.multipleBovengrens;
-  var huidigJaar=new Date().getFullYear()+p.horizonJaren;
+  var jarenTotClosing=p.horizonJaren;
+  var huidigJaar=new Date().getFullYear()+jarenTotClosing;
   for(var j=1;j<=5;j++){
     var acqEbitda=p.baOvernamesPerJaar*p.baOmvangEbitda;
     var acqSchuld=acqEbitda*p.baAcqMultiple*(p.baAcqSchuldPct/100);
@@ -129,7 +138,10 @@ function dvBerekenBuyAndBuild(p,laatsteSchuldRow){
     var multiple=Math.min(p.baPlatformMultipleMax, multipleStart+(p.baPlatformMultipleMax-multipleStart)*(j/5));
     var ev=groepsEbitda*multiple;
     var koperWaarde=ev*(p.belangPct/100);
-    rows.push({jaar:String(huidigJaar+j),deals:p.baOvernamesPerJaar,acqEbitda:acqEbitda,groepsEbitda:groepsEbitda,nettoSchuld:nettoSchuld,leverage:nettoSchuld/groepsEbitda,multiple:multiple,ev:ev,koperWaarde:koperWaarde});
+    var jarenSindsClosing=jarenTotClosing+j;
+    var mom=(initieleInzetKoper&&initieleInzetKoper>0)?(koperWaarde/initieleInzetKoper):null;
+    var irr=(mom&&mom>0)?(Math.pow(mom,1/jarenSindsClosing)-1):null;
+    rows.push({jaar:String(huidigJaar+j),deals:p.baOvernamesPerJaar,acqEbitda:acqEbitda,groepsEbitda:groepsEbitda,nettoSchuld:nettoSchuld,leverage:nettoSchuld/groepsEbitda,multiple:multiple,ev:ev,koperWaarde:koperWaarde,mom:mom,irr:irr});
   }
   return rows;
 }
@@ -178,8 +190,11 @@ function dvTabelSchuldafbouw(rows){
 }
 
 function dvTabelBuyAndBuild(rows){
-  return dvRenderTabelHtml(['Jaar','Deals','Acq. EBITDA','Groeps-EBITDA','Netto schuld','ND/EBITDA','Multiple','EV','Koperswaarde'],
-    rows.map(function(r){return [r.jaar,r.deals,dvMln(r.acqEbitda),dvMln(r.groepsEbitda),dvMln(r.nettoSchuld),dvMultiple(r.leverage),dvMultiple(r.multiple),dvMln(r.ev),dvMln(r.koperWaarde)];}));
+  var momCol='MoM';
+  var irrCol='IRR* <span title="Vereenvoudigd: jaarlijkse-rendementsindicatie op basis van begin- en eindwaarde van het koperbelang (CAGR-achtig) — geen volledige kasstroom-IRR, want dit model houdt geen tussentijdse eigen-vermogen-inleg per add-on bij." style="cursor:help;color:#8a8880">&#9432;</span>';
+  return dvRenderTabelHtml(['Jaar','Deals','Acq. EBITDA','Groeps-EBITDA','Netto schuld','ND/EBITDA','Multiple','EV','Koperswaarde',momCol,irrCol],
+    rows.map(function(r){return [r.jaar,r.deals,dvMln(r.acqEbitda),dvMln(r.groepsEbitda),dvMln(r.nettoSchuld),dvMultiple(r.leverage),dvMultiple(r.multiple),dvMln(r.ev),dvMln(r.koperWaarde),(r.mom!=null?dvMultiple(r.mom):'—'),(r.irr!=null?dvPct(r.irr*100):'—')];}))
+    +'<div style="font-size:9px;color:#8a8880;margin:-.75rem 0 1rem">* IRR is vereenvoudigd (zie ⓘ) — geen volledige kasstroom-IRR met tussentijdse eigen-vermogen-inleg per add-on.</div>';
 }
 
 // Label-waarde tabel met wrappende waardekolom (voor vrije tekstvelden uit de due diligence, i.t.t.
