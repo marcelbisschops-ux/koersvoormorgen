@@ -562,8 +562,8 @@ async function uploadDocument(faseId, file) {
           renderApp();saveEntiteitData(effectiefEntiteitId,alleFases);
         }else{markDirty();renderApp();schedSave();}
       }
-      // Toon crosscheck waarschuwingen
-      if((d.crosschecks&&d.crosschecks.length)||(d.entiteit_naam&&S.traject&&S.traject.kantoor_naam)){
+      // Toon crosscheck waarschuwingen (AI-zelfrapportage + deterministische sanity-check)
+      if((d.crosschecks&&d.crosschecks.length)||(d.sanity_waarschuwingen&&d.sanity_waarschuwingen.length)||(d.entiteit_naam&&S.traject&&S.traject.kantoor_naam)){
         var msgs=[];
         // Entiteit check
         if(d.entiteit_naam&&S.traject&&S.traject.kantoor_naam){
@@ -572,6 +572,7 @@ async function uploadDocument(faseId, file) {
             msgs.push('⚠ Entiteit in document ("'+d.entiteit_naam+'") wijkt af van kantoornaam ("'+S.traject.kantoor_naam+'")');
         }
         if(d.crosschecks)msgs=msgs.concat(d.crosschecks);
+        if(d.sanity_waarschuwingen)msgs=msgs.concat(d.sanity_waarschuwingen);
         if(msgs.length){
           var md='<div style="background:var(--gold-bg);border:1px solid var(--gold);border-radius:6px;padding:.75rem;margin:.5rem 0">'
             +'<div style="font-size:11px;font-weight:600;color:var(--gold-dark);margin-bottom:.4rem">⚠ Aandachtspunten bij '+esc(file.name)+'</div>'
@@ -657,11 +658,12 @@ window.centraalUploadFiles = async function(files) {
           renderApp();
           continue;
         }
-        // Toon crosscheck waarschuwingen als die er zijn
-        if(d.crosschecks&&d.crosschecks.length){
+        // Toon crosscheck waarschuwingen als die er zijn (AI-zelfrapportage + deterministische sanity-check)
+        var alleWarn=(d.crosschecks||[]).concat(d.sanity_waarschuwingen||[]);
+        if(alleWarn.length){
           var warnHtml='<div style="background:var(--gold-bg);border:1px solid var(--gold);border-radius:6px;padding:.75rem;margin-top:.5rem">'
-            +'<div style="font-size:11px;font-weight:600;color:var(--gold-dark);margin-bottom:.4rem">⚠ '+file.name+' — '+d.crosschecks.length+' aandachtspunt(en)</div>';
-          d.crosschecks.forEach(function(w){warnHtml+='<div style="font-size:12px;color:var(--gold-dark);padding:2px 0">• '+esc(w)+'</div>';});
+            +'<div style="font-size:11px;font-weight:600;color:var(--gold-dark);margin-bottom:.4rem">⚠ '+file.name+' — '+alleWarn.length+' aandachtspunt(en)</div>';
+          alleWarn.forEach(function(w){warnHtml+='<div style="font-size:12px;color:var(--gold-dark);padding:2px 0">• '+esc(w)+'</div>';});
           // Entiteit check
           if(d.entiteit_naam&&S.traject&&S.traject.kantoor_naam){
             var naam1=(d.entiteit_naam||'').toLowerCase();
