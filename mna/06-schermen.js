@@ -1002,6 +1002,44 @@ function bindAll(){
       wAiBtn.textContent='↻ Opnieuw genereren';wAiBtn.disabled=false;
     }catch(e){out.innerHTML='<div style="color:var(--red);font-size:13px">Fout: '+e.message+'</div>';wAiBtn.disabled=false;wAiBtn.textContent='Genereer AI-analyse & waardering';}
   });
+  // AI-waardering second opinion — onafhankelijke AI-multiple/range, los van de rekenkern hierboven.
+  var wAi2Btn=ge('w-ai2-btn');
+  if(wAi2Btn)wAi2Btn.addEventListener('click',async function(){
+    var out2=ge('w-ai2-out');if(!out2)return;
+    wAi2Btn.disabled=true;wAi2Btn.textContent='Genereren...';
+    out2.style.display='block';
+    out2.innerHTML='<div style="color:var(--muted);font-size:13px">AI bepaalt een onafhankelijke waardering... (kan 15-30 sec duren)</div>';
+    try{
+      var resp2=await fetch(WORKER+'/mna/waardering/genereer',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||S.code||''},body:JSON.stringify({code:S.code})});
+      var rd2=await resp2.json();
+      if(!rd2.ok){out2.innerHTML='<div style="color:var(--red);font-size:13px">Fout: '+esc(rd2.error||'onbekende fout')+'</div>';wAi2Btn.disabled=false;wAi2Btn.textContent='&#129302; Genereer AI-waardering (second opinion)';return;}
+      var w2=rd2.waardering||{};
+      var sc2=rd2.sanity_check||{waarschuwingen:[]};
+      var bronnen2=rd2.benchmark_bronnen||[];
+      var html2='';
+      if(sc2.waarschuwingen&&sc2.waarschuwingen.length){
+        html2+='<div style="background:var(--red-bg);border:1px solid var(--red);border-radius:var(--r);padding:.6rem .85rem;margin-bottom:.85rem;font-size:12px;color:var(--red)">'
+          +'<strong>&#9888; Sanity-check geeft '+sc2.waarschuwingen.length+' aandachtspunt(en):</strong>'
+          +sc2.waarschuwingen.map(function(w){return '<div style="padding:2px 0">&bull; '+esc(w)+'</div>';}).join('')
+          +'</div>';
+      }
+      html2+='<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:.75rem">'
+        +'<div style="background:var(--card);border-radius:var(--r);padding:.75rem;text-align:center"><div style="font-size:10px;color:var(--muted);margin-bottom:.2rem">Laag</div><div style="font-family:IBM Plex Mono,monospace;font-size:13px;font-weight:600">'+fmtGeld(w2.range_laag||0)+'</div></div>'
+        +'<div style="background:var(--gold-bg);border:1px solid var(--gold);border-radius:var(--r);padding:.75rem;text-align:center"><div style="font-size:10px;color:var(--gold-dark);margin-bottom:.2rem">Midden</div><div style="font-family:IBM Plex Mono,monospace;font-size:14px;font-weight:600;color:var(--gold-dark)">'+fmtGeld(w2.range_midden||0)+'</div></div>'
+        +'<div style="background:var(--card);border-radius:var(--r);padding:.75rem;text-align:center"><div style="font-size:10px;color:var(--muted);margin-bottom:.2rem">Hoog</div><div style="font-family:IBM Plex Mono,monospace;font-size:13px;font-weight:600">'+fmtGeld(w2.range_hoog||0)+'</div></div>'
+        +'</div>'
+        +'<div style="font-size:12px;color:var(--mid);margin-bottom:.5rem"><strong>Methode:</strong> '+esc(w2.methode||'onbekend')+(w2.gehanteerde_multiple?' ('+esc(String(w2.gehanteerde_multiple))+'x)':'')+'</div>'
+        +(w2.onderbouwing?'<div style="font-size:12px;color:var(--mid);margin-bottom:.5rem;line-height:1.6"><strong>Onderbouwing:</strong> '+esc(w2.onderbouwing)+'</div>':'')
+        +(w2.risicofactoren?'<div style="font-size:12px;color:var(--mid);margin-bottom:.5rem;line-height:1.6"><strong>Risicofactoren:</strong> '+esc(w2.risicofactoren)+'</div>':'');
+      if(bronnen2.length){
+        html2+='<div style="font-size:11px;color:var(--muted);margin-top:.6rem;padding-top:.6rem;border-top:1px solid var(--border)"><strong>Benchmarkbronnen gebruikt:</strong>'
+          +bronnen2.map(function(b){return '<div style="padding:1px 0">&bull; '+esc(b.sleutel)+': '+esc(String(b.waarde))+' ('+esc(b.bron||'onbekend')+(b.peildatum?', peildatum '+esc(b.peildatum):'')+')</div>';}).join('')
+          +'</div>';
+      }
+      out2.innerHTML=html2;
+      wAi2Btn.disabled=false;wAi2Btn.textContent='↻ Opnieuw genereren';
+    }catch(e){out2.innerHTML='<div style="color:var(--red);font-size:13px">Fout: '+esc(e.message)+'</div>';wAi2Btn.disabled=false;wAi2Btn.textContent='&#129302; Genereer AI-waardering (second opinion)';}
+  });
   // Eerder gegenereerd waarderingsrapport ophalen (server, niet meer lokaal) en tonen
   if(wAiBtn){
     (async function(){
