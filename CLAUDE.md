@@ -36,6 +36,7 @@ Eigenaar: Marcel Bisschops (Bisschops Financing B.V.).
 5. **Geen diagnose zonder data.** Niet gokken; eerst code of logs lezen (`npx wrangler tail` voor live worker-logs).
 6. **Elke fix in `mna.html` ook doorvoeren in `adv.html`** (en omgekeerd waar relevant), tenzij aantoonbaar specifiek voor één van beide.
 7. **Bij elke code-wijziging een test meeleveren:** curl-commando's, een checklist, of een testscript — iets waarmee Marcel zelf kan verifiëren.
+8. **GOUDEN STANDAARD — nooit gokken in het platform zelf (Marcel, 24 juli 2026, mag nooit gebroken worden):** het systeem (AI-extractie, classificatie, entiteit-routing, waardering, elke automatische beslissing) mag NOOIT een onzekere waarde verzinnen of stilzwijgend een aanname doorvoeren. Bij twijfel: altijd een melding aan de gebruiker, nooit een default/gok. Specifiek bij documentclassificatie/-routing: als niet met zekerheid vaststaat bij welke entiteit/fase/veld een document hoort, dan wordt het gelabeld "handmatig toevoegen" (of gelijkwaardig) in plaats van automatisch (fout) ingedeeld. Geldt voor alle bestaande én nieuwe AI/automatiserings-code — bij twijfel over of een stuk logica hieraan voldoet: expliciet testen tegen deze regel vóór opleveren.
 
 ## Technische valkuilen (eerder geleerd)
 - `node --check` op elk JS-bestand vóór opleveren; voor HTML-bestanden met inline script (marilyn/adv/index/hugo/verhuis): het `<script>`-blok extraheren en checken. Voor mna: direct `node --check mna/*.js`.
