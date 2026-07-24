@@ -55,7 +55,10 @@ function triggerFileUpload(faseId) {
   document.body.appendChild(inp);
   inp.addEventListener('change', function(e) {
     var files = e.target.files;
-    for (var i = 0; i < files.length; i++) uploadDocument(faseId, files[i]);
+    // Eén voor één verwerken i.p.v. gelijktijdig — zelfde reden als uploadDocumentenSequentieel:
+    // bij gelijktijdige uploads liep gedeelde state (S._conflicts) door elkaar tussen bestanden,
+    // waardoor van een hele reeks maar 1 bestand goed verwerkt terugkwam. Gevonden 23 juli 2026.
+    window.uploadDocumentenSequentieel(faseId, files);
     document.body.removeChild(inp);
   });
   inp.click();
