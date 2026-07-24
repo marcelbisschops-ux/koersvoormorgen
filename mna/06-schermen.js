@@ -244,7 +244,10 @@ function renderMain(){
     // Groepsniveau-velden (bv. aantal partners) horen altijd bij de groep, ook als er een
     // entiteit actief is — anders lijkt hetzelfde partnerteam per BV een ander antwoord te geven.
     var val=(df.groepsniveau?S._groepData:S.data)[f.id+'_'+df.id]||'';
-    var ref=S.docRefs&&S.docRefs[f.id+'_'+df.id]||null;
+    // S.docRefs werd nooit ergens gevuld (dode infrastructuur) — herkomst komt uit veldBron(),
+    // die al bestond voor de AI-verificatiestatus-samenvatting maar nooit per-veld werd getoond.
+    var veldBronInfo=veldBron(f.id+'_'+df.id);
+    var ref=(veldBronInfo&&veldBronInfo.bron==='ai_document'&&veldBronInfo.bron_doc)?veldBronInfo.bron_doc:null;
     var missing=S.showValidation&&df.req&&!val.trim();
     // Check of dit veld een openstaand conflict heeft
     var hasConflict=S._pendingConflicts&&S._pendingConflicts[f.id+'_'+df.id];
@@ -262,7 +265,10 @@ function renderMain(){
     }else{
       var conflictStyle=hasConflict?'border-color:var(--gold);background:var(--gold-bg)':'';
       var conflictTitle=hasConflict?(' title="Document zegt: '+esc(hasConflict)+'"'):'';
-      dataHtml+='<div class="f"><label>'+df.label+(df.req?' <span class="req">*</span>':'')+(df.doc?' <span style="color:var(--gold);font-size:9px">&#128196; ref</span>':'')
+      // Herkomst tonen zodra AI het veld daadwerkelijk heeft ingevuld (niet alleen "kan uit een
+      // document komen" — df.doc/"ref" hierboven is alleen die generieke capaciteits-indicator).
+      var bronTag=(val&&ref)?' <span style="color:var(--gold-dark);font-size:9px;font-weight:600" title="Automatisch ingevuld uit dit document — controleer de waarde.">&#128196; uit: '+esc(ref)+'</span>':'';
+      dataHtml+='<div class="f"><label>'+df.label+(df.req?' <span class="req">*</span>':'')+(df.doc?' <span style="color:var(--gold);font-size:9px">&#128196; ref</span>':'')+bronTag
         +(hasConflict?' <span style="color:var(--gold);font-size:9px;font-weight:600" title="Document geeft andere waarde: '+esc(hasConflict)+'">&#9888; afwijking</span>':'')
         +(toontGroepsniveauBadge?' <span style="color:var(--muted);font-size:9px;font-weight:600" title="Dit veld geldt voor de hele groep, niet alleen voor de geselecteerde entiteit — wijzigingen gelden overal.">&#128279; geldt voor hele groep</span>':'')+'</label>'
         +'<input type="text" id="df_'+df.id+'" value="'+esc(val)+'" placeholder="'+esc(df.ph)+'" class="'+(missing?'missing':'')+'" style="'+conflictStyle+'"'+conflictTitle+' oninput="userEdit(this)"></div>';
