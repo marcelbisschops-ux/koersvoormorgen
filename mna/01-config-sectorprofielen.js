@@ -1,4 +1,7 @@
-var WORKER='https://kantoorinzicht.marcel-bisschops.workers.dev';
+// Standaard altijd productie. Alleen overschrijfbaar via ?worker=... in de URL — bedoeld voor de
+// staging-omgeving testen (Playwright UI-tests, of handmatig), nooit als permanente instelling
+// (geen localStorage/cookie: sluit je het tabblad, is het weer productie).
+var WORKER=new URLSearchParams(location.search).get('worker')||'https://kantoorinzicht.marcel-bisschops.workers.dev';
 // White-label basis — centrale merkconfig. Eén plek om de productnaam/exploitant te wijzigen.
 // Later uitbreidbaar naar per-adviseur (uit de DB). Wijzig hier = overal in de UI-chrome.
 var BRAND = {
