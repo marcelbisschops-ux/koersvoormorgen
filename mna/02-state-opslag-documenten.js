@@ -1013,7 +1013,7 @@ function renderDocumentSectie(faseId) {
     uploadHtml = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:.75rem;flex-wrap:wrap">'
       + '<label style="display:flex;align-items:center;gap:6px;background:var(--teal);color:#fff;font-family:IBM Plex Sans,sans-serif;font-size:12px;font-weight:600;padding:6px 14px;border-radius:var(--r);cursor:pointer">'
       + '&#128196; Document toevoegen'
-      + '<input type="file" multiple accept=".pdf,.docx,.doc,.xlsx,.xls,.csv,.txt,.eml" style="display:none" onchange="uploadDocumentenSequentieel(\''+faseId+'\',this.files);this.value=\'\';">'
+      + '<input type="file" multiple accept=".pdf,.docx,.doc,.xlsx,.xls,.csv,.txt,.eml" style="display:none" onchange="var _inp=this;uploadDocumentenSequentieel(\''+faseId+'\',this.files).then(function(){_inp.value=\'\';});">'
       + '</label>'
       + entiteitKiezer
       + '<div id="upload-status-'+faseId+'" style="font-size:11px;color:var(--muted)"></div>'
