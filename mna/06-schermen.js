@@ -1,3 +1,8 @@
+// Vaste spelregels-tekst over automatische AI-invoer/analyse/output — getoond op de landingspagina
+// aan zowel verkoper als koper/derde, naast (niet i.p.v.) de per-document-waarschuwing in akkoordHtml().
+function aiSpelregelsHtml(){
+  return '<div style="margin:1rem 0;padding:.75rem 1rem;background:var(--gold-bg);border:1px solid var(--gold);border-radius:var(--r);font-size:11px;color:var(--muted);line-height:1.7">&#129302; <strong>AI &amp; verantwoordelijkheid:</strong> Veldwaarden die automatisch uit documenten worden ingelezen, en analyses/beoordelingen/waarderingen die dit platform genereert, komen tot stand met behulp van kunstmatige intelligentie (mogelijk bèta-functionaliteit) en kunnen fouten bevatten. Dit is ondersteunende informatie, geen advies. Controleer automatisch ingevulde waarden en gegenereerde teksten altijd zelf — de eindverantwoordelijkheid voor juistheid en gebruik ligt bij u en uw adviseur.</div>';
+}
 function renderCover(){
   var t=S.traject;
   var vergrendeld=t&&t.status==='vergrendeld';
@@ -21,12 +26,14 @@ function renderCover(){
       +'<p>Uw gegevens worden strikt vertrouwelijk behandeld.</p>'
       +'<div style="margin:1rem 0;padding:.75rem 1rem;background:var(--card);border:1px solid var(--border);border-radius:var(--r);font-size:11px;color:var(--muted);line-height:1.7">&#128274; <strong>Beveiliging &amp; AVG:</strong> Alle gegevens worden versleuteld via HTTPS verstuurd en opgeslagen op Cloudflare-servers in Europa (Frankfurt, EU) en uitsluitend gebruikt voor dit M&amp;A-traject. <strong>'+esc(t.begeleider_naam||'Uw adviseur')+'</strong> is de verwerkingsverantwoordelijke voor uw gegevens conform de AVG — voor vragen over inzage, correctie of verwijdering van úw gegevens kunt u het beste rechtstreeks contact opnemen via <a href=\"mailto:'+esc(begeleiderWeergaveEmail(t.begeleider_email))+'\" style=\"color:var(--teal)\">'+esc(begeleiderWeergaveEmail(t.begeleider_email))+'</a>.'
       +'<div style="margin-top:.5rem;font-size:10px;color:#b8b6ac">Verwerkt via het '+BRAND.platformEcht+'-platform, techniek verzorgd door '+BRAND.kort+' — zie de <a href=\"privacy.html\" style=\"color:#b8b6ac\">verwerkersinformatie</a>.</div></div>'
+      +aiSpelregelsHtml()
     +'<p>Met vriendelijke groet,<br><strong>'+esc(t.begeleider_naam||BRAND.contactpersoon)+'</strong><br><span style="font-size:12px;color:var(--muted)">Senior M&amp;A-adviseur &middot; '+esc(t.begeleider_bedrijf||BRAND.bedrijfKort)+'<br><a href="mailto:'+esc(begeleiderWeergaveEmail(t.begeleider_email))+'" style="color:var(--muted)">'+esc(begeleiderWeergaveEmail(t.begeleider_email))+'</a></span></p>'
       +'<div style="margin-top:.75rem;font-size:10px;color:#c8c5bc">Mogelijk gemaakt door '+BRAND.platformEcht+'</div>';
   }else if(isTussen()){
     intro='<p>Geachte tussenpersoon,</p>'
       +'<p>U heeft toegang tot de voortgang van het due diligence traject (trajecttype: <strong>'+esc(t.traject_type||'M&A')+'</strong>). De kantooridentiteit is geanonimiseerd conform de afspraken. U kunt per fase de ingevoerde informatie inzien en een AI-advies genereren op basis van de beschikbare data.</p>'
       +'<p>Vragen? Neem contact op via <a href="mailto:' + esc(begeleiderWeergaveEmail(t.begeleider_email)) + '" style="color:var(--teal)">' + esc(begeleiderWeergaveEmail(t.begeleider_email)) + '</a>.</p>'
+      +aiSpelregelsHtml()
       +'<p>Met vriendelijke groet,<br><strong>'+esc(t.begeleider_naam||BRAND.contactpersoon)+'</strong><br><span style="font-size:12px;color:var(--muted)">Senior M&amp;A-adviseur &middot; '+esc(t.begeleider_bedrijf||BRAND.bedrijfKort)+'</span></p>';
   }else if(!t.koper_vrijgegeven){
     // Koper zonder vrijgave — toon BEM als die beschikbaar is
@@ -66,6 +73,7 @@ function renderCover(){
       +'</div>'
       +'<div style="margin:1rem 0;padding:.75rem 1rem;background:var(--card);border:1px solid var(--border);border-radius:var(--r);font-size:11px;color:var(--muted);line-height:1.7">&#128274; <strong>Beveiliging &amp; AVG:</strong> <strong>'+esc(t.begeleider_naam||'Uw adviseur')+'</strong> is de verwerkingsverantwoordelijke voor de gegevens in dit traject conform de AVG — voor vragen kunt u contact opnemen via <a href=\"mailto:'+esc(begeleiderWeergaveEmail(t.begeleider_email))+'\" style=\"color:var(--teal)\">'+esc(begeleiderWeergaveEmail(t.begeleider_email))+'</a>.'
       +'<div style="margin-top:.5rem;font-size:10px;color:#b8b6ac">Verwerkt via het '+BRAND.platformEcht+'-platform, techniek verzorgd door '+BRAND.kort+' — zie de <a href=\"privacy.html\" style=\"color:#b8b6ac\">verwerkersinformatie</a>.</div></div>'
+      +aiSpelregelsHtml()
       +'<p>Met vriendelijke groet,<br><strong>'+esc(t.begeleider_naam||BRAND.contactpersoon)+'</strong><br><span style="font-size:12px;color:var(--muted)">Senior M&amp;A-adviseur &middot; '+esc(t.begeleider_bedrijf||BRAND.bedrijfKort)+'</span></p>'
       +'<div style="margin-top:.75rem;font-size:10px;color:#c8c5bc">Mogelijk gemaakt door '+BRAND.platformEcht+'</div>';
   }

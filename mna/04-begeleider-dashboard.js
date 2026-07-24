@@ -481,7 +481,8 @@ function renderBegeleiderDashboard(app){
 
   // Verplichte controlestap vóór versturen: checkbox-html + koppel disable/enable aan verstuurknoppen
   function akkoordHtml(id){
-    return '<label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);margin-top:.85rem;cursor:pointer"><input type="checkbox" id="'+id+'" style="width:15px;height:15px"> Ik heb dit document gecontroleerd en aangepast waar nodig (namen, bedragen, datum én de tekst passend bij deze specifieke situatie — dit is een uitgangspunt, geen kant-en-klaar juridisch advies)</label>';
+    return '<div style="margin-top:.85rem;padding:.6rem .85rem;background:var(--gold-bg);border:1px solid var(--gold);border-radius:var(--r);font-size:11px;color:var(--sub);line-height:1.6;display:flex;gap:8px;align-items:flex-start"><span style="font-size:14px;line-height:1">&#129302;</span><span><strong>AI-gegenereerd (bèta):</strong> deze tekst is automatisch opgesteld door kunstmatige intelligentie op basis van de template en de ingevoerde gegevens. Dit kan fouten, verkeerde bedragen of onvolledige/onjuiste clausules bevatten — dit is geen juridisch advies.</span></div>'
+      +'<label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);margin-top:.6rem;cursor:pointer"><input type="checkbox" id="'+id+'" style="width:15px;height:15px"> Ik heb dit document gecontroleerd en aangepast waar nodig (namen, bedragen, datum én de tekst passend bij deze specifieke situatie — dit is een uitgangspunt, geen kant-en-klaar juridisch advies)</label>';
   }
   // Retourneert een controller met setOverride(bool) — nodig omdat de checkbox-eis ("ik heb dit
   // document gecontroleerd") niet zinvol is bij een eigen geüpload bestand: er is dan niets
