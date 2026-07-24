@@ -547,7 +547,9 @@ async function uploadDocument(faseId, file, existingId) {
   var bewaar = S.traject && S.traject.bewaar_docs !== false;
   var entiteitSel = document.getElementById('entiteit-select-'+faseId);
   var entiteitId = entiteitSel ? entiteitSel.value : '';
-  var url = WORKER + '/mna/document/upload?code=' + S.code + '&fase_id=' + faseId + '&bewaar=' + bewaar + (entiteitId?'&entiteit_id='+encodeURIComponent(entiteitId):'');
+  var dubbeleCheckEl = document.getElementById('dubbele-check-'+faseId);
+  var dubbeleCheck = dubbeleCheckEl && dubbeleCheckEl.checked;
+  var url = WORKER + '/mna/document/upload?code=' + S.code + '&fase_id=' + faseId + '&bewaar=' + bewaar + (entiteitId?'&entiteit_id='+encodeURIComponent(entiteitId):'') + (dubbeleCheck?'&dubbele_check=true':'');
 
   try {
     var resp = await fetch(url, { method: 'POST', body: formData });
@@ -600,6 +602,23 @@ async function uploadDocument(faseId, file, existingId) {
           S._conflicts=[];
           var alleFases=['financieel','commercieel','partner','compliance','it','juridisch','strategisch'];
           alleFases.forEach(function(fid){ autoFillFromExtraction(fid, d.veld_extractie, false, file.name, effectiefEntiteitId); });
+          // Extra controle (dubbele AI-analyse) aangevraagd: de tweede, onafhankelijke lezing vergelijken
+          // met wat pass 1 net heeft ingevuld. BELANGRIJK: de meeste velden gebruiken intern setIfEmpty
+          // (vult alleen een leeg veld, negeert stil een latere afwijkende waarde) — hergebruik van
+          // autoFillFromExtraction voor pass 2 zou dus voor ~55 van de ~60 velden GEEN conflict tonen
+          // bij een afwijking (getest en bevestigd: alleen jaaromzet loopt via applyOrConflict). Daarom
+          // hier gesplitst: jaaromzet hergebruikt de bestaande, al beproefde boekjaar-windowing
+          // (autoFillFromExtraction met een minimale set — alleen omzet/boekjaar/omzet_per_jaar, zodat
+          // geen van de setIfEmpty-velden per ongeluk meegetriggerd wordt); alle overige velden gaan
+          // via een losse, directe vergelijking die zelf de juiste doel-bucket en form-veldkey bepaalt
+          // (zie AI_VELD_MAP/vergelijkDubbelePassOverigeVelden hieronder) en dus NOOIT stilzwijgend een
+          // afwijking laat liggen.
+          if(d.veld_extractie_2){
+            var veld2Omzet={omzet:d.veld_extractie_2.omzet,boekjaar:d.veld_extractie_2.boekjaar,omzet_per_jaar:d.veld_extractie_2.omzet_per_jaar};
+            autoFillFromExtraction('financieel',veld2Omzet,false,file.name+' (2e AI-lezing, extra controle)',effectiefEntiteitId);
+            var overigeDiffs=vergelijkDubbelePassOverigeVelden(d.veld_extractie,d.veld_extractie_2,effectiefEntiteitId);
+            if(overigeDiffs.length){ if(!S._conflicts)S._conflicts=[]; S._conflicts=S._conflicts.concat(overigeDiffs); }
+          }
           if(S._conflicts&&S._conflicts.length){
             var ctxLbl=effectiefEntiteitId?('Voor: '+entiteitNaam(effectiefEntiteitId)):'Voor: Groep (geconsolideerd)';
             var conflictenBatch=S._conflicts.slice();S._conflicts=[];
@@ -753,6 +772,102 @@ function cleanGetal(v) {
   // Komma als decimaalscheider: 24,8 → 24.8
   if (/^\d+,\d+$/.test(s)) return s.replace(',', '.');
   return s;
+}
+
+// Zelfconsistentie ("Extra controle", dubbele AI-analyse): koppelt elk AI-schemaveld (zie
+// DOC_EXTRACTIE_JSON_SCHEMA_BASIS in de worker) aan het bijbehorende interne formulierveld + label.
+// Handgemaakt en 1-op-1 nagelopen tegen de setIfEmpty/applyOrConflict-aanroepen in
+// _autoFillFromExtractionBody hieronder — GEEN gok, elke regel hier komt overeen met een bestaande
+// mapping daar. Bewust NIET opgenomen: omzet/boekjaar/omzet_per_jaar (die lopen via de aparte,
+// al bestaande boekjaar-windowing — zie de aanroep in uploadDocument), 'claims' (in de bestaande
+// code dubbelzinnig — mapt daar naar twee verschillende velden, dus hier niet automatisch te kiezen),
+// 'vervolgstap' (heeft een eigen filter op geblokkeerde woorden, niet zomaar te dupliceren) en de
+// sectorspecifieke MKB/Zorg/IT-extra-velden (aparte, kleinere uitbreiding, nog niet gedekt).
+var AI_VELD_MAP = {
+  ebitda_pct:{key:'financieel_ebitdaMarge',label:'EBITDA-marge (%)'},
+  resultaat:{key:'financieel_ebitdaNorm',label:'EBITDA genormaliseerd'},
+  ebitda_abs:{key:'financieel_ebitda',label:'EBITDA (€, absoluut)'},
+  ohw:{key:'financieel_wip',label:'Onderhanden werk'},
+  debiteuren:{key:'financieel_debiteuren',label:'Debiteuren'},
+  omzet_jaarwerk_pct:{key:'financieel_omzetJaarwerk',label:'Omzet jaarwerk (%)'},
+  omzet_advies_pct:{key:'financieel_omzetAdvies',label:'Omzet advies (%)'},
+  omzet_loon_pct:{key:'financieel_omzetLoon',label:'Omzet loonadministratie (%)'},
+  omzet_fiscaal_pct:{key:'financieel_omzetFiscaal',label:'Omzet fiscaal (%)'},
+  omzet_overig_pct:{key:'financieel_omzetOverig',label:'Omzet overig (%)'},
+  omzet_ytd:{key:'financieel_omzetYTD',label:'Omzet YTD'},
+  debiteuren_oud:{key:'financieel_debiteurenOud',label:'Debiteuren >90 dagen (%)'},
+  declarabiliteit:{key:'financieel_declarab',label:'Declarabiliteit (%)'},
+  partnerbeloning:{key:'financieel_partnerBel',label:'Partnerbeloning'},
+  kosten_personeel_pct:{key:'financieel_kostenPersoneel',label:'Personeelskosten (%)'},
+  kosten_huisvesting_pct:{key:'financieel_kostenHuisvesting',label:'Huisvestingskosten (%)'},
+  kosten_it_pct:{key:'financieel_kostenIT',label:'IT-kosten (%)'},
+  kosten_marketing_pct:{key:'financieel_kostenMarketing',label:'Marketingkosten (%)'},
+  kosten_overig_pct:{key:'financieel_kostenOverig',label:'Overige kosten (%)'},
+  fte:{key:'partner_fte',label:'FTE'},
+  aantal_partners:{key:'partner_aantalP',label:'Aantal partners'},
+  gem_leeftijd_partners:{key:'partner_gemLeeftijd',label:'Gem. leeftijd partners'},
+  omzet_per_partner:{key:'partner_omzetPerP',label:'Omzet per partner'},
+  pensioen_partners:{key:'partner_pensioenP',label:'Pensioen partners'},
+  personeelsverloop:{key:'partner_verloop',label:'Personeelsverloop (%)'},
+  openstaande_vacatures:{key:'partner_vacatures',label:'Openstaande vacatures'},
+  ra_aa_opleiding:{key:'partner_raAa',label:'RA/AA-opleiding'},
+  opvolgingskandidaat:{key:'partner_opvolging',label:'Opvolgingskandidaat'},
+  veranderbereidheid:{key:'partner_verandering',label:'Veranderbereidheid'},
+  partnerovereenkomsten:{key:'partner_pContract',label:'Partnerovereenkomsten'},
+  aandeelhoudersstructuur:{key:'partner_eigendomsStructuur',label:'Eigendomsstructuur'},
+  aantal_klanten:{key:'commercieel_aantalKlanten',label:'Aantal klanten'},
+  churn:{key:'commercieel_churn',label:'Churn (%)'},
+  gem_klantduur:{key:'commercieel_klantduur',label:'Gem. klantduur'},
+  grootste_klant_pct:{key:'commercieel_top1pct',label:'Grootste klant (% van omzet)'},
+  top10_pct:{key:'commercieel_top10pct',label:'Top-10 klanten (% van omzet)'},
+  recurring:{key:'commercieel_recurring',label:'Recurring omzet (%)'},
+  cross_sell:{key:'commercieel_crossSell',label:'Cross-sell (%)'},
+  nieuwe_klanten:{key:'commercieel_nieuw',label:'Nieuwe klanten'},
+  verloren_klanten:{key:'commercieel_verlies',label:'Verloren klanten'},
+  nba_status:{key:'compliance_nba',label:'NBA-status'},
+  afm_vergunning:{key:'compliance_afm',label:'AFM-vergunning'},
+  kwaliteitstoetsing_jaar:{key:'compliance_toetsDatum',label:'Kwaliteitstoetsing (jaar)'},
+  kwaliteitstoetsing_oordeel:{key:'compliance_toetsOordeel',label:'Kwaliteitstoetsing (oordeel)'},
+  tuchtzaken:{key:'compliance_tuchtzaken',label:'Tuchtzaken'},
+  wwft:{key:'compliance_wwft',label:'WWFT'},
+  integriteitsincidenten:{key:'compliance_incidenten',label:'Integriteitsincidenten'},
+  software_primair:{key:'it_software',label:'Primaire software'},
+  overige_systemen:{key:'it_softwareOverig',label:'Overige systemen'},
+  automatiseringsgraad:{key:'it_autoGraad',label:'Automatiseringsgraad'},
+  ai_tooling:{key:'it_ai',label:'AI-tooling'},
+  it_kosten:{key:'it_itKosten',label:'IT-kosten'},
+  cybersecurity:{key:'it_security',label:'Cybersecurity'},
+  it_risicos:{key:'it_itRisico',label:'IT-risico’s'},
+  rechtsvorm:{key:'juridisch_rechtsvorm',label:'Rechtsvorm'},
+  huurcontract_looptijd:{key:'juridisch_huur',label:'Huurcontract looptijd'},
+  vpb_discussies:{key:'juridisch_vpb',label:'VPB-discussies'},
+  fiscale_risicos:{key:'juridisch_fiscaalRisico',label:'Fiscale risico’s'},
+  stak:{key:'juridisch_stak',label:'STAK / bijzondere structuur'},
+  leaseverplichtingen:{key:'juridisch_lease',label:'Leaseverplichtingen'},
+  marktpositie:{key:'strategisch_marktpos',label:'Marktpositie'},
+  niche:{key:'strategisch_niche',label:'Niche/specialisme'},
+  concurrenten:{key:'strategisch_concurrenten',label:'Concurrenten'},
+  ai_impact:{key:'strategisch_aiImpact',label:'AI-impact'},
+  cultuur:{key:'strategisch_cultuurFit',label:'Cultuur/fit'},
+  tijdlijn:{key:'strategisch_tijdlijn',label:'Gewenste tijdlijn'}
+};
+function vergelijkDubbelePassOverigeVelden(veld1, veld2, entiteitId) {
+  veld1 = veld1 || {}; veld2 = veld2 || {};
+  var bucket = entiteitId ? (S.dataPerEntiteit[entiteitId] = S.dataPerEntiteit[entiteitId] || {}) : S.data;
+  var diffs = [];
+  Object.keys(AI_VELD_MAP).forEach(function(aiKey) {
+    var m = AI_VELD_MAP[aiKey];
+    var a = cleanGetal(veld1[aiKey]);
+    var b = cleanGetal(veld2[aiKey]);
+    var aLeeg = (a === null || a === undefined || a === 'null' || String(a).trim() === '');
+    var bLeeg = (b === null || b === undefined || b === 'null' || String(b).trim() === '');
+    if (aLeeg || bLeeg) return; // alleen vergelijken als BEIDE AI-lezingen een waarde gaven
+    if (String(a) === String(b)) return; // de twee lezingen zijn het eens
+    var existing = (bucket[m.key] || '').trim();
+    if (!existing || existing === String(b)) return; // niets ingevuld, of huidige waarde is toch al gelijk aan lezing 2
+    diffs.push({ key: m.key, label: m.label, huidig: existing, nieuw: String(b), bron: '2e AI-lezing (extra controle)', doel: bucket });
+  });
+  return diffs;
 }
 
 function autoFillFromExtraction(faseId, velden, forceOverwrite, docNaam, entiteitId) {
@@ -1111,6 +1226,9 @@ function renderDocumentSectie(faseId) {
       + '<input type="file" multiple accept=".pdf,.docx,.doc,.xlsx,.xls,.csv,.txt,.eml" style="display:none" onchange="var _inp=this;uploadDocumentenSequentieel(\''+faseId+'\',this.files).then(function(){_inp.value=\'\';});">'
       + '</label>'
       + entiteitKiezer
+      + '<label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);cursor:pointer" title="Leest het document twee keer onafhankelijk met AI en vergelijkt de uitkomst. Komen de twee lezingen niet overeen, dan krijgt u een keuze i.p.v. een gok. Kost meer en duurt langer — daarom standaard uit.">'
+      + '<input type="checkbox" id="dubbele-check-'+faseId+'" style="margin:0"> Extra controle (dubbele AI-analyse)'
+      + '</label>'
       + '<div id="upload-status-'+faseId+'" style="font-size:11px;color:var(--muted)"></div>'
       + '</div>';
   }
