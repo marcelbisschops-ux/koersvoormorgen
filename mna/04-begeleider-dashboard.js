@@ -390,9 +390,11 @@ function renderBegeleiderDashboard(app){
     +'<div style="display:flex;gap:8px;margin-bottom:1.25rem">'
     +'<button class="btn" id="bg-waardering-actie" style="background:#6b7c93">&#9881; AI-analyse &amp; waardering</button>'
     +'<button class="btn-outline btn-sm" id="bg-ai-status-actie">&#129302; AI-verificatiestatus</button>'
+    +'<button class="btn-outline btn-sm" id="bg-koperfit-actie">&#127919; Koper-fit strategie</button>'
     +'<button class="btn-outline btn-sm" id="bg-feedback-actie" style="border-color:var(--gold);color:var(--gold)">&#128172; Feedback / bug melden</button>'
     +'</div>'
     +'<div id="bg-ai-status-out" style="display:none;margin-bottom:1.25rem"></div>'
+    +'<div id="bg-koperfit-out" style="display:none;margin-bottom:1.25rem"></div>'
     // Doc output
     +'<div id="bg-doc-out" style="display:none;margin-bottom:1.25rem"></div>'
     // Gesprek output
@@ -1710,6 +1712,118 @@ function renderBegeleiderDashboard(app){
 
   var wrdBtn=document.getElementById('bg-waardering-actie');
   if(wrdBtn)wrdBtn.onclick=function(){S.screen='waardering';renderApp();};
+
+  // ===== Koper-fit strategie: harde/tekstuele/vrije criteria tegen de DD-data van de verkoper =====
+  // Begeleider-only (v1) — verkoper mag de koper-strategie nooit zien, vandaar hier en niet in een
+  // voor verkoper zichtbaar scherm. GOUDEN STANDAARD: categorie A/B worden server-side deterministisch
+  // beoordeeld (geen AI); alleen categorie C (vrije tekst) gaat naar de AI, die uitsluitend citeert en
+  // nooit zelf oordeelt (zie backend-toelichting bij /mna/koper-criteria/beoordeel).
+  var KOPERFIT_A_VELDEN=[
+    {type:'omzet_min',label:'Minimale jaaromzet (€)'},
+    {type:'ebitdamarge_min',label:'Minimale EBITDA-marge (%)'},
+    {type:'ebitdamarge_max',label:'Maximale EBITDA-marge (%)'},
+    {type:'fte_min',label:'Minimaal aantal FTE'},
+    {type:'recurring_min',label:'Minimaal % recurring omzet'},
+    {type:'klantconcentratie_max',label:'Maximale klantconcentratie grootste klant (%)'}
+  ];
+  var KOPERFIT_B_VELDEN=[
+    {type:'sector_niche',label:'Gewenste sector/niche (trefwoord)'},
+    {type:'regio',label:'Gewenste regio/marktpositie (trefwoord)'}
+  ];
+  var KOPERFIT_VERDICT_LABEL={
+    past:{txt:'&#10003; Past',kleur:'var(--teal)',bg:'var(--teal-bg)'},
+    past_niet:{txt:'&#10005; Past niet',kleur:'var(--red)',bg:'var(--red-bg)'},
+    onvoldoende_data:{txt:'&#9888; Onvoldoende data',kleur:'var(--muted)',bg:'var(--card)'},
+    niet_objectief_vast_te_stellen:{txt:'&#128172; Zie citaten — zelf beoordelen',kleur:'var(--info)',bg:'var(--info-bg)'}
+  };
+  function koperFitFormHtml(criteria){
+    criteria=criteria||[];
+    function waardeVoor(type){var c=criteria.find(function(x){return x.type===type;});return c?c.waarde:'';}
+    function resultaatVoor(idOfType,isType){
+      var c=isType?criteria.find(function(x){return x.type===idOfType;}):criteria.find(function(x){return x.id===idOfType;});
+      if(!c||!c.result_verdict)return '';
+      var lbl=KOPERFIT_VERDICT_LABEL[c.result_verdict]||{txt:c.result_verdict,kleur:'var(--muted)',bg:'var(--card)'};
+      return '<div style="margin-top:4px;padding:6px 10px;background:'+lbl.bg+';border-radius:var(--r);font-size:11px">'
+        +'<span style="font-weight:600;color:'+lbl.kleur+'">'+lbl.txt+'</span>'
+        +(c.result_onderbouwing?'<div style="color:var(--mid);margin-top:2px">'+esc(c.result_onderbouwing)+'</div>':'')
+        +'</div>';
+    }
+    var cCriteria=criteria.filter(function(x){return x.categorie==='C';});
+    var cTekst=cCriteria.map(function(x){return x.waarde;}).join('\n');
+    var cResultaten=cCriteria.map(function(x){return '<div style="margin-bottom:.5rem"><div style="font-size:11px;color:var(--sub)">&bull; '+esc(x.waarde)+'</div>'+resultaatVoor(x.id,false)+'</div>';}).join('');
+    var html='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem">'
+      +'<div style="font-size:13px;font-weight:600;color:var(--head);margin-bottom:.4rem">&#127919; Koper-fit strategie</div>'
+      +'<div style="font-size:11px;color:var(--muted);margin-bottom:1rem;line-height:1.6">Leg vast waarom de koper deze overname zoekt en welke criteria de kandidaat moet halen. Harde criteria worden rekenkundig getoetst aan de ingevulde DD-cijfers (geen AI, geen gok). Alleen voor de vrije-tekst-overwegingen haalt de AI relevante passages aan — die velt zelf nooit een oordeel. Alleen zichtbaar voor u, niet voor de verkoper.</div>'
+      +'<div style="font-size:10px;font-weight:600;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem">Harde criteria — laat leeg als niet van toepassing</div>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:1rem">'
+      +KOPERFIT_A_VELDEN.map(function(v){return '<div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:2px">'+v.label+'</label><input type="text" id="kf-a-'+v.type+'" value="'+esc(waardeVoor(v.type))+'" style="width:100%;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:6px 8px;font-size:12px">'+resultaatVoor(v.type,true)+'</div>';}).join('')
+      +'</div>'
+      +'<div style="font-size:10px;font-weight:600;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem">Tekstuele criteria — trefwoord, laat leeg als niet van toepassing</div>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:1rem">'
+      +KOPERFIT_B_VELDEN.map(function(v){return '<div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:2px">'+v.label+'</label><input type="text" id="kf-b-'+v.type+'" value="'+esc(waardeVoor(v.type))+'" style="width:100%;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:6px 8px;font-size:12px">'+resultaatVoor(v.type,true)+'</div>';}).join('')
+      +'</div>'
+      +'<div style="font-size:10px;font-weight:600;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem">Overige strategische overwegingen — één per regel</div>'
+      +'<textarea id="kf-c-tekst" style="width:100%;height:80px;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:8px;font-size:12px;margin-bottom:.75rem">'+esc(cTekst)+'</textarea>'
+      +(cResultaten?'<div style="margin-bottom:1rem">'+cResultaten+'</div>':'')
+      +'<div style="display:flex;gap:8px">'
+      +'<button id="kf-opslaan" class="btn-ghost" style="font-size:12px;padding:6px 14px">&#128190; Opslaan</button>'
+      +'<button id="kf-beoordeel" class="btn" style="font-size:12px;padding:6px 14px;background:#6b7c93">&#127919; Beoordeel fit</button>'
+      +'</div>'
+      +'</div>';
+    return html;
+  }
+  async function koperFitLaadEnToon(){
+    var out=document.getElementById('bg-koperfit-out');if(!out)return;
+    out.style.display='block';out.innerHTML='<div style="color:var(--muted);font-size:13px;padding:1rem">Laden...</div>';
+    var r=await fetch(WORKER+'/mna/koper-criteria/'+encodeURIComponent(S.code),{headers:{'x-tussen-key':S._bgKey||''}}).then(function(x){return x.json();}).catch(function(){return{ok:false};});
+    out.innerHTML=koperFitFormHtml(r.ok?r.criteria:[]);
+    koperFitWireForm();
+  }
+  function koperFitLeesFormulier(){
+    var criteria=[];
+    KOPERFIT_A_VELDEN.forEach(function(v){
+      var el=document.getElementById('kf-a-'+v.type);
+      if(el&&el.value.trim()!=='')criteria.push({categorie:'A',type:v.type,label:v.label,waarde:el.value.trim()});
+    });
+    KOPERFIT_B_VELDEN.forEach(function(v){
+      var el=document.getElementById('kf-b-'+v.type);
+      if(el&&el.value.trim()!=='')criteria.push({categorie:'B',type:v.type,label:v.label,waarde:el.value.trim()});
+    });
+    var cEl=document.getElementById('kf-c-tekst');
+    if(cEl&&cEl.value.trim()!==''){
+      cEl.value.split('\n').map(function(l){return l.trim();}).filter(Boolean).forEach(function(regel){
+        criteria.push({categorie:'C',waarde:regel});
+      });
+    }
+    return criteria;
+  }
+  function koperFitWireForm(){
+    var opslaanBtn=document.getElementById('kf-opslaan');
+    if(opslaanBtn)opslaanBtn.onclick=async function(){
+      opslaanBtn.disabled=true;opslaanBtn.textContent='Opslaan...';
+      var criteria=koperFitLeesFormulier();
+      var r=await fetch(WORKER+'/mna/koper-criteria/opslaan',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||''},body:JSON.stringify({code:S.code,criteria:criteria})}).then(function(x){return x.json();}).catch(function(){return{ok:false};});
+      if(r.ok){toast('Criteria opgeslagen.','ok');koperFitLaadEnToon();}
+      else{toast('Opslaan mislukt: '+(r.error||'onbekend'),'err');opslaanBtn.disabled=false;opslaanBtn.textContent='&#128190; Opslaan';}
+    };
+    var beoordeelBtn=document.getElementById('kf-beoordeel');
+    if(beoordeelBtn)beoordeelBtn.onclick=async function(){
+      beoordeelBtn.disabled=true;beoordeelBtn.textContent='Bezig... (kan 15-30 sec duren)';
+      var criteria=koperFitLeesFormulier();
+      var saveR=await fetch(WORKER+'/mna/koper-criteria/opslaan',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||''},body:JSON.stringify({code:S.code,criteria:criteria})}).then(function(x){return x.json();}).catch(function(){return{ok:false};});
+      if(!saveR.ok){toast('Opslaan mislukt: '+(saveR.error||'onbekend'),'err');beoordeelBtn.disabled=false;beoordeelBtn.textContent='&#127919; Beoordeel fit';return;}
+      var r=await fetch(WORKER+'/mna/koper-criteria/beoordeel',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||''},body:JSON.stringify({code:S.code})}).then(function(x){return x.json();}).catch(function(){return{ok:false};});
+      if(!r.ok){toast('Beoordelen mislukt: '+(r.error||'onbekend'),'err');beoordeelBtn.disabled=false;beoordeelBtn.textContent='&#127919; Beoordeel fit';return;}
+      toast('Beoordeling klaar.','ok');
+      koperFitLaadEnToon();
+    };
+  }
+  var koperfitBtn=document.getElementById('bg-koperfit-actie');
+  if(koperfitBtn)koperfitBtn.onclick=function(){
+    var out=document.getElementById('bg-koperfit-out');
+    if(out&&out.style.display==='block'){out.style.display='none';return;}
+    koperFitLaadEnToon();
+  };
 
 }
 
