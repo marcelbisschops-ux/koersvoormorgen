@@ -9,7 +9,7 @@ accountprobleem.
 | Onderdeel | Draait op | Back-up (los van systeem) |
 |-----------|-----------|---------------------------|
 | Frontend (mna/marilyn/adv/index …) | Cloudflare Pages | **GitHub** (`koersvoormorgen`, elke push) |
-| Backend (worker) | Cloudflare Workers | **GitHub** `backend/` (via `scripts/backup.sh` + push) |
+| Backend (worker) | Cloudflare Workers | **GitHub**, aparte private repo `koersvoormorgen-backend` (los van dit backup-script — zie hieronder) |
 | Klantdata (database D1) | Cloudflare D1 | **`.sql`-export** in je back-upmap (buiten Cloudflare) |
 | Documenten (R2) | Cloudflare R2 | **kopie in je back-upmap** (`documenten/`, via `scripts/backup.sh`) |
 
@@ -65,11 +65,43 @@ Database terugzetten vanuit een `.sql`-back-up naar een (nieuwe) D1-database:
 # 1. Kies de gewenste back-up
 ls -1 ~/KantoorInzicht-Backups/
 # 2. Importeer in de database (LET OP: overschrijft bestaande data)
-cd ~/Downloads
+cd ~/Documents/GitHub/koersvoormorgen-backend/backend
 npx wrangler d1 execute kantoorinzicht --remote --file="~/KantoorInzicht-Backups/kantoorinzicht_JJJJ-MM-DD_UUMM.sql"
 ```
-Backend terugzetten: `backend/cloudflare-worker.js` uit GitHub deployen met
-`npx wrangler deploy`.
+**Sneller alternatief voor recente data (tot 30 dagen terug):** D1 heeft een
+ingebouwde Time Travel-functie, los van dit script:
+```bash
+cd ~/Documents/GitHub/koersvoormorgen-backend/backend
+npx wrangler d1 time-travel info kantoorinzicht --remote          # beschikbare bookmarks bekijken
+npx wrangler d1 time-travel restore kantoorinzicht --bookmark=<id> --remote
+```
+Backend (code) terugzetten: vanuit `~/Documents/GitHub/koersvoormorgen-backend/backend`
+een eerdere commit uitchecken en `npx wrangler deploy cloudflare-worker.js` draaien.
+
+## Rollback bij een slechte deploy (geen dataherstel, alleen code)
+
+Cloudflare bewaart automatisch alle eerdere Worker-versies. Bij een deploy die een
+regressie blijkt (bug, syntaxfout die er toch doorheen glipte):
+```bash
+cd ~/Documents/GitHub/koersvoormorgen-backend/backend
+npx wrangler deployments list          # bekijk eerdere versies met timestamp
+npx wrangler rollback [version-id]     # zonder version-id: rollt terug naar de vorige
+```
+Dit is direct (seconden), raakt geen data, en is de snelste eerste stap bij een
+productie-incident vóórdat je een inhoudelijke fix uitzoekt.
+
+## RTO/RPO — realistische inschatting (geen formeel vastgelegde norm, wel een richtlijn)
+
+- **Code/worker-herstel:** enkele minuten (rollback hierboven, of een eerdere commit
+  herdeployen) — RTO is dus laag.
+- **Database (D1):** Time Travel dekt de laatste 30 dagen automatisch, ongeacht of
+  `backup.sh` die dag heeft gedraaid — RPO voor D1 is dus in de praktijk goed, mits
+  binnen 30 dagen ontdekt.
+- **Documenten (R2):** géén platform-eigen Time Travel-achtige voorziening. Het enige
+  vangnet is `scripts/backup.sh` — RPO voor documenten is dus zo actueel als de
+  laatste keer dat dit script daadwerkelijk draaide (zie hierboven: geautomatiseerd
+  dagelijks vereist de eenmalige launchd-instelling; zonder die instelling is het
+  RPO "sinds de laatste handmatige run", wat kan oplopen als dat een tijd geleden is).
 
 ## Documenten (R2)
 
