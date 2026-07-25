@@ -183,6 +183,28 @@ function dvBerekenBuyAndBuild(p,laatsteSchuldRow,initieleInzetKoper){
   return rows;
 }
 
+// Vendor loan (verkoperslening, 25 juli 2026): tot nu toe alleen een vrije-tekstregel in bod-/LOI-
+// documenten ("betalingsstructuur"), zonder aflossingsschema — deze functie berekent dat schema
+// daadwerkelijk. Twee vormen: lineaire aflossing (elk jaar gelijk deel + rente over de restschuld),
+// of aflossingsvrij met een bullet-aflossing (volledige hoofdsom) in het laatste jaar. Losstaand van
+// dvBerekenSchuldafbouw() (de bankfinanciering) — een vendor loan is een aparte, aan de verkoper
+// verschuldigde verplichting van de koper, geen onderdeel van de netto-bankschuld-kasstroom hierboven.
+// Bewust geen aannames bij ontbrekende invoer: retourneert null als er geen bedrag is ingevuld, i.p.v.
+// een leeg/misleidend schema te tonen.
+function dvBerekenVendorLoan(p){
+  if(!p.vendorLoanAan||!p.vendorLoanBedrag||!p.vendorLoanJaren)return null;
+  var rows=[];
+  var restschuld=p.vendorLoanBedrag;
+  var jaarlijkseAflossing=p.vendorLoanAflossingsvrij?0:p.vendorLoanBedrag/p.vendorLoanJaren;
+  for(var j=1;j<=p.vendorLoanJaren;j++){
+    var rente=restschuld*(p.vendorLoanRentePct/100);
+    var aflossing=p.vendorLoanAflossingsvrij?(j===p.vendorLoanJaren?restschuld:0):Math.min(jaarlijkseAflossing,restschuld);
+    restschuld=Math.max(0,restschuld-aflossing);
+    rows.push({jaar:j,rente:rente,aflossing:aflossing,totaal:rente+aflossing,restschuld:restschuld});
+  }
+  return rows;
+}
+
 function dvRenderTabelHtml(kolommen,rows){
   var head='<tr>'+kolommen.map(function(k,i){return '<th style="padding:6px 10px;text-align:'+(i===0?'left':'right')+';font-size:9pt;text-transform:uppercase;letter-spacing:.05em;color:#8a8880;border-bottom:2px solid #ccc;white-space:nowrap">'+k+'</th>';}).join('')+'</tr>';
   var body=rows.map(function(r){
@@ -224,6 +246,12 @@ function dvTabelClosing(closing){
 function dvTabelSchuldafbouw(rows){
   return dvRenderTabelHtml(['Jaar','EBITDA','Rente','VpB','Capex','&#916; Werkkapitaal','FCF','Earn-up','Netto schuld','ND/EBITDA'],
     rows.map(function(r){return [r.jaar,dvMln(r.ebitda),dvMln(r.rente),dvMln(r.vpb),dvMln(r.capex),dvMln(r.nwcMutatie||0),dvMln(r.fcf),dvMln(r.earnUp),dvMln(r.nettoSchuld),dvMultiple(r.leverage)];}));
+}
+
+function dvTabelVendorLoan(rows){
+  if(!rows)return '';
+  return dvRenderTabelHtml(['Jaar','Rente','Aflossing','Totale betaling','Restschuld'],
+    rows.map(function(r){return [r.jaar,dvMln(r.rente),dvMln(r.aflossing),dvMln(r.totaal),dvMln(r.restschuld)];}));
 }
 
 function dvTabelBuyAndBuild(rows){
