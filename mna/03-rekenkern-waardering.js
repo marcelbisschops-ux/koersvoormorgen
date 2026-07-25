@@ -1,5 +1,9 @@
 function parseGeld(s){if(!s)return 0;var n=String(s).replace(/[^0-9,.]/g,'').replace(',','.');return parseFloat(n)||0;}
 function fmtGeld(n){if(!n||isNaN(n))return '—';if(n>=1000000)return '€'+(n/1000000).toFixed(2)+' mln';if(n>=1000)return '€'+(n/1000).toFixed(0)+'.000';return '€'+Math.round(n);}
+// Zelfde als parseGeld, maar geeft null terug als het veld niet is ingevuld (i.p.v. 0) — nodig voor
+// de financiële ratio's hieronder, waar 0 een geldige uitkomst kan zijn (bijv. geen schuld) en dus
+// onderscheiden moet worden van "nog niet ingevuld" (GOUDEN STANDAARD: nooit stilzwijgend gokken).
+function dvGeldOfNull(key){var v=S.data[key];if(!v||!String(v).trim())return null;var n=parseGeld(v);return isNaN(n)?null:n;}
 
 // Groepsstructuur (Fase 2): welke velden op groepsniveau automatisch berekend worden uit de
 // entiteiten (en dus read-only zijn in de "Groep"-weergave) — spiegelbeeld van VELD_AGGREGATIE in de
@@ -255,6 +259,12 @@ function dvTabelCijferoverzicht(){
     ['Partnerbeloning per jaar',dvVeldGeld('financieel_partnerBel')],
     ['Onderhanden werk (OHW)',dvVeldGeld('financieel_wip')],
     ['Debiteuren totaal',dvVeldGeld('financieel_debiteuren')],
+    ['Nettoresultaat na belasting',dvVeldGeld('financieel_resultaat')],
+    ['Eigen vermogen',dvVeldGeld('financieel_eigenVermogen')],
+    ['Balanstotaal',dvVeldGeld('financieel_balansTotaal')],
+    ['Liquide middelen',dvVeldGeld('financieel_liquideMiddelen')],
+    ['Kortlopende schulden',dvVeldGeld('financieel_kortlopendeSchulden')],
+    ['Langlopende schulden / leningen',dvVeldGeld('financieel_langlopendeSchulden')],
     ['Personeelskosten (% omzet)',dvVeldPct('financieel_kostenPersoneel')],
     ['Aantal actieve klanten',dvVeld('commercieel_aantalKlanten')],
     ['Grootste klant — aandeel omzet',dvVeldPct('commercieel_top1pct')],
@@ -456,6 +466,34 @@ function dvBerekenWaardering(){
   var top10pct=parseFloat(S.data['commercieel_top10pct'])||0;
   var churn=parseFloat(S.data['commercieel_churn'])||0;
 
+  // Klassieke financiële ratio's (audit-fix, 25 juli 2026) — elke ratio is null (niet 0) zolang de
+  // benodigde balans-/schuldvelden niet zijn ingevuld, zodat dvIndicatorenRij() 'm dan overslaat i.p.v.
+  // een misleidend "0,0%" of "0,00×" te tonen. eigenVermogen valt terug op de oudere mkb-veldnaam
+  // 'eigVermoeden' (zelfde concept, andere id om bestaande trajectdata niet te breken).
+  var resultaat=dvGeldOfNull('financieel_resultaat');
+  var eigenVermogen=dvGeldOfNull('financieel_eigenVermogen');
+  if(eigenVermogen===null)eigenVermogen=dvGeldOfNull('financieel_eigVermoeden');
+  var balansTotaal=dvGeldOfNull('financieel_balansTotaal');
+  var liquideMiddelen=dvGeldOfNull('financieel_liquideMiddelen');
+  var kortlopendeSchulden=dvGeldOfNull('financieel_kortlopendeSchulden');
+  var langlopendeSchulden=dvGeldOfNull('financieel_langlopendeSchulden');
+  var rentelasten=dvGeldOfNull('financieel_rentelasten');
+  var aflossingVerplicht=dvGeldOfNull('financieel_aflossingVerplicht');
+  var voorraadR=dvGeldOfNull('financieel_voorraad');
+
+  var solvabiliteit=(eigenVermogen!==null&&balansTotaal)?eigenVermogen/balansTotaal*100:null;
+  var roe=(resultaat!==null&&eigenVermogen)?resultaat/eigenVermogen*100:null;
+  var roa=(resultaat!==null&&balansTotaal)?resultaat/balansTotaal*100:null;
+  // Vlottende activa is een samengestelde grootheid (geen los DD-veld) — alleen berekend als
+  // liquideMiddelen daadwerkelijk is ingevuld; debiteuren/wip tellen mee met hun bestaande 0-fallback
+  // (zelfde conventie als de rest van deze functie hierboven).
+  var currentRatio=(liquideMiddelen!==null&&kortlopendeSchulden)?((debiteuren+wip+liquideMiddelen+(voorraadR||0))/kortlopendeSchulden):null;
+  var quickRatio=(liquideMiddelen!==null&&kortlopendeSchulden)?((debiteuren+wip+liquideMiddelen)/kortlopendeSchulden):null;
+  var schuldenlast=(rentelasten||0)+(aflossingVerplicht||0);
+  var dscr=(schuldenlast>0&&ebitdaAbs)?ebitdaAbs/schuldenlast:null;
+  var nettoSchuld=(kortlopendeSchulden!==null||langlopendeSchulden!==null)?((kortlopendeSchulden||0)+(langlopendeSchulden||0)-(liquideMiddelen||0)):null;
+  var netDebtEbitda=(nettoSchuld!==null&&ebitdaAbs)?nettoSchuld/ebitdaAbs:null;
+
   // Multiples (sectornorm) — zelfde bron als dvGetDefaults(), zie dvSectorMultipleRange() hierboven.
   var mRangeW=dvSectorMultipleRange();
   var mLaag=mRangeW.mLaag,mHoog=mRangeW.mHoog,mMid=(mLaag+mHoog)/2,omzetFactor=0.8;
@@ -490,7 +528,8 @@ function dvBerekenWaardering(){
     mLaag:mLaag,mMid:mMid,mHoog:mHoog,omzetFactor:omzetFactor,
     wLaag:wLaag,wMid:wMid,wHoog:wHoog,wOmzet:wOmzet,
     gemGroei:gemGroei,fc:fc,fcE:fcE,fcW:fcW,
-    earnBase:earnBase,earnPct:earnPct,earnTarget:earnTarget,earnJaren:earnJaren,fixedKoop:fixedKoop,earnJaarlijks:earnJaarlijks
+    earnBase:earnBase,earnPct:earnPct,earnTarget:earnTarget,earnJaren:earnJaren,fixedKoop:fixedKoop,earnJaarlijks:earnJaarlijks,
+    solvabiliteit:solvabiliteit,roe:roe,roa:roa,currentRatio:currentRatio,quickRatio:quickRatio,dscr:dscr,netDebtEbitda:netDebtEbitda
   };
 }
 
@@ -511,9 +550,23 @@ function dvIndicatorenRij(v){
     {label:'Onderhanden werk',val:v.wip,fmt:fmtGeld},
     {label:'Declarabiliteit',val:v.declarab,fmt:function(x){return x.toFixed(1)+'%';}}
   ].filter(function(it){return it.val&&it.val>0;});
-  if(!items.length)return '';
+  // Klassieke financiële ratio's (25 juli 2026): apart gefilterd op "!== null" i.p.v. "> 0" — in
+  // tegenstelling tot de kengetallen hierboven kan een ratio hier legitiem 0 of negatief zijn (bijv.
+  // een negatieve ROE), en dat moet gewoon getoond worden. null betekent hier altijd "onvoldoende
+  // balans-/schuldvelden ingevuld om te berekenen", nooit "berekend en toevallig nul".
+  var ratioItems=[
+    {label:'Solvabiliteit (EV/BT)',val:v.solvabiliteit,fmt:function(x){return x.toFixed(1)+'%';}},
+    {label:'ROE',val:v.roe,fmt:function(x){return x.toFixed(1)+'%';}},
+    {label:'ROA',val:v.roa,fmt:function(x){return x.toFixed(1)+'%';}},
+    {label:'Current ratio',val:v.currentRatio,fmt:function(x){return x.toFixed(2);}},
+    {label:'Quick ratio',val:v.quickRatio,fmt:function(x){return x.toFixed(2);}},
+    {label:'DSCR',val:v.dscr,fmt:function(x){return x.toFixed(2);}},
+    {label:'Netto schuld / EBITDA',val:v.netDebtEbitda,fmt:function(x){return x.toFixed(2)+'×';}}
+  ].filter(function(it){return it.val!==null&&it.val!==undefined&&isFinite(it.val);});
+  var alleItems=items.concat(ratioItems);
+  if(!alleItems.length)return '';
   return '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-top:.85rem;padding-top:.85rem;border-top:1px solid var(--border)">'
-    +items.map(function(it){
+    +alleItems.map(function(it){
       return '<div style="text-align:center"><div style="font-size:9px;color:var(--muted);margin-bottom:.15rem;text-transform:uppercase;letter-spacing:.04em">'+it.label+'</div><div style="font-family:IBM Plex Mono,monospace;font-size:12px;font-weight:600;color:var(--sub)">'+it.fmt(it.val)+'</div></div>';
     }).join('')
     +'</div>';
