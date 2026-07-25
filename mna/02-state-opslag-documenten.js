@@ -900,6 +900,13 @@ function autoFillFromExtraction(faseId, velden, forceOverwrite, docNaam, entitei
 }
 function _autoFillFromExtractionBody(faseId, velden, forceOverwrite, docNaam) {
   var currentDocNaam = docNaam || 'onbekend document';
+  // Boekjaar van dit document (uit de extractie) — per veld onthouden zodat de conflict-dialoog kan
+  // tonen bij welk boekjaar elke waarde hoort. Was een gemeld pijnpunt (Marcel, 25 juli 2026): bij
+  // afwijkende waarden (bv. EBITDA-marge 46,9 vs 48,9) was onduidelijk dat het twee verschillende
+  // boekjaren betrof. In-memory (S._docJaar); ontbreekt het jaar, dan valt de dialoog netjes terug op
+  // alleen de bestandsnaam, zoals voorheen.
+  var docJaar = velden.boekjaar ? String(velden.boekjaar).trim() : null;
+  if(!S._docJaar) S._docJaar = {};
   var knownFases = ['financieel','commercieel','partner','compliance','it','juridisch','strategisch'];
 
   // Pre-pass: omzet_per_jaar_YYYY losse velden samenvoegen tot _opy object
@@ -937,7 +944,7 @@ function _autoFillFromExtractionBody(faseId, velden, forceOverwrite, docNaam) {
     if(val&&val!=='null'&&val!==null&&String(val).trim()!==''&&!(d[key]||'').trim()){
       d[key]=String(val);
       if(rawVeldNaam){
-        if(!S._docSource)S._docSource={};S._docSource[key]=currentDocNaam;
+        if(!S._docSource)S._docSource={};S._docSource[key]=currentDocNaam;S._docJaar[key]=docJaar;
         var frag=(velden._bron_fragmenten||{})[rawVeldNaam];
         if(frag){if(!S._docFragment)S._docFragment={};S._docFragment[key]=frag;}
       }
@@ -953,11 +960,11 @@ function _autoFillFromExtractionBody(faseId, velden, forceOverwrite, docNaam) {
       var frag=(velden._bron_fragmenten||{})[rawVeldNaam];
       if(frag){if(!S._docFragment)S._docFragment={};S._docFragment[key]=frag;}
     }
-    if(!existing){d[key]=newVal;if(!S._docSource)S._docSource={};S._docSource[key]=currentDocNaam;zetFragment();return;}
+    if(!existing){d[key]=newVal;if(!S._docSource)S._docSource={};S._docSource[key]=currentDocNaam;S._docJaar[key]=docJaar;zetFragment();return;}
     if(existing===newVal)return;
-    if(forceOverwrite){d[key]=newVal;if(!S._docSource)S._docSource={};S._docSource[key]=currentDocNaam;zetFragment();return;}
+    if(forceOverwrite){d[key]=newVal;if(!S._docSource)S._docSource={};S._docSource[key]=currentDocNaam;S._docJaar[key]=docJaar;zetFragment();return;}
     // Zelfde document dat dit veld eerder al zette (bijv. herverwerking) — gewoon bijwerken, geen conflict.
-    if(S._docSource&&S._docSource[key]===currentDocNaam){d[key]=newVal;return;}
+    if(S._docSource&&S._docSource[key]===currentDocNaam){d[key]=newVal;S._docJaar[key]=docJaar;return;}
     // Andere waarde dan wat er al stond — altijd laten kiezen, ook als het huidige veld zelf
     // automatisch is ingevuld door een ander document. Stilzwijgend overschrijven leidde ertoe dat
     // een later document (bijv. van een ander bedrijfsonderdeel) correcte cijfers ongemerkt verving.
@@ -967,7 +974,9 @@ function _autoFillFromExtractionBody(faseId, velden, forceOverwrite, docNaam) {
     // opnieuw via S.data aanroepen bij het toepassen van de keuze: autoFillFromExtraction zet S.data
     // ondertussen alweer terug naar de oorspronkelijke formuliercontext, dus "S.data[key]=..." bij het
     // toepassen schreef de keuze soms in de verkeerde (groeps- i.p.v. entiteit-)bucket.
-    S._conflicts.push({key:key,label:label,huidig:existing,nieuw:newVal,bron:currentDocNaam,doel:d});
+    // huidigJaar = boekjaar van het document dat de bestaande waarde zette; nieuwJaar = boekjaar van
+    // dit document. De dialoog toont ze zodat duidelijk is waar elke waarde betrekking op heeft.
+    S._conflicts.push({key:key,label:label,huidig:existing,nieuw:newVal,bron:currentDocNaam,doel:d,huidigJaar:(S._docJaar&&S._docJaar[key])||null,nieuwJaar:docJaar});
     if(!S._pendingConflicts)S._pendingConflicts={};
     S._pendingConflicts[key]=newVal;
   }
@@ -1383,6 +1392,14 @@ function toonConflictDialog(conflicts, contextLabel) {
   conflicts.forEach(function(c,i){
     var row=document.createElement('div');row.style.cssText='background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px';
     var lbl=document.createElement('div');lbl.style.cssText='font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.02em;color:var(--head);margin-bottom:4px';lbl.textContent=c.label;row.appendChild(lbl);
+    // Als de twee waarden bij verschillende boekjaren horen: dat expliciet melden — dan is duidelijk
+    // dat het geen tegenstrijdige lezing van hetzelfde cijfer is, maar twee jaren. Kies doorgaans het
+    // meest recente jaar (Marcel, 25 juli 2026).
+    if(c.huidigJaar&&c.nieuwJaar&&c.huidigJaar!==c.nieuwJaar){
+      var jaarHint=document.createElement('div');jaarHint.style.cssText='font-size:10px;color:var(--gold-dark);margin-bottom:6px;line-height:1.5';
+      jaarHint.innerHTML='&#8505; Deze waarden horen bij verschillende boekjaren ('+esc(c.huidigJaar)+' en '+esc(c.nieuwJaar)+'). Kies doorgaans het meest recente jaar.';
+      row.appendChild(jaarHint);
+    }
     // Brondocument per veld alleen tonen als het afwijkt van de ene bron die al bovenaan staat.
     if(c.bron&&!eenBron){var bronLbl=document.createElement('div');bronLbl.style.cssText='font-size:10px;color:var(--gold);margin-bottom:6px';bronLbl.innerHTML='&#128196; Uit: <em>'+esc(c.bron)+'</em>';row.appendChild(bronLbl);}
     var opts=document.createElement('div');opts.style.cssText='display:flex;gap:8px;flex-wrap:wrap';
@@ -1390,10 +1407,12 @@ function toonConflictDialog(conflicts, contextLabel) {
     var rH=document.createElement('input');rH.type='radio';rH.name='cf_'+i;rH.value='huidig';rH.checked=true;rH.style.accentColor='var(--teal)';lblH.appendChild(rH);
     var tH=document.createElement('span');tH.style.color='var(--mid)';
     var bronHuidig=S._docSource&&S._docSource[c.key]?'uit '+S._docSource[c.key]:'handmatig ingevoerd';
-    tH.innerHTML='<div style="font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-bottom:2px">Huidig</div><strong style="font-size:15px;color:var(--sub)">'+esc(fmtConflictWaarde(c.huidig))+'</strong><div style="font-size:10px;color:var(--muted);margin-top:2px">'+esc(bronHuidig)+'</div>';lblH.appendChild(tH);opts.appendChild(lblH);
+    var jaarHuidig=c.huidigJaar?'<div style="font-size:10px;font-weight:700;color:var(--gold-dark);margin-top:2px">Boekjaar '+esc(c.huidigJaar)+'</div>':'';
+    tH.innerHTML='<div style="font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-bottom:2px">Huidig</div><strong style="font-size:15px;color:var(--sub)">'+esc(fmtConflictWaarde(c.huidig))+'</strong>'+jaarHuidig+'<div style="font-size:10px;color:var(--muted);margin-top:2px">'+esc(bronHuidig)+'</div>';lblH.appendChild(tH);opts.appendChild(lblH);
     var lblN=document.createElement('label');
     var rN=document.createElement('input');rN.type='radio';rN.name='cf_'+i;rN.value='nieuw';rN.style.accentColor='var(--teal)';lblN.appendChild(rN);
-    var tN=document.createElement('span');tN.style.color='var(--mid)';tN.innerHTML='<div style="font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-bottom:2px">Uit document</div><strong style="font-size:15px;color:var(--sub)">'+esc(fmtConflictWaarde(c.nieuw))+'</strong><div style="font-size:10px;color:var(--muted);margin-top:2px">uit '+esc(c.bron||'document')+'</div>';lblN.appendChild(tN);opts.appendChild(lblN);
+    var jaarNieuw=c.nieuwJaar?'<div style="font-size:10px;font-weight:700;color:var(--gold-dark);margin-top:2px">Boekjaar '+esc(c.nieuwJaar)+'</div>':'';
+    var tN=document.createElement('span');tN.style.color='var(--mid)';tN.innerHTML='<div style="font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-bottom:2px">Uit document</div><strong style="font-size:15px;color:var(--sub)">'+esc(fmtConflictWaarde(c.nieuw))+'</strong>'+jaarNieuw+'<div style="font-size:10px;color:var(--muted);margin-top:2px">uit '+esc(c.bron||'document')+'</div>';lblN.appendChild(tN);opts.appendChild(lblN);
     // Visueel duidelijk maken welke optie daadwerkelijk gekozen is (voorheen kreeg "Document"
     // altijd een teal-accent, ook als "Huidig" geselecteerd was — dat oogde tegenstrijdig).
     var stijlBasis='flex:1;min-width:140px;display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;padding:7px 10px;border-radius:var(--r);border:1px solid ';
