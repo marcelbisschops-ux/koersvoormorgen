@@ -224,7 +224,16 @@ function renderMain(){
       +'De onderstaande gegevens zijn de som van '+S._entiteiten.length+' entiteiten binnen de groep: '+S._entiteiten.map(function(e){return esc(e.naam);}).join(', ')+'.'
       +'</div>';
   }
-  var instrTxt=isVerkoper()?'<div style="font-size:11px;color:var(--muted);line-height:1.6;margin-bottom:1rem;padding-bottom:.75rem;border-bottom:1px solid var(--border)">Vul de velden in. Upload rechts de relevante documenten &mdash; velden worden automatisch ingelezen zolang het boekjaar in het document staat. Controleer alle automatisch ingevulde waarden. De ge&uuml;ploade documenten dienen als grondslag voor de due diligence. Ontbrekende velden vult u zelf in.</div>'
+  // Audit-fix (25 juli 2026, op Marcels verzoek): niet duidelijk genoeg dat handmatig invullen +
+  // documenten als bewijsstuk de standaardaanpak is, en AI-analyse een bewuste, aparte keuze
+  // (het vinkje bij uploaden). Ook expliciet gemaakt wat er gebeurt bij een document mét AI-analyse
+  // als een veld al handmatig is ingevuld — nooit stilzwijgend overschreven, altijd een keuze bij
+  // een afwijking (zie het "Afwijkende waarden gevonden"-scherm).
+  var instrTxt=isVerkoper()?'<div style="font-size:11px;color:var(--muted);line-height:1.6;margin-bottom:1rem;padding-bottom:.75rem;border-bottom:1px solid var(--border)">'
+    +'<strong style="color:var(--sub)">Vul de velden hieronder zelf in</strong> — dat is de basis. Upload rechts uw documenten (jaarrekeningen, KvK-uittreksel, contracten) als onderbouwing bij het dossier.<br>'
+    +'Bij het uploaden kiest u zelf: <strong style="color:var(--sub)">"Alleen als bewijsstuk toevoegen"</strong> aangevinkt &rarr; het document wordt alleen bewaard, er verandert niets aan uw ingevulde velden. Niet aangevinkt (standaard) &rarr; de AI leest het document en vult ontbrekende velden automatisch aan.<br>'
+    +'Heeft u een veld al zelf ingevuld en levert een document (met AI-analyse) daarna een andere waarde? Dan wordt nooit stilzwijgend overschreven — u krijgt een keuzescherm om zelf de juiste waarde aan te wijzen.'
+    +'</div>'
     :isKoper()&&KOPER_FASE_UITLEG[f.id]?'<div style="font-size:12px;color:var(--sub);line-height:1.7;margin-bottom:1rem;padding:.6rem .85rem;background:var(--card);border:1px solid var(--border);border-radius:var(--r)">&#128161; '+esc(KOPER_FASE_UITLEG[f.id])+'</div>':'';
   dataHtml+=instrTxt+'<div class="data-grid">';
   var fase2GetoondHeader=false;
