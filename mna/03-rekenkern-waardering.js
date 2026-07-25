@@ -19,13 +19,25 @@ function dvMln(n){return (n/1000000).toLocaleString('nl-NL',{minimumFractionDigi
 function dvPct(n){return n.toLocaleString('nl-NL',{minimumFractionDigits:1,maximumFractionDigits:1})+'%';}
 function dvMultiple(n){return n.toLocaleString('nl-NL',{minimumFractionDigits:1,maximumFractionDigits:1})+'×';}
 
-function dvGetDefaults(){
-  var t=S.traject||{};
+// Sectorbewuste multiple-range — gedeeld tussen dvGetDefaults() (dealvoorstel) en
+// dvBerekenWaardering() (hoofdscherm), zodat beide altijd hetzelfde getal tonen i.p.v. dat het
+// hoofdscherm een vaste multiple ongeacht sector gebruikt terwijl het zelf claimt "gebaseerd op
+// sectorale benchmarks" (audit-fix P1, 25 juli 2026). Val terug op 4,5-5,5x als het sectorprofiel
+// geen "multiple X-Yx" in de vrije aiNormen-tekst heeft — bekende beperking: de regex onderscheidt
+// geen EBITDA-/omzet-/ARR-multiple, dat blijft een apart aandachtspunt.
+function dvSectorMultipleRange(){
   var sectorProfiel=getSectorProfiel();
   var normen=sectorProfiel.aiNormen||'';
   var mMatch=normen.match(/multiple\s*([\d.,]+)\s*[-–]\s*([\d.,]+)x/i);
   var mLaag=mMatch?parseFloat(mMatch[1].replace(',','.')):4.5;
   var mHoog=mMatch?parseFloat(mMatch[2].replace(',','.')):5.5;
+  return {mLaag:mLaag,mHoog:mHoog};
+}
+
+function dvGetDefaults(){
+  var t=S.traject||{};
+  var mRange=dvSectorMultipleRange();
+  var mLaag=mRange.mLaag, mHoog=mRange.mHoog;
   var ebBasis=parseGeld(S.data['financieel_ebitdaNorm']||S.data['financieel_ebitda']||'0');
   return {
     koperNaam:t.koper_naam||'',
@@ -410,7 +422,10 @@ function dvBerekenWaardering(){
   var o2=parseGeld(S.data['financieel_omzet2']);
   var o3=parseGeld(S.data['financieel_omzet3']);
   var omzetYTD=parseGeld(S.data['financieel_omzetYTD']);
-  var ebitdaAbs=parseGeld(S.data['financieel_ebitda']);
+  // Genormaliseerde EBITDA i.p.v. ruw bedrag, consistent met dvGetDefaults() (audit-fix P1,
+  // 25 juli 2026: hoofdscherm en dealvoorstel toonden voorheen een ander cijfer omdat alleen de
+  // dealvoorstel-module al de genormaliseerde waarde gebruikte).
+  var ebitdaAbs=parseGeld(S.data['financieel_ebitdaNorm']||S.data['financieel_ebitda']);
   var ebitdaPct=parseFloat(S.data['financieel_ebitdaMarge'])||(o3?ebitdaAbs/o3*100:0);
   var partnerBel=parseGeld(S.data['financieel_partnerBel']);
   var recurring=parseFloat(S.data['financieel_recurring'])||0;
@@ -425,8 +440,9 @@ function dvBerekenWaardering(){
   var top10pct=parseFloat(S.data['commercieel_top10pct'])||0;
   var churn=parseFloat(S.data['commercieel_churn'])||0;
 
-  // Multiples (sectornorm)
-  var mLaag=4.6,mMid=5.05,mHoog=5.5,omzetFactor=0.8;
+  // Multiples (sectornorm) — zelfde bron als dvGetDefaults(), zie dvSectorMultipleRange() hierboven.
+  var mRangeW=dvSectorMultipleRange();
+  var mLaag=mRangeW.mLaag,mHoog=mRangeW.mHoog,mMid=(mLaag+mHoog)/2,omzetFactor=0.8;
 
   // Bereken
   var ebitdaAmt=ebitdaAbs||(o3*(ebitdaPct/100));
