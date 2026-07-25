@@ -181,6 +181,25 @@ document.addEventListener('click', secActivity, { passive: true });
 document.addEventListener('keydown', secActivity, { passive: true });
 // ────────────────────────────────────────────────────────────────────────────
 
+// Toegankelijkheid (audit-fix P2, 25 juli 2026): modals waren alleen met de muis te sluiten, geen
+// Escape-ondersteuning. Alle ~15 modal-overlays in dit product delen hetzelfde patroon
+// (position:fixed;inset:0 als eerste twee style-declaraties van de overlay-<div>) — geen gedeelde
+// modal-helper, dus hier generiek afgevangen i.p.v. alle aanroepplekken los aan te passen. Sluit
+// alleen de bovenste (laatst geopende) overlay; doet niets als er geen modal open is. Bewust
+// uitgezonderd: de conflictdialoog (toonConflictDialog, z-index:1000) — die vereist een expliciete
+// keuze (huidig/document/geen van beide) en heeft eigen wachtrij-state (S._conflictDialoogOpen) die
+// een kale DOM-removal niet zou terugzetten; ongevraagd wegklikken zou bovendien een stilzwijgende
+// keuze zijn, wat tegen de gouden standaard ingaat.
+document.addEventListener('keydown', function(e) {
+  if (e.key !== 'Escape') return;
+  var overlays = Array.prototype.filter.call(document.querySelectorAll('div[style]'), function(el) {
+    var s = el.getAttribute('style') || '';
+    return s.indexOf('position:fixed;inset:0') === 0 && s.indexOf('z-index:1000;') === -1;
+  });
+  if (!overlays.length) return;
+  overlays[overlays.length - 1].remove();
+});
+
 function pct(id){var f=FASES.find(function(x){return x.id===id;});if(!f)return 0;var d=f.items.filter(function(_,i){return S.checked[id+'_'+i];}).length;return f.items.length?Math.round(d/f.items.length*100):0;}
 function checkOmzetSom(){
   var ids=['omzetJaarwerk','omzetAdvies','omzetLoon','omzetFiscaal','omzetOverig'];

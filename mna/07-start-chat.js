@@ -197,14 +197,14 @@ function chatInit() {
   var placeholder = isVerkoper() ? 'Stel een vraag...' : 'Stuur een bericht...';
   var container = document.createElement('div'); container.id = 'chat-container';
   container.innerHTML =
-    '<div id="chat-fab" style="position:fixed;bottom:24px;right:24px;z-index:500;display:flex;align-items:center;justify-content:center;width:52px;height:52px;border-radius:50%;background:var(--teal);box-shadow:0 4px 16px rgba(0,0,0,.2);cursor:pointer" onclick="chatOpen()">'
-    +'<span style="font-size:22px">&#128172;</span>'
+    '<button id="chat-fab" aria-label="Chat openen" style="position:fixed;bottom:24px;right:24px;z-index:500;display:flex;align-items:center;justify-content:center;width:52px;height:52px;border-radius:50%;background:var(--teal);border:none;box-shadow:0 4px 16px rgba(0,0,0,.2);cursor:pointer" onclick="chatOpen()">'
+    +'<span style="font-size:22px" aria-hidden="true">&#128172;</span>'
     +'<div id="chat-badge" style="display:none;position:absolute;top:-2px;right:-2px;background:var(--red);color:#fff;font-size:10px;font-weight:700;width:18px;height:18px;border-radius:50%;align-items:center;justify-content:center;border:2px solid #fff"></div>'
-    +'</div>'
+    +'</button>'
     +'<div id="chat-venster" style="display:none;position:fixed;bottom:24px;right:24px;z-index:500;width:360px;height:500px;background:var(--panel);border:1px solid var(--border2);border-radius:var(--r2);box-shadow:0 8px 32px rgba(0,0,0,.18);flex-direction:column;overflow:hidden">'
     +'<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:var(--teal);color:#fff">'
     +'<div style="font-size:13px;font-weight:600">'+headerTitel+'</div>'
-    +'<button onclick="chatSluit()" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer;padding:0;line-height:1">&times;</button>'
+    +'<button onclick="chatSluit()" aria-label="Chat sluiten" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer;padding:0;line-height:1">&times;</button>'
     +'</div>'
     +'<div id="chat-berichten" style="flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column"></div>'
     +'<div style="padding:10px 12px;border-top:1px solid var(--border);display:flex;gap:8px;align-items:flex-end">'
