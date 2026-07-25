@@ -1,57 +1,89 @@
-# KantoorInzicht — Backlog (juli 2026)
+# KantoorInzicht — Backlog
 
-Geordend van eenvoudig naar moeilijk. **Uren** = geschatte bouw- en testtijd met Claude Code (Marcels tijd aan de sessie; API-kosten verwaarloosbaar, valt binnen abonnement). **€-indicatie** = referentie wat dit extern zou kosten bij ~€100/uur, als zakelijk vergelijkingskader.
+Vervangt de vorige versie (juli 2026), die na 24 afgeronde punten grotendeels ✅-ruis was geworden.
+Deze versie bevat **alleen wat nog daadwerkelijk openstaat**, per 25 juli 2026. Zodra een punt
+wordt afgerond: hier direct wegstrepen/verwijderen, niet laten aanslibben.
 
-**Model per taak — vóór de start van elke taak het juiste model inschakelen:**
-- Sonnet: `/model claude-sonnet-5` — routinewerk, snelst/goedkoopst in verbruik
-- Opus: `/model claude-opus-4-8` — ontwerp- en integratiewerk
-- Fable: `/model claude-fable-5` — alleen voor de grote refactor (#12); dubbel tokenverbruik, dus niet voor routinetaken
-- NB: Fable 5 zit t/m **7 juli 2026** gratis in Marcels Pro-abonnement ("Included until July 7"). Als Fable daarna niet meer beschikbaar is: gebruik voor #12 gewoon Opus 4.8 — met de E2E-testsuite (#4) als vangnet is dat een prima alternatief. De refactor NIET haasten om de actieperiode te halen.
-
-| # | Taak | Model | Inspanning | €-indicatie extern | Toelichting |
-|---|------|-------|-----------|--------------------|-------------|
-| 1 | ~~Waarschuwing in modals als kopernaam ontbreekt~~ ✅ AFGEROND | Sonnet | 0,5–1 u | €50–100 | Bleek al grotendeels gebouwd (`toonDocWaarschuwing`, kopernaam-check) — alleen kantoornaam-check ontbrak nog (buy-side scenario), nu toegevoegd. Live geverifieerd (24 juli) |
-| 2 | ~~Bevestigingsstap vóór versturen AI-documenten~~ ✅ AFGEROND | Sonnet | 2–3 u | €200–300 | Verplichte controle-checkbox bestond al (`akkoordHtml`, uitgebreid 24 juli met expliciete AI/bèta-waarschuwing); CONCEPT-watermerk op het printvenster toegevoegd (24 juli) |
-| 3 | ~~Buy-and-build aannames instelbaar~~ ✅ AFGEROND | Sonnet | 1–2 u | €100–200 | Bevestigd via Playwright-regressietest "buy-and-build: instelbare aannames werken door (regressie #13)", groen |
-| 4 | ~~**Geautomatiseerde end-to-end testsuite**~~ ✅ AFGEROND | Opus | 8–16 u | €800–1.600 | Zie `tests/README.md`. Deel A (API) + Deel B (Playwright UI) draaien groen. Vond+fixte meteen een waardering-bug. Voorwaarde voor #12/refactor is hiermee vervuld |
-| 5 | ~~Gefaseerde dataroom-toegang koper~~ ✅ AFGEROND | Opus | 6–10 u | €600–1.000 | Vrijgave per DD-categorie (aanvinken) i.p.v. alles-of-niets; velden én documenten, server-side gefilterd. Begeleider-modal "🔓 Koper-toegang". Backward-compatible (bestaande trajecten = alles). Getest via e2e-suite STAP 7b |
-| 6 | ~~Concept-SPA-generator (werkdocument jurist)~~ ✅ AFGEROND | Opus | 4–6 u | €400–600 + €500–1.500 eenmalige juridische template-review | Knop "📜 Concept-SPA" in begeleider-dashboard, print-only, nadrukkelijk CONCEPT-label. Template in marilyn (upload eigen getoetste versie). **Nog te doen: jurist het BF-standaard SPA-template laten reviewen vóór echt gebruik** |
-| 7 | ~~Branding neutraliseren (white-label basis)~~ ✅ VOLLEDIG AFGEROND | Sonnet | 6–10 u | €600–1.000 | Centrale `BRAND`-config in **alle zes portals** (mna, adv, marilyn, index, hugo, verhuis) + de worker (`WORKER_BRAND`). Alle UI-chrome, e-mails, legal-templates (NDA/LoI/BEM/SPA/Bieding/VOK/Algemene Voorwaarden) en foutmeldingen eraan gekoppeld. Live bewezen op elk portaal + echte documentgeneratie getest (BEM in marilyn, waardering-flow). **Onderweg een kritieke zelfreferentie-bug gevonden en gefixt** (bulk-vervanging raakte per ongeluk de eigen configregel) — testsuite + live checks vingen dit vóór het live kon gaan. Rest: alleen nog domeingebonden e-mailadressen/telefoonnummers indien gewenst per klant (kleine nazorg) |
-| 8 | ~~AI-extractieschema's per sector~~ ✅ AFGEROND | Opus | 4–6 u | €400–600 | Gecacht systeem-blok is nu sector-neutraal: financiële beoordeling toetst aan de sectorbenchmarks uit de context (al aanwezig per sector) i.p.v. hardgecodeerde accountancy-normen. Caching intact (één gedeelde cache). Live geverifieerd: retail-doc → retail-normen 3-8% |
-| 9 | ~~Benchmarks & AI-prompts per sector~~ ✅ AFGEROND | Sonnet | 4–8 u | €400–800 | De documentanalyse-benchmarks (voorheen hardgecodeerd `sectorLabelsDoc`) zitten nu in het sectorprofiel als `docBenchmarks` — bewerkbaar in marilyn → Sectoren, met de ingebouwde tekst als default. Worker leest de DB-versie bij documentupload. **Live bewezen**: aangepaste MKB-benchmark (uniek testgetal) verscheen exact in de AI-analyse. Eén bewerkbare plek voor alle sectorbenchmarks. Benchmarkinhoud (de cijfers) blijft Marcels domeinwerk |
-| 10 | Nieuwe sectorprofielen (inhoud + inbouw) | Sonnet | 2–4 u techniek per sector | €200–400 per sector | DD-velden/checklists/normen/infoverzoek — inhoud = Marcels expertise |
-| 11 | Pilot algemene DD-tool (MKB afronden) | Opus | 2–3 dagen | €1.600–2.400 | Bundelt #7+#8+#9 voor sector MKB → verkoopbaar algemeen product |
-| 12 | ~~mna.html opsplitsen (refactor)~~ ✅ AFGEROND | **Fable 5** | 2–4 dagen | €1.600–3.200 | mna.html (5221 regels) → HTML-skelet (144 regels) + 7 genummerde modules in `mna/` (config-sectorprofielen, state-opslag-documenten, rekenkern-waardering, begeleider-dashboard, documentflow-partijen, schermen, start-chat). **Byte-identieke partitie** (samengevoegd = exact het originele script, bewijsbaar) — nul gedragswijziging. Volledig geverifieerd: UI-suite 7/7 + API-suite 37/37 groen, De Vries begeleider-login + dashboard live getest. CLAUDE.md bijgewerkt (structuur + testritueel) |
-| 13 | ~~Sectorparameters zelf-service voor adviseurs~~ ✅ AFGEROND (globaal beheer) | Opus | 1–2 dagen | €800–1.600 | Sectorprofielen (label/aiNormen/fases/velden/checklists) van code → database. Worker: `DEFAULT_SECTOR_PROFIELEN` + tabel `sector_profielen` + GET `/mna/sectorprofielen` (merge defaults+DB) + admin POST. mna.html laadt uit DB (hardgecodeerde fallback). **Marilyn → Sectoren-tab**: label/benchmarks per sector bewerken, volledig profiel via JSON, sector toevoegen/verwijderen, reset naar standaard. Live end-to-end getest (opslaan → mna.html pikt op → reset). Backward-compatible, testsuite groen. Scope: globaal (admin). Per-adviseur = latere uitbreiding |
-
-| 14 | ~~ZIP-export + 14-dagen opruiming bij trajectafsluiting~~ ✅ AFGEROND | Sonnet | — | — | Knop "🏁 Traject afsluiten": ZIP (documenten + DD-eindrapport-PDF) + downloadlink (14 dgn) per mail, daarna automatische verwijdering via de dagelijkse cron (metadata blijft). Getest op wegwerptraject |
-| 15 | ~~Herziene AV + verplichte acceptatie~~ ✅ AFGEROND (AV-concept wacht op jurist) | Sonnet | — | — | `AV-Bisschops-Financing-v2.0-CONCEPT.docx` in Downloads — **nog naar jurist sturen**. Los daarvan: adviseurs moeten nu AV + nieuwe Gebruiksvoorwaarden (platformgebruik) actief accepteren bij login, versie-gestuurd, IP+tijd gelogd, server-side afgedwongen |
-| 16 | ~~Dealvoorstel aanpasbaar + eigen PDF-upload (alle 6 documenttypes)~~ ✅ AFGEROND | Sonnet | — | — | Dealvoorstel was read-only (tabellen+tekst) → nu `contenteditable`, bewerkingen gaan mee in print/verzenden. Alle 6 documenttypes (nda/loi/bem/excl/dealvoorstel/bieding) hebben nu ook een "eigen PDF uploaden i.p.v. AI-tekst"-optie. **Onderweg 2 bestaande bugs gevonden en gefixt**: Exclusiviteitsbrief-knop gebruikte per ongeluk het BEM-endpoint, en de Exclusiviteitsbrief-backend crashte altijd door een zelfverwijzing (nooit eerder opgemerkt omdat de knop dus nooit het juiste endpoint raakte) |
-| 17 | ~~Templates per adviseur (multi-tenant fix)~~ ✅ AFGEROND | Sonnet | — | — | `mna_templates` had `doc_type UNIQUE` systeembreed — elke upload zou alle andere adviseurs' templates overschrijven. Nu uniek op (doc_type+email); fallback-keten eigen→Marcels platform-standaard→ingebouwd. **Bonus-fix**: de "Reset BF standaard"-knop in marilyn gaf altijd een foutmelding (lege tekst werd geweigerd) en deed dus nooit iets — nu werkt reset echt |
-| 18 | ~~Bug: adviseur-uitnodiging linkte naar marilyn i.p.v. adv~~ ✅ AFGEROND | Sonnet | — | — | invite-link miste `&redirect=adv` (de wachtwoord-vergeten-link had het wel). Nieuwe adviseurs kwamen na activering in Marcels admin-paneel terecht i.p.v. hun eigen portaal |
-| 19 | ~~AV-scope gecorrigeerd voor adviseurs~~ ✅ AFGEROND | Sonnet | — | — | De M&A-business-AV (succesfee/anti-omzeiling) is niet van toepassing op een adviseur die alleen het platform gebruikt. Adviseurs accepteren nu alleen nog de Gebruiksvoorwaarden (platformgebruik); GV-tekst zelf ook zelfstandig gemaakt (verwees eerder onterecht naar de AV) |
-| 20 | ~~Realistische namen uit placeholders verwijderd~~ ✅ AFGEROND | Sonnet | — | — | "Barry Sutin" en vergelijkbare persoonsnamen als voorbeeldtekst in adv.html/marilyn.html vervangen door generieke tekst |
-| 21 | ~~Zelf-service huisstijl voor adviseurs~~ ✅ AFGEROND (v1) | Sonnet | — | — | Adviseur stelt in adv.html ("🎨 Huisstijl") een eigen platformnaam, accentkleur en logo-URL in; werkt automatisch door naar mna.html-trajecten die hij aanmaakt (verkoper/koper zien zijn eigen merk). Live bewezen: header + accentkleur veranderen zichtbaar. Nog niet gedaan: eigen logo-upload (nu alleen via URL) |
-| 22 | ~~Handleiding voor adviseurs~~ ✅ AFGEROND | Sonnet | — | — | `HANDLEIDING-ADVISEUR.md` + publieke `handleiding.html` (gelinkt vanuit de uitnodigingsmail) — inloggen, traject starten + codes doorgeven, huisstijl instellen, modules/limieten, voorwaarden |
-| 23 | ~~Juridische documenten consistent maken~~ ✅ AFGEROND | Sonnet | — | — | Marcel testte de flow en vond een echte tegenstrijdigheid: privacy.html/VOK zeiden nog "7 jaar bewaring" voor M&A-documenten (2 verschillende getallen zelfs, 5 én 7 jaar) terwijl vandaag juist 14-dagen-verwijdering is gebouwd (#39). Gefixt: VOK Artikel 5 + privacy.html nu consistent (14 dagen documenten, adviseur eigen bewaarplicht daarna). **Bonus-fixes onderweg**: (1) KvK-nummer klopte niet — twee verschillende nummers in omloop (90006777 vs 82085200), gecorrigeerd naar 82085200; (2) VOK-versie-check ontbrak — een tekstwijziging in de Verwerkersovereenkomst werd nooit opnieuw voorgelegd aan al-ondertekenden, nu wel; (3) VOK-tabel had geen unieke sleutel per traject — ondertekeningen stapelden op i.p.v. te vervangen, waardoor een status-check soms de verkéérde (oudste) versie kon tonen — gefixt met ORDER BY + verwijderen vóór opnieuw invoegen; (4) nieuwe publieke pagina `platformvoorwaarden.html` (toont de live Gebruiksvoorwaarden-tekst) — mna.html's kapotte link naar de verkeerde (scan-tool-)voorwaarden gefixt. |
-| 24 | ~~AVG-melding verkoper/koper: juiste verwerkingsverantwoordelijke~~ ✅ AFGEROND | Sonnet | — | — | De AVG-melding op het verkoper/koper-scherm verwees alleen naar "onze privacyverklaring" (die van Bisschops Financing) — maar volgens de VOK is de **adviseur** de verwerkingsverantwoordelijke, niet Bisschops Financing. Melding aangepast: noemt nu de eigen adviseur (naam + klikbare e-mail uit het traject) als aanspreekpunt voor AVG-vragen over hún gegevens; Bisschops Financing wordt correct als technisch verwerker vermeld. Koper kreeg voorheen helemaal geen AVG-melding — nu wel (vergelijkbare, kortere tekst). WAF blijft open: vereist Cloudflare Enterprise-upgrade (Marcels eigen aankoopbeslissing, geen code-taak). |
-
-**Quick wins (#1–3):** ✅ alle drie afgerond (24 juli 2026). Van de hele backlog resteren alleen nog #10/#11 (nieuwe sectorprofielen / MKB-pilot — Marcels domeinwerk, geen coderingstaak zonder zijn inhoudelijke input) en de extern-geblokkeerde juristenpunten (#6, #15).
-
-NB: het AI-model **ín het platform** (documentanalyse in de worker: `claude-sonnet-4-6`) is een aparte keuze en blijft ongewijzigd — dit gaat alleen over het bouwmodel in Claude Code.
-
-Eerder bewust geparkeerd (staat los van deze lijst): eigen document-templates (NDA/LoI/BEM) opnieuw uploaden in marilyn.
+**Model per taak** — vóór de start van elke taak het juiste model inschakelen:
+- Sonnet (`/model claude-sonnet-5`) — routinewerk
+- Opus (`/model claude-opus-4-8`) — ontwerp- en integratiewerk
 
 ---
 
-## Testplan: geautomatiseerde end-to-end test (#4)
+## 1. Wacht op jou — korte eigen actie, geen coderingswerk
 
-Doel: vóór elke deploy met één commando bevestigen dat het hele systeem werkt — en verplicht vangnet vóór de refactor (#12).
+| # | Punt | Actie |
+|---|------|-------|
+| 1 | Signhost-checksum (2e beveiligingslaag) | Shared secret ophalen uit portal.signhost.com/RegisteredPostbacks, dan hier laten uitvoeren: `wrangler secret put SIGNHOST_WEBHOOK_SECRET` |
+| 2 | Beide repo's staan lokaal vóór op GitHub | Frontend 2 commits, backend 47 commits — pushen lukt niet vanuit deze omgeving (credential-issue). Nodig via GitHub Desktop, anders komt de laatste frontend-fix (Dealvoorstel-secties) nooit online |
+| 3 | Eigen document-templates (NDA/LoI/BEM) opnieuw uploaden in marilyn | Eerder gewist door een inmiddels gefixte bug — bewust door jou uitgesteld, nog steeds jouw actie zodra je eraan toekomt |
+
+## 2. Wacht op je jurist
+
+| # | Punt | Status |
+|---|------|--------|
+| 4 | AV-concept (`AV-Bisschops-Financing-v2.0-CONCEPT.docx`, staat in Downloads) | Nog naar de jurist te sturen |
+| 5 | VOK Artikel 9-concept (geanonimiseerd trajectdata-gebruik voor sectorbenchmarks/AI-verbetering) | Concept-tekst ligt klaar (zie `project_data_optimalisatie_vok`-geheugen), wacht op jouw jurist. **Geen techniek bouwen** vóór bevestiging — nieuw verwerkingsdoel zonder bijgewerkte VOK is een AVG-risico |
+| 6 | SPA-template (concept-koopovereenkomst) laten toetsen | Vóór het model als "getoetst" gebruikt wordt, niet alleen als CONCEPT-werkdocument |
+
+## 3. Klaar om te bouwen — wacht op jouw inhoudelijke input
+
+| # | Punt | Toelichting |
+|---|------|-------------|
+| 7 | Nieuwe sectorprofielen | DD-velden/checklists/normen per nieuwe sector — jouw domeinexpertise, techniek staat al klaar (marilyn → Sectoren). ~2-4 u techniek per sector zodra de inhoud er is |
+| 8 | Pilot algemene DD-tool (MKB) | Bundelt bestaande sectorneutrale AI-extractie/benchmarks tot verkoopbaar algemeen product — 2-3 dagen zodra je de MKB-inhoud aanlevert |
+
+## 4. Concrete openstaande features (jouw eigen 25-juli-lijst, nog niet gestart)
+
+| # | Punt | Toelichting |
+|---|------|-------------|
+| 9 | Earn-out meenemen in dealvoorstel-generatie | Jouw woorden: "dat is vaak regel en moet meegenomen worden" |
+| 10 | LoI moet waarden overnemen van het dealvoorstel | Nu volledig los van elkaar — dealvoorstel-cijfers worden niet automatisch doorgezet naar de LoI-tekst |
+| 11 | Fase-2-vrijgave na LoI-ondertekening — **nog te onderzoeken, niet per se een bug** | Handleidingtekst claimt dat ondertekening van de LoI bij de verkoper automatisch de diepere fase-2-DD-vragen ontgrendelt (`mna/08-handleiding.js`) — jij zag dit niet gebeuren. Eerst uitzoeken of dit alleen documentatie zonder implementatie is, of een echte bug, vóórdat er gebouwd wordt |
+
+## 5. Bewust uitgesteld — risico-afweging, trigger om terug te komen
+
+| # | Punt | Waarom uitgesteld | Trigger om op terug te komen |
+|---|------|--------------------|-------------------------------|
+| 12 | Response-envelope-duplicatie (463× patroon over 20 workermodules) | Mechanisch, maar over zoveel plekken dat een regressie makkelijk onopgemerkt blijft zonder gerichte test-ronde | Een moment met ruimte voor een dedicated refactor-+-testronde |
+| 13 | Foreign keys toevoegen aan het D1-schema | Vereist tabel-rebuild op levende productiedata (SQLite kan geen kolomconstraints achteraf toevoegen) — een fout hierin is niet lokaal herstelbaar zoals de meeste andere fixes | Alleen met een uitgebreid rollback-plan, niet tussendoor |
+| 14 | Cloudflare WAF-upgrade | Huidige schaal (jij, testadviseurs) weegt niet op tegen de kosten; bestaande lagen (rate-limiting, gehashte wachtwoorden, HTTPS, gratis DDoS-bescherming) dekken het risico al grotendeels | Zodra er **echte betalende externe adviseurs** actief zijn — dan eerst zone-level Pro-plan checken vóór Enterprise |
+| 15 | Externe pentest | Nog nooit gedaan, logische vervolgstap | Zodra er meer dan een handvol bekende testgebruikers is |
+| 16 | Deal comparison / scenariovergelijking naast elkaar | Jouw woorden: "nog niet" | Op jouw signaal |
+| 17 | Dealflow-CRM / pipeline-management + target screening | Expliciet gedeprioriteerd: "vind ik nu niet belangrijk, kan naar achteren" | Op jouw signaal |
+| 18 | Geanonimiseerde cross-adviseur benchmarks (met terugdeling aan bijdragende adviseurs) | Nieuwe feature, hangt af van punt 5 (VOK Artikel 9 bij jurist) | Ná juridische goedkeuring én expliciet verzoek |
+| 19 | SBR/XBRL uitbreiden (meer velden dan omzet/debiteuren, entiteitsnaam-verificatie voor XBRL-uploads, namespace-URI-validatie) | v1 (omzet/debiteuren, RGS/NT-taxonomie-conform) is af en live; dit is bewust beperkte vervolgwerk, geen bug | Niet urgent, oppakken wanneer gewenst |
+| 20 | AI-model in het platform omzetten naar `claude-sonnet-5` (nu `claude-sonnet-4-6`) | Eerst kwaliteitstest op staging met echte [dossier]-achtige documenten vóór productie wordt aangeraakt — deal-kritieke AI-extractie | Wanneer jij groen licht geeft voor de staging-test |
+
+## 6. Kleine, niet-urgente technische schuld
+
+| # | Punt | Toelichting |
+|---|------|-------------|
+| 21 | D1-database `jurisdiction: null` | Draait feitelijk al in West-Europa (bevestigd via wrangler), maar niet hard afgedwongen in de config |
+| 22 | Playwright-test "Gelijktijdige multi-upload" — bekende flakiness | Faalde één keer op een race-timing, reproduceerde niet bij herhaling, nog niet verhard |
+
+## 7. Terugkerend, geen actie nu
+
+| # | Punt | Eerstvolgende moment |
+|---|------|----------------------|
+| 23 | Kwartaalcheck 7 juridische templates + sector-benchmarks op actualiteit | Streefdatum **2026-10-05** — bij sessiestart rond/na die datum proactief voorstellen |
+| 24 | Maandelijkse kwaliteitsaudit (werkregel #12) | Elke maand + vóór elke grote release + op verzoek |
+
+## 8. Afgewezen — niet opnieuw voorstellen
+
+- MIP / fiscale structuuroptimalisatie — jouw woorden: "nee" (logische omissie voor 1-op-1-overnames, geen fondsstructurering)
+- "Strikte scheiding" tussen platform en je eigen adviespraktijk juridisch claimen — feitelijk onwaar zolang het één eenmanszaak is; zou geloofwaardigheid ondermijnen. Enige echte weg is een aparte rechtspersoon — een ondernemingsbeslissing, geen tekstwijziging
+
+---
+
+## Testplan: geautomatiseerde end-to-end test (blijft geldig, zie `tests/README.md`)
+
+Doel: vóór elke deploy met één commando bevestigen dat het hele systeem werkt.
 
 ### Deel A — API-tests (Node-script, `tests/e2e-api.mjs`)
 Tegen de live worker, met eigen testdata die het script zelf aanmaakt én opruimt:
 1. `/health` — 200 + `ok:true`
-2. Adviseur-lifecycle: uitnodigen → activeren → verkoop (limiet/modules) → traject aanmaken → limiet afdwingen → module-gating (traject uit → geblokkeerd) → deactiveren → verwijderen (de bestaande `test_adviseur.sh` als basis, geporteerd naar Node)
+2. Adviseur-lifecycle: uitnodigen → activeren → verkoop (limiet/modules) → traject aanmaken → limiet afdwingen → module-gating (traject uit → geblokkeerd) → deactiveren → verwijderen
 3. Rollen-login: verkoper-, koper- en tussenpersoonscode geven elk de juiste rol en (voor tussenpersoon) de juiste `modules`
 4. Documentupload (multipart, klein testbestand) → analyse aanwezig → `veld_extractie` gevuld → cache-logregel
 5. DD-data opslaan (`/mna/save`) en teruglezen
@@ -69,7 +101,7 @@ Headless browser tegen lokale mna.html + live worker:
 3. Dealvoorstel-modal: bekende invoer → **asserten dat de berekende tabelwaarden exact kloppen** (prijsmechanisme, schuldafbouw, buy-and-build) — dit beschermt de rekenkern
 4. Bieding-modal: bod = EBITDA × multiple exact; vervolgstappen-paneel verschijnt
 5. Informatieverzoek: bestaande knop → fase 1; via bieding-paneel → fase 2 met DD-categorieën
-6. Verkoper-flow: inloggen De Vries, velden zichtbaar, verversen werkt
+6. Verkoper-flow: inloggen, velden zichtbaar, verversen werkt
 
 ### Draaien
 ```
