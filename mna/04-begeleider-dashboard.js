@@ -318,6 +318,92 @@ function toonGroepsstructuurModal(app){
   laadLijst();
 }
 
+// Partnerregister: partners eenmalig vastleggen (naam, leeftijd, veranderbereidheid,
+// opvolgingskandidaat, gekoppelde entiteiten, omzet incl. onderliggend team) i.p.v. deze vragen
+// per entiteit te herhalen — dezelfde partner kan bij meerdere werkmaatschappijen horen (Marcel,
+// 25 juli 2026). Additief: de bestaande per-entiteit velden (leeftijd/veranderbereidheid/opvolging/
+// omzet per partner) blijven ongewijzigd staan — geen dataverlies, geen gok naar wie welke oude
+// waarde was. "Omzet die aan de partner hangt" is bewust incl. onderliggend team, niet alleen zijn
+// eigen declarabele productie — bij vertrek van de partner is dát het omzetrisico voor de koper.
+function toonPartnersModal(app){
+  var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:400;display:flex;align-items:center;justify-content:center;padding:1.5rem';
+  var mo=document.createElement('div');mo.style.cssText='background:var(--panel);border-radius:10px;padding:1.75rem;max-width:560px;width:100%;max-height:90vh;overflow-y:auto';
+  mo.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.15rem;color:#1a1815;font-weight:600;margin-bottom:.25rem">&#129489;&#8205;&#128188; Partners</div>'
+    +'<div style="font-size:12px;color:#8a8880;margin-bottom:1rem">Leg elke partner één keer vast, ook als deze bij meerdere entiteiten werkt. "Omzet die aan de partner hangt" is de omzet incl. het onderliggend team — het bedrag dat risico loopt als deze partner vertrekt, niet alleen zijn eigen declarabele productie.</div>'
+    +'<div id="pt-lijst" style="margin-bottom:1rem;font-size:13px;color:#8a8880;font-style:italic">Laden...</div>'
+    +'<div style="border-top:1px solid #e5e2d8;padding-top:.85rem;margin-top:.5rem">'
+    +'<div style="display:flex;gap:8px;margin-bottom:6px">'
+    +'<input type="text" id="pt-naam" placeholder="Naam partner" style="flex:2;background:#f0eeea;border:1px solid #c8c5bc;border-radius:6px;padding:7px 11px;font-size:13px">'
+    +'<input type="text" id="pt-leeftijd" placeholder="Leeftijd" style="flex:1;background:#f0eeea;border:1px solid #c8c5bc;border-radius:6px;padding:7px 11px;font-size:13px">'
+    +'</div>'
+    +'<div style="display:flex;gap:8px;margin-bottom:6px">'
+    +'<input type="text" id="pt-verandering" placeholder="Veranderbereidheid" style="flex:1;background:#f0eeea;border:1px solid #c8c5bc;border-radius:6px;padding:7px 11px;font-size:13px">'
+    +'<input type="text" id="pt-opvolging" placeholder="Opvolgingskandidaat" style="flex:1;background:#f0eeea;border:1px solid #c8c5bc;border-radius:6px;padding:7px 11px;font-size:13px">'
+    +'<input type="text" id="pt-omzet" placeholder="Omzet incl. team (€)" style="flex:1;background:#f0eeea;border:1px solid #c8c5bc;border-radius:6px;padding:7px 11px;font-size:13px">'
+    +'</div>'
+    +'<div id="pt-entiteiten" style="font-size:12px;color:#8a8880;margin-bottom:8px">Gekoppelde entiteiten: <span style="font-style:italic">laden...</span></div>'
+    +'<button id="pt-toevoegen" style="background:#1a7a5e;color:#fff;border:none;padding:7px 14px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600">+ Toevoegen</button>'
+    +'</div>'
+    +'<div id="pt-err" style="display:none;color:#e05252;font-size:12px;margin:.5rem 0"></div>'
+    +'<div style="display:flex;justify-content:flex-end;margin-top:1rem">'
+    +'<button id="pt-sluiten" style="background:transparent;border:1px solid #c8c5bc;padding:8px 16px;border-radius:6px;cursor:pointer;font-size:13px">Sluiten</button>'
+    +'</div>';
+  ov.appendChild(mo);document.body.appendChild(ov);
+  ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
+  document.getElementById('pt-sluiten').onclick=function(){document.body.removeChild(ov);};
+
+  async function laadEntiteitenCheckboxen(){
+    var rows=(S._entiteiten&&S._entiteiten.length)?S._entiteiten:await fetch(WORKER+'/mna/entiteiten/'+S.code).then(function(r){return r.json();}).catch(function(){return [];});
+    var el=document.getElementById('pt-entiteiten');
+    if(!rows||!rows.length){el.innerHTML='Gekoppelde entiteiten: <span style="font-style:italic">geen entiteiten geregistreerd — deze partner geldt dan voor het hele traject.</span>';return;}
+    el.innerHTML='Gekoppelde entiteiten:<div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:4px">'
+      +rows.map(function(r){return '<label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" class="pt-ent-chk" value="'+esc(r.id)+'"> '+esc(r.naam)+'</label>';}).join('')
+      +'</div>';
+  }
+
+  async function laadLijst(){
+    var lijstEl=document.getElementById('pt-lijst');
+    lijstEl.textContent='Laden...';
+    var rows=await fetch(WORKER+'/mna/partners/'+S.code).then(function(r){return r.json();}).catch(function(){return [];});
+    if(!rows||!rows.length){lijstEl.innerHTML='<span style="font-style:italic">Nog geen partners geregistreerd.</span>';return;}
+    lijstEl.style.fontStyle='normal';
+    lijstEl.innerHTML=rows.map(function(r){
+      var entNamen=(r.entiteit_ids||[]).map(function(id){var e=(S._entiteiten||[]).find(function(x){return x.id===id;});return e?e.naam:id;}).join(', ');
+      return '<div style="display:flex;align-items:flex-start;gap:8px;padding:7px 10px;border:1px solid var(--border);border-radius:7px;margin-bottom:6px">'
+        +'<div style="flex:1">'
+        +'<div style="font-size:13px;color:var(--sub);font-weight:600">'+esc(r.naam)+(r.leeftijd?' &middot; '+esc(r.leeftijd)+' jaar':'')+'</div>'
+        +(r.veranderbereidheid?'<div style="font-size:11px;color:var(--muted)">Veranderbereidheid: '+esc(r.veranderbereidheid)+'</div>':'')
+        +(r.opvolgingskandidaat?'<div style="font-size:11px;color:var(--muted)">Opvolging: '+esc(r.opvolgingskandidaat)+'</div>':'')
+        +(r.omzet_incl_team?'<div style="font-size:11px;color:var(--muted)">Omzet incl. team: &euro;'+esc(Number(r.omzet_incl_team).toLocaleString('nl-NL'))+'</div>':'')
+        +(entNamen?'<div style="font-size:11px;color:var(--teal)">'+esc(entNamen)+'</div>':'')
+        +'</div>'
+        +'<button class="pt-verwijder" data-id="'+esc(r.id)+'" style="background:transparent;border:1px solid #c8c5bc;color:#e05252;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px">Verwijderen</button>'
+        +'</div>';
+    }).join('');
+    lijstEl.querySelectorAll('.pt-verwijder').forEach(function(btn){
+      btn.onclick=async function(){
+        await fetch(WORKER+'/mna/partners/'+S.code,{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey},body:JSON.stringify({actie:'verwijderen',id:btn.dataset.id})});
+        laadLijst();
+      };
+    });
+  }
+  document.getElementById('pt-toevoegen').onclick=async function(){
+    var btn=this;
+    var naamEl=document.getElementById('pt-naam'),leeftijdEl=document.getElementById('pt-leeftijd'),verEl=document.getElementById('pt-verandering'),opvEl=document.getElementById('pt-opvolging'),omzetEl=document.getElementById('pt-omzet');
+    var errEl=document.getElementById('pt-err');errEl.style.display='none';
+    var naam=naamEl.value.trim();
+    if(!naam){errEl.textContent='Naam is verplicht.';errEl.style.display='block';return;}
+    var entIds=Array.prototype.slice.call(document.querySelectorAll('.pt-ent-chk:checked')).map(function(c){return c.value;});
+    btn.disabled=true;btn.textContent='...';
+    var r=await fetch(WORKER+'/mna/partners/'+S.code,{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey},body:JSON.stringify({naam:naam,leeftijd:leeftijdEl.value.trim(),veranderbereidheid:verEl.value.trim(),opvolgingskandidaat:opvEl.value.trim(),omzet_incl_team:omzetEl.value.trim(),entiteit_ids:entIds})}).then(function(x){return x.json();}).catch(function(){return {};});
+    btn.disabled=false;btn.textContent='+ Toevoegen';
+    if(r.ok){naamEl.value='';leeftijdEl.value='';verEl.value='';opvEl.value='';omzetEl.value='';document.querySelectorAll('.pt-ent-chk').forEach(function(c){c.checked=false;});laadLijst();}
+    else{errEl.textContent=r.error||'Fout bij opslaan';errEl.style.display='block';}
+  };
+  laadEntiteitenCheckboxen();
+  laadLijst();
+}
+
 function renderBegeleiderDashboard(app){
   var t=S.traject||{};
   var contractenAan=!S.modules||S.modules.contracten!==false;
@@ -349,6 +435,7 @@ function renderBegeleiderDashboard(app){
     +'<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
     +'<button class="btn btn-sm" id="bg-toegang" style="background:var(--teal)">&#128275; Koper-toegang</button>'
     +'<button class="btn-outline btn-sm" id="bg-groepsstructuur">&#127970; Groepsstructuur</button>'
+    +'<button class="btn-outline btn-sm" id="bg-partners">&#129489;&#8205;&#128188; Partners</button>'
     +(t.status==='afgesloten'?'':'<button class="btn-ghost btn-sm" id="bg-afsluiten" style="color:var(--red);border-color:var(--red)">&#127937; Traject afsluiten</button>')
     +(function(){ var kc=koperCatsVan(t); var tot=(window.FASES&&FASES.length)||7; var lbl,kl; if(kc===null){ lbl=t.koper_vrijgegeven?'Alles vrijgegeven':'Geen toegang'; kl=t.koper_vrijgegeven?'var(--teal)':'var(--muted)'; } else if(kc.length){ lbl=kc.length+'/'+tot+' categorieën vrij'; kl='var(--teal)'; } else { lbl='Geen toegang'; kl='var(--muted)'; } return '<span style="font-size:11px;font-weight:600;color:'+kl+'">'+lbl+'</span>'; })()
     +'<span style="display:inline-block;padding:4px 12px;border-radius:12px;font-size:11px;font-weight:600;background:'+(t.status==='vergrendeld'?'var(--red-bg)':'var(--teal-bg)')+';color:'+(t.status==='vergrendeld'?'var(--red)':'var(--teal)')+';border:1px solid '+(t.status==='vergrendeld'?'var(--red)':'var(--teal-dark)')+'">'+esc(t.status||'actief')+'</span>'
@@ -457,6 +544,8 @@ function renderBegeleiderDashboard(app){
   if(tgBtn)tgBtn.onclick=function(){ toonKoperToegangModal(app); };
   var gsBtn=document.getElementById('bg-groepsstructuur');
   if(gsBtn)gsBtn.onclick=function(){ toonGroepsstructuurModal(app); };
+  var ptBtn=document.getElementById('bg-partners');
+  if(ptBtn)ptBtn.onclick=function(){ toonPartnersModal(app); };
 
   // Traject afsluiten: dossier-export (ZIP + DD-rapport), downloadmail, daarna 14 dagen tot verwijdering
   var afsBtn=document.getElementById('bg-afsluiten');
