@@ -226,13 +226,15 @@ function renderMain(){
   }
   // Audit-fix (25 juli 2026, op Marcels verzoek): niet duidelijk genoeg dat handmatig invullen +
   // documenten als bewijsstuk de standaardaanpak is, en AI-analyse een bewuste, aparte keuze
-  // (het vinkje bij uploaden). Ook expliciet gemaakt wat er gebeurt bij een document mét AI-analyse
-  // als een veld al handmatig is ingevuld — nooit stilzwijgend overschreven, altijd een keuze bij
-  // een afwijking (zie het "Afwijkende waarden gevonden"-scherm).
+  // (het vinkje bij uploaden). Tekst over "wat gebeurt er bij een afwijking" is bewust precies:
+  // gecontroleerd in autoFillFromExtraction() (mna/02-state-opslag-documenten.js) dat een handmatig
+  // ingevulde waarde NOOIT wordt overschreven — maar alleen bij de belangrijkste financiële velden
+  // (omzet/EBITDA e.d., via applyOrConflict) verschijnt ook een keuzescherm bij een afwijking; bij de
+  // meeste overige velden (setIfEmpty) blijft uw waarde gewoon staan, zonder melding van de afwijking.
   var instrTxt=isVerkoper()?'<div style="font-size:11px;color:var(--muted);line-height:1.6;margin-bottom:1rem;padding-bottom:.75rem;border-bottom:1px solid var(--border)">'
     +'<strong style="color:var(--sub)">Vul de velden hieronder zelf in</strong> — dat is de basis. Upload rechts uw documenten (jaarrekeningen, KvK-uittreksel, contracten) als onderbouwing bij het dossier.<br>'
     +'Bij het uploaden kiest u zelf: <strong style="color:var(--sub)">"Alleen als bewijsstuk toevoegen"</strong> aangevinkt &rarr; het document wordt alleen bewaard, er verandert niets aan uw ingevulde velden. Niet aangevinkt (standaard) &rarr; de AI leest het document en vult ontbrekende velden automatisch aan.<br>'
-    +'Heeft u een veld al zelf ingevuld en levert een document (met AI-analyse) daarna een andere waarde? Dan wordt nooit stilzwijgend overschreven — u krijgt een keuzescherm om zelf de juiste waarde aan te wijzen.'
+    +'Een handmatig ingevulde waarde wordt nooit automatisch overschreven. Bij de belangrijkste financiële velden (zoals omzet en EBITDA) krijgt u bij een afwijkende waarde uit een document ook een keuzescherm om zelf de juiste waarde aan te wijzen.'
     +'</div>'
     :isKoper()&&KOPER_FASE_UITLEG[f.id]?'<div style="font-size:12px;color:var(--sub);line-height:1.7;margin-bottom:1rem;padding:.6rem .85rem;background:var(--card);border:1px solid var(--border);border-radius:var(--r)">&#128161; '+esc(KOPER_FASE_UITLEG[f.id])+'</div>':'';
   dataHtml+=instrTxt+'<div class="data-grid">';
