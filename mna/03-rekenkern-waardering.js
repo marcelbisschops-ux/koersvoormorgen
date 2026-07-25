@@ -249,6 +249,34 @@ function dvBerekenAlternatieveWaarderingen(p){
   return {intrinsiek:intrinsiek,liquidatiewaarde:liquidatiewaarde,liquidatieDetail:liquidatieDetail,goodwill:goodwill,omzetLaatste:omzetLaatste};
 }
 
+// Synergie-analyse (25 juli 2026): het bestaande DD-veld "Cross-sell — klanten met meerdere diensten
+// (%)" (commercieel_crossSell) werd tot nu toe nergens verwerkt tot een waardebijdrage — puur getoond
+// als kengetal. Deze functie berekent een echte synergiewaarde: kosten- en omzetsynergieën bouwen
+// lineair op van 0 naar het volledige jaarlijkse bedrag over synergieRealisatieJaren (realistischer
+// dan meteen jaar 1 op volle kracht — integratie kost tijd), daarna vlak voor de rest van de horizon.
+// NPV verdisconteert de jaarlijkse synergiekasstroom tegen dezelfde discontovoet als de DCF-
+// kruiscontrole hierboven, min de eenmalige implementatiekosten (jaar 0, niet contant gemaakt).
+// Bedragen zijn volledig door de gebruiker ingevoerd (geen DD-veld dat een synergiebedrag ople-
+// vert) — het cross-sell-percentage is bewust alleen ter referentie in de UI, niet automatisch
+// vertaald naar een euro-bedrag, want dat zou een aanname over de gemiddelde waarde per cross-sell
+// zijn die dit platform niet kan onderbouwen (GOUDEN STANDAARD: geen gegokte omrekening).
+function dvBerekenSynergie(p){
+  if(!p.synergieAan)return null;
+  var rows=[];
+  var r=p.discontovoetPct/100;
+  var npv=-(p.synergieImplementatiekosten||0);
+  for(var j=1;j<=p.horizonJaren;j++){
+    var factor=p.synergieRealisatieJaren>0?Math.min(1,j/p.synergieRealisatieJaren):1;
+    var kostensynergie=p.synergieKostenJaarlijks*factor;
+    var omzetsynergie=p.synergieOmzetJaarlijks*factor;
+    var totaal=kostensynergie+omzetsynergie;
+    var contant=totaal/Math.pow(1+r,j);
+    npv+=contant;
+    rows.push({jaar:j,kostensynergie:kostensynergie,omzetsynergie:omzetsynergie,totaal:totaal,contant:contant});
+  }
+  return {rows:rows,npv:npv,implementatiekosten:p.synergieImplementatiekosten||0};
+}
+
 function dvRenderTabelHtml(kolommen,rows){
   var head='<tr>'+kolommen.map(function(k,i){return '<th style="padding:6px 10px;text-align:'+(i===0?'left':'right')+';font-size:9pt;text-transform:uppercase;letter-spacing:.05em;color:#8a8880;border-bottom:2px solid #ccc;white-space:nowrap">'+k+'</th>';}).join('')+'</tr>';
   var body=rows.map(function(r){
@@ -317,6 +345,16 @@ function dvTabelAlternatieveWaarderingen(alt,p){
     rows.push(['Goodwill-methode','niet berekend — geen goodwill-percentage ingevoerd']);
   }
   return dvRenderTabelHtml(['','€ mln'],rows);
+}
+
+function dvTabelSynergie(syn){
+  if(!syn)return '';
+  var rows=syn.rows.map(function(r){return [r.jaar,dvMln(r.kostensynergie),dvMln(r.omzetsynergie),dvMln(r.totaal),dvMln(r.contant)];});
+  var html=dvRenderTabelHtml(['Jaar','Kostensynergie','Omzetsynergie','Totaal','Contant gemaakt'],rows);
+  html+='<div style="font-size:12px;color:#8a8880;padding:.6rem .75rem;background:#f6f5f2;border-radius:6px;margin-top:-.75rem">'
+    +'Eenmalige implementatiekosten: <strong>'+dvMln(syn.implementatiekosten)+' mln</strong> &nbsp;|&nbsp; NPV synergieën (na aftrek implementatiekosten): <strong>'+dvMln(syn.npv)+' mln</strong>'
+    +'</div>';
+  return html;
 }
 
 function dvTabelBuyAndBuild(rows){
