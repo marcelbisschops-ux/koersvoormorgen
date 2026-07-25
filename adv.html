@@ -96,10 +96,19 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--s
 .card-body{padding:1.25rem}
 
 /* TABLE */
+.table-wrap{overflow-x:auto}
 table{width:100%;border-collapse:collapse}
 th{text-align:left;padding:8px 14px;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);background:var(--bg)}
 td{padding:11px 14px;border-bottom:1px solid var(--border);color:var(--sub);vertical-align:middle}
 tr:last-child td{border-bottom:none}
+
+/* Audit-fix P3 (25 juli 2026): geen enkel breakpoint behalve dark-mode, in tegenstelling tot
+   mna.html (dat wel 600px/680px-breakpoints heeft) — tabellen liepen op smal scherm ongewijzigd
+   door i.p.v. te scrollen. table-wrap laat de tabel zelf horizontaal scrollen i.p.v. de pagina. */
+@media(max-width:700px){
+  .stats{grid-template-columns:1fr 1fr}
+  table{min-width:520px}
+}
 tr:hover td{background:var(--bg);cursor:pointer}
 .td-name{font-weight:600;color:var(--head)}
 .td-sec{font-size:12px;color:var(--muted)}
@@ -329,10 +338,10 @@ function renderDashboard(){
           </div>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;padding:12px 0 4px">${modChips()}</div>
-        <table>
+        <div class="table-wrap"><table>
           <thead><tr><th>Onderneming</th><th>Type</th><th>Sector</th><th>Status</th><th>Aangemaakt</th><th></th></tr></thead>
           <tbody>${rows}</tbody>
-        </table>
+        </table></div>
       </div>
     </div>
   `);
