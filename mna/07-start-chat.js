@@ -148,7 +148,8 @@ function chatRenderBerichten() {
     var align = isEigen ? 'flex-end' : 'flex-start';
     var border = isAI ? '1px solid var(--border)' : isBeg ? '1px solid var(--purple-border)' : 'none';
     var naamKleur = isAI ? 'var(--teal)' : isBeg ? 'var(--purple)' : 'var(--muted)';
-    var naamHtml = isEigen ? '' : '<div style="font-size:10px;font-weight:600;color:'+naamKleur+';margin-bottom:3px">' + (b.naam||b.auteur) + '</div>';
+    var naamVeilig = String(b.naam||b.auteur||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    var naamHtml = isEigen ? '' : '<div style="font-size:10px;font-weight:600;color:'+naamKleur+';margin-bottom:3px">' + naamVeilig + '</div>';
     var radius = isEigen ? '12px 12px 2px 12px' : '12px 12px 12px 2px';
     if (b.typing) return '<div style="display:flex;justify-content:flex-start;margin-bottom:8px"><div style="background:var(--card);border:1px solid var(--border);border-radius:'+radius+';padding:8px 14px;max-width:80%">'+naamHtml+'<div style="display:flex;gap:4px;align-items:center;height:18px"><div style="width:6px;height:6px;border-radius:50%;background:var(--muted);animation:chatdot .8s infinite 0s"></div><div style="width:6px;height:6px;border-radius:50%;background:var(--muted);animation:chatdot .8s infinite .2s"></div><div style="width:6px;height:6px;border-radius:50%;background:var(--muted);animation:chatdot .8s infinite .4s"></div></div></div></div>';
     var tekstHtml = String(b.tekst||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
