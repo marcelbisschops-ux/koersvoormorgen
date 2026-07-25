@@ -78,7 +78,12 @@ function dvGetDefaults(){
     vendorLoanBedrag:0,
     vendorLoanRentePct:6,
     vendorLoanJaren:5,
-    vendorLoanAflossingsvrij:false
+    vendorLoanAflossingsvrij:false,
+    altWaarderingAan:false,
+    liqDebiteurenPct:80,
+    liqWipPct:50,
+    liqKostenPct:5,
+    goodwillPct:0
   };
 }
 
@@ -205,6 +210,40 @@ function dvBerekenVendorLoan(p){
   return rows;
 }
 
+// Asset-based / liquidatiewaarde / goodwill (25 juli 2026) — alternatieve waarderingsmethodes naast
+// de EBITDA-multiple hierboven. GOUDEN STANDAARD: de liquidatie-percentages en het goodwill-
+// percentage zijn AANNAMES die de gebruiker zelf instelt in het dealvoorstel-formulier — dit zijn
+// geen vastgestelde branchenormen (er is geen betrouwbaar gesourcete LHV/NMa-goodwillnorm in dit
+// platform vastgelegd), dus wordt hier nooit een default-percentage ingevuld dat als "de norm"
+// gepresenteerd zou kunnen worden. Elke uitkomst is null zolang de onderliggende balansvelden of het
+// percentage niet zijn ingevuld — nooit een gegokt bedrag.
+function dvBerekenAlternatieveWaarderingen(p){
+  var eigenVermogen=dvGeldOfNull('financieel_eigenVermogen');
+  if(eigenVermogen===null)eigenVermogen=dvGeldOfNull('financieel_eigVermoeden');
+  var debiteuren=dvGeldOfNull('financieel_debiteuren');
+  var wip=dvGeldOfNull('financieel_wip');
+  var liquideMiddelen=dvGeldOfNull('financieel_liquideMiddelen');
+  var kortlopendeSchulden=dvGeldOfNull('financieel_kortlopendeSchulden');
+  var langlopendeSchulden=dvGeldOfNull('financieel_langlopendeSchulden');
+  var omzetLaatste=parseGeld(S.data['financieel_omzet3']||'0');
+
+  var intrinsiek=eigenVermogen;
+
+  var liquidatiewaarde=null, liquidatieDetail=null;
+  if(liquideMiddelen!==null&&(kortlopendeSchulden!==null||langlopendeSchulden!==null)){
+    var debiteurenInbaar=(debiteuren||0)*(p.liqDebiteurenPct/100);
+    var wipInbaar=(wip||0)*(p.liqWipPct/100);
+    var activaLiquidatie=liquideMiddelen+debiteurenInbaar+wipInbaar;
+    var liquidatiekosten=activaLiquidatie*(p.liqKostenPct/100);
+    liquidatiewaarde=activaLiquidatie-liquidatiekosten-(kortlopendeSchulden||0)-(langlopendeSchulden||0);
+    liquidatieDetail={liquideMiddelen:liquideMiddelen,debiteurenInbaar:debiteurenInbaar,wipInbaar:wipInbaar,liquidatiekosten:liquidatiekosten,schulden:(kortlopendeSchulden||0)+(langlopendeSchulden||0)};
+  }
+
+  var goodwill=(p.goodwillPct&&omzetLaatste)?omzetLaatste*(p.goodwillPct/100):null;
+
+  return {intrinsiek:intrinsiek,liquidatiewaarde:liquidatiewaarde,liquidatieDetail:liquidatieDetail,goodwill:goodwill,omzetLaatste:omzetLaatste};
+}
+
 function dvRenderTabelHtml(kolommen,rows){
   var head='<tr>'+kolommen.map(function(k,i){return '<th style="padding:6px 10px;text-align:'+(i===0?'left':'right')+';font-size:9pt;text-transform:uppercase;letter-spacing:.05em;color:#8a8880;border-bottom:2px solid #ccc;white-space:nowrap">'+k+'</th>';}).join('')+'</tr>';
   var body=rows.map(function(r){
@@ -252,6 +291,27 @@ function dvTabelVendorLoan(rows){
   if(!rows)return '';
   return dvRenderTabelHtml(['Jaar','Rente','Aflossing','Totale betaling','Restschuld'],
     rows.map(function(r){return [r.jaar,dvMln(r.rente),dvMln(r.aflossing),dvMln(r.totaal),dvMln(r.restschuld)];}));
+}
+
+function dvTabelAlternatieveWaarderingen(alt,p){
+  var rows=[];
+  rows.push(['Intrinsieke waarde (netto vermogenswaarde)',alt.intrinsiek!==null?dvMln(alt.intrinsiek):'onbekend — eigen vermogen niet ingevuld']);
+  if(alt.liquidatiewaarde!==null){
+    rows.push(['Liquidatiewaarde',dvMln(alt.liquidatiewaarde)]);
+    rows.push(['— waarvan liquide middelen (100%)',dvMln(alt.liquidatieDetail.liquideMiddelen)]);
+    rows.push(['— waarvan debiteuren ('+p.liqDebiteurenPct+'% inbaar, aanname)',dvMln(alt.liquidatieDetail.debiteurenInbaar)]);
+    rows.push(['— waarvan onderhanden werk ('+p.liqWipPct+'% inbaar, aanname)',dvMln(alt.liquidatieDetail.wipInbaar)]);
+    rows.push(['— af: liquidatiekosten ('+p.liqKostenPct+'%, aanname)','-'+dvMln(alt.liquidatieDetail.liquidatiekosten)]);
+    rows.push(['— af: totale schulden','-'+dvMln(alt.liquidatieDetail.schulden)]);
+  } else {
+    rows.push(['Liquidatiewaarde','onbekend — balansvelden (liquide middelen, schulden) niet volledig ingevuld']);
+  }
+  if(alt.goodwill!==null){
+    rows.push(['Goodwill-methode ('+p.goodwillPct+'% van jaaromzet — zelf ingevoerd percentage, geen branchenorm)',dvMln(alt.goodwill)]);
+  } else {
+    rows.push(['Goodwill-methode','niet berekend — geen goodwill-percentage ingevoerd']);
+  }
+  return dvRenderTabelHtml(['','€ mln'],rows);
 }
 
 function dvTabelBuyAndBuild(rows){
