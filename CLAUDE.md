@@ -24,7 +24,7 @@ Eigenaar: Marcel Bisschops (Bisschops Financing B.V.).
 - AI-model in de worker: `claude-sonnet-4-6`
 
 ## Deployen
-- **Worker:** `npx wrangler deploy cloudflare-worker.js` — draaien vanuit de map waar de wrangler-configuratie staat (historisch: ~/Downloads). Marcel heeft staand akkoord gegeven voor workerdeploys (7 juli 2026) — geen bevestiging per keer meer nodig; wel altijd eerst `node --check` en een lokale test.
+- **Worker:** `npx wrangler deploy cloudflare-worker.js` — draaien vanuit `~/Documents/GitHub/koersvoormorgen-backend/backend/` (de canonieke bron sinds 25 juli 2026; **niet meer** vanuit `~/Downloads`, dat bleek na de repo-splitsing van 23 juli stil te zijn achtergebleven — zie `reference_worker_buiten_git`-geheugen). Marcel heeft staand akkoord gegeven voor workerdeploys (7 juli 2026) — geen bevestiging per keer meer nodig; wel altijd eerst `node --check` en een lokale test, en bij risicovolle wijzigingen (auth, betalingen, data-verwijdering) eerst `--env=staging` deployen en daar testen vóór productie.
 - **Frontend:** commit + push naar `main` (GitHub Desktop of `git push`); GitHub Pages publiceert automatisch binnen 1-2 min. Herinner Marcel aan hard-refresh (Cmd+Shift+R) na publicatie.
 - **Secrets** (ADMIN_KEY, ANTHROPIC_API_KEY, RESEND_API_KEY) staan in Cloudflare. NOOIT een secret in een bestand of commit zetten. Nieuwe secret: `npx wrangler secret put NAAM`.
 
