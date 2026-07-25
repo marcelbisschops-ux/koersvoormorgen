@@ -634,7 +634,7 @@ async function laadDocumenten(id, tussenCode){
       var dt=doc.uploaded_at?new Date(doc.uploaded_at).toLocaleDateString('nl-NL',{day:'2-digit',month:'short',year:'numeric'}):'—';
       html+='<tr>'
         +'<td class="td-sec">'+esc(doc.fase_id||'—')+'</td>'
-        +'<td class="td-name" style="font-size:13px">'+esc(doc.bestand_naam||'—')+'</td>'
+        +'<td class="td-name" style="font-size:13px">'+esc(doc.bestand_naam||'—')+(doc.methode==='bewijsstuk'?' <span style="font-size:9px;font-weight:600;color:var(--muted);background:var(--bg);border-radius:8px;padding:1px 6px;margin-left:2px" title="Alleen als onderbouwing toegevoegd, niet automatisch geanalyseerd">📎 Bewijsstuk</span>':'')+'</td>'
         +'<td class="td-sec">'+dt+'</td>'
         +'<td style="text-align:right">'
         +(doc.bewaard?'<a href="'+WORKER+'/mna/document/download/'+doc.id+'?code='+encodeURIComponent(tussenCode)+'" target="_blank" class="btn-outline sm">↓ Download</a>':'')
@@ -656,6 +656,9 @@ function uploadDocument(id, tussenCode){
     <div class="field"><label>Fase</label><select id="up-fase">
       ${faseKeuze.map(function(f){return'<option value="'+f+'">'+f.charAt(0).toUpperCase()+f.slice(1)+'</option>';}).join('')}
     </select></div>
+    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);cursor:pointer;margin:.4rem 0" title="Slaat het document alleen op als bewijsstuk, zonder AI-analyse.">
+      <input type="checkbox" id="up-bewijsstuk" style="margin:0"> Alleen als bewijsstuk toevoegen (geen AI-analyse)
+    </label>
     <div id="up-err" class="err-msg"></div>
     <div class="modal-footer">
       <button class="btn-outline" id="up-ann">Annuleren</button>
@@ -672,7 +675,8 @@ function uploadDocument(id, tussenCode){
     try{
       var fd=new FormData();
       fd.append('file',file);
-      var r=await fetch(WORKER+'/mna/document/upload?code='+encodeURIComponent(tussenCode)+'&fase_id='+encodeURIComponent(fase)+'&bewaar=1',{method:'POST',body:fd});
+      var alleenBewijsstuk=ge('up-bewijsstuk').checked;
+      var r=await fetch(WORKER+'/mna/document/upload?code='+encodeURIComponent(tussenCode)+'&fase_id='+encodeURIComponent(fase)+'&bewaar=1'+(alleenBewijsstuk?'&alleen_bewijsstuk=true':''),{method:'POST',body:fd});
       var d=await r.json();
       if(d.ok||d.id){
         toast('Geüpload: '+file.name,'ok');
