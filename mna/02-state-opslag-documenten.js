@@ -335,6 +335,30 @@ function saveGroepsniveauVelden(faseId){
   }).catch(function(){});
 }
 function getChecklistForFase(id){var out={items:{},redflags:{}};var f=FASES.find(function(x){return x.id===id;});if(!f)return out;f.items.forEach(function(_,i){out.items[i]=!!S.checked[id+'_'+i];});f.redflags.forEach(function(_,i){out.redflags[i]=!!S.checked[id+'_rf_'+i];});return out;}
+
+// Consolidatiekeuze: bij een groepscijfer dat materieel afwijkt van de som van de entiteiten kiest de
+// begeleider zelf welke waarde geldt (Marcel, 25 juli 2026: een stray/aangeleverd cijfer mag niet
+// stilzwijgend winnen — gouden standaard: bij twijfel een keuze, geen gok).
+// - 'som'        : neemt de som van de entiteiten over als groepswaarde (en slaat die op).
+// - 'aangeleverd': behoudt het aangeleverde/handmatige cijfer (geen wijziging).
+// In beide gevallen verdwijnt de afwijkingsmelding voor dít veld uit het overzicht. Bij 'aangeleverd'
+// kan de melding na een latere entiteit-wijziging opnieuw verschijnen (het verschil bestaat dan nog
+// steeds) — dat is bewust: een reëel verschil hoort opnieuw te worden bevestigd, niet verborgen.
+window.consolKies = function(faseId, veld, keuze, somWaarde){
+  var key = faseId+'_'+veld;
+  if(keuze==='som'){
+    S._groepData[key]=String(somWaarde);
+    saveGroepsniveauVelden(faseId);
+  }
+  // Afwijking voor dit veld uit het lokale consolidatiecheck-overzicht halen zodat de melding meteen bijwerkt.
+  var ccKey = faseId+'_consolidatieCheck';
+  try{
+    var arr = JSON.parse(S._groepData[ccKey]||'[]');
+    S._groepData[ccKey]=JSON.stringify(arr.filter(function(a){return a.veld!==veld;}));
+  }catch(e){}
+  renderApp();
+  toast(keuze==='som'?'Som van de entiteiten overgenomen als groepscijfer.':'Aangeleverd cijfer behouden.','ok');
+};
 function loadDataFromDB(dbData){dbData.forEach(function(row){var id=row.fase_id;var dj=typeof row.data_json==='string'?JSON.parse(row.data_json||'{}'):row.data_json||{};var cj=typeof row.checklist_json==='string'?JSON.parse(row.checklist_json||'{}'):row.checklist_json||{};var f=FASES.find(function(x){return x.id===id;});if(!f)return;
   // Groepsstructuur (Fase 2): rijen met entiteit_id gaan naar de per-entiteit-opslag, niet naar S._groepData
   var doel=row.entiteit_id?(S.dataPerEntiteit[row.entiteit_id]=S.dataPerEntiteit[row.entiteit_id]||{}):S._groepData;
