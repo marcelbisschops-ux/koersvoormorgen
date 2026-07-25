@@ -576,6 +576,53 @@ function dvTabelDCFGevoeligheid(gv){
   return dvRenderTabelHtml(kolommen,rows);
 }
 
+// Grafieken (25 juli 2026) — tot nu toe stond alles als tabellen. Geen library (zelfde overweging als
+// bij de CSV-export): dependency-vrije inline SVG, dus werkt ook in de geprinte PDF-weergave.
+function dvSvgBarChart(items){
+  var w=560,h=200,padLeft=10,padBottom=36,padTop=28,padRight=10;
+  var chartW=w-padLeft-padRight,chartH=h-padTop-padBottom;
+  var maxVal=Math.max.apply(null,items.map(function(i){return i.waarde;}).concat([0]));
+  var gap=chartW/items.length,barW=gap*0.55;
+  function y(val){return padTop+chartH-(maxVal?(val/maxVal)*chartH:0);}
+  var bars=items.map(function(item,i){
+    var x=padLeft+i*gap+(gap-barW)/2;
+    var barY=y(item.waarde);
+    var barH=Math.max(chartH-(barY-padTop),1);
+    return '<rect x="'+x.toFixed(1)+'" y="'+barY.toFixed(1)+'" width="'+barW.toFixed(1)+'" height="'+barH.toFixed(1)+'" fill="'+(item.kleur||'var(--teal)')+'" rx="3"/>'
+      +'<text x="'+(x+barW/2).toFixed(1)+'" y="'+(barY-8).toFixed(1)+'" text-anchor="middle" font-size="12" font-family="IBM Plex Mono, monospace" fill="var(--sub)">'+esc(fmtGeld(item.waarde))+'</text>'
+      +'<text x="'+(x+barW/2).toFixed(1)+'" y="'+(h-padBottom+18).toFixed(1)+'" text-anchor="middle" font-size="11" font-family="IBM Plex Sans, sans-serif" fill="var(--muted)">'+esc(item.label)+'</text>';
+  }).join('');
+  var basislijn='<line x1="'+padLeft+'" y1="'+y(0).toFixed(1)+'" x2="'+(w-padRight)+'" y2="'+y(0).toFixed(1)+'" stroke="var(--border2)" stroke-width="1"/>';
+  return '<svg viewBox="0 0 '+w+' '+h+'" width="100%" style="max-width:'+w+'px;height:auto;display:block;margin:0 auto">'+basislijn+bars+'</svg>';
+}
+// Waterfall: elke stap is een increment (delta) t.o.v. de vorige, behalve stappen met isTotal:true —
+// die tonen de volledige cumulatieve hoogte vanaf 0 (voor de begin- en eindstaaf van de brug).
+function dvSvgWaterfallChart(steps){
+  var w=560,h=220,padLeft=10,padBottom=36,padTop=28,padRight=10;
+  var chartW=w-padLeft-padRight,chartH=h-padTop-padBottom;
+  var running=0;
+  var cumuls=steps.map(function(s){
+    if(s.isTotal){var c={start:0,end:s.delta,label:s.label,delta:s.delta,isTotal:true};return c;}
+    var start=running;running+=s.delta;
+    return {start:start,end:running,label:s.label,delta:s.delta,isTotal:false};
+  });
+  var maxVal=Math.max.apply(null,cumuls.map(function(c){return Math.max(c.start,c.end);}).concat([0]));
+  var gap=chartW/steps.length,barW=gap*0.55;
+  function y(val){return padTop+chartH-(maxVal?(val/maxVal)*chartH:0);}
+  var bars=cumuls.map(function(c,i){
+    var x=padLeft+i*gap+(gap-barW)/2;
+    var top=Math.min(y(c.start),y(c.end));
+    var barH=Math.max(Math.abs(y(c.start)-y(c.end)),1);
+    var kleur=c.isTotal?'var(--teal)':(c.delta>=0?'var(--info)':'var(--gold-dark)');
+    var label=c.isTotal?fmtGeld(c.end):(c.delta>=0?'+':'')+fmtGeld(c.delta);
+    return '<rect x="'+x.toFixed(1)+'" y="'+top.toFixed(1)+'" width="'+barW.toFixed(1)+'" height="'+barH.toFixed(1)+'" fill="'+kleur+'" rx="3"/>'
+      +'<text x="'+(x+barW/2).toFixed(1)+'" y="'+(top-8).toFixed(1)+'" text-anchor="middle" font-size="11" font-family="IBM Plex Mono, monospace" fill="var(--sub)">'+esc(label)+'</text>'
+      +'<text x="'+(x+barW/2).toFixed(1)+'" y="'+(h-padBottom+18).toFixed(1)+'" text-anchor="middle" font-size="11" font-family="IBM Plex Sans, sans-serif" fill="var(--muted)">'+esc(c.label)+'</text>';
+  }).join('');
+  var basislijn='<line x1="'+padLeft+'" y1="'+y(0).toFixed(1)+'" x2="'+(w-padRight)+'" y2="'+y(0).toFixed(1)+'" stroke="var(--border2)" stroke-width="1"/>';
+  return '<svg viewBox="0 0 '+w+' '+h+'" width="100%" style="max-width:'+w+'px;height:auto;display:block;margin:0 auto">'+basislijn+bars+'</svg>';
+}
+
 // CSV-export van het waarderingsscherm (25 juli 2026, op verzoek Marcel — CSV i.p.v. een echt .xlsx,
 // want dit platform heeft geen build-systeem/library om een OOXML-spreadsheet te schrijven; CSV opent
 // direct in Excel). Puntkomma als scheidingsteken (NL-Excel-standaard, want komma is het decimaalteken
@@ -908,7 +955,12 @@ function renderWaardering(){
       +'Omzetmethode ('+omzetFactor+'\xd7): <strong>'+fmtGeld(wOmzet)+'</strong>'
       +(recurring>0?' &nbsp;|&nbsp; Recurring: <strong>'+recurring+'%</strong>':'')
       +(churn>0?' &nbsp;|&nbsp; Churn: <strong>'+churn+'%</strong>':'')
-    +'</div></div>';
+    +'</div>'
+    +'<div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)">'+dvSvgBarChart([
+      {label:'Laag ('+mLaag+'\xd7)',waarde:wLaag,kleur:'var(--border2)'},
+      {label:'Midden ('+mMid+'\xd7)',waarde:wMid,kleur:'var(--teal)'},
+      {label:'Hoog ('+mHoog+'\xd7)',waarde:wHoog,kleur:'var(--border2)'}
+    ])+'</div></div>';
 
   // Rolling forecast
   html+='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;margin-bottom:1.25rem">'
@@ -962,7 +1014,12 @@ function renderWaardering(){
       +'<td style="padding:6px 10px;font-size:12px;font-family:IBM Plex Mono,monospace;text-align:right;border-bottom:1px solid var(--border)">'+fmtGeld(cumul)+'</td></tr>';
   }
   html+='<tr style="background:var(--card)"><td style="padding:6px 10px;font-size:12px;font-weight:600;color:var(--sub)">Totaal</td><td></td><td style="padding:6px 10px;font-size:12px;font-weight:600;font-family:IBM Plex Mono,monospace;text-align:right;color:var(--sub)">'+fmtGeld(earnBase)+'</td><td></td></tr>';
-  html+='</tbody></table></div>';
+  html+='</tbody></table>';
+  var wfSteps=[{label:'Closing',delta:fixedKoop}];
+  for(var wk=1;wk<=earnJaren;wk++)wfSteps.push({label:'Jaar '+wk,delta:earnJaarlijks});
+  wfSteps.push({label:'Totaal',delta:earnBase,isTotal:true});
+  html+='<div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)">'+dvSvgWaterfallChart(wfSteps)+'</div>'
+    +'</div>';
 
   // AI rapport knop (alleen tussenpersoon)
   if(isTussen()){
