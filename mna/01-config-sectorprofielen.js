@@ -82,6 +82,11 @@ var SECTOR_PROFIELEN = {
   accountancy: {
     label: 'Accountancy & administratie',
     aiNormen: 'EBITDA-marge norm 15-25%, omzet per FTE €80k-€140k, personeelskosten 55-65%, declarabiliteit >75%, multiple 4.5-5.5x',
+    // multipleBasis/multipleLaag/multipleHoog (25 juli 2026, vierde kwartaalaudit P1 #1): expliciet,
+    // gestructureerd vastgelegd i.p.v. met een regex uit de vrije aiNormen-tekst geparst — die regex
+    // kon niet onderscheiden of de gevonden range een EBITDA-, omzet- of ARR-multiple was (zie zorg/
+    // itsoftware hieronder), waardoor bij zorg tot >70% waarderingsafwijking kon ontstaan.
+    multipleBasis: 'ebitda', multipleLaag: 4.5, multipleHoog: 5.5,
     fases: [
       {id:'financieel',num:'I',title:'Financieel',desc:'Kwaliteit en duurzaamheid van omzet en winst.',
        dataFields:[
@@ -235,6 +240,7 @@ var SECTOR_PROFIELEN = {
   mkb: {
     label: 'MKB — Retail / Horeca / Handel / Ambacht',
     aiNormen: 'EBITDA-marge norm 5-15% (sector afhankelijk: horeca 8-12%, retail 5-10%, handel 6-12%), omzet per FTE €80k-€200k, personeelskosten 25-45%, voorraadomzet >6x per jaar, multiple 2.5-4.5x',
+    multipleBasis: 'ebitda', multipleLaag: 2.5, multipleHoog: 4.5,
     fases: [
       {id:'financieel',num:'I',title:'Financieel',desc:'Omzet, marge en werkkapitaal.',
        dataFields:[
@@ -384,6 +390,11 @@ var SECTOR_PROFIELEN = {
   zorg: {
     label: 'Zorg — Huisarts / Tandarts / Fysiotherapie',
     aiNormen: 'EBITDA-marge norm 15-25% (huisarts 20-30%), omzet per FTE €60k-€120k, NZa-tarieven leidend, patiëntenbestand overdraagbaarheid cruciaal, multiple 1-3x omzet (praktijkwaarde)',
+    // LET OP: dit is een OMZET-multiple (praktijkwaarde), geen EBITDA-multiple — zie dvSectorMultipleRange()
+    // in mna/03-rekenkern-waardering.js. Het Dealvoorstel-scherm (prijsmechanisme/schuldaflossing/DCF)
+    // blijft bewust EBITDA-based en gebruikt dus NIET automatisch deze omzet-range (bewuste scope-keuze,
+    // 25 juli 2026) — alleen het hoofdwaarderingsscherm past 'm correct op omzet toe.
+    multipleBasis: 'omzet', multipleLaag: 1, multipleHoog: 3,
     fases: [
       {id:'financieel',num:'I',title:'Financieel',desc:'Praktijkomzet, declaraties en winstgevendheid.',
        dataFields:[
@@ -523,6 +534,11 @@ var SECTOR_PROFIELEN = {
   itsoftware: {
     label: 'IT & Software',
     aiNormen: 'EBITDA-marge norm 15-30% (SaaS 20-40%), ARR/MRR groei >20% is sterk, churn <5% is goed, LTV/CAC >3 vereist, NPS >30 positief, multiple 3-8x ARR (SaaS) of 4-6x EBITDA (maatwerk/diensten)',
+    // Dit sectorprofiel dekt zowel SaaS (ARR-multiple) als maatwerk/diensten (EBITDA-multiple) — het
+    // platform heeft geen apart ARR-veld en de rest van het Dealvoorstel-scherm is EBITDA-based, dus
+    // hier bewust de EBITDA-variant (4-6x) als structureel vastgelegde basis; een zuiver SaaS-traject
+    // moet handmatig als kanttekening worden meegenomen (bekende beperking, 25 juli 2026).
+    multipleBasis: 'ebitda', multipleLaag: 4, multipleHoog: 6,
     fases: [
       {id:'financieel',num:'I',title:'Financieel',desc:'Omzet, ARR/MRR en unit economics.',
        dataFields:[
