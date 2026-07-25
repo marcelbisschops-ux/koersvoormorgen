@@ -24,18 +24,23 @@ function dvPct(n){return n.toLocaleString('nl-NL',{minimumFractionDigits:1,maxim
 function dvMultiple(n){return n.toLocaleString('nl-NL',{minimumFractionDigits:1,maximumFractionDigits:1})+'×';}
 
 // Sectorbewuste multiple-range — gedeeld tussen dvGetDefaults() (dealvoorstel) en
-// dvBerekenWaardering() (hoofdscherm), zodat beide altijd hetzelfde getal tonen i.p.v. dat het
-// hoofdscherm een vaste multiple ongeacht sector gebruikt terwijl het zelf claimt "gebaseerd op
-// sectorale benchmarks" (audit-fix P1, 25 juli 2026). Val terug op 4,5-5,5x als het sectorprofiel
-// geen "multiple X-Yx" in de vrije aiNormen-tekst heeft — bekende beperking: de regex onderscheidt
-// geen EBITDA-/omzet-/ARR-multiple, dat blijft een apart aandachtspunt.
+// dvBerekenWaardering() (hoofdscherm). Sinds de vierde kwartaalaudit (25 juli 2026, P1 #1) leest dit
+// de expliciete, gestructureerde velden multipleBasis/multipleLaag/multipleHoog op het sectorprofiel
+// i.p.v. een regex uit de vrije aiNormen-tekst te parsen — die regex kon niet onderscheiden of de
+// gevonden range een EBITDA- of omzet-multiple was (bijv. zorg: "1-3x omzet"), waardoor een omzet-
+// multiple stilzwijgend op EBITDA werd toegepast (tot >70% waarderingsafwijking). Val terug op de
+// oude regex-parse (basis altijd 'ebitda') alleen als een sectorprofiel deze velden nog niet heeft —
+// bijv. een via marilyn handmatig met vrije JSON aangemaakt profiel.
 function dvSectorMultipleRange(){
   var sectorProfiel=getSectorProfiel();
+  if(sectorProfiel.multipleLaag&&sectorProfiel.multipleHoog){
+    return {mLaag:sectorProfiel.multipleLaag,mHoog:sectorProfiel.multipleHoog,basis:sectorProfiel.multipleBasis||'ebitda'};
+  }
   var normen=sectorProfiel.aiNormen||'';
   var mMatch=normen.match(/multiple\s*([\d.,]+)\s*[-–]\s*([\d.,]+)x/i);
   var mLaag=mMatch?parseFloat(mMatch[1].replace(',','.')):4.5;
   var mHoog=mMatch?parseFloat(mMatch[2].replace(',','.')):5.5;
-  return {mLaag:mLaag,mHoog:mHoog};
+  return {mLaag:mLaag,mHoog:mHoog,basis:'ebitda'};
 }
 
 function dvGetDefaults(){
@@ -699,7 +704,7 @@ function dvExporteerWaarderingCsv(v){
   ].forEach(function(r){if(r[1]!==null&&r[1]!==undefined&&r[1]!==0)regel(r);});
   leeg();
 
-  regel(['Waardebepaling as-is (EBITDA-methode)']);
+  regel(['Waardebepaling as-is ('+(v.multipleType==='omzet'?'omzet':'EBITDA')+'-methode)']);
   regel(['Scenario','Multiple','Waarde (€)']);
   regel(['Laag',v.mLaag,Math.round(v.wLaag)]);
   regel(['Midden',v.mMid,Math.round(v.wMid)]);
@@ -864,14 +869,19 @@ function dvBerekenWaardering(){
   var netDebtEbitda=(nettoSchuld!==null&&ebitdaAbs)?nettoSchuld/ebitdaAbs:null;
 
   // Multiples (sectornorm) — zelfde bron als dvGetDefaults(), zie dvSectorMultipleRange() hierboven.
+  // multipleType bepaalt of de range op EBITDA of op omzet wordt toegepast (P1 #1, vierde
+  // kwartaalaudit 25 juli 2026) — bijv. zorg heeft een omzet-multiple (praktijkwaarde), geen
+  // EBITDA-multiple, en die twee mogen nooit door elkaar gebruikt worden.
   var mRangeW=dvSectorMultipleRange();
   var mLaag=mRangeW.mLaag,mHoog=mRangeW.mHoog,mMid=(mLaag+mHoog)/2,omzetFactor=0.8;
+  var multipleType=mRangeW.basis||'ebitda';
 
   // Bereken
   var ebitdaAmt=ebitdaAbs||(o3*(ebitdaPct/100));
-  var wLaag=ebitdaAmt*mLaag;
-  var wMid=ebitdaAmt*mMid;
-  var wHoog=ebitdaAmt*mHoog;
+  var multipleTypeBedrag=multipleType==='omzet'?o3:ebitdaAmt;
+  var wLaag=multipleTypeBedrag*mLaag;
+  var wMid=multipleTypeBedrag*mMid;
+  var wHoog=multipleTypeBedrag*mHoog;
   var wOmzet=o3*omzetFactor;
 
   // Groei
@@ -882,7 +892,9 @@ function dvBerekenWaardering(){
   var fc=[o3];
   for(var i=1;i<=3;i++)fc.push(fc[fc.length-1]*(1+gemGroei/100));
   var fcE=fc.map(function(o){return o*(ebitdaPct/100);});
-  var fcW=fcE.map(function(e){return e*mMid;});
+  // Zelfde basis-onderscheid als wLaag/wMid/wHoog hierboven — bij een omzet-multiple moet de rolling
+  // forecast de omzetprognose (fc) vermenigvuldigen, niet de EBITDA-prognose (fcE).
+  var fcW=multipleType==='omzet'?fc.map(function(o){return o*mMid;}):fcE.map(function(e){return e*mMid;});
 
   // Earn-out default
   var earnBase=wMid;
@@ -894,7 +906,7 @@ function dvBerekenWaardering(){
     o1:o1,o2:o2,o3:o3,omzetYTD:omzetYTD,ebitdaAbs:ebitdaAbs,ebitdaPct:ebitdaPct,ebitdaAmt:ebitdaAmt,
     partnerBel:partnerBel,recurring:recurring,declarab:declarab,wip:wip,debiteuren:debiteuren,
     fte:fte,aantalP:aantalP,omzetPerP:omzetPerP,aantalKlanten:aantalKlanten,top1pct:top1pct,top10pct:top10pct,churn:churn,
-    mLaag:mLaag,mMid:mMid,mHoog:mHoog,omzetFactor:omzetFactor,
+    mLaag:mLaag,mMid:mMid,mHoog:mHoog,omzetFactor:omzetFactor,multipleType:multipleType,multipleTypeBedrag:multipleTypeBedrag,
     wLaag:wLaag,wMid:wMid,wHoog:wHoog,wOmzet:wOmzet,
     gemGroei:gemGroei,fc:fc,fcE:fcE,fcW:fcW,
     earnBase:earnBase,earnPct:earnPct,earnTarget:earnTarget,earnJaren:earnJaren,fixedKoop:fixedKoop,earnJaarlijks:earnJaarlijks,
@@ -952,6 +964,8 @@ function renderWaardering(){
     gemGroei=v.gemGroei,fc=v.fc,fcE=v.fcE,fcW=v.fcW,
     earnBase=v.earnBase,earnPct=v.earnPct,earnTarget=v.earnTarget,earnJaren=v.earnJaren,fixedKoop=v.fixedKoop,earnJaarlijks=v.earnJaarlijks;
 
+  var multipleType=v.multipleType||'ebitda';
+  var basisLabel=multipleType==='omzet'?'omzet':'EBITDA';
   var html='<div class="wrap anim">'
     +'<div class="hdr"><div class="brand">'+brandMerkHtml()+BRAND.platform+' &middot; Waardering'+versieLabel()+'</div>'
     +'<div style="display:flex;gap:8px">'
@@ -981,16 +995,17 @@ function renderWaardering(){
 
   // Waardebepaling as-is
   html+='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;margin-bottom:1.25rem">'
-    +'<div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)">Waardebepaling as-is (EBITDA-methode)</div>'
+    +'<div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)">Waardebepaling as-is ('+basisLabel+'-methode)</div>'
+    +(multipleType==='omzet'?'<div style="font-size:12px;color:var(--gold);background:var(--gold-bg);border:1px solid var(--gold);border-radius:var(--r);padding:8px 12px;margin-bottom:.75rem">Deze sector gebruikt een omzet-multiple (praktijkwaarde), geen EBITDA-multiple. Het Dealvoorstel-scherm (prijsmechanisme, bankfinanciering, schuldaflossing, DCF) blijft EBITDA-based — gebruik daar de cijfers hieronder met dat voorbehoud.</div>':'')
     +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:.75rem">'
     +'<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r2);padding:1rem;text-align:center">'
-      +'<div style="font-size:10px;color:var(--muted);margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.06em">Laag ('+mLaag+'\xd7)</div>'
+      +'<div style="font-size:10px;color:var(--muted);margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.06em">Laag ('+mLaag+'&times; '+basisLabel+')</div>'
       +'<div style="font-family:Playfair Display,serif;font-size:1.4rem;font-weight:600;color:var(--mid)">'+fmtGeld(wLaag)+'</div></div>'
     +'<div style="background:var(--teal-bg);border:2px solid var(--teal-dark);border-radius:var(--r2);padding:1rem;text-align:center">'
-      +'<div style="font-size:10px;color:var(--teal-dim);margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.06em;font-weight:600">Midden ('+mMid+'\xd7)</div>'
+      +'<div style="font-size:10px;color:var(--teal-dim);margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.06em;font-weight:600">Midden ('+mMid+'&times; '+basisLabel+')</div>'
       +'<div style="font-family:Playfair Display,serif;font-size:1.8rem;font-weight:600;color:var(--teal)">'+fmtGeld(wMid)+'</div></div>'
     +'<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r2);padding:1rem;text-align:center">'
-      +'<div style="font-size:10px;color:var(--muted);margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.06em">Hoog ('+mHoog+'\xd7)</div>'
+      +'<div style="font-size:10px;color:var(--muted);margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.06em">Hoog ('+mHoog+'&times; '+basisLabel+')</div>'
       +'<div style="font-family:Playfair Display,serif;font-size:1.4rem;font-weight:600;color:var(--mid)">'+fmtGeld(wHoog)+'</div></div>'
     +'</div>'
     +'<div style="font-size:12px;color:var(--mid);padding:.6rem .75rem;background:var(--card);border-radius:var(--r)">'
@@ -999,9 +1014,9 @@ function renderWaardering(){
       +(churn>0?' &nbsp;|&nbsp; Churn: <strong>'+churn+'%</strong>':'')
     +'</div>'
     +'<div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)">'+dvSvgBarChart([
-      {label:'Laag ('+mLaag+'\xd7)',waarde:wLaag,kleur:'var(--border2)'},
-      {label:'Midden ('+mMid+'\xd7)',waarde:wMid,kleur:'var(--teal)'},
-      {label:'Hoog ('+mHoog+'\xd7)',waarde:wHoog,kleur:'var(--border2)'}
+      {label:'Laag ('+mLaag+'\xd7 '+basisLabel+')',waarde:wLaag,kleur:'var(--border2)'},
+      {label:'Midden ('+mMid+'\xd7 '+basisLabel+')',waarde:wMid,kleur:'var(--teal)'},
+      {label:'Hoog ('+mHoog+'\xd7 '+basisLabel+')',waarde:wHoog,kleur:'var(--border2)'}
     ])+'</div></div>';
 
   // Rolling forecast
