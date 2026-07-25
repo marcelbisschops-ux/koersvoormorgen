@@ -474,13 +474,39 @@ alleen één van beide behandelt telt niet als volledig.
   16. Signhost-checksum blijft **open** — vereist Marcels actie in het Signhost-portaal
      (`SIGNHOST_WEBHOOK_SECRET`).
 
-  **P2 nog open (2 van 10) + P3/P4 (13+3, ongewijzigd):**
-  12. Toegankelijkheid nieuwe features (aria-modal, SVG title/desc, label-for-koppeling) — nog niet
-     opgepakt, vereist zorgvuldiger werk per modal dan in deze sessie nog paste.
-  17. EBITDA-normalisatie niet automatisch herberekend — bewust niet blind gefixt: `ebitdaNorm` is
-     expliciet gelabeld "(gevalideerd)", een auto-overschrijving zou net zo goed een bewust
-     gevalideerd cijfer kunnen overschrijven. Vereist een ontwerpkeuze (hint tonen vs. blijven
-     negeren), niet gedaan zonder Marcel te raadplegen.
+  **P2: alle 10 afgerond** (#12 toegankelijkheid en #17 EBITDA-normalisatie-hint later dezelfde dag
+  alsnog gebouwd, zie hieronder). Alleen #16 (Signhost-checksum) blijft open — vereist Marcels eigen
+  actie in het Signhost-portaal, geen codepunt.
+
+  **P3, 6 van 13 afgerond (zelfde dag, latere ronde):**
+  - Toegankelijkheid nieuwe features (P2 #12, hierboven al als "open" genoemd — alsnog gedaan):
+    `role="dialog"`/`aria-modal`/`aria-labelledby` op de Dealvoorstel-modal, label-for-koppeling op
+    de 16 nieuwe velden, `role="img"`/`aria-label`/`<title>` op de twee SVG-grafieken.
+  - EBITDA-normalisatie-hint (P2 #17, hierboven al als "open" genoemd — Marcels keuze: hint tonen,
+    nooit automatisch overschrijven): niet-blokkerende waarschuwing als het ingevulde bedrag afwijkt
+    van ebitda + normalisatie.
+  - Route-prefix-overlap `/group/` vs. `/group/by-admin-code/` (worker/06-scantool.js) alsnog
+    afgeschermd — zelfde patroon als de eerder gefixte qa-route-bug.
+  - Wachtwoordvergelijking nu constant-time (eigen `constantTimeEqual()`, Web Crypto API heeft geen
+    ingebouwde timingSafeEqual).
+  - Volledige trajectverwijdering logt nu vooraf naar `mna_audit` (overleeft de cascade) — voorheen
+    verdween het logboek zelf mee met de verwijdering.
+  - `mna_doc_versies` nu ook in de centrale schema-lijst (was alleen lazy aangemaakt op 9 plekken).
+  - DSCR expliciet gelabeld als vereenvoudiging (tooltip + CSV-kolomnaam).
+
+  **P3 nog open (7 van 13) — bewust niet gedaan, groter regressierisico of aparte ontwerpkeuze
+  nodig, niet zonder gerichte review-tijd:**
+  - 463× gedupliceerde response-envelope over de 20 workermodules.
+  - Geen `env.DB.batch()` bij multi-tabel-delete (D1 ondersteunt dit wel, nog niet gebruikt).
+  - Race condition op documentversienummer (geen UNIQUE-constraint).
+  - Geen pagination op lijst-endpoints.
+  - Geen foreign keys in het D1-schema.
+  - Server-side validatie van de 12 nieuwe features ontbreekt (alleen client-side).
+  - Synergie-NPV zonder fiscale correctie (VpB) — vereist een ontwerpkeuze zoals bij de eerdere
+    P1/P2-punten, niet zonder Marcel te raadplegen.
+  - Dealvoorstel-modal cognitief dicht bij overladen — UX-herontwerp, subjectief/groter.
+
+  **P4: alle 3 nog open** (HSTS/Referrer-Policy, foutmeldingscasing, mna_audit-bewaarbeleid).
 
   **Nieuw gevonden tijdens het fixen (niet in de oorspronkelijke bevindingenlijst), apart
   weggezet voor een volgende ronde:** de hardcoded-hex-kleurenkwestie (P2 #15) bleek bij nader
