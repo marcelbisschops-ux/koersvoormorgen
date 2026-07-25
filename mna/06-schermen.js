@@ -1292,11 +1292,15 @@ function bindAll(){
           div.innerHTML=faseLijst.map(function(q){
             var isVoorstel=q.type==='voorstel';
             var badge=qaStatusBadge[q.status];
+            var deadlineVerstreken=q.deadline&&!q.antwoord&&new Date(q.deadline).getTime()<Date.now();
+            var reacties=q.reacties||[];
             return '<div style="margin-bottom:.75rem;padding:.75rem;background:var(--card);border-radius:var(--r);border-left:3px solid '+(q.antwoord?'var(--teal)':'var(--gold)')+'">'
               +'<div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:.3rem;flex-wrap:wrap">'
               +'<span style="font-family:IBM Plex Mono,monospace;font-size:10px;background:var(--gold-bg);color:var(--gold);padding:1px 6px;border-radius:3px;flex-shrink:0">#'+q.vraag_nr+'</span>'
               +(isVoorstel?'<span style="font-size:10px;font-weight:600;background:var(--gold);color:#fff;padding:1px 8px;border-radius:10px">VOORSTEL'+(q.bedrag?': '+esc(q.bedrag):'')+'</span>':'')
               +(badge?'<span style="font-size:10px;font-weight:600;color:'+badge.kleur+'">'+badge.label+'</span>':'')
+              +(q.deadline?'<span style="font-size:10px;font-weight:600;color:'+(deadlineVerstreken?'var(--red)':'var(--info)')+'">'+(deadlineVerstreken?'&#9888; Deadline verstreken: ':'&#128197; Deadline: ')+esc(q.deadline)+'</span>':'')
+              +(q.toegewezen_aan?'<span style="font-size:10px;font-weight:600;color:var(--muted)">&#128100; '+esc(q.toegewezen_aan)+'</span>':'')
               +'<span style="font-size:13px;color:var(--sub);flex:1 1 100%">'+esc(q.vraag)+'</span></div>'
               +(q.antwoord
                 ?'<div style="margin-top:.5rem;padding:.5rem .75rem;background:var(--teal-bg);border-radius:var(--r);font-size:12px;color:var(--teal-dim)">&#10003; <strong>'+esc(q.beantwoord_door||'Adviseur')+':</strong> '+esc(q.antwoord)+'</div>'
@@ -1309,6 +1313,20 @@ function bindAll(){
                       +'<button class="btn-sm qa-ant-btn" data-id="'+q.id+'" data-status="afgewezen" style="font-size:11px;background:var(--red);color:#fff;border:none;border-radius:var(--r);padding:5px 12px;cursor:pointer">Afwijzen</button>':'')
                     +'</div></div>'
                   :'<div style="font-size:11px;color:var(--muted);margin-top:.25rem;font-style:italic">&#8987; Wacht op antwoord...</div>'))
+              +(isTussen()?'<div style="margin-top:.5rem;padding-top:.5rem;border-top:1px dashed var(--border2);display:flex;gap:6px;flex-wrap:wrap;align-items:center">'
+                +'<input type="date" id="qa-deadline-'+q.id+'" value="'+esc(q.deadline||'')+'" style="background:var(--panel);border:1px solid var(--border2);border-radius:var(--r);padding:3px 6px;font-size:11px;color:var(--sub)">'
+                +'<input type="text" id="qa-toegewezen-'+q.id+'" value="'+esc(q.toegewezen_aan||'')+'" placeholder="Toegewezen aan (naam)" style="background:var(--panel);border:1px solid var(--border2);border-radius:var(--r);padding:3px 6px;font-size:11px;color:var(--sub);width:150px">'
+                +'<button class="btn-ghost btn-sm qa-beheer-btn" data-id="'+q.id+'" style="font-size:10px;padding:3px 8px">Opslaan</button>'
+                +'</div>':'')
+              +(reacties.length?'<div style="margin-top:.5rem;padding-top:.5rem;border-top:1px dashed var(--border2)">'
+                +reacties.map(function(r){
+                  return '<div style="font-size:12px;color:var(--sub);margin-bottom:.3rem;padding:.35rem .5rem;background:var(--panel);border-radius:var(--r)"><strong>'+esc(r.auteur_naam||(r.auteur_rol==='koper'?'Koper':'Begeleider'))+':</strong> '+esc(r.tekst)+'</div>';
+                }).join('')
+                +'</div>':'')
+              +'<div style="margin-top:.4rem;display:flex;gap:6px;align-items:center">'
+                +'<input type="text" id="qa-reply-'+q.id+'" placeholder="Reageren..." style="flex:1;background:var(--panel);border:1px solid var(--border2);border-radius:var(--r);padding:5px 9px;font-size:12px;color:var(--sub)">'
+                +'<button class="btn-ghost btn-sm qa-reply-btn" data-id="'+q.id+'" style="font-size:11px;padding:5px 10px;white-space:nowrap">Reageer</button>'
+                +'</div>'
               +'</div>';
           }).join('');
           if(isTussen()){
@@ -1331,7 +1349,38 @@ function bindAll(){
                 }catch(e){toast('Verbindingsfout.','err');btn.disabled=false;}
               });
             });
+            div.querySelectorAll('.qa-beheer-btn').forEach(function(btn){
+              btn.addEventListener('click',async function(){
+                var qId=btn.dataset.id;
+                var deadlineInp=ge('qa-deadline-'+qId);
+                var toegewezenInp=ge('qa-toegewezen-'+qId);
+                btn.disabled=true;btn.textContent='Opslaan...';
+                try{
+                  var r=await fetch(WORKER+'/mna/admin/qa/beheer/'+qId,{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||''},body:JSON.stringify({deadline:deadlineInp?deadlineInp.value:'',toegewezen_aan:toegewezenInp?toegewezenInp.value.trim():''})});
+                  var d=await r.json();
+                  if(d.ok){toast('Opgeslagen.','ok');qaLaad();}
+                  else{toast('Fout: '+(d.error||'onbekend'),'err');btn.disabled=false;btn.textContent='Opslaan';}
+                }catch(e){toast('Verbindingsfout.','err');btn.disabled=false;btn.textContent='Opslaan';}
+              });
+            });
           }
+          // Thread-reactie: zowel koper als begeleider kunnen doorpraten over een vraag.
+          div.querySelectorAll('.qa-reply-btn').forEach(function(btn){
+            btn.addEventListener('click',async function(){
+              var qId=btn.dataset.id;
+              var replyInp=ge('qa-reply-'+qId);
+              var tekst=replyInp?replyInp.value.trim():'';
+              if(!tekst){toast('Vul een reactie in.','err');return;}
+              btn.disabled=true;
+              try{
+                var auteurNaam=isTussen()?(S.traject&&S.traject.begeleider_naam||BRAND.contactpersoon):(S.traject&&S.traject.koper_naam||'Koper');
+                var r=await fetch(WORKER+'/mna/qa/reactie/'+qId,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:S.code,tekst:tekst,auteur_naam:auteurNaam})});
+                var d=await r.json();
+                if(d.ok){toast('Reactie geplaatst.','ok');qaLaad();}
+                else{toast('Fout: '+(d.error||'onbekend'),'err');btn.disabled=false;}
+              }catch(e){toast('Verbindingsfout.','err');btn.disabled=false;}
+            });
+          });
         }).catch(function(){});
       }
       qaLaad();
