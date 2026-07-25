@@ -53,7 +53,7 @@ function renderHandleiding(){
     + stap(1,'NDA eerst','Voordat u toegang krijgt, ontvangt en ondertekent u een geheimhoudingsovereenkomst (NDA). Zonder ondertekende NDA verleent de adviseur geen toegang.')
     + stap(2,'Inloggen','Na ondertekening logt u in op <code>mna.html</code> met uw persoonlijke <strong>koperscode</strong>.')
     + stap(3,'Gefaseerde toegang','U ziet alleen de informatiecategorieën die de adviseur specifiek voor u heeft vrijgegeven — dit kan per fase verschillen en wordt gedurende het traject uitgebreid. Ziet u een categorie nog niet, dan is die simpelweg nog niet vrijgegeven.')
-    + stap(4,'Dataroom en documenten inzien','Alle vrijgegeven documenten staan gebundeld in de dataroom, inclusief de automatisch geëxtraheerde kerncijfers per document.')
+    + stap(4,'Dataroom en documenten inzien','Klik op "Alle documenten bekijken" op het startscherm voor een overzicht van alle vrijgegeven documenten (inclusief getekende NDA/BEM/Excl), met de automatisch geëxtraheerde kerncijfers per document. Vanuit een informatiefase komt u via "Terug naar overzicht" weer bij dit startscherm.')
     + stap(5,'Vragen stellen (Q&amp;A)','Per informatiefase kunt u vragen stellen via het Q&amp;A-register. De adviseur (of verkoper, via de adviseur) beantwoordt deze en de antwoorden blijven in het dossier bewaard.')
     + stap(6,'Letter of Intent','Zodra de hoofdpunten zijn afgestemd, stelt de adviseur een LoI op ter ondertekening door beide partijen — dit ontgrendelt bij de verkoper ook de diepere fase-2-vragen.')
   );

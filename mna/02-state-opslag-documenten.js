@@ -1503,7 +1503,11 @@ function sluitConflictDialoogEnGaVerder(){
 
 
 async function loadDataroom(){
-  if(!S.code||isKoper())return;
+  // Koper mocht hier niet in — dat was een te brede restrictie: het endpoint /mna/document/lijst
+  // filtert al server-side op vrijgegeven categorieën (koperMagCategorie) en renderDataroom() heeft
+  // al koper-veilige labels ("Bekijken" i.p.v. "Download", geen koppel-UI). Zonder toegang kon de
+  // koper geen overzicht van (getekende) documenten zien (Marcel, 25 juli 2026).
+  if(!S.code)return;
   S.dataroomLoading=true;renderApp();
   try{
     var resp=await fetch(WORKER+'/mna/document/lijst/'+S.code);

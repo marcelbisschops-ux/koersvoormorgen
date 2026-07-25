@@ -121,6 +121,7 @@ function renderCover(){
     +'<div id="partij-gesprekken-sectie" style="margin-top:1rem"></div>'
     +(isVerkoper()?'<button class="btn" id="to-main-btn2" style="width:100%;margin-top:1rem">'+(totalFillPct()>0?'Verder met invullen':'Start met invullen')+' &#8594;</button>':'')
     +(isKoper()?'<button class="btn" id="to-main-btn2" style="width:100%;margin-top:1rem">Bekijk due diligence-informatie &#8594;</button>':'')
+    +(isKoper()?'<button class="btn-outline" id="to-dataroom-btn2" style="width:100%;margin-top:.5rem">&#128196; Alle documenten bekijken</button>':'')
     +(isKoper()&&t.koper_vrijgegeven?'<button class="btn-outline" id="to-waardering-btn2" style="width:100%;margin-top:.5rem">&#9654; Waardering</button>':'')
     +'</div>';
 }
@@ -401,6 +402,7 @@ function renderMain(){
   }
   var nav='<div class="fase-nav">'
     +(isVerkoper()?'<button class="btn-ghost btn-sm" id="cover-btn">&#128196; Cover letter</button>':'')
+    +(isKoper()?'<button class="btn-ghost btn-sm" id="cover-btn">&#8592; Terug naar overzicht</button>':'')
     +(S.fase>0?'<button class="btn-ghost btn-sm" id="prev-btn">&#8592; Vorige</button>':'')
     +'<div style="flex:1"></div>'
     +(!isKoper()&&!vergrendeld?'<button class="btn-ghost btn-sm" id="opslaan-btn" style="color:var(--teal);border-color:var(--teal)">&#128190; Opslaan</button>':'')
@@ -886,6 +888,7 @@ function bindAll(){
   var toMain2=ge('to-main-btn2');if(toMain2)toMain2.onclick=function(){S.screen='main';var fId=FASES[S.fase]&&FASES[S.fase].id;if(fId&&!DOCS[fId])loadDocsForFase(fId);renderApp();};
   var toWrd=ge('to-waardering-btn');if(toWrd)toWrd.onclick=function(){S.screen='waardering';renderApp();};
   var toWrd2=ge('to-waardering-btn2');if(toWrd2)toWrd2.onclick=function(){S.screen='waardering';renderApp();};
+  var toDataroom2=ge('to-dataroom-btn2');if(toDataroom2)toDataroom2.onclick=function(){S.screen='dataroom';loadDataroom();};
   var toLb=ge('logboek-btn');if(toLb)toLb.onclick=function(){S.screen='logboek';renderApp();};
   // Laad en toon huidige fase op cover
   (async function(){
