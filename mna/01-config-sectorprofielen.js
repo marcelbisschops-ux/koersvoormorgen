@@ -143,8 +143,8 @@ var SECTOR_PROFIELEN = {
        redflags:['Omzet geconcentreerd bij <5 klanten','Klantverloop >10% per jaar','Klantrelaties hangen aan individuele partners','Geen structurele acquisitie']},
       {id:'partner',num:'III',title:'Partners & personeel',desc:'Afhankelijkheden, opvolging en cultuur.',
        dataFields:[
-        {id:'aantalP',label:'Aantal partners / eigenaren',ph:'',doc:false,req:true,fase:'1'},
-        {id:'gemLeeftijd',label:'Gemiddelde leeftijd partners (jaren)',ph:'',doc:false,req:true,fase:'1'},
+        {id:'aantalP',label:'Aantal partners / eigenaren',ph:'',doc:false,req:true,fase:'1',groepsniveau:true},
+        {id:'gemLeeftijd',label:'Gemiddelde leeftijd partners (jaren)',ph:'',doc:false,req:true,fase:'1',groepsniveau:true},
         {id:'fte',label:'Totaal FTE',ph:'',doc:false,req:true,fase:'1'},
         {id:'omzetPerFte',label:'Omzet per medewerker / FTE (€)',ph:'',doc:false,req:false,fase:'1'},
         {id:'omzetPerP',label:'Omzet per partner (€)',ph:'',doc:false,req:true,fase:'1'},
