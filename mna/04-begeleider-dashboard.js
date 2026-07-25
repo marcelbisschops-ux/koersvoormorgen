@@ -775,7 +775,7 @@ function renderBegeleiderDashboard(app){
       var ep=epMap[type]||'/mna/bem/email';
       var payload={code:S.traject.id,to:toList};
       if(type==='nda')payload.nda_tekst=vt;
-      else if(type==='loi')payload.loi_tekst=vt;
+      else if(type==='loi'){payload.loi_tekst=vt;payload.goedgekeurd_door=bgGoedkeuringCtrl?bgGoedkeuringCtrl.getNaam():'';}
       else if(type==='excl')payload.excl_tekst=vt;
       else{payload.bem_tekst=vt;payload.type=isSell?'verkoop':'aankoop';}
       if(bgPdfStaat.base64){payload.eigen_pdf_base64=bgPdfStaat.base64;payload.eigen_pdf_naam=bgPdfStaat.naam;payload.eigen_pdf_mime=bgPdfStaat.mime;}
@@ -1226,7 +1226,7 @@ function renderBegeleiderDashboard(app){
           var ebtn=this;ebtn.disabled=true;ebtn.textContent='Versturen...';
           secAuditLog('interne_goedkeuring',{document_type:'bieding',verzendkanaal:'email',goedgekeurd_door:bdGoedkeuringCtrl.getNaam()});
           var toList=[t2.contact_email,t2.begeleider_email,t2.koper_email].filter(Boolean);
-          var payload={code:S.traject.id,bieding_tekst:document.getElementById('bd-doc-tekst').value,to:toList};
+          var payload={code:S.traject.id,bieding_tekst:document.getElementById('bd-doc-tekst').value,to:toList,goedgekeurd_door:bdGoedkeuringCtrl.getNaam()};
           if(bdPdfStaat.base64){payload.eigen_pdf_base64=bdPdfStaat.base64;payload.eigen_pdf_naam=bdPdfStaat.naam;payload.eigen_pdf_mime=bdPdfStaat.mime;}
           var er=await fetch(WORKER+'/mna/bieding/email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
           var ed=await er.json();
