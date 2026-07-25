@@ -873,12 +873,14 @@ function renderBegeleiderDashboard(app){
     // contrast in dark mode voor alle 16 nieuwe Dealvoorstel-velden van vandaag.
     var lbl='font-size:10px;font-weight:600;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:4px';
     var inp='width:100%;background:var(--card);border:1px solid var(--border2);border-radius:6px;padding:7px 11px;font-family:IBM Plex Sans,sans-serif;font-size:13px';
+    // Audit-fix P2 (25 juli 2026, vierde ronde): label-for-koppeling (screenreader weet welk veld bij
+    // welk label hoort) op alle 16 nieuwe velden.
     function veld(id,label,val,step){
-      return '<div style="flex:1"><label style="'+lbl+'">'+label+'</label><input type="number" id="'+id+'" value="'+val+'" '+(step?'step="'+step+'"':'')+' style="'+inp+'"></div>';
+      return '<div style="flex:1"><label for="'+id+'" style="'+lbl+'">'+label+'</label><input type="number" id="'+id+'" value="'+val+'" '+(step?'step="'+step+'"':'')+' style="'+inp+'"></div>';
     }
     var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:400;display:flex;align-items:center;justify-content:center;padding:1.5rem';
-    var mo=document.createElement('div');mo.style.cssText='background:var(--panel);border-radius:10px;padding:2rem;max-width:640px;width:100%;max-height:92vh;overflow-y:auto';
-    mo.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.15rem;color:#1a1815;font-weight:600;margin-bottom:.25rem">&#128202; Dealvoorstel — dealparameters</div>'
+    var mo=document.createElement('div');mo.setAttribute('role','dialog');mo.setAttribute('aria-modal','true');mo.setAttribute('aria-labelledby','dv-modal-titel');mo.style.cssText='background:var(--panel);border-radius:10px;padding:2rem;max-width:640px;width:100%;max-height:92vh;overflow-y:auto';
+    mo.innerHTML='<div id="dv-modal-titel" style="font-family:Playfair Display,serif;font-size:1.15rem;color:#1a1815;font-weight:600;margin-bottom:.25rem">&#128202; Dealvoorstel — dealparameters</div>'
       +'<div style="font-size:12px;color:#8a8880;margin-bottom:1.25rem">Deze cijfers worden exact zo berekend en meegenomen — de AI verzint geen eigen bedragen of multiples.</div>'
       +'<div style="margin-bottom:1rem"><label style="'+lbl+'">Tegenpartij (koper)</label><input type="text" id="dv-koper" value="'+esc(d.koperNaam)+'" placeholder="Naam kopende partij" style="'+inp+'"></div>'
       +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('dv-belang','Belang koper bij closing (%)',d.belangPct)+veld('dv-ebitda-bewezen','Bewezen EBITDA laatste boekjaar (€)',d.ebitdaBewezen)+'</div>'
