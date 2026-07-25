@@ -83,7 +83,8 @@ function dvGetDefaults(){
     liqDebiteurenPct:80,
     liqWipPct:50,
     liqKostenPct:5,
-    goodwillPct:0,
+    goodwillNormrendementPct:0,
+    goodwillKapitalisatievoetPct:0,
     synergieAan:false,
     synergieKostenJaarlijks:0,
     synergieOmzetJaarlijks:0,
@@ -249,9 +250,27 @@ function dvBerekenAlternatieveWaarderingen(p){
     liquidatieDetail={liquideMiddelen:liquideMiddelen,debiteurenInbaar:debiteurenInbaar,wipInbaar:wipInbaar,liquidatiekosten:liquidatiekosten,schulden:(kortlopendeSchulden||0)+(langlopendeSchulden||0)};
   }
 
-  var goodwill=(p.goodwillPct&&omzetLaatste)?omzetLaatste*(p.goodwillPct/100):null;
+  // Overwinstmethode (25 juli 2026, herbouwd na de vierde kwartaalaudit P1 #5 — de vorige versie was
+  // een arbitrair percentage van de omzet, geen overwinstmethode). Erkende methode: overwinst =
+  // genormaliseerde nettowinst - (normrendement% x eigen vermogen); goodwill = overwinst /
+  // kapitalisatievoet (perpetuity-kapitalisatie, geen aantal-jaren-factor — dat zou zelf weer een
+  // ongefundeerde aanname zijn). "Nettoresultaat na belasting" komt uit de al bestaande DD-balansvelden
+  // (financieel_resultaat); normrendement% en kapitalisatievoet% zijn — net als de liquidatie-
+  // percentages hierboven — bewust GEEN vooringevulde branchenorm, de begeleider vult ze zelf in.
+  // Een negatieve overwinst (nettowinst lager dan het normrendement rechtvaardigt) levert een
+  // negatieve/nihil-goodwill op — dat is een geldige uitkomst van de methode, geen fout, en wordt
+  // als zodanig getoond, niet weggemoffeld.
+  var nettowinstNorm=dvGeldOfNull('financieel_resultaat');
+  var normaleWinst=null, overwinst=null, goodwill=null;
+  if(nettowinstNorm!==null&&eigenVermogen!==null&&p.goodwillNormrendementPct){
+    normaleWinst=eigenVermogen*(p.goodwillNormrendementPct/100);
+    overwinst=nettowinstNorm-normaleWinst;
+    if(p.goodwillKapitalisatievoetPct){
+      goodwill=overwinst/(p.goodwillKapitalisatievoetPct/100);
+    }
+  }
 
-  return {intrinsiek:intrinsiek,liquidatiewaarde:liquidatiewaarde,liquidatieDetail:liquidatieDetail,goodwill:goodwill,omzetLaatste:omzetLaatste};
+  return {intrinsiek:intrinsiek,liquidatiewaarde:liquidatiewaarde,liquidatieDetail:liquidatieDetail,nettowinstNorm:nettowinstNorm,normaleWinst:normaleWinst,overwinst:overwinst,goodwill:goodwill,omzetLaatste:omzetLaatste};
 }
 
 // Synergie-analyse (25 juli 2026): het bestaande DD-veld "Cross-sell — klanten met meerdere diensten
@@ -367,9 +386,12 @@ function dvTabelAlternatieveWaarderingen(alt,p){
     rows.push(['Liquidatiewaarde','onbekend — balansvelden (liquide middelen, schulden) niet volledig ingevuld']);
   }
   if(alt.goodwill!==null){
-    rows.push(['Goodwill-methode ('+p.goodwillPct+'% van jaaromzet — zelf ingevoerd percentage, geen branchenorm)',dvMln(alt.goodwill)]);
+    rows.push(['Genormaliseerde nettowinst',dvMln(alt.nettowinstNorm)]);
+    rows.push(['— af: normale winst ('+p.goodwillNormrendementPct+'% normrendement op eigen vermogen, aanname)','-'+dvMln(alt.normaleWinst)]);
+    rows.push(['= Overwinst',dvMln(alt.overwinst)]);
+    rows.push(['Goodwill (overwinst / '+p.goodwillKapitalisatievoetPct+'% kapitalisatievoet, aanname)',dvMln(alt.goodwill)]);
   } else {
-    rows.push(['Goodwill-methode','niet berekend — geen goodwill-percentage ingevoerd']);
+    rows.push(['Goodwill-methode (overwinstmethode)','niet berekend — nettoresultaat, eigen vermogen of normrendement/kapitalisatievoet ontbreken']);
   }
   return dvRenderTabelHtml(['','€ mln'],rows);
 }
