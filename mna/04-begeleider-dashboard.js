@@ -878,6 +878,11 @@ function renderBegeleiderDashboard(app){
       +'<div style="font-size:11px;color:#8a8880;margin-bottom:.75rem">Breder dan de gevoeligheidstabel hieronder (die alleen EBITDA×multiple varieert): hier groeit de bewezen EBITDA over de volledige horizon door met een af- of opwaartse afwijking op de groeivoet.</div>'
       +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('dv-scen-delta','Downside/upside-afwijking op groeivoet (procentpunt, zelf in te stellen)',d.scenarioGroeiDeltaPct,0.5)+'<div style="flex:1"></div></div>'
       +'</div>'
+      +'<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--sub);margin-bottom:1rem;cursor:pointer"><input type="checkbox" id="dv-dcfgv-aan" style="width:15px;height:15px;accent-color:var(--gold-dark)"> DCF-gevoeligheidsmatrix tonen (WACC × groeivoet)</label>'
+      +'<div id="dv-dcfgv-velden" style="display:none">'
+      +'<div style="font-size:11px;color:#8a8880;margin-bottom:.75rem">Houdt de FCF-projectie vast en varieert alleen de discontovoet en de terminale groeivoet bij het contant maken — de twee aannames waar de DCF-uitkomst het gevoeligst voor is. Bandbreedtes zelf in te stellen, geen norm.</div>'
+      +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('dv-dcfgv-wacc','WACC-bandbreedte (± procentpunt)',d.dcfWaccDeltaPct,0.5)+veld('dv-dcfgv-groei','Groeivoet-bandbreedte (± procentpunt)',d.dcfGroeiDeltaPct,0.5)+'</div>'
+      +'</div>'
       +'<div id="dv-err" style="display:none;color:#e05252;font-size:12px;margin-bottom:.75rem"></div>'
       +'<div style="display:flex;gap:8px;justify-content:flex-end">'
       +'<button id="dv-ann" style="background:transparent;border:1px solid #c8c5bc;padding:8px 16px;border-radius:6px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:13px">Annuleren</button>'
@@ -891,6 +896,7 @@ function renderBegeleiderDashboard(app){
     document.getElementById('dv-alt-aan').onchange=function(){document.getElementById('dv-alt-velden').style.display=this.checked?'block':'none';};
     document.getElementById('dv-syn-aan').onchange=function(){document.getElementById('dv-syn-velden').style.display=this.checked?'block':'none';};
     document.getElementById('dv-scen-aan').onchange=function(){document.getElementById('dv-scen-velden').style.display=this.checked?'block':'none';};
+    document.getElementById('dv-dcfgv-aan').onchange=function(){document.getElementById('dv-dcfgv-velden').style.display=this.checked?'block':'none';};
 
     document.getElementById('dv-ok').onclick=async function(){
       var btn=this;btn.disabled=true;btn.textContent='Genereren... (20-40 sec)';
@@ -935,7 +941,10 @@ function renderBegeleiderDashboard(app){
         synergieRealisatieJaren:parseInt(document.getElementById('dv-syn-realisatie').value)||2,
         synergieImplementatiekosten:parseFloat(document.getElementById('dv-syn-implementatie').value)||0,
         scenarioAan:document.getElementById('dv-scen-aan').checked,
-        scenarioGroeiDeltaPct:parseFloat(document.getElementById('dv-scen-delta').value)||5
+        scenarioGroeiDeltaPct:parseFloat(document.getElementById('dv-scen-delta').value)||5,
+        dcfGevoeligheidAan:document.getElementById('dv-dcfgv-aan').checked,
+        dcfWaccDeltaPct:parseFloat(document.getElementById('dv-dcfgv-wacc').value)||2,
+        dcfGroeiDeltaPct:parseFloat(document.getElementById('dv-dcfgv-groei').value)||1
       };
       if(!p.ebitdaBewezen||!p.ebitdaPrognose){
         errEl.textContent='Vul zowel de bewezen als de prognose-EBITDA in.';errEl.style.display='block';
@@ -954,6 +963,7 @@ function renderBegeleiderDashboard(app){
         var altWaardering=p.altWaarderingAan?dvBerekenAlternatieveWaarderingen(p):null;
         var synergie=dvBerekenSynergie(p);
         var scenarios=dvBerekenScenarios(p);
+        var dcfGevoeligheid=p.dcfGevoeligheidAan?dvBerekenDCFGevoeligheid(p,schuldafbouw):null;
         var gevoeligheid=dvBerekenGevoeligheid(p);
         var dcf=dvBerekenDCF(p,schuldafbouw);
         var tabelMap={
@@ -970,7 +980,8 @@ function renderBegeleiderDashboard(app){
           VENDORLOAN:vendorLoanRows?dvTabelVendorLoan(vendorLoanRows):'',
           ALTWAARDERING:altWaardering?dvTabelAlternatieveWaarderingen(altWaardering,p):'',
           SYNERGIE:synergie?dvTabelSynergie(synergie):'',
-          SCENARIOS:scenarios?dvTabelScenarios(scenarios,p):''
+          SCENARIOS:scenarios?dvTabelScenarios(scenarios,p):'',
+          DCFGEVOELIGHEID:dcfGevoeligheid?dvTabelDCFGevoeligheid(dcfGevoeligheid):''
         };
         var sectorProfiel=getSectorProfiel();
         var contextBlok='Sector: '+(sectorProfiel.label||'MKB')+'. Verkopende partij: '+(t2.kantoor_naam||S.code)+'. Kopende partij: '+p.koperNaam+'.\n'
@@ -983,7 +994,8 @@ function renderBegeleiderDashboard(app){
           +(vendorLoanRows?('\nVendor loan (verkoperslening): €'+Math.round(p.vendorLoanBedrag)+' tegen '+p.vendorLoanRentePct+'% rente, looptijd '+p.vendorLoanJaren+' jaar, '+(p.vendorLoanAflossingsvrij?'aflossingsvrij met bullet-aflossing van de hoofdsom in het laatste jaar':'lineaire jaarlijkse aflossing')+'. Dit is een door de verkopende partij aan de koper verstrekte, achtergestelde lening — een aparte verplichting naast de bankfinanciering.'):'')
           +(altWaardering?('\nAlternatieve waarderingsmethodes (ter controle naast de EBITDA-multiple hierboven): intrinsieke waarde (netto vermogenswaarde) '+(altWaardering.intrinsiek!==null?'€'+Math.round(altWaardering.intrinsiek):'onbekend, eigen vermogen niet ingevuld')+'; liquidatiewaarde '+(altWaardering.liquidatiewaarde!==null?'€'+Math.round(altWaardering.liquidatiewaarde)+' (op basis van zelf ingevoerde aannames: '+p.liqDebiteurenPct+'% debiteuren inbaar, '+p.liqWipPct+'% OHW inbaar, '+p.liqKostenPct+'% liquidatiekosten — geen vastgestelde branchenorm)':'onbekend, balansvelden niet volledig ingevuld')+'; goodwill-methode '+(altWaardering.goodwill!==null?'€'+Math.round(altWaardering.goodwill)+' bij '+p.goodwillPct+'% van de laatste jaaromzet (zelf gekozen percentage, geen branchenorm)':'niet berekend, geen percentage ingevoerd')+'.'):'')
           +(synergie?('\nSynergie-analyse: kostensynergie €'+Math.round(p.synergieKostenJaarlijks)+'/jaar en omzetsynergie €'+Math.round(p.synergieOmzetJaarlijks)+'/jaar op volle kracht, opgebouwd over '+p.synergieRealisatieJaren+' jaar, eenmalige implementatiekosten €'+Math.round(p.synergieImplementatiekosten)+'. NPV van de synergieën over de horizon van '+p.horizonJaren+' jaar (tegen dezelfde discontovoet als de DCF): €'+Math.round(synergie.npv)+'. Deze bedragen zijn eigen inschattingen van de begeleider, geen automatische berekening uit de DD-data.'):'')
-          +(scenarios?('\nScenarioanalyse (downside/base/upside, '+p.scenarioGroeiDeltaPct+' procentpunt afwijking op de groeivoet, zelf ingestelde bandbreedte): '+scenarios.map(function(s){return s.label+' — groeivoet '+s.groeiPct.toFixed(1)+'%/jaar, EBITDA na '+p.horizonJaren+' jaar €'+Math.round(s.ebitdaEind)+', ondernemingswaarde €'+Math.round(s.waardeLaag)+'–€'+Math.round(s.waardeHoog);}).join('; ')+'.'):'');
+          +(scenarios?('\nScenarioanalyse (downside/base/upside, '+p.scenarioGroeiDeltaPct+' procentpunt afwijking op de groeivoet, zelf ingestelde bandbreedte): '+scenarios.map(function(s){return s.label+' — groeivoet '+s.groeiPct.toFixed(1)+'%/jaar, EBITDA na '+p.horizonJaren+' jaar €'+Math.round(s.ebitdaEind)+', ondernemingswaarde €'+Math.round(s.waardeLaag)+'–€'+Math.round(s.waardeHoog);}).join('; ')+'.'):'')
+          +(dcfGevoeligheid?('\nDCF-gevoeligheidsmatrix: WACC-bandbreedte ±'+p.dcfWaccDeltaPct+' procentpunt rond '+p.discontovoetPct+'%, groeivoet-bandbreedte ±'+p.dcfGroeiDeltaPct+' procentpunt rond '+p.groeiPct+'% (zelf ingestelde bandbreedtes, geen norm) — de matrix zelf staat in de tabel, benoem alleen dat de uitkomst het gevoeligst is voor deze twee aannames.'):'');
         var koppen='## Managementsamenvatting\n(3-5 bullets over de kern van het voorstel, dan één alinea "In één zin")\n\n'
           +'## Uitgangspunten & de cijfers\n(korte toelichting op de omzet-/EBITDA-ontwikkeling)\n[TABEL:CIJFERS]\n\n'
           +'## Cijferoverzicht & interpretatie\n(bespreek feitelijk wat de aangeleverde cijfers hieronder betekenen voor risico en waardering — klantconcentratie, recurring omzet, partnerafhankelijkheid, personeelskosten; herhaal en duid alleen wat er staat, verzin niets)\n[TABEL:CIJFEROVERZICHT]\n\n'
@@ -997,6 +1009,7 @@ function renderBegeleiderDashboard(app){
           +'## Prijsmechanisme\n(leg uit hoe de multiple meebeweegt met de gerealiseerde EBITDA, en waarom de cliff-drempel de koper beschermt)\n[TABEL:PRIJSMECHANISME]\n\n'
           +'## Bedrag bij closing en earn-up\n(toelichting op het bedrag bij closing en de gefaseerde afrekening bij realisatie)\n[TABEL:CLOSING]\n\n'
           +'## Kruiscontrole: DCF versus EBITDA-multiple\n(leg uit hoe de DCF-uitkomst zich verhoudt tot de multiple-waardering — noem beide bedragen uit de context en interpreteer het verschil, verzin geen eigen bedragen)\n[TABEL:DCF]\n\n'
+          +(dcfGevoeligheid?'## DCF-gevoeligheid: WACC × groeivoet\n(leg uit dat de DCF-uitkomst het gevoeligst is voor de discontovoet en de terminale groeivoet — interpreteer de matrix, benoem "n.v.t."-cellen als een teken dat die combinatie wiskundig ongeldig is (WACC moet hoger zijn dan de groeivoet), verzin geen eigen getallen)\n[TABEL:DCFGEVOELIGHEID]\n\n':'')
           +'## Closing-mechanismen\n(kort: locked box, escrow, garanties — gebruik de escrow-cijfers hierboven)\n\n'
           +'## Financiering en kasstroom\n(toelichting op het schuldafbouwmodel)\n[TABEL:SCHULDAFBOUW]\n\n'
           +(p.buyAndBuild?'## Buy-and-build: platformscenario\n(korte toelichting op het groeiscenario via overnames)\n[TABEL:BUYANDBUILD]\n\n':'')

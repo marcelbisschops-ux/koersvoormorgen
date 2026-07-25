@@ -90,7 +90,10 @@ function dvGetDefaults(){
     synergieRealisatieJaren:2,
     synergieImplementatiekosten:0,
     scenarioAan:false,
-    scenarioGroeiDeltaPct:5
+    scenarioGroeiDeltaPct:5,
+    dcfGevoeligheidAan:false,
+    dcfWaccDeltaPct:2,
+    dcfGroeiDeltaPct:1
   };
 }
 
@@ -537,6 +540,40 @@ function dvTabelDCF(dcf){
     ['Deel koper (DCF-methode)',dvMln(dcf.deelKoperDcf)]
   ]);
   return tabel+samenvatting;
+}
+
+// Bredere DCF-gevoeligheidsanalyse: WACC × groeivoet-matrix (25 juli 2026) — tot nu toe was alleen
+// EBITDA×multiple-gevoeligheid beschikbaar (dvBerekenGevoeligheid), niets voor de DCF-methode zelf.
+// Houdt de expliciete FCF-projectieperiode vast (die hangt af van de operationele groeivoet in de
+// schuldafbouw, niet van de discontovoet) en varieert alleen de discontovoet en de terminale
+// groeivoet bij het contant maken — dat zijn precies de twee aannames waar een DCF het gevoeligst
+// voor is. dcfWaccDeltaPct/dcfGroeiDeltaPct zijn zelf in te stellen bandbreedtes, geen norm.
+function dvBerekenDCFGevoeligheid(p,schuldafbouwRows){
+  var projRows=schuldafbouwRows.slice(1);
+  var laatsteFcf=projRows.length?projRows[projRows.length-1].fcf:0;
+  var waccDelta=p.dcfWaccDeltaPct||0, groeiDelta=p.dcfGroeiDeltaPct||0;
+  var waccWaarden=[p.discontovoetPct-waccDelta,p.discontovoetPct,p.discontovoetPct+waccDelta];
+  var groeiWaarden=[p.groeiPct-groeiDelta,p.groeiPct,p.groeiPct+groeiDelta];
+  var matrix=waccWaarden.map(function(waccPct){
+    var d=waccPct/100;
+    var pvSom=0;
+    projRows.forEach(function(r,i){pvSom+=r.fcf/Math.pow(1+d,i+1);});
+    return groeiWaarden.map(function(groeiPct){
+      var g=groeiPct/100;
+      if(d<=g)return null; // DCF-formule ongeldig bij deze combinatie — nooit een gegokte waarde tonen
+      var tv=(laatsteFcf*(1+g))/(d-g);
+      var tvPv=tv/Math.pow(1+d,projRows.length);
+      return pvSom+tvPv;
+    });
+  });
+  return {waccWaarden:waccWaarden,groeiWaarden:groeiWaarden,matrix:matrix};
+}
+function dvTabelDCFGevoeligheid(gv){
+  var kolommen=['WACC \\ Groeivoet'].concat(gv.groeiWaarden.map(function(g){return g.toFixed(1)+'%';}));
+  var rows=gv.matrix.map(function(rij,i){
+    return [gv.waccWaarden[i].toFixed(1)+'%'].concat(rij.map(function(v){return v!==null?dvMln(v):'n.v.t. (WACC ≤ groei)';}));
+  });
+  return dvRenderTabelHtml(kolommen,rows);
 }
 
 function dvFmtTekst(t){
