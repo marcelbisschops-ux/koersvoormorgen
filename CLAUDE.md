@@ -48,6 +48,7 @@ Eigenaar: Marcel Bisschops (Bisschops Financing B.V.).
 - Geneste template-literals in de worker veroorzaken syntaxfouten; gebruik string-concatenatie in gegenereerde HTML.
 - DELETE-methode wordt door CORS geblokkeerd; gebruik POST.
 - Bij traject-verwijdering NOOIT platformbrede data (zoals `mna_templates`) meewissen.
+- **Sectorprofiel-DD-velden staan dubbel** (ontdekt 25 juli 2026): de leesbare bron `mna/01-config-sectorprofielen.js` (`var SECTOR_PROFIELEN`, deze repo) én een geminificeerde kopie `const DEFAULT_SECTOR_PROFIELEN` in `cloudflare-worker.js` (backend-repo). De backend-kopie is **leidend** — bij elke login haalt `mna/07-start-chat.js` `GET /mna/sectorprofielen` op en overschrijft daarmee de frontend-bron volledig. Wijzig je een sectorprofiel-veld in `mna/01-config-sectorprofielen.js`, dan is dat **onzichtbaar voor gebruikers** totdat de backend-kopie is bijgewerkt. Gebruik daarvoor `backend/scripts/sync-sectorprofielen.js` (dry-run toont het verschil per veld; `--apply` past `cloudflare-worker.js` aan) — daarna de gebruikelijke node --check + staging-test + productie-deploy.
 
 ## Verkoopmodel adviseurs (adv.html)
 - Gebruikers in tabel `bf_gebruikers` met `traject_limiet` en `modules` (JSON: traject, contracten, ai_analyse, qa, export).
