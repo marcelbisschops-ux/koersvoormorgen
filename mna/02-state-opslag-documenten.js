@@ -520,7 +520,8 @@ function loadDocsForFase(faseId) {
             grootte: d.bestand_grootte, analyse: d.analyse,
             velden: (function(s){try{var r=JSON.parse(s||'{}');return r&&typeof r==='object'&&!Array.isArray(r)?r:{};}catch(e){return {};}})(d.veld_extractie),
             uploaded_at: d.uploaded_at||null, entiteit_id: d.entiteit_id||'',
-            bewaard: !!d.bewaard, methode: d.methode, uploading: false
+            bewaard: !!d.bewaard, methode: d.methode, uploading: false,
+            versie: d.versie||1, heeft_eerdere_versies: !!d.heeft_eerdere_versies
           };
         });
       renderApp();
@@ -574,7 +575,7 @@ window.uploadDocumentenSequentieel = async function(faseId, files) {
   if (statusEl) statusEl.textContent = '';
 };
 
-async function uploadDocument(faseId, file, existingId) {
+async function uploadDocument(faseId, file, existingId, vervangtDocId) {
   if (!S.code || isKoper()) return;
   if (S.traject && S.traject.status === 'vergrendeld') { toast('Traject is vergrendeld.','warn'); if (existingId) DOCS[faseId] = DOCS[faseId].filter(function(x){ return x.id !== existingId; }); return; }
   var maxSize = 20 * 1024 * 1024;
@@ -592,14 +593,16 @@ async function uploadDocument(faseId, file, existingId) {
   var entiteitId = entiteitSel ? entiteitSel.value : '';
   var dubbeleCheckEl = document.getElementById('dubbele-check-'+faseId);
   var dubbeleCheck = dubbeleCheckEl && dubbeleCheckEl.checked;
-  var url = WORKER + '/mna/document/upload?code=' + S.code + '&fase_id=' + faseId + '&bewaar=' + bewaar + (entiteitId?'&entiteit_id='+encodeURIComponent(entiteitId):'') + (dubbeleCheck?'&dubbele_check=true':'');
+  var url = WORKER + '/mna/document/upload?code=' + S.code + '&fase_id=' + faseId + '&bewaar=' + bewaar + (entiteitId?'&entiteit_id='+encodeURIComponent(entiteitId):'') + (dubbeleCheck?'&dubbele_check=true':'') + (vervangtDocId?'&vervangt='+encodeURIComponent(vervangtDocId):'');
 
   try {
     var resp = await fetch(url, { method: 'POST', body: formData });
     var d = await resp.json();
     if (d.ok) {
-      // Replace temp with real
-      DOCS[faseId] = DOCS[faseId].filter(function(x){ return x.id !== tempId; });
+      // Replace temp with real — en bij een vervangende versie ook de oude versie uit de weergave
+      // halen (de server sluit "vervangen" documenten al uit van /mna/document/lijst, maar de
+      // lokale DOCS-cache is los daarvan en wordt pas bij een volgende loadDocsForFase ververst).
+      DOCS[faseId] = DOCS[faseId].filter(function(x){ return x.id !== tempId && x.id !== vervangtDocId; });
       // d.entiteit_naam is een los top-level responsveld (de server verwijdert het uit veld_extractie
       // vóórdat die als losse velden teruggaat) — voor de "handmatig koppelen"-badge (die op elk
       // render-moment, ook ná een pagina-herlaad, opnieuw uit doc.velden.entiteit_naam herberekent)
@@ -610,7 +613,8 @@ async function uploadDocument(faseId, file, existingId) {
         id: d.doc_id, naam: file.name, type: file.type, grootte: file.size,
         analyse: d.analyse, velden: veldenMetEntNaam, bewaard: !!d.r2_opgeslagen,
         uploaded_at: Date.now(), uploading: false, verworpen: !!d.verworpen, verworpen_reden: d.verworpen_reden||null,
-        entiteit_id: entiteitId || ''
+        entiteit_id: entiteitId || '',
+        versie: d.versie||1, heeft_eerdere_versies: !!vervangtDocId
       });
       if (d.veld_extractie) {
         // Geen entiteit gekozen bij upload. Als de AI zeker (exacte naam-match) één geregistreerde
@@ -1321,9 +1325,11 @@ function renderDocumentSectie(faseId) {
         : '';
       return '<div style="display:flex;align-items:center;gap:6px;padding:5px 8px;background:'+(behoeftKoppelingDoc?'var(--red-bg)':'var(--card)')+';border-radius:var(--r);border:1px solid '+(behoeftKoppelingDoc?'var(--red)':'var(--border)')+';flex-wrap:wrap">'
         + '<span style="font-size:13px">'+icon+'</span>'
-        + '<span style="font-size:11px;color:'+(behoeftKoppelingDoc?'var(--head)':'var(--teal)')+';flex:1">'+(doc.bewaard?'<a href="'+WORKER+'/mna/document/download/'+doc.id+'?code='+encodeURIComponent(S.code)+'" target="_blank" style="color:'+(behoeftKoppelingDoc?'var(--head)':'var(--teal)')+';text-decoration:'+(behoeftKoppelingDoc?'underline':'none')+'">'+esc(doc.naam)+'</a>':esc(doc.naam))+(entNaamDoc?' <span style="font-size:9px;font-weight:600;color:var(--teal);background:var(--teal-bg);border-radius:8px;padding:1px 6px;margin-left:2px">'+esc(entNaamDoc)+'</span>':groepsniveauBadgeDoc)+'</span>'
+        + '<span style="font-size:11px;color:'+(behoeftKoppelingDoc?'var(--head)':'var(--teal)')+';flex:1">'+(doc.bewaard?'<a href="'+WORKER+'/mna/document/download/'+doc.id+'?code='+encodeURIComponent(S.code)+'" target="_blank" style="color:'+(behoeftKoppelingDoc?'var(--head)':'var(--teal)')+';text-decoration:'+(behoeftKoppelingDoc?'underline':'none')+'">'+esc(doc.naam)+'</a>':esc(doc.naam))+(entNaamDoc?' <span style="font-size:9px;font-weight:600;color:var(--teal);background:var(--teal-bg);border-radius:8px;padding:1px 6px;margin-left:2px">'+esc(entNaamDoc)+'</span>':groepsniveauBadgeDoc)+((doc.versie||1)>1?' <span style="font-size:9px;font-weight:600;color:var(--muted);background:var(--panel);border-radius:8px;padding:1px 6px;margin-left:2px" title="Dit is versie '+(doc.versie||1)+' — vervangt een eerder geüpload document">v'+(doc.versie||1)+'</span>':'')+'</span>'
         + '<span style="font-size:10px;color:var(--muted)">'+(doc.grootte/1024/1024).toFixed(1)+'MB</span>'
         + (toonKoppelenDoc?'<select id="fd-ent-'+doc.id+'" style="font-size:10px;background:var(--panel);border:1px solid var(--border2);border-radius:var(--r);padding:2px 4px"><option value="">'+(doc.entiteit_id?'— Groepsniveau (ontkoppelen) —':'— Koppel aan entiteit —')+'</option>'+S._entiteiten.map(function(e){return '<option value="'+esc(e.id)+'"'+(e.id===geselecteerdDoc?' selected':'')+'>'+esc(e.naam)+(e.id===gokIdDoc&&!doc.entiteit_id?' (AI-suggestie)':'')+'</option>';}).join('')+'</select><button onclick="koppelDocumentAanEntiteit(\''+doc.id+'\',\'fd-ent-\')" style="background:none;border:1px solid var(--teal);color:var(--teal);border-radius:var(--r);cursor:pointer;font-size:10px;padding:1px 6px">&#128279;</button>':'')
+        + ((doc.heeft_eerdere_versies||(doc.versie||1)>1)?'<button onclick="toonVersieGeschiedenis(\''+doc.id+'\')" title="Eerdere versies bekijken" style="background:none;border:1px solid var(--border2);color:var(--muted);border-radius:var(--r);cursor:pointer;font-size:10px;padding:1px 6px">&#128337; Versies</button>':'')
+        + (!isReadOnly?'<button onclick="vervangDocument(\''+faseId+'\',\''+doc.id+'\')" title="Nieuwe versie uploaden (vervangt dit document)" style="background:none;border:1px solid var(--border2);color:var(--muted);border-radius:var(--r);cursor:pointer;font-size:10px;padding:1px 6px">&#8635; Vervangen</button>':'')
         + (!isReadOnly?'<button onclick="deleteDocument(\''+doc.id+'\',\''+faseId+'\')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:10px;padding:0 2px">✕</button>':'')
         + '</div>';
     }).join('');
@@ -1333,6 +1339,53 @@ function renderDocumentSectie(faseId) {
   return '<div style="margin-bottom:1rem">'+uploadHtml+docsHtml+'</div>';
 }
 
+// Nieuwe versie van een bestaand document uploaden (Documentversiebeheer, 25 juli 2026): opent een
+// verborgen bestandskiezer en koppelt de nieuwe upload via ?vervangt= aan het oude document — de
+// server houdt dan de volledige keten bij i.p.v. twee losse, ongerelateerde documenten.
+window.vervangDocument = function(faseId, docId) {
+  var inp = document.createElement('input');
+  inp.type = 'file';
+  inp.accept = '.pdf,.docx,.doc,.xlsx,.xls,.csv,.txt,.eml,.xml,.xbrl';
+  inp.style.display = 'none';
+  inp.onchange = function() {
+    if (inp.files && inp.files[0]) uploadDocument(faseId, inp.files[0], null, docId);
+    inp.remove();
+  };
+  document.body.appendChild(inp);
+  inp.click();
+};
+
+// Toont de volledige versieketen van een document (oud → nieuw) in een overlay, met downloadlinks
+// per versie. Overlay volgt hetzelfde position:fixed;inset:0-patroon als de andere modals in dit
+// bestand, zodat de generieke Escape-afhandeling (zie boven) 'm ook sluit.
+window.toonVersieGeschiedenis = async function(docId) {
+  var ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:900;display:flex;align-items:center;justify-content:center;padding:1.5rem';
+  ov.onclick = function(e) { if (e.target === ov) ov.remove(); };
+  var box = document.createElement('div');
+  box.style.cssText = 'background:var(--panel);border:1px solid var(--border2);border-radius:var(--r2);padding:1.5rem;max-width:480px;width:100%;max-height:80vh;overflow-y:auto';
+  box.innerHTML = '<div style="font-family:Playfair Display,serif;font-size:1.05rem;color:var(--head);font-weight:600;margin-bottom:.75rem">Versiegeschiedenis</div><div style="font-size:12px;color:var(--muted)">Laden...</div>';
+  ov.appendChild(box);
+  document.body.appendChild(ov);
+  try {
+    var resp = await fetch(WORKER + '/mna/document/versies/' + S.code + '/' + docId);
+    var d = await resp.json();
+    if (!d.ok || !d.versies || !d.versies.length) { box.innerHTML = '<div style="font-family:Playfair Display,serif;font-size:1.05rem;color:var(--head);font-weight:600;margin-bottom:.75rem">Versiegeschiedenis</div><div style="font-size:12px;color:var(--muted)">Geen geschiedenis gevonden.</div>'; return; }
+    var lijst = d.versies.slice().reverse().map(function(v) {
+      var datum = v.uploaded_at ? new Date(v.uploaded_at).toLocaleString('nl-NL') : '';
+      return '<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--card);border:1px solid var(--border);border-radius:var(--r)">'
+        + '<span style="font-size:9px;font-weight:700;color:#fff;background:var(--teal);border-radius:8px;padding:1px 6px;flex-shrink:0">v'+(v.versie||1)+'</span>'
+        + '<span style="font-size:12px;flex:1">'+(v.bewaard?'<a href="'+WORKER+'/mna/document/download/'+v.id+'?code='+encodeURIComponent(S.code)+'" target="_blank" style="color:var(--teal)">'+esc(v.bestand_naam)+'</a>':esc(v.bestand_naam))+'</span>'
+        + '<span style="font-size:10px;color:var(--muted)">'+esc(datum)+'</span>'
+        + '</div>';
+    }).join('');
+    box.innerHTML = '<div style="font-family:Playfair Display,serif;font-size:1.05rem;color:var(--head);font-weight:600;margin-bottom:.75rem">Versiegeschiedenis</div><div style="display:flex;flex-direction:column;gap:6px;margin-bottom:1rem">'+lijst+'</div><button id="versies-sluiten-btn" style="background:var(--teal);color:#fff;border:none;border-radius:var(--r);padding:6px 16px;cursor:pointer;font-size:12px">Sluiten</button>';
+    var sluitBtn = box.querySelector('#versies-sluiten-btn');
+    if (sluitBtn) sluitBtn.onclick = function() { ov.remove(); };
+  } catch (e) {
+    box.innerHTML = '<div style="font-family:Playfair Display,serif;font-size:1.05rem;color:var(--head);font-weight:600;margin-bottom:.75rem">Versiegeschiedenis</div><div style="font-size:12px;color:var(--red)">Verbindingsfout bij laden.</div>';
+  }
+};
 
 // Zet de doc-tekst/handtekenstatus-velden (NDA/LoI/BEM) over van het traject-object naar de losse
 // S.xxxTekst/S.xxxGetekend state die renderCover() leest. Gedeeld door de loginflow en refreshData()
