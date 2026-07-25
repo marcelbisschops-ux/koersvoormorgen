@@ -596,6 +596,35 @@ function renderBegeleiderDashboard(app){
     return {setOverride:function(actief){override=actief;toepassen();}};
   }
 
+  // Interne goedkeuring (approval workflow, 25 juli 2026 — op uitdrukkelijk verzoek van Marcel de
+  // lichte variant: self-attestatie + logboek, geen apart multi-persoons-rollensysteem). Vóór het
+  // versturen van een bod (indicatieve bieding) of LOI moet expliciet worden vastgelegd wie dit
+  // intern heeft goedgekeurd — gelogd via het bestaande auditlog-endpoint (secAuditLog, mna_audit-
+  // tabel), geen nieuwe backend-route nodig. Losstaand van de bestaande akkoord-checkbox hierboven
+  // (die gaat over "ik heb de AI-tekst gecontroleerd"): dit is een aparte, altijd-verplichte stap.
+  function interneGoedkeuringHtml(id){
+    return '<div style="margin-top:.6rem"><label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Intern goedgekeurd door (naam) — verplicht vóór verzending</label>'
+      +'<input type="text" id="'+id+'" placeholder="Voor- en achternaam" style="width:100%;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:7px 11px;font-family:IBM Plex Sans,sans-serif;font-size:13px"></div>';
+  }
+  function wireInterneGoedkeuring(naamId,akkoordId,buttonIds){
+    var naamInput=document.getElementById(naamId);
+    var akkoordCb=document.getElementById(akkoordId);
+    var pdfOverride=false;
+    function toepassen(){
+      var naamOk=naamInput&&naamInput.value.trim().length>0;
+      var akkOk=pdfOverride||(akkoordCb&&akkoordCb.checked);
+      var ok=naamOk&&akkOk;
+      buttonIds.forEach(function(id){
+        var b=document.getElementById(id);
+        if(b){b.disabled=!ok;b.style.opacity=ok?'1':'.45';b.style.cursor=ok?'pointer':'not-allowed';}
+      });
+    }
+    if(naamInput)naamInput.oninput=toepassen;
+    if(akkoordCb){var orig=akkoordCb.onchange;akkoordCb.onchange=function(e){if(orig)orig.call(this,e);toepassen();};}
+    toepassen();
+    return {setPdfOverride:function(actief){pdfOverride=actief;toepassen();},getNaam:function(){return naamInput?naamInput.value.trim():'';}};
+  }
+
   // Eigen PDF-upload: alternatief voor het gegenereerde document. Herbruikbaar voor elk documenttype.
   var EIGEN_DOC_MIMES=['application/pdf','application/vnd.openxmlformats-officedocument.wordprocessingml.document','application/msword'];
   function eigenDocTypeOk(f){
@@ -695,6 +724,7 @@ function renderBegeleiderDashboard(app){
       +'<div id="bg-doc-body">'
       +'<textarea id="bg-doc-tekst" style="width:100%;height:280px;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:Georgia,serif;font-size:12px;line-height:1.8;padding:1rem;outline:none;resize:vertical">'+esc(tekst)+'</textarea>'
       +akkoordHtml('bg-doc-akkoord')
+      +(type==='loi'?interneGoedkeuringHtml('bg-goedkeuring-naam'):'')
       +'<div style="display:flex;gap:8px;margin-top:.75rem">'
       +'<button id="bg-print" class="btn-ghost" style="font-size:12px;padding:6px 14px">&#128196; Print</button>'
       +'<button id="bg-email" class="btn" style="font-size:12px;padding:6px 14px;background:'+kleuren[type]+'">&#9993; Verstuur naar partijen</button>'
@@ -712,11 +742,13 @@ function renderBegeleiderDashboard(app){
       bgDocToggle.innerHTML=open?'&#9660; Uitklappen':'&#9650; Inklappen';
     };
     var bgAkkoordCtrl=wireAkkoord('bg-doc-akkoord', ['bg-email','bg-signhost']);
+    var bgGoedkeuringCtrl=type==='loi'?wireInterneGoedkeuring('bg-goedkeuring-naam','bg-doc-akkoord',['bg-email','bg-signhost']):null;
     var bgPdfStaat={base64:null,naam:null};
     wireEigenPdf('bg-pdf', bgPdfStaat, function(actief){
       document.getElementById('bg-print').disabled=actief;
       document.getElementById('bg-print').style.opacity=actief?'.4':'1';
       bgAkkoordCtrl.setOverride(actief);
+      if(bgGoedkeuringCtrl)bgGoedkeuringCtrl.setPdfOverride(actief);
     });
     document.getElementById('bg-print').onclick=function(){ printDoc(document.getElementById('bg-doc-tekst').value, {nda:'NDA',loi:'Letter of Intent',bem:'Bemiddelingsovereenkomst',excl:'Exclusiviteitsbrief'}[type]||type, type); };
     // Scroll naar doc output zodat knoppen zichtbaar zijn
@@ -724,6 +756,7 @@ function renderBegeleiderDashboard(app){
     if(docOutEl)setTimeout(function(){docOutEl.scrollIntoView({behavior:'smooth',block:'nearest'});},100);
     document.getElementById('bg-email').onclick=async function(){
       var ebtn=this;ebtn.disabled=true;ebtn.textContent='Versturen...';
+      if(type==='loi')secAuditLog('interne_goedkeuring',{document_type:'loi',verzendkanaal:'email',goedgekeurd_door:(bgGoedkeuringCtrl?bgGoedkeuringCtrl.getNaam():'')});
       var vt=document.getElementById('bg-doc-tekst').value;
       // BEM naar opdrachtgever: koper als koper opdrachtgever is, anders verkoper
       var toList;
@@ -813,6 +846,7 @@ function renderBegeleiderDashboard(app){
         var email=document.getElementById('bg-sh-email').value.trim();
         var errEl=document.getElementById('bg-sh-err');
         if(!email){errEl.style.display='block';errEl.textContent='E-mail verplicht';btn.disabled=false;btn.textContent='Verstuur';return;}
+        if(type==='loi')secAuditLog('interne_goedkeuring',{document_type:'loi',verzendkanaal:'signhost',goedgekeurd_door:(bgGoedkeuringCtrl?bgGoedkeuringCtrl.getNaam():'')});
         var r=await fetch(WORKER+'/mna/signhost/stuur',{method:'POST',
           headers:{'Content-Type':'application/json','x-tussen-key':S.code},
           body:JSON.stringify({code:S.traject.id,doc_type:type,ondertekenaar_naam:naam,ondertekenaar_email:email,doc_tekst:tekst})});
@@ -1143,6 +1177,7 @@ function renderBegeleiderDashboard(app){
           +'<div style="font-size:11px;font-weight:600;color:#a0522d;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.75rem">Indicatieve bieding gegenereerd</div>'
           +'<textarea id="bd-doc-tekst" style="width:100%;height:320px;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:Georgia,serif;font-size:12px;line-height:1.8;padding:1rem;outline:none;resize:vertical">'+esc(tekst)+'</textarea>'
           +akkoordHtml('bd-doc-akkoord')
+          +interneGoedkeuringHtml('bd-goedkeuring-naam')
           +'<div style="display:flex;gap:8px;margin-top:.75rem">'
           +'<button id="bd-print" class="btn-ghost" style="font-size:12px;padding:6px 14px">&#128196; Print</button>'
           +'<button id="bd-email" class="btn" style="font-size:12px;padding:6px 14px;background:#a0522d">&#9993; Verstuur naar partijen</button>'
@@ -1159,15 +1194,18 @@ function renderBegeleiderDashboard(app){
         var docOutEl=document.getElementById('bg-doc-out');
         if(docOutEl)setTimeout(function(){docOutEl.scrollIntoView({behavior:'smooth',block:'nearest'});},100);
         var bdAkkoordCtrl=wireAkkoord('bd-doc-akkoord', ['bd-email']);
+        var bdGoedkeuringCtrl=wireInterneGoedkeuring('bd-goedkeuring-naam','bd-doc-akkoord',['bd-email']);
         var bdPdfStaat={base64:null,naam:null};
         wireEigenPdf('bd-pdf', bdPdfStaat, function(actief){
           document.getElementById('bd-print').disabled=actief;
           document.getElementById('bd-print').style.opacity=actief?'.4':'1';
           bdAkkoordCtrl.setOverride(actief);
+          bdGoedkeuringCtrl.setPdfOverride(actief);
         });
         document.getElementById('bd-print').onclick=function(){printDoc(document.getElementById('bd-doc-tekst').value,titel,'bieding');};
         document.getElementById('bd-email').onclick=async function(){
           var ebtn=this;ebtn.disabled=true;ebtn.textContent='Versturen...';
+          secAuditLog('interne_goedkeuring',{document_type:'bieding',verzendkanaal:'email',goedgekeurd_door:bdGoedkeuringCtrl.getNaam()});
           var toList=[t2.contact_email,t2.begeleider_email,t2.koper_email].filter(Boolean);
           var payload={code:S.traject.id,bieding_tekst:document.getElementById('bd-doc-tekst').value,to:toList};
           if(bdPdfStaat.base64){payload.eigen_pdf_base64=bdPdfStaat.base64;payload.eigen_pdf_naam=bdPdfStaat.naam;payload.eigen_pdf_mime=bdPdfStaat.mime;}
