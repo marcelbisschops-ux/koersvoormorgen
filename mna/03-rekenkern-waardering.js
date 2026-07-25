@@ -576,6 +576,79 @@ function dvTabelDCFGevoeligheid(gv){
   return dvRenderTabelHtml(kolommen,rows);
 }
 
+// CSV-export van het waarderingsscherm (25 juli 2026, op verzoek Marcel — CSV i.p.v. een echt .xlsx,
+// want dit platform heeft geen build-systeem/library om een OOXML-spreadsheet te schrijven; CSV opent
+// direct in Excel). Puntkomma als scheidingsteken (NL-Excel-standaard, want komma is het decimaalteken
+// in de Nederlandse locale) en een UTF-8 BOM zodat € en accenten goed weergegeven worden in Excel.
+function dvCsvVeld(x){
+  var s=String(x===null||x===undefined?'':x);
+  if(/[",;\n]/.test(s))return '"'+s.replace(/"/g,'""')+'"';
+  return s;
+}
+function dvExporteerWaarderingCsv(v){
+  var rows=[];
+  function regel(cols){rows.push(cols.map(dvCsvVeld).join(';'));}
+  function leeg(){rows.push('');}
+
+  regel(['Financiële basis']);
+  regel(['Omzet jaar 1',Math.round(v.o1)]);
+  regel(['Omzet jaar 2',Math.round(v.o2)]);
+  regel(['Omzet jaar 3',Math.round(v.o3)]);
+  regel(['EBITDA',Math.round(v.ebitdaAmt)]);
+  regel(['EBITDA-marge (%)',v.ebitdaPct.toFixed(1)]);
+  leeg();
+
+  regel(['Kengetallen & ratio\'s','Waarde']);
+  [
+    ['Recurring omzet (%)',v.recurring],['Klantverloop/churn (%)',v.churn],['Grootste klant (%)',v.top1pct],
+    ['Top 10 klanten (%)',v.top10pct],['Aantal klanten',v.aantalKlanten],['Totaal FTE',v.fte],
+    ['Aantal partners',v.aantalP],['Omzet per partner',v.omzetPerP?Math.round(v.omzetPerP):null],['Partnerbeloning',v.partnerBel?Math.round(v.partnerBel):null],
+    ['Debiteuren',v.debiteuren?Math.round(v.debiteuren):null],['Onderhanden werk',v.wip?Math.round(v.wip):null],['Declarabiliteit (%)',v.declarab],
+    ['Solvabiliteit EV/BT (%)',v.solvabiliteit!==null?v.solvabiliteit.toFixed(1):null],['ROE (%)',v.roe!==null?v.roe.toFixed(1):null],['ROA (%)',v.roa!==null?v.roa.toFixed(1):null],
+    ['Current ratio',v.currentRatio!==null?v.currentRatio.toFixed(2):null],['Quick ratio',v.quickRatio!==null?v.quickRatio.toFixed(2):null],['DSCR',v.dscr!==null?v.dscr.toFixed(2):null],
+    ['Netto schuld/EBITDA',v.netDebtEbitda!==null?v.netDebtEbitda.toFixed(2):null]
+  ].forEach(function(r){if(r[1]!==null&&r[1]!==undefined&&r[1]!==0)regel(r);});
+  leeg();
+
+  regel(['Waardebepaling as-is (EBITDA-methode)']);
+  regel(['Scenario','Multiple','Waarde (€)']);
+  regel(['Laag',v.mLaag,Math.round(v.wLaag)]);
+  regel(['Midden',v.mMid,Math.round(v.wMid)]);
+  regel(['Hoog',v.mHoog,Math.round(v.wHoog)]);
+  regel(['Omzetmethode ('+v.omzetFactor+'×)','',Math.round(v.wOmzet)]);
+  leeg();
+
+  regel(['Rolling forecast (3 jaar)']);
+  regel(['Jaar','Omzet (€)','EBITDA (€)','Waardebandbreedte laag (€)','Waardebandbreedte hoog (€)']);
+  var jLabels=['Huidig','Jaar +1','Jaar +2','Jaar +3'];
+  for(var j=0;j<4;j++){
+    regel([jLabels[j],Math.round(v.fc[j]),Math.round(v.fcE[j]),Math.round(v.fcW[j]*(v.mLaag/v.mMid)),Math.round(v.fcW[j]*(v.mHoog/v.mMid))]);
+  }
+  leeg();
+
+  regel(['Earn-out structuur (indicatief)']);
+  regel(['Moment','Omzet target (€)','Uitkering (€)','Cumulatief (€)']);
+  var cumul=v.fixedKoop;
+  regel(['Closing','',Math.round(v.fixedKoop),Math.round(cumul)]);
+  for(var k=1;k<=v.earnJaren;k++){
+    var tgt=v.o3*Math.pow(1+v.earnTarget/100,k);
+    cumul+=v.earnJaarlijks;
+    regel(['Jaar '+k,Math.round(tgt),Math.round(v.earnJaarlijks),Math.round(cumul)]);
+  }
+
+  return '﻿'+rows.join('\r\n');
+}
+window.exporteerWaarderingCsv=function(){
+  var v=dvBerekenWaardering();
+  var csv=dvExporteerWaarderingCsv(v);
+  var blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  a.href=url;a.download='Waardering_'+(S.code||'export')+'.csv';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
+
 function dvFmtTekst(t){
   if(!t) return '';
   t=t.replace(/^(##+ .+)/gm,function(m){return '<h3>'+m.replace(/^#+\s*/,'')+'</h3>';});
@@ -794,6 +867,7 @@ function renderWaardering(){
     +'<div class="hdr"><div class="brand">'+brandMerkHtml()+BRAND.platform+' &middot; Waardering'+versieLabel()+'</div>'
     +'<div style="display:flex;gap:8px">'
     +'<button class="btn-ghost btn-sm" onclick="window.print()">PDF</button>'
+    +'<button class="btn-ghost btn-sm" onclick="exporteerWaarderingCsv()" title="Downloadbaar als CSV — opent direct in Excel">CSV</button>'
     +'<button class="btn-ghost btn-sm" onclick="S.screen=(isTussen()?\'begeleider\':\'cover\');renderApp()">&#8592; Terug</button>'
     +'</div></div>'
     +'<div style="font-family:Playfair Display,serif;font-size:1.4rem;color:var(--head);font-weight:600;margin-bottom:.25rem">Waardebepaling</div>'
