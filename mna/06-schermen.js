@@ -292,10 +292,25 @@ function renderMain(){
       // belangrijkste financiële cijfervelden — zie setIfEmpty/applyOrConflict-aanroepen.
       var bronFragTitle=veldBronInfo&&veldBronInfo.bron_fragment?('Uit het document: &quot;'+esc(veldBronInfo.bron_fragment)+'&quot;'):'Automatisch ingevuld uit dit document — controleer de waarde.';
       var bronTag=(val&&ref)?' <span style="color:var(--gold-dark);font-size:9px;font-weight:600;cursor:help" title="'+bronFragTitle+'">&#128196; uit: '+esc(ref)+(veldBronInfo&&veldBronInfo.bron_fragment?' &#128172;':'')+'</span>':'';
+      // Audit-fix P2 (25 juli 2026, vierde ronde, Marcels keuze: hint tonen, nooit automatisch
+      // overschrijven — ebitdaNorm blijft een bewust door de begeleider gevalideerd veld): waarschuw
+      // niet-blokkerend als het ingevulde bedrag afwijkt van ebitda + normalisatie, voor het geval dat
+      // per ongeluk vergeten is de genormaliseerde EBITDA opnieuw te berekenen na een wijziging.
+      var ebitdaNormHint='';
+      if(f.id==='financieel'&&df.id==='ebitdaNorm'&&val){
+        var ebnBasis=(df.groepsniveau?S._groepData:S.data);
+        var ebnRuw=ebnBasis[f.id+'_ebitda'], ebnPost=ebnBasis[f.id+'_normalisatie'];
+        if(ebnRuw&&ebnPost){
+          var ebnVerwacht=parseGeld(ebnRuw)+parseGeld(ebnPost);
+          if(Math.abs(parseGeld(val)-ebnVerwacht)>1){
+            ebitdaNormHint='<div style="font-size:11px;color:var(--gold-dark);background:var(--gold-bg);border:1px solid var(--gold);border-radius:4px;padding:4px 8px;margin-top:4px">&#9888; Wijkt af van EBITDA + normalisatie ('+fmtGeld(ebnVerwacht)+') — controleer of dit bewust is.</div>';
+          }
+        }
+      }
       dataHtml+='<div class="f"><label>'+df.label+reqLabel(df)+(df.doc?' <span style="color:var(--gold);font-size:9px">&#128196; ref</span>':'')+bronTag
         +(hasConflict?' <span style="color:var(--gold);font-size:9px;font-weight:600" title="Document geeft andere waarde: '+esc(hasConflict)+'">&#9888; afwijking</span>':'')
         +(toontGroepsniveauBadge?' <span style="color:var(--muted);font-size:9px;font-weight:600" title="Dit veld geldt voor de hele groep, niet alleen voor de geselecteerde entiteit — wijzigingen gelden overal.">&#128279; geldt voor hele groep</span>':'')+'</label>'
-        +'<input type="text" id="df_'+df.id+'" value="'+esc(val)+'" placeholder="'+esc(df.ph)+'" class="'+(missing?'missing':'')+'" style="'+conflictStyle+'"'+conflictTitle+' oninput="userEdit(this)"></div>';
+        +'<input type="text" id="df_'+df.id+'" value="'+esc(val)+'" placeholder="'+esc(df.ph)+'" class="'+(missing?'missing':'')+'" style="'+conflictStyle+'"'+conflictTitle+' oninput="userEdit(this)">'+ebitdaNormHint+'</div>';
     }
     dataHtml+='</div>';
   });
