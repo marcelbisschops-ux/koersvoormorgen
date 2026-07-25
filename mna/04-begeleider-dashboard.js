@@ -848,7 +848,7 @@ function renderBegeleiderDashboard(app){
       +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('dv-leverage','Bankfinanciering (× bewezen EBITDA)',d.bankLeverage,0.1)+veld('dv-rente','Rente (%)',d.rentePct,0.1)+'</div>'
       +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('dv-vpb','VpB-tarief (%)',d.vpbPct,0.1)+veld('dv-capex','Capex (% van EBITDA)',d.capexPct,0.1)+'</div>'
       +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('dv-groei','Organische groei (%/jaar)',d.groeiPct,0.1)+veld('dv-horizon','Horizon schuldafbouw (jaren)',d.horizonJaren)+'</div>'
-      +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('dv-discontovoet','Discontovoet / WACC (%) — voor DCF-kruiscontrole',d.discontovoetPct,0.1)+'<div style="flex:1"></div></div>'
+      +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('dv-discontovoet','Discontovoet (%) — handmatige aanname, geen berekende WACC — voor DCF-kruiscontrole',d.discontovoetPct,0.1)+'<div style="flex:1"></div></div>'
       +'<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--sub);margin-bottom:1rem;cursor:pointer"><input type="checkbox" id="dv-bab-aan" style="width:15px;height:15px;accent-color:var(--gold-dark)"> Buy-and-build platformscenario meenemen</label>'
       +'<div id="dv-bab-velden" style="display:none">'
       +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('dv-bab-nper','Overnames per jaar',d.baOvernamesPerJaar)+veld('dv-bab-omvang','Gem. EBITDA per overname (€)',d.baOmvangEbitda)+'</div>'
