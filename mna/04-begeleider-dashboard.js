@@ -466,6 +466,9 @@ function renderBegeleiderDashboard(app){
     +(contractenAan
       ?'<button class="btn" id="bg-spa-actie" style="background:#5a5470;padding:10px;font-size:12px">&#128220; Aandachtspunten SPA</button>'
       :'<button class="btn" id="bg-spa-actie" disabled title="Module Contracten niet actief — neem contact op met ' + BRAND.kort + '" style="background:#5a5470;padding:10px;font-size:12px;opacity:.45;cursor:not-allowed">&#128220; Aandachtspunten SPA</button>')
+    +(contractenAan
+      ?'<button class="btn" id="bg-closing-actie" style="background:#2d6a4f;padding:10px;font-size:12px">&#127937; Closing-checklist</button>'
+      :'<button class="btn" id="bg-closing-actie" disabled title="Module Contracten niet actief — neem contact op met ' + BRAND.kort + '" style="background:#2d6a4f;padding:10px;font-size:12px;opacity:.45;cursor:not-allowed">&#127937; Closing-checklist</button>')
     +'</div>'
     +(contractenAan?'':'<div style="font-size:11px;color:var(--muted);margin-top:-.5rem;margin-bottom:.75rem">&#128274; Module Contracten niet actief — neem contact op met ' + BRAND.kort + ' om deze module te activeren.</div>')
     +'<div style="margin-bottom:1.25rem"><button class="btn-outline btn-sm" id="bg-eigendoc-actie">&#128206; Eigen document versturen</button><div style="font-size:11px;color:var(--muted);margin-top:4px">Upload een PDF of Word-bestand en deel het rechtstreeks met verkoper en/of koper — werkt ook zonder de module Contracten.</div></div>'
@@ -1266,6 +1269,29 @@ function renderBegeleiderDashboard(app){
     document.getElementById('spa-print').onclick=function(){printDoc(document.getElementById('spa-doc-tekst').value,titel,'spa');};
   }
 
+  // ===== CLOSING-CHECKLIST: bestond al als tekst-sjabloon in de backend (BF_TEMPLATES.closing),
+  // maar was nergens in de UI ontsloten — dus feitelijk onbruikbaar. Zelfde patroon als de SPA-
+  // aandachtspuntenlijst hierboven: alleen het statische sjabloon ophalen en tonen, geen deal-
+  // specifieke invulling of AI-generatie (het is een procesmatige controlelijst, geen document).
+  async function toonClosingModal(){
+    var t2=S.traject||{};
+    var out=document.getElementById('bg-doc-out');out.style.display='block';
+    out.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem">Closing-checklist laden...</div>';
+    var docOutEl=document.getElementById('bg-doc-out');
+    if(docOutEl)setTimeout(function(){docOutEl.scrollIntoView({behavior:'smooth',block:'nearest'});},100);
+    var tplD=await fetch(WORKER+'/mna/template/closing?email='+encodeURIComponent(t2.begeleider_email||'')+'&code='+encodeURIComponent(S.code)).then(function(r){return r.json();}).catch(function(){return{ok:false};});
+    var tekst=tplD.ok&&tplD.tekst?tplD.tekst:'[closing-checklist niet beschikbaar]';
+    var titel='Closing-checklist — '+(t2.kantoor_naam||S.code);
+    out.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem">'
+      +'<div style="font-size:11px;font-weight:600;color:#2d6a4f;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.5rem">Closing-checklist</div>'
+      +'<div style="font-size:12px;color:var(--gold-dark);background:var(--gold-bg);border:1px solid var(--gold);border-radius:6px;padding:.5rem .75rem;margin-bottom:.75rem;line-height:1.5">&#9888; Algemene controlelijst ter voorbereiding op closing — geen juridisch of fiscaal advies, en niet automatisch aangepast aan de specifieke transactiestructuur van dit traject.</div>'
+      +'<textarea id="closing-doc-tekst" readonly style="width:100%;height:340px;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:Georgia,serif;font-size:12px;line-height:1.8;padding:1rem;outline:none;resize:vertical">'+esc(tekst)+'</textarea>'
+      +'<div style="display:flex;gap:8px;margin-top:.75rem">'
+      +'<button id="closing-print" class="btn-ghost" style="font-size:12px;padding:6px 14px">&#128196; Print / PDF</button>'
+      +'</div></div>';
+    document.getElementById('closing-print').onclick=function(){printDoc(document.getElementById('closing-doc-tekst').value,titel,'closing');};
+  }
+
   document.getElementById('bg-nda-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op met ' + BRAND.kort + '.','err');return;} toonDocWaarschuwing('nda', function(){ bgDoc('nda'); }); };
   document.getElementById('bg-loi-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op met ' + BRAND.kort + '.','err');return;} toonDocWaarschuwing('loi', function(){ bgDoc('loi'); }); };
   document.getElementById('bg-bem-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op met ' + BRAND.kort + '.','err');return;} toonDocWaarschuwing('bem', function(){ bgDoc('bem'); }); };
@@ -1273,6 +1299,11 @@ function renderBegeleiderDashboard(app){
   document.getElementById('bg-dealvoorstel-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op met ' + BRAND.kort + '.','err');return;} toonDocWaarschuwing('dealvoorstel', function(){ toonDealvoorstelModal(); }); };
   document.getElementById('bg-bieding-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op met ' + BRAND.kort + '.','err');return;} toonDocWaarschuwing('bieding', function(){ toonBiedingModal(); }); };
   document.getElementById('bg-spa-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op met ' + BRAND.kort + '.','err');return;} toonDocWaarschuwing('spa', function(){ toonSpaModal(); }); };
+  // Geen toonDocWaarschuwing hier: de closing-checklist is een generieke controlelijst zonder
+  // partij-naam-placeholders (in tegenstelling tot NDA/LoI/BEM/Excl/SPA), dus de kopernaam-/
+  // kantoornaam-waarschuwing is hier niet relevant — en 'closing' staat niet in de labels-map van
+  // die functie, wat een "undefined"-titel in de waarschuwingsdialoog zou opleveren.
+  document.getElementById('bg-closing-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op met ' + BRAND.kort + '.','err');return;} toonClosingModal(); };
   document.getElementById('bg-eigendoc-actie').onclick=function(){ toonEigenDocumentModal(); };
   document.getElementById('bg-dataroom-actie').onclick=function(){ S.screen='dataroom'; loadDataroom(); };
 
