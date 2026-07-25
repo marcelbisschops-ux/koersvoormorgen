@@ -878,18 +878,29 @@ function renderBegeleiderDashboard(app){
     function veld(id,label,val,step){
       return '<div style="flex:1"><label for="'+id+'" style="'+lbl+'">'+label+'</label><input type="number" id="'+id+'" value="'+val+'" '+(step?'step="'+step+'"':'')+' style="'+inp+'"></div>';
     }
+    // Audit-fix P3 (25 juli 2026, vijfde ronde): 16 altijd-zichtbare velden liepen ongegroepeerd
+    // onder elkaar door — cognitieve overload. Puur visuele sectiekopjes toegevoegd, geen enkel
+    // veld-ID of de rekenlogica in dv-ok hieronder is aangeraakt.
+    var sectieHdr='font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--gold-dark);margin:1.15rem 0 .5rem;padding-top:.85rem;border-top:1px solid var(--border2)';
+    function sectie(titel){ return '<div style="'+sectieHdr+'">'+titel+'</div>'; }
     var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:400;display:flex;align-items:center;justify-content:center;padding:1.5rem';
     var mo=document.createElement('div');mo.setAttribute('role','dialog');mo.setAttribute('aria-modal','true');mo.setAttribute('aria-labelledby','dv-modal-titel');mo.style.cssText='background:var(--panel);border-radius:10px;padding:2rem;max-width:640px;width:100%;max-height:92vh;overflow-y:auto';
     mo.innerHTML='<div id="dv-modal-titel" style="font-family:Playfair Display,serif;font-size:1.15rem;color:#1a1815;font-weight:600;margin-bottom:.25rem">&#128202; Dealvoorstel — dealparameters</div>'
       +'<div style="font-size:12px;color:#8a8880;margin-bottom:1.25rem">Deze cijfers worden exact zo berekend en meegenomen — de AI verzint geen eigen bedragen of multiples.</div>'
       +'<div style="margin-bottom:1rem"><label style="'+lbl+'">Tegenpartij (koper)</label><input type="text" id="dv-koper" value="'+esc(d.koperNaam)+'" placeholder="Naam kopende partij" style="'+inp+'"></div>'
+      +sectie('EBITDA & belang')
       +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('dv-belang','Belang koper bij closing (%)',d.belangPct)+veld('dv-ebitda-bewezen','Bewezen EBITDA laatste boekjaar (€)',d.ebitdaBewezen)+'</div>'
       +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('dv-ebitda-prognose','Prognose-EBITDA komend jaar (€)',d.ebitdaPrognose)+veld('dv-cliff','Cliff-drempel (% van prognose)',d.cliffPct)+'</div>'
+      +sectie('Multiples & earn-out')
       +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('dv-mult-basis','Basis-multiple (bewezen)',d.multipleBasis,0.1)+veld('dv-mult-boven','Bovengrens-multiple (bij prognose)',d.multipleBovengrens,0.1)+'</div>'
+      +sectie('Escrow')
       +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('dv-escrow-pct','Escrow (%)',d.escrowPct)+veld('dv-escrow-mnd','Escrow-duur (maanden)',d.escrowMaanden)+'</div>'
+      +sectie('Financiering')
       +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('dv-leverage','Bankfinanciering (× bewezen EBITDA)',d.bankLeverage,0.1)+veld('dv-rente','Rente (%)',d.rentePct,0.1)+'</div>'
+      +sectie('Fiscaal & operationeel')
       +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('dv-vpb','VpB-tarief (%)',d.vpbPct,0.1)+veld('dv-capex','Capex (% van EBITDA)',d.capexPct,0.1)+'</div>'
       +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('dv-groei','Organische groei (%/jaar)',d.groeiPct,0.1)+veld('dv-horizon','Horizon schuldafbouw (jaren)',d.horizonJaren)+'</div>'
+      +sectie('Kruiscontrole')
       +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('dv-discontovoet','Discontovoet (%) — handmatige aanname, geen berekende WACC — voor DCF-kruiscontrole',d.discontovoetPct,0.1)+'<div style="flex:1"></div></div>'
       +'<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--sub);margin-bottom:1rem;cursor:pointer"><input type="checkbox" id="dv-bab-aan" style="width:15px;height:15px;accent-color:var(--gold-dark)"> Buy-and-build platformscenario meenemen</label>'
       +'<div id="dv-bab-velden" style="display:none">'
