@@ -88,7 +88,9 @@ function dvGetDefaults(){
     synergieKostenJaarlijks:0,
     synergieOmzetJaarlijks:0,
     synergieRealisatieJaren:2,
-    synergieImplementatiekosten:0
+    synergieImplementatiekosten:0,
+    scenarioAan:false,
+    scenarioGroeiDeltaPct:5
   };
 }
 
@@ -277,6 +279,28 @@ function dvBerekenSynergie(p){
   return {rows:rows,npv:npv,implementatiekosten:p.synergieImplementatiekosten||0};
 }
 
+// Scenarioanalyse (25 juli 2026): drie operationele scenario's (downside/base/upside) op de
+// groeivoet, breder dan de bestaande EBITDA×multiple-gevoeligheidstabel (dvBerekenGevoeligheid) die
+// alleen één jaar EBITDA varieert tegen de multiple-range. Hier groeit de bewezen EBITDA over de
+// volledige horizon (dezelfde horizonJaren als de schuldafbouw) met een af- of opwaartse afwijking
+// t.o.v. de basis-groeivoet. scenarioGroeiDeltaPct is een door de gebruiker aan te passen swing (geen
+// vastgestelde norm) — vergelijkbaar met de al bestaande ±10%-scenario's in dvBerekenPrijsmechanisme.
+function dvBerekenScenarios(p){
+  if(!p.scenarioAan)return null;
+  var delta=p.scenarioGroeiDeltaPct||0;
+  var varianten=[
+    {label:'Downside',groeiDelta:-delta},
+    {label:'Base case',groeiDelta:0},
+    {label:'Upside',groeiDelta:delta}
+  ];
+  return varianten.map(function(v){
+    var groei=(p.groeiPct+v.groeiDelta)/100;
+    var ebitda=p.ebitdaBewezen;
+    for(var j=1;j<=p.horizonJaren;j++){ebitda*=(1+groei);}
+    return {label:v.label,groeiPct:p.groeiPct+v.groeiDelta,ebitdaEind:ebitda,waardeLaag:ebitda*p.multipleBasis,waardeHoog:ebitda*p.multipleBovengrens};
+  });
+}
+
 function dvRenderTabelHtml(kolommen,rows){
   var head='<tr>'+kolommen.map(function(k,i){return '<th style="padding:6px 10px;text-align:'+(i===0?'left':'right')+';font-size:9pt;text-transform:uppercase;letter-spacing:.05em;color:#8a8880;border-bottom:2px solid #ccc;white-space:nowrap">'+k+'</th>';}).join('')+'</tr>';
   var body=rows.map(function(r){
@@ -353,6 +377,16 @@ function dvTabelSynergie(syn){
   var html=dvRenderTabelHtml(['Jaar','Kostensynergie','Omzetsynergie','Totaal','Contant gemaakt'],rows);
   html+='<div style="font-size:12px;color:#8a8880;padding:.6rem .75rem;background:#f6f5f2;border-radius:6px;margin-top:-.75rem">'
     +'Eenmalige implementatiekosten: <strong>'+dvMln(syn.implementatiekosten)+' mln</strong> &nbsp;|&nbsp; NPV synergieën (na aftrek implementatiekosten): <strong>'+dvMln(syn.npv)+' mln</strong>'
+    +'</div>';
+  return html;
+}
+
+function dvTabelScenarios(scenarios,p){
+  if(!scenarios)return '';
+  var rows=scenarios.map(function(s){return [s.label,s.groeiPct.toFixed(1)+'%/jaar',dvMln(s.ebitdaEind),dvMln(s.waardeLaag)+' – '+dvMln(s.waardeHoog)];});
+  var html=dvRenderTabelHtml(['Scenario','Groeivoet','EBITDA na '+p.horizonJaren+' jaar','Ondernemingswaarde (€ mln)'],rows);
+  html+='<div style="font-size:12px;color:#8a8880;padding:.6rem .75rem;background:#f6f5f2;border-radius:6px;margin-top:-.75rem">'
+    +'Downside/upside wijken '+p.scenarioGroeiDeltaPct+' procentpunt af van de basis-groeivoet ('+p.groeiPct+'%/jaar) — zelf ingestelde bandbreedte, geen vastgestelde norm.'
     +'</div>';
   return html;
 }

@@ -873,6 +873,11 @@ function renderBegeleiderDashboard(app){
       +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('dv-syn-kosten','Kostensynergie op jaarbasis (€, volledig gerealiseerd)',d.synergieKostenJaarlijks)+veld('dv-syn-omzet','Omzetsynergie op jaarbasis (€, volledig gerealiseerd)',d.synergieOmzetJaarlijks)+'</div>'
       +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('dv-syn-realisatie','Realisatietermijn (jaren tot volledig)',d.synergieRealisatieJaren)+veld('dv-syn-implementatie','Eenmalige implementatiekosten (€)',d.synergieImplementatiekosten)+'</div>'
       +'</div>'
+      +'<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--sub);margin-bottom:1rem;cursor:pointer"><input type="checkbox" id="dv-scen-aan" style="width:15px;height:15px;accent-color:var(--gold-dark)"> Scenarioanalyse tonen (downside/base/upside op de groeivoet)</label>'
+      +'<div id="dv-scen-velden" style="display:none">'
+      +'<div style="font-size:11px;color:#8a8880;margin-bottom:.75rem">Breder dan de gevoeligheidstabel hieronder (die alleen EBITDA×multiple varieert): hier groeit de bewezen EBITDA over de volledige horizon door met een af- of opwaartse afwijking op de groeivoet.</div>'
+      +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('dv-scen-delta','Downside/upside-afwijking op groeivoet (procentpunt, zelf in te stellen)',d.scenarioGroeiDeltaPct,0.5)+'<div style="flex:1"></div></div>'
+      +'</div>'
       +'<div id="dv-err" style="display:none;color:#e05252;font-size:12px;margin-bottom:.75rem"></div>'
       +'<div style="display:flex;gap:8px;justify-content:flex-end">'
       +'<button id="dv-ann" style="background:transparent;border:1px solid #c8c5bc;padding:8px 16px;border-radius:6px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:13px">Annuleren</button>'
@@ -885,6 +890,7 @@ function renderBegeleiderDashboard(app){
     document.getElementById('dv-vl-aan').onchange=function(){document.getElementById('dv-vl-velden').style.display=this.checked?'block':'none';};
     document.getElementById('dv-alt-aan').onchange=function(){document.getElementById('dv-alt-velden').style.display=this.checked?'block':'none';};
     document.getElementById('dv-syn-aan').onchange=function(){document.getElementById('dv-syn-velden').style.display=this.checked?'block':'none';};
+    document.getElementById('dv-scen-aan').onchange=function(){document.getElementById('dv-scen-velden').style.display=this.checked?'block':'none';};
 
     document.getElementById('dv-ok').onclick=async function(){
       var btn=this;btn.disabled=true;btn.textContent='Genereren... (20-40 sec)';
@@ -927,7 +933,9 @@ function renderBegeleiderDashboard(app){
         synergieKostenJaarlijks:parseFloat(document.getElementById('dv-syn-kosten').value)||0,
         synergieOmzetJaarlijks:parseFloat(document.getElementById('dv-syn-omzet').value)||0,
         synergieRealisatieJaren:parseInt(document.getElementById('dv-syn-realisatie').value)||2,
-        synergieImplementatiekosten:parseFloat(document.getElementById('dv-syn-implementatie').value)||0
+        synergieImplementatiekosten:parseFloat(document.getElementById('dv-syn-implementatie').value)||0,
+        scenarioAan:document.getElementById('dv-scen-aan').checked,
+        scenarioGroeiDeltaPct:parseFloat(document.getElementById('dv-scen-delta').value)||5
       };
       if(!p.ebitdaBewezen||!p.ebitdaPrognose){
         errEl.textContent='Vul zowel de bewezen als de prognose-EBITDA in.';errEl.style.display='block';
@@ -945,6 +953,7 @@ function renderBegeleiderDashboard(app){
         var vendorLoanRows=dvBerekenVendorLoan(p);
         var altWaardering=p.altWaarderingAan?dvBerekenAlternatieveWaarderingen(p):null;
         var synergie=dvBerekenSynergie(p);
+        var scenarios=dvBerekenScenarios(p);
         var gevoeligheid=dvBerekenGevoeligheid(p);
         var dcf=dvBerekenDCF(p,schuldafbouw);
         var tabelMap={
@@ -960,7 +969,8 @@ function renderBegeleiderDashboard(app){
           BUYANDBUILD:buyAndBuildRows?dvTabelBuyAndBuild(buyAndBuildRows):'',
           VENDORLOAN:vendorLoanRows?dvTabelVendorLoan(vendorLoanRows):'',
           ALTWAARDERING:altWaardering?dvTabelAlternatieveWaarderingen(altWaardering,p):'',
-          SYNERGIE:synergie?dvTabelSynergie(synergie):''
+          SYNERGIE:synergie?dvTabelSynergie(synergie):'',
+          SCENARIOS:scenarios?dvTabelScenarios(scenarios,p):''
         };
         var sectorProfiel=getSectorProfiel();
         var contextBlok='Sector: '+(sectorProfiel.label||'MKB')+'. Verkopende partij: '+(t2.kantoor_naam||S.code)+'. Kopende partij: '+p.koperNaam+'.\n'
@@ -972,7 +982,8 @@ function renderBegeleiderDashboard(app){
           +'Transactiestructuur: koper verwerft '+p.belangPct+'% bij closing; de verkopende partij behoudt '+(100-p.belangPct)+'%.'
           +(vendorLoanRows?('\nVendor loan (verkoperslening): €'+Math.round(p.vendorLoanBedrag)+' tegen '+p.vendorLoanRentePct+'% rente, looptijd '+p.vendorLoanJaren+' jaar, '+(p.vendorLoanAflossingsvrij?'aflossingsvrij met bullet-aflossing van de hoofdsom in het laatste jaar':'lineaire jaarlijkse aflossing')+'. Dit is een door de verkopende partij aan de koper verstrekte, achtergestelde lening — een aparte verplichting naast de bankfinanciering.'):'')
           +(altWaardering?('\nAlternatieve waarderingsmethodes (ter controle naast de EBITDA-multiple hierboven): intrinsieke waarde (netto vermogenswaarde) '+(altWaardering.intrinsiek!==null?'€'+Math.round(altWaardering.intrinsiek):'onbekend, eigen vermogen niet ingevuld')+'; liquidatiewaarde '+(altWaardering.liquidatiewaarde!==null?'€'+Math.round(altWaardering.liquidatiewaarde)+' (op basis van zelf ingevoerde aannames: '+p.liqDebiteurenPct+'% debiteuren inbaar, '+p.liqWipPct+'% OHW inbaar, '+p.liqKostenPct+'% liquidatiekosten — geen vastgestelde branchenorm)':'onbekend, balansvelden niet volledig ingevuld')+'; goodwill-methode '+(altWaardering.goodwill!==null?'€'+Math.round(altWaardering.goodwill)+' bij '+p.goodwillPct+'% van de laatste jaaromzet (zelf gekozen percentage, geen branchenorm)':'niet berekend, geen percentage ingevoerd')+'.'):'')
-          +(synergie?('\nSynergie-analyse: kostensynergie €'+Math.round(p.synergieKostenJaarlijks)+'/jaar en omzetsynergie €'+Math.round(p.synergieOmzetJaarlijks)+'/jaar op volle kracht, opgebouwd over '+p.synergieRealisatieJaren+' jaar, eenmalige implementatiekosten €'+Math.round(p.synergieImplementatiekosten)+'. NPV van de synergieën over de horizon van '+p.horizonJaren+' jaar (tegen dezelfde discontovoet als de DCF): €'+Math.round(synergie.npv)+'. Deze bedragen zijn eigen inschattingen van de begeleider, geen automatische berekening uit de DD-data.'):'');
+          +(synergie?('\nSynergie-analyse: kostensynergie €'+Math.round(p.synergieKostenJaarlijks)+'/jaar en omzetsynergie €'+Math.round(p.synergieOmzetJaarlijks)+'/jaar op volle kracht, opgebouwd over '+p.synergieRealisatieJaren+' jaar, eenmalige implementatiekosten €'+Math.round(p.synergieImplementatiekosten)+'. NPV van de synergieën over de horizon van '+p.horizonJaren+' jaar (tegen dezelfde discontovoet als de DCF): €'+Math.round(synergie.npv)+'. Deze bedragen zijn eigen inschattingen van de begeleider, geen automatische berekening uit de DD-data.'):'')
+          +(scenarios?('\nScenarioanalyse (downside/base/upside, '+p.scenarioGroeiDeltaPct+' procentpunt afwijking op de groeivoet, zelf ingestelde bandbreedte): '+scenarios.map(function(s){return s.label+' — groeivoet '+s.groeiPct.toFixed(1)+'%/jaar, EBITDA na '+p.horizonJaren+' jaar €'+Math.round(s.ebitdaEind)+', ondernemingswaarde €'+Math.round(s.waardeLaag)+'–€'+Math.round(s.waardeHoog);}).join('; ')+'.'):'');
         var koppen='## Managementsamenvatting\n(3-5 bullets over de kern van het voorstel, dan één alinea "In één zin")\n\n'
           +'## Uitgangspunten & de cijfers\n(korte toelichting op de omzet-/EBITDA-ontwikkeling)\n[TABEL:CIJFERS]\n\n'
           +'## Cijferoverzicht & interpretatie\n(bespreek feitelijk wat de aangeleverde cijfers hieronder betekenen voor risico en waardering — klantconcentratie, recurring omzet, partnerafhankelijkheid, personeelskosten; herhaal en duid alleen wat er staat, verzin niets)\n[TABEL:CIJFEROVERZICHT]\n\n'
@@ -980,6 +991,7 @@ function renderBegeleiderDashboard(app){
           +(altWaardering?'## Alternatieve waarderingsmethodes\n(toon deze drie methodes als controle naast de EBITDA-multiple hierboven — benoem expliciet dat de liquidatie- en goodwill-percentages zelf gekozen aannames zijn en GEEN vastgestelde branchenorm; verzin geen ander percentage dan wat in de context staat)\n[TABEL:ALTWAARDERING]\n\n':'')
           +(synergie?'## Synergie-analyse\n(leg uit dat kosten- en omzetsynergieën stapsgewijs oplopen tot volledige realisatie, en interpreteer de NPV — benoem expliciet dat dit eigen inschattingen van de begeleider zijn, geen berekening uit de due-diligence-data)\n[TABEL:SYNERGIE]\n\n':'')
           +'## Gevoeligheidsanalyse\n(korte toelichting hoe de ondernemingswaarde varieert met EBITDA-realisatie en multiple)\n[TABEL:GEVOELIGHEID]\n\n'
+          +(scenarios?'## Scenarioanalyse: downside/base/upside\n(leg uit dat dit een bredere scenarioanalyse is dan de gevoeligheidstabel hierboven — hier groeit de EBITDA over de volledige horizon door bij een af- of opwaartse groeivoet; benoem expliciet dat de bandbreedte een zelf ingestelde aanname is, geen vastgestelde norm)\n[TABEL:SCENARIOS]\n\n':'')
           +'## Meerjarige trend\n(korte toelichting op de omzetgroei over de jaren; vermeld expliciet dat de EBITDA-marge maar over één jaar bekend is)\n[TABEL:TREND]\n\n'
           +'## Vergelijkbare transacties\n(leg in 2-3 zinnen uit hoe de gekozen multiple-range zich verhoudt tot onderstaande sectorreferenties; verzin geen eigen transacties, gebruik uitsluitend de tekst hieronder)\n[TABEL:VERGELIJKBAAR]\n\n'
           +'## Prijsmechanisme\n(leg uit hoe de multiple meebeweegt met de gerealiseerde EBITDA, en waarom de cliff-drempel de koper beschermt)\n[TABEL:PRIJSMECHANISME]\n\n'
