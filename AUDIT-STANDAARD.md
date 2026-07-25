@@ -114,6 +114,19 @@ Controleer volledige implementatie van:
 - **Liquidatiewaarde**: correcte implementatie.
 - **Goodwill**: overwinstmethode; kapitalisatiemethode; economische goodwill.
 
+**Verplichte werkwijze bij elke controle van dit onderdeel** (toegevoegd 25 juli 2026, na een
+externe "Enterprise Validation Framework"-testset van Marcel — zie logboek voor welke onderdelen
+daarvan wel/niet zijn overgenomen en waarom): voor elke waarderingsformule die gecontroleerd wordt,
+(1) toon de gebruikte formule expliciet, (2) reken een concreet testgeval onafhankelijk na met de
+hand/een los scriptje (niet vertrouwen op de code zelf om zichzelf te controleren), (3) vergelijk
+met de daadwerkelijke functie-uitkomst, (4) stress-test met 0/negatieve/extreme invoer op
+crash/NaN/Infinity, (5) controleer reproduceerbaarheid (zelfde invoer → zelfde uitkomst — triviaal
+waar, maar wel controleren, want een toekomstige niet-deterministische toevoeging zou dit breken).
+Wanneer een gecontroleerd onderdeel (bijv. CAPM-gebaseerde WACC-opbouw, een volledige
+resultatenrekening-opbouw vanaf omzet, peer-group-multiples, Monte Carlo) niet in dit platform
+bestaat: markeer expliciet **N.V.T. — niet geïmplementeerd in dit datamodel**, nooit een fictieve
+berekening ophangen aan data die het platform niet vastlegt.
+
 ### Financiële analyse
 EBITDA; EBIT; Nettowinst; Brutomarge; Current Ratio; Quick Ratio; Solvabiliteit; Rentabiliteit;
 ROE; ROA; ROS; DSCR; Interest Coverage; Net Debt; Working Capital; Cash Conversion; Vrije
@@ -210,6 +223,35 @@ wordt als dat verandert. Elke audit dekt zowel de frontend- als de backend-repo;
 alleen één van beide behandelt telt niet als volledig.
 
 ## Logboek van uitgevoerde audits
+
+- **25 juli 2026 (externe testset — "Enterprise Validation Framework", 21 modules EVF-001 t/m
+  EVF-026, door Marcel aangeleverd)** — op zijn instructie ("alleen die onderdelen toevoegen die
+  relevant zijn voor mijn platform en die nog niet in je eigen script zitten") getrieerd i.p.v.
+  letterlijk uitgevoerd: de meeste modules (PPA/IFRS3, CAPM-WACC-opbouw, peer-group-multiplestatistiek,
+  Monte Carlo, LBO-cash-sweep, ESG-scoring-engine, formele pentest/CVSS, 24-uurs-loadtests met
+  duizenden gelijktijdige gebruikers, organisatie-governance/RACI) bestaan niet in dit platform of
+  vergen infrastructuur/tooling die hier niet beschikbaar is — expliciet als N.V.T. gemarkeerd,
+  niet uitgevoerd met verzonnen data. Het financieel-rekenkundige deel (EVF-001/002/004/005) is wél
+  uitgevoerd als een echte, onafhankelijke herberekening tegen de daadwerkelijke code
+  (`mna/03-rekenkern-waardering.js`) met de door Marcel aangeleverde testcijfers (Alpha Holding BV),
+  plus stress-tests (nul/negatief/extreem) en een reproduceerbaarheidscheck — 16/16 geslaagd (één
+  aanvankelijke "fout" bleek een eigen testscript-fout, geen platformbug: ontbrekende `vpbPct` in de
+  teststub, niet in de code zelf).
+
+  **Eén nieuwe, echte bevinding (geen P1/P2 — bewuste, veilige-richting vereenvoudiging, geen bug):**
+  de DCF-vrije-kasstroom belast de volledige EBITDA i.p.v. EBIT (EBITDA minus afschrijvingen/
+  amortisatie) — standaard corporate-finance-theorie belast EBIT en telt D&A daarna niet-cash terug
+  op (het "depreciation tax shield"). Het platform kent geen los DD-veld voor afschrijvingen/
+  amortisatie (zit besloten in het EBITDA-cijfer), dus dit is een structurele modelkeuze, geen losse
+  fout — en werkt in de veilige richting (onderschat de FCF/waarde licht, i.p.v. overschat, in
+  tegenstelling tot de eerdere P1 #6-bug van dezelfde dag die wél overschatte). Bewust niet blind
+  gefixt: zou een nieuw DD-veld (afschrijvingen) vereisen, een scope-keuze net als bij eerdere
+  P1-punten vandaag — aan Marcel voorgelegd, niet unilateral gebouwd.
+
+  De methodologie (formule tonen, onafhankelijk narekenen, vergelijken, stress-testen,
+  reproduceerbaarheid checken) is overgenomen als vaste werkwijze-eis voor de
+  Waarderingsmodellen-sectie hierboven — dat is het deel van deze externe testset dat aantoonbaar
+  waarde toevoegde aan de bestaande audit-opdracht.
 
 - **25 juli 2026 (cadans-wijziging)** — Marcel: cadans van elk kwartaal naar elke maand, wegens het
   hoge bouwtempo (12 features in één sessie op 25 juli) — sneller signaal nodig dan een kwartaal kan
