@@ -573,6 +573,57 @@ alleen één van beide behandelt telt niet als volledig.
     ze opnieuw aan te maken); een fout hierin is niet lokaal te herstellen zoals de meeste
     andere fixes vandaag. Niet blind gedaan.
 
+  ---
+
+  **Vijfde ronde — volledige heraudit, 25 juli 2026 (op Marcels verzoek: "welk cijfer geef je
+  platform nu?" → "ja [draai de audit opnieuw] en maak daarna een back-up").** Vijf onafhankelijke
+  deelaudits (Explore-agents, elk met eigen scope: architectuur/backend/data, security, frontend/
+  UX/API, cloud/deployment/compliance, M&A-functionaliteit) plus een eigen, handmatige
+  onafhankelijke herberekening van de volledige waarderingsrekenkern (Node-testscript,
+  `mna/03-rekenkern-waardering.js` geladen in een vm-sandbox, 50 checks: EBITDA-multiple, DCF/
+  Gordon-Growth-geldigheid, Goodwill-overwinstmethode, Liquidatiewaarde, Synergie-NPV-na-belasting,
+  Vendor loan, prijsmechanisme, plus stress-tests 0/negatief/extreem en reproduceerbaarheid —
+  49/50 groen, zie hieronder de ene bevinding).
+
+  **Volledig rapport (15 scores + geprioriteerde bevindingenlijst) als artifact opgeleverd** — zie
+  sessie-geheugen `project_validatie_audit_25juli` voor de link/inhoud. Score: **64/100**, op van
+  58. Bewust géén hogere score ondanks dat alle P1-P4 van de vorige ronde zijn afgevinkt: deze
+  heraudit ging dieper (5 gespecialiseerde deelaudits i.p.v. één brede pas) en vond daardoor
+  ongeveer evenveel nieuwe, echte gaten als er zijn dichtgemaakt — met name idempotency op
+  e-mail-endpoints (bijna nergens toegepast), rate limiting op admin-routes (vrijwel afwezig,
+  ADMIN_KEY dus brute-forceable), en een juridische tekstinconsistentie tussen de getekende VOK
+  en de Signhost-bevestigingsmail. Financiële correctheid steeg wél stevig (54→78) — de
+  waarderingsrekenkern is nu onafhankelijk handmatig nagerekend en klopt aantoonbaar.
+
+  **Drie regressies gevonden in het eigen werk van eerder vandaag, direct gefixt (niet blind
+  toegevoegd aan de wachtlijst, want het waren gaten in dezelfde-dag-fixes):**
+  1. `mna_wijzigingen` had alleen een index in `initDB()`, nooit de `CREATE TABLE` zelf (alleen
+     lazy in `loglWijziging()`) — zou de eerder vandaag gebouwde atomaire batch()-delete-cascade
+     hebben laten FALEN op een traject waar nog nooit een DD-veld is gewijzigd.
+  2. `mna_vok` (naam+IP van wie de VOK accepteerde) stond in geen van beide delete-cascades — een
+     AVG-verwijderverzoek liet deze persoonsgegevens dus altijd staan. Sleutelt op `tussen_code`,
+     niet `traject_id`.
+  3. Documenten in R2 werden bij géén van beide delete-cascades opgeruimd — voor
+     `/admin/delete/mna/{id}` een opslagkosten-probleem, voor `/avg/verwijder` (het AVG-recht-op-
+     vergetelheid-endpoint) een compliance-gat.
+
+  Getest: de exacte 21-statement cascade rechtstreeks tegen D1 staging uitgevoerd (geen "no such
+  table"-fouten, alle rijen bevestigd op 0 na afloop, incl. een los aangemaakt R2-testobject vóór
+  de test). Staging- en productiedeploy, health-check groen. Commit `cc0e8be`.
+
+  **~34 overige bevindingen (nieuw of nog openstaand), geprioriteerd P1-P4, staan in het
+  artifact-rapport** — niet blind opgepakt in dezelfde sessie (zelfde discipline als eerdere
+  rondes: audit eerst, Marcel prioriteert daarna wat wordt gefixt). Zwaarste nieuwe P1's:
+  approval-workflow volledig omzeilbaar (geen server-side afdwinging), nieuw partnerregister niet
+  gekoppeld aan consolidatie/waardering (twee niet-gesynchroniseerde databronnen), backend-CI mist
+  de staging-override die de frontend-CI al kreeg (kan bij ingesteld secret tegen productie
+  draaien), 47 backend-commits + 1 frontend-commit niet gepusht naar GitHub (ondermijnt zowel CI
+  als de "repo is de back-up"-garantie).
+
+  Na de audit: op Marcels verzoek een verse handmatige back-up gedraaid (`scripts/backup.sh`) —
+  42 tabellen, 2.438 rijen, 536K, geverifieerd (structuur + integriteit gecontroleerd, bevat de
+  schema-fixes van vandaag). Zie `project_backups`-geheugen.
+
   **Nieuw gevonden tijdens het fixen (niet in de oorspronkelijke bevindingenlijst), apart
   weggezet voor een volgende ronde:** de hardcoded-hex-kleurenkwestie (P2 #15) bleek bij nader
   onderzoek een veel breder, al langer bestaand patroon te zijn dan de 5 die-vandaag-toegevoegde
