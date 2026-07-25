@@ -625,9 +625,9 @@ async function laadDocumenten(id, tussenCode){
   var body=ge('docs-body');
   body.innerHTML='<div style="color:var(--muted);font-size:13px">Laden...</div>';
   try{
-    var r=await fetch(WORKER+'/mna/traject/'+tussenCode,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ts:Date.now()})});
-    var d=await r.json();
-    var docs=(d.documenten||[]);
+    var r=await fetch(WORKER+'/mna/document/lijst/'+encodeURIComponent(tussenCode));
+    var docs=await r.json();
+    if(!Array.isArray(docs))docs=[];
     if(!docs.length){body.innerHTML='<div class="empty" style="padding:1.5rem">Nog geen documenten geüpload.</div>';return;}
     var html='<table><thead><tr><th>Fase</th><th>Bestand</th><th>Datum</th><th></th></tr></thead><tbody>';
     docs.forEach(function(doc){
