@@ -147,10 +147,18 @@ async function toonDocWaarschuwing(docType, onDoorgaan) {
   } catch(e) {}
 
   var t = S.traject || {};
-  var heeftBem = versies.some(function(v){return v.doc_type==='bem'||v.doc_type==='bem_verk'||v.doc_type==='bem_koper'||v.doc_type==='bem_upload';});
-  var heeftNda = versies.some(function(v){return v.doc_type==='nda'||v.doc_type==='nda_upload';});
-  var heeftExcl = versies.some(function(v){return v.doc_type==='exclusief'||v.doc_type==='excl'||v.doc_type==='excl_upload';});
-  var heeftLoi = versies.some(function(v){return v.doc_type==='loi'||v.doc_type==='loi_upload';});
+  // Een document telt als "aanwezig" wanneer er ofwel een gegenereerde/geüploade versie in de
+  // documenthistorie staat (mna_doc_versies), ofwel het traject zelf aangeeft dat het document is
+  // opgesteld of getekend (tekst/datum/getekend-kolommen). Die tweede bron is essentieel: een
+  // begeleider kan een NDA/Excl/BEM buiten het platform (of buiten Signhost) om (laten) tekenen en
+  // dat hier als "getekend" markeren — dan bestaat er geen doc_versies-rij, maar is het document er
+  // wel degelijk. Zonder deze OR blokkeerde de LoI-knop ten onrechte met "De NDA is nog niet
+  // aangemaakt", terwijl de NDA al getekend was (gevonden 25 juli 2026, [dossier]-traject). Dit maakt
+  // de check gelijk aan de al bestaande docProcesCheck().
+  var heeftBem = versies.some(function(v){return v.doc_type==='bem'||v.doc_type==='bem_verk'||v.doc_type==='bem_koper'||v.doc_type==='bem_upload';}) || !!(t.bem_tekst||t.bem_datum||t.bem_getekend);
+  var heeftNda = versies.some(function(v){return v.doc_type==='nda'||v.doc_type==='nda_upload';}) || !!(t.nda_tekst||t.nda_datum||t.nda_getekend);
+  var heeftExcl = versies.some(function(v){return v.doc_type==='exclusief'||v.doc_type==='excl'||v.doc_type==='excl_upload';}) || !!(t.excl_tekst||t.excl_datum||t.excl_getekend);
+  var heeftLoi = versies.some(function(v){return v.doc_type==='loi'||v.doc_type==='loi_upload';}) || !!(t.loi_tekst||t.loi_datum||t.loi_getekend);
 
   var waarschuwingen = [];
   var geblokkeerd = false;
@@ -183,7 +191,6 @@ async function toonDocWaarschuwing(docType, onDoorgaan) {
   }
 
   var check = { waarschuwingen: waarschuwingen, geblokkeerd: geblokkeerd };
-  if (!check.waarschuwingen.length) { onDoorgaan(); return; }
   if (!check.waarschuwingen.length) { onDoorgaan(); return; }
 
   var ov = document.createElement('div');
