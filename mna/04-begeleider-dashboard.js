@@ -861,6 +861,12 @@ function renderBegeleiderDashboard(app){
       +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('dv-vl-jaren','Looptijd (jaren)',d.vendorLoanJaren)+'<div style="flex:1"></div></div>'
       +'<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--sub);margin-bottom:1rem;cursor:pointer"><input type="checkbox" id="dv-vl-aflvrij" style="width:15px;height:15px;accent-color:var(--gold-dark)"> Aflossingsvrij (bullet-aflossing hoofdsom in laatste jaar) — anders lineaire aflossing</label>'
       +'</div>'
+      +'<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--sub);margin-bottom:1rem;cursor:pointer"><input type="checkbox" id="dv-alt-aan" style="width:15px;height:15px;accent-color:var(--gold-dark)"> Alternatieve waarderingsmethodes tonen (asset-based / liquidatiewaarde / goodwill)</label>'
+      +'<div id="dv-alt-velden" style="display:none">'
+      +'<div style="font-size:11px;color:#8a8880;margin-bottom:.75rem">Intrinsieke waarde komt automatisch uit het ingevulde eigen vermogen (DD-fase Financieel). De percentages hieronder zijn geen vastgestelde branchenorm — vul ze zelf in op basis van uw eigen inschatting.</div>'
+      +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('dv-liq-deb','Liquidatiewaarde: debiteuren inbaar (%)',d.liqDebiteurenPct)+veld('dv-liq-wip','Liquidatiewaarde: OHW inbaar (%)',d.liqWipPct)+'</div>'
+      +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('dv-liq-kosten','Liquidatiekosten (% van activa)',d.liqKostenPct)+veld('dv-goodwill-pct','Goodwill (% van laatste jaaromzet — zelf te bepalen, geen norm)',d.goodwillPct)+'</div>'
+      +'</div>'
       +'<div id="dv-err" style="display:none;color:#e05252;font-size:12px;margin-bottom:.75rem"></div>'
       +'<div style="display:flex;gap:8px;justify-content:flex-end">'
       +'<button id="dv-ann" style="background:transparent;border:1px solid #c8c5bc;padding:8px 16px;border-radius:6px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:13px">Annuleren</button>'
@@ -871,6 +877,7 @@ function renderBegeleiderDashboard(app){
     document.getElementById('dv-ann').onclick=function(){document.body.removeChild(ov);};
     document.getElementById('dv-bab-aan').onchange=function(){document.getElementById('dv-bab-velden').style.display=this.checked?'block':'none';};
     document.getElementById('dv-vl-aan').onchange=function(){document.getElementById('dv-vl-velden').style.display=this.checked?'block':'none';};
+    document.getElementById('dv-alt-aan').onchange=function(){document.getElementById('dv-alt-velden').style.display=this.checked?'block':'none';};
 
     document.getElementById('dv-ok').onclick=async function(){
       var btn=this;btn.disabled=true;btn.textContent='Genereren... (20-40 sec)';
@@ -903,7 +910,12 @@ function renderBegeleiderDashboard(app){
         vendorLoanBedrag:parseFloat(document.getElementById('dv-vl-bedrag').value)||0,
         vendorLoanRentePct:parseFloat(document.getElementById('dv-vl-rente').value)||6,
         vendorLoanJaren:parseInt(document.getElementById('dv-vl-jaren').value)||5,
-        vendorLoanAflossingsvrij:document.getElementById('dv-vl-aflvrij').checked
+        vendorLoanAflossingsvrij:document.getElementById('dv-vl-aflvrij').checked,
+        altWaarderingAan:document.getElementById('dv-alt-aan').checked,
+        liqDebiteurenPct:parseFloat(document.getElementById('dv-liq-deb').value)||0,
+        liqWipPct:parseFloat(document.getElementById('dv-liq-wip').value)||0,
+        liqKostenPct:parseFloat(document.getElementById('dv-liq-kosten').value)||0,
+        goodwillPct:parseFloat(document.getElementById('dv-goodwill-pct').value)||0
       };
       if(!p.ebitdaBewezen||!p.ebitdaPrognose){
         errEl.textContent='Vul zowel de bewezen als de prognose-EBITDA in.';errEl.style.display='block';
@@ -919,6 +931,7 @@ function renderBegeleiderDashboard(app){
         var schuldafbouw=dvBerekenSchuldafbouw(p,closing);
         var buyAndBuildRows=p.buyAndBuild?dvBerekenBuyAndBuild(p,schuldafbouw[schuldafbouw.length-1],closing.deelKoperBasis):null;
         var vendorLoanRows=dvBerekenVendorLoan(p);
+        var altWaardering=p.altWaarderingAan?dvBerekenAlternatieveWaarderingen(p):null;
         var gevoeligheid=dvBerekenGevoeligheid(p);
         var dcf=dvBerekenDCF(p,schuldafbouw);
         var tabelMap={
@@ -932,7 +945,8 @@ function renderBegeleiderDashboard(app){
           DCF:dvTabelDCF(dcf),
           SCHULDAFBOUW:dvTabelSchuldafbouw(schuldafbouw),
           BUYANDBUILD:buyAndBuildRows?dvTabelBuyAndBuild(buyAndBuildRows):'',
-          VENDORLOAN:vendorLoanRows?dvTabelVendorLoan(vendorLoanRows):''
+          VENDORLOAN:vendorLoanRows?dvTabelVendorLoan(vendorLoanRows):'',
+          ALTWAARDERING:altWaardering?dvTabelAlternatieveWaarderingen(altWaardering,p):''
         };
         var sectorProfiel=getSectorProfiel();
         var contextBlok='Sector: '+(sectorProfiel.label||'MKB')+'. Verkopende partij: '+(t2.kantoor_naam||S.code)+'. Kopende partij: '+p.koperNaam+'.\n'
@@ -942,11 +956,13 @@ function renderBegeleiderDashboard(app){
           +'Bedrag bij closing (koper, op bewezen basis): €'+Math.round(closing.deelKoperBasis)+'. Mogelijke earn-up bij volledige realisatie: €'+Math.round(closing.earnUp)+'.\n'
           +'DCF-kruiscontrole (discontovoet '+p.discontovoetPct+'%): ondernemingswaarde DCF €'+Math.round(dcf.evDcf)+' t.o.v. ondernemingswaarde EBITDA-multiple (bewezen) €'+Math.round(closing.evBasis)+'.\n'
           +'Transactiestructuur: koper verwerft '+p.belangPct+'% bij closing; de verkopende partij behoudt '+(100-p.belangPct)+'%.'
-          +(vendorLoanRows?('\nVendor loan (verkoperslening): €'+Math.round(p.vendorLoanBedrag)+' tegen '+p.vendorLoanRentePct+'% rente, looptijd '+p.vendorLoanJaren+' jaar, '+(p.vendorLoanAflossingsvrij?'aflossingsvrij met bullet-aflossing van de hoofdsom in het laatste jaar':'lineaire jaarlijkse aflossing')+'. Dit is een door de verkopende partij aan de koper verstrekte, achtergestelde lening — een aparte verplichting naast de bankfinanciering.'):'');
+          +(vendorLoanRows?('\nVendor loan (verkoperslening): €'+Math.round(p.vendorLoanBedrag)+' tegen '+p.vendorLoanRentePct+'% rente, looptijd '+p.vendorLoanJaren+' jaar, '+(p.vendorLoanAflossingsvrij?'aflossingsvrij met bullet-aflossing van de hoofdsom in het laatste jaar':'lineaire jaarlijkse aflossing')+'. Dit is een door de verkopende partij aan de koper verstrekte, achtergestelde lening — een aparte verplichting naast de bankfinanciering.'):'')
+          +(altWaardering?('\nAlternatieve waarderingsmethodes (ter controle naast de EBITDA-multiple hierboven): intrinsieke waarde (netto vermogenswaarde) '+(altWaardering.intrinsiek!==null?'€'+Math.round(altWaardering.intrinsiek):'onbekend, eigen vermogen niet ingevuld')+'; liquidatiewaarde '+(altWaardering.liquidatiewaarde!==null?'€'+Math.round(altWaardering.liquidatiewaarde)+' (op basis van zelf ingevoerde aannames: '+p.liqDebiteurenPct+'% debiteuren inbaar, '+p.liqWipPct+'% OHW inbaar, '+p.liqKostenPct+'% liquidatiekosten — geen vastgestelde branchenorm)':'onbekend, balansvelden niet volledig ingevuld')+'; goodwill-methode '+(altWaardering.goodwill!==null?'€'+Math.round(altWaardering.goodwill)+' bij '+p.goodwillPct+'% van de laatste jaaromzet (zelf gekozen percentage, geen branchenorm)':'niet berekend, geen percentage ingevoerd')+'.'):'');
         var koppen='## Managementsamenvatting\n(3-5 bullets over de kern van het voorstel, dan één alinea "In één zin")\n\n'
           +'## Uitgangspunten & de cijfers\n(korte toelichting op de omzet-/EBITDA-ontwikkeling)\n[TABEL:CIJFERS]\n\n'
           +'## Cijferoverzicht & interpretatie\n(bespreek feitelijk wat de aangeleverde cijfers hieronder betekenen voor risico en waardering — klantconcentratie, recurring omzet, partnerafhankelijkheid, personeelskosten; herhaal en duid alleen wat er staat, verzin niets)\n[TABEL:CIJFEROVERZICHT]\n\n'
           +'## Waardering: marktonderbouwing\n(leg uit waarom deze multiple-range past bij de sector en de EBITDA-marge; gebruik de sectornormen)\n\n'
+          +(altWaardering?'## Alternatieve waarderingsmethodes\n(toon deze drie methodes als controle naast de EBITDA-multiple hierboven — benoem expliciet dat de liquidatie- en goodwill-percentages zelf gekozen aannames zijn en GEEN vastgestelde branchenorm; verzin geen ander percentage dan wat in de context staat)\n[TABEL:ALTWAARDERING]\n\n':'')
           +'## Gevoeligheidsanalyse\n(korte toelichting hoe de ondernemingswaarde varieert met EBITDA-realisatie en multiple)\n[TABEL:GEVOELIGHEID]\n\n'
           +'## Meerjarige trend\n(korte toelichting op de omzetgroei over de jaren; vermeld expliciet dat de EBITDA-marge maar over één jaar bekend is)\n[TABEL:TREND]\n\n'
           +'## Vergelijkbare transacties\n(leg in 2-3 zinnen uit hoe de gekozen multiple-range zich verhoudt tot onderstaande sectorreferenties; verzin geen eigen transacties, gebruik uitsluitend de tekst hieronder)\n[TABEL:VERGELIJKBAAR]\n\n'
