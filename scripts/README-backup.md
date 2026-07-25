@@ -113,6 +113,6 @@ bestaan — zo blijven metadata en bestanden in sync.
 
 Terugzetten van een document naar R2 (in geval van nood):
 ```bash
-cd ~/Downloads
+cd ~/Documents/GitHub/koersvoormorgen-backend/backend
 npx wrangler r2 object put "kantoorinzicht-docs/<r2_key>" --file="<pad naar back-up>" --remote
 ```
