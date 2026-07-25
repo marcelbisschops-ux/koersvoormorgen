@@ -7,6 +7,11 @@ on:
 jobs:
   checks:
     runs-on: ubuntu-latest
+    # Audit-fix P2/P3 (25 juli 2026): draaide voorheen tegen productie (WORKER_URL niet gezet,
+    # tests/lib.mjs valt dan terug op de productie-worker) — nu expliciet tegen staging, zodat CI
+    # geen productieverkeer/-schrijfacties meer genereert bij elke push.
+    env:
+      WORKER_URL: https://kantoorinzicht-staging.marcel-bisschops.workers.dev
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -20,5 +25,15 @@ jobs:
       - name: Veiligheids- en consistentie-audit
         run: node tests/audit-consistentie.mjs
 
-      - name: Publieke e2e-checks (health-check, geen admin-key nodig)
+      - name: Publieke e2e-checks tegen staging (health-check, geen admin-key nodig)
         run: node tests/e2e-api.mjs
+
+      # Audit-fix P2 (25 juli 2026): de admin-key-afhankelijke 90% van e2e-api.mjs (adviseur-
+      # lifecycle, traject-flow, module-gating, waardering, tekenen) draaide nergens automatisch —
+      # alleen handmatig lokaal. Draait hier zodra het secret STAGING_ADMIN_KEY bestaat (Marcel:
+      # instellen via repo Settings → Secrets and variables → Actions, met de staging-ADMIN_KEY —
+      # NOOIT de productie-ADMIN_KEY hier zetten). Zonder dat secret wordt deze stap overgeslagen,
+      # geen falende build zolang het nog niet is ingesteld.
+      - name: Volledige e2e-testsuite tegen staging (admin-key vereist)
+        if: ${{ secrets.STAGING_ADMIN_KEY != '' }}
+        run: node tests/e2e-api.mjs --key="${{ secrets.STAGING_ADMIN_KEY }}"
