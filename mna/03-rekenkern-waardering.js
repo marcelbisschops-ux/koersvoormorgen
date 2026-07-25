@@ -293,17 +293,23 @@ function dvBerekenSynergie(p){
   if(!p.synergieAan)return null;
   var rows=[];
   var r=p.discontovoetPct/100;
+  // Audit-fix P3 (25 juli 2026, vierde ronde, Marcels keuze): synergiebedragen worden nu na
+  // belasting verdisconteerd, consistent met de EBITDA-kasstromen elders in het Dealvoorstel (DCF/
+  // schuldafbouw rekenen ook na VpB). Implementatiekosten blijven onbelast aftrekbaar in jaar 0 (geen
+  // aanname over fiscale aftrekbaarheid daarvan — puur de synergie-kasstroom zelf wordt belast).
+  var naBelastingFactor=1-(p.vpbPct/100);
   var npv=-(p.synergieImplementatiekosten||0);
   for(var j=1;j<=p.horizonJaren;j++){
     var factor=p.synergieRealisatieJaren>0?Math.min(1,j/p.synergieRealisatieJaren):1;
     var kostensynergie=p.synergieKostenJaarlijks*factor;
     var omzetsynergie=p.synergieOmzetJaarlijks*factor;
     var totaal=kostensynergie+omzetsynergie;
-    var contant=totaal/Math.pow(1+r,j);
+    var totaalNaBelasting=totaal*naBelastingFactor;
+    var contant=totaalNaBelasting/Math.pow(1+r,j);
     npv+=contant;
-    rows.push({jaar:j,kostensynergie:kostensynergie,omzetsynergie:omzetsynergie,totaal:totaal,contant:contant});
+    rows.push({jaar:j,kostensynergie:kostensynergie,omzetsynergie:omzetsynergie,totaal:totaal,totaalNaBelasting:totaalNaBelasting,contant:contant});
   }
-  return {rows:rows,npv:npv,implementatiekosten:p.synergieImplementatiekosten||0};
+  return {rows:rows,npv:npv,implementatiekosten:p.synergieImplementatiekosten||0,vpbPct:p.vpbPct};
 }
 
 // Scenarioanalyse (25 juli 2026): drie operationele scenario's (downside/base/upside) op de
@@ -403,10 +409,10 @@ function dvTabelAlternatieveWaarderingen(alt,p){
 
 function dvTabelSynergie(syn){
   if(!syn)return '';
-  var rows=syn.rows.map(function(r){return [r.jaar,dvMln(r.kostensynergie),dvMln(r.omzetsynergie),dvMln(r.totaal),dvMln(r.contant)];});
-  var html=dvRenderTabelHtml(['Jaar','Kostensynergie','Omzetsynergie','Totaal','Contant gemaakt'],rows);
+  var rows=syn.rows.map(function(r){return [r.jaar,dvMln(r.kostensynergie),dvMln(r.omzetsynergie),dvMln(r.totaal),dvMln(r.totaalNaBelasting),dvMln(r.contant)];});
+  var html=dvRenderTabelHtml(['Jaar','Kostensynergie','Omzetsynergie','Totaal (vóór belasting)','Na belasting ('+syn.vpbPct+'%)','Contant gemaakt'],rows);
   html+='<div style="font-size:12px;color:var(--muted);padding:.6rem .75rem;background:var(--card);border-radius:6px;margin-top:-.75rem">'
-    +'Eenmalige implementatiekosten: <strong>'+dvMln(syn.implementatiekosten)+' mln</strong> &nbsp;|&nbsp; NPV synergieën (na aftrek implementatiekosten): <strong>'+dvMln(syn.npv)+' mln</strong>'
+    +'Eenmalige implementatiekosten: <strong>'+dvMln(syn.implementatiekosten)+' mln</strong> &nbsp;|&nbsp; NPV synergieën (na belasting en aftrek implementatiekosten): <strong>'+dvMln(syn.npv)+' mln</strong>'
     +'</div>';
   return html;
 }
