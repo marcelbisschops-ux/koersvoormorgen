@@ -273,8 +273,11 @@ alleen één van beide behandelt telt niet als volledig.
    geheugen bijgewerkt. Ook bleek de backend-repo al (ongecommit) call-site-wijzigingen naar
    `verifyWW` te bevatten op 5 plekken (met een `needsRehash`-uitbreidingspunt) — vermoedelijk een
    eerder gestaakte migratiepoging; nu afgerond en gecommit.
-2. Hoofdwaardering vaste multiple i.p.v. sectorbewust — **open**
-3. AI-modelversie niet vastgelegd bij waarderingen — **open**
+2. Hoofdwaardering vaste multiple i.p.v. sectorbewust — **gefixt en live geverifieerd (25 juli
+   2026)**, visueel bevestigd in de echte UI (mkb-traject toont nu 2,5×/3,5×/4,5× i.p.v. de oude
+   vaste 4,6×/5,05×/5,5×).
+3. AI-modelversie niet vastgelegd bij waarderingen — **gefixt en live geverifieerd (25 juli
+   2026)**.
 4. EBITDA-marge kan verzonnen "0,0%" tonen — **gefixt en live geverifieerd (25 juli 2026)**, guard
    toegevoegd + getest op staging vóór productie-deploy.
 5. Signhost-webhook zonder signature-verificatie — **grotendeels gefixt (25 juli 2026)**: webhook
@@ -286,3 +289,61 @@ alleen één van beide behandelt telt niet als volledig.
 6. Entiteit-verwijdering laat wees-data achter — **gefixt en live geverifieerd (25 juli 2026)**,
    volledig scenario getest op staging (entiteit+data+document+partnerkoppeling).
 7. Automatische back-up draait niet — **open, vereist actie van Marcel zelf (Mac-permissie)**
+
+- **25 juli 2026 (zelfde dag, afwerkronde)** — op verzoek van Marcel ("alles moet afgewerkt
+  worden, vraag niet of je door moet gaan") alle P1- en P2-bevindingen uit de drie audit-rondes
+  opgepakt, plus een selectie van de belangrijkste/veiligste P3-bevindingen. Elke fix: eigen commit
+  in de juiste repo, getest (staging waar mogelijk, anders directe SQL-validatie of node --check),
+  daarna gedeployed naar staging + productie. Volledige lijst met wat gefixt is en waarom, zie de
+  git-log van beide repo's (elke commit heeft een uitgebreide beschrijving) en
+  sessie-geheugen `project_validatie_audit_25juli`.
+
+  **Volledig afgerond (P1, 6 van 7 — #7 vereist Marcels eigen actie, zie hierboven):** 1, 2, 3
+  (grotendeels — checksum-laag staat klaar, vereist Signhost-portal-actie), 4, 6. Punt 3
+  (AI-modelversie) volledig.
+
+  **Volledig afgerond (P2, 14 van 14):** AVG-verwijderrecht, DCF-werkkapitaalmutatie +
+  WACC-transparantie, wachtwoord-hashing (PBKDF2), waarderingsgeschiedenis-API, security headers,
+  CI-automatisering (vereist nog wel Marcels GitHub-secret, zie hieronder), audittrail bij
+  admin-acties, rate-limiting-fix, deploy-worker.sh-reparatie, DB-statuscodes, Resend-silent-fail,
+  sectorprofiel/benchmark-historie, kleurcontrast (gerichte fix), toegankelijkheid (chat-knop +
+  Escape-op-modals).
+
+  **Deels afgerond (P3):** D1-indexen (14 toegevoegd), sessietokens naar crypto.randomUUID(),
+  idempotency-guard dossier-vrijgeven, adv.html-responsive-breakpoint, back-up-script gerepareerd
+  (ontdekt tijdens het uitzoeken van P1 #7 — bevatte een tweede, ernstiger bug, zie backup.sh-
+  commit), rollback/DR gedocumenteerd. **Bewust niet gedaan** (te grote refactor-omvang/regressie-
+  risico om zonder uitgebreide visuele/functionele regressietest te rechtvaardigen binnen deze
+  sessie): het samenvoegen van de 105 gedupliceerde response-envelope-regels tot een helper, de
+  N+1-fix in groepsdetail, een cachinglaag voor sectorprofielen/benchmarks, machineleesbare
+  foutcodes, timeouts op Anthropic-calls, en een gedeelde modal-helper (overlay+focus-trap) ter
+  vervanging van de 15 losse modal-implementaties. Deze blijven in de P3-lijst hierboven staan voor
+  een volgende ronde.
+
+  **Twee acties die alleen Marcel zelf kan afronden:**
+  - Back-up-automatisering (P1 #7): Volledige Schijftoegang verlenen + `launchctl load`, zie
+    `scripts/README-backup.md`.
+  - Signhost-checksum (P1 #3, tweede beveiligingslaag): shared secret ophalen via
+    portal.signhost.com/RegisteredPostbacks, instellen met
+    `wrangler secret put SIGNHOST_WEBHOOK_SECRET` (prod + staging).
+  - CI-secret (P2 #10): `STAGING_ADMIN_KEY` toevoegen via GitHub repo Settings → Secrets and
+    variables → Actions (de staging-sleutel, nooit de productie-sleutel).
+
+  **Verificatie na afronding:** een volledige, visuele end-to-end-test uitgevoerd op staging via de
+  echte mna.html-frontend (niet alleen API-calls): begeleider-login + VOK-acceptatie, verkoper-
+  login, DD-data invullen en opslaan (bevestigd: "✓ Opgeslagen"), een echt testdocument geüpload
+  (CSV-jaarrekening uit Marcels eigen testpakket op het bureaublad) — AI-extractie werkte correct
+  én detecteerde zelf een bewust ingebouwde inconsistentie tussen de handmatig ingevulde cijfers en
+  het document, gerapporteerd als `crosscheck_waarschuwingen` in plaats van stilzwijgend een van
+  beide te negeren (bevestigt de gouden standaard werkt end-to-end). Het waarderingsscherm als
+  begeleider bekeken: toont voor dit mkb-traject nu 2,5×/3,5×/4,5× — zichtbaar bewijs dat de
+  sectorbewuste-multiple-fix (P1 #2) live werkt. Wijzigingenlog toonde correct "8 nieuw" na de
+  testacties. Alle testdata (traject, document, R2-object) na afloop volledig opgeruimd.
+  Document-upload via de browser-UI zelf kon niet worden getest (deze automatiseringstool kan geen
+  bestandskiezers bedienen) — opgevangen door hetzelfde upload-endpoint direct te testen, wat de
+  volledige backend-pipeline (opslag + AI-extractie) evengoed dekt.
+
+  **Niet getest binnen deze sessie:** de volledige Signhost-ondertekenflow (vereist echte
+  Signhost-sandboxtoegang), LoI/dealvoorstel-PDF-generatie end-to-end, en de adviseur-portaal-login
+  (adv.html) met een echt e-mail+wachtwoord-account (vereist ADMIN_KEY om een adviseur aan te
+  maken, niet beschikbaar in deze sessie) — de onderliggende code is wel apart getest (zie P1 #1).
