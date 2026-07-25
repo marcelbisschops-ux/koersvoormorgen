@@ -200,14 +200,20 @@ een specifieke programmeertaal, framework of architectuur.
 
 ## Cadans
 
-Elk kwartaal, aansluitend op de bestaande kwartaalcheck voor sjablonen/benchmarks (zie CLAUDE.md
-"Openstaande punten"). Ook uit te voeren vóór een grote release of wanneer Marcel erom vraagt.
+Elke maand (sinds 25 juli 2026 — zie logboek-toelichting hieronder; was daarvoor elk kwartaal).
+Ook uit te voeren vóór een grote release of wanneer Marcel erom vraagt. De aparte kwartaalcheck
+voor sjablonen/benchmarks (zie CLAUDE.md "Openstaande punten") loopt op zijn eigen, ongewijzigde
+kwartaalcadans — deze audit is daar niet meer aan gekoppeld.
 Bevindingen die na een audit zijn opgelost, hoeven bij de volgende audit niet opnieuw als
 aanbeveling te verschijnen — wel kort als "OK/aantoonbaar aanwezig", zodat regressie zichtbaar
 wordt als dat verandert. Elke audit dekt zowel de frontend- als de backend-repo; een audit die
 alleen één van beide behandelt telt niet als volledig.
 
 ## Logboek van uitgevoerde audits
+
+- **25 juli 2026 (cadans-wijziging)** — Marcel: cadans van elk kwartaal naar elke maand, wegens het
+  hoge bouwtempo (12 features in één sessie op 25 juli) — sneller signaal nodig dan een kwartaal kan
+  geven. De aparte sjabloon-/benchmark-kwartaalcheck blijft ongewijzigd per kwartaal.
 
 - **25 juli 2026** — eerste, verkennende uitvoering (Correct/Verbeterbaar/Ontbreekt/N.v.t.-formaat,
   vóórdat deze opdracht als werkregel #12 werd vastgelegd). Twee kritieke, zelf-in-de-code-
@@ -347,3 +353,44 @@ alleen één van beide behandelt telt niet als volledig.
   Signhost-sandboxtoegang), LoI/dealvoorstel-PDF-generatie end-to-end, en de adviseur-portaal-login
   (adv.html) met een echt e-mail+wachtwoord-account (vereist ADMIN_KEY om een adviseur aan te
   maken, niet beschikbaar in deze sessie) — de onderliggende code is wel apart getest (zie P1 #1).
+
+- **25 juli 2026 (vierde ronde, na de 12-features-bouwdag)** — volledige onafhankelijke audit door
+  vijf gespecialiseerde deelonderzoeken (security; architectuur/backend/API/data; frontend/UX;
+  waarderingsmodellen; teststrategie/cloud/compliance), elk zelf de code lezend, niet vertrouwend op
+  eerdere logboek-claims. Scores: Architectuur 68, Backendkwaliteit 60, Frontendkwaliteit 55,
+  API & Integraties 46, Datakwaliteit 50, Codekwaliteit 62, Security 63, Testkwaliteit 42,
+  Performance 64, Cloud-/Deploymentkwaliteit 44, M&A-functionaliteit 72, Financiële correctheid 46,
+  Onderhoudbaarheid 60, Enterprise Readiness 44, **Totaal 56/100** (vrijwel vlak t.o.v. 58, andere
+  samenstelling: minder "ontbrekend", meer "gebouwd maar onvoldoende geverifieerd"). Volledig
+  rapport: zie artifact `audit-25juli-vierde-ronde.html` / sessie-geheugen
+  `project_audit_vierde_ronde_25juli`.
+
+  Zes P1-bevindingen:
+  8. Sector-multiple wordt op de verkeerde grootheid toegepast bij zorg/SaaS (regex onderscheidt
+     niet EBITDA/omzet/ARR-multiple) — tot >70% waarderingsafwijking, zonder waarschuwing.
+     `mna/03-rekenkern-waardering.js:32-39,830-832`.
+  9. Stored XSS via contactnaam in het chatvenster — cross-role. `mna/07-start-chat.js:151`.
+  10. Back-up nog steeds niet actueel/werkend (launchd exit 126, dump 21 dagen oud) — bevestigt P1
+      #7 hierboven — **opgelost 25 juli 2026, zelfde dag**: Marcel heeft Volledige Schijftoegang
+      verleend; geverifieerd met een echte `launchctl kickstart` (het daadwerkelijke dagelijkse
+      20:00-pad, niet alleen een handmatige terminal-run) — exit status 0, nieuwe dump
+      (`kantoorinzicht_2026-07-25_1719.sql`, 42 tabellen) succesvol weggeschreven naar de
+      iCloud-map.
+  11. AVG-verwijderrecht blijkt bij herverificatie nog incompleet (`mna_partners`,
+      `mna_koper_criteria`, `mna_audit` niet in de delete-cascade) — ondanks eerdere "14/14
+      afgerond"-status bij P2.
+  12. Goodwill/overwinstmethode is geen overwinstmethode — arbitrair omzetpercentage,
+      misleidende functienaam/comment. `mna/03-rekenkern-waardering.js:252`.
+  13. DCF combineert een na-rente kasstroom (FCFE) met WACC — dubbele verdiscontering van het
+      financieringseffect, structureel te lage uitkomst bij schuldfinanciering.
+      `mna/03-rekenkern-waardering.js:160,526,539`.
+
+  Plus 10 P2-, 13 P3- en 3 P4-bevindingen — volledige lijst in het artifact/geheugen. Twee eerder
+  als "volledig afgerond" gelogde punten (sectorbewuste multiple uit ronde 3, AVG-verwijderrecht uit
+  P2) bleken bij deze onafhankelijke herverificatie nog gaten te hebben — reden om voortaan bij elke
+  audit expliciet eerder-"afgeronde" punten opnieuw te verifiëren i.p.v. te vertrouwen op de
+  logboekstatus.
+
+  **Vervolgstap:** ligt bij Marcel — welke van de zes P1's als eerste, of allemaal in
+  prioriteitsvolgorde net als bij de vorige afwerkronde. Dit logboek en de status hieronder wordt
+  bijgewerkt zodra iets is opgelost.
