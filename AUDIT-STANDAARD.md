@@ -277,6 +277,12 @@ alleen één van beide behandelt telt niet als volledig.
 3. AI-modelversie niet vastgelegd bij waarderingen — **open**
 4. EBITDA-marge kan verzonnen "0,0%" tonen — **gefixt en live geverifieerd (25 juli 2026)**, guard
    toegevoegd + getest op staging vóór productie-deploy.
-5. Signhost-webhook zonder signature-verificatie — **open**
-6. Entiteit-verwijdering laat wees-data achter — **open**
+5. Signhost-webhook zonder signature-verificatie — **grotendeels gefixt (25 juli 2026)**: webhook
+   accepteert nu alleen transactionId's die we zelf hebben aangemaakt (getest op staging: vervalste
+   ID genegeerd, echte ID verwerkt) — dit sluit de praktische aanval af. Checksum-verificatie is
+   voorbereid maar staat uit tot Marcel actie onderneemt: **shared secret ophalen via
+   portal.signhost.com/RegisteredPostbacks en instellen met
+   `wrangler secret put SIGNHOST_WEBHOOK_SECRET` (prod + staging)**.
+6. Entiteit-verwijdering laat wees-data achter — **gefixt en live geverifieerd (25 juli 2026)**,
+   volledig scenario getest op staging (entiteit+data+document+partnerkoppeling).
 7. Automatische back-up draait niet — **open, vereist actie van Marcel zelf (Mac-permissie)**
