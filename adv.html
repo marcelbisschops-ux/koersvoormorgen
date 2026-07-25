@@ -307,6 +307,7 @@ function renderDashboard(){
       <div class="hdr-brand"><div class="hdr-dot"></div>${BRAND.platform} ${BRAND.suffix}</div>
       <div class="hdr-right">
         <span class="hdr-user">Ingelogd als <span class="hdr-name">${esc(G.naam)}</span>${G.bedrijf?' &middot; '+esc(G.bedrijf):''}</span>
+        <button class="btn-outline" onclick="renderAdvHandleiding()">&#128214; Handleiding</button>
         <button class="btn-outline" onclick="renderHuisstijlModal()">&#127912; Huisstijl</button>
         <button class="btn-outline" onclick="renderLogin()">Uitloggen</button>
       </div>
@@ -333,6 +334,68 @@ function renderDashboard(){
           <tbody>${rows}</tbody>
         </table>
       </div>
+    </div>
+  `);
+}
+
+// ===== HANDLEIDING (achter login, alle rollen in één pagina) =====
+// Zelfde inhoud als de handleiding-pagina in mna.html — hier gedupliceerd omdat adv.html een los
+// script-context is (zelfde patroon als partijLabels() e.d., zie mna/01-config-sectorprofielen.js).
+// Werkregel (Marcel, 25 juli 2026): bij elke gebruikersgerichte wijziging aan het platform hoort
+// deze pagina in dezelfde wijziging bijgewerkt te worden — zie CLAUDE.md.
+function renderAdvHandleiding(){
+  VIEW='handleiding';
+  function sectie(titel, inhoud){
+    return `<div class="card" style="margin-bottom:1.25rem"><div class="card-hdr"><div class="card-title">${titel}</div></div><div style="padding:1rem 0">${inhoud}</div></div>`;
+  }
+  function stap(nr, titel, tekst){
+    return `<div style="display:flex;gap:12px;margin-bottom:1rem;align-items:flex-start">
+      <div style="flex-shrink:0;width:26px;height:26px;border-radius:50%;background:var(--teal-bg);color:var(--teal);font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center">${nr}</div>
+      <div><div style="font-weight:600;color:var(--head);font-size:13px;margin-bottom:.2rem">${titel}</div><div style="font-size:13px;color:var(--muted);line-height:1.65">${tekst}</div></div>
+    </div>`;
+  }
+  render(`
+    <div class="hdr">
+      <div class="hdr-brand"><div class="hdr-dot"></div>${BRAND.platform} ${BRAND.suffix} &middot; Handleiding</div>
+      <div class="hdr-right"><button class="btn-outline" onclick="renderDashboard()">&#8592; Terug naar dashboard</button></div>
+    </div>
+    <div class="main">
+      <div style="font-family:Playfair Display,serif;font-size:1.5rem;color:var(--head);font-weight:600;margin-bottom:.25rem">Handleiding ${esc(BRAND.platform)}</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:1.5rem">Uitgebreide handleiding voor alle rollen. Uw eigen rol (adviseur) staat als eerste.</div>
+
+      ${sectie('🏢 Adviseur (accountbeheer — dit portaal)',
+        stap(1,'Account activeren','U ontvangt een uitnodigingsmail met een activeringslink. Stel een wachtwoord in — u komt daarna in dit adviseursportaal.')
+        + stap(2,'Een traject starten',`Klik op "+ Nieuw traject", vul de gegevens van de onderneming (en desgewenst de koper) in. Zijn e-mailadressen ingevuld, dan verstuurt het platform automatisch een uitnodigingsmail met code en instructies naar verkoper en/of koper — anders geeft u de codes zelf handmatig door.`)
+        + stap(3,'Eigen huisstijl (optioneel)','Via "🎨 Huisstijl" stelt u een eigen platformnaam, accentkleur en logo in. Dit geldt voor alle trajecten die u vanaf dat moment aanmaakt. Kiest u een kleur die op een donkere achtergrond moeilijk leesbaar zou zijn, dan waarschuwt het scherm dit direct — en wordt de kleur voor uw cliënten automatisch iets aangepast voor leesbaarheid.')
+        + stap(4,'Modules en limieten','Uw account heeft een trajectlimiet en een set modules (Contracten, AI-analyse, Q&amp;A, Export), zichtbaar als chips boven uw trajectenlijst. Een module met een slotje is niet actief — neem contact op met uw platformbeheerder.')
+        + stap(5,'Voorwaarden','Bij eerste gebruik accepteert u de <a href="platformvoorwaarden.html">Gebruiksvoorwaarden</a>. Zie ook de <a href="privacy.html">Privacyverklaring</a>.')
+      )}
+
+      ${sectie('🧭 Begeleider (binnen een traject, op mna.html)',
+        stap(1,'Inloggen','Klik op een traject in uw trajectenlijst, of log rechtstreeks in op mna.html met de tussenpersoonscode van dat traject. Bij de eerste keer moet u de verwerkersovereenkomst (VOK) accepteren.')
+        + stap(2,'Documenten genereren','Is de module "Contracten" actief, dan kunt u vanuit het traject-dashboard NDA, LoI, BEM (bemiddelingsovereenkomst), Excl (exclusiviteitsovereenkomst), Dealvoorstel, Bieding en SPA genereren en digitaal laten ondertekenen via Signhost.')
+        + stap(3,'AI-analyse &amp; waardering','De deterministieke rekenkern (closing/earn-up/buy-and-build, met IRR/MoM) plus een onafhankelijke AI-"second opinion"-waardering op basis van sectorbenchmarks.')
+        + stap(4,'Koper-fit strategie','Leg vast waarom de koper overnames zoekt; het systeem toetst de verkoper hier expliciet tegen — harde cijfers automatisch, vrije tekst alleen geciteerd door de AI, nooit zelf beoordeeld.')
+        + stap(5,'Groepsstructuur, koper-toegang, Q&amp;A, wijzigingenlog','Entiteiten beheren bij een holdingstructuur, per DD-categorie bepalen wat de koper mag zien, vragen tussen partijen beheren, en elke wijziging van de verkoper gelogd terugzien.')
+      )}
+
+      ${sectie('👤 Verkoper',
+        stap(1,'Inloggen','Met de persoonlijke verkopercode op mna.html.')
+        + stap(2,'7 informatiefases doorlopen','Financieel, Klanten &amp; commercieel, Partners &amp; personeel, Compliance &amp; kwaliteit, IT &amp; automatisering, Juridisch &amp; fiscaal, Strategisch &amp; markt. Fase-2-velden komen pas ná ondertekening van de LoI.')
+        + stap(3,'Documenten uploaden — velden vullen zichzelf','PDF, Word, Excel/CSV, tekst, en SBR/XBRL-jaarrekeningen (.xml/.xbrl, 100% deterministisch uitgelezen). Let op: bij kleine/middelgrote rechtspersonen bevat een SBR-bestand wettelijk geen apart omzetcijfer.')
+        + stap(4,'Extra controle (optioneel)','Vinkje bij het uploaden: het document wordt dan twee keer onafhankelijk gelezen; bij een afwijking krijgt de verkoper een keuze in plaats van een gok.')
+        + stap(5,'Herkomst en afwijkingen','Elk automatisch ingevuld veld toont van welk document het komt, met het letterlijke citaat. Geeft een ander document een andere waarde, dan verschijnt een keuzescherm.')
+        + stap(6,'Groepsstructuur','Bij meerdere entiteiten koppelt de verkoper documenten aan de juiste werkmaatschappij; bij onzekerheid wordt niets automatisch verwerkt.')
+      )}
+
+      ${sectie('🤝 Koper',
+        stap(1,'NDA eerst','Toegang pas na ondertekening van de geheimhoudingsovereenkomst.')
+        + stap(2,'Inloggen','Met de persoonlijke koperscode op mna.html.')
+        + stap(3,'Gefaseerde toegang','Alleen de door de begeleider vrijgegeven informatiecategorieën zijn zichtbaar — dit wordt gedurende het traject uitgebreid.')
+        + stap(4,'Dataroom, Q&amp;A en LoI','Documenten en kerncijfers inzien, vragen stellen per fase, en na afstemming de Letter of Intent ondertekenen.')
+      )}
+
+      <div style="font-size:11px;color:var(--muted);text-align:center;margin-top:1rem">Deze handleiding wordt bijgehouden zodra het platform wijzigt.</div>
     </div>
   `);
 }

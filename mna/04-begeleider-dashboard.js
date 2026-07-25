@@ -178,6 +178,7 @@ function renderApp(){
   else if(S.screen==='waardering')app.innerHTML=renderWaardering();
   else if(S.screen==='logboek')renderLogboekScreen(app);
   else if(S.screen==='begeleider')renderBegeleiderDashboard(app);
+  else if(S.screen==='handleiding')app.innerHTML=renderHandleiding();
   bindAll();
 }
 
@@ -325,6 +326,7 @@ function renderBegeleiderDashboard(app){
     +'<div class="hdr"><div class="brand">'+brandMerkHtml()+BRAND.platform+' &middot; M&A Begeleider'+versieLabel()+'</div>'
     +'<div style="display:flex;gap:8px">'
     +'<button class="btn-ghost btn-sm" onclick="refreshData()">&#8635; Ververs</button>'
+    +'<button class="btn-ghost btn-sm" onclick="S.screen=\'handleiding\';renderApp()">&#128214; Handleiding</button>'
     +'<button class="btn-ghost btn-sm" onclick="window.print()">&#128196; PDF</button>'
     +'<button class="btn-ghost btn-sm" onclick="uitloggen()">&#8592; Uitloggen</button>'
     +'</div></div>'

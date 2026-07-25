@@ -406,6 +406,7 @@ function renderMain(){
     +'<div class="hdr"><div class="brand">'+brandMerkHtml()+BRAND.platform+' &middot; M&amp;A'+versieLabel()+'</div>'
     +'<div style="display:flex;align-items:center;gap:8px">'
     +'<span style="font-size:11px;color:var(--muted)">'+esc(S.traject&&S.traject.kantoor_naam||S.code)+'</span>'
+    +'<button class="btn-ghost btn-sm" onclick="S.screen=\'handleiding\';renderApp()">&#128214; Handleiding</button>'
     +'<button class="btn-ghost btn-sm" onclick="window.print()">PDF</button>'
     +'</div></div>'
     +lockedBanner
@@ -829,8 +830,11 @@ function bindAll(){
         // Groepsstructuur: geregistreerde entiteiten laden (voor upload-toewijzing en dataroom-labels)
         loadEntiteiten();
         // Sla tussen_code op als begeleider-auth
+        // Rechtstreeks naar de handleiding als de URL dat vraagt (bijv. vanuit de uitnodigingsmail:
+        // mna.html?code=XXXX&screen=handleiding) — alleen bij een geldige, net ingelogde sessie.
+        var schermOverride=new URLSearchParams(location.search).get('screen');
         if(isTussen()){
-          S._bgKey=code;S.screen='begeleider';
+          S._bgKey=code;S.screen=(schermOverride==='handleiding')?'handleiding':'begeleider';
           checkVOK(code).then(function(vokStatus){
             // Ook opnieuw tonen als er een nieuwere versie is dan wat eerder getekend is —
             // anders wordt een tekstwijziging (bv. bewaartermijn) nooit meer voorgelegd.
@@ -852,6 +856,7 @@ function bindAll(){
           var fId2=FASES[S.fase]&&FASES[S.fase].id;
           if(fId2&&!DOCS[fId2])loadDocsForFase(fId2);
         }
+        if(schermOverride==='handleiding')S.screen='handleiding';
         renderApp();
       }catch(e){if(err)err.style.display='block';if(load)load.style.display='none';lb.disabled=false;}
     };
