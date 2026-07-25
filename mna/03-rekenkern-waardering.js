@@ -83,7 +83,12 @@ function dvGetDefaults(){
     liqDebiteurenPct:80,
     liqWipPct:50,
     liqKostenPct:5,
-    goodwillPct:0
+    goodwillPct:0,
+    synergieAan:false,
+    synergieKostenJaarlijks:0,
+    synergieOmzetJaarlijks:0,
+    synergieRealisatieJaren:2,
+    synergieImplementatiekosten:0
   };
 }
 
