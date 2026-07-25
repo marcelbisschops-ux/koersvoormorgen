@@ -625,7 +625,9 @@ function dvTabelDCFGevoeligheid(gv){
 
 // Grafieken (25 juli 2026) — tot nu toe stond alles als tabellen. Geen library (zelfde overweging als
 // bij de CSV-export): dependency-vrije inline SVG, dus werkt ook in de geprinte PDF-weergave.
-function dvSvgBarChart(items){
+// Audit-fix P2 (25 juli 2026, vierde ronde): titel-param + role="img"/aria-label/<title> zodat een
+// screenreader de grafiek niet gewoon overslaat — SVG heeft standaard geen tekst-equivalent.
+function dvSvgBarChart(items,titel){
   var w=560,h=200,padLeft=10,padBottom=36,padTop=28,padRight=10;
   var chartW=w-padLeft-padRight,chartH=h-padTop-padBottom;
   var maxVal=Math.max.apply(null,items.map(function(i){return i.waarde;}).concat([0]));
@@ -640,11 +642,12 @@ function dvSvgBarChart(items){
       +'<text x="'+(x+barW/2).toFixed(1)+'" y="'+(h-padBottom+18).toFixed(1)+'" text-anchor="middle" font-size="11" font-family="IBM Plex Sans, sans-serif" fill="var(--muted)">'+esc(item.label)+'</text>';
   }).join('');
   var basislijn='<line x1="'+padLeft+'" y1="'+y(0).toFixed(1)+'" x2="'+(w-padRight)+'" y2="'+y(0).toFixed(1)+'" stroke="var(--border2)" stroke-width="1"/>';
-  return '<svg viewBox="0 0 '+w+' '+h+'" width="100%" style="max-width:'+w+'px;height:auto;display:block;margin:0 auto">'+basislijn+bars+'</svg>';
+  var titelSafe=esc(titel||'Staafdiagram: '+items.map(function(i){return i.label+' '+fmtGeld(i.waarde);}).join(', '));
+  return '<svg viewBox="0 0 '+w+' '+h+'" width="100%" role="img" aria-label="'+titelSafe+'" style="max-width:'+w+'px;height:auto;display:block;margin:0 auto"><title>'+titelSafe+'</title>'+basislijn+bars+'</svg>';
 }
 // Waterfall: elke stap is een increment (delta) t.o.v. de vorige, behalve stappen met isTotal:true —
 // die tonen de volledige cumulatieve hoogte vanaf 0 (voor de begin- en eindstaaf van de brug).
-function dvSvgWaterfallChart(steps){
+function dvSvgWaterfallChart(steps,titel){
   var w=560,h=220,padLeft=10,padBottom=36,padTop=28,padRight=10;
   var chartW=w-padLeft-padRight,chartH=h-padTop-padBottom;
   var running=0;
@@ -667,7 +670,8 @@ function dvSvgWaterfallChart(steps){
       +'<text x="'+(x+barW/2).toFixed(1)+'" y="'+(h-padBottom+18).toFixed(1)+'" text-anchor="middle" font-size="11" font-family="IBM Plex Sans, sans-serif" fill="var(--muted)">'+esc(c.label)+'</text>';
   }).join('');
   var basislijn='<line x1="'+padLeft+'" y1="'+y(0).toFixed(1)+'" x2="'+(w-padRight)+'" y2="'+y(0).toFixed(1)+'" stroke="var(--border2)" stroke-width="1"/>';
-  return '<svg viewBox="0 0 '+w+' '+h+'" width="100%" style="max-width:'+w+'px;height:auto;display:block;margin:0 auto">'+basislijn+bars+'</svg>';
+  var titelSafe=esc(titel||'Waterfall-diagram: '+cumuls.map(function(c){return c.label+' '+(c.isTotal?fmtGeld(c.end):(c.delta>=0?'+':'')+fmtGeld(c.delta));}).join(', '));
+  return '<svg viewBox="0 0 '+w+' '+h+'" width="100%" role="img" aria-label="'+titelSafe+'" style="max-width:'+w+'px;height:auto;display:block;margin:0 auto"><title>'+titelSafe+'</title>'+basislijn+bars+'</svg>';
 }
 
 // CSV-export van het waarderingsscherm (25 juli 2026, op verzoek Marcel — CSV i.p.v. een echt .xlsx,
@@ -1026,7 +1030,7 @@ function renderWaardering(){
       {label:'Laag ('+mLaag+'\xd7 '+basisLabel+')',waarde:wLaag,kleur:'var(--border2)'},
       {label:'Midden ('+mMid+'\xd7 '+basisLabel+')',waarde:wMid,kleur:'var(--teal)'},
       {label:'Hoog ('+mHoog+'\xd7 '+basisLabel+')',waarde:wHoog,kleur:'var(--border2)'}
-    ])+'</div></div>';
+    ],'Waardebandbreedte: laag '+fmtGeld(wLaag)+', midden '+fmtGeld(wMid)+', hoog '+fmtGeld(wHoog))+'</div></div>';
 
   // Rolling forecast
   html+='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;margin-bottom:1.25rem">'
@@ -1084,7 +1088,7 @@ function renderWaardering(){
   var wfSteps=[{label:'Closing',delta:fixedKoop}];
   for(var wk=1;wk<=earnJaren;wk++)wfSteps.push({label:'Jaar '+wk,delta:earnJaarlijks});
   wfSteps.push({label:'Totaal',delta:earnBase,isTotal:true});
-  html+='<div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)">'+dvSvgWaterfallChart(wfSteps)+'</div>'
+  html+='<div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)">'+dvSvgWaterfallChart(wfSteps,'Earn-out-opbouw: closing '+fmtGeld(fixedKoop)+' plus '+earnJaren+' jaarlijkse termijnen tot een totaal van '+fmtGeld(earnBase))+'</div>'
     +'</div>';
 
   // AI rapport knop (alleen tussenpersoon)
