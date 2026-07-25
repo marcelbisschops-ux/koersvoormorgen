@@ -631,3 +631,59 @@ alleen één van beide behandelt telt niet als volledig.
   (groepsstructuur/partners/koper-toegang/feedback e.d.) gebruiken dezelfde hardcoded kleuren,
   van vóór vandaag. Bewust niet meegenomen (te groot, te veel regressierisico om zonder gerichte
   ronde te doen) — zie sessie-geheugen.
+
+  ---
+
+  **Vervolgronde — resterende P1's/P2's/enkele P3-P4's opgepakt (25/26 juli 2026, na de
+  score-vraag "welk cijfer geef je platform nu?").** Marcel: "ga door met de Ps, doe alleen de Ps
+  die zonder mijn interventie door kunnen lopen; Ps waarbij ik handelingen moet verrichten zet je
+  met prio in de backlog." Alle auto-doable P1's en P2's uit het vijfde-ronde-artifact zijn nu
+  gefixt, getest (staging eerst) en live:
+
+  **P1 (6 van 7 auto-doable, 1 vereist Marcels actie):**
+  - Rate limiting op alle admin-routes (60/5min per IP) — voorheen alleen `/admin/scans`.
+    Getest onder realistisch aanvalsvolume (700 requests, 20 gelijktijdig -> 258 kregen 429);
+    een eerste, te trage sequentiële test gaf een vals-negatief resultaat door Cloudflare
+    Workers-isolate-hergebruik, geen echt probleem.
+  - Backend-CI-workflow kreeg de staging-override (WORKER_URL + STAGING_ADMIN_KEY-secret) die de
+    frontend-CI al had — kon voorheen bij een ingesteld ADMIN_KEY-secret tegen productie draaien.
+  - Approval workflow (interne goedkeuring) nu server-side afgedwongen op `/mna/loi/email` en
+    `/mna/bieding/email`, ook bij de eigen-PDF-upload-route (was daar volledig omzeild).
+  - VOK-bevestigingsmail-tekst (Signhost) letterlijk gelijkgetrokken met de getekende VOK (was 8
+    artikelen/oude bewaartermijn/"Mei 2026", nu 11 artikelen/versie 1.3/juli 2026).
+  - Idempotency op alle 6 document-verstuurendpoints (NDA/LoI/BEM/Excl/Dealvoorstel/Bieding) —
+    nieuwe helper `isDubbeleVerzending()`, 15s-debounce-venster.
+  - Partnerregister-afwijking zichtbaar gemaakt (niet-blokkerende waarschuwing in de
+    Partners-modal) i.p.v. twee stil uiteenlopende databronnen.
+  - **Nog open, vereist Marcel:** 47 backend- + 1 frontend-commit pushen naar GitHub.
+
+  **P2 (6 van 6 auto-doable):**
+  - Twee muur-lekken gedicht (`/mna/admin/documenten`, `/mna/admin/audit/{id}`) + een
+    write-integriteitsgat (`/mna/admin/update/{id}` kon een extern traject overschrijven).
+  - CORS-whitelist daadwerkelijk afgedwongen (viel voorheen terug op `*` voor elke origin).
+  - `mna_qa.vraag_nr` had dezelfde race condition als documentversies eerder hadden — nieuwe
+    generieke helper `metVolgnummerRetry()` + UNIQUE INDEX.
+  - `checklist_json` kreeg dezelfde 500KB-groottelimiet als `data_json`.
+  - Signhost-webhook-idempotency: een herhaalde delivery (webhook-providers zijn standaard
+    "at-least-once") stuurde niet langer een dubbele "ondertekend"-e-mail/logregel.
+  - Server-side sessie-invalidatie: nieuw endpoint `/gebruikers/logout`. **Bijvangst tijdens het
+    bouwen:** het `sessie_token`-mechanisme blijkt in de huidige frontend nergens actief
+    geconsumeerd te worden (adv.html authenticeert direct met e-mail+wachtwoord, marilyn.html's
+    `gebruikerToken` wordt nooit op een echte waarde gezet, registreer.html slaat een token op in
+    localStorage die niets ooit terugleest) — een kennelijk halfafgemaakte adviseur-login-flow,
+    apart in de backlog gezet, niet zelfstandig doorontwikkeld.
+
+  **Een paar snelle P3/P4-wins meegenomen:**
+  - Negatieve-bewezen-EBITDA-edge-case in de schuldafbouw (gevonden tijdens de onafhankelijke
+    stress-test) — nettoSchuld bij closing geclampt op 0.
+  - Quick ratio kreeg een tooltip-label (bevat OHW, afwijkend van de klassieke definitie) net als
+    DSCR al had.
+  - Verouderd, ongebruikt `wrangler.toml` verwijderd uit de publieke frontend-repo.
+  - `README-backup.md` verwees nog naar het verouderde `~/Downloads`-pad — gecorrigeerd.
+
+  **Bewust nog niet opgepakt (groter scope, zie het artifact voor de volledige lijst):**
+  response-envelope-duplicatie (580×), ontbrekende foreign keys, volledige
+  modal-toegankelijkheids-/dark-mode-refactor, HTTP-statuscode-consistentie over 88 responses,
+  gestructureerde omzetsplitsing in het accountancy-sectorprofiel, geautomatiseerde risicoscore,
+  interactieve closing-checklist, route/business/data-scheiding. Elk hiervan is een eigen,
+  grotere ronde waard — niet blind meegenomen in deze fixronde.
