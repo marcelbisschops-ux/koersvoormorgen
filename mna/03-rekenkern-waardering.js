@@ -39,11 +39,18 @@ function dvGetDefaults(){
   var mRange=dvSectorMultipleRange();
   var mLaag=mRange.mLaag, mHoog=mRange.mHoog;
   var ebBasis=parseGeld(S.data['financieel_ebitdaNorm']||S.data['financieel_ebitda']||'0');
+  // Werkkapitaalbasis (debiteuren + onderhanden werk) — audit-fix P2, 25 juli 2026: nodig om een
+  // werkkapitaalmutatie in de DCF-kasstroom mee te kunnen nemen (zie dvBerekenSchuldafbouw()). Het
+  // aparte DD-veld "Netto werkkapitaalanalyse (NWC)" is bewust NIET gebruikt — dat is een
+  // document-/vrijetekstveld (geen betrouwbaar te parsen getal), in tegenstelling tot debiteuren/wip
+  // die al elders in dit bestand als bedrag worden ingevuld en gebruikt.
+  var werkkapitaalBasis=parseGeld(S.data['financieel_debiteuren']||'0')+parseGeld(S.data['financieel_wip']||'0');
   return {
     koperNaam:t.koper_naam||'',
     belangPct:51,
     ebitdaBewezen:ebBasis||0,
     ebitdaPrognose:ebBasis?Math.round(ebBasis*1.3):0,
+    werkkapitaalBasis:werkkapitaalBasis,
     multipleBasis:mLaag,
     multipleBovengrens:mHoog,
     cliffPct:70,
@@ -105,21 +112,30 @@ function dvBerekenClosing(p){
 
 // Meerjarig kasstroom-/schuldafbouwmodel (realisatie-scenario: prognose wordt gehaald, earn-up in jaar 1 uitgekeerd).
 // Capex is vereenvoudigd als percentage van EBITDA (geen aparte omzetprognose beschikbaar in dit model).
+// Werkkapitaalmutatie (audit-fix P2, 25 juli 2026): de FCF miste voorheen elke werkkapitaalcomponent
+// — bij een groeiend kantoor kan dat de kasstroom structureel overschatten. Aanname (net als de
+// groei-/rente-/capex-percentages hierboven, geen berekening): werkkapitaal groeit evenredig met de
+// EBITDA-groei van dat jaar; de jaarlijkse toename is een kasuitstroom. Bij ebitdaBasis=0 is er geen
+// werkkapitaalbasis om te schalen en blijft de mutatie 0 (geen breuk door delen door nul).
 function dvBerekenSchuldafbouw(p,closing){
   var rows=[];
   var huidigJaar=new Date().getFullYear();
   var nettoSchuld=p.ebitdaBewezen*p.bankLeverage;
   var ebitda=p.ebitdaBewezen;
-  rows.push({jaar:'Closing ('+huidigJaar+')',ebitda:ebitda,rente:0,vpb:0,capex:0,fcf:0,earnUp:0,nettoSchuld:nettoSchuld,leverage:ebitda?nettoSchuld/ebitda:0});
+  var werkkapitaal=p.werkkapitaalBasis||0;
+  rows.push({jaar:'Closing ('+huidigJaar+')',ebitda:ebitda,rente:0,vpb:0,capex:0,nwcMutatie:0,fcf:0,earnUp:0,nettoSchuld:nettoSchuld,leverage:ebitda?nettoSchuld/ebitda:0});
   for(var j=1;j<=p.horizonJaren;j++){
+    var groeiDitJaar = (j===1 && p.ebitdaBewezen) ? (p.ebitdaPrognose-p.ebitdaBewezen)/p.ebitdaBewezen : p.groeiPct/100;
     ebitda = j===1 ? (p.ebitdaPrognose||ebitda) : ebitda*(1+p.groeiPct/100);
     var rente=nettoSchuld*(p.rentePct/100);
     var vpb=Math.max(0,ebitda-rente)*(p.vpbPct/100);
     var capex=ebitda*(p.capexPct/100);
+    var nwcMutatie=werkkapitaal*groeiDitJaar;
+    werkkapitaal+=nwcMutatie;
     var earnUp=j===1?closing.earnUp:0;
-    var fcf=ebitda-rente-vpb-capex;
+    var fcf=ebitda-rente-vpb-capex-nwcMutatie;
     nettoSchuld=Math.max(0,nettoSchuld-fcf+earnUp);
-    rows.push({jaar:String(huidigJaar+j),ebitda:ebitda,rente:rente,vpb:vpb,capex:capex,fcf:fcf,earnUp:earnUp,nettoSchuld:nettoSchuld,leverage:ebitda?nettoSchuld/ebitda:0});
+    rows.push({jaar:String(huidigJaar+j),ebitda:ebitda,rente:rente,vpb:vpb,capex:capex,nwcMutatie:nwcMutatie,fcf:fcf,earnUp:earnUp,nettoSchuld:nettoSchuld,leverage:ebitda?nettoSchuld/ebitda:0});
   }
   return rows;
 }
@@ -197,8 +213,8 @@ function dvTabelClosing(closing){
 }
 
 function dvTabelSchuldafbouw(rows){
-  return dvRenderTabelHtml(['Jaar','EBITDA','Rente','VpB','Capex','FCF','Earn-up','Netto schuld','ND/EBITDA'],
-    rows.map(function(r){return [r.jaar,dvMln(r.ebitda),dvMln(r.rente),dvMln(r.vpb),dvMln(r.capex),dvMln(r.fcf),dvMln(r.earnUp),dvMln(r.nettoSchuld),dvMultiple(r.leverage)];}));
+  return dvRenderTabelHtml(['Jaar','EBITDA','Rente','VpB','Capex','&#916; Werkkapitaal','FCF','Earn-up','Netto schuld','ND/EBITDA'],
+    rows.map(function(r){return [r.jaar,dvMln(r.ebitda),dvMln(r.rente),dvMln(r.vpb),dvMln(r.capex),dvMln(r.nwcMutatie||0),dvMln(r.fcf),dvMln(r.earnUp),dvMln(r.nettoSchuld),dvMultiple(r.leverage)];}));
 }
 
 function dvTabelBuyAndBuild(rows){
