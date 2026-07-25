@@ -196,10 +196,24 @@ function renderMain(){
       var consolAfwijkingen=[];
       if(consolCheckRaw){try{consolAfwijkingen=JSON.parse(consolCheckRaw)||[];}catch(e){}}
       if(consolAfwijkingen.length){
+        // Interactief: per afwijkend veld kiest de begeleider zelf welke waarde geldt — het aangeleverde
+        // cijfer wint niet meer stilzwijgend (Marcel, 25 juli 2026). Alleen voor de begeleider; de
+        // verkoper ziet dit keuzeblok niet (die vult in, de begeleider consolideert).
+        var magKiezen=isTussen();
         dataHtml+='<div style="background:var(--gold-bg);border:1px solid var(--gold);border-radius:var(--r);padding:.75rem 1rem;margin-bottom:1rem">'
-          +'<div style="font-size:12px;font-weight:600;color:var(--gold-dark);margin-bottom:4px">&#9888; Aangeleverde groepscijfers wijken af van de som van de entiteiten</div>'
-          +consolAfwijkingen.map(function(a){return '<div style="font-size:11px;color:var(--sub);line-height:1.6">'+esc(a.label)+': aangeleverd '+Number(a.documentWaarde).toLocaleString('nl-NL')+' vs. som entiteiten '+Number(a.somEntiteiten).toLocaleString('nl-NL')+' ('+a.verschilPct+'% verschil)</div>';}).join('')
-          +'<div style="font-size:10px;color:var(--muted);margin-top:4px;font-style:italic">Het aangeleverde cijfer wordt gebruikt. Controleer op ontbrekende entiteitsdata of onderlinge (intercompany-)posten.</div>'
+          +'<div style="font-size:12px;font-weight:600;color:var(--gold-dark);margin-bottom:6px">&#9888; Aangeleverde groepscijfers wijken af van de som van de entiteiten</div>'
+          +consolAfwijkingen.map(function(a){
+            var regel='<div style="font-size:11px;color:var(--sub);line-height:1.6;padding:5px 0;border-top:1px solid var(--gold)">'
+              +'<strong>'+esc(a.label)+'</strong>: aangeleverd '+Number(a.documentWaarde).toLocaleString('nl-NL')+' vs. som entiteiten '+Number(a.somEntiteiten).toLocaleString('nl-NL')+' ('+a.verschilPct+'% verschil)';
+            if(magKiezen){
+              regel+='<div style="display:flex;gap:6px;margin-top:4px;flex-wrap:wrap">'
+                +'<button onclick="consolKies(\''+f.id+'\',\''+esc(a.veld)+'\',\'som\','+Number(a.somEntiteiten)+')" style="font-size:10px;font-weight:600;background:var(--teal);color:#fff;border:none;border-radius:var(--r);padding:3px 8px;cursor:pointer">Gebruik som van entiteiten ('+Number(a.somEntiteiten).toLocaleString('nl-NL')+')</button>'
+                +'<button onclick="consolKies(\''+f.id+'\',\''+esc(a.veld)+'\',\'aangeleverd\',0)" style="font-size:10px;font-weight:600;background:none;color:var(--gold-dark);border:1px solid var(--gold);border-radius:var(--r);padding:3px 8px;cursor:pointer">Gebruik aangeleverd cijfer ('+Number(a.documentWaarde).toLocaleString('nl-NL')+')</button>'
+                +'</div>';
+            }
+            return regel+'</div>';
+          }).join('')
+          +'<div style="font-size:10px;color:var(--muted);margin-top:6px;font-style:italic">'+(magKiezen?'Kies per veld welke waarde geldt. Een verschil ontstaat vaak door ontbrekende entiteitsdata of onderlinge (intercompany-)posten.':'Het aangeleverde cijfer wordt gebruikt totdat de begeleider een keuze maakt.')+'</div>'
           +'</div>';
       }
     }
