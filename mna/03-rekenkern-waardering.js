@@ -150,7 +150,12 @@ function dvBerekenClosing(p){
 function dvBerekenSchuldafbouw(p,closing){
   var rows=[];
   var huidigJaar=new Date().getFullYear();
-  var nettoSchuld=p.ebitdaBewezen*p.bankLeverage;
+  // Audit-fix P3 (25 juli 2026, vijfde ronde — gevonden via een onafhankelijke stress-test): bij
+  // een (zeldzame) NEGATIEVE bewezen EBITDA gaf dit een onlogische negatieve "netto schuld" bij
+  // closing. Een bankfinanciering op basis van een EBITDA-multiple is sowieso niet zinvol voor een
+  // verlieslatend target, maar de weergave moet in dat geval geen fictieve negatieve schuld tonen —
+  // vandaar geclampt op 0, net als de rest van deze functie al doet voor latere jaren.
+  var nettoSchuld=Math.max(0,p.ebitdaBewezen*p.bankLeverage);
   var ebitda=p.ebitdaBewezen;
   var werkkapitaal=p.werkkapitaalBasis||0;
   rows.push({jaar:'Closing ('+huidigJaar+')',ebitda:ebitda,rente:0,vpb:0,capex:0,nwcMutatie:0,fcf:0,earnUp:0,nettoSchuld:nettoSchuld,leverage:ebitda?nettoSchuld/ebitda:0});
@@ -959,7 +964,7 @@ function dvIndicatorenRij(v){
     {label:'ROE',val:v.roe,fmt:function(x){return x.toFixed(1)+'%';}},
     {label:'ROA',val:v.roa,fmt:function(x){return x.toFixed(1)+'%';}},
     {label:'Current ratio',val:v.currentRatio,fmt:function(x){return x.toFixed(2);}},
-    {label:'Quick ratio',val:v.quickRatio,fmt:function(x){return x.toFixed(2);}},
+    {label:'Quick ratio',val:v.quickRatio,fmt:function(x){return x.toFixed(2);},titel:'Bevat onderhanden werk (OHW) in de teller — bewuste modelkeuze voor een dienstverlener zonder fysieke voorraad, wijkt af van de klassieke quick ratio die voorraadachtige posten juist uitsluit.'},
     {label:'DSCR',val:v.dscr,fmt:function(x){return x.toFixed(2);},titel:'Vereenvoudigd: EBITDA / (rentelasten + aflossingsverplichting) — geen volledige kasstroom na belasting en CAPEX.'},
     {label:'Netto schuld / EBITDA',val:v.netDebtEbitda,fmt:function(x){return x.toFixed(2)+'×';}}
   ].filter(function(it){return it.val!==null&&it.val!==undefined&&isFinite(it.val);});
