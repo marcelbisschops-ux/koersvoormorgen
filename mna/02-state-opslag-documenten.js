@@ -593,7 +593,9 @@ async function uploadDocument(faseId, file, existingId, vervangtDocId) {
   var entiteitId = entiteitSel ? entiteitSel.value : '';
   var dubbeleCheckEl = document.getElementById('dubbele-check-'+faseId);
   var dubbeleCheck = dubbeleCheckEl && dubbeleCheckEl.checked;
-  var url = WORKER + '/mna/document/upload?code=' + S.code + '&fase_id=' + faseId + '&bewaar=' + bewaar + (entiteitId?'&entiteit_id='+encodeURIComponent(entiteitId):'') + (dubbeleCheck?'&dubbele_check=true':'') + (vervangtDocId?'&vervangt='+encodeURIComponent(vervangtDocId):'');
+  var bewijsstukEl = document.getElementById('bewijsstuk-alleen-'+faseId);
+  var alleenBewijsstuk = bewijsstukEl && bewijsstukEl.checked;
+  var url = WORKER + '/mna/document/upload?code=' + S.code + '&fase_id=' + faseId + '&bewaar=' + bewaar + (entiteitId?'&entiteit_id='+encodeURIComponent(entiteitId):'') + (dubbeleCheck?'&dubbele_check=true':'') + (alleenBewijsstuk?'&alleen_bewijsstuk=true':'') + (vervangtDocId?'&vervangt='+encodeURIComponent(vervangtDocId):'');
 
   try {
     var resp = await fetch(url, { method: 'POST', body: formData });
@@ -614,8 +616,12 @@ async function uploadDocument(faseId, file, existingId, vervangtDocId) {
         analyse: d.analyse, velden: veldenMetEntNaam, bewaard: !!d.r2_opgeslagen,
         uploaded_at: Date.now(), uploading: false, verworpen: !!d.verworpen, verworpen_reden: d.verworpen_reden||null,
         entiteit_id: entiteitId || '',
-        versie: d.versie||1, heeft_eerdere_versies: !!vervangtDocId
+        versie: d.versie||1, heeft_eerdere_versies: !!vervangtDocId,
+        alleen_bewijsstuk: !!d.alleen_bewijsstuk
       });
+      // Bewijsstuk-only: server stuurt bewust geen veld_extractie/crosschecks mee (zie hieronder,
+      // die blokken worden dan vanzelf overgeslagen) — wel een eigen, duidelijke melding.
+      if (d.alleen_bewijsstuk) toast('"'+file.name+'" toegevoegd als bewijsstuk — niet automatisch geanalyseerd.','ok');
       if (d.veld_extractie) {
         // Geen entiteit gekozen bij upload. Als de AI zeker (exacte naam-match) één geregistreerde
         // entiteit herkent, routeren we automatisch daarnaartoe. GOUDEN STANDAARD (Marcel, 24 juli
@@ -1283,7 +1289,10 @@ function renderDocumentSectie(faseId) {
       + '</label>'
       + entiteitKiezer
       + '<label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);cursor:pointer" title="Leest het document twee keer onafhankelijk met AI en vergelijkt de uitkomst. Komen de twee lezingen niet overeen, dan wordt u gevraagd de juiste waarde te kiezen. Kost meer en duurt langer — daarom standaard uit.">'
-      + '<input type="checkbox" id="dubbele-check-'+faseId+'" style="margin:0"> Extra controle (dubbele AI-analyse)'
+      + '<input type="checkbox" id="dubbele-check-'+faseId+'" style="margin:0" onchange="if(this.checked){var b=document.getElementById(\'bewijsstuk-alleen-'+faseId+'\');if(b)b.checked=false;}"> Extra controle (dubbele AI-analyse)'
+      + '</label>'
+      + '<label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);cursor:pointer" title="Slaat het document alleen op als bewijsstuk, zonder AI-analyse — handig als u de velden liever zelf invult en het document er alleen ter onderbouwing bij wilt hebben.">'
+      + '<input type="checkbox" id="bewijsstuk-alleen-'+faseId+'" style="margin:0" onchange="if(this.checked){var d=document.getElementById(\'dubbele-check-'+faseId+'\');if(d)d.checked=false;}"> Alleen als bewijsstuk toevoegen (geen AI-analyse)'
       + '</label>'
       + '<div id="upload-status-'+faseId+'" style="font-size:11px;color:var(--muted)"></div>'
       + (faseId==='financieel'?'<div style="font-size:10px;color:var(--muted);flex-basis:100%">Ook een SBR/XBRL-jaarrekeningbestand kan hier geüpload worden — de officiële cijfers worden dan automatisch uitgelezen. Let op: bij kleine/middelgrote rechtspersonen bevat dit wettelijk geen apart omzetcijfer (pas vanaf brutomarge).</div>':'')
@@ -1318,14 +1327,16 @@ function renderDocumentSectie(faseId) {
       // verwerkt — herberekend uit de opgeslagen extractie (dus ook kloppend ná een pagina-herlaad,
       // niet afhankelijk van in-memory state van het moment van uploaden).
       var behoeftKoppelingDoc = toonKoppelenDoc && !doc.entiteit_id && (doc.velden||{}).entiteit_naam && !gokEntiteitId((doc.velden||{}).entiteit_naam, true);
-      var groepsniveauBadgeDoc = (toonKoppelenDoc && !doc.entiteit_id)
+      var isBewijsstuk = doc.alleen_bewijsstuk || doc.methode === 'bewijsstuk';
+      var bewijsstukBadgeDoc = isBewijsstuk ? ' <span style="font-size:9px;font-weight:600;color:var(--muted);background:var(--panel);border-radius:8px;padding:1px 6px;margin-left:2px" title="Alleen als onderbouwing toegevoegd, niet automatisch geanalyseerd — velden hieronder blijven ongewijzigd">&#128206; Bewijsstuk</span>' : '';
+      var groepsniveauBadgeDoc = (toonKoppelenDoc && !doc.entiteit_id && !isBewijsstuk)
         ? (behoeftKoppelingDoc
           ? ' <span style="font-size:9px;font-weight:700;color:#fff;background:var(--red);border-radius:8px;padding:1px 6px;margin-left:2px">&#9888; Handmatig koppelen</span>'
           : ' <span style="font-size:9px;font-weight:600;color:var(--muted);background:var(--panel);border-radius:8px;padding:1px 6px;margin-left:2px">Groepsniveau</span>')
         : '';
       return '<div style="display:flex;align-items:center;gap:6px;padding:5px 8px;background:'+(behoeftKoppelingDoc?'var(--red-bg)':'var(--card)')+';border-radius:var(--r);border:1px solid '+(behoeftKoppelingDoc?'var(--red)':'var(--border)')+';flex-wrap:wrap">'
         + '<span style="font-size:13px">'+icon+'</span>'
-        + '<span style="font-size:11px;color:'+(behoeftKoppelingDoc?'var(--head)':'var(--teal)')+';flex:1">'+(doc.bewaard?'<a href="'+WORKER+'/mna/document/download/'+doc.id+'?code='+encodeURIComponent(S.code)+'" target="_blank" style="color:'+(behoeftKoppelingDoc?'var(--head)':'var(--teal)')+';text-decoration:'+(behoeftKoppelingDoc?'underline':'none')+'">'+esc(doc.naam)+'</a>':esc(doc.naam))+(entNaamDoc?' <span style="font-size:9px;font-weight:600;color:var(--teal);background:var(--teal-bg);border-radius:8px;padding:1px 6px;margin-left:2px">'+esc(entNaamDoc)+'</span>':groepsniveauBadgeDoc)+((doc.versie||1)>1?' <span style="font-size:9px;font-weight:600;color:var(--muted);background:var(--panel);border-radius:8px;padding:1px 6px;margin-left:2px" title="Dit is versie '+(doc.versie||1)+' — vervangt een eerder geüpload document">v'+(doc.versie||1)+'</span>':'')+'</span>'
+        + '<span style="font-size:11px;color:'+(behoeftKoppelingDoc?'var(--head)':'var(--teal)')+';flex:1">'+(doc.bewaard?'<a href="'+WORKER+'/mna/document/download/'+doc.id+'?code='+encodeURIComponent(S.code)+'" target="_blank" style="color:'+(behoeftKoppelingDoc?'var(--head)':'var(--teal)')+';text-decoration:'+(behoeftKoppelingDoc?'underline':'none')+'">'+esc(doc.naam)+'</a>':esc(doc.naam))+(entNaamDoc?' <span style="font-size:9px;font-weight:600;color:var(--teal);background:var(--teal-bg);border-radius:8px;padding:1px 6px;margin-left:2px">'+esc(entNaamDoc)+'</span>':groepsniveauBadgeDoc)+bewijsstukBadgeDoc+((doc.versie||1)>1?' <span style="font-size:9px;font-weight:600;color:var(--muted);background:var(--panel);border-radius:8px;padding:1px 6px;margin-left:2px" title="Dit is versie '+(doc.versie||1)+' — vervangt een eerder geüpload document">v'+(doc.versie||1)+'</span>':'')+'</span>'
         + '<span style="font-size:10px;color:var(--muted)">'+(doc.grootte/1024/1024).toFixed(1)+'MB</span>'
         + (toonKoppelenDoc?'<select id="fd-ent-'+doc.id+'" style="font-size:10px;background:var(--panel);border:1px solid var(--border2);border-radius:var(--r);padding:2px 4px"><option value="">'+(doc.entiteit_id?'— Groepsniveau (ontkoppelen) —':'— Koppel aan entiteit —')+'</option>'+S._entiteiten.map(function(e){return '<option value="'+esc(e.id)+'"'+(e.id===geselecteerdDoc?' selected':'')+'>'+esc(e.naam)+(e.id===gokIdDoc&&!doc.entiteit_id?' (AI-suggestie)':'')+'</option>';}).join('')+'</select><button onclick="koppelDocumentAanEntiteit(\''+doc.id+'\',\'fd-ent-\')" style="background:none;border:1px solid var(--teal);color:var(--teal);border-radius:var(--r);cursor:pointer;font-size:10px;padding:1px 6px">&#128279;</button>':'')
         + ((doc.heeft_eerdere_versies||(doc.versie||1)>1)?'<button onclick="toonVersieGeschiedenis(\''+doc.id+'\')" title="Eerdere versies bekijken" style="background:none;border:1px solid var(--border2);color:var(--muted);border-radius:var(--r);cursor:pointer;font-size:10px;padding:1px 6px">&#128337; Versies</button>':'')
