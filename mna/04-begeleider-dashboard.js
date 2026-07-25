@@ -330,6 +330,7 @@ function toonPartnersModal(app){
   var mo=document.createElement('div');mo.style.cssText='background:var(--panel);border-radius:10px;padding:1.75rem;max-width:560px;width:100%;max-height:90vh;overflow-y:auto';
   mo.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.15rem;color:#1a1815;font-weight:600;margin-bottom:.25rem">&#129489;&#8205;&#128188; Partners</div>'
     +'<div style="font-size:12px;color:#8a8880;margin-bottom:1rem">Leg elke partner één keer vast, ook als deze bij meerdere entiteiten werkt. "Omzet die aan de partner hangt" is de omzet incl. het onderliggend team — het bedrag dat risico loopt als deze partner vertrekt, niet alleen zijn eigen declarabele productie.</div>'
+    +'<div id="pt-reconciliatie"></div>'
     +'<div id="pt-lijst" style="margin-bottom:1rem;font-size:13px;color:#8a8880;font-style:italic">Laden...</div>'
     +'<div style="border-top:1px solid #e5e2d8;padding-top:.85rem;margin-top:.5rem">'
     +'<div style="display:flex;gap:8px;margin-bottom:6px">'
@@ -361,10 +362,32 @@ function toonPartnersModal(app){
       +'</div>';
   }
 
+  // Audit-fix P1 (25 juli 2026, vijfde ronde): het partnerregister en de oudere, losse DD-velden
+  // partner_aantalP/partner_omzetPerP zijn twee niet-gesynchroniseerde databronnen — de waardering
+  // leest nog steeds de oude velden (bewust niet automatisch overschreven, zie hierboven "geen
+  // gok naar wie welke oude waarde was"). Puur informatieve, niet-blokkerende vergelijking, zodat
+  // een afwijking hier zichtbaar is i.p.v. stil te blijven bestaan.
+  function toonReconciliatie(rows){
+    var el=document.getElementById('pt-reconciliatie');
+    if(!rows||!rows.length){el.innerHTML='';return;}
+    var aantalRegister=rows.length;
+    var omzetRegister=rows.reduce(function(sum,r){return sum+(parseFloat(r.omzet_incl_team)||0);},0);
+    var aantalIngevuld=parseFloat(S.data['partner_aantalP'])||null;
+    var omzetIngevuld=null;var omzetRaw=S.data['partner_omzetPerP'];
+    if(omzetRaw){var n=parseFloat(String(omzetRaw).replace(/[^0-9.,]/g,'').replace(',','.'));if(!isNaN(n))omzetIngevuld=n;}
+    var verschillen=[];
+    if(aantalIngevuld!==null&&aantalIngevuld!==aantalRegister)verschillen.push('aantal partners: DD-veld zegt '+aantalIngevuld+', register zegt '+aantalRegister);
+    if(omzetIngevuld!==null&&Math.abs(omzetIngevuld-omzetRegister)>1)verschillen.push('omzet: DD-veld zegt €'+omzetIngevuld.toLocaleString('nl-NL')+', register (som incl. team) zegt €'+omzetRegister.toLocaleString('nl-NL'));
+    if(!verschillen.length){el.innerHTML='';return;}
+    el.innerHTML='<div style="background:var(--gold-bg);border:1px solid var(--gold);border-radius:6px;padding:8px 12px;margin-bottom:.85rem;font-size:12px;color:var(--sub)">'
+      +'&#9888; Het partnerregister wijkt af van de ingevulde DD-velden (fase Partners &amp; personeel) — de waardering gebruikt nog steeds de DD-velden, niet dit register. '+esc(verschillen.join('; '))+'. Werk beide bij als één van de twee verouderd is.'
+      +'</div>';
+  }
   async function laadLijst(){
     var lijstEl=document.getElementById('pt-lijst');
     lijstEl.textContent='Laden...';
     var rows=await fetch(WORKER+'/mna/partners/'+S.code).then(function(r){return r.json();}).catch(function(){return [];});
+    toonReconciliatie(rows);
     if(!rows||!rows.length){lijstEl.innerHTML='<span style="font-style:italic">Nog geen partners geregistreerd.</span>';return;}
     lijstEl.style.fontStyle='normal';
     lijstEl.innerHTML=rows.map(function(r){
