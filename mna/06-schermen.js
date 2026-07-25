@@ -1018,7 +1018,7 @@ function bindAll(){
           var cj={};try{cj=JSON.parse(rv.cijfers_json||'{}');}catch(e){}
           var gewijzigd=cj.wMid&&Math.round(cj.wMid)!==Math.round(actueel.wMid);
           return '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:.5rem .75rem;background:var(--card);border-radius:var(--r);margin-bottom:6px;flex-wrap:wrap">'
-            +'<span style="font-size:12px;color:var(--sub)">Versie '+rv.versie+' &middot; '+new Date(rv.created_at).toLocaleDateString('nl-NL',{day:'2-digit',month:'short',year:'numeric'})+' &middot; '+(gewijzigd?'<span style="color:var(--gold)">cijfers zijn sindsdien gewijzigd</span>':'<span style="color:var(--muted)">zelfde cijfers, andere formulering</span>')+'</span>'
+            +'<span style="font-size:12px;color:var(--sub)">Versie '+rv.versie+' &middot; '+new Date(rv.created_at).toLocaleDateString('nl-NL',{day:'2-digit',month:'short',year:'numeric'})+' &middot; '+(gewijzigd?'<span style="color:var(--gold-dark);font-weight:600">cijfers zijn sindsdien gewijzigd</span>':'<span style="color:var(--muted)">zelfde cijfers, andere formulering</span>')+'</span>'
             +'<button class="btn-ghost btn-sm" data-vid="'+rv.id+'" style="font-size:11px">Bekijk</button>'
             +'</div>';
         }).join('');
