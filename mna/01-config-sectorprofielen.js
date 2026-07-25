@@ -137,6 +137,7 @@ var SECTOR_PROFIELEN = {
         {id:'aantalP',label:'Aantal partners / eigenaren',ph:'',doc:false,req:true,fase:'1'},
         {id:'gemLeeftijd',label:'Gemiddelde leeftijd partners (jaren)',ph:'',doc:false,req:true,fase:'1'},
         {id:'fte',label:'Totaal FTE',ph:'',doc:false,req:true,fase:'1'},
+        {id:'omzetPerFte',label:'Omzet per medewerker / FTE (€)',ph:'',doc:false,req:false,fase:'1'},
         {id:'omzetPerP',label:'Omzet per partner (€)',ph:'',doc:false,req:true,fase:'1'},
         {id:'eigendomsStructuur',label:'Eigendomsstructuur (verdeling aandelen)',ph:'',doc:false,req:true,fase:'1'},
         {id:'opvolging',label:'Opvolgingskandidaat aanwezig',ph:'',doc:false,req:true,fase:'1'},
