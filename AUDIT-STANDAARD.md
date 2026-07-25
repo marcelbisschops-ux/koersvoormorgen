@@ -266,10 +266,17 @@ alleen één van beide behandelt telt niet als volledig.
   vóór je opnieuw begint aan een van bovenstaande punten.
 
 ### Status P1-bevindingen (bijgewerkt zodra iets is opgelost)
-1. Adviseur-login crasht (`verifyWW`) — **open**
+1. Adviseur-login crasht (`verifyWW`) — **gefixt en live geverifieerd (25 juli 2026)**. Tijdens het
+   fixen bleek de deploy-bron zelf ook stil te zijn achtergebleven: `~/Downloads` (de tot dan toe
+   gedocumenteerde deploy-map) was verouderd t.o.v. de backend-git-repo. Marcel bevestigde: voortaan
+   direct vanuit `~/Documents/GitHub/koersvoormorgen-backend/backend/` deployen — CLAUDE.md en
+   geheugen bijgewerkt. Ook bleek de backend-repo al (ongecommit) call-site-wijzigingen naar
+   `verifyWW` te bevatten op 5 plekken (met een `needsRehash`-uitbreidingspunt) — vermoedelijk een
+   eerder gestaakte migratiepoging; nu afgerond en gecommit.
 2. Hoofdwaardering vaste multiple i.p.v. sectorbewust — **open**
 3. AI-modelversie niet vastgelegd bij waarderingen — **open**
-4. EBITDA-marge kan verzonnen "0,0%" tonen — **open**
+4. EBITDA-marge kan verzonnen "0,0%" tonen — **gefixt en live geverifieerd (25 juli 2026)**, guard
+   toegevoegd + getest op staging vóór productie-deploy.
 5. Signhost-webhook zonder signature-verificatie — **open**
 6. Entiteit-verwijdering laat wees-data achter — **open**
 7. Automatische back-up draait niet — **open, vereist actie van Marcel zelf (Mac-permissie)**
