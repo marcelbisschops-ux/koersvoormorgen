@@ -703,7 +703,7 @@ function dvExporteerWaarderingCsv(v){
     ['Aantal partners',v.aantalP],['Omzet per partner',v.omzetPerP?Math.round(v.omzetPerP):null],['Partnerbeloning',v.partnerBel?Math.round(v.partnerBel):null],
     ['Debiteuren',v.debiteuren?Math.round(v.debiteuren):null],['Onderhanden werk',v.wip?Math.round(v.wip):null],['Declarabiliteit (%)',v.declarab],
     ['Solvabiliteit EV/BT (%)',v.solvabiliteit!==null?v.solvabiliteit.toFixed(1):null],['ROE (%)',v.roe!==null?v.roe.toFixed(1):null],['ROA (%)',v.roa!==null?v.roa.toFixed(1):null],
-    ['Current ratio',v.currentRatio!==null?v.currentRatio.toFixed(2):null],['Quick ratio',v.quickRatio!==null?v.quickRatio.toFixed(2):null],['DSCR',v.dscr!==null?v.dscr.toFixed(2):null],
+    ['Current ratio',v.currentRatio!==null?v.currentRatio.toFixed(2):null],['Quick ratio',v.quickRatio!==null?v.quickRatio.toFixed(2):null],['DSCR (vereenvoudigd: EBITDA/schuldenlast)',v.dscr!==null?v.dscr.toFixed(2):null],
     ['Netto schuld/EBITDA',v.netDebtEbitda!==null?v.netDebtEbitda.toFixed(2):null]
   ].forEach(function(r){if(r[1]!==null&&r[1]!==undefined&&r[1]!==0)regel(r);});
   leeg();
@@ -954,14 +954,17 @@ function dvIndicatorenRij(v){
     {label:'ROA',val:v.roa,fmt:function(x){return x.toFixed(1)+'%';}},
     {label:'Current ratio',val:v.currentRatio,fmt:function(x){return x.toFixed(2);}},
     {label:'Quick ratio',val:v.quickRatio,fmt:function(x){return x.toFixed(2);}},
-    {label:'DSCR',val:v.dscr,fmt:function(x){return x.toFixed(2);}},
+    {label:'DSCR',val:v.dscr,fmt:function(x){return x.toFixed(2);},titel:'Vereenvoudigd: EBITDA / (rentelasten + aflossingsverplichting) — geen volledige kasstroom na belasting en CAPEX.'},
     {label:'Netto schuld / EBITDA',val:v.netDebtEbitda,fmt:function(x){return x.toFixed(2)+'×';}}
   ].filter(function(it){return it.val!==null&&it.val!==undefined&&isFinite(it.val);});
   var alleItems=items.concat(ratioItems);
   if(!alleItems.length)return '';
   return '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-top:.85rem;padding-top:.85rem;border-top:1px solid var(--border)">'
     +alleItems.map(function(it){
-      return '<div style="text-align:center"><div style="font-size:9px;color:var(--muted);margin-bottom:.15rem;text-transform:uppercase;letter-spacing:.04em">'+it.label+'</div><div style="font-family:IBM Plex Mono,monospace;font-size:12px;font-weight:600;color:var(--sub)">'+it.fmt(it.val)+'</div></div>';
+      // Audit-fix P3 (25 juli 2026, vierde ronde): DSCR is een vereenvoudiging (ruwe EBITDA, geen
+      // volledige kasstroom na belasting/CAPEX) — nu expliciet gelabeld via een tooltip i.p.v. als
+      // een precieze DSCR gepresenteerd te worden.
+      return '<div style="text-align:center"'+(it.titel?' title="'+esc(it.titel)+'"':'')+'><div style="font-size:9px;color:var(--muted);margin-bottom:.15rem;text-transform:uppercase;letter-spacing:.04em">'+it.label+(it.titel?' &#9432;':'')+'</div><div style="font-family:IBM Plex Mono,monospace;font-size:12px;font-weight:600;color:var(--sub)">'+it.fmt(it.val)+'</div></div>';
     }).join('')
     +'</div>';
 }
