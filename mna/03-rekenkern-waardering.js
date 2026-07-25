@@ -73,7 +73,12 @@ function dvGetDefaults(){
     baAcqMultiple:5.5,
     baPlatformMultipleMax:9.5,
     baAcqSchuldPct:55,
-    baAflossingPct:15
+    baAflossingPct:15,
+    vendorLoanAan:false,
+    vendorLoanBedrag:0,
+    vendorLoanRentePct:6,
+    vendorLoanJaren:5,
+    vendorLoanAflossingsvrij:false
   };
 }
 
