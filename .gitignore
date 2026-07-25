@@ -9,3 +9,6 @@ playwright/.cache/
 *.sql
 KantoorInzicht-Backups/
 backups/
+
+# Lokale wrangler-cache (per ongeluk hier aangemaakt bij een cross-directory commando)
+.wrangler/
