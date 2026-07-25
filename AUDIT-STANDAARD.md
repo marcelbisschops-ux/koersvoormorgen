@@ -494,11 +494,27 @@ alleen één van beide behandelt telt niet als volledig.
   - `mna_doc_versies` nu ook in de centrale schema-lijst (was alleen lazy aangemaakt op 9 plekken).
   - DSCR expliciet gelabeld als vereenvoudiging (tooltip + CSV-kolomnaam).
 
-  **P3 nog open (7 van 13) — bewust niet gedaan, groter regressierisico of aparte ontwerpkeuze
+  **P3, tweede ronde (zelfde dag) — nog 3 afgerond, waaronder een grotere, onderweg ontdekte
+  vondst:**
+  - `env.DB.batch()` voor beide delete-cascade-routes — atomair i.p.v. losse `.catch(()=>{})`-deletes.
+    Eerste poging faalde op staging (mna_feedback bestond nergens) — zie hieronder.
+  - **Nieuwe, bredere vondst tijdens het testen:** 11 van de 21 tabellen in de delete-cascades bleken
+    alleen lazy aangemaakt te worden, nooit centraal in `initDB()` — werkte tot nu toe alleen omdat
+    elke DELETE een eigen tolerante `.catch()` had. Alle 11 nu alsnog centraal toegevoegd (puur
+    additief, `IF NOT EXISTS`), waarna de batch()-fix opnieuw en ditmaal succesvol is gedaan.
+    Bijvangst: `mna_gesprek_concepten` en `mna_infoverzoek` bleken vestigiale tabelverwijzingen
+    zonder ooit bestaan te hebben CREATE TABLE — bewust uit de delete-cascade gehaald i.p.v. een
+    schema te verzinnen.
+  - Atomiciteit expliciet bewezen op staging: een batch met een opzettelijk falende statement liet
+    de daarvoor al uitgevoerde DELETE aantoonbaar niet doorgaan.
+
+  **P3 nog open (4 van 13) — bewust niet gedaan, groter regressierisico of aparte ontwerpkeuze
   nodig, niet zonder gerichte review-tijd:**
   - 463× gedupliceerde response-envelope over de 20 workermodules.
-  - Geen `env.DB.batch()` bij multi-tabel-delete (D1 ondersteunt dit wel, nog niet gebruikt).
-  - Race condition op documentversienummer (geen UNIQUE-constraint).
+  - Race condition op documentversienummer — een `CREATE UNIQUE INDEX` zou dit oplossen (SQLite
+    ondersteunt dat zonder tabel-rebuild), maar vereist eerst controleren of er al bestaande
+    duplicaten in productiedata zitten (anders faalt de index-creatie zelf) — niet gedaan zonder
+    die data-veiligheidscheck vooraf.
   - Geen pagination op lijst-endpoints.
   - Geen foreign keys in het D1-schema.
   - Server-side validatie van de 12 nieuwe features ontbreekt (alleen client-side).
@@ -506,7 +522,8 @@ alleen één van beide behandelt telt niet als volledig.
     P1/P2-punten, niet zonder Marcel te raadplegen.
   - Dealvoorstel-modal cognitief dicht bij overladen — UX-herontwerp, subjectief/groter.
 
-  **P4: alle 3 nog open** (HSTS/Referrer-Policy, foutmeldingscasing, mna_audit-bewaarbeleid).
+  **P4, 1 van 3 afgerond:** HSTS + Referrer-Policy-headers toegevoegd aan `getCORS()`, live
+  geverifieerd op staging en productie. Nog open: foutmeldingscasing, mna_audit-bewaarbeleid.
 
   **Nieuw gevonden tijdens het fixen (niet in de oorspronkelijke bevindingenlijst), apart
   weggezet voor een volgende ronde:** de hardcoded-hex-kleurenkwestie (P2 #15) bleek bij nader
