@@ -138,6 +138,11 @@ var KOPER_FASE_UITLEG={
   strategisch:'Hier vindt u de marktpositie en groeipotentie van de onderneming — relevant voor de vraag of de aankoop op langere termijn waarde toevoegt.'
 };
 
+// Duidelijk zichtbare verplicht-markering bij een veldlabel. Vervangt het eerdere kale rode "*",
+// dat zonder uitleg cryptisch was — een invuller herkent nu meteen dat het veld verplicht is
+// (Marcel, 25 juli 2026). Eén helper zodat alle render-plekken identiek blijven.
+function reqLabel(df){ return df.req ? ' <span class="req-tag">verplicht</span>' : ''; }
+
 function renderMain(){
   var f=FASES[S.fase];
   var tp=(isVerkoper()||isKoper())?totalFillPct():Math.round(FASES.reduce(function(a,fase){return a+pct(fase.id);},0)/FASES.length);
@@ -258,10 +263,10 @@ function renderMain(){
     dataHtml+='<div>';
     if(isRO){
       var roFragTitle=veldBronInfo&&veldBronInfo.bron_fragment?(' title="Uit het document: &quot;'+esc(veldBronInfo.bron_fragment)+'&quot;"'):'';
-      dataHtml+='<div class="f"><label>'+df.label+(df.req?' <span class="req">*</span>':'')+(df.doc?' &#128196;':'')+'</label>'
+      dataHtml+='<div class="f"><label>'+df.label+reqLabel(df)+(df.doc?' &#128196;':'')+'</label>'
         +'<div class="readonly-val'+(val?'':' empty')+'">'+(val?esc(val):'Niet ingevuld')+(ref?'<span style="color:var(--gold);font-size:11px;margin-left:8px;cursor:help"'+roFragTitle+'>&#128196; '+esc(ref)+'</span>':'')+'</div></div>';
     }else if(isGeaggregeerdInGroep){
-      dataHtml+='<div class="f"><label>'+df.label+(df.req?' <span class="req">*</span>':'')+' <span style="color:var(--teal);font-size:9px;font-weight:600">&#128279; som van entiteiten</span></label>'
+      dataHtml+='<div class="f"><label>'+df.label+reqLabel(df)+' <span style="color:var(--teal);font-size:9px;font-weight:600">&#128279; som van entiteiten</span></label>'
         +'<div class="readonly-val" style="background:var(--teal-bg);border-color:var(--teal-dark)" title="Automatisch berekend uit de geregistreerde entiteiten — vóór eliminatie van onderlinge transacties. Wijzig per entiteit via de kiezer hierboven.">'+(val?esc(val):'Nog geen entiteitsdata')+'</div></div>';
     }else{
       var conflictStyle=hasConflict?'border-color:var(--gold);background:var(--gold-bg)':'';
@@ -272,7 +277,7 @@ function renderMain(){
       // belangrijkste financiële cijfervelden — zie setIfEmpty/applyOrConflict-aanroepen.
       var bronFragTitle=veldBronInfo&&veldBronInfo.bron_fragment?('Uit het document: &quot;'+esc(veldBronInfo.bron_fragment)+'&quot;'):'Automatisch ingevuld uit dit document — controleer de waarde.';
       var bronTag=(val&&ref)?' <span style="color:var(--gold-dark);font-size:9px;font-weight:600;cursor:help" title="'+bronFragTitle+'">&#128196; uit: '+esc(ref)+(veldBronInfo&&veldBronInfo.bron_fragment?' &#128172;':'')+'</span>':'';
-      dataHtml+='<div class="f"><label>'+df.label+(df.req?' <span class="req">*</span>':'')+(df.doc?' <span style="color:var(--gold);font-size:9px">&#128196; ref</span>':'')+bronTag
+      dataHtml+='<div class="f"><label>'+df.label+reqLabel(df)+(df.doc?' <span style="color:var(--gold);font-size:9px">&#128196; ref</span>':'')+bronTag
         +(hasConflict?' <span style="color:var(--gold);font-size:9px;font-weight:600" title="Document geeft andere waarde: '+esc(hasConflict)+'">&#9888; afwijking</span>':'')
         +(toontGroepsniveauBadge?' <span style="color:var(--muted);font-size:9px;font-weight:600" title="Dit veld geldt voor de hele groep, niet alleen voor de geselecteerde entiteit — wijzigingen gelden overal.">&#128279; geldt voor hele groep</span>':'')+'</label>'
         +'<input type="text" id="df_'+df.id+'" value="'+esc(val)+'" placeholder="'+esc(df.ph)+'" class="'+(missing?'missing':'')+'" style="'+conflictStyle+'"'+conflictTitle+' oninput="userEdit(this)"></div>';
@@ -280,7 +285,7 @@ function renderMain(){
     dataHtml+='</div>';
   });
   dataHtml+='</div>'+(S.showValidation&&getMissing().find(function(m){return m.fase.startsWith(f.num);})
-    ?'<div style="font-size:12px;color:var(--red);margin-top:.5rem">&#9888; Vul alle verplichte velden (*) in voor een volledig beeld.</div>':'')+'</div>';
+    ?'<div style="font-size:12px;color:var(--red);margin-top:.5rem">&#9888; Vul alle als <span class="req-tag">verplicht</span> gemarkeerde velden in voor een volledig beeld.</div>':'')+'</div>';
 
   // Marcel-only: checklist + rode vlaggen + notities + AI
   var extraHtml='';
