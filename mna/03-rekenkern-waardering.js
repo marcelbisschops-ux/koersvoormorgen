@@ -508,12 +508,30 @@ function dvBlokVergelijkbareTransacties(){
   return '<div style="background:#f7f5f0;border:1px solid #e0ddd4;border-radius:6px;padding:12px 16px;margin:.5rem 0 1.25rem;font-size:10pt;color:#2a2825;white-space:pre-line">'+esc(tekst)+'</div>';
 }
 
-// DCF als kruiscontrole op de EBITDA-multiple-waardering: contante waarde van de al berekende
-// FCF-projectie (dvBerekenSchuldafbouw) + terminal value o.b.v. de bestaande groei-aanname.
+// FCFF (kasstroom vóór financieringseffecten) afleiden uit de schuldaflossingsprojectie
+// (dvBerekenSchuldafbouw). Die projectie rekent zelf bewust met een na-rente kasstroom (r.fcf) —
+// terecht voor dát doel, want de bankschuld wordt afgelost met de kasstroom die na rentebetaling
+// overblijft. Maar diezelfde na-rente kasstroom (FCFE-achtig) verdisconteren tegen WACC en het
+// resultaat "Ondernemingswaarde (DCF)" noemen was een methodefout: WACC/ondernemingswaarde
+// veronderstelt een kasstroom vóór financieringseffecten, anders wordt het rente-effect dubbel
+// verdisconteerd (eerst als lagere kasstroom, dan nogmaals via de discontovoet). Gevonden bij de
+// vierde kwartaalaudit (25 juli 2026, P1 #6). Gedeeld door dvBerekenDCF() en
+// dvBerekenDCFGevoeligheid() zodat ze nooit uiteen kunnen lopen.
+function dvFcffRijen(schuldafbouwRows,p){
+  return schuldafbouwRows.slice(1).map(function(r){
+    var vpbOpEbitda=Math.max(0,r.ebitda)*(p.vpbPct/100);
+    return {jaar:r.jaar,fcf:r.ebitda-vpbOpEbitda-r.capex-(r.nwcMutatie||0)};
+  });
+}
+
+// DCF als kruiscontrole op de EBITDA-multiple-waardering: contante waarde van de FCFF-projectie
+// (dvFcffRijen) + terminal value o.b.v. de bestaande groei-aanname. Bij WACC ≤ groeivoet is de
+// Gordon Growth-formule wiskundig ongeldig — dan null teruggeven i.p.v. een gefabriceerde 0
+// (zelfde gouden-standaard-behandeling als dvBerekenDCFGevoeligheid hieronder, die dit al goed deed).
 function dvBerekenDCF(p,schuldafbouwRows){
   var d=p.discontovoetPct/100;
   var g=p.groeiPct/100;
-  var projRows=schuldafbouwRows.slice(1);
+  var projRows=dvFcffRijen(schuldafbouwRows,p);
   var pvSom=0,detail=[];
   projRows.forEach(function(r,i){
     var jaarIdx=i+1;
@@ -523,21 +541,23 @@ function dvBerekenDCF(p,schuldafbouwRows){
     detail.push({jaar:r.jaar,fcf:r.fcf,factor:factor,pv:pv});
   });
   var laatsteFcf=projRows.length?projRows[projRows.length-1].fcf:0;
-  var terminalValueEind=(d>g)?(laatsteFcf*(1+g))/(d-g):0;
-  var terminalValuePv=terminalValueEind/Math.pow(1+d,projRows.length);
-  var evDcf=pvSom+terminalValuePv;
-  var deelKoperDcf=evDcf*(p.belangPct/100);
-  return {detail:detail,pvSom:pvSom,terminalValueEind:terminalValueEind,terminalValuePv:terminalValuePv,evDcf:evDcf,deelKoperDcf:deelKoperDcf};
+  var geldig=d>g;
+  var terminalValueEind=geldig?(laatsteFcf*(1+g))/(d-g):null;
+  var terminalValuePv=geldig?(terminalValueEind/Math.pow(1+d,projRows.length)):null;
+  var evDcf=geldig?(pvSom+terminalValuePv):null;
+  var deelKoperDcf=geldig?(evDcf*(p.belangPct/100)):null;
+  return {detail:detail,pvSom:pvSom,terminalValueEind:terminalValueEind,terminalValuePv:terminalValuePv,evDcf:evDcf,deelKoperDcf:deelKoperDcf,geldig:geldig};
 }
 function dvTabelDCF(dcf){
-  var tabel=dvRenderTabelHtml(['Jaar','FCF (€ mln)','Discontofactor','Contante waarde (€ mln)'],
+  var tabel=dvRenderTabelHtml(['Jaar','FCFF (€ mln)','Discontofactor','Contante waarde (€ mln)'],
     dcf.detail.map(function(r){return [r.jaar,dvMln(r.fcf),dvMultiple(r.factor),dvMln(r.pv)];}));
+  var na='n.v.t. (WACC ≤ groeivoet — Gordon Growth-formule ongeldig)';
   var samenvatting=dvRenderTabelHtml(['DCF-uitkomst','€ mln'],[
-    ['Som contante waarde FCF-periode',dvMln(dcf.pvSom)],
-    ['Terminal value (eindejaar)',dvMln(dcf.terminalValueEind)],
-    ['Terminal value (contant gemaakt)',dvMln(dcf.terminalValuePv)],
-    ['Ondernemingswaarde (DCF)',dvMln(dcf.evDcf)],
-    ['Deel koper (DCF-methode)',dvMln(dcf.deelKoperDcf)]
+    ['Som contante waarde FCFF-periode',dvMln(dcf.pvSom)],
+    ['Terminal value (eindejaar)',dcf.geldig?dvMln(dcf.terminalValueEind):na],
+    ['Terminal value (contant gemaakt)',dcf.geldig?dvMln(dcf.terminalValuePv):na],
+    ['Ondernemingswaarde (DCF)',dcf.geldig?dvMln(dcf.evDcf):na],
+    ['Deel koper (DCF-methode)',dcf.geldig?dvMln(dcf.deelKoperDcf):na]
   ]);
   return tabel+samenvatting;
 }
@@ -549,7 +569,7 @@ function dvTabelDCF(dcf){
 // groeivoet bij het contant maken — dat zijn precies de twee aannames waar een DCF het gevoeligst
 // voor is. dcfWaccDeltaPct/dcfGroeiDeltaPct zijn zelf in te stellen bandbreedtes, geen norm.
 function dvBerekenDCFGevoeligheid(p,schuldafbouwRows){
-  var projRows=schuldafbouwRows.slice(1);
+  var projRows=dvFcffRijen(schuldafbouwRows,p);
   var laatsteFcf=projRows.length?projRows[projRows.length-1].fcf:0;
   var waccDelta=p.dcfWaccDeltaPct||0, groeiDelta=p.dcfGroeiDeltaPct||0;
   var waccWaarden=[p.discontovoetPct-waccDelta,p.discontovoetPct,p.discontovoetPct+waccDelta];
