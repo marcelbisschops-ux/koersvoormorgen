@@ -855,6 +855,12 @@ function renderBegeleiderDashboard(app){
       +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('dv-bab-mult','Acquisitiemultiple',d.baAcqMultiple,0.1)+veld('dv-bab-max','Doel-platformmultiple bij schaal',d.baPlatformMultipleMax,0.1)+'</div>'
       +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('dv-bab-acqschuld','Acquisitieschuld (% van acquisitiewaarde)',d.baAcqSchuldPct)+veld('dv-bab-aflossing','Jaarlijkse aflossing bestaande schuld (%)',d.baAflossingPct)+'</div>'
       +'</div>'
+      +'<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--sub);margin-bottom:1rem;cursor:pointer"><input type="checkbox" id="dv-vl-aan" style="width:15px;height:15px;accent-color:var(--gold-dark)"> Vendor loan (verkoperslening) meenemen</label>'
+      +'<div id="dv-vl-velden" style="display:none">'
+      +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('dv-vl-bedrag','Bedrag vendor loan (€)',0)+veld('dv-vl-rente','Rente (%)',d.vendorLoanRentePct,0.1)+'</div>'
+      +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('dv-vl-jaren','Looptijd (jaren)',d.vendorLoanJaren)+'<div style="flex:1"></div></div>'
+      +'<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--sub);margin-bottom:1rem;cursor:pointer"><input type="checkbox" id="dv-vl-aflvrij" style="width:15px;height:15px;accent-color:var(--gold-dark)"> Aflossingsvrij (bullet-aflossing hoofdsom in laatste jaar) — anders lineaire aflossing</label>'
+      +'</div>'
       +'<div id="dv-err" style="display:none;color:#e05252;font-size:12px;margin-bottom:.75rem"></div>'
       +'<div style="display:flex;gap:8px;justify-content:flex-end">'
       +'<button id="dv-ann" style="background:transparent;border:1px solid #c8c5bc;padding:8px 16px;border-radius:6px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:13px">Annuleren</button>'
@@ -864,6 +870,7 @@ function renderBegeleiderDashboard(app){
     ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
     document.getElementById('dv-ann').onclick=function(){document.body.removeChild(ov);};
     document.getElementById('dv-bab-aan').onchange=function(){document.getElementById('dv-bab-velden').style.display=this.checked?'block':'none';};
+    document.getElementById('dv-vl-aan').onchange=function(){document.getElementById('dv-vl-velden').style.display=this.checked?'block':'none';};
 
     document.getElementById('dv-ok').onclick=async function(){
       var btn=this;btn.disabled=true;btn.textContent='Genereren... (20-40 sec)';
@@ -891,10 +898,19 @@ function renderBegeleiderDashboard(app){
         baAcqMultiple:parseFloat(document.getElementById('dv-bab-mult').value)||5.5,
         baPlatformMultipleMax:parseFloat(document.getElementById('dv-bab-max').value)||9.5,
         baAcqSchuldPct:parseFloat(document.getElementById('dv-bab-acqschuld').value)||55,
-        baAflossingPct:parseFloat(document.getElementById('dv-bab-aflossing').value)||15
+        baAflossingPct:parseFloat(document.getElementById('dv-bab-aflossing').value)||15,
+        vendorLoanAan:document.getElementById('dv-vl-aan').checked,
+        vendorLoanBedrag:parseFloat(document.getElementById('dv-vl-bedrag').value)||0,
+        vendorLoanRentePct:parseFloat(document.getElementById('dv-vl-rente').value)||6,
+        vendorLoanJaren:parseInt(document.getElementById('dv-vl-jaren').value)||5,
+        vendorLoanAflossingsvrij:document.getElementById('dv-vl-aflvrij').checked
       };
       if(!p.ebitdaBewezen||!p.ebitdaPrognose){
         errEl.textContent='Vul zowel de bewezen als de prognose-EBITDA in.';errEl.style.display='block';
+        btn.disabled=false;btn.textContent='📊 Genereren';return;
+      }
+      if(p.vendorLoanAan&&!p.vendorLoanBedrag){
+        errEl.textContent='Vendor loan staat aan, maar er is geen bedrag ingevuld.';errEl.style.display='block';
         btn.disabled=false;btn.textContent='📊 Genereren';return;
       }
       try{
@@ -902,6 +918,7 @@ function renderBegeleiderDashboard(app){
         var closing=dvBerekenClosing(p);
         var schuldafbouw=dvBerekenSchuldafbouw(p,closing);
         var buyAndBuildRows=p.buyAndBuild?dvBerekenBuyAndBuild(p,schuldafbouw[schuldafbouw.length-1],closing.deelKoperBasis):null;
+        var vendorLoanRows=dvBerekenVendorLoan(p);
         var gevoeligheid=dvBerekenGevoeligheid(p);
         var dcf=dvBerekenDCF(p,schuldafbouw);
         var tabelMap={
@@ -914,7 +931,8 @@ function renderBegeleiderDashboard(app){
           CLOSING:dvTabelClosing(closing),
           DCF:dvTabelDCF(dcf),
           SCHULDAFBOUW:dvTabelSchuldafbouw(schuldafbouw),
-          BUYANDBUILD:buyAndBuildRows?dvTabelBuyAndBuild(buyAndBuildRows):''
+          BUYANDBUILD:buyAndBuildRows?dvTabelBuyAndBuild(buyAndBuildRows):'',
+          VENDORLOAN:vendorLoanRows?dvTabelVendorLoan(vendorLoanRows):''
         };
         var sectorProfiel=getSectorProfiel();
         var contextBlok='Sector: '+(sectorProfiel.label||'MKB')+'. Verkopende partij: '+(t2.kantoor_naam||S.code)+'. Kopende partij: '+p.koperNaam+'.\n'
@@ -923,7 +941,8 @@ function renderBegeleiderDashboard(app){
           +'Escrow: '+p.escrowPct+'% gedurende '+p.escrowMaanden+' maanden. Bankfinanciering bij closing: '+p.bankLeverage+'× de bewezen EBITDA.\n'
           +'Bedrag bij closing (koper, op bewezen basis): €'+Math.round(closing.deelKoperBasis)+'. Mogelijke earn-up bij volledige realisatie: €'+Math.round(closing.earnUp)+'.\n'
           +'DCF-kruiscontrole (discontovoet '+p.discontovoetPct+'%): ondernemingswaarde DCF €'+Math.round(dcf.evDcf)+' t.o.v. ondernemingswaarde EBITDA-multiple (bewezen) €'+Math.round(closing.evBasis)+'.\n'
-          +'Transactiestructuur: koper verwerft '+p.belangPct+'% bij closing; de verkopende partij behoudt '+(100-p.belangPct)+'%.';
+          +'Transactiestructuur: koper verwerft '+p.belangPct+'% bij closing; de verkopende partij behoudt '+(100-p.belangPct)+'%.'
+          +(vendorLoanRows?('\nVendor loan (verkoperslening): €'+Math.round(p.vendorLoanBedrag)+' tegen '+p.vendorLoanRentePct+'% rente, looptijd '+p.vendorLoanJaren+' jaar, '+(p.vendorLoanAflossingsvrij?'aflossingsvrij met bullet-aflossing van de hoofdsom in het laatste jaar':'lineaire jaarlijkse aflossing')+'. Dit is een door de verkopende partij aan de koper verstrekte, achtergestelde lening — een aparte verplichting naast de bankfinanciering.'):'');
         var koppen='## Managementsamenvatting\n(3-5 bullets over de kern van het voorstel, dan één alinea "In één zin")\n\n'
           +'## Uitgangspunten & de cijfers\n(korte toelichting op de omzet-/EBITDA-ontwikkeling)\n[TABEL:CIJFERS]\n\n'
           +'## Cijferoverzicht & interpretatie\n(bespreek feitelijk wat de aangeleverde cijfers hieronder betekenen voor risico en waardering — klantconcentratie, recurring omzet, partnerafhankelijkheid, personeelskosten; herhaal en duid alleen wat er staat, verzin niets)\n[TABEL:CIJFEROVERZICHT]\n\n'
@@ -937,6 +956,7 @@ function renderBegeleiderDashboard(app){
           +'## Closing-mechanismen\n(kort: locked box, escrow, garanties — gebruik de escrow-cijfers hierboven)\n\n'
           +'## Financiering en kasstroom\n(toelichting op het schuldafbouwmodel)\n[TABEL:SCHULDAFBOUW]\n\n'
           +(p.buyAndBuild?'## Buy-and-build: platformscenario\n(korte toelichting op het groeiscenario via overnames)\n[TABEL:BUYANDBUILD]\n\n':'')
+          +(vendorLoanRows?'## Vendor loan: aflossingsschema\n(leg uit dat dit een door de verkopende partij verstrekte, achtergestelde lening aan de koper is — los van de bankfinanciering — en toon het jaarlijkse rente-/aflossingsverloop uit de tabel)\n[TABEL:VENDORLOAN]\n\n':'')
           +'## Transactiestructuur\n(beschrijf beknopt de aandelenverhouding bij closing op basis van het belang-percentage in de context, en het gangbare gebruik van een acquisitievehikel/holding zodat de overnamefinanciering niet drukt op het belang van de achterblijvende verkoper; geen eigen bedragen verzinnen buiten de context)\n\n'
           +'## Retentie & alignment van de verkopende partij\n(leg uit — in algemene, standaard M&A-termen — waarom het gefaseerd uitkeren van de earn-up, een lock-up op het achtergebleven belang, en het koppelen van de einduitkering aan aanblijven/integratie de continuïteit van de onderneming beschermt; generiek, geen nieuwe cijfers)\n\n'
           +'## Governance & exit\n(kort: reguliere meerderheid voor de dagelijkse gang van zaken bij de koper, een versterkte meerderheid voor de verkopende partij op kernbesluiten, en een geordend exit-pad na een aantal jaren via vooraf afgesproken voorwaarden; generiek, geen nieuwe cijfers)\n\n'
