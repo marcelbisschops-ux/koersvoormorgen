@@ -391,6 +391,26 @@ alleen één van beide behandelt telt niet als volledig.
   audit expliciet eerder-"afgeronde" punten opnieuw te verifiëren i.p.v. te vertrouwen op de
   logboekstatus.
 
-  **Vervolgstap:** ligt bij Marcel — welke van de zes P1's als eerste, of allemaal in
-  prioriteitsvolgorde net als bij de vorige afwerkronde. Dit logboek en de status hieronder wordt
-  bijgewerkt zodra iets is opgelost.
+  **Alle 6 P1's afgerond, zelfde dag (25 juli 2026):**
+  1. Sector-multiple-type expliciet (multipleBasis/multipleLaag/multipleHoog per sectorprofiel,
+     i.p.v. regex-parse) — hoofdwaarderingsscherm past nu correct EBITDA- of omzet-multiple toe.
+     Scope bewust beperkt tot het hoofdscherm (Marcels keuze); Dealvoorstel-scherm blijft EBITDA-
+     based met een waarschuwing bij omzet-basis-sectoren. Live geverifieerd op staging + productie.
+  2. Stored XSS in chatvenster — naam wordt nu geëscaped net als het berichtveld.
+  3. Back-up — Marcel heeft Volledige Schijftoegang verleend; geverifieerd met een echte
+     `launchctl kickstart` (exit 0, nieuwe dump succesvol).
+  4. AVG-verwijderrecht — mna_partners/mna_koper_criteria toegevoegd aan beide delete-routes,
+     geverifieerd op staging via directe D1-rijen.
+  5. Goodwill — Marcel koos de echte overwinstmethode i.p.v. alleen herbenoemen. Nieuwe formule
+     (overwinst = nettowinst − normrendement×eigen vermogen; goodwill = overwinst/kapitalisatievoet),
+     hergebruikt het al bestaande DD-veld "nettoresultaat", geen nieuwe velden nodig.
+  6. DCF FCFE/WACC-methodefout — nieuwe gedeelde helper dvFcffRijen() levert een kasstroom vóór
+     financieringseffecten; d≤g geeft nu consistent null i.p.v. een gefabriceerde 0.
+
+  Bijvangst tijdens punt 1: het sync-script (`backend/scripts/sync-sectorprofielen.js`) bleek zelf
+  ook een gat te hebben — het vergeleek alleen DD-velden, niet top-level sectorprofiel-velden, dus
+  een `--apply` van een top-level wijziging sloeg zichzelf stilzwijgend over. Gefixt in dezelfde ronde.
+
+  Alle zes P1-commits staan los in de git-historie van beide repo's (frontend + backend), elk met
+  een eigen test (pure-functietests met Node, directe D1-verificatie op staging, of een echte
+  `launchctl kickstart`) vóór de deploy naar productie.

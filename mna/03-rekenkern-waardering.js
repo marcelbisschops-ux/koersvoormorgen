@@ -405,7 +405,7 @@ function dvTabelSynergie(syn){
   if(!syn)return '';
   var rows=syn.rows.map(function(r){return [r.jaar,dvMln(r.kostensynergie),dvMln(r.omzetsynergie),dvMln(r.totaal),dvMln(r.contant)];});
   var html=dvRenderTabelHtml(['Jaar','Kostensynergie','Omzetsynergie','Totaal','Contant gemaakt'],rows);
-  html+='<div style="font-size:12px;color:#8a8880;padding:.6rem .75rem;background:#f6f5f2;border-radius:6px;margin-top:-.75rem">'
+  html+='<div style="font-size:12px;color:var(--muted);padding:.6rem .75rem;background:var(--card);border-radius:6px;margin-top:-.75rem">'
     +'Eenmalige implementatiekosten: <strong>'+dvMln(syn.implementatiekosten)+' mln</strong> &nbsp;|&nbsp; NPV synergieën (na aftrek implementatiekosten): <strong>'+dvMln(syn.npv)+' mln</strong>'
     +'</div>';
   return html;
@@ -415,7 +415,7 @@ function dvTabelScenarios(scenarios,p){
   if(!scenarios)return '';
   var rows=scenarios.map(function(s){return [s.label,s.groeiPct.toFixed(1)+'%/jaar',dvMln(s.ebitdaEind),dvMln(s.waardeLaag)+' – '+dvMln(s.waardeHoog)];});
   var html=dvRenderTabelHtml(['Scenario','Groeivoet','EBITDA na '+p.horizonJaren+' jaar','Ondernemingswaarde (€ mln)'],rows);
-  html+='<div style="font-size:12px;color:#8a8880;padding:.6rem .75rem;background:#f6f5f2;border-radius:6px;margin-top:-.75rem">'
+  html+='<div style="font-size:12px;color:var(--muted);padding:.6rem .75rem;background:var(--card);border-radius:6px;margin-top:-.75rem">'
     +'Downside/upside wijken '+p.scenarioGroeiDeltaPct+' procentpunt af van de basis-groeivoet ('+p.groeiPct+'%/jaar) — zelf ingestelde bandbreedte, geen vastgestelde norm.'
     +'</div>';
   return html;
@@ -789,6 +789,11 @@ function printDealvoorstel(bodyHtml,titel){
   win.document.write('<!DOCTYPE html><html lang="nl"><head><meta charset="UTF-8"><title>'+titel+'<\/title>'
     +'<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">'
     +'<style>'
+    // Print is bewust altijd licht (papier), ongeacht het thema van de app — maar dvTabelSynergie()/
+    // dvTabelScenarios() (en andere gedeelde tabelfuncties) gebruiken var(--muted)/var(--card) zodat
+    // dezelfde HTML ook correct is in de donkere modus van #dv-preview hierboven. Zonder deze :root-
+    // definitie zouden die var()'s hier onopgelost blijven (transparante/wegvallende highlight-vakken).
+    +':root{--muted:#8a8880;--card:#f0eeea}'
     +'*{box-sizing:border-box;margin:0;padding:0}'
     +'body{font-family:IBM Plex Sans,Helvetica,Arial,sans-serif;font-size:11pt;line-height:1.75;color:#1a1815;background:#fff}'
     +'.page{max-width:780px;margin:0 auto;padding:2cm}'
@@ -865,7 +870,11 @@ function dvBerekenWaardering(){
   var quickRatio=(liquideMiddelen!==null&&kortlopendeSchulden)?((debiteuren+wip+liquideMiddelen)/kortlopendeSchulden):null;
   var schuldenlast=(rentelasten||0)+(aflossingVerplicht||0);
   var dscr=(schuldenlast>0&&ebitdaAbs)?ebitdaAbs/schuldenlast:null;
-  var nettoSchuld=(kortlopendeSchulden!==null||langlopendeSchulden!==null)?((kortlopendeSchulden||0)+(langlopendeSchulden||0)-(liquideMiddelen||0)):null;
+  // Audit-fix P2 (25 juli 2026, vierde ronde): vereiste voorheen alleen dat één van de twee
+  // schuldvelden was ingevuld, maar gebruikte liquideMiddelen daarna sowieso met een ||0-fallback —
+  // bij een niet-ingevulde (dus onbekende) kaspositie werd die stilzwijgend als "0 liquide middelen"
+  // behandeld, wat de netto schuld overschat. liquideMiddelen moet nu ook expliciet ingevuld zijn.
+  var nettoSchuld=(liquideMiddelen!==null&&(kortlopendeSchulden!==null||langlopendeSchulden!==null))?((kortlopendeSchulden||0)+(langlopendeSchulden||0)-liquideMiddelen):null;
   var netDebtEbitda=(nettoSchuld!==null&&ebitdaAbs)?nettoSchuld/ebitdaAbs:null;
 
   // Multiples (sectornorm) — zelfde bron als dvGetDefaults(), zie dvSectorMultipleRange() hierboven.

@@ -868,8 +868,11 @@ function renderBegeleiderDashboard(app){
   function toonDealvoorstelModal(){
     var t2=S.traject||{};
     var d=dvGetDefaults();
-    var lbl='font-size:10px;font-weight:600;text-transform:uppercase;color:#8a8880;display:block;margin-bottom:4px';
-    var inp='width:100%;background:#f0eeea;border:1px solid #c8c5bc;border-radius:6px;padding:7px 11px;font-family:IBM Plex Sans,sans-serif;font-size:13px';
+    // Audit-fix P2 (25 juli 2026, vierde ronde): waren hardcoded hex-kleuren (toevallig exact gelijk
+    // aan de light-theme CSS-variabelen) i.p.v. var(--muted)/var(--card)/var(--border2) — brak het
+    // contrast in dark mode voor alle 16 nieuwe Dealvoorstel-velden van vandaag.
+    var lbl='font-size:10px;font-weight:600;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:4px';
+    var inp='width:100%;background:var(--card);border:1px solid var(--border2);border-radius:6px;padding:7px 11px;font-family:IBM Plex Sans,sans-serif;font-size:13px';
     function veld(id,label,val,step){
       return '<div style="flex:1"><label style="'+lbl+'">'+label+'</label><input type="number" id="'+id+'" value="'+val+'" '+(step?'step="'+step+'"':'')+' style="'+inp+'"></div>';
     }
@@ -1075,7 +1078,7 @@ function renderBegeleiderDashboard(app){
         out.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem">'
           +'<div style="font-size:11px;font-weight:600;color:var(--gold-dark);text-transform:uppercase;letter-spacing:.1em;margin-bottom:.75rem">Dealvoorstel gegenereerd</div>'
           +'<div style="font-size:11px;color:var(--teal);margin-bottom:.5rem">&#9998; Klik in de tekst hieronder om aan te passen vóór verzending.</div>'
-          +'<div id="dv-preview" contenteditable="true" style="max-height:400px;overflow-y:auto;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:1.25rem;font-family:Georgia,serif;font-size:12px;line-height:1.7;color:var(--sub);outline:none" onfocus="this.style.borderColor=\'var(--teal)\'" onblur="this.style.borderColor=\'var(--border2)\'">'+bodyHtml+'</div>'
+          +'<div id="dv-preview" contenteditable="true" style="max-height:400px;overflow-y:auto;overflow-x:auto;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:1.25rem;font-family:Georgia,serif;font-size:12px;line-height:1.7;color:var(--sub);outline:none" onfocus="this.style.borderColor=\'var(--teal)\'" onblur="this.style.borderColor=\'var(--border2)\'">'+bodyHtml+'</div>'
           +akkoordHtml('dv-doc-akkoord')
           +'<div style="display:flex;gap:8px;margin-top:.75rem">'
           +'<button id="dv-print" class="btn-ghost" style="font-size:12px;padding:6px 14px">&#128196; Print</button>'
