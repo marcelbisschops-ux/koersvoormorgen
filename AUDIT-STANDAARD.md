@@ -414,3 +414,36 @@ alleen één van beide behandelt telt niet als volledig.
   Alle zes P1-commits staan los in de git-historie van beide repo's (frontend + backend), elk met
   een eigen test (pure-functietests met Node, directe D1-verificatie op staging, of een echte
   `launchctl kickstart`) vóór de deploy naar productie.
+
+  **P2, zelfde dag, 6 van 10 afgerond:**
+  8. Net Debt/EBITDA gebruikte liquide middelen met een `||0`-fallback ook als dat veld niet was
+     ingevuld — vereist nu expliciet dat het is ingevuld, anders null i.p.v. een gok.
+  11. Toegangscodes (traject/koper/tussenpersoon) van Math.random() naar een CSPRNG-helper
+     (`veiligeCode()`, Web Crypto API) — vier aanmaakpunten gefixt.
+  13. adv.html-handleiding noemde de Q&A-uitbreiding (deadline/toewijzing/reactiedraad) niet —
+     tekstfix; adv.html heeft zelf geen Q&A-UI (verloopt via mna.html), dus geen functionele
+     duplicatie nodig.
+  14. `#dv-preview` (Dealvoorstel) miste `overflow-x:auto` — nieuwe brede tabellen braken uit op
+     mobiel.
+  15. Hardcoded hex-kleuren in de Dealvoorstel-modal (veld()-helper) en synergie-/scenario-hint-
+     boxen vervangen door CSS-variabelen; het losse print-document (`printDealvoorstel`, eigen
+     window zonder toegang tot de app-CSS) kreeg een eigen `:root`-fallback met de lichte-thema-
+     waarden zodat dezelfde HTML in beide contexten correct blijft.
+  16. Signhost-checksum blijft **open** — vereist Marcels actie in het Signhost-portaal
+     (`SIGNHOST_WEBHOOK_SECRET`).
+
+  **P2 nog open (2 van 10) + P3/P4 (13+3, ongewijzigd):**
+  12. Toegankelijkheid nieuwe features (aria-modal, SVG title/desc, label-for-koppeling) — nog niet
+     opgepakt, vereist zorgvuldiger werk per modal dan in deze sessie nog paste.
+  17. EBITDA-normalisatie niet automatisch herberekend — bewust niet blind gefixt: `ebitdaNorm` is
+     expliciet gelabeld "(gevalideerd)", een auto-overschrijving zou net zo goed een bewust
+     gevalideerd cijfer kunnen overschrijven. Vereist een ontwerpkeuze (hint tonen vs. blijven
+     negeren), niet gedaan zonder Marcel te raadplegen.
+
+  **Nieuw gevonden tijdens het fixen (niet in de oorspronkelijke bevindingenlijst), apart
+  weggezet voor een volgende ronde:** de hardcoded-hex-kleurenkwestie (P2 #15) bleek bij nader
+  onderzoek een veel breder, al langer bestaand patroon te zijn dan de 5 die-vandaag-toegevoegde
+  plekken die de audit noemde — tientallen andere modals in `mna/04-begeleider-dashboard.js`
+  (groepsstructuur/partners/koper-toegang/feedback e.d.) gebruiken dezelfde hardcoded kleuren,
+  van vóór vandaag. Bewust niet meegenomen (te groot, te veel regressierisico om zonder gerichte
+  ronde te doen) — zie sessie-geheugen.
