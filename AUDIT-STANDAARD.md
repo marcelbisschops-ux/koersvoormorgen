@@ -525,6 +525,54 @@ alleen één van beide behandelt telt niet als volledig.
   **P4, 1 van 3 afgerond:** HSTS + Referrer-Policy-headers toegevoegd aan `getCORS()`, live
   geverifieerd op staging en productie. Nog open: foutmeldingscasing, mna_audit-bewaarbeleid.
 
+  **P3/P4, vijfde ronde (zelfde dag) — de resterende 5 punten afgerond:**
+  - Documentversie race condition — alsnog gedaan (was in de vierde ronde nog aangehouden
+    vanwege de data-veiligheidscheck): `metDocVersieRetry()`-helper (5 pogingen, hertelt bij
+    conflict) + `CREATE UNIQUE INDEX idx_doc_versies_uniek ON mna_doc_versies(traject_id,
+    doc_type, versie)`, op alle 9 plekken die voorheen los `COUNT()+INSERT` deden. Getest:
+    UNIQUE-constraint bewezen op staging (dubbele insert faalt), retry-logica los gesimuleerd,
+    index bevestigd aanwezig op staging én productie.
+  - Server-side validatie op `/mna/save` (data_json/checklist_json): vorm moet een plain object
+    zijn, elk veld.value moet een primitief zijn (geen geneste object/array), payload max 500KB.
+    Bewust kleiner dan "volledige schema-validatie per sectorprofiel-veld" (dat vereist per-veld
+    definities per sector, een groter project) — een generieke ondergrens tegen misbruik/corrupte
+    data, niet per-veld business-rule-validatie. Getest: 13 isolatietests + 4 live staging-curls
+    (3× correcte afwijzing, 1× geldige payload loopt door) + een volledige end-to-end save op
+    een echt (aangemaakt+opgeruimd) testtraject.
+  - Pagination op lijst-endpoints: `/mna/admin/lijst` (beide varianten) en `/gebruikers/lijst`
+    kregen een `LIMIT 5000`-veiligheidsplafond. Bewust GEEN echte UI-paginering — marilyn.html
+    berekent totalen/aggregaten client-side over de volledige lijst, dus paginering zou die
+    som stilzwijgend fout maken zonder frontend-herontwerp (aparte ontwerpkeuze, niet blind
+    gedaan). Huidige rijaantallen triviaal klein (1 traject, 1 gebruiker) — dit is
+    toekomstbestendiging, geen actief probleem.
+  - Foutmeldingscasing: 62 berichten die met een kleine letter begonnen ('unauthorized', 'code
+    verplicht', ...) genormaliseerd naar hoofdletter-eerste-letter, in lijn met de meerderheid
+    van de bestaande berichten. Bewust NIET aangeraakt: 'vergrendeld' en
+    'voorwaarden_niet_geaccepteerd' — machine-leesbare error-codes die de frontend programmatisch
+    vergelijkt (`d.error==='vergrendeld'`), geen weergavetekst. Frontend gecontroleerd op exacte
+    string-vergelijkingen tegen de gewijzigde teksten — geen gevonden.
+  - Dealvoorstel-modal cognitieve overload: 6 sectiekopjes toegevoegd boven de 16 altijd-
+    zichtbare velden (EBITDA & belang / Multiples & earn-out / Escrow / Financiering / Fiscaal &
+    operationeel / Kruiscontrole) — puur visueel, geen veld-ID of rekenlogica aangeraakt. De 6
+    optionele secties hadden al hun eigen checkbox-kop. Visueel geverifieerd in licht én donker
+    thema via een geïsoleerde HTML-reconstructie met de echte CSS-variabelen.
+  - mna_audit-bewaarbeleid: bleek bij controle al de feitelijke praktijk (mna_audit staat in
+    geen van beide delete-cascades) — Marcels eerdere keuze ("bewaren") vereiste geen
+    codewijziging, alleen een expliciete comment op beide plekken zodat de weglating herkenbaar
+    is als bewuste keuze.
+
+  **P3: 13 van 13 afgerond. P4: 3 van 3 afgerond (Signhost-checksum uitgezonderd — vereist
+  Marcels eigen actie in het Signhost-portaal, geen codepunt).**
+
+  **Resterend, bewust niet aangepakt in deze fixronde (zie ook eerdere vermelding hierboven):**
+  - 463× gedupliceerde response-envelope over de 20 workermodules — mechanische refactor,
+    maar over zoveel plekken dat een regressie makkelijk onopgemerkt blijft zonder een gerichte
+    ronde met extra testtijd.
+  - Geen foreign keys in het D1-schema — vereist tabel-rebuild op levende productiedata in
+    SQLite (kolomniveau-constraints kunnen niet worden toegevoegd aan bestaande tabellen zonder
+    ze opnieuw aan te maken); een fout hierin is niet lokaal te herstellen zoals de meeste
+    andere fixes vandaag. Niet blind gedaan.
+
   **Nieuw gevonden tijdens het fixen (niet in de oorspronkelijke bevindingenlijst), apart
   weggezet voor een volgende ronde:** de hardcoded-hex-kleurenkwestie (P2 #15) bleek bij nader
   onderzoek een veel breder, al langer bestaand patroon te zijn dan de 5 die-vandaag-toegevoegde
