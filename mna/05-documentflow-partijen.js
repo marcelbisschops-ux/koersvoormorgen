@@ -196,13 +196,14 @@ async function toonDocWaarschuwing(docType, onDoorgaan) {
   var ov = document.createElement('div');
   ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:3000;display:flex;align-items:center;justify-content:center;padding:1.5rem';
   var mo = document.createElement('div');
+  mo.setAttribute('role','dialog');mo.setAttribute('aria-modal','true');mo.setAttribute('aria-labelledby','docwaarschuwing-modal-titel');
   mo.style.cssText = 'background:var(--panel);border:1px solid var(--border2);border-radius:var(--r2);padding:1.75rem;max-width:440px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.25)';
 
   var labels = {nda:'NDA',loi:'Letter of Intent',bem:'Bemiddelingsovereenkomst',excl:'Exclusiviteitsbrief',dealvoorstel:'Dealvoorstel',bieding:'Indicatieve bieding',spa:'Concept-koopovereenkomst'};
   var kleuren = {nda:'#7c5cbf',loi:'var(--gold)',bem:'#2a5ea0',excl:'var(--teal)',dealvoorstel:'#8a5a00',bieding:'#a0522d',spa:'#5a5470'};
   var kleur = kleuren[docType] || 'var(--teal)';
 
-  mo.innerHTML = '<div style="font-family:Playfair Display,serif;font-size:1.1rem;font-weight:600;color:var(--head);margin-bottom:1rem">'
+  mo.innerHTML = '<div id="docwaarschuwing-modal-titel" style="font-family:Playfair Display,serif;font-size:1.1rem;font-weight:600;color:var(--head);margin-bottom:1rem">'
     + (check.geblokkeerd ? '⛔ ' : '⚠️ ') + labels[docType] + '</div>'
     + '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:1.25rem">'
     + check.waarschuwingen.map(function(w) {
@@ -368,9 +369,10 @@ async function laadPartijDocs() {
         var ov2 = document.createElement('div');
         ov2.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:3000;display:flex;align-items:center;justify-content:center;padding:1.5rem';
         var mo2 = document.createElement('div');
+        mo2.setAttribute('role','dialog');mo2.setAttribute('aria-modal','true');mo2.setAttribute('aria-labelledby','partijdoc-modal-titel');
         mo2.style.cssText = 'background:var(--panel);border:1px solid var(--border2);border-radius:var(--r2);padding:1.75rem;max-width:700px;width:100%;max-height:85vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,.25)';
         mo2.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">'
-          + '<div style="font-family:Playfair Display,serif;font-size:1rem;font-weight:600;color:var(--head)">'+(labels[vd.doc_type]||vd.doc_type)+'</div>'
+          + '<div id="partijdoc-modal-titel" style="font-family:Playfair Display,serif;font-size:1rem;font-weight:600;color:var(--head)">'+(labels[vd.doc_type]||vd.doc_type)+'</div>'
           + '<button id="pd-sluit" class="btn-ghost" style="font-size:12px;padding:4px 12px">&#10005;</button></div>'
           + '<textarea readonly style="width:100%;height:420px;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:1rem;font-family:Georgia,serif;font-size:12px;line-height:1.8;color:var(--sub);outline:none;resize:vertical">'+esc(vd.tekst||'')+'</textarea>'
           + '<div style="display:flex;gap:8px;margin-top:.75rem;justify-content:flex-end">'

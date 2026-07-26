@@ -426,9 +426,10 @@ function renderHuisstijlModal(){
   var ov=document.createElement('div');
   ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:400;display:flex;align-items:center;justify-content:center;padding:1.5rem';
   var mo=document.createElement('div');
+  mo.setAttribute('role','dialog');mo.setAttribute('aria-modal','true');mo.setAttribute('aria-labelledby','huisstijl-modal-titel');
   mo.style.cssText='background:var(--panel);border-radius:10px;padding:2rem;max-width:440px;width:100%;max-height:92vh;overflow-y:auto';
   mo.innerHTML=`
-    <div style="font-family:Playfair Display,serif;font-size:1.15rem;color:var(--head);font-weight:600;margin-bottom:.25rem">&#127912; Eigen huisstijl</div>
+    <div id="huisstijl-modal-titel" style="font-family:Playfair Display,serif;font-size:1.15rem;color:var(--head);font-weight:600;margin-bottom:.25rem">&#127912; Eigen huisstijl</div>
     <div style="font-size:12px;color:var(--muted);margin-bottom:1.25rem;line-height:1.6">Deze instellingen gelden voor de trajecten die u aanmaakt — uw verkoper en koper zien uw eigen naam/kleur/logo in plaats van "${esc(BRAND.platform)}". Laat een veld leeg om de standaard te gebruiken.</div>
     <div class="field" style="margin-bottom:1rem"><label>Eigen platformnaam</label><input type="text" id="hs-naam" value="${esc(b.brand_naam)}" placeholder="${esc(BRAND.platform)}" maxlength="60"></div>
     <div class="field" style="margin-bottom:1rem"><label>Accentkleur</label><div style="display:flex;align-items:center;gap:10px"><input type="color" id="hs-kleur" value="${esc(b.brand_kleur)||'#1a7a5e'}" style="width:48px;height:36px;padding:2px;border:1px solid var(--border);border-radius:6px;cursor:pointer"><span style="font-size:12px;color:var(--muted)">Klik op het vlak om een kleur te kiezen</span></div><div id="hs-kleur-waarschuwing" style="font-size:11px;color:var(--gold-dark);margin-top:6px;line-height:1.5;display:none">&#8505; Deze kleur is op een donkere achtergrond moeilijk leesbaar als tekst — uw verkoper/koper ziet in donkere modus automatisch een lichtere versie ervan.</div></div>
@@ -654,8 +655,8 @@ function uploadDocument(id, tussenCode){
   var faseKeuze=['voorgesprek','financieel','juridisch','commercieel','operationeel','personeel','strategisch','compliance'];
 
   var ov=document.createElement('div');ov.className='overlay';
-  ov.innerHTML=`<div class="modal">
-    <div class="modal-title">Document uploaden</div>
+  ov.innerHTML=`<div class="modal" role="dialog" aria-modal="true" aria-labelledby="upload-modal-titel">
+    <div class="modal-title" id="upload-modal-titel">Document uploaden</div>
     <div class="field"><label>Bestand</label><input type="file" id="up-file" accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.xlsx,.xls" style="background:var(--bg);border:1.5px solid var(--border);border-radius:var(--r);padding:8px;width:100%"></div>
     <div class="field"><label>Fase</label><select id="up-fase">
       ${faseKeuze.map(function(f){return'<option value="'+f+'">'+f.charAt(0).toUpperCase()+f.slice(1)+'</option>';}).join('')}
@@ -725,8 +726,8 @@ function nieuwGesprek(id, tussenCode){
   var typen=['intake','voortgang','onderhandeling','presentatie','overig'];
   var vandaag=new Date().toISOString().split('T')[0];
   var ov=document.createElement('div');ov.className='overlay';
-  ov.innerHTML=`<div class="modal" style="max-width:620px">
-    <div class="modal-title">Gesprek vastleggen</div>
+  ov.innerHTML=`<div class="modal" style="max-width:620px" role="dialog" aria-modal="true" aria-labelledby="gesprek-modal-titel">
+    <div class="modal-title" id="gesprek-modal-titel">Gesprek vastleggen</div>
     <div class="row2">
       <div class="field"><label>Type</label><select id="gs-type">
         ${typen.map(function(t){return'<option value="'+t+'">'+t.charAt(0).toUpperCase()+t.slice(1)+'</option>';}).join('')}
@@ -785,8 +786,8 @@ async function slaNotitieOp(id){
 // ===== NIEUW TRAJECT =====
 function nieuwTraject(){
   var ov=document.createElement('div');ov.className='overlay';
-  ov.innerHTML=`<div class="modal">
-    <div class="modal-title">Nieuw traject aanmaken</div>
+  ov.innerHTML=`<div class="modal" role="dialog" aria-modal="true" aria-labelledby="nieuwtraject-adv-modal-titel">
+    <div class="modal-title" id="nieuwtraject-adv-modal-titel">Nieuw traject aanmaken</div>
     <div class="row2">
       <div class="field"><label>Type *</label><select id="n-type">
         <option value="Verkoop">Verkoop</option><option value="Fusie">Fusie</option>
@@ -951,8 +952,8 @@ function renderDetail(t){
 function toonAdvBewerkModal(id){
   var t=G.trajecten.find(function(x){return x.id===id;})||{};
   var ov=document.createElement('div');ov.className='overlay';
-  ov.innerHTML=`<div class="modal">
-    <div class="modal-title">&#9999;&#65039; Bewerk gegevens</div>
+  ov.innerHTML=`<div class="modal" role="dialog" aria-modal="true" aria-labelledby="bewerk-modal-titel">
+    <div class="modal-title" id="bewerk-modal-titel">&#9999;&#65039; Bewerk gegevens</div>
     <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.5rem">Verkoper</div>
     <div class="field"><label>Naam onderneming</label><input type="text" id="bw-k" value="${esc(t.kantoor_naam||'')}"></div>
     <div class="row2">

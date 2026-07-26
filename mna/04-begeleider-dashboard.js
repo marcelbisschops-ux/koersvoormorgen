@@ -13,8 +13,9 @@ function toonVOKPopup(code, onAkkoord) {
   var ov = document.createElement('div');
   ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:2000;display:flex;align-items:center;justify-content:center;padding:1.5rem';
   var mo = document.createElement('div');
+  mo.setAttribute('role','dialog');mo.setAttribute('aria-modal','true');mo.setAttribute('aria-labelledby','vok-modal-titel');
   mo.style.cssText = 'background:var(--panel);border:1px solid var(--border2);border-radius:var(--r2);padding:2rem;max-width:600px;width:100%;max-height:90vh;overflow-y:auto';
-  mo.innerHTML = '<div style="font-family:Playfair Display,serif;font-size:1.2rem;color:var(--head);font-weight:600;margin-bottom:.4rem">Verwerkersovereenkomst</div>'
+  mo.innerHTML = '<div id="vok-modal-titel" style="font-family:Playfair Display,serif;font-size:1.2rem;color:var(--head);font-weight:600;margin-bottom:.4rem">Verwerkersovereenkomst</div>'
     + '<div style="font-size:11px;color:var(--muted);margin-bottom:1rem">Versie ' + VOK_VERSIE + ' · ' + BRAND.bedrijf + ' · Vereist voor gebruik van ' + BRAND.platform + '</div>'
     + '<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:1rem;max-height:260px;overflow-y:auto;font-size:12px;line-height:1.8;color:var(--sub);white-space:pre-wrap;margin-bottom:1rem">' + esc(VOK_TEKST) + '</div>'
     + '<div style="background:var(--teal-bg);border:1px solid var(--teal-dark);border-radius:var(--r);padding:.75rem 1rem;margin-bottom:1rem;font-size:12px;color:var(--teal-dim);line-height:1.6">'
@@ -56,8 +57,8 @@ function toonNieuwTrajectModalTussen(){
   var zn=['Eik','Beuk','Rots','Rivier','Berg','Dal','Ster','Maan','Bron','Haven','Veld','Kust'];
   function nieuweCode(){return adj[Math.floor(Math.random()*adj.length)]+'-'+zn[Math.floor(Math.random()*zn.length)];}
   var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:3000;display:flex;align-items:center;justify-content:center;padding:1.5rem';
-  var mo=document.createElement('div');mo.style.cssText='background:var(--panel,#fff);border:1px solid #c8c5bc;border-radius:10px;padding:1.75rem;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.25);max-height:90vh;overflow-y:auto;max-width:500px';
-  mo.innerHTML='<div class="modal-title">&#43; Nieuw traject — privacy-eerste</div>'
+  var mo=document.createElement('div');mo.setAttribute('role','dialog');mo.setAttribute('aria-modal','true');mo.setAttribute('aria-labelledby','nieuwtraject-modal-titel');mo.style.cssText='background:var(--panel,#fff);border:1px solid #c8c5bc;border-radius:10px;padding:1.75rem;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.25);max-height:90vh;overflow-y:auto;max-width:500px';
+  mo.innerHTML='<div id="nieuwtraject-modal-titel" class="modal-title">&#43; Nieuw traject — privacy-eerste</div>'
     +'<div style="background:var(--teal-bg);border:1px solid var(--teal-dark);border-radius:var(--r);padding:.75rem 1rem;margin-bottom:1.25rem;font-size:12px;color:var(--teal-dim);line-height:1.7">'
     +'Gebruik een codenaam. Geen persoonsgegevens nodig — de verkoper vult zijn eigen gegevens in na inloggen.'
     +'</div>'
@@ -221,14 +222,14 @@ function toonKoperToegangModal(app){
   // null (alles) → bij binaire oude vrijgave alles aangevinkt; anders de opgeslagen selectie
   var voorGeselecteerd = huidige===null ? (t.koper_vrijgegeven?fases.map(function(f){return f.id;}):[]) : huidige;
   var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:400;display:flex;align-items:center;justify-content:center;padding:1.5rem';
-  var mo=document.createElement('div');mo.style.cssText='background:var(--panel);border-radius:10px;padding:1.75rem;max-width:520px;width:100%;max-height:90vh;overflow-y:auto';
+  var mo=document.createElement('div');mo.setAttribute('role','dialog');mo.setAttribute('aria-modal','true');mo.setAttribute('aria-labelledby','kopertoegang-modal-titel');mo.style.cssText='background:var(--panel);border-radius:10px;padding:1.75rem;max-width:520px;width:100%;max-height:90vh;overflow-y:auto';
   var rijen=fases.map(function(f){
     var aan=voorGeselecteerd.indexOf(f.id)>=0;
     return '<label style="display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid var(--border);border-radius:7px;margin-bottom:7px;cursor:pointer;font-size:13px;color:var(--sub)">'
       +'<input type="checkbox" class="kt-cat" value="'+f.id+'"'+(aan?' checked':'')+' style="width:16px;height:16px;accent-color:var(--teal)">'
       +'<span style="font-weight:600;color:#8a8880;min-width:24px">'+esc(f.num||'')+'</span><span>'+esc(f.title||f.id)+'</span></label>';
   }).join('');
-  mo.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.15rem;color:var(--head);font-weight:600;margin-bottom:.25rem">&#128275; Koper-toegang per categorie</div>'
+  mo.innerHTML='<div id="kopertoegang-modal-titel" style="font-family:Playfair Display,serif;font-size:1.15rem;color:var(--head);font-weight:600;margin-bottom:.25rem">&#128275; Koper-toegang per categorie</div>'
     +'<div style="font-size:12px;color:#8a8880;margin-bottom:1rem">Vink aan welke DD-categorieën de koper mag inzien (velden én documenten). De koper ziet uitsluitend wat hier is vrijgegeven.</div>'
     +'<div style="display:flex;gap:8px;margin-bottom:.85rem"><button id="kt-alles" style="background:transparent;border:1px solid #c8c5bc;padding:5px 12px;border-radius:6px;cursor:pointer;font-size:12px">Alles</button><button id="kt-niets" style="background:transparent;border:1px solid #c8c5bc;padding:5px 12px;border-radius:6px;cursor:pointer;font-size:12px">Niets</button></div>'
     +rijen
@@ -268,8 +269,8 @@ function toonKoperToegangModal(app){
 
 function toonGroepsstructuurModal(app){
   var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:400;display:flex;align-items:center;justify-content:center;padding:1.5rem';
-  var mo=document.createElement('div');mo.style.cssText='background:var(--panel);border-radius:10px;padding:1.75rem;max-width:520px;width:100%;max-height:90vh;overflow-y:auto';
-  mo.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.15rem;color:var(--head);font-weight:600;margin-bottom:.25rem">&#127970; Groepsstructuur</div>'
+  var mo=document.createElement('div');mo.setAttribute('role','dialog');mo.setAttribute('aria-modal','true');mo.setAttribute('aria-labelledby','groepsstructuur-modal-titel');mo.style.cssText='background:var(--panel);border-radius:10px;padding:1.75rem;max-width:520px;width:100%;max-height:90vh;overflow-y:auto';
+  mo.innerHTML='<div id="groepsstructuur-modal-titel" style="font-family:Playfair Display,serif;font-size:1.15rem;color:var(--head);font-weight:600;margin-bottom:.25rem">&#127970; Groepsstructuur</div>'
     +'<div style="font-size:12px;color:#8a8880;margin-bottom:1rem">Betreft dit traject een holding met meerdere werkmaatschappijen? Registreer hier de aparte entiteiten — documenten van deze bedrijven worden dan niet meer afgewezen als "ander bedrijf", en blijven traceerbaar in de dataroom.</div>'
     +'<div id="gs-lijst" style="margin-bottom:1rem;font-size:13px;color:#8a8880;font-style:italic">Laden...</div>'
     +'<div style="display:flex;gap:8px;margin-bottom:.5rem">'
@@ -327,8 +328,8 @@ function toonGroepsstructuurModal(app){
 // eigen declarabele productie — bij vertrek van de partner is dát het omzetrisico voor de koper.
 function toonPartnersModal(app){
   var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:400;display:flex;align-items:center;justify-content:center;padding:1.5rem';
-  var mo=document.createElement('div');mo.style.cssText='background:var(--panel);border-radius:10px;padding:1.75rem;max-width:560px;width:100%;max-height:90vh;overflow-y:auto';
-  mo.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.15rem;color:var(--head);font-weight:600;margin-bottom:.25rem">&#129489;&#8205;&#128188; Partners</div>'
+  var mo=document.createElement('div');mo.setAttribute('role','dialog');mo.setAttribute('aria-modal','true');mo.setAttribute('aria-labelledby','partners-modal-titel');mo.style.cssText='background:var(--panel);border-radius:10px;padding:1.75rem;max-width:560px;width:100%;max-height:90vh;overflow-y:auto';
+  mo.innerHTML='<div id="partners-modal-titel" style="font-family:Playfair Display,serif;font-size:1.15rem;color:var(--head);font-weight:600;margin-bottom:.25rem">&#129489;&#8205;&#128188; Partners</div>'
     +'<div style="font-size:12px;color:#8a8880;margin-bottom:1rem">Leg elke partner één keer vast, ook als deze bij meerdere entiteiten werkt. "Omzet die aan de partner hangt" is de omzet incl. het onderliggend team — het bedrag dat risico loopt als deze partner vertrekt, niet alleen zijn eigen declarabele productie.</div>'
     +'<div id="pt-reconciliatie"></div>'
     +'<div id="pt-lijst" style="margin-bottom:1rem;font-size:13px;color:#8a8880;font-style:italic">Laden...</div>'
@@ -813,8 +814,8 @@ function renderBegeleiderDashboard(app){
     var handmatigBtn=document.getElementById('bg-handmatig-getekend');
     if(handmatigBtn)handmatigBtn.onclick=function(){
       var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:3000;display:flex;align-items:center;justify-content:center;padding:1.5rem';
-      var mo=document.createElement('div');mo.style.cssText='background:var(--panel);border:1px solid var(--border2);border-radius:var(--r2);padding:1.75rem;max-width:400px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.25)';
-      mo.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.1rem;color:var(--head);font-weight:600;margin-bottom:1rem">&#128221; Buiten Signhost om getekend &mdash; '+(labels[type]||type)+'</div>'
+      var mo=document.createElement('div');mo.setAttribute('role','dialog');mo.setAttribute('aria-modal','true');mo.setAttribute('aria-labelledby','handmatig-getekend-modal-titel');mo.style.cssText='background:var(--panel);border:1px solid var(--border2);border-radius:var(--r2);padding:1.75rem;max-width:400px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.25)';
+      mo.innerHTML='<div id="handmatig-getekend-modal-titel" style="font-family:Playfair Display,serif;font-size:1.1rem;color:var(--head);font-weight:600;margin-bottom:1rem">&#128221; Buiten Signhost om getekend &mdash; '+(labels[type]||type)+'</div>'
         +'<div class="field"><label>Naam van degene die getekend heeft</label><input type="text" id="bg-hg-naam"></div>'
         +'<div id="bg-hg-err" style="display:none;color:var(--red);font-size:12px;margin-bottom:.5rem"></div>'
         +'<div style="display:flex;gap:8px;justify-content:flex-end">'
@@ -851,8 +852,8 @@ function renderBegeleiderDashboard(app){
       var defEmail=type==='bem'?(isSell?(t2.contact_email||''):(t2.koper_email||'')):(t2.contact_email||'');
       var defNaam=type==='bem'?(isSell?(t2.contact_naam||''):(t2.koper_contact||t2.koper_naam||'')):(t2.contact_naam||'');
       var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:3000;display:flex;align-items:center;justify-content:center;padding:1.5rem';
-      var mo=document.createElement('div');mo.style.cssText='background:var(--panel);border:1px solid var(--border2);border-radius:var(--r2);padding:1.75rem;max-width:400px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.25)';
-      mo.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.1rem;color:var(--head);font-weight:600;margin-bottom:1rem">&#9998; Verstuur via Signhost &mdash; '+(labels[type]||type)+'</div>'
+      var mo=document.createElement('div');mo.setAttribute('role','dialog');mo.setAttribute('aria-modal','true');mo.setAttribute('aria-labelledby','signhost-modal-titel');mo.style.cssText='background:var(--panel);border:1px solid var(--border2);border-radius:var(--r2);padding:1.75rem;max-width:400px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.25)';
+      mo.innerHTML='<div id="signhost-modal-titel" style="font-family:Playfair Display,serif;font-size:1.1rem;color:var(--head);font-weight:600;margin-bottom:1rem">&#9998; Verstuur via Signhost &mdash; '+(labels[type]||type)+'</div>'
         +'<div class="field"><label>Naam ondertekenaar</label><input type="text" id="bg-sh-naam" value="'+esc(defNaam)+'" placeholder="Voor- en achternaam"></div>'
         +'<div class="field"><label>E-mail ondertekenaar</label><input type="email" id="bg-sh-email" value="'+esc(defEmail)+'" placeholder="E-mailadres"></div>'
         +'<div id="bg-sh-err" style="display:none;color:var(--red);font-size:12px;margin-bottom:.5rem"></div>'
@@ -1162,8 +1163,8 @@ function renderBegeleiderDashboard(app){
     }
     var geldigTot=new Date(Date.now()+30*24*3600*1000).toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'});
     var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:400;display:flex;align-items:center;justify-content:center;padding:1.5rem';
-    var mo=document.createElement('div');mo.style.cssText='background:var(--panel);border-radius:10px;padding:2rem;max-width:560px;width:100%;max-height:92vh;overflow-y:auto';
-    mo.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.15rem;color:var(--head);font-weight:600;margin-bottom:.25rem">&#128233; Indicatieve bieding</div>'
+    var mo=document.createElement('div');mo.setAttribute('role','dialog');mo.setAttribute('aria-modal','true');mo.setAttribute('aria-labelledby','bieding-modal-titel');mo.style.cssText='background:var(--panel);border-radius:10px;padding:2rem;max-width:560px;width:100%;max-height:92vh;overflow-y:auto';
+    mo.innerHTML='<div id="bieding-modal-titel" style="font-family:Playfair Display,serif;font-size:1.15rem;color:var(--head);font-weight:600;margin-bottom:.25rem">&#128233; Indicatieve bieding</div>'
       +'<div style="font-size:12px;color:#8a8880;margin-bottom:1.25rem">Niet-bindend bod. Het bod (bandbreedte) wordt berekend uit EBITDA × multiple en exact zo in de brief overgenomen.</div>'
       +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('bd-ebitda','Genormaliseerde EBITDA (€)',d.ebitdaBewezen)+'</div>'
       +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('bd-mult-laag','Multiple laag',d.multipleBasis,0.1)+veld('bd-mult-hoog','Multiple hoog',d.multipleBovengrens,0.1)+'</div>'
@@ -1276,8 +1277,8 @@ function renderBegeleiderDashboard(app){
     if(t2.contact_email)ontvangers.push({label:'Verkoper ('+esc(t2.contact_email)+')',email:t2.contact_email,checked:true});
     if(t2.koper_email)ontvangers.push({label:'Koper ('+esc(t2.koper_email)+')',email:t2.koper_email,checked:false});
     var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:400;display:flex;align-items:center;justify-content:center;padding:1.5rem';
-    var mo=document.createElement('div');mo.style.cssText='background:var(--panel);border-radius:10px;padding:2rem;max-width:480px;width:100%;max-height:92vh;overflow-y:auto';
-    mo.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.15rem;color:var(--head);font-weight:600;margin-bottom:.25rem">&#128206; Eigen document versturen</div>'
+    var mo=document.createElement('div');mo.setAttribute('role','dialog');mo.setAttribute('aria-modal','true');mo.setAttribute('aria-labelledby','eigendoc-modal-titel');mo.style.cssText='background:var(--panel);border-radius:10px;padding:2rem;max-width:480px;width:100%;max-height:92vh;overflow-y:auto';
+    mo.innerHTML='<div id="eigendoc-modal-titel" style="font-family:Playfair Display,serif;font-size:1.15rem;color:var(--head);font-weight:600;margin-bottom:.25rem">&#128206; Eigen document versturen</div>'
       +'<div style="font-size:12px;color:#8a8880;margin-bottom:1.25rem">Upload een bestaand PDF- of Word-bestand en verstuur het rechtstreeks — geen AI, geen sjabloon.</div>'
       +'<div style="margin-bottom:1rem"><label style="font-size:10px;font-weight:600;text-transform:uppercase;color:#8a8880;display:block;margin-bottom:4px">Bestand</label>'
       +'<input type="file" id="ed-file" accept=".pdf,.docx,.doc,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword" style="font-size:13px;width:100%"></div>'
@@ -1461,7 +1462,7 @@ function renderBegeleiderDashboard(app){
 
     // Modal met aanvinkbare categorieën
     var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:200;display:flex;align-items:center;justify-content:center;padding:1.5rem';
-    var mo=document.createElement('div');mo.style.cssText='background:var(--panel);border-radius:10px;padding:2rem;max-width:720px;width:100%;max-height:92vh;overflow-y:auto';
+    var mo=document.createElement('div');mo.setAttribute('role','dialog');mo.setAttribute('aria-modal','true');mo.setAttribute('aria-labelledby','infoverzoek-modal-titel');mo.style.cssText='background:var(--panel);border-radius:10px;padding:2rem;max-width:720px;width:100%;max-height:92vh;overflow-y:auto';
 
     var catHtml = '';
     categorieen.forEach(function(cat, ci){
@@ -1481,7 +1482,7 @@ function renderBegeleiderDashboard(app){
 
     var deadline=new Date(Date.now()+14*24*3600*1000).toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'});
 
-    mo.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.1rem;color:var(--head);font-weight:600;margin-bottom:.25rem">&#128203; Informatieverzoek samenstellen</div>'
+    mo.innerHTML='<div id="infoverzoek-modal-titel" style="font-family:Playfair Display,serif;font-size:1.1rem;color:var(--head);font-weight:600;margin-bottom:.25rem">&#128203; Informatieverzoek samenstellen</div>'
       +'<div style="display:inline-block;background:'+(ivFase==="2"?"var(--info-bg)":"var(--teal-bg)")+';border:1px solid '+(ivFase==="2"?"var(--info)":"var(--teal)")+';color:'+(ivFase==="2"?"var(--info)":"var(--teal)")+';font-size:11px;font-weight:600;padding:3px 10px;border-radius:12px;margin-bottom:1rem">'+(ivFase==="2"?"🔍 Fase 2 — Volledige DD (post-LoI)":"📋 Fase 1 — Oriëntatie (pre-LoI)")+'</div>'
       +'<div style="font-size:12px;color:#8a8880;margin-bottom:1.25rem">Vink aan welke categorieën en vragen u wilt meesturen. U kunt per categorie een toelichting toevoegen.</div>'
       +'<div style="margin-bottom:1rem"><label style="font-size:10px;font-weight:600;text-transform:uppercase;color:#8a8880;display:block;margin-bottom:4px">Deadline (aanpasbaar)</label>'
@@ -1552,9 +1553,9 @@ function renderBegeleiderDashboard(app){
     document.getElementById('bg-iv-preview').onclick=function(){
       var html = bouwMailHtml();
       var pvOv=document.createElement('div');pvOv.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:300;display:flex;align-items:center;justify-content:center;padding:1.5rem';
-      var pvMo=document.createElement('div');pvMo.style.cssText='background:var(--panel);border-radius:10px;padding:1.5rem;max-width:680px;width:100%;max-height:90vh;overflow-y:auto';
+      var pvMo=document.createElement('div');pvMo.setAttribute('role','dialog');pvMo.setAttribute('aria-modal','true');pvMo.setAttribute('aria-labelledby','pv-modal-titel');pvMo.style.cssText='background:var(--panel);border-radius:10px;padding:1.5rem;max-width:680px;width:100%;max-height:90vh;overflow-y:auto';
       pvMo.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">'
-        +'<div style="font-weight:600;font-size:13px">Preview e-mail</div>'
+        +'<div id="pv-modal-titel" style="font-weight:600;font-size:13px">Preview e-mail</div>'
         +'<button id="pv-sluit" style="background:none;border:none;font-size:18px;cursor:pointer;color:#8a8880">&times;</button></div>'
         +'<div style="border:1px solid #ddd;border-radius:6px;padding:1rem">'+html+'</div>';
       pvOv.appendChild(pvMo);document.body.appendChild(pvOv);
@@ -1645,10 +1646,10 @@ function renderBegeleiderDashboard(app){
             var vr=await fetch(WORKER+'/mna/versie/'+btn.dataset.id+'?code='+encodeURIComponent(S.code));
             var vd=await vr.json();
             var ov2=document.createElement('div');ov2.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:3000;display:flex;align-items:center;justify-content:center;padding:1.5rem';
-            var mo2=document.createElement('div');mo2.style.cssText='background:var(--panel);border:1px solid var(--border2);border-radius:var(--r2);padding:1.75rem;max-width:700px;width:100%;max-height:85vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,.25)';
+            var mo2=document.createElement('div');mo2.setAttribute('role','dialog');mo2.setAttribute('aria-modal','true');mo2.setAttribute('aria-labelledby','versie-modal-titel');mo2.style.cssText='background:var(--panel);border:1px solid var(--border2);border-radius:var(--r2);padding:1.75rem;max-width:700px;width:100%;max-height:85vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,.25)';
             var docLabel=(labels[vd.doc_type]||vd.doc_type)+' — versie '+vd.versie;
             mo2.innerHTML='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">'
-              +'<div style="font-family:Playfair Display,serif;font-size:1rem;font-weight:600;color:var(--head)">'+esc(docLabel)+'</div>'
+              +'<div id="versie-modal-titel" style="font-family:Playfair Display,serif;font-size:1rem;font-weight:600;color:var(--head)">'+esc(docLabel)+'</div>'
               +'<button id="bg-vd-sluit" class="btn-ghost" style="font-size:12px;padding:4px 12px">&#10005;</button></div>'
               +'<textarea readonly style="width:100%;height:400px;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:1rem;font-family:Georgia,serif;font-size:12px;line-height:1.8;color:var(--sub);outline:none;resize:vertical">'+esc(vd.tekst||'')+'</textarea>'
               +'<div style="display:flex;gap:8px;margin-top:.75rem;justify-content:flex-end">'
@@ -1807,8 +1808,9 @@ function renderBegeleiderDashboard(app){
       var ov = document.createElement('div');
       ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:3000;display:flex;align-items:center;justify-content:center;padding:1.5rem';
       var mo = document.createElement('div');
+      mo.setAttribute('role','dialog');mo.setAttribute('aria-modal','true');mo.setAttribute('aria-labelledby','gesprek-modal-titel');
       mo.style.cssText = 'background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.75rem;max-width:600px;width:100%;max-height:90vh;overflow-y:auto';
-      mo.innerHTML = '<div style="font-family:Playfair Display,serif;font-size:1rem;font-weight:600;color:var(--head);margin-bottom:1.25rem">'+(g.id?'Gesprek bewerken':'Gesprek vastleggen')+'</div>'
+      mo.innerHTML = '<div id="gesprek-modal-titel" style="font-family:Playfair Display,serif;font-size:1rem;font-weight:600;color:var(--head);margin-bottom:1.25rem">'+(g.id?'Gesprek bewerken':'Gesprek vastleggen')+'</div>'
         + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">'
         + '<div><label style="font-size:10px;font-weight:600;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:4px">Datum</label>'
         + '<input type="date" id="bgg-datum" value="'+(g.datum||vandaag)+'" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:8px 10px;font-family:IBM Plex Sans,sans-serif;font-size:13px"></div>'
@@ -1928,8 +1930,8 @@ function renderBegeleiderDashboard(app){
   var feedbackBtn=document.getElementById('bg-feedback-actie');
   if(feedbackBtn)feedbackBtn.onclick=function(){
     var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:400;display:flex;align-items:center;justify-content:center;padding:1.5rem';
-    var mo=document.createElement('div');mo.style.cssText='background:var(--panel);border-radius:10px;padding:2rem;max-width:480px;width:100%';
-    mo.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.1rem;color:var(--head);font-weight:600;margin-bottom:.5rem">&#128172; Feedback of een bug melden</div>'
+    var mo=document.createElement('div');mo.setAttribute('role','dialog');mo.setAttribute('aria-modal','true');mo.setAttribute('aria-labelledby','feedback-modal-titel');mo.style.cssText='background:var(--panel);border-radius:10px;padding:2rem;max-width:480px;width:100%';
+    mo.innerHTML='<div id="feedback-modal-titel" style="font-family:Playfair Display,serif;font-size:1.1rem;color:var(--head);font-weight:600;margin-bottom:.5rem">&#128172; Feedback of een bug melden</div>'
       +'<div style="font-size:12px;color:#8a8880;margin-bottom:1rem">Kort omschrijven wat je zag en wat je verwachtte. Komt direct binnen bij Marcel — reken op een reactie binnen 24 uur.</div>'
       +'<textarea id="fb-tekst" rows="6" style="width:100%;background:#f0eeea;border:1px solid #c8c5bc;border-radius:6px;padding:9px 11px;font-family:IBM Plex Sans,sans-serif;font-size:13px;resize:vertical" placeholder="Wat zag je en wat verwachtte je?"></textarea>'
       +'<div id="fb-err" style="display:none;color:#e05252;font-size:12px;margin-top:.5rem"></div>'

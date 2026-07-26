@@ -1374,14 +1374,15 @@ window.toonVersieGeschiedenis = async function(docId) {
   ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:900;display:flex;align-items:center;justify-content:center;padding:1.5rem';
   ov.onclick = function(e) { if (e.target === ov) ov.remove(); };
   var box = document.createElement('div');
+  box.setAttribute('role','dialog');box.setAttribute('aria-modal','true');box.setAttribute('aria-labelledby','versiegeschiedenis-modal-titel');
   box.style.cssText = 'background:var(--panel);border:1px solid var(--border2);border-radius:var(--r2);padding:1.5rem;max-width:480px;width:100%;max-height:80vh;overflow-y:auto';
-  box.innerHTML = '<div style="font-family:Playfair Display,serif;font-size:1.05rem;color:var(--head);font-weight:600;margin-bottom:.75rem">Versiegeschiedenis</div><div style="font-size:12px;color:var(--muted)">Laden...</div>';
+  box.innerHTML = '<div id="versiegeschiedenis-modal-titel" style="font-family:Playfair Display,serif;font-size:1.05rem;color:var(--head);font-weight:600;margin-bottom:.75rem">Versiegeschiedenis</div><div style="font-size:12px;color:var(--muted)">Laden...</div>';
   ov.appendChild(box);
   document.body.appendChild(ov);
   try {
     var resp = await fetch(WORKER + '/mna/document/versies/' + S.code + '/' + docId);
     var d = await resp.json();
-    if (!d.ok || !d.versies || !d.versies.length) { box.innerHTML = '<div style="font-family:Playfair Display,serif;font-size:1.05rem;color:var(--head);font-weight:600;margin-bottom:.75rem">Versiegeschiedenis</div><div style="font-size:12px;color:var(--muted)">Geen geschiedenis gevonden.</div>'; return; }
+    if (!d.ok || !d.versies || !d.versies.length) { box.innerHTML = '<div id="versiegeschiedenis-modal-titel" style="font-family:Playfair Display,serif;font-size:1.05rem;color:var(--head);font-weight:600;margin-bottom:.75rem">Versiegeschiedenis</div><div style="font-size:12px;color:var(--muted)">Geen geschiedenis gevonden.</div>'; return; }
     var lijst = d.versies.slice().reverse().map(function(v) {
       var datum = v.uploaded_at ? new Date(v.uploaded_at).toLocaleString('nl-NL') : '';
       return '<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--card);border:1px solid var(--border);border-radius:var(--r)">'
@@ -1390,11 +1391,11 @@ window.toonVersieGeschiedenis = async function(docId) {
         + '<span style="font-size:10px;color:var(--muted)">'+esc(datum)+'</span>'
         + '</div>';
     }).join('');
-    box.innerHTML = '<div style="font-family:Playfair Display,serif;font-size:1.05rem;color:var(--head);font-weight:600;margin-bottom:.75rem">Versiegeschiedenis</div><div style="display:flex;flex-direction:column;gap:6px;margin-bottom:1rem">'+lijst+'</div><button id="versies-sluiten-btn" style="background:var(--teal);color:#fff;border:none;border-radius:var(--r);padding:6px 16px;cursor:pointer;font-size:12px">Sluiten</button>';
+    box.innerHTML = '<div id="versiegeschiedenis-modal-titel" style="font-family:Playfair Display,serif;font-size:1.05rem;color:var(--head);font-weight:600;margin-bottom:.75rem">Versiegeschiedenis</div><div style="display:flex;flex-direction:column;gap:6px;margin-bottom:1rem">'+lijst+'</div><button id="versies-sluiten-btn" style="background:var(--teal);color:#fff;border:none;border-radius:var(--r);padding:6px 16px;cursor:pointer;font-size:12px">Sluiten</button>';
     var sluitBtn = box.querySelector('#versies-sluiten-btn');
     if (sluitBtn) sluitBtn.onclick = function() { ov.remove(); };
   } catch (e) {
-    box.innerHTML = '<div style="font-family:Playfair Display,serif;font-size:1.05rem;color:var(--head);font-weight:600;margin-bottom:.75rem">Versiegeschiedenis</div><div style="font-size:12px;color:var(--red)">Verbindingsfout bij laden.</div>';
+    box.innerHTML = '<div id="versiegeschiedenis-modal-titel" style="font-family:Playfair Display,serif;font-size:1.05rem;color:var(--head);font-weight:600;margin-bottom:.75rem">Versiegeschiedenis</div><div style="font-size:12px;color:var(--red)">Verbindingsfout bij laden.</div>';
   }
 };
 
@@ -1479,8 +1480,9 @@ function toonConflictDialog(conflicts, contextLabel) {
   var ov=document.createElement('div');
   ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;display:flex;align-items:center;justify-content:center;padding:1.5rem';
   var box=document.createElement('div');
+  box.setAttribute('role','dialog');box.setAttribute('aria-modal','true');box.setAttribute('aria-labelledby','conflict-modal-titel');
   box.style.cssText='background:var(--panel);border:1px solid var(--border2);border-radius:var(--r2);padding:1.75rem;max-width:560px;width:100%;max-height:85vh;overflow-y:auto';
-  var title=document.createElement('div');title.style.cssText='font-family:Playfair Display,serif;font-size:1.1rem;color:var(--head);font-weight:600;margin-bottom:.35rem';title.textContent='Afwijkende waarden gevonden';box.appendChild(title);
+  var title=document.createElement('div');title.id='conflict-modal-titel';title.style.cssText='font-family:Playfair Display,serif;font-size:1.1rem;color:var(--head);font-weight:600;margin-bottom:.35rem';title.textContent='Afwijkende waarden gevonden';box.appendChild(title);
   // Onduidelijk welke entiteit/periode het betreft was zelf al een gemeld pijnpunt — de veld-labels
   // tonen al het jaartal (zie de dynamische omzetPerJaar-labels), maar de entiteit ontbrak volledig.
   if(contextLabel){
