@@ -153,6 +153,171 @@ var VERKOPER_FASE_INTRO={
   strategisch:'Beschrijf de marktpositie en groeikansen van de onderneming. Dit helpt een koper inschatten of de overname ook op langere termijn waarde toevoegt.'
 };
 
+// Verplicht openingsscherm voor de verkoper bij een NIEUW traject (punt #29, 26 juli 2026,
+// Marcels expliciete keuze: verplicht bij eerste login, alleen voor nieuwe trajecten — bestaande
+// trajecten hebben opening_voltooid al op 1 staan via de eenmalige backend-migratie, zie
+// worker/07-mna-groepen.js). Legt adres/KvK/naam tekenbevoegde vast op traject-niveau plus
+// partners/groepsstructuur (dezelfde /mna/entiteiten en /mna/partners-routes als de begeleider
+// gebruikt, nu ook voor de verkoper opengesteld — geen aparte auth-header nodig, S.code in de URL
+// is voor deze routes voldoende autorisatie voor de eigen verkoperrol).
+function renderOpening(){
+  var t=S.traject||{};
+  return '<div class="wrap anim">'
+    +'<div class="hdr"><div class="brand">'+brandMerkHtml()+BRAND.platform+' &middot; M&amp;A'+versieLabel()+'</div>'
+    +'<button class="btn-ghost btn-sm" onclick="uitloggen()">&#8592; Uitloggen</button></div>'
+    +'<div style="font-family:Playfair Display,serif;font-size:1.4rem;color:var(--head);font-weight:600;margin-bottom:.25rem">Welkom &mdash; voordat u begint</div>'
+    +'<div style="font-size:13px;color:var(--muted);margin-bottom:1.5rem;max-width:640px">Voor <strong>'+esc(t.kantoor_naam||'')+'</strong> vragen we eerst een paar basisgegevens en, indien van toepassing, de partners en groepsstructuur. Dit is eenmalig en duurt een paar minuten — daarna gaat u direct door naar de due diligence-vragen.</div>'
+    +'<div class="panel" style="max-width:640px;margin-bottom:1.25rem">'
+    +'<div style="font-family:Playfair Display,serif;font-size:1.05rem;color:var(--head);font-weight:600;margin-bottom:.75rem">&#128274; Bedrijfsgegevens</div>'
+    +'<div class="f" style="margin-bottom:.75rem"><label>Adres (statutair)</label><input type="text" id="op-adres" value="'+esc(t.verkoper_adres||'')+'"></div>'
+    +'<div class="f" style="margin-bottom:.75rem"><label>KvK-nummer</label><input type="text" id="op-kvk" value="'+esc(t.verkoper_kvk||'')+'"></div>'
+    +'<div class="f"><label>Naam tekenbevoegde</label><input type="text" id="op-tekenbevoegde" value="'+esc(t.tekenbevoegde_naam||'')+'"></div>'
+    +'</div>'
+    +'<div class="panel" style="max-width:640px;margin-bottom:1.25rem">'
+    +'<div style="font-family:Playfair Display,serif;font-size:1.05rem;color:var(--head);font-weight:600;margin-bottom:.25rem">&#127970; Groepsstructuur</div>'
+    +'<div style="font-size:12px;color:var(--muted);margin-bottom:1rem">Alleen relevant als er sprake is van een holding met werkmaatschappijen. Geen groepsstructuur? Dan kunt u dit overslaan.</div>'
+    +'<div id="op-gs-lijst" style="margin-bottom:1rem;font-size:13px;color:var(--muted);font-style:italic">Laden...</div>'
+    +'<div style="display:flex;gap:8px;margin-bottom:.5rem">'
+    +'<input type="text" id="op-gs-naam" placeholder="Naam entiteit" style="flex:2;background:var(--card);border:1px solid var(--border2);border-radius:6px;padding:7px 11px;font-size:13px">'
+    +'<input type="text" id="op-gs-kvk" placeholder="KvK (optioneel)" style="flex:1;background:var(--card);border:1px solid var(--border2);border-radius:6px;padding:7px 11px;font-size:13px">'
+    +'<button id="op-gs-toevoegen" style="background:var(--teal);color:#fff;border:none;padding:7px 14px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;white-space:nowrap">+ Toevoegen</button>'
+    +'</div>'
+    +'<div id="op-gs-err" style="display:none;color:var(--red);font-size:12px;margin-top:.5rem"></div>'
+    +'</div>'
+    +'<div class="panel" style="max-width:640px;margin-bottom:1.25rem">'
+    +'<div style="font-family:Playfair Display,serif;font-size:1.05rem;color:var(--head);font-weight:600;margin-bottom:.25rem">&#129489;&#8205;&#128188; Partners</div>'
+    +'<div style="font-size:12px;color:var(--muted);margin-bottom:1rem">Leg elke partner één keer vast. Werkt een partner bij meerdere entiteiten hierboven? Koppel deze dan aan alle betreffende entiteiten.</div>'
+    +'<div id="op-pt-lijst" style="margin-bottom:1rem;font-size:13px;color:var(--muted);font-style:italic">Laden...</div>'
+    +'<div style="display:flex;gap:8px;margin-bottom:6px">'
+    +'<input type="text" id="op-pt-naam" placeholder="Naam partner" style="flex:2;background:var(--card);border:1px solid var(--border2);border-radius:6px;padding:7px 11px;font-size:13px">'
+    +'<input type="text" id="op-pt-leeftijd" placeholder="Leeftijd" style="flex:1;background:var(--card);border:1px solid var(--border2);border-radius:6px;padding:7px 11px;font-size:13px">'
+    +'</div>'
+    +'<div style="display:flex;gap:8px;margin-bottom:6px">'
+    +'<input type="text" id="op-pt-verandering" placeholder="Veranderbereidheid" style="flex:1;background:var(--card);border:1px solid var(--border2);border-radius:6px;padding:7px 11px;font-size:13px">'
+    +'<input type="text" id="op-pt-opvolging" placeholder="Opvolgingskandidaat" style="flex:1;background:var(--card);border:1px solid var(--border2);border-radius:6px;padding:7px 11px;font-size:13px">'
+    +'<input type="text" id="op-pt-omzet" placeholder="Omzet incl. team (€)" style="flex:1;background:var(--card);border:1px solid var(--border2);border-radius:6px;padding:7px 11px;font-size:13px">'
+    +'</div>'
+    +'<div id="op-pt-entiteiten" style="font-size:12px;color:var(--muted);margin-bottom:8px">Gekoppelde entiteiten: <span style="font-style:italic">laden...</span></div>'
+    +'<button id="op-pt-toevoegen" style="background:var(--teal);color:#fff;border:none;padding:7px 14px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600">+ Toevoegen</button>'
+    +'<div id="op-pt-err" style="display:none;color:var(--red);font-size:12px;margin-top:.5rem"></div>'
+    +'</div>'
+    +'<div id="op-voltooien-err" style="display:none;color:var(--red);font-size:13px;margin-bottom:.75rem;max-width:640px"></div>'
+    +'<button id="op-voltooien-btn" class="btn" style="font-size:14px;padding:10px 24px">Doorgaan naar due diligence &#8594;</button>'
+    +'</div>';
+}
+
+// Bind-logica voor renderOpening() — guarded op ge('op-voltooien-btn') zodat dit veilig vanuit
+// de algemene bindAll() aangeroepen kan worden, ook als het openingsscherm niet actief is.
+function bindOpeningScreen(){
+  var voltooienBtn=ge('op-voltooien-btn');
+  if(!voltooienBtn)return;
+
+  async function laadOpeningEntiteiten(){
+    var lijstEl=ge('op-gs-lijst');
+    if(!lijstEl)return;
+    var rows=await fetch(WORKER+'/mna/entiteiten/'+S.code).then(function(r){return r.json();}).catch(function(){return [];});
+    S._entiteiten=rows||[];
+    if(!rows||!rows.length){lijstEl.innerHTML='<span style="font-style:italic">Nog geen entiteiten toegevoegd.</span>';}
+    else{
+      lijstEl.style.fontStyle='normal';
+      lijstEl.innerHTML=rows.map(function(r){
+        return '<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid var(--border);border-radius:7px;margin-bottom:6px">'
+          +'<div style="flex:1"><div style="font-size:13px;color:var(--sub)">'+esc(r.naam)+'</div>'+(r.kvk?'<div style="font-size:11px;color:var(--muted)">KvK '+esc(r.kvk)+'</div>':'')+'</div>'
+          +'<button class="op-gs-verwijder" data-id="'+esc(r.id)+'" style="background:transparent;border:1px solid var(--border2);color:var(--red);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px">Verwijderen</button>'
+          +'</div>';
+      }).join('');
+      lijstEl.querySelectorAll('.op-gs-verwijder').forEach(function(btn){
+        btn.onclick=async function(){
+          await fetch(WORKER+'/mna/entiteiten/'+S.code,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({actie:'verwijderen',id:btn.dataset.id})});
+          laadOpeningEntiteiten();laadOpeningPartners();
+        };
+      });
+    }
+    var entChkEl=ge('op-pt-entiteiten');
+    if(entChkEl){
+      if(!rows||!rows.length){entChkEl.innerHTML='Gekoppelde entiteiten: <span style="font-style:italic">geen entiteiten toegevoegd — deze partner geldt dan voor het hele traject.</span>';}
+      else{
+        entChkEl.innerHTML='Gekoppelde entiteiten:<div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:4px">'
+          +rows.map(function(r){return '<label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" class="op-pt-ent-chk" value="'+esc(r.id)+'"> '+esc(r.naam)+'</label>';}).join('')
+          +'</div>';
+      }
+    }
+  }
+  async function laadOpeningPartners(){
+    var lijstEl=ge('op-pt-lijst');
+    if(!lijstEl)return;
+    var rows=await fetch(WORKER+'/mna/partners/'+S.code).then(function(r){return r.json();}).catch(function(){return [];});
+    if(!rows||!rows.length){lijstEl.innerHTML='<span style="font-style:italic">Nog geen partners toegevoegd.</span>';return;}
+    lijstEl.style.fontStyle='normal';
+    lijstEl.innerHTML=rows.map(function(r){
+      var entNamen=(r.entiteit_ids||[]).map(function(id){var e=(S._entiteiten||[]).find(function(x){return x.id===id;});return e?e.naam:id;}).join(', ');
+      return '<div style="display:flex;align-items:flex-start;gap:8px;padding:7px 10px;border:1px solid var(--border);border-radius:7px;margin-bottom:6px">'
+        +'<div style="flex:1">'
+        +'<div style="font-size:13px;color:var(--sub);font-weight:600">'+esc(r.naam)+(r.leeftijd?' &middot; '+esc(r.leeftijd)+' jaar':'')+'</div>'
+        +(r.veranderbereidheid?'<div style="font-size:11px;color:var(--muted)">Veranderbereidheid: '+esc(r.veranderbereidheid)+'</div>':'')
+        +(r.opvolgingskandidaat?'<div style="font-size:11px;color:var(--muted)">Opvolging: '+esc(r.opvolgingskandidaat)+'</div>':'')
+        +(r.omzet_incl_team?'<div style="font-size:11px;color:var(--muted)">Omzet incl. team: &euro;'+esc(Number(r.omzet_incl_team).toLocaleString('nl-NL'))+'</div>':'')
+        +(entNamen?'<div style="font-size:11px;color:var(--teal)">'+esc(entNamen)+'</div>':'')
+        +'</div>'
+        +'<button class="op-pt-verwijder" data-id="'+esc(r.id)+'" style="background:transparent;border:1px solid var(--border2);color:var(--red);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px">Verwijderen</button>'
+        +'</div>';
+    }).join('');
+    lijstEl.querySelectorAll('.op-pt-verwijder').forEach(function(btn){
+      btn.onclick=async function(){
+        await fetch(WORKER+'/mna/partners/'+S.code,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({actie:'verwijderen',id:btn.dataset.id})});
+        laadOpeningPartners();
+      };
+    });
+  }
+  var gsToevoegenBtn=ge('op-gs-toevoegen');
+  if(gsToevoegenBtn)gsToevoegenBtn.onclick=async function(){
+    var btn=this;var naamEl=ge('op-gs-naam');var kvkEl=ge('op-gs-kvk');var errEl=ge('op-gs-err');
+    errEl.style.display='none';
+    var naam=naamEl.value.trim();
+    if(!naam){errEl.textContent='Naam is verplicht.';errEl.style.display='block';return;}
+    btn.disabled=true;btn.textContent='...';
+    var r=await fetch(WORKER+'/mna/entiteiten/'+S.code,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({naam:naam,kvk:kvkEl.value.trim()})}).then(function(x){return x.json();}).catch(function(){return {};});
+    btn.disabled=false;btn.textContent='+ Toevoegen';
+    if(r.ok){naamEl.value='';kvkEl.value='';laadOpeningEntiteiten();}
+    else{errEl.textContent=r.error||'Fout bij opslaan';errEl.style.display='block';}
+  };
+  var ptToevoegenBtn=ge('op-pt-toevoegen');
+  if(ptToevoegenBtn)ptToevoegenBtn.onclick=async function(){
+    var btn=this;
+    var naamEl=ge('op-pt-naam'),leeftijdEl=ge('op-pt-leeftijd'),verEl=ge('op-pt-verandering'),opvEl=ge('op-pt-opvolging'),omzetEl=ge('op-pt-omzet');
+    var errEl=ge('op-pt-err');errEl.style.display='none';
+    var naam=naamEl.value.trim();
+    if(!naam){errEl.textContent='Naam is verplicht.';errEl.style.display='block';return;}
+    var entIds=Array.prototype.slice.call(document.querySelectorAll('.op-pt-ent-chk:checked')).map(function(c){return c.value;});
+    btn.disabled=true;btn.textContent='...';
+    var r=await fetch(WORKER+'/mna/partners/'+S.code,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({naam:naam,leeftijd:leeftijdEl.value.trim(),veranderbereidheid:verEl.value.trim(),opvolgingskandidaat:opvEl.value.trim(),omzet_incl_team:omzetEl.value.trim(),entiteit_ids:entIds})}).then(function(x){return x.json();}).catch(function(){return {};});
+    btn.disabled=false;btn.textContent='+ Toevoegen';
+    if(r.ok){naamEl.value='';leeftijdEl.value='';verEl.value='';opvEl.value='';omzetEl.value='';document.querySelectorAll('.op-pt-ent-chk').forEach(function(c){c.checked=false;});laadOpeningPartners();}
+    else{errEl.textContent=r.error||'Fout bij opslaan';errEl.style.display='block';}
+  };
+  voltooienBtn.onclick=async function(){
+    var errEl=ge('op-voltooien-err');errEl.style.display='none';
+    var adres=(ge('op-adres').value||'').trim();
+    var kvk=(ge('op-kvk').value||'').trim();
+    var tekenbevoegde=(ge('op-tekenbevoegde').value||'').trim();
+    if(!adres||!kvk||!tekenbevoegde){
+      errEl.textContent='Adres, KvK-nummer en naam tekenbevoegde zijn verplicht.';errEl.style.display='block';return;
+    }
+    voltooienBtn.disabled=true;voltooienBtn.textContent='Bezig...';
+    var r=await fetch(WORKER+'/mna/opening/voltooien',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:S.code,verkoper_adres:adres,verkoper_kvk:kvk,tekenbevoegde_naam:tekenbevoegde})}).then(function(x){return x.json();}).catch(function(){return {};});
+    if(r.ok){
+      S.traject=Object.assign({},S.traject,{verkoper_adres:adres,verkoper_kvk:kvk,tekenbevoegde_naam:tekenbevoegde,opening_voltooid:1});
+      S.screen='cover';
+      renderApp();
+    }else{
+      voltooienBtn.disabled=false;voltooienBtn.textContent='Doorgaan naar due diligence →';
+      errEl.textContent=r.error||'Opslaan mislukt, probeer opnieuw.';errEl.style.display='block';
+    }
+  };
+  laadOpeningEntiteiten();
+  laadOpeningPartners();
+}
+
 // Duidelijk zichtbare verplicht-markering bij een veldlabel. Vervangt het eerdere kale rode "*",
 // dat zonder uitleg cryptisch was — een invuller herkent nu meteen dat het veld verplicht is
 // (Marcel, 25 juli 2026). Eén helper zodat alle render-plekken identiek blijven.
@@ -919,12 +1084,18 @@ function bindAll(){
           if(fId2&&!DOCS[fId2])loadDocsForFase(fId2);
         }
         if(schermOverride==='handleiding')S.screen='handleiding';
+        // Verplicht openingsscherm (punt #29, 26 juli 2026): alleen voor nieuwe trajecten
+        // (opening_voltooid komt uit de backend, bestaande trajecten staan al op 1 via de
+        // eenmalige migratie) — overschrijft bewust elke andere schermkeuze hierboven, inclusief
+        // de fase-2-doorstart en de handleiding-URL-override.
+        if(isVerkoper()&&d.traject&&d.traject.opening_voltooid!==1){S.screen='opening';}
         renderApp();
       }catch(e){if(err)err.style.display='block';if(load)load.style.display='none';lb.disabled=false;}
     };
     var cf=ge('l-code');
     if(cf){cf.oninput=function(){this.value=this.value.toUpperCase();};cf.onkeydown=function(e){if(e.key==='Enter')lb.click();};}
   }
+  bindOpeningScreen();
   var toMain=ge('to-main-btn');if(toMain)toMain.onclick=function(){S.screen='main';var fId=FASES[S.fase]&&FASES[S.fase].id;if(fId&&!DOCS[fId])loadDocsForFase(fId);renderApp();};
   var toMain2=ge('to-main-btn2');if(toMain2)toMain2.onclick=function(){S.screen='main';var fId=FASES[S.fase]&&FASES[S.fase].id;if(fId&&!DOCS[fId])loadDocsForFase(fId);renderApp();};
   var toWrd=ge('to-waardering-btn');if(toWrd)toWrd.onclick=function(){S.screen='waardering';renderApp();};
