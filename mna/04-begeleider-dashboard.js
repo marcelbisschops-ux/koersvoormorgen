@@ -471,11 +471,11 @@ function renderBegeleiderDashboard(app){
       ?'<button class="btn" id="bg-nda-actie" style="background:#7c5cbf;padding:10px;font-size:12px">&#128274; NDA</button>'
       :'<button class="btn" id="bg-nda-actie" disabled title="Module Contracten niet actief — neem contact op met ' + BRAND.kort + '" style="background:#7c5cbf;padding:10px;font-size:12px;opacity:.45;cursor:not-allowed">&#128274; NDA</button>')
     +(contractenAan
-      ?'<button class="btn" id="bg-loi-actie" style="background:var(--gold);padding:10px;font-size:12px">&#128196; LoI</button>'
-      :'<button class="btn" id="bg-loi-actie" disabled title="Module Contracten niet actief — neem contact op met ' + BRAND.kort + '" style="background:var(--gold);padding:10px;font-size:12px;opacity:.45;cursor:not-allowed">&#128196; LoI</button>')
-    +(contractenAan
       ?'<button class="btn" id="bg-bem-actie" style="background:#2a5ea0;padding:10px;font-size:12px">&#128203; BEM</button>'
       :'<button class="btn" id="bg-bem-actie" disabled title="Module Contracten niet actief — neem contact op met ' + BRAND.kort + '" style="background:#2a5ea0;padding:10px;font-size:12px;opacity:.45;cursor:not-allowed">&#128203; BEM</button>')
+    +(contractenAan
+      ?'<button class="btn" id="bg-loi-actie" style="background:var(--gold);padding:10px;font-size:12px">&#128196; LoI</button>'
+      :'<button class="btn" id="bg-loi-actie" disabled title="Module Contracten niet actief — neem contact op met ' + BRAND.kort + '" style="background:var(--gold);padding:10px;font-size:12px;opacity:.45;cursor:not-allowed">&#128196; LoI</button>')
     +'</div>'
     +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:.75rem">'
     +(contractenAan
