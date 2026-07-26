@@ -139,6 +139,20 @@ var KOPER_FASE_UITLEG={
   strategisch:'Hier vindt u de marktpositie en groeipotentie van de onderneming — relevant voor de vraag of de aankoop op langere termijn waarde toevoegt.'
 };
 
+// Sectoronafhankelijke intro-tekst per fase-onderdeel voor de VERKOPER (Marcel, 26 juli 2026):
+// legt uit wat er in deze fase precies gevraagd wordt en waarom, vóór de velden zelf. Zelfde
+// opzet als KOPER_FASE_UITLEG hierboven maar vanuit het perspectief van de invuller (verkoper),
+// niet van de koper die het resultaat beoordeelt.
+var VERKOPER_FASE_INTRO={
+  financieel:'Deze cijfers vormen de basis voor de waardering en het dealvoorstel. Vul ze zo volledig mogelijk in en onderbouw met de gevraagde jaarrekeningen — hoe vollediger, hoe nauwkeuriger de waardering die hieruit volgt.',
+  commercieel:'Hier laat u zien hoe uw klantenbestand is opgebouwd en hoe voorspelbaar de omzet is. Een koper wil weten hoe afhankelijk de onderneming is van een klein aantal grote klanten.',
+  partner:'Bij een mensenbedrijf hangt de continuïteit vaak af van sleutelpersonen. Geef aan wie dat zijn, en wat er verandert als zij na de overname vertrekken.',
+  compliance:'Vergunningen, certificeringen en dossierkwaliteit bepalen mede het risico dat een koper overneemt. Geef een eerlijk beeld, ook van eventuele lopende issues — dat voorkomt verrassingen verderop in het proces.',
+  it:'Beschrijf de systemen die u gebruikt en hoe geautomatiseerd uw werkprocessen zijn. Dit helpt de koper inschatten hoe eenvoudig een integratie met de eigen organisatie zal verlopen.',
+  juridisch:'Hier legt u de juridische en fiscale structuur vast — contracten, geschillen en verplichtingen. Volledigheid hier voorkomt vertraging of onaangename verrassingen bij de closing.',
+  strategisch:'Beschrijf de marktpositie en groeikansen van de onderneming. Dit helpt een koper inschatten of de overname ook op langere termijn waarde toevoegt.'
+};
+
 // Duidelijk zichtbare verplicht-markering bij een veldlabel. Vervangt het eerdere kale rode "*",
 // dat zonder uitleg cryptisch was — een invuller herkent nu meteen dat het veld verplicht is
 // (Marcel, 25 juli 2026). Eén helper zodat alle render-plekken identiek blijven.
@@ -462,7 +476,8 @@ function renderMain(){
     +'<div class="prog-bar"><div class="prog-fill" style="width:'+tp+'%;background:'+(tp===100?'var(--teal)':tp>50?'var(--gold)':'var(--red)')+'"></div></div>'
     +ov
     +'<div style="font-family:Playfair Display,serif;font-size:1.1rem;color:var(--head);font-weight:600;margin-bottom:.2rem">'+f.num+'. '+f.title+'</div>'
-    +'<div style="font-size:13px;color:var(--muted);margin-bottom:1.25rem">'+f.desc+'</div>'
+    +'<div style="font-size:13px;color:var(--muted);margin-bottom:'+(isVerkoper()&&VERKOPER_FASE_INTRO[f.id]?'.5rem':'1.25rem')+'">'+f.desc+'</div>'
+    +(isVerkoper()&&VERKOPER_FASE_INTRO[f.id]?'<div style="font-size:12px;color:var(--sub);line-height:1.6;background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:.75rem 1rem;margin-bottom:1.25rem">'+esc(VERKOPER_FASE_INTRO[f.id])+'</div>':'')
     +'<div class="data-grid-sidebar">'+dataHtml+renderDocumentSectie(f.id)+'</div>'
     +extraHtml+nav+'</div>';
 }
