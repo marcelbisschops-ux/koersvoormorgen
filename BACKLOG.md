@@ -41,6 +41,11 @@ wegstrepen/verwijderen, niet laten aanslibben.
 | 10 | Pilot algemene DD-tool (MKB) | Bundelt bestaande sectorneutrale AI-extractie/benchmarks tot verkoopbaar algemeen product — 2-3 dagen zodra je de MKB-inhoud aanlevert |
 | 11 | Accountancy-sectorprofiel: gestructureerde omzetsplitsing + winst-per-partner | Controle/samenstel/fiscaal/advies-omzet zit nu in één vrij tekstveld i.p.v. vier aparte %-velden; geen winst-per-partner (alleen omzet-per-partner) en geen partnerafhankelijkheidsscore. Gevonden bij de heraudit — vereist jouw input over de gewenste velden/definities |
 
+**Afgerond 26 juli 2026 (zelfde sessie, na jouw antwoorden op de 4 verduidelijkingsvragen):**
+- **Documentknoppen hergroeperen**: NDA → BEM → LoI → Excl → Dealvoorstel → Bieding, in beide plekken waar ze getoond worden.
+- **Per-fase-intro voor de verkoper**: uitgebreide alinea per fase (wat + waarom) toegevoegd, sectoronafhankelijk (`VERKOPER_FASE_INTRO` in `mna/06-schermen.js`).
+- **Verplicht openingsscherm verkoper**: bij een NIEUW traject moet de verkoper bij eerste login adres/KvK/naam-tekenbevoegde invullen, plus (optioneel) groepsstructuur en partners. Bestaande trajecten (incl. het lopende "[dossier]") ongewijzigd via een eenmalige backend-migratie. Nieuwe backend-endpoint `/mna/opening/voltooien` + verkoper-toegang geopend op de bestaande `/mna/entiteiten` en `/mna/partners`-routes. Volledig staging-getest (nieuw/bestaand traject, validatie, koper-uitsluiting) vóór productie-deploy. Handleiding in beide bestanden bijgewerkt.
+
 ## 5. Concrete openstaande features (jouw eigen 25-juli-lijst, nog niet gestart)
 
 | # | Punt | Toelichting |
@@ -48,9 +53,6 @@ wegstrepen/verwijderen, niet laten aanslibben.
 | 12 | Earn-out meenemen in dealvoorstel-generatie | Jouw woorden: "dat is vaak regel en moet meegenomen worden" |
 | 13 | LoI moet waarden overnemen van het dealvoorstel | Nu volledig los van elkaar — dealvoorstel-cijfers worden niet automatisch doorgezet naar de LoI-tekst |
 | 14 | Fase-2-vrijgave na LoI-ondertekening — **nog te onderzoeken, niet per se een bug** | Handleidingtekst claimt dat ondertekening van de LoI bij de verkoper automatisch de diepere fase-2-DD-vragen ontgrendelt (`mna/08-handleiding.js`) — jij zag dit niet gebeuren. Eerst uitzoeken of dit alleen documentatie zonder implementatie is, of een echte bug, vóórdat er gebouwd wordt |
-| 29 | Partnerregister + groepsstructuur door verkoper laten invullen (nu alleen begeleider) | Jouw woorden (26 juli): "de partner moet ingevuld worden door de verkoper. hetzelfde geldt voor de groepstructuur. eventueel ook door de adviseur, maar zal als eerste stappen door de verkoper moeten gebeuren." Geverifieerd: `toonPartnersModal`/`toonGroepsstructuurModal` bestaan nu alleen in `mna/04-begeleider-dashboard.js` (begeleider-only), geen verkoper-toegangspad. Jouw voorstel: een openingsscherm bij eerste login van de verkoper met bevestiging van adres/KvK/tekenbevoegdheid e.d. — vereist nog een concreet veldenontwerp vóór bouw (welke velden precies, verplicht/optioneel, wat gebeurt er met al bestaande begeleider-ingevoerde data bij een reeds lopend traject) |
-| 30 | Verkoper explicieter per fase informeren welke data + welk steunbewijs nodig is | Jouw vraag (26 juli): "wordt de verkoper vooraf per fase geinformeerd over welke data hij precies moet invoeren en welk steunbewijs gevraagd wordt? moet wel." Geverifieerd huidige stand: elke fase heeft een korte 1-regel-omschrijving (`f.desc`), velden die een document verwachten krijgen een 📄-icoon, en de DD-checklist/redflags per fase zijn ook voor de verkoper zichtbaar — maar geen uitgebreidere uitleg per veld (waarom gevraagd, wat precies als steunbewijs telt). Jouw beslissing nodig: is de huidige icoon+label-aanpak voldoende, of moet dit uitgebreider (bijv. een intro-tekst per fase, of hover-uitleg per veld)? |
-| 31 | Documentknoppen begeleider hergroeperen in logische procesvolgorde | Jouw voorstel (26 juli): knoppen van links naar rechts plaatsen in de volgorde waarin ze normaliter gebruikt worden (bijv. beginnen met BEM i.p.v. de huidige NDA→LoI→BEM-volgorde). Vereist jouw bevestiging van de gewenste volgorde vóór het wijzigen van `mna/06-schermen.js`/`mna/04-begeleider-dashboard.js` — een verkeerde aanname hier is zichtbaar voor elke gebruiker |
 
 ## 6. Bewust uitgesteld — risico-afweging, trigger om terug te komen
 
