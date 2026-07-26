@@ -252,6 +252,13 @@ test.describe('Gelijktijdige multi-upload', () => {
 
     // Twee echte conflicten verwacht (doc2 vs doc1, doc3 vs doc2) — maar nooit meer dan
     // één dialoog gelijktijdig op het scherm; de tweede moet in de wachtrij staan.
+    // Race-conditie-fix (26 juli 2026): toonConflictDialog() wordt per document met een bewuste
+    // 300ms setTimeout vertraagd getoond (mna/02-state-opslag-documenten.js). "upload-status leeg"
+    // hierboven betekent alleen dat alle uploads/verwerkingen klaar zijn — niet dat de 300ms-
+    // vertraagde dialoog-aanroep van het LAATSTE document ook al is afgevuurd. Zonder deze wait kon
+    // de test op dat exacte tussenmoment vangen (wachtrij nog leeg, een fractie later wel gevuld) —
+    // dit maakte de test flaky/soms consistent falend, geen echte bug in de app.
+    await page.waitForFunction(() => (S._conflictWachtrij || []).length >= 1, null, { timeout: 2000 });
     await expect(page.getByText('Afwijkende waarden gevonden')).toHaveCount(1);
     let wachtrijLengte = await page.evaluate(() => (S._conflictWachtrij || []).length);
     expect(wachtrijLengte).toBeGreaterThanOrEqual(1);
