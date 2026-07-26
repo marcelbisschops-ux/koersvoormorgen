@@ -698,6 +698,19 @@ function renderBegeleiderDashboard(app){
     var isSell=(t2.opdrachtgever_rol==='koper')?false:(!t2.traject_type||t2.traject_type==='Verkoop'||t2.traject_type==='Opvolging');
     var tplType=type==='bem'?(isSell?'bem_verk':'bem_koper'):type;
     var tplD=await fetch(WORKER+'/mna/template/'+tplType+'?email='+encodeURIComponent(t2.begeleider_email||'')+'&code='+encodeURIComponent(S.code)).then(function(r){return r.json();}).catch(function(){return{ok:false};});
+    // Cijfers uit het laatst verstuurde dealvoorstel automatisch overnemen in de LoI (26 juli 2026)
+    // — voorkomt dat de begeleider dezelfde koopsom/multiple/escrow een tweede keer met de hand
+    // intikt, met risico op afwijkende cijfers richting een echte tegenpartij. Alleen gebruiken als
+    // de structuur klopt (p+closing aanwezig); zonder dealvoorstel blijft de LoI werken zoals voorheen
+    // (placeholders die de begeleider zelf invult) — nooit een gegokt bedrag.
+    var dvCijfers=null;
+    if(type==='loi'){
+      var dvVersies=await fetch(WORKER+'/mna/versies/'+encodeURIComponent(S.code)+'/dealvoorstel').then(function(r){return r.json();}).catch(function(){return [];});
+      var dvLaatste=Array.isArray(dvVersies)&&dvVersies.length?dvVersies[0]:null;
+      if(dvLaatste&&dvLaatste.cijfers_json){
+        try{var dvC=JSON.parse(dvLaatste.cijfers_json);if(dvC&&dvC.p&&dvC.closing)dvCijfers=dvC;}catch(dvParseErr){}
+      }
+    }
     // Bepaal partijgegevens op basis van opdrachtgever_rol
     var opdrNaam   = isSell ? (t2.kantoor_naam||'[verkoper]') : (t2.koper_naam||'[koper]');
     var opdrAdres  = isSell ? (t2.verkoper_adres||'[adres]') : (t2.koper_adres||'[adres]');
@@ -717,7 +730,9 @@ function renderBegeleiderDashboard(app){
       loi:'Vul de LoI template in. Vervang ALLE [tekst tussen haakjes].\n'
         +'Verkopende partij: '+esc(t2.kantoor_naam||'[verkoper]')+', '+(t2.verkoper_adres||'')+'.\n'
         +'Kopende partij: '+esc(t2.koper_naam||'[koper]')+' ('+(t2.koper_rechtsvorm||'')+'), '+(t2.koper_adres||'')+'.\n'
-        +'Datum: '+datum+'. Adviseur: '+adviseur+'. Geef alleen het ingevulde document terug.',
+        +'Datum: '+datum+'. Adviseur: '+adviseur+'.'
+        +(dvCijfers?('\nBELANGRIJK — dit dealvoorstel is al met de tegenpartij gedeeld. Neem de volgende cijfers EXACT over op de bijbehorende plek in de template, verzin geen andere bedragen: koopsom bij closing (op bewezen EBITDA-basis) €'+Math.round(dvCijfers.closing.deelKoperBasis)+' voor '+dvCijfers.p.belangPct+'% van de aandelen; ondernemingswaarde €'+Math.round(dvCijfers.closing.evBasis)+' op basis van '+dvCijfers.p.multipleBasis+'&times; de bewezen EBITDA van €'+Math.round(dvCijfers.p.ebitdaBewezen)+'; mogelijke aanvullende betaling bij volledige realisatie van de prognose (earn-up) €'+Math.round(dvCijfers.closing.earnUp)+'; escrow '+dvCijfers.p.escrowPct+'% gedurende '+dvCijfers.p.escrowMaanden+' maanden.'):' Er is nog geen dealvoorstel gevonden voor dit traject — laat de financiële placeholders ([bedrag], [percentage] e.d.) in de template staan zodat de begeleider ze zelf invult; verzin zelf geen bedragen.')
+        +' Geef alleen het ingevulde document terug.',
       excl:'Vul de Exclusiviteitsbrief in. Vervang ALLE [tekst tussen haakjes].\n'
         +'INSTRUCTIE: De VERKOPENDE partij verleent exclusiviteit. De KOPENDE partij ontvangt exclusiviteit.\n'
         +'Verlenende partij (verkoper): '+esc(t2.kantoor_naam||'[verkoper]')+', '+(t2.verkoper_adres||'[adres]')+'.\n'
@@ -747,6 +762,7 @@ function renderBegeleiderDashboard(app){
       +'<button id="bg-doc-toggle" class="btn-ghost" style="font-size:11px;padding:3px 10px;white-space:nowrap">&#9650; Inklappen</button>'
       +'</div>'
       +'<div id="bg-doc-body">'
+      +(type==='loi'?('<div style="font-size:11px;margin-bottom:.75rem;color:'+(dvCijfers?'var(--teal)':'var(--muted)')+'">'+(dvCijfers?'&#10003; Koopsom, multiple en escrow automatisch overgenomen uit het laatst verstuurde dealvoorstel — controleer vóór verzending.':'&#8505; Geen eerder dealvoorstel gevonden voor dit traject — vul de financiële placeholders zelf in.')+'</div>'):'')
       +'<textarea id="bg-doc-tekst" style="width:100%;height:280px;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:Georgia,serif;font-size:12px;line-height:1.8;padding:1rem;outline:none;resize:vertical">'+esc(tekst)+'</textarea>'
       +akkoordHtml('bg-doc-akkoord')
       +(type==='loi'?interneGoedkeuringHtml('bg-goedkeuring-naam'):'')
@@ -837,6 +853,11 @@ function renderBegeleiderDashboard(app){
         if(r.ok){
           document.body.removeChild(ov);
           toast('Vastgelegd: '+(labels[type]||type)+' getekend door '+naam,'ok');
+          // Bugfix 26 juli 2026: bij een LoI moet fase 2 (post-LoI DD) meteen ontgrendeld zijn — de
+          // koper/verkoper in-app-tekenflow zet S.loiGetekend al wél (mna/06-schermen.js), maar dit
+          // begeleider-pad ("buiten Signhost om getekend") deed dat niet, waardoor de begeleider zelf
+          // pas na een herlaad/herlogin fase-2-vragen te zien kreeg (ivFase leest S.loiGetekend).
+          if(type==='loi')S.loiGetekend=naam;
           handmatigBtn.disabled=true;handmatigBtn.textContent='✓ Getekend vastgelegd';handmatigBtn.style.opacity='.5';
           if(bgDocToggle&&bgDocBody&&bgDocBody.style.display!=='none')bgDocToggle.click();
         }
@@ -918,6 +939,12 @@ function renderBegeleiderDashboard(app){
       +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('dv-ebitda-prognose','Prognose-EBITDA komend jaar (€)',d.ebitdaPrognose)+veld('dv-cliff','Cliff-drempel (% van prognose)',d.cliffPct)+'</div>'
       +sectie('Multiples & earn-out')
       +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('dv-mult-basis','Basis-multiple (bewezen)',d.multipleBasis,0.1)+veld('dv-mult-boven','Bovengrens-multiple (bij prognose)',d.multipleBovengrens,0.1)+'</div>'
+      +'<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--sub);margin-bottom:1rem;cursor:pointer"><input type="checkbox" id="dv-eo-aan" style="width:15px;height:15px;accent-color:var(--gold-dark)"> Earn-out meenemen (deel van de koopsom gefaseerd uitgekeerd, gekoppeld aan toekomstige groei)</label>'
+      +'<div id="dv-eo-velden" style="display:none">'
+      +'<div style="font-size:11px;color:#8a8880;margin-bottom:.75rem">Ander mechanisme dan de earn-up bij closing hieronder: hier wordt een deel van de koopsom zelf aangehouden en pas uitgekeerd als de doelgroei per jaar wordt gehaald. Percentage, doelgroei en looptijd zijn eigen keuzes, geen vastgestelde norm.</div>'
+      +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('dv-eo-pct','Aandeel koopsom in earn-out (%)',d.earnOutPct)+veld('dv-eo-target','Doel omzetgroei per jaar (%)',d.earnOutTargetPct,0.5)+'</div>'
+      +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('dv-eo-jaren','Looptijd (jaren)',d.earnOutJaren)+'<div style="flex:1"></div></div>'
+      +'</div>'
       +sectie('Escrow')
       +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('dv-escrow-pct','Escrow (%)',d.escrowPct)+veld('dv-escrow-mnd','Escrow-duur (maanden)',d.escrowMaanden)+'</div>'
       +sectie('Financiering')
@@ -971,6 +998,7 @@ function renderBegeleiderDashboard(app){
     ov.appendChild(mo);document.body.appendChild(ov);
     ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
     document.getElementById('dv-ann').onclick=function(){document.body.removeChild(ov);};
+    document.getElementById('dv-eo-aan').onchange=function(){document.getElementById('dv-eo-velden').style.display=this.checked?'block':'none';};
     document.getElementById('dv-bab-aan').onchange=function(){document.getElementById('dv-bab-velden').style.display=this.checked?'block':'none';};
     document.getElementById('dv-vl-aan').onchange=function(){document.getElementById('dv-vl-velden').style.display=this.checked?'block':'none';};
     document.getElementById('dv-alt-aan').onchange=function(){document.getElementById('dv-alt-velden').style.display=this.checked?'block':'none';};
@@ -989,6 +1017,10 @@ function renderBegeleiderDashboard(app){
         cliffPct:parseFloat(document.getElementById('dv-cliff').value)||70,
         multipleBasis:parseFloat(document.getElementById('dv-mult-basis').value)||4.5,
         multipleBovengrens:parseFloat(document.getElementById('dv-mult-boven').value)||5.5,
+        earnOutAan:document.getElementById('dv-eo-aan').checked,
+        earnOutPct:parseFloat(document.getElementById('dv-eo-pct').value)||0,
+        earnOutTargetPct:parseFloat(document.getElementById('dv-eo-target').value)||0,
+        earnOutJaren:parseInt(document.getElementById('dv-eo-jaren').value)||0,
         escrowPct:parseFloat(document.getElementById('dv-escrow-pct').value)||12,
         escrowMaanden:parseFloat(document.getElementById('dv-escrow-mnd').value)||18,
         bankLeverage:parseFloat(document.getElementById('dv-leverage').value)||2,
@@ -1035,12 +1067,17 @@ function renderBegeleiderDashboard(app){
         errEl.textContent='Vendor loan staat aan, maar er is geen bedrag ingevuld.';errEl.style.display='block';
         btn.disabled=false;btn.textContent='📊 Genereren';return;
       }
+      if(p.earnOutAan&&(!p.earnOutJaren||p.earnOutPct<=0)){
+        errEl.textContent='Earn-out staat aan, maar het percentage of de looptijd is niet correct ingevuld.';errEl.style.display='block';
+        btn.disabled=false;btn.textContent='📊 Genereren';return;
+      }
       try{
         var prijsmechanisme=dvBerekenPrijsmechanisme(p);
         var closing=dvBerekenClosing(p);
         var schuldafbouw=dvBerekenSchuldafbouw(p,closing);
         var buyAndBuildRows=p.buyAndBuild?dvBerekenBuyAndBuild(p,schuldafbouw[schuldafbouw.length-1],closing.deelKoperBasis):null;
         var vendorLoanRows=dvBerekenVendorLoan(p);
+        var earnOut=p.earnOutAan?dvBerekenEarnOut(p,closing):null;
         var altWaardering=p.altWaarderingAan?dvBerekenAlternatieveWaarderingen(p):null;
         var synergie=dvBerekenSynergie(p);
         var scenarios=dvBerekenScenarios(p);
@@ -1055,6 +1092,7 @@ function renderBegeleiderDashboard(app){
           VERGELIJKBAAR:dvBlokVergelijkbareTransacties(),
           PRIJSMECHANISME:dvTabelPrijsmechanisme(prijsmechanisme),
           CLOSING:dvTabelClosing(closing),
+          EARNOUT:earnOut?dvTabelEarnOut(earnOut):'',
           DCF:dvTabelDCF(dcf),
           SCHULDAFBOUW:dvTabelSchuldafbouw(schuldafbouw),
           BUYANDBUILD:buyAndBuildRows?dvTabelBuyAndBuild(buyAndBuildRows):'',
@@ -1072,6 +1110,7 @@ function renderBegeleiderDashboard(app){
           +'Bedrag bij closing (koper, op bewezen basis): €'+Math.round(closing.deelKoperBasis)+'. Mogelijke earn-up bij volledige realisatie: €'+Math.round(closing.earnUp)+'.\n'
           +'DCF-kruiscontrole (discontovoet '+p.discontovoetPct+'%): ondernemingswaarde DCF '+(dcf.geldig?'€'+Math.round(dcf.evDcf):'n.v.t. (discontovoet ≤ groeivoet, Gordon Growth-formule ongeldig bij deze combinatie)')+' t.o.v. ondernemingswaarde EBITDA-multiple (bewezen) €'+Math.round(closing.evBasis)+'.\n'
           +'Transactiestructuur: koper verwerft '+p.belangPct+'% bij closing; de verkopende partij behoudt '+(100-p.belangPct)+'%.'
+          +(earnOut?('\nEarn-out (prestatieafhankelijke naverrekening, los van de earn-up hierboven): van de koopsom bij closing op bewezen basis (€'+Math.round(earnOut.earnBase)+') wordt €'+Math.round(earnOut.vastBedrag)+' direct uitgekeerd en €'+Math.round(earnOut.earnOutTotaal)+' ('+p.earnOutPct+'%) aangehouden en uitgekeerd in '+p.earnOutJaren+' jaarlijkse tranches van €'+Math.round(earnOut.jaarlijks)+', gekoppeld aan een doelomzetgroei van '+p.earnOutTargetPct+'% per jaar (zelf gekozen aanname, geen vastgestelde norm).'):'')
           +(vendorLoanRows?('\nVendor loan (verkoperslening): €'+Math.round(p.vendorLoanBedrag)+' tegen '+p.vendorLoanRentePct+'% rente, looptijd '+p.vendorLoanJaren+' jaar, '+(p.vendorLoanAflossingsvrij?'aflossingsvrij met bullet-aflossing van de hoofdsom in het laatste jaar':'lineaire jaarlijkse aflossing')+'. Dit is een door de verkopende partij aan de koper verstrekte, achtergestelde lening — een aparte verplichting naast de bankfinanciering.'):'')
           +(altWaardering?('\nAlternatieve waarderingsmethodes (ter controle naast de EBITDA-multiple hierboven): intrinsieke waarde (netto vermogenswaarde) '+(altWaardering.intrinsiek!==null?'€'+Math.round(altWaardering.intrinsiek):'onbekend, eigen vermogen niet ingevuld')+'; liquidatiewaarde '+(altWaardering.liquidatiewaarde!==null?'€'+Math.round(altWaardering.liquidatiewaarde)+' (op basis van zelf ingevoerde aannames: '+p.liqDebiteurenPct+'% debiteuren inbaar, '+p.liqWipPct+'% OHW inbaar, '+p.liqKostenPct+'% liquidatiekosten — geen vastgestelde branchenorm)':'onbekend, balansvelden niet volledig ingevuld')+'; goodwill via de overwinstmethode '+(altWaardering.goodwill!==null?'€'+Math.round(altWaardering.goodwill)+' (genormaliseerde nettowinst €'+Math.round(altWaardering.nettowinstNorm)+' minus normale winst €'+Math.round(altWaardering.normaleWinst)+' bij '+p.goodwillNormrendementPct+'% normrendement = overwinst €'+Math.round(altWaardering.overwinst)+', gekapitaliseerd tegen '+p.goodwillKapitalisatievoetPct+'% — beide percentages zelf gekozen aannames, geen branchenorm)':'niet berekend, nettoresultaat/eigen vermogen/percentages niet volledig ingevoerd')+'.'):'')
           +(synergie?('\nSynergie-analyse: kostensynergie €'+Math.round(p.synergieKostenJaarlijks)+'/jaar en omzetsynergie €'+Math.round(p.synergieOmzetJaarlijks)+'/jaar op volle kracht (vóór belasting), opgebouwd over '+p.synergieRealisatieJaren+' jaar, eenmalige implementatiekosten €'+Math.round(p.synergieImplementatiekosten)+'. NPV van de synergieën over de horizon van '+p.horizonJaren+' jaar (na '+p.vpbPct+'% belasting, tegen dezelfde discontovoet als de DCF): €'+Math.round(synergie.npv)+'. Deze bedragen zijn eigen inschattingen van de begeleider, geen automatische berekening uit de DD-data.'):'')
@@ -1089,6 +1128,7 @@ function renderBegeleiderDashboard(app){
           +'## Vergelijkbare transacties\n(leg in 2-3 zinnen uit hoe de gekozen multiple-range zich verhoudt tot onderstaande sectorreferenties; verzin geen eigen transacties, gebruik uitsluitend de tekst hieronder)\n[TABEL:VERGELIJKBAAR]\n\n'
           +'## Prijsmechanisme\n(leg uit hoe de multiple meebeweegt met de gerealiseerde EBITDA, en waarom de cliff-drempel de koper beschermt)\n[TABEL:PRIJSMECHANISME]\n\n'
           +'## Bedrag bij closing en earn-up\n(toelichting op het bedrag bij closing en de gefaseerde afrekening bij realisatie)\n[TABEL:CLOSING]\n\n'
+          +(earnOut?'## Earn-out: prestatieafhankelijke naverrekening\n(leg uit dat dit los staat van de earn-up hierboven: hier wordt een deel van de koopsom zelf aangehouden en in jaarlijkse tranches uitgekeerd, gekoppeld aan het behalen van de doelomzetgroei per jaar — benoem expliciet dat het percentage, de doelgroei en de looptijd eigen keuzes van de begeleider zijn, geen vastgestelde norm)\n[TABEL:EARNOUT]\n\n':'')
           +'## Kruiscontrole: DCF versus EBITDA-multiple\n(leg uit hoe de DCF-uitkomst zich verhoudt tot de multiple-waardering — noem beide bedragen uit de context en interpreteer het verschil, verzin geen eigen bedragen)\n[TABEL:DCF]\n\n'
           +(dcfGevoeligheid?'## DCF-gevoeligheid: WACC × groeivoet\n(leg uit dat de DCF-uitkomst het gevoeligst is voor de discontovoet en de terminale groeivoet — interpreteer de matrix, benoem "n.v.t."-cellen als een teken dat die combinatie wiskundig ongeldig is (WACC moet hoger zijn dan de groeivoet), verzin geen eigen getallen)\n[TABEL:DCFGEVOELIGHEID]\n\n':'')
           +'## Closing-mechanismen\n(kort: locked box, escrow, garanties — gebruik de escrow-cijfers hierboven)\n\n'
@@ -1138,7 +1178,10 @@ function renderBegeleiderDashboard(app){
           var ebtn=this;ebtn.disabled=true;ebtn.textContent='Versturen...';
           var toList=[t2.contact_email,t2.begeleider_email].filter(Boolean);
           var levendeHtml=document.getElementById('dv-preview').innerHTML;
-          var payload={code:S.traject.id,dealvoorstel_tekst:dvHtmlNaarTekst(levendeHtml),to:toList};
+          // cijfers_json (26 juli 2026): de daadwerkelijk gehanteerde dealparameters + berekende
+          // closing-cijfers meesturen, zodat de LoI-generatie deze later automatisch kan overnemen
+          // i.p.v. de begeleider ze een tweede keer met de hand te laten intikken.
+          var payload={code:S.traject.id,dealvoorstel_tekst:dvHtmlNaarTekst(levendeHtml),to:toList,cijfers_json:{p:p,closing:closing}};
           if(dvPdfStaat.base64){payload.eigen_pdf_base64=dvPdfStaat.base64;payload.eigen_pdf_naam=dvPdfStaat.naam;payload.eigen_pdf_mime=dvPdfStaat.mime;}
           var er=await fetch(WORKER+'/mna/dealvoorstel/email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
           var ed=await er.json();
