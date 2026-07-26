@@ -463,7 +463,7 @@ function renderMain(){
     +ov
     +'<div style="font-family:Playfair Display,serif;font-size:1.1rem;color:var(--head);font-weight:600;margin-bottom:.2rem">'+f.num+'. '+f.title+'</div>'
     +'<div style="font-size:13px;color:var(--muted);margin-bottom:1.25rem">'+f.desc+'</div>'
-    +'<div style="display:grid;grid-template-columns:1fr 280px;gap:1.25rem;align-items:start">'+dataHtml+renderDocumentSectie(f.id)+'</div>'
+    +'<div class="data-grid-sidebar">'+dataHtml+renderDocumentSectie(f.id)+'</div>'
     +extraHtml+nav+'</div>';
 }
 

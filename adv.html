@@ -630,7 +630,10 @@ async function laadDocumenten(id, tussenCode){
     var docs=await r.json();
     if(!Array.isArray(docs))docs=[];
     if(!docs.length){body.innerHTML='<div class="empty" style="padding:1.5rem">Nog geen documenten geüpload.</div>';return;}
-    var html='<table><thead><tr><th>Fase</th><th>Bestand</th><th>Datum</th><th></th></tr></thead><tbody>';
+    // Audit-fix P3 (26 juli 2026): deze dynamisch opgebouwde tabel miste table-wrap — lange
+    // bestandsnamen konden op mobiel horizontaal uitbreken buiten de kaart (zelfde patroon als de
+    // al beschermde statische tabel elders in dit bestand, regel 341).
+    var html='<div class="table-wrap"><table><thead><tr><th>Fase</th><th>Bestand</th><th>Datum</th><th></th></tr></thead><tbody>';
     docs.forEach(function(doc){
       var dt=doc.uploaded_at?new Date(doc.uploaded_at).toLocaleDateString('nl-NL',{day:'2-digit',month:'short',year:'numeric'}):'—';
       html+='<tr>'
@@ -641,7 +644,7 @@ async function laadDocumenten(id, tussenCode){
         +(doc.bewaard?'<a href="'+WORKER+'/mna/document/download/'+doc.id+'?code='+encodeURIComponent(tussenCode)+'" target="_blank" class="btn-outline sm">↓ Download</a>':'')
         +'</td></tr>';
     });
-    html+='</tbody></table>';
+    html+='</tbody></table></div>';
     body.innerHTML=html;
   }catch(e){body.innerHTML='<div style="color:var(--red);font-size:13px">Fout bij laden: '+esc(e.message)+'</div>';}
 }

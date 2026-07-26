@@ -43,6 +43,12 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--s
 .f input::placeholder,.f textarea::placeholder{color:var(--muted)}
 .data-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:1rem}
 @media(max-width:600px){.data-grid{grid-template-columns:1fr}}
+/* Audit-fix P3 (26 juli 2026): het fase-detailscherm (velddata + documentsectie) gebruikte een
+   inline grid-template-columns, dat wint qua CSS-specificiteit altijd van een class-based
+   media-query — dus de bestaande @media(max-width:600px){.data-grid...}-regel had daar nooit
+   effect. Eigen klasse i.p.v. de inline stijl, zodat de responsive override wél werkt. */
+.data-grid-sidebar{display:grid;grid-template-columns:1fr 280px;gap:1.25rem;align-items:start}
+@media(max-width:600px){.data-grid-sidebar{grid-template-columns:1fr}}
 .sec-hdr{font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem;display:flex;align-items:center;gap:8px}
 .sec-hdr::after{content:'';flex:1;height:1px;background:var(--border)}
 .prog-bar{height:4px;background:var(--border2);border-radius:2px;overflow:hidden;margin-bottom:1.5rem}
