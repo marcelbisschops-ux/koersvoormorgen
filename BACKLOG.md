@@ -15,11 +15,10 @@ wegstrepen/verwijderen, niet laten aanslibben.
 
 | # | Punt | Actie |
 |---|------|-------|
-| 1 | Signhost-checksum (2e beveiligingslaag) | Shared secret ophalen uit portal.signhost.com/RegisteredPostbacks, dan hier laten uitvoeren: `wrangler secret put SIGNHOST_WEBHOOK_SECRET` |
-| 2 | GitHub Actions-secret controleren (backend-repo) | Settings → Secrets and variables → Actions: oud `ADMIN_KEY`-secret verwijderen als het bestaat, `STAGING_ADMIN_KEY` toevoegen met de staging-sleutel. Codefix (staging-override in de CI-workflow) staat al klaar en sinds 26 juli 2026 ook echt op GitHub — wordt pas werkend na deze stap |
-| 3 | Eigen document-templates (NDA/LoI/BEM) opnieuw uploaden in marilyn | Eerder gewist door een inmiddels gefixte bug — bewust door jou uitgesteld, nog steeds jouw actie zodra je eraan toekomt |
+| 1 | Eigen document-templates (NDA/LoI/BEM) opnieuw uploaden in marilyn | Eerder gewist door een inmiddels gefixte bug — **bewust uitgesteld op jouw verzoek (26 juli 2026), niet opnieuw voorstellen tot je 'm zelf noemt** |
+| 2 | Oud testtraject op staging opruimen? | `AUDITTEST2870` / "Batchtest BV" — leftover van eerder testwerk, niet van de sessie van 25/26 juli. Jouw keuze: laten staan of opruimen |
 
-**Beide repo's staan sinds 26 juli 2026 volledig gesynchroniseerd op GitHub** (frontend + backend, via Terminal met een Personal Access Token — `repo`+`workflow`-scope nodig gebleken vanwege de `.github/workflows/`-wijziging). Onderweg twee echte, bijgevangen bevindingen: een GitHub-Desktop-vs-Terminal-omgevingsverschil met de pre-push-hook (geen bug, GitHub Desktop draait hooks kennelijk anders) en een CORS-regressie die dezelfde fixronde zelf veroorzaakte (localhost:8799, de Playwright-testserver, stond niet op de whitelist — direct gefixt).
+**Afgerond 26 juli 2026:** Signhost-checksum ingesteld (beide omgevingen), GitHub Actions-secret vervangen (oude productie-`ADMIN_KEY` verwijderd uit de backend-repo, nieuwe aparte `STAGING_ADMIN_KEY` aangemaakt + functioneel getest tegen staging), beide repo's volledig gesynchroniseerd op GitHub (Terminal + PAT, `repo`+`workflow`-scope). Onderweg twee bijgevangen bevindingen, allebei gefixt: een GitHub-Desktop-vs-Terminal-omgevingsverschil met de pre-push-hook, en een CORS-regressie die dezelfde fixronde zelf veroorzaakte (localhost:8799, de Playwright-testserver, stond niet op de whitelist).
 
 ## 2. Wacht op jouw beslissing — ontdekt tijdens het bouwen, geen blinde fix
 
