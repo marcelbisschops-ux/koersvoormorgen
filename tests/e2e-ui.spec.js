@@ -251,22 +251,22 @@ test.describe('Gelijktijdige multi-upload', () => {
     expect(aantalDocs).toBe(3);
 
     // Twee echte conflicten verwacht (doc2 vs doc1, doc3 vs doc2) — maar nooit meer dan
-    // één dialoog gelijktijdig op het scherm; de tweede moet in de wachtrij staan.
-    // Race-conditie-fix (26 juli 2026): toonConflictDialog() wordt per document met een bewuste
-    // 300ms setTimeout vertraagd getoond (mna/02-state-opslag-documenten.js). "upload-status leeg"
-    // hierboven betekent alleen dat alle uploads/verwerkingen klaar zijn — niet dat de 300ms-
-    // vertraagde dialoog-aanroep van het LAATSTE document ook al is afgevuurd. Zonder deze wait kon
-    // de test op dat exacte tussenmoment vangen (wachtrij nog leeg, een fractie later wel gevuld) —
-    // dit maakte de test flaky/soms consistent falend, geen echte bug in de app.
-    await page.waitForFunction(() => (S._conflictWachtrij || []).length >= 1, null, { timeout: 2000 });
-    await expect(page.getByText('Afwijkende waarden gevonden')).toHaveCount(1);
-    let wachtrijLengte = await page.evaluate(() => (S._conflictWachtrij || []).length);
-    expect(wachtrijLengte).toBeGreaterThanOrEqual(1);
+    // één dialoog gelijktijdig op het scherm; de tweede moet in de wachtrij staan (of iets later
+    // alsnog verschijnen als de eigen 300ms-timer nog niet was afgevuurd toen de eerste al openging).
+    // Race-conditie-fix (26 juli 2026, herzien na een tweede, live-productie-flake): eerder wachtte
+    // deze test EERST op _conflictWachtrij.length>=1 vóórdat de dialoog gecheckt werd. Dat neemt aan
+    // dat doc2's dialoog-timer altíjd eerder vuurt dan doc3's — in theorie zo (doc2 wordt eerder
+    // gescheduled, sequentieel vóór doc3), maar bij variabele productie-latency (echte fetch-
+    // round-trips naar de live worker, i.p.v. lokale timing) bleek dat niet hard genoeg gegarandeerd.
+    // Nu: direct wachten op de zichtbare dialoogtekst zelf (ongeacht via welk pad — meteen getoond
+    // of via de wachtrij), en pas ná het wegklikken van de eerste controleren dat de wachtrij leeg is.
+    // Dat test dezelfde garantie (geen dropped/gestapelde dialogen) zonder aanname over vuurvolgorde.
+    await expect(page.getByText('Afwijkende waarden gevonden')).toHaveCount(1, { timeout: 10000 });
 
-    // Eerste dialoog wegklikken → de gewachte tweede dialoog moet nu verschijnen.
+    // Eerste dialoog wegklikken → de tweede (al in de wachtrij, of alsnog net op tijd) moet nu verschijnen.
     await page.getByRole('button', { name: 'Alles behouden' }).click();
-    await expect(page.getByText('Afwijkende waarden gevonden')).toHaveCount(1);
-    wachtrijLengte = await page.evaluate(() => (S._conflictWachtrij || []).length);
+    await expect(page.getByText('Afwijkende waarden gevonden')).toHaveCount(1, { timeout: 10000 });
+    let wachtrijLengte = await page.evaluate(() => (S._conflictWachtrij || []).length);
     expect(wachtrijLengte).toBe(0);
 
     // Tweede dialoog ook wegklikken → alles opgelost, geen dialoog meer over.
