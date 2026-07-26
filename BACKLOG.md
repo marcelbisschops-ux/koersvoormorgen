@@ -51,11 +51,12 @@ wegstrepen/verwijderen, niet laten aanslibben.
 
 ## 5. Concrete openstaande features (jouw eigen 25-juli-lijst, nog niet gestart)
 
-| # | Punt | Toelichting |
-|---|------|-------------|
-| 12 | Earn-out meenemen in dealvoorstel-generatie | Jouw woorden: "dat is vaak regel en moet meegenomen worden" |
-| 13 | LoI moet waarden overnemen van het dealvoorstel | Nu volledig los van elkaar — dealvoorstel-cijfers worden niet automatisch doorgezet naar de LoI-tekst |
-| 14 | Fase-2-vrijgave na LoI-ondertekening — **nog te onderzoeken, niet per se een bug** | Handleidingtekst claimt dat ondertekening van de LoI bij de verkoper automatisch de diepere fase-2-DD-vragen ontgrendelt (`mna/08-handleiding.js`) — jij zag dit niet gebeuren. Eerst uitzoeken of dit alleen documentatie zonder implementatie is, of een echte bug, vóórdat er gebouwd wordt |
+*(leeg — punten 12/13/14 hieronder afgerond 26 juli 2026)*
+
+**Afgerond 26 juli 2026 (zelfde sessie, jouw 3 gemelde functionele gaten):**
+- **Earn-out in dealvoorstel-generatie (voorheen punt 12)**: nieuwe optionele sectie "Multiples & earn-out" in het Dealvoorstel-formulier (checkbox + percentage/doelgroei/looptijd, standaard uit). Ander mechanisme dan de bestaande earn-up: een deel van de koopsom bij closing wordt aangehouden en in gelijke jaarlijkse tranches uitgekeerd, gekoppeld aan een zelf ingestelde doelomzetgroei — nooit een vastgestelde norm, exact zoals vendor loan/liquidatiewaarde hiervoor al werkten. Rekenlogica (`dvBerekenEarnOut` in `mna/03-rekenkern-waardering.js`) handmatig doorgerekend en geverifieerd (€1.147.500 koopsom-basis → €229.500 in 3× €76.500), en live getest op staging met een echte AI-generatie: het gegenereerde document toonde exact deze bedragen.
+- **LoI neemt dealvoorstel-cijfers over (voorheen punt 13)**: bij het versturen van een Dealvoorstel worden de gehanteerde dealparameters + berekende closing-cijfers nu structureel opgeslagen (`cijfers_json` op de bestaande documentversie-tabel). De LoI-generatie haalt automatisch de laatst verstuurde dealvoorstel-cijfers op en geeft koopsom/multiple/escrow expliciet mee aan de AI-prompt ("neem deze cijfers exact over, verzin niets anders"), met een zichtbare melding boven het gegenereerde document (wel/geen dealvoorstel gevonden). Zonder eerder dealvoorstel werkt de LoI ongewijzigd (handmatige placeholders). Live getest op staging: de gegenereerde LoI-tekst bevatte het juiste bedrag (€1.147.500) en percentage (51%) uit een eerder "verstuurd" dealvoorstel.
+- **Fase-2-vrijgave na LoI-ondertekening (voorheen punt 14) — bleek een échte bug, geen documentatieprobleem**: de leesende code (`ivFase` in `mna/04-begeleider-dashboard.js`, `mna/06-schermen.js`) las correct `S.loiGetekend`. Het probleem zat in het schrijfpad: de begeleider-flow "buiten Signhost om getekend" riep wel het teken-endpoint aan (DB correct bijgewerkt), maar zette `S.loiGetekend` niet lokaal — de koper/verkoper in-app-tekenflow deed dat al wél. Hierdoor zag de begeleider zélf pas na een herlaad/herlogin de fase-2-DD-vragen, ook al was de LoI al echt getekend. Eén regel toegevoegd (`S.loiGetekend=naam` na een geslaagde handmatige registratie); geen backend-wijziging nodig.
 
 ## 6. Bewust uitgesteld — risico-afweging, trigger om terug te komen
 

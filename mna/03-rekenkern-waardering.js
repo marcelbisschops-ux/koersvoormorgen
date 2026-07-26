@@ -63,6 +63,10 @@ function dvGetDefaults(){
     multipleBasis:mLaag,
     multipleBovengrens:mHoog,
     cliffPct:70,
+    earnOutAan:false,
+    earnOutPct:20,
+    earnOutTargetPct:5,
+    earnOutJaren:3,
     escrowPct:12,
     escrowMaanden:18,
     bankLeverage:2,
@@ -138,6 +142,27 @@ function dvBerekenClosing(p){
   var deelKoperPrognose=evPrognose*(p.belangPct/100);
   var earnUp=Math.max(0,deelKoperPrognose-deelKoperBasis);
   return {evBasis:evBasis,deelKoperBasis:deelKoperBasis,deelVerkoperBasis:deelVerkoperBasis,evPrognose:evPrognose,deelKoperPrognose:deelKoperPrognose,earnUp:earnUp};
+}
+
+// Earn-out: prestatieafhankelijke naverrekening (26 juli 2026). ANDER mechanisme dan de earn-up
+// hierboven — earn-up is een eenmalige bonus in jaar 1 als de prognose meteen wordt gehaald; een
+// earn-out houdt zelf een deel van de koopsom (op bewezen basis) vast en keert dat gefaseerd uit
+// over meerdere jaren, gekoppeld aan een doelgroei per jaar. GOUDEN STANDAARD: het percentage van de
+// koopsom, de doelgroei en de looptijd zijn AANNAMES die de begeleider zelf instelt (net als bij
+// vendor loan/escrow) — geen berekende of verzonnen uitkomst. Retourneert null zolang de checkbox
+// uit staat, dan wordt er niets van meegenomen in het document.
+function dvBerekenEarnOut(p,closing){
+  if(!p.earnOutAan||!p.earnOutJaren)return null;
+  var earnBase=closing.deelKoperBasis;
+  var earnOutTotaal=earnBase*(p.earnOutPct/100);
+  var vastBedrag=earnBase-earnOutTotaal;
+  var jaarlijks=earnOutTotaal/p.earnOutJaren;
+  var rows=[],cumulatief=0;
+  for(var j=1;j<=p.earnOutJaren;j++){
+    cumulatief+=jaarlijks;
+    rows.push({jaar:j,tranche:jaarlijks,cumulatief:cumulatief});
+  }
+  return {earnBase:earnBase,vastBedrag:vastBedrag,earnOutTotaal:earnOutTotaal,jaarlijks:jaarlijks,rows:rows};
 }
 
 // Meerjarig kasstroom-/schuldafbouwmodel (realisatie-scenario: prognose wordt gehaald, earn-up in jaar 1 uitgekeerd).
@@ -375,6 +400,12 @@ function dvTabelClosing(closing){
     ['Ondernemingswaarde bij volledige realisatie',dvMln(closing.evPrognose)],
     ['Earn-up (extra bij realisatie)',dvMln(closing.earnUp)]
   ]);
+}
+
+function dvTabelEarnOut(eo){
+  if(!eo)return '';
+  return dvRenderTabelHtml(['Jaar','Tranche bij behaalde doelgroei','Cumulatief uitgekeerd'],
+    eo.rows.map(function(r){return [r.jaar,dvMln(r.tranche),dvMln(r.cumulatief)];}));
 }
 
 function dvTabelSchuldafbouw(rows){
