@@ -228,7 +228,7 @@ function toonKoperToegangModal(app){
       +'<input type="checkbox" class="kt-cat" value="'+f.id+'"'+(aan?' checked':'')+' style="width:16px;height:16px;accent-color:var(--teal)">'
       +'<span style="font-weight:600;color:#8a8880;min-width:24px">'+esc(f.num||'')+'</span><span>'+esc(f.title||f.id)+'</span></label>';
   }).join('');
-  mo.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.15rem;color:#1a1815;font-weight:600;margin-bottom:.25rem">&#128275; Koper-toegang per categorie</div>'
+  mo.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.15rem;color:var(--head);font-weight:600;margin-bottom:.25rem">&#128275; Koper-toegang per categorie</div>'
     +'<div style="font-size:12px;color:#8a8880;margin-bottom:1rem">Vink aan welke DD-categorieën de koper mag inzien (velden én documenten). De koper ziet uitsluitend wat hier is vrijgegeven.</div>'
     +'<div style="display:flex;gap:8px;margin-bottom:.85rem"><button id="kt-alles" style="background:transparent;border:1px solid #c8c5bc;padding:5px 12px;border-radius:6px;cursor:pointer;font-size:12px">Alles</button><button id="kt-niets" style="background:transparent;border:1px solid #c8c5bc;padding:5px 12px;border-radius:6px;cursor:pointer;font-size:12px">Niets</button></div>'
     +rijen
@@ -269,7 +269,7 @@ function toonKoperToegangModal(app){
 function toonGroepsstructuurModal(app){
   var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:400;display:flex;align-items:center;justify-content:center;padding:1.5rem';
   var mo=document.createElement('div');mo.style.cssText='background:var(--panel);border-radius:10px;padding:1.75rem;max-width:520px;width:100%;max-height:90vh;overflow-y:auto';
-  mo.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.15rem;color:#1a1815;font-weight:600;margin-bottom:.25rem">&#127970; Groepsstructuur</div>'
+  mo.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.15rem;color:var(--head);font-weight:600;margin-bottom:.25rem">&#127970; Groepsstructuur</div>'
     +'<div style="font-size:12px;color:#8a8880;margin-bottom:1rem">Betreft dit traject een holding met meerdere werkmaatschappijen? Registreer hier de aparte entiteiten — documenten van deze bedrijven worden dan niet meer afgewezen als "ander bedrijf", en blijven traceerbaar in de dataroom.</div>'
     +'<div id="gs-lijst" style="margin-bottom:1rem;font-size:13px;color:#8a8880;font-style:italic">Laden...</div>'
     +'<div style="display:flex;gap:8px;margin-bottom:.5rem">'
@@ -328,7 +328,7 @@ function toonGroepsstructuurModal(app){
 function toonPartnersModal(app){
   var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:400;display:flex;align-items:center;justify-content:center;padding:1.5rem';
   var mo=document.createElement('div');mo.style.cssText='background:var(--panel);border-radius:10px;padding:1.75rem;max-width:560px;width:100%;max-height:90vh;overflow-y:auto';
-  mo.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.15rem;color:#1a1815;font-weight:600;margin-bottom:.25rem">&#129489;&#8205;&#128188; Partners</div>'
+  mo.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.15rem;color:var(--head);font-weight:600;margin-bottom:.25rem">&#129489;&#8205;&#128188; Partners</div>'
     +'<div style="font-size:12px;color:#8a8880;margin-bottom:1rem">Leg elke partner één keer vast, ook als deze bij meerdere entiteiten werkt. "Omzet die aan de partner hangt" is de omzet incl. het onderliggend team — het bedrag dat risico loopt als deze partner vertrekt, niet alleen zijn eigen declarabele productie.</div>'
     +'<div id="pt-reconciliatie"></div>'
     +'<div id="pt-lijst" style="margin-bottom:1rem;font-size:13px;color:#8a8880;font-style:italic">Laden...</div>'
@@ -908,7 +908,7 @@ function renderBegeleiderDashboard(app){
     function sectie(titel){ return '<div style="'+sectieHdr+'">'+titel+'</div>'; }
     var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:400;display:flex;align-items:center;justify-content:center;padding:1.5rem';
     var mo=document.createElement('div');mo.setAttribute('role','dialog');mo.setAttribute('aria-modal','true');mo.setAttribute('aria-labelledby','dv-modal-titel');mo.style.cssText='background:var(--panel);border-radius:10px;padding:2rem;max-width:640px;width:100%;max-height:92vh;overflow-y:auto';
-    mo.innerHTML='<div id="dv-modal-titel" style="font-family:Playfair Display,serif;font-size:1.15rem;color:#1a1815;font-weight:600;margin-bottom:.25rem">&#128202; Dealvoorstel — dealparameters</div>'
+    mo.innerHTML='<div id="dv-modal-titel" style="font-family:Playfair Display,serif;font-size:1.15rem;color:var(--head);font-weight:600;margin-bottom:.25rem">&#128202; Dealvoorstel — dealparameters</div>'
       +'<div style="font-size:12px;color:#8a8880;margin-bottom:1.25rem">Deze cijfers worden exact zo berekend en meegenomen — de AI verzint geen eigen bedragen of multiples.</div>'
       +'<div style="margin-bottom:1rem"><label style="'+lbl+'">Tegenpartij (koper)</label><input type="text" id="dv-koper" value="'+esc(d.koperNaam)+'" placeholder="Naam kopende partij" style="'+inp+'"></div>'
       +sectie('EBITDA & belang')
@@ -1163,7 +1163,7 @@ function renderBegeleiderDashboard(app){
     var geldigTot=new Date(Date.now()+30*24*3600*1000).toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'});
     var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:400;display:flex;align-items:center;justify-content:center;padding:1.5rem';
     var mo=document.createElement('div');mo.style.cssText='background:var(--panel);border-radius:10px;padding:2rem;max-width:560px;width:100%;max-height:92vh;overflow-y:auto';
-    mo.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.15rem;color:#1a1815;font-weight:600;margin-bottom:.25rem">&#128233; Indicatieve bieding</div>'
+    mo.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.15rem;color:var(--head);font-weight:600;margin-bottom:.25rem">&#128233; Indicatieve bieding</div>'
       +'<div style="font-size:12px;color:#8a8880;margin-bottom:1.25rem">Niet-bindend bod. Het bod (bandbreedte) wordt berekend uit EBITDA × multiple en exact zo in de brief overgenomen.</div>'
       +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('bd-ebitda','Genormaliseerde EBITDA (€)',d.ebitdaBewezen)+'</div>'
       +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('bd-mult-laag','Multiple laag',d.multipleBasis,0.1)+veld('bd-mult-hoog','Multiple hoog',d.multipleBovengrens,0.1)+'</div>'
@@ -1277,7 +1277,7 @@ function renderBegeleiderDashboard(app){
     if(t2.koper_email)ontvangers.push({label:'Koper ('+esc(t2.koper_email)+')',email:t2.koper_email,checked:false});
     var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:400;display:flex;align-items:center;justify-content:center;padding:1.5rem';
     var mo=document.createElement('div');mo.style.cssText='background:var(--panel);border-radius:10px;padding:2rem;max-width:480px;width:100%;max-height:92vh;overflow-y:auto';
-    mo.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.15rem;color:#1a1815;font-weight:600;margin-bottom:.25rem">&#128206; Eigen document versturen</div>'
+    mo.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.15rem;color:var(--head);font-weight:600;margin-bottom:.25rem">&#128206; Eigen document versturen</div>'
       +'<div style="font-size:12px;color:#8a8880;margin-bottom:1.25rem">Upload een bestaand PDF- of Word-bestand en verstuur het rechtstreeks — geen AI, geen sjabloon.</div>'
       +'<div style="margin-bottom:1rem"><label style="font-size:10px;font-weight:600;text-transform:uppercase;color:#8a8880;display:block;margin-bottom:4px">Bestand</label>'
       +'<input type="file" id="ed-file" accept=".pdf,.docx,.doc,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword" style="font-size:13px;width:100%"></div>'
@@ -1481,7 +1481,7 @@ function renderBegeleiderDashboard(app){
 
     var deadline=new Date(Date.now()+14*24*3600*1000).toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'});
 
-    mo.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.1rem;color:#1a1815;font-weight:600;margin-bottom:.25rem">&#128203; Informatieverzoek samenstellen</div>'
+    mo.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.1rem;color:var(--head);font-weight:600;margin-bottom:.25rem">&#128203; Informatieverzoek samenstellen</div>'
       +'<div style="display:inline-block;background:'+(ivFase==="2"?"var(--info-bg)":"var(--teal-bg)")+';border:1px solid '+(ivFase==="2"?"var(--info)":"var(--teal)")+';color:'+(ivFase==="2"?"var(--info)":"var(--teal)")+';font-size:11px;font-weight:600;padding:3px 10px;border-radius:12px;margin-bottom:1rem">'+(ivFase==="2"?"🔍 Fase 2 — Volledige DD (post-LoI)":"📋 Fase 1 — Oriëntatie (pre-LoI)")+'</div>'
       +'<div style="font-size:12px;color:#8a8880;margin-bottom:1.25rem">Vink aan welke categorieën en vragen u wilt meesturen. U kunt per categorie een toelichting toevoegen.</div>'
       +'<div style="margin-bottom:1rem"><label style="font-size:10px;font-weight:600;text-transform:uppercase;color:#8a8880;display:block;margin-bottom:4px">Deadline (aanpasbaar)</label>'
@@ -1929,7 +1929,7 @@ function renderBegeleiderDashboard(app){
   if(feedbackBtn)feedbackBtn.onclick=function(){
     var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:400;display:flex;align-items:center;justify-content:center;padding:1.5rem';
     var mo=document.createElement('div');mo.style.cssText='background:var(--panel);border-radius:10px;padding:2rem;max-width:480px;width:100%';
-    mo.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.1rem;color:#1a1815;font-weight:600;margin-bottom:.5rem">&#128172; Feedback of een bug melden</div>'
+    mo.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.1rem;color:var(--head);font-weight:600;margin-bottom:.5rem">&#128172; Feedback of een bug melden</div>'
       +'<div style="font-size:12px;color:#8a8880;margin-bottom:1rem">Kort omschrijven wat je zag en wat je verwachtte. Komt direct binnen bij Marcel — reken op een reactie binnen 24 uur.</div>'
       +'<textarea id="fb-tekst" rows="6" style="width:100%;background:#f0eeea;border:1px solid #c8c5bc;border-radius:6px;padding:9px 11px;font-family:IBM Plex Sans,sans-serif;font-size:13px;resize:vertical" placeholder="Wat zag je en wat verwachtte je?"></textarea>'
       +'<div id="fb-err" style="display:none;color:#e05252;font-size:12px;margin-top:.5rem"></div>'
@@ -1947,7 +1947,7 @@ function renderBegeleiderDashboard(app){
       try{
         var r=await fetch(WORKER+'/mna/feedback',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:S.code,bericht:tekst,scherm:'begeleider-dashboard'})});
         var d=await r.json();
-        if(d.ok){mo.innerHTML='<div style="text-align:center;padding:1rem 0"><div style="font-size:2rem;margin-bottom:.75rem">&#10003;</div><div style="font-family:Playfair Display,serif;font-size:1.05rem;color:#1a1815;font-weight:600;margin-bottom:.5rem">Bedankt!</div><div style="font-size:13px;color:#5a5854">Je melding is verstuurd. We pakken dit binnen 24 uur op.</div><button id="fb-sluit" style="margin-top:1.25rem;background:var(--gold);color:#fff;border:none;padding:8px 20px;border-radius:6px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:13px;font-weight:600">Sluiten</button></div>';document.getElementById('fb-sluit').onclick=function(){document.body.removeChild(ov);};}
+        if(d.ok){mo.innerHTML='<div style="text-align:center;padding:1rem 0"><div style="font-size:2rem;margin-bottom:.75rem">&#10003;</div><div style="font-family:Playfair Display,serif;font-size:1.05rem;color:var(--head);font-weight:600;margin-bottom:.5rem">Bedankt!</div><div style="font-size:13px;color:var(--mid)">Je melding is verstuurd. We pakken dit binnen 24 uur op.</div><button id="fb-sluit" style="margin-top:1.25rem;background:var(--gold);color:#fff;border:none;padding:8px 20px;border-radius:6px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:13px;font-weight:600">Sluiten</button></div>';document.getElementById('fb-sluit').onclick=function(){document.body.removeChild(ov);};}
         else{errEl.textContent='Fout: '+(d.error||'onbekend');errEl.style.display='block';btn.disabled=false;btn.textContent='Versturen';}
       }catch(e){errEl.textContent='Verbindingsfout.';errEl.style.display='block';btn.disabled=false;btn.textContent='Versturen';}
     };

@@ -931,8 +931,8 @@ function bindAll(){
     var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;display:flex;align-items:center;justify-content:center;padding:1.5rem';
     var box=document.createElement('div');box.style.cssText='background:var(--panel);border-radius:10px;padding:2rem;max-width:700px;width:100%;max-height:90vh;overflow-y:auto';
     var loiEigen=eigenUploadTekst(S.loiTekst);
-    box.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.2rem;font-weight:600;color:#1a1815;margin-bottom:1rem">Letter of Intent</div>'
-      +(loiEigen?docNietBeschikbaarHtml(loiEigen):'<div style="font-family:Georgia,serif;font-size:13px;line-height:1.9;color:#2a2825;white-space:pre-wrap">'+esc(S.loiTekst)+'</div>')
+    box.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.2rem;font-weight:600;color:var(--head);margin-bottom:1rem">Letter of Intent</div>'
+      +(loiEigen?docNietBeschikbaarHtml(loiEigen):'<div style="font-family:Georgia,serif;font-size:13px;line-height:1.9;color:var(--sub);white-space:pre-wrap">'+esc(S.loiTekst)+'</div>')
       +'<div style="display:flex;justify-content:flex-end;margin-top:1.25rem"><button style="background:transparent;border:1px solid #c8c5bc;border-radius:6px;padding:8px 18px;cursor:pointer;font-size:13px" id="loi-sluit">Sluiten</button></div>';
     ov.appendChild(box);document.body.appendChild(ov);
     ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
@@ -985,8 +985,8 @@ function bindAll(){
     var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;display:flex;align-items:center;justify-content:center;padding:1.5rem';
     var box=document.createElement('div');box.style.cssText='background:var(--panel);border-radius:10px;padding:2rem;max-width:700px;width:100%;max-height:90vh;overflow-y:auto';
     var bemEigen=eigenUploadTekst(S.bemTekst);
-    box.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.2rem;font-weight:600;color:#1a1815;margin-bottom:1rem">Bemiddelingsovereenkomst</div>'
-      +(bemEigen?docNietBeschikbaarHtml(bemEigen):'<div style="font-family:Georgia,serif;font-size:13px;line-height:1.9;color:#2a2825;white-space:pre-wrap">'+esc(S.bemTekst)+'</div>')
+    box.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.2rem;font-weight:600;color:var(--head);margin-bottom:1rem">Bemiddelingsovereenkomst</div>'
+      +(bemEigen?docNietBeschikbaarHtml(bemEigen):'<div style="font-family:Georgia,serif;font-size:13px;line-height:1.9;color:var(--sub);white-space:pre-wrap">'+esc(S.bemTekst)+'</div>')
       +'<div style="display:flex;justify-content:flex-end;margin-top:1.25rem"><button style="background:transparent;border:1px solid #c8c5bc;border-radius:6px;padding:8px 18px;cursor:pointer;font-size:13px" id="bem-sluit">Sluiten</button></div>';
     ov.appendChild(box);document.body.appendChild(ov);
     ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
@@ -1000,14 +1000,14 @@ function bindAll(){
     var box=document.createElement('div');
     box.style.cssText='background:var(--panel);border-radius:10px;padding:2rem;max-width:700px;width:100%;max-height:90vh;overflow-y:auto';
     var ndaEigen=eigenUploadTekst(S.ndaTekst);
-    var ndaHtml=(S.ndaTekst||'').replace(/^# (.+)$/gm,'<h2 style="font-family:Georgia,serif;font-size:1.1rem;margin:1rem 0 .4rem;font-weight:700">$1</h2>').replace(/^## (.+)$/gm,'<h3 style="font-family:Georgia,serif;font-size:.95rem;margin:.9rem 0 .3rem;font-weight:700">$1</h3>').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/^---$/gm,'<hr style="border:none;border-top:1px solid #ddd;margin:.75rem 0">').replace(/\n\n/g,'</p><p style="font-size:13px;line-height:1.9;color:#2a2825;margin:.4rem 0">').replace(/\n/g,'<br>');
+    var ndaHtml=(S.ndaTekst||'').replace(/^# (.+)$/gm,'<h2 style="font-family:Georgia,serif;font-size:1.1rem;margin:1rem 0 .4rem;font-weight:700">$1</h2>').replace(/^## (.+)$/gm,'<h3 style="font-family:Georgia,serif;font-size:.95rem;margin:.9rem 0 .3rem;font-weight:700">$1</h3>').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/^---$/gm,'<hr style="border:none;border-top:1px solid var(--border);margin:.75rem 0">').replace(/\n\n/g,'</p><p style="font-size:13px;line-height:1.9;color:var(--sub);margin:.4rem 0">').replace(/\n/g,'<br>');
     var hdr=document.createElement('div');hdr.style.cssText='display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem';
     hdr.innerHTML='<div style="font-size:11px;font-weight:600;color:#7c5cbf;letter-spacing:.1em;text-transform:uppercase">Non-Disclosure Agreement</div>';
     var sluit=document.createElement('button');sluit.textContent='Sluiten';sluit.style.cssText='background:transparent;border:1px solid #ddd;border-radius:6px;padding:4px 12px;cursor:pointer;font-size:12px';
     sluit.onclick=function(){document.body.removeChild(ov);};
     hdr.appendChild(sluit);
-    var tekDiv=document.createElement('div');tekDiv.style.cssText='font-family:Georgia,serif;font-size:13px;line-height:1.9;color:#2a2825';
-    tekDiv.innerHTML=ndaEigen?docNietBeschikbaarHtml(ndaEigen):'<p style="font-size:13px;line-height:1.9;color:#2a2825;margin:.4rem 0">'+ndaHtml+'</p>';
+    var tekDiv=document.createElement('div');tekDiv.style.cssText='font-family:Georgia,serif;font-size:13px;line-height:1.9;color:var(--sub)';
+    tekDiv.innerHTML=ndaEigen?docNietBeschikbaarHtml(ndaEigen):'<p style="font-size:13px;line-height:1.9;color:var(--sub);margin:.4rem 0">'+ndaHtml+'</p>';
     var btns=document.createElement('div');btns.style.cssText='margin-top:1rem;display:flex;gap:8px';
     if(!ndaEigen){
       var printBtn=document.createElement('button');printBtn.textContent='📄 Print / PDF';printBtn.style.cssText='font-size:12px;padding:6px 14px;border:1px solid #ccc;border-radius:6px;cursor:pointer;background:transparent';
@@ -1462,8 +1462,8 @@ function bindAll(){
       var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:200;display:flex;align-items:center;justify-content:center;padding:1.5rem';
       var mo=document.createElement('div');mo.style.cssText='background:var(--panel);border-radius:10px;padding:2rem;max-width:560px;width:100%;max-height:90vh;overflow-y:auto';
       var t2=S.traject;
-      mo.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.1rem;color:#1a1815;font-weight:600;margin-bottom:1.25rem">&#128196; Documenten genereren</div>'
-        +'<p style="font-size:13px;color:#5a5854;margin-bottom:1.25rem">Genereer en verstuur documenten voor traject <strong>'+esc(t2.kantoor_naam||S.code)+'</strong>.</p>'
+      mo.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.1rem;color:var(--head);font-weight:600;margin-bottom:1.25rem">&#128196; Documenten genereren</div>'
+        +'<p style="font-size:13px;color:var(--mid);margin-bottom:1.25rem">Genereer en verstuur documenten voor traject <strong>'+esc(t2.kantoor_naam||S.code)+'</strong>.</p>'
         +'<div style="display:flex;flex-direction:column;gap:10px">'
         +'<button id="bg-nda-btn" style="background:#7c5cbf;color:#fff;border:none;padding:10px 16px;border-radius:6px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:13px;font-weight:600;text-align:left">&#128274; Genereer NDA</button>'
         +'<button id="bg-loi-btn" style="background:#c9a84c;color:#fff;border:none;padding:10px 16px;border-radius:6px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:13px;font-weight:600;text-align:left">&#128196; Genereer LoI</button>'
@@ -1626,8 +1626,8 @@ function bindAll(){
         var tekst=(rd.text||'Fout bij genereren.').replace(/## ([^\n]+)/g,'<strong style="display:block;margin:.75rem 0 .25rem;font-size:14px">$1</strong>').replace(/\n/g,'<br>');
         var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:200;display:flex;align-items:center;justify-content:center;padding:1.5rem';
         var mo=document.createElement('div');mo.style.cssText='background:var(--panel);border-radius:10px;padding:2rem;max-width:680px;width:100%;max-height:90vh;overflow-y:auto';
-        mo.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.1rem;color:#1a1815;font-weight:600;margin-bottom:1.25rem">&#9881; AI-analyse · '+esc(t3.kantoor_naam||S.code)+'</div>'
-          +'<div style="font-size:13px;color:#5a5854;line-height:1.8">'+tekst+'</div>'
+        mo.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.1rem;color:var(--head);font-weight:600;margin-bottom:1.25rem">&#9881; AI-analyse · '+esc(t3.kantoor_naam||S.code)+'</div>'
+          +'<div style="font-size:13px;color:var(--mid);line-height:1.8">'+tekst+'</div>'
           +'<div style="margin-top:1.25rem;text-align:right"><button id="ai-sluit" style="background:transparent;border:1px solid #c8c5bc;padding:8px 16px;border-radius:6px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:13px">Sluiten</button></div>';
         ov.appendChild(mo);document.body.appendChild(ov);
         ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
