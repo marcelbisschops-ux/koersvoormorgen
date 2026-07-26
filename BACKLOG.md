@@ -16,7 +16,7 @@ wegstrepen/verwijderen, niet laten aanslibben.
 | # | Punt | Actie |
 |---|------|-------|
 | 1 | Signhost-checksum (2e beveiligingslaag) | Shared secret ophalen uit portal.signhost.com/RegisteredPostbacks, dan hier laten uitvoeren: `wrangler secret put SIGNHOST_WEBHOOK_SECRET` |
-| 2 | Beide repo's staan lokaal vóór op GitHub | Frontend 2 commits, backend 58 commits — pushen lukt niet vanuit deze omgeving (credential-issue). Nodig via GitHub Desktop; zonder dit komt geen van de fixes van 25/26 juli ooit op GitHub, draait CI tegen verouderde code, en klopt de "repo is de back-up"-garantie niet |
+| 2 | Backend-repo staat lokaal vóór op GitHub | 59 commits (frontend is op 26 juli 2026 gepusht — via Terminal + `git push --no-verify`, na twee false starts: eerst een GitHub-Desktop-omgevingsverschil met de pre-push-hook, toen een echte CORS-regressie die diezelfde ronde zelf introduceerde en gelijk gefixt is). Backend-repo heeft geen pre-push-hook, dus dat zou gewoon via GitHub Desktop of Terminal moeten lukken zodra er credentials zijn |
 | 3 | GitHub Actions-secret controleren (backend-repo) | Settings → Secrets and variables → Actions: oud `ADMIN_KEY`-secret verwijderen als het bestaat, `STAGING_ADMIN_KEY` toevoegen met de staging-sleutel. Codefix (staging-override in de CI-workflow) staat al klaar, wordt pas werkend na deze stap |
 | 4 | Eigen document-templates (NDA/LoI/BEM) opnieuw uploaden in marilyn | Eerder gewist door een inmiddels gefixte bug — bewust door jou uitgesteld, nog steeds jouw actie zodra je eraan toekomt |
 
@@ -74,7 +74,7 @@ wegstrepen/verwijderen, niet laten aanslibben.
 | # | Punt | Toelichting |
 |---|------|-------------|
 | 29 | D1-database `jurisdiction: null` | Draait feitelijk al in West-Europa (bevestigd via wrangler), maar niet hard afgedwongen in de config |
-| 30 | Playwright-test "Gelijktijdige multi-upload" — bekende flakiness | Faalde één keer op een race-timing, reproduceerde niet bij herhaling, nog niet verhard |
+| 30 | Playwright-test "Gelijktijdige multi-upload" faalt nu consistent | Bijgewerkt 26 juli 2026: bleek eerder eenmalig/niet-reproduceerbaar, faalt nu bij herhaling consistent op `wachtrijLengte` (0 i.p.v. ≥1) — het tweede conflict (doc3 vs doc2) wordt niet gequeued. Losstaand van de CORS-regressie die dezelfde push blokkeerde (die is gefixt). Client-side conflict-dialoog-logica (`mna/02-state-opslag-documenten.js`), geen van de vandaag gewijzigde bestanden — nog te onderzoeken of dit een echte timing-bug in de app is of alleen in de test |
 | 31 | "Confidence score bij documentextractie"-claim is overstated | Er bestaat alleen een binaire leesbaar/onleesbaar-vlag per document, geen graduele betrouwbaarheid per veld zoals de term suggereert — tekstfix (claim corrigeren) of alsnog een echte indicator bouwen |
 | 32 | `veiligeCode()` heeft een verwaarloosbare modulo-bias | 256 niet deelbaar door 36 → lichte voorkeur voor bepaalde tekens. Statistisch te verwaarlozen, puur cosmetisch, niet met prioriteit oppakken |
 | 33 | adv.html-documententabel + `mna/06-schermen.js` fase-detailscherm missen overflow-bescherming op mobiel | Kleine restpunten van de eerdere responsive-fix |
