@@ -1,3 +1,4 @@
+<!-- © 2026 Bisschops Financing B.V. Alle rechten voorbehouden. -->
 <!DOCTYPE html>
 <html lang="nl">
 <head>
@@ -191,6 +192,7 @@ function renderLogin(){
     <div class="sec-notice">&#128274; <strong>Beveiliging & privacy</strong><br>
     Verbinding versleuteld (HTTPS). Gegevens in Cloudflare EU (Frankfurt). Geen gegevensverkoop.
     <a href="privacy.html" style="color:var(--teal)">Privacyverklaring</a> &middot; <a href="platformvoorwaarden.html" style="color:var(--teal)">Gebruiksvoorwaarden</a></div>
+    <div style="text-align:center;margin-top:1rem;font-size:11px;color:var(--muted)">&copy; ${new Date().getFullYear()} ${BRAND.bedrijf} Alle rechten voorbehouden.</div>
   </div></div>`);
   ge('l-btn').onclick=doLogin;
   ge('l-w').onkeydown=function(e){if(e.key==='Enter')doLogin();};

@@ -1,3 +1,4 @@
+// © 2026 Bisschops Financing B.V. Alle rechten voorbehouden.
 function printDoc(tekst, titel, docType) {
   var kleuren = {nda:'#7c5cbf',loi:'#c9a84c',bem:'#2a5ea0',bem_verk:'#2a5ea0',bem_koper:'#2a5ea0',excl:'#1a7a5e',exclusief:'#1a7a5e',bieding:'#a0522d',spa:'#5a5470'};
   var kleur = kleuren[docType] || '#1a7a5e';

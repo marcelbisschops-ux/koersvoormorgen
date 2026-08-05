@@ -1,3 +1,4 @@
+// © 2026 Bisschops Financing B.V. Alle rechten voorbehouden.
 document.title = 'M&A Begeleiding - ' + BRAND.platform;
 
 // Sectorprofielen uit de database laden — overschrijft de hardgecodeerde defaults hierboven.
