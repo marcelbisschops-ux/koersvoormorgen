@@ -1239,8 +1239,17 @@ function bindAll(){
         }).join('');
       histEl.querySelectorAll('button[data-vid]').forEach(function(btn){
         btn.addEventListener('click',async function(){
-          var vd=await fetch(WORKER+'/mna/versie/'+btn.dataset.vid+'?code='+encodeURIComponent(S.code)).then(function(r){return r.json();});
-          if(vd&&vd.tekst)wToonRapport(vd.tekst, vd.created_at, vd.versie);
+          var origineel=btn.textContent;btn.textContent='Laden...';btn.disabled=true;
+          var vd=await fetch(WORKER+'/mna/versie/'+btn.dataset.vid+'?code='+encodeURIComponent(S.code)).then(function(r){return r.json();}).catch(function(){return null;});
+          btn.textContent=origineel;btn.disabled=false;
+          if(vd&&vd.tekst){
+            wToonRapport(vd.tekst, vd.created_at, vd.versie);
+            // Bug 5 aug 2026: rapport wordt boven de "Eerdere versies"-lijst getoond, dus zonder
+            // scroll leek de klik niets te doen — content veranderde onzichtbaar buiten beeld.
+            var outEl=ge('w-ai-out');if(outEl)outEl.scrollIntoView({behavior:'smooth',block:'start'});
+          }else{
+            toast('Kon deze versie niet laden.','err');
+          }
         });
       });
     }catch(e){histEl.innerHTML='';}
