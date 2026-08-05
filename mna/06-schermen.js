@@ -1806,7 +1806,9 @@ function bindAll(){
           if(gevuld.length){dataSamenvatting+='\n## '+row.fase_id+'\n';gevuld.forEach(function(v){dataSamenvatting+='- '+v.label+': '+v.value+'\n';});}
         }catch(e){}
       });
-      var bmTekst='BENCHMARKS: EBITDA '+(bms['ebitda_marge_admin']?bms['ebitda_marge_admin'].waarde:18.7)+'% | Multiples '+(bms['multiple_adm_laag']?bms['multiple_adm_laag'].waarde:4.6)+'x-'+(bms['multiple_adm_hoog']?bms['multiple_adm_hoog'].waarde:5.5)+'x\n';
+      var multBeschikbaar=!!(bms['multiple_adm_laag']&&bms['multiple_adm_hoog']);
+      var bmTekst='BENCHMARKS: EBITDA '+(bms['ebitda_marge_admin']?bms['ebitda_marge_admin'].waarde+'%':'niet ingesteld in Benchmarks')
+        +' | Multiples '+(multBeschikbaar?bms['multiple_adm_laag'].waarde+'x-'+bms['multiple_adm_hoog'].waarde+'x':'niet ingesteld in Benchmarks — noem geen indicatieve multiple in de analyse')+'\n';
       var prompt='M&A-adviseur accountancy. Analyseer traject: '+esc(t3.kantoor_naam||S.code)+' ('+esc(t3.traject_type||'Verkoop')+')\n'+bmTekst+'\nDUE DILIGENCE:'+dataSamenvatting+'\n\n## Samenvatting\n## Financieel profiel & waardering\n## Sterktes\n## Risicos\n## Aanbevelingen\n\nMax 500 woorden.';
       try{
         var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:3000})});
