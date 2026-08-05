@@ -1796,8 +1796,6 @@ function bindAll(){
     aiAnalyseCoverBtn.onclick=async function(){
       var btn=this;btn.disabled=true;btn.textContent='Analyseren...';
       var t3=S.traject;
-      var bms={};
-      try{var br=await fetch(WORKER+'/benchmarks');var bd=await br.json();bd.forEach(function(b){bms[b.sleutel]=b;});}catch(e){}
       var dataSamenvatting='';
       (S._mnaData||[]).forEach(function(row){
         try{
@@ -1806,9 +1804,46 @@ function bindAll(){
           if(gevuld.length){dataSamenvatting+='\n## '+row.fase_id+'\n';gevuld.forEach(function(v){dataSamenvatting+='- '+v.label+': '+v.value+'\n';});}
         }catch(e){}
       });
-      var multBeschikbaar=!!(bms['multiple_adm_laag']&&bms['multiple_adm_hoog']);
-      var bmTekst='BENCHMARKS: EBITDA '+(bms['ebitda_marge_admin']?bms['ebitda_marge_admin'].waarde+'%':'niet ingesteld in Benchmarks')
-        +' | Multiples '+(multBeschikbaar?bms['multiple_adm_laag'].waarde+'x-'+bms['multiple_adm_hoog'].waarde+'x':'niet ingesteld in Benchmarks — noem geen indicatieve multiple in de analyse')+'\n';
+      // Waarderingsmodel (Fase 4, 5 aug 2026) — zelfde config-gedreven curve als index.html/marilyn.
+      // Geen scan-kwaliteitsscore beschikbaar binnen een lopend mna-traject, dus alleen de
+      // omvang-curve + marktcorrectie, geen kwaliteitsfactor (blijft neutraal, factor 1.0).
+      var financieelRow=(S._mnaData||[]).find(function(row){return row.fase_id==='financieel';});
+      var fdj={};
+      try{var rawFdj=financieelRow?financieelRow.data_json:null;fdj=typeof rawFdj==='string'?JSON.parse(rawFdj):(rawFdj||{});}catch(e){}
+      function parseGeldLocal(s){if(!s)return 0;var n=String(s).replace(/[^0-9,.]/g,'').replace(',','.');return parseFloat(n)||0;}
+      var omzet3=fdj.omzet3?parseGeldLocal(fdj.omzet3.value):0;
+      var ebitdaPct=fdj.ebitda?parseFloat(String(fdj.ebitda.value).replace(',','.'))||0:0;
+      var ebitdaBedrag=omzet3*(ebitdaPct/100);
+      var waarderingConfig=null;
+      try{var wr=await fetch(WORKER+'/waardering/config?sector=accountant');waarderingConfig=await wr.json();}catch(e){}
+      var bmTekst;
+      if(!waarderingConfig||!waarderingConfig.beschikbaar){
+        bmTekst='BENCHMARKS: waarderingsmodel niet beschikbaar — noem geen indicatieve multiple in de analyse.\n';
+      }else if(ebitdaBedrag<=0){
+        bmTekst='BENCHMARKS: onvoldoende financiele data (omzet/EBITDA) ingevuld voor een indicatieve multiple — noem geen indicatieve multiple in de analyse.\n';
+      }else{
+        var wConf=waarderingConfig.basisconfig.regulier;
+        function interpoleerCurveLocal(curve,x){
+          if(x<=curve[0][0])return curve[0][1];
+          if(x>=curve[curve.length-1][0])return curve[curve.length-1][1];
+          for(var i=0;i<curve.length-1;i++){
+            var p0=curve[i],p1=curve[i+1];
+            if(x>=p0[0]&&x<=p1[0]){var frac=(x-p0[0])/(p1[0]-p0[0]);return p0[1]+frac*(p1[1]-p0[1]);}
+          }
+          return curve[curve.length-1][1];
+        }
+        var betrouwbaarheidsfactorLocal={hoog:1.0,midden:0.6,laag:0.3};
+        var marktcorrectieW=0;
+        (waarderingConfig.marktfactoren||[]).forEach(function(f){
+          var gewicht=(waarderingConfig.marktconfig.gewicht_per_sleutel||{})[f.sleutel]||0;
+          marktcorrectieW+=gewicht*(f.effect_op_multiple||0)*(betrouwbaarheidsfactorLocal[f.betrouwbaarheid]||0.3);
+        });
+        var mccLocal=waarderingConfig.marktconfig;
+        marktcorrectieW=Math.max(-mccLocal.max_correctie,Math.min(mccLocal.max_correctie,marktcorrectieW));
+        var basisMult=interpoleerCurveLocal(wConf.curve_punten,ebitdaBedrag);
+        var eindMult=Math.max(mccLocal.ondergrens_eindmultiple,Math.min(mccLocal.bovengrens_eindmultiple,Math.round((basisMult+marktcorrectieW)*10)/10));
+        bmTekst='BENCHMARKS: EBITDA-marge '+ebitdaPct+'% | Indicatieve EBITDA multiple '+eindMult.toFixed(1).replace('.',',')+'x (regulier/terugverdientijd-gedreven, o.b.v. Brookz Overname Barometer — dit is GEEN formele due-diligence-waardering, alleen een indicatie)\n';
+      }
       var prompt='M&A-adviseur accountancy. Analyseer traject: '+esc(t3.kantoor_naam||S.code)+' ('+esc(t3.traject_type||'Verkoop')+')\n'+bmTekst+'\nDUE DILIGENCE:'+dataSamenvatting+'\n\n## Samenvatting\n## Financieel profiel & waardering\n## Sterktes\n## Risicos\n## Aanbevelingen\n\nMax 500 woorden.';
       try{
         var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:3000})});
