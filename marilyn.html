@@ -211,6 +211,7 @@ function renderDashboard(){
     +'<button class="tab'+(activeTab==='rapporten'?' active':'')+'" id="t-rapp">Scan rapporten ('+rapporten.length+')</button>'
     +'<button class="tab'+(activeTab==='benchmarks'?' active':'')+'" id="t-bench">Benchmarks</button>'
     +'<button class="tab'+(activeTab==='waardering'?' active':'')+'" id="t-waardering">&#9654; Waardering</button>'
+    +'<button class="tab'+(activeTab==='waarderingsmodel'?' active':'')+'" id="t-waarderingsmodel">&#9878; Waarderingsmodel</button>'
     
     +'<button class="tab'+(activeTab==='templates'?' active':'')+'" id="t-templates">&#128196; Templates</button>'
     +(isSuperAdmin?'<button class="tab'+(activeTab==='sectoren'?' active':'')+'" id="t-sectoren">&#127970; Sectoren</button>':'')
@@ -223,6 +224,7 @@ function renderDashboard(){
   document.getElementById('t-rapp').addEventListener('click',function(){activeTab='rapporten';renderDashboard();});
   document.getElementById('t-bench').addEventListener('click',function(){activeTab='benchmarks';renderDashboard();});
   document.getElementById('t-waardering').addEventListener('click',function(){activeTab='waardering';renderDashboard();});
+  document.getElementById('t-waarderingsmodel').addEventListener('click',function(){activeTab='waarderingsmodel';renderDashboard();});
   document.getElementById('t-templates').addEventListener('click',function(){activeTab='templates';renderDashboard();});
   if(isSuperAdmin){var stb=document.getElementById('t-sectoren');if(stb)stb.addEventListener('click',function(){activeTab='sectoren';renderDashboard();});}
   if(isSuperAdmin){var gtb=document.getElementById('t-geb');if(gtb)gtb.addEventListener('click',function(){activeTab='gebruikers';renderDashboard();});}
@@ -239,6 +241,7 @@ function renderTab(){
   else if(activeTab==='docs')renderDocsTab(el);
   else if(activeTab==='benchmarks')renderBenchmarksTab(el);
   else if(activeTab==='waardering')renderWaarderingTab(el);
+  else if(activeTab==='waarderingsmodel')renderWaarderingsmodelTab(el);
   else if(activeTab==='templates')renderTemplatesTab(el);
   else if(activeTab==='sectoren')renderSectorenTab(el);
   else if(activeTab==='gebruikers')renderGebruikersTab(el);
@@ -893,6 +896,169 @@ function renderSectorenTab(el){
   laad();
 }
 
+// Beheerscherm voor het gelaagde waarderingsmodel (5 aug 2026): actieve configuratie inzien,
+// marktfactoren beheren, wijzigingsvoorstellen beoordelen. Wijzigingen aan basisconfig/marktconfig
+// gaan altijd via een voorstel — dit scherm past nooit iets direct aan, alleen via goedkeuren/afwijzen.
+async function renderWaarderingsmodelTab(el){
+  el.innerHTML='<div class="table-wrap"><div class="table-hdr"><div class="table-title">Waarderingsmodel</div></div>'
+    +'<div id="wm-config" class="empty">Laden...</div></div>'
+    +'<div class="table-wrap" style="margin-top:1.5rem"><div class="table-hdr"><div class="table-title">Marktfactoren</div>'
+    +'<button class="btn" style="font-size:12px;padding:7px 14px" id="btn-mf-add">+ Marktfactor toevoegen</button></div>'
+    +'<div id="wm-factoren" class="empty">Laden...</div></div>'
+    +'<div class="table-wrap" style="margin-top:1.5rem"><div class="table-hdr"><div class="table-title">Wijzigingsvoorstellen</div></div>'
+    +'<div id="wm-voorstellen" class="empty">Laden...</div></div>';
+
+  async function laadConfig(){
+    var box=document.getElementById('wm-config');
+    try{
+      var r=await fetch(WORKER+'/waardering/config?sector=accountant');
+      var d=await r.json();
+      if(!d.beschikbaar){box.innerHTML='<div class="empty">'+esc(d.reden||'Nog niet beschikbaar')+'</div>';return;}
+      function curveHtml(conf,titel){
+        if(!conf)return '<div style="font-size:12px;color:var(--muted)">Geen '+titel+'-config actief.</div>';
+        var punten=conf.curve_punten.map(function(p){return '€'+(p[0]/1000).toFixed(0)+'K → '+p[1].toFixed(1)+'x';}).join(' &middot; ');
+        var bronnen=(conf.bron_referenties||[]).map(function(b){return b.url?'<a href="'+esc(b.url)+'" target="_blank" style="color:var(--teal)">'+esc(b.omschrijving)+'</a>':esc(b.omschrijving);}).join('<br>');
+        return '<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:.85rem 1rem;margin-bottom:.75rem">'
+          +'<div style="font-size:12px;font-weight:600;color:var(--head);margin-bottom:.4rem">'+titel+' (versie '+conf.versie+')</div>'
+          +'<div class="mono" style="font-size:11px;color:var(--sub);margin-bottom:.4rem">'+punten+'</div>'
+          +'<div style="font-size:11px;color:var(--muted)">Kwaliteitsbandbreedte: '+conf.kwaliteit_gewicht_min+'–'+conf.kwaliteit_gewicht_max+' &middot; Dealbreakers: '+(conf.dealbreaker_regels||[]).join(', ')+'</div>'
+          +(bronnen?'<div style="font-size:10px;color:var(--muted);margin-top:.4rem">'+bronnen+'</div>':'')
+          +'</div>';
+      }
+      var mc=d.marktconfig;
+      var mcHtml=mc?('<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:.85rem 1rem;margin-bottom:.75rem">'
+        +'<div style="font-size:12px;font-weight:600;color:var(--head);margin-bottom:.4rem">Marktconfig (versie '+mc.versie+')</div>'
+        +'<div style="font-size:11px;color:var(--sub)">Gewichten: '+Object.keys(mc.gewicht_per_sleutel).map(function(k){return k+' '+(mc.gewicht_per_sleutel[k]*100).toFixed(0)+'%';}).join(' &middot; ')+'</div>'
+        +'<div style="font-size:11px;color:var(--muted);margin-top:.3rem">Max correctie ±'+mc.max_correctie+'x &middot; Grenzen '+mc.ondergrens_eindmultiple+'x–'+mc.bovengrens_eindmultiple+'x &middot; Drempel '+mc.drempel_afwijking+'x over '+mc.meetperiodes_vereist+' periodes</div>'
+        +'</div>'):'';
+      box.innerHTML=curveHtml(d.basisconfig.regulier,'Regulier')+curveHtml(d.basisconfig.pe,'PE-platform')+mcHtml;
+    }catch(e){box.innerHTML='<div class="empty">Fout bij laden: '+e.message+'</div>';}
+  }
+
+  async function laadFactoren(){
+    var box=document.getElementById('wm-factoren');
+    try{
+      var r=await fetch(WORKER+'/waardering/marktfactoren/alle?key='+encodeURIComponent(adminKey));
+      var data=await r.json();
+      if(!data.length){box.innerHTML='<div class="empty">Nog geen marktfactoren.</div>';return;}
+      var badge={hoog:'var(--teal)',midden:'var(--gold)',laag:'var(--red)'};
+      var html='<table><thead><tr><th>Sleutel</th><th>Waarde</th><th>Effect</th><th>Bron</th><th>Betrouwbaarheid</th><th>Status</th><th></th></tr></thead><tbody>';
+      data.forEach(function(f){
+        html+='<tr>'
+          +'<td class="mono" style="font-size:11px;color:var(--teal)">'+esc(f.sleutel)+'</td>'
+          +'<td class="mono">'+(f.waarde!=null?f.waarde:'--')+'</td>'
+          +'<td class="mono">'+(f.effect_op_multiple>0?'+':'')+f.effect_op_multiple+'x</td>'
+          +'<td style="font-size:11px;color:var(--muted)">'+esc(f.bron)+(f.bron_url?'<br><a href="'+esc(f.bron_url)+'" target="_blank" style="color:var(--teal);font-size:10px">Bron &#8599;</a>':'')+'<br>'+esc(f.publicatiedatum||'')+'</td>'
+          +'<td><span style="color:'+(badge[f.betrouwbaarheid]||'var(--muted)')+';font-size:11px;font-weight:600">'+esc(f.betrouwbaarheid)+'</span></td>'
+          +'<td style="font-size:11px">'+esc(f.status)+'</td>'
+          +'<td>'+(f.status==='actief'?'<button class="btn-red btn-mf-intrek" data-id="'+esc(f.id)+'" style="font-size:10px;padding:2px 6px">Intrekken</button>':'')+'</td>'
+          +'</tr>';
+      });
+      html+='</tbody></table>';
+      box.innerHTML=html;
+      box.querySelectorAll('.btn-mf-intrek').forEach(function(btn){
+        btn.addEventListener('click',async function(){
+          if(!confirm('Marktfactor intrekken? Deze telt dan niet meer mee in de marktcorrectie.'))return;
+          await fetch(WORKER+'/waardering/marktfactor/status/'+btn.dataset.id+'?key='+encodeURIComponent(adminKey),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'ingetrokken'})}).catch(function(){});
+          laadFactoren();laadConfig();
+        });
+      });
+    }catch(e){box.innerHTML='<div class="empty">Fout bij laden: '+e.message+'</div>';}
+  }
+
+  async function laadVoorstellen(){
+    var box=document.getElementById('wm-voorstellen');
+    try{
+      var r=await fetch(WORKER+'/waardering/wijzigingsvoorstellen?key='+encodeURIComponent(adminKey));
+      var data=await r.json();
+      if(!data.length){box.innerHTML='<div class="empty">Geen wijzigingsvoorstellen.</div>';return;}
+      var kleur={voorgesteld:'var(--gold)',goedgekeurd:'var(--teal)',afgewezen:'var(--red)'};
+      var html='';
+      data.forEach(function(v){
+        var impact=[];
+        try{impact=JSON.parse(v.impactanalyse);}catch(e){}
+        var dt=new Date(v.aangemaakt_op).toLocaleString('nl-NL',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+        html+='<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:.85rem 1rem;margin-bottom:.75rem">'
+          +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">'
+          +'<div><span style="font-size:11px;font-weight:600;color:var(--head)">'+esc(v.type)+'</span> &middot; <span style="font-size:11px;color:'+(kleur[v.status]||'var(--muted)')+';font-weight:600">'+esc(v.status)+'</span> &middot; <span style="font-size:10px;color:var(--muted)">'+dt+' door '+esc(v.aangemaakt_door)+'</span></div>'
+          +(v.status==='voorgesteld'?'<div style="display:flex;gap:6px;flex-shrink:0"><button class="btn" style="font-size:11px;padding:5px 10px" data-id="'+esc(v.id)+'" data-actie="goedkeuren">Goedkeuren</button><button class="btn-ghost" style="font-size:11px;padding:5px 10px" data-id="'+esc(v.id)+'" data-actie="afwijzen">Afwijzen</button></div>':'')
+          +'</div>'
+          +'<div style="font-size:12px;color:var(--sub);margin-top:.5rem">'+esc(v.aanleiding)+'</div>'
+          +(impact.length?'<div style="font-size:11px;color:var(--muted);margin-top:.4rem">Impact: '+impact.map(function(i){return esc(i.voorbeeldcase||'')+': '+esc(String(i.oude_uitkomst))+' → '+esc(String(i.nieuwe_uitkomst));}).join(' &middot; ')+'</div>':'')
+          +(v.opmerking?'<div style="font-size:11px;color:var(--muted);margin-top:.4rem;font-style:italic">'+esc(v.opmerking)+'</div>':'')
+          +'</div>';
+      });
+      box.innerHTML=html;
+      box.querySelectorAll('button[data-actie]').forEach(function(btn){
+        btn.addEventListener('click',async function(){
+          var actie=btn.dataset.actie;
+          if(actie==='afwijzen'&&!confirm('Voorstel afwijzen?'))return;
+          var opmerking=actie==='afwijzen'?(prompt('Opmerking (optioneel):')||''):'';
+          btn.disabled=true;
+          try{
+            var r=await fetch(WORKER+'/waardering/wijzigingsvoorstel/'+btn.dataset.id+'/beoordelen?key='+encodeURIComponent(adminKey),{
+              method:'POST',headers:{'Content-Type':'application/json'},
+              body:JSON.stringify({actie:actie,beoordeeld_door:'Marcel (marilyn)',opmerking:opmerking})
+            });
+            var d=await r.json();
+            if(d.ok){toast('Voorstel '+(actie==='goedkeuren'?'goedgekeurd':'afgewezen')+'.','ok');laadVoorstellen();laadConfig();laadFactoren();}
+            else toast('Fout: '+(d.error||'onbekend'),'err');
+          }catch(e){toast('Verbindingsfout.','err');}
+        });
+      });
+    }catch(e){box.innerHTML='<div class="empty">Fout bij laden: '+e.message+'</div>';}
+  }
+
+  document.getElementById('btn-mf-add').addEventListener('click',function(){
+    var ov=document.createElement('div');ov.className='overlay';
+    var mo=document.createElement('div');mo.className='modal';
+    mo.innerHTML='<div class="modal-title">Marktfactor toevoegen</div>'
+      +'<div class="field"><label>Sleutel <span style="color:var(--red)">*</span></label><input type="text" id="mf-sleutel" placeholder="bijv. pe_activiteit_accountancy_nl" style="margin-bottom:.5rem"></div>'
+      +'<div class="field"><label>Waarde</label><input type="text" id="mf-waarde" placeholder="numeriek, optioneel" style="margin-bottom:.5rem"></div>'
+      +'<div class="field"><label>Effect op multiple</label><input type="text" id="mf-effect" placeholder="bijv. 0.2 of -0.1 (standaard 0 = neutraal)" style="margin-bottom:.5rem"></div>'
+      +'<div class="field"><label>Bron <span style="color:var(--red)">*</span></label><input type="text" id="mf-bron" placeholder="bijv. Brookz Overname Barometer H1-2025" style="margin-bottom:.5rem"></div>'
+      +'<div class="field"><label>Bron-URL</label><input type="text" id="mf-bronurl" style="margin-bottom:.5rem"></div>'
+      +'<div class="field"><label>Publicatiedatum</label><input type="text" id="mf-datum" placeholder="JJJJ-MM" style="margin-bottom:.5rem"></div>'
+      +'<div class="field"><label>Betrouwbaarheid <span style="color:var(--red)">*</span></label><select id="mf-betr" style="margin-bottom:.5rem"><option value="hoog">Hoog</option><option value="midden">Midden</option><option value="laag">Laag</option></select></div>'
+      +'<div class="field"><label>Relevantie <span style="color:var(--red)">*</span></label><select id="mf-rel" style="margin-bottom:.5rem"><option value="hoog">Hoog</option><option value="midden">Midden</option><option value="laag">Laag</option></select></div>'
+      +'<div class="field"><label>Meetperiode</label><input type="text" id="mf-periode" placeholder="bijv. H1-2025" style="margin-bottom:.5rem"></div>'
+      +'<div id="mf-err" style="color:var(--red);font-size:12px;margin-bottom:.5rem;display:none"></div>'
+      +'<div style="display:flex;gap:10px;justify-content:flex-end"><button class="btn-ghost" id="mf-ann">Annuleren</button><button class="btn" id="mf-ok">Opslaan</button></div>';
+    ov.appendChild(mo);document.body.appendChild(ov);
+    ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
+    document.getElementById('mf-ann').addEventListener('click',function(){document.body.removeChild(ov);});
+    document.getElementById('mf-ok').addEventListener('click',async function(){
+      var sleutel=document.getElementById('mf-sleutel').value.trim();
+      var bron=document.getElementById('mf-bron').value.trim();
+      var err=document.getElementById('mf-err');
+      if(!sleutel||!bron){err.style.display='block';err.textContent='Sleutel en bron zijn verplicht.';return;}
+      var btn=document.getElementById('mf-ok');btn.disabled=true;btn.textContent='Opslaan...';
+      try{
+        var r=await fetch(WORKER+'/waardering/marktfactor?key='+encodeURIComponent(adminKey),{
+          method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({
+            sleutel:sleutel,
+            waarde:document.getElementById('mf-waarde').value?parseFloat(document.getElementById('mf-waarde').value):null,
+            effect_op_multiple:document.getElementById('mf-effect').value?parseFloat(document.getElementById('mf-effect').value):0,
+            bron:bron,
+            bron_url:document.getElementById('mf-bronurl').value.trim()||null,
+            publicatiedatum:document.getElementById('mf-datum').value.trim()||null,
+            betrouwbaarheid:document.getElementById('mf-betr').value,
+            relevantie:document.getElementById('mf-rel').value,
+            meetperiode:document.getElementById('mf-periode').value.trim()||null,
+            ingevoerd_door:'Marcel (marilyn)'
+          })
+        });
+        var d=await r.json();
+        if(d.ok){toast('Marktfactor toegevoegd.','ok');document.body.removeChild(ov);laadFactoren();laadConfig();}
+        else{err.style.display='block';err.textContent=d.error||'Onbekende fout';btn.disabled=false;btn.textContent='Opslaan';}
+      }catch(e){err.style.display='block';err.textContent='Verbindingsfout.';btn.disabled=false;btn.textContent='Opslaan';}
+    });
+  });
+
+  laadConfig();laadFactoren();laadVoorstellen();
+}
+
 function renderWaarderingTab(el){
   var selectedTraject=null;
   var bms={};
@@ -1062,16 +1228,43 @@ function renderWaarderingTab(el){
 
   el.innerHTML=renderModule();
 
-  // Laad benchmarks
-  fetch(WORKER+'/benchmarks').then(function(r){return r.json();}).then(function(data){
-    data.forEach(function(b){bms[b.sleutel]=b;});
-    W.multiBronOntbreekt=!(bms['multiple_adm_laag']&&bms['multiple_adm_hoog']);
-    W.multiLaag=bms['multiple_adm_laag']?bms['multiple_adm_laag'].waarde:4.6;
-    W.multiHoog=bms['multiple_adm_hoog']?bms['multiple_adm_hoog'].waarde:5.5;
-    W.multiMid=Math.round((W.multiLaag+W.multiHoog)/2*100)/100;
+  // Waarderingsmodel — zelfde config-gedreven curve als index.html/mna (Fase 4, 5 aug 2026).
+  // Geeft hier één best-estimate-punt (geen los "kwaliteit"-signaal zoals de scan heeft), dat als
+  // startpunt in de drie editbare velden komt — Marcel verbreedt/versmalt de band zelf naar inzicht.
+  var waarderingConfig=null;
+  function interpoleerCurve(curve,x){
+    if(x<=curve[0][0])return curve[0][1];
+    if(x>=curve[curve.length-1][0])return curve[curve.length-1][1];
+    for(var i=0;i<curve.length-1;i++){
+      var p0=curve[i],p1=curve[i+1];
+      if(x>=p0[0]&&x<=p1[0]){var frac=(x-p0[0])/(p1[0]-p0[0]);return p0[1]+frac*(p1[1]-p0[1]);}
+    }
+    return curve[curve.length-1][1];
+  }
+  function pasMultiplesAan(){
+    if(!waarderingConfig||!waarderingConfig.beschikbaar){W.multiBronOntbreekt=true;return;}
+    var conf=waarderingConfig.basisconfig.regulier;
+    var ebitdaBedrag=(W.omzet3||0)*((W.ebitda||0)/100);
+    var betrouwbaarheidsfactor={hoog:1.0,midden:0.6,laag:0.3};
+    var marktcorrectie=0;
+    (waarderingConfig.marktfactoren||[]).forEach(function(f){
+      var gewicht=(waarderingConfig.marktconfig.gewicht_per_sleutel||{})[f.sleutel]||0;
+      marktcorrectie+=gewicht*(f.effect_op_multiple||0)*(betrouwbaarheidsfactor[f.betrouwbaarheid]||0.3);
+    });
+    var mc=waarderingConfig.marktconfig;
+    marktcorrectie=Math.max(-mc.max_correctie,Math.min(mc.max_correctie,marktcorrectie));
+    var basis=interpoleerCurve(conf.curve_punten,ebitdaBedrag);
+    var eind=Math.max(mc.ondergrens_eindmultiple,Math.min(mc.bovengrens_eindmultiple,Math.round((basis+marktcorrectie)*100)/100));
+    W.multiLaag=W.multiMid=W.multiHoog=eind;
+    W.multiBronOntbreekt=false;
+  }
+
+  fetch(WORKER+'/waardering/config?sector=admin').then(function(r){return r.json();}).then(function(data){
+    waarderingConfig=data;
+    pasMultiplesAan();
     el.innerHTML=renderModule();
     bindWaardering();
-  }).catch(function(){bindWaardering();});
+  }).catch(function(){W.multiBronOntbreekt=true;bindWaardering();});
 
   function bindWaardering(){
     // Traject selectie
@@ -1100,6 +1293,7 @@ function renderWaarderingTab(el){
           }
         });
       }
+      pasMultiplesAan();
       el.innerHTML=renderModule();bindWaardering();
     });
 
