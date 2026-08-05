@@ -722,6 +722,17 @@ async function generateAI(){
     var regOnzekerheid=onzekerheidVoor(marktfactoren,false);
     var regConfidence=confidenceVoor(regOnzekerheid);
 
+    // Bij een dealbreaker: het echte, berekende "potentieel zonder dealbreaker" tonen — nooit een
+    // vage "bovenkant van de bandbreedte" laten verzinnen door de AI (bug gevonden 5 aug 2026: de
+    // oude promptinstructie impliceerde een range die niet meer bestaat, AI vulde 'm zelf in).
+    var multReguliterPotentieel=null,wReguliterPotentieel=0;
+    if(heeftDealbreaker){
+      var regBasisZonder=Math.round(interpoleerCurve(regConf.curve_punten,ebitdaBedrag)*kwaliteitFactorVoor(regConf,false)*10)/10;
+      var regRuwEindZonder=Math.round((regBasisZonder+marktcorrectie)*10)/10;
+      multReguliterPotentieel=Math.max(wc.marktconfig.ondergrens_eindmultiple,Math.min(wc.marktconfig.bovengrens_eindmultiple,regRuwEindZonder));
+      wReguliterPotentieel=Math.round(ebitdaBedrag*multReguliterPotentieel/10000)*10000;
+    }
+
     peBeschikbaar=!!peConf&&ebitdaBedrag>=peConf.curve_punten[0][0]&&!heeftDealbreaker;
     var peOnzekerheid=0,peConfidence=0,peGrensGeraakt=false;
     if(peBeschikbaar){
@@ -740,6 +751,9 @@ async function generateAI(){
       +').'
       +(peBeschikbaar
         ?' Bij interesse van een PE-platform (andere markt dan regulier, platform-multiple-arbitrage-logica — DUN onderbouwd, gebaseerd op slechts twee bekende transacties, minder zeker dan de reguliere schatting): €'+wPE.toLocaleString('nl-NL')+' (multiple '+multPE.toFixed(1).replace('.',',')+'x, onzekerheidsmarge ±'+peOnzekerheid.toFixed(1).replace('.',',')+'x, betrouwbaarheidsscore '+peConfidence+'/100'+(peGrensGeraakt?'; modelgrens toegepast':'')+').'
+        :'')
+      +(heeftDealbreaker
+        ?' BEREKEND POTENTIEEL zonder de geconstateerde dealbreaker(s): €'+wReguliterPotentieel.toLocaleString('nl-NL')+' (multiple '+multReguliterPotentieel.toFixed(1).replace('.',',')+'x) — dit is het enige geldige "opwaarts"-cijfer, gebruik nooit een ander bedrag of een bandbreedte die hier niet expliciet staat.'
         :'');
 
     // Reproduceerbaarheid — fire-and-forget snapshot, mag rapportgeneratie nooit blokkeren/breken.
@@ -804,7 +818,7 @@ async function generateAI(){
     +'## Aanbeveling\n'
     +'INSTRUCTIE Aanbeveling: geef 3-5 concrete prioriteiten met tijdshorizon (0-6 maanden / 6-18 maanden / 18+ maanden). '
     +'Elke prioriteit heeft een concreet gevolg als hij NIET wordt uitgevoerd — benoem dat expliciet. '
-    +'Verwerk de indicatieve waardering ('+waardering+') in de aanbeveling: wat moet er veranderen om de bovenkant van de bandbreedte te halen? '
+    +'Verwerk de indicatieve waardering ('+waardering+') in de aanbeveling. VERBOD: gebruik uitsluitend de bedragen/multiples die hierboven letterlijk staan (regulier, eventueel PE-platform, eventueel het berekende potentieel zonder dealbreaker) — verzin NOOIT een aanvullend bedrag, percentage of bandbreedte die daar niet expliciet in staat. Als er een "berekend potentieel zonder dealbreaker" is gegeven, leg uit dat het wegnemen van de genoemde dealbreaker(s) dat verschil oplevert; is dat er niet, benoem dan alleen hoe de scan-zwaktes de multiple raken zonder een nieuw getal te noemen. '
     +'Sluit af met één heldere, onvergetelijke zin die de eigenaar bijblijft als hij het rapport wegslaat.\n'
     +'VERBOD: Gebruik GEEN markdown-tabellen (geen |---| of |kolom|). Schrijf alles in lopende tekst.\n'
     +'VERBOD samenvatting-taal: NOOIT "samenvattend", "kortom", "al met al", "concluderend", "tot slot kan gesteld worden". Eindig elke sectie met een scherpe zin, geen conclusie-cliché.\n'
