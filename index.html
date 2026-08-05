@@ -631,28 +631,59 @@ async function generateAI(){
     ?'- Sectorale benchmarks: brutowinst/FTE klein acc €'+Math.round(bwFteKlein/1000)+'K, groot €'+Math.round(bwFteGroot/1000)+'K, admin €'+Math.round(bwFteAdmin/1000)+'K. EBITDA-marge klein acc '+String(ebitdaMKlein).replace('.',',')+'%, groot '+String(ebitdaMGroot).replace('.',',')+'%, admin '+String(ebitdaMAdmin).replace('.',',')+'%. Uurtarief personeel klein €'+uurKlein+', groot €'+uurGroot+', admin €'+uurAdmin+'. Gebruik deze getallen als feitelijke norm zonder de bron te noemen in het rapport.\n'
     :'';
 
-  // Waardering — multiple verplicht ingesteld via marilyn → Benchmarks; geen fallback (Gouden Standaard: nooit gokken)
+  // Waardering — twee gescheiden tracks, niet blenden (Marcel, 5 aug 2026):
+  // - Regulier: terugverdientijd-gedreven, Brookz Overname Barometer H1-2025, omvangcurve sector
+  //   Zakelijke dienstverlening (bron: accountancyvanmorgen.nl, Brookz-rapport editie 22).
+  // - PE-platform: platform-multiple-arbitrage-logica (koper profiteert van de exit-multiple van het
+  //   hele platform, niet van de standalone cashflow) — twee bekende ankerpunten: Bartjens/FD mei 2025
+  //   (landelijke top-tier + internationaal netwerk, ~€18-20 mln EBITDA → 10-11x) en Marcels eigen
+  //   dealervaring (€6 mln omzet/25% marge = €1,5 mln EBITDA → bod op 8x). Tussen die twee punten
+  //   lineair geinterpoleerd; onder het laagste punt geen PE-scenario (geen bewijs van interesse daar).
+  // Kwaliteit (scan-totaalscore) en dealbreakers (Wwft, klantrelaties niet in team geborgd, primair
+  // Excel) buigen de multiple binnen de bandbreedte — dit is Marcels eigen methodologische keuze,
+  // geen externe marktdata, en wordt in de AI-prompt ook zo gelabeld.
   const recurring=!isNaN(recurringVal)?recurringVal:0;
-  const multLaagKey=isAdminKantoor?'multiple_adm_laag':'multiple_acc_laag';
-  const multHoogKey=isAdminKantoor?'multiple_adm_hoog':'multiple_acc_hoog';
-  const multiplesBeschikbaar=!!(bm[multLaagKey]&&bm[multHoogKey]);
-  // Hogere vaste omzet = hogere multiple (minder risico koper)
-  const multFactor=recurring>70?1.3:recurring>50?1.0:0.75;
-  const mLow=multiplesBeschikbaar?Math.round((bm[multLaagKey].waarde*multFactor)*10)/10:null;
-  const mHigh=multiplesBeschikbaar?Math.round((bm[multHoogKey].waarde*multFactor)*10)/10:null;
-  const mult=multiplesBeschikbaar?(mLow.toFixed(1).replace('.',',')+'-'+mHigh.toFixed(1).replace('.',',')+'x'):null;
-  const wLow=(multiplesBeschikbaar&&ebitdaBedrag>0)?Math.round(ebitdaBedrag*mLow/10000)*10000:0;
-  const wHigh=(multiplesBeschikbaar&&ebitdaBedrag>0)?Math.round(ebitdaBedrag*mHigh/10000)*10000:0;
+
+  const REGULIER_CURVE=[[200000,3.5],[500000,4.1],[1000000,5.0],[2000000,5.3],[5000000,5.8],[10000000,6.7]];
+  const PE_CURVE=[[1500000,8.0],[19000000,10.5]];
+  function interpoleerCurve(curve,x){
+    if(x<=curve[0][0])return curve[0][1];
+    if(x>=curve[curve.length-1][0])return curve[curve.length-1][1];
+    for(var i=0;i<curve.length-1;i++){
+      var p0=curve[i],p1=curve[i+1];
+      if(x>=p0[0]&&x<=p1[0]){
+        var frac=(x-p0[0])/(p1[0]-p0[0]);
+        return p0[1]+frac*(p1[1]-p0[1]);
+      }
+    }
+    return curve[curve.length-1][1];
+  }
+
+  const dealbreakerWwft=a.f4!==undefined&&a.f4<=2;
+  const dealbreakerKlantrelaties=a.p1!==undefined&&a.p1<=2;
+  const dealbreakerIT=excelWarn;
+  const heeftDealbreaker=dealbreakerWwft||dealbreakerKlantrelaties||dealbreakerIT;
+
+  const kwaliteitFactorRuw=0.85+(ov/100)*0.30;
+  const kwaliteitFactor=heeftDealbreaker?0.85:Math.max(0.85,Math.min(1.15,kwaliteitFactorRuw));
+
+  const multRegulier=(ebitdaBedrag>0)?Math.round(interpoleerCurve(REGULIER_CURVE,ebitdaBedrag)*kwaliteitFactor*10)/10:null;
+  const peBeschikbaar=ebitdaBedrag>=1500000&&!heeftDealbreaker;
+  const multPE=peBeschikbaar?Math.round(interpoleerCurve(PE_CURVE,ebitdaBedrag)*kwaliteitFactor*10)/10:null;
+  const wRegulier=(multRegulier&&ebitdaBedrag>0)?Math.round(ebitdaBedrag*multRegulier/10000)*10000:0;
+  const wPE=(multPE&&ebitdaBedrag>0)?Math.round(ebitdaBedrag*multPE/10000)*10000:0;
+
   const waardering=
     (!isNaN(ebitdaVal)&&ebitdaVal<=0)
       ?'Negatieve EBITDA ('+ebitdaVal+'%): geen positieve waardering mogelijk. Herstel winstgevendheid is randvoorwaarde voor elke transactie.'
-    :!multiplesBeschikbaar
-      ?'Waarderingsmultiple nog niet ingesteld in de benchmarks — geen indicatieve bandbreedte beschikbaar.'
-    :wLow>0
-      ?'Indicatief: €'+wLow.toLocaleString('nl-NL')+' – €'+wHigh.toLocaleString('nl-NL')+' (EBITDA multiple '+mult+', op basis van '+ebitdaVal+'% marge en '+recurring+'% recurring).'
-    :(!isNaN(ebitdaVal)&&ebitdaVal>0&&omzetVal===0)
-      ?'EBITDA-marge '+ebitdaVal+'% bekend maar omzet niet ingevuld — vul omzet in voor een indicatieve bandbreedte.'
-    :'Onvoldoende data voor berekening. Vul EBITDA% en omzet in.';
+    :ebitdaBedrag<=0
+      ?((!isNaN(ebitdaVal)&&ebitdaVal>0&&omzetVal===0)
+        ?'EBITDA-marge '+ebitdaVal+'% bekend maar omzet niet ingevuld — vul omzet in voor een indicatieve bandbreedte.'
+        :'Onvoldoende data voor berekening. Vul EBITDA% en omzet in.')
+    :'Regulier (verkoop aan een reguliere koper, terugverdientijd-gedreven): indicatief €'+wRegulier.toLocaleString('nl-NL')+' (EBITDA multiple '+multRegulier.toFixed(1).replace('.',',')+'x'+(heeftDealbreaker?', gedrukt door geconstateerde dealbreaker(s)':'')+').'
+      +(peBeschikbaar
+        ?' Bij interesse van een PE-platform (indicatief, alleen relevant bij voldoende schaal, andere markt dan regulier): €'+wPE.toLocaleString('nl-NL')+' (multiple '+multPE.toFixed(1).replace('.',',')+'x).'
+        :'');
 
   const mainPrompt=
     'Schrijf een uitgebreid, confronterend en direct strategisch adviesrapport in het Nederlands. Minimaal 1200 woorden.\n'
@@ -691,7 +722,9 @@ async function generateAI(){
     +'DIMENSIESCORES:\n'+dims+'\n'
     +'Totaal: '+ov+'/100 | Sterktes: '+strengths+' | Zwaktes: '+weaknesses+'\n\n'
     +'BEVINDINGEN PER VRAAG:\n'+vi.map(v=>'- '+v).join('\n')+'\n\n'
-    +'WAARDERING:\n'+waardering+'\n\n'
+    +'WAARDERING:\n'+waardering+'\n'
+    +(peBeschikbaar?'INSTRUCTIE waardering: leg kort uit dat dit twee verschillende markten zijn — de reguliere prijs is terugverdientijd-gedreven, de PE-platformprijs komt voort uit de hogere exit-multiple van het geconsolideerde platform waar uw kantoor onderdeel van wordt. Presenteer ze niet als hetzelfde getal met een andere naam.\n':'')
+    +'\n'
     +'TOP SCENARIOS: '+top3+'\n\n'
     +'STRUCTUUR (gebruik exact deze ## koppen):\n'
     +'## Scorekaart en samenvatting\n'
