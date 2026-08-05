@@ -18,6 +18,12 @@ var BRAND = {
   adres: 'Grotestraat 13, 5841AA Oploo'
 };
 
+// Vaste taalregels voor elke AI-prompt in mna.html (5 aug 2026, Marcel: analyses bevatten soms
+// onnatuurlijk/vertaald Nederlands — vooral inconsistent u/je-gebruik en Engelse zinsconstructies
+// zoals "niet een X" i.p.v. "geen X"). Zelfde tekst als TAAL_REGELS in index.html — bewust twee losse
+// constanten i.p.v. gedeeld, want mna.html en index.html laden onafhankelijk van elkaar.
+var TAAL_REGELS='Schrijf in natuurlijk, vloeiend Nederlands — geen letterlijke vertaling uit het Engels. Gebruik uitsluitend de formele aanspreekvorm "u/uw", nooit "je/jij/jouw", ook niet losse keren door elkaar. Gebruik "geen [zelfstandig naamwoord]" i.p.v. de onnatuurlijke constructie "niet een [zelfstandig naamwoord]". Vermijd andere letterlijke Engelse constructies (bijv. "maakt sense", "op het einde van de dag") en verzin geen niet-bestaande woorden.';
+
 // Versienummer bewust niet meer getoond in de UI (verzoek Marcel, juli 2026).
 // De functie blijft bestaan omdat headers 'm aanroepen; hij levert nu niets op.
 function versieLabel(){return '';}

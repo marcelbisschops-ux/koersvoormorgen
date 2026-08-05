@@ -311,6 +311,11 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--b
 const WORKER = 'https://kantoorinzicht.marcel-bisschops.workers.dev';
 // White-label basis — centrale merkconfig voor de publieke scan (zelfde patroon als de rest).
 const BRAND = { platform:'KantoorInzicht', bedrijf:'Bisschops Financing B.V.', bedrijfKort:'Bisschops Financing BV' };
+// Vaste taalregels voor elke AI-prompt op deze pagina (5 aug 2026, Marcel: analyses bevatten soms
+// onnatuurlijk/vertaald Nederlands — vooral inconsistent u/je-gebruik en Engelse zinsconstructies
+// zoals "niet een X" i.p.v. "geen X"). Eén centrale plek i.p.v. losse, licht verschillende
+// taalinstructies per prompt.
+const TAAL_REGELS='Schrijf in natuurlijk, vloeiend Nederlands — geen letterlijke vertaling uit het Engels. Gebruik uitsluitend de formele aanspreekvorm "u/uw", nooit "je/jij/jouw", ook niet losse keren door elkaar. Gebruik "geen [zelfstandig naamwoord]" i.p.v. de onnatuurlijke constructie "niet een [zelfstandig naamwoord]". Vermijd andere letterlijke Engelse constructies (bijv. "maakt sense", "op het einde van de dag") en verzin geen niet-bestaande woorden.';
 document.title = 'Strategische Kantoor Scan - ' + BRAND.platform;
 
 /* ======== DATA ======== */
@@ -770,6 +775,7 @@ async function generateAI(){
 
   const mainPrompt=
     'Schrijf een uitgebreid, confronterend en direct strategisch adviesrapport in het Nederlands. Minimaal 1200 woorden.\n'
+    +TAAL_REGELS+'\n'
     +'TOON: De eigenaar weet al hoe zijn kantoor eruitziet. Wat hij niet weet is wat het betekent — financieel, strategisch en persoonlijk. Jouw taak is hem dat te laten voelen, niet te beschrijven.\n'
     +'VERBOD beschrijvende taal: NOOIT "aandacht verdient", "het is van belang", "overwegen te", "het is raadzaam", "speelt een rol", "relevant is", "vraagt om", "vereist actief beheer". Vervang altijd door directe consequentie.\n'
     +'VERBOD vage risico-taal: NOOIT "vormt een risico", "niet mag worden onderschat", "reëel risico", "potentieel risico". Zeg concreet: wat gaat er mis, wanneer, en wat kost het.\n'
@@ -1707,7 +1713,11 @@ function bindEvents(){
       return (i+1)+'. '+( o.name||'Anoniem')+' | Score: '+o.overall+' | EBITDA: '+(o.ebitda||'?')+'% | Vast: '+(o.recurring||'?')+'% | Omzet: '+(o.revenue||'?')+' | Fte: '+(o.fte||'?')+' | Ambitie: '+(o.ambitie||'?')+' | Scenario: '+(o.top_scenario||'?');
     }).join('\n');
     var dimInfo=SECTIONS.map(function(s){return s.label+': '+(cum[s.id]||0);}).join(' | ');
-    var oPfte=o.fte&&o.revenue?Math.round(parseFloat(String(o.revenue).replace(/[^0-9]/g,''))/parseFloat(o.fte)):0;var prompt='Geef een strategische analyse van dit kantoor. Gebruik "uw kantoor". Geen eerste persoon.\n\nKANTOORPROFIEL:\n- Naam: '+(o.name||'Anoniem')+'\n- Score: '+o.overall+'/100\n- Fte: '+(o.fte||'?')+' medewerkers\n- Omzet: '+(o.revenue||'?')+(oPfte>0?' (\u20ac'+(oPfte/1000).toFixed(0)+'K per fte)':'')+'\n- EBITDA-marge: '+(o.ebitda||'?')+'% (benchmark: 20-30%)\n- Aandeel vaste/abonnements-omzet: '+(o.recurring||'?')+'% (>60% = sterk voor M&A)\n- Ambitie: '+(o.ambitie||'?')+'\n- Aanbevolen scenario: '+(o.top_scenario||'?')+'\n\nDIMENSIESCORES:\n'+dimInfo+'\n\nGeef een rapport in het Nederlands met ## koppen:\n## Strategisch profiel\n[Score en positie, kantoortype-context, omzet per fte beoordeling]\n## Sterktes\n[Concrete sterktes op basis van dimensiescores en financiele kengetallen]\n## Risicos en aandachtspunten\n[Lage scores, financiele signalen, structurele kwetsbaarheden]\n## Aanbeveling\n[Concreet advies passend bij ambitie en aanbevolen scenario]\n\nDirect, concreet, specifiek voor dit kantoor. Max 350 woorden.';
+    // Bugfix 5 aug 2026: verwees naar een niet-bestaande variabele 'o' (leek gekopieerd van een
+    // losse-kantoor-prompt) \u2014 crashte synchroon v\u00f3\u00f3r de fetch, dus de laadspinner bleef eeuwig staan
+    // zonder foutmelding. Nu een echte groepsbrede prompt op basis van kantoorInfo/avg/dimInfo, die
+    // al w\u00e9l correct werden opgebouwd maar nooit gebruikt werden.
+    var prompt='Geef een strategische groepsanalyse over deze '+offices.length+' kantoren samen \u2014 geen los rapport per kantoor. '+TAAL_REGELS+'\n\nGROEPSOVERZICHT:\n- Aantal kantoren: '+offices.length+'\n- Gemiddelde score: '+avg+'/100\n\nKANTOREN (gesorteerd op score):\n'+kantoorInfo+'\n\nGEMIDDELDE DIMENSIESCORES OVER DE GROEP:\n'+dimInfo+'\n\nGeef een rapport in het Nederlands met ## koppen:\n## Groepsprofiel\n[Spreiding in scores, opvallende verschillen tussen de kantoren, algemeen beeld]\n## Gezamenlijke sterktes\n[Wat de groep als geheel sterk maakt, op basis van de dimensiescores]\n## Gezamenlijke risicos en aandachtspunten\n[Structurele zwaktes die bij meerdere kantoren terugkomen]\n## Aanbeveling\n[Concreet advies voor de groep \u2014 bijv. kennisdeling, gezamenlijke inkoop, benchmarking, consolidatie]\n\nDirect, concreet, specifiek voor deze groep kantoren. Max 400 woorden.';
     try{
       var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}]})});
       if(!resp.ok)throw new Error('HTTP '+resp.status);
