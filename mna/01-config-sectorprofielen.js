@@ -1,3 +1,4 @@
+// © 2026 Bisschops Financing B.V. Alle rechten voorbehouden.
 // Standaard altijd productie. Alleen overschrijfbaar via ?worker=... in de URL — bedoeld voor de
 // staging-omgeving testen (Playwright UI-tests, of handmatig), nooit als permanente instelling
 // (geen localStorage/cookie: sluit je het tabblad, is het weer productie).

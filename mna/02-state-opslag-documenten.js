@@ -1,3 +1,4 @@
+// © 2026 Bisschops Financing B.V. Alle rechten voorbehouden.
 var S={screen:'login',code:'',rol:'',traject:null,fase:0,checked:{},data:{},docRefs:{},notities:{},aiTexts:{},aiLoading:{},saveTimer:null,showValidation:false,dataroomLoading:false,dataroom:null,_opy:{},_epy:{},_opySlotJaar:{},_conflicts:[],_userEdited:{},_docSource:{},_docFragment:{},faseStatus:{},dossierVrijgegeven:false,_entiteiten:[],dataPerEntiteit:{},_actieveEntiteit:null};
 // Groepsdata (S._groepData) en S.data wijzen initieel naar hetzelfde object — bij het wisselen van
 // entiteit (switchEntiteit) wordt S.data omgezet naar de data van die entiteit, en weer terug. Alle

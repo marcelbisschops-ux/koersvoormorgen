@@ -1,3 +1,4 @@
+// © 2026 Bisschops Financing B.V. Alle rechten voorbehouden.
 // Vaste spelregels-tekst over automatische AI-invoer/analyse/output — getoond op de landingspagina
 // aan zowel verkoper als koper/derde, naast (niet i.p.v.) de per-document-waarschuwing in akkoordHtml().
 function aiSpelregelsHtml(){

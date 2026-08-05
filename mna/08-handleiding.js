@@ -1,3 +1,4 @@
+// © 2026 Bisschops Financing B.V. Alle rechten voorbehouden.
 // ── HANDLEIDING ──────────────────────────────────────────────────────────
 // Eén pagina, maar toont sinds 25 juli 2026 (op Marcels verzoek) uitsluitend de sectie die bij de
 // rol van de ingelogde gebruiker hoort — een verkoper ziet dus geen begeleider-/koperinhoud en

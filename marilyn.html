@@ -1,3 +1,4 @@
+<!-- © 2026 Bisschops Financing B.V. Alle rechten voorbehouden. -->
 <!DOCTYPE html>
 <html lang="nl">
 <head>
@@ -132,6 +133,7 @@ function renderLogin(){
     +'<div id="login-mode" style="display:none"></div>'
     +'<div id="admin-fields" style="display:none"></div>'
     +'<div id="adviseur-fields" style="display:none"></div>'
+    +'<div style="text-align:center;margin-top:1rem;font-size:11px;color:var(--muted)">&copy; '+new Date().getFullYear()+' '+BRAND.bedrijf+' Alle rechten voorbehouden.</div>'
     +'</div></div>';
   document.getElementById('login-btn').addEventListener('click',doLogin);
   document.getElementById('ak').addEventListener('keydown',function(e){if(e.key==='Enter')doLogin();});
