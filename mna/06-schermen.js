@@ -678,7 +678,8 @@ function renderSummary(){
 
   function parseGeldCheck(v){
     if(!v)return null;
-    var n=String(v).replace(/[^0-9,.]/g,'').replace(',','.');
+    // Fix 5 aug 2026: punten zijn NL-duizendtal-scheiding, nooit decimaal — eerst verwijderen.
+    var n=String(v).replace(/[^0-9,.]/g,'').replace(/\./g,'').replace(',','.');
     var parsed=parseFloat(n);
     return isNaN(parsed)?null:parsed;
   }
