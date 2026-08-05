@@ -631,59 +631,117 @@ async function generateAI(){
     ?'- Sectorale benchmarks: brutowinst/FTE klein acc €'+Math.round(bwFteKlein/1000)+'K, groot €'+Math.round(bwFteGroot/1000)+'K, admin €'+Math.round(bwFteAdmin/1000)+'K. EBITDA-marge klein acc '+String(ebitdaMKlein).replace('.',',')+'%, groot '+String(ebitdaMGroot).replace('.',',')+'%, admin '+String(ebitdaMAdmin).replace('.',',')+'%. Uurtarief personeel klein €'+uurKlein+', groot €'+uurGroot+', admin €'+uurAdmin+'. Gebruik deze getallen als feitelijke norm zonder de bron te noemen in het rapport.\n'
     :'';
 
-  // Waardering — twee gescheiden tracks, niet blenden (Marcel, 5 aug 2026):
-  // - Regulier: terugverdientijd-gedreven, Brookz Overname Barometer H1-2025, omvangcurve sector
-  //   Zakelijke dienstverlening (bron: accountancyvanmorgen.nl, Brookz-rapport editie 22).
-  // - PE-platform: platform-multiple-arbitrage-logica (koper profiteert van de exit-multiple van het
-  //   hele platform, niet van de standalone cashflow) — twee bekende ankerpunten: Bartjens/FD mei 2025
-  //   (landelijke top-tier + internationaal netwerk, ~€18-20 mln EBITDA → 10-11x) en Marcels eigen
-  //   dealervaring (€6 mln omzet/25% marge = €1,5 mln EBITDA → bod op 8x). Tussen die twee punten
-  //   lineair geinterpoleerd; onder het laagste punt geen PE-scenario (geen bewijs van interesse daar).
-  // Kwaliteit (scan-totaalscore) en dealbreakers (Wwft, klantrelaties niet in team geborgd, primair
-  // Excel) buigen de multiple binnen de bandbreedte — dit is Marcels eigen methodologische keuze,
-  // geen externe marktdata, en wordt in de AI-prompt ook zo gelabeld.
-  const recurring=!isNaN(recurringVal)?recurringVal:0;
+  // Waarderingsmodel — live opgehaald uit backend (marilyn-beheerde config, gedeelde bron met
+  // marilyn/mna). Nooit hardcoded curves/gewichten in de frontend (Marcel, 5 aug 2026, Fase 2).
+  // Basismultiple = curve(omvang) x gewogen kwaliteitsscore x dealbreaker-vloer.
+  // Marktcorrectie = gewogen, betrouwbaarheid-gedempte som van actuele marktfactoren, begrensd.
+  // Onzekerheidsmarge/betrouwbaarheidsscore tonen expliciet hoe stevig elk cijfer onderbouwd is —
+  // ook voor de eindgebruiker, niet alleen intern.
+  if(!ST._waarderingConfig){
+    try{
+      const wr=await fetch(WORKER+'/waardering/config?sector='+(isAdminKantoor?'admin':'accountant'));
+      ST._waarderingConfig=await wr.json();
+    }catch(e){ST._waarderingConfig={beschikbaar:false};}
+  }
+  const wc=ST._waarderingConfig;
 
-  const REGULIER_CURVE=[[200000,3.5],[500000,4.1],[1000000,5.0],[2000000,5.3],[5000000,5.8],[10000000,6.7]];
-  const PE_CURVE=[[1500000,8.0],[19000000,10.5]];
   function interpoleerCurve(curve,x){
     if(x<=curve[0][0])return curve[0][1];
     if(x>=curve[curve.length-1][0])return curve[curve.length-1][1];
     for(var i=0;i<curve.length-1;i++){
       var p0=curve[i],p1=curve[i+1];
-      if(x>=p0[0]&&x<=p1[0]){
-        var frac=(x-p0[0])/(p1[0]-p0[0]);
-        return p0[1]+frac*(p1[1]-p0[1]);
-      }
+      if(x>=p0[0]&&x<=p1[0]){var frac=(x-p0[0])/(p1[0]-p0[0]);return p0[1]+frac*(p1[1]-p0[1]);}
     }
     return curve[curve.length-1][1];
   }
+  var DEALBREAKER_CHECKS={
+    wwft:{actief:a.f4!==undefined&&a.f4<=2,label:'Wwft niet op orde'},
+    klantrelaties_team:{actief:a.p1!==undefined&&a.p1<=2,label:'klantrelaties niet in het team geborgd'},
+    primair_excel:{actief:excelWarn,label:'primair Excel, geen digitale infrastructuur'},
+    opvolgingsplan_ontbreekt:{actief:a.o1!==undefined&&a.o1<=2,label:'geen opvolgingsplan'},
+    klantconcentratie_extreem:{actief:a.k1!==undefined&&a.k1<=2,label:'extreme klantconcentratie'}
+  };
+  function kwaliteitscoreGewogen(gewichten){
+    var totaal=0;
+    Object.keys(gewichten).forEach(function(id){var score=(s[id]!=null)?s[id]:ov;totaal+=(score/100)*gewichten[id];});
+    return totaal;
+  }
+  function kwaliteitFactorVoor(config,heeftDealbreaker){
+    if(heeftDealbreaker)return config.kwaliteit_gewicht_min;
+    var score=kwaliteitscoreGewogen(config.kwaliteit_dimensie_gewichten);
+    var ruw=config.kwaliteit_gewicht_min+score*(config.kwaliteit_gewicht_max-config.kwaliteit_gewicht_min);
+    return Math.max(config.kwaliteit_gewicht_min,Math.min(config.kwaliteit_gewicht_max,ruw));
+  }
+  var BETROUWBAARHEIDSFACTOR={hoog:1.0,midden:0.6,laag:0.3};
+  function onzekerheidVoor(marktfactoren,isPeTrack){
+    var marge=0.3;
+    (marktfactoren||[]).forEach(function(f){
+      if(f.betrouwbaarheid==='laag')marge+=0.2;
+      if(f.publicatiedatum){
+        var ouderdomMnd=(Date.now()-new Date(f.publicatiedatum+'-01').getTime())/(1000*60*60*24*30);
+        if(ouderdomMnd>12)marge+=0.05;
+      }
+    });
+    if(isPeTrack)marge+=0.2;
+    return Math.round(marge*10)/10;
+  }
+  function confidenceVoor(marge){return Math.max(0,Math.min(100,Math.round(100*(1-marge/2.0))));}
 
-  const dealbreakerWwft=a.f4!==undefined&&a.f4<=2;
-  const dealbreakerKlantrelaties=a.p1!==undefined&&a.p1<=2;
-  const dealbreakerIT=excelWarn;
-  const heeftDealbreaker=dealbreakerWwft||dealbreakerKlantrelaties||dealbreakerIT;
+  let waardering,multRegulier=null,multPE=null,wRegulier=0,wPE=0,peBeschikbaar=false;
 
-  const kwaliteitFactorRuw=0.85+(ov/100)*0.30;
-  const kwaliteitFactor=heeftDealbreaker?0.85:Math.max(0.85,Math.min(1.15,kwaliteitFactorRuw));
+  if(!isNaN(ebitdaVal)&&ebitdaVal<=0){
+    waardering='Negatieve EBITDA ('+ebitdaVal+'%): geen positieve waardering mogelijk. Herstel winstgevendheid is randvoorwaarde voor elke transactie.';
+  }else if(!wc||!wc.beschikbaar){
+    waardering='Waarderingsmodel nog niet beschikbaar voor deze sector — geen indicatieve bandbreedte mogelijk.';
+  }else if(ebitdaBedrag<=0){
+    waardering=(!isNaN(ebitdaVal)&&ebitdaVal>0&&omzetVal===0)
+      ?'EBITDA-marge '+ebitdaVal+'% bekend maar omzet niet ingevuld — vul omzet in voor een indicatieve bandbreedte.'
+      :'Onvoldoende data voor berekening. Vul EBITDA% en omzet in.';
+  }else{
+    var regConf=wc.basisconfig.regulier,peConf=wc.basisconfig.pe;
+    var dealbreakerLabels=[];
+    (regConf.dealbreaker_regels||[]).forEach(function(code){
+      var chk=DEALBREAKER_CHECKS[code];
+      if(chk&&chk.actief)dealbreakerLabels.push(chk.label);
+    });
+    var heeftDealbreaker=dealbreakerLabels.length>0;
 
-  const multRegulier=(ebitdaBedrag>0)?Math.round(interpoleerCurve(REGULIER_CURVE,ebitdaBedrag)*kwaliteitFactor*10)/10:null;
-  const peBeschikbaar=ebitdaBedrag>=1500000&&!heeftDealbreaker;
-  const multPE=peBeschikbaar?Math.round(interpoleerCurve(PE_CURVE,ebitdaBedrag)*kwaliteitFactor*10)/10:null;
-  const wRegulier=(multRegulier&&ebitdaBedrag>0)?Math.round(ebitdaBedrag*multRegulier/10000)*10000:0;
-  const wPE=(multPE&&ebitdaBedrag>0)?Math.round(ebitdaBedrag*multPE/10000)*10000:0;
+    var marktfactoren=wc.marktfactoren||[];
+    var marktcorrectieRuw=0;
+    marktfactoren.forEach(function(f){
+      var gewicht=(wc.marktconfig.gewicht_per_sleutel||{})[f.sleutel]||0;
+      marktcorrectieRuw+=gewicht*(f.effect_op_multiple||0)*(BETROUWBAARHEIDSFACTOR[f.betrouwbaarheid]||0.3);
+    });
+    var marktcorrectie=Math.max(-wc.marktconfig.max_correctie,Math.min(wc.marktconfig.max_correctie,marktcorrectieRuw));
 
-  const waardering=
-    (!isNaN(ebitdaVal)&&ebitdaVal<=0)
-      ?'Negatieve EBITDA ('+ebitdaVal+'%): geen positieve waardering mogelijk. Herstel winstgevendheid is randvoorwaarde voor elke transactie.'
-    :ebitdaBedrag<=0
-      ?((!isNaN(ebitdaVal)&&ebitdaVal>0&&omzetVal===0)
-        ?'EBITDA-marge '+ebitdaVal+'% bekend maar omzet niet ingevuld — vul omzet in voor een indicatieve bandbreedte.'
-        :'Onvoldoende data voor berekening. Vul EBITDA% en omzet in.')
-    :'Regulier (verkoop aan een reguliere koper, terugverdientijd-gedreven): indicatief €'+wRegulier.toLocaleString('nl-NL')+' (EBITDA multiple '+multRegulier.toFixed(1).replace('.',',')+'x'+(heeftDealbreaker?', gedrukt door geconstateerde dealbreaker(s)':'')+').'
+    var regBasis=Math.round(interpoleerCurve(regConf.curve_punten,ebitdaBedrag)*kwaliteitFactorVoor(regConf,heeftDealbreaker)*10)/10;
+    var regRuwEind=Math.round((regBasis+marktcorrectie)*10)/10;
+    multRegulier=Math.max(wc.marktconfig.ondergrens_eindmultiple,Math.min(wc.marktconfig.bovengrens_eindmultiple,regRuwEind));
+    var regGrensGeraakt=multRegulier!==regRuwEind;
+    wRegulier=Math.round(ebitdaBedrag*multRegulier/10000)*10000;
+    var regOnzekerheid=onzekerheidVoor(marktfactoren,false);
+    var regConfidence=confidenceVoor(regOnzekerheid);
+
+    peBeschikbaar=!!peConf&&ebitdaBedrag>=peConf.curve_punten[0][0]&&!heeftDealbreaker;
+    var peOnzekerheid=0,peConfidence=0,peGrensGeraakt=false;
+    if(peBeschikbaar){
+      var peBasis=Math.round(interpoleerCurve(peConf.curve_punten,ebitdaBedrag)*kwaliteitFactorVoor(peConf,heeftDealbreaker)*10)/10;
+      var peRuwEind=Math.round((peBasis+marktcorrectie)*10)/10;
+      multPE=Math.max(wc.marktconfig.ondergrens_eindmultiple,Math.min(wc.marktconfig.bovengrens_eindmultiple,peRuwEind));
+      peGrensGeraakt=multPE!==peRuwEind;
+      wPE=Math.round(ebitdaBedrag*multPE/10000)*10000;
+      peOnzekerheid=onzekerheidVoor(marktfactoren,true);
+      peConfidence=confidenceVoor(peOnzekerheid);
+    }
+
+    waardering='Regulier (verkoop aan een reguliere koper, terugverdientijd-gedreven — stevig onderbouwd op basis van 289 Nederlandse M&A-advieskantoren, Brookz Overname Barometer): indicatief €'+wRegulier.toLocaleString('nl-NL')+' (EBITDA multiple '+multRegulier.toFixed(1).replace('.',',')+'x, onzekerheidsmarge ±'+regOnzekerheid.toFixed(1).replace('.',',')+'x, betrouwbaarheidsscore '+regConfidence+'/100'
+      +(heeftDealbreaker?'; gedrukt door: '+dealbreakerLabels.join(', '):'')
+      +(regGrensGeraakt?'; modelgrens toegepast':'')
+      +').'
       +(peBeschikbaar
-        ?' Bij interesse van een PE-platform (indicatief, alleen relevant bij voldoende schaal, andere markt dan regulier): €'+wPE.toLocaleString('nl-NL')+' (multiple '+multPE.toFixed(1).replace('.',',')+'x).'
+        ?' Bij interesse van een PE-platform (andere markt dan regulier, platform-multiple-arbitrage-logica — DUN onderbouwd, gebaseerd op slechts twee bekende transacties, minder zeker dan de reguliere schatting): €'+wPE.toLocaleString('nl-NL')+' (multiple '+multPE.toFixed(1).replace('.',',')+'x, onzekerheidsmarge ±'+peOnzekerheid.toFixed(1).replace('.',',')+'x, betrouwbaarheidsscore '+peConfidence+'/100'+(peGrensGeraakt?'; modelgrens toegepast':'')+').'
         :'');
+  }
 
   const mainPrompt=
     'Schrijf een uitgebreid, confronterend en direct strategisch adviesrapport in het Nederlands. Minimaal 1200 woorden.\n'
