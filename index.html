@@ -741,6 +741,17 @@ async function generateAI(){
       +(peBeschikbaar
         ?' Bij interesse van een PE-platform (andere markt dan regulier, platform-multiple-arbitrage-logica — DUN onderbouwd, gebaseerd op slechts twee bekende transacties, minder zeker dan de reguliere schatting): €'+wPE.toLocaleString('nl-NL')+' (multiple '+multPE.toFixed(1).replace('.',',')+'x, onzekerheidsmarge ±'+peOnzekerheid.toFixed(1).replace('.',',')+'x, betrouwbaarheidsscore '+peConfidence+'/100'+(peGrensGeraakt?'; modelgrens toegepast':'')+').'
         :'');
+
+    // Reproduceerbaarheid — fire-and-forget snapshot, mag rapportgeneratie nooit blokkeren/breken.
+    fetch(WORKER+'/waardering/resultaat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      scan_id:ST.savedScanId||null,
+      basisconfig_versie_regulier:regConf.versie,basisconfig_versie_pe:peConf?peConf.versie:null,
+      marktconfig_versie:wc.marktconfig.versie,marktfactor_ids:marktfactoren.map(function(f){return f.id;}),
+      basismultiple_regulier:regBasis,basismultiple_pe:peBeschikbaar?peBasis:null,marktcorrectie:marktcorrectie,
+      eindmultiple_regulier:multRegulier,eindmultiple_pe:multPE,
+      grens_toegepast:{regulier:regGrensGeraakt,pe:peGrensGeraakt},
+      onzekerheidsmarge:regOnzekerheid,confidence_score:regConfidence,verklaring_tekst:waardering
+    })}).catch(function(){});
   }
 
   const mainPrompt=
