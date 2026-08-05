@@ -1143,7 +1143,7 @@ function renderBegeleiderDashboard(app){
           +'## Waarom dit werkt voor beide partijen\n(twee korte alinea\'s: perspectief verkopende partij, perspectief koper — gebruik de bedragen uit de context)\n\n'
           +'## Risico\'s & aandachtspunten\n(4-6 concrete, genummerde aandachtspunten)\n\n'
           +'## Aandachtspunten & vervolgstappen\n(genummerde praktische checklist voor de komende stappen: termsheet, due diligence, uitwerken retentiepakket, SPA en closing-mechanismen, financiering regelen — generiek maar concreet)';
-        var prompt='Je bent ' + (t2.begeleider_naam||BRAND.contactpersoon) + ', senior M&A-adviseur bij ' + (t2.begeleider_bedrijf||BRAND.bedrijf) + '. Schrijf de verhalende hoofdstukken van een vertrouwelijk dealvoorstel.\n\n'
+        var prompt='Je bent ' + (t2.begeleider_naam||BRAND.contactpersoon) + ', senior M&A-adviseur bij ' + (t2.begeleider_bedrijf||BRAND.bedrijf) + '. Schrijf de verhalende hoofdstukken van een vertrouwelijk dealvoorstel. '+TAAL_REGELS+'\n\n'
           +'BELANGRIJK: gebruik uitsluitend de cijfers hieronder. Verzin GEEN eigen bedragen, percentages, multiples of vergelijkbare transacties — die liggen al vast in de berekende tabellen die apart worden ingevoegd op de plek van [TABEL:xxx]-markeringen. Laat die markeringen exact zo staan (op een eigen regel), vervang ze niet door eigen tekst of tabellen.\n\n'
           +'CONTEXT:\n'+contextBlok+'\n\n'
           +'Schrijf onderstaande hoofdstukken met ## koppen, zakelijk Nederlands, geen overdreven bijvoeglijke naamwoorden, max 1500 woorden tekst in totaal (exclusief tabelmarkeringen):\n\n'+koppen;
@@ -1910,7 +1910,7 @@ function renderBegeleiderDashboard(app){
           var notities=(document.getElementById('bgg-notities').value||'').trim();
           if(!notities){if(aiSt)aiSt.textContent='Voer eerst notities in.';return;}
           aiBtn.disabled=true;if(aiSt)aiSt.textContent='Genereren...';
-          var prompt='Maak professioneel gespreksverslag M&A traject.\n\nGesprek: '+document.getElementById('bgg-type').value+' | Datum: '+document.getElementById('bgg-datum').value+' | Deelnemers: '+(document.getElementById('bgg-deelnemers').value||'onbekend')+'\n\nNOTITIES:\n'+notities+'\n\nFormaat: ## Samenvatting, ## Besproken punten, ## Beslissingen, ## Actiepunten, ## Volgende stap';
+          var prompt='Maak professioneel gespreksverslag M&A traject. '+TAAL_REGELS+'\n\nGesprek: '+document.getElementById('bgg-type').value+' | Datum: '+document.getElementById('bgg-datum').value+' | Deelnemers: '+(document.getElementById('bgg-deelnemers').value||'onbekend')+'\n\nNOTITIES:\n'+notities+'\n\nFormaat: ## Samenvatting, ## Besproken punten, ## Beslissingen, ## Actiepunten, ## Volgende stap';
           var rd=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:1500})}).then(function(r){return r.json();}).catch(function(){return{};});
           document.getElementById('bgg-verslag').value=rd.text||'';
           aiBtn.disabled=false;if(aiSt)aiSt.textContent='✓ Verslag gegenereerd';
