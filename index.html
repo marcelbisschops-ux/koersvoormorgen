@@ -774,22 +774,18 @@ async function generateAI(){
   }
 
   const mainPrompt=
-    'Schrijf een uitgebreid, confronterend en direct strategisch adviesrapport in het Nederlands. Minimaal 1200 woorden.\n'
+    'Schrijf een beknopt, direct strategisch adviesrapport in het Nederlands. Maximaal 600 woorden totaal — dit is een harde grens, geen richtlijn. Kort en to-the-point weegt zwaarder dan volledigheid.\n'
     +TAAL_REGELS+'\n'
-    +'TOON: De eigenaar weet al hoe zijn kantoor eruitziet. Wat hij niet weet is wat het betekent — financieel, strategisch en persoonlijk. Jouw taak is hem dat te laten voelen, niet te beschrijven.\n'
-    +'VERBOD beschrijvende taal: NOOIT "aandacht verdient", "het is van belang", "overwegen te", "het is raadzaam", "speelt een rol", "relevant is", "vraagt om", "vereist actief beheer". Vervang altijd door directe consequentie.\n'
-    +'VERBOD vage risico-taal: NOOIT "vormt een risico", "niet mag worden onderschat", "reëel risico", "potentieel risico". Zeg concreet: wat gaat er mis, wanneer, en wat kost het.\n'
-    +'VERBOD zachte aanbevelingen: NOOIT "dient te", "zou moeten", "verdient aanbeveling", "investeer in". Elke aanbeveling is een opdracht met een deadline en een gevolg als hij niet wordt uitgevoerd.\n'
-    +'VERPLICHT bij elk alarmsignaal: vertaal naar wat dit de eigenaar concreet kost — in euro\'s, in verkoopprijs, in tijd, of in kansen die hij mist.\n'
-    +'VERPLICHT bij elke bevinding: eindig met de consequentie voor zijn ambitie ('+p.ambitie+'). Niet wat het is, maar wat het hem doet.\n'
-    +'VERPLICHT bij elke prioriteit in de aanbeveling: benoem expliciet wat er gebeurt als deze prioriteit NIET wordt uitgevoerd. Maak het concreet: welk scenario valt af, welke euro\'s verdwijnen, welke koper haakt af.\n'
+    +'TOON: De eigenaar weet al hoe zijn kantoor eruitziet. Beschrijf niet wat hij al weet — benoem kort en helder wat de cijfers en scores laten zien, zonder elk mogelijk gevolg uit te spellen. Vertrouw erop dat hij zelf ook kan nadenken; het rapport hoeft niet compleet te zijn, het moet een scherp startpunt zijn.\n'
+    +'VERBOD beschrijvende taal: NOOIT "aandacht verdient", "het is van belang", "overwegen te", "het is raadzaam", "speelt een rol", "relevant is", "vraagt om", "vereist actief beheer". Vervang door een korte, concrete constatering.\n'
+    +'VERBOD vage risico-taal: NOOIT "vormt een risico", "niet mag worden onderschat", "reëel risico", "potentieel risico". Benoem kort en concreet wat het probleem is.\n'
+    +'AANBEVELINGEN ZIJN SUGGESTIES, GEEN OPDRACHTEN: presenteer elke aanbeveling als een overweging die de eigenaar kan meenemen, niet als een dwingende opdracht met deadline. Gebruik gerust "overweeg", "kan helpen om", "is het waard om te onderzoeken" — dit is precies waar eerder te stellige taal ("dient te", "moet") ongepast was. Werk niet elk gevolg van elke aanbeveling uit; noem er ten hoogste bij de belangrijkste suggestie kort de reden bij, en laat de rest aan het eigen inzicht van de eigenaar over.\n'
     +'Begin DIRECT met ## Scorekaart en samenvatting. Geen titelpagina, geen "Opgesteld door"-regel.\n'
     +'Gebruik ALTIJD "uw kantoor" - nooit "dit kantoor" of "het kantoor".\n'
     +'VERBOD eerste persoon: NOOIT "ik", "mijn", "in mijn praktijk", "ik zie", "ik adviseer" of vergelijkbare ik-zinnen.\n'
     +'Schrijf in de derde persoon of onpersoonlijk: "uw kantoor", "de analyse toont", "het rapport concludeert".\n'
     +'NOOIT beginnen met "Laat ik direct zijn" of vergelijkbare retorische zinnen.\n'
-    +'STIJL: Schrijf zoals een ervaren M&A-adviseur die de eigenaar al tien jaar kent — geen verkooppraatje, geen voorzichtige omwegen, geen beleefde vaagheid. Zeg wat het is.\n'
-    +'STRUCTUUREIS per sectie: elke ## sectie eindigt met een zin die de eigenaar niet kan negeren. Geen samenvatting, geen conclusie — een harde vaststelling of een ongemakkelijke vraag.\n'
+    +'STIJL: Schrijf zoals een ervaren M&A-adviseur die kort en to-the-point communiceert — geen verkooppraatje, geen voorzichtige omwegen, maar ook geen overdreven dramatiek of doemdenken. Zeg wat het is, in zo min mogelijk woorden.\n'
     +(p.specialisme?'Specialisme "'+p.specialisme+'" meenemen: specifiek advies voor dit segment, geen generieke sector-aanbevelingen.\n':'')
     +(p.software&&p.software.length>2?'Software "'+p.software+'" is bekend: ga ervan uit dat dit al in gebruik is, adviseer geen alternatieven tenzij er fundamentele problemen zijn.\n':'')
     +(p.doelgroep?'Doelgroep "'+p.doelgroep+'" meenemen in commercieel en positioneringsadvies.\n':'')
@@ -822,15 +818,14 @@ async function generateAI(){
     +'## Strategische positie en commerciele kracht\n'
     +'## Risicoprofiel\n'
     +'## Aanbeveling\n'
-    +'INSTRUCTIE Aanbeveling: geef 3-5 concrete prioriteiten met tijdshorizon (0-6 maanden / 6-18 maanden / 18+ maanden). '
-    +'Elke prioriteit heeft een concreet gevolg als hij NIET wordt uitgevoerd — benoem dat expliciet. '
-    +'Verwerk de indicatieve waardering ('+waardering+') in de aanbeveling. VERBOD: gebruik uitsluitend de bedragen/multiples die hierboven letterlijk staan (regulier, eventueel PE-platform, eventueel het berekende potentieel zonder dealbreaker) — verzin NOOIT een aanvullend bedrag, percentage of bandbreedte die daar niet expliciet in staat. Als er een "berekend potentieel zonder dealbreaker" is gegeven, leg uit dat het wegnemen van de genoemde dealbreaker(s) dat verschil oplevert; is dat er niet, benoem dan alleen hoe de scan-zwaktes de multiple raken zonder een nieuw getal te noemen. '
-    +'Sluit af met één heldere, onvergetelijke zin die de eigenaar bijblijft als hij het rapport wegslaat.\n'
+    +'INSTRUCTIE Aanbeveling: geef 2-3 suggesties, geen uitputtende lijst. Behandel ze als overwegingen (zie AANBEVELINGEN ZIJN SUGGESTIES hierboven), niet als opdrachten — een tijdshorizon (bijv. "op korte termijn"/"op langere termijn") mag, een harde deadline met dwingend gevolg niet. '
+    +'Verwerk de indicatieve waardering ('+waardering+') kort in de aanbeveling. VERBOD: gebruik uitsluitend de bedragen/multiples die hierboven letterlijk staan (regulier, eventueel PE-platform, eventueel het berekende potentieel zonder dealbreaker) — verzin NOOIT een aanvullend bedrag, percentage of bandbreedte die daar niet expliciet in staat. '
+    +'Sluit af met één korte zin, geen dramatische afsluiter.\n'
     +'VERBOD: Gebruik GEEN markdown-tabellen (geen |---| of |kolom|). Schrijf alles in lopende tekst.\n'
-    +'VERBOD samenvatting-taal: NOOIT "samenvattend", "kortom", "al met al", "concluderend", "tot slot kan gesteld worden". Eindig elke sectie met een scherpe zin, geen conclusie-cliché.\n'
+    +'VERBOD samenvatting-taal: NOOIT "samenvattend", "kortom", "al met al", "concluderend", "tot slot kan gesteld worden".\n'
     +'VERBOD wollige kwalificaties: NOOIT "enigszins", "in zekere mate", "relatief", "vrij", "tamelijk", "redelijk goed". Kies positie of benoem het probleem direct.\n'
-    +(signalen.length?'VERPLICHT: Adresseer elk van deze alarmsignalen expliciet in het rapport: '+signalen.join(' | ')+'\n':'')
-    +(weaknesses!=='geen'?'VERPLICHT: Adresseer de zwakke dimensies expliciet: '+weaknesses+'\n':'');
+    +(signalen.length?'Benoem kort het belangrijkste alarmsignaal (niet per se alle): '+signalen.slice(0,2).join(' | ')+'\n':'')
+    +(weaknesses!=='geen'?'Zwakke dimensies, kort benoemen waar relevant (niet elke los uitwerken): '+weaknesses+'\n':'');
 
   // Check limiet
   const _email=(ST.profile&&ST.profile.email)||'';
@@ -1719,26 +1714,17 @@ function bindEvents(){
     // al w\u00e9l correct werden opgebouwd maar nooit gebruikt werden.
     var prompt='Geef een strategische groepsanalyse over deze '+offices.length+' kantoren samen \u2014 geen los rapport per kantoor. '+TAAL_REGELS+'\n\nGROEPSOVERZICHT:\n- Aantal kantoren: '+offices.length+'\n- Gemiddelde score: '+avg+'/100\n\nKANTOREN (gesorteerd op score):\n'+kantoorInfo+'\n\nGEMIDDELDE DIMENSIESCORES OVER DE GROEP:\n'+dimInfo+'\n\nGeef een rapport in het Nederlands met ## koppen:\n## Groepsprofiel\n[Spreiding in scores, opvallende verschillen tussen de kantoren, algemeen beeld]\n## Gezamenlijke sterktes\n[Wat de groep als geheel sterk maakt, op basis van de dimensiescores]\n## Gezamenlijke risicos en aandachtspunten\n[Structurele zwaktes die bij meerdere kantoren terugkomen]\n## Aanbeveling\n[Concreet advies voor de groep \u2014 bijv. kennisdeling, gezamenlijke inkoop, benchmarking, consolidatie]\n\nDirect, concreet, specifiek voor deze groep kantoren. Max 400 woorden.';
     try{
-      var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}]})});
+      // Bugfix 5 aug 2026: dit parste een SSE-streamformaat ("data: {...}") dat de backend nooit
+      // levert (/ai draait met stream:false en geeft één JSON-object terug — zelfde patroon als
+      // callAI() voor het individuele rapport). Zonder deze fix bleef txt altijd leeg: de crash die
+      // hiervóór zat (variabele 'o' bestond niet) verborg dit tot nu toe, want de code kwam nooit
+      // tot hier.
+      var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:3000})});
       if(!resp.ok)throw new Error('HTTP '+resp.status);
-      var reader=resp.body.getReader();
-      var dec=new TextDecoder();
-      var txt='';
-      out.innerHTML='';
-      while(true){
-        var res=await reader.read();
-        if(res.done)break;
-        var chunk=dec.decode(res.value,{stream:true});
-        var lines2=chunk.split('\n');
-        for(var li=0;li<lines2.length;li++){
-          var line2=lines2[li].trim();
-          if(!line2||line2==='data: [DONE]')continue;
-          if(line2.startsWith('data: ')){
-            try{var j=JSON.parse(line2.slice(6));if(j.type==='content_block_delta'&&j.delta&&j.delta.text)txt+=j.delta.text;}catch(e){}
-          }
-        }
-        out.innerHTML=renderAIText(txt,true);
-      }
+      var data=await resp.json();
+      if(data.error)throw new Error(data.error);
+      var txt=(data.text||'').trim();
+      if(!txt)throw new Error('Leeg antwoord van AI ontvangen');
       out.innerHTML=renderAIText(txt,false);
       btn.textContent='Opnieuw genereren';btn.disabled=false;
     }catch(e){

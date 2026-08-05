@@ -101,6 +101,8 @@ tr:hover td{background:rgba(26,122,94,.04)}
 const WORKER=new URLSearchParams(location.search).get('worker')||'https://kantoorinzicht.marcel-bisschops.workers.dev';
 // White-label basis — centrale merkconfig voor de beheerkant (zelfde patroon als de rest).
 const BRAND={platform:'KantoorInzicht',bedrijf:'Bisschops Financing B.V.',suffix:'Beheer',kort:'Bisschops Financing',adres:'Grotestraat 13, 5841AA Oploo'};
+// Vaste taalregels voor elke AI-prompt in marilyn.html (5 aug 2026, zelfde tekst als index.html/mna.html).
+const TAAL_REGELS='Schrijf in natuurlijk, vloeiend Nederlands — geen letterlijke vertaling uit het Engels. Gebruik uitsluitend de formele aanspreekvorm "u/uw", nooit "je/jij/jouw", ook niet losse keren door elkaar. Gebruik "geen [zelfstandig naamwoord]" i.p.v. de onnatuurlijke constructie "niet een [zelfstandig naamwoord]". Vermijd andere letterlijke Engelse constructies en verzin geen niet-bestaande woorden.';
 document.title=BRAND.platform+' — '+BRAND.suffix;
 (function(){var b=document.querySelector('.brand');if(b)b.innerHTML='<div class="wdot"></div>'+BRAND.platform+' <span style="color:var(--teal);margin-left:4px">'+BRAND.suffix+'</span>';})();
 let adminKey='',scans=[],callbacks=[],mnaList=[],rapporten=[],activeTab='scans',scanFilter='',openRow=null;
@@ -1354,7 +1356,7 @@ function renderWaarderingTab(el){
       };
       var _t3=selectedTraject?mnaList.find(function(t){return t.id===selectedTraject;})||{}:{};
       var sectorRapLabel=sectorRap[_t3.sector]||'Accountancy';
-      var prompt='Je bent Marcel Bisschops, senior M&A-adviseur. Sector: '+sectorRapLabel+'. '+( sectorBenchmarks[_t3.sector]||'')+'.\n\n'
+      var prompt='Je bent Marcel Bisschops, senior M&A-adviseur. Sector: '+sectorRapLabel+'. '+( sectorBenchmarks[_t3.sector]||'')+'. '+TAAL_REGELS+'\n\n'
         +'Schrijf een professioneel waarderingsrapport voor traject: '+trajectNaam+'\n\n'
         +'FINANCIËLE DATA:\n'
         +'- Omzet jaar 1: '+fmtGeld(W.omzet1)+'\n'
@@ -1389,7 +1391,7 @@ function renderWaarderingTab(el){
         +(_t3.traject_type==='PE-traject'
           ?'CONTEXT: Dit betreft een PE-traject waarbij een private equity partij een meerderheidsbelang verwerft. Gebruik PE-specifieke waarderingslogica: EBITDA-multiple als primaire methode, aandacht voor management buy-in/buy-out structuur, earn-out mogelijkheden, en recurring revenue kwaliteit. Voor accountantskantoren: PE-deals worden momenteel gewaardeerd op 10–11x EBITDA (Baker Tilly/Grant Thornton precedenten, mei 2025). Bespreek platformstrategie, add-on potentieel en exitstrategie.'
           :'')
-        +'\n\nSchrijf in professionele Nederlandse rapporttaal. Concreet, cijfermatig onderbouwd. Gebruik de benchmarknormen voor de sector.';
+        +'\n\nSchrijf in professionele Nederlandse rapporttaal. Concreet, cijfermatig onderbouwd. Gebruik de benchmarknormen voor de sector. In de sectie Conclusie en aanbeveling: presenteer aanbevelingen als overwegingen voor Marcel om aan de klant voor te leggen, niet als dwingende conclusies — de uiteindelijke afweging blijft aan de adviseur en de klant.';
       try{
         var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:8000})});
         var rd=await resp.json();
@@ -1989,7 +1991,7 @@ async function toonDetail(id,naam){
         var sectorKeyM=d.traject.sector||'accountancy';
         var sectorLabelM={accountancy:'Accountancy & administratie',mkb:'MKB',zorg:'Zorg',itsoftware:'IT & Software'}[sectorKeyM]||'Accountancy';
         var bmTekst='SECTOR: '+sectorLabelM+'\nNORMEN: '+(sectorNormsM[sectorKeyM]||sectorNormsM.accountancy)+'\n'+(bms&&bms['ebitda_marge_admin']?'Benchmark EBITDA: '+bms['ebitda_marge_admin'].waarde+'%\n':'');
-        var prompt='Je bent Marcel Bisschops, senior M&A-adviseur. Sector: '+sectorLabelM+'. Analyseer:\nTRAJECT: '+d.traject.kantoor_naam+' ('+d.traject.traject_type+')\n'+bmTekst+'\nDUE DILIGENCE:'+dataSamenvatting+'\n\n## Samenvatting\n## Financieel profiel & waardering\n## Sterktes\n## Risicos\n## Aanbevelingen\n\nMax 500 woorden. Gebruik de sectornormen als referentie.';
+        var prompt='Je bent Marcel Bisschops, senior M&A-adviseur. Sector: '+sectorLabelM+'. '+TAAL_REGELS+' Analyseer:\nTRAJECT: '+d.traject.kantoor_naam+' ('+d.traject.traject_type+')\n'+bmTekst+'\nDUE DILIGENCE:'+dataSamenvatting+'\n\n## Samenvatting\n## Financieel profiel & waardering\n## Sterktes\n## Risicos\n## Aanbevelingen\n\nMax 500 woorden. Gebruik de sectornormen als referentie. Aanbevelingen zijn overwegingen voor Marcel om mee te nemen, geen dwingende conclusies.';
         var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:3000})});
         var rd=await resp.json();
         var tekst=rd.text||(rd.error||'Fout.');
