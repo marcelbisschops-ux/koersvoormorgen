@@ -897,7 +897,7 @@ function renderWaarderingTab(el){
   var selectedTraject=null;
   var bms={};
   var W={omzet1:0,omzet2:0,omzet3:0,ebitda:0,fte:0,aantalKlanten:0,recurring:0,churn:0,marge:0,
-    multiLaag:4.6,multiMid:5.05,multiHoog:5.5,omzetFactor:0.8,risico:0,
+    multiLaag:4.6,multiMid:5.05,multiHoog:5.5,multiBronOntbreekt:true,omzetFactor:0.8,risico:0,
     earnBase:0,earnPct:20,earnTarget:5,earnJaren:3,earnMinimum:0};
 
   function parseGeld(s){if(!s)return 0;var n=String(s).replace(/[^0-9,.]/g,'').replace(',','.');return parseFloat(n)||0;}
@@ -971,6 +971,7 @@ function renderWaarderingTab(el){
 
     // Multiples
     html+='<div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem;padding-bottom:.4rem;border-bottom:1px solid var(--border)">EBITDA multiples</div>'
+      +(W.multiBronOntbreekt?'<div style="font-size:11px;color:var(--red);margin-bottom:.6rem">⚠ Geen multiple ingesteld in Benchmarks — onderstaande waarden zijn een schatting, geen brondata. Controleer vóór gebruik.</div>':'')
       +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:1.5rem">'
       +'<div><div style="font-size:10px;color:var(--muted);margin-bottom:3px">Laag (×)</div><input type="number" id="w-multi-laag" value="'+W.multiLaag+'" step="0.1" style="width:100%;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:7px 10px;font-size:13px;font-family:IBM Plex Mono,monospace"></div>'
       +'<div><div style="font-size:10px;color:var(--muted);margin-bottom:3px">Midden (×)</div><input type="number" id="w-multi-mid" value="'+W.multiMid+'" step="0.1" style="width:100%;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:7px 10px;font-size:13px;font-family:IBM Plex Mono,monospace"></div>'
@@ -1064,6 +1065,7 @@ function renderWaarderingTab(el){
   // Laad benchmarks
   fetch(WORKER+'/benchmarks').then(function(r){return r.json();}).then(function(data){
     data.forEach(function(b){bms[b.sleutel]=b;});
+    W.multiBronOntbreekt=!(bms['multiple_adm_laag']&&bms['multiple_adm_hoog']);
     W.multiLaag=bms['multiple_adm_laag']?bms['multiple_adm_laag'].waarde:4.6;
     W.multiHoog=bms['multiple_adm_hoog']?bms['multiple_adm_hoog'].waarde:5.5;
     W.multiMid=Math.round((W.multiLaag+W.multiHoog)/2*100)/100;
