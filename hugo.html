@@ -65,6 +65,7 @@ function renderLogin() {
     + '<div class="field"><label>Admin sleutel</label><input type="password" id="ak" autofocus></div>'
     + '<button class="btn" id="login-btn" style="width:100%">Inloggen</button>'
     + '<div id="login-err" style="color:var(--red);font-size:12px;margin-top:.75rem;display:none">Sleutel onjuist.</div>'
+    + '<div style="text-align:center;margin-top:1rem;font-size:11px;color:var(--muted)">&copy; ' + new Date().getFullYear() + ' ' + BRAND.bedrijf + ' Alle rechten voorbehouden.</div>'
     + '</div></div>';
   document.getElementById('login-btn').addEventListener('click', doLogin);
   document.getElementById('ak').addEventListener('keydown', function(e) { if (e.key === 'Enter') doLogin(); });
