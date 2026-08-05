@@ -1,5 +1,8 @@
 // © 2026 Bisschops Financing B.V. Alle rechten voorbehouden.
-function parseGeld(s){if(!s)return 0;var n=String(s).replace(/[^0-9,.]/g,'').replace(',','.');return parseFloat(n)||0;}
+// Fix 5 aug 2026: "3.000.000" (NL-duizendtallen) werd door parseFloat na de eerste extra punt
+// afgekapt tot 3 — punten zijn in NL-notatie altijd duizendtal-scheiding, nooit decimaal (dat is de
+// komma), dus die worden nu eerst verwijderd vóór het omzetten van de komma naar een decimale punt.
+function parseGeld(s){if(!s)return 0;var n=String(s).replace(/[^0-9,.]/g,'').replace(/\./g,'').replace(',','.');return parseFloat(n)||0;}
 function fmtGeld(n){if(!n||isNaN(n))return '—';if(n>=1000000)return '€'+(n/1000000).toFixed(2)+' mln';if(n>=1000)return '€'+(n/1000).toFixed(0)+'.000';return '€'+Math.round(n);}
 // Zelfde als parseGeld, maar geeft null terug als het veld niet is ingevuld (i.p.v. 0) — nodig voor
 // de financiële ratio's hieronder, waar 0 een geldige uitkomst kan zijn (bijv. geen schuld) en dus
