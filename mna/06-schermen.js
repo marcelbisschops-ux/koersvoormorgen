@@ -1811,7 +1811,7 @@ function bindAll(){
       var financieelRow=(S._mnaData||[]).find(function(row){return row.fase_id==='financieel';});
       var fdj={};
       try{var rawFdj=financieelRow?financieelRow.data_json:null;fdj=typeof rawFdj==='string'?JSON.parse(rawFdj):(rawFdj||{});}catch(e){}
-      function parseGeldLocal(s){if(!s)return 0;var n=String(s).replace(/[^0-9,.]/g,'').replace(',','.');return parseFloat(n)||0;}
+      function parseGeldLocal(s){if(!s)return 0;var n=String(s).replace(/[^0-9,.]/g,'').replace(/\./g,'').replace(',','.');return parseFloat(n)||0;}
       var omzet3=fdj.omzet3?parseGeldLocal(fdj.omzet3.value):0;
       var ebitdaPct=fdj.ebitda?parseFloat(String(fdj.ebitda.value).replace(',','.'))||0:0;
       var ebitdaBedrag=omzet3*(ebitdaPct/100);
