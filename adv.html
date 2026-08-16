@@ -380,6 +380,7 @@ function renderAdvHandleiding(){
         + stap(3,'Eigen huisstijl (optioneel)','Via "🎨 Huisstijl" stelt u een eigen platformnaam, accentkleur en logo in. Dit geldt voor alle trajecten die u vanaf dat moment aanmaakt. Kiest u een kleur die op een donkere achtergrond moeilijk leesbaar zou zijn, dan waarschuwt het scherm dit direct — en wordt de kleur voor uw cliënten automatisch iets aangepast voor leesbaarheid.')
         + stap(4,'Modules en limieten','Uw account heeft een trajectlimiet en een set modules (Contracten, AI-analyse, Q&amp;A, Export), zichtbaar als chips boven uw trajectenlijst. Een module met een slotje is niet actief — neem contact op met uw platformbeheerder.')
         + stap(5,'Voorwaarden','Bij eerste gebruik accepteert u de <a href="platformvoorwaarden.html">Gebruiksvoorwaarden</a>. Zie ook de <a href="privacy.html">Privacyverklaring</a>.')
+        + stap(6,'Meekijkers','Bij elk traject kunt u onder "Meekijkers" een bank, accountant of andere aandrager beperkte, alleen-lezen inzage geven in (een deel van) dat traject. U bevestigt daarbij expliciet dat u toestemming heeft van uw opdrachtgever — zonder die bevestiging kan er geen toegangscode ontstaan. De meekijker moet zelf eerst een vertrouwelijkheidsverklaring accepteren voordat hij iets te zien krijgt, en verkoper/koper zien in hun eigen dashboard altijd wie er meekijkt. Toegang is altijd alleen-lezen en door u op elk moment intrekbaar.')
       )}
 
       ${sectie('🧭 Begeleider (binnen een traject, op mna.html)',
@@ -390,7 +391,7 @@ function renderAdvHandleiding(){
         + stap(5,'Koper-fit strategie','Leg vast waarom de koper overnames zoekt; het systeem toetst de verkoper hier expliciet tegen — harde cijfers automatisch, vrije tekst alleen geciteerd door de AI, nooit zelf beoordeeld.')
         + stap(6,'Groepsstructuur, koper-toegang, Q&amp;A, wijzigingenlog','Entiteiten beheren bij een holdingstructuur, per DD-categorie bepalen wat de koper mag zien, en elke wijziging van de verkoper gelogd terugzien. Bij het Q&amp;A-register (op mna.html) kunt u per vraag een deadline zetten (onbeantwoord na die datum geeft een rode waarschuwing) en de vraag toewijzen aan een naam; na een antwoord blijft de vraag open voor een reactiedraad.')
         + stap(7,'Partners beheren','Registreer partners bij naam en koppel ze aan hun entiteit(en), in plaats van per entiteit los leeftijd/veranderbereidheid in te vullen. De gevraagde omzet is bewust de omzet inclusief onderliggend team die bij vertrek van de partner risico loopt.')
-        + stap(8,'Meekijkers toevoegen','Wilt u een bank, accountant of andere aandrager beperkte, alleen-lezen inzage geven in dit traject? Dit is momenteel alleen in te stellen via het beheerpaneel (marilyn) — neem daarvoor contact op met uw platformbeheerder. Bij het aanmaken wordt expliciet bevestigd dat er toestemming is van de opdrachtgever. De meekijker moet zelf eerst een vertrouwelijkheidsverklaring accepteren, en verkoper/koper zien in hun eigen dashboard altijd wie er meekijkt. Toegang is altijd alleen-lezen, beperkt tot één fase (of alles), en op elk moment intrekbaar.')
+        + stap(8,'Meekijkers toevoegen','Wilt u een bank, accountant of andere aandrager beperkte, alleen-lezen inzage geven in dit traject? Dat regelt u niet hier op mna.html, maar bij dit traject in uw eigen adviseursportaal (adv.html), onder "Meekijkers" — bent u zelf platformbeheerder, dan kan dit ook via marilyn. Bij het aanmaken bevestigt u expliciet dat er toestemming is van de opdrachtgever. De meekijker moet zelf eerst een vertrouwelijkheidsverklaring accepteren, en verkoper/koper zien in hun eigen dashboard altijd wie er meekijkt. Toegang is altijd alleen-lezen, beperkt tot één fase (of alles), en op elk moment intrekbaar.')
       )}
 
       ${sectie('👤 Verkoper',
@@ -922,6 +923,28 @@ function renderDetail(t){
       </div>
 
       <div class="card">
+        <div class="card-hdr"><div class="card-title">👀 Meekijkers</div></div>
+        <div class="card-body">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:1rem;line-height:1.6">Geef een bank, accountant of andere aandrager beperkte, alleen-lezen toegang tot (een deel van) dit traject.</div>
+          <div id="meekijkers-body" style="margin-bottom:1.25rem;font-size:13px">Laden...</div>
+          <div style="border-top:1px solid var(--border);padding-top:1rem">
+            <div style="font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem">Nieuwe meekijker</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <div class="field" style="flex:2;min-width:180px"><label>Naam meekijker</label><input type="text" id="mk-adv-naam"></div>
+              <div class="field" style="flex:1;min-width:120px"><label>Type</label><select id="mk-adv-type"><option value="bank">Bank</option><option value="accountant">Accountant</option><option value="overig">Overig</option></select></div>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <div class="field" style="flex:1;min-width:160px"><label>Scope</label><select id="mk-adv-scope"><option value="alle">Alle fases</option></select></div>
+              <div class="field" style="flex:1;min-width:140px"><label>Verloopt na (optioneel, dagen)</label><input type="number" id="mk-adv-verloopt" min="1"></div>
+            </div>
+            <label style="display:flex;align-items:flex-start;gap:8px;font-size:12px;color:var(--muted);line-height:1.5;margin:.5rem 0 1rem;cursor:pointer"><input type="checkbox" id="mk-adv-toestemming" style="margin-top:2px"> Ik heb toestemming van mijn opdrachtgever om deze partij beperkte inzage te geven in dit traject.</label>
+            <div id="mk-adv-err" class="err-msg"></div>
+            <button class="btn btn-sm" id="mk-adv-toevoegen">+ Meekijker aanmaken</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
         <div class="card-hdr">
           <div class="card-title">📁 Dataroom — Documenten</div>
           <button class="btn btn-sm" id="btn-upload">↑ Document uploaden</button>
@@ -951,7 +974,79 @@ function renderDetail(t){
   if(t.tussen_code){
     laadDocumenten(id, t.tussen_code);
     laadGesprekken(id, t.tussen_code);
+    initMeekijkersAdv(id, t.tussen_code, t.sector||'accountancy');
   }
+}
+
+// ===== MEEKIJKERS (adviseur beheert zelf, via eigen tussenpersoonscode) =====
+function initMeekijkersAdv(id, tussenCode, sector){
+  fetch(WORKER+'/mna/sectorprofielen').then(function(r){return r.json();}).then(function(d){
+    var profiel=d.profielen&&d.profielen[sector];
+    var sel=ge('mk-adv-scope');if(!sel)return;
+    (profiel&&profiel.fases||[]).forEach(function(f){
+      var opt=document.createElement('option');opt.value=f.id;opt.textContent=(f.num?f.num+'. ':'')+f.title;sel.appendChild(opt);
+    });
+  }).catch(function(){});
+
+  var faseLabels={};
+  fetch(WORKER+'/mna/sectorprofielen').then(function(r){return r.json();}).then(function(d){
+    var profiel=d.profielen&&d.profielen[sector];
+    (profiel&&profiel.fases||[]).forEach(function(f){faseLabels[f.id]=f.title;});
+  }).catch(function(){});
+
+  function laadLijst(){
+    var el=ge('meekijkers-body');if(!el)return;
+    fetch(WORKER+'/mna/admin/viewer/lijst?traject_id='+encodeURIComponent(id),{headers:{'x-tussen-key':tussenCode}})
+      .then(function(r){return r.json();}).then(function(d){
+        var viewers=d.viewers||[];
+        if(!viewers.length){el.innerHTML='<div style="color:var(--muted);font-style:italic">Nog geen meekijkers voor dit traject.</div>';return;}
+        var html='<table style="width:100%;border-collapse:collapse"><thead><tr style="font-size:10px;text-transform:uppercase;color:var(--muted);text-align:left"><th style="padding-bottom:6px">Naam</th><th>Type</th><th>Scope</th><th>Code</th><th>Status</th><th></th></tr></thead><tbody>';
+        viewers.forEach(function(v){
+          var ingetrokken=!!v.ingetrokken_op;
+          var verlopen=v.expires_at&&Date.now()>v.expires_at;
+          var status=ingetrokken?'Ingetrokken':(verlopen?'Verlopen':'Actief');
+          var statusKleur=ingetrokken||verlopen?'#c0392b':'#1a7a5e';
+          html+='<tr style="border-top:1px solid var(--border)"><td style="padding:6px 0">'+esc(v.viewer_naam||'—')+'</td><td>'+esc(v.viewer_type||'—')+'</td>'
+            +'<td>'+(v.scope_fase==='alle'?'Alle fases':esc(faseLabels[v.scope_fase]||v.scope_fase))+'</td>'
+            +'<td><span class="code-val" style="font-size:11px">'+esc(v.viewer_code)+'</span></td>'
+            +'<td style="color:'+statusKleur+'">'+status+'</td>'
+            +'<td>'+(ingetrokken?'':'<button class="btn-outline" style="font-size:11px;padding:2px 8px;color:#c0392b;border-color:#c0392b" onclick="intrekMeekijkerAdv(\''+esc(v.id)+'\',\''+esc(id)+'\',\''+esc(tussenCode)+'\')">Intrekken</button>')+'</td></tr>';
+        });
+        html+='</tbody></table>';
+        el.innerHTML=html;
+      }).catch(function(){el.innerHTML='<div style="color:#c0392b">Kon meekijkers niet laden.</div>';});
+  }
+  laadLijst();
+  window._mkAdvLaadLijst=laadLijst;
+
+  ge('mk-adv-toevoegen').onclick=function(){
+    var naam=ge('mk-adv-naam').value.trim();
+    var type=ge('mk-adv-type').value;
+    var scope=ge('mk-adv-scope').value;
+    var verloopt=ge('mk-adv-verloopt').value.trim();
+    var toestemming=ge('mk-adv-toestemming').checked;
+    var err=ge('mk-adv-err');err.style.display='none';
+    if(!naam){err.style.display='block';err.textContent='Naam meekijker is verplicht.';return;}
+    if(!toestemming){err.style.display='block';err.textContent='Bevestig eerst dat u toestemming heeft van uw opdrachtgever.';return;}
+    var btn=this;btn.disabled=true;btn.textContent='Bezig...';
+    var body={traject_id:id,viewer_naam:naam,viewer_type:type,scope_fase:scope,toestemming_bevestigd:true};
+    if(verloopt)body.verloopt_dagen=Number(verloopt);
+    fetch(WORKER+'/mna/admin/viewer/aanmaken',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':tussenCode},body:JSON.stringify(body)})
+      .then(function(r){return r.json();}).then(function(d){
+        if(d.ok){
+          ge('mk-adv-naam').value='';ge('mk-adv-verloopt').value='';ge('mk-adv-toestemming').checked=false;
+          toast('Meekijker-code aangemaakt: '+d.viewer_code,'ok');
+          laadLijst();
+        }else{err.style.display='block';err.textContent='Fout: '+(d.error||'onbekend');}
+        btn.disabled=false;btn.textContent='+ Meekijker aanmaken';
+      }).catch(function(){err.style.display='block';err.textContent='Verbindingsfout.';btn.disabled=false;btn.textContent='+ Meekijker aanmaken';});
+  };
+}
+function intrekMeekijkerAdv(viewerId, trajectId, tussenCode){
+  if(!confirm('Toegang voor deze meekijker direct intrekken?'))return;
+  fetch(WORKER+'/mna/admin/viewer/intrekken',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':tussenCode},body:JSON.stringify({id:viewerId,traject_id:trajectId})})
+    .then(function(){if(window._mkAdvLaadLijst)window._mkAdvLaadLijst();})
+    .catch(function(){toast('Intrekken mislukt.','err');});
 }
 
 // ===== VERKOPER/KOPER-GEGEVENS BEWERKEN (zelf-service, i.p.v. via Marcel) =====
