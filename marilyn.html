@@ -113,6 +113,15 @@ function toast(msg,type,dur){type=type||'ok';dur=dur||3500;var c=document.getEle
 function dc(v){return v>=70?'score-high':v>=50?'score-mid':'score-low';}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function formatDate(ts){if(!ts)return '—';return new Date(ts).toLocaleDateString('nl-NL',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});}
+function meekijkerChipsHtml(t){
+  var actief=(t.meekijkers||[]).filter(function(v){return !v.ingetrokken_op&&!(v.expires_at&&Date.now()>v.expires_at);});
+  if(!actief.length)return '';
+  return '<div style="margin-top:3px;display:flex;gap:3px;flex-wrap:wrap;align-items:center">'
+    +actief.map(function(v){
+      return '<span class="code-chip" style="font-size:10px;background:var(--card);color:var(--mid);border-color:var(--border2)" title="Meekijker: '+esc(v.viewer_naam||'—')+' ('+esc(v.viewer_type||'—')+') — scope: '+esc(v.scope_fase==='alle'?'alle fases':v.scope_fase)+'">&#128064; '+esc(v.viewer_code)+'</span><button class="copy-btn" data-copy="'+esc(v.viewer_code)+'">⎘</button>';
+    }).join('')
+    +'</div>';
+}
 function partijLabels(type){
   var t=type||'Verkoop';
   if(t==='Fusie')return{partij1:'Fusiepartij A',partij2:'Fusiepartij B',p1adres:'Adres partij A',p2adres:'Adres partij B',p1kvk:'KvK partij A',p2kvk:'KvK partij B',p1contact:'Contactpersoon A',p2contact:'Contactpersoon B',p1email:'E-mail partij A',p2email:'E-mail partij B',p1rv:'Rechtsvorm partij A',sectie1:'Fusiepartij A',sectie2:'Fusiepartij B'};
@@ -405,7 +414,7 @@ function renderMnaTab(el){
         +'<button class="btn-ghost btn-detail" data-id="'+esc(t.id)+'" data-naam="'+esc(t.kantoor_naam||t.id)+'" style="font-size:11px;padding:3px 8px">&#128065; Bekijk</button>'
         +(t.inhoud_afgeschermd
           ?'<span class="btn-ghost" style="font-size:11px;padding:3px 8px;opacity:.5;cursor:not-allowed" title="Afgeschermd — traject van externe adviseur">&#128064; Meekijkers</span>'
-          :'<button class="btn-ghost btn-meekijkers" data-id="'+esc(t.id)+'" data-naam="'+esc(t.kantoor_naam||t.id)+'" data-sector="'+esc(t.sector||'accountancy')+'" style="font-size:11px;padding:3px 8px">&#128064; Meekijkers</button>')
+          :'<span><button class="btn-ghost btn-meekijkers" data-id="'+esc(t.id)+'" data-naam="'+esc(t.kantoor_naam||t.id)+'" data-sector="'+esc(t.sector||'accountancy')+'" style="font-size:11px;padding:3px 8px">&#128064; Meekijkers</button>'+meekijkerChipsHtml(t)+'</span>')
         +'<button class="btn-ghost btn-bewerk" data-id="'+esc(t.id)+'" data-naam="'+esc(t.kantoor_naam||t.id)+'" style="font-size:11px;padding:3px 8px">&#9999;&#65039; Bewerk</button>'
         +'<button class="btn-ghost btn-opslaan" data-idx="'+i+'" style="font-size:11px;padding:3px 8px">&#8681; Opslaan</button>'
         +(t.inhoud_afgeschermd
@@ -2670,6 +2679,7 @@ async function toonMeekijkersModal(trajectId, trajectNaam, sector){
           b.disabled=true;b.textContent='Bezig...';
           await fetch(WORKER+'/mna/admin/viewer/intrekken',{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':adminKey},body:JSON.stringify({id:b.dataset.id,traject_id:trajectId})}).catch(function(){});
           laadLijst();
+          refreshData();
         });
       });
     }catch(e){lijstEl.innerHTML='<div style="color:var(--red)">Kon meekijkers niet laden.</div>';}
@@ -2693,6 +2703,7 @@ async function toonMeekijkersModal(trajectId, trajectNaam, sector){
         document.getElementById('mk-naam').value='';document.getElementById('mk-verloopt').value='';
         toast('Meekijker-code aangemaakt: '+d.viewer_code,'ok',6000);
         laadLijst();
+        refreshData();
       }else{err.style.display='block';err.textContent='Fout: '+(d.error||'onbekend');}
     }catch(e){err.style.display='block';err.textContent='Verbindingsfout.';}
     btn.disabled=false;btn.textContent='+ Meekijker aanmaken';
