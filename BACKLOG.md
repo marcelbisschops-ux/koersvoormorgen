@@ -18,7 +18,8 @@ Er staat momenteel **niets open** dat vóór of tijdens de externe testfase acti
 
 ## Openstaande punten (ná bouwfreeze, op Marcels verzoek toegevoegd)
 
-1. **Begeleider-dashboard (mna.html) is onoverzichtelijk** (Marcel, 16 augustus 2026, tijdens de meekijker-bouwsessie) — de knoppenwand onder "Documenten" (NDA/BEM/LoI/Excl/Dealvoorstel/Indicatieve bieding/Aandachtspunten SPA/Closing-checklist) en de secties eronder (Communicatie/Analyse) nodigen niet genoeg uit en zijn te dicht op elkaar. Marcel wil: volledig uitgeschreven documentnamen i.p.v. afkortingen, betere groepering, en inklapbare secties/dropdowns i.p.v. alles in beeld tegelijk. Nog niet opgepakt — bewust apart gehouden van de meekijker-bouwsessie waarin dit werd gesignaleerd. Bestand: `mna/04-begeleider-dashboard.js` (renderBegeleiderDashboard-achtige functie, zie de knoppenrij rond "Documenten").
+1. ~~Begeleider-dashboard (mna.html) is onoverzichtelijk~~ — **afgerond 16 augustus 2026**: volledig uitgeschreven documentnamen, groepering per dealfase (Voorfase/Onderhandeling/Afronding), Documenten/Communicatie/Analyse nu los inklapbaar. Getest op staging (browser).
+2. **Eigen bem_koper-sjabloon (echte tarieven) nog niet in productie** (16 augustus 2026) — op basis van de getekende [dossier]-bemiddelingsovereenkomst is een eigen template gebouwd (succesfee 4,5%/3,5%/2,75%/2%, min €25.000; voorfase Fase 0 €4.000 + Fase 1 €6.000; uurtarief €250; forum Rechtbank Oost-Brabant), getest op staging (tokens/tarieven kloppen). Alleen voor Marcels eigen account (begeleider_email marcel@bisschopsfinancing.nl) — niet het platform-brede standaardsjabloon. Bestand staat lokaal klaar; moet nog via marilyn → Templates → Bemiddelingsovereenkomst Aankoop → "Upload eigen" worden geüpload (of Claude doet dit met de productie-ADMIN_KEY). bem_verk (verkoop-mandaat) bewust nog niet gedaan — geen getekend voorbeeld beschikbaar.
 
 ---
 
