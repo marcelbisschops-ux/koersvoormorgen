@@ -227,6 +227,7 @@ function renderDashboard(){
     +'<button class="tab'+(activeTab==='templates'?' active':'')+'" id="t-templates">&#128196; Templates</button>'
     +(isSuperAdmin?'<button class="tab'+(activeTab==='sectoren'?' active':'')+'" id="t-sectoren">&#127970; Sectoren</button>':'')
     +(isSuperAdmin?'<button class="tab'+(activeTab==='gebruikers'?' active':'')+'" id="t-geb" style="border-left:2px solid var(--gold)">&#128101; Gebruikers</button>':'')
+    +(isSuperAdmin?'<button class="tab'+(activeTab==='tarieven'?' active':'')+'" id="t-tarieven">&euro; Tarieven</button>':'')
     +'</div>'
     +'<div id="tc"></div>';
   if(isSuperAdmin){var ts=document.getElementById('t-scans');if(ts)ts.addEventListener('click',function(){activeTab='scans';scanFilter='';openRow=null;renderDashboard();});var tc2=document.getElementById('t-cb');if(tc2)tc2.addEventListener('click',function(){activeTab='callbacks';renderDashboard();});}
@@ -239,6 +240,7 @@ function renderDashboard(){
   document.getElementById('t-templates').addEventListener('click',function(){activeTab='templates';renderDashboard();});
   if(isSuperAdmin){var stb=document.getElementById('t-sectoren');if(stb)stb.addEventListener('click',function(){activeTab='sectoren';renderDashboard();});}
   if(isSuperAdmin){var gtb=document.getElementById('t-geb');if(gtb)gtb.addEventListener('click',function(){activeTab='gebruikers';renderDashboard();});}
+  if(isSuperAdmin){var ttb=document.getElementById('t-tarieven');if(ttb)ttb.addEventListener('click',function(){activeTab='tarieven';renderDashboard();});}
   renderTab();
   // Systeemwaarschuwingen: Signhost-herinnering bewust verwijderd (verzoek Marcel, juli 2026).
   // De container #sys-waarschuwingen blijft beschikbaar voor eventuele toekomstige meldingen.
@@ -256,6 +258,7 @@ function renderTab(){
   else if(activeTab==='templates')renderTemplatesTab(el);
   else if(activeTab==='sectoren')renderSectorenTab(el);
   else if(activeTab==='gebruikers')renderGebruikersTab(el);
+  else if(activeTab==='tarieven')renderTarievenTab(el);
   else renderRapportenTab(el);
 }
 
@@ -3360,6 +3363,90 @@ async function renderGebruikersTab(el) {
         if (rd.ok) { toast('Uitnodiging opnieuw verstuurd.', 'ok'); }
         else { toast('Fout: ' + (rd.error||'onbekend'), 'err'); }
         btn.disabled = false; btn.textContent = '✉ Opnieuw sturen';
+      });
+    });
+  } catch(e) {
+    el.innerHTML = '<div style="color:var(--red);font-size:13px;padding:1rem">Fout bij laden: ' + esc(e.message) + '</div>';
+  }
+}
+
+var TARIEF_LABELS = {
+  basis: 'Basis (DD-begeleiding zonder AI-extractie)',
+  ai: 'Basis + AI (met AI-documentextractie/analyse)',
+  lead_inbreng: 'Module-fee — Lead-inbreng (eenmalig per traject met aandrager)',
+  meekijker: 'Module-fee — Meekijker (eenmalig per aangemaakte code)'
+};
+
+async function renderTarievenTab(el) {
+  el.innerHTML = '<div style="padding:1rem;color:var(--muted);font-size:13px">Laden...</div>';
+  try {
+    var tr = await fetch(WORKER + '/mna/admin/tarieven?key=' + encodeURIComponent(adminKey));
+    var tarieven = await tr.json();
+    var er = await fetch(WORKER + '/mna/admin/tarieven/events?key=' + encodeURIComponent(adminKey));
+    var events = await er.json();
+    if (!Array.isArray(tarieven)) tarieven = [];
+    if (!Array.isArray(events)) events = [];
+
+    var html = '<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:1.25rem">&euro; Tarieven — platformgebruik door adviseurs</div>'
+      + '<div style="font-size:12px;color:var(--muted);margin-bottom:1.25rem;line-height:1.6">Bedragen hieronder gelden voor <em>nieuwe</em> trajecten/gebeurtenissen vanaf het moment van opslaan. Een reeds aangemaakt traject behoudt het tarief dat gold op het moment van aanmaken (vastgepind, zie kolom "Gepind" in het overzicht eronder) — een latere wijziging hier raakt lopende trajecten dus nooit met terugwerkende kracht.</div>'
+      + '<div style="overflow-x:auto;margin-bottom:2rem"><table style="width:100%;border-collapse:collapse;font-size:13px">'
+      + '<thead><tr>'
+      + '<th style="text-align:left;padding:8px 12px;font-size:11px;color:var(--muted);border-bottom:1px solid var(--border);font-weight:600">Fee-type</th>'
+      + '<th style="text-align:left;padding:8px 12px;font-size:11px;color:var(--muted);border-bottom:1px solid var(--border);font-weight:600">Bedrag (&euro;)</th>'
+      + '<th style="text-align:left;padding:8px 12px;font-size:11px;color:var(--muted);border-bottom:1px solid var(--border);font-weight:600">Laatst gewijzigd</th>'
+      + '<th style="padding:8px 12px;border-bottom:1px solid var(--border)"></th>'
+      + '</tr></thead><tbody>';
+    tarieven.forEach(function(t) {
+      var wijzDatum = t.laatst_gewijzigd_op ? new Date(t.laatst_gewijzigd_op).toLocaleDateString('nl-NL') : '—';
+      html += '<tr style="border-bottom:1px solid var(--border)">'
+        + '<td style="padding:10px 12px;color:var(--sub)"><div style="font-weight:600">' + esc(t.fee_type) + '</div><div style="font-size:11px;color:var(--muted)">' + esc(TARIEF_LABELS[t.fee_type] || t.omschrijving || '') + '</div></td>'
+        + '<td style="padding:10px 12px"><input type="number" min="0" step="1" class="tar-bedrag" data-type="' + esc(t.fee_type) + '" value="' + Number(t.bedrag) + '" style="width:110px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--sub);font-family:IBM Plex Mono,monospace"></td>'
+        + '<td style="padding:10px 12px;font-size:11px;color:var(--muted)">' + wijzDatum + (t.laatst_gewijzigd_door ? ' &middot; ' + esc(t.laatst_gewijzigd_door) : '') + '</td>'
+        + '<td style="padding:10px 12px"><button class="btn-ghost tar-opslaan" data-type="' + esc(t.fee_type) + '" style="font-size:10px;padding:3px 8px;color:var(--gold);border-color:var(--gold)">Opslaan</button></td>'
+        + '</tr>';
+    });
+    html += '</tbody></table></div>';
+
+    html += '<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem">Fee-events (' + events.length + ') — facturatie-overzicht per adviseur/traject</div>';
+    if (!events.length) {
+      html += '<div style="color:var(--muted);font-size:13px;font-style:italic;padding:1rem 0">Nog geen fee-events gelogd.</div>';
+    } else {
+      html += '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">'
+        + '<thead><tr>'
+        + '<th style="text-align:left;padding:8px 12px;font-size:11px;color:var(--muted);border-bottom:1px solid var(--border);font-weight:600">Datum</th>'
+        + '<th style="text-align:left;padding:8px 12px;font-size:11px;color:var(--muted);border-bottom:1px solid var(--border);font-weight:600">Adviseur</th>'
+        + '<th style="text-align:left;padding:8px 12px;font-size:11px;color:var(--muted);border-bottom:1px solid var(--border);font-weight:600">Traject</th>'
+        + '<th style="text-align:left;padding:8px 12px;font-size:11px;color:var(--muted);border-bottom:1px solid var(--border);font-weight:600">Fee-type</th>'
+        + '<th style="text-align:left;padding:8px 12px;font-size:11px;color:var(--muted);border-bottom:1px solid var(--border);font-weight:600">Bedrag</th>'
+        + '<th style="text-align:left;padding:8px 12px;font-size:11px;color:var(--muted);border-bottom:1px solid var(--border);font-weight:600">Omschrijving</th>'
+        + '</tr></thead><tbody>';
+      events.forEach(function(ev) {
+        html += '<tr style="border-bottom:1px solid var(--border)">'
+          + '<td style="padding:10px 12px;font-size:11px;color:var(--muted)">' + new Date(ev.created_at).toLocaleDateString('nl-NL') + '</td>'
+          + '<td style="padding:10px 12px;color:var(--sub)">' + esc(ev.gebruiker_naam || '—') + (ev.gebruiker_email ? '<div style="font-size:11px;color:var(--muted)">' + esc(ev.gebruiker_email) + '</div>' : '') + '</td>'
+          + '<td style="padding:10px 12px;color:var(--mid)">' + esc(ev.kantoor_naam || ev.traject_id) + '</td>'
+          + '<td style="padding:10px 12px;color:var(--mid)">' + esc(ev.fee_type) + '</td>'
+          + '<td style="padding:10px 12px;font-family:IBM Plex Mono,monospace;color:var(--teal)">&euro;' + Number(ev.bedrag).toLocaleString('nl-NL') + '</td>'
+          + '<td style="padding:10px 12px;font-size:11px;color:var(--muted)">' + esc(ev.omschrijving || '') + '</td>'
+          + '</tr>';
+      });
+      html += '</tbody></table></div>';
+    }
+    el.innerHTML = html;
+
+    el.querySelectorAll('.tar-opslaan').forEach(function(btn) {
+      btn.addEventListener('click', async function() {
+        var type = btn.dataset.type;
+        var inp = el.querySelector('.tar-bedrag[data-type="' + type + '"]');
+        var bedrag = Number(inp.value);
+        if (!isFinite(bedrag) || bedrag < 0) { toast('Bedrag moet een getal ≥ 0 zijn.', 'err'); return; }
+        btn.disabled = true; btn.textContent = 'Opslaan...';
+        try {
+          var sr = await fetch(WORKER + '/mna/admin/tarieven', { method: 'POST', headers: { 'x-admin-key': adminKey, 'Content-Type': 'application/json' }, body: JSON.stringify({ fee_type: type, bedrag: bedrag, door: 'Marcel (marilyn)' }) });
+          var sd = await sr.json();
+          if (sd.ok) { toast('Tarief "' + type + '" opgeslagen: €' + bedrag + '.', 'ok'); var tct = document.querySelector('.tab-content'); if (tct) renderTarievenTab(tct); }
+          else { toast(sd.error || 'Fout bij opslaan.', 'err'); btn.disabled = false; btn.textContent = 'Opslaan'; }
+        } catch(e) { toast('Verbindingsfout.', 'err'); btn.disabled = false; btn.textContent = 'Opslaan'; }
       });
     });
   } catch(e) {
