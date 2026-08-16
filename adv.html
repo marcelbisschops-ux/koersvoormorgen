@@ -822,6 +822,7 @@ function renderDetail(t){
       <div class="card">
         <div class="card-hdr"><div class="card-title">👀 Meekijkers</div></div>
         <div class="card-body">
+          ${(G.modules && G.modules.meekijker) ? `
           <div style="font-size:12px;color:var(--muted);margin-bottom:1rem;line-height:1.6">Geef een bank, accountant of andere aandrager beperkte, alleen-lezen toegang tot (een deel van) dit traject.</div>
           <div id="meekijkers-body" style="margin-bottom:1.25rem;font-size:13px">Laden...</div>
           <div style="border-top:1px solid var(--border);padding-top:1rem">
@@ -837,7 +838,8 @@ function renderDetail(t){
             <label style="display:flex;align-items:flex-start;gap:8px;font-size:12px;color:var(--muted);line-height:1.5;margin:.5rem 0 1rem;cursor:pointer"><input type="checkbox" id="mk-adv-toestemming" style="margin-top:2px"> Ik heb toestemming van mijn opdrachtgever om deze partij beperkte inzage te geven in dit traject.</label>
             <div id="mk-adv-err" class="err-msg"></div>
             <button class="btn btn-sm" id="mk-adv-toevoegen">+ Meekijker aanmaken</button>
-          </div>
+          </div>` : `
+          <div style="font-size:12px;color:var(--muted);line-height:1.6">&#128274; Deze module is niet actief op uw account. Geef een bank, accountant of andere aandrager beperkte, alleen-lezen toegang tot (een deel van) dit traject — neem contact op met ${esc(BRAND.kort)} om deze module te activeren.</div>`}
         </div>
       </div>
 
@@ -877,6 +879,7 @@ function renderDetail(t){
 
 // ===== MEEKIJKERS (adviseur beheert zelf, via eigen tussenpersoonscode) =====
 function initMeekijkersAdv(id, tussenCode, sector){
+  if(!(G.modules&&G.modules.meekijker))return; // module niet actief — kaart toont dan alleen de vergrendel-tekst, geen formulier om aan te binden
   fetch(WORKER+'/mna/sectorprofielen').then(function(r){return r.json();}).then(function(d){
     var profiel=d.profielen&&d.profielen[sector];
     var sel=ge('mk-adv-scope');if(!sel)return;
