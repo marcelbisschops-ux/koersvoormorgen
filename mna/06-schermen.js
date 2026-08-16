@@ -645,7 +645,7 @@ function renderMain(){
     +'<div style="font-family:Playfair Display,serif;font-size:1.1rem;color:var(--head);font-weight:600;margin-bottom:.2rem">'+f.num+'. '+f.title+'</div>'
     +'<div style="font-size:13px;color:var(--muted);margin-bottom:'+(isVerkoper()&&VERKOPER_FASE_INTRO[f.id]?'.5rem':'1.25rem')+'">'+f.desc+'</div>'
     +(isVerkoper()&&VERKOPER_FASE_INTRO[f.id]?'<div style="font-size:12px;color:var(--sub);line-height:1.6;background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:.75rem 1rem;margin-bottom:1.25rem">'+esc(VERKOPER_FASE_INTRO[f.id])+'</div>':'')
-    +'<div class="data-grid-sidebar">'+dataHtml+renderDocumentSectie(f.id)+'</div>'
+    +'<div class="data-grid-sidebar">'+dataHtml+renderDocumentSectie(f.id)+renderBankmutatiesSectie(f.id)+'</div>'
     +extraHtml+nav+'</div>';
 }
 
@@ -1085,6 +1085,7 @@ function bindAll(){
           S.fase=eersteOpenFase>=0?eersteOpenFase:0;
           var fId2=FASES[S.fase]&&FASES[S.fase].id;
           if(fId2&&!DOCS[fId2])loadDocsForFase(fId2);
+          if(fId2==='financieel'&&BANKMUTATIES===null)laadBankmutaties();
         }
         if(schermOverride==='handleiding')S.screen='handleiding';
         // Verplicht openingsscherm (punt #29, 26 juli 2026): alleen voor nieuwe trajecten
@@ -1099,8 +1100,8 @@ function bindAll(){
     if(cf){cf.oninput=function(){this.value=this.value.toUpperCase();};cf.onkeydown=function(e){if(e.key==='Enter')lb.click();};}
   }
   bindOpeningScreen();
-  var toMain=ge('to-main-btn');if(toMain)toMain.onclick=function(){S.screen='main';var fId=FASES[S.fase]&&FASES[S.fase].id;if(fId&&!DOCS[fId])loadDocsForFase(fId);renderApp();};
-  var toMain2=ge('to-main-btn2');if(toMain2)toMain2.onclick=function(){S.screen='main';var fId=FASES[S.fase]&&FASES[S.fase].id;if(fId&&!DOCS[fId])loadDocsForFase(fId);renderApp();};
+  var toMain=ge('to-main-btn');if(toMain)toMain.onclick=function(){S.screen='main';var fId=FASES[S.fase]&&FASES[S.fase].id;if(fId&&!DOCS[fId])loadDocsForFase(fId);if(fId==='financieel'&&BANKMUTATIES===null)laadBankmutaties();renderApp();};
+  var toMain2=ge('to-main-btn2');if(toMain2)toMain2.onclick=function(){S.screen='main';var fId=FASES[S.fase]&&FASES[S.fase].id;if(fId&&!DOCS[fId])loadDocsForFase(fId);if(fId==='financieel'&&BANKMUTATIES===null)laadBankmutaties();renderApp();};
   var toWrd=ge('to-waardering-btn');if(toWrd)toWrd.onclick=function(){S.screen='waardering';renderApp();};
   var toWrd2=ge('to-waardering-btn2');if(toWrd2)toWrd2.onclick=function(){S.screen='waardering';renderApp();};
   var toDataroom2=ge('to-dataroom-btn2');if(toDataroom2)toDataroom2.onclick=function(){S.screen='dataroom';loadDataroom();};
@@ -1363,10 +1364,10 @@ function bindAll(){
     saveAll();
   };
   var coverBtn=ge('cover-btn');if(coverBtn)coverBtn.onclick=function(){saveCurrent();S.screen='cover';renderApp();};
-  var backMain=ge('back-main');if(backMain)backMain.onclick=function(){S.screen='main';renderApp();};
+  var backMain=ge('back-main');if(backMain)backMain.onclick=function(){S.screen='main';var fIdBm=FASES[S.fase]&&FASES[S.fase].id;if(fIdBm==='financieel'&&BANKMUTATIES===null)laadBankmutaties();renderApp();};
   // Alle huidige kritieke-discrepantiechecks gaan uitsluitend over Financieel-velden — als daar
   // ooit checks voor andere fases bijkomen, moet deze knop per discrepantie de juiste fase kiezen.
-  var naarFinancieelBtn=ge('naar-financieel-btn');if(naarFinancieelBtn)naarFinancieelBtn.onclick=function(){S.screen='main';var fi=FASES.findIndex(function(f){return f.id==='financieel';});S.fase=fi>=0?fi:0;renderApp();};
+  var naarFinancieelBtn=ge('naar-financieel-btn');if(naarFinancieelBtn)naarFinancieelBtn.onclick=function(){S.screen='main';var fi=FASES.findIndex(function(f){return f.id==='financieel';});S.fase=fi>=0?fi:0;if(BANKMUTATIES===null)laadBankmutaties();renderApp();};
   var finaleCheckBtn=ge('finale-check-btn');if(finaleCheckBtn)finaleCheckBtn.onclick=finaleCheck;
 
   // ── FASE AFRONDEN / HEROPENEN ────────────────────────────────
@@ -1424,6 +1425,8 @@ function bindAll(){
       S.showValidation=true;
       S.fase=parseInt(btn.dataset.faseIdx,10);
       S.screen='main';
+      var fIdMv=FASES[S.fase]&&FASES[S.fase].id;
+      if(fIdMv==='financieel'&&BANKMUTATIES===null)laadBankmutaties();
       renderApp();
       setTimeout(function(){
         var el=ge('df_'+btn.dataset.veldId);
@@ -1466,6 +1469,7 @@ function bindAll(){
     S.fase=newFase;
     var faseId=FASES[newFase]&&FASES[newFase].id;
     if(faseId&&!DOCS[faseId])loadDocsForFase(faseId);
+    if(faseId==='financieel'&&BANKMUTATIES===null)laadBankmutaties();
     renderApp();
   };});
   if(!isKoper()){
