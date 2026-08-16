@@ -466,51 +466,66 @@ function renderBegeleiderDashboard(app){
     +(function(){ var kc=koperCatsVan(t); var tot=(window.FASES&&FASES.length)||7; var lbl,kl; if(kc===null){ lbl=t.koper_vrijgegeven?'Alles vrijgegeven':'Geen toegang'; kl=t.koper_vrijgegeven?'var(--teal)':'var(--muted)'; } else if(kc.length){ lbl=kc.length+'/'+tot+' categorieën vrij'; kl='var(--teal)'; } else { lbl='Geen toegang'; kl='var(--muted)'; } return '<span style="font-size:11px;font-weight:600;color:'+kl+'">'+lbl+'</span>'; })()
     +'<span style="display:inline-block;padding:4px 12px;border-radius:12px;font-size:11px;font-weight:600;background:'+(t.status==='vergrendeld'?'var(--red-bg)':'var(--teal-bg)')+';color:'+(t.status==='vergrendeld'?'var(--red)':'var(--teal)')+';border:1px solid '+(t.status==='vergrendeld'?'var(--red)':'var(--teal-dark)')+'">'+esc(t.status||'actief')+'</span>'
     +'</div></div></div>'
-    // Actie knoppen
-    +'<div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.4rem">Documenten</div>'
-    +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px">'
-    +(contractenAan
-      ?'<button class="btn" id="bg-nda-actie" style="background:#7c5cbf;padding:10px;font-size:12px">&#128274; NDA</button>'
-      :'<button class="btn" id="bg-nda-actie" disabled title="Module Contracten niet actief — neem contact op met ' + BRAND.kort + '" style="background:#7c5cbf;padding:10px;font-size:12px;opacity:.45;cursor:not-allowed">&#128274; NDA</button>')
-    +(contractenAan
-      ?'<button class="btn" id="bg-bem-actie" style="background:#2a5ea0;padding:10px;font-size:12px">&#128203; BEM</button>'
-      :'<button class="btn" id="bg-bem-actie" disabled title="Module Contracten niet actief — neem contact op met ' + BRAND.kort + '" style="background:#2a5ea0;padding:10px;font-size:12px;opacity:.45;cursor:not-allowed">&#128203; BEM</button>')
-    +(contractenAan
-      ?'<button class="btn" id="bg-loi-actie" style="background:var(--gold);padding:10px;font-size:12px">&#128196; LoI</button>'
-      :'<button class="btn" id="bg-loi-actie" disabled title="Module Contracten niet actief — neem contact op met ' + BRAND.kort + '" style="background:var(--gold);padding:10px;font-size:12px;opacity:.45;cursor:not-allowed">&#128196; LoI</button>')
-    +'</div>'
-    +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:.75rem">'
-    +(contractenAan
-      ?'<button class="btn" id="bg-excl-actie" style="background:#1a7a5e;padding:10px;font-size:12px">&#128221; Excl</button>'
-      :'<button class="btn" id="bg-excl-actie" disabled title="Module Contracten niet actief — neem contact op met ' + BRAND.kort + '" style="background:#1a7a5e;padding:10px;font-size:12px;opacity:.45;cursor:not-allowed">&#128221; Excl</button>')
-    +(contractenAan
-      ?'<button class="btn" id="bg-dealvoorstel-actie" style="background:#8a5a00;padding:10px;font-size:12px">&#128202; Dealvoorstel</button>'
-      :'<button class="btn" id="bg-dealvoorstel-actie" disabled title="Module Contracten niet actief — neem contact op met ' + BRAND.kort + '" style="background:#8a5a00;padding:10px;font-size:12px;opacity:.45;cursor:not-allowed">&#128202; Dealvoorstel</button>')
-    +(contractenAan
-      ?'<button class="btn" id="bg-bieding-actie" style="background:#a0522d;padding:10px;font-size:12px">&#128233; Indicatieve bieding</button>'
-      :'<button class="btn" id="bg-bieding-actie" disabled title="Module Contracten niet actief — neem contact op met ' + BRAND.kort + '" style="background:#a0522d;padding:10px;font-size:12px;opacity:.45;cursor:not-allowed">&#128233; Indicatieve bieding</button>')
-    +(contractenAan
-      ?'<button class="btn" id="bg-spa-actie" style="background:#5a5470;padding:10px;font-size:12px">&#128220; Aandachtspunten SPA</button>'
-      :'<button class="btn" id="bg-spa-actie" disabled title="Module Contracten niet actief — neem contact op met ' + BRAND.kort + '" style="background:#5a5470;padding:10px;font-size:12px;opacity:.45;cursor:not-allowed">&#128220; Aandachtspunten SPA</button>')
-    +(contractenAan
-      ?'<button class="btn" id="bg-closing-actie" style="background:#2d6a4f;padding:10px;font-size:12px">&#127937; Closing-checklist</button>'
-      :'<button class="btn" id="bg-closing-actie" disabled title="Module Contracten niet actief — neem contact op met ' + BRAND.kort + '" style="background:#2d6a4f;padding:10px;font-size:12px;opacity:.45;cursor:not-allowed">&#127937; Closing-checklist</button>')
-    +'</div>'
-    +(contractenAan?'':'<div style="font-size:11px;color:var(--muted);margin-top:-.5rem;margin-bottom:.75rem">&#128274; Module Contracten niet actief — neem contact op met ' + BRAND.kort + ' om deze module te activeren.</div>')
-    +'<div style="margin-bottom:1.25rem"><button class="btn-outline btn-sm" id="bg-eigendoc-actie">&#128206; Eigen document versturen</button><div style="font-size:11px;color:var(--muted);margin-top:4px">Upload een PDF of Word-bestand en deel het rechtstreeks met verkoper en/of koper — werkt ook zonder de module Contracten.</div></div>'
-    +'<div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.4rem">Communicatie</div>'
-    +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:1.25rem">'
-    +'<button class="btn" id="bg-gesprek-actie" style="background:var(--teal);padding:10px;font-size:12px">&#128172; Gesprek</button>'
-    +'<button class="btn" id="bg-uitnodigen-btn" style="background:var(--teal-dim);padding:10px;font-size:12px">&#9993; Uitnodigen</button>'
-    +'<button class="btn" id="bg-infoverzoek-actie" style="background:var(--teal-dim);padding:10px;font-size:12px">&#128203; Informatieverzoek</button>'
-    +'</div>'
-    +'<div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.4rem">Analyse</div>'
-    +'<div style="display:flex;gap:8px;margin-bottom:1.25rem">'
-    +'<button class="btn" id="bg-waardering-actie" style="background:#6b7c93">&#9881; AI-analyse &amp; waardering</button>'
-    +'<button class="btn-outline btn-sm" id="bg-ai-status-actie">&#129302; AI-verificatiestatus</button>'
-    +'<button class="btn-outline btn-sm" id="bg-koperfit-actie">&#127919; Koper-fit strategie</button>'
-    +'<button class="btn-outline btn-sm" id="bg-feedback-actie" style="border-color:var(--gold);color:var(--gold)">&#128172; Feedback / bug melden</button>'
-    +'</div>'
+    // Actie knoppen — gegroepeerd per dealfase, secties inklapbaar (16 aug 2026, op verzoek Marcel:
+    // volledig uitgeschreven documentnamen i.p.v. afkortingen, betere groepering, minder tegelijk in beeld).
+    +(function(){
+      function secHdr(sec, label){
+        return '<div class="bg-sec-hdr" data-sec="'+sec+'" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;padding:.75rem 1rem">'
+          +'<span style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">'+label+'</span>'
+          +'<span class="bg-sec-chevron" data-sec="'+sec+'" style="font-size:12px;color:var(--muted)">&#9650;</span>'
+          +'</div>';
+      }
+      function docBtn(id, icoon, kleur, naam){
+        return contractenAan
+          ?'<button class="btn" id="'+id+'" style="background:'+kleur+';padding:10px;font-size:12px">'+icoon+' '+naam+'</button>'
+          :'<button class="btn" id="'+id+'" disabled title="Module Contracten niet actief — neem contact op met ' + BRAND.kort + '" style="background:'+kleur+';padding:10px;font-size:12px;opacity:.45;cursor:not-allowed">'+icoon+' '+naam+'</button>';
+      }
+      function subLabel(tekst){
+        return '<div style="font-size:9px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);opacity:.75;margin:.6rem 0 .35rem">'+tekst+'</div>';
+      }
+      var html='';
+      // ── Documenten (open per default — hoofdactie van dit scherm) ──
+      html+='<div class="panel" style="margin-bottom:.75rem;padding:0">'+secHdr('docs','&#128196; Documenten')
+        +'<div class="bg-sec-body" data-sec="docs" style="display:block;padding:0 1rem 1rem">'
+        +subLabel('Voorfase')
+        +'<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px">'
+        +docBtn('bg-nda-actie','&#128274;','#7c5cbf','Geheimhoudingsovereenkomst (NDA)')
+        +docBtn('bg-bem-actie','&#128203;','#2a5ea0','Bemiddelingsovereenkomst (BEM)')
+        +'</div>'
+        +subLabel('Onderhandeling')
+        +'<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px">'
+        +docBtn('bg-bieding-actie','&#128233;','#a0522d','Indicatieve bieding')
+        +docBtn('bg-loi-actie','&#128196;','var(--gold)','Intentieverklaring (LoI)')
+        +docBtn('bg-excl-actie','&#128221;','#1a7a5e','Exclusiviteitsovereenkomst')
+        +docBtn('bg-dealvoorstel-actie','&#128202;','#8a5a00','Dealvoorstel')
+        +'</div>'
+        +subLabel('Afronding')
+        +'<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px">'
+        +docBtn('bg-spa-actie','&#128220;','#5a5470','Aandachtspunten koopovereenkomst (SPA)')
+        +docBtn('bg-closing-actie','&#127937;','#2d6a4f','Closing-checklist')
+        +'</div>'
+        +(contractenAan?'':'<div style="font-size:11px;color:var(--muted);margin-top:.6rem">&#128274; Module Contracten niet actief — neem contact op met ' + BRAND.kort + ' om deze module te activeren.</div>')
+        +'<div style="margin-top:.85rem;padding-top:.75rem;border-top:1px dashed var(--border2)"><button class="btn-outline btn-sm" id="bg-eigendoc-actie">&#128206; Eigen document versturen</button><div style="font-size:11px;color:var(--muted);margin-top:4px">Upload een PDF of Word-bestand en deel het rechtstreeks met verkoper en/of koper — werkt ook zonder de module Contracten.</div></div>'
+        +'</div></div>';
+      // ── Communicatie (ingeklapt) ──
+      html+='<div class="panel" style="margin-bottom:.75rem;padding:0">'+secHdr('comm','&#128172; Communicatie').replace('&#9650;','&#9660;')
+        +'<div class="bg-sec-body" data-sec="comm" style="display:none;padding:0 1rem 1rem">'
+        +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">'
+        +'<button class="btn" id="bg-gesprek-actie" style="background:var(--teal);padding:10px;font-size:12px">&#128172; Gesprek</button>'
+        +'<button class="btn" id="bg-uitnodigen-btn" style="background:var(--teal-dim);padding:10px;font-size:12px">&#9993; Uitnodigen</button>'
+        +'<button class="btn" id="bg-infoverzoek-actie" style="background:var(--teal-dim);padding:10px;font-size:12px">&#128203; Informatieverzoek</button>'
+        +'</div></div></div>';
+      // ── Analyse (ingeklapt) ──
+      html+='<div class="panel" style="margin-bottom:1.25rem;padding:0">'+secHdr('analyse','&#9881; Analyse').replace('&#9650;','&#9660;')
+        +'<div class="bg-sec-body" data-sec="analyse" style="display:none;padding:0 1rem 1rem">'
+        +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
+        +'<button class="btn" id="bg-waardering-actie" style="background:#6b7c93">&#9881; AI-analyse &amp; waardering</button>'
+        +'<button class="btn-outline btn-sm" id="bg-ai-status-actie">&#129302; AI-verificatiestatus</button>'
+        +'<button class="btn-outline btn-sm" id="bg-koperfit-actie">&#127919; Koper-fit strategie</button>'
+        +'<button class="btn-outline btn-sm" id="bg-feedback-actie" style="border-color:var(--gold);color:var(--gold)">&#128172; Feedback / bug melden</button>'
+        +'</div></div></div>';
+      return html;
+    })()
     +'<div id="bg-ai-status-out" style="display:none;margin-bottom:1.25rem"></div>'
     +'<div id="bg-koperfit-out" style="display:none;margin-bottom:1.25rem"></div>'
     // Doc output
@@ -565,6 +580,19 @@ function renderBegeleiderDashboard(app){
     hdr.addEventListener('click',function(){
       var body=app.querySelector('.bg-fase-body[data-fase="'+hdr.dataset.fase+'"]');
       if(body)body.style.display=body.style.display==='none'?'block':'none';
+    });
+  });
+
+  // Documenten/Communicatie/Analyse-secties inklapbaar (16 aug 2026)
+  app.querySelectorAll('.bg-sec-hdr').forEach(function(hdr){
+    hdr.addEventListener('click',function(){
+      var sec=hdr.dataset.sec;
+      var body=app.querySelector('.bg-sec-body[data-sec="'+sec+'"]');
+      var chevron=app.querySelector('.bg-sec-chevron[data-sec="'+sec+'"]');
+      if(!body)return;
+      var open=body.style.display!=='none';
+      body.style.display=open?'none':'block';
+      if(chevron)chevron.innerHTML=open?'&#9660;':'&#9650;';
     });
   });
 
