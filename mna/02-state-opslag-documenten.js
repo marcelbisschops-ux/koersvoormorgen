@@ -70,8 +70,8 @@ function entiteitNaam(id){
 // gebruikt voor een afwijkingswaarschuwing tegen de kantoornaam — nooit om de koppel-dropdown voor
 // te selecteren. Eerst een exacte match op genormaliseerde naam (dekt "BV"/"B.V."/"bv"), pas als
 // dat niets oplevert een bevat-check. Bewust GEEN losse-voorvoegsel-matching (zoals de worker voor
-// de afwijs-validatie gebruikt) — bij namen die een lang gedeeld voorvoegsel delen (hier: "[dossier]
-// ...") maakte dat elke zustervennootschap onterecht gelijk.
+// de afwijs-validatie gebruikt) — bij namen die een lang gedeeld voorvoegsel delen maakte dat elke
+// zustervennootschap onterecht gelijk.
 // alleenZeker=true: alleen de exacte-naam-match (nooit de "bevat"-heuristiek) — gebruikt op de plek
 // waar het resultaat AUTOMATISCH wordt toegepast (geen mens die nog akkoord geeft). GOUDEN STANDAARD
 // (Marcel, 24 juli 2026): het systeem mag nooit gokken — een niet-exacte match is een suggestie voor

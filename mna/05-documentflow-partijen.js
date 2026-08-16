@@ -154,7 +154,7 @@ async function toonDocWaarschuwing(docType, onDoorgaan) {
   // begeleider kan een NDA/Excl/BEM buiten het platform (of buiten Signhost) om (laten) tekenen en
   // dat hier als "getekend" markeren — dan bestaat er geen doc_versies-rij, maar is het document er
   // wel degelijk. Zonder deze OR blokkeerde de LoI-knop ten onrechte met "De NDA is nog niet
-  // aangemaakt", terwijl de NDA al getekend was (gevonden 25 juli 2026, [dossier]-traject). Dit maakt
+  // aangemaakt", terwijl de NDA al getekend was (gevonden 25 juli 2026, een lopend traject). Dit maakt
   // de check gelijk aan de al bestaande docProcesCheck().
   var heeftBem = versies.some(function(v){return v.doc_type==='bem'||v.doc_type==='bem_verk'||v.doc_type==='bem_koper'||v.doc_type==='bem_upload';}) || !!(t.bem_tekst||t.bem_datum||t.bem_getekend);
   var heeftNda = versies.some(function(v){return v.doc_type==='nda'||v.doc_type==='nda_upload';}) || !!(t.nda_tekst||t.nda_datum||t.nda_getekend);
