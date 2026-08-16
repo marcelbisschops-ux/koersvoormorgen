@@ -116,11 +116,11 @@ function formatDate(ts){if(!ts)return '—';return new Date(ts).toLocaleDateStri
 function meekijkerChipsHtml(t){
   var actief=(t.meekijkers||[]).filter(function(v){return !v.ingetrokken_op&&!(v.expires_at&&Date.now()>v.expires_at);});
   if(!actief.length)return '';
-  return '<div style="margin-top:3px;display:flex;gap:3px;flex-wrap:wrap;align-items:center">'
+  return '<span style="margin-top:3px;display:inline-flex;gap:3px;flex-wrap:wrap;align-items:center">'
     +actief.map(function(v){
       return '<span class="code-chip" style="font-size:10px;background:var(--card);color:var(--mid);border-color:var(--border2)" title="Meekijker: '+esc(v.viewer_naam||'—')+' ('+esc(v.viewer_type||'—')+') — scope: '+esc(v.scope_fase==='alle'?'alle fases':v.scope_fase)+'">&#128064; '+esc(v.viewer_code)+'</span><button class="copy-btn" data-copy="'+esc(v.viewer_code)+'">⎘</button>';
     }).join('')
-    +'</div>';
+    +'</span>';
 }
 function partijLabels(type){
   var t=type||'Verkoop';
@@ -2638,22 +2638,18 @@ async function toonMeekijkersModal(trajectId, trajectNaam, sector){
   ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
   document.getElementById('mk-sluit').addEventListener('click',function(){document.body.removeChild(ov);});
 
-  function fasesInvullen(){
-    fetch(WORKER+'/mna/sectorprofielen').then(function(r){return r.json();}).then(function(d){
-      var profiel=d.profielen&&d.profielen[sector||'accountancy'];
-      var sel=document.getElementById('mk-scope');if(!sel)return;
-      (profiel&&profiel.fases||[]).forEach(function(f){
-        var opt=document.createElement('option');opt.value=f.id;opt.textContent=(f.num?f.num+'. ':'')+f.title;sel.appendChild(opt);
-      });
-    }).catch(function(){});
-  }
-  fasesInvullen();
-
+  // Eén fetch i.p.v. twee losse (was een race: laadLijst() kon eerder terug zijn dan de
+  // labelcache, waardoor de Scope-kolom bij de eerste render de ruwe fase-id toonde i.p.v. het
+  // genummerde label — zie sectorprofielenKlaar hieronder).
   var faseLabelCache={};
   function faseLabel(id){return faseLabelCache[id]||id;}
-  fetch(WORKER+'/mna/sectorprofielen').then(function(r){return r.json();}).then(function(d){
+  var sectorprofielenKlaar=fetch(WORKER+'/mna/sectorprofielen').then(function(r){return r.json();}).then(function(d){
     var profiel=d.profielen&&d.profielen[sector||'accountancy'];
-    (profiel&&profiel.fases||[]).forEach(function(f){faseLabelCache[f.id]=f.title;});
+    var sel=document.getElementById('mk-scope');
+    (profiel&&profiel.fases||[]).forEach(function(f){
+      faseLabelCache[f.id]=f.title;
+      if(sel){var opt=document.createElement('option');opt.value=f.id;opt.textContent=(f.num?f.num+'. ':'')+f.title;sel.appendChild(opt);}
+    });
   }).catch(function(){});
 
   async function laadLijst(){
@@ -2689,7 +2685,7 @@ async function toonMeekijkersModal(trajectId, trajectNaam, sector){
       });
     }catch(e){lijstEl.innerHTML='<div style="color:var(--red)">Kon meekijkers niet laden.</div>';}
   }
-  laadLijst();
+  sectorprofielenKlaar.then(laadLijst);
 
   document.getElementById('mk-toevoegen').addEventListener('click',async function(){
     var naam=document.getElementById('mk-naam').value.trim();
@@ -3280,7 +3276,7 @@ async function renderGebruikersTab(el) {
           try {
             var vr = await fetch(WORKER + '/gebruikers/verkoop/' + encodeURIComponent(g.id), { method: 'POST', headers: { 'x-admin-key': adminKey, 'Content-Type': 'application/json' }, body: JSON.stringify({ traject_limiet: lim, modules: nm }) });
             var vd = await vr.json();
-            if (vd.ok) { toast('Verkoopinstellingen opgeslagen: limiet ' + vd.traject_limiet + '.', 'ok'); ov.remove(); var tcv = document.querySelector('.tab-content'); if (tcv) renderGebruikersTab(tcv); }
+            if (vd.ok) { toast('Verkoopinstellingen opgeslagen: limiet ' + vd.traject_limiet + '.', 'ok'); ov.remove(); var tcv = document.getElementById('tc'); if (tcv) renderGebruikersTab(tcv); }
             else toast(vd.error || 'Fout bij opslaan.', 'err');
           } catch(e) { toast('Verbindingsfout.', 'err'); }
         });
@@ -3300,7 +3296,7 @@ async function renderGebruikersTab(el) {
         try {
           var er = await fetch(WORKER + '/gebruikers/eigen/' + encodeURIComponent(btn.dataset.id), { method: 'POST', headers: { 'x-admin-key': adminKey, 'Content-Type': 'application/json' }, body: JSON.stringify({ is_eigen: nieuweWaarde }) });
           var ed = await er.json();
-          if (ed.ok) { toast(nieuweWaarde ? 'Gemarkeerd als eigen — inhoud zichtbaar.' : 'Gemarkeerd als extern — inhoud afgeschermd.', 'ok'); var tce = document.querySelector('.tab-content'); if (tce) renderGebruikersTab(tce); }
+          if (ed.ok) { toast(nieuweWaarde ? 'Gemarkeerd als eigen — inhoud zichtbaar.' : 'Gemarkeerd als extern — inhoud afgeschermd.', 'ok'); var tce = document.getElementById('tc'); if (tce) renderGebruikersTab(tce); }
           else toast(ed.error || 'Fout bij opslaan.', 'err');
         } catch(e) { toast('Verbindingsfout.', 'err'); }
       });
@@ -3313,7 +3309,7 @@ async function renderGebruikersTab(el) {
         var drBody=new URLSearchParams();drBody.append('key',adminKey);
         var dr = await fetch(WORKER + '/gebruikers/activeer/' + btn.dataset.id, {method:'POST',body:drBody});
         var dd = await dr.json();
-        if (dd.ok) { toast('Gebruiker geactiveerd.', 'ok'); var tc2=document.querySelector('.tab-content'); if(tc2)renderGebruikersTab(tc2); }
+        if (dd.ok) { toast('Gebruiker geactiveerd.', 'ok'); var tc2=document.getElementById('tc'); if(tc2)renderGebruikersTab(tc2); }
         else toast(dd.error || 'Fout bij activeren.', 'err');
       });
     });
@@ -3333,7 +3329,7 @@ async function renderGebruikersTab(el) {
         var drBody2=new URLSearchParams();drBody2.append('key',adminKey);
         var dr = await fetch(WORKER + '/gebruikers/verwijder/' + btn.dataset.id, {method:'POST',body:drBody2});
         var dd = await dr.json();
-        if (dd.ok) { toast('Gebruiker verwijderd.', 'ok'); var tc3=document.querySelector('.tab-content'); if(tc3)renderGebruikersTab(tc3); }
+        if (dd.ok) { toast('Gebruiker verwijderd.', 'ok'); var tc3=document.getElementById('tc'); if(tc3)renderGebruikersTab(tc3); }
         else toast(dd.error || 'Fout bij verwijderen.', 'err');
       });
     });
@@ -3344,7 +3340,7 @@ async function renderGebruikersTab(el) {
         var drBody3=new URLSearchParams();drBody3.append('key',adminKey);
         var dr = await fetch(WORKER + '/gebruikers/deactiveer/' + btn.dataset.id, {method:'POST',body:drBody3});
         var dd = await dr.json();
-        if (dd.ok) { toast('Gebruiker gedeactiveerd.', 'ok'); var tc4=document.querySelector('.tab-content'); if(tc4)renderGebruikersTab(tc4); }
+        if (dd.ok) { toast('Gebruiker gedeactiveerd.', 'ok'); var tc4=document.getElementById('tc'); if(tc4)renderGebruikersTab(tc4); }
         else { toast('Fout: ' + (dd.error||'onbekend'), 'err'); btn.disabled = false; }
       });
     });
@@ -3444,7 +3440,7 @@ async function renderTarievenTab(el) {
         try {
           var sr = await fetch(WORKER + '/mna/admin/tarieven', { method: 'POST', headers: { 'x-admin-key': adminKey, 'Content-Type': 'application/json' }, body: JSON.stringify({ fee_type: type, bedrag: bedrag, door: 'Marcel (marilyn)' }) });
           var sd = await sr.json();
-          if (sd.ok) { toast('Tarief "' + type + '" opgeslagen: €' + bedrag + '.', 'ok'); var tct = document.querySelector('.tab-content'); if (tct) renderTarievenTab(tct); }
+          if (sd.ok) { toast('Tarief "' + type + '" opgeslagen: €' + bedrag + '.', 'ok'); var tct = document.getElementById('tc'); if (tct) renderTarievenTab(tct); }
           else { toast(sd.error || 'Fout bij opslaan.', 'err'); btn.disabled = false; btn.textContent = 'Opslaan'; }
         } catch(e) { toast('Verbindingsfout.', 'err'); btn.disabled = false; btn.textContent = 'Opslaan'; }
       });
