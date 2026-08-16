@@ -422,4 +422,30 @@ async function laadPartijGesprekken() {
   } catch(e) {}
 }
 
+// Transparantie: welke bank/accountant kijkt er (deels) mee met dit traject. Alleen naam/type/
+// scope — nooit de toegangscode zelf, die kent alleen de begeleider (marilyn.html).
+async function laadMeekijkers() {
+  var el = document.getElementById('meekijkers-sectie');
+  if (!el) return;
+  try {
+    var r = await fetch(WORKER+'/mna/meekijkers/'+S.code);
+    var d = await r.json();
+    var lijst = d.meekijkers || [];
+    if (!lijst.length) { el.innerHTML=''; return; }
+    var typeLabels = {bank:'bank',accountant:'accountant',overig:'derde partij',onbekend:'derde partij'};
+    var faseLabel = function(id){
+      if (id==='alle') return 'alle onderdelen';
+      var f = (FASES||[]).filter(function(x){return x.id===id;})[0];
+      return f ? (f.num?f.num+'. ':'')+f.title : id;
+    };
+    var html = '<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r2);padding:1rem 1.25rem">'
+      + '<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem">&#128064; Wie kijkt er mee</div>'
+      + '<div style="font-size:12px;color:var(--mid);margin-bottom:.6rem">Uw begeleider heeft de volgende partij(en) beperkte, alleen-lezen inzage gegeven in dit traject:</div>'
+      + lijst.map(function(v){
+          return '<div style="font-size:12.5px;color:var(--sub);padding:2px 0">&#8226; <strong>'+esc(v.viewer_naam||'—')+'</strong> ('+esc(typeLabels[v.viewer_type]||v.viewer_type||'onbekend')+') — ziet: '+esc(faseLabel(v.scope_fase))+'</div>';
+        }).join('')
+      + '</div>';
+    el.innerHTML = html;
+  } catch(e) { el.innerHTML=''; }
+}
 
