@@ -10,5 +10,11 @@ playwright/.cache/
 KantoorInzicht-Backups/
 backups/
 
+# Lijst met echte cliëntnamen/traject-codes die ooit als testmateriaal zijn gebruikt ([dossier],
+# [dossier], e.d.) — gebruikt door check 7 in tests/audit-consistentie.mjs om te voorkomen dat zo'n
+# naam opnieuw in code/commits belandt. Blijft BEWUST lokaal, nooit naar GitHub — de lijst zelf zou
+# anders precies de namen bevatten die 'ie moet beschermen. Zie tests/README.md voor hoe bij te werken.
+.gevoelige-termen.local.txt
+
 # Lokale wrangler-cache (per ongeluk hier aangemaakt bij een cross-directory commando)
 .wrangler/

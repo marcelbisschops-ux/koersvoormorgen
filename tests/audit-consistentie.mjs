@@ -13,6 +13,7 @@
 
 import fs from 'fs';
 import path from 'path';
+import { execSync } from 'child_process';
 
 const ROOT = process.cwd();
 let bevindingen = 0;
@@ -232,6 +233,96 @@ if (backendFiles.length) {
   else uniekeIssues.forEach(p => warn(p + ' — NIEUW — doet SELECT * op mna_trajecten/mna_gesprekken én stuurt binnen dezelfde route JSON terug, buiten een /admin/-pad. Controleer of alle teruggegeven velden voor élke rol die dit endpoint mag aanroepen (incl. koper) bedoeld zijn.'));
 } else {
   ok('backend/ niet gevonden (leeft sinds 23 juli 2026 in de privé-repo koersvoormorgen-backend) — check 5 overgeslagen.');
+}
+
+// ── 6. Tabellen met traject_id die ontbreken in de traject-verwijder-cascade ──
+// (het patroon van 25 juli én 16 aug 2026: elke keer een nieuwe traject-gebonden tabel toegevoegd
+// zonder 'm ook in /admin/delete/mna/'s DELETE-batch op te nemen, waardoor wees-rijen achterblijven
+// bij trajectverwijdering. In plaats van hierop te vertrouwen dat iemand het onthoudt: elke tabel met
+// een traject_id-kolom in initDB() MOET hier automatisch als gedekt worden herkend. mna_trajecten
+// zelf (sleutelt op id), mna_vok (sleutelt op tussen_code) en mna_audit (bewust bewaard, P4-besluit
+// 25 juli 2026) hebben geen traject_id-kolom en verschijnen dus terecht nooit in deze lijst.)
+log('6. Tabellen met traject_id die ontbreken in de traject-verwijder-cascade (/admin/delete/mna/)');
+if (backendFiles.length) {
+  const workerEntry = backendFiles.find(f => f.name === 'backend/cloudflare-worker.js');
+  const deleteFile = backendFiles.find(f => f.name === 'backend/worker/13-mna-afsluiten-delete.js');
+  if (!workerEntry || !deleteFile) {
+    ok('cloudflare-worker.js of worker/13-mna-afsluiten-delete.js niet gevonden — check 6 overgeslagen.');
+  } else {
+    const createRe = /CREATE TABLE IF NOT EXISTS (\w+)\s*\(([\s\S]*?)\)`,/g;
+    const tablesWithTrajectId = new Set();
+    let cm;
+    while ((cm = createRe.exec(workerEntry.src))) {
+      if (/\btraject_id\b/.test(cm[2])) tablesWithTrajectId.add(cm[1]);
+    }
+    const startIdx = deleteFile.src.indexOf("path.startsWith('/admin/delete/mna/')");
+    const scope = startIdx === -1 ? '' : deleteFile.src.slice(startIdx, startIdx + 6000);
+    const delRe = /DELETE FROM (\w+) WHERE traject_id=/g;
+    const covered = new Set();
+    let dm;
+    while ((dm = delRe.exec(scope))) covered.add(dm[1]);
+    const missing = [...tablesWithTrajectId].filter(t => !covered.has(t));
+    if (startIdx === -1) warn('worker/13-mna-afsluiten-delete.js: route /admin/delete/mna/ niet gevonden — is deze verplaatst of hernoemd? Check 6 kan niet valideren.');
+    else if (!missing.length) ok(tablesWithTrajectId.size + ' tabellen met traject_id gecontroleerd, allemaal gedekt in de verwijder-cascade.');
+    else missing.forEach(t => warn('backend/cloudflare-worker.js: tabel "' + t + '" heeft een traject_id-kolom maar staat NIET in de DELETE-cascade van /admin/delete/mna/ (worker/13-mna-afsluiten-delete.js) — voeg toe: DELETE FROM ' + t + ' WHERE traject_id=?'));
+  }
+} else {
+  ok('backend/ niet gevonden (leeft sinds 23 juli 2026 in de privé-repo koersvoormorgen-backend) — check 6 overgeslagen.');
+}
+
+// ── 7. Echte cliëntnamen/traject-codes in code, docs of commit-berichten ──
+// (16 aug 2026: [dossier] + "[dossier]" bleken over weken tijd, in tientallen commits, in dit
+// publieke repo terechtgekomen — via code-comments én commit-berichten — zonder dat iets dat
+// opmerkte, tot er expliciet naar gevraagd werd. Deze check leest een lokale, NOOIT gecommitte
+// termenlijst (.gevoelige-termen.local.txt, zie .gitignore) en scant daar zowel de huidige
+// bestandsboom als de recente commit-berichten tegen. Bestaat het lijst-bestand niet (bijv. een
+// verse clone), dan is dat geen fout — gewoon nog niets bijgehouden, geen valse zekerheid.)
+log('7. Echte cliëntnamen/traject-codes uit .gevoelige-termen.local.txt (bestandsboom + recente commits)');
+const termenPad = path.join(ROOT, '.gevoelige-termen.local.txt');
+if (!fs.existsSync(termenPad)) {
+  ok('.gevoelige-termen.local.txt bestaat niet (nog niets bijgehouden) — check 7 kan niets controleren.');
+} else {
+  const termen = fs.readFileSync(termenPad, 'utf8')
+    .split('\n')
+    .map(l => l.trim())
+    .filter(l => l && !l.startsWith('#'));
+  if (!termen.length) {
+    ok('.gevoelige-termen.local.txt is leeg — niets om te controleren.');
+  } else {
+    const gevonden = [];
+    // Bestandsboom: dezelfde bestandstypen als de rest van dit script bestrijkt.
+    const scanDirs = ['mna', 'tests'];
+    const scanFiles = fs.readdirSync(ROOT).filter(f => /\.(md|html)$/i.test(f)).map(f => path.join(ROOT, f));
+    scanDirs.forEach(d => {
+      const dirPath = path.join(ROOT, d);
+      if (!fs.existsSync(dirPath)) return;
+      fs.readdirSync(dirPath).filter(f => /\.(js|md|html)$/i.test(f)).forEach(f => scanFiles.push(path.join(dirPath, f)));
+    });
+    if (backendFiles.length) {
+      // backendFiles bevat al {name, src} — geen los bestandssysteem-pad nodig, direct op src testen.
+      backendFiles.forEach(({ name, src }) => {
+        termen.forEach(term => {
+          if (src.includes(term)) gevonden.push('backend-bestand ' + name + ': bevat "' + term + '"');
+        });
+      });
+    }
+    scanFiles.forEach(fp => {
+      const src = fs.readFileSync(fp, 'utf8');
+      termen.forEach(term => {
+        if (src.includes(term)) gevonden.push('bestand ' + path.relative(ROOT, fp) + ': bevat "' + term + '"');
+      });
+    });
+    // Recente commit-berichten (laatste 50, over alle branches — hoeft niet de volledige
+    // geschiedenis te zijn: dit is een vooruitkijkende bewaker, geen archief-herverificatie).
+    try {
+      const log = execSync('git log --all -n 50 --format=%H%n%s%n%b%n---COMMIT-END---', { cwd: ROOT, encoding: 'utf8' });
+      termen.forEach(term => {
+        if (log.includes(term)) gevonden.push('commit-bericht (laatste 50, alle branches): bevat "' + term + '" — zoek op met: git log --all -i --grep="' + term + '"');
+      });
+    } catch (e) { /* geen git-repo of git niet beschikbaar — sla deze subcheck stil over */ }
+    if (!gevonden.length) ok(termen.length + ' term(en) uit .gevoelige-termen.local.txt gecontroleerd tegen bestandsboom + recente commit-berichten — niets gevonden.');
+    else gevonden.forEach(g => warn(g));
+  }
 }
 
 // ── Samenvatting ──────────────────────────────────────────────────────────
