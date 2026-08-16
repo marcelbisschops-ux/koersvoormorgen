@@ -512,6 +512,89 @@ function laadBankmutaties() {
     .catch(function(){ BANKMUTATIES = []; renderApp(); });
 }
 
+// -- RED-FLAG-ANALYSE (sessie 5, alleen begeleider — zelfde zichtbaarheid als Koper-fit strategie) --
+var BANKMUTATIES_ANALYSE = null; // null = nog niet geladen; false = geladen maar nog geen analyse; object = wel
+var BANKMUTATIES_ANALYSE_BEZIG = false;
+
+function laadRedFlagAnalyse() {
+  if (!S.code || !isTussen()) return;
+  fetch(WORKER + '/mna/bankmutaties/analyse/' + encodeURIComponent(S.code), { headers: { 'x-tussen-key': S.code } })
+    .then(function(r){ return r.json(); })
+    .then(function(d){ BANKMUTATIES_ANALYSE = (d && d.analyse) || false; renderApp(); })
+    .catch(function(){ BANKMUTATIES_ANALYSE = false; renderApp(); });
+}
+
+function genereerRedFlagAnalyse() {
+  if (!isTussen() || BANKMUTATIES_ANALYSE_BEZIG) return;
+  BANKMUTATIES_ANALYSE_BEZIG = true;
+  renderApp();
+  fetch(WORKER + '/mna/bankmutaties/analyse/genereren', {
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'x-tussen-key': S.code },
+    body: JSON.stringify({ traject_id: S.code })
+  }).then(function(r){ return r.json(); })
+    .then(function(d){
+      BANKMUTATIES_ANALYSE_BEZIG = false;
+      if (d && d.ok) { BANKMUTATIES_ANALYSE = { resultaat: d.resultaat, aantal_regels_geanalyseerd: d.aantal_regels_geanalyseerd, gegenereerd_op: Date.now() }; }
+      else { toast((d && d.error) || 'Analyse mislukt.', 'err'); }
+      renderApp();
+    }).catch(function(){ BANKMUTATIES_ANALYSE_BEZIG = false; toast('Verbindingsfout.', 'err'); renderApp(); });
+}
+
+var RED_FLAG_CATEGORIE_LABELS = {
+  omzet_verificatie: 'Omzet-verificatie',
+  verborgen_verplichtingen: 'Verborgen verplichtingen',
+  cashflow_kwaliteit: 'Cashflow-kwaliteit',
+  klant_leverancier_concentratie: 'Klant-/leverancierconcentratie',
+  prive_zakelijk_vermenging: 'Privé/zakelijk vermenging',
+  fraude_integriteit_wwft: 'Fraude/integriteit (Wwft)',
+};
+
+function renderRedFlagAnalyseSectie() {
+  if (!isTussen()) return '';
+  var html = '<div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)">'
+    + '<div style="font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">&#128269; Red-flag-analyse <span style="font-weight:400;text-transform:none;letter-spacing:normal">(alleen zichtbaar voor u)</span></div>';
+
+  if (BANKMUTATIES_ANALYSE_BEZIG) {
+    html += '<div style="font-size:12px;color:var(--muted);display:flex;align-items:center;gap:8px"><div class="spin" style="border-color:var(--border2);border-top-color:var(--teal);width:13px;height:13px;flex-shrink:0"></div>Analyse wordt gegenereerd (kan een minuut duren)...</div></div>';
+    return html;
+  }
+
+  html += '<button class="btn-sm" style="background:#6b7c93;color:#fff;border:none;border-radius:var(--r);padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer;margin-bottom:.75rem" onclick="genereerRedFlagAnalyse()">&#9881; '+((BANKMUTATIES_ANALYSE&&BANKMUTATIES_ANALYSE.resultaat)?'Opnieuw genereren':'Genereer analyse')+'</button>';
+
+  if (!BANKMUTATIES_ANALYSE || !BANKMUTATIES_ANALYSE.resultaat) {
+    html += '</div>';
+    return html;
+  }
+
+  var res = BANKMUTATIES_ANALYSE.resultaat;
+  var ernstKleur = { laag: 'var(--muted)', midden: 'var(--gold)', hoog: 'var(--red)' };
+  html += '<div style="font-size:10px;color:var(--muted);margin-bottom:.6rem">Gegenereerd op basis van '+(BANKMUTATIES_ANALYSE.aantal_regels_geanalyseerd||0)+' transactieregel(s) · '+(BANKMUTATIES_ANALYSE.gegenereerd_op?new Date(BANKMUTATIES_ANALYSE.gegenereerd_op).toLocaleString('nl-NL',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'')+'</div>';
+  if (res.samenvatting) html += '<div style="font-size:12px;color:var(--sub);line-height:1.6;background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:.6rem .8rem;margin-bottom:.75rem">'+esc(res.samenvatting)+'</div>';
+
+  Object.keys(RED_FLAG_CATEGORIE_LABELS).forEach(function(cat){
+    var catData = (res.categorieen || {})[cat];
+    var bevindingen = (catData && catData.bevindingen) || [];
+    html += '<div style="margin-bottom:.6rem">'
+      + '<div style="font-size:11.5px;font-weight:600;color:var(--head);margin-bottom:.3rem">'+esc(RED_FLAG_CATEGORIE_LABELS[cat])+'</div>';
+    if (!bevindingen.length) {
+      html += '<div style="font-size:11px;color:var(--muted);font-style:italic;padding-left:.5rem">Geen bijzonderheden gevonden.</div>';
+    } else {
+      bevindingen.forEach(function(b){
+        var kleur = ernstKleur[b.ernst] || 'var(--muted)';
+        html += '<div style="padding:5px 8px;background:var(--card);border-left:3px solid '+kleur+';border-radius:0 var(--r) var(--r) 0;margin-bottom:4px">'
+          + '<div style="display:flex;align-items:center;gap:6px"><span style="font-size:11.5px;font-weight:600;color:var(--sub)">'+esc(b.signaal||'')+'</span><span style="font-size:9px;font-weight:700;text-transform:uppercase;color:'+kleur+'">'+esc(b.ernst||'')+'</span></div>'
+          + (b.toelichting?'<div style="font-size:11px;color:var(--mid);margin-top:2px">'+esc(b.toelichting)+'</div>':'')
+          + (b.bewijs?'<div style="font-size:10px;color:var(--muted);margin-top:2px;font-style:italic">'+esc(b.bewijs)+'</div>':'')
+          + '</div>';
+      });
+    }
+    html += '</div>';
+  });
+
+  html += '</div>';
+  return html;
+}
+
 function laadBankmutatiesRegels(importId) {
   fetch(WORKER + '/mna/bankmutaties/regels/' + encodeURIComponent(importId) + '?code=' + encodeURIComponent(S.code))
     .then(function(r){ return r.json(); })
@@ -617,10 +700,11 @@ function renderBankmutatiesSectie(faseId) {
     }).join('') + '</div>';
   }
 
-  if (!uploadHtml && !lijstHtml) return '';
+  var redFlagHtml = renderRedFlagAnalyseSectie();
+  if (!uploadHtml && !lijstHtml && !redFlagHtml) return '';
   return '<div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)">'
     + '<div style="font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">&#127974; Bankmutaties</div>'
-    + uploadHtml + lijstHtml + '</div>';
+    + uploadHtml + lijstHtml + redFlagHtml + '</div>';
 }
 
 // -- DOCUMENT STATE ----------------------------------------------
@@ -1573,6 +1657,8 @@ function uitloggen(){
   Object.keys(DOCS).forEach(function(k){delete DOCS[k];});
   BANKMUTATIES=null;
   Object.keys(BANKMUTATIES_REGELS).forEach(function(k){delete BANKMUTATIES_REGELS[k];});
+  BANKMUTATIES_ANALYSE=null;
+  BANKMUTATIES_ANALYSE_BEZIG=false;
   S={screen:'login',code:'',rol:'',traject:null,modules:null,fase:0,checked:{},data:{},docRefs:{},notities:{},aiTexts:{},aiLoading:{},saveTimer:null,showValidation:false,dataroomLoading:false,dataroom:null,_opy:{},_epy:{},_opySlotJaar:{},_conflicts:[],_pendingConflicts:{}};
   renderApp();
 }
