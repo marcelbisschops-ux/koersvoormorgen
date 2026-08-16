@@ -119,11 +119,45 @@ async function doLogin(){
     var d=await r.json();
     if(!d.ok){renderLogin(d.error||'Inloggen mislukt.');return;}
     viewerCode=code;info=d;
-    await laadData();
-    await laadDocumenten();
-    await laadFaseLabels();
-    renderDashboard();
+    if(!info.voorwaarden_akkoord){renderVoorwaarden();return;}
+    await naarDashboard();
   }catch(e){renderLogin('Verbindingsfout. Probeer het opnieuw.');}
+}
+
+async function naarDashboard(){
+  await laadData();
+  await laadDocumenten();
+  await laadFaseLabels();
+  renderDashboard();
+}
+
+function renderVoorwaarden(){
+  document.getElementById('app').innerHTML=''
+    +'<div class="login-outer"><div class="login-card" style="max-width:480px">'
+    +'<div class="login-brand"><span class="login-dot"></span><span class="login-brand-name">KantoorInzicht</span></div>'
+    +'<div class="login-title">Vertrouwelijkheidsverklaring</div>'
+    +'<div class="login-sub">U krijgt zo meteen alleen-lezen inzage in vertrouwelijke bedrijfsgegevens van <strong style="color:var(--head)">'+esc(info.kantoor_naam)+'</strong>, in het kader van een lopend overnametraject. Voordat u verdergaat:</div>'
+    +'<ul style="font-size:12.5px;color:var(--mid);line-height:1.7;margin:0 0 1.25rem 1.1rem;padding:0">'
+    +'<li>U behandelt deze gegevens vertrouwelijk en deelt ze niet met derden</li>'
+    +'<li>U gebruikt de gegevens uitsluitend voor het doel waarvoor deze toegang aan u is verleend</li>'
+    +'<li>Deze toegang is alleen-lezen en kan op elk moment door de begeleider worden ingetrokken</li>'
+    +'</ul>'
+    +'<label style="display:flex;align-items:flex-start;gap:8px;font-size:12.5px;color:var(--mid);line-height:1.5;margin-bottom:1.25rem;cursor:pointer"><input type="checkbox" id="vw-akkoord" style="margin-top:2px"> Ik ga akkoord en wil de gegevens inzien.</label>'
+    +'<div class="err-msg" id="vw-err"></div>'
+    +'<button class="btn" id="vw-verder">Doorgaan naar de gegevens</button>'
+    +'</div></div>';
+  document.getElementById('vw-verder').addEventListener('click',async function(){
+    var err=document.getElementById('vw-err');err.style.display='none';
+    if(!document.getElementById('vw-akkoord').checked){err.style.display='block';err.textContent='Vink eerst het vakje aan om verder te gaan.';return;}
+    var btn=this;btn.disabled=true;btn.textContent='Bezig...';
+    try{
+      var r=await fetch(WORKER+'/mna/viewer/voorwaarden/accepteren',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:viewerCode})});
+      var d=await r.json();
+      if(!d.ok){err.style.display='block';err.textContent='Kon niet doorgaan. Probeer het opnieuw.';btn.disabled=false;btn.textContent='Doorgaan naar de gegevens';return;}
+      info.voorwaarden_akkoord=true;
+      await naarDashboard();
+    }catch(e){err.style.display='block';err.textContent='Verbindingsfout.';btn.disabled=false;btn.textContent='Doorgaan naar de gegevens';}
+  });
 }
 
 async function laadData(){

@@ -2625,6 +2625,7 @@ async function toonMeekijkersModal(trajectId, trajectNaam, sector){
     +'<div class="field" style="flex:1"><label>Scope</label><select id="mk-scope"><option value="alle">Alle fases</option></select></div>'
     +'<div class="field" style="flex:1"><label>Verloopt na <span style="font-weight:400;color:var(--muted)">(optioneel, dagen)</span></label><input type="number" id="mk-verloopt" min="1"></div>'
     +'</div>'
+    +'<label style="display:flex;align-items:flex-start;gap:8px;font-size:12px;color:var(--mid);line-height:1.5;margin:.5rem 0 1rem;cursor:pointer"><input type="checkbox" id="mk-toestemming" style="margin-top:2px"> Ik heb toestemming van mijn opdrachtgever om deze partij beperkte inzage te geven in dit traject.</label>'
     +'<div id="mk-err" style="display:none;color:var(--red);font-size:12px;margin-bottom:.5rem"></div>'
     +'<div style="display:flex;gap:10px;justify-content:flex-end">'
     +'<button class="btn-ghost" id="mk-sluit">Sluiten</button>'
@@ -2691,16 +2692,18 @@ async function toonMeekijkersModal(trajectId, trajectNaam, sector){
     var type=document.getElementById('mk-type').value;
     var scope=document.getElementById('mk-scope').value;
     var verloopt=document.getElementById('mk-verloopt').value.trim();
+    var toestemming=document.getElementById('mk-toestemming').checked;
     var err=document.getElementById('mk-err');err.style.display='none';
     if(!naam){err.style.display='block';err.textContent='Naam meekijker is verplicht.';return;}
+    if(!toestemming){err.style.display='block';err.textContent='Bevestig eerst dat u toestemming heeft van uw opdrachtgever.';return;}
     var btn=this;btn.disabled=true;btn.textContent='Bezig...';
     try{
-      var body={traject_id:trajectId,viewer_naam:naam,viewer_type:type,scope_fase:scope};
+      var body={traject_id:trajectId,viewer_naam:naam,viewer_type:type,scope_fase:scope,toestemming_bevestigd:true};
       if(verloopt)body.verloopt_dagen=Number(verloopt);
       var r=await fetch(WORKER+'/mna/admin/viewer/aanmaken',{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':adminKey},body:JSON.stringify(body)});
       var d=await r.json();
       if(d.ok){
-        document.getElementById('mk-naam').value='';document.getElementById('mk-verloopt').value='';
+        document.getElementById('mk-naam').value='';document.getElementById('mk-verloopt').value='';document.getElementById('mk-toestemming').checked=false;
         toast('Meekijker-code aangemaakt: '+d.viewer_code,'ok',6000);
         laadLijst();
         refreshData();

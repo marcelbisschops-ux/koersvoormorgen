@@ -120,6 +120,7 @@ function renderCover(){
       +'</div></div>':'')
     +'<div id="partij-docs-sectie" style="margin-top:1.5rem"></div>'
     +'<div id="partij-gesprekken-sectie" style="margin-top:1rem"></div>'
+    +((isVerkoper()||isKoper())?'<div id="meekijkers-sectie" style="margin-top:1rem"></div>':'')
     +(isVerkoper()?'<button class="btn" id="to-main-btn2" style="width:100%;margin-top:1rem">'+(totalFillPct()>0?'Verder met invullen':'Start met invullen')+' &#8594;</button>':'')
     +(isKoper()?'<button class="btn" id="to-main-btn2" style="width:100%;margin-top:1rem">Bekijk due diligence-informatie &#8594;</button>':'')
     +(isKoper()?'<button class="btn-outline" id="to-dataroom-btn2" style="width:100%;margin-top:.5rem">&#128196; Alle documenten bekijken</button>':'')

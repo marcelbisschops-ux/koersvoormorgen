@@ -174,7 +174,7 @@ function renderApp(){
   var app=ge('app');
   if(S.screen==='login')app.innerHTML=renderLogin();
   else if(S.screen==='opening')app.innerHTML=renderOpening();
-  else if(S.screen==='cover'){app.innerHTML=renderCover();laadPartijDocs();laadPartijGesprekken();}
+  else if(S.screen==='cover'){app.innerHTML=renderCover();laadPartijDocs();laadPartijGesprekken();laadMeekijkers();}
   else if(S.screen==='main')app.innerHTML=renderMain();
   else if(S.screen==='summary')app.innerHTML=renderSummary();
   else if(S.screen==='dataroom')app.innerHTML=renderDataroom();
