@@ -281,12 +281,14 @@ if (backendFiles.length) {
 }
 
 // ── 7. Echte cliëntnamen/traject-codes in code, docs of commit-berichten ──
-// (16 aug 2026: [dossier] + "[dossier]" bleken over weken tijd, in tientallen commits, in dit
-// publieke repo terechtgekomen — via code-comments én commit-berichten — zonder dat iets dat
-// opmerkte, tot er expliciet naar gevraagd werd. Deze check leest een lokale, NOOIT gecommitte
-// termenlijst (.gevoelige-termen.local.txt, zie .gitignore) en scant daar zowel de huidige
-// bestandsboom als de recente commit-berichten tegen. Bestaat het lijst-bestand niet (bijv. een
-// verse clone), dan is dat geen fout — gewoon nog niets bijgehouden, geen valse zekerheid.)
+// (16 aug 2026: twee eerder gebruikte, echte cliëntnamen bleken over weken tijd, in tientallen
+// commits, in dit publieke repo terechtgekomen — via code-comments én commit-berichten — zonder
+// dat iets dat opmerkte, tot er expliciet naar gevraagd werd. Deze check leest een lokale, NOOIT
+// gecommitte termenlijst (.gevoelige-termen.local.txt, zie .gitignore) en scant daar zowel de
+// huidige bestandsboom als de recente commit-berichten tegen. Bestaat het lijst-bestand niet
+// (bijv. een verse clone), dan is dat geen fout — gewoon nog niets bijgehouden, geen valse
+// zekerheid. LET OP — zelfde valkuil als hierboven: deze check-tekst mag de namen zelf ook nooit
+// noemen (gebeurde hier per ongeluk, ontdekt via /code-review ultra, meteen gecorrigeerd).
 log('7. Echte cliëntnamen/traject-codes uit .gevoelige-termen.local.txt (bestandsboom + recente commits)');
 const termenPad = path.join(ROOT, '.gevoelige-termen.local.txt');
 if (!fs.existsSync(termenPad)) {
@@ -300,13 +302,15 @@ if (!fs.existsSync(termenPad)) {
     ok('.gevoelige-termen.local.txt is leeg — niets om te controleren.');
   } else {
     const gevonden = [];
-    // Bestandsboom: dezelfde bestandstypen als de rest van dit script bestrijkt.
+    // Bestandsboom: dezelfde bestandstypen als de rest van dit script bestrijkt, PLUS .gitignore
+    // en .mjs — die vielen er eerder buiten (gevonden via /code-review ultra, 16 aug 2026: precies
+    // de twee bestanden waar de teruggekeerde namen in stonden, inclusief deze eigen auditscript).
     const scanDirs = ['mna', 'tests'];
-    const scanFiles = fs.readdirSync(ROOT).filter(f => /\.(md|html)$/i.test(f)).map(f => path.join(ROOT, f));
+    const scanFiles = fs.readdirSync(ROOT).filter(f => /\.(md|html)$/i.test(f) || f === '.gitignore').map(f => path.join(ROOT, f));
     scanDirs.forEach(d => {
       const dirPath = path.join(ROOT, d);
       if (!fs.existsSync(dirPath)) return;
-      fs.readdirSync(dirPath).filter(f => /\.(js|md|html)$/i.test(f)).forEach(f => scanFiles.push(path.join(dirPath, f)));
+      fs.readdirSync(dirPath).filter(f => /\.(js|mjs|md|html)$/i.test(f)).forEach(f => scanFiles.push(path.join(dirPath, f)));
     });
     if (backendFiles.length) {
       // backendFiles bevat al {name, src} — geen los bestandssysteem-pad nodig, direct op src testen.
