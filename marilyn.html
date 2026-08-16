@@ -2807,7 +2807,7 @@ function toonNieuwModal(){
     var kantoor=vv('m-k');
     var btn=document.getElementById('m-ok');btn.disabled=true;btn.textContent='Aanmaken...';
     try{
-      var r=await fetch(gebruikerToken?WORKER+'/gebruikers/mna/create':WORKER+'/mna/create',{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':adminKey,'x-gebruiker-token':gebruikerToken||''},
+      var r=await fetch(WORKER+'/mna/create',{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':adminKey,'x-gebruiker-token':gebruikerToken||''},
         body:JSON.stringify({
           kantoor_naam:kantoor,
           kantoor_rechtsvorm:vv('m-rv'),
