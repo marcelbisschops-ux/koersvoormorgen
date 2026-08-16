@@ -57,6 +57,7 @@ document.title = BRAND.beheer + ' — ' + BRAND.platform + ' Beheer';
 // De statische header staat al in de DOM (boven dit script), dus direct te zetten.
 (function(){ var b=document.querySelector('.brand'); if(b) b.textContent = BRAND.platform + ' · Admin'; })();
 let adminKey = '', scans = [];
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 
 function renderLogin() {
   document.getElementById('app').innerHTML = '<div class="login-wrap"><div class="login-box">'
@@ -119,13 +120,13 @@ function renderDashboard() {
     scans.forEach(function(s) {
       html += '<tr>'
         + '<td style="font-size:11px;font-family:IBM Plex Mono,monospace">' + fd(s.created_at) + '</td>'
-        + '<td style="font-weight:500;color:var(--sub)">' + (s.bedrijfsnaam || 'Anoniem') + '</td>'
-        + '<td>' + (s.regio || '—') + '</td>'
+        + '<td style="font-weight:500;color:var(--sub)">' + esc(s.bedrijfsnaam || 'Anoniem') + '</td>'
+        + '<td>' + esc(s.regio || '—') + '</td>'
         + '<td><span class="score-chip" style="background:rgba(0,0,0,.05);color:' + dc(s.overall) + '">' + (s.overall || '—') + '</span></td>'
-        + '<td style="font-size:12px">' + (s.top_scenario || '—') + '</td>'
-        + '<td style="font-size:12px;color:var(--teal)">' + (s.email ? '<a href="mailto:' + s.email + '" style="color:var(--teal);text-decoration:none">' + s.email + '</a>' : '—') + '</td>'
-        + '<td><button class="btn-ghost btn-lees" data-id="' + s.id + '" style="font-size:11px;padding:3px 8px">Bekijk</button>'
-        + ' <button class="btn-red btn-del" data-id="' + s.id + '" style="font-size:10px;padding:2px 6px">✕</button></td>'
+        + '<td style="font-size:12px">' + esc(s.top_scenario || '—') + '</td>'
+        + '<td style="font-size:12px;color:var(--teal)">' + (s.email ? '<a href="mailto:' + esc(s.email) + '" style="color:var(--teal);text-decoration:none">' + esc(s.email) + '</a>' : '—') + '</td>'
+        + '<td><button class="btn-ghost btn-lees" data-id="' + esc(s.id) + '" style="font-size:11px;padding:3px 8px">Bekijk</button>'
+        + ' <button class="btn-red btn-del" data-id="' + esc(s.id) + '" style="font-size:10px;padding:2px 6px">✕</button></td>'
         + '</tr>';
     });
     html += '</tbody></table>';
@@ -161,10 +162,13 @@ async function leesRapport(id) {
   var scores = typeof d.scores === 'string' ? JSON.parse(d.scores) : d.scores || {};
   var scHtml = '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-bottom:1rem">';
   Object.entries(scores).forEach(function(e) {
-    scHtml += '<div style="background:var(--card);border-radius:var(--r);padding:6px 10px;font-size:12px"><span style="color:var(--muted)">' + e[0] + ':</span> <strong style="color:' + dc(e[1]) + '">' + e[1] + '</strong></div>';
+    scHtml += '<div style="background:var(--card);border-radius:var(--r);padding:6px 10px;font-size:12px"><span style="color:var(--muted)">' + esc(e[0]) + ':</span> <strong style="color:' + dc(e[1]) + '">' + esc(e[1]) + '</strong></div>';
   });
   scHtml += '</div>';
-  var tekst = (d.rapport_tekst || 'Rapport nog niet gegenereerd.')
+  // Security-fix 17 aug 2026: rapport_tekst komt uit de AI en werd voorheen ongefilterd in innerHTML
+  // gezet — eerst esc() toepassen en pas dáárna de markdown-achtige opmaak erop loslaten, zodat
+  // eventuele HTML/script-inhoud in de AI-tekst als platte tekst blijft staan i.p.v. uit te voeren.
+  var tekst = esc(d.rapport_tekst || 'Rapport nog niet gegenereerd.')
     .replace(/^## (.+)$/gm, '<h3 style="font-size:.95rem;font-weight:700;color:var(--sub);margin:1rem 0 .4rem;border-top:1px solid var(--border);padding-top:.75rem">$1</h3>')
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .split('\n\n').map(function(p) { p = p.trim(); if (!p || p.startsWith('<')) return p; return '<p>' + p + '</p>'; }).join('');
