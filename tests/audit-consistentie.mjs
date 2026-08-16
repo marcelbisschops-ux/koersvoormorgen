@@ -235,19 +235,20 @@ if (backendFiles.length) {
   ok('backend/ niet gevonden (leeft sinds 23 juli 2026 in de privé-repo koersvoormorgen-backend) — check 5 overgeslagen.');
 }
 
-// ── 6. Tabellen met traject_id die ontbreken in de traject-verwijder-cascade ──
+// ── 6. Tabellen met traject_id die ontbreken in een traject-verwijder-cascade ──
 // (het patroon van 25 juli én 16 aug 2026: elke keer een nieuwe traject-gebonden tabel toegevoegd
-// zonder 'm ook in /admin/delete/mna/'s DELETE-batch op te nemen, waardoor wees-rijen achterblijven
-// bij trajectverwijdering. In plaats van hierop te vertrouwen dat iemand het onthoudt: elke tabel met
-// een traject_id-kolom in initDB() MOET hier automatisch als gedekt worden herkend. mna_trajecten
+// zonder 'm ook in een DELETE-batch op te nemen, waardoor wees-rijen achterblijven. 16 aug 2026,
+// tweede keer op één dag: er bleken TWEE los onderhouden cascades te zijn — /admin/delete/mna/ én
+// /avg/verwijder (het AVG-recht-op-vergetelheid-endpoint, worker/06-scantool.js) — de eerste werd
+// gefixt, de tweede pas later die dag ontdekt, nog steeds stuk. Vandaar: elke bekende cascade-
+// locatie hieronder wordt APART gevalideerd, geen gedeelde/gecombineerde dekking. mna_trajecten
 // zelf (sleutelt op id), mna_vok (sleutelt op tussen_code) en mna_audit (bewust bewaard, P4-besluit
-// 25 juli 2026) hebben geen traject_id-kolom en verschijnen dus terecht nooit in deze lijst.)
-log('6. Tabellen met traject_id die ontbreken in de traject-verwijder-cascade (/admin/delete/mna/)');
+// 25 juli 2026) hebben geen traject_id-kolom en verschijnen dus terecht nooit in de lijst.)
+log('6. Tabellen met traject_id die ontbreken in een traject-verwijder-cascade');
 if (backendFiles.length) {
   const workerEntry = backendFiles.find(f => f.name === 'backend/cloudflare-worker.js');
-  const deleteFile = backendFiles.find(f => f.name === 'backend/worker/13-mna-afsluiten-delete.js');
-  if (!workerEntry || !deleteFile) {
-    ok('cloudflare-worker.js of worker/13-mna-afsluiten-delete.js niet gevonden — check 6 overgeslagen.');
+  if (!workerEntry) {
+    ok('backend/cloudflare-worker.js niet gevonden — check 6 overgeslagen.');
   } else {
     const createRe = /CREATE TABLE IF NOT EXISTS (\w+)\s*\(([\s\S]*?)\)`,/g;
     const tablesWithTrajectId = new Set();
@@ -255,16 +256,25 @@ if (backendFiles.length) {
     while ((cm = createRe.exec(workerEntry.src))) {
       if (/\btraject_id\b/.test(cm[2])) tablesWithTrajectId.add(cm[1]);
     }
-    const startIdx = deleteFile.src.indexOf("path.startsWith('/admin/delete/mna/')");
-    const scope = startIdx === -1 ? '' : deleteFile.src.slice(startIdx, startIdx + 6000);
-    const delRe = /DELETE FROM (\w+) WHERE traject_id=/g;
-    const covered = new Set();
-    let dm;
-    while ((dm = delRe.exec(scope))) covered.add(dm[1]);
-    const missing = [...tablesWithTrajectId].filter(t => !covered.has(t));
-    if (startIdx === -1) warn('worker/13-mna-afsluiten-delete.js: route /admin/delete/mna/ niet gevonden — is deze verplaatst of hernoemd? Check 6 kan niet valideren.');
-    else if (!missing.length) ok(tablesWithTrajectId.size + ' tabellen met traject_id gecontroleerd, allemaal gedekt in de verwijder-cascade.');
-    else missing.forEach(t => warn('backend/cloudflare-worker.js: tabel "' + t + '" heeft een traject_id-kolom maar staat NIET in de DELETE-cascade van /admin/delete/mna/ (worker/13-mna-afsluiten-delete.js) — voeg toe: DELETE FROM ' + t + ' WHERE traject_id=?'));
+    // Bekende cascade-locaties — nieuwe cascade ergens anders toegevoegd? Hier registreren.
+    const CASCADE_LOCATIES = [
+      { bestandNaam: 'backend/worker/13-mna-afsluiten-delete.js', marker: "path.startsWith('/admin/delete/mna/')", label: '/admin/delete/mna/' },
+      { bestandNaam: 'backend/worker/06-scantool.js', marker: "path === '/avg/verwijder'", label: '/avg/verwijder (AVG-recht-op-vergetelheid)' },
+    ];
+    CASCADE_LOCATIES.forEach(({ bestandNaam, marker, label }) => {
+      const bestand = backendFiles.find(f => f.name === bestandNaam);
+      if (!bestand) { warn(bestandNaam + ' niet gevonden — cascade "' + label + '" kan niet gevalideerd worden.'); return; }
+      const startIdx = bestand.src.indexOf(marker);
+      if (startIdx === -1) { warn(bestandNaam + ': route ' + label + ' niet gevonden — is deze verplaatst/hernoemd? Cascade kan niet gevalideerd worden.'); return; }
+      const scope = bestand.src.slice(startIdx, startIdx + 12000);
+      const delRe = /DELETE FROM (\w+) WHERE traject_id=/g;
+      const covered = new Set();
+      let dm;
+      while ((dm = delRe.exec(scope))) covered.add(dm[1]);
+      const missing = [...tablesWithTrajectId].filter(t => !covered.has(t));
+      if (!missing.length) ok(label + ' (' + bestandNaam + '): ' + tablesWithTrajectId.size + ' tabellen met traject_id gecontroleerd, allemaal gedekt.');
+      else missing.forEach(t => warn(bestandNaam + ' (cascade ' + label + '): tabel "' + t + '" heeft een traject_id-kolom maar staat er NIET in — voeg toe: DELETE FROM ' + t + ' WHERE traject_id=?'));
+    });
   }
 } else {
   ok('backend/ niet gevonden (leeft sinds 23 juli 2026 in de privé-repo koersvoormorgen-backend) — check 6 overgeslagen.');
