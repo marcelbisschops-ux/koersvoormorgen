@@ -287,7 +287,7 @@ function renderVoorwaardenAcceptatie(vw){
 // ===== DASHBOARD =====
 function modChips(){
   var m=G.modules||{traject:true};
-  var lbl={traject:'Traject',contracten:'Contracten & ondertekening',ai_analyse:'AI-analyse',qa:'Q&A',export:'Export & rapportage'};
+  var lbl={traject:'Traject',contracten:'Contracten & ondertekening',ai_analyse:'AI-analyse',qa:'Q&A',export:'Export & rapportage',meekijker:'Meekijkers'};
   return Object.keys(lbl).map(function(k){
     var aan=!!m[k];
     return '<span title="'+(aan?'Module actief':'Activeren via '+BRAND.kort+' — neem contact op')+'" style="font-size:11px;padding:3px 10px;border-radius:12px;border:1px solid var(--border);'+(aan?'color:var(--teal)':'color:var(--muted);opacity:.65')+'">'+(aan?'&#10003; ':'&#128274; ')+lbl[k]+'</span>';
@@ -378,7 +378,7 @@ function renderAdvHandleiding(){
         stap(1,'Account activeren','U ontvangt een uitnodigingsmail met een activeringslink. Stel een wachtwoord in — u komt daarna in dit adviseursportaal.')
         + stap(2,'Een traject starten',`Klik op "+ Nieuw traject", vul de gegevens van de onderneming (en desgewenst de koper) in. Zijn e-mailadressen ingevuld, dan verstuurt het platform automatisch een uitnodigingsmail met code en instructies naar verkoper en/of koper — anders geeft u de codes zelf handmatig door. Bracht een bank, accountant of ander contact u bij deze opdracht? Vul dat in bij "Aangedragen door" (optioneel) — dit is uw eigen administratie voor de referral-afspraak met die aandrager, los van het platform.`)
         + stap(3,'Eigen huisstijl (optioneel)','Via "🎨 Huisstijl" stelt u een eigen platformnaam, accentkleur en logo in. Dit geldt voor alle trajecten die u vanaf dat moment aanmaakt. Kiest u een kleur die op een donkere achtergrond moeilijk leesbaar zou zijn, dan waarschuwt het scherm dit direct — en wordt de kleur voor uw cliënten automatisch iets aangepast voor leesbaarheid.')
-        + stap(4,'Modules en limieten','Uw account heeft een trajectlimiet en een set modules (Contracten, AI-analyse, Q&amp;A, Export), zichtbaar als chips boven uw trajectenlijst. Een module met een slotje is niet actief — neem contact op met uw platformbeheerder.')
+        + stap(4,'Modules en limieten','Uw account heeft een trajectlimiet en een set modules (Contracten, AI-analyse, Q&amp;A, Export, Meekijkers), zichtbaar als chips boven uw trajectenlijst. Een module met een slotje is niet actief — neem contact op met uw platformbeheerder.')
         + stap(5,'Voorwaarden','Bij eerste gebruik accepteert u de <a href="platformvoorwaarden.html">Gebruiksvoorwaarden</a>. Zie ook de <a href="privacy.html">Privacyverklaring</a>.')
         + stap(6,'Meekijkers','Bij elk traject kunt u onder "Meekijkers" een bank, accountant of andere aandrager beperkte, alleen-lezen inzage geven in (een deel van) dat traject. U bevestigt daarbij expliciet dat u toestemming heeft van uw opdrachtgever — zonder die bevestiging kan er geen toegangscode ontstaan. De meekijker moet zelf eerst een vertrouwelijkheidsverklaring accepteren voordat hij iets te zien krijgt, en verkoper/koper zien in hun eigen dashboard altijd wie er meekijkt. Toegang is altijd alleen-lezen en door u op elk moment intrekbaar.')
       )}
@@ -889,18 +889,16 @@ function renderDetail(t){
 // ===== MEEKIJKERS (adviseur beheert zelf, via eigen tussenpersoonscode) =====
 function initMeekijkersAdv(id, tussenCode, sector){
   if(!(G.modules&&G.modules.meekijker))return; // module niet actief — kaart toont dan alleen de vergrendel-tekst, geen formulier om aan te binden
-  fetch(WORKER+'/mna/sectorprofielen').then(function(r){return r.json();}).then(function(d){
-    var profiel=d.profielen&&d.profielen[sector];
-    var sel=ge('mk-adv-scope');if(!sel)return;
-    (profiel&&profiel.fases||[]).forEach(function(f){
-      var opt=document.createElement('option');opt.value=f.id;opt.textContent=(f.num?f.num+'. ':'')+f.title;sel.appendChild(opt);
-    });
-  }).catch(function(){});
-
+  // Eén fetch i.p.v. twee losse (was een race: laadLijst() kon eerder terug zijn dan
+  // faseLabels, waardoor de Scope-kolom bij de eerste render de ruwe fase-id toonde).
   var faseLabels={};
-  fetch(WORKER+'/mna/sectorprofielen').then(function(r){return r.json();}).then(function(d){
+  var sectorprofielenKlaar=fetch(WORKER+'/mna/sectorprofielen').then(function(r){return r.json();}).then(function(d){
     var profiel=d.profielen&&d.profielen[sector];
-    (profiel&&profiel.fases||[]).forEach(function(f){faseLabels[f.id]=f.title;});
+    var sel=ge('mk-adv-scope');
+    (profiel&&profiel.fases||[]).forEach(function(f){
+      faseLabels[f.id]=f.title;
+      if(sel){var opt=document.createElement('option');opt.value=f.id;opt.textContent=(f.num?f.num+'. ':'')+f.title;sel.appendChild(opt);}
+    });
   }).catch(function(){});
 
   function laadLijst(){
@@ -926,7 +924,7 @@ function initMeekijkersAdv(id, tussenCode, sector){
         el.innerHTML=html;
       }).catch(function(){el.innerHTML='<div style="color:#c0392b">Kon meekijkers niet laden.</div>';});
   }
-  laadLijst();
+  sectorprofielenKlaar.then(laadLijst);
   window._mkAdvLaadLijst=laadLijst;
 
   ge('mk-adv-toevoegen').onclick=function(){
