@@ -12,7 +12,13 @@ wachtwoord in JS-geheugen): beoordeeld op 26 juli 2026 als geen actieve kwetsbaa
 her-authenticatie bij elke actie dekt het risico al) — geen actie nu, oppakken in de eerste
 bouwronde ná de testfase.
 
-Er staat momenteel **niets open** dat vóór of tijdens de externe testfase actie vereist.
+Er staat momenteel **niets open** dat vóór of tijdens de externe testfase actie vereist (stand 26 juli 2026 — zie hieronder voor nieuwe punten van ná die datum).
+
+---
+
+## Openstaande punten (ná bouwfreeze, op Marcels verzoek toegevoegd)
+
+1. **Begeleider-dashboard (mna.html) is onoverzichtelijk** (Marcel, 16 augustus 2026, tijdens de meekijker-bouwsessie) — de knoppenwand onder "Documenten" (NDA/BEM/LoI/Excl/Dealvoorstel/Indicatieve bieding/Aandachtspunten SPA/Closing-checklist) en de secties eronder (Communicatie/Analyse) nodigen niet genoeg uit en zijn te dicht op elkaar. Marcel wil: volledig uitgeschreven documentnamen i.p.v. afkortingen, betere groepering, en inklapbare secties/dropdowns i.p.v. alles in beeld tegelijk. Nog niet opgepakt — bewust apart gehouden van de meekijker-bouwsessie waarin dit werd gesignaleerd. Bestand: `mna/04-begeleider-dashboard.js` (renderBegeleiderDashboard-achtige functie, zie de knoppenrij rond "Documenten").
 
 ---
 
