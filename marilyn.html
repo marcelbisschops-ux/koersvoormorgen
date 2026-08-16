@@ -2611,7 +2611,7 @@ function toonBegeleiderModal(trajectId, trajectNaam, tussenCode){
 // MEEKIJKERS — read-only toegang voor bank/accountant per traject (worker/21-meekijker.js).
 async function toonMeekijkersModal(trajectId, trajectNaam, sector){
   var ov=document.createElement('div');ov.className='overlay';
-  var mo=document.createElement('div');mo.className='modal';mo.style.maxWidth='560px';
+  var mo=document.createElement('div');mo.className='modal';mo.style.maxWidth='720px';
   mo.innerHTML='<div class="modal-title">&#128065; Meekijkers — '+esc(trajectNaam)+'</div>'
     +'<p style="font-size:13px;color:var(--mid);margin-bottom:1rem;line-height:1.6">Bank of accountant read-only toegang geven tot dit traject. Een meekijker kan nooit iets wijzigen, alleen de gekozen fase (of alles) inzien.</p>'
     +'<div id="mk-lijst" style="margin-bottom:1.25rem;font-size:13px">Laden...</div>'
@@ -2660,7 +2660,7 @@ async function toonMeekijkersModal(trajectId, trajectNaam, sector){
       var d=await r.json();
       var viewers=(d.viewers||[]);
       if(!viewers.length){lijstEl.innerHTML='<div style="color:var(--muted);font-style:italic">Nog geen meekijkers voor dit traject.</div>';return;}
-      var html='<table style="width:100%"><thead><tr><th>Naam</th><th>Type</th><th>Scope</th><th>Code</th><th>Status</th><th></th></tr></thead><tbody>';
+      var html='<table style="width:100%"><thead><tr><th>Naam</th><th>Type</th><th>Scope</th><th>Code</th><th>Status</th><th>Laatst bekeken</th><th></th></tr></thead><tbody>';
       viewers.forEach(function(v){
         var ingetrokken=!!v.ingetrokken_op;
         var verlopen=v.expires_at&&Date.now()>v.expires_at;
@@ -2668,8 +2668,9 @@ async function toonMeekijkersModal(trajectId, trajectNaam, sector){
         var statusKleur=ingetrokken||verlopen?'var(--red)':'var(--teal)';
         html+='<tr><td>'+esc(v.viewer_naam||'—')+'</td><td>'+esc(v.viewer_type||'—')+'</td>'
           +'<td>'+(v.scope_fase==='alle'?'Alle fases':esc(faseLabel(v.scope_fase)))+'</td>'
-          +'<td><span class="code-chip" style="font-size:11px">'+esc(v.viewer_code)+'</span></td>'
+          +'<td style="white-space:nowrap"><span class="code-chip" style="font-size:11px">'+esc(v.viewer_code)+'</span></td>'
           +'<td style="color:'+statusKleur+';font-size:12px">'+status+'</td>'
+          +'<td style="font-size:11px;color:var(--muted)">'+(v.laatst_bekeken?formatDate(v.laatst_bekeken):'<span style="font-style:italic">Nog niet bekeken</span>')+'</td>'
           +'<td>'+(ingetrokken?'':'<button class="btn-ghost btn-mk-intrekken" data-id="'+esc(v.id)+'" style="font-size:11px;padding:2px 8px;color:var(--red);border-color:var(--red)">Intrekken</button>')+'</td></tr>';
       });
       html+='</tbody></table>';

@@ -897,7 +897,7 @@ function initMeekijkersAdv(id, tussenCode, sector){
       .then(function(r){return r.json();}).then(function(d){
         var viewers=d.viewers||[];
         if(!viewers.length){el.innerHTML='<div style="color:var(--muted);font-style:italic">Nog geen meekijkers voor dit traject.</div>';return;}
-        var html='<table style="width:100%;border-collapse:collapse"><thead><tr style="font-size:10px;text-transform:uppercase;color:var(--muted);text-align:left"><th style="padding-bottom:6px">Naam</th><th>Type</th><th>Scope</th><th>Code</th><th>Status</th><th></th></tr></thead><tbody>';
+        var html='<table style="width:100%;border-collapse:collapse"><thead><tr style="font-size:10px;text-transform:uppercase;color:var(--muted);text-align:left"><th style="padding-bottom:6px">Naam</th><th>Type</th><th>Scope</th><th>Code</th><th>Status</th><th>Laatst bekeken</th><th></th></tr></thead><tbody>';
         viewers.forEach(function(v){
           var ingetrokken=!!v.ingetrokken_op;
           var verlopen=v.expires_at&&Date.now()>v.expires_at;
@@ -907,6 +907,7 @@ function initMeekijkersAdv(id, tussenCode, sector){
             +'<td>'+(v.scope_fase==='alle'?'Alle fases':esc(faseLabels[v.scope_fase]||v.scope_fase))+'</td>'
             +'<td><span class="code-val" style="font-size:11px">'+esc(v.viewer_code)+'</span></td>'
             +'<td style="color:'+statusKleur+'">'+status+'</td>'
+            +'<td style="font-size:11px;color:var(--muted)">'+(v.laatst_bekeken?fmt(v.laatst_bekeken):'<span style="font-style:italic">Nog niet bekeken</span>')+'</td>'
             +'<td>'+(ingetrokken?'':'<button class="btn-outline" style="font-size:11px;padding:2px 8px;color:#c0392b;border-color:#c0392b" onclick="intrekMeekijkerAdv(\''+esc(v.id)+'\',\''+esc(id)+'\',\''+esc(tussenCode)+'\')">Intrekken</button>')+'</td></tr>';
         });
         html+='</tbody></table>';
