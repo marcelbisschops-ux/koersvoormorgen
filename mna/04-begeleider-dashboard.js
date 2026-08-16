@@ -778,7 +778,7 @@ function renderBegeleiderDashboard(app){
     // ca. 9700 tekens) zodat artikelen nooit halverwege worden afgesneden (regressie: AV stopte bij Artikel 2).
     if(tplTekst.length>14000)tplTekst=tplTekst.substring(0,14000)+'\n[...verdere standaardbepalingen van toepassing]';
     var prompt=prompts[type]+'\n\nTEMPLATE:\n'+tplTekst;
-    var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:8000})});
+    var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:16000})});
     var rd=await resp.json();
     var tekst=rd.text||'Fout bij genereren';
     // (Concept-opslag verwijderd juli 2026: het endpoint bestond niet en de
@@ -1175,7 +1175,7 @@ function renderBegeleiderDashboard(app){
           +'BELANGRIJK: gebruik uitsluitend de cijfers hieronder. Verzin GEEN eigen bedragen, percentages, multiples of vergelijkbare transacties — die liggen al vast in de berekende tabellen die apart worden ingevoegd op de plek van [TABEL:xxx]-markeringen. Laat die markeringen exact zo staan (op een eigen regel), vervang ze niet door eigen tekst of tabellen.\n\n'
           +'CONTEXT:\n'+contextBlok+'\n\n'
           +'Schrijf onderstaande hoofdstukken met ## koppen, zakelijk Nederlands, geen overdreven bijvoeglijke naamwoorden, max 1500 woorden tekst in totaal (exclusief tabelmarkeringen):\n\n'+koppen;
-        var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:8000})});
+        var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:16000})});
         var rd=await resp.json();
         var bodyHtml=dvBouwRapportHtml(rd.text||'',tabelMap);
         document.body.removeChild(ov);
@@ -1283,7 +1283,7 @@ function renderBegeleiderDashboard(app){
           +'Geldig tot: '+geldigTotV+'.\n'
           +'Datum: '+datum+'. Plaats: Oploo.\n\n'
           +'Geef alleen het volledig ingevulde document terug, zonder toelichting.\n\nTEMPLATE:\n'+tplTekst;
-        var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:8000})});
+        var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:16000})});
         var rd=await resp.json();
         var tekst=rd.text||'Fout bij genereren';
         document.body.removeChild(ov);
