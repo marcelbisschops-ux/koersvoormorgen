@@ -403,6 +403,9 @@ function renderMnaTab(el){
           ?'<span class="btn-ghost" style="font-size:11px;padding:3px 10px;opacity:.5;cursor:not-allowed" title="Afgeschermd — traject van externe adviseur">&#128231; Begeleider</span>'
           :'<button class="btn btn-uitnodigen" data-id="'+esc(t.id)+'" data-naam="'+esc(t.kantoor_naam||t.id)+'" data-tcode="'+esc(t.tussen_code||'')+'" style="font-size:11px;padding:3px 10px;background:var(--info)">&#128231; Begeleider</button>')
         +'<button class="btn-ghost btn-detail" data-id="'+esc(t.id)+'" data-naam="'+esc(t.kantoor_naam||t.id)+'" style="font-size:11px;padding:3px 8px">&#128065; Bekijk</button>'
+        +(t.inhoud_afgeschermd
+          ?'<span class="btn-ghost" style="font-size:11px;padding:3px 8px;opacity:.5;cursor:not-allowed" title="Afgeschermd — traject van externe adviseur">&#128064; Meekijkers</span>'
+          :'<button class="btn-ghost btn-meekijkers" data-id="'+esc(t.id)+'" data-naam="'+esc(t.kantoor_naam||t.id)+'" data-sector="'+esc(t.sector||'accountancy')+'" style="font-size:11px;padding:3px 8px">&#128064; Meekijkers</button>')
         +'<button class="btn-ghost btn-bewerk" data-id="'+esc(t.id)+'" data-naam="'+esc(t.kantoor_naam||t.id)+'" style="font-size:11px;padding:3px 8px">&#9999;&#65039; Bewerk</button>'
         +'<button class="btn-ghost btn-opslaan" data-idx="'+i+'" style="font-size:11px;padding:3px 8px">&#8681; Opslaan</button>'
         +(t.inhoud_afgeschermd
@@ -428,6 +431,7 @@ function renderMnaTab(el){
     });
   });
   el.querySelectorAll('.btn-detail').forEach(function(b){b.addEventListener('click',function(){toonDetail(b.dataset.id,b.dataset.naam);});});
+  el.querySelectorAll('.btn-meekijkers').forEach(function(b){b.addEventListener('click',function(){toonMeekijkersModal(b.dataset.id,b.dataset.naam,b.dataset.sector);});});
   el.querySelectorAll('.btn-bewerk').forEach(function(b){b.addEventListener('click',function(){toonBewerkModal(b.dataset.id,b.dataset.naam);});});
   el.querySelectorAll('.btn-uitnodigen').forEach(function(b){b.addEventListener('click',function(){toonBegeleiderModal(b.dataset.id,b.dataset.naam,b.dataset.tcode);});});
   el.querySelectorAll('.btn-opslaan').forEach(function(b){b.addEventListener('click',function(){slaOp(mnaList[parseInt(b.dataset.idx)]);});});
@@ -2595,6 +2599,106 @@ function toonBegeleiderModal(trajectId, trajectNaam, tussenCode){
   });
 }
 
+// MEEKIJKERS — read-only toegang voor bank/accountant per traject (worker/21-meekijker.js).
+async function toonMeekijkersModal(trajectId, trajectNaam, sector){
+  var ov=document.createElement('div');ov.className='overlay';
+  var mo=document.createElement('div');mo.className='modal';mo.style.maxWidth='560px';
+  mo.innerHTML='<div class="modal-title">&#128065; Meekijkers — '+esc(trajectNaam)+'</div>'
+    +'<p style="font-size:13px;color:var(--mid);margin-bottom:1rem;line-height:1.6">Bank of accountant read-only toegang geven tot dit traject. Een meekijker kan nooit iets wijzigen, alleen de gekozen fase (of alles) inzien.</p>'
+    +'<div id="mk-lijst" style="margin-bottom:1.25rem;font-size:13px">Laden...</div>'
+    +'<div style="border-top:1px solid var(--border);padding-top:1rem">'
+    +'<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem">Nieuwe meekijker</div>'
+    +'<div style="display:flex;gap:8px">'
+    +'<div class="field" style="flex:2"><label>Naam meekijker <span style="color:var(--red)">*</span></label><input type="text" id="mk-naam"></div>'
+    +'<div class="field" style="flex:1"><label>Type</label><select id="mk-type"><option value="bank">Bank</option><option value="accountant">Accountant</option><option value="overig">Overig</option></select></div>'
+    +'</div>'
+    +'<div style="display:flex;gap:8px">'
+    +'<div class="field" style="flex:1"><label>Scope</label><select id="mk-scope"><option value="alle">Alle fases</option></select></div>'
+    +'<div class="field" style="flex:1"><label>Verloopt na <span style="font-weight:400;color:var(--muted)">(optioneel, dagen)</span></label><input type="number" id="mk-verloopt" min="1"></div>'
+    +'</div>'
+    +'<div id="mk-err" style="display:none;color:var(--red);font-size:12px;margin-bottom:.5rem"></div>'
+    +'<div style="display:flex;gap:10px;justify-content:flex-end">'
+    +'<button class="btn-ghost" id="mk-sluit">Sluiten</button>'
+    +'<button class="btn" id="mk-toevoegen">+ Meekijker aanmaken</button>'
+    +'</div></div>';
+  ov.appendChild(mo);document.body.appendChild(ov);
+  ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
+  document.getElementById('mk-sluit').addEventListener('click',function(){document.body.removeChild(ov);});
+
+  function fasesInvullen(){
+    fetch(WORKER+'/mna/sectorprofielen').then(function(r){return r.json();}).then(function(d){
+      var profiel=d.profielen&&d.profielen[sector||'accountancy'];
+      var sel=document.getElementById('mk-scope');if(!sel)return;
+      (profiel&&profiel.fases||[]).forEach(function(f){
+        var opt=document.createElement('option');opt.value=f.id;opt.textContent=(f.num?f.num+'. ':'')+f.title;sel.appendChild(opt);
+      });
+    }).catch(function(){});
+  }
+  fasesInvullen();
+
+  var faseLabelCache={};
+  function faseLabel(id){return faseLabelCache[id]||id;}
+  fetch(WORKER+'/mna/sectorprofielen').then(function(r){return r.json();}).then(function(d){
+    var profiel=d.profielen&&d.profielen[sector||'accountancy'];
+    (profiel&&profiel.fases||[]).forEach(function(f){faseLabelCache[f.id]=f.title;});
+  }).catch(function(){});
+
+  async function laadLijst(){
+    var lijstEl=document.getElementById('mk-lijst');if(!lijstEl)return;
+    try{
+      var r=await fetch(WORKER+'/mna/admin/viewer/lijst?traject_id='+encodeURIComponent(trajectId),{headers:{'x-admin-key':adminKey}});
+      var d=await r.json();
+      var viewers=(d.viewers||[]);
+      if(!viewers.length){lijstEl.innerHTML='<div style="color:var(--muted);font-style:italic">Nog geen meekijkers voor dit traject.</div>';return;}
+      var html='<table style="width:100%"><thead><tr><th>Naam</th><th>Type</th><th>Scope</th><th>Code</th><th>Status</th><th></th></tr></thead><tbody>';
+      viewers.forEach(function(v){
+        var ingetrokken=!!v.ingetrokken_op;
+        var verlopen=v.expires_at&&Date.now()>v.expires_at;
+        var status=ingetrokken?'Ingetrokken':(verlopen?'Verlopen':'Actief');
+        var statusKleur=ingetrokken||verlopen?'var(--red)':'var(--teal)';
+        html+='<tr><td>'+esc(v.viewer_naam||'—')+'</td><td>'+esc(v.viewer_type||'—')+'</td>'
+          +'<td>'+(v.scope_fase==='alle'?'Alle fases':esc(faseLabel(v.scope_fase)))+'</td>'
+          +'<td><span class="code-chip" style="font-size:11px">'+esc(v.viewer_code)+'</span></td>'
+          +'<td style="color:'+statusKleur+';font-size:12px">'+status+'</td>'
+          +'<td>'+(ingetrokken?'':'<button class="btn-ghost btn-mk-intrekken" data-id="'+esc(v.id)+'" style="font-size:11px;padding:2px 8px;color:var(--red);border-color:var(--red)">Intrekken</button>')+'</td></tr>';
+      });
+      html+='</tbody></table>';
+      lijstEl.innerHTML=html;
+      lijstEl.querySelectorAll('.btn-mk-intrekken').forEach(function(b){
+        b.addEventListener('click',async function(){
+          if(!confirm('Toegang voor deze meekijker direct intrekken?'))return;
+          b.disabled=true;b.textContent='Bezig...';
+          await fetch(WORKER+'/mna/admin/viewer/intrekken',{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':adminKey},body:JSON.stringify({id:b.dataset.id,traject_id:trajectId})}).catch(function(){});
+          laadLijst();
+        });
+      });
+    }catch(e){lijstEl.innerHTML='<div style="color:var(--red)">Kon meekijkers niet laden.</div>';}
+  }
+  laadLijst();
+
+  document.getElementById('mk-toevoegen').addEventListener('click',async function(){
+    var naam=document.getElementById('mk-naam').value.trim();
+    var type=document.getElementById('mk-type').value;
+    var scope=document.getElementById('mk-scope').value;
+    var verloopt=document.getElementById('mk-verloopt').value.trim();
+    var err=document.getElementById('mk-err');err.style.display='none';
+    if(!naam){err.style.display='block';err.textContent='Naam meekijker is verplicht.';return;}
+    var btn=this;btn.disabled=true;btn.textContent='Bezig...';
+    try{
+      var body={traject_id:trajectId,viewer_naam:naam,viewer_type:type,scope_fase:scope};
+      if(verloopt)body.verloopt_dagen=Number(verloopt);
+      var r=await fetch(WORKER+'/mna/admin/viewer/aanmaken',{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':adminKey},body:JSON.stringify(body)});
+      var d=await r.json();
+      if(d.ok){
+        document.getElementById('mk-naam').value='';document.getElementById('mk-verloopt').value='';
+        toast('Meekijker-code aangemaakt: '+d.viewer_code,'ok',6000);
+        laadLijst();
+      }else{err.style.display='block';err.textContent='Fout: '+(d.error||'onbekend');}
+    }catch(e){err.style.display='block';err.textContent='Verbindingsfout.';}
+    btn.disabled=false;btn.textContent='+ Meekijker aanmaken';
+  });
+}
+
 function toonNieuwModal(){
   var ov=document.createElement('div');ov.className='overlay';
   var mo=document.createElement('div');mo.className='modal';
@@ -2619,6 +2723,10 @@ function toonNieuwModal(){
     +'<div class="field"><label id="m-p2-adres-lbl">Adres koper <span style="color:var(--red)">*</span></label><input type="text" id="m-koper-adres" placeholder="Adres"></div>'
     +'<div class="field"><label id="m-p2-contact-lbl">Contactpersoon koper <span style="color:var(--red)">*</span></label><input type="text" id="m-koper-contact" placeholder="Naam contactpersoon"></div>'
     +'<div class="field"><label id="m-p2-email-lbl">E-mail koper <span style="color:var(--red)">*</span></label><input type="email" id="m-koper-email" placeholder="E-mailadres koper"></div>'
+    +'<div style="border-top:1px solid var(--border);margin:.75rem 0;padding-top:.75rem"><div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem">Aangedragen door <span style="font-weight:400;text-transform:none;letter-spacing:normal">(optioneel — intern, nooit zichtbaar voor verkoper/koper)</span></div></div>'
+    +'<div class="field"><label>Naam aandrager <span style="font-weight:400;color:var(--muted)">(bijv. contactpersoon bij bank/accountantskantoor)</span></label><input type="text" id="m-aandr-naam"></div>'
+    +'<div class="field"><label>Organisatie aandrager</label><input type="text" id="m-aandr-org"></div>'
+    +'<div class="field"><label>Referral fee-afspraak <span style="font-weight:400;color:var(--muted)">(percentage of vast bedrag, vrije tekst)</span></label><input type="text" id="m-aandr-afspraak"></div>'
     +'<div id="m-res" style="display:none;background:var(--teal-bg);border:1px solid var(--teal-dark);border-radius:var(--r);padding:1rem;margin-bottom:1rem;font-size:13px;line-height:2"></div>'
     +'<div id="m-err" style="display:none;color:var(--red);font-size:12px;margin-bottom:.75rem"></div>'
     +'<div style="display:flex;gap:10px;justify-content:flex-end"><button class="btn-ghost" id="m-ann">Annuleren</button><button class="btn" id="m-ok">Traject aanmaken</button></div>';
@@ -2702,7 +2810,10 @@ function toonNieuwModal(){
           koper_contact:vv('m-koper-contact'),
           koper_email:vv('m-koper-email'),
           koper_adres:vv('m-koper-adres'),
-          koper_kvk:vv('m-koper-kvk')
+          koper_kvk:vv('m-koper-kvk'),
+          aangedragen_door_naam:vv('m-aandr-naam'),
+          aangedragen_door_organisatie:vv('m-aandr-org'),
+          aangedragen_door_afspraak:vv('m-aandr-afspraak')
         })});
       var d=await r.json();
       if(d.ok){
