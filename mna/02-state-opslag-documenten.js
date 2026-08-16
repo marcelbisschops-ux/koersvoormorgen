@@ -500,6 +500,129 @@ window.addEventListener('beforeunload',function(){
   }
 });
 
+// -- BANKMUTATIES STATE (sessie 4, hoort bij fase "financieel") --
+var BANKMUTATIES = null; // null = nog niet geladen; anders array van imports
+var BANKMUTATIES_REGELS = {}; // { importId: [regels] }, on-demand geladen bij uitklappen
+
+function laadBankmutaties() {
+  if (!S.code) return;
+  fetch(WORKER + '/mna/bankmutaties/lijst/' + encodeURIComponent(S.code))
+    .then(function(r){ return r.json(); })
+    .then(function(d){ BANKMUTATIES = (d && d.imports) || []; renderApp(); })
+    .catch(function(){ BANKMUTATIES = []; renderApp(); });
+}
+
+function laadBankmutatiesRegels(importId) {
+  fetch(WORKER + '/mna/bankmutaties/regels/' + encodeURIComponent(importId) + '?code=' + encodeURIComponent(S.code))
+    .then(function(r){ return r.json(); })
+    .then(function(d){ BANKMUTATIES_REGELS[importId] = (d && d.regels) || []; renderApp(); })
+    .catch(function(){ BANKMUTATIES_REGELS[importId] = []; renderApp(); });
+}
+
+function uploadBankmutatiesBestand(input) {
+  var file = input.files && input.files[0];
+  if (!file) return;
+  var statusEl = ge('bankmut-upload-status');
+  if (statusEl) statusEl.textContent = 'Bezig met verwerken...';
+  var fd = new FormData();
+  fd.append('code', S.code);
+  fd.append('file', file);
+  fetch(WORKER + '/mna/bankmutaties/upload', { method: 'POST', body: fd })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      input.value = '';
+      if (!d || !d.ok) { if (statusEl) statusEl.textContent = 'Fout: ' + ((d && d.error) || 'onbekend'); return; }
+      if (statusEl) statusEl.textContent = '';
+      laadBankmutaties();
+    })
+    .catch(function(){ input.value = ''; if (statusEl) statusEl.textContent = 'Verbindingsfout.'; });
+}
+
+function verwijderBankmutatiesImport(importId) {
+  if (!confirm('Deze import (en alle bijbehorende transactieregels) verwijderen?')) return;
+  fetch(WORKER + '/mna/bankmutaties/verwijderen', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ import_id: importId, traject_id: S.code })
+  }).then(function(){ delete BANKMUTATIES_REGELS[importId]; laadBankmutaties(); }).catch(function(){});
+}
+
+function toggleBankmutatiesRegels(importId) {
+  if (BANKMUTATIES_REGELS[importId]) { delete BANKMUTATIES_REGELS[importId]; renderApp(); return; }
+  BANKMUTATIES_REGELS[importId] = []; // toont meteen "laden..." ipv niets
+  laadBankmutatiesRegels(importId);
+}
+
+function renderBankmutatiesSectie(faseId) {
+  if (faseId !== 'financieel') return '';
+  var isReadOnly = (S.traject && S.traject.status === 'vergrendeld');
+  var magUploaden = !isReadOnly && !isKoper();
+  var magVerwijderen = !isReadOnly && !isKoper();
+
+  var uploadHtml = '';
+  if (magUploaden) {
+    uploadHtml = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:.75rem;flex-wrap:wrap">'
+      + '<label style="display:flex;align-items:center;gap:6px;background:var(--teal);color:#fff;font-family:IBM Plex Sans,sans-serif;font-size:12px;font-weight:600;padding:6px 14px;border-radius:var(--r);cursor:pointer">'
+      + '&#127974; Bankmutaties uploaden (CSV/MT940)'
+      + '<input type="file" accept=".csv,.940,.sta,.mt940,.txt" style="display:none" onchange="uploadBankmutatiesBestand(this)">'
+      + '</label>'
+      + '<div id="bankmut-upload-status" style="font-size:11px;color:var(--muted)"></div>'
+      + '</div>';
+  }
+
+  var lijstHtml = '';
+  if (BANKMUTATIES === null) {
+    lijstHtml = '<div style="font-size:12px;color:var(--muted);font-style:italic">Bankmutaties laden...</div>';
+  } else if (!BANKMUTATIES.length) {
+    lijstHtml = magUploaden ? '' : '<div style="font-size:12px;color:var(--muted);font-style:italic">Nog geen bankmutaties geüpload.</div>';
+  } else {
+    lijstHtml = '<div style="display:flex;flex-direction:column;gap:6px">' + BANKMUTATIES.map(function(imp){
+      var nodigControle = imp.status === 'handmatig_controleren';
+      var regels = BANKMUTATIES_REGELS[imp.id];
+      var opengeklapt = regels !== undefined;
+      var badge = nodigControle
+        ? '<span style="font-size:9px;font-weight:700;color:#fff;background:var(--red);border-radius:8px;padding:1px 6px">&#9888; Handmatig controleren</span>'
+        : '<span style="font-size:9px;font-weight:600;color:var(--teal);background:var(--teal-bg);border-radius:8px;padding:1px 6px">'+imp.aantal_regels+' regel(s)</span>';
+      var regelsHtml = '';
+      if (opengeklapt) {
+        if (!regels) {
+          regelsHtml = '<div style="font-size:11px;color:var(--muted);padding:.5rem 0">Laden...</div>';
+        } else if (!regels.length) {
+          regelsHtml = '<div style="font-size:11px;color:var(--muted);padding:.5rem 0">Geen transactieregels.</div>';
+        } else {
+          regelsHtml = '<div style="overflow-x:auto;margin-top:.4rem"><table style="width:100%;border-collapse:collapse;font-size:11px">'
+            + '<thead><tr style="text-align:left;color:var(--muted)"><th style="padding:3px 6px">Datum</th><th style="padding:3px 6px">Bedrag</th><th style="padding:3px 6px">Tegenpartij</th><th style="padding:3px 6px">Omschrijving</th></tr></thead><tbody>'
+            + regels.map(function(r){
+                var bedragKleur = (r.bedrag||0) < 0 ? 'var(--red)' : 'var(--teal)';
+                return '<tr style="border-top:1px solid var(--border)">'
+                  + '<td style="padding:3px 6px;white-space:nowrap">'+esc(r.datum||'—')+'</td>'
+                  + '<td style="padding:3px 6px;white-space:nowrap;color:'+bedragKleur+'">&euro; '+(r.bedrag!==null&&r.bedrag!==undefined?Number(r.bedrag).toLocaleString('nl-NL',{minimumFractionDigits:2,maximumFractionDigits:2}):'—')+'</td>'
+                  + '<td style="padding:3px 6px">'+esc(r.tegenpartij||'—')+'</td>'
+                  + '<td style="padding:3px 6px">'+esc(r.omschrijving||'—')+'</td>'
+                  + '</tr>';
+              }).join('')
+            + '</tbody></table></div>';
+        }
+      }
+      return '<div style="padding:6px 8px;background:'+(nodigControle?'var(--red-bg)':'var(--card)')+';border-radius:var(--r);border:1px solid '+(nodigControle?'var(--red)':'var(--border)')+'">'
+        + '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">'
+        + '<span style="font-size:13px">&#127974;</span>'
+        + '<span style="font-size:11px;color:var(--sub);flex:1;cursor:pointer" onclick="toggleBankmutatiesRegels(\''+imp.id+'\')">'+esc(imp.bestand_naam)+' <span style="color:var(--muted)">('+esc((imp.bron_formaat||'').toUpperCase())+')</span></span>'
+        + badge
+        + '<button onclick="toggleBankmutatiesRegels(\''+imp.id+'\')" style="background:none;border:1px solid var(--border2);color:var(--muted);border-radius:var(--r);cursor:pointer;font-size:10px;padding:1px 6px">'+(opengeklapt?'Inklappen':'Bekijken')+'</button>'
+        + (magVerwijderen?'<button onclick="verwijderBankmutatiesImport(\''+imp.id+'\')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:10px;padding:0 2px">✕</button>':'')
+        + '</div>'
+        + (nodigControle?'<div style="font-size:10px;color:var(--red);margin-top:3px">'+esc(imp.status_reden||'Kon niet automatisch worden verwerkt.')+'</div>':'')
+        + regelsHtml
+        + '</div>';
+    }).join('') + '</div>';
+  }
+
+  if (!uploadHtml && !lijstHtml) return '';
+  return '<div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)">'
+    + '<div style="font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">&#127974; Bankmutaties</div>'
+    + uploadHtml + lijstHtml + '</div>';
+}
+
 // -- DOCUMENT STATE ----------------------------------------------
 var DOCS = {};  // { faseId: [{id, naam, type, grootte, analyse, velden, uploading}] }
 
@@ -1448,6 +1571,8 @@ function uitloggen(){
   secAuditLog('logout');
   secReset();
   Object.keys(DOCS).forEach(function(k){delete DOCS[k];});
+  BANKMUTATIES=null;
+  Object.keys(BANKMUTATIES_REGELS).forEach(function(k){delete BANKMUTATIES_REGELS[k];});
   S={screen:'login',code:'',rol:'',traject:null,modules:null,fase:0,checked:{},data:{},docRefs:{},notities:{},aiTexts:{},aiLoading:{},saveTimer:null,showValidation:false,dataroomLoading:false,dataroom:null,_opy:{},_epy:{},_opySlotJaar:{},_conflicts:[],_pendingConflicts:{}};
   renderApp();
 }
