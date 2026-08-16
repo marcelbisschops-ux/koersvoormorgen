@@ -149,9 +149,14 @@ tr:hover td{background:var(--bg);cursor:pointer}
 <div id="app"></div>
 <div id="toast"></div>
 <script>
-// Standaard altijd productie. Alleen overschrijfbaar via ?worker=... in de URL — bedoeld om tegen
-// de staging-omgeving te testen, nooit als permanente instelling.
-var WORKER=new URLSearchParams(location.search).get('worker')||'https://kantoorinzicht.marcel-bisschops.workers.dev';
+// Standaard altijd productie. Alleen overschrijfbaar via ?worker=... in de URL, en dan uitsluitend
+// naar de bekende staging-omgeving — bedoeld om daar tegen te testen, nooit als permanente
+// instelling. Security-fix 17 aug 2026 (extern codereview): een willekeurige ?worker=-waarde
+// accepteren betekende dat een gekaapte link inloggegevens naar een server van een aanvaller kon
+// sturen; met deze whitelist zijn alleen deze twee, door onszelf beheerde, bestemmingen mogelijk.
+var _WORKER_WHITELIST=['https://kantoorinzicht.marcel-bisschops.workers.dev','https://kantoorinzicht-staging.marcel-bisschops.workers.dev'];
+var _WORKER_PARAM=new URLSearchParams(location.search).get('worker')||'';
+var WORKER=_WORKER_WHITELIST.includes(_WORKER_PARAM)?_WORKER_PARAM:'https://kantoorinzicht.marcel-bisschops.workers.dev';
 // White-label basis — centrale merkconfig (zelfde patroon als mna.html). Eén plek wijzigen = overal.
 var BRAND = { platform:'KantoorInzicht', bedrijf:'Bisschops Financing B.V.', bedrijfKort:'Bisschops Financing BV', suffix:'M&A', kort:'Bisschops Financing' };
 document.title = BRAND.platform + ' — Adviseur';

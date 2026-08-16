@@ -89,7 +89,12 @@ tr:last-child td{border-bottom:none}
 <body>
 <div id="app"></div>
 <script>
-var WORKER=new URLSearchParams(location.search).get('worker')||'https://kantoorinzicht.marcel-bisschops.workers.dev';
+// Security-fix 17 aug 2026 (extern codereview): ?worker= accepteerde voorheen elke waarde, waardoor
+// een gekaapte link meekijker-gegevens naar een server van een aanvaller kon sturen. Whitelist naar
+// alleen productie en de bekende staging-omgeving.
+var _WORKER_WHITELIST=['https://kantoorinzicht.marcel-bisschops.workers.dev','https://kantoorinzicht-staging.marcel-bisschops.workers.dev'];
+var _WORKER_PARAM=new URLSearchParams(location.search).get('worker')||'';
+var WORKER=_WORKER_WHITELIST.includes(_WORKER_PARAM)?_WORKER_PARAM:'https://kantoorinzicht.marcel-bisschops.workers.dev';
 var viewerCode='',info=null,dataRows=[],documenten=[],faseLabels={};
 
 function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
