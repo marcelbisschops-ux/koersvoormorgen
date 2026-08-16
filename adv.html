@@ -719,6 +719,12 @@ function nieuwTraject(){
       <div class="field"><label>Naam koper</label><input type="text" id="n-koper-naam" placeholder="Naam"></div>
       <div class="field"><label>E-mail koper</label><input type="email" id="n-koper-email" placeholder="E-mailadres"></div>
     </div>
+    <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.75rem;margin-top:.25rem">Aangedragen door (optioneel)</div>
+    <div class="row2">
+      <div class="field"><label>Naam aandrager</label><input type="text" id="n-aandr-naam" placeholder="Naam"></div>
+      <div class="field"><label>Organisatie aandrager</label><input type="text" id="n-aandr-org" placeholder="Bank, accountantskantoor, ..."></div>
+    </div>
+    <div class="field"><label>Afspraak met aandrager</label><input type="text" id="n-aandr-afspraak" placeholder="Percentage of vast bedrag, eigen onderlinge afspraak"></div>
     <div id="n-err" class="err-msg"></div>
     <div id="n-ok" class="ok-msg"></div>
     <div class="modal-footer">
@@ -741,7 +747,10 @@ function nieuwTraject(){
           opdrachtgever_rol:ge('n-opdrgever')?ge('n-opdrgever').value:'verkoper',
           verkoper_adres:ge('n-adres').value.trim(),
           koper_naam:ge('n-koper-naam').value.trim(),
-          koper_email:ge('n-koper-email').value.trim()}
+          koper_email:ge('n-koper-email').value.trim(),
+          aangedragen_door_naam:ge('n-aandr-naam').value.trim(),
+          aangedragen_door_organisatie:ge('n-aandr-org').value.trim(),
+          aangedragen_door_afspraak:ge('n-aandr-afspraak').value.trim()}
       });
       var d=await r.json();
       if(!d.ok){err.textContent=d.error||'Fout.';err.style.display='block';btn.disabled=false;btn.textContent='Aanmaken';return;}
