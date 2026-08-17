@@ -311,6 +311,7 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--b
 const WORKER = 'https://kantoorinzicht.marcel-bisschops.workers.dev';
 // White-label basis — centrale merkconfig voor de publieke scan (zelfde patroon als de rest).
 const BRAND = { platform:'KantoorInzicht', bedrijf:'Bisschops Financing B.V.', bedrijfKort:'Bisschops Financing BV' };
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 // Vaste taalregels voor elke AI-prompt op deze pagina (5 aug 2026, Marcel: analyses bevatten soms
 // onnatuurlijk/vertaald Nederlands — vooral inconsistent u/je-gebruik en Engelse zinsconstructies
 // zoals "niet een X" i.p.v. "geen X"). Eén centrale plek i.p.v. losse, licht verschillende
@@ -979,7 +980,9 @@ function renderAIText(text,cursor=false){
   if(!text)return'<div class="ai-placeholder"><div class="ai-placeholder-icon">&#9672;</div><p class="ai-placeholder-text">Klik op "Genereer AI-advies" voor een gepersonaliseerd strategisch memo.</p></div>';
   if(text==='__ERROR__')return'<div class="ai-placeholder"><div class="ai-placeholder-icon" style="opacity:.5">&#9888;</div><p class="ai-placeholder-text" style="margin-bottom:1rem">Kon niet verbinden.</p><button class="btn-gen" onclick="generateAI()" style="margin:0 auto">Opnieuw proberen</button></div>';
   if(text==='__LIMIT__')return'<div class="ai-placeholder"><div class="ai-placeholder-icon" style="color:var(--gold)">&#9888;</div><p class="ai-placeholder-text" style="margin-bottom:.5rem"><strong>Rapport-limiet bereikt</strong></p><p style="font-size:13px;color:var(--muted);text-align:center;max-width:380px;margin:0 auto">U heeft het maximale aantal rapporten bereikt. Neem contact op via <a href="mailto:marcel@bisschopsfinancing.nl" style="color:var(--teal)">marcel@bisschopsfinancing.nl</a>.</p></div>';
-  let t=text;
+  // Security-fix 17 aug 2026: text komt uit de AI en ging voorheen ongefilterd in innerHTML —
+  // eerst esc() toepassen, dan pas de markdown-achtige opmaak erop loslaten.
+  let t=esc(text);
   // Verwijder markdown tabellen (|---|) volledig
   t=t.replace(/^\|.*\|.*$/gm,'').replace(/^\s*\|[-| :]+\|\s*$/gm,'');
   // ## Koppen
@@ -1290,7 +1293,7 @@ function rDashboard(){
     return '<tr style="border-bottom:1px solid #e8e6e0;cursor:pointer" onclick="toonKantoorDetail(\''+i+'\')">'
       +'<td style="padding:11px 14px;font-weight:600;color:#1a1815">'
         +'<span style="display:inline-block;width:20px;height:20px;border-radius:50%;background:'+sb+';color:'+sc+';font-size:10px;font-weight:700;text-align:center;line-height:20px;margin-right:6px">'+(i+1)+'</span>'
-        +(o.name||'Anoniem')+'</td>'
+        +esc(o.name||'Anoniem')+'</td>'
       +'<td style="padding:11px 14px;font-size:12px;text-align:right;font-family:IBM Plex Mono,monospace">'+(o.fte||'\u2014')+'</td>'
       +'<td style="padding:11px 14px;font-size:12px;text-align:right;font-family:IBM Plex Mono,monospace">'+fmtOmzet(o.revenue)+'</td>'
       +'<td style="padding:11px 14px;font-size:12px;text-align:right;font-family:IBM Plex Mono,monospace">'+(o.ebitda||'\u2014')+'</td>'
@@ -1314,11 +1317,11 @@ function rDashboard(){
     +'</div>';
 
   return`<div class="page-wrap">
-<div class="page-hdr"><div class="page-brand"><div class="wdot"></div>${BRAND.platform}</div><div class="page-step">Groepsdashboard &middot; ${d.group.name||ST.groupId}</div></div>
+<div class="page-hdr"><div class="page-brand"><div class="wdot"></div>${BRAND.platform}</div><div class="page-step">Groepsdashboard &middot; ${esc(d.group.name)||ST.groupId}</div></div>
 
 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2rem;flex-wrap:wrap;gap:1rem">
   <div>
-    <div style="font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:600;color:#1a1815">${d.group.name||'Groep'}</div>
+    <div style="font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:600;color:#1a1815">${esc(d.group.name)||'Groep'}</div>
     <div style="font-size:13px;color:#8a8880;margin-top:2px">Groepscode: <span style="font-family:IBM Plex Mono,monospace;color:#1a7a5e">${d.group.id||ST.groupId}</span> &middot; ${offices.length} kantoren &middot; ${new Date().toLocaleDateString('nl-NL')}</div>
   </div>
   <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -1409,7 +1412,7 @@ function toonKantoorDetail(idx){
   var mo=document.createElement('div');
   mo.style.cssText='background:#faf9f6;border-radius:12px;padding:2rem;max-width:680px;width:100%;max-height:90vh;overflow-y:auto;position:relative';
   mo.innerHTML='<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.5rem">'
-    +'<div><div style="font-size:1.2rem;font-weight:600;color:#1a1815">'+(o.name||'Anoniem')+'</div>'
+    +'<div><div style="font-size:1.2rem;font-weight:600;color:#1a1815">'+esc(o.name||'Anoniem')+'</div>'
     +'<div style="font-size:13px;color:#8a8880">'+(o.fte?o.fte+' fte':'')+' &middot; Score: <strong style="color:'+sc(o.overall)+'">'+o.overall+'/100</strong></div></div>'
     +'<div style="display:flex;gap:8px;align-items:center"><button id="det-ai-btn" style="background:var(--teal);color:#fff;border:none;border-radius:var(--r);padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer;font-family:IBM Plex Sans,sans-serif">&#127775; AI-analyse</button><button id="det-sluit" style="background:none;border:none;font-size:1.2rem;cursor:pointer;color:#8a8880;padding:4px">&times;</button></div></div>'
     +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:1.5rem">'
