@@ -3482,6 +3482,7 @@ function toonUitnodigenModal() {
     + '<div class="field"><label>Naam <span style="color:var(--red)">*</span></label><input type="text" id="inv-naam" placeholder="Voornaam achternaam"></div>'
     + '<div class="field"><label>Bedrijf</label><input type="text" id="inv-bedrijf" placeholder="Naam kantoor of bedrijf"></div>'
     + '<div class="field"><label>E-mailadres <span style="color:var(--red)">*</span></label><input type="email" id="inv-email" placeholder="E-mailadres adviseur"></div>'
+    + '<div class="field" style="flex-direction:row;align-items:center;gap:8px"><input type="checkbox" id="inv-tester" style="width:auto"><label for="inv-tester" style="margin:0">Dit is een testaccount (testvoorwaarden + aansprakelijkheid nihil in de uitnodigingsmail)</label></div>'
     + '<div id="inv-err" style="color:var(--red);font-size:12px;margin-bottom:.75rem;display:none"></div>'
     + '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem">'
     + '<button class="btn-ghost" id="inv-ann">Annuleren</button>'
@@ -3496,6 +3497,7 @@ function toonUitnodigenModal() {
     var naam = document.getElementById('inv-naam').value.trim();
     var bedrijf = document.getElementById('inv-bedrijf').value.trim();
     var email = document.getElementById('inv-email').value.trim();
+    var isTester = document.getElementById('inv-tester').checked;
     var errDiv = document.getElementById('inv-err');
     errDiv.style.display = 'none';
     if (!naam || !email) { errDiv.textContent = 'Naam en e-mail zijn verplicht.'; errDiv.style.display = 'block'; btn.disabled = false; btn.textContent = '✉ Uitnodiging versturen'; return; }
@@ -3503,7 +3505,7 @@ function toonUitnodigenModal() {
       var r = await fetch(WORKER + '/gebruikers/uitnodigen', {
         method: 'POST',
         headers: {'Content-Type': 'application/json','x-admin-key':adminKey},
-        body: JSON.stringify({naam, bedrijf, email})
+        body: JSON.stringify({naam, bedrijf, email, is_tester: isTester})
       });
       var d = await r.json();
       if (d.ok) {
