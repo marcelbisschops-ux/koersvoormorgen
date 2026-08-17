@@ -160,7 +160,7 @@ var WORKER=_WORKER_WHITELIST.includes(_WORKER_PARAM)?_WORKER_PARAM:'https://kant
 // White-label basis — centrale merkconfig (zelfde patroon als mna.html). Eén plek wijzigen = overal.
 var BRAND = { platform:'KantoorInzicht', bedrijf:'Bisschops Financing B.V.', bedrijfKort:'Bisschops Financing BV', suffix:'M&A', kort:'Bisschops Financing' };
 document.title = BRAND.platform + ' — Adviseur';
-var G={email:'',ww:'',naam:'',bedrijf:'',trajecten:[]};
+var G={email:'',token:'',naam:'',bedrijf:'',trajecten:[]};
 var VIEW='dashboard'; // dashboard | detail
 var TRAJECT=null;
 
@@ -178,7 +178,12 @@ function toast(msg,type){
 function post(url,body){
   var params=new URLSearchParams();
   params.append('data',JSON.stringify(body));
-  return fetch(WORKER+url,{method:'POST',body:params});
+  // Security-fix 17 aug 2026 (fix 6): sessietoken als header i.p.v. wachtwoord in elke request-body
+  // opnieuw meesturen. Tijdens de allereerste login is G.token nog leeg — dan valt de backend zelf
+  // terug op email/wachtwoord uit de body (die het inlogscherm daar bewust nog wél in zet).
+  var opts={method:'POST',body:params};
+  if(G.token) opts.headers={'x-gebruiker-token':G.token};
+  return fetch(WORKER+url,opts);
 }
 
 // ===== LOGIN =====
@@ -240,7 +245,7 @@ async function doLogin(){
     var r=await post('/adviseur/trajecten',{email:email,wachtwoord:ww});
     var d=await r.json();
     if(!r.ok||!d.ok){err.textContent=d.error||'Inloggegevens onjuist.';err.style.display='block';btn.disabled=false;btn.textContent='Inloggen';return;}
-    G.email=email;G.ww=ww;G.naam=d.naam;G.bedrijf=d.bedrijf;G.trajecten=d.trajecten||[];G.limiet=d.traject_limiet||1;G.modules=d.modules||{traject:true};G.branding=d.branding||{brand_naam:'',brand_kleur:'',brand_logo_url:''};
+    G.email=email;G.token=d.sessie_token||'';G.naam=d.naam;G.bedrijf=d.bedrijf;G.trajecten=d.trajecten||[];G.limiet=d.traject_limiet||1;G.modules=d.modules||{traject:true};G.branding=d.branding||{brand_naam:'',brand_kleur:'',brand_logo_url:''};
     var vw=d.voorwaarden||{gv_akkoord:true};
     if(!vw.gv_akkoord){ renderVoorwaardenAcceptatie(vw); return; }
     renderDashboard();
@@ -280,7 +285,7 @@ function renderVoorwaardenAcceptatie(vw){
       var btn=this;btn.disabled=true;btn.textContent='Verwerken...';
       var err=ge('vw-err');err.style.display='none';
       try{
-        var r=await fetch(WORKER+'/gebruiker/voorwaarden/accepteren',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:G.email,wachtwoord:G.ww})});
+        var r=await fetch(WORKER+'/gebruiker/voorwaarden/accepteren',{method:'POST',headers:{'Content-Type':'application/json','x-gebruiker-token':G.token},body:JSON.stringify({})});
         var rd=await r.json();
         if(!r.ok||!rd.ok){err.textContent=rd.error||'Kon niet worden verwerkt.';err.style.display='block';btn.disabled=false;btn.textContent='Ga akkoord en verder';return;}
         renderDashboard();
@@ -325,7 +330,7 @@ function renderDashboard(){
         <span class="hdr-user">Ingelogd als <span class="hdr-name">${esc(G.naam)}</span>${G.bedrijf?' &middot; '+esc(G.bedrijf):''}</span>
         <button class="btn-outline" onclick="renderAdvHandleiding()">&#128214; Handleiding</button>
         <button class="btn-outline" onclick="renderHuisstijlModal()">&#127912; Huisstijl</button>
-        <button class="btn-outline" onclick="renderLogin()">Uitloggen</button>
+        <button class="btn-outline" onclick="doLogout()">Uitloggen</button>
       </div>
     </div>
     <div class="main">
@@ -423,9 +428,18 @@ function renderAdvHandleiding(){
   `);
 }
 
+// Security-fix 17 aug 2026 (fix 6): uitloggen wiste voorheen alleen lokale JS-state — de
+// sessietoken bleef tot 8 uur geldig op de server, ook na uitloggen. Nu ook server-side intrekken.
+async function doLogout(){
+  var tok=G.token;
+  G.token='';G.email='';
+  try{ if(tok) await fetch(WORKER+'/gebruikers/logout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessie_token:tok})}); }catch(e){}
+  renderLogin();
+}
+
 async function ververs(){
   try{
-    var r=await post('/adviseur/trajecten',{email:G.email,wachtwoord:G.ww});
+    var r=await post('/adviseur/trajecten',{});
     var d=await r.json();
     if(d.ok){G.trajecten=d.trajecten||[];G.limiet=d.traject_limiet||G.limiet||1;G.modules=d.modules||G.modules;renderDashboard();}
   }catch(e){}
@@ -518,10 +532,10 @@ function renderHuisstijlModal(){
     if(kvk&&!/^\d{8}$/.test(kvk)){err.textContent='KvK-nummer moet 8 cijfers zijn.';err.style.display='block';return;}
     btn.disabled=true;btn.textContent='Opslaan...';
     try{
-      var payload={email:G.email,wachtwoord:G.ww,brand_naam:naam,brand_kleur:kleur,brand_adres:adres,brand_kvk:kvk};
+      var payload={brand_naam:naam,brand_kleur:kleur,brand_adres:adres,brand_kvk:kvk};
       if(nieuwLogoBase64){payload.logo_base64=nieuwLogoBase64;payload.logo_mime=nieuwLogoMime;}
       if(logoVerwijderen)payload.verwijder_logo=true;
-      var r=await fetch(WORKER+'/adviseur/branding',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      var r=await fetch(WORKER+'/adviseur/branding',{method:'POST',headers:{'Content-Type':'application/json','x-gebruiker-token':G.token},body:JSON.stringify(payload)});
       var d=await r.json();
       if(!r.ok||!d.ok){err.textContent=d.error||'Opslaan mislukt.';err.style.display='block';btn.disabled=false;btn.textContent='Opslaan';return;}
       G.branding={brand_naam:naam,brand_kleur:kleur,brand_logo_url:d.logo_url||'',brand_adres:adres,brand_kvk:kvk};
@@ -746,7 +760,6 @@ function nieuwTraject(){
     if(!naam||!contact||!email){err.textContent='Naam, contactpersoon en e-mail zijn verplicht.';err.style.display='block';btn.disabled=false;btn.textContent='Aanmaken';return;}
     try{
       var r=await post('/adviseur/create',{
-        email:G.email,wachtwoord:G.ww,
         traject:{kantoor_naam:naam,contact_naam:contact,contact_email:email,
           traject_type:ge('n-type').value,sector:ge('n-sector').value,
           opdrachtgever_rol:ge('n-opdrgever')?ge('n-opdrgever').value:'verkoper',
@@ -791,7 +804,7 @@ function renderDetail(t){
       <div class="hdr-brand"><div class="hdr-dot"></div>${BRAND.platform} ${BRAND.suffix}</div>
       <div class="hdr-right">
         <span class="hdr-user"><span class="hdr-name">${esc(G.naam)}</span></span>
-        <button class="btn-outline" onclick="renderLogin()">Uitloggen</button>
+        <button class="btn-outline" onclick="doLogout()">Uitloggen</button>
       </div>
     </div>
     <div class="main">
@@ -1008,7 +1021,6 @@ function toonAdvBewerkModal(id){
     var btn=this;btn.disabled=true;btn.textContent='Opslaan...';
     var err=ge('bw-err');err.style.display='none';
     var payload={
-      email:G.email,wachtwoord:G.ww,
       kantoor_naam:ge('bw-k').value.trim(),
       contact_naam:ge('bw-c').value.trim(),
       contact_email:ge('bw-e').value.trim(),
@@ -1022,7 +1034,7 @@ function toonAdvBewerkModal(id){
       koper_rechtsvorm:ge('bw-koper-rv').value
     };
     try{
-      var r=await fetch(WORKER+'/adviseur/traject/update/'+id,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      var r=await fetch(WORKER+'/adviseur/traject/update/'+id,{method:'POST',headers:{'Content-Type':'application/json','x-gebruiker-token':G.token},body:JSON.stringify(payload)});
       var d=await r.json();
       if(!d.ok){err.textContent=d.error||'Fout bij opslaan.';err.style.display='block';btn.disabled=false;btn.textContent='Opslaan';return;}
       Object.assign(t,{kantoor_naam:payload.kantoor_naam,contact_naam:payload.contact_naam,contact_email:payload.contact_email,verkoper_kvk:payload.verkoper_kvk,verkoper_adres:payload.verkoper_adres,koper_naam:payload.koper_naam,koper_contact:payload.koper_contact,koper_email:payload.koper_email,koper_kvk:payload.koper_kvk,koper_adres:payload.koper_adres,koper_rechtsvorm:payload.koper_rechtsvorm});
