@@ -188,7 +188,7 @@ function renderApp(){
 function renderLogin(){
   return '<div class="wrap narrow anim" style="padding-top:3rem">'
     +'<div class="hdr"><div class="brand">'+brandMerkHtml()+BRAND.platform+'</div>'
-    +'<a href="kantoorscan.html" style="font-size:11px;color:var(--muted);text-decoration:none">&#8592; Terug naar scan</a></div>'
+    +'<a href="index.html" style="font-size:11px;color:var(--muted);text-decoration:none">&#8592; Terug naar home</a></div>'
     +'<div style="min-height:60vh;display:flex;align-items:center;justify-content:center">'
     +'<div class="panel" style="max-width:420px;width:100%">'
     +'<div style="font-family:Playfair Display,serif;font-size:1.4rem;color:var(--head);font-weight:600;margin-bottom:.3rem">M&amp;A Begeleiding</div>'
@@ -197,7 +197,7 @@ function renderLogin(){
     +'<input type="text" id="l-code" placeholder="" style="text-transform:uppercase;letter-spacing:.15em;font-size:1.2rem;text-align:center;font-family:IBM Plex Mono,monospace" maxlength="10" autocomplete="off"></div>'
     +'<div id="l-err" style="color:var(--red);font-size:12px;margin-bottom:.75rem;display:none">Code niet gevonden. Controleer uw code of neem contact op met uw adviseur.</div>'
     +'<div id="l-load" style="color:var(--muted);font-size:12px;margin-bottom:.75rem;display:none">Laden...</div>'
-    +'<div style="display:flex;gap:10px"><button class="btn-ghost" onclick="window.location.href=\'kantoorscan.html\'">Terug</button><button class="btn" id="l-btn">Inloggen</button></div>'
+    +'<div style="display:flex;gap:10px"><button class="btn-ghost" onclick="window.location.href=\'index.html\'">Terug</button><button class="btn" id="l-btn">Inloggen</button></div>'
     +'<div style="margin-top:1rem;padding:.75rem 1rem;background:rgba(26,122,94,.07);border:1px solid rgba(26,122,94,.2);border-radius:6px;font-size:11px;color:var(--mid);line-height:1.7">&#128274; <strong style="color:var(--head)">Beveiliging & privacy</strong><br>Uw verbinding is versleuteld (HTTPS). Gegevens opgeslagen in Cloudflare EU-datacenters (Frankfurt, Duitsland). Toegang alleen met uw persoonlijke code. Geen gegevensverkoop aan derden. <a href="privacy.html" style="color:var(--teal)">Privacyverklaring</a> &middot; <a href="platformvoorwaarden.html" style="color:var(--teal)">Voorwaarden</a></div>'
     +'<div style="margin-top:1.25rem;font-size:11px;color:var(--muted);padding-top:1rem;border-top:1px solid var(--border)">Code ontvangen via uw adviseur.</div>'
     +'<div style="margin-top:.5rem;font-size:10px;color:var(--muted);display:flex;align-items:center;gap:5px">&#128274; Sessie verloopt automatisch na 8 uur inactiviteit. Max. 10 inlogpogingen per sessie.</div>'
