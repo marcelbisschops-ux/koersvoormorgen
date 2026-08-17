@@ -89,6 +89,34 @@ var DOC_LABELS={
 };
 
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+// Security-fix 17 aug 2026: de AI wordt hier expliciet gevraagd om ruwe HTML te genereren
+// (h1/h2/p/ol/ul/span class="blank") — een simpele esc() zou die opmaak juist kapotmaken. In
+// plaats daarvan een allowlist-sanitizer: parseert via DOMParser (inert — geen scripts/afbeeldingen
+// worden geladen tijdens het parsen, in tegenstelling tot het rechtstreeks zetten van .innerHTML),
+// verwijdert elk element dat niet op de toegestane lijst staat (tekstinhoud blijft behouden) en
+// verwijdert alle attributen behalve class.
+function saniteerHtml(ruweHtml, toegestaneTags) {
+  var doc = new DOMParser().parseFromString(String(ruweHtml || ''), 'text/html');
+  var walker = document.createTreeWalker(doc.body, NodeFilter.SHOW_ELEMENT, null);
+  var teVervangen = [];
+  var node = walker.nextNode();
+  while (node) {
+    var tag = node.tagName.toLowerCase();
+    if (toegestaneTags.indexOf(tag) === -1) {
+      teVervangen.push(node);
+    } else {
+      Array.from(node.attributes).forEach(function(attr) {
+        if (attr.name.toLowerCase() !== 'class') node.removeAttribute(attr.name);
+      });
+    }
+    node = walker.nextNode();
+  }
+  teVervangen.forEach(function(el) {
+    if (el.parentNode) el.parentNode.replaceChild(document.createTextNode(el.textContent), el);
+  });
+  return doc.body.innerHTML;
+}
+var DOC_TOEGESTANE_TAGS = ['h1','h2','h3','p','ol','ul','li','span','strong','em','br'];
 function ge(id){return document.getElementById(id);}
 function isAdmin(){return S.rol==='admin';}
 
@@ -415,7 +443,7 @@ async function genDoc(){
     var tekst=d.content&&d.content[0]?d.content[0].text:(d.error||'Fout bij genereren.');
     // Strip eventuele ```html wrapper
     tekst=tekst.replace(/^```html\n?/,'').replace(/\n?```$/,'');
-    S.docTexts[docType]=tekst;
+    S.docTexts[docType]=saniteerHtml(tekst, DOC_TOEGESTANE_TAGS);
   }catch(e){
     S.docTexts[docType]='<p style="color:var(--red)">Fout bij genereren: '+esc(e.message)+'</p>';
   }

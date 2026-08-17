@@ -601,6 +601,7 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--b
 const WORKER = 'https://kantoorinzicht.marcel-bisschops.workers.dev';
 // White-label basis — centrale merkconfig voor de publieke VerhuisScan (zelfde patroon als de rest).
 const BRAND = { platform:'VerhuisScan', bedrijf:'Bisschops Financing B.V.', bedrijfKort:'Bisschops Financing' };
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 // De koppen staan in statische (toon/verberg) secties; zet ze allemaal in één keer bij het laden.
 function applyBrand(){
   try{
@@ -882,7 +883,9 @@ async function rapportOphalen() {
     document.getElementById('rapp-grafiek').innerHTML=ghHtml;
     var rt=scan.rapport_tekst||'';
     if(rt){
-      var raw=rt.replace(/^## (.+)$/gm,'<h2>$1</h2>').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+      // Security-fix 17 aug 2026: rt komt uit de AI en ging voorheen ongefilterd in innerHTML —
+      // eerst esc(), dan pas de markdown-achtige opmaak.
+      var raw=esc(rt).replace(/^## (.+)$/gm,'<h2>$1</h2>').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
       var tekst=raw.split('\n\n').map(function(p){p=p.trim();if(!p||p.startsWith('<'))return p;return '<p>'+p+'</p>';}).join('');
       document.getElementById('rapp-tekst').innerHTML=tekst;
     } else {
@@ -1013,7 +1016,7 @@ function renderDashboard(data){
     html+='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);overflow:hidden;margin-bottom:2rem"><table style="width:100%;border-collapse:collapse"><thead><tr style="background:var(--card)"><th style="padding:10px 14px;text-align:left;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">#</th><th style="padding:10px 14px;text-align:left;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">Bedrijf</th><th style="padding:10px 14px;text-align:left;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">Regio</th><th style="padding:10px 14px;text-align:left;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">Scenario</th><th style="padding:10px 14px;text-align:center;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">Score</th></tr></thead><tbody>';
     scans.forEach(function(s,i){
       var kleur=sc(s.overall);
-      html+='<tr style="border-top:1px solid var(--border)"><td style="padding:10px 14px;font-size:12px;color:var(--muted)">'+(i+1)+'</td><td style="padding:10px 14px;font-size:13px;font-weight:600;color:var(--head)">'+s.bedrijfsnaam+'</td><td style="padding:10px 14px;font-size:12px;color:var(--mid)">'+(s.regio||'—')+'</td><td style="padding:10px 14px;font-size:11px;color:var(--mid)">'+(s.top_scenario||'—')+'</td><td style="padding:10px 14px;text-align:center"><span style="font-family:IBM Plex Mono,monospace;font-size:13px;font-weight:600;color:'+kleur+'">'+s.overall+'</span></td></tr>';
+      html+='<tr style="border-top:1px solid var(--border)"><td style="padding:10px 14px;font-size:12px;color:var(--muted)">'+(i+1)+'</td><td style="padding:10px 14px;font-size:13px;font-weight:600;color:var(--head)">'+esc(s.bedrijfsnaam)+'</td><td style="padding:10px 14px;font-size:12px;color:var(--mid)">'+esc(s.regio||'—')+'</td><td style="padding:10px 14px;font-size:11px;color:var(--mid)">'+esc(s.top_scenario||'—')+'</td><td style="padding:10px 14px;text-align:center"><span style="font-family:IBM Plex Mono,monospace;font-size:13px;font-weight:600;color:'+kleur+'">'+s.overall+'</span></td></tr>';
     });
     html+='</tbody></table></div>';
   } else if(scans.length===0){
