@@ -39,6 +39,10 @@ h1{font-family:'Playfair Display',serif;font-size:1.9rem;font-weight:600;color:v
 .ok p{color:var(--mid)}
 .note{font-size:12px;color:var(--muted);margin-top:1.5rem;line-height:1.7}
 .note a{color:var(--teal)}
+.wa-btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:14px 0;background:#25D366;color:#fff;border-radius:var(--r2);font-weight:600;font-size:15px;text-decoration:none;margin-bottom:1.75rem}
+.wa-btn:hover{opacity:.92}
+.divider{display:flex;align-items:center;gap:12px;color:var(--muted);font-size:12px;margin-bottom:1.75rem}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border)}
 </style>
 </head>
 <body>
@@ -50,7 +54,10 @@ h1{font-family:'Playfair Display',serif;font-size:1.9rem;font-weight:600;color:v
 
 <div id="app">
 <h1>Draag een overname aan</h1>
-<p class="sub">Kent u als bank of accountant een onderneming met verkoop-, fusie- of opvolgingsplannen? Vul onderstaand formulier in — Marcel Bisschops neemt dan persoonlijk contact op.</p>
+<p class="sub">Kent u als bank of accountant een onderneming met verkoop-, fusie- of opvolgingsplannen? Stuur gerust direct een WhatsApp-bericht, of vul desgewenst onderstaand formulier in — Marcel Bisschops neemt dan persoonlijk contact op.</p>
+
+<a class="wa-btn" href="https://wa.me/31638689888?text=Hallo%2C%20ik%20wil%20een%20overname%20aandragen" target="_blank" rel="noopener">&#128241; Stuur een WhatsApp-bericht</a>
+<div class="divider">of vul het formulier in</div>
 
 <div class="panel">
   <div class="err" id="err"></div>
