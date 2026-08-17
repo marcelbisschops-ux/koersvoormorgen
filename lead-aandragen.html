@@ -1,0 +1,109 @@
+<!-- © 2026 Bisschops Financing B.V. Alle rechten voorbehouden. -->
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Overname aandragen — Koersvoormorgen</title>
+<meta name="description" content="Bent u bank of accountant en kent u een accountants- of administratiekantoor met verkoop- of overnameplannen? Draag het hier aan.">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--void:#faf9f6;--panel:#fff;--border:#dddbd4;--border2:#c8c5bc;--muted:#8a8880;--mid:#5a5854;--sub:#2a2825;--head:#1a1815;--teal:#1a7a5e;--teal-dim:#145f48;--teal-bg:rgba(26,122,94,.08);--red:#d64a3a;--red-bg:rgba(214,74,58,.08);--r:6px;--r2:10px}
+@media(prefers-color-scheme:dark){
+  :root{--void:#171614;--panel:#211f1c;--border:#38352f;--border2:#48443c;--muted:#83807a;--mid:#a8a49c;--sub:#e0dcd2;--head:#f5f1e8;--teal:#22c98a;--teal-dim:#1a9a6a;--teal-bg:rgba(34,197,138,.1);--red:#e05a4a;--red-bg:rgba(224,90,74,.1)}
+}
+body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--sub);font-size:15px;line-height:1.65;min-height:100vh}
+.wrap{max-width:600px;margin:0 auto;padding:3rem 2rem 5rem}
+.hdr{display:flex;align-items:center;justify-content:space-between;padding-bottom:1.25rem;border-bottom:1px solid var(--border);margin-bottom:2.5rem}
+.brand{font-size:11px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:8px}
+.wdot{width:6px;height:6px;border-radius:50%;background:var(--teal)}
+.hdr a{font-size:12px;color:var(--muted);text-decoration:none}
+h1{font-family:'Playfair Display',serif;font-size:1.9rem;font-weight:600;color:var(--head);margin-bottom:.5rem}
+.sub{color:var(--mid);margin-bottom:2rem;line-height:1.7}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.75rem}
+.f{margin-bottom:1.1rem}
+.f label{display:block;font-size:12px;font-weight:600;color:var(--mid);margin-bottom:.4rem;letter-spacing:.02em}
+.f label .opt{font-weight:400;color:var(--muted)}
+.f input,.f textarea{width:100%;padding:10px 12px;background:var(--void);border:1.5px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:'IBM Plex Sans',sans-serif;font-size:14px;outline:none}
+.f input:focus,.f textarea:focus{border-color:var(--teal)}
+.f textarea{resize:vertical;min-height:80px}
+.row2{display:flex;gap:12px}
+.row2>.f{flex:1}
+.btn{width:100%;padding:12px 0;background:var(--teal);color:#fff;border:none;border-radius:var(--r);font-family:'IBM Plex Sans',sans-serif;font-size:14.5px;font-weight:600;cursor:pointer}
+.btn:hover{background:var(--teal-dim)}
+.btn:disabled{opacity:.5;cursor:default}
+.err{color:var(--red);background:var(--red-bg);border:1px solid var(--red);border-radius:var(--r);padding:.75rem 1rem;font-size:13px;margin-bottom:1rem;display:none}
+.ok{text-align:center;padding:2rem 0}
+.ok h2{font-family:'Playfair Display',serif;color:var(--teal);font-size:1.4rem;margin-bottom:.75rem}
+.ok p{color:var(--mid)}
+.note{font-size:12px;color:var(--muted);margin-top:1.5rem;line-height:1.7}
+.note a{color:var(--teal)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="hdr">
+  <div class="brand"><div class="wdot"></div>Koersvoormorgen</div>
+  <a href="index.html">&#8592; Terug naar home</a>
+</div>
+
+<div id="app">
+<h1>Draag een overname aan</h1>
+<p class="sub">Kent u als bank of accountant een accountants- of administratiekantoor met verkoop-, fusie- of opvolgingsplannen? Vul onderstaand formulier in — Marcel Bisschops neemt dan persoonlijk contact op.</p>
+
+<div class="panel">
+  <div class="err" id="err"></div>
+  <div class="f"><label>Naam kantoor dat u aandraagt <span style="color:var(--red)">*</span></label><input type="text" id="l-kantoor"></div>
+  <div class="row2">
+    <div class="f"><label>Uw naam <span style="color:var(--red)">*</span></label><input type="text" id="l-naam"></div>
+    <div class="f"><label>Uw organisatie <span class="opt">(bank, accountantskantoor, ...)</span></label><input type="text" id="l-org"></div>
+  </div>
+  <div class="row2">
+    <div class="f"><label>Uw e-mailadres <span style="color:var(--red)">*</span></label><input type="email" id="l-email"></div>
+    <div class="f"><label>Uw telefoonnummer <span class="opt">(optioneel)</span></label><input type="tel" id="l-tel"></div>
+  </div>
+  <div class="f"><label>Toelichting <span class="opt">(optioneel)</span></label><textarea id="l-toel" placeholder=""></textarea></div>
+  <button class="btn" id="l-submit">Aandragen</button>
+</div>
+
+<div class="note">Uw gegevens worden uitsluitend gebruikt om deze aandracht te beoordelen en eventueel contact met u op te nemen. Zie de <a href="privacy.html">Privacyverklaring</a>.</div>
+</div>
+</div>
+
+<script>
+var WORKER='https://kantoorinzicht.marcel-bisschops.workers.dev';
+function ge(id){return document.getElementById(id);}
+var emailRe=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+ge('l-submit').addEventListener('click',async function(){
+  var errEl=ge('err');errEl.style.display='none';
+  var kantoor=ge('l-kantoor').value.trim();
+  var naam=ge('l-naam').value.trim();
+  var org=ge('l-org').value.trim();
+  var email=ge('l-email').value.trim();
+  var tel=ge('l-tel').value.trim();
+  var toel=ge('l-toel').value.trim();
+
+  function fout(msg){errEl.textContent=msg;errEl.style.display='block';}
+  if(!kantoor)return fout('Naam van het aangedragen kantoor is verplicht.');
+  if(!naam)return fout('Uw naam is verplicht.');
+  if(!email)return fout('Uw e-mailadres is verplicht.');
+  if(!emailRe.test(email))return fout('E-mailadres heeft geen geldig formaat.');
+
+  var btn=this;btn.disabled=true;btn.textContent='Bezig...';
+  try{
+    var r=await fetch(WORKER+'/leads/aandragen',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      naam:naam,organisatie:org,email:email,telefoon:tel,kantoor_naam:kantoor,toelichting:toel
+    })});
+    var d=await r.json();
+    if(!r.ok||!d.ok){btn.disabled=false;btn.textContent='Aandragen';return fout(d.error||'Er ging iets mis. Probeer het later opnieuw.');}
+    ge('app').innerHTML='<div class="ok"><h2>&#10003; Bedankt voor uw aandracht</h2><p>We nemen zo snel mogelijk contact met u op.</p></div>';
+  }catch(e){
+    btn.disabled=false;btn.textContent='Aandragen';
+    fout('Verbindingsfout. Controleer uw internetverbinding en probeer opnieuw.');
+  }
+});
+</script>
+</body>
+</html>

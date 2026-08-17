@@ -110,7 +110,7 @@ const BRAND={platform:'KantoorInzicht',bedrijf:'Bisschops Financing B.V.',suffix
 const TAAL_REGELS='Schrijf in natuurlijk, vloeiend Nederlands — geen letterlijke vertaling uit het Engels. Gebruik uitsluitend de formele aanspreekvorm "u/uw", nooit "je/jij/jouw", ook niet losse keren door elkaar. Gebruik "geen [zelfstandig naamwoord]" i.p.v. de onnatuurlijke constructie "niet een [zelfstandig naamwoord]". Vermijd andere letterlijke Engelse constructies en verzin geen niet-bestaande woorden.';
 document.title=BRAND.platform+' — '+BRAND.suffix;
 (function(){var b=document.querySelector('.brand');if(b)b.innerHTML='<div class="wdot"></div>'+BRAND.platform+' <span style="color:var(--teal);margin-left:4px">'+BRAND.suffix+'</span>';})();
-let adminKey='',scans=[],callbacks=[],mnaList=[],rapporten=[],activeTab='scans',scanFilter='',openRow=null;
+let adminKey='',scans=[],callbacks=[],mnaList=[],rapporten=[],leads=[],activeTab='scans',scanFilter='',openRow=null;
 let gebruikerToken='',gebruikerInfo=null,isSuperAdmin=false;
 
 function toast(msg,type,dur){type=type||'ok';dur=dur||3500;var c=document.getElementById('toast-container');if(!c){c=document.createElement('div');c.id='toast-container';c.className='toast-container';document.body.appendChild(c);}var t=document.createElement('div');t.className='toast toast-'+type;var ico=type==='ok'?'✓':type==='err'?'✕':type==='warn'?'⚠':'ℹ';t.innerHTML='<span style="font-size:15px;flex-shrink:0;color:'+(type==='ok'?'var(--teal)':type==='err'?'var(--red)':type==='warn'?'var(--gold)':'#2a5ea0')+'">'+ico+'</span><span style="flex:1;line-height:1.5">'+String(msg).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</span><button onclick="this.parentElement.remove()" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px;padding:0;line-height:1;flex-shrink:0">&times;</button>';c.appendChild(t);setTimeout(function(){t.classList.add('hide');setTimeout(function(){if(t.parentElement)t.parentElement.removeChild(t);},220);},dur);return t;}
@@ -177,16 +177,18 @@ async function doLogin(){
   var key=document.getElementById('ak').value.trim();
   if(!key){btn.disabled=false;btn.textContent='Inloggen';return;}
   try{
-    var [r1,r2,r3,r4]=await Promise.all([
+    var [r1,r2,r3,r4,r5]=await Promise.all([
       fetch(WORKER+'/admin/scans',{headers:{'x-admin-key':key}}),
       fetch(WORKER+'/admin/callbacks',{headers:{'x-admin-key':key}}),
       fetch(WORKER+'/mna/admin/lijst',{headers:{'x-admin-key':key}}),
-      fetch(WORKER+'/admin/rapporten',{headers:{'x-admin-key':key}})
+      fetch(WORKER+'/admin/rapporten',{headers:{'x-admin-key':key}}),
+      fetch(WORKER+'/admin/leads',{headers:{'x-admin-key':key}})
     ]);
     if(!r1.ok)throw new Error('unauthorized');
     scans=await r1.json();callbacks=await r2.json();
     mnaList=r3.ok?await r3.json():[];
     try{var r4data=r4.ok?await r4.json().catch(()=>[]):[];rapporten=Array.isArray(r4data)?r4data:[];}catch(e){rapporten=[];}
+    try{var r5data=r5.ok?await r5.json().catch(()=>[]):[];leads=Array.isArray(r5data)?r5data:[];}catch(e){leads=[];}
     adminKey=key;isSuperAdmin=true;gebruikerInfo=null;gebruikerToken='';
     document.getElementById('hdr-actions').style.display='flex';
     document.getElementById('btn-refresh').addEventListener('click',refreshData);
@@ -200,7 +202,7 @@ async function doLogin(){
 }
 
 function logout(){
-  adminKey='';scans=[];callbacks=[];mnaList=[];rapporten=[];
+  adminKey='';scans=[];callbacks=[];mnaList=[];rapporten=[];leads=[];
   gebruikerToken='';gebruikerInfo=null;isSuperAdmin=false;
   document.getElementById('hdr-actions').style.display='none';
   renderLogin();
@@ -208,15 +210,17 @@ function logout(){
 
 async function refreshData(){
   try{
-    var [r1,r2,r3,r4]=await Promise.all([
+    var [r1,r2,r3,r4,r5]=await Promise.all([
       fetch(WORKER+'/admin/scans',{headers:{'x-admin-key':adminKey}}),
       fetch(WORKER+'/admin/callbacks',{headers:{'x-admin-key':adminKey}}),
       fetch(WORKER+'/mna/admin/lijst',{headers:{'x-admin-key':adminKey}}),
-      fetch(WORKER+'/admin/rapporten',{headers:{'x-admin-key':adminKey}})
+      fetch(WORKER+'/admin/rapporten',{headers:{'x-admin-key':adminKey}}),
+      fetch(WORKER+'/admin/leads',{headers:{'x-admin-key':adminKey}})
     ]);
     scans=await r1.json();callbacks=await r2.json();
     mnaList=r3.ok?await r3.json():[];
     try{var r4data=r4.ok?await r4.json().catch(()=>[]):[];rapporten=Array.isArray(r4data)?r4data:[];}catch(e){rapporten=[];}
+    try{var r5data=r5.ok?await r5.json().catch(()=>[]):[];leads=Array.isArray(r5data)?r5data:[];}catch(e){leads=[];}
     renderDashboard();
   }catch(e){toast('Kon niet verversen.','err');}
 }
@@ -238,6 +242,7 @@ function renderDashboard(){
     +'<div class="tabs">'
     +(isSuperAdmin?'<button class="tab'+(activeTab==='scans'?' active':'')+'" id="t-scans">Scans ('+scans.length+')</button>':'')
     +(isSuperAdmin?'<button class="tab'+(activeTab==='callbacks'?' active':'')+'" id="t-cb">Terugbelverzoeken ('+callbacks.length+')</button>':'')
+    +(isSuperAdmin?'<button class="tab'+(activeTab==='leads'?' active':'')+'" id="t-leads">Leads ('+leads.filter(function(l){return l.status==='nieuw';}).length+')</button>':'')
     +'<button class="tab'+(activeTab==='mna'?' active':'')+'" id="t-mna">M&A Trajecten ('+mnaList.length+')</button>'
     +'<button class="tab'+(activeTab==='docs'?' active':'')+'" id="t-docs">Documenten</button>'
     +'<button class="tab'+(activeTab==='rapporten'?' active':'')+'" id="t-rapp">Scan rapporten ('+rapporten.length+')</button>'
@@ -251,7 +256,7 @@ function renderDashboard(){
     +(isSuperAdmin?'<button class="tab'+(activeTab==='tarieven'?' active':'')+'" id="t-tarieven">&euro; Tarieven</button>':'')
     +'</div>'
     +'<div id="tc"></div>';
-  if(isSuperAdmin){var ts=document.getElementById('t-scans');if(ts)ts.addEventListener('click',function(){activeTab='scans';scanFilter='';openRow=null;renderDashboard();});var tc2=document.getElementById('t-cb');if(tc2)tc2.addEventListener('click',function(){activeTab='callbacks';renderDashboard();});}
+  if(isSuperAdmin){var ts=document.getElementById('t-scans');if(ts)ts.addEventListener('click',function(){activeTab='scans';scanFilter='';openRow=null;renderDashboard();});var tc2=document.getElementById('t-cb');if(tc2)tc2.addEventListener('click',function(){activeTab='callbacks';renderDashboard();});var tld=document.getElementById('t-leads');if(tld)tld.addEventListener('click',function(){activeTab='leads';renderDashboard();});}
   document.getElementById('t-mna').addEventListener('click',function(){activeTab='mna';renderDashboard();});
   document.getElementById('t-docs').addEventListener('click',function(){activeTab='docs';renderDashboard();});
   document.getElementById('t-rapp').addEventListener('click',function(){activeTab='rapporten';renderDashboard();});
@@ -271,6 +276,7 @@ function renderTab(){
   var el=document.getElementById('tc');
   if(activeTab==='scans')renderScansTab(el);
   else if(activeTab==='callbacks')renderCallbacksTab(el);
+  else if(activeTab==='leads')renderLeadsTab(el);
   else if(activeTab==='mna')renderMnaTab(el);
   else if(activeTab==='docs')renderDocsTab(el);
   else if(activeTab==='benchmarks')renderBenchmarksTab(el);
@@ -395,6 +401,49 @@ function renderCallbacksTab(el){
   el.querySelectorAll('.cb-cb').forEach(function(cb){cb.addEventListener('change',updSelCb);});
   var btnDelC=document.getElementById('btn-del-sel-cb');
   if(btnDelC)btnDelC.addEventListener('click',async function(){var ids=Array.from(el.querySelectorAll('.cb-cb:checked')).map(function(cb){return cb.dataset.id;});if(!ids.length)return;if(!confirm('Verwijder '+ids.length+' terugbelverzoek(en)?'))return;btnDelC.disabled=true;btnDelC.textContent='Verwijderen...';for(var i=0;i<ids.length;i++){try{await fetch(WORKER+'/admin/delete/callback/'+ids[i],{headers:{'x-admin-key':adminKey},method:'POST'});}catch(e){}}await refreshData();});
+}
+
+// LEADS TAB
+function renderLeadsTab(el){
+  var html='<div class="table-wrap"><div class="table-hdr"><div class="table-title">Leads</div>'
+    +'<div style="display:flex;gap:8px;align-items:center"><button class="btn" style="font-size:12px;padding:7px 14px" id="btn-ref-ld">&#8635; Verversen</button></div></div>';
+  if(!leads.length){
+    html+='<div class="empty">Nog geen leads aangedragen.</div>';
+  } else {
+    html+='<table><thead><tr><th>Datum</th><th>Aangedragen kantoor</th><th>Aandrager</th><th>Contact</th><th>Toelichting</th><th>Status</th><th>Acties</th></tr></thead><tbody>';
+    leads.forEach(function(l){
+      var omgezet=l.status==='omgezet';
+      html+='<tr>'
+        +'<td class="mono" style="font-size:11px;white-space:nowrap">'+formatDate(l.created_at)+'</td>'
+        +'<td style="font-weight:500;color:var(--head)">'+esc(l.kantoor_naam||'—')+'</td>'
+        +'<td style="font-size:12px">'+esc(l.naam||'—')+(l.organisatie?'<div style="color:var(--muted);font-size:10px">'+esc(l.organisatie)+'</div>':'')+'</td>'
+        +'<td style="font-size:12px"><a href="mailto:'+esc(l.email)+'" style="color:var(--teal);text-decoration:none">'+esc(l.email||'—')+'</a>'+(l.telefoon?'<div><a href="tel:'+esc(l.telefoon)+'" style="color:var(--teal);text-decoration:none;font-size:11px">'+esc(l.telefoon)+'</a></div>':'')+'</td>'
+        +'<td style="font-size:12px;max-width:260px">'+esc(l.toelichting||'—')+'</td>'
+        +'<td>'+(omgezet?'<span class="tag" style="background:var(--teal-bg);color:var(--teal-dim);border-color:var(--teal)">&#10003; Omgezet</span><div style="margin-top:3px"><span class="code-chip" style="font-size:10px">'+esc(l.traject_id||'')+'</span></div>':'<span class="tag">Nieuw</span>')+'</td>'
+        +'<td style="white-space:nowrap">'+(omgezet?'':'<button class="btn-lead-omzetten" data-id="'+esc(l.id)+'" style="font-size:10px;padding:4px 8px;margin-right:4px">&#8594; Traject</button>')+'<button class="btn-del-lead btn-red" data-id="'+esc(l.id)+'" style="font-size:10px;padding:2px 6px">&#10005;</button></td>'
+        +'</tr>';
+    });
+    html+='</tbody></table>';
+  }
+  html+='</div>';
+  el.innerHTML=html;
+  var rbl=document.getElementById('btn-ref-ld');
+  if(rbl)rbl.addEventListener('click',refreshData);
+  el.querySelectorAll('.btn-del-lead').forEach(function(b){
+    b.addEventListener('click',async function(){
+      if(!confirm('Lead verwijderen?'))return;
+      var r=await fetch(WORKER+'/admin/delete/lead/'+b.dataset.id,{method:'POST',headers:{'x-admin-key':adminKey}});
+      var d=await r.json();
+      if(d.ok){leads=leads.filter(function(l){return String(l.id)!==String(b.dataset.id);});renderDashboard();}
+      else toast('Fout: '+(d.error||'onbekend'),'err');
+    });
+  });
+  el.querySelectorAll('.btn-lead-omzetten').forEach(function(b){
+    b.addEventListener('click',function(){
+      var lead=leads.find(function(l){return String(l.id)===String(b.dataset.id);});
+      if(lead)toonNieuwModal(lead);
+    });
+  });
 }
 
 // MNA TAB
@@ -2734,7 +2783,8 @@ async function toonMeekijkersModal(trajectId, trajectNaam, sector){
   });
 }
 
-function toonNieuwModal(){
+function toonNieuwModal(prefillLead){
+  var pf=prefillLead||{};
   var ov=document.createElement('div');ov.className='overlay';
   var mo=document.createElement('div');mo.className='modal';
   mo.innerHTML='<div class="modal-title">Nieuw M&amp;A traject aanmaken</div>'
@@ -2743,12 +2793,12 @@ function toonNieuwModal(){
     +'<div class="field" style="flex:1"><label>Sector <span style="color:var(--red)">*</span></label><select id="m-sector"><option value="accountancy">Accountancy & administratie</option><option value="mkb">MKB — Retail / Horeca / Handel</option><option value="zorg">Zorg — Huisarts / Tandarts / Fysiotherapie</option><option value="itsoftware">IT & Software</option></select></div>'
     +'</div>'
     +'<div style="border-bottom:1px solid var(--border);margin:.75rem 0 .75rem;padding-bottom:.25rem"><div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)" id="m-sectie1-hdr">Verkopende partij</div></div>'
-    +'<div class="field"><label id="m-p1-naam-lbl">Naam onderneming <span style="color:var(--red)">*</span></label><div style="display:flex;gap:8px"><input type="text" id="m-k" placeholder="Naam van de onderneming" style="flex:2"><input type="text" id="m-kvk" placeholder="KvK-nr" style="flex:1"></div></div>'
+    +'<div class="field"><label id="m-p1-naam-lbl">Naam onderneming <span style="color:var(--red)">*</span></label><div style="display:flex;gap:8px"><input type="text" id="m-k" placeholder="Naam van de onderneming" value="'+esc(pf.kantoor_naam||'')+'" style="flex:2"><input type="text" id="m-kvk" placeholder="KvK-nr" style="flex:1"></div></div>'
     +'<div class="field"><label id="m-p1-rv-lbl">Rechtsvorm <span style="color:var(--red)">*</span></label><select id="m-rv"><option value="">— Kies rechtsvorm —</option><option value="B.V.">B.V. (Besloten Vennootschap)</option><option value="N.V.">N.V. (Naamloze Vennootschap)</option><option value="Eenmanszaak">Eenmanszaak</option><option value="V.O.F.">V.O.F.</option><option value="Maatschap">Maatschap</option><option value="Coöperatie">Coöperatie</option><option value="Stichting">Stichting</option><option value="Holding B.V.">Holding B.V.</option><option value="C.V.">C.V.</option></select></div>'
     +'<div class="field"><label id="m-p1-adres-lbl">Adres <span style="color:var(--red)">*</span></label><input type="text" id="m-adres" placeholder="Adres"></div>'
     +'<div class="field"><label id="m-p1-contact-lbl">Contactpersoon <span style="color:var(--red)">*</span></label><input type="text" id="m-c" placeholder="Naam contactpersoon"></div>'
     +'<div class="field"><label id="m-p1-email-lbl">E-mail contactpersoon <span style="color:var(--red)">*</span></label><input type="email" id="m-e" placeholder="E-mailadres"></div>'
-    +'<div class="field"><label>Notitie (intern) <span style="font-weight:400;color:var(--muted)">(optioneel)</span></label><textarea id="m-n" rows="2" placeholder="Interne aantekeningen..."></textarea></div>'
+    +'<div class="field"><label>Notitie (intern) <span style="font-weight:400;color:var(--muted)">(optioneel)</span></label><textarea id="m-n" rows="2" placeholder="Interne aantekeningen...">'+esc(pf.toelichting?('Uit aangedragen lead: '+pf.toelichting):'')+'</textarea></div>'
     +'<div style="border-top:1px solid var(--border);margin:.75rem 0;padding-top:.75rem"><div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem">Begeleider (tussenpersoon)</div></div>'
     +'<div class="field"><label>Naam begeleider</label><input type="text" id="m-bg-naam" value="Marcel Bisschops"></div>'
     +'<div class="field"><label>E-mail begeleider</label><input type="email" id="m-bg-email" value="marcel@bisschopsfinancing.nl"></div>'
@@ -2759,8 +2809,8 @@ function toonNieuwModal(){
     +'<div class="field"><label id="m-p2-contact-lbl">Contactpersoon koper <span style="color:var(--red)">*</span></label><input type="text" id="m-koper-contact" placeholder="Naam contactpersoon"></div>'
     +'<div class="field"><label id="m-p2-email-lbl">E-mail koper <span style="color:var(--red)">*</span></label><input type="email" id="m-koper-email" placeholder="E-mailadres koper"></div>'
     +'<div style="border-top:1px solid var(--border);margin:.75rem 0;padding-top:.75rem"><div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem">Aangedragen door <span style="font-weight:400;text-transform:none;letter-spacing:normal">(optioneel — intern, nooit zichtbaar voor verkoper/koper)</span></div></div>'
-    +'<div class="field"><label>Naam aandrager <span style="font-weight:400;color:var(--muted)">(bijv. contactpersoon bij bank/accountantskantoor)</span></label><input type="text" id="m-aandr-naam"></div>'
-    +'<div class="field"><label>Organisatie aandrager</label><input type="text" id="m-aandr-org"></div>'
+    +'<div class="field"><label>Naam aandrager <span style="font-weight:400;color:var(--muted)">(bijv. contactpersoon bij bank/accountantskantoor)</span></label><input type="text" id="m-aandr-naam" value="'+esc(pf.naam||'')+'"></div>'
+    +'<div class="field"><label>Organisatie aandrager</label><input type="text" id="m-aandr-org" value="'+esc(pf.organisatie||'')+'"></div>'
     +'<div class="field"><label>Referral fee-afspraak <span style="font-weight:400;color:var(--muted)">(percentage of vast bedrag, vrije tekst)</span></label><input type="text" id="m-aandr-afspraak"></div>'
     +'<div id="m-res" style="display:none;background:var(--teal-bg);border:1px solid var(--teal-dark);border-radius:var(--r);padding:1rem;margin-bottom:1rem;font-size:13px;line-height:2"></div>'
     +'<div id="m-err" style="display:none;color:var(--red);font-size:12px;margin-bottom:.75rem"></div>'
@@ -2848,11 +2898,13 @@ function toonNieuwModal(){
           koper_kvk:vv('m-koper-kvk'),
           aangedragen_door_naam:vv('m-aandr-naam'),
           aangedragen_door_organisatie:vv('m-aandr-org'),
-          aangedragen_door_afspraak:vv('m-aandr-afspraak')
+          aangedragen_door_afspraak:vv('m-aandr-afspraak'),
+          lead_id:pf.id||undefined
         })});
       var d=await r.json();
       if(d.ok){
         mnaList.unshift({id:d.code,kantoor_naam:kantoor,traject_type:vv('m-t'),koper_code:d.koper_code,tussen_code:d.tussen_code,status:'actief',created_at:Date.now()});
+        if(pf.id){var ldRef=leads.find(function(l){return String(l.id)===String(pf.id);});if(ldRef){ldRef.status='omgezet';ldRef.traject_id=d.code;}}
         var res=document.getElementById('m-res');res.style.display='block';
         res.innerHTML='<strong style="color:var(--teal-dim)">&#10003; Traject aangemaakt</strong><br>'
           +'<b>Verkoperscode:</b> <span class="code-chip">'+d.code+'</span> <button class="copy-btn res-copy" data-copy="'+d.code+'">&#8690; Kopieer</button><br>'
