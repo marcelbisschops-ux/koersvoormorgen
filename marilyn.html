@@ -118,6 +118,22 @@ function toast(msg,type,dur){type=type||'ok';dur=dur||3500;var c=document.getEle
 function dc(v){return v>=70?'score-high':v>=50?'score-mid':'score-low';}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function formatDate(ts){if(!ts)return '—';return new Date(ts).toLocaleDateString('nl-NL',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});}
+// Security-fix 17 aug 2026: downloads/exports gingen voorheen via <a href="...?key=admin-sleutel">
+// — daarmee stond de admin-sleutel letterlijk in de link (browsergeschiedenis, "kopieer link").
+// Nu een fetch met de sleutel in een header, en de browser-download-dialoog getriggerd via een
+// tijdelijke blob-URL i.p.v. de sleutel zichtbaar in de adresbalk/link te zetten.
+async function downloadMetAdminKey(url,bestandsnaam){
+  try{
+    var r=await fetch(url,{headers:{'x-admin-key':adminKey}});
+    if(!r.ok){toast('Download mislukt','err');return;}
+    var blob=await r.blob();
+    var a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download=bestandsnaam||'download';
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+    setTimeout(function(){URL.revokeObjectURL(a.href);},1000);
+  }catch(e){toast('Download mislukt','err');}
+}
 function meekijkerChipsHtml(t){
   var actief=(t.meekijkers||[]).filter(function(v){return !v.ingetrokken_op&&!(v.expires_at&&Date.now()>v.expires_at);});
   if(!actief.length)return '';
@@ -162,10 +178,10 @@ async function doLogin(){
   if(!key){btn.disabled=false;btn.textContent='Inloggen';return;}
   try{
     var [r1,r2,r3,r4]=await Promise.all([
-      fetch(WORKER+'/admin/scans?key='+encodeURIComponent(key)),
-      fetch(WORKER+'/admin/callbacks?key='+encodeURIComponent(key)),
-      fetch(WORKER+'/mna/admin/lijst?key='+encodeURIComponent(key)),
-      fetch(WORKER+'/admin/rapporten?key='+encodeURIComponent(key))
+      fetch(WORKER+'/admin/scans',{headers:{'x-admin-key':key}}),
+      fetch(WORKER+'/admin/callbacks',{headers:{'x-admin-key':key}}),
+      fetch(WORKER+'/mna/admin/lijst',{headers:{'x-admin-key':key}}),
+      fetch(WORKER+'/admin/rapporten',{headers:{'x-admin-key':key}})
     ]);
     if(!r1.ok)throw new Error('unauthorized');
     scans=await r1.json();callbacks=await r2.json();
@@ -193,10 +209,10 @@ function logout(){
 async function refreshData(){
   try{
     var [r1,r2,r3,r4]=await Promise.all([
-      fetch(WORKER+'/admin/scans?key='+encodeURIComponent(adminKey)),
-      fetch(WORKER+'/admin/callbacks?key='+encodeURIComponent(adminKey)),
-      fetch(WORKER+'/mna/admin/lijst?key='+encodeURIComponent(adminKey)),
-      fetch(WORKER+'/admin/rapporten?key='+encodeURIComponent(adminKey))
+      fetch(WORKER+'/admin/scans',{headers:{'x-admin-key':adminKey}}),
+      fetch(WORKER+'/admin/callbacks',{headers:{'x-admin-key':adminKey}}),
+      fetch(WORKER+'/mna/admin/lijst',{headers:{'x-admin-key':adminKey}}),
+      fetch(WORKER+'/admin/rapporten',{headers:{'x-admin-key':adminKey}})
     ]);
     scans=await r1.json();callbacks=await r2.json();
     mnaList=r3.ok?await r3.json():[];
@@ -339,7 +355,7 @@ function renderScansTab(el){
   if(cbAllS)cbAllS.addEventListener('change',function(){el.querySelectorAll('.scan-cb').forEach(function(cb){cb.checked=cbAllS.checked;});updSelScans();});
   el.querySelectorAll('.scan-cb').forEach(function(cb){cb.addEventListener('change',updSelScans);});
   var btnDelS=document.getElementById('btn-del-sel-scans');
-  if(btnDelS)btnDelS.addEventListener('click',async function(){var ids=Array.from(el.querySelectorAll('.scan-cb:checked')).map(function(cb){return cb.dataset.id;});if(!ids.length)return;if(!confirm('Verwijder '+ids.length+' scan(s)?'))return;btnDelS.disabled=true;btnDelS.textContent='Verwijderen...';for(var i=0;i<ids.length;i++){try{await fetch(WORKER+'/admin/delete/scan/'+ids[i]+'?key='+encodeURIComponent(adminKey),{method:'POST'});}catch(e){}}await refreshData();});
+  if(btnDelS)btnDelS.addEventListener('click',async function(){var ids=Array.from(el.querySelectorAll('.scan-cb:checked')).map(function(cb){return cb.dataset.id;});if(!ids.length)return;if(!confirm('Verwijder '+ids.length+' scan(s)?'))return;btnDelS.disabled=true;btnDelS.textContent='Verwijderen...';for(var i=0;i<ids.length;i++){try{await fetch(WORKER+'/admin/delete/scan/'+ids[i],{headers:{'x-admin-key':adminKey},method:'POST'});}catch(e){}}await refreshData();});
 }
 
 // CALLBACKS TAB
@@ -378,7 +394,7 @@ function renderCallbacksTab(el){
   if(cbAllC)cbAllC.addEventListener('change',function(){el.querySelectorAll('.cb-cb').forEach(function(cb){cb.checked=cbAllC.checked;});updSelCb();});
   el.querySelectorAll('.cb-cb').forEach(function(cb){cb.addEventListener('change',updSelCb);});
   var btnDelC=document.getElementById('btn-del-sel-cb');
-  if(btnDelC)btnDelC.addEventListener('click',async function(){var ids=Array.from(el.querySelectorAll('.cb-cb:checked')).map(function(cb){return cb.dataset.id;});if(!ids.length)return;if(!confirm('Verwijder '+ids.length+' terugbelverzoek(en)?'))return;btnDelC.disabled=true;btnDelC.textContent='Verwijderen...';for(var i=0;i<ids.length;i++){try{await fetch(WORKER+'/admin/delete/callback/'+ids[i]+'?key='+encodeURIComponent(adminKey),{method:'POST'});}catch(e){}}await refreshData();});
+  if(btnDelC)btnDelC.addEventListener('click',async function(){var ids=Array.from(el.querySelectorAll('.cb-cb:checked')).map(function(cb){return cb.dataset.id;});if(!ids.length)return;if(!confirm('Verwijder '+ids.length+' terugbelverzoek(en)?'))return;btnDelC.disabled=true;btnDelC.textContent='Verwijderen...';for(var i=0;i<ids.length;i++){try{await fetch(WORKER+'/admin/delete/callback/'+ids[i],{headers:{'x-admin-key':adminKey},method:'POST'});}catch(e){}}await refreshData();});
 }
 
 // MNA TAB
@@ -427,7 +443,7 @@ function renderMnaTab(el){
         +'<button class="btn-ghost btn-opslaan" data-idx="'+i+'" style="font-size:11px;padding:3px 8px">&#8681; Opslaan</button>'
         +(t.inhoud_afgeschermd
           ?'<span class="btn-ghost" style="font-size:11px;padding:3px 8px;opacity:.5;cursor:not-allowed" title="Afgeschermd — traject van externe adviseur">&#128230; Export</span>'
-          :'<a href="'+WORKER+'/mna/admin/export/'+esc(t.id)+'?key='+encodeURIComponent(adminKey)+'" target="_blank" class="btn-ghost" style="font-size:11px;padding:3px 8px;text-decoration:none" title="Dossier exporteren">&#128230; Export</a>')
+          :'<button class="btn-ghost btn-export" data-id="'+esc(t.id)+'" style="font-size:11px;padding:3px 8px" title="Dossier exporteren">&#128230; Export</button>')
         +(verg
           ?'<button class="btn-ghost btn-ontv" data-id="'+esc(t.id)+'" style="font-size:11px;padding:3px 8px;color:var(--teal)">&#128275; Ontgrendel</button>'
           :'<button class="btn-ghost btn-verg" data-id="'+esc(t.id)+'" data-naam="'+esc(t.kantoor_naam||t.id)+'" style="font-size:11px;padding:3px 8px;color:var(--gold)">&#128274; Vergrendel</button>')
@@ -448,6 +464,7 @@ function renderMnaTab(el){
     });
   });
   el.querySelectorAll('.btn-detail').forEach(function(b){b.addEventListener('click',function(){toonDetail(b.dataset.id,b.dataset.naam);});});
+  el.querySelectorAll('.btn-export').forEach(function(b){b.addEventListener('click',function(){downloadMetAdminKey(WORKER+'/mna/admin/export/'+encodeURIComponent(b.dataset.id),'dossier-'+b.dataset.id+'.zip');});});
   el.querySelectorAll('.btn-meekijkers').forEach(function(b){b.addEventListener('click',function(){toonMeekijkersModal(b.dataset.id,b.dataset.naam,b.dataset.sector);});});
   el.querySelectorAll('.btn-bewerk').forEach(function(b){b.addEventListener('click',function(){toonBewerkModal(b.dataset.id,b.dataset.naam);});});
   el.querySelectorAll('.btn-uitnodigen').forEach(function(b){b.addEventListener('click',function(){toonBegeleiderModal(b.dataset.id,b.dataset.naam,b.dataset.tcode);});});
@@ -466,7 +483,7 @@ function renderMnaTab(el){
     if(!ids.length)return;
     if(!confirm('Verwijder '+ids.length+' traject(en) inclusief alle data en documenten?'))return;
     btnDelM.disabled=true;btnDelM.textContent='Verwijderen...';
-    for(var i=0;i<ids.length;i++){try{var rd=await fetch(WORKER+'/admin/delete/mna/'+ids[i]+'?key='+encodeURIComponent(adminKey),{method:'POST'});var dd=await rd.json();if(dd.ok)mnaList=mnaList.filter(function(t){return t.id!==ids[i];});}catch(e){}}
+    for(var i=0;i<ids.length;i++){try{var rd=await fetch(WORKER+'/admin/delete/mna/'+ids[i],{headers:{'x-admin-key':adminKey},method:'POST'});var dd=await rd.json();if(dd.ok)mnaList=mnaList.filter(function(t){return t.id!==ids[i];});}catch(e){}}
     renderDashboard();
   });
 }
@@ -483,14 +500,14 @@ async function renderDocsTab(el){
 
   function updateSelCount(){var checked=document.querySelectorAll('.doc-cb:checked').length;var btn=document.getElementById('btn-del-selected');var cnt=document.getElementById('sel-count');if(btn){btn.style.display=checked>0?'inline-block':'none';}if(cnt)cnt.textContent=checked;}
 
-  document.getElementById('btn-del-selected').addEventListener('click',async function(){var ids=Array.from(document.querySelectorAll('.doc-cb:checked')).map(function(cb){return cb.dataset.id;});if(!ids.length)return;if(!confirm('Verwijder '+ids.length+' geselecteerde document(en)?'))return;var btn=this;btn.disabled=true;btn.textContent='Verwijderen...';var ok=0,fail=0;for(var i=0;i<ids.length;i++){try{var r=await fetch(WORKER+'/mna/document/delete/'+ids[i]+'?key='+encodeURIComponent(adminKey),{method:'POST'});if(r.ok)ok++;else fail++;}catch(e){fail++;}}toast(ok+' document(en) verwijderd'+(fail>0?', '+fail+' mislukt':''),'err');
+  document.getElementById('btn-del-selected').addEventListener('click',async function(){var ids=Array.from(document.querySelectorAll('.doc-cb:checked')).map(function(cb){return cb.dataset.id;});if(!ids.length)return;if(!confirm('Verwijder '+ids.length+' geselecteerde document(en)?'))return;var btn=this;btn.disabled=true;btn.textContent='Verwijderen...';var ok=0,fail=0;for(var i=0;i<ids.length;i++){try{var r=await fetch(WORKER+'/mna/document/delete/'+ids[i],{headers:{'x-admin-key':adminKey},method:'POST'});if(r.ok)ok++;else fail++;}catch(e){fail++;}}toast(ok+' document(en) verwijderd'+(fail>0?', '+fail+' mislukt':''),'err');
  document.getElementById('btn-load-docs').click();});
 
   document.getElementById('btn-load-docs').addEventListener('click',async function(){
     var db=document.getElementById('docs-body');
     db.textContent='Laden...';
     try{
-      var r=await fetch(WORKER+'/mna/admin/documenten?key='+encodeURIComponent(adminKey));
+      var r=await fetch(WORKER+'/mna/admin/documenten',{headers:{'x-admin-key':adminKey}});
       if(!r.ok)throw new Error('HTTP '+r.status);
       var docs=await r.json();
       if(!docs.length){db.innerHTML='<div class="empty">Geen documenten gevonden.</div>';return;}
@@ -509,7 +526,7 @@ async function renderDocsTab(el){
           +'<td>'+(vergr?'<span class="tag" style="background:var(--red-bg);color:var(--red);border-color:var(--red)">&#128274; Vergrendeld</span>':'<span style="font-size:11px;color:var(--muted)">Vrij</span>')+'</td>'
           +'<td class="mono" style="font-size:11px">'+dt+'</td>'
           +'<td style="white-space:nowrap;display:flex;gap:4px">'
-          +(d.bewaard?'<a href="'+WORKER+'/mna/document/download/'+d.id+'?key='+encodeURIComponent(adminKey)+'" target="_blank" class="btn-ghost" style="font-size:11px;padding:3px 8px;text-decoration:none">&#8681;</a>':'')
+          +(d.bewaard?'<button class="btn-ghost btn-dl-doc" data-id="'+esc(d.id)+'" data-naam="'+esc(d.bestand_naam||'download')+'" style="font-size:11px;padding:3px 8px">&#8681;</button>':'')
           +(vergr
             ?'<button class="btn-ghost btn-ontv-doc" data-id="'+d.id+'" style="font-size:11px;padding:3px 8px;color:var(--teal)">&#128275;</button>'
             :'<button class="btn-ghost btn-verg-doc" data-id="'+d.id+'" style="font-size:11px;padding:3px 8px;color:var(--gold)">&#128274;</button>')
@@ -525,6 +542,7 @@ async function renderDocsTab(el){
       db.querySelectorAll('.btn-del-doc').forEach(function(b){b.addEventListener('click',function(){verwijderDoc(b.dataset.id);});});
       db.querySelectorAll('.btn-verg-doc').forEach(function(b){b.addEventListener('click',function(){vergrendelDoc(b.dataset.id,true);});});
       db.querySelectorAll('.btn-ontv-doc').forEach(function(b){b.addEventListener('click',function(){vergrendelDoc(b.dataset.id,false);});});
+      db.querySelectorAll('.btn-dl-doc').forEach(function(b){b.addEventListener('click',function(){downloadMetAdminKey(WORKER+'/mna/document/download/'+encodeURIComponent(b.dataset.id),b.dataset.naam);});});
     }catch(e){db.textContent='Fout bij laden: '+e.message;}
   });
 }
@@ -564,7 +582,7 @@ async function renderBenchmarksTab(el){
       db.querySelectorAll('.btn-del-bench').forEach(function(btn){
         btn.addEventListener('click',async function(){
           if(!confirm('Benchmark "'+btn.dataset.sleutel+'" verwijderen?'))return;
-          await fetch(WORKER+'/admin/benchmarks/delete/'+btn.dataset.sleutel+'?key='+encodeURIComponent(adminKey),{method:'POST'}).catch(function(){});
+          await fetch(WORKER+'/admin/benchmarks/delete/'+btn.dataset.sleutel,{headers:{'x-admin-key':adminKey},method:'POST'}).catch(function(){});
           laadBenchmarks();
         });
       });
@@ -575,7 +593,7 @@ async function renderBenchmarksTab(el){
   document.getElementById('btn-bench-refresh').addEventListener('click',async function(){
     var btn=this;btn.disabled=true;btn.textContent='Updaten...';
     try{
-      var r=await fetch(WORKER+'/admin/benchmarks/refresh?key='+encodeURIComponent(adminKey),{method:'POST'});
+      var r=await fetch(WORKER+'/admin/benchmarks/refresh',{method:'POST',headers:{'x-admin-key':adminKey}});
       if(!r.ok&&r.status!==400){var errTxt=await r.text().catch(()=>'');throw new Error('Server fout '+r.status+': '+errTxt.substring(0,100));}
       var d=await r.json();
       if(d.ok){toast(d.count+' benchmarks bijgewerkt uit bronnen.','ok');laadBenchmarks();}
@@ -614,8 +632,8 @@ async function renderBenchmarksTab(el){
         btn.disabled=true;btn.textContent='Opslaan...';
         var gevonden2=btn._gevonden||[];
         for(var bi=0;bi<gevonden2.length;bi++){
-          await fetch(WORKER+'/admin/benchmarks/update?key='+encodeURIComponent(adminKey),{
-            method:'POST',headers:{'Content-Type':'application/json'},
+          await fetch(WORKER+'/admin/benchmarks/update',{
+            method:'POST',headers:{'Content-Type':'application/json','x-admin-key':adminKey},
             body:JSON.stringify({sleutel:gevonden2[bi].sleutel,waarde:gevonden2[bi].waarde,categorie:gevonden2[bi].categorie||'algemeen',omschrijving:gevonden2[bi].omschrijving,bron:bron,peildatum:datum})
           }).catch(function(){});
         }
@@ -638,9 +656,9 @@ async function renderBenchmarksTab(el){
         });
         status.textContent='AI analyseert PDF... (30-60 seconden)';
         // Stuur naar worker die AI aanroept
-        var resp=await fetch(WORKER+'/admin/benchmarks/pdf-analyse?key='+encodeURIComponent(adminKey),{
+        var resp=await fetch(WORKER+'/admin/benchmarks/pdf-analyse',{
           method:'POST',
-          headers:{'Content-Type':'application/json'},
+          headers:{'Content-Type':'application/json','x-admin-key':adminKey},
           body:JSON.stringify({pdf_base64:b64,bron:bron,peildatum:datum,bestandsnaam:file.name})
         });
         var data=await resp.json();
@@ -728,8 +746,8 @@ async function renderBenchmarksTab(el){
       btn.dataset.confirmed='';
       btn.disabled=true;btn.textContent='Opslaan...';
       try{
-        var r=await fetch(WORKER+'/admin/benchmarks/update?key='+encodeURIComponent(adminKey),{
-          method:'POST',headers:{'Content-Type':'application/json'},
+        var r=await fetch(WORKER+'/admin/benchmarks/update',{
+          method:'POST',headers:{'Content-Type':'application/json','x-admin-key':adminKey},
           body:JSON.stringify({sleutel:id,waarde:val,categorie:document.getElementById('bm-cat').value,omschrijving:document.getElementById('bm-omschr').value.trim(),bron:document.getElementById('bm-bron').value.trim(),bron_url:document.getElementById('bm-url').value.trim(),peildatum:document.getElementById('bm-datum').value.trim()})
         });
         var d=await r.json();
@@ -961,7 +979,7 @@ async function renderWaarderingsmodelTab(el){
   async function laadFactoren(){
     var box=document.getElementById('wm-factoren');
     try{
-      var r=await fetch(WORKER+'/waardering/marktfactoren/alle?key='+encodeURIComponent(adminKey));
+      var r=await fetch(WORKER+'/waardering/marktfactoren/alle',{headers:{'x-admin-key':adminKey}});
       var data=await r.json();
       if(!data.length){box.innerHTML='<div class="empty">Nog geen marktfactoren.</div>';return;}
       var badge={hoog:'var(--teal)',midden:'var(--gold)',laag:'var(--red)'};
@@ -982,7 +1000,7 @@ async function renderWaarderingsmodelTab(el){
       box.querySelectorAll('.btn-mf-intrek').forEach(function(btn){
         btn.addEventListener('click',async function(){
           if(!confirm('Marktfactor intrekken? Deze telt dan niet meer mee in de marktcorrectie.'))return;
-          await fetch(WORKER+'/waardering/marktfactor/status/'+btn.dataset.id+'?key='+encodeURIComponent(adminKey),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'ingetrokken'})}).catch(function(){});
+          await fetch(WORKER+'/waardering/marktfactor/status/'+btn.dataset.id,{method:'POST',headers:{'x-admin-key':adminKey,'Content-Type':'application/json'},body:JSON.stringify({status:'ingetrokken'})}).catch(function(){});
           laadFactoren();laadConfig();
         });
       });
@@ -992,7 +1010,7 @@ async function renderWaarderingsmodelTab(el){
   async function laadVoorstellen(){
     var box=document.getElementById('wm-voorstellen');
     try{
-      var r=await fetch(WORKER+'/waardering/wijzigingsvoorstellen?key='+encodeURIComponent(adminKey));
+      var r=await fetch(WORKER+'/waardering/wijzigingsvoorstellen',{headers:{'x-admin-key':adminKey}});
       var data=await r.json();
       if(!data.length){box.innerHTML='<div class="empty">Geen wijzigingsvoorstellen.</div>';return;}
       var kleur={voorgesteld:'var(--gold)',goedgekeurd:'var(--teal)',afgewezen:'var(--red)'};
@@ -1019,8 +1037,8 @@ async function renderWaarderingsmodelTab(el){
           var opmerking=actie==='afwijzen'?(prompt('Opmerking (optioneel):')||''):'';
           btn.disabled=true;
           try{
-            var r=await fetch(WORKER+'/waardering/wijzigingsvoorstel/'+btn.dataset.id+'/beoordelen?key='+encodeURIComponent(adminKey),{
-              method:'POST',headers:{'Content-Type':'application/json'},
+            var r=await fetch(WORKER+'/waardering/wijzigingsvoorstel/'+btn.dataset.id+'/beoordelen',{
+              method:'POST',headers:{'Content-Type':'application/json','x-admin-key':adminKey},
               body:JSON.stringify({actie:actie,beoordeeld_door:'Marcel (marilyn)',opmerking:opmerking})
             });
             var d=await r.json();
@@ -1057,8 +1075,8 @@ async function renderWaarderingsmodelTab(el){
       if(!sleutel||!bron){err.style.display='block';err.textContent='Sleutel en bron zijn verplicht.';return;}
       var btn=document.getElementById('mf-ok');btn.disabled=true;btn.textContent='Opslaan...';
       try{
-        var r=await fetch(WORKER+'/waardering/marktfactor?key='+encodeURIComponent(adminKey),{
-          method:'POST',headers:{'Content-Type':'application/json'},
+        var r=await fetch(WORKER+'/waardering/marktfactor',{
+          method:'POST',headers:{'Content-Type':'application/json','x-admin-key':adminKey},
           body:JSON.stringify({
             sleutel:sleutel,
             waarde:document.getElementById('mf-waarde').value?parseFloat(document.getElementById('mf-waarde').value):null,
@@ -1297,7 +1315,7 @@ function renderWaarderingTab(el){
     if(sel)sel.addEventListener('change',async function(){
       selectedTraject=this.value;
       if(!selectedTraject){el.innerHTML=renderModule();bindWaardering();return;}
-      var r=await fetch(WORKER+'/mna/admin/detail/'+selectedTraject+'?key='+encodeURIComponent(adminKey));
+      var r=await fetch(WORKER+'/mna/admin/detail/'+selectedTraject,{headers:{'x-admin-key':adminKey}});
       var d=await r.json();
       if(d&&d.data){
         d.data.forEach(function(row){
@@ -1458,7 +1476,7 @@ function renderRapportenTab(el){
   html+='</div>';
   el.innerHTML=html;
   var rb=document.getElementById('btn-ref-rapp');
-  if(rb)rb.addEventListener('click',async function(){var r=await fetch(WORKER+'/admin/rapporten?key='+encodeURIComponent(adminKey));rapporten=r.ok?await r.json():[];renderDashboard();});
+  if(rb)rb.addEventListener('click',async function(){var r=await fetch(WORKER+'/admin/rapporten',{headers:{'x-admin-key':adminKey}});rapporten=r.ok?await r.json():[];renderDashboard();});
   var rs=document.getElementById('rapp-search');
   if(rs)rs.addEventListener('input',function(){var q=this.value.toLowerCase();el.querySelectorAll('.rapp-row').forEach(function(r){r.style.display=r.textContent.toLowerCase().includes(q)?'':'none';});});
   el.querySelectorAll('.btn-del-rapp').forEach(function(b){b.addEventListener('click',function(){verwijderRapport(b.dataset.id);});});
@@ -1468,7 +1486,7 @@ function renderRapportenTab(el){
   if(cbAllR)cbAllR.addEventListener('change',function(){el.querySelectorAll('.rapp-cb').forEach(function(cb){cb.checked=cbAllR.checked;});updSelRapp();});
   el.querySelectorAll('.rapp-cb').forEach(function(cb){cb.addEventListener('change',updSelRapp);});
   var btnDelR=document.getElementById('btn-del-sel-rapp');
-  if(btnDelR)btnDelR.addEventListener('click',async function(){var ids=Array.from(el.querySelectorAll('.rapp-cb:checked')).map(function(cb){return cb.dataset.id;});if(!ids.length)return;if(!confirm('Verwijder '+ids.length+' rapport(en)?'))return;btnDelR.disabled=true;btnDelR.textContent='Verwijderen...';for(var i=0;i<ids.length;i++){try{await fetch(WORKER+'/admin/delete/rapport/'+ids[i]+'?key='+encodeURIComponent(adminKey),{method:'POST'});}catch(e){}}var rb2=document.getElementById('btn-ref-rapp');if(rb2)rb2.click();});
+  if(btnDelR)btnDelR.addEventListener('click',async function(){var ids=Array.from(el.querySelectorAll('.rapp-cb:checked')).map(function(cb){return cb.dataset.id;});if(!ids.length)return;if(!confirm('Verwijder '+ids.length+' rapport(en)?'))return;btnDelR.disabled=true;btnDelR.textContent='Verwijderen...';for(var i=0;i<ids.length;i++){try{await fetch(WORKER+'/admin/delete/rapport/'+ids[i],{headers:{'x-admin-key':adminKey},method:'POST'});}catch(e){}}var rb2=document.getElementById('btn-ref-rapp');if(rb2)rb2.click();});
 }
 
 async function leesRapport(id){
@@ -1481,7 +1499,7 @@ async function leesRapport(id){
   ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
   document.getElementById('rapp-sluit').addEventListener('click',function(){document.body.removeChild(ov);});
   try{
-    var r=await fetch(WORKER+'/admin/rapport/'+id+'?key='+encodeURIComponent(adminKey));
+    var r=await fetch(WORKER+'/admin/rapport/'+id,{headers:{'x-admin-key':adminKey}});
     var d=await r.json();
     mo.querySelector('.modal-title').textContent=(d.kantoor_naam||'Rapport')+' — score '+d.overall+' — '+formatDate(d.created_at);
     var rb=document.getElementById('rapp-body');
@@ -1502,7 +1520,7 @@ async function leesRapport(id){
 async function verwijderRapport(id){
   if(!confirm('Rapport permanent verwijderen?'))return;
   try{
-    var r=await fetch(WORKER+'/admin/delete/rapport/'+id+'?key='+encodeURIComponent(adminKey),{method:'POST'});
+    var r=await fetch(WORKER+'/admin/delete/rapport/'+id,{headers:{'x-admin-key':adminKey},method:'POST'});
     var d=await r.json();
     if(d.ok){rapporten=rapporten.filter(function(x){return x.id!==id;});renderDashboard();}
     else toast('Fout: '+(d.error||'onbekend'),'err');
@@ -1522,7 +1540,7 @@ async function verwijderDoc(id){
 
 async function vergrendelDoc(id,lock){
   try{
-    var r=await fetch(WORKER+'/mna/admin/vergrendel-document/'+id+'?key='+encodeURIComponent(adminKey),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({vergrendeld:lock?1:0})});
+    var r=await fetch(WORKER+'/mna/admin/vergrendel-document/'+id,{method:'POST',headers:{'x-admin-key':adminKey,'Content-Type':'application/json'},body:JSON.stringify({vergrendeld:lock?1:0})});
     var d=await r.json();
     if(d.ok){document.getElementById('btn-load-docs').click();}
     else toast('Fout: '+(d.error||'onbekend'),'err');
@@ -1534,7 +1552,7 @@ async function deleteScan(id){
   if(!id){toast('Geen ID voor deze scan.','err');return;}
   if(!confirm('Scan permanent verwijderen?'))return;
   try{
-    var r=await fetch(WORKER+'/admin/delete/scan/'+id+'?key='+encodeURIComponent(adminKey),{method:'POST'});
+    var r=await fetch(WORKER+'/admin/delete/scan/'+id,{headers:{'x-admin-key':adminKey},method:'POST'});
     var d=await r.json();
     if(d.ok){scans=scans.filter(function(s){return String(s.id)!==String(id);});openRow=null;renderDashboard();}
     else toast('Fout: '+(d.error||'onbekend'),'err');
@@ -1545,7 +1563,7 @@ async function deleteCallback(id){
   if(!id){toast('Geen ID.','err');return;}
   if(!confirm('Terugbelverzoek permanent verwijderen?'))return;
   try{
-    var r=await fetch(WORKER+'/admin/delete/callback/'+id+'?key='+encodeURIComponent(adminKey),{method:'POST'});
+    var r=await fetch(WORKER+'/admin/delete/callback/'+id,{headers:{'x-admin-key':adminKey},method:'POST'});
     var d=await r.json();
     if(d.ok){callbacks=callbacks.filter(function(c){return String(c.id)!==String(id);});renderDashboard();}
     else toast('Fout: '+(d.error||'onbekend'),'err');
@@ -1555,7 +1573,7 @@ async function deleteCallback(id){
 async function deleteMna(id,naam){
   if(!confirm('Traject '+naam+' en alle data permanent verwijderen?'))return;
   try{
-    var r=await fetch(WORKER+'/admin/delete/mna/'+id+'?key='+encodeURIComponent(adminKey),{method:'POST'});
+    var r=await fetch(WORKER+'/admin/delete/mna/'+id,{headers:{'x-admin-key':adminKey},method:'POST'});
     var d=await r.json();
     if(d.ok){mnaList=mnaList.filter(function(t){return t.id!==id;});renderDashboard();}
     else toast('Fout: '+(d.error||'onbekend'),'err');
@@ -1666,7 +1684,7 @@ async function toonDetail(id,naam){
 
 
   try{
-    var r=await fetch(WORKER+'/mna/admin/detail/'+id+'?key='+encodeURIComponent(adminKey));
+    var r=await fetch(WORKER+'/mna/admin/detail/'+id,{headers:{'x-admin-key':adminKey}});
     var d=await r.json();
     var db=document.getElementById('detail-body');
     if(!d||!d.traject){db.textContent='Traject niet gevonden.';return;}
@@ -2032,8 +2050,8 @@ async function toonDetail(id,naam){
       try{
         // Laad BEIDE: geüploade bestanden (direct per traject) + gegenereerde versies
         var [docsResp, versiesResp] = await Promise.all([
-          fetch(WORKER+'/mna/traject-docs/'+id+'?key='+encodeURIComponent(adminKey)),
-          fetch(WORKER+'/mna/versies/'+id+'?key='+encodeURIComponent(adminKey))
+          fetch(WORKER+'/mna/traject-docs/'+id,{headers:{'x-admin-key':adminKey}}),
+          fetch(WORKER+'/mna/versies/'+id,{headers:{'x-admin-key':adminKey}})
         ]);
         var trajectDocs = docsResp.ok ? await docsResp.json() : [];
         var versies = versiesResp.ok ? await versiesResp.json() : [];
@@ -2054,7 +2072,7 @@ async function toonDetail(id,naam){
               +'<span style="font-size:12px;font-weight:500;color:var(--head);flex:1">'+esc(d.bestand_naam||'—')+'</span>'
               +'<span style="font-size:10px;color:var(--muted)">'+gr+'</span>'
               +'<span style="font-size:10px;color:var(--muted)">'+dt+'</span>'
-              +(d.bewaard?'<a href="'+WORKER+'/mna/document/download/'+d.id+'?key='+encodeURIComponent(adminKey)+'" target="_blank" class="btn-ghost" style="font-size:10px;padding:2px 8px;text-decoration:none">↓ Download</a>':'')
+              +(d.bewaard?'<button class="btn-ghost btn-dl-doc2" data-id="'+esc(d.id)+'" data-naam="'+esc(d.bestand_naam||'download')+'" style="font-size:10px;padding:2px 8px">↓ Download</button>':'')
               +'<button class="btn-ghost doc-del-btn" data-id="'+esc(d.id)+'" style="font-size:10px;padding:2px 6px;color:var(--red);border-color:var(--red)">✕</button>'
               +'</div>';
           });
@@ -2085,6 +2103,7 @@ async function toonDetail(id,naam){
           return;
         }
         vBody.innerHTML=html;
+        vBody.querySelectorAll('.btn-dl-doc2').forEach(function(b){b.addEventListener('click',function(){downloadMetAdminKey(WORKER+'/mna/document/download/'+encodeURIComponent(b.dataset.id),b.dataset.naam);});});
         // Delete handlers geüploade bestanden
         vBody.querySelectorAll('.doc-del-btn').forEach(function(b){
           b.addEventListener('click',async function(){
@@ -2119,7 +2138,7 @@ async function toonDetail(id,naam){
 
   async function laadGesprekken(){
     try{
-      var gr=await fetch(WORKER+'/mna/admin/gesprekken/'+id+'?key='+encodeURIComponent(adminKey));
+      var gr=await fetch(WORKER+'/mna/admin/gesprekken/'+id,{headers:{'x-admin-key':adminKey}});
       var gd=await gr.json();
       var lijst=gd.gesprekken||[];
       if(!lijst.length){gesprekkenBody.innerHTML='<div style="color:var(--muted);font-size:12px;font-style:italic">Nog geen gesprekken vastgelegd.</div>';return;}
@@ -2142,7 +2161,7 @@ async function toonDetail(id,naam){
         hdr.addEventListener('click',function(e){if(e.target.tagName==='BUTTON')return;var b=gesprekkenBody.querySelector('.gesprek-body[data-gid="'+hdr.dataset.gid+'"]');if(b)b.style.display=b.style.display==='none'?'block':'none';});
       });
       gesprekkenBody.querySelectorAll('.gesprek-del-btn').forEach(function(btn){
-        btn.addEventListener('click',async function(e){e.stopPropagation();if(!confirm('Gesprek verwijderen?'))return;await fetch(WORKER+'/mna/admin/gesprek/delete/'+btn.dataset.gid+'?key='+encodeURIComponent(adminKey),{method:'POST'});laadGesprekken();});
+        btn.addEventListener('click',async function(e){e.stopPropagation();if(!confirm('Gesprek verwijderen?'))return;await fetch(WORKER+'/mna/admin/gesprek/delete/'+btn.dataset.gid,{headers:{'x-admin-key':adminKey},method:'POST'});laadGesprekken();});
       });
       gesprekkenBody.querySelectorAll('.gesprek-bewerk-btn').forEach(function(btn){
         btn.addEventListener('click',function(e){e.stopPropagation();var g2=lijst.find(function(x){return x.id===btn.dataset.gid;});if(g2)toonGesprekModal(id,g2,laadGesprekken);});
@@ -2160,7 +2179,7 @@ async function toonDetail(id,naam){
     var qaBody=document.getElementById('qa-register-body');
     qaBody.textContent='Laden...';
     try{
-      var qaR=await fetch(WORKER+'/mna/qa/'+id+'?key='+encodeURIComponent(adminKey));
+      var qaR=await fetch(WORKER+'/mna/qa/'+id,{headers:{'x-admin-key':adminKey}});
       var lijst=await qaR.json();
       if(!lijst.length){qaBody.textContent='Nog geen vragen gesteld.';return;}
       var html='<div style="display:flex;flex-direction:column;gap:8px">';
@@ -2208,7 +2227,7 @@ async function toonDetail(id,naam){
     var auditBody=document.getElementById('audit-body');
     auditBody.textContent='Laden...';
     try{
-      var ar=await fetch(WORKER+'/mna/admin/audit/'+id+'?key='+encodeURIComponent(adminKey));
+      var ar=await fetch(WORKER+'/mna/admin/audit/'+id,{headers:{'x-admin-key':adminKey}});
       var logs=await ar.json();
       if(!logs.length){auditBody.textContent='Geen activiteit geregistreerd.';return;}
       var actieLbl={
@@ -2245,7 +2264,7 @@ async function toonDetail(id,naam){
 // NIEUW TRAJECT
 async function toonBewerkModal(id, naam){
   // Haal huidige trajectdata op
-  var r=await fetch(WORKER+'/mna/admin/detail/'+id+'?key='+encodeURIComponent(adminKey));
+  var r=await fetch(WORKER+'/mna/admin/detail/'+id,{headers:{'x-admin-key':adminKey}});
   var dd=await r.json();
   if(!dd||!dd.traject){toast('Traject niet gevonden.','err');return;}
   var t=dd.traject;
@@ -2283,8 +2302,8 @@ async function toonBewerkModal(id, naam){
     var btn=this;btn.disabled=true;btn.textContent='Opslaan...';
     var err=document.getElementById('bw-err');err.style.display='none';
     try{
-      var resp=await fetch(WORKER+'/mna/admin/update/'+id+'?key='+encodeURIComponent(adminKey),{
-        method:'POST',headers:{'Content-Type':'application/json'},
+      var resp=await fetch(WORKER+'/mna/admin/update/'+id,{
+        method:'POST',headers:{'x-admin-key':adminKey,'Content-Type':'application/json'},
         body:JSON.stringify({
           kantoor_naam:document.getElementById('bw-k').value.trim(),
           contact_naam:document.getElementById('bw-c').value.trim(),
@@ -2455,7 +2474,7 @@ function toonGesprekModal(trajectId, bestaand, onSaved){
     el.querySelectorAll('.bijlage-del').forEach(function(btn){
       btn.addEventListener('click',async function(){
         var bid=btn.dataset.id;
-        if(gesprekId){await fetch(WORKER+'/mna/admin/gesprek/bijlage/delete/'+bid+'?key='+encodeURIComponent(adminKey),{method:'POST'}).catch(function(){});}
+        if(gesprekId){await fetch(WORKER+'/mna/admin/gesprek/bijlage/delete/'+bid,{headers:{'x-admin-key':adminKey},method:'POST'}).catch(function(){});}
         bijlagenLijst=bijlagenLijst.filter(function(b){return b.id!==bid;});
         renderBijlagen();
       });
@@ -2464,7 +2483,7 @@ function toonGesprekModal(trajectId, bestaand, onSaved){
 
   // Laad bestaande bijlagen als bewerken
   if(gesprekId){
-    fetch(WORKER+'/mna/admin/gesprek/bijlagen/'+gesprekId+'?key='+encodeURIComponent(adminKey))
+    fetch(WORKER+'/mna/admin/gesprek/bijlagen/'+gesprekId,{headers:{'x-admin-key':adminKey}})
       .then(function(r){return r.json();})
       .then(function(d){
         bijlagenLijst=(d.bijlagen||[]).map(function(b){return{id:b.id,naam:b.bestand_naam,type:b.bestand_type,grootte:b.bestand_grootte,tekst:b.tekst};});
@@ -2493,7 +2512,7 @@ function toonGesprekModal(trajectId, bestaand, onSaved){
       renderBijlagen();
       var fd=new FormData();fd.append('file',file);
       try{
-        var resp=await fetch(WORKER+'/mna/admin/gesprek/bijlage/'+gesprekId+'?key='+encodeURIComponent(adminKey),{method:'POST',body:fd});
+        var resp=await fetch(WORKER+'/mna/admin/gesprek/bijlage/'+gesprekId,{headers:{'x-admin-key':adminKey},method:'POST',body:fd});
         var bd=await resp.json();
         bijlagenLijst=bijlagenLijst.filter(function(b){return b.id!==tmpId;});
         if(bd.ok){bijlagenLijst.push({id:bd.id,naam:bd.naam||file.name,type:file.type,grootte:file.size,tekst:bd.tekst_beschikbaar?'ja':''});}
@@ -2605,7 +2624,7 @@ function toonBegeleiderModal(trajectId, trajectNaam, tussenCode){
         btn.textContent='Verstuurd';
         // Update begeleider in DB als naam/email ingevuld
         if(naam||email){
-          await fetch(WORKER+'/mna/admin/update/'+trajectId+'?key='+encodeURIComponent(adminKey),{method:'POST',headers:{'Content-Type':'application/json'},
+          await fetch(WORKER+'/mna/admin/update/'+trajectId,{method:'POST',headers:{'x-admin-key':adminKey,'Content-Type':'application/json'},
             body:JSON.stringify({begeleider_naam:naam,begeleider_email:email})}).catch(function(){});
         }
       } else {
@@ -2865,7 +2884,7 @@ function slaOp(t){
 async function vergrendel(id,naam){
   if(!confirm('Traject '+naam+' vergrendelen?'))return;
   try{
-    var r=await fetch(WORKER+'/mna/admin/vergrendel/'+id+'?key='+encodeURIComponent(adminKey),{method:'POST'});
+    var r=await fetch(WORKER+'/mna/admin/vergrendel/'+id,{headers:{'x-admin-key':adminKey},method:'POST'});
     var d=await r.json();
     if(d.ok){var t=mnaList.find(function(x){return x.id===id;});if(t)t.status='vergrendeld';renderTab();}
     else toast('Fout: '+(d.error||'onbekend'),'err');
@@ -2874,7 +2893,7 @@ async function vergrendel(id,naam){
 
 async function ontvergrendel(id){
   try{
-    var r=await fetch(WORKER+'/mna/admin/status/'+id+'?key='+encodeURIComponent(adminKey),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'actief'})});
+    var r=await fetch(WORKER+'/mna/admin/status/'+id,{method:'POST',headers:{'x-admin-key':adminKey,'Content-Type':'application/json'},body:JSON.stringify({status:'actief'})});
     var d=await r.json();
     if(d.ok){var t=mnaList.find(function(x){return x.id===id;});if(t)t.status='actief';renderTab();}
     else toast('Fout: '+(d.error||'onbekend'),'err');
@@ -2884,8 +2903,8 @@ async function ontvergrendel(id){
 async function maakTrajectVanScan(scanId, naam, email){
   if(!confirm('M&A traject aanmaken voor '+naam+'?'))return;
   try{
-    var r=await fetch(WORKER+'/mna/scan-to-traject?key='+encodeURIComponent(adminKey),{
-      method:'POST',headers:{'Content-Type':'application/json'},
+    var r=await fetch(WORKER+'/mna/scan-to-traject',{
+      method:'POST',headers:{'Content-Type':'application/json','x-admin-key':adminKey},
       body:JSON.stringify({scan_id:scanId,kantoor_naam:naam,contact_email:email,traject_type:'Verkoop'})
     });
     var d=await r.json();
@@ -2948,7 +2967,7 @@ function wisTrajectData(id, naam) {
     if (wisDD || wisChk) {
       prog.textContent = '⏳ DD-data wissen...';
       try {
-        var r = await fetch(WORKER + '/mna/admin/wis-data/' + id + '?key=' + encodeURIComponent(adminKey), { method: 'POST' });
+        var r = await fetch(WORKER + '/mna/admin/wis-data/' + id, { method: 'POST', headers: { 'x-admin-key': adminKey } });
         var d = await r.json();
         if (d.ok) {
           stappen.push('✓ DD-data gewist via worker');
@@ -2971,13 +2990,13 @@ function wisTrajectData(id, naam) {
     if (wisDocs) {
       prog.textContent = '⏳ Documenten verwijderen...';
       try {
-        var rd = await fetch(WORKER + '/mna/admin/documenten?key=' + encodeURIComponent(adminKey));
+        var rd = await fetch(WORKER + '/mna/admin/documenten', { headers: { 'x-admin-key': adminKey } });
         var docs = await rd.json();
         var trajectDocs = docs.filter(function(doc) { return doc.traject_id === id && !doc.vergrendeld; });
         var verw = 0;
         for (var j = 0; j < trajectDocs.length; j++) {
           try {
-            var dr = await fetch(WORKER + '/mna/document/delete/' + trajectDocs[j].id + '?key=' + encodeURIComponent(adminKey), { method: 'POST' });
+            var dr = await fetch(WORKER + '/mna/document/delete/' + trajectDocs[j].id, { method: 'POST', headers: { 'x-admin-key': adminKey } });
             if (dr.ok) verw++;
           } catch(e3) {}
         }
@@ -3189,7 +3208,7 @@ function toonVeldenDebug(trajectId, naam, d) {
 async function renderGebruikersTab(el) {
   el.innerHTML = '<div style="padding:1rem;color:var(--muted);font-size:13px">Laden...</div>';
   try {
-    var r = await fetch(WORKER + '/gebruikers/lijst?key=' + encodeURIComponent(adminKey));
+    var r = await fetch(WORKER + '/gebruikers/lijst', { headers: { 'x-admin-key': adminKey } });
     var lijst = await r.json();
     var html = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem">'
       + '<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">'
@@ -3322,7 +3341,7 @@ async function renderGebruikersTab(el) {
       btn.addEventListener('click', async function() {
         var nieuwWw = prompt('Nieuw wachtwoord voor ' + btn.dataset.email + ':');
         if (!nieuwWw || nieuwWw.length < 8) { toast('Wachtwoord minimaal 8 tekens.', 'err'); return; }
-        var dr = await fetch(WORKER + '/gebruikers/reset-ww/' + btn.dataset.id + '?key=' + encodeURIComponent(adminKey), {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({wachtwoord:nieuwWw})});
+        var dr = await fetch(WORKER + '/gebruikers/reset-ww/' + btn.dataset.id, {method:'POST', headers:{'Content-Type':'application/json','x-admin-key':adminKey}, body:JSON.stringify({wachtwoord:nieuwWw})});
         var dd = await dr.json();
         if (dd.ok) toast('Wachtwoord gereset voor ' + btn.dataset.email + '.', 'ok');
         else toast(dd.error || 'Fout bij resetten.', 'err');
@@ -3355,9 +3374,9 @@ async function renderGebruikersTab(el) {
       btn.addEventListener('click', async function() {
         btn.disabled = true; btn.textContent = 'Versturen...';
         // Goede aanpak: opnieuw uitnodigen via deactiveer + nieuw uitnodigen
-        var rr = await fetch(WORKER + '/gebruikers/uitnodigen?key=' + encodeURIComponent(adminKey), {
+        var rr = await fetch(WORKER + '/gebruikers/uitnodigen', {
           method: 'POST',
-          headers: {'Content-Type':'application/json'},
+          headers: {'Content-Type':'application/json','x-admin-key':adminKey},
           body: JSON.stringify({naam: btn.dataset.naam, email: btn.dataset.email, _resend: btn.dataset.id})
         });
         var rd = await rr.json();
@@ -3381,9 +3400,9 @@ var TARIEF_LABELS = {
 async function renderTarievenTab(el) {
   el.innerHTML = '<div style="padding:1rem;color:var(--muted);font-size:13px">Laden...</div>';
   try {
-    var tr = await fetch(WORKER + '/mna/admin/tarieven?key=' + encodeURIComponent(adminKey));
+    var tr = await fetch(WORKER + '/mna/admin/tarieven', { headers: { 'x-admin-key': adminKey } });
     var tarieven = await tr.json();
-    var er = await fetch(WORKER + '/mna/admin/tarieven/events?key=' + encodeURIComponent(adminKey));
+    var er = await fetch(WORKER + '/mna/admin/tarieven/events', { headers: { 'x-admin-key': adminKey } });
     var events = await er.json();
     if (!Array.isArray(tarieven)) tarieven = [];
     if (!Array.isArray(events)) events = [];
@@ -3481,9 +3500,9 @@ function toonUitnodigenModal() {
     errDiv.style.display = 'none';
     if (!naam || !email) { errDiv.textContent = 'Naam en e-mail zijn verplicht.'; errDiv.style.display = 'block'; btn.disabled = false; btn.textContent = '✉ Uitnodiging versturen'; return; }
     try {
-      var r = await fetch(WORKER + '/gebruikers/uitnodigen?key=' + encodeURIComponent(adminKey), {
+      var r = await fetch(WORKER + '/gebruikers/uitnodigen', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
+        headers: {'Content-Type': 'application/json','x-admin-key':adminKey},
         body: JSON.stringify({naam, bedrijf, email})
       });
       var d = await r.json();
