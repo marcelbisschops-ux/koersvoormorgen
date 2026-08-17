@@ -67,6 +67,14 @@ Eigenaar: Marcel Bisschops (Bisschops Financing B.V.).
 - De Vries & Partners (`UZ24377`) is door Marcel zelf verwijderd (juli 2026) en wordt bewust NIET meer aangemaakt. De E2E-testsuite (`tests/e2e-ui.spec.js`) leunt hier niet meer op — die maakt en ruimt een eigen tijdelijk testtraject op.
 - Marilyn en Co / Bisschops & Co: realistische testsets (echte jaarrekening-PDF's met kloppende balans) staan lokaal op het bureaublad, voor handmatig testen van uploads/extractie/groepsstructuur.
 
+## Testdocumenten-standaard (Marcel, 17 augustus 2026, geldt voor alle volgende verzoeken — ook van derden)
+Bij elk verzoek om testdocumenten voor het M&A-platform (mna.html-uploadflow, ongeacht wie het vraagt):
+1. **Volledigheid**: het documentenpakket moet zoveel mogelijk van de DD-velden over **alle** fases van het sectorprofiel kunnen vullen (`mna/01-config-sectorprofielen.js`) — niet alleen financieel. Dus ook documenten voor commercieel (klantenportefeuille), partners & personeel (personeelsoverzicht, partnerovereenkomst), compliance (NBA-inschrijving, kwaliteitstoetsing, Wwft/klachtenregister), IT (systemenoverzicht), en juridisch & fiscaal (KvK-uittreksel, aandeelhoudersstructuur, huurovereenkomst, VPB-positie).
+2. **Realisme**: documenten moeten qua vorm en inhoud lijken op wat een echte verkoper daadwerkelijk zou uploaden — een jaarrekening met balans/W&V/toelichting, een KvK-uittreksel, een huurcontract, geen kale datatabel. Cijfers moeten intern kloppend zijn (balans sluit, cijfers komen tussen documenten onderling overeen) — zelfde discipline als bij elk ander testdata-verzoek (GOUDEN STANDAARD, zie werkregel 8/13).
+3. **Randgevallen expliciet meenemen**: naast documenten die succesvol verwerkt moeten worden, ook minstens één document dat door het systeem hoort te worden **afgewezen** (bijv. entiteit-mismatch, onleesbare/niet-matchende inhoud, of — bij bankmutaties — een CSV met onduidelijke kolomindeling die "handmatig controleren" moet opleveren). Doel: ook het foutpad/de "nooit gokken"-bewaking testen, niet alleen de happy path.
+4. **Groepsstructuur**: waar relevant een holdingstructuur (holding + minstens één werkmaatschappij) opnemen, met per entiteit passende documenten, om entiteit-routing en consolidatie te kunnen testen.
+5. Blijft uiteraard vallen onder werkregel 14 (GOUDEN STANDAARD): altijd volledig fictief, nooit een echte cliëntnaam of dossier.
+
 ## Openstaande punten (juli 2026)
 - Eigen document-templates (NDA/LoI/BEM) opnieuw uploaden in marilyn (gewist door inmiddels gefixte bug) — bewust uitgesteld door Marcel
 - Volledige backlog (12 taken, eenvoudig → moeilijk, met kosteninschatting) + geautomatiseerd E2E-testplan: zie `BACKLOG.md`
