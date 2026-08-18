@@ -413,7 +413,7 @@ function renderMain(){
   // (omzet/EBITDA e.d., via applyOrConflict) verschijnt ook een keuzescherm bij een afwijking; bij de
   // meeste overige velden (setIfEmpty) blijft uw waarde gewoon staan, zonder melding van de afwijking.
   var instrTxt=isVerkoper()?'<div style="font-size:11px;color:var(--muted);line-height:1.6;margin-bottom:1rem;padding-bottom:.75rem;border-bottom:1px solid var(--border)">'
-    +'<strong style="color:var(--sub)">Vul de velden hieronder zelf in</strong> — dat is de basis. Upload rechts uw documenten (jaarrekeningen, KvK-uittreksel, contracten) als onderbouwing bij het dossier.<br>'
+    +'<strong style="color:var(--sub)">Vul de velden hieronder zelf in, of upload rechts uw documenten</strong> (jaarrekeningen, KvK-uittreksel, contracten) en laat ze automatisch invullen — beide kan, in elke volgorde. Documenten dienen ook als onderbouwing bij het dossier.<br>'
     +'Bij het uploaden kiest u zelf: <strong style="color:var(--sub)">"Alleen als bewijsstuk toevoegen"</strong> aangevinkt &rarr; het document wordt alleen bewaard, er verandert niets aan uw ingevulde velden. Niet aangevinkt (standaard) &rarr; de AI leest het document en vult ontbrekende velden automatisch aan.<br>'
     +'Een handmatig ingevulde waarde wordt nooit automatisch overschreven. Bij de belangrijkste financiële velden (zoals omzet en EBITDA) krijgt u bij een afwijkende waarde uit een document ook een keuzescherm om zelf de juiste waarde aan te wijzen.'
     +'</div>'
