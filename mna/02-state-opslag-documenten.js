@@ -313,24 +313,40 @@ function saveCurrent(cb){
   // Gevonden 18 augustus 2026 bij het verifiëren van taak 24: twee entiteiten kregen na kort na
   // elkaar uploaden + wisselen exact dezelfde (verkeerde) cijfers in de database.
   var saveSnapshot={code:S.code,fase_id:f.id,data_json:getDataForFase(f.id),checklist_json:getChecklistForFase(f.id),notitie:S.notities[f.id]||'',entiteit_id:S._actieveEntiteit||undefined};
+  var nieuwePending={snapshot:saveSnapshot,faseId:f.id,groepsniveauGewijzigd:groepsniveauGewijzigd,cb:cb};
+  // Staat er al een save van een ANDERE fase/entiteit te wachten (nog niet verstuurd)? Dan die eerst
+  // direct versturen i.p.v. zomaar annuleren — anders raakt die wijziging stilzwijgend kwijt zodra de
+  // gebruiker binnen 800ms twee keer van entiteit wisselt (elke saveCurrent()-aanroep annuleerde tot nu
+  // toe onvoorwaardelijk de vorige, gedeelde timer, ook als die van een ANDERE entiteit was — dus niet
+  // fout toegeschreven zoals de vorige bug hierboven, maar volledig verdwenen). clearTimeout hieronder
+  // annuleert alleen de wachtende TIMER, nooit een save die al daadwerkelijk onderweg (geflusht) is.
+  // Gevonden 18 augustus 2026, ná de save-race-fix hierboven, bij het draaien van de regressietest ervoor.
+  if(S._pendingSave&&(S._pendingSave.snapshot.fase_id!==saveSnapshot.fase_id||S._pendingSave.snapshot.entiteit_id!==saveSnapshot.entiteit_id)){
+    _verstuurGeplandeSave(S._pendingSave);
+  }
   clearTimeout(S.saveTimer);
+  S._pendingSave=nieuwePending;
   S.saveTimer=setTimeout(function(){
-    fetch(WORKER+'/mna/save',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify(saveSnapshot)
-    }).then(function(r){return r.json();}).then(function(d){
-      if(d.error==='vergrendeld'){showAlert('Dit traject is vergrendeld. Uw wijzigingen zijn niet opgeslagen.');}
-      else{
-        showSaveIndicator();
-        // Groepsstructuur: bij een entiteit-save stuurt de server de bijgewerkte groepswaarden mee terug —
-        // direct verwerken in S._groepData zodat "Groep"-weergave meteen klopt, ook zonder herfetch.
-        if(d.groepswaarden)Object.keys(d.groepswaarden).forEach(function(k){var v=d.groepswaarden[k];if(v&&v.value!==undefined)S._groepData[f.id+'_'+k]=v.value;});
-      }
-    }).catch(function(){});
-    // Groepsniveau-veld gewijzigd terwijl een entiteit actief was: die hoort niet in de
-    // entiteit-eigen save hierboven (getDataForFase sluit 'm al uit) — apart naar de groepsrij.
-    if(groepsniveauGewijzigd)saveGroepsniveauVelden(f.id);
-    if(cb)cb();
+    var pending=S._pendingSave;S._pendingSave=null;
+    _verstuurGeplandeSave(pending);
   },800);
+}
+function _verstuurGeplandeSave(pending){
+  fetch(WORKER+'/mna/save',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(pending.snapshot)
+  }).then(function(r){return r.json();}).then(function(d){
+    if(d.error==='vergrendeld'){showAlert('Dit traject is vergrendeld. Uw wijzigingen zijn niet opgeslagen.');}
+    else{
+      showSaveIndicator();
+      // Groepsstructuur: bij een entiteit-save stuurt de server de bijgewerkte groepswaarden mee terug —
+      // direct verwerken in S._groepData zodat "Groep"-weergave meteen klopt, ook zonder herfetch.
+      if(d.groepswaarden)Object.keys(d.groepswaarden).forEach(function(k){var v=d.groepswaarden[k];if(v&&v.value!==undefined)S._groepData[pending.faseId+'_'+k]=v.value;});
+    }
+  }).catch(function(){});
+  // Groepsniveau-veld gewijzigd terwijl een entiteit actief was: die hoort niet in de
+  // entiteit-eigen save hierboven (getDataForFase sluit 'm al uit) — apart naar de groepsrij.
+  if(pending.groepsniveauGewijzigd)saveGroepsniveauVelden(pending.faseId);
+  if(pending.cb)pending.cb();
 }
 
 // AI-verificatiestatus: waar komt een veldwaarde vandaan? 'ai_document' (uit documentextractie,
