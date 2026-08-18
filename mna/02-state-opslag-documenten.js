@@ -663,7 +663,7 @@ function renderBankmutatiesSectie(faseId) {
       var regels = BANKMUTATIES_REGELS[imp.id];
       var opengeklapt = regels !== undefined;
       var badge = nodigControle
-        ? '<span style="font-size:9px;font-weight:700;color:#fff;background:var(--red);border-radius:8px;padding:1px 6px">&#9888; Handmatig controleren</span>'
+        ? '<span style="font-size:9px;font-weight:700;color:#fff;background:var(--gold);border-radius:8px;padding:1px 6px">&#9888; Handmatig controleren</span>'
         : '<span style="font-size:9px;font-weight:600;color:var(--teal);background:var(--teal-bg);border-radius:8px;padding:1px 6px">'+imp.aantal_regels+' regel(s)</span>';
       var regelsHtml = '';
       if (opengeklapt) {
@@ -686,7 +686,7 @@ function renderBankmutatiesSectie(faseId) {
             + '</tbody></table></div>';
         }
       }
-      return '<div style="padding:6px 8px;background:'+(nodigControle?'var(--red-bg)':'var(--card)')+';border-radius:var(--r);border:1px solid '+(nodigControle?'var(--red)':'var(--border)')+'">'
+      return '<div style="padding:6px 8px;background:'+(nodigControle?'var(--gold-bg)':'var(--card)')+';border-radius:var(--r);border:1px solid '+(nodigControle?'var(--gold)':'var(--border)')+'">'
         + '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">'
         + '<span style="font-size:13px">&#127974;</span>'
         + '<span style="font-size:11px;color:var(--sub);flex:1;cursor:pointer" onclick="toggleBankmutatiesRegels(\''+imp.id+'\')">'+esc(imp.bestand_naam)+' <span style="color:var(--muted)">('+esc((imp.bron_formaat||'').toUpperCase())+')</span></span>'
@@ -694,7 +694,7 @@ function renderBankmutatiesSectie(faseId) {
         + '<button onclick="toggleBankmutatiesRegels(\''+imp.id+'\')" style="background:none;border:1px solid var(--border2);color:var(--muted);border-radius:var(--r);cursor:pointer;font-size:10px;padding:1px 6px">'+(opengeklapt?'Inklappen':'Bekijken')+'</button>'
         + (magVerwijderen?'<button onclick="verwijderBankmutatiesImport(\''+imp.id+'\')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:10px;padding:0 2px">✕</button>':'')
         + '</div>'
-        + (nodigControle?'<div style="font-size:10px;color:var(--red);margin-top:3px">'+esc(imp.status_reden||'Kon niet automatisch worden verwerkt.')+'</div>':'')
+        + (nodigControle?'<div style="font-size:10px;color:var(--gold-dark);margin-top:3px">'+esc(imp.status_reden||'Kon niet automatisch worden verwerkt.')+'</div>':'')
         + regelsHtml
         + '</div>';
     }).join('') + '</div>';
@@ -996,7 +996,7 @@ window.centraalUploadFiles = async function(files) {
             var naam1=(d.entiteit_naam||'').toLowerCase();
             var naam2=(S.traject.kantoor_naam||'').toLowerCase();
             if(!naam1.includes(naam2.split(' ')[0])&&!naam2.includes(naam1.split(' ')[0])){
-              warnHtml+='<div style="font-size:12px;color:var(--red);padding:2px 0;font-weight:500">⚠ Entiteit in document ("'+esc(d.entiteit_naam)+'") wijkt af van kantoornaam ("'+esc(S.traject.kantoor_naam)+'") — controleer of dit het juiste bestand is.</div>';
+              warnHtml+='<div style="font-size:12px;color:var(--gold-dark);padding:2px 0;font-weight:500">⚠ Entiteit in document ("'+esc(d.entiteit_naam)+'") wijkt af van kantoornaam ("'+esc(S.traject.kantoor_naam)+'") — controleer of dit het juiste bestand is.</div>';
             }
           }
           warnHtml+='</div>';
@@ -1539,10 +1539,10 @@ function renderDocumentSectie(faseId) {
       var bewijsstukBadgeDoc = isBewijsstuk ? ' <span style="font-size:9px;font-weight:600;color:var(--muted);background:var(--panel);border-radius:8px;padding:1px 6px;margin-left:2px" title="Alleen als onderbouwing toegevoegd, niet automatisch geanalyseerd — velden hieronder blijven ongewijzigd">&#128206; Bewijsstuk</span>' : '';
       var groepsniveauBadgeDoc = (toonKoppelenDoc && !doc.entiteit_id && !isBewijsstuk)
         ? (behoeftKoppelingDoc
-          ? ' <span style="font-size:9px;font-weight:700;color:#fff;background:var(--red);border-radius:8px;padding:1px 6px;margin-left:2px">&#9888; Handmatig koppelen</span>'
+          ? ' <span style="font-size:9px;font-weight:700;color:#fff;background:var(--gold);border-radius:8px;padding:1px 6px;margin-left:2px">&#9888; Handmatig koppelen</span>'
           : ' <span style="font-size:9px;font-weight:600;color:var(--muted);background:var(--panel);border-radius:8px;padding:1px 6px;margin-left:2px">Groepsniveau</span>')
         : '';
-      return '<div style="display:flex;align-items:center;gap:6px;padding:5px 8px;background:'+(behoeftKoppelingDoc?'var(--red-bg)':'var(--card)')+';border-radius:var(--r);border:1px solid '+(behoeftKoppelingDoc?'var(--red)':'var(--border)')+';flex-wrap:wrap">'
+      return '<div style="display:flex;align-items:center;gap:6px;padding:5px 8px;background:'+(behoeftKoppelingDoc?'var(--gold-bg)':'var(--card)')+';border-radius:var(--r);border:1px solid '+(behoeftKoppelingDoc?'var(--gold)':'var(--border)')+';flex-wrap:wrap">'
         + '<span style="font-size:13px">'+icon+'</span>'
         + '<span style="font-size:11px;color:'+(behoeftKoppelingDoc?'var(--head)':'var(--teal)')+';flex:1">'+(doc.bewaard?'<a href="'+WORKER+'/mna/document/download/'+doc.id+'?code='+encodeURIComponent(S.code)+'" target="_blank" style="color:'+(behoeftKoppelingDoc?'var(--head)':'var(--teal)')+';text-decoration:'+(behoeftKoppelingDoc?'underline':'none')+'">'+esc(doc.naam)+'</a>':esc(doc.naam))+(entNaamDoc?' <span style="font-size:9px;font-weight:600;color:var(--teal);background:var(--teal-bg);border-radius:8px;padding:1px 6px;margin-left:2px">'+esc(entNaamDoc)+'</span>':groepsniveauBadgeDoc)+bewijsstukBadgeDoc+((doc.versie||1)>1?' <span style="font-size:9px;font-weight:600;color:var(--muted);background:var(--panel);border-radius:8px;padding:1px 6px;margin-left:2px" title="Dit is versie '+(doc.versie||1)+' — vervangt een eerder geüpload document">v'+(doc.versie||1)+'</span>':'')+'</span>'
         + '<span style="font-size:10px;color:var(--muted)">'+(doc.grootte/1024/1024).toFixed(1)+'MB</span>'
@@ -1842,7 +1842,7 @@ function renderDataroom(){
         var behoeftKoppeling=toonKoppelen&&!doc.entiteit_id&&(doc.velden||{}).entiteit_naam&&!gokEntiteitId((doc.velden||{}).entiteit_naam,true);
         var groepsniveauBadge=(toonKoppelen&&!doc.entiteit_id)
           ?(behoeftKoppeling
-            ?' <span style="font-size:10px;font-weight:700;color:#fff;background:var(--red);border-radius:8px;padding:2px 8px;margin-left:4px">&#9888; Handmatig koppelen</span>'
+            ?' <span style="font-size:10px;font-weight:700;color:#fff;background:var(--gold);border-radius:8px;padding:2px 8px;margin-left:4px">&#9888; Handmatig koppelen</span>'
             :' <span style="font-size:10px;font-weight:600;color:var(--muted);background:var(--panel);border-radius:8px;padding:2px 8px;margin-left:4px">Groepsniveau</span>')
           :'';
         html+='<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">'
