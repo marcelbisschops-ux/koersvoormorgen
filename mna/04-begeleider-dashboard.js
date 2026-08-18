@@ -430,6 +430,22 @@ function toonPartnersModal(app){
   laadLijst();
 }
 
+// Opent het dossier op een specifieke fase (het gewone invulscherm, S.screen='main') — de begeleider-
+// dashboard hierboven toonde de DD-voortgang tot 18 aug 2026 alleen read-only, zonder enige knop naar
+// dit scherm. Daardoor waren documentupload, bankmutaties-upload en de red-flag-analyse (allemaal wél
+// gebouwd voor de begeleider-rol, zie isTussen()-checks) in de praktijk nooit bereikbaar via de UI.
+function openBegeleiderFase(faseId){
+  var idx=FASES.findIndex(function(f){return f.id===faseId;});
+  S.screen='main';
+  S.fase=idx>=0?idx:0;
+  if(!DOCS[faseId])loadDocsForFase(faseId);
+  if(faseId==='financieel'){
+    if(BANKMUTATIES===null)laadBankmutaties();
+    if(BANKMUTATIES_ANALYSE===null)laadRedFlagAnalyse();
+  }
+  renderApp();
+}
+
 function renderBegeleiderDashboard(app){
   var t=S.traject||{};
   var contractenAan=!S.modules||S.modules.contracten!==false;
@@ -547,6 +563,7 @@ function renderBegeleiderDashboard(app){
       +'<span style="font-size:13px;font-weight:500;color:var(--head)">'+faseLabels[faseId]+'</span>'
       +'<div style="display:flex;align-items:center;gap:10px">'
       +'<span style="font-size:11px;font-weight:600;color:'+kleur+'">'+items.length+' velden ingevuld</span>'
+      +'<button class="btn-outline btn-sm" style="font-size:10px;padding:2px 8px" onclick="event.stopPropagation();openBegeleiderFase(\''+faseId+'\')">&#128065; Openen</button>'
       +'<span style="font-size:12px;color:var(--muted)">&#9660;</span>'
       +'</div></div>'
       +'<div class="bg-fase-body" data-fase="'+faseId+'" style="display:none;padding:12px 14px">';
