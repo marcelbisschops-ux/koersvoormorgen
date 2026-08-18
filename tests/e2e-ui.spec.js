@@ -177,7 +177,89 @@ test.describe('Documentknoppen module-gating', () => {
   });
 });
 
-// ───────────────────── 4. GELIJKTIJDIGE MULTI-UPLOAD ─────────────────────
+// ───────────────────── 4. CROSS-ENTITEIT DATABEVEILIGING ─────────────────────
+// Regressietest voor de save-race-bug (18 augustus 2026): saveCurrent() las de
+// data pas uit op het moment dat de 800ms-debounce-timer afging, niet op het
+// moment van aanroepen. Wisselde je binnen die 800ms van entiteit (via de
+// "Invullen voor"-kiezer), dan verstuurde de vertraagde save de cijfers van de
+// inmiddels actieve entiteit, gelabeld met het entiteit_id van de vorige — de
+// twee entiteiten kregen zo elkaars cijfers. Fix: saveCurrent() legt de data nu
+// synchroon vast (snapshot) bij aanroepen, niet pas bij het afgaan van de timer.
+//
+// Mutation-waarden (111111/222222, geen realistische bedragen als 950.000/
+// 620.000) zodat besmetting tussen de twee entiteiten onmogelijk te missen is.
+test.describe('Cross-entiteit databeveiliging (regressie 18 aug 2026)', () => {
+  test.skip(!ADMIN, 'Geen admin-key (ADMIN_KEY / --key=) — cross-entiteit-test overgeslagen');
+
+  let email, gid, verkoperCode, tussenCode, noordId, zuidId;
+
+  test.beforeAll(async () => {
+    email = 'e2e-ui-crossentiteit-' + Date.now() + '@bisschopsfinancing.test';
+    const uit = await api('POST', '/gebruikers/uitnodigen', { adminKey: ADMIN, body: { naam: 'E2E CrossEntiteit', bedrijf: 'E2E CrossEntiteit BV', email } });
+    gid = uit.json.id;
+    await api('POST', '/gebruikers/activeer', { body: { token: uit.json.token, wachtwoord: WW } });
+    await api('POST', '/gebruiker/voorwaarden/accepteren', { body: { email, wachtwoord: WW } });
+    await api('POST', '/gebruikers/verkoop/' + gid, { adminKey: ADMIN, body: { traject_limiet: 1, modules: { traject: true, contracten: true } } });
+    const c = await api('POST', '/adviseur/create', { body: { email, wachtwoord: WW, traject: { kantoor_naam: 'E2E CrossEntiteit Kantoor BV', traject_type: 'Verkoop' } } });
+    verkoperCode = c.json.code;
+    tussenCode = c.json.tussen_code;
+    await api('POST', '/mna/vok/teken', { body: { code: tussenCode, naam: 'E2E Test', versie: '1.2', email } });
+
+    const eNoord = await api('POST', '/mna/entiteiten/' + tussenCode, { body: { naam: 'E2E Regressie Noord B.V.', kvk: '95000001' } });
+    noordId = eNoord.json.id;
+    const eZuid = await api('POST', '/mna/entiteiten/' + tussenCode, { body: { naam: 'E2E Regressie Zuid B.V.', kvk: '95000002' } });
+    zuidId = eZuid.json.id;
+  });
+
+  test.afterAll(async () => {
+    if (verkoperCode) await api('POST', '/admin/delete/mna/' + verkoperCode, { adminKey: ADMIN });
+    if (gid) await api('POST', '/gebruikers/verwijder/' + gid, { adminKey: ADMIN, body: {} });
+  });
+
+  test('snel wisselen van entiteit tijdens invullen mag data niet bij de verkeerde entiteit opslaan', async ({ page }) => {
+    await login(page, tussenCode);
+    await page.waitForFunction(() => window.S && S.traject && S.rol === 'tussenpersoon', null, { timeout: 15000 });
+    // loadEntiteiten() (aangeroepen tijdens login) is een aparte, niet-afgewachte fetch — expliciet
+    // wachten tot beide testentiteiten geladen zijn vóórdat we naar de fase navigeren, anders is de
+    // "Invullen voor"-kiezer (die alleen rendert als S._entiteiten al gevuld is) een race conditie.
+    await page.waitForFunction(() => window.S && Array.isArray(S._entiteiten) && S._entiteiten.length >= 2, null, { timeout: 15000 });
+
+    await page.evaluate(() => openBegeleiderFase('financieel'));
+    await page.waitForFunction(() => window.S && S.screen === 'main', null, { timeout: 15000 });
+    await page.waitForSelector('#df_omzet3', { timeout: 15000 });
+
+    // Default moet al op de eerste werkmaatschappij staan (fix "entiteiten vóór groep", 18 aug 2026).
+    const actiefBijStart = await page.evaluate(() => S._actieveEntiteit);
+    expect(actiefBijStart).toBe(noordId);
+
+    // Noord invullen, meteen wisselen — NIET wachten op de 800ms-debounce.
+    await page.locator('#df_omzet3').fill('111111');
+    await page.locator('#entiteit-kiezer-form').selectOption(zuidId);
+
+    // Zuid invullen, meteen terugwisselen — weer geen wachttijd.
+    await page.locator('#df_omzet3').fill('222222');
+    await page.locator('#entiteit-kiezer-form').selectOption(noordId);
+
+    // Nu pas wachten tot alle gedebouncede saves (elk 800ms) daadwerkelijk zijn voltooid.
+    await page.waitForTimeout(2000);
+
+    // Verifiëren via een verse API-fetch, niet via in-memory state (die kan toevallig kloppen
+    // terwijl de database alsnog het verkeerde cijfer kreeg).
+    const terug = await api('POST', '/mna/traject/' + verkoperCode, { body: {} });
+    const rijen = (terug.json && terug.json.data) || [];
+    const rijNoord = rijen.find(r => r.fase_id === 'financieel' && r.entiteit_id === noordId);
+    const rijZuid = rijen.find(r => r.fase_id === 'financieel' && r.entiteit_id === zuidId);
+    expect(rijNoord, 'Noord-rij niet gevonden').toBeTruthy();
+    expect(rijZuid, 'Zuid-rij niet gevonden').toBeTruthy();
+    const djNoord = typeof rijNoord.data_json === 'string' ? JSON.parse(rijNoord.data_json) : rijNoord.data_json;
+    const djZuid = typeof rijZuid.data_json === 'string' ? JSON.parse(rijZuid.data_json) : rijZuid.data_json;
+
+    expect(djNoord.omzet3 && djNoord.omzet3.value).toBe('111111');
+    expect(djZuid.omzet3 && djZuid.omzet3.value).toBe('222222');
+  });
+});
+
+// ───────────────────── 5. GELIJKTIJDIGE MULTI-UPLOAD ─────────────────────
 // Regressietest voor de batchupload-bug (juli 2026): bij meerdere bestanden
 // tegelijk selecteren liep gedeelde state (S._conflicts) door elkaar en konden
 // meerdere conflict-dialogen tegelijk opstapelen (zwart scherm). Inmiddels
