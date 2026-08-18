@@ -305,10 +305,18 @@ function saveCurrent(cb){
     // Als element niet in DOM is, behoud altijd bestaande waarde
   });
   var nel=ge('notitie_'+f.id);if(nel)S.notities[f.id]=nel.value;
+  // Nu al vastleggen (snapshot), niet pas als de vertraagde save hieronder afgaat — anders leest
+  // de setTimeout-callback S.data/S._actieveEntiteit AMBIENT op het moment dat hij afgaat, 800ms
+  // later. Wisselt de gebruiker in die tussentijd van entiteit (switchEntiteit wijzigt S.data en
+  // S._actieveEntiteit), dan verstuurde de vertraagde save tot nu toe de cijfers van de inmiddels
+  // actieve entiteit, gelabeld met het entiteit_id van de OUDE — écht cross-entiteit-databesmetting.
+  // Gevonden 18 augustus 2026 bij het verifiëren van taak 24: twee entiteiten kregen na kort na
+  // elkaar uploaden + wisselen exact dezelfde (verkeerde) cijfers in de database.
+  var saveSnapshot={code:S.code,fase_id:f.id,data_json:getDataForFase(f.id),checklist_json:getChecklistForFase(f.id),notitie:S.notities[f.id]||'',entiteit_id:S._actieveEntiteit||undefined};
   clearTimeout(S.saveTimer);
   S.saveTimer=setTimeout(function(){
     fetch(WORKER+'/mna/save',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({code:S.code,fase_id:f.id,data_json:getDataForFase(f.id),checklist_json:getChecklistForFase(f.id),notitie:S.notities[f.id]||'',entiteit_id:S._actieveEntiteit||undefined})
+      body:JSON.stringify(saveSnapshot)
     }).then(function(r){return r.json();}).then(function(d){
       if(d.error==='vergrendeld'){showAlert('Dit traject is vergrendeld. Uw wijzigingen zijn niet opgeslagen.');}
       else{
