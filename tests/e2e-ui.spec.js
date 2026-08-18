@@ -205,10 +205,17 @@ test.describe('Cross-entiteit databeveiliging (regressie 18 aug 2026)', () => {
     tussenCode = c.json.tussen_code;
     await api('POST', '/mna/vok/teken', { body: { code: tussenCode, naam: 'E2E Test', versie: '1.2', email } });
 
-    const eNoord = await api('POST', '/mna/entiteiten/' + tussenCode, { body: { naam: 'E2E Regressie Noord B.V.', kvk: '95000001' } });
-    noordId = eNoord.json.id;
-    const eZuid = await api('POST', '/mna/entiteiten/' + tussenCode, { body: { naam: 'E2E Regressie Zuid B.V.', kvk: '95000002' } });
-    zuidId = eZuid.json.id;
+    // begeleiderOfVerkoperAuth vereist bij een begeleidercode expliciet de x-tussen-key-header
+    // (verkoper-/traject-id zelf is impliciet toegestaan, tussen_code niet — zie begeleiderAuth()
+    // in cloudflare-worker.js). Zonder deze header faalt dit stil met 401, blijven noordId/zuidId
+    // undefined, en loopt de test pas later vast op de wachttijd voor S._entiteiten.
+    const eNoord = await api('POST', '/mna/entiteiten/' + tussenCode, { headers: { 'x-tussen-key': tussenCode }, body: { naam: 'E2E Regressie Noord B.V.', kvk: '95000001' } });
+    noordId = eNoord.json && eNoord.json.id;
+    const eZuid = await api('POST', '/mna/entiteiten/' + tussenCode, { headers: { 'x-tussen-key': tussenCode }, body: { naam: 'E2E Regressie Zuid B.V.', kvk: '95000002' } });
+    zuidId = eZuid.json && eZuid.json.id;
+    if (!noordId || !zuidId) {
+      throw new Error('Entiteiten niet aangemaakt in beforeAll — Noord: ' + JSON.stringify(eNoord.json) + ' · Zuid: ' + JSON.stringify(eZuid.json));
+    }
   });
 
   test.afterAll(async () => {
