@@ -168,6 +168,39 @@ async function main() {
     }
   }
 
+  // ─────────────── STAP 6b: HOLDING NIET DUBBEL IN GROEPSTOTAAL (regressie 18 aug 2026) ───────────────
+  // Bug: een holding-entiteit telde mee in de som naar "Groep (geconsolideerd)" — haar eigen (in
+  // Nederland vrijwel altijd al geconsolideerde) jaarrekening werd zo nogmaals opgeteld bij de
+  // werkmaatschappijen. Fix: consolideerFase() (cloudflare-worker.js) sluit rol='holding' uit van
+  // de som. Mutation-waarden (111111/222222) i.p.v. realistische bedragen, zodat een fout meteen
+  // opvalt i.p.v. toevallig te kloppen.
+  kop('STAP 6b · Holding-entiteit telt niet dubbel mee in groepstotaal');
+  {
+    const eHolding = await api('POST', '/mna/entiteiten/' + hoofdTraject.code, { body: { naam: 'E2E Holding B.V.', kvk: '90000001', rol: 'holding' } });
+    check('holding-entiteit aangemaakt met rol=holding', eHolding.json && eHolding.json.ok === true && eHolding.json.rol === 'holding', JSON.stringify(eHolding.json));
+    const eWerkmij = await api('POST', '/mna/entiteiten/' + hoofdTraject.code, { body: { naam: 'E2E Werkmaatschappij B.V.', kvk: '90000002' } });
+    check('werkmaatschappij aangemaakt met rol=werkmaatschappij (default)', eWerkmij.json && eWerkmij.json.ok === true && eWerkmij.json.rol === 'werkmaatschappij', JSON.stringify(eWerkmij.json));
+
+    if (eHolding.json && eHolding.json.id && eWerkmij.json && eWerkmij.json.id) {
+      await api('POST', '/mna/save', { body: { code: hoofdTraject.code, fase_id: 'financieel', entiteit_id: eHolding.json.id, data_json: { omzet3: { label: 'Jaaromzet jaar 3', value: '111111' } } } });
+      const saveWerkmij = await api('POST', '/mna/save', { body: { code: hoofdTraject.code, fase_id: 'financieel', entiteit_id: eWerkmij.json.id, data_json: { omzet3: { label: 'Jaaromzet jaar 3', value: '222222' } } } });
+
+      const groepswaarde = saveWerkmij.json && saveWerkmij.json.groepswaarden && saveWerkmij.json.groepswaarden.omzet3 && saveWerkmij.json.groepswaarden.omzet3.value;
+      check('groepstotaal is alleen de werkmaatschappij (222222), niet 333333', groepswaarde === '222222', 'kreeg: ' + groepswaarde);
+      check('groepstotaal is expliciet NIET de som incl. holding (333333)', groepswaarde !== '333333', 'kreeg: ' + groepswaarde);
+
+      // Nogmaals verifiëren via een verse traject-fetch (niet alleen het save-response).
+      const terug = await api('POST', '/mna/traject/' + hoofdTraject.code, { body: {} });
+      const groepsRij = terug.json && Array.isArray(terug.json.data) && terug.json.data.find(d => d.fase_id === 'financieel' && !d.entiteit_id);
+      if (check('groepsrij (entiteit_id=null) gevonden na herladen', !!groepsRij)) {
+        const dj = typeof groepsRij.data_json === 'string' ? JSON.parse(groepsRij.data_json) : groepsRij.data_json;
+        check('herladen groepstotaal blijft 222222 (holding blijft uitgesloten)', dj && dj.omzet3 && dj.omzet3.value === '222222', JSON.stringify(dj && dj.omzet3));
+      }
+    } else {
+      sla_over('holding-uitsluiting verificatie', 'entiteiten niet aangemaakt');
+    }
+  }
+
   // ─────────────── STAP 7: FASE-WIJZIGING VIA LOGBOEK ───────────────
   kop('STAP 7 · Fasewijziging via logboek-endpoint');
   {
