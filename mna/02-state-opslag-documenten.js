@@ -1307,10 +1307,10 @@ function _autoFillFromExtractionBody(faseId, velden, forceOverwrite, docNaam) {
       var ej=velden.boekjaar?String(Number(velden.boekjaar)):'0';
       if(!S._epy[ej])S._epy[ej]=ev;
       var eys=Object.keys(S._epy).map(Number).filter(function(j){return!isNaN(j);}).sort(function(a,b){return b-a;});
-      if(eys.length)applyOrConflict('financieel_ebitdaMarge',S._epy[String(eys[0])],'EBITDA-marge (%)');
+      if(eys.length)applyOrConflict('financieel_ebitdaMarge',S._epy[String(eys[0])],'EBITDA-marge jaar 3 — percentage van omzet (%)');
     }
-    if(velden.ohw&&velden.ohw!=='null')applyOrConflict('financieel_wip',cleanGetal(velden.ohw),'Onderhanden werk','ohw');
-    if(velden.debiteuren&&velden.debiteuren!=='null')applyOrConflict('financieel_debiteuren',cleanGetal(velden.debiteuren),'Debiteuren','debiteuren');
+    if(velden.ohw&&velden.ohw!=='null')applyOrConflict('financieel_wip',cleanGetal(velden.ohw),'Onderhanden werk / OHW','ohw');
+    if(velden.debiteuren&&velden.debiteuren!=='null')applyOrConflict('financieel_debiteuren',cleanGetal(velden.debiteuren),'Debiteuren totaal','debiteuren');
     // Herkomst+brontekstfragment gekoppeld voor de belangrijkste financiële cijfervelden (zie
     // toelichting bij setIfEmpty) — bij een OR-keten (bijv. resultaat||afgeleid) alleen de eerste
     // (meest voorkomende) AI-veldnaam als rawVeldNaam, dus geen fragment bij de fallback-synoniemen.
