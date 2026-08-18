@@ -280,6 +280,10 @@ function toonGroepsstructuurModal(app){
     +'<input type="text" id="gs-kvk" placeholder="KvK (optioneel)" style="flex:1;background:#f0eeea;border:1px solid #c8c5bc;border-radius:6px;padding:7px 11px;font-size:13px">'
     +'<button id="gs-toevoegen" style="background:#1a7a5e;color:#fff;border:none;padding:7px 14px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;white-space:nowrap">+ Toevoegen</button>'
     +'</div>'
+    +'<label style="display:flex;align-items:flex-start;gap:6px;font-size:11px;color:var(--muted);margin-bottom:1rem;cursor:pointer">'
+    +'<input type="checkbox" id="gs-holding" style="margin-top:2px">'
+    +'<span>Dit is de overkoepelende <strong>holding</strong>, niet een werkmaatschappij — bijv. bij het toevoegen van de holding zelf naast de werkmaatschappijen. De holding telt niet apart mee in het groepstotaal (haar eigen jaarrekening is in Nederland vrijwel altijd al de geconsolideerde jaarrekening, die werkmaatschappijen dus al bevat).</span>'
+    +'</label>'
     +'<div id="gs-err" style="display:none;color:#e05252;font-size:12px;margin:.5rem 0"></div>'
     +'<div style="display:flex;justify-content:flex-end;margin-top:1rem">'
     +'<button id="gs-sluiten" style="background:transparent;border:1px solid #c8c5bc;padding:8px 16px;border-radius:6px;cursor:pointer;font-size:13px">Sluiten</button>'
@@ -295,8 +299,9 @@ function toonGroepsstructuurModal(app){
     if(!rows||!rows.length){lijstEl.innerHTML='<span style="font-style:italic">Nog geen entiteiten geregistreerd — dit traject wordt behandeld als één bedrijf.</span>';return;}
     lijstEl.style.fontStyle='normal';
     lijstEl.innerHTML=rows.map(function(r){
+      var holdingBadge=r.rol==='holding'?' <span style="font-size:9px;font-weight:700;color:var(--gold-dark);background:var(--gold-bg);border-radius:8px;padding:1px 6px;margin-left:4px" title="Telt niet apart mee in het groepstotaal">HOLDING</span>':'';
       return '<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid var(--border);border-radius:7px;margin-bottom:6px">'
-        +'<div style="flex:1"><div style="font-size:13px;color:var(--sub)">'+esc(r.naam)+'</div>'+(r.kvk?'<div style="font-size:11px;color:var(--muted)">KvK '+esc(r.kvk)+'</div>':'')+'</div>'
+        +'<div style="flex:1"><div style="font-size:13px;color:var(--sub)">'+esc(r.naam)+holdingBadge+'</div>'+(r.kvk?'<div style="font-size:11px;color:var(--muted)">KvK '+esc(r.kvk)+'</div>':'')+'</div>'
         +'<button class="gs-verwijder" data-id="'+esc(r.id)+'" style="background:transparent;border:1px solid #c8c5bc;color:#e05252;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px">Verwijderen</button>'
         +'</div>';
     }).join('');
@@ -308,14 +313,14 @@ function toonGroepsstructuurModal(app){
     });
   }
   document.getElementById('gs-toevoegen').onclick=async function(){
-    var btn=this;var naamEl=document.getElementById('gs-naam');var kvkEl=document.getElementById('gs-kvk');var errEl=document.getElementById('gs-err');
+    var btn=this;var naamEl=document.getElementById('gs-naam');var kvkEl=document.getElementById('gs-kvk');var errEl=document.getElementById('gs-err');var holdingEl=document.getElementById('gs-holding');
     errEl.style.display='none';
     var naam=naamEl.value.trim();
     if(!naam){errEl.textContent='Naam is verplicht.';errEl.style.display='block';return;}
     btn.disabled=true;btn.textContent='...';
-    var r=await fetch(WORKER+'/mna/entiteiten/'+S.code,{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey},body:JSON.stringify({naam:naam,kvk:kvkEl.value.trim()})}).then(function(x){return x.json();}).catch(function(){return {};});
+    var r=await fetch(WORKER+'/mna/entiteiten/'+S.code,{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey},body:JSON.stringify({naam:naam,kvk:kvkEl.value.trim(),rol:holdingEl.checked?'holding':'werkmaatschappij'})}).then(function(x){return x.json();}).catch(function(){return {};});
     btn.disabled=false;btn.textContent='+ Toevoegen';
-    if(r.ok){naamEl.value='';kvkEl.value='';laadLijst();}
+    if(r.ok){naamEl.value='';kvkEl.value='';holdingEl.checked=false;laadLijst();}
     else{errEl.textContent=r.error||'Fout bij opslaan';errEl.style.display='block';}
   };
   laadLijst();
@@ -1118,6 +1123,12 @@ function renderBegeleiderDashboard(app){
         btn.disabled=false;btn.textContent='📊 Genereren';return;
       }
       try{
+        // Het dealvoorstel geldt de hele onderneming, nooit één werkmaatschappij — maar S.data kan op
+        // een specifieke entiteit staan (sinds entiteiten een default-actieve entiteit kregen i.p.v.
+        // standaard de groep, 18 aug 2026). Alle dvBereken*/dvTabel*-functies hieronder lezen S.data
+        // rechtstreeks, dus hier één keer op groepsniveau zetten voor de hele berekening.
+        var _origDataDv2=S.data;
+        S.data=S._groepData;
         var prijsmechanisme=dvBerekenPrijsmechanisme(p);
         var closing=dvBerekenClosing(p);
         var schuldafbouw=dvBerekenSchuldafbouw(p,closing);
@@ -1148,6 +1159,7 @@ function renderBegeleiderDashboard(app){
           SCENARIOS:scenarios?dvTabelScenarios(scenarios,p):'',
           DCFGEVOELIGHEID:dcfGevoeligheid?dvTabelDCFGevoeligheid(dcfGevoeligheid):''
         };
+        S.data=_origDataDv2; // groepsniveau was alleen nodig voor de berekeningen hierboven
         var sectorProfiel=getSectorProfiel();
         var contextBlok='Sector: '+(sectorProfiel.label||'MKB')+'. Verkopende partij: '+(t2.kantoor_naam||S.code)+'. Kopende partij: '+p.koperNaam+'.\n'
           +'Bewezen EBITDA laatste boekjaar: €'+Math.round(p.ebitdaBewezen)+'. Prognose-EBITDA komend jaar: €'+Math.round(p.ebitdaPrognose)+'.\n'
@@ -1234,6 +1246,7 @@ function renderBegeleiderDashboard(app){
           if(ed.ok){ebtn.textContent='✓ Verstuurd';}else{toast('Fout: '+(ed.error||'onbekend'),'err');ebtn.disabled=false;ebtn.textContent='✉ Verstuur naar partijen';}
         };
       }catch(e){
+        if(_origDataDv2)S.data=_origDataDv2; // vangnet: bij een fout halverwege de berekeningen niet op groepsniveau laten hangen
         errEl.textContent='Fout bij genereren: '+e.message;errEl.style.display='block';
         btn.disabled=false;btn.textContent='📊 Genereren';
       }

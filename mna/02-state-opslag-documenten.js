@@ -59,10 +59,16 @@ function loadEntiteiten(){
     S._entiteiten=Array.isArray(rows)?rows:[];
     // Bij een groepsstructuur is de groep rekenkundig een afgeleide (som van entiteiten, zie
     // consolidatiecheck) — geen brondata. Daarom bij het eerste laden (alleen als er nog niets
-    // gekozen is) standaard op de eerste entiteit starten i.p.v. "Groep (geconsolideerd)" (Marcel,
-    // 18 aug 2026). loadEntiteiten() draait maar één keer per sessie (bij inloggen), dus dit
-    // overschrijft nooit een latere, bewuste keuze van de gebruiker.
-    if(S._entiteiten.length&&!S._actieveEntiteit)switchEntiteit(S._entiteiten[0].id);
+    // gekozen is) standaard op de eerste WERKMAATSCHAPPIJ starten i.p.v. "Groep (geconsolideerd)"
+    // (Marcel, 18 aug 2026). Nooit op de holding zelf (indien geregistreerd) — die telt sinds de
+    // holding-rol-fix niet meer mee in het groepstotaal, dus daar invullen zou niets aan de
+    // geconsolideerde cijfers toevoegen; alle entiteiten holding → dan toch de eerste, niets beter.
+    // loadEntiteiten() draait maar één keer per sessie (bij inloggen), overschrijft dus nooit een
+    // latere, bewuste keuze van de gebruiker.
+    if(S._entiteiten.length&&!S._actieveEntiteit){
+      var eersteWerkmij=S._entiteiten.find(function(e){return e.rol!=='holding';})||S._entiteiten[0];
+      switchEntiteit(eersteWerkmij.id);
+    }
     renderApp();
   }).catch(function(){});
 }
