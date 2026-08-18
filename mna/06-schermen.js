@@ -184,6 +184,10 @@ function renderOpening(){
     +'<input type="text" id="op-gs-kvk" placeholder="KvK (optioneel)" style="flex:1;background:var(--card);border:1px solid var(--border2);border-radius:6px;padding:7px 11px;font-size:13px">'
     +'<button id="op-gs-toevoegen" style="background:var(--teal);color:#fff;border:none;padding:7px 14px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;white-space:nowrap">+ Toevoegen</button>'
     +'</div>'
+    +'<label style="display:flex;align-items:flex-start;gap:6px;font-size:11px;color:var(--muted);margin-bottom:.5rem;cursor:pointer">'
+    +'<input type="checkbox" id="op-gs-holding" style="margin-top:2px">'
+    +'<span>Dit is de overkoepelende <strong>holding</strong>, niet een werkmaatschappij.</span>'
+    +'</label>'
     +'<div id="op-gs-err" style="display:none;color:var(--red);font-size:12px;margin-top:.5rem"></div>'
     +'</div>'
     +'<div class="panel" style="max-width:640px;margin-bottom:1.25rem">'
@@ -223,8 +227,9 @@ function bindOpeningScreen(){
     else{
       lijstEl.style.fontStyle='normal';
       lijstEl.innerHTML=rows.map(function(r){
+        var holdingBadge=r.rol==='holding'?' <span style="font-size:9px;font-weight:700;color:var(--gold-dark);background:var(--gold-bg);border-radius:8px;padding:1px 6px;margin-left:4px">HOLDING</span>':'';
         return '<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid var(--border);border-radius:7px;margin-bottom:6px">'
-          +'<div style="flex:1"><div style="font-size:13px;color:var(--sub)">'+esc(r.naam)+'</div>'+(r.kvk?'<div style="font-size:11px;color:var(--muted)">KvK '+esc(r.kvk)+'</div>':'')+'</div>'
+          +'<div style="flex:1"><div style="font-size:13px;color:var(--sub)">'+esc(r.naam)+holdingBadge+'</div>'+(r.kvk?'<div style="font-size:11px;color:var(--muted)">KvK '+esc(r.kvk)+'</div>':'')+'</div>'
           +'<button class="op-gs-verwijder" data-id="'+esc(r.id)+'" style="background:transparent;border:1px solid var(--border2);color:var(--red);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px">Verwijderen</button>'
           +'</div>';
       }).join('');
@@ -273,14 +278,14 @@ function bindOpeningScreen(){
   }
   var gsToevoegenBtn=ge('op-gs-toevoegen');
   if(gsToevoegenBtn)gsToevoegenBtn.onclick=async function(){
-    var btn=this;var naamEl=ge('op-gs-naam');var kvkEl=ge('op-gs-kvk');var errEl=ge('op-gs-err');
+    var btn=this;var naamEl=ge('op-gs-naam');var kvkEl=ge('op-gs-kvk');var errEl=ge('op-gs-err');var holdingEl=ge('op-gs-holding');
     errEl.style.display='none';
     var naam=naamEl.value.trim();
     if(!naam){errEl.textContent='Naam is verplicht.';errEl.style.display='block';return;}
     btn.disabled=true;btn.textContent='...';
-    var r=await fetch(WORKER+'/mna/entiteiten/'+S.code,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({naam:naam,kvk:kvkEl.value.trim()})}).then(function(x){return x.json();}).catch(function(){return {};});
+    var r=await fetch(WORKER+'/mna/entiteiten/'+S.code,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({naam:naam,kvk:kvkEl.value.trim(),rol:holdingEl&&holdingEl.checked?'holding':'werkmaatschappij'})}).then(function(x){return x.json();}).catch(function(){return {};});
     btn.disabled=false;btn.textContent='+ Toevoegen';
-    if(r.ok){naamEl.value='';kvkEl.value='';laadOpeningEntiteiten();}
+    if(r.ok){naamEl.value='';kvkEl.value='';if(holdingEl)holdingEl.checked=false;laadOpeningEntiteiten();}
     else{errEl.textContent=r.error||'Fout bij opslaan';errEl.style.display='block';}
   };
   var ptToevoegenBtn=ge('op-pt-toevoegen');

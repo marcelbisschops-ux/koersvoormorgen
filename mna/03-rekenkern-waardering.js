@@ -51,13 +51,15 @@ function dvGetDefaults(){
   var t=S.traject||{};
   var mRange=dvSectorMultipleRange();
   var mLaag=mRange.mLaag, mHoog=mRange.mHoog;
-  var ebBasis=parseGeld(S.data['financieel_ebitdaNorm']||S.data['financieel_ebitda']||'0');
+  // Altijd op groepsniveau (S._groepData), nooit op de toevallig actieve entiteit — het dealvoorstel
+  // geldt de hele onderneming (zie dvBerekenWaardering() hierboven voor dezelfde overweging).
+  var ebBasis=parseGeld(S._groepData['financieel_ebitdaNorm']||S._groepData['financieel_ebitda']||'0');
   // Werkkapitaalbasis (debiteuren + onderhanden werk) — audit-fix P2, 25 juli 2026: nodig om een
   // werkkapitaalmutatie in de DCF-kasstroom mee te kunnen nemen (zie dvBerekenSchuldafbouw()). Het
   // aparte DD-veld "Netto werkkapitaalanalyse (NWC)" is bewust NIET gebruikt — dat is een
   // document-/vrijetekstveld (geen betrouwbaar te parsen getal), in tegenstelling tot debiteuren/wip
   // die al elders in dit bestand als bedrag worden ingevuld en gebruikt.
-  var werkkapitaalBasis=parseGeld(S.data['financieel_debiteuren']||'0')+parseGeld(S.data['financieel_wip']||'0');
+  var werkkapitaalBasis=parseGeld(S._groepData['financieel_debiteuren']||'0')+parseGeld(S._groepData['financieel_wip']||'0');
   return {
     koperNaam:t.koper_naam||'',
     belangPct:51,
@@ -873,6 +875,14 @@ function printDealvoorstel(bodyHtml,titel){
 // zonder de extra indicatoren — met als gevolg een rapport dat andere/verkeerde cijfers noemde dan
 // het waarderingsscherm zelf. Nu is er precies één bron van waarheid.
 function dvBerekenWaardering(){
+  // De waardering geldt altijd de HELE onderneming die verkocht wordt, nooit één werkmaatschappij —
+  // maar S.data wijst, sinds entiteiten een default-actieve entiteit kregen i.p.v. standaard de groep
+  // (Marcel, 18 aug 2026), niet meer betrouwbaar naar de geconsolideerde cijfers. Daarom hier expliciet
+  // op S._groepData rekenen, ongeacht welke entiteit-tab toevallig actief is elders in de app — zelfde
+  // tijdelijke-swap-patroon als switchEntiteit()/autoFillFromExtraction() al gebruiken.
+  var _origDataDv=S.data;
+  S.data=S._groepData;
+  try{
   var o1=parseGeld(S.data['financieel_omzet1']);
   var o2=parseGeld(S.data['financieel_omzet2']);
   var o3=parseGeld(S.data['financieel_omzet3']);
@@ -971,6 +981,7 @@ function dvBerekenWaardering(){
     earnBase:earnBase,earnPct:earnPct,earnTarget:earnTarget,earnJaren:earnJaren,fixedKoop:fixedKoop,earnJaarlijks:earnJaarlijks,
     solvabiliteit:solvabiliteit,roe:roe,roa:roa,currentRatio:currentRatio,quickRatio:quickRatio,dscr:dscr,netDebtEbitda:netDebtEbitda
   };
+  } finally { S.data=_origDataDv; }
 }
 
 // Extra kengetallen naast omzet/EBITDA — toont alleen wat daadwerkelijk is ingevuld, zodat het
