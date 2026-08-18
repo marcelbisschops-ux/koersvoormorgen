@@ -57,6 +57,12 @@ function loadEntiteiten(){
   if(!S.code)return;
   fetch(WORKER+'/mna/entiteiten/'+S.code).then(function(r){return r.json();}).then(function(rows){
     S._entiteiten=Array.isArray(rows)?rows:[];
+    // Bij een groepsstructuur is de groep rekenkundig een afgeleide (som van entiteiten, zie
+    // consolidatiecheck) — geen brondata. Daarom bij het eerste laden (alleen als er nog niets
+    // gekozen is) standaard op de eerste entiteit starten i.p.v. "Groep (geconsolideerd)" (Marcel,
+    // 18 aug 2026). loadEntiteiten() draait maar één keer per sessie (bij inloggen), dus dit
+    // overschrijft nooit een latere, bewuste keuze van de gebruiker.
+    if(S._entiteiten.length&&!S._actieveEntiteit)switchEntiteit(S._entiteiten[0].id);
     renderApp();
   }).catch(function(){});
 }
