@@ -336,7 +336,17 @@ alleen één van beide behandelt telt niet als volledig.
    `wrangler secret put SIGNHOST_WEBHOOK_SECRET` (prod + staging)**.
 6. Entiteit-verwijdering laat wees-data achter — **gefixt en live geverifieerd (25 juli 2026)**,
    volledig scenario getest op staging (entiteit+data+document+partnerkoppeling).
-7. Automatische back-up draait niet — **open, vereist actie van Marcel zelf (Mac-permissie)**
+7. Automatische back-up draait niet — **gefixt, geverifieerd operationeel (bevestigd 19 augustus
+   2026 via launchd-status + geslaagde runs in het back-uplog van 16/17/18 augustus)**.
+8. Cross-traject document-download (IDOR) — `worker/15-document-beheer.js`: verkoper/koper/
+   tussenpersoon konden met een geldig eigen traject-code een documentId van een willekeurig
+   ánder traject downloaden (geen check of het document bij het eigen traject hoort). **Gefixt en
+   live geverifieerd (19 augustus 2026)** met een zelfopruimend testscript (twee losse
+   trajecten): cross-traject-poging nu 403, eigen-traject-toegang blijft 200.
+9. Waardering-configuratiewijziging niet atomair (`worker/21-waarderingsmodel.js:205-253`) — een
+   mislukte tweede schrijfactie bij het goedkeuren van een basisconfig-wijziging wordt niet
+   herkend; het voorstel wordt hoe dan ook op "goedgekeurd" gezet. **Open, nog niet gefixt** —
+   gevonden tijdens de zesde heraudit (19 augustus 2026), zie het volledige rapport.
 
 - **25 juli 2026 (zelfde dag, afwerkronde)** — op verzoek van Marcel ("alles moet afgewerkt
   worden, vraag niet of je door moet gaan") alle P1- en P2-bevindingen uit de drie audit-rondes
@@ -687,3 +697,44 @@ alleen één van beide behandelt telt niet als volledig.
   gestructureerde omzetsplitsing in het accountancy-sectorprofiel, geautomatiseerde risicoscore,
   interactieve closing-checklist, route/business/data-scheiding. Elk hiervan is een eigen,
   grotere ronde waard — niet blind meegenomen in deze fixronde.
+
+- **19 augustus 2026 — zesde volledige heraudit (op Marcels verzoek "cijfer platform?", nadat een
+  live sessie diezelfde dag al drie functionele bugs blootlegde — zie hieronder).** Vijf
+  onafhankelijke deelaudits (architectuur/backend/data/code/API/performance;
+  security; frontend/UX; cloud/deployment/teststrategie/compliance; M&A-functionaliteit +
+  onafhankelijke herberekening van de volledige waarderingsrekenkern, 105/105 checks groen).
+  Volledig rapport (14 deelscores + geprioriteerde bevindingenlijst) als artifact opgeleverd —
+  zie sessie-geheugen. **Score: 69/100, op van 64** (25 juli). Geen inflatie: Frontendkwaliteit
+  daalde licht (60→58, dieper contrastonderzoek legde bloot dat het probleem in de
+  `--muted`-kleurvariabele zelf zit — 481 toepassingen, niet louter hardcoded hex zoals eerder
+  aangenomen); Financiële correctheid steeg het sterkst (78→84) door twee onafhankelijk
+  bevestigde bugfixes.
+
+  **Directe aanleiding van diezelfde sessie, vóór de audit zelf al gevonden en gefixt:**
+  1. Gegenereerde NDA/LoI/BEM/Exclusiviteitsbrief werden nooit opgeslagen tenzij verstuurd/
+     getekend — een puur gegenereerd document verdween spoorloos bij wegnavigeren. Nieuw endpoint
+     `/mna/document/concept-opslaan`, meteen aangeroepen na generatie.
+  2. Groepsniveau-bug (zelfde klasse als de 18 aug-fix): `/mna/waardering/genereer`,
+     bankmutaties-red-flag-analyse en document-upload-AI-context lazen `mna_data` zonder filter
+     op `entiteit_id` — konden bij een traject met entiteiten de cijfers van één werkmaatschappij
+     pakken i.p.v. de groep. Alle drie plekken gefixt (`WHERE entiteit_id IS NULL`).
+
+  **Eén nieuwe P1 gevonden tijdens de audit zelf, dezelfde dag gefixt en geverifieerd — zie
+  Status P1-bevindingen hieronder (#8).**
+
+  **Overige nieuwe bevindingen (niet blind opgepakt, Marcel prioriteert):** een niet-atomaire
+  waardering-configuratiewijziging die zichzelf als "goedgekeurd" kan markeren ondanks een
+  mislukte schrijfactie (P1, `worker/21-waarderingsmodel.js`); inconsistente HTML-escaping in
+  uitgaande e-mails (P2); geen persistente/doorzoekbare logging buiten een actieve `wrangler
+  tail`-sessie (P2); onzekerheid of CI/de wekelijkse taak zonder `STAGING_ADMIN_KEY`-secret wel
+  de volle testsuite draait (P2); de nieuw gebouwde "Juridische documenten"-toggle niet
+  toetsenbord-bedienbaar (P2); geen centrale foutafhandeling rond de dispatch-keten in `fetch()`
+  (P2). Volledige lijst in het artifact.
+
+  **Positief, expliciet (her)geverifieerd, niet aangenomen:** alle zes eerder gemelde P1/P2-fixes
+  uit de 25/26 juli-ronde staan nog overeind; de trajectverwijder-cascade is geconsolideerd tot
+  één gedeelde bron die aantoonbaar alle 25 `traject_id`-tabellen dekt; de dagelijkse back-up
+  draait daadwerkelijk (launchd-log bevestigt geslaagde runs 16/17/18 augustus); geen
+  SQL-injectie in 770 gecontroleerde queries; geen hardcoded secrets; AI schrijft nooit zelf een
+  waarderingsuitkomst (server berekent deterministisch, AI-tekst wordt hard overschreven op de
+  numerieke velden).
