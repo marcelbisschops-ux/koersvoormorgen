@@ -921,6 +921,53 @@ function renderBegeleiderDashboard(app){
     };
   }
 
+  // Bestaande versie tonen i.p.v. blind opnieuw genereren (19 aug 2026, Marcel: als een NDA al
+  // gegenereerd is — of een eigen NDA is geüpload — en (eventueel buiten Signhost om) getekend, moet
+  // die vastgelegd én terug te vinden zijn, niet weggeklikt worden door meteen een nieuwe te maken).
+  // Zoekt zowel de AI-gegenereerde variant (bijv. 'nda') als de geüploade variant ('nda_upload') en
+  // toont de meest recente van de twee; alleen als geen van beide bestaat, gaat het gewone genereer-
+  // pad (toonDocWaarschuwing + bgDoc) alsnog van start.
+  async function bgToonOfGenereerDoc(type){
+    var out=document.getElementById('bg-doc-out');
+    out.style.display='block';
+    out.innerHTML='<div style="color:var(--muted);font-size:13px;padding:1rem;background:var(--card);border-radius:var(--r2)">Laden...</div>';
+    var alle=await fetch(WORKER+'/mna/versies/'+S.code,{headers:{'x-tussen-key':S._bgKey||''}}).then(function(r){return r.json();}).catch(function(){return [];});
+    var varianten=[type,type+'_upload'];
+    var matches=(Array.isArray(alle)?alle:[]).filter(function(v){return varianten.indexOf(v.doc_type)!==-1;});
+    matches.sort(function(a,b){return b.created_at-a.created_at;});
+    if(matches.length){
+      await bgToonBestaandeVersie(type,matches[0]);
+    }else{
+      toonDocWaarschuwing(type,function(){ bgDoc(type); });
+    }
+  }
+
+  async function bgToonBestaandeVersie(type,v){
+    var out=document.getElementById('bg-doc-out');
+    var labels={nda:'NDA',loi:'LoI',bem:'Bemiddelingsovereenkomst',excl:'Exclusiviteitsbrief'};
+    var kleuren={nda:'#7c5cbf',loi:'var(--gold)',bem:'#2a5ea0',excl:'#1a7a5e'};
+    var getekendVeld={nda:'nda_getekend',loi:'loi_getekend',bem:'bem_getekend',excl:'excl_getekend'}[type];
+    var datumVeld={nda:'nda_getekend_datum',loi:'loi_getekend_datum',bem:'bem_datum',excl:'excl_datum'}[type];
+    var getekend=S.traject&&S.traject[getekendVeld];
+    var datum=S.traject&&S.traject[datumVeld];
+    var isUpload=v.doc_type.indexOf('_upload')!==-1;
+    var vd=await fetch(WORKER+'/mna/versie/'+v.id+'?code='+encodeURIComponent(S.code)).then(function(r){return r.json();}).catch(function(){return{};});
+    out.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem">'
+      +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem;flex-wrap:wrap;gap:6px">'
+      +'<div style="font-size:11px;font-weight:600;color:'+kleuren[type]+';text-transform:uppercase;letter-spacing:.1em">'+labels[type]+(isUpload?' (geüpload)':'')+' — laatste versie'+(v.versie?' v'+v.versie:'')+'</div>'
+      +(getekend?'<span style="font-size:11px;padding:3px 10px;border-radius:12px;background:var(--teal-bg);border:1px solid var(--teal);color:var(--teal)">&#10003; Getekend door '+esc(getekend)+(datum?' &middot; '+new Date(datum).toLocaleDateString('nl-NL',{day:'2-digit',month:'short',year:'numeric'}):'')+'</span>'
+        :'<span style="font-size:11px;padding:3px 10px;border-radius:12px;background:var(--gold-bg);border:1px solid var(--gold);color:var(--gold)">Nog niet getekend</span>')
+      +'</div>'
+      +(vd&&vd.tekst
+        ?'<textarea readonly style="width:100%;height:280px;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:Georgia,serif;font-size:12px;line-height:1.8;padding:1rem;outline:none;resize:vertical">'+esc(vd.tekst)+'</textarea>'
+        :'<div style="font-size:12px;color:var(--muted);padding:1rem;background:var(--card);border-radius:var(--r)">Geüpload bestand, geen tekstweergave beschikbaar. <a href="'+WORKER+'/mna/document/download/'+v.id+'?code='+encodeURIComponent(S.code)+'" target="_blank" style="color:var(--teal)">&#8681; Download</a></div>')
+      +'<div style="display:flex;gap:8px;margin-top:.75rem">'
+      +'<button id="bg-doc-nieuw" class="btn-outline" style="font-size:12px;padding:6px 14px">&#8635; Nieuwe versie genereren</button>'
+      +'</div></div>';
+    var nieuwBtn=document.getElementById('bg-doc-nieuw');
+    if(nieuwBtn)nieuwBtn.onclick=function(){ toonDocWaarschuwing(type,function(){ bgDoc(type); }); };
+  }
+
   // Document genereren helper
   async function bgDoc(type){
     var out=document.getElementById('bg-doc-out');
@@ -1710,10 +1757,10 @@ function renderBegeleiderDashboard(app){
     render();
   }
 
-  document.getElementById('bg-nda-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op met ' + BRAND.kort + '.','err');return;} toonDocWaarschuwing('nda', function(){ bgDoc('nda'); }); };
-  document.getElementById('bg-loi-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op met ' + BRAND.kort + '.','err');return;} toonDocWaarschuwing('loi', function(){ bgDoc('loi'); }); };
-  document.getElementById('bg-bem-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op met ' + BRAND.kort + '.','err');return;} toonDocWaarschuwing('bem', function(){ bgDoc('bem'); }); };
-  document.getElementById('bg-excl-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op met ' + BRAND.kort + '.','err');return;} toonDocWaarschuwing('excl', function(){ bgDoc('excl'); }); };
+  document.getElementById('bg-nda-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op met ' + BRAND.kort + '.','err');return;} bgToonOfGenereerDoc('nda'); };
+  document.getElementById('bg-loi-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op met ' + BRAND.kort + '.','err');return;} bgToonOfGenereerDoc('loi'); };
+  document.getElementById('bg-bem-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op met ' + BRAND.kort + '.','err');return;} bgToonOfGenereerDoc('bem'); };
+  document.getElementById('bg-excl-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op met ' + BRAND.kort + '.','err');return;} bgToonOfGenereerDoc('excl'); };
   document.getElementById('bg-dealvoorstel-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op met ' + BRAND.kort + '.','err');return;} toonDocWaarschuwing('dealvoorstel', function(){ toonDealvoorstelModal(); }); };
   document.getElementById('bg-bieding-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op met ' + BRAND.kort + '.','err');return;} toonDocWaarschuwing('bieding', function(){ toonBiedingModal(); }); };
   document.getElementById('bg-spa-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op met ' + BRAND.kort + '.','err');return;} toonDocWaarschuwing('spa', function(){ toonSpaModal(); }); };
