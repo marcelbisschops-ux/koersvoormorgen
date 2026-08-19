@@ -753,3 +753,38 @@ edge-breed gedeeld (zelfde beperking als de bestaande admin-limiter, zie P3 hier
   SQL-injectie in 770 gecontroleerde queries; geen hardcoded secrets; AI schrijft nooit zelf een
   waarderingsuitkomst (server berekent deterministisch, AI-tekst wordt hard overschreven op de
   numerieke velden).
+
+  **P3's uit de zesde heraudit (19 augustus 2026, op Marcels verzoek "los ook alle P3s op"):**
+  - **Gefixt, getest, live:** N+1-query in `/gebruikers/lijst` (`worker/09-gebruikersbeheer.js`,
+    nu één GROUP BY i.p.v. een losse COUNT per gebruiker) · dependency-scanning (`npm audit`) +
+    een basale secret-patroonscan toegevoegd aan CI in beide repo's.
+  - **Bewust niet blind uitgevoerd, vereist een eigen ronde (Product-Improvement-Standaard,
+    sectie 15/18: nooit blind optimaliseren, stoppen bij onvoldoende bewijs van veiligheid
+    zonder gerichte testronde):**
+    - Volledige sanering van 266 hardcoded hex-kleuren over 3 bestanden — te groot om zonder
+      visuele regressietest per scherm te doen; alleen de zichtbaar-brekende gevallen (closing-
+      checklist-titel) waren al P1 en zijn gefixt.
+    - Gedeelde frontend-API-client (135 losse `fetch()`-aanroepen) — mechanische maar
+      grootschalige refactor, hoog risico op een onopgemerkte regressie zonder een dedicated
+      testronde.
+    - In-memory rate limiter → Durable Object/KV-gebaseerde limiter — een nieuwe Cloudflare-
+      primitive met eigen kosten-/architectuurimpact, vereist Marcels expliciete akkoord vóórdat
+      dit gebouwd wordt (Product-Improvement-Standaard, sectie 18: architecturale trade-offs
+      → menselijke beoordeling).
+    - Marilyn.html-responsive-verbetering (15+ tabellen/grids) — bewust overgeslagen: intern,
+      desktop-only beheerderspaneel, door de audit zelf al als lage prioriteit gemarkeerd; geen
+      visuele verificatie mogelijk zonder uitgebreide handmatige doorloop.
+    - Volledige loading-state-dekkingsaudit (mna/06 + marilyn.html) — vereist het doornemen van
+      tientallen async-handlers; niet blind gedaan zonder per-handler verificatie.
+  - **Nog niet opgepakt, nieuwe functionaliteit (geen bugfix):** geformaliseerd
+    SWOT/PESTEL/Porter-risicoraamwerk en een numerieke AI-confidence-score — beide P3's uit de
+    M&A/waarderingsdeelaudit zijn nieuwe features, geen fixes. Voorgelegd aan Marcel voor scope-
+    bevestiging i.p.v. blind gebouwd (GOUDEN STANDAARD werkregel 9).
+
+## Cross-path information-flow audit
+
+Vanaf 19 augustus 2026 draait bij elke periodieke kwaliteitsaudit ook de checklist uit
+`CROSS-PATH-SECURITY-STANDAARD.md` — zie dat bestand voor het eigen logboek van uitgevoerde
+cross-path-audits (los bijgehouden van de scores/bevindingen hierboven, want dit is een andere
+soort controle: informatie-doorstroming via indirecte paden, niet functionaliteit/kwaliteit per
+domein).
