@@ -978,7 +978,8 @@ function renderBegeleiderDashboard(app){
     var datum=new Date().toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'});
     // isSell bepaald door opdrachtgever_rol: koper=buy-side, anders sell-side
     var isSell=(t2.opdrachtgever_rol==='koper')?false:(!t2.traject_type||t2.traject_type==='Verkoop'||t2.traject_type==='Opvolging');
-    var tplType=type==='bem'?(isSell?'bem_verk':'bem_koper'):type;
+    var isOpvolging=t2.traject_type==='Opvolging';
+    var tplType=type==='bem'?(isOpvolging?'bem_opvolging':(isSell?'bem_verk':'bem_koper')):type;
     var tplD=await fetch(WORKER+'/mna/template/'+tplType+'?email='+encodeURIComponent(t2.begeleider_email||'')+'&code='+encodeURIComponent(S.code)).then(function(r){return r.json();}).catch(function(){return{ok:false};});
     // Cijfers uit het laatst verstuurde dealvoorstel automatisch overnemen in de LoI (26 juli 2026)
     // — voorkomt dat de begeleider dezelfde koopsom/multiple/escrow een tweede keer met de hand
@@ -1020,7 +1021,7 @@ function renderBegeleiderDashboard(app){
         +'Verlenende partij (verkoper): '+esc(t2.kantoor_naam||'[verkoper]')+', '+(t2.verkoper_adres||'[adres]')+'.\n'
         +'Ontvangende partij (koper): '+esc(t2.koper_naam||'[koper]')+', '+(t2.koper_adres||'[adres]')+'.\n'
         +'Exclusiviteitsperiode: 6 weken. Datum: '+datum+'. Begeleider: '+adviseur+'. Geef alleen het ingevulde document terug.',
-      bem:'Vul de Bemiddelingsovereenkomst in. Type: '+(isSell?'Verkoop (sell-side)':'Aankoop (buy-side)')+'. Vervang ALLE [tekst tussen haakjes].\n'
+      bem:'Vul de Bemiddelingsovereenkomst in. Type: '+(isOpvolging?'Bedrijfsopvolging':(isSell?'Verkoop (sell-side)':'Aankoop (buy-side)'))+'. Vervang ALLE [tekst tussen haakjes].\n'
         +'INSTRUCTIE: De OPDRACHTGEVER heeft ' + (t2.begeleider_bedrijf||BRAND.kort) + ' ingeschakeld. De WEDERPARTIJ is de andere transactiepartij.\n'
         +'Opdrachtgever ('+(isSell?lb.sectie1:lb.sectie2)+'): '+esc(opdrNaam)+' ('+(opdrRv||'[rechtsvorm]')+'), '+esc(opdrAdres)+', KvK: '+esc(opdrKvk)+'.\n'
         +'Wederpartij ('+(isSell?lb.sectie2:lb.sectie1)+'): '+esc(wpartNaam)+' ('+(wpartRv||'[rechtsvorm]')+'), '+esc(wpartAdres)+', KvK: '+esc(wpartKvk)+'.\n'
