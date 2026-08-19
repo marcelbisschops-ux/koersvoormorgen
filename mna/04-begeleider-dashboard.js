@@ -702,7 +702,7 @@ function renderBegeleiderDashboard(app){
         +stapRij('bg-excl-actie','&#128221;','#1a7a5e','Exclusiviteitsovereenkomst',getekendStatus('excl_getekend','excl_datum'))
         +stapRij('bg-dealvoorstel-actie','&#128202;','#8a5a00','Dealvoorstel','Klik om te genereren')
         +stapRij('bg-spa-actie','&#128220;','#5a5470','Aandachtspunten koopovereenkomst (SPA)','Aandachtspuntenlijst — geen concept-overeenkomst')
-        +stapRij('bg-closing-actie','&#127937;','#2d6a4f','Closing-checklist','Laden...',true)
+        +stapRij('bg-closing-actie','&#127937;','var(--teal)','Closing-checklist','Laden...',true)
         +(contractenAan?'':'<div style="font-size:11px;color:var(--muted);margin:.4rem 0 .6rem">&#128274; Module Contracten niet actief — neem contact op met ' + BRAND.kort + ' om deze module te activeren.</div>')
         +'<div style="padding:.85rem 0;border-top:1px dashed var(--border2)"><button class="btn-outline btn-sm" id="bg-eigendoc-actie">&#128206; Eigen document versturen</button><div style="font-size:11px;color:var(--muted);margin-top:4px">Upload een PDF of Word-bestand en deel het rechtstreeks met verkoper en/of koper — werkt ook zonder de module Contracten.</div></div>'
         +'</div></div>';
@@ -1720,7 +1720,7 @@ function renderBegeleiderDashboard(app){
       var pct=v.totaal?Math.round(v.af/v.totaal*100):0;
       var html='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem">'
         +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">'
-        +'<div style="font-size:11px;font-weight:600;color:#2d6a4f;text-transform:uppercase;letter-spacing:.1em">Closing-checklist</div>'
+        +'<div style="font-size:11px;font-weight:600;color:var(--teal);text-transform:uppercase;letter-spacing:.1em">Closing-checklist</div>'
         +'<div style="font-size:11px;color:var(--muted);font-weight:600">'+v.af+' / '+v.totaal+' afgerond</div>'
         +'</div>'
         +'<div style="background:var(--card);border-radius:6px;height:8px;overflow:hidden;margin-bottom:.75rem"><div style="background:'+(pct===100?'var(--teal)':'var(--gold)')+';height:100%;width:'+pct+'%;transition:width .3s"></div></div>'
