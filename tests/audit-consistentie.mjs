@@ -198,6 +198,7 @@ const GEVERIFIEERD_VEILIG_CHECK5 = new Set([
   '/mna/infoverzoek/stuur',        // retourneert alleen {ok:true}; SELECT * wordt enkel gebruikt voor e-mailtekst
   '/mna/signhost/stuur',           // ADMIN_KEY- of geldige tussen_code-gated, retourneert alleen transactiestatus
   '/mna/signhost/webhook',         // inkomend vanaf Signhost zelf, retourneert altijd platte tekst 'ok', nooit JSON
+  '/mna/risicoraamwerk/genereer',  // begeleiderAuth-only (19-08-2026 geverifieerd), retourneert alleen swot/pestel/porter-AI-output
 ]);
 if (backendFiles.length) {
   const selectRe = /SELECT \* FROM mna_(trajecten|gesprekken)\b/;

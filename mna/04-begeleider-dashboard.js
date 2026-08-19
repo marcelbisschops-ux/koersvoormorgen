@@ -701,6 +701,7 @@ function renderBegeleiderDashboard(app){
         +stapRij('bg-loi-actie','&#128196;','var(--gold)','Intentieverklaring (LoI)',getekendStatus('loi_getekend','loi_getekend_datum'))
         +stapRij('bg-excl-actie','&#128221;','#1a7a5e','Exclusiviteitsovereenkomst',getekendStatus('excl_getekend','excl_datum'))
         +stapRij('bg-dealvoorstel-actie','&#128202;','#8a5a00','Dealvoorstel','Klik om te genereren')
+        +stapRij('bg-risicoraamwerk-actie','&#129517;','#4a6ea0','Risicoraamwerk (SWOT/PESTEL/Porter)','Klik om te genereren')
         +stapRij('bg-spa-actie','&#128220;','#5a5470','Aandachtspunten koopovereenkomst (SPA)','Aandachtspuntenlijst — geen concept-overeenkomst')
         +stapRij('bg-closing-actie','&#127937;','var(--teal)','Closing-checklist','Laden...',true)
         +(contractenAan?'':'<div style="font-size:11px;color:var(--muted);margin:.4rem 0 .6rem">&#128274; Module Contracten niet actief — neem contact op met ' + BRAND.kort + ' om deze module te activeren.</div>')
@@ -1698,6 +1699,65 @@ function renderBegeleiderDashboard(app){
   // (mna_closing_checklist_status) zodat voortgang blijft staan tussen sessies. Nog steeds geen
   // juridisch/fiscaal advies en niet automatisch aangepast aan de transactiestructuur — dat blijft
   // een procesmatige controlelijst, geen gegenereerd document.
+  // Risicoraamwerk (SWOT/PESTEL/Porter) — P3 uit de zesde heraudit (19 aug 2026). Zelfde
+  // "toon bestaande versie eerst, genereer alleen op verzoek"-patroon als bgToonOfGenereerDoc
+  // (NDA/LoI/BEM/Excl): een generatie die je alleen bekijkt mag niet stilzwijgend verdwijnen.
+  var RR_LABELS={sterktes:'Sterktes',zwaktes:'Zwaktes',kansen:'Kansen',bedreigingen:'Bedreigingen',
+    politiek:'Politiek',economisch:'Economisch',sociaal:'Sociaal-cultureel',technologisch:'Technologisch',ecologisch:'Ecologisch/duurzaamheid',juridisch:'Juridisch/regelgeving',
+    concurrentie_bestaand:'Concurrentie tussen bestaande spelers',dreiging_nieuwkomers:'Dreiging van nieuwkomers',onderhandelingsmacht_leveranciers:'Onderhandelingsmacht leveranciers',onderhandelingsmacht_afnemers:'Onderhandelingsmacht afnemers',dreiging_substituten:'Dreiging van substituten'};
+  function renderRisicoraamwerk(d){
+    var swot=d.swot||{},pestel=d.pestel||{},porter=d.porter||{};
+    var html='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem">'
+      +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">'
+      +'<div style="font-size:11px;font-weight:600;color:#4a6ea0;text-transform:uppercase;letter-spacing:.1em">Risicoraamwerk</div>'
+      +'<button id="rr-nieuw" class="btn-outline" style="font-size:12px;padding:6px 14px">&#8635; Opnieuw genereren</button>'
+      +'</div>'
+      +'<div style="font-size:12px;color:var(--gold-dark);background:var(--gold-bg);border:1px solid var(--gold);border-radius:6px;padding:.5rem .75rem;margin-bottom:.85rem;line-height:1.5">&#129302; AI-gegenereerd (bèta), gebaseerd uitsluitend op de al ingevulde DD-data en beoordelingen van dit traject — geen extern marktonderzoek. Controleer vóór gebruik richting een tegenpartij.</div>';
+    if(d.onvoldoende_data_voor&&d.onvoldoende_data_voor.length){
+      html+='<div style="font-size:12px;color:var(--red);margin-bottom:.85rem">&#9888; Onvoldoende brondata voor: '+d.onvoldoende_data_voor.map(esc).join(', ')+'</div>';
+    }
+    html+='<div style="font-size:12px;font-weight:600;color:var(--head);margin:.75rem 0 .4rem">SWOT</div>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem">'
+      +['sterktes','zwaktes','kansen','bedreigingen'].map(function(k){
+        return '<div style="background:var(--card);border-radius:6px;padding:.6rem .75rem"><div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:.3rem">'+RR_LABELS[k]+'</div>'
+          +'<ul style="margin:0;padding-left:1.1rem;font-size:12px;color:var(--sub)">'+(swot[k]||[]).map(function(p){return '<li style="margin:2px 0">'+esc(p)+'</li>';}).join('')+'</ul></div>';
+      }).join('')
+      +'</div>';
+    html+='<div style="font-size:12px;font-weight:600;color:var(--head);margin:1rem 0 .4rem">PESTEL</div>'
+      +['politiek','economisch','sociaal','technologisch','ecologisch','juridisch'].map(function(k){
+        return pestel[k]?('<div style="font-size:12px;color:var(--sub);padding:4px 0"><strong>'+RR_LABELS[k]+':</strong> '+esc(pestel[k])+'</div>'):'';
+      }).join('');
+    html+='<div style="font-size:12px;font-weight:600;color:var(--head);margin:1rem 0 .4rem">Porter\'s Five Forces</div>'
+      +['concurrentie_bestaand','dreiging_nieuwkomers','onderhandelingsmacht_leveranciers','onderhandelingsmacht_afnemers','dreiging_substituten'].map(function(k){
+        return porter[k]?('<div style="font-size:12px;color:var(--sub);padding:4px 0"><strong>'+RR_LABELS[k]+':</strong> '+esc(porter[k])+'</div>'):'';
+      }).join('');
+    if(d.updated_at) html+='<div style="font-size:11px;color:var(--muted);margin-top:.75rem">Gegenereerd: '+new Date(d.updated_at).toLocaleString('nl-NL')+'</div>';
+    html+='</div>';
+    return html;
+  }
+  async function genereerRisicoraamwerk(out){
+    out.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;color:var(--muted)">Genereren... (15-30 sec)</div>';
+    var r=await fetch(WORKER+'/mna/risicoraamwerk/genereer',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||''},body:JSON.stringify({code:S.code})}).then(function(x){return x.json();}).catch(function(){return{};});
+    if(!r.ok){out.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;color:var(--red)">Genereren mislukt: '+esc(r.error||'onbekende fout')+'</div>';return;}
+    out.innerHTML=renderRisicoraamwerk(r);
+    var nieuwBtn=document.getElementById('rr-nieuw');
+    if(nieuwBtn)nieuwBtn.onclick=function(){genereerRisicoraamwerk(out);};
+  }
+  async function toonRisicoraamwerkModal(){
+    var out=document.getElementById('bg-doc-out');out.style.display='block';
+    out.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;color:var(--muted)">Laden...</div>';
+    var docOutEl=document.getElementById('bg-doc-out');
+    if(docOutEl)setTimeout(function(){docOutEl.scrollIntoView({behavior:'smooth',block:'nearest'});},100);
+    var d=await fetch(WORKER+'/mna/risicoraamwerk/'+S.code,{headers:{'x-tussen-key':S._bgKey||''}}).then(function(r){return r.json();}).catch(function(){return{ok:false};});
+    if(d.ok&&d.bestaat){
+      out.innerHTML=renderRisicoraamwerk(d);
+      var nieuwBtn=document.getElementById('rr-nieuw');
+      if(nieuwBtn)nieuwBtn.onclick=function(){genereerRisicoraamwerk(out);};
+    }else{
+      await genereerRisicoraamwerk(out);
+    }
+  }
+
   async function toonClosingModal(){
     var t2=S.traject||{};
     var out=document.getElementById('bg-doc-out');out.style.display='block';
@@ -1771,6 +1831,9 @@ function renderBegeleiderDashboard(app){
   document.getElementById('bg-bem-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op met ' + BRAND.kort + '.','err');return;} bgToonOfGenereerDoc('bem'); };
   document.getElementById('bg-excl-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op met ' + BRAND.kort + '.','err');return;} bgToonOfGenereerDoc('excl'); };
   document.getElementById('bg-dealvoorstel-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op met ' + BRAND.kort + '.','err');return;} toonDocWaarschuwing('dealvoorstel', function(){ toonDealvoorstelModal(); }); };
+  // Geen contractenAan/toonDocWaarschuwing-gate hier: dit is interne analyse (geen document dat
+  // naar een tegenpartij wordt verstuurd), zelfde redenering als de closing-checklist hieronder.
+  document.getElementById('bg-risicoraamwerk-actie').onclick=function(){ toonRisicoraamwerkModal(); };
   document.getElementById('bg-bieding-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op met ' + BRAND.kort + '.','err');return;} toonDocWaarschuwing('bieding', function(){ toonBiedingModal(); }); };
   document.getElementById('bg-spa-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op met ' + BRAND.kort + '.','err');return;} toonDocWaarschuwing('spa', function(){ toonSpaModal(); }); };
   // Geen toonDocWaarschuwing hier: de closing-checklist is een generieke controlelijst zonder

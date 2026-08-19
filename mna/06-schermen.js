@@ -1028,6 +1028,10 @@ function bindAll(){
         }
         // Volledige reset - geen datalek tussen trajecten
         Object.keys(DOCS).forEach(function(k){delete DOCS[k];});
+        // Bugfix 19 aug 2026 (KRITIEK, cross-path-informatielek-audit F5): CHAT stond hier niet in de
+        // reset, ondanks dat deze regel expliciet "geen datalek tussen trajecten" claimt — zie
+        // dezelfde fix in uitloggen() (mna/02-state-opslag-documenten.js) voor de volledige toelichting.
+        if(typeof CHAT!=='undefined'){CHAT.berichten=[];CHAT.serverBerichten=[];CHAT.open=false;CHAT.laden=false;CHAT.sturen=false;}
         S={screen:'cover',code:code,rol:d.rol||'verkoper',traject:d.traject,modules:d.modules||null,_ivSelectie:null,
           fase:0,checked:{},data:{},docRefs:{},notities:{},aiTexts:{},aiLoading:{},
           saveTimer:null,showValidation:false,dataroomLoading:false,dataroom:null,
