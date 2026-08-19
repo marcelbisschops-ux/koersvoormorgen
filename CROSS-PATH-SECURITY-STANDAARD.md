@@ -289,7 +289,35 @@ introduceert (nieuwe endpoint, nieuwe AI-functie, nieuwe export/notificatie), v�
 
 ## Logboek van uitgevoerde audits
 
-- **19 augustus 2026 — eerste uitvoering**, direct na ontvangst van deze standaard. Zie
-  `AUDIT-STANDAARD.md`-logboek en sessie-geheugen voor de volledige bevindingen (op dit platform
-  toegesneden: object-level authorization / IDOR-klasse, AI-extractiecontext, frontend-state na
-  entiteit-/rolwissel, revocation van koper-toegang).
+- **19 augustus 2026 — eerste uitvoering**, direct na ontvangst van deze standaard. Multi-agent
+  cross-path-informatieflow-audit (object-level authorization/IDOR-klasse, revocation-tests, muur-
+  tegen-externe-adviseurs, indirecte leakage via notificaties/Q&A). Eindverdict: **FAIL**, 13
+  bevindingen (F1-F13), geprioriteerd naar ernst. Status per bevinding:
+
+  | # | Bevinding (kort) | Status |
+  |---|---|---|
+  | F1 | `/mna/uitnodiging`: geen cross-traject-auth (tussen_code van traject A werkte op traject B) | **Gefixt** — traject eerst herleiden uit `code`, dan pas `tussenKey` valideren tegen dát traject |
+  | F2 | `/mna/signhost/stuur`: idem, plus `code`/`traject.id`-verwarring in 3 downstream statements | **Gefixt** — zelfde patroon als F1 + 3 downstream fixes (Reference-veld, UPDATE, transactielookup) |
+  | F3 | Koper-categorie-intrekking niet doorgevoerd naar entiteiten/partners/qa/bankmutaties | **Gefixt** — `koperCategorieLijst`/`koperMagCategorie` toegepast in `worker/07-mna-groepen.js`, `worker/08-mna-qa-export.js`, `worker/22-bankmutaties.js` |
+  | F4 | `marcel@bisschopsfinancing.nl` onvoorwaardelijk in CC bij externe-adviseurstrajecten (6+ mailflows) | **Gefixt** — gegated achter `isEigenTraject()`; 3 bewuste uitzonderingen (feedback-mail, VOK-bevestiging, admin-login-alert) expliciet niet gewijzigd |
+  | F5 | Chat-state (CHAT-object) niet gereset bij uitloggen/rolwissel — mogelijk cross-sessie-lek in browser-geheugen | **Gefixt** — CHAT-reset toegevoegd aan dezelfde reset-blokken als de rest van de state |
+  | F6 | `/mna/waardering/geschiedenis/{code}` zonder enige auth (elke geldige code) | **Gefixt** — `begeleiderAuth`-only, zelfde gate als `/mna/infofase/{code}` |
+  | F7 | `/mna/mail-begeleider`: zwakke/geen tussen_code-validatie | **Gefixt** — verplichte exacte match tegen het herleide traject |
+  | F8 | Gesprek-bijlage-routes (upload/lijst/delete/gesprek-delete) misten de `isEigenTraject`-muur die de zustergroute (`GET /mna/admin/gesprekken/{code}`) al had | **Gefixt** — 4 routes in `worker/12-mna-gesprekken-logboek.js` |
+  | F9 | Dead code `/mna/groep/*` (worker/07) zonder eigen autorisatie, ongebruikt door de huidige frontend | **Bewust uitgesteld** — beslissing nodig: authorizeren of verwijderen; geen actief risico zolang ongebruikt (geverifieerd via grep) |
+  | F10 | `/mna/qa/reactie/{qaId}`: existence-oracle (404 vóór authcheck) | **Gefixt** — traject eerst uit `code` herleiden, dan pas de qa-id-existence checken |
+  | F11 | `mna_gesprek_bijlagen.traject_id` nooit gevuld bij INSERT — cascade (`verwijderTrajectData`) filterde al wel op deze kolom maar trof 0 rijen; R2-bestand werd nooit opgeruimd | **Gefixt** — `traject_id` nu gevuld bij upload + R2-cleanup toegevoegd aan de cascade. **Bekende beperking**: bijlages die vóór 19 aug 2026 zijn geüpload hebben nog `traject_id=NULL` en blijven wees bij trajectverwijdering — geen geautomatiseerde backfill uitgevoerd (zou een aparte, bewuste actie moeten zijn) |
+  | F12 | Architectuur: generieke `/ai`-proxy (worker/06-scantool.js) heeft geen server-side traject-binding | **Bewust uitgesteld** — richtlijn voor nieuwe features (dedicated, code-geauthenticeerde endpoints), geen retroactieve fix aan bestaand gebruik zonder aparte scope-beslissing |
+  | F13 | `/mna/meekijkers/{code}`: geen muur tegen ADMIN_KEY-aanroep op extern traject (marilyn toont tussen_code ook voor externe trajecten) | **Gefixt** — muur alleen bij expliciete `x-admin-key`-aanroep; normale portal-aanroep (mna.html) ongewijzigd |
+
+  **Verificatie**: volledige bestaande e2e-suite (`tests/e2e-api.mjs`, 44/44) + consistentie-audit
+  (`tests/audit-consistentie.mjs`, schoon na 2 handmatig geverifieerde false-positives toegevoegd
+  aan de whitelist) + nieuwe permanente regressietest `tests/e2e-crosspath-fixes.mjs` (39/39, dekt
+  F3/F6/F8/F10/F11/F13 met échte cross-rol-aanroepen tegen productie, niet alleen "geen crash").
+  Alle wijzigingen gedeployed naar productie en gepusht (beide repo's, commits `28470d3`/`f6275e2`
+  in het backend-repo, `1d00ba0`/`24f2768` in dit repo).
+
+  **Openstaand**: F9 en F12 vereisen een productbeslissing van Marcel (verwijderen vs. autoriseren;
+  architectuurrichting voor nieuwe AI-features) — bewust niet zelfstandig ingevuld, conform de
+  GOUDEN STANDAARD ("nooit gokken"). F11's legacy-wees-bijlagen (vóór de fix) zijn niet met
+  terugwerkende kracht opgeruimd.

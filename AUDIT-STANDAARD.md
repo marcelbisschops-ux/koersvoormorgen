@@ -776,10 +776,12 @@ edge-breed gedeeld (zelfde beperking als de bestaande admin-limiter, zie P3 hier
       visuele verificatie mogelijk zonder uitgebreide handmatige doorloop.
     - Volledige loading-state-dekkingsaudit (mna/06 + marilyn.html) — vereist het doornemen van
       tientallen async-handlers; niet blind gedaan zonder per-handler verificatie.
-  - **Nog niet opgepakt, nieuwe functionaliteit (geen bugfix):** geformaliseerd
-    SWOT/PESTEL/Porter-risicoraamwerk en een numerieke AI-confidence-score — beide P3's uit de
-    M&A/waarderingsdeelaudit zijn nieuwe features, geen fixes. Voorgelegd aan Marcel voor scope-
-    bevestiging i.p.v. blind gebouwd (GOUDEN STANDAARD werkregel 9).
+  - **Nieuwe functionaliteit, na Marcels expliciete "nu bouwen"-bevestiging gebouwd en live:**
+    SWOT/PESTEL/Porter-risicoraamwerk (`/mna/risicoraamwerk/genereer` + GET-variant in
+    `worker/19-info-fases.js`, UI in `mna/04-begeleider-dashboard.js`, begeleider-only, groepsniveau-
+    data conform werkregel 13, handleiding bijgewerkt in beide bestanden) en een numerieke
+    AI-extractie-betrouwbaarheidsscore (`_extractie_betrouwbaarheid`, hoog/gemiddeld/laag, met
+    frontend-waarschuwing bij lage betrouwbaarheid).
 
 ## Cross-path information-flow audit
 
