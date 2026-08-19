@@ -1033,8 +1033,15 @@ function renderBegeleiderDashboard(app){
     var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:16000})});
     var rd=await resp.json();
     var tekst=rd.text||'Fout bij genereren';
-    // (Concept-opslag verwijderd juli 2026: het endpoint bestond niet en de
-    //  blokkadecheck leest uit mna_doc_versies, niet uit concepten.)
+    // Meteen vastleggen als concept-versie (19 aug 2026, Marcel: een gegenereerd document dat nooit
+    // verstuurd/getekend werd, verdween voorheen spoorloos — opslag hing alleen aan versturen/tekenen).
+    // Fire-and-forget: mislukte opslag mag het tonen van het document niet blokkeren, maar wél gemeld
+    // worden zodat de begeleider weet dat deze versie (nog) niet terug te vinden zal zijn.
+    var coOpgeslagen=true;
+    if(tekst&&tekst!=='Fout bij genereren'){
+      var coR=await fetch(WORKER+'/mna/document/concept-opslaan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:S.traject.id,doc_type:type,tekst:tekst})}).then(function(r){return r.json();}).catch(function(){return{ok:false};});
+      coOpgeslagen=!!(coR&&coR.ok);
+    }
     var kleuren={nda:'#7c5cbf',loi:'var(--gold)',bem:'#2a5ea0',excl:'#1a7a5e'};
     var labels={nda:'NDA',loi:'LoI',bem:'Bemiddelingsovereenkomst',excl:'Exclusiviteitsbrief'};
     out.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem">'
@@ -1043,6 +1050,8 @@ function renderBegeleiderDashboard(app){
       +'<button id="bg-doc-toggle" class="btn-ghost" style="font-size:11px;padding:3px 10px;white-space:nowrap">&#9650; Inklappen</button>'
       +'</div>'
       +'<div id="bg-doc-body">'
+      +(coOpgeslagen?'<div style="font-size:11px;margin-bottom:.75rem;color:var(--teal)">&#10003; Vastgelegd als versie — terug te vinden zonder opnieuw te genereren, ook zonder te versturen/tekenen.</div>'
+        :'<div style="font-size:11px;margin-bottom:.75rem;color:var(--red)">&#9888; Vastleggen is mislukt — deze versie gaat verloren als je wegnavigeert zonder te versturen of te tekenen. Probeer opnieuw te genereren.</div>')
       +(type==='loi'?('<div style="font-size:11px;margin-bottom:.75rem;color:'+(dvCijfers?'var(--teal)':'var(--muted)')+'">'+(dvCijfers?'&#10003; Koopsom, multiple en escrow automatisch overgenomen uit het laatst verstuurde dealvoorstel — controleer vóór verzending.':'&#8505; Geen eerder dealvoorstel gevonden voor dit traject — vul de financiële placeholders zelf in.')+'</div>'):'')
       +'<textarea id="bg-doc-tekst" style="width:100%;height:280px;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:Georgia,serif;font-size:12px;line-height:1.8;padding:1rem;outline:none;resize:vertical">'+esc(tekst)+'</textarea>'
       +akkoordHtml('bg-doc-akkoord')
