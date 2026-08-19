@@ -156,7 +156,7 @@ const GEVERIFIEERD_VEILIG_CHECK4 = new Set([
   // in mna/06-schermen.js (zie de login-flow). Structurele scheiding op scherm-niveau, dus geen
   // lokale !isKoper()-check nodig. Backend dubbelt dit bovendien af: /mna/risicoraamwerk/genereer
   // en de GET-variant zijn begeleiderAuth-only (zie tests/audit-consistentie.mjs check 5).
-  'mna/04-begeleider-dashboard.js:1834',
+  'mna/04-begeleider-dashboard.js:1835',
   // 19-08-2026: handleiding-tekst (documentatiestring in mna/08-handleiding.js), geen
   // autorisatie-relevante UI-code — de heuristiek matcht hier puur op het woord "interne" in de
   // uitlegtekst zelf, niet op een daadwerkelijk conditioneel getoond blok.
