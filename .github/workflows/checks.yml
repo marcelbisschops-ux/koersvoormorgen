@@ -25,6 +25,26 @@ jobs:
       - name: Veiligheids- en consistentie-audit
         run: node tests/audit-consistentie.mjs
 
+      # P3 (19 aug 2026, kwaliteitsaudit): dependency-vulnerability-scanning ontbrak volledig —
+      # geen npm audit in CI, geen Dependabot. Enige dependency is @playwright/test (devDependency,
+      # laag risico), maar het proces zelf hoort structureel te bestaan i.p.v. incidenteel handmatig.
+      - name: Dependency-scan (npm audit)
+        run: |
+          npm install --package-lock-only
+          npm audit --audit-level=high
+
+      # P3 (19 aug 2026): aanvulling op de bestaande, gerichte .gevoelige-termen-check (die vangt
+      # cliëntnamen, niet generieke secret-patronen) — basale scan op de bekendste secret-vormen
+      # als extra vangnet naast discipline. Geen vervanging voor GitHub Advanced Security (niet
+      # beschikbaar voor deze private/publieke repo-combinatie zonder aparte instelling door Marcel).
+      - name: Basale secret-patroonscan
+        run: |
+          if git grep -nE "AKIA[0-9A-Z]{16}|-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----|sk-[a-zA-Z0-9]{20,}|xox[baprs]-[0-9A-Za-z-]{10,}" -- . ':!*.md' ':!.github/workflows/*'; then
+            echo "Mogelijk secret-patroon gevonden — zie regels hierboven."; exit 1;
+          else
+            echo "Geen bekende secret-patronen gevonden.";
+          fi
+
       - name: Publieke e2e-checks tegen staging (health-check, geen admin-key nodig)
         run: node tests/e2e-api.mjs
 
