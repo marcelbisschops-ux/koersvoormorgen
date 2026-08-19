@@ -3605,15 +3605,17 @@ async function renderVeiligheidTab(el) {
         + '<div style="padding:1.25rem">' + veiligheidGauge(ov.gauges.bevindingen_score, 'Open bevindingen', ov.open_totaal + ' open (' + ov.open_kritiek_hoog + ' kritiek/hoog) · ' + ov.gefixt_totaal + ' gefixt') + '</div>'
         + '</div>'
 
-        + '<div class="table-wrap" style="margin-bottom:1.5rem"><div class="table-hdr"><div class="table-title">3. Laatste periodieke diepe audit</div></div>'
+        + '<div class="table-wrap" style="margin-bottom:1.5rem' + ((ov.diepe_audit && ov.diepe_audit.verouderd) || !ov.diepe_audit ? ';border-color:var(--red)' : '') + '"><div class="table-hdr"><div class="table-title">3. Laatste periodieke diepe audit</div>'
+        + (!ov.diepe_audit || (ov.diepe_audit && ov.diepe_audit.verouderd) ? '<span class="tag" style="background:var(--red-bg);color:var(--red);border-color:var(--red)">&#9888; Verouderd — audit is toe aan een nieuwe ronde</span>' : '<span class="tag" style="background:var(--teal-bg);color:var(--teal);border-color:var(--teal)">&#10003; Op schema</span>')
+        + '</div>'
         + '<div style="padding:1.25rem">'
         + (ov.diepe_audit
             ? '<div style="display:flex;gap:1.5rem;align-items:flex-start;flex-wrap:wrap">'
-              + '<div style="flex:0 0 230px">' + veiligheidGauge(ov.diepe_audit.score, 'Diepe audit-score', new Date(ov.diepe_audit.datum).toLocaleDateString('nl-NL')) + '</div>'
+              + '<div style="flex:0 0 230px">' + veiligheidGauge(ov.diepe_audit.score, 'Diepe audit-score', new Date(ov.diepe_audit.datum).toLocaleDateString('nl-NL') + ' — ' + ov.diepe_audit.dagen_geleden + ' dagen geleden') + '</div>'
               + '<div style="flex:1;min-width:260px;font-size:12px;color:var(--mid);line-height:1.6"><strong>' + esc(ov.diepe_audit.bron) + '</strong><br>' + esc(ov.diepe_audit.samenvatting) + '</div>'
               + '</div>'
-            : '<div class="empty">Nog geen diepe audit gelogd.</div>')
-        + '<div style="font-size:11px;color:var(--muted);margin-top:1rem">Redenerende, brede beoordeling (architectuur/waardering/AI-kwaliteit/compliance) — kan niet automatisch draaien zonder forse AI-kosten en kwaliteitsverlies, dus handmatig gelogd na elke <code>AUDIT-STANDAARD.md</code>-ronde of <code>/code-review ultra</code>-run.</div>'
+            : '<div class="empty" style="color:var(--red)">Nog geen diepe audit gelogd.</div>')
+        + '<div style="font-size:11px;color:var(--muted);margin-top:1rem">Redenerende, brede beoordeling (architectuur/waardering/AI-kwaliteit/compliance) — kan niet automatisch draaien zonder forse AI-kosten en kwaliteitsverlies, dus handmatig gelogd na elke <code>AUDIT-STANDAARD.md</code>-ronde of <code>/code-review ultra</code>-run. Cadans: maandelijks + vóór elke grote release + op verzoek — dit vervangt de dagelijkse/push-checks hierboven niet en wordt er ook nooit door vervangen.</div>'
         + '</div></div>';
 
       html += '<div class="table-wrap" style="margin-bottom:1.5rem"><div class="table-hdr"><div class="table-title">Open bevindingen (' + open.length + ')</div></div>';
