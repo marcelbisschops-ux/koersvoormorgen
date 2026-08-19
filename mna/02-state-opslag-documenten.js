@@ -886,6 +886,9 @@ async function uploadDocument(faseId, file, existingId, vervangtDocId) {
             fetch(WORKER+'/mna/document/koppel-entiteit/'+d.doc_id,{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S.code},body:JSON.stringify({entiteit_id:gokIdUpload})}).catch(function(){});
             var docRefUpload=DOCS[faseId].find(function(x){return x.id===d.doc_id;});
             if(docRefUpload)docRefUpload.entiteit_id=gokIdUpload;
+            // Deze koppeling gebeurde stil (geen toast) — alleen het kleine badge-label bij het
+            // document liet zien dat het gekoppeld was. Marcel: niet duidelijk genoeg (19 aug 2026).
+            toast('"'+file.name+'" herkend en gekoppeld aan '+entiteitNaam(gokIdUpload)+'.','ok');
           } else if (S._entiteiten.length > 1 && d.entiteit_naam) {
             behoeftHandmatigeKoppeling = true;
             var docRefOnzeker=DOCS[faseId].find(function(x){return x.id===d.doc_id;});
