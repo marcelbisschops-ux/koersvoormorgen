@@ -460,6 +460,23 @@ async function laadRisicoBadges(){
   });
 }
 
+// Vult de closing-checklist-voortgang in de documentflow (de overige 3 niet-ondertekenbare stappen
+// — Bieding/Dealvoorstel/SPA — hebben geen betrouwbare "gegenereerd"-status om op te halen: die
+// worden pas als documentversie bewaard zodra ze daadwerkelijk verstuurd worden, niet bij het openen
+// van het scherm, dus daar blijft de statische tekst uit stapRij() staan).
+async function laadDocFlowStatus(){
+  var el=document.querySelector('.stap-status[data-doc="bg-closing-actie"]');
+  if(!el)return;
+  var d=await fetch(WORKER+'/mna/closing-checklist/'+S.code,{headers:{'x-tussen-key':S._bgKey||''}}).then(function(r){return r.json();}).catch(function(){return{ok:false};});
+  if(!d.ok)return;
+  var totaal=0,af=0;
+  (d.checklist||[]).forEach(function(cat){cat.items.forEach(function(){totaal++;});});
+  Object.keys(d.status||{}).forEach(function(k){if(d.status[k]&&d.status[k].aangevinkt)af++;});
+  el.innerHTML=af===totaal&&totaal>0
+    ?'<span style="color:var(--teal)">&#10003; '+af+' / '+totaal+' afgerond</span>'
+    :af>0?'<span style="color:var(--gold-dark)">'+af+' / '+totaal+' afgerond</span>':totaal+' punten — nog niet gestart';
+}
+
 // Modal: per DD-fase de standaard rode-vlaggen uit het sectorprofiel (FASES[x].redflags) tonen als
 // classificeerbare bevindingen, plus eigen bevindingen kunnen toevoegen. Elke rij is los opslaanbaar
 // (categorie+fase is de unieke sleutel in mna_beoordelingen, zie worker/19-info-fases.js).
@@ -491,8 +508,15 @@ async function toonRisicoModal(faseId){
     b=b||{};
     var opties=['<option value="">&mdash; geen &mdash;</option>'].concat(RISICOKLASSEN.map(function(k){return '<option value="'+k+'"'+(b.risicoklasse===k?' selected':'')+'>'+k+'</option>';})).join('');
     var actieOpties=['<option value="">&mdash; geen &mdash;</option>'].concat(MA_ACTIES.map(function(a){return '<option value="'+esc(a)+'"'+(b.ma_actie===a?' selected':'')+'>'+esc(a)+'</option>';})).join('');
+    var bestaandeAi=null;
+    if(b.ai_analyse){try{bestaandeAi=JSON.parse(b.ai_analyse);}catch(e){}}
     return '<div class="rk-rij" data-cat="'+esc(categorie)+'" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:10px;margin-bottom:8px">'
-      +'<div style="font-size:12px;color:var(--sub);font-weight:600;margin-bottom:6px">'+esc(categorie)+'</div>'
+      +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px">'
+      +'<div style="font-size:12px;color:var(--sub);font-weight:600">'+esc(categorie)+'</div>'
+      +'<button class="rk-ai-vraag btn-outline btn-sm" style="font-size:10px;padding:2px 8px;white-space:nowrap">&#129302; AI-suggestie</button>'
+      +'</div>'
+      +'<div class="rk-ai-out" style="display:'+(bestaandeAi?'block':'none')+';background:var(--gold-bg);border:1px solid var(--gold);border-radius:6px;padding:8px;margin-bottom:6px;font-size:11px;color:var(--sub);line-height:1.6">'
+      +(bestaandeAi?renderAiSuggestie(bestaandeAi):'')+'</div>'
       +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px">'
       +'<select class="rk-klasse" style="font-size:12px;padding:6px;border-radius:6px;border:1px solid var(--border2);background:var(--panel);color:var(--sub)">'+opties+'</select>'
       +'<select class="rk-actie" style="font-size:12px;padding:6px;border-radius:6px;border:1px solid var(--border2);background:var(--panel);color:var(--sub)">'+actieOpties+'</select>'
@@ -502,6 +526,17 @@ async function toonRisicoModal(faseId){
       +'<span class="rk-status" style="font-size:11px;margin-right:8px"></span>'
       +'<button class="rk-opslaan btn-sm" style="font-size:11px;padding:4px 12px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--sub);cursor:pointer">Opslaan</button>'
       +'</div></div>';
+  }
+
+  // Toont de AI-analyse als leestekst — vult NOOIT zelf risicoklasse/ma_actie in, dat blijft
+  // begeleider-oordeel (GOUDEN STANDAARD). Score is een hulpmiddel, geen automatische classificatie.
+  function renderAiSuggestie(ai){
+    var delen=[];
+    if(ai.analyse)delen.push('<div><strong>Analyse:</strong> '+esc(ai.analyse)+'</div>');
+    if(ai.risicos)delen.push('<div><strong>Risico\'s:</strong> '+esc(ai.risicos)+'</div>');
+    if(ai.ontbreekt)delen.push('<div><strong>Ontbreekt nog:</strong> '+esc(ai.ontbreekt)+'</div>');
+    if(ai.score!=null)delen.push('<div><strong>AI-score:</strong> '+esc(String(ai.score))+'/10 &mdash; ter indicatie, bepaalt niet zelf de risicoklasse.</div>');
+    return delen.join('') || '<em>Geen AI-analyse beschikbaar.</em>';
   }
 
   function bindRij(el,categorie){
@@ -514,6 +549,16 @@ async function toonRisicoModal(faseId){
       statusEl.style.color=r.ok?'var(--teal)':'var(--red)';
       statusEl.textContent=r.ok?'Opgeslagen':(r.error||'Mislukt');
       if(r.ok)laadRisicoBadges();
+    };
+    el.querySelector('.rk-ai-vraag').onclick=async function(){
+      var btn=this,outEl=el.querySelector('.rk-ai-out');
+      btn.disabled=true;btn.textContent='Bezig...';
+      outEl.style.display='block';
+      outEl.innerHTML='<em>AI-analyse wordt opgehaald&hellip;</em>';
+      var r=await fetch(WORKER+'/mna/beoordeling/ai',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||''},body:JSON.stringify({code:S.code,fase:faseId,categorie:categorie})}).then(function(x){return x.json();}).catch(function(){return{};});
+      btn.disabled=false;btn.innerHTML='&#129302; AI-suggestie';
+      if(r.ok&&r.analyse){outEl.innerHTML=renderAiSuggestie(r.analyse);}
+      else{outEl.innerHTML='<span style="color:var(--red)">'+esc(r.error||'AI-analyse mislukt')+'</span>';}
     };
   }
 
@@ -578,6 +623,21 @@ function renderBegeleiderDashboard(app){
     // Traject info
     +'<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;margin-bottom:1.25rem">'
     +(t.verkoper_klaar?'<div style="background:var(--teal-bg);border:1px solid var(--teal);border-radius:var(--r);padding:.75rem 1rem;margin-bottom:1rem;display:flex;align-items:center;gap:10px"><span style="font-size:1.5rem">&#128228;</span><div><div style="font-size:13px;font-weight:600;color:var(--teal)">Verkoper heeft dossier vrijgegeven</div><div style="font-size:11px;color:var(--muted);margin-top:2px">'+(t.verkoper_klaar_naam?'Door: '+esc(t.verkoper_klaar_naam)+' &middot; ':'')+( t.verkoper_klaar_at?new Date(t.verkoper_klaar_at).toLocaleString('nl-NL',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'')+'</div></div></div>':'')
+    // Koper-toegang als eigen, prominente kaart (19 aug 2026, op verzoek Marcel: de knop hiervoor
+    // verdween tussen te veel andere kleine knoppen in de actierij hieronder — "niet zichtbaar/
+    // vindbaar"). Klikt nog steeds gewoon toonKoperToegangModal() aan, alleen de verpakking is nieuw.
+    +(function(){
+      var kc=koperCatsVan(t); var tot=(window.FASES&&FASES.length)||7; var lbl,kl,bg,bd;
+      if(kc===null){ lbl=t.koper_vrijgegeven?'Alles vrijgegeven aan koper':'Nog geen toegang gegeven'; }
+      else if(kc.length){ lbl=kc.length+' van de '+tot+' DD-categorieën vrijgegeven aan koper'; }
+      else { lbl='Nog geen toegang gegeven'; }
+      var heeftToegang=(kc===null&&t.koper_vrijgegeven)||(kc&&kc.length);
+      kl=heeftToegang?'var(--teal)':'var(--gold-dark)'; bg=heeftToegang?'var(--teal-bg)':'var(--gold-bg)'; bd=heeftToegang?'var(--teal)':'var(--gold)';
+      return '<div style="background:'+bg+';border:1px solid '+bd+';border-radius:var(--r);padding:.85rem 1rem;margin-bottom:1rem;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">'
+        +'<div style="display:flex;align-items:center;gap:10px"><span style="font-size:1.4rem">&#128275;</span><div><div style="font-size:13px;font-weight:600;color:'+kl+'">Koper-toegang</div><div style="font-size:11px;color:var(--muted);margin-top:2px">'+esc(lbl)+'</div></div></div>'
+        +'<button class="btn btn-sm" id="bg-toegang" style="background:'+kl+'">&#128275; Beheer koper-toegang</button>'
+        +'</div>';
+    })()
     +'<div class="panel" id="wz-panel" style="margin-bottom:1rem;padding:0">'
     +'<div id="wz-toggle-hdr" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;padding:.75rem 1rem">'
     +'<div style="display:flex;align-items:center;gap:8px">'
@@ -592,11 +652,9 @@ function renderBegeleiderDashboard(app){
     +'<div style="font-size:12px;color:var(--muted);margin-top:.25rem">'+esc(t.traject_type||'M&A')+' &middot; Code: <span style="font-family:IBM Plex Mono,monospace;color:var(--teal)">'+esc(S.code)+'</span></div>'
     +'</div>'
     +'<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
-    +'<button class="btn btn-sm" id="bg-toegang" style="background:var(--teal)">&#128275; Koper-toegang</button>'
     +'<button class="btn-outline btn-sm" id="bg-groepsstructuur">&#127970; Groepsstructuur</button>'
     +'<button class="btn-outline btn-sm" id="bg-partners">&#129489;&#8205;&#128188; Partners</button>'
     +(t.status==='afgesloten'?'':'<button class="btn-ghost btn-sm" id="bg-afsluiten" style="color:var(--red);border-color:var(--red)">&#127937; Traject afsluiten</button>')
-    +(function(){ var kc=koperCatsVan(t); var tot=(window.FASES&&FASES.length)||7; var lbl,kl; if(kc===null){ lbl=t.koper_vrijgegeven?'Alles vrijgegeven':'Geen toegang'; kl=t.koper_vrijgegeven?'var(--teal)':'var(--muted)'; } else if(kc.length){ lbl=kc.length+'/'+tot+' categorieën vrij'; kl='var(--teal)'; } else { lbl='Geen toegang'; kl='var(--muted)'; } return '<span style="font-size:11px;font-weight:600;color:'+kl+'">'+lbl+'</span>'; })()
     +'<span style="display:inline-block;padding:4px 12px;border-radius:12px;font-size:11px;font-weight:600;background:'+(t.status==='vergrendeld'?'var(--red-bg)':'var(--teal-bg)')+';color:'+(t.status==='vergrendeld'?'var(--red)':'var(--teal)')+';border:1px solid '+(t.status==='vergrendeld'?'var(--red)':'var(--teal-dark)')+'">'+esc(t.status||'actief')+'</span>'
     +'</div></div></div>'
     // Actie knoppen — gegroepeerd per dealfase, secties inklapbaar (16 aug 2026, op verzoek Marcel:
@@ -608,37 +666,45 @@ function renderBegeleiderDashboard(app){
           +'<span class="bg-sec-chevron" data-sec="'+sec+'" style="font-size:12px;color:var(--muted)">&#9650;</span>'
           +'</div>';
       }
-      function docBtn(id, icoon, kleur, naam){
-        return contractenAan
-          ?'<button class="btn" id="'+id+'" style="background:'+kleur+';padding:10px;font-size:12px">'+icoon+' '+naam+'</button>'
-          :'<button class="btn" id="'+id+'" disabled title="Module Contracten niet actief — neem contact op met ' + BRAND.kort + '" style="background:'+kleur+';padding:10px;font-size:12px;opacity:.45;cursor:not-allowed">'+icoon+' '+naam+'</button>';
+      // Documentflow als verticale stappenlijn (19 aug 2026, op verzoek Marcel: "ik wil de
+      // documenten in volgorde zien... in een flow zodat ze aangeklikt kunnen worden op basis van
+      // fase"). Vervangt het platte knoppenraster. Elke stap is nog steeds gewoon de bestaande knop
+      // (zelfde id, zelfde onclick-koppeling verderop) — alleen de visuele verpakking is nieuw.
+      // Status van de 4 ondertekenbare documenten komt al mee met het traject; status van de overige
+      // 4 (geen "getekend"-concept) wordt na render async ingeladen, zie laadDocFlowStatus().
+      function stapRij(id, icoon, kleur, naam, statusHtml, isLaatste){
+        var disabled=!contractenAan;
+        return '<div style="display:flex;gap:12px">'
+          +'<div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0">'
+          +'<div style="width:34px;height:34px;border-radius:50%;background:'+(disabled?'var(--panel)':kleur)+';border:2px solid '+(disabled?'var(--border2)':kleur)+';display:flex;align-items:center;justify-content:center;font-size:15px;'+(disabled?'opacity:.4':'')+'">'+icoon+'</div>'
+          +(isLaatste?'':'<div style="width:2px;flex:1;background:var(--border2);margin:2px 0;min-height:18px"></div>')
+          +'</div>'
+          +'<button id="'+id+'" '+(disabled?'disabled title="Module Contracten niet actief — neem contact op met ' + BRAND.kort + '"':'')+' style="all:unset;cursor:'+(disabled?'not-allowed':'pointer')+';flex:1;padding-bottom:16px;'+(disabled?'opacity:.45':'')+'">'
+          +'<div style="font-size:13px;font-weight:600;color:var(--head)">'+naam+'</div>'
+          +'<div class="stap-status" data-doc="'+id+'" style="font-size:11px;color:var(--muted);margin-top:2px">'+(statusHtml||'')+'</div>'
+          +'</button></div>';
       }
-      function subLabel(tekst){
-        return '<div style="font-size:9px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);opacity:.75;margin:.6rem 0 .35rem">'+tekst+'</div>';
+      function getekendStatus(getekendVeld, datumVeld){
+        var getekend=S.traject&&S.traject[getekendVeld];
+        var datum=S.traject&&S.traject[datumVeld];
+        return getekend
+          ?'<span style="color:var(--teal)">&#10003; Getekend door '+esc(getekend)+(datum?' &middot; '+new Date(datum).toLocaleDateString('nl-NL',{day:'2-digit',month:'short',year:'numeric'}):'')+'</span>'
+          :'Nog niet getekend';
       }
       var html='';
       // ── Documenten (open per default — hoofdactie van dit scherm) ──
-      html+='<div class="panel" style="margin-bottom:.75rem;padding:0">'+secHdr('docs','&#128196; Documenten')
-        +'<div class="bg-sec-body" data-sec="docs" style="display:block;padding:0 1rem 1rem">'
-        +subLabel('Voorfase')
-        +'<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px">'
-        +docBtn('bg-nda-actie','&#128274;','#7c5cbf','Geheimhoudingsovereenkomst (NDA)')
-        +docBtn('bg-bem-actie','&#128203;','#2a5ea0','Bemiddelingsovereenkomst (BEM)')
-        +'</div>'
-        +subLabel('Onderhandeling')
-        +'<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px">'
-        +docBtn('bg-bieding-actie','&#128233;','#a0522d','Indicatieve bieding')
-        +docBtn('bg-loi-actie','&#128196;','var(--gold)','Intentieverklaring (LoI)')
-        +docBtn('bg-excl-actie','&#128221;','#1a7a5e','Exclusiviteitsovereenkomst')
-        +docBtn('bg-dealvoorstel-actie','&#128202;','#8a5a00','Dealvoorstel')
-        +'</div>'
-        +subLabel('Afronding')
-        +'<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px">'
-        +docBtn('bg-spa-actie','&#128220;','#5a5470','Aandachtspunten koopovereenkomst (SPA)')
-        +docBtn('bg-closing-actie','&#127937;','#2d6a4f','Closing-checklist')
-        +'</div>'
-        +(contractenAan?'':'<div style="font-size:11px;color:var(--muted);margin-top:.6rem">&#128274; Module Contracten niet actief — neem contact op met ' + BRAND.kort + ' om deze module te activeren.</div>')
-        +'<div style="margin-top:.85rem;padding-top:.75rem;border-top:1px dashed var(--border2)"><button class="btn-outline btn-sm" id="bg-eigendoc-actie">&#128206; Eigen document versturen</button><div style="font-size:11px;color:var(--muted);margin-top:4px">Upload een PDF of Word-bestand en deel het rechtstreeks met verkoper en/of koper — werkt ook zonder de module Contracten.</div></div>'
+      html+='<div class="panel" style="margin-bottom:.75rem;padding:0">'+secHdr('docs','&#128196; Documenten &mdash; flow')
+        +'<div class="bg-sec-body" data-sec="docs" style="display:block;padding:.25rem 1rem 0">'
+        +stapRij('bg-nda-actie','&#128274;','#7c5cbf','Geheimhoudingsovereenkomst (NDA)',getekendStatus('nda_getekend','nda_getekend_datum'))
+        +stapRij('bg-bem-actie','&#128203;','#2a5ea0','Bemiddelingsovereenkomst (BEM)',getekendStatus('bem_getekend','bem_datum'))
+        +stapRij('bg-bieding-actie','&#128233;','#a0522d','Indicatieve bieding','Klaar om te versturen')
+        +stapRij('bg-loi-actie','&#128196;','var(--gold)','Intentieverklaring (LoI)',getekendStatus('loi_getekend','loi_getekend_datum'))
+        +stapRij('bg-excl-actie','&#128221;','#1a7a5e','Exclusiviteitsovereenkomst',getekendStatus('excl_getekend','excl_datum'))
+        +stapRij('bg-dealvoorstel-actie','&#128202;','#8a5a00','Dealvoorstel','Klik om te genereren')
+        +stapRij('bg-spa-actie','&#128220;','#5a5470','Aandachtspunten koopovereenkomst (SPA)','Aandachtspuntenlijst — geen concept-overeenkomst')
+        +stapRij('bg-closing-actie','&#127937;','#2d6a4f','Closing-checklist','Laden...',true)
+        +(contractenAan?'':'<div style="font-size:11px;color:var(--muted);margin:.4rem 0 .6rem">&#128274; Module Contracten niet actief — neem contact op met ' + BRAND.kort + ' om deze module te activeren.</div>')
+        +'<div style="padding:.85rem 0;border-top:1px dashed var(--border2)"><button class="btn-outline btn-sm" id="bg-eigendoc-actie">&#128206; Eigen document versturen</button><div style="font-size:11px;color:var(--muted);margin-top:4px">Upload een PDF of Word-bestand en deel het rechtstreeks met verkoper en/of koper — werkt ook zonder de module Contracten.</div></div>'
         +'</div></div>';
       // ── Communicatie (ingeklapt) ──
       html+='<div class="panel" style="margin-bottom:.75rem;padding:0">'+secHdr('comm','&#128172; Communicatie').replace('&#9650;','&#9660;')
@@ -712,6 +778,7 @@ function renderBegeleiderDashboard(app){
   app.innerHTML=html;
 
   laadRisicoBadges();
+  laadDocFlowStatus();
 
   // Fase accordeon
   app.querySelectorAll('.bg-fase-hdr').forEach(function(hdr){
@@ -1569,27 +1636,78 @@ function renderBegeleiderDashboard(app){
     document.getElementById('spa-print').onclick=function(){printDoc(document.getElementById('spa-doc-tekst').value,titel,'spa');};
   }
 
-  // ===== CLOSING-CHECKLIST: bestond al als tekst-sjabloon in de backend (BF_TEMPLATES.closing),
-  // maar was nergens in de UI ontsloten — dus feitelijk onbruikbaar. Zelfde patroon als de SPA-
-  // aandachtspuntenlijst hierboven: alleen het statische sjabloon ophalen en tonen, geen deal-
-  // specifieke invulling of AI-generatie (het is een procesmatige controlelijst, geen document).
+  // ===== CLOSING-CHECKLIST: was tot 19 aug 2026 platte, niet-aanvinkbare tekst (BF_TEMPLATES.closing)
+  // — Marcel: "closing checklist is nog steeds bagger". Nu een echte checklist: items komen uit
+  // DEFAULT_CLOSING_CHECKLIST (backend), aangevinkt-status per item wordt per traject bewaard
+  // (mna_closing_checklist_status) zodat voortgang blijft staan tussen sessies. Nog steeds geen
+  // juridisch/fiscaal advies en niet automatisch aangepast aan de transactiestructuur — dat blijft
+  // een procesmatige controlelijst, geen gegenereerd document.
   async function toonClosingModal(){
     var t2=S.traject||{};
     var out=document.getElementById('bg-doc-out');out.style.display='block';
     out.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem">Closing-checklist laden...</div>';
     var docOutEl=document.getElementById('bg-doc-out');
     if(docOutEl)setTimeout(function(){docOutEl.scrollIntoView({behavior:'smooth',block:'nearest'});},100);
-    var tplD=await fetch(WORKER+'/mna/template/closing?email='+encodeURIComponent(t2.begeleider_email||'')+'&code='+encodeURIComponent(S.code)).then(function(r){return r.json();}).catch(function(){return{ok:false};});
-    var tekst=tplD.ok&&tplD.tekst?tplD.tekst:'[closing-checklist niet beschikbaar]';
-    var titel='Closing-checklist — '+(t2.kantoor_naam||S.code);
-    out.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem">'
-      +'<div style="font-size:11px;font-weight:600;color:#2d6a4f;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.5rem">Closing-checklist</div>'
-      +'<div style="font-size:12px;color:var(--gold-dark);background:var(--gold-bg);border:1px solid var(--gold);border-radius:6px;padding:.5rem .75rem;margin-bottom:.75rem;line-height:1.5">&#9888; Algemene controlelijst ter voorbereiding op closing — geen juridisch of fiscaal advies, en niet automatisch aangepast aan de specifieke transactiestructuur van dit traject.</div>'
-      +'<textarea id="closing-doc-tekst" readonly style="width:100%;height:340px;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:Georgia,serif;font-size:12px;line-height:1.8;padding:1rem;outline:none;resize:vertical">'+esc(tekst)+'</textarea>'
-      +'<div style="display:flex;gap:8px;margin-top:.75rem">'
-      +'<button id="closing-print" class="btn-ghost" style="font-size:12px;padding:6px 14px">&#128196; Print / PDF</button>'
-      +'</div></div>';
-    document.getElementById('closing-print').onclick=function(){printDoc(document.getElementById('closing-doc-tekst').value,titel,'closing');};
+    var d=await fetch(WORKER+'/mna/closing-checklist/'+S.code,{headers:{'x-tussen-key':S._bgKey||''}}).then(function(r){return r.json();}).catch(function(){return{ok:false};});
+    if(!d.ok){out.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;color:var(--red)">Checklist laden mislukt: '+esc(d.error||'onbekende fout')+'</div>';return;}
+    var checklist=d.checklist||[];var status=d.status||{};
+
+    function telVoortgang(){
+      var totaal=0,af=0;
+      checklist.forEach(function(cat){cat.items.forEach(function(){totaal++;});});
+      Object.keys(status).forEach(function(k){if(status[k]&&status[k].aangevinkt)af++;});
+      return {af:af,totaal:totaal};
+    }
+
+    function render(){
+      var v=telVoortgang();
+      var pct=v.totaal?Math.round(v.af/v.totaal*100):0;
+      var html='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem">'
+        +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">'
+        +'<div style="font-size:11px;font-weight:600;color:#2d6a4f;text-transform:uppercase;letter-spacing:.1em">Closing-checklist</div>'
+        +'<div style="font-size:11px;color:var(--muted);font-weight:600">'+v.af+' / '+v.totaal+' afgerond</div>'
+        +'</div>'
+        +'<div style="background:var(--card);border-radius:6px;height:8px;overflow:hidden;margin-bottom:.75rem"><div style="background:'+(pct===100?'var(--teal)':'var(--gold)')+';height:100%;width:'+pct+'%;transition:width .3s"></div></div>'
+        +'<div style="font-size:12px;color:var(--gold-dark);background:var(--gold-bg);border:1px solid var(--gold);border-radius:6px;padding:.5rem .75rem;margin-bottom:.75rem;line-height:1.5">&#9888; Algemene controlelijst ter voorbereiding op closing — geen juridisch of fiscaal advies, en niet automatisch aangepast aan de specifieke transactiestructuur van dit traject.</div>';
+      checklist.forEach(function(cat,ci){
+        html+='<div style="margin-bottom:.85rem"><div style="font-size:12px;font-weight:600;color:var(--head);margin-bottom:.4rem">'+esc(cat.categorie)+'</div>';
+        cat.items.forEach(function(item,ii){
+          var key=ci+'_'+ii;
+          var st=status[key];
+          var af=!!(st&&st.aangevinkt);
+          html+='<label style="display:flex;align-items:flex-start;gap:8px;padding:5px 0;font-size:12px;color:'+(af?'var(--muted)':'var(--sub)')+';cursor:pointer'+(af?';text-decoration:line-through':'')+'">'
+            +'<input type="checkbox" class="cc-check" data-key="'+key+'"'+(af?' checked':'')+' style="margin-top:2px;flex-shrink:0">'
+            +'<span>'+esc(item)+(af&&st.aangevinkt_door?' <span style="font-size:10px;color:var(--muted);text-decoration:none;font-style:italic">('+esc(st.aangevinkt_door)+')</span>':'')+'</span>'
+            +'</label>';
+        });
+        html+='</div>';
+      });
+      html+='<div style="display:flex;gap:8px;margin-top:.5rem"><button id="closing-print" class="btn-ghost" style="font-size:12px;padding:6px 14px">&#128196; Print / PDF</button></div></div>';
+      out.innerHTML=html;
+      out.querySelectorAll('.cc-check').forEach(function(cb){
+        cb.onchange=async function(){
+          var key=this.dataset.key;var checked=this.checked;
+          this.disabled=true;
+          var r=await fetch(WORKER+'/mna/closing-checklist/vinken',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||''},body:JSON.stringify({code:S.code,item_key:key,aangevinkt:checked,naam:S.traject&&S.traject.begeleider_naam||'Begeleider'})}).then(function(x){return x.json();}).catch(function(){return{};});
+          if(r.ok){status[key]={item_key:key,aangevinkt:checked?1:0,aangevinkt_door:S.traject&&S.traject.begeleider_naam||'Begeleider'};render();}
+          else{toast('Opslaan mislukt: '+(r.error||'onbekend'),'err');this.disabled=false;this.checked=!checked;}
+        };
+      });
+      var printBtn=document.getElementById('closing-print');
+      if(printBtn)printBtn.onclick=function(){
+        var tekst='CLOSING-CHECKLIST — '+(t2.kantoor_naam||S.code)+'\n\n';
+        checklist.forEach(function(cat,ci){
+          tekst+=cat.categorie.toUpperCase()+'\n';
+          cat.items.forEach(function(item,ii){
+            var st=status[ci+'_'+ii];
+            tekst+=(st&&st.aangevinkt?'[x] ':'[ ] ')+item+'\n';
+          });
+          tekst+='\n';
+        });
+        printDoc(tekst,'Closing-checklist — '+(t2.kantoor_naam||S.code),'closing');
+      };
+    }
+    render();
   }
 
   document.getElementById('bg-nda-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op met ' + BRAND.kort + '.','err');return;} toonDocWaarschuwing('nda', function(){ bgDoc('nda'); }); };

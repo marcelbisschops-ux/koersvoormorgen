@@ -190,6 +190,13 @@ async function toonDocWaarschuwing(docType, onDoorgaan) {
     if (!heeftExcl) { waarschuwingen.push('⚠ De Exclusiviteitsbrief is nog niet aangemaakt.'); geblokkeerd = true; }
     if (heeftLoi) waarschuwingen.push('Er is al een LoI aangemaakt.');
   }
+  // Alleen een waarschuwing, geen blokkade (Marcel, 19 aug 2026, expliciete keuze): een dealvoorstel
+  // vóór de koper exclusief onderhandelt kan legitiem zijn (bijv. bij één serieuze partij), dus geen
+  // harde stop — wel een duidelijke melding als de Exclusiviteitsovereenkomst nog niet getékend is
+  // (specifiek getekend, niet alleen aangemaakt — een niet-ondertekend concept biedt geen exclusiviteit).
+  if (docType === 'dealvoorstel') {
+    if (!t.excl_getekend) waarschuwingen.push('⚠ De Exclusiviteitsovereenkomst is nog niet getekend — koper onderhandelt (nog) niet exclusief.');
+  }
 
   var check = { waarschuwingen: waarschuwingen, geblokkeerd: geblokkeerd };
   if (!check.waarschuwingen.length) { onDoorgaan(); return; }
