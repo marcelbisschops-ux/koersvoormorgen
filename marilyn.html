@@ -3584,8 +3584,11 @@ async function renderVeiligheidTab(el) {
         return '<div style="font-size:11px;color:var(--mid)">' + naam + ': <span style="color:' + kleur + ';font-weight:600">' + run.checks_geslaagd + '/' + run.checks_totaal + '</span> — ' + new Date(run.ran_at).toLocaleString('nl-NL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) + '</div>';
       }
 
-      var html = '<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.4rem">&#128737; Veiligheid</div>'
-        + '<div style="font-size:12px;color:var(--muted);margin-bottom:1.25rem;max-width:720px;line-height:1.6">Drie bewust gescheiden lagen — een groene "continue check" hierboven betekent nooit "het hele platform is veilig", alleen dat de daar getoetste punten kloppen. Voor de brede, redenerende beoordeling (architectuur, waardering, AI-kwaliteit, compliance) blijft de periodieke diepe audit leidend.</div>'
+      var html = '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;margin-bottom:.4rem">'
+        + '<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">&#128737; Veiligheid</div>'
+        + '<a href="https://koersvoormorgen.nl/beveiliging.html" target="_blank" rel="noopener" class="btn" style="font-size:12px;padding:7px 14px;text-decoration:none;display:inline-flex;align-items:center;gap:6px">&#128196; Extern beveiligingsrapport &#8599;</a>'
+        + '</div>'
+        + '<div style="font-size:12px;color:var(--muted);margin-bottom:1.25rem;max-width:720px;line-height:1.6">Drie bewust gescheiden lagen — een groene "continue check" hierboven betekent nooit "het hele platform is veilig", alleen dat de daar getoetste punten kloppen. Voor de brede, redenerende beoordeling (architectuur, waardering, AI-kwaliteit, compliance) blijft de periodieke diepe audit leidend. De knop rechtsboven opent het publieke rapport (koersvoormorgen.nl/beveiliging.html) met de meest actuele cijfers — te mailen of rechtstreeks te delen met (potentiële) gebruikers.</div>'
 
         + '<div class="table-wrap" style="margin-bottom:1.25rem"><div class="table-hdr"><div class="table-title">1. Continue geautomatiseerde checks</div></div>'
         + '<div style="padding:1.25rem;display:flex;gap:2rem;flex-wrap:wrap;align-items:flex-start">'
