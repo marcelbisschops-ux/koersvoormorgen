@@ -977,7 +977,7 @@ async function uploadDocument(faseId, file, existingId, vervangtDocId) {
         }
       }
       // Toon crosscheck waarschuwingen (AI-zelfrapportage + deterministische sanity-check)
-      if((d.crosschecks&&d.crosschecks.length)||(d.sanity_waarschuwingen&&d.sanity_waarschuwingen.length)||(d.entiteit_naam&&S.traject&&S.traject.kantoor_naam)){
+      if((d.crosschecks&&d.crosschecks.length)||(d.sanity_waarschuwingen&&d.sanity_waarschuwingen.length)||(d.entiteit_naam&&S.traject&&S.traject.kantoor_naam)||(d.extractie_betrouwbaarheid&&d.extractie_betrouwbaarheid!=='hoog')){
         var msgs=[];
         // Entiteit check
         if(d.entiteit_naam&&S.traject&&S.traject.kantoor_naam){
@@ -985,6 +985,13 @@ async function uploadDocument(faseId, file, existingId, vervangtDocId) {
           if(!n1.includes(n2.split(' ')[0])&&!n2.includes(n1.split(' ')[0]))
             msgs.push('⚠ Entiteit in document ("'+d.entiteit_naam+'") wijkt af van kantoornaam ("'+S.traject.kantoor_naam+'")');
         }
+        // AI-extractiebetrouwbaarheid (19 aug 2026): alleen tonen bij "gemiddeld"/"laag" — bij "hoog"
+        // voegt een badge niets toe, alleen ruis. Zelfrapportage door de AI, geen harde garantie —
+        // vervangt de bestaande crosscheck/sanity-checks niet, is een aanvulling.
+        if(d.extractie_betrouwbaarheid==='laag')
+          msgs.push('⚠ AI geeft zelf een lage betrouwbaarheid aan voor de extractie uit dit document — controleer de ingevulde velden extra kritisch.');
+        else if(d.extractie_betrouwbaarheid==='gemiddeld')
+          msgs.push('ℹ AI geeft een gemiddelde betrouwbaarheid aan voor de extractie uit dit document (bijv. minder scherpe scan of interpretatie nodig) — een korte controle is aan te raden.');
         if(d.crosschecks)msgs=msgs.concat(d.crosschecks);
         if(d.sanity_waarschuwingen)msgs=msgs.concat(d.sanity_waarschuwingen);
         if(msgs.length){
@@ -1746,6 +1753,11 @@ function uitloggen(){
   Object.keys(BANKMUTATIES_REGELS).forEach(function(k){delete BANKMUTATIES_REGELS[k];});
   BANKMUTATIES_ANALYSE=null;
   BANKMUTATIES_ANALYSE_BEZIG=false;
+  // Bugfix 19 aug 2026 (KRITIEK, cross-path-informatielek-audit F5): CHAT (mna/07-start-chat.js) is
+  // module-scope, buiten S — werd hier nooit gereset. Bij twee opeenvolgende logins in hetzelfde
+  // tabblad (normaal op een gedeeld/kantoor-device) bleven chatberichten van traject A zichtbaar
+  // tussen die van traject B, inclusief eventuele DD-context die de chatassistent had meegenomen.
+  if(typeof CHAT!=='undefined'){CHAT.berichten=[];CHAT.serverBerichten=[];CHAT.open=false;CHAT.laden=false;CHAT.sturen=false;}
   S={screen:'login',code:'',rol:'',traject:null,modules:null,fase:0,checked:{},data:{},docRefs:{},notities:{},aiTexts:{},aiLoading:{},saveTimer:null,showValidation:false,dataroomLoading:false,dataroom:null,_opy:{},_epy:{},_opySlotJaar:{},_conflicts:[],_pendingConflicts:{}};
   renderApp();
 }
