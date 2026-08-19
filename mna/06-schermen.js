@@ -649,7 +649,7 @@ function renderMain(){
     // laadPartijDocs() bestond al (met rolfilter + Signhost-status + dataroom-koppeling) en wordt nu
     // ook hier aangeroepen, zelfde #partij-docs-sectie-element, geen nieuwe logica.
     +((isVerkoper()||isKoper())?('<div class="panel" id="pd-panel" style="margin-bottom:1rem;padding:0">'
-      +'<div id="pd-toggle-hdr" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;padding:.75rem 1rem">'
+      +'<div id="pd-toggle-hdr" tabindex="0" role="button" aria-expanded="true" aria-controls="pd-body" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;padding:.75rem 1rem">'
       +'<span style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">&#128196; Juridische documenten</span>'
       +'<span id="pd-chevron" style="font-size:12px;color:var(--muted)">&#9650;</span>'
       +'</div><div id="pd-body" style="display:block;padding:0 1rem 1rem"><div id="partij-docs-sectie">Laden...</div></div></div>'):'')
@@ -1899,12 +1899,21 @@ function bindAll(){
   // patroon als andere collapsible panelen in dit platform.
   var pdHdr=ge('pd-toggle-hdr');
   if(pdHdr){
-    pdHdr.onclick=function(){
+    // Bugfix 19 aug 2026 (frontend-audit P1): alleen .onclick + cursor:pointer, geen tabindex/role/
+    // keydown — toetsenbord- en screenreadergebruikers konden dit paneel (toegang tot NDA/LoI voor
+    // verkoper/koper) niet openen. tabindex/role/aria-expanded staan al in de HTML hierboven; hier
+    // de toggle-functie herbruikbaar maken en ook op Enter/Spatie laten reageren.
+    var pdToggle=function(){
       var body=ge('pd-body'),chevron=ge('pd-chevron');
       if(!body)return;
       var open=body.style.display!=='none';
       body.style.display=open?'none':'block';
       if(chevron)chevron.innerHTML=open?'&#9660;':'&#9650;';
+      pdHdr.setAttribute('aria-expanded',open?'false':'true');
+    };
+    pdHdr.onclick=pdToggle;
+    pdHdr.onkeydown=function(e){
+      if(e.key==='Enter'||e.key===' '||e.key==='Spacebar'){e.preventDefault();pdToggle();}
     };
   }
 

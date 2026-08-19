@@ -213,6 +213,54 @@ document.addEventListener('keydown', function(e) {
   overlays[overlays.length - 1].remove();
 });
 
+// Focus-trap + focus-return (audit-fix P2, 19 aug 2026): zelfde generieke overlay-detectie als de
+// Escape-handler hierboven (geen gedeelde modal-helper, dus hier centraal afgevangen i.p.v. alle
+// ~32 aanroepplekken los aan te passen). Escape sluit correct, maar Tab kon uit een "modale" dialoog
+// naar de achterliggende pagina lekken (aria-modal="true" beloofde meer dan de code waarmaakte), en
+// focus keerde na sluiten niet terug naar het element dat de modal opende. _pdOpenOverlays voorkomt
+// dat elke Tab-druk een dure querySelectorAll doet zolang er geen modal open is.
+var _pdOpenOverlays = 0;
+var _pdFocusTriggers = new WeakMap();
+function _pdIsOverlayDiv(el) {
+  var s = (el.getAttribute && el.getAttribute('style')) || '';
+  return s.indexOf('position:fixed;inset:0') === 0;
+}
+function _pdFocusableElements(root) {
+  return Array.prototype.filter.call(
+    root.querySelectorAll('a[href],button:not([disabled]),textarea:not([disabled]),input:not([disabled]),select:not([disabled]),[tabindex]:not([tabindex="-1"])'),
+    function (el) { return el.offsetParent !== null; }
+  );
+}
+new MutationObserver(function (mutations) {
+  mutations.forEach(function (m) {
+    m.addedNodes && Array.prototype.forEach.call(m.addedNodes, function (node) {
+      if (node.nodeType !== 1 || !_pdIsOverlayDiv(node)) return;
+      _pdOpenOverlays++;
+      _pdFocusTriggers.set(node, document.activeElement);
+      var f = _pdFocusableElements(node);
+      if (f.length) f[0].focus();
+    });
+    m.removedNodes && Array.prototype.forEach.call(m.removedNodes, function (node) {
+      if (node.nodeType !== 1 || !_pdIsOverlayDiv(node)) return;
+      _pdOpenOverlays = Math.max(0, _pdOpenOverlays - 1);
+      var trigger = _pdFocusTriggers.get(node);
+      _pdFocusTriggers.delete(node);
+      if (trigger && document.body.contains(trigger)) trigger.focus();
+    });
+  });
+}).observe(document.body, { childList: true });
+document.addEventListener('keydown', function (e) {
+  if (e.key !== 'Tab' || _pdOpenOverlays <= 0) return;
+  var overlays = Array.prototype.filter.call(document.querySelectorAll('div[style]'), _pdIsOverlayDiv);
+  if (!overlays.length) return;
+  var top = overlays[overlays.length - 1];
+  var f = _pdFocusableElements(top);
+  if (!f.length) return;
+  var first = f[0], last = f[f.length - 1];
+  if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+  else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+});
+
 function pct(id){var f=FASES.find(function(x){return x.id===id;});if(!f)return 0;var d=f.items.filter(function(_,i){return S.checked[id+'_'+i];}).length;return f.items.length?Math.round(d/f.items.length*100):0;}
 function checkOmzetSom(){
   var ids=['omzetJaarwerk','omzetAdvies','omzetLoon','omzetFiscaal','omzetOverig'];
