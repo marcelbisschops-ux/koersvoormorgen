@@ -254,6 +254,7 @@ function renderDashboard(){
     +(isSuperAdmin?'<button class="tab'+(activeTab==='sectoren'?' active':'')+'" id="t-sectoren">&#127970; Sectoren</button>':'')
     +(isSuperAdmin?'<button class="tab'+(activeTab==='gebruikers'?' active':'')+'" id="t-geb" style="border-left:2px solid var(--gold)">&#128101; Gebruikers</button>':'')
     +(isSuperAdmin?'<button class="tab'+(activeTab==='tarieven'?' active':'')+'" id="t-tarieven">&euro; Tarieven</button>':'')
+    +(isSuperAdmin?'<button class="tab'+(activeTab==='veiligheid'?' active':'')+'" id="t-veiligheid" style="border-left:2px solid var(--red)">&#128737; Veiligheid</button>':'')
     +'</div>'
     +'<div id="tc"></div>';
   if(isSuperAdmin){var ts=document.getElementById('t-scans');if(ts)ts.addEventListener('click',function(){activeTab='scans';scanFilter='';openRow=null;renderDashboard();});var tc2=document.getElementById('t-cb');if(tc2)tc2.addEventListener('click',function(){activeTab='callbacks';renderDashboard();});var tld=document.getElementById('t-leads');if(tld)tld.addEventListener('click',function(){activeTab='leads';renderDashboard();});}
@@ -267,6 +268,7 @@ function renderDashboard(){
   if(isSuperAdmin){var stb=document.getElementById('t-sectoren');if(stb)stb.addEventListener('click',function(){activeTab='sectoren';renderDashboard();});}
   if(isSuperAdmin){var gtb=document.getElementById('t-geb');if(gtb)gtb.addEventListener('click',function(){activeTab='gebruikers';renderDashboard();});}
   if(isSuperAdmin){var ttb=document.getElementById('t-tarieven');if(ttb)ttb.addEventListener('click',function(){activeTab='tarieven';renderDashboard();});}
+  if(isSuperAdmin){var vtb=document.getElementById('t-veiligheid');if(vtb)vtb.addEventListener('click',function(){activeTab='veiligheid';renderDashboard();});}
   renderTab();
   // Systeemwaarschuwingen: Signhost-herinnering bewust verwijderd (verzoek Marcel, juli 2026).
   // De container #sys-waarschuwingen blijft beschikbaar voor eventuele toekomstige meldingen.
@@ -286,6 +288,7 @@ function renderTab(){
   else if(activeTab==='sectoren')renderSectorenTab(el);
   else if(activeTab==='gebruikers')renderGebruikersTab(el);
   else if(activeTab==='tarieven')renderTarievenTab(el);
+  else if(activeTab==='veiligheid')renderVeiligheidTab(el);
   else renderRapportenTab(el);
 }
 
@@ -3518,6 +3521,139 @@ async function renderTarievenTab(el) {
   } catch(e) {
     el.innerHTML = '<div style="color:var(--red);font-size:13px;padding:1rem">Fout bij laden: ' + esc(e.message) + '</div>';
   }
+}
+
+// VEILIGHEID TAB (19 aug 2026) — structureert audit-bevindingen uit security_audit_log in D1,
+// plus de dagelijkse geautomatiseerde selfcheck (zelfde cross-path-invarianten als
+// tests/e2e-crosspath-fixes.mjs, maar dan als cron in de worker zelf) als "levend" onderdeel.
+var veiligheidRefreshTimer = null;
+var ERNST_KLEUR = { kritiek: 'var(--red)', hoog: 'var(--red)', midden: 'var(--gold)', laag: 'var(--info)' };
+var ERNST_LABEL = { kritiek: 'Kritiek', hoog: 'Hoog', midden: 'Midden', laag: 'Laag' };
+
+function veiligheidGauge(waarde, label, subtekst) {
+  var cx = 110, cy = 95, r = 75, strokeW = 14;
+  function polair(hoekGraden) { var rad = hoekGraden * Math.PI / 180; return { x: cx + r * Math.cos(rad), y: cy - r * Math.sin(rad) }; }
+  function hoekVoorWaarde(w) { return 180 - (Math.max(0, Math.min(100, w)) / 100) * 180; }
+  function boogPad(vanW, totW) {
+    var p1 = polair(hoekVoorWaarde(vanW)), p2 = polair(hoekVoorWaarde(totW));
+    return 'M ' + p1.x.toFixed(2) + ' ' + p1.y.toFixed(2) + ' A ' + r + ' ' + r + ' 0 0 1 ' + p2.x.toFixed(2) + ' ' + p2.y.toFixed(2);
+  }
+  // Zelfde grens-drempels (70/50) als de bestaande scorekleuring elders in marilyn (regel ~319).
+  var zones = [{ van: 0, tot: 50, kleur: 'var(--red)' }, { van: 50, tot: 70, kleur: 'var(--gold)' }, { van: 70, tot: 100, kleur: 'var(--teal)' }];
+  var boogSvg = zones.map(function(z){ return '<path d="'+boogPad(z.van,z.tot)+'" fill="none" stroke="'+z.kleur+'" stroke-width="'+strokeW+'" stroke-linecap="round"/>'; }).join('');
+  var heeftWaarde = waarde !== null && waarde !== undefined;
+  var naaldKleur = !heeftWaarde ? 'var(--muted)' : (waarde >= 70 ? 'var(--teal)' : waarde >= 50 ? 'var(--gold)' : 'var(--red)');
+  var naaldPunt = polair(hoekVoorWaarde(heeftWaarde ? waarde : 0));
+  var naaldSvg = !heeftWaarde ? '' :
+    '<line x1="'+cx+'" y1="'+cy+'" x2="'+naaldPunt.x.toFixed(2)+'" y2="'+naaldPunt.y.toFixed(2)+'" stroke="'+naaldKleur+'" stroke-width="4" stroke-linecap="round"/>'
+    + '<circle cx="'+cx+'" cy="'+cy+'" r="8" fill="'+naaldKleur+'" stroke="var(--panel)" stroke-width="2"/>';
+  var waardeTekst = heeftWaarde ? Math.round(waarde) : '—';
+  return '<div style="text-align:center">'
+    + '<svg viewBox="0 0 220 130" width="100%" style="max-width:230px" role="img" aria-label="' + esc(label) + ': ' + waardeTekst + (heeftWaarde ? '/100' : '') + '">' + boogSvg + naaldSvg
+    + '<text x="110" y="122" text-anchor="middle" font-size="26" font-weight="700" fill="var(--head)" font-family="IBM Plex Sans, sans-serif">' + waardeTekst + (heeftWaarde ? '<tspan font-size="13" fill="var(--muted)"> /100</tspan>' : '') + '</text>'
+    + '</svg>'
+    + '<div style="font-size:12px;font-weight:600;color:var(--head);margin-top:-4px">' + esc(label) + '</div>'
+    + (subtekst ? '<div style="font-size:11px;color:var(--muted);margin-top:2px">' + esc(subtekst) + '</div>' : '')
+    + '</div>';
+}
+
+async function renderVeiligheidTab(el) {
+  if (veiligheidRefreshTimer) { clearInterval(veiligheidRefreshTimer); veiligheidRefreshTimer = null; }
+  el.innerHTML = '<div style="padding:1rem;color:var(--muted);font-size:13px">Laden...</div>';
+
+  async function laadVeiligheid() {
+    if (activeTab !== 'veiligheid') { if (veiligheidRefreshTimer) { clearInterval(veiligheidRefreshTimer); veiligheidRefreshTimer = null; } return; }
+    try {
+      var ovR = await fetch(WORKER + '/mna/admin/veiligheid/overzicht', { headers: { 'x-admin-key': adminKey } });
+      var ov = await ovR.json();
+      var bvR = await fetch(WORKER + '/mna/admin/veiligheid/bevindingen', { headers: { 'x-admin-key': adminKey } });
+      var bv = await bvR.json();
+      if (!ov.ok) { el.innerHTML = '<div style="color:var(--red);font-size:13px;padding:1rem">Fout bij laden: ' + esc(ov.error || 'onbekend') + '</div>'; return; }
+      var open = (bv.bevindingen || []).filter(function(b){ return b.status === 'open'; });
+      var gefixt = (bv.bevindingen || []).filter(function(b){ return b.status !== 'open'; }).slice(0, 15);
+      var laatsteRun = ov.laatste_selfcheck;
+      var laatsteRunTekst = laatsteRun ? (new Date(laatsteRun.ran_at).toLocaleString('nl-NL', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) + ' — ' + laatsteRun.checks_geslaagd + '/' + laatsteRun.checks_totaal + ' geslaagd') : 'Nog nooit gedraaid';
+
+      var html = '<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:1.25rem">&#128737; Veiligheid — cross-path-informatielekaudit</div>'
+        + '<div style="display:flex;gap:2rem;flex-wrap:wrap;align-items:flex-start;background:var(--card);border:1px solid var(--border);border-radius:var(--r2);padding:1.5rem;margin-bottom:1.5rem">'
+        + '<div style="flex:0 0 230px">' + veiligheidGauge(ov.gauges.dagelijkse_check_score, 'Dagelijkse automatische check', laatsteRunTekst) + '</div>'
+        + '<div style="flex:0 0 230px">' + veiligheidGauge(ov.gauges.bevindingen_score, 'Open bevindingen', ov.open_totaal + ' open (' + ov.open_kritiek_hoog + ' kritiek/hoog) · ' + ov.gefixt_totaal + ' gefixt') + '</div>'
+        + '<div style="flex:1;min-width:220px;display:flex;flex-direction:column;justify-content:center;gap:.75rem;padding-top:.5rem">'
+        + '<div style="font-size:12px;color:var(--mid);line-height:1.6">De dagelijkse check hertest elke nacht automatisch, in productie, de kern-beveiligingsinvarianten (koper-categorie-intrekking, muur tegen externe adviseurs, existence-oracles). Elke gefaalde check schrijft direct een nieuwe, kritieke bevinding hieronder en mailt een waarschuwing.</div>'
+        + '<button class="btn" id="btn-veiligheid-nu" style="font-size:12px;padding:8px 16px;align-self:flex-start">&#8635; Draai selfcheck nu</button>'
+        + '</div>'
+        + '</div>';
+
+      html += '<div class="table-wrap" style="margin-bottom:1.5rem"><div class="table-hdr"><div class="table-title">Open bevindingen (' + open.length + ')</div></div>';
+      if (!open.length) {
+        html += '<div class="empty" style="color:var(--teal)">Geen openstaande bevindingen. &#127881;</div>';
+      } else {
+        html += '<table><thead><tr><th>Ernst</th><th>Code</th><th>Titel</th><th>Omschrijving</th><th>Gevonden</th><th></th></tr></thead><tbody>';
+        open.sort(function(a,b){ var o={kritiek:0,hoog:1,midden:2,laag:3}; return (o[a.ernst]||9)-(o[b.ernst]||9) || b.gevonden_op-a.gevonden_op; }).forEach(function(b){
+          html += '<tr>'
+            + '<td><span class="tag" style="background:' + ERNST_KLEUR[b.ernst] + '22;color:' + ERNST_KLEUR[b.ernst] + ';border-color:' + ERNST_KLEUR[b.ernst] + '">' + (ERNST_LABEL[b.ernst] || b.ernst) + '</span></td>'
+            + '<td class="mono" style="font-size:11px;color:var(--muted)">' + esc(b.code || '—') + '</td>'
+            + '<td style="font-size:12px;font-weight:600">' + esc(b.titel) + '</td>'
+            + '<td style="font-size:11px;color:var(--muted);max-width:340px">' + esc(b.omschrijving || '') + '</td>'
+            + '<td class="mono" style="font-size:11px">' + new Date(b.gevonden_op).toLocaleDateString('nl-NL') + '</td>'
+            + '<td><button class="btn-ghost btn-veiligheid-opgelost" data-id="' + esc(b.id) + '" style="font-size:10px;padding:3px 8px">Markeer opgelost</button></td>'
+            + '</tr>';
+        });
+        html += '</tbody></table>';
+      }
+      html += '</div>';
+
+      html += '<div class="table-wrap"><div class="table-hdr"><div class="table-title">Recent gefixt / afgehandeld</div></div>';
+      if (!gefixt.length) {
+        html += '<div class="empty">Nog niets.</div>';
+      } else {
+        html += '<table><thead><tr><th>Status</th><th>Code</th><th>Titel</th><th>Opgelost</th></tr></thead><tbody>';
+        gefixt.forEach(function(b){
+          html += '<tr>'
+            + '<td><span class="tag" style="background:var(--teal-bg);color:var(--teal);border-color:var(--teal)">' + (b.status === 'gefixt' ? 'Gefixt' : 'Bewust uitgesteld') + '</span></td>'
+            + '<td class="mono" style="font-size:11px;color:var(--muted)">' + esc(b.code || '—') + '</td>'
+            + '<td style="font-size:12px">' + esc(b.titel) + '</td>'
+            + '<td class="mono" style="font-size:11px">' + (b.opgelost_op ? new Date(b.opgelost_op).toLocaleDateString('nl-NL') : '—') + '</td>'
+            + '</tr>';
+        });
+        html += '</tbody></table>';
+      }
+      html += '</div>';
+
+      el.innerHTML = html;
+
+      var nuBtn = document.getElementById('btn-veiligheid-nu');
+      if (nuBtn) nuBtn.addEventListener('click', async function() {
+        nuBtn.disabled = true; nuBtn.textContent = 'Bezig...';
+        try {
+          var r = await fetch(WORKER + '/mna/admin/veiligheid/selfcheck-nu', { method: 'POST', headers: { 'x-admin-key': adminKey } });
+          var d = await r.json();
+          if (d.ok) { toast('Selfcheck uitgevoerd: ' + (d.resultaat ? d.resultaat.checks_geslaagd + '/' + d.resultaat.checks_totaal + ' geslaagd' : ''), d.resultaat && d.resultaat.checks_geslaagd === d.resultaat.checks_totaal ? 'ok' : 'warn'); laadVeiligheid(); }
+          else { toast(d.error || 'Fout bij selfcheck.', 'err'); }
+        } catch(e) { toast('Verbindingsfout.', 'err'); }
+        finally { nuBtn.disabled = false; nuBtn.textContent = '↻ Draai selfcheck nu'; }
+      });
+      el.querySelectorAll('.btn-veiligheid-opgelost').forEach(function(btn){
+        btn.addEventListener('click', async function() {
+          btn.disabled = true;
+          try {
+            var r = await fetch(WORKER + '/mna/admin/veiligheid/bevinding', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-key': adminKey }, body: JSON.stringify({ id: btn.dataset.id, status: 'gefixt' }) });
+            var d = await r.json();
+            if (d.ok) { toast('Bevinding gemarkeerd als opgelost.', 'ok'); laadVeiligheid(); }
+            else { toast(d.error || 'Fout.', 'err'); btn.disabled = false; }
+          } catch(e) { toast('Verbindingsfout.', 'err'); btn.disabled = false; }
+        });
+      });
+    } catch(e) {
+      el.innerHTML = '<div style="color:var(--red);font-size:13px;padding:1rem">Fout bij laden: ' + esc(e.message) + '</div>';
+    }
+  }
+
+  await laadVeiligheid();
+  // "Live/doorlopend" (Marcels verzoek 19 aug 2026): elke 60s verversen zolang dit tabblad open
+  // staat — geen websocket/SSE-infrastructuur nodig, en de dagelijkse cron zelf draait toch maar
+  // 1x per nacht, dus vaker pollen dan dit voegt niets toe.
+  veiligheidRefreshTimer = setInterval(laadVeiligheid, 60000);
 }
 
 function toonUitnodigenModal() {
