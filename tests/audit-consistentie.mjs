@@ -203,7 +203,6 @@ const GEVERIFIEERD_VEILIG_CHECK5 = new Set([
   '/mna/traject/',           // /mna/save-achtige login-respons: strip alle 8 interne/tekenbevoegdheid-velden vóór JSON.stringify
   '/mna/logboek/',           // geeft alleen traject_fase + logboek terug, nooit het volledige traject-object
   '/mna/traject/afsluiten/', // begeleiderAuth-only (vertrouwde rol), bundelt DD-eindrapport voor de eigen begeleider
-  '/mna/groep/detail/',      // harde ADMIN_KEY-check vóór elke query (13-07-2026 toegevoegd)
   '/gebruikers/deactiveer/', // ADMIN_KEY + isSuperAdmin, response is alleen {ok:true}
   '/gebruikers/mna/detail/', // eigenaarscheck (gebruiker_id) + strip dezelfde 8 velden als /mna/traject/ (13-07-2026)
   '/adviseur/trajecten',     // idem strip (13-07-2026) — dit was het echte, live lek dat deze regel miste (zie hieronder)
