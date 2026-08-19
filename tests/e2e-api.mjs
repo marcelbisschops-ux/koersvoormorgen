@@ -151,9 +151,13 @@ async function main() {
   // ─────────────── STAP 6: DD-DATA OPSLAAN EN TERUGLEZEN ───────────────
   kop('STAP 6 · DD-data opslaan (/mna/save) en teruglezen');
   {
+    // Let op: 'ebitda' is het echte sectorprofielveld (mna/01-config-sectorprofielen.js) — de
+    // waardering (STAP 9) leest exact deze bare key. 'financieel_omzet3' blijft bewust een niet-
+    // bestaande sleutel (test dat /mna/save willekeurige keys accepteert) en botst niet met de
+    // 'omzet3'-aggregatie in STAP 6b (die leest alleen entiteitsniveau-data, niet deze groepsrij).
     const dataJson = {
       financieel_omzet3: { label: 'Omzet laatste jaar', value: '1.850.000' },
-      financieel_ebitda: { label: 'EBITDA', value: '295.000' }
+      ebitda: { label: 'EBITDA jaar 3 — absoluut bedrag (€)', value: '295.000' }
     };
     const save = await api('POST', '/mna/save', { body: { code: hoofdTraject.code, fase_id: 'financieel', data_json: dataJson } });
     check('opslaan ok:true', save.json && save.json.ok === true, JSON.stringify(save.json));
@@ -164,7 +168,7 @@ async function main() {
     check('opgeslagen fase-data is terug te lezen', !!faseRij, 'financieel-rij niet gevonden');
     if (faseRij) {
       const dj = typeof faseRij.data_json === 'string' ? JSON.parse(faseRij.data_json) : faseRij.data_json;
-      check('teruggelezen EBITDA-waarde klopt', dj && dj.financieel_ebitda && dj.financieel_ebitda.value === '295.000', JSON.stringify(dj && dj.financieel_ebitda));
+      check('teruggelezen EBITDA-waarde klopt', dj && dj.ebitda && dj.ebitda.value === '295.000', JSON.stringify(dj && dj.ebitda));
     }
   }
 
