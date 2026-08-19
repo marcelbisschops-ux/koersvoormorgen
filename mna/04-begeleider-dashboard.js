@@ -435,6 +435,118 @@ function toonPartnersModal(app){
   laadLijst();
 }
 
+// Risicoclassificatie per DD-bevinding (23 aug 2026) — begeleider-only, verkoper ziet dit nooit.
+// Enums moeten exact overeenkomen met RISICOKLASSEN/MA_ACTIES in backend/worker/02-config-constanten.js
+// (de server valideert hier ook tegen, dit is alleen voor de UI).
+var RISICOKLASSEN = ['Critical','High','Medium','Low','Info'];
+var MA_ACTIES = ['Geen actie','Nader onderzoeken','Prijs aanpassen','Garantie opnemen','Indemnity opnemen','Escrow','CP voor closing','Earn-out','Stop transactie'];
+var RISICO_KLEUR = {Critical:'var(--red)',High:'var(--red)',Medium:'var(--gold)',Low:'var(--teal)',Info:'var(--muted)'};
+
+async function laadRisicoBadges(){
+  var d=await fetch(WORKER+'/mna/infofase/'+S.code,{headers:{'x-tussen-key':S._bgKey||''}}).then(function(r){return r.json();}).catch(function(){return{ok:false};});
+  S._beoordelingen=(d&&d.ok&&d.beoordelingen)||[];
+  var perFase={};
+  S._beoordelingen.forEach(function(b){
+    if(!b.risicoklasse)return;
+    perFase[b.fase]=perFase[b.fase]||{};
+    perFase[b.fase][b.risicoklasse]=(perFase[b.fase][b.risicoklasse]||0)+1;
+  });
+  Object.keys(perFase).forEach(function(faseId){
+    var el=document.getElementById('bg-risico-badge-'+faseId);
+    if(!el)return;
+    var hoogste=RISICOKLASSEN.find(function(k){return perFase[faseId][k];});
+    var totaal=Object.keys(perFase[faseId]).reduce(function(a,k){return a+perFase[faseId][k];},0);
+    if(hoogste)el.innerHTML='<span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px;background:'+RISICO_KLEUR[hoogste]+';color:#fff">'+totaal+' bevinding'+(totaal===1?'':'en')+'</span>';
+  });
+}
+
+// Modal: per DD-fase de standaard rode-vlaggen uit het sectorprofiel (FASES[x].redflags) tonen als
+// classificeerbare bevindingen, plus eigen bevindingen kunnen toevoegen. Elke rij is los opslaanbaar
+// (categorie+fase is de unieke sleutel in mna_beoordelingen, zie worker/19-info-fases.js).
+async function toonRisicoModal(faseId){
+  var fase=(FASES||[]).find(function(f){return f.id===faseId;});
+  if(!fase)return;
+  var ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:2000;display:flex;align-items:center;justify-content:center;padding:1.5rem';
+  var mo=document.createElement('div');
+  mo.setAttribute('role','dialog');mo.setAttribute('aria-modal','true');
+  mo.style.cssText='background:var(--panel);border:1px solid var(--border2);border-radius:var(--r2);padding:2rem;max-width:680px;width:100%;max-height:90vh;overflow-y:auto';
+  mo.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.2rem;color:var(--head);font-weight:600;margin-bottom:.4rem">&#128681; Risicobeoordeling &mdash; '+esc(fase.title)+'</div>'
+    +'<div style="font-size:11px;color:var(--muted);margin-bottom:1rem">Alleen zichtbaar voor u &mdash; de verkoper ziet dit niet. Risicoklasse en vervolgactie zijn optioneel; laat leeg als u nog geen oordeel heeft (nooit een gok invullen).</div>'
+    +'<div id="rk-lijst"></div>'
+    +'<div style="border-top:1px solid var(--border);margin-top:1rem;padding-top:1rem">'
+    +'<div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:6px">+ Eigen bevinding toevoegen</div>'
+    +'<div style="display:flex;gap:8px">'
+    +'<input type="text" id="rk-nieuw-cat" placeholder="Korte omschrijving van de bevinding" style="flex:1;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:8px 10px;font-size:12px;color:var(--sub)">'
+    +'<button id="rk-nieuw-toevoegen" class="btn-outline btn-sm" style="font-size:11px">+ Toevoegen</button>'
+    +'</div></div>'
+    +'<div style="display:flex;justify-content:flex-end;margin-top:1.25rem">'
+    +'<button id="rk-sluiten" class="btn-ghost" style="font-size:12px;padding:7px 14px">Sluiten</button>'
+    +'</div>';
+  ov.appendChild(mo);
+  document.body.appendChild(ov);
+  document.getElementById('rk-sluiten').onclick=function(){document.body.removeChild(ov);};
+
+  function rijHtml(categorie,b){
+    b=b||{};
+    var opties=['<option value="">&mdash; geen &mdash;</option>'].concat(RISICOKLASSEN.map(function(k){return '<option value="'+k+'"'+(b.risicoklasse===k?' selected':'')+'>'+k+'</option>';})).join('');
+    var actieOpties=['<option value="">&mdash; geen &mdash;</option>'].concat(MA_ACTIES.map(function(a){return '<option value="'+esc(a)+'"'+(b.ma_actie===a?' selected':'')+'>'+esc(a)+'</option>';})).join('');
+    return '<div class="rk-rij" data-cat="'+esc(categorie)+'" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:10px;margin-bottom:8px">'
+      +'<div style="font-size:12px;color:var(--sub);font-weight:600;margin-bottom:6px">'+esc(categorie)+'</div>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px">'
+      +'<select class="rk-klasse" style="font-size:12px;padding:6px;border-radius:6px;border:1px solid var(--border2);background:var(--panel);color:var(--sub)">'+opties+'</select>'
+      +'<select class="rk-actie" style="font-size:12px;padding:6px;border-radius:6px;border:1px solid var(--border2);background:var(--panel);color:var(--sub)">'+actieOpties+'</select>'
+      +'</div>'
+      +'<textarea class="rk-notitie" placeholder="Toelichting (optioneel)" style="width:100%;min-height:44px;background:var(--panel);border:1px solid var(--border2);border-radius:6px;padding:6px 8px;font-size:12px;color:var(--sub)">'+esc(b.adviseur_notitie||'')+'</textarea>'
+      +'<div style="display:flex;justify-content:flex-end;align-items:center;margin-top:6px">'
+      +'<span class="rk-status" style="font-size:11px;margin-right:8px"></span>'
+      +'<button class="rk-opslaan btn-sm" style="font-size:11px;padding:4px 12px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--sub);cursor:pointer">Opslaan</button>'
+      +'</div></div>';
+  }
+
+  function bindRij(el,categorie){
+    el.querySelector('.rk-opslaan').onclick=async function(){
+      var btn=this,statusEl=el.querySelector('.rk-status');
+      btn.disabled=true;btn.textContent='...';
+      var body={code:S.code,fase:faseId,categorie:categorie,bevinding:'',adviseur_notitie:el.querySelector('.rk-notitie').value,risicoklasse:el.querySelector('.rk-klasse').value||null,ma_actie:el.querySelector('.rk-actie').value||null};
+      var r=await fetch(WORKER+'/mna/beoordeling/opslaan',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||''},body:JSON.stringify(body)}).then(function(x){return x.json();}).catch(function(){return{};});
+      btn.disabled=false;btn.textContent='Opslaan';
+      statusEl.style.color=r.ok?'var(--teal)':'var(--red)';
+      statusEl.textContent=r.ok?'Opgeslagen':(r.error||'Mislukt');
+      if(r.ok)laadRisicoBadges();
+    };
+  }
+
+  function render(){
+    var lijstEl=document.getElementById('rk-lijst');
+    var bestaand=(S._beoordelingen||[]).filter(function(b){return b.fase===faseId;});
+    var html='';
+    (fase.redflags||[]).forEach(function(cat){
+      var b=bestaand.find(function(x){return x.categorie===cat;});
+      html+=rijHtml(cat,b);
+    });
+    bestaand.filter(function(b){return (fase.redflags||[]).indexOf(b.categorie)===-1;}).forEach(function(b){
+      html+=rijHtml(b.categorie,b);
+    });
+    lijstEl.innerHTML=html||'<div style="font-size:12px;color:var(--muted);font-style:italic">Geen standaard aandachtspunten voor deze fase.</div>';
+    lijstEl.querySelectorAll('.rk-rij').forEach(function(el){bindRij(el,el.dataset.cat);});
+  }
+  render();
+
+  document.getElementById('rk-nieuw-toevoegen').onclick=function(){
+    var inp=document.getElementById('rk-nieuw-cat');
+    var cat=inp.value.trim();
+    if(!cat)return;
+    inp.value='';
+    var lijstEl=document.getElementById('rk-lijst');
+    var wrap=document.createElement('div');
+    wrap.innerHTML=rijHtml(cat,null);
+    var el=wrap.firstChild;
+    lijstEl.appendChild(el);
+    bindRij(el,cat);
+  };
+}
+
 // Opent het dossier op een specifieke fase (het gewone invulscherm, S.screen='main') — de begeleider-
 // dashboard hierboven toonde de DD-voortgang tot 18 aug 2026 alleen read-only, zonder enige knop naar
 // dit scherm. Daardoor waren documentupload, bankmutaties-upload en de red-flag-analyse (allemaal wél
@@ -568,7 +680,9 @@ function renderBegeleiderDashboard(app){
       +'<span style="font-size:13px;font-weight:500;color:var(--head)">'+faseLabels[faseId]+'</span>'
       +'<div style="display:flex;align-items:center;gap:10px">'
       +'<span style="font-size:11px;font-weight:600;color:'+kleur+'">'+items.length+' velden ingevuld</span>'
+      +'<span id="bg-risico-badge-'+faseId+'"></span>'
       +'<button class="btn-outline btn-sm" style="font-size:10px;padding:2px 8px" onclick="event.stopPropagation();openBegeleiderFase(\''+faseId+'\')">&#128065; Openen</button>'
+      +'<button class="btn-outline btn-sm" style="font-size:10px;padding:2px 8px;border-color:var(--gold);color:var(--gold)" onclick="event.stopPropagation();toonRisicoModal(\''+faseId+'\')">&#128681; Risico</button>'
       +'<span style="font-size:12px;color:var(--muted)">&#9660;</span>'
       +'</div></div>'
       +'<div class="bg-fase-body" data-fase="'+faseId+'" style="display:none;padding:12px 14px">';
@@ -596,6 +710,8 @@ function renderBegeleiderDashboard(app){
     +'</div>';
 
   app.innerHTML=html;
+
+  laadRisicoBadges();
 
   // Fase accordeon
   app.querySelectorAll('.bg-fase-hdr').forEach(function(hdr){
