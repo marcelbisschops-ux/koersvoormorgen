@@ -1707,7 +1707,8 @@ function bindAll(){
         var datum=new Date().toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'});
         var t3=S.traject;
         var isSell=(t3.opdrachtgever_rol==='koper')?false:(!t3.traject_type||t3.traject_type==='Verkoop'||t3.traject_type==='Opvolging');
-        var tplType=type==='bem'?(isSell?'bem_verk':'bem_koper'):type;
+        var isOpvolging=t3.traject_type==='Opvolging';
+        var tplType=type==='bem'?(isOpvolging?'bem_opvolging':(isSell?'bem_verk':'bem_koper')):type;
         var tplR=await fetch(WORKER+'/mna/template/'+tplType+'?email='+encodeURIComponent(t3.begeleider_email||'')+'&code='+encodeURIComponent(S.code)).catch(function(){return{json:function(){return{ok:false};}};});
         var tplD=await tplR.json().catch(function(){return{ok:false};});
         var prompt='';
@@ -1716,7 +1717,7 @@ function bindAll(){
         }else if(type==='loi'){
           prompt='Vul de LoI template in voor trajecttype: '+(t3.traject_type||'Verkoop')+'. Partij 1: '+esc(t3.kantoor_naam||'[verkoper]')+'. Partij 2: '+esc(t3.koper_naam||'[koper]')+' ('+(t3.koper_rechtsvorm||'')+'), '+(t3.koper_adres||'')+'. Datum: '+datum+'. Adviseur: '+(t3.begeleider_naam||'' + BRAND.bedrijf + '')+'.\n\nTEMPLATE:\n'+(tplD.ok&&tplD.tekst?tplD.tekst:'[standaard LoI template]');
         }else{
-          prompt='Vul de Bemiddelingsovereenkomst template in. Type: '+(isSell?'Verkoop':'Aankoop')+'. Opdrachtgever: '+esc(isSell?t3.kantoor_naam:t3.koper_naam||'[koper]')+'. Datum: '+datum+'. Begeleider/Adviseur: '+(t3.begeleider_naam||'' + BRAND.bedrijf + '')+'.\n\nTEMPLATE:\n'+(tplD.ok&&tplD.tekst?tplD.tekst:'[standaard BEM template]');
+          prompt='Vul de Bemiddelingsovereenkomst template in. Type: '+(isOpvolging?'Bedrijfsopvolging':(isSell?'Verkoop':'Aankoop'))+'. Opdrachtgever: '+esc(isSell?t3.kantoor_naam:t3.koper_naam||'[koper]')+'. Datum: '+datum+'. Begeleider/Adviseur: '+(t3.begeleider_naam||'' + BRAND.bedrijf + '')+'.\n\nTEMPLATE:\n'+(tplD.ok&&tplD.tekst?tplD.tekst:'[standaard BEM template]');
         }
         var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:8000})});
         var rd=await resp.json();
