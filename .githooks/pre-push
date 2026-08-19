@@ -36,3 +36,11 @@ if ! npx playwright test; then
 fi
 
 echo "✓ Audit en testsuite groen — push gaat door."
+
+# Best-effort melding aan het veiligheidsdashboard (marilyn.html → Veiligheid) dat de statische
+# audit hier zojuist groen was — blokkeert de push nooit, faalt stil zonder ADMIN_KEY (20 aug 2026).
+if [ -n "${ADMIN_KEY:-}" ]; then
+  curl -s -m 5 -X POST -H "Content-Type: application/json" -H "x-admin-key: ${ADMIN_KEY}" \
+    "https://kantoorinzicht.marcel-bisschops.workers.dev/mna/admin/veiligheid/statische-audit" \
+    -d '{"repo":"frontend","checks_totaal":7,"checks_geslaagd":7}' >/dev/null 2>&1 || true
+fi

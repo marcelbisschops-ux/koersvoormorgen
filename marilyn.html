@@ -3577,16 +3577,44 @@ async function renderVeiligheidTab(el) {
       var gefixt = (bv.bevindingen || []).filter(function(b){ return b.status !== 'open'; }).slice(0, 15);
       var laatsteRun = ov.laatste_selfcheck;
       var laatsteRunTekst = laatsteRun ? (new Date(laatsteRun.ran_at).toLocaleString('nl-NL', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) + ' — ' + laatsteRun.checks_geslaagd + '/' + laatsteRun.checks_totaal + ' geslaagd') : 'Nog nooit gedraaid';
+      function pushBadge(naam, run) {
+        if (!run) return '<div style="font-size:11px;color:var(--muted)">' + naam + ': nog geen push gemeld</div>';
+        var groen = run.checks_geslaagd === run.checks_totaal;
+        var kleur = groen ? 'var(--teal)' : 'var(--red)';
+        return '<div style="font-size:11px;color:var(--mid)">' + naam + ': <span style="color:' + kleur + ';font-weight:600">' + run.checks_geslaagd + '/' + run.checks_totaal + '</span> — ' + new Date(run.ran_at).toLocaleString('nl-NL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) + '</div>';
+      }
 
-      var html = '<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:1.25rem">&#128737; Veiligheid — cross-path-informatielekaudit</div>'
-        + '<div style="display:flex;gap:2rem;flex-wrap:wrap;align-items:flex-start;background:var(--card);border:1px solid var(--border);border-radius:var(--r2);padding:1.5rem;margin-bottom:1.5rem">'
-        + '<div style="flex:0 0 230px">' + veiligheidGauge(ov.gauges.dagelijkse_check_score, 'Dagelijkse automatische check', laatsteRunTekst) + '</div>'
-        + '<div style="flex:0 0 230px">' + veiligheidGauge(ov.gauges.bevindingen_score, 'Open bevindingen', ov.open_totaal + ' open (' + ov.open_kritiek_hoog + ' kritiek/hoog) · ' + ov.gefixt_totaal + ' gefixt') + '</div>'
-        + '<div style="flex:1;min-width:220px;display:flex;flex-direction:column;justify-content:center;gap:.75rem;padding-top:.5rem">'
-        + '<div style="font-size:12px;color:var(--mid);line-height:1.6">De dagelijkse check hertest elke nacht automatisch, in productie, de kern-beveiligingsinvarianten (koper-categorie-intrekking, muur tegen externe adviseurs, existence-oracles). Elke gefaalde check schrijft direct een nieuwe, kritieke bevinding hieronder en mailt een waarschuwing.</div>'
-        + '<button class="btn" id="btn-veiligheid-nu" style="font-size:12px;padding:8px 16px;align-self:flex-start">&#8635; Draai selfcheck nu</button>'
+      var html = '<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.4rem">&#128737; Veiligheid</div>'
+        + '<div style="font-size:12px;color:var(--muted);margin-bottom:1.25rem;max-width:720px;line-height:1.6">Drie bewust gescheiden lagen — een groene "continue check" hierboven betekent nooit "het hele platform is veilig", alleen dat de daar getoetste punten kloppen. Voor de brede, redenerende beoordeling (architectuur, waardering, AI-kwaliteit, compliance) blijft de periodieke diepe audit leidend.</div>'
+
+        + '<div class="table-wrap" style="margin-bottom:1.25rem"><div class="table-hdr"><div class="table-title">1. Continue geautomatiseerde checks</div></div>'
+        + '<div style="padding:1.25rem;display:flex;gap:2rem;flex-wrap:wrap;align-items:flex-start">'
+        + '<div style="flex:0 0 230px">' + veiligheidGauge(ov.gauges.dagelijkse_check_score, 'Nachtelijke gedragschecks', laatsteRunTekst) + '</div>'
+        + '<div style="flex:1;min-width:260px;display:flex;flex-direction:column;justify-content:center;gap:.6rem;padding-top:.5rem">'
+        + '<div style="font-size:12px;color:var(--mid);line-height:1.6">Elke nacht, live in productie: admin-endpoints weigeren zonder key, security-headers aanwezig, een SQL-injectie-achtige payload geeft geen crash/data, plus de cross-path-invarianten (koper-categorie-intrekking, muur tegen externe adviseurs, existence-oracles). Een gefaalde check schrijft direct een kritieke bevinding + waarschuwingsmail.</div>'
+        + '<div style="display:flex;flex-direction:column;gap:2px;margin-top:4px;padding-top:8px;border-top:1px solid var(--border)">'
+        + '<div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:2px">Statische code-audit (bij elke push, git-hook)</div>'
+        + pushBadge('Frontend-repo', ov.statische_audit && ov.statische_audit.frontend)
+        + pushBadge('Backend-repo', ov.statische_audit && ov.statische_audit.backend)
         + '</div>'
-        + '</div>';
+        + '<button class="btn" id="btn-veiligheid-nu" style="font-size:12px;padding:8px 16px;align-self:flex-start;margin-top:6px">&#8635; Draai nachtelijke check nu</button>'
+        + '</div>'
+        + '</div></div>'
+
+        + '<div class="table-wrap" style="margin-bottom:1.25rem"><div class="table-hdr"><div class="table-title">2. Open bevindingen (uit alle bronnen)</div></div>'
+        + '<div style="padding:1.25rem">' + veiligheidGauge(ov.gauges.bevindingen_score, 'Open bevindingen', ov.open_totaal + ' open (' + ov.open_kritiek_hoog + ' kritiek/hoog) · ' + ov.gefixt_totaal + ' gefixt') + '</div>'
+        + '</div>'
+
+        + '<div class="table-wrap" style="margin-bottom:1.5rem"><div class="table-hdr"><div class="table-title">3. Laatste periodieke diepe audit</div></div>'
+        + '<div style="padding:1.25rem">'
+        + (ov.diepe_audit
+            ? '<div style="display:flex;gap:1.5rem;align-items:flex-start;flex-wrap:wrap">'
+              + '<div style="flex:0 0 230px">' + veiligheidGauge(ov.diepe_audit.score, 'Diepe audit-score', new Date(ov.diepe_audit.datum).toLocaleDateString('nl-NL')) + '</div>'
+              + '<div style="flex:1;min-width:260px;font-size:12px;color:var(--mid);line-height:1.6"><strong>' + esc(ov.diepe_audit.bron) + '</strong><br>' + esc(ov.diepe_audit.samenvatting) + '</div>'
+              + '</div>'
+            : '<div class="empty">Nog geen diepe audit gelogd.</div>')
+        + '<div style="font-size:11px;color:var(--muted);margin-top:1rem">Redenerende, brede beoordeling (architectuur/waardering/AI-kwaliteit/compliance) — kan niet automatisch draaien zonder forse AI-kosten en kwaliteitsverlies, dus handmatig gelogd na elke <code>AUDIT-STANDAARD.md</code>-ronde of <code>/code-review ultra</code>-run.</div>'
+        + '</div></div>';
 
       html += '<div class="table-wrap" style="margin-bottom:1.5rem"><div class="table-hdr"><div class="table-title">Open bevindingen (' + open.length + ')</div></div>';
       if (!open.length) {
