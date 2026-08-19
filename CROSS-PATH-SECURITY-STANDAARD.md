@@ -317,10 +317,17 @@ introduceert (nieuwe endpoint, nieuwe AI-functie, nieuwe export/notificatie), v�
   Alle wijzigingen gedeployed naar productie en gepusht (beide repo's, commits `28470d3`/`f6275e2`
   in het backend-repo, `1d00ba0`/`24f2768` in dit repo).
 
-  **Openstaand**: F9 en F12 vereisen een productbeslissing van Marcel (verwijderen vs. autoriseren;
-  architectuurrichting voor nieuwe AI-features) — bewust niet zelfstandig ingevuld, conform de
-  GOUDEN STANDAARD ("nooit gokken"). F11's legacy-wees-bijlagen (vóór de fix) zijn niet met
-  terugwerkende kracht opgeruimd.
+  F11's legacy-wees-bijlagen (vóór de fix) zijn niet met terugwerkende kracht opgeruimd.
+
+  **Zelfde dag, F9 en F12 door Marcel besloten (13/13 nu afgehandeld):**
+  - **F9 — gefixt**: de 6 dode `/mna/groep/*`-routes (nooit door enige frontend aangeroepen, nul
+    groepen in productie) zijn verwijderd, inclusief de CREATE TABLE-definities en de
+    cascade-DELETE ernaar. Backend-commit `90ff513`.
+  - **F12 — bewust vastgelegd als richtlijn, geen codewijziging**: de generieke `/ai`-proxy blijft
+    ongewijzigd (in gebruik voor de scan-tool op index.html/kantoorscan.html, leest zelf niets uit
+    de database — geen actief lek). Vastgelegde regel: elke nieuwe traject-gebonden AI-feature
+    krijgt een eigen, code-geauthenticeerde route (zoals `/mna/risicoraamwerk/genereer`), nooit de
+    generieke `/ai`-proxy.
 
   **Zelfde dag, aanvulling — veiligheidsdashboard (marilyn.html):** de F1-F13-historie is
   gestructureerd vastgelegd in een nieuwe D1-tabel (`security_audit_log`, backend-commit
