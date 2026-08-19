@@ -321,3 +321,16 @@ introduceert (nieuwe endpoint, nieuwe AI-functie, nieuwe export/notificatie), v�
   architectuurrichting voor nieuwe AI-features) — bewust niet zelfstandig ingevuld, conform de
   GOUDEN STANDAARD ("nooit gokken"). F11's legacy-wees-bijlagen (vóór de fix) zijn niet met
   terugwerkende kracht opgeruimd.
+
+  **Zelfde dag, aanvulling — veiligheidsdashboard (marilyn.html):** de F1-F13-historie is
+  gestructureerd vastgelegd in een nieuwe D1-tabel (`security_audit_log`, backend-commit
+  `bb90abb`) en zichtbaar gemaakt via een nieuw "Veiligheid"-tabblad in marilyn.html
+  (frontend-commit `6086d57`) — twee gauges (rood/oranje/groen), open bevindingen met "markeer
+  opgelost", en een lijst recent gefixte bevindingen. Dit dient tevens als het door Marcel
+  gevraagde bewijsvoerings-overzicht (expliciet doel: aantoonbaar maken dat veiligheid structureel
+  prioriteit #1 is, o.a. relevant bij een eventueel juridisch geschil). Daarnaast draait er nu een
+  **dagelijkse geautomatiseerde selfcheck** (aangehaakt op de bestaande nachtelijke cron in
+  `scheduled()`) die in productie een eigen, zichzelf opruimend testtraject aanmaakt en de
+  kern-invarianten van F3/F6/F8/F10/F13 live hertest — bij een gefaalde check ontstaat automatisch
+  een nieuwe, kritieke bevinding + een waarschuwingsmail, zodat een toekomstige regressie niet stil
+  kan sluipen tussen twee handmatige audits in.
