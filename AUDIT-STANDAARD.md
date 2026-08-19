@@ -345,8 +345,23 @@ alleen één van beide behandelt telt niet als volledig.
    trajecten): cross-traject-poging nu 403, eigen-traject-toegang blijft 200.
 9. Waardering-configuratiewijziging niet atomair (`worker/21-waarderingsmodel.js:205-253`) — een
    mislukte tweede schrijfactie bij het goedkeuren van een basisconfig-wijziging wordt niet
-   herkend; het voorstel wordt hoe dan ook op "goedgekeurd" gezet. **Open, nog niet gefixt** —
-   gevonden tijdens de zesde heraudit (19 augustus 2026), zie het volledige rapport.
+   herkend; het voorstel wordt hoe dan ook op "goedgekeurd" gezet. **Gefixt (19 augustus 2026)**:
+   UPDATE+INSERT nu in `env.DB.batch()`, JSON.parse in try/catch, voorstel blijft op "voorgesteld"
+   bij een mislukte write. Positieve pad geverifieerd via volledige testsuite (geen regressie);
+   het faal-pad zelf (D1-write die daadwerkelijk mislukt) is niet los reproduceerbaar getest —
+   correctheid steunt op codereview + de D1 batch()-documentatie (atomair per definitie).
+
+**Alle P2's uit de zesde heraudit (19 augustus 2026) gefixt, staging+productie getest:**
+`--muted`-contrasttoken (WCAG AA, 481 toepassingen), hardcoded closing-checklist-kleur die in
+donkere modus brak, inconsistente e-mail-escaping (nieuwe gedeelde `escHtml()`-helper, 6
+bestanden), persistente logging (Cloudflare Workers Logs ingeschakeld), rate-limiting-gaten
+(`/gebruikers/login` + AI-kosten-endpoints buiten `/ai`), geen centrale foutafhandeling in
+`fetch()`, "Juridische documenten"-toggle niet toetsenbord-bedienbaar, geen focus-trap/-return op
+de ~32 modals. Volledige testsuite (53 API + 9 UI + 7 consistentie) groen na alle wijzigingen. Eén
+kanttekening: de nieuwe login-rate-limiter is logisch geverifieerd (losstaande unit-test, 11e
+poging correct geblokkeerd) maar niet end-to-end tegen productie reproduceerbaar — bevestigt de
+al bekende, gedocumenteerde beperking dat de in-memory rate limiter per-isolate werkt, niet
+edge-breed gedeeld (zelfde beperking als de bestaande admin-limiter, zie P3 hieronder).
 
 - **25 juli 2026 (zelfde dag, afwerkronde)** — op verzoek van Marcel ("alles moet afgewerkt
   worden, vraag niet of je door moet gaan") alle P1- en P2-bevindingen uit de drie audit-rondes
