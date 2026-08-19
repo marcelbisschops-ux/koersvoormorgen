@@ -643,6 +643,16 @@ function renderMain(){
     +'<button class="btn-ghost btn-sm" onclick="window.print()">PDF</button>'
     +'</div></div>'
     +lockedBanner
+    // Juridische documenten (19 aug 2026, op verzoek Marcel: NDA/LoI/etc. waren voor verkoper/koper
+    // alleen zichtbaar op het openingsscherm (renderCover, S.screen='cover'), dat na de eerste keer
+    // inloggen niet meer bezocht wordt — dus feitelijk onvindbaar tijdens het reguliere invullen.
+    // laadPartijDocs() bestond al (met rolfilter + Signhost-status + dataroom-koppeling) en wordt nu
+    // ook hier aangeroepen, zelfde #partij-docs-sectie-element, geen nieuwe logica.
+    +((isVerkoper()||isKoper())?('<div class="panel" id="pd-panel" style="margin-bottom:1rem;padding:0">'
+      +'<div id="pd-toggle-hdr" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;padding:.75rem 1rem">'
+      +'<span style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">&#128196; Juridische documenten</span>'
+      +'<span id="pd-chevron" style="font-size:12px;color:var(--muted)">&#9650;</span>'
+      +'</div><div id="pd-body" style="display:block;padding:0 1rem 1rem"><div id="partij-docs-sectie">Laden...</div></div></div>'):'')
     +'<div style="font-family:Playfair Display,serif;font-size:1.4rem;color:var(--head);font-weight:600;margin-bottom:.25rem">'+esc(S.traject&&S.traject.kantoor_naam||'')+'</div>'
     +'<div style="font-size:13px;color:var(--muted);margin-bottom:1rem">Verplichte velden ingevuld: <span style="font-family:IBM Plex Mono,monospace;font-weight:600;color:'+(tp===100?'var(--teal)':tp>50?'var(--gold)':'var(--red)')+'">'+tp+'%</span><span style="font-size:11px;color:var(--muted);margin-left:6px">(alle 7 fases)</span></div>'
     +'<div class="prog-bar"><div class="prog-fill" style="width:'+tp+'%;background:'+(tp===100?'var(--teal)':tp>50?'var(--gold)':'var(--red)')+'"></div></div>'
@@ -1882,6 +1892,19 @@ function bindAll(){
         document.getElementById('ai-sluit').onclick=function(){document.body.removeChild(ov);};
       }catch(e){toast('Fout bij AI-analyse: '+e.message,'err');}
       btn.disabled=false;btn.innerHTML='&#9881; AI-analyse';
+    };
+  }
+
+  // Juridische-documenten-paneel op het hoofdscherm (zie renderMain hierboven) — inklapbaar, zelfde
+  // patroon als andere collapsible panelen in dit platform.
+  var pdHdr=ge('pd-toggle-hdr');
+  if(pdHdr){
+    pdHdr.onclick=function(){
+      var body=ge('pd-body'),chevron=ge('pd-chevron');
+      if(!body)return;
+      var open=body.style.display!=='none';
+      body.style.display=open?'none':'block';
+      if(chevron)chevron.innerHTML=open?'&#9660;':'&#9650;';
     };
   }
 
