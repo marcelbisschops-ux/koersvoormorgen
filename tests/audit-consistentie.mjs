@@ -147,6 +147,21 @@ if (!backendFiles.length) {
 // "(intern)" maar werden toch aan de koper-rol getoond omdat de if-conditie alleen op
 // !isVerkoper() checkte in plaats van ook koper uit te sluiten.)
 log('4. "Intern" gelabelde UI-blokken vs. koper-afscherming (mna/*.js)');
+// Handmatig nagelopen — bewaakt niet via een lokale '!isKoper()'-conditie (wat deze heuristiek
+// zoekt) maar op een andere, evengoed sluitende manier. Nieuwe regels horen hier NIET automatisch
+// bij te komen — eerst zelf de bewakende conditie vinden en bevestigen, dán pas toevoegen.
+const GEVERIFIEERD_VEILIG_CHECK4 = new Set([
+  // 19-08-2026: risicoraamwerk-knop staat alleen in renderBegeleiderDashboard(), dat zelf alleen
+  // bereikt wordt via S.screen='begeleider' — en dát wordt uitsluitend gezet binnen if(isTussen())
+  // in mna/06-schermen.js (zie de login-flow). Structurele scheiding op scherm-niveau, dus geen
+  // lokale !isKoper()-check nodig. Backend dubbelt dit bovendien af: /mna/risicoraamwerk/genereer
+  // en de GET-variant zijn begeleiderAuth-only (zie tests/audit-consistentie.mjs check 5).
+  'mna/04-begeleider-dashboard.js:1834',
+  // 19-08-2026: handleiding-tekst (documentatiestring in mna/08-handleiding.js), geen
+  // autorisatie-relevante UI-code — de heuristiek matcht hier puur op het woord "interne" in de
+  // uitlegtekst zelf, niet op een daadwerkelijk conditioneel getoond blok.
+  'mna/08-handleiding.js:60',
+]);
 const internIssues = [];
 mnaFiles.forEach(file => {
   const src = fs.readFileSync(path.join(ROOT, file), 'utf8');
@@ -154,6 +169,7 @@ mnaFiles.forEach(file => {
   lines.forEach((line, idx) => {
     if (/<option value=/.test(line)) return; // dropdown-configuratie, geen getoond contentblok
     if (!/\(intern\)|Intern[e]?\s+(notitie|analyse|advies|instrument)/i.test(line)) return;
+    if (GEVERIFIEERD_VEILIG_CHECK4.has(file + ':' + (idx + 1))) return;
     // Bepaal de omvattende functie (terugzoeken naar 'function naam(' als grens) en check of
     // ÉRGENS daarbinnen, vóór dit label, een '!isKoper()'-conditie voorkomt. Niet de dichtstbijzijnde
     // if(...) nemen — nabijgelegen, ongerelateerde if's (bv. een forEach met een eigen if) geven dan
@@ -167,6 +183,7 @@ mnaFiles.forEach(file => {
     if (!gevonden) internIssues.push({ file, line: idx + 1, text: line.trim().slice(0, 100) });
   });
 });
+if (GEVERIFIEERD_VEILIG_CHECK4.size) ok(GEVERIFIEERD_VEILIG_CHECK4.size + ' eerder handmatig geverifieerd en veilig bevonden: ' + [...GEVERIFIEERD_VEILIG_CHECK4].join(', '));
 if (!internIssues.length) ok('Alle "(intern)"-gelabelde blokken staan achter een conditie die koper expliciet uitsluit.');
 else internIssues.forEach(i => warn(i.file + ':' + i.line + ' — label "intern" gevonden, geen nabije "!isKoper()"-conditie herkend — controleer handmatig\n      ' + i.text));
 
