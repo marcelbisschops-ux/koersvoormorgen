@@ -1548,6 +1548,15 @@ function _autoFillFromExtractionBody(faseId, velden, forceOverwrite, docNaam) {
     setIfEmpty('juridisch_vastgoed',velden.vastgoed_omschrijving);
     setIfEmpty('strategisch_risicoFactoren',velden.risicofactoren);
     setIfEmpty('strategisch_dealStructuur',velden.deal_structuur_voorkeur);
+    // Aanvulling na de eerste live-test van het mkb-testpakket (20 aug 2026, 3 trajecten,
+    // 93-94/97 velden automatisch gevuld): deze 3 velden bleven bij alle 3 testcases leeg omdat
+    // de hergebruikte accountancy-sleutel (partnerovereenkomsten/tuchtzaken/aantal_klanten) een
+    // ander begrip dekt dan het mkb-veld — de AI vulde deze dan ook terecht niet in i.p.v. te
+    // gokken. Dedicated mkb-sleutels toegevoegd (zie backend SECTOR_EXTRACTIE_EXTRA.mkb), als
+    // fallback zodat bestaand gedrag voor andere sectoren ongewijzigd blijft.
+    setIfEmpty('partner_pContract',velden.arbeidscontracten_status);
+    setIfEmpty('compliance_tuchtzaken',velden.lopende_juridische_procedures);
+    setIfEmpty('commercieel_aantalKlanten',velden.aantal_klanten_mkb);
     // Zorg
     setIfEmpty('financieel_zorgverzekeraars',velden.omzet_per_financieringsstroom);
     setIfEmpty('financieel_bezettingsgraad',velden.bezettingsgraad_pct);
