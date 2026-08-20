@@ -1493,6 +1493,61 @@ function _autoFillFromExtractionBody(faseId, velden, forceOverwrite, docNaam) {
     setIfEmpty('commercieel_top10Leveranciers',velden.top10_leveranciers_pct);
     setIfEmpty('commercieel_locaties',velden.aantal_locaties);
     setIfEmpty('it_ecommerce',velden.ecommerce_platform);
+    // MKB — 20 augustus 2026: de 3 sleutels hierboven bestonden al in het AI-schema maar hadden
+    // geen setIfEmpty-regel (dode koppeling — AI werd gevraagd het te extraheren, resultaat werd
+    // nergens opgeslagen), plus ~41 nieuwe sleutels voor velden die eerder helemaal geen
+    // extractiepad hadden. Zie backend worker/02-config-constanten.js SECTOR_EXTRACTIE_EXTRA.mkb
+    // voor de bijbehorende AI-schemasleutels. Gevonden tijdens het bouwen van het mkb-testpakket
+    // (Testdocumenten-standaard, CLAUDE.md) — was daarvoor onopgemerkt (geen effect op bestaande
+    // klanttrajecten, alleen extra velden bleven leeg die nu wél gevuld kunnen worden).
+    setIfEmpty('commercieel_seizoen',velden.seizoensgevoeligheid);
+    setIfEmpty('partner_eigenaarAfhank',velden.eigenaar_afhankelijkheid);
+    setIfEmpty('partner_sleutelpersonen',velden.sleutelpersonen_risico);
+    setIfEmpty('strategisch_groeipotentieel',velden.groeimogelijkheden);
+    setIfEmpty('compliance_vergunningen',velden.bedrijfsvergunningen);
+    setIfEmpty('compliance_huurOverdraagbaar',velden.huur_overdraagbaar);
+    setIfEmpty('financieel_normalisatie',velden.normalisaties_omschrijving);
+    setIfEmpty('financieel_orderportefeuille',velden.orderportefeuille_pipeline);
+    setIfEmpty('commercieel_orderPortefeuille',velden.orderportefeuille_pipeline);
+    setIfEmpty('financieel_forecast',cleanGetal(velden.omzetforecast));
+    setIfEmpty('financieel_voorraadomzet',velden.voorraadomzetsnelheid);
+    setIfEmpty('financieel_crediteuren',cleanGetal(velden.crediteuren));
+    setIfEmpty('financieel_nwcAnalyse',velden.nwc_analyse);
+    setIfEmpty('financieel_capexHistorie',velden.capex_historie);
+    setIfEmpty('financieel_eigVermoeden',cleanGetal(velden.eigen_vermogen));
+    setIfEmpty('financieel_resultaat',cleanGetal(velden.nettoresultaat_na_belasting));
+    setIfEmpty('financieel_balansTotaal',cleanGetal(velden.balanstotaal));
+    setIfEmpty('financieel_liquideMiddelen',cleanGetal(velden.liquide_middelen));
+    setIfEmpty('financieel_kortlopendeSchulden',cleanGetal(velden.kortlopende_schulden));
+    setIfEmpty('financieel_langlopendeSchulden',cleanGetal(velden.langlopende_schulden));
+    setIfEmpty('financieel_rentelasten',cleanGetal(velden.rentelasten));
+    setIfEmpty('financieel_aflossingVerplicht',cleanGetal(velden.aflossingsverplichting));
+    setIfEmpty('financieel_kostenInkoop',velden.kosten_inkoop_pct);
+    setIfEmpty('commercieel_online',velden.online_omzet_pct);
+    setIfEmpty('commercieel_omzetPerKlant',cleanGetal(velden.omzet_per_klant));
+    setIfEmpty('commercieel_productmix',velden.productmix);
+    setIfEmpty('commercieel_leveranciersAfhank',velden.leveranciers_afhankelijkheid);
+    setIfEmpty('commercieel_marktaandeel',velden.marktaandeel);
+    setIfEmpty('commercieel_schaalbaarheid',velden.schaalbaarheid_operationeel);
+    setIfEmpty('strategisch_schaalbaarheid',velden.schaalbaarheid_operationeel);
+    setIfEmpty('partner_organogram',velden.organogram_structuur);
+    setIfEmpty('partner_parttime',velden.parttime_pct);
+    setIfEmpty('partner_cao',velden.cao_van_toepassing);
+    setIfEmpty('partner_vakkennis',velden.specifieke_vakkennis);
+    setIfEmpty('partner_pensioenReg',velden.pensioenregeling);
+    setIfEmpty('compliance_certificeringen',velden.kwaliteitscertificaten);
+    setIfEmpty('compliance_nvwa',velden.nvwa_status);
+    setIfEmpty('compliance_haccpKeuken',velden.haccp_voedselveiligheid);
+    setIfEmpty('compliance_milieu',velden.milieuvergunning);
+    setIfEmpty('compliance_ip',velden.intellectueel_eigendom);
+    setIfEmpty('it_licentiesOverdraagbaar',velden.licenties_overdraagbaar);
+    setIfEmpty('it_avg',velden.avg_compliance_status);
+    setIfEmpty('juridisch_leveranciers',velden.leverancierscontracten);
+    setIfEmpty('juridisch_changeControl',velden.change_of_control_clausules);
+    setIfEmpty('juridisch_taxDD',velden.tax_dd_omschrijving);
+    setIfEmpty('juridisch_vastgoed',velden.vastgoed_omschrijving);
+    setIfEmpty('strategisch_risicoFactoren',velden.risicofactoren);
+    setIfEmpty('strategisch_dealStructuur',velden.deal_structuur_voorkeur);
     // Zorg
     setIfEmpty('financieel_zorgverzekeraars',velden.omzet_per_financieringsstroom);
     setIfEmpty('financieel_bezettingsgraad',velden.bezettingsgraad_pct);
