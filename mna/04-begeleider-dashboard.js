@@ -695,8 +695,12 @@ function renderBegeleiderDashboard(app){
       // ── Documenten (open per default — hoofdactie van dit scherm) ──
       html+='<div class="panel" style="margin-bottom:.75rem;padding:0">'+secHdr('docs','&#128196; Documenten &mdash; flow')
         +'<div class="bg-sec-body" data-sec="docs" style="display:block;padding:.25rem 1rem 0">'
-        +stapRij('bg-nda-actie','&#128274;','#7c5cbf','Geheimhoudingsovereenkomst (NDA)',getekendStatus('nda_getekend','nda_getekend_datum'))
+        // Volgorde volgt de daadwerkelijke dealstroom (Marcel, 21 aug 2026): BEM is het mandaat
+        // tussen begeleider en opdrachtgever (Fase 0 in de eigen BEM-sjablonen, worker/02-config-
+        // constanten.js) — wordt getekend vóórdat er met de tegenpartij iets gebeurt, dus hoort vóór
+        // de NDA (die juist tússen verkoper/koper geldt zodra vertrouwelijke info wordt gedeeld).
         +stapRij('bg-bem-actie','&#128203;','#2a5ea0','Bemiddelingsovereenkomst (BEM)',getekendStatus('bem_getekend','bem_datum'))
+        +stapRij('bg-nda-actie','&#128274;','#7c5cbf','Geheimhoudingsovereenkomst (NDA)',getekendStatus('nda_getekend','nda_getekend_datum'))
         +stapRij('bg-bieding-actie','&#128233;','#a0522d','Indicatieve bieding','Klaar om te versturen')
         +stapRij('bg-loi-actie','&#128196;','var(--gold)','Intentieverklaring (LoI)',getekendStatus('loi_getekend','loi_getekend_datum'))
         +stapRij('bg-excl-actie','&#128221;','#1a7a5e','Exclusiviteitsovereenkomst',getekendStatus('excl_getekend','excl_datum'))
