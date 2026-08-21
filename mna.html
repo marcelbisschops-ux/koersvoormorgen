@@ -85,7 +85,7 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--s
 /* Fase grid */
 .fase-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:1.5rem}
 @media(max-width:680px){.fase-grid{grid-template-columns:repeat(2,1fr)}}
-.fase-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:.9rem;cursor:pointer;transition:all .15s}
+.fase-card{position:relative;background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:.9rem;cursor:pointer;transition:all .15s}
 .fase-card:hover,.fase-card.active{border-color:var(--teal);box-shadow:0 0 0 2px var(--teal-bg)}
 .fase-num{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);margin-bottom:.2rem}
 .fase-name{font-size:12px;font-weight:600;color:var(--head);margin-bottom:.35rem;line-height:1.3}
