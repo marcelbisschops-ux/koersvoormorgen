@@ -186,8 +186,10 @@ async function toonDocWaarschuwing(docType, onDoorgaan) {
     if (heeftNda) waarschuwingen.push('Er is al een NDA aangemaakt.');
   }
   if (docType === 'loi') {
+    // Geen heeftExcl-eis hier: in de daadwerkelijke dealstroom (zie stapRij-volgorde in
+    // mna/04-begeleider-dashboard.js) komt de Exclusiviteitsovereenkomst ná de LoI, niet ervoor —
+    // die eis blokkeerde de LoI dus altijd (bug, ongedocumenteerde commit, gevonden 21 aug 2026).
     if (!heeftNda) { waarschuwingen.push('⚠ De NDA is nog niet aangemaakt.'); geblokkeerd = true; }
-    if (!heeftExcl) { waarschuwingen.push('⚠ De Exclusiviteitsbrief is nog niet aangemaakt.'); geblokkeerd = true; }
     if (heeftLoi) waarschuwingen.push('Er is al een LoI aangemaakt.');
   }
   // Alleen een waarschuwing, geen blokkade (Marcel, 19 aug 2026, expliciete keuze): een dealvoorstel
