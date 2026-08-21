@@ -504,7 +504,13 @@ function dvTabelCijferoverzicht(){
     ['Genormaliseerde EBITDA',dvVeldGeld('financieel_ebitdaNorm')],
     ['Normalisatie eenmalige posten',dvVeldGeld('financieel_normalisatie')],
     ['Recurring omzet',dvVeldPct('financieel_recurring')],
-    ['Partnerbeloning per jaar',dvVeldGeld('financieel_partnerBel')],
+  ];
+  // Sectorafhankelijk eigenaar-/partnerbeloningsveld — alleen toevoegen als de sector dit concept
+  // daadwerkelijk kent (zie getEigenaarBeloningsVeld()), anders altijd "niet ingevuld" tonen voor een
+  // veld dat voor die sector nooit bestond (itsoftware) of onder een ander veld-ID valt (mkb).
+  var eigBelVeldCo=getEigenaarBeloningsVeld();
+  if(eigBelVeldCo) rows.push([eigBelVeldCo.label+' per jaar',dvVeldGeld('financieel_'+eigBelVeldCo.veldId)]);
+  rows.push(
     ['Onderhanden werk (OHW)',dvVeldGeld('financieel_wip')],
     ['Debiteuren totaal',dvVeldGeld('financieel_debiteuren')],
     ['Nettoresultaat na belasting',dvVeldGeld('financieel_resultaat')],
@@ -523,7 +529,7 @@ function dvTabelCijferoverzicht(){
     ['Omzet per partner',dvVeldGeld('partner_omzetPerP')],
     ['Opvolgingskandidaat aanwezig',dvVeld('partner_opvolging')],
     ['Concurrentiebeding sleutelfiguren',dvVeld('partner_concurrentieBeding')]
-  ];
+  );
   return dvRenderKenmerkTabel(rows);
 }
 
@@ -748,7 +754,7 @@ function dvExporteerWaarderingCsv(v){
   [
     ['Recurring omzet (%)',v.recurring],['Klantverloop/churn (%)',v.churn],['Grootste klant (%)',v.top1pct],
     ['Top 10 klanten (%)',v.top10pct],['Aantal klanten',v.aantalKlanten],['Totaal FTE',v.fte],
-    ['Aantal partners',v.aantalP],['Omzet per partner',v.omzetPerP?Math.round(v.omzetPerP):null],['Partnerbeloning',v.partnerBel?Math.round(v.partnerBel):null],
+    ['Aantal partners',v.aantalP],['Omzet per partner',v.omzetPerP?Math.round(v.omzetPerP):null],[v.partnerBelLabel||'Eigenaar-/partnerbeloning',v.partnerBel?Math.round(v.partnerBel):null],
     ['Debiteuren',v.debiteuren?Math.round(v.debiteuren):null],['Onderhanden werk',v.wip?Math.round(v.wip):null],['Declarabiliteit (%)',v.declarab],
     ['Solvabiliteit EV/BT (%)',v.solvabiliteit!==null?v.solvabiliteit.toFixed(1):null],['ROE (%)',v.roe!==null?v.roe.toFixed(1):null],['ROA (%)',v.roa!==null?v.roa.toFixed(1):null],
     ['Current ratio',v.currentRatio!==null?v.currentRatio.toFixed(2):null],['Quick ratio',v.quickRatio!==null?v.quickRatio.toFixed(2):null],['DSCR (vereenvoudigd: EBITDA/schuldenlast)',v.dscr!==null?v.dscr.toFixed(2):null],
@@ -892,7 +898,11 @@ function dvBerekenWaardering(){
   // dealvoorstel-module al de genormaliseerde waarde gebruikte).
   var ebitdaAbs=parseGeld(S.data['financieel_ebitdaNorm']||S.data['financieel_ebitda']);
   var ebitdaPct=parseFloat(S.data['financieel_ebitdaMarge'])||(o3?ebitdaAbs/o3*100:0);
-  var partnerBel=parseGeld(S.data['financieel_partnerBel']);
+  // Sectorafhankelijk veld-ID/label (mkb: dgaSalaris, itsoftware: geen equivalent) — zie
+  // getEigenaarBeloningsVeld() in mna/01-config-sectorprofielen.js.
+  var eigBelVeld=getEigenaarBeloningsVeld();
+  var partnerBel=eigBelVeld?parseGeld(S.data['financieel_'+eigBelVeld.veldId]):0;
+  var partnerBelLabel=eigBelVeld?eigBelVeld.label:null;
   var recurring=parseFloat(S.data['financieel_recurring'])||0;
   var declarab=parseFloat(S.data['financieel_declarab'])||0;
   var wip=parseGeld(S.data['financieel_wip']);
@@ -973,7 +983,7 @@ function dvBerekenWaardering(){
 
   return {
     o1:o1,o2:o2,o3:o3,omzetYTD:omzetYTD,ebitdaAbs:ebitdaAbs,ebitdaPct:ebitdaPct,ebitdaAmt:ebitdaAmt,
-    partnerBel:partnerBel,recurring:recurring,declarab:declarab,wip:wip,debiteuren:debiteuren,
+    partnerBel:partnerBel,partnerBelLabel:partnerBelLabel,recurring:recurring,declarab:declarab,wip:wip,debiteuren:debiteuren,
     fte:fte,aantalP:aantalP,omzetPerP:omzetPerP,aantalKlanten:aantalKlanten,top1pct:top1pct,top10pct:top10pct,churn:churn,
     mLaag:mLaag,mMid:mMid,mHoog:mHoog,omzetFactor:omzetFactor,multipleType:multipleType,multipleTypeBedrag:multipleTypeBedrag,
     wLaag:wLaag,wMid:wMid,wHoog:wHoog,wOmzet:wOmzet,
@@ -996,7 +1006,7 @@ function dvIndicatorenRij(v){
     {label:'Totaal FTE',val:v.fte,fmt:function(x){return x.toLocaleString('nl-NL');}},
     {label:'Aantal partners',val:v.aantalP,fmt:function(x){return Math.round(x).toLocaleString('nl-NL');}},
     {label:'Omzet per partner',val:v.omzetPerP,fmt:fmtGeld},
-    {label:'Partnerbeloning',val:v.partnerBel,fmt:fmtGeld},
+    {label:v.partnerBelLabel||'Eigenaar-/partnerbeloning',val:v.partnerBel,fmt:fmtGeld},
     {label:'Debiteuren',val:v.debiteuren,fmt:fmtGeld},
     {label:'Onderhanden werk',val:v.wip,fmt:fmtGeld},
     {label:'Declarabiliteit',val:v.declarab,fmt:function(x){return x.toFixed(1)+'%';}}
