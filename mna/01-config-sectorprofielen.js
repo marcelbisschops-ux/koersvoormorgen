@@ -673,6 +673,27 @@ function getSectorFases() {
   return getSectorProfiel().fases;
 }
 
+// Sectorafhankelijk "eigenaar-/partnerbeloning"-concept (21 aug 2026, live-testbug gevonden door
+// Marcel bij Bistro/mkb en bevestigd voor autodealer/mkb en vermoedelijk zorg): het veld-ID én de
+// juiste terminologie verschillen per sector — accountancy/zorg noemen dit 'partnerBel' (al heeft
+// zorg zelf al de juiste eigen label "Eigenaarssalaris p/j"), mkb gebruikt een heel ander veld-ID
+// ('dgaSalaris'), en itsoftware heeft helemaal geen equivalent veld. Vóór deze fix was de kritieke-
+// discrepantiecheck in mna/06-schermen.js hardcoded op 'financieel_partnerBel' met de tekst
+// "Partnerbeloning" — dat blokkeerde niet-accountancy trajecten op een veld dat voor die sector
+// nooit bestond (mkb/itsoftware), met bovendien de verkeerde term voor een eigenaar i.p.v. partner.
+// Geeft null terug als de sector geen zo'n veld kent — de aanroeper moet dat dan overslaan, nooit
+// een niet-bestaand veld verplicht stellen (GOUDEN STANDAARD: nooit gokken/aannemen).
+function getEigenaarBeloningsVeld() {
+  var MAP = { accountancy: 'partnerBel', zorg: 'partnerBel', mkb: 'dgaSalaris', itsoftware: null };
+  var sector = (S.traject && S.traject.sector) || 'accountancy';
+  var veldId = MAP.hasOwnProperty(sector) ? MAP[sector] : 'partnerBel';
+  if (!veldId) return null;
+  var fase = getSectorProfiel().fases.filter(function(f){ return f.id === 'financieel'; })[0];
+  var df = fase && fase.dataFields.filter(function(d){ return d.id === veldId; })[0];
+  if (!df) return null;
+  return { veldId: veldId, label: df.label };
+}
+
 
 // FASES wordt dynamisch bepaald via getSectorFases()
 var FASES = SECTOR_PROFIELEN.accountancy.fases;

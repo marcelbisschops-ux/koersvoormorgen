@@ -705,12 +705,20 @@ function renderSummary(){
   var o3=parseGeldCheck(S.data['financieel_omzet3']);
   var ebitdaAbs=parseGeldCheck(S.data['financieel_ebitda']);
   var ebitdaMarge=parseGeldCheck(S.data['financieel_ebitdaMarge']);
-  var partnerBel=parseGeldCheck(S.data['financieel_partnerBel']);
+  // Sectorafhankelijk (21 aug 2026, live-testbug): accountancy/zorg noemen dit 'partnerBel', mkb
+  // gebruikt 'dgaSalaris', itsoftware kent dit concept niet — zie getEigenaarBeloningsVeld() in
+  // mna/01-config-sectorprofielen.js. Voorheen hardcoded op 'financieel_partnerBel' met de tekst
+  // "Partnerbeloning", waardoor mkb/itsoftware-trajecten altijd bleven vastlopen op een veld dat
+  // voor die sector nooit bestond, en zorg/mkb de verkeerde term ("partner" i.p.v. "eigenaar") zagen.
+  var eigBelVeld=getEigenaarBeloningsVeld();
+  var partnerBel=eigBelVeld?parseGeldCheck(S.data['financieel_'+eigBelVeld.veldId]):null;
+  var eigBelLabel=eigBelVeld?eigBelVeld.label:'Eigenaar-/partnerbeloning';
 
   // 1. Ontbrekende kritieke financiële velden
   if(!o1||!o2||!o3) kritiekeDiscrepanties.push('Jaaromzet voor alle drie jaren is verplicht voor een indicatieve waardering. Vul omzet jaar 1, 2 en 3 in.');
   if(!ebitdaAbs&&!ebitdaMarge) kritiekeDiscrepanties.push('EBITDA ontbreekt volledig (zowel absoluut als marge). Dit is de basis voor de waarderingsberekening.');
-  if(!partnerBel) kritiekeDiscrepanties.push('Partnerbeloning ontbreekt. Zonder dit gegeven kan de EBITDA niet genormaliseerd worden.');
+  // Alleen verplicht stellen als deze sector het concept ook daadwerkelijk kent (itsoftware: nooit).
+  if(eigBelVeld&&!partnerBel) kritiekeDiscrepanties.push(eigBelLabel+' ontbreekt. Zonder dit gegeven kan de EBITDA niet genormaliseerd worden.');
 
   // 2. EBITDA-marge buiten realistisch bereik
   if(ebitdaMarge!==null){
@@ -758,7 +766,7 @@ function renderSummary(){
   // 6. Partnerbeloning hoger dan EBITDA (normalisatie-probleem)
   if(partnerBel&&ebitdaAbs&&partnerBel>ebitdaAbs){
     kritiekeDiscrepanties.push(
-      'Partnerbeloning ('+partnerBel.toLocaleString('nl-NL')+') is hoger dan EBITDA absoluut ('+ebitdaAbs.toLocaleString('nl-NL')+'). '
+      eigBelLabel+' ('+partnerBel.toLocaleString('nl-NL')+') is hoger dan EBITDA absoluut ('+ebitdaAbs.toLocaleString('nl-NL')+'). '
       +'Dit leidt tot een negatieve genormaliseerde EBITDA en maakt waardering onmogelijk. Controleer de invoer.'
     );
   }
@@ -1285,7 +1293,7 @@ function bindAll(){
     var lijnen=['Omzet jaar 1: '+fmtGeld(v.o1),'Omzet jaar 2: '+fmtGeld(v.o2),'Omzet jaar 3: '+fmtGeld(v.o3)];
     if(v.omzetYTD)lijnen.push('Omzet YTD lopend jaar: '+fmtGeld(v.omzetYTD));
     lijnen.push('EBITDA: '+fmtGeld(v.ebitdaAmt)+' ('+v.ebitdaPct.toFixed(1)+'% van omzet)');
-    if(v.partnerBel)lijnen.push('Partnerbeloning: '+fmtGeld(v.partnerBel));
+    if(v.partnerBel)lijnen.push((v.partnerBelLabel||'Eigenaar-/partnerbeloning')+': '+fmtGeld(v.partnerBel));
     if(v.recurring)lijnen.push('Recurring omzet: '+v.recurring.toFixed(1)+'%');
     if(v.churn)lijnen.push('Klantverloop (churn): '+v.churn.toFixed(1)+'%');
     if(v.top1pct)lijnen.push('Aandeel grootste klant: '+v.top1pct.toFixed(1)+'%');
