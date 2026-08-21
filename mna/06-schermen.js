@@ -330,34 +330,39 @@ function bindOpeningScreen(){
 // (Marcel, 25 juli 2026). Eén helper zodat alle render-plekken identiek blijven.
 function reqLabel(df){ return df.req ? ' <span class="req-tag">verplicht</span>' : ''; }
 
+// Post-LoI (fase 2) helpers — losstaand van renderMain() zodat renderDocumentSectie()
+// (mna/02-state-opslag-documenten.js) ze ook kan gebruiken voor de upload-knopkleur.
+// Bepaal DD-fase: fase 1 (pre-LOI) of fase 2 (post-LOI). LET OP: loi_datum betekent alleen dat
+// de LoI is aangemaakt/verstuurd door de begeleider, niet dat de verkoper 'm heeft ondertekend —
+// alleen S.loiGetekend/t.loi_getekend (echte handtekening via /mna/teken) mag fase 2 ontgrendelen.
+// Regressie juli 2026: loi_datum werd hier ten onrechte ook als "getekend" behandeld, waardoor
+// fase-2-velden al vrijkwamen zodra de begeleider een LoI verstuurde.
+function isLoiGetekend(){
+  return !!(S.loiGetekend || (S.traject && S.traject.loi_getekend));
+}
+// Zichtbaarheid post-LoI-vragen (Marcel, 21 aug 2026: "ik zie niet waar ik fase 2 moet uploaden"):
+// de aanvullende velden staan al gelabeld "(post-LOI)" tussen de gewone velden van diezelfde
+// categorie (zie mna/01-config-sectorprofielen.js, _hdr_*2-entries), maar dat was pas zichtbaar ná
+// het aanklikken van die categorie — nergens een signaal wélke categorie nieuwe vragen heeft.
+function fase2VeldenVoorCategorie(faseId){
+  var fase=FASES.find(function(fx){return fx.id===faseId;});
+  if(!fase)return [];
+  return fase.dataFields.filter(function(df){return !df.header&&df.fase==='2';}).map(function(df){
+    var val=(df.groepsniveau?S._groepData:S.data)[faseId+'_'+df.id]||'';
+    return {label:df.label,ingevuld:!!val.trim()};
+  });
+}
+function faseHeeftOpenstaandeFase2Velden(faseId){
+  return fase2VeldenVoorCategorie(faseId).some(function(v){return !v.ingevuld;});
+}
+
 function renderMain(){
   var f=FASES[S.fase];
   var tp=(isVerkoper()||isKoper())?totalFillPct():Math.round(FASES.reduce(function(a,fase){return a+pct(fase.id);},0)/FASES.length);
   var vergrendeld=S.traject&&S.traject.status==='vergrendeld';
   var isRO=isKoper()||vergrendeld;
-
-  // Bepaal DD-fase: fase 1 (pre-LOI) of fase 2 (post-LOI). LET OP: loi_datum betekent alleen dat
-  // de LoI is aangemaakt/verstuurd door de begeleider, niet dat de verkoper 'm heeft ondertekend —
-  // alleen S.loiGetekend/t.loi_getekend (echte handtekening via /mna/teken) mag fase 2 ontgrendelen.
-  // Regressie juli 2026: loi_datum werd hier ten onrechte ook als "getekend" behandeld, waardoor
-  // fase-2-velden al vrijkwamen zodra de begeleider een LoI verstuurde.
-  var loiGetekend = !!(S.loiGetekend || (S.traject && S.traject.loi_getekend));
+  var loiGetekend = isLoiGetekend();
   var huidigeDDFase = loiGetekend ? '2' : '1';
-
-  // Zichtbaarheid post-LoI-vragen op het overzichtsscherm (Marcel, 21 aug 2026: "ik zie niet waar ik
-  // fase 2 moet uploaden"): de aanvullende velden staan al gelabeld "(post-LOI)" tussen de gewone
-  // velden van diezelfde categorie (zie mna/01-config-sectorprofielen.js, _hdr_*2-entries), maar dat
-  // was pas zichtbaar ná het aanklikken van die categorie — nergens op dit overzicht een signaal
-  // wélke categorie nieuwe vragen heeft. Badge toont alleen zolang er nog een post-LoI-veld open staat.
-  function faseHeeftOpenstaandeFase2Velden(faseId){
-    var fase=FASES.find(function(fx){return fx.id===faseId;});
-    if(!fase)return false;
-    return fase.dataFields.some(function(df){
-      if(df.header||df.fase!=='2')return false;
-      var val=(df.groepsniveau?S._groepData:S.data)[faseId+'_'+df.id]||'';
-      return !val.trim();
-    });
-  }
 
   var ov='<div class="fase-grid">';
   FASES.forEach(function(fase,i){
@@ -395,6 +400,20 @@ function renderMain(){
         +'<div style="font-size:11px;font-weight:600;color:var(--gold-dark);margin-bottom:4px">&#128203; Specifiek opgevraagd door uw adviseur'+(huidigeDDFase==='2'?' (post-LoI)':'')+':</div>'
         +'<ul style="margin:0;padding-left:1.1rem;font-size:12px;color:var(--sub);line-height:1.6">'
         +ivGevraagdeItems.map(function(item){return '<li>'+esc(item)+'</li>';}).join('')
+        +'</ul></div>';
+    }
+  }
+  // Structureel checklistje van de post-LoI-velden voor déze categorie (Marcel, 21 aug 2026: "ik mis
+  // een lijstje per categorie") — onafhankelijk van of er een informatieverzoek is verstuurd, gewoon
+  // op basis van welke velden het sectorprofiel als fase 2 markeert. Toont ✓ voor al ingevulde velden
+  // (bijv. via een geüpload document) zodat direct zichtbaar is wat nog ontbreekt.
+  if((isVerkoper()||isTussen())&&loiGetekend){
+    var f2Lijst=fase2VeldenVoorCategorie(f.id);
+    if(f2Lijst.length){
+      dataHtml+='<div style="background:var(--info-bg);border:1px solid var(--info);border-radius:var(--r);padding:.75rem 1rem;margin-bottom:1rem">'
+        +'<div style="font-size:11px;font-weight:600;color:var(--info);margin-bottom:6px">&#128203; Post-LoI-vragen voor '+esc(f.title)+':</div>'
+        +'<ul style="margin:0;padding-left:0;list-style:none;font-size:12px;color:var(--sub);line-height:1.7">'
+        +f2Lijst.map(function(v){return '<li>'+(v.ingevuld?'<span style="color:var(--teal)">&#10003;</span>':'<span style="color:var(--muted)">&#9675;</span>')+' '+esc(v.label)+'</li>';}).join('')
         +'</ul></div>';
     }
   }
