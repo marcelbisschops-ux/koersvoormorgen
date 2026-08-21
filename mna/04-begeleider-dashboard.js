@@ -672,8 +672,11 @@ function renderBegeleiderDashboard(app){
       // (zelfde id, zelfde onclick-koppeling verderop) — alleen de visuele verpakking is nieuw.
       // Status van de 4 ondertekenbare documenten komt al mee met het traject; status van de overige
       // 4 (geen "getekend"-concept) wordt na render async ingeladen, zie laadDocFlowStatus().
-      function stapRij(id, icoon, kleur, naam, statusHtml, isLaatste){
-        var disabled=!contractenAan;
+      function stapRij(id, icoon, kleur, naam, statusHtml, isLaatste, skipContractenGate){
+        // Het informatieverzoek is een checklist/e-mailtool, geen ondertekenbaar contract — hoort dus
+        // niet achter de betaalde module Contracten (zelfde als de bestaande "Informatieverzoek"-knop
+        // in de Communicatie-sectie, die ook geen contractenAan-gate heeft).
+        var disabled=skipContractenGate?false:!contractenAan;
         return '<div style="display:flex;gap:12px">'
           +'<div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0">'
           +'<div style="width:34px;height:34px;border-radius:50%;background:'+(disabled?'var(--panel)':kleur)+';border:2px solid '+(disabled?'var(--border2)':kleur)+';display:flex;align-items:center;justify-content:center;font-size:15px;'+(disabled?'opacity:.4':'')+'">'+icoon+'</div>'
@@ -703,6 +706,11 @@ function renderBegeleiderDashboard(app){
         +stapRij('bg-nda-actie','&#128274;','#7c5cbf','Geheimhoudingsovereenkomst (NDA)',getekendStatus('nda_getekend','nda_getekend_datum'))
         +stapRij('bg-bieding-actie','&#128233;','#a0522d','Indicatieve bieding','Klaar om te versturen')
         +stapRij('bg-loi-actie','&#128196;','var(--gold)','Intentieverklaring (LoI)',getekendStatus('loi_getekend','loi_getekend_datum'))
+        // Persistent, zichtbaar gemaakt (21 aug 2026, Marcel kon de trigger niet vinden): stond
+        // voorheen alleen als knop verstopt binnen het resultaatscherm van "Indicatieve bieding" —
+        // nu een eigen stap in de flow, matchend met de "post-LoI"-terminologie die elders in de
+        // code/sectorprofielen al werd gebruikt (zie openInformatieverzoek()).
+        +stapRij('bg-infoverzoek2-actie','&#128203;','#2a6b8a','Informatieverzoek — volledige DD (post-LoI)',(S.traject&&S.traject.traject_fase==='due_diligence')?'<span style="color:var(--teal)">&#10003; Fase 2 gestart</span>':'Start de verdiepende DD-vragenlijst',false,true)
         +stapRij('bg-excl-actie','&#128221;','#1a7a5e','Exclusiviteitsovereenkomst',getekendStatus('excl_getekend','excl_datum'))
         +stapRij('bg-dealvoorstel-actie','&#128202;','#8a5a00','Dealvoorstel','Klik om te genereren')
         +stapRij('bg-risicoraamwerk-actie','&#129517;','#4a6ea0','Risicoraamwerk (SWOT/PESTEL/Porter)','Klik om te genereren')
@@ -1896,7 +1904,19 @@ function renderBegeleiderDashboard(app){
         {id:'compliance',titel:'Kwaliteit & regelgeving',items:['Laatste IGJ-inspectie + oordeel','Lopende claims / tuchtrecht','NZa-registratie + zorgverzekeraarcontracten']},
         {id:'it',titel:'IT & systemen',items:['HIS/TIS systeem + overdraagbaarheid','Gegevensmigratie mogelijk']},
         {id:'juridisch',titel:'Juridisch & structuur',items:['Rechtsvorm + eigendomsstructuur','Goodwill-afspraken (LHV/NMa)','Zorgcontracten looptijd','Lopende claims']},
-        {id:'strategisch',titel:'Strategie',items:['Werkgebied + specialisaties','Groeimogelijkheden','Gewenste overdrachtstijdlijn']}]
+        {id:'strategisch',titel:'Strategie',items:['Werkgebied + specialisaties','Groeimogelijkheden','Gewenste overdrachtstijdlijn']}],
+      // itsoftware ontbrak hier (21 aug 2026, live-testbug — Marcel kon de post-LoI-fase niet
+      // vinden/testen): zonder deze entry viel een itsoftware-traject stil terug op accountancy-
+      // categorieën (ARR/partnerbeloning i.p.v. ARR/tech stack), exact het "verkeerde-sector-gok"-
+      // gedrag dat de GOUDEN STANDAARD verbiedt. Items komen 1-op-1 uit de bestaande itsoftware-
+      // sectorprofielvelden in mna/01-config-sectorprofielen.js, niets verzonnen.
+      itsoftware: [{id:'financieel',titel:'Financieel',items:['ARR/MRR + jaaromzet 3 jaar + YTD','EBITDA-marge','Unit economics (LTV/CAC)','Recurring vs project-omzet (%)']},
+        {id:'commercieel',titel:'Klanten & product',items:['Aantal actieve klanten','Klant-churn per jaar (%)','Grootste klant / top 10 (% ARR)','Productstatus (MVP/groei/matuur)']},
+        {id:'partners',titel:'Team & IP',items:['Totaal FTE + development FTE','Aantal founders/eigenaren','Sleutelontwikkelaars + retentierisico','Verloop development team']},
+        {id:'compliance',titel:'Beveiliging & compliance',items:['AVG/GDPR-compliance','Laatste penetratietest','Security incidents afgelopen 2 jaar','Open source licentie-compliance']},
+        {id:'it',titel:'Technologie & architectuur',items:['Tech stack (talen, frameworks)','Hosting/cloud provider','CI/CD aanwezig','Schaalbaarheid architectuur']},
+        {id:'juridisch',titel:'Juridisch & IP',items:['Rechtsvorm + aandeelhoudersstructuur','Klantcontracten (looptijd, opzegtermijn)','VPB en R&D-aftrek (WBSO)-situatie']},
+        {id:'strategisch',titel:'Markt & schaalbaarheid',items:['Marktpositie + category definition','Unieke waardepropositie (moat)','Groeimotor (PLG/SLG/partnerships)','Exit-tijdlijn']}]
     };
 
     // Bepaal fase op basis van LoI-status — alleen een echte handtekening (loi_getekend) telt,
@@ -1928,7 +1948,15 @@ function renderBegeleiderDashboard(app){
         {id:'personeel',titel:'HR DD',items:['Wet DBA / ZZP-risicos','CAO + verplichtingen','Pensioenregeling','Arbeidscontracten volledig']},
         {id:'compliance',titel:'Compliance DD',items:['IGJ-rapportages volledig','Wkkgz-audit','AVG/privacy patiëntgegevens (details)','WTZa-vergunning']},
         {id:'it',titel:'IT DD',items:['Cybersecurity + NEN 7510','AVG patiëntgegevens (details)','EPD contracten']},
-        {id:'juridisch',titel:'Legal & Tax DD',items:['Huurcontract + overdraagbaarheid','BTW-vrijstellingen','Goodwill-onderbouwing','Claims + garanties details']}]
+        {id:'juridisch',titel:'Legal & Tax DD',items:['Huurcontract + overdraagbaarheid','BTW-vrijstellingen','Goodwill-onderbouwing','Claims + garanties details']}],
+      // itsoftware ontbrak ook hier — zie toelichting bij sectoren.itsoftware hierboven.
+      itsoftware: [{id:'financieel',titel:'Financial DD',items:['Genormaliseerde EBITDA (gevalideerd)','Cohort-analyse LTV/CAC per cohort','Contractuele recurring-omzet verificatie','Kostenstructuur R&D/Sales/G&A volledig']},
+        {id:'commercieel',titel:'Commercial DD',items:['Churn per cohort (logo vs. revenue)','NPS-onderbouwing','Technische schuld gekwantificeerd','Product-roadmap + concurrentiepositie']},
+        {id:'partners',titel:'HR & IP DD',items:['IP-eigenaarschap geverifieerd (werknemers + contractors)','Bus factor / kennisdocumentatie','Arbeidscontracten incl. IP-clausules','Teambereidheid bij nieuwe eigenaar']},
+        {id:'compliance',titel:'Security & Compliance DD',items:['ISO 27001/SOC2/NEN7510-status','Pentest-rapportage volledig','Open source licentie-audit (GPL-risico)','SLA-nakoming historisch']},
+        {id:'it',titel:'Tech DD',items:['Vendor lock-in beoordeling','Uptime/availability-historie','Monitoring/DevOps-tooling','Technische schuld % van dev-capaciteit']},
+        {id:'juridisch',titel:'Legal & IP DD',items:['IP-registraties (patenten/merken/octrooien)','Change-of-control-clausules klantcontracten','Fiscale risicos (WBSO/innovatiebox)','Openstaande IP-geschillen']},
+        {id:'strategisch',titel:'Operational DD',items:['Concurrentieanalyse gedetailleerd','AI-impact op product/concurrenten','Synergiemogelijkheden met koper gekwantificeerd','Cultuurfit engineering-team']}]
     };
 
     var categorieen = ivFase === '2' ? (sectoren2[sector]||sectoren2.accountancy) : sectoren[sector];
@@ -2067,6 +2095,8 @@ function renderBegeleiderDashboard(app){
     if(ibtn){ibtn.disabled=false;ibtn.innerHTML='&#128203; Informatieverzoek';}
   }
   document.getElementById('bg-infoverzoek-actie').onclick=function(){ openInformatieverzoek(null, this); };
+  var infoverzoek2Btn=document.getElementById('bg-infoverzoek2-actie');
+  if(infoverzoek2Btn)infoverzoek2Btn.onclick=function(){ openInformatieverzoek('2', this); };
 
   // ── Documenten sectie begeleider ──
   var bgDocsEl = document.getElementById('bg-docs-sectie');
