@@ -1648,8 +1648,12 @@ function renderDocumentSectie(faseId) {
         + S._entiteiten.map(function(e){return '<option value="'+esc(e.id)+'">'+esc(e.naam)+'</option>';}).join('')
         + '</select>';
     }
+    // Knopkleur: info-blauw zolang deze categorie nog openstaande post-LoI-velden heeft (Marcel,
+    // 21 aug 2026: "sowieso moet het upload veld dan ook blauw zijn") — zelfde blauw als de
+    // POST-LOI-badge op het overzichtsscherm en het checklistje in renderMain(), voor consistentie.
+    var uploadKleur=(typeof isLoiGetekend==='function'&&isLoiGetekend()&&typeof faseHeeftOpenstaandeFase2Velden==='function'&&faseHeeftOpenstaandeFase2Velden(faseId))?'var(--info)':'var(--teal)';
     uploadHtml = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:.75rem;flex-wrap:wrap">'
-      + '<label style="display:flex;align-items:center;gap:6px;background:var(--teal);color:#fff;font-family:IBM Plex Sans,sans-serif;font-size:12px;font-weight:600;padding:6px 14px;border-radius:var(--r);cursor:pointer">'
+      + '<label style="display:flex;align-items:center;gap:6px;background:'+uploadKleur+';color:#fff;font-family:IBM Plex Sans,sans-serif;font-size:12px;font-weight:600;padding:6px 14px;border-radius:var(--r);cursor:pointer">'
       + '&#128196; Document toevoegen'
       + '<input type="file" multiple accept=".pdf,.docx,.doc,.xlsx,.xls,.csv,.txt,.eml,.xml,.xbrl,.jpg,.jpeg,.png" style="display:none" onchange="var _inp=this;uploadDocumentenSequentieel(\''+faseId+'\',this.files).then(function(){_inp.value=\'\';});">'
       + '</label>'
