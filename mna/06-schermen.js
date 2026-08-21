@@ -1288,6 +1288,7 @@ function bindAll(){
     var out=ge('w-ai-out');if(!out)return;
     wAiBtn.disabled=true;wAiBtn.textContent='Genereren...';
     out.style.display='block';
+    toast('⚙️ Bezig met genereren: AI-analyse & waardering...','info',4000);
     out.innerHTML='<div style="color:var(--muted);font-size:13px">AI genereert rapport... (kan 20-40 sec duren)</div>';
     var v=dvBerekenWaardering();
     var lijnen=['Omzet jaar 1: '+fmtGeld(v.o1),'Omzet jaar 2: '+fmtGeld(v.o2),'Omzet jaar 3: '+fmtGeld(v.o3)];
@@ -1327,7 +1328,8 @@ function bindAll(){
       wToonRapport(tekstHtml, nu, saveResp&&saveResp.versie);
       wLaadGeschiedenis();
       wAiBtn.textContent='↻ Opnieuw genereren';wAiBtn.disabled=false;
-    }catch(e){out.innerHTML='<div style="color:var(--red);font-size:13px">Fout: '+e.message+'</div>';wAiBtn.disabled=false;wAiBtn.textContent='Genereer AI-analyse & waardering';}
+      toast('✓ AI-analyse & waardering is gegenereerd','ok');
+    }catch(e){out.innerHTML='<div style="color:var(--red);font-size:13px">Fout: '+e.message+'</div>';wAiBtn.disabled=false;wAiBtn.textContent='Genereer AI-analyse & waardering';toast('Genereren van AI-analyse & waardering is mislukt','err');}
   });
   // AI-waardering second opinion — onafhankelijke AI-multiple/range, los van de rekenkern hierboven.
   var wAi2Btn=ge('w-ai2-btn');
@@ -1335,11 +1337,12 @@ function bindAll(){
     var out2=ge('w-ai2-out');if(!out2)return;
     wAi2Btn.disabled=true;wAi2Btn.textContent='Genereren...';
     out2.style.display='block';
+    toast('⚙️ Bezig met genereren: AI-waardering (second opinion)...','info',4000);
     out2.innerHTML='<div style="color:var(--muted);font-size:13px">AI bepaalt een onafhankelijke waardering... (kan 15-30 sec duren)</div>';
     try{
       var resp2=await fetch(WORKER+'/mna/waardering/genereer',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||S.code||''},body:JSON.stringify({code:S.code})});
       var rd2=await resp2.json();
-      if(!rd2.ok){out2.innerHTML='<div style="color:var(--red);font-size:13px">Fout: '+esc(rd2.error||'onbekende fout')+'</div>';wAi2Btn.disabled=false;wAi2Btn.textContent='&#129302; Genereer AI-waardering (second opinion)';return;}
+      if(!rd2.ok){out2.innerHTML='<div style="color:var(--red);font-size:13px">Fout: '+esc(rd2.error||'onbekende fout')+'</div>';wAi2Btn.disabled=false;wAi2Btn.textContent='&#129302; Genereer AI-waardering (second opinion)';toast('Genereren van AI-waardering is mislukt','err');return;}
       var w2=rd2.waardering||{};
       var sc2=rd2.sanity_check||{waarschuwingen:[]};
       var bronnen2=rd2.benchmark_bronnen||[];
@@ -1365,7 +1368,8 @@ function bindAll(){
       }
       out2.innerHTML=html2;
       wAi2Btn.disabled=false;wAi2Btn.textContent='↻ Opnieuw genereren';
-    }catch(e){out2.innerHTML='<div style="color:var(--red);font-size:13px">Fout: '+esc(e.message)+'</div>';wAi2Btn.disabled=false;wAi2Btn.textContent='&#129302; Genereer AI-waardering (second opinion)';}
+      toast('✓ AI-waardering (second opinion) is gegenereerd','ok');
+    }catch(e){out2.innerHTML='<div style="color:var(--red);font-size:13px">Fout: '+esc(e.message)+'</div>';wAi2Btn.disabled=false;wAi2Btn.textContent='&#129302; Genereer AI-waardering (second opinion)';toast('Genereren van AI-waardering is mislukt','err');}
   });
   // Eerder gegenereerd waarderingsrapport ophalen (server, niet meer lokaal) en tonen
   if(wAiBtn){
