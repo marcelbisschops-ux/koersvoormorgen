@@ -336,18 +336,6 @@ function renderMain(){
   var vergrendeld=S.traject&&S.traject.status==='vergrendeld';
   var isRO=isKoper()||vergrendeld;
 
-  var ov='<div class="fase-grid">';
-  FASES.forEach(function(fase,i){
-    var p=(isVerkoper()||isKoper())?fillPct(fase.id):pct(fase.id);
-    ov+='<div class="fase-card'+(S.fase===i?' active':'')+'" data-fi="'+i+'">'
-      +'<div class="fase-num">'+fase.num+'</div>'
-      +'<div class="fase-name">'+fase.title+'</div>'
-      +'<div class="fase-bar"><div class="fase-fill" style="width:'+p+'%;background:'+(p===100?'var(--teal)':p>50?'var(--gold)':'var(--red)')+'"></div></div>'
-      +'<div class="fase-pct">'+p+'%</div>'
-      +'</div>';
-  });
-  ov+='</div>';
-
   // Bepaal DD-fase: fase 1 (pre-LOI) of fase 2 (post-LOI). LET OP: loi_datum betekent alleen dat
   // de LoI is aangemaakt/verstuurd door de begeleider, niet dat de verkoper 'm heeft ondertekend —
   // alleen S.loiGetekend/t.loi_getekend (echte handtekening via /mna/teken) mag fase 2 ontgrendelen.
@@ -355,6 +343,35 @@ function renderMain(){
   // fase-2-velden al vrijkwamen zodra de begeleider een LoI verstuurde.
   var loiGetekend = !!(S.loiGetekend || (S.traject && S.traject.loi_getekend));
   var huidigeDDFase = loiGetekend ? '2' : '1';
+
+  // Zichtbaarheid post-LoI-vragen op het overzichtsscherm (Marcel, 21 aug 2026: "ik zie niet waar ik
+  // fase 2 moet uploaden"): de aanvullende velden staan al gelabeld "(post-LOI)" tussen de gewone
+  // velden van diezelfde categorie (zie mna/01-config-sectorprofielen.js, _hdr_*2-entries), maar dat
+  // was pas zichtbaar ná het aanklikken van die categorie — nergens op dit overzicht een signaal
+  // wélke categorie nieuwe vragen heeft. Badge toont alleen zolang er nog een post-LoI-veld open staat.
+  function faseHeeftOpenstaandeFase2Velden(faseId){
+    var fase=FASES.find(function(fx){return fx.id===faseId;});
+    if(!fase)return false;
+    return fase.dataFields.some(function(df){
+      if(df.header||df.fase!=='2')return false;
+      var val=(df.groepsniveau?S._groepData:S.data)[faseId+'_'+df.id]||'';
+      return !val.trim();
+    });
+  }
+
+  var ov='<div class="fase-grid">';
+  FASES.forEach(function(fase,i){
+    var p=(isVerkoper()||isKoper())?fillPct(fase.id):pct(fase.id);
+    var toontFase2Badge=loiGetekend&&(isVerkoper()||isKoper()||isTussen())&&faseHeeftOpenstaandeFase2Velden(fase.id);
+    ov+='<div class="fase-card'+(S.fase===i?' active':'')+'" data-fi="'+i+'">'
+      +(toontFase2Badge?'<div style="position:absolute;top:6px;right:6px;font-size:9px;font-weight:700;background:var(--info);color:#fff;padding:2px 7px;border-radius:10px;letter-spacing:.03em" title="Nieuwe vragen beschikbaar na ondertekening LoI">POST-LOI</div>':'')
+      +'<div class="fase-num">'+fase.num+'</div>'
+      +'<div class="fase-name">'+fase.title+'</div>'
+      +'<div class="fase-bar"><div class="fase-fill" style="width:'+p+'%;background:'+(p===100?'var(--teal)':p>50?'var(--gold)':'var(--red)')+'"></div></div>'
+      +'<div class="fase-pct">'+p+'%</div>'
+      +'</div>';
+  });
+  ov+='</div>';
 
   // Data fields
   var dataHtml='<div class="panel">';
@@ -367,6 +384,20 @@ function renderMain(){
     }
   }
   dataHtml+='<div class="sec-hdr">Informatie invullen</div>';
+  // Specifiek opgevraagde items tonen (informatieverzoek van de begeleider) — voorheen berekend maar
+  // nergens gerenderd (dode code, gevonden 21 aug 2026); nu ook expliciet per fase (was hardcoded op
+  // fase 1, dus een post-LoI-verzoek was hier nooit zichtbaar voor de verkoper).
+  if(isVerkoper()){
+    var ivSelHuidig=huidigeDDFase==='2'?S._ivSelectie2:S._ivSelectie1;
+    var ivGevraagdeItems=ivSelHuidig&&ivSelHuidig[f.id];
+    if(ivGevraagdeItems&&ivGevraagdeItems.length){
+      dataHtml+='<div style="background:var(--gold-bg);border:1px solid var(--gold);border-radius:var(--r);padding:.75rem 1rem;margin-bottom:1rem">'
+        +'<div style="font-size:11px;font-weight:600;color:var(--gold-dark);margin-bottom:4px">&#128203; Specifiek opgevraagd door uw adviseur'+(huidigeDDFase==='2'?' (post-LoI)':'')+':</div>'
+        +'<ul style="margin:0;padding-left:1.1rem;font-size:12px;color:var(--sub);line-height:1.6">'
+        +ivGevraagdeItems.map(function(item){return '<li>'+esc(item)+'</li>';}).join('')
+        +'</ul></div>';
+    }
+  }
   // Groepsstructuur (Fase 2): kiezer om cijfers per entiteit in te vullen i.p.v. alleen op groepsniveau
   if(!isKoper()&&S._entiteiten&&S._entiteiten.length){
     dataHtml+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:1rem;padding:.6rem .85rem;background:var(--card);border:1px solid var(--border);border-radius:var(--r)">'
@@ -431,14 +462,6 @@ function renderMain(){
     var blokkeer = isFase2 && !loiGetekend && isVerkoper();
 
     if(df.header){
-      // Voeg IV-badge toe als categorie in informatieverzoek staat
-      if(isVerkoper() && S._ivSelectie && df.fase==='1'){
-        var catId = f.id;
-        var gevraagd = S._ivSelectie[catId] && S._ivSelectie[catId].length > 0;
-        if(df.label && !df.label.startsWith('—') && gevraagd){
-          // skip — badge staat al op sectie header
-        }
-      }
       // Header altijd tonen maar met fade als fase 2 geblokkeerd
       if(isFase2 && !loiGetekend && isVerkoper()){
         if(!fase2GetoondHeader){
@@ -1040,7 +1063,7 @@ function bindAll(){
         // reset, ondanks dat deze regel expliciet "geen datalek tussen trajecten" claimt — zie
         // dezelfde fix in uitloggen() (mna/02-state-opslag-documenten.js) voor de volledige toelichting.
         if(typeof CHAT!=='undefined'){CHAT.berichten=[];CHAT.serverBerichten=[];CHAT.open=false;CHAT.laden=false;CHAT.sturen=false;}
-        S={screen:'cover',code:code,rol:d.rol||'verkoper',traject:d.traject,modules:d.modules||null,_ivSelectie:null,
+        S={screen:'cover',code:code,rol:d.rol||'verkoper',traject:d.traject,modules:d.modules||null,_ivSelectie1:null,_ivSelectie2:null,
           fase:0,checked:{},data:{},docRefs:{},notities:{},aiTexts:{},aiLoading:{},
           saveTimer:null,showValidation:false,dataroomLoading:false,dataroom:null,
           _opy:{},_epy:{},_opySlotJaar:{},_conflicts:[],_userEdited:{},_docSource:{},_docFragment:{},koperReacties:{},loiTekst:'',loiDatum:0,
@@ -1052,10 +1075,15 @@ function bindAll(){
         SEC.attempts = 0;
         secStartSession();
         secAuditLog('login', { kantoor: d.traject && d.traject.kantoor_naam });
-        // Laad infoverzoek selectie voor veldfiltering
+        // Laad infoverzoek selectie voor veldfiltering — beide fases apart (kv_store bewaart ze onder
+        // een eigen sleutel per fase, zie /mna/infoverzoek/opslaan). Was hardcoded op fase '1', waardoor
+        // een post-LoI-informatieverzoek (fase 2) hier nooit werd opgehaald (Marcel, 21 aug 2026).
         if(d.rol==='verkoper'){
           fetch(WORKER+'/mna/infoverzoek/'+code+'/1').then(function(r){return r.json();}).then(function(sel){
-            S._ivSelectie = sel;
+            S._ivSelectie1 = sel;
+          }).catch(function(){});
+          fetch(WORKER+'/mna/infoverzoek/'+code+'/2').then(function(r){return r.json();}).then(function(sel){
+            S._ivSelectie2 = sel;
           }).catch(function(){});
         }
         // FASES dynamisch laden op basis van sector
