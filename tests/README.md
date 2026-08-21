@@ -87,6 +87,26 @@ Draait ook **wekelijks automatisch** (geplande taak, zie hieronder) — bij
 bevindingen worden kleine/duidelijke fixes zelfstandig doorgevoerd en gemeld;
 bij twijfel of impact wordt eerst gewacht op Marcels akkoord in de eerstvolgende sessie.
 
+## Extra hulpmiddel — documenten uploaden via een echte browsersessie (`tests/upload-via-browser.mjs`)
+De AI-extractie/velden-merge (`autoFillFromExtraction`, `mna/02-state-opslag-documenten.js`)
+draait uitsluitend client-side; een document rechtstreeks via curl naar
+`/mna/document/upload` sturen slaat het bestand en de AI-analyse wel op, maar
+vult **nooit** de DD-velden — dat vereist altijd een browserstap (bewuste
+architectuurkeuze, geen bug — de merge-logica server-side dupliceren zou het
+dubbele-bron-risico herintroduceren waar dit project al eerder door is
+gebeten). Voor het opbouwen van testpakketten (bijv. via een achtergrondtaak
+zonder eigen browser) dit script gebruiken in plaats van curl:
+
+```
+node tests/upload-via-browser.mjs --code=<toegangscode> --fase=<fase_id> --file=/pad/naar/doc.pdf [--file=... | --dir=/pad/naar/map]
+```
+
+Automatiseert exact de bestaande, echte browserflow (login → fase → "Document
+toevoegen") — geen nieuwe merge-logica. Wacht per bestand écht op de
+upload- en save-netwerkresponsen (niet op een vaste sleep — AI-analyse duurt
+10-30+ seconden) en meldt per bestand `verwerkt`/`AFGEWEZEN`. Zie de
+commentaarblok bovenin het script voor alle opties.
+
 ## Bekende beperking
 De module-gating-test tekent een verwerkersovereenkomst (VOK) voor zijn
 testtraject. Die regel in `mna_vok` wordt niet door de traject-opruiming
