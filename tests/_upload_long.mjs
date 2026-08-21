@@ -28,11 +28,6 @@
 //   --base=       basis-URL waar mna.html bereikbaar is (default: https://koersvoormorgen.nl)
 //   --bewijsstuk  upload alleen als bewijsstuk (geen AI-extractie) — zelfde vinkje als in de UI
 //   --headed      toon de browser (default: headless)
-//   --timeout=    max. wachttijd per bestand op de upload-respons, in seconden (default: 90).
-//                 Verhoog dit bij grote/tekstrijke documenten: de AI-analyse duurt dan langer dan
-//                 90s, en bij een time-out sluit dit script de browser — waardoor het verzoek
-//                 wordt afgebroken en het document NIET wordt opgeslagen en de velden NIET worden
-//                 gemerged (21 aug 2026: waargenomen bij een jaarrekening-PDF van 19 paginas).
 // ══════════════════════════════════════════════════════════════════
 
 import { chromium } from '@playwright/test';
@@ -123,7 +118,7 @@ async function main() {
       // verzoeken tot gevolg. Eén poging, genoeg marge, is betrouwbaarder gebleken.
       const uploadWacht = page.waitForResponse(
         (r) => r.url().includes('/mna/document/upload') && r.request().method() === 'POST',
-        { timeout: 90000 }
+        { timeout: 300000 }
       );
       await input.setInputFiles(bestanden.length === 1 ? bestanden : [bestand]);
       const uploadResp = await uploadWacht; // gooit vanzelf een duidelijke timeout-fout na 90s

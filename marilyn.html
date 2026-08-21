@@ -3544,13 +3544,18 @@ function veiligheidGauge(waarde, label, subtekst) {
   }
   // Zelfde grens-drempels (70/50) als de bestaande scorekleuring elders in marilyn (regel ~319).
   var zones = [{ van: 0, tot: 50, kleur: 'var(--red)' }, { van: 50, tot: 70, kleur: 'var(--gold)' }, { van: 70, tot: 100, kleur: 'var(--teal)' }];
-  var boogSvg = zones.map(function(z){ return '<path d="'+boogPad(z.van,z.tot)+'" fill="none" stroke="'+z.kleur+'" stroke-width="'+strokeW+'" stroke-linecap="round"/>'; }).join('');
+  // stroke-linecap:butt op de losse zone-segmenten — met "round" overlappen de afgeronde
+  // uiteinden bij elke zonegrens (50/70) en ontstaat een bultje dat op een losse stip lijkt,
+  // los van de waarde (leek op een verkeerd gepositioneerde naald "in het midden").
+  var boogSvg = zones.map(function(z){ return '<path d="'+boogPad(z.van,z.tot)+'" fill="none" stroke="'+z.kleur+'" stroke-width="'+strokeW+'" stroke-linecap="butt"/>'; }).join('');
   var heeftWaarde = waarde !== null && waarde !== undefined;
   var naaldKleur = !heeftWaarde ? 'var(--muted)' : (waarde >= 70 ? 'var(--teal)' : waarde >= 50 ? 'var(--gold)' : 'var(--red)');
   var naaldPunt = polair(hoekVoorWaarde(heeftWaarde ? waarde : 0));
+  // Bugfix 21 aug 2026: de stip stond vast op het draaipunt (cx,cy) i.p.v. op het naaldpunt zelf —
+  // zag er dus bij elke score hetzelfde uit (een bolletje in het midden), los van de waarde.
   var naaldSvg = !heeftWaarde ? '' :
     '<line x1="'+cx+'" y1="'+cy+'" x2="'+naaldPunt.x.toFixed(2)+'" y2="'+naaldPunt.y.toFixed(2)+'" stroke="'+naaldKleur+'" stroke-width="4" stroke-linecap="round"/>'
-    + '<circle cx="'+cx+'" cy="'+cy+'" r="8" fill="'+naaldKleur+'" stroke="var(--panel)" stroke-width="2"/>';
+    + '<circle cx="'+naaldPunt.x.toFixed(2)+'" cy="'+naaldPunt.y.toFixed(2)+'" r="8" fill="'+naaldKleur+'" stroke="var(--panel)" stroke-width="2"/>';
   var waardeTekst = heeftWaarde ? Math.round(waarde) : '—';
   return '<div style="text-align:center">'
     + '<svg viewBox="0 0 220 130" width="100%" style="max-width:230px" role="img" aria-label="' + esc(label) + ': ' + waardeTekst + (heeftWaarde ? '/100' : '') + '">' + boogSvg + naaldSvg
