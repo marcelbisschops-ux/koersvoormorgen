@@ -977,6 +977,10 @@ function renderBegeleiderDashboard(app){
   async function bgDoc(type){
     var out=document.getElementById('bg-doc-out');
     out.style.display='block';
+    // Prominent zichtbaar maken (21 aug 2026, Marcel — herhaaldelijk gevraagd): een grijze regel
+    // onderin een uitgeklapt paneel werd gemist. Toast() verschijnt altijd bovenop, ongeacht scrollpositie.
+    var bgDocLabels={nda:'NDA',loi:'LoI',bem:'Bemiddelingsovereenkomst',excl:'Exclusiviteitsbrief'};
+    toast('⚙️ Bezig met genereren: '+(bgDocLabels[type]||type)+'...','info',4000);
     out.innerHTML='<div style="color:var(--muted);font-size:13px;padding:1rem;background:var(--card);border-radius:var(--r2)">Genereren... (15-30 sec)</div>';
     var t2=S.traject;
     var datum=new Date().toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'});
@@ -1050,6 +1054,8 @@ function renderBegeleiderDashboard(app){
     }
     var kleuren={nda:'#7c5cbf',loi:'var(--gold)',bem:'#2a5ea0',excl:'#1a7a5e'};
     var labels={nda:'NDA',loi:'LoI',bem:'Bemiddelingsovereenkomst',excl:'Exclusiviteitsbrief'};
+    if(tekst&&tekst!=='Fout bij genereren')toast('✓ '+labels[type]+' is gegenereerd','ok');
+    else toast('Genereren van '+labels[type]+' is mislukt','err');
     out.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem">'
       +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">'
       +'<div style="font-size:11px;font-weight:600;color:'+kleuren[type]+';text-transform:uppercase;letter-spacing:.1em">'+labels[type]+' gegenereerd</div>'
@@ -1304,6 +1310,7 @@ function renderBegeleiderDashboard(app){
 
     document.getElementById('dv-ok').onclick=async function(){
       var btn=this;btn.disabled=true;btn.textContent='Genereren... (20-40 sec)';
+      toast('⚙️ Bezig met genereren: Dealvoorstel...','info',4000);
       var errEl=document.getElementById('dv-err');errEl.style.display='none';
       var p={
         koperNaam:document.getElementById('dv-koper').value.trim()||'de koper',
@@ -1453,6 +1460,7 @@ function renderBegeleiderDashboard(app){
         var rd=await resp.json();
         var bodyHtml=dvBouwRapportHtml(rd.text||'',tabelMap);
         document.body.removeChild(ov);
+        toast('✓ Dealvoorstel is gegenereerd','ok');
         var out=document.getElementById('bg-doc-out');
         out.style.display='block';
         var titel='Dealvoorstel — '+(t2.kantoor_naam||S.code);
@@ -1682,11 +1690,13 @@ function renderBegeleiderDashboard(app){
   async function toonSpaModal(){
     var t2=S.traject||{};
     var out=document.getElementById('bg-doc-out');out.style.display='block';
+    toast('⚙️ Bezig met genereren: Aandachtspunten koopovereenkomst (SPA)...','info',4000);
     out.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem">Aandachtspuntenlijst laden...</div>';
     var docOutEl=document.getElementById('bg-doc-out');
     if(docOutEl)setTimeout(function(){docOutEl.scrollIntoView({behavior:'smooth',block:'nearest'});},100);
     var tplD=await fetch(WORKER+'/mna/template/spa?email='+encodeURIComponent(t2.begeleider_email||'')+'&code='+encodeURIComponent(S.code)).then(function(r){return r.json();}).catch(function(){return{ok:false};});
     var tekst=tplD.ok&&tplD.tekst?tplD.tekst:'[aandachtspuntenlijst niet beschikbaar]';
+    toast(tplD.ok?'✓ Aandachtspuntenlijst (SPA) is gegenereerd':'Genereren van aandachtspuntenlijst is mislukt',tplD.ok?'ok':'err');
     var titel='Aandachtspunten koopovereenkomst (SPA) — '+(t2.kantoor_naam||S.code);
     out.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem">'
       +'<div style="font-size:11px;font-weight:600;color:#5a5470;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.5rem">Aandachtspunten koopovereenkomst (SPA)</div>'
@@ -1741,9 +1751,11 @@ function renderBegeleiderDashboard(app){
     return html;
   }
   async function genereerRisicoraamwerk(out){
+    toast('⚙️ Bezig met genereren: Risicoraamwerk (SWOT/PESTEL/Porter)...','info',4000);
     out.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;color:var(--muted)">Genereren... (15-30 sec)</div>';
     var r=await fetch(WORKER+'/mna/risicoraamwerk/genereer',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||''},body:JSON.stringify({code:S.code})}).then(function(x){return x.json();}).catch(function(){return{};});
-    if(!r.ok){out.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;color:var(--red)">Genereren mislukt: '+esc(r.error||'onbekende fout')+'</div>';return;}
+    if(!r.ok){toast('Genereren van Risicoraamwerk is mislukt','err');out.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;color:var(--red)">Genereren mislukt: '+esc(r.error||'onbekende fout')+'</div>';return;}
+    toast('✓ Risicoraamwerk is gegenereerd','ok');
     out.innerHTML=renderRisicoraamwerk(r);
     var nieuwBtn=document.getElementById('rr-nieuw');
     if(nieuwBtn)nieuwBtn.onclick=function(){genereerRisicoraamwerk(out);};
