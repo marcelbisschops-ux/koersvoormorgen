@@ -87,7 +87,9 @@ section{padding:3.5rem 0}
 /* Adviseurs */
 .pill-row{display:flex;gap:.6rem;flex-wrap:wrap;margin:1rem 0 1.75rem}
 .pill{font-size:12.5px;font-weight:600;color:var(--sub);background:var(--panel);border:1px solid var(--border2);border-radius:99px;padding:5px 14px}
-.scan-card{background:var(--panel);border:1.5px solid var(--teal);border-radius:var(--r4);padding:2rem 2.25rem;margin-top:2.75rem;max-width:520px;box-shadow:0 8px 28px rgba(0,0,0,.08)}
+.scan-divider{display:flex;align-items:center;gap:12px;color:var(--muted);font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;margin:3rem 0 1.75rem}
+.scan-divider::before,.scan-divider::after{content:'';flex:1;height:1px;background:var(--border2)}
+.scan-card{background:var(--teal-bg);border:1.5px solid var(--teal);border-radius:var(--r4);padding:2rem 2.25rem;max-width:520px;box-shadow:0 8px 28px rgba(0,0,0,.08)}
 .scan-tag{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--gold);margin-bottom:.6rem}
 .scan-card h3{font-size:1.25rem;font-weight:600;margin-bottom:.35rem}
 .scan-sub{font-size:13px;font-weight:600;color:var(--teal);margin-bottom:.9rem}
@@ -254,6 +256,7 @@ section{padding:3.5rem 0}
     </div>
     <p style="font-size:14.5px;color:var(--sub);font-weight:500">Van eerste voorbereiding tot closing: de adviseur houdt de regie.</p>
 
+    <div class="scan-divider">Los aanbod voor accountantskantoren</div>
     <div class="scan-card">
       <div class="scan-tag">Alleen voor accountantskantoren</div>
       <h3>Hoe overnameklaar is jouw kantoor?</h3>
