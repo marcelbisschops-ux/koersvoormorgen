@@ -327,8 +327,8 @@ function toonGroepsstructuurModal(app){
     +'<div style="font-size:12px;color:#8a8880;margin-bottom:1rem">Betreft dit traject een holding met meerdere werkmaatschappijen? Registreer hier de aparte entiteiten — documenten van deze bedrijven worden dan niet meer afgewezen als "ander bedrijf", en blijven traceerbaar in de dataroom.</div>'
     +'<div id="gs-lijst" style="margin-bottom:1rem;font-size:13px;color:#8a8880;font-style:italic">Laden...</div>'
     +'<div style="display:flex;gap:8px;margin-bottom:.5rem">'
-    +'<input type="text" id="gs-naam" placeholder="Naam entiteit" style="flex:2;background:#f0eeea;border:1px solid #c8c5bc;border-radius:6px;padding:7px 11px;font-size:13px">'
-    +'<input type="text" id="gs-kvk" placeholder="KvK (optioneel)" style="flex:1;background:#f0eeea;border:1px solid #c8c5bc;border-radius:6px;padding:7px 11px;font-size:13px">'
+    +'<input type="text" id="gs-naam" placeholder="Naam entiteit" style="flex:2;background:#f0eeea;color:#2a2825;border:1px solid #c8c5bc;border-radius:6px;padding:7px 11px;font-size:13px">'
+    +'<input type="text" id="gs-kvk" placeholder="KvK (optioneel)" style="flex:1;background:#f0eeea;color:#2a2825;border:1px solid #c8c5bc;border-radius:6px;padding:7px 11px;font-size:13px">'
     +'<button id="gs-toevoegen" style="background:#1a7a5e;color:#fff;border:none;padding:7px 14px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;white-space:nowrap">+ Toevoegen</button>'
     +'</div>'
     +'<label style="display:flex;align-items:flex-start;gap:6px;font-size:11px;color:var(--muted);margin-bottom:1rem;cursor:pointer">'
@@ -393,13 +393,13 @@ function toonPartnersModal(app){
     +'<div id="pt-lijst" style="margin-bottom:1rem;font-size:13px;color:#8a8880;font-style:italic">Laden...</div>'
     +'<div style="border-top:1px solid #e5e2d8;padding-top:.85rem;margin-top:.5rem">'
     +'<div style="display:flex;gap:8px;margin-bottom:6px">'
-    +'<input type="text" id="pt-naam" placeholder="Naam partner" style="flex:2;background:#f0eeea;border:1px solid #c8c5bc;border-radius:6px;padding:7px 11px;font-size:13px">'
-    +'<input type="text" id="pt-leeftijd" placeholder="Leeftijd" style="flex:1;background:#f0eeea;border:1px solid #c8c5bc;border-radius:6px;padding:7px 11px;font-size:13px">'
+    +'<input type="text" id="pt-naam" placeholder="Naam partner" style="flex:2;background:#f0eeea;color:#2a2825;border:1px solid #c8c5bc;border-radius:6px;padding:7px 11px;font-size:13px">'
+    +'<input type="text" id="pt-leeftijd" placeholder="Leeftijd" style="flex:1;background:#f0eeea;color:#2a2825;border:1px solid #c8c5bc;border-radius:6px;padding:7px 11px;font-size:13px">'
     +'</div>'
     +'<div style="display:flex;gap:8px;margin-bottom:6px">'
-    +'<input type="text" id="pt-verandering" placeholder="Veranderbereidheid" style="flex:1;background:#f0eeea;border:1px solid #c8c5bc;border-radius:6px;padding:7px 11px;font-size:13px">'
-    +'<input type="text" id="pt-opvolging" placeholder="Opvolgingskandidaat" style="flex:1;background:#f0eeea;border:1px solid #c8c5bc;border-radius:6px;padding:7px 11px;font-size:13px">'
-    +'<input type="text" id="pt-omzet" placeholder="Omzet incl. team (€)" style="flex:1;background:#f0eeea;border:1px solid #c8c5bc;border-radius:6px;padding:7px 11px;font-size:13px">'
+    +'<input type="text" id="pt-verandering" placeholder="Veranderbereidheid" style="flex:1;background:#f0eeea;color:#2a2825;border:1px solid #c8c5bc;border-radius:6px;padding:7px 11px;font-size:13px">'
+    +'<input type="text" id="pt-opvolging" placeholder="Opvolgingskandidaat" style="flex:1;background:#f0eeea;color:#2a2825;border:1px solid #c8c5bc;border-radius:6px;padding:7px 11px;font-size:13px">'
+    +'<input type="text" id="pt-omzet" placeholder="Omzet incl. team (€)" style="flex:1;background:#f0eeea;color:#2a2825;border:1px solid #c8c5bc;border-radius:6px;padding:7px 11px;font-size:13px">'
     +'</div>'
     +'<div id="pt-entiteiten" style="font-size:12px;color:#8a8880;margin-bottom:8px">Gekoppelde entiteiten: <span style="font-style:italic">laden...</span></div>'
     +'<button id="pt-toevoegen" style="background:#1a7a5e;color:#fff;border:none;padding:7px 14px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600">+ Toevoegen</button>'
@@ -1573,7 +1573,7 @@ function renderBegeleiderDashboard(app){
     var d=dvGetDefaults();
     var multMid=((d.multipleBasis+d.multipleBovengrens)/2);
     var lbl='font-size:10px;font-weight:600;text-transform:uppercase;color:#8a8880;display:block;margin-bottom:4px';
-    var inp='width:100%;background:#f0eeea;border:1px solid #c8c5bc;border-radius:6px;padding:7px 11px;font-family:IBM Plex Sans,sans-serif;font-size:13px';
+    var inp='width:100%;background:#f0eeea;color:#2a2825;border:1px solid #c8c5bc;border-radius:6px;padding:7px 11px;font-family:IBM Plex Sans,sans-serif;font-size:13px';
     function veld(id,label,val,step,type){
       return '<div style="flex:1"><label style="'+lbl+'">'+label+'</label><input type="'+(type||'number')+'" id="'+id+'" value="'+val+'" '+(step?'step="'+step+'"':'')+' style="'+inp+'"></div>';
     }
@@ -1703,7 +1703,7 @@ function renderBegeleiderDashboard(app){
       +(ontvangers.length?'':'<div style="font-size:12px;color:#e05252">Geen e-mailadressen bekend voor dit traject.</div>')
       +'</div>'
       +'<div style="margin-bottom:1rem"><label style="font-size:10px;font-weight:600;text-transform:uppercase;color:#8a8880;display:block;margin-bottom:4px">Bericht (optioneel)</label>'
-      +'<textarea id="ed-bericht" rows="3" style="width:100%;background:#f0eeea;border:1px solid #c8c5bc;border-radius:6px;padding:7px 11px;font-family:IBM Plex Sans,sans-serif;font-size:13px;resize:vertical" placeholder="Korte toelichting bij het document..."></textarea></div>'
+      +'<textarea id="ed-bericht" rows="3" style="width:100%;background:#f0eeea;color:#2a2825;border:1px solid #c8c5bc;border-radius:6px;padding:7px 11px;font-family:IBM Plex Sans,sans-serif;font-size:13px;resize:vertical" placeholder="Korte toelichting bij het document..."></textarea></div>'
       +'<div id="ed-err" style="display:none;color:#e05252;font-size:12px;margin-bottom:.75rem"></div>'
       +'<div style="display:flex;gap:8px;justify-content:flex-end">'
       +'<button id="ed-ann" style="background:transparent;border:1px solid #c8c5bc;padding:8px 16px;border-radius:6px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:13px">Annuleren</button>'
@@ -2022,7 +2022,7 @@ function renderBegeleiderDashboard(app){
     var catHtml = '';
     categorieen.forEach(function(cat, ci){
       catHtml += '<div style="margin-bottom:12px;border:1px solid #e4e0db;border-radius:8px;overflow:hidden">'
-        + '<label style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#f7f5f2;cursor:pointer;font-weight:600;font-size:13px">'
+        + '<label style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#f7f5f2;color:#2a2825;cursor:pointer;font-weight:600;font-size:13px">'
         + '<input type="checkbox" class="iv-cat-check" data-ci="'+ci+'" checked style="width:15px;height:15px;accent-color:#1a7a5e"> '
         + cat.titel + '</label>'
         + '<div class="iv-items-'+ci+'" style="padding:8px 14px 10px 38px">';
@@ -2041,12 +2041,12 @@ function renderBegeleiderDashboard(app){
       +'<div style="display:inline-block;background:'+(ivFase==="2"?"var(--info-bg)":"var(--teal-bg)")+';border:1px solid '+(ivFase==="2"?"var(--info)":"var(--teal)")+';color:'+(ivFase==="2"?"var(--info)":"var(--teal)")+';font-size:11px;font-weight:600;padding:3px 10px;border-radius:12px;margin-bottom:1rem">'+(ivFase==="2"?"🔍 Fase 2 — Volledige DD (post-LoI)":"📋 Fase 1 — Oriëntatie (pre-LoI)")+'</div>'
       +'<div style="font-size:12px;color:#8a8880;margin-bottom:1.25rem">Vink aan welke categorieën en vragen u wilt meesturen. U kunt per categorie een toelichting toevoegen.</div>'
       +'<div style="margin-bottom:1rem"><label style="font-size:10px;font-weight:600;text-transform:uppercase;color:#8a8880;display:block;margin-bottom:4px">Deadline (aanpasbaar)</label>'
-      +'<input type="text" id="iv-deadline" value="'+deadline+'" style="background:#f0eeea;border:1px solid #c8c5bc;border-radius:6px;padding:7px 11px;font-family:IBM Plex Sans,sans-serif;font-size:13px;width:200px"></div>'
+      +'<input type="text" id="iv-deadline" value="'+deadline+'" style="background:#f0eeea;color:#2a2825;border:1px solid #c8c5bc;border-radius:6px;padding:7px 11px;font-family:IBM Plex Sans,sans-serif;font-size:13px;width:200px"></div>'
       +'<div style="margin-bottom:1rem"><label style="font-size:10px;font-weight:600;text-transform:uppercase;color:#8a8880;display:block;margin-bottom:4px">Persoonlijk bericht (optioneel)</label>'
-      +'<textarea id="iv-bericht" rows="2" placeholder="Voeg een persoonlijk bericht toe..." style="width:100%;background:#f0eeea;border:1px solid #c8c5bc;border-radius:6px;padding:7px 11px;font-family:IBM Plex Sans,sans-serif;font-size:13px;resize:vertical"></textarea></div>'
+      +'<textarea id="iv-bericht" rows="2" placeholder="Voeg een persoonlijk bericht toe..." style="width:100%;background:#f0eeea;color:#2a2825;border:1px solid #c8c5bc;border-radius:6px;padding:7px 11px;font-family:IBM Plex Sans,sans-serif;font-size:13px;resize:vertical"></textarea></div>'
       +catHtml
       +'<div style="margin-bottom:1rem;margin-top:1rem"><label style="font-size:10px;font-weight:600;text-transform:uppercase;color:#8a8880;display:block;margin-bottom:4px">Stuur naar</label>'
-      +'<input type="email" id="bg-iv-email" value="'+esc(t2.contact_email||'')+'" style="width:100%;background:#f0eeea;border:1px solid #c8c5bc;border-radius:6px;padding:9px 11px;font-family:IBM Plex Sans,sans-serif;font-size:13px"></div>'
+      +'<input type="email" id="bg-iv-email" value="'+esc(t2.contact_email||'')+'" style="width:100%;background:#f0eeea;color:#2a2825;border:1px solid #c8c5bc;border-radius:6px;padding:9px 11px;font-family:IBM Plex Sans,sans-serif;font-size:13px"></div>'
       +'<div id="bg-iv-err" style="display:none;color:#e05252;font-size:12px;margin-bottom:.5rem"></div>'
       +'<div style="display:flex;gap:8px;justify-content:flex-end">'
       +'<button id="bg-iv-preview" style="background:transparent;border:1px solid #c8c5bc;padding:8px 16px;border-radius:6px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:13px">&#128065; Preview</button>'
@@ -2490,7 +2490,7 @@ function renderBegeleiderDashboard(app){
     var mo=document.createElement('div');mo.setAttribute('role','dialog');mo.setAttribute('aria-modal','true');mo.setAttribute('aria-labelledby','feedback-modal-titel');mo.style.cssText='background:var(--panel);border-radius:10px;padding:2rem;max-width:480px;width:100%';
     mo.innerHTML='<div id="feedback-modal-titel" style="font-family:Playfair Display,serif;font-size:1.1rem;color:var(--head);font-weight:600;margin-bottom:.5rem">&#128172; Feedback of een bug melden</div>'
       +'<div style="font-size:12px;color:#8a8880;margin-bottom:1rem">Kort omschrijven wat je zag en wat je verwachtte. Komt direct binnen bij Marcel — reken op een reactie binnen 24 uur.</div>'
-      +'<textarea id="fb-tekst" rows="6" style="width:100%;background:#f0eeea;border:1px solid #c8c5bc;border-radius:6px;padding:9px 11px;font-family:IBM Plex Sans,sans-serif;font-size:13px;resize:vertical" placeholder="Wat zag je en wat verwachtte je?"></textarea>'
+      +'<textarea id="fb-tekst" rows="6" style="width:100%;background:#f0eeea;color:#2a2825;border:1px solid #c8c5bc;border-radius:6px;padding:9px 11px;font-family:IBM Plex Sans,sans-serif;font-size:13px;resize:vertical" placeholder="Wat zag je en wat verwachtte je?"></textarea>'
       +'<div id="fb-err" style="display:none;color:#e05252;font-size:12px;margin-top:.5rem"></div>'
       +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem">'
       +'<button id="fb-ann" style="background:transparent;border:1px solid #c8c5bc;padding:8px 16px;border-radius:6px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:13px">Annuleren</button>'
