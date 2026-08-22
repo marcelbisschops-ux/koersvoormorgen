@@ -1815,7 +1815,7 @@ function bindAll(){
           if(type==='nda')payload.nda_tekst=verzendTekst;
           else if(type==='loi')payload.loi_tekst=verzendTekst;
           else{payload.bem_tekst=verzendTekst;payload.type=isSell?'verkoop':'aankoop';}
-          var er=await fetch(WORKER+endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+          var er=await fetch(WORKER+endpoint,{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S.code},body:JSON.stringify(payload)});
           var ed=await er.json();
           if(ed.ok){ebtn.textContent='✓ Verstuurd';setTimeout(function(){ebtn.textContent='✉ Verstuur';ebtn.disabled=false;},2000);}
           else{toast('Fout: '+(ed.error||'onbekend'),'err');ebtn.disabled=false;ebtn.textContent='✉ Verstuur';}

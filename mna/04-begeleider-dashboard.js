@@ -1182,7 +1182,7 @@ function renderBegeleiderDashboard(app){
       else if(type==='excl')payload.excl_tekst=vt;
       else{payload.bem_tekst=vt;payload.type=isSell?'verkoop':'aankoop';}
       if(bgPdfStaat.base64){payload.eigen_pdf_base64=bgPdfStaat.base64;payload.eigen_pdf_naam=bgPdfStaat.naam;payload.eigen_pdf_mime=bgPdfStaat.mime;}
-      var er=await fetch(WORKER+ep,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      var er=await fetch(WORKER+ep,{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S.code},body:JSON.stringify(payload)});
       var ed=await er.json();
       if(ed.ok){ebtn.textContent='✓ Verstuurd';}else{toast('Fout: '+(ed.error||'onbekend'),'err');ebtn.disabled=false;ebtn.textContent='✉ Verstuur';}
     };
@@ -1554,7 +1554,7 @@ function renderBegeleiderDashboard(app){
           // i.p.v. de begeleider ze een tweede keer met de hand te laten intikken.
           var payload={code:S.traject.id,dealvoorstel_tekst:dvHtmlNaarTekst(levendeHtml),to:toList,cijfers_json:{p:p,closing:closing}};
           if(dvPdfStaat.base64){payload.eigen_pdf_base64=dvPdfStaat.base64;payload.eigen_pdf_naam=dvPdfStaat.naam;payload.eigen_pdf_mime=dvPdfStaat.mime;}
-          var er=await fetch(WORKER+'/mna/dealvoorstel/email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+          var er=await fetch(WORKER+'/mna/dealvoorstel/email',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S.code},body:JSON.stringify(payload)});
           var ed=await er.json();
           if(ed.ok){ebtn.textContent='✓ Verstuurd';}else{toast('Fout: '+(ed.error||'onbekend'),'err');ebtn.disabled=false;ebtn.textContent='✉ Verstuur naar partijen';}
         };
@@ -1668,7 +1668,7 @@ function renderBegeleiderDashboard(app){
           var toList=[t2.contact_email,t2.begeleider_email,t2.koper_email].filter(Boolean);
           var payload={code:S.traject.id,bieding_tekst:document.getElementById('bd-doc-tekst').value,to:toList,goedgekeurd_door:bdGoedkeuringCtrl.getNaam()};
           if(bdPdfStaat.base64){payload.eigen_pdf_base64=bdPdfStaat.base64;payload.eigen_pdf_naam=bdPdfStaat.naam;payload.eigen_pdf_mime=bdPdfStaat.mime;}
-          var er=await fetch(WORKER+'/mna/bieding/email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+          var er=await fetch(WORKER+'/mna/bieding/email',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S.code},body:JSON.stringify(payload)});
           var ed=await er.json();
           if(ed.ok){ebtn.textContent='✓ Verstuurd';}else{toast('Fout: '+(ed.error||'onbekend'),'err');ebtn.disabled=false;ebtn.textContent='✉ Verstuur naar partijen';}
         };
