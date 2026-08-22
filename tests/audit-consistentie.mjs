@@ -151,14 +151,14 @@ log('4. "Intern" gelabelde UI-blokken vs. koper-afscherming (mna/*.js)');
 // zoekt) maar op een andere, evengoed sluitende manier. Nieuwe regels horen hier NIET automatisch
 // bij te komen — eerst zelf de bewakende conditie vinden en bevestigen, dán pas toevoegen.
 const GEVERIFIEERD_VEILIG_CHECK4 = new Set([
-  // 19-08-2026, regelnummer herbevestigd 21-08-2026 (opgeschoven door latere, ongerelateerde
-  // toevoegingen eerder in het bestand): risicoraamwerk-knop staat alleen in
-  // renderBegeleiderDashboard(), dat zelf alleen bereikt wordt via S.screen='begeleider' — en dát
-  // wordt uitsluitend gezet binnen if(isTussen()) in mna/06-schermen.js (zie de login-flow).
-  // Structurele scheiding op scherm-niveau, dus geen lokale !isKoper()-check nodig. Backend dubbelt
-  // dit bovendien af: /mna/risicoraamwerk/genereer en de GET-variant zijn begeleiderAuth-only (zie
-  // tests/audit-consistentie.mjs check 5).
-  'mna/04-begeleider-dashboard.js:1859',
+  // 19-08-2026, regelnummer herbevestigd 22-08-2026 (opnieuw opgeschoven door latere, ongerelateerde
+  // toevoegingen eerder in het bestand — o.a. de Tussenpersoon-toegang-uitnodiging): risicoraamwerk-
+  // knop staat alleen in renderBegeleiderDashboard(), dat zelf alleen bereikt wordt via
+  // S.screen='begeleider' — en dát wordt uitsluitend gezet binnen if(isTussen()) in
+  // mna/06-schermen.js (zie de login-flow). Structurele scheiding op scherm-niveau, dus geen lokale
+  // !isKoper()-check nodig. Backend dubbelt dit bovendien af: /mna/risicoraamwerk/genereer en de
+  // GET-variant zijn begeleiderAuth-only (zie tests/audit-consistentie.mjs check 5).
+  'mna/04-begeleider-dashboard.js:1911',
   // 19-08-2026: handleiding-tekst (documentatiestring in mna/08-handleiding.js), geen
   // autorisatie-relevante UI-code — de heuristiek matcht hier puur op het woord "interne" in de
   // uitlegtekst zelf, niet op een daadwerkelijk conditioneel getoond blok.
