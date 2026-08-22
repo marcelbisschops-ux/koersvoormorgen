@@ -170,6 +170,57 @@ function toonUitnodigingModalTussen() {
   document.getElementById('inv-kt-btn').onclick = function(){ stuurTussen('k'); };
 }
 
+// Toegang tot dit traject ALS TUSSENPERSOON/BEGELEIDER doorsturen naar iemand anders — bijv. een
+// externe tester die het traject zelf als begeleider moet doorlopen. Bewust los van
+// toonUitnodigingModalTussen() hierboven, die verkoper-/koper-toegang verstuurt: de tussen_code geeft
+// volledige begeleiderstoegang, dus deze mail moet altijd bewust en handmatig verstuurd worden.
+function toonUitnodigingModalTussenpersoon() {
+  var t = S.traject || {};
+  var mnaUrl = 'https://koersvoormorgen.nl/mna.html';
+  var ov = document.createElement('div'); ov.className = 'overlay';
+  var mo = document.createElement('div'); mo.className = 'modal'; mo.style.maxWidth = '460px';
+  mo.innerHTML = '<div style="font-family:Playfair Display,serif;font-size:1.2rem;color:var(--head);font-weight:600;margin-bottom:.4rem">&#128101; Tussenpersoon-toegang versturen</div>'
+    + '<p style="font-size:13px;color:var(--mid);margin-bottom:1rem;line-height:1.6">Stuurt de volledige begeleiderscode van dit traject naar het opgegeven e-mailadres — die persoon kan daarmee alles zien en doen wat u als begeleider kunt. Alleen gebruiken voor iemand die dit traject zelf als begeleider moet testen/doorlopen.</p>'
+    + '<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r2);padding:.875rem;margin-bottom:1rem">'
+    + '<div style="font-size:11px;font-weight:700;color:var(--teal);text-transform:uppercase;letter-spacing:.1em;margin-bottom:.5rem">Tussenpersoon-code</div>'
+    + '<div style="font-family:IBM Plex Mono,monospace;font-size:.9rem;font-weight:700;color:var(--teal);margin-bottom:.6rem">'+esc(t.tussen_code||S.code||'')+'</div>'
+    + '<input type="email" id="inv-tp-email" placeholder="E-mailadres" style="width:100%;background:var(--panel);border:1px solid var(--border2);border-radius:var(--r);padding:7px 10px;font-size:12px;font-family:IBM Plex Sans,sans-serif;color:var(--sub);outline:none;margin-bottom:.5rem">'
+    + '<button id="inv-tp-btn" class="btn" style="width:100%;font-size:12px;padding:6px;background:var(--teal)">&#9993; Verstuur</button>'
+    + '<div id="inv-tp-st" style="font-size:11px;margin-top:.3rem;min-height:14px"></div>'
+    + '</div>'
+    + '<div style="display:flex;justify-content:flex-end"><button class="btn-ghost" id="inv-tp-sluit">Sluiten</button></div>';
+  ov.appendChild(mo); document.body.appendChild(ov);
+  ov.addEventListener('click', function(e){if(e.target===ov)document.body.removeChild(ov);});
+  document.getElementById('inv-tp-sluit').onclick = function(){document.body.removeChild(ov);};
+
+  document.getElementById('inv-tp-btn').onclick = async function(){
+    var email = document.getElementById('inv-tp-email').value.trim();
+    var stEl = document.getElementById('inv-tp-st');
+    var btnEl = this;
+    if (!email) { stEl.innerHTML='<span style="color:var(--red)">E-mail verplicht</span>'; return; }
+    btnEl.disabled = true; btnEl.textContent = 'Versturen...';
+    var tussenCode = t.tussen_code || S.code;
+    var html = '<div style="font-family:sans-serif;max-width:560px;margin:0 auto">'
+      + '<div style="background:#1a7a5e;color:#fff;padding:1.5rem;border-radius:8px 8px 0 0"><h2 style="margin:0;font-size:1.1rem">Toegang als tussenpersoon — '+esc(t.kantoor_naam||'M&A-traject')+'</h2></div>'
+      + '<div style="background:#fff;border:1px solid #ddd;border-top:none;padding:1.5rem;border-radius:0 0 8px 8px">'
+      + '<p style="font-size:13px;color:#5a5854;line-height:1.7">U bent uitgenodigd om dit M&A-traject als <strong>tussenpersoon/begeleider</strong> te doorlopen.</p>'
+      + '<div style="background:#f0faf6;border:1px solid #0a3d2e;border-radius:8px;padding:1.25rem;margin:1.25rem 0">'
+      + '<div style="font-size:11px;font-weight:600;color:#145f48;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.5rem">Inloggen</div>'
+      + '<div style="font-family:monospace;background:#fff;border:1px solid #ddd;padding:.75rem;border-radius:6px;font-size:13px;margin-bottom:.5rem"><a href="'+mnaUrl+'" style="color:#1a7a5e">'+mnaUrl+'</a></div>'
+      + '<div style="font-size:12px;color:#8a8880">Toegangscode: <strong style="font-family:monospace;color:#1a7a5e;font-size:14px">'+esc(tussenCode)+'</strong></div>'
+      + '</div>'
+      + '<p style="font-size:13px;color:#5a5854;line-height:1.7">Na het inloggen vindt u linksboven de knop <strong>📖 Handleiding</strong> met een volledige uitleg van alle stappen en functies.</p>'
+      + '</div></div>';
+    try {
+      var res = await fetch(WORKER+'/mna/mail-begeleider', { method:'POST', headers:{'Content-Type':'application/json','x-tussen-key':S.code},
+        body: JSON.stringify({ to: email, trajectNaam: t.kantoor_naam||S.code, tussenCode: tussenCode, subject: 'Toegang als tussenpersoon — '+(t.kantoor_naam||'M&A-traject'), html: html }) });
+      var rd = await res.json();
+      if (rd.ok) { stEl.innerHTML='<span style="color:var(--teal)">&#10003; Verstuurd</span>'; btnEl.innerHTML='&#10003; Ok'; }
+      else { stEl.innerHTML='<span style="color:var(--red)">'+esc(rd.error||'Fout')+'</span>'; btnEl.disabled=false; btnEl.textContent='Verstuur'; }
+    } catch(e) { stEl.innerHTML='<span style="color:var(--red)">Verbindingsfout</span>'; btnEl.disabled=false; btnEl.textContent='Verstuur'; }
+  };
+}
+
 function renderApp(){
   var app=ge('app');
   if(S.screen==='login')app.innerHTML=renderLogin();
@@ -722,10 +773,11 @@ function renderBegeleiderDashboard(app){
       // ── Communicatie (ingeklapt) ──
       html+='<div class="panel" style="margin-bottom:.75rem;padding:0">'+secHdr('comm','&#128172; Communicatie').replace('&#9650;','&#9660;')
         +'<div class="bg-sec-body" data-sec="comm" style="display:none;padding:0 1rem 1rem">'
-        +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">'
+        +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">'
         +'<button class="btn" id="bg-gesprek-actie" style="background:var(--teal);padding:10px;font-size:12px">&#128172; Gesprek</button>'
         +'<button class="btn" id="bg-uitnodigen-btn" style="background:var(--teal-dim);padding:10px;font-size:12px">&#9993; Uitnodigen</button>'
         +'<button class="btn" id="bg-infoverzoek-actie" style="background:var(--teal-dim);padding:10px;font-size:12px">&#128203; Informatieverzoek</button>'
+        +'<button class="btn" id="bg-uitn-tussenp-btn" style="background:var(--teal-dim);padding:10px;font-size:12px">&#128101; Tussenpersoon-toegang</button>'
         +'</div></div></div>';
       // ── Analyse (ingeklapt) ──
       html+='<div class="panel" style="margin-bottom:1.25rem;padding:0">'+secHdr('analyse','&#9881; Analyse').replace('&#9650;','&#9660;')
@@ -1876,6 +1928,8 @@ function renderBegeleiderDashboard(app){
   // Informatieverzoek knop
   var bgUitnBtn=document.getElementById('bg-uitnodigen-btn');
   if(bgUitnBtn)bgUitnBtn.onclick=function(){toonUitnodigingModalTussen();};
+  var bgUitnTpBtn=document.getElementById('bg-uitn-tussenp-btn');
+  if(bgUitnTpBtn)bgUitnTpBtn.onclick=function(){toonUitnodigingModalTussenpersoon();};
   async function openInformatieverzoek(forcedFase, triggerBtn){
     var ibtn=triggerBtn||null;if(ibtn){ibtn.disabled=true;ibtn.textContent='Laden...';}
     var t2=S.traject;

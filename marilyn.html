@@ -2991,6 +2991,10 @@ function wisTrajectData(id, naam) {
     + '<input type="checkbox" id="wis-docs" style="width:15px;height:15px;cursor:pointer">'
     + '<div><div style="font-size:13px;font-weight:600;color:var(--sub)">Geüploade documenten</div>'
     + '<div style="font-size:11px;color:var(--muted)">Alle bestanden in de dataroom worden permanent verwijderd.</div></div></label>'
+    + '<label style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--card);border:1px solid var(--border);border-radius:var(--r);cursor:pointer">'
+    + '<input type="checkbox" id="wis-teken" style="width:15px;height:15px;cursor:pointer">'
+    + '<div><div style="font-size:13px;font-weight:600;color:var(--sub)">Ondertekeningen (BEM/NDA/LoI/Excl) + trajectfase</div>'
+    + '<div style="font-size:11px;color:var(--muted)">Zet het traject terug naar "voorgesprek", alsof er nog niets getekend is.</div></div></label>'
     + '</div>'
     + '<div id="wis-progress" style="display:none;background:var(--teal-bg);border:1px solid var(--teal-dark);border-radius:var(--r);padding:10px 12px;font-size:12px;color:var(--teal);margin-bottom:.75rem"></div>'
     + '<div id="wis-err" style="display:none;color:var(--red);font-size:12px;margin-bottom:.75rem"></div>'
@@ -3005,7 +3009,8 @@ function wisTrajectData(id, naam) {
     var wisDD = document.getElementById('wis-dd').checked;
     var wisChk = document.getElementById('wis-chk').checked;
     var wisDocs = document.getElementById('wis-docs').checked;
-    if (!wisDD && !wisChk && !wisDocs) {
+    var wisTeken = document.getElementById('wis-teken').checked;
+    if (!wisDD && !wisChk && !wisDocs && !wisTeken) {
       document.getElementById('wis-err').style.display = 'block';
       document.getElementById('wis-err').textContent = 'Selecteer minimaal één optie.';
       return;
@@ -3014,19 +3019,20 @@ function wisTrajectData(id, naam) {
     if (wisDD) confirmMsg += '✓ DD-velden (alle fases)\n';
     if (wisChk) confirmMsg += '✓ Checklist-statussen\n';
     if (wisDocs) confirmMsg += '✓ Geüploade documenten\n';
+    if (wisTeken) confirmMsg += '✓ Ondertekeningen + trajectfase\n';
     confirmMsg += '\nDit kan NIET ongedaan worden gemaakt. Doorgaan?';
     if (!confirm(confirmMsg)) return;
     var btn = this; btn.disabled = true; btn.textContent = 'Bezig...';
     var prog = document.getElementById('wis-progress'); prog.style.display = 'block';
     var stappen = []; var ok = true;
-    // Stap 1: DD-velden + checklist wissen
-    if (wisDD || wisChk) {
+    // Stap 1: DD-velden + checklist (+ evt. ondertekeningen) wissen
+    if (wisDD || wisChk || wisTeken) {
       prog.textContent = '⏳ DD-data wissen...';
       try {
-        var r = await fetch(WORKER + '/mna/admin/wis-data/' + id, { method: 'POST', headers: { 'x-admin-key': adminKey } });
+        var r = await fetch(WORKER + '/mna/admin/wis-data/' + id, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-key': adminKey }, body: JSON.stringify({ tekenen: wisTeken }) });
         var d = await r.json();
         if (d.ok) {
-          stappen.push('✓ DD-data gewist via worker');
+          stappen.push('✓ DD-data gewist via worker' + (wisTeken ? ' (incl. ondertekeningen + trajectfase)' : ''));
         } else {
           // Fallback: fase voor fase leegmaken
           var fases = ['financieel','commercieel','partner','compliance','it','juridisch','strategisch'];
