@@ -3609,6 +3609,15 @@ function veiligheidGauge(waarde, label, subtekst) {
     + '</div>';
 }
 
+function auditVerzoekStatusTekst(verzoek) {
+  if (!verzoek) return 'Nog geen aanvraag ingediend.';
+  var tijd = function(ms) { return new Date(ms).toLocaleString('nl-NL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }); };
+  if (verzoek.status === 'open') return 'Aanvraag ingediend om ' + tijd(verzoek.aangevraagd_op) + ' — wacht tot de routine dit oppikt (elke ~15 min).';
+  if (verzoek.status === 'bezig') return 'Routine is bezig sinds ' + tijd(verzoek.opgehaald_op) + '...';
+  if (verzoek.status === 'klaar') return 'Laatste aanvraag afgerond om ' + tijd(verzoek.afgerond_op) + '.';
+  return '';
+}
+
 async function renderVeiligheidTab(el) {
   if (veiligheidRefreshTimer) { clearInterval(veiligheidRefreshTimer); veiligheidRefreshTimer = null; }
   el.innerHTML = '<div style="padding:1rem;color:var(--muted);font-size:13px">Laden...</div>';
@@ -3670,7 +3679,12 @@ async function renderVeiligheidTab(el) {
               + '<div style="flex:1;min-width:260px;font-size:12px;color:var(--mid);line-height:1.6"><strong>' + esc(ov.diepe_audit.bron) + '</strong><br>' + esc(ov.diepe_audit.samenvatting) + '</div>'
               + '</div>'
             : '<div class="empty" style="color:var(--red)">Nog geen diepe audit gelogd.</div>')
-        + '<div style="font-size:11px;color:var(--muted);margin-top:1rem">Redenerende, brede beoordeling (architectuur/waardering/AI-kwaliteit/compliance) — kan niet automatisch draaien zonder forse AI-kosten en kwaliteitsverlies, dus handmatig gelogd na elke <code>AUDIT-STANDAARD.md</code>-ronde of <code>/code-review ultra</code>-run. Cadans: maandelijks + vóór elke grote release + op verzoek — dit vervangt de dagelijkse/push-checks hierboven niet en wordt er ook nooit door vervangen.</div>'
+        + '<div style="font-size:11px;color:var(--muted);margin-top:1rem">Redenerende, brede beoordeling (architectuur/waardering/AI-kwaliteit/compliance) — kan niet in de Worker zelf draaien zonder forse AI-kosten en kwaliteitsverlies, dus normaal handmatig gelogd na elke <code>AUDIT-STANDAARD.md</code>-ronde of <code>/code-review ultra</code>-run. Cadans: maandelijks + vóór elke grote release + op verzoek — dit vervangt de dagelijkse/push-checks hierboven niet en wordt er ook nooit door vervangen.</div>'
+        + '<div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border);display:flex;align-items:center;gap:12px;flex-wrap:wrap">'
+        + '<button class="btn" id="btn-audit-aanvragen" style="font-size:12px;padding:8px 16px">&#9889; Draai diepe audit nu (frontend + backend)</button>'
+        + '<span id="audit-verzoek-status" style="font-size:11px;color:var(--muted)">' + auditVerzoekStatusTekst(ov.audit_verzoek) + '</span>'
+        + '</div>'
+        + '<div style="font-size:10px;color:var(--muted);margin-top:6px">Zet een aanvraag klaar die een cloud-routine binnen ~15 min oppikt en zelf uitvoert (kost AI-tokens — max 1 tegelijk, min. 10 min tussen aanvragen).</div>'
         + '</div></div>';
 
       html += '<div class="table-wrap" style="margin-bottom:1.5rem"><div class="table-hdr"><div class="table-title">Open bevindingen (' + open.length + ')</div></div>';
@@ -3735,6 +3749,21 @@ async function renderVeiligheidTab(el) {
       if (rapportNieuwBtn) rapportNieuwBtn.addEventListener('click', function(){
         if (!confirm('Nieuwe code genereren? Elke eerder verstuurde link stopt dan direct met werken.')) return;
         haalRapportLinkOp(true);
+      });
+
+      var auditAanvraagBtn = document.getElementById('btn-audit-aanvragen');
+      if (auditAanvraagBtn) auditAanvraagBtn.addEventListener('click', async function() {
+        if (!confirm('Diepe audit aanvragen voor zowel de frontend- als de backend-repo? Dit kost AI-tokens (facturering) en start niet direct — een cloud-routine pikt de aanvraag binnen ~15 min op.')) return;
+        auditAanvraagBtn.disabled = true; auditAanvraagBtn.textContent = 'Bezig...';
+        try {
+          var r = await fetch(WORKER + '/mna/admin/veiligheid/diepe-audit/aanvragen', { method: 'POST', headers: { 'x-admin-key': adminKey } });
+          var d = await r.json();
+          if (!r.ok) { toast(d.error || 'Aanvraag mislukt.', 'err'); }
+          else if (d.al_in_behandeling) { toast('Er staat al een aanvraag open (status: ' + d.status + ').', 'warn'); }
+          else { toast('Audit aangevraagd — de routine pikt dit binnen ~15 min op.', 'ok'); }
+          laadVeiligheid();
+        } catch(e) { toast('Verbindingsfout.', 'err'); }
+        finally { auditAanvraagBtn.disabled = false; auditAanvraagBtn.textContent = '⚡ Draai diepe audit nu (frontend + backend)'; }
       });
 
       var nuBtn = document.getElementById('btn-veiligheid-nu');
