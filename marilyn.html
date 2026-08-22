@@ -500,6 +500,7 @@ function renderMnaTab(el){
           ?'<button class="btn-ghost btn-ontv" data-id="'+esc(t.id)+'" style="font-size:11px;padding:3px 8px;color:var(--teal)">&#128275; Ontgrendel</button>'
           :'<button class="btn-ghost btn-verg" data-id="'+esc(t.id)+'" data-naam="'+esc(t.kantoor_naam||t.id)+'" style="font-size:11px;padding:3px 8px;color:var(--gold)">&#128274; Vergrendel</button>')
         +'<button class="btn-ghost btn-wis-data" data-id="'+esc(t.id)+'" data-naam="'+esc(t.kantoor_naam||t.id)+'" style="font-size:11px;padding:3px 8px;color:var(--red);border-color:var(--red)" title="Data wissen (traject blijft)">&#129529; Wis data</button>'
+        +'<button class="btn-ghost btn-koppel-geb" data-id="'+esc(t.id)+'" data-naam="'+esc(t.kantoor_naam||t.id)+'" style="font-size:11px;padding:3px 8px" title="Koppel dit traject aan een adviseursaccount, zodat die het via adv.html ziet">&#128279; Koppel</button>'
         +'<button class="btn-red btn-del-mna" data-id="'+esc(t.id)+'" data-naam="'+esc(t.kantoor_naam||t.id)+'" style="font-size:13px;padding:3px 8px;color:var(--red)" title="Traject permanent verwijderen">&#128465;</button>'
         +'</td></tr>';
     });
@@ -525,6 +526,7 @@ function renderMnaTab(el){
   el.querySelectorAll('.btn-ontv').forEach(function(b){b.addEventListener('click',function(){ontvergrendel(b.dataset.id);});});
   el.querySelectorAll('.btn-del-mna').forEach(function(b){b.addEventListener('click',function(){deleteMna(b.dataset.id,b.dataset.naam);});});
   el.querySelectorAll('.btn-wis-data').forEach(function(b){b.addEventListener('click',function(){wisTrajectData(b.dataset.id,b.dataset.naam);});});
+  el.querySelectorAll('.btn-koppel-geb').forEach(function(b){b.addEventListener('click',function(){koppelTrajectAanGebruiker(b.dataset.id,b.dataset.naam);});});
   function updSelMna(){var n=el.querySelectorAll('.mna-cb:checked').length;var btn=document.getElementById('btn-del-sel-mna');var cnt=document.getElementById('sel-cnt-mna');if(btn)btn.style.display=n>0?'inline-block':'none';if(cnt)cnt.textContent=n;}
   var cbAllM=document.getElementById('cb-all-mna');
   if(cbAllM)cbAllM.addEventListener('change',function(){el.querySelectorAll('.mna-cb:not(:disabled)').forEach(function(cb){cb.checked=cbAllM.checked;});updSelMna();});
@@ -3072,6 +3074,41 @@ function wisTrajectData(id, naam) {
     document.getElementById('wis-ann').textContent = 'Sluiten';
     document.getElementById('wis-ann').onclick = function() { document.body.removeChild(ov); refreshData(); };
     toast((ok ? 'Data gewist voor traject ' : 'Data gedeeltelijk gewist voor traject ') + naam, ok ? 'ok' : 'warn');
+  });
+}
+
+// ── KOPPEL TRAJECT AAN ADVISEURSACCOUNT ──────────────────────
+// Zet gebruiker_id op een bestaand traject, zodat het verschijnt in de trajectenlijst van die
+// adviseur op adv.html (bijv. voor een externe tester die een al opgebouwd testtraject moet zien).
+// Tussen_code/koper_code/verkoper-id blijven ongewijzigd — bestaande toegang blijft werken.
+function koppelTrajectAanGebruiker(id, naam) {
+  var ov = document.createElement('div'); ov.className = 'overlay';
+  var mo = document.createElement('div'); mo.className = 'modal'; mo.style.maxWidth = '440px';
+  mo.innerHTML = '<div class="modal-title">&#128279; Koppel aan adviseursaccount — ' + esc(naam) + '</div>'
+    + '<p style="font-size:13px;color:var(--mid);line-height:1.65;margin-bottom:1rem">Het traject verschijnt daarna in de trajectenlijst van dit account op adv.html. De adviseur moet al bestaan (marilyn → Gebruikers).</p>'
+    + '<label style="font-size:11px;font-weight:600;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:4px">E-mail adviseursaccount</label>'
+    + '<input type="email" id="kg-email" placeholder="naam@voorbeeld.nl" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:8px 11px;font-size:13px;color:var(--sub);margin-bottom:1rem">'
+    + '<div id="kg-err" style="display:none;color:var(--red);font-size:12px;margin-bottom:.75rem"></div>'
+    + '<div style="display:flex;gap:10px;justify-content:flex-end">'
+    + '<button class="btn-ghost" id="kg-ann">Annuleren</button>'
+    + '<button class="btn" id="kg-ok">&#128279; Koppelen</button>'
+    + '</div>';
+  ov.appendChild(mo); document.body.appendChild(ov);
+  ov.addEventListener('click', function(e) { if (e.target === ov) document.body.removeChild(ov); });
+  document.getElementById('kg-ann').addEventListener('click', function() { document.body.removeChild(ov); });
+  document.getElementById('kg-ok').addEventListener('click', async function() {
+    var email = document.getElementById('kg-email').value.trim();
+    var errEl = document.getElementById('kg-err');
+    if (!email) { errEl.style.display = 'block'; errEl.textContent = 'E-mail verplicht.'; return; }
+    var btn = this; btn.disabled = true; btn.textContent = 'Bezig...';
+    try {
+      var r = await fetch(WORKER + '/mna/admin/traject/koppel/' + id, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-key': adminKey }, body: JSON.stringify({ email: email }) });
+      var d = await r.json();
+      if (d.ok) {
+        toast('Traject ' + naam + ' gekoppeld aan ' + email + (d.gebruiker_status === 'uitgenodigd' ? ' (account nog niet geactiveerd)' : '') + '.', 'ok');
+        document.body.removeChild(ov);
+      } else { errEl.style.display = 'block'; errEl.textContent = d.error || 'Fout'; btn.disabled = false; btn.textContent = 'Koppelen'; }
+    } catch (e) { errEl.style.display = 'block'; errEl.textContent = 'Verbindingsfout.'; btn.disabled = false; btn.textContent = 'Koppelen'; }
   });
 }
 
