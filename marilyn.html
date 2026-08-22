@@ -3666,7 +3666,11 @@ async function renderVeiligheidTab(el) {
         + '</div></div>'
 
         + '<div class="table-wrap" style="margin-bottom:1.25rem"><div class="table-hdr"><div class="table-title">2. Open bevindingen (uit alle bronnen)</div></div>'
-        + '<div style="padding:1.25rem">' + veiligheidGauge(ov.gauges.bevindingen_score, 'Open bevindingen', ov.open_totaal + ' open (' + ov.open_kritiek_hoog + ' kritiek/hoog) · ' + ov.gefixt_totaal + ' gefixt') + '</div>'
+        + '<div style="padding:1.25rem;display:flex;gap:2rem;flex-wrap:wrap;align-items:flex-start">'
+        + '<div style="flex:0 0 230px">' + veiligheidGauge(ov.gauges.bevindingen_score, 'Open bevindingen', ov.open_totaal + ' open (' + ov.open_kritiek_hoog + ' kritiek/hoog) · ' + ov.gefixt_totaal + ' gefixt') + '</div>'
+        + '<div style="flex:1;min-width:260px;display:flex;flex-direction:column;justify-content:center;gap:.6rem;padding-top:.5rem">'
+        + '<div style="font-size:12px;color:var(--mid);line-height:1.6">Alle nog openstaande bevindingen, ongeacht bron (nachtelijke check, statische audit, of handmatig gelogd bij een diepe audit). Elke open kritieke/hoge bevinding trekt fors af van de score — 0 open kritiek/hoog is de enige manier om hier op 100 te staan.</div>'
+        + '</div>'
         + '</div>'
 
         + '<div class="table-wrap" style="margin-bottom:1.5rem' + ((ov.diepe_audit && ov.diepe_audit.verouderd) || !ov.diepe_audit ? ';border-color:var(--red)' : '') + '"><div class="table-hdr"><div class="table-title">3. Laatste periodieke diepe audit</div>'
