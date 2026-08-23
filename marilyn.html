@@ -255,6 +255,7 @@ function renderDashboard(){
     +(isSuperAdmin?'<button class="tab'+(activeTab==='gebruikers'?' active':'')+'" id="t-geb" style="border-left:2px solid var(--gold)">&#128101; Gebruikers</button>':'')
     +(isSuperAdmin?'<button class="tab'+(activeTab==='tarieven'?' active':'')+'" id="t-tarieven">&euro; Tarieven</button>':'')
     +(isSuperAdmin?'<button class="tab'+(activeTab==='veiligheid'?' active':'')+'" id="t-veiligheid" style="border-left:2px solid var(--red)">&#128737; Veiligheid</button>':'')
+    +(isSuperAdmin?'<button class="tab'+(activeTab==='matching'?' active':'')+'" id="t-matching">&#128279; Matching</button>':'')
     +'</div>'
     +'<div id="tc"></div>';
   if(isSuperAdmin){var ts=document.getElementById('t-scans');if(ts)ts.addEventListener('click',function(){activeTab='scans';scanFilter='';openRow=null;renderDashboard();});var tc2=document.getElementById('t-cb');if(tc2)tc2.addEventListener('click',function(){activeTab='callbacks';renderDashboard();});var tld=document.getElementById('t-leads');if(tld)tld.addEventListener('click',function(){activeTab='leads';renderDashboard();});}
@@ -269,6 +270,7 @@ function renderDashboard(){
   if(isSuperAdmin){var gtb=document.getElementById('t-geb');if(gtb)gtb.addEventListener('click',function(){activeTab='gebruikers';renderDashboard();});}
   if(isSuperAdmin){var ttb=document.getElementById('t-tarieven');if(ttb)ttb.addEventListener('click',function(){activeTab='tarieven';renderDashboard();});}
   if(isSuperAdmin){var vtb=document.getElementById('t-veiligheid');if(vtb)vtb.addEventListener('click',function(){activeTab='veiligheid';renderDashboard();});}
+  if(isSuperAdmin){var mtb=document.getElementById('t-matching');if(mtb)mtb.addEventListener('click',function(){activeTab='matching';renderDashboard();});}
   renderTab();
   // Systeemwaarschuwingen: Signhost-herinnering bewust verwijderd (verzoek Marcel, juli 2026).
   // De container #sys-waarschuwingen blijft beschikbaar voor eventuele toekomstige meldingen.
@@ -289,6 +291,7 @@ function renderTab(){
   else if(activeTab==='gebruikers')renderGebruikersTab(el);
   else if(activeTab==='tarieven')renderTarievenTab(el);
   else if(activeTab==='veiligheid')renderVeiligheidTab(el);
+  else if(activeTab==='matching')renderMatchingTab(el);
   else renderRapportenTab(el);
 }
 
@@ -1677,6 +1680,10 @@ async function toonDetail(id,naam){
     +'<div id="dekking-body" style="font-size:12px;color:var(--muted);font-style:italic">Laden...</div>'
     +'</div>'
     +'<div style="margin-top:1.5rem;border-top:2px solid var(--border);padding-top:1.25rem">'
+    +'<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem">&#128279; Matching-platform</div>'
+    +'<div id="matching-toggle-body" style="font-size:12px;color:var(--muted)"></div>'
+    +'</div>'
+    +'<div style="margin-top:1.5rem;border-top:2px solid var(--border);padding-top:1.25rem">'
     +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">'
     +'<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">&#128193; Dataroom & Documentversies</div>'    +'<div style="display:flex;gap:6px">'    +'<label class="btn" id="lbl-upload-doc" style="font-size:11px;padding:4px 12px;background:var(--teal);cursor:pointer">↑ Document uploaden<input type="file" id="inp-upload-doc" accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.xlsx,.xls" style="display:none"></label>'    +'<button class="btn-ghost" id="btn-laad-versies" style="font-size:11px;padding:4px 12px">&#8635; Laden</button>'    +'</div>'
     +'</div>'
@@ -1707,6 +1714,29 @@ async function toonDetail(id,naam){
   ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
   document.getElementById('det-sluit').addEventListener('click',function(){document.body.removeChild(ov);});
   laadDocumentdekking(id);
+  (function(){
+    var mtEl=document.getElementById('matching-toggle-body');
+    if(!mtEl)return;
+    var trajectObj=mnaList.find(function(t){return t.id===id;})||{};
+    function render(){
+      if(!trajectObj.teaser_tekst){
+        mtEl.innerHTML='Nog geen teaser gegenereerd — dat moet eerst (begeleider-dashboard, sectie Marketing) voordat dit traject zichtbaar kan zijn op de <a href="matching-demo.html" target="_blank" style="color:var(--teal)">live matching-pagina</a>.';
+        return;
+      }
+      var aan=!!trajectObj.beschikbaar_voor_matching;
+      mtEl.innerHTML='<label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="matching-toggle-chk" '+(aan?'checked':'')+'> Zichtbaar op de live <a href="matching-demo.html" target="_blank" style="color:var(--teal)" onclick="event.stopPropagation()">matching-pagina</a></label>';
+      document.getElementById('matching-toggle-chk').addEventListener('change',async function(e){
+        var nieuw=e.target.checked;
+        try{
+          var r=await fetch(WORKER+'/mna/matching/beschikbaar',{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':adminKey},body:JSON.stringify({code:id,beschikbaar:nieuw})});
+          var d=await r.json();
+          if(d.ok){trajectObj.beschikbaar_voor_matching=nieuw?1:0;toast(nieuw?'Zichtbaar gemaakt op matching-pagina.':'Verborgen van matching-pagina.','ok');}
+          else{e.target.checked=!nieuw;toast(d.error||'Fout.','err');}
+        }catch(err){e.target.checked=!nieuw;toast('Verbindingsfout.','err');}
+      });
+    }
+    render();
+  })();
 
   document.getElementById('inp-upload-doc').addEventListener('change',async function(){
     var file=this.files[0];if(!file)return;
@@ -3418,6 +3448,8 @@ async function renderGebruikersTab(el) {
           + '<input type="number" id="vk-limiet" min="1" value="' + (g.traject_limiet||1) + '" style="width:100px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--sub);font-size:14px;margin-bottom:1rem">'
           + '<div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:4px">Modules</div>'
           + chk
+          + '<div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:1rem 0 4px">Prijs module Marketing (&euro;/mnd, alleen intern — informeert niets automatisch)</div>'
+          + '<input type="number" id="vk-marketing-prijs" min="0" step="1" placeholder="bijv. 49" value="' + (g.marketing_prijs!=null?g.marketing_prijs:'') + '" style="width:100px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--sub);font-size:14px">'
           + '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1.25rem">'
           + '<button class="btn-ghost" id="vk-annuleer" style="font-size:12px;padding:7px 14px">Annuleren</button>'
           + '<button class="btn" id="vk-opslaan" style="font-size:12px;padding:7px 14px">Opslaan</button>'
@@ -3428,8 +3460,10 @@ async function renderGebruikersTab(el) {
           var nm = {};
           ov.querySelectorAll('.vk-mod').forEach(function(c){ nm[c.dataset.mod] = c.checked; });
           var lim = Math.max(1, parseInt(document.getElementById('vk-limiet').value, 10) || 1);
+          var prijsRaw = document.getElementById('vk-marketing-prijs').value;
+          var prijsBody = prijsRaw !== '' ? { marketing_prijs: Math.max(0, parseFloat(prijsRaw) || 0) } : {};
           try {
-            var vr = await fetch(WORKER + '/gebruikers/verkoop/' + encodeURIComponent(g.id), { method: 'POST', headers: { 'x-admin-key': adminKey, 'Content-Type': 'application/json' }, body: JSON.stringify({ traject_limiet: lim, modules: nm }) });
+            var vr = await fetch(WORKER + '/gebruikers/verkoop/' + encodeURIComponent(g.id), { method: 'POST', headers: { 'x-admin-key': adminKey, 'Content-Type': 'application/json' }, body: JSON.stringify(Object.assign({ traject_limiet: lim, modules: nm }, prijsBody)) });
             var vd = await vr.json();
             if (vd.ok) { toast('Verkoopinstellingen opgeslagen: limiet ' + vd.traject_limiet + '.', 'ok'); ov.remove(); var tcv = document.getElementById('tc'); if (tcv) renderGebruikersTab(tcv); }
             else toast(vd.error || 'Fout bij opslaan.', 'err');
@@ -3648,6 +3682,86 @@ function auditVerzoekStatusTekst(verzoek) {
   if (verzoek.status === 'bezig') return 'Routine is bezig sinds ' + tijd(verzoek.opgehaald_op) + '...';
   if (verzoek.status === 'klaar') return 'Laatste aanvraag afgerond om ' + tijd(verzoek.afgerond_op) + '.';
   return '';
+}
+
+var MATCH_SECTOREN=[['accountancy','Accountancy & administratie'],['mkb','Mkb'],['zorg','Zorg'],['itsoftware','IT/software']];
+var MATCH_REGIOS=['Noord-Nederland','Oost-Nederland','Randstad','Zuid-Nederland'];
+var MATCH_OMZETKLASSEN=['< €500k','€500k-€1mln','€1-2mln','€2-5mln','€5-10mln','> €10mln'];
+
+async function renderMatchingTab(el){
+  el.innerHTML='<div style="padding:1rem;color:var(--muted);font-size:13px">Laden...</div>';
+  async function laad(){
+    var r=await fetch(WORKER+'/mna/matching/overzicht');
+    var d=await r.json().catch(function(){return{ok:false};});
+    if(!d.ok){el.innerHTML='<div style="color:var(--red);padding:1rem">Fout bij laden.</div>';return;}
+    var html='<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem">&#128279; Matching-platform</div>'
+      +'<div style="font-size:12px;color:var(--muted);margin-bottom:1.25rem;max-width:700px;line-height:1.6">Koper-zoekprofielen beheer je hier. Of een traject meetelt als "verkoper" in het matching-overzicht (<a href="matching-demo.html" target="_blank" style="color:var(--teal)">live pagina</a>) stel je per traject in — bij het traject-detail in het tabblad "M&A Trajecten", zodra er een teaser is.</div>'
+      +'<div style="font-size:12px;color:var(--sub);font-weight:600;margin-bottom:.5rem">'+d.sellers.length+' verkoper(s) momenteel zichtbaar op de live matching-pagina</div>'
+      +'<div class="table-wrap" style="margin-bottom:1.5rem"><div class="table-hdr"><div class="table-title">Koper-zoekprofielen ('+d.kopers.length+')</div>'
+      +'<button class="btn" id="mk-nieuw-btn" style="font-size:12px;padding:6px 14px">+ Nieuw zoekprofiel</button></div>';
+    if(!d.kopers.length){html+='<div class="empty">Nog geen koper-zoekprofielen.</div>';}
+    else{
+      html+='<table><thead><tr><th>Naam</th><th>Sectoren</th><th>Regio</th><th>Omzet</th><th></th></tr></thead><tbody>';
+      d.kopers.forEach(function(k){
+        html+='<tr><td style="font-weight:600">'+esc(k.naam)+'</td>'
+          +'<td style="font-size:12px">'+k.zoekt_sectoren.map(function(s){var f=MATCH_SECTOREN.find(function(m){return m[0]===s;});return f?f[1]:s;}).join(', ')+'</td>'
+          +'<td style="font-size:12px">'+(k.zoekt_regio&&k.zoekt_regio.length?k.zoekt_regio.join(', '):'Heel Nederland')+'</td>'
+          +'<td style="font-size:12px">'+MATCH_OMZETKLASSEN[k.omzet_min]+' – '+MATCH_OMZETKLASSEN[k.omzet_max]+'</td>'
+          +'<td><button class="btn-ghost mk-verwijder" data-id="'+esc(k.id)+'" style="font-size:11px;padding:3px 8px;color:var(--red);border-color:var(--red)">Verwijder</button></td></tr>';
+      });
+      html+='</tbody></table>';
+    }
+    html+='</div>';
+    el.innerHTML=html;
+
+    document.getElementById('mk-nieuw-btn').addEventListener('click',function(){
+      var ov=document.createElement('div');
+      ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center';
+      ov.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:1.75rem;width:100%;max-width:440px;max-height:85vh;overflow-y:auto">'
+        +'<div style="font-size:15px;font-weight:600;color:var(--head);margin-bottom:1rem">Nieuw koper-zoekprofiel</div>'
+        +'<div class="field"><label>Naam (fictief voor demo\'s)</label><input type="text" id="mk-naam" placeholder="bijv. PE-platform X"></div>'
+        +'<div style="font-size:11px;font-weight:600;text-transform:uppercase;color:var(--muted);margin:.75rem 0 4px">Zoekt sector(en)</div>'
+        +MATCH_SECTOREN.map(function(s){return '<label style="display:flex;gap:6px;align-items:center;font-size:13px;padding:2px 0"><input type="checkbox" class="mk-sector" value="'+s[0]+'"> '+s[1]+'</label>';}).join('')
+        +'<div style="font-size:11px;font-weight:600;text-transform:uppercase;color:var(--muted);margin:.75rem 0 4px">Regio (leeg = heel Nederland)</div>'
+        +MATCH_REGIOS.map(function(r){return '<label style="display:flex;gap:6px;align-items:center;font-size:13px;padding:2px 0"><input type="checkbox" class="mk-regio" value="'+r+'"> '+r+'</label>';}).join('')
+        +'<div style="display:flex;gap:8px;margin-top:.75rem">'
+        +'<div class="field" style="flex:1"><label>Omzet vanaf</label><select id="mk-omzet-min">'+MATCH_OMZETKLASSEN.map(function(o,i){return '<option value="'+i+'">'+o+'</option>';}).join('')+'</select></div>'
+        +'<div class="field" style="flex:1"><label>Omzet tot</label><select id="mk-omzet-max">'+MATCH_OMZETKLASSEN.map(function(o,i){return '<option value="'+i+'"'+(i===5?' selected':'')+'>'+o+'</option>';}).join('')+'</select></div>'
+        +'</div>'
+        +'<div class="field"><label>Beschrijving</label><textarea id="mk-beschrijving" rows="3"></textarea></div>'
+        +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem">'
+        +'<button class="btn-ghost" id="mk-ann">Annuleren</button><button class="btn" id="mk-opslaan">Opslaan</button>'
+        +'</div></div>';
+      document.body.appendChild(ov);
+      document.getElementById('mk-ann').addEventListener('click',function(){ov.remove();});
+      document.getElementById('mk-opslaan').addEventListener('click',async function(){
+        var naam=document.getElementById('mk-naam').value.trim();
+        var sectoren=Array.prototype.slice.call(ov.querySelectorAll('.mk-sector:checked')).map(function(c){return c.value;});
+        var regios=Array.prototype.slice.call(ov.querySelectorAll('.mk-regio:checked')).map(function(c){return c.value;});
+        if(!naam||!sectoren.length){toast('Naam en minstens één sector verplicht.','err');return;}
+        var body={naam:naam,zoekt_sectoren:sectoren,zoekt_regio:regios.length?regios:null,omzet_min:parseInt(document.getElementById('mk-omzet-min').value,10),omzet_max:parseInt(document.getElementById('mk-omzet-max').value,10),beschrijving:document.getElementById('mk-beschrijving').value.trim()};
+        try{
+          var r2=await fetch(WORKER+'/mna/matching/koper',{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':adminKey},body:JSON.stringify(body)});
+          var d2=await r2.json();
+          if(d2.ok){toast('Zoekprofiel opgeslagen.','ok');ov.remove();laad();}
+          else toast(d2.error||'Fout bij opslaan.','err');
+        }catch(e){toast('Verbindingsfout.','err');}
+      });
+    });
+
+    el.querySelectorAll('.mk-verwijder').forEach(function(btn){
+      btn.addEventListener('click',async function(){
+        if(!confirm('Zoekprofiel verwijderen?'))return;
+        try{
+          var r3=await fetch(WORKER+'/mna/matching/koper/verwijderen',{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':adminKey},body:JSON.stringify({id:btn.dataset.id})});
+          var d3=await r3.json();
+          if(d3.ok){toast('Verwijderd.','ok');laad();}
+          else toast(d3.error||'Fout.','err');
+        }catch(e){toast('Verbindingsfout.','err');}
+      });
+    });
+  }
+  await laad();
 }
 
 async function renderVeiligheidTab(el) {
