@@ -746,10 +746,25 @@ function renderBegeleiderDashboard(app){
           ?'<span style="color:var(--teal)">&#10003; Getekend door '+esc(getekend)+(datum?' &middot; '+new Date(datum).toLocaleDateString('nl-NL',{day:'2-digit',month:'short',year:'numeric'}):'')+'</span>'
           :'Nog niet getekend';
       }
+      // Procesfase (23 aug 2026, op verzoek Marcel: het scherm toonde alleen losse knoppen, geen
+      // processtroom). Afgeleid, geen nieuw databaseveld — "geen koper" betekent hier: nog geen
+      // koper_naam/koper_code ingevuld. In die fase is Marketing (teaser/verkoopmemorandum) de
+      // hoofdactie en is de Documenten-flow (NDA/LoI/BEM richting een specifieke koper) nog niet
+      // relevant, dus secties staan default anders open/dicht dan in het reguliere DD-proces.
+      var heeftKoper=!!(t.koper_naam||t.koper_code);
       var html='';
-      // ── Documenten (open per default — hoofdactie van dit scherm) ──
+      if(!heeftKoper){
+        var fabStap=!t.teaser_tekst?'Begin met de teaser — kort en anoniem, om interesse te peilen vóór er een koper is.'
+          :!t.verkoopmemorandum_tekst?'Teaser staat klaar. Bij concrete interesse: genereer het verkoopmemorandum voor die partij.'
+          :'Teaser en verkoopmemorandum staan klaar. Zodra er een concrete koper is: vul de koper-gegevens in — dan start het reguliere DD-proces (NDA, LoI, dataroom).';
+        html+='<div style="background:var(--gold-bg);border:1px solid var(--gold);border-radius:var(--r2);padding:1rem 1.25rem;margin-bottom:1.25rem">'
+          +'<div style="font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--gold-dark)">Fase: Marketing — nog geen koper</div>'
+          +'<div style="font-size:13px;color:var(--sub);margin-top:4px">'+fabStap+'</div>'
+          +'</div>';
+      }
+      // ── Documenten (open per default in het reguliere proces; dicht zolang er nog geen koper is) ──
       html+='<div class="panel" style="margin-bottom:.75rem;padding:0">'+secHdr('docs','&#128196; Documenten &mdash; flow')
-        +'<div class="bg-sec-body" data-sec="docs" style="display:block;padding:.25rem 1rem 0">'
+        +'<div class="bg-sec-body" data-sec="docs" style="display:'+(heeftKoper?'block':'none')+';padding:.25rem 1rem 0">'
         // Volgorde volgt de daadwerkelijke dealstroom (Marcel, 21 aug 2026): BEM is het mandaat
         // tussen begeleider en opdrachtgever (Fase 0 in de eigen BEM-sjablonen, worker/02-config-
         // constanten.js) — wordt getekend vóórdat er met de tegenpartij iets gebeurt, dus hoort vóór
@@ -789,14 +804,13 @@ function renderBegeleiderDashboard(app){
         +'<button class="btn-outline btn-sm" id="bg-koperfit-actie">&#127919; Koper-fit strategie</button>'
         +'<button class="btn-outline btn-sm" id="bg-feedback-actie" style="border-color:var(--gold);color:var(--gold)">&#128172; Feedback / bug melden</button>'
         +'</div></div></div>';
-      // ── Marketing (ingeklapt) — teaser: anoniem, vóór er een koper is, kleine datasubset ──
-      html+='<div class="panel" style="margin-bottom:1.25rem;padding:0">'+secHdr('marketing','&#128226; Marketing').replace('&#9650;','&#9660;')
-        +'<div class="bg-sec-body" data-sec="marketing" style="display:none;padding:0 1rem 1rem">'
+      // ── Marketing — teaser: anoniem, vóór er een koper is, kleine datasubset. Open per default
+      // zolang er nog geen koper is (dan is dit de hoofdactie), anders ingeklapt zoals de rest. ──
+      html+='<div class="panel" style="margin-bottom:1.25rem;padding:0">'+(heeftKoper?secHdr('marketing','&#128226; Marketing').replace('&#9650;','&#9660;'):secHdr('marketing','&#128226; Marketing'))
+        +'<div class="bg-sec-body" data-sec="marketing" style="display:'+(heeftKoper?'none':'block')+';padding:0 1rem 1rem">'
         +(marketingAan
           ?'<button class="btn" id="bg-teaser-actie" style="background:#1a7a5e">&#128226; '+(t.teaser_tekst?'Teaser bekijken/bewerken':'Genereer teaser')+'</button><div style="font-size:11px;color:var(--muted);margin-top:6px;margin-bottom:1rem">Kort, anoniem verkoopdocument (max. 150 woorden, geen bedrijfsnaam) om vroeg in het proces interesse te peilen — vóór er een koper is.</div>'
-            +(t.nda_getekend
-              ?'<button class="btn" id="bg-verkoopmemo-actie" style="background:#8a5a00">&#128220; '+(t.verkoopmemorandum_tekst?'Verkoopmemorandum bekijken/bewerken':'Genereer verkoopmemorandum')+'</button><div style="font-size:11px;color:var(--muted);margin-top:6px">Uitgebreid document mét bedrijfsnaam voor de partij die de NDA heeft getekend.</div>'
-              :'<div style="font-size:11px;color:var(--muted)"><button class="btn" disabled title="Beschikbaar na ondertekende NDA" style="background:#8a5a00;opacity:.45;cursor:not-allowed">&#128220; Genereer verkoopmemorandum</button><div style="margin-top:6px">Beschikbaar zodra de NDA is ondertekend (bevat bedrijfsnaam + gedetailleerde data).</div></div>')
+            +'<button class="btn" id="bg-verkoopmemo-actie" style="background:#8a5a00">&#128220; '+(t.verkoopmemorandum_tekst?'Verkoopmemorandum bekijken/bewerken':'Genereer verkoopmemorandum')+'</button><div style="font-size:11px;color:var(--muted);margin-top:6px">Uitgebreid document mét bedrijfsnaam, voor een specifieke geïnteresseerde partij — pas versturen nadat die partij een NDA heeft ondertekend (in het platform, of extern).</div>'
           :'<div style="font-size:11px;color:var(--muted)">&#128274; Module Marketing niet actief — neem contact op met ' + BRAND.kort + ' om deze module te activeren.</div>')
         +'</div></div>';
       return html;
@@ -1910,16 +1924,30 @@ function renderBegeleiderDashboard(app){
       };
       document.getElementById('verkoopmemo-nieuw-btn').onclick=function(){genereerVerkoopmemo();};
     }
-    async function genereerVerkoopmemo(){
+    async function genereerVerkoopmemo(ndaBevestigd){
       out.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;color:var(--muted)">Genereren...</div>';
-      var r=await fetch(WORKER+'/mna/verkoopmemorandum/genereer',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||''},body:JSON.stringify({code:S.code})}).then(function(x){return x.json();}).catch(function(){return{};});
+      var r=await fetch(WORKER+'/mna/verkoopmemorandum/genereer',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||''},body:JSON.stringify({code:S.code,nda_bevestigd:!!ndaBevestigd})}).then(function(x){return x.json();}).catch(function(){return{};});
       if(r.ok){t2.verkoopmemorandum_tekst=r.verkoopmemorandum_tekst;renderVerkoopmemo(r.verkoopmemorandum_tekst,'nieuw gegenereerd');}
       else{out.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;color:var(--red)">'+esc(r.error||'Genereren mislukt.')+'</div>';}
+    }
+    function toonNdaBevestiging(){
+      out.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem">'
+        +'<div style="font-size:11px;font-weight:600;color:#8a5a00;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.75rem">&#128220; Verkoopmemorandum &mdash; controle vooraf</div>'
+        +'<div style="font-size:13px;color:var(--sub);margin-bottom:1rem;line-height:1.6">Dit document bevat de bedrijfsnaam en gedetailleerde bedrijfsinformatie. Er is voor dit traject nog geen NDA ondertekend via het platform (die kan bijv. wel al buiten het platform om ondertekend zijn — dat is normaal in deze fase, vóór er een formele koper is ingevoerd).</div>'
+        +'<label style="display:flex;align-items:flex-start;gap:8px;font-size:13px;color:var(--sub);cursor:pointer;margin-bottom:1rem"><input type="checkbox" id="verkoopmemo-nda-chk" style="margin-top:2px"> Ik bevestig dat de partij die dit document ontvangt een NDA heeft ondertekend (in het platform of extern).</label>'
+        +'<div style="display:flex;gap:8px"><button class="btn" id="verkoopmemo-nda-door" style="background:#8a5a00">Doorgaan &amp; genereren</button><button class="btn-ghost" id="verkoopmemo-nda-ann">Annuleren</button></div>'
+        +'</div>';
+      document.getElementById('verkoopmemo-nda-ann').onclick=function(){out.style.display='none';};
+      document.getElementById('verkoopmemo-nda-door').onclick=function(){
+        if(!document.getElementById('verkoopmemo-nda-chk').checked){toast('Bevestig eerst dat er een NDA is ondertekend.','err');return;}
+        genereerVerkoopmemo(true);
+      };
     }
     var docOutEl=document.getElementById('bg-verkoopmemo-out');
     if(docOutEl)setTimeout(function(){docOutEl.scrollIntoView({behavior:'smooth',block:'nearest'});},100);
     if(t2.verkoopmemorandum_tekst){renderVerkoopmemo(t2.verkoopmemorandum_tekst,t2.verkoopmemorandum_status||'');}
-    else{await genereerVerkoopmemo();}
+    else if(t2.nda_getekend){await genereerVerkoopmemo(false);}
+    else{toonNdaBevestiging();}
   }
 
   async function toonClosingModal(){
