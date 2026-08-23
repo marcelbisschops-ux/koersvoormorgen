@@ -662,6 +662,7 @@ function openBegeleiderFase(faseId){
 function renderBegeleiderDashboard(app){
   var t=S.traject||{};
   var contractenAan=!S.modules||S.modules.contracten!==false;
+  var marketingAan=!S.modules||S.modules.marketing!==false;
   var lb=partijLabels(t.traject_type||'Verkoop');
   var html='<div class="wrap anim">'
     +'<div class="hdr"><div class="brand">'+brandMerkHtml()+BRAND.platform+' &middot; M&A Begeleider'+versieLabel()+'</div>'
@@ -788,12 +789,21 @@ function renderBegeleiderDashboard(app){
         +'<button class="btn-outline btn-sm" id="bg-koperfit-actie">&#127919; Koper-fit strategie</button>'
         +'<button class="btn-outline btn-sm" id="bg-feedback-actie" style="border-color:var(--gold);color:var(--gold)">&#128172; Feedback / bug melden</button>'
         +'</div></div></div>';
+      // ── Marketing (ingeklapt) — teaser: anoniem, vóór er een koper is, kleine datasubset ──
+      html+='<div class="panel" style="margin-bottom:1.25rem;padding:0">'+secHdr('marketing','&#128226; Marketing').replace('&#9650;','&#9660;')
+        +'<div class="bg-sec-body" data-sec="marketing" style="display:none;padding:0 1rem 1rem">'
+        +(marketingAan
+          ?'<button class="btn" id="bg-teaser-actie" style="background:#1a7a5e">&#128226; '+(t.teaser_tekst?'Teaser bekijken/bewerken':'Genereer teaser')+'</button><div style="font-size:11px;color:var(--muted);margin-top:6px">Kort, anoniem verkoopdocument (max. 150 woorden, geen bedrijfsnaam) om vroeg in het proces interesse te peilen — vóór er een koper is.</div>'
+          :'<div style="font-size:11px;color:var(--muted)">&#128274; Module Marketing niet actief — neem contact op met ' + BRAND.kort + ' om deze module te activeren.</div>')
+        +'</div></div>';
       return html;
     })()
     +'<div id="bg-ai-status-out" style="display:none;margin-bottom:1.25rem"></div>'
     +'<div id="bg-koperfit-out" style="display:none;margin-bottom:1.25rem"></div>'
     // Doc output
     +'<div id="bg-doc-out" style="display:none;margin-bottom:1.25rem"></div>'
+    // Teaser output
+    +'<div id="bg-teaser-out" style="display:none;margin-bottom:1.25rem"></div>'
     // Gesprek output
     +'<div id="bg-gesp-out" style="display:none;margin-bottom:1.25rem"></div>'
     // DD data per fase
@@ -1835,6 +1845,42 @@ function renderBegeleiderDashboard(app){
     }
   }
 
+  async function toonTeaserModal(){
+    var out=document.getElementById('bg-teaser-out');out.style.display='block';
+    var t2=S.traject||{};
+    function renderTeaser(tekst,status){
+      out.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem">'
+        +'<div style="font-size:11px;font-weight:600;color:var(--teal);text-transform:uppercase;letter-spacing:.1em;margin-bottom:.75rem">&#128226; Teaser'+(status?' &mdash; '+esc(status):'')+'</div>'
+        +'<textarea id="teaser-txt" rows="8" style="width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:var(--r);font-family:\'IBM Plex Sans\',sans-serif;font-size:13px;padding:9px 11px;color:var(--sub);resize:vertical;outline:none">'+esc(tekst||'')+'</textarea>'
+        +'<div style="font-size:11px;color:var(--muted);margin-top:6px">Anoniem, max. ~150 woorden, geen bedrijfsnaam. Controleer altijd zelf op onbedoeld identificerende details vóór verspreiding.</div>'
+        +'<div style="display:flex;gap:8px;margin-top:.75rem">'
+        +'<button class="btn" id="teaser-opslaan-btn" style="background:var(--teal)">Opslaan</button>'
+        +'<button class="btn-outline btn-sm" id="teaser-nieuw-btn">&#8635; Opnieuw genereren</button>'
+        +'<button class="btn-ghost" id="teaser-sluit-btn" style="margin-left:auto">Sluiten</button>'
+        +'</div></div>';
+      document.getElementById('teaser-sluit-btn').onclick=function(){out.style.display='none';};
+      document.getElementById('teaser-opslaan-btn').onclick=async function(){
+        var btn=this;btn.disabled=true;btn.textContent='Bezig...';
+        var tekstNu=document.getElementById('teaser-txt').value;
+        var r=await fetch(WORKER+'/mna/teaser/opslaan',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||''},body:JSON.stringify({code:S.code,tekst:tekstNu})}).then(function(x){return x.json();}).catch(function(){return{};});
+        if(r.ok){toast('Teaser opgeslagen.','ok');t2.teaser_tekst=tekstNu;}
+        else{toast(r.error||'Opslaan mislukt.','err');}
+        btn.disabled=false;btn.textContent='Opslaan';
+      };
+      document.getElementById('teaser-nieuw-btn').onclick=function(){genereerTeaser();};
+    }
+    async function genereerTeaser(){
+      out.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;color:var(--muted)">Genereren...</div>';
+      var r=await fetch(WORKER+'/mna/teaser/genereer',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||''},body:JSON.stringify({code:S.code})}).then(function(x){return x.json();}).catch(function(){return{};});
+      if(r.ok){t2.teaser_tekst=r.teaser_tekst;renderTeaser(r.teaser_tekst,'nieuw gegenereerd');}
+      else{out.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;color:var(--red)">'+esc(r.error||'Genereren mislukt.')+'</div>';}
+    }
+    var docOutEl=document.getElementById('bg-teaser-out');
+    if(docOutEl)setTimeout(function(){docOutEl.scrollIntoView({behavior:'smooth',block:'nearest'});},100);
+    if(t2.teaser_tekst){renderTeaser(t2.teaser_tekst,t2.teaser_status||'');}
+    else{await genereerTeaser();}
+  }
+
   async function toonClosingModal(){
     var t2=S.traject||{};
     var out=document.getElementById('bg-doc-out');out.style.display='block';
@@ -1911,6 +1957,9 @@ function renderBegeleiderDashboard(app){
   // Geen contractenAan/toonDocWaarschuwing-gate hier: dit is interne analyse (geen document dat
   // naar een tegenpartij wordt verstuurd), zelfde redenering als de closing-checklist hieronder.
   document.getElementById('bg-risicoraamwerk-actie').onclick=function(){ toonRisicoraamwerkModal(); };
+  // Alleen aanwezig als module Marketing actief is (zie marketingAan hierboven).
+  var bgTeaserBtn=document.getElementById('bg-teaser-actie');
+  if(bgTeaserBtn)bgTeaserBtn.onclick=function(){ toonTeaserModal(); };
   document.getElementById('bg-bieding-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op met ' + BRAND.kort + '.','err');return;} toonDocWaarschuwing('bieding', function(){ toonBiedingModal(); }); };
   document.getElementById('bg-spa-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op met ' + BRAND.kort + '.','err');return;} toonDocWaarschuwing('spa', function(){ toonSpaModal(); }); };
   // Geen toonDocWaarschuwing hier: de closing-checklist is een generieke controlelijst zonder

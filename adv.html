@@ -297,7 +297,7 @@ function renderVoorwaardenAcceptatie(vw){
 // ===== DASHBOARD =====
 function modChips(){
   var m=G.modules||{traject:true};
-  var lbl={traject:'Traject',contracten:'Contracten & ondertekening',ai_analyse:'AI-analyse',qa:'Q&A',export:'Export & rapportage',meekijker:'Meekijkers'};
+  var lbl={traject:'Traject',contracten:'Contracten & ondertekening',ai_analyse:'AI-analyse',qa:'Q&A',export:'Export & rapportage',meekijker:'Meekijkers',marketing:'Marketing'};
   return Object.keys(lbl).map(function(k){
     var aan=!!m[k];
     return '<span title="'+(aan?'Module actief':'Activeren via '+BRAND.kort+' — neem contact op')+'" style="font-size:11px;padding:3px 10px;border-radius:12px;border:1px solid var(--border);'+(aan?'color:var(--teal)':'color:var(--muted);opacity:.65')+'">'+(aan?'&#10003; ':'&#128274; ')+lbl[k]+'</span>';
