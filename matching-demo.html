@@ -1,0 +1,270 @@
+<!-- © 2026 Bisschops Financing B.V. Alle rechten voorbehouden. -->
+<!-- Matching-demo (23 aug 2026): illustratief, met uitsluitend fictieve voorbeeldverkopers/-kopers
+     (GOUDEN STANDAARD werkregel 14 — nooit echte namen). Bewust géén live koppeling met echte
+     trajectdata: dit is een sales-demo richting M&A-kantoren om het mechanisme te laten zien, geen
+     live marktplaats — die heeft pas waarde zodra er echte kopers én verkopers op het platform staan.
+     Puur statisch (geen backend-aanroepen), dus geen kosten en niets dat kan lekken. -->
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Matching-demo — Koers voor Morgen</title>
+<meta name="description" content="Illustratie van het koper-verkoper-matchingmechanisme van Koers voor Morgen, met fictieve voorbeelddata.">
+<meta name="robots" content="noindex, nofollow">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;1,400&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --void:#faf9f6;--panel:#ffffff;--panel2:#f5f3ee;
+  --border:#dddbd4;--border2:#c8c5bc;--muted:#8a8880;--mid:#5a5854;
+  --body:#4a4845;--sub:#2a2825;--head:#1a1815;
+  --teal:#1a7a5e;--teal-dim:#145f48;--teal-bg:rgba(34,197,160,.1);
+  --gold:#c9a84c;--gold-bg:rgba(201,168,76,.12);
+  --red:#b5453d;--red-bg:rgba(181,69,61,.08);
+  --r:8px;--r2:10px;--r4:22px;
+}
+@media(prefers-color-scheme:dark){
+  :root{
+    --void:#171614;--panel:#211f1c;--panel2:#26241f;
+    --border:#38352f;--border2:#48443c;--muted:#83807a;--mid:#a8a49c;
+    --body:#c8c5bc;--sub:#e0dcd2;--head:#f5f1e8;
+    --teal:#22c98a;--teal-dim:#1a9a6a;--teal-bg:rgba(34,197,138,.14);
+    --gold:#e0b85a;--gold-bg:rgba(224,184,90,.14);
+    --red:#e0857c;--red-bg:rgba(224,133,124,.12);
+  }
+}
+body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--body);min-height:100vh;font-size:15px;line-height:1.65}
+a{color:var(--teal)}
+.wrap{max-width:1100px;margin:0 auto;padding:0 2rem}
+h1,h2,h3{font-family:'Playfair Display',serif;color:var(--head)}
+.nav{border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--void);z-index:10}
+.nav-inner{display:flex;align-items:center;justify-content:space-between;padding:1.1rem 0}
+.nav-logo{font-family:'Playfair Display',serif;font-weight:600;font-size:1.05rem;color:var(--head);text-decoration:none}
+.nav-links a{font-size:13.5px;color:var(--mid);text-decoration:none;font-weight:500;margin-left:1.5rem}
+.nav-links a:hover{color:var(--teal)}
+.hero{padding:3.5rem 0 2rem;text-align:center}
+.eyebrow{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--teal);margin-bottom:1rem}
+.hero h1{font-weight:600;font-size:2.2rem;line-height:1.25;color:var(--head);max-width:680px;margin:0 auto 1rem}
+.hero p{font-size:14.5px;color:var(--mid);max-width:600px;margin:0 auto}
+.demo-badge{display:inline-block;margin-top:1.1rem;font-size:11.5px;font-weight:600;color:var(--gold);background:var(--gold-bg);border:1px solid var(--gold);border-radius:99px;padding:5px 14px}
+section{padding:2.5rem 0}
+.section-head h2{font-size:1.4rem;font-weight:600;margin-bottom:.5rem}
+.section-head p{font-size:13.5px;color:var(--mid);max-width:640px;margin-bottom:.5rem}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:1.25rem;margin-top:1.5rem}
+@media(max-width:860px){.grid3{grid-template-columns:1fr}}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.35rem;transition:box-shadow .15s,border-color .15s}
+.card-tag{font-size:10.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--teal);margin-bottom:.5rem}
+.card h3{font-size:1.05rem;font-weight:600;margin-bottom:.4rem}
+.card-meta{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:.75rem}
+.chip{font-size:11px;font-weight:500;color:var(--sub);background:var(--panel2);border:1px solid var(--border2);border-radius:99px;padding:3px 10px}
+.card-desc{font-size:13px;color:var(--mid)}
+.buyer-card{cursor:pointer}
+.buyer-card.active{border-color:var(--teal);box-shadow:0 4px 18px rgba(0,0,0,.06)}
+.match-panel{margin-top:2rem;background:var(--panel2);border:1px solid var(--border);border-radius:var(--r4);padding:1.75rem}
+.match-panel-title{font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin-bottom:1rem}
+.match-row{display:flex;align-items:center;gap:1rem;padding:.85rem 0;border-bottom:1px solid var(--border)}
+.match-row:last-child{border-bottom:none}
+.match-seller{flex:1;font-size:13.5px;font-weight:600;color:var(--head)}
+.match-crit{display:flex;gap:6px;flex-wrap:wrap;flex:2}
+.crit{font-size:11px;font-weight:500;border-radius:99px;padding:3px 10px;display:flex;align-items:center;gap:4px}
+.crit.ok{color:var(--teal);background:var(--teal-bg);border:1px solid var(--teal)}
+.crit.fail{color:var(--red);background:var(--red-bg);border:1px solid var(--red)}
+.match-verdict{flex-shrink:0;font-size:12px;font-weight:600;padding:5px 14px;border-radius:99px}
+.match-verdict.yes{color:var(--teal);background:var(--teal-bg);border:1px solid var(--teal)}
+.match-verdict.no{color:var(--muted);background:var(--panel);border:1px solid var(--border2)}
+.footnote{font-size:12px;color:var(--muted);margin-top:1.25rem;line-height:1.6}
+.cta{text-align:center;padding:3rem 0 4rem}
+.btn-primary{background:var(--head);color:var(--void);padding:13px 28px;border-radius:99px;font-weight:600;font-size:14px;text-decoration:none;display:inline-block;border:1px solid var(--head)}
+.btn-primary:hover{background:var(--teal);border-color:var(--teal);color:#fff}
+footer{border-top:1px solid var(--border);padding:2rem 0;text-align:center;font-size:12px;color:var(--muted)}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="wrap nav-inner">
+    <a href="index.html" class="nav-logo">Koers voor Morgen</a>
+    <div class="nav-links">
+      <a href="index.html">Terug naar de homepage</a>
+    </div>
+  </div>
+</nav>
+
+<div class="hero">
+  <div class="wrap">
+    <div class="eyebrow">Illustratie van het matchingmechanisme</div>
+    <h1>Zo brengt Koers voor Morgen kopers en verkopers samen</h1>
+    <p>Elke koper heeft zoekcriteria (sector, regio, omzetklasse); elke verkoper heeft een anonieme teaser met dezelfde kenmerken. Het platform matcht ze automatisch — geen AI nodig, gewoon heldere filtering.</p>
+    <div class="demo-badge">Demo met fictieve voorbeelddata — geen echte kantoren of kopers</div>
+  </div>
+</div>
+
+<section>
+  <div class="wrap">
+    <div class="section-head">
+      <h2>1. Kopers met een zoekprofiel</h2>
+      <p>Klik op een koper om de matches tegen de drie voorbeeldverkopers hieronder te zien.</p>
+    </div>
+    <div class="grid3" id="buyers-grid"></div>
+  </div>
+</section>
+
+<section class="section-alt" style="background:var(--panel2);border-top:1px solid var(--border);border-bottom:1px solid var(--border)">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>2. Verkopers met een anonieme teaser</h2>
+      <p>Zelfde soort document als wat het platform automatisch genereert — geen bedrijfsnaam, geen adres, alleen de kenmerken die voor een match nodig zijn.</p>
+    </div>
+    <div class="grid3" id="sellers-grid"></div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="match-panel">
+      <div class="match-panel-title" id="match-panel-title">Matches voor: —</div>
+      <div id="match-rows"></div>
+      <div class="footnote">Matching-logica: sector moet overeenkomen (of koper zoekt "alle sectoren"), regio moet overeenkomen (of koper zoekt "heel Nederland"), en de omzetklasse van de verkoper moet binnen de gezochte bandbreedte van de koper vallen. Geen AI — puur filteren op de structuur die de teaser- en documentdekking-features al opleveren.</div>
+    </div>
+  </div>
+</section>
+
+<div class="cta">
+  <div class="wrap">
+    <a href="index.html#adviseurs" class="btn-primary">Meer over het platform &rarr;</a>
+  </div>
+</div>
+
+<footer>
+  <div class="wrap">© 2026 Bisschops Financing B.V. — Koers voor Morgen. Deze pagina is een interne demo, niet geïndexeerd.</div>
+</footer>
+
+<script>
+// Uitsluitend fictieve voorbeelddata — geen echte kantoren, geen echte kopers (GOUDEN STANDAARD
+// werkregel 14). Omzetklasses en regio's zijn dezelfde structuur als de teaser-generator gebruikt
+// (mna/01-config-sectorprofielen.js / worker/19-info-fases.js), zodat dit mechanisme één-op-één
+// aansluit op de echte teaser-output zodra er verkopers op het platform staan.
+
+var SECTOREN = {accountancy:'Accountancy & administratie', it:'IT & software', zorg:'Zorg'};
+var OMZETKLASSEN = ['< €500.000','€500.000 - €1 miljoen','€1 - €2 miljoen','€2 - €5 miljoen','€5 - €10 miljoen','> €10 miljoen'];
+// Ondergrens per klasse-index, in euro's — parallelle array, gebruikt om een koper-bandbreedte
+// (omzetMin t/m omzetMax) leesbaar te tonen zonder tekst uit OMZETKLASSEN te moeten knippen/plakken.
+var OMZETGRENZEN = [0,500000,1000000,2000000,5000000,10000000];
+function fmtEuro(bedrag){ return bedrag>=1000000 ? '€'+(bedrag/1000000)+' mln' : '€'+bedrag.toLocaleString('nl-NL'); }
+function omzetBandbreedte(min,max){
+  var boven=max>=OMZETGRENZEN.length-1?'∞':fmtEuro(OMZETGRENZEN[max+1]);
+  if(min===0) return 'tot '+boven;
+  return fmtEuro(OMZETGRENZEN[min])+' – '+boven;
+}
+
+var SELLERS = [
+  {
+    id: 's1', sector: 'accountancy', regio: 'Randstad', omzetklasse: 2, // index in OMZETKLASSEN
+    fte: 12, usp: 'Gespecialiseerd in mkb-boekhouding en fiscaal advies voor de creatieve sector.',
+    label: 'Accountancy- en administratiekantoor · Randstad'
+  },
+  {
+    id: 's2', sector: 'it', regio: 'Zuid-Nederland', omzetklasse: 3,
+    fte: 25, usp: 'Maatwerk SaaS-platform voor planning en tracking in de logistieke sector.',
+    label: 'IT/software-bedrijf · Zuid-Nederland'
+  },
+  {
+    id: 's3', sector: 'zorg', regio: 'Noord-Nederland', omzetklasse: 1,
+    fte: 8, usp: 'Fysiotherapiepraktijk met specialisatie in sportrevalidatie en een loyale verwijzerskring.',
+    label: 'Zorgpraktijk · Noord-Nederland'
+  }
+];
+
+var BUYERS = [
+  {
+    id: 'b1', naam: 'PE-platform — accountancy-consolidatie',
+    zoektSectoren: ['accountancy'], zoektRegio: null, // null = heel Nederland
+    omzetMin: 2, omzetMax: 3,
+    beschrijving: 'Bouwt een landelijk platform van accountancy- en administratiekantoren op, zoekt kantoren met €1-5 mln omzet, regio is ondergeschikt.'
+  },
+  {
+    id: 'b2', naam: 'Strategische koper — logistieke IT',
+    zoektSectoren: ['it'], zoektRegio: ['Zuid-Nederland','Randstad'],
+    omzetMin: 2, omzetMax: 4,
+    beschrijving: 'Wil het eigen dienstenpakket uitbreiden met een gespecialiseerd IT/software-bedrijf, bij voorkeur Zuid-Nederland of Randstad.'
+  },
+  {
+    id: 'b3', naam: 'Individuele overnemer — zorg/mkb',
+    zoektSectoren: ['zorg','accountancy'], zoektRegio: ['Noord-Nederland'],
+    omzetMin: 0, omzetMax: 1,
+    beschrijving: 'Zoekt een eerste overname in zorg of mkb, kleinschalig (tot circa €1 mln omzet), specifiek Noord-Nederland.'
+  }
+];
+
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+function renderBuyers(){
+  var el=document.getElementById('buyers-grid');
+  el.innerHTML=BUYERS.map(function(b){
+    var sectorLabels=b.zoektSectoren.map(function(s){return SECTOREN[s];}).join(' of ');
+    var regioLabel=b.zoektRegio?b.zoektRegio.join(' of '):'Heel Nederland';
+    return '<div class="card buyer-card" data-id="'+b.id+'" id="card-'+b.id+'">'
+      +'<div class="card-tag">Koper (fictief)</div>'
+      +'<h3>'+esc(b.naam)+'</h3>'
+      +'<div class="card-meta">'
+      +'<span class="chip">'+esc(sectorLabels)+'</span>'
+      +'<span class="chip">'+esc(regioLabel)+'</span>'
+      +'<span class="chip">Omzet: '+esc(omzetBandbreedte(b.omzetMin,b.omzetMax))+'</span>'
+      +'</div>'
+      +'<div class="card-desc">'+esc(b.beschrijving)+'</div>'
+      +'</div>';
+  }).join('');
+  Array.prototype.forEach.call(el.querySelectorAll('.buyer-card'),function(c){
+    c.addEventListener('click',function(){selectBuyer(c.dataset.id);});
+  });
+}
+
+function renderSellers(){
+  var el=document.getElementById('sellers-grid');
+  el.innerHTML=SELLERS.map(function(s){
+    return '<div class="card" id="seller-'+s.id+'">'
+      +'<div class="card-tag">Teaser (fictief)</div>'
+      +'<h3>'+esc(s.label)+'</h3>'
+      +'<div class="card-meta">'
+      +'<span class="chip">'+esc(OMZETKLASSEN[s.omzetklasse])+'</span>'
+      +'<span class="chip">'+s.fte+' FTE</span>'
+      +'</div>'
+      +'<div class="card-desc">'+esc(s.usp)+'</div>'
+      +'</div>';
+  }).join('');
+}
+
+function matchSector(buyer,seller){ return buyer.zoektSectoren.indexOf(seller.sector)!==-1; }
+function matchRegio(buyer,seller){ return !buyer.zoektRegio || buyer.zoektRegio.indexOf(seller.regio)!==-1; }
+function matchOmzet(buyer,seller){ return seller.omzetklasse>=buyer.omzetMin && seller.omzetklasse<=buyer.omzetMax; }
+
+function selectBuyer(id){
+  Array.prototype.forEach.call(document.querySelectorAll('.buyer-card'),function(c){
+    c.classList.toggle('active',c.dataset.id===id);
+  });
+  var buyer=BUYERS.filter(function(b){return b.id===id;})[0];
+  document.getElementById('match-panel-title').textContent='Matches voor: '+buyer.naam;
+  var rows=SELLERS.map(function(s){
+    var okSector=matchSector(buyer,s), okRegio=matchRegio(buyer,s), okOmzet=matchOmzet(buyer,s);
+    var alles=okSector&&okRegio&&okOmzet;
+    return '<div class="match-row">'
+      +'<div class="match-seller">'+esc(s.label)+'</div>'
+      +'<div class="match-crit">'
+      +'<span class="crit '+(okSector?'ok':'fail')+'">'+(okSector?'&#10003;':'&#10007;')+' Sector</span>'
+      +'<span class="crit '+(okRegio?'ok':'fail')+'">'+(okRegio?'&#10003;':'&#10007;')+' Regio</span>'
+      +'<span class="crit '+(okOmzet?'ok':'fail')+'">'+(okOmzet?'&#10003;':'&#10007;')+' Omzetklasse</span>'
+      +'</div>'
+      +'<div class="match-verdict '+(alles?'yes':'no')+'">'+(alles?'Match':'Geen match')+'</div>'
+      +'</div>';
+  }).join('');
+  document.getElementById('match-rows').innerHTML=rows;
+}
+
+renderBuyers();
+renderSellers();
+selectBuyer(BUYERS[0].id);
+</script>
+
+</body>
+</html>
