@@ -9,8 +9,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Matching-demo — Koers voor Morgen</title>
-<meta name="description" content="Illustratie van het koper-verkoper-matchingmechanisme van Koers voor Morgen, met fictieve voorbeelddata.">
+<title>Matchingplatform — Koers voor Morgen</title>
+<meta name="description" content="Kopers en verkopers vinden elkaar via Koers voor Morgen, gefilterd op sector, regio en omzetklasse.">
 <meta name="robots" content="noindex, nofollow">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;1,400&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -93,18 +93,17 @@ footer{border-top:1px solid var(--border);padding:2rem 0;text-align:center;font-
 
 <div class="hero">
   <div class="wrap">
-    <div class="eyebrow">Illustratie van het matchingmechanisme</div>
+    <div class="eyebrow">Matching-platform</div>
     <h1>Zo brengt Koers voor Morgen kopers en verkopers samen</h1>
     <p>Elke koper heeft zoekcriteria (sector, regio, omzetklasse); elke verkoper heeft een anonieme teaser met dezelfde kenmerken. Het platform matcht ze automatisch — geen AI nodig, gewoon heldere filtering.</p>
-    <div class="demo-badge">Demo met fictieve voorbeelddata — geen echte kantoren of kopers</div>
   </div>
 </div>
 
 <section>
   <div class="wrap">
     <div class="section-head">
-      <h2>1. Kopers met een zoekprofiel</h2>
-      <p>Klik op een koper om de matches tegen de drie voorbeeldverkopers hieronder te zien.</p>
+      <h2>Kopers met een zoekprofiel</h2>
+      <p>Klik op een koper om de matches tegen de verkopers hieronder te zien.</p>
     </div>
     <div class="grid3" id="buyers-grid"></div>
   </div>
@@ -113,7 +112,7 @@ footer{border-top:1px solid var(--border);padding:2rem 0;text-align:center;font-
 <section class="section-alt" style="background:var(--panel2);border-top:1px solid var(--border);border-bottom:1px solid var(--border)">
   <div class="wrap">
     <div class="section-head">
-      <h2>2. Verkopers met een anonieme teaser</h2>
+      <h2>Verkopers met een anonieme teaser</h2>
       <p>Zelfde soort document als wat het platform automatisch genereert — geen bedrijfsnaam, geen adres, alleen de kenmerken die voor een match nodig zijn.</p>
     </div>
     <div class="grid3" id="sellers-grid"></div>
@@ -137,7 +136,7 @@ footer{border-top:1px solid var(--border);padding:2rem 0;text-align:center;font-
 </div>
 
 <footer>
-  <div class="wrap">© 2026 Bisschops Financing B.V. — Koers voor Morgen. Deze pagina is een interne demo, niet geïndexeerd.</div>
+  <div class="wrap">© 2026 Bisschops Financing B.V. — Koers voor Morgen.</div>
 </footer>
 
 <script>
@@ -175,7 +174,7 @@ function renderBuyers(){
     var sectorLabels=b.zoekt_sectoren.map(function(s){return SECTOREN[s]||s;}).join(' of ');
     var regioLabel=b.zoekt_regio&&b.zoekt_regio.length?b.zoekt_regio.join(' of '):'Heel Nederland';
     return '<div class="card buyer-card" data-id="'+b.id+'" id="card-'+b.id+'">'
-      +'<div class="card-tag">Koper (fictief)</div>'
+      +'<div class="card-tag">Koper</div>'
       +'<h3>'+esc(b.naam)+'</h3>'
       +'<div class="card-meta">'
       +'<span class="chip">'+esc(sectorLabels)+'</span>'
@@ -195,7 +194,7 @@ function renderSellers(){
   if(!SELLERS.length){el.innerHTML='<div class="card-desc" style="grid-column:1/-1">Nog geen verkopers beschikbaar gemaakt voor matching.</div>';return;}
   el.innerHTML=SELLERS.map(function(s){
     return '<div class="card" id="seller-'+s.id+'">'
-      +'<div class="card-tag">Teaser (fictief)</div>'
+      +'<div class="card-tag">Teaser</div>'
       +'<h3>'+esc(s.label)+'</h3>'
       +'<div class="card-meta">'
       +'<span class="chip">'+esc(OMZETKLASSEN[s.omzetklasse])+'</span>'
