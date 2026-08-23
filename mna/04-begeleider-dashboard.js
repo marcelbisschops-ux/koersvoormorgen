@@ -793,7 +793,10 @@ function renderBegeleiderDashboard(app){
       html+='<div class="panel" style="margin-bottom:1.25rem;padding:0">'+secHdr('marketing','&#128226; Marketing').replace('&#9650;','&#9660;')
         +'<div class="bg-sec-body" data-sec="marketing" style="display:none;padding:0 1rem 1rem">'
         +(marketingAan
-          ?'<button class="btn" id="bg-teaser-actie" style="background:#1a7a5e">&#128226; '+(t.teaser_tekst?'Teaser bekijken/bewerken':'Genereer teaser')+'</button><div style="font-size:11px;color:var(--muted);margin-top:6px">Kort, anoniem verkoopdocument (max. 150 woorden, geen bedrijfsnaam) om vroeg in het proces interesse te peilen — vóór er een koper is.</div>'
+          ?'<button class="btn" id="bg-teaser-actie" style="background:#1a7a5e">&#128226; '+(t.teaser_tekst?'Teaser bekijken/bewerken':'Genereer teaser')+'</button><div style="font-size:11px;color:var(--muted);margin-top:6px;margin-bottom:1rem">Kort, anoniem verkoopdocument (max. 150 woorden, geen bedrijfsnaam) om vroeg in het proces interesse te peilen — vóór er een koper is.</div>'
+            +(t.nda_getekend
+              ?'<button class="btn" id="bg-verkoopmemo-actie" style="background:#8a5a00">&#128220; '+(t.verkoopmemorandum_tekst?'Verkoopmemorandum bekijken/bewerken':'Genereer verkoopmemorandum')+'</button><div style="font-size:11px;color:var(--muted);margin-top:6px">Uitgebreid document mét bedrijfsnaam voor de partij die de NDA heeft getekend.</div>'
+              :'<div style="font-size:11px;color:var(--muted)"><button class="btn" disabled title="Beschikbaar na ondertekende NDA" style="background:#8a5a00;opacity:.45;cursor:not-allowed">&#128220; Genereer verkoopmemorandum</button><div style="margin-top:6px">Beschikbaar zodra de NDA is ondertekend (bevat bedrijfsnaam + gedetailleerde data).</div></div>')
           :'<div style="font-size:11px;color:var(--muted)">&#128274; Module Marketing niet actief — neem contact op met ' + BRAND.kort + ' om deze module te activeren.</div>')
         +'</div></div>';
       return html;
@@ -804,6 +807,8 @@ function renderBegeleiderDashboard(app){
     +'<div id="bg-doc-out" style="display:none;margin-bottom:1.25rem"></div>'
     // Teaser output
     +'<div id="bg-teaser-out" style="display:none;margin-bottom:1.25rem"></div>'
+    // Verkoopmemorandum output
+    +'<div id="bg-verkoopmemo-out" style="display:none;margin-bottom:1.25rem"></div>'
     // Gesprek output
     +'<div id="bg-gesp-out" style="display:none;margin-bottom:1.25rem"></div>'
     // DD data per fase
@@ -1881,6 +1886,42 @@ function renderBegeleiderDashboard(app){
     else{await genereerTeaser();}
   }
 
+  async function toonVerkoopmemoModal(){
+    var out=document.getElementById('bg-verkoopmemo-out');out.style.display='block';
+    var t2=S.traject||{};
+    function renderVerkoopmemo(tekst,status){
+      out.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem">'
+        +'<div style="font-size:11px;font-weight:600;color:#8a5a00;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.75rem">&#128220; Verkoopmemorandum'+(status?' &mdash; '+esc(status):'')+'</div>'
+        +'<textarea id="verkoopmemo-txt" rows="16" style="width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:var(--r);font-family:\'IBM Plex Sans\',sans-serif;font-size:13px;padding:9px 11px;color:var(--sub);resize:vertical;outline:none">'+esc(tekst||'')+'</textarea>'
+        +'<div style="font-size:11px;color:var(--muted);margin-top:6px">Bevat de bedrijfsnaam — controleer vóór verspreiding altijd of dit alleen naar de partij gaat die de NDA heeft getekend.</div>'
+        +'<div style="display:flex;gap:8px;margin-top:.75rem">'
+        +'<button class="btn" id="verkoopmemo-opslaan-btn" style="background:#8a5a00">Opslaan</button>'
+        +'<button class="btn-outline btn-sm" id="verkoopmemo-nieuw-btn">&#8635; Opnieuw genereren</button>'
+        +'<button class="btn-ghost" id="verkoopmemo-sluit-btn" style="margin-left:auto">Sluiten</button>'
+        +'</div></div>';
+      document.getElementById('verkoopmemo-sluit-btn').onclick=function(){out.style.display='none';};
+      document.getElementById('verkoopmemo-opslaan-btn').onclick=async function(){
+        var btn=this;btn.disabled=true;btn.textContent='Bezig...';
+        var tekstNu=document.getElementById('verkoopmemo-txt').value;
+        var r=await fetch(WORKER+'/mna/verkoopmemorandum/opslaan',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||''},body:JSON.stringify({code:S.code,tekst:tekstNu})}).then(function(x){return x.json();}).catch(function(){return{};});
+        if(r.ok){toast('Verkoopmemorandum opgeslagen.','ok');t2.verkoopmemorandum_tekst=tekstNu;}
+        else{toast(r.error||'Opslaan mislukt.','err');}
+        btn.disabled=false;btn.textContent='Opslaan';
+      };
+      document.getElementById('verkoopmemo-nieuw-btn').onclick=function(){genereerVerkoopmemo();};
+    }
+    async function genereerVerkoopmemo(){
+      out.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;color:var(--muted)">Genereren...</div>';
+      var r=await fetch(WORKER+'/mna/verkoopmemorandum/genereer',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||''},body:JSON.stringify({code:S.code})}).then(function(x){return x.json();}).catch(function(){return{};});
+      if(r.ok){t2.verkoopmemorandum_tekst=r.verkoopmemorandum_tekst;renderVerkoopmemo(r.verkoopmemorandum_tekst,'nieuw gegenereerd');}
+      else{out.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;color:var(--red)">'+esc(r.error||'Genereren mislukt.')+'</div>';}
+    }
+    var docOutEl=document.getElementById('bg-verkoopmemo-out');
+    if(docOutEl)setTimeout(function(){docOutEl.scrollIntoView({behavior:'smooth',block:'nearest'});},100);
+    if(t2.verkoopmemorandum_tekst){renderVerkoopmemo(t2.verkoopmemorandum_tekst,t2.verkoopmemorandum_status||'');}
+    else{await genereerVerkoopmemo();}
+  }
+
   async function toonClosingModal(){
     var t2=S.traject||{};
     var out=document.getElementById('bg-doc-out');out.style.display='block';
@@ -1960,6 +2001,8 @@ function renderBegeleiderDashboard(app){
   // Alleen aanwezig als module Marketing actief is (zie marketingAan hierboven).
   var bgTeaserBtn=document.getElementById('bg-teaser-actie');
   if(bgTeaserBtn)bgTeaserBtn.onclick=function(){ toonTeaserModal(); };
+  var bgVerkoopmemoBtn=document.getElementById('bg-verkoopmemo-actie');
+  if(bgVerkoopmemoBtn)bgVerkoopmemoBtn.onclick=function(){ toonVerkoopmemoModal(); };
   document.getElementById('bg-bieding-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op met ' + BRAND.kort + '.','err');return;} toonDocWaarschuwing('bieding', function(){ toonBiedingModal(); }); };
   document.getElementById('bg-spa-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op met ' + BRAND.kort + '.','err');return;} toonDocWaarschuwing('spa', function(){ toonSpaModal(); }); };
   // Geen toonDocWaarschuwing hier: de closing-checklist is een generieke controlelijst zonder
