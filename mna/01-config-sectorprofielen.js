@@ -246,6 +246,7 @@ var SECTOR_PROFIELEN = {
        dataFields:[
         {id:'marktpos',label:'Marktpositie / regio',ph:'',doc:false,req:true,fase:'1'},
         {id:'niche',label:'Niche of specialisme',ph:'',doc:false,req:true,fase:'1'},
+        {id:'redenVerkoop',label:'Reden van verkoop',ph:'',doc:false,req:false,fase:'1'},
         {id:'synergie',label:'Gewenste vervolgstap eigenaar',ph:'',doc:false,req:true,fase:'1'},
         {id:'tijdlijn',label:'Gewenste tijdlijn transactie',ph:'',doc:false,req:true,fase:'1'},
         {id:'managementTeam',label:'Managementteam na overname',ph:'',doc:false,req:false,fase:'1'},
