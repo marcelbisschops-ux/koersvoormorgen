@@ -1724,7 +1724,7 @@ async function toonDetail(id,naam){
         return;
       }
       var aan=!!trajectObj.beschikbaar_voor_matching;
-      mtEl.innerHTML='<label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="matching-toggle-chk" '+(aan?'checked':'')+'> Zichtbaar op de live <a href="matching-demo.html" target="_blank" style="color:var(--teal)" onclick="event.stopPropagation()">matching-pagina</a></label>';
+      mtEl.innerHTML='<label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="matching-toggle-chk" '+(aan?'checked':'')+'> Zichtbaar op de live <a href="matching-demo.html" target="_blank" style="color:var(--teal)" onclick="event.stopPropagation()">matching-pagina</a></label><div style="font-size:11px;color:var(--muted);margin-top:4px">Verdwijnt automatisch zodra er een koper is ingevuld — geen aparte actie nodig.</div>';
       document.getElementById('matching-toggle-chk').addEventListener('change',async function(e){
         var nieuw=e.target.checked;
         try{
