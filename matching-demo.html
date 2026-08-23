@@ -146,7 +146,8 @@ footer{border-top:1px solid var(--border);padding:2rem 0;text-align:center;font-
 // (mna/01-config-sectorprofielen.js / worker/19-info-fases.js), zodat dit mechanisme één-op-één
 // aansluit op de echte teaser-output zodra er verkopers op het platform staan.
 
-var SECTOREN = {accountancy:'Accountancy & administratie', it:'IT & software', zorg:'Zorg'};
+var WORKER = 'https://kantoorinzicht.marcel-bisschops.workers.dev';
+var SECTOREN = {accountancy:'Accountancy & administratie', mkb:'Mkb', zorg:'Zorg', itsoftware:'IT & software'};
 var OMZETKLASSEN = ['< €500.000','€500.000 - €1 miljoen','€1 - €2 miljoen','€2 - €5 miljoen','€5 - €10 miljoen','> €10 miljoen'];
 // Ondergrens per klasse-index, in euro's — parallelle array, gebruikt om een koper-bandbreedte
 // (omzetMin t/m omzetMax) leesbaar te tonen zonder tekst uit OMZETKLASSEN te moeten knippen/plakken.
@@ -158,61 +159,30 @@ function omzetBandbreedte(min,max){
   return fmtEuro(OMZETGRENZEN[min])+' – '+boven;
 }
 
-var SELLERS = [
-  {
-    id: 's1', sector: 'accountancy', regio: 'Randstad', omzetklasse: 2, // index in OMZETKLASSEN
-    fte: 12, usp: 'Gespecialiseerd in mkb-boekhouding en fiscaal advies voor de creatieve sector.',
-    label: 'Accountancy- en administratiekantoor · Randstad'
-  },
-  {
-    id: 's2', sector: 'it', regio: 'Zuid-Nederland', omzetklasse: 3,
-    fte: 25, usp: 'Maatwerk SaaS-platform voor planning en tracking in de logistieke sector.',
-    label: 'IT/software-bedrijf · Zuid-Nederland'
-  },
-  {
-    id: 's3', sector: 'zorg', regio: 'Noord-Nederland', omzetklasse: 1,
-    fte: 8, usp: 'Fysiotherapiepraktijk met specialisatie in sportrevalidatie en een loyale verwijzerskring.',
-    label: 'Zorgpraktijk · Noord-Nederland'
-  }
-];
-
-var BUYERS = [
-  {
-    id: 'b1', naam: 'PE-platform — accountancy-consolidatie',
-    zoektSectoren: ['accountancy'], zoektRegio: null, // null = heel Nederland
-    omzetMin: 2, omzetMax: 3,
-    beschrijving: 'Bouwt een landelijk platform van accountancy- en administratiekantoren op, zoekt kantoren met €1-5 mln omzet, regio is ondergeschikt.'
-  },
-  {
-    id: 'b2', naam: 'Strategische koper — logistieke IT',
-    zoektSectoren: ['it'], zoektRegio: ['Zuid-Nederland','Randstad'],
-    omzetMin: 2, omzetMax: 4,
-    beschrijving: 'Wil het eigen dienstenpakket uitbreiden met een gespecialiseerd IT/software-bedrijf, bij voorkeur Zuid-Nederland of Randstad.'
-  },
-  {
-    id: 'b3', naam: 'Individuele overnemer — zorg/mkb',
-    zoektSectoren: ['zorg','accountancy'], zoektRegio: ['Noord-Nederland'],
-    omzetMin: 0, omzetMax: 1,
-    beschrijving: 'Zoekt een eerste overname in zorg of mkb, kleinschalig (tot circa €1 mln omzet), specifiek Noord-Nederland.'
-  }
-];
+// Live data (23 aug 2026) — opgehaald bij GET /mna/matching/overzicht, publiek/geen auth (zelfde
+// filosofie als /waardering/config). Alleen trajecten die een begeleider expliciet "beschikbaar voor
+// matching" heeft gezet komen als seller voor; koper-zoekprofielen beheert Marcel in marilyn
+// (tabblad Matching). Bij een lege lijst blijft de pagina bruikbaar met een duidelijke lege-staat.
+var SELLERS = [];
+var BUYERS = [];
 
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 
 function renderBuyers(){
   var el=document.getElementById('buyers-grid');
+  if(!BUYERS.length){el.innerHTML='<div class="card-desc" style="grid-column:1/-1">Nog geen koper-zoekprofielen toegevoegd.</div>';return;}
   el.innerHTML=BUYERS.map(function(b){
-    var sectorLabels=b.zoektSectoren.map(function(s){return SECTOREN[s];}).join(' of ');
-    var regioLabel=b.zoektRegio?b.zoektRegio.join(' of '):'Heel Nederland';
+    var sectorLabels=b.zoekt_sectoren.map(function(s){return SECTOREN[s]||s;}).join(' of ');
+    var regioLabel=b.zoekt_regio&&b.zoekt_regio.length?b.zoekt_regio.join(' of '):'Heel Nederland';
     return '<div class="card buyer-card" data-id="'+b.id+'" id="card-'+b.id+'">'
       +'<div class="card-tag">Koper (fictief)</div>'
       +'<h3>'+esc(b.naam)+'</h3>'
       +'<div class="card-meta">'
       +'<span class="chip">'+esc(sectorLabels)+'</span>'
       +'<span class="chip">'+esc(regioLabel)+'</span>'
-      +'<span class="chip">Omzet: '+esc(omzetBandbreedte(b.omzetMin,b.omzetMax))+'</span>'
+      +'<span class="chip">Omzet: '+esc(omzetBandbreedte(b.omzet_min,b.omzet_max))+'</span>'
       +'</div>'
-      +'<div class="card-desc">'+esc(b.beschrijving)+'</div>'
+      +'<div class="card-desc">'+esc(b.beschrijving||'')+'</div>'
       +'</div>';
   }).join('');
   Array.prototype.forEach.call(el.querySelectorAll('.buyer-card'),function(c){
@@ -222,30 +192,32 @@ function renderBuyers(){
 
 function renderSellers(){
   var el=document.getElementById('sellers-grid');
+  if(!SELLERS.length){el.innerHTML='<div class="card-desc" style="grid-column:1/-1">Nog geen verkopers beschikbaar gemaakt voor matching.</div>';return;}
   el.innerHTML=SELLERS.map(function(s){
     return '<div class="card" id="seller-'+s.id+'">'
       +'<div class="card-tag">Teaser (fictief)</div>'
       +'<h3>'+esc(s.label)+'</h3>'
       +'<div class="card-meta">'
       +'<span class="chip">'+esc(OMZETKLASSEN[s.omzetklasse])+'</span>'
-      +'<span class="chip">'+s.fte+' FTE</span>'
+      +(s.fte?'<span class="chip">'+esc(s.fte)+' FTE</span>':'')
       +'</div>'
-      +'<div class="card-desc">'+esc(s.usp)+'</div>'
+      +'<div class="card-desc">'+esc((s.teaser_tekst||'').slice(0,220))+((s.teaser_tekst||'').length>220?'…':'')+'</div>'
       +'</div>';
   }).join('');
 }
 
-function matchSector(buyer,seller){ return buyer.zoektSectoren.indexOf(seller.sector)!==-1; }
-function matchRegio(buyer,seller){ return !buyer.zoektRegio || buyer.zoektRegio.indexOf(seller.regio)!==-1; }
-function matchOmzet(buyer,seller){ return seller.omzetklasse>=buyer.omzetMin && seller.omzetklasse<=buyer.omzetMax; }
+function matchSector(buyer,seller){ return buyer.zoekt_sectoren.indexOf(seller.sector)!==-1; }
+function matchRegio(buyer,seller){ return !buyer.zoekt_regio || !buyer.zoekt_regio.length || buyer.zoekt_regio.indexOf(seller.regio)!==-1; }
+function matchOmzet(buyer,seller){ return seller.omzetklasse>=buyer.omzet_min && seller.omzetklasse<=buyer.omzet_max; }
 
 function selectBuyer(id){
   Array.prototype.forEach.call(document.querySelectorAll('.buyer-card'),function(c){
     c.classList.toggle('active',c.dataset.id===id);
   });
   var buyer=BUYERS.filter(function(b){return b.id===id;})[0];
+  if(!buyer)return;
   document.getElementById('match-panel-title').textContent='Matches voor: '+buyer.naam;
-  var rows=SELLERS.map(function(s){
+  var rows=!SELLERS.length?'<div class="card-desc">Nog geen verkopers om te matchen.</div>':SELLERS.map(function(s){
     var okSector=matchSector(buyer,s), okRegio=matchRegio(buyer,s), okOmzet=matchOmzet(buyer,s);
     var alles=okSector&&okRegio&&okOmzet;
     return '<div class="match-row">'
@@ -261,9 +233,19 @@ function selectBuyer(id){
   document.getElementById('match-rows').innerHTML=rows;
 }
 
-renderBuyers();
-renderSellers();
-selectBuyer(BUYERS[0].id);
+async function laadLiveData(){
+  try{
+    var r=await fetch(WORKER+'/mna/matching/overzicht');
+    var d=await r.json();
+    if(d.ok){ BUYERS=d.kopers; SELLERS=d.sellers; }
+  }catch(e){ /* laat lege staat zien bij een verbindingsfout */ }
+  renderBuyers();
+  renderSellers();
+  if(BUYERS.length){ selectBuyer(BUYERS[0].id); }
+  else{ document.getElementById('match-panel-title').textContent='Matches'; document.getElementById('match-rows').innerHTML='<div class="card-desc">Voeg koper-zoekprofielen toe in marilyn (tabblad Matching) om matches te zien.</div>'; }
+}
+
+laadLiveData();
 </script>
 
 </body>
