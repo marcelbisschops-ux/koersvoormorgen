@@ -643,7 +643,10 @@ function renderMain(){
   }
 
   // Q&A module (koper stelt vragen of tegenvoorstellen, begeleider beantwoordt — iedereen ziet antwoorden)
-  if(isKoper()||isTussen()){
+  // 23 aug 2026: module-vinkje 'qa' in marilyn had tot nu toe geen client- of server-gate — nu
+  // beide toegevoegd (zelfde patroon als Contracten/AI-analyse).
+  var qaModuleAan=!S.modules||S.modules.qa!==false;
+  if(qaModuleAan&&(isKoper()||isTussen())){
     extraHtml+='<div class="panel" style="border-color:var(--gold)" id="qa-panel-'+f.id+'">'
       +'<div class="sec-hdr" style="color:var(--gold)">&#10067; Q&A — vragen, voorstellen &amp; antwoorden</div>'
       +'<div id="qa-lijst-'+f.id+'" style="margin-bottom:1rem"><div style="font-size:12px;color:var(--muted);font-style:italic">Laden...</div></div>'
@@ -1618,7 +1621,8 @@ function bindAll(){
   // Koper reactie knoppen
   // Q&A laden en versturen — vraag óf tegenvoorstel; begeleider kan direct vanuit dit scherm reageren
   var qaCurFase=FASES[S.fase];
-  if(qaCurFase&&(isKoper()||isTussen())){
+  var qaModuleAan2=!S.modules||S.modules.qa!==false;
+  if(qaModuleAan2&&qaCurFase&&(isKoper()||isTussen())){
     (function(faseId){
       var qaStatusBadge={
         beantwoord:{kleur:'var(--teal)',label:'Beantwoord'},
