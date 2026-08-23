@@ -135,7 +135,11 @@ var SECTOR_PROFIELEN = {
         {id:'kostenOverig',label:'Overige kosten (% omzet)',ph:'',doc:false,req:false,fase:'2'}
        ],
        items:['Jaarrekeningen 3 jaar beschikbaar','YTD-cijfers aangeleverd','Omzet per dienstlijn inzichtelijk','EBITDA-normalisatie opgesteld','OHW geïnventariseerd','Debiteurenpositie geanalyseerd','Partnerbeloningen vergeleken met marktconform','Declarabiliteit bepaald'],
-       redflags:['Hoge WIP en oude debiteuren (>90 dagen)','Lage partnerproductiviteit tov benchmark','Eenmalige omzetpieken vertekenen beeld','Niet-genormaliseerde partnerbeloningen']},
+       redflags:['Hoge WIP en oude debiteuren (>90 dagen)','Lage partnerproductiviteit tov benchmark','Eenmalige omzetpieken vertekenen beeld','Niet-genormaliseerde partnerbeloningen'],
+       vereisteDocumenten:[
+        {naam:'Jaarrekeningen (3 jaar)',trefwoorden:['jaarrekening','jaarcijfers','jaarverslag'],verplicht:true},
+        {naam:'YTD-cijfers / tussentijdse cijfers',trefwoorden:['ytd','tussentijds','tussentijdse'],verplicht:true}
+       ]},
       {id:'commercieel',num:'II',title:'Klanten & commercieel',desc:'Concentratie, retentie en commerciële kracht.',
        dataFields:[
         {id:'aantalKlanten',label:'Aantal actieve klanten',ph:'',doc:false,req:true,fase:'1'},
@@ -152,7 +156,10 @@ var SECTOR_PROFIELEN = {
         {id:'retentieRisico',label:'Retentierisico sleutelklanten bij overname',ph:'',doc:false,req:false,fase:'2'}
        ],
        items:['Klantverloop inzichtelijk (3 jaar)','Top 10 klanten samen <40% omzet','Cross-sell percentage vastgesteld','Contractduur inzichtelijk'],
-       redflags:['Omzet geconcentreerd bij <5 klanten','Klantverloop >10% per jaar','Klantrelaties hangen aan individuele partners','Geen structurele acquisitie']},
+       redflags:['Omzet geconcentreerd bij <5 klanten','Klantverloop >10% per jaar','Klantrelaties hangen aan individuele partners','Geen structurele acquisitie'],
+       vereisteDocumenten:[
+        {naam:'Klantenoverzicht / omzet per klant',trefwoorden:['klantenoverzicht','klantlijst','omzet per klant','debiteurenlijst'],verplicht:true}
+       ]},
       {id:'partner',num:'III',title:'Partners & personeel',desc:'Afhankelijkheden, opvolging en cultuur.',
        dataFields:[
         {id:'aantalP',label:'Aantal partners / eigenaren',ph:'',doc:false,req:true,fase:'1',groepsniveau:true},
@@ -173,7 +180,11 @@ var SECTOR_PROFIELEN = {
         {id:'pensioenReg',label:'Pensioenregeling (soort + kosten)',ph:'',doc:true,req:false,fase:'2'}
        ],
        items:['Omzetbijdrage per partner vastgesteld','Leeftijdsopbouw in kaart','Opvolgingsplan aanwezig','Verlooppercentage bepaald (norm <15%)'],
-       redflags:['Omzet zit in 1-2 partners','Pensioengolf zonder opvolging','Verloop >15%','Geen formele partnerovereenkomsten']},
+       redflags:['Omzet zit in 1-2 partners','Pensioengolf zonder opvolging','Verloop >15%','Geen formele partnerovereenkomsten'],
+       vereisteDocumenten:[
+        {naam:'Personeelsoverzicht / organogram',trefwoorden:['personeelsoverzicht','organogram','fte-overzicht','personeelslijst'],verplicht:true},
+        {naam:'Partnerovereenkomsten',trefwoorden:['partnerovereenkomst','maatschapsovereenkomst'],verplicht:false}
+       ]},
       {id:'compliance',num:'IV',title:'Compliance & kwaliteit',desc:'Regulatory status en dossierkwaliteit.',
        dataFields:[
         {id:'nba',label:'NBA-status (inschrijving)',ph:'',doc:true,req:true,fase:'1'},
@@ -205,7 +216,10 @@ var SECTOR_PROFIELEN = {
         {id:'avg',label:'AVG-documentatie up-to-date',ph:'',doc:true,req:false,fase:'2'}
        ],
        items:['Softwarelandschap in kaart','Automatiseringsgraad bepaald','AI-tooling aanwezig','Cybersecurity vastgesteld'],
-       redflags:['Geen schaalbaar systeemlandschap','Hoge mate handmatig werk','Lage AI-readiness','Cybersecurity kwetsbaarheden']},
+       redflags:['Geen schaalbaar systeemlandschap','Hoge mate handmatig werk','Lage AI-readiness','Cybersecurity kwetsbaarheden'],
+       vereisteDocumenten:[
+        {naam:'Systemenoverzicht / IT-inventarisatie',trefwoorden:['systemenoverzicht','it-inventarisatie','softwarelandschap'],verplicht:false}
+       ]},
       {id:'juridisch',num:'VI',title:'Juridisch & fiscaal',desc:'Structuur, contracten en fiscale risico.',
        dataFields:[
         {id:'rechtsvorm',label:'Rechtsvorm(en)',ph:'',doc:true,req:true,fase:'1'},
@@ -222,7 +236,12 @@ var SECTOR_PROFIELEN = {
         {id:'verzekering',label:'Beroepsaansprakelijkheidsverzekering (dekking)',ph:'',doc:true,req:false,fase:'2'}
        ],
        items:['Statuten doorgenomen','Huurcontracten inzichtelijk','VPB-positie 3 jaar beoordeeld','Claims vastgesteld'],
-       redflags:['Openstaande fiscale discussies','Huurcontract niet overdraagbaar','Onbekende claims']},
+       redflags:['Openstaande fiscale discussies','Huurcontract niet overdraagbaar','Onbekende claims'],
+       vereisteDocumenten:[
+        {naam:'KvK-uittreksel',trefwoorden:['kvk','uittreksel','handelsregister'],verplicht:true},
+        {naam:'Aandeelhoudersregister / statuten',trefwoorden:['aandeelhouders','statuten','akte'],verplicht:true},
+        {naam:'Huurovereenkomst',trefwoorden:['huurovereenkomst','huurcontract'],verplicht:false}
+       ]},
       {id:'strategisch',num:'VII',title:'Strategisch & markt',desc:'Marktpositie, groeipotentieel en strategische fit.',
        dataFields:[
         {id:'marktpos',label:'Marktpositie / regio',ph:'',doc:false,req:true,fase:'1'},

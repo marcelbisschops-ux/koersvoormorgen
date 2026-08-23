@@ -1634,6 +1634,31 @@ async function deleteMna(id,naam){
 }
 
 // MNA DETAIL
+async function laadDocumentdekking(code){
+  var el=document.getElementById('dekking-body');
+  if(!el)return;
+  try{
+    var r=await fetch(WORKER+'/mna/documentdekking/'+encodeURIComponent(code),{headers:{'x-admin-key':adminKey}});
+    var d=await r.json();
+    if(!d.ok||!d.fases||!d.fases.length){el.innerHTML='<span style="font-style:italic">Geen documentdekking gedefinieerd voor dit sectorprofiel.</span>';return;}
+    var totAanwezig=0,totVereist=0;
+    d.fases.forEach(function(f){totAanwezig+=f.aanwezig;totVereist+=f.totaal;});
+    var html='<div style="font-size:12px;color:var(--sub);font-weight:600;margin-bottom:.5rem">'+totAanwezig+' / '+totVereist+' vereiste documenten aanwezig</div>';
+    d.fases.forEach(function(f){
+      var kleur=f.aanwezig>=f.totaal?'var(--teal)':'var(--gold)';
+      var ontbrekend=f.vereist.filter(function(v){return!(f.dekking[v.naam]&&f.dekking[v.naam].aanwezig);});
+      html+='<details style="margin-bottom:4px"><summary style="cursor:pointer;font-size:12px;color:var(--mid)">'+esc(f.fase_title)+' — <span style="color:'+kleur+';font-weight:600">'+f.aanwezig+'/'+f.totaal+'</span></summary>';
+      if(ontbrekend.length){
+        html+='<ul style="margin:4px 0 8px 1.2rem;padding:0;font-size:11px;color:var(--muted)">'+ontbrekend.map(function(v){return'<li>'+esc(v.naam)+(v.verplicht?' <span style="color:var(--red)">(verplicht)</span>':' (optioneel)')+'</li>';}).join('')+'</ul>';
+      } else {
+        html+='<div style="margin:4px 0 8px 1.2rem;font-size:11px;color:var(--teal)">Alles aanwezig.</div>';
+      }
+      html+='</details>';
+    });
+    el.innerHTML=html;
+  }catch(e){el.innerHTML='<span style="color:var(--red)">Fout bij laden.</span>';}
+}
+
 async function toonDetail(id,naam){
   var ov=document.createElement('div');ov.className='overlay';
   var mo=document.createElement('div');mo.className='modal';mo.style.maxWidth='700px';
@@ -1645,6 +1670,12 @@ async function toonDetail(id,naam){
     +'<div id="excl-output" style="display:none;margin-bottom:1.25rem;border-bottom:1px solid var(--border);padding-bottom:1.25rem"></div>'
     +'<div id="mna-ai-out" style="display:none;margin-bottom:1.25rem;border-bottom:1px solid var(--border);padding-bottom:1.25rem"></div>'
     +'<div id="detail-body" style="color:var(--muted);font-size:13px">Laden...</div>'
+    +'<div style="margin-top:1.5rem;border-top:2px solid var(--border);padding-top:1.25rem">'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">'
+    +'<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">&#128203; Documentdekking</div>'
+    +'</div>'
+    +'<div id="dekking-body" style="font-size:12px;color:var(--muted);font-style:italic">Laden...</div>'
+    +'</div>'
     +'<div style="margin-top:1.5rem;border-top:2px solid var(--border);padding-top:1.25rem">'
     +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">'
     +'<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">&#128193; Dataroom & Documentversies</div>'    +'<div style="display:flex;gap:6px">'    +'<label class="btn" id="lbl-upload-doc" style="font-size:11px;padding:4px 12px;background:var(--teal);cursor:pointer">↑ Document uploaden<input type="file" id="inp-upload-doc" accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.xlsx,.xls" style="display:none"></label>'    +'<button class="btn-ghost" id="btn-laad-versies" style="font-size:11px;padding:4px 12px">&#8635; Laden</button>'    +'</div>'
@@ -1675,6 +1706,7 @@ async function toonDetail(id,naam){
   ov.appendChild(mo);document.body.appendChild(ov);
   ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
   document.getElementById('det-sluit').addEventListener('click',function(){document.body.removeChild(ov);});
+  laadDocumentdekking(id);
 
   document.getElementById('inp-upload-doc').addEventListener('change',async function(){
     var file=this.files[0];if(!file)return;
