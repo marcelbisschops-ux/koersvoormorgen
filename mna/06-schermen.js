@@ -118,6 +118,12 @@ function renderCover(){
       +(S.loiDocId?'<a href="'+WORKER+'/mna/document/download/'+S.loiDocId+'?code='+encodeURIComponent(S.code)+'" target="_blank" class="btn-ghost" style="font-size:12px;text-decoration:none">&#8681; Download LoI</a>':('<button id="loi-lees-btn" class="btn-ghost" style="font-size:12px">&#128065; Lees LoI</button>'+'<button id="loi-print2-btn" class="btn" style="font-size:12px;background:var(--gold)">&#128196; Download / Print</button>'))
       +(S.loiGetekend?'<div style="font-size:11px;padding:4px 10px;border-radius:12px;background:var(--gold-bg);border:1px solid var(--gold);color:var(--gold);display:flex;align-items:center;gap:4px">&#10003; Getekend door '+esc(S.loiGetekend)+'</div>':(!isAdmin()?'<button id="loi-teken-btn" class="btn-ghost" style="font-size:12px;border-color:var(--gold);color:var(--gold)">&#9998; Akkoord &amp; onderteken</button>':''))
       +'</div></div>':'')
+    +(isVerkoper()&&(!S.modules||S.modules.marketing!==false)?'<div style="margin-top:1.5rem;background:var(--card);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem">'
+      +'<div style="font-size:11px;font-weight:600;color:var(--teal);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.6rem">&#128226; Teaser</div>'
+      +'<div style="font-size:12px;color:var(--mid);margin-bottom:.75rem">Een kort, anoniem verkoopdocument (geen bedrijfsnaam) om vroeg in het proces interesse te peilen bij potentiële kopers — vóór er een specifieke koper is. Uw adviseur kan deze ook voor u aanmaken.</div>'
+      +'<button class="btn" id="teaser-verk-btn" style="font-size:12px;background:var(--teal)">'+(t.teaser_tekst?'Teaser bekijken/bewerken':'Genereer teaser')+'</button>'
+      +'<div id="teaser-verk-out" style="display:none;margin-top:.75rem"></div>'
+      +'</div>':'')
     +'<div id="partij-docs-sectie" style="margin-top:1.5rem"></div>'
     +'<div id="partij-gesprekken-sectie" style="margin-top:1rem"></div>'
     +((isVerkoper()||isKoper())?'<div id="meekijkers-sectie" style="margin-top:1rem"></div>':'')
@@ -1256,6 +1262,32 @@ function bindAll(){
     ov.appendChild(box);document.body.appendChild(ov);
     ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
     document.getElementById('bem-sluit').addEventListener('click',function(){document.body.removeChild(ov);});
+  };
+
+  var teaserVerkBtn=ge('teaser-verk-btn');
+  if(teaserVerkBtn)teaserVerkBtn.onclick=function(){
+    var out=ge('teaser-verk-out');if(!out)return;
+    out.style.display='block';
+    function renderTeaserVerk(tekst){
+      out.innerHTML='<textarea id="teaser-verk-txt" rows="8" style="width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:var(--r);font-family:\'IBM Plex Sans\',sans-serif;font-size:13px;padding:9px 11px;color:var(--sub);resize:vertical;outline:none">'+esc(tekst||'')+'</textarea>'
+        +'<div style="font-size:11px;color:var(--muted);margin-top:6px">Anoniem, max. ~150 woorden, geen bedrijfsnaam. Controleer altijd zelf op onbedoeld identificerende details vóór verspreiding.</div>'
+        +'<div style="display:flex;gap:8px;margin-top:.75rem"><button class="btn" id="teaser-verk-opslaan" style="background:var(--teal)">Opslaan</button><button class="btn-outline btn-sm" id="teaser-verk-nieuw">&#8635; Opnieuw genereren</button></div>';
+      ge('teaser-verk-opslaan').onclick=async function(){
+        var btn=this;btn.disabled=true;btn.textContent='Bezig...';
+        var tekstNu=ge('teaser-verk-txt').value;
+        var r=await fetch(WORKER+'/mna/teaser/opslaan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:S.code,tekst:tekstNu})}).then(function(x){return x.json();}).catch(function(){return{};});
+        if(r.ok)toast('Teaser opgeslagen.','ok');else toast(r.error||'Opslaan mislukt.','err');
+        btn.disabled=false;btn.textContent='Opslaan';
+      };
+      ge('teaser-verk-nieuw').onclick=function(){genereerTeaserVerk();};
+    }
+    async function genereerTeaserVerk(){
+      out.innerHTML='<div style="color:var(--muted);font-size:12px">Genereren...</div>';
+      var r=await fetch(WORKER+'/mna/teaser/genereer',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:S.code})}).then(function(x){return x.json();}).catch(function(){return{};});
+      if(r.ok)renderTeaserVerk(r.teaser_tekst);
+      else out.innerHTML='<div style="color:var(--red);font-size:12px">'+esc(r.error||'Genereren mislukt.')+'</div>';
+    }
+    if(S.traject&&S.traject.teaser_tekst)renderTeaserVerk(S.traject.teaser_tekst);else genereerTeaserVerk();
   };
 
   var ndaLees=ge('nda-lees-btn');
