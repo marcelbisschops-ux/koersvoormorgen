@@ -61,6 +61,9 @@ section{padding:2.5rem 0}
 .card-desc{font-size:13px;color:var(--mid)}
 .buyer-card{cursor:pointer}
 .buyer-card.active{border-color:var(--teal);box-shadow:0 4px 18px rgba(0,0,0,.06)}
+.interesse-blok{margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)}
+.btn-interesse{width:100%;background:transparent;border:1.5px solid var(--teal);color:var(--teal);padding:8px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit}
+.btn-interesse:hover{background:var(--teal-bg)}
 .match-panel{margin-top:2rem;background:var(--panel2);border:1px solid var(--border);border-radius:var(--r4);padding:1.75rem}
 .match-panel-title{font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin-bottom:1rem}
 .match-row{display:flex;align-items:center;gap:1rem;padding:.85rem 0;border-bottom:1px solid var(--border)}
@@ -201,8 +204,50 @@ function renderSellers(){
       +(s.fte?'<span class="chip">'+esc(s.fte)+' FTE</span>':'')
       +'</div>'
       +'<div class="card-desc">'+esc((s.teaser_tekst||'').slice(0,220))+((s.teaser_tekst||'').length>220?'…':'')+'</div>'
+      +'<div class="interesse-blok" id="interesse-'+s.id+'">'
+      +'<button class="btn-interesse" data-id="'+s.id+'">Ik heb interesse &rarr;</button>'
+      +'</div>'
       +'</div>';
   }).join('');
+  Array.prototype.forEach.call(el.querySelectorAll('.btn-interesse'),function(b){
+    b.addEventListener('click',function(){toonInteresseFormulier(b.dataset.id);});
+  });
+}
+
+function toonInteresseFormulier(id){
+  var blok=document.getElementById('interesse-'+id);
+  if(!blok)return;
+  blok.innerHTML='<input type="text" class="int-naam" placeholder="Uw naam / organisatie" style="width:100%;margin-bottom:6px;padding:8px 10px;font-size:13px;border:1px solid var(--border2);border-radius:6px;background:var(--panel);color:var(--sub);font-family:inherit">'
+    +'<input type="email" class="int-email" placeholder="E-mailadres" style="width:100%;margin-bottom:6px;padding:8px 10px;font-size:13px;border:1px solid var(--border2);border-radius:6px;background:var(--panel);color:var(--sub);font-family:inherit">'
+    +'<textarea class="int-bericht" placeholder="Toelichting (optioneel)" rows="2" style="width:100%;margin-bottom:8px;padding:8px 10px;font-size:13px;border:1px solid var(--border2);border-radius:6px;background:var(--panel);color:var(--sub);font-family:inherit;resize:vertical"></textarea>'
+    +'<div class="int-err" style="display:none;color:var(--red);font-size:12px;margin-bottom:6px"></div>'
+    +'<button class="btn-verstuur-interesse" data-id="'+id+'" style="width:100%;background:var(--teal);color:#fff;border:none;padding:9px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer">Aanmelden</button>';
+  blok.querySelector('.btn-verstuur-interesse').addEventListener('click',function(){verstuurInteresse(id);});
+}
+
+async function verstuurInteresse(id){
+  var blok=document.getElementById('interesse-'+id);
+  var naam=blok.querySelector('.int-naam').value.trim();
+  var email=blok.querySelector('.int-email').value.trim();
+  var bericht=blok.querySelector('.int-bericht').value.trim();
+  var errEl=blok.querySelector('.int-err');
+  errEl.style.display='none';
+  if(!naam||!email){errEl.textContent='Naam en e-mail zijn verplicht.';errEl.style.display='block';return;}
+  var btn=blok.querySelector('.btn-verstuur-interesse');
+  btn.disabled=true;btn.textContent='Versturen...';
+  try{
+    var r=await fetch(WORKER+'/mna/matching/interesse',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({traject_id:id,naam:naam,email:email,bericht:bericht})});
+    var d=await r.json();
+    if(d.ok){
+      blok.innerHTML='<div style="color:var(--teal);font-size:13px;font-weight:600">&#10003; Aangemeld — u ontvangt per e-mail uw persoonlijke toegang.</div>';
+    }else{
+      errEl.textContent=d.error||'Aanmelden is mislukt, probeer het later opnieuw.';errEl.style.display='block';
+      btn.disabled=false;btn.textContent='Aanmelden';
+    }
+  }catch(e){
+    errEl.textContent='Verbindingsfout, probeer het later opnieuw.';errEl.style.display='block';
+    btn.disabled=false;btn.textContent='Aanmelden';
+  }
 }
 
 function matchSector(buyer,seller){ return buyer.zoekt_sectoren.indexOf(seller.sector)!==-1; }
