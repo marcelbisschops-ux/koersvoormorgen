@@ -532,6 +532,7 @@ async function laadDocFlowStatus(){
 // classificeerbare bevindingen, plus eigen bevindingen kunnen toevoegen. Elke rij is los opslaanbaar
 // (categorie+fase is de unieke sleutel in mna_beoordelingen, zie worker/19-info-fases.js).
 async function toonRisicoModal(faseId){
+  if(S.modules&&S.modules.ai_analyse===false){toast('Module AI-analyse niet actief. Neem contact op met ' + BRAND.kort + '.','err');return;}
   var fase=(FASES||[]).find(function(f){return f.id===faseId;});
   if(!fase)return;
   var ov=document.createElement('div');
@@ -602,6 +603,7 @@ async function toonRisicoModal(faseId){
       if(r.ok)laadRisicoBadges();
     };
     el.querySelector('.rk-ai-vraag').onclick=async function(){
+      if(!aiAnalyseAan){toast('Module AI-analyse niet actief. Neem contact op met ' + BRAND.kort + '.','err');return;}
       var btn=this,outEl=el.querySelector('.rk-ai-out');
       btn.disabled=true;btn.textContent='Bezig...';
       outEl.style.display='block';
@@ -663,6 +665,7 @@ function renderBegeleiderDashboard(app){
   var t=S.traject||{};
   var contractenAan=!S.modules||S.modules.contracten!==false;
   var marketingAan=!S.modules||S.modules.marketing!==false;
+  var aiAnalyseAan=!S.modules||S.modules.ai_analyse!==false;
   var lb=partijLabels(t.traject_type||'Verkoop');
   var html='<div class="wrap anim">'
     +'<div class="hdr"><div class="brand">'+brandMerkHtml()+BRAND.platform+' &middot; M&A Begeleider'+versieLabel()+'</div>'
@@ -2023,9 +2026,10 @@ function renderBegeleiderDashboard(app){
   document.getElementById('bg-bem-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op met ' + BRAND.kort + '.','err');return;} bgToonOfGenereerDoc('bem'); };
   document.getElementById('bg-excl-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op met ' + BRAND.kort + '.','err');return;} bgToonOfGenereerDoc('excl'); };
   document.getElementById('bg-dealvoorstel-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op met ' + BRAND.kort + '.','err');return;} toonDocWaarschuwing('dealvoorstel', function(){ toonDealvoorstelModal(); }); };
-  // Geen contractenAan/toonDocWaarschuwing-gate hier: dit is interne analyse (geen document dat
-  // naar een tegenpartij wordt verstuurd), zelfde redenering als de closing-checklist hieronder.
-  document.getElementById('bg-risicoraamwerk-actie').onclick=function(){ toonRisicoraamwerkModal(); };
+  // Geen contractenAan-gate hier: dit is interne analyse (geen document dat naar een tegenpartij
+  // wordt verstuurd), zelfde redenering als de closing-checklist hieronder — wel aiAnalyseAan-gate
+  // (23 aug 2026: module AI-analyse had tot dan toe nergens een client- of server-gate).
+  document.getElementById('bg-risicoraamwerk-actie').onclick=function(){ if(!aiAnalyseAan){toast('Module AI-analyse niet actief. Neem contact op met ' + BRAND.kort + '.','err');return;} toonRisicoraamwerkModal(); };
   // Alleen aanwezig als module Marketing actief is (zie marketingAan hierboven).
   var bgTeaserBtn=document.getElementById('bg-teaser-actie');
   if(bgTeaserBtn)bgTeaserBtn.onclick=function(){ toonTeaserModal(); };
