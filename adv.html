@@ -396,6 +396,7 @@ function renderAdvHandleiding(){
       ${sectie('🧭 Begeleider (binnen een traject, op mna.html)',
         stap(1,'Inloggen','Klik op een traject in uw trajectenlijst, of log rechtstreeks in op mna.html met de tussenpersoonscode van dat traject. Bij de eerste keer moet u de verwerkersovereenkomst (VOK) accepteren.')
         + stap(2,'Documenten genereren','Is de module "Contracten" actief, dan kunt u vanuit het traject-dashboard NDA, LoI, BEM (bemiddelingsovereenkomst), Excl (exclusiviteitsovereenkomst), Dealvoorstel, Bieding, SPA en een Closing-checklist genereren en digitaal laten ondertekenen via Signhost. Bij LoI en Bieding is vóór verzending een verplicht veld "Intern goedgekeurd door" ingebouwd, vastgelegd in het logboek. De BEM-knop kiest zelf de juiste tekst op basis van het trajecttype (verkoop/aankoop met succesfee-staffel 5%/4%/3%/2%, min. €25.000; bij "Opvolging" een apart bedrijfsopvolgings-sjabloon).')
+        + stap('2b','Documentdekking','Op het traject-dashboard ziet u per DD-fase welke vereiste documenten (bijv. jaarrekeningen, KvK-uittreksel) al zijn aangeleverd — automatisch bijgewerkt zodra een document met een herkenbare bestandsnaam wordt geüpload. Klap een fase open voor de lijst met ontbrekende documenten (verplicht/optioneel). Puur een hulpmiddel op bestandsnaam, geen inhoudelijke AI-beoordeling — een verkeerd benoemd bestand kan gemist worden.')
         + stap(3,'AI-analyse &amp; waardering','De deterministieke rekenkern (closing/earn-up/buy-and-build/vendor loan-aflossingsschema, optioneel aangevuld met intrinsieke waarde/liquidatiewaarde/goodwill-methode, een synergie-analyse met NPV, een downside/base/upside-scenarioanalyse en een DCF-gevoeligheidsmatrix WACC×groeivoet, met IRR/MoM) plus een onafhankelijke AI-"second opinion"-waardering op basis van sectorbenchmarks.')
         + stap(4,'Wat elke waarderingsmethode in het Dealvoorstel precies berekent','Naast de hoofdwaardering (EBITDA-multiple, of een omzet-multiple bij sectoren zoals zorg — het scherm toont altijd welke grondslag geldt) kunnen deze methodes als kruiscontrole worden toegevoegd, nooit als vervanging: <strong>DCF</strong> (contante waarde van de vrije kasstromen vóór financieringseffecten, verdisconteerd tegen de WACC, plus een terminal value — "n.v.t." als WACC ≤ groeivoet, want dan is de formule ongeldig); <strong>Intrinsieke waarde</strong> (boekwaarde eigen vermogen, geen correctie voor stille reserves); <strong>Liquidatiewaarde</strong> (inbare debiteuren/OHW minus liquidatiekosten minus schulden); <strong>Goodwill via de overwinstmethode</strong> (overwinst = genormaliseerde nettowinst minus normrendement over eigen vermogen; goodwill = overwinst / kapitalisatievoet); <strong>Vendor loan</strong> (rente-/aflossingsschema, los van de bankfinanciering); <strong>Earn-out</strong> (ander mechanisme dan de earn-up bij closing: een deel van de koopsom wordt aangehouden en pas uitgekeerd in jaarlijkse tranches, gekoppeld aan een zelf ingestelde doelomzetgroei per jaar); <strong>Synergie-analyse</strong> (zelf ingeschatte kosten-/omzetsynergieën, verdisconteerd tot NPV); <strong>Scenarioanalyse</strong> (downside/base/upside op de groeivoet). Bij elk zelf in te vullen percentage geldt: het platform vult nooit een waarde in als het veld leeg blijft — geen verzonnen branchenorm, de uitkomst blijft dan gewoon weg. Is er al een Dealvoorstel verstuurd voor dit traject? Dan neemt de LoI-generatie koopsom, multiple en escrow daaruit automatisch over (zichtbaar aan de melding boven het gegenereerde LoI-document).')
         + stap('4b','Risicoraamwerk (SWOT/PESTEL/Porter)','Genereert op basis van de al ingevulde DD-data en eerdere AI-beoordelingen een SWOT-, PESTEL- en Porter\'s Five Forces-analyse. Puur interne analyse — nooit voor verkoper of koper zichtbaar, niet gekoppeld aan de Contracten-module. Bij te dunne DD-data benoemt het raamwerk dat expliciet in plaats van een aanname te verzinnen.')
@@ -873,6 +874,11 @@ function renderDetail(t){
       </div>
 
       <div class="card">
+        <div class="card-hdr"><div class="card-title">📋 Documentdekking</div></div>
+        <div id="dekking-body" class="card-body"><div style="color:var(--muted);font-size:13px">Laden...</div></div>
+      </div>
+
+      <div class="card">
         <div class="card-hdr">
           <div class="card-title">📁 Dataroom — Documenten</div>
           <button class="btn btn-sm" id="btn-upload">↑ Document uploaden</button>
@@ -903,7 +909,33 @@ function renderDetail(t){
     laadDocumenten(id, t.tussen_code);
     laadGesprekken(id, t.tussen_code);
     initMeekijkersAdv(id, t.tussen_code, t.sector||'accountancy');
+    laadDocumentdekking(id, t.tussen_code);
   }
+}
+
+async function laadDocumentdekking(id, tussenCode){
+  var el=ge('dekking-body');
+  if(!el)return;
+  try{
+    var r=await fetch(WORKER+'/mna/documentdekking/'+encodeURIComponent(id),{headers:{'x-tussen-key':tussenCode||''}});
+    var d=await r.json();
+    if(!d.ok||!d.fases||!d.fases.length){el.innerHTML='<div style="color:var(--muted);font-size:13px;font-style:italic">Geen documentdekking gedefinieerd voor dit sectorprofiel.</div>';return;}
+    var totAanwezig=0,totVereist=0;
+    d.fases.forEach(function(f){totAanwezig+=f.aanwezig;totVereist+=f.totaal;});
+    var html='<div style="font-size:12px;color:var(--sub);font-weight:600;margin-bottom:.5rem">'+totAanwezig+' / '+totVereist+' vereiste documenten aanwezig</div>';
+    d.fases.forEach(function(f){
+      var kleur=f.aanwezig>=f.totaal?'var(--teal)':'var(--gold)';
+      var ontbrekend=f.vereist.filter(function(v){return!(f.dekking[v.naam]&&f.dekking[v.naam].aanwezig);});
+      html+='<details style="margin-bottom:4px"><summary style="cursor:pointer;font-size:12px;color:var(--mid)">'+esc(f.fase_title)+' — <span style="color:'+kleur+';font-weight:600">'+f.aanwezig+'/'+f.totaal+'</span></summary>';
+      if(ontbrekend.length){
+        html+='<ul style="margin:4px 0 8px 1.2rem;padding:0;font-size:11px;color:var(--muted)">'+ontbrekend.map(function(v){return'<li>'+esc(v.naam)+(v.verplicht?' <span style="color:var(--red)">(verplicht)</span>':' (optioneel)')+'</li>';}).join('')+'</ul>';
+      } else {
+        html+='<div style="margin:4px 0 8px 1.2rem;font-size:11px;color:var(--teal)">Alles aanwezig.</div>';
+      }
+      html+='</details>';
+    });
+    el.innerHTML=html;
+  }catch(e){el.innerHTML='<div style="color:var(--red);font-size:13px">Fout bij laden.</div>';}
 }
 
 // ===== MEEKIJKERS (adviseur beheert zelf, via eigen tussenpersoonscode) =====
