@@ -1,9 +1,10 @@
 <!-- © 2026 Bisschops Financing B.V. Alle rechten voorbehouden. -->
-<!-- Matching-demo (23 aug 2026): illustratief, met uitsluitend fictieve voorbeeldverkopers/-kopers
-     (GOUDEN STANDAARD werkregel 14 — nooit echte namen). Bewust géén live koppeling met echte
-     trajectdata: dit is een sales-demo richting M&A-kantoren om het mechanisme te laten zien, geen
-     live marktplaats — die heeft pas waarde zodra er echte kopers én verkopers op het platform staan.
-     Puur statisch (geen backend-aanroepen), dus geen kosten en niets dat kan lekken. -->
+<!-- Matching-platform (23-24 aug 2026): live, database-gedreven koppeling tussen kopers en
+     verkopers op het platform (GET /mna/matching/overzicht) — geen statische pagina meer.
+     Sectoren/regio/omzetklasse worden getoond, nooit bedrijfsnamen of adressen (anonieme teaser,
+     GOUDEN STANDAARD werkregel 14). Achter een gedeeld wachtwoord (los van marilyn's ADMIN_KEY,
+     zie /mna/matching/login in worker/19-info-fases.js) — bedoeld om selectief te delen met
+     M&A-kantoren, niet volledig openbaar/geïndexeerd. -->
 <!DOCTYPE html>
 <html lang="nl">
 <head>
@@ -48,7 +49,6 @@ h1,h2,h3{font-family:'Playfair Display',serif;color:var(--head)}
 .eyebrow{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--teal);margin-bottom:1rem}
 .hero h1{font-weight:600;font-size:2.2rem;line-height:1.25;color:var(--head);max-width:680px;margin:0 auto 1rem}
 .hero p{font-size:14.5px;color:var(--mid);max-width:600px;margin:0 auto}
-.demo-badge{display:inline-block;margin-top:1.1rem;font-size:11.5px;font-weight:600;color:var(--gold);background:var(--gold-bg);border:1px solid var(--gold);border-radius:99px;padding:5px 14px}
 section{padding:2.5rem 0}
 .section-head h2{font-size:1.4rem;font-weight:600;margin-bottom:.5rem}
 .section-head p{font-size:13.5px;color:var(--mid);max-width:640px;margin-bottom:.5rem}

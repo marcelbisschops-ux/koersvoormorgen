@@ -1720,11 +1720,11 @@ async function toonDetail(id,naam){
     var trajectObj=mnaList.find(function(t){return t.id===id;})||{};
     function render(){
       if(!trajectObj.teaser_tekst){
-        mtEl.innerHTML='Nog geen teaser gegenereerd — dat moet eerst (begeleider-dashboard, sectie Marketing) voordat dit traject zichtbaar kan zijn op de <a href="matching-demo.html" target="_blank" style="color:var(--teal)">live matching-pagina</a>.';
+        mtEl.innerHTML='Nog geen teaser gegenereerd — dat moet eerst (begeleider-dashboard, sectie Marketing) voordat dit traject zichtbaar kan zijn op de <a href="matching-platform.html" target="_blank" style="color:var(--teal)">live matching-pagina</a>.';
         return;
       }
       var aan=!!trajectObj.beschikbaar_voor_matching;
-      mtEl.innerHTML='<label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="matching-toggle-chk" '+(aan?'checked':'')+'> Zichtbaar op de live <a href="matching-demo.html" target="_blank" style="color:var(--teal)" onclick="event.stopPropagation()">matching-pagina</a></label><div style="font-size:11px;color:var(--muted);margin-top:4px">Verdwijnt automatisch zodra er een koper is ingevuld — geen aparte actie nodig.</div>';
+      mtEl.innerHTML='<label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="matching-toggle-chk" '+(aan?'checked':'')+'> Zichtbaar op de live <a href="matching-platform.html" target="_blank" style="color:var(--teal)" onclick="event.stopPropagation()">matching-pagina</a></label><div style="font-size:11px;color:var(--muted);margin-top:4px">Verdwijnt automatisch zodra er een koper is ingevuld — geen aparte actie nodig.</div>';
       document.getElementById('matching-toggle-chk').addEventListener('change',async function(e){
         var nieuw=e.target.checked;
         try{
@@ -3695,7 +3695,7 @@ async function renderMatchingTab(el){
     var d=await r.json().catch(function(){return{ok:false};});
     if(!d.ok){el.innerHTML='<div style="color:var(--red);padding:1rem">Fout bij laden.</div>';return;}
     var html='<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem">&#128279; Matching-platform</div>'
-      +'<div style="font-size:12px;color:var(--muted);margin-bottom:1.25rem;max-width:700px;line-height:1.6">Koper-zoekprofielen beheer je hier. Of een traject meetelt als "verkoper" in het matching-overzicht (<a href="matching-demo.html" target="_blank" style="color:var(--teal)">live pagina</a>) stel je per traject in — bij het traject-detail in het tabblad "M&A Trajecten", zodra er een teaser is.</div>'
+      +'<div style="font-size:12px;color:var(--muted);margin-bottom:1.25rem;max-width:700px;line-height:1.6">Koper-zoekprofielen beheer je hier. Of een traject meetelt als "verkoper" in het matching-overzicht (<a href="matching-platform.html" target="_blank" style="color:var(--teal)">live pagina</a>) stel je per traject in — bij het traject-detail in het tabblad "M&A Trajecten", zodra er een teaser is.</div>'
       +'<div style="font-size:12px;color:var(--sub);font-weight:600;margin-bottom:.5rem">'+d.sellers.length+' verkoper(s) momenteel zichtbaar op de live matching-pagina</div>'
       +'<div class="table-wrap" style="margin-bottom:1.5rem"><div class="table-hdr"><div class="table-title">Koper-zoekprofielen ('+d.kopers.length+')</div>'
       +'<button class="btn" id="mk-nieuw-btn" style="font-size:12px;padding:6px 14px">+ Nieuw zoekprofiel</button></div>';
