@@ -3589,7 +3589,34 @@ async function renderTarievenTab(el) {
     });
     html += '</tbody></table></div>';
 
-    html += '<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem">Fee-events (' + events.length + ') — facturatie-overzicht per adviseur/traject</div>';
+    // Openstaand per adviseur (24 aug 2026, Marcel: "factuur die ik kan versturen") — som van
+    // fee-events zonder gefactureerd_op, gegroepeerd op gebruiker_id, met een knop die het nieuwe
+    // /mna/admin/factuur/{id}-endpoint aanroept en de PDF-download start.
+    var openstaandPerGeb = {};
+    events.forEach(function(ev) {
+      if (ev.gefactureerd_op || !ev.gebruiker_id) return;
+      if (!openstaandPerGeb[ev.gebruiker_id]) openstaandPerGeb[ev.gebruiker_id] = { naam: ev.gebruiker_naam, email: ev.gebruiker_email, totaal: 0, aantal: 0 };
+      openstaandPerGeb[ev.gebruiker_id].totaal += Number(ev.bedrag) || 0;
+      openstaandPerGeb[ev.gebruiker_id].aantal++;
+    });
+    var openGebIds = Object.keys(openstaandPerGeb);
+    html += '<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem">Openstaand per adviseur — kostenoverzicht genereren</div>';
+    if (!openGebIds.length) {
+      html += '<div style="color:var(--muted);font-size:13px;font-style:italic;padding:.5rem 0 1.25rem">Geen openstaande (nog niet gefactureerde) kosten.</div>';
+    } else {
+      html += '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:1.5rem">';
+      openGebIds.forEach(function(gid) {
+        var o = openstaandPerGeb[gid];
+        html += '<div style="display:flex;align-items:center;gap:12px;padding:.75rem 1rem;background:var(--card);border:1px solid var(--border);border-radius:8px">'
+          + '<div style="flex:1"><div style="font-weight:600;color:var(--sub)">' + esc(o.naam || '—') + '</div><div style="font-size:11px;color:var(--muted)">' + esc(o.email || '') + ' &middot; ' + o.aantal + ' openstaande post(en)</div></div>'
+          + '<div style="font-family:IBM Plex Mono,monospace;font-weight:600;color:var(--teal)">&euro;' + o.totaal.toLocaleString('nl-NL') + '</div>'
+          + '<button class="btn btn-sm fact-genereer" data-gid="' + esc(gid) + '" style="font-size:11px;padding:5px 12px">&#128196; Factuur genereren</button>'
+          + '</div>';
+      });
+      html += '</div>';
+    }
+
+    html += '<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem">Fee-events (' + events.length + ') — volledige geschiedenis</div>';
     if (!events.length) {
       html += '<div style="color:var(--muted);font-size:13px;font-style:italic;padding:1rem 0">Nog geen fee-events gelogd.</div>';
     } else {
@@ -3601,8 +3628,12 @@ async function renderTarievenTab(el) {
         + '<th style="text-align:left;padding:8px 12px;font-size:11px;color:var(--muted);border-bottom:1px solid var(--border);font-weight:600">Fee-type</th>'
         + '<th style="text-align:left;padding:8px 12px;font-size:11px;color:var(--muted);border-bottom:1px solid var(--border);font-weight:600">Bedrag</th>'
         + '<th style="text-align:left;padding:8px 12px;font-size:11px;color:var(--muted);border-bottom:1px solid var(--border);font-weight:600">Omschrijving</th>'
+        + '<th style="text-align:left;padding:8px 12px;font-size:11px;color:var(--muted);border-bottom:1px solid var(--border);font-weight:600">Status</th>'
         + '</tr></thead><tbody>';
       events.forEach(function(ev) {
+        var statusHtml = ev.gefactureerd_op
+          ? '<span style="color:var(--teal)">&#10003; ' + new Date(ev.gefactureerd_op).toLocaleDateString('nl-NL') + '</span><div style="font-size:10px;color:var(--muted)">' + esc(ev.factuur_referentie || '') + '</div>'
+          : '<span style="color:var(--gold-dark)">Open</span>';
         html += '<tr style="border-bottom:1px solid var(--border)">'
           + '<td style="padding:10px 12px;font-size:11px;color:var(--muted)">' + new Date(ev.created_at).toLocaleDateString('nl-NL') + '</td>'
           + '<td style="padding:10px 12px;color:var(--sub)">' + esc(ev.gebruiker_naam || '—') + (ev.gebruiker_email ? '<div style="font-size:11px;color:var(--muted)">' + esc(ev.gebruiker_email) + '</div>' : '') + '</td>'
@@ -3610,11 +3641,35 @@ async function renderTarievenTab(el) {
           + '<td style="padding:10px 12px;color:var(--mid)">' + esc(ev.fee_type) + '</td>'
           + '<td style="padding:10px 12px;font-family:IBM Plex Mono,monospace;color:var(--teal)">&euro;' + Number(ev.bedrag).toLocaleString('nl-NL') + '</td>'
           + '<td style="padding:10px 12px;font-size:11px;color:var(--muted)">' + esc(ev.omschrijving || '') + '</td>'
+          + '<td style="padding:10px 12px;font-size:11px">' + statusHtml + '</td>'
           + '</tr>';
       });
       html += '</tbody></table></div>';
     }
     el.innerHTML = html;
+
+    el.querySelectorAll('.fact-genereer').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var gid = btn.dataset.gid;
+        btn.disabled = true; btn.textContent = 'Bezig...';
+        fetch(WORKER + '/mna/admin/factuur/' + encodeURIComponent(gid), { headers: { 'x-admin-key': adminKey } })
+          .then(function(r) {
+            if (!r.ok) return r.json().then(function(d) { throw new Error(d.error || 'Onbekende fout'); });
+            var cd = r.headers.get('Content-Disposition') || '';
+            var naamMatch = cd.match(/filename="([^"]+)"/);
+            return r.blob().then(function(blob) { return { blob: blob, naam: naamMatch ? naamMatch[1] : 'kostenoverzicht.pdf' }; });
+          })
+          .then(function(res) {
+            var url = URL.createObjectURL(res.blob);
+            var a = document.createElement('a');
+            a.href = url; a.download = res.naam; document.body.appendChild(a); a.click();
+            setTimeout(function() { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+            toast('Kostenoverzicht gedownload — ' + res.naam, 'ok');
+            var tct = document.getElementById('tc'); if (tct) renderTarievenTab(tct);
+          })
+          .catch(function(e) { toast('Fout: ' + e.message, 'err'); btn.disabled = false; btn.textContent = '📄 Factuur genereren'; });
+      });
+    });
 
     el.querySelectorAll('.tar-opslaan').forEach(function(btn) {
       btn.addEventListener('click', async function() {
