@@ -3441,8 +3441,13 @@ async function renderGebruikersTab(el) {
         var ov = document.createElement('div');
         ov.id = 'vk-overlay';
         ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center';
-        ov.innerHTML = '<div style="background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:1.75rem;width:100%;max-width:420px">'
-          + '<div style="font-size:15px;font-weight:600;color:var(--head);margin-bottom:2px">&euro; Verkoop &mdash; ' + esc(g.naam) + '</div>'
+        // Audit-fix P2 (24 aug 2026, zevende heraudit): dit modal (en alle marilyn-modals) miste
+        // role="dialog"/aria-modal — schermlezers kregen geen aankondiging dat er een dialoog
+        // opende. Zelfde patroon als mna/adv al gebruiken. Escape sluit toegevoegd omdat dat
+        // sitebreed nergens stond en hier triviaal is; een volledige focus-trap voor alle overige
+        // marilyn-modals is bewust bredere scope, niet in deze fix meegenomen.
+        ov.innerHTML = '<div role="dialog" aria-modal="true" aria-labelledby="vk-titel" style="background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:1.75rem;width:100%;max-width:420px">'
+          + '<div id="vk-titel" style="font-size:15px;font-weight:600;color:var(--head);margin-bottom:2px">&euro; Verkoop &mdash; ' + esc(g.naam) + '</div>'
           + '<div style="font-size:11px;color:var(--muted);margin-bottom:1rem">' + esc(g.email) + ' &middot; ' + (g.traject_count||0) + ' traject(en) in gebruik</div>'
           + '<div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:4px">Trajectlimiet</div>'
           + '<input type="number" id="vk-limiet" min="1" value="' + (g.traject_limiet||1) + '" style="width:100px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--sub);font-size:14px;margin-bottom:1rem">'
@@ -3453,6 +3458,8 @@ async function renderGebruikersTab(el) {
           + '<button class="btn" id="vk-opslaan" style="font-size:12px;padding:7px 14px">Opslaan</button>'
           + '</div></div>';
         document.body.appendChild(ov);
+        document.getElementById('vk-limiet').focus();
+        ov.addEventListener('keydown', function(e){ if (e.key === 'Escape') ov.remove(); });
         document.getElementById('vk-annuleer').addEventListener('click', function(){ ov.remove(); });
         document.getElementById('vk-opslaan').addEventListener('click', async function() {
           var nm = {};
