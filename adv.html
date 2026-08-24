@@ -398,7 +398,8 @@ function renderAdvHandleiding(){
         stap(1,'Inloggen','Klik op een traject in uw trajectenlijst, of log rechtstreeks in op mna.html met de tussenpersoonscode van dat traject. Bij de eerste keer moet u de verwerkersovereenkomst (VOK) accepteren.')
         + stap(2,'Documenten genereren','Is de module "Contracten" actief, dan kunt u vanuit het traject-dashboard NDA, LoI, BEM (bemiddelingsovereenkomst), Excl (exclusiviteitsovereenkomst), Dealvoorstel, Bieding, SPA en een Closing-checklist genereren en digitaal laten ondertekenen via Signhost. Bij LoI en Bieding is vóór verzending een verplicht veld "Intern goedgekeurd door" ingebouwd, vastgelegd in het logboek. De BEM-knop kiest zelf de juiste tekst op basis van het trajecttype (verkoop/aankoop met succesfee-staffel 5%/4%/3%/2%, min. €25.000; bij "Opvolging" een apart bedrijfsopvolgings-sjabloon).')
         + stap('2b','Documentdekking','Op het traject-dashboard ziet u per DD-fase welke vereiste documenten (bijv. jaarrekeningen, KvK-uittreksel) al zijn aangeleverd — automatisch bijgewerkt zodra een document met een herkenbare bestandsnaam wordt geüpload. Klap een fase open voor de lijst met ontbrekende documenten (verplicht/optioneel). Puur een hulpmiddel op bestandsnaam, geen inhoudelijke AI-beoordeling — een verkeerd benoemd bestand kan gemist worden.')
-        + stap('2c','Teaser, verkoopmemorandum &amp; matching (module Marketing)','Is de module "Marketing" actief, dan vindt u in het traject-dashboard onder "Marketing": een <strong>teaser</strong> (kort, anoniem, geen bedrijfsnaam — geschikt om vroeg in het proces breed te verspreiden, vóór er een koper is; de verkoper kan deze ook zelf genereren) en een <strong>verkoopmemorandum</strong> (uitgebreid, mét bedrijfsnaam, pas beschikbaar ná ondertekende NDA). Beide worden automatisch gevuld met de al ingevulde DD-data, zijn bewerkbaar vóór verspreiding, en verzinnen nooit ontbrekende informatie. Zet u de teaser vervolgens op "beschikbaar voor matching", dan verschijnt het traject anoniem op het losse matching-platform, gefilterd op sector/regio/omzetklasse (geen AI, puur filtering). Meldt een koper zich daar aan, dan krijgt die automatisch zijn inlogcode, ontvangt u een melding met naam/e-mail plus het matching-tarief, en verdwijnt het traject van de matching-pagina. <strong>Dit is geen automatische vervolgstap</strong>: de koper ziet nog niets — u stuurt zelf de NDA en geeft daarna zelf de DD-fases vrij, exact zoals bij elke andere koper.')
+        + stap('2c','Teaser &amp; verkoopmemorandum (module Marketing)','Is de module "Marketing" actief, dan staan in het traject-dashboard (mna.html), gewoon tussen de andere documenten in de Documenten-flow: een <strong>teaser</strong> (kort, anoniem, geen bedrijfsnaam, vóór de NDA — geschikt om vroeg in het proces breed te verspreiden, vóór er een koper is; de verkoper kan deze ook zelf genereren) en een <strong>verkoopmemorandum</strong> (uitgebreid, mét bedrijfsnaam, ná de NDA). Beide worden automatisch gevuld met de al ingevulde DD-data, zijn bewerkbaar vóór verspreiding, en verzinnen nooit ontbrekende informatie. Of het traject zichtbaar is op de live matching-pagina regelt u niet op mna.html, maar hier in uw eigen adviseursportaal — zie de kaart "Matching-platform" bij dit traject.')
+        + stap('2d','Matching-platform','Zodra dit traject een teaser heeft, kunt u het bij de kaart "Matching-platform" (bij dit traject) zelf "beschikbaar voor matching" zetten — verschijnt dan anoniem op het losse matching-platform, gefilterd op sector/regio/omzetklasse tegen de daar geregistreerde koper-zoekprofielen (geen AI, puur filtering). Meldt een koper zich daar aan, dan gebeurt automatisch: hij krijgt zijn inlogcode gemaild, u ontvangt een melding met naam/e-mail plus het matching-tarief, en het traject verdwijnt van de matching-pagina. <strong>Dit is geen automatische vervolgstap</strong> in de rest van het traject: de koper ziet nog niets inhoudelijks — u stuurt zelf de NDA en geeft daarna zelf de DD-fases vrij, exact zoals bij elke andere koper.')
         + stap(3,'AI-analyse &amp; waardering','De deterministieke rekenkern (closing/earn-up/buy-and-build/vendor loan-aflossingsschema, optioneel aangevuld met intrinsieke waarde/liquidatiewaarde/goodwill-methode, een synergie-analyse met NPV, een downside/base/upside-scenarioanalyse en een DCF-gevoeligheidsmatrix WACC×groeivoet, met IRR/MoM) plus een onafhankelijke AI-"second opinion"-waardering op basis van sectorbenchmarks.')
         + stap(4,'Wat elke waarderingsmethode in het Dealvoorstel precies berekent','Naast de hoofdwaardering (EBITDA-multiple, of een omzet-multiple bij sectoren zoals zorg — het scherm toont altijd welke grondslag geldt) kunnen deze methodes als kruiscontrole worden toegevoegd, nooit als vervanging: <strong>DCF</strong> (contante waarde van de vrije kasstromen vóór financieringseffecten, verdisconteerd tegen de WACC, plus een terminal value — "n.v.t." als WACC ≤ groeivoet, want dan is de formule ongeldig); <strong>Intrinsieke waarde</strong> (boekwaarde eigen vermogen, geen correctie voor stille reserves); <strong>Liquidatiewaarde</strong> (inbare debiteuren/OHW minus liquidatiekosten minus schulden); <strong>Goodwill via de overwinstmethode</strong> (overwinst = genormaliseerde nettowinst minus normrendement over eigen vermogen; goodwill = overwinst / kapitalisatievoet); <strong>Vendor loan</strong> (rente-/aflossingsschema, los van de bankfinanciering); <strong>Earn-out</strong> (ander mechanisme dan de earn-up bij closing: een deel van de koopsom wordt aangehouden en pas uitgekeerd in jaarlijkse tranches, gekoppeld aan een zelf ingestelde doelomzetgroei per jaar); <strong>Synergie-analyse</strong> (zelf ingeschatte kosten-/omzetsynergieën, verdisconteerd tot NPV); <strong>Scenarioanalyse</strong> (downside/base/upside op de groeivoet). Bij elk zelf in te vullen percentage geldt: het platform vult nooit een waarde in als het veld leeg blijft — geen verzonnen branchenorm, de uitkomst blijft dan gewoon weg. Is er al een Dealvoorstel verstuurd voor dit traject? Dan neemt de LoI-generatie koopsom, multiple en escrow daaruit automatisch over (zichtbaar aan de melding boven het gegenereerde LoI-document).')
         + stap('4b','Risicoraamwerk (SWOT/PESTEL/Porter)','Genereert op basis van de al ingevulde DD-data en eerdere AI-beoordelingen een SWOT-, PESTEL- en Porter\'s Five Forces-analyse. Puur interne analyse — nooit voor verkoper of koper zichtbaar, niet gekoppeld aan de Contracten-module. Bij te dunne DD-data benoemt het raamwerk dat expliciet in plaats van een aanname te verzinnen.')
@@ -918,6 +919,16 @@ function renderDetail(t){
       </div>
 
       <div class="card">
+        <div class="card-hdr"><div class="card-title">&#128279; Matching-platform</div></div>
+        <div class="card-body">
+          ${(G.modules && G.modules.marketing) ? `
+          <div id="matching-adv-body" style="font-size:12px;color:var(--muted)">Laden...</div>
+          ` : `
+          <div style="font-size:12px;color:var(--muted);line-height:1.6">&#128274; Module Marketing niet actief op uw account — neem contact op met ${esc(BRAND.kort)} om deze module te activeren.</div>`}
+        </div>
+      </div>
+
+      <div class="card">
         <div class="card-hdr"><div class="card-title">📋 Documentdekking</div></div>
         <div id="dekking-body" class="card-body"><div style="color:var(--muted);font-size:13px">Laden...</div></div>
       </div>
@@ -954,6 +965,7 @@ function renderDetail(t){
     laadGesprekken(id, t.tussen_code);
     initMeekijkersAdv(id, t.tussen_code, t.sector||'accountancy');
     laadDocumentdekking(id, t.tussen_code);
+    initMatchingAdv(id, t.tussen_code, t);
   }
 }
 
@@ -980,6 +992,30 @@ async function laadDocumentdekking(id, tussenCode){
     });
     el.innerHTML=html;
   }catch(e){el.innerHTML='<div style="color:var(--red);font-size:13px">Fout bij laden.</div>';}
+}
+
+// ===== MATCHING-PLATFORM (24 aug 2026, Marcel: "hij moet dit kunnen" — adviseur beheert nu zelf,
+// via eigen tussenpersoonscode, i.p.v. alleen via marilyn) =====
+function initMatchingAdv(id, tussenCode, t){
+  var el=ge('matching-adv-body');
+  if(!el)return; // module niet actief — kaart toont dan alleen de vergrendel-tekst
+  if(!t.teaser_tekst){
+    el.innerHTML='<div style="font-size:12px;color:var(--muted);line-height:1.6">Genereer eerst een teaser bij dit traject (mna.html, sectie "Documenten") voordat u het beschikbaar kunt maken voor matching.</div>';
+    return;
+  }
+  var aan=!!t.beschikbaar_voor_matching;
+  el.innerHTML='<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--sub)"><input type="checkbox" id="matching-adv-chk" '+(aan?'checked':'')+'> Zichtbaar op de live <a href="matching-platform.html" target="_blank" style="color:var(--teal)" onclick="event.stopPropagation()">matching-pagina</a></label><div style="font-size:11px;color:var(--muted);margin-top:6px">Verdwijnt automatisch zodra er een koper is ingevuld — geen aparte actie nodig.</div>';
+  ge('matching-adv-chk').addEventListener('change', async function(e){
+    var nieuw=e.target.checked;
+    e.target.disabled=true;
+    try{
+      var r=await fetch(WORKER+'/mna/matching/beschikbaar',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':tussenCode},body:JSON.stringify({code:id,beschikbaar:nieuw})});
+      var d=await r.json();
+      if(d.ok){t.beschikbaar_voor_matching=nieuw?1:0;toast(nieuw?'Zichtbaar gemaakt op matching-pagina.':'Verborgen van matching-pagina.','ok');}
+      else{toast(d.error||'Fout bij opslaan.','err');e.target.checked=!nieuw;}
+    }catch(err){toast('Verbindingsfout.','err');e.target.checked=!nieuw;}
+    e.target.disabled=false;
+  });
 }
 
 // ===== MEEKIJKERS (adviseur beheert zelf, via eigen tussenpersoonscode) =====

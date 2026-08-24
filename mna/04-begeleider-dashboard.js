@@ -727,17 +727,21 @@ function renderBegeleiderDashboard(app){
       // (zelfde id, zelfde onclick-koppeling verderop) — alleen de visuele verpakking is nieuw.
       // Status van de 4 ondertekenbare documenten komt al mee met het traject; status van de overige
       // 4 (geen "getekend"-concept) wordt na render async ingeladen, zie laadDocFlowStatus().
-      function stapRij(id, icoon, kleur, naam, statusHtml, isLaatste, skipContractenGate){
+      function stapRij(id, icoon, kleur, naam, statusHtml, isLaatste, skipContractenGate, customDisabled, customDisabledTitel){
         // Het informatieverzoek is een checklist/e-mailtool, geen ondertekenbaar contract — hoort dus
         // niet achter de betaalde module Contracten (zelfde als de bestaande "Informatieverzoek"-knop
         // in de Communicatie-sectie, die ook geen contractenAan-gate heeft).
-        var disabled=skipContractenGate?false:!contractenAan;
+        // customDisabled (24 aug 2026, teaser/verkoopmemorandum nu in dezelfde flow): een rij kan ook
+        // achter een ándere module dan Contracten zitten (hier: Marketing) — als customDisabled
+        // expliciet is meegegeven, wint die, en negeert deze rij de contractenAan-check volledig.
+        var disabled=customDisabled!==undefined?customDisabled:(skipContractenGate?false:!contractenAan);
+        var titel=customDisabled!==undefined?(customDisabledTitel||''):'Module Contracten niet actief — neem contact op met ' + BRAND.kort;
         return '<div style="display:flex;gap:12px">'
           +'<div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0">'
           +'<div style="width:34px;height:34px;border-radius:50%;background:'+(disabled?'var(--panel)':kleur)+';border:2px solid '+(disabled?'var(--border2)':kleur)+';display:flex;align-items:center;justify-content:center;font-size:15px;'+(disabled?'opacity:.4':'')+'">'+icoon+'</div>'
           +(isLaatste?'':'<div style="width:2px;flex:1;background:var(--border2);margin:2px 0;min-height:18px"></div>')
           +'</div>'
-          +'<button id="'+id+'" '+(disabled?'disabled title="Module Contracten niet actief — neem contact op met ' + BRAND.kort + '"':'')+' style="all:unset;cursor:'+(disabled?'not-allowed':'pointer')+';flex:1;padding-bottom:16px;'+(disabled?'opacity:.45':'')+'">'
+          +'<button id="'+id+'" '+(disabled?'disabled title="'+esc(titel)+'"':'')+' style="all:unset;cursor:'+(disabled?'not-allowed':'pointer')+';flex:1;padding-bottom:16px;'+(disabled?'opacity:.45':'')+'">'
           +'<div style="font-size:13px;font-weight:600;color:var(--head)">'+naam+'</div>'
           +'<div class="stap-status" data-doc="'+id+'" style="font-size:11px;color:var(--muted);margin-top:2px">'+(statusHtml||'')+'</div>'
           +'</button></div>';
@@ -765,15 +769,23 @@ function renderBegeleiderDashboard(app){
           +'<div style="font-size:13px;color:var(--sub);margin-top:4px">'+fabStap+'</div>'
           +'</div>';
       }
-      // ── Documenten (open per default in het reguliere proces; dicht zolang er nog geen koper is) ──
+      // ── Documenten (24 aug 2026, Marcel: "teaser en verkoopmemorandum gewoon in de flow plaatsen,
+      // niet onder Marketing" — altijd open/zichtbaar, ook vóór er een koper is, want de teaser is nu
+      // letterlijk de eerste stap in deze flow) ──
       html+='<div class="panel" style="margin-bottom:.75rem;padding:0">'+secHdr('docs','&#128196; Documenten &mdash; flow')
-        +'<div class="bg-sec-body" data-sec="docs" style="display:'+(heeftKoper?'block':'none')+';padding:.25rem 1rem 0">'
+        +'<div class="bg-sec-body" data-sec="docs" style="display:block;padding:.25rem 1rem 0">'
         // Volgorde volgt de daadwerkelijke dealstroom (Marcel, 21 aug 2026): BEM is het mandaat
         // tussen begeleider en opdrachtgever (Fase 0 in de eigen BEM-sjablonen, worker/02-config-
         // constanten.js) — wordt getekend vóórdat er met de tegenpartij iets gebeurt, dus hoort vóór
         // de NDA (die juist tússen verkoper/koper geldt zodra vertrouwelijke info wordt gedeeld).
+        // Teaser/verkoopmemorandum (24 aug 2026, voorheen een losse "Marketing"-sectie) staan qua
+        // volgorde tussen BEM en NDA: de teaser gaat al de markt op vóórdat er een geïnteresseerde
+        // partij is; het verkoopmemorandum is voor een specifieke partij, pas ná diens NDA (eigen
+        // bevestigingsstap in toonVerkoopmemoModal, vereist geen formele koper in het platform).
         +stapRij('bg-bem-actie','&#128203;','#2a5ea0','Bemiddelingsovereenkomst (BEM)',getekendStatus('bem_getekend','bem_datum'))
+        +stapRij('bg-teaser-actie','&#128226;','#1a7a5e',t.teaser_tekst?'Teaser bekijken/bewerken':'Genereer teaser',t.teaser_tekst?'<span style="color:var(--teal)">&#10003; Teaser klaar</span>':'Kort, anoniem verkoopdocument — vóór er een koper is',false,false,!marketingAan,'Module Marketing niet actief — neem contact op met ' + BRAND.kort)
         +stapRij('bg-nda-actie','&#128274;','#7c5cbf','Geheimhoudingsovereenkomst (NDA)',getekendStatus('nda_getekend','nda_getekend_datum'))
+        +stapRij('bg-verkoopmemo-actie','&#128220;','#8a5a00',t.verkoopmemorandum_tekst?'Verkoopmemorandum bekijken/bewerken':'Genereer verkoopmemorandum',t.verkoopmemorandum_tekst?'<span style="color:var(--teal)">&#10003; Verkoopmemorandum klaar</span>':'Uitgebreid document mét bedrijfsnaam, na NDA van die partij',false,false,!marketingAan,'Module Marketing niet actief — neem contact op met ' + BRAND.kort)
         +stapRij('bg-bieding-actie','&#128233;','#a0522d','Indicatieve bieding','Klaar om te versturen')
         +stapRij('bg-loi-actie','&#128196;','var(--gold)','Intentieverklaring (LoI)',getekendStatus('loi_getekend','loi_getekend_datum'))
         // Persistent, zichtbaar gemaakt (21 aug 2026, Marcel kon de trigger niet vinden): stond
@@ -807,15 +819,6 @@ function renderBegeleiderDashboard(app){
         +'<button class="btn-outline btn-sm" id="bg-koperfit-actie">&#127919; Koper-fit strategie</button>'
         +'<button class="btn-outline btn-sm" id="bg-feedback-actie" style="border-color:var(--gold);color:var(--gold)">&#128172; Feedback / bug melden</button>'
         +'</div></div></div>';
-      // ── Marketing — teaser: anoniem, vóór er een koper is, kleine datasubset. Open per default
-      // zolang er nog geen koper is (dan is dit de hoofdactie), anders ingeklapt zoals de rest. ──
-      html+='<div class="panel" style="margin-bottom:1.25rem;padding:0">'+(heeftKoper?secHdr('marketing','&#128226; Marketing').replace('&#9650;','&#9660;'):secHdr('marketing','&#128226; Marketing'))
-        +'<div class="bg-sec-body" data-sec="marketing" style="display:'+(heeftKoper?'none':'block')+';padding:0 1rem 1rem">'
-        +(marketingAan
-          ?'<button class="btn" id="bg-teaser-actie" style="background:#1a7a5e">&#128226; '+(t.teaser_tekst?'Teaser bekijken/bewerken':'Genereer teaser')+'</button><div style="font-size:11px;color:var(--muted);margin-top:6px;margin-bottom:1rem">Kort, anoniem verkoopdocument (max. 150 woorden, geen bedrijfsnaam) om vroeg in het proces interesse te peilen — vóór er een koper is.</div>'
-            +'<button class="btn" id="bg-verkoopmemo-actie" style="background:#8a5a00">&#128220; '+(t.verkoopmemorandum_tekst?'Verkoopmemorandum bekijken/bewerken':'Genereer verkoopmemorandum')+'</button><div style="font-size:11px;color:var(--muted);margin-top:6px">Uitgebreid document mét bedrijfsnaam, voor een specifieke geïnteresseerde partij — pas versturen nadat die partij een NDA heeft ondertekend (in het platform, of extern).</div>'
-          :'<div style="font-size:11px;color:var(--muted)">&#128274; Module Marketing niet actief — neem contact op met ' + BRAND.kort + ' om deze module te activeren.</div>')
-        +'</div></div>';
       return html;
     })()
     +'<div id="bg-ai-status-out" style="display:none;margin-bottom:1.25rem"></div>'
@@ -2030,11 +2033,11 @@ function renderBegeleiderDashboard(app){
   // wordt verstuurd), zelfde redenering als de closing-checklist hieronder — wel aiAnalyseAan-gate
   // (23 aug 2026: module AI-analyse had tot dan toe nergens een client- of server-gate).
   document.getElementById('bg-risicoraamwerk-actie').onclick=function(){ if(!aiAnalyseAan){toast('Module AI-analyse niet actief. Neem contact op met ' + BRAND.kort + '.','err');return;} toonRisicoraamwerkModal(); };
-  // Alleen aanwezig als module Marketing actief is (zie marketingAan hierboven).
-  var bgTeaserBtn=document.getElementById('bg-teaser-actie');
-  if(bgTeaserBtn)bgTeaserBtn.onclick=function(){ toonTeaserModal(); };
-  var bgVerkoopmemoBtn=document.getElementById('bg-verkoopmemo-actie');
-  if(bgVerkoopmemoBtn)bgVerkoopmemoBtn.onclick=function(){ toonVerkoopmemoModal(); };
+  // 24 aug 2026: teaser/verkoopmemorandum staan nu als gewone rijen in de Documenten-flow (niet meer
+  // een losse "Marketing"-sectie) — zelfde dubbele-verdediging-patroon als de andere module-gates
+  // hierboven (rij is al visueel disabled, maar de click-handler checkt ook expliciet).
+  document.getElementById('bg-teaser-actie').onclick=function(){ if(!marketingAan){toast('Module Marketing niet actief. Neem contact op met ' + BRAND.kort + '.','err');return;} toonTeaserModal(); };
+  document.getElementById('bg-verkoopmemo-actie').onclick=function(){ if(!marketingAan){toast('Module Marketing niet actief. Neem contact op met ' + BRAND.kort + '.','err');return;} toonVerkoopmemoModal(); };
   document.getElementById('bg-bieding-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op met ' + BRAND.kort + '.','err');return;} toonDocWaarschuwing('bieding', function(){ toonBiedingModal(); }); };
   document.getElementById('bg-spa-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op met ' + BRAND.kort + '.','err');return;} toonDocWaarschuwing('spa', function(){ toonSpaModal(); }); };
   // Geen toonDocWaarschuwing hier: de closing-checklist is een generieke controlelijst zonder
