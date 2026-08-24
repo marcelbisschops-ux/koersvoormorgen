@@ -10,8 +10,13 @@ jobs:
     # Audit-fix P2/P3 (25 juli 2026): draaide voorheen tegen productie (WORKER_URL niet gezet,
     # tests/lib.mjs valt dan terug op de productie-worker) — nu expliciet tegen staging, zodat CI
     # geen productieverkeer/-schrijfacties meer genereert bij elke push.
+    #
+    # STAGING_ADMIN_KEY staat hier op job-niveau (i.p.v. alleen bij de laatste stap) omdat een
+    # `if:`-conditie op een stap alleen job-/workflow-niveau env-vars ziet, niet een env-var die op
+    # diezelfde stap zelf wordt gezet — zie de P1-fix hieronder bij de laatste stap.
     env:
       WORKER_URL: https://kantoorinzicht-staging.marcel-bisschops.workers.dev
+      STAGING_ADMIN_KEY: ${{ secrets.STAGING_ADMIN_KEY }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -54,6 +59,13 @@ jobs:
       # instellen via repo Settings → Secrets and variables → Actions, met de staging-ADMIN_KEY —
       # NOOIT de productie-ADMIN_KEY hier zetten). Zonder dat secret wordt deze stap overgeslagen,
       # geen falende build zolang het nog niet is ingesteld.
+      #
+      # Audit-fix P1 (24 aug 2026, zevende heraudit): `if: ${{ secrets.X != '' }}` breekt de hele
+      # workflow vóór de eerste stap ("Unrecognized named-value: 'secrets'") — de `secrets`-context
+      # is niet toegestaan in een `if:`-expressie. Live geverifieerd: alle 160+ runs sinds commit
+      # 1eadd38 (25 juli 2026) faalden hierdoor, dus geen enkele stap hierboven (node --check,
+      # audit-consistentie.mjs, npm audit, secret-scan, publieke e2e) heeft ooit gedraaid. Fix: het
+      # secret staat nu als job-niveau env-var (hierboven) — de env-context ís toegestaan in `if:`.
       - name: Volledige e2e-testsuite tegen staging (admin-key vereist)
-        if: ${{ secrets.STAGING_ADMIN_KEY != '' }}
-        run: node tests/e2e-api.mjs --key="${{ secrets.STAGING_ADMIN_KEY }}"
+        if: ${{ env.STAGING_ADMIN_KEY != '' }}
+        run: node tests/e2e-api.mjs --key="$STAGING_ADMIN_KEY"

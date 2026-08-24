@@ -278,12 +278,21 @@ if (backendFiles.length) {
   if (!workerEntry || !sharedFile) {
     ok('backend/cloudflare-worker.js of backend/worker/02-config-constanten.js niet gevonden — check 6 overgeslagen.');
   } else {
-    const createRe = /CREATE TABLE IF NOT EXISTS (\w+)\s*\(([\s\S]*?)\)`,/g;
+    // Audit-fix P2 (24 aug 2026, zevende heraudit): scande voorheen alleen cloudflare-worker.js —
+    // de 20 worker/*.js-modules (waar sinds de modularisering de meeste NIEUWE tabellen ontstaan,
+    // vaak lazy via env.DB.prepare('CREATE TABLE...').run() met enkele aanhalingstekens i.p.v. de
+    // backtick-array-stijl in het hoofdbestand) werden nooit gecontroleerd — een gemiste tabel daar
+    // zou hier stilzwijgend "OK" tonen. Nu over alle backendFiles, met een regex die beide stijlen
+    // dekt (afsluitende backtick+komma óf enkel aanhalingsteken).
+    const createRe = /CREATE TABLE IF NOT EXISTS (\w+)\s*\(([\s\S]*?)\)\s*[`']/g;
     const tablesWithTrajectId = new Set();
-    let cm;
-    while ((cm = createRe.exec(workerEntry.src))) {
-      if (/\btraject_id\b/.test(cm[2])) tablesWithTrajectId.add(cm[1]);
-    }
+    backendFiles.forEach(({ src }) => {
+      let cm;
+      createRe.lastIndex = 0;
+      while ((cm = createRe.exec(src))) {
+        if (/\btraject_id\b/.test(cm[2])) tablesWithTrajectId.add(cm[1]);
+      }
+    });
     const fnMarker = 'export async function verwijderTrajectData(';
     const fnStart = sharedFile.src.indexOf(fnMarker);
     if (fnStart === -1) {

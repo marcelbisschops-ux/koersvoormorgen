@@ -48,15 +48,45 @@ fi
 
 mkdir -p "$BACKUP_DIR"
 
+# Audit-fix P1 (24 aug 2026, zevende heraudit): de export hieronder stond drie dagen op rij
+# (22/23 augustus) stil, exact ná deze regel, zonder één foutregel in het launchd-logbestand
+# (~/Library/Logs/kantoorinzicht-backup.log) — de oorzaak was zelf-veroorzaakte blindheid: alle
+# output van het wrangler-commando ging naar /dev/null, dus zelfs een harde fout of een hangende
+# interactieve prompt (macOS heeft geen ingebouwde 'timeout'-command, dus zoiets zou voor altijd
+# blijven hangen) liet nul sporen na. Twee onafhankelijke maatregelen hieronder:
+#  1. Geen output-onderdrukking meer — alles stroomt door naar het launchd-logbestand.
+#  2. Een handmatige timeout (10 min) rond het commando, zodat een hang een duidelijke, geloggde
+#     mislukking wordt in plaats van een script dat voor altijd blijft hangen.
+# WRANGLER_SEND_METRICS/CI verkleinen de kans op een interactieve telemetrie-/consent-prompt die in
+# deze niet-interactieve launchd-context nooit een antwoord zou krijgen.
+# Root cause NIET vastgesteld binnen deze sessie: een handmatige herhaling van exact hetzelfde
+# commando (interactief, in deze sessie) lukte meteen — dat wijst op iets specifiek aan de
+# launchd-achtergrondcontext (bijv. een TCC/Full Disk Access-regressie, zelfde categorie als het
+# eerdere back-up-incident van 25 juli 2026) die alleen Marcel op zijn eigen Mac kan onderzoeken/
+# oplossen (System Settings → Privacy & Security → Full Disk Access controleren, of
+# `launchctl kickstart -k` draaien en Console.app/Activiteitenweergave live meekijken).
+export WRANGLER_SEND_METRICS=false CI=true
 echo "▶ 1/4  Database exporteren (kantoorinzicht) ..."
 OUT="$BACKUP_DIR/kantoorinzicht_$STAMP.sql"
+EXPORT_TIMEOUT=600
 # --remote = de live productie-database (niet een lokale kopie)
-( cd "$BACKEND_DIR" && npx wrangler d1 export kantoorinzicht --remote --output="$OUT" ) >/dev/null 2>&1
+( cd "$BACKEND_DIR" && npx wrangler d1 export kantoorinzicht --remote --output="$OUT" ) &
+EXPORT_PID=$!
+( sleep "$EXPORT_TIMEOUT" && kill -TERM "$EXPORT_PID" 2>/dev/null ) &
+WATCHER_PID=$!
+if wait "$EXPORT_PID" 2>/dev/null; then EXPORT_STATUS=0; else EXPORT_STATUS=$?; fi
+kill "$WATCHER_PID" 2>/dev/null || true
+wait "$WATCHER_PID" 2>/dev/null || true
+
+if [ "$EXPORT_STATUS" -ne 0 ]; then
+  echo "   ✗ Export mislukt of vastgelopen (exitcode $EXPORT_STATUS, timeout ${EXPORT_TIMEOUT}s) — zie eventuele foutmelding hierboven." >&2
+  exit 1
+fi
 if [ -s "$OUT" ]; then
   TABELLEN=$(grep -c "CREATE TABLE" "$OUT" || true)
   echo "   ✓ $(basename "$OUT")  ($(du -h "$OUT" | cut -f1), $TABELLEN tabellen)"
 else
-  echo "   ✗ Export mislukt — geen bestand geschreven. Controleer 'npx wrangler whoami'."
+  echo "   ✗ Export mislukt — geen bestand geschreven. Controleer 'npx wrangler whoami'." >&2
   exit 1
 fi
 
