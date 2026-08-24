@@ -3695,7 +3695,14 @@ async function renderMatchingTab(el){
     var d=await r.json().catch(function(){return{ok:false};});
     if(!d.ok){el.innerHTML='<div style="color:var(--red);padding:1rem">Fout bij laden.</div>';return;}
     var html='<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem">&#128279; Matching-platform</div>'
-      +'<div style="font-size:12px;color:var(--muted);margin-bottom:1.25rem;max-width:700px;line-height:1.6">Koper-zoekprofielen beheer je hier. Of een traject meetelt als "verkoper" in het matching-overzicht (<a href="matching-platform.html" target="_blank" style="color:var(--teal)">live pagina</a>) stel je per traject in — bij het traject-detail in het tabblad "M&A Trajecten", zodra er een teaser is.</div>'
+      +'<div style="font-size:12px;color:var(--muted);margin-bottom:1rem;max-width:700px;line-height:1.6">Koper-zoekprofielen beheer je hier. Of een traject meetelt als "verkoper" in het matching-overzicht stel je per traject in — bij het traject-detail in het tabblad "M&A Trajecten", zodra er een teaser is.</div>'
+      +'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:1.25rem;padding:.85rem 1rem;background:var(--card);border:1px solid var(--border);border-radius:10px">'
+      +'<button class="btn" id="mk-open-btn" style="font-size:12px;padding:6px 14px">&#128279; Open matching-platform (geen wachtwoord nodig)</button>'
+      +'<span style="flex:1"></span>'
+      +'<span style="font-size:11px;color:var(--muted)">Toegangscode voor prospects:</span>'
+      +'<code id="mk-ww-huidig" style="font-size:12px;background:var(--panel);border:1px solid var(--border2);border-radius:6px;padding:3px 8px">laden...</code>'
+      +'<button class="btn-ghost" id="mk-ww-wijzig-btn" style="font-size:11px;padding:4px 10px">Wijzigen</button>'
+      +'</div>'
       +'<div style="font-size:12px;color:var(--sub);font-weight:600;margin-bottom:.5rem">'+d.sellers.length+' verkoper(s) momenteel zichtbaar op de live matching-pagina</div>'
       +'<div class="table-wrap" style="margin-bottom:1.5rem"><div class="table-hdr"><div class="table-title">Koper-zoekprofielen ('+d.kopers.length+')</div>'
       +'<button class="btn" id="mk-nieuw-btn" style="font-size:12px;padding:6px 14px">+ Nieuw zoekprofiel</button></div>';
@@ -3713,6 +3720,28 @@ async function renderMatchingTab(el){
     }
     html+='</div>';
     el.innerHTML=html;
+
+    document.getElementById('mk-open-btn').addEventListener('click',function(){
+      window.open('matching-platform.html?admin_key='+encodeURIComponent(adminKey),'_blank');
+    });
+    (async function(){
+      var wwEl=document.getElementById('mk-ww-huidig');
+      var r=await fetch(WORKER+'/mna/matching/wachtwoord',{headers:{'x-admin-key':adminKey}});
+      var d2=await r.json().catch(function(){return{ok:false};});
+      wwEl.textContent=d2.ok?d2.wachtwoord:'onbekend';
+    })();
+    document.getElementById('mk-ww-wijzig-btn').addEventListener('click',function(){
+      var nieuw=prompt('Nieuw wachtwoord voor de matching-pagina (minstens 6 tekens):');
+      if(nieuw===null)return;
+      nieuw=nieuw.trim();
+      if(nieuw.length<6){toast('Wachtwoord moet minstens 6 tekens zijn.','err');return;}
+      fetch(WORKER+'/mna/matching/wachtwoord',{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':adminKey},body:JSON.stringify({wachtwoord:nieuw})})
+        .then(function(r){return r.json();})
+        .then(function(d3){
+          if(d3.ok){document.getElementById('mk-ww-huidig').textContent=d3.wachtwoord;toast('Wachtwoord gewijzigd.','ok');}
+          else{toast('Fout: '+(d3.error||'onbekend'),'err');}
+        }).catch(function(){toast('Verbindingsfout.','err');});
+    });
 
     document.getElementById('mk-nieuw-btn').addEventListener('click',function(){
       var ov=document.createElement('div');
