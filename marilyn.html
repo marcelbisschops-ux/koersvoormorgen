@@ -3448,8 +3448,6 @@ async function renderGebruikersTab(el) {
           + '<input type="number" id="vk-limiet" min="1" value="' + (g.traject_limiet||1) + '" style="width:100px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--sub);font-size:14px;margin-bottom:1rem">'
           + '<div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:4px">Modules</div>'
           + chk
-          + '<div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:1rem 0 4px">Prijs module Marketing (&euro;/mnd, alleen intern — informeert niets automatisch)</div>'
-          + '<input type="number" id="vk-marketing-prijs" min="0" step="1" placeholder="bijv. 49" value="' + (g.marketing_prijs!=null?g.marketing_prijs:'') + '" style="width:100px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--sub);font-size:14px">'
           + '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1.25rem">'
           + '<button class="btn-ghost" id="vk-annuleer" style="font-size:12px;padding:7px 14px">Annuleren</button>'
           + '<button class="btn" id="vk-opslaan" style="font-size:12px;padding:7px 14px">Opslaan</button>'
@@ -3460,10 +3458,8 @@ async function renderGebruikersTab(el) {
           var nm = {};
           ov.querySelectorAll('.vk-mod').forEach(function(c){ nm[c.dataset.mod] = c.checked; });
           var lim = Math.max(1, parseInt(document.getElementById('vk-limiet').value, 10) || 1);
-          var prijsRaw = document.getElementById('vk-marketing-prijs').value;
-          var prijsBody = prijsRaw !== '' ? { marketing_prijs: Math.max(0, parseFloat(prijsRaw) || 0) } : {};
           try {
-            var vr = await fetch(WORKER + '/gebruikers/verkoop/' + encodeURIComponent(g.id), { method: 'POST', headers: { 'x-admin-key': adminKey, 'Content-Type': 'application/json' }, body: JSON.stringify(Object.assign({ traject_limiet: lim, modules: nm }, prijsBody)) });
+            var vr = await fetch(WORKER + '/gebruikers/verkoop/' + encodeURIComponent(g.id), { method: 'POST', headers: { 'x-admin-key': adminKey, 'Content-Type': 'application/json' }, body: JSON.stringify({ traject_limiet: lim, modules: nm }) });
             var vd = await vr.json();
             if (vd.ok) { toast('Verkoopinstellingen opgeslagen: limiet ' + vd.traject_limiet + '.', 'ok'); ov.remove(); var tcv = document.getElementById('tc'); if (tcv) renderGebruikersTab(tcv); }
             else toast(vd.error || 'Fout bij opslaan.', 'err');
@@ -3556,7 +3552,10 @@ var TARIEF_LABELS = {
   basis: 'Basis (DD-begeleiding zonder AI-extractie)',
   ai: 'Basis + AI (met AI-documentextractie/analyse)',
   lead_inbreng: 'Module-fee — Lead-inbreng (eenmalig per traject met aandrager)',
-  meekijker: 'Module-fee — Meekijker (eenmalig per aangemaakte code)'
+  meekijker: 'Module-fee — Meekijker (eenmalig per aangemaakte code)',
+  teaser: 'Module-fee — Teaser (eenmalig bij eerste generatie per traject)',
+  verkoopmemorandum: 'Module-fee — Verkoopmemorandum (eenmalig bij eerste generatie per traject)',
+  matching: 'Module-fee — Matching (eenmalig per koper die zich aanmeldt)'
 };
 
 async function renderTarievenTab(el) {

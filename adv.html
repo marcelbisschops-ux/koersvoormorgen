@@ -474,10 +474,15 @@ async function renderKostenModal(){
   var inhoudEl=document.getElementById('kosten-inhoud');
   if(!inhoudEl)return; // modal intussen gesloten
   if(!r.ok){inhoudEl.innerHTML='<div class="err-msg">Kon kosten niet laden.</div>';return;}
-  var feeLabels={basis:'Trajectfee (basis)',ai:'Trajectfee (met AI-extractie)',lead_inbreng:'Lead-inbreng',meekijker:'Meekijker toegevoegd',matching:'Koper aangemeld via matching'};
+  var feeLabels={basis:'Trajectfee (basis)',ai:'Trajectfee (met AI-extractie)',lead_inbreng:'Lead-inbreng',meekijker:'Meekijker toegevoegd',teaser:'Teaser gegenereerd',verkoopmemorandum:'Verkoopmemorandum gegenereerd',matching:'Koper aangemeld via matching'};
   var html='';
-  if(r.marketing_prijs!=null){
-    html+='<div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:.75rem 1rem;margin-bottom:1rem;font-size:12px;color:var(--sub)">Uw matching-tarief: <strong>&euro;'+Number(r.marketing_prijs).toLocaleString('nl-NL')+'</strong> per koper die zich aanmeldt via het matching-platform.</div>';
+  if(r.tarieven && (r.tarieven.teaser!=null || r.tarieven.verkoopmemorandum!=null || r.tarieven.matching!=null)){
+    html+='<div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:.75rem 1rem;margin-bottom:1rem;font-size:12px;color:var(--sub)">'
+      +'<div style="font-weight:600;margin-bottom:.4rem">Huidige tarieven module Marketing</div>'
+      +(r.tarieven.teaser!=null?'Teaser (eerste keer): <strong>&euro;'+Number(r.tarieven.teaser).toLocaleString('nl-NL')+'</strong><br>':'')
+      +(r.tarieven.verkoopmemorandum!=null?'Verkoopmemorandum (eerste keer): <strong>&euro;'+Number(r.tarieven.verkoopmemorandum).toLocaleString('nl-NL')+'</strong><br>':'')
+      +(r.tarieven.matching!=null?'Matching (per aangemelde koper): <strong>&euro;'+Number(r.tarieven.matching).toLocaleString('nl-NL')+'</strong>':'')
+      +'</div>';
   }
   if(!r.events.length){
     html+='<div class="empty">Nog geen kosten geregistreerd.</div>';
