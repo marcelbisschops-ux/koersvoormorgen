@@ -44,6 +44,7 @@ h1,h2,h3{font-family:'Playfair Display',serif;color:var(--head)}
 .nav-links a{font-size:13.5px;color:var(--mid);text-decoration:none;font-weight:500;margin-left:1.5rem}
 .nav-links a:hover{color:var(--teal)}
 .hero{padding:3.5rem 0 2rem;text-align:center}
+.gate{min-height:60vh}
 .eyebrow{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--teal);margin-bottom:1rem}
 .hero h1{font-weight:600;font-size:2.2rem;line-height:1.25;color:var(--head);max-width:680px;margin:0 auto 1rem}
 .hero p{font-size:14.5px;color:var(--mid);max-width:600px;margin:0 auto}
@@ -94,6 +95,18 @@ footer{border-top:1px solid var(--border);padding:2rem 0;text-align:center;font-
   </div>
 </nav>
 
+<div class="gate" id="matching-gate">
+  <div class="wrap" style="max-width:400px;padding-top:5rem;text-align:center">
+    <h1 style="font-size:1.5rem;margin-bottom:.5rem">Matching-platform</h1>
+    <p style="font-size:13.5px;color:var(--mid);margin-bottom:1.5rem">Deze pagina is alleen toegankelijk met een toegangscode.</p>
+    <input type="password" id="gate-wachtwoord" placeholder="Toegangscode" style="width:100%;padding:11px 14px;font-size:14px;border:1px solid var(--border2);border-radius:8px;background:var(--panel);color:var(--sub);margin-bottom:.75rem;text-align:center">
+    <div id="gate-err" style="display:none;color:var(--red);font-size:12.5px;margin-bottom:.75rem"></div>
+    <button id="gate-btn" class="btn-primary" style="width:100%;border:none;cursor:pointer">Ontgrendelen</button>
+  </div>
+</div>
+
+<div id="matching-content" style="display:none">
+
 <div class="hero">
   <div class="wrap">
     <div class="eyebrow">Matching-platform</div>
@@ -138,6 +151,8 @@ footer{border-top:1px solid var(--border);padding:2rem 0;text-align:center;font-
   </div>
 </div>
 
+</div>
+
 <footer>
   <div class="wrap">© 2026 Bisschops Financing B.V. — Koers voor Morgen.</div>
 </footer>
@@ -161,12 +176,17 @@ function omzetBandbreedte(min,max){
   return fmtEuro(OMZETGRENZEN[min])+' – '+boven;
 }
 
-// Live data (23 aug 2026) — opgehaald bij GET /mna/matching/overzicht, publiek/geen auth (zelfde
-// filosofie als /waardering/config). Alleen trajecten die een begeleider expliciet "beschikbaar voor
-// matching" heeft gezet komen als seller voor; koper-zoekprofielen beheert Marcel in marilyn
-// (tabblad Matching). Bij een lege lijst blijft de pagina bruikbaar met een duidelijke lege-staat.
+// Live data (23 aug 2026) — opgehaald bij GET /mna/matching/overzicht. Alleen trajecten die een
+// begeleider expliciet "beschikbaar voor matching" heeft gezet komen als seller voor;
+// koper-zoekprofielen beheert Marcel in marilyn (tabblad Matching). Bij een lege lijst blijft de
+// pagina bruikbaar met een duidelijke lege-staat.
+// Pagina achter een gedeeld wachtwoord (24 aug 2026) — apart van marilyn's ADMIN_KEY, zie
+// toelichting bij /mna/matching/login in worker/19-info-fases.js. Het wachtwoord zelf gaat als
+// x-matching-key mee bij elke matching-aanroep, bewaard in sessionStorage (niet localStorage) zodat
+// het niet blijft hangen na het sluiten van de browser.
 var SELLERS = [];
 var BUYERS = [];
+var MATCHING_KEY = sessionStorage.getItem('mna_matching_key') || '';
 
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 
@@ -236,7 +256,7 @@ async function verstuurInteresse(id){
   var btn=blok.querySelector('.btn-verstuur-interesse');
   btn.disabled=true;btn.textContent='Versturen...';
   try{
-    var r=await fetch(WORKER+'/mna/matching/interesse',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({traject_id:id,naam:naam,email:email,bericht:bericht})});
+    var r=await fetch(WORKER+'/mna/matching/interesse',{method:'POST',headers:{'Content-Type':'application/json','x-matching-key':MATCHING_KEY},body:JSON.stringify({traject_id:id,naam:naam,email:email,bericht:bericht})});
     var d=await r.json();
     if(d.ok){
       blok.innerHTML='<div style="color:var(--teal);font-size:13px;font-weight:600">&#10003; Aangemeld — u ontvangt per e-mail uw persoonlijke toegang.</div>';
@@ -279,7 +299,17 @@ function selectBuyer(id){
 
 async function laadLiveData(){
   try{
-    var r=await fetch(WORKER+'/mna/matching/overzicht');
+    var r=await fetch(WORKER+'/mna/matching/overzicht',{headers:{'x-matching-key':MATCHING_KEY}});
+    if(r.status===401){
+      // Bewaarde toegangscode is niet (meer) geldig (bv. gewijzigd door Marcel) — terug naar het
+      // slotscherm i.p.v. stilzwijgend een lege pagina tonen.
+      sessionStorage.removeItem('mna_matching_key');
+      document.getElementById('matching-content').style.display='none';
+      document.getElementById('matching-gate').style.display='block';
+      document.getElementById('gate-err').textContent='Uw toegangscode is niet meer geldig, vul opnieuw in.';
+      document.getElementById('gate-err').style.display='block';
+      return;
+    }
     var d=await r.json();
     if(d.ok){ BUYERS=d.kopers; SELLERS=d.sellers; }
   }catch(e){ /* laat lege staat zien bij een verbindingsfout */ }
@@ -289,7 +319,45 @@ async function laadLiveData(){
   else{ document.getElementById('match-panel-title').textContent='Matches'; document.getElementById('match-rows').innerHTML='<div class="card-desc">Voeg koper-zoekprofielen toe in marilyn (tabblad Matching) om matches te zien.</div>'; }
 }
 
-laadLiveData();
+function toonMatchingContent(){
+  document.getElementById('matching-gate').style.display='none';
+  document.getElementById('matching-content').style.display='block';
+  laadLiveData();
+}
+
+async function probeerOntgrendelen(){
+  var inp=document.getElementById('gate-wachtwoord');
+  var errEl=document.getElementById('gate-err');
+  var btn=document.getElementById('gate-btn');
+  var wachtwoord=inp.value.trim();
+  errEl.style.display='none';
+  if(!wachtwoord){errEl.textContent='Vul een toegangscode in.';errEl.style.display='block';return;}
+  btn.disabled=true;btn.textContent='Bezig...';
+  try{
+    var r=await fetch(WORKER+'/mna/matching/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({wachtwoord:wachtwoord})});
+    var d=await r.json();
+    if(d.ok){
+      MATCHING_KEY=wachtwoord;
+      sessionStorage.setItem('mna_matching_key',wachtwoord);
+      toonMatchingContent();
+    }else{
+      errEl.textContent=d.error||'Onjuiste toegangscode.';errEl.style.display='block';
+      btn.disabled=false;btn.textContent='Ontgrendelen';
+    }
+  }catch(e){
+    errEl.textContent='Verbindingsfout, probeer het later opnieuw.';errEl.style.display='block';
+    btn.disabled=false;btn.textContent='Ontgrendelen';
+  }
+}
+
+document.getElementById('gate-btn').addEventListener('click',probeerOntgrendelen);
+document.getElementById('gate-wachtwoord').addEventListener('keydown',function(e){if(e.key==='Enter')probeerOntgrendelen();});
+
+// Al eerder in deze sessie ontgrendeld (sessionStorage) — meteen doorschieten, geen wachtwoord
+// opnieuw vragen. Het echte controlepunt blijft server-side (elke matching-aanroep valideert de
+// header opnieuw), dus een verlopen/gewijzigd wachtwoord geeft alsnog nette foutafhandeling via
+// laadLiveData's lege-staat, niet een crash.
+if(MATCHING_KEY){ toonMatchingContent(); }
 </script>
 
 </body>
