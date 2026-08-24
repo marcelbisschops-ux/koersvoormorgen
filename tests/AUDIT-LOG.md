@@ -1,5 +1,20 @@
 # Audit-log — wekelijkse controle KantoorInzicht
 
+## 2026-08-24
+
+**Uitgevoerd:**
+1. Syntax-check: `node --check` op de canonieke worker (`~/Documents/GitHub/koersvoormorgen-backend/backend/cloudflare-worker.js`) en op alle `mna/*.js`-modules in deze repo.
+2. `node tests/audit-consistentie.mjs` (veldreferenties, functie-shadowing, begeleiderAuth-scoping, koper-afscherming, SELECT *-audit, traject-verwijder-cascade, gevoelige-termen-check — 7 checks).
+3. `node tests/e2e-api.mjs` — geen ADMIN_KEY beschikbaar in deze sessie, dus alleen health-check en toegangscode-weigering getest (stappen 3-9 overgeslagen).
+
+**Bevindingen:** geen. Alle syntax-checks slagen, consistentie-audit geeft "Geen bevindingen" op alle 7 checks, health-check en basis-API-tests slagen (4 geslaagd, 0 gefaald, 1 overgeslagen wegens ontbrekende key).
+
+**Zelfstandig opgelost:** niets nodig — geen bevindingen.
+
+**Overig:** de SKILL.md van deze scheduled task verwijst inmiddels correct naar de backend-repo als canonieke bron (het aandachtspunt uit de 2026-08-17-run is kennelijk al verwerkt) — geen actie nodig.
+
+**Wacht op Marcel's akkoord:** niets.
+
 ## 2026-08-17
 
 **Uitgevoerd:**
