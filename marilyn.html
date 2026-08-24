@@ -3432,7 +3432,7 @@ async function renderGebruikersTab(el) {
         if (!g) return;
         var mods = {};
         try { mods = JSON.parse(g.modules || '{}'); } catch(e) {}
-        var modDefs = [['traject','Traject (basis)'],['contracten','Contracten & ondertekening'],['ai_analyse','AI-analyse'],['qa','Q&A'],['meekijker','Meekijkers (bank/accountant laten meekijken)'],['marketing','Marketing (teaser & verkoopmemorandum)']];
+        var modDefs = [['traject','Traject (basis)'],['contracten','Contracten & ondertekening'],['ai_analyse','AI-analyse'],['qa','Q&A'],['meekijker','Meekijkers (bank/accountant laten meekijken)'],['marketing','Marketing aan/uit (teaser, verkoopmemorandum & matching)']];
         var chk = modDefs.map(function(md){
           var aan = md[0]==='traject' ? (mods[md[0]]!==false) : !!mods[md[0]];
           return '<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--sub);padding:4px 0;cursor:pointer">'
@@ -3446,7 +3446,7 @@ async function renderGebruikersTab(el) {
           + '<div style="font-size:11px;color:var(--muted);margin-bottom:1rem">' + esc(g.email) + ' &middot; ' + (g.traject_count||0) + ' traject(en) in gebruik</div>'
           + '<div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:4px">Trajectlimiet</div>'
           + '<input type="number" id="vk-limiet" min="1" value="' + (g.traject_limiet||1) + '" style="width:100px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--sub);font-size:14px;margin-bottom:1rem">'
-          + '<div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:4px">Modules</div>'
+          + '<div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:4px">Modules <span style="font-weight:400;text-transform:none;letter-spacing:normal">(aan/uit per adviseur — prijzen staan in &euro; Tarieven)</span></div>'
           + chk
           + '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1.25rem">'
           + '<button class="btn-ghost" id="vk-annuleer" style="font-size:12px;padding:7px 14px">Annuleren</button>'
