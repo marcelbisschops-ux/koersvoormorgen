@@ -187,6 +187,23 @@ function omzetBandbreedte(min,max){
 var SELLERS = [];
 var BUYERS = [];
 var MATCHING_KEY = sessionStorage.getItem('mna_matching_key') || '';
+// Admin-bypass (24 aug 2026, Marcel: knop in marilyn zonder wachtwoord nodig) — marilyn linkt
+// hierheen met ?admin_key=..., de backend accepteert diezelfde ADMIN_KEY ook als x-admin-key
+// (zie matchingAuthOk in worker/19-info-fases.js). Direct uit de URL strippen na het lezen zodat
+// de sleutel niet zichtbaar blijft hangen in de adresbalk/geschiedenis; bewaard in sessionStorage
+// (net als het gewone wachtwoord) zodat een reload in dezelfde tab blijft werken.
+var ADMIN_BYPASS = sessionStorage.getItem('mna_matching_admin') || '';
+(function(){
+  var urlAdminKey = new URLSearchParams(location.search).get('admin_key');
+  if (urlAdminKey) {
+    ADMIN_BYPASS = urlAdminKey;
+    sessionStorage.setItem('mna_matching_admin', urlAdminKey);
+    history.replaceState({}, '', location.pathname);
+  }
+})();
+function matchingAuthHeader(){
+  return ADMIN_BYPASS ? { 'x-admin-key': ADMIN_BYPASS } : { 'x-matching-key': MATCHING_KEY };
+}
 
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 
@@ -256,7 +273,7 @@ async function verstuurInteresse(id){
   var btn=blok.querySelector('.btn-verstuur-interesse');
   btn.disabled=true;btn.textContent='Versturen...';
   try{
-    var r=await fetch(WORKER+'/mna/matching/interesse',{method:'POST',headers:{'Content-Type':'application/json','x-matching-key':MATCHING_KEY},body:JSON.stringify({traject_id:id,naam:naam,email:email,bericht:bericht})});
+    var r=await fetch(WORKER+'/mna/matching/interesse',{method:'POST',headers:Object.assign({'Content-Type':'application/json'},matchingAuthHeader()),body:JSON.stringify({traject_id:id,naam:naam,email:email,bericht:bericht})});
     var d=await r.json();
     if(d.ok){
       blok.innerHTML='<div style="color:var(--teal);font-size:13px;font-weight:600">&#10003; Aangemeld — u ontvangt per e-mail uw persoonlijke toegang.</div>';
@@ -299,11 +316,13 @@ function selectBuyer(id){
 
 async function laadLiveData(){
   try{
-    var r=await fetch(WORKER+'/mna/matching/overzicht',{headers:{'x-matching-key':MATCHING_KEY}});
+    var r=await fetch(WORKER+'/mna/matching/overzicht',{headers:matchingAuthHeader()});
     if(r.status===401){
       // Bewaarde toegangscode is niet (meer) geldig (bv. gewijzigd door Marcel) — terug naar het
       // slotscherm i.p.v. stilzwijgend een lege pagina tonen.
       sessionStorage.removeItem('mna_matching_key');
+      sessionStorage.removeItem('mna_matching_admin');
+      MATCHING_KEY='';ADMIN_BYPASS='';
       document.getElementById('matching-content').style.display='none';
       document.getElementById('matching-gate').style.display='block';
       document.getElementById('gate-err').textContent='Uw toegangscode is niet meer geldig, vul opnieuw in.';
@@ -357,7 +376,7 @@ document.getElementById('gate-wachtwoord').addEventListener('keydown',function(e
 // opnieuw vragen. Het echte controlepunt blijft server-side (elke matching-aanroep valideert de
 // header opnieuw), dus een verlopen/gewijzigd wachtwoord geeft alsnog nette foutafhandeling via
 // laadLiveData's lege-staat, niet een crash.
-if(MATCHING_KEY){ toonMatchingContent(); }
+if(ADMIN_BYPASS||MATCHING_KEY){ toonMatchingContent(); }
 </script>
 
 </body>
