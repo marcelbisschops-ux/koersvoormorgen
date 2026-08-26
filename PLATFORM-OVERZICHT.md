@@ -8,7 +8,7 @@
 
 ### Twee productlijnen op één fundament
 
-| | **KantoorInzicht** (accountancy / M&A) | **VerhuisScan** (verhuisbedrijven) |
+| | **Koers voor Morgen** (accountancy / M&A) | **VerhuisScan** (verhuisbedrijven) |
 |---|---|---|
 | Publieke scan | `index.html` | `verhuis.html` |
 | Volledig M&A-traject | `mna.html` (verkoper/koper/begeleider) | — |
@@ -18,7 +18,7 @@
 
 Alles draait op **één Cloudflare-worker + één database (D1) + documentopslag (R2)**. De twee productlijnen delen de infrastructuur maar hebben eigen endpoints en tabellen — data blijft gescheiden.
 
-### Wat het M&A-product (KantoorInzicht) kan
+### Wat het M&A-product (Koers voor Morgen) kan
 - **Scan → rapport**: strategische zelfscan met AI-adviesrapport (index.html).
 - **Volledig M&A-traject** (mna.html): drie rollen (verkoper, koper, begeleider), due-diligencedossier in 7 categorieën, documentupload met **AI-extractie** (sector-bewust), waardering, dataroom.
 - **Gefaseerde koper-toegang**: begeleider geeft per DD-categorie vrij wat de koper mag zien (velden én documenten).
@@ -54,7 +54,7 @@ Je beheert dit in **marilyn → Gebruikers → € Verkoop**. Geblokkeerde funct
 ### A. Branden (white-label) — de techniek staat klaar
 Elk portaal heeft bovenin een `BRAND`-blok, bv. in `mna.html`:
 ```js
-var BRAND = { platform:'KantoorInzicht', bedrijf:'Bisschops Financing B.V.', suffix:'M&A' };
+var BRAND = { platform:'Koers voor Morgen', bedrijf:'Bisschops Financing B.V.', suffix:'M&A' };
 ```
 Merknaam wijzigen = deze regel aanpassen → hele portaal herbrandt (headers, titels, footers). Live getest met "DealScope", "MoveScan", "ScanPro".
 

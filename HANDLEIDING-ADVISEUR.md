@@ -1,4 +1,4 @@
-# Handleiding — KantoorInzicht voor adviseurs
+# Handleiding — Koers voor Morgen voor adviseurs
 
 Korte praktische handleiding voor adviseurs die met het platform werken. Stuur dit door bij de uitnodiging.
 
@@ -23,7 +23,7 @@ Korte praktische handleiding voor adviseurs die met het platform werken. Stuur d
 
 ## 3. Eigen huisstijl instellen (optioneel)
 
-Wilt u dat uw cliënten uw eigen naam/kleur zien in plaats van "KantoorInzicht"?
+Wilt u dat uw cliënten uw eigen naam/kleur zien in plaats van "Koers voor Morgen"?
 
 1. Log in op `adv.html` → klik rechtsboven op **"🎨 Huisstijl"**.
 2. Vul in: uw eigen platformnaam, een accentkleur (hex-code, bijv. `#1a7a5e`) en eventueel een logo-URL (moet met `https://` beginnen).

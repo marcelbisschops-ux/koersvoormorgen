@@ -1,4 +1,4 @@
-# Back-up & herstel — KantoorInzicht
+# Back-up & herstel — Koers voor Morgen
 
 Doel: al het werk (code) én de klantdata veilig bewaren, **los van het draaiende
 systeem** (Cloudflare), zodat niets verloren gaat bij een fout, verwijdering of
@@ -20,7 +20,7 @@ cd ~/Documents/GitHub/koersvoormorgen
 bash scripts/backup.sh
 ```
 
-Dit exporteert de volledige database naar `~/KantoorInzicht-Backups/` en ververst
+Dit exporteert de volledige database naar `~/KoersVoorMorgen-Backups/` en ververst
 de backend-codekopie in de repo. Zet die back-upmap in **iCloud Drive** of op een
 **externe schijf** — dan staat de klantdata automatisch los van je Mac én van Cloudflare.
 
@@ -63,10 +63,10 @@ schijftoegang-instelling.
 Database terugzetten vanuit een `.sql`-back-up naar een (nieuwe) D1-database:
 ```bash
 # 1. Kies de gewenste back-up
-ls -1 ~/KantoorInzicht-Backups/
+ls -1 ~/KoersVoorMorgen-Backups/
 # 2. Importeer in de database (LET OP: overschrijft bestaande data)
 cd ~/Documents/GitHub/koersvoormorgen-backend/backend
-npx wrangler d1 execute kantoorinzicht --remote --file="~/KantoorInzicht-Backups/kantoorinzicht_JJJJ-MM-DD_UUMM.sql"
+npx wrangler d1 execute kantoorinzicht --remote --file="~/KoersVoorMorgen-Backups/kantoorinzicht_JJJJ-MM-DD_UUMM.sql"
 ```
 **Sneller alternatief voor recente data (tot 30 dagen terug):** D1 heeft een
 ingebouwde Time Travel-functie, los van dit script:

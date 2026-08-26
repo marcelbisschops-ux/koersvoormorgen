@@ -1,4 +1,4 @@
-# KantoorInzicht — Archief (uitgesteld / afgerond / afgewezen)
+# Koers voor Morgen — Archief (uitgesteld / afgerond / afgewezen)
 
 Afgesplitst van `BACKLOG.md` op 26 juli 2026, op Marcels verzoek: het platform gaat nu de externe
 testfase in en er wordt bewust **niets meer gebouwd** tot na die fase (tenzij een test een echte bug

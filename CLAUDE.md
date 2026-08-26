@@ -1,4 +1,4 @@
-# KantoorInzicht — projectinstructies voor Claude Code
+# Koers voor Morgen — projectinstructies voor Claude Code
 
 ## Taal en stijl
 - Communiceer in het Nederlands.
@@ -6,7 +6,7 @@
 - Marcel is geen programmeur: leg wijzigingen uit in gewone taal (wat het doet, niet hoe de code werkt), tenzij hij om detail vraagt.
 
 ## Wat is dit project
-KantoorInzicht: AI-gedreven M&A due-diligence platform voor overnames van accountantskantoren.
+Koers voor Morgen: AI-gedreven M&A due-diligence platform voor overnames van accountantskantoren.
 Eigenaar: Marcel Bisschops (Bisschops Financing B.V.).
 
 ## Bestanden en rollen

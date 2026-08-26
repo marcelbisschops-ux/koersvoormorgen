@@ -1,4 +1,4 @@
-# Standaard periodieke kwaliteitsaudit — KantoorInzicht
+# Standaard periodieke kwaliteitsaudit — Koers voor Morgen
 
 Vastgelegd op 25 juli 2026 op verzoek van Marcel, diezelfde dag tweemaal aangescherpt tot de
 huidige, volledige versie. Dit is de vaste, technologie-onafhankelijke audit-opdracht die Claude

@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Account activeren — KantoorInzicht M&A</title>
+<title>Account activeren — Koers voor Morgen M&A</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
 <style>
@@ -51,7 +51,7 @@ async function init(){
 
   // Reset-flow
   if(resetToken){
-    app.innerHTML='<div class="logo">KantoorInzicht M&A</div>'
+    app.innerHTML='<div class="logo">Koers voor Morgen M&A</div>'
       +'<div class="sub">Stel een nieuw wachtwoord in voor uw account.</div>'
       +'<div id="err" class="err"></div>'
       +'<div class="field"><label>Nieuw wachtwoord <span style="color:var(--red)">*</span></label><input type="password" id="ww1" placeholder="Minimaal 8 tekens" autofocus></div>'
@@ -70,7 +70,7 @@ async function init(){
         var ar=await fetch(WORKER+'/gebruikers/ww-reset',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:resetToken,wachtwoord:ww1})});
         var ad=await ar.json();
         if(!ar.ok||!ad.ok){err.textContent=ad.error||'Fout.';err.style.display='block';btn.disabled=false;btn.textContent='Wachtwoord instellen';return;}
-        app.innerHTML='<div class="logo">KantoorInzicht M&A</div>'
+        app.innerHTML='<div class="logo">Koers voor Morgen M&A</div>'
           +'<div style="color:var(--teal);font-size:1.1rem;font-weight:600;margin:1rem 0">&#10003; Wachtwoord ingesteld!</div>'
           +'<div style="font-size:13px;color:var(--mid);margin-bottom:1.5rem">U kunt nu inloggen met uw nieuwe wachtwoord.</div>'
           +'<a href="'+((new URLSearchParams(window.location.search).get('redirect')==='adv')?'adv.html':'marilyn.html')+'" class="btn" style="display:inline-block;text-decoration:none;text-align:center">Naar inloggen</a>';
@@ -81,18 +81,18 @@ async function init(){
   }
 
   if(!token){
-    app.innerHTML='<div class="logo">KantoorInzicht M&A</div><div class="sub" style="color:var(--red);margin-top:.5rem">Ongeldige activatielink. Neem contact op met uw adviseur.</div>';
+    app.innerHTML='<div class="logo">Koers voor Morgen M&A</div><div class="sub" style="color:var(--red);margin-top:.5rem">Ongeldige activatielink. Neem contact op met uw adviseur.</div>';
     return;
   }
   try{
     var r=await fetch(WORKER+'/gebruikers/invite?token='+encodeURIComponent(token));
     var d=await r.json();
     if(!r.ok||!d.ok){
-      app.innerHTML='<div class="logo">KantoorInzicht M&A</div><div class="sub" style="color:var(--red);margin-top:.5rem">'+esc(d.error||'Ongeldige of verlopen uitnodiging.')+'</div><div style="font-size:12px;color:var(--muted);margin-top:1rem">Neem contact op met Marcel Bisschops via <a href="mailto:marcel@bisschopsfinancing.nl" style="color:var(--teal)">marcel@bisschopsfinancing.nl</a>.</div>';
+      app.innerHTML='<div class="logo">Koers voor Morgen M&A</div><div class="sub" style="color:var(--red);margin-top:.5rem">'+esc(d.error||'Ongeldige of verlopen uitnodiging.')+'</div><div style="font-size:12px;color:var(--muted);margin-top:1rem">Neem contact op met Marcel Bisschops via <a href="mailto:marcel@bisschopsfinancing.nl" style="color:var(--teal)">marcel@bisschopsfinancing.nl</a>.</div>';
       return;
     }
     // Toon activatieformulier
-    app.innerHTML='<div class="logo">KantoorInzicht M&A</div>'
+    app.innerHTML='<div class="logo">Koers voor Morgen M&A</div>'
       +'<div class="sub">Welkom, '+esc(d.naam)+'! Stel een wachtwoord in om uw account te activeren.</div>'
       +'<div class="info-row"><strong style="color:var(--head)">'+esc(d.naam)+'</strong>'+(d.bedrijf?'<br><span style="color:var(--muted)">'+esc(d.bedrijf)+'</span>':'')+'<br><span style="font-family:monospace;font-size:11px;color:var(--mid)">'+esc(d.email)+'</span></div>'
       +'<div id="err" class="err">Fout bij activeren.</div>'
@@ -116,7 +116,7 @@ async function init(){
         // Succes — sla sessie op en stuur door naar Marilyn
         localStorage.setItem('ki_sessie_token', ad.sessie_token);
         localStorage.setItem('ki_sessie_email', ad.email);
-        app.innerHTML='<div class="logo">KantoorInzicht M&A</div>'
+        app.innerHTML='<div class="logo">Koers voor Morgen M&A</div>'
           +'<div style="color:var(--teal);font-size:1.1rem;font-weight:600;margin:1rem 0">&#10003; Account geactiveerd!</div>'
           +'<div style="font-size:13px;color:var(--mid);margin-bottom:1.5rem;line-height:1.7">Uw account is actief. U wordt doorgestuurd naar het dashboard...</div>'
           +'<div style="font-size:12px;color:var(--muted)">Wordt niet doorgestuurd? <a href="'+((new URLSearchParams(window.location.search).get('redirect')==='adv')?'adv.html':'marilyn.html')+'" style="color:var(--teal)">Klik hier</a>.</div>';
@@ -127,7 +127,7 @@ async function init(){
     document.getElementById('ww2').addEventListener('keydown',function(e){if(e.key==='Enter')document.getElementById('act-btn').click();});
 
   }catch(e){
-    app.innerHTML='<div class="logo">KantoorInzicht M&A</div><div style="color:var(--red);font-size:13px;margin-top:.5rem">Verbindingsfout. Controleer uw internetverbinding en probeer opnieuw.</div>';
+    app.innerHTML='<div class="logo">Koers voor Morgen M&A</div><div style="color:var(--red);font-size:13px;margin-top:.5rem">Verbindingsfout. Controleer uw internetverbinding en probeer opnieuw.</div>';
   }
 }
 

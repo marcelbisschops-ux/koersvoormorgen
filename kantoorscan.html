@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Strategische Kantoor Scan - KantoorInzicht</title>
+<title>Strategische Kantoor Scan - Koers voor Morgen</title>
 <!-- BUILD: 27 May 10:45 -->
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -310,7 +310,7 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--b
 /* ======== CONFIG ======== */
 const WORKER = 'https://kantoorinzicht.marcel-bisschops.workers.dev';
 // White-label basis — centrale merkconfig voor de publieke scan (zelfde patroon als de rest).
-const BRAND = { platform:'KantoorInzicht', bedrijf:'Bisschops Financing B.V.', bedrijfKort:'Bisschops Financing BV' };
+const BRAND = { platform:'Koers voor Morgen', bedrijf:'Bisschops Financing B.V.', bedrijfKort:'Bisschops Financing BV' };
 function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 // Vaste taalregels voor elke AI-prompt op deze pagina (5 aug 2026, Marcel: analyses bevatten soms
 // onnatuurlijk/vertaald Nederlands — vooral inconsistent u/je-gebruik en Engelse zinsconstructies
@@ -1511,7 +1511,7 @@ function downloadGroepsRapport(){
   var d=ST.groupData;if(!d)return;
   var offices=(d.offices||[]).sort(function(a,b){return b.overall-a.overall;});
   var avg=offices.length?Math.round(offices.reduce(function(a,o){return a+o.overall;},0)/offices.length):0;
-  var txt='KantoorInzicht -- Groepsrapport\n================================\n\n';
+  var txt='Koers voor Morgen -- Groepsrapport\n================================\n\n';
   txt+='Groep: '+(d.group&&d.group.name||ST.groupId)+'\n';
   txt+='Datum: '+new Date().toLocaleDateString('nl-NL')+'\n';
   txt+='Deelnemers: '+offices.length+'\nGem. score: '+avg+'/100\n\n';
@@ -1595,7 +1595,7 @@ function bindEvents(){
     const adminCode=ST.adminCode||'';
     const code=ST.groupId||'';
     const naam=(ST.groupData&&ST.groupData.group&&ST.groupData.group.name)||'Groep';
-    const inhoud='KantoorInzicht — Groepscodes\n\nGroep: '+naam+'\nDeelnemerscode: '+code+'\nBeheerdscode: '+(adminCode||'niet beschikbaar')+'\nDatum: '+new Date().toLocaleDateString('nl-NL')+'\n\nKantoren gebruiken de DEELNEMERSCODE.\nU gebruikt de BEHEERDSCODE om alles te zien.\n\nhttps://koersvoormorgen.nl';
+    const inhoud='Koers voor Morgen — Groepscodes\n\nGroep: '+naam+'\nDeelnemerscode: '+code+'\nBeheerdscode: '+(adminCode||'niet beschikbaar')+'\nDatum: '+new Date().toLocaleDateString('nl-NL')+'\n\nKantoren gebruiken de DEELNEMERSCODE.\nU gebruikt de BEHEERDSCODE om alles te zien.\n\nhttps://koersvoormorgen.nl';
     const blob=new Blob([inhoud],{type:'text/plain;charset=utf-8'});
     const url=URL.createObjectURL(blob);
     const a=document.createElement('a');a.href=url;a.download='kantoorinzicht-code-'+code+'.txt';

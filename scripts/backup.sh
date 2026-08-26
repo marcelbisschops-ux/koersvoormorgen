@@ -31,9 +31,9 @@ set -euo pipefail
 ICLOUD_BASE="$HOME/Library/Mobile Documents/com~apple~CloudDocs"
 if [ -z "${BACKUP_DIR:-}" ]; then
   if [ -d "$ICLOUD_BASE" ]; then
-    BACKUP_DIR="$ICLOUD_BASE/KantoorInzicht-Backups"
+    BACKUP_DIR="$ICLOUD_BASE/KoersVoorMorgen-Backups"
   else
-    BACKUP_DIR="$HOME/KantoorInzicht-Backups"
+    BACKUP_DIR="$HOME/KoersVoorMorgen-Backups"
   fi
 fi
 REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"

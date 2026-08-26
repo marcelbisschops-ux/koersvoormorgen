@@ -5,7 +5,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="color-scheme" content="light dark">
-<title>KantoorInzicht — Beheer</title>
+<title>Koers voor Morgen — Beheer</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -86,7 +86,7 @@ tr:hover td{background:rgba(26,122,94,.04)}
 <body>
 <div class="wrap">
   <div class="hdr">
-    <div class="brand"><div class="wdot"></div>KantoorInzicht <span style="color:var(--teal);margin-left:4px">Beheer</span></div>
+    <div class="brand"><div class="wdot"></div>Koers voor Morgen <span style="color:var(--teal);margin-left:4px">Beheer</span></div>
     <div id="hdr-actions" style="display:none;gap:10px;align-items:center">
       <button class="btn-ghost" style="font-size:12px" id="btn-refresh">&#8635; Verversen</button>
       <button class="btn-ghost" style="font-size:12px" id="btn-logout">Uitloggen</button>
@@ -105,7 +105,7 @@ const _WORKER_WHITELIST=['https://kantoorinzicht.marcel-bisschops.workers.dev','
 const _WORKER_PARAM=new URLSearchParams(location.search).get('worker')||'';
 const WORKER=_WORKER_WHITELIST.includes(_WORKER_PARAM)?_WORKER_PARAM:'https://kantoorinzicht.marcel-bisschops.workers.dev';
 // White-label basis — centrale merkconfig voor de beheerkant (zelfde patroon als de rest).
-const BRAND={platform:'KantoorInzicht',bedrijf:'Bisschops Financing B.V.',suffix:'Beheer',kort:'Bisschops Financing',adres:'Grotestraat 13, 5841AA Oploo'};
+const BRAND={platform:'Koers voor Morgen',bedrijf:'Bisschops Financing B.V.',suffix:'Beheer',kort:'Bisschops Financing',adres:'Grotestraat 13, 5841AA Oploo'};
 // Vaste taalregels voor elke AI-prompt in marilyn.html (5 aug 2026, zelfde tekst als index.html/mna.html).
 const TAAL_REGELS='Schrijf in natuurlijk, vloeiend Nederlands — geen letterlijke vertaling uit het Engels. Gebruik uitsluitend de formele aanspreekvorm "u/uw", nooit "je/jij/jouw", ook niet losse keren door elkaar. Gebruik "geen [zelfstandig naamwoord]" i.p.v. de onnatuurlijke constructie "niet een [zelfstandig naamwoord]". Vermijd andere letterlijke Engelse constructies en verzin geen niet-bestaande woorden.';
 document.title=BRAND.platform+' — '+BRAND.suffix;
@@ -2720,7 +2720,7 @@ function toonBegeleiderModal(trajectId, trajectNaam, tussenCode){
     var btn=this;btn.disabled=true;btn.textContent='Versturen...';
     try{
       var html='<div style="font-family:sans-serif;max-width:600px;margin:0 auto">'
-        +'<div style="background:#1a7a5e;color:#fff;padding:1.5rem;border-radius:8px 8px 0 0"><h2 style="margin:0;font-size:1.1rem">KantoorInzicht M&A — Uitnodiging begeleider</h2></div>'
+        +'<div style="background:#1a7a5e;color:#fff;padding:1.5rem;border-radius:8px 8px 0 0"><h2 style="margin:0;font-size:1.1rem">Koers voor Morgen M&A — Uitnodiging begeleider</h2></div>'
         +'<div style="background:#fff;border:1px solid #ddd;border-top:none;padding:1.5rem;border-radius:0 0 8px 8px">'
         +'<p style="font-size:14px;color:#2a2825">Beste '+(naam||'begeleider')+',</p>'
         +'<p style="font-size:13px;color:#5a5854;line-height:1.7">Je bent uitgenodigd als begeleider voor het M&A traject <strong>'+esc(trajectNaam)+'</strong>.</p>'
@@ -2993,7 +2993,7 @@ function toonNieuwModal(prefillLead){
 }
 
 function slaOp(t){
-  var regels=['KantoorInzicht - M&A Traject','','Kantoor: '+(t.kantoor_naam||'-'),'Type: '+(t.traject_type||'-'),'Status: '+(t.status||'actief'),'Aangemaakt: '+formatDate(t.created_at),'','CODES','Verkoperscode: '+t.id,'Koperscode: '+(t.koper_code||'-'),'Tussenpersoonscode: '+(t.tussen_code||'-'),'','Toegang via: https://koersvoormorgen.nl/mna.html'];
+  var regels=['Koers voor Morgen - M&A Traject','','Kantoor: '+(t.kantoor_naam||'-'),'Type: '+(t.traject_type||'-'),'Status: '+(t.status||'actief'),'Aangemaakt: '+formatDate(t.created_at),'','CODES','Verkoperscode: '+t.id,'Koperscode: '+(t.koper_code||'-'),'Tussenpersoonscode: '+(t.tussen_code||'-'),'','Toegang via: https://koersvoormorgen.nl/mna.html'];
   var inhoud=regels.join('\n');
   var blob=new Blob([inhoud],{type:'text/plain;charset=utf-8'});
   var url=URL.createObjectURL(blob);

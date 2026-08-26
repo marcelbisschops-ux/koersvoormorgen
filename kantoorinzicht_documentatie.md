@@ -1,4 +1,4 @@
-# KantoorInzicht — Technische Documentatie
+# Koers voor Morgen — Technische Documentatie
 *Gegenereerd: 20 mei 2026*
 
 ---
