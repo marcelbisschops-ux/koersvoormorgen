@@ -389,9 +389,10 @@ function renderAdvHandleiding(){
         stap(1,'Account activeren','U ontvangt een uitnodigingsmail met een activeringslink. Stel een wachtwoord in — u komt daarna in dit adviseursportaal.')
         + stap(2,'Een traject starten',`Klik op "+ Nieuw traject", vul de gegevens van de onderneming (en desgewenst de koper) in. Zijn e-mailadressen ingevuld, dan verstuurt het platform automatisch een uitnodigingsmail met code en instructies naar verkoper en/of koper — anders geeft u de codes zelf handmatig door. Bracht een bank, accountant of ander contact u bij deze opdracht? Vul dat in bij "Aangedragen door" (optioneel) — dit is uw eigen administratie voor de referral-afspraak met die aandrager, los van het platform.`)
         + stap(3,'Eigen huisstijl (optioneel)','Via "🎨 Huisstijl" stelt u een eigen platformnaam, accentkleur en logo in. Dit geldt voor alle trajecten die u vanaf dat moment aanmaakt. Kiest u een kleur die op een donkere achtergrond moeilijk leesbaar zou zijn, dan waarschuwt het scherm dit direct — en wordt de kleur voor uw cliënten automatisch iets aangepast voor leesbaarheid.')
-        + stap(4,'Modules en limieten','Uw account heeft een trajectlimiet en een set modules (Contracten, AI-analyse, Q&amp;A, Meekijkers, Marketing), zichtbaar als chips boven uw trajectenlijst. Een module met een slotje is niet actief — neem contact op met uw platformbeheerder. Via de knop "€ Kosten" bovenaan ziet u op elk moment uw eigen platformkosten (trajectfees, module-fees, matching-fees) — zo weet u vooraf wat bijvoorbeeld een matching-tarief kost vóórdat u de module gebruikt.')
+        + stap(4,'Modules en limieten','Uw account heeft een trajectlimiet en een set modules (Contracten, AI-analyse, Q&amp;A, Meekijkers, Marketing, Export &amp; rapportage), zichtbaar als chips boven uw trajectenlijst. Een module met een slotje is niet actief — neem contact op met uw platformbeheerder. Via de knop "€ Kosten" bovenaan ziet u op elk moment uw eigen platformkosten (trajectfees, module-fees, matching-fees) — zo weet u vooraf wat bijvoorbeeld een matching-tarief kost vóórdat u de module gebruikt.')
         + stap(5,'Voorwaarden','Bij eerste gebruik accepteert u de <a href="platformvoorwaarden.html">Gebruiksvoorwaarden</a>. Zie ook de <a href="privacy.html">Privacyverklaring</a>.')
         + stap(6,'Meekijkers','Bij elk traject kunt u onder "Meekijkers" een bank, accountant of andere aandrager beperkte, alleen-lezen inzage geven in (een deel van) dat traject. U bevestigt daarbij expliciet dat u toestemming heeft van uw opdrachtgever — zonder die bevestiging kan er geen toegangscode ontstaan. De meekijker moet zelf eerst een vertrouwelijkheidsverklaring accepteren voordat hij iets te zien krijgt, en verkoper/koper zien in hun eigen dashboard altijd wie er meekijkt. Toegang is altijd alleen-lezen en door u op elk moment intrekbaar.')
+        + stap(7,'Dossier exporteren','Is de module "Export &amp; rapportage" actief, dan staat bij elk van uw trajecten een kaart "Export" met de knop "Dossier downloaden" — een compleet tekstbestand met de due-diligence-gegevens, Q&amp;A, gespreksverslagen, documentenlijst en toegangslog van dat traject. Uitsluitend voor uw eigen trajecten.')
       )}
 
       ${sectie('🧭 Begeleider (binnen een traject, op mna.html)',
@@ -934,6 +935,18 @@ function renderDetail(t){
       </div>
 
       <div class="card">
+        <div class="card-hdr"><div class="card-title">&#128230; Export</div></div>
+        <div class="card-body">
+          ${(G.modules && G.modules.export) ? `
+          <div style="font-size:12px;color:var(--muted);margin-bottom:.75rem;line-height:1.6">Download het volledige dossier van dit traject als tekstbestand: due-diligence-gegevens, Q&amp;A, gespreksverslagen, documentenlijst en toegangslog.</div>
+          <button class="btn btn-sm" id="btn-adv-export">&#8681; Dossier downloaden</button>
+          <div id="adv-export-err" class="err-msg"></div>
+          ` : `
+          <div style="font-size:12px;color:var(--muted);line-height:1.6">&#128274; Deze module is niet actief op uw account — neem contact op met ${esc(BRAND.kort)} om deze module te activeren.</div>`}
+        </div>
+      </div>
+
+      <div class="card">
         <div class="card-hdr"><div class="card-title">📋 Documentdekking</div></div>
         <div id="dekking-body" class="card-body"><div style="color:var(--muted);font-size:13px">Laden...</div></div>
       </div>
@@ -965,6 +978,8 @@ function renderDetail(t){
   `);
 
   ge('btn-upload').onclick=function(){uploadDocument(id, t.tussen_code||'');};
+  var advExportBtn=ge('btn-adv-export');
+  if(advExportBtn)advExportBtn.onclick=function(){exportDossierAdv(id, advExportBtn);};
   if(t.tussen_code){
     laadDocumenten(id, t.tussen_code);
     laadGesprekken(id, t.tussen_code);
@@ -1001,6 +1016,31 @@ async function laadDocumentdekking(id, tussenCode){
 
 // ===== MATCHING-PLATFORM (24 aug 2026, Marcel: "hij moet dit kunnen" — adviseur beheert nu zelf,
 // via eigen tussenpersoonscode, i.p.v. alleen via marilyn) =====
+async function exportDossierAdv(id, btn){
+  var errEl=ge('adv-export-err');
+  if(errEl)errEl.textContent='';
+  var origTekst=btn.textContent;
+  btn.disabled=true;btn.textContent='Bezig...';
+  try{
+    var r=await fetch(WORKER+'/adviseur/export/'+encodeURIComponent(id),{headers:{'x-gebruiker-token':G.token}});
+    if(!r.ok){
+      var d=await r.json().catch(function(){return{};});
+      throw new Error(d.error||'Download mislukt.');
+    }
+    var cd=r.headers.get('Content-Disposition')||'';
+    var naamMatch=cd.match(/filename="([^"]+)"/);
+    var blob=await r.blob();
+    var a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download=naamMatch?naamMatch[1]:('dossier-'+id+'.txt');
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+    setTimeout(function(){URL.revokeObjectURL(a.href);},1000);
+  }catch(e){
+    if(errEl)errEl.textContent=e.message||'Download mislukt.';
+  }
+  btn.disabled=false;btn.textContent=origTekst;
+}
+
 function initMatchingAdv(id, tussenCode, t){
   var el=ge('matching-adv-body');
   if(!el)return; // module niet actief — kaart toont dan alleen de vergrendel-tekst
