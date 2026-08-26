@@ -47,8 +47,9 @@ ADMIN_KEY=JOUW_ADMIN_KEY npx playwright test  # inclusief module-gating-test
 
 Wat wordt gecheckt:
 - **Rekenkern** — de dealvoorstel-berekeningen (closing/earn-up, prijsmechanisme
-  met cliff + interpolatie, buy-and-build met instelbare aannames) met exacte
-  bedragen. Dit beschermt de commerciële kern tegen sluipende rekenfouten.
+  met cliff + interpolatie, buy-and-build met instelbare aannames, ruilverhouding
+  bij een aandelenruil) met exacte bedragen. Dit beschermt de commerciële kern
+  tegen sluipende rekenfouten.
 - **Login & rollen** — foutmelding bij ongeldige code; verkoper- en
   begeleider-weergave van het De Vries-dossier.
 - **Module-gating** — met module "contracten" uit zijn de zes documentknoppen
