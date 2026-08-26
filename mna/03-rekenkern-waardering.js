@@ -94,6 +94,10 @@ function dvGetDefaults(){
     vendorLoanRentePct:6,
     vendorLoanJaren:5,
     vendorLoanAflossingsvrij:false,
+    aandelenruilAan:false,
+    koperswaardeExtern:0,
+    aandelenKoperAantal:0,
+    aandelenVerkoperAantal:0,
     altWaarderingAan:false,
     liqDebiteurenPct:80,
     liqWipPct:50,
@@ -262,6 +266,41 @@ function dvBerekenVendorLoan(p){
   return rows;
 }
 
+// Aandelenruil / ruilverhouding (27 augustus 2026, backlog "De M van M&A" punt 4 — bewust de kleine
+// variant: aandelen-voor-aandelen als dealstructuur BINNEN het bestaande koper/verkoper-model, niet
+// de volledige juridische fusie met een symmetrisch tweepartijen-rolmodel. Dat laatste zou het
+// begeleiderAuth/rolVanCode-fundament raken — expliciet niet gebouwd, zie backlog).
+// GOUDEN STANDAARD (nooit gokken): de koper doorloopt op dit platform geen DD, dus er is geen
+// betrouwbaar berekende koperswaarde beschikbaar. koperswaardeExtern is daarom altijd een expliciet
+// door de begeleider ingevoerd, apart gelabeld extern bedrag — nooit een schatting of afgeleide
+// waarde. Zonder dat bedrag levert deze functie null (geen deels-ingevulde/misleidende tabel).
+// De waarde die namens de verkopende aandeelhouders wordt ingebracht is dezelfde closing.deelKoperBasis
+// die bij een gewone (contante) transactie door de koper zou zijn betaald — bij een aandelenruil wordt
+// dat bedrag in nieuw uit te geven aandelen uitgekeerd i.p.v. in geld. De ruilverhouding zelf is de
+// standaard waarde-evenredige verdeling (geen controlepremie/korting verwerkt — dat is onderhandeling,
+// geen berekening).
+function dvBerekenRuilverhouding(p,closing){
+  if(!p.aandelenruilAan||!p.koperswaardeExtern)return null;
+  var waardeVerkoperDeel=closing.deelKoperBasis;
+  var totaalNaUitgifte=p.koperswaardeExtern+waardeVerkoperDeel;
+  var pctVerkoper=totaalNaUitgifte?(waardeVerkoperDeel/totaalNaUitgifte*100):0;
+  var pctKoper=100-pctVerkoper;
+  var nieuweAandelen=null;
+  if(p.aandelenKoperAantal){
+    nieuweAandelen=Math.round(p.aandelenKoperAantal*(waardeVerkoperDeel/p.koperswaardeExtern));
+  }
+  return {
+    waardeVerkoperDeel:waardeVerkoperDeel,
+    koperswaardeExtern:p.koperswaardeExtern,
+    totaalNaUitgifte:totaalNaUitgifte,
+    pctVerkoper:pctVerkoper,
+    pctKoper:pctKoper,
+    nieuweAandelen:nieuweAandelen,
+    aandelenKoperAantal:p.aandelenKoperAantal||null,
+    aandelenVerkoperAantal:p.aandelenVerkoperAantal||null
+  };
+}
+
 // Asset-based / liquidatiewaarde / goodwill (25 juli 2026) — alternatieve waarderingsmethodes naast
 // de EBITDA-multiple hierboven. GOUDEN STANDAARD: de liquidatie-percentages en het goodwill-
 // percentage zijn AANNAMES die de gebruiker zelf instelt in het dealvoorstel-formulier — dit zijn
@@ -423,6 +462,22 @@ function dvTabelVendorLoan(rows){
   if(!rows)return '';
   return dvRenderTabelHtml(['Jaar','Rente','Aflossing','Totale betaling','Restschuld'],
     rows.map(function(r){return [r.jaar,dvMln(r.rente),dvMln(r.aflossing),dvMln(r.totaal),dvMln(r.restschuld)];}));
+}
+
+function dvTabelRuilverhouding(rv){
+  if(!rv)return '';
+  var html=dvRenderTabelHtml(['Partij','Ingebrachte waarde (€ mln)','Aandeel in de gecombineerde onderneming'],[
+    ['Verkoper-aandeelhouders (aandelenpakket i.p.v. koopsom)',dvMln(rv.waardeVerkoperDeel),dvPct(rv.pctVerkoper)],
+    ['Koper — bestaande aandeelhouders',dvMln(rv.koperswaardeExtern),dvPct(rv.pctKoper)]
+  ]);
+  if(rv.nieuweAandelen!==null){
+    html+='<p style="font-size:10pt;color:#5a5854;margin:-.75rem 0 1rem">Indicatief uit te geven nieuwe aandelen aan verkoper-aandeelhouders: circa '+rv.nieuweAandelen.toLocaleString('nl-NL')+' (op basis van '+rv.aandelenKoperAantal.toLocaleString('nl-NL')+' bestaande aandelen koper).</p>';
+  }
+  if(rv.aandelenVerkoperAantal){
+    html+='<p style="font-size:10pt;color:#5a5854;margin:-.75rem 0 1rem">Ter referentie — huidig aantal aandelen verkopende vennootschap: '+rv.aandelenVerkoperAantal.toLocaleString('nl-NL')+'.</p>';
+  }
+  html+='<p style="font-size:9pt;color:#8a8880;font-style:italic;margin:-.5rem 0 1rem">Koperswaarde is een door de begeleider extern aangeleverd bedrag — niet via due diligence op dit platform geverifieerd of berekend.</p>';
+  return html;
 }
 
 function dvTabelAlternatieveWaarderingen(alt,p){

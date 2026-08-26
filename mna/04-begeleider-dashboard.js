@@ -1363,6 +1363,12 @@ function renderBegeleiderDashboard(app){
       +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('dv-vl-jaren','Looptijd (jaren)',d.vendorLoanJaren)+'<div style="flex:1"></div></div>'
       +'<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--sub);margin-bottom:1rem;cursor:pointer"><input type="checkbox" id="dv-vl-aflvrij" style="width:15px;height:15px;accent-color:var(--gold-dark)"> Aflossingsvrij (bullet-aflossing hoofdsom in laatste jaar) — anders lineaire aflossing</label>'
       +'</div>'
+      +'<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--sub);margin-bottom:1rem;cursor:pointer"><input type="checkbox" id="dv-ar-aan" style="width:15px;height:15px;accent-color:var(--gold-dark)"> Aandelenruil (deal geheel/gedeeltelijk in aandelen i.p.v. contant) meenemen</label>'
+      +'<div id="dv-ar-velden" style="display:none">'
+      +'<div style="font-size:11px;color:#8a8880;margin-bottom:.75rem">Het platform berekent hier alleen de <em>ruilverhouding</em> als dealstructuur binnen het bestaande koper/verkoper-model — geen volledige juridische fusie (Boek 2 BW) met gelijkwaardige DD over en weer. De koper doorloopt op dit platform geen due diligence, dus de koperswaarde hieronder komt niet uit dit systeem — vul een extern aangeleverd, zelf geverifieerd bedrag in.</div>'
+      +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('dv-ar-koperswaarde','Waarde onderneming koper (€) — extern aangeleverd, verplicht',0)+'<div style="flex:1"></div></div>'
+      +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('dv-ar-aandelen-koper','Aantal bestaande aandelen koper (optioneel, voor aandelenberekening)',0)+veld('dv-ar-aandelen-verkoper','Aantal aandelen verkopende vennootschap (optioneel, ter referentie)',0)+'</div>'
+      +'</div>'
       +'<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--sub);margin-bottom:1rem;cursor:pointer"><input type="checkbox" id="dv-alt-aan" style="width:15px;height:15px;accent-color:var(--gold-dark)"> Alternatieve waarderingsmethodes tonen (asset-based / liquidatiewaarde / goodwill)</label>'
       +'<div id="dv-alt-velden" style="display:none">'
       +'<div style="font-size:11px;color:#8a8880;margin-bottom:.75rem">Intrinsieke waarde komt automatisch uit het ingevulde eigen vermogen (DD-fase Financieel). De percentages hieronder zijn geen vastgestelde branchenorm — vul ze zelf in op basis van uw eigen inschatting.</div>'
@@ -1398,6 +1404,7 @@ function renderBegeleiderDashboard(app){
     document.getElementById('dv-eo-aan').onchange=function(){document.getElementById('dv-eo-velden').style.display=this.checked?'block':'none';};
     document.getElementById('dv-bab-aan').onchange=function(){document.getElementById('dv-bab-velden').style.display=this.checked?'block':'none';};
     document.getElementById('dv-vl-aan').onchange=function(){document.getElementById('dv-vl-velden').style.display=this.checked?'block':'none';};
+    document.getElementById('dv-ar-aan').onchange=function(){document.getElementById('dv-ar-velden').style.display=this.checked?'block':'none';};
     document.getElementById('dv-alt-aan').onchange=function(){document.getElementById('dv-alt-velden').style.display=this.checked?'block':'none';};
     document.getElementById('dv-syn-aan').onchange=function(){document.getElementById('dv-syn-velden').style.display=this.checked?'block':'none';};
     document.getElementById('dv-scen-aan').onchange=function(){document.getElementById('dv-scen-velden').style.display=this.checked?'block':'none';};
@@ -1440,6 +1447,10 @@ function renderBegeleiderDashboard(app){
         vendorLoanRentePct:parseFloat(document.getElementById('dv-vl-rente').value)||6,
         vendorLoanJaren:parseInt(document.getElementById('dv-vl-jaren').value)||5,
         vendorLoanAflossingsvrij:document.getElementById('dv-vl-aflvrij').checked,
+        aandelenruilAan:document.getElementById('dv-ar-aan').checked,
+        koperswaardeExtern:parseFloat(document.getElementById('dv-ar-koperswaarde').value)||0,
+        aandelenKoperAantal:parseInt(document.getElementById('dv-ar-aandelen-koper').value)||0,
+        aandelenVerkoperAantal:parseInt(document.getElementById('dv-ar-aandelen-verkoper').value)||0,
         altWaarderingAan:document.getElementById('dv-alt-aan').checked,
         liqDebiteurenPct:parseFloat(document.getElementById('dv-liq-deb').value)||0,
         liqWipPct:parseFloat(document.getElementById('dv-liq-wip').value)||0,
@@ -1465,6 +1476,10 @@ function renderBegeleiderDashboard(app){
         errEl.textContent='Vendor loan staat aan, maar er is geen bedrag ingevuld.';errEl.style.display='block';
         btn.disabled=false;btn.textContent='📊 Genereren';return;
       }
+      if(p.aandelenruilAan&&!p.koperswaardeExtern){
+        errEl.textContent='Aandelenruil staat aan, maar er is geen externe koperswaarde ingevuld.';errEl.style.display='block';
+        btn.disabled=false;btn.textContent='📊 Genereren';return;
+      }
       if(p.earnOutAan&&(!p.earnOutJaren||p.earnOutPct<=0)){
         errEl.textContent='Earn-out staat aan, maar het percentage of de looptijd is niet correct ingevuld.';errEl.style.display='block';
         btn.disabled=false;btn.textContent='📊 Genereren';return;
@@ -1481,6 +1496,7 @@ function renderBegeleiderDashboard(app){
         var schuldafbouw=dvBerekenSchuldafbouw(p,closing);
         var buyAndBuildRows=p.buyAndBuild?dvBerekenBuyAndBuild(p,schuldafbouw[schuldafbouw.length-1],closing.deelKoperBasis):null;
         var vendorLoanRows=dvBerekenVendorLoan(p);
+        var ruilverhouding=dvBerekenRuilverhouding(p,closing);
         var earnOut=p.earnOutAan?dvBerekenEarnOut(p,closing):null;
         var altWaardering=p.altWaarderingAan?dvBerekenAlternatieveWaarderingen(p):null;
         var synergie=dvBerekenSynergie(p);
@@ -1501,6 +1517,7 @@ function renderBegeleiderDashboard(app){
           SCHULDAFBOUW:dvTabelSchuldafbouw(schuldafbouw),
           BUYANDBUILD:buyAndBuildRows?dvTabelBuyAndBuild(buyAndBuildRows):'',
           VENDORLOAN:vendorLoanRows?dvTabelVendorLoan(vendorLoanRows):'',
+          RUILVERHOUDING:ruilverhouding?dvTabelRuilverhouding(ruilverhouding):'',
           ALTWAARDERING:altWaardering?dvTabelAlternatieveWaarderingen(altWaardering,p):'',
           SYNERGIE:synergie?dvTabelSynergie(synergie):'',
           SCENARIOS:scenarios?dvTabelScenarios(scenarios,p):'',
@@ -1517,6 +1534,7 @@ function renderBegeleiderDashboard(app){
           +'Transactiestructuur: koper verwerft '+p.belangPct+'% bij closing; de verkopende partij behoudt '+(100-p.belangPct)+'%.'
           +(earnOut?('\nEarn-out (prestatieafhankelijke naverrekening, los van de earn-up hierboven): van de koopsom bij closing op bewezen basis (€'+Math.round(earnOut.earnBase)+') wordt €'+Math.round(earnOut.vastBedrag)+' direct uitgekeerd en €'+Math.round(earnOut.earnOutTotaal)+' ('+p.earnOutPct+'%) aangehouden en uitgekeerd in '+p.earnOutJaren+' jaarlijkse tranches van €'+Math.round(earnOut.jaarlijks)+', gekoppeld aan een doelomzetgroei van '+p.earnOutTargetPct+'% per jaar (zelf gekozen aanname, geen vastgestelde norm).'):'')
           +(vendorLoanRows?('\nVendor loan (verkoperslening): €'+Math.round(p.vendorLoanBedrag)+' tegen '+p.vendorLoanRentePct+'% rente, looptijd '+p.vendorLoanJaren+' jaar, '+(p.vendorLoanAflossingsvrij?'aflossingsvrij met bullet-aflossing van de hoofdsom in het laatste jaar':'lineaire jaarlijkse aflossing')+'. Dit is een door de verkopende partij aan de koper verstrekte, achtergestelde lening — een aparte verplichting naast de bankfinanciering.'):'')
+          +(ruilverhouding?('\nAandelenruil (dealstructuur, geen juridische fusie): de koper betaalt het deel bij closing (€'+Math.round(ruilverhouding.waardeVerkoperDeel)+') niet contant maar in nieuw uit te geven aandelen. Waarde onderneming koper (extern aangeleverd, niet door dit platform via due diligence geverifieerd): €'+Math.round(ruilverhouding.koperswaardeExtern)+'. Ruilverhouding, waarde-evenredig berekend (geen premie/korting verwerkt): verkoper-aandeelhouders krijgen '+ruilverhouding.pctVerkoper.toFixed(1)+'% van de gecombineerde onderneming, bestaande aandeelhouders koper behouden '+ruilverhouding.pctKoper.toFixed(1)+'%.'+(ruilverhouding.nieuweAandelen!==null?(' Indicatief uit te geven nieuwe aandelen: circa '+ruilverhouding.nieuweAandelen+' (op basis van '+ruilverhouding.aandelenKoperAantal+' bestaande aandelen koper).'):'')):'')
           +(altWaardering?('\nAlternatieve waarderingsmethodes (ter controle naast de EBITDA-multiple hierboven): intrinsieke waarde (netto vermogenswaarde) '+(altWaardering.intrinsiek!==null?'€'+Math.round(altWaardering.intrinsiek):'onbekend, eigen vermogen niet ingevuld')+'; liquidatiewaarde '+(altWaardering.liquidatiewaarde!==null?'€'+Math.round(altWaardering.liquidatiewaarde)+' (op basis van zelf ingevoerde aannames: '+p.liqDebiteurenPct+'% debiteuren inbaar, '+p.liqWipPct+'% OHW inbaar, '+p.liqKostenPct+'% liquidatiekosten — geen vastgestelde branchenorm)':'onbekend, balansvelden niet volledig ingevuld')+'; goodwill via de overwinstmethode '+(altWaardering.goodwill!==null?'€'+Math.round(altWaardering.goodwill)+' (genormaliseerde nettowinst €'+Math.round(altWaardering.nettowinstNorm)+' minus normale winst €'+Math.round(altWaardering.normaleWinst)+' bij '+p.goodwillNormrendementPct+'% normrendement = overwinst €'+Math.round(altWaardering.overwinst)+', gekapitaliseerd tegen '+p.goodwillKapitalisatievoetPct+'% — beide percentages zelf gekozen aannames, geen branchenorm)':'niet berekend, nettoresultaat/eigen vermogen/percentages niet volledig ingevoerd')+'.'):'')
           +(synergie?('\nSynergie-analyse: kostensynergie €'+Math.round(p.synergieKostenJaarlijks)+'/jaar en omzetsynergie €'+Math.round(p.synergieOmzetJaarlijks)+'/jaar op volle kracht (vóór belasting), opgebouwd over '+p.synergieRealisatieJaren+' jaar, eenmalige implementatiekosten €'+Math.round(p.synergieImplementatiekosten)+'. NPV van de synergieën over de horizon van '+p.horizonJaren+' jaar (na '+p.vpbPct+'% belasting, tegen dezelfde discontovoet als de DCF): €'+Math.round(synergie.npv)+'. Deze bedragen zijn eigen inschattingen van de begeleider, geen automatische berekening uit de DD-data.'):'')
           +(scenarios?('\nScenarioanalyse (downside/base/upside, '+p.scenarioGroeiDeltaPct+' procentpunt afwijking op de groeivoet, zelf ingestelde bandbreedte): '+scenarios.map(function(s){return s.label+' — groeivoet '+s.groeiPct.toFixed(1)+'%/jaar, EBITDA na '+p.horizonJaren+' jaar €'+Math.round(s.ebitdaEind)+', ondernemingswaarde €'+Math.round(s.waardeLaag)+'–€'+Math.round(s.waardeHoog);}).join('; ')+'.'):'')
@@ -1540,6 +1558,8 @@ function renderBegeleiderDashboard(app){
           +'## Financiering en kasstroom\n(toelichting op het schuldafbouwmodel)\n[TABEL:SCHULDAFBOUW]\n\n'
           +(p.buyAndBuild?'## Buy-and-build: platformscenario\n(korte toelichting op het groeiscenario via overnames)\n[TABEL:BUYANDBUILD]\n\n':'')
           +(vendorLoanRows?'## Vendor loan: aflossingsschema\n(leg uit dat dit een door de verkopende partij verstrekte, achtergestelde lening aan de koper is — los van de bankfinanciering — en toon het jaarlijkse rente-/aflossingsverloop uit de tabel)\n[TABEL:VENDORLOAN]\n\n':'')
+          +(ruilverhouding?'## Aandelenruil: ruilverhouding\n(leg uit dat de koper het deel bij closing niet contant maar in nieuw uit te geven aandelen betaalt, en interpreteer de ruilverhouding uit de tabel — benoem expliciet dat de koperswaarde een extern aangeleverd bedrag is, niet door dit platform via due diligence geverifieerd, en dat de ruilverhouding waarde-evenredig is berekend zonder controlepremie of -korting; dat laatste is onderhandeling, geen berekening)\n[TABEL:RUILVERHOUDING]\n\n'
+            +'## Aandelenruil: juridisch vervolgtraject\n(generieke, korte toelichting — geen eigen cijfers of aannames: een aandelenruil als dealstructuur is een aandelentransactie (SPA-achtig, geen wettelijke fusieprocedure); wijst de partijen erop dat een échte juridische fusie via Boek 2 BW een fundamenteel andere, aparte procedure is — fusievoorstel, deponering bij de KvK, wettelijke verzetstermijn voor crediteuren van één maand, en pas daarna een notariële fusieakte — en dat dit traject die procedure niet doorloopt of vervangt; raad aan hiervoor tijdig een notaris te betrekken als partijen alsnog voor een juridische fusie kiezen)\n\n':'')
           +'## Transactiestructuur\n(beschrijf beknopt de aandelenverhouding bij closing op basis van het belang-percentage in de context, en het gangbare gebruik van een acquisitievehikel/holding zodat de overnamefinanciering niet drukt op het belang van de achterblijvende verkoper; geen eigen bedragen verzinnen buiten de context)\n\n'
           +'## Retentie & alignment van de verkopende partij\n(leg uit — in algemene, standaard M&A-termen — waarom het gefaseerd uitkeren van de earn-up, een lock-up op het achtergebleven belang, en het koppelen van de einduitkering aan aanblijven/integratie de continuïteit van de onderneming beschermt; generiek, geen nieuwe cijfers)\n\n'
           +'## Governance & exit\n(kort: reguliere meerderheid voor de dagelijkse gang van zaken bij de koper, een versterkte meerderheid voor de verkopende partij op kernbesluiten, en een geordend exit-pad na een aantal jaren via vooraf afgesproken voorwaarden; generiek, geen nieuwe cijfers)\n\n'
