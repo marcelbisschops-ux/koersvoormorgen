@@ -1,5 +1,5 @@
 // ══════════════════════════════════════════════════════════════════
-// KantoorInzicht — End-to-end UI-tests (Deel B, Playwright)
+// Koers voor Morgen — End-to-end UI-tests (Deel B, Playwright)
 //
 // Draait tegen lokale mna.html (static-server op :8799) + de LIVE worker.
 // Drie groepen:

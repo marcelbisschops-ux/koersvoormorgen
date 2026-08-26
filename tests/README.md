@@ -1,4 +1,4 @@
-# KantoorInzicht — end-to-end testsuite
+# Koers voor Morgen — end-to-end testsuite
 
 Eén commando dat vóór elke deploy bevestigt dat het hele systeem werkt. Vangnet
 voor grotere wijzigingen (o.a. de geplande `mna.html`-refactor).

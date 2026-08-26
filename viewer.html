@@ -5,7 +5,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="color-scheme" content="light dark">
-<title>KantoorInzicht — Meekijker</title>
+<title>Koers voor Morgen — Meekijker</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -103,7 +103,7 @@ function formatDate(ts){if(!ts)return'—';var d=new Date(ts);return d.toLocaleD
 function renderLogin(foutmelding){
   document.getElementById('app').innerHTML=''
     +'<div class="login-outer"><div class="login-card">'
-    +'<div class="login-brand"><span class="login-dot"></span><span class="login-brand-name">KantoorInzicht</span></div>'
+    +'<div class="login-brand"><span class="login-dot"></span><span class="login-brand-name">Koers voor Morgen</span></div>'
     +'<div class="login-title">Meekijker-toegang</div>'
     +'<div class="login-sub">Alleen-lezen inzicht in een M&amp;A-traject. Voer de toegangscode in die u van uw contactpersoon heeft ontvangen.</div>'
     +'<div class="field"><label>Toegangscode</label><input type="text" id="vc-input" autocomplete="off" autocapitalize="characters"></div>'
@@ -139,7 +139,7 @@ async function naarDashboard(){
 function renderVoorwaarden(){
   document.getElementById('app').innerHTML=''
     +'<div class="login-outer"><div class="login-card" style="max-width:480px">'
-    +'<div class="login-brand"><span class="login-dot"></span><span class="login-brand-name">KantoorInzicht</span></div>'
+    +'<div class="login-brand"><span class="login-dot"></span><span class="login-brand-name">Koers voor Morgen</span></div>'
     +'<div class="login-title">Vertrouwelijkheidsverklaring</div>'
     +'<div class="login-sub">U krijgt zo meteen alleen-lezen inzage in vertrouwelijke bedrijfsgegevens van <strong style="color:var(--head)">'+esc(info.kantoor_naam)+'</strong>, in het kader van een lopend overnametraject. Voordat u verdergaat:</div>'
     +'<ul style="font-size:12.5px;color:var(--mid);line-height:1.7;margin:0 0 1.25rem 1.1rem;padding:0">'
@@ -199,7 +199,7 @@ function veldLabel(faseId,veldId){var fl=window._viewerFieldLabels||{};return fl
 function renderDashboard(){
   var scopeTekst=info.scope_fase&&info.scope_fase!=='alle'?('Alleen fase: '+esc(faseLabel(info.scope_fase))):'Alle fases';
   var html='<div class="hdr">'
-    +'<div class="hdr-brand"><span class="hdr-dot"></span>KantoorInzicht</div>'
+    +'<div class="hdr-brand"><span class="hdr-dot"></span>Koers voor Morgen</div>'
     +'<div class="hdr-mid">Meekijker bij <strong>'+esc(info.kantoor_naam)+'</strong></div>'
     +'<div class="hdr-right"><span class="badge">'+esc(info.viewer_naam)+'</span><span class="badge badge-gold">'+esc(info.viewer_type||'—')+'</span></div>'
     +'</div>'

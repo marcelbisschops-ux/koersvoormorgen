@@ -1,4 +1,4 @@
-# Audit-log — wekelijkse controle KantoorInzicht
+# Audit-log — wekelijkse controle Koers voor Morgen
 
 ## 2026-08-24
 
