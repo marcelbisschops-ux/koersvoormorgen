@@ -73,6 +73,31 @@ test.describe('Rekenkern dealvoorstel', () => {
     expect(standaard.nettoSchuld).toBe(8980000);     // 55%-schuld, 15%-aflossing
     expect(aangepast.nettoSchuld).toBe(11350000);    // 70%-schuld, 5%-aflossing → hoger
   });
+
+  // Aandelenruil (27 augustus 2026, backlog "De M van M&A" punt 4) — GOUDEN STANDAARD: de
+  // koperswaarde komt nooit uit dit platform (koper doorloopt geen DD), dus dit beschermt vooral
+  // dat (a) zonder koperswaarde het resultaat null blijft (nooit een misleidende tabel) en (b) het
+  // percentage en het afgeleide aantal nieuwe aandelen onderling consistent blijven.
+  test('ruilverhouding: waarde-evenredig en consistent met aandelenaantal', async ({ page }) => {
+    const r = await page.evaluate(() => dvBerekenRuilverhouding(
+      { aandelenruilAan: true, koperswaardeExtern: 8000000, aandelenKoperAantal: 1000000 },
+      { deelKoperBasis: 2000000 }
+    ));
+    expect(r.pctVerkoper).toBe(20);                  // 2M / (2M+8M)
+    expect(r.pctKoper).toBe(80);
+    expect(r.nieuweAandelen).toBe(250000);           // 1M × (2M/8M)
+    // Cross-check: het percentage afgeleid uit het aandelenaantal moet exact overeenkomen met pctVerkoper
+    const pctViaAandelen = r.nieuweAandelen / (1000000 + r.nieuweAandelen) * 100;
+    expect(pctViaAandelen).toBeCloseTo(r.pctVerkoper, 6);
+  });
+
+  test('ruilverhouding: zonder koperswaarde nooit een gegokt resultaat', async ({ page }) => {
+    const r = await page.evaluate(() => dvBerekenRuilverhouding(
+      { aandelenruilAan: true, koperswaardeExtern: 0 },
+      { deelKoperBasis: 2000000 }
+    ));
+    expect(r).toBeNull();
+  });
 });
 
 // ───────────────────── 2. LOGIN & ROLLEN ─────────────────────
