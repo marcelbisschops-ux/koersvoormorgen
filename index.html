@@ -111,16 +111,16 @@ section{padding:3.5rem 0}
 /* Adviseurs */
 .pill-row{display:flex;gap:.6rem;flex-wrap:wrap;margin:1rem 0 1.75rem}
 .pill{font-size:12.5px;font-weight:600;color:var(--sub);background:var(--panel);border:1px solid var(--border2);border-radius:99px;padding:5px 14px}
-.scan-divider{display:flex;align-items:center;gap:12px;color:var(--muted);font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;margin:3rem 0 1.75rem}
-.scan-divider::before,.scan-divider::after{content:'';flex:1;height:1px;background:var(--border2)}
-.scan-card{background:var(--teal-bg);border:1.5px solid var(--teal);border-radius:var(--r4);padding:2rem 2.25rem;max-width:520px;box-shadow:0 8px 28px rgba(0,0,0,.08)}
-.scan-tag{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--gold);margin-bottom:.6rem}
-.scan-card h3{font-size:1.25rem;font-weight:600;margin-bottom:.35rem}
-.scan-sub{font-size:13px;font-weight:600;color:var(--teal);margin-bottom:.9rem}
-.scan-card p{font-size:13.5px;color:var(--mid);margin-bottom:.4rem}
-.scan-note{font-size:12.5px;color:var(--muted);margin-bottom:1.1rem}
-.scan-link{font-size:13.5px;font-weight:600;color:var(--teal);text-decoration:none}
-.scan-link:hover{color:var(--teal-dim)}
+
+/* Secondaire aanbiedingen: bewust lichter dan het hoofdproduct, geen concurrerende CTA's */
+.offers-tag{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);text-align:center;margin-bottom:1.75rem}
+.offer-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem}
+.offer-card{border:1px solid var(--border);border-radius:var(--r2);padding:1.6rem 1.85rem;background:var(--panel)}
+.offer-card-tag{font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--gold);margin-bottom:.6rem}
+.offer-card h4{font-family:'Playfair Display',serif;font-size:1.15rem;font-weight:600;color:var(--head);margin-bottom:.5rem}
+.offer-card p{font-size:13px;color:var(--mid);margin-bottom:.9rem;line-height:1.6}
+.offer-link{font-size:13px;font-weight:600;color:var(--teal);text-decoration:none}
+.offer-link:hover{color:var(--teal-dim)}
 
 /* Final CTA */
 .cta-band{background:var(--panel2);border:1px solid var(--border);border-radius:var(--r4);padding:3rem 2.5rem;text-align:center;margin:3.5rem 0}
@@ -150,6 +150,7 @@ section{padding:3.5rem 0}
   .foot-links{align-items:flex-start}
   .proof-band{grid-template-columns:1fr}
   .ai-grid{grid-template-columns:1fr}
+  .offer-grid{grid-template-columns:1fr}
 }
 @media(max-width:480px){
   .feature-grid{grid-template-columns:1fr}
@@ -338,24 +339,25 @@ section{padding:3.5rem 0}
       <span class="pill">MKB</span><span class="pill">Accountancy</span><span class="pill">Zorg</span><span class="pill">IT</span>
     </div>
     <p style="font-size:14.5px;color:var(--sub);font-weight:500">Van eerste voorbereiding tot closing: de adviseur houdt de regie.</p>
+  </div>
+</section>
 
-    <div class="scan-divider">Los aanbod voor accountantskantoren</div>
-    <div class="scan-card">
-      <div class="scan-tag">Alleen voor accountantskantoren</div>
-      <h3>Hoe overnameklaar is jouw kantoor?</h3>
-      <div class="scan-sub">Gratis strategische kantoorscan</div>
-      <p>Ontdek in één scan waar jouw kantoor staat, met inzicht in opvolging, waardering, organisatie en processen, en overnamegereedheid.</p>
-      <div class="scan-note">Gratis. Onafhankelijk. Zonder verplichtingen.</div>
-      <a href="kantoorscan.html" class="scan-link">Start de gratis kantoorscan &rarr;</a>
-    </div>
-
-    <div class="scan-divider">Van teaser tot koper</div>
-    <div class="scan-card">
-      <div class="scan-tag">Matching-platform</div>
-      <h3>Zo vinden kopers en verkopers elkaar</h3>
-      <div class="scan-sub">Kopers en verkopers samengebracht</div>
-      <p>Zodra een verkopend kantoor of onderneming een anonieme teaser heeft klaargezet, wordt die zichtbaar voor kopende partijen met een passend zoekprofiel — gefilterd op sector, regio en omzetklasse.</p>
-      <a href="matching-platform.html" class="scan-link">Bekijk het matching-platform &rarr;</a>
+<section>
+  <div class="wrap">
+    <div class="offers-tag">Ook van Koers voor Morgen</div>
+    <div class="offer-grid">
+      <div class="offer-card">
+        <div class="offer-card-tag">Gratis &middot; alleen voor accountantskantoren</div>
+        <h4>Hoe overnameklaar is uw kantoor?</h4>
+        <p>Eén scan met inzicht in opvolging, waardering, organisatie en processen. Onafhankelijk, zonder verplichtingen.</p>
+        <a href="kantoorscan.html" class="offer-link">Start de gratis kantoorscan &rarr;</a>
+      </div>
+      <div class="offer-card">
+        <div class="offer-card-tag">Matching-platform</div>
+        <h4>Zo vinden kopers en verkopers elkaar</h4>
+        <p>Zodra een teaser klaarstaat, wordt die zichtbaar voor kopende partijen met een passend zoekprofiel — gefilterd op sector, regio en omzetklasse.</p>
+        <a href="matching-platform.html" class="offer-link">Bekijk het matching-platform &rarr;</a>
+      </div>
     </div>
   </div>
 </section>
