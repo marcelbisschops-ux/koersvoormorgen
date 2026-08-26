@@ -219,6 +219,13 @@ const GEVERIFIEERD_VEILIG_CHECK5 = new Set([
   '/mna/signhost/stuur',           // ADMIN_KEY- of geldige tussen_code-gated, retourneert alleen transactiestatus
   '/mna/signhost/webhook',         // inkomend vanaf Signhost zelf, retourneert altijd platte tekst 'ok', nooit JSON
   '/mna/risicoraamwerk/genereer',  // begeleiderAuth-only (19-08-2026 geverifieerd), retourneert alleen swot/pestel/porter-AI-output
+  '/adviseur/export/',             // gebruikerViaToken + expliciete eigenaarschapscheck (gebruiker_id-match, geen /admin/-pad
+                                    // maar wel evenwaardig beschermd), plus heeftModule('export')-gate (26-08-2026 geverifieerd).
+                                    // SELECT * wordt alleen gebruikt om 9 met naam genoemde, niet-gevoelige velden te plukken
+                                    // (kantoornaam/type/status/datum/contactpersoon/adres/KvK/koper-naam-en-mail/begeleider) —
+                                    // géén tussen_code/koper_code/notitie/tekenbevoegdheid/gebruiker_id, zelfde stripping-
+                                    // patroon als /mna/traject/ en /gebruikers/mna/detail/ hierboven. Adviseur ziet hiermee
+                                    // uitsluitend data van zijn eigen, al toegankelijke traject — geen nieuwe blootstelling.
 ]);
 if (backendFiles.length) {
   const selectRe = /SELECT \* FROM mna_(trajecten|gesprekken)\b/;

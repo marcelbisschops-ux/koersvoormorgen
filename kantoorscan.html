@@ -1598,7 +1598,7 @@ function bindEvents(){
     const inhoud='Koers voor Morgen — Groepscodes\n\nGroep: '+naam+'\nDeelnemerscode: '+code+'\nBeheerdscode: '+(adminCode||'niet beschikbaar')+'\nDatum: '+new Date().toLocaleDateString('nl-NL')+'\n\nKantoren gebruiken de DEELNEMERSCODE.\nU gebruikt de BEHEERDSCODE om alles te zien.\n\nhttps://koersvoormorgen.nl';
     const blob=new Blob([inhoud],{type:'text/plain;charset=utf-8'});
     const url=URL.createObjectURL(blob);
-    const a=document.createElement('a');a.href=url;a.download='kantoorinzicht-code-'+code+'.txt';
+    const a=document.createElement('a');a.href=url;a.download='koersvoormorgen-code-'+code+'.txt';
     document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
   });
   on('do-join-group','click',()=>{

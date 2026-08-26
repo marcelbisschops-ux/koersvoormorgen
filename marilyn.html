@@ -3432,7 +3432,7 @@ async function renderGebruikersTab(el) {
         if (!g) return;
         var mods = {};
         try { mods = JSON.parse(g.modules || '{}'); } catch(e) {}
-        var modDefs = [['traject','Traject (basis)'],['contracten','Contracten & ondertekening'],['ai_analyse','AI-analyse'],['qa','Q&A'],['meekijker','Meekijkers (bank/accountant laten meekijken)'],['marketing','Marketing aan/uit (teaser, verkoopmemorandum & matching)']];
+        var modDefs = [['traject','Traject (basis)'],['contracten','Contracten & ondertekening'],['ai_analyse','AI-analyse'],['qa','Q&A'],['meekijker','Meekijkers (bank/accountant laten meekijken)'],['marketing','Marketing aan/uit (teaser, verkoopmemorandum & matching)'],['export','Export & rapportage (dossier downloaden als tekstbestand)']];
         var chk = modDefs.map(function(md){
           var aan = md[0]==='traject' ? (mods[md[0]]!==false) : !!mods[md[0]];
           return '<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--sub);padding:4px 0;cursor:pointer">'
