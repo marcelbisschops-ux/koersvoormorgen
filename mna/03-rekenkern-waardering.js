@@ -54,6 +54,27 @@ function dvGetDefaults(){
   // Altijd op groepsniveau (S._groepData), nooit op de toevallig actieve entiteit — het dealvoorstel
   // geldt de hele onderneming (zie dvBerekenWaardering() hierboven voor dezelfde overweging).
   var ebBasis=parseGeld(S._groepData['financieel_ebitdaNorm']||S._groepData['financieel_ebitda']||'0');
+  // Maatschap / IB-onderneming (backlogpunt 9-B4): een maatschap betaalt geen VpB en de maten hebben
+  // geen salaris — hun "loon" zit in de winst. De maintainable earnings zijn daarom de
+  // genormaliseerde winst MINUS een marktconform ondernemersloon voor de werkende maten samen. Als
+  // proxy voor dat ondernemersloon gebruiken we het al bestaande, voor accountancy/zorg verplichte
+  // veld "eigenaar-/partnerbeloning totaal per jaar" (getEigenaarBeloningsVeld()). Is dat veld leeg,
+  // dan is de grondslag niet vast te stellen — dan NOOIT stilzwijgend op de ongecorrigeerde winst
+  // rekenen (GOUDEN STANDAARD werkregel 8/13): dvBerekenWaardering()/de dealvoorstel-render tonen dan
+  // een melding i.p.v. een getal. Hier zetten we de basis alvast op de gecorrigeerde waarde (0 als
+  // onbekend) en VpB op 0.
+  var _isMaatschap = (typeof isMaatschap==='function') && isMaatschap();
+  var _ondernemersloonTot = 0, _maatschapGrondslagOnbekend = false;
+  if(_isMaatschap){
+    var _ebVeld = (typeof getEigenaarBeloningsVeld==='function') ? getEigenaarBeloningsVeld() : null;
+    _ondernemersloonTot = _ebVeld ? parseGeld(S._groepData['financieel_'+_ebVeld.veldId]||'0') : 0;
+    if(_ondernemersloonTot>0){
+      ebBasis = Math.max(0, ebBasis - _ondernemersloonTot);
+    } else {
+      _maatschapGrondslagOnbekend = true;
+      ebBasis = 0;
+    }
+  }
   // Werkkapitaalbasis (debiteuren + onderhanden werk) — audit-fix P2, 25 juli 2026: nodig om een
   // werkkapitaalmutatie in de DCF-kasstroom mee te kunnen nemen (zie dvBerekenSchuldafbouw()). Het
   // aparte DD-veld "Netto werkkapitaalanalyse (NWC)" is bewust NIET gebruikt — dat is een
@@ -66,6 +87,9 @@ function dvGetDefaults(){
     ebitdaBewezen:ebBasis||0,
     ebitdaPrognose:ebBasis?Math.round(ebBasis*1.3):0,
     werkkapitaalBasis:werkkapitaalBasis,
+    isMaatschap:_isMaatschap,
+    ondernemersloonTotaal:_ondernemersloonTot,
+    maatschapGrondslagOnbekend:_maatschapGrondslagOnbekend,
     multipleBasis:mLaag,
     multipleBovengrens:mHoog,
     cliffPct:70,
@@ -77,7 +101,7 @@ function dvGetDefaults(){
     escrowMaanden:18,
     bankLeverage:2,
     rentePct:5,
-    vpbPct:25.8,
+    vpbPct:_isMaatschap?0:25.8,
     capexPct:1.5,
     groeiPct:4,
     horizonJaren:5,
@@ -817,11 +841,17 @@ function dvExporteerWaarderingCsv(v){
   ].forEach(function(r){if(r[1]!==null&&r[1]!==undefined&&r[1]!==0)regel(r);});
   leeg();
 
-  regel(['Waardebepaling as-is ('+(v.multipleType==='omzet'?'omzet':'EBITDA')+'-methode)']);
+  regel(['Waardebepaling as-is ('+(v.multipleType==='omzet'?'omzet':(v.multipleType==='maatschap'?'winst ná ondernemersloon':'EBITDA'))+'-methode)']);
+  if(v.maatschapModus){
+    regel(['Genormaliseerde winst (€)',Math.round(v.ebitdaAmt||0)]);
+    regel(['- af: marktconform ondernemersloon werkende maten (€)',Math.round(v.ondernemersloonTotaal||0)]);
+    regel(['= Grondslag (€)',v.maatschapGrondslagOnbekend?'niet berekend — eigenaar-/partnerbeloning niet ingevuld':Math.round(v.multipleTypeBedrag||0)]);
+  }
   regel(['Scenario','Multiple','Waarde (€)']);
-  regel(['Laag',v.mLaag,Math.round(v.wLaag)]);
-  regel(['Midden',v.mMid,Math.round(v.wMid)]);
-  regel(['Hoog',v.mHoog,Math.round(v.wHoog)]);
+  var _csvW=function(w){return (w===null||w===undefined)?'niet berekend':Math.round(w);};
+  regel(['Laag',v.mLaag,_csvW(v.wLaag)]);
+  regel(['Midden',v.mMid,_csvW(v.wMid)]);
+  regel(['Hoog',v.mHoog,_csvW(v.wHoog)]);
   regel(['Omzetmethode ('+v.omzetFactor+'×)','',Math.round(v.wOmzet)]);
   leeg();
 
@@ -1013,9 +1043,28 @@ function dvBerekenWaardering(){
   // Bereken
   var ebitdaAmt=ebitdaAbs||(o3*(ebitdaPct/100));
   var multipleTypeBedrag=multipleType==='omzet'?o3:ebitdaAmt;
-  var wLaag=multipleTypeBedrag*mLaag;
-  var wMid=multipleTypeBedrag*mMid;
-  var wHoog=multipleTypeBedrag*mHoog;
+
+  // Maatschap / IB-onderneming (backlogpunt 9-B4): waarderingsgrondslag is de genormaliseerde winst
+  // MINUS het marktconform ondernemersloon voor de werkende maten samen — als proxy het al ingevoerde
+  // veld eigenaar-/partnerbeloning totaal (partnerBel hierboven). Sector-multiplerange ongewijzigd,
+  // maar toegepast op die gecorrigeerde basis; VpB speelt geen rol (maten betalen box-1 IB, niet VpB
+  // — dat wordt in het Dealvoorstel apart afgevangen via vpbPct=0). Is partnerBel niet ingevuld, dan
+  // is de grondslag niet vast te stellen: w-waardes op null (de render toont dan een melding, GOUDEN
+  // STANDAARD werkregel 8/13 — nooit stilzwijgend op de ongecorrigeerde winst rekenen).
+  var maatschapModus=(typeof isMaatschap==='function')&&isMaatschap();
+  var maatschapGrondslagOnbekend=false;
+  if(maatschapModus){
+    multipleType='maatschap';
+    if(partnerBel>0){
+      multipleTypeBedrag=Math.max(0,(ebitdaAbs||0)-partnerBel);
+    } else {
+      maatschapGrondslagOnbekend=true;
+      multipleTypeBedrag=0;
+    }
+  }
+  var wLaag=maatschapGrondslagOnbekend?null:multipleTypeBedrag*mLaag;
+  var wMid=maatschapGrondslagOnbekend?null:multipleTypeBedrag*mMid;
+  var wHoog=maatschapGrondslagOnbekend?null:multipleTypeBedrag*mHoog;
   var wOmzet=o3*omzetFactor;
 
   // Groei
@@ -1026,21 +1075,29 @@ function dvBerekenWaardering(){
   var fc=[o3];
   for(var i=1;i<=3;i++)fc.push(fc[fc.length-1]*(1+gemGroei/100));
   var fcE=fc.map(function(o){return o*(ebitdaPct/100);});
+  // Bij een maatschap moet de rolling forecast de gecorrigeerde grondslag (winst ná ondernemersloon)
+  // volgen, niet de ruwe EBITDA — anders overschat de forecast met precies het ondernemersloon.
+  // Schaal fcE met de verhouding gecorrigeerde basis / ruwe EBITDA-basis van jaar 3.
+  if(multipleType==='maatschap' && !maatschapGrondslagOnbekend && ebitdaAmt>0){
+    var _maatschapRatio=multipleTypeBedrag/ebitdaAmt;
+    fcE=fcE.map(function(e){return e*_maatschapRatio;});
+  }
   // Zelfde basis-onderscheid als wLaag/wMid/wHoog hierboven — bij een omzet-multiple moet de rolling
   // forecast de omzetprognose (fc) vermenigvuldigen, niet de EBITDA-prognose (fcE).
-  var fcW=multipleType==='omzet'?fc.map(function(o){return o*mMid;}):fcE.map(function(e){return e*mMid;});
+  var fcW=maatschapGrondslagOnbekend?[null,null,null,null]:(multipleType==='omzet'?fc.map(function(o){return o*mMid;}):fcE.map(function(e){return e*mMid;}));
 
   // Earn-out default
-  var earnBase=wMid;
+  var earnBase=(wMid===null||wMid===undefined)?null:wMid;
   var earnPct=20,earnTarget=5,earnJaren=3;
-  var fixedKoop=earnBase*(1-earnPct/100);
-  var earnJaarlijks=earnBase*(earnPct/100)/earnJaren;
+  var fixedKoop=earnBase===null?null:earnBase*(1-earnPct/100);
+  var earnJaarlijks=earnBase===null?null:earnBase*(earnPct/100)/earnJaren;
 
   return {
     o1:o1,o2:o2,o3:o3,omzetYTD:omzetYTD,ebitdaAbs:ebitdaAbs,ebitdaPct:ebitdaPct,ebitdaAmt:ebitdaAmt,
     partnerBel:partnerBel,partnerBelLabel:partnerBelLabel,recurring:recurring,declarab:declarab,wip:wip,debiteuren:debiteuren,
     fte:fte,aantalP:aantalP,omzetPerP:omzetPerP,aantalKlanten:aantalKlanten,top1pct:top1pct,top10pct:top10pct,churn:churn,
     mLaag:mLaag,mMid:mMid,mHoog:mHoog,omzetFactor:omzetFactor,multipleType:multipleType,multipleTypeBedrag:multipleTypeBedrag,
+    maatschapModus:maatschapModus,maatschapGrondslagOnbekend:maatschapGrondslagOnbekend,ondernemersloonTotaal:maatschapModus?partnerBel:0,
     wLaag:wLaag,wMid:wMid,wHoog:wHoog,wOmzet:wOmzet,
     gemGroei:gemGroei,fc:fc,fcE:fcE,fcW:fcW,
     earnBase:earnBase,earnPct:earnPct,earnTarget:earnTarget,earnJaren:earnJaren,fixedKoop:fixedKoop,earnJaarlijks:earnJaarlijks,
@@ -1103,7 +1160,7 @@ function renderWaardering(){
     earnBase=v.earnBase,earnPct=v.earnPct,earnTarget=v.earnTarget,earnJaren=v.earnJaren,fixedKoop=v.fixedKoop,earnJaarlijks=v.earnJaarlijks;
 
   var multipleType=v.multipleType||'ebitda';
-  var basisLabel=multipleType==='omzet'?'omzet':'EBITDA';
+  var basisLabel=multipleType==='omzet'?'omzet':(multipleType==='maatschap'?'winst ná ondernemersloon':'EBITDA');
   var html='<div class="wrap anim">'
     +'<div class="hdr"><div class="brand">'+brandMerkHtml()+BRAND.platform+' &middot; Waardering'+versieLabel()+'</div>'
     +'<div style="display:flex;gap:8px">'
@@ -1135,6 +1192,8 @@ function renderWaardering(){
   html+='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;margin-bottom:1.25rem">'
     +'<div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)">Waardebepaling as-is ('+basisLabel+'-methode)</div>'
     +(multipleType==='omzet'?'<div style="font-size:12px;color:var(--gold);background:var(--gold-bg);border:1px solid var(--gold);border-radius:var(--r);padding:8px 12px;margin-bottom:.75rem">Deze sector gebruikt een omzet-multiple (praktijkwaarde), geen EBITDA-multiple. Het Dealvoorstel-scherm (prijsmechanisme, bankfinanciering, schuldaflossing, DCF) blijft EBITDA-based — gebruik daar de cijfers hieronder met dat voorbehoud.</div>':'')
+    +(v.maatschapModus&&!v.maatschapGrondslagOnbekend?'<div style="font-size:12px;color:var(--teal-dim);background:var(--teal-bg);border:1px solid var(--teal-dark);border-radius:var(--r);padding:8px 12px;margin-bottom:.75rem">Maatschap / IB-onderneming: de grondslag is de genormaliseerde winst ('+fmtGeld(ebitdaAmt)+') <strong>minus</strong> een marktconform ondernemersloon voor de werkende maten ('+fmtGeld(v.ondernemersloonTotaal)+', overgenomen uit het veld eigenaar-/partnerbeloning) = <strong>'+fmtGeld(v.multipleTypeBedrag)+'</strong>. Er wordt niet met vennootschapsbelasting gerekend (maten betalen box-1 inkomstenbelasting).</div>':'')
+    +(v.maatschapModus&&v.maatschapGrondslagOnbekend?'<div style="font-size:12px;color:var(--red);background:var(--red-bg);border:1px solid var(--red);border-radius:var(--r);padding:8px 12px;margin-bottom:.75rem"><strong>&#9888; Grondslag nog niet vast te stellen.</strong> Dit is een maatschap: de waardering rekent op de winst ná een marktconform ondernemersloon voor de werkende maten. Vul daarvoor eerst het veld <strong>eigenaar-/partnerbeloning totaal per jaar</strong> in (fase Financieel). Zolang dat leeg is, wordt hier bewust géén waarde getoond in plaats van een ongecorrigeerd cijfer.</div>':'')
     +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:.75rem">'
     +'<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r2);padding:1rem;text-align:center">'
       +'<div style="font-size:10px;color:var(--muted);margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.06em">Laag ('+mLaag+'&times; '+basisLabel+')</div>'
@@ -1151,11 +1210,11 @@ function renderWaardering(){
       +(recurring>0?' &nbsp;|&nbsp; Recurring: <strong>'+recurring+'%</strong>':'')
       +(churn>0?' &nbsp;|&nbsp; Churn: <strong>'+churn+'%</strong>':'')
     +'</div>'
-    +'<div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)">'+dvSvgBarChart([
+    +(v.maatschapGrondslagOnbekend?'':'<div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)">'+dvSvgBarChart([
       {label:'Laag ('+mLaag+'\xd7 '+basisLabel+')',waarde:wLaag,kleur:'var(--border2)'},
       {label:'Midden ('+mMid+'\xd7 '+basisLabel+')',waarde:wMid,kleur:'var(--teal)'},
       {label:'Hoog ('+mHoog+'\xd7 '+basisLabel+')',waarde:wHoog,kleur:'var(--border2)'}
-    ],'Waardebandbreedte: laag '+fmtGeld(wLaag)+', midden '+fmtGeld(wMid)+', hoog '+fmtGeld(wHoog))+'</div></div>';
+    ],'Waardebandbreedte: laag '+fmtGeld(wLaag)+', midden '+fmtGeld(wMid)+', hoog '+fmtGeld(wHoog))+'</div>')+'</div>';
 
   // Rolling forecast
   html+='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;margin-bottom:1.25rem">'

@@ -402,6 +402,7 @@ function toonPartnersModal(app){
     +'<input type="text" id="pt-opvolging" placeholder="Opvolgingskandidaat" style="flex:1;background:#f0eeea;color:#2a2825;border:1px solid #c8c5bc;border-radius:6px;padding:7px 11px;font-size:13px">'
     +'<input type="text" id="pt-omzet" placeholder="Omzet incl. team (€)" style="flex:1;background:#f0eeea;color:#2a2825;border:1px solid #c8c5bc;border-radius:6px;padding:7px 11px;font-size:13px">'
     +'</div>'
+    +(isMaatschap()?'<div style="display:flex;gap:8px;margin-bottom:6px"><input type="text" id="pt-winstaandeel" placeholder="Winstaandeel deze maat (%)" style="flex:1;background:#f0eeea;color:#2a2825;border:1px solid #c8c5bc;border-radius:6px;padding:7px 11px;font-size:13px"></div>':'')
     +'<div id="pt-entiteiten" style="font-size:12px;color:#8a8880;margin-bottom:8px">Gekoppelde entiteiten: <span style="font-style:italic">laden...</span></div>'
     +'<button id="pt-toevoegen" style="background:#1a7a5e;color:#fff;border:none;padding:7px 14px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600">+ Toevoegen</button>'
     +'</div>'
@@ -458,6 +459,7 @@ function toonPartnersModal(app){
         +(r.veranderbereidheid?'<div style="font-size:11px;color:var(--muted)">Veranderbereidheid: '+esc(r.veranderbereidheid)+'</div>':'')
         +(r.opvolgingskandidaat?'<div style="font-size:11px;color:var(--muted)">Opvolging: '+esc(r.opvolgingskandidaat)+'</div>':'')
         +(r.omzet_incl_team?'<div style="font-size:11px;color:var(--muted)">Omzet incl. team: &euro;'+esc(Number(r.omzet_incl_team).toLocaleString('nl-NL'))+'</div>':'')
+        +(r.winstaandeel_pct?'<div style="font-size:11px;color:var(--muted)">Winstaandeel: '+esc(r.winstaandeel_pct)+'%</div>':'')
         +(entNamen?'<div style="font-size:11px;color:var(--teal)">'+esc(entNamen)+'</div>':'')
         +'</div>'
         +'<button class="pt-verwijder" data-id="'+esc(r.id)+'" style="background:transparent;border:1px solid #c8c5bc;color:#e05252;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px">Verwijderen</button>'
@@ -472,15 +474,15 @@ function toonPartnersModal(app){
   }
   document.getElementById('pt-toevoegen').onclick=async function(){
     var btn=this;
-    var naamEl=document.getElementById('pt-naam'),leeftijdEl=document.getElementById('pt-leeftijd'),verEl=document.getElementById('pt-verandering'),opvEl=document.getElementById('pt-opvolging'),omzetEl=document.getElementById('pt-omzet');
+    var naamEl=document.getElementById('pt-naam'),leeftijdEl=document.getElementById('pt-leeftijd'),verEl=document.getElementById('pt-verandering'),opvEl=document.getElementById('pt-opvolging'),omzetEl=document.getElementById('pt-omzet'),winstEl=document.getElementById('pt-winstaandeel');
     var errEl=document.getElementById('pt-err');errEl.style.display='none';
     var naam=naamEl.value.trim();
     if(!naam){errEl.textContent='Naam is verplicht.';errEl.style.display='block';return;}
     var entIds=Array.prototype.slice.call(document.querySelectorAll('.pt-ent-chk:checked')).map(function(c){return c.value;});
     btn.disabled=true;btn.textContent='...';
-    var r=await fetch(WORKER+'/mna/partners/'+S.code,{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey},body:JSON.stringify({naam:naam,leeftijd:leeftijdEl.value.trim(),veranderbereidheid:verEl.value.trim(),opvolgingskandidaat:opvEl.value.trim(),omzet_incl_team:omzetEl.value.trim(),entiteit_ids:entIds})}).then(function(x){return x.json();}).catch(function(){return {};});
+    var r=await fetch(WORKER+'/mna/partners/'+S.code,{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey},body:JSON.stringify({naam:naam,leeftijd:leeftijdEl.value.trim(),veranderbereidheid:verEl.value.trim(),opvolgingskandidaat:opvEl.value.trim(),omzet_incl_team:omzetEl.value.trim(),winstaandeel_pct:winstEl?winstEl.value.trim():'',entiteit_ids:entIds})}).then(function(x){return x.json();}).catch(function(){return {};});
     btn.disabled=false;btn.textContent='+ Toevoegen';
-    if(r.ok){naamEl.value='';leeftijdEl.value='';verEl.value='';opvEl.value='';omzetEl.value='';document.querySelectorAll('.pt-ent-chk').forEach(function(c){c.checked=false;});laadLijst();}
+    if(r.ok){naamEl.value='';leeftijdEl.value='';verEl.value='';opvEl.value='';omzetEl.value='';if(winstEl)winstEl.value='';document.querySelectorAll('.pt-ent-chk').forEach(function(c){c.checked=false;});laadLijst();}
     else{errEl.textContent=r.error||'Fout bij opslaan';errEl.style.display='block';}
   };
   laadEntiteitenCheckboxen();
@@ -1331,6 +1333,8 @@ function renderBegeleiderDashboard(app){
     var mo=document.createElement('div');mo.setAttribute('role','dialog');mo.setAttribute('aria-modal','true');mo.setAttribute('aria-labelledby','dv-modal-titel');mo.style.cssText='background:var(--panel);border-radius:10px;padding:2rem;max-width:640px;width:100%;max-height:92vh;overflow-y:auto';
     mo.innerHTML='<div id="dv-modal-titel" style="font-family:Playfair Display,serif;font-size:1.15rem;color:var(--head);font-weight:600;margin-bottom:.25rem">&#128202; Dealvoorstel — dealparameters</div>'
       +'<div style="font-size:12px;color:#8a8880;margin-bottom:1.25rem">Deze cijfers worden exact zo berekend en meegenomen — de AI verzint geen eigen bedragen of multiples.</div>'
+      +(d.isMaatschap&&!d.maatschapGrondslagOnbekend?'<div style="font-size:12px;color:var(--teal-dim);background:var(--teal-bg);border:1px solid var(--teal-dark);border-radius:6px;padding:8px 12px;margin-bottom:1rem">Maatschap: "Bewezen EBITDA" is hier voorgevuld als de genormaliseerde winst mín een marktconform ondernemersloon voor de werkende maten ('+fmtGeld(d.ondernemersloonTotaal)+', uit het veld eigenaar-/partnerbeloning). VpB-tarief staat op 0 (maten betalen box-1 IB). Pas de bedragen aan als u een zuiverder ondernemersloon hanteert.</div>':'')
+      +(d.isMaatschap&&d.maatschapGrondslagOnbekend?'<div style="font-size:12px;color:var(--red);background:var(--red-bg);border:1px solid var(--red);border-radius:6px;padding:8px 12px;margin-bottom:1rem"><strong>&#9888; Grondslag onbekend.</strong> Dit is een maatschap — de waardering rekent op de winst ná een marktconform ondernemersloon. Vul eerst het veld <strong>eigenaar-/partnerbeloning totaal per jaar</strong> in (fase Financieel), of vul "Bewezen EBITDA" hieronder handmatig met de reeds gecorrigeerde winst. Nu voorgevuld op 0 om geen ongecorrigeerd cijfer te suggereren.</div>':'')
       +'<div style="margin-bottom:1rem"><label style="'+lbl+'">Tegenpartij (koper)</label><input type="text" id="dv-koper" value="'+esc(d.koperNaam)+'" placeholder="Naam kopende partij" style="'+inp+'"></div>'
       +sectie('EBITDA & belang')
       +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('dv-belang','Belang koper bij closing (%)',d.belangPct)+veld('dv-ebitda-bewezen','Bewezen EBITDA laatste boekjaar (€)',d.ebitdaBewezen)+'</div>'
@@ -1638,6 +1642,8 @@ function renderBegeleiderDashboard(app){
     var mo=document.createElement('div');mo.setAttribute('role','dialog');mo.setAttribute('aria-modal','true');mo.setAttribute('aria-labelledby','bieding-modal-titel');mo.style.cssText='background:var(--panel);border-radius:10px;padding:2rem;max-width:560px;width:100%;max-height:92vh;overflow-y:auto';
     mo.innerHTML='<div id="bieding-modal-titel" style="font-family:Playfair Display,serif;font-size:1.15rem;color:var(--head);font-weight:600;margin-bottom:.25rem">&#128233; Indicatieve bieding</div>'
       +'<div style="font-size:12px;color:#8a8880;margin-bottom:1.25rem">Niet-bindend bod. Het bod (bandbreedte) wordt berekend uit EBITDA × multiple en exact zo in de brief overgenomen.</div>'
+      +(d.isMaatschap&&!d.maatschapGrondslagOnbekend?'<div style="font-size:12px;color:var(--teal-dim);background:var(--teal-bg);border:1px solid var(--teal-dark);border-radius:6px;padding:8px 12px;margin-bottom:1rem">Maatschap: het bedrag hieronder is de genormaliseerde winst mín een marktconform ondernemersloon voor de werkende maten ('+fmtGeld(d.ondernemersloonTotaal)+'). Geen VpB-effect.</div>':'')
+      +(d.isMaatschap&&d.maatschapGrondslagOnbekend?'<div style="font-size:12px;color:var(--red);background:var(--red-bg);border:1px solid var(--red);border-radius:6px;padding:8px 12px;margin-bottom:1rem"><strong>&#9888;</strong> Maatschap zonder ingevuld ondernemersloon (veld eigenaar-/partnerbeloning) — het bedrag hieronder staat op 0. Vul dat veld in of corrigeer het bedrag handmatig vóór verzending.</div>':'')
       +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('bd-ebitda','Genormaliseerde EBITDA (€)',d.ebitdaBewezen)+'</div>'
       +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('bd-mult-laag','Multiple laag',d.multipleBasis,0.1)+veld('bd-mult-hoog','Multiple hoog',d.multipleBovengrens,0.1)+'</div>'
       +'<div style="margin-bottom:1rem"><label style="'+lbl+'">Betalingsstructuur</label><input type="text" id="bd-betaling" value="100% contant bij closing (cash-and-debt-free)" style="'+inp+'"></div>'
