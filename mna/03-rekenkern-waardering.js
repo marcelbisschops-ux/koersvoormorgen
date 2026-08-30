@@ -616,6 +616,72 @@ function dvTabelCijferoverzicht(){
   return dvRenderKenmerkTabel(rows);
 }
 
+// Management- & retentiescan (backlogpunt 8 stap 3, 31 aug 2026). Een KWALITATIEVE
+// aandachtspunt-indicatie (laag/midden/hoog risico op management-/sleutelpersoon-vlak), afgeleid uit
+// de al ingevulde DD-velden. NADRUKKELIJK: dit corrigeert NOOIT automatisch de multiple of de
+// waardering (GOUDEN STANDAARD werkregel 8) — het is een zichtbare wegingsfactor, geen rekeninput.
+// Elke deelvraag die niet betrouwbaar te beoordelen valt wordt "onbekend"; bij te veel onbekend
+// vervalt het totaaloordeel ("onvoldoende ingevuld") i.p.v. een gok. Per aspect wordt de ruwe
+// ingevulde waarde meegetoond, zodat de lezer de basis van het oordeel ziet.
+function dvManagementRisico(){
+  function tekst(k){var v=S.data['partner_'+k];return (v&&String(v).trim())?String(v).trim():'';}
+  function bevat(s,lijst){var l=s.toLowerCase();return lijst.some(function(w){return l.indexOf(w)>=0;});}
+  var aspecten=[];
+  // 1. Key-person-afhankelijkheid — het enige (semi-)objectieve veld: een percentage.
+  var kpRuw=tekst('keyPersonAfhank');
+  var kpNum=kpRuw?parseFloat(String(kpRuw).replace(/[^0-9,.]/g,'').replace(',','.')):NaN;
+  if(kpRuw&&!isNaN(kpNum)){
+    var kpP=kpNum>=40?2:(kpNum>=20?1:0);
+    aspecten.push({label:'Key-person-afhankelijkheid',waarde:kpRuw,punten:kpP,oordeel:kpP===2?'hoog':(kpP===1?'verhoogd':'beperkt')});
+  } else {
+    aspecten.push({label:'Key-person-afhankelijkheid',waarde:kpRuw||'—',punten:null,oordeel:'onbekend'});
+  }
+  // 2. Tweede echelon / managementlaag onder de eigenaar.
+  var teRuw=tekst('tweedeEchelon');
+  if(!teRuw){ aspecten.push({label:'Tweede echelon / managementlaag',waarde:'—',punten:null,oordeel:'onbekend'}); }
+  else if(bevat(teRuw,['geen','afwezig','ontbreekt','ontbreek','alles via','1 persoon','één persoon','een persoon','zwak','niet aanwezig'])){ aspecten.push({label:'Tweede echelon / managementlaag',waarde:teRuw,punten:2,oordeel:'afwezig/zwak'}); }
+  else if(bevat(teRuw,['in opbouw','deels','gedeeltelijk','beperkt','dun','klein'])){ aspecten.push({label:'Tweede echelon / managementlaag',waarde:teRuw,punten:1,oordeel:'beperkt'}); }
+  else { aspecten.push({label:'Tweede echelon / managementlaag',waarde:teRuw,punten:0,oordeel:'aanwezig'}); }
+  // 3. Veranderbereidheid partners.
+  var vbRuw=tekst('verandering');
+  if(!vbRuw){ aspecten.push({label:'Veranderbereidheid',waarde:'—',punten:null,oordeel:'onbekend'}); }
+  else if(bevat(vbRuw,['laag','weerstand','terughoudend','niet bereid','geen bereidheid','beperkt','moeizaam'])){ aspecten.push({label:'Veranderbereidheid',waarde:vbRuw,punten:2,oordeel:'laag'}); }
+  else if(bevat(vbRuw,['gemiddeld','neutraal','wisselend','deels','matig','redelijk'])){ aspecten.push({label:'Veranderbereidheid',waarde:vbRuw,punten:1,oordeel:'gemiddeld'}); }
+  else { aspecten.push({label:'Veranderbereidheid',waarde:vbRuw,punten:0,oordeel:'hoog'}); }
+  // 4. Aanblijf-/retentieafspraken management.
+  var reRuw=tekst('mgmtRetentie');
+  if(!reRuw||bevat(reRuw,['geen','nog niet','n.v.t','nvt','niet vastgelegd'])){ aspecten.push({label:'Retentie-/aanblijfafspraken management',waarde:reRuw||'—',punten:1,oordeel:reRuw?'niet vastgelegd':'niet ingevuld'}); }
+  else if(bevat(reRuw,['bonus','lock-up','lock up','lockup','earn-in','earn in','earnin','aanblijf','vastgelegd','overeengekomen','retentie','vesting'])){ aspecten.push({label:'Retentie-/aanblijfafspraken management',waarde:reRuw,punten:0,oordeel:'vastgelegd'}); }
+  else { aspecten.push({label:'Retentie-/aanblijfafspraken management',waarde:reRuw,punten:null,oordeel:'onbekend'}); }
+  // 5. Opvolgingskandidaat.
+  var opRuw=tekst('opvolging');
+  if(!opRuw){ aspecten.push({label:'Opvolgingskandidaat',waarde:'—',punten:null,oordeel:'onbekend'}); }
+  else if(bevat(opRuw,['geen','niet','nee','n.v.t','nvt','ontbreekt'])){ aspecten.push({label:'Opvolgingskandidaat',waarde:opRuw,punten:1,oordeel:'geen'}); }
+  else { aspecten.push({label:'Opvolgingskandidaat',waarde:opRuw,punten:0,oordeel:'aanwezig'}); }
+
+  var gescoord=aspecten.filter(function(a){return a.punten!==null;});
+  var onbekend=aspecten.length-gescoord.length;
+  var totaal=gescoord.reduce(function(s,a){return s+a.punten;},0);
+  var onvoldoendeData=onbekend>=3;
+  var band=onvoldoendeData?'onvoldoende ingevuld':(totaal<=1?'laag':(totaal<=3?'midden':'hoog'));
+  return {band:band,totaal:totaal,maxTotaal:gescoord.length*2,onbekend:onbekend,onvoldoendeData:onvoldoendeData,aspecten:aspecten};
+}
+
+function dvTabelManagementRisico(){
+  var r=dvManagementRisico();
+  var bandKleur={laag:'var(--teal)',midden:'var(--gold)',hoog:'var(--red)'}[r.band]||'var(--muted)';
+  var head='<div style="margin:.25rem 0 .75rem"><span style="display:inline-block;padding:3px 12px;border-radius:12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;background:'+bandKleur+';color:#fff">Risico-indicatie: '+esc(r.band)+'</span>'
+    +(r.onvoldoendeData?'':' <span style="font-size:11px;color:var(--muted)">('+r.totaal+' van '+r.maxTotaal+' risicopunten'+(r.onbekend?', '+r.onbekend+' aspect(en) niet te beoordelen':'')+')</span>')+'</div>';
+  var rows=r.aspecten.map(function(a){return [a.label,a.waarde,a.oordeel];});
+  var body='<table style="width:100%;border-collapse:collapse;margin:.25rem 0 .75rem">'
+    +rows.map(function(c){return '<tr><td style="padding:5px 10px;text-align:left;border-bottom:1px solid #eee;font-size:10pt;white-space:nowrap;color:#8a8880">'+esc(c[0])+'</td>'
+      +'<td style="padding:5px 10px;text-align:left;border-bottom:1px solid #eee;font-size:10pt">'+esc(String(c[1]))+'</td>'
+      +'<td style="padding:5px 10px;text-align:left;border-bottom:1px solid #eee;font-size:10pt;font-weight:600">'+esc(c[2])+'</td></tr>';}).join('')
+    +'</table>';
+  var disc='<div style="font-size:9pt;color:#8a8880;font-style:italic">Kwalitatieve indicatie op basis van de ingevulde due-diligence-velden — <strong>géén automatische correctie op de multiple of de waardering</strong>. Bedoeld als aandachtspunt voor het retentiepakket en de risicoparagraaf.</div>';
+  return head+body+disc;
+}
+
 // Gevoeligheidstabel: EBITDA-scenario's (bewezen/prognose ±10%) tegen de gekozen multiple-range,
 // zodat de impact van de aannames op de waardering direct zichtbaar is.
 function dvBerekenGevoeligheid(p){
@@ -857,6 +923,13 @@ function dvExporteerWaarderingCsv(v){
   regel(['Midden',v.mMid,_csvW(v.wMid)]);
   regel(['Hoog',v.mHoog,_csvW(v.wHoog)]);
   regel(['Omzetmethode ('+v.omzetFactor+'×)','',Math.round(v.wOmzet)]);
+  leeg();
+
+  var _mgmtR=dvManagementRisico();
+  regel(['Management- & sleutelpersoonrisico (kwalitatief — geen correctie op de waardering)']);
+  regel(['Risico-indicatie',_mgmtR.onvoldoendeData?'onvoldoende ingevuld':_mgmtR.band,(_mgmtR.onvoldoendeData?'':_mgmtR.totaal+' / '+_mgmtR.maxTotaal+' risicopunten')]);
+  regel(['Aspect','Ingevulde waarde','Oordeel']);
+  _mgmtR.aspecten.forEach(function(a){ regel([a.label,a.waarde,a.oordeel]); });
   leeg();
 
   regel(['Rolling forecast (3 jaar)']);
@@ -1219,6 +1292,14 @@ function renderWaardering(){
       {label:'Midden ('+mMid+'\xd7 '+basisLabel+')',waarde:wMid,kleur:'var(--teal)'},
       {label:'Hoog ('+mHoog+'\xd7 '+basisLabel+')',waarde:wHoog,kleur:'var(--border2)'}
     ],'Waardebandbreedte: laag '+fmtGeld(wLaag)+', midden '+fmtGeld(wMid)+', hoog '+fmtGeld(wHoog))+'</div>')+'</div>';
+
+  // Management- & retentiescan (backlogpunt 8 stap 3) — kwalitatief aandachtspunt, geen correctie op
+  // de waardering. :root-vars werken hier ook in de print-weergave (zie de :root-definitie in
+  // dvOpenPrintVenster()).
+  html+='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;margin-bottom:1.25rem">'
+    +'<div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)">Management- & sleutelpersoonrisico</div>'
+    +dvTabelManagementRisico()
+    +'</div>';
 
   // Rolling forecast
   html+='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;margin-bottom:1.25rem">'

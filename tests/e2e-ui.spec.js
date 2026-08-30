@@ -137,6 +137,27 @@ test.describe('Rekenkern dealvoorstel', () => {
     expect(res.bv.defVpb).toBe(25.8);
     expect(res.bv.defBewezen).toBe(600000);
   });
+
+  // Management- & retentiescan (backlogpunt 8 stap 3) — kwalitatieve laag/midden/hoog-indicatie,
+  // NOOIT een correctie op de waardering. Beschermt de banding + het "onvoldoende ingevuld"-pad.
+  test('managementrisico: banding en "onvoldoende ingevuld" bij te veel onbekend', async ({ page }) => {
+    const res = await page.evaluate(() => {
+      const run = (data) => { window.S = { data: Object.assign({}, data) }; return dvManagementRisico(); };
+      return {
+        hoog: run({ partner_keyPersonAfhank: '55', partner_tweedeEchelon: 'geen tweede laag, alles via de eigenaar',
+          partner_verandering: 'laag, veel weerstand', partner_mgmtRetentie: 'geen', partner_opvolging: 'geen' }),
+        laag: run({ partner_keyPersonAfhank: '8', partner_tweedeEchelon: 'sterk MT van 3 personen',
+          partner_verandering: 'hoog, staan er open voor', partner_mgmtRetentie: 'retentiebonus + lock-up overeengekomen', partner_opvolging: 'ja, interne kandidaat' }),
+        leeg: run({ partner_keyPersonAfhank: '', partner_tweedeEchelon: '', partner_verandering: '' }),
+      };
+    });
+    expect(res.hoog.band).toBe('hoog');
+    expect(res.hoog.onvoldoendeData).toBe(false);
+    expect(res.laag.band).toBe('laag');
+    // key-person leeg + tweede echelon leeg + veranderbereidheid leeg = 3 onbekend → geen oordeel
+    expect(res.leeg.onvoldoendeData).toBe(true);
+    expect(res.leeg.band).toBe('onvoldoende ingevuld');
+  });
 });
 
 // ───────────────────── 2. LOGIN & ROLLEN ─────────────────────
