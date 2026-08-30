@@ -81,6 +81,17 @@ function dvGetDefaults(){
   // document-/vrijetekstveld (geen betrouwbaar te parsen getal), in tegenstelling tot debiteuren/wip
   // die al elders in dit bestand als bedrag worden ingevuld en gebruikt.
   var werkkapitaalBasis=parseGeld(S._groepData['financieel_debiteuren']||'0')+parseGeld(S._groepData['financieel_wip']||'0');
+  // Opbrengst-brug (backlogpunt 7): netto schuld van het doelwit als voorgevulde default uit de al
+  // ingevulde balansvelden (kortlopend + langlopend − liquide middelen), maar ALLEEN als die velden
+  // daadwerkelijk zijn ingevuld — anders 0 en de begeleider vult het zelf in (nooit een gegokte
+  // schuldpositie, werkregel 8). debt-like items en de werkkapitaalcorrectie kennen geen betrouwbaar
+  // te parsen bronveld → default 0, handmatig. Transactiekosten: gedocumenteerde standaardaanname 2%
+  // van de ondernemingswaarde (zelfde soort default als escrowPct 12% — een expliciete, aanpasbare
+  // waarde, geen verzonnen cijfer), aanpasbaar door de begeleider.
+  var _ks=S._groepData['financieel_kortlopendeSchulden'], _ls=S._groepData['financieel_langlopendeSchulden'], _lm=S._groepData['financieel_liquideMiddelen'];
+  var _nettoSchuldDefault=((_ks&&String(_ks).trim())||(_ls&&String(_ls).trim()))
+    ? Math.max(0, parseGeld(_ks||'0')+parseGeld(_ls||'0')-parseGeld(_lm||'0'))
+    : 0;
   return {
     koperNaam:t.koper_naam||'',
     belangPct:51,
@@ -99,6 +110,10 @@ function dvGetDefaults(){
     earnOutJaren:3,
     escrowPct:12,
     escrowMaanden:18,
+    nettoSchuld:_nettoSchuldDefault,
+    debtLikeItems:0,
+    werkkapitaalCorrectie:0,
+    transactiekostenPct:2,
     bankLeverage:2,
     rentePct:5,
     vpbPct:_isMaatschap?0:25.8,
@@ -469,6 +484,67 @@ function dvTabelClosing(closing){
     ['Ondernemingswaarde bij volledige realisatie',dvMln(closing.evPrognose)],
     ['Earn-up (extra bij realisatie)',dvMln(closing.earnUp)]
   ]);
+}
+
+// Opbrengst-brug (backlogpunt 7): van headline-ondernemingswaarde naar wat er daadwerkelijk als geld
+// bij de verkopende partij aankomt. Alle aftrekposten zijn expliciete begeleider-parameters (netto
+// schuld voorgevuld uit de balansvelden, de rest handmatig) — nooit een gegokte waarde. De "verwachte
+// gerealiseerde waarde" is het optimistische scenario (escrow volledig vrijgegeven, uitgestelde
+// earn-out volledig behaald) en wordt ook zo gelabeld.
+function dvBerekenOpbrengstBrug(p,closing){
+  var ev=closing.evBasis;                                  // 100% ondernemingswaarde, bewezen basis
+  var nettoSchuld=Math.max(0,p.nettoSchuld||0);
+  var debtLike=Math.max(0,p.debtLikeItems||0);
+  var wcCorrectie=p.werkkapitaalCorrectie||0;              // + verhoogt, − verlaagt de opbrengst
+  var transactiekosten=Math.max(0,ev*((p.transactiekostenPct||0)/100));
+  var equityValue100=ev-nettoSchuld-debtLike-wcCorrectie-transactiekosten;
+  var belangFrac=(p.belangPct||0)/100;
+  var verkochtBelangWaarde=equityValue100*belangFrac;      // wat de koper betaalt voor zijn belang
+  var escrowBedrag=Math.max(0,verkochtBelangWaarde)*((p.escrowPct||0)/100);
+  var earnOutUitgesteld=p.earnOutAan?Math.max(0,verkochtBelangWaarde)*((p.earnOutPct||0)/100):0;
+  var cashBijClosing=verkochtBelangWaarde-escrowBedrag-earnOutUitgesteld;
+  var verwachteGerealiseerd=cashBijClosing+escrowBedrag+earnOutUitgesteld;  // = verkochtBelangWaarde, maar getoond als opbouw
+  return {
+    ev:ev,nettoSchuld:nettoSchuld,debtLike:debtLike,wcCorrectie:wcCorrectie,transactiekosten:transactiekosten,transactiekostenPct:p.transactiekostenPct||0,
+    equityValue100:equityValue100,belangPct:p.belangPct||0,verkochtBelangWaarde:verkochtBelangWaarde,
+    escrowPct:p.escrowPct||0,escrowMaanden:p.escrowMaanden||0,escrowBedrag:escrowBedrag,
+    earnOutAan:!!p.earnOutAan,earnOutPct:p.earnOutPct||0,earnOutUitgesteld:earnOutUitgesteld,
+    cashBijClosing:cashBijClosing,verwachteGerealiseerd:verwachteGerealiseerd
+  };
+}
+
+function dvTabelOpbrengstBrug(b){
+  var rows=[
+    ['Ondernemingswaarde (100%, bewezen basis)',dvMln(b.ev)],
+    ['&minus; Netto schuld doelwit',b.nettoSchuld?'&minus;'+dvMln(b.nettoSchuld):'0,00'],
+    ['&minus; Debt-like items',b.debtLike?'&minus;'+dvMln(b.debtLike):'0,00'],
+    ['&minus; Werkkapitaalcorrectie',b.wcCorrectie?(b.wcCorrectie>0?'&minus;'+dvMln(b.wcCorrectie):'+'+dvMln(-b.wcCorrectie)):'0,00'],
+    ['&minus; Transactiekosten ('+dvPct(b.transactiekostenPct)+' van EV, aanname)','&minus;'+dvMln(b.transactiekosten)],
+    ['= Equity value (100%)',dvMln(b.equityValue100)],
+    ['Verkocht belang koper ('+dvPct(b.belangPct)+')',dvMln(b.verkochtBelangWaarde)],
+    ['&minus; Escrow ('+dvPct(b.escrowPct)+', '+b.escrowMaanden+' mnd vastgehouden)','&minus;'+dvMln(b.escrowBedrag)]
+  ];
+  if(b.earnOutAan) rows.push(['&minus; Uitgestelde earn-out ('+dvPct(b.earnOutPct)+' aangehouden)','&minus;'+dvMln(b.earnOutUitgesteld)]);
+  rows.push(['= Cash bij closing (verkoper, verkocht belang)',dvMln(b.cashBijClosing)]);
+  rows.push(['+ Verwachte vrijval escrow (aanname: volledig)','+'+dvMln(b.escrowBedrag)]);
+  if(b.earnOutAan) rows.push(['+ Verwachte earn-out (aanname: doel behaald)','+'+dvMln(b.earnOutUitgesteld)]);
+  rows.push(['= Verwachte gerealiseerde waarde',dvMln(b.verwachteGerealiseerd)]);
+
+  var wf=[{label:'Ondernemingswaarde',delta:b.ev,isTotal:true}];
+  if(b.nettoSchuld) wf.push({label:'− Netto schuld',delta:-b.nettoSchuld});
+  if(b.debtLike) wf.push({label:'− Debt-like',delta:-b.debtLike});
+  if(b.wcCorrectie) wf.push({label:(b.wcCorrectie>0?'−':'+')+' Werkkap.corr.',delta:-b.wcCorrectie});
+  if(b.transactiekosten) wf.push({label:'− Transactiekosten',delta:-b.transactiekosten});
+  wf.push({label:'Equity value 100%',delta:b.equityValue100,isTotal:true});
+  wf.push({label:'Belang '+Math.round(b.belangPct)+'%',delta:b.verkochtBelangWaarde,isTotal:true});
+  if(b.escrowBedrag) wf.push({label:'− Escrow',delta:-b.escrowBedrag});
+  if(b.earnOutUitgesteld) wf.push({label:'− Earn-out uitgest.',delta:-b.earnOutUitgesteld});
+  wf.push({label:'Cash bij closing',delta:b.cashBijClosing,isTotal:true});
+
+  var html=dvRenderKenmerkTabel(rows);
+  html+='<div style="margin-top:.75rem;padding-top:.5rem">'+dvSvgWaterfallChart(wf,'Opbrengst-brug: van ondernemingswaarde '+fmtGeld(b.ev)+' naar cash bij closing '+fmtGeld(b.cashBijClosing))+'</div>';
+  html+='<div style="font-size:9pt;color:#8a8880;font-style:italic;margin-top:.35rem">De aftrekposten (netto schuld, debt-like items, werkkapitaalcorrectie, transactiekosten) zijn door de begeleider ingevoerde aannames — geen door het platform berekende waarden. "Verwachte gerealiseerde waarde" gaat uit van een volledige escrow-vrijgave en een volledig behaalde earn-out; de werkelijke uitkomst kan lager zijn.</div>';
+  return html;
 }
 
 function dvTabelEarnOut(eo){

@@ -1349,6 +1349,10 @@ function renderBegeleiderDashboard(app){
       +'</div>'
       +sectie('Escrow')
       +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('dv-escrow-pct','Escrow (%)',d.escrowPct)+veld('dv-escrow-mnd','Escrow-duur (maanden)',d.escrowMaanden)+'</div>'
+      +sectie('Opbrengst-brug (van ondernemingswaarde naar cash bij closing)')
+      +'<div style="font-size:11px;color:#8a8880;margin-bottom:.75rem">Aannames — geen door het platform berekende waarden. Netto schuld is voorgevuld uit de balansvelden indien ingevuld; controleer en pas aan.</div>'
+      +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('dv-nettoschuld','Netto schuld doelwit (€)',Math.round(d.nettoSchuld))+veld('dv-debtlike','Debt-like items (€)',Math.round(d.debtLikeItems))+'</div>'
+      +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('dv-wccorr','Werkkapitaalcorrectie (€, + verlaagt opbrengst)',Math.round(d.werkkapitaalCorrectie))+veld('dv-txkosten','Transactiekosten (% van EV)',d.transactiekostenPct,0.1)+'</div>'
       +sectie('Financiering')
       +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('dv-leverage','Bankfinanciering (× bewezen EBITDA)',d.bankLeverage,0.1)+veld('dv-rente','Rente (%)',d.rentePct,0.1)+'</div>'
       +sectie('Fiscaal & operationeel')
@@ -1433,6 +1437,10 @@ function renderBegeleiderDashboard(app){
         earnOutJaren:parseInt(document.getElementById('dv-eo-jaren').value)||0,
         escrowPct:parseFloat(document.getElementById('dv-escrow-pct').value)||12,
         escrowMaanden:parseFloat(document.getElementById('dv-escrow-mnd').value)||18,
+        nettoSchuld:parseFloat(document.getElementById('dv-nettoschuld').value)||0,
+        debtLikeItems:parseFloat(document.getElementById('dv-debtlike').value)||0,
+        werkkapitaalCorrectie:parseFloat(document.getElementById('dv-wccorr').value)||0,
+        transactiekostenPct:parseFloat(document.getElementById('dv-txkosten').value)||0,
         bankLeverage:parseFloat(document.getElementById('dv-leverage').value)||2,
         rentePct:parseFloat(document.getElementById('dv-rente').value)||5,
         vpbPct:parseFloat(document.getElementById('dv-vpb').value)||25.8,
@@ -1509,10 +1517,12 @@ function renderBegeleiderDashboard(app){
         var dcfGevoeligheid=p.dcfGevoeligheidAan?dvBerekenDCFGevoeligheid(p,schuldafbouw):null;
         var gevoeligheid=dvBerekenGevoeligheid(p);
         var dcf=dvBerekenDCF(p,schuldafbouw);
+        var opbrengstBrug=dvBerekenOpbrengstBrug(p,closing);
         var tabelMap={
           CIJFERS:dvTabelCijfers(),
           CIJFEROVERZICHT:dvTabelCijferoverzicht(),
           MGMTRISICO:dvTabelManagementRisico(),
+          OPBRENGSTBRUG:dvTabelOpbrengstBrug(opbrengstBrug),
           GEVOELIGHEID:dvTabelGevoeligheid(gevoeligheid),
           TREND:dvTabelTrend(),
           VERGELIJKBAAR:dvBlokVergelijkbareTransacties(),
@@ -1539,6 +1549,7 @@ function renderBegeleiderDashboard(app){
           +'DCF-kruiscontrole (discontovoet '+p.discontovoetPct+'%): ondernemingswaarde DCF '+(dcf.geldig?'€'+Math.round(dcf.evDcf):'n.v.t. (discontovoet ≤ groeivoet, Gordon Growth-formule ongeldig bij deze combinatie)')+' t.o.v. ondernemingswaarde EBITDA-multiple (bewezen) €'+Math.round(closing.evBasis)+'.\n'
           +'Transactiestructuur: koper verwerft '+p.belangPct+'% bij closing; de verkopende partij behoudt '+(100-p.belangPct)+'%.'
           +('\nManagement- & sleutelpersoonrisico (kwalitatieve indicatie uit de DD-velden, GEEN correctie op de waardering): '+(function(){var mr=dvManagementRisico();return mr.onvoldoendeData?'onvoldoende ingevuld voor een oordeel':(mr.band+' ('+mr.totaal+'/'+mr.maxTotaal+' risicopunten)');})()+'.')
+          +('\nOpbrengst-brug (aannames van de begeleider, geen platformberekening): ondernemingswaarde €'+Math.round(opbrengstBrug.ev)+' − netto schuld €'+Math.round(opbrengstBrug.nettoSchuld)+' − debt-like €'+Math.round(opbrengstBrug.debtLike)+' − werkkapitaalcorrectie €'+Math.round(opbrengstBrug.wcCorrectie)+' − transactiekosten €'+Math.round(opbrengstBrug.transactiekosten)+' ('+opbrengstBrug.transactiekostenPct+'% van EV) = equity value €'+Math.round(opbrengstBrug.equityValue100)+'. Verkocht belang '+opbrengstBrug.belangPct+'% = €'+Math.round(opbrengstBrug.verkochtBelangWaarde)+', minus escrow €'+Math.round(opbrengstBrug.escrowBedrag)+(opbrengstBrug.earnOutAan?' en uitgestelde earn-out €'+Math.round(opbrengstBrug.earnOutUitgesteld):'')+' = cash bij closing €'+Math.round(opbrengstBrug.cashBijClosing)+'. Verwachte gerealiseerde waarde (bij volledige escrow-vrijgave'+(opbrengstBrug.earnOutAan?' en behaalde earn-out':'')+'): €'+Math.round(opbrengstBrug.verwachteGerealiseerd)+'.')
           +(earnOut?('\nEarn-out (prestatieafhankelijke naverrekening, los van de earn-up hierboven): van de koopsom bij closing op bewezen basis (€'+Math.round(earnOut.earnBase)+') wordt €'+Math.round(earnOut.vastBedrag)+' direct uitgekeerd en €'+Math.round(earnOut.earnOutTotaal)+' ('+p.earnOutPct+'%) aangehouden en uitgekeerd in '+p.earnOutJaren+' jaarlijkse tranches van €'+Math.round(earnOut.jaarlijks)+', gekoppeld aan een doelomzetgroei van '+p.earnOutTargetPct+'% per jaar (zelf gekozen aanname, geen vastgestelde norm).'):'')
           +(vendorLoanRows?('\nVendor loan (verkoperslening): €'+Math.round(p.vendorLoanBedrag)+' tegen '+p.vendorLoanRentePct+'% rente, looptijd '+p.vendorLoanJaren+' jaar, '+(p.vendorLoanAflossingsvrij?'aflossingsvrij met bullet-aflossing van de hoofdsom in het laatste jaar':'lineaire jaarlijkse aflossing')+'. Dit is een door de verkopende partij aan de koper verstrekte, achtergestelde lening — een aparte verplichting naast de bankfinanciering.'):'')
           +(ruilverhouding?('\nAandelenruil (dealstructuur, geen juridische fusie): de koper betaalt het deel bij closing (€'+Math.round(ruilverhouding.waardeVerkoperDeel)+') niet contant maar in nieuw uit te geven aandelen. Waarde onderneming koper (extern aangeleverd, niet door dit platform via due diligence geverifieerd): €'+Math.round(ruilverhouding.koperswaardeExtern)+'. Ruilverhouding, waarde-evenredig berekend (geen premie/korting verwerkt): verkoper-aandeelhouders krijgen '+ruilverhouding.pctVerkoper.toFixed(1)+'% van de gecombineerde onderneming, bestaande aandeelhouders koper behouden '+ruilverhouding.pctKoper.toFixed(1)+'%.'+(ruilverhouding.nieuweAandelen!==null?(' Indicatief uit te geven nieuwe aandelen: circa '+ruilverhouding.nieuweAandelen+' (op basis van '+ruilverhouding.aandelenKoperAantal+' bestaande aandelen koper).'):'')):'')
@@ -1558,6 +1569,7 @@ function renderBegeleiderDashboard(app){
           +'## Vergelijkbare transacties\n(leg in 2-3 zinnen uit hoe de gekozen multiple-range zich verhoudt tot onderstaande sectorreferenties; verzin geen eigen transacties, gebruik uitsluitend de tekst hieronder)\n[TABEL:VERGELIJKBAAR]\n\n'
           +'## Prijsmechanisme\n(leg uit hoe de multiple meebeweegt met de gerealiseerde EBITDA, en waarom de cliff-drempel de koper beschermt)\n[TABEL:PRIJSMECHANISME]\n\n'
           +'## Bedrag bij closing en earn-up\n(toelichting op het bedrag bij closing en de gefaseerde afrekening bij realisatie)\n[TABEL:CLOSING]\n\n'
+          +'## Van ondernemingswaarde naar opbrengst bij closing\n(loop de brug hieronder in 3-5 zinnen langs: de headline-ondernemingswaarde is niet wat de verkopende partij als geld ontvangt — netto schuld, debt-like items, werkkapitaalcorrectie en transactiekosten gaan eraf tot de equity value, en escrow plus een eventuele uitgestelde earn-out worden pas later uitgekeerd. Benoem het bedrag "cash bij closing" en het verschil met de headline expliciet. BELANGRIJK: de aftrekposten zijn door de begeleider ingevoerde aannames, geen platformberekening — schrijf dat ook zo; en de "verwachte gerealiseerde waarde" gaat uit van een volledige escrow-vrijgave en een volledig behaalde earn-out, dus benoem dat als het optimistische scenario. Gebruik uitsluitend de tabel, verzin geen bedragen)\n[TABEL:OPBRENGSTBRUG]\n\n'
           +(earnOut?'## Earn-out: prestatieafhankelijke naverrekening\n(leg uit dat dit los staat van de earn-up hierboven: hier wordt een deel van de koopsom zelf aangehouden en in jaarlijkse tranches uitgekeerd, gekoppeld aan het behalen van de doelomzetgroei per jaar — benoem expliciet dat het percentage, de doelgroei en de looptijd eigen keuzes van de begeleider zijn, geen vastgestelde norm)\n[TABEL:EARNOUT]\n\n':'')
           +'## Kruiscontrole: DCF versus EBITDA-multiple\n(leg uit hoe de DCF-uitkomst zich verhoudt tot de multiple-waardering — noem beide bedragen uit de context, verzin geen eigen bedragen. BELANGRIJK: als de DCF-uitkomst duidelijk hoger ligt dan de multiple-waardering, benoem dan expliciet dat dit vooral door de terminal value bij de gekozen groeivoet komt (Gordon Growth-effect bij een kleine WACC-groeivoet-marge), en dat de DCF een plausibiliteitscheck is — niet een bevestiging dat de multiple-waardering "redelijk" of "klopt". Schrijf dus NIET dat de DCF de multiple-waardering bevestigt als de bedragen ver uiteen liggen; benoem het verschil zakelijk en laat de lezer zelf de implicatie trekken)\n[TABEL:DCF]\n\n'
           +(dcfGevoeligheid?'## DCF-gevoeligheid: WACC × groeivoet\n(leg uit dat de DCF-uitkomst het gevoeligst is voor de discontovoet en de terminale groeivoet — interpreteer de matrix, benoem "n.v.t."-cellen als een teken dat die combinatie wiskundig ongeldig is (WACC moet hoger zijn dan de groeivoet), verzin geen eigen getallen)\n[TABEL:DCFGEVOELIGHEID]\n\n':'')
