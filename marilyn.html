@@ -2862,6 +2862,7 @@ function toonNieuwModal(prefillLead){
     +'<div style="display:flex;gap:12px">'
     +'<div class="field" style="flex:1"><label>Trajecttype <span style="color:var(--red)">*</span></label><select id="m-t"><option value="Verkoop">Verkoop</option><option value="Fusie">Fusie</option><option value="Opvolging">Opvolging</option><option value="PE-traject">PE-traject</option><option value="Overname">Overname</option></select></div>'
     +'<div class="field" style="flex:1"><label>Sector <span style="color:var(--red)">*</span></label><select id="m-sector"><option value="accountancy">Accountancy & administratie</option><option value="mkb">MKB — Retail / Horeca / Handel</option><option value="zorg">Zorg — Huisarts / Tandarts / Fysiotherapie</option><option value="itsoftware">IT & Software</option></select></div>'
+    +'<div class="field" style="flex:1"><label>Structuur <span style="color:var(--red)">*</span></label><select id="m-structuur"><option value="bv">BV / NV — VPB</option><option value="maatschap">Maatschap — maten (box 1), geen VPB</option><option value="eenmanszaak">Eenmanszaak</option></select></div>'
     +'</div>'
     +'<div style="border-bottom:1px solid var(--border);margin:.75rem 0 .75rem;padding-bottom:.25rem"><div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)" id="m-sectie1-hdr">Verkopende partij</div></div>'
     +'<div class="field"><label id="m-p1-naam-lbl">Naam onderneming <span style="color:var(--red)">*</span></label><div style="display:flex;gap:8px"><input type="text" id="m-k" placeholder="Naam van de onderneming" value="'+esc(pf.kantoor_naam||'')+'" style="flex:2"><input type="text" id="m-kvk" placeholder="KvK-nr" style="flex:1"></div></div>'
@@ -2952,6 +2953,7 @@ function toonNieuwModal(prefillLead){
         body:JSON.stringify({
           kantoor_naam:kantoor,
           kantoor_rechtsvorm:vv('m-rv'),
+          structuur_type:vv('m-structuur')||'bv',
           contact_naam:vv('m-c'),
           contact_email:vv('m-e'),
           verkoper_adres:vv('m-adres'),

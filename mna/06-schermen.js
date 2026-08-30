@@ -210,6 +210,7 @@ function renderOpening(){
     +'<input type="text" id="op-pt-opvolging" placeholder="Opvolgingskandidaat" style="flex:1;background:var(--card);border:1px solid var(--border2);border-radius:6px;padding:7px 11px;font-size:13px">'
     +'<input type="text" id="op-pt-omzet" placeholder="Omzet incl. team (€)" style="flex:1;background:var(--card);border:1px solid var(--border2);border-radius:6px;padding:7px 11px;font-size:13px">'
     +'</div>'
+    +(isMaatschap()?'<div style="display:flex;gap:8px;margin-bottom:6px"><input type="text" id="op-pt-winstaandeel" placeholder="Winstaandeel deze maat (%)" style="flex:1;background:var(--card);border:1px solid var(--border2);border-radius:6px;padding:7px 11px;font-size:13px"></div>':'')
     +'<div id="op-pt-entiteiten" style="font-size:12px;color:var(--muted);margin-bottom:8px">Gekoppelde entiteiten: <span style="font-style:italic">laden...</span></div>'
     +'<button id="op-pt-toevoegen" style="background:var(--teal);color:#fff;border:none;padding:7px 14px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600">+ Toevoegen</button>'
     +'<div id="op-pt-err" style="display:none;color:var(--red);font-size:12px;margin-top:.5rem"></div>'
@@ -271,6 +272,7 @@ function bindOpeningScreen(){
         +(r.veranderbereidheid?'<div style="font-size:11px;color:var(--muted)">Veranderbereidheid: '+esc(r.veranderbereidheid)+'</div>':'')
         +(r.opvolgingskandidaat?'<div style="font-size:11px;color:var(--muted)">Opvolging: '+esc(r.opvolgingskandidaat)+'</div>':'')
         +(r.omzet_incl_team?'<div style="font-size:11px;color:var(--muted)">Omzet incl. team: &euro;'+esc(Number(r.omzet_incl_team).toLocaleString('nl-NL'))+'</div>':'')
+        +(r.winstaandeel_pct?'<div style="font-size:11px;color:var(--muted)">Winstaandeel: '+esc(r.winstaandeel_pct)+'%</div>':'')
         +(entNamen?'<div style="font-size:11px;color:var(--teal)">'+esc(entNamen)+'</div>':'')
         +'</div>'
         +'<button class="op-pt-verwijder" data-id="'+esc(r.id)+'" style="background:transparent;border:1px solid var(--border2);color:var(--red);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px">Verwijderen</button>'
@@ -298,15 +300,15 @@ function bindOpeningScreen(){
   var ptToevoegenBtn=ge('op-pt-toevoegen');
   if(ptToevoegenBtn)ptToevoegenBtn.onclick=async function(){
     var btn=this;
-    var naamEl=ge('op-pt-naam'),leeftijdEl=ge('op-pt-leeftijd'),verEl=ge('op-pt-verandering'),opvEl=ge('op-pt-opvolging'),omzetEl=ge('op-pt-omzet');
+    var naamEl=ge('op-pt-naam'),leeftijdEl=ge('op-pt-leeftijd'),verEl=ge('op-pt-verandering'),opvEl=ge('op-pt-opvolging'),omzetEl=ge('op-pt-omzet'),winstEl=ge('op-pt-winstaandeel');
     var errEl=ge('op-pt-err');errEl.style.display='none';
     var naam=naamEl.value.trim();
     if(!naam){errEl.textContent='Naam is verplicht.';errEl.style.display='block';return;}
     var entIds=Array.prototype.slice.call(document.querySelectorAll('.op-pt-ent-chk:checked')).map(function(c){return c.value;});
     btn.disabled=true;btn.textContent='...';
-    var r=await fetch(WORKER+'/mna/partners/'+S.code,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({naam:naam,leeftijd:leeftijdEl.value.trim(),veranderbereidheid:verEl.value.trim(),opvolgingskandidaat:opvEl.value.trim(),omzet_incl_team:omzetEl.value.trim(),entiteit_ids:entIds})}).then(function(x){return x.json();}).catch(function(){return {};});
+    var r=await fetch(WORKER+'/mna/partners/'+S.code,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({naam:naam,leeftijd:leeftijdEl.value.trim(),veranderbereidheid:verEl.value.trim(),opvolgingskandidaat:opvEl.value.trim(),omzet_incl_team:omzetEl.value.trim(),winstaandeel_pct:winstEl?winstEl.value.trim():'',entiteit_ids:entIds})}).then(function(x){return x.json();}).catch(function(){return {};});
     btn.disabled=false;btn.textContent='+ Toevoegen';
-    if(r.ok){naamEl.value='';leeftijdEl.value='';verEl.value='';opvEl.value='';omzetEl.value='';document.querySelectorAll('.op-pt-ent-chk').forEach(function(c){c.checked=false;});laadOpeningPartners();}
+    if(r.ok){naamEl.value='';leeftijdEl.value='';verEl.value='';opvEl.value='';omzetEl.value='';if(winstEl)winstEl.value='';document.querySelectorAll('.op-pt-ent-chk').forEach(function(c){c.checked=false;});laadOpeningPartners();}
     else{errEl.textContent=r.error||'Fout bij opslaan';errEl.style.display='block';}
   };
   voltooienBtn.onclick=async function(){

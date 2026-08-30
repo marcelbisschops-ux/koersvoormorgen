@@ -98,6 +98,45 @@ test.describe('Rekenkern dealvoorstel', () => {
     ));
     expect(r).toBeNull();
   });
+
+  // Maatschap-waardering (backlogpunt 9-B4, werkregel 13) — grondslag is winst ná een marktconform
+  // ondernemersloon (proxy: veld eigenaar-/partnerbeloning), sector-multiple daarop, geen VpB.
+  // Beschermt (a) de maatschap-rekenwijze en (b) dat de BV-tak exact ongewijzigd blijft.
+  test('maatschap: grondslag = winst ná ondernemersloon, geen VpB; BV ongewijzigd', async ({ page }) => {
+    const res = await page.evaluate(() => {
+      const run = (structuur, data) => {
+        window.S = { traject: { sector: 'accountancy', structuur_type: structuur, koper_naam: '' },
+          _groepData: Object.assign({}, data), data: Object.assign({}, data) };
+        const v = dvBerekenWaardering();
+        const d = dvGetDefaults();
+        return { multipleType: v.multipleType, grondslag: v.multipleTypeBedrag, wMid: v.wMid,
+          onbekend: v.maatschapGrondslagOnbekend, defVpb: d.vpbPct, defBewezen: d.ebitdaBewezen };
+      };
+      const basis = { financieel_ebitdaNorm: '600000', financieel_partnerBel: '300000',
+        financieel_omzet3: '2000000', financieel_ebitdaMarge: '30' };
+      return {
+        maatschap: run('maatschap', basis),
+        maatschapLeeg: run('maatschap', { financieel_ebitdaNorm: '600000', financieel_omzet3: '2000000', financieel_ebitdaMarge: '30' }),
+        bv: run('bv', basis),
+      };
+    });
+    // maatschap: 600k − 300k = 300k grondslag; mid-multiple 5,0 → 1,5M; VpB-default 0
+    expect(res.maatschap.multipleType).toBe('maatschap');
+    expect(res.maatschap.grondslag).toBe(300000);
+    expect(res.maatschap.wMid).toBe(1500000);
+    expect(res.maatschap.defVpb).toBe(0);
+    expect(res.maatschap.defBewezen).toBe(300000);
+    // maatschap zonder ondernemersloon → geen gegokt cijfer
+    expect(res.maatschapLeeg.wMid).toBeNull();
+    expect(res.maatschapLeeg.onbekend).toBe(true);
+    expect(res.maatschapLeeg.defBewezen).toBe(0);
+    // BV-regressie: partnerbeloning NIET afgetrokken, VpB-default 25,8 — exact als voorheen
+    expect(res.bv.multipleType).toBe('ebitda');
+    expect(res.bv.grondslag).toBe(600000);
+    expect(res.bv.wMid).toBe(3000000);
+    expect(res.bv.defVpb).toBe(25.8);
+    expect(res.bv.defBewezen).toBe(600000);
+  });
 });
 
 // ───────────────────── 2. LOGIN & ROLLEN ─────────────────────
