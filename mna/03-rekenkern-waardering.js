@@ -607,6 +607,10 @@ function dvTabelCijferoverzicht(){
     ['Aantal partners/eigenaren',dvVeld('partner_aantalP')],
     ['Omzet per partner',dvVeldGeld('partner_omzetPerP')],
     ['Opvolgingskandidaat aanwezig',dvVeld('partner_opvolging')],
+    ['Veranderbereidheid partners',dvVeld('partner_verandering')],
+    ['Tweede echelon / managementlaag onder eigenaar',dvVeld('partner_tweedeEchelon')],
+    ['Key-person-afhankelijkheid (% omzet/relaties aan 1 persoon)',dvVeld('partner_keyPersonAfhank')],
+    ['Aanblijf-/retentieafspraken management',dvVeld('partner_mgmtRetentie')],
     ['Concurrentiebeding sleutelfiguren',dvVeld('partner_concurrentieBeding')]
   );
   return dvRenderKenmerkTabel(rows);
