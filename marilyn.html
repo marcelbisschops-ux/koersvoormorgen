@@ -416,13 +416,15 @@ function renderLeadsTab(el){
   if(!leads.length){
     html+='<div class="empty">Nog geen leads aangedragen.</div>';
   } else {
-    html+='<table><thead><tr><th>Datum</th><th>Aangedragen kantoor</th><th>Aandrager</th><th>Contact</th><th>Toelichting</th><th>Status</th><th>Acties</th></tr></thead><tbody>';
+    html+='<table><thead><tr><th>Datum</th><th>Type</th><th>Kantoor / organisatie</th><th>Aanvrager</th><th>Contact</th><th>Toelichting</th><th>Status</th><th>Acties</th></tr></thead><tbody>';
     leads.forEach(function(l){
       var omgezet=l.status==='omgezet';
+      var isTt=l.bron==='testtraject';
       html+='<tr>'
         +'<td class="mono" style="font-size:11px;white-space:nowrap">'+formatDate(l.created_at)+'</td>'
-        +'<td style="font-weight:500;color:var(--head)">'+esc(l.kantoor_naam||'—')+'</td>'
-        +'<td style="font-size:12px">'+esc(l.naam||'—')+(l.organisatie?'<div style="color:var(--muted);font-size:10px">'+esc(l.organisatie)+'</div>':'')+'</td>'
+        +'<td><span class="tag" style="font-size:10px'+(isTt?';background:var(--gold-bg);color:var(--gold);border-color:var(--gold)':'')+'">'+(isTt?'Testtraject':'Overname')+'</span></td>'
+        +'<td style="font-weight:500;color:var(--head)">'+esc(l.kantoor_naam||'—')+(l.kvk?'<div class="mono" style="color:var(--muted);font-size:10px">KvK '+esc(l.kvk)+'</div>':'')+'</td>'
+        +'<td style="font-size:12px">'+esc(l.naam||'—')+(l.organisatie&&l.organisatie!==l.kantoor_naam?'<div style="color:var(--muted);font-size:10px">'+esc(l.organisatie)+'</div>':'')+'</td>'
         +'<td style="font-size:12px"><a href="mailto:'+esc(l.email)+'" style="color:var(--teal);text-decoration:none">'+esc(l.email||'—')+'</a>'+(l.telefoon?'<div><a href="tel:'+esc(l.telefoon)+'" style="color:var(--teal);text-decoration:none;font-size:11px">'+esc(l.telefoon)+'</a></div>':'')+'</td>'
         +'<td style="font-size:12px;max-width:260px">'+esc(l.toelichting||'—')+'</td>'
         +'<td>'+(omgezet?'<span class="tag" style="background:var(--teal-bg);color:var(--teal-dim);border-color:var(--teal)">&#10003; Omgezet</span><div style="margin-top:3px"><span class="code-chip" style="font-size:10px">'+esc(l.traject_id||'')+'</span></div>':'<span class="tag">Nieuw</span>')+'</td>'

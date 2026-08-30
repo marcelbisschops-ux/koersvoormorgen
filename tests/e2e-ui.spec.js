@@ -158,6 +158,25 @@ test.describe('Rekenkern dealvoorstel', () => {
     expect(res.leeg.onvoldoendeData).toBe(true);
     expect(res.leeg.band).toBe('onvoldoende ingevuld');
   });
+
+  // Opbrengst-brug (backlogpunt 7) — headline-EV minus aftrekposten → equity value → cash bij closing.
+  // Beschermt de rekenkundige opbouw; alle aftrekposten zijn begeleider-aannames, geen platformgok.
+  test('opbrengst-brug: EV → equity value → cash bij closing exact', async ({ page }) => {
+    const b = await page.evaluate(() => {
+      const p = { ebitdaBewezen: 400000, multipleBasis: 5.0, ebitdaPrognose: 520000, multipleBovengrens: 6.0, belangPct: 51,
+        nettoSchuld: 300000, debtLikeItems: 100000, werkkapitaalCorrectie: 50000, transactiekostenPct: 2,
+        escrowPct: 12, escrowMaanden: 18, earnOutAan: true, earnOutPct: 20 };
+      return dvBerekenOpbrengstBrug(p, dvBerekenClosing(p));
+    });
+    expect(b.ev).toBe(2000000);                    // 400k × 5,0
+    expect(b.transactiekosten).toBe(40000);        // 2% van EV
+    expect(b.equityValue100).toBe(1510000);        // 2M − 300k − 100k − 50k − 40k
+    expect(Math.round(b.verkochtBelangWaarde)).toBe(770100);   // × 51%
+    expect(Math.round(b.escrowBedrag)).toBe(92412);            // 12%
+    expect(Math.round(b.earnOutUitgesteld)).toBe(154020);      // 20%
+    expect(Math.round(b.cashBijClosing)).toBe(523668);
+    expect(Math.round(b.verwachteGerealiseerd)).toBe(770100);  // escrow + earn-out komen terug
+  });
 });
 
 // ───────────────────── 2. LOGIN & ROLLEN ─────────────────────

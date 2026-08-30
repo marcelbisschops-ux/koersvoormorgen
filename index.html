@@ -166,6 +166,22 @@ section{padding:3.5rem 0}
   .nav-links{gap:.7rem}
   .nav-links a{font-size:12px}
 }
+
+/* Testtraject-aanvraag (backlogpunt 11) */
+dialog#tt-dialog{border:1px solid var(--border2);border-radius:var(--r2);padding:0;max-width:440px;width:calc(100% - 2rem);max-height:90vh;overflow:auto;background:var(--panel);color:var(--body)}
+dialog#tt-dialog::backdrop{background:rgba(20,18,15,.55)}
+.tt-inner{padding:1.75rem}
+.tt-inner h3{font-size:1.15rem;margin-bottom:.4rem}
+.tt-inner p.tt-sub{font-size:13px;color:var(--mid);margin-bottom:1.1rem}
+.tt-field{margin-bottom:.8rem}
+.tt-field label{display:block;font-size:12px;font-weight:600;color:var(--sub);margin-bottom:.25rem}
+.tt-field input,.tt-field textarea,.tt-field select{width:100%;border:1px solid var(--border2);border-radius:var(--r);padding:9px 11px;font:inherit;font-size:14px;background:var(--void);color:var(--body)}
+.tt-hp{position:absolute!important;left:-9999px;width:1px;height:1px;overflow:hidden}
+.tt-actions{display:flex;gap:.6rem;justify-content:flex-end;margin-top:1.1rem;flex-wrap:wrap}
+.tt-actions .btn-secondary,.tt-actions .btn-primary{cursor:pointer}
+.tt-msg{font-size:13px;margin-top:.7rem;line-height:1.5}
+.tt-msg.ok{color:var(--teal-dim)}
+.tt-msg.err{color:#c0392b}
 </style>
 </head>
 <body>
@@ -191,7 +207,7 @@ section{padding:3.5rem 0}
     <p>Breng structuur, snelheid en regie in ieder overnametraject.</p>
     <p>Van eerste documentverzoek tot closing werken koper, verkoper en adviseur in één omgeving. Met duidelijke fases, rollen, documenten, vragen en acties.</p>
     <div class="hero-ctas">
-      <a href="https://wa.me/31638689888?text=Hallo%2C%20ik%20wil%20graag%20een%20demo%20van%20Koers%20voor%20Morgen%20plannen" target="_blank" rel="noopener" class="btn-primary">Plan een demo</a>
+      <button type="button" class="btn-primary" onclick="ttOpen()">Vraag een testtraject aan</button>
       <a href="mna.html" class="btn-secondary">Inloggen</a>
     </div>
     <div class="hero-note">Bent u zelf adviseur? <a href="adv.html">Log in als adviseur &rarr;</a></div>
@@ -337,7 +353,7 @@ section{padding:3.5rem 0}
       </div>
     </div>
     <div class="steps-tag">Eén werkwijze. Eén omgeving. Eén compleet trajectdossier.</div>
-    <a href="https://wa.me/31638689888?text=Hallo%2C%20ik%20wil%20graag%20een%20demo%20van%20Koers%20voor%20Morgen%20plannen" target="_blank" rel="noopener" class="btn-primary">Plan een demo</a>
+    <button type="button" class="btn-primary" onclick="ttOpen()">Vraag een testtraject aan</button>
   </div>
 </section>
 
@@ -382,8 +398,8 @@ section{padding:3.5rem 0}
       <div class="cta-founder-text"><strong>Marcel Bisschops</strong>Bisschops Financing</div>
     </div>
     <h2>Klaar om jouw volgende overnametraject beter te organiseren?</h2>
-    <p>Ontdek hoe Koers voor Morgen past binnen de werkwijze van jouw kantoor. Plan een persoonlijke demo, afgestemd op de omvang en werkwijze van jouw kantoor.</p>
-    <a href="https://wa.me/31638689888?text=Hallo%2C%20ik%20wil%20graag%20een%20demo%20van%20Koers%20voor%20Morgen%20plannen" target="_blank" rel="noopener" class="btn-primary">Plan een demo</a>
+    <p>Ontdek hoe Koers voor Morgen past binnen de werkwijze van jouw kantoor. Vraag een testtraject aan — wij richten het samen met u in, afgestemd op de omvang en werkwijze van uw kantoor.</p>
+    <button type="button" class="btn-primary" onclick="ttOpen()">Vraag een testtraject aan</button>
   </div>
 </div>
 
@@ -405,6 +421,43 @@ section{padding:3.5rem 0}
 </div>
 
 </div>
-<script>document.getElementById('jr').textContent=new Date().getFullYear();</script>
+<dialog id="tt-dialog">
+  <form method="dialog" class="tt-inner" id="tt-form">
+    <h3>Vraag een testtraject aan</h3>
+    <p class="tt-sub">Wij nemen contact met u op om samen een testtraject in te richten, afgestemd op uw kantoor. Vrijblijvend.</p>
+    <div class="tt-field"><label for="tt-naam">Naam *</label><input id="tt-naam" name="naam" required maxlength="120"></div>
+    <div class="tt-field"><label for="tt-org">Kantoor / organisatie *</label><input id="tt-org" name="organisatie" required maxlength="160"></div>
+    <div class="tt-field"><label for="tt-email">E-mailadres *</label><input id="tt-email" name="email" type="email" required maxlength="160"></div>
+    <div class="tt-field"><label for="tt-kvk">KvK-nummer</label><input id="tt-kvk" name="kvk" inputmode="numeric" maxlength="8" placeholder="8 cijfers"></div>
+    <div class="tt-field"><label for="tt-rol">Uw rol</label><select id="tt-rol" name="rol"><option value="">— kies —</option><option>Accountant</option><option>M&amp;A-/overnameadviseur</option><option>Ondernemer</option><option>Anders</option></select></div>
+    <div class="tt-field"><label for="tt-toel">Toelichting (optioneel)</label><textarea id="tt-toel" name="toelichting" rows="3" maxlength="2000"></textarea></div>
+    <div class="tt-hp"><label>Website<input name="website" tabindex="-1" autocomplete="off"></label></div>
+    <div class="tt-msg" id="tt-msg"></div>
+    <div class="tt-actions">
+      <button type="button" class="btn-secondary" onclick="document.getElementById('tt-dialog').close()">Annuleren</button>
+      <button type="submit" class="btn-primary" id="tt-submit">Versturen</button>
+    </div>
+  </form>
+</dialog>
+<script>
+document.getElementById('jr').textContent=new Date().getFullYear();
+var TT_WORKER='https://kantoorinzicht.marcel-bisschops.workers.dev';
+function ttOpen(){var m=document.getElementById('tt-msg');m.textContent='';m.className='tt-msg';document.getElementById('tt-dialog').showModal();}
+document.getElementById('tt-form').addEventListener('submit',async function(e){
+  e.preventDefault();
+  var f=e.target,msg=document.getElementById('tt-msg'),btn=document.getElementById('tt-submit');
+  msg.className='tt-msg';msg.textContent='';btn.disabled=true;btn.textContent='Versturen…';
+  var payload={naam:f.naam.value.trim(),organisatie:f.organisatie.value.trim(),email:f.email.value.trim(),kvk:f.kvk.value.trim(),rol:f.rol.value,toelichting:f.toelichting.value.trim(),website:f.website.value};
+  try{
+    var r=await fetch(TT_WORKER+'/leads/testtraject',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    var j=await r.json().catch(function(){return{};});
+    if(!r.ok||!j.ok){msg.className='tt-msg err';msg.textContent=(j&&j.error)||'Er ging iets mis. Probeer het later opnieuw of mail naar marcel@bisschopsfinancing.nl.';btn.disabled=false;btn.textContent='Versturen';return;}
+    f.querySelectorAll('.tt-field,.tt-hp,.tt-actions').forEach(function(el){el.style.display='none';});
+    msg.className='tt-msg ok';msg.textContent='Bedankt — we hebben uw aanvraag ontvangen en nemen binnen enkele werkdagen contact op.';
+    var c=document.createElement('button');c.type='button';c.className='btn-secondary';c.textContent='Sluiten';c.style.marginTop='.9rem';c.onclick=function(){document.getElementById('tt-dialog').close();};
+    f.appendChild(c);
+  }catch(err){msg.className='tt-msg err';msg.textContent='Kon geen verbinding maken. Probeer het later opnieuw.';btn.disabled=false;btn.textContent='Versturen';}
+});
+</script>
 </body>
 </html>
