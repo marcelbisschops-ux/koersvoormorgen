@@ -406,7 +406,7 @@ function renderAdvHandleiding(){
         + stap('4b','Risicoraamwerk (SWOT/PESTEL/Porter)','Genereert op basis van de al ingevulde DD-data en eerdere AI-beoordelingen een SWOT-, PESTEL- en Porter\'s Five Forces-analyse. Puur interne analyse — nooit voor verkoper of koper zichtbaar, niet gekoppeld aan de Contracten-module. Bij te dunne DD-data benoemt het raamwerk dat expliciet in plaats van een aanname te verzinnen.')
         + stap(5,'Koper-fit strategie','Leg vast waarom de koper overnames zoekt; het systeem toetst de verkoper hier expliciet tegen — harde cijfers automatisch, vrije tekst alleen geciteerd door de AI, nooit zelf beoordeeld.')
         + stap(6,'Groepsstructuur, koper-toegang, Q&amp;A, wijzigingenlog','Entiteiten beheren bij een holdingstructuur, per DD-categorie bepalen wat de koper mag zien, en elke wijziging van de verkoper gelogd terugzien. Bij het Q&amp;A-register (op mna.html) kunt u per vraag een deadline zetten (onbeantwoord na die datum geeft een rode waarschuwing) en de vraag toewijzen aan een naam; na een antwoord blijft de vraag open voor een reactiedraad.')
-        + stap(7,'Partners beheren','Registreer partners bij naam en koppel ze aan hun entiteit(en), in plaats van per entiteit los leeftijd/veranderbereidheid in te vullen. De gevraagde omzet is bewust de omzet inclusief onderliggend team die bij vertrek van de partner risico loopt. De fase "Partners &amp; personeel" vraagt daarnaast naar het tweede echelon (managementlaag onder de eigenaar), de key-person-afhankelijkheid (% omzet/relaties aan één persoon) en — in fase 2 — aanblijf-/retentieafspraken voor management.')
+        + stap(7,'Partners / eigenaren beheren','Terminologie past zich aan de sector aan (partners / maten-praktijkhouders / eigenaren-DGA / founders). Registreer ze bij naam en koppel ze aan hun entiteit(en), in plaats van per entiteit los leeftijd/veranderbereidheid in te vullen. De gevraagde omzet is bewust de omzet inclusief onderliggend team die bij vertrek van de partner risico loopt. De fase "Partners &amp; personeel" vraagt daarnaast naar het tweede echelon (managementlaag onder de eigenaar), de key-person-afhankelijkheid (% omzet/relaties aan één persoon) en — in fase 2 — aanblijf-/retentieafspraken voor management.')
         + stap(8,'Meekijkers toevoegen','Wilt u een bank, accountant of andere aandrager beperkte, alleen-lezen inzage geven in dit traject? Dat regelt u niet hier op mna.html, maar bij dit traject in uw eigen adviseursportaal (adv.html), onder "Meekijkers" — bent u zelf platformbeheerder, dan kan dit ook via marilyn. Bij het aanmaken bevestigt u expliciet dat er toestemming is van de opdrachtgever. De meekijker moet zelf eerst een vertrouwelijkheidsverklaring accepteren, en verkoper/koper zien in hun eigen dashboard altijd wie er meekijkt. Toegang is altijd alleen-lezen, beperkt tot één fase (of alles), en op elk moment intrekbaar.')
         + stap(9,'Traject afsluiten en databewaring','Sluit het traject af zodra de deal (of het contact) definitief is beëindigd — dit is niet vrijblijvend: veertien dagen ná afsluiting wordt <strong>alle</strong> trajectdata definitief verwijderd (documenten, ingevulde velden, gesprekken, Q&amp;A, waardering — alles), op een minimale archiefregel na (trajectnaam, datum, betrokken partijen). Bij het afsluiten ontvangt u direct een link naar één ZIP-download met het complete dossier — download deze binnen veertien dagen als u iets wilt bewaren, want daarna is het echt weg. Sluit u een traject niet zelf af, dan doet het platform dat automatisch na drie maanden zonder inhoudelijke activiteit (u ontvangt daarvoor eerst een waarschuwing met nog veertien dagen de tijd om te reageren) — zo blijft er nooit onnodig data staan.')
       )}
@@ -778,6 +778,12 @@ function nieuwTraject(){
         <option value="zorg">Zorg</option><option value="itsoftware">IT & Software</option>
       </select></div>
     </div>
+    <div class="field"><label>Structuur *</label><select id="n-structuur">
+      <option value="bv">BV / NV — holding + werkmaatschappijen, VPB</option>
+      <option value="maatschap">Maatschap — maten (box 1), geen VPB</option>
+      <option value="eenmanszaak">Eenmanszaak</option>
+    </select>
+    <div style="font-size:11px;color:var(--muted);margin-top:3px">Bepaalt de waarderingsmethode: bij een maatschap wordt gerekend op de winst ná een marktconform ondernemersloon per maat, zonder VPB-correctie.</div></div>
     <div class="field"><label>Opdrachtgever *</label><select id="n-opdrgever">
       <option value="verkoper">Verkoper (sell-side) — BEM naar verkoper, Excl naar koper</option>
       <option value="koper">Koper (buy-side) — BEM naar koper, Excl naar verkoper</option>
@@ -818,6 +824,7 @@ function nieuwTraject(){
       var r=await post('/adviseur/create',{
         traject:{kantoor_naam:naam,contact_naam:contact,contact_email:email,
           traject_type:ge('n-type').value,sector:ge('n-sector').value,
+          structuur_type:ge('n-structuur')?ge('n-structuur').value:'bv',
           opdrachtgever_rol:ge('n-opdrgever')?ge('n-opdrgever').value:'verkoper',
           verkoper_adres:ge('n-adres').value.trim(),
           koper_naam:ge('n-koper-naam').value.trim(),
@@ -838,7 +845,7 @@ function nieuwTraject(){
       ge('n-ok').innerHTML='<strong>✓ Aangemaakt</strong> &nbsp;Code: <strong>'+esc(d.code)+'</strong> &nbsp;Koperscode: <strong>'+esc(d.koper_code)+'</strong>'+uitnHtml;
       ge('n-ok').style.display='block';
       ge('n-ann').textContent='Sluiten';btn.textContent='Aangemaakt ✓';
-      G.trajecten.unshift({id:d.code,kantoor_naam:naam,traject_type:ge('n-type').value,sector:ge('n-sector').value,status:'actief',koper_code:d.koper_code,tussen_code:d.tussen_code,created_at:Date.now()});
+      G.trajecten.unshift({id:d.code,kantoor_naam:naam,traject_type:ge('n-type').value,sector:ge('n-sector').value,structuur_type:ge('n-structuur')?ge('n-structuur').value:'bv',status:'actief',koper_code:d.koper_code,tussen_code:d.tussen_code,created_at:Date.now()});
     }catch(e){err.textContent=e.message;err.style.display='block';btn.disabled=false;btn.textContent='Aanmaken';}
   };
   ge('n-naam').focus();
