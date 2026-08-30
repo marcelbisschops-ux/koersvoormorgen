@@ -1168,6 +1168,9 @@ var AI_VELD_MAP = {
   ra_aa_opleiding:{key:'partner_raAa',label:'RA/AA-opleiding'},
   opvolgingskandidaat:{key:'partner_opvolging',label:'Opvolgingskandidaat'},
   veranderbereidheid:{key:'partner_verandering',label:'Veranderbereidheid'},
+  tweede_echelon:{key:'partner_tweedeEchelon',label:'Tweede echelon / managementlaag'},
+  key_person_afhankelijkheid:{key:'partner_keyPersonAfhank',label:'Key-person-afhankelijkheid (%)'},
+  management_retentie:{key:'partner_mgmtRetentie',label:'Retentieafspraken management'},
   partnerovereenkomsten:{key:'partner_pContract',label:'Partnerovereenkomsten'},
   aandeelhoudersstructuur:{key:'partner_eigendomsStructuur',label:'Eigendomsstructuur'},
   aantal_klanten:{key:'commercieel_aantalKlanten',label:'Aantal klanten'},
@@ -1424,6 +1427,13 @@ function _autoFillFromExtractionBody(faseId, velden, forceOverwrite, docNaam) {
     setIfEmpty('partner_raAa',velden.ra_aa_opleiding||velden.accountants_opleiding);
     setIfEmpty('partner_opvolging',velden.opvolgingskandidaat||velden.opvolging);
     setIfEmpty('partner_verandering',velden.veranderbereidheid||velden.bereidheid_verandering);
+    // Management-/directie-diepte (30 aug 2026) — geldt voor alle 4 sectorprofielen. De AI-
+    // schemasleutels tweede_echelon / key_person_afhankelijkheid / management_retentie moeten nog aan
+    // het backend-extractieschema worden toegevoegd (stap 2, backend-repo); tot dan blijven deze
+    // regels een geldige maar inactieve koppeling — precies zoals bij de mkb-uitbreiding van 20 aug.
+    setIfEmpty('partner_tweedeEchelon',velden.tweede_echelon||velden.managementlaag||velden.tweede_echelon_management);
+    setIfEmpty('partner_keyPersonAfhank',velden.key_person_afhankelijkheid||velden.key_person_pct||velden.sleutelpersoon_afhankelijkheid_pct);
+    setIfEmpty('partner_mgmtRetentie',velden.management_retentie||velden.retentieafspraken_management||velden.aanblijfafspraken_management);
     setIfEmpty('partner_pContract',velden.partnerovereenkomsten||velden.partner_contract);
     setIfEmpty('partner_eigendomsStructuur',velden.eigendomsstructuur||velden.aandeelhoudersstructuur);
   }
