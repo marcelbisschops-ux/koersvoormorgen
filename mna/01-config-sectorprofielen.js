@@ -730,6 +730,33 @@ function getEigenaarBeloningsVeld() {
   return { veldId: veldId, label: df.label };
 }
 
+// Sectorbewuste term voor de mensen aan de top van de onderneming (30 aug 2026). De partner-op-naam-
+// registratie (mna_partners / toonPartnersModal / het openingsscherm-blok) was hardcoded op
+// "partner" — accountancy-/advocatuurjargon dat niet past bij een fysiopraktijk (eigenaar/maat),
+// een winkel (eigenaar/DGA) of een softwarebedrijf (founder). Zelfde patroon als
+// getEigenaarBeloningsVeld() hierboven: de DB-tabel/het endpoint blijven intern "partners" heten,
+// alleen de zichtbare tekst wisselt. Onbekende sector → accountancy-term (bestaand gedrag).
+function getPartnerTerm() {
+  var MAP = {
+    accountancy: { enkel: 'partner',               meer: 'partners',                titel: 'Partners' },
+    zorg:        { enkel: 'maat / praktijkhouder', meer: 'maten / praktijkhouders', titel: 'Maten & praktijkhouders' },
+    mkb:         { enkel: 'eigenaar / DGA',        meer: 'eigenaren',               titel: 'Eigenaren' },
+    itsoftware:  { enkel: 'founder / eigenaar',    meer: 'founders',                titel: 'Founders & eigenaren' }
+  };
+  var sector = (S.traject && S.traject.sector) || 'accountancy';
+  return MAP[sector] || MAP.accountancy;
+}
+
+// Structuurtype van het traject (31 aug 2026, backlogpunt 9-B). Expliciet opgeslagen op het traject
+// (mna_trajecten.structuur_type) — nooit afgeleid uit een vrij rechtsvorm-veld. Bepaalt of de
+// waardering/consolidatie de BV-logica (VPB, holding-uitsluiting) of de maatschap-logica (geen VPB,
+// winst ná ondernemersloon per maat) volgt. Onbekende/ontbrekende waarde → 'bv' = bestaand gedrag.
+function getStructuurType() {
+  var st = (S.traject && S.traject.structuur_type || 'bv').toLowerCase();
+  return (st === 'maatschap' || st === 'eenmanszaak') ? st : 'bv';
+}
+function isMaatschap() { return getStructuurType() === 'maatschap'; }
+
 
 // FASES wordt dynamisch bepaald via getSectorFases()
 var FASES = SECTOR_PROFIELEN.accountancy.fases;

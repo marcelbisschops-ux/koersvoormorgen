@@ -170,11 +170,12 @@ var VERKOPER_FASE_INTRO={
 // is voor deze routes voldoende autorisatie voor de eigen verkoperrol).
 function renderOpening(){
   var t=S.traject||{};
+  var pt=getPartnerTerm();
   return '<div class="wrap anim">'
     +'<div class="hdr"><div class="brand">'+brandMerkHtml()+BRAND.platform+' &middot; M&amp;A'+versieLabel()+'</div>'
     +'<button class="btn-ghost btn-sm" onclick="uitloggen()">&#8592; Uitloggen</button></div>'
     +'<div style="font-family:Playfair Display,serif;font-size:1.4rem;color:var(--head);font-weight:600;margin-bottom:.25rem">Welkom &mdash; voordat u begint</div>'
-    +'<div style="font-size:13px;color:var(--muted);margin-bottom:1.5rem;max-width:640px">Voor <strong>'+esc(t.kantoor_naam||'')+'</strong> vragen we eerst een paar basisgegevens en, indien van toepassing, de partners en groepsstructuur. Dit is eenmalig en duurt een paar minuten — daarna gaat u direct door naar de due diligence-vragen.</div>'
+    +'<div style="font-size:13px;color:var(--muted);margin-bottom:1.5rem;max-width:640px">Voor <strong>'+esc(t.kantoor_naam||'')+'</strong> vragen we eerst een paar basisgegevens en, indien van toepassing, de '+esc(pt.meer)+' en groepsstructuur. Dit is eenmalig en duurt een paar minuten — daarna gaat u direct door naar de due diligence-vragen.</div>'
     +'<div class="panel" style="max-width:640px;margin-bottom:1.25rem">'
     +'<div style="font-family:Playfair Display,serif;font-size:1.05rem;color:var(--head);font-weight:600;margin-bottom:.75rem">&#128274; Bedrijfsgegevens</div>'
     +'<div class="f" style="margin-bottom:.75rem"><label>Adres (statutair)</label><input type="text" id="op-adres" value="'+esc(t.verkoper_adres||'')+'"></div>'
@@ -197,11 +198,11 @@ function renderOpening(){
     +'<div id="op-gs-err" style="display:none;color:var(--red);font-size:12px;margin-top:.5rem"></div>'
     +'</div>'
     +'<div class="panel" style="max-width:640px;margin-bottom:1.25rem">'
-    +'<div style="font-family:Playfair Display,serif;font-size:1.05rem;color:var(--head);font-weight:600;margin-bottom:.25rem">&#129489;&#8205;&#128188; Partners</div>'
-    +'<div style="font-size:12px;color:var(--muted);margin-bottom:1rem">Leg elke partner één keer vast. Werkt een partner bij meerdere entiteiten hierboven? Koppel deze dan aan alle betreffende entiteiten.</div>'
+    +'<div style="font-family:Playfair Display,serif;font-size:1.05rem;color:var(--head);font-weight:600;margin-bottom:.25rem">&#129489;&#8205;&#128188; '+esc(pt.titel)+'</div>'
+    +'<div style="font-size:12px;color:var(--muted);margin-bottom:1rem">Leg elke '+esc(pt.enkel)+' één keer vast. Werkt een '+esc(pt.enkel)+' bij meerdere entiteiten hierboven? Koppel deze dan aan alle betreffende entiteiten.</div>'
     +'<div id="op-pt-lijst" style="margin-bottom:1rem;font-size:13px;color:var(--muted);font-style:italic">Laden...</div>'
     +'<div style="display:flex;gap:8px;margin-bottom:6px">'
-    +'<input type="text" id="op-pt-naam" placeholder="Naam partner" style="flex:2;background:var(--card);border:1px solid var(--border2);border-radius:6px;padding:7px 11px;font-size:13px">'
+    +'<input type="text" id="op-pt-naam" placeholder="Naam '+esc(pt.enkel)+'" style="flex:2;background:var(--card);border:1px solid var(--border2);border-radius:6px;padding:7px 11px;font-size:13px">'
     +'<input type="text" id="op-pt-leeftijd" placeholder="Leeftijd" style="flex:1;background:var(--card);border:1px solid var(--border2);border-radius:6px;padding:7px 11px;font-size:13px">'
     +'</div>'
     +'<div style="display:flex;gap:8px;margin-bottom:6px">'
@@ -260,7 +261,7 @@ function bindOpeningScreen(){
     var lijstEl=ge('op-pt-lijst');
     if(!lijstEl)return;
     var rows=await fetch(WORKER+'/mna/partners/'+S.code).then(function(r){return r.json();}).catch(function(){return [];});
-    if(!rows||!rows.length){lijstEl.innerHTML='<span style="font-style:italic">Nog geen partners toegevoegd.</span>';return;}
+    if(!rows||!rows.length){lijstEl.innerHTML='<span style="font-style:italic">Nog geen '+esc(getPartnerTerm().meer)+' toegevoegd.</span>';return;}
     lijstEl.style.fontStyle='normal';
     lijstEl.innerHTML=rows.map(function(r){
       var entNamen=(r.entiteit_ids||[]).map(function(id){var e=(S._entiteiten||[]).find(function(x){return x.id===id;});return e?e.naam:id;}).join(', ');

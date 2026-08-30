@@ -385,15 +385,16 @@ function toonGroepsstructuurModal(app){
 // waarde was. "Omzet die aan de partner hangt" is bewust incl. onderliggend team, niet alleen zijn
 // eigen declarabele productie — bij vertrek van de partner is dát het omzetrisico voor de koper.
 function toonPartnersModal(app){
+  var pt=getPartnerTerm();
   var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:400;display:flex;align-items:center;justify-content:center;padding:1.5rem';
   var mo=document.createElement('div');mo.setAttribute('role','dialog');mo.setAttribute('aria-modal','true');mo.setAttribute('aria-labelledby','partners-modal-titel');mo.style.cssText='background:var(--panel);border-radius:10px;padding:1.75rem;max-width:560px;width:100%;max-height:90vh;overflow-y:auto';
-  mo.innerHTML='<div id="partners-modal-titel" style="font-family:Playfair Display,serif;font-size:1.15rem;color:var(--head);font-weight:600;margin-bottom:.25rem">&#129489;&#8205;&#128188; Partners</div>'
-    +'<div style="font-size:12px;color:#8a8880;margin-bottom:1rem">Leg elke partner één keer vast, ook als deze bij meerdere entiteiten werkt. "Omzet die aan de partner hangt" is de omzet incl. het onderliggend team — het bedrag dat risico loopt als deze partner vertrekt, niet alleen zijn eigen declarabele productie.</div>'
+  mo.innerHTML='<div id="partners-modal-titel" style="font-family:Playfair Display,serif;font-size:1.15rem;color:var(--head);font-weight:600;margin-bottom:.25rem">&#129489;&#8205;&#128188; '+esc(pt.titel)+'</div>'
+    +'<div style="font-size:12px;color:#8a8880;margin-bottom:1rem">Leg elke '+esc(pt.enkel)+' één keer vast, ook als deze bij meerdere entiteiten werkt. "Omzet die aan de '+esc(pt.enkel)+' hangt" is de omzet incl. het onderliggend team — het bedrag dat risico loopt als deze '+esc(pt.enkel)+' vertrekt, niet alleen zijn eigen declarabele productie.</div>'
     +'<div id="pt-reconciliatie"></div>'
     +'<div id="pt-lijst" style="margin-bottom:1rem;font-size:13px;color:#8a8880;font-style:italic">Laden...</div>'
     +'<div style="border-top:1px solid #e5e2d8;padding-top:.85rem;margin-top:.5rem">'
     +'<div style="display:flex;gap:8px;margin-bottom:6px">'
-    +'<input type="text" id="pt-naam" placeholder="Naam partner" style="flex:2;background:#f0eeea;color:#2a2825;border:1px solid #c8c5bc;border-radius:6px;padding:7px 11px;font-size:13px">'
+    +'<input type="text" id="pt-naam" placeholder="Naam '+esc(pt.enkel)+'" style="flex:2;background:#f0eeea;color:#2a2825;border:1px solid #c8c5bc;border-radius:6px;padding:7px 11px;font-size:13px">'
     +'<input type="text" id="pt-leeftijd" placeholder="Leeftijd" style="flex:1;background:#f0eeea;color:#2a2825;border:1px solid #c8c5bc;border-radius:6px;padding:7px 11px;font-size:13px">'
     +'</div>'
     +'<div style="display:flex;gap:8px;margin-bottom:6px">'
@@ -435,11 +436,11 @@ function toonPartnersModal(app){
     var omzetIngevuld=null;var omzetRaw=S.data['partner_omzetPerP'];
     if(omzetRaw){var n=parseFloat(String(omzetRaw).replace(/[^0-9.,]/g,'').replace(',','.'));if(!isNaN(n))omzetIngevuld=n;}
     var verschillen=[];
-    if(aantalIngevuld!==null&&aantalIngevuld!==aantalRegister)verschillen.push('aantal partners: DD-veld zegt '+aantalIngevuld+', register zegt '+aantalRegister);
+    if(aantalIngevuld!==null&&aantalIngevuld!==aantalRegister)verschillen.push('aantal '+pt.meer+': DD-veld zegt '+aantalIngevuld+', register zegt '+aantalRegister);
     if(omzetIngevuld!==null&&Math.abs(omzetIngevuld-omzetRegister)>1)verschillen.push('omzet: DD-veld zegt €'+omzetIngevuld.toLocaleString('nl-NL')+', register (som incl. team) zegt €'+omzetRegister.toLocaleString('nl-NL'));
     if(!verschillen.length){el.innerHTML='';return;}
     el.innerHTML='<div style="background:var(--gold-bg);border:1px solid var(--gold);border-radius:6px;padding:8px 12px;margin-bottom:.85rem;font-size:12px;color:var(--sub)">'
-      +'&#9888; Het partnerregister wijkt af van de ingevulde DD-velden (fase Partners &amp; personeel) — de waardering gebruikt nog steeds de DD-velden, niet dit register. '+esc(verschillen.join('; '))+'. Werk beide bij als één van de twee verouderd is.'
+      +'&#9888; Het register met '+esc(pt.meer)+' wijkt af van de ingevulde DD-velden (mensen-fase van de due diligence) — de waardering gebruikt nog steeds de DD-velden, niet dit register. '+esc(verschillen.join('; '))+'. Werk beide bij als één van de twee verouderd is.'
       +'</div>';
   }
   async function laadLijst(){
@@ -447,7 +448,7 @@ function toonPartnersModal(app){
     lijstEl.textContent='Laden...';
     var rows=await fetch(WORKER+'/mna/partners/'+S.code).then(function(r){return r.json();}).catch(function(){return [];});
     toonReconciliatie(rows);
-    if(!rows||!rows.length){lijstEl.innerHTML='<span style="font-style:italic">Nog geen partners geregistreerd.</span>';return;}
+    if(!rows||!rows.length){lijstEl.innerHTML='<span style="font-style:italic">Nog geen '+esc(pt.meer)+' geregistreerd.</span>';return;}
     lijstEl.style.fontStyle='normal';
     lijstEl.innerHTML=rows.map(function(r){
       var entNamen=(r.entiteit_ids||[]).map(function(id){var e=(S._entiteiten||[]).find(function(x){return x.id===id;});return e?e.naam:id;}).join(', ');
@@ -708,7 +709,7 @@ function renderBegeleiderDashboard(app){
     +'</div>'
     +'<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
     +'<button class="btn-outline btn-sm" id="bg-groepsstructuur">&#127970; Groepsstructuur</button>'
-    +'<button class="btn-outline btn-sm" id="bg-partners">&#129489;&#8205;&#128188; Partners</button>'
+    +'<button class="btn-outline btn-sm" id="bg-partners">&#129489;&#8205;&#128188; '+esc(getPartnerTerm().titel)+'</button>'
     +(t.status==='afgesloten'?'':'<button class="btn-ghost btn-sm" id="bg-afsluiten" style="color:var(--red);border-color:var(--red)">&#127937; Traject afsluiten</button>')
     +'<span style="display:inline-block;padding:4px 12px;border-radius:12px;font-size:11px;font-weight:600;background:'+(t.status==='vergrendeld'?'var(--red-bg)':'var(--teal-bg)')+';color:'+(t.status==='vergrendeld'?'var(--red)':'var(--teal)')+';border:1px solid '+(t.status==='vergrendeld'?'var(--red)':'var(--teal-dark)')+'">'+esc(t.status||'actief')+'</span>'
     +'</div></div></div>'
