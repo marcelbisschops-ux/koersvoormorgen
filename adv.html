@@ -245,7 +245,7 @@ async function doLogin(){
     var r=await post('/adviseur/trajecten',{email:email,wachtwoord:ww});
     var d=await r.json();
     if(!r.ok||!d.ok){err.textContent=d.error||'Inloggegevens onjuist.';err.style.display='block';btn.disabled=false;btn.textContent='Inloggen';return;}
-    G.email=email;G.token=d.sessie_token||'';G.naam=d.naam;G.bedrijf=d.bedrijf;G.trajecten=d.trajecten||[];G.limiet=d.traject_limiet||1;G.modules=d.modules||{traject:true};G.branding=d.branding||{brand_naam:'',brand_kleur:'',brand_logo_url:''};
+    G.email=email;G.token=d.sessie_token||'';G.naam=d.naam;G.bedrijf=d.bedrijf;G.trajecten=d.trajecten||[];G.limiet=d.traject_limiet||1;G.modules=d.modules||{traject:true};G.isTester=!!d.is_tester;G.branding=d.branding||{brand_naam:'',brand_kleur:'',brand_logo_url:''};
     var vw=d.voorwaarden||{gv_akkoord:true};
     if(!vw.gv_akkoord){ renderVoorwaardenAcceptatie(vw); return; }
     renderDashboard();
@@ -330,7 +330,7 @@ function renderDashboard(){
         <span class="hdr-user">Ingelogd als <span class="hdr-name">${esc(G.naam)}</span>${G.bedrijf?' &middot; '+esc(G.bedrijf):''}</span>
         <button class="btn-outline" onclick="renderAdvHandleiding()">&#128214; Handleiding</button>
         <button class="btn-outline" onclick="renderHuisstijlModal()">&#127912; Huisstijl</button>
-        <button class="btn-outline" onclick="renderKostenModal()">&#128176; Kosten</button>
+        ${G.isTester?'':'<button class="btn-outline" onclick="renderKostenModal()">&#128176; Kosten</button>'}
         <button class="btn-outline" onclick="doLogout()">Uitloggen</button>
       </div>
     </div>
@@ -389,7 +389,7 @@ function renderAdvHandleiding(){
         stap(1,'Account activeren','U ontvangt een uitnodigingsmail met een activeringslink. Stel een wachtwoord in — u komt daarna in dit adviseursportaal.')
         + stap(2,'Een traject starten',`Klik op "+ Nieuw traject", vul de gegevens van de onderneming (en desgewenst de koper) in. Zijn e-mailadressen ingevuld, dan verstuurt het platform automatisch een uitnodigingsmail met code en instructies naar verkoper en/of koper — anders geeft u de codes zelf handmatig door. Bracht een bank, accountant of ander contact u bij deze opdracht? Vul dat in bij "Aangedragen door" (optioneel) — dit is uw eigen administratie voor de referral-afspraak met die aandrager, los van het platform.`)
         + stap(3,'Eigen huisstijl (optioneel)','Via "🎨 Huisstijl" stelt u een eigen platformnaam, accentkleur en logo in. Dit geldt voor alle trajecten die u vanaf dat moment aanmaakt. Kiest u een kleur die op een donkere achtergrond moeilijk leesbaar zou zijn, dan waarschuwt het scherm dit direct — en wordt de kleur voor uw cliënten automatisch iets aangepast voor leesbaarheid.')
-        + stap(4,'Modules en limieten','Uw account heeft een trajectlimiet en een set modules (Contracten, AI-analyse, Q&amp;A, Meekijkers, Marketing, Export &amp; rapportage), zichtbaar als chips boven uw trajectenlijst. Een module met een slotje is niet actief — neem contact op met uw platformbeheerder. Via de knop "€ Kosten" bovenaan ziet u op elk moment uw eigen platformkosten (trajectfees, module-fees, matching-fees) — zo weet u vooraf wat bijvoorbeeld een matching-tarief kost vóórdat u de module gebruikt.')
+        + stap(4,'Modules en limieten','Uw account heeft een trajectlimiet en een set modules (Contracten, AI-analyse, Q&amp;A, Meekijkers, Marketing, Export &amp; rapportage), zichtbaar als chips boven uw trajectenlijst. Een module met een slotje is niet actief — neem contact op met uw platformbeheerder.'+(G.isTester?'':' Via de knop "€ Kosten" bovenaan ziet u op elk moment uw eigen platformkosten (trajectfees, module-fees, matching-fees) — zo weet u vooraf wat bijvoorbeeld een matching-tarief kost vóórdat u de module gebruikt.'))
         + stap(5,'Voorwaarden','Bij eerste gebruik accepteert u de <a href="platformvoorwaarden.html">Gebruiksvoorwaarden</a>. Zie ook de <a href="privacy.html">Privacyverklaring</a>.')
         + stap(6,'Meekijkers','Bij elk traject kunt u onder "Meekijkers" een bank, accountant of andere aandrager beperkte, alleen-lezen inzage geven in (een deel van) dat traject. U bevestigt daarbij expliciet dat u toestemming heeft van uw opdrachtgever — zonder die bevestiging kan er geen toegangscode ontstaan. De meekijker moet zelf eerst een vertrouwelijkheidsverklaring accepteren voordat hij iets te zien krijgt, en verkoper/koper zien in hun eigen dashboard altijd wie er meekijkt. Toegang is altijd alleen-lezen en door u op elk moment intrekbaar.')
         + stap(7,'Dossier exporteren','Is de module "Export &amp; rapportage" actief, dan staat bij elk van uw trajecten een kaart "Export" met de knop "Dossier downloaden" — een compleet tekstbestand met de due-diligence-gegevens, Q&amp;A, gespreksverslagen, documentenlijst en toegangslog van dat traject. Uitsluitend voor uw eigen trajecten.')
@@ -448,7 +448,7 @@ async function ververs(){
   try{
     var r=await post('/adviseur/trajecten',{});
     var d=await r.json();
-    if(d.ok){G.trajecten=d.trajecten||[];G.limiet=d.traject_limiet||G.limiet||1;G.modules=d.modules||G.modules;renderDashboard();}
+    if(d.ok){G.trajecten=d.trajecten||[];G.limiet=d.traject_limiet||G.limiet||1;G.modules=d.modules||G.modules;G.isTester=!!d.is_tester;renderDashboard();}
   }catch(e){}
 }
 
