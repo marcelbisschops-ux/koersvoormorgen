@@ -964,16 +964,29 @@ function renderBegeleiderDashboard(app){
   // intern heeft goedgekeurd — gelogd via het bestaande auditlog-endpoint (secAuditLog, mna_audit-
   // tabel), geen nieuwe backend-route nodig. Losstaand van de bestaande akkoord-checkbox hierboven
   // (die gaat over "ik heb de AI-tekst gecontroleerd"): dit is een aparte, altijd-verplichte stap.
+  // Fusie (backlogpunt 4.5): een fusie vereist gezamenlijke besluitvorming vanuit beide besturen —
+  // dan vraagt de interne-goedkeuring twee namen (één per fusiepartij), beide verplicht vóór
+  // verzending, beide gelogd. Blijft de lichte variant (self-attestatie + logboek, geen rollensysteem):
+  // de twee namen worden gecombineerd in hetzelfde `goedgekeurd_door`-veld, dus geen backend-wijziging.
+  function _isFusieTraject(){ return (S.traject&&S.traject.traject_type)==='Fusie'; }
   function interneGoedkeuringHtml(id){
+    var stl='width:100%;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:7px 11px;font-family:IBM Plex Sans,sans-serif;font-size:13px';
+    if(_isFusieTraject()){
+      var pl=partijLabels('Fusie');
+      return '<div style="margin-top:.6rem"><label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Intern goedgekeurd door — beide besturen, verplicht vóór verzending</label>'
+        +'<input type="text" id="'+id+'" placeholder="Naam — namens '+esc(pl.sectie1)+'" style="'+stl+';margin-bottom:6px">'
+        +'<input type="text" id="'+id+'-b" placeholder="Naam — namens '+esc(pl.sectie2)+'" style="'+stl+'"></div>';
+    }
     return '<div style="margin-top:.6rem"><label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Intern goedgekeurd door (naam) — verplicht vóór verzending</label>'
-      +'<input type="text" id="'+id+'" placeholder="Voor- en achternaam" style="width:100%;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:7px 11px;font-family:IBM Plex Sans,sans-serif;font-size:13px"></div>';
+      +'<input type="text" id="'+id+'" placeholder="Voor- en achternaam" style="'+stl+'"></div>';
   }
   function wireInterneGoedkeuring(naamId,akkoordId,buttonIds){
     var naamInput=document.getElementById(naamId);
+    var naamInputB=document.getElementById(naamId+'-b'); // alleen bij Fusie
     var akkoordCb=document.getElementById(akkoordId);
     var pdfOverride=false;
     function toepassen(){
-      var naamOk=naamInput&&naamInput.value.trim().length>0;
+      var naamOk=naamInput&&naamInput.value.trim().length>0&&(!naamInputB||naamInputB.value.trim().length>0);
       var akkOk=pdfOverride||(akkoordCb&&akkoordCb.checked);
       var ok=naamOk&&akkOk;
       buttonIds.forEach(function(id){
@@ -982,9 +995,15 @@ function renderBegeleiderDashboard(app){
       });
     }
     if(naamInput)naamInput.oninput=toepassen;
+    if(naamInputB)naamInputB.oninput=toepassen;
     if(akkoordCb){var orig=akkoordCb.onchange;akkoordCb.onchange=function(e){if(orig)orig.call(this,e);toepassen();};}
     toepassen();
-    return {setPdfOverride:function(actief){pdfOverride=actief;toepassen();},getNaam:function(){return naamInput?naamInput.value.trim():'';}};
+    return {setPdfOverride:function(actief){pdfOverride=actief;toepassen();},getNaam:function(){
+      if(!naamInput)return '';
+      var a=naamInput.value.trim();
+      if(naamInputB){var pl=partijLabels('Fusie');return pl.sectie1+': '+a+' · '+pl.sectie2+': '+naamInputB.value.trim();}
+      return a;
+    }};
   }
 
   // Eigen PDF-upload: alternatief voor het gegenereerde document. Herbruikbaar voor elk documenttype.
