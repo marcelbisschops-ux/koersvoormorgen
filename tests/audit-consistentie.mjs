@@ -403,6 +403,39 @@ if (!fs.existsSync(termenPad)) {
   }
 }
 
+// ── 8. Dealvoorstel: publieke/interne context-split blijft gescheiden ──────
+// (ChatGPT-promptreview A2, 31 aug 2026: BATNA/walk-awayprijs + de LoI-onderhandelchecklist zaten
+//  in dezelfde tekst die met "Verstuur naar partijen" gedeeld wordt. Ze horen nu UITSLUITEND in de
+//  interne bijlage. Deze check vergrendelt dat zodat een latere edit ze niet stilzwijgend terugzet
+//  in het deelbare dealvoorstel.)
+log('8. Dealvoorstel: BATNA/walk-away/LoI-checklist uitsluitend in de interne bijlage (mna/04)');
+{
+  const f = 'mna/04-begeleider-dashboard.js';
+  const src = fs.readFileSync(path.join(ROOT, f), 'utf8');
+  // De PUBLIEKE promptdelen: van 'var contextBlok=' tot 'var interneContext', en van 'var koppen='
+  // tot 'var interneKoppen'. Alles daarbinnen mag GEEN onderhandelpositie-inhoud bevatten.
+  const knip = (van, tot) => {
+    const a = src.indexOf(van); const b = src.indexOf(tot, a + 1);
+    return (a >= 0 && b > a) ? src.slice(a, b) : null;
+  };
+  const publiekeContext = knip('var contextBlok=', 'var interneContext');
+  const publiekeKoppen = knip("var koppen='## Managementsamenvatting", 'var interneKoppen');
+  const interneKoppen = knip('var interneKoppen=', 'var antiVerzin');
+  const verboden = [/\bbatna\b/i, /walk-?away/i, /LoI-checklist/i, /TABEL:BATNA/, /TABEL:LOICHECKLIST/, /walk-?awayprijs/i];
+  let problemen = 0;
+  if (!publiekeContext || !publiekeKoppen) {
+    warn(f + ' — kon de publieke/interne knip in de dealvoorstel-generatie niet vinden (var contextBlok / var koppen / var interneContext / var interneKoppen). Structuur gewijzigd? Controleer handmatig.');
+    problemen++;
+  } else {
+    verboden.forEach(re => {
+      if (re.test(publiekeContext)) { warn(f + ' — de PUBLIEKE dealvoorstel-context (contextBlok) bevat "' + re.source + '" — onderhandelpositie hoort in interneContext, niet in de deelbare tekst.'); problemen++; }
+      if (re.test(publiekeKoppen)) { warn(f + ' — de PUBLIEKE dealvoorstel-hoofdstukken (koppen) bevatten "' + re.source + '" — hoort in interneKoppen.'); problemen++; }
+    });
+  }
+  if (interneKoppen && !/TABEL:BATNA/.test(interneKoppen)) { warn(f + ' — interneKoppen bevat geen [TABEL:BATNA] meer — is het BATNA-hoofdstuk verplaatst/verdwenen?'); problemen++; }
+  if (!problemen) ok('contextBlok + koppen bevatten geen BATNA/walk-away/LoI-checklist; die zitten in interneContext/interneKoppen (interne bijlage, niet in dealvoorstel_tekst / de e-mail).');
+}
+
 // ── Samenvatting ──────────────────────────────────────────────────────────
 log('Samenvatting');
 if (!bevindingen) {
