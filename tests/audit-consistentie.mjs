@@ -436,6 +436,26 @@ log('8. Dealvoorstel: BATNA/walk-away/LoI-checklist uitsluitend in de interne bi
   if (!problemen) ok('contextBlok + koppen bevatten geen BATNA/walk-away/LoI-checklist; die zitten in interneContext/interneKoppen (interne bijlage, niet in dealvoorstel_tekst / de e-mail).');
 }
 
+// ── 9. Documentgenerator: clausule-integriteitsregel + afkap-weigering blijven staan ──
+// (ChatGPT-promptreview A1, 31 aug 2026: de AI mag alleen placeholders vervangen, geen bepaling
+//  wijzigen/toevoegen/weglaten; een template boven de limiet wordt geweigerd i.p.v. afgekapt.
+//  Deze check bewaakt dat een latere edit die twee regels niet stilzwijgend verwijdert.)
+log('9. Documentgenerator (bgDoc in mna/04): clausule-integriteitsregel + afkap-weigering aanwezig');
+{
+  const f = 'mna/04-begeleider-dashboard.js';
+  const src = fs.readFileSync(path.join(ROOT, f), 'utf8');
+  let problemen = 0;
+  if (!/STRIKTE REGELS voor het invullen/.test(src) || !/geen bestaande bepaling/i.test(src)) {
+    warn(f + ' — de clausule-integriteitsregel ("STRIKTE REGELS ... geen bestaande bepaling wijzigen/toevoegen/weglaten") ontbreekt in bgDoc(). Zonder die regel kan de AI juridische tekst herschrijven.');
+    problemen++;
+  }
+  if (!/tplTekst\.length\s*>\s*\d{4,}[\s\S]{0,120}(geweigerd|weiger|return)/i.test(src)) {
+    warn(f + ' — de afkap-weigering (te lange template → generatie stoppen i.p.v. substring) lijkt te ontbreken/gewijzigd in bgDoc(). Controleer.');
+    problemen++;
+  }
+  if (!problemen) ok('bgDoc() bevat de clausule-integriteitsregel én weigert een te lange template i.p.v. hem af te kappen.');
+}
+
 // ── Samenvatting ──────────────────────────────────────────────────────────
 log('Samenvatting');
 if (!bevindingen) {
