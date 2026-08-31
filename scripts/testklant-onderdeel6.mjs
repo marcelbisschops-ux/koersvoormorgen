@@ -119,9 +119,13 @@ async function vulFinancieel(code, omzet3, margePct) {
   console.log('   genereer het Dealvoorstel en klik "Verstuur naar partijen".');
   console.log('   → hierin zie je ZOPA-trade-space, BATNA-oordeel en de LoI-checklist.');
   console.log('2. Log in als begeleider met ' + B.tussen_code + ' (traject B), genereer + verstuur daar OOK een');
-  console.log('   Dealvoorstel — kies bewust andere dealparameters (ander belang%, andere escrow/earn-out).');
+  console.log('   Dealvoorstel. BELANGRIJK voor een zinvolle vergelijking: houd het belang% (aandeel dat');
+  console.log('   de koper koopt) in BEIDE trajecten GELIJK — varieer alleen de STRUCTUUR: escrow%,');
+  console.log('   earn-out%, financieringszekerheid, weken tot closing, strategische fit. Zo vergelijk je');
+  console.log('   twee biedingen op dezelfde onderneming en hetzelfde belang; een ander belang% maakt de');
+  console.log('   koopsommen onvergelijkbaar (de matrix waarschuwt daar nu ook voor bij een factor >3).');
   console.log('3. Terug in traject A (of B): klik "Biedingen vergelijken" → de Deal Value Matrix laadt beide');
-  console.log('   trajecten automatisch in; vul per bod de 4 inschattingen aan en vergelijk.');
+  console.log('   trajecten automatisch in; vul per bod de inschattingen aan en vergelijk.');
   console.log('');
   console.log('OPRUIMEN als je klaar bent:');
   console.log(`  curl -s -X POST -H "x-admin-key: $ADMIN_KEY" "${WORKER}/admin/delete/mna/${A.code}"`);

@@ -849,16 +849,29 @@ function dvBerekenBiedingVergelijking(biedingen){
   var geldig=(biedingen||[]).filter(function(b){return b&&b.naam&&(+b.ev>0);});
   if(geldig.length<2) return {status:'onvoldoende',aantal:geldig.length};
   var maxEv=Math.max.apply(null,geldig.map(function(b){return +b.ev;}));
+  var minEv=Math.min.apply(null,geldig.map(function(b){return +b.ev;}));
+  // GOUDEN STANDAARD: liggen de koopsommen een factor >3 uiteen, dan vergelijkt de matrix
+  // vermoedelijk ongelijke grootheden (ander belang%, ander dealvoorstel of een half ingevuld
+  // traject). Niet zelf corrigeren of verbergen — de gebruiker waarschuwen.
+  var evSpreidFactor=minEv>0?(maxEv/minEv):0;
+  var evSpreidWaarschuwing=evSpreidFactor>3;
   var W=DV_BOD_GEWICHTEN;
   var rows=geldig.map(function(b){
-    var ev=+b.ev;
-    var cashPct=Math.max(0,+b.cashPct||0), escrowPct=Math.max(0,+b.escrowPct||0), earnOutPct=Math.max(0,+b.earnOutPct||0), behoudenPct=Math.max(0,+b.behoudenPct||0);
+    var ev=+b.ev;   // koopsom voor het VERKOCHTE belang (bijv. 51%)
+    var cashPct=Math.max(0,+b.cashPct||0), escrowPct=Math.max(0,+b.escrowPct||0), earnOutPct=Math.max(0,+b.earnOutPct||0), behoudenPct=Math.max(0,Math.min(99.9,+b.behoudenPct||0));
     var vendorLoan=Math.max(0,+b.vendorLoan||0);
     var cashNu=Math.max(0, ev*(cashPct/100) - vendorLoan);
     var escrowBedrag=ev*(escrowPct/100);
     var earnOutBedrag=ev*(earnOutPct/100);
-    var behoudenBedrag=ev*(behoudenPct/100);
-    var somPct=cashPct+escrowPct+earnOutPct+behoudenPct;
+    // Behouden belang is een % van de HELE onderneming, niet van de koopsom. De koopsom `ev` is de
+    // waarde van het verkochte belang (100 − behoudenPct). Waarde behouden deel = ev per procentpunt
+    // × behoudenPct. (Bugfix 31 aug 2026: stond op ev × behoudenPct/100 → verkeerde grondslag.)
+    var verkochtBelangPct=Math.max(0.1, 100-behoudenPct);
+    var behoudenBedrag=(ev/verkochtBelangPct)*behoudenPct;
+    // De betaalstructuur van de KOOPSOM (cash + escrow + earn-out) hoort ~100% te zijn. Behouden
+    // belang telt hier NIET in mee — dat is geen betaling van de koper. (Bugfix 31 aug 2026: eerdere
+    // check telde behoudenPct mee → waarschuwing sloeg bij elke deelverkoop onterecht aan.)
+    var somPct=cashPct+escrowPct+earnOutPct;
     var weken=Math.max(0,+b.wekenTotClosing||0);
     var voorw=Math.max(0,Math.round(+b.aantalVoorwaarden||0));
     var fin=(b.financiering&&DV_BOD_FIN[b.financiering]!=null)?DV_BOD_FIN[b.financiering]:25;
@@ -871,13 +884,14 @@ function dvBerekenBiedingVergelijking(biedingen){
     var totaal=Math.round(sPrijs*W.prijs/100 + sZekerheidCash*W.zekerheidCash/100 + sDealZekerheid*W.dealZekerheid/100 + sTiming*W.timing/100 + sFit*W.fit/100);
     return {
       naam:String(b.naam), ev:ev, cashNu:cashNu, escrowBedrag:escrowBedrag, earnOutBedrag:earnOutBedrag, behoudenBedrag:behoudenBedrag,
-      vendorLoan:vendorLoan, somPct:somPct, somWaarschuwing:Math.abs(somPct-100)>1,
+      vendorLoan:vendorLoan, somPct:somPct, somWaarschuwing:Math.abs(somPct-100)>1.5,
       weken:weken, voorw:voorw, financiering:b.financiering||'teregelen', strategischeFit:b.strategischeFit||'midden',
       sPrijs:Math.round(sPrijs), sZekerheidCash:Math.round(sZekerheidCash), sTiming:Math.round(sTiming), sDealZekerheid:Math.round(sDealZekerheid), sFit:Math.round(sFit),
-      upsidePct:earnOutPct+behoudenPct, totaal:totaal
+      totaal:totaal
     };
   });
-  return {status:'ok', biedingen:rows, ranglijst:rows.slice().sort(function(a,b){return b.totaal-a.totaal;}), gewichten:W};
+  return {status:'ok', biedingen:rows, ranglijst:rows.slice().sort(function(a,b){return b.totaal-a.totaal;}), gewichten:W,
+    evSpreidFactor:evSpreidFactor, evSpreidWaarschuwing:evSpreidWaarschuwing};
 }
 
 var DV_FIN_LABEL={eigen:'eigen middelen',commitment:'commitment brief',teregelen:'nog te regelen'};
@@ -911,12 +925,13 @@ function dvTabelBiedingVergelijking(v){
     +rij('Timing (10%)',B.map(function(b){return b.sTiming;}))
     +rij('Strategische fit (15%)',B.map(function(b){return b.sFit;}))
     +rij('Totaalscore',B.map(function(b){return b.totaal;}),true)
-    +rij('Upside-potentieel (earn-out + behouden belang)',B.map(function(b){return b.upsidePct.toFixed(0)+'%';}));
+    +rij('Voorwaardelijke/behouden upside (€ mln)',B.map(function(b){return dvMln(b.earnOutBedrag+b.behoudenBedrag);}));
   var html='<table style="width:100%;border-collapse:collapse;margin:.5rem 0 .75rem">'+hdr()+rijen+'</table>';
   var top=v.ranglijst[0], tweede=v.ranglijst[1];
   html+='<p style="font-size:10pt;color:#5a5854;margin:.25rem 0 .5rem">Hoogste totaalscore: <strong>'+esc(top.naam)+'</strong> ('+top.totaal+'), daarna '+esc(tweede.naam)+' ('+tweede.totaal+'). Dit is een gewogen ordening (prijs 30% / zekerheid cash 25% / deal-zekerheid 20% / strategische fit 15% / timing 10%), geen keuze — de zwaarte van elke as hangt af van wat de verkoper belangrijk vindt.</p>';
   var somW=B.filter(function(b){return b.somWaarschuwing;}).map(function(b){return b.naam;});
-  if(somW.length) html+='<p style="font-size:9pt;color:#c0392b;margin:0 0 .5rem">De betaalpercentages (cash + escrow + earn-out + behouden belang) tellen niet op tot ~100% bij: '+esc(somW.join(', '))+'. Controleer de invoer.</p>';
+  if(somW.length) html+='<p style="font-size:9pt;color:#c0392b;margin:0 0 .5rem">De betaalstructuur van de koopsom (cash % + escrow % + earn-out %) telt niet op tot ~100% bij: '+esc(somW.join(', '))+'. Controleer die drie percentages (behouden belang telt hier niet mee — dat is geen betaling van de koper).</p>';
+  if(v.evSpreidWaarschuwing) html+='<p style="font-size:9pt;color:#c0392b;margin:0 0 .5rem">De koopsommen liggen ver uiteen (factor '+v.evSpreidFactor.toFixed(1)+'). Controleer of beide biedingen op hetzelfde belang in dezelfde onderneming slaan en of voor elk traject een dealvoorstel is gegenereerd — anders vergelijkt de matrix ongelijke grootheden.</p>';
   html+='<div style="font-size:9pt;color:#8a8880;font-style:italic">De euro-bedragen zijn een rechtstreekse herrekening van de per bod ingevoerde percentages. Financieringszekerheid, het aantal opschortende voorwaarden en de strategische fit zijn inschattingen van de begeleider — geen platformoordeel. Uitsluitend voor de verkoper en de begeleider.</div>';
   return html;
 }
