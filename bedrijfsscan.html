@@ -1877,6 +1877,8 @@ async function genereerKantoorAI(o, container) {
   var prompt =
     'Schrijf een strategisch rapport. Gebruik "uw ' + zn + '". Geen eerste persoon. Begin direct met ## Strategisch profiel.\n\n'
     + (oAcc?'':'LET OP: dit is GEEN accountantskantoor \u2014 geen accountancy-jargon of -benchmarks, schrijf over "' + zn + '".\n')
+    + (oAcc?'':'Er is voor deze sector geen externe benchmark beschikbaar \u2014 noem geen marktgemiddelde, sectornorm of vergelijkingscijfer uit eigen kennis.\n')
+    + 'Baseer alles uitsluitend op de scores en gegevens hieronder. Verzin geen oorzaak, cijfer of externe norm die niet uit de scan volgt. Formuleer de aanbeveling als directe consequentie van de ingevulde scaninformatie; ontbreekt onderbouwing, benoem dat.\n'
     + (zn==='kantoor'?'Kantoor: ':zn==='praktijk'?'Praktijk: ':'Bedrijf: ') + (o.name||'Anoniem') + ' | Score: ' + o.overall + '/100\n'
     + 'Fte: ' + (o.fte||'?') + ' | Omzet: ' + (o.revenue||'?')
       + (oPfte > 0 ? ' (\u20ac' + (oPfte/1000).toFixed(0) + 'K/fte' + (oPfte < bFte ? ' — ONDER ' + bLabel : '') + ')' : '') + '\n'
@@ -1919,7 +1921,8 @@ async function genereerGroepsAI() {
     'Schrijf een uitgebreid strategisch groepsrapport in het Nederlands (800-1000 woorden).\n'
     + 'Gebruik de bedrijfsnaam of "het ' + zn + '" direct. NOOIT eerste persoon (geen ik/mijn).\n'
     + (gL.sector==='gemengd'?'LET OP: deze groep bevat deelnemers uit verschillende sectoren — schrijf sectorneutraal ("onderneming(en)"), geen sectorspecifiek jargon of sectorbenchmarks.\n':(gL.acc?'':'LET OP: dit betreft GEEN accountantskantoren — geen accountancy-jargon of -benchmarks, schrijf over "' + znMv + '".\n'))
-    + 'VERBOD: geen markdown-tabellen (geen |---|). Schrijf alles in lopende tekst.\n\n'
+    + 'VERBOD: geen markdown-tabellen (geen |---|). Schrijf alles in lopende tekst.\n'
+    + 'Baseer alles uitsluitend op de scores en gegevens hieronder. Verzin geen externe benchmark, marktgemiddelde, synergiebedrag of oorzaak die niet uit de scan volgt. Presenteer "Strategische opties" als opties die logisch uit de groepsdata volgen, niet als vaststaande noodzaak.\n\n'
     + 'GROEP: ' + (d.group&&d.group.name||'Onbekend') + ' | Gem. score: ' + avg + '/100\n'
     + 'Dimensiegemiddelden: ' + dims + '\n\n' + znMv.toUpperCase() + ' (gesorteerd op score):\n' + info + '\n\n'
     + 'STRUCTUUR (gebruik exact deze ## koppen):\n'

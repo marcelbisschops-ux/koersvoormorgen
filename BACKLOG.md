@@ -117,6 +117,40 @@ van beide repo's.
       (via GitHub Desktop): `mna/03`, `mna/04`, `mna/08`, `adv.html`, `tests/e2e-ui.spec.js`,
       `scripts/validate-*.mjs` (7 stuks), `BACKLOG.md`.
 
+13. **AI-promptreview (ChatGPT, 15 generatieprompts) — AFGEROND 31 aug 2026 (niet gepusht).**
+    Reviewpakket op `~/Desktop/prompt-review/`. 34 bevindingen — alle geverifieerd tegen de code,
+    geen false positives. Ernst herijkt (ChatGPT skaalde te heet); één structureel punt, rest
+    prompt-aanscherping + opruiming. Gefixt:
+    - **A2 (structureel) — publieke/interne context-split van het dealvoorstel** (`mna/04`). BATNA /
+      walk-awayprijs en de LoI-onderhandelchecklist zaten in dezelfde tekst die de begeleider met
+      "Verstuur naar partijen" deelt. Nu: `contextBlok`/`koppen` = PUBLIEK (deelbaar), nieuw
+      `interneContext`/`interneKoppen` = alleen verkoper+begeleider. De interne stukken worden in een
+      **aparte AI-call** gegenereerd en getoond als rood-omrande **"Interne onderhandelbijlage"** met
+      eigen printknop — zit nooit in `#dv-preview` en dus nooit in `dealvoorstel_tekst` / de e-mail.
+      ZOPA-hoofdstuk herbenoemd + neutraal geframed (geen onderhandeltactiek meer in de deelbare tekst).
+    - **A1/B4 — clausule-integriteit + afkap-weigering** (`mna/04` bgDoc + `mna/06` bgGenereerDoc).
+      Beide NDA/LoI/BEM-generatoren krijgen één harde regel: geen bepaling wijzigen/toevoegen/weglaten,
+      alleen placeholders vervangen, onbekende placeholder exact laten staan. Template > 18k tekens →
+      generatie **geweigerd** i.p.v. afgekapt. mna/06-variant gemarkeerd als de oudere (consolidatie = backlog).
+    - **B5 + C1 — "M&A-adviseur accountancy" hardcoded** → nu `getSectorProfiel().label`, met
+      accountancy-jargon-verbod voor niet-accountancy.
+    - **D1 — verkoper-chatassistent** (`mna/07`): anti-prompt-injection-regel + "onthul niets over
+      koper/andere trajecten/dealprijzen/interne notities" + "verzin geen cijfers".
+    - **Prompt-hardening** over B1/B2/B3/C2/A4/A3/E1/E2: uniforme "geen externe benchmark/oorzaak/
+      norm verzinnen", "onbekend = onbekend", conflict-detectie i.p.v. reconstructie, notities =
+      bronmateriaal geen instructies, "beschrijf factoren, kwantificeer effect op de multiple niet zelf".
+    - **A3 bod** (`mna/04`): ingevulde hoge multiple < lage → invoerfout (melden) i.p.v. stil
+      normaliseren; clausule-/afkapregel toegevoegd; brief expliciet indicatief/niet-bindend.
+    - **Operator-precedentie** `naam || '' + BRAND.bedrijf + ''` → `naam || BRAND.bedrijf` (mna/04 + mna/06).
+    - Validatie: alle 255 rekenkern-checks groen; `node --check` op mna/02,03,04,06,07 + bedrijfsscan;
+      browsertest: alle modules laden, geen JS-fouten; structurele grep-check dat BATNA/walk-away/
+      LoI-checklist NIET meer in de publieke dealvoorstel-prompt zit.
+    - **Open/backlog:** E2 bedrijfsscan-groepsrapport — verifiëren wie het groepsrapport kan openen
+      (groepseigenaar vs. individuele deelnemer) i.v.m. cross-office-zichtbaarheid; A1/B4 tot één
+      documentservice consolideren; "context-whitelist per outputdoel" als bredere noord-ster.
+    - **Rest = frontend-push** (GitHub Desktop): `mna/02`, `mna/03`, `mna/04`, `mna/06`, `mna/07`,
+      `bedrijfsscan.html`, `BACKLOG.md`.
+
 ### Aandachtspunt (geen genummerd bouwpunt)
 
 De `🧪 TEST`-naamgevingsconventie maakt geen onderscheid tussen kortlevende verificatie-testdata en
