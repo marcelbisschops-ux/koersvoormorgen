@@ -52,6 +52,19 @@ EBITDA-multiple (~6,0–7,3×).
   omvangsafhankelijk maken (klein = omzet-multiple, groter = EBITDA-multiple). Evt. met een
   zorgadviseur toetsen.
 
+### 1.3b — Gebronde benchmarkdata voor de niet-accountancy bedrijfsscan · **P2 · 🟡**
+De bedrijfsscan-AI is buiten accountancy "weinig zeggend" (Marcel, 31 aug 2026, over MKB). Oorzaak:
+voor niet-accountancy krijgt de AI géén benchmarks en géén waardering mee (`benchmarkFte=0`,
+`cbsGroeiIndex=null`, `sectorBenchmarkZin` leeg, `waardering`="niet beschikbaar") — er is geen
+gebronde data en de gouden standaard verbiedt verzonnen getallen. **Al gedaan (31 aug):** kwalitatieve
+`SECTOR_AI_CONTEXT` per sector (mkb/zorg/itsoftware) toegevoegd aan de scan-prompt — overname-
+aandachtspunten, koperstypes, geen cijfers. **Nog te doen:** echte, gebronde MKB-/zorg-/IT-
+kengetallen (EBITDA-marge-ranges, omzet/FTE per subsector, groei-index) toevoegen aan
+`/benchmarks` (backend) + wiren in de scan-prompt zoals accountancy dat heeft.
+- **Wie/wat:** jij levert of bevestigt de bron (Brookz-subsectoren, brancheorganisaties, CBS-SBI);
+  ik bouw. Raakt de gouden standaard (herkomst benchmarks) — bron eerst vastleggen in
+  `SECTORPROFIEL-BRONNEN.md`.
+
 ### 1.3 — Bredere marketing-/positioneringstekst voor niet-accountancy · **P2 · 🟡**
 De scan en het M&A-platform zijn nu multi-sector (accountancy/mkb/zorg/IT). `index.html` (naast de
 al aangepaste offer-card), `privacy.html` en `voorwaarden.html` zijn nog grotendeels
