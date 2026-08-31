@@ -88,6 +88,10 @@ var SECTOR_PROFIELEN = {
   // ── ACCOUNTANCY (bestaand, ongewijzigd) ─────────────────────────────────
   accountancy: {
     label: 'Accountancy & administratie',
+    // Bron-status (zie SECTORPROFIEL-BRONNEN.md, 31 aug 2026): multiple 4,5-5,5x = 🟢 geverifieerd
+    // (Brookz-curve NL M&A-/accountantskantoren, zelfde bron als het waarderingsscherm). Overige
+    // getallen 🟡 plausibel maar zonder citaat in de code (overlappen deels met DB-benchmark
+    // omzet_fte_accountant, bron "Full Finance/Novak 2024-2025").
     aiNormen: 'EBITDA-marge norm 15-25%, omzet per FTE €80k-€140k, personeelskosten 55-65%, declarabiliteit >75%, multiple 4.5-5.5x',
     // multipleBasis/multipleLaag/multipleHoog (25 juli 2026, vierde kwartaalaudit P1 #1): expliciet,
     // gestructureerd vastgelegd i.p.v. met een regex uit de vrije aiNormen-tekst geparst — die regex
@@ -270,6 +274,10 @@ var SECTOR_PROFIELEN = {
   // ── MKB GENERIEK (retail, horeca, handel, ambacht) ───────────────────────
   mkb: {
     label: 'MKB — Retail / Horeca / Handel / Ambacht',
+    // Bron-status (zie SECTORPROFIEL-BRONNEN.md, 31 aug 2026): multiple 2,5-4,5x = 🔴 AANDACHT —
+    // de actuele Brookz Overnamebarometer (H2-2025) geeft een gemiddelde MKB-EBITDA-multiple van 5,0;
+    // de bovengrens hier ligt daaronder. Bewust conservatief kan, maar herijk tegen Brookz of
+    // documenteer expliciet als bewuste ondergrens. Marge-/FTE-getallen 🟡 plausibel, geen bron.
     aiNormen: 'EBITDA-marge norm 5-15% (sector afhankelijk: horeca 8-12%, retail 5-10%, handel 6-12%), omzet per FTE €80k-€200k, personeelskosten 25-45%, voorraadomzet >6x per jaar, multiple 2.5-4.5x',
     multipleBasis: 'ebitda', multipleLaag: 2.5, multipleHoog: 4.5,
     fases: [
@@ -424,6 +432,11 @@ var SECTOR_PROFIELEN = {
   // ── ZORG (huisartsenpraktijken, tandartsen, fysiotherapie) ───────────────
   zorg: {
     label: 'Zorg — Huisarts / Tandarts / Fysiotherapie',
+    // Bron-status (zie SECTORPROFIEL-BRONNEN.md, 31 aug 2026): multiple 1-3x omzet = 🔴 AANDACHT —
+    // "praktijkwaarde ≈ deel van de jaaromzet" is een reële conventie voor KLEINE eigenaar-gedreven
+    // solopraktijken, maar voor grotere praktijken/ketens hanteert de markt een EBITDA-multiple
+    // (Brookz "zorg & farmacie" ~6,0-7,3x EBITDA). Bovengrens 3x omzet lijkt te hoog. Overweeg een
+    // omvangsafhankelijke schakelaar of begrens tot echt kleine praktijken.
     aiNormen: 'EBITDA-marge norm 15-25% (huisarts 20-30%), omzet per FTE €60k-€120k, NZa-tarieven leidend, patiëntenbestand overdraagbaarheid cruciaal, multiple 1-3x omzet (praktijkwaarde)',
     // LET OP: dit is een OMZET-multiple (praktijkwaarde), geen EBITDA-multiple — zie dvSectorMultipleRange()
     // in mna/03-rekenkern-waardering.js. Het Dealvoorstel-scherm (prijsmechanisme/schuldaflossing/DCF)
@@ -572,6 +585,10 @@ var SECTOR_PROFIELEN = {
   // ── IT & SOFTWARE ────────────────────────────────────────────────────────
   itsoftware: {
     label: 'IT & Software',
+    // Bron-status (zie SECTORPROFIEL-BRONNEN.md, 31 aug 2026): alle getallen 🟡 plausibel, geen bron
+    // in de code. multiple 4-6x EBITDA is de vastgelegde basis (redelijk voor maatwerk/diensten);
+    // de 3-8x ARR-range gaat alleen naar de AI-tekst, niet naar de rekenkern. ARR/MRR-groei/churn/
+    // LTV-CAC/NPS zijn gangbare SaaS-vuistregels, geen harde NL-branchebron.
     aiNormen: 'EBITDA-marge norm 15-30% (SaaS 20-40%), ARR/MRR groei >20% is sterk, churn <5% is goed, LTV/CAC >3 vereist, NPS >30 positief, multiple 3-8x ARR (SaaS) of 4-6x EBITDA (maatwerk/diensten)',
     // Dit sectorprofiel dekt zowel SaaS (ARR-multiple) als maatwerk/diensten (EBITDA-multiple) — het
     // platform heeft geen apart ARR-veld en de rest van het Dealvoorstel-scherm is EBITDA-based, dus
