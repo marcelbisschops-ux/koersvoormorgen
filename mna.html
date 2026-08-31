@@ -141,6 +141,9 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--s
      over een paginagrens heen lopen. */
   .doc-veld{break-inside:avoid}
   #w-ai-hist,#w-ai-hist *{display:none!important}
+  /* Scrollbare tekstvakken worden op papier anders afgekapt op hun schermhoogte — bij printen
+     alles tonen (analyse-tekst in de dataroom, dealvoorstel-preview, interne bijlage). */
+  .doc-analyse,#dv-preview,#dv-bijlage,.doc-analyse *{max-height:none!important;overflow:visible!important}
   body{font-size:11px}
 }
 .toast-container{position:fixed;top:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none}

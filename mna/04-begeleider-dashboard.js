@@ -2053,12 +2053,16 @@ function renderBegeleiderDashboard(app){
         +'<div style="font-size:11px;font-weight:600;color:var(--teal);text-transform:uppercase;letter-spacing:.1em;margin-bottom:.75rem">&#128226; Teaser'+(status?' &mdash; '+esc(status):'')+'</div>'
         +'<textarea id="teaser-txt" rows="8" style="width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:var(--r);font-family:\'IBM Plex Sans\',sans-serif;font-size:13px;padding:9px 11px;color:var(--sub);resize:vertical;outline:none">'+esc(tekst||'')+'</textarea>'
         +'<div style="font-size:11px;color:var(--muted);margin-top:6px">Anoniem, max. ~150 woorden, geen bedrijfsnaam. Controleer altijd zelf op onbedoeld identificerende details vóór verspreiding.</div>'
-        +'<div style="display:flex;gap:8px;margin-top:.75rem">'
-        +'<button class="btn" id="teaser-opslaan-btn" style="background:var(--teal)">Opslaan</button>'
+        +'<div style="display:flex;gap:8px;margin-top:.75rem;flex-wrap:wrap">'
+        +'<button class="btn" id="teaser-opslaan-btn" style="background:var(--teal)" title="Bewaart de tekst bij dit traject — later terug te vinden via &quot;Teaser bekijken/bewerken&quot;. Er wordt geen bestand gedownload.">Opslaan</button>'
+        +'<button class="btn-ghost" id="teaser-print-btn" style="font-size:12px;padding:6px 14px">&#128196; Print / PDF</button>'
         +'<button class="btn-outline btn-sm" id="teaser-nieuw-btn">&#8635; Opnieuw genereren</button>'
         +'<button class="btn-ghost" id="teaser-sluit-btn" style="margin-left:auto">Sluiten</button>'
         +'</div></div>';
       document.getElementById('teaser-sluit-btn').onclick=function(){out.style.display='none';};
+      document.getElementById('teaser-print-btn').onclick=function(){
+        printDoc(document.getElementById('teaser-txt').value||'', 'Teaser', 'teaser');
+      };
       document.getElementById('teaser-opslaan-btn').onclick=async function(){
         var btn=this;btn.disabled=true;btn.textContent='Bezig...';
         var tekstNu=document.getElementById('teaser-txt').value;
@@ -2089,12 +2093,16 @@ function renderBegeleiderDashboard(app){
         +'<div style="font-size:11px;font-weight:600;color:#8a5a00;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.75rem">&#128220; Verkoopmemorandum'+(status?' &mdash; '+esc(status):'')+'</div>'
         +'<textarea id="verkoopmemo-txt" rows="16" style="width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:var(--r);font-family:\'IBM Plex Sans\',sans-serif;font-size:13px;padding:9px 11px;color:var(--sub);resize:vertical;outline:none">'+esc(tekst||'')+'</textarea>'
         +'<div style="font-size:11px;color:var(--muted);margin-top:6px">Bevat de bedrijfsnaam — controleer vóór verspreiding altijd of dit alleen naar de partij gaat die de NDA heeft getekend.</div>'
-        +'<div style="display:flex;gap:8px;margin-top:.75rem">'
-        +'<button class="btn" id="verkoopmemo-opslaan-btn" style="background:#8a5a00">Opslaan</button>'
+        +'<div style="display:flex;gap:8px;margin-top:.75rem;flex-wrap:wrap">'
+        +'<button class="btn" id="verkoopmemo-opslaan-btn" style="background:#8a5a00" title="Bewaart de tekst bij dit traject — later terug te vinden via &quot;Verkoopmemorandum bekijken/bewerken&quot;. Er wordt geen bestand gedownload.">Opslaan</button>'
+        +'<button class="btn-ghost" id="verkoopmemo-print-btn" style="font-size:12px;padding:6px 14px">&#128196; Print / PDF</button>'
         +'<button class="btn-outline btn-sm" id="verkoopmemo-nieuw-btn">&#8635; Opnieuw genereren</button>'
         +'<button class="btn-ghost" id="verkoopmemo-sluit-btn" style="margin-left:auto">Sluiten</button>'
         +'</div></div>';
       document.getElementById('verkoopmemo-sluit-btn').onclick=function(){out.style.display='none';};
+      document.getElementById('verkoopmemo-print-btn').onclick=function(){
+        printDoc(document.getElementById('verkoopmemo-txt').value||'', 'Verkoopmemorandum — '+(t2.kantoor_naam||S.code), 'memo');
+      };
       document.getElementById('verkoopmemo-opslaan-btn').onclick=async function(){
         var btn=this;btn.disabled=true;btn.textContent='Bezig...';
         var tekstNu=document.getElementById('verkoopmemo-txt').value;

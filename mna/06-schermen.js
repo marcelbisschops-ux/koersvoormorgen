@@ -1277,7 +1277,8 @@ function bindAll(){
     function renderTeaserVerk(tekst){
       out.innerHTML='<textarea id="teaser-verk-txt" rows="8" style="width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:var(--r);font-family:\'IBM Plex Sans\',sans-serif;font-size:13px;padding:9px 11px;color:var(--sub);resize:vertical;outline:none">'+esc(tekst||'')+'</textarea>'
         +'<div style="font-size:11px;color:var(--muted);margin-top:6px">Anoniem, max. ~150 woorden, geen bedrijfsnaam. Controleer altijd zelf op onbedoeld identificerende details vóór verspreiding.</div>'
-        +'<div style="display:flex;gap:8px;margin-top:.75rem"><button class="btn" id="teaser-verk-opslaan" style="background:var(--teal)">Opslaan</button><button class="btn-outline btn-sm" id="teaser-verk-nieuw">&#8635; Opnieuw genereren</button></div>';
+        +'<div style="display:flex;gap:8px;margin-top:.75rem;flex-wrap:wrap"><button class="btn" id="teaser-verk-opslaan" style="background:var(--teal)" title="Bewaart de tekst bij dit traject — later terug te vinden via &quot;Teaser bekijken/bewerken&quot;. Er wordt geen bestand gedownload.">Opslaan</button><button class="btn-ghost" id="teaser-verk-print" style="font-size:12px;padding:6px 14px">&#128196; Print / PDF</button><button class="btn-outline btn-sm" id="teaser-verk-nieuw">&#8635; Opnieuw genereren</button></div>';
+      ge('teaser-verk-print').onclick=function(){ printDoc(ge('teaser-verk-txt').value||'', 'Teaser', 'teaser'); };
       ge('teaser-verk-opslaan').onclick=async function(){
         var btn=this;btn.disabled=true;btn.textContent='Bezig...';
         var tekstNu=ge('teaser-verk-txt').value;

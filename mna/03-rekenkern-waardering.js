@@ -1505,11 +1505,40 @@ function dvHtmlNaarTekst(html){
     .trim();
 }
 
+// Gedeeld: open een opgemaakt document in een apart printvenster (met auto-print) en val terug
+// op een verborgen iframe als de browser de pop-up blokkeert. Voorheen deed elke printfunctie dit
+// zelf, zonder fallback — vandaar "soms opent alleen een lege HTML-pagina" / "er gebeurt niets".
+function printHtmlDocument(docHtml){
+  var win=null;
+  try{ win=window.open('','_blank'); }catch(e){ win=null; }
+  if(win && win.document){
+    win.document.write(docHtml+'<script>window.onload=function(){window.focus();window.print();}<\/script>');
+    win.document.close();
+    return;
+  }
+  var ifr=document.createElement('iframe');
+  ifr.setAttribute('aria-hidden','true');
+  ifr.style.cssText='position:fixed;width:0;height:0;border:0;right:0;bottom:0;opacity:0';
+  document.body.appendChild(ifr);
+  try{
+    var idoc=ifr.contentWindow.document;
+    idoc.open(); idoc.write(docHtml); idoc.close();
+    var doPrint=function(){
+      try{ ifr.contentWindow.focus(); ifr.contentWindow.print(); }catch(e){}
+      setTimeout(function(){ if(ifr && ifr.parentNode) ifr.parentNode.removeChild(ifr); },2000);
+    };
+    if(idoc.readyState==='complete') setTimeout(doPrint,350);
+    else ifr.onload=function(){ setTimeout(doPrint,350); };
+  }catch(e){
+    if(ifr && ifr.parentNode) ifr.parentNode.removeChild(ifr);
+    alert('Kon het printvenster niet openen. Sta pop-ups toe voor deze site, of gebruik '+(navigator.platform&&navigator.platform.indexOf('Mac')>-1?'⌘P':'Ctrl+P')+'.');
+  }
+}
+
 function printDealvoorstel(bodyHtml,titel){
   var datum=new Date().toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'});
   var kleur='#8a5a00';
-  var win=window.open('','_blank');
-  win.document.write('<!DOCTYPE html><html lang="nl"><head><meta charset="UTF-8"><title>'+titel+'<\/title>'
+  var docHtml='<!DOCTYPE html><html lang="nl"><head><meta charset="UTF-8"><title>'+titel+'<\/title>'
     +'<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">'
     +'<style>'
     // Print is bewust altijd licht (papier), ongeacht het thema van de app — maar dvTabelSynergie()/
@@ -1535,9 +1564,8 @@ function printDealvoorstel(bodyHtml,titel){
     +'<div class="doc-header"><div class="doc-title">'+esc(titel)+'</div><div class="doc-sub">' + BRAND.bedrijf + ' &middot; '+datum+' &middot; Vertrouwelijk &mdash; denkrichting, geen waardering, geen bod</div></div>'
     +bodyHtml
     +'<div class="doc-footer"><span>' + BRAND.bedrijf + '</span><span>'+datum+'</span></div>'
-    +'</div></body></html>');
-  win.document.close();
-  win.focus();
+    +'</div></body></html>';
+  printHtmlDocument(docHtml);
 }
 
 // Eén centrale berekening voor de waardering — gebruikt door zowel renderWaardering() (het scherm)
