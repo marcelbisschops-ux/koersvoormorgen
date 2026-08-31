@@ -553,6 +553,76 @@ function dvTabelEarnOut(eo){
     eo.rows.map(function(r){return [r.jaar,dvMln(r.tranche),dvMln(r.cumulatief)];}));
 }
 
+// ZOPA trade-space (onderhandel-playbook, onderdeel 1 — 31 augustus 2026). Deelt de TOTALE
+// tegenprestatie voor de verkopende partij op naar zekerheid × timing, zodat de verkoper de
+// onderhandelruimte ziet die op tafel ligt: waar valt aan te draaien — meer cash bij closing, een
+// kortere escrow, minder earn-out, meer of minder behouden belang. GOUDEN STANDAARD: dit voegt GEEN
+// nieuwe aannames toe; het is puur een herindeling van bedragen die dvBerekenOpbrengstBrug en
+// dvBerekenClosing al berekenen (en die apart gevalideerd zijn). Invariant: de som van de buckets is
+// exact "waarde verkocht belang + waarde behouden belang".
+function dvBerekenZopaTradeSpace(p,closing,brug){
+  var belangFrac=(p.belangPct||0)/100;
+  var behoudenBelangWaarde=Math.max(0,brug.equityValue100*(1-belangFrac));   // rollover: waarde van het behouden belang
+  var cashNu=Math.max(0,brug.cashBijClosing);
+  var escrow=Math.max(0,brug.escrowBedrag);
+  var earnOut=Math.max(0,brug.earnOutUitgesteld);
+  // Vendor loan: een deel van de koopsom dat de verkoper als achtergestelde lening aan de koper
+  // verstrekt i.p.v. contant te ontvangen. dvBerekenOpbrengstBrug rekent dit (nog) niet mee in
+  // cashBijClosing — we raken die berekening niet aan, maar herindelen het bedrag hier risicomatig
+  // van "zeker bij closing" naar "voorwaardelijk/uitgesteld" (kredietrisico koper) en tonen het apart.
+  var vendorLoan=(p.vendorLoanAan&&p.vendorLoanBedrag)?Math.max(0,Math.min(p.vendorLoanBedrag,cashNu)):0;
+  var zekerNu=Math.max(0,cashNu-vendorLoan);
+  var voorwaardelijk=earnOut+vendorLoan;
+  var totaal=zekerNu+escrow+voorwaardelijk+behoudenBelangWaarde;
+  function pct(x){return totaal>0?(x/totaal*100):0;}
+  var escrowMnd=brug.escrowMaanden||p.escrowMaanden||0;
+  var voorwAard=[earnOut>0?'earn-out (prestatie-afhankelijk)':'',vendorLoan>0?'verkoperslening (kredietrisico koper)':''].filter(Boolean).join(' · ')||'geen';
+  var buckets=[
+    {key:'zeker',label:'Zeker, bij closing',bedrag:zekerNu,pct:pct(zekerNu),aard:'Contant op de closingdatum',kleur:'var(--teal)'},
+    {key:'escrow',label:'Escrow (vastgehouden)',bedrag:escrow,pct:pct(escrow),aard:'Vrij na ~'+escrowMnd+' mnd, mits geen claims',kleur:'var(--gold)'},
+    {key:'voorwaardelijk',label:'Voorwaardelijk / uitgesteld',bedrag:voorwaardelijk,pct:pct(voorwaardelijk),aard:voorwAard,kleur:'var(--gold-dark)'},
+    {key:'behouden',label:'Behouden belang ('+Math.round(100-(p.belangPct||0))+'%)',bedrag:behoudenBelangWaarde,pct:pct(behoudenBelangWaarde),aard:'Waarde hangt af van toekomstig resultaat en een tweede exit-moment',kleur:'var(--muted)'}
+  ];
+  return {
+    buckets:buckets,totaal:totaal,
+    zekerNu:zekerNu,escrow:escrow,voorwaardelijk:voorwaardelijk,behoudenBelangWaarde:behoudenBelangWaarde,
+    earnOut:earnOut,vendorLoan:vendorLoan,escrowMaanden:escrowMnd,
+    pctZekerBijClosing:pct(zekerNu),pctEscrow:pct(escrow),pctVoorwaardelijk:pct(voorwaardelijk),pctBehoudenBelang:pct(behoudenBelangWaarde)
+  };
+}
+
+// Kleine gestapelde horizontale balk (100% = totaal), segmenten gekleurd per zekerheidsniveau.
+function dvSvgStackedBar(segments,titel){
+  var totaal=segments.reduce(function(a,s){return a+Math.max(0,s.bedrag);},0);
+  if(totaal<=0) return '<p style="font-size:9pt;color:#8a8880;font-style:italic">Geen verdeling te tonen (totaal is nul).</p>';
+  var W=560,x=0,bars='',labels='';
+  segments.forEach(function(s){
+    var w=Math.max(0,s.bedrag)/totaal*W;
+    if(w<=0) return;
+    bars+='<rect x="'+x.toFixed(1)+'" y="0" width="'+w.toFixed(1)+'" height="26" fill="'+s.kleur+'"/>';
+    if(w>34) labels+='<text x="'+(x+w/2).toFixed(1)+'" y="17" text-anchor="middle" font-size="10" font-family="IBM Plex Mono, monospace" fill="#fff">'+Math.round(s.pct)+'%</text>';
+    x+=w;
+  });
+  var titelSafe=esc(titel||'Verdeling naar zekerheid');
+  return '<svg viewBox="0 0 '+W+' 28" width="100%" role="img" aria-label="'+titelSafe+'" style="max-width:'+W+'px;height:auto;display:block"><title>'+titelSafe+'</title>'+bars+labels+'</svg>';
+}
+
+function dvTabelZopaTradeSpace(z){
+  var rows=z.buckets.map(function(b){return [b.label,dvMln(b.bedrag),dvPct(b.pct),b.aard];});
+  var html=dvRenderTabelHtml(['Component','€ mln','Aandeel','Aard / zekerheid'],rows);
+  html+='<div style="margin:.5rem 0 .4rem">'+dvSvgStackedBar(z.buckets,'Verdeling van de totale tegenprestatie ('+fmtGeld(z.totaal)+') naar zekerheid')+'</div>';
+  var legenda=z.buckets.filter(function(b){return b.bedrag>0;}).map(function(b){
+    return '<span style="display:inline-flex;align-items:center;gap:5px;margin-right:14px;font-size:9pt;color:#5a5854"><span style="width:9px;height:9px;background:'+b.kleur+';display:inline-block;border-radius:2px"></span>'+esc(b.label.replace(/\s*\(.*\)/,''))+'</span>';
+  }).join('');
+  html+='<div style="margin-bottom:.5rem">'+legenda+'</div>';
+  var vw=(z.earnOut>0&&z.vendorLoan>0)?' (earn-out + verkoperslening)':z.earnOut>0?' (earn-out)':z.vendorLoan>0?' (verkoperslening)':'';
+  html+='<p style="font-size:10pt;color:#5a5854;margin:.25rem 0 .5rem">Van de totale tegenprestatie van '+fmtGeld(z.totaal)+' is '+dvPct(z.pctZekerBijClosing)+' zeker bij closing, '
+    +dvPct(z.pctEscrow)+' uitgesteld maar doorgaans zeker (escrow, ~'+z.escrowMaanden+' mnd), '
+    +dvPct(z.pctVoorwaardelijk)+' voorwaardelijk'+vw+' en '+dvPct(z.pctBehoudenBelang)+' behouden belang.</p>';
+  html+='<div style="font-size:9pt;color:#8a8880;font-style:italic">"Zeker bij closing" betekent contant op de closingdatum, niet dat het bedrag gegarandeerd is — koper-kredietrisico, opschortende voorwaarden en MAC-clausules kunnen alsnog spelen. De indeling volgt de dealstructuur-aannames uit dit voorstel (belang, escrow, earn-out, eventuele verkoperslening); het zijn geen door het platform berekende waarden.</div>';
+  return html;
+}
+
 function dvTabelSchuldafbouw(rows){
   return dvRenderTabelHtml(['Jaar','EBITDA','Rente','VpB','Capex','&#916; Werkkapitaal','FCF','Earn-up','Netto schuld','ND/EBITDA'],
     rows.map(function(r){return [r.jaar,dvMln(r.ebitda),dvMln(r.rente),dvMln(r.vpb),dvMln(r.capex),dvMln(r.nwcMutatie||0),dvMln(r.fcf),dvMln(r.earnUp),dvMln(r.nettoSchuld),dvMultiple(r.leverage)];}));
