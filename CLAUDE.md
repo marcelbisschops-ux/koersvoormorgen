@@ -97,6 +97,13 @@ Bij elk verzoek om testdocumenten voor het M&A-platform (mna.html-uploadflow, on
 - Eigen document-templates (NDA/LoI/BEM) opnieuw uploaden in marilyn (gewist door inmiddels gefixte bug) — bewust uitgesteld door Marcel
 - Volledige backlog (12 taken, eenvoudig → moeilijk, met kosteninschatting) + geautomatiseerd E2E-testplan: zie `BACKLOG.md`
 
+## Vaste checks & cadans (aangevuld 31 augustus 2026 n.a.v. de twee ChatGPT-reviewrondes)
+- **Kwartaal — sectorbenchmark-bronnencheck:** loop `SECTORPROFIEL-BRONNEN.md` opnieuw langs; elk kwantitatief getal in de sectorprofielen moet 🟢 (gebrond) of expliciet 🟡/🔴 (gemarkeerd) zijn. Hangt aan de bestaande sjabloon-/benchmark-kwartaalcheck.
+- **Maandelijks — lichte diff-review:** de commits van de afgelopen maand door een verse AI (ChatGPT/Claude, losstaand) met de vraag "wat is er veranderd, wat is riskant". Goedkoop, vangt drift tussen de kwartaalrondes. (Naast de volledige maand-audit uit werkregel 12 en `/code-review ultra` per kwartaal.)
+- **Bij een nieuw AI-model** (nu `claude-sonnet-4-6`): eerst `scripts/check-dealvoorstel-output.mjs` draaien op een vers gegenereerd dealvoorstel + één dealvoorstel volledig nalezen — modelwissels verschuiven de AI-output.
+- **Na elke groene audit + gevalideerde/gedeployde staat:** een git-tag `known-good-JJJJMMDD` zetten, zodat terugvallen naar de laatst volledig geverifieerde staat één commando is.
+- **Dealvoorstel-generatie:** `tests/audit-consistentie.mjs` check 8 (statische publiek/interne-scheiding, draait bij elke push) + `scripts/check-dealvoorstel-output.mjs` (op een echt gegenereerd document) horen bij elke wijziging aan `mna/04` rond het dealvoorstel groen te zijn — zie werkregel 19.
+
 ### Afgerond (juli 2026)
 - Stap 3 adviseursportaal: contracten-flow (NDA/LoI/BEM/Excl) achter het module-slot `contracten` — knoppen in het begeleider-dashboard van mna.html checken nu `modules.contracten`
 - Prompt caching in de worker: vaste instructies + JSON-extractieschema van de documentanalyse gaan als cachebaar `system`-block mee (bevestigd: cache-hits in productie)
