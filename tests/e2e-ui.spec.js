@@ -300,7 +300,7 @@ test.describe('Login en rollen (eigen testtraject)', () => {
     verkoperCode = c.json.code;
     tussenCode = c.json.tussen_code;
     // Verwerkersovereenkomst vooraf tekenen, anders blokkeert de VOK-popup het dashboard.
-    await api('POST', '/mna/vok/teken', { body: { code: tussenCode, naam: 'E2E Test', versie: '1.2', email } });
+    await api('POST', '/mna/vok/teken', { body: { code: tussenCode, naam: 'E2E Test', versie: '1.5', email } });
   });
 
   test.afterAll(async () => {
@@ -352,7 +352,7 @@ test.describe('Documentknoppen module-gating', () => {
     // Verwerkersovereenkomst vooraf tekenen, anders blokkeert de VOK-popup het dashboard.
     // LET OP: versie moet gelijk zijn aan VOK_VERSIE in mna/04-begeleider-dashboard.js — anders
     // wordt de popup (terecht) opnieuw getoond en faalt deze test.
-    await api('POST', '/mna/vok/teken', { body: { code: tussenCode, naam: 'E2E Test', versie: '1.2', email } });
+    await api('POST', '/mna/vok/teken', { body: { code: tussenCode, naam: 'E2E Test', versie: '1.5', email } });
   });
 
   test.afterAll(async () => {
@@ -397,7 +397,7 @@ test.describe('Cross-entiteit databeveiliging (regressie 18 aug 2026)', () => {
     const c = await api('POST', '/adviseur/create', { body: { email, wachtwoord: WW, traject: { kantoor_naam: 'E2E CrossEntiteit Kantoor BV', traject_type: 'Verkoop' } } });
     verkoperCode = c.json.code;
     tussenCode = c.json.tussen_code;
-    await api('POST', '/mna/vok/teken', { body: { code: tussenCode, naam: 'E2E Test', versie: '1.2', email } });
+    await api('POST', '/mna/vok/teken', { body: { code: tussenCode, naam: 'E2E Test', versie: '1.5', email } });
 
     // begeleiderOfVerkoperAuth vereist bij een begeleidercode expliciet de x-tussen-key-header
     // (verkoper-/traject-id zelf is impliciet toegestaan, tussen_code niet — zie begeleiderAuth()
@@ -491,7 +491,7 @@ test.describe('Gelijktijdige multi-upload', () => {
     const c = await api('POST', '/adviseur/create', { body: { email, wachtwoord: WW, traject: { kantoor_naam: 'E2E MultiUpload Kantoor BV', traject_type: 'Verkoop' } } });
     verkoperCode = c.json.code;
     tussenCode = c.json.tussen_code;
-    await api('POST', '/mna/vok/teken', { body: { code: tussenCode, naam: 'E2E Test', versie: '1.2', email } });
+    await api('POST', '/mna/vok/teken', { body: { code: tussenCode, naam: 'E2E Test', versie: '1.5', email } });
 
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-multiupload-'));
     const inhoud = (omzet) => `veld,waarde\nomzet,${omzet}\nboekjaar,2025\n`;
