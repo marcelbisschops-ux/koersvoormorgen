@@ -68,6 +68,11 @@ function printDoc(tekst, titel, docType) {
     +docLogoImg
     +datum+'<br>Vertrouwelijk'+(code?'<br><span style="font-family:monospace;font-size:8pt;color:#c8c5bc">'+code+'<\/span>':'')
     +'<\/div><\/div>'
+    // Verkoopmemorandum: geen groot CONCEPT-watermerk (zou het als "niet af" laten lezen richting een
+    // serieuze koper), maar wél een discrete statusregel — het is een automatisch gegenereerd,
+    // bewerkbaar document dat de begeleider hoort te controleren vóór verspreiding (ChatGPT-review
+    // 31 aug 2026, keuze Marcel: discrete regel).
+    +(docType==='memo'?'<div style="background:#fbf3e3;border:1px solid #e0b84c;border-radius:4px;padding:6px 12px;margin-bottom:1.5rem;font-size:9pt;color:#7a5a00">Conceptversie &mdash; automatisch samengesteld uit de aangeleverde gegevens. Controleer de inhoud v&oacute;&oacute;r verspreiding.<\/div>':'')
     +'<div class="doc-body">'+fmt(tekst)+'<\/div>'
     +'<div class="doc-footer">'
     +'<span>' + docBedrijf + ' &middot; ' + docAdres + '<\/span>'

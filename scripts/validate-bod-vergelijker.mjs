@@ -130,11 +130,44 @@ const bodB = { naam: 'Koper Beta', ev: 2600000, cashPct: 90, escrowPct: 10, earn
   eq('A sPrijs = 3M/4M × 100 = 75', v.biedingen[0].sPrijs, 75, 1);
   ok('C geen somWaarschuwing (80+20+0 = 100)', v.biedingen[2].somWaarschuwing === false);
   is('ranglijst kop = Gamma', v.ranglijst[0].naam, 'Koper Gamma');
-  ok('tabel-HTML bevat 3 datakolommen + de disclaimer + de upside-euro-regel', (() => {
+  ok('tabel-HTML bevat 3 datakolommen + de disclaimer', (() => {
     const h = dvTabelBiedingVergelijking(v);
     return h.includes('Koper Alfa') && h.includes('Koper Beta') && h.includes('Koper Gamma')
-      && h.includes('geen platformoordeel') && h.includes('Voorwaardelijke/behouden upside');
+      && h.includes('geen platformoordeel');
   })());
+  ok('earn-out en behouden belang staan als APARTE regels (geen gecombineerde "upside")', (() => {
+    const h = dvTabelBiedingVergelijking(v);
+    return h.includes('Earn-out uitgesteld (€ mln)') && h.includes('Behouden belang (€ mln)')
+      && !h.includes('Voorwaardelijke/behouden upside');
+  })());
+}
+
+// ── TC7 — ongeldig percentage behouden belang: nooit stilzwijgend clampen (GOUDEN STANDAARD) ──
+{
+  console.log('\nTC7 — behoudenPct ≥ 100 of < 0 → gemarkeerd, geen fantasiebedrag');
+  // Vroeger: behoudenPct 100 → geclampt naar 99,9 → behoudenBedrag = ev/0,1 × 99,9 = ±3 miljard.
+  const v100 = dvBerekenBiedingVergelijking([bodA, { ...bodB, behoudenPct: 100 }]);
+  ok('behoudenOngeldig = true bij 100%', v100.biedingen[1].behoudenOngeldig === true);
+  ok('behoudenBedrag = null bij 100% (geen berekend bedrag)', v100.biedingen[1].behoudenBedrag === null);
+  ok('behoudenPct = null bij 100%', v100.biedingen[1].behoudenPct === null);
+  ok('score wordt gewoon nog berekend (behoudenPct telt niet mee in de score)', typeof v100.biedingen[1].totaal === 'number');
+  ok('tabel toont n.v.t. voor behouden belang', dvTabelBiedingVergelijking(v100).includes('n.v.t.'));
+  ok('tabel toont de invoer-controleregel', dvTabelBiedingVergelijking(v100).includes('Ongeldig percentage behouden belang'));
+
+  const v150 = dvBerekenBiedingVergelijking([bodA, { ...bodB, behoudenPct: 150 }]);
+  ok('behoudenOngeldig = true bij 150%', v150.biedingen[1].behoudenOngeldig === true);
+
+  const vNeg = dvBerekenBiedingVergelijking([bodA, { ...bodB, behoudenPct: -5 }]);
+  ok('behoudenOngeldig = true bij -5%', vNeg.biedingen[1].behoudenOngeldig === true);
+
+  // 99% is een geldige (zeer scheve) minderheidsverkoop — moet gewoon rekenen, niet afwijzen.
+  const v99 = dvBerekenBiedingVergelijking([{ ...bodA, ev: 3000000, behoudenPct: 99 }, bodB]);
+  ok('behoudenPct 99 is GELDIG (geen afwijzing)', v99.biedingen[0].behoudenOngeldig === false);
+  eq('behoudenBedrag bij 99% = ev/(100−99)×99 = ev×99', v99.biedingen[0].behoudenBedrag, 3000000 * 99, 1);
+
+  // geldige biedingen ongemoeid
+  ok('geldig bod (behoudenPct 15) blijft behoudenOngeldig = false',
+    dvBerekenBiedingVergelijking([bodA, bodB]).biedingen[0].behoudenOngeldig === false);
 }
 
 // ── TC5 — koopsommen liggen een factor >3 uiteen → aparte waarschuwing ──
