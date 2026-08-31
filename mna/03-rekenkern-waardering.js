@@ -858,16 +858,23 @@ function dvBerekenBiedingVergelijking(biedingen){
   var W=DV_BOD_GEWICHTEN;
   var rows=geldig.map(function(b){
     var ev=+b.ev;   // koopsom voor het VERKOCHTE belang (bijv. 51%)
-    var cashPct=Math.max(0,+b.cashPct||0), escrowPct=Math.max(0,+b.escrowPct||0), earnOutPct=Math.max(0,+b.earnOutPct||0), behoudenPct=Math.max(0,Math.min(99.9,+b.behoudenPct||0));
+    var cashPct=Math.max(0,+b.cashPct||0), escrowPct=Math.max(0,+b.escrowPct||0), earnOutPct=Math.max(0,+b.earnOutPct||0);
     var vendorLoan=Math.max(0,+b.vendorLoan||0);
     var cashNu=Math.max(0, ev*(cashPct/100) - vendorLoan);
     var escrowBedrag=ev*(escrowPct/100);
     var earnOutBedrag=ev*(earnOutPct/100);
     // Behouden belang is een % van de HELE onderneming, niet van de koopsom. De koopsom `ev` is de
     // waarde van het verkochte belang (100 − behoudenPct). Waarde behouden deel = ev per procentpunt
-    // × behoudenPct. (Bugfix 31 aug 2026: stond op ev × behoudenPct/100 → verkeerde grondslag.)
-    var verkochtBelangPct=Math.max(0.1, 100-behoudenPct);
-    var behoudenBedrag=(ev/verkochtBelangPct)*behoudenPct;
+    // verkocht belang × behoudenPct. (Bugfix 31 aug 2026 #1: stond op ev × behoudenPct/100 →
+    // verkeerde grondslag.)
+    // ChatGPT-review 31 aug 2026: NOOIT stilzwijgend clampen. Een behoudenPct van 100 of meer (of
+    // negatief) is geen geldige deelverkoop — er is dan geen verkocht belang om de koopsom aan toe
+    // te rekenen. Vroeger werd 100 → 99,9 geclampt, wat via de deling een fantasiebedrag opleverde
+    // (ev / 0,1 × 99,9). Nu: bedrag = null en het bod wordt gemarkeerd (behoudenOngeldig).
+    var behoudenPctRaw=+b.behoudenPct||0;
+    var behoudenOngeldig=(behoudenPctRaw<0 || behoudenPctRaw>=100);
+    var behoudenPct=behoudenOngeldig?null:behoudenPctRaw;
+    var behoudenBedrag=behoudenOngeldig?null:(ev/(100-behoudenPct))*behoudenPct;
     // De betaalstructuur van de KOOPSOM (cash + escrow + earn-out) hoort ~100% te zijn. Behouden
     // belang telt hier NIET in mee — dat is geen betaling van de koper. (Bugfix 31 aug 2026: eerdere
     // check telde behoudenPct mee → waarschuwing sloeg bij elke deelverkoop onterecht aan.)
@@ -883,7 +890,8 @@ function dvBerekenBiedingVergelijking(biedingen){
     var sFit=fit;
     var totaal=Math.round(sPrijs*W.prijs/100 + sZekerheidCash*W.zekerheidCash/100 + sDealZekerheid*W.dealZekerheid/100 + sTiming*W.timing/100 + sFit*W.fit/100);
     return {
-      naam:String(b.naam), ev:ev, cashNu:cashNu, escrowBedrag:escrowBedrag, earnOutBedrag:earnOutBedrag, behoudenBedrag:behoudenBedrag,
+      naam:String(b.naam), ev:ev, cashNu:cashNu, escrowBedrag:escrowBedrag, earnOutBedrag:earnOutBedrag,
+      behoudenBedrag:behoudenBedrag, behoudenPct:behoudenPct, behoudenOngeldig:behoudenOngeldig,
       vendorLoan:vendorLoan, somPct:somPct, somWaarschuwing:Math.abs(somPct-100)>1.5,
       weken:weken, voorw:voorw, financiering:b.financiering||'teregelen', strategischeFit:b.strategischeFit||'midden',
       sPrijs:Math.round(sPrijs), sZekerheidCash:Math.round(sZekerheidCash), sTiming:Math.round(sTiming), sDealZekerheid:Math.round(sDealZekerheid), sFit:Math.round(sFit),
@@ -913,7 +921,7 @@ function dvTabelBiedingVergelijking(v){
     +rij('Cash bij closing (€ mln)',B.map(function(b){return dvMln(b.cashNu);}))
     +rij('Escrow (€ mln)',B.map(function(b){return dvMln(b.escrowBedrag);}))
     +rij('Earn-out uitgesteld (€ mln)',B.map(function(b){return dvMln(b.earnOutBedrag);}))
-    +rij('Behouden belang (€ mln)',B.map(function(b){return dvMln(b.behoudenBedrag);}))
+    +rij('Behouden belang (€ mln)',B.map(function(b){return b.behoudenBedrag==null?'n.v.t.':dvMln(b.behoudenBedrag);}))
     +rij('Opschortende voorwaarden (aantal)',B.map(function(b){return b.voorw;}))
     +rij('Financieringszekerheid',B.map(function(b){return DV_FIN_LABEL[b.financiering]||b.financiering;}))
     +rij('Weken tot closing',B.map(function(b){return b.weken;}))
@@ -924,14 +932,19 @@ function dvTabelBiedingVergelijking(v){
     +rij('Deal-zekerheid (20%)',B.map(function(b){return b.sDealZekerheid;}))
     +rij('Timing (10%)',B.map(function(b){return b.sTiming;}))
     +rij('Strategische fit (15%)',B.map(function(b){return b.sFit;}))
-    +rij('Totaalscore',B.map(function(b){return b.totaal;}),true)
-    +rij('Voorwaardelijke/behouden upside (€ mln)',B.map(function(b){return dvMln(b.earnOutBedrag+b.behoudenBedrag);}));
+    +rij('Totaalscore',B.map(function(b){return b.totaal;}),true);
+  // (De vroegere regel "Voorwaardelijke/behouden upside (€ mln)" is verwijderd — ChatGPT-review
+  // 31 aug 2026: die telde de earn-out (voorwaardelijk deel van de koopsom) op bij de waarde van het
+  // behouden belang (eigen equity van de verkoper). Twee economisch verschillende grondslagen onder
+  // één getal. Beide staan hierboven al als eigen regel: "Earn-out uitgesteld" en "Behouden belang".)
   var html='<table style="width:100%;border-collapse:collapse;margin:.5rem 0 .75rem">'+hdr()+rijen+'</table>';
   var top=v.ranglijst[0], tweede=v.ranglijst[1];
   html+='<p style="font-size:10pt;color:#5a5854;margin:.25rem 0 .5rem">Hoogste totaalscore: <strong>'+esc(top.naam)+'</strong> ('+top.totaal+'), daarna '+esc(tweede.naam)+' ('+tweede.totaal+'). Dit is een gewogen ordening (prijs 30% / zekerheid cash 25% / deal-zekerheid 20% / strategische fit 15% / timing 10%), geen keuze — de zwaarte van elke as hangt af van wat de verkoper belangrijk vindt.</p>';
   var somW=B.filter(function(b){return b.somWaarschuwing;}).map(function(b){return b.naam;});
   if(somW.length) html+='<p style="font-size:9pt;color:#c0392b;margin:0 0 .5rem">De betaalstructuur van de koopsom (cash % + escrow % + earn-out %) telt niet op tot ~100% bij: '+esc(somW.join(', '))+'. Controleer die drie percentages (behouden belang telt hier niet mee — dat is geen betaling van de koper).</p>';
   if(v.evSpreidWaarschuwing) html+='<p style="font-size:9pt;color:#c0392b;margin:0 0 .5rem">De koopsommen liggen ver uiteen (factor '+v.evSpreidFactor.toFixed(1)+'). Controleer of beide biedingen op hetzelfde belang in dezelfde onderneming slaan en of voor elk traject een dealvoorstel is gegenereerd — anders vergelijkt de matrix ongelijke grootheden.</p>';
+  var behOng=B.filter(function(b){return b.behoudenOngeldig;}).map(function(b){return b.naam;});
+  if(behOng.length) html+='<p style="font-size:9pt;color:#c0392b;margin:0 0 .5rem">Ongeldig percentage behouden belang (0–99 verwacht) bij: '+esc(behOng.join(', '))+'. Bij 100% of meer is er geen verkocht belang om de koopsom aan toe te rekenen — de regel "Behouden belang" toont daarom n.v.t. Controleer de invoer.</p>';
   html+='<div style="font-size:9pt;color:#8a8880;font-style:italic">De euro-bedragen zijn een rechtstreekse herrekening van de per bod ingevoerde percentages. Financieringszekerheid, het aantal opschortende voorwaarden en de strategische fit zijn inschattingen van de begeleider — geen platformoordeel. Uitsluitend voor de verkoper en de begeleider.</div>';
   return html;
 }
@@ -1516,6 +1529,11 @@ function printHtmlDocument(docHtml){
     win.document.close();
     return;
   }
+  // ChatGPT-review 31 aug 2026: laat de iframe-fallback niet stil falen. Lukt print() daar ook niet,
+  // dan dezelfde zichtbare instructie tonen als de buitenste catch — anders lijkt de knop niets te doen.
+  var handmatigMelding=function(){
+    alert('Kon het printvenster niet openen. Sta pop-ups toe voor deze site, of gebruik '+(navigator.platform&&navigator.platform.indexOf('Mac')>-1?'⌘P':'Ctrl+P')+'.');
+  };
   var ifr=document.createElement('iframe');
   ifr.setAttribute('aria-hidden','true');
   ifr.style.cssText='position:fixed;width:0;height:0;border:0;right:0;bottom:0;opacity:0';
@@ -1524,14 +1542,14 @@ function printHtmlDocument(docHtml){
     var idoc=ifr.contentWindow.document;
     idoc.open(); idoc.write(docHtml); idoc.close();
     var doPrint=function(){
-      try{ ifr.contentWindow.focus(); ifr.contentWindow.print(); }catch(e){}
+      try{ ifr.contentWindow.focus(); ifr.contentWindow.print(); }catch(e){ handmatigMelding(); }
       setTimeout(function(){ if(ifr && ifr.parentNode) ifr.parentNode.removeChild(ifr); },2000);
     };
     if(idoc.readyState==='complete') setTimeout(doPrint,350);
     else ifr.onload=function(){ setTimeout(doPrint,350); };
   }catch(e){
     if(ifr && ifr.parentNode) ifr.parentNode.removeChild(ifr);
-    alert('Kon het printvenster niet openen. Sta pop-ups toe voor deze site, of gebruik '+(navigator.platform&&navigator.platform.indexOf('Mac')>-1?'⌘P':'Ctrl+P')+'.');
+    handmatigMelding();
   }
 }
 
