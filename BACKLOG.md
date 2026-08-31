@@ -67,14 +67,19 @@ nodig heeft; meld wat je wilt en ik pak het op.
 ## 2. Afronden wat al grotendeels gebouwd is
 
 ### 2.1 — Bod-vergelijker: laatste stappen · **P2 · 🟡**
-Kern + code staan (onderdeel 4 van het onderhandel-playbook). Rest:
+Kern + code staan (onderdeel 4 van het onderhandel-playbook). De twee rekenfouten die jouw eerste
+vergelijking (T7OFKL11) liet zien zijn opgelost en met een los rekenscript nagerekend — details in
+`BACKLOG-ARCHIEF.md` #23. Rest:
 - Backend deployen (`scripts/deploy.sh backend`) — draagt o.a. de `kopieer_dd_van`-rij-id-fix in
   `worker/10-mna-communicatie.js`. *(Zit in punt 0.1.)*
+- **Frontend pushen** — `mna/03-rekenkern-waardering.js`, `mna/08-handleiding.js`, `adv.html`,
+  `scripts/validate-bod-vergelijker.mjs`, `scripts/testklant-onderdeel6.mjs`.
 - De **negatief-rolgeval-test** in `tests/e2e-crosspath-fixes.mjs` één keer tegen de live worker
   draaien (koper-code → 401, verkopercode → 401, onbekende code → 401, begeleidercode → 200
   "geen_groep").
-- Optioneel: gevulde testklant draaien — `ADMIN_KEY=… node scripts/testklant-onderdeel6.mjs`
-  (`--leeg` voor een externe tester).
+- Opnieuw testen met een gevulde testklant — `ADMIN_KEY=… node scripts/testklant-onderdeel6.mjs`
+  (`--leeg` voor een externe tester). Volg stap 2 in de scriptuitvoer: **belang% in beide trajecten
+  gelijk houden**, alleen escrow/earn-out/financiering/timing/fit variëren.
 
 ### 2.2 — Cloudflare Turnstile aanzetten op het testtraject-formulier · **P3 · ⚪**
 Frontend + backend zijn klaar en **veilig uit** tot geconfigureerd (honeypot + rate-limiter dragen
