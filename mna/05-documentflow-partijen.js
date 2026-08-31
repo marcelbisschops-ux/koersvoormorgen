@@ -1,7 +1,12 @@
 // © 2026 Bisschops Financing B.V. Alle rechten voorbehouden.
 function printDoc(tekst, titel, docType) {
-  var kleuren = {nda:'#7c5cbf',loi:'#c9a84c',bem:'#2a5ea0',bem_verk:'#2a5ea0',bem_koper:'#2a5ea0',excl:'#1a7a5e',exclusief:'#1a7a5e',bieding:'#a0522d',spa:'#5a5470'};
+  var kleuren = {nda:'#7c5cbf',loi:'#c9a84c',bem:'#2a5ea0',bem_verk:'#2a5ea0',bem_koper:'#2a5ea0',excl:'#1a7a5e',exclusief:'#1a7a5e',bieding:'#a0522d',spa:'#5a5470',teaser:'#1a7a5e',memo:'#8a5a00'};
   var kleur = kleuren[docType] || '#1a7a5e';
+  // Teaser en verkoopmemorandum zijn eind-informatiedocumenten die als zodanig naar een tegenpartij
+  // gaan — geen concept van een te ondertekenen contract. Voor die twee geen CONCEPT-watermerk
+  // (dat zou een ontvanger ten onrechte als "nog niet definitief" lezen). Alle contract-/biedings-
+  // documenten houden het watermerk.
+  var toonWatermerk = !(docType === 'teaser' || docType === 'memo');
   function fmt(t) {
     if(!t) return '';
     t = t.replace(/^(Artikel \d+[^\n]*)/gm, '<h3>$1</h3>');
@@ -29,8 +34,7 @@ function printDoc(tekst, titel, docType) {
   var docLogoImg = BRAND._logoUrl
     ? '<img src="'+String(BRAND._logoUrl).replace(/"/g,'&quot;')+'" alt="'+docBedrijf+'">'
     : '';
-  var win = window.open('','_blank');
-  win.document.write('<!DOCTYPE html><html lang="nl"><head><meta charset="UTF-8"><title>'+titel+'<\/title>'
+  var docHtml = '<!DOCTYPE html><html lang="nl"><head><meta charset="UTF-8"><title>'+titel+'<\/title>'
     +'<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">'
     +'<style>'
     +'*{box-sizing:border-box;margin:0;padding:0}'
@@ -38,7 +42,7 @@ function printDoc(tekst, titel, docType) {
     // Watermerk: dit printvenster toont altijd een concept-tekst (gegenereerd of nog niet definitief
     // ondertekend) — nooit het daadwerkelijk ondertekende document (dat loopt via Signhost). Een
     // duidelijk "CONCEPT"-watermerk voorkomt dat een printout per ongeluk als definitief circuleert.
-    +'body::before{content:"CONCEPT";position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-35deg);font-size:110pt;font-weight:700;color:rgba(0,0,0,.06);z-index:0;pointer-events:none;white-space:nowrap;font-family:IBM Plex Sans,sans-serif}'
+    +(toonWatermerk?'body::before{content:"CONCEPT";position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-35deg);font-size:110pt;font-weight:700;color:rgba(0,0,0,.06);z-index:0;pointer-events:none;white-space:nowrap;font-family:IBM Plex Sans,sans-serif}':'')
     +'.page{max-width:720px;margin:0 auto;padding:2cm;position:relative;z-index:1}'
     +'.doc-header{display:flex;align-items:flex-end;justify-content:space-between;padding-bottom:1.25rem;border-bottom:3px solid '+kleur+';margin-bottom:2rem}'
     +'.doc-header-left .doc-title{font-family:Playfair Display,serif;font-size:22pt;font-weight:600;color:'+kleur+';line-height:1.2}'
@@ -68,10 +72,10 @@ function printDoc(tekst, titel, docType) {
     +'<div class="doc-footer">'
     +'<span>' + docBedrijf + ' &middot; ' + docAdres + '<\/span>'
     +'<span>Vertrouwelijk &mdash; uitsluitend bestemd voor geadresseerde(n)<\/span>'
-    +'<\/div><\/div>'
-    +'<script>window.onload=function(){window.print();}<\/script>'
-    +'<\/body><\/html>');
-  win.document.close();
+    +'<\/div><\/div><\/body><\/html>';
+  // Gedeelde helper (mna/03): apart printvenster + auto-print, met iframe-fallback bij een
+  // geblokkeerde pop-up.
+  printHtmlDocument(docHtml);
 }
 
 
