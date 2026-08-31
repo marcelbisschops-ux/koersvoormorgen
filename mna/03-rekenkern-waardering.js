@@ -110,6 +110,10 @@ function dvGetDefaults(){
     earnOutJaren:3,
     escrowPct:12,
     escrowMaanden:18,
+    walkAwayPrijs:0,
+    batnaKeuze:'',
+    batnaWaarde:0,
+    batnaTijdsdruk:'onbekend',
     nettoSchuld:_nettoSchuldDefault,
     debtLikeItems:0,
     werkkapitaalCorrectie:0,
@@ -605,6 +609,206 @@ function dvSvgStackedBar(segments,titel){
   });
   var titelSafe=esc(titel||'Verdeling naar zekerheid');
   return '<svg viewBox="0 0 '+W+' 28" width="100%" role="img" aria-label="'+titelSafe+'" style="max-width:'+W+'px;height:auto;display:block"><title>'+titelSafe+'</title>'+bars+labels+'</svg>';
+}
+
+// BATNA & walk-away (onderhandel-playbook onderdeel 2 — 31 augustus 2026). Toetst de dealopbrengst
+// tegen de door de begeleider (in overleg met de verkoper) vastgelegde ondergrens: de walk-awayprijs
+// — de minimale opbrengst waaronder het aangevoerde alternatief (BATNA) aantrekkelijker is dan
+// verkopen. GOUDEN STANDAARD: de walk-awayprijs en de BATNA-waarde zijn INGEVOERDE aannames, nooit
+// een platformberekening; is de walk-awayprijs niet ingevuld, dan wordt er geen oordeel geveld
+// (status 'nietIngevuld') i.p.v. een gegokte ondergrens. Alleen zinvol aan verkoperszijde — de
+// aanroepende code roept dit niet aan bij een koper-opdrachtgever.
+function dvBerekenBatna(p,closing,brug){
+  var walkAway=Math.max(0,p.walkAwayPrijs||0);
+  var cashNu=Math.max(0,brug.cashBijClosing);
+  var totaalVerkocht=Math.max(0,brug.verkochtBelangWaarde);   // cash + escrow + uitgestelde earn-out
+  var batnaWaarde=Math.max(0,p.batnaWaarde||0);
+  if(walkAway<=0){
+    return {status:'nietIngevuld',cashNu:cashNu,totaalVerkocht:totaalVerkocht,batnaKeuze:p.batnaKeuze||'',batnaWaarde:batnaWaarde,tijdsdruk:p.batnaTijdsdruk||'onbekend'};
+  }
+  var margeCash=cashNu-walkAway;
+  var margeTotaal=totaalVerkocht-walkAway;
+  var status;
+  if(margeCash>=0) status='ruimBoven';            // zelfs de zekere cash ligt boven de ondergrens
+  else if(margeTotaal>=0) status='krap';          // alleen als alle uitgestelde delen binnenkomen
+  else status='onder';                            // ook in het beste geval onder de ondergrens
+  var batnaVergelijk=null;
+  if(batnaWaarde>0) batnaVergelijk={verschilCash:cashNu-batnaWaarde,verschilTotaal:totaalVerkocht-batnaWaarde};
+  return {
+    status:status,walkAway:walkAway,cashNu:cashNu,totaalVerkocht:totaalVerkocht,
+    margeCash:margeCash,margeTotaal:margeTotaal,
+    batnaKeuze:p.batnaKeuze||'',batnaWaarde:batnaWaarde,batnaVergelijk:batnaVergelijk,
+    tijdsdruk:p.batnaTijdsdruk||'onbekend'
+  };
+}
+
+var DV_BATNA_LABELS={'':'niet gekozen',zelfstandig:'Zelfstandig doorgaan',later:'Later verkopen (2-3 jaar)',andere_koper:'Andere koper benaderen',investeerder:'Minderheidsinvesteerder aantrekken',overdracht:'Overdracht aan familie of management',afbouwen:'Afbouwen / staken'};
+var DV_TIJDSDRUK_LABELS={onbekend:'niet opgegeven',laag:'laag — geen haast',midden:'gemiddeld',hoog:'hoog — moet op korte termijn rond zijn'};
+
+function dvTabelBatna(b){
+  var keuzeLabel=DV_BATNA_LABELS[b.batnaKeuze]||b.batnaKeuze||'niet gekozen';
+  var tijdLabel=DV_TIJDSDRUK_LABELS[b.tijdsdruk]||b.tijdsdruk;
+  if(b.status==='nietIngevuld'){
+    return '<div style="background:#fff8e6;border:1px solid #e0b84c;border-radius:6px;padding:10px 14px;margin:.5rem 0 1rem;font-size:10pt;color:#7a5a00">'
+      +'<strong>Walk-awayprijs niet ingevuld.</strong> Bepaal vóór de onderhandeling de minimale opbrengst waaronder het alternatief zonder deze deal aantrekkelijker is. Zonder die ondergrens is er geen ijkpunt om een bod tegen af te wegen.'
+      +(b.batnaKeuze?(' Gekozen alternatief (BATNA): '+keuzeLabel+'.'):'')
+      +'</div>';
+  }
+  var badge,kleur,vlak,tekst;
+  if(b.status==='ruimBoven'){ badge='BOVEN DE WALK-AWAY'; kleur='#1a7a5e'; vlak='#e7f5f0'; tekst='De zekere cash bij closing ('+dvMln(b.cashNu)+' mln) ligt al boven de ondergrens van '+dvMln(b.walkAway)+' mln — dit bod is aantrekkelijker dan het aangevoerde alternatief.'; }
+  else if(b.status==='krap'){ badge='KRAP — ALLEEN MET DE UITGESTELDE DELEN'; kleur='#c9a84c'; vlak='#fdf6e3'; tekst='De zekere cash bij closing ('+dvMln(b.cashNu)+' mln) ligt ónder de ondergrens van '+dvMln(b.walkAway)+' mln; alleen als escrow en earn-out volledig binnenkomen ('+dvMln(b.totaalVerkocht)+' mln) wordt de ondergrens gehaald. Dat verschil hangt af van toekomstige prestaties en van het kredietrisico van de koper.'; }
+  else { badge='ONDER DE WALK-AWAY'; kleur='#c0392b'; vlak='#fdecea'; tekst='Ook in het beste geval (escrow + earn-out volledig, '+dvMln(b.totaalVerkocht)+' mln) blijft de opbrengst onder de ondergrens van '+dvMln(b.walkAway)+' mln. Dit bod niet accepteren zoals het nu ligt — het aangevoerde alternatief levert meer op.'; }
+  var rows=[
+    ['Walk-awayprijs (ingevoerde ondergrens)',dvMln(b.walkAway)],
+    ['Zekere cash bij closing',dvMln(b.cashNu)+'  ('+(b.margeCash>=0?'+':'')+dvMln(b.margeCash)+' t.o.v. walk-away)'],
+    ['Totale tegenprestatie verkocht belang (cash + escrow + earn-out)',dvMln(b.totaalVerkocht)+'  ('+(b.margeTotaal>=0?'+':'')+dvMln(b.margeTotaal)+' t.o.v. walk-away)'],
+    ['Alternatief zonder deze deal (BATNA)',keuzeLabel]
+  ];
+  if(b.batnaWaarde>0) rows.push(['Geschatte waarde van dat alternatief',dvMln(b.batnaWaarde)+'  (cash bij closing '+(b.batnaVergelijk.verschilCash>=0?'+':'')+dvMln(b.batnaVergelijk.verschilCash)+' t.o.v. alternatief)']);
+  rows.push(['Tijdsdruk verkoper',tijdLabel]);
+  var html='<div style="background:'+vlak+';border-left:4px solid '+kleur+';border-radius:0 6px 6px 0;padding:10px 14px;margin:.5rem 0 .75rem">'
+    +'<div style="font-size:9pt;font-weight:700;letter-spacing:.06em;color:'+kleur+';margin-bottom:3px">'+badge+'</div>'
+    +'<div style="font-size:10pt;color:#3a3a3a;line-height:1.5">'+tekst+'</div></div>';
+  html+=dvRenderKenmerkTabel(rows);
+  html+='<div style="font-size:9pt;color:#8a8880;font-style:italic">De walk-awayprijs en de geschatte BATNA-waarde zijn door de begeleider in overleg met de verkoper ingevoerd — geen platformberekening. <strong>Dit blok is uitsluitend voor de verkopende partij en de begeleider; deel het niet met de koper.</strong></div>';
+  return html;
+}
+
+// LoI-checklist "leg de kern-economics vroeg vast" (onderhandel-playbook onderdeel 3 — 31 augustus
+// 2026). De LoI wordt vaak als vrijblijvende formaliteit behandeld, maar wie de kern-economics
+// (prijsmechanisme, earn-out, escrow, koopsom-aanpassing, reps & warranties-kader, MAC, opschortende
+// voorwaarden, non-concurrentie, retentie) pas in de SPA vastlegt, geeft onderhandelruimte weg.
+// Deze lijst kruist wat dít dealvoorstel al vastlegt tegen wat de begeleider nog expliciet in de LoI
+// moet regelen. GEEN juridisch advies — de SPA-punten horen met een jurist te worden uitgewerkt.
+// Alleen verkoperszijde (de aanroepende code roept dit niet aan bij een koper-opdrachtgever).
+function dvTabelLoiChecklist(p){
+  function veld(k){var v=S.data&&S.data[k];return !!(v&&String(v).trim());}
+  var earnOut=!!p.earnOutAan;
+  var keyPerson=veld('partner_keyPersonAfhank')||veld('partner_tweedeEchelon');
+  var mgmtRet=veld('partner_mgmtRetentie');
+  var G='gedekt',D='deels',N='niet';
+  var items=[
+    {t:'Koopsom & prijsmechanisme',s:G,w:'Vast in dit voorstel: basis-multiple, glijdende schaal en cliff-drempel. Neem het mechanisme (niet alleen het bedrag) letterlijk over in de LoI.'},
+    {t:'Betaalstructuur: cash bij closing / uitgesteld / behouden belang',s:G,w:'De opbrengst-brug en de trade-space hierboven leggen dit vast. Zet de verhouding cash / uitgesteld / rollover expliciet in de LoI.'},
+    {t:'Earn-out',s:earnOut?G:N,w:earnOut?'Percentage, doelgroei en looptijd staan in dit voorstel — neem ze exact over in de LoI.':'Niet in dit voorstel opgenomen. Sluit een earn-out expliciet uit in de LoI, of neem hem alsnog op — een latere toevoeging kost leverage.'},
+    {t:'Escrow / inhouding',s:G,w:'Percentage en looptijd staan vast. Leg in de LoI ook de vrijgavevoorwaarden en het claimproces vast.'},
+    {t:'Koopsom-aanpassingsmechanisme (locked box vs. completion accounts)',s:D,w:'Netto schuld en werkkapitaalcorrectie zijn als bedrag ingevoerd, maar het mechanisme is een keuze: locked box (vaste peildatum) of completion accounts (afrekening ná closing). Leg dit in de LoI vast.'},
+    {t:'Exclusiviteit',s:N,w:'Loopt via een aparte brief, maar benoem de duur (bijv. 6-8 weken) en de sancties al in de LoI.'},
+    {t:'Reps & warranties — omvang en beperkingen',s:N,w:'SPA-materie, maar het kader hoort in de LoI: cap als % van de koopsom, de-minimis/basket-drempels, survival-termijnen. Zonder kader staat de verkoper later zwakker.'},
+    {t:'W&I-verzekering — wie sluit af, wie betaalt de premie',s:N,w:'Bepaalt of de verkoper na closing nog aansprakelijk is. Leg de intentie (wel/niet, kostenverdeling) al in de LoI vast.'},
+    {t:'MAC / material-adverse-change-clausule',s:N,w:'Geeft de koper een uitweg tussen signing en closing. Beperk de reikwijdte al in de LoI (bijv. alleen bedrijfsspecifiek, niet marktbreed).'},
+    {t:'Opschortende voorwaarden (financiering, toestemmingen, sleutelmedewerkers)',s:N,w:'Elke voorwaarde is een exit-optie voor de koper. Som ze uitputtend op in de LoI; "gebruikelijke voorwaarden" is te vaag.'},
+    {t:'Non-concurrentie / relatiebeding verkoper + sleutelpersonen',s:keyPerson?D:N,w:'Reikwijdte, duur en geografie horen in de LoI — dit raakt direct wat de verkoper daarna nog mag ondernemen.'},
+    {t:'Retentie / lock-up sleutelpersonen',s:mgmtRet?D:N,w:mgmtRet?'Er zijn retentie-afspraken vastgelegd in de DD — vertaal ze naar concrete LoI-punten (bonusstructuur, looptijd).':'Nog geen retentie-afspraken vastgelegd. Bepaal vóór de LoI welke sleutelpersonen moeten blijven en tegen welke voorwaarden.'},
+    {t:'Overtollige liquiditeiten / dividend vóór closing',s:N,w:'Wie krijgt de kas die niet nodig is voor de bedrijfsvoering? Leg de cash-/debt-free-definitie en een eventueel pre-closing dividend vast in de LoI.'},
+    {t:'Kostenverdeling (juridisch, DD, notaris, W&I-premie)',s:N,w:'Klein bedrag, veel discussie als het niet vroeg vastligt. Eén regel in de LoI volstaat.'},
+    {t:'Geschillenregeling & toepasselijk recht',s:N,w:'Nederlands recht plus bevoegde rechter of arbitrage — standaard, maar benoem het in de LoI zodat er geen discussie ontstaat.'}
+  ];
+  var nG=items.filter(function(i){return i.s===G;}).length;
+  var nD=items.filter(function(i){return i.s===D;}).length;
+  var nN=items.filter(function(i){return i.s===N;}).length;
+  var badge=function(s){
+    var kl=s===G?'#1a7a5e':s===D?'#c9a84c':'#8a8880';
+    var tx=s===G?'gedekt':s===D?'deels':'leg vast in LoI';
+    return '<span style="display:inline-block;font-size:8pt;font-weight:700;letter-spacing:.04em;color:#fff;background:'+kl+';border-radius:3px;padding:1px 6px;white-space:nowrap">'+tx+'</span>';
+  };
+  var rijen=items.map(function(i){
+    return '<tr><td style="padding:5px 10px;border-bottom:1px solid #eee;font-size:10pt;vertical-align:top">'+esc(i.t)+'</td>'
+      +'<td style="padding:5px 10px;border-bottom:1px solid #eee;vertical-align:top">'+badge(i.s)+'</td>'
+      +'<td style="padding:5px 10px;border-bottom:1px solid #eee;font-size:9.5pt;color:#5a5854;vertical-align:top">'+esc(i.w)+'</td></tr>';
+  }).join('');
+  var html='<table style="width:100%;border-collapse:collapse;margin:.5rem 0 .75rem">'
+    +'<tr><th style="padding:6px 10px;text-align:left;font-size:9pt;text-transform:uppercase;letter-spacing:.05em;color:#8a8880;border-bottom:2px solid #ccc">Kern-economic</th>'
+    +'<th style="padding:6px 10px;text-align:left;font-size:9pt;text-transform:uppercase;letter-spacing:.05em;color:#8a8880;border-bottom:2px solid #ccc">Status</th>'
+    +'<th style="padding:6px 10px;text-align:left;font-size:9pt;text-transform:uppercase;letter-spacing:.05em;color:#8a8880;border-bottom:2px solid #ccc">Waarom vroeg vastleggen</th></tr>'+rijen+'</table>';
+  html+='<p style="font-size:10pt;color:#5a5854;margin:.25rem 0 .5rem">Van de '+items.length+' kern-economics worden er '+nG+' door dit voorstel gedekt en '+nD+' deels; leg de overige '+nN+' expliciet vast in de LoI (of benoem waarom niet van toepassing) vóór verzending — anders geef je die onderhandelruimte weg.</p>';
+  html+='<div style="font-size:9pt;color:#8a8880;font-style:italic">Aandachtspuntenlijst, <strong>geen juridisch advies</strong> — reps &amp; warranties, MAC en opschortende voorwaarden horen met een jurist te worden uitgewerkt. Uitsluitend voor de verkoper en de begeleider; niet delen met de koper.</div>';
+  return html;
+}
+
+// Bod-vergelijker / Deal Value Matrix (onderhandel-playbook onderdeel 4 — 31 augustus 2026).
+// Vergelijkt 2-4 concurrerende biedingen op vijf gewogen assen (plus een neutrale upside-as).
+// GOUDEN STANDAARD: de subjectieve assen (financieringszekerheid, aantal opschortende voorwaarden,
+// strategische fit) zijn expliciet door de begeleider ingevoerde inschattingen — geen platform-
+// oordeel. De euro-bedragen zijn een rechttoe-rechtaan herrekening van de per bod ingevoerde
+// percentages. De vergelijking ordent; ze kiest niet.
+var DV_BOD_FIN={eigen:100,commitment:65,teregelen:25};
+var DV_BOD_FIT={laag:33,midden:66,hoog:100};
+var DV_BOD_GEWICHTEN={prijs:30,zekerheidCash:25,dealZekerheid:20,timing:10,fit:15};   // som 100
+function dvBerekenBiedingVergelijking(biedingen){
+  var geldig=(biedingen||[]).filter(function(b){return b&&b.naam&&(+b.ev>0);});
+  if(geldig.length<2) return {status:'onvoldoende',aantal:geldig.length};
+  var maxEv=Math.max.apply(null,geldig.map(function(b){return +b.ev;}));
+  var W=DV_BOD_GEWICHTEN;
+  var rows=geldig.map(function(b){
+    var ev=+b.ev;
+    var cashPct=Math.max(0,+b.cashPct||0), escrowPct=Math.max(0,+b.escrowPct||0), earnOutPct=Math.max(0,+b.earnOutPct||0), behoudenPct=Math.max(0,+b.behoudenPct||0);
+    var vendorLoan=Math.max(0,+b.vendorLoan||0);
+    var cashNu=Math.max(0, ev*(cashPct/100) - vendorLoan);
+    var escrowBedrag=ev*(escrowPct/100);
+    var earnOutBedrag=ev*(earnOutPct/100);
+    var behoudenBedrag=ev*(behoudenPct/100);
+    var somPct=cashPct+escrowPct+earnOutPct+behoudenPct;
+    var weken=Math.max(0,+b.wekenTotClosing||0);
+    var voorw=Math.max(0,Math.round(+b.aantalVoorwaarden||0));
+    var fin=(b.financiering&&DV_BOD_FIN[b.financiering]!=null)?DV_BOD_FIN[b.financiering]:25;
+    var fit=(b.strategischeFit&&DV_BOD_FIT[b.strategischeFit]!=null)?DV_BOD_FIT[b.strategischeFit]:66;
+    var sPrijs=maxEv>0?(ev/maxEv*100):0;
+    var sZekerheidCash=ev>0?Math.min(100,(cashNu/ev*100)):0;
+    var sTiming=Math.max(0,100-Math.min(100,(weken/26)*100));                 // 26 weken → 0
+    var sDealZekerheid=Math.max(0,Math.min(100, fin*0.6 + Math.max(0,100-voorw*15)*0.4));
+    var sFit=fit;
+    var totaal=Math.round(sPrijs*W.prijs/100 + sZekerheidCash*W.zekerheidCash/100 + sDealZekerheid*W.dealZekerheid/100 + sTiming*W.timing/100 + sFit*W.fit/100);
+    return {
+      naam:String(b.naam), ev:ev, cashNu:cashNu, escrowBedrag:escrowBedrag, earnOutBedrag:earnOutBedrag, behoudenBedrag:behoudenBedrag,
+      vendorLoan:vendorLoan, somPct:somPct, somWaarschuwing:Math.abs(somPct-100)>1,
+      weken:weken, voorw:voorw, financiering:b.financiering||'teregelen', strategischeFit:b.strategischeFit||'midden',
+      sPrijs:Math.round(sPrijs), sZekerheidCash:Math.round(sZekerheidCash), sTiming:Math.round(sTiming), sDealZekerheid:Math.round(sDealZekerheid), sFit:Math.round(sFit),
+      upsidePct:earnOutPct+behoudenPct, totaal:totaal
+    };
+  });
+  return {status:'ok', biedingen:rows, ranglijst:rows.slice().sort(function(a,b){return b.totaal-a.totaal;}), gewichten:W};
+}
+
+var DV_FIN_LABEL={eigen:'eigen middelen',commitment:'commitment brief',teregelen:'nog te regelen'};
+function dvTabelBiedingVergelijking(v){
+  if(!v||v.status!=='ok'){
+    return '<div style="background:#fff8e6;border:1px solid #e0b84c;border-radius:6px;padding:10px 14px;font-size:10pt;color:#7a5a00">Minimaal twee biedingen met een naam en een koopsom &gt; 0 nodig om te vergelijken'+(v&&v.aantal?(' (nu '+v.aantal+').'):'.')+'</div>';
+  }
+  var B=v.biedingen;
+  function hdr(){
+    return '<tr><th style="text-align:left;padding:6px 10px;font-size:9pt;text-transform:uppercase;color:#8a8880;border-bottom:2px solid #ccc">&nbsp;</th>'
+      +B.map(function(b){return '<th style="text-align:right;padding:6px 10px;font-size:9pt;color:#1a1815;border-bottom:2px solid #ccc;white-space:nowrap">'+esc(b.naam)+'</th>';}).join('')+'</tr>';
+  }
+  function rij(label,vals,accent){
+    return '<tr><td style="text-align:left;padding:5px 10px;border-bottom:1px solid #eee;font-size:10pt;color:'+(accent?'#1a1815':'#5a5854')+(accent?';font-weight:700':'')+'">'+esc(label)+'</td>'
+      +vals.map(function(x){return '<td style="text-align:right;padding:5px 10px;border-bottom:1px solid #eee;font-size:10pt'+(accent?';font-weight:700':'')+'">'+esc(String(x))+'</td>';}).join('')+'</tr>';
+  }
+  var rijen=''
+    +rij('Koopsom / grondslag (€ mln)',B.map(function(b){return dvMln(b.ev);}))
+    +rij('Cash bij closing (€ mln)',B.map(function(b){return dvMln(b.cashNu);}))
+    +rij('Escrow (€ mln)',B.map(function(b){return dvMln(b.escrowBedrag);}))
+    +rij('Earn-out uitgesteld (€ mln)',B.map(function(b){return dvMln(b.earnOutBedrag);}))
+    +rij('Behouden belang (€ mln)',B.map(function(b){return dvMln(b.behoudenBedrag);}))
+    +rij('Opschortende voorwaarden (aantal)',B.map(function(b){return b.voorw;}))
+    +rij('Financieringszekerheid',B.map(function(b){return DV_FIN_LABEL[b.financiering]||b.financiering;}))
+    +rij('Weken tot closing',B.map(function(b){return b.weken;}))
+    +rij('Strategische fit (inschatting begeleider)',B.map(function(b){return b.strategischeFit;}))
+    +'<tr><td colspan="'+(B.length+1)+'" style="padding:8px 10px 3px;font-size:9pt;text-transform:uppercase;color:#8a8880;letter-spacing:.05em">Scores 0-100</td></tr>'
+    +rij('Prijs (30%)',B.map(function(b){return b.sPrijs;}))
+    +rij('Zekerheid cash (25%)',B.map(function(b){return b.sZekerheidCash;}))
+    +rij('Deal-zekerheid (20%)',B.map(function(b){return b.sDealZekerheid;}))
+    +rij('Timing (10%)',B.map(function(b){return b.sTiming;}))
+    +rij('Strategische fit (15%)',B.map(function(b){return b.sFit;}))
+    +rij('Totaalscore',B.map(function(b){return b.totaal;}),true)
+    +rij('Upside-potentieel (earn-out + behouden belang)',B.map(function(b){return b.upsidePct.toFixed(0)+'%';}));
+  var html='<table style="width:100%;border-collapse:collapse;margin:.5rem 0 .75rem">'+hdr()+rijen+'</table>';
+  var top=v.ranglijst[0], tweede=v.ranglijst[1];
+  html+='<p style="font-size:10pt;color:#5a5854;margin:.25rem 0 .5rem">Hoogste totaalscore: <strong>'+esc(top.naam)+'</strong> ('+top.totaal+'), daarna '+esc(tweede.naam)+' ('+tweede.totaal+'). Dit is een gewogen ordening (prijs 30% / zekerheid cash 25% / deal-zekerheid 20% / strategische fit 15% / timing 10%), geen keuze — de zwaarte van elke as hangt af van wat de verkoper belangrijk vindt.</p>';
+  var somW=B.filter(function(b){return b.somWaarschuwing;}).map(function(b){return b.naam;});
+  if(somW.length) html+='<p style="font-size:9pt;color:#c0392b;margin:0 0 .5rem">De betaalpercentages (cash + escrow + earn-out + behouden belang) tellen niet op tot ~100% bij: '+esc(somW.join(', '))+'. Controleer de invoer.</p>';
+  html+='<div style="font-size:9pt;color:#8a8880;font-style:italic">De euro-bedragen zijn een rechtstreekse herrekening van de per bod ingevoerde percentages. Financieringszekerheid, het aantal opschortende voorwaarden en de strategische fit zijn inschattingen van de begeleider — geen platformoordeel. Uitsluitend voor de verkoper en de begeleider.</div>';
+  return html;
 }
 
 function dvTabelZopaTradeSpace(z){

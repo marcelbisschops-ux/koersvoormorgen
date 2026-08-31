@@ -199,6 +199,72 @@ test.describe('Rekenkern dealvoorstel', () => {
     // Behouden belang = equity value × (1 − belang)
     expect(Math.round(z.behoudenBelangWaarde)).toBe(Math.round(b.equityValue100 * 0.49));
   });
+
+  test('BATNA & walk-away: BOVEN/KRAP/ONDER op de juiste drempels, nooit een gegokte ondergrens', async ({ page }) => {
+    const r = await page.evaluate(() => {
+      const base = { ebitdaBewezen: 400000, multipleBasis: 5.0, ebitdaPrognose: 520000, multipleBovengrens: 6.0, belangPct: 51,
+        nettoSchuld: 300000, debtLikeItems: 100000, werkkapitaalCorrectie: 50000, transactiekostenPct: 2,
+        escrowPct: 12, escrowMaanden: 18, earnOutAan: true, earnOutPct: 20 };
+      const calc = (extra) => {
+        const p = { ...base, ...extra };
+        const b = dvBerekenOpbrengstBrug(p, dvBerekenClosing(p));
+        return dvBerekenBatna(p, dvBerekenClosing(p), b);
+      };
+      return {
+        leeg: calc({ walkAwayPrijs: 0 }).status,
+        boven: calc({ walkAwayPrijs: 400000 }).status,      // < cash 523.668
+        krap: calc({ walkAwayPrijs: 600000 }).status,       // tussen cash en totaal 770.100
+        onder: calc({ walkAwayPrijs: 850000 }).status,      // > totaal
+        grens: calc({ walkAwayPrijs: 523668 }).status,      // == cash
+      };
+    });
+    expect(r.leeg).toBe('nietIngevuld');   // GOUDEN STANDAARD: geen gegokte ondergrens
+    expect(r.boven).toBe('ruimBoven');
+    expect(r.krap).toBe('krap');
+    expect(r.onder).toBe('onder');
+    expect(r.grens).toBe('ruimBoven');
+  });
+
+  test('LoI-checklist: 15 kern-economics, earn-out/retentie data-afhankelijk, disclaimer aanwezig', async ({ page }) => {
+    const r = await page.evaluate(() => {
+      window.S = { data: {} };
+      const zonder = dvTabelLoiChecklist({ earnOutAan: false });
+      window.S = { data: { partner_mgmtRetentie: 'jaarbonus 20% over 3 jaar', partner_keyPersonAfhank: '40' } };
+      const met = dvTabelLoiChecklist({ earnOutAan: true });
+      return { zonder, met };
+    });
+    // 15 items → 15 <tr> in de body (+1 header rij)
+    expect((r.zonder.match(/<tr>/g) || []).length).toBe(16);
+    // earn-out uit → "leg vast in LoI"; earn-out aan → "gedekt"
+    expect(r.zonder).toContain('Sluit een earn-out expliciet uit');
+    expect(r.met).toContain('Percentage, doelgroei en looptijd staan in dit voorstel');
+    // retentieveld gevuld → "vertaal ze naar concrete LoI-punten"
+    expect(r.met).toContain('vertaal ze naar concrete LoI-punten');
+    expect(r.zonder).toContain('Nog geen retentie-afspraken vastgelegd');
+    // altijd: geen juridisch advies + niet delen met de koper
+    expect(r.zonder).toContain('geen juridisch advies');
+    expect(r.zonder).toContain('niet delen met de koper');
+  });
+
+  test('bod-vergelijker: euro-herrekening exact, gewogen totaalscore, <2 biedingen → geen matrix', async ({ page }) => {
+    const r = await page.evaluate(() => {
+      const A = { naam: 'Alfa', ev: 3000000, cashPct: 60, escrowPct: 15, earnOutPct: 10, behoudenPct: 15,
+        vendorLoan: 0, aantalVoorwaarden: 2, financiering: 'eigen', wekenTotClosing: 12, strategischeFit: 'hoog' };
+      const B = { naam: 'Beta', ev: 2600000, cashPct: 80, escrowPct: 10, earnOutPct: 0, behoudenPct: 10,
+        vendorLoan: 200000, aantalVoorwaarden: 4, financiering: 'commitment', wekenTotClosing: 20, strategischeFit: 'midden' };
+      const v = dvBerekenBiedingVergelijking([A, B]);
+      return { status: v.status, a: v.biedingen[0], b: v.biedingen[1], kop: v.ranglijst[0].naam,
+        leeg: dvBerekenBiedingVergelijking([A]).status };
+    });
+    expect(r.status).toBe('ok');
+    expect(Math.round(r.a.cashNu)).toBe(1800000);          // 3M × 60%
+    expect(Math.round(r.b.cashNu)).toBe(1880000);          // 2,6M × 80% − 200k vendor loan
+    expect(r.a.sPrijs).toBe(100);                          // hoogste ev
+    expect(r.a.totaal).toBe(83);                           // gedocumenteerde gewogen som
+    expect(r.b.totaal).toBe(67);
+    expect(r.kop).toBe('Alfa');
+    expect(r.leeg).toBe('onvoldoende');                    // GOUDEN STANDAARD: geen misleidende matrix
+  });
 });
 
 // ───────────────────── 2. LOGIN & ROLLEN ─────────────────────
