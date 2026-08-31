@@ -164,6 +164,17 @@ const GEVERIFIEERD_VEILIG_CHECK4 = [
   // autorisatie-relevante UI-code — de heuristiek matcht hier puur op het woord "interne" in de
   // uitlegtekst zelf, niet op een daadwerkelijk conditioneel getoond blok.
   { file: 'mna/08-handleiding.js', tekst: null, lineHint: 60 },
+  // 31-08-2026: dit is de AI-PROMPT-string van de interne onderhandelbijlage bij het dealvoorstel
+  // (ChatGPT-review A2 — publieke/interne context-split), niet een aan de koper getoond UI-blok. De
+  // bijlage wordt gegenereerd binnen toonDealvoorstelModal()/dv-ok, uitsluitend bereikbaar vanuit
+  // renderBegeleiderDashboard() (S.screen='begeleider', alleen gezet in if(isTussen())), gegated op
+  // isSellDv, en de output gaat naar #dv-bijlage — nooit in #dv-preview / dealvoorstel_tekst / de
+  // e-mail. Structurele scheiding op scherm-niveau, zelfde patroon als de risicoraamwerk-entry.
+  { file: 'mna/04-begeleider-dashboard.js', tekst: "'CONTEXT (intern):\\n'+interneContext" },
+  // 31-08-2026: instructietekst BINNEN de systeemprompt van de verkoper-chatassistent (mna/07) die
+  // de AI juist verbiedt "interne notities van de begeleider" prijs te geven. Geen UI-blok; het hele
+  // blok draait in if(isVerkoper()). De heuristiek matcht puur op het woord "interne notities".
+  { file: 'mna/07-start-chat.js', tekst: 'onderhandelingsposities of interne notities van de begeleider' },
 ];
 const internIssues = [];
 mnaFiles.forEach(file => {
