@@ -798,6 +798,7 @@ function renderBegeleiderDashboard(app){
         +stapRij('bg-infoverzoek2-actie','&#128203;','#2a6b8a','Informatieverzoek — volledige DD (post-LoI)',(S.traject&&S.traject.traject_fase==='due_diligence')?'<span style="color:var(--teal)">&#10003; Fase 2 gestart</span>':'Start de verdiepende DD-vragenlijst',false,true)
         +stapRij('bg-excl-actie','&#128221;','#1a7a5e','Exclusiviteitsovereenkomst',getekendStatus('excl_getekend','excl_datum'))
         +stapRij('bg-dealvoorstel-actie','&#128202;','#8a5a00','Dealvoorstel','Klik om te genereren')
+        +((t.opdrachtgever_rol==='koper')?'':stapRij('bg-biedingvergelijk-actie','&#9878;&#65039;','#7a5a00','Biedingen vergelijken','Gekoppelde trajecten van dezelfde verkoper — Deal Value Matrix',false,true))
         +stapRij('bg-risicoraamwerk-actie','&#129517;','#4a6ea0','Risicoraamwerk (SWOT/PESTEL/Porter)','Klik om te genereren')
         +stapRij('bg-spa-actie','&#128220;','#5a5470','Aandachtspunten koopovereenkomst (SPA)','Aandachtspuntenlijst — geen concept-overeenkomst')
         +stapRij('bg-closing-actie','&#127937;','var(--teal)','Closing-checklist','Laden...',true)
@@ -2112,6 +2113,77 @@ function renderBegeleiderDashboard(app){
     }
     render();
   }
+
+  // Bod-vergelijker / Deal Value Matrix (onderhandel-playbook onderdeel 4). Haalt de gekoppelde
+  // trajecten van dezelfde verkoper op (/mna/biedingen/vergelijk — begeleider-authed, per traject),
+  // vult de koopsom/betaalstructuur voor uit het laatste Dealvoorstel van elk traject, en laat de
+  // begeleider per bod de vier inschattingen (voorwaarden, financiering, doorlooptijd, fit)
+  // aanvullen. GOUDEN STANDAARD: die vier zijn expliciet begeleider-inschattingen; de euro's zijn
+  // een zuivere herrekening; de matrix ordent, ze kiest niet.
+  async function toonBiedingVergelijkerModal(){
+    var key=S._bgKey||S.code||'';
+    var d;
+    try{
+      d=await fetch(WORKER+'/mna/biedingen/vergelijk?code='+encodeURIComponent(S.code),{headers:{'x-tussen-key':key}}).then(function(r){return r.json();});
+    }catch(e){ toast('Ophalen mislukt: '+e.message,'err'); return; }
+    if(!d||d.status==='geen_groep'){
+      toast('Dit traject is niet gekoppeld aan andere trajecten van dezelfde verkoper. Koppelen gebeurt bij het aanmaken van een traject.','info',9000); return;
+    }
+    if(d.status!=='ok'||!d.trajecten||d.trajecten.length<2){
+      toast('Minder dan 2 gekoppelde trajecten met een dealvoorstel. Genereer eerst een Dealvoorstel in elk gekoppeld traject.','info',9000); return;
+    }
+    var biedingen=d.trajecten.map(function(tr,i){
+      var p=null,closing=null;
+      try{ var cj=JSON.parse(tr.cijfers_json||'null'); if(cj&&cj.p&&cj.closing){p=cj.p;closing=cj.closing;} }catch(e){}
+      var ev=closing?Math.round(closing.deelKoperBasis):0;
+      var escrowPct=p?(+p.escrowPct||0):0;
+      var earnOutPct=(p&&p.earnOutAan)?(+p.earnOutPct||0):0;
+      var behoudenPct=p?Math.max(0,100-(+p.belangPct||0)):0;
+      var vendorLoan=(p&&p.vendorLoanAan)?Math.round(+p.vendorLoanBedrag||0):0;
+      var cashPct=Math.max(0,100-escrowPct-earnOutPct);
+      return {_huidig:tr.is_huidig,_geenDv:!p,naam:(tr.koper_naam||('Bod '+(i+1))),ev:ev,cashPct:cashPct,escrowPct:escrowPct,earnOutPct:earnOutPct,behoudenPct:behoudenPct,vendorLoan:vendorLoan,aantalVoorwaarden:2,financiering:'commitment',wekenTotClosing:16,strategischeFit:'midden'};
+    });
+    var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:400;display:flex;align-items:center;justify-content:center;padding:1.5rem';
+    var mo=document.createElement('div');mo.setAttribute('role','dialog');mo.setAttribute('aria-modal','true');mo.style.cssText='background:var(--panel);border-radius:10px;padding:2rem;max-width:760px;width:100%;max-height:92vh;overflow-y:auto';
+    var lbl='font-size:10px;font-weight:600;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:3px';
+    var inp='width:100%;background:var(--card);border:1px solid var(--border2);border-radius:6px;padding:6px 9px;font-family:IBM Plex Sans,sans-serif;font-size:12px';
+    function num(id,label,val,step){return '<div style="flex:1;min-width:90px"><label for="'+id+'" style="'+lbl+'">'+label+'</label><input type="number" id="'+id+'" value="'+val+'" '+(step?'step="'+step+'"':'')+' style="'+inp+'"></div>';}
+    function sel(id,label,opts,v){return '<div style="flex:1;min-width:120px"><label for="'+id+'" style="'+lbl+'">'+label+'</label><select id="'+id+'" style="'+inp+'">'+opts.map(function(o){return '<option value="'+o[0]+'"'+(o[0]===v?' selected':'')+'>'+esc(o[1])+'</option>';}).join('')+'</select></div>';}
+    var blokken=biedingen.map(function(b,i){
+      return '<div style="border:1px solid var(--border2);border-radius:8px;padding:.9rem 1rem;margin-bottom:.8rem">'
+        +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:.6rem;flex-wrap:wrap"><input type="text" id="bv-naam-'+i+'" value="'+esc(b.naam)+'" style="'+inp+';font-weight:600;max-width:240px">'+(b._huidig?'<span style="font-size:10px;color:var(--teal);font-weight:600">DIT TRAJECT</span>':'')+(b._geenDv?'<span style="font-size:10px;color:var(--red)">geen dealvoorstel — vul handmatig</span>':'')+'</div>'
+        +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:.5rem">'+num('bv-ev-'+i,'Koopsom verkocht belang (€)',b.ev)+num('bv-cash-'+i,'% cash bij closing',b.cashPct)+num('bv-escrow-'+i,'% escrow',b.escrowPct)+'</div>'
+        +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:.5rem">'+num('bv-eo-'+i,'% earn-out',b.earnOutPct)+num('bv-beh-'+i,'% behouden belang',b.behoudenPct)+num('bv-vl-'+i,'Verkoperslening (€)',b.vendorLoan)+'</div>'
+        +'<div style="display:flex;gap:8px;flex-wrap:wrap">'+num('bv-vw-'+i,'Opschortende voorwaarden (aantal)',b.aantalVoorwaarden)
+          +sel('bv-fin-'+i,'Financieringszekerheid',[['eigen','eigen middelen'],['commitment','commitment brief'],['teregelen','nog te regelen']],b.financiering)
+          +num('bv-wk-'+i,'Weken tot closing',b.wekenTotClosing)
+          +sel('bv-fit-'+i,'Strategische fit (inschatting)',[['laag','laag'],['midden','midden'],['hoog','hoog']],b.strategischeFit)+'</div></div>';
+    }).join('');
+    mo.innerHTML='<div style="font-family:Playfair Display,serif;font-size:1.15rem;color:var(--head);font-weight:600;margin-bottom:.25rem">&#9878;&#65039; Biedingen vergelijken'+(d.verkoper?(' — '+esc(d.verkoper)):'')+'</div>'
+      +'<div style="font-size:12px;color:#8a8880;margin-bottom:1rem">Koopsom en betaalstructuur komen uit het laatste Dealvoorstel van elk gekoppeld traject. Vul per bod de vier inschattingen aan (voorwaarden, financieringszekerheid, doorlooptijd, strategische fit) &mdash; dat zijn <strong>jouw</strong> inschattingen, geen platformoordeel. Alleen voor de verkoper en jou.</div>'
+      +blokken
+      +'<div style="display:flex;gap:8px;margin-top:.5rem"><button id="bv-annuleer" class="btn-ghost" style="font-size:12px;padding:6px 14px">Annuleren</button><button id="bv-vergelijk" class="btn" style="font-size:12px;padding:6px 14px;background:#7a5a00">Vergelijk</button></div>';
+    ov.appendChild(mo);document.body.appendChild(ov);
+    document.getElementById('bv-annuleer').onclick=function(){document.body.removeChild(ov);};
+    document.getElementById('bv-vergelijk').onclick=function(){
+      var gv=function(id){return document.getElementById(id);};
+      var arr=biedingen.map(function(b,i){
+        return {naam:(gv('bv-naam-'+i).value||('Bod '+(i+1))),ev:parseFloat(gv('bv-ev-'+i).value)||0,cashPct:parseFloat(gv('bv-cash-'+i).value)||0,escrowPct:parseFloat(gv('bv-escrow-'+i).value)||0,earnOutPct:parseFloat(gv('bv-eo-'+i).value)||0,behoudenPct:parseFloat(gv('bv-beh-'+i).value)||0,vendorLoan:parseFloat(gv('bv-vl-'+i).value)||0,aantalVoorwaarden:parseInt(gv('bv-vw-'+i).value)||0,financiering:gv('bv-fin-'+i).value,wekenTotClosing:parseFloat(gv('bv-wk-'+i).value)||0,strategischeFit:gv('bv-fit-'+i).value};
+      });
+      var html=dvTabelBiedingVergelijking(dvBerekenBiedingVergelijking(arr));
+      document.body.removeChild(ov);
+      var out=document.getElementById('bg-doc-out');
+      out.style.display='block';
+      out.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem">'
+        +'<div style="font-size:11px;font-weight:600;color:#7a5a00;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.75rem">Deal Value Matrix'+(d.verkoper?(' — '+esc(d.verkoper)):'')+'</div>'
+        +'<div style="background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:1rem;overflow-x:auto;font-family:Georgia,serif;font-size:12px;color:var(--sub)">'+html+'</div>'
+        +'<div style="margin-top:.75rem"><button id="bv-print" class="btn-ghost" style="font-size:12px;padding:6px 14px">&#128196; Print</button></div></div>';
+      document.getElementById('bv-print').onclick=function(){ printDoc(document.getElementById('bg-doc-out').innerText,'Deal Value Matrix'+(d.verkoper?(' — '+d.verkoper):''),'biedingvergelijk'); };
+      document.getElementById('bg-doc-out').scrollIntoView({behavior:'smooth',block:'nearest'});
+    };
+  }
+  var bvBtnEl=document.getElementById('bg-biedingvergelijk-actie');
+  if(bvBtnEl)bvBtnEl.onclick=function(){ toonBiedingVergelijkerModal(); };
 
   document.getElementById('bg-nda-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op met ' + BRAND.kort + '.','err');return;} bgToonOfGenereerDoc('nda'); };
   document.getElementById('bg-loi-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op met ' + BRAND.kort + '.','err');return;} bgToonOfGenereerDoc('loi'); };
