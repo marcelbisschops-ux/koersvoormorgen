@@ -25,7 +25,8 @@ Eigenaar: Marcel Bisschops (Bisschops Financing B.V.).
 - AI-model in de worker: `claude-sonnet-4-6`
 
 ## Deployen
-- **Worker:** vanuit `~/Documents/GitHub/koersvoormorgen-backend/backend/` (de canonieke bron sinds 25 juli 2026; **niet meer** vanuit `~/Downloads`, dat bleek na de repo-splitsing van 23 juli stil te zijn achtergebleven — zie `reference_worker_buiten_git`-geheugen). Twee stappen, altijd:
+- **Standaardscript (sinds 31 augustus 2026):** `scripts/deploy.sh` (in de frontend-repo) doet backend (staging → bevestigen → productie, met health-check) en daarna de frontend-push in de juiste volgorde. `scripts/deploy.sh backend` / `frontend` / `staging` voor losse onderdelen. Marcel vroeg hier expliciet om — zie `feedback_deploy_instructies_expliciet`-geheugen.
+- **Worker (handmatig, wat het script doet):** vanuit `~/Documents/GitHub/koersvoormorgen-backend/backend/` (de canonieke bron sinds 25 juli 2026; **niet meer** vanuit `~/Downloads`, dat bleek na de repo-splitsing van 23 juli stil te zijn achtergebleven — zie `reference_worker_buiten_git`-geheugen). Twee stappen, altijd:
   1. staging: `npx wrangler deploy cloudflare-worker.js --env=staging` → smoke-test
   2. productie: `npx wrangler deploy cloudflare-worker.js`
   **Sinds 31 augustus 2026 draait `wrangler` vóór elke deploy automatisch `backend/predeploy.sh`** (via `[build].command` in `wrangler.toml`): syntaxcheck + `tests/audit-backend.mjs` + melding aan het veiligheidsdashboard in marilyn. Bij een auditbevinding breekt de deploy af. Reden: de audit hing eerst alleen aan de pre-push git-hook, maar backenddeploys gaan via `wrangler`, niet via `git push` — dus die hook sloeg over. Noodgeval (audit bewust overslaan, alleen met reden): `KVM_SKIP_PREDEPLOY=1 npx wrangler deploy cloudflare-worker.js`. Marcel heeft staand akkoord voor workerdeploys (7 juli 2026) — geen bevestiging per keer; wel bij risicovolle wijzigingen (auth, betalingen, data-verwijdering) eerst staging.
