@@ -7,10 +7,11 @@
 #   2. FRONTEND (GitHub Pages)      — git push naar main
 #
 # Gebruik:
-#   scripts/deploy.sh            # backend (staging + productie) + daarna frontend-reminder
-#   scripts/deploy.sh backend    # alleen backend
-#   scripts/deploy.sh frontend   # alleen frontend
+#   scripts/deploy.sh            # BACKEND: staging → bevestigen → productie (+ health-check)
 #   scripts/deploy.sh staging    # alleen backend-staging (geen productie)
+#   scripts/deploy.sh frontend   # toont alleen de frontend-status (push zelf via GitHub Desktop)
+#
+# De frontend gaat NIET via dit script — die push je altijd zelf via GitHub Desktop.
 #
 # De backend-deploy draait AUTOMATISCH eerst backend/predeploy.sh (syntaxcheck +
 # tests/audit-backend.mjs + melding aan het veiligheidsdashboard) via [build] in
@@ -54,35 +55,24 @@ deploy_backend_prod() {
   echo "Rollback indien nodig: vorige Version ID opnieuw deployen (staat in de output hierboven)."
 }
 
-deploy_frontend() {
+deploy_frontend_status() {
   echo ""
   echo "════════ FRONTEND · GITHUB PAGES ════════"
   cd "$FE_DIR"
   if [ -z "$(git status --porcelain)" ]; then
-    echo "Geen wijzigingen in de frontend-repo — niets te pushen."
-    return
-  fi
-  echo "Nog niet gepusht:"
-  git status --short
-  echo ""
-  echo "Pushen doe je zoals altijd (GitHub Desktop, of hieronder via CLI)."
-  read -rp "Nu committen + pushen via CLI? Geef een commit-bericht (leeg = overslaan): " MSG
-  if [ -n "$MSG" ]; then
-    git add -A
-    git commit -m "$MSG"
-    git push origin main    # pre-push hook draait tests/audit-consistentie.mjs
-    echo "✓ Gepusht. GitHub Pages publiceert binnen 1-2 min — daarna Cmd+Shift+R (hard refresh)."
+    echo "Geen openstaande frontend-wijzigingen."
   else
-    echo "Frontend overgeslagen — push zelf via GitHub Desktop wanneer je klaar bent."
+    echo "Nog niet gepusht (push zelf via GitHub Desktop):"
+    git status --short
   fi
+  echo "GitHub Pages publiceert 1-2 min na je push — daarna Cmd+Shift+R (hard refresh)."
 }
 
 case "$WAT" in
-  staging)  deploy_backend_staging ;;
-  backend)  deploy_backend_staging; deploy_backend_prod ;;
-  frontend) deploy_frontend ;;
-  alles)    deploy_backend_staging; deploy_backend_prod; deploy_frontend ;;
-  *) echo "Gebruik: scripts/deploy.sh [alles|backend|frontend|staging]"; exit 2 ;;
+  staging)          deploy_backend_staging ;;
+  ""|backend|alles) deploy_backend_staging; deploy_backend_prod; deploy_frontend_status ;;
+  frontend)         deploy_frontend_status ;;
+  *) echo "Gebruik: scripts/deploy.sh [backend|staging|frontend]"; exit 2 ;;
 esac
 
 echo ""
