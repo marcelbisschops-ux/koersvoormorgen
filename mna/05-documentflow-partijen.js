@@ -140,6 +140,14 @@ function docProcesCheck(docType) {
 }
 
 async function toonDocWaarschuwing(docType, onDoorgaan) {
+  // Anti-stapel (31 aug 2026): dit is een async-functie (fetch vóór de modal verschijnt). Twee klikken
+  // vlak na elkaar op een documentstap gaven twee overlays; "Annuleren" sloot er dan maar één en het
+  // scherm bleef gedimd/vast. Ruim eerst een eventueel nog openstaande doc-waarschuwing op, en negeer
+  // een tweede aanroep zolang er al één actief is.
+  document.querySelectorAll('.docwaarschuwing-ov').forEach(function(el){ try{ el.remove(); }catch(e){} });
+  if (window.__docWaarschuwingBezig) return;
+  window.__docWaarschuwingBezig = true;
+  try {
   // Haal versies op voor realtime blokkadecheck
   var versies = [];
   try {
@@ -201,9 +209,12 @@ async function toonDocWaarschuwing(docType, onDoorgaan) {
   }
 
   var check = { waarschuwingen: waarschuwingen, geblokkeerd: geblokkeerd };
-  if (!check.waarschuwingen.length) { onDoorgaan(); return; }
+  if (!check.waarschuwingen.length) { window.__docWaarschuwingBezig = false; onDoorgaan(); return; }
+
+  function sluitDw(el){ try{ el.remove(); }catch(e){} window.__docWaarschuwingBezig = false; }
 
   var ov = document.createElement('div');
+  ov.className = 'docwaarschuwing-ov';
   ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:3000;display:flex;align-items:center;justify-content:center;padding:1.5rem';
   var mo = document.createElement('div');
   mo.setAttribute('role','dialog');mo.setAttribute('aria-modal','true');mo.setAttribute('aria-labelledby','docwaarschuwing-modal-titel');
@@ -230,13 +241,19 @@ async function toonDocWaarschuwing(docType, onDoorgaan) {
     + '</div>';
 
   ov.appendChild(mo); document.body.appendChild(ov);
-  ov.addEventListener('click', function(e) { if(e.target===ov) document.body.removeChild(ov); });
-  document.getElementById('dw-ann').onclick = function() { document.body.removeChild(ov); };
+  ov.addEventListener('click', function(e) { if(e.target===ov) sluitDw(ov); });
+  document.getElementById('dw-ann').onclick = function() { sluitDw(ov); };
   if (!check.geblokkeerd) {
     document.getElementById('dw-door').onclick = function() {
-      document.body.removeChild(ov);
+      sluitDw(ov);
       onDoorgaan();
     };
+  }
+  } catch (e) {
+    // Nooit de vlag laten hangen bij een onverwachte fout — anders blijft elke volgende klik dood.
+    window.__docWaarschuwingBezig = false;
+    document.querySelectorAll('.docwaarschuwing-ov').forEach(function(el){ try{ el.remove(); }catch(x){} });
+    console.error('toonDocWaarschuwing:', e);
   }
 }
 
