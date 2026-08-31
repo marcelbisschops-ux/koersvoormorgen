@@ -1,5 +1,18 @@
 # Audit-log — wekelijkse controle Koers voor Morgen
 
+## 2026-08-31
+
+**Uitgevoerd:**
+1. Syntax-check: `node --check` op de canonieke worker (`~/Documents/GitHub/koersvoormorgen-backend/backend/cloudflare-worker.js`) en op alle `mna/*.js`-modules in deze repo — allemaal OK.
+2. `node tests/audit-consistentie.mjs` — alle 7 checks (veldreferenties, functie-shadowing, begeleiderAuth-scoping, koper-afscherming, SELECT *-audit, traject-verwijder-cascade, gevoelige-termen-check): "Geen bevindingen".
+3. `node tests/e2e-api.mjs` — geen ADMIN_KEY in deze sessie-omgeving, dus alleen health-check + toegangscode-weigering getest (stappen 3-9 overgeslagen). 4 geslaagd, 0 gefaald, 1 overgeslagen. Worker live en gezond (`/health` → 200, `ok:true`).
+
+**Bevindingen:** geen. Alles groen.
+
+**Zelfstandig opgelost:** niets nodig — geen bevindingen.
+
+**Wacht op Marcel's akkoord:** niets.
+
 ## 2026-08-24
 
 **Uitgevoerd:**
