@@ -947,16 +947,27 @@ function renderBegeleiderDashboard(app){
   // document gecontroleerd") niet zinvol is bij een eigen geüpload bestand: er is dan niets
   // gegenereerds om te controleren, dus schakelt wireEigenPdf hieronder 'm dan uit.
   function wireAkkoord(checkboxId, buttonIds){
-    var cb=document.getElementById(checkboxId);
+    var ids=Array.isArray(checkboxId)?checkboxId:[checkboxId];
+    var cbs=ids.map(function(id){return document.getElementById(id);}).filter(Boolean);
     var btns=buttonIds.map(function(id){return document.getElementById(id);}).filter(Boolean);
     var override=false;
     function toepassen(){
-      var ok=override||(cb&&cb.checked);
+      var ok=override||(cbs.length>0&&cbs.every(function(c){return c.checked;}));
       btns.forEach(function(b){b.disabled=!ok;b.style.opacity=ok?'1':'.45';b.style.cursor=ok?'pointer':'not-allowed';});
     }
-    if(cb)cb.onchange=toepassen;
+    cbs.forEach(function(c){c.onchange=toepassen;});
     toepassen();
     return {setOverride:function(actief){override=actief;toepassen();}};
+  }
+  // Dealvoorstel-specifieke poort (ChatGPT-promptreview B3, 31 aug 2026): drie gerichte checks
+  // i.p.v. één generieke, precies de drie dingen die bij een AI-document misgaan.
+  function akkoordHtmlDv(prefix){
+    var wrap='display:flex;align-items:flex-start;gap:8px;font-size:12px;color:var(--muted);margin-top:.5rem;cursor:pointer';
+    var box='width:15px;height:15px;margin-top:2px;flex-shrink:0';
+    return '<div style="margin-top:.85rem;padding:.6rem .85rem;background:var(--gold-bg);border:1px solid var(--gold);border-radius:var(--r);font-size:11px;color:var(--sub);line-height:1.6"><strong>&#129302; AI-gegenereerd (b&egrave;ta)</strong> &mdash; kan fouten, verkeerde bedragen of onjuiste clausules bevatten. Loop de drie punten hieronder na v&oacute;&oacute;r verzending:</div>'
+      +'<label style="'+wrap+'"><input type="checkbox" id="'+prefix+'-bedrag" style="'+box+'"> De bedragen in de lopende tekst kloppen met de tabellen (koopsom, ondernemingswaarde, escrow, earn-up).</label>'
+      +'<label style="'+wrap+'"><input type="checkbox" id="'+prefix+'-intern" style="'+box+'"> Er staat geen interne informatie in de tekst die naar de koper gaat (walk-awayprijs, BATNA, onderhandeltactiek).</label>'
+      +'<label style="'+wrap+'"><input type="checkbox" id="'+prefix+'-clausule" style="'+box+'"> De tekst past bij deze specifieke situatie en is waar nodig aangepast (namen, datum, formuleringen). Dit is een uitgangspunt, geen kant-en-klaar juridisch advies.</label>';
   }
 
   // Interne goedkeuring (approval workflow, 25 juli 2026 — op uitdrukkelijk verzoek van Marcel de
@@ -1714,7 +1725,7 @@ function renderBegeleiderDashboard(app){
           +'<div style="font-size:11px;font-weight:600;color:var(--gold-dark);text-transform:uppercase;letter-spacing:.1em;margin-bottom:.75rem">Dealvoorstel gegenereerd</div>'
           +'<div style="font-size:11px;color:var(--teal);margin-bottom:.5rem">&#9998; Klik in de tekst hieronder om aan te passen vóór verzending.</div>'
           +'<div id="dv-preview" contenteditable="true" style="max-height:400px;overflow-y:auto;overflow-x:auto;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:1.25rem;font-family:Georgia,serif;font-size:12px;line-height:1.7;color:var(--sub);outline:none" onfocus="this.style.borderColor=\'var(--teal)\'" onblur="this.style.borderColor=\'var(--border2)\'">'+bodyHtml+'</div>'
-          +akkoordHtml('dv-doc-akkoord')
+          +akkoordHtmlDv('dv-doc-akkoord')
           +'<div style="display:flex;gap:8px;margin-top:.75rem">'
           +'<button id="dv-print" class="btn-ghost" style="font-size:12px;padding:6px 14px">&#128196; Print</button>'
           +'<button id="dv-email" class="btn" style="font-size:12px;padding:6px 14px;background:#8a5a00">&#9993; Verstuur naar partijen</button>'
@@ -1729,7 +1740,7 @@ function renderBegeleiderDashboard(app){
             +'</div>'):'');
         var docOutEl=document.getElementById('bg-doc-out');
         if(docOutEl)setTimeout(function(){docOutEl.scrollIntoView({behavior:'smooth',block:'nearest'});},100);
-        var dvAkkoordCtrl=wireAkkoord('dv-doc-akkoord', ['dv-email']);
+        var dvAkkoordCtrl=wireAkkoord(['dv-doc-akkoord-bedrag','dv-doc-akkoord-intern','dv-doc-akkoord-clausule'], ['dv-email']);
         var dvPdfStaat={base64:null,naam:null};
         wireEigenPdf('dv-pdf', dvPdfStaat, function(actief){
           document.getElementById('dv-print').disabled=actief;

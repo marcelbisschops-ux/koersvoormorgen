@@ -91,7 +91,6 @@ function renderCover(){
         :'<button class="btn btn-sm" id="vrijgeven-btn">&#128275; Koper toegang geven</button>')
       +' <button class="btn btn-sm" id="to-main-btn">Bekijk data &#8594;</button>'
       +' <button class="btn btn-sm" id="to-waardering-btn" style="background:var(--gold)">&#9654; Waardering</button>'
-      +' <button class="btn btn-sm" id="doc-knoppen-btn" style="background:#2a5ea0">&#128196; Documenten</button>'
       +' <button class="btn btn-sm" id="gesprek-btn-cover" style="background:var(--teal-dim)">&#128172; Gesprek vastleggen</button>'
       +' <button class="btn btn-sm" id="ai-analyse-btn-cover" style="background:#6b7c93">&#9881; AI-analyse</button>'
     :'<button class="btn btn-sm" id="to-main-btn">Bekijk data &#8594;</button>'
@@ -1012,7 +1011,7 @@ async function generateAI(faseId){
   var sectorProfiel=getSectorProfiel();
   var sectorLabel=sectorProfiel.label||'MKB';
   var sectorNormen=sectorProfiel.aiNormen||'';
-  var prompt='Je bent ' + esc(S.traject&&S.traject.begeleider_naam||BRAND.contactpersoon) + ', senior M&A-adviseur. '+TAAL_REGELS+' Sector: '+sectorLabel+'. Traject: '+esc(S.traject&&S.traject.traject_type||'M&A')+' voor "'+esc(S.traject&&S.traject.kantoor_naam||S.code)+'".\n\nSECTOR NORMEN:\n'+(sectorNormen||'(geen sectorbenchmark beschikbaar — noem dan geen benchmark of marktgemiddelde uit eigen kennis)')+'\n\nFASE: '+f.title+'\n\nINGEVOERDE DATA:\n'+(dataLines.join('\n')||'Geen data')+'\n\nCHECKLIST:\nGereed: '+(chk.join(', ')||'niets')+'\nOpen: '+(open.join(', ')||'alles gereed')+'\n\nRODE VLAGGEN: '+(rfs.join(', ')||'geen')+'\n\nNOTITIES: '+(S.notities[faseId]||'geen')+'\n\nGeef beknopt strategisch advies voor deze sector. Analyseer de cijfers expliciet en vergelijk met de sectorgemiddelden hierboven — uitsluitend als die hierboven daadwerkelijk staan. Onderscheid feit (wat er staat), directe gevolgtrekking uit dat feit, en advies. Introduceer geen nieuwe oorzaken, percentages, normen of externe marktclaims die niet uit de data volgen. Bespreek: voortgang en prioriteiten, urgente openstaande punten, impact rode vlaggen, concrete vervolgstappen. Schrijf in ik-vorm. Gebruik ## koppen. Geen tabellen of bullets.';
+  var prompt='Je bent ' + esc(S.traject&&S.traject.begeleider_naam||BRAND.contactpersoon) + ', senior M&A-adviseur. '+TAAL_REGELS+' Sector: '+sectorLabel+'. Traject: '+esc(S.traject&&S.traject.traject_type||'M&A')+' voor "'+esc(S.traject&&S.traject.kantoor_naam||S.code)+'".\n\nSECTOR NORMEN (indicatieve richtwaarden, geen vastgestelde branchenorm — niet als hard feit presenteren):\n'+(sectorNormen||'(geen sectorbenchmark beschikbaar — noem dan geen benchmark of marktgemiddelde uit eigen kennis)')+'\n\nFASE: '+f.title+'\n\nINGEVOERDE DATA:\n'+(dataLines.join('\n')||'Geen data')+'\n\nCHECKLIST:\nGereed: '+(chk.join(', ')||'niets')+'\nOpen: '+(open.join(', ')||'alles gereed')+'\n\nRODE VLAGGEN: '+(rfs.join(', ')||'geen')+'\n\nNOTITIES: '+(S.notities[faseId]||'geen')+'\n\nGeef beknopt strategisch advies voor deze sector. Analyseer de cijfers expliciet en vergelijk met de sectorgemiddelden hierboven — uitsluitend als die hierboven daadwerkelijk staan. Onderscheid feit (wat er staat), directe gevolgtrekking uit dat feit, en advies. Introduceer geen nieuwe oorzaken, percentages, normen of externe marktclaims die niet uit de data volgen. Bespreek: voortgang en prioriteiten, urgente openstaande punten, impact rode vlaggen, concrete vervolgstappen. Schrijf in ik-vorm. Gebruik ## koppen. Geen tabellen of bullets.';
   try{
     var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}]})});
     if(!resp.ok)throw new Error('HTTP '+resp.status);
@@ -1402,7 +1401,7 @@ function bindAll(){
     var dataSamW='';
     var faseLW={financieel:'Financieel',commercieel:'Klanten',partner:'Partners',compliance:'Compliance',it:'IT',juridisch:'Juridisch',strategisch:'Strategisch'};
     (S._mnaData||[]).forEach(function(row){try{var dj=typeof row.data_json==='string'?JSON.parse(row.data_json):row.data_json;var gevuld=Object.values(dj||{}).filter(function(v2){return v2&&v2.value;});if(gevuld.length){dataSamW+='\n## '+(faseLW[row.fase_id]||row.fase_id)+'\n';gevuld.forEach(function(v2){dataSamW+='- '+v2.label+': '+v2.value+'\n';});}}catch(e){}});
-    var prompt='Schrijf één samenhangend, professioneel M&A-rapport voor '+esc(S.traject&&S.traject.kantoor_naam||S.code)+' (sector: '+(sectorProfielW.label||'')+') — zowel de due-diligence-analyse als de daarop gebaseerde waardering, als één geheel. '+TAAL_REGELS+'\n\nSECTOR NORMEN: '+(sectorProfielW.aiNormen||'')+'\n\nDUE DILIGENCE DATA:'+dataSamW+'\n\nCIJFERS VOOR DE WAARDERING (uitsluitend deze gebruiken, geen andere bedragen of percentages verzinnen):\n'+lijnen.join('\n')+'\n\nGa expliciet in op wat de cijfers zeggen over de kwaliteit en het risico van de omzet (concentratie, recurring, churn) waar die zijn aangeleverd. De waarderingssectie mag de bevindingen uit de due-diligence-sectie kwalitatief benoemen (welke factoren de waardering drukken of ondersteunen), maar mag het effect NIET zelf kwantificeren — geen "dit verlaagt de multiple met 0,5x" of een zelfbedachte bandbreedte. De enige multiple en waarderingsbedragen zijn die uit "CIJFERS VOOR DE WAARDERING" hierboven; verzin er geen bij en pas ze niet aan.\n\nBegin DIRECT met de eerste ## kop hieronder — geen eigen titel, geen bedrijfsnaam als kop, geen horizontale lijnen (---).\n\n## Samenvatting\n## Financieel\n## Sterktes\n## Risicos\n## Waarderingsmethodiek\n## As-is waardering\n## Kwaliteit van de cijfers\n## Groei- en waardepotentieel\n## Transactiestructuur\n## Conclusie en aanbevelingen\n\nGebruik bullets (met -) waar een opsomming duidelijker is dan lopende tekst. Max 800 woorden. In Conclusie en aanbevelingen: presenteer aanbevelingen als overwegingen voor de begeleider om mee te nemen, geen dwingende conclusies.';
+    var prompt='Schrijf één samenhangend, professioneel M&A-rapport voor '+esc(S.traject&&S.traject.kantoor_naam||S.code)+' (sector: '+(sectorProfielW.label||'')+') — zowel de due-diligence-analyse als de daarop gebaseerde waardering, als één geheel. '+TAAL_REGELS+'\n\nSECTOR NORMEN (indicatieve richtwaarden, geen vastgestelde branchenorm — niet als hard feit presenteren): '+(sectorProfielW.aiNormen||'(geen sectorbenchmark beschikbaar — geen benchmark of marktgemiddelde uit eigen kennis noemen)')+'\n\nDUE DILIGENCE DATA:'+dataSamW+'\n\nCIJFERS VOOR DE WAARDERING (uitsluitend deze gebruiken, geen andere bedragen of percentages verzinnen):\n'+lijnen.join('\n')+'\n\nGa expliciet in op wat de cijfers zeggen over de kwaliteit en het risico van de omzet (concentratie, recurring, churn) waar die zijn aangeleverd. De waarderingssectie mag de bevindingen uit de due-diligence-sectie kwalitatief benoemen (welke factoren de waardering drukken of ondersteunen), maar mag het effect NIET zelf kwantificeren — geen "dit verlaagt de multiple met 0,5x" of een zelfbedachte bandbreedte. De enige multiple en waarderingsbedragen zijn die uit "CIJFERS VOOR DE WAARDERING" hierboven; verzin er geen bij en pas ze niet aan.\n\nBegin DIRECT met de eerste ## kop hieronder — geen eigen titel, geen bedrijfsnaam als kop, geen horizontale lijnen (---).\n\n## Samenvatting\n## Financieel\n## Sterktes\n## Risicos\n## Waarderingsmethodiek\n## As-is waardering\n## Kwaliteit van de cijfers\n## Groei- en waardepotentieel\n## Transactiestructuur\n## Conclusie en aanbevelingen\n\nGebruik bullets (met -) waar een opsomming duidelijker is dan lopende tekst. Max 800 woorden. In Conclusie en aanbevelingen: presenteer aanbevelingen als overwegingen voor de begeleider om mee te nemen, geen dwingende conclusies.';
     try{
       var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:3600})});
       var rd=await resp.json();
@@ -1778,105 +1777,9 @@ function bindAll(){
     if(r.ok){S.traject.koper_vrijgegeven=0;renderApp();}else toast('Fout: '+(r.error||'onbekend'),'err');
   };
 
-  // ── BEGELEIDER DOCUMENT KNOPPEN ──────────────────────────────
-  var docKnopBtn=ge('doc-knoppen-btn');
-  if(docKnopBtn&&isTussen()){
-    docKnopBtn.onclick=function(){
-      // Toon document modal met NDA/LoI/BEM knoppen
-      var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:200;display:flex;align-items:center;justify-content:center;padding:1.5rem';
-      var mo=document.createElement('div');mo.setAttribute('role','dialog');mo.setAttribute('aria-modal','true');mo.setAttribute('aria-labelledby','docgen-modal-titel');mo.style.cssText='background:var(--panel);border-radius:10px;padding:2rem;max-width:560px;width:100%;max-height:90vh;overflow-y:auto';
-      var t2=S.traject;
-      mo.innerHTML='<div id="docgen-modal-titel" style="font-family:Playfair Display,serif;font-size:1.1rem;color:var(--head);font-weight:600;margin-bottom:1.25rem">&#128196; Documenten genereren</div>'
-        +'<p style="font-size:13px;color:var(--mid);margin-bottom:1.25rem">Genereer en verstuur documenten voor traject <strong>'+esc(t2.kantoor_naam||S.code)+'</strong>.</p>'
-        +'<div style="display:flex;flex-direction:column;gap:10px">'
-        +'<button id="bg-nda-btn" style="background:#7c5cbf;color:#fff;border:none;padding:10px 16px;border-radius:6px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:13px;font-weight:600;text-align:left">&#128274; Genereer NDA</button>'
-        +'<button id="bg-bem-btn" style="background:#2a5ea0;color:#fff;border:none;padding:10px 16px;border-radius:6px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:13px;font-weight:600;text-align:left">&#128203; Bemiddelingsovereenkomst</button>'
-        +'<button id="bg-loi-btn" style="background:#c9a84c;color:#fff;border:none;padding:10px 16px;border-radius:6px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:13px;font-weight:600;text-align:left">&#128196; Genereer LoI</button>'
-        +'<button id="bg-excl-btn" style="background:#1a7a5e;color:#fff;border:none;padding:10px 16px;border-radius:6px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:13px;font-weight:600;text-align:left">&#128221; Exclusiviteitsbrief</button>'
-        +'</div>'
-        +'<div id="bg-doc-output" style="margin-top:1rem"></div>'
-        +'<div style="margin-top:1.25rem;text-align:right"><button id="bg-doc-sluit" style="background:transparent;border:1px solid #c8c5bc;padding:8px 16px;border-radius:6px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:13px">Sluiten</button></div>';
-      ov.appendChild(mo);document.body.appendChild(ov);
-      ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
-      document.getElementById('bg-doc-sluit').addEventListener('click',function(){document.body.removeChild(ov);});
-
-      async function bgGenereerDoc(type){
-        var out=document.getElementById('bg-doc-output');
-        out.innerHTML='<div style="color:#8a8880;font-size:13px">Genereren... (15-30 sec)</div>';
-        var datum=new Date().toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'});
-        var t3=S.traject;
-        var isSell=(t3.opdrachtgever_rol==='koper')?false:(!t3.traject_type||t3.traject_type==='Verkoop'||t3.traject_type==='Opvolging');
-        var isOpvolging=t3.traject_type==='Opvolging';
-        var tplType=type==='bem'?(isOpvolging?'bem_opvolging':(isSell?'bem_verk':'bem_koper')):type;
-        var tplR=await fetch(WORKER+'/mna/template/'+tplType+'?email='+encodeURIComponent(t3.begeleider_email||'')+'&code='+encodeURIComponent(S.code)).catch(function(){return{json:function(){return{ok:false};}};});
-        var tplD=await tplR.json().catch(function(){return{ok:false};});
-        // ChatGPT-review A1/B4: dezelfde strikte clausule-integriteitsregel als bgDoc() in mna/04.
-        // NB: dit is de oudere van twee documentgeneratoren — mna/04 bgDoc() is de canonieke; deze
-        // schermvariant volgt hetzelfde regime. Consolidatie tot één service: backlog.
-        var _tplRaw=tplD.ok&&tplD.tekst?tplD.tekst:'';
-        if(_tplRaw.length>18000){
-          out.innerHTML='<div style="color:var(--red);font-size:13px;padding:1rem">&#9888; Template te lang ('+_tplRaw.length+' tekens) — automatisch invullen geweigerd om afkappen van bepalingen te voorkomen. Vul dit document handmatig in.</div>';
-          return;
-        }
-        var _clausuleRegel='STRIKTE REGELS: wijzig/herschrijf/verkort/verleng/voeg toe/verwijder GEEN bestaande bepaling uit de template — neem de juridische tekst exact over. Vervang UITSLUITEND placeholders tussen [vierkante haken]. Kan een placeholder niet uit de context worden ingevuld, laat hem EXACT staan (verzin geen naam/bedrag/datum/percentage). Voeg geen eigen clausules toe. Geef alleen het ingevulde document terug.\n\n';
-        var prompt='';
-        if(type==='nda'){
-          prompt=_clausuleRegel+'Vul de NDA template in voor trajecttype: '+(t3.traject_type||'Verkoop')+'. Partij 1: '+esc(t3.kantoor_naam||'[verkoper]')+', '+(t3.verkoper_adres||'[adres]')+'. Partij 2: '+esc(t3.koper_naam||'[koper]')+' ('+(t3.koper_rechtsvorm||'')+'). Datum: '+datum+'. Adviseur: ' + BRAND.bedrijf + ', '+esc(t3.begeleider_naam||'Begeleider')+'.\n\nTEMPLATE:\n'+(_tplRaw||'[standaard NDA template]');
-        }else if(type==='loi'){
-          prompt=_clausuleRegel+'Vul de LoI template in voor trajecttype: '+(t3.traject_type||'Verkoop')+'. Partij 1: '+esc(t3.kantoor_naam||'[verkoper]')+'. Partij 2: '+esc(t3.koper_naam||'[koper]')+' ('+(t3.koper_rechtsvorm||'')+'), '+(t3.koper_adres||'')+'. Datum: '+datum+'. Adviseur: '+((t3.begeleider_naam||'')+' '+BRAND.bedrijf)+'.\n\nTEMPLATE:\n'+(_tplRaw||'[standaard LoI template]');
-        }else{
-          prompt=_clausuleRegel+'Vul de Bemiddelingsovereenkomst template in. Type: '+(isOpvolging?'Bedrijfsopvolging':(isSell?'Verkoop':'Aankoop'))+'. Opdrachtgever: '+esc(isSell?t3.kantoor_naam:t3.koper_naam||'[koper]')+'. Datum: '+datum+'. Begeleider/Adviseur: '+((t3.begeleider_naam||'')+' '+BRAND.bedrijf)+'.\n\nTEMPLATE:\n'+(_tplRaw||'[standaard BEM template]');
-        }
-        var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:8000})});
-        var rd=await resp.json();
-        var tekst=rd.text||(rd.error||'Fout');
-        var labels={nda:'NDA',loi:'LoI',bem:'Bemiddelingsovereenkomst'};
-        out.innerHTML='<div style="font-size:11px;font-weight:600;color:var(--info);text-transform:uppercase;letter-spacing:.1em;margin-bottom:.5rem">'+labels[type]+' gegenereerd</div>'
-          +'<textarea style="width:100%;height:280px;background:var(--card);border:1px solid var(--border2);border-radius:6px;color:var(--sub);font-family:Georgia,serif;font-size:12px;line-height:1.8;padding:1rem;outline:none;resize:vertical" id="bg-doc-tekst">'+esc(tekst)+'</textarea>'
-          +'<div style="display:flex;gap:8px;margin-top:.75rem">'
-          +'<button id="bg-print-btn" style="background:transparent;border:1px solid #c8c5bc;padding:6px 14px;border-radius:6px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:12px">&#128196; Print / PDF</button>'
-          +'<button id="bg-email-btn" style="background:#2a5ea0;color:#fff;border:none;padding:6px 14px;border-radius:6px;cursor:pointer;font-family:IBM Plex Sans,sans-serif;font-size:12px;font-weight:600">&#9993; Verstuur naar partijen</button>'
-          +'</div>';
-        document.getElementById('bg-print-btn').onclick=function(){
-          var win=window.open('','_blank');
-          var pt=document.getElementById('bg-doc-tekst').value;
-          win.document.write('<html><head><style>body{font-family:Georgia,serif;font-size:13px;line-height:1.9;max-width:700px;margin:2cm auto;color:#2a2825}</style></head><body><p>'+pt.replace(/\n/g,'<br>')+'</p></body></html>');
-          win.document.close();win.print();
-        };
-        document.getElementById('bg-email-btn').onclick=async function(){
-          var ebtn=this;ebtn.disabled=true;ebtn.textContent='Versturen...';
-          var verzendTekst=document.getElementById('bg-doc-tekst').value;
-          // BEM naar opdrachtgever
-          var toList;
-          if(type==='bem'){
-            if(isSell){
-              toList=[t3.contact_email,t3.begeleider_email].filter(Boolean);
-            } else {
-              toList=[t3.koper_email,t3.begeleider_email].filter(Boolean);
-            }
-          } else {
-            toList=[t3.contact_email||t3.begeleider_email];
-            if(t3.begeleider_email&&!toList.includes(t3.begeleider_email))toList.push(t3.begeleider_email);
-            if(t3.koper_email&&!toList.includes(t3.koper_email))toList.push(t3.koper_email);
-          }
-          var endpoint=type==='nda'?'/mna/nda/email':type==='loi'?'/mna/loi/email':'/mna/bem/email';
-          var payload={code:S.code,to:toList};
-          if(type==='nda')payload.nda_tekst=verzendTekst;
-          else if(type==='loi')payload.loi_tekst=verzendTekst;
-          else{payload.bem_tekst=verzendTekst;payload.type=isSell?'verkoop':'aankoop';}
-          var er=await fetch(WORKER+endpoint,{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S.code},body:JSON.stringify(payload)});
-          var ed=await er.json();
-          if(ed.ok){ebtn.textContent='✓ Verstuurd';setTimeout(function(){ebtn.textContent='✉ Verstuur';ebtn.disabled=false;},2000);}
-          else{toast('Fout: '+(ed.error||'onbekend'),'err');ebtn.disabled=false;ebtn.textContent='✉ Verstuur';}
-        };
-      }
-      document.getElementById('bg-nda-btn').onclick=function(){bgGenereerDoc('nda');};
-      document.getElementById('bg-excl-btn').onclick=function(){bgGenereerDoc('excl');};
-      document.getElementById('bg-loi-btn').onclick=function(){bgGenereerDoc('loi');};
-      document.getElementById('bg-bem-btn').onclick=function(){bgGenereerDoc('bem');};
-    };
-  }
-
+  // (ChatGPT-promptreview C3, 31 aug 2026) De oude cover-scherm document-generator (doc-knoppen-btn
+  // + bgGenereerDoc) is verwijderd: stond in een display:none-blok, dus onbereikbaar. De enige,
+  // geharde documentgenerator is bgDoc() in mna/04-begeleider-dashboard.js.
   // ── BEGELEIDER GESPREK VASTLEGGEN ────────────────────────────
   var gesprekCoverBtn=ge('gesprek-btn-cover');
   if(gesprekCoverBtn&&isTussen()){
