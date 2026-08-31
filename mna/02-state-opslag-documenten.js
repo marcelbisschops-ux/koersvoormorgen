@@ -1618,7 +1618,7 @@ async function consolideerAnalyse(faseId){
   S.aiLoading[faseId]=true;renderApp();
   var lines=[];f.dataFields.forEach(function(df){var v=S.data[f.id+'_'+df.id];if(v&&!df.header)lines.push(df.label+': '+v);});
   var analyses=docs.map(function(d,i){return 'Doc '+(i+1)+': '+d.naam+'\n'+(d.analyse||'');}).join('\n---\n');
-  var prompt='Geconsolideerde M&A analyse voor fase '+f.title+' van '+esc(S.traject&&S.traject.kantoor_naam||S.code)+'. '+TAAL_REGELS+'\n\nVelden:\n'+(lines.join('\n')||'leeg')+'\n\nAnalyses:\n'+analyses+'\n\nTrends, rode vlaggen, aanbevelingen. Concreet. ## koppen.';
+  var prompt='Geconsolideerde M&A analyse voor fase '+f.title+' van '+esc(S.traject&&S.traject.kantoor_naam||S.code)+'. '+TAAL_REGELS+'\n\nVelden:\n'+(lines.join('\n')||'leeg')+'\n\nAnalyses:\n'+analyses+'\n\nGeef trends, rode vlaggen en aanbevelingen — concreet, met ## koppen. Elke rode vlag en trend moet terug te voeren zijn op een concrete waarde of documentpassage hierboven; verzin geen verband, oorzaak of cijfer. Spreken twee bronnen elkaar tegen, noem dan BEIDE waarden en markeer het conflict — kies of reconstrueer niet zelf. Aanbevelingen mogen geen nieuw feit introduceren.';
   try{
     var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}]})});
     if(!resp.ok)throw new Error('HTTP '+resp.status);
