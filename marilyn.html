@@ -3576,6 +3576,10 @@ async function renderTarievenTab(el) {
     var tarieven = await tr.json();
     var er = await fetch(WORKER + '/mna/admin/tarieven/events', { headers: { 'x-admin-key': adminKey } });
     var events = await er.json();
+    var fcr = await fetch(WORKER + '/mna/admin/factuurconfig', { headers: { 'x-admin-key': adminKey } });
+    var fcfg = await fcr.json().catch(function(){return{};});
+    if (!fcfg || typeof fcfg !== 'object') fcfg = {};
+    var fcCompleet = !!(fcfg.btwnr && fcfg.iban);
     if (!Array.isArray(tarieven)) tarieven = [];
     if (!Array.isArray(events)) events = [];
 
@@ -3610,7 +3614,19 @@ async function renderTarievenTab(el) {
       openstaandPerGeb[ev.gebruiker_id].aantal++;
     });
     var openGebIds = Object.keys(openstaandPerGeb);
-    html += '<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem">Openstaand per adviseur — kostenoverzicht genereren</div>';
+
+    // Facturatiegegevens (backlogpunt 3) — verplicht vóór er een BTW-factuur gegenereerd kan worden.
+    html += '<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem">Facturatiegegevens Bisschops Financing</div>'
+      + '<div style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-bottom:2rem;padding:1rem;background:var(--card);border:1px solid var(--border);border-radius:8px">'
+      + '<div><label style="font-size:11px;color:var(--muted);display:block;margin-bottom:3px">BTW-nummer</label><input type="text" id="fc-btwnr" placeholder="NL123456789B01" value="' + esc(fcfg.btwnr || '') + '" style="width:170px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--void);color:var(--sub);font-family:IBM Plex Mono,monospace;font-size:12px"></div>'
+      + '<div><label style="font-size:11px;color:var(--muted);display:block;margin-bottom:3px">IBAN</label><input type="text" id="fc-iban" placeholder="NL00BANK0123456789" value="' + esc(fcfg.iban || '') + '" style="width:200px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--void);color:var(--sub);font-family:IBM Plex Mono,monospace;font-size:12px"></div>'
+      + '<div><label style="font-size:11px;color:var(--muted);display:block;margin-bottom:3px">T.n.v. (rekeninghouder)</label><input type="text" id="fc-tnv" placeholder="Bisschops Financing B.V." value="' + esc(fcfg.tnv || '') + '" style="width:200px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--void);color:var(--sub);font-size:12px"></div>'
+      + '<div><label style="font-size:11px;color:var(--muted);display:block;margin-bottom:3px">Betaaltermijn (dagen)</label><input type="number" id="fc-term" min="0" max="90" value="' + (fcfg.betaaltermijn != null ? Number(fcfg.betaaltermijn) : 14) + '" style="width:90px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--void);color:var(--sub);font-family:IBM Plex Mono,monospace;font-size:12px"></div>'
+      + '<button class="btn btn-sm" id="fc-opslaan" style="font-size:11px;padding:6px 14px">Opslaan</button>'
+      + '</div>';
+
+    html += '<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem">Openstaand per adviseur — BTW-factuur genereren</div>';
+    if (!fcCompleet) html += '<div style="font-size:12px;color:var(--gold-dark);background:var(--gold-bg);border:1px solid var(--gold);border-radius:6px;padding:8px 12px;margin-bottom:.75rem">Vul eerst het BTW-nummer en IBAN hierboven in — zonder deze gegevens kan er geen factuur worden gegenereerd.</div>';
     if (!openGebIds.length) {
       html += '<div style="color:var(--muted);font-size:13px;font-style:italic;padding:.5rem 0 1.25rem">Geen openstaande (nog niet gefactureerde) kosten.</div>';
     } else {
@@ -3667,18 +3683,33 @@ async function renderTarievenTab(el) {
             if (!r.ok) return r.json().then(function(d) { throw new Error(d.error || 'Onbekende fout'); });
             var cd = r.headers.get('Content-Disposition') || '';
             var naamMatch = cd.match(/filename="([^"]+)"/);
-            return r.blob().then(function(blob) { return { blob: blob, naam: naamMatch ? naamMatch[1] : 'kostenoverzicht.pdf' }; });
+            return r.blob().then(function(blob) { return { blob: blob, naam: naamMatch ? naamMatch[1] : 'factuur.pdf' }; });
           })
           .then(function(res) {
             var url = URL.createObjectURL(res.blob);
             var a = document.createElement('a');
             a.href = url; a.download = res.naam; document.body.appendChild(a); a.click();
             setTimeout(function() { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
-            toast('Kostenoverzicht gedownload — ' + res.naam, 'ok');
+            toast('Factuur gegenereerd en gedownload — ' + res.naam, 'ok');
             var tct = document.getElementById('tc'); if (tct) renderTarievenTab(tct);
           })
           .catch(function(e) { toast('Fout: ' + e.message, 'err'); btn.disabled = false; btn.textContent = '📄 Factuur genereren'; });
       });
+    });
+
+    var fcBtn = document.getElementById('fc-opslaan');
+    if (fcBtn) fcBtn.addEventListener('click', function() {
+      fcBtn.disabled = true; fcBtn.textContent = 'Opslaan...';
+      fetch(WORKER + '/mna/admin/factuurconfig', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-key': adminKey },
+        body: JSON.stringify({
+          btwnr: document.getElementById('fc-btwnr').value, iban: document.getElementById('fc-iban').value,
+          tnv: document.getElementById('fc-tnv').value, betaaltermijn: document.getElementById('fc-term').value
+        })
+      }).then(function(r) { return r.json(); }).then(function(d) {
+        if (d.ok) { toast('Facturatiegegevens opgeslagen.', 'ok'); var tct = document.getElementById('tc'); if (tct) renderTarievenTab(tct); }
+        else { toast('Fout: ' + (d.error || 'onbekend'), 'err'); fcBtn.disabled = false; fcBtn.textContent = 'Opslaan'; }
+      }).catch(function() { toast('Kon niet opslaan.', 'err'); fcBtn.disabled = false; fcBtn.textContent = 'Opslaan'; });
     });
 
     el.querySelectorAll('.tar-opslaan').forEach(function(btn) {

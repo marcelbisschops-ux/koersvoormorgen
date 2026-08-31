@@ -319,8 +319,15 @@ function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'
 const TAAL_REGELS='Schrijf in natuurlijk, vloeiend Nederlands — geen letterlijke vertaling uit het Engels. Gebruik uitsluitend de formele aanspreekvorm "u/uw", nooit "je/jij/jouw", ook niet losse keren door elkaar. Gebruik "geen [zelfstandig naamwoord]" i.p.v. de onnatuurlijke constructie "niet een [zelfstandig naamwoord]". Vermijd andere letterlijke Engelse constructies (bijv. "maakt sense", "op het einde van de dag") en verzin geen niet-bestaande woorden.';
 document.title = 'Strategische Kantoor Scan - ' + BRAND.platform;
 
-/* ======== DATA ======== */
-const SECTIONS=[
+/* ======== DATA ========
+   Sector-geparametriseerd (backlogpunt 13, fase 1 — 31 aug 2026). SECTIONS / SCENARIOS / REVERSE
+   zijn nu `let`-bindings die naar de config van de actieve sector (ST.sector) wijzen; setScanSector()
+   wisselt ze om. Alleen 'accountancy' is nu gevuld — de andere sectoren volgen in fase 2 en vallen
+   tot dan terug op accountancy. Zolang ST.sector 'accountancy' is, is het gedrag exact ongewijzigd. */
+const SECTIONS_BY_SECTOR={};
+const SCENARIOS_BY_SECTOR={};
+const REVERSE_BY_SECTOR={ accountancy:new Set(['p1','k1','k2','ai1','pe1']) };
+SECTIONS_BY_SECTOR.accountancy=[
   {id:'strategisch',label:'Strategische positie',icon:'I',desc:'Hoe helder en onderscheidend is de strategische koers van het kantoor?',questions:[
     {id:'s1',q:'Het kantoor heeft een uitgesproken, herkenbare positionering in de markt.',hint:'bijv. niche, doelgroep, regio of prijssegment'},
     {id:'s2',q:'Er is een gedragen langetermijnvisie (3-5 jaar) die richting geeft aan beslissingen.',hint:null},
@@ -381,8 +388,7 @@ const SECTIONS=[
     {id:'c3',q:'Cross-sell naar bestaande klanten wordt systematisch en meetbaar opgepakt.',hint:null},
   ]},
 ];
-const REVERSE=new Set(['p1','k1','k2','ai1','pe1']);
-const SCENARIOS={
+SCENARIOS_BY_SECTOR.accountancy={
   'zelfstandig-doorgroeien':{name:'Zelfstandig doorgroeien',fit:s=>{
     // Sterk bij: hoge commerciele kracht, goede winstkwaliteit, lage partnerafhankelijkheid risico, voldoende schaal
     const base=Math.round((s.commercieel*0.3+s.winst*0.25+s.schaal*0.25+s.personeel*0.2));
@@ -442,8 +448,20 @@ const SCENARIOS={
   },actions:[{t:'Unieke positionering versterken',d:'Maak overnemen minder logisch via niche en klantbinding.',h:'0-12 mnd'},{t:'Strategische allianties sluiten',d:'Werk samen in een netwerk zonder volledige fusie.',h:'6-18 mnd'},{t:'Klantloyaliteit verhogen',d:'Langere contracttermijnen en loyaliteitsprogrammas.',h:'0-12 mnd'},{t:'Werkgeversmerk opbouwen',d:'Investeer in cultuur om talent te behouden.',h:'6-24 mnd'}]},
 };
 
+// Actieve sector-config. Wissel via setScanSector(); ongevulde sectoren vallen terug op accountancy.
+let SECTIONS  = SECTIONS_BY_SECTOR.accountancy;
+let SCENARIOS = SCENARIOS_BY_SECTOR.accountancy;
+let REVERSE   = REVERSE_BY_SECTOR.accountancy;
+function setScanSector(sec){
+  var k = (sec && SECTIONS_BY_SECTOR[sec]) ? sec : 'accountancy';
+  ST.sector = k;
+  SECTIONS  = SECTIONS_BY_SECTOR[k];
+  SCENARIOS = SCENARIOS_BY_SECTOR[k];
+  REVERSE   = REVERSE_BY_SECTOR[k] || new Set();
+}
+
 /* ======== STATE ======== */
-let ST={screen:'intro',_benchmarks:null,section:0,answers:{},scores:null,scenarios:null,openScenario:null,openOffice:null,aiText:null,aiLoading:false,_smvKlaar:false,groupId:null,adminCode:null,groupData:null,groupLoading:false,isGroupAdmin:false,savedScanId:null,profile:{naam:'',naamAnon:false,email:'',regio:'',fte:'',omzet:'',specialisme:'',doelgroep:'',software:'',ambitie:'',context:'',omzetfte:'',ebitda:'',recurring:'',saveConsent:true,sbi:''}};
+let ST={screen:'intro',sector:'accountancy',_benchmarks:null,section:0,answers:{},scores:null,scenarios:null,openScenario:null,openOffice:null,aiText:null,aiLoading:false,_smvKlaar:false,groupId:null,adminCode:null,groupData:null,groupLoading:false,isGroupAdmin:false,savedScanId:null,profile:{naam:'',naamAnon:false,email:'',regio:'',fte:'',omzet:'',specialisme:'',doelgroep:'',software:'',ambitie:'',context:'',omzetfte:'',ebitda:'',recurring:'',saveConsent:true,sbi:''}};
 
 /* ======== SCORING ======== */
 function calcScores(){const s={};SECTIONS.forEach(sec=>{let tot=0,cnt=0;sec.questions.forEach(q=>{if(ST.answers[q.id]!==undefined){let v=ST.answers[q.id];if(REVERSE.has(q.id))v=6-v;tot+=v;cnt++;}});s[sec.id]=cnt>0?Math.round((tot/(cnt*5))*100):0;});return s;}
