@@ -452,6 +452,7 @@ dialog#tt-dialog::backdrop{background:rgba(20,18,15,.55)}
     <div class="tt-field"><label for="tt-rol">Uw rol</label><select id="tt-rol" name="rol"><option value="">— kies —</option><option>Accountant</option><option>M&amp;A-/overnameadviseur</option><option>Ondernemer</option><option>Anders</option></select></div>
     <div class="tt-field"><label for="tt-toel">Toelichting (optioneel)</label><textarea id="tt-toel" name="toelichting" rows="3" maxlength="2000"></textarea></div>
     <div class="tt-hp"><label>Website<input name="website" tabindex="-1" autocomplete="off"></label></div>
+    <div class="tt-field" id="tt-turnstile-slot" style="display:none"></div>
     <div class="tt-msg" id="tt-msg"></div>
     <div class="tt-actions">
       <button type="button" class="btn-secondary" onclick="document.getElementById('tt-dialog').close()">Annuleren</button>
@@ -462,16 +463,37 @@ dialog#tt-dialog::backdrop{background:rgba(20,18,15,.55)}
 <script>
 document.getElementById('jr').textContent=new Date().getFullYear();
 var TT_WORKER='https://kantoorinzicht.marcel-bisschops.workers.dev';
-function ttOpen(){var m=document.getElementById('tt-msg');m.textContent='';m.className='tt-msg';document.getElementById('tt-dialog').showModal();}
+// Cloudflare Turnstile (backlogpunt B7): laat dit leeg om de widget uit te zetten — dan dragen het
+// honeypot-veld + de rate-limiter de botbescherming. Vul de site key in (Cloudflare-dashboard →
+// Turnstile → widget aanmaken voor koersvoormorgen.nl) én zet het secret met
+// `npx wrangler secret put TURNSTILE_SECRET` om de challenge te activeren.
+var TT_TURNSTILE_SITEKEY='';
+var _ttTurnstileGeladen=false;
+function ttLaadTurnstile(){
+  if(!TT_TURNSTILE_SITEKEY||_ttTurnstileGeladen)return;
+  _ttTurnstileGeladen=true;
+  var s=document.createElement('script');
+  s.src='https://challenges.cloudflare.com/turnstile/v0/api.js';s.async=true;s.defer=true;
+  document.head.appendChild(s);
+  var slot=document.getElementById('tt-turnstile-slot');
+  slot.innerHTML='<div class="cf-turnstile" data-sitekey="'+TT_TURNSTILE_SITEKEY+'"></div>';
+  slot.style.display='';
+}
+function ttOpen(){var m=document.getElementById('tt-msg');m.textContent='';m.className='tt-msg';ttLaadTurnstile();document.getElementById('tt-dialog').showModal();}
 document.getElementById('tt-form').addEventListener('submit',async function(e){
   e.preventDefault();
   var f=e.target,msg=document.getElementById('tt-msg'),btn=document.getElementById('tt-submit');
   msg.className='tt-msg';msg.textContent='';btn.disabled=true;btn.textContent='Versturen…';
   var payload={naam:f.naam.value.trim(),organisatie:f.organisatie.value.trim(),email:f.email.value.trim(),kvk:f.kvk.value.trim(),rol:f.rol.value,toelichting:f.toelichting.value.trim(),website:f.website.value};
+  if(TT_TURNSTILE_SITEKEY){
+    var tok=(window.turnstile&&window.turnstile.getResponse)?window.turnstile.getResponse():'';
+    if(!tok){msg.className='tt-msg err';msg.textContent='Bevestig eerst dat u geen robot bent.';btn.disabled=false;btn.textContent='Versturen';return;}
+    payload.turnstileToken=tok;
+  }
   try{
     var r=await fetch(TT_WORKER+'/leads/testtraject',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     var j=await r.json().catch(function(){return{};});
-    if(!r.ok||!j.ok){msg.className='tt-msg err';msg.textContent=(j&&j.error)||'Er ging iets mis. Probeer het later opnieuw of mail naar marcel@bisschopsfinancing.nl.';btn.disabled=false;btn.textContent='Versturen';return;}
+    if(!r.ok||!j.ok){msg.className='tt-msg err';msg.textContent=(j&&j.error)||'Er ging iets mis. Probeer het later opnieuw of mail naar marcel@bisschopsfinancing.nl.';btn.disabled=false;btn.textContent='Versturen';if(TT_TURNSTILE_SITEKEY&&window.turnstile&&window.turnstile.reset)window.turnstile.reset();return;}
     f.querySelectorAll('.tt-field,.tt-hp,.tt-actions').forEach(function(el){el.style.display='none';});
     msg.className='tt-msg ok';msg.textContent='Bedankt — we hebben uw aanvraag ontvangen en nemen binnen enkele werkdagen contact op.';
     var c=document.createElement('button');c.type='button';c.className='btn-secondary';c.textContent='Sluiten';c.style.marginTop='.9rem';c.onclick=function(){document.getElementById('tt-dialog').close();};

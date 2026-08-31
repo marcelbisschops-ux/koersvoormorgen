@@ -52,29 +52,70 @@ van beide repo's.
 
 ### B. Kleine vervolgpunten uit afgeronde bouwsessies
 
-6. **Bod-vergelijker afronden** (onderdeel 4 van het onderhandel-playbook — kern staat live).
-   - `kopieer_dd_van` had de verkeerde rij-id-conventie (kon dubbele fase-rijen geven); gefixt in
-     `worker/10-mna-communicatie.js`, **nog niet gedeployd** — meenemen bij de volgende backend-deploy
-     (`scripts/deploy.sh`).
-   - Op staging het **negatieve rolgeval** testen: koper van traject B mag via geen enkele route iets
-     van traject A / de verkoper-groep zien.
-   - De **gevulde testklant** draaien: `ADMIN_KEY=… node scripts/testklant-onderdeel6.mjs`
-     (of `--leeg` voor een externe tester die zelf verkoper/koper invult en eigen documenten uploadt).
+6. **Bod-vergelijker — laatste stappen** (onderdeel 4 van het onderhandel-playbook — kern + code staan; 31 aug afgerond wat kon).
+   - `kopieer_dd_van`-rij-id-fix (`worker/10-mna-communicatie.js`) + een **permanente negatief-rolgeval-test** in `tests/e2e-crosspath-fixes.mjs` (koper-code → 401, verkopercode → 401, onbekende code → 401, begeleider-code → 200 "geen_groep") staan klaar. **Rest = deploy** (`scripts/deploy.sh`) + de test één keer draaien tegen de live worker.
+   - De **gevulde testklant** draaien wanneer je wilt: `ADMIN_KEY=… node scripts/testklant-onderdeel6.mjs` (of `--leeg` voor een externe tester).
 
-7. **Testtraject-formulier `/leads/testtraject` hardenen:** Cloudflare Turnstile + een rate-limiter
-   op het endpoint. Bewust weggelaten in v1 (honeypot volstond, endpoint triggert alleen een mail).
+7. **Testtraject-formulier `/leads/testtraject` — grotendeels afgerond 31 aug 2026 (frontend + backend, niet gepusht/gedeployd).** Rate-limiter live in `worker/23-leads.js` (max 5 inzendingen / 15 min / IP, geldt ook voor `/leads/aandragen`; `clientIP`+`checkRateLimit` doorgegeven vanuit `cloudflare-worker.js`). Cloudflare Turnstile-ondersteuning ingebouwd maar **uit tot geconfigureerd**: backend verifieert `turnstileToken` alleen als `env.TURNSTILE_SECRET` is gezet; `index.html` toont de widget alleen als `TT_TURNSTILE_SITEKEY` is ingevuld (leeg = honeypot + rate-limiter dragen de bescherming, formulier werkt ongewijzigd). **Om Turnstile aan te zetten:** widget aanmaken in Cloudflare (Turnstile → koersvoormorgen.nl), site key in `index.html` plakken, `npx wrangler secret put TURNSTILE_SECRET`. **Werkregel 17:** zodra Turnstile actief is, een regel toevoegen aan `privacy.html` (Cloudflare Turnstile verwerkt IP + gedragssignaal voor botdetectie, cookieloos) — nu niet nodig omdat het uit staat.
 
-8. **Bedrijfsscan — losse eindjes.** (a) De groeps-/dashboardmodus van de scan gebruikt de sector
-   van de *bekijker* (`ST.sector`), niet die van de opgeslagen scan — pas relevant bij groepen met
-   gemengde sectoren. (b) Fase 3: bredere marketing-/positioneringstekst (`index.html` naast de al
-   aangepaste offer-card, plus `privacy.html`/`voorwaarden.html`) zodra een niet-accountancy sector
-   actief wordt gepromoot.
+8. **Bedrijfsscan — losse eindjes.** (a) **AFGEROND 31 aug 2026 (niet gepusht):** de groepsmodus-AI (`genereerKantoorAI`/`genereerGroepsAI`) gebruikt nu de sector van de *opgeslagen scan* — per kantoor `o.sector`, voor het groepsrapport de gedeelde sector als alle deelnemers gelijk zijn, anders sectorneutrale bewoording ("onderneming(en)"). Oude scans zonder sector vallen terug op de scan-sector. Helpers `labelsVoorSector()`/`groepSectorLabels()` in de browser geverifieerd. (b) **Nog open:** fase 3 — bredere marketing-/positioneringstekst (`index.html` naast de al aangepaste offer-card, plus `privacy.html`/`voorwaarden.html`) zodra een niet-accountancy sector actief wordt gepromoot. Jouw call.
 
-9. **Check:** heeft `marilyn.html` een eigen traject-aanmaakflow die de `structuur_type`-selector
-   (bv / maatschap / eenmanszaak) ook nodig heeft? (`adv.html` en `/mna/create` hebben hem al.)
+9. ~~Check marilyn structuur_type-selector~~ — **GECONTROLEERD 31 aug 2026: niet nodig.** `marilyn.html` heeft `#m-structuur` (bv/maatschap/eenmanszaak) in de aanmaakmodal en stuurt `structuur_type` mee in `/mna/create` (regel ~2867/2958). Niets te doen.
 
 10. **Marcel bekijkt zelf** of de rest van de desktop-homepage nog aandacht nodig heeft (hero +
     hero-visual zijn 31 aug gedaan).
+
+11. **Dealvoorstel-consistentie na ChatGPT-review — AFGEROND 31 aug 2026 (niet gepusht).** Marcel
+    haalde een gegenereerd dealvoorstel door ChatGPT; twee rode + drie oranje bevindingen bleven na
+    verificatie overeind. Gefixt in `mna/03-rekenkern-waardering.js` + `mna/04-begeleider-dashboard.js`
+    + handleiding (`mna/08` + `adv.html`):
+    - **Nieuwe centrale bron van waarheid** `dvVerkoperBedragen()` — vijf strikt gescheiden grootheden
+      (`verkopersopbrengstCashClosing` / `toegerekendeEVVerkochtBelang` / `retainedEquity` /
+      `earnUpEVAllocation` / `earnUpSellerConsideration`). De AI-prompt krijgt ze nu expliciet
+      gelabeld aangereikt met de instructie €367k-achtige EV-toerekening nooit "opbrengst voor de
+      verkoper" te noemen (dat is de opbrengst-brug-cash).
+    - **Earn-up zit nu in de "voorwaardelijk"-bucket** van de ZOPA trade-space (herrekend naar
+      equity/cash-basis met de EV→equity-verhouding van de brug) — "voorwaardelijk 0%" terwijl er een
+      earn-up bestaat kan niet meer. Nieuwe invariant + validatiescript.
+    - **"totale tegenprestatie" → "waardepositie verkoper"**; behouden belang expliciet gemarkeerd als
+      niet door de koper betaald.
+    - **DCF-tabel:** "Discontofactor" → "Oprentingsfactor (1+r)^t"; WACC + terminale groeivoet nu
+      zichtbaar in de samenvatting + Gordon-Growth-formule in een noot.
+    - **Schuldbrug:** context + sectie-instructie leggen nu uit dat bestaande netto schuld doelwit
+      (opbrengst-brug) en nieuwe acquisitiefinanciering (schuldafbouwmodel, × bewezen EBITDA) twee
+      verschillende posten zijn.
+    - Validatie: 176 checks groen (`scripts/validate-*.mjs`, incl. nieuw
+      `validate-verkoper-bedragen.mjs` met de exacte ChatGPT-testcase), `tests/e2e-ui.spec.js`
+      ZOPA-test bijgewerkt, browsertest tegen de exacte cijfers (367.200 vs 79.707 nu gescheiden;
+      voorwaardelijk 40,6% i.p.v. 0%).
+
+12. **Volledige rekenkern-review (ChatGPT, hele module) — AFGEROND 31 aug 2026 (niet gepusht).**
+    Marcel liet `mna/03-rekenkern-waardering.js` volledig reviewen (reviewpakket op `~/Desktop/rekenkern-review/`).
+    12 bevindingen — alle 12 tegen de code geverifieerd, geen false positives — allemaal gefixt:
+    - **#2 (🔴) zorg omzet-multiple:** `dvGetDefaults()` negeerde `multipleBasis:'omzet'`; het dealvoorstel
+      rekende 1–3× op EBITDA i.p.v. op omzet. Nu volledige **grondslag-schakelaar** (`p.grondslag`
+      + `grondslagBewezen/Prognose`, helpers `dvGrondslagBewezen/Prognose`): closing, prijsmechanisme,
+      cliff, gevoeligheid en opbrengst-brug rekenen op de omzet; schuldafbouw/DCF bewust op EBITDA.
+      Eigen omzet-grondslagvelden in de dealvoorstel-modal + AI-prompt grondslag-bewust. Nieuw
+      `validate-grondslag.mjs` (37 checks).
+    - **#1 sectorfallback:** `dvSectorMultipleRange()` geeft geen gegokte `4,5–5,5×` meer — onbekende
+      sector / sector zonder range → `bekend:false`, geen multiple; melding i.p.v. getal in dealvoorstel + waarderingsscherm.
+    - **#3 forecast-gok:** ontbrekende omzethistorie gaf stil 3% groei → nu `gemGroei:null` + rolling
+      forecast verborgen met melding.
+    - **#4 negatieve equity:** opbrengst-brug clampt verkoperscash op €0 + `equityNegatief`-vlag +
+      waarschuwing "schuld > ondernemingswaarde".
+    - **#5 parse-gok:** `dvGeldOfNull()` geeft `null` bij niet-lege maar cijferloze invoer ("onbekend").
+    - **#6 DCF:** "FCFF" → "vereenvoudigde unlevered kasstroom" + optionele `afschrijvingenPct`
+      (0 = belasting over EBITDA zoals nu; >0 = over EBIT).
+    - **#7/#8:** DSCR-label → "EBITDA-dekking schuldendienst (vereenvoudigd)"; quick ratio zonder OHW/voorraad.
+    - **#9:** `capex = max(0, ebitda) × %` + NWC-mutatie 0 bij negatieve EBITDA.
+    - **#10:** leeg `mgmtRetentie` → `onbekend` (geen risicopunt).
+    - **#11:** hardcoded `0,8×` omzetmethode verwijderd uit waarderingsscherm + CSV.
+    - **#12:** `earnUpSchuldPct` (default 100 = huidig gedrag) — aandeel earn-up dat op de bankschuld drukt, instelbaar.
+    - Validatie: **255 checks groen** over 8 scripts (nieuw: `validate-grondslag.mjs`,
+      `validate-edge-cases.mjs`), browsertest zorg/onbekend/negatieve-equity-paden. **Rest = frontend-push**
+      (via GitHub Desktop): `mna/03`, `mna/04`, `mna/08`, `adv.html`, `tests/e2e-ui.spec.js`,
+      `scripts/validate-*.mjs` (7 stuks), `BACKLOG.md`.
 
 ### Aandachtspunt (geen genummerd bouwpunt)
 
