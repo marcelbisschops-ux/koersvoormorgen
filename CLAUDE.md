@@ -15,7 +15,7 @@ Eigenaar: Marcel Bisschops (Bisschops Financing B.V.).
 - `marilyn.html` — admin-paneel van Marcel
 - `adv.html` — adviseursportaal (betaalde externe adviseurs; login met e-mail + wachtwoord)
 - `index.html` — landingspagina koersvoormorgen.nl (sinds 16 augustus 2026; was daarvoor de scan-tool zelf)
-- `kantoorscan.html` — de strategische kantoorscan (verplaatst uit `index.html` op 16 augustus 2026)
+- `bedrijfsscan.html` — de strategische zelfanalyse-scan (verplaatst uit `index.html` op 16 augustus 2026; hernoemd van `kantoorscan.html` op 31 augustus 2026 toen de scan multi-sector werd: accountancy/mkb/zorg/itsoftware via een sectorkiezer op het startscherm, `SECTIONS_BY_SECTOR`/`SCENARIOS_BY_SECTOR`/`REVERSE_BY_SECTOR` + `setScanSector()`). `kantoorscan.html` bestaat nog als redirect-stub naar `bedrijfsscan.html` zodat oude links blijven werken. Buiten accountancy: geen accountancy-benchmarks en geen waardering (die is er alleen voor accountancy) — nette "nog niet beschikbaar"-melding i.p.v. een verkeerde norm. **Legal-teksten die nog "kantoorscan" noemen (`voorwaarden.html`, `privacy.html`) zijn bewust niet automatisch aangepast — werkregel 11d; apart aan Marcel/jurist voorgelegd.**
 - `hugo.html` — VerhuisScan (aparte module, andere sector)
 
 ## Infrastructuur
