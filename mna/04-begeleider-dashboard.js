@@ -2092,7 +2092,9 @@ function renderBegeleiderDashboard(app){
       out.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem">'
         +'<div style="font-size:11px;font-weight:600;color:#8a5a00;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.75rem">&#128220; Verkoopmemorandum'+(status?' &mdash; '+esc(status):'')+'</div>'
         +'<textarea id="verkoopmemo-txt" rows="16" style="width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:var(--r);font-family:\'IBM Plex Sans\',sans-serif;font-size:13px;padding:9px 11px;color:var(--sub);resize:vertical;outline:none">'+esc(tekst||'')+'</textarea>'
-        +'<div style="font-size:11px;color:var(--muted);margin-top:6px">Bevat de bedrijfsnaam — controleer vóór verspreiding altijd of dit alleen naar de partij gaat die de NDA heeft getekend.</div>'
+        +'<div style="font-size:11px;color:var(--muted);margin-top:6px">Bevat de bedrijfsnaam — controleer vóór verspreiding altijd of dit alleen naar de partij gaat die de NDA heeft getekend.'
+        +((t2.verkoopmemorandum_nda_door&&!t2.nda_getekend)?(' <span style="color:var(--teal)">NDA-ondertekening bevestigd door '+esc(t2.verkoopmemorandum_nda_door)+(t2.verkoopmemorandum_nda_op?(' op '+new Date(t2.verkoopmemorandum_nda_op).toLocaleDateString('nl-NL')):'')+'.</span>'):'')
+        +'</div>'
         +'<div style="display:flex;gap:8px;margin-top:.75rem;flex-wrap:wrap">'
         +'<button class="btn" id="verkoopmemo-opslaan-btn" style="background:#8a5a00" title="Bewaart de tekst bij dit traject — later terug te vinden via &quot;Verkoopmemorandum bekijken/bewerken&quot;. Er wordt geen bestand gedownload.">Opslaan</button>'
         +'<button class="btn-ghost" id="verkoopmemo-print-btn" style="font-size:12px;padding:6px 14px">&#128196; Print / PDF</button>'
@@ -2113,23 +2115,26 @@ function renderBegeleiderDashboard(app){
       };
       document.getElementById('verkoopmemo-nieuw-btn').onclick=function(){genereerVerkoopmemo();};
     }
-    async function genereerVerkoopmemo(ndaBevestigd){
+    async function genereerVerkoopmemo(ndaBevestigd,ndaDoor){
       out.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;color:var(--muted)">Genereren...</div>';
-      var r=await fetch(WORKER+'/mna/verkoopmemorandum/genereer',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||''},body:JSON.stringify({code:S.code,nda_bevestigd:!!ndaBevestigd})}).then(function(x){return x.json();}).catch(function(){return{};});
-      if(r.ok){t2.verkoopmemorandum_tekst=r.verkoopmemorandum_tekst;renderVerkoopmemo(r.verkoopmemorandum_tekst,'nieuw gegenereerd');}
+      var r=await fetch(WORKER+'/mna/verkoopmemorandum/genereer',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||''},body:JSON.stringify({code:S.code,nda_bevestigd:!!ndaBevestigd,nda_bevestigd_door:ndaDoor||''})}).then(function(x){return x.json();}).catch(function(){return{};});
+      if(r.ok){t2.verkoopmemorandum_tekst=r.verkoopmemorandum_tekst;if(ndaDoor){t2.verkoopmemorandum_nda_door=ndaDoor;t2.verkoopmemorandum_nda_op=Date.now();}renderVerkoopmemo(r.verkoopmemorandum_tekst,'nieuw gegenereerd');}
       else{out.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;color:var(--red)">'+esc(r.error||'Genereren mislukt.')+'</div>';}
     }
     function toonNdaBevestiging(){
       out.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem">'
         +'<div style="font-size:11px;font-weight:600;color:#8a5a00;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.75rem">&#128220; Verkoopmemorandum &mdash; controle vooraf</div>'
         +'<div style="font-size:13px;color:var(--sub);margin-bottom:1rem;line-height:1.6">Dit document bevat de bedrijfsnaam en gedetailleerde bedrijfsinformatie. Er is voor dit traject nog geen NDA ondertekend via het platform (die kan bijv. wel al buiten het platform om ondertekend zijn — dat is normaal in deze fase, vóór er een formele koper is ingevoerd).</div>'
-        +'<label style="display:flex;align-items:flex-start;gap:8px;font-size:13px;color:var(--sub);cursor:pointer;margin-bottom:1rem"><input type="checkbox" id="verkoopmemo-nda-chk" style="margin-top:2px"> Ik bevestig dat de partij die dit document ontvangt een NDA heeft ondertekend (in het platform of extern).</label>'
+        +'<label style="display:flex;align-items:flex-start;gap:8px;font-size:13px;color:var(--sub);cursor:pointer;margin-bottom:.75rem"><input type="checkbox" id="verkoopmemo-nda-chk" style="margin-top:2px"> Ik bevestig dat de partij die dit document ontvangt een NDA heeft ondertekend (in het platform of extern).</label>'
+        +'<div style="margin-bottom:1rem"><label style="display:block;font-size:12px;color:var(--muted);margin-bottom:3px">Bevestigd door (uw naam) &mdash; wordt vastgelegd bij het traject</label><input type="text" id="verkoopmemo-nda-naam" placeholder="Voor- en achternaam" style="width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:var(--r);font-family:\'IBM Plex Sans\',sans-serif;font-size:13px;padding:8px 11px;color:var(--sub);outline:none"></div>'
         +'<div style="display:flex;gap:8px"><button class="btn" id="verkoopmemo-nda-door" style="background:#8a5a00">Doorgaan &amp; genereren</button><button class="btn-ghost" id="verkoopmemo-nda-ann">Annuleren</button></div>'
         +'</div>';
       document.getElementById('verkoopmemo-nda-ann').onclick=function(){out.style.display='none';};
       document.getElementById('verkoopmemo-nda-door').onclick=function(){
         if(!document.getElementById('verkoopmemo-nda-chk').checked){toast('Bevestig eerst dat er een NDA is ondertekend.','err');return;}
-        genereerVerkoopmemo(true);
+        var naam=(document.getElementById('verkoopmemo-nda-naam').value||'').trim();
+        if(!naam){toast('Vul uw naam in — dit wordt bij het traject vastgelegd.','err');return;}
+        genereerVerkoopmemo(true,naam);
       };
     }
     var docOutEl=document.getElementById('bg-verkoopmemo-out');
