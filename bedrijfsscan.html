@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Strategische scan - Koers voor Morgen</title>
+<title>Strategische Bedrijfsscan - Koers voor Morgen</title>
 <!-- BUILD: 27 May 10:45 -->
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -325,11 +325,11 @@ function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'
 // zoals "niet een X" i.p.v. "geen X"). Eén centrale plek i.p.v. losse, licht verschillende
 // taalinstructies per prompt.
 const TAAL_REGELS='Schrijf in natuurlijk, vloeiend Nederlands — geen letterlijke vertaling uit het Engels. Gebruik uitsluitend de formele aanspreekvorm "u/uw", nooit "je/jij/jouw", ook niet losse keren door elkaar. Gebruik "geen [zelfstandig naamwoord]" i.p.v. de onnatuurlijke constructie "niet een [zelfstandig naamwoord]". Vermijd andere letterlijke Engelse constructies (bijv. "maakt sense", "op het einde van de dag") en verzin geen niet-bestaande woorden.';
-// Titel wordt per sector bijgewerkt in render() (setScanTitle); dit is de neutrale beginwaarde.
-document.title = 'Strategische scan - ' + BRAND.platform;
+// De scan heet sinds 31 augustus 2026 productbreed "Bedrijfsscan" (alle sectoren, niet alleen
+// kantoren). De sectorkeuze stuurt de vragen/scenario's/benchmarks — niet de productnaam.
+document.title = 'Strategische Bedrijfsscan - ' + BRAND.platform;
 function setScanTitle(){
-  var w = SL().zn==='kantoor' ? 'Kantoorscan' : SL().zn==='praktijk' ? 'Praktijkscan' : 'Bedrijfsscan';
-  document.title = 'Strategische ' + w + ' - ' + BRAND.platform;
+  document.title = 'Strategische Bedrijfsscan - ' + BRAND.platform;
 }
 
 /* ======== DATA ========
@@ -1502,7 +1502,7 @@ function rIntro(){
   const vragenTotaal=SECTIONS.reduce((n,sec)=>n+sec.questions.length,0);
   const scenarioTotaal=Object.keys(SCENARIOS).length;
   const sectorKnoppen=SECTOR_KEUZE.map(o=>`<button type="button" class="sector-pick${ST.sector===o.k?' sel':''}" data-sector="${o.k}"><span class="sp-label">${o.label}</span><span class="sp-hint">${o.hint}</span></button>`).join('');
-  return`<div class="intro-wrap"><div class="intro-grid"></div><div class="intro-inner"><div class="wordmark"><div class="wdot"></div>${BRAND.platform}<div class="wdot"></div></div><div class="eyebrow">Strategisch analyse-instrument &middot; AI-powered</div><h1 class="intro-h1">Strategische <em>${SL().zn==='kantoor'?'Kantoor':SL().zn==='praktijk'?'Praktijk':'Bedrijfs'}</em> Scan</h1><p class="intro-sub">Een PE-ge\xefnspireerde analyse van uw ${SL().zn}. In 10 minuten een volledig strategisch profiel, positioneringsmatrix en AI-adviesrapport op maat.</p><div class="kpi-row"><div class="kpi-item"><div class="kpi-num">${SECTIONS.length}</div><div class="kpi-lbl">Dimensies</div></div><div class="kpi-div"></div><div class="kpi-item"><div class="kpi-num">${vragenTotaal}</div><div class="kpi-lbl">Vragen</div></div><div class="kpi-div"></div><div class="kpi-item"><div class="kpi-num">${scenarioTotaal}</div><div class="kpi-lbl">Scenario&#39;s</div></div><div class="kpi-div"></div><div class="kpi-item"><div class="kpi-num">AI</div><div class="kpi-lbl">Advies</div></div></div><div style="max-width:580px;margin:0 auto 1.75rem"><div style="font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--teal);margin-bottom:.6rem">Kies uw sector</div><div class="sector-picker">${sectorKnoppen}</div><div style="font-size:11px;color:var(--muted);margin-top:.5rem">De vragenlijst, scenario&#39;s en benchmarks worden op uw sector afgestemd. Meer sectoren volgen.</div></div><div class="dim-row">${SECTIONS.map(s=>`<span class="dim-chip">${s.label}</span>`).join('')}</div><div style="margin-bottom:2rem">
+  return`<div class="intro-wrap"><div class="intro-grid"></div><div class="intro-inner"><div class="wordmark"><div class="wdot"></div>${BRAND.platform}<div class="wdot"></div></div><div class="eyebrow">Strategisch analyse-instrument &middot; AI-powered</div><h1 class="intro-h1">Strategische <em>Bedrijfs</em>scan</h1><p class="intro-sub">Een PE-ge\xefnspireerde analyse van uw onderneming. In 10 minuten een volledig strategisch profiel, positioneringsmatrix en AI-adviesrapport op maat.</p><div class="kpi-row"><div class="kpi-item"><div class="kpi-num">${SECTIONS.length}</div><div class="kpi-lbl">Dimensies</div></div><div class="kpi-div"></div><div class="kpi-item"><div class="kpi-num">${vragenTotaal}</div><div class="kpi-lbl">Vragen</div></div><div class="kpi-div"></div><div class="kpi-item"><div class="kpi-num">${scenarioTotaal}</div><div class="kpi-lbl">Scenario&#39;s</div></div><div class="kpi-div"></div><div class="kpi-item"><div class="kpi-num">AI</div><div class="kpi-lbl">Advies</div></div></div><div style="max-width:580px;margin:0 auto 1.75rem"><div style="font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--teal);margin-bottom:.6rem">Kies uw sector</div><div class="sector-picker">${sectorKnoppen}</div><div style="font-size:11px;color:var(--muted);margin-top:.5rem">De vragenlijst, scenario&#39;s en benchmarks worden op uw sector afgestemd. Meer sectoren volgen.</div></div><div class="dim-row">${SECTIONS.map(s=>`<span class="dim-chip">${s.label}</span>`).join('')}</div><div style="margin-bottom:2rem">
 <div style="font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--teal);margin-bottom:.75rem">Voor \xe9\xe9n ${SL().zn}</div>
 <div class="route-cards" style="max-width:580px;margin:0 auto 1.5rem">
 <div class="route-card highlight" id="route-solo" style="border:2px solid var(--teal);background:var(--teal-bg)">

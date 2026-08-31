@@ -177,6 +177,28 @@ test.describe('Rekenkern dealvoorstel', () => {
     expect(Math.round(b.cashBijClosing)).toBe(523668);
     expect(Math.round(b.verwachteGerealiseerd)).toBe(770100);  // escrow + earn-out komen terug
   });
+
+  test('ZOPA trade-space: buckets sommeren exact, geen bedrag toegevoegd/afgehaald', async ({ page }) => {
+    const r = await page.evaluate(() => {
+      const p = { ebitdaBewezen: 400000, multipleBasis: 5.0, ebitdaPrognose: 520000, multipleBovengrens: 6.0, belangPct: 51,
+        nettoSchuld: 300000, debtLikeItems: 100000, werkkapitaalCorrectie: 50000, transactiekostenPct: 2,
+        escrowPct: 12, escrowMaanden: 18, earnOutAan: true, earnOutPct: 20, vendorLoanAan: true, vendorLoanBedrag: 200000 };
+      const b = dvBerekenOpbrengstBrug(p, dvBerekenClosing(p));
+      const z = dvBerekenZopaTradeSpace(p, dvBerekenClosing(p), b);
+      return { b, z };
+    });
+    const { b, z } = r;
+    // Kerninvariant: de trade-space herverdeelt alleen — totaal == verkocht belang + behouden belang
+    expect(Math.round(z.totaal)).toBe(Math.round(b.verkochtBelangWaarde + z.behoudenBelangWaarde));
+    expect(Math.round(z.zekerNu + z.escrow + z.voorwaardelijk + z.behoudenBelangWaarde)).toBe(Math.round(z.totaal));
+    // Vendor loan wordt van "zeker" naar "voorwaardelijk" geschoven, niet opgeteld
+    expect(Math.round(z.vendorLoan)).toBe(200000);
+    expect(Math.round(z.zekerNu)).toBe(Math.round(b.cashBijClosing - 200000));  // 523.668 − 200.000
+    expect(Math.round(z.voorwaardelijk)).toBe(Math.round(b.earnOutUitgesteld + 200000));  // 154.020 + 200.000
+    expect(z.pctZekerBijClosing + z.pctEscrow + z.pctVoorwaardelijk + z.pctBehoudenBelang).toBeCloseTo(100, 4);
+    // Behouden belang = equity value × (1 − belang)
+    expect(Math.round(z.behoudenBelangWaarde)).toBe(Math.round(b.equityValue100 * 0.49));
+  });
 });
 
 // ───────────────────── 2. LOGIN & ROLLEN ─────────────────────
