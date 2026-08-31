@@ -7,7 +7,17 @@ function fmtGeld(n){if(!n||isNaN(n))return '—';if(n>=1000000)return '€'+(n/1
 // Zelfde als parseGeld, maar geeft null terug als het veld niet is ingevuld (i.p.v. 0) — nodig voor
 // de financiële ratio's hieronder, waar 0 een geldige uitkomst kan zijn (bijv. geen schuld) en dus
 // onderscheiden moet worden van "nog niet ingevuld" (GOUDEN STANDAARD: nooit stilzwijgend gokken).
-function dvGeldOfNull(key){var v=S.data[key];if(!v||!String(v).trim())return null;var n=parseGeld(v);return isNaN(n)?null:n;}
+// ChatGPT-review #5: parseGeld() vangt onparseerbare invoer af als 0. Voor de ratio's is dat gevaarlijk
+// (een typfout wordt dan een "echte" 0%-uitkomst). Deze helper geeft daarom null terug bij LEEG
+// én bij niet-lege maar cijferloze invoer ("onbekend", "zie bijlage", "n.v.t.") — dan blijft de
+// betreffende ratio weg i.p.v. een misleidend cijfer te tonen.
+function dvGeldOfNull(key){
+  var v=S.data[key];
+  if(!v||!String(v).trim())return null;
+  if(!/[0-9]/.test(String(v)))return null;   // niet-lege invoer zonder enig cijfer → onbekend, geen 0
+  var n=parseGeld(v);
+  return isNaN(n)?null:n;
+}
 
 // Groepsstructuur (Fase 2): welke velden op groepsniveau automatisch berekend worden uit de
 // entiteiten (en dus read-only zijn in de "Groep"-weergave) — spiegelbeeld van VELD_AGGREGATIE in de
@@ -35,16 +45,28 @@ function dvMultiple(n){return n.toLocaleString('nl-NL',{minimumFractionDigits:1,
 // multiple stilzwijgend op EBITDA werd toegepast (tot >70% waarderingsafwijking). Val terug op de
 // oude regex-parse (basis altijd 'ebitda') alleen als een sectorprofiel deze velden nog niet heeft —
 // bijv. een via marilyn handmatig met vrije JSON aangemaakt profiel.
+// ChatGPT-review 31 aug 2026 #1: geef NOOIT stilzwijgend een gegokte multiple-range terug.
+// - Een expliciet gezette maar onbekende sector → geen multiple (geen stille accountancy-fallback
+//   voor de waardering; getSectorProfiel() valt voor de UI wél terug op accountancy, maar dat mag
+//   geen waarderingsgetal opleveren).
+// - Een sectorprofiel zonder gestructureerde multiples én zonder parseerbare range in aiNormen →
+//   {mLaag:null, mHoog:null, bekend:false} i.p.v. de oude hardcoded 4,5–5,5×.
+// De aanroepers (dvGetDefaults, dvBerekenWaardering) tonen dan een melding i.p.v. een getal.
 function dvSectorMultipleRange(){
+  var sectorKey=S.traject&&S.traject.sector;
+  if(sectorKey&&typeof SECTOR_PROFIELEN!=='undefined'&&!SECTOR_PROFIELEN[sectorKey]){
+    return {mLaag:null,mHoog:null,basis:'ebitda',bekend:false,reden:'onbekende sector "'+sectorKey+'"'};
+  }
   var sectorProfiel=getSectorProfiel();
   if(sectorProfiel.multipleLaag&&sectorProfiel.multipleHoog){
-    return {mLaag:sectorProfiel.multipleLaag,mHoog:sectorProfiel.multipleHoog,basis:sectorProfiel.multipleBasis||'ebitda'};
+    return {mLaag:sectorProfiel.multipleLaag,mHoog:sectorProfiel.multipleHoog,basis:sectorProfiel.multipleBasis||'ebitda',bekend:true};
   }
   var normen=sectorProfiel.aiNormen||'';
   var mMatch=normen.match(/multiple\s*([\d.,]+)\s*[-–]\s*([\d.,]+)x/i);
-  var mLaag=mMatch?parseFloat(mMatch[1].replace(',','.')):4.5;
-  var mHoog=mMatch?parseFloat(mMatch[2].replace(',','.')):5.5;
-  return {mLaag:mLaag,mHoog:mHoog,basis:'ebitda'};
+  if(mMatch){
+    return {mLaag:parseFloat(mMatch[1].replace(',','.')),mHoog:parseFloat(mMatch[2].replace(',','.')),basis:'ebitda',bekend:true};
+  }
+  return {mLaag:null,mHoog:null,basis:'ebitda',bekend:false,reden:'sectorprofiel zonder multiple-range'};
 }
 
 function dvGetDefaults(){
@@ -54,6 +76,7 @@ function dvGetDefaults(){
   // Altijd op groepsniveau (S._groepData), nooit op de toevallig actieve entiteit — het dealvoorstel
   // geldt de hele onderneming (zie dvBerekenWaardering() hierboven voor dezelfde overweging).
   var ebBasis=parseGeld(S._groepData['financieel_ebitdaNorm']||S._groepData['financieel_ebitda']||'0');
+  var omzet3=parseGeld(S._groepData['financieel_omzet3']||'0');
   // Maatschap / IB-onderneming (backlogpunt 9-B4): een maatschap betaalt geen VpB en de maten hebben
   // geen salaris — hun "loon" zit in de winst. De maintainable earnings zijn daarom de
   // genormaliseerde winst MINUS een marktconform ondernemersloon voor de werkende maten samen. Als
@@ -92,17 +115,39 @@ function dvGetDefaults(){
   var _nettoSchuldDefault=((_ks&&String(_ks).trim())||(_ls&&String(_ls).trim()))
     ? Math.max(0, parseGeld(_ks||'0')+parseGeld(_ls||'0')-parseGeld(_lm||'0'))
     : 0;
+  // Grondslag van de multiple (ChatGPT-review 31 aug 2026, bevinding #2): sommige sectoren
+  // (zorg: praktijkwaarde) hanteren een OMZET-multiple, geen EBITDA-multiple — dvSectorMultipleRange()
+  // levert dat als `basis`. Tot nu toe negeerde dvGetDefaults() dat en paste de omzet-range (1–3×)
+  // stilzwijgend op de EBITDA toe. Nu expliciet: `grondslag` + het bijbehorende grondslagbedrag.
+  // Bij een maatschap wint de maatschap-grondslag (winst ná ondernemersloon) altijd — een
+  // omzet-multiple op een maatschap is niet gedefinieerd. `grondslagPrognose` volgt dezelfde
+  // gedocumenteerde +30%-aanname als de EBITDA-prognose hierboven (aanpasbaar in het formulier).
+  // NB: het schuldafbouw-/DCF-model blijft bewust op EBITDA rekenen — schuldcapaciteit en vrije
+  // kasstroom zijn altijd EBITDA-gedreven, ongeacht welke grondslag de headline-multiple gebruikt.
+  var _grondslag = _isMaatschap ? 'ebitda' : (mRange.basis || 'ebitda');
+  var _grondslagBewezen = (_grondslag==='omzet') ? omzet3 : (ebBasis||0);
+  var _grondslagPrognose = (_grondslag==='omzet')
+    ? (omzet3 ? Math.round(omzet3*1.3) : 0)
+    : (ebBasis ? Math.round(ebBasis*1.3) : 0);
+  // ChatGPT-review #1: geen gegokte multiple-range. Is die voor deze sector niet bekend, dan blijven
+  // multipleBasis/multipleBovengrens leeg (null) en vult de begeleider ze handmatig in — de
+  // dealvoorstel-modal toont daarbij een waarschuwing.
+  var _multipleOnbekend = (mRange.bekend===false);
   return {
     koperNaam:t.koper_naam||'',
     belangPct:51,
     ebitdaBewezen:ebBasis||0,
     ebitdaPrognose:ebBasis?Math.round(ebBasis*1.3):0,
+    grondslag:_grondslag,
+    grondslagBewezen:_grondslagBewezen,
+    grondslagPrognose:_grondslagPrognose,
     werkkapitaalBasis:werkkapitaalBasis,
     isMaatschap:_isMaatschap,
     ondernemersloonTotaal:_ondernemersloonTot,
     maatschapGrondslagOnbekend:_maatschapGrondslagOnbekend,
     multipleBasis:mLaag,
     multipleBovengrens:mHoog,
+    multipleOnbekend:_multipleOnbekend,
     cliffPct:70,
     earnOutAan:false,
     earnOutPct:20,
@@ -124,6 +169,8 @@ function dvGetDefaults(){
     capexPct:1.5,
     groeiPct:4,
     horizonJaren:5,
+    afschrijvingenPct:0,      // ChatGPT-review #6: 0 = belasting over EBITDA (conservatief); >0 = belasting over EBIT
+    earnUpSchuldPct:100,      // ChatGPT-review #12: aandeel van de earn-up dat met schuld wordt gefinancierd
     discontovoetPct:12,
     buyAndBuild:false,
     baOvernamesPerJaar:2,
@@ -160,41 +207,52 @@ function dvGetDefaults(){
   };
 }
 
+// De grondslag waar de multiple op wordt toegepast: EBITDA (default) of omzet (bijv. zorg —
+// praktijkwaarde). ChatGPT-review 31 aug 2026 #2. Valt terug op de EBITDA-velden als dvGetDefaults()
+// nog geen grondslagvelden meegaf (oudere aanroepen / tests).
+function dvGrondslagBewezen(p){ return (p.grondslagBewezen!=null) ? p.grondslagBewezen : p.ebitdaBewezen; }
+function dvGrondslagPrognose(p){ return (p.grondslagPrognose!=null) ? p.grondslagPrognose : p.ebitdaPrognose; }
+
 // Glijdende-schaal prijsmechanisme: multiple loopt lineair van multipleBasis (bij de cliff-drempel)
 // naar multipleBovengrens (bij of boven de prognose); onder de cliff geldt de vaste basis-multiple als
-// harde ondergrens, boven de prognose wordt de bovengrens niet verder verhoogd.
+// harde ondergrens, boven de prognose wordt de bovengrens niet verder verhoogd. De grondslag (EBITDA
+// of omzet) volgt p.grondslag — de veldnaam `ebitda` in de scenariorijen betekent "grondslagwaarde".
 function dvBerekenPrijsmechanisme(p){
-  var cliff=p.ebitdaPrognose*(p.cliffPct/100);
-  function multipleVoor(ebitda){
-    if(!p.ebitdaPrognose||ebitda<=cliff) return p.multipleBasis;
-    if(ebitda>=p.ebitdaPrognose) return p.multipleBovengrens;
-    var frac=(ebitda-cliff)/(p.ebitdaPrognose-cliff);
+  var gProg=dvGrondslagPrognose(p);
+  var cliff=gProg*(p.cliffPct/100);
+  function multipleVoor(waarde){
+    if(!gProg||waarde<=cliff) return p.multipleBasis;
+    if(waarde>=gProg) return p.multipleBovengrens;
+    var frac=(waarde-cliff)/(gProg-cliff);
     return p.multipleBasis+frac*(p.multipleBovengrens-p.multipleBasis);
   }
   var scenarios=[
     {label:'Cliff — serieuze misser',ebitda:cliff*0.9},
-    {label:'Deels gerealiseerd',ebitda:cliff+(p.ebitdaPrognose-cliff)*0.5},
-    {label:'Prognose gehaald',ebitda:p.ebitdaPrognose},
-    {label:'Ruim boven prognose',ebitda:p.ebitdaPrognose*1.12}
+    {label:'Deels gerealiseerd',ebitda:cliff+(gProg-cliff)*0.5},
+    {label:'Prognose gehaald',ebitda:gProg},
+    {label:'Ruim boven prognose',ebitda:gProg*1.12}
   ];
   return scenarios.map(function(s){
     var mult=multipleVoor(s.ebitda);
     var ev=s.ebitda*mult;
     var deelKoper=ev*(p.belangPct/100);
     var deelVerkoper=ev*(1-p.belangPct/100);
-    return {label:s.label,ebitda:s.ebitda,multiple:mult,ev:ev,deelKoper:deelKoper,deelVerkoper:deelVerkoper};
+    return {label:s.label,ebitda:s.ebitda,multiple:mult,ev:ev,deelKoper:deelKoper,deelVerkoper:deelVerkoper,grondslag:p.grondslag||'ebitda'};
   });
 }
 
-// Bedrag bij closing (op bewezen EBITDA × basis-multiple) en de earn-up (verschil met het prognose-scenario)
+// Bedrag bij closing (grondslag bewezen × basis-multiple) en de earn-up (verschil met het prognose-scenario).
+// Grondslag = EBITDA (default) of omzet, zie dvGrondslagBewezen/Prognose.
 function dvBerekenClosing(p){
-  var evBasis=p.ebitdaBewezen*p.multipleBasis;
+  var gBasis=dvGrondslagBewezen(p);
+  var gProg=dvGrondslagPrognose(p);
+  var evBasis=gBasis*p.multipleBasis;
   var deelKoperBasis=evBasis*(p.belangPct/100);
   var deelVerkoperBasis=evBasis*(1-p.belangPct/100);
-  var evPrognose=p.ebitdaPrognose*p.multipleBovengrens;
+  var evPrognose=gProg*p.multipleBovengrens;
   var deelKoperPrognose=evPrognose*(p.belangPct/100);
   var earnUp=Math.max(0,deelKoperPrognose-deelKoperBasis);
-  return {evBasis:evBasis,deelKoperBasis:deelKoperBasis,deelVerkoperBasis:deelVerkoperBasis,evPrognose:evPrognose,deelKoperPrognose:deelKoperPrognose,earnUp:earnUp};
+  return {evBasis:evBasis,deelKoperBasis:deelKoperBasis,deelVerkoperBasis:deelVerkoperBasis,evPrognose:evPrognose,deelKoperPrognose:deelKoperPrognose,earnUp:earnUp,grondslag:p.grondslag||'ebitda'};
 }
 
 // Earn-out: prestatieafhankelijke naverrekening (26 juli 2026). ANDER mechanisme dan de earn-up
@@ -237,18 +295,25 @@ function dvBerekenSchuldafbouw(p,closing){
   var ebitda=p.ebitdaBewezen;
   var werkkapitaal=p.werkkapitaalBasis||0;
   rows.push({jaar:'Closing ('+huidigJaar+')',ebitda:ebitda,rente:0,vpb:0,capex:0,nwcMutatie:0,fcf:0,earnUp:0,nettoSchuld:nettoSchuld,leverage:ebitda?nettoSchuld/ebitda:0});
+  // ChatGPT-review #12: welk deel van de earn-up wordt met (nieuwe) schuld gefinancierd? Voorheen
+  // impliciet 100%. Nu een expliciete, aanpasbare aanname (default 100 = ongewijzigd gedrag); de rest
+  // wordt verondersteld uit eigen middelen/operationele kasstroom te komen en raakt de bankschuld niet.
+  var earnUpSchuldFrac=(p.earnUpSchuldPct==null?100:Math.max(0,Math.min(100,p.earnUpSchuldPct)))/100;
   for(var j=1;j<=p.horizonJaren;j++){
-    var groeiDitJaar = (j===1 && p.ebitdaBewezen) ? (p.ebitdaPrognose-p.ebitdaBewezen)/p.ebitdaBewezen : p.groeiPct/100;
+    var groeiDitJaar = (j===1 && p.ebitdaBewezen>0) ? (p.ebitdaPrognose-p.ebitdaBewezen)/p.ebitdaBewezen : p.groeiPct/100;
     ebitda = j===1 ? (p.ebitdaPrognose||ebitda) : ebitda*(1+p.groeiPct/100);
     var rente=nettoSchuld*(p.rentePct/100);
     var vpb=Math.max(0,ebitda-rente)*(p.vpbPct/100);
-    var capex=ebitda*(p.capexPct/100);
-    var nwcMutatie=werkkapitaal*groeiDitJaar;
+    // ChatGPT-review #9: bij EBITDA <= 0 geen negatieve capex/werkkapitaalmutatie (die zouden als
+    // fictieve kasINstroom werken). Capex en NWC-schaling zijn alleen zinvol op een positieve basis.
+    var capex=Math.max(0,ebitda)*(p.capexPct/100);
+    var nwcMutatie=ebitda>0?werkkapitaal*groeiDitJaar:0;
     werkkapitaal+=nwcMutatie;
     var earnUp=j===1?closing.earnUp:0;
+    var earnUpSchuld=earnUp*earnUpSchuldFrac;
     var fcf=ebitda-rente-vpb-capex-nwcMutatie;
-    nettoSchuld=Math.max(0,nettoSchuld-fcf+earnUp);
-    rows.push({jaar:String(huidigJaar+j),ebitda:ebitda,rente:rente,vpb:vpb,capex:capex,nwcMutatie:nwcMutatie,fcf:fcf,earnUp:earnUp,nettoSchuld:nettoSchuld,leverage:ebitda?nettoSchuld/ebitda:0});
+    nettoSchuld=Math.max(0,nettoSchuld-fcf+earnUpSchuld);
+    rows.push({jaar:String(huidigJaar+j),ebitda:ebitda,rente:rente,vpb:vpb,capex:capex,nwcMutatie:nwcMutatie,fcf:fcf,earnUp:earnUp,earnUpSchuld:earnUpSchuld,nettoSchuld:nettoSchuld,leverage:ebitda?nettoSchuld/ebitda:0});
   }
   return rows;
 }
@@ -476,18 +541,23 @@ function dvTabelCijfers(){
 }
 
 function dvTabelPrijsmechanisme(scenarios){
-  return dvRenderTabelHtml(['Scenario','EBITDA (€ mln)','Multiple','EV (€ mln)','Deel koper (€ mln)','Deel verkoper (€ mln)'],
+  var grondslagLabel=(scenarios[0]&&scenarios[0].grondslag==='omzet')?'Omzet (€ mln)':'EBITDA (€ mln)';
+  return dvRenderTabelHtml(['Scenario',grondslagLabel,'Multiple','EV (€ mln)','Deel koper (€ mln)','Deel verkoper (€ mln)'],
     scenarios.map(function(s){return [s.label,dvMln(s.ebitda),dvMultiple(s.multiple),dvMln(s.ev),dvMln(s.deelKoper),dvMln(s.deelVerkoper)];}));
 }
 
 function dvTabelClosing(closing){
-  return dvRenderTabelHtml(['','€ mln'],[
-    ['Ondernemingswaarde (bewezen basis)',dvMln(closing.evBasis)],
-    ['Deel koper bij closing',dvMln(closing.deelKoperBasis)],
-    ['Behouden belang verkoper',dvMln(closing.deelVerkoperBasis)],
-    ['Ondernemingswaarde bij volledige realisatie',dvMln(closing.evPrognose)],
-    ['Earn-up (extra bij realisatie)',dvMln(closing.earnUp)]
+  var belangPct=closing.evBasis>0?Math.round(closing.deelKoperBasis/closing.evBasis*100):0;
+  var html=dvRenderTabelHtml(['','€ mln'],[
+    ['Ondernemingswaarde (100%, bewezen basis)',dvMln(closing.evBasis)],
+    ['Toegerekende ondernemingswaarde koper-belang ('+belangPct+'%)',dvMln(closing.deelKoperBasis)],
+    ['Toegerekende ondernemingswaarde behouden belang ('+(100-belangPct)+'%)',dvMln(closing.deelVerkoperBasis)],
+    ['Ondernemingswaarde (100%) bij volledige realisatie prognose',dvMln(closing.evPrognose)],
+    ['Earn-up: extra toegerekende waarde bij volledige realisatie',dvMln(closing.earnUp)]
   ]);
+  var grondslagWoord=(closing.grondslag==='omzet')?'bewezen omzet':'bewezen EBITDA';
+  html+='<div style="font-size:9pt;color:#8a8880;font-style:italic;margin-top:-.75rem">Dit zijn <strong>toegerekende ondernemingswaarden</strong> ('+grondslagWoord+' &times; basis-multiple &times; belang) &mdash; vóór aftrek van netto schuld, debt-like items en transactiekosten. Het is <strong>niet</strong> de cash die de verkopende partij bij closing ontvangt; die staat in het hoofdstuk &bdquo;Van ondernemingswaarde naar opbrengst bij closing&rdquo;. De earn-up is een voorwaardelijke meeropbrengst die alleen bij volledige realisatie van de prognose tot uitkering komt.</div>';
+  return html;
 }
 
 // Opbrengst-brug (backlogpunt 7): van headline-ondernemingswaarde naar wat er daadwerkelijk als geld
@@ -503,14 +573,21 @@ function dvBerekenOpbrengstBrug(p,closing){
   var transactiekosten=Math.max(0,ev*((p.transactiekostenPct||0)/100));
   var equityValue100=ev-nettoSchuld-debtLike-wcCorrectie-transactiekosten;
   var belangFrac=(p.belangPct||0)/100;
-  var verkochtBelangWaarde=equityValue100*belangFrac;      // wat de koper betaalt voor zijn belang
-  var escrowBedrag=Math.max(0,verkochtBelangWaarde)*((p.escrowPct||0)/100);
-  var earnOutUitgesteld=p.earnOutAan?Math.max(0,verkochtBelangWaarde)*((p.earnOutPct||0)/100):0;
-  var cashBijClosing=verkochtBelangWaarde-escrowBedrag-earnOutUitgesteld;
+  // ChatGPT-review #4: ligt de schuld boven de ondernemingswaarde, dan is equityValue100 negatief —
+  // dat is rekenkundig juist en blijft als informatief cijfer staan. Maar de bedragen die als
+  // "opbrengst voor de verkoper" worden gepresenteerd (verkocht belang, cash bij closing) worden op 0
+  // geclampt (consistent met dvVerkoperBedragen). Een negatieve "cash bij closing" betekent immers
+  // niet dat de verkoper moet bijstorten — dat vraagt een andere transactiestructuur; daarvoor is de
+  // vlag equityNegatief, die de tabel/prompt laat waarschuwen i.p.v. een negatief bedrag te tonen.
+  var equityNegatief=equityValue100<0;
+  var verkochtBelangWaarde=Math.max(0,equityValue100*belangFrac);
+  var escrowBedrag=verkochtBelangWaarde*((p.escrowPct||0)/100);
+  var earnOutUitgesteld=p.earnOutAan?verkochtBelangWaarde*((p.earnOutPct||0)/100):0;
+  var cashBijClosing=Math.max(0,verkochtBelangWaarde-escrowBedrag-earnOutUitgesteld);
   var verwachteGerealiseerd=cashBijClosing+escrowBedrag+earnOutUitgesteld;  // = verkochtBelangWaarde, maar getoond als opbouw
   return {
     ev:ev,nettoSchuld:nettoSchuld,debtLike:debtLike,wcCorrectie:wcCorrectie,transactiekosten:transactiekosten,transactiekostenPct:p.transactiekostenPct||0,
-    equityValue100:equityValue100,belangPct:p.belangPct||0,verkochtBelangWaarde:verkochtBelangWaarde,
+    equityValue100:equityValue100,equityNegatief:equityNegatief,belangPct:p.belangPct||0,verkochtBelangWaarde:verkochtBelangWaarde,
     escrowPct:p.escrowPct||0,escrowMaanden:p.escrowMaanden||0,escrowBedrag:escrowBedrag,
     earnOutAan:!!p.earnOutAan,earnOutPct:p.earnOutPct||0,earnOutUitgesteld:earnOutUitgesteld,
     cashBijClosing:cashBijClosing,verwachteGerealiseerd:verwachteGerealiseerd
@@ -545,7 +622,11 @@ function dvTabelOpbrengstBrug(b){
   if(b.earnOutUitgesteld) wf.push({label:'− Earn-out uitgest.',delta:-b.earnOutUitgesteld});
   wf.push({label:'Cash bij closing',delta:b.cashBijClosing,isTotal:true});
 
-  var html=dvRenderKenmerkTabel(rows);
+  var html='';
+  if(b.equityNegatief){
+    html+='<div style="background:#fdecea;border-left:4px solid #c0392b;border-radius:0 6px 6px 0;padding:10px 14px;margin:.25rem 0 .75rem;font-size:10pt;color:#3a3a3a;line-height:1.5"><strong style="color:#c0392b">Netto schuld hoger dan de ondernemingswaarde.</strong> Bij deze aannames is de equity value negatief ('+dvMln(b.equityValue100)+' mln). Een reguliere aandelentransactie levert de verkopende partij dan niets op — de opbrengst bij closing is op &euro;0 gezet, niet op een negatief bedrag. Dit vraagt om een andere aanpak (bijv. een activa-transactie, herfinanciering van de schuld, of heronderhandeling van de aannames); dat is geen rekenuitkomst maar een dealstructuur-vraag.</div>';
+  }
+  html+=dvRenderKenmerkTabel(rows);
   html+='<div style="margin-top:.75rem;padding-top:.5rem">'+dvSvgWaterfallChart(wf,'Opbrengst-brug: van ondernemingswaarde '+fmtGeld(b.ev)+' naar cash bij closing '+fmtGeld(b.cashBijClosing))+'</div>';
   html+='<div style="font-size:9pt;color:#8a8880;font-style:italic;margin-top:.35rem">De aftrekposten (netto schuld, debt-like items, werkkapitaalcorrectie, transactiekosten) zijn door de begeleider ingevoerde aannames — geen door het platform berekende waarden. "Verwachte gerealiseerde waarde" gaat uit van een volledige escrow-vrijgave en een volledig behaalde earn-out; de werkelijke uitkomst kan lager zijn.</div>';
   return html;
@@ -557,40 +638,66 @@ function dvTabelEarnOut(eo){
     eo.rows.map(function(r){return [r.jaar,dvMln(r.tranche),dvMln(r.cumulatief)];}));
 }
 
-// ZOPA trade-space (onderhandel-playbook, onderdeel 1 — 31 augustus 2026). Deelt de TOTALE
-// tegenprestatie voor de verkopende partij op naar zekerheid × timing, zodat de verkoper de
-// onderhandelruimte ziet die op tafel ligt: waar valt aan te draaien — meer cash bij closing, een
-// kortere escrow, minder earn-out, meer of minder behouden belang. GOUDEN STANDAARD: dit voegt GEEN
-// nieuwe aannames toe; het is puur een herindeling van bedragen die dvBerekenOpbrengstBrug en
-// dvBerekenClosing al berekenen (en die apart gevalideerd zijn). Invariant: de som van de buckets is
-// exact "waarde verkocht belang + waarde behouden belang".
-function dvBerekenZopaTradeSpace(p,closing,brug){
+// Eén centrale bron van waarheid voor de bedragen die in het dealvoorstel allemaal op "bedrag bij
+// closing" lijken maar economisch verschillend zijn (ChatGPT-review 31 augustus 2026 — de AI-vrije
+// tekst verwarde de toegerekende ondernemingswaarde van het belang met de daadwerkelijke cash voor
+// de verkoper). GEEN nieuwe waardering: puur een benoemde herverpakking van dvBerekenClosing +
+// dvBerekenOpbrengstBrug, die allebei apart gevalideerd zijn. De enige expliciete modelaanname hier
+// is de omrekening van de earn-up (die dvBerekenClosing als EV-toerekening berekent) naar dezelfde
+// equity/cash-basis als de opbrengst-brug: schalen met equityValue100/ev — dezelfde EV→equity-
+// verhouding (aftrek netto schuld, debt-like, transactiekosten) die de brug al hanteert. Bij ev<=0
+// (schuld groter dan de ondernemingswaarde) is de earn-up voor de verkoper feitelijk nihil.
+function dvVerkoperBedragen(p,closing,brug){
   var belangFrac=(p.belangPct||0)/100;
-  var behoudenBelangWaarde=Math.max(0,brug.equityValue100*(1-belangFrac));   // rollover: waarde van het behouden belang
+  var earnUpEVAllocation=Math.max(0,(closing&&closing.earnUp)||0);
+  var evNaarEquityFactor=(brug.ev>0)?Math.max(0,brug.equityValue100/brug.ev):0;
+  var earnUpSellerConsideration=earnUpEVAllocation*evNaarEquityFactor;
+  return {
+    verkopersopbrengstCashClosing:Math.max(0,brug.cashBijClosing),          // enige "wat de verkoper bij closing als geld krijgt"
+    verkopersopbrengstVerwacht:Math.max(0,brug.verwachteGerealiseerd),      // + volledige escrow-vrijval (+ earn-out indien aan)
+    toegerekendeEVVerkochtBelang:Math.max(0,(closing&&closing.deelKoperBasis)||0), // EV(100%) × belang% — waardering, GEEN cash
+    retainedEquity:Math.max(0,brug.equityValue100*(1-belangFrac)),          // waarde van het behouden belang
+    earnUpEVAllocation:earnUpEVAllocation,                                  // EV-effect bij volledige realisatie prognose
+    earnUpSellerConsideration:earnUpSellerConsideration,                    // daarvan, herrekend naar equity/cash-basis
+    evNaarEquityFactor:evNaarEquityFactor
+  };
+}
+
+// ZOPA trade-space (onderhandel-playbook, onderdeel 1 — 31 augustus 2026). Deelt de waardepositie van
+// de verkopende partij op naar zekerheid × timing, zodat de verkoper de onderhandelruimte ziet die op
+// tafel ligt: waar valt aan te draaien — meer cash bij closing, een kortere escrow, minder earn-out,
+// meer of minder behouden belang. Bouwt op dvBerekenOpbrengstBrug + dvBerekenClosing (apart
+// gevalideerd) via dvVerkoperBedragen. Invariant: de som van de buckets is exact
+// "waarde verkocht belang + earn-up (verkoper-basis) + waarde behouden belang".
+function dvBerekenZopaTradeSpace(p,closing,brug){
+  var vb=dvVerkoperBedragen(p,closing,brug);
+  var behoudenBelangWaarde=vb.retainedEquity;                              // rollover: waarde van het behouden belang
   var cashNu=Math.max(0,brug.cashBijClosing);
   var escrow=Math.max(0,brug.escrowBedrag);
-  var earnOut=Math.max(0,brug.earnOutUitgesteld);
+  var earnOut=Math.max(0,brug.earnOutUitgesteld);                          // contractuele uitgestelde earn-out (checkbox aan)
+  var earnUp=Math.max(0,vb.earnUpSellerConsideration);                     // voorwaardelijke earn-up, herrekend naar verkoper-basis
   // Vendor loan: een deel van de koopsom dat de verkoper als achtergestelde lening aan de koper
   // verstrekt i.p.v. contant te ontvangen. dvBerekenOpbrengstBrug rekent dit (nog) niet mee in
   // cashBijClosing — we raken die berekening niet aan, maar herindelen het bedrag hier risicomatig
   // van "zeker bij closing" naar "voorwaardelijk/uitgesteld" (kredietrisico koper) en tonen het apart.
   var vendorLoan=(p.vendorLoanAan&&p.vendorLoanBedrag)?Math.max(0,Math.min(p.vendorLoanBedrag,cashNu)):0;
   var zekerNu=Math.max(0,cashNu-vendorLoan);
-  var voorwaardelijk=earnOut+vendorLoan;
+  var voorwaardelijk=earnOut+vendorLoan+earnUp;
   var totaal=zekerNu+escrow+voorwaardelijk+behoudenBelangWaarde;
   function pct(x){return totaal>0?(x/totaal*100):0;}
   var escrowMnd=brug.escrowMaanden||p.escrowMaanden||0;
-  var voorwAard=[earnOut>0?'earn-out (prestatie-afhankelijk)':'',vendorLoan>0?'verkoperslening (kredietrisico koper)':''].filter(Boolean).join(' · ')||'geen';
+  var voorwAard=[earnOut>0?'earn-out (prestatie-afhankelijk)':'',earnUp>0?'earn-up (bij volledige realisatie van de prognose)':'',vendorLoan>0?'verkoperslening (kredietrisico koper)':''].filter(Boolean).join(' · ')||'geen';
   var buckets=[
     {key:'zeker',label:'Zeker, bij closing',bedrag:zekerNu,pct:pct(zekerNu),aard:'Contant op de closingdatum',kleur:'var(--teal)'},
     {key:'escrow',label:'Escrow (vastgehouden)',bedrag:escrow,pct:pct(escrow),aard:'Vrij na ~'+escrowMnd+' mnd, mits geen claims',kleur:'var(--gold)'},
     {key:'voorwaardelijk',label:'Voorwaardelijk / uitgesteld',bedrag:voorwaardelijk,pct:pct(voorwaardelijk),aard:voorwAard,kleur:'var(--gold-dark)'},
-    {key:'behouden',label:'Behouden belang ('+Math.round(100-(p.belangPct||0))+'%)',bedrag:behoudenBelangWaarde,pct:pct(behoudenBelangWaarde),aard:'Waarde hangt af van toekomstig resultaat en een tweede exit-moment',kleur:'var(--muted)'}
+    {key:'behouden',label:'Behouden belang ('+Math.round(100-(p.belangPct||0))+'%)',bedrag:behoudenBelangWaarde,pct:pct(behoudenBelangWaarde),aard:'Niet betaald door de koper — waarde hangt af van toekomstig resultaat en een tweede exit-moment',kleur:'var(--muted)'}
   ];
   return {
     buckets:buckets,totaal:totaal,
     zekerNu:zekerNu,escrow:escrow,voorwaardelijk:voorwaardelijk,behoudenBelangWaarde:behoudenBelangWaarde,
-    earnOut:earnOut,vendorLoan:vendorLoan,escrowMaanden:escrowMnd,
+    earnOut:earnOut,earnUp:earnUp,earnUpEVAllocation:vb.earnUpEVAllocation,evNaarEquityFactor:vb.evNaarEquityFactor,
+    vendorLoan:vendorLoan,escrowMaanden:escrowMnd,
     pctZekerBijClosing:pct(zekerNu),pctEscrow:pct(escrow),pctVoorwaardelijk:pct(voorwaardelijk),pctBehoudenBelang:pct(behoudenBelangWaarde)
   };
 }
@@ -623,8 +730,10 @@ function dvBerekenBatna(p,closing,brug){
   var cashNu=Math.max(0,brug.cashBijClosing);
   var totaalVerkocht=Math.max(0,brug.verkochtBelangWaarde);   // cash + escrow + uitgestelde earn-out
   var batnaWaarde=Math.max(0,p.batnaWaarde||0);
+  var _vb=dvVerkoperBedragen(p,closing,brug);
+  var earnUpSeller=Math.max(0,_vb.earnUpSellerConsideration);  // voorwaardelijke earn-up, verkoper-basis — NIET in de status verwerkt
   if(walkAway<=0){
-    return {status:'nietIngevuld',cashNu:cashNu,totaalVerkocht:totaalVerkocht,batnaKeuze:p.batnaKeuze||'',batnaWaarde:batnaWaarde,tijdsdruk:p.batnaTijdsdruk||'onbekend'};
+    return {status:'nietIngevuld',cashNu:cashNu,totaalVerkocht:totaalVerkocht,earnUpSeller:earnUpSeller,batnaKeuze:p.batnaKeuze||'',batnaWaarde:batnaWaarde,tijdsdruk:p.batnaTijdsdruk||'onbekend'};
   }
   var margeCash=cashNu-walkAway;
   var margeTotaal=totaalVerkocht-walkAway;
@@ -635,7 +744,7 @@ function dvBerekenBatna(p,closing,brug){
   var batnaVergelijk=null;
   if(batnaWaarde>0) batnaVergelijk={verschilCash:cashNu-batnaWaarde,verschilTotaal:totaalVerkocht-batnaWaarde};
   return {
-    status:status,walkAway:walkAway,cashNu:cashNu,totaalVerkocht:totaalVerkocht,
+    status:status,walkAway:walkAway,cashNu:cashNu,totaalVerkocht:totaalVerkocht,earnUpSeller:earnUpSeller,
     margeCash:margeCash,margeTotaal:margeTotaal,
     batnaKeuze:p.batnaKeuze||'',batnaWaarde:batnaWaarde,batnaVergelijk:batnaVergelijk,
     tijdsdruk:p.batnaTijdsdruk||'onbekend'
@@ -665,6 +774,7 @@ function dvTabelBatna(b){
     ['Alternatief zonder deze deal (BATNA)',keuzeLabel]
   ];
   if(b.batnaWaarde>0) rows.push(['Geschatte waarde van dat alternatief',dvMln(b.batnaWaarde)+'  (cash bij closing '+(b.batnaVergelijk.verschilCash>=0?'+':'')+dvMln(b.batnaVergelijk.verschilCash)+' t.o.v. alternatief)']);
+  if(b.earnUpSeller>0) rows.push(['Mogelijke earn-up (voorwaardelijk, niet in het oordeel meegewogen)','+ '+dvMln(b.earnUpSeller)+'  (alleen bij volledige realisatie van de prognose)']);
   rows.push(['Tijdsdruk verkoper',tijdLabel]);
   var html='<div style="background:'+vlak+';border-left:4px solid '+kleur+';border-radius:0 6px 6px 0;padding:10px 14px;margin:.5rem 0 .75rem">'
     +'<div style="font-size:9pt;font-weight:700;letter-spacing:.06em;color:'+kleur+';margin-bottom:3px">'+badge+'</div>'
@@ -814,16 +924,20 @@ function dvTabelBiedingVergelijking(v){
 function dvTabelZopaTradeSpace(z){
   var rows=z.buckets.map(function(b){return [b.label,dvMln(b.bedrag),dvPct(b.pct),b.aard];});
   var html=dvRenderTabelHtml(['Component','€ mln','Aandeel','Aard / zekerheid'],rows);
-  html+='<div style="margin:.5rem 0 .4rem">'+dvSvgStackedBar(z.buckets,'Verdeling van de totale tegenprestatie ('+fmtGeld(z.totaal)+') naar zekerheid')+'</div>';
+  html+='<div style="margin:.5rem 0 .4rem">'+dvSvgStackedBar(z.buckets,'Verdeling van de waardepositie verkoper ('+fmtGeld(z.totaal)+') naar zekerheid')+'</div>';
   var legenda=z.buckets.filter(function(b){return b.bedrag>0;}).map(function(b){
     return '<span style="display:inline-flex;align-items:center;gap:5px;margin-right:14px;font-size:9pt;color:#5a5854"><span style="width:9px;height:9px;background:'+b.kleur+';display:inline-block;border-radius:2px"></span>'+esc(b.label.replace(/\s*\(.*\)/,''))+'</span>';
   }).join('');
   html+='<div style="margin-bottom:.5rem">'+legenda+'</div>';
-  var vw=(z.earnOut>0&&z.vendorLoan>0)?' (earn-out + verkoperslening)':z.earnOut>0?' (earn-out)':z.vendorLoan>0?' (verkoperslening)':'';
-  html+='<p style="font-size:10pt;color:#5a5854;margin:.25rem 0 .5rem">Van de totale tegenprestatie van '+fmtGeld(z.totaal)+' is '+dvPct(z.pctZekerBijClosing)+' zeker bij closing, '
+  var vwOnd=[z.earnOut>0?'earn-out':'',z.earnUp>0?'earn-up':'',z.vendorLoan>0?'verkoperslening':''].filter(Boolean).join(' + ');
+  var vw=vwOnd?' ('+vwOnd+')':'';
+  html+='<p style="font-size:10pt;color:#5a5854;margin:.25rem 0 .5rem">Van de waardepositie van de verkoper van '+fmtGeld(z.totaal)+' is '+dvPct(z.pctZekerBijClosing)+' zeker bij closing (contante cash), '
     +dvPct(z.pctEscrow)+' uitgesteld maar doorgaans zeker (escrow, ~'+z.escrowMaanden+' mnd), '
-    +dvPct(z.pctVoorwaardelijk)+' voorwaardelijk'+vw+' en '+dvPct(z.pctBehoudenBelang)+' behouden belang.</p>';
-  html+='<div style="font-size:9pt;color:#8a8880;font-style:italic">"Zeker bij closing" betekent contant op de closingdatum, niet dat het bedrag gegarandeerd is — koper-kredietrisico, opschortende voorwaarden en MAC-clausules kunnen alsnog spelen. De indeling volgt de dealstructuur-aannames uit dit voorstel (belang, escrow, earn-out, eventuele verkoperslening); het zijn geen door het platform berekende waarden.</div>';
+    +dvPct(z.pctVoorwaardelijk)+' voorwaardelijk'+vw+' en '+dvPct(z.pctBehoudenBelang)+' behouden belang — dat laatste is geen betaling van de koper maar de waarde van het niet-verkochte deel.</p>';
+  if(z.earnUp>0){
+    html+='<p style="font-size:9pt;color:#8a8880;font-style:italic;margin:0 0 .35rem">De earn-up in de voorwaardelijke laag ('+fmtGeld(z.earnUp)+') is de EV-toerekening uit het hoofdstuk &bdquo;Waardetoerekening per belang en de earn-up&rdquo; ('+fmtGeld(z.earnUpEVAllocation)+'), herrekend naar dezelfde equity/cash-basis als de rest van deze verdeling met de EV&rarr;equity-verhouding van de opbrengst-brug ('+(z.evNaarEquityFactor*100).toFixed(0)+'%). Aanname: dezelfde aftrekposten gelden in het realisatiescenario.</p>';
+  }
+  html+='<div style="font-size:9pt;color:#8a8880;font-style:italic">"Zeker bij closing" betekent contant op de closingdatum, niet dat het bedrag gegarandeerd is — koper-kredietrisico, opschortende voorwaarden en MAC-clausules kunnen alsnog spelen. De indeling volgt de dealstructuur-aannames uit dit voorstel (belang, escrow, earn-out, earn-up, eventuele verkoperslening); het zijn geen door het platform berekende waarden.</div>';
   return html;
 }
 
@@ -1000,7 +1114,11 @@ function dvManagementRisico(){
   else { aspecten.push({label:'Veranderbereidheid',waarde:vbRuw,punten:0,oordeel:'hoog'}); }
   // 4. Aanblijf-/retentieafspraken management.
   var reRuw=tekst('mgmtRetentie');
-  if(!reRuw||bevat(reRuw,['geen','nog niet','n.v.t','nvt','niet vastgelegd'])){ aspecten.push({label:'Retentie-/aanblijfafspraken management',waarde:reRuw||'—',punten:1,oordeel:reRuw?'niet vastgelegd':'niet ingevuld'}); }
+  // ChatGPT-review #10: een LEEG veld → 'onbekend' (punten:null), consistent met alle andere
+  // aspecten hier — ontbrekende data mag het risicosignaal niet richting "hoger" duwen. Alleen een
+  // expliciete tekst die zegt dat er niets is vastgelegd, telt als risicopunt.
+  if(!reRuw){ aspecten.push({label:'Retentie-/aanblijfafspraken management',waarde:'—',punten:null,oordeel:'onbekend'}); }
+  else if(bevat(reRuw,['geen','nog niet','n.v.t','nvt','niet vastgelegd','niets'])){ aspecten.push({label:'Retentie-/aanblijfafspraken management',waarde:reRuw,punten:1,oordeel:'niet vastgelegd'}); }
   else if(bevat(reRuw,['bonus','lock-up','lock up','lockup','earn-in','earn in','earnin','aanblijf','vastgelegd','overeengekomen','retentie','vesting'])){ aspecten.push({label:'Retentie-/aanblijfafspraken management',waarde:reRuw,punten:0,oordeel:'vastgelegd'}); }
   else { aspecten.push({label:'Retentie-/aanblijfafspraken management',waarde:reRuw,punten:null,oordeel:'onbekend'}); }
   // 5. Opvolgingskandidaat.
@@ -1032,24 +1150,27 @@ function dvTabelManagementRisico(){
   return head+body+disc;
 }
 
-// Gevoeligheidstabel: EBITDA-scenario's (bewezen/prognose ±10%) tegen de gekozen multiple-range,
-// zodat de impact van de aannames op de waardering direct zichtbaar is.
+// Gevoeligheidstabel: grondslag-scenario's (bewezen/prognose ±10%) tegen de gekozen multiple-range,
+// zodat de impact van de aannames op de waardering direct zichtbaar is. Grondslag = EBITDA (default)
+// of omzet, volgt p.grondslag (ChatGPT-review #2).
 function dvBerekenGevoeligheid(p){
+  var gBasis=dvGrondslagBewezen(p), gProg=dvGrondslagPrognose(p);
   var ebitdaScenarios=[
-    {label:'Bewezen −10%',ebitda:p.ebitdaBewezen*0.9},
-    {label:'Bewezen',ebitda:p.ebitdaBewezen},
-    {label:'Prognose',ebitda:p.ebitdaPrognose},
-    {label:'Prognose +10%',ebitda:p.ebitdaPrognose*1.1}
+    {label:'Bewezen −10%',ebitda:gBasis*0.9},
+    {label:'Bewezen',ebitda:gBasis},
+    {label:'Prognose',ebitda:gProg},
+    {label:'Prognose +10%',ebitda:gProg*1.1}
   ];
   var multiples=[
     {label:'Laag ('+dvMultiple(p.multipleBasis)+')',m:p.multipleBasis},
     {label:'Midden ('+dvMultiple((p.multipleBasis+p.multipleBovengrens)/2)+')',m:(p.multipleBasis+p.multipleBovengrens)/2},
     {label:'Hoog ('+dvMultiple(p.multipleBovengrens)+')',m:p.multipleBovengrens}
   ];
-  return {ebitdaScenarios:ebitdaScenarios,multiples:multiples};
+  return {ebitdaScenarios:ebitdaScenarios,multiples:multiples,grondslag:p.grondslag||'ebitda'};
 }
 function dvTabelGevoeligheid(g){
-  var kolommen=['EBITDA-scenario (€ mln)'].concat(g.multiples.map(function(m){return m.label;}));
+  var grondslagLabel=(g.grondslag==='omzet')?'Omzet-scenario (€ mln)':'EBITDA-scenario (€ mln)';
+  var kolommen=[grondslagLabel].concat(g.multiples.map(function(m){return m.label;}));
   var rows=g.ebitdaScenarios.map(function(s){
     var row=[s.label+' — '+dvMln(s.ebitda)];
     g.multiples.forEach(function(m){row.push(dvMln(s.ebitda*m.m));});
@@ -1097,10 +1218,19 @@ function dvBlokVergelijkbareTransacties(){
 // verdisconteerd (eerst als lagere kasstroom, dan nogmaals via de discontovoet). Gevonden bij de
 // vierde kwartaalaudit (25 juli 2026, P1 #6). Gedeeld door dvBerekenDCF() en
 // dvBerekenDCFGevoeligheid() zodat ze nooit uiteen kunnen lopen.
+// Vereenvoudigde unlevered kasstroom voor de DCF-kruiscontrole. ChatGPT-review #6: dit is GEEN
+// volledige FCFF — er is geen aparte afschrijvingscomponent (D&A) tenzij p.afschrijvingenPct is
+// gezet. Met afschrijvingenPct=0 (default) wordt de belasting over de EBITDA berekend (conservatief,
+// want een echte FCFF belast de EBIT en telt D&A daarna terug — het belastingschild op D&A ontbreekt
+// dan). Zet p.afschrijvingenPct (% van EBITDA, aanname) om de belasting over EBIT te berekenen:
+// fcf = EBITDA − belasting(EBITDA − D&A) − capex − ΔNWC  (= EBIT×(1−t) + D&A − capex − ΔNWC).
 function dvFcffRijen(schuldafbouwRows,p){
+  var dnaPct=Math.max(0,p.afschrijvingenPct||0)/100;
   return schuldafbouwRows.slice(1).map(function(r){
-    var vpbOpEbitda=Math.max(0,r.ebitda)*(p.vpbPct/100);
-    return {jaar:r.jaar,fcf:r.ebitda-vpbOpEbitda-r.capex-(r.nwcMutatie||0)};
+    var basis=Math.max(0,r.ebitda);
+    var dna=basis*dnaPct;
+    var vpb=Math.max(0,basis-dna)*(p.vpbPct/100);
+    return {jaar:r.jaar,fcf:basis-vpb-r.capex-(r.nwcMutatie||0)};
   });
 }
 
@@ -1126,20 +1256,23 @@ function dvBerekenDCF(p,schuldafbouwRows){
   var terminalValuePv=geldig?(terminalValueEind/Math.pow(1+d,projRows.length)):null;
   var evDcf=geldig?(pvSom+terminalValuePv):null;
   var deelKoperDcf=geldig?(evDcf*(p.belangPct/100)):null;
-  return {detail:detail,pvSom:pvSom,terminalValueEind:terminalValueEind,terminalValuePv:terminalValuePv,evDcf:evDcf,deelKoperDcf:deelKoperDcf,geldig:geldig};
+  return {detail:detail,pvSom:pvSom,terminalValueEind:terminalValueEind,terminalValuePv:terminalValuePv,evDcf:evDcf,deelKoperDcf:deelKoperDcf,geldig:geldig,discontovoetPct:p.discontovoetPct,groeivoetPct:p.groeiPct};
 }
 function dvTabelDCF(dcf){
-  var tabel=dvRenderTabelHtml(['Jaar','FCFF (€ mln)','Discontofactor','Contante waarde (€ mln)'],
-    dcf.detail.map(function(r){return [r.jaar,dvMln(r.fcf),dvMultiple(r.factor),dvMln(r.pv)];}));
+  var tabel=dvRenderTabelHtml(['Jaar','Vrije kasstroom, vereenv. (€ mln)','Oprentingsfactor (1+r)^t','Contante waarde (€ mln)'],
+    dcf.detail.map(function(r){return [r.jaar,dvMln(r.fcf),r.factor.toLocaleString('nl-NL',{minimumFractionDigits:2,maximumFractionDigits:2}),dvMln(r.pv)];}));
   var na='n.v.t. (WACC ≤ groeivoet — Gordon Growth-formule ongeldig)';
   var samenvatting=dvRenderTabelHtml(['DCF-uitkomst','€ mln'],[
-    ['Som contante waarde FCFF-periode',dvMln(dcf.pvSom)],
+    ['Gehanteerde discontovoet (WACC, aanname)',dcf.discontovoetPct!=null?dvPct(dcf.discontovoetPct):'—'],
+    ['Terminale groeivoet (aanname)',dcf.groeivoetPct!=null?dvPct(dcf.groeivoetPct):'—'],
+    ['Som contante waarde projectieperiode',dvMln(dcf.pvSom)],
     ['Terminal value (eindejaar)',dcf.geldig?dvMln(dcf.terminalValueEind):na],
     ['Terminal value (contant gemaakt)',dcf.geldig?dvMln(dcf.terminalValuePv):na],
     ['Ondernemingswaarde (DCF)',dcf.geldig?dvMln(dcf.evDcf):na],
     ['Deel koper (DCF-methode)',dcf.geldig?dvMln(dcf.deelKoperDcf):na]
   ]);
-  return tabel+samenvatting;
+  var toelichting='<div style="font-size:9pt;color:#8a8880;font-style:italic;margin-top:-.75rem">De kasstroom hierboven is een <strong>vereenvoudigde unlevered kasstroom</strong> (EBITDA &minus; belasting &minus; capex &minus; werkkapitaalmutatie), geen volledige FCFF: er is geen aparte afschrijvingscomponent tenzij die als aanname is ingevuld, dus het belastingschild op afschrijvingen ontbreekt en de uitkomst is eerder conservatief. De <strong>oprentingsfactor</strong> (1+r)<sup>t</sup> is de deler waarmee elke toekomstige kasstroom naar vandaag wordt teruggerekend (een echte disconteringsfactor is de inverse daarvan, &lt;1). <strong>Terminal value</strong> volgens Gordon Growth: kasstroom laatste jaar &times; (1 + g) / (WACC &minus; g), met g de terminale groeivoet en WACC de discontovoet hierboven. Beide zijn ingevoerde aannames; bij een kleine marge tussen WACC en g weegt de terminal value zwaar mee.</div>';
+  return tabel+samenvatting+toelichting;
 }
 
 // Bredere DCF-gevoeligheidsanalyse: WACC × groeivoet-matrix (25 juli 2026) — tot nu toe was alleen
@@ -1256,7 +1389,7 @@ function dvExporteerWaarderingCsv(v){
     ['Aantal partners',v.aantalP],['Omzet per partner',v.omzetPerP?Math.round(v.omzetPerP):null],[v.partnerBelLabel||'Eigenaar-/partnerbeloning',v.partnerBel?Math.round(v.partnerBel):null],
     ['Debiteuren',v.debiteuren?Math.round(v.debiteuren):null],['Onderhanden werk',v.wip?Math.round(v.wip):null],['Declarabiliteit (%)',v.declarab],
     ['Solvabiliteit EV/BT (%)',v.solvabiliteit!==null?v.solvabiliteit.toFixed(1):null],['ROE (%)',v.roe!==null?v.roe.toFixed(1):null],['ROA (%)',v.roa!==null?v.roa.toFixed(1):null],
-    ['Current ratio',v.currentRatio!==null?v.currentRatio.toFixed(2):null],['Quick ratio',v.quickRatio!==null?v.quickRatio.toFixed(2):null],['DSCR (vereenvoudigd: EBITDA/schuldenlast)',v.dscr!==null?v.dscr.toFixed(2):null],
+    ['Current ratio',v.currentRatio!==null?v.currentRatio.toFixed(2):null],['Quick ratio (excl. voorraad/OHW)',v.quickRatio!==null?v.quickRatio.toFixed(2):null],['EBITDA-dekking schuldendienst (vereenvoudigd, geen volwaardige DSCR)',v.dscr!==null?v.dscr.toFixed(2):null],
     ['Netto schuld/EBITDA',v.netDebtEbitda!==null?v.netDebtEbitda.toFixed(2):null]
   ].forEach(function(r){if(r[1]!==null&&r[1]!==undefined&&r[1]!==0)regel(r);});
   leeg();
@@ -1269,10 +1402,9 @@ function dvExporteerWaarderingCsv(v){
   }
   regel(['Scenario','Multiple','Waarde (€)']);
   var _csvW=function(w){return (w===null||w===undefined)?'niet berekend':Math.round(w);};
-  regel(['Laag',v.mLaag,_csvW(v.wLaag)]);
-  regel(['Midden',v.mMid,_csvW(v.wMid)]);
-  regel(['Hoog',v.mHoog,_csvW(v.wHoog)]);
-  regel(['Omzetmethode ('+v.omzetFactor+'×)','',Math.round(v.wOmzet)]);
+  regel(['Laag',v.mLaag!=null?v.mLaag:'geen multiple-range voor deze sector',_csvW(v.wLaag)]);
+  regel(['Midden',v.mMid!=null?v.mMid:'',_csvW(v.wMid)]);
+  regel(['Hoog',v.mHoog!=null?v.mHoog:'',_csvW(v.wHoog)]);
   leeg();
 
   var _mgmtR=dvManagementRisico();
@@ -1283,10 +1415,16 @@ function dvExporteerWaarderingCsv(v){
   leeg();
 
   regel(['Rolling forecast (3 jaar)']);
-  regel(['Jaar','Omzet (€)','EBITDA (€)','Waardebandbreedte laag (€)','Waardebandbreedte hoog (€)']);
-  var jLabels=['Huidig','Jaar +1','Jaar +2','Jaar +3'];
-  for(var j=0;j<4;j++){
-    regel([jLabels[j],Math.round(v.fc[j]),Math.round(v.fcE[j]),Math.round(v.fcW[j]*(v.mLaag/v.mMid)),Math.round(v.fcW[j]*(v.mHoog/v.mMid))]);
+  if(v.forecastOnbekend){
+    regel(['niet berekend — onvoldoende opeenvolgende omzetjaren voor een groeiraming (geen groeivoet aangenomen)']);
+  } else {
+    regel(['Jaar','Omzet (€)','EBITDA (€)','Waardebandbreedte laag (€)','Waardebandbreedte hoog (€)']);
+    var jLabels=['Huidig','Jaar +1','Jaar +2','Jaar +3'];
+    var _fcCsv=function(x){return (x===null||x===undefined||isNaN(x))?'':Math.round(x);};
+    var _band=(v.mLaag!=null&&v.mMid!=null&&v.mHoog!=null);
+    for(var j=0;j<4;j++){
+      regel([jLabels[j],_fcCsv(v.fc[j]),_fcCsv(v.fcE[j]),_band?_fcCsv(v.fcW[j]*(v.mLaag/v.mMid)):'',_band?_fcCsv(v.fcW[j]*(v.mHoog/v.mMid)):'']);
+    }
   }
   leeg();
 
@@ -1449,7 +1587,10 @@ function dvBerekenWaardering(){
   // liquideMiddelen daadwerkelijk is ingevuld; debiteuren/wip tellen mee met hun bestaande 0-fallback
   // (zelfde conventie als de rest van deze functie hierboven).
   var currentRatio=(liquideMiddelen!==null&&kortlopendeSchulden)?((debiteuren+wip+liquideMiddelen+(voorraadR||0))/kortlopendeSchulden):null;
-  var quickRatio=(liquideMiddelen!==null&&kortlopendeSchulden)?((debiteuren+wip+liquideMiddelen)/kortlopendeSchulden):null;
+  // ChatGPT-review #8: quick ratio (acid test) sluit voorraadachtige posten — incl. onderhanden werk —
+  // conventioneel UIT. OHW zit wél in de current ratio hierboven. Alleen direct liquide posten:
+  // debiteuren + liquide middelen.
+  var quickRatio=(liquideMiddelen!==null&&kortlopendeSchulden)?((debiteuren+liquideMiddelen)/kortlopendeSchulden):null;
   var schuldenlast=(rentelasten||0)+(aflossingVerplicht||0);
   var dscr=(schuldenlast>0&&ebitdaAbs)?ebitdaAbs/schuldenlast:null;
   // Audit-fix P2 (25 juli 2026, vierde ronde): vereiste voorheen alleen dat één van de twee
@@ -1464,7 +1605,9 @@ function dvBerekenWaardering(){
   // kwartaalaudit 25 juli 2026) — bijv. zorg heeft een omzet-multiple (praktijkwaarde), geen
   // EBITDA-multiple, en die twee mogen nooit door elkaar gebruikt worden.
   var mRangeW=dvSectorMultipleRange();
-  var mLaag=mRangeW.mLaag,mHoog=mRangeW.mHoog,mMid=(mLaag+mHoog)/2,omzetFactor=0.8;
+  var mLaag=mRangeW.mLaag,mHoog=mRangeW.mHoog;
+  var multipleOnbekend=(mRangeW.bekend===false);   // ChatGPT-review #1: geen gegokte multiple-range
+  var mMid=(mLaag!=null&&mHoog!=null)?(mLaag+mHoog)/2:null;
   var multipleType=mRangeW.basis||'ebitda';
 
   // Bereken
@@ -1489,29 +1632,31 @@ function dvBerekenWaardering(){
       multipleTypeBedrag=0;
     }
   }
-  var wLaag=maatschapGrondslagOnbekend?null:multipleTypeBedrag*mLaag;
-  var wMid=maatschapGrondslagOnbekend?null:multipleTypeBedrag*mMid;
-  var wHoog=maatschapGrondslagOnbekend?null:multipleTypeBedrag*mHoog;
-  var wOmzet=o3*omzetFactor;
+  var _geenMultiple=maatschapGrondslagOnbekend||multipleOnbekend;
+  var wLaag=_geenMultiple?null:multipleTypeBedrag*mLaag;
+  var wMid=_geenMultiple?null:multipleTypeBedrag*mMid;
+  var wHoog=_geenMultiple?null:multipleTypeBedrag*mHoog;
 
-  // Groei
+  // Groei — gemiddelde omzetgroei uit maximaal twee jaar-op-jaar-stappen. ChatGPT-review #3: bij
+  // onvoldoende historie GEEN gegokte 3% meer; dan blijft gemGroei null en wordt de rolling forecast
+  // niet getoond i.p.v. een verzonnen groeivoet door te rekenen.
   var groei=0,steps=0;
   if(o1>0&&o2>0){groei+=(o2-o1)/o1*100;steps++;}
   if(o2>0&&o3>0){groei+=(o3-o2)/o2*100;steps++;}
-  var gemGroei=steps>0?groei/steps:3;
-  var fc=[o3];
-  for(var i=1;i<=3;i++)fc.push(fc[fc.length-1]*(1+gemGroei/100));
-  var fcE=fc.map(function(o){return o*(ebitdaPct/100);});
+  var gemGroei=steps>0?groei/steps:null;
+  var forecastOnbekend=(gemGroei===null);
+  var fc=forecastOnbekend?[o3,null,null,null]:(function(){var a=[o3];for(var i=1;i<=3;i++)a.push(a[a.length-1]*(1+gemGroei/100));return a;})();
+  var fcE=fc.map(function(o){return o==null?null:o*(ebitdaPct/100);});
   // Bij een maatschap moet de rolling forecast de gecorrigeerde grondslag (winst ná ondernemersloon)
   // volgen, niet de ruwe EBITDA — anders overschat de forecast met precies het ondernemersloon.
   // Schaal fcE met de verhouding gecorrigeerde basis / ruwe EBITDA-basis van jaar 3.
   if(multipleType==='maatschap' && !maatschapGrondslagOnbekend && ebitdaAmt>0){
     var _maatschapRatio=multipleTypeBedrag/ebitdaAmt;
-    fcE=fcE.map(function(e){return e*_maatschapRatio;});
+    fcE=fcE.map(function(e){return e==null?null:e*_maatschapRatio;});
   }
   // Zelfde basis-onderscheid als wLaag/wMid/wHoog hierboven — bij een omzet-multiple moet de rolling
   // forecast de omzetprognose (fc) vermenigvuldigen, niet de EBITDA-prognose (fcE).
-  var fcW=maatschapGrondslagOnbekend?[null,null,null,null]:(multipleType==='omzet'?fc.map(function(o){return o*mMid;}):fcE.map(function(e){return e*mMid;}));
+  var fcW=(_geenMultiple||forecastOnbekend)?[null,null,null,null]:(multipleType==='omzet'?fc.map(function(o){return o*mMid;}):fcE.map(function(e){return e*mMid;}));
 
   // Earn-out default
   var earnBase=(wMid===null||wMid===undefined)?null:wMid;
@@ -1523,10 +1668,10 @@ function dvBerekenWaardering(){
     o1:o1,o2:o2,o3:o3,omzetYTD:omzetYTD,ebitdaAbs:ebitdaAbs,ebitdaPct:ebitdaPct,ebitdaAmt:ebitdaAmt,
     partnerBel:partnerBel,partnerBelLabel:partnerBelLabel,recurring:recurring,declarab:declarab,wip:wip,debiteuren:debiteuren,
     fte:fte,aantalP:aantalP,omzetPerP:omzetPerP,aantalKlanten:aantalKlanten,top1pct:top1pct,top10pct:top10pct,churn:churn,
-    mLaag:mLaag,mMid:mMid,mHoog:mHoog,omzetFactor:omzetFactor,multipleType:multipleType,multipleTypeBedrag:multipleTypeBedrag,
+    mLaag:mLaag,mMid:mMid,mHoog:mHoog,multipleType:multipleType,multipleTypeBedrag:multipleTypeBedrag,multipleOnbekend:multipleOnbekend,
     maatschapModus:maatschapModus,maatschapGrondslagOnbekend:maatschapGrondslagOnbekend,ondernemersloonTotaal:maatschapModus?partnerBel:0,
-    wLaag:wLaag,wMid:wMid,wHoog:wHoog,wOmzet:wOmzet,
-    gemGroei:gemGroei,fc:fc,fcE:fcE,fcW:fcW,
+    wLaag:wLaag,wMid:wMid,wHoog:wHoog,
+    gemGroei:gemGroei,forecastOnbekend:forecastOnbekend,fc:fc,fcE:fcE,fcW:fcW,
     earnBase:earnBase,earnPct:earnPct,earnTarget:earnTarget,earnJaren:earnJaren,fixedKoop:fixedKoop,earnJaarlijks:earnJaarlijks,
     solvabiliteit:solvabiliteit,roe:roe,roa:roa,currentRatio:currentRatio,quickRatio:quickRatio,dscr:dscr,netDebtEbitda:netDebtEbitda
   };
@@ -1559,8 +1704,8 @@ function dvIndicatorenRij(v){
     {label:'ROE',val:v.roe,fmt:function(x){return x.toFixed(1)+'%';}},
     {label:'ROA',val:v.roa,fmt:function(x){return x.toFixed(1)+'%';}},
     {label:'Current ratio',val:v.currentRatio,fmt:function(x){return x.toFixed(2);}},
-    {label:'Quick ratio',val:v.quickRatio,fmt:function(x){return x.toFixed(2);},titel:'Bevat onderhanden werk (OHW) in de teller — bewuste modelkeuze voor een dienstverlener zonder fysieke voorraad, wijkt af van de klassieke quick ratio die voorraadachtige posten juist uitsluit.'},
-    {label:'DSCR',val:v.dscr,fmt:function(x){return x.toFixed(2);},titel:'Vereenvoudigd: EBITDA / (rentelasten + aflossingsverplichting) — geen volledige kasstroom na belasting en CAPEX.'},
+    {label:'Quick ratio',val:v.quickRatio,fmt:function(x){return x.toFixed(2);},titel:'Acid test: (debiteuren + liquide middelen) / kortlopende schulden. Voorraad en onderhanden werk zijn hier bewust uitgesloten (die zitten wél in de current ratio).'},
+    {label:'EBITDA-dekking schuldendienst',val:v.dscr,fmt:function(x){return x.toFixed(2);},titel:'Vereenvoudigde dekkingsgraad: EBITDA / (rentelasten + aflossingsverplichting). GEEN volwaardige DSCR — die gebruikt de vrije kasstroom vóór schuldendienst (na belasting, capex en werkkapitaal).'},
     {label:'Netto schuld / EBITDA',val:v.netDebtEbitda,fmt:function(x){return x.toFixed(2)+'×';}}
   ].filter(function(it){return it.val!==null&&it.val!==undefined&&isFinite(it.val);});
   var alleItems=items.concat(ratioItems);
@@ -1581,8 +1726,8 @@ function renderWaardering(){
   var v=dvBerekenWaardering();
   var o1=v.o1,o2=v.o2,o3=v.o3,ebitdaAbs=v.ebitdaAbs,ebitdaPct=v.ebitdaPct,ebitdaAmt=v.ebitdaAmt,
     fte=v.fte,recurring=v.recurring,churn=v.churn,
-    mLaag=v.mLaag,mMid=v.mMid,mHoog=v.mHoog,omzetFactor=v.omzetFactor,
-    wLaag=v.wLaag,wMid=v.wMid,wHoog=v.wHoog,wOmzet=v.wOmzet,
+    mLaag=v.mLaag,mMid=v.mMid,mHoog=v.mHoog,
+    wLaag=v.wLaag,wMid=v.wMid,wHoog=v.wHoog,
     gemGroei=v.gemGroei,fc=v.fc,fcE=v.fcE,fcW=v.fcW,
     earnBase=v.earnBase,earnPct=v.earnPct,earnTarget=v.earnTarget,earnJaren=v.earnJaren,fixedKoop=v.fixedKoop,earnJaarlijks=v.earnJaarlijks;
 
@@ -1621,22 +1766,23 @@ function renderWaardering(){
     +(multipleType==='omzet'?'<div style="font-size:12px;color:var(--gold);background:var(--gold-bg);border:1px solid var(--gold);border-radius:var(--r);padding:8px 12px;margin-bottom:.75rem">Deze sector gebruikt een omzet-multiple (praktijkwaarde), geen EBITDA-multiple. Het Dealvoorstel-scherm (prijsmechanisme, bankfinanciering, schuldaflossing, DCF) blijft EBITDA-based — gebruik daar de cijfers hieronder met dat voorbehoud.</div>':'')
     +(v.maatschapModus&&!v.maatschapGrondslagOnbekend?'<div style="font-size:12px;color:var(--teal-dim);background:var(--teal-bg);border:1px solid var(--teal-dark);border-radius:var(--r);padding:8px 12px;margin-bottom:.75rem">Maatschap / IB-onderneming: de grondslag is de genormaliseerde winst ('+fmtGeld(ebitdaAmt)+') <strong>minus</strong> een marktconform ondernemersloon voor de werkende maten ('+fmtGeld(v.ondernemersloonTotaal)+', overgenomen uit het veld eigenaar-/partnerbeloning) = <strong>'+fmtGeld(v.multipleTypeBedrag)+'</strong>. Er wordt niet met vennootschapsbelasting gerekend (maten betalen box-1 inkomstenbelasting).</div>':'')
     +(v.maatschapModus&&v.maatschapGrondslagOnbekend?'<div style="font-size:12px;color:var(--red);background:var(--red-bg);border:1px solid var(--red);border-radius:var(--r);padding:8px 12px;margin-bottom:.75rem"><strong>&#9888; Grondslag nog niet vast te stellen.</strong> Dit is een maatschap: de waardering rekent op de winst ná een marktconform ondernemersloon voor de werkende maten. Vul daarvoor eerst het veld <strong>eigenaar-/partnerbeloning totaal per jaar</strong> in (fase Financieel). Zolang dat leeg is, wordt hier bewust géén waarde getoond in plaats van een ongecorrigeerd cijfer.</div>':'')
+    +(v.multipleOnbekend?'<div style="font-size:12px;color:var(--red);background:var(--red-bg);border:1px solid var(--red);border-radius:var(--r);padding:8px 12px;margin-bottom:.75rem"><strong>&#9888; Geen multiple-range voor deze sector.</strong> Er is geen onderbouwde EBITDA-/omzet-multiple bekend voor deze sector, dus er wordt hier bewust géén waardering getoond in plaats van een gegokte bandbreedte. Gebruik het Dealvoorstel-scherm en vul daar een onderbouwde multiple handmatig in.</div>':'')
     +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:.75rem">'
     +'<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r2);padding:1rem;text-align:center">'
-      +'<div style="font-size:10px;color:var(--muted);margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.06em">Laag ('+mLaag+'&times; '+basisLabel+')</div>'
+      +'<div style="font-size:10px;color:var(--muted);margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.06em">Laag ('+(mLaag!=null?mLaag:'?')+'&times; '+basisLabel+')</div>'
       +'<div style="font-family:Playfair Display,serif;font-size:1.4rem;font-weight:600;color:var(--mid)">'+fmtGeld(wLaag)+'</div></div>'
     +'<div style="background:var(--teal-bg);border:2px solid var(--teal-dark);border-radius:var(--r2);padding:1rem;text-align:center">'
-      +'<div style="font-size:10px;color:var(--teal-dim);margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.06em;font-weight:600">Midden ('+mMid+'&times; '+basisLabel+')</div>'
+      +'<div style="font-size:10px;color:var(--teal-dim);margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.06em;font-weight:600">Midden ('+(mMid!=null?mMid:'?')+'&times; '+basisLabel+')</div>'
       +'<div style="font-family:Playfair Display,serif;font-size:1.8rem;font-weight:600;color:var(--teal)">'+fmtGeld(wMid)+'</div></div>'
     +'<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r2);padding:1rem;text-align:center">'
-      +'<div style="font-size:10px;color:var(--muted);margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.06em">Hoog ('+mHoog+'&times; '+basisLabel+')</div>'
+      +'<div style="font-size:10px;color:var(--muted);margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.06em">Hoog ('+(mHoog!=null?mHoog:'?')+'&times; '+basisLabel+')</div>'
       +'<div style="font-family:Playfair Display,serif;font-size:1.4rem;font-weight:600;color:var(--mid)">'+fmtGeld(wHoog)+'</div></div>'
     +'</div>'
-    +'<div style="font-size:12px;color:var(--mid);padding:.6rem .75rem;background:var(--card);border-radius:var(--r)">'
-      +'Omzetmethode ('+omzetFactor+'\xd7): <strong>'+fmtGeld(wOmzet)+'</strong>'
-      +(recurring>0?' &nbsp;|&nbsp; Recurring: <strong>'+recurring+'%</strong>':'')
-      +(churn>0?' &nbsp;|&nbsp; Churn: <strong>'+churn+'%</strong>':'')
-    +'</div>'
+    +((recurring>0||churn>0)?('<div style="font-size:12px;color:var(--mid);padding:.6rem .75rem;background:var(--card);border-radius:var(--r)">'
+      +(recurring>0?'Recurring: <strong>'+recurring+'%</strong>':'')
+      +(recurring>0&&churn>0?' &nbsp;|&nbsp; ':'')
+      +(churn>0?'Churn: <strong>'+churn+'%</strong>':'')
+    +'</div>'):'')
     +(v.maatschapGrondslagOnbekend?'':'<div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)">'+dvSvgBarChart([
       {label:'Laag ('+mLaag+'\xd7 '+basisLabel+')',waarde:wLaag,kleur:'var(--border2)'},
       {label:'Midden ('+mMid+'\xd7 '+basisLabel+')',waarde:wMid,kleur:'var(--teal)'},
@@ -1653,24 +1799,31 @@ function renderWaardering(){
 
   // Rolling forecast
   html+='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;margin-bottom:1.25rem">'
-    +'<div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)">Rolling forecast (3 jaar)</div>'
-    +'<div style="font-size:12px;color:var(--mid);margin-bottom:.75rem">Gem. historische groei: <strong style="color:var(--sub)">'+gemGroei.toFixed(1)+'%</strong>/jaar</div>'
+    +'<div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)">Rolling forecast (3 jaar)</div>';
+  if(v.forecastOnbekend){
+    html+='<div style="font-size:12px;color:var(--gold-dark);background:var(--gold-bg);border:1px solid var(--gold);border-radius:var(--r);padding:8px 12px"><strong>&#9888; Geen groeiraming mogelijk.</strong> Er zijn niet genoeg opeenvolgende omzetjaren ingevuld om een gemiddelde historische groei te berekenen. Vul omzet jaar 1 t/m 3 in; er wordt bewust g\u00e9\u00e9n groeivoet aangenomen.</div>';
+  } else if(v.multipleOnbekend){
+    html+='<div style="font-size:12px;color:var(--mid);margin-bottom:.75rem">Gem. historische groei: <strong style="color:var(--sub)">'+gemGroei.toFixed(1)+'%</strong>/jaar. Waardebandbreedte niet getoond \u2014 geen multiple-range bekend voor deze sector.</div>';
+  } else {
+    html+='<div style="font-size:12px;color:var(--mid);margin-bottom:.75rem">Gem. historische groei: <strong style="color:var(--sub)">'+gemGroei.toFixed(1)+'%</strong>/jaar</div>'
     +'<table style="width:100%;border-collapse:collapse"><thead><tr>'
     +'<th style="text-align:left;padding:8px 10px;font-size:10px;text-transform:uppercase;color:var(--muted);border-bottom:2px solid var(--border)">Jaar</th>'
     +'<th style="text-align:right;padding:8px 10px;font-size:10px;text-transform:uppercase;color:var(--muted);border-bottom:2px solid var(--border)">Omzet</th>'
     +'<th style="text-align:right;padding:8px 10px;font-size:10px;text-transform:uppercase;color:var(--muted);border-bottom:2px solid var(--border)">EBITDA</th>'
     +'<th style="text-align:right;padding:8px 10px;font-size:10px;text-transform:uppercase;color:var(--muted);border-bottom:2px solid var(--border)">Waardebandreedte</th>'
     +'</tr></thead><tbody>';
-  var jLabels=['Huidig','Jaar +1','Jaar +2','Jaar +3'];
-  for(var j=0;j<4;j++){
-    html+='<tr style="'+(j===0?'background:var(--teal-bg)':'')+'">'
-      +'<td style="padding:8px 10px;font-size:12px;font-weight:'+(j===0?'600':'400')+';color:var(--sub);border-bottom:1px solid var(--border)">'+jLabels[j]+'</td>'
-      +'<td style="padding:8px 10px;font-size:12px;font-family:IBM Plex Mono,monospace;text-align:right;border-bottom:1px solid var(--border)">'+fmtGeld(fc[j])+'</td>'
-      +'<td style="padding:8px 10px;font-size:12px;font-family:IBM Plex Mono,monospace;text-align:right;color:var(--teal);border-bottom:1px solid var(--border)">'+fmtGeld(fcE[j])+'</td>'
-      +'<td style="padding:8px 10px;font-size:12px;font-family:IBM Plex Mono,monospace;text-align:right;color:var(--mid);border-bottom:1px solid var(--border)">'+fmtGeld(fcW[j]*(mLaag/mMid))+' \u2013 '+fmtGeld(fcW[j]*(mHoog/mMid))+'</td>'
-      +'</tr>';
+    var jLabels=['Huidig','Jaar +1','Jaar +2','Jaar +3'];
+    for(var j=0;j<4;j++){
+      html+='<tr style="'+(j===0?'background:var(--teal-bg)':'')+'">'
+        +'<td style="padding:8px 10px;font-size:12px;font-weight:'+(j===0?'600':'400')+';color:var(--sub);border-bottom:1px solid var(--border)">'+jLabels[j]+'</td>'
+        +'<td style="padding:8px 10px;font-size:12px;font-family:IBM Plex Mono,monospace;text-align:right;border-bottom:1px solid var(--border)">'+fmtGeld(fc[j])+'</td>'
+        +'<td style="padding:8px 10px;font-size:12px;font-family:IBM Plex Mono,monospace;text-align:right;color:var(--teal);border-bottom:1px solid var(--border)">'+fmtGeld(fcE[j])+'</td>'
+        +'<td style="padding:8px 10px;font-size:12px;font-family:IBM Plex Mono,monospace;text-align:right;color:var(--mid);border-bottom:1px solid var(--border)">'+fmtGeld(fcW[j]*(mLaag/mMid))+' \u2013 '+fmtGeld(fcW[j]*(mHoog/mMid))+'</td>'
+        +'</tr>';
+    }
+    html+='</tbody></table>';
   }
-  html+='</tbody></table></div>';
+  html+='</div>';
 
   // Earn-out
   html+='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;margin-bottom:1.25rem">'

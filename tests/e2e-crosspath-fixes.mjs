@@ -225,6 +225,26 @@ async function main() {
     }
   }
 
+  // ─────────────── B6: /mna/biedingen/vergelijk alleen voor de begeleider ───────────────
+  // De bod-vergelijker (onderhandel-playbook onderdeel 4) mag NOOIT iets teruggeven aan een koper of
+  // aan een verkoper — alleen aan de begeleider van (een traject in) de groep. Zie backlog B6.
+  kop('B6 · /mna/biedingen/vergelijk weigert koper/verkoper, laat begeleider door');
+  {
+    const alsKoper = await api('GET', '/mna/biedingen/vergelijk?code=' + traject.koper_code);
+    check('koper-code → 401 (geen toegang tot de bod-vergelijker)', alsKoper.status === 401, 'status=' + alsKoper.status + ' ' + JSON.stringify(alsKoper.json));
+
+    const alsVerkoper = await api('GET', '/mna/biedingen/vergelijk?code=' + traject.code);
+    check('verkoper-/trajectcode → 401 (verkoper is geen begeleider)', alsVerkoper.status === 401, 'status=' + alsVerkoper.status + ' ' + JSON.stringify(alsVerkoper.json));
+
+    const onzin = await api('GET', '/mna/biedingen/vergelijk?code=DITBESTAATNIET999');
+    check('onbekende code → 401', onzin.status === 401, 'status=' + onzin.status);
+
+    const alsBegeleider = await api('GET', '/mna/biedingen/vergelijk?code=' + traject.tussen_code, { headers: { 'x-tussen-key': traject.tussen_code } });
+    check('begeleider-code → 200 met status "geen_groep" (dit traject is niet gekoppeld)',
+      alsBegeleider.status === 200 && alsBegeleider.json && alsBegeleider.json.status === 'geen_groep',
+      'status=' + alsBegeleider.status + ' ' + JSON.stringify(alsBegeleider.json));
+  }
+
   await opruimen();
   process.exit(samenvatting() ? 0 : 1);
 }

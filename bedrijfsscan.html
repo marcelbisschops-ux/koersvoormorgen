@@ -834,6 +834,17 @@ const SECTOR_LABELS={
 };
 function SL(){return SECTOR_LABELS[ST.sector]||SECTOR_LABELS.accountancy;}
 function isAccountancyScan(){return (ST.sector||'accountancy')==='accountancy';}
+// Groepsmodus (backlogpunt B8): elke opgeslagen scan draagt sinds 31 aug 2026 zijn eigen sector mee.
+// De per-kantoor-analyse gebruikt de sector van díé scan; het groepsrapport gebruikt de gedeelde
+// sector als alle deelnemers gelijk zijn, anders sectorneutrale bewoording ("onderneming(en)").
+function labelsVoorSector(sec){return SECTOR_LABELS[sec]||SECTOR_LABELS.accountancy;}
+function groepSectorLabels(offices){
+  var secs=(offices||[]).map(function(o){return (o.sector||'').trim();}).filter(Boolean);
+  var uniek=secs.filter(function(v,i){return secs.indexOf(v)===i;});
+  if(uniek.length===1 && SECTOR_LABELS[uniek[0]]) return {sector:uniek[0],acc:uniek[0]==='accountancy',L:SECTOR_LABELS[uniek[0]]};
+  if(!secs.length) return {sector:ST.sector||'accountancy',acc:isAccountancyScan(),L:SL()};   // oude scans zonder sector
+  return {sector:'gemengd',acc:false,L:{zn:'onderneming',znMv:'ondernemingen'}};              // gemengde groep
+}
 
 /* ======== STATE ======== */
 let ST={screen:'intro',sector:'accountancy',_benchmarks:null,section:0,answers:{},scores:null,scenarios:null,openScenario:null,openOffice:null,aiText:null,aiLoading:false,_smvKlaar:false,groupId:null,adminCode:null,groupData:null,groupLoading:false,isGroupAdmin:false,savedScanId:null,profile:{naam:'',naamAnon:false,email:'',regio:'',fte:'',omzet:'',specialisme:'',doelgroep:'',software:'',ambitie:'',context:'',omzetfte:'',ebitda:'',recurring:'',saveConsent:true,sbi:''}};
@@ -1855,14 +1866,17 @@ async function genereerKantoorAI(o, container) {
   }).join(', ');
   var oPfte = o.fte && o.revenue
     ? Math.round(parseFloat(String(o.revenue).replace(/[^0-9]/g,'')) / parseFloat(o.fte)) : 0;
-  var zn = SL().zn;
+  // Sector van D\u00cdT kantoor (uit de opgeslagen scan); valt terug op de scan-sector voor oude scans.
+  var oSector = (o.sector||'').trim() || ST.sector || 'accountancy';
+  var oAcc = oSector === 'accountancy';
+  var zn = labelsVoorSector(oSector).zn;
   var isAdmin = (o.kantoorType||'').toLowerCase().includes('admin') || (o.specialisme||'').toLowerCase().includes('admin');
   // Accountancy-benchmark alleen voor de accountancy-scan; andere sectoren hebben (nog) geen externe norm.
-  var bFte = !isAccountancyScan() ? 0 : (isAdmin?(ST._benchmarks&&ST._benchmarks['omzet_fte_admin']?ST._benchmarks['omzet_fte_admin'].waarde:120000):(ST._benchmarks&&ST._benchmarks['omzet_fte_accountant']?ST._benchmarks['omzet_fte_accountant'].waarde:ST._benchmarks&&ST._benchmarks['omzet_fte_gemiddeld']?ST._benchmarks['omzet_fte_gemiddeld'].waarde:133000));
+  var bFte = !oAcc ? 0 : (isAdmin?(ST._benchmarks&&ST._benchmarks['omzet_fte_admin']?ST._benchmarks['omzet_fte_admin'].waarde:120000):(ST._benchmarks&&ST._benchmarks['omzet_fte_accountant']?ST._benchmarks['omzet_fte_accountant'].waarde:ST._benchmarks&&ST._benchmarks['omzet_fte_gemiddeld']?ST._benchmarks['omzet_fte_gemiddeld'].waarde:133000));
   var bLabel = isAdmin ? '\u20ac'+(bFte/1000).toFixed(0)+'K (admin)' : '\u20ac'+(bFte/1000).toFixed(0)+'K';
   var prompt =
     'Schrijf een strategisch rapport. Gebruik "uw ' + zn + '". Geen eerste persoon. Begin direct met ## Strategisch profiel.\n\n'
-    + (isAccountancyScan()?'':'LET OP: dit is GEEN accountantskantoor \u2014 geen accountancy-jargon of -benchmarks, schrijf over "' + zn + '".\n')
+    + (oAcc?'':'LET OP: dit is GEEN accountantskantoor \u2014 geen accountancy-jargon of -benchmarks, schrijf over "' + zn + '".\n')
     + (zn==='kantoor'?'Kantoor: ':zn==='praktijk'?'Praktijk: ':'Bedrijf: ') + (o.name||'Anoniem') + ' | Score: ' + o.overall + '/100\n'
     + 'Fte: ' + (o.fte||'?') + ' | Omzet: ' + (o.revenue||'?')
       + (oPfte > 0 ? ' (\u20ac' + (oPfte/1000).toFixed(0) + 'K/fte' + (oPfte < bFte ? ' — ONDER ' + bLabel : '') + ')' : '') + '\n'
@@ -1899,11 +1913,12 @@ async function genereerGroepsAI() {
       + (o.specialisme ? ' | Specialisme: ' + o.specialisme : '');
   }).join('\n');
   var dims = SECTIONS.map(function(s){ return s.label + ': ' + (cum[s.id]||0); }).join(', ');
-  var zn = SL().zn, znMv = SL().znMv;
+  var gL = groepSectorLabels(offices);
+  var zn = gL.L.zn, znMv = gL.L.znMv;
   var prompt =
     'Schrijf een uitgebreid strategisch groepsrapport in het Nederlands (800-1000 woorden).\n'
     + 'Gebruik de bedrijfsnaam of "het ' + zn + '" direct. NOOIT eerste persoon (geen ik/mijn).\n'
-    + (isAccountancyScan()?'':'LET OP: dit betreft GEEN accountantskantoren — geen accountancy-jargon of -benchmarks, schrijf over "' + znMv + '".\n')
+    + (gL.sector==='gemengd'?'LET OP: deze groep bevat deelnemers uit verschillende sectoren — schrijf sectorneutraal ("onderneming(en)"), geen sectorspecifiek jargon of sectorbenchmarks.\n':(gL.acc?'':'LET OP: dit betreft GEEN accountantskantoren — geen accountancy-jargon of -benchmarks, schrijf over "' + znMv + '".\n'))
     + 'VERBOD: geen markdown-tabellen (geen |---|). Schrijf alles in lopende tekst.\n\n'
     + 'GROEP: ' + (d.group&&d.group.name||'Onbekend') + ' | Gem. score: ' + avg + '/100\n'
     + 'Dimensiegemiddelden: ' + dims + '\n\n' + znMv.toUpperCase() + ' (gesorteerd op score):\n' + info + '\n\n'
