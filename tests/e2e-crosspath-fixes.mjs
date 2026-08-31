@@ -245,6 +245,78 @@ async function main() {
       'status=' + alsBegeleider.status + ' ' + JSON.stringify(alsBegeleider.json));
   }
 
+  // ─────────────── CONF: vertrouwelijkheidsmatrix van de login-respons ───────────────
+  // Negatieve-exposure-test (1 sep 2026): /mna/traject/{code} draait op SELECT * van mna_trajecten.
+  // Deze test bewijst per rol dat gevoelige kolommen NIET in het traject-object terugkomen — de
+  // "koper krijgt nooit bem_tekst / tussen_code"-invariant, niet alleen "koper krijgt wat mag".
+  // Bij een nieuwe gevoelige kolom hoort hier een regel; faalt de test, dan lekt de kolom.
+  kop('CONF · Vertrouwelijkheidsmatrix login-respons (negatieve exposure per rol)');
+  {
+    const VERBODEN_VOOR_KOPER = [
+      'tussen_code', 'koper_code',
+      'bem_tekst', 'dealvoorstel_tekst', 'verkoopmemorandum_tekst', 'teaser_tekst',
+      'verkoopmemorandum_nda_door', 'verkoopmemorandum_nda_op',
+      'trajectfee_bedrag', 'trajectfee_type', 'trajectfee_gepind_op',
+      'gebruiker_id', 'notitie',
+      'aangedragen_door_naam', 'aangedragen_door_organisatie', 'aangedragen_door_afspraak',
+      'signhost_transactions', 'verkoper_teken', 'koper_teken', 'teken_status',
+      'volgend_overleg', 'extra_contact', 'inactiviteit_gewaarschuwd_op', 'export_opgeruimd',
+    ];
+    const VERBODEN_VOOR_VERKOPER = [
+      'tussen_code', 'koper_code',
+      'dealvoorstel_tekst', 'verkoopmemorandum_tekst',
+      'verkoopmemorandum_nda_door', 'verkoopmemorandum_nda_op',
+      'trajectfee_bedrag', 'trajectfee_type', 'trajectfee_gepind_op',
+      'gebruiker_id', 'notitie',
+      'aangedragen_door_naam', 'aangedragen_door_organisatie', 'aangedragen_door_afspraak',
+      'signhost_transactions', 'verkoper_teken', 'koper_teken', 'teken_status',
+      'volgend_overleg', 'extra_contact',
+    ];
+    // Positieve sanity: dit MOET de koper wel krijgen (anders is er over-gestript).
+    const VERWACHT_VOOR_KOPER = ['id', 'kantoor_naam', 'sector', 'status', 'begeleider_naam'];
+
+    const loginResp = async (code) => {
+      const r = await api('POST', '/mna/traject/' + code, { body: { ts: Date.now() } });
+      return (r.json && r.json.traject) || null;
+    };
+    const geenVan = (obj, verboden, rol) => {
+      const lek = verboden.filter(k => obj && Object.prototype.hasOwnProperty.call(obj, k) && obj[k] !== null && obj[k] !== undefined && obj[k] !== '');
+      check(rol + '-login lekt geen gevoelige velden', lek.length === 0, lek.length ? 'gelekt: ' + lek.join(', ') : '');
+      // Ook de key-aanwezigheid checken (een lege string kan alsnog "dit veld bestaat"-info lekken):
+      const keys = verboden.filter(k => obj && Object.prototype.hasOwnProperty.call(obj, k));
+      check(rol + '-login: gevoelige veld-keys volledig afwezig', keys.length === 0, keys.length ? 'aanwezig: ' + keys.join(', ') : '');
+    };
+
+    const koperObj = await loginResp(traject.koper_code);
+    const verkoperObj = await loginResp(traject.code);
+    const tussenObj = await loginResp(traject.tussen_code);
+
+    check('koper-login geeft een traject-object terug', !!koperObj);
+    check('verkoper-login geeft een traject-object terug', !!verkoperObj);
+    check('begeleider-login geeft een traject-object terug', !!tussenObj);
+
+    if (koperObj) {
+      geenVan(koperObj, VERBODEN_VOOR_KOPER, 'koper');
+      const mist = VERWACHT_VOOR_KOPER.filter(k => !koperObj[k]);
+      check('koper-login bevat wél de toegestane basisvelden (niet over-gestript)', mist.length === 0, mist.length ? 'mist: ' + mist.join(', ') : '');
+    }
+    if (verkoperObj) geenVan(verkoperObj, VERBODEN_VOOR_VERKOPER, 'verkoper');
+    if (tussenObj) {
+      // De begeleider MOET tussen_code + koper_code juist wél krijgen (dashboard deelt de codes).
+      check('begeleider-login bevat tussen_code én koper_code (nodig voor het dashboard)',
+        !!(tussenObj.tussen_code || traject.tussen_code) && Object.prototype.hasOwnProperty.call(tussenObj, 'koper_code'),
+        JSON.stringify({ tussen_code: !!tussenObj.tussen_code, koper_code: Object.prototype.hasOwnProperty.call(tussenObj, 'koper_code') }));
+    }
+
+    // /mna/versies/{koper_code}: mag nooit een tussenpersoon-only doc_type teruggeven.
+    const versiesKoper = await api('GET', '/mna/versies/' + traject.koper_code);
+    const koperDocTypes = Array.isArray(versiesKoper.json) ? versiesKoper.json.map(v => v.doc_type) : [];
+    const verbodenDocTypes = ['bem', 'bem_verk', 'bem_koper', 'bem_upload', 'dealvoorstel', 'waarderingsrapport', 'spa', 'closing'];
+    const docLek = koperDocTypes.filter(t => verbodenDocTypes.includes(t));
+    check('/mna/versies/{koper_code} lekt geen begeleider-/verkoper-only doc_types (incl. waarderingsrapport)',
+      docLek.length === 0, docLek.length ? 'gelekt: ' + docLek.join(', ') : 'koper ziet: ' + (koperDocTypes.join(', ') || '(niets)'));
+  }
+
   await opruimen();
   process.exit(samenvatting() ? 0 : 1);
 }

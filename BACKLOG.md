@@ -32,6 +32,24 @@ server-side moduleslots (Q&A / AI-analyse / contracten / marketing), mkb AI-extr
 - **Wie:** Marcel (review wat er in de 20 commits zit) + ik voor het opdelen/committen op verzoek.
   Auth-/betaal-/matching-code → eerst staging.
 
+### 0.2 — Allow-list DTO-architectuur voor deal-data-endpoints · **P1 · 🔴**
+De grootste architectuurschuld (Marcel + ChatGPT, 1 sep 2026). `/mna/traject/{code}` en enkele
+andere endpoints draaien op `SELECT *` van `mna_trajecten` en filteren met een lijst deletes. Elke
+nieuwe kolom is dan automatisch potentieel uitlekbaar — zo lekten `bem_tekst`,
+`verkoopmemorandum_tekst` en `tussen_code` (privilege-escalatie) naar de koper (gevonden + tactisch
+gedicht 1 sep, zie `BACKLOG-ARCHIEF.md` #25 + `SECURITY-INVARIANTS.md`).
+- **Nu al gedaan (tussenstap):** gecategoriseerde strip (`GEVOELIG` in
+  `backend/worker/11-mna-tekenen-beheer.js`), `waarderingsrapport` in `ROLGEBONDEN_DOCTYPES`, en een
+  permanente negatieve-exposure-test (CONF-matrix in `tests/e2e-crosspath-fixes.mjs`).
+- **Echte fix (dit punt):** per rol een expliciet respons-schema (`koper` / `verkoper` /
+  `meekijker` / `begeleider`); geen DB-object meer rechtstreeks naar JSON; één centrale
+  policy-laag (`rol × resource × actie × veld`) i.p.v. per-endpoint-logica; een CI-gate die faalt
+  als een nieuw veld ongemerkt in een extern schema belandt. Exports/downloads/e-mailroutes volgen
+  dezelfde policy.
+- **Werkwijze:** gescheiden AI-contexten (Builder / Breaker / Fixer), één endpoint tegelijk, elke
+  stap via staging. Begin bij `/mna/traject/{code}` (het login-antwoord, grootste oppervlak).
+- **Regel tot dit staat:** geen nieuwe feature op deal-data vóór de security-boundary goed staat.
+
 ---
 
 ## 1. Beslissingen die op jou wachten (geen code van mij nodig)
