@@ -10,26 +10,28 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 html{color-scheme:light dark}
+/* Huisstijl Koers voor Morgen (1 sep 2026): nachtblauw #0D1B2A, petrolgroen #3D6B63,
+   warm off-white #F6F2EA, koel lichtgrijs, goud #C49A4A. --red blijft semantisch. */
 :root{
-  --void:#f7f5f2;--bg:#faf9f7;--panel:#fff;
-  --border:#e4e0db;--border2:#d0cbc4;
-  --head:#1a1815;--sub:#2a2825;--mid:#5a5450;--muted:#6b6862;
-  --teal:#1a7a5e;--teal-light:#edf7f3;--teal-border:#b8ddd2;--teal-dark:#145f48;
-  --gold:#c9a84c;--gold-bg:#fdf8ee;--gold-border:#e8d99a;--gold-dark:#8a6d00;
+  --void:#f6f2ea;--bg:#f2f4f6;--panel:#fff;
+  --border:#d9dee3;--border2:#bfc8d0;
+  --head:#0d1b2a;--sub:#16232e;--mid:#42525e;--muted:#647581;
+  --teal:#3d6b63;--teal-light:#e9f1ef;--teal-border:#b7cdc7;--teal-dark:#2c4f4a;
+  --gold:#c49a4a;--gold-bg:#faf4e8;--gold-border:#e3d3a3;--gold-dark:#8a6a2e;
   --red:#c0392b;--red-light:#fdf2f0;
   --r:5px;--r2:8px;
-  --shadow:0 1px 3px rgba(0,0,0,.06),0 4px 12px rgba(0,0,0,.04);
-  --shadow-lg:0 4px 16px rgba(0,0,0,.08),0 1px 4px rgba(0,0,0,.04);
+  --shadow:0 1px 3px rgba(13,27,42,.06),0 4px 12px rgba(13,27,42,.04);
+  --shadow-lg:0 4px 16px rgba(13,27,42,.08),0 1px 4px rgba(13,27,42,.04);
 }
 /* Nachtmodus: volgt de systeeminstelling van het apparaat, zoals in mna.html. De toastmelding
    (#toast) gebruikt bewust een vaste donkere pil ongeacht thema — die staat los van --head. */
 @media(prefers-color-scheme:dark){
   :root{
-    --void:#1b1a17;--bg:#221f1c;--panel:#252320;
-    --border:#3d3a34;--border2:#4d4940;
-    --head:#f6f4ef;--sub:#e9e7e1;--mid:#b8b4aa;--muted:#938f86;
-    --teal:#2fae87;--teal-light:#1c352c;--teal-border:#2f5c4a;--teal-dark:#8fe0c0;
-    --gold:#e0c06a;--gold-bg:#332c1a;--gold-border:#5c4f2a;--gold-dark:#f0d68c;
+    --void:#0d1b2a;--bg:#132534;--panel:#16293a;
+    --border:#24384a;--border2:#33485c;
+    --head:#f4f1e9;--sub:#e2e9ee;--mid:#a6b8c4;--muted:#8ca0ae;
+    --teal:#5e9b8f;--teal-light:#1a2f3a;--teal-border:#33564f;--teal-dark:#9cc8bd;
+    --gold:#d8b36a;--gold-bg:#2b2c22;--gold-border:#4f4a2f;--gold-dark:#e8cf9a;
     --red:#e8746b;--red-light:#3a211f;
   }
 }
@@ -49,7 +51,7 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--s
 .field{margin-bottom:1rem}
 .field label{display:block;font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin-bottom:.4rem}
 .field input,.field select,.field textarea{width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:var(--r);color:var(--sub);font-family:'IBM Plex Sans',sans-serif;font-size:13px;padding:9px 11px;outline:none;transition:border-color .15s,box-shadow .15s}
-.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--teal);box-shadow:0 0 0 3px rgba(26,122,94,.08)}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--teal);box-shadow:0 0 0 3px rgba(61,107,99,.08)}
 .field textarea{resize:vertical;min-height:80px}
 .row2{display:flex;gap:12px}
 .row2 .field{flex:1}
@@ -141,7 +143,7 @@ tr:hover td{background:var(--bg);cursor:pointer}
 .modal-footer{display:flex;gap:8px;justify-content:flex-end;margin-top:1rem}
 
 /* TOAST */
-#toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:#1a1815;color:#fff;font-size:12px;padding:8px 18px;border-radius:20px;opacity:0;transition:opacity .2s;z-index:999;pointer-events:none}
+#toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:#0d1b2a;color:#fff;font-size:12px;padding:8px 18px;border-radius:20px;opacity:0;transition:opacity .2s;z-index:999;pointer-events:none}
 #toast.show{opacity:1}
 </style>
 </head>
@@ -171,7 +173,7 @@ function render(h){ge('app').innerHTML=h;}
 
 function toast(msg,type){
   var el=ge('toast');el.textContent=msg;
-  el.style.background=type==='err'?'#c0392b':type==='ok'?'#1a7a5e':'#1a1815';
+  el.style.background=type==='err'?'#c0392b':type==='ok'?'#3d6b63':'#0d1b2a';
   el.classList.add('show');setTimeout(function(){el.classList.remove('show');},2800);
 }
 
@@ -572,7 +574,7 @@ function renderHuisstijlModal(){
     <div id="huisstijl-modal-titel" style="font-family:Playfair Display,serif;font-size:1.15rem;color:var(--head);font-weight:600;margin-bottom:.25rem">&#127912; Eigen huisstijl</div>
     <div style="font-size:12px;color:var(--muted);margin-bottom:1.25rem;line-height:1.6">Deze instellingen gelden voor de trajecten die u aanmaakt — uw verkoper en koper zien uw eigen naam/kleur/logo in plaats van "${esc(BRAND.platform)}". Laat een veld leeg om de standaard te gebruiken.</div>
     <div class="field" style="margin-bottom:1rem"><label>Eigen platformnaam</label><input type="text" id="hs-naam" value="${esc(b.brand_naam)}" placeholder="${esc(BRAND.platform)}" maxlength="60"></div>
-    <div class="field" style="margin-bottom:1rem"><label>Accentkleur</label><div style="display:flex;align-items:center;gap:10px"><input type="color" id="hs-kleur" value="${esc(b.brand_kleur)||'#1a7a5e'}" style="width:48px;height:36px;padding:2px;border:1px solid var(--border);border-radius:6px;cursor:pointer"><span style="font-size:12px;color:var(--muted)">Klik op het vlak om een kleur te kiezen</span></div><div id="hs-kleur-waarschuwing" style="font-size:11px;color:var(--gold-dark);margin-top:6px;line-height:1.5;display:none">&#8505; Deze kleur is op een donkere achtergrond moeilijk leesbaar als tekst — uw verkoper/koper ziet in donkere modus automatisch een lichtere versie ervan.</div></div>
+    <div class="field" style="margin-bottom:1rem"><label>Accentkleur</label><div style="display:flex;align-items:center;gap:10px"><input type="color" id="hs-kleur" value="${esc(b.brand_kleur)||'#3d6b63'}" style="width:48px;height:36px;padding:2px;border:1px solid var(--border);border-radius:6px;cursor:pointer"><span style="font-size:12px;color:var(--muted)">Klik op het vlak om een kleur te kiezen</span></div><div id="hs-kleur-waarschuwing" style="font-size:11px;color:var(--gold-dark);margin-top:6px;line-height:1.5;display:none">&#8505; Deze kleur is op een donkere achtergrond moeilijk leesbaar als tekst — uw verkoper/koper ziet in donkere modus automatisch een lichtere versie ervan.</div></div>
     <div class="field" style="margin-bottom:1.25rem"><label>Logo</label>
       <div id="hs-logo-preview" style="margin-bottom:.5rem;${b.brand_logo_url?'':'display:none'}"><img id="hs-logo-img" src="${esc(b.brand_logo_url||'')}" style="height:40px;max-width:160px;object-fit:contain;border:1px solid var(--border);border-radius:6px;padding:4px;background:var(--bg)"></div>
       <input type="file" id="hs-logo-file" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml" style="font-size:12px">
@@ -601,7 +603,7 @@ function renderHuisstijlModal(){
       function lin(c){return c<=0.03928?c/12.92:Math.pow((c+0.055)/1.055,2.4);}
       return 0.2126*lin(r)+0.7152*lin(g)+0.0722*lin(b);
     }
-    var l1=relLuminantie(hex),l2=relLuminantie('#1b1a17');
+    var l1=relLuminantie(hex),l2=relLuminantie('#0d1b2a');
     return (Math.max(l1,l2)+0.05)/(Math.min(l1,l2)+0.05);
   }
   function toonKleurWaarschuwingIndienNodig(){
@@ -1156,7 +1158,7 @@ function initMeekijkersAdv(id, tussenCode, sector){
           var ingetrokken=!!v.ingetrokken_op;
           var verlopen=v.expires_at&&Date.now()>v.expires_at;
           var status=ingetrokken?'Ingetrokken':(verlopen?'Verlopen':'Actief');
-          var statusKleur=ingetrokken||verlopen?'#c0392b':'#1a7a5e';
+          var statusKleur=ingetrokken||verlopen?'#c0392b':'#3d6b63';
           html+='<tr style="border-top:1px solid var(--border)"><td style="padding:6px 0">'+esc(v.viewer_naam||'—')+'</td><td>'+esc(v.viewer_type||'—')+'</td>'
             +'<td>'+(v.scope_fase==='alle'?'Alle fases':esc(faseLabels[v.scope_fase]||v.scope_fase))+'</td>'
             +'<td><span class="code-val" style="font-size:11px">'+esc(v.viewer_code)+'</span></td>'

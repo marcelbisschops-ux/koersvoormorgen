@@ -10,14 +10,17 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 html{color-scheme:light dark}
-:root{--void:#faf9f6;--panel:#fff;--card:#f0eeea;--border:#dddbd4;--border2:#c8c5bc;--muted:#6b6862;--mid:#5a5854;--sub:#2a2825;--head:#1a1815;--teal:#1a7a5e;--teal-dim:#145f48;--teal-dark:#0a3d2e;--teal-bg:rgba(34,197,160,.1);--gold:#c9a84c;--gold-bg:rgba(201,168,76,.12);--gold-dark:#8a6d00;--red:#e05252;--red-bg:rgba(224,82,82,.1);--info:#2a5ea0;--info-bg:#eef3fa;--info-dim:#4a6ea0;--purple:#7c5cbf;--purple-bg:#f3f0ff;--purple-border:#c8b8f0;--r:6px;--r2:10px}
+/* Huisstijl Koers voor Morgen (1 sep 2026): nachtblauw #0D1B2A, petrolgroen #3D6B63,
+   warm off-white #F6F2EA, lichtgrijs #DCE2DD, goud #C49A4A. --red/--info/--purple blijven
+   semantisch (fout/info/tag) ongewijzigd. */
+:root{--void:#f6f2ea;--panel:#fff;--card:#ebeef1;--border:#d9dee3;--border2:#bfc8d0;--muted:#647581;--mid:#42525e;--sub:#16232e;--head:#0d1b2a;--teal:#3d6b63;--teal-dim:#2c4f4a;--teal-dark:#12352d;--teal-bg:rgba(61,107,99,.1);--gold:#c49a4a;--gold-bg:rgba(196,154,74,.12);--gold-dark:#8a6a2e;--red:#e05252;--red-bg:rgba(224,82,82,.1);--info:#2a5ea0;--info-bg:#eef3fa;--info-dim:#4a6ea0;--purple:#7c5cbf;--purple-bg:#f3f0ff;--purple-border:#c8b8f0;--r:6px;--r2:10px}
 /* Nachtmodus: volgt de systeeminstelling van het apparaat (dag/avond), geen aparte knop nodig.
    Alleen de kleurvariabelen wisselen — de rest van de CSS/JS gebruikt overal var(--x), dus dat
    verft automatisch mee. De vaste merkkleuren van documentknoppen (bieding/SPA/waardering) en de
    afgedrukte contract-/waarderingsdocumenten blijven bewust ongewijzigd — die horen altijd hetzelfde
    te ogen, ongeacht dag- of nachtmodus. */
 @media(prefers-color-scheme:dark){
-  :root{--void:#1b1a17;--panel:#252320;--card:#2f2c27;--border:#3d3a34;--border2:#4d4940;--muted:#938f86;--mid:#b8b4aa;--sub:#e9e7e1;--head:#f6f4ef;--teal:#2fae87;--teal-dim:#3fc49a;--teal-dark:#8fe0c0;--teal-bg:rgba(47,174,135,.16);--gold:#e0c06a;--gold-bg:rgba(224,192,106,.14);--gold-dark:#f0d68c;--red:#e8746b;--red-bg:rgba(232,116,107,.14);--info:#6ea8e0;--info-bg:rgba(110,168,224,.14);--info-dim:#8fb8e8;--purple:#b39ce0;--purple-bg:rgba(179,156,224,.16);--purple-border:#8f74b8}
+  :root{--void:#0d1b2a;--panel:#132534;--card:#16293a;--border:#24384a;--border2:#33485c;--muted:#8ca0ae;--mid:#a6b8c4;--sub:#e2e9ee;--head:#f4f1e9;--teal:#5e9b8f;--teal-dim:#4a8377;--teal-dark:#9cc8bd;--teal-bg:rgba(94,155,143,.16);--gold:#d8b36a;--gold-bg:rgba(216,179,106,.14);--gold-dark:#e8cf9a;--red:#e8746b;--red-bg:rgba(232,116,107,.14);--info:#6ea8e0;--info-bg:rgba(110,168,224,.14);--info-dim:#8fb8e8;--purple:#b39ce0;--purple-bg:rgba(179,156,224,.16);--purple-border:#8f74b8}
 }
 body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--sub);min-height:100vh;font-size:14px;line-height:1.6}
 #app{min-height:100vh}

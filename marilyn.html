@@ -10,10 +10,13 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 html{color-scheme:light dark}
-:root{--void:#faf9f6;--panel:#fff;--card:#f0eeea;--border:#dddbd4;--border2:#c8c5bc;--muted:#6b6862;--mid:#5a5854;--sub:#2a2825;--head:#1a1815;--teal:#1a7a5e;--teal-dim:#145f48;--teal-dark:#0a3d2e;--teal-bg:rgba(34,197,160,.1);--gold:#c9a84c;--gold-bg:rgba(201,168,76,.12);--gold-dark:#8a6d00;--red:#e05252;--red-bg:rgba(224,82,82,.1);--info:#2a5ea0;--info-bg:#eef3fa;--info-dim:#4a6ea0;--purple:#7c5cbf;--purple-bg:#f3f0ff;--purple-border:#c8b8f0;--r:6px;--r2:10px}
+/* Huisstijl Koers voor Morgen (1 sep 2026): nachtblauw #0D1B2A, petrolgroen #3D6B63,
+   warm off-white #F6F2EA, lichtgrijs #DCE2DD, goud #C49A4A. --red/--info/--purple blijven
+   semantisch (fout/info/tag) ongewijzigd. */
+:root{--void:#f6f2ea;--panel:#fff;--card:#ebeef1;--border:#d9dee3;--border2:#bfc8d0;--muted:#647581;--mid:#42525e;--sub:#16232e;--head:#0d1b2a;--teal:#3d6b63;--teal-dim:#2c4f4a;--teal-dark:#12352d;--teal-bg:rgba(61,107,99,.1);--gold:#c49a4a;--gold-bg:rgba(196,154,74,.12);--gold-dark:#8a6a2e;--red:#e05252;--red-bg:rgba(224,82,82,.1);--info:#2a5ea0;--info-bg:#eef3fa;--info-dim:#4a6ea0;--purple:#7c5cbf;--purple-bg:#f3f0ff;--purple-border:#c8b8f0;--r:6px;--r2:10px}
 /* Nachtmodus: volgt de systeeminstelling van het apparaat, zoals in mna.html/adv.html. */
 @media(prefers-color-scheme:dark){
-  :root{--void:#1b1a17;--panel:#252320;--card:#2f2c27;--border:#3d3a34;--border2:#4d4940;--muted:#938f86;--mid:#b8b4aa;--sub:#e9e7e1;--head:#f6f4ef;--teal:#2fae87;--teal-dim:#3fc49a;--teal-dark:#8fe0c0;--teal-bg:rgba(47,174,135,.16);--gold:#e0c06a;--gold-bg:rgba(224,192,106,.14);--gold-dark:#f0d68c;--red:#e8746b;--red-bg:rgba(232,116,107,.14);--info:#6ea8e0;--info-bg:rgba(110,168,224,.14);--info-dim:#8fb8e8;--purple:#b39ce0;--purple-bg:rgba(179,156,224,.16);--purple-border:#8f74b8}
+  :root{--void:#0d1b2a;--panel:#132534;--card:#16293a;--border:#24384a;--border2:#33485c;--muted:#8ca0ae;--mid:#a6b8c4;--sub:#e2e9ee;--head:#f4f1e9;--teal:#5e9b8f;--teal-dim:#4a8377;--teal-dark:#9cc8bd;--teal-bg:rgba(94,155,143,.16);--gold:#d8b36a;--gold-bg:rgba(216,179,106,.14);--gold-dark:#e8cf9a;--red:#e8746b;--red-bg:rgba(232,116,107,.14);--info:#6ea8e0;--info-bg:rgba(110,168,224,.14);--info-dim:#8fb8e8;--purple:#b39ce0;--purple-bg:rgba(179,156,224,.16);--purple-border:#8f74b8}
 }
 body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--sub);min-height:100vh;font-size:14px;line-height:1.6}
 .mono{font-family:'IBM Plex Mono',monospace}
@@ -53,7 +56,7 @@ th:after{content:'';position:absolute;right:0;top:25%;height:50%;width:3px;backg
 th:hover:after{opacity:1}
 td{padding:12px 16px;border-bottom:1px solid var(--border);font-size:13px;color:var(--mid);vertical-align:middle;word-break:break-word}
 tr:last-child td{border-bottom:none}
-tr:hover td{background:rgba(26,122,94,.04)}
+tr:hover td{background:rgba(61,107,99,.04)}
 .table-wrap{overflow-x:auto}
 .score-badge{display:inline-block;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;padding:2px 8px;border-radius:3px}
 .score-high{background:var(--teal-bg);color:var(--teal)}
@@ -1905,7 +1908,7 @@ async function toonDetail(id,naam){
         bemEditEl2.value=tekst;
         bemEditEl2.dataset.tekst=''; // clear
         document.getElementById('bem-email-btn').dataset.ready='1';
-        document.getElementById('bem-print-btn').addEventListener('click',function(){var bemEl=document.getElementById('bem-edit');var pt=bemEl?bemEl.value:tekst;var win=window.open('','_blank');win.document.write('<html><head><style>body{font-family:Georgia,serif;font-size:13px;line-height:1.9;max-width:700px;margin:2cm auto;color:#2a2825}@media print{body{margin:1.5cm}}</style></head><body><p>'+pt.replace(/\n/g,'<br>')+'</p></body></html>');win.document.close();win.print();});
+        document.getElementById('bem-print-btn').addEventListener('click',function(){var bemEl=document.getElementById('bem-edit');var pt=bemEl?bemEl.value:tekst;var win=window.open('','_blank');win.document.write('<html><head><style>body{font-family:Georgia,serif;font-size:13px;line-height:1.9;max-width:700px;margin:2cm auto;color:#16232e}@media print{body{margin:1.5cm}}</style></head><body><p>'+pt.replace(/\n/g,'<br>')+'</p></body></html>');win.document.close();win.print();});
         document.getElementById('bem-email-btn').addEventListener('click',async function(){
           var ebtn=this;ebtn.disabled=true;ebtn.textContent='Versturen...';
           var toList=[d.traject.contact_email||'marcel@bisschopsfinancing.nl'];
@@ -1960,7 +1963,7 @@ async function toonDetail(id,naam){
           +'<button id="nda-email-btn" class="btn" style="font-size:12px;padding:6px 14px;background:var(--purple)">&#9993; Stuur naar partijen</button>'
           +'</div>';
         document.getElementById('nda-edit').value=tekst;
-        document.getElementById('nda-print-btn').addEventListener('click',function(){var ndaEl=document.getElementById('nda-edit');var pt=ndaEl?ndaEl.value:tekst;var win=window.open('','_blank');win.document.write('<html><head><style>body{font-family:Georgia,serif;font-size:13px;line-height:1.9;max-width:700px;margin:2cm auto;color:#2a2825}@media print{body{margin:1.5cm}}</style></head><body><p>'+pt.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>')+'</p></body></html>');win.document.close();win.print();});
+        document.getElementById('nda-print-btn').addEventListener('click',function(){var ndaEl=document.getElementById('nda-edit');var pt=ndaEl?ndaEl.value:tekst;var win=window.open('','_blank');win.document.write('<html><head><style>body{font-family:Georgia,serif;font-size:13px;line-height:1.9;max-width:700px;margin:2cm auto;color:#16232e}@media print{body{margin:1.5cm}}</style></head><body><p>'+pt.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>')+'</p></body></html>');win.document.close();win.print();});
         document.getElementById('nda-email-btn').addEventListener('click',async function(){
           var ebtn=this;ebtn.disabled=true;ebtn.textContent='Versturen...';
           var toList=[d.traject.contact_email||'marcel@bisschopsfinancing.nl'];
@@ -1984,29 +1987,29 @@ async function toonDetail(id,naam){
           var verkoperCode=t3.id||id;
           var deadline=new Date(Date.now()+14*24*3600*1000).toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'});
           var html='<div style="font-family:sans-serif;max-width:620px;margin:0 auto">'
-            +'<div style="background:#1a7a5e;color:#fff;padding:1.5rem;border-radius:8px 8px 0 0">'
+            +'<div style="background:#3d6b63;color:#fff;padding:1.5rem;border-radius:8px 8px 0 0">'
             +'<h2 style="margin:0;font-size:1.1rem">Informatieverzoek M&A — '+esc(t3.kantoor_naam||'Uw kantoor')+'</h2>'
             +'</div>'
             +'<div style="background:#fff;border:1px solid #ddd;border-top:none;padding:1.5rem;border-radius:0 0 8px 8px">'
-            +'<p style="font-size:14px;color:#2a2825">Beste '+esc(t3.contact_naam||'relatie')+',</p>'
-            +'<p style="font-size:13px;color:#5a5854;line-height:1.7">Nu de geheimhoudingsovereenkomst is ondertekend, starten we met de due diligence fase. Om dit traject goed voor te bereiden, verzoeken we u onderstaande informatie en documenten aan te leveren vóór <strong>'+deadline+'</strong>.</p>'
-            +'<div style="background:#f0faf6;border:1px solid #0a3d2e;border-radius:8px;padding:1.25rem;margin:1.25rem 0">'
-            +'<div style="font-size:11px;font-weight:600;color:#145f48;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.75rem">Uw persoonlijke uploadomgeving</div>'
-            +'<p style="font-size:13px;color:#2a2825;margin-bottom:.5rem">Via onderstaande link kunt u direct documenten uploaden. De AI verwerkt ze automatisch.</p>'
-            +'<div style="font-family:monospace;background:#fff;border:1px solid #ddd;padding:.75rem;border-radius:6px;font-size:13px;margin-bottom:.5rem"><a href="'+mnaUrl+'" style="color:#1a7a5e">'+mnaUrl+'</a></div>'
-            +'<div style="font-size:12px;color:#8a8880">Uw toegangscode: <strong style="font-family:monospace;color:#1a7a5e;font-size:14px">'+esc(verkoperCode)+'</strong></div>'
+            +'<p style="font-size:14px;color:#16232e">Beste '+esc(t3.contact_naam||'relatie')+',</p>'
+            +'<p style="font-size:13px;color:#42525e;line-height:1.7">Nu de geheimhoudingsovereenkomst is ondertekend, starten we met de due diligence fase. Om dit traject goed voor te bereiden, verzoeken we u onderstaande informatie en documenten aan te leveren vóór <strong>'+deadline+'</strong>.</p>'
+            +'<div style="background:#f0faf6;border:1px solid #12352d;border-radius:8px;padding:1.25rem;margin:1.25rem 0">'
+            +'<div style="font-size:11px;font-weight:600;color:#2c4f4a;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.75rem">Uw persoonlijke uploadomgeving</div>'
+            +'<p style="font-size:13px;color:#16232e;margin-bottom:.5rem">Via onderstaande link kunt u direct documenten uploaden. De AI verwerkt ze automatisch.</p>'
+            +'<div style="font-family:monospace;background:#fff;border:1px solid #ddd;padding:.75rem;border-radius:6px;font-size:13px;margin-bottom:.5rem"><a href="'+mnaUrl+'" style="color:#3d6b63">'+mnaUrl+'</a></div>'
+            +'<div style="font-size:12px;color:#647581">Uw toegangscode: <strong style="font-family:monospace;color:#3d6b63;font-size:14px">'+esc(verkoperCode)+'</strong></div>'
             +'</div>'
-            +'<p style="font-size:13px;color:#2a2825;font-weight:600;margin-bottom:.75rem">Wat hebben we nodig?</p>'
+            +'<p style="font-size:13px;color:#16232e;font-weight:600;margin-bottom:.75rem">Wat hebben we nodig?</p>'
             +'<table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:1.25rem">'
-            +'<tr style="background:#f0eeea"><td style="padding:8px 12px;font-weight:600;color:#2a2825;border:1px solid #ddd">Financieel</td><td style="padding:8px 12px;color:#5a5854;border:1px solid #ddd">Jaarrekeningen laatste 3 jaar (PDF), aangifte VPB, management-rapportage huidig jaar, debiteurenlijst, OHW-overzicht</td></tr>'
-            +'<tr><td style="padding:8px 12px;font-weight:600;color:#2a2825;border:1px solid #ddd">Klanten</td><td style="padding:8px 12px;color:#5a5854;border:1px solid #ddd">Klantenlijst met omzet per klant (Excel/CSV export uit boekhoudpakket), contractenoverzicht, NPS of klanttevredenheidsdata</td></tr>'
-            +'<tr style="background:#f0eeea"><td style="padding:8px 12px;font-weight:600;color:#2a2825;border:1px solid #ddd">Personeel</td><td style="padding:8px 12px;color:#5a5854;border:1px solid #ddd">Loonstrokenoverzicht of salarisadministratie (geanonimiseerd), organogram, arbeidscontracten key-personen</td></tr>'
-            +'<tr><td style="padding:8px 12px;font-weight:600;color:#2a2825;border:1px solid #ddd">Juridisch</td><td style="padding:8px 12px;color:#5a5854;border:1px solid #ddd">Uittreksel KvK, oprichtingsakte, huurcontract kantoor, verzekeringspolissen, eventuele lopende contracten</td></tr>'
-            +'<tr style="background:#f0eeea"><td style="padding:8px 12px;font-weight:600;color:#2a2825;border:1px solid #ddd">IT & Systemen</td><td style="padding:8px 12px;color:#5a5854;border:1px solid #ddd">Overzicht software en licenties, beschrijving werkprocessen, automatiseringsgraad</td></tr>'
-            +'<tr><td style="padding:8px 12px;font-weight:600;color:#2a2825;border:1px solid #ddd">Kwaliteit</td><td style="padding:8px 12px;color:#5a5854;border:1px solid #ddd">Kwaliteitshandboek of -certificaat, dossierbeheer-beschrijving, AVG-documentatie</td></tr>'
+            +'<tr style="background:#ebeef1"><td style="padding:8px 12px;font-weight:600;color:#16232e;border:1px solid #ddd">Financieel</td><td style="padding:8px 12px;color:#42525e;border:1px solid #ddd">Jaarrekeningen laatste 3 jaar (PDF), aangifte VPB, management-rapportage huidig jaar, debiteurenlijst, OHW-overzicht</td></tr>'
+            +'<tr><td style="padding:8px 12px;font-weight:600;color:#16232e;border:1px solid #ddd">Klanten</td><td style="padding:8px 12px;color:#42525e;border:1px solid #ddd">Klantenlijst met omzet per klant (Excel/CSV export uit boekhoudpakket), contractenoverzicht, NPS of klanttevredenheidsdata</td></tr>'
+            +'<tr style="background:#ebeef1"><td style="padding:8px 12px;font-weight:600;color:#16232e;border:1px solid #ddd">Personeel</td><td style="padding:8px 12px;color:#42525e;border:1px solid #ddd">Loonstrokenoverzicht of salarisadministratie (geanonimiseerd), organogram, arbeidscontracten key-personen</td></tr>'
+            +'<tr><td style="padding:8px 12px;font-weight:600;color:#16232e;border:1px solid #ddd">Juridisch</td><td style="padding:8px 12px;color:#42525e;border:1px solid #ddd">Uittreksel KvK, oprichtingsakte, huurcontract kantoor, verzekeringspolissen, eventuele lopende contracten</td></tr>'
+            +'<tr style="background:#ebeef1"><td style="padding:8px 12px;font-weight:600;color:#16232e;border:1px solid #ddd">IT & Systemen</td><td style="padding:8px 12px;color:#42525e;border:1px solid #ddd">Overzicht software en licenties, beschrijving werkprocessen, automatiseringsgraad</td></tr>'
+            +'<tr><td style="padding:8px 12px;font-weight:600;color:#16232e;border:1px solid #ddd">Kwaliteit</td><td style="padding:8px 12px;color:#42525e;border:1px solid #ddd">Kwaliteitshandboek of -certificaat, dossierbeheer-beschrijving, AVG-documentatie</td></tr>'
             +'</table>'
-            +'<p style="font-size:12px;color:#8a8880;line-height:1.7">U kunt documenten uploaden via de persoonlijke link hierboven. Heeft u vragen of lukt het uploaden niet? Neem dan contact op via <a href="mailto:'+esc((t3.begeleider_email&&t3.begeleider_email.toLowerCase()!=='marcel.bisschops@gmail.com')?t3.begeleider_email:'marcel@bisschopsfinancing.nl')+'" style="color:#1a7a5e">'+esc((t3.begeleider_email&&t3.begeleider_email.toLowerCase()!=='marcel.bisschops@gmail.com')?t3.begeleider_email:'marcel@bisschopsfinancing.nl')+'</a> of bel '+esc(t3.begeleider_naam||'Marcel Bisschops')+'.</p>'
-            +'<p style="font-size:12px;color:#8a8880;margin-top:1rem">Met vriendelijke groet,<br><strong>'+esc(t3.begeleider_naam||'Marcel Bisschops')+'</strong><br>' + BRAND.kort + ' BV</p>'
+            +'<p style="font-size:12px;color:#647581;line-height:1.7">U kunt documenten uploaden via de persoonlijke link hierboven. Heeft u vragen of lukt het uploaden niet? Neem dan contact op via <a href="mailto:'+esc((t3.begeleider_email&&t3.begeleider_email.toLowerCase()!=='marcel.bisschops@gmail.com')?t3.begeleider_email:'marcel@bisschopsfinancing.nl')+'" style="color:#3d6b63">'+esc((t3.begeleider_email&&t3.begeleider_email.toLowerCase()!=='marcel.bisschops@gmail.com')?t3.begeleider_email:'marcel@bisschopsfinancing.nl')+'</a> of bel '+esc(t3.begeleider_naam||'Marcel Bisschops')+'.</p>'
+            +'<p style="font-size:12px;color:#647581;margin-top:1rem">Met vriendelijke groet,<br><strong>'+esc(t3.begeleider_naam||'Marcel Bisschops')+'</strong><br>' + BRAND.kort + ' BV</p>'
             +'</div></div>';
           // Toon preview modal
           var ov2=document.createElement('div');ov2.className='overlay';
@@ -2072,7 +2075,7 @@ async function toonDetail(id,naam){
           +'<textarea id="loi-edit" style="width:100%;height:320px;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:Georgia,serif;font-size:12px;line-height:1.8;padding:1rem;outline:none;resize:vertical"></textarea>'
           +'<div style="display:flex;gap:8px;margin-top:.75rem"><button id="loi-print-btn" class="btn-ghost" style="font-size:12px;padding:6px 14px">&#128196; Print / PDF</button><button id="loi-email-btn" class="btn" style="font-size:12px;padding:6px 14px;background:var(--gold)">&#9993; Stuur naar partijen</button></div>';
         document.getElementById('loi-edit').value=tekst;
-        document.getElementById('loi-print-btn').addEventListener('click',function(){var loiEl=document.getElementById('loi-edit');var pt=loiEl?loiEl.value:tekst;var win=window.open('','_blank');win.document.write('<html><head><style>body{font-family:Georgia,serif;font-size:13px;line-height:1.9;max-width:700px;margin:2cm auto;color:#2a2825}@media print{body{margin:1.5cm}}</style></head><body><p>'+pt.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>')+'</p></body></html>');win.document.close();win.print();});
+        document.getElementById('loi-print-btn').addEventListener('click',function(){var loiEl=document.getElementById('loi-edit');var pt=loiEl?loiEl.value:tekst;var win=window.open('','_blank');win.document.write('<html><head><style>body{font-family:Georgia,serif;font-size:13px;line-height:1.9;max-width:700px;margin:2cm auto;color:#16232e}@media print{body{margin:1.5cm}}</style></head><body><p>'+pt.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>')+'</p></body></html>');win.document.close();win.print();});
         document.getElementById('loi-email-btn').addEventListener('click',async function(){
           var ebtn=this;ebtn.disabled=true;ebtn.textContent='Versturen...';
           var loiEditEl=document.getElementById('loi-edit');
@@ -2120,7 +2123,7 @@ async function toonDetail(id,naam){
           +'<button id="excl-email-btn" class="btn" style="font-size:12px;padding:6px 14px;background:var(--teal)">&#9993; Stuur naar partijen</button>'
           +'</div>';
         document.getElementById('excl-edit').value=tekst;
-        document.getElementById('excl-print-btn').addEventListener('click',function(){var el=document.getElementById('excl-edit');var pt=el?el.value:tekst;var win=window.open('','_blank');win.document.write('<html><head><style>body{font-family:Georgia,serif;font-size:13px;line-height:1.9;max-width:700px;margin:2cm auto;color:#2a2825}@media print{body{margin:1.5cm}}</style></head><body><p>'+pt.replace(/\n/g,'<br>')+'</p></body></html>');win.document.close();win.print();});
+        document.getElementById('excl-print-btn').addEventListener('click',function(){var el=document.getElementById('excl-edit');var pt=el?el.value:tekst;var win=window.open('','_blank');win.document.write('<html><head><style>body{font-family:Georgia,serif;font-size:13px;line-height:1.9;max-width:700px;margin:2cm auto;color:#16232e}@media print{body{margin:1.5cm}}</style></head><body><p>'+pt.replace(/\n/g,'<br>')+'</p></body></html>');win.document.close();win.print();});
         document.getElementById('excl-email-btn').addEventListener('click',async function(){
           var ebtn=this;ebtn.disabled=true;ebtn.textContent='Versturen...';
           var toList=[d.traject.contact_email||'marcel@bisschopsfinancing.nl'];
@@ -2726,18 +2729,18 @@ function toonBegeleiderModal(trajectId, trajectNaam, tussenCode){
     var btn=this;btn.disabled=true;btn.textContent='Versturen...';
     try{
       var html='<div style="font-family:sans-serif;max-width:600px;margin:0 auto">'
-        +'<div style="background:#1a7a5e;color:#fff;padding:1.5rem;border-radius:8px 8px 0 0"><h2 style="margin:0;font-size:1.1rem">Koers voor Morgen M&A — Uitnodiging begeleider</h2></div>'
+        +'<div style="background:#3d6b63;color:#fff;padding:1.5rem;border-radius:8px 8px 0 0"><h2 style="margin:0;font-size:1.1rem">Koers voor Morgen M&A — Uitnodiging begeleider</h2></div>'
         +'<div style="background:#fff;border:1px solid #ddd;border-top:none;padding:1.5rem;border-radius:0 0 8px 8px">'
-        +'<p style="font-size:14px;color:#2a2825">Beste '+(naam||'begeleider')+',</p>'
-        +'<p style="font-size:13px;color:#5a5854;line-height:1.7">Je bent uitgenodigd als begeleider voor het M&A traject <strong>'+esc(trajectNaam)+'</strong>.</p>'
-        +(bericht?'<p style="font-size:13px;color:#5a5854;line-height:1.7;border-left:3px solid #1a7a5e;padding-left:1rem;margin:1rem 0">'+esc(bericht)+'</p>':'')
-        +'<div style="background:#f0faf6;border:1px solid #0a3d2e;border-radius:8px;padding:1.25rem;margin:1.25rem 0">'
-        +'<div style="font-size:11px;font-weight:600;color:#145f48;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.4rem">Jouw toegangscode</div>'
-        +'<div style="font-family:monospace;font-size:1.6rem;font-weight:700;color:#1a7a5e;letter-spacing:.2em">'+esc(tussenCode)+'</div>'
-        +'<div style="font-size:12px;color:#8a8880;margin-top:.3rem">Inloggen op: <a href="'+mnaUrl+'" style="color:#1a7a5e">'+mnaUrl+'</a></div>'
+        +'<p style="font-size:14px;color:#16232e">Beste '+(naam||'begeleider')+',</p>'
+        +'<p style="font-size:13px;color:#42525e;line-height:1.7">Je bent uitgenodigd als begeleider voor het M&A traject <strong>'+esc(trajectNaam)+'</strong>.</p>'
+        +(bericht?'<p style="font-size:13px;color:#42525e;line-height:1.7;border-left:3px solid #3d6b63;padding-left:1rem;margin:1rem 0">'+esc(bericht)+'</p>':'')
+        +'<div style="background:#f0faf6;border:1px solid #12352d;border-radius:8px;padding:1.25rem;margin:1.25rem 0">'
+        +'<div style="font-size:11px;font-weight:600;color:#2c4f4a;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.4rem">Jouw toegangscode</div>'
+        +'<div style="font-family:monospace;font-size:1.6rem;font-weight:700;color:#3d6b63;letter-spacing:.2em">'+esc(tussenCode)+'</div>'
+        +'<div style="font-size:12px;color:#647581;margin-top:.3rem">Inloggen op: <a href="'+mnaUrl+'" style="color:#3d6b63">'+mnaUrl+'</a></div>'
         +'</div>'
-        +'<p style="font-size:12px;color:#8a8880">Met jouw code kun je het traject volledig beheren: documenten genereren, gesprekken vastleggen en de koper toegang geven.</p>'
-        +'<p style="font-size:12px;color:#8a8880;margin-top:1rem">Met vriendelijke groet,<br><strong>Marcel Bisschops</strong><br>' + BRAND.kort + ' BV</p>'
+        +'<p style="font-size:12px;color:#647581">Met jouw code kun je het traject volledig beheren: documenten genereren, gesprekken vastleggen en de koper toegang geven.</p>'
+        +'<p style="font-size:12px;color:#647581;margin-top:1rem">Met vriendelijke groet,<br><strong>Marcel Bisschops</strong><br>' + BRAND.kort + ' BV</p>'
         +'</div></div>';
       var r=await fetch(WORKER+'/mna/mail-begeleider',{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':adminKey},
         body:JSON.stringify({to:email,naam:naam,trajectNaam:trajectNaam,tussenCode:tussenCode,html:html})});

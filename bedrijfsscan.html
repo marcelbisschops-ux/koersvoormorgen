@@ -9,30 +9,32 @@
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
+/* Huisstijl Koers voor Morgen (1 sep 2026): nachtblauw #0D1B2A, petrolgroen #3D6B63,
+   warm off-white #F6F2EA, koel lichtgrijs, goud #C49A4A. --red blijft semantisch. */
 :root{
-  --void:#faf9f6;--panel:#ffffff;--card:#f0eeea;
-  --border:#dddbd4;--border2:#c8c5bc;--muted:#6b6862;--mid:#5a5854;
-  --body:#4a4845;--sub:#2a2825;--head:#1a1815;--white:#0a0805;
-  --teal:#1a7a5e;--teal-dim:#145f48;--teal-dark:#0a3d2e;--teal-bg:rgba(34,197,160,.1);
-  --gold:#c9a84c;--gold-bg:rgba(201,168,76,.12);
+  --void:#f6f2ea;--panel:#ffffff;--card:#ebeef1;
+  --border:#d9dee3;--border2:#bfc8d0;--muted:#647581;--mid:#42525e;
+  --body:#2f3d47;--sub:#16232e;--head:#0d1b2a;--white:#0a0805;
+  --teal:#3d6b63;--teal-dim:#2c4f4a;--teal-dark:#12352d;--teal-bg:rgba(61,107,99,.1);
+  --gold:#c49a4a;--gold-bg:rgba(196,154,74,.12);
   --red:#e05252;--red-bg:rgba(224,82,82,.1);
   --r:6px;--r2:10px;
 }
 @media(prefers-color-scheme:dark){
   :root{
-    --void:#1a1917;--panel:#242220;--card:#2e2c29;
-    --border:#3a3835;--border2:#4a4845;--muted:#938f86;--mid:#a0a09c;
-    --body:#c8c5bc;--sub:#d8d5cc;--head:#f0eeea;--white:#faf9f6;
-    --teal:#22c98a;--teal-dim:#1a9a6a;--teal-dark:#0a5a3a;--teal-bg:rgba(34,197,138,.12);
-    --gold:#e0b85a;--gold-bg:rgba(224,184,90,.12);
+    --void:#0d1b2a;--panel:#132534;--card:#16293a;
+    --border:#24384a;--border2:#33485c;--muted:#8ca0ae;--mid:#a6b8c4;
+    --body:#c6d3db;--sub:#e2e9ee;--head:#f4f1e9;--white:#f6f2ea;
+    --teal:#5e9b8f;--teal-dim:#4a8377;--teal-dark:#9cc8bd;--teal-bg:rgba(94,155,143,.16);
+    --gold:#d8b36a;--gold-bg:rgba(216,179,106,.14);
     --red:#f07070;--red-bg:rgba(240,112,112,.12);
   }
   .ai-h2{color:#e8e4da!important}
-  .ai-h3{color:#c8c5bc!important}
-  .field input,.field select,.field textarea{color:#f0eeea!important;background:#2e2c29!important;border-color:#4a4845!important}
+  .ai-h3{color:#bfc8d0!important}
+  .field input,.field select,.field textarea{color:#ebeef1!important;background:#2e2c29!important;border-color:#4a4845!important}
   .field input::placeholder,.field textarea::placeholder{color:#7a7875}
-  .field select option{background:#2e2c29;color:#f0eeea}
-  .field label,.field .field-label{color:#c8c5bc}
+  .field select option{background:#2e2c29;color:#ebeef1}
+  .field label,.field .field-label{color:#bfc8d0}
   .intake-wrap,.intake-card{background:#242220}
   .field-hint{color:#7a7875}
 }
@@ -59,7 +61,7 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--b
 .field.required label::after{content:' *';color:var(--red);font-size:11px}
 .field.required input,.field.required select,.field.required textarea{border-color:var(--border2)}
 .field.required input:not([value='']),.field.required select:not([value='']){border-color:var(--teal)}
-.field input,.field select,.field textarea{background:var(--panel);border:1px solid var(--border2);border-radius:var(--r);color:#1a1815;font-family:'IBM Plex Sans',sans-serif;font-size:13px;padding:10px 12px;outline:none;transition:border-color .12s;-webkit-appearance:none;width:100%}.field.required input,.field.required select,.field.required textarea{background:#f0f7f4;border-color:var(--teal-dark)}
+.field input,.field select,.field textarea{background:var(--panel);border:1px solid var(--border2);border-radius:var(--r);color:#0d1b2a;font-family:'IBM Plex Sans',sans-serif;font-size:13px;padding:10px 12px;outline:none;transition:border-color .12s;-webkit-appearance:none;width:100%}.field.required input,.field.required select,.field.required textarea{background:#eaf1ef;border-color:var(--teal-dark)}
 .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--teal)}
 .field select option{background:var(--panel)}
 .field textarea{resize:vertical;min-height:70px}
@@ -67,7 +69,7 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--b
 .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:1.5rem}
 .form-grid.full{grid-template-columns:1fr}
 .intro-wrap{min-height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:4rem 2rem;position:relative;overflow:hidden}
-.intro-wrap::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 600px 400px at 70% 30%,rgba(34,197,160,.04),transparent 70%),radial-gradient(ellipse 400px 600px at 20% 80%,rgba(201,168,76,.03),transparent 70%);pointer-events:none}
+.intro-wrap::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 600px 400px at 70% 30%,rgba(61,107,99,.04),transparent 70%),radial-gradient(ellipse 400px 600px at 20% 80%,rgba(201,168,76,.03),transparent 70%);pointer-events:none}
 .intro-grid{position:absolute;inset:0;background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);background-size:60px 60px;opacity:.4;pointer-events:none}
 .intro-inner{max-width:700px;width:100%;text-align:center;position:relative;z-index:1}
 .wordmark{display:inline-flex;align-items:center;gap:10px;margin-bottom:2.5rem;font-size:11px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}
@@ -111,7 +113,7 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--b
 .prog-frac{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted)}
 .prog-track{height:2px;background:var(--border2);border-radius:1px;position:relative;overflow:visible}
 .prog-fill{height:100%;background:var(--teal);border-radius:1px;transition:width .5s cubic-bezier(.4,0,.2,1);position:relative}
-.prog-fill::after{content:'';position:absolute;right:-3px;top:-3px;width:8px;height:8px;border-radius:50%;background:var(--teal);box-shadow:0 0 12px rgba(34,197,160,.5)}
+.prog-fill::after{content:'';position:absolute;right:-3px;top:-3px;width:8px;height:8px;border-radius:50%;background:var(--teal);box-shadow:0 0 12px rgba(61,107,99,.5)}
 .prog-steps{display:flex;gap:3px;margin-top:10px}
 .p-step{flex:1;height:3px;border-radius:1px;background:var(--border);transition:background .3s}
 .p-step.done{background:var(--teal-dark)}
@@ -198,7 +200,7 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--b
 .act-horizon{font-size:10px;color:var(--muted);font-family:'IBM Plex Mono',monospace;margin-top:3px}
 .ai-panel{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);overflow:hidden;margin-bottom:2.5rem}
 .ai-panel-hdr{display:flex;align-items:center;justify-content:space-between;padding:1.25rem 1.5rem;border-bottom:1px solid var(--border);background:var(--card);gap:1rem;flex-wrap:wrap}
-.ai-badge-el{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:3px;background:rgba(34,197,160,.12);color:var(--teal);border:1px solid var(--teal-dark)}
+.ai-badge-el{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:3px;background:rgba(61,107,99,.12);color:var(--teal);border:1px solid var(--teal-dark)}
 .ai-title-group{display:flex;align-items:center;gap:10px}
 .ai-panel-name{font-family:'Playfair Display',serif;font-size:1rem;color:var(--head);font-weight:600}
 .ai-panel-sub{font-size:12px;color:var(--muted);margin-top:1px}
@@ -299,7 +301,7 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--b
 .ai-gen-step.active{color:var(--teal);font-weight:500}
 .ai-gen-step.done{color:var(--mid)}
 .ai-gen-dot{width:6px;height:6px;border-radius:50%;background:var(--border2);flex-shrink:0;transition:background .3s}
-.ai-gen-step.active .ai-gen-dot{background:var(--teal);box-shadow:0 0 8px rgba(26,122,94,.4)}
+.ai-gen-step.active .ai-gen-dot{background:var(--teal);box-shadow:0 0 8px rgba(61,107,99,.4)}
 .ai-gen-step.done .ai-gen-dot{background:var(--teal)}
 @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 .anim{animation:fadeUp .35s ease forwards}
@@ -1636,7 +1638,7 @@ function rResults(){
 <div class="summary-box anim a1" id="summary-box">${renderSummary()}</div>
 ${(p.ebitda||p.recurring)?`<div class="sec-lbl anim a2">Financi\xeble kengetallen</div><div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:2rem">${[p.ebitda?{l:'EBITDA-marge',v:p.ebitda,b:'Benchmark: 17-22%'}:null,p.recurring?{l:'Vaste omzet',v:p.recurring,b:'PE/koper-streefwaarde: >70%'}:null].filter(Boolean).map(k=>`<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:14px 16px"><div style="font-size:11px;color:var(--muted);margin-bottom:4px">${k.l}</div><div style="font-size:1.2rem;font-weight:600;color:var(--head);font-family:'IBM Plex Mono',monospace;margin-bottom:4px">${k.v}</div><div style="font-size:10px;color:var(--muted)">${k.b}</div></div>`).join('')}</div>`:''}
 <div class="sec-lbl anim a2">Strategische scenario&#39;s</div><div class="scenario-cards anim a3">${top3.map((sc,i)=>`<div class="sc-card"><div class="sc-hdr" data-k="${sc.k}"><span class="sc-rank${i===0?' pri':''}">${i===0?'AANBEVOLEN':i===1?'ALTERNATIEF':'OPTIONEEL'}</span><span class="sc-name${i===0?' pri':''}">${sc.name}</span><span class="sc-fit mono">${sc.score}% fit</span><span class="sc-chev${ST.openScenario===sc.k?' open':''}">&#9662;</span></div><div class="sc-body${ST.openScenario===sc.k?' open':''}"><div class="actions-lbl">Concrete vervolgstappen</div><div class="action-items">${sc.actions.map((a,ai)=>`<div class="action-item"><span class="act-num">0${ai+1}</span><div><div class="act-title">${a.t}</div><div class="act-desc">${a.d}</div><div class="act-horizon">${a.h}</div></div></div>`).join('')}</div></div></div>`).join('')}</div><div class="sec-lbl anim a3">Scores per dimensie <span style="font-size:10px;font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0">\u2014 bewijslaag</span></div>
-<div style="font-size:12px;color:var(--mid);line-height:1.6;padding:10px 16px;background:var(--card);border-left:3px solid var(--teal);border-radius:0 var(--r) var(--r) 0;margin-bottom:1rem">Deze analyse is gebaseerd op zelfrapportage. Scores geven richting aan strategische aandachtspunten en vormen geen formeel waarderings- of due diligence-advies.</div><div class="dim-grid anim a2">${SECTIONS.map(sec=>{const v=s[sec.id];const f=df(v);return`<div class="dim-card"><div class="dim-top"><div class="dim-name">${sec.label}</div><div class="dim-val" style="color:${dc(v)}">${v}</div></div><div class="dim-bar-bg"><div class="dim-bar" style="width:${v}%;background:${dc(v)}"></div></div><div class="dim-flag" style="color:${f.c}">${f.l}</div></div>`;}).join('')}</div><div class="sec-lbl anim a3">Positioneringsmatrix</div><div class="matrix-sec anim a2"><div class="matrix-title">Strategische positiematrix</div><div class="matrix-sub">Schaalbaarheid &amp; commercieel (X) &middot; Winstkracht &amp; klantbinding (Y)</div><div class="matrix-body"><svg viewBox="0 0 270 220" style="flex-shrink:0;width:100%;max-width:270px;height:auto"><rect x="30" y="10" width="220" height="170" fill="var(--card)" rx="4"/><rect x="30" y="10" width="110" height="85" fill="rgba(224,82,82,.07)" rx="4"/><rect x="140" y="10" width="110" height="85" fill="rgba(201,168,76,.07)"/><rect x="30" y="95" width="110" height="85" fill="rgba(201,168,76,.07)"/><rect x="140" y="95" width="110" height="85" fill="rgba(34,197,160,.07)" rx="4"/><line x1="140" y1="10" x2="140" y2="180" stroke="var(--border2)" stroke-width="1" stroke-dasharray="4,3"/><line x1="30" y1="95" x2="250" y2="95" stroke="var(--border2)" stroke-width="1" stroke-dasharray="4,3"/><text x="85" y="26" text-anchor="middle" font-size="9" fill="${mx<=50&&my<=50?'var(--teal)':'var(--muted)'}" font-family="IBM Plex Sans">Kwetsbaar</text><text x="195" y="26" text-anchor="middle" font-size="9" fill="${mx<=50&&my>50?'var(--teal)':'var(--muted)'}" font-family="IBM Plex Sans">Groei mogelijk</text><text x="85" y="172" text-anchor="middle" font-size="9" fill="${mx>50&&my<=50?'var(--teal)':'var(--muted)'}" font-family="IBM Plex Sans">Stabiel</text><text x="195" y="172" text-anchor="middle" font-size="9" fill="${mx>50&&my>50?'var(--teal)':'var(--muted)'}" font-family="IBM Plex Sans">Sterk platform</text><text x="140" y="207" text-anchor="middle" font-size="9" fill="var(--muted)" font-family="IBM Plex Sans">Schaal &amp; commercieel</text><circle cx="${30+(bench/100)*220}" cy="${180-((bench/100)*170)}" r="5" fill="none" stroke="var(--gold)" stroke-width="1.5" opacity=".6"/><circle cx="${30+(mx/100)*220}" cy="${180-((my/100)*170)}" r="9" fill="var(--teal)" opacity=".2"/><circle cx="${30+(mx/100)*220}" cy="${180-((my/100)*170)}" r="5" fill="var(--teal)"/></svg><div class="quadrant-list">${[{q:'Sterk platform',d:'Hoge schaal + hoge winstkracht.',a:mx>50&&my>50},{q:'Groei mogelijk',d:'Lage schaal + hoge winstkracht.',a:mx<=50&&my>50},{q:'Stabiel / defensief',d:'Hoge schaal + lagere winstkracht.',a:mx>50&&my<=50},{q:'Kwetsbaar',d:'Lage schaal + lage winstkracht.',a:mx<=50&&my<=50}].map(i=>`<div class="q-item${i.a?' active':''}"><div class="q-dot" style="background:${i.a?'var(--teal)':'var(--border2)'}"></div><div><div class="q-iname">${i.q}</div><div class="q-idesc">${i.d}</div></div></div>`).join('')}</div></div></div><div class="sec-lbl anim a1">Strategisch advies op maat</div><div class="ai-panel anim a3"><div class="ai-panel-hdr"><div class="ai-title-group"><span class="ai-badge-el">${BRAND.platform} &middot; AI</span><div><div class="ai-panel-name">Strategisch advies op maat</div><div class="ai-panel-sub">Op basis van zelfrapportage &middot; Scores zijn indicatief</div></div></div><button class="btn-gen" id="gen-btn" onclick="generateAI()" ${ST.aiLoading?'disabled':''}>${ST.aiLoading?'Genereren...':ST.aiText&&ST.aiText!=='__ERROR__'?'Opnieuw genereren':'Genereer AI-advies'}</button></div><div class="ai-body"><div id="ai-out">${renderAIText(ST.aiText,false)}</div></div></div><div class="r-footer anim a4"><div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:1rem 1.25rem;margin-bottom:1.5rem;font-size:11px;color:var(--muted);line-height:1.7"><strong style="color:var(--sub)">Disclaimer</strong> &mdash; Dit rapport is gegenereerd op basis van zelfrapportage door de gebruiker en is uitsluitend bedoeld als indicatief strategisch oriëntatie-instrument. De uitkomsten, scores en aanbevelingen vormen geen formeel advies, geen waarderings- of due diligence-rapport en geen accountants- of juridisch oordeel. ${BRAND.bedrijfKort} aanvaardt geen aansprakelijkheid voor beslissingen die (mede) worden genomen op basis van de inhoud van dit rapport. Voor een formele waardering, due diligence of strategisch advies dient u een gekwalificeerde adviseur te raadplegen. &copy; 2026 ${BRAND.bedrijfKort} &mdash; ${BRAND.platform}. Alle rechten voorbehouden.</div><div style="background:var(--teal-bg);border:1.5px solid var(--teal);border-radius:var(--r2);padding:1.5rem 2rem;margin-bottom:1.5rem;text-align:center"><div style="font-family:'Playfair Display',serif;font-size:1.2rem;color:var(--head);font-weight:600;margin-bottom:.5rem">Wilt u de uitkomsten bespreken?</div><div style="font-size:13px;color:var(--mid);line-height:1.7;margin-bottom:1rem">Marcel Bisschops is M&amp;A-adviseur${isAccountancyScan()?' gespecialiseerd in accountantskantoren \u2014 met een achtergrond als bestuurder binnen de sector en een breed netwerk van kantoren en softwareleveranciers':' \u2014 met ruime ervaring in bedrijfsoverdracht, fusies en waardering'}. Een gesprek duurt 30 minuten en is vrijblijvend.</div><div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap"><button id="callback-btn" style="display:inline-flex;align-items:center;gap:8px;background:var(--teal);color:var(--void);font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;padding:10px 20px;border-radius:var(--r);border:none;cursor:pointer">\ud83d\udccb Stuur terugbelverzoek</button><button onclick="window.location.href='tel:+31638689888'" style="display:inline-flex;align-items:center;gap:8px;background:var(--teal);color:var(--void);font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;padding:10px 20px;border-radius:var(--r);border:none;cursor:pointer">\ud83d\udcde 06 - 38 68 98 88</button><button onclick="toonFeedbackModal()" style="display:inline-flex;align-items:center;gap:8px;background:transparent;color:var(--teal);font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;padding:10px 20px;border-radius:var(--r);border:1.5px solid var(--teal);cursor:pointer">&#9993; Feedback</button></div></div><p class="footer-note">&copy; ${new Date().getFullYear()} ${BRAND.bedrijfKort} \u2014 ${BRAND.platform}. Aanbevelingen zijn indicatief en vormen geen formeel advies.</p>${ST.savedScanId?`<div style="background:var(--teal-bg);border:1px solid var(--teal-dark);border-radius:var(--r);padding:.75rem 1rem;margin-bottom:.75rem"><div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px"><div><div style="font-size:12px;font-weight:600;color:var(--teal);margin-bottom:2px">&#128274; Uw persoonlijke rapportcode</div><div style="font-family:IBM Plex Mono,monospace;font-size:18px;font-weight:700;letter-spacing:.12em;color:var(--head)">${ST.savedScanId}</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Bewaar deze code. Gebruik &#8220;Rapport ophalen&#8221; op de beginpagina om dit rapport later terug te zien.</div></div><button onclick="navigator.clipboard.writeText(ST.savedScanId).then(function(){this.innerHTML='&#10003; Gekopieerd';}.bind(this))" style="background:var(--teal);color:#fff;border:none;border-radius:var(--r);padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer;font-family:IBM Plex Sans,sans-serif;white-space:nowrap">Kopieer code</button></div></div>`:''}<div class="footer-btns"><button class="btn-print" onclick="setTimeout(function(){window.print()},300)">&#128438; Printen</button>${ST.groupId?`<button class="btn-ghost" id="view-group-btn">Dashboard</button>`:''}<button class="btn-restart" id="restart-btn">Nieuwe scan</button></div></div></div>`;
+<div style="font-size:12px;color:var(--mid);line-height:1.6;padding:10px 16px;background:var(--card);border-left:3px solid var(--teal);border-radius:0 var(--r) var(--r) 0;margin-bottom:1rem">Deze analyse is gebaseerd op zelfrapportage. Scores geven richting aan strategische aandachtspunten en vormen geen formeel waarderings- of due diligence-advies.</div><div class="dim-grid anim a2">${SECTIONS.map(sec=>{const v=s[sec.id];const f=df(v);return`<div class="dim-card"><div class="dim-top"><div class="dim-name">${sec.label}</div><div class="dim-val" style="color:${dc(v)}">${v}</div></div><div class="dim-bar-bg"><div class="dim-bar" style="width:${v}%;background:${dc(v)}"></div></div><div class="dim-flag" style="color:${f.c}">${f.l}</div></div>`;}).join('')}</div><div class="sec-lbl anim a3">Positioneringsmatrix</div><div class="matrix-sec anim a2"><div class="matrix-title">Strategische positiematrix</div><div class="matrix-sub">Schaalbaarheid &amp; commercieel (X) &middot; Winstkracht &amp; klantbinding (Y)</div><div class="matrix-body"><svg viewBox="0 0 270 220" style="flex-shrink:0;width:100%;max-width:270px;height:auto"><rect x="30" y="10" width="220" height="170" fill="var(--card)" rx="4"/><rect x="30" y="10" width="110" height="85" fill="rgba(224,82,82,.07)" rx="4"/><rect x="140" y="10" width="110" height="85" fill="rgba(201,168,76,.07)"/><rect x="30" y="95" width="110" height="85" fill="rgba(201,168,76,.07)"/><rect x="140" y="95" width="110" height="85" fill="rgba(61,107,99,.07)" rx="4"/><line x1="140" y1="10" x2="140" y2="180" stroke="var(--border2)" stroke-width="1" stroke-dasharray="4,3"/><line x1="30" y1="95" x2="250" y2="95" stroke="var(--border2)" stroke-width="1" stroke-dasharray="4,3"/><text x="85" y="26" text-anchor="middle" font-size="9" fill="${mx<=50&&my<=50?'var(--teal)':'var(--muted)'}" font-family="IBM Plex Sans">Kwetsbaar</text><text x="195" y="26" text-anchor="middle" font-size="9" fill="${mx<=50&&my>50?'var(--teal)':'var(--muted)'}" font-family="IBM Plex Sans">Groei mogelijk</text><text x="85" y="172" text-anchor="middle" font-size="9" fill="${mx>50&&my<=50?'var(--teal)':'var(--muted)'}" font-family="IBM Plex Sans">Stabiel</text><text x="195" y="172" text-anchor="middle" font-size="9" fill="${mx>50&&my>50?'var(--teal)':'var(--muted)'}" font-family="IBM Plex Sans">Sterk platform</text><text x="140" y="207" text-anchor="middle" font-size="9" fill="var(--muted)" font-family="IBM Plex Sans">Schaal &amp; commercieel</text><circle cx="${30+(bench/100)*220}" cy="${180-((bench/100)*170)}" r="5" fill="none" stroke="var(--gold)" stroke-width="1.5" opacity=".6"/><circle cx="${30+(mx/100)*220}" cy="${180-((my/100)*170)}" r="9" fill="var(--teal)" opacity=".2"/><circle cx="${30+(mx/100)*220}" cy="${180-((my/100)*170)}" r="5" fill="var(--teal)"/></svg><div class="quadrant-list">${[{q:'Sterk platform',d:'Hoge schaal + hoge winstkracht.',a:mx>50&&my>50},{q:'Groei mogelijk',d:'Lage schaal + hoge winstkracht.',a:mx<=50&&my>50},{q:'Stabiel / defensief',d:'Hoge schaal + lagere winstkracht.',a:mx>50&&my<=50},{q:'Kwetsbaar',d:'Lage schaal + lage winstkracht.',a:mx<=50&&my<=50}].map(i=>`<div class="q-item${i.a?' active':''}"><div class="q-dot" style="background:${i.a?'var(--teal)':'var(--border2)'}"></div><div><div class="q-iname">${i.q}</div><div class="q-idesc">${i.d}</div></div></div>`).join('')}</div></div></div><div class="sec-lbl anim a1">Strategisch advies op maat</div><div class="ai-panel anim a3"><div class="ai-panel-hdr"><div class="ai-title-group"><span class="ai-badge-el">${BRAND.platform} &middot; AI</span><div><div class="ai-panel-name">Strategisch advies op maat</div><div class="ai-panel-sub">Op basis van zelfrapportage &middot; Scores zijn indicatief</div></div></div><button class="btn-gen" id="gen-btn" onclick="generateAI()" ${ST.aiLoading?'disabled':''}>${ST.aiLoading?'Genereren...':ST.aiText&&ST.aiText!=='__ERROR__'?'Opnieuw genereren':'Genereer AI-advies'}</button></div><div class="ai-body"><div id="ai-out">${renderAIText(ST.aiText,false)}</div></div></div><div class="r-footer anim a4"><div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:1rem 1.25rem;margin-bottom:1.5rem;font-size:11px;color:var(--muted);line-height:1.7"><strong style="color:var(--sub)">Disclaimer</strong> &mdash; Dit rapport is gegenereerd op basis van zelfrapportage door de gebruiker en is uitsluitend bedoeld als indicatief strategisch oriëntatie-instrument. De uitkomsten, scores en aanbevelingen vormen geen formeel advies, geen waarderings- of due diligence-rapport en geen accountants- of juridisch oordeel. ${BRAND.bedrijfKort} aanvaardt geen aansprakelijkheid voor beslissingen die (mede) worden genomen op basis van de inhoud van dit rapport. Voor een formele waardering, due diligence of strategisch advies dient u een gekwalificeerde adviseur te raadplegen. &copy; 2026 ${BRAND.bedrijfKort} &mdash; ${BRAND.platform}. Alle rechten voorbehouden.</div><div style="background:var(--teal-bg);border:1.5px solid var(--teal);border-radius:var(--r2);padding:1.5rem 2rem;margin-bottom:1.5rem;text-align:center"><div style="font-family:'Playfair Display',serif;font-size:1.2rem;color:var(--head);font-weight:600;margin-bottom:.5rem">Wilt u de uitkomsten bespreken?</div><div style="font-size:13px;color:var(--mid);line-height:1.7;margin-bottom:1rem">Marcel Bisschops is M&amp;A-adviseur${isAccountancyScan()?' gespecialiseerd in accountantskantoren \u2014 met een achtergrond als bestuurder binnen de sector en een breed netwerk van kantoren en softwareleveranciers':' \u2014 met ruime ervaring in bedrijfsoverdracht, fusies en waardering'}. Een gesprek duurt 30 minuten en is vrijblijvend.</div><div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap"><button id="callback-btn" style="display:inline-flex;align-items:center;gap:8px;background:var(--teal);color:var(--void);font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;padding:10px 20px;border-radius:var(--r);border:none;cursor:pointer">\ud83d\udccb Stuur terugbelverzoek</button><button onclick="window.location.href='tel:+31638689888'" style="display:inline-flex;align-items:center;gap:8px;background:var(--teal);color:var(--void);font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;padding:10px 20px;border-radius:var(--r);border:none;cursor:pointer">\ud83d\udcde 06 - 38 68 98 88</button><button onclick="toonFeedbackModal()" style="display:inline-flex;align-items:center;gap:8px;background:transparent;color:var(--teal);font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;padding:10px 20px;border-radius:var(--r);border:1.5px solid var(--teal);cursor:pointer">&#9993; Feedback</button></div></div><p class="footer-note">&copy; ${new Date().getFullYear()} ${BRAND.bedrijfKort} \u2014 ${BRAND.platform}. Aanbevelingen zijn indicatief en vormen geen formeel advies.</p>${ST.savedScanId?`<div style="background:var(--teal-bg);border:1px solid var(--teal-dark);border-radius:var(--r);padding:.75rem 1rem;margin-bottom:.75rem"><div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px"><div><div style="font-size:12px;font-weight:600;color:var(--teal);margin-bottom:2px">&#128274; Uw persoonlijke rapportcode</div><div style="font-family:IBM Plex Mono,monospace;font-size:18px;font-weight:700;letter-spacing:.12em;color:var(--head)">${ST.savedScanId}</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Bewaar deze code. Gebruik &#8220;Rapport ophalen&#8221; op de beginpagina om dit rapport later terug te zien.</div></div><button onclick="navigator.clipboard.writeText(ST.savedScanId).then(function(){this.innerHTML='&#10003; Gekopieerd';}.bind(this))" style="background:var(--teal);color:#fff;border:none;border-radius:var(--r);padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer;font-family:IBM Plex Sans,sans-serif;white-space:nowrap">Kopieer code</button></div></div>`:''}<div class="footer-btns"><button class="btn-print" onclick="setTimeout(function(){window.print()},300)">&#128438; Printen</button>${ST.groupId?`<button class="btn-ghost" id="view-group-btn">Dashboard</button>`:''}<button class="btn-restart" id="restart-btn">Nieuwe scan</button></div></div></div>`;
 }
 
 
@@ -1665,7 +1667,7 @@ function rStaafdiagram(offices){
       var ctx=document.getElementById(chartId);
       if(!ctx)return;
       new Chart(ctx,{type:'bar',data:{labels:namen,datasets:[
-        {label:'EBITDA-marge (%)',data:ebitda,backgroundColor:'rgba(26,122,94,.8)',borderRadius:3},
+        {label:'EBITDA-marge (%)',data:ebitda,backgroundColor:'rgba(61,107,99,.8)',borderRadius:3},
         {label:'Vaste omzet (%)',data:recurring,backgroundColor:'rgba(201,168,76,.8)',borderRadius:3},
         {label:'Totaalscore (0-100, gem. van 11 dimensies)',data:scores,backgroundColor:'rgba(59,130,246,.7)',borderRadius:3}
       ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{boxWidth:12}},tooltip:{callbacks:{label:function(c){return c.dataset.label+': '+c.parsed.y;}}}},scales:{y:{beginAtZero:true,max:100},x:{grid:{display:false}}}}});
@@ -1681,7 +1683,7 @@ function kantoorRadar(scores){
   const grid=[20,40,60,80,100].map(v=>{const gp=SECTIONS.map((_,i)=>ap(i,v)).map(p=>p.join(",")).join(" ");return '<polygon points="'+gp+'" fill="none" stroke="var(--border)" stroke-width="0.5"/>';}).join("");
   const axes=SECTIONS.map((_,i)=>{const[x,y]=ap(i,100);return '<line x1="'+cx+'" y1="'+cy+'" x2="'+x+'" y2="'+y+'" stroke="var(--border2)" stroke-width="0.5"/>';}).join("");
   const labs=SECTIONS.map((s,i)=>{const[x,y]=ap(i,107);const lbl=s.label.length>9?s.label.slice(0,8)+"…":s.label;return '<text x="'+x+'" y="'+y+'" text-anchor="middle" font-size="6" fill="var(--muted)" font-family="IBM Plex Sans">'+lbl+'</text>';}).join("");
-  return '<svg width="170" height="170" viewBox="0 0 170 170" style="display:block;margin:.25rem auto">'+grid+axes+'<polygon points="'+pts+'" fill="rgba(34,197,160,.15)" stroke="var(--teal)" stroke-width="1.5"/>'+labs+'</svg>';
+  return '<svg width="170" height="170" viewBox="0 0 170 170" style="display:block;margin:.25rem auto">'+grid+axes+'<polygon points="'+pts+'" fill="rgba(61,107,99,.15)" stroke="var(--teal)" stroke-width="1.5"/>'+labs+'</svg>';
 }
 function rDashboard(){
   var d=ST.groupData;if(!d||!d.group)return rDashboardError();
@@ -1693,8 +1695,8 @@ function rDashboard(){
   var topSc=Object.entries(scenarioCounts).sort(function(a,b){return b[1]-a[1];})[0];
   function fmt(v){return v||'\u2014';}
   function fmtOmzet(v){if(!v)return '\u2014';var n=parseFloat(String(v).replace(/[^0-9]/g,''));if(isNaN(n))return v;if(n>=1000000)return '\u20ac'+(n/1000000).toFixed(1)+'M';if(n>=1000)return '\u20ac'+(n/1000).toFixed(0)+'K';return '\u20ac'+n;}
-  function scoreColor(v){return v>=70?'#1a7a5e':v>=50?'#c9a84c':'#e05252';}
-  function scoreBg(v){return v>=70?'rgba(26,122,94,.1)':v>=50?'rgba(201,168,76,.1)':'rgba(224,82,82,.1)';}
+  function scoreColor(v){return v>=70?'#3d6b63':v>=50?'#c49a4a':'#e05252';}
+  function scoreBg(v){return v>=70?'rgba(61,107,99,.1)':v>=50?'rgba(201,168,76,.1)':'rgba(224,82,82,.1)';}
 
   var chartId='bar_'+Math.random().toString(36).slice(2,6);
   var radarId='rad_'+Math.random().toString(36).slice(2,6);
@@ -1707,7 +1709,7 @@ function rDashboard(){
         new Chart(bctx,{type:'bar',
           data:{labels:offices.map(function(o){return o.name||'Anoniem';}),
             datasets:[
-              {label:'EBITDA %',data:offices.map(function(o){return parseFloat(String(o.ebitda||'0').replace('%',''))||0;}),backgroundColor:'rgba(26,122,94,.8)',borderRadius:3},
+              {label:'EBITDA %',data:offices.map(function(o){return parseFloat(String(o.ebitda||'0').replace('%',''))||0;}),backgroundColor:'rgba(61,107,99,.8)',borderRadius:3},
               {label:'Vaste omzet %',data:offices.map(function(o){return parseFloat(String(o.recurring||'0').replace('%',''))||0;}),backgroundColor:'rgba(201,168,76,.8)',borderRadius:3},
               {label:'Score',data:offices.map(function(o){return o.overall||0;}),backgroundColor:'rgba(59,130,246,.7)',borderRadius:3}
             ]},
@@ -1721,7 +1723,7 @@ function rDashboard(){
         new Chart(rctx,{type:'radar',
           data:{labels:SECTIONS.map(function(s){return s.label.length>12?s.label.slice(0,11)+'\u2026':s.label;}),
             datasets:[{label:'Groepsgemiddelde',data:SECTIONS.map(function(s){return cum[s.id]||0;}),
-              backgroundColor:'rgba(26,122,94,.15)',borderColor:'#1a7a5e',borderWidth:2,pointBackgroundColor:'#1a7a5e',pointRadius:3}]},
+              backgroundColor:'rgba(61,107,99,.15)',borderColor:'#3d6b63',borderWidth:2,pointBackgroundColor:'#3d6b63',pointRadius:3}]},
           options:{responsive:true,maintainAspectRatio:false,
             plugins:{legend:{display:false}},
             scales:{r:{min:0,max:100,ticks:{stepSize:20,font:{size:10}},pointLabels:{font:{size:10}}}}}});
@@ -1732,28 +1734,28 @@ function rDashboard(){
   // Tabel rijen
   var rows=canSee?offices.map(function(o,i){
     var sc=scoreColor(o.overall);var sb=scoreBg(o.overall);
-    return '<tr style="border-bottom:1px solid #e8e6e0;cursor:pointer" onclick="toonKantoorDetail(\''+i+'\')">'
-      +'<td style="padding:11px 14px;font-weight:600;color:#1a1815">'
+    return '<tr style="border-bottom:1px solid #d9dee3;cursor:pointer" onclick="toonKantoorDetail(\''+i+'\')">'
+      +'<td style="padding:11px 14px;font-weight:600;color:#0d1b2a">'
         +'<span style="display:inline-block;width:20px;height:20px;border-radius:50%;background:'+sb+';color:'+sc+';font-size:10px;font-weight:700;text-align:center;line-height:20px;margin-right:6px">'+(i+1)+'</span>'
         +esc(o.name||'Anoniem')+'</td>'
       +'<td style="padding:11px 14px;font-size:12px;text-align:right;font-family:IBM Plex Mono,monospace">'+(o.fte||'\u2014')+'</td>'
       +'<td style="padding:11px 14px;font-size:12px;text-align:right;font-family:IBM Plex Mono,monospace">'+fmtOmzet(o.revenue)+'</td>'
       +'<td style="padding:11px 14px;font-size:12px;text-align:right;font-family:IBM Plex Mono,monospace">'+(o.ebitda||'\u2014')+'</td>'
       +'<td style="padding:11px 14px;font-size:12px;text-align:right;font-family:IBM Plex Mono,monospace">'+(o.recurring||'\u2014')+'</td>'
-      +'<td style="padding:11px 14px;font-size:12px;color:#5a5854">'+(o.ambitie||'\u2014')+'</td>'
+      +'<td style="padding:11px 14px;font-size:12px;color:#42525e">'+(o.ambitie||'\u2014')+'</td>'
       +'<td style="padding:11px 14px;text-align:center">'
         +'<span style="font-family:IBM Plex Mono,monospace;font-size:13px;font-weight:600;padding:3px 10px;border-radius:4px;background:'+sb+';color:'+sc+'">'+o.overall+'</span></td>'
-      +'<td style="padding:11px 14px"><span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:3px;background:rgba(26,122,94,.1);color:#1a7a5e;border:1px solid #0a3d2e">'+(o.top_scenario||'\u2014').split(' ').slice(0,2).join(' ')+'</span></td>'
-      +'<td style="padding:11px 14px;text-align:center"><button onclick="event.stopPropagation();toonKantoorDetail(\''+i+'\')" style="font-size:11px;padding:3px 8px;background:transparent;border:1px solid #c8c5bc;color:#5a5854;border-radius:4px;cursor:pointer">Detail</button></td>'
+      +'<td style="padding:11px 14px"><span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:3px;background:rgba(61,107,99,.1);color:#3d6b63;border:1px solid #12352d">'+(o.top_scenario||'\u2014').split(' ').slice(0,2).join(' ')+'</span></td>'
+      +'<td style="padding:11px 14px;text-align:center"><button onclick="event.stopPropagation();toonKantoorDetail(\''+i+'\')" style="font-size:11px;padding:3px 8px;background:transparent;border:1px solid #bfc8d0;color:#42525e;border-radius:4px;cursor:pointer">Detail</button></td>'
       +'</tr>';
-  }).join(''):'<tr><td colspan="9" style="padding:1.5rem;text-align:center;color:#8a8880;font-style:italic">Beheerder heeft scores niet openbaar gemaakt.</td></tr>';
+  }).join(''):'<tr><td colspan="9" style="padding:1.5rem;text-align:center;color:#647581;font-style:italic">Beheerder heeft scores niet openbaar gemaakt.</td></tr>';
 
   // AI status
-  var aiHtml=d._aiTekst?renderAIText(d._aiTekst,false):d._aiLoading?'<div class="ai-loading"><div class="ai-spinner"></div><span>Groepsanalyse wordt gegenereerd\u2026</span></div>':'<div style="color:#8a8880;font-style:italic">Analyse wordt geladen\u2026</div>';
+  var aiHtml=d._aiTekst?renderAIText(d._aiTekst,false):d._aiLoading?'<div class="ai-loading"><div class="ai-spinner"></div><span>Groepsanalyse wordt gegenereerd\u2026</span></div>':'<div style="color:#647581;font-style:italic">Analyse wordt geladen\u2026</div>';
 
   // Chart legenda
-  var legenda='<div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:8px;font-size:12px;color:#5a5854">'
-    +'<span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:rgba(26,122,94,.8)"></span>EBITDA %</span>'
+  var legenda='<div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:8px;font-size:12px;color:#42525e">'
+    +'<span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:rgba(61,107,99,.8)"></span>EBITDA %</span>'
     +'<span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:rgba(201,168,76,.8)"></span>Vaste omzet %</span>'
     +'<span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:rgba(59,130,246,.7)"></span>Score</span>'
     +'</div>';
@@ -1763,64 +1765,64 @@ function rDashboard(){
 
 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2rem;flex-wrap:wrap;gap:1rem">
   <div>
-    <div style="font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:600;color:#1a1815">${esc(d.group.name)||'Groep'}</div>
-    <div style="font-size:13px;color:#8a8880;margin-top:2px">Groepscode: <span style="font-family:IBM Plex Mono,monospace;color:#1a7a5e">${d.group.id||ST.groupId}</span> &middot; ${offices.length} kantoren &middot; ${new Date().toLocaleDateString('nl-NL')}</div>
+    <div style="font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:600;color:#0d1b2a">${esc(d.group.name)||'Groep'}</div>
+    <div style="font-size:13px;color:#647581;margin-top:2px">Groepscode: <span style="font-family:IBM Plex Mono,monospace;color:#3d6b63">${d.group.id||ST.groupId}</span> &middot; ${offices.length} kantoren &middot; ${new Date().toLocaleDateString('nl-NL')}</div>
   </div>
   <div style="display:flex;gap:8px;flex-wrap:wrap">
-    <button id="groep-ai-btn" style="font-size:12px;padding:6px 12px;background:transparent;border:1px solid #c8c5bc;color:#5a5854;border-radius:6px;cursor:pointer">&#8635; Herlaad analyse</button>
-    <button onclick="downloadGroepsRapport()" style="font-size:12px;padding:6px 12px;background:transparent;border:1px solid #c8c5bc;color:#5a5854;border-radius:6px;cursor:pointer">&#8681; Rapport</button>
+    <button id="groep-ai-btn" style="font-size:12px;padding:6px 12px;background:transparent;border:1px solid #bfc8d0;color:#42525e;border-radius:6px;cursor:pointer">&#8635; Herlaad analyse</button>
+    <button onclick="downloadGroepsRapport()" style="font-size:12px;padding:6px 12px;background:transparent;border:1px solid #bfc8d0;color:#42525e;border-radius:6px;cursor:pointer">&#8681; Rapport</button>
   </div>
 </div>
 
 <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:2rem">
-  <div style="background:#fff;border:1px solid #e8e6e0;border-radius:10px;padding:1.25rem;text-align:center">
-    <div style="font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#8a8880;margin-bottom:.4rem">Kantoren</div>
-    <div style="font-family:'Playfair Display',serif;font-size:2rem;font-weight:600;color:#1a7a5e">${offices.length}</div>
+  <div style="background:#fff;border:1px solid #d9dee3;border-radius:10px;padding:1.25rem;text-align:center">
+    <div style="font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#647581;margin-bottom:.4rem">Kantoren</div>
+    <div style="font-family:'Playfair Display',serif;font-size:2rem;font-weight:600;color:#3d6b63">${offices.length}</div>
   </div>
-  <div style="background:#fff;border:1px solid #e8e6e0;border-radius:10px;padding:1.25rem;text-align:center">
-    <div style="font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#8a8880;margin-bottom:.4rem">Gem. score</div>
+  <div style="background:#fff;border:1px solid #d9dee3;border-radius:10px;padding:1.25rem;text-align:center">
+    <div style="font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#647581;margin-bottom:.4rem">Gem. score</div>
     <div style="font-family:'Playfair Display',serif;font-size:2rem;font-weight:600;color:${scoreColor(avg)}">${avg||'\u2014'}</div>
   </div>
-  <div style="background:#fff;border:1px solid #e8e6e0;border-radius:10px;padding:1.25rem;text-align:center">
-    <div style="font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#8a8880;margin-bottom:.4rem">Hoogste score</div>
-    <div style="font-family:'Playfair Display',serif;font-size:2rem;font-weight:600;color:#1a1815">${offices[0]?offices[0].overall:'\u2014'}</div>
+  <div style="background:#fff;border:1px solid #d9dee3;border-radius:10px;padding:1.25rem;text-align:center">
+    <div style="font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#647581;margin-bottom:.4rem">Hoogste score</div>
+    <div style="font-family:'Playfair Display',serif;font-size:2rem;font-weight:600;color:#0d1b2a">${offices[0]?offices[0].overall:'\u2014'}</div>
   </div>
-  <div style="background:#fff;border:1px solid #e8e6e0;border-radius:10px;padding:1.25rem;text-align:center">
-    <div style="font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#8a8880;margin-bottom:.4rem">Top scenario</div>
-    <div style="font-size:14px;font-weight:600;color:#1a1815;margin-top:.3rem">${topSc?topSc[0].split(' ')[0]:'\u2014'}</div>
+  <div style="background:#fff;border:1px solid #d9dee3;border-radius:10px;padding:1.25rem;text-align:center">
+    <div style="font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#647581;margin-bottom:.4rem">Top scenario</div>
+    <div style="font-size:14px;font-weight:600;color:#0d1b2a;margin-top:.3rem">${topSc?topSc[0].split(' ')[0]:'\u2014'}</div>
   </div>
 </div>
 
-<div style="font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#8a8880;margin-bottom:.75rem;padding-bottom:.5rem;border-bottom:1px solid #e8e6e0">Groepsanalyse &mdash; AI</div>
-<div style="background:#fff;border:1px solid #e8e6e0;border-left:4px solid #1a7a5e;border-radius:0 10px 10px 0;padding:1.5rem 2rem;margin-bottom:2rem">
-  <div id="groep-ai-out" style="font-size:14px;color:#5a5854;line-height:1.85">${aiHtml}</div>
+<div style="font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#647581;margin-bottom:.75rem;padding-bottom:.5rem;border-bottom:1px solid #d9dee3">Groepsanalyse &mdash; AI</div>
+<div style="background:#fff;border:1px solid #d9dee3;border-left:4px solid #3d6b63;border-radius:0 10px 10px 0;padding:1.5rem 2rem;margin-bottom:2rem">
+  <div id="groep-ai-out" style="font-size:14px;color:#42525e;line-height:1.85">${aiHtml}</div>
 </div>
 
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:2rem">
-  <div style="background:#fff;border:1px solid #e8e6e0;border-radius:10px;padding:1.25rem">
-    <div style="font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#8a8880;margin-bottom:1rem">Kengetallen vergelijking</div>
+  <div style="background:#fff;border:1px solid #d9dee3;border-radius:10px;padding:1.25rem">
+    <div style="font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#647581;margin-bottom:1rem">Kengetallen vergelijking</div>
     <div style="position:relative;height:${Math.max(offices.length*45+80,160)}px"><canvas id="${chartId}" role="img" aria-label="Kengetallen per kantoor">Kengetallen.</canvas></div>
     ${legenda}
   </div>
-  <div style="background:#fff;border:1px solid #e8e6e0;border-radius:10px;padding:1.25rem">
-    <div style="font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#8a8880;margin-bottom:1rem">Dimensieprofiel groep</div>
+  <div style="background:#fff;border:1px solid #d9dee3;border-radius:10px;padding:1.25rem">
+    <div style="font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#647581;margin-bottom:1rem">Dimensieprofiel groep</div>
     <div style="position:relative;height:${Math.max(offices.length*45+80,160)}px"><canvas id="${radarId}" role="img" aria-label="Radardiagram dimensies">Radardiagram.</canvas></div>
   </div>
 </div>
 
-<div style="font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#8a8880;margin-bottom:.75rem;padding-bottom:.5rem;border-bottom:1px solid #e8e6e0">Kantoorenoverzicht</div>
-<div style="background:#fff;border:1px solid #e8e6e0;border-radius:10px;overflow:hidden;margin-bottom:2rem">
+<div style="font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#647581;margin-bottom:.75rem;padding-bottom:.5rem;border-bottom:1px solid #d9dee3">Kantoorenoverzicht</div>
+<div style="background:#fff;border:1px solid #d9dee3;border-radius:10px;overflow:hidden;margin-bottom:2rem">
   <table style="width:100%;border-collapse:collapse">
 
-    <thead><tr style="background:#f0eeea">
-      <th style="padding:10px 14px;text-align:left;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#8a8880">Kantoor</th>
-      <th style="padding:10px 14px;text-align:right;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#8a8880">Fte</th>
-      <th style="padding:10px 14px;text-align:right;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#8a8880">Omzet</th>
-      <th style="padding:10px 14px;text-align:right;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#8a8880">EBITDA</th>
-      <th style="padding:10px 14px;text-align:right;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#8a8880">Vast</th>
-      <th style="padding:10px 14px;text-align:left;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#8a8880">Ambitie</th>
-      <th style="padding:10px 14px;text-align:center;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#8a8880">Score</th>
-      <th style="padding:10px 14px;text-align:left;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#8a8880">Scenario</th>
+    <thead><tr style="background:#ebeef1">
+      <th style="padding:10px 14px;text-align:left;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#647581">Kantoor</th>
+      <th style="padding:10px 14px;text-align:right;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#647581">Fte</th>
+      <th style="padding:10px 14px;text-align:right;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#647581">Omzet</th>
+      <th style="padding:10px 14px;text-align:right;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#647581">EBITDA</th>
+      <th style="padding:10px 14px;text-align:right;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#647581">Vast</th>
+      <th style="padding:10px 14px;text-align:left;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#647581">Ambitie</th>
+      <th style="padding:10px 14px;text-align:center;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#647581">Score</th>
+      <th style="padding:10px 14px;text-align:left;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#647581">Scenario</th>
       <th style="padding:10px 14px"></th>
     </tr></thead>
     <tbody>${rows}</tbody>
@@ -1842,34 +1844,34 @@ function toonKantoorDetail(idx){
   var d=ST.groupData;if(!d)return;
   var offices=(d.offices||[]).sort(function(a,b){return b.overall-a.overall;});
   var o=offices[parseInt(idx)];if(!o)return;
-  function sc(v){return v>=70?'#1a7a5e':v>=50?'#c9a84c':'#e05252';}
+  function sc(v){return v>=70?'#3d6b63':v>=50?'#c49a4a':'#e05252';}
   var dimRows=SECTIONS.map(function(s){
     var v=(o.scores&&o.scores[s.id])||0;
-    return '<tr style="border-bottom:1px solid #e8e6e0"><td style="padding:8px 12px;font-size:13px;color:#5a5854">'+s.label+'</td>'
-      +'<td style="padding:8px 12px;width:55%"><div style="height:6px;background:#f0eeea;border-radius:3px"><div style="height:100%;width:'+v+'%;background:'+sc(v)+';border-radius:3px"></div></div></td>'
+    return '<tr style="border-bottom:1px solid #d9dee3"><td style="padding:8px 12px;font-size:13px;color:#42525e">'+s.label+'</td>'
+      +'<td style="padding:8px 12px;width:55%"><div style="height:6px;background:#ebeef1;border-radius:3px"><div style="height:100%;width:'+v+'%;background:'+sc(v)+';border-radius:3px"></div></div></td>'
       +'<td style="padding:8px 12px;text-align:right;font-family:IBM Plex Mono,monospace;font-size:12px;font-weight:600;color:'+sc(v)+'">'+v+'</td></tr>';
   }).join('');
   var ov=document.createElement('div');
   ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;display:flex;align-items:center;justify-content:center;padding:1rem';
   var mo=document.createElement('div');
-  mo.style.cssText='background:#faf9f6;border-radius:12px;padding:2rem;max-width:680px;width:100%;max-height:90vh;overflow-y:auto;position:relative';
+  mo.style.cssText='background:#f6f2ea;border-radius:12px;padding:2rem;max-width:680px;width:100%;max-height:90vh;overflow-y:auto;position:relative';
   mo.innerHTML='<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.5rem">'
-    +'<div><div style="font-size:1.2rem;font-weight:600;color:#1a1815">'+esc(o.name||'Anoniem')+'</div>'
-    +'<div style="font-size:13px;color:#8a8880">'+(o.fte?o.fte+' fte':'')+' &middot; Score: <strong style="color:'+sc(o.overall)+'">'+o.overall+'/100</strong></div></div>'
-    +'<div style="display:flex;gap:8px;align-items:center"><button id="det-ai-btn" style="background:var(--teal);color:#fff;border:none;border-radius:var(--r);padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer;font-family:IBM Plex Sans,sans-serif">&#127775; AI-analyse</button><button id="det-sluit" style="background:none;border:none;font-size:1.2rem;cursor:pointer;color:#8a8880;padding:4px">&times;</button></div></div>'
+    +'<div><div style="font-size:1.2rem;font-weight:600;color:#0d1b2a">'+esc(o.name||'Anoniem')+'</div>'
+    +'<div style="font-size:13px;color:#647581">'+(o.fte?o.fte+' fte':'')+' &middot; Score: <strong style="color:'+sc(o.overall)+'">'+o.overall+'/100</strong></div></div>'
+    +'<div style="display:flex;gap:8px;align-items:center"><button id="det-ai-btn" style="background:var(--teal);color:#fff;border:none;border-radius:var(--r);padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer;font-family:IBM Plex Sans,sans-serif">&#127775; AI-analyse</button><button id="det-sluit" style="background:none;border:none;font-size:1.2rem;cursor:pointer;color:#647581;padding:4px">&times;</button></div></div>'
     +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:1.5rem">'
-    +'<div style="background:#f0eeea;border-radius:8px;padding:10px"><div style="font-size:10px;text-transform:uppercase;font-weight:600;color:#8a8880;margin-bottom:2px">Omzet</div><div style="font-size:14px;font-weight:600;color:#1a1815">'+(o.revenue||'—')+'</div></div>'
-    +'<div style="background:#f0eeea;border-radius:8px;padding:10px"><div style="font-size:10px;text-transform:uppercase;font-weight:600;color:#8a8880;margin-bottom:2px">EBITDA</div><div style="font-size:14px;font-weight:600;color:#1a1815">'+(o.ebitda||'—')+'</div></div>'
-    +'<div style="background:#f0eeea;border-radius:8px;padding:10px"><div style="font-size:10px;text-transform:uppercase;font-weight:600;color:#8a8880;margin-bottom:2px">Vast omzet</div><div style="font-size:14px;font-weight:600;color:#1a1815">'+(o.recurring||'—')+'</div></div></div>'
-    +'<div style="background:rgba(26,122,94,.08);border-radius:8px;padding:10px 14px;margin-bottom:1.5rem;font-size:13px;color:#1a7a5e;font-weight:600">'
+    +'<div style="background:#ebeef1;border-radius:8px;padding:10px"><div style="font-size:10px;text-transform:uppercase;font-weight:600;color:#647581;margin-bottom:2px">Omzet</div><div style="font-size:14px;font-weight:600;color:#0d1b2a">'+(o.revenue||'—')+'</div></div>'
+    +'<div style="background:#ebeef1;border-radius:8px;padding:10px"><div style="font-size:10px;text-transform:uppercase;font-weight:600;color:#647581;margin-bottom:2px">EBITDA</div><div style="font-size:14px;font-weight:600;color:#0d1b2a">'+(o.ebitda||'—')+'</div></div>'
+    +'<div style="background:#ebeef1;border-radius:8px;padding:10px"><div style="font-size:10px;text-transform:uppercase;font-weight:600;color:#647581;margin-bottom:2px">Vast omzet</div><div style="font-size:14px;font-weight:600;color:#0d1b2a">'+(o.recurring||'—')+'</div></div></div>'
+    +'<div style="background:rgba(61,107,99,.08);border-radius:8px;padding:10px 14px;margin-bottom:1.5rem;font-size:13px;color:#3d6b63;font-weight:600">'
     +'Ambitie: '+(o.ambitie||'—')+' &rarr; '+( o.top_scenario||'—')+'</div>'
-    +'<div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#8a8880;margin-bottom:.75rem">Scores per dimensie</div>'
+    +'<div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#647581;margin-bottom:.75rem">Scores per dimensie</div>'
     +'<table style="width:100%;border-collapse:collapse"><tbody>'+dimRows+'</tbody></table>';
   ov.appendChild(mo);document.body.appendChild(ov);
   ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
   document.getElementById('det-sluit').addEventListener('click',function(){document.body.removeChild(ov);});
   var aiContainer=document.createElement('div');
-  aiContainer.style.cssText='margin-top:1.5rem;padding-top:1.5rem;border-top:1px solid #e8e6e0';
+  aiContainer.style.cssText='margin-top:1.5rem;padding-top:1.5rem;border-top:1px solid #d9dee3';
   mo.insertBefore(aiContainer,mo.lastElementChild);
   document.getElementById('det-ai-btn').addEventListener('click',function(){
     genereerKantoorAI(o,aiContainer);
