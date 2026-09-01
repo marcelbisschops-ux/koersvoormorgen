@@ -17,7 +17,6 @@ NAV_ITEMS = [
     ("{{ROOT}}m-en-a-expertise/", "M&amp;A Expertise"),
     ("{{ROOT}}cases/", "Cases"),
     ("{{ROOT}}inzichten/", "Inzichten"),
-    ("{{ROOT}}contact.html", "Contact"),
 ]
 
 def nav():

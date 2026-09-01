@@ -319,6 +319,22 @@ a.card:hover,.card--link:hover{transform:translateY(-3px); border-color:var(--pe
 .hero h1{font-size:var(--fs-hero); letter-spacing:.005em}
 .hero__sub{font-size:var(--fs-md); max-width:54ch; margin-top:1.5rem}
 .s-dark .hero__sub{color:var(--body-d)}
+
+/* fotografisch statement achter de homepage-hero */
+.hero--photo{position:relative; overflow:hidden; min-height:min(84vh,760px); display:flex; align-items:center}
+.hero--photo::before{
+  content:""; position:absolute; inset:0; z-index:0;
+  background:
+    linear-gradient(90deg, var(--s-dark) 0%, rgba(13,27,42,.94) 30%, rgba(13,27,42,.6) 68%, rgba(13,27,42,.38) 100%),
+    linear-gradient(to top, var(--s-dark) 4%, rgba(13,27,42,0) 52%),
+    url("img/hero-weg.jpg") center 60%/cover no-repeat;
+}
+.hero--photo .wrap{position:relative; z-index:1; width:100%}
+@media (max-width:640px){
+  .hero--photo::before{background:
+    linear-gradient(180deg, rgba(13,27,42,.7) 0%, rgba(13,27,42,.86) 45%, var(--s-dark) 100%),
+    url("img/hero-weg.jpg") center/cover no-repeat;}
+}
 .hero__media{margin-top:3rem; border-radius:var(--r-lg); overflow:hidden; border:1px solid var(--hair-d)}
 .hero__media img{width:100%; display:block}
 
