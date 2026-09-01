@@ -751,9 +751,14 @@ function renderSummary(){
   function parseGeldCheck(v){
     if(!v)return null;
     // Fix 5 aug 2026: punten zijn NL-duizendtal-scheiding, nooit decimaal — eerst verwijderen.
-    var n=String(v).replace(/[^0-9,.]/g,'').replace(/\./g,'').replace(',','.');
+    // Fix 1 sep 2026: teken behouden (zie parseGeld in mna/03) — anders zou een negatieve EBITDA in
+    // een discrepantie-check als positief worden vergeleken.
+    var str=String(v).trim();
+    var negatief=/^[^\d]*[-−–—‑－]\s*\d/.test(str)||/\d\s*[-−–—‑－]\s*$/.test(str)||/^\(.*\d.*\)$/.test(str);
+    var n=str.replace(/[^0-9,.]/g,'').replace(/\./g,'').replace(',','.');
     var parsed=parseFloat(n);
-    return isNaN(parsed)?null:parsed;
+    if(isNaN(parsed))return null;
+    return negatief?-parsed:parsed;
   }
 
   var o1=parseGeldCheck(S.data['financieel_omzet1']);
@@ -1863,7 +1868,7 @@ function bindAll(){
       var financieelRow=(S._mnaData||[]).find(function(row){return row.fase_id==='financieel';});
       var fdj={};
       try{var rawFdj=financieelRow?financieelRow.data_json:null;fdj=typeof rawFdj==='string'?JSON.parse(rawFdj):(rawFdj||{});}catch(e){}
-      function parseGeldLocal(s){if(!s)return 0;var n=String(s).replace(/[^0-9,.]/g,'').replace(/\./g,'').replace(',','.');return parseFloat(n)||0;}
+      function parseGeldLocal(s){if(!s)return 0;var str=String(s).trim();var neg=/^[^\d]*[-−–—‑－]\s*\d/.test(str)||/\d\s*[-−–—‑－]\s*$/.test(str)||/^\(.*\d.*\)$/.test(str);var n=str.replace(/[^0-9,.]/g,'').replace(/\./g,'').replace(',','.');var v=parseFloat(n)||0;return neg?-v:v;}
       var omzet3=fdj.omzet3?parseGeldLocal(fdj.omzet3.value):0;
       var ebitdaPct=fdj.ebitda?parseFloat(String(fdj.ebitda.value).replace(',','.'))||0:0;
       var ebitdaBedrag=omzet3*(ebitdaPct/100);

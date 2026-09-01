@@ -2,8 +2,33 @@
 // Fix 5 aug 2026: "3.000.000" (NL-duizendtallen) werd door parseFloat na de eerste extra punt
 // afgekapt tot 3 — punten zijn in NL-notatie altijd duizendtal-scheiding, nooit decimaal (dat is de
 // komma), dus die worden nu eerst verwijderd vóór het omzetten van de komma naar een decimale punt.
-function parseGeld(s){if(!s)return 0;var n=String(s).replace(/[^0-9,.]/g,'').replace(/\./g,'').replace(',','.');return parseFloat(n)||0;}
-function fmtGeld(n){if(!n||isNaN(n))return '—';if(n>=1000000)return '€'+(n/1000000).toFixed(2)+' mln';if(n>=1000)return '€'+(n/1000).toFixed(0)+'.000';return '€'+Math.round(n);}
+// Fix 1 sep 2026 (kritiek, auditbevinding): de tekenklasse [^0-9,.] verwijderde óók het minteken, dus
+// een NEGATIEVE waarde (verlieslatende EBITDA, negatief eigen vermogen) werd als POSITIEF ingelezen —
+// een structurele waarderingsvertekening (GOUDEN STANDAARD werkregel 13). Nu: het teken wordt eerst
+// bepaald en na het strippen weer toegepast. Herkent: leidend minteken (incl. en-/em-dash en
+// non-breaking/fullwidth varianten die Excel/Word er stilzwijgend van maken), achterloop-minteken
+// (SAP en diverse boekhoudexports: "1.234-"), en boekhoudkundige haakjes rond het hele bedrag.
+function parseGeld(s){
+  if(!s)return 0;
+  var str=String(s).trim();
+  var negatief=/^[^\d]*[-−–—‑－]\s*\d/.test(str)
+    || /\d\s*[-−–—‑－]\s*$/.test(str)
+    || /^\(.*\d.*\)$/.test(str);
+  var n=str.replace(/[^0-9,.]/g,'').replace(/\./g,'').replace(',','.');
+  var v=parseFloat(n)||0;
+  return negatief ? -v : v;
+}
+// fmtGeld: 0/leeg/NaN → "—" (ongewijzigd). Negatieve bedragen: magnitude formatteren en het minteken
+// ervóór zetten, i.p.v. de kale "€-200000" die de bucket-grenzen (>=1000/1000000) voor een negatief
+// getal opleverden.
+function fmtGeld(n){
+  if(!n||isNaN(n))return '—';
+  var neg=n<0, a=Math.abs(n);
+  var s=a>=1000000 ? '€'+(a/1000000).toFixed(2)+' mln'
+       : a>=1000    ? '€'+(a/1000).toFixed(0)+'.000'
+       : '€'+Math.round(a);
+  return neg ? '-'+s : s;
+}
 // Zelfde als parseGeld, maar geeft null terug als het veld niet is ingevuld (i.p.v. 0) — nodig voor
 // de financiële ratio's hieronder, waar 0 een geldige uitkomst kan zijn (bijv. geen schuld) en dus
 // onderscheiden moet worden van "nog niet ingevuld" (GOUDEN STANDAARD: nooit stilzwijgend gokken).
@@ -503,6 +528,15 @@ function dvBerekenSynergie(p){
 // vastgestelde norm) — vergelijkbaar met de al bestaande ±10%-scenario's in dvBerekenPrijsmechanisme.
 function dvBerekenScenarios(p){
   if(!p.scenarioAan)return null;
+  // Fix 1 sep 2026 (auditbevinding #2): deze functie las p.ebitdaBewezen rechtstreeks — voor een
+  // sector met een OMZET-multiple (zorg: praktijkwaarde) werd de omzet-multiple dan op de EBITDA
+  // toegepast (>70% afwijking, zie dvSectorMultipleRange-toelichting). Nu grondslag-bewust via
+  // dvGrondslagBewezen(), consistent met dvBerekenPrijsmechanisme/dvBerekenClosing.
+  // GOUDEN STANDAARD werkregel 13: bij een verlieslatende/nul grondslag is een multiple-scenario
+  // betekenisloos — groei op een negatieve basis keert Downside/Upside om (kleiner vs. groter verlies)
+  // en de labels zouden hun eigen cijfers tegenspreken. Dan geen scenario's.
+  var gBasis=dvGrondslagBewezen(p);
+  if(!(gBasis>0))return null;
   var delta=p.scenarioGroeiDeltaPct||0;
   var varianten=[
     {label:'Downside',groeiDelta:-delta},
@@ -511,9 +545,11 @@ function dvBerekenScenarios(p){
   ];
   return varianten.map(function(v){
     var groei=(p.groeiPct+v.groeiDelta)/100;
-    var ebitda=p.ebitdaBewezen;
-    for(var j=1;j<=p.horizonJaren;j++){ebitda*=(1+groei);}
-    return {label:v.label,groeiPct:p.groeiPct+v.groeiDelta,ebitdaEind:ebitda,waardeLaag:ebitda*p.multipleBasis,waardeHoog:ebitda*p.multipleBovengrens};
+    var g=gBasis;
+    for(var j=1;j<=p.horizonJaren;j++){g*=(1+groei);}
+    // ebitdaEind = grondslag na de horizon (EBITDA óf omzet, afhankelijk van p.grondslag) — sleutelnaam
+    // blijft 'ebitdaEind' voor de bestaande renderers; het label wordt grondslag-bewust getoond.
+    return {label:v.label,groeiPct:p.groeiPct+v.groeiDelta,ebitdaEind:g,waardeLaag:g*p.multipleBasis,waardeHoog:g*p.multipleBovengrens,grondslag:p.grondslag||'ebitda'};
   });
 }
 
@@ -1032,8 +1068,9 @@ function dvTabelSynergie(syn){
 
 function dvTabelScenarios(scenarios,p){
   if(!scenarios)return '';
+  var grLabel=((scenarios[0]&&scenarios[0].grondslag==='omzet')||p.grondslag==='omzet')?'Omzet':'EBITDA';
   var rows=scenarios.map(function(s){return [s.label,s.groeiPct.toFixed(1)+'%/jaar',dvMln(s.ebitdaEind),dvMln(s.waardeLaag)+' – '+dvMln(s.waardeHoog)];});
-  var html=dvRenderTabelHtml(['Scenario','Groeivoet','EBITDA na '+p.horizonJaren+' jaar','Ondernemingswaarde (€ mln)'],rows);
+  var html=dvRenderTabelHtml(['Scenario','Groeivoet',grLabel+' na '+p.horizonJaren+' jaar','Ondernemingswaarde (€ mln)'],rows);
   html+='<div style="font-size:12px;color:var(--muted);padding:.6rem .75rem;background:var(--card);border-radius:6px;margin-top:-.75rem">'
     +'Downside/upside wijken '+p.scenarioGroeiDeltaPct+' procentpunt af van de basis-groeivoet ('+p.groeiPct+'%/jaar) — zelf ingestelde bandbreedte, geen vastgestelde norm.'
     +'</div>';
@@ -1693,7 +1730,12 @@ function dvBerekenWaardering(){
       multipleTypeBedrag=0;
     }
   }
-  var _geenMultiple=maatschapGrondslagOnbekend||multipleOnbekend;
+  // Fix 1 sep 2026 (auditbevinding + parseGeld-tekenfix): een verlieslatende of nul grondslag
+  // (genormaliseerde EBITDA <= 0, of geen/negatieve omzet bij een omzet-multiple) maakt een
+  // multiplewaardering betekenisloos. GOUDEN STANDAARD werkregel 8/13: dan bewust géén getal tonen —
+  // zelfde behandeling als multipleOnbekend / maatschapGrondslagOnbekend (rode banner in de render).
+  var grondslagNegatief=!(multipleTypeBedrag>0) && !maatschapGrondslagOnbekend;
+  var _geenMultiple=maatschapGrondslagOnbekend||multipleOnbekend||grondslagNegatief;
   var wLaag=_geenMultiple?null:multipleTypeBedrag*mLaag;
   var wMid=_geenMultiple?null:multipleTypeBedrag*mMid;
   var wHoog=_geenMultiple?null:multipleTypeBedrag*mHoog;
@@ -1730,6 +1772,7 @@ function dvBerekenWaardering(){
     partnerBel:partnerBel,partnerBelLabel:partnerBelLabel,recurring:recurring,declarab:declarab,wip:wip,debiteuren:debiteuren,
     fte:fte,aantalP:aantalP,omzetPerP:omzetPerP,aantalKlanten:aantalKlanten,top1pct:top1pct,top10pct:top10pct,churn:churn,
     mLaag:mLaag,mMid:mMid,mHoog:mHoog,multipleType:multipleType,multipleTypeBedrag:multipleTypeBedrag,multipleOnbekend:multipleOnbekend,
+    grondslagNegatief:grondslagNegatief,
     maatschapModus:maatschapModus,maatschapGrondslagOnbekend:maatschapGrondslagOnbekend,ondernemersloonTotaal:maatschapModus?partnerBel:0,
     wLaag:wLaag,wMid:wMid,wHoog:wHoog,
     gemGroei:gemGroei,forecastOnbekend:forecastOnbekend,fc:fc,fcE:fcE,fcW:fcW,
@@ -1828,6 +1871,7 @@ function renderWaardering(){
     +(v.maatschapModus&&!v.maatschapGrondslagOnbekend?'<div style="font-size:12px;color:var(--teal-dim);background:var(--teal-bg);border:1px solid var(--teal-dark);border-radius:var(--r);padding:8px 12px;margin-bottom:.75rem">Maatschap / IB-onderneming: de grondslag is de genormaliseerde winst ('+fmtGeld(ebitdaAmt)+') <strong>minus</strong> een marktconform ondernemersloon voor de werkende maten ('+fmtGeld(v.ondernemersloonTotaal)+', overgenomen uit het veld eigenaar-/partnerbeloning) = <strong>'+fmtGeld(v.multipleTypeBedrag)+'</strong>. Er wordt niet met vennootschapsbelasting gerekend (maten betalen box-1 inkomstenbelasting).</div>':'')
     +(v.maatschapModus&&v.maatschapGrondslagOnbekend?'<div style="font-size:12px;color:var(--red);background:var(--red-bg);border:1px solid var(--red);border-radius:var(--r);padding:8px 12px;margin-bottom:.75rem"><strong>&#9888; Grondslag nog niet vast te stellen.</strong> Dit is een maatschap: de waardering rekent op de winst ná een marktconform ondernemersloon voor de werkende maten. Vul daarvoor eerst het veld <strong>eigenaar-/partnerbeloning totaal per jaar</strong> in (fase Financieel). Zolang dat leeg is, wordt hier bewust géén waarde getoond in plaats van een ongecorrigeerd cijfer.</div>':'')
     +(v.multipleOnbekend?'<div style="font-size:12px;color:var(--red);background:var(--red-bg);border:1px solid var(--red);border-radius:var(--r);padding:8px 12px;margin-bottom:.75rem"><strong>&#9888; Geen multiple-range voor deze sector.</strong> Er is geen onderbouwde EBITDA-/omzet-multiple bekend voor deze sector, dus er wordt hier bewust géén waardering getoond in plaats van een gegokte bandbreedte. Gebruik het Dealvoorstel-scherm en vul daar een onderbouwde multiple handmatig in.</div>':'')
+    +((v.grondslagNegatief&&!v.multipleOnbekend)?'<div style="font-size:12px;color:var(--red);background:var(--red-bg);border:1px solid var(--red);border-radius:var(--r);padding:8px 12px;margin-bottom:.75rem"><strong>&#9888; Verlieslatende of nul grondslag.</strong> De '+(multipleType==='omzet'?'omzet':'genormaliseerde EBITDA')+' waarop de multiple wordt toegepast is '+fmtGeld(v.multipleTypeBedrag)+'. Een multiplewaardering is dan betekenisloos, dus er wordt hier bewust géén bandbreedte getoond. Beoordeel dit traject via de alternatieve methodes (intrinsieke waarde, liquidatiewaarde) op het Dealvoorstel-scherm.</div>':'')
     +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:.75rem">'
     +'<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r2);padding:1rem;text-align:center">'
       +'<div style="font-size:10px;color:var(--muted);margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.06em">Laag ('+(mLaag!=null?mLaag:'?')+'&times; '+basisLabel+')</div>'
@@ -1844,7 +1888,7 @@ function renderWaardering(){
       +(recurring>0&&churn>0?' &nbsp;|&nbsp; ':'')
       +(churn>0?'Churn: <strong>'+churn+'%</strong>':'')
     +'</div>'):'')
-    +(v.maatschapGrondslagOnbekend?'':'<div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)">'+dvSvgBarChart([
+    +((v.maatschapGrondslagOnbekend||v.multipleOnbekend||v.grondslagNegatief)?'':'<div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)">'+dvSvgBarChart([
       {label:'Laag ('+mLaag+'\xd7 '+basisLabel+')',waarde:wLaag,kleur:'var(--border2)'},
       {label:'Midden ('+mMid+'\xd7 '+basisLabel+')',waarde:wMid,kleur:'var(--teal)'},
       {label:'Hoog ('+mHoog+'\xd7 '+basisLabel+')',waarde:wHoog,kleur:'var(--border2)'}
@@ -1865,6 +1909,8 @@ function renderWaardering(){
     html+='<div style="font-size:12px;color:var(--gold-dark);background:var(--gold-bg);border:1px solid var(--gold);border-radius:var(--r);padding:8px 12px"><strong>&#9888; Geen groeiraming mogelijk.</strong> Er zijn niet genoeg opeenvolgende omzetjaren ingevuld om een gemiddelde historische groei te berekenen. Vul omzet jaar 1 t/m 3 in; er wordt bewust g\u00e9\u00e9n groeivoet aangenomen.</div>';
   } else if(v.multipleOnbekend){
     html+='<div style="font-size:12px;color:var(--mid);margin-bottom:.75rem">Gem. historische groei: <strong style="color:var(--sub)">'+gemGroei.toFixed(1)+'%</strong>/jaar. Waardebandbreedte niet getoond \u2014 geen multiple-range bekend voor deze sector.</div>';
+  } else if(v.grondslagNegatief){
+    html+='<div style="font-size:12px;color:var(--mid);margin-bottom:.75rem">Gem. historische groei: <strong style="color:var(--sub)">'+gemGroei.toFixed(1)+'%</strong>/jaar. Waardebandbreedte niet getoond \u2014 verlieslatende of nul grondslag.</div>';
   } else {
     html+='<div style="font-size:12px;color:var(--mid);margin-bottom:.75rem">Gem. historische groei: <strong style="color:var(--sub)">'+gemGroei.toFixed(1)+'%</strong>/jaar</div>'
     +'<table style="width:100%;border-collapse:collapse"><thead><tr>'
