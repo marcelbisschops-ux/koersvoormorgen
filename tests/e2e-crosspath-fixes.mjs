@@ -350,6 +350,20 @@ async function main() {
       } else {
         sla_over('CONF · /mna/versie/{id} koper-403', 'geen waarderingsrapport-versie-id gevonden');
       }
+
+      // /adviseur/trajecten geeft de eigen trajectenlijst aan de adviseur (owner-facing, geen
+      // cross-rol). Nog SELECT * + deny-list — BACKLOG 0.2. Deze check bewaakt in elk geval dat de
+      // platformbeheerder-notitie + handtekening-detailvelden er nooit in belanden.
+      const advLijst = await api('POST', '/adviseur/trajecten', { body: { email, wachtwoord: WW } });
+      const advTr = (advLijst.json && Array.isArray(advLijst.json.trajecten)) ? advLijst.json.trajecten
+        : (Array.isArray(advLijst.json) ? advLijst.json : (advLijst.json && advLijst.json.lijst) || []);
+      if (Array.isArray(advTr) && advTr.length) {
+        const ADV_NOOIT = ['notitie', 'verkoper_teken', 'verkoper_teken_grond', 'verkoper_teken2', 'koper_teken', 'koper_teken_grond', 'teken_status', 'volgend_overleg', 'extra_contact', 'signhost_transactions'];
+        const advLek = ADV_NOOIT.filter(k => advTr.some(t => Object.prototype.hasOwnProperty.call(t, k)));
+        check('/adviseur/trajecten lekt geen platformbeheerder-/handtekening-velden', advLek.length === 0, advLek.length ? 'aanwezig: ' + advLek.join(', ') : '');
+      } else {
+        sla_over('CONF · /adviseur/trajecten', 'geen trajecten in de adviseur-respons (' + JSON.stringify(advLijst.json).slice(0, 120) + ')');
+      }
     }
   }
 
