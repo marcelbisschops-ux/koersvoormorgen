@@ -92,8 +92,13 @@ gedicht 1 sep, zie `BACKLOG-ARCHIEF.md` #25 + `SECURITY-INVARIANTS.md`).
   een expliciete allow-list. Wat overblijft is structureel, geen losse endpoints meer:
   - **Eén centrale policy-laag** (`rol × resource × actie × veld`) i.p.v. de per-endpoint-lijstjes
     die er nu staan. Grootste stuk werk; verdient een eigen ontwerp-sessie, niet tussendoor.
-  - **CI-gate:** nieuw veld in een externe respons/schema → build faalt tenzij expliciet
-    goedgekeurd (schema-snapshot + diff-check).
+  - **CI-gate:** ~~nieuw veld in een externe respons/schema → build faalt tenzij expliciet
+    goedgekeurd~~ — **script gebouwd:** `tests/schema-gate.mjs`. Zet een compleet testtraject op,
+    berekent per externe endpoint × rol de veld-signatuur van de respons, vergelijkt met
+    `tests/schema-baseline.json` (TOEGEVOEGD veld → FAIL; verdwenen veld → alleen waarschuwing).
+    **Nog te doen:** (a) `ADMIN_KEY=... node tests/schema-gate.mjs --update` draaien tegen de
+    LIVE worker ná de deploy van de huidige batch, zodat de baseline de gewenste (versmalde)
+    staat vastlegt; (b) opnemen in een CI-stap of de pre-deploy die de ADMIN_KEY heeft.
   - De "muur" in marilyn (`stripAfgeschermdeVelden`) is nog een deny-list — hoort bij de centrale
     policy-laag hierboven, niet als losse fix.
 - **Werkwijze (voor de structurele stukken):** ontwerp eerst voorleggen, dan bouwen; staging +
