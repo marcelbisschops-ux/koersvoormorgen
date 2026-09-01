@@ -215,6 +215,39 @@ dialog#tt-dialog::backdrop{background:rgba(13,27,42,.55)}
 .tt-msg{font-size:13px;margin-top:.7rem;line-height:1.5}
 .tt-msg.ok{color:var(--teal-dim)}
 .tt-msg.err{color:#c0392b}
+
+/* ── Beweging: terughoudend, professioneel, uit bij prefers-reduced-motion ── */
+@media (prefers-reduced-motion: no-preference){
+  /* Scroll-onthulling (JS voegt .reveal toe aan secties/kaarten en .in als ze in beeld komen) */
+  .reveal{opacity:0;transform:translateY(16px);transition:opacity .6s cubic-bezier(.22,.61,.36,1),transform .6s cubic-bezier(.22,.61,.36,1)}
+  .reveal.in{opacity:1;transform:none}
+  .reveal.d1{transition-delay:.06s}.reveal.d2{transition-delay:.12s}.reveal.d3{transition-delay:.18s}.reveal.d4{transition-delay:.24s}
+
+  /* Hero-tekst getrapt binnen bij het laden */
+  .hero .eyebrow,.hero h1,.hero-sub,.hero p,.hero-ctas,.hero-note{opacity:0;transform:translateY(14px);animation:heroIn .7s cubic-bezier(.22,.61,.36,1) forwards}
+  .hero h1{animation-delay:.08s}.hero-sub{animation-delay:.16s}.hero p{animation-delay:.24s}
+  .hero-ctas{animation-delay:.32s}.hero-note{animation-delay:.4s}
+  @keyframes heroIn{to{opacity:1;transform:none}}
+
+  /* Hover-micro-interacties */
+  .feature,.offer-card,.ai-card,.proof-frame,.pill{transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}
+  .offer-card:hover,.ai-card:hover{transform:translateY(-3px);border-color:var(--teal);box-shadow:0 14px 30px -14px rgba(13,27,42,.28)}
+  .feature:hover .feature-icon{background:var(--teal);border-color:var(--teal)}
+  .proof-frame:hover{transform:translateY(-3px);box-shadow:0 26px 55px -20px rgba(13,27,42,.3)}
+  .product-frame{transition:transform .5s cubic-bezier(.22,.61,.36,1),box-shadow .5s ease}
+  .product-frame:hover{transform:translateY(-5px)}
+  .btn-primary,.btn-secondary,.offer-link{transition:transform .16s ease,background .18s ease,border-color .18s ease,color .18s ease}
+  .btn-primary:hover,.btn-secondary:hover{transform:translateY(-2px)}
+  .offer-link:hover{transform:translateX(3px)}
+  .nav-links a{position:relative;transition:color .16s ease}
+  .nav-links a::after{content:'';position:absolute;left:0;right:100%;bottom:-4px;height:1.5px;background:var(--on-navy-accent);transition:right .22s ease}
+  .nav-links a:hover::after{right:0}
+
+  /* Gouden accentlijn onder een sectiekop die 'groeit' bij het in beeld komen */
+  .section-head h2{position:relative;padding-bottom:.6rem}
+  .section-head h2::after{content:'';position:absolute;left:0;bottom:0;width:0;height:2px;background:var(--gold);transition:width .6s cubic-bezier(.22,.61,.36,1) .15s}
+  .reveal.in .section-head h2::after,.section-head.in h2::after{width:44px}
+}
 </style>
 </head>
 <body>
@@ -547,6 +580,26 @@ document.getElementById('tt-form').addEventListener('submit',async function(e){
     f.appendChild(c);
   }catch(err){msg.className='tt-msg err';msg.textContent='Kon geen verbinding maken. Probeer het later opnieuw.';btn.disabled=false;btn.textContent='Versturen';}
 });
+
+/* Scroll-onthulling — voegt .reveal toe aan secties/kaarten en .in zodra ze in beeld komen.
+   Doet niets als de gebruiker prefers-reduced-motion heeft (dan blijft alles gewoon zichtbaar). */
+(function(){
+  if(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+  if(!('IntersectionObserver' in window))return;
+  var sel='.section-head, .feature, .offer-card, .ai-card, .proof-band, .cta-band, .step, .hero-visual';
+  var els=[].slice.call(document.querySelectorAll(sel));
+  els.forEach(function(el){el.classList.add('reveal');});
+  // Kleine stagger binnen een groep zusjes (feature-grid, ai-grid, offers-grid).
+  ['.feature-grid','.ai-grid','.offers-grid','.proof-band'].forEach(function(gs){
+    document.querySelectorAll(gs).forEach(function(grp){
+      [].slice.call(grp.children).forEach(function(ch,i){ if(ch.classList.contains('reveal')&&i<4) ch.classList.add('d'+(i+1)); });
+    });
+  });
+  var io=new IntersectionObserver(function(entries){
+    entries.forEach(function(en){ if(en.isIntersecting){ en.target.classList.add('in'); io.unobserve(en.target); } });
+  },{threshold:.12,rootMargin:'0px 0px -8% 0px'});
+  els.forEach(function(el){io.observe(el);});
+})();
 </script>
 </body>
 </html>
