@@ -116,6 +116,16 @@ Genormaliseerde rolnaam: **`begeleider`** overal (de oude `rolVanCode` gaf `'tus
 Callers die op de letterlijke string `'tussenpersoon'` vergelijken, worden bij hun migratiestap
 meegenomen — `grep -rn "'tussenpersoon'" backend/worker` vóór stap 3.
 
+⚠️ **STAP-3-HAZARD (bevestigd door de onafhankelijke review, 1 sep 2026):** `rolVanCodeViaPolicy`
+geeft `'tussenpersoon'` terug (byte-getrouw), maar `resolveRol({modus:'padcode'})` geeft
+`'begeleider'` voor dezelfde input. `magDocTypeZien` / `ROLGEBONDEN_DOCTYPES` (worker/10) én
+~15 `=== 'tussenpersoon'`-vergelijkingen in worker/10,11,12,15,19 zijn op `'tussenpersoon'` gesleuteld.
+Zodra stap 3 een `rolVanCode`-caller naar `resolveRol` overzet, matchen die stil niet meer —
+faalmodus: een begeleider verliest toegang, of (erger) een doc-type-check evalueert verkeerd.
+**Elke stap-3-commit MUST óf een rolnaam-normalisatie-shim meeleveren, óf de matrix + alle
+`=== 'tussenpersoon'`-checks in dezelfde commit meeverhuizen naar `'begeleider'`.** Niet
+endpoint-voor-endpoint half doen.
+
 ---
 
 # STAP 1 — GEDAAN (1 sep 2026, geen productie-impact)
