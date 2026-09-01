@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Contact — plan een gesprek — Koers voor Morgen</title>
+<meta name="description" content="Plan een gesprek over het platform of over een transactie of vraagstuk. marcel@bisschopsfinancing.nl · +31 6 38 68 98 88.">
+<link rel="canonical" href="https://koersvoormorgen.nl/contact">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Contact — plan een gesprek — Koers voor Morgen">
+<meta property="og:description" content="Plan een gesprek over het platform of over een transactie of vraagstuk. marcel@bisschopsfinancing.nl · +31 6 38 68 98 88.">
+<meta property="og:image" content="https://koersvoormorgen.nl/assets/og/hero-weg.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500&family=Inter:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="./assets/kvm.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    { "@type": "Organization", "@id": "https://koersvoormorgen.nl/#org", "name": "Koers voor Morgen", "url": "https://koersvoormorgen.nl/", "parentOrganization": { "@type": "Organization", "name": "Bisschops Financing B.V." }, "sameAs": ["https://www.linkedin.com/in/marcelbisschops"] },
+    { "@type": "WebSite", "@id": "https://koersvoormorgen.nl/#site", "url": "https://koersvoormorgen.nl/", "name": "Koers voor Morgen", "publisher": { "@id": "https://koersvoormorgen.nl/#org" }, "inLanguage": "nl-NL" },
+    { "@type": "BreadcrumbList", "itemListElement": [{ "@type": "ListItem", "position": 1, "name": "Home", "item": "https://koersvoormorgen.nl/" }, { "@type": "ListItem", "position": 2, "name": "Contact", "item": "https://koersvoormorgen.nl/contact" }] }
+  ]
+}
+</script>
+</head>
+<body>
+
+<header class="nav">
+  <div class="nav__in">
+    <a class="nav__brand" href="./">Koers voor <b>Morgen</b></a>
+    <button class="nav__toggle" aria-label="Menu" aria-expanded="false">&#9776;</button>
+    <nav class="nav__links" aria-label="Hoofdnavigatie">
+      <a href="./platform/">Platform</a>
+      <a href="./m-en-a-expertise/">M&amp;A Expertise</a>
+      <a href="./bedrijfsscan.html">Bedrijfsscan</a>
+      <a href="./cases/">Cases</a>
+      <a href="./inzichten/">Inzichten</a>
+      <a href="./contact.html">Contact</a>
+      <a class="nav__cta" href="./contact.html">Plan een gesprek</a>
+      <a class="nav__login" href="./inloggen.html">Inloggen</a>
+    </nav>
+  </div>
+</header>
+
+<div class="spine" aria-hidden="true"></div>
+
+<main>
+  <section class="section s-dark">
+    <div class="wrap wrap--text">
+      <p class="crumb"><a href="./">Home</a> <span class="sep">&rsaquo;</span> <b>Contact</b></p>
+      <p class="eyebrow">Contact</p>
+      <h1>Soms is één goed gesprek genoeg.</h1>
+      <p class="hero__sub">Vertel kort waar het over gaat — het platform, of een transactie of
+      vraagstuk. U hoort doorgaans binnen één werkdag van Marcel.</p>
+
+      <form class="reveal" id="contactform" method="post"
+            action="https://kantoorinzicht.marcel-bisschops.workers.dev/contact"
+            style="margin-top:2.5rem; max-width:34rem">
+        <div class="field">
+          <label for="cf-naam">Naam</label>
+          <input id="cf-naam" name="naam" type="text" autocomplete="name" required>
+        </div>
+        <div class="field">
+          <label for="cf-mail">E-mailadres</label>
+          <input id="cf-mail" name="email" type="email" autocomplete="email" required>
+        </div>
+        <div class="field">
+          <label for="cf-org">Organisatie <span style="color:var(--muted-d); font-weight:400">(optioneel)</span></label>
+          <input id="cf-org" name="organisatie" type="text" autocomplete="organization">
+        </div>
+        <div class="field">
+          <label for="cf-onderwerp">Waar gaat het over?</label>
+          <select id="cf-onderwerp" name="onderwerp" required>
+            <option value="">Kies…</option>
+            <option value="platform">Het platform</option>
+            <option value="transactie">Een transactie of vraagstuk</option>
+            <option value="anders">Iets anders</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="cf-bericht">Uw bericht</label>
+          <textarea id="cf-bericht" name="bericht" required></textarea>
+        </div>
+        <div class="field field--hp" aria-hidden="true">
+          <label for="cf-website">Laat dit veld leeg</label>
+          <input id="cf-website" name="website" type="text" tabindex="-1" autocomplete="off">
+        </div>
+        <div class="btn-row" style="margin-top:1rem; align-items:baseline">
+          <button class="btn btn-primary" type="submit">Verstuur</button>
+          <span style="font-size:var(--fs-xs); color:var(--muted-d)">Door te versturen gaat u akkoord met de
+          <a href="./privacy.html">privacyverklaring</a>.</span>
+        </div>
+        <p id="cf-status" role="status" style="margin-top:1rem; font-size:var(--fs-sm); display:none"></p>
+      </form>
+    </div>
+  </section>
+
+  <section class="section s-light">
+    <div class="wrap wrap--text">
+      <div class="section-head reveal">
+        <p class="eyebrow">Direct</p>
+        <h2>Liever meteen mailen of bellen?</h2>
+      </div>
+      <p class="reveal" style="margin-top:1.25rem; font-size:var(--fs-md)">
+        <a href="mailto:marcel@bisschopsfinancing.nl">marcel@bisschopsfinancing.nl</a><br>
+        <a href="tel:+31638689888">+31 6 38 68 98 88</a><br>
+        <a href="https://www.linkedin.com/in/marcelbisschops">linkedin.com/in/marcelbisschops</a>
+      </p>
+      <p class="reveal" style="margin-top:1.5rem; color:var(--muted); font-size:var(--fs-sm)">
+      Na uw bericht neemt Marcel doorgaans binnen één werkdag contact op. Voor het platform kunt u
+      ook direct <a href="./bedrijfsscan.html">de gratis bedrijfsscan</a> starten of
+      <a href="./inloggen.html">inloggen</a>.</p>
+    </div>
+  </section>
+
+</main>
+
+<footer class="foot">
+  <div class="foot__grid">
+    <div class="foot__brand"><b>Koers voor Morgen</b>Van complexiteit naar koers, van besluit naar beweging. Een initiatief van Bisschops Financing B.V.</div>
+    <div><h4>Platform</h4><ul>
+      <li><a href="./platform/">Overzicht</a></li>
+      <li><a href="./platform/dataroom-en-fases.html">Dataroom &amp; fases</a></li>
+      <li><a href="./platform/ai-signalen.html">AI-signalen</a></li>
+      <li><a href="./platform/beveiliging-en-gegevens.html">Beveiliging &amp; gegevens</a></li>
+      <li><a href="./platform/voor-adviseurs.html">Voor adviseurs</a></li>
+    </ul></div>
+    <div><h4>M&amp;A Expertise</h4><ul>
+      <li><a href="./m-en-a-expertise/">Overzicht</a></li>
+      <li><a href="./m-en-a-expertise/complexe-transacties.html">Complexe transacties</a></li>
+      <li><a href="./m-en-a-expertise/due-diligence-begeleiding.html">Due diligence</a></li>
+      <li><a href="./m-en-a-expertise/integratie-en-pmi.html">Integratie &amp; PMI</a></li>
+      <li><a href="./m-en-a-expertise/regie.html">Regie</a></li>
+    </ul></div>
+    <div><h4>Meer</h4><ul>
+      <li><a href="./bedrijfsscan.html">Bedrijfsscan</a></li>
+      <li><a href="./cases/">Cases</a></li>
+      <li><a href="./inzichten/">Inzichten</a></li>
+      <li><a href="./contact.html">Contact</a></li>
+      <li><a href="./inloggen.html">Inloggen</a></li>
+    </ul></div>
+  </div>
+  <div class="foot__legal">
+    <span>&copy; 2026 Bisschops Financing B.V.</span>
+    <a href="./privacy.html">Privacyverklaring</a>
+    <a href="./voorwaarden.html">Voorwaarden</a>
+    <a href="https://www.linkedin.com/in/marcelbisschops">LinkedIn</a>
+    <a href="mailto:marcel@bisschopsfinancing.nl">marcel@bisschopsfinancing.nl</a>
+    <a href="tel:+31638689888">+31 6 38 68 98 88</a>
+  </div>
+</footer>
+
+<script src="./assets/kvm.js"></script>
+</body>
+</html>
