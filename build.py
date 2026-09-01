@@ -49,6 +49,7 @@ def foot():
       <li><a href="{{ROOT}}platform/ai-signalen.html">AI-signalen</a></li>
       <li><a href="{{ROOT}}platform/beveiliging-en-gegevens.html">Beveiliging &amp; gegevens</a></li>
       <li><a href="{{ROOT}}platform/voor-adviseurs.html">Voor adviseurs</a></li>
+      <li><a href="{{ROOT}}platform/matching.html">Matching</a></li>
     </ul></div>
     <div><h4>M&amp;A Expertise</h4><ul>
       <li><a href="{{ROOT}}m-en-a-expertise/">Overzicht</a></li>
