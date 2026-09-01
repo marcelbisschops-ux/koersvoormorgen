@@ -103,6 +103,8 @@ button{font:inherit; cursor:pointer}
 .reveal.in .section-head h2::after{width:64px}
 
 .lead{font-size:var(--fs-md)}
+.lead a{color:var(--petrol); text-decoration:underline; text-underline-offset:2px}
+.s-dark .lead a,.s-petrol .lead a{color:var(--petrol-bright)}
 .prose{max-width:var(--w-text)}
 .prose > * + *{margin-top:1.1rem}
 .prose h2{font-size:var(--fs-xl); margin-top:2.4rem}
