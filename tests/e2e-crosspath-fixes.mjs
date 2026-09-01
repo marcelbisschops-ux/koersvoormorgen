@@ -162,6 +162,11 @@ async function main() {
     const mkResp = await api('GET', '/mna/meekijkers/' + traject.code, { adminKey: ADMIN });
     check('meekijkers met ADMIN_KEY op extern traject afgeschermd (F13)', mkResp.json && mkResp.json.inhoud_afgeschermd === true && Array.isArray(mkResp.json.meekijkers) && mkResp.json.meekijkers.length === 0, JSON.stringify(mkResp.json));
 
+    // BACKLOG 0.2 stap 5-review: /mna/admin/wis-data/ miste de isEigenTraject-check — met ADMIN_KEY
+    // kon je de DD-data van een extern-adviseurstraject wissen. Nu geblokkeerd (403), zoals /mna/admin/update/.
+    const wisResp = await api('POST', '/mna/admin/wis-data/' + traject.code, { adminKey: ADMIN, body: {} });
+    check('DD-data wissen met ADMIN_KEY op extern traject geblokkeerd (403)', wisResp.status === 403, 'status=' + wisResp.status + ' ' + JSON.stringify(wisResp.json));
+
     const mkZonderKey = await api('GET', '/mna/meekijkers/' + traject.code);
     check('meekijkers zonder key (normale portal-aanroep) blijft gewoon werken', mkZonderKey.json && mkZonderKey.json.ok === true && mkZonderKey.json.inhoud_afgeschermd !== true, JSON.stringify(mkZonderKey.json));
   }
