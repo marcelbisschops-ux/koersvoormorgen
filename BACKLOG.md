@@ -32,79 +32,20 @@ server-side moduleslots (Q&A / AI-analyse / contracten / marketing), mkb AI-extr
 - **Wie:** Marcel (review wat er in de 20 commits zit) + ik voor het opdelen/committen op verzoek.
   Auth-/betaal-/matching-code → eerst staging.
 
-### 0.2 — Allow-list DTO-architectuur voor deal-data-endpoints · **P1 · 🔴**
-De grootste architectuurschuld (Marcel + ChatGPT, 1 sep 2026). `/mna/traject/{code}` en enkele
-andere endpoints draaien op `SELECT *` van `mna_trajecten` en filteren met een lijst deletes. Elke
-nieuwe kolom is dan automatisch potentieel uitlekbaar — zo lekten `bem_tekst`,
-`verkoopmemorandum_tekst` en `tussen_code` (privilege-escalatie) naar de koper (gevonden + tactisch
-gedicht 1 sep, zie `BACKLOG-ARCHIEF.md` #25 + `SECURITY-INVARIANTS.md`).
-- **Gedaan (1 sep 2026):**
-  - `/mna/traject/{code}` (`backend/worker/11-mna-tekenen-beheer.js`) omgezet naar een **echte
-    allow-list DTO**: `DTO_BASIS` + `DTO_VERKOPER_EXTRA` + `DTO_BEGELEIDER_EXTRA`, per rol expliciet
-    geselecteerd. `SELECT *` wordt nu doorheen een whitelist gehaald — een nieuwe kolom verschijnt
-    pas in de respons als hij aan een lijst wordt toegevoegd.
-  - `waarderingsrapport` toegevoegd aan `ROLGEBONDEN_DOCTYPES` (`worker/10`).
-  - Permanente negatieve-exposure-test: CONF-matrix in `tests/e2e-crosspath-fixes.mjs` (per rol:
-    verboden velden afwezig + positieve sanity dat toegestane velden er wél zijn).
-  - `SECURITY-INVARIANTS.md` + verwijzing in `CLAUDE.md`.
-  - **`/adviseur/trajecten` — GEDEPLOYED (1 sep 2026, Version e75... opvolger).** Omgezet van
-    `SELECT *` + deny-list naar een allow-list. Verse Breaker-blik: schoon (geen regressie, strikt
-    versmallend). Daarna: gedeelde helper (zie volgende punt).
-  - **Gedeelde allow-list voor álle adviseur-eigen trajectlijst-endpoints** — `ADVISEUR_TRAJECT_DTO_VELDEN`
-    + `adviseurTrajectDTO()` in `backend/worker/02-config-constanten.js` (23 velden). Toegepast op:
-    `/adviseur/trajecten` (`worker/16`), `/gebruikers/mna/lijst` en `/gebruikers/mna/detail/`
-    (`worker/09`) — die laatste twee stonden op exact dezelfde deny-list en hebben geen vindbare
-    frontend-consumer (waarschijnlijk legacy; niet verwijderd, backwards compatible gehouden).
-    CONF-matrix dekt alle drie. ⚠️ `worker/02` + `worker/09` nog niet gedeployed — wacht op staging
-    + verse Breaker-blik.
-  - `/adviseur/export/` (`worker/16`): `SELECT *` vervangen door de 11 kolommen die het
-    tekstrapport daadwerkelijk gebruikt (`kantoor_naam, traject_type, status, created_at,
-    contact_naam, contact_email, verkoper_adres, verkoper_kvk, koper_naam, koper_email,
-    begeleider_naam`). Was al geen datalek (rapport pikte al bij naam), nu ook geen `SELECT *` meer.
-    ⚠️ Nog niet gedeployed.
-  - **Recon afgerond op de rest van de deal-data-oppervlakte** (alleen gelezen, geen wijziging nodig):
-    `/mna/viewer/documenten` + `/mna/viewer/info` (al expliciete kolomlijsten, handgebouwde respons);
-    `/mna/admin/detail/` (alleen ADMIN_KEY, plus muur-strip voor niet-eigen trajecten — niet
-    extern-bereikbaar); de e-mailroutes (`/mna/{loi,nda,bem,exclusief,dealvoorstel,bieding}/email`,
-    alle achter `begeleiderAuth`, respons is `{ok:true}` zonder data-echo — al gehard bij de
-    22-aug-2026-audit). Geen van deze valt in de "rauw object naar externe rol"-klasse.
-  - **`/mna/versies/` + `/mna/versie/{id}` (`worker/10`) — traject_id-lek gedicht (privilege-escalatie).**
-    Beide gaven `traject_id` mee in de respons; dat is gelijk aan `mna_trajecten.id` = de LOGIN-code
-    van de verkoper. Een koper kon via `/mna/versies/{koper_code}` die code oogsten en zich als
-    verkoper aanmelden (zelfde klasse als de eerder gedichte `id`-in-DTO_BASIS-fix op
-    `/mna/traject/{code}`). Fix: `traject_id` uit de SELECT-kolomlijst van de lijst, en `/mna/versie/{id}`
-    van `SELECT *` + rauwe rij naar een expliciete allow-list-respons (id, doc_type, versie, tekst,
-    verstuurd_naar, verstuurd_door, cijfers_json, created_at). Geen consumer las `traject_id`.
-    CONF-matrix uitgebreid: `traject_id` afwezig in elke versies-respons + tekst nog wél aanwezig.
-    ⚠️ Nog niet gedeployed.
-  - **`/mna/viewer/data` (`worker/21`) — begeleider-notities uit de meekijker-respons.** De
-    meekijker (bank/accountant, alleen-lezen) kreeg per fase ook `notitie` + `checklist_json` — de
-    interne DD-werknotities/afvinklijst van de begeleider. Marcel (1 sep 2026): eruit. Fix:
-    `SELECT fase_id, data_json, updated_at` (was `… data_json, checklist_json, notitie, updated_at`).
-    `viewer.html` leest alleen `r.data_json`, dus geen UI-impact. CONF-matrix uitgebreid: meekijker
-    ziet wél `data_json`, niet `notitie`/`checklist_json`. ⚠️ Nog niet gedeployed.
-  - Losse bevinding onderweg (níét in deze wijziging opgelost): `adv.html:1040` vult het tekstveld
-    "Interne notitie" uit `t.notitie`, maar de adviseur-notitie wordt via `/mna/save` in de DD-data
-    (`voorgesprek` → `adv_notitie`) bewaard — dus dat veld toont bij heropenen altijd leeg. Kleine
-    frontend-fix, apart oppakken.
-- **Per-endpoint sweep: AFGEROND (1 sep 2026).** Alle deal-data-endpoints die een respons naar een
-  externe rol (verkoper/koper/adviseur/meekijker) sturen zijn omgezet naar een expliciete allow-list.
-- **Centrale policy-laag: AFGEROND (1 sep 2026), stappen 1–5** — zie `POLICY-LAAG-ONTWERP.md`:
-  - Stap 1–2: `resolveRol()` in `worker/00-policy.js`, `begeleiderAuth` delegeert ernaartoe. **LIVE**,
-    `/code-review ultra` groen, CONF-matrix 71/71.
-  - Stap 3: `rolVanCode` → gedeelde implementatie. **LIVE**, Breaker groen.
-  - Stap 4: bewust overgeslagen (login-DTO stond al op één plek).
-  - Stap 5: de "muur" (`stripAfgeschermdeVelden`) van deny-list → allow-list (`filterExternTraject`).
-    Dichtte meteen echte lekken (`tussen_code`, `koper_code`, `trajectfee_bedrag`,
-    `verkoopmemorandum_tekst`, teken-/overleg-velden gingen nog naar de platformbeheerder voor
-    externe-adviseurstrajecten). Onafhankelijke review: "safe tightening". Status: ⏳ deploy.
-  - `tests/policy-equivalentie.mjs` (54 checks) draait in `predeploy.sh`.
-- **CI-gate schema-drift: script klaar** (`tests/schema-gate.mjs`). **Nog te doen:** baseline
-  vastleggen tegen de LIVE worker (`ADMIN_KEY=... node tests/schema-gate.mjs --update`) ná de
-  huidige deploys; daarna opnemen in een CI-stap met ADMIN_KEY.
-- **Muur — schrijf-pad `/mna/admin/wis-data/{id}` (`worker/13`) gedicht (1 sep 2026):** miste de
-  `isEigenTraject`-check; ADMIN_KEY kon de DD-data van een extern-adviseurstraject wissen. Nu 403,
-  zelfde check als `/mna/admin/update/`. CONF-matrix uitgebreid. **LIVE.**
+### 0.2 — Allow-list DTO-architectuur voor deal-data-endpoints · **AFGEROND 1 sep 2026** ✅
+Volledig gebouwd, gereviewd en **live op productie**. Volledige log + ontwerp: `POLICY-LAAG-ONTWERP.md`.
+Kort:
+- Elke deal-data-endpoint naar een externe rol: `SELECT *` + deny-list → **expliciete allow-list**.
+- Centrale policy-laag `worker/00-policy.js` (`resolveRol` + `filterExternTraject`); `begeleiderAuth`
+  en `rolVanCode` delegeren ernaartoe; de marilyn-"muur" is nu ook een allow-list.
+- Vier echte lekken gedicht: `tussen_code`/`traject.id` naar de koper (privilege-escalatie),
+  fee-/memorandum-velden van externe adviseurs naar de platformbeheerder, DD-data van een extern
+  traject wisbaar met ADMIN_KEY.
+- Regressienetten: `tests/policy-equivalentie.mjs` (54 checks) in `predeploy.sh`; schema-drift-gate
+  `tests/schema-gate.mjs` met vastgelegde baseline (`tests/schema-baseline.json`); CONF-matrix
+  uitgebreid.
+- Bewust NIET: stap 4 (login-DTO fysiek verhuizen naar `00-policy.js`) — stond al als één expliciete
+  lijst in `worker/11`, verplaatsen = alleen drift-risico, geen winst.
 
 ---
 
