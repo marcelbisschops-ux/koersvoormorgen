@@ -1,0 +1,67 @@
+  <section class="section s-dark">
+    <div class="wrap wrap--text">
+      <p class="crumb"><a href="{{ROOT}}">Home</a> <span class="sep">&rsaquo;</span> <b>Contact</b></p>
+      <p class="eyebrow">Contact</p>
+      <h1>Soms is één goed gesprek genoeg.</h1>
+      <p class="hero__sub">Vertel kort waar het over gaat — het platform, of een transactie of
+      vraagstuk. U hoort doorgaans binnen één werkdag van Marcel.</p>
+
+      <form class="reveal" id="contactform" method="post"
+            action="https://kantoorinzicht.marcel-bisschops.workers.dev/contact"
+            style="margin-top:2.5rem; max-width:34rem">
+        <div class="field">
+          <label for="cf-naam">Naam</label>
+          <input id="cf-naam" name="naam" type="text" autocomplete="name" required>
+        </div>
+        <div class="field">
+          <label for="cf-mail">E-mailadres</label>
+          <input id="cf-mail" name="email" type="email" autocomplete="email" required>
+        </div>
+        <div class="field">
+          <label for="cf-org">Organisatie <span style="color:var(--muted-d); font-weight:400">(optioneel)</span></label>
+          <input id="cf-org" name="organisatie" type="text" autocomplete="organization">
+        </div>
+        <div class="field">
+          <label for="cf-onderwerp">Waar gaat het over?</label>
+          <select id="cf-onderwerp" name="onderwerp" required>
+            <option value="">Kies…</option>
+            <option value="platform">Het platform</option>
+            <option value="transactie">Een transactie of vraagstuk</option>
+            <option value="anders">Iets anders</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="cf-bericht">Uw bericht</label>
+          <textarea id="cf-bericht" name="bericht" required></textarea>
+        </div>
+        <div class="field field--hp" aria-hidden="true">
+          <label for="cf-website">Laat dit veld leeg</label>
+          <input id="cf-website" name="website" type="text" tabindex="-1" autocomplete="off">
+        </div>
+        <div class="btn-row" style="margin-top:1rem; align-items:baseline">
+          <button class="btn btn-primary" type="submit">Verstuur</button>
+          <span style="font-size:var(--fs-xs); color:var(--muted-d)">Door te versturen gaat u akkoord met de
+          <a href="{{ROOT}}privacy.html">privacyverklaring</a>.</span>
+        </div>
+        <p id="cf-status" role="status" style="margin-top:1rem; font-size:var(--fs-sm); display:none"></p>
+      </form>
+    </div>
+  </section>
+
+  <section class="section s-light">
+    <div class="wrap wrap--text">
+      <div class="section-head reveal">
+        <p class="eyebrow">Direct</p>
+        <h2>Liever meteen mailen of bellen?</h2>
+      </div>
+      <p class="reveal" style="margin-top:1.25rem; font-size:var(--fs-md)">
+        <a href="mailto:marcel@bisschopsfinancing.nl">marcel@bisschopsfinancing.nl</a><br>
+        <a href="tel:+31638689888">+31 6 38 68 98 88</a><br>
+        <a href="https://www.linkedin.com/in/marcelbisschops">linkedin.com/in/marcelbisschops</a>
+      </p>
+      <p class="reveal" style="margin-top:1.5rem; color:var(--muted); font-size:var(--fs-sm)">
+      Na uw bericht neemt Marcel doorgaans binnen één werkdag contact op. Voor het platform kunt u
+      ook direct <a href="{{ROOT}}bedrijfsscan.html">de gratis bedrijfsscan</a> starten of
+      <a href="{{ROOT}}inloggen.html">inloggen</a>.</p>
+    </div>
+  </section>

@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /mna.html
+Disallow: /adv.html
+Disallow: /marilyn.html
+Disallow: /viewer.html
+Disallow: /matching-platform.html
+
+Sitemap: https://koersvoormorgen.nl/sitemap.xml
