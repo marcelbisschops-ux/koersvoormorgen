@@ -496,7 +496,9 @@ function renderMnaTab(el){
         +(t.inhoud_afgeschermd
           ?'<span class="btn-ghost" style="font-size:11px;padding:3px 8px;opacity:.5;cursor:not-allowed" title="Afgeschermd — traject van externe adviseur">&#128064; Meekijkers</span>'
           :'<span><button class="btn-ghost btn-meekijkers" data-id="'+esc(t.id)+'" data-naam="'+esc(t.kantoor_naam||t.id)+'" data-sector="'+esc(t.sector||'accountancy')+'" style="font-size:11px;padding:3px 8px">&#128064; Meekijkers</button>'+meekijkerChipsHtml(t)+'</span>')
-        +'<button class="btn-ghost btn-bewerk" data-id="'+esc(t.id)+'" data-naam="'+esc(t.kantoor_naam||t.id)+'" style="font-size:11px;padding:3px 8px">&#9999;&#65039; Bewerk</button>'
+        +(t.inhoud_afgeschermd
+          ?'<span class="btn-ghost" style="font-size:11px;padding:3px 8px;opacity:.5;cursor:not-allowed" title="Afgeschermd — traject van externe adviseur">&#9999;&#65039; Bewerk</span>'
+          :'<button class="btn-ghost btn-bewerk" data-id="'+esc(t.id)+'" data-naam="'+esc(t.kantoor_naam||t.id)+'" style="font-size:11px;padding:3px 8px">&#9999;&#65039; Bewerk</button>')
         +'<button class="btn-ghost btn-opslaan" data-idx="'+i+'" style="font-size:11px;padding:3px 8px">&#8681; Opslaan</button>'
         +(t.inhoud_afgeschermd
           ?'<span class="btn-ghost" style="font-size:11px;padding:3px 8px;opacity:.5;cursor:not-allowed" title="Afgeschermd — traject van externe adviseur">&#128230; Export</span>'

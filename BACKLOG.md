@@ -88,21 +88,30 @@ gedicht 1 sep, zie `BACKLOG-ARCHIEF.md` #25 + `SECURITY-INVARIANTS.md`).
     (`voorgesprek` → `adv_notitie`) bewaard — dus dat veld toont bij heropenen altijd leeg. Kleine
     frontend-fix, apart oppakken.
 - **Per-endpoint sweep: AFGEROND (1 sep 2026).** Alle deal-data-endpoints die een respons naar een
-  externe rol (verkoper/koper/adviseur/meekijker) sturen zijn nagelopen en waar nodig omgezet naar
-  een expliciete allow-list. Wat overblijft is structureel, geen losse endpoints meer:
-  - **Eén centrale policy-laag** (`rol × resource × actie × veld`) i.p.v. de per-endpoint-lijstjes
-    die er nu staan. Grootste stuk werk; verdient een eigen ontwerp-sessie, niet tussendoor.
-  - **CI-gate:** ~~nieuw veld in een externe respons/schema → build faalt tenzij expliciet
-    goedgekeurd~~ — **script gebouwd:** `tests/schema-gate.mjs`. Zet een compleet testtraject op,
-    berekent per externe endpoint × rol de veld-signatuur van de respons, vergelijkt met
-    `tests/schema-baseline.json` (TOEGEVOEGD veld → FAIL; verdwenen veld → alleen waarschuwing).
-    **Nog te doen:** (a) `ADMIN_KEY=... node tests/schema-gate.mjs --update` draaien tegen de
-    LIVE worker ná de deploy van de huidige batch, zodat de baseline de gewenste (versmalde)
-    staat vastlegt; (b) opnemen in een CI-stap of de pre-deploy die de ADMIN_KEY heeft.
-  - De "muur" in marilyn (`stripAfgeschermdeVelden`) is nog een deny-list — hoort bij de centrale
-    policy-laag hierboven, niet als losse fix.
-- **Werkwijze (voor de structurele stukken):** ontwerp eerst voorleggen, dan bouwen; staging +
-  verse Breaker-blik per stap. Zie `SECURITY-INVARIANTS.md`.
+  externe rol (verkoper/koper/adviseur/meekijker) sturen zijn omgezet naar een expliciete allow-list.
+- **Centrale policy-laag: AFGEROND (1 sep 2026), stappen 1–5** — zie `POLICY-LAAG-ONTWERP.md`:
+  - Stap 1–2: `resolveRol()` in `worker/00-policy.js`, `begeleiderAuth` delegeert ernaartoe. **LIVE**,
+    `/code-review ultra` groen, CONF-matrix 71/71.
+  - Stap 3: `rolVanCode` → gedeelde implementatie. **LIVE**, Breaker groen.
+  - Stap 4: bewust overgeslagen (login-DTO stond al op één plek).
+  - Stap 5: de "muur" (`stripAfgeschermdeVelden`) van deny-list → allow-list (`filterExternTraject`).
+    Dichtte meteen echte lekken (`tussen_code`, `koper_code`, `trajectfee_bedrag`,
+    `verkoopmemorandum_tekst`, teken-/overleg-velden gingen nog naar de platformbeheerder voor
+    externe-adviseurstrajecten). Onafhankelijke review: "safe tightening". Status: ⏳ deploy.
+  - `tests/policy-equivalentie.mjs` (54 checks) draait in `predeploy.sh`.
+- **CI-gate schema-drift: script klaar** (`tests/schema-gate.mjs`). **Nog te doen:** baseline
+  vastleggen tegen de LIVE worker (`ADMIN_KEY=... node tests/schema-gate.mjs --update`) ná de
+  huidige deploys; daarna opnemen in een CI-stap met ADMIN_KEY.
+- **Nog open — pre-existing schrijf-pad-gaten in de muur** (gevonden bij de stap-5-review, NIET
+  door stap 5 veroorzaakt; geen datalek, wél doorbreking van "geen toegang tot externe trajecten"):
+  - `/mna/admin/wis-data/{id}` (`worker/13`) — géén `isEigenTraject`-check: ADMIN_KEY kan de DD-data
+    van een extern-adviseurstraject wissen. **P2 🟡** — kleine losse fix (zelfde check als
+    `/mna/admin/update/`).
+  - `/mna/admin/status/`, `/mna/admin/vergrendel/` (`worker/12`), `/admin/delete/mna/` — idem:
+    status wijzigen / vergrendelen / verwijderen van een extern traject. **P3**.
+  - `/mna/matching/beschikbaar` (`worker/19`) — `rol==='admin'` omzeilt de match-/module-check en
+    er is geen `isEigenTraject`. UI-route is dicht (marilyn toont de toggle niet meer voor
+    afgeschermde trajecten), endpoint nog via curl bereikbaar. **P3**.
 - **Regel tot dit staat:** geen nieuwe feature op deal-data vóór de security-boundary goed staat.
 
 ---

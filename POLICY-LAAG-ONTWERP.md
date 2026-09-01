@@ -205,6 +205,37 @@ Risico laag: `rolVanCode` was een pure 7-regel-stringvergelijking; de kopie is k
 **→ Voor Marcel:** Breaker terug → staging-deploy + CONF-matrix → productie-deploy. **Geen
 `/code-review ultra` nodig** voor stap 3 (afspraak: ultra alleen bij stap 2 en na stap 5).
 
+**STAP 3 — LIVE op productie (1 sep 2026, Version `39a62888`).** Predeploy groen, `/health` ok.
+Gecommit + gepusht. Tag `known-good-20260901` op beide repos (lokaal; push optioneel).
+
+---
+
+# STAP 5 — GEDAAN in code, wacht op onafhankelijke review + staging + deploy (1 sep 2026)
+
+Stap 4 (login-DTO verhuizen) is op Marcels keuze **overgeslagen** — die lijst stond al goed op één
+plek. Direct naar stap 5: de marilyn-"muur" (`stripAfgeschermdeVelden`) van deny-list naar allow-list.
+
+- **`worker/00-policy.js`**: `filterExternTraject()` + `EXTERN_TRAJECT_ZICHTBAAR` (11 velden die
+  marilyn van een afgeschermd traject rendert) + `EXTERN_TRAJECT_LEEG` (13 identiteitsvelden,
+  aanwezig-maar-leeg zoals vroeger).
+- **`cloudflare-worker.js`**: `stripAfgeschermdeVelden = filterExternTraject`. De inline deny-list-
+  consts weg.
+- **Dicht bovendien echte lekken:** de oude deny-list liet nog wél door naar de platformbeheerder,
+  voor trajecten van externe adviseurs: `koper_code`, `tussen_code`, `trajectfee_bedrag`/`_type`,
+  `verkoopmemorandum_tekst`, `teaser_tekst`, `verkoper_teken*`, `koper_teken*`, `teken_status`,
+  `volgend_overleg`, `extra_contact`. Nu allemaal weg.
+- **Geen datacorruptie-risico:** `/mna/admin/update/{id}` weigert al sinds 25 juli een niet-eigen
+  traject (403), dus een bewerk-save op een afgeschermd traject faalt sowieso backend-side.
+- `tests/policy-equivalentie.mjs` sectie 6: marilyn-velden ongewijzigd + de 13 lege velden +
+  nieuw-afgeschermde velden weg + de 6 documentteksten nog steeds weg. **54/54 groen** + volledige
+  predeploy dry-run groen.
+- Consumers: alleen `worker/12` (`/mna/admin/lijst` + `/mna/admin/detail/`), beide ADMIN_KEY.
+- Schema-gate: niet geraakt (die dekt externe-rol-endpoints, niet `/mna/admin/*`).
+
+**→ Voor Marcel:** onafhankelijke review terug → staging-deploy + CONF-matrix → **dan `/code-review
+ultra`** (afspraak: ultra ná stap 5) → productie-deploy. De `claude` CLI staat niet in je terminal,
+dus de brede sub-agent-review is de ultra-equivalent — die draait nu.
+
 ---
 
 ## 1. Wat is er nu
