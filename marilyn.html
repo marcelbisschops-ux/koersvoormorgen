@@ -1170,7 +1170,9 @@ function renderWaarderingTab(el){
 
   // Fix 5 aug 2026: "3.000.000" werd afgekapt tot 3 — punten zijn NL-duizendtal-scheiding, nooit
   // decimaal, dus eerst verwijderen vóór de komma naar een decimale punt om te zetten.
-  function parseGeld(s){if(!s)return 0;var n=String(s).replace(/[^0-9,.]/g,'').replace(/\./g,'').replace(',','.');return parseFloat(n)||0;}
+  // Fix 1 sep 2026: teken behouden (zie parseGeld in mna/03) — de tekenklasse [^0-9,.] slikte het
+  // minteken, waardoor een negatief bedrag als positief werd ingelezen.
+  function parseGeld(s){if(!s)return 0;var str=String(s).trim();var neg=/^[^\d]*[-−–—‑－]\s*\d/.test(str)||/\d\s*[-−–—‑－]\s*$/.test(str)||/^\(.*\d.*\)$/.test(str);var n=str.replace(/[^0-9,.]/g,'').replace(/\./g,'').replace(',','.');var v=parseFloat(n)||0;return neg?-v:v;}
   function fmtGeld(n){if(!n||isNaN(n))return '—';if(n>=1000000)return '\u20ac'+(n/1000000).toFixed(2).replace('.',',')+' mln';if(n>=1000)return '\u20ac'+(n/1000).toFixed(0)+'.000';return '\u20ac'+Math.round(n);}
   function fmtPct(n){return n?n.toFixed(1)+'%':'—';}
 

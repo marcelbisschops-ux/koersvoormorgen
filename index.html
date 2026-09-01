@@ -9,21 +9,25 @@
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;1,400&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
+/* Huisstijl Koers voor Morgen (1 sep 2026): nachtblauw #0D1B2A (fundament/autoriteit),
+   petrolgroen #3D6B63 (koers/ontwikkeling), warm off-white #F6F2EA (rust/menselijkheid),
+   lichtgrijs #DCE2DD (ondersteunend), goud #C49A4A (spaarzaam accent). De overige tonen
+   hieronder zijn daarvan afgeleide tinten/schakeringen. */
 :root{
-  --void:#faf9f6;--panel:#ffffff;--panel2:#f5f3ee;
-  --border:#dddbd4;--border2:#c8c5bc;--muted:#6b6862;--mid:#5a5854;
-  --body:#4a4845;--sub:#2a2825;--head:#1a1815;
-  --teal:#1a7a5e;--teal-dim:#145f48;--teal-bg:rgba(34,197,160,.1);
-  --gold:#c9a84c;--gold-bg:rgba(201,168,76,.12);
+  --void:#f6f2ea;--panel:#ffffff;--panel2:#edefeb;
+  --border:#dce2dd;--border2:#c3ccc5;--muted:#6e7b79;--mid:#4c5957;
+  --body:#33403e;--sub:#1e2b33;--head:#0d1b2a;
+  --teal:#3d6b63;--teal-dim:#2f534d;--teal-bg:rgba(61,107,99,.10);
+  --gold:#c49a4a;--gold-bg:rgba(196,154,74,.12);
   --r:8px;--r2:10px;--r4:22px;
 }
 @media(prefers-color-scheme:dark){
   :root{
-    --void:#171614;--panel:#211f1c;--panel2:#26241f;
-    --border:#38352f;--border2:#48443c;--muted:#938f86;--mid:#a8a49c;
-    --body:#c8c5bc;--sub:#e0dcd2;--head:#f5f1e8;
-    --teal:#22c98a;--teal-dim:#1a9a6a;--teal-bg:rgba(34,197,138,.14);
-    --gold:#e0b85a;--gold-bg:rgba(224,184,90,.14);
+    --void:#0d1b2a;--panel:#132534;--panel2:#16293a;
+    --border:#24384a;--border2:#33485c;--muted:#8ca0ae;--mid:#a6b8c4;
+    --body:#c6d3db;--sub:#e2e9ee;--head:#f4f1e9;
+    --teal:#5e9b8f;--teal-dim:#4a8377;--teal-bg:rgba(94,155,143,.15);
+    --gold:#d8b36a;--gold-bg:rgba(216,179,106,.15);
   }
 }
 html{scroll-behavior:smooth}
@@ -69,7 +73,7 @@ h1,h2,h3{font-family:'Playfair Display',serif;color:var(--head)}
    volledige platte lijst. Op desktop begrensd in breedte én hoogte (bovenkant tonen, onderkant laten
    vervagen) zodat het als productbeeld leest en niet als een grote tabel. Mobiel toont meer (zie media). */
 .hero-visual{margin:2rem auto 0;max-width:600px;padding:0 1rem 2rem}
-.product-frame{position:relative;background:var(--panel);border:1px solid var(--border2);border-radius:14px;box-shadow:0 30px 70px -20px rgba(20,18,15,.32),0 2px 10px rgba(20,18,15,.06);overflow:hidden;max-height:388px;
+.product-frame{position:relative;background:var(--panel);border:1px solid var(--border2);border-radius:14px;box-shadow:0 30px 70px -20px rgba(13,27,42,.32),0 2px 10px rgba(13,27,42,.06);overflow:hidden;max-height:388px;
   -webkit-mask-image:linear-gradient(180deg,#000 68%,transparent);mask-image:linear-gradient(180deg,#000 68%,transparent)}
 .product-frame-bar{display:flex;align-items:center;gap:10px;padding:11px 14px;background:var(--panel2);border-bottom:1px solid var(--border)}
 .product-frame-dots{display:flex;gap:6px}
@@ -93,7 +97,7 @@ section{padding:3.5rem 0}
 
 /* Proof-band: schermafbeelding als bewijs naast de featurelijst */
 .proof-band{margin-top:2.75rem;display:grid;grid-template-columns:1fr 1fr;gap:2.5rem;align-items:center}
-.proof-frame{background:var(--panel);border:1px solid var(--border2);border-radius:12px;box-shadow:0 20px 45px -18px rgba(20,18,15,.22);overflow:hidden}
+.proof-frame{background:var(--panel);border:1px solid var(--border2);border-radius:12px;box-shadow:0 20px 45px -18px rgba(13,27,42,.22);overflow:hidden}
 .proof-frame img{display:block;width:100%;height:auto}
 .proof-copy-tag{font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--teal);margin-bottom:.6rem}
 .proof-copy h3{font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:600;color:var(--head);margin-bottom:.6rem}
@@ -185,7 +189,7 @@ section{padding:3.5rem 0}
 
 /* Testtraject-aanvraag (backlogpunt 11) */
 dialog#tt-dialog{border:1px solid var(--border2);border-radius:var(--r2);padding:0;max-width:440px;width:calc(100% - 2rem);max-height:90vh;overflow:auto;background:var(--panel);color:var(--body)}
-dialog#tt-dialog::backdrop{background:rgba(20,18,15,.55)}
+dialog#tt-dialog::backdrop{background:rgba(13,27,42,.55)}
 .tt-inner{padding:1.75rem}
 .tt-inner h3{font-size:1.15rem;margin-bottom:.4rem}
 .tt-inner p.tt-sub{font-size:13px;color:var(--mid);margin-bottom:1.1rem}
