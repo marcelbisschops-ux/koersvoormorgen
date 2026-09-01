@@ -102,17 +102,9 @@ gedicht 1 sep, zie `BACKLOG-ARCHIEF.md` #25 + `SECURITY-INVARIANTS.md`).
 - **CI-gate schema-drift: script klaar** (`tests/schema-gate.mjs`). **Nog te doen:** baseline
   vastleggen tegen de LIVE worker (`ADMIN_KEY=... node tests/schema-gate.mjs --update`) ná de
   huidige deploys; daarna opnemen in een CI-stap met ADMIN_KEY.
-- **Nog open — pre-existing schrijf-pad-gaten in de muur** (gevonden bij de stap-5-review, NIET
-  door stap 5 veroorzaakt; geen datalek, wél doorbreking van "geen toegang tot externe trajecten"):
-  - `/mna/admin/wis-data/{id}` (`worker/13`) — géén `isEigenTraject`-check: ADMIN_KEY kan de DD-data
-    van een extern-adviseurstraject wissen. **P2 🟡** — kleine losse fix (zelfde check als
-    `/mna/admin/update/`).
-  - `/mna/admin/status/`, `/mna/admin/vergrendel/` (`worker/12`), `/admin/delete/mna/` — idem:
-    status wijzigen / vergrendelen / verwijderen van een extern traject. **P3**.
-  - `/mna/matching/beschikbaar` (`worker/19`) — `rol==='admin'` omzeilt de match-/module-check en
-    er is geen `isEigenTraject`. UI-route is dicht (marilyn toont de toggle niet meer voor
-    afgeschermde trajecten), endpoint nog via curl bereikbaar. **P3**.
-- **Regel tot dit staat:** geen nieuwe feature op deal-data vóór de security-boundary goed staat.
+- **Muur — schrijf-pad `/mna/admin/wis-data/{id}` (`worker/13`) gedicht (1 sep 2026):** miste de
+  `isEigenTraject`-check; ADMIN_KEY kon de DD-data van een extern-adviseurstraject wissen. Nu 403,
+  zelfde check als `/mna/admin/update/`. CONF-matrix uitgebreid. **LIVE.**
 
 ---
 
