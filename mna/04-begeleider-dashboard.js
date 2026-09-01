@@ -2113,13 +2113,22 @@ function renderBegeleiderDashboard(app){
         else{toast(r.error||'Opslaan mislukt.','err');}
         btn.disabled=false;btn.textContent='Opslaan';
       };
-      document.getElementById('verkoopmemo-nieuw-btn').onclick=function(){genereerVerkoopmemo();};
+      document.getElementById('verkoopmemo-nieuw-btn').onclick=function(){
+        // Zonder formeel getekende NDA vereist opnieuw genereren óók de bevestiging + naam — anders
+        // 400 van de backend en een dood scherm. Mét NDA: direct opnieuw.
+        if(t2.nda_getekend){genereerVerkoopmemo(false);}else{toonNdaBevestiging();}
+      };
     }
     async function genereerVerkoopmemo(ndaBevestigd,ndaDoor){
       out.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;color:var(--muted)">Genereren...</div>';
       var r=await fetch(WORKER+'/mna/verkoopmemorandum/genereer',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||''},body:JSON.stringify({code:S.code,nda_bevestigd:!!ndaBevestigd,nda_bevestigd_door:ndaDoor||''})}).then(function(x){return x.json();}).catch(function(){return{};});
       if(r.ok){t2.verkoopmemorandum_tekst=r.verkoopmemorandum_tekst;if(ndaDoor){t2.verkoopmemorandum_nda_door=ndaDoor;t2.verkoopmemorandum_nda_op=Date.now();}renderVerkoopmemo(r.verkoopmemorandum_tekst,'nieuw gegenereerd');}
-      else{out.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;color:var(--red)">'+esc(r.error||'Genereren mislukt.')+'</div>';}
+      else{
+        out.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem"><div style="color:var(--red);margin-bottom:.75rem">'+esc(r.error||'Genereren mislukt.')+'</div>'
+          +'<div style="display:flex;gap:8px"><button class="btn btn-sm" id="verkoopmemo-err-opnieuw" style="background:#8a5a00">Opnieuw proberen</button><button class="btn-ghost btn-sm" id="verkoopmemo-err-sluit">Sluiten</button></div></div>';
+        document.getElementById('verkoopmemo-err-sluit').onclick=function(){out.style.display='none';};
+        document.getElementById('verkoopmemo-err-opnieuw').onclick=function(){ if(t2.nda_getekend){genereerVerkoopmemo(false);}else{toonNdaBevestiging();} };
+      }
     }
     function toonNdaBevestiging(){
       out.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem">'

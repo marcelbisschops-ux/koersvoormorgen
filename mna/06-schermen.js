@@ -687,11 +687,14 @@ function renderMain(){
     +'</div>';
 
   var lockedBanner=vergrendeld?'<div style="background:var(--red-bg);border:1px solid var(--red);border-radius:var(--r);padding:10px 14px;margin-bottom:1rem;font-size:13px;color:var(--red)">&#128274; <strong>Dit traject is vergrendeld.</strong> U kunt geen wijzigingen meer doorvoeren.</div>':'';
+  // Verkoper-identiteit: de backend stuurt kantoor_naam pas ná een getekende NDA naar de koper.
+  // Vóór dat moment een nette anonieme aanduiding i.p.v. een lege titel.
+  var trajNaamWeergave=(S.traject&&S.traject.kantoor_naam)||(isKoper()?'Verkooptraject — bedrijfsnaam vrij na NDA':(S.code||''));
 
   return '<div class="wrap anim">'
     +'<div class="hdr"><div class="brand">'+brandMerkHtml()+BRAND.platform+' &middot; M&amp;A'+versieLabel()+'</div>'
     +'<div style="display:flex;align-items:center;gap:8px">'
-    +'<span style="font-size:11px;color:var(--muted)">'+esc(S.traject&&S.traject.kantoor_naam||S.code)+'</span>'
+    +'<span style="font-size:11px;color:var(--muted)">'+esc(trajNaamWeergave)+'</span>'
     +'<button class="btn-ghost btn-sm" onclick="S.screen=\'handleiding\';renderApp()">&#128214; Handleiding</button>'
     +'<button class="btn-ghost btn-sm" onclick="window.print()">PDF</button>'
     +'</div></div>'
@@ -706,7 +709,7 @@ function renderMain(){
       +'<span style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">&#128196; Juridische documenten</span>'
       +'<span id="pd-chevron" style="font-size:12px;color:var(--muted)">&#9650;</span>'
       +'</div><div id="pd-body" style="display:block;padding:0 1rem 1rem"><div id="partij-docs-sectie">Laden...</div></div></div>'):'')
-    +'<div style="font-family:Playfair Display,serif;font-size:1.4rem;color:var(--head);font-weight:600;margin-bottom:.25rem">'+esc(S.traject&&S.traject.kantoor_naam||'')+'</div>'
+    +'<div style="font-family:Playfair Display,serif;font-size:1.4rem;color:var(--head);font-weight:600;margin-bottom:.25rem">'+esc(trajNaamWeergave)+'</div>'
     +'<div style="font-size:13px;color:var(--muted);margin-bottom:1rem">Verplichte velden ingevuld: <span style="font-family:IBM Plex Mono,monospace;font-weight:600;color:'+(tp===100?'var(--teal)':tp>50?'var(--gold)':'var(--red)')+'">'+tp+'%</span><span style="font-size:11px;color:var(--muted);margin-left:6px">(alle 7 fases)</span></div>'
     +'<div class="prog-bar"><div class="prog-fill" style="width:'+tp+'%;background:'+(tp===100?'var(--teal)':tp>50?'var(--gold)':'var(--red)')+'"></div></div>'
     +ov

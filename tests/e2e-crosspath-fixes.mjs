@@ -8,7 +8,7 @@
 // Draaien: node tests/e2e-crosspath-fixes.mjs --key=ADMIN_KEY
 //          ADMIN_KEY=... node tests/e2e-crosspath-fixes.mjs
 // ══════════════════════════════════════════════════════════════════
-import { WORKER, leesAdminKey, api, check, kop, kleur, samenvatting } from './lib.mjs';
+import { WORKER, leesAdminKey, api, check, kop, kleur, samenvatting, sla_over } from './lib.mjs';
 
 const ADMIN = leesAdminKey();
 const TEST_EMAIL_DOMEIN = '@e2e-test.koersvoormorgen.invalid';
@@ -252,69 +252,105 @@ async function main() {
   // Bij een nieuwe gevoelige kolom hoort hier een regel; faalt de test, dan lekt de kolom.
   kop('CONF · Vertrouwelijkheidsmatrix login-respons (negatieve exposure per rol)');
   {
-    const VERBODEN_VOOR_KOPER = [
-      'tussen_code', 'koper_code',
-      'bem_tekst', 'dealvoorstel_tekst', 'verkoopmemorandum_tekst', 'teaser_tekst',
-      'verkoopmemorandum_nda_door', 'verkoopmemorandum_nda_op',
-      'trajectfee_bedrag', 'trajectfee_type', 'trajectfee_gepind_op',
-      'gebruiker_id', 'notitie',
-      'aangedragen_door_naam', 'aangedragen_door_organisatie', 'aangedragen_door_afspraak',
-      'signhost_transactions', 'verkoper_teken', 'koper_teken', 'teken_status',
-      'volgend_overleg', 'extra_contact', 'inactiviteit_gewaarschuwd_op', 'export_opgeruimd',
+    // Allow-lists — spiegel van DTO_BASIS / DTO_VERKOPER_EXTRA / DTO_BEGELEIDER_EXTRA in
+    // backend/worker/11-mna-tekenen-beheer.js. De sterkste check is: geen enkel veld BUITEN deze set
+    // (dan hoeft er bij een nieuwe kolom niets aan een verboden-lijst te worden toegevoegd).
+    // Verkoper-identiteit — de koper krijgt dit pas ná een getekende NDA (DTO_VERKOPER_IDENTITEIT).
+    const IDENTITEIT = ['kantoor_naam', 'contact_naam', 'contact_email', 'verkoper_adres', 'verkoper_kvk', 'tekenbevoegde_naam'];
+    // KOPER_ALLOW = DTO_BASIS (géén verkoper-identiteit — dit testtraject heeft geen getekende NDA).
+    const KOPER_ALLOW = [
+      'kantoor_rechtsvorm', 'structuur_type', 'sector', 'traject_type',
+      'status', 'traject_fase', 'created_at', 'updated_at', 'opdrachtgever_rol',
+      'koper_naam', 'koper_rechtsvorm', 'koper_contact', 'koper_email', 'koper_adres', 'koper_kvk',
+      'opening_voltooid',
+      'begeleider_naam', 'begeleider_email', 'begeleider_bedrijf', 'begeleider_adres',
+      'vergrendeld_op', 'afgesloten_op', 'koper_vrijgegeven', 'koper_categorieen',
+      'verkoper_groep_id', 'beschikbaar_voor_matching',
+      'verkoper_klaar', 'verkoper_klaar_at', 'verkoper_klaar_naam',
+      'nda_tekst', 'nda_datum', 'nda_getekend', 'nda_getekend_datum', 'nda_doc_id',
+      'loi_tekst', 'loi_datum', 'loi_getekend', 'loi_getekend_datum', 'loi_doc_id',
+      'excl_tekst', 'excl_datum', 'excl_getekend', 'excl_doc_id',
+      'bieding_tekst', 'bieding_datum',
     ];
-    const VERBODEN_VOOR_VERKOPER = [
-      'tussen_code', 'koper_code',
-      'dealvoorstel_tekst', 'verkoopmemorandum_tekst',
-      'verkoopmemorandum_nda_door', 'verkoopmemorandum_nda_op',
-      'trajectfee_bedrag', 'trajectfee_type', 'trajectfee_gepind_op',
-      'gebruiker_id', 'notitie',
-      'aangedragen_door_naam', 'aangedragen_door_organisatie', 'aangedragen_door_afspraak',
-      'signhost_transactions', 'verkoper_teken', 'koper_teken', 'teken_status',
-      'volgend_overleg', 'extra_contact',
-    ];
-    // Positieve sanity: dit MOET de koper wel krijgen (anders is er over-gestript).
-    const VERWACHT_VOOR_KOPER = ['id', 'kantoor_naam', 'sector', 'status', 'begeleider_naam'];
+    const VERKOPER_ALLOW = [...KOPER_ALLOW, ...IDENTITEIT, 'id', 'bem_tekst', 'bem_datum', 'bem_getekend', 'bem_doc_id', 'teaser_tekst', 'teaser_status', 'teaser_datum'];
+    // Kritiek: deze mogen NOOIT bij de betreffende rol — losse expliciete asserts naast de allow-list.
+    // Voor de koper (geen getekende NDA): óók de hele verkoper-identiteit.
+    const KOPER_NOOIT = ['id', 'tussen_code', 'koper_code', ...IDENTITEIT, 'bem_tekst', 'dealvoorstel_tekst', 'verkoopmemorandum_tekst', 'teaser_tekst', 'trajectfee_bedrag', 'gebruiker_id', 'notitie', 'signhost_transactions', 'verkoper_teken', 'koper_teken'];
+    const VERKOPER_NOOIT = ['tussen_code', 'koper_code', 'dealvoorstel_tekst', 'verkoopmemorandum_tekst', 'trajectfee_bedrag', 'gebruiker_id', 'notitie', 'signhost_transactions'];
 
     const loginResp = async (code) => {
       const r = await api('POST', '/mna/traject/' + code, { body: { ts: Date.now() } });
+      if (r.status === 429) return '429';
       return (r.json && r.json.traject) || null;
     };
-    const geenVan = (obj, verboden, rol) => {
-      const lek = verboden.filter(k => obj && Object.prototype.hasOwnProperty.call(obj, k) && obj[k] !== null && obj[k] !== undefined && obj[k] !== '');
-      check(rol + '-login lekt geen gevoelige velden', lek.length === 0, lek.length ? 'gelekt: ' + lek.join(', ') : '');
-      // Ook de key-aanwezigheid checken (een lege string kan alsnog "dit veld bestaat"-info lekken):
-      const keys = verboden.filter(k => obj && Object.prototype.hasOwnProperty.call(obj, k));
-      check(rol + '-login: gevoelige veld-keys volledig afwezig', keys.length === 0, keys.length ? 'aanwezig: ' + keys.join(', ') : '');
+    const nooitVan = (obj, verboden, rol) => {
+      const lek = verboden.filter(k => obj && Object.prototype.hasOwnProperty.call(obj, k));
+      check(rol + '-login: verboden veld-keys volledig afwezig', lek.length === 0, lek.length ? 'aanwezig: ' + lek.join(', ') : '');
+    };
+    const binnenAllowList = (obj, allow, rol) => {
+      const buiten = obj ? Object.keys(obj).filter(k => !allow.includes(k)) : [];
+      check(rol + '-login: geen enkel veld buiten de toegestane set', buiten.length === 0, buiten.length ? 'buiten allow-list: ' + buiten.join(', ') : '');
     };
 
     const koperObj = await loginResp(traject.koper_code);
     const verkoperObj = await loginResp(traject.code);
     const tussenObj = await loginResp(traject.tussen_code);
 
-    check('koper-login geeft een traject-object terug', !!koperObj);
-    check('verkoper-login geeft een traject-object terug', !!verkoperObj);
-    check('begeleider-login geeft een traject-object terug', !!tussenObj);
+    if (koperObj === '429' || verkoperObj === '429' || tussenObj === '429') {
+      sla_over('CONF · vertrouwelijkheidsmatrix', 'login-rate-limiter (429) geraakt — draai los, niet direct na een andere e2e-run');
+    } else {
+      check('koper-login geeft een traject-object terug', !!koperObj);
+      check('verkoper-login geeft een traject-object terug', !!verkoperObj);
+      check('begeleider-login geeft een traject-object terug', !!tussenObj);
 
-    if (koperObj) {
-      geenVan(koperObj, VERBODEN_VOOR_KOPER, 'koper');
-      const mist = VERWACHT_VOOR_KOPER.filter(k => !koperObj[k]);
-      check('koper-login bevat wél de toegestane basisvelden (niet over-gestript)', mist.length === 0, mist.length ? 'mist: ' + mist.join(', ') : '');
-    }
-    if (verkoperObj) geenVan(verkoperObj, VERBODEN_VOOR_VERKOPER, 'verkoper');
-    if (tussenObj) {
-      // De begeleider MOET tussen_code + koper_code juist wél krijgen (dashboard deelt de codes).
-      check('begeleider-login bevat tussen_code én koper_code (nodig voor het dashboard)',
-        !!(tussenObj.tussen_code || traject.tussen_code) && Object.prototype.hasOwnProperty.call(tussenObj, 'koper_code'),
-        JSON.stringify({ tussen_code: !!tussenObj.tussen_code, koper_code: Object.prototype.hasOwnProperty.call(tussenObj, 'koper_code') }));
-    }
+      if (koperObj) {
+        nooitVan(koperObj, KOPER_NOOIT, 'koper');
+        binnenAllowList(koperObj, KOPER_ALLOW, 'koper');
+        const mist = ['sector', 'status', 'traject_type', 'begeleider_naam'].filter(k => !koperObj[k]);
+        check('koper-login bevat wél de toegestane basisvelden (niet over-gestript)', mist.length === 0, mist.length ? 'mist: ' + mist.join(', ') : '');
+        check('koper-login bevat GEEN id (= verkoper-toegangscode — privilege-escalatie)', !Object.prototype.hasOwnProperty.call(koperObj, 'id'));
+        check('koper-login vóór NDA bevat GEEN verkoper-identiteit (kantoor_naam/contact/adres/KvK)',
+          !IDENTITEIT.some(k => Object.prototype.hasOwnProperty.call(koperObj, k)),
+          'aanwezig: ' + IDENTITEIT.filter(k => Object.prototype.hasOwnProperty.call(koperObj, k)).join(', '));
+      }
+      if (verkoperObj) {
+        nooitVan(verkoperObj, VERKOPER_NOOIT, 'verkoper');
+        binnenAllowList(verkoperObj, VERKOPER_ALLOW, 'verkoper');
+        const verkMist = ['id', 'kantoor_naam', 'sector', 'status', 'nda_getekend'].filter(k => !(k in verkoperObj));
+        check('verkoper-login bevat wél de toegestane velden (incl. eigen id, bem_tekst)', verkMist.length === 0, verkMist.length ? 'mist: ' + verkMist.join(', ') : '');
+      }
+      if (tussenObj) {
+        const tussenMist = ['id', 'kantoor_naam', 'koper_naam'].filter(k => !(k in tussenObj));
+        check('begeleider-login bevat de basisvelden', tussenMist.length === 0, tussenMist.length ? 'mist: ' + tussenMist.join(', ') : '');
+        check('begeleider-login bevat tussen_code én koper_code (nodig voor het dashboard)',
+          Object.prototype.hasOwnProperty.call(tussenObj, 'tussen_code') && Object.prototype.hasOwnProperty.call(tussenObj, 'koper_code'), '');
+      }
 
-    // /mna/versies/{koper_code}: mag nooit een tussenpersoon-only doc_type teruggeven.
-    const versiesKoper = await api('GET', '/mna/versies/' + traject.koper_code);
-    const koperDocTypes = Array.isArray(versiesKoper.json) ? versiesKoper.json.map(v => v.doc_type) : [];
-    const verbodenDocTypes = ['bem', 'bem_verk', 'bem_koper', 'bem_upload', 'dealvoorstel', 'waarderingsrapport', 'spa', 'closing'];
-    const docLek = koperDocTypes.filter(t => verbodenDocTypes.includes(t));
-    check('/mna/versies/{koper_code} lekt geen begeleider-/verkoper-only doc_types (incl. waarderingsrapport)',
-      docLek.length === 0, docLek.length ? 'gelekt: ' + docLek.join(', ') : 'koper ziet: ' + (koperDocTypes.join(', ') || '(niets)'));
+      // Restricted doc_type in mna_doc_versies zetten (waarderingsrapport — geen AI/e-mail nodig via
+      // /mna/waardering/rapport) en dan bewijzen dat de koper 'm niet kan lezen. Zonder deze stap was
+      // de versies-check leeg en dus tandeloos.
+      const wr = await api('POST', '/mna/waardering/rapport', { body: { code: traject.tussen_code, rapport_tekst: 'E2E CONF interne waardering — GEHEIM', cijfers_json: { ebitda: 111111, multiple: 4.2 } }, headers: { 'x-tussen-key': traject.tussen_code } });
+      check('waarderingsrapport-versie aangemaakt voor de test', wr.json && (wr.json.ok === true || wr.json.versie != null), JSON.stringify(wr.json));
+
+      const versiesKoper = await api('GET', '/mna/versies/' + traject.koper_code);
+      const koperDocs = Array.isArray(versiesKoper.json) ? versiesKoper.json : [];
+      const verbodenDocTypes = ['bem', 'bem_verk', 'bem_koper', 'bem_opvolging', 'bem_upload', 'dealvoorstel', 'waarderingsrapport', 'eigen_document', 'loi_concept', 'spa', 'closing'];
+      const docLek = koperDocs.map(v => v.doc_type).filter(t => verbodenDocTypes.includes(t));
+      check('/mna/versies/{koper_code} lekt geen begeleider-/verkoper-only doc_type (waarderingsrapport getest)',
+        docLek.length === 0, docLek.length ? 'gelekt: ' + docLek.join(', ') : 'koper ziet: ' + (koperDocs.map(v => v.doc_type).join(', ') || '(niets)'));
+
+      // Ook via /mna/versies/{tussen_code} het versie-id ophalen en proberen te lezen als koper.
+      const versiesTussen = await api('GET', '/mna/versies/' + traject.tussen_code + '/waarderingsrapport', { headers: { 'x-tussen-key': traject.tussen_code } });
+      const wrId = Array.isArray(versiesTussen.json) && versiesTussen.json[0] && versiesTussen.json[0].id;
+      if (wrId) {
+        const alsKoper = await api('GET', '/mna/versie/' + wrId + '?code=' + traject.koper_code);
+        check('/mna/versie/{id} met koper-code op een waarderingsrapport → 403', alsKoper.status === 403, 'status=' + alsKoper.status);
+        const alsBegeleider = await api('GET', '/mna/versie/' + wrId + '?code=' + traject.tussen_code);
+        check('/mna/versie/{id} met begeleider-code op hetzelfde rapport → 200 (geen overbreek)', alsBegeleider.status === 200, 'status=' + alsBegeleider.status);
+      } else {
+        sla_over('CONF · /mna/versie/{id} koper-403', 'geen waarderingsrapport-versie-id gevonden');
+      }
+    }
   }
 
   await opruimen();
