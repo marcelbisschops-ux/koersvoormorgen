@@ -341,12 +341,26 @@ async function main() {
 
       // Ook via /mna/versies/{tussen_code} het versie-id ophalen en proberen te lezen als koper.
       const versiesTussen = await api('GET', '/mna/versies/' + traject.tussen_code + '/waarderingsrapport', { headers: { 'x-tussen-key': traject.tussen_code } });
+      // traject_id == de verkoperscode. Mag in GEEN ENKELE versies-respons voorkomen (privilege-escalatie).
+      const versLijstAlgemeen = await api('GET', '/mna/versies/' + traject.tussen_code, { headers: { 'x-tussen-key': traject.tussen_code } });
+      const versLijstRijen = [
+        ...(Array.isArray(versiesKoper.json) ? versiesKoper.json : []),
+        ...(Array.isArray(versiesTussen.json) ? versiesTussen.json : []),
+        ...(Array.isArray(versLijstAlgemeen.json) ? versLijstAlgemeen.json : []),
+      ];
+      const tidLek = versLijstRijen.some(v => v && Object.prototype.hasOwnProperty.call(v, 'traject_id'));
+      check('/mna/versies/* bevat geen traject_id (= verkoperscode) in de rijen', !tidLek,
+        tidLek ? 'traject_id aanwezig in minstens één versie-rij' : '');
+
       const wrId = Array.isArray(versiesTussen.json) && versiesTussen.json[0] && versiesTussen.json[0].id;
       if (wrId) {
         const alsKoper = await api('GET', '/mna/versie/' + wrId + '?code=' + traject.koper_code);
         check('/mna/versie/{id} met koper-code op een waarderingsrapport → 403', alsKoper.status === 403, 'status=' + alsKoper.status);
         const alsBegeleider = await api('GET', '/mna/versie/' + wrId + '?code=' + traject.tussen_code);
         check('/mna/versie/{id} met begeleider-code op hetzelfde rapport → 200 (geen overbreek)', alsBegeleider.status === 200, 'status=' + alsBegeleider.status);
+        check('/mna/versie/{id}-respons bevat geen traject_id', alsBegeleider.json && !Object.prototype.hasOwnProperty.call(alsBegeleider.json, 'traject_id'), '');
+        check('/mna/versie/{id}-respons bevat wél de tekst (consumers hebben die nodig)',
+          alsBegeleider.json && typeof alsBegeleider.json.tekst === 'string', '');
       } else {
         sla_over('CONF · /mna/versie/{id} koper-403', 'geen waarderingsrapport-versie-id gevonden');
       }
