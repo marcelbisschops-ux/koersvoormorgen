@@ -255,18 +255,22 @@ a.card:hover,.card--link:hover{transform:translateY(-3px); border-color:var(--pe
 @media (max-width:860px){ .grid-3,.grid-4{grid-template-columns:1fr 1fr} }
 @media (max-width:620px){ .grid-2,.grid-3,.grid-4{grid-template-columns:1fr} }
 
-/* routekaart — de twee proposities */
-.routes{display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; margin-top:2.75rem}
-@media (max-width:720px){ .routes{grid-template-columns:1fr} }
+/* routekaart — de twee proposities (hele kaart = één link) */
+.routes{display:grid; grid-template-columns:1fr 1fr; gap:1.25rem; margin-top:2.25rem}
+@media (max-width:640px){ .routes{grid-template-columns:1fr} }
 .route{
-  background:var(--s-dark-2); border:1px solid var(--hair-d); border-top:2px solid var(--koerslijn);
-  border-radius:var(--r-md); padding:1.75rem; display:flex; flex-direction:column;
-  transition:transform .16s ease, border-color .16s ease;
+  display:flex; flex-direction:column; text-decoration:none;
+  background:var(--s-dark-2); border:1px solid var(--hair-d); border-left:2px solid var(--koerslijn);
+  border-radius:var(--r-md); padding:1.35rem 1.5rem;
+  transition:transform .16s ease, border-color .16s ease, background .16s ease;
 }
-.route:hover{transform:translateY(-3px); border-color:var(--petrol-bright)}
-.route__ey{font:600 var(--fs-xs)/1 var(--sans); letter-spacing:.14em; text-transform:uppercase; color:var(--petrol-bright); margin-bottom:.8rem}
-.route__who{font-family:var(--serif); font-size:var(--fs-lg); color:var(--ink-d); margin-bottom:.5rem}
-.route p{font-size:var(--fs-sm); color:var(--body-d); margin-bottom:1.25rem; flex:1}
+.route:hover{transform:translateY(-2px); border-color:var(--petrol-bright); background:#16293a}
+.route:focus-visible{outline:2px solid var(--koerslijn); outline-offset:2px}
+.route__ey{font:600 var(--fs-xs)/1 var(--sans); letter-spacing:.14em; text-transform:uppercase; color:var(--petrol-bright); margin-bottom:.55rem}
+.route__who{font-family:var(--serif); font-size:var(--fs-md); color:var(--ink-d); margin-bottom:.45rem; line-height:1.25}
+.route__p{font-size:var(--fs-sm); color:var(--body-d); margin-bottom:1rem; flex:1}
+.route__go{font:600 var(--fs-sm)/1 var(--sans); color:var(--petrol-bright); display:inline-flex; align-items:center}
+.route:hover .route__go{text-decoration:underline; text-underline-offset:3px}
 
 /* ---------- pull quote ---------- */
 .pullquote{display:flex; gap:1.1rem; margin:2.5rem 0; max-width:38ch}
