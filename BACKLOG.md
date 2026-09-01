@@ -70,6 +70,12 @@ gedicht 1 sep, zie `BACKLOG-ARCHIEF.md` #25 + `SECURITY-INVARIANTS.md`).
     verstuurd_naar, verstuurd_door, cijfers_json, created_at). Geen consumer las `traject_id`.
     CONF-matrix uitgebreid: `traject_id` afwezig in elke versies-respons + tekst nog wél aanwezig.
     ⚠️ Nog niet gedeployed.
+  - **`/mna/viewer/data` (`worker/21`) — begeleider-notities uit de meekijker-respons.** De
+    meekijker (bank/accountant, alleen-lezen) kreeg per fase ook `notitie` + `checklist_json` — de
+    interne DD-werknotities/afvinklijst van de begeleider. Marcel (1 sep 2026): eruit. Fix:
+    `SELECT fase_id, data_json, updated_at` (was `… data_json, checklist_json, notitie, updated_at`).
+    `viewer.html` leest alleen `r.data_json`, dus geen UI-impact. CONF-matrix uitgebreid: meekijker
+    ziet wél `data_json`, niet `notitie`/`checklist_json`. ⚠️ Nog niet gedeployed.
   - Losse bevinding onderweg (níét in deze wijziging opgelost): `adv.html:1040` vult het tekstveld
     "Interne notitie" uit `t.notitie`, maar de adviseur-notitie wordt via `/mna/save` in de DD-data
     (`voorgesprek` → `adv_notitie`) bewaard — dus dat veld toont bij heropenen altijd leeg. Kleine
