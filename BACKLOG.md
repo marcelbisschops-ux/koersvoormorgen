@@ -57,10 +57,17 @@ gedicht 1 sep, zie `BACKLOG-ARCHIEF.md` #25 + `SECURITY-INVARIANTS.md`).
     frontend-consumer (waarschijnlijk legacy; niet verwijderd, backwards compatible gehouden).
     CONF-matrix dekt alle drie. ⚠️ `worker/02` + `worker/09` nog niet gedeployed — wacht op staging
     + verse Breaker-blik.
-  - `/adviseur/export/` (`worker/16`): `SELECT *`, maar het tekstrapport pikt alleen bij naam
-    genoemde velden (`kantoor_naam`, `contact_*`, `verkoper_*`, `koper_naam/email`, `begeleider_naam`)
-    — geen rauw object in de respons. Feitelijk al een allow-list; alleen de `SELECT *` zelf nog
-    opschonen als cosmetische verbetering, geen datalek.
+  - `/adviseur/export/` (`worker/16`): `SELECT *` vervangen door de 11 kolommen die het
+    tekstrapport daadwerkelijk gebruikt (`kantoor_naam, traject_type, status, created_at,
+    contact_naam, contact_email, verkoper_adres, verkoper_kvk, koper_naam, koper_email,
+    begeleider_naam`). Was al geen datalek (rapport pikte al bij naam), nu ook geen `SELECT *` meer.
+    ⚠️ Nog niet gedeployed.
+  - **Recon afgerond op de rest van de deal-data-oppervlakte** (alleen gelezen, geen wijziging nodig):
+    `/mna/viewer/documenten` + `/mna/viewer/info` (al expliciete kolomlijsten, handgebouwde respons);
+    `/mna/admin/detail/` (alleen ADMIN_KEY, plus muur-strip voor niet-eigen trajecten — niet
+    extern-bereikbaar); de e-mailroutes (`/mna/{loi,nda,bem,exclusief,dealvoorstel,bieding}/email`,
+    alle achter `begeleiderAuth`, respons is `{ok:true}` zonder data-echo — al gehard bij de
+    22-aug-2026-audit). Geen van deze valt in de "rauw object naar externe rol"-klasse.
   - **`/mna/versies/` + `/mna/versie/{id}` (`worker/10`) — traject_id-lek gedicht (privilege-escalatie).**
     Beide gaven `traject_id` mee in de respons; dat is gelijk aan `mna_trajecten.id` = de LOGIN-code
     van de verkoper. Een koper kon via `/mna/versies/{koper_code}` die code oogsten en zich als
@@ -80,16 +87,17 @@ gedicht 1 sep, zie `BACKLOG-ARCHIEF.md` #25 + `SECURITY-INVARIANTS.md`).
     "Interne notitie" uit `t.notitie`, maar de adviseur-notitie wordt via `/mna/save` in de DD-data
     (`voorgesprek` → `adv_notitie`) bewaard — dus dat veld toont bij heropenen altijd leeg. Kleine
     frontend-fix, apart oppakken.
-- **Nog te doen (de rest van dit punt):**
-  - Dezelfde allow-list-DTO-behandeling voor de overige endpoints die trajectdata teruggeven
-    (`/mna/admin/detail/`, de e-mailroutes, de meekijker-endpoints — die laatste
-    zijn al streng, maar controleren tegen dezelfde lijstgedachte). `/adviseur/export/` alleen nog
-    de `SELECT *` → kolomlijst (cosmetisch).
-  - Eén centrale policy-laag (`rol × resource × actie × veld`) i.p.v. per-endpoint-logica.
-  - CI-gate: nieuw veld in een extern schema → faalt tenzij expliciet goedgekeurd.
-  - Exports/downloads onder dezelfde policy.
-- **Werkwijze:** één endpoint tegelijk, elke stap via staging, en na elke stap een verse
-  Breaker-blik (`/code-review` of nieuwe sessie) vóór akkoord. Zie `SECURITY-INVARIANTS.md`.
+- **Per-endpoint sweep: AFGEROND (1 sep 2026).** Alle deal-data-endpoints die een respons naar een
+  externe rol (verkoper/koper/adviseur/meekijker) sturen zijn nagelopen en waar nodig omgezet naar
+  een expliciete allow-list. Wat overblijft is structureel, geen losse endpoints meer:
+  - **Eén centrale policy-laag** (`rol × resource × actie × veld`) i.p.v. de per-endpoint-lijstjes
+    die er nu staan. Grootste stuk werk; verdient een eigen ontwerp-sessie, niet tussendoor.
+  - **CI-gate:** nieuw veld in een externe respons/schema → build faalt tenzij expliciet
+    goedgekeurd (schema-snapshot + diff-check).
+  - De "muur" in marilyn (`stripAfgeschermdeVelden`) is nog een deny-list — hoort bij de centrale
+    policy-laag hierboven, niet als losse fix.
+- **Werkwijze (voor de structurele stukken):** ontwerp eerst voorleggen, dan bouwen; staging +
+  verse Breaker-blik per stap. Zie `SECURITY-INVARIANTS.md`.
 - **Regel tot dit staat:** geen nieuwe feature op deal-data vóór de security-boundary goed staat.
 
 ---
