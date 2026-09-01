@@ -369,16 +369,41 @@ async function main() {
         'dealvoorstel_tekst', 'verkoopmemorandum_tekst', 'bem_tekst', 'loi_tekst', 'nda_tekst',
         'trajectfee_bedrag', 'trajectfee_type',
       ];
+      const advBuitenAllow = (rijen, waar) => {
+        const buiten = [...new Set(rijen.flatMap(t => Object.keys(t || {})).filter(k => !ADV_DTO_ALLOW.includes(k)))];
+        check(waar + ': geen veld buiten de allow-list-DTO', buiten.length === 0, buiten.length ? 'buiten allow-list: ' + buiten.join(', ') : '');
+        const lek = ADV_NOOIT.filter(k => rijen.some(t => t && Object.prototype.hasOwnProperty.call(t, k)));
+        check(waar + ': notitie / ondertekening-internals / deal- en fee-teksten afwezig', lek.length === 0, lek.length ? 'aanwezig: ' + lek.join(', ') : '');
+      };
+
       const advLijst = await api('POST', '/adviseur/trajecten', { body: { email, wachtwoord: WW } });
+      const advToken = advLijst.json && advLijst.json.sessie_token;
       const advTr = (advLijst.json && Array.isArray(advLijst.json.trajecten)) ? advLijst.json.trajecten
         : (Array.isArray(advLijst.json) ? advLijst.json : (advLijst.json && advLijst.json.lijst) || []);
       if (Array.isArray(advTr) && advTr.length) {
-        const advBuiten = [...new Set(advTr.flatMap(t => Object.keys(t)).filter(k => !ADV_DTO_ALLOW.includes(k)))];
-        check('/adviseur/trajecten: geen veld buiten de allow-list-DTO', advBuiten.length === 0, advBuiten.length ? 'buiten allow-list: ' + advBuiten.join(', ') : '');
-        const advLek = ADV_NOOIT.filter(k => advTr.some(t => Object.prototype.hasOwnProperty.call(t, k)));
-        check('/adviseur/trajecten: notitie / ondertekening-internals / deal- en fee-teksten afwezig', advLek.length === 0, advLek.length ? 'aanwezig: ' + advLek.join(', ') : '');
+        advBuitenAllow(advTr, '/adviseur/trajecten');
       } else {
         sla_over('CONF · /adviseur/trajecten', 'geen trajecten in de adviseur-respons (' + JSON.stringify(advLijst.json).slice(0, 120) + ')');
+      }
+
+      // /gebruikers/mna/lijst + /gebruikers/mna/detail/ (worker/09) — zelfde eigenaar-context,
+      // dezelfde gedeelde allow-list-helper sinds BACKLOG 0.2. Token-auth (x-gebruiker-token).
+      if (advToken) {
+        const gLijst = await api('GET', '/gebruikers/mna/lijst', { headers: { 'x-gebruiker-token': advToken } });
+        const gTr = Array.isArray(gLijst.json) ? gLijst.json : (gLijst.json && gLijst.json.results) || [];
+        if (Array.isArray(gTr) && gTr.length) {
+          advBuitenAllow(gTr, '/gebruikers/mna/lijst');
+          const gDetail = await api('GET', '/gebruikers/mna/detail/' + traject.code, { headers: { 'x-gebruiker-token': advToken } });
+          if (gDetail.json && gDetail.json.traject) {
+            advBuitenAllow([gDetail.json.traject], '/gebruikers/mna/detail/');
+          } else {
+            sla_over('CONF · /gebruikers/mna/detail/', 'geen traject-object in respons (' + JSON.stringify(gDetail.json).slice(0, 120) + ')');
+          }
+        } else {
+          sla_over('CONF · /gebruikers/mna/lijst', 'lege lijst (' + JSON.stringify(gLijst.json).slice(0, 120) + ')');
+        }
+      } else {
+        sla_over('CONF · /gebruikers/mna/*', 'geen sessie_token uit /adviseur/trajecten');
       }
     }
   }

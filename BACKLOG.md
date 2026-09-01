@@ -47,20 +47,29 @@ gedicht 1 sep, zie `BACKLOG-ARCHIEF.md` #25 + `SECURITY-INVARIANTS.md`).
   - Permanente negatieve-exposure-test: CONF-matrix in `tests/e2e-crosspath-fixes.mjs` (per rol:
     verboden velden afwezig + positieve sanity dat toegestane velden er wél zijn).
   - `SECURITY-INVARIANTS.md` + verwijzing in `CLAUDE.md`.
-  - `/adviseur/trajecten` (`backend/worker/16-adviseur.js`) omgezet van `SELECT *` + deny-list naar
-    `ADV_DTO_VELDEN` — 23 velden die adv.html daadwerkelijk gebruikt. Deal-/fee-/memorandum-/
-    ondertekening-teksten die er via de deny-list nog wél in zaten, staan er nu niet meer in.
-    CONF-matrix uitgebreid met een allow-list-check + expliciete deny-check op dit endpoint.
-    ⚠️ Nog niet gedeployed — wacht op staging + verse Breaker-blik.
+  - **`/adviseur/trajecten` — GEDEPLOYED (1 sep 2026, Version e75... opvolger).** Omgezet van
+    `SELECT *` + deny-list naar een allow-list. Verse Breaker-blik: schoon (geen regressie, strikt
+    versmallend). Daarna: gedeelde helper (zie volgende punt).
+  - **Gedeelde allow-list voor álle adviseur-eigen trajectlijst-endpoints** — `ADVISEUR_TRAJECT_DTO_VELDEN`
+    + `adviseurTrajectDTO()` in `backend/worker/02-config-constanten.js` (23 velden). Toegepast op:
+    `/adviseur/trajecten` (`worker/16`), `/gebruikers/mna/lijst` en `/gebruikers/mna/detail/`
+    (`worker/09`) — die laatste twee stonden op exact dezelfde deny-list en hebben geen vindbare
+    frontend-consumer (waarschijnlijk legacy; niet verwijderd, backwards compatible gehouden).
+    CONF-matrix dekt alle drie. ⚠️ `worker/02` + `worker/09` nog niet gedeployed — wacht op staging
+    + verse Breaker-blik.
+  - `/adviseur/export/` (`worker/16`): `SELECT *`, maar het tekstrapport pikt alleen bij naam
+    genoemde velden (`kantoor_naam`, `contact_*`, `verkoper_*`, `koper_naam/email`, `begeleider_naam`)
+    — geen rauw object in de respons. Feitelijk al een allow-list; alleen de `SELECT *` zelf nog
+    opschonen als cosmetische verbetering, geen datalek.
   - Losse bevinding onderweg (níét in deze wijziging opgelost): `adv.html:1040` vult het tekstveld
     "Interne notitie" uit `t.notitie`, maar de adviseur-notitie wordt via `/mna/save` in de DD-data
     (`voorgesprek` → `adv_notitie`) bewaard — dus dat veld toont bij heropenen altijd leeg. Kleine
     frontend-fix, apart oppakken.
 - **Nog te doen (de rest van dit punt):**
   - Dezelfde allow-list-DTO-behandeling voor de overige endpoints die trajectdata teruggeven
-    (`/adviseur/export/`, `/gebruikers/mna/detail/`, `/mna/versies/`,
-    `/mna/admin/detail/`, de e-mailroutes, de meekijker-endpoints — die laatste zijn al streng,
-    maar controleren tegen dezelfde lijstgedachte).
+    (`/mna/versies/`, `/mna/admin/detail/`, de e-mailroutes, de meekijker-endpoints — die laatste
+    zijn al streng, maar controleren tegen dezelfde lijstgedachte). `/adviseur/export/` alleen nog
+    de `SELECT *` → kolomlijst (cosmetisch).
   - Eén centrale policy-laag (`rol × resource × actie × veld`) i.p.v. per-endpoint-logica.
   - CI-gate: nieuw veld in een extern schema → faalt tenzij expliciet goedgekeurd.
   - Exports/downloads onder dezelfde policy.
