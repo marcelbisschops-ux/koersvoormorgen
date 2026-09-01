@@ -38,16 +38,25 @@ andere endpoints draaien op `SELECT *` van `mna_trajecten` en filteren met een l
 nieuwe kolom is dan automatisch potentieel uitlekbaar — zo lekten `bem_tekst`,
 `verkoopmemorandum_tekst` en `tussen_code` (privilege-escalatie) naar de koper (gevonden + tactisch
 gedicht 1 sep, zie `BACKLOG-ARCHIEF.md` #25 + `SECURITY-INVARIANTS.md`).
-- **Nu al gedaan (tussenstap):** gecategoriseerde strip (`GEVOELIG` in
-  `backend/worker/11-mna-tekenen-beheer.js`), `waarderingsrapport` in `ROLGEBONDEN_DOCTYPES`, en een
-  permanente negatieve-exposure-test (CONF-matrix in `tests/e2e-crosspath-fixes.mjs`).
-- **Echte fix (dit punt):** per rol een expliciet respons-schema (`koper` / `verkoper` /
-  `meekijker` / `begeleider`); geen DB-object meer rechtstreeks naar JSON; één centrale
-  policy-laag (`rol × resource × actie × veld`) i.p.v. per-endpoint-logica; een CI-gate die faalt
-  als een nieuw veld ongemerkt in een extern schema belandt. Exports/downloads/e-mailroutes volgen
-  dezelfde policy.
-- **Werkwijze:** gescheiden AI-contexten (Builder / Breaker / Fixer), één endpoint tegelijk, elke
-  stap via staging. Begin bij `/mna/traject/{code}` (het login-antwoord, grootste oppervlak).
+- **Gedaan (1 sep 2026):**
+  - `/mna/traject/{code}` (`backend/worker/11-mna-tekenen-beheer.js`) omgezet naar een **echte
+    allow-list DTO**: `DTO_BASIS` + `DTO_VERKOPER_EXTRA` + `DTO_BEGELEIDER_EXTRA`, per rol expliciet
+    geselecteerd. `SELECT *` wordt nu doorheen een whitelist gehaald — een nieuwe kolom verschijnt
+    pas in de respons als hij aan een lijst wordt toegevoegd.
+  - `waarderingsrapport` toegevoegd aan `ROLGEBONDEN_DOCTYPES` (`worker/10`).
+  - Permanente negatieve-exposure-test: CONF-matrix in `tests/e2e-crosspath-fixes.mjs` (per rol:
+    verboden velden afwezig + positieve sanity dat toegestane velden er wél zijn).
+  - `SECURITY-INVARIANTS.md` + verwijzing in `CLAUDE.md`.
+- **Nog te doen (de rest van dit punt):**
+  - Dezelfde allow-list-DTO-behandeling voor de andere endpoints die trajectdata teruggeven
+    (`/adviseur/trajecten`, `/adviseur/export/`, `/gebruikers/mna/detail/`, `/mna/versies/`,
+    `/mna/admin/detail/`, de e-mailroutes, de meekijker-endpoints — die laatste zijn al streng,
+    maar controleren tegen dezelfde lijstgedachte).
+  - Eén centrale policy-laag (`rol × resource × actie × veld`) i.p.v. per-endpoint-logica.
+  - CI-gate: nieuw veld in een extern schema → faalt tenzij expliciet goedgekeurd.
+  - Exports/downloads onder dezelfde policy.
+- **Werkwijze:** één endpoint tegelijk, elke stap via staging, en na elke stap een verse
+  Breaker-blik (`/code-review` of nieuwe sessie) vóór akkoord. Zie `SECURITY-INVARIANTS.md`.
 - **Regel tot dit staat:** geen nieuwe feature op deal-data vóór de security-boundary goed staat.
 
 ---
