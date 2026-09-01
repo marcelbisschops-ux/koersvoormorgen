@@ -179,6 +179,32 @@ voor de non-admin `begeleider`-uitkomst doet `resolveRol` één extra geïndexee
 `bf_gebruikers`-query (voor de `eigenTraject`-vlag) die het oude `begeleiderAuth` niet deed. De
 shim gebruikt die vlag nu niet; hij komt van pas bij stap 5 (de muur).
 
+**STAP 2 — LIVE op productie (1 sep 2026, ~15:00).** CONF-matrix tegen productie: **71/71 groen**.
+Onafhankelijke brede review vooraf: "SOUND for production, geen HIGH/MED". Gecommit `f9a910c`.
+
+---
+
+# STAP 3 — GEDAAN in code, wacht op Breaker + staging + deploy (1 sep 2026)
+
+Aanpak: **géén** per-endpoint-omzetting van de ~15 `rolVanCode`-callers (dat zou de
+`'tussenpersoon'`-valkuil hierboven raken). In plaats daarvan:
+
+- **`rolVanCode` in `cloudflare-worker.js` is nu `const rolVanCode = rolVanCodeViaPolicy`** —
+  delegeert naar de byte-getrouwe kopie in `worker/00-policy.js`. Eén implementatie. Alle ~15
+  call-sites én alle `=== 'tussenpersoon'`-checks blijven **letterlijk ongewijzigd**.
+- `resolveRol({modus:'padcode'})` hergebruikt intern `rolVanCodeViaPolicy` (één string-mapping) en
+  geeft **`'tussenpersoon'`** terug — byte-getrouw aan de oude `rolVanCode`, dus de valkuil is
+  vermeden i.p.v. omzeild.
+- `tests/policy-equivalentie.mjs`: sectie 3 bewijst nu `resolveRol(padcode) ⇔ OUD_rolVanCode`
+  (incl. de naam `'tussenpersoon'`). **39/39 groen** + volledige predeploy dry-run groen.
+- Diff: 3 bestanden, +34/−24 (waarvan 1 testbestand).
+
+Risico laag: `rolVanCode` was een pure 7-regel-stringvergelijking; de kopie is karakter-identiek.
+`function` → `const`: alle call-sites draaien request-time (ná module-init), geen TDZ.
+
+**→ Voor Marcel:** Breaker terug → staging-deploy + CONF-matrix → productie-deploy. **Geen
+`/code-review ultra` nodig** voor stap 3 (afspraak: ultra alleen bij stap 2 en na stap 5).
+
 ---
 
 ## 1. Wat is er nu
