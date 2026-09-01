@@ -61,13 +61,22 @@ gedicht 1 sep, zie `BACKLOG-ARCHIEF.md` #25 + `SECURITY-INVARIANTS.md`).
     genoemde velden (`kantoor_naam`, `contact_*`, `verkoper_*`, `koper_naam/email`, `begeleider_naam`)
     — geen rauw object in de respons. Feitelijk al een allow-list; alleen de `SELECT *` zelf nog
     opschonen als cosmetische verbetering, geen datalek.
+  - **`/mna/versies/` + `/mna/versie/{id}` (`worker/10`) — traject_id-lek gedicht (privilege-escalatie).**
+    Beide gaven `traject_id` mee in de respons; dat is gelijk aan `mna_trajecten.id` = de LOGIN-code
+    van de verkoper. Een koper kon via `/mna/versies/{koper_code}` die code oogsten en zich als
+    verkoper aanmelden (zelfde klasse als de eerder gedichte `id`-in-DTO_BASIS-fix op
+    `/mna/traject/{code}`). Fix: `traject_id` uit de SELECT-kolomlijst van de lijst, en `/mna/versie/{id}`
+    van `SELECT *` + rauwe rij naar een expliciete allow-list-respons (id, doc_type, versie, tekst,
+    verstuurd_naar, verstuurd_door, cijfers_json, created_at). Geen consumer las `traject_id`.
+    CONF-matrix uitgebreid: `traject_id` afwezig in elke versies-respons + tekst nog wél aanwezig.
+    ⚠️ Nog niet gedeployed.
   - Losse bevinding onderweg (níét in deze wijziging opgelost): `adv.html:1040` vult het tekstveld
     "Interne notitie" uit `t.notitie`, maar de adviseur-notitie wordt via `/mna/save` in de DD-data
     (`voorgesprek` → `adv_notitie`) bewaard — dus dat veld toont bij heropenen altijd leeg. Kleine
     frontend-fix, apart oppakken.
 - **Nog te doen (de rest van dit punt):**
   - Dezelfde allow-list-DTO-behandeling voor de overige endpoints die trajectdata teruggeven
-    (`/mna/versies/`, `/mna/admin/detail/`, de e-mailroutes, de meekijker-endpoints — die laatste
+    (`/mna/admin/detail/`, de e-mailroutes, de meekijker-endpoints — die laatste
     zijn al streng, maar controleren tegen dezelfde lijstgedachte). `/adviseur/export/` alleen nog
     de `SELECT *` → kolomlijst (cosmetisch).
   - Eén centrale policy-laag (`rol × resource × actie × veld`) i.p.v. per-endpoint-logica.
