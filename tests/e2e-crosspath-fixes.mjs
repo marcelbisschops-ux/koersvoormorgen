@@ -56,7 +56,7 @@ async function main() {
       await api('POST', '/gebruikers/activeer', { body: { token, wachtwoord: WW } });
       await api('POST', '/gebruiker/voorwaarden/accepteren', { body: { email, wachtwoord: WW } });
     }
-    await api('POST', '/gebruikers/verkoop/' + opruimGebruikerId, { adminKey: ADMIN, body: { traject_limiet: 1, modules: { traject: true, contracten: true, ai_analyse: true, qa: true, export: true } } });
+    await api('POST', '/gebruikers/verkoop/' + opruimGebruikerId, { adminKey: ADMIN, body: { traject_limiet: 1, modules: { traject: true, contracten: true, ai_analyse: true, qa: true, export: true, meekijker: true } } });
     const c = await api('POST', '/adviseur/create', { body: { email, wachtwoord: WW, traject: { kantoor_naam: 'E2E Crosspath Kantoor BV', contact_naam: 'Test Verkoper', contact_email: 'verkoper' + TEST_EMAIL_DOMEIN, koper_naam: 'E2E Crosspath Koper BV', koper_contact: 'Test Koper', koper_email: 'koper' + TEST_EMAIL_DOMEIN, traject_type: 'Verkoop' } } });
     check('extern traject aangemaakt', c.json && c.json.ok === true, JSON.stringify(c.json));
     if (c.json && c.json.code) {
@@ -363,6 +363,33 @@ async function main() {
           alsBegeleider.json && typeof alsBegeleider.json.tekst === 'string', '');
       } else {
         sla_over('CONF · /mna/versie/{id} koper-403', 'geen waarderingsrapport-versie-id gevonden');
+      }
+
+      // /mna/viewer/data (meekijker: bank/accountant, alleen-lezen) mag de DD-veldwaarden (data_json)
+      // wél tonen, maar NIET de interne DD-werknotities/afvinklijst van de begeleider
+      // (notitie, checklist_json). Setup: fase-data mét notitie opslaan → meekijker-code aanmaken →
+      // vertrouwelijkheidsverklaring accepteren → data ophalen.
+      {
+        await api('POST', '/mna/save', { body: { code: traject.tussen_code, fase_id: 'financieel',
+          data_json: { omzet1: { label: 'Omzet', value: '1000000' } },
+          checklist_json: { e2e_conf: true },
+          notitie: 'E2E CONF interne begeleidernotitie — GEHEIM' } });
+        const mkAanmaak = await api('POST', '/mna/admin/viewer/aanmaken', {
+          headers: { 'x-tussen-key': traject.tussen_code },
+          body: { traject_id: traject.code, viewer_naam: 'E2E CONF Meekijker', viewer_type: 'bank', scope_fase: 'alle', toestemming_bevestigd: true } });
+        const mkCode = mkAanmaak.json && (mkAanmaak.json.viewer_code || mkAanmaak.json.code);
+        if (mkCode) {
+          await api('POST', '/mna/viewer/voorwaarden/accepteren', { body: { code: mkCode } });
+          const mkData = await api('GET', '/mna/viewer/data?code=' + encodeURIComponent(mkCode));
+          const mkRows = (mkData.json && Array.isArray(mkData.json.data)) ? mkData.json.data : [];
+          check('/mna/viewer/data levert wél DD-veldwaarden (data_json)',
+            mkRows.some(r => r && 'data_json' in r), JSON.stringify(mkData.json).slice(0, 160));
+          const mkLek = mkRows.some(r => r && (Object.prototype.hasOwnProperty.call(r, 'notitie') || Object.prototype.hasOwnProperty.call(r, 'checklist_json')));
+          check('/mna/viewer/data lekt GEEN begeleider-notitie of checklist_json', !mkLek,
+            mkLek ? 'notitie/checklist_json aanwezig in een meekijker-rij' : '');
+        } else {
+          sla_over('CONF · /mna/viewer/data', 'geen meekijker-code (' + JSON.stringify(mkAanmaak.json).slice(0, 140) + ')');
+        }
       }
 
       // /adviseur/trajecten geeft de eigen trajectenlijst aan de adviseur (owner-facing, geen
