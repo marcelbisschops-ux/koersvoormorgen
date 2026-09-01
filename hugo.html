@@ -8,7 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-:root{--void:#faf9f6;--panel:#fff;--card:#f0eeea;--border:#dddbd4;--muted:#6b6862;--mid:#5a5854;--sub:#2a2825;--teal:#1a7a5e;--orange:#e8500a;--red:#e05252;--r:6px;--r2:10px}
+:root{--void:#f6f2ea;--panel:#fff;--card:#ebeef1;--border:#d9dee3;--muted:#647581;--mid:#42525e;--sub:#16232e;--teal:#3d6b63;--orange:#e8500a;--red:#e05252;--r:6px;--r2:10px}
 body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--sub);font-size:14px}
 .wrap{max-width:1200px;margin:0 auto;padding:2rem}
 .hdr{display:flex;align-items:center;justify-content:space-between;padding:1.25rem 0;border-bottom:1px solid var(--border);margin-bottom:2rem}
@@ -99,7 +99,7 @@ async function doLogin() {
   }
 }
 
-function dc(v) { return v >= 70 ? '#1a7a5e' : v >= 50 ? '#b8860b' : '#e05252'; }
+function dc(v) { return v >= 70 ? '#3d6b63' : v >= 50 ? '#b8860b' : '#e05252'; }
 function fd(ts) { return ts ? new Date(ts).toLocaleDateString('nl-NL', { day:'2-digit', month:'short', year:'numeric' }) : '—'; }
 
 function renderDashboard() {
