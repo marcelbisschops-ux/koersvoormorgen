@@ -190,9 +190,9 @@ button{font:inherit; cursor:pointer}
   .nav__links.open{display:flex}
   .nav__links a{padding:.8rem 0; border-bottom:1px solid var(--hair-d)}
   .nav__links a::after{display:none}
-  .nav__cta{margin-top:.9rem; text-align:center}
+  .nav__cta{margin-top:.9rem; text-align:center; order:2}
   .nav__toggle{display:block}
-  .nav__login{display:none}
+  .nav__login{display:block; order:1; color:var(--body-d); letter-spacing:normal; font-size:var(--fs-sm); font-weight:500}
 }
 
 /* ---------- footer ---------- */
