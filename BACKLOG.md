@@ -47,9 +47,18 @@ gedicht 1 sep, zie `BACKLOG-ARCHIEF.md` #25 + `SECURITY-INVARIANTS.md`).
   - Permanente negatieve-exposure-test: CONF-matrix in `tests/e2e-crosspath-fixes.mjs` (per rol:
     verboden velden afwezig + positieve sanity dat toegestane velden er wél zijn).
   - `SECURITY-INVARIANTS.md` + verwijzing in `CLAUDE.md`.
+  - `/adviseur/trajecten` (`backend/worker/16-adviseur.js`) omgezet van `SELECT *` + deny-list naar
+    `ADV_DTO_VELDEN` — 23 velden die adv.html daadwerkelijk gebruikt. Deal-/fee-/memorandum-/
+    ondertekening-teksten die er via de deny-list nog wél in zaten, staan er nu niet meer in.
+    CONF-matrix uitgebreid met een allow-list-check + expliciete deny-check op dit endpoint.
+    ⚠️ Nog niet gedeployed — wacht op staging + verse Breaker-blik.
+  - Losse bevinding onderweg (níét in deze wijziging opgelost): `adv.html:1040` vult het tekstveld
+    "Interne notitie" uit `t.notitie`, maar de adviseur-notitie wordt via `/mna/save` in de DD-data
+    (`voorgesprek` → `adv_notitie`) bewaard — dus dat veld toont bij heropenen altijd leeg. Kleine
+    frontend-fix, apart oppakken.
 - **Nog te doen (de rest van dit punt):**
-  - Dezelfde allow-list-DTO-behandeling voor de andere endpoints die trajectdata teruggeven
-    (`/adviseur/trajecten`, `/adviseur/export/`, `/gebruikers/mna/detail/`, `/mna/versies/`,
+  - Dezelfde allow-list-DTO-behandeling voor de overige endpoints die trajectdata teruggeven
+    (`/adviseur/export/`, `/gebruikers/mna/detail/`, `/mna/versies/`,
     `/mna/admin/detail/`, de e-mailroutes, de meekijker-endpoints — die laatste zijn al streng,
     maar controleren tegen dezelfde lijstgedachte).
   - Eén centrale policy-laag (`rol × resource × actie × veld`) i.p.v. per-endpoint-logica.
