@@ -84,6 +84,93 @@ functiedefinities tellen niet mee).
 
 ---
 
+# FASE 1 — kritieke ontwerpbeslissing die stap 1 blootlegde
+
+`begeleiderAuth` en `rolVanCode` hebben een **verschillend dreigingsmodel** — ze mogen NIET naïef
+samengevoegd worden:
+
+| | `begeleiderAuth` | `rolVanCode` + zijn callers |
+|---|---|---|
+| **Wat is de credential?** | de **sleutel** in `x-admin-key` / `x-tussen-key` / `?key=` | de **trajectcode in het URL-pad zelf** (bearer-token in het pad) |
+| De URL-trajectcode is... | alleen "welk traject", géén bewijs | het bewijs zelf |
+| Geeft rollen | `admin`, `begeleider` | `verkoper`, `koper`, `tussenpersoon` |
+
+Voorbeeld van de valkuil: bij een `begeleiderAuth`-endpoint is `tussen_code` in het URL-pad **geen**
+geldige toegang zonder de bijbehorende sleutel-header (dat was juist de cross-traject-fix van
+juli 2026). Bij een `rolVanCode`-endpoint (`/mna/versies/{tussen_code}` e.d.) IS `tussen_code` in
+het pad wél de geldige toegang. Eén functie die "de hoogste rol die pad-code óf sleutel toekent"
+teruggeeft, zou een `begeleiderAuth`-endpoint openzetten voor pad-code-zonder-sleutel. **Auth-lek.**
+
+**Ontwerpkeuze:** `resolveRol(request, code, env, { modus })` met expliciete `modus`:
+- `'sleutel'` → spiegelt `begeleiderAuth`: alleen een sleutel-header/param geeft toegang;
+  uitkomsten `admin` | `begeleider` | `{ok:false}`.
+- `'padcode'` → spiegelt `rolVanCode`: de code in het pad is de credential; uitkomsten
+  `admin` (als óók de sleutel klopt) | `verkoper` | `koper` | `begeleider` | `onbekend`.
+- (`'beide'` alleen als er endpoints blijken te zijn die vandaag écht allebei accepteren —
+  te controleren tijdens migratie, niet vooraf aannemen.)
+
+Elke migratiestap kiest expliciet de `modus` die bij dat endpoint hoort, en de
+equivalentietest bewijst per modus dat de uitkomst gelijk is aan het oude mechanisme.
+
+Genormaliseerde rolnaam: **`begeleider`** overal (de oude `rolVanCode` gaf `'tussenpersoon'`).
+Callers die op de letterlijke string `'tussenpersoon'` vergelijken, worden bij hun migratiestap
+meegenomen — `grep -rn "'tussenpersoon'" backend/worker` vóór stap 3.
+
+---
+
+# STAP 1 — GEDAAN (1 sep 2026, geen productie-impact)
+
+- **`backend/worker/00-policy.js`** — `resolveRol(request, code, env, { modus })` geschreven,
+  door **niets** aangeroepen. Plus compat-shims `begeleiderAuthViaPolicy` en `rolVanCodeViaPolicy`
+  die de exacte oude return-vormen teruggeven.
+- **`backend/tests/policy-equivalentie.mjs`** — draait `resolveRol` (via de shims) tegen een
+  gestubde DB voor een matrix van (code, sleutel, is_eigen)-combinaties en vergelijkt met een
+  1-op-1 kopie van de HUIDIGE `begeleiderAuth`/`rolVanCode`-logica. Alle combinaties gelijk = groen.
+- Bekend, benign verschil: `resolveRol` in `modus:'sleutel'` doet voor een admin-call één extra
+  geïndexeerde query (traject ophalen voor `traject_id`/`eigenTraject`) die het oude
+  `begeleiderAuth` niet deed. Geen gedragsverschil, wel iets meer werk per admin-request.
+  Later te optimaliseren; nu bewust zo voor een volledige return-vorm.
+
+**Nog niet aangesloten. Geen `wrangler deploy` nodig voor stap 1.**
+
+---
+
+# STAP 2 — GEDAAN in code, WACHT OP `/code-review ultra` + deploy (1 sep 2026)
+
+- **`cloudflare-worker.js`**: `import { begeleiderAuthViaPolicy } from './worker/00-policy.js'` +
+  de `begeleiderAuth`-closure is nu `(req, code) => begeleiderAuthViaPolicy(req, code, env)`.
+  De ~45 call-sites blijven **letterlijk ongewijzigd** (zelfde aanroep, zelfde return-vorm).
+- **`worker/00-policy.js`**: `begeleiderAuthViaPolicy` short-circuit't het admin-pad zelf
+  (geen traject-query, exact als het oude `begeleiderAuth`), en delegeert de rest naar
+  `resolveRol(..., {modus:'sleutel'})`.
+- `node --check` (cloudflare-worker.js + alle modules) + `tests/policy-equivalentie.mjs` (**38/38**) +
+  `tests/audit-backend.mjs` + volledige `backend/predeploy.sh` dry-run → groen.
+- **Verse Breaker-blik: terug, "faithful no-op refactor, geen HIGH/MED".** Verwerkt:
+  - LOW: `resolveRol` deed de extra `bf_gebruikers`-query óók voor `{ok:false}`-probes →
+    nu alléén bij een geslaagde uitkomst (`geslaagd()`-helper). Geen query-amplificatie meer
+    bij het aftasten van geldige trajectcodes.
+  - LOW: `String(code)` i.p.v. kaal `code.toUpperCase()` — nu gedocumenteerd als bewuste
+    fail-closed-verharding (oud gooide een ongevangen 500 bij een niet-string).
+  - Testgat: **echte cross-traject-case toegevoegd** (tweede traject T2; T1's tussen_code tegen
+    T2's code → weiger), plus lege/undefined trajectCode en `ADMIN_KEY` leeg/afwezig.
+  - Testgat: `tests/policy-equivalentie.mjs` **in `backend/predeploy.sh` gezet** (draait nu bij
+    elke deploy, náást de audit).
+  - Testbestand verplaatst van `backend/tests/` (fout) naar repo-root `tests/` (conventie).
+
+**→ VOLGORDE VOOR MARCEL:**
+1. Verse Breaker terug + eventuele bevindingen verwerkt.
+2. Staging-deploy + `tests/e2e-crosspath-fixes.mjs` (CONF-matrix) groen tegen staging.
+3. **`/code-review ultra`** — dit is het moment (eerste keer dat `begeleiderAuth` via `resolveRol`
+   loopt, 45 endpoints).
+4. Pas daarna productie-deploy.
+
+Bekend, benign verschil t.o.v. het oude gedrag (geen gedragswijziging, wel iets meer werk):
+voor de non-admin `begeleider`-uitkomst doet `resolveRol` één extra geïndexeerde
+`bf_gebruikers`-query (voor de `eigenTraject`-vlag) die het oude `begeleiderAuth` niet deed. De
+shim gebruikt die vlag nu niet; hij komt van pas bij stap 5 (de muur).
+
+---
+
 ## 1. Wat is er nu
 
 Elke endpoint die trajectdata teruggeeft doet **zelf** twee dingen:
