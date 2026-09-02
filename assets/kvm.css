@@ -455,19 +455,14 @@ a.card:hover,.card--link:hover{transform:translateY(-3px); border-color:var(--pe
 /* ingelijst beeld — nog alleen voor het portret op /over-marcel */
 .hero__media{margin-inline:0; max-width:100%; border-radius:var(--r-lg); overflow:hidden; border:1px solid var(--hair-d)}
 .hero__media img{width:100%; max-width:100%; height:auto; display:block}
-/* walkthrough: stappen naast een schermafbeeld, om en om gespiegeld */
-.stepblock{display:grid; grid-template-columns:1fr minmax(0,440px); gap:clamp(1.75rem,4vw,3.75rem); align-items:center; margin-top:2.75rem}
+/* walkthrough: stappen links, schermafbeeld rechts ernaast */
+.stepblock{display:grid; grid-template-columns:1fr minmax(0,430px); gap:clamp(1.75rem,4vw,3.5rem); align-items:center; margin-top:2.75rem}
 .stepblock + .stepblock{margin-top:clamp(2.5rem,6vw,4.5rem)}
-.stepblock > .steps{margin-top:0; grid-column:1}
-.stepblock > .walkshot{grid-column:2}
-.stepblock--flip{grid-template-columns:minmax(0,440px) 1fr}
-.stepblock--flip > .steps{grid-column:2}
-.stepblock--flip > .walkshot{grid-column:1}
+.stepblock > .steps{margin-top:0}
 .walkshot{margin:0; box-shadow:0 14px 40px -14px rgba(13,27,42,.30)}
 .walkshot img{cursor:zoom-in}
 @media (max-width:820px){
-  .stepblock,.stepblock--flip{grid-template-columns:1fr; gap:1.5rem}
-  .stepblock > .steps,.stepblock > .walkshot{grid-column:1}
+  .stepblock{grid-template-columns:1fr; gap:1.5rem}
   .walkshot{max-width:560px}
 }
 
