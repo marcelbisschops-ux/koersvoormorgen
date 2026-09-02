@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Proefaccount aanvragen · Koers voor Morgen Platform</title>
+<meta name="description" content="Vraag een proefaccount aan voor het M&amp;A-platform: één traject, dertig dagen, na goedkeuring door Bisschops Financing. Geen demo vooraf nodig.">
+<link rel="canonical" href="https://koersvoormorgen.nl/proefaccount">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Proefaccount aanvragen · Koers voor Morgen Platform">
+<meta property="og:description" content="Vraag een proefaccount aan voor het M&amp;A-platform: één traject, dertig dagen, na goedkeuring door Bisschops Financing. Geen demo vooraf nodig.">
+<meta property="og:image" content="https://koersvoormorgen.nl/assets/og/platform-dashboard.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500&family=Inter:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="./assets/kvm.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    { "@type": "Organization", "@id": "https://koersvoormorgen.nl/#org", "name": "Koers voor Morgen", "url": "https://koersvoormorgen.nl/", "parentOrganization": { "@type": "Organization", "name": "Bisschops Financing B.V." }, "sameAs": ["https://www.linkedin.com/in/marcelbisschops"] },
+    { "@type": "WebSite", "@id": "https://koersvoormorgen.nl/#site", "url": "https://koersvoormorgen.nl/", "name": "Koers voor Morgen", "publisher": { "@id": "https://koersvoormorgen.nl/#org" }, "inLanguage": "nl-NL" },
+    { "@type": "BreadcrumbList", "itemListElement": [{ "@type": "ListItem", "position": 1, "name": "Home", "item": "https://koersvoormorgen.nl/" }, { "@type": "ListItem", "position": 2, "name": "Proefaccount", "item": "https://koersvoormorgen.nl/proefaccount" }] }
+  ]
+}
+</script>
+</head>
+<body>
+
+<header class="nav">
+  <div class="nav__in">
+    <a class="nav__brand" href="./">Koers voor <b>Morgen</b></a>
+    <button class="nav__toggle" aria-label="Menu" aria-expanded="false">&#9776;</button>
+    <nav class="nav__links" aria-label="Hoofdnavigatie">
+      <a href="./platform/">Platform</a>
+      <a href="./m-en-a-expertise/">M&amp;A Expertise</a>
+      <a href="./bedrijfsscan.html">Bedrijfsscan</a>
+      <a href="./cases/">Cases</a>
+      <a href="./inzichten/">Inzichten</a>
+      <a class="nav__cta" href="./contact.html">Plan een gesprek</a>
+      <a class="nav__login" href="./inloggen.html">Inloggen</a>
+    </nav>
+  </div>
+</header>
+
+<div class="spine" aria-hidden="true"></div>
+
+<main>
+  <section class="section s-dark">
+    <div class="wrap wrap--text">
+      <p class="crumb"><a href="./">Home</a> <span class="sep">&rsaquo;</span>
+        <a href="./platform/">Platform</a> <span class="sep">&rsaquo;</span> <b>Proefaccount</b></p>
+      <p class="eyebrow">Voor adviseurs</p>
+      <h1>Probeer het platform op een eigen traject.</h1>
+      <p class="hero__sub">Geen demo nodig om te beginnen. Vraag een proefaccount aan; na goedkeuring
+      door Bisschops Financing (doorgaans binnen één werkdag) krijgt u een activatielink en kunt u
+      meteen aan de slag.</p>
+
+      <div class="prose reveal" style="margin-top:1.75rem; border:1px solid var(--hair-d); border-radius:var(--r-md); padding:1.25rem 1.5rem; max-width:34rem">
+        <p style="margin:0"><strong>Wat het proefaccount omvat</strong></p>
+        <ul style="margin:.6rem 0 0">
+          <li>Eén volledig traject, van voorbereiding tot closing</li>
+          <li>Dossier per due-diligence-categorie, AI-signalen en Q&amp;A</li>
+          <li>Uw eigen huisstijl</li>
+          <li>Dertig dagen looptijd; daarna bespreken we of het bij uw praktijk past</li>
+        </ul>
+        <p style="margin:.75rem 0 0; font-size:var(--fs-sm); color:var(--muted-d)">Contracten- en
+        exportmodules zitten niet in de proef. Bij het activeren accepteert u de
+        <a href="./voorwaarden.html">Gebruiksvoorwaarden</a> van het platform.</p>
+      </div>
+
+      <form class="reveal" id="proefform"
+            action="https://kantoorinzicht.marcel-bisschops.workers.dev/adviseur/proef/aanvraag"
+            style="margin-top:2.25rem; max-width:34rem">
+        <div class="field">
+          <label for="pf-naam">Naam</label>
+          <input id="pf-naam" name="naam" type="text" autocomplete="name" required>
+        </div>
+        <div class="field">
+          <label for="pf-mail">E-mailadres</label>
+          <input id="pf-mail" name="email" type="email" autocomplete="email" required>
+        </div>
+        <div class="field">
+          <label for="pf-kantoor">Kantoor</label>
+          <input id="pf-kantoor" name="organisatie" type="text" autocomplete="organization" required>
+        </div>
+        <div class="field">
+          <label for="pf-kvk">KvK-nummer <span style="color:var(--muted-d); font-weight:400">(optioneel, 8 cijfers)</span></label>
+          <input id="pf-kvk" name="kvk" type="text" inputmode="numeric" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="pf-tel">Telefoon <span style="color:var(--muted-d); font-weight:400">(optioneel)</span></label>
+          <input id="pf-tel" name="telefoon" type="tel" autocomplete="tel">
+        </div>
+        <div class="field">
+          <label for="pf-motivatie">Waarvoor wilt u het inzetten?</label>
+          <textarea id="pf-motivatie" name="motivatie" required></textarea>
+        </div>
+        <div class="field field--hp" aria-hidden="true">
+          <label for="pf-website">Laat dit veld leeg</label>
+          <input id="pf-website" name="website" type="text" tabindex="-1" autocomplete="off">
+        </div>
+        <div class="btn-row" style="margin-top:1rem; align-items:baseline">
+          <button class="btn btn-primary" type="submit">Vraag proefaccount aan</button>
+          <span style="font-size:var(--fs-xs); color:var(--muted-d)">Door te versturen gaat u akkoord met de
+          <a href="./privacy.html">privacyverklaring</a>.</span>
+        </div>
+        <p id="pf-status" role="status" style="margin-top:1rem; font-size:var(--fs-sm); display:none"></p>
+      </form>
+    </div>
+  </section>
+
+  <section class="section s-light">
+    <div class="wrap wrap--text">
+      <div class="section-head reveal">
+        <p class="eyebrow">Liever eerst kennismaken?</p>
+        <h2>Een kort gesprek kan ook.</h2>
+      </div>
+      <p class="reveal" style="margin-top:1.25rem; font-size:var(--fs-md)">Wilt u het platform eerst
+      zien op een fictief traject, of hebt u vragen over het adviseursmodel?
+      <a href="./contact.html">Plan een gesprek</a> of lees eerst
+      <a href="./platform/voor-adviseurs.html">hoe het adviseursmodel werkt</a>.</p>
+    </div>
+  </section>
+
+</main>
+
+<footer class="foot">
+  <div class="foot__grid">
+    <div class="foot__brand"><b>Koers voor Morgen</b>Van complexiteit naar koers, van besluit naar beweging. Een initiatief van Bisschops Financing B.V.</div>
+    <div><h4>Platform</h4><ul>
+      <li><a href="./platform/">Overzicht</a></li>
+      <li><a href="./platform/dataroom-en-fases.html">Dataroom &amp; fases</a></li>
+      <li><a href="./platform/ai-signalen.html">AI-signalen</a></li>
+      <li><a href="./platform/beveiliging-en-gegevens.html">Beveiliging &amp; gegevens</a></li>
+      <li><a href="./platform/voor-adviseurs.html">Voor adviseurs</a></li>
+      <li><a href="./platform/matching.html">Matching <span style="color:var(--muted-d)">(b&#232;ta)</span></a></li>
+    </ul></div>
+    <div><h4>M&amp;A Expertise</h4><ul>
+      <li><a href="./m-en-a-expertise/">Overzicht</a></li>
+      <li><a href="./m-en-a-expertise/complexe-transacties.html">Complexe transacties</a></li>
+      <li><a href="./m-en-a-expertise/due-diligence-begeleiding.html">Due diligence</a></li>
+      <li><a href="./m-en-a-expertise/integratie-en-pmi.html">Integratie &amp; PMI</a></li>
+      <li><a href="./m-en-a-expertise/regie.html">Regie</a></li>
+    </ul></div>
+    <div><h4>Meer</h4><ul>
+      <li><a href="./bedrijfsscan.html">Bedrijfsscan</a></li>
+      <li><a href="./cases/">Cases</a></li>
+      <li><a href="./inzichten/">Inzichten</a></li>
+      <li><a href="./contact.html">Contact</a></li>
+      <li><a href="./inloggen.html">Inloggen</a></li>
+    </ul></div>
+  </div>
+  <div class="foot__legal">
+    <span>&copy; 2026 Bisschops Financing B.V.</span>
+    <a href="./privacy.html">Privacyverklaring</a>
+    <a href="./voorwaarden.html">Voorwaarden</a>
+    <a href="https://www.linkedin.com/in/marcelbisschops">LinkedIn</a>
+    <a href="mailto:marcel@bisschopsfinancing.nl">marcel@bisschopsfinancing.nl</a>
+    <a href="tel:+31638689888">+31 6 38 68 98 88</a>
+  </div>
+</footer>
+
+<script src="./assets/kvm.js"></script>
+</body>
+</html>

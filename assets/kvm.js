@@ -103,6 +103,57 @@
     });
   }
 
+  /* proefaccount-aanvraag — progressive enhancement, JSON naar de worker */
+  var pf = document.getElementById("proefform");
+  if (pf) {
+    var pfStatus = document.getElementById("pf-status");
+    pf.addEventListener("submit", function (e) {
+      e.preventDefault();
+      var hp = pf.querySelector('[name="website"]');
+      if (hp && hp.value) return;
+      var btn = pf.querySelector('button[type="submit"]');
+      var data = {};
+      Array.prototype.forEach.call(pf.elements, function (el) {
+        if (el.name && el.type !== "submit") data[el.name] = el.value;
+      });
+      btn.disabled = true;
+      btn.textContent = "Versturen…";
+      fetch(pf.action, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify(data),
+      })
+        .then(function (r) {
+          return r.json().then(function (d) { return { ok: r.ok, d: d }; });
+        })
+        .then(function (res) {
+          pfStatus.style.display = "block";
+          if (res.ok && res.d && res.d.ok) {
+            pf.reset();
+            pfStatus.style.color = "var(--petrol-bright)";
+            pfStatus.textContent =
+              "Bedankt, uw aanvraag is ontvangen. Na goedkeuring door Bisschops Financing (doorgaans binnen één werkdag) ontvangt u een activatiemail.";
+            btn.textContent = "Verzonden";
+          } else {
+            pfStatus.style.color = "var(--bad)";
+            pfStatus.textContent =
+              (res.d && res.d.error) ? res.d.error : "Versturen lukte niet. Probeer het later opnieuw of mail naar marcel@bisschopsfinancing.nl.";
+            btn.disabled = false;
+            btn.textContent = "Vraag proefaccount aan";
+          }
+        })
+        .catch(function () {
+          pfStatus.style.display = "block";
+          pfStatus.style.color = "var(--bad)";
+          pfStatus.innerHTML =
+            'Versturen lukte niet. Mail gerust rechtstreeks naar ' +
+            '<a href="mailto:marcel@bisschopsfinancing.nl">marcel@bisschopsfinancing.nl</a>.';
+          btn.disabled = false;
+          btn.textContent = "Vraag proefaccount aan";
+        });
+    });
+  }
+
   /* schermafbeeldingen: klik of Enter om te vergroten */
   var shots = document.querySelectorAll(".walkshot img");
   if (shots.length) {

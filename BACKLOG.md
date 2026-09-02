@@ -136,29 +136,35 @@ Marcel**. Aanvraag → marilyn goedkeuren → automatisch tijdelijk adviseursacc
 - marilyn: tab **Proefaanvragen** (lijst + goedkeuren/afwijzen). Frontend al gepusht? nee — zit in
   de lokale marilyn.html-wijziging, moet mee met de rest.
 
-**Nog te doen (deze backlogpost):**
-1. **Goedkeur-flow end-to-end testen op staging** met Marcels ADMIN_KEY (`test-proef-staging.sh` op
-   het bureaublad) — account aangemaakt? mail eruit? idempotent bij dubbel goedkeuren?
-2. **5-dagen-vooraf herinneringsmail** aan de adviseur (nu alleen bevriezen, geen waarschuwing).
-   Kan via een tussenstatus `proef_status='herinnerd'` zonder extra kolom.
-3. **Definitieve dataopruiming** van een niet-omgezet proefaccount: na bijv. 30 dagen grace ná
-   `proef_tot` de trajecten purgen (`verwijderTrajectData`) + de `bf_gebruikers`-rij weg (AVG-
-   dataminimalisatie; het account is dan al bevroren, dus geen actief lek). Meenemen in
-   `/avg/verwijder` (op e-mail) en de checklist "nieuwe DB-tabel" punt 3 afvinken voor
-   `adviseur_proef_aanvragen` (bevat naam/e-mail/telefoon/IP).
-4. **"Omzetten naar betalend"**-knop in marilyn op een proef-gebruiker: `proef=0`,
-   `proef_status='omgezet'`, echte `traject_limiet`/`modules` zetten (deels al via € Tarieven —
-   alleen de proef-vlag moet er nog af).
-5. **Frontend:** nieuwe pagina `proefaccount.html` (aanvraagformulier + uitleg) + tweede knop
-   "Of vraag direct een proefaccount aan" op `voor-adviseurs.html` en de voet-CTA van
-   `platform.html`; registreren in `build.py`.
-6. **Werkregel 17 — voorwaarden:** checken of de Gebruiksvoorwaarden (GV_VERSIE nu 1.8) een
-   proefaccount-bepaling nodig hebben. Waarschijnlijk niet ("as is / geen SLA" + 14-dagen-regel
-   dekken het), maar expliciet bevestigen vóór livegang; GV/AV nooit automatisch wijzigen.
-7. **Werkregel 10 — handleiding:** regel toevoegen in `adv.html` (`renderAdvHandleiding()`) dat een
-   proefaccount 1 traject / 30 dagen omvat.
-8. **Regressie + productie-deploy** van het geheel (backend + marilyn + nieuwe frontendpagina).
-9. Overweeg of dit de bestaande `/leads/testtraject`-flow (index.html) vervangt of ernaast blijft.
+**Gebouwd 2 sep 2026 (staging, geverifieerd) — vervolg op bovenstaande:**
+- ✅ Goedkeur-flow end-to-end getest op staging: account aangemaakt met juiste proef-velden,
+  idempotent bij dubbel goedkeuren. (mail niet getest — staging heeft geen RESEND-sleutel.)
+- ✅ 5-dagen-vooraf herinneringsmail (`scheduled()`, tussenstatus `proef_status='herinnerd'`).
+- ✅ Definitieve dataopruiming (`scheduled()`): 30 dagen grace ná `proef_tot` → trajecten via
+  `archiveerEnPurgeerTraject` + aanvraag-PII gewist + `bf_gebruikers`-rij weg. `/avg/verwijder`
+  wist nu ook `adviseur_proef_aanvragen` op e-mail.
+- ✅ "Omzetten naar betalend": endpoint `POST /adviseur/proef/omzetten/{id}` + knop in de
+  marilyn-tab Proefaanvragen (op goedgekeurde rijen).
+- ✅ Frontend: `_src/proefaccount.html` (formulier + uitleg, JSON-submit via `#proefform`-handler
+  in `kvm.js`) + knop "Vraag een proefaccount aan" op `voor-adviseurs.html` en de voet-CTA van
+  `platform.html`; geregistreerd in `build.py` + sitemap. Pagina rendert, formulier getest tegen
+  staging (aanvraag → succesmelding).
+- ✅ Handleiding (`adv.html` `renderAdvHandleiding()` stap 4): toont bij een proefaccount "1 traject,
+  30 dagen tot <datum>". Vereiste `proef`/`proef_tot` in de adviseur-login-DTO (`worker/16-adviseur.js`).
+
+**Nog te doen vóór livegang:**
+1. **Werkregel 17 — privacy.html:** rij toevoegen voor "Proefaccount aanvragen" (naam/kantoor/
+   e-mail/telefoon/KvK/motivatie/IP; grondslag toestemming/gerechtvaardigd belang; bewaartermijn).
+   De bestaande rij "Testtraject aanvragen" is het sjabloon. **Gebruiksvoorwaarden (GV 1.8):**
+   waarschijnlijk geen wijziging nodig ("as is / geen SLA" + beëindigingsartikel dekken het; de
+   adviseur accepteert GV bij activering, net als een betalend account) — Marcel bevestigt.
+2. **Regressie + productie-deploy** van het geheel: backend (staging → prod), daarna frontend-push
+   (`marilyn.html`, `adv.html`, `proefaccount.html`, `voor-adviseurs.html`, `platform.html`,
+   `kvm.js`, `build.py` + gebouwde pagina's). Deze frontendbestanden staan nu **lokaal, niet
+   gecommit** — niet los meesturen met een andere push (de marilyn-tab en de proefaccount-pagina
+   roepen endpoints aan die vóór de backend-prod-deploy nog niet bestaan).
+3. Staging-testdata opruimen (`adviseur_proef_aanvragen` + testaccount `G1788384100946REC6`).
+4. Overweeg of dit de bestaande `/leads/testtraject`-flow (index.html) vervangt of ernaast blijft.
 
 ---
 
