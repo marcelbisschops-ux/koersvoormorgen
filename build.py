@@ -48,7 +48,7 @@ def foot():
       <li><a href="{{ROOT}}platform/ai-signalen.html">AI-signalen</a></li>
       <li><a href="{{ROOT}}platform/beveiliging-en-gegevens.html">Beveiliging &amp; gegevens</a></li>
       <li><a href="{{ROOT}}platform/voor-adviseurs.html">Voor adviseurs</a></li>
-      <li><a href="{{ROOT}}platform/matching.html">Matching</a></li>
+      <li><a href="{{ROOT}}platform/matching.html">Matching <span style="color:var(--muted-d)">(b&#232;ta)</span></a></li>
     </ul></div>
     <div><h4>M&amp;A Expertise</h4><ul>
       <li><a href="{{ROOT}}m-en-a-expertise/">Overzicht</a></li>
@@ -115,172 +115,172 @@ SKELETON = """<!doctype html>
 # (bestandspad, diepte, <title>, meta-description, canonical-pad, og:image, og:type, extra JSON-LD-graph-items)
 PAGES = [
     ("index.html", 0,
-     "Koers voor Morgen — M&amp;A-platform en M&amp;A Expertise",
+     "Koers voor Morgen, M&amp;A-platform en M&amp;A Expertise",
      "Een zelfstandig M&amp;A-platform voor adviseurs en dealteams, en senior M&amp;A-ervaring voor complexe transacties. Van doorzien tot realiseren.",
      "https://koersvoormorgen.nl/", "hero-weg.jpg", "website", "home"),
 
     ("platform/index.html", 1,
-     "M&amp;A-platform — één traject, één dossier — Koers voor Morgen",
+     "M&amp;A-platform · één traject, één dossier · Koers voor Morgen",
      "Voer overnametrajecten van voorbereiding tot closing in één omgeving. Documenten per DD-categorie, AI-signalen, Q&amp;A, voortgang. Zelfstandig inzetbaar.",
      "https://koersvoormorgen.nl/platform", "platform-dashboard.jpg", "website", "platform"),
 
     ("platform/dataroom-en-fases.html", 1,
-     "Dataroom en fases — M&amp;A-platform — Koers voor Morgen",
+     "Dataroom en fases · M&amp;A-platform · Koers voor Morgen",
      "Documenten gestructureerd per due-diligence-categorie en fase, met rol- en fase-toegang en volledige herleidbaarheid naar het brondocument.",
      "https://koersvoormorgen.nl/platform/dataroom-en-fases", "platform-dashboard.jpg", "website", "platform-sub"),
 
     ("platform/ai-signalen.html", 1,
-     "AI-signalen in due diligence — Koers voor Morgen",
-     "De AI signaleert ontbrekende documenten en afwijkingen tussen stukken. Ze vult niets in en doet geen aanname — de beoordeling blijft bij de adviseur.",
+     "AI-signalen in due diligence · Koers voor Morgen",
+     "De AI signaleert ontbrekende documenten en afwijkingen tussen stukken. Ze vult niets in en doet geen aanname, de beoordeling blijft bij de adviseur.",
      "https://koersvoormorgen.nl/platform/ai-signalen", "platform-dashboard.jpg", "website", "platform-sub"),
 
     ("platform/beveiliging-en-gegevens.html", 1,
-     "Beveiliging en gegevens — M&amp;A-platform — Koers voor Morgen",
+     "Beveiliging en gegevens · M&amp;A-platform · Koers voor Morgen",
      "EU-opslag (Frankfurt, ISO 27001 / SOC 2), TLS, rol- en fase-toegang, 14-dagen-verwijdering, technisch afgedwongen scheiding tussen trajecten.",
      "https://koersvoormorgen.nl/platform/beveiliging-en-gegevens", "platform-dashboard.jpg", "website", "platform-sub"),
 
     ("platform/voor-adviseurs.html", 1,
-     "Het platform voor uw eigen M&amp;A-praktijk — Koers voor Morgen",
-     "Zet Koers voor Morgen zelfstandig in bij uw eigen klanten en transacties — eigen huisstijl, eigen regie, trajectlimiet en modules naar keuze.",
+     "Het platform voor uw eigen M&amp;A-praktijk · Koers voor Morgen",
+     "Zet Koers voor Morgen zelfstandig in bij uw eigen klanten en transacties, eigen huisstijl, eigen regie, trajectlimiet en modules naar keuze.",
      "https://koersvoormorgen.nl/platform/voor-adviseurs", "platform-dashboard.jpg", "website", "platform-sub"),
 
     ("platform/matching.html", 1,
-     "Anonieme koper–verkoper-matching — Koers voor Morgen",
+     "Anonieme koper–verkoper-matching · Koers voor Morgen",
      "Anoniem matchen op sector en regio, waarbij de adviseur de regie houdt. Geen open marktplaats, geen automatische deal.",
      "https://koersvoormorgen.nl/platform/matching", "bedrijfsscan-polder.jpg", "website", "platform-sub"),
 
     ("bedrijfsscan.html", 0,
-     "Gratis bedrijfsscan — weet of uw koers nog klopt",
+     "Gratis bedrijfsscan, weet of uw koers nog klopt",
      "Een gratis strategische zelfanalyse met adviesrapport, voor accountancy, mkb, zorg en IT. ±15 minuten, direct resultaat.",
      "https://koersvoormorgen.nl/bedrijfsscan", "bedrijfsscan-polder.jpg", "website", "bedrijfsscan"),
 
     ("m-en-a-expertise/index.html", 1,
-     "M&amp;A Expertise — Marcel Bisschops — Koers voor Morgen",
+     "M&amp;A Expertise · Marcel Bisschops · Koers voor Morgen",
      "Senior M&amp;A-ervaring voor complexe transacties, due diligence, integratie, value creation, strategie en regie. Ruim 30 jaar, 20+ deals koop- én verkoopzijde.",
      "https://koersvoormorgen.nl/m-en-a-expertise", "expertise-oversteek.jpg", "website", "ma"),
 
     ("m-en-a-expertise/complexe-transacties.html", 1,
-     "Begeleiding bij complexe overnames — Koers voor Morgen",
-     "Senior begeleiding bij transacties waar de belangen, complexiteit of stakes hoog zijn — van strategie en onderhandeling tot closing.",
+     "Begeleiding bij complexe overnames · Koers voor Morgen",
+     "Senior begeleiding bij transacties waar de belangen, complexiteit of stakes hoog zijn, van strategie en onderhandeling tot closing.",
      "https://koersvoormorgen.nl/m-en-a-expertise/complexe-transacties", "expertise-staal.jpg", "website", "ma-sub|Complexe transacties"),
 
     ("m-en-a-expertise/due-diligence-begeleiding.html", 1,
-     "Due diligence-begeleiding — Koers voor Morgen",
+     "Due diligence-begeleiding · Koers voor Morgen",
      "Financiële, commerciële, operationele, IT-, organisatorische en strategische due diligence, verbonden tot één beeld van de deal.",
      "https://koersvoormorgen.nl/m-en-a-expertise/due-diligence-begeleiding", "expertise-staal.jpg", "website", "ma-sub|Due diligence-begeleiding"),
 
     ("m-en-a-expertise/integratie-en-pmi.html", 1,
-     "Post-merger integratie (PMI) — Koers voor Morgen",
+     "Post-merger integratie (PMI) · Koers voor Morgen",
      "Regie op de integratie na de deal: operating model, leiderschap, systemen en een ritme waarin de synergie ook echt gerealiseerd wordt.",
      "https://koersvoormorgen.nl/m-en-a-expertise/integratie-en-pmi", "expertise-oversteek.jpg", "website", "ma-sub|Integratie en PMI"),
 
     ("m-en-a-expertise/value-creation.html", 1,
-     "Waardecreatie na de transactie — Koers voor Morgen",
+     "Waardecreatie na de transactie · Koers voor Morgen",
      "Van transactie naar rendement: de keuzes en de uitvoering die een overname daadwerkelijk waardevol maken.",
      "https://koersvoormorgen.nl/m-en-a-expertise/value-creation", "expertise-staal.jpg", "website", "ma-sub|Value creation"),
 
     ("m-en-a-expertise/strategische-vraagstukken.html", 1,
-     "Strategische vraagstukken rond een transactie — Koers voor Morgen",
+     "Strategische vraagstukken rond een transactie · Koers voor Morgen",
      "Wanneer de strategie niet meer het hele antwoord geeft en er een transactie speelt: het vraagstuk terugbrengen tot de essentie en de keuzes scherp maken.",
      "https://koersvoormorgen.nl/m-en-a-expertise/strategische-vraagstukken", "expertise-staal.jpg", "website", "ma-sub|Strategische vraagstukken"),
 
     ("m-en-a-expertise/regie.html", 1,
-     "Regie op een complex transactietraject — Koers voor Morgen",
+     "Regie op een complex transactietraject · Koers voor Morgen",
      "Eén ervaren hand op het stuur in een traject met veel partijen, veel belangen en weinig ruimte voor fouten.",
      "https://koersvoormorgen.nl/m-en-a-expertise/regie", "expertise-oversteek.jpg", "website", "ma-sub|Regie"),
 
     ("over-marcel.html", 0,
-     "Over Marcel Bisschops — M&amp;A, bestuur en transacties",
+     "Over Marcel Bisschops, M&amp;A, bestuur en transacties",
      "Ruim 30 jaar op het snijvlak van strategie, bestuur, transactie en uitvoering. COO, voorzitter RvB, toezichthouder, 20+ fusies en overnames.",
      "https://koersvoormorgen.nl/over-marcel", "marcel-portret.jpg", "profile", "over-marcel"),
 
     ("cases/index.html", 1,
-     "Cases — Koers voor Morgen",
+     "Cases · Koers voor Morgen",
      "Geanonimiseerde M&amp;A-trajecten met situatie, rol, interventie en resultaat. Ervaring, geen beloften.",
      "https://koersvoormorgen.nl/cases", "expertise-staal.jpg", "website", "cases"),
 
     ("cases/verkoop-accountantskantoor-opvolging.html", 1,
-     "Case: verkoop accountantskantoor met opvolgingsvraag — Koers voor Morgen",
-     "Twee vertrekkende partners, geen interne opvolging — een gestructureerd verkooptraject zonder het kantoor te destabiliseren.",
+     "Case: verkoop accountantskantoor met opvolgingsvraag · Koers voor Morgen",
+     "Twee vertrekkende partners, geen interne opvolging, een gestructureerd verkooptraject zonder het kantoor te destabiliseren.",
      "https://koersvoormorgen.nl/cases/verkoop-accountantskantoor-opvolging", "expertise-staal.jpg", "article", "case|Verkoop accountantskantoor"),
 
     ("cases/post-merger-integratie.html", 1,
-     "Case: post-merger integratie die niet op gang kwam — Koers voor Morgen",
-     "Zes maanden na de deal nog twee losse bedrijven — binnen een kwartaal één operating model en één managementteam.",
+     "Case: post-merger integratie die niet op gang kwam · Koers voor Morgen",
+     "Zes maanden na de deal nog twee losse bedrijven, binnen een kwartaal één operating model en één managementteam.",
      "https://koersvoormorgen.nl/cases/post-merger-integratie", "expertise-oversteek.jpg", "article", "case|Post-merger integratie"),
 
     ("cases/portefeuille-deelnemingen.html", 1,
-     "Case: portefeuille van deelnemingen zonder grip — Koers voor Morgen",
+     "Case: portefeuille van deelnemingen zonder grip · Koers voor Morgen",
      "Governance en financiële sturing hersteld; de portefeuille geherstructureerd richting externe groeifinanciering.",
      "https://koersvoormorgen.nl/cases/portefeuille-deelnemingen", "expertise-staal.jpg", "article", "case|Portefeuille van deelnemingen"),
 
     ("contact.html", 0,
-     "Contact — plan een gesprek — Koers voor Morgen",
+     "Contact · plan een gesprek · Koers voor Morgen",
      "Plan een gesprek over het platform of over een transactie of vraagstuk. marcel@bisschopsfinancing.nl · +31 6 38 68 98 88.",
      "https://koersvoormorgen.nl/contact", "hero-weg.jpg", "website", "simple|Contact"),
 
     ("contact-verzonden.html", 0,
-     "Bericht ontvangen — Koers voor Morgen",
+     "Bericht ontvangen · Koers voor Morgen",
      "Uw bericht is ontvangen. Marcel neemt doorgaans binnen één werkdag contact op.",
      "https://koersvoormorgen.nl/contact-verzonden", "hero-weg.jpg", "website", "noindex"),
 
     ("inloggen.html", 0,
-     "Inloggen — Koers voor Morgen",
+     "Inloggen · Koers voor Morgen",
      "Naar het verkoper- en koperportaal of het adviseursportaal van het Koers voor Morgen-platform.",
      "https://koersvoormorgen.nl/inloggen", "hero-weg.jpg", "website", "simple|Inloggen"),
 
     ("404.html", 0,
-     "Pagina niet gevonden — Koers voor Morgen",
+     "Pagina niet gevonden · Koers voor Morgen",
      "Deze pagina bestaat niet meer. Ga naar het platform, M&amp;A Expertise of de homepage.",
      "https://koersvoormorgen.nl/404", "hero-weg.jpg", "website", "noindex"),
 
     ("inzichten/index.html", 1,
-     "Inzichten over M&amp;A, due diligence en integratie — Koers voor Morgen",
-     "Stukken die een vraagstuk scherper maken — over M&amp;A, due diligence, integratie, strategie en AI in M&amp;A.",
+     "Inzichten over M&amp;A, due diligence en integratie · Koers voor Morgen",
+     "Stukken die een vraagstuk scherper maken, over M&amp;A, due diligence, integratie, strategie en AI in M&amp;A.",
      "https://koersvoormorgen.nl/inzichten", "expertise-staal.jpg", "website", "simple|Inzichten"),
 
     ("inzichten/wat-ai-wel-en-niet-doet-in-due-diligence.html", 1,
-     "Wat AI wél en niet doet in due diligence — Koers voor Morgen",
-     "De grens tussen signaleren en beoordelen in AI-ondersteunde due diligence — en waarom die grens ertoe doet.",
+     "Wat AI wél en niet doet in due diligence · Koers voor Morgen",
+     "De grens tussen signaleren en beoordelen in AI-ondersteunde due diligence, en waarom die grens ertoe doet.",
      "https://koersvoormorgen.nl/inzichten/wat-ai-wel-en-niet-doet-in-due-diligence", "platform-dashboard.jpg", "article", "post|AI in M&A|Wat AI wél en niet doet in due diligence"),
 
     ("inzichten/een-overnametraject-als-een-dossier.html", 1,
-     "Een overnametraject als één dossier — Koers voor Morgen",
+     "Een overnametraject als één dossier · Koers voor Morgen",
      "Waarom een dataroom niet genoeg is, en wat er misgaat als een overnametraject verspreid raakt over e-mail en Excel.",
      "https://koersvoormorgen.nl/inzichten/een-overnametraject-als-een-dossier", "platform-dashboard.jpg", "article", "post|M&A|Een overnametraject als één dossier"),
 
     ("inzichten/waarom-integraties-vastlopen.html", 1,
-     "Waarom integraties vastlopen — Koers voor Morgen",
+     "Waarom integraties vastlopen · Koers voor Morgen",
      "Integraties lopen zelden vast op de inhoud, maar op de knopen die niemand doorhakt. Over patroon en aanpak.",
      "https://koersvoormorgen.nl/inzichten/waarom-integraties-vastlopen", "expertise-oversteek.jpg", "article", "post|Integratie|Waarom integraties vastlopen"),
 
     ("inzichten/wat-een-dataroom-niet-laat-zien.html", 1,
-     "Wat een dataroom niet laat zien — Koers voor Morgen",
-     "De cijfers kloppen en de dataroom is compleet — en toch valt een overname soms tegen. Wat de waarde bepaalt, staat zelden in de stukken.",
+     "Wat een dataroom niet laat zien · Koers voor Morgen",
+     "De cijfers kloppen en de dataroom is compleet, en toch valt een overname soms tegen. Wat de waarde bepaalt, staat zelden in de stukken.",
      "https://koersvoormorgen.nl/inzichten/wat-een-dataroom-niet-laat-zien", "expertise-staal.jpg", "article", "post|Due diligence|Wat een dataroom niet laat zien"),
 
     ("inzichten/kopen-omdat-het-kan-is-geen-strategie.html", 1,
-     "Kopen omdat het kan is geen strategie — Koers voor Morgen",
-     "Een overnamekans voelt als vooruitgang. Maar een deal die niet bij de richting past, kost meer dan hij oplevert — ook bij een goede prijs.",
+     "Kopen omdat het kan is geen strategie · Koers voor Morgen",
+     "Een overnamekans voelt als vooruitgang. Maar een deal die niet bij de richting past, kost meer dan hij oplevert, ook bij een goede prijs.",
      "https://koersvoormorgen.nl/inzichten/kopen-omdat-het-kan-is-geen-strategie", "expertise-staal.jpg", "article", "post|Strategie|Kopen omdat het kan is geen strategie"),
 
     ("inzichten/de-momenten-waarop-een-deal-klapt.html", 1,
-     "De momenten waarop een deal alsnog klapt — Koers voor Morgen",
+     "De momenten waarop een deal alsnog klapt · Koers voor Morgen",
      "De meeste transacties lopen niet vast op de prijs, maar op de momenten waarop informatie, belangen of tempo uit elkaar lopen.",
      "https://koersvoormorgen.nl/inzichten/de-momenten-waarop-een-deal-klapt", "expertise-oversteek.jpg", "article", "post|M&A|De momenten waarop een deal alsnog klapt"),
 
     ("inzichten/personeel-behouden-na-een-overname.html", 1,
-     "Personeel behouden na een overname — Koers voor Morgen",
+     "Personeel behouden na een overname · Koers voor Morgen",
      "De human factor bij integratie, overnames en PE: waarom mensen vertrekken, wat werkt in de eerste honderd dagen, en waarom retentiebonussen geen strategie zijn.",
      "https://koersvoormorgen.nl/inzichten/personeel-behouden-na-een-overname", "expertise-oversteek.jpg", "article", "post|Integratie|Personeel behouden na een overname"),
 
     ("privacy.html", 0,
-     "Privacyverklaring — Koers voor Morgen",
+     "Privacyverklaring · Koers voor Morgen",
      "Hoe Koers voor Morgen omgaat met persoonsgegevens: welke gegevens, welke grondslag, welke bewaartermijnen en uw rechten onder de AVG.",
      "https://koersvoormorgen.nl/privacy", "hero-weg.jpg", "website", "simple|Privacyverklaring"),
 
     ("voorwaarden.html", 0,
-     "Gebruiksvoorwaarden — Koers voor Morgen",
+     "Gebruiksvoorwaarden · Koers voor Morgen",
      "De gebruiksvoorwaarden voor verkopers, kopers en andere partijen in een M&amp;A-traject op het Koers voor Morgen-platform.",
      "https://koersvoormorgen.nl/voorwaarden", "hero-weg.jpg", "website", "simple|Gebruiksvoorwaarden"),
 ]
