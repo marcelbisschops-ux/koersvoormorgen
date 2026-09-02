@@ -1,5 +1,9 @@
 # Audit-log — wekelijkse controle Koers voor Morgen
 
+## 2026-09-02
+
+**diepe-audit-routine (geautomatiseerde scheduled task):** kon niet draaien. `AUDIT_TRIGGER_KEY` ontbreekt in de omgeving (`~/.zshrc`), dus de audit-wachtrij (`GET /mna/veiligheid/audit-opdracht`) is niet leesbaar — geen manier om te bepalen of er een openstaande "Draai diepe audit nu"-aanvraag is. Aanvullend: de `ADMIN_KEY` uit `~/.zshrc` geeft `Unauthorized` op `/mna/admin/veiligheid/overzicht`, dus de fallback-route (laatste diepe-auditdatum ophalen voor de maandcadans-check) werkt ook niet. Worker zelf is gezond (`/health` → 200). **Actie Marcel:** `export AUDIT_TRIGGER_KEY=...` in `~/.zshrc` zetten met dezelfde waarde als de Cloudflare-secret; controleren of de `ADMIN_KEY`-waarde in `~/.zshrc` nog klopt (roteren indien nodig). Geen audit uitgevoerd, geen bevindingen, niets gewijzigd behalve deze logregel.
+
 ## 2026-08-31
 
 **Uitgevoerd:**
