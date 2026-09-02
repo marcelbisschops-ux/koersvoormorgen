@@ -118,6 +118,48 @@ nu de bescherming; het formulier werkt ongewijzigd). Aanzetten:
 4. **Werkregel 17:** dan een regel toevoegen aan `privacy.html` (Turnstile verwerkt IP +
    gedragssignaal voor botdetectie, cookieloos).
 
+### 2.3 — Proefaccount voor adviseurs: afronden · **P2 · 🟡**
+Marcel wil de drempel verlagen: naast "plan een demo" ook een **proefaccount na goedkeuring door
+Marcel**. Aanvraag → marilyn goedkeuren → automatisch tijdelijk adviseursaccount (1 traject,
+30 dagen, modules dossier + AI-analyse + Q&A; contracten/export uit) + activatiemail.
+
+**Gebouwd + op STAGING (2 sep 2026), nog niet productie:**
+- Backend `worker/25-adviseur-proef.js`: openbaar `POST /adviseur/proef/aanvraag` (rate-limit
+  3/uur, honeypot, notificatiemail) + admin `GET /adviseur/proef/aanvragen` +
+  `POST /adviseur/proef/aanvraag/{id}/besluit` (goedkeuren/afwijzen, idempotent).
+- Schema: tabel `adviseur_proef_aanvragen` + kolommen `proef` / `proef_tot` / `proef_status` op
+  `bf_gebruikers`. `SCHEMA_VERSION` → 2.
+- Vervalcheck op het login-pad (`/gebruikers/login` + `/adviseur/trajecten`): verlopen proef →
+  403 met nette melding (`PROEF_VERLOPEN_MELDING` in `worker/02-config-constanten.js`).
+- Nachtelijke `scheduled()`-taak: verlopen proef → `proef_status='verlopen'`, `status='inactief'`,
+  sessietoken gewist.
+- marilyn: tab **Proefaanvragen** (lijst + goedkeuren/afwijzen). Frontend al gepusht? nee — zit in
+  de lokale marilyn.html-wijziging, moet mee met de rest.
+
+**Nog te doen (deze backlogpost):**
+1. **Goedkeur-flow end-to-end testen op staging** met Marcels ADMIN_KEY (`test-proef-staging.sh` op
+   het bureaublad) — account aangemaakt? mail eruit? idempotent bij dubbel goedkeuren?
+2. **5-dagen-vooraf herinneringsmail** aan de adviseur (nu alleen bevriezen, geen waarschuwing).
+   Kan via een tussenstatus `proef_status='herinnerd'` zonder extra kolom.
+3. **Definitieve dataopruiming** van een niet-omgezet proefaccount: na bijv. 30 dagen grace ná
+   `proef_tot` de trajecten purgen (`verwijderTrajectData`) + de `bf_gebruikers`-rij weg (AVG-
+   dataminimalisatie; het account is dan al bevroren, dus geen actief lek). Meenemen in
+   `/avg/verwijder` (op e-mail) en de checklist "nieuwe DB-tabel" punt 3 afvinken voor
+   `adviseur_proef_aanvragen` (bevat naam/e-mail/telefoon/IP).
+4. **"Omzetten naar betalend"**-knop in marilyn op een proef-gebruiker: `proef=0`,
+   `proef_status='omgezet'`, echte `traject_limiet`/`modules` zetten (deels al via € Tarieven —
+   alleen de proef-vlag moet er nog af).
+5. **Frontend:** nieuwe pagina `proefaccount.html` (aanvraagformulier + uitleg) + tweede knop
+   "Of vraag direct een proefaccount aan" op `voor-adviseurs.html` en de voet-CTA van
+   `platform.html`; registreren in `build.py`.
+6. **Werkregel 17 — voorwaarden:** checken of de Gebruiksvoorwaarden (GV_VERSIE nu 1.8) een
+   proefaccount-bepaling nodig hebben. Waarschijnlijk niet ("as is / geen SLA" + 14-dagen-regel
+   dekken het), maar expliciet bevestigen vóór livegang; GV/AV nooit automatisch wijzigen.
+7. **Werkregel 10 — handleiding:** regel toevoegen in `adv.html` (`renderAdvHandleiding()`) dat een
+   proefaccount 1 traject / 30 dagen omvat.
+8. **Regressie + productie-deploy** van het geheel (backend + marilyn + nieuwe frontendpagina).
+9. Overweeg of dit de bestaande `/leads/testtraject`-flow (index.html) vervangt of ernaast blijft.
+
 ---
 
 ## 3. Grote onderwerpen — bewust geparkeerd, wachten op jouw go
