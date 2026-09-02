@@ -152,19 +152,22 @@ Marcel**. Aanvraag → marilyn goedkeuren → automatisch tijdelijk adviseursacc
 - ✅ Handleiding (`adv.html` `renderAdvHandleiding()` stap 4): toont bij een proefaccount "1 traject,
   30 dagen tot <datum>". Vereiste `proef`/`proef_tot` in de adviseur-login-DTO (`worker/16-adviseur.js`).
 
-**Nog te doen vóór livegang:**
-1. **Werkregel 17 — privacy.html:** rij toevoegen voor "Proefaccount aanvragen" (naam/kantoor/
-   e-mail/telefoon/KvK/motivatie/IP; grondslag toestemming/gerechtvaardigd belang; bewaartermijn).
-   De bestaande rij "Testtraject aanvragen" is het sjabloon. **Gebruiksvoorwaarden (GV 1.8):**
-   waarschijnlijk geen wijziging nodig ("as is / geen SLA" + beëindigingsartikel dekken het; de
-   adviseur accepteert GV bij activering, net als een betalend account) — Marcel bevestigt.
-2. **Regressie + productie-deploy** van het geheel: backend (staging → prod), daarna frontend-push
-   (`marilyn.html`, `adv.html`, `proefaccount.html`, `voor-adviseurs.html`, `platform.html`,
-   `kvm.js`, `build.py` + gebouwde pagina's). Deze frontendbestanden staan nu **lokaal, niet
-   gecommit** — niet los meesturen met een andere push (de marilyn-tab en de proefaccount-pagina
-   roepen endpoints aan die vóór de backend-prod-deploy nog niet bestaan).
-3. Staging-testdata opruimen (`adviseur_proef_aanvragen` + testaccount `G1788384100946REC6`).
-4. Overweeg of dit de bestaande `/leads/testtraject`-flow (index.html) vervangt of ernaast blijft.
+**Voorwaarden (werkregel 17) — Marcel akkoord 2 sep 2026, verwerkt op staging:**
+- ✅ `privacy.html`: rij "Proefaccount aanvragen (adviseur)" toegevoegd; versie 1.7 → 1.8 · September 2026.
+- ✅ Adviseurs-GV (backend-tekst): één zin in Artikel 7 ("Een proefaccount eindigt van rechtswege op
+  de bij aanvang meegedeelde einddatum; voortzetting daarna vereist een nieuwe afspraak").
+  `GV_VERSIE` 1.8 → 1.9. **Neveneffect:** bestaande adviseurs krijgen bij eerstvolgende login
+  eenmalig opnieuw het GV-acceptatiescherm (bestaand mechanisme).
+- `voorwaarden.html` (v2.2, verkoper/koper): geen wijziging — proefaccount raakt die rol niet.
+
+**Nog te doen:**
+1. **Productie-deploy** van het geheel: backend (staging → prod via `scripts/deploy.sh backend` of
+   twee `wrangler deploy`-commando's), daarna frontend-push (`marilyn.html`, `adv.html`,
+   `proefaccount.html`, `voor-adviseurs.html`, `platform.html`, `privacy.html` + `_src/`, `kvm.js`,
+   `build.py` + gebouwde pagina's). Backend eerst — de marilyn-tab en de proefaccount-pagina roepen
+   endpoints aan die vóór de backend-prod-deploy nog niet bestaan.
+2. Staging-testdata opruimen (`adviseur_proef_aanvragen` + testaccount `G1788384100946REC6`).
+3. Overweeg of dit de bestaande `/leads/testtraject`-flow (index.html) vervangt of ernaast blijft.
 
 ---
 
