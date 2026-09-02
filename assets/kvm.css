@@ -317,6 +317,23 @@ a.card:hover,.card--link:hover{transform:translateY(-3px); border-color:var(--pe
 .s-dark .phase--over,.s-petrol .phase--over{border-left-color:var(--gold)}
 .s-dark .phase--over .phase__k,.s-petrol .phase--over .phase__k{color:var(--gold)}
 
+/* ---------- stappen (editorialer alternatief voor een 3-kaartjes-grid) ---------- */
+.steps{margin-top:2.75rem; display:flex; flex-direction:column; border-left:1.5px solid color-mix(in srgb, var(--koerslijn) 55%, transparent); max-width:var(--w-text)}
+.step{position:relative; padding:0 0 2.1rem 3rem}
+.step:last-child{padding-bottom:0}
+.step__n{
+  position:absolute; left:0; top:-.1em; transform:translateX(-50%);
+  width:2.3rem; height:2.3rem; display:grid; place-items:center; border-radius:50%;
+  background:var(--s-dark); border:1.5px solid var(--koerslijn);
+  font-family:var(--serif); font-size:var(--fs-md); line-height:1; color:var(--ink-d);
+}
+.s-light .step__n{background:var(--s-light); color:var(--ink)}
+.s-light-2 .step__n{background:var(--s-light-2); color:var(--ink)}
+.s-petrol .step__n{background:var(--s-petrol); color:#fff}
+.step h3{font-size:var(--fs-lg); margin-bottom:.4rem}
+.step p{font-size:var(--fs-base); max-width:54ch}
+.s-dark .step p,.s-petrol .step p{color:var(--body-d)}
+
 /* ---------- pull quote ---------- */
 .pullquote{display:flex; gap:1.1rem; margin:2.5rem 0; max-width:38ch}
 .pullquote .bar{flex:0 0 2px; background:var(--koerslijn)}
