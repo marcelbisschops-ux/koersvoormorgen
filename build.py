@@ -269,6 +269,11 @@ PAGES = [
      "De meeste transacties lopen niet vast op de prijs, maar op de momenten waarop informatie, belangen of tempo uit elkaar lopen.",
      "https://koersvoormorgen.nl/inzichten/de-momenten-waarop-een-deal-klapt", "expertise-oversteek.jpg", "article", "post|M&A|De momenten waarop een deal alsnog klapt"),
 
+    ("inzichten/personeel-behouden-na-een-overname.html", 1,
+     "Personeel behouden na een overname — Koers voor Morgen",
+     "De human factor bij integratie, overnames en PE: waarom mensen vertrekken, wat werkt in de eerste honderd dagen, en waarom retentiebonussen geen strategie zijn.",
+     "https://koersvoormorgen.nl/inzichten/personeel-behouden-na-een-overname", "expertise-oversteek.jpg", "article", "post|Integratie|Personeel behouden na een overname"),
+
     ("privacy.html", 0,
      "Privacyverklaring — Koers voor Morgen",
      "Hoe Koers voor Morgen omgaat met persoonsgegevens: welke gegevens, welke grondslag, welke bewaartermijnen en uw rechten onder de AVG.",
