@@ -103,6 +103,50 @@
     });
   }
 
+  /* schermafbeeldingen: klik of Enter om te vergroten */
+  var shots = document.querySelectorAll(".walkshot img");
+  if (shots.length) {
+    var box = null;
+    var onKey = function (e) {
+      if (e.key === "Escape") closeBox();
+    };
+    var closeBox = function () {
+      if (!box) return;
+      if (box.parentNode) box.parentNode.removeChild(box);
+      box = null;
+      document.removeEventListener("keydown", onKey);
+    };
+    var openBox = function (src, alt) {
+      closeBox();
+      box = document.createElement("div");
+      box.className = "lightbox";
+      var big = new Image();
+      big.src = src;
+      big.alt = alt || "";
+      box.appendChild(big);
+      box.addEventListener("click", closeBox);
+      document.body.appendChild(box);
+      document.addEventListener("keydown", onKey);
+      requestAnimationFrame(function () {
+        box.classList.add("is-open");
+      });
+    };
+    shots.forEach(function (img) {
+      img.setAttribute("tabindex", "0");
+      img.setAttribute("role", "button");
+      img.setAttribute("aria-label", "Vergroot: " + (img.alt || "schermafbeelding"));
+      img.addEventListener("click", function () {
+        openBox(img.currentSrc || img.src, img.alt);
+      });
+      img.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          openBox(img.currentSrc || img.src, img.alt);
+        }
+      });
+    });
+  }
+
   /* markeer de actieve hoofd-navlink */
   var path = location.pathname.replace(/\/index\.html$/, "/").replace(/\.html$/, "");
   document.querySelectorAll(".nav__links a").forEach(function (a) {
