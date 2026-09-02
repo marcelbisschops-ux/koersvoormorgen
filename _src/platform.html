@@ -66,7 +66,7 @@
   </section>
 
   <!-- VOOR ADVISEURS (naar voren: dit is gereedschap voor úw praktijk) -->
-  <section class="section s-dark s-bg" style="--bg:url(/assets/img/platform-voortgang.jpg); --bg-pos:right center">
+  <section class="section s-dark s-bg" style="--bg:url(/assets/img/platform-huisstijl.jpg); --bg-pos:right center">
     <div class="wrap">
       <div class="section-head reveal">
         <p class="eyebrow">Voor adviseurs</p>
@@ -123,29 +123,38 @@
     </div>
   </section>
 
-  <!-- PROCES -->
+  <!-- ZO LOOPT EEN DEAL DOOR HET PLATFORM (fictief traject, echte schermen) -->
   <section class="section s-light-2">
     <div class="wrap">
       <div class="section-head reveal">
-        <p class="eyebrow">Zo werkt een traject</p>
-        <h2>Vijf stappen, één omgeving.</h2>
+        <p class="eyebrow">Zo werkt het</p>
+        <h2>Zo loopt een deal door het platform.</h2>
+        <p class="lead">Eén fictief traject, stap voor stap — met de echte schermen.</p>
       </div>
-      <div class="proces reveal">
-        <svg viewBox="0 0 1000 60" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Start, Dataroom, Vragen en acties, Voortgang, Closing">
-          <path class="koersline koersline--draw" d="M20 30 L980 30"></path>
-          <circle class="koersnode" cx="20" cy="30" r="5"></circle>
-          <circle class="koersnode" cx="260" cy="30" r="5"></circle>
-          <circle class="koersnode" cx="500" cy="30" r="5"></circle>
-          <circle class="koersnode" cx="740" cy="30" r="5"></circle>
-          <circle class="koersnode" cx="980" cy="30" r="5"></circle>
-        </svg>
-        <div class="proces__labels" style="grid-template-columns:repeat(5,1fr)">
-          <div><h3 style="font-size:var(--fs-md)">Start</h3><p>Traject aangemaakt, rollen en fasen ingericht.</p></div>
-          <div><h3 style="font-size:var(--fs-md)">Dataroom</h3><p>Documenten geüpload en per categorie geordend.</p></div>
-          <div><h3 style="font-size:var(--fs-md)">Vragen &amp; acties</h3><p>Q&amp;A en openstaande punten, gekoppeld aan de stukken.</p></div>
-          <div><h3 style="font-size:var(--fs-md)">Voortgang</h3><p>Dekking per fase, signalen, wat er nog moet.</p></div>
-          <div><h3 style="font-size:var(--fs-md)">Closing</h3><p>Dossier compleet, afgesloten en te archiveren.</p></div>
-        </div>
+
+      <div class="steps reveal" style="margin-top:2.5rem">
+        <div class="step"><span class="step__n">1</span><h3>Dossier aangemaakt</h3><p>Traject, rollen en fasen ingericht. Iedereen werkt vanaf hier in dezelfde omgeving.</p></div>
+        <div class="step"><span class="step__n">2</span><h3>Documenten gestructureerd</h3><p>Elk stuk landt in de due-diligence-categorie en de fase waar het hoort. Uploaden gebeurt één keer; daarna staat het op de goede plek voor iedereen.</p></div>
+      </div>
+      <div class="hero__media reveal" style="margin:1.75rem 0">
+        <img src="{{ROOT}}assets/img/platform-dataroom-fases.jpg" width="1600" height="760" alt="Platformscherm: links documentdekking per fase, rechts documenten geordend per due-diligence-categorie." loading="lazy">
+      </div>
+
+      <div class="steps reveal">
+        <div class="step"><span class="step__n">3</span><h3>AI signaleert ontbrekende informatie</h3><p>"Voor fase 2 ontbreekt de huurovereenkomst van het kantoorpand." — een gat in de dekking, benoemd voordat het een probleem wordt.</p></div>
+        <div class="step"><span class="step__n">4</span><h3>Afwijking gevonden</h3><p>"De omzet in de jaarrekening wijkt af van het klantenoverzicht." De stukken komen naast elkaar; welke leidend is, bepaalt de adviseur.</p></div>
+      </div>
+      <div class="hero__media reveal" style="margin:1.75rem 0">
+        <img src="{{ROOT}}assets/img/platform-ai-signalen.jpg" width="1600" height="650" alt="Platformscherm met drie AI-signalen: ontbrekend document, afwijking tussen documenten en actie vereist." loading="lazy">
+      </div>
+
+      <div class="steps reveal">
+        <div class="step"><span class="step__n">5</span><h3>Vraag uitgezet</h3><p>Gekoppeld aan het brondocument en de bladzijde waar het over gaat — niet als losse e-mail.</p></div>
+        <div class="step"><span class="step__n">6</span><h3>Actie toegewezen</h3><p>Met een eigenaar en een datum. Openstaande punten blijven zichtbaar tot ze zijn afgerond en aan het juiste stuk gekoppeld.</p></div>
+        <div class="step"><span class="step__n">7</span><h3>Voortgang zichtbaar</h3><p>Dekking per fase, de signalen, en wat er nog moet komen — in één beeld, voor iedereen die eraan werkt.</p></div>
+      </div>
+      <div class="hero__media reveal" style="margin:1.75rem 0 0">
+        <img src="{{ROOT}}assets/img/platform-voortgang.jpg" width="1600" height="650" alt="Voortgangsscherm: tijdlijn met vijf stappen, documentdekking en openstaande vragen, plus wat er nog moet komen." loading="lazy">
       </div>
     </div>
   </section>
