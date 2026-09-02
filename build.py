@@ -149,6 +149,11 @@ PAGES = [
      "Anoniem matchen op sector en regio, waarbij de adviseur de regie houdt. Geen open marktplaats, geen automatische deal.",
      "https://koersvoormorgen.nl/platform/matching", "bedrijfsscan-polder.jpg", "website", "platform-sub"),
 
+    ("proefaccount.html", 0,
+     "Proefaccount aanvragen · Koers voor Morgen Platform",
+     "Vraag een proefaccount aan voor het M&amp;A-platform: één traject, dertig dagen, na goedkeuring door Bisschops Financing. Geen demo vooraf nodig.",
+     "https://koersvoormorgen.nl/proefaccount", "platform-dashboard.jpg", "website", "simple|Proefaccount"),
+
     ("bedrijfsscan.html", 0,
      "Gratis bedrijfsscan, weet of uw koers nog klopt",
      "Een gratis strategische zelfanalyse met adviesrapport, voor accountancy, mkb, zorg en IT. ±15 minuten, direct resultaat.",

@@ -478,11 +478,16 @@ function renderProefTab(el){
       if(open){statusCel='<span class="tag" style="background:var(--gold-bg);color:var(--gold);border-color:var(--gold)">Open</span>';}
       else if(goedgekeurd){statusCel='<span class="tag" style="background:var(--teal-bg);color:var(--teal-dim);border-color:var(--teal)">&#10003; Goedgekeurd</span>'+(p.behandeld_at?'<div style="color:var(--muted);font-size:10px">'+formatDate(p.behandeld_at)+'</div>':'')+(p.gebruiker_id?'<div><span class="code-chip" style="font-size:10px">'+esc(p.gebruiker_id)+'</span></div>':'');}
       else{statusCel='<span class="tag">'+esc(p.status||'—')+'</span>'+(p.behandeld_at?'<div style="color:var(--muted);font-size:10px">'+formatDate(p.behandeld_at)+'</div>':'');}
-      var acties=open
-        ? '<div style="display:flex;gap:4px;align-items:center;white-space:nowrap"><label style="font-size:10px;color:var(--muted)">dagen <input type="number" class="pf-dagen" data-id="'+esc(p.id)+'" value="30" min="1" max="180" style="width:48px;font-size:11px;padding:2px 4px"></label>'
+      var acties;
+      if(open){
+        acties='<div style="display:flex;gap:4px;align-items:center;white-space:nowrap"><label style="font-size:10px;color:var(--muted)">dagen <input type="number" class="pf-dagen" data-id="'+esc(p.id)+'" value="30" min="1" max="180" style="width:48px;font-size:11px;padding:2px 4px"></label>'
           +'<button class="btn pf-goedkeuren" data-id="'+esc(p.id)+'" style="font-size:10px;padding:4px 8px">Goedkeuren</button>'
-          +'<button class="btn-red pf-afwijzen" data-id="'+esc(p.id)+'" style="font-size:10px;padding:4px 8px">Afwijzen</button></div>'
-        : '<span style="color:var(--muted);font-size:11px">&mdash;</span>';
+          +'<button class="btn-red pf-afwijzen" data-id="'+esc(p.id)+'" style="font-size:10px;padding:4px 8px">Afwijzen</button></div>';
+      } else if(goedgekeurd && p.gebruiker_id){
+        acties='<button class="btn pf-omzetten" data-gid="'+esc(p.gebruiker_id)+'" style="font-size:10px;padding:4px 8px">&#8594; Omzetten naar betalend</button>';
+      } else {
+        acties='<span style="color:var(--muted);font-size:11px">&mdash;</span>';
+      }
       html+='<tr>'
         +'<td class="mono" style="font-size:11px;white-space:nowrap">'+formatDate(p.created_at)+'</td>'
         +'<td style="font-weight:500;color:var(--head)">'+esc(p.organisatie||'—')+(p.kvk?'<div class="mono" style="color:var(--muted);font-size:10px">KvK '+esc(p.kvk)+'</div>':'')+'</td>'
@@ -527,6 +532,18 @@ function renderProefTab(el){
         if(r.ok&&d.ok){toast('Aanvraag afgewezen.','ok');await refreshData();}
         else{toast('Fout: '+(d.error||'onbekend'),'err');b.disabled=false;}
       }catch(e){toast('Netwerkfout bij afwijzen.','err');b.disabled=false;}
+    });
+  });
+  el.querySelectorAll('.pf-omzetten').forEach(function(b){
+    b.addEventListener('click',async function(){
+      if(!confirm('Dit proefaccount omzetten naar een gewoon account? De proef-vlag gaat eraf; stel daarna de trajectlimiet en modules in via € Tarieven.'))return;
+      b.disabled=true;b.textContent='Bezig...';
+      try{
+        var r=await fetch(WORKER+'/adviseur/proef/omzetten/'+encodeURIComponent(b.dataset.gid),{method:'POST',headers:{'x-admin-key':adminKey}});
+        var d=await r.json();
+        if(r.ok&&d.ok){toast('Omgezet naar gewoon account. Stel limiet/modules in via € Tarieven.','ok');await refreshData();}
+        else{toast('Fout: '+(d.error||'onbekend'),'err');b.disabled=false;b.textContent='→ Omzetten naar betalend';}
+      }catch(e){toast('Netwerkfout bij omzetten.','err');b.disabled=false;b.textContent='→ Omzetten naar betalend';}
     });
   });
 }
