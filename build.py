@@ -116,8 +116,8 @@ SKELETON = """<!doctype html>
 # (bestandspad, diepte, <title>, meta-description, canonical-pad, og:image, og:type, extra JSON-LD-graph-items)
 PAGES = [
     ("index.html", 0,
-     "Koers voor Morgen — M&amp;A-platform en senior M&amp;A-expertise",
-     "Een zelfstandig M&amp;A-platform voor adviseurs en dealteams, en senior M&amp;A-expertise voor complexe transacties. Van doorzien tot realiseren.",
+     "Koers voor Morgen — M&amp;A-platform en M&amp;A Expertise",
+     "Een zelfstandig M&amp;A-platform voor adviseurs en dealteams, en senior M&amp;A-ervaring voor complexe transacties. Van doorzien tot realiseren.",
      "https://koersvoormorgen.nl/", "hero-weg.jpg", "website", "home"),
 
     ("platform/index.html", 1,
@@ -156,8 +156,8 @@ PAGES = [
      "https://koersvoormorgen.nl/bedrijfsscan", "bedrijfsscan-polder.jpg", "website", "bedrijfsscan"),
 
     ("m-en-a-expertise/index.html", 1,
-     "Senior M&amp;A-expertise — Marcel Bisschops — Koers voor Morgen",
-     "Senior M&amp;A-expertise voor complexe transacties, due diligence, integratie, value creation, strategie en regie. Ruim 30 jaar, 20+ deals.",
+     "M&amp;A Expertise — Marcel Bisschops — Koers voor Morgen",
+     "Senior M&amp;A-ervaring voor complexe transacties, due diligence, integratie, value creation, strategie en regie. Ruim 30 jaar, 20+ deals koop- én verkoopzijde.",
      "https://koersvoormorgen.nl/m-en-a-expertise", "expertise-oversteek.jpg", "website", "ma"),
 
     ("m-en-a-expertise/complexe-transacties.html", 1,
@@ -191,13 +191,13 @@ PAGES = [
      "https://koersvoormorgen.nl/m-en-a-expertise/regie", "expertise-oversteek.jpg", "website", "ma-sub|Regie"),
 
     ("over-marcel.html", 0,
-     "Over Marcel Bisschops — senior M&amp;A-professional",
+     "Over Marcel Bisschops — M&amp;A, bestuur en transacties",
      "Ruim 30 jaar op het snijvlak van strategie, bestuur, transactie en uitvoering. COO, voorzitter RvB, toezichthouder, 20+ fusies en overnames.",
      "https://koersvoormorgen.nl/over-marcel", "marcel-portret.jpg", "profile", "over-marcel"),
 
     ("cases/index.html", 1,
      "Cases — Koers voor Morgen",
-     "Geanonimiseerde trajecten die het patroon laten zien: van complexiteit naar koers, van besluit naar beweging. Ervaring, geen beloften.",
+     "Geanonimiseerde M&amp;A-trajecten met situatie, rol, interventie en resultaat. Ervaring, geen beloften.",
      "https://koersvoormorgen.nl/cases", "expertise-staal.jpg", "website", "cases"),
 
     ("cases/verkoop-accountantskantoor-opvolging.html", 1,
@@ -269,7 +269,7 @@ PAGES = [
 LD_COMMON = '{ "@type": "Organization", "@id": "https://koersvoormorgen.nl/#org", "name": "Koers voor Morgen", "url": "https://koersvoormorgen.nl/", "parentOrganization": { "@type": "Organization", "name": "Bisschops Financing B.V." }, "sameAs": ["https://www.linkedin.com/in/marcelbisschops"] }'
 LD_SITE = '{ "@type": "WebSite", "@id": "https://koersvoormorgen.nl/#site", "url": "https://koersvoormorgen.nl/", "name": "Koers voor Morgen", "publisher": { "@id": "https://koersvoormorgen.nl/#org" }, "inLanguage": "nl-NL" }'
 LD_SOFTWARE = '{ "@type": "SoftwareApplication", "name": "Koers voor Morgen Platform", "applicationCategory": "BusinessApplication", "operatingSystem": "Web", "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR", "description": "Gratis bedrijfsscan; adviseursmodel op aanvraag." }, "publisher": { "@id": "https://koersvoormorgen.nl/#org" } }'
-LD_PERSON = '{ "@type": "Person", "@id": "https://koersvoormorgen.nl/#marcel", "name": "Marcel Bisschops", "jobTitle": "Senior M&A-professional", "worksFor": { "@type": "Organization", "name": "Bisschops Financing B.V." }, "alumniOf": "Rijksuniversiteit Leiden", "knowsAbout": ["Fusies en overnames", "Due diligence", "Post-merger integratie", "Value creation", "Corporate governance"], "sameAs": ["https://www.linkedin.com/in/marcelbisschops"] }'
+LD_PERSON = '{ "@type": "Person", "@id": "https://koersvoormorgen.nl/#marcel", "name": "Marcel Bisschops", "jobTitle": "M&A-professional", "worksFor": { "@type": "Organization", "name": "Bisschops Financing B.V." }, "alumniOf": "Rijksuniversiteit Leiden", "knowsAbout": ["Fusies en overnames", "Due diligence", "Post-merger integratie", "Value creation", "Corporate governance"], "sameAs": ["https://www.linkedin.com/in/marcelbisschops"] }'
 
 def breadcrumb_ld(items):
     els = ", ".join(

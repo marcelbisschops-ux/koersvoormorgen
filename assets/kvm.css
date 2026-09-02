@@ -405,11 +405,54 @@ a.card:hover,.card--link:hover{transform:translateY(-3px); border-color:var(--pe
     linear-gradient(180deg, rgba(13,27,42,.7) 0%, rgba(13,27,42,.86) 45%, var(--s-dark) 100%),
     url("img/hero-weg.jpg") center/cover no-repeat;}
 }
-.hero__media{margin-top:3rem; margin-inline:0; max-width:100%; border-radius:var(--r-lg); overflow:hidden; border:1px solid var(--hair-d)}
+
+/* beeld als sectie-achtergrond (i.p.v. ingelijst plaatje in de tekst).
+   Per sectie: class s-bg + --bg:url(...) [+ optioneel --bg-pos]. Werkt op
+   donkere oppervlakken (s-dark / s-petrol); de gradient houdt de tekst leesbaar. */
+.s-bg{position:relative; overflow:hidden; isolation:isolate}
+.s-bg::before{
+  content:""; position:absolute; inset:0; z-index:-1;
+  background:
+    linear-gradient(90deg, var(--s-dark) 0%, rgba(13,27,42,.95) 34%, rgba(13,27,42,.8) 60%, rgba(13,27,42,.58) 100%),
+    linear-gradient(to top, var(--s-dark) 3%, rgba(13,27,42,0) 44%),
+    var(--bg) var(--bg-pos, center) / cover no-repeat;
+}
+.s-petrol.s-bg::before{
+  background:
+    linear-gradient(90deg, var(--s-petrol) 0%, rgba(32,66,61,.95) 34%, rgba(32,66,61,.8) 62%, rgba(32,66,61,.58) 100%),
+    linear-gradient(to top, var(--s-petrol) 3%, rgba(32,66,61,0) 44%),
+    var(--bg) var(--bg-pos, center) / cover no-repeat;
+}
+.s-bg > .wrap{position:relative; z-index:1}
+/* zachtere variant — beeld mag meer spreken (merklaag: homepage/bedrijfsscan) */
+.s-bg--soft::before{
+  background:
+    linear-gradient(90deg, var(--s-dark) 0%, rgba(13,27,42,.86) 30%, rgba(13,27,42,.52) 62%, rgba(13,27,42,.3) 100%),
+    linear-gradient(to top, var(--s-dark) 3%, rgba(13,27,42,0) 50%),
+    var(--bg) var(--bg-pos, center) / cover no-repeat !important;
+}
+@media (max-width:640px){
+  .s-bg--soft::before{background:
+    linear-gradient(180deg, rgba(13,27,42,.66) 0%, rgba(13,27,42,.86) 55%, var(--s-dark) 100%),
+    var(--bg) var(--bg-pos, center) / cover no-repeat !important;}
+}
+/* tekst op een beeld-achtergrond blijft in de donkere linkerzone + krijgt iets meer body */
+.s-bg .section-head,.s-bg .hero__sub,.s-bg .prose,.s-bg > .wrap > .lead,.s-bg .proof{max-width:min(100%, 58ch)}
+@media (max-width:640px){ .s-bg .section-head,.s-bg .hero__sub,.s-bg .prose,.s-bg .proof{max-width:100%} }
+.s-bg .proof__v{color:#fff}
+.s-bg .proof__k{color:var(--body-d)}
+.s-bg .hero__sub,.s-bg .lead{color:var(--ink-d)}
+/* ingelijst beeld — nog alleen voor het portret op /over-marcel */
+.hero__media{margin-inline:0; max-width:100%; border-radius:var(--r-lg); overflow:hidden; border:1px solid var(--hair-d)}
 .hero__media img{width:100%; max-width:100%; height:auto; display:block}
-/* cinematische band voor fotoheroes op subpagina's (geen productscreenshot) */
-.hero__media--band img{aspect-ratio:21/8; height:auto; object-fit:cover; object-position:center 42%}
-@media (max-width:640px){ .hero__media--band img{aspect-ratio:3/2} }
+@media (max-width:640px){
+  .s-bg::before{background:
+    linear-gradient(180deg, rgba(13,27,42,.74) 0%, rgba(13,27,42,.9) 55%, var(--s-dark) 100%),
+    var(--bg) var(--bg-pos, center) / cover no-repeat;}
+  .s-petrol.s-bg::before{background:
+    linear-gradient(180deg, rgba(32,66,61,.76) 0%, rgba(32,66,61,.92) 55%, var(--s-petrol) 100%),
+    var(--bg) var(--bg-pos, center) / cover no-repeat;}
+}
 
 /* ---------- formulier ---------- */
 .field{display:flex; flex-direction:column; gap:.4rem; margin-bottom:1.25rem}
