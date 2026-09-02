@@ -163,11 +163,17 @@ Marcel**. Aanvraag → marilyn goedkeuren → automatisch tijdelijk adviseursacc
 **Live 2 sep 2026:** backend gedeployed naar productie (schema v2 gemigreerd, endpoints geverifieerd,
 GV 1.9); frontend gecommit + gepusht. Werkt end-to-end.
 
-**Restpunt (nog open):** overweeg of dit de bestaande `/leads/testtraject`-flow (index.html)
-vervangt of ernaast blijft bestaan. Nu staan er twee wegen naar "probeer het platform".
+**3 sep 2026 — afwijzing stuurt nu een mail** aan de aanvrager (backend live op productie). De
+bijbehorende marilyn-wijziging (bij "Afwijzen" een optioneel toelichtingsveldje dat in de mail komt)
+staat **lokaal in `marilyn.html`, nog niet gecommit/gepusht** — zonder die push wijst marilyn wel af
+mét mail, alleen zonder het toelichtingsveld.
 
-**Opruimen (mag, geen haast):** staging-testdata (`adviseur_proef_aanvragen` + testaccount
-`G1788384100946REC6`).
+**Restpunten (nog open):**
+- `marilyn.html` (afwijs-toelichting) committen + pushen.
+- Overweeg of dit de bestaande `/leads/testtraject`-flow (index.html) vervangt of ernaast blijft
+  bestaan. Nu staan er twee wegen naar "probeer het platform".
+- Opruimen (mag, geen haast): staging-testdata (`adviseur_proef_aanvragen` + testaccount
+  `G1788384100946REC6`).
 
 ---
 
