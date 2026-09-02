@@ -524,12 +524,14 @@ function renderProefTab(el){
   });
   el.querySelectorAll('.pf-afwijzen').forEach(function(b){
     b.addEventListener('click',async function(){
-      if(!confirm('Deze proefaanvraag afwijzen?'))return;
+      if(!confirm('Deze proefaanvraag afwijzen? De aanvrager krijgt een korte afwijzingsmail.'))return;
+      var reden=prompt('Optioneel: een zin toelichting voor de aanvrager (leeg laten mag).','');
+      if(reden===null)return;
       b.disabled=true;
       try{
-        var r=await fetch(WORKER+'/adviseur/proef/aanvraag/'+encodeURIComponent(b.dataset.id)+'/besluit',{method:'POST',headers:{'x-admin-key':adminKey,'content-type':'application/json'},body:JSON.stringify({besluit:'afwijzen'})});
+        var r=await fetch(WORKER+'/adviseur/proef/aanvraag/'+encodeURIComponent(b.dataset.id)+'/besluit',{method:'POST',headers:{'x-admin-key':adminKey,'content-type':'application/json'},body:JSON.stringify({besluit:'afwijzen',reden:reden})});
         var d=await r.json();
-        if(r.ok&&d.ok){toast('Aanvraag afgewezen.','ok');await refreshData();}
+        if(r.ok&&d.ok){toast('Aanvraag afgewezen'+(d.mail_verzonden===false?' (LET OP: mail niet verzonden)':d.mail_verzonden?' en aanvrager geïnformeerd':'')+'.','ok');await refreshData();}
         else{toast('Fout: '+(d.error||'onbekend'),'err');b.disabled=false;}
       }catch(e){toast('Netwerkfout bij afwijzen.','err');b.disabled=false;}
     });

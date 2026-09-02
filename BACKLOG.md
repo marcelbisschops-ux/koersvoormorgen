@@ -118,7 +118,7 @@ nu de bescherming; het formulier werkt ongewijzigd). Aanzetten:
 4. **Werkregel 17:** dan een regel toevoegen aan `privacy.html` (Turnstile verwerkt IP +
    gedragssignaal voor botdetectie, cookieloos).
 
-### 2.3 — Proefaccount voor adviseurs: afronden · **P2 · 🟡**
+### 2.3 — Proefaccount voor adviseurs · **LIVE 2 sep 2026** ✅ (één restpunt, zie onder)
 Marcel wil de drempel verlagen: naast "plan een demo" ook een **proefaccount na goedkeuring door
 Marcel**. Aanvraag → marilyn goedkeuren → automatisch tijdelijk adviseursaccount (1 traject,
 30 dagen, modules dossier + AI-analyse + Q&A; contracten/export uit) + activatiemail.
@@ -160,14 +160,14 @@ Marcel**. Aanvraag → marilyn goedkeuren → automatisch tijdelijk adviseursacc
   eenmalig opnieuw het GV-acceptatiescherm (bestaand mechanisme).
 - `voorwaarden.html` (v2.2, verkoper/koper): geen wijziging — proefaccount raakt die rol niet.
 
-**Nog te doen:**
-1. **Productie-deploy** van het geheel: backend (staging → prod via `scripts/deploy.sh backend` of
-   twee `wrangler deploy`-commando's), daarna frontend-push (`marilyn.html`, `adv.html`,
-   `proefaccount.html`, `voor-adviseurs.html`, `platform.html`, `privacy.html` + `_src/`, `kvm.js`,
-   `build.py` + gebouwde pagina's). Backend eerst — de marilyn-tab en de proefaccount-pagina roepen
-   endpoints aan die vóór de backend-prod-deploy nog niet bestaan.
-2. Staging-testdata opruimen (`adviseur_proef_aanvragen` + testaccount `G1788384100946REC6`).
-3. Overweeg of dit de bestaande `/leads/testtraject`-flow (index.html) vervangt of ernaast blijft.
+**Live 2 sep 2026:** backend gedeployed naar productie (schema v2 gemigreerd, endpoints geverifieerd,
+GV 1.9); frontend gecommit + gepusht. Werkt end-to-end.
+
+**Restpunt (nog open):** overweeg of dit de bestaande `/leads/testtraject`-flow (index.html)
+vervangt of ernaast blijft bestaan. Nu staan er twee wegen naar "probeer het platform".
+
+**Opruimen (mag, geen haast):** staging-testdata (`adviseur_proef_aanvragen` + testaccount
+`G1788384100946REC6`).
 
 ---
 
