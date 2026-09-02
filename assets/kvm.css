@@ -148,6 +148,7 @@ button{font:inherit; cursor:pointer}
 @media (prefers-reduced-motion: reduce){ .koersline--draw{stroke-dashoffset:0} }
 .koersnode{fill:var(--s-dark); stroke:var(--koerslijn); stroke-width:1.5}
 .s-light .koersnode{fill:var(--s-light)}
+.s-light-2 .koersnode{fill:var(--s-light-2)}
 .s-petrol .koersnode{fill:var(--s-petrol)}
 
 /* ---------- nav ---------- */
@@ -404,8 +405,11 @@ a.card:hover,.card--link:hover{transform:translateY(-3px); border-color:var(--pe
     linear-gradient(180deg, rgba(13,27,42,.7) 0%, rgba(13,27,42,.86) 45%, var(--s-dark) 100%),
     url("img/hero-weg.jpg") center/cover no-repeat;}
 }
-.hero__media{margin-top:3rem; border-radius:var(--r-lg); overflow:hidden; border:1px solid var(--hair-d)}
-.hero__media img{width:100%; display:block}
+.hero__media{margin-top:3rem; margin-inline:0; max-width:100%; border-radius:var(--r-lg); overflow:hidden; border:1px solid var(--hair-d)}
+.hero__media img{width:100%; max-width:100%; height:auto; display:block}
+/* cinematische band voor fotoheroes op subpagina's (geen productscreenshot) */
+.hero__media--band img{aspect-ratio:21/8; height:auto; object-fit:cover; object-position:center 42%}
+@media (max-width:640px){ .hero__media--band img{aspect-ratio:3/2} }
 
 /* ---------- formulier ---------- */
 .field{display:flex; flex-direction:column; gap:.4rem; margin-bottom:1.25rem}
