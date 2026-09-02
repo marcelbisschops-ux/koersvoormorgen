@@ -18,7 +18,6 @@ NAV_ITEMS = [
     ("{{ROOT}}bedrijfsscan.html", "Bedrijfsscan"),
     ("{{ROOT}}cases/", "Cases"),
     ("{{ROOT}}inzichten/", "Inzichten"),
-    ("{{ROOT}}contact.html", "Contact"),
 ]
 
 def nav():
@@ -254,6 +253,21 @@ PAGES = [
      "Waarom integraties vastlopen — Koers voor Morgen",
      "Integraties lopen zelden vast op de inhoud, maar op de knopen die niemand doorhakt. Over patroon en aanpak.",
      "https://koersvoormorgen.nl/inzichten/waarom-integraties-vastlopen", "expertise-oversteek.jpg", "article", "post|Integratie|Waarom integraties vastlopen"),
+
+    ("inzichten/wat-een-dataroom-niet-laat-zien.html", 1,
+     "Wat een dataroom niet laat zien — Koers voor Morgen",
+     "De cijfers kloppen en de dataroom is compleet — en toch valt een overname soms tegen. Wat de waarde bepaalt, staat zelden in de stukken.",
+     "https://koersvoormorgen.nl/inzichten/wat-een-dataroom-niet-laat-zien", "expertise-staal.jpg", "article", "post|Due diligence|Wat een dataroom niet laat zien"),
+
+    ("inzichten/kopen-omdat-het-kan-is-geen-strategie.html", 1,
+     "Kopen omdat het kan is geen strategie — Koers voor Morgen",
+     "Een overnamekans voelt als vooruitgang. Maar een deal die niet bij de richting past, kost meer dan hij oplevert — ook bij een goede prijs.",
+     "https://koersvoormorgen.nl/inzichten/kopen-omdat-het-kan-is-geen-strategie", "expertise-staal.jpg", "article", "post|Strategie|Kopen omdat het kan is geen strategie"),
+
+    ("inzichten/de-momenten-waarop-een-deal-klapt.html", 1,
+     "De momenten waarop een deal alsnog klapt — Koers voor Morgen",
+     "De meeste transacties lopen niet vast op de prijs, maar op de momenten waarop informatie, belangen of tempo uit elkaar lopen.",
+     "https://koersvoormorgen.nl/inzichten/de-momenten-waarop-een-deal-klapt", "expertise-oversteek.jpg", "article", "post|M&A|De momenten waarop een deal alsnog klapt"),
 
     ("privacy.html", 0,
      "Privacyverklaring — Koers voor Morgen",
