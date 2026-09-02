@@ -486,8 +486,9 @@ function renderProefTab(el){
       } else if(goedgekeurd && p.gebruiker_id){
         acties='<button class="btn pf-omzetten" data-gid="'+esc(p.gebruiker_id)+'" style="font-size:10px;padding:4px 8px">&#8594; Omzetten naar betalend</button>';
       } else {
-        acties='<span style="color:var(--muted);font-size:11px">&mdash;</span>';
+        acties='';
       }
+      acties+='<button class="btn-red pf-verwijderen" data-id="'+esc(p.id)+'" data-email="'+esc(p.email||'')+'" data-gid="'+esc(p.gebruiker_id||'')+'" style="font-size:10px;padding:4px 8px;margin-left:4px" title="Definitief verwijderen">&#128465; Verwijderen</button>';
       html+='<tr>'
         +'<td class="mono" style="font-size:11px;white-space:nowrap">'+formatDate(p.created_at)+'</td>'
         +'<td style="font-weight:500;color:var(--head)">'+esc(p.organisatie||'—')+(p.kvk?'<div class="mono" style="color:var(--muted);font-size:10px">KvK '+esc(p.kvk)+'</div>':'')+'</td>'
@@ -534,6 +535,20 @@ function renderProefTab(el){
         if(r.ok&&d.ok){toast('Aanvraag afgewezen'+(d.mail_verzonden===false?' (LET OP: mail niet verzonden)':d.mail_verzonden?' en aanvrager geïnformeerd':'')+'.','ok');await refreshData();}
         else{toast('Fout: '+(d.error||'onbekend'),'err');b.disabled=false;}
       }catch(e){toast('Netwerkfout bij afwijzen.','err');b.disabled=false;}
+    });
+  });
+  el.querySelectorAll('.pf-verwijderen').forEach(function(b){
+    b.addEventListener('click',async function(){
+      var em=b.dataset.email?(' ('+b.dataset.email+')'):'';
+      var extra=b.dataset.gid?('\n\nLet op: het gekoppelde proefaccount '+b.dataset.gid+' blijft bestaan — verwijder dat zo nodig apart via Gebruikers.'):'';
+      if(!confirm('Proefaanvraag'+em+' definitief verwijderen? Dit kan niet ongedaan worden gemaakt.'+extra))return;
+      b.disabled=true;b.textContent='Bezig...';
+      try{
+        var r=await fetch(WORKER+'/adviseur/proef/aanvraag/'+encodeURIComponent(b.dataset.id)+'/verwijderen',{method:'POST',headers:{'x-admin-key':adminKey}});
+        var d=await r.json();
+        if(r.ok&&d.ok){toast('Proefaanvraag verwijderd.','ok');await refreshData();}
+        else{toast('Fout: '+(d.error||'onbekend'),'err');b.disabled=false;b.textContent='Verwijderen';}
+      }catch(e){toast('Netwerkfout bij verwijderen.','err');b.disabled=false;b.textContent='Verwijderen';}
     });
   });
   el.querySelectorAll('.pf-omzetten').forEach(function(b){
