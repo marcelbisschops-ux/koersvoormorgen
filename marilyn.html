@@ -113,7 +113,7 @@ const BRAND={platform:'Koers voor Morgen',bedrijf:'Bisschops Financing B.V.',suf
 const TAAL_REGELS='Schrijf in natuurlijk, vloeiend Nederlands — geen letterlijke vertaling uit het Engels. Gebruik uitsluitend de formele aanspreekvorm "u/uw", nooit "je/jij/jouw", ook niet losse keren door elkaar. Gebruik "geen [zelfstandig naamwoord]" i.p.v. de onnatuurlijke constructie "niet een [zelfstandig naamwoord]". Vermijd andere letterlijke Engelse constructies en verzin geen niet-bestaande woorden.';
 document.title=BRAND.platform+' — '+BRAND.suffix;
 (function(){var b=document.querySelector('.brand');if(b)b.innerHTML='<div class="wdot"></div>'+BRAND.platform+' <span style="color:var(--teal);margin-left:4px">'+BRAND.suffix+'</span>';})();
-let adminKey='',scans=[],callbacks=[],mnaList=[],rapporten=[],leads=[],activeTab='scans',scanFilter='',openRow=null;
+let adminKey='',scans=[],callbacks=[],mnaList=[],rapporten=[],leads=[],proefAanvragen=[],activeTab='scans',scanFilter='',openRow=null;
 let gebruikerToken='',gebruikerInfo=null,isSuperAdmin=false;
 
 function toast(msg,type,dur){type=type||'ok';dur=dur||3500;var c=document.getElementById('toast-container');if(!c){c=document.createElement('div');c.id='toast-container';c.className='toast-container';document.body.appendChild(c);}var t=document.createElement('div');t.className='toast toast-'+type;var ico=type==='ok'?'✓':type==='err'?'✕':type==='warn'?'⚠':'ℹ';t.innerHTML='<span style="font-size:15px;flex-shrink:0;color:'+(type==='ok'?'var(--teal)':type==='err'?'var(--red)':type==='warn'?'var(--gold)':'#2a5ea0')+'">'+ico+'</span><span style="flex:1;line-height:1.5">'+String(msg).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</span><button onclick="this.parentElement.remove()" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px;padding:0;line-height:1;flex-shrink:0">&times;</button>';c.appendChild(t);setTimeout(function(){t.classList.add('hide');setTimeout(function(){if(t.parentElement)t.parentElement.removeChild(t);},220);},dur);return t;}
@@ -180,18 +180,20 @@ async function doLogin(){
   var key=document.getElementById('ak').value.trim();
   if(!key){btn.disabled=false;btn.textContent='Inloggen';return;}
   try{
-    var [r1,r2,r3,r4,r5]=await Promise.all([
+    var [r1,r2,r3,r4,r5,r6]=await Promise.all([
       fetch(WORKER+'/admin/scans',{headers:{'x-admin-key':key}}),
       fetch(WORKER+'/admin/callbacks',{headers:{'x-admin-key':key}}),
       fetch(WORKER+'/mna/admin/lijst',{headers:{'x-admin-key':key}}),
       fetch(WORKER+'/admin/rapporten',{headers:{'x-admin-key':key}}),
-      fetch(WORKER+'/admin/leads',{headers:{'x-admin-key':key}})
+      fetch(WORKER+'/admin/leads',{headers:{'x-admin-key':key}}),
+      fetch(WORKER+'/adviseur/proef/aanvragen',{headers:{'x-admin-key':key}})
     ]);
     if(!r1.ok)throw new Error('unauthorized');
     scans=await r1.json();callbacks=await r2.json();
     mnaList=r3.ok?await r3.json():[];
     try{var r4data=r4.ok?await r4.json().catch(()=>[]):[];rapporten=Array.isArray(r4data)?r4data:[];}catch(e){rapporten=[];}
     try{var r5data=r5.ok?await r5.json().catch(()=>[]):[];leads=Array.isArray(r5data)?r5data:[];}catch(e){leads=[];}
+    try{var r6data=r6.ok?await r6.json().catch(()=>[]):[];proefAanvragen=Array.isArray(r6data)?r6data:[];}catch(e){proefAanvragen=[];}
     adminKey=key;isSuperAdmin=true;gebruikerInfo=null;gebruikerToken='';
     document.getElementById('hdr-actions').style.display='flex';
     document.getElementById('btn-refresh').addEventListener('click',refreshData);
@@ -213,17 +215,19 @@ function logout(){
 
 async function refreshData(){
   try{
-    var [r1,r2,r3,r4,r5]=await Promise.all([
+    var [r1,r2,r3,r4,r5,r6]=await Promise.all([
       fetch(WORKER+'/admin/scans',{headers:{'x-admin-key':adminKey}}),
       fetch(WORKER+'/admin/callbacks',{headers:{'x-admin-key':adminKey}}),
       fetch(WORKER+'/mna/admin/lijst',{headers:{'x-admin-key':adminKey}}),
       fetch(WORKER+'/admin/rapporten',{headers:{'x-admin-key':adminKey}}),
-      fetch(WORKER+'/admin/leads',{headers:{'x-admin-key':adminKey}})
+      fetch(WORKER+'/admin/leads',{headers:{'x-admin-key':adminKey}}),
+      fetch(WORKER+'/adviseur/proef/aanvragen',{headers:{'x-admin-key':adminKey}})
     ]);
     scans=await r1.json();callbacks=await r2.json();
     mnaList=r3.ok?await r3.json():[];
     try{var r4data=r4.ok?await r4.json().catch(()=>[]):[];rapporten=Array.isArray(r4data)?r4data:[];}catch(e){rapporten=[];}
     try{var r5data=r5.ok?await r5.json().catch(()=>[]):[];leads=Array.isArray(r5data)?r5data:[];}catch(e){leads=[];}
+    try{var r6data=r6.ok?await r6.json().catch(()=>[]):[];proefAanvragen=Array.isArray(r6data)?r6data:[];}catch(e){proefAanvragen=[];}
     renderDashboard();
   }catch(e){toast('Kon niet verversen.','err');}
 }
@@ -246,6 +250,7 @@ function renderDashboard(){
     +(isSuperAdmin?'<button class="tab'+(activeTab==='scans'?' active':'')+'" id="t-scans">Scans ('+scans.length+')</button>':'')
     +(isSuperAdmin?'<button class="tab'+(activeTab==='callbacks'?' active':'')+'" id="t-cb">Terugbelverzoeken ('+callbacks.length+')</button>':'')
     +(isSuperAdmin?'<button class="tab'+(activeTab==='leads'?' active':'')+'" id="t-leads">Leads ('+leads.filter(function(l){return l.status==='nieuw';}).length+')</button>':'')
+    +(isSuperAdmin?'<button class="tab'+(activeTab==='proef'?' active':'')+'" id="t-proef">Proefaanvragen ('+proefAanvragen.filter(function(p){return p.status==='open';}).length+')</button>':'')
     +'<button class="tab'+(activeTab==='mna'?' active':'')+'" id="t-mna">M&A Trajecten ('+mnaList.length+')</button>'
     +'<button class="tab'+(activeTab==='docs'?' active':'')+'" id="t-docs">Documenten</button>'
     +'<button class="tab'+(activeTab==='rapporten'?' active':'')+'" id="t-rapp">Scan rapporten ('+rapporten.length+')</button>'
@@ -261,7 +266,7 @@ function renderDashboard(){
     +(isSuperAdmin?'<button class="tab'+(activeTab==='matching'?' active':'')+'" id="t-matching">&#128279; Matching</button>':'')
     +'</div>'
     +'<div id="tc"></div>';
-  if(isSuperAdmin){var ts=document.getElementById('t-scans');if(ts)ts.addEventListener('click',function(){activeTab='scans';scanFilter='';openRow=null;renderDashboard();});var tc2=document.getElementById('t-cb');if(tc2)tc2.addEventListener('click',function(){activeTab='callbacks';renderDashboard();});var tld=document.getElementById('t-leads');if(tld)tld.addEventListener('click',function(){activeTab='leads';renderDashboard();});}
+  if(isSuperAdmin){var ts=document.getElementById('t-scans');if(ts)ts.addEventListener('click',function(){activeTab='scans';scanFilter='';openRow=null;renderDashboard();});var tc2=document.getElementById('t-cb');if(tc2)tc2.addEventListener('click',function(){activeTab='callbacks';renderDashboard();});var tld=document.getElementById('t-leads');if(tld)tld.addEventListener('click',function(){activeTab='leads';renderDashboard();});var tpf=document.getElementById('t-proef');if(tpf)tpf.addEventListener('click',function(){activeTab='proef';renderDashboard();});}
   document.getElementById('t-mna').addEventListener('click',function(){activeTab='mna';renderDashboard();});
   document.getElementById('t-docs').addEventListener('click',function(){activeTab='docs';renderDashboard();});
   document.getElementById('t-rapp').addEventListener('click',function(){activeTab='rapporten';renderDashboard();});
@@ -284,6 +289,7 @@ function renderTab(){
   if(activeTab==='scans')renderScansTab(el);
   else if(activeTab==='callbacks')renderCallbacksTab(el);
   else if(activeTab==='leads')renderLeadsTab(el);
+  else if(activeTab==='proef')renderProefTab(el);
   else if(activeTab==='mna')renderMnaTab(el);
   else if(activeTab==='docs')renderDocsTab(el);
   else if(activeTab==='benchmarks')renderBenchmarksTab(el);
@@ -453,6 +459,74 @@ function renderLeadsTab(el){
     b.addEventListener('click',function(){
       var lead=leads.find(function(l){return String(l.id)===String(b.dataset.id);});
       if(lead)toonNieuwModal(lead);
+    });
+  });
+}
+
+// PROEFAANVRAGEN TAB — adviseurs die een proefaccount aanvragen
+function renderProefTab(el){
+  var html='<div class="table-wrap"><div class="table-hdr"><div class="table-title">Proefaanvragen adviseurs</div>'
+    +'<div style="display:flex;gap:8px;align-items:center"><button class="btn" style="font-size:12px;padding:7px 14px" id="btn-ref-pf">&#8635; Verversen</button></div></div>';
+  if(!proefAanvragen.length){
+    html+='<div class="empty">Nog geen proefaanvragen.</div>';
+  } else {
+    html+='<table><thead><tr><th>Datum</th><th>Kantoor / KvK</th><th>Aanvrager</th><th>Contact</th><th>Motivatie</th><th>Status</th><th>Acties</th></tr></thead><tbody>';
+    proefAanvragen.forEach(function(p){
+      var open=p.status==='open';
+      var goedgekeurd=p.status==='goedgekeurd';
+      var statusCel;
+      if(open){statusCel='<span class="tag" style="background:var(--gold-bg);color:var(--gold);border-color:var(--gold)">Open</span>';}
+      else if(goedgekeurd){statusCel='<span class="tag" style="background:var(--teal-bg);color:var(--teal-dim);border-color:var(--teal)">&#10003; Goedgekeurd</span>'+(p.behandeld_at?'<div style="color:var(--muted);font-size:10px">'+formatDate(p.behandeld_at)+'</div>':'')+(p.gebruiker_id?'<div><span class="code-chip" style="font-size:10px">'+esc(p.gebruiker_id)+'</span></div>':'');}
+      else{statusCel='<span class="tag">'+esc(p.status||'—')+'</span>'+(p.behandeld_at?'<div style="color:var(--muted);font-size:10px">'+formatDate(p.behandeld_at)+'</div>':'');}
+      var acties=open
+        ? '<div style="display:flex;gap:4px;align-items:center;white-space:nowrap"><label style="font-size:10px;color:var(--muted)">dagen <input type="number" class="pf-dagen" data-id="'+esc(p.id)+'" value="30" min="1" max="180" style="width:48px;font-size:11px;padding:2px 4px"></label>'
+          +'<button class="btn pf-goedkeuren" data-id="'+esc(p.id)+'" style="font-size:10px;padding:4px 8px">Goedkeuren</button>'
+          +'<button class="btn-red pf-afwijzen" data-id="'+esc(p.id)+'" style="font-size:10px;padding:4px 8px">Afwijzen</button></div>'
+        : '<span style="color:var(--muted);font-size:11px">&mdash;</span>';
+      html+='<tr>'
+        +'<td class="mono" style="font-size:11px;white-space:nowrap">'+formatDate(p.created_at)+'</td>'
+        +'<td style="font-weight:500;color:var(--head)">'+esc(p.organisatie||'—')+(p.kvk?'<div class="mono" style="color:var(--muted);font-size:10px">KvK '+esc(p.kvk)+'</div>':'')+'</td>'
+        +'<td style="font-size:12px">'+esc(p.naam||'—')+'</td>'
+        +'<td style="font-size:12px"><a href="mailto:'+esc(p.email)+'" style="color:var(--teal);text-decoration:none">'+esc(p.email||'—')+'</a>'+(p.telefoon?'<div><a href="tel:'+esc(p.telefoon)+'" style="color:var(--teal);text-decoration:none;font-size:11px">'+esc(p.telefoon)+'</a></div>':'')+'</td>'
+        +'<td style="font-size:12px;max-width:260px">'+esc(p.motivatie||'—')+'</td>'
+        +'<td>'+statusCel+'</td>'
+        +'<td>'+acties+'</td>'
+        +'</tr>';
+    });
+    html+='</tbody></table>';
+  }
+  html+='<div style="padding:10px 14px;color:var(--muted);font-size:11px;border-top:1px solid var(--border)">Goedkeuren maakt automatisch een proefaccount aan (1 traject, dossier + AI-analyse + Q&amp;A, contracten/export uit) en stuurt de activatiemail. De proef verloopt na het aantal ingestelde dagen.</div>';
+  html+='</div>';
+  el.innerHTML=html;
+  var rpf=document.getElementById('btn-ref-pf');
+  if(rpf)rpf.addEventListener('click',refreshData);
+  el.querySelectorAll('.pf-goedkeuren').forEach(function(b){
+    b.addEventListener('click',async function(){
+      var di=el.querySelector('.pf-dagen[data-id="'+b.dataset.id+'"]');
+      var dagen=di?parseInt(di.value,10)||30:30;
+      if(!confirm('Proefaccount goedkeuren voor '+dagen+' dagen? Er wordt meteen een account aangemaakt en een activatiemail verstuurd.'))return;
+      b.disabled=true;b.textContent='Bezig...';
+      try{
+        var r=await fetch(WORKER+'/adviseur/proef/aanvraag/'+encodeURIComponent(b.dataset.id)+'/besluit',{method:'POST',headers:{'x-admin-key':adminKey,'content-type':'application/json'},body:JSON.stringify({besluit:'goedkeuren',dagen:dagen})});
+        var d=await r.json();
+        if(r.ok&&d.ok){
+          var mail=d.mail_verzonden===false?' (LET OP: activatiemail niet verzonden)':'';
+          toast('Proefaccount aangemaakt'+(d.proef_tot?' t/m '+formatDate(d.proef_tot):'')+mail,'ok');
+          await refreshData();
+        } else { toast('Fout: '+(d.error||'onbekend'),'err');b.disabled=false;b.textContent='Goedkeuren'; }
+      }catch(e){ toast('Netwerkfout bij goedkeuren.','err');b.disabled=false;b.textContent='Goedkeuren'; }
+    });
+  });
+  el.querySelectorAll('.pf-afwijzen').forEach(function(b){
+    b.addEventListener('click',async function(){
+      if(!confirm('Deze proefaanvraag afwijzen?'))return;
+      b.disabled=true;
+      try{
+        var r=await fetch(WORKER+'/adviseur/proef/aanvraag/'+encodeURIComponent(b.dataset.id)+'/besluit',{method:'POST',headers:{'x-admin-key':adminKey,'content-type':'application/json'},body:JSON.stringify({besluit:'afwijzen'})});
+        var d=await r.json();
+        if(r.ok&&d.ok){toast('Aanvraag afgewezen.','ok');await refreshData();}
+        else{toast('Fout: '+(d.error||'onbekend'),'err');b.disabled=false;}
+      }catch(e){toast('Netwerkfout bij afwijzen.','err');b.disabled=false;}
     });
   });
 }
