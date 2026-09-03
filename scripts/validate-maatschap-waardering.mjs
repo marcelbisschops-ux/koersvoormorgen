@@ -94,7 +94,14 @@ scenario('TC4 — maatschap, ondernemersloon hoger dan winst', 'accountancy', 'm
 {
   const v = dvBerekenWaardering();
   check('grondslag geklemd op 0 (niet negatief)', v.multipleTypeBedrag, 0);
-  check('wMid = 0', v.wMid, 0);
+  // Sinds 1 sep 2026 (commit 9ff664c): een nul/verlieslatende grondslag → grondslagNegatief=true en
+  // wLaag/wMid/wHoog = null met een rode banner, i.p.v. een gefabriceerde € 0-waardering (GOUDEN
+  // STANDAARD werkregel 8/13 — een onderneming is nooit "exact niets waard"; de grondslag is enkel
+  // niet levensvatbaar). Deze testcase toetste vóór die fix nog het oude wMid=0-gedrag.
+  check('grondslagNegatief = true', v.grondslagNegatief, true);
+  check('wMid = null (geen gefabriceerde € 0-waardering)', v.wMid, null);
+  check('wLaag = null', v.wLaag, null);
+  check('wHoog = null', v.wHoog, null);
   check('grondslagOnbekend = false (loon is wél ingevuld)', v.maatschapGrondslagOnbekend, false);
 }
 
