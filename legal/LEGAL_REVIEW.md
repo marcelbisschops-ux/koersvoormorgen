@@ -49,7 +49,7 @@ Reviewregels: [`../REVIEW.md`](../REVIEW.md) · Inventaris: [`LEGAL_INVENTORY.md
 ### Openstaande juridische aandachtspunten
 
 Zie `LEGAL_ISSUES.md` — 25 bevindingen + 12 cross-document consistentiepunten.
-Stand 2026-09-03: **0 toegepast**, 25 in afwachting van akkoord/keuze.
+Stand 2026-09-03: **0 toegepast op live bestanden.** FASE 5 voorbereid: commerciële keuzes gemaakt, volledige nieuwe tekst uitgewerkt in `FASE5-WIJZIGINGEN.md` + `CLIENTACCEPTATIE-BESLISBOOM.md`. Wacht op "ja op de redline" + één sub-keuze (ISSUE-10 H1: variant A of B).
 
 ### Bekende juridische onzekerheden
 

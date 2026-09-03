@@ -4,6 +4,8 @@
 **Basis:** [`LEGAL_INVENTORY.md`](LEGAL_INVENTORY.md). Reviewregels: [`../REVIEW.md`](../REVIEW.md).
 **Status van dit document:** analyse + tekstvoorstellen. **Er is nog geen enkel juridisch document gewijzigd.** Toepassing (FASE 5) gebeurt pas na akkoord per bevinding — zie "Direct aan te passen" onderaan.
 
+> **Update 2026-09-03 — FASE 5 voorbereid.** Marcel heeft de commerciële keuzes gemaakt (ISSUE-05: cap € 10.000/opdracht + € 10.000/jaar, geen verzekering · ISSUE-03: voorwaardelijke consumentenclausule · ISSUE-07: strakke Transactiewaarde-definitie · ISSUE-09: verrekenbare, begrensde boete · ISSUE-02: geen losse AV-pagina · ISSUE-12: AV-bepaling + adviseur-beslisboom, niet-blokkerend). De volledige nieuwe tekst per document staat in [`FASE5-WIJZIGINGEN.md`](FASE5-WIJZIGINGEN.md); de Wwft-werkinstructie in [`CLIENTACCEPTATIE-BESLISBOOM.md`](CLIENTACCEPTATIE-BESLISBOOM.md). Nog toe te passen op de live bestanden na "ja op de redline". Eén open sub-keuze: ISSUE-10 H1 (voorstel A met € 10.000-bodem, of voorstel B).
+
 Wetsverwijzingen gecontroleerd op 2026-09-03 tegen wetten.overheid.nl (BW Boek 6 titel 5 afd. 3, Boek 7 titel 7; Rv; AVG/UAVG; Wwft). Waar de toepassing casuïstisch is, staat **JURIDISCHE ONZEKERHEID** met uitleg.
 
 ---
