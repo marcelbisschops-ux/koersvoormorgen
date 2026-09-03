@@ -280,8 +280,8 @@ async function main() {
     const VERKOPER_ALLOW = [...KOPER_ALLOW, ...IDENTITEIT, 'id', 'bem_tekst', 'bem_datum', 'bem_getekend', 'bem_doc_id', 'teaser_tekst', 'teaser_status', 'teaser_datum'];
     // Kritiek: deze mogen NOOIT bij de betreffende rol — losse expliciete asserts naast de allow-list.
     // Voor de koper (geen getekende NDA): óók de hele verkoper-identiteit.
-    const KOPER_NOOIT = ['id', 'tussen_code', 'koper_code', ...IDENTITEIT, 'bem_tekst', 'dealvoorstel_tekst', 'verkoopmemorandum_tekst', 'teaser_tekst', 'trajectfee_bedrag', 'gebruiker_id', 'notitie', 'signhost_transactions', 'verkoper_teken', 'koper_teken'];
-    const VERKOPER_NOOIT = ['tussen_code', 'koper_code', 'dealvoorstel_tekst', 'verkoopmemorandum_tekst', 'trajectfee_bedrag', 'gebruiker_id', 'notitie', 'signhost_transactions'];
+    const KOPER_NOOIT = ['id', 'tussen_code', 'koper_code', ...IDENTITEIT, 'bem_tekst', 'dealvoorstel_tekst', 'verkoopmemorandum_tekst', 'teaser_tekst', 'trajectfee_bedrag', 'gebruiker_id', 'notitie', 'signhost_transactions', 'verkoper_teken', 'koper_teken', 'clientacceptatie_getoetst', 'clientacceptatie_door', 'clientacceptatie_datum', 'clientacceptatie_notitie'];
+    const VERKOPER_NOOIT = ['tussen_code', 'koper_code', 'dealvoorstel_tekst', 'verkoopmemorandum_tekst', 'trajectfee_bedrag', 'gebruiker_id', 'notitie', 'signhost_transactions', 'clientacceptatie_getoetst', 'clientacceptatie_door', 'clientacceptatie_datum', 'clientacceptatie_notitie'];
 
     const loginResp = async (code) => {
       const r = await api('POST', '/mna/traject/' + code, { body: { ts: Date.now() } });
