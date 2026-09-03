@@ -868,6 +868,24 @@ function renderBegeleiderDashboard(app){
     html+='</div></div>';
   });
 
+  // Cliëntacceptatie / Wwft (juridische review 3 sep 2026) — de begeleider bevestigt dat hij dit
+  // heeft getoetst (openbare bronnen + bij de cliënt). Niet-blokkerend; wél een bevestigingsvraag
+  // bij het versturen/tekenen van een contract als het (nog) niet is aangevinkt.
+  var caGet=!!(S.traject&&S.traject.clientacceptatie_getoetst);
+  var caDoor=(S.traject&&S.traject.clientacceptatie_door)||'';
+  var caDat=(S.traject&&S.traject.clientacceptatie_datum)||0;
+  html+='<div style="margin-bottom:1rem;padding:.75rem .9rem;border:1px solid '+(caGet?'var(--teal)':'var(--border2)')+';border-radius:var(--r2);background:'+(caGet?'var(--teal-bg)':'var(--card)')+'">'
+    +'<label style="display:flex;gap:9px;align-items:flex-start;cursor:pointer;font-size:12.5px;color:var(--sub);line-height:1.5">'
+    +'<input type="checkbox" id="bg-ca-chk" '+(caGet?'checked':'')+' style="margin-top:2px;flex:none">'
+    +'<span><strong>Cliëntacceptatie getoetst</strong> &mdash; ik heb de betrokken partijen getoetst via openbare bronnen (KvK, UBO-register, sanctielijsten, PEP) &eacute;n bij de cli&euml;nt zelf (identiteit, structuur, doel, herkomst van middelen). '
+    +(caGet?('<span style="color:var(--teal-dim)">&#10003; '+esc(caDoor||'')+(caDat?(' &middot; '+formatDate(caDat)):'')+'</span>'):'<span style="color:var(--muted)">Nog niet bevestigd.</span>')+'</span></label>'
+    +'<div id="bg-ca-detail" style="display:'+(caGet?'none':'block')+';margin-top:.6rem;padding-left:26px">'
+    +'<input type="text" id="bg-ca-door" value="'+esc(caDoor||(S.traject&&S.traject.begeleider_naam)||'')+'" placeholder="Uw naam" style="width:100%;max-width:320px;background:var(--panel);border:1px solid var(--border2);border-radius:var(--r);padding:6px 9px;font-size:12px;color:var(--sub);margin-bottom:6px">'
+    +'<textarea id="bg-ca-notitie" placeholder="Opmerkingen / openstaande punten (optioneel)" rows="2" style="width:100%;background:var(--panel);border:1px solid var(--border2);border-radius:var(--r);padding:6px 9px;font-size:12px;color:var(--sub);resize:vertical;margin-bottom:6px">'+esc((S.traject&&S.traject.clientacceptatie_notitie)||'')+'</textarea>'
+    +'<button id="bg-ca-opslaan" class="btn btn-sm" style="font-size:11px">Bevestigen &amp; opslaan</button>'
+    +' <a href="https://koersvoormorgen.nl/" onclick="return false" style="font-size:10px;color:var(--muted)">zie de cli&euml;ntacceptatie-beslisboom</a>'
+    +'</div></div>';
+
   // Documenten
   html+='<div style="margin-bottom:1rem">'
     +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">'
@@ -886,6 +904,27 @@ function renderBegeleiderDashboard(app){
 
   laadRisicoBadges();
   laadDocFlowStatus();
+  (function(){
+    var chk=document.getElementById('bg-ca-chk'); var det=document.getElementById('bg-ca-detail');
+    var btn=document.getElementById('bg-ca-opslaan');
+    if(chk)chk.addEventListener('change',function(){ if(det)det.style.display=chk.checked?'block':'none'; });
+    if(btn)btn.addEventListener('click',async function(){
+      btn.disabled=true;btn.textContent='Opslaan...';
+      var payload={code:S.code,getoetst:!!(chk&&chk.checked),door:(document.getElementById('bg-ca-door')||{}).value||'',notitie:(document.getElementById('bg-ca-notitie')||{}).value||''};
+      try{
+        var r=await fetch(WORKER+'/mna/clientacceptatie',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S.code},body:JSON.stringify(payload)});
+        var d=await r.json();
+        if(r.ok&&d.ok){
+          S.traject.clientacceptatie_getoetst=d.getoetst?1:0;
+          S.traject.clientacceptatie_door=payload.door; S.traject.clientacceptatie_notitie=payload.notitie;
+          S.traject.clientacceptatie_datum=d.getoetst?Date.now():0;
+          if(det)det.style.display=d.getoetst?'none':'block';
+          toast(d.getoetst?'Cliëntacceptatie bevestigd — zichtbaar bij volgende keer openen':'Opgeslagen','ok');
+          btn.disabled=false;btn.textContent='Bevestigen & opslaan';
+        } else { toast('Fout: '+(d.error||'onbekend'),'err'); btn.disabled=false;btn.textContent='Bevestigen & opslaan'; }
+      }catch(e){ toast('Netwerkfout bij opslaan.','err'); btn.disabled=false;btn.textContent='Bevestigen & opslaan'; }
+    });
+  })();
 
   // Fase accordeon
   app.querySelectorAll('.bg-fase-hdr').forEach(function(hdr){
@@ -1258,6 +1297,7 @@ function renderBegeleiderDashboard(app){
       if(type==='loi')secAuditLog('interne_goedkeuring',{document_type:'loi',verzendkanaal:'email',goedgekeurd_door:(bgGoedkeuringCtrl?bgGoedkeuringCtrl.getNaam():'')});
       var vt=document.getElementById('bg-doc-tekst').value;
       var vtPh=resterendePlaceholders(vt);
+      if(!(S.traject&&S.traject.clientacceptatie_getoetst) && !confirm('Cliëntacceptatie is voor dit traject nog niet als getoetst gemarkeerd (Wwft / AV art. 4). Toch versturen?')){ ebtn.disabled=false; ebtn.textContent='\u2709 Verstuur naar partijen'; return; }
       if(vtPh.length && !confirm('Let op: er staan nog '+vtPh.length+' oningevulde plek'+(vtPh.length===1?'':'ken')+' in het document:\n\n'+vtPh.slice(0,12).join('\n')+'\n\nToch versturen naar partijen?')){ ebtn.disabled=false; ebtn.textContent='\u2709 Verstuur naar partijen'; return; }
       // BEM naar opdrachtgever: koper als koper opdrachtgever is, anders verkoper
       var toList;
@@ -1353,6 +1393,7 @@ function renderBegeleiderDashboard(app){
         var errEl=document.getElementById('bg-sh-err');
         if(!email){errEl.style.display='block';errEl.textContent='E-mail verplicht';btn.disabled=false;btn.textContent='Verstuur';return;}
         var shPh=resterendePlaceholders(tekst);
+        if(!(S.traject&&S.traject.clientacceptatie_getoetst) && !confirm('Cliëntacceptatie is voor dit traject nog niet als getoetst gemarkeerd (Wwft / AV art. 4). Toch via Signhost versturen?')){ btn.disabled=false; btn.textContent='\u270e Verstuur via Signhost'; return; }
         if(shPh.length && !confirm('Let op: er staan nog '+shPh.length+' oningevulde plek'+(shPh.length===1?'':'ken')+' in het document:\n\n'+shPh.slice(0,12).join('\n')+'\n\nToch via Signhost versturen?')){ btn.disabled=false; btn.textContent='\u270e Verstuur via Signhost'; return; }
         if(type==='loi')secAuditLog('interne_goedkeuring',{document_type:'loi',verzendkanaal:'signhost',goedgekeurd_door:(bgGoedkeuringCtrl?bgGoedkeuringCtrl.getNaam():'')});
         var r=await fetch(WORKER+'/mna/signhost/stuur',{method:'POST',
