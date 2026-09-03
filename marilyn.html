@@ -3889,9 +3889,10 @@ function veiligheidGauge(waarde, label, subtekst) {
 function auditVerzoekStatusTekst(verzoek) {
   if (!verzoek) return 'Nog geen aanvraag ingediend.';
   var tijd = function(ms) { return new Date(ms).toLocaleString('nl-NL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }); };
-  if (verzoek.status === 'open') return 'Aanvraag ingediend om ' + tijd(verzoek.aangevraagd_op) + ' — wacht tot de routine dit oppikt (elke ~15 min).';
+  if (verzoek.status === 'open') return 'Aanvraag ingediend om ' + tijd(verzoek.aangevraagd_op) + ' — wordt de eerstvolgende ochtend (rond 06:00) opgepakt.';
   if (verzoek.status === 'bezig') return 'Routine is bezig sinds ' + tijd(verzoek.opgehaald_op) + '...';
   if (verzoek.status === 'klaar') return 'Laatste aanvraag afgerond om ' + tijd(verzoek.afgerond_op) + '.';
+  if (verzoek.status === 'afgebroken') return '⚠ Vorige routine afgebroken zonder resultaat (' + tijd(verzoek.afgerond_op || verzoek.opgehaald_op) + '). Druk op "Draai diepe audit nu" om opnieuw aan te vragen.';
   return '';
 }
 
@@ -4074,7 +4075,7 @@ async function renderVeiligheidTab(el) {
         + '<button class="btn" id="btn-audit-aanvragen" style="font-size:12px;padding:8px 16px">&#9889; Draai diepe audit nu (frontend + backend)</button>'
         + '<span id="audit-verzoek-status" style="font-size:11px;color:var(--muted)">' + auditVerzoekStatusTekst(ov.audit_verzoek) + '</span>'
         + '</div>'
-        + '<div style="font-size:10px;color:var(--muted);margin-top:6px">Zet een aanvraag klaar die een cloud-routine binnen ~15 min oppikt en zelf uitvoert (kost AI-tokens — max 1 tegelijk, min. 10 min tussen aanvragen).</div>'
+        + '<div style="font-size:10px;color:var(--muted);margin-top:6px">Zet een aanvraag klaar die de dagelijkse routine (rond 06:00) oppikt: bestaande check-scripts + diff-review van recente commits + score + rapport-artifact (kost AI-tokens — max 1 tegelijk, min. 10 min tussen aanvragen). De volledige AUDIT-STANDAARD.md-ronde blijft een begeleide sessie / <code>/code-review ultra</code>.</div>'
         + '</div></div>';
 
       html += '<div class="table-wrap" style="margin-bottom:1.5rem"><div class="table-hdr"><div class="table-title">Open bevindingen (' + open.length + ')</div></div>';
