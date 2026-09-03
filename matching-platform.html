@@ -270,6 +270,7 @@ function toonInteresseFormulier(id){
     +'<label for="int-bericht-'+id+'" class="sr-only">Toelichting (optioneel)</label>'
     +'<textarea id="int-bericht-'+id+'" class="int-bericht" placeholder="Toelichting (optioneel)" rows="2" style="width:100%;margin-bottom:8px;padding:8px 10px;font-size:13px;border:1px solid var(--border2);border-radius:6px;background:var(--panel);color:var(--sub);font-family:inherit;resize:vertical"></textarea>'
     +'<div class="int-err" style="display:none;color:var(--red);font-size:12px;margin-bottom:6px"></div>'
+    +'<label style="display:flex;gap:7px;align-items:flex-start;font-size:11px;color:var(--muted);line-height:1.5;margin-bottom:8px;cursor:pointer"><input type="checkbox" class="int-akkoord" style="margin-top:2px;flex:none"><span>Ik ga akkoord met de <a href="voorwaarden.html" target="_blank" style="color:var(--teal)">Gebruiksvoorwaarden</a>. Ik begrijp dat aanmelding geen recht geeft op contact of op een transactie, dat de anonimiteit van de verkoper niet wordt gegarandeerd, en dat ik informatie uit de anonieme profielschets vertrouwelijk behandel.</span></label>'
     +'<button class="btn-verstuur-interesse" data-id="'+id+'" style="width:100%;background:var(--teal);color:#fff;border:none;padding:9px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer">Aanmelden</button>';
   blok.querySelector('.btn-verstuur-interesse').addEventListener('click',function(){verstuurInteresse(id);});
 }
@@ -282,10 +283,12 @@ async function verstuurInteresse(id){
   var errEl=blok.querySelector('.int-err');
   errEl.style.display='none';
   if(!naam||!email){errEl.textContent='Naam en e-mail zijn verplicht.';errEl.style.display='block';return;}
+  var akkoord=blok.querySelector('.int-akkoord')&&blok.querySelector('.int-akkoord').checked;
+  if(!akkoord){errEl.textContent='U dient akkoord te gaan met de voorwaarden.';errEl.style.display='block';return;}
   var btn=blok.querySelector('.btn-verstuur-interesse');
   btn.disabled=true;btn.textContent='Versturen...';
   try{
-    var r=await fetch(WORKER+'/mna/matching/interesse',{method:'POST',headers:Object.assign({'Content-Type':'application/json'},matchingAuthHeader()),body:JSON.stringify({traject_id:id,naam:naam,email:email,bericht:bericht})});
+    var r=await fetch(WORKER+'/mna/matching/interesse',{method:'POST',headers:Object.assign({'Content-Type':'application/json'},matchingAuthHeader()),body:JSON.stringify({traject_id:id,naam:naam,email:email,bericht:bericht,akkoord:true})});
     var d=await r.json();
     if(d.ok){
       blok.innerHTML='<div style="color:var(--teal);font-size:13px;font-weight:600">&#10003; Aangemeld — u ontvangt per e-mail uw persoonlijke toegang.</div>';
