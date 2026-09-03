@@ -49,7 +49,13 @@ Reviewregels: [`../REVIEW.md`](../REVIEW.md) · Inventaris: [`LEGAL_INVENTORY.md
 ### Openstaande juridische aandachtspunten
 
 Zie `LEGAL_ISSUES.md` — 25 bevindingen + 12 cross-document consistentiepunten.
-Stand 2026-09-03: **0 toegepast op live bestanden.** FASE 5 voorbereid: commerciële keuzes gemaakt, volledige nieuwe tekst uitgewerkt in `FASE5-WIJZIGINGEN.md` + `CLIENTACCEPTATIE-BESLISBOOM.md`. Wacht op "ja op de redline" + één sub-keuze (ISSUE-10 H1: variant A of B).
+Stand 2026-09-03 — **FASE 5 grotendeels toegepast en live (staging + productie)**:
+- Backend commit `e1e4172`: AV herschreven v1.2 (12 art, cap € 10.000/opdracht + € 10.000/jaar, art. 4 cliëntacceptatie, art. 5 belangenconflict, art. 11 consument), adviseur-GV v2.0 (art. 6 vaste € 10.000-cap + samenloop, meldplicht via 6:101 BW), BF_TEMPLATES gehard (embedded AV weg, weerlegbaar vermoeden, potestatief-fix, NDA-boete, LOI-instructie eruit), VOK-bewijstekst gesynct met v1.5.
+- Frontend commit `bc48bfc`: `voorwaarden.html` v2.3, `privacy.html` v1.9 (Google Fonts-doorgifte), `lead-aandragen.html` aanbrengvoorwaarden, `platform/beveiliging-en-gegevens.html` ISO/SOC → Cloudflare.
+- Prod-verificatie: `/gebruiker/voorwaarden` → AV 1.2 / GV 2.0, 12 artikelen, € 10.000-cap, 1× AV-kop; `/mna/template/loi` → instructie weg + `{{KOSTEN_REGELING}}`.
+- **Data-actie:** 2 in marilyn opgeslagen platform-templates (`mna_templates`: `bem_verk` 24 aug, `bem_koper` 16 aug) bevatten een oudere, afwijkende sjabloonversie mét ingebedde AV → de ingebedde AV is uit beide rijen gestript (double-AV-bug gedicht). **Openstaand:** die 2 rijen hebben nog de oude wording ("onweerlegbaar", oude voorfasevergoeding-trigger); merge met de FASE-5-fixes vereist Marcels keuze (rij verwijderen → code-default met alle fixes, óf de rij behouden en handmatig bijwerken). `bem_opvolging` heeft geen DB-rij → volledig gefixt via code.
+
+**Niet toegepast (wacht/aparte taak):** ISSUE-21/22 (matching/meekijker — FASE 2 vervolg), ISSUE-25 (`bgDoc()` placeholder-check), ISSUE-11 fonts self-hosten, ISSUE-01 E2 (VOK single-source + tekst opslaan), Wwft-kwalificatie JUR-1 (specialistische toets), `algemene-voorwaarden.html` (bewust niet — keuze Marcel).
 
 ### Bekende juridische onzekerheden
 
