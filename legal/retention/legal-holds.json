@@ -1,0 +1,19 @@
+{
+  "_meta": {
+    "doel": "Actieve legal holds: informatieobjecten of hele categorieën/trajecten die NIET verwijderd mogen worden ongeacht de berekende bewaartermijn (lopend geschil, toezichtsonderzoek, bewijsbelang, expliciet bewaarbesluit).",
+    "laatst_bijgewerkt": "2026-09-03",
+    "toevoegregel": "Voeg een hold toe zodra een geschil, klacht, toezichtsvraag of bewaarbesluit ontstaat. Verwijder een hold pas na een expliciet besluit dat hij niet meer nodig is (leg dat vast in 'opgeheven')."
+  },
+  "holds": [
+    {
+      "id": "HOLD-mna_audit-P4",
+      "scope": "categorie",
+      "target": "AUDIT_TRAIL",
+      "reden": "P4-besluit 25 juli 2026: mna_audit en gerelateerde logs worden bewust bewaard en buiten de verwijder-cascades gehouden (aantoonbaarheid AVG-naleving, beveiliging, geschillen).",
+      "ingesteld_op": "2026-07-25",
+      "ingesteld_door": "Marcel Bisschops (P4-besluit)",
+      "review_datum": "2027-07-25",
+      "opgeheven": null
+    }
+  ]
+}

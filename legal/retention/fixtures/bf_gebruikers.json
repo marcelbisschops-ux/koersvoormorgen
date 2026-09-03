@@ -1,0 +1,12 @@
+[
+ {
+  "id": "DEMO-ADV",
+  "email": "demo-adviseur@example.test",
+  "bedrijf": "Demo Advies BV",
+  "gv_versie": "2.0",
+  "gv_datum": 1786870800000,
+  "created_at": 1786870800000,
+  "last_login": 1788253200000,
+  "status": "actief"
+ }
+]

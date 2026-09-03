@@ -1,0 +1,35 @@
+{
+  "_meta": {
+    "doel": "Overeenkomstenregister. Deels HANDMATIG onderhouden (afwijkende afspraken, addenda, verlengingen, beëindigingen die niet uit de data blijken), deels AFGELEID door de engine uit de D1-data. Bij het draaien mergt de engine dit register met de afgeleide contracten (sleutel = overeenkomst_id).",
+    "laatst_bijgewerkt": "2026-09-03",
+    "afgeleide_contracten": {
+      "bemiddelingsovereenkomst": "1 per mna_traject. AV-versie = de op mna_trajecten.bem_datum (of created_at) geldende ALGEMENE_VOORWAARDEN_BF_MA-versie. Begindatum = bem_datum||created_at. Einddatum = afgesloten_op (of null = lopend).",
+      "adviseur_platformovereenkomst": "1 per bf_gebruikers. GV-versie = bf_gebruikers.gv_versie (met gv_datum); AV-BF-versie n.v.t. (platform-only). Begindatum = gv_datum||created_at. Einddatum = null tenzij status='inactief'/'beeindigd'.",
+      "verwerkersovereenkomst": "1 per mna_vok-rij (of per adviseur, laatste acceptatie). Versie = mna_vok.versie (met datum). Begindatum = mna_vok.datum. Einddatum = einde relatie met de adviseur."
+    }
+  },
+
+  "handmatige_overrides": [],
+
+  "voorbeeld_override_formaat": {
+    "overeenkomst_id": "bem:<traject_id>",
+    "type": "bemiddelingsovereenkomst",
+    "partij": "<naam opdrachtgever>",
+    "begindatum": "2024-06-01",
+    "av_versie_override": "1.2",
+    "av_versie_override_reden": "Addendum d.d. 2026-09-10: partijen zijn overeengekomen dat AV v1.2 van toepassing wordt op de lopende opdracht.",
+    "einddatum_override": "2026-06-01",
+    "einddatum_override_reden": "Opdracht schriftelijk beëindigd per e-mail 2026-06-01; niet als afgesloten_op in het systeem vastgelegd.",
+    "addenda": [
+      { "datum": "2025-01-15", "omschrijving": "Uitbreiding scope met buy-side zoekopdracht", "raakt_bewaartermijn": false }
+    ],
+    "verlengingen": [
+      { "datum": "2025-06-01", "nieuwe_einddatum": "2026-06-01" }
+    ],
+    "afwijkende_bewaarafspraak": {
+      "categorie": "MNA_DOCUMENT",
+      "termijn": { "waarde": 3, "eenheid": "maanden" },
+      "reden": "Cliënt heeft schriftelijk verzocht de documenten 3 maanden na afsluiting beschikbaar te houden i.p.v. 14 dagen; vastgelegd in het addendum."
+    }
+  }
+}

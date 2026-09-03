@@ -1,0 +1,6 @@
+[
+ { "id": "DEMO-D1", "traject_id": "DEMO-AFGEROND", "fase_id": "1", "bestand_naam": "NDA getekend.pdf", "uploaded_at": 1786870800000, "r2_key": "demo/DEMO-D1" },
+ { "id": "DEMO-D2", "traject_id": "DEMO-AFGEROND", "fase_id": "3", "bestand_naam": "jaarrekening 2025 financieel.pdf", "uploaded_at": 1786870800000, "r2_key": "demo/DEMO-D2" },
+ { "id": "DEMO-D3", "traject_id": "DEMO-LOPEND", "fase_id": "2", "bestand_naam": "due-diligence memo.pdf", "uploaded_at": 1787216400000, "r2_key": "demo/DEMO-D3" },
+ { "id": "DEMO-D4", "traject_id": "TRAJECT-BESTAAT-NIET", "fase_id": "2", "bestand_naam": "wees-document.pdf", "uploaded_at": 1787043600000, "r2_key": "demo/DEMO-D4" }
+]

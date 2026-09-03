@@ -1,0 +1,185 @@
+{
+  "_meta": {
+    "doel": "De contractuele bewaarregels per retention-rules-sleutel (verwezen vanuit categories.json). Elke regel verwijst naar de bron (voorwaardenversie + clausule) en geeft een termijn + startgebeurtenis. GEEN hardcoded termijn zonder bron.",
+    "laatst_bijgewerkt": "2026-09-03",
+    "termijn_eenheden": "dagen | maanden | jaren; start = welke gebeurtenis de klok start",
+    "toepassing": "De engine leest de bewaartermijn primair uit de op de contractdatum geldende voorwaardenversie (av-versions.json → bewaarbepalingen). Deze regels zijn de genormaliseerde, per-categorie samenvatting daarvan + het startmoment. Wanneer av-versions en deze regel afwijken → LEGAL_RETENTION_CONFLICT.",
+    "versie_invariante_termijn_toelichting": "true = de bewaartermijn van deze regel is gelijk in alle tot nu toe geldende voorwaardenversies; een onbekende voorwaardenversie blokkeert de berekening dan NIET. Zodra een nieuwe versie de termijn wijzigt: zet deze op false voor die regel en voeg de per-versie-termijn toe aan av-versions.json."
+  },
+  "regels": {
+    "MNA_DOCUMENT": {
+      "omschrijving": "Geüploade en gegenereerde documenten en overige trajectgegevens in een M&A-traject",
+      "bron": "GEBRUIKSVOORWAARDEN_VERKOPER_KOPER art. 4 / GEBRUIKSVOORWAARDEN_ADVISEUR art. 3 / VERWERKERSOVEREENKOMST art. 5 / PRIVACYVERKLARING §7",
+      "termijn": {
+        "waarde": 14,
+        "eenheid": "dagen"
+      },
+      "type": "maximum_verwijdertermijn",
+      "type_toelichting": "De platformvoorwaarden bevatten een uitdrukkelijke TOEZEGGING om te verwijderen (14 dagen na afsluiting). Een 'bewaren toegestaan'-grondslag (verjaring/claimverweer) mag deze toezegging NIET oprekken; alleen een hardere wettelijke minimum-bewaarplicht (Wwft-cliëntacceptatie, fiscaal) gaat vóór.",
+      "start": "afsluiting van het traject (mna_trajecten.afgesloten_op)",
+      "na_afloop": "definitief verwijderd van het platform; de adviseur archiveert zelf conform zijn eigen bewaarplicht",
+      "wettelijke_overrides_mogelijk": [
+        "WWFT_CLIENTENONDERZOEK (alleen voor identificatie-/cliëntacceptatiestukken)"
+      ],
+      "opmerking": "De platform-bewaartermijn is bewust kort. Fiscale/Wwft-bewaarplichten rusten op de adviseur als verwerkingsverantwoordelijke, niet op het platform — behalve het cliëntacceptatiedossier (aparte regel).",
+      "versie_invariante_termijn": true
+    },
+    "MNA_TRAJECTMETADATA": {
+      "omschrijving": "Beperkte trajectmetadata: trajectnaam, sector, type, aanmaak- en afsluitdatum, namen van betrokken partijen",
+      "bron": "GEBRUIKSVOORWAARDEN_VERKOPER_KOPER art. 4 ('langer, t.b.v. administratie') / VERWERKERSOVEREENKOMST art. 5 (archiefregel) / PRIVACYVERKLARING §7",
+      "termijn": {
+        "waarde": 5,
+        "eenheid": "jaren"
+      },
+      "termijn_grondslag": "Geen harde contractuele termijn; de engine gebruikt de civiele verjaringstermijn (art. 3:307/3:310 BW, 5 jaar na afsluiting) als de bovengrens waarbinnen bewaren gerechtvaardigd is voor geschillenbeslechting.",
+      "start": "afsluiting van het traject",
+      "na_afloop": "DELETE_ELIGIBLE tenzij een ander belang (fiscaal, Wwft, legal hold) nog loopt",
+      "versie_invariante_termijn": true
+    },
+    "VOK_ACCEPTATIE_BEWIJS": {
+      "omschrijving": "Bewijs van acceptatie van de verwerkersovereenkomst door een adviseur (mna_vok: naam, datum, IP, versie, tekst)",
+      "bron": "AVG art. 28 lid 9 (schriftelijke verwerkersovereenkomst) + AV_VERVALTERMIJN_CLAIMS + CIVIELE_VERJARING_ALGEMEEN",
+      "termijn": {
+        "waarde": 5,
+        "eenheid": "jaren"
+      },
+      "start": "einde van de zakelijke relatie met de adviseur (bf_gebruikers laatste activiteit) of afsluiting van het laatste traject onder die VOK",
+      "na_afloop": "DELETE_ELIGIBLE",
+      "opmerking": "Bewijs dat er een geldige art. 28-grondslag was; relevant zolang aanspraken kunnen worden ingesteld. Bevat een IP-adres (persoonsgegeven) → na afloop verwijderen.",
+      "versie_invariante_termijn": true
+    },
+    "WWFT_CLIENTACCEPTATIEDOSSIER": {
+      "omschrijving": "Cliëntacceptatie-/identificatiedossier onder de Wwft (mna_trajecten.clientacceptatie_getoetst/_door/_datum/_notitie; bijbehorende KvK-/UBO-/sanctiecheck-vastlegging)",
+      "bron": "Wwft art. 33 (via legal-rules WWFT_CLIENTENONDERZOEK); AV BF art. 4 (v1.2)",
+      "termijn": {
+        "waarde": 5,
+        "eenheid": "jaren"
+      },
+      "start": "beëindiging van de zakelijke relatie (afsluiting van het traject)",
+      "type": "minimum_bewaarplicht",
+      "na_afloop": "DELETE_ELIGIBLE",
+      "voorwaarde": "Aanname sinds 3 sep 2026: BF is Wwft-instelling. Definitieve kwalificatie JUR-1 wordt specialistisch bevestigd; tot dan grondslag = 'aanname'.",
+      "versie_invariante_termijn": true
+    },
+    "ADVISEUR_ACCOUNT": {
+      "omschrijving": "Adviseursaccount (bf_gebruikers): naam, e-mail, bedrijf, geaccepteerde AV/GV-versie + datum, modules, sessies",
+      "bron": "GEBRUIKSVOORWAARDEN_ADVISEUR art. 7 (Beëindiging) + FINANCIELE_ADMINISTRATIE (voor de facturatiekoppeling) + CIVIELE_VERJARING_ALGEMEEN",
+      "termijn": {
+        "waarde": 7,
+        "eenheid": "jaren"
+      },
+      "termijn_grondslag": "De accountgegevens zijn onlosmakelijk verbonden met de facturatie (platform_fee_events → fiscale bewaarplicht 7 jaar). Na 7 jaar zonder facturatiegrondslag → DELETE_ELIGIBLE.",
+      "start": "beëindiging van het account / laatste login + inactiviteit",
+      "na_afloop": "DELETE_ELIGIBLE (persoonsgegevens); geanonimiseerde facturatiehistorie mag blijven",
+      "versie_invariante_termijn": true
+    },
+    "BEDRIJFSSCAN": {
+      "omschrijving": "Bedrijfsscan- (en VerhuisScan-) gegevens: e-mail, bedrijfsnaam, regio, FTE, omzet, EBITDA, scanantwoorden en -scores, rapporttekst",
+      "bron": "PRIVACYVERKLARING §2/§7",
+      "termijn": {
+        "waarde": 12,
+        "eenheid": "maanden"
+      },
+      "start": "indiening / created_at",
+      "type": "maximum_noodzakelijkheid",
+      "na_afloop": "DELETE_ELIGIBLE (automatische verwijdering conform de verklaring)",
+      "versie_invariante_termijn": true
+    },
+    "RAPPORT_USAGE": {
+      "omschrijving": "Rapport-gebruik: e-mailadres, IP-adres, tijdstempel (misbruikbeperking scan)",
+      "bron": "PRIVACYVERKLARING §2/§7",
+      "termijn": {
+        "waarde": 12,
+        "eenheid": "maanden"
+      },
+      "start": "created_at",
+      "na_afloop": "DELETE_ELIGIBLE",
+      "versie_invariante_termijn": true
+    },
+    "TERUGBELVERZOEK": {
+      "omschrijving": "Terugbelverzoek: naam, telefoon, e-mail, gewenste beltijd",
+      "bron": "PRIVACYVERKLARING §2/§7",
+      "termijn": {
+        "waarde": 6,
+        "eenheid": "maanden"
+      },
+      "start": "afhandeling / created_at",
+      "na_afloop": "DELETE_ELIGIBLE",
+      "versie_invariante_termijn": true
+    },
+    "CONTACT_BERICHT": {
+      "omschrijving": "Contactformulier: naam, e-mail, organisatie, onderwerp, bericht, IP",
+      "bron": "PRIVACYVERKLARING (afgeleid van de terugbelverzoek-termijn; op contact.html staat een verwijzing naar de privacyverklaring)",
+      "termijn": {
+        "waarde": 6,
+        "eenheid": "maanden"
+      },
+      "termijn_herkomst": "afgeleid",
+      "start": "created_at",
+      "na_afloop": "DELETE_ELIGIBLE",
+      "signaal": "De privacyverklaring noemt geen expliciete termijn voor het contactformulier; dit is een afgeleide toepassing van de 6-maanden-terugbeltermijn. Overweeg in LEGAL_REVIEW een expliciete regel op te nemen.",
+      "versie_invariante_termijn": true
+    },
+    "LEAD_AANDRAGEN": {
+      "omschrijving": "Aangedragen overname / lead: naam, organisatie, e-mail, telefoon van de aandrager + naam aangedragen onderneming + toelichting",
+      "bron": "PRIVACYVERKLARING §2/§7",
+      "termijn": {
+        "waarde": 12,
+        "eenheid": "maanden"
+      },
+      "start": "created_at",
+      "tenzij": "de lead leidt tot een M&A-traject → dan geldt de trajecttermijn (via mna_leads.traject_id)",
+      "na_afloop": "DELETE_ELIGIBLE",
+      "versie_invariante_termijn": true
+    },
+    "PROEFACCOUNT_AANVRAAG": {
+      "omschrijving": "Proefaccount-aanvraag adviseur: naam, kantoor, e-mail, telefoon, KvK, motivatie, IP",
+      "bron": "PRIVACYVERKLARING §2/§7",
+      "termijn": {
+        "waarde": 12,
+        "eenheid": "maanden"
+      },
+      "start": "created_at",
+      "tenzij": "leidt tot een account → bewaartermijnen van dat account; bij niet-omgezet proefaccount worden de aanvraaggegevens geanonimiseerd",
+      "na_afloop": "DELETE_ELIGIBLE / ANONIMISEREN",
+      "versie_invariante_termijn": true
+    },
+    "FINANCIELE_ADMINISTRATIE": {
+      "omschrijving": "Fee-events, factuurreeks, financiële administratie",
+      "bron": "FISCALE_BEWAARPLICHT (art. 52 AWR / art. 2:10 BW)",
+      "termijn": {
+        "waarde": 7,
+        "eenheid": "jaren"
+      },
+      "start": "einde van het boekjaar waarop het stuk betrekking heeft",
+      "type": "minimum_bewaarplicht",
+      "na_afloop": "DELETE_ELIGIBLE (bevat doorgaans geen bijzondere persoonsgegevens)",
+      "versie_invariante_termijn": true
+    },
+    "AUDIT_TRAIL": {
+      "omschrijving": "Audit- en beveiligingslogs, wijzigingenlog, meekijker-log, AVG-verwijderlog",
+      "bron": "P4-besluit 25 juli 2026 (mna_audit bewust bewaard, buiten de verwijder-cascades) + gerechtvaardigd belang (beveiliging, geschillen, aantoonbaarheid AVG-naleving)",
+      "termijn": {
+        "waarde": 7,
+        "eenheid": "jaren"
+      },
+      "start": "loggebeurtenis (ts/created_at)",
+      "type": "bewaren_toegestaan_grondslag",
+      "na_afloop": "DELETE_ELIGIBLE; overweeg pseudonimisering van IP-adressen na 1 jaar",
+      "legal_hold": true,
+      "legal_hold_reden": "mna_audit is expliciet als bewust-bewaard aangemerkt (P4-besluit) — behandeld als staande legal hold tot dat besluit wordt herzien.",
+      "versie_invariante_termijn": true
+    },
+    "AD_HOC_BACKUP_TABEL": {
+      "omschrijving": "Eenmalige backup-kopieën van tabellen in de live DB (suffix _backup_20260726)",
+      "bron": "PRIVACYVERKLARING §7 (backups uiterlijk 60 dagen) — deze staan echter in de productie-DB, niet in het losse backup-systeem",
+      "termijn": {
+        "waarde": 60,
+        "eenheid": "dagen"
+      },
+      "start": "2026-07-26 (aanmaakdatum uit de tabelnaam)",
+      "na_afloop": "DELETE_ELIGIBLE — ruim verlopen; verwijderen ná REVIEW dat de originele tabellen compleet en intact zijn (de engine zet deze standaard op REVIEW_REQUIRED met een concrete aanbeveling, niet direct DELETE_ELIGIBLE).",
+      "versie_invariante_termijn": true
+    }
+  }
+}

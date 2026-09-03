@@ -1,0 +1,116 @@
+{
+  "_meta": {
+    "doel": "Versiehistorie van de algemene/gebruiksvoorwaarden en verwante juridische documenten, machineleesbaar voor de retention-engine. Ingangsdata deels gereconstrueerd uit git-historie (git log --follow op het bronbestand), deels uit legal/LEGAL_REVIEW.md.",
+    "laatst_bijgewerkt": "2026-09-03",
+    "bijwerkregel": "Bij een nieuwe of gewijzigde voorwaardenversie: nieuw record toevoegen met ingangsdatum = commitdatum, einddatum van de vorige versie = dag vóór de nieuwe ingangsdatum, en de bewaarbepalingen expliciet overnemen. Verlaag nooit een 'einddatum: null' naar een datum zonder de contractuele context te onderzoeken (een oudere versie kan nog gelden voor lopende overeenkomsten die niet onder een 'latere versie geldt'-beding vallen).",
+    "hash_toelichting": "hash = sha256 van de canonieke tekst van die versie; leeg wanneer niet vastgelegd. Bereken met legal/retention/tools/hash-doc.mjs.",
+    "geen_versie_voor_datum_is_anomalie_toelichting": "true = er kan geen enkele overeenkomst van dit type bestaan vóór de eerste vastgelegde versie, want de dienst zelf bestond toen nog niet (bv. het M&A-platform startte 2026-08-16). Een contractdatum daarvóór is dan een data-integriteitsfout → de engine zet het object op REVIEW_REQUIRED, óók als de bewaartermijn versie-invariant is. false = de dienst bestond al langer en oudere voorwaardenversies zijn alleen niet apart gecatalogiseerd; de engine mag dan terugvallen op de (versie-invariante) termijn."
+  },
+
+  "documenten": {
+    "GEBRUIKSVOORWAARDEN_VERKOPER_KOPER": {
+      "omschrijving": "Gebruiksvoorwaarden platform voor verkoper/koper/meekijker (voorwaarden.html)",
+      "bron_bestand": "voorwaarden.html",
+      "toepassingsgebied": ["mna_traject_partij_verkoper", "mna_traject_partij_koper", "mna_traject_meekijker"],
+      "geen_versie_voor_datum_is_anomalie": true,
+      "latere_versie_geldt_beding": true,
+      "latere_versie_geldt_grondslag": "voorwaarden.html art. 7 (Wijzigingen): 'De meest actuele versie staat altijd op koersvoormorgen.nl/voorwaarden.html' — de meest recente versie geldt voor lopend gebruik. Voor de retentieberekening betekent dit: de op de sluitdatum van het traject geldende versie is bepalend.",
+      "versies": [
+        { "versie": "1.0", "ingangsdatum": "2026-08-16", "einddatum": "2026-08-16", "hash": "", "bewaarbepalingen": { "mna_documenten_na_afsluiting_dagen": 14, "trajectmetadata": "langer, t.b.v. administratie", "clausule": "art. 4" }, "overgangsbepalingen": null },
+        { "versie": "2.0", "ingangsdatum": "2026-08-17", "einddatum": "2026-08-25", "hash": "", "bewaarbepalingen": { "mna_documenten_na_afsluiting_dagen": 14, "trajectmetadata": "langer, t.b.v. administratie", "clausule": "art. 4" }, "overgangsbepalingen": null },
+        { "versie": "2.1", "ingangsdatum": "2026-08-26", "einddatum": "2026-09-01", "hash": "", "bewaarbepalingen": { "mna_documenten_na_afsluiting_dagen": 14, "trajectmetadata": "langer, t.b.v. administratie", "clausule": "art. 4" }, "overgangsbepalingen": null },
+        { "versie": "2.2", "ingangsdatum": "2026-09-02", "einddatum": "2026-09-02", "hash": "", "bewaarbepalingen": { "mna_documenten_na_afsluiting_dagen": 14, "trajectmetadata": "langer, t.b.v. administratie", "clausule": "art. 4" }, "overgangsbepalingen": null },
+        { "versie": "2.3", "ingangsdatum": "2026-09-03", "einddatum": null, "hash": "", "bewaarbepalingen": { "mna_documenten_na_afsluiting_dagen": 14, "trajectmetadata": "langer, t.b.v. administratie", "clausule": "art. 4" }, "overgangsbepalingen": "art. 2: bij BF als adviseur gelden daarnaast de Algemene Voorwaarden BF, als bijlage bij de opdracht." }
+      ]
+    },
+
+    "GEBRUIKSVOORWAARDEN_ADVISEUR": {
+      "omschrijving": "Gebruiksvoorwaarden platform voor adviseurs (GEBRUIKSVOORWAARDEN_TEKST in de backend, GV_VERSIE)",
+      "bron_bestand": "koersvoormorgen-backend/backend/cloudflare-worker.js#GEBRUIKSVOORWAARDEN_TEKST",
+      "toepassingsgebied": ["bf_gebruiker_platformgebruik"],
+      "geen_versie_voor_datum_is_anomalie": false,
+      "latere_versie_geldt_beding": true,
+      "latere_versie_geldt_grondslag": "adviseur-GV art. 8 (Wijzigingen): bij een inhoudelijke wijziging wordt opnieuw om acceptatie gevraagd bij eerstvolgende inlog; bf_gebruikers.gv_versie/gv_datum leggen de geaccepteerde versie + datum vast.",
+      "versies": [
+        { "versie": "1.9", "ingangsdatum": "2026-09-03", "einddatum": "2026-09-03", "hash": "", "bewaarbepalingen": { "mna_documenten_na_afsluiting_dagen": 14, "adviseur_archiveert_zelf": "conform eigen wettelijke bewaarplichten (doorgaans fiscaal 7 jaar)", "backup_database_dagen": 60, "backup_documenten": "zelfde doel, alleen calamiteitenherstel", "clausule": "art. 3" }, "overgangsbepalingen": null },
+        { "versie": "2.0", "ingangsdatum": "2026-09-03", "einddatum": null, "hash": "", "bewaarbepalingen": { "mna_documenten_na_afsluiting_dagen": 14, "adviseur_archiveert_zelf": "conform eigen wettelijke bewaarplichten (doorgaans fiscaal 7 jaar)", "backup_database_dagen": 60, "backup_documenten": "zelfde doel, alleen calamiteitenherstel", "clausule": "art. 3" }, "overgangsbepalingen": "art. 6: aansprakelijkheidsbodem/-plafond en samenloop; art. 8: bij wezenlijke verslechtering kan de adviseur vóór inwerkingtreding kosteloos beëindigen." }
+      ],
+      "opmerking_historische_versies": "Versies vóór 1.9 (o.a. 1.7/1.8) bestonden wel maar zijn niet met een aparte ingangsdatum in de git-historie van de backend-repo teruggezocht in deze ronde. Voor een adviseur met bf_gebruikers.gv_versie < '1.9' en een gv_datum: de op die gv_datum geldende bewaarbepaling was materieel gelijk (14 dagen na afsluiting) — de engine gebruikt de 14-dagen-regel en markeert av_versie_herkomst='afgeleid' zolang het exacte record ontbreekt."
+    },
+
+    "ALGEMENE_VOORWAARDEN_BF_MA": {
+      "omschrijving": "Algemene Voorwaarden Bisschops Financing B.V. — M&A-advies en bemiddeling (buildAvTekst / AV_VERSIE)",
+      "bron_bestand": "koersvoormorgen-backend/backend/cloudflare-worker.js#buildAvTekst",
+      "toepassingsgebied": ["bemiddelingsovereenkomst_opdrachtgever"],
+      "geen_versie_voor_datum_is_anomalie": false,
+      "latere_versie_geldt_beding": false,
+      "latere_versie_geldt_grondslag": "De AV wordt als bijlage bij een concrete bemiddelingsovereenkomst verstrekt en aanvaard (voorwaarden.html art. 2 nieuw). De op de contractdatum meegeleverde versie geldt voor die opdracht, tenzij een addendum anders bepaalt.",
+      "versies": [
+        { "versie": "1.1", "ingangsdatum": "2026-08-01", "einddatum": "2026-09-02", "hash": "", "bewaarbepalingen": { "geen_eigen_documentbewaartermijn": true, "verval_claims_maanden_na_ontdekking": 12, "wwft_clientacceptatie": false }, "overgangsbepalingen": null },
+        { "versie": "1.2", "ingangsdatum": "2026-09-03", "einddatum": null, "hash": "", "bewaarbepalingen": { "geen_eigen_documentbewaartermijn": true, "verval_claims_maanden_na_ontdekking": 12, "verval_claims_maanden_na_gebeurtenis": 24, "wwft_clientacceptatie": true, "wwft_clientacceptatiedossier_jaren_na_einde_relatie": 5 }, "overgangsbepalingen": "art. 4 Cliëntacceptatie/integriteit + art. 11 consument-opdrachtgever nieuw sinds 1.2." }
+      ]
+    },
+
+    "VERWERKERSOVEREENKOMST": {
+      "omschrijving": "Verwerkersovereenkomst BF (verwerker) — adviseur (verwerkingsverantwoordelijke). bouwVokTekst() / VOK_VERSIE. Ondertekende tekst per acceptatie sinds 3 sep 2026 opgeslagen in mna_vok.tekst.",
+      "bron_bestand": "koersvoormorgen-backend/backend/worker/20-signhost-vok.js#bouwVokTekst",
+      "toepassingsgebied": ["mna_traject_persoonsgegevens_clienten_van_adviseur"],
+      "geen_versie_voor_datum_is_anomalie": false,
+      "latere_versie_geldt_beding": true,
+      "latere_versie_geldt_grondslag": "mna_vok legt per acceptatie de versie + datum + (sinds 3 sep 2026) de volledige tekst vast; de op de acceptatiedatum geldende versie is bepalend voor dat traject/die adviseur.",
+      "versies": [
+        { "versie": "1.3", "ingangsdatum": "2026-07-09", "einddatum": "2026-08-16", "hash": "", "bewaarbepalingen": { "mna_documenten_na_afsluiting_dagen": 14, "inactiviteit_autoafsluiting_maanden": 3, "inactiviteit_extra_termijn_dagen": 14, "backup_database_dagen": 60, "archiefregel": "trajectnaam, sector, type, aanmaak- en afsluitdatum, namen betrokken partijen", "clausule": "art. 5" }, "overgangsbepalingen": null },
+        { "versie": "1.5", "ingangsdatum": "2026-08-17", "einddatum": null, "hash": "", "bewaarbepalingen": { "mna_documenten_na_afsluiting_dagen": 14, "inactiviteit_autoafsluiting_maanden": 3, "inactiviteit_extra_termijn_dagen": 14, "backup_database_dagen": 60, "archiefregel": "trajectnaam, sector, type, aanmaak- en afsluitdatum, namen betrokken partijen", "clausule": "art. 5", "datalekmelding_uur": 72, "auditrecht": true }, "overgangsbepalingen": "art. 8 (72u-datalekmelding) en art. 9 (Auditrecht) nieuw sinds 1.5." }
+      ]
+    },
+
+    "PRIVACYVERKLARING": {
+      "omschrijving": "Privacyverklaring (privacy.html) — de gepubliceerde bewaartermijntabel per dienst.",
+      "bron_bestand": "privacy.html",
+      "toepassingsgebied": ["bedrijfsscan", "rapport_usage", "terugbelverzoek", "lead_aandragen", "testtraject_aanvraag", "proefaccount_aanvraag", "mna_begeleiding", "matching", "meekijker"],
+      "geen_versie_voor_datum_is_anomalie": false,
+      "geen_versie_voor_datum_toelichting": "De bedrijfsscan (voorheen index.html) en de contactformulieren bestonden vóór de eerste geregistreerde privacyverklaring-versie (2026-05-18). De bewaartermijnen zijn altijd gelijk geweest (git-bevestigd); een oudere inzending zonder pin-bare versie valt terug op de gepubliceerde termijn, geen REVIEW.",
+      "latere_versie_geldt_beding": true,
+      "latere_versie_geldt_grondslag": "privacy.html art. 10: meest actuele versie geldt; bij ingrijpende wijziging worden actieve gebruikers per e-mail geïnformeerd.",
+      "versies": [
+        { "versie": "1.0", "ingangsdatum": "2026-05-18", "einddatum": "2026-05-30", "hash": "" },
+        { "versie": "1.1", "ingangsdatum": "2026-05-31", "einddatum": "2026-08-04", "hash": "" },
+        { "versie": "1.2", "ingangsdatum": "2026-08-05", "einddatum": "2026-08-15", "hash": "" },
+        { "versie": "1.3", "ingangsdatum": "2026-08-16", "einddatum": "2026-08-16", "hash": "" },
+        { "versie": "1.4", "ingangsdatum": "2026-08-17", "einddatum": "2026-08-17", "hash": "" },
+        { "versie": "1.5", "ingangsdatum": "2026-08-17", "einddatum": "2026-08-30", "hash": "" },
+        { "versie": "1.6", "ingangsdatum": "2026-08-31", "einddatum": "2026-09-01", "hash": "" },
+        { "versie": "1.7", "ingangsdatum": "2026-09-02", "einddatum": "2026-09-02", "hash": "" },
+        { "versie": "1.8", "ingangsdatum": "2026-09-02", "einddatum": "2026-09-02", "hash": "" },
+        { "versie": "1.9", "ingangsdatum": "2026-09-03", "einddatum": null, "hash": "" }
+      ],
+      "bewaartermijnen_actueel": {
+        "bedrijfsscan": { "maanden": 12, "grondslag": "gerechtvaardigd belang / toestemming bij groepsdeelname" },
+        "rapport_usage": { "maanden": 12, "grondslag": "gerechtvaardigd belang (misbruikbeperking)" },
+        "terugbelverzoek": { "maanden": 6, "grondslag": "uitvoering overeenkomst / toestemming" },
+        "contact_bericht": { "maanden": 6, "grondslag": "gerechtvaardigd belang (afhandelen contactverzoek)", "opmerking": "privacy.html noemt 6 mnd expliciet voor terugbelverzoeken; op het contactformulier zelf wordt daarnaar verwezen — dezelfde termijn toegepast, gemarkeerd als afgeleid" },
+        "lead_aandragen": { "maanden": 12, "grondslag": "gerechtvaardigd belang", "tenzij": "leidt tot een M&A-traject → dan trajecttermijn" },
+        "testtraject_aanvraag": { "maanden": 12, "grondslag": "toestemming / gerechtvaardigd belang", "tenzij": "leidt tot account/traject" },
+        "proefaccount_aanvraag": { "maanden": 12, "grondslag": "toestemming / gerechtvaardigd belang", "bij_afloop_niet_omgezet": "aanvraaggegevens worden geanonimiseerd" },
+        "mna_documenten": { "dagen_na_afsluiting": 14, "daarna": "definitief verwijderd; adviseur archiveert zelf" },
+        "mna_trajectmetadata": { "termijn": "langer, t.b.v. administratie en geschillenbeslechting", "opmerking": "geen harde termijn in de verklaring; engine gebruikt de verjaringsgrondslag uit legal-rules (civiel 5 jaar na afsluiting) als contractuele bovengrens, tenzij fiscaal/Wwft langer" },
+        "backup_database": { "dagen": 60 },
+        "backup_documenten": { "termijn": "zelfde doel, alleen calamiteitenherstel", "opmerking": "geen aparte termijn; volgt de database-backup van 60 dagen als praktische bovengrens" }
+      }
+    },
+
+    "TESTVOORWAARDEN": {
+      "omschrijving": "Testvoorwaarden (testvoorwaarden.html) — stagingomgeving / testgebruiker.",
+      "bron_bestand": "testvoorwaarden.html",
+      "toepassingsgebied": ["staging_omgeving", "testgebruiker"],
+      "geen_versie_voor_datum_is_anomalie": true,
+      "latere_versie_geldt_beding": true,
+      "versies": [
+        { "versie": "1.0", "ingangsdatum": "2026-08-17", "einddatum": "2026-08-20", "hash": "" },
+        { "versie": "1.1", "ingangsdatum": "2026-08-21", "einddatum": "2026-09-02", "hash": "" },
+        { "versie": "1.2", "ingangsdatum": "2026-09-03", "einddatum": null, "hash": "" }
+      ],
+      "bewaarbepalingen": { "termijn": "geen — gegevens kunnen op elk moment en zonder kennisgeving worden gewist", "clausule": "art. 3" }
+    }
+  }
+}

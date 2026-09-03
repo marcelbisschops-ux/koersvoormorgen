@@ -1,0 +1,151 @@
+{
+  "_meta": {
+    "doel": "Informatieobject-categorieën: welke D1-tabel/R2-prefix hoort bij welke categorie, welke datumkolom de bewaartermijn start, welke overeenkomst van toepassing is, of er persoonsgegevens in zitten, en welke retentieregel geldt.",
+    "laatst_bijgewerkt": "2026-09-03",
+    "velden": {
+      "bron": "d1:<tabel> of r2:<prefix>",
+      "sleutel": "primaire sleutel-kolom",
+      "traject_link": "kolom die naar mna_trajecten.id verwijst (of null)",
+      "relatie_link": "kolom die naar bf_gebruikers.id / een e-mailadres verwijst (of null)",
+      "start_kolom": "kolom (epoch-ms) die de bewaartermijn start, of 'traject.afgesloten_op' voor trajectgebonden objecten",
+      "overeenkomst": "welk overeenkomsttype van toepassing is: bemiddelingsovereenkomst | adviseur_platformovereenkomst | verwerkersovereenkomst | privacyverklaring | geen",
+      "persoonsgegevens": "ja | nee | gemengd",
+      "regel": "retention-rules sleutel",
+      "mna_subcategorie": "voor M&A-trajectobjecten: de sub-bewaarcategorie (NDA, IM, financieel, ...)"
+    }
+  },
+
+  "categorieen": {
+    "mna_traject": {
+      "bron": "d1:mna_trajecten", "sleutel": "id", "traject_link": "id", "relatie_link": "gebruiker_id",
+      "start_kolom": "afgesloten_op", "fallback_start_kolom": "vergrendeld_op|updated_at|created_at",
+      "overeenkomst": "bemiddelingsovereenkomst", "persoonsgegevens": "gemengd",
+      "regel": "MNA_TRAJECTMETADATA",
+      "toelichting": "Het trajectrecord zelf = de opdracht/relatie. De inhoudelijke velden (bem_tekst/loi_tekst/nda_tekst/dealvoorstel_tekst/verkoopmemorandum_tekst/teaser_tekst) vallen onder MNA_DOCUMENT (14 dagen). De metadata (naam, sector, type, data) onder MNA_TRAJECTMETADATA."
+    },
+    "mna_document_upload": {
+      "bron": "d1:mna_documenten", "sleutel": "id", "traject_link": "traject_id", "relatie_link": null,
+      "start_kolom": "traject.afgesloten_op", "fallback_start_kolom": "uploaded_at",
+      "overeenkomst": "bemiddelingsovereenkomst", "persoonsgegevens": "gemengd",
+      "regel": "MNA_DOCUMENT",
+      "r2_koppeling": "r2_key -> bucket kantoorinzicht-docs",
+      "soft_delete_kolommen": ["verwijderd", "verwijderd_op"],
+      "mna_subcategorie_uit_kolom": "fase_id + bestand_naam (heuristiek in engine: NDA/IM/financieel/fiscaal/personeel/juridisch/correspondentie/bieding/LOI/SPA/closing)"
+    },
+    "mna_doc_versie": {
+      "bron": "d1:mna_doc_versies", "sleutel": "id", "traject_link": "traject_id", "relatie_link": null,
+      "start_kolom": "traject.afgesloten_op", "fallback_start_kolom": "created_at",
+      "overeenkomst": "bemiddelingsovereenkomst", "persoonsgegevens": "gemengd",
+      "regel": "MNA_DOCUMENT",
+      "mna_subcategorie_uit_kolom": "doc_type"
+    },
+    "mna_gesprek_bijlage": {
+      "bron": "d1:mna_gesprek_bijlagen", "sleutel": "id", "traject_link": "traject_id", "relatie_link": null,
+      "start_kolom": "traject.afgesloten_op", "fallback_start_kolom": "uploaded_at",
+      "overeenkomst": "bemiddelingsovereenkomst", "persoonsgegevens": "gemengd",
+      "regel": "MNA_DOCUMENT", "mna_subcategorie": "correspondentie"
+    },
+    "mna_bankmutaties_import": {
+      "bron": "d1:mna_bankmutaties_import", "sleutel": "id", "traject_link": "traject_id", "relatie_link": null,
+      "start_kolom": "traject.afgesloten_op", "fallback_start_kolom": "created_at",
+      "overeenkomst": "bemiddelingsovereenkomst", "persoonsgegevens": "gemengd",
+      "regel": "MNA_DOCUMENT", "mna_subcategorie": "financieel",
+      "r2_koppeling": "r2_key -> bucket kantoorinzicht-docs"
+    },
+    "mna_bankmutaties_regel": {
+      "bron": "d1:mna_bankmutaties_regel", "sleutel": "id", "traject_link": "traject_id", "relatie_link": null,
+      "start_kolom": "traject.afgesloten_op", "fallback_start_kolom": "created_at",
+      "overeenkomst": "bemiddelingsovereenkomst", "persoonsgegevens": "gemengd",
+      "regel": "MNA_DOCUMENT", "mna_subcategorie": "financieel"
+    },
+    "mna_traject_inhoud": {
+      "bron": "d1:mna_data|mna_beoordelingen|mna_qa|mna_qa_reacties|mna_chat|mna_logboek|mna_gesprekken|mna_gesprek_concepten|mna_partners|mna_entiteiten|mna_koper_criteria|mna_waarderingen|mna_risicoraamwerk|mna_fase_status|mna_info_fases|mna_infoverzoek|mna_closing_checklist_status|mna_wijzigingen",
+      "sleutel": "id", "traject_link": "traject_id", "relatie_link": null,
+      "start_kolom": "traject.afgesloten_op", "fallback_start_kolom": "created_at|updated_at",
+      "overeenkomst": "bemiddelingsovereenkomst", "persoonsgegevens": "gemengd",
+      "regel": "MNA_DOCUMENT",
+      "toelichting": "Alle trajectgebonden inhoudstabellen volgen dezelfde 14-dagen-na-afsluiting-regel als geüploade documenten (VOK art. 5: 'alle overige trajectgegevens')."
+    },
+    "mna_vok_acceptatie": {
+      "bron": "d1:mna_vok", "sleutel": "id", "traject_link": "tussen_code", "relatie_link": "tussen_code",
+      "start_kolom": "traject.afgesloten_op", "fallback_start_kolom": "datum",
+      "overeenkomst": "verwerkersovereenkomst", "persoonsgegevens": "ja",
+      "regel": "VOK_ACCEPTATIE_BEWIJS"
+    },
+    "clientacceptatie_wwft": {
+      "bron": "d1:mna_trajecten#clientacceptatie_*", "sleutel": "id", "traject_link": "id", "relatie_link": "gebruiker_id",
+      "start_kolom": "traject.afgesloten_op", "fallback_start_kolom": "clientacceptatie_datum",
+      "overeenkomst": "bemiddelingsovereenkomst", "persoonsgegevens": "ja",
+      "regel": "WWFT_CLIENTACCEPTATIEDOSSIER",
+      "toelichting": "De cliëntacceptatie-registratie (getoetst/door/datum/notitie) is het Wwft-identificatiedossier → 5 jaar na einde relatie (art. 33 Wwft), overrulet de 14-dagen-regel."
+    },
+    "bf_gebruiker_account": {
+      "bron": "d1:bf_gebruikers", "sleutel": "id", "traject_link": null, "relatie_link": "id",
+      "start_kolom": "last_login", "fallback_start_kolom": "created_at",
+      "overeenkomst": "adviseur_platformovereenkomst", "persoonsgegevens": "ja",
+      "regel": "ADVISEUR_ACCOUNT"
+    },
+    "scan_rapport": {
+      "bron": "d1:scan_rapporten|rapporten|scans|verhuis_scans", "sleutel": "id|scan_id", "traject_link": null, "relatie_link": "email|office_email",
+      "start_kolom": "created_at",
+      "overeenkomst": "privacyverklaring", "persoonsgegevens": "ja",
+      "regel": "BEDRIJFSSCAN"
+    },
+    "rapport_usage": {
+      "bron": "d1:rapport_usage", "sleutel": "id", "traject_link": null, "relatie_link": "email",
+      "start_kolom": "created_at", "overeenkomst": "privacyverklaring", "persoonsgegevens": "ja",
+      "regel": "RAPPORT_USAGE"
+    },
+    "terugbelverzoek": {
+      "bron": "d1:callbacks", "sleutel": "id", "traject_link": null, "relatie_link": "email",
+      "start_kolom": "created_at", "overeenkomst": "privacyverklaring", "persoonsgegevens": "ja",
+      "regel": "TERUGBELVERZOEK"
+    },
+    "contact_bericht": {
+      "bron": "d1:contact_berichten", "sleutel": "id", "traject_link": null, "relatie_link": "email",
+      "start_kolom": "created_at", "overeenkomst": "privacyverklaring", "persoonsgegevens": "ja",
+      "regel": "CONTACT_BERICHT"
+    },
+    "lead": {
+      "bron": "d1:mna_leads", "sleutel": "id", "traject_link": "traject_id", "relatie_link": "email",
+      "start_kolom": "created_at", "overeenkomst": "privacyverklaring", "persoonsgegevens": "ja",
+      "regel": "LEAD_AANDRAGEN"
+    },
+    "proefaccount_aanvraag": {
+      "bron": "d1:adviseur_proef_aanvragen", "sleutel": "id", "traject_link": null, "relatie_link": "email",
+      "start_kolom": "created_at", "overeenkomst": "privacyverklaring", "persoonsgegevens": "ja",
+      "regel": "PROEFACCOUNT_AANVRAAG"
+    },
+    "fee_event": {
+      "bron": "d1:platform_fee_events", "sleutel": "id", "traject_link": "traject_id", "relatie_link": "gebruiker_id",
+      "start_kolom": "created_at", "overeenkomst": "adviseur_platformovereenkomst", "persoonsgegevens": "nee",
+      "regel": "FINANCIELE_ADMINISTRATIE"
+    },
+    "audit_log": {
+      "bron": "d1:mna_audit|security_audit_log|security_selfcheck_log|traject_viewer_log|avg_verwijder_log|mna_wijzigingen",
+      "sleutel": "id", "traject_link": "code|traject_id", "relatie_link": null,
+      "start_kolom": "ts|created_at|gevonden_op|ran_at", "overeenkomst": "geen", "persoonsgegevens": "gemengd",
+      "regel": "AUDIT_TRAIL"
+    },
+    "meekijker": {
+      "bron": "d1:traject_viewers", "sleutel": "id", "traject_link": "traject_id", "relatie_link": null,
+      "start_kolom": "traject.afgesloten_op", "fallback_start_kolom": "created_at",
+      "overeenkomst": "bemiddelingsovereenkomst", "persoonsgegevens": "ja",
+      "regel": "MNA_TRAJECTMETADATA"
+    },
+    "backup_tabel_stale": {
+      "bron": "d1:*_backup_20260726",
+      "sleutel": "id", "traject_link": "traject_id", "relatie_link": null,
+      "start_kolom": "FIXED:2026-07-26", "overeenkomst": "geen", "persoonsgegevens": "gemengd",
+      "regel": "AD_HOC_BACKUP_TABEL",
+      "toelichting": "Eenmalige backup-kopieën in de live DB (suffix _backup_20260726). Geen bewaargrondslag als productiedata; vallen onder de 60-dagen-backupregel — dus ruim verlopen → DELETE_ELIGIBLE (na review dat de originele tabellen intact zijn)."
+    },
+    "verhuisscan_data": {
+      "bron": "d1:verhuis_scans|verhuis_groepen|verhuis_groep_scans",
+      "sleutel": "id", "traject_link": null, "relatie_link": "email",
+      "start_kolom": "created_at", "overeenkomst": "privacyverklaring", "persoonsgegevens": "ja",
+      "regel": "BEDRIJFSSCAN",
+      "toelichting": "VerhuisScan is per 3 sep 2026 offline gehaald maar de data staat er nog. Behandeld als scan-data (12 mnd)."
+    }
+  }
+}

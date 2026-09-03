@@ -1,0 +1,21 @@
+[
+ {
+  "id": "DEMO-AFGEROND",
+  "kantoor_naam": "Demo Accountants BV",
+  "created_at": 1786870800000,
+  "bem_datum": 1786870800000,
+  "afgesloten_op": 1786957200000,
+  "gebruiker_id": "DEMO-ADV",
+  "clientacceptatie_getoetst": 1,
+  "clientacceptatie_door": "M. Bisschops",
+  "clientacceptatie_datum": 1786870800000
+ },
+ {
+  "id": "DEMO-LOPEND",
+  "kantoor_naam": "Demo MKB BV",
+  "created_at": 1787216400000,
+  "bem_datum": 1787216400000,
+  "afgesloten_op": null,
+  "gebruiker_id": "DEMO-ADV"
+ }
+]

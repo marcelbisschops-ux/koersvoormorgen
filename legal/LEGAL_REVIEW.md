@@ -94,15 +94,21 @@ Eerste volledige review — geen voorgaande. Eerdere losse juridische correcties
 
 | Document | Huidige versie | Datum in tekst | Acceptatieflow | Bron |
 |---|---|---|---|---|
-| Gebruiksvoorwaarden verkoper/koper/meekijker | **2.2** | augustus 2026 | impliciet ("door in te loggen") | `voorwaarden.html` |
-| Gebruiksvoorwaarden platform (adviseur) | **GV 1.9** | september 2026 | expliciet, herhaald bij versieverhoging | `cloudflare-worker.js` `GV_VERSIE` |
-| Algemene Voorwaarden (M&A-praktijk) | **AV 1.1** | — | als bijlage bij ondertekende BEM | `cloudflare-worker.js` `AV_VERSIE` / `buildAvTekst()` |
-| Verwerkersovereenkomst | **VOK 1.5** | augustus 2026 (frontend) / "Juli 2026" (backend-e-mail — **fout**, ISSUE-01) | expliciet, `VOK_VERSIE` | `mna/04` `VOK_TEKST` ↔ `worker/20` `vokTekst` |
-| Privacyverklaring | **1.8** | september 2026 | n.v.t. (informatief) | `privacy.html` |
-| Testvoorwaarden | **1.2** | augustus 2026 | impliciet (staging-gebruik) | `testvoorwaarden.html` |
+| Gebruiksvoorwaarden verkoper/koper/meekijker | **2.3** | september 2026 | impliciet ("door in te loggen") | `voorwaarden.html` |
+| Gebruiksvoorwaarden platform (adviseur) | **GV 2.0** | september 2026 | expliciet, herhaald bij versieverhoging | `cloudflare-worker.js` `GV_VERSIE` |
+| Algemene Voorwaarden (M&A-praktijk) | **AV 1.2** | september 2026 | als bijlage bij ondertekende BEM | `cloudflare-worker.js` `AV_VERSIE` / `buildAvTekst()` |
+| Verwerkersovereenkomst | **VOK 1.5** | augustus 2026 | expliciet, `VOK_VERSIE`; ondertekende tekst opgeslagen in `mna_vok.tekst` | `worker/20-signhost-vok.js` `bouwVokTekst()` ↔ `mna/04` `VOK_VERSIE` |
+| Privacyverklaring | **1.9** | september 2026 | n.v.t. (informatief) | `privacy.html` |
+| Testvoorwaarden | **1.2** | september 2026 | impliciet (staging-gebruik) | `testvoorwaarden.html` |
 | Bemiddelingsovereenkomsten + NDA/LOI/excl. | ongenummerd | — | ondertekening via Signhost | `BF_TEMPLATES` (marilyn-bewerkbaar) |
 
 **Regel:** bij een inhoudelijke wijziging aan een genummerd document → versienr. ophogen + datum bijwerken + regel toevoegen aan "Wijzigingen sinds vorige review" + acceptatie-impact wegen. Ongenummerde sjablonen: wijziging vastleggen in de git-commit + hier onder "Wijzigingen".
+
+**Machineleesbare versiehistorie:** de volledige versiegeschiedenis (ingangs-/einddata,
+bewaarbepaling en toepassingsgebied per versie) staat in
+[`legal/retention/policies/av-versions.json`](retention/policies/av-versions.json) en wordt
+door de retention-engine gebruikt. Werk dat bestand bij in dezelfde wijziging als een
+versieverhoging hier (zie stap 8 van "Run legal review").
 
 ---
 
@@ -117,5 +123,39 @@ Wanneer Marcel zegt **"Run legal review"** (of bij de kwartaalcadans / vóór ee
 5. **Alleen relevante nieuwe risico's/verbeteringen rapporteren.** Geen herformulering "omdat het mooier klinkt" — een wijziging heeft een reden uit `REVIEW.md` § Wijzigingsdiscipline. Bevindingen in het format probleem/risico/huidige tekst/voorgestelde tekst/reden/prioriteit; toevoegen aan `LEGAL_ISSUES.md` met een nieuw ISSUE-nummer.
 6. **Regressiecheck.** Voor elke doorgevoerde wijziging: raakt die bescherming of commerciële werking uit een ander document? (aansprakelijkheidsregime, fee, bewaartermijn, definities, forumkeuze, kruisverwijzingen). Draai `node tests/audit-consistentie.mjs` (o.a. de publiek/interne-scheiding- en dubbele-bron-checks) en, in de backend-repo, `node tests/audit-backend.mjs`.
 7. **Registers bijwerken.** `LEGAL_REVIEW.md` (datum, gecontroleerde documenten, wijzigingen, versieregister) en `LEGAL_ISSUES.md` (status per bevinding).
+8. **Retention-engine synchroon houden.** Is er een juridisch document met een versienummer of een bewaarbepaling gewijzigd? → werk `legal/retention/policies/av-versions.json` bij (nieuw versierecord, `einddatum` vorige versie, `bewaarbepalingen`), en zet zo nodig `versie_invariante_termijn: false` op de betrokken regel in `retention-rules.json`. Draai daarna **Run retention audit** (hieronder) en controleer dat de samenvatting **0 LEGAL_RETENTION_CONFLICT** toont.
 
 Een periodieke review betekent **niet** dat documenten standaard worden herschreven — alleen wijzigen bij een concrete juridische, commerciële, technische of redactionele reden.
+
+---
+
+## Herhaalbaar proces — "Run retention audit"
+
+De bewaartermijn-engine (`legal/retention/`, volledig gedocumenteerd in
+[`retention/RETENTION-ENGINE.md`](retention/RETENTION-ENGINE.md)) bepaalt per
+informatieobject in de productiedatabase de toepasselijke bewaartermijn en status, met de
+op de contractdatum geldende voorwaardenversie (nooit automatisch de huidige).
+
+Wanneer Marcel zegt **"Run retention audit"** (of bij de kwartaalcadans / vóór een grote
+release / na een wijziging aan een bewaarbepaling):
+
+```bash
+node legal/retention/snapshot.mjs            # verse read-only snapshot van de productie-D1 (wrangler ingelogd)
+node legal/retention/retention-engine.mjs    # DRY RUN → legal/retention/reports/latest.md + .json
+node legal/retention/test/retention.test.mjs # 16 scenario's — moet 16/16 blijven
+```
+
+Rapporteer uit `reports/latest.md`:
+
+- de samenvattingstelling (`RETENTION_REQUIRED` / `RETENTION_ALLOWED` / `DELETE_ELIGIBLE` /
+  `REVIEW_REQUIRED` / `LEGAL_HOLD`);
+- **LEGAL_RETENTION_CONFLICT > 0** → een bewaarbepaling in `av-versions.json` en de regel in
+  `retention-rules.json` spreken elkaar tegen. Dit is een **juridische bevinding**: los het
+  op in de policybestanden (niet in de engine), voeg zo nodig een ISSUE toe in
+  `LEGAL_ISSUES.md`, draai opnieuw.
+- **REVIEW_REQUIRED** objecten → handmatig beoordelen; niets wordt automatisch verwijderd.
+- **DELETE_ELIGIBLE** objecten → mogen (na de gebruikelijke controle) via de bestaande
+  worker-endpoints `/admin/delete/mna/`, `/avg/verwijder`, `/avg/cleanup` worden opgeruimd;
+  `node legal/retention/retention-engine.mjs --enforce` schrijft daarvoor een plan.
+
+De engine verwijdert zelf nooit iets (principe 1 en 7 in `RETENTION-ENGINE.md`).

@@ -1,0 +1,71 @@
+{
+  "_meta": {
+    "doel": "Wettelijke bewaarplichten en -grondslagen die een contractuele bewaartermijn kunnen aanvullen of overrulen. Machineleesbaar voor de retention-engine.",
+    "laatst_bijgewerkt": "2026-09-03",
+    "broncontrole": "2026-09-03 tegen wetten.overheid.nl",
+    "toepassing": "De engine kiest NOOIT automatisch 'de langste termijn'. Per informatieobject bepaalt de decision tree welke grondslag prevaleert (zie retention-engine.mjs → beslisBewaartermijn). Een wettelijke MINIMUM-bewaarplicht overrulet een kortere contractuele/privacy-termijn (document mag/moet dan langer blijven). Een wettelijke of privacy-eis van dataminimalisatie kan een langere contractuele termijn NIET verlengen maar wel signaleren dat 'bewaren toegestaan' i.p.v. 'bewaren verplicht' geldt."
+  },
+
+  "regels": {
+    "FISCALE_BEWAARPLICHT": {
+      "omschrijving": "Fiscale bewaarplicht voor de administratie",
+      "grondslag": "art. 52 lid 4 Algemene wet inzake rijksbelastingen (AWR); art. 2:10 BW (boekhoudplicht)",
+      "type": "minimum_bewaarplicht",
+      "termijn_jaren": 7,
+      "start": "einde boekjaar waarop het stuk betrekking heeft (engine: kalenderjaar van created_at + 7 jaar, per 31-12)",
+      "van_toepassing_op_categorieen": ["factuur", "financiele_administratie", "fee_event", "factuurreeks", "opdrachtbevestiging_financieel_deel"],
+      "opmerking": "Basisgegevens (grootboek, debiteuren/crediteuren, in-/verkoopadministratie, voorraad, loonadministratie) 7 jaar. Vastgoedgegevens 10 jaar — niet van toepassing in dit project."
+    },
+
+    "WWFT_CLIENTENONDERZOEK": {
+      "omschrijving": "Bewaarplicht cliëntenonderzoek en transactiegegevens onder de Wwft",
+      "grondslag": "art. 33 Wwft",
+      "type": "minimum_bewaarplicht",
+      "termijn_jaren": 5,
+      "start": "beëindiging van de zakelijke relatie of het uitvoeren van de incidentele transactie",
+      "van_toepassing_op_categorieen": ["clientacceptatiedossier", "wwft_identificatie", "wwft_ubo", "wwft_herkomst_middelen", "wwft_transactiemonitoring", "bemiddelingsovereenkomst"],
+      "voorwaarde": "Alleen als Bisschops Financing als Wwft-instelling kwalificeert. Aanname sinds 3 sep 2026 (Marcel): JA. Zie legal/WWFT-ANALYSE.md — de definitieve kwalificatie (JUR-1) wordt nog specialistisch bevestigd; de engine hanteert de veilige aanname (5 jaar) en markeert de grondslag als 'aanname, specialist te bevestigen'.",
+      "opmerking": "Deze plicht overrulet de contractuele 14-dagen-verwijdering NIET voor de trajectdocumenten zelf (die blijven bij de adviseur als verwerkingsverantwoordelijke), maar wel voor het cliëntacceptatie-/identificatiedossier dat BF/de adviseur als Wwft-instelling zelf moet bewaren."
+    },
+
+    "AVG_DATAMINIMALISATIE": {
+      "omschrijving": "Persoonsgegevens niet langer bewaren dan noodzakelijk voor het doel",
+      "grondslag": "art. 5 lid 1 sub e AVG (opslagbeperking); art. 17 AVG (recht op vergetelheid)",
+      "type": "maximum_noodzakelijkheid",
+      "termijn_jaren": null,
+      "effect": "Wanneer geen wettelijke minimum-bewaarplicht en geen actieve contractuele noodzaak meer bestaat, is het bewaren van persoonsgegevens niet langer toegestaan → status DELETE_ELIGIBLE (voor de persoonsgegeven-onderdelen). Verlengt nooit een termijn.",
+      "van_toepassing_op_categorieen": ["*_met_persoonsgegevens"]
+    },
+
+    "CIVIELE_VERJARING_ALGEMEEN": {
+      "omschrijving": "Algemene verjaringstermijn voor rechtsvorderingen — grondslag om trajectmetadata/bewijsstukken te bewaren t.b.v. geschillenbeslechting",
+      "grondslag": "art. 3:307 BW (nakoming overeenkomst, 5 jaar) / art. 3:310 BW (schadevergoeding, 5 jaar na bekendheid, 20 jaar absoluut)",
+      "type": "bewaren_toegestaan_grondslag",
+      "termijn_jaren": 5,
+      "start": "einde van de overeenkomst / afsluiting van het traject",
+      "van_toepassing_op_categorieen": ["trajectmetadata", "opdrachtbevestiging", "correspondentie_contractueel", "getekende_overeenkomst"],
+      "effect": "Geeft een gerechtvaardigd belang om beperkte metadata en getekende overeenkomsten tot 5 jaar na afsluiting te bewaren (status RETENTION_ALLOWED). Geen verplichting; na 5 jaar zonder ander belang → DELETE_ELIGIBLE."
+    },
+
+    "AV_VERVALTERMIJN_CLAIMS": {
+      "omschrijving": "Contractuele vervaltermijn voor aanspraken jegens BF — grondslag om dossierstukken te bewaren zolang een claim nog kan worden ingediend",
+      "grondslag": "Algemene Voorwaarden BF art. 9 (v1.2): verval 12 maanden na ontdekking, in elk geval 24 maanden na de gebeurtenis",
+      "type": "bewaren_toegestaan_grondslag",
+      "termijn_maanden": 24,
+      "start": "de schadeveroorzakende gebeurtenis / einde opdracht",
+      "van_toepassing_op_categorieen": ["dossier_bewijsstuk", "getekende_overeenkomst", "adviesrapport"],
+      "effect": "Grondslag om dossierbewijs tot 24 maanden na einde opdracht te bewaren. Korter dan de civiele verjaring; de engine gebruikt het maximum van beide als 'bewaren toegestaan'-bovengrens."
+    }
+  },
+
+  "prioriteitsvolgorde_decision_tree": [
+    "1. LEGAL_HOLD actief → LEGAL_HOLD (bewaren geblokkeerd tegen verwijdering, ongeacht termijn).",
+    "2. Onvoldoende betrouwbare informatie (geen overeenkomst / AV-versie onbekend / geen begindatum / tegenstrijdige regels / wettelijke plicht onduidelijk) → REVIEW_REQUIRED (niet verwijderen).",
+    "3. Een van toepassing zijnde wettelijke MINIMUM-bewaarplicht (FISCALE_BEWAARPLICHT, WWFT_CLIENTENONDERZOEK) die nog loopt → RETENTION_REQUIRED tot de wettelijke einddatum; reden = de wettelijke grondslag.",
+    "4. Een lopende contractuele bewaartermijn (uit av-versions → retention-rules) → RETENTION_REQUIRED (contractueel) tot de contractuele einddatum.",
+    "5. Geen (meer) lopende wettelijke of contractuele plicht, maar wél een 'bewaren toegestaan'-grondslag (CIVIELE_VERJARING_ALGEMEEN / AV_VERVALTERMIJN_CLAIMS) die nog loopt → RETENTION_ALLOWED tot die einddatum.",
+    "6. Geen enkele grondslag meer én het object bevat persoonsgegevens → DELETE_ELIGIBLE (AVG-dataminimalisatie).",
+    "7. Geen enkele grondslag meer én het object bevat geen persoonsgegevens → RETENTION_ALLOWED (geen wettelijke reden tot verwijdering, maar ook geen noodzaak) — met signaal 'bewaren niet langer noodzakelijk'.",
+    "8. De contractuele/wettelijke einddatum ligt vóór de simulatiedatum → EXPIRED (en, afhankelijk van stap 6/7, DELETE_ELIGIBLE of RETENTION_ALLOWED)."
+  ]
+}

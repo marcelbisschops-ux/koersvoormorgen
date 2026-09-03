@@ -1,0 +1,4 @@
+[
+ { "id": "DEMO-S1", "scan_id": "DEMOSCAN1", "email": "verlopen-scan@example.test", "kantoor_naam": "Oud Scankantoor", "sector": "accountancy", "created_at": 1748941200000, "rapport_tekst": "..." },
+ { "id": "DEMO-S2", "scan_id": "DEMOSCAN2", "email": "recente-scan@example.test", "kantoor_naam": "Nieuw Scankantoor", "sector": "mkb", "created_at": 1780477200000, "rapport_tekst": "..." }
+]

@@ -132,3 +132,17 @@ Documenten met een acceptatieflow (adviseur-GV `GV_VERSIE`, VOK `VOK_VERSIE`,
 
 Zie `legal/LEGAL_REVIEW.md`. Een periodieke review herschrijft niet standaard documenten;
 alleen wijzigen bij een concrete reden uit de lijst onder **Wijzigingsdiscipline**.
+
+## Bewaartermijnen ("Run retention audit")
+
+Bewaartermijnen zijn onderdeel van de juridische kwaliteit. De bewaartermijn-engine staat
+in `legal/retention/` (gedocumenteerd in `legal/retention/RETENTION-ENGINE.md`); het
+"Run retention audit"-proces staat in `legal/LEGAL_REVIEW.md`. Twee harde koppelingen met
+deze reviewregels:
+
+- **Versiebeheer** (zie hierboven): bij elke versieverhoging of gewijzigde bewaarbepaling in
+  een juridisch document → in dezelfde wijziging `legal/retention/policies/av-versions.json`
+  bijwerken (nieuw versierecord + bewaarbepaling).
+- **LEGAL_RETENTION_CONFLICT** uit het retention-rapport = een tegenspraak tussen de
+  vastgelegde voorwaardenversie en de genormaliseerde bewaarregel → behandelen als
+  juridische bevinding (ISSUE in `legal/LEGAL_ISSUES.md`), oplossen in de policybestanden.

@@ -19,3 +19,9 @@ backups/
 # Lokale wrangler-cache (per ongeluk hier aangemaakt bij een cross-directory commando)
 .wrangler/
 _mock/*.png
+
+# Retention-engine: de D1-snapshot bevat KLANTDATA (blijft lokaal), en de gegenereerde
+# rapporten zijn roterende output. De policies/, fixtures/, contracts/registry.json,
+# legal-holds.json en de engine zelf horen WEL in git.
+legal/retention/.data/
+legal/retention/reports/
