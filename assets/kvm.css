@@ -182,18 +182,20 @@ button{font:inherit; cursor:pointer}
 .nav__cta:hover{border-color:var(--petrol-bright); background:color-mix(in srgb, var(--petrol-bright) 12%, transparent); color:#fff}
 .nav__login{font:500 var(--fs-xs)/1 var(--sans); color:var(--muted-d); letter-spacing:.04em}
 .nav__toggle{display:none; margin-left:auto; background:none; border:0; color:var(--ink-d); padding:.4rem}
+/* Marcel, 4 sep 2026: geen hamburger-dropdown meer — de navigatie blijft op elke breedte een
+   horizontale rij; op smalle schermen scrolt die rij zijwaarts i.p.v. in te klappen. */
 @media (max-width:860px){
+  .nav__in{gap:1rem}
   .nav__links{
-    position:absolute; top:100%; left:0; right:0; background:var(--s-dark);
-    border-bottom:1px solid var(--hair-d); flex-direction:column; align-items:stretch;
-    gap:0; padding:.5rem var(--pad-x) 1.25rem; display:none;
+    min-width:0; flex-wrap:nowrap; overflow-x:auto; gap:1.1rem;
+    -webkit-overflow-scrolling:touch; scrollbar-width:none;
   }
-  .nav__links.open{display:flex}
-  .nav__links a{padding:.8rem 0; border-bottom:1px solid var(--hair-d)}
-  .nav__links a::after{display:none}
-  .nav__cta{margin-top:.9rem; text-align:center; order:2}
-  .nav__toggle{display:block}
-  .nav__login{display:block; order:1; color:var(--body-d); letter-spacing:normal; font-size:var(--fs-sm); font-weight:500}
+  .nav__links::-webkit-scrollbar{display:none}
+  .nav__links a{white-space:nowrap}
+  .nav__cta{white-space:nowrap}
+}
+@media (max-width:480px){
+  .nav__brand{font-size:1rem}
 }
 
 /* ---------- footer ---------- */
