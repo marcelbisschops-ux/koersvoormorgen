@@ -2,6 +2,18 @@
 (function () {
   "use strict";
 
+  /* bezoek-telemetrie: één beacon per paginaweergave naar de eigen worker (first-party,
+     cookieloos, geen derde partij). Geen retry, geen invloed op de paginalading. */
+  try {
+    var pvUrl = "https://kantoorinzicht.marcel-bisschops.workers.dev/pageview";
+    var pvData = JSON.stringify({ path: location.pathname, ref: document.referrer || "" });
+    if (navigator.sendBeacon) {
+      navigator.sendBeacon(pvUrl, pvData);
+    } else if (window.fetch) {
+      fetch(pvUrl, { method: "POST", body: pvData, keepalive: true, headers: { "Content-Type": "text/plain" } }).catch(function () {});
+    }
+  } catch (e) {}
+
   /* mobiele nav */
   var toggle = document.querySelector(".nav__toggle");
   var links = document.querySelector(".nav__links");
