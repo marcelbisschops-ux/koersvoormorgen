@@ -15,9 +15,9 @@ SRC  = HERE / "_src"
 NAV_ITEMS = [
     ("{{ROOT}}platform/", "Platform"),
     ("{{ROOT}}m-en-a-expertise/", "M&amp;A Expertise"),
-    ("{{ROOT}}bedrijfsscan.html", "Bedrijfsscan"),
     ("{{ROOT}}cases/", "Cases"),
     ("{{ROOT}}inzichten/", "Inzichten"),
+    ("{{ROOT}}bedrijfsscan.html", "Bedrijfsscan"),
 ]
 
 def nav():
