@@ -202,8 +202,8 @@ groen tegen productie (81/81 totaal). Handleiding bijgewerkt in beide bestanden 
 in GitHub Actions kwam niet meer overeen met de daadwerkelijke `ADMIN_KEY` op de staging-Worker in
 Cloudflare (elk faalgeval in de CI-log was "Unauthorized"/"Authenticatie mislukt" vanaf de allereerste
 admin-vereiste aanroep). Beide kanten opnieuw gelijkgetrokken met een nieuwe waarde
-(`wrangler secret put ADMIN_KEY --env=staging` + de GitHub Actions-secret bijgewerkt). Wordt met deze
-commit meteen live geverifieerd via een nieuwe CI-run.
+(`wrangler secret put ADMIN_KEY --env=staging` + de GitHub Actions-secret bijgewerkt). Live geverifieerd: de eerstvolgende CI-run (commit e2477cd) slaagde volledig
+(`conclusion: success`) — de eerste groene run sinds minstens 1 september.
 
 ### P2-27 · Sequentiële INSERT's bij bankmutatie-CSV-import (geen batch)
 🔴 Nog open. `worker/22-bankmutaties.js:357-361` + `worker/19-info-fases.js:1342-1346`.
