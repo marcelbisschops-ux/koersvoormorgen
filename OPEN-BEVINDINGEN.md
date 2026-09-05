@@ -232,7 +232,8 @@ resterend van de 10) eveneens nog open.
 (`/mna/qa/*`, `/mna/qa/reactie/*`) in `worker/08-mna-qa-export.js`.
 
 ### P3-32 · Misleidend "wordt door niets aangeroepen"-commentaar in `worker/00-policy.js`
-🔴 Nog open. Module is de daadwerkelijke implementatie achter `begeleiderAuth`/`rolVanCode`.
+🟢 **Gefixt (5 sep 2026).** Commentaar bijgewerkt: bevestigd dat `begeleiderAuth`/`rolVanCode` in
+`cloudflare-worker.js` beide dunne wrappers zijn die volledig naar deze module delegeren.
 
 ### P3-33 · Backup-fix nog niet bewezen door een echte geplande run
 🟡 CLOUDFLARE_API_TOKEN staat sinds 5 sep 16:27 in de plist — eerste echte test vanavond 20:00.
@@ -244,10 +245,43 @@ resterend van de 10) eveneens nog open.
 🔴 `worker/19-info-fases.js` 1436→1449 regels, ook al binnen dezelfde dag.
 
 ### P3-37 · Overige niet-toetsenbordbedienbare uitklap-toggles
-🔴 `adv.html:751`, `mna/02-state-opslag-documenten.js:776`.
+🟢 **Gefixt (adv.html, 5 sep 2026)** — `tabindex/role/aria-expanded` + keydown-handler op de
+gespreksnotities-toggle. `mna/02-state-opslag-documenten.js:776` bleek bij nader inzien **geen**
+echte bevinding: er staat al een losse, volledig toetsenbordbedienbare `<button>` naast de span met
+exact dezelfde `toggleBankmutatiesRegels()`-actie — de functionaliteit was dus al bereikbaar.
 
-### P4-38 t/m P4-43 · CLAUDE.md-moduleaantal stale (20 vs. 28) · lazy CREATE TABLE zonder FK in `loglWijziging()` · ontbrekend `alt` op logo-preview (`adv.html:579`) · `koperMagCategorie()` null-default niet volledig geverifieerd · DSCR-label mogelijk niet in PDF-print · retentietest-pad bestaat niet meer op de gedocumenteerde locatie
-🔴/⚪ Zie artifact voor volledige onderbouwing per punt.
+### P4-38 · CLAUDE.md-moduleaantal stale
+🟢 **Gefixt (5 sep 2026).** Bijgewerkt naar 28 modules (00-policy t/m 26-analytics, incl. de
+bewuste dubbele "21"-prefix), met een opmerking om dit periodiek te verifiëren i.p.v. aan te nemen.
+
+### P4-39 · Lazy `CREATE TABLE` zonder FK in `loglWijziging()`
+🟢 **Gefixt (5 sep 2026).** Weggehaald — `initDB()` maakt de tabel (mét FK) al centraal aan.
+
+### P4-40 · Ontbrekend `alt` op logo-preview
+🟢 **Gefixt (5 sep 2026).** `alt="Voorbeeld van uw logo"` toegevoegd.
+
+### P4-41 · `koperMagCategorie()` null-default bij nieuwe trajecten
+🔴 **Bevestigd een echt punt, geen bugfix maar een ontwerpkeuze — voorgelegd aan Marcel.** Alle drie
+plekken die een nieuw traject aanmaken (`worker/11-mna-tekenen-beheer.js:610`,
+`worker/16-adviseur.js:252`, `worker/10-mna-communicatie.js:95`) laten `koper_categorieen` weg uit de
+INSERT — elk NIEUW traject krijgt dus `NULL`, wat `koperMagCategorie()` leest als "koper ziet alles".
+De code-comment noemt dit expliciet "backward compat" (bedoeld voor bestaande oude trajecten), niet
+als doorlopend ontwerp voor nieuwe. Twee opties: (a) nieuwe trajecten expliciet met `koper_categorieen
+='[]'` starten (koper ziet niets tot de begeleider iets vrijgeeft — consistent met de allow-list-
+filosofie elders), of (b) bewust laten zoals het is als "in eerste instantie alles zichtbaar" de
+bedoelde eerste-fase-ervaring is. Niet zelf ingevuld — productiebeslissing.
+
+### P4-42 · DSCR-label mogelijk niet in PDF-print
+🟢 **Bleek geen bevinding.** "PDF" is hier `window.print()` op exact dezelfde gerenderde pagina — het
+label + de uitgebreide tooltip-toelichting ("vereenvoudigd, GEEN volwaardige DSCR") staan al in de
+CSV-exportregel én de schermweergave, dus komen automatisch mee in de afdruk. Geen apart pad dat het
+kon missen.
+
+### P4-43 · Retentietest-pad "bestaat niet meer"
+🟢 **Bleek geen bevinding.** Het bestand bestaat gewoon op `legal/retention/test/retention.test.mjs`
+— in de FRONTEND-repo, niet in `backend/`. De audit-subagent zocht in de verkeerde repo; de
+scheduled-task-instructie zelf noemt het pad al correct zonder `backend/`-prefix. 16/16 groen
+geverifieerd.
 
 ---
 
