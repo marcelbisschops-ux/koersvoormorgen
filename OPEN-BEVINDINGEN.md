@@ -63,10 +63,13 @@ bestand narekent — voorkomt dat dit een vierde keer terugkomt. Laatst geverifi
 ## P2 — hoog
 
 ### P2-5 · Matching-wachtwoord buiten de bedoelde rate-limiter te raden
-🔴 **Nog open.** `matchingAuthOk()` in `worker/19-info-fases.js` heeft nog geen eigen
-`checkRateLimit`-aanroep — alleen de cosmetische `/mna/matching/login`-route heeft er één, terwijl
-`/mna/matching/overzicht` de functie rechtstreeks aanroept. Laatst geverifieerd: 5 sep 2026 (grep,
-0 treffers).
+🟢 **Gefixt** (24 aug 2026, met een expliciete "Audit-fix P2"-commentaarregel in de code).
+**Correctie 5 sep 2026:** eerder in deze ronde ten onrechte op 🔴 gezet — die grep zocht op
+`function matchingAuthOk` terwijl de code `const matchingAuthOk = async (req) => {...}` gebruikt,
+dus de zoekopdracht vond niets en werd verkeerd gelezen als "geen limiter aanwezig". Bij het
+daadwerkelijk willen fixen bleek `matchingAuthOk()` (`worker/19-info-fases.js:931-937`) allang een
+`checkRateLimit(clientIP + ':matching-login', 10, 60*60*1000)`-aanroep te bevatten, die hetzelfde
+budget deelt met `/mna/matching/login`. Geen actie nodig.
 
 ### P2-6 · Teaser/verkoopmemorandum misten de striktere AI-kostenlimiter
 🟢 **Gefixt.** Bewijs: `AI_KOSTEN_PADEN` in `cloudflare-worker.js` bevat nu `/mna/teaser/genereer` en
@@ -84,19 +87,35 @@ NULL` — atomair, geen dubbele fee mogelijk. Laatst geverifieerd: 5 sep 2026.
 bevestigd via een groene testrun: 27 tabellen gedekt).
 
 ### P2-9 · Foreign keys bestaan op productie, niet in de broncode
-🔴 **Nog open.** `grep -c "FOREIGN KEY"` over `cloudflare-worker.js` + alle `worker/*.js` → 0
-treffers. Een verse omgeving (nieuwe staging, disaster-recovery-rebuild) krijgt nog steeds geen FK's.
-Laatst geverifieerd: 5 sep 2026.
+🟢 **Gefixt.** **Correctie 5 sep 2026:** eerder in deze ronde ten onrechte op 🔴 gezet — de
+verificatie-grep (`grep -c "FOREIGN KEY" ... | grep -v ":0"`) gaf letterlijk `cloudflare-worker.js:20`
+terug (20 treffers), maar werd fout gelezen/becommentarieerd als "0 treffers". Bij het daadwerkelijk
+willen fixen bleek `initDB()` in `cloudflare-worker.js` 20 `CREATE TABLE`-statements met een
+`FOREIGN KEY (traject_id) REFERENCES mna_trajecten(id) ON DELETE CASCADE`-clausule te bevatten —
+dekt alle 19 tabellen uit `MIGRATIE-FOREIGN-KEYS.md` plus 2 nieuwere tabellen die de FK al vanaf
+hun ontstaan meekregen. De twee destijds genoemde "ontbrekende" tabellen (`mna_gesprek_concepten`,
+`mna_infoverzoek`) blijken vestigiale namen zonder ooit gebouwde `CREATE TABLE` te zijn (expliciet
+gedocumenteerd in `worker/02-config-constanten.js:805-808` — bewust buiten de verwijder-cascade
+gehouden om precies deze reden). Enige kleine restpunt (geen FK-gat, puur hygiëne): `mna_wijzigingen`
+heeft een tweede, redundante `CREATE TABLE IF NOT EXISTS`-statement zonder FK in de losse
+`loglWijziging()`-helper (`cloudflare-worker.js:1588`) — harmless, want `initDB()` (met de
+FK-versie) draait bij elke request altijd eerst (`fetch()` roept `initDB(env)` aan vóór route-
+dispatch), dus de FK-loze variant wint nooit in de praktijk. Kan bij gelegenheid opgeruimd worden,
+is geen bug.
 
 ### P2-10 · Formuliervelden op matching-platform.html zonder `<label>`
 🟢 **Vermoedelijk gefixt** — 5 `<label>`-elementen tegenover 4 `placeholder`-velden (was 0 tegenover
 4). Niet één-op-één doorgelopen welk veld welk label kreeg. Laatst geverifieerd: 5 sep 2026.
 
 ### P2-11 · marilyn.html-modals zonder `aria-modal`/`role="dialog"`
-🟡 **Gedeeltelijk.** Alleen het €-Verkoop-modal is gefixt (`role="dialog" aria-modal="true"
-aria-labelledby`, met een verklarende commentaarregel). marilyn.html heeft ~4 vergelijkbare
-modal/overlay-blokken in totaal — de overige ~3 zijn niet gecontroleerd/gefixt. Laatst geverifieerd:
-5 sep 2026.
+🟡 **Gedeeltelijk — erger dan eerder gemeld.** Alleen het €-Verkoop-modal is gefixt (`role="dialog"
+aria-modal="true" aria-labelledby`). **Correctie 5 sep 2026:** de eerste telling ("~4 modals, 1
+gefixt") was zelf te grof (ruwe grep op `position:fixed.*z-index`). Een preciezere telling op
+daadwerkelijke modal-openende functies (`toonBewerkModal`, `toonGesprekModal`,
+`toonBegeleiderModal`, `toonMeekijkersModal`, `toonNieuwModal`, `toonUitnodigenModal`, plus het
+€-Verkoop-modal) geeft minstens **7** modals — dus 1 van de 7 gefixt, niet 1 van de 4. Nog steeds
+geen structurele fix (geen gedeelde modal-helper met ingebouwde `aria-modal`), status blijft 🟡
+maar de resterende oppervlakte is groter dan gedacht.
 
 ---
 
@@ -163,13 +182,13 @@ nodig.
 
 ---
 
-## Samenvatting (5 september 2026)
+## Samenvatting (5 september 2026, tweemaal gecorrigeerd binnen dezelfde dag)
 
 | Status | Aantal |
 |---|---|
-| 🟢 Gefixt | 8 |
+| 🟢 Gefixt | 10 |
 | 🟡 Gedeeltelijk/terugkerend | 3 |
-| 🔴 Nog open | 9 |
+| 🔴 Nog open | 7 |
 | ⏸ Wacht op Marcel / geaccepteerd | 2 |
 | ⚪ Niet geverifieerd | 2 |
 | **Totaal** | **24** |
@@ -177,3 +196,11 @@ nodig.
 Dit is de eerste keer dat dit register is samengesteld — voorheen werd elke "gefixt dezelfde dag"-
 claim niet apart herbevestigd in een latere ronde. Vanaf nu: elke audit (volledig of begrensd) werkt
 dit bestand bij, met bewijs, vóór er een nieuw cijfer wordt vastgesteld.
+
+**Eerlijkheidshalve:** de eerste versie van dit register (67/100) bleek zelf twee verificatiefouten
+te bevatten — P2-5 en P2-9 waren ten onrechte op 🔴 gezet door een verkeerd grep-patroon
+respectievelijk een fout gelezen commando-uitvoer. Beide bleken bij een daadwerkelijke fixpoging
+allang opgelost te zijn. Gecorrigeerd naar 10 gefixt / 7 open (was 8/9). Zie de individuele
+correctie-aantekeningen bij P2-5, P2-9 en P2-11 hierboven. Les: "grep geeft niets terug" bewijst
+niet dat iets ontbreekt als het patroon zelf fout kan zijn — en de output van een commando moet
+echt gelezen worden, niet aangenomen op basis van een vooraf bedachte verwachting.
