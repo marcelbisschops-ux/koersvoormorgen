@@ -134,6 +134,7 @@ tr:hover td{background:var(--bg);cursor:pointer}
 /* GESPREK */
 .gesprek-item{border:1px solid var(--border);border-radius:var(--r2);margin-bottom:.75rem;overflow:hidden}
 .gesprek-hdr{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--bg);cursor:pointer}
+.gesprek-hdr:focus-visible{outline:2px solid var(--teal);outline-offset:-2px}
 .gesprek-body{padding:12px 14px;font-size:13px;color:var(--sub);line-height:1.7;display:none;border-top:1px solid var(--border)}
 .gesprek-body.open{display:block}
 
@@ -578,7 +579,7 @@ function renderHuisstijlModal(){
     <div class="field" style="margin-bottom:1rem"><label for="hs-naam">Eigen platformnaam</label><input type="text" id="hs-naam" value="${esc(b.brand_naam)}" placeholder="${esc(BRAND.platform)}" maxlength="60"></div>
     <div class="field" style="margin-bottom:1rem"><label>Accentkleur</label><div style="display:flex;align-items:center;gap:10px"><input type="color" id="hs-kleur" value="${esc(b.brand_kleur)||'#3d6b63'}" style="width:48px;height:36px;padding:2px;border:1px solid var(--border);border-radius:6px;cursor:pointer"><span style="font-size:12px;color:var(--muted)">Klik op het vlak om een kleur te kiezen</span></div><div id="hs-kleur-waarschuwing" style="font-size:11px;color:var(--gold-dark);margin-top:6px;line-height:1.5;display:none">&#8505; Deze kleur is op een donkere achtergrond moeilijk leesbaar als tekst — uw verkoper/koper ziet in donkere modus automatisch een lichtere versie ervan.</div></div>
     <div class="field" style="margin-bottom:1.25rem"><label>Logo</label>
-      <div id="hs-logo-preview" style="margin-bottom:.5rem;${b.brand_logo_url?'':'display:none'}"><img id="hs-logo-img" src="${esc(b.brand_logo_url||'')}" style="height:40px;max-width:160px;object-fit:contain;border:1px solid var(--border);border-radius:6px;padding:4px;background:var(--bg)"></div>
+      <div id="hs-logo-preview" style="margin-bottom:.5rem;${b.brand_logo_url?'':'display:none'}"><img id="hs-logo-img" src="${esc(b.brand_logo_url||'')}" alt="Voorbeeld van uw logo" style="height:40px;max-width:160px;object-fit:contain;border:1px solid var(--border);border-radius:6px;padding:4px;background:var(--bg)"></div>
       <input type="file" id="hs-logo-file" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml" style="font-size:12px">
       <div style="font-size:11px;color:var(--muted);margin-top:4px">PNG, JPG, WEBP, GIF of SVG — max 1,5 MB.${b.brand_logo_url?' <a href="#" id="hs-logo-verwijder" style="color:var(--teal)">Logo verwijderen</a>':''}</div>
     </div>
@@ -750,7 +751,7 @@ async function laadGesprekken(id, tussenCode){
     gesprekken.forEach(function(g){
       var dt=g.datum?new Date(g.datum).toLocaleDateString('nl-NL',{day:'2-digit',month:'long',year:'numeric'}):fmt(g.created_at);
       html+='<div class="gesprek-item">'
-        +'<div class="gesprek-hdr" onclick="this.nextSibling.classList.toggle(\'open\')">'
+        +'<div class="gesprek-hdr" onclick="this.nextSibling.classList.toggle(\'open\')" tabindex="0" role="button" aria-expanded="false" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();this.nextSibling.classList.toggle(\'open\');this.setAttribute(\'aria-expanded\',this.nextSibling.classList.contains(\'open\'));}">'
         +'<span class="badge badge-actief" style="font-size:9px">'+esc(typenL[g.type]||g.type||'Gesprek')+'</span>'
         +'<span style="font-size:13px;font-weight:600;color:var(--head)">'+esc(dt)+'</span>'
         +(g.deelnemers?'<span style="font-size:11px;color:var(--muted)">'+esc(g.deelnemers)+'</span>':'')
