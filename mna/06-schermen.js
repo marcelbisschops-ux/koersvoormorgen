@@ -177,9 +177,9 @@ function renderOpening(){
     +'<div style="font-size:13px;color:var(--muted);margin-bottom:1.5rem;max-width:640px">Voor <strong>'+esc(t.kantoor_naam||'')+'</strong> vragen we eerst een paar basisgegevens en, indien van toepassing, de '+esc(pt.meer)+' en groepsstructuur. Dit is eenmalig en duurt een paar minuten — daarna gaat u direct door naar de due diligence-vragen.</div>'
     +'<div class="panel" style="max-width:640px;margin-bottom:1.25rem">'
     +'<div style="font-family:Playfair Display,serif;font-size:1.05rem;color:var(--head);font-weight:600;margin-bottom:.75rem">&#128274; Bedrijfsgegevens</div>'
-    +'<div class="f" style="margin-bottom:.75rem"><label>Adres (statutair)</label><input type="text" id="op-adres" value="'+esc(t.verkoper_adres||'')+'"></div>'
-    +'<div class="f" style="margin-bottom:.75rem"><label>KvK-nummer</label><input type="text" id="op-kvk" value="'+esc(t.verkoper_kvk||'')+'"></div>'
-    +'<div class="f"><label>Naam tekenbevoegde</label><input type="text" id="op-tekenbevoegde" value="'+esc(t.tekenbevoegde_naam||'')+'"></div>'
+    +'<div class="f" style="margin-bottom:.75rem"><label for="op-adres">Adres (statutair)</label><input type="text" id="op-adres" value="'+esc(t.verkoper_adres||'')+'"></div>'
+    +'<div class="f" style="margin-bottom:.75rem"><label for="op-kvk">KvK-nummer</label><input type="text" id="op-kvk" value="'+esc(t.verkoper_kvk||'')+'"></div>'
+    +'<div class="f"><label for="op-tekenbevoegde">Naam tekenbevoegde</label><input type="text" id="op-tekenbevoegde" value="'+esc(t.tekenbevoegde_naam||'')+'"></div>'
     +'</div>'
     +'<div class="panel" style="max-width:640px;margin-bottom:1.25rem">'
     +'<div style="font-family:Playfair Display,serif;font-size:1.05rem;color:var(--head);font-weight:600;margin-bottom:.25rem">&#127970; Groepsstructuur</div>'
@@ -554,7 +554,7 @@ function renderMain(){
           }
         }
       }
-      dataHtml+='<div class="f"><label>'+df.label+reqLabel(df)+(df.doc?' <span style="color:var(--gold);font-size:9px">&#128196; ref</span>':'')+bronTag
+      dataHtml+='<div class="f"><label for="df_'+df.id+'">'+df.label+reqLabel(df)+(df.doc?' <span style="color:var(--gold);font-size:9px">&#128196; ref</span>':'')+bronTag
         +(hasConflict?' <span style="color:var(--gold);font-size:9px;font-weight:600" title="Document geeft andere waarde: '+esc(hasConflict)+'">&#9888; afwijking</span>':'')
         +(toontGroepsniveauBadge?' <span style="color:var(--muted);font-size:9px;font-weight:600" title="Dit veld geldt voor de hele groep, niet alleen voor de geselecteerde entiteit — wijzigingen gelden overal.">&#128279; geldt voor hele groep</span>':'')+'</label>'
         +'<input type="text" id="df_'+df.id+'" value="'+esc(val)+'" placeholder="'+esc(df.ph)+'" class="'+(missing?'missing':'')+'" style="'+conflictStyle+'"'+conflictTitle+' oninput="userEdit(this)">'+ebitdaNormHint+'</div>';
