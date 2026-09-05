@@ -747,7 +747,7 @@ function renderBegeleiderDashboard(app){
           +'<div style="width:34px;height:34px;border-radius:50%;background:'+(disabled?'var(--panel)':kleur)+';border:2px solid '+(disabled?'var(--border2)':kleur)+';display:flex;align-items:center;justify-content:center;font-size:15px;'+(disabled?'opacity:.4':'')+'">'+icoon+'</div>'
           +(isLaatste?'':'<div style="width:2px;flex:1;background:var(--border2);margin:2px 0;min-height:18px"></div>')
           +'</div>'
-          +'<button id="'+id+'" '+(disabled?'disabled title="'+esc(titel)+'"':'')+' style="all:unset;cursor:'+(disabled?'not-allowed':'pointer')+';flex:1;padding-bottom:16px;'+(disabled?'opacity:.45':'')+'">'
+          +'<button id="'+id+'" class="stap-btn" '+(disabled?'disabled title="'+esc(titel)+'"':'')+' style="all:unset;cursor:'+(disabled?'not-allowed':'pointer')+';flex:1;padding-bottom:16px;'+(disabled?'opacity:.45':'')+'">'
           +'<div style="font-size:13px;font-weight:600;color:var(--head)">'+naam+'</div>'
           +'<div class="stap-status" data-doc="'+id+'" style="font-size:11px;color:var(--muted);margin-top:2px">'+(statusHtml||'')+'</div>'
           +'</button></div>';
@@ -1136,7 +1136,7 @@ function renderBegeleiderDashboard(app){
       +'</div>'
       +(vd&&vd.tekst
         ?'<textarea readonly style="width:100%;height:280px;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:Georgia,serif;font-size:12px;line-height:1.8;padding:1rem;outline:none;resize:vertical">'+esc(vd.tekst)+'</textarea>'
-        :'<div style="font-size:12px;color:var(--muted);padding:1rem;background:var(--card);border-radius:var(--r)">Geüpload bestand, geen tekstweergave beschikbaar. <a href="'+WORKER+'/mna/document/download/'+v.id+'?code='+encodeURIComponent(S.code)+'" target="_blank" style="color:var(--teal)">&#8681; Download</a></div>')
+        :'<div style="font-size:12px;color:var(--muted);padding:1rem;background:var(--card);border-radius:var(--r)">Geüpload bestand, geen tekstweergave beschikbaar. <a href="'+WORKER+'/mna/document/download/'+v.id+'?code='+encodeURIComponent(S.code)+'" target="_blank" rel="noopener" style="color:var(--teal)">&#8681; Download</a></div>')
       +'<div style="display:flex;gap:8px;margin-top:.75rem">'
       +'<button id="bg-doc-nieuw" class="btn-outline" style="font-size:12px;padding:6px 14px">&#8635; Nieuwe versie genereren</button>'
       +'</div></div>';
@@ -2643,7 +2643,7 @@ function renderBegeleiderDashboard(app){
             +'<span style="font-size:11px;font-weight:600;color:'+kleur+';min-width:160px">'+(labels[v.doc_type]||v.doc_type)+(isUpload?'':' v'+v.versie)+'</span>'
             +'<span style="font-size:11px;color:var(--muted)">'+dt+'</span>'
             +(isUpload
-              ?'<a href="'+WORKER+'/mna/document/download/'+esc(v.id)+'?code='+encodeURIComponent(S.code)+'" target="_blank" class="btn-ghost" style="font-size:10px;padding:2px 10px;margin-left:auto;text-decoration:none">&#8681; Download</a>'
+              ?'<a href="'+WORKER+'/mna/document/download/'+esc(v.id)+'?code='+encodeURIComponent(S.code)+'" target="_blank" rel="noopener" class="btn-ghost" style="font-size:10px;padding:2px 10px;margin-left:auto;text-decoration:none">&#8681; Download</a>'
               :'<button class="btn-ghost bg-versie-open" data-id="'+esc(v.id)+'" style="font-size:10px;padding:2px 10px;margin-left:auto">&#128065; Lezen</button>'
               +'<button class="btn-ghost bg-versie-del" data-id="'+esc(v.id)+'" style="font-size:10px;padding:2px 6px;color:var(--red);border-color:var(--red);margin-left:4px">&#10005;</button>')
             +'</div>';

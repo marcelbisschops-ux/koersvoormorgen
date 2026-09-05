@@ -456,6 +456,21 @@ log('9. Documentgenerator (bgDoc in mna/04): clausule-integriteitsregel + afkap-
   if (!problemen) ok('bgDoc() bevat de clausule-integriteitsregel én weigert een te lange template i.p.v. hem af te kappen.');
 }
 
+// ── 10. Kleurcontrast: --muted (en varianten) tegen elk oppervlak (WCAG AA) ──
+// (5 sep 2026: de --muted-token is sinds 19 augustus al drie keer "gefixt" met een nieuwe hex-
+//  waarde, maar telkens maar tegen één achtergrond gecontroleerd. scripts/check-contrast.mjs
+//  rekent nu elke tekst/oppervlak-combinatie automatisch na, i.p.v. dat een volgende fix-poging
+//  hetzelfde patroon herhaalt.)
+log('10. Kleurcontrast (WCAG AA) — tekst-tokens tegen alle oppervlak-tokens');
+{
+  try {
+    execSync('node ' + path.join(ROOT, 'scripts/check-contrast.mjs'), { cwd: ROOT, stdio: 'pipe' });
+    ok('Alle tekst/oppervlak-combinaties halen WCAG AA (4.5:1) — zie scripts/check-contrast.mjs voor details.');
+  } catch (e) {
+    warn('Eén of meer kleurcombinaties onder de WCAG AA-grens (4.5:1). Draai `node scripts/check-contrast.mjs` voor de volledige lijst:\n' + (e.stdout || '').toString().trim().split('\n').map(l => '      ' + l).join('\n'));
+  }
+}
+
 // ── Samenvatting ──────────────────────────────────────────────────────────
 log('Samenvatting');
 if (!bevindingen) {

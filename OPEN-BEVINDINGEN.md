@@ -46,17 +46,14 @@ aria-pressed aria-label` + een `keydown`-handler voor Enter/Spatie, met een expl
 "Audit-fix P1 (24 aug 2026)"-commentaarregel. Laatst geverifieerd: 5 sep 2026.
 
 ### P1-4 · `--muted`-kleurtoken onder WCAG AA (4,5:1) — terugkerend probleem
-🟡 **Terugkerend, niet structureel opgelost.** De waarde is sindsdien meermaals gewijzigd, maar niet
-tegen alle achtergrond-tokens waar hij op gebruikt wordt herberekend:
-- `mna.html` `--muted:#647581` op `--card:#ebeef1` → **4,10:1** (fail)
-- `marilyn.html` `--muted:#5f7180` op `--card:#eae1d0` → **3,89:1** (fail)
-- `assets/kvm.css` (marketing-site, nieuw sinds de "Herontwerp"-ronde na 24 aug) `--muted:#5f7180`
-  op `--s-light-2:#efe9dc` → **4,17:1** (fail); op `--s-light:#f6f2ea` → 4,52:1 (net oké)
-Rekenkundig gecontroleerd met de WCAG-relatieve-luminantieformule, niet aangenomen. **Patroon:** elke
-keer wordt de kleur op ÉÉN achtergrond gecontroleerd en goedgekeurd, niet op alle surfaces waar de
-token ook op staat (kaarten/panels naast de hoofdachtergrond). **Aanbeveling:** een los lint-scriptje
-(`scripts/check-contrast.mjs`) dat automatisch elke tekst-token tegen elke surface-token in elk
-bestand narekent — voorkomt dat dit een vierde keer terugkomt. Laatst geverifieerd: 5 sep 2026.
+🟢 **Structureel gefixt (5 sep 2026).** Nieuwe waarden die op ALLE relevante achtergronden slagen:
+`mna.html`/`adv.html`/`matching-platform.html` `--muted:#5a6974` (4,86-5,07:1), `marilyn.html`
+`--muted:#556573` (4,63-5,11:1), `assets/kvm.css` `--muted:#556573` (4,97-5,38:1). Belangrijker dan de
+kleurwaarde zelf: **`scripts/check-contrast.mjs`** toegevoegd (nieuw, rekent elke tekst-token tegen
+elke surface-token na, WCAG-relatieve-luminantieformule) en verplicht ingebakken als **check 10** in
+`tests/audit-consistentie.mjs` — draait dus voortaan bij elke push, geen handmatige één-achtergrond-
+check meer per fix-poging. Dit is precies het patroon dat de eerdere drie fixes (19 aug, en twee keer
+sindsdien) misten.
 
 ---
 
@@ -122,10 +119,11 @@ maar de resterende oppervlakte is groter dan gedacht.
 ## P3 — midden
 
 ### P3-12 · `/beveiliging`-route mist alle security-headers
-🔴 **Nog open.** De route retourneert nog steeds alleen `Content-Type` + `X-Robots-Tag` — geen
-X-Frame-Options/CSP/HSTS. Clickjacking-risico blijft (alleen bereikbaar met een geheime 28-tekens-
-code, dus beperkte praktische blootstelling, maar de bevinding zelf is niet verholpen). Laatst
-geverifieerd: 5 sep 2026.
+🟢 **Gefixt (5 sep 2026).** Eigen headerset toegevoegd (X-Frame-Options: DENY, CSP afgestemd op de
+daadwerkelijke inline stijlen/Google Fonts/inline onclick, HSTS, Referrer-Policy) — `getCORS()`'s
+`default-src 'none'` blijft terecht voor de rest van de worker (JSON-only), maar was niet geschikt
+voor deze ene HTML-route. Geverifieerd op staging én productie met een echte GET (een eerdere
+HEAD-test gaf een vals beeld, zie audit-notitie).
 
 ### P3-13 · Diepe-audit-wachtrij had geen timeout/herstel bij een vastgelopen run
 🟢 **Gefixt** (backend-commit `27aeff0`, staging + productie live, 3 sep 2026). Een `bezig`-aanvraag
@@ -138,16 +136,18 @@ zelf is hier het bewijs — de wachtrij werkte zoals bedoeld).
 blijft staan maar is nu redundant/harmless. Laatst geverifieerd: 5 sep 2026.
 
 ### P3-15 · N+1-query in het matching-overzicht
-🔴 **Nog open.** `worker/19-info-fases.js` doet nog steeds 3 losse `SELECT`'s per traject
-(financieel/partner/strategisch) in een `for`-loop. Laatst geverifieerd: 5 sep 2026.
+🟢 **Gefixt (5 sep 2026).** Eén query met `traject_id IN (...)` + groeperen in JS, i.p.v. 3 losse
+SELECT's per traject in een loop. Zelfde patroon als de eerdere `/gebruikers/lijst`-fix (19 aug).
 
 ### P3-16 · Dode `marketing_prijs`-kolom
-🔴 **Nog open.** Kolom wordt nog steeds gelezen/geschreven in `worker/16-adviseur.js` (verkoop-
-instelling-endpoint), bevestigd 0 frontend-consumenten. Laatst geverifieerd: 5 sep 2026.
+🟢 **Gefixt (5 sep 2026).** Kolom wordt niet meer gelezen/geschreven in `worker/16-adviseur.js`. De
+kolom zelf blijft in het schema staan (verwijderen is een schema-wijziging buiten "ADD COLUMN",
+bewust niet meegenomen — puur cosmetisch, geen risico).
 
 ### P3-17 · Focus-visible ontbreekt op de documentflow-stepper
-🔴 **Nog open.** `style="all:unset"` staat nog op de stap-knoppen in `mna/04-begeleider-dashboard.js`;
-0 treffers voor `:focus-visible` in dat bestand. Laatst geverifieerd: 5 sep 2026.
+🟢 **Gefixt (5 sep 2026).** `.stap-btn`-class toegevoegd aan de stepper-knop + één CSS-regel
+(`.stap-btn:focus-visible{outline:...!important}`) — `!important` is nodig omdat de bestaande
+inline `style="all:unset"` anders altijd wint van een externe class-regel.
 
 ### P3-18 · Sectorspecifieke waarderingsmethodiek beperkt tot EBITDA-vs-omzet
 ⏸ **Wacht op Marcel.** Geen bug — een scope-vraag (ARR-multiple voor IT, IGJ-risicoscore voor zorg
@@ -161,8 +161,8 @@ wel of niet bouwen). Nog niet aan Marcel voorgelegd sinds 24 aug.
 ⚪ Niet geverifieerd deze ronde (puur cosmetisch, lage prioriteit om te checken).
 
 ### P4-20 · `target="_blank"` zonder `rel="noopener"`
-🔴 **Nog open, verergerd.** 26 treffers sitebreed (was 18 op 24 aug) — alle same-origin, dus beperkt
-praktisch risico, maar het aantal groeit i.p.v. te dalen. Laatst geverifieerd: 5 sep 2026.
+🟢 **Gefixt (5 sep 2026).** Alle 27 treffers sitebreed kregen `rel="noopener"` (1 had 'm al). Geen
+functionele wijziging (alle links waren al same-origin), pure hygiëne.
 
 ### P4-21 · Geen laadindicator tijdens `laadLiveData()` op matching-platform.html
 ⚪ Niet geverifieerd deze ronde.
@@ -173,8 +173,8 @@ praktisch risico, maar het aantal groeit i.p.v. te dalen. Laatst geverifieerd: 5
 grotere ronde (zie eerdere audits). Laatst geverifieerd: 5 sep 2026.
 
 ### P4-23 · CLAUDE.md-documentatie over bestandsomvang is stale
-🔴 **Nog open, verergerd.** CLAUDE.md claimt nog steeds "~970 regels" voor `cloudflare-worker.js`;
-werkelijk nu **1787** regels (was al 1597 op 24 aug). Laatst geverifieerd: 5 sep 2026.
+🟢 **Gefixt (5 sep 2026).** Bijgewerkt naar het actuele regelaantal (1787) + een opmerking dat dit
+periodiek moet worden bijgewerkt i.p.v. aannemen dat het klopt.
 
 ### P4-24 · AUDIT_TRIGGER_KEY leesbaar in de routine-prompt · geen JSON-download waarderingsrapport
 ⏸ **Geaccepteerd, geen actie.** Beide destijds al beoordeeld als bewuste afweging, geen wijziging
@@ -182,16 +182,26 @@ nodig.
 
 ---
 
-## Samenvatting (5 september 2026, tweemaal gecorrigeerd binnen dezelfde dag)
+## Samenvatting (5 september 2026 — bijgewerkt na een fixronde dezelfde dag)
 
 | Status | Aantal |
 |---|---|
-| 🟢 Gefixt | 10 |
-| 🟡 Gedeeltelijk/terugkerend | 3 |
-| 🔴 Nog open | 7 |
+| 🟢 Gefixt | 17 |
+| 🟡 Gedeeltelijk/terugkerend | 2 |
+| 🔴 Nog open | 1 |
 | ⏸ Wacht op Marcel / geaccepteerd | 2 |
 | ⚪ Niet geverifieerd | 2 |
 | **Totaal** | **24** |
+
+**Ná de eerste registerversie van vandaag is een fixronde gedraaid:** P1-4 (`--muted`-contrast,
+structureel via een nieuw lint-script `scripts/check-contrast.mjs` + check 10 in
+`tests/audit-consistentie.mjs`), P3-12 (`/beveiliging`-headers), P3-15 (N+1-query), P3-16 (dode
+kolom), P3-17 (focus-visible), P4-20 (`target=_blank`) en P4-23 (stale documentatie) zijn allemaal
+gefixt, getest (staging+productie, 44/44 e2e-API, 72/72 cross-path, 18/18 Playwright) en gedeployed.
+Resterend: P1-2 (backup, gedeeltelijk — root cause wél gefixt via `CLOUDFLARE_API_TOKEN`, nog niet
+lang genoeg bewezen om op 🟢 te zetten), P2-11 (marilyn-modals, 1 van 7), P3-18 (scope-vraag aan
+Marcel), P4-19/21/24 (niet gecheckt/geaccepteerd), en P4-22 (groeiende bestanden — bewust niet
+opgepakt, een aparte grotere ronde per eerdere audits).
 
 Dit is de eerste keer dat dit register is samengesteld — voorheen werd elke "gefixt dezelfde dag"-
 claim niet apart herbevestigd in een latere ronde. Vanaf nu: elke audit (volledig of begrensd) werkt

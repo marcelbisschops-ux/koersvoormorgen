@@ -13,7 +13,7 @@ html{color-scheme:light dark}
 /* Huisstijl Koers voor Morgen (1 sep 2026): nachtblauw #0D1B2A, petrolgroen #3D6B63,
    warm off-white #F6F2EA, lichtgrijs #DCE2DD, goud #C49A4A. --red/--info/--purple blijven
    semantisch (fout/info/tag) ongewijzigd. */
-:root{--void:#f6f2ea;--panel:#fff;--card:#ebeef1;--border:#d9dee3;--border2:#bfc8d0;--muted:#647581;--mid:#42525e;--sub:#16232e;--head:#0d1b2a;--teal:#3d6b63;--teal-dim:#2c4f4a;--teal-dark:#12352d;--teal-bg:rgba(61,107,99,.1);--gold:#c49a4a;--gold-bg:rgba(196,154,74,.12);--gold-dark:#8a6a2e;--red:#e05252;--red-bg:rgba(224,82,82,.1);--info:#2a5ea0;--info-bg:#eef3fa;--info-dim:#4a6ea0;--purple:#7c5cbf;--purple-bg:#f3f0ff;--purple-border:#c8b8f0;--r:6px;--r2:10px}
+:root{--void:#f6f2ea;--panel:#fff;--card:#ebeef1;--border:#d9dee3;--border2:#bfc8d0;--muted:#5a6974;--mid:#42525e;--sub:#16232e;--head:#0d1b2a;--teal:#3d6b63;--teal-dim:#2c4f4a;--teal-dark:#12352d;--teal-bg:rgba(61,107,99,.1);--gold:#c49a4a;--gold-bg:rgba(196,154,74,.12);--gold-dark:#8a6a2e;--red:#e05252;--red-bg:rgba(224,82,82,.1);--info:#2a5ea0;--info-bg:#eef3fa;--info-dim:#4a6ea0;--purple:#7c5cbf;--purple-bg:#f3f0ff;--purple-border:#c8b8f0;--r:6px;--r2:10px}
 /* Nachtmodus: volgt de systeeminstelling van het apparaat (dag/avond), geen aparte knop nodig.
    Alleen de kleurvariabelen wisselen — de rest van de CSS/JS gebruikt overal var(--x), dus dat
    verft automatisch mee. De vaste merkkleuren van documentknoppen (bieding/SPA/waardering) en de
@@ -42,6 +42,11 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--s
 .req-tag{display:inline-block;font-size:8px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--red);background:var(--red-bg);border:1px solid var(--red);border-radius:3px;padding:0 5px;margin-left:6px;vertical-align:middle;line-height:1.5}
 .f input,.f textarea,.f select{background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:'IBM Plex Sans',sans-serif;font-size:13px;padding:8px 11px;outline:none;width:100%;transition:border-color .12s}
 .f input:focus,.f textarea:focus{border-color:var(--teal)}
+/* Audit-fix P3 (5 sep 2026): style="all:unset" op de documentflow-stepper-knoppen verwijdert ook de
+   standaard focusring — 13 tabbare stappen zonder enige visuele focusindicator. !important is hier
+   nodig: een inline style="all:unset" wint anders altijd van een externe class-regel, ongeacht
+   pseudo-class-specificiteit. Eén regel lost het voor alle stappen tegelijk op. */
+.stap-btn:focus-visible{outline:2px solid var(--teal) !important;outline-offset:2px !important;border-radius:4px}
 .f input.missing{border-color:var(--red);background:var(--red-bg)}
 .f textarea{resize:vertical;min-height:60px}
 .f input::placeholder,.f textarea::placeholder{color:var(--muted)}
