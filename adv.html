@@ -85,6 +85,7 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--s
 .main{max-width:1000px;margin:0 auto;padding:2rem}
 .back-btn{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);cursor:pointer;margin-bottom:1.5rem;transition:color .15s}
 .back-btn:hover{color:var(--teal)}
+.back-btn:focus-visible{outline:2px solid var(--teal);outline-offset:2px;border-radius:4px}
 
 /* STATS */
 .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:2rem}
@@ -149,7 +150,7 @@ tr:hover td{background:var(--bg);cursor:pointer}
 </head>
 <body>
 <div id="app"></div>
-<div id="toast"></div>
+<div id="toast" role="status" aria-live="polite"></div>
 <script>
 // Standaard altijd productie. Alleen overschrijfbaar via ?worker=... in de URL, en dan uitsluitend
 // naar de bekende staging-omgeving — bedoeld om daar tegen te testen, nooit als permanente
@@ -194,8 +195,8 @@ function renderLogin(){
     <div class="login-brand"><div class="login-dot"></div><span class="login-brand-name">${BRAND.platform} ${BRAND.suffix}</span></div>
     <div class="login-title">Adviseur portaal</div>
     <div class="login-sub">Log in met uw e-mailadres en wachtwoord.</div>
-    <div class="field"><label>E-mailadres</label><input type="email" id="l-e" placeholder="E-mailadres" autofocus></div>
-    <div class="field"><label>Wachtwoord</label><input type="password" id="l-w" placeholder="••••••••"></div>
+    <div class="field"><label for="l-e">E-mailadres</label><input type="email" id="l-e" placeholder="E-mailadres" autofocus></div>
+    <div class="field"><label for="l-w">Wachtwoord</label><input type="password" id="l-w" placeholder="••••••••"></div>
     <div id="l-err" class="err-msg"></div>
     <button class="btn" id="l-btn" style="width:100%;margin-bottom:1rem">Inloggen</button>
     <div style="text-align:right;margin-bottom:1.25rem">
@@ -217,7 +218,7 @@ function renderForgot(){
     <div class="login-brand"><div class="login-dot"></div><span class="login-brand-name">${BRAND.platform} ${BRAND.suffix}</span></div>
     <div class="login-title">Wachtwoord vergeten</div>
     <div class="login-sub">Vul uw e-mailadres in. Als het bekend is ontvangt u een resetlink.</div>
-    <div class="field"><label>E-mailadres</label><input type="email" id="f-e" placeholder="E-mailadres" autofocus></div>
+    <div class="field"><label for="f-e">E-mailadres</label><input type="email" id="f-e" placeholder="E-mailadres" autofocus></div>
     <div id="f-ok" class="ok-msg"></div>
     <div id="f-err" class="err-msg"></div>
     <button class="btn" id="f-btn" style="width:100%;margin-bottom:1rem">Verstuur resetlink</button>
@@ -574,7 +575,7 @@ function renderHuisstijlModal(){
   mo.innerHTML=`
     <div id="huisstijl-modal-titel" style="font-family:Playfair Display,serif;font-size:1.15rem;color:var(--head);font-weight:600;margin-bottom:.25rem">&#127912; Eigen huisstijl</div>
     <div style="font-size:12px;color:var(--muted);margin-bottom:1.25rem;line-height:1.6">Deze instellingen gelden voor de trajecten die u aanmaakt — uw verkoper en koper zien uw eigen naam/kleur/logo in plaats van "${esc(BRAND.platform)}". Laat een veld leeg om de standaard te gebruiken.</div>
-    <div class="field" style="margin-bottom:1rem"><label>Eigen platformnaam</label><input type="text" id="hs-naam" value="${esc(b.brand_naam)}" placeholder="${esc(BRAND.platform)}" maxlength="60"></div>
+    <div class="field" style="margin-bottom:1rem"><label for="hs-naam">Eigen platformnaam</label><input type="text" id="hs-naam" value="${esc(b.brand_naam)}" placeholder="${esc(BRAND.platform)}" maxlength="60"></div>
     <div class="field" style="margin-bottom:1rem"><label>Accentkleur</label><div style="display:flex;align-items:center;gap:10px"><input type="color" id="hs-kleur" value="${esc(b.brand_kleur)||'#3d6b63'}" style="width:48px;height:36px;padding:2px;border:1px solid var(--border);border-radius:6px;cursor:pointer"><span style="font-size:12px;color:var(--muted)">Klik op het vlak om een kleur te kiezen</span></div><div id="hs-kleur-waarschuwing" style="font-size:11px;color:var(--gold-dark);margin-top:6px;line-height:1.5;display:none">&#8505; Deze kleur is op een donkere achtergrond moeilijk leesbaar als tekst — uw verkoper/koper ziet in donkere modus automatisch een lichtere versie ervan.</div></div>
     <div class="field" style="margin-bottom:1.25rem"><label>Logo</label>
       <div id="hs-logo-preview" style="margin-bottom:.5rem;${b.brand_logo_url?'':'display:none'}"><img id="hs-logo-img" src="${esc(b.brand_logo_url||'')}" style="height:40px;max-width:160px;object-fit:contain;border:1px solid var(--border);border-radius:6px;padding:4px;background:var(--bg)"></div>
@@ -583,8 +584,8 @@ function renderHuisstijlModal(){
     </div>
     <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.5rem">Bedrijfsgegevens voor documenten (optioneel)</div>
     <div style="font-size:12px;color:var(--muted);margin-bottom:.75rem;line-height:1.5">Vult u dit in, dan noemen NDA/LoI/bemiddelingsovereenkomst e.d. uw eigen kantoor als begeleidende partij in plaats van ${esc(BRAND.platform)}. Laat leeg om de standaardtekst te gebruiken.</div>
-    <div class="field" style="margin-bottom:1rem"><label>Vestigingsadres</label><input type="text" id="hs-adres" value="${esc(b.brand_adres||'')}" placeholder="Vestigingsadres" maxlength="120"></div>
-    <div class="field" style="margin-bottom:1.25rem"><label>KvK-nummer</label><input type="text" id="hs-kvk" value="${esc(b.brand_kvk||'')}" placeholder="KvK-nummer" maxlength="8"></div>
+    <div class="field" style="margin-bottom:1rem"><label for="hs-adres">Vestigingsadres</label><input type="text" id="hs-adres" value="${esc(b.brand_adres||'')}" placeholder="Vestigingsadres" maxlength="120"></div>
+    <div class="field" style="margin-bottom:1.25rem"><label for="hs-kvk">KvK-nummer</label><input type="text" id="hs-kvk" value="${esc(b.brand_kvk||'')}" placeholder="KvK-nummer" maxlength="8"></div>
     <div id="hs-err" class="err-msg"></div>
     <div style="display:flex;gap:8px;justify-content:flex-end">
       <button id="hs-ann" class="btn-outline">Annuleren</button>
@@ -697,8 +698,8 @@ function uploadDocument(id, tussenCode){
   var ov=document.createElement('div');ov.className='overlay';
   ov.innerHTML=`<div class="modal" role="dialog" aria-modal="true" aria-labelledby="upload-modal-titel">
     <div class="modal-title" id="upload-modal-titel">Document uploaden</div>
-    <div class="field"><label>Bestand</label><input type="file" id="up-file" accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.xlsx,.xls" style="background:var(--bg);border:1.5px solid var(--border);border-radius:var(--r);padding:8px;width:100%"></div>
-    <div class="field"><label>Fase</label><select id="up-fase">
+    <div class="field"><label for="up-file">Bestand</label><input type="file" id="up-file" accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.xlsx,.xls" style="background:var(--bg);border:1.5px solid var(--border);border-radius:var(--r);padding:8px;width:100%"></div>
+    <div class="field"><label for="up-fase">Fase</label><select id="up-fase">
       ${faseKeuze.map(function(f){return'<option value="'+f+'">'+f.charAt(0).toUpperCase()+f.slice(1)+'</option>';}).join('')}
     </select></div>
     <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);cursor:pointer;margin:.4rem 0" title="Slaat het document alleen op als bewijsstuk, zonder AI-analyse.">
@@ -769,13 +770,13 @@ function nieuwGesprek(id, tussenCode){
   ov.innerHTML=`<div class="modal" style="max-width:620px" role="dialog" aria-modal="true" aria-labelledby="gesprek-modal-titel">
     <div class="modal-title" id="gesprek-modal-titel">Gesprek vastleggen</div>
     <div class="row2">
-      <div class="field"><label>Type</label><select id="gs-type">
+      <div class="field"><label for="gs-type">Type</label><select id="gs-type">
         ${typen.map(function(t){return'<option value="'+t+'">'+t.charAt(0).toUpperCase()+t.slice(1)+'</option>';}).join('')}
       </select></div>
-      <div class="field"><label>Datum</label><input type="date" id="gs-datum" value="${vandaag}"></div>
+      <div class="field"><label for="gs-datum">Datum</label><input type="date" id="gs-datum" value="${vandaag}"></div>
     </div>
-    <div class="field"><label>Deelnemers</label><input type="text" id="gs-deeln" placeholder="Namen van deelnemers"></div>
-    <div class="field"><label>Notities / verslag</label><textarea id="gs-verslag" rows="6" placeholder="Bespreekpunten, beslissingen, actiepunten..."></textarea></div>
+    <div class="field"><label for="gs-deeln">Deelnemers</label><input type="text" id="gs-deeln" placeholder="Namen van deelnemers"></div>
+    <div class="field"><label for="gs-verslag">Notities / verslag</label><textarea id="gs-verslag" rows="6" placeholder="Bespreekpunten, beslissingen, actiepunten..."></textarea></div>
     <div id="gs-err" class="err-msg"></div>
     <div class="modal-footer">
       <button class="btn-outline" id="gs-ann">Annuleren</button>
@@ -829,44 +830,44 @@ function nieuwTraject(){
   ov.innerHTML=`<div class="modal" role="dialog" aria-modal="true" aria-labelledby="nieuwtraject-adv-modal-titel">
     <div class="modal-title" id="nieuwtraject-adv-modal-titel">Nieuw traject aanmaken</div>
     <div class="row2">
-      <div class="field"><label>Type *</label><select id="n-type">
+      <div class="field"><label for="n-type">Type *</label><select id="n-type">
         <option value="Verkoop">Verkoop</option><option value="Fusie">Fusie</option>
         <option value="Opvolging">Opvolging</option><option value="PE-traject">PE-traject</option>
         <option value="Overname">Overname</option>
       </select></div>
-      <div class="field"><label>Sector *</label><select id="n-sector">
+      <div class="field"><label for="n-sector">Sector *</label><select id="n-sector">
         <option value="accountancy">Accountancy</option><option value="mkb">MKB</option>
         <option value="zorg">Zorg</option><option value="itsoftware">IT & Software</option>
       </select></div>
     </div>
-    <div class="field"><label>Structuur *</label><select id="n-structuur">
+    <div class="field"><label for="n-structuur">Structuur *</label><select id="n-structuur">
       <option value="bv">BV / NV — holding + werkmaatschappijen, VPB</option>
       <option value="maatschap">Maatschap — maten (box 1), geen VPB</option>
       <option value="eenmanszaak">Eenmanszaak</option>
     </select>
     <div style="font-size:11px;color:var(--muted);margin-top:3px">Bepaalt de waarderingsmethode: bij een maatschap wordt gerekend op de winst ná een marktconform ondernemersloon per maat, zonder VPB-correctie.</div></div>
-    <div class="field"><label>Opdrachtgever *</label><select id="n-opdrgever">
+    <div class="field"><label for="n-opdrgever">Opdrachtgever *</label><select id="n-opdrgever">
       <option value="verkoper">Verkoper (sell-side) — BEM naar verkoper, Excl naar koper</option>
       <option value="koper">Koper (buy-side) — BEM naar koper, Excl naar verkoper</option>
       <option value="beide">Beide partijen (dual mandate)</option>
     </select></div>
-    <div class="field"><label>Naam onderneming *</label><input type="text" id="n-naam" placeholder="Naam van de onderneming"></div>
+    <div class="field"><label for="n-naam">Naam onderneming *</label><input type="text" id="n-naam" placeholder="Naam van de onderneming"></div>
     <div class="row2">
-      <div class="field"><label>Contactpersoon *</label><input type="text" id="n-contact" placeholder="Naam"></div>
-      <div class="field"><label>E-mail contactpersoon *</label><input type="email" id="n-email" placeholder="E-mailadres"></div>
+      <div class="field"><label for="n-contact">Contactpersoon *</label><input type="text" id="n-contact" placeholder="Naam"></div>
+      <div class="field"><label for="n-email">E-mail contactpersoon *</label><input type="email" id="n-email" placeholder="E-mailadres"></div>
     </div>
-    <div class="field"><label>Adres</label><input type="text" id="n-adres" placeholder="Straat, postcode, plaats"></div>
+    <div class="field"><label for="n-adres">Adres</label><input type="text" id="n-adres" placeholder="Straat, postcode, plaats"></div>
     <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.75rem;margin-top:.25rem">Kopende partij (optioneel)</div>
     <div class="row2">
-      <div class="field"><label>Naam koper</label><input type="text" id="n-koper-naam" placeholder="Naam"></div>
-      <div class="field"><label>E-mail koper</label><input type="email" id="n-koper-email" placeholder="E-mailadres"></div>
+      <div class="field"><label for="n-koper-naam">Naam koper</label><input type="text" id="n-koper-naam" placeholder="Naam"></div>
+      <div class="field"><label for="n-koper-email">E-mail koper</label><input type="email" id="n-koper-email" placeholder="E-mailadres"></div>
     </div>
     <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.75rem;margin-top:.25rem">Aangedragen door (optioneel)</div>
     <div class="row2">
-      <div class="field"><label>Naam aandrager</label><input type="text" id="n-aandr-naam" placeholder="Naam"></div>
-      <div class="field"><label>Organisatie aandrager</label><input type="text" id="n-aandr-org" placeholder="Bank, accountantskantoor, ..."></div>
+      <div class="field"><label for="n-aandr-naam">Naam aandrager</label><input type="text" id="n-aandr-naam" placeholder="Naam"></div>
+      <div class="field"><label for="n-aandr-org">Organisatie aandrager</label><input type="text" id="n-aandr-org" placeholder="Bank, accountantskantoor, ..."></div>
     </div>
-    <div class="field"><label>Afspraak met aandrager</label><input type="text" id="n-aandr-afspraak" placeholder="Percentage of vast bedrag, eigen onderlinge afspraak"></div>
+    <div class="field"><label for="n-aandr-afspraak">Afspraak met aandrager</label><input type="text" id="n-aandr-afspraak" placeholder="Percentage of vast bedrag, eigen onderlinge afspraak"></div>
     <div id="n-err" class="err-msg"></div>
     <div id="n-ok" class="ok-msg"></div>
     <div class="modal-footer">
@@ -932,7 +933,7 @@ function renderDetail(t){
       </div>
     </div>
     <div class="main">
-      <div class="back-btn" onclick="renderDashboard()">← Terug naar overzicht</div>
+      <div class="back-btn" onclick="renderDashboard()" tabindex="0" role="button" aria-label="Terug naar overzicht" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();renderDashboard();}">← Terug naar overzicht</div>
       <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem">
         <div>
           <div style="font-family:'Playfair Display',serif;font-size:1.4rem;color:var(--head);font-weight:600">${esc(t.kantoor_naam||id)}</div>
@@ -979,12 +980,12 @@ function renderDetail(t){
           <div style="border-top:1px solid var(--border);padding-top:1rem">
             <div style="font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem">Nieuwe meekijker</div>
             <div style="display:flex;gap:8px;flex-wrap:wrap">
-              <div class="field" style="flex:2;min-width:180px"><label>Naam meekijker</label><input type="text" id="mk-adv-naam"></div>
-              <div class="field" style="flex:1;min-width:120px"><label>Type</label><select id="mk-adv-type"><option value="bank">Bank</option><option value="accountant">Accountant</option><option value="overig">Overig</option></select></div>
+              <div class="field" style="flex:2;min-width:180px"><label for="mk-adv-naam">Naam meekijker</label><input type="text" id="mk-adv-naam"></div>
+              <div class="field" style="flex:1;min-width:120px"><label for="mk-adv-type">Type</label><select id="mk-adv-type"><option value="bank">Bank</option><option value="accountant">Accountant</option><option value="overig">Overig</option></select></div>
             </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap">
-              <div class="field" style="flex:1;min-width:160px"><label>Scope</label><select id="mk-adv-scope"><option value="alle">Alle fases</option></select></div>
-              <div class="field" style="flex:1;min-width:140px"><label>Verloopt na (optioneel, dagen)</label><input type="number" id="mk-adv-verloopt" min="1"></div>
+              <div class="field" style="flex:1;min-width:160px"><label for="mk-adv-scope">Scope</label><select id="mk-adv-scope"><option value="alle">Alle fases</option></select></div>
+              <div class="field" style="flex:1;min-width:140px"><label for="mk-adv-verloopt">Verloopt na (optioneel, dagen)</label><input type="number" id="mk-adv-verloopt" min="1"></div>
             </div>
             <label style="display:flex;align-items:flex-start;gap:8px;font-size:12px;color:var(--muted);line-height:1.5;margin:.5rem 0 1rem;cursor:pointer"><input type="checkbox" id="mk-adv-toestemming" style="margin-top:2px"> Ik heb toestemming van mijn opdrachtgever om deze partij beperkte inzage te geven in dit traject.</label>
             <div id="mk-adv-err" class="err-msg"></div>
@@ -1211,26 +1212,26 @@ function toonAdvBewerkModal(id){
   ov.innerHTML=`<div class="modal" role="dialog" aria-modal="true" aria-labelledby="bewerk-modal-titel">
     <div class="modal-title" id="bewerk-modal-titel">&#9999;&#65039; Bewerk gegevens</div>
     <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.5rem">Verkoper</div>
-    <div class="field"><label>Naam onderneming</label><input type="text" id="bw-k" value="${esc(t.kantoor_naam||'')}"></div>
+    <div class="field"><label for="bw-k">Naam onderneming</label><input type="text" id="bw-k" value="${esc(t.kantoor_naam||'')}"></div>
     <div class="row2">
-      <div class="field"><label>Contactpersoon</label><input type="text" id="bw-c" value="${esc(t.contact_naam||'')}"></div>
-      <div class="field"><label>E-mail contactpersoon</label><input type="email" id="bw-e" value="${esc(t.contact_email||'')}"></div>
+      <div class="field"><label for="bw-c">Contactpersoon</label><input type="text" id="bw-c" value="${esc(t.contact_naam||'')}"></div>
+      <div class="field"><label for="bw-e">E-mail contactpersoon</label><input type="email" id="bw-e" value="${esc(t.contact_email||'')}"></div>
     </div>
     <div class="row2">
-      <div class="field"><label>KvK-nummer</label><input type="text" id="bw-kvk" value="${esc(t.verkoper_kvk||'')}"></div>
-      <div class="field"><label>Adres</label><input type="text" id="bw-adres" value="${esc(t.verkoper_adres||'')}"></div>
+      <div class="field"><label for="bw-kvk">KvK-nummer</label><input type="text" id="bw-kvk" value="${esc(t.verkoper_kvk||'')}"></div>
+      <div class="field"><label for="bw-adres">Adres</label><input type="text" id="bw-adres" value="${esc(t.verkoper_adres||'')}"></div>
     </div>
     <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin:1rem 0 .5rem">Koper</div>
-    <div class="field"><label>Naam koper</label><input type="text" id="bw-koper-naam" value="${esc(t.koper_naam||'')}"></div>
+    <div class="field"><label for="bw-koper-naam">Naam koper</label><input type="text" id="bw-koper-naam" value="${esc(t.koper_naam||'')}"></div>
     <div class="row2">
-      <div class="field"><label>Contactpersoon koper</label><input type="text" id="bw-koper-contact" value="${esc(t.koper_contact||'')}"></div>
-      <div class="field"><label>E-mail koper</label><input type="email" id="bw-koper-email" value="${esc(t.koper_email||'')}"></div>
+      <div class="field"><label for="bw-koper-contact">Contactpersoon koper</label><input type="text" id="bw-koper-contact" value="${esc(t.koper_contact||'')}"></div>
+      <div class="field"><label for="bw-koper-email">E-mail koper</label><input type="email" id="bw-koper-email" value="${esc(t.koper_email||'')}"></div>
     </div>
     <div class="row2">
-      <div class="field"><label>KvK-nummer koper</label><input type="text" id="bw-koper-kvk" value="${esc(t.koper_kvk||'')}"></div>
-      <div class="field"><label>Adres koper</label><input type="text" id="bw-koper-adres" value="${esc(t.koper_adres||'')}"></div>
+      <div class="field"><label for="bw-koper-kvk">KvK-nummer koper</label><input type="text" id="bw-koper-kvk" value="${esc(t.koper_kvk||'')}"></div>
+      <div class="field"><label for="bw-koper-adres">Adres koper</label><input type="text" id="bw-koper-adres" value="${esc(t.koper_adres||'')}"></div>
     </div>
-    <div class="field"><label>Rechtsvorm koper</label><select id="bw-koper-rv">
+    <div class="field"><label for="bw-koper-rv">Rechtsvorm koper</label><select id="bw-koper-rv">
       <option value="">— Kies rechtsvorm —</option>
       <option value="B.V."${t.koper_rechtsvorm==='B.V.'?' selected':''}>B.V.</option>
       <option value="N.V."${t.koper_rechtsvorm==='N.V.'?' selected':''}>N.V.</option>

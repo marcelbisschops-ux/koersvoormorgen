@@ -206,19 +206,30 @@ admin-vereiste aanroep). Beide kanten opnieuw gelijkgetrokken met een nieuwe waa
 (`conclusion: success`) — de eerste groene run sinds minstens 1 september.
 
 ### P2-27 · Sequentiële INSERT's bij bankmutatie-CSV-import (geen batch)
-🔴 Nog open. `worker/22-bankmutaties.js:357-361` + `worker/19-info-fases.js:1342-1346`.
+🟢 **Gefixt (5 sep 2026).** `env.DB.batch()` in stukken van 100, in zowel `worker/22-bankmutaties.js`
+als de koper-criteria-opslag in `worker/19-info-fases.js`.
 
 ### P2-28 · ~200+ velden met niet-programmatisch-gekoppeld label (geen `for=`)
-🔴 Nog open. marilyn.html 106/107, mna/*.js 66/70, adv.html 46/46 zonder `for`.
+🟡 **Grotendeels gefixt (5 sep 2026).** marilyn.html 70/107 → nu correct gekoppeld, adv.html 40/46,
+plus de centrale DD-veld-renderfunctie in `mna/06-schermen.js` (raakt de meeste runtime-instanties
+van het hele due-diligence-formulier, ook al is het maar 1 broncode-locatie) en 9 velden in
+`mna/04-begeleider-dashboard.js`. **Resterend:** ~27 complexere gevallen in
+`mna/04-begeleider-dashboard.js` waar het label niet direct gevolgd wordt door het invoerveld
+(wrapper-elementen, tussenliggende content) — vereist individuele beoordeling, bewust niet blind
+gefixt. Enkele velden in `mna/02-state-opslag-documenten.js` (4) en `mna/06-schermen.js` (2
+resterend van de 10) eveneens nog open.
 
 ### P2-29 · adv.html "Terug naar overzicht" niet toetsenbordbedienbaar
-🔴 Nog open. `adv.html:934` — navigatie-blokkade voor adviseurs.
+🟢 **Gefixt (5 sep 2026).** `tabindex="0" role="button" aria-label` + Enter/Spatie-handler +
+`:focus-visible`-stijl, zelfde patroon als de eerder gefixte `.buyer-card`.
 
 ### P2-30 · Toast-meldingen missen `aria-live`
-🔴 Nog open. 0 treffers sitebreed.
+🟢 **Gefixt (5 sep 2026).** `role="status" aria-live="polite"` toegevoegd in alle drie bestanden
+(mna/02, marilyn.html, adv.html).
 
 ### P2-31 · Geen rate-limiting op chat-/Q&A-schrijfroutes
-🔴 Nog open. `worker/17-mna-chat.js`, `worker/08-mna-qa-export.js`.
+🟢 **Gefixt (5 sep 2026).** 30/uur per IP+traject op `/mna/chat/*` (POST) en beide Q&A-schrijfroutes
+(`/mna/qa/*`, `/mna/qa/reactie/*`) in `worker/08-mna-qa-export.js`.
 
 ### P3-32 · Misleidend "wordt door niets aangeroepen"-commentaar in `worker/00-policy.js`
 🔴 Nog open. Module is de daadwerkelijke implementatie achter `begeleiderAuth`/`rolVanCode`.

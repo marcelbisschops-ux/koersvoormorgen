@@ -1333,7 +1333,7 @@ function renderBegeleiderDashboard(app){
       var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:3000;display:flex;align-items:center;justify-content:center;padding:1.5rem';
       var mo=document.createElement('div');mo.setAttribute('role','dialog');mo.setAttribute('aria-modal','true');mo.setAttribute('aria-labelledby','handmatig-getekend-modal-titel');mo.style.cssText='background:var(--panel);border:1px solid var(--border2);border-radius:var(--r2);padding:1.75rem;max-width:400px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.25)';
       mo.innerHTML='<div id="handmatig-getekend-modal-titel" style="font-family:Playfair Display,serif;font-size:1.1rem;color:var(--head);font-weight:600;margin-bottom:1rem">&#128221; Buiten Signhost om getekend &mdash; '+(labels[type]||type)+'</div>'
-        +'<div class="field"><label>Naam van degene die getekend heeft</label><input type="text" id="bg-hg-naam"></div>'
+        +'<div class="field"><label for="bg-hg-naam">Naam van degene die getekend heeft</label><input type="text" id="bg-hg-naam"></div>'
         +'<div id="bg-hg-err" style="display:none;color:var(--red);font-size:12px;margin-bottom:.5rem"></div>'
         +'<div style="display:flex;gap:8px;justify-content:flex-end">'
         +'<button class="btn-ghost" id="bg-hg-ann">Annuleren</button>'
@@ -1376,8 +1376,8 @@ function renderBegeleiderDashboard(app){
       var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:3000;display:flex;align-items:center;justify-content:center;padding:1.5rem';
       var mo=document.createElement('div');mo.setAttribute('role','dialog');mo.setAttribute('aria-modal','true');mo.setAttribute('aria-labelledby','signhost-modal-titel');mo.style.cssText='background:var(--panel);border:1px solid var(--border2);border-radius:var(--r2);padding:1.75rem;max-width:400px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.25)';
       mo.innerHTML='<div id="signhost-modal-titel" style="font-family:Playfair Display,serif;font-size:1.1rem;color:var(--head);font-weight:600;margin-bottom:1rem">&#9998; Verstuur via Signhost &mdash; '+(labels[type]||type)+'</div>'
-        +'<div class="field"><label>Naam ondertekenaar</label><input type="text" id="bg-sh-naam" value="'+esc(defNaam)+'" placeholder="Voor- en achternaam"></div>'
-        +'<div class="field"><label>E-mail ondertekenaar</label><input type="email" id="bg-sh-email" value="'+esc(defEmail)+'" placeholder="E-mailadres"></div>'
+        +'<div class="field"><label for="bg-sh-naam">Naam ondertekenaar</label><input type="text" id="bg-sh-naam" value="'+esc(defNaam)+'" placeholder="Voor- en achternaam"></div>'
+        +'<div class="field"><label for="bg-sh-email">E-mail ondertekenaar</label><input type="email" id="bg-sh-email" value="'+esc(defEmail)+'" placeholder="E-mailadres"></div>'
         +'<div id="bg-sh-err" style="display:none;color:var(--red);font-size:12px;margin-bottom:.5rem"></div>'
         +'<div style="display:flex;gap:8px;justify-content:flex-end">'
         +'<button class="btn-ghost" id="bg-sh-ann">Annuleren</button>'
@@ -1445,7 +1445,7 @@ function renderBegeleiderDashboard(app){
       +'<div style="font-size:12px;color:#8a8880;margin-bottom:1.25rem">Deze cijfers worden exact zo berekend en meegenomen — de AI verzint geen eigen bedragen of multiples.</div>'
       +(d.isMaatschap&&!d.maatschapGrondslagOnbekend?'<div style="font-size:12px;color:var(--teal-dim);background:var(--teal-bg);border:1px solid var(--teal-dark);border-radius:6px;padding:8px 12px;margin-bottom:1rem">Maatschap: "Bewezen EBITDA" is hier voorgevuld als de genormaliseerde winst mín een marktconform ondernemersloon voor de werkende maten ('+fmtGeld(d.ondernemersloonTotaal)+', uit het veld eigenaar-/partnerbeloning). VpB-tarief staat op 0 (maten betalen box-1 IB). Pas de bedragen aan als u een zuiverder ondernemersloon hanteert.</div>':'')
       +(d.isMaatschap&&d.maatschapGrondslagOnbekend?'<div style="font-size:12px;color:var(--red);background:var(--red-bg);border:1px solid var(--red);border-radius:6px;padding:8px 12px;margin-bottom:1rem"><strong>&#9888; Grondslag onbekend.</strong> Dit is een maatschap — de waardering rekent op de winst ná een marktconform ondernemersloon. Vul eerst het veld <strong>eigenaar-/partnerbeloning totaal per jaar</strong> in (fase Financieel), of vul "Bewezen EBITDA" hieronder handmatig met de reeds gecorrigeerde winst. Nu voorgevuld op 0 om geen ongecorrigeerd cijfer te suggereren.</div>':'')
-      +'<div style="margin-bottom:1rem"><label style="'+lbl+'">Tegenpartij (koper)</label><input type="text" id="dv-koper" value="'+esc(d.koperNaam)+'" placeholder="Naam kopende partij" style="'+inp+'"></div>'
+      +'<div style="margin-bottom:1rem"><label for="dv-koper" style="'+lbl+'">Tegenpartij (koper)</label><input type="text" id="dv-koper" value="'+esc(d.koperNaam)+'" placeholder="Naam kopende partij" style="'+inp+'"></div>'
       +sectie('EBITDA & belang')
       +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('dv-belang','Belang koper bij closing (%)',d.belangPct)+veld('dv-ebitda-bewezen','Bewezen EBITDA laatste boekjaar (€)',d.ebitdaBewezen)+'</div>'
       +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('dv-ebitda-prognose','Prognose-EBITDA komend jaar (€)',d.ebitdaPrognose)+veld('dv-cliff','Cliff-drempel (% van prognose)',d.cliffPct)+'</div>'
@@ -1847,7 +1847,7 @@ function renderBegeleiderDashboard(app){
     var lbl='font-size:10px;font-weight:600;text-transform:uppercase;color:#8a8880;display:block;margin-bottom:4px';
     var inp='width:100%;background:#f0eeea;color:#2a2825;border:1px solid #c8c5bc;border-radius:6px;padding:7px 11px;font-family:IBM Plex Sans,sans-serif;font-size:13px';
     function veld(id,label,val,step,type){
-      return '<div style="flex:1"><label style="'+lbl+'">'+label+'</label><input type="'+(type||'number')+'" id="'+id+'" value="'+val+'" '+(step?'step="'+step+'"':'')+' style="'+inp+'"></div>';
+      return '<div style="flex:1"><label for="'+id+'" style="'+lbl+'">'+label+'</label><input type="'+(type||'number')+'" id="'+id+'" value="'+val+'" '+(step?'step="'+step+'"':'')+' style="'+inp+'"></div>';
     }
     var geldigTot=new Date(Date.now()+30*24*3600*1000).toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'});
     var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:400;display:flex;align-items:center;justify-content:center;padding:1.5rem';
@@ -1858,7 +1858,7 @@ function renderBegeleiderDashboard(app){
       +(d.isMaatschap&&d.maatschapGrondslagOnbekend?'<div style="font-size:12px;color:var(--red);background:var(--red-bg);border:1px solid var(--red);border-radius:6px;padding:8px 12px;margin-bottom:1rem"><strong>&#9888;</strong> Maatschap zonder ingevuld ondernemersloon (veld eigenaar-/partnerbeloning) — het bedrag hieronder staat op 0. Vul dat veld in of corrigeer het bedrag handmatig vóór verzending.</div>':'')
       +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('bd-ebitda','Genormaliseerde EBITDA (€)',d.ebitdaBewezen)+'</div>'
       +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('bd-mult-laag','Multiple laag',d.multipleBasis,0.1)+veld('bd-mult-hoog','Multiple hoog',d.multipleBovengrens,0.1)+'</div>'
-      +'<div style="margin-bottom:1rem"><label style="'+lbl+'">Betalingsstructuur</label><input type="text" id="bd-betaling" value="100% contant bij closing (cash-and-debt-free)" style="'+inp+'"></div>'
+      +'<div style="margin-bottom:1rem"><label for="bd-betaling" style="'+lbl+'">Betalingsstructuur</label><input type="text" id="bd-betaling" value="100% contant bij closing (cash-and-debt-free)" style="'+inp+'"></div>'
       +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('bd-excl','Exclusiviteit (weken)',6)+veld('bd-geldig','Geldig tot',geldigTot,null,'text')+'</div>'
       +'<div id="bd-err" style="display:none;color:#e05252;font-size:12px;margin-bottom:.75rem"></div>'
       +'<div style="display:flex;gap:8px;justify-content:flex-end">'
@@ -2202,7 +2202,7 @@ function renderBegeleiderDashboard(app){
         +'<div style="font-size:11px;font-weight:600;color:#8a5a00;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.75rem">&#128220; Verkoopmemorandum &mdash; controle vooraf</div>'
         +'<div style="font-size:13px;color:var(--sub);margin-bottom:1rem;line-height:1.6">Dit document bevat de bedrijfsnaam en gedetailleerde bedrijfsinformatie. Er is voor dit traject nog geen NDA ondertekend via het platform (die kan bijv. wel al buiten het platform om ondertekend zijn — dat is normaal in deze fase, vóór er een formele koper is ingevoerd).</div>'
         +'<label style="display:flex;align-items:flex-start;gap:8px;font-size:13px;color:var(--sub);cursor:pointer;margin-bottom:.75rem"><input type="checkbox" id="verkoopmemo-nda-chk" style="margin-top:2px"> Ik bevestig dat de partij die dit document ontvangt een NDA heeft ondertekend (in het platform of extern).</label>'
-        +'<div style="margin-bottom:1rem"><label style="display:block;font-size:12px;color:var(--muted);margin-bottom:3px">Bevestigd door (uw naam) &mdash; wordt vastgelegd bij het traject</label><input type="text" id="verkoopmemo-nda-naam" placeholder="Voor- en achternaam" style="width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:var(--r);font-family:\'IBM Plex Sans\',sans-serif;font-size:13px;padding:8px 11px;color:var(--sub);outline:none"></div>'
+        +'<div style="margin-bottom:1rem"><label for="verkoopmemo-nda-naam" style="display:block;font-size:12px;color:var(--muted);margin-bottom:3px">Bevestigd door (uw naam) &mdash; wordt vastgelegd bij het traject</label><input type="text" id="verkoopmemo-nda-naam" placeholder="Voor- en achternaam" style="width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:var(--r);font-family:\'IBM Plex Sans\',sans-serif;font-size:13px;padding:8px 11px;color:var(--sub);outline:none"></div>'
         +'<div style="display:flex;gap:8px"><button class="btn" id="verkoopmemo-nda-door" style="background:#8a5a00">Doorgaan &amp; genereren</button><button class="btn-ghost" id="verkoopmemo-nda-ann">Annuleren</button></div>'
         +'</div>';
       document.getElementById('verkoopmemo-nda-ann').onclick=function(){out.style.display='none';};
@@ -3058,11 +3058,11 @@ function renderBegeleiderDashboard(app){
       +'<div style="font-size:11px;color:var(--muted);margin-bottom:1rem;line-height:1.6">Leg vast waarom de koper deze overname zoekt en welke criteria de kandidaat moet halen. Harde criteria worden rekenkundig getoetst aan de ingevulde DD-cijfers (geen AI, geen gok). Alleen voor de vrije-tekst-overwegingen haalt de AI relevante passages aan — die velt zelf nooit een oordeel. Alleen zichtbaar voor u, niet voor de verkoper.</div>'
       +'<div style="font-size:10px;font-weight:600;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem">Harde criteria — laat leeg als niet van toepassing</div>'
       +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:1rem">'
-      +KOPERFIT_A_VELDEN.map(function(v){return '<div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:2px">'+v.label+'</label><input type="text" id="kf-a-'+v.type+'" value="'+esc(waardeVoor(v.type))+'" style="width:100%;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:6px 8px;font-size:12px">'+resultaatVoor(v.type,true)+'</div>';}).join('')
+      +KOPERFIT_A_VELDEN.map(function(v){return '<div><label for="kf-a-'+v.type+'" style="font-size:10px;color:var(--muted);display:block;margin-bottom:2px">'+v.label+'</label><input type="text" id="kf-a-'+v.type+'" value="'+esc(waardeVoor(v.type))+'" style="width:100%;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:6px 8px;font-size:12px">'+resultaatVoor(v.type,true)+'</div>';}).join('')
       +'</div>'
       +'<div style="font-size:10px;font-weight:600;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem">Tekstuele criteria — trefwoord, laat leeg als niet van toepassing</div>'
       +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:1rem">'
-      +KOPERFIT_B_VELDEN.map(function(v){return '<div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:2px">'+v.label+'</label><input type="text" id="kf-b-'+v.type+'" value="'+esc(waardeVoor(v.type))+'" style="width:100%;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:6px 8px;font-size:12px">'+resultaatVoor(v.type,true)+'</div>';}).join('')
+      +KOPERFIT_B_VELDEN.map(function(v){return '<div><label for="kf-b-'+v.type+'" style="font-size:10px;color:var(--muted);display:block;margin-bottom:2px">'+v.label+'</label><input type="text" id="kf-b-'+v.type+'" value="'+esc(waardeVoor(v.type))+'" style="width:100%;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:6px 8px;font-size:12px">'+resultaatVoor(v.type,true)+'</div>';}).join('')
       +'</div>'
       +'<div style="font-size:10px;font-weight:600;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem">Overige strategische overwegingen — één per regel</div>'
       +'<textarea id="kf-c-tekst" style="width:100%;height:80px;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:8px;font-size:12px;margin-bottom:.75rem">'+esc(cTekst)+'</textarea>'

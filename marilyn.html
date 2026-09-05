@@ -116,7 +116,7 @@ document.title=BRAND.platform+' — '+BRAND.suffix;
 let adminKey='',scans=[],callbacks=[],mnaList=[],rapporten=[],leads=[],proefAanvragen=[],activeTab='scans',scanFilter='',openRow=null;
 let gebruikerToken='',gebruikerInfo=null,isSuperAdmin=false;
 
-function toast(msg,type,dur){type=type||'ok';dur=dur||3500;var c=document.getElementById('toast-container');if(!c){c=document.createElement('div');c.id='toast-container';c.className='toast-container';document.body.appendChild(c);}var t=document.createElement('div');t.className='toast toast-'+type;var ico=type==='ok'?'✓':type==='err'?'✕':type==='warn'?'⚠':'ℹ';t.innerHTML='<span style="font-size:15px;flex-shrink:0;color:'+(type==='ok'?'var(--teal)':type==='err'?'var(--red)':type==='warn'?'var(--gold)':'#2a5ea0')+'">'+ico+'</span><span style="flex:1;line-height:1.5">'+String(msg).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</span><button onclick="this.parentElement.remove()" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px;padding:0;line-height:1;flex-shrink:0">&times;</button>';c.appendChild(t);setTimeout(function(){t.classList.add('hide');setTimeout(function(){if(t.parentElement)t.parentElement.removeChild(t);},220);},dur);return t;}
+function toast(msg,type,dur){type=type||'ok';dur=dur||3500;var c=document.getElementById('toast-container');if(!c){c=document.createElement('div');c.id='toast-container';c.className='toast-container';c.setAttribute('role','status');c.setAttribute('aria-live','polite');document.body.appendChild(c);}var t=document.createElement('div');t.className='toast toast-'+type;var ico=type==='ok'?'✓':type==='err'?'✕':type==='warn'?'⚠':'ℹ';t.innerHTML='<span style="font-size:15px;flex-shrink:0;color:'+(type==='ok'?'var(--teal)':type==='err'?'var(--red)':type==='warn'?'var(--gold)':'#2a5ea0')+'">'+ico+'</span><span style="flex:1;line-height:1.5">'+String(msg).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</span><button onclick="this.parentElement.remove()" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px;padding:0;line-height:1;flex-shrink:0">&times;</button>';c.appendChild(t);setTimeout(function(){t.classList.add('hide');setTimeout(function(){if(t.parentElement)t.parentElement.removeChild(t);},220);},dur);return t;}
 
 function dc(v){return v>=70?'score-high':v>=50?'score-mid':'score-low';}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
@@ -161,7 +161,7 @@ function renderLogin(){
   document.getElementById('app').innerHTML='<div class="login-wrap"><div class="login-box">'
     +'<div class="login-title">'+BRAND.platform+' '+BRAND.suffix+'</div>'
     +'<div class="login-sub">Beheerder-toegang. Alleen voor beheerder.</div>'
-    +'<div class="field" style="margin-top:1rem"><label>Beheerder-sleutel</label><input type="password" id="ak" placeholder="••••••••" autofocus></div>'
+    +'<div class="field" style="margin-top:1rem"><label for="ak">Beheerder-sleutel</label><input type="password" id="ak" placeholder="••••••••" autofocus></div>'
     +'<button class="btn" id="login-btn" style="width:100%">Inloggen</button>'
     +'<div style="margin-top:1rem;padding:.75rem 1rem;background:var(--teal-bg);border:1px solid var(--teal-dark);border-radius:var(--r);font-size:11px;color:var(--muted);line-height:1.7">&#128274; <strong style="color:var(--sub)">Beveiliging & privacy</strong><br>Verbinding versleuteld (HTTPS). Gegevens in Cloudflare EU (Frankfurt). Geen gegevensverkoop. <a href="privacy.html" style="color:var(--teal)">Privacyverklaring</a></div>'
     +'<div id="login-err" style="color:var(--red);font-size:12px;margin-top:.75rem;display:none">Sleutel incorrect.</div>'
@@ -780,9 +780,9 @@ async function renderBenchmarksTab(el){
     mo.style.maxWidth='520px';
     mo.innerHTML='<div class="modal-title">&#128196; PDF analyseren voor benchmarks</div>'
       +'<p style="font-size:13px;color:var(--mid);margin-bottom:1rem;line-height:1.6">Upload een PDF met benchmarkdata (bijv. Full Finance, Simplicate, AV Top 20). De AI extraheert automatisch de relevante waarden en slaat ze op als benchmarks.</p>'
-      +'<div class="field"><label>Bron naam <span style="color:var(--red)">*</span></label><input type="text" id="pdf-bron" placeholder="Naam van de bron" style="margin-bottom:.5rem"></div>'
-      +'<div class="field"><label>Peildatum <span style="color:var(--red)">*</span></label><input type="text" id="pdf-datum" placeholder="Jaartal" style="margin-bottom:.5rem"></div>'
-      +'<div class="field"><label>PDF bestand <span style="color:var(--red)">*</span></label><input type="file" id="pdf-file" accept=".pdf" style="margin-bottom:.5rem"></div>'
+      +'<div class="field"><label for="pdf-bron">Bron naam <span style="color:var(--red)">*</span></label><input type="text" id="pdf-bron" placeholder="Naam van de bron" style="margin-bottom:.5rem"></div>'
+      +'<div class="field"><label for="pdf-datum">Peildatum <span style="color:var(--red)">*</span></label><input type="text" id="pdf-datum" placeholder="Jaartal" style="margin-bottom:.5rem"></div>'
+      +'<div class="field"><label for="pdf-file">PDF bestand <span style="color:var(--red)">*</span></label><input type="file" id="pdf-file" accept=".pdf" style="margin-bottom:.5rem"></div>'
       +'<div id="pdf-status" style="font-size:12px;color:var(--teal);margin:.75rem 0;display:none;padding:10px;background:var(--teal-bg);border-radius:var(--r)"></div>'
       +'<div id="pdf-err" style="color:var(--red);font-size:12px;margin-bottom:.5rem;display:none"></div>'
       +'<div id="pdf-preview" style="font-size:12px;color:var(--mid);margin-bottom:.75rem;display:none"></div>'
@@ -880,13 +880,13 @@ async function renderBenchmarksTab(el){
     var ov=document.createElement('div');ov.className='overlay';
     var mo=document.createElement('div');mo.className='modal';
     mo.innerHTML='<div class="modal-title">Benchmark handmatig toevoegen</div>'
-      +'<div class="field"><label>Sleutel (uniek ID) <span style="color:var(--red)">*</span></label><input type="text" id="bm-id" placeholder="Sleutel (key)"></div>'
-      +'<div class="field"><label>Omschrijving</label><input type="text" id="bm-omschr" placeholder="Omschrijving"></div>'
-      +'<div class="field"><label>Waarde (getal) <span style="color:var(--red)">*</span></label><input type="number" id="bm-val" step="0.1"></div>'
-      +'<div class="field"><label>Categorie</label><select id="bm-cat"><option value="productiviteit">Productiviteit</option><option value="winstgevendheid">Winstgevendheid</option><option value="waardering">Waardering</option><option value="tarieven">Tarieven</option><option value="algemeen">Algemeen</option></select></div>'
-      +'<div class="field"><label>Bron</label><input type="text" id="bm-bron" placeholder="Bron"></div>'
-      +'<div class="field"><label>Bron URL (optioneel)</label><input type="text" id="bm-url" placeholder="URL"></div>'
-      +'<div class="field"><label>Peildatum</label><input type="text" id="bm-datum" placeholder="Peildatum"></div>'
+      +'<div class="field"><label for="bm-id">Sleutel (uniek ID) <span style="color:var(--red)">*</span></label><input type="text" id="bm-id" placeholder="Sleutel (key)"></div>'
+      +'<div class="field"><label for="bm-omschr">Omschrijving</label><input type="text" id="bm-omschr" placeholder="Omschrijving"></div>'
+      +'<div class="field"><label for="bm-val">Waarde (getal) <span style="color:var(--red)">*</span></label><input type="number" id="bm-val" step="0.1"></div>'
+      +'<div class="field"><label for="bm-cat">Categorie</label><select id="bm-cat"><option value="productiviteit">Productiviteit</option><option value="winstgevendheid">Winstgevendheid</option><option value="waardering">Waardering</option><option value="tarieven">Tarieven</option><option value="algemeen">Algemeen</option></select></div>'
+      +'<div class="field"><label for="bm-bron">Bron</label><input type="text" id="bm-bron" placeholder="Bron"></div>'
+      +'<div class="field"><label for="bm-url">Bron URL (optioneel)</label><input type="text" id="bm-url" placeholder="URL"></div>'
+      +'<div class="field"><label for="bm-datum">Peildatum</label><input type="text" id="bm-datum" placeholder="Peildatum"></div>'
       +'<div id="bm-err" style="color:var(--red);font-size:12px;margin-bottom:.5rem;display:none"></div>'
       +'<div style="display:flex;gap:10px;justify-content:flex-end"><button class="btn-ghost" id="bm-ann">Annuleren</button><button class="btn" id="bm-ok">Opslaan</button></div>';
     ov.appendChild(mo);document.body.appendChild(ov);
@@ -1226,15 +1226,15 @@ async function renderWaarderingsmodelTab(el){
     var ov=document.createElement('div');ov.className='overlay';
     var mo=document.createElement('div');mo.className='modal';
     mo.innerHTML='<div class="modal-title">Marktfactor toevoegen</div>'
-      +'<div class="field"><label>Sleutel <span style="color:var(--red)">*</span></label><input type="text" id="mf-sleutel" placeholder="bijv. pe_activiteit_accountancy_nl" style="margin-bottom:.5rem"></div>'
-      +'<div class="field"><label>Waarde</label><input type="text" id="mf-waarde" placeholder="numeriek, optioneel" style="margin-bottom:.5rem"></div>'
-      +'<div class="field"><label>Effect op multiple</label><input type="text" id="mf-effect" placeholder="bijv. 0.2 of -0.1 (standaard 0 = neutraal)" style="margin-bottom:.5rem"></div>'
-      +'<div class="field"><label>Bron <span style="color:var(--red)">*</span></label><input type="text" id="mf-bron" placeholder="bijv. Brookz Overname Barometer H1-2025" style="margin-bottom:.5rem"></div>'
-      +'<div class="field"><label>Bron-URL</label><input type="text" id="mf-bronurl" style="margin-bottom:.5rem"></div>'
-      +'<div class="field"><label>Publicatiedatum</label><input type="text" id="mf-datum" placeholder="JJJJ-MM" style="margin-bottom:.5rem"></div>'
-      +'<div class="field"><label>Betrouwbaarheid <span style="color:var(--red)">*</span></label><select id="mf-betr" style="margin-bottom:.5rem"><option value="hoog">Hoog</option><option value="midden">Midden</option><option value="laag">Laag</option></select></div>'
-      +'<div class="field"><label>Relevantie <span style="color:var(--red)">*</span></label><select id="mf-rel" style="margin-bottom:.5rem"><option value="hoog">Hoog</option><option value="midden">Midden</option><option value="laag">Laag</option></select></div>'
-      +'<div class="field"><label>Meetperiode</label><input type="text" id="mf-periode" placeholder="bijv. H1-2025" style="margin-bottom:.5rem"></div>'
+      +'<div class="field"><label for="mf-sleutel">Sleutel <span style="color:var(--red)">*</span></label><input type="text" id="mf-sleutel" placeholder="bijv. pe_activiteit_accountancy_nl" style="margin-bottom:.5rem"></div>'
+      +'<div class="field"><label for="mf-waarde">Waarde</label><input type="text" id="mf-waarde" placeholder="numeriek, optioneel" style="margin-bottom:.5rem"></div>'
+      +'<div class="field"><label for="mf-effect">Effect op multiple</label><input type="text" id="mf-effect" placeholder="bijv. 0.2 of -0.1 (standaard 0 = neutraal)" style="margin-bottom:.5rem"></div>'
+      +'<div class="field"><label for="mf-bron">Bron <span style="color:var(--red)">*</span></label><input type="text" id="mf-bron" placeholder="bijv. Brookz Overname Barometer H1-2025" style="margin-bottom:.5rem"></div>'
+      +'<div class="field"><label for="mf-bronurl">Bron-URL</label><input type="text" id="mf-bronurl" style="margin-bottom:.5rem"></div>'
+      +'<div class="field"><label for="mf-datum">Publicatiedatum</label><input type="text" id="mf-datum" placeholder="JJJJ-MM" style="margin-bottom:.5rem"></div>'
+      +'<div class="field"><label for="mf-betr">Betrouwbaarheid <span style="color:var(--red)">*</span></label><select id="mf-betr" style="margin-bottom:.5rem"><option value="hoog">Hoog</option><option value="midden">Midden</option><option value="laag">Laag</option></select></div>'
+      +'<div class="field"><label for="mf-rel">Relevantie <span style="color:var(--red)">*</span></label><select id="mf-rel" style="margin-bottom:.5rem"><option value="hoog">Hoog</option><option value="midden">Midden</option><option value="laag">Laag</option></select></div>'
+      +'<div class="field"><label for="mf-periode">Meetperiode</label><input type="text" id="mf-periode" placeholder="bijv. H1-2025" style="margin-bottom:.5rem"></div>'
       +'<div id="mf-err" style="color:var(--red);font-size:12px;margin-bottom:.5rem;display:none"></div>'
       +'<div style="display:flex;gap:10px;justify-content:flex-end"><button class="btn-ghost" id="mf-ann">Annuleren</button><button class="btn" id="mf-ok">Opslaan</button></div>';
     ov.appendChild(mo);document.body.appendChild(ov);
@@ -1865,7 +1865,7 @@ async function toonDetail(id,naam){
     var faseKeuze=['voorgesprek','financieel','juridisch','commercieel','operationeel','personeel','strategisch','compliance'];
     var faseOv=document.createElement('div');faseOv.className='overlay';
     faseOv.innerHTML='<div class="modal" style="max-width:380px"><div class="modal-title">Kies fase</div>'
-      +'<div class="field"><label>Fase</label><select id="fase-keuze-sel">'
+      +'<div class="field"><label for="fase-keuze-sel">Fase</label><select id="fase-keuze-sel">'
       +faseKeuze.map(function(f){return'<option value="'+f+'">'+f.charAt(0).toUpperCase()+f.slice(1)+'</option>';}).join('')
       +'</select></div>'
       +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:.75rem">'
@@ -2124,7 +2124,7 @@ async function toonDetail(id,naam){
           var mo2=document.createElement('div');mo2.className='modal';mo2.style.maxWidth='680px';
           mo2.innerHTML='<div class="modal-title">&#128203; Informatieverzoek — preview</div>'
             +'<div style="border:1px solid var(--border);border-radius:var(--r);padding:1rem;max-height:60vh;overflow-y:auto;margin-bottom:1rem">'+html+'</div>'
-            +'<div class="field"><label>Stuur naar</label><input type="email" id="iv-email" value="'+esc(t3.contact_email||'')+'" placeholder="E-mailadres verkoper"></div>'
+            +'<div class="field"><label for="iv-email">Stuur naar</label><input type="email" id="iv-email" value="'+esc(t3.contact_email||'')+'" placeholder="E-mailadres verkoper"></div>'
             +'<div id="iv-err" style="display:none;color:var(--red);font-size:12px;margin-bottom:.5rem"></div>'
             +'<div style="display:flex;gap:8px;justify-content:flex-end">'
             +'<button class="btn-ghost" id="iv-ann">Annuleren</button>'
@@ -2508,22 +2508,22 @@ async function toonBewerkModal(id, naam){
   mo.innerHTML='<div class="modal-title">&#9999;&#65039; Bewerk traject: '+esc(naam)+'</div>'
     +'<div style="font-size:11px;color:var(--muted);margin-bottom:1rem">Wijzig partijgegevens, begeleider of contactinfo.</div>'
     +'<div style="border-bottom:1px solid var(--border);margin-bottom:.75rem;padding-bottom:.25rem"><div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">Verkoper</div></div>'
-    +'<div class="field"><label>Naam onderneming</label><input type="text" id="bw-k" value="'+esc(t.kantoor_naam||'')+'"></div>'
-    +'<div class="field"><label>Contactpersoon <span style="color:var(--red)">*</span></label><input type="text" id="bw-c" value="'+esc(t.contact_naam||'')+'"></div>'
-    +'<div class="field"><label>E-mail contactpersoon <span style="color:var(--red)">*</span></label><input type="email" id="bw-e" value="'+esc(t.contact_email||'')+'"></div>'
-    +'<div class="field"><label>KvK-nummer verkoper</label><input type="text" id="bw-kvk" value="'+esc(t.verkoper_kvk||'')+'"></div>'
-    +'<div class="field"><label>Adres verkoper <span style="color:var(--red)">*</span></label><input type="text" id="bw-adres" value="'+esc(t.verkoper_adres||'')+'"></div>'
+    +'<div class="field"><label for="bw-k">Naam onderneming</label><input type="text" id="bw-k" value="'+esc(t.kantoor_naam||'')+'"></div>'
+    +'<div class="field"><label for="bw-c">Contactpersoon <span style="color:var(--red)">*</span></label><input type="text" id="bw-c" value="'+esc(t.contact_naam||'')+'"></div>'
+    +'<div class="field"><label for="bw-e">E-mail contactpersoon <span style="color:var(--red)">*</span></label><input type="email" id="bw-e" value="'+esc(t.contact_email||'')+'"></div>'
+    +'<div class="field"><label for="bw-kvk">KvK-nummer verkoper</label><input type="text" id="bw-kvk" value="'+esc(t.verkoper_kvk||'')+'"></div>'
+    +'<div class="field"><label for="bw-adres">Adres verkoper <span style="color:var(--red)">*</span></label><input type="text" id="bw-adres" value="'+esc(t.verkoper_adres||'')+'"></div>'
     +'<div style="border-bottom:1px solid var(--border);margin:.75rem 0 .75rem;padding-bottom:.25rem"><div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">Begeleider</div></div>'
-    +'<div class="field"><label>Naam begeleider <span style="color:var(--red)">*</span></label><input type="text" id="bw-bg-naam" value="'+esc(t.begeleider_naam||'Marcel Bisschops')+'"></div>'
-    +'<div class="field"><label>E-mail begeleider <span style="color:var(--red)">*</span></label><input type="email" id="bw-bg-email" value="'+esc(t.begeleider_email||'marcel@bisschopsfinancing.nl')+'"></div>'
+    +'<div class="field"><label for="bw-bg-naam">Naam begeleider <span style="color:var(--red)">*</span></label><input type="text" id="bw-bg-naam" value="'+esc(t.begeleider_naam||'Marcel Bisschops')+'"></div>'
+    +'<div class="field"><label for="bw-bg-email">E-mail begeleider <span style="color:var(--red)">*</span></label><input type="email" id="bw-bg-email" value="'+esc(t.begeleider_email||'marcel@bisschopsfinancing.nl')+'"></div>'
     +'<div style="border-bottom:1px solid var(--border);margin:.75rem 0 .75rem;padding-bottom:.25rem"><div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">Koper</div></div>'
-    +'<div class="field"><label>Naam koper</label><input type="text" id="bw-koper-naam" value="'+esc(t.koper_naam||'')+'"></div>'
-    +'<div class="field"><label>Rechtsvorm</label><select id="bw-koper-rv"><option value="">— Kies rechtsvorm —</option><option value="B.V."'+(t.koper_rechtsvorm==='B.V.'?' selected':'')+'>B.V. (Besloten Vennootschap)</option><option value="N.V."'+(t.koper_rechtsvorm==='N.V.'?' selected':'')+'>N.V. (Naamloze Vennootschap)</option><option value="Eenmanszaak"'+(t.koper_rechtsvorm==='Eenmanszaak'?' selected':'')+'>Eenmanszaak</option><option value="V.O.F."'+(t.koper_rechtsvorm==='V.O.F.'?' selected':'')+'>V.O.F.</option><option value="Maatschap"'+(t.koper_rechtsvorm==='Maatschap'?' selected':'')+'>Maatschap</option><option value="Coöperatie"'+(t.koper_rechtsvorm==='Coöperatie'?' selected':'')+'>Coöperatie</option><option value="Stichting"'+(t.koper_rechtsvorm==='Stichting'?' selected':'')+'>Stichting</option><option value="Holding B.V."'+(t.koper_rechtsvorm==='Holding B.V.'?' selected':'')+'>Holding B.V.</option><option value="C.V."'+(t.koper_rechtsvorm==='C.V.'?' selected':'')+'>C.V.</option></select></div>'
+    +'<div class="field"><label for="bw-koper-naam">Naam koper</label><input type="text" id="bw-koper-naam" value="'+esc(t.koper_naam||'')+'"></div>'
+    +'<div class="field"><label for="bw-koper-rv">Rechtsvorm</label><select id="bw-koper-rv"><option value="">— Kies rechtsvorm —</option><option value="B.V."'+(t.koper_rechtsvorm==='B.V.'?' selected':'')+'>B.V. (Besloten Vennootschap)</option><option value="N.V."'+(t.koper_rechtsvorm==='N.V.'?' selected':'')+'>N.V. (Naamloze Vennootschap)</option><option value="Eenmanszaak"'+(t.koper_rechtsvorm==='Eenmanszaak'?' selected':'')+'>Eenmanszaak</option><option value="V.O.F."'+(t.koper_rechtsvorm==='V.O.F.'?' selected':'')+'>V.O.F.</option><option value="Maatschap"'+(t.koper_rechtsvorm==='Maatschap'?' selected':'')+'>Maatschap</option><option value="Coöperatie"'+(t.koper_rechtsvorm==='Coöperatie'?' selected':'')+'>Coöperatie</option><option value="Stichting"'+(t.koper_rechtsvorm==='Stichting'?' selected':'')+'>Stichting</option><option value="Holding B.V."'+(t.koper_rechtsvorm==='Holding B.V.'?' selected':'')+'>Holding B.V.</option><option value="C.V."'+(t.koper_rechtsvorm==='C.V.'?' selected':'')+'>C.V.</option></select></div>'
     +'<div class="field"><label id=\"m-p2-contact-lbl\">Contactpersoon koper</label><input type="text" id="bw-koper-contact" value="'+esc(t.koper_contact||'')+'"></div>'
-    +'<div class="field"><label>E-mail koper <span style="color:var(--red)">*</span></label><input type="email" id="bw-koper-email" value="'+esc(t.koper_email||'')+'"></div>'
-    +'<div class="field"><label>KvK-nummer koper</label><input type="text" id="bw-koper-kvk" value="'+esc(t.koper_kvk||'')+'"></div>'
-    +'<div class="field"><label>Adres koper <span style="color:var(--red)">*</span></label><input type="text" id="bw-koper-adres" value="'+esc(t.koper_adres||'')+'"></div>'
-    +'<div style="border-bottom:1px solid var(--border);margin:.75rem 0;padding-bottom:.25rem"><div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">Tekenbevoegdheid</div></div>'    +'<div style="font-size:11px;color:var(--muted);margin-bottom:.75rem;line-height:1.6">Leg vast wie namens welke partij bevoegd is te tekenen. Dit wordt gebruikt bij het opstellen en verzenden van overeenkomsten.</div>'    +'<div style="display:flex;gap:12px">'    +'<div class="field" style="flex:1"><label>Tekenbevoegde verkoper</label><input type="text" id="bw-verk-teken" value="'+esc(t.verkoper_teken||t.contact_naam||'')+'" placeholder="Naam(en) bevoegd te tekenen"></div>'    +'<div class="field" style="flex:1"><label>Functie / grondslag</label><input type="text" id="bw-verk-teken-grond" value="'+esc(t.verkoper_teken_grond||'')+'" placeholder="Functie of grondslag"></div>'    +'</div>'    +'<div class="field"><label>Overige tekenaars verkoper <span style="font-weight:400;color:var(--muted)">(optioneel)</span></label><input type="text" id="bw-verk-teken2" value="'+esc(t.verkoper_teken2||'')+'" placeholder="Overige tekenaars verkoper"></div>'    +'<div style="display:flex;gap:12px">'    +'<div class="field" style="flex:1"><label>Tekenbevoegde koper</label><input type="text" id="bw-koper-teken" value="'+esc(t.koper_teken||t.koper_contact||'')+'" placeholder="Naam bevoegd te tekenen"></div>'    +'<div class="field" style="flex:1"><label>Functie / grondslag</label><input type="text" id="bw-koper-teken-grond" value="'+esc(t.koper_teken_grond||'')+'" placeholder="Functie of grondslag"></div>'    +'</div>'    +'<div class="field"><label>Tekeningsstatus</label><select id="bw-teken-status"><option value="">— Niet gecheckt —</option><option value="geverifieerd"'+(t.teken_status==='geverifieerd'?' selected':'')+'>✓ Geverifieerd (KvK / volmacht gezien)</option><option value="op_basis_volmacht"'+(t.teken_status==='op_basis_volmacht'?' selected':'')+'>Op basis van volmacht (niet geverifieerd)</option><option value="actie_vereist"'+(t.teken_status==='actie_vereist'?' selected':'')+'>⚠ Actie vereist — bevoegdheid nog te bevestigen</option></select></div>'    +'<div style="border-bottom:1px solid var(--border);margin:.75rem 0;padding-bottom:.25rem"><div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">Notities & context</div></div>'    +'<div class="field"><label>Interne notitie</label><textarea id="bw-notitie" rows="4" placeholder="Context, afspraken, bijzonderheden, contacten buiten het systeem...">'+esc(t.notitie||'')+'</textarea></div>'    +'<div class="field"><label>Cli\u00ebntacceptatie / Wwft</label><div style="font-size:12px;padding:8px 10px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:'+((t.clientacceptatie_getoetst)?'var(--teal-dim)':'var(--muted)')+'">'+((t.clientacceptatie_getoetst)?('\u2713 Getoetst door '+esc(t.clientacceptatie_door||'\u2014')+(t.clientacceptatie_datum?(' op '+formatDate(t.clientacceptatie_datum)):'')+(t.clientacceptatie_notitie?('<br><span style="color:var(--muted)">'+esc(t.clientacceptatie_notitie)+'</span>'):'')):'Nog niet als getoetst gemarkeerd door de begeleider.')+'</div></div>'    +'<div style="display:flex;gap:12px">'    +'<div class="field" style="flex:1"><label>Volgend overleg</label><input type="text" id="bw-volgend-overleg" value="'+esc(t.volgend_overleg||'')+'" placeholder="Volgend overleg"></div>'    +'<div class="field" style="flex:1"><label>Extra contactpersoon verkoper</label><input type="text" id="bw-extra-contact" value="'+esc(t.extra_contact||'')+'" placeholder="Extra contactpersoon"></div>'    +'</div>'    +'<div id="bw-err" style="display:none;color:var(--red);font-size:12px;margin-bottom:.5rem"></div>'    +'<div style="display:flex;gap:10px;justify-content:flex-end;margin-top:.5rem"><button class="btn-ghost" id="bw-ann">Annuleren</button><button class="btn" id="bw-ok">&#10003; Opslaan</button></div>';
+    +'<div class="field"><label for="bw-koper-email">E-mail koper <span style="color:var(--red)">*</span></label><input type="email" id="bw-koper-email" value="'+esc(t.koper_email||'')+'"></div>'
+    +'<div class="field"><label for="bw-koper-kvk">KvK-nummer koper</label><input type="text" id="bw-koper-kvk" value="'+esc(t.koper_kvk||'')+'"></div>'
+    +'<div class="field"><label for="bw-koper-adres">Adres koper <span style="color:var(--red)">*</span></label><input type="text" id="bw-koper-adres" value="'+esc(t.koper_adres||'')+'"></div>'
+    +'<div style="border-bottom:1px solid var(--border);margin:.75rem 0;padding-bottom:.25rem"><div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">Tekenbevoegdheid</div></div>'    +'<div style="font-size:11px;color:var(--muted);margin-bottom:.75rem;line-height:1.6">Leg vast wie namens welke partij bevoegd is te tekenen. Dit wordt gebruikt bij het opstellen en verzenden van overeenkomsten.</div>'    +'<div style="display:flex;gap:12px">'    +'<div class="field" style="flex:1"><label for="bw-verk-teken">Tekenbevoegde verkoper</label><input type="text" id="bw-verk-teken" value="'+esc(t.verkoper_teken||t.contact_naam||'')+'" placeholder="Naam(en) bevoegd te tekenen"></div>'    +'<div class="field" style="flex:1"><label for="bw-verk-teken-grond">Functie / grondslag</label><input type="text" id="bw-verk-teken-grond" value="'+esc(t.verkoper_teken_grond||'')+'" placeholder="Functie of grondslag"></div>'    +'</div>'    +'<div class="field"><label for="bw-verk-teken2">Overige tekenaars verkoper <span style="font-weight:400;color:var(--muted)">(optioneel)</span></label><input type="text" id="bw-verk-teken2" value="'+esc(t.verkoper_teken2||'')+'" placeholder="Overige tekenaars verkoper"></div>'    +'<div style="display:flex;gap:12px">'    +'<div class="field" style="flex:1"><label for="bw-koper-teken">Tekenbevoegde koper</label><input type="text" id="bw-koper-teken" value="'+esc(t.koper_teken||t.koper_contact||'')+'" placeholder="Naam bevoegd te tekenen"></div>'    +'<div class="field" style="flex:1"><label for="bw-koper-teken-grond">Functie / grondslag</label><input type="text" id="bw-koper-teken-grond" value="'+esc(t.koper_teken_grond||'')+'" placeholder="Functie of grondslag"></div>'    +'</div>'    +'<div class="field"><label for="bw-teken-status">Tekeningsstatus</label><select id="bw-teken-status"><option value="">— Niet gecheckt —</option><option value="geverifieerd"'+(t.teken_status==='geverifieerd'?' selected':'')+'>✓ Geverifieerd (KvK / volmacht gezien)</option><option value="op_basis_volmacht"'+(t.teken_status==='op_basis_volmacht'?' selected':'')+'>Op basis van volmacht (niet geverifieerd)</option><option value="actie_vereist"'+(t.teken_status==='actie_vereist'?' selected':'')+'>⚠ Actie vereist — bevoegdheid nog te bevestigen</option></select></div>'    +'<div style="border-bottom:1px solid var(--border);margin:.75rem 0;padding-bottom:.25rem"><div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">Notities & context</div></div>'    +'<div class="field"><label for="bw-notitie">Interne notitie</label><textarea id="bw-notitie" rows="4" placeholder="Context, afspraken, bijzonderheden, contacten buiten het systeem...">'+esc(t.notitie||'')+'</textarea></div>'    +'<div class="field"><label>Cli\u00ebntacceptatie / Wwft</label><div style="font-size:12px;padding:8px 10px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:'+((t.clientacceptatie_getoetst)?'var(--teal-dim)':'var(--muted)')+'">'+((t.clientacceptatie_getoetst)?('\u2713 Getoetst door '+esc(t.clientacceptatie_door||'\u2014')+(t.clientacceptatie_datum?(' op '+formatDate(t.clientacceptatie_datum)):'')+(t.clientacceptatie_notitie?('<br><span style="color:var(--muted)">'+esc(t.clientacceptatie_notitie)+'</span>'):'')):'Nog niet als getoetst gemarkeerd door de begeleider.')+'</div></div>'    +'<div style="display:flex;gap:12px">'    +'<div class="field" style="flex:1"><label for="bw-volgend-overleg">Volgend overleg</label><input type="text" id="bw-volgend-overleg" value="'+esc(t.volgend_overleg||'')+'" placeholder="Volgend overleg"></div>'    +'<div class="field" style="flex:1"><label for="bw-extra-contact">Extra contactpersoon verkoper</label><input type="text" id="bw-extra-contact" value="'+esc(t.extra_contact||'')+'" placeholder="Extra contactpersoon"></div>'    +'</div>'    +'<div id="bw-err" style="display:none;color:var(--red);font-size:12px;margin-bottom:.5rem"></div>'    +'<div style="display:flex;gap:10px;justify-content:flex-end;margin-top:.5rem"><button class="btn-ghost" id="bw-ann">Annuleren</button><button class="btn" id="bw-ok">&#10003; Opslaan</button></div>';
   ov.appendChild(mo);document.body.appendChild(ov);
   ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
   document.getElementById('bw-ann').addEventListener('click',function(){document.body.removeChild(ov);});
@@ -2591,8 +2591,8 @@ function toonGesprekModal(trajectId, bestaand, onSaved){
 
   mo2.innerHTML='<div class="modal-title">'+(bestaand?'Gesprek bewerken':'Nieuw gesprek vastleggen')+'</div>'
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
-    +'<div class="field"><label>Datum</label><input type="date" id="gs-datum" value="'+(g.datum||vandaag)+'"></div>'
-    +'<div class="field"><label>Type</label><select id="gs-type">'
+    +'<div class="field"><label for="gs-datum">Datum</label><input type="date" id="gs-datum" value="'+(g.datum||vandaag)+'"></div>'
+    +'<div class="field"><label for="gs-type">Type</label><select id="gs-type">'
     +'<option value="gesprek"'+(g.type==='gesprek'?' selected':'')+'>Gesprek</option>'
     +'<option value="kennismaking"'+(g.type==='kennismaking'?' selected':'')+'>Kennismaking</option>'
     +'<option value="onderhandeling"'+(g.type==='onderhandeling'?' selected':'')+'>Onderhandeling</option>'
@@ -2601,7 +2601,7 @@ function toonGesprekModal(trajectId, bestaand, onSaved){
     +'<option value="email"'+(g.type==='email'?' selected':'')+'>E-mailwisseling</option>'
     +'<option value="andere"'+(g.type==='andere'?' selected':'')+'>Overig</option>'
     +'</select></div></div>'
-    +'<div class="field"><label>Deelnemers</label><input type="text" id="gs-deelnemers" placeholder="Namen van deelnemers" value="'+esc(g.deelnemers||'')+'"></div>'
+    +'<div class="field"><label for="gs-deelnemers">Deelnemers</label><input type="text" id="gs-deelnemers" placeholder="Namen van deelnemers" value="'+esc(g.deelnemers||'')+'"></div>'
 
     // Notities + opname
     +'<div class="field">'
@@ -2811,9 +2811,9 @@ function toonBegeleiderModal(trajectId, trajectNaam, tussenCode){
     +'<div style="font-family:IBM Plex Mono,monospace;font-size:1.4rem;font-weight:600;color:var(--teal);letter-spacing:.2em">'+esc(tussenCode||'—')+'</div>'
     +'<div style="font-size:11px;color:var(--muted);margin-top:.3rem">Inloggen op: '+mnaUrl+'</div>'
     +'</div>'
-    +'<div class="field"><label>E-mail begeleider <span style="color:var(--red)">*</span></label><input type="email" id="bg-email-input" placeholder="E-mailadres begeleider"></div>'
-    +'<div class="field"><label>Naam begeleider</label><input type="text" id="bg-naam-input" placeholder="Naam begeleider"></div>'
-    +'<div class="field"><label>Persoonlijk bericht (optioneel)</label><textarea id="bg-bericht-input" rows="3" placeholder="Voeg eventueel een persoonlijk bericht toe..."></textarea></div>'
+    +'<div class="field"><label for="bg-email-input">E-mail begeleider <span style="color:var(--red)">*</span></label><input type="email" id="bg-email-input" placeholder="E-mailadres begeleider"></div>'
+    +'<div class="field"><label for="bg-naam-input">Naam begeleider</label><input type="text" id="bg-naam-input" placeholder="Naam begeleider"></div>'
+    +'<div class="field"><label for="bg-bericht-input">Persoonlijk bericht (optioneel)</label><textarea id="bg-bericht-input" rows="3" placeholder="Voeg eventueel een persoonlijk bericht toe..."></textarea></div>'
     +'<div id="bg-err" style="display:none;color:var(--red);font-size:12px;margin-bottom:.5rem"></div>'
     +'<div id="bg-ok" style="display:none;color:var(--teal);font-size:13px;margin-bottom:.5rem">&#10003; Uitnodiging verstuurd!</div>'
     +'<div style="display:flex;gap:10px;justify-content:flex-end">'
@@ -2879,12 +2879,12 @@ async function toonMeekijkersModal(trajectId, trajectNaam, sector){
     +'<div style="border-top:1px solid var(--border);padding-top:1rem">'
     +'<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem">Nieuwe meekijker</div>'
     +'<div style="display:flex;gap:8px">'
-    +'<div class="field" style="flex:2"><label>Naam meekijker <span style="color:var(--red)">*</span></label><input type="text" id="mk-naam"></div>'
-    +'<div class="field" style="flex:1"><label>Type</label><select id="mk-type"><option value="bank">Bank</option><option value="accountant">Accountant</option><option value="overig">Overig</option></select></div>'
+    +'<div class="field" style="flex:2"><label for="mk-naam">Naam meekijker <span style="color:var(--red)">*</span></label><input type="text" id="mk-naam"></div>'
+    +'<div class="field" style="flex:1"><label for="mk-type">Type</label><select id="mk-type"><option value="bank">Bank</option><option value="accountant">Accountant</option><option value="overig">Overig</option></select></div>'
     +'</div>'
     +'<div style="display:flex;gap:8px">'
-    +'<div class="field" style="flex:1"><label>Scope</label><select id="mk-scope"><option value="alle">Alle fases</option></select></div>'
-    +'<div class="field" style="flex:1"><label>Verloopt na <span style="font-weight:400;color:var(--muted)">(optioneel, dagen)</span></label><input type="number" id="mk-verloopt" min="1"></div>'
+    +'<div class="field" style="flex:1"><label for="mk-scope">Scope</label><select id="mk-scope"><option value="alle">Alle fases</option></select></div>'
+    +'<div class="field" style="flex:1"><label for="mk-verloopt">Verloopt na <span style="font-weight:400;color:var(--muted)">(optioneel, dagen)</span></label><input type="number" id="mk-verloopt" min="1"></div>'
     +'</div>'
     +'<label style="display:flex;align-items:flex-start;gap:8px;font-size:12px;color:var(--mid);line-height:1.5;margin:.5rem 0 1rem;cursor:pointer"><input type="checkbox" id="mk-toestemming" style="margin-top:2px"> Ik heb toestemming van mijn opdrachtgever om deze partij beperkte inzage te geven in dit traject.</label>'
     +'<div id="mk-err" style="display:none;color:var(--red);font-size:12px;margin-bottom:.5rem"></div>'
@@ -2977,9 +2977,9 @@ function toonNieuwModal(prefillLead){
   var mo=document.createElement('div');mo.className='modal';
   mo.innerHTML='<div class="modal-title">Nieuw M&amp;A traject aanmaken</div>'
     +'<div style="display:flex;gap:12px">'
-    +'<div class="field" style="flex:1"><label>Trajecttype <span style="color:var(--red)">*</span></label><select id="m-t"><option value="Verkoop">Verkoop</option><option value="Fusie">Fusie</option><option value="Opvolging">Opvolging</option><option value="PE-traject">PE-traject</option><option value="Overname">Overname</option></select></div>'
-    +'<div class="field" style="flex:1"><label>Sector <span style="color:var(--red)">*</span></label><select id="m-sector"><option value="accountancy">Accountancy & administratie</option><option value="mkb">MKB — Retail / Horeca / Handel</option><option value="zorg">Zorg — Huisarts / Tandarts / Fysiotherapie</option><option value="itsoftware">IT & Software</option></select></div>'
-    +'<div class="field" style="flex:1"><label>Structuur <span style="color:var(--red)">*</span></label><select id="m-structuur"><option value="bv">BV / NV — VPB</option><option value="maatschap">Maatschap — maten (box 1), geen VPB</option><option value="eenmanszaak">Eenmanszaak</option></select></div>'
+    +'<div class="field" style="flex:1"><label for="m-t">Trajecttype <span style="color:var(--red)">*</span></label><select id="m-t"><option value="Verkoop">Verkoop</option><option value="Fusie">Fusie</option><option value="Opvolging">Opvolging</option><option value="PE-traject">PE-traject</option><option value="Overname">Overname</option></select></div>'
+    +'<div class="field" style="flex:1"><label for="m-sector">Sector <span style="color:var(--red)">*</span></label><select id="m-sector"><option value="accountancy">Accountancy & administratie</option><option value="mkb">MKB — Retail / Horeca / Handel</option><option value="zorg">Zorg — Huisarts / Tandarts / Fysiotherapie</option><option value="itsoftware">IT & Software</option></select></div>'
+    +'<div class="field" style="flex:1"><label for="m-structuur">Structuur <span style="color:var(--red)">*</span></label><select id="m-structuur"><option value="bv">BV / NV — VPB</option><option value="maatschap">Maatschap — maten (box 1), geen VPB</option><option value="eenmanszaak">Eenmanszaak</option></select></div>'
     +'</div>'
     +'<div style="border-bottom:1px solid var(--border);margin:.75rem 0 .75rem;padding-bottom:.25rem"><div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)" id="m-sectie1-hdr">Verkopende partij</div></div>'
     +'<div class="field"><label id="m-p1-naam-lbl">Naam onderneming <span style="color:var(--red)">*</span></label><div style="display:flex;gap:8px"><input type="text" id="m-k" placeholder="Naam van de onderneming" value="'+esc(pf.kantoor_naam||'')+'" style="flex:2"><input type="text" id="m-kvk" placeholder="KvK-nr" style="flex:1"></div></div>'
@@ -2987,10 +2987,10 @@ function toonNieuwModal(prefillLead){
     +'<div class="field"><label id="m-p1-adres-lbl">Adres <span style="color:var(--red)">*</span></label><input type="text" id="m-adres" placeholder="Adres"></div>'
     +'<div class="field"><label id="m-p1-contact-lbl">Contactpersoon <span style="color:var(--red)">*</span></label><input type="text" id="m-c" placeholder="Naam contactpersoon"></div>'
     +'<div class="field"><label id="m-p1-email-lbl">E-mail contactpersoon <span style="color:var(--red)">*</span></label><input type="email" id="m-e" placeholder="E-mailadres"></div>'
-    +'<div class="field"><label>Notitie (intern) <span style="font-weight:400;color:var(--muted)">(optioneel)</span></label><textarea id="m-n" rows="2" placeholder="Interne aantekeningen...">'+esc(pf.toelichting?('Uit aangedragen lead: '+pf.toelichting):'')+'</textarea></div>'
+    +'<div class="field"><label for="m-n">Notitie (intern) <span style="font-weight:400;color:var(--muted)">(optioneel)</span></label><textarea id="m-n" rows="2" placeholder="Interne aantekeningen...">'+esc(pf.toelichting?('Uit aangedragen lead: '+pf.toelichting):'')+'</textarea></div>'
     +'<div style="border-top:1px solid var(--border);margin:.75rem 0;padding-top:.75rem"><div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem">Begeleider (tussenpersoon)</div></div>'
-    +'<div class="field"><label>Naam begeleider</label><input type="text" id="m-bg-naam" value="Marcel Bisschops"></div>'
-    +'<div class="field"><label>E-mail begeleider</label><input type="email" id="m-bg-email" value="marcel@bisschopsfinancing.nl"></div>'
+    +'<div class="field"><label for="m-bg-naam">Naam begeleider</label><input type="text" id="m-bg-naam" value="Marcel Bisschops"></div>'
+    +'<div class="field"><label for="m-bg-email">E-mail begeleider</label><input type="email" id="m-bg-email" value="marcel@bisschopsfinancing.nl"></div>'
     +'<div style="border-top:1px solid var(--border);margin:.75rem 0;padding-top:.75rem"><div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem" id="m-sectie2-hdr">Kopende partij</div></div>'
     +'<div class="field"><label id="m-p2-naam-lbl">Naam kopende partij <span style="color:var(--red)">*</span></label><div style="display:flex;gap:8px"><input type="text" id="m-koper-naam" placeholder="Naam kopende partij" style="flex:2"><input type="text" id="m-koper-kvk" placeholder="KvK-nr" style="flex:1"></div></div>'
     +'<div class="field"><label id="m-p2-rv-lbl">Rechtsvorm koper <span style="color:var(--red)">*</span></label><select id="m-koper-rv"><option value="">— Kies rechtsvorm —</option><option value="B.V.">B.V. (Besloten Vennootschap)</option><option value="N.V.">N.V. (Naamloze Vennootschap)</option><option value="Eenmanszaak">Eenmanszaak</option><option value="V.O.F.">V.O.F.</option><option value="Maatschap">Maatschap</option><option value="Coöperatie">Coöperatie</option><option value="Stichting">Stichting</option><option value="Holding B.V.">Holding B.V.</option><option value="C.V.">C.V.</option></select></div>'
@@ -2998,9 +2998,9 @@ function toonNieuwModal(prefillLead){
     +'<div class="field"><label id="m-p2-contact-lbl">Contactpersoon koper <span style="color:var(--red)">*</span></label><input type="text" id="m-koper-contact" placeholder="Naam contactpersoon"></div>'
     +'<div class="field"><label id="m-p2-email-lbl">E-mail koper <span style="color:var(--red)">*</span></label><input type="email" id="m-koper-email" placeholder="E-mailadres koper"></div>'
     +'<div style="border-top:1px solid var(--border);margin:.75rem 0;padding-top:.75rem"><div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem">Aangedragen door <span style="font-weight:400;text-transform:none;letter-spacing:normal">(optioneel — intern, nooit zichtbaar voor verkoper/koper)</span></div></div>'
-    +'<div class="field"><label>Naam aandrager <span style="font-weight:400;color:var(--muted)">(bijv. contactpersoon bij bank/accountantskantoor)</span></label><input type="text" id="m-aandr-naam" value="'+esc(pf.naam||'')+'"></div>'
-    +'<div class="field"><label>Organisatie aandrager</label><input type="text" id="m-aandr-org" value="'+esc(pf.organisatie||'')+'"></div>'
-    +'<div class="field"><label>Referral fee-afspraak <span style="font-weight:400;color:var(--muted)">(percentage of vast bedrag, vrije tekst)</span></label><input type="text" id="m-aandr-afspraak"></div>'
+    +'<div class="field"><label for="m-aandr-naam">Naam aandrager <span style="font-weight:400;color:var(--muted)">(bijv. contactpersoon bij bank/accountantskantoor)</span></label><input type="text" id="m-aandr-naam" value="'+esc(pf.naam||'')+'"></div>'
+    +'<div class="field"><label for="m-aandr-org">Organisatie aandrager</label><input type="text" id="m-aandr-org" value="'+esc(pf.organisatie||'')+'"></div>'
+    +'<div class="field"><label for="m-aandr-afspraak">Referral fee-afspraak <span style="font-weight:400;color:var(--muted)">(percentage of vast bedrag, vrije tekst)</span></label><input type="text" id="m-aandr-afspraak"></div>'
     +'<div id="m-res" style="display:none;background:var(--teal-bg);border:1px solid var(--teal-dark);border-radius:var(--r);padding:1rem;margin-bottom:1rem;font-size:13px;line-height:2"></div>'
     +'<div id="m-err" style="display:none;color:var(--red);font-size:12px;margin-bottom:.75rem"></div>'
     +'<div style="display:flex;gap:10px;justify-content:flex-end"><button class="btn-ghost" id="m-ann">Annuleren</button><button class="btn" id="m-ok">Traject aanmaken</button></div>';
@@ -3960,16 +3960,16 @@ async function renderMatchingTab(el){
       ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center';
       ov.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:1.75rem;width:100%;max-width:440px;max-height:85vh;overflow-y:auto">'
         +'<div style="font-size:15px;font-weight:600;color:var(--head);margin-bottom:1rem">Nieuw koper-zoekprofiel</div>'
-        +'<div class="field"><label>Naam (fictief voor demo\'s)</label><input type="text" id="mk-naam" placeholder="bijv. PE-platform X"></div>'
+        +'<div class="field"><label for="mk-naam">Naam (fictief voor demo\'s)</label><input type="text" id="mk-naam" placeholder="bijv. PE-platform X"></div>'
         +'<div style="font-size:11px;font-weight:600;text-transform:uppercase;color:var(--muted);margin:.75rem 0 4px">Zoekt sector(en)</div>'
         +MATCH_SECTOREN.map(function(s){return '<label style="display:flex;gap:6px;align-items:center;font-size:13px;padding:2px 0"><input type="checkbox" class="mk-sector" value="'+s[0]+'"> '+s[1]+'</label>';}).join('')
         +'<div style="font-size:11px;font-weight:600;text-transform:uppercase;color:var(--muted);margin:.75rem 0 4px">Regio (leeg = heel Nederland)</div>'
         +MATCH_REGIOS.map(function(r){return '<label style="display:flex;gap:6px;align-items:center;font-size:13px;padding:2px 0"><input type="checkbox" class="mk-regio" value="'+r+'"> '+r+'</label>';}).join('')
         +'<div style="display:flex;gap:8px;margin-top:.75rem">'
-        +'<div class="field" style="flex:1"><label>Omzet vanaf</label><select id="mk-omzet-min">'+MATCH_OMZETKLASSEN.map(function(o,i){return '<option value="'+i+'">'+o+'</option>';}).join('')+'</select></div>'
-        +'<div class="field" style="flex:1"><label>Omzet tot</label><select id="mk-omzet-max">'+MATCH_OMZETKLASSEN.map(function(o,i){return '<option value="'+i+'"'+(i===5?' selected':'')+'>'+o+'</option>';}).join('')+'</select></div>'
+        +'<div class="field" style="flex:1"><label for="mk-omzet-min">Omzet vanaf</label><select id="mk-omzet-min">'+MATCH_OMZETKLASSEN.map(function(o,i){return '<option value="'+i+'">'+o+'</option>';}).join('')+'</select></div>'
+        +'<div class="field" style="flex:1"><label for="mk-omzet-max">Omzet tot</label><select id="mk-omzet-max">'+MATCH_OMZETKLASSEN.map(function(o,i){return '<option value="'+i+'"'+(i===5?' selected':'')+'>'+o+'</option>';}).join('')+'</select></div>'
         +'</div>'
-        +'<div class="field"><label>Beschrijving</label><textarea id="mk-beschrijving" rows="3"></textarea></div>'
+        +'<div class="field"><label for="mk-beschrijving">Beschrijving</label><textarea id="mk-beschrijving" rows="3"></textarea></div>'
         +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem">'
         +'<button class="btn-ghost" id="mk-ann">Annuleren</button><button class="btn" id="mk-opslaan">Opslaan</button>'
         +'</div></div>';
@@ -4196,9 +4196,9 @@ function toonUitnodigenModal() {
   var mo = document.createElement('div'); mo.className = 'modal'; mo.style.maxWidth = '480px';
   mo.innerHTML = '<div class="modal-title">&#9993; Adviseur uitnodigen</div>'
     + '<div style="font-size:13px;color:var(--mid);margin-bottom:1.25rem;line-height:1.7">De adviseur ontvangt een e-mail met een activatielink. Na activatie kan hij inloggen en eigen trajecten aanmaken.</div>'
-    + '<div class="field"><label>Naam <span style="color:var(--red)">*</span></label><input type="text" id="inv-naam" placeholder="Voornaam achternaam"></div>'
-    + '<div class="field"><label>Bedrijf</label><input type="text" id="inv-bedrijf" placeholder="Naam kantoor of bedrijf"></div>'
-    + '<div class="field"><label>E-mailadres <span style="color:var(--red)">*</span></label><input type="email" id="inv-email" placeholder="E-mailadres adviseur"></div>'
+    + '<div class="field"><label for="inv-naam">Naam <span style="color:var(--red)">*</span></label><input type="text" id="inv-naam" placeholder="Voornaam achternaam"></div>'
+    + '<div class="field"><label for="inv-bedrijf">Bedrijf</label><input type="text" id="inv-bedrijf" placeholder="Naam kantoor of bedrijf"></div>'
+    + '<div class="field"><label for="inv-email">E-mailadres <span style="color:var(--red)">*</span></label><input type="email" id="inv-email" placeholder="E-mailadres adviseur"></div>'
     + '<div class="field" style="flex-direction:row;align-items:center;gap:8px"><input type="checkbox" id="inv-tester" style="width:auto"><label for="inv-tester" style="margin:0">Dit is een testaccount (testvoorwaarden + aansprakelijkheid nihil in de uitnodigingsmail)</label></div>'
     + '<div id="inv-err" style="color:var(--red);font-size:12px;margin-bottom:.75rem;display:none"></div>'
     + '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem">'
