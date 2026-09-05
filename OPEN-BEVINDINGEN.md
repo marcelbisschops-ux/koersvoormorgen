@@ -190,9 +190,12 @@ Vijf parallelle deelaudits vonden deze nieuwe punten, bovenop de rondes hierbove
 https://claude.ai/code/artifact/ba7699ae-3e02-4782-9ef3-52285402d76b
 
 ### P1-25 · `/mna/chat/{code}` — koper leest verkoper↔begeleider-chat + kan begeleider spoofen
-🔴 **Nog open, kritiek.** GET/POST herleiden verkoper-/koper-/begeleidercode allemaal naar dezelfde
-`mna_chat`-thread zonder rolcheck; POST accepteert een vrij `auteur`-veld zonder verificatie. Locatie:
-`backend/worker/17-mna-chat.js:6-31`. Wacht op Marcels akkoord vóór fix (auth-wijziging, werkregel 19).
+🟢 **Gefixt (5 sep 2026), en uitgebreid tot een nieuwe feature.** Marcel koos ervoor om koper niet
+simpelweg uit te sluiten, maar een eigen, gescheiden koper↔begeleider-kanaal te bouwen (nieuwe
+`kanaal`-kolom op `mna_chat`, rol altijd server-side bepaald via `resolveRol()` uit `worker/00-policy.js`,
+`auteur` nooit meer uit de request-body). Begeleider schakelt in de UI tussen een "Verkoper"- en
+"Koper"-tab. 9 nieuwe regressiechecks (NF-1) toegevoegd aan `tests/e2e-crosspath-fixes.mjs`, allemaal
+groen tegen productie (81/81 totaal). Handleiding bijgewerkt in beide bestanden (mna/08 + adv.html).
 
 ### P1-26 · CI staat al 50+ runs / 5+ dagen rood op de e2e-tegen-staging-stap
 🔴 **Nog open, kritiek.** 5 van 6 stappen slagen; de zwaarste laag (adviseur-lifecycle, module-gating,
