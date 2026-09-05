@@ -454,6 +454,42 @@ async function main() {
     }
   }
 
+  kop('NF-1 · /mna/chat — koper mag het verkoper-begeleider-gesprek niet zien, en niet spoofen (fix 5 sep 2026)');
+  {
+    const vBericht = 'E2E CONF — bericht van de verkoper, alleen voor het verkoper-kanaal';
+    await api('POST', '/mna/chat/' + traject.code, { body: { tekst: vBericht } });
+
+    // Koper probeert zich voor te doen als begeleider — de server moet dit negeren en 'koper' opslaan.
+    const kPost = await api('POST', '/mna/chat/' + traject.koper_code, { body: { tekst: 'E2E CONF — koper probeert te spoofen', auteur: 'begeleider' } });
+    check('NF-1 · koper-POST met auteur:"begeleider" wordt geaccepteerd (ok:true)', kPost.json && kPost.json.ok === true, JSON.stringify(kPost.json));
+    check('NF-1 · koper-POST slaat op in het koper-kanaal, niet verkoper', kPost.json && kPost.json.kanaal === 'koper', JSON.stringify(kPost.json));
+
+    // Koper mag het verkoper-kanaal niet kunnen lezen.
+    const kGet = await api('GET', '/mna/chat/' + traject.koper_code);
+    const kBerichten = (kGet.json && kGet.json.berichten) || [];
+    check('NF-1 · koper ziet het verkoper-bericht NIET', !kBerichten.some(b => b.tekst === vBericht), JSON.stringify(kBerichten.map(b => b.tekst)));
+    const gespoofd = kBerichten.find(b => b.tekst === 'E2E CONF — koper probeert te spoofen');
+    check('NF-1 · het "gespoofde" bericht staat als auteur "koper", niet "begeleider"', !!gespoofd && gespoofd.auteur === 'koper', JSON.stringify(gespoofd));
+
+    // Verkoper mag het koper-kanaal niet kunnen lezen.
+    const vGet = await api('GET', '/mna/chat/' + traject.code);
+    const vBerichten = (vGet.json && vGet.json.berichten) || [];
+    check('NF-1 · verkoper ziet het koper-bericht NIET', !vBerichten.some(b => b.tekst === 'E2E CONF — koper probeert te spoofen'), JSON.stringify(vBerichten.map(b => b.tekst)));
+    check('NF-1 · verkoper ziet wél het eigen verkoper-bericht', vBerichten.some(b => b.tekst === vBericht), JSON.stringify(vBerichten.map(b => b.tekst)));
+
+    // Begeleider ziet beide kanalen, elk apart, met de juiste (server-bepaalde) auteur.
+    const bVerkoperGet = await api('GET', '/mna/chat/' + traject.tussen_code + '?kanaal=verkoper');
+    const bKoperGet = await api('GET', '/mna/chat/' + traject.tussen_code + '?kanaal=koper');
+    const bVerkoperBerichten = (bVerkoperGet.json && bVerkoperGet.json.berichten) || [];
+    const bKoperBerichten = (bKoperGet.json && bKoperGet.json.berichten) || [];
+    check('NF-1 · begeleider ziet het verkoper-bericht in het verkoper-kanaal', bVerkoperBerichten.some(b => b.tekst === vBericht), JSON.stringify(bVerkoperBerichten.map(b => b.tekst)));
+    check('NF-1 · begeleider ziet het koper-bericht in het koper-kanaal, niet in verkoper', bKoperBerichten.some(b => b.tekst === 'E2E CONF — koper probeert te spoofen') && !bVerkoperBerichten.some(b => b.tekst === 'E2E CONF — koper probeert te spoofen'), JSON.stringify({ verkoper: bVerkoperBerichten.map(b => b.tekst), koper: bKoperBerichten.map(b => b.tekst) }));
+
+    // Onbekende code krijgt geen toegang meer (voorheen: elke onbekende code las gewoon traject_id=code zelf).
+    const onbekend = await api('GET', '/mna/chat/DITBESTAATNIET99');
+    check('NF-1 · een onbekende/niet-herleidbare code krijgt geen berichten (leeg, geen cross-traject-lek)', Array.isArray(onbekend.json && onbekend.json.berichten) ? onbekend.json.berichten.length === 0 : true, JSON.stringify(onbekend.json));
+  }
+
   await opruimen();
   process.exit(samenvatting() ? 0 : 1);
 }

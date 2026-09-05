@@ -31,13 +31,21 @@ renderApp();
 // ============================================================
 // CHAT SYSTEEM
 // ============================================================
+// Audit-fix P1 (5 sep 2026, achtste heraudit): koper en verkoper zaten voorheen ongewild in
+// hetzelfde gesprek met de begeleider (backend deed geen rolcheck) — Marcel koos voor een eigen,
+// gescheiden koper-begeleider-kanaal i.p.v. koper simpelweg uit te sluiten. Alleen de begeleider
+// heeft twee kanalen (kan tussen 'verkoper' en 'koper' schakelen); verkoper/koper hebben elk maar
+// hun eigen kanaal, de server bepaalt dat zelf op basis van de (server-geverifieerde) rol.
 var CHAT = {
   open: false,
   berichten: [],
   serverBerichten: [],
+  serverBerichtenPerKanaal: { verkoper: [], koper: [] },
+  kanaal: 'verkoper',
   laden: false,
   sturen: false,
-  unread: 0
+  unread: 0,
+  unreadPerKanaal: { verkoper: 0, koper: 0 }
 };
 
 function chatContextBeschrijving() {
@@ -60,36 +68,59 @@ function chatContextBeschrijving() {
 async function chatLaadBerichten() {
   if (!S.code) return;
   try {
-    var resp = await fetch(WORKER + '/mna/chat/' + S.code);
-    if (!resp.ok) return;
-    var d = await resp.json();
-    if (d.berichten) {
-      CHAT.serverBerichten = d.berichten;
-      var nieuweUnread = 0;
-      d.berichten.forEach(function(b) {
-        if (isVerkoper() && b.auteur === 'begeleider' && !b.gelezen) nieuweUnread++;
-        if (isTussen() && b.auteur === 'verkoper' && !b.gelezen) nieuweUnread++;
-      });
-      if (!CHAT.open && nieuweUnread > CHAT.unread) {
-        CHAT.unread = nieuweUnread;
-        chatUpdateBadge();
+    if (isTussen()) {
+      // Begeleider heeft twee kanalen — allebei ophalen zodat het totale ongelezen-aantal klopt,
+      // ook voor het kanaal dat nu niet actief in beeld staat.
+      var respV = await fetch(WORKER + '/mna/chat/' + S.code + '?kanaal=verkoper');
+      var respK = await fetch(WORKER + '/mna/chat/' + S.code + '?kanaal=koper');
+      var dV = respV.ok ? await respV.json() : { berichten: [] };
+      var dK = respK.ok ? await respK.json() : { berichten: [] };
+      CHAT.serverBerichtenPerKanaal.verkoper = dV.berichten || [];
+      CHAT.serverBerichtenPerKanaal.koper = dK.berichten || [];
+      CHAT.serverBerichten = CHAT.serverBerichtenPerKanaal[CHAT.kanaal];
+      CHAT.unreadPerKanaal.verkoper = CHAT.serverBerichtenPerKanaal.verkoper.filter(function(b){return b.auteur==='verkoper'&&!b.gelezen;}).length;
+      CHAT.unreadPerKanaal.koper = CHAT.serverBerichtenPerKanaal.koper.filter(function(b){return b.auteur==='koper'&&!b.gelezen;}).length;
+      var totaalUnread = CHAT.unreadPerKanaal.verkoper + CHAT.unreadPerKanaal.koper;
+      if (!CHAT.open && totaalUnread > CHAT.unread) { CHAT.unread = totaalUnread; chatUpdateBadge(); }
+    } else {
+      var resp = await fetch(WORKER + '/mna/chat/' + S.code);
+      if (!resp.ok) return;
+      var d = await resp.json();
+      if (d.berichten) {
+        CHAT.serverBerichten = d.berichten;
+        var nieuweUnread = d.berichten.filter(function(b){ return b.auteur === 'begeleider' && !b.gelezen; }).length;
+        if (!CHAT.open && nieuweUnread > CHAT.unread) { CHAT.unread = nieuweUnread; chatUpdateBadge(); }
       }
     }
   } catch(e) {}
 }
 
+function chatWisselKanaal(kanaal) {
+  if (kanaal !== 'verkoper' && kanaal !== 'koper') return;
+  CHAT.kanaal = kanaal;
+  CHAT.berichten = [];
+  CHAT.serverBerichten = CHAT.serverBerichtenPerKanaal[kanaal];
+  chatInit();
+  if (CHAT.open) { var v = document.getElementById('chat-venster'); if (v) v.style.display = 'flex'; var f = document.getElementById('chat-fab'); if (f) f.style.display = 'none'; chatRenderBerichten(); }
+}
+
 async function chatVerstuur(tekst) {
   if (!tekst.trim() || CHAT.sturen) return;
   CHAT.sturen = true;
+  // Alleen voor de OPTIMISTISCHE lokale weergave — de server bepaalt auteur/naam zelf, server-side,
+  // op basis van de geverifieerde rol (Audit-fix P1, 5 sep 2026: nooit meer een client-opgegeven
+  // auteur vertrouwen, dat was het spoofing-lek).
   var auteur = isVerkoper() ? 'verkoper' : isTussen() ? 'begeleider' : 'koper';
   var naamLabel = isVerkoper() ? (S.traject && S.traject.contact_naam || 'Verkoper') : isTussen() ? (S.traject && S.traject.begeleider_naam || 'Begeleider') : 'Koper';
   var userMsg = { auteur: auteur, naam: naamLabel, tekst: tekst, ts: Date.now(), lokaal: true };
   CHAT.berichten.push(userMsg);
   chatRenderBerichten();
   try {
+    var postBody = { tekst: tekst };
+    if (isTussen()) postBody.kanaal = CHAT.kanaal;
     await fetch(WORKER + '/mna/chat/' + S.code, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ auteur: auteur, naam: naamLabel, tekst: tekst })
+      body: JSON.stringify(postBody)
     });
   } catch(e) {}
   if (isVerkoper()) {
@@ -142,7 +173,7 @@ function chatRenderBerichten() {
     return;
   }
   lijst.innerHTML = alleBerichten.map(function(b) {
-    var isEigen = (isVerkoper() && b.auteur === 'verkoper') || (isTussen() && b.auteur === 'begeleider');
+    var isEigen = (isVerkoper() && b.auteur === 'verkoper') || (isTussen() && b.auteur === 'begeleider') || (isKoper() && b.auteur === 'koper');
     var isAI = b.auteur === 'ai';
     var isBeg = b.auteur === 'begeleider';
     var dt = b.ts ? new Date(b.ts).toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'}) : '';
@@ -197,8 +228,19 @@ function chatInit() {
     st.textContent = '@keyframes chatdot{0%,80%,100%{opacity:.3;transform:scale(.8)}40%{opacity:1;transform:scale(1)}}';
     document.head.appendChild(st);
   }
-  var headerTitel = isVerkoper() ? '&#128172; Assistent & Begeleider' : isTussen() ? '&#128172; Chat met verkoper' : '&#128172; Chat';
+  var headerTitel = isVerkoper() ? '&#128172; Assistent & Begeleider' : isTussen() ? (CHAT.kanaal === 'koper' ? '&#128172; Chat met koper' : '&#128172; Chat met verkoper') : '&#128172; Chat';
   var placeholder = isVerkoper() ? 'Stel een vraag...' : 'Stuur een bericht...';
+  // Audit-fix P1 (5 sep 2026): begeleider heeft nu twee gescheiden kanalen (verkoper/koper) —
+  // een kleine tabwissel bovenin de widget, alleen zichtbaar voor de begeleider.
+  var kanaalTabsHtml = '';
+  if (isTussen()) {
+    var uV = CHAT.unreadPerKanaal.verkoper, uK = CHAT.unreadPerKanaal.koper;
+    var tabStijl = function(actief){ return 'flex:1;padding:7px 0;border:none;cursor:pointer;font-size:11.5px;font-weight:600;background:'+(actief?'rgba(255,255,255,.22)':'transparent')+';color:#fff;border-bottom:2px solid '+(actief?'#fff':'transparent')+''; };
+    kanaalTabsHtml = '<div style="display:flex;background:var(--teal-dim,var(--teal))">'
+      +'<button onclick="chatWisselKanaal(\'verkoper\')" style="'+tabStijl(CHAT.kanaal==='verkoper')+'">Verkoper'+(uV?' &middot; '+uV:'')+'</button>'
+      +'<button onclick="chatWisselKanaal(\'koper\')" style="'+tabStijl(CHAT.kanaal==='koper')+'">Koper'+(uK?' &middot; '+uK:'')+'</button>'
+      +'</div>';
+  }
   var container = document.createElement('div'); container.id = 'chat-container';
   container.innerHTML =
     '<button id="chat-fab" aria-label="Chat openen" style="position:fixed;bottom:24px;right:24px;z-index:500;display:flex;align-items:center;justify-content:center;width:52px;height:52px;border-radius:50%;background:var(--teal);border:none;box-shadow:0 4px 16px rgba(0,0,0,.2);cursor:pointer" onclick="chatOpen()">'
@@ -210,6 +252,7 @@ function chatInit() {
     +'<div style="font-size:13px;font-weight:600">'+headerTitel+'</div>'
     +'<button onclick="chatSluit()" aria-label="Chat sluiten" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer;padding:0;line-height:1">&times;</button>'
     +'</div>'
+    +kanaalTabsHtml
     +'<div id="chat-berichten" style="flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column"></div>'
     +'<div style="padding:10px 12px;border-top:1px solid var(--border);display:flex;gap:8px;align-items:flex-end">'
     +'<textarea id="chat-input" placeholder="'+placeholder+'" rows="1" style="flex:1;background:var(--card);border:1px solid var(--border2);border-radius:8px;padding:8px 10px;font-family:IBM Plex Sans,sans-serif;font-size:13px;color:var(--sub);outline:none;resize:none;max-height:80px;line-height:1.5"></textarea>'
