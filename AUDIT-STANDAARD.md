@@ -222,6 +222,27 @@ aanbeveling te verschijnen — wel kort als "OK/aantoonbaar aanwezig", zodat reg
 wordt als dat verandert. Elke audit dekt zowel de frontend- als de backend-repo; een audit die
 alleen één van beide behandelt telt niet als volledig.
 
+**Open-bevindingen-register — verplicht bij elke audit, ook een begrensde (Marcel, 5 september
+2026, vaste regel):** *"ik wil dat openstaande punten altijd meegenomen worden"* — een audit die
+alleen naar nieuwe dingen kijkt en oude bevindingen ongemoeid laat, houdt het cijfer kunstmatig
+laag hangen én maakt een echte fix onzichtbaar. Aanleiding: bij de eerste keer dat dit expliciet
+werd nagevraagd (5 sep 2026, begrensde routine-ronde) bleek van de 24 P1-P4-bevindingen uit de
+24-augustus-audit een groot deel nooit herbevestigd — een eerdere sessie had geclaimd dat "alle
+P1's en P2's dezelfde dag gefixt" waren, maar een daadwerkelijke hercontrole liet zien dat 9 van
+de 24 nog gewoon open stonden (waaronder 2 P2's en 4 P3's), 3 een terugkerend/gedeeltelijk
+probleem waren (waaronder een kleurcontrast-bevinding die na de fix van 19 augustus met een
+nieuwe kleurwaarde op een nieuwe pagina terugkwam, en een backup die weer bleek te falen — laatste
+mislukte poging: de nacht vóór deze audit), en enkele juist wél stilzwijgend waren opgelost zonder
+dat het ergens zichtbaar werd. Vaste werkwijze vanaf nu: **`OPEN-BEVINDINGEN.md`** in de repo-root
+is het levende register van elke nog-niet-aantoonbaar-opgeloste bevinding. Elke audit — volledig
+óf de begrensde scheduled-task-routine — doorloopt dit bestand, verifieert elk item opnieuw met
+concreet bewijs (grep/test/berekening — nooit aannemen dat een eerdere "gefixt"-claim nog klopt),
+werkt de status bij, en laat het resultaat expliciet meewegen in het eindcijfer: elk item dat
+🔴→🟢 gaat is zichtbare vooruitgang, elk item dat blijft hangen of verergert (bijv. een groeiend
+bestand, meer treffers dan de vorige meting) is zichtbare achteruitgang. Nieuwe bevindingen uit
+een audit worden direct aan dit register toegevoegd, niet alleen in het logboek hieronder. Een
+item wordt alleen verwijderd/op 🟢 gezet met concreet bewijs, nooit op vertrouwen.
+
 ## Logboek van uitgevoerde audits
 
 - **25 juli 2026 (externe testset — "Enterprise Validation Framework", 21 modules EVF-001 t/m
@@ -808,6 +829,8 @@ edge-breed gedeeld (zelfde beperking als de bestaande admin-limiter, zie P3 hier
   **Aandachtspunt (P4, informatief):** een reeks rekenkern-commits draagt niet-beschrijvende boodschappen ("xx", "c c") — geen functionele fout (alle 282 checks slagen), maar maakt de door werkregel 19 verplichte tegenspraak-stap achteraf lastiger te herleiden. Aanbeveling: beschrijvend commit-bericht bij toekomstige rekenkern-wijzigingen. **Niet gedraaid:** `check-dealvoorstel-output.mjs` / `check-contract-output.mjs` (vereisen een vers, echt gegenereerd document — kosten; bewust overgeslagen in deze onbeheerde ronde). Aanbeveling: handmatig draaien op het eerstvolgende dealvoorstel met de nieuwe onderhandelmodule om werkregel 19 voor deze uitbreiding volledig af te sluiten.
 
   Laatste volledige AUDIT-STANDAARD.md-ronde: 24 augustus (11 dagen geleden) — binnen de maandcadans, geen acute aanbeveling; gezien de omvang van de rekenkern-uitbreiding wel een kandidaat om eerder dan gepland een `/code-review ultra` op te draaien.
+
+  **Vervolg, zelfde dag — score gecorrigeerd naar 65, na Marcels navraag "waarom open punten niet opnieuw getest?"** Bovenstaande 67 was gebaseerd op de aanname dat de 24 P1-P4-bevindingen uit de 24-augustus-audit grotendeels waren opgelost (de destijds opgeslagen samenvatting claimde "alle P1's en P2's dezelfde dag gefixt"). Op Marcels expliciete verzoek zijn alle 24 items nu voor het eerst één voor één met bewijs herverifieerd (grep/berekening/logbestand, niet aangenomen) — vastgelegd in het nieuwe, blijvende register **`OPEN-BEVINDINGEN.md`**. Uitkomst: **8 aantoonbaar gefixt** (CI-YAML, koperkaarten-toetsenbord, AI-kostenlimiter teaser/vkm, race-condition-fee, cascade-scan-scope, matching-labels, diepe-audit-wachtrij-timeout, mna_koper_zoekprofiel-in-initDB), **3 gedeeltelijk/terugkerend** (backup faalt nog steeds intermitterend — laatste mislukte poging de nácht vóór deze audit, geen mailalert toegevoegd; `--muted`-contrast meermaals gewijzigd maar rekenkundig nog steeds onder de AA-grens op meerdere achtergrond-tokens, incl. de geheel nieuwe marketing-site-CSS; marilyn-modals slechts 1 van ~4 gefixt), **9 nog volledig open** (matching-wachtwoord-rate-limiter, foreign-keys-niet-in-broncode, `/beveiliging`-headers, N+1-matching-overzicht, dode `marketing_prijs`-kolom, focus-visible-stepper, `target=_blank`-hygiëne (verergerd 18→26), groeiende bestanden (verergerd), stale CLAUDE.md-documentatie (verergerd)), en 2 niet-bugs die wachten op Marcels keuze. Score dus **65/100** (van 64 op 24 augustus — per saldo licht positief: de nieuwe functionaliteit is solide gevalideerd en de meerderheid van de P2's is echt gefixt, maar twee terugkerende risicopatronen — back-upbetrouwbaarheid en kleurcontrast-discipline — wegen daar tegenop). **Nieuwe vaste regel** (zie Cadans-sectie hierboven): elke volgende audit, ook een begrensde routine-ronde, doorloopt `OPEN-BEVINDINGEN.md` verplicht en laat het cijfer daadwerkelijk bewegen op basis van wat daar verandert.
 
 ## Cross-path information-flow audit
 
