@@ -18,7 +18,7 @@
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
   --void:#f6f2ea;--panel:#ffffff;--panel2:#ebeef1;
-  --border:#d9dee3;--border2:#bfc8d0;--muted:#647581;--mid:#42525e;
+  --border:#d9dee3;--border2:#bfc8d0;--muted:#5a6974;--mid:#42525e;
   --body:#33485c;--sub:#16232e;--head:#0d1b2a;
   --teal:#3d6b63;--teal-dim:#2c4f4a;--teal-bg:rgba(61,107,99,.1);
   --gold:#c49a4a;--gold-bg:rgba(201,168,76,.12);
@@ -270,7 +270,7 @@ function toonInteresseFormulier(id){
     +'<label for="int-bericht-'+id+'" class="sr-only">Toelichting (optioneel)</label>'
     +'<textarea id="int-bericht-'+id+'" class="int-bericht" placeholder="Toelichting (optioneel)" rows="2" style="width:100%;margin-bottom:8px;padding:8px 10px;font-size:13px;border:1px solid var(--border2);border-radius:6px;background:var(--panel);color:var(--sub);font-family:inherit;resize:vertical"></textarea>'
     +'<div class="int-err" style="display:none;color:var(--red);font-size:12px;margin-bottom:6px"></div>'
-    +'<label style="display:flex;gap:7px;align-items:flex-start;font-size:11px;color:var(--muted);line-height:1.5;margin-bottom:8px;cursor:pointer"><input type="checkbox" class="int-akkoord" style="margin-top:2px;flex:none"><span>Ik ga akkoord met de <a href="voorwaarden.html" target="_blank" style="color:var(--teal)">Gebruiksvoorwaarden</a>. Ik begrijp dat aanmelding geen recht geeft op contact of op een transactie, dat de anonimiteit van de verkoper niet wordt gegarandeerd, en dat ik informatie uit de anonieme profielschets vertrouwelijk behandel.</span></label>'
+    +'<label style="display:flex;gap:7px;align-items:flex-start;font-size:11px;color:var(--muted);line-height:1.5;margin-bottom:8px;cursor:pointer"><input type="checkbox" class="int-akkoord" style="margin-top:2px;flex:none"><span>Ik ga akkoord met de <a href="voorwaarden.html" target="_blank" rel="noopener" style="color:var(--teal)">Gebruiksvoorwaarden</a>. Ik begrijp dat aanmelding geen recht geeft op contact of op een transactie, dat de anonimiteit van de verkoper niet wordt gegarandeerd, en dat ik informatie uit de anonieme profielschets vertrouwelijk behandel.</span></label>'
     +'<button class="btn-verstuur-interesse" data-id="'+id+'" style="width:100%;background:var(--teal);color:#fff;border:none;padding:9px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer">Aanmelden</button>';
   blok.querySelector('.btn-verstuur-interesse').addEventListener('click',function(){verstuurInteresse(id);});
 }

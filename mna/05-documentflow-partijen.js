@@ -339,7 +339,7 @@ async function laadPartijDocs() {
         + '<span style="font-size:11px;color:var(--muted)">'+dt+'</span>'
         + shBadge
         + (v.is_upload
-          ? '<a href="'+WORKER+'/mna/document/download/'+v.id+'?code='+encodeURIComponent(S.code)+'" target="_blank" class="btn-ghost" style="font-size:11px;padding:4px 12px;text-decoration:none">&#8681; Download</a>'
+          ? '<a href="'+WORKER+'/mna/document/download/'+v.id+'?code='+encodeURIComponent(S.code)+'" target="_blank" rel="noopener" class="btn-ghost" style="font-size:11px;padding:4px 12px;text-decoration:none">&#8681; Download</a>'
           : '<button class="btn-ghost partij-doc-open" data-id="'+v.id+'" style="font-size:11px;padding:4px 12px">&#128065; Lezen</button>')
         + '</div>';
     });
@@ -374,7 +374,7 @@ async function laadPartijDocs() {
             })(d.bestand_naam||'document')+'</span>'
           + (gr ? '<span style="font-size:10px;color:var(--muted)">'+gr+'</span>' : '')
           + '<span style="font-size:11px;color:var(--muted)">'+dt+'</span>'
-          + '<a href="'+WORKER+'/mna/document/download/'+d.id+'?code='+encodeURIComponent(S.code)+'" target="_blank" class="btn-ghost" style="font-size:11px;padding:4px 12px;text-decoration:none">&#8681; Download</a>'
+          + '<a href="'+WORKER+'/mna/document/download/'+d.id+'?code='+encodeURIComponent(S.code)+'" target="_blank" rel="noopener" class="btn-ghost" style="font-size:11px;padding:4px 12px;text-decoration:none">&#8681; Download</a>'
           + '</div>';
       });
     }

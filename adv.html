@@ -15,7 +15,7 @@ html{color-scheme:light dark}
 :root{
   --void:#f6f2ea;--bg:#f2f4f6;--panel:#fff;
   --border:#d9dee3;--border2:#bfc8d0;
-  --head:#0d1b2a;--sub:#16232e;--mid:#42525e;--muted:#647581;
+  --head:#0d1b2a;--sub:#16232e;--mid:#42525e;--muted:#5a6974;
   --teal:#3d6b63;--teal-light:#e9f1ef;--teal-border:#b7cdc7;--teal-dark:#2c4f4a;
   --gold:#c49a4a;--gold-bg:#faf4e8;--gold-border:#e3d3a3;--gold-dark:#8a6a2e;
   --red:#c0392b;--red-light:#fdf2f0;
@@ -681,7 +681,7 @@ async function laadDocumenten(id, tussenCode){
         +'<td class="td-name" style="font-size:13px">'+esc(doc.bestand_naam||'—')+(doc.methode==='bewijsstuk'?' <span style="font-size:9px;font-weight:600;color:var(--muted);background:var(--bg);border-radius:8px;padding:1px 6px;margin-left:2px" title="Alleen als onderbouwing toegevoegd, niet automatisch geanalyseerd">📎 Bewijsstuk</span>':'')+'</td>'
         +'<td class="td-sec">'+dt+'</td>'
         +'<td style="text-align:right">'
-        +(doc.bewaard?'<a href="'+WORKER+'/mna/document/download/'+doc.id+'?code='+encodeURIComponent(tussenCode)+'" target="_blank" class="btn-outline sm">↓ Download</a>':'')
+        +(doc.bewaard?'<a href="'+WORKER+'/mna/document/download/'+doc.id+'?code='+encodeURIComponent(tussenCode)+'" target="_blank" rel="noopener" class="btn-outline sm">↓ Download</a>':'')
         +'</td></tr>';
     });
     html+='</tbody></table></div>';
@@ -963,7 +963,7 @@ function renderDetail(t){
           </div>
           ${t.tussen_code?`<div class="info-box" style="margin-top:1rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap">
             <span>Hier beheert u trajecten. Om dít traject te <strong>begeleiden</strong> (NDA/LoI, waardering, AI-analyse, informatieverzoek) logt u zelf ook in op mna.html.</span>
-            <a href="mna.html?code=${esc(t.tussen_code)}" target="_blank" class="btn btn-sm" style="text-decoration:none;white-space:nowrap">Open als begeleider &rarr;</a>
+            <a href="mna.html?code=${esc(t.tussen_code)}" target="_blank" rel="noopener" class="btn btn-sm" style="text-decoration:none;white-space:nowrap">Open als begeleider &rarr;</a>
           </div>`:''}
           <div class="info-box" style="margin-top:.5rem">Verkoper en koper loggen in via <strong>koersvoormorgen.nl/mna.html</strong></div>
         </div>
@@ -1118,7 +1118,7 @@ function initMatchingAdv(id, tussenCode, t){
     return;
   }
   var aan=!!t.beschikbaar_voor_matching;
-  el.innerHTML='<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--sub)"><input type="checkbox" id="matching-adv-chk" '+(aan?'checked':'')+'> Zichtbaar op de live <a href="matching-platform.html" target="_blank" style="color:var(--teal)" onclick="event.stopPropagation()">matching-pagina</a></label><div style="font-size:11px;color:var(--muted);margin-top:6px">Verdwijnt automatisch zodra er een koper is ingevuld — geen aparte actie nodig.</div>';
+  el.innerHTML='<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--sub)"><input type="checkbox" id="matching-adv-chk" '+(aan?'checked':'')+'> Zichtbaar op de live <a href="matching-platform.html" target="_blank" rel="noopener" style="color:var(--teal)" onclick="event.stopPropagation()">matching-pagina</a></label><div style="font-size:11px;color:var(--muted);margin-top:6px">Verdwijnt automatisch zodra er een koper is ingevuld — geen aparte actie nodig.</div>';
   ge('matching-adv-chk').addEventListener('change', async function(e){
     var nieuw=e.target.checked;
     e.target.disabled=true;
