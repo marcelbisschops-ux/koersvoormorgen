@@ -555,6 +555,24 @@ test.describe('Gelijktijdige multi-upload', () => {
     // Nu: direct wachten op de zichtbare dialoogtekst zelf (ongeacht via welk pad — meteen getoond
     // of via de wachtrij), en pas ná het wegklikken van de eerste controleren dat de wachtrij leeg is.
     // Dat test dezelfde garantie (geen dropped/gestapelde dialogen) zonder aanname over vuurvolgorde.
+    //
+    // Diagnostiek (5 sep 2026): deze test bleek intermitterend te falen (0 dialogen na 10s), maar
+    // alléén wanneer hij ná de andere 17 tests in de volledige suite draait (8/8 geslaagd in
+    // isolatie) — wijst op timing die gevoelig is voor systeembelasting/netwerklatency naar de
+    // live worker, niet een altijd-foute logicafout. Bij een volgende mislukking dit meteen loggen
+    // i.p.v. alleen "Expected 1, Received 0" te zien — scheelt een hele herhaal-sessie.
+    if ((await page.getByText('Afwijkende waarden gevonden').count()) === 0) {
+      const diag = await page.evaluate(() => ({
+        conflicts: window.S && window.S._conflicts,
+        wachtrij: window.S && window.S._conflictWachtrij,
+        dialoogOpen: window.S && window.S._conflictDialoogOpen,
+        opySlotJaar: window.S && window.S._opySlotJaar,
+        opy: window.S && window.S._opy,
+        docSource: window.S && window.S._docSource,
+        financieelOmzet3: window.S && window.S.data && window.S.data.financieel_omzet3,
+      })).catch(e => ({ evalError: String(e) }));
+      console.log('DIAGNOSE multi-upload (vóór de assertion, dialoog nog niet zichtbaar):', JSON.stringify(diag));
+    }
     await expect(page.getByText('Afwijkende waarden gevonden')).toHaveCount(1, { timeout: 10000 });
 
     // Eerste dialoog wegklikken → de tweede (al in de wachtrij, of alsnog net op tijd) moet nu verschijnen.
