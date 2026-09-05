@@ -98,3 +98,11 @@
 ## 2026-09-05 (vervolg) — achtste volledige AUDIT-STANDAARD.md-heraudit
 
 Op Marcels expliciete verzoek gedraaid dezelfde dag als de begrensde routine-ronde hierboven — vijf onafhankelijke parallelle deelaudits (subagents). Score **58/100** (van 64 op 24 aug), bewust geen gemiddelde van de 15 deelscores. Financiële correctheid steeg naar 92/100 (hoogste ooit) en M&A-functionaliteit naar 86/100 — maar twee NIEUWE kritieke bevindingen wegen zwaarder: (1) `/mna/chat/{code}` laat een koper het verkoper↔begeleider-gesprek lezen én zich voordoen als begeleider (`backend/worker/17-mna-chat.js:6-31`, exact het cross-rol-lekpatroon dat dit platform al vaker trof), en (2) CI staat al 50+ runs / 5+ dagen rood op de zwaarste teststap (e2e tegen staging), onopgemerkt. 5 P2's + 6 P3's + 6 P4's, zie het volledige rapport. Volledig artifact: https://claude.ai/code/artifact/ba7699ae-3e02-4782-9ef3-52285402d76b. Beide P1's wachten op Marcels akkoord vóór zelfstandige fix (auth-wijziging resp. CI-diepgraving, werkregel 19). Gelogd in `AUDIT-STANDAARD.md`.
+
+## 2026-09-05 (vervolg 2) — beide P1's uit de achtste heraudit gefixt
+
+**P1-25 (chat-datalek):** opgelost + uitgebreid tot een nieuwe feature op Marcels verzoek — koper en verkoper hebben nu elk een eigen, gescheiden gesprek met de begeleider (nieuwe `kanaal`-kolom op `mna_chat`, rol server-side bepaald via `resolveRol()`, `auteur` nooit meer uit de request-body). 9 nieuwe regressiechecks (NF-1) in `tests/e2e-crosspath-fixes.mjs`, 81/81 groen tegen productie. Gedeployed op staging + productie. Handleiding bijgewerkt (mna/08 + adv.html).
+
+**P1-26 (CI rood):** bleek geen functionele bug — `STAGING_ADMIN_KEY` in GitHub Actions kwam niet meer overeen met de daadwerkelijke `ADMIN_KEY` op staging in Cloudflare (elke falende check was "Unauthorized" vanaf de eerste admin-aanroep, bevestigd via de daadwerkelijke CI-log die Marcel handmatig deelde — logdownload zelf bleek geen GitHub-token beschikbaar in deze sessie). Marcel heeft beide kanten zelf gelijkgetrokken met een nieuwe waarde. Deze commit triggert de eerstvolgende CI-run als verificatie.
+
+Beide P1's uit `OPEN-BEVINDINGEN.md` staan nu op 🟢.

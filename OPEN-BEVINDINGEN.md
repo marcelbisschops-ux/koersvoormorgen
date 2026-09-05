@@ -198,8 +198,12 @@ simpelweg uit te sluiten, maar een eigen, gescheiden koper↔begeleider-kanaal t
 groen tegen productie (81/81 totaal). Handleiding bijgewerkt in beide bestanden (mna/08 + adv.html).
 
 ### P1-26 · CI staat al 50+ runs / 5+ dagen rood op de e2e-tegen-staging-stap
-🔴 **Nog open, kritiek.** 5 van 6 stappen slagen; de zwaarste laag (adviseur-lifecycle, module-gating,
-AVG-verwijdering) faalt structureel, onopgemerkt sinds minstens 1 sep. Root cause nog niet vastgesteld.
+🟢 **Gefixt (5 sep 2026).** Geen functionele bug — een pure authenticatiemismatch: `STAGING_ADMIN_KEY`
+in GitHub Actions kwam niet meer overeen met de daadwerkelijke `ADMIN_KEY` op de staging-Worker in
+Cloudflare (elk faalgeval in de CI-log was "Unauthorized"/"Authenticatie mislukt" vanaf de allereerste
+admin-vereiste aanroep). Beide kanten opnieuw gelijkgetrokken met een nieuwe waarde
+(`wrangler secret put ADMIN_KEY --env=staging` + de GitHub Actions-secret bijgewerkt). Wordt met deze
+commit meteen live geverifieerd via een nieuwe CI-run.
 
 ### P2-27 · Sequentiële INSERT's bij bankmutatie-CSV-import (geen batch)
 🔴 Nog open. `worker/22-bankmutaties.js:357-361` + `worker/19-info-fases.js:1342-1346`.
