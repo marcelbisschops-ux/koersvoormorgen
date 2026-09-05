@@ -182,6 +182,57 @@ nodig.
 
 ---
 
+---
+
+## Nieuw sinds de achtste volledige heraudit (5 september 2026, zelfde dag)
+
+Vijf parallelle deelaudits vonden deze nieuwe punten, bovenop de rondes hierboven. Volledig rapport:
+https://claude.ai/code/artifact/ba7699ae-3e02-4782-9ef3-52285402d76b
+
+### P1-25 · `/mna/chat/{code}` — koper leest verkoper↔begeleider-chat + kan begeleider spoofen
+🔴 **Nog open, kritiek.** GET/POST herleiden verkoper-/koper-/begeleidercode allemaal naar dezelfde
+`mna_chat`-thread zonder rolcheck; POST accepteert een vrij `auteur`-veld zonder verificatie. Locatie:
+`backend/worker/17-mna-chat.js:6-31`. Wacht op Marcels akkoord vóór fix (auth-wijziging, werkregel 19).
+
+### P1-26 · CI staat al 50+ runs / 5+ dagen rood op de e2e-tegen-staging-stap
+🔴 **Nog open, kritiek.** 5 van 6 stappen slagen; de zwaarste laag (adviseur-lifecycle, module-gating,
+AVG-verwijdering) faalt structureel, onopgemerkt sinds minstens 1 sep. Root cause nog niet vastgesteld.
+
+### P2-27 · Sequentiële INSERT's bij bankmutatie-CSV-import (geen batch)
+🔴 Nog open. `worker/22-bankmutaties.js:357-361` + `worker/19-info-fases.js:1342-1346`.
+
+### P2-28 · ~200+ velden met niet-programmatisch-gekoppeld label (geen `for=`)
+🔴 Nog open. marilyn.html 106/107, mna/*.js 66/70, adv.html 46/46 zonder `for`.
+
+### P2-29 · adv.html "Terug naar overzicht" niet toetsenbordbedienbaar
+🔴 Nog open. `adv.html:934` — navigatie-blokkade voor adviseurs.
+
+### P2-30 · Toast-meldingen missen `aria-live`
+🔴 Nog open. 0 treffers sitebreed.
+
+### P2-31 · Geen rate-limiting op chat-/Q&A-schrijfroutes
+🔴 Nog open. `worker/17-mna-chat.js`, `worker/08-mna-qa-export.js`.
+
+### P3-32 · Misleidend "wordt door niets aangeroepen"-commentaar in `worker/00-policy.js`
+🔴 Nog open. Module is de daadwerkelijke implementatie achter `begeleiderAuth`/`rolVanCode`.
+
+### P3-33 · Backup-fix nog niet bewezen door een echte geplande run
+🟡 CLOUDFLARE_API_TOKEN staat sinds 5 sep 16:27 in de plist — eerste echte test vanavond 20:00.
+
+### P3-34 · Geen echte pagination · P3-35 · Geen gedeelde response-body-helper
+🔴 Beide bekend, bewust uitgesteld, herbevestigd ongewijzigd.
+
+### P3-36 · Groeiende monolithische bestanden (verder toegenomen)
+🔴 `worker/19-info-fases.js` 1436→1449 regels, ook al binnen dezelfde dag.
+
+### P3-37 · Overige niet-toetsenbordbedienbare uitklap-toggles
+🔴 `adv.html:751`, `mna/02-state-opslag-documenten.js:776`.
+
+### P4-38 t/m P4-43 · CLAUDE.md-moduleaantal stale (20 vs. 28) · lazy CREATE TABLE zonder FK in `loglWijziging()` · ontbrekend `alt` op logo-preview (`adv.html:579`) · `koperMagCategorie()` null-default niet volledig geverifieerd · DSCR-label mogelijk niet in PDF-print · retentietest-pad bestaat niet meer op de gedocumenteerde locatie
+🔴/⚪ Zie artifact voor volledige onderbouwing per punt.
+
+---
+
 ## Samenvatting (5 september 2026 — bijgewerkt na een fixronde dezelfde dag)
 
 | Status | Aantal |
