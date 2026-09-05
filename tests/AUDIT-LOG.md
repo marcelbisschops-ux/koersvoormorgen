@@ -94,3 +94,7 @@
 **Zelfstandig opgelost:** niets nodig — geen bevindingen.
 
 **Wacht op Marcel's akkoord:** niets.
+
+## 2026-09-05 (vervolg) — achtste volledige AUDIT-STANDAARD.md-heraudit
+
+Op Marcels expliciete verzoek gedraaid dezelfde dag als de begrensde routine-ronde hierboven — vijf onafhankelijke parallelle deelaudits (subagents). Score **58/100** (van 64 op 24 aug), bewust geen gemiddelde van de 15 deelscores. Financiële correctheid steeg naar 92/100 (hoogste ooit) en M&A-functionaliteit naar 86/100 — maar twee NIEUWE kritieke bevindingen wegen zwaarder: (1) `/mna/chat/{code}` laat een koper het verkoper↔begeleider-gesprek lezen én zich voordoen als begeleider (`backend/worker/17-mna-chat.js:6-31`, exact het cross-rol-lekpatroon dat dit platform al vaker trof), en (2) CI staat al 50+ runs / 5+ dagen rood op de zwaarste teststap (e2e tegen staging), onopgemerkt. 5 P2's + 6 P3's + 6 P4's, zie het volledige rapport. Volledig artifact: https://claude.ai/code/artifact/ba7699ae-3e02-4782-9ef3-52285402d76b. Beide P1's wachten op Marcels akkoord vóór zelfstandige fix (auth-wijziging resp. CI-diepgraving, werkregel 19). Gelogd in `AUDIT-STANDAARD.md`.
