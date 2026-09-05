@@ -48,6 +48,23 @@ fi
 
 mkdir -p "$BACKUP_DIR"
 
+# Audit-fix P1 (5 sep 2026): meldt het resultaat van deze run aan de Worker, zodat een mislukking
+# een e-mailalert oplevert (bestaande Resend-route, hergebruikt) i.p.v. alleen zichtbaar te zijn in
+# een lokaal logbestand dat niemand actief in de gaten houdt. ADMIN_KEY komt uit de omgeving (in de
+# launchd-plist gezet, niet in dit script of git) — ontbreekt hij (bijv. een handmatige run zonder
+# ~/.zshrc geladen), dan wordt de melding overgeslagen, nooit de back-up zelf geblokkeerd.
+meld_backup_status() {
+  local ok="$1" details="$2"
+  if [ -z "${ADMIN_KEY:-}" ]; then
+    echo "   ⊘ ADMIN_KEY niet in de omgeving — melding aan de worker overgeslagen." >&2
+    return 0
+  fi
+  curl -s -m 15 -X POST -H "x-admin-key: $ADMIN_KEY" -H "Content-Type: application/json" \
+    "https://kantoorinzicht.marcel-bisschops.workers.dev/mna/admin/veiligheid/backup-melding" \
+    -d "{\"ok\":$ok,\"details\":$(printf '%s' "$details" | python3 -c 'import json,sys;print(json.dumps(sys.stdin.read()))')}" \
+    >/dev/null 2>&1 || echo "   ⊘ Melding aan de worker mislukte (netwerk?) — geen blokkade van de back-up zelf." >&2
+}
+
 # Audit-fix P1 (24 aug 2026, zevende heraudit): de export hieronder stond drie dagen op rij
 # (22/23 augustus) stil, exact ná deze regel, zonder één foutregel in het launchd-logbestand
 # (~/Library/Logs/kantoorinzicht-backup.log) — de oorzaak was zelf-veroorzaakte blindheid: alle
@@ -69,26 +86,48 @@ export WRANGLER_SEND_METRICS=false CI=true
 echo "▶ 1/4  Database exporteren (kantoorinzicht) ..."
 OUT="$BACKUP_DIR/kantoorinzicht_$STAMP.sql"
 EXPORT_TIMEOUT=600
-# --remote = de live productie-database (niet een lokale kopie)
-( cd "$BACKEND_DIR" && npx wrangler d1 export kantoorinzicht --remote --output="$OUT" ) &
-EXPORT_PID=$!
-( sleep "$EXPORT_TIMEOUT" && kill -TERM "$EXPORT_PID" 2>/dev/null ) &
-WATCHER_PID=$!
-if wait "$EXPORT_PID" 2>/dev/null; then EXPORT_STATUS=0; else EXPORT_STATUS=$?; fi
-kill "$WATCHER_PID" 2>/dev/null || true
-wait "$WATCHER_PID" 2>/dev/null || true
 
-if [ "$EXPORT_STATUS" -ne 0 ]; then
-  echo "   ✗ Export mislukt of vastgelopen (exitcode $EXPORT_STATUS, timeout ${EXPORT_TIMEOUT}s) — zie eventuele foutmelding hierboven." >&2
-  exit 1
-fi
-if [ -s "$OUT" ]; then
-  TABELLEN=$(grep -c "CREATE TABLE" "$OUT" || true)
-  echo "   ✓ $(basename "$OUT")  ($(du -h "$OUT" | cut -f1), $TABELLEN tabellen)"
+# Audit-fix P1 (5 sep 2026, na een hernieuwde mislukking op 4→5 sep): het wrangler-debuglog van die
+# mislukking liet zien dat het proces vastliep op één enkel netwerkverzoek naar Cloudflare (GET
+# /client/v4/memberships), niet op een geweigerde inlog — past bij een kortstondige netwerkhapering
+# rond het geplande tijdstip (bijv. Mac net wakker, wifi nog niet volledig verbonden). Eén
+# automatische herkansing na een korte pauze vangt precies dit scenario op zonder de wrangler-
+# authenticatie zelf aan te hoeven passen.
+probeer_export() {
+  ( cd "$BACKEND_DIR" && npx wrangler d1 export kantoorinzicht --remote --output="$OUT" ) &
+  local export_pid=$!
+  ( sleep "$EXPORT_TIMEOUT" && kill -TERM "$export_pid" 2>/dev/null ) &
+  local watcher_pid=$!
+  if wait "$export_pid" 2>/dev/null; then local status=0; else local status=$?; fi
+  kill "$watcher_pid" 2>/dev/null || true
+  wait "$watcher_pid" 2>/dev/null || true
+  return "$status"
+}
+
+EXPORT_FOUTMELDING=""
+if probeer_export; then
+  EXPORT_STATUS=0
 else
-  echo "   ✗ Export mislukt — geen bestand geschreven. Controleer 'npx wrangler whoami'." >&2
+  EXPORT_STATUS=$?
+  echo "   ⚠ Eerste poging mislukt/vastgelopen (exitcode $EXPORT_STATUS) — 2 minuten wachten en één keer herkansen ..." >&2
+  sleep 120
+  if probeer_export; then
+    EXPORT_STATUS=0
+    echo "   ✓ Herkansing geslaagd."
+  else
+    EXPORT_STATUS=$?
+    EXPORT_FOUTMELDING="Export mislukt of vastgelopen, ook na 1 herkansing (laatste exitcode $EXPORT_STATUS, timeout ${EXPORT_TIMEOUT}s per poging)."
+  fi
+fi
+
+if [ "$EXPORT_STATUS" -ne 0 ] || [ ! -s "$OUT" ]; then
+  [ -z "$EXPORT_FOUTMELDING" ] && EXPORT_FOUTMELDING="Export mislukt — geen (leeg) bestand geschreven, exitcode $EXPORT_STATUS."
+  echo "   ✗ $EXPORT_FOUTMELDING Controleer 'npx wrangler whoami' en ~/Library/Logs/kantoorinzicht-backup.log." >&2
+  meld_backup_status "false" "$EXPORT_FOUTMELDING"
   exit 1
 fi
+TABELLEN=$(grep -c "CREATE TABLE" "$OUT" || true)
+echo "   ✓ $(basename "$OUT")  ($(du -h "$OUT" | cut -f1), $TABELLEN tabellen)"
 
 echo "▶ 2/4  Documenten (R2) ophalen ..."
 DOCS_DIR="$BACKUP_DIR/documenten"
@@ -128,6 +167,8 @@ echo "▶ 4/4  Oude database-back-ups opruimen (>60 dagen) ..."
 find "$BACKUP_DIR" -maxdepth 1 -name "kantoorinzicht_*.sql" -mtime +60 -delete 2>/dev/null || true
 AANTAL=$(ls -1 "$BACKUP_DIR"/kantoorinzicht_*.sql 2>/dev/null | wc -l | tr -d ' ')
 echo "   ✓ $AANTAL database-back-up(s) in $BACKUP_DIR"
+
+meld_backup_status "true" "OK — $(basename "$OUT"), $TABELLEN tabellen, $DOC_OK nieuwe document(en)."
 
 echo ""
 echo "Klaar. Bewaar $BACKUP_DIR op een plek los van Cloudflare (iCloud Drive / externe schijf)."
