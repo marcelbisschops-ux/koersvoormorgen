@@ -106,3 +106,16 @@ Op Marcels expliciete verzoek gedraaid dezelfde dag als de begrensde routine-ron
 **P1-26 (CI rood):** bleek geen functionele bug — `STAGING_ADMIN_KEY` in GitHub Actions kwam niet meer overeen met de daadwerkelijke `ADMIN_KEY` op staging in Cloudflare (elke falende check was "Unauthorized" vanaf de eerste admin-aanroep, bevestigd via de daadwerkelijke CI-log die Marcel handmatig deelde — logdownload zelf bleek geen GitHub-token beschikbaar in deze sessie). Marcel heeft beide kanten zelf gelijkgetrokken met een nieuwe waarde. Deze commit triggert de eerstvolgende CI-run als verificatie.
 
 Beide P1's uit `OPEN-BEVINDINGEN.md` staan nu op 🟢.
+
+## 2026-09-06 — diepe-audit-routine (scheduled task)
+
+diepe-audit-routine: geen open aanvraag, cadans nog niet verstreken. Wachtrij gepolld
+(`GET /mna/veiligheid/audit-opdracht` → HTTP 200, `{"ok":true,"opdracht":null}`). Vandaag is de 6e
+dag van de maand (maandelijkse cadans-trigger is 1e–3e), en de achtste volledige AUDIT-STANDAARD.md-
+heraudit is gisteren (5 sep) nog gedraaid — geen zelf-aangevraagde ronde nodig. Geen begrensde ronde
+uitgevoerd, geen wijzigingen.
+
+Procesnotitie: `AUDIT_TRIGGER_KEY`/`ADMIN_KEY` stonden niet in de omgeving van de scheduled-task-shell;
+wel in `~/.zshrc` (na `source` werkte de poll). `~/.zshrc` bevat meerdere conflicterende `export`-regels
+voor beide sleutels (regels 6–10); de laatst-winnende waarde is voor `ADMIN_KEY` én `AUDIT_TRIGGER_KEY`
+identiek — ziet eruit als een bewerkingsfout. Niet zelf aangepast (credential-config van Marcel).
