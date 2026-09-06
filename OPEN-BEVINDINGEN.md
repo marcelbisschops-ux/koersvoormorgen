@@ -250,8 +250,18 @@ geverifieerd (0 overgeslagen, gaf bij de eerste poging een logicafout die daar i
 dat een echt bestand werd geraakt), daarna pas toegepast. Zuiver mechanisch: 44/44 e2e-API + 81/81
 cross-path identiek aan vóór de refactor, gedeployed staging → productie.
 
-### P3-36 · Groeiende monolithische bestanden (verder toegenomen)
-🔴 `worker/19-info-fases.js` 1436→1449 regels, ook al binnen dezelfde dag.
+### P3-36 · Groeiende monolithische bestanden
+🟡 **Deels gefixt (5 sep 2026).** `worker/19-info-fases.js` (1450 regels, 34 routes over meerdere
+losse thema's) opgesplitst in drie modules (19: 377 regels checklist/infofase/beoordeling/
+risicoraamwerk; 19b: 483 regels waardering/teaser/verkoopmemorandum; 19c: 610 regels matching/
+koper-criteria/overig) — zelfde bestaande dispatch-patroon, geen gedragswijziging, getest op
+staging+productie (44/44 + 81/81 identiek). **Nog open: `mna/04-begeleider-dashboard.js` (3138
+regels) en `marilyn.html` (4253 regels)** — bewust NIET in dezelfde ronde aangepakt. Deze zijn
+wezenlijk risicovoller dan de ES-module-splitsing hierboven: losse, samengevoegde `<script>`-blokken
+in één gedeelde globale scope ("laadvolgorde is heilig"), zonder een module-systeem dat een gemiste
+koppeling hard laat falen bij het laden — precies het vangnet dat de worker-splitsing hierboven wél
+had (en nodig bleek: een off-by-one werd pas gevangen door de bestanden als echte ES-module te
+importeren, `node --check` alleen was niet genoeg). Vereist een aparte, zorgvuldigere aanpak.
 
 ### P3-37 · Overige niet-toetsenbordbedienbare uitklap-toggles
 🟢 **Gefixt (adv.html, 5 sep 2026)** — `tabindex/role/aria-expanded` + keydown-handler op de
