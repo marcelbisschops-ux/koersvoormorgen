@@ -239,8 +239,16 @@ resterend van de 10) eveneens nog open.
 🟡 CLOUDFLARE_API_TOKEN staat sinds 5 sep 16:27 in de plist — eerste echte test vanavond 20:00.
 
 ### P3-34 · Geen echte pagination
-🔴 Bekend, bewust uitgesteld — raakt ook de frontend (een cursor-respons is zinloos zonder dat
-mna.html/marilyn.html 'm gebruikt), eigen afweging nodig, niet in dezelfde ronde als P3-35/36.
+🔴 **Bewust uitgesteld, nu met concrete cijfers onderbouwd (5 sep 2026).** Werkelijke rijentelling op
+productie gecontroleerd vóór er iets gebouwd zou worden: `mna_trajecten` 7/5000, `bf_gebruikers`
+21/5000, `paginabezoeken` 90/500 (18%, de dichtstbijzijnde), `scan_rapporten` 19/200,
+`contact_berichten` 1/200, `platform_fee_events` 1/2000. Geen enkele tabel benadert zijn plafond —
+dit is dus geen actief probleem dat vandaag data laat verdwijnen, puur een preventieve
+architectuurzorg voor een schaal die dit platform nog niet heeft. Een cursor/offset-systeem bouwen
+(backend + frontend, want een API-paginering zonder dat mna.html/marilyn.html 'm gebruikt lost niets
+op) is nu voorbarige techniek met reëel regressierisico tegenover nul actuele winst.
+**Heractiveringsdrempel:** oppakken zodra een van bovenstaande tabellen boven ~60% van zijn plafond
+komt — niet oneindig laten liggen zonder concreet meetmoment.
 
 ### P3-35 · Geen gedeelde response-body-helper
 🟢 **Gefixt (5 sep 2026).** `jsonResp(body, headers)` toegevoegd in `worker/02-config-constanten.js`
