@@ -244,6 +244,11 @@ PAGES = [
      "Stukken die een vraagstuk scherper maken, over M&amp;A, due diligence, integratie, strategie en AI in M&amp;A.",
      "https://koersvoormorgen.nl/inzichten", "expertise-staal.jpg", "website", "simple|Inzichten"),
 
+    ("inzichten/ebitda-is-geen-strategie.html", 1,
+     "EBITDA is een stuurgetal, geen strategie &middot; Koers voor Morgen",
+     "Grant Thornton Nederland ging voor &euro;185,1 miljoen naar de Amerikanen; de accountant waarschuwt voor frauderisico bij EBITDA-targets. Wat dit betekent voor kopers en verkopers.",
+     "https://koersvoormorgen.nl/inzichten/ebitda-is-geen-strategie", "expertise-staal.jpg", "article", "post|Waardering|EBITDA is een stuurgetal, geen strategie"),
+
     ("inzichten/wat-ai-wel-en-niet-doet-in-due-diligence.html", 1,
      "Wat AI wél en niet doet in due diligence · Koers voor Morgen",
      "De grens tussen signaleren en beoordelen in AI-ondersteunde due diligence, en waarom die grens ertoe doet.",
