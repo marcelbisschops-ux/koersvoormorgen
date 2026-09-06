@@ -238,8 +238,17 @@ resterend van de 10) eveneens nog open.
 ### P3-33 · Backup-fix nog niet bewezen door een echte geplande run
 🟡 CLOUDFLARE_API_TOKEN staat sinds 5 sep 16:27 in de plist — eerste echte test vanavond 20:00.
 
-### P3-34 · Geen echte pagination · P3-35 · Geen gedeelde response-body-helper
-🔴 Beide bekend, bewust uitgesteld, herbevestigd ongewijzigd.
+### P3-34 · Geen echte pagination
+🔴 Bekend, bewust uitgesteld — raakt ook de frontend (een cursor-respons is zinloos zonder dat
+mna.html/marilyn.html 'm gebruikt), eigen afweging nodig, niet in dezelfde ronde als P3-35/36.
+
+### P3-35 · Geen gedeelde response-body-helper
+🟢 **Gefixt (5 sep 2026).** `jsonResp(body, headers)` toegevoegd in `worker/02-config-constanten.js`
+(spiegelbeeld van de eerdere `jsonHeaders()`-fix, 26 juli 2026). Alle 910 call-sites over 24
+bestanden omgezet met een bracket-/string-/template-literal-bewuste codemod, eerst op een testkopie
+geverifieerd (0 overgeslagen, gaf bij de eerste poging een logicafout die daar is opgevangen zonder
+dat een echt bestand werd geraakt), daarna pas toegepast. Zuiver mechanisch: 44/44 e2e-API + 81/81
+cross-path identiek aan vóór de refactor, gedeployed staging → productie.
 
 ### P3-36 · Groeiende monolithische bestanden (verder toegenomen)
 🔴 `worker/19-info-fases.js` 1436→1449 regels, ook al binnen dezelfde dag.
