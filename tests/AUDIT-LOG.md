@@ -131,3 +131,23 @@ Advies voor nu: bij een pre-push-testfaling die specifiek de "eigen testtraject"
 ---
 
 **2026-09-07 — diepe-audit-routine (scheduled task):** geen open aanvraag in de wachtrij; maandelijkse cadans nog niet verstreken (vandaag is de 7e, cadans-venster is dag 1-3). Geen audit-ronde gedraaid. Check draaide wel.
+
+## 2026-09-07 — wekelijkse-audit (scheduled task)
+
+**Uitgevoerd:**
+1. `node --check` op `~/Documents/GitHub/koersvoormorgen-backend/backend/cloudflare-worker.js` + alle 30 `worker/*.js`-modules + alle 8 `mna/*.js`-modules — allemaal OK.
+2. `node tests/audit-consistentie.mjs` — 10/10 checks groen, "Geen bevindingen". Check 10 (WCAG-kleurcontrast, terugkerend probleem P1-4) haalt nu alle tekst/oppervlak-combinaties ≥ 4,5:1.
+3. `node tests/e2e-api.mjs` — geen ADMIN_KEY in deze sessie-omgeving, dus alleen stap 1-2 (health 200 + ok:true, onbekende toegangscode → 404 + foutmelding): 4 geslaagd, 0 gefaald, admin-afhankelijke stappen 3-9 overgeslagen (verwacht, geen fout).
+
+**Herverificatie open P1-bevindingen (OPEN-BEVINDINGEN.md), voor zover binnen de scope van deze begrensde ronde:**
+- **P1-1** (CI YAML-fout) — 🟢 bevestigd: `.github/workflows/checks.yml` gebruikt `env.STAGING_ADMIN_KEY` + expliciete "Audit-fix P1"-commentaarregel aanwezig.
+- **P1-3** (koperkaarten toetsenbord) — 🟢 bevestigd: `.buyer-card` heeft `tabindex="0" role="button" aria-pressed aria-label` + Enter/Spatie-keydown-handler + `:focus-visible`-outline in `matching-platform.html`.
+- **P1-4** (`--muted` WCAG AA, 3× eerder teruggekeerd) — 🟢 bevestigd: audit-consistentie check 10 (geautomatiseerde contrastberekening) draait mee en is groen.
+- **P1-25** (chat-datalek) / **P1-26** (CI rood) — 🟢 volgens de fixronde van 5 sep (niet opnieuw end-to-end getest deze ronde; geen ADMIN_KEY/GitHub-token).
+- **P1-2** (dagelijkse D1-backup faalt intermitterend, geen mailalert) — **blijft 🟡.** Update uit `~/Library/Logs/kantoorinzicht-backup.log`: de twee meest recente geplande runs zijn wél geslaagd (5 sep 86 tabellen, 6 sep 87 tabellen); de laatste mislukte run was de nacht van 4→5 sep (Cloudflare API-export-fout, exitcode 1). Het faalpatroon (26/28/30 aug, ~4 sep) is dus nog niet weg en er is nog steeds geen alert. De aanbevolen fix (wrangler op een API-token i.p.v. OAuth voor de launchd-context + mailalert bij een faalrun) raakt credentials → **wacht op Marcels akkoord**, ongewijzigd t.o.v. 5 sep.
+
+**Bevindingen:** geen nieuwe. Alle harde checks groen.
+
+**Zelfstandig opgelost + gedeployed:** niets nodig — geen bevindingen.
+
+**Wacht op Marcels akkoord:** alleen het bestaande, al gerapporteerde P1-2-actiepunt (backup-authenticatie OAuth → API-token + mailalert). Geen nieuwe punten.
