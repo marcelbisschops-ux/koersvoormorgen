@@ -127,3 +127,7 @@ Marcels eigen `git push` faalde op 5 (niet 1) UI-tests tegelijk — alle vijf te
 Structurele fix (nog niet uitgevoerd, genoeg bewegende delen voor een eigen sessie): de Playwright-suite tegen staging laten praten i.p.v. productie. Vereist: (1) een `?worker=<staging-url>`-override bij elke test-navigatie of een globale `page.route()`-interceptie, (2) de Node-side `api()`-testhelper (buiten de browser om, voor `beforeAll`-setup) een eigen staging-basis-URL geven, (3) `STAGING_ADMIN_KEY` i.p.v. `ADMIN_KEY` gebruiken voor die admin-setup-calls. Staging heeft een volledig eigen, geïsoleerde rate-limit-teller (aparte Worker-instantie), dus dit sluit het probleem structureel uit i.p.v. het toevallig te vermijden.
 
 Advies voor nu: bij een pre-push-testfaling die specifiek de "eigen testtraject"-tests raakt (regel 322/331/374/431/520 in tests/e2e-ui.spec.js), eerst een paar minuten wachten en opnieuw proberen vóór er verder onderzocht wordt — dit patroon is nu tweemaal onafhankelijk bevestigd (5 sep en 6 sep 2026).
+
+---
+
+**2026-09-07 — diepe-audit-routine (scheduled task):** geen open aanvraag in de wachtrij; maandelijkse cadans nog niet verstreken (vandaag is de 7e, cadans-venster is dag 1-3). Geen audit-ronde gedraaid. Check draaide wel.
