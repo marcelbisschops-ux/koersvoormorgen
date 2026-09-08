@@ -356,6 +356,23 @@ backend-wijziging nodig. Commit `980864b`, gepusht, live geverifieerd (bogus-tok
   bewust offline (3 sep), geen levende pagina linkt ernaar. **Conclusie: `registreer.html` was het
   enige echte gat uit het herontwerp.**
 
+**Oorzaakanalyse (8 sep 2026, op verzoek van Marcel):** het herontwerp-plan `HERONTWERP-FASE5-6.md`
+noemde `registreer.html` in **twee tegenstrijdige lijsten** — §5.1 "Buiten scope van het herontwerp
+(functioneel), laat staan" én §5.4 (de redirect-tabel) "`/registreer.html` → `/platform/voor-adviseurs`
+| stub". Bij de uitvoering won de redirect-tabel: de pagina werd behandeld als een oude losse
+marketing-`.html` zoals `kantoorscan.html`, zonder te checken wat hij dóét. Waarom niets het ving,
+7 dagen lang: (1) de afhankelijkheid — worker mailt `registreer.html?token=…` — leeft in de **aparte
+private backend-repo**, onzichtbaar vanuit de frontend-repo; (2) **geen enkele pagina op de site linkt
+naar `registreer.html`**, dus een interne-linkcheck vindt 'm nooit; (3) `build.py` kende de pagina
+niet (stond niet in `PAGES`), geen generatie/validatie; (4) geen test loopt uitnodigen → activeren →
+inloggen end-to-end; (5) de audits checkten dit patroon niet; (6) niemand activeerde een account
+tussen 1 en 8 sep tot Thijs. **Ingebouwde tegenmaatregel:** CLAUDE.md **werkregel 22** (GOUDEN
+STANDAARD) + `LOAD-BEARING-PAGES.md` (register van pagina's waar een backend-flow van afhangt) +
+**check 11 in `tests/audit-consistentie.mjs`** — grep't de backend-repo op `koersvoormorgen.nl/<pad>`-
+verwijzingen en faalt (blokkeert push + CI + worker-deploy) als een genoemde pagina ontbreekt, een
+redirect-stub is geworden, of niet in het register staat. Negatief getest: `registreer.html` opnieuw
+tot stub maken → audit exit 1, twee expliciete waarschuwingen die naar deze bug verwijzen.
+
 ---
 
 ## Samenvatting (5 september 2026 — bijgewerkt na een fixronde dezelfde dag)

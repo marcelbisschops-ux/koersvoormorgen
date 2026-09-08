@@ -42,5 +42,5 @@ echo "✓ Audit en testsuite groen — push gaat door."
 if [ -n "${ADMIN_KEY:-}" ]; then
   curl -s -m 5 -X POST -H "Content-Type: application/json" -H "x-admin-key: ${ADMIN_KEY}" \
     "https://kantoorinzicht.marcel-bisschops.workers.dev/mna/admin/veiligheid/statische-audit" \
-    -d '{"repo":"frontend","checks_totaal":7,"checks_geslaagd":7}' >/dev/null 2>&1 || true
+    -d '{"repo":"frontend","checks_totaal":11,"checks_geslaagd":11}' >/dev/null 2>&1 || true
 fi

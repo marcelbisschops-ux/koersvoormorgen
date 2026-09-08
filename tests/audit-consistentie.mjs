@@ -471,6 +471,107 @@ log('10. Kleurcontrast (WCAG AA) — tekst-tokens tegen alle oppervlak-tokens');
   }
 }
 
+// ── 11. Load-bearing pagina's: elke frontend-URL die de backend mailt/redirect't ──
+// (8 sep 2026: bij het herontwerp van 1 sep werd registreer.html — de enige activatie-/
+//  wachtwoordpagina, waar de worker een eenmalige token-link naartoe mailt — vervangen door een
+//  redirect-stub naar een marketingpagina. Zeven dagen lang kon niemand een account activeren of
+//  z'n wachtwoord resetten; ontdekt door een echte prospect. De afhankelijkheid was onzichtbaar
+//  vanuit deze repo: de link wordt in de private backend-repo gebouwd, geen pagina op de site
+//  linkt ernaar, build.py kende 'm niet. Deze check maakt die afhankelijkheid expliciet en
+//  faalt als een backend-gelinkte pagina ontbreekt of een redirect-stub is geworden.
+//  Zie LOAD-BEARING-PAGES.md + CLAUDE.md werkregel 22.)
+log('11. Load-bearing pagina\'s (backend-gemailde/geredirecte frontend-URL\'s bestaan én zijn geen stub)');
+{
+  const manifestPad = path.join(ROOT, 'LOAD-BEARING-PAGES.md');
+  // Detecteert of een frontend-.html-bestand een redirect-stub is i.p.v. een echte pagina.
+  const isRedirectStub = (html) => {
+    const h = html.slice(0, 2000);
+    const heeftRefresh = /<meta[^>]+http-equiv=["']?refresh["']?[^>]*>/i.test(h);
+    const heeftJsReplace = /location\.replace\(/i.test(h);
+    // Een echte functionele pagina heeft vrijwel altijd een form, een fetch, of event-handlers.
+    const heeftFunctionaliteit = /<form\b|fetch\(|addEventListener\(|querySelector(All)?\(/i.test(html);
+    return (heeftRefresh || (heeftJsReplace && html.length < 1500)) && !heeftFunctionaliteit;
+  };
+  // Clean-URL's die de worker gebruikt → hun daadwerkelijke bestand in deze repo.
+  const CLEAN_URL_NAAR_BESTAND = {
+    'contact': 'contact.html',
+    'contact-verzonden': 'contact-verzonden.html',
+    'privacy': 'privacy.html',
+    'voorwaarden': 'voorwaarden.html',
+    'bedrijfsscan': 'bedrijfsscan.html',
+  };
+
+  // (a) Manifest inlezen — de vastgelegde "mag niet stub zijn"-lijst.
+  const manifestPaden = new Set();
+  if (fs.existsSync(manifestPad)) {
+    const mtxt = fs.readFileSync(manifestPad, 'utf8');
+    // De markers moeten alléén op hun regel staan (een inline vermelding in proza telt niet mee).
+    let inBlok = false;
+    mtxt.split('\n').forEach(regel => {
+      const l = regel.trim();
+      if (l === '<!-- BEGIN-MANIFEST -->') { inBlok = true; return; }
+      if (l === '<!-- END-MANIFEST -->') { inBlok = false; return; }
+      if (!inBlok || !l || l.startsWith('```') || l.startsWith('#') || l.startsWith('<!--')) return;
+      const eersteVeld = l.split('|')[0].trim();
+      if (eersteVeld.endsWith('.html')) manifestPaden.add(eersteVeld);
+    });
+  } else {
+    warn('LOAD-BEARING-PAGES.md ontbreekt — het register van pagina\'s waar een backend-flow van afhangt. Zie CLAUDE.md werkregel 22.');
+  }
+
+  // (b) Elke manifest-pagina moet bestaan én geen stub zijn (werkt ook zonder backend-repo).
+  let manifestProblemen = 0;
+  manifestPaden.forEach(rel => {
+    const fp = path.join(ROOT, rel);
+    if (!fs.existsSync(fp)) {
+      warn('LOAD-BEARING-PAGES.md noemt "' + rel + '" als load-bearing, maar dat bestand bestaat niet (meer) in deze repo.');
+      manifestProblemen++;
+    } else if (isRedirectStub(fs.readFileSync(fp, 'utf8'))) {
+      warn('"' + rel + '" staat in LOAD-BEARING-PAGES.md als "mag geen stub zijn", maar het IS nu een redirect-stub. Een backend-flow (token-link/redirect) breekt hierop. Dit is exact de registreer.html-bug van 8 sep 2026.');
+      manifestProblemen++;
+    }
+  });
+
+  // (c) Backend-repo grepen op koersvoormorgen.nl/<pad>-verwijzingen en elk pad valideren.
+  if (!backendFiles.length) {
+    ok('backend/ niet gevonden — subcheck (c) overgeslagen; het manifest zelf is wél gecontroleerd (' + manifestPaden.size + ' pagina\'s' + (manifestProblemen ? ', ' + manifestProblemen + ' probleem/problemen' : ', allemaal aanwezig en functioneel') + ').');
+  } else {
+    const urlRe = /koersvoormorgen\.nl\/([A-Za-z0-9_\/-]+(?:\.html)?)/g;
+    const backendRefs = new Set();
+    backendFiles.forEach(({ src }) => {
+      let um;
+      const re = new RegExp(urlRe.source, 'g');
+      while ((um = re.exec(src))) {
+        let p = um[1];
+        if (CLEAN_URL_NAAR_BESTAND[p]) p = CLEAN_URL_NAAR_BESTAND[p];
+        if (p.endsWith('.html')) backendRefs.add(p);
+      }
+    });
+    // App-/adminpagina's die bewust ook een pure redirect mógen zijn zolang de flow doorloopt —
+    // hier bewust NIET vrijgesteld van de "bestaat"-check, wel van de stub-check, omdat een
+    // redirect naar een werkend inlogscherm voor die pagina's een legitieme keuze is.
+    const STUB_TOEGESTAAN_MITS_FLOW_DOORLOOPT = new Set(['mna.html', 'adv.html', 'marilyn.html']);
+    let refProblemen = 0;
+    [...backendRefs].sort().forEach(rel => {
+      const fp = path.join(ROOT, rel);
+      if (!fs.existsSync(fp)) {
+        warn('De backend mailt/linkt naar koersvoormorgen.nl/' + rel + ', maar dat bestand bestaat niet in deze repo. Herstel de pagina of pas de backend-link aan. (werkregel 22)');
+        refProblemen++;
+        return;
+      }
+      if (isRedirectStub(fs.readFileSync(fp, 'utf8')) && !STUB_TOEGESTAAN_MITS_FLOW_DOORLOOPT.has(rel)) {
+        warn('De backend mailt/linkt naar koersvoormorgen.nl/' + rel + ', maar dat is een redirect-stub geworden. Een eenmalige token-/flow-link overleeft een redirect niet. Zet de functionele pagina terug. Dit is exact de registreer.html-bug van 8 sep 2026. (werkregel 22 / LOAD-BEARING-PAGES.md)');
+        refProblemen++;
+      }
+      if (!manifestPaden.has(rel)) {
+        warn('koersvoormorgen.nl/' + rel + ' wordt door de backend gebruikt maar staat niet in LOAD-BEARING-PAGES.md. Voeg deze pagina toe (met wat er breekt + hoe te testen) zodat een latere refactor haar niet per ongeluk weggooit.');
+        refProblemen++;
+      }
+    });
+    if (!refProblemen && !manifestProblemen) ok('Alle ' + backendRefs.size + ' backend-gelinkte frontend-pagina\'s bestaan, zijn functioneel en staan in LOAD-BEARING-PAGES.md.');
+  }
+}
+
 // ── Samenvatting ──────────────────────────────────────────────────────────
 log('Samenvatting');
 if (!bevindingen) {
