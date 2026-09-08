@@ -151,3 +151,7 @@ Advies voor nu: bij een pre-push-testfaling die specifiek de "eigen testtraject"
 **Zelfstandig opgelost + gedeployed:** niets nodig — geen bevindingen.
 
 **Wacht op Marcels akkoord:** alleen het bestaande, al gerapporteerde P1-2-actiepunt (backup-authenticatie OAuth → API-token + mailalert). Geen nieuwe punten.
+
+---
+
+**2026-09-08 — diepe-audit-routine (scheduled task):** wachtrij gepolld (`GET /mna/veiligheid/audit-opdracht` → `{"ok":true,"opdracht":null}`), geen open "Draai diepe audit nu"-aanvraag. Maandelijkse cadans niet van toepassing: vandaag is de 8e, het cadans-venster is dag 1-3 van de maand. Geen audit-ronde gedraaid. Check draaide wel; worker gezond. Niets gewijzigd behalve deze logregel.
