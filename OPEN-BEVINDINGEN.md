@@ -312,6 +312,31 @@ geverifieerd.
 
 ---
 
+## Nieuw — buiten een auditronde gevonden (8 september 2026, productie-incident door Marcel gemeld)
+
+### P1-44 · `registreer.html` was sinds het herontwerp een redirect-stub — alle adviseur-activatie/-reset stuk
+🟢 **Gefixt (8 sep 2026), frontend live.** Herontwerp-commit `93495bf` (1 sep 2026 23:36) verving de
+functionele activatie-/wachtwoordpagina `registreer.html` door een redirect-stub naar
+`/platform/voor-adviseurs`. Gevolg: elke adviseur die na 1 sep op de activatielink in zijn
+uitnodigings- of proefaccountmail klikte (`registreer.html?token=…&redirect=adv`) belandde op een
+marketingpagina met een "vraag proefaccount aan"-CTA in plaats van het wachtwoord-instelscherm — een
+lus zonder toegang. Ook `registreer.html?reset=…` (wachtwoord-vergeten, `worker/09-gebruikersbeheer.js:85`)
+en de gewone adviseur-uitnodiging (`worker/09-gebruikersbeheer.js:53`) waren hierdoor stuk, niet alleen
+de proefaccount-flow (`worker/25-adviseur-proef.js:196`). **Bewezen slachtoffer:** proefaccount Thijs
+Muijsenberg (tmuijsenberg@companyshaping.com), goedgekeurd 7 sep 15:02, account bleef `uitgenodigd`,
+diende 8 sep opnieuw een aanvraag in. **Fix:** de functionele `registreer.html` teruggezet (identiek
+aan `93495bf^`) — valideert via `GET /gebruikers/invite`, activeert via `POST /gebruikers/activeer`,
+reset via `POST /gebruikers/ww-reset`; alle drie endpoints bestaan onveranderd in de worker, geen
+backend-wijziging nodig. Commit `980864b`, gepusht, live geverifieerd (bogus-token → nette
+"Ongeldige of verlopen uitnodiging" i.p.v. redirect). **Restpunten (wachten op Marcel):**
+(1) `info@odr9.nl` staat óók op `uitgenodigd` — mogelijk hetzelfde probleem, controleren.
+(2) de teruggezette pagina draait nog op de oude huisstijl (IBM Plex / Playfair) — cosmetisch,
+past niet bij het nieuwe visuele systeem; een `_src/`-variant + `build.py`-integratie is nettere
+follow-up. (3) `build.py` genereert `registreer.html` niet, dus een volgende site-build overschrijft
+'m niet — maar zet het op de radar bij de volgende herontwerp-ronde zodat de stub niet terugkeert.
+
+---
+
 ## Samenvatting (5 september 2026 — bijgewerkt na een fixronde dezelfde dag)
 
 | Status | Aantal |
