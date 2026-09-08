@@ -328,12 +328,33 @@ diende 8 sep opnieuw een aanvraag in. **Fix:** de functionele `registreer.html` 
 aan `93495bf^`) — valideert via `GET /gebruikers/invite`, activeert via `POST /gebruikers/activeer`,
 reset via `POST /gebruikers/ww-reset`; alle drie endpoints bestaan onveranderd in de worker, geen
 backend-wijziging nodig. Commit `980864b`, gepusht, live geverifieerd (bogus-token → nette
-"Ongeldige of verlopen uitnodiging" i.p.v. redirect). **Restpunten (wachten op Marcel):**
-(1) `info@odr9.nl` staat óók op `uitgenodigd` — mogelijk hetzelfde probleem, controleren.
-(2) de teruggezette pagina draait nog op de oude huisstijl (IBM Plex / Playfair) — cosmetisch,
-past niet bij het nieuwe visuele systeem; een `_src/`-variant + `build.py`-integratie is nettere
-follow-up. (3) `build.py` genereert `registreer.html` niet, dus een volgende site-build overschrijft
-'m niet — maar zet het op de radar bij de volgende herontwerp-ronde zodat de stub niet terugkeert.
+"Ongeldige of verlopen uitnodiging" i.p.v. redirect).
+
+**Vervolg (8 sep 2026, zelfde sessie) — alle restpunten afgehandeld:**
+- **Huisstijl + build-integratie:** `_src/registreer.html` gebouwd in het nieuwe visuele systeem
+  (kvm.css: `.section`/`.wrap`/`.field`/`.btn`), opgenomen in `build.py` als `noindex`-pagina, zodat
+  de activatiepagina voortaan meelift op het herontwerp-buildsysteem en niet nog eens per ongeluk
+  een stub wordt. `python3 build.py` gaf **nul diff** op alle andere pagina's. Zelfde drie flows,
+  zelfde ongewijzigde worker-endpoints. Commit `2fced01`.
+- **"U wordt doorgestuurd naar het dashboard" was altijd al een leugen** voor `adv.html`: die pagina
+  leest geen sessie uit `localStorage` en toont altijd het inlogscherm. Afrondscherm nu eerlijk:
+  *"Account geactiveerd. Log in met uw e-mailadres en het wachtwoord dat u zojuist heeft ingesteld."*
+  met een knop naar het inlogscherm. Dode `localStorage`-schrijfacties verwijderd.
+- **End-to-end geverifieerd tegen productie** met een wegwerp-testaccount (aangemaakt via
+  `/gebruikers/uitnodigen`, activatie doorlopen op de echte pagina, ingelogd op `adv.html` met het
+  nieuwe wachtwoord → GV-acceptatiescherm → dashboard, daarna account verwijderd). Alle drie flows
+  (activeren, wachtwoord-reset, ongeldige link) werken.
+- **`info@odr9.nl`:** aangemaakt 28 aug (vóór het herontwerp), nooit geactiveerd, status
+  `uitgenodigd`, invite-token nog geldig (geen expiry op invite-tokens). De herstelde pagina lost dit
+  automatisch op — hun oorspronkelijke uitnodigingslink werkt nu. Actie Marcel: die persoon vragen de
+  link opnieuw te gebruiken, of opnieuw uitnodigen via marilyn.
+- **Bredere sweep van het herontwerp (`93495bf`):** de commit raakte maar 3 niet-gegenereerde
+  pagina's — `index.html` (bewust nieuwe marketinghome), `kantoorscan.html` (was al een redirect-stub)
+  en `registreer.html` (dit gat). Alle 9 frontend-URL's die de worker in e-mails gebruikt geven live
+  200. Geen enkele kapotte relatieve `.html`-link in de hele repo. App-pagina's (`adv`/`mna`/`marilyn`)
+  verwijzen alleen naar `mna.html` + `voorwaarden.html` (beide 200). `verhuis.html`/`hugo.html` zijn
+  bewust offline (3 sep), geen levende pagina linkt ernaar. **Conclusie: `registreer.html` was het
+  enige echte gat uit het herontwerp.**
 
 ---
 

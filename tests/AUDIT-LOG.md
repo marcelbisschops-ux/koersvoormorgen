@@ -168,3 +168,13 @@ Muijsenberg. **Fix:** functionele `registreer.html` teruggezet (identiek aan `93
 gepusht, live geverifieerd. Geen backend-wijziging nodig — de drie endpoints (`/gebruikers/invite`,
 `/gebruikers/activeer`, `/gebruikers/ww-reset`) bestaan onveranderd. Zie OPEN-BEVINDINGEN.md P1-44 voor de
 restpunten (o.a. `info@odr9.nl` mogelijk ook geraakt; pagina nog op oude huisstijl).
+
+**2026-09-08 — vervolg P1-44 (registreer.html):** pagina herbouwd in de nieuwe huisstijl via
+`_src/registreer.html` + `build.py` (noindex; `build.py` gaf nul diff op andere pagina's). Afrondscherm
+niet meer "u wordt doorgestuurd" (adv.html leest geen localStorage-sessie) maar "log in met uw nieuwe
+wachtwoord" + knop. End-to-end getest tegen productie met een wegwerp-testaccount (activeren → inloggen
+op adv.html → GV-scherm → dashboard; account daarna verwijderd). `info@odr9.nl` (uitgenodigd sinds 28
+aug) wordt door de fix automatisch gedekt — invite-token nog geldig. Bredere herontwerp-sweep: `93495bf`
+raakte maar 3 niet-gegenereerde pagina's (index = bewust nieuw, kantoorscan = was al stub, registreer =
+dit gat); alle 9 worker-e-maillinks live 200; geen kapotte relatieve .html-links in de repo. registreer.html
+was het enige echte gat. Commit `2fced01`.
