@@ -229,6 +229,11 @@ PAGES = [
      "Uw bericht is ontvangen. Marcel neemt doorgaans binnen één werkdag contact op.",
      "https://koersvoormorgen.nl/contact-verzonden", "hero-weg.jpg", "website", "noindex"),
 
+    ("registreer.html", 0,
+     "Account activeren · Koers voor Morgen",
+     "Activeer uw account voor het Koers voor Morgen-platform of stel een nieuw wachtwoord in.",
+     "https://koersvoormorgen.nl/registreer", "hero-weg.jpg", "website", "noindex"),
+
     ("inloggen.html", 0,
      "Inloggen · Koers voor Morgen",
      "Naar het verkoper- en koperportaal of het adviseursportaal van het Koers voor Morgen-platform.",
