@@ -155,3 +155,16 @@ Advies voor nu: bij een pre-push-testfaling die specifiek de "eigen testtraject"
 ---
 
 **2026-09-08 — diepe-audit-routine (scheduled task):** wachtrij gepolld (`GET /mna/veiligheid/audit-opdracht` → `{"ok":true,"opdracht":null}`), geen open "Draai diepe audit nu"-aanvraag. Maandelijkse cadans niet van toepassing: vandaag is de 8e, het cadans-venster is dag 1-3 van de maand. Geen audit-ronde gedraaid. Check draaide wel; worker gezond. Niets gewijzigd behalve deze logregel.
+
+---
+
+**2026-09-08 — productie-incident (door Marcel gemeld tijdens de diepe-audit-sessie):** adviseur-activatie stuk.
+`registreer.html` was bij het herontwerp van 1 sep (commit `93495bf`) vervangen door een redirect-stub naar
+`/platform/voor-adviseurs`. Elke adviseur die na 1 sep op de activatie-/resetlink in zijn uitnodigings- of
+proefaccountmail klikte kwam op een marketingpagina terecht i.p.v. het wachtwoord-instelscherm — lus zonder
+toegang. Blast radius: proefaccount-activatie (`worker/25-adviseur-proef.js:196`), gewone adviseur-uitnodiging
+(`worker/09-gebruikersbeheer.js:53`) én wachtwoord-reset (`:85`). Bewezen slachtoffer: proefaccount Thijs
+Muijsenberg. **Fix:** functionele `registreer.html` teruggezet (identiek aan `93495bf^`), commit `980864b`,
+gepusht, live geverifieerd. Geen backend-wijziging nodig — de drie endpoints (`/gebruikers/invite`,
+`/gebruikers/activeer`, `/gebruikers/ww-reset`) bestaan onveranderd. Zie OPEN-BEVINDINGEN.md P1-44 voor de
+restpunten (o.a. `info@odr9.nl` mogelijk ook geraakt; pagina nog op oude huisstijl).
