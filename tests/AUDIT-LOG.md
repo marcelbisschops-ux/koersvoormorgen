@@ -178,3 +178,14 @@ aug) wordt door de fix automatisch gedekt — invite-token nog geldig. Bredere h
 raakte maar 3 niet-gegenereerde pagina's (index = bewust nieuw, kantoorscan = was al stub, registreer =
 dit gat); alle 9 worker-e-maillinks live 200; geen kapotte relatieve .html-links in de repo. registreer.html
 was het enige echte gat. Commit `2fced01`.
+
+**2026-09-08 — oorzaakanalyse P1-44 + gouden regel ingebouwd (op verzoek van Marcel).** Oorzaak: het
+herontwerp-plan noemde `registreer.html` in twee tegenstrijdige lijsten ("buiten scope, laat staan"
+én "→ stub"); de stub-tabel won bij uitvoering. Niets ving het 7 dagen lang omdat de afhankelijkheid
+(worker mailt `registreer.html?token=…`) in de aparte private backend-repo leeft, geen pagina op de
+site ernaar linkt, `build.py` de pagina niet kende, en geen test de activatieflow loopt. Ingebouwd:
+CLAUDE.md werkregel 22 (GOUDEN STANDAARD — een pagina waar een backend-flow van afhangt wordt nooit
+stilzwijgend gesloopt) + `LOAD-BEARING-PAGES.md` (register) + check 11 in `tests/audit-consistentie.mjs`
+(grep't de backend-repo op `koersvoormorgen.nl/<pad>` en faalt bij een ontbrekende/gestubde/
+niet-geregistreerde pagina; draait in pre-push-hook, CI en elke worker-deploy). Negatief getest: exit 1
+bij een her-gestubde `registreer.html`. Alle 11 checks groen op de huidige boom.
