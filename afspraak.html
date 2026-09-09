@@ -50,106 +50,183 @@
 
 <main>
   <section class="section s-dark">
-    <div class="wrap wrap--text">
-      <h1>Plan een afspraak.</h1>
-      <p class="hero__sub">Kies een dinsdag- of donderdagmiddag. Een gesprek duurt een uur. Je krijgt
-      meteen een bevestiging met een agenda-uitnodiging. Past geen van de momenten, stel dan zelf
-      een dag en tijd voor.</p>
-
-      <div id="afspraak-app" style="margin-top:2.5rem; max-width:34rem">
-        <p style="color:var(--muted)">Beschikbare momenten laden&hellip;</p>
+    <div class="wrap">
+      <div class="afspr-head">
+        <h1>Plan een afspraak.</h1>
+        <p class="hero__sub" style="max-width:44rem">Kies een dinsdag- of donderdagmiddag. Een gesprek
+        duurt een uur en je krijgt meteen een bevestiging met agenda-uitnodiging. Past geen van de
+        momenten, dan stel je zelf een dag en tijd voor.</p>
       </div>
-    </div>
-  </section>
 
-  <section class="section s-light">
-    <div class="wrap wrap--text">
-      <p style="font-size:var(--fs-sm); color:var(--muted)">Liever eerst een bericht sturen?
-      <a href="./contact.html">Naar het contactformulier</a>.</p>
+      <div class="afspr-card">
+        <ol class="afspr-steps" id="afspr-steps">
+          <li data-step="dag"><span>1</span> Dag</li>
+          <li data-step="tijd"><span>2</span> Tijd</li>
+          <li data-step="gegevens"><span>3</span> Gegevens</li>
+        </ol>
+        <div id="afspraak-app">
+          <p style="color:var(--muted-d)">Beschikbare momenten laden&hellip;</p>
+        </div>
+      </div>
+
+      <p class="afspr-alt" style="margin-top:1.25rem; font-size:var(--fs-sm); color:var(--muted-d)">
+      Liever eerst een bericht sturen? <a href="./contact.html">Naar het contactformulier</a>.</p>
     </div>
   </section>
 
   <style>
-    #afspraak-app .veld{display:flex; flex-direction:column; gap:.4rem; margin-bottom:1rem}
-    #afspraak-app label{font:600 .8rem/1.3 var(--sans); color:var(--ink-d)}
+    .afspr-head{max-width:44rem; margin-bottom:2.25rem}
+    .afspr-card{
+      background:var(--s-dark-2); border:1px solid var(--hair-d); border-radius:var(--r-lg);
+      padding:1.75rem clamp(1.1rem, 3vw, 2rem); max-width:47rem;
+    }
+    .afspr-steps{
+      display:flex; gap:1.5rem; list-style:none; padding:0; margin:0 0 1.5rem;
+      border-bottom:1px solid var(--hair-d); padding-bottom:1.1rem;
+    }
+    .afspr-steps li{
+      display:flex; align-items:center; gap:.5rem; font:600 var(--fs-xs)/1 var(--sans);
+      letter-spacing:.06em; text-transform:uppercase; color:var(--muted-d);
+    }
+    .afspr-steps li span{
+      display:grid; place-items:center; width:1.4rem; height:1.4rem; border-radius:50%;
+      border:1px solid var(--hair-p); font-size:.72rem;
+    }
+    .afspr-steps li.done{color:var(--body-d)}
+    .afspr-steps li.done span{border-color:var(--petrol-bright); color:var(--petrol-bright)}
+    .afspr-steps li.active{color:var(--ink-d)}
+    .afspr-steps li.active span{background:var(--petrol-bright); border-color:var(--petrol-bright); color:var(--s-dark)}
+
+    .afspr-maand{font:600 var(--fs-xs)/1 var(--sans); letter-spacing:.1em; text-transform:uppercase;
+      color:var(--petrol-bright); margin:1.4rem 0 .7rem}
+    .afspr-maand:first-child{margin-top:0}
+    .afspr-dagen{display:grid; grid-template-columns:repeat(auto-fill, minmax(6.5rem, 1fr)); gap:.55rem}
+    .afspr-dag{
+      display:flex; flex-direction:column; align-items:flex-start; gap:.1rem;
+      background:var(--s-dark); border:1px solid var(--hair-d); border-radius:var(--r-md);
+      color:var(--body-d); padding:.6rem .7rem; cursor:pointer; transition:border-color .15s, transform .15s;
+      font:500 .78rem/1.2 var(--sans);
+    }
+    .afspr-dag b{font-size:1.05rem; color:var(--ink-d); font-weight:600}
+    .afspr-dag:hover{border-color:var(--petrol-bright); transform:translateY(-1px)}
+    .afspr-dag[aria-pressed="true"]{background:var(--petrol-bright); border-color:var(--petrol-bright); color:var(--s-dark)}
+    .afspr-dag[aria-pressed="true"] b{color:var(--s-dark)}
+
+    .afspr-gekozen{
+      display:flex; align-items:baseline; gap:.6rem; flex-wrap:wrap;
+      margin:1.6rem 0 .5rem; padding-top:1.25rem; border-top:1px solid var(--hair-d);
+    }
+    .afspr-gekozen h3{font-family:var(--serif); font-size:1.15rem; color:var(--ink-d); margin:0}
+    .afspr-gekozen .wijzig{font-size:var(--fs-xs); color:var(--petrol-bright); background:none; border:0; cursor:pointer; padding:0; text-decoration:underline}
+
+    .afspr-tijden{display:flex; flex-wrap:wrap; gap:.5rem; margin:.4rem 0 0}
+    .afspr-tijd{
+      background:var(--s-dark); border:1px solid var(--hair-d); border-radius:999px;
+      color:var(--body-d); padding:.45rem 1.1rem; cursor:pointer; font:600 .9rem var(--sans); transition:border-color .15s;
+    }
+    .afspr-tijd:hover{border-color:var(--petrol-bright)}
+    .afspr-tijd[aria-pressed="true"]{background:var(--petrol-bright); border-color:var(--petrol-bright); color:var(--s-dark)}
+
+    #afspraak-app .veld{display:flex; flex-direction:column; gap:.35rem; margin-bottom:.9rem}
+    #afspraak-app .veld-2{display:grid; grid-template-columns:1fr 1fr; gap:.9rem}
+    @media(max-width:34rem){ #afspraak-app .veld-2{grid-template-columns:1fr} }
+    #afspraak-app label{font:600 var(--fs-xs)/1.3 var(--sans); letter-spacing:.03em; color:var(--body-d)}
     #afspraak-app input, #afspraak-app select, #afspraak-app textarea{
-      background:var(--s-dark-2); border:1px solid var(--hair-d); border-radius:var(--r-sm);
-      color:var(--ink-d); padding:.6rem .7rem; font:400 .95rem var(--sans); width:100%}
+      background:var(--s-dark); border:1px solid var(--hair-d); border-radius:var(--r-sm);
+      color:var(--ink-d); padding:.62rem .75rem; font:400 .95rem var(--sans); width:100%}
     #afspraak-app input:focus, #afspraak-app select:focus, #afspraak-app textarea:focus{
-      outline:2px solid color-mix(in srgb, var(--koerslijn) 35%, transparent); border-color:var(--petrol-bright)}
-    #afspraak-app textarea{min-height:5rem; resize:vertical}
-    .dag-lijst{display:flex; flex-direction:column; gap:.4rem; margin:.5rem 0 1.25rem}
-    .dag-knop{text-align:left; background:var(--s-dark-2); border:1px solid var(--hair-d);
-      border-radius:var(--r-sm); color:var(--body-d); padding:.7rem .9rem; cursor:pointer; font:500 .95rem var(--sans)}
-    .dag-knop[aria-pressed="true"]{border-color:var(--petrol-bright); color:var(--ink-d); background:var(--s-dark)}
-    .tijd-rij{display:flex; flex-wrap:wrap; gap:.5rem; margin:.25rem 0 1.25rem}
-    .tijd-knop{background:var(--s-dark-2); border:1px solid var(--hair-d); border-radius:999px;
-      color:var(--body-d); padding:.4rem .9rem; cursor:pointer; font:500 .9rem var(--sans)}
-    .tijd-knop[aria-pressed="true"]{border-color:var(--petrol-bright); color:var(--s-dark); background:var(--petrol-bright)}
+      outline:2px solid color-mix(in srgb, var(--koerslijn) 35%, transparent); outline-offset:1px; border-color:var(--petrol-bright)}
+    #afspraak-app textarea{min-height:4.5rem; resize:vertical}
     #afspraak-app .hp{position:absolute; left:-9999px}
-    #afspraak-status{margin-top:1rem; font-size:var(--fs-sm)}
-    .schakel{font-size:var(--fs-sm); color:var(--petrol-bright); background:none; border:0; cursor:pointer; padding:0; text-decoration:underline}
+    .afspr-form-kop{font-family:var(--serif); font-size:1.1rem; color:var(--ink-d); margin:1.5rem 0 .9rem; padding-top:1.25rem; border-top:1px solid var(--hair-d)}
+    #afspraak-status{margin-top:.9rem; font-size:var(--fs-sm); min-height:1.2em}
+    .afspr-schakel{margin-top:1.5rem; font-size:var(--fs-sm)}
+    .afspr-schakel button{color:var(--petrol-bright); background:none; border:0; cursor:pointer; padding:0; text-decoration:underline; font:inherit}
+    .afspr-klaar{background:var(--s-dark); border:1px solid var(--petrol-bright); border-radius:var(--r-md); padding:1.5rem 1.6rem}
+    .afspr-klaar h3{font-family:var(--serif); font-size:1.25rem; color:var(--ink-d); margin:0 0 .5rem}
+    .afspr-klaar p{color:var(--body-d); margin:0}
   </style>
 
   <script>
   (function(){
     var API = 'https://kantoorinzicht.marcel-bisschops.workers.dev';
     var app = document.getElementById('afspraak-app');
+    var stepsEl = document.getElementById('afspr-steps');
     var state = { slots: [], gekozenDatum: null, gekozenTijd: null, modus: 'slot' };
+    var WD = ['zo','ma','di','wo','do','vr','za'];
+    var MND = ['januari','februari','maart','april','mei','juni','juli','augustus','september','oktober','november','december'];
 
     function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-    function veld(id, label, type, req){
-      return '<div class="veld"><label for="'+id+'">'+esc(label)+(req?' *':'')+'</label>'
-        + (type==='textarea'
-            ? '<textarea id="'+id+'"'+(req?' required':'')+'></textarea>'
-            : '<input id="'+id+'" type="'+type+'"'+(req?' required':'')+' autocomplete="'+(type==='email'?'email':(id==='af-naam'?'name':(id==='af-bedrijf'?'organization':'off')))+'">')
-        + '</div>';
+    function val(id){ var e=document.getElementById(id); return e?e.value.trim():''; }
+    function dObj(ymd){ var p=(ymd||'').split('-'); return new Date(Date.UTC(+p[0],+p[1]-1,+p[2],12)); }
+    function maandKop(ymd){ var d=dObj(ymd); return MND[d.getUTCMonth()]+' '+d.getUTCFullYear(); }
+    function dagChip(ymd){ var d=dObj(ymd); return '<span>'+WD[d.getUTCDay()]+'</span><b>'+d.getUTCDate()+'</b><span>'+MND[d.getUTCMonth()].slice(0,3)+'</span>'; }
+    function langeDatum(ymd){ var d=dObj(ymd); return ['zondag','maandag','dinsdag','woensdag','donderdag','vrijdag','zaterdag'][d.getUTCDay()]+' '+d.getUTCDate()+' '+MND[d.getUTCMonth()]; }
+
+    function zetStap(){
+      if(!stepsEl) return;
+      var s = state.modus==='voorstel' ? 'gegevens' : (!state.gekozenDatum ? 'dag' : (!state.gekozenTijd ? 'tijd' : 'gegevens'));
+      var volg = { dag:0, tijd:1, gegevens:2 }[s];
+      Array.prototype.forEach.call(stepsEl.children, function(li,i){
+        li.classList.toggle('active', i===volg);
+        li.classList.toggle('done', i<volg);
+      });
     }
+
     function typeVeld(){
-      return '<div class="veld"><label for="af-type">Waar gaat het over? *</label>'
+      return '<div class="veld"><label for="af-type">Waar gaat het over?</label>'
         + '<select id="af-type"><option value="advies">Een transactie of vraagstuk (M&amp;A-advies)</option>'
         + '<option value="platform">Het platform</option></select></div>';
     }
-    function contactVelden(){
-      return typeVeld()
-        + veld('af-naam','Naam','text',true)
-        + veld('af-mail','E-mailadres','email',true)
-        + veld('af-bedrijf','Organisatie','text',false)
-        + veld('af-onderwerp','Kort onderwerp','text',false)
-        + veld('af-toel','Toelichting','textarea',false)
+    function gegevensVelden(){
+      return '<div class="veld-2">'
+        + '<div class="veld"><label for="af-naam">Naam *</label><input id="af-naam" type="text" autocomplete="name"></div>'
+        + '<div class="veld"><label for="af-mail">E-mailadres *</label><input id="af-mail" type="email" autocomplete="email"></div>'
+        + '</div>'
+        + '<div class="veld-2">'
+        + '<div class="veld"><label for="af-bedrijf">Organisatie</label><input id="af-bedrijf" type="text" autocomplete="organization"></div>'
+        + typeVeld()
+        + '</div>'
+        + '<div class="veld"><label for="af-onderwerp">Kort onderwerp</label><input id="af-onderwerp" type="text" autocomplete="off"></div>'
+        + '<div class="veld"><label for="af-toel">Toelichting</label><textarea id="af-toel"></textarea></div>'
         + '<div class="veld hp" aria-hidden="true"><label for="af-web">Laat leeg</label><input id="af-web" type="text" tabindex="-1" autocomplete="off"></div>';
     }
     function gemeen(){
-      return { naam:val('af-naam'), email:val('af-mail'), bedrijf:val('af-bedrijf'),
-               type:val('af-type'), website:val('af-web') };
+      return { naam:val('af-naam'), email:val('af-mail'), bedrijf:val('af-bedrijf'), type:val('af-type'), website:val('af-web') };
     }
-    function val(id){ var e=document.getElementById(id); return e?e.value.trim():''; }
 
     function render(){
+      zetStap();
       if(state.modus==='voorstel'){ renderVoorstel(); return; }
-      var h = '';
       if(!state.slots.length){
-        h += '<p style="color:var(--body-d)">Er zijn nu geen vrije momenten in de komende twee maanden. '
-           + 'Stel gerust zelf een dag en tijd voor.</p>';
+        app.innerHTML = '<p style="color:var(--body-d)">Er zijn nu geen vrije momenten in de komende twee maanden.</p>'
+          + '<p class="afspr-schakel"><button type="button" id="af-naar-voorstel">Stel zelf een dag en tijd voor &rarr;</button></p>';
+        bind(); return;
+      }
+      var h = '';
+      if(!state.gekozenDatum){
+        var perMaand = {};
+        state.slots.forEach(function(s){ (perMaand[maandKop(s.datum)] = perMaand[maandKop(s.datum)] || []).push(s); });
+        Object.keys(perMaand).forEach(function(mk){
+          h += '<p class="afspr-maand">'+esc(mk)+'</p><div class="afspr-dagen">'
+            + perMaand[mk].map(function(s){ return '<button type="button" class="afspr-dag" data-d="'+esc(s.datum)+'">'+dagChip(s.datum)+'</button>'; }).join('')
+            + '</div>';
+        });
       } else {
-        h += '<p style="font:600 .8rem/1.3 var(--sans); color:var(--muted-d); text-transform:uppercase; letter-spacing:.08em">1 · Kies een dag</p>'
-           + '<div class="dag-lijst">'
-           + state.slots.map(function(s){ return '<button type="button" class="dag-knop" data-d="'+esc(s.datum)+'" aria-pressed="'+(state.gekozenDatum===s.datum)+'">'+esc(s.label)+'</button>'; }).join('')
-           + '</div>';
-        if(state.gekozenDatum){
-          var slot = state.slots.filter(function(s){return s.datum===state.gekozenDatum;})[0];
-          h += '<p style="font:600 .8rem/1.3 var(--sans); color:var(--muted-d); text-transform:uppercase; letter-spacing:.08em">2 · Kies een tijd</p>'
-             + '<div class="tijd-rij">'
-             + slot.tijden.map(function(t){ return '<button type="button" class="tijd-knop" data-t="'+esc(t)+'" aria-pressed="'+(state.gekozenTijd===t)+'">'+esc(t)+'</button>'; }).join('')
+        var slot = state.slots.filter(function(s){return s.datum===state.gekozenDatum;})[0] || { tijden: [] };
+        h += '<div class="afspr-gekozen"><h3>'+esc(langeDatum(state.gekozenDatum))+(state.gekozenTijd?(' &middot; '+esc(state.gekozenTijd)+' uur'):'')+'</h3>'
+           + '<button type="button" class="wijzig" id="af-wijzig-dag">wijzig</button></div>';
+        if(!state.gekozenTijd){
+          h += '<div class="afspr-tijden">'
+             + slot.tijden.map(function(t){ return '<button type="button" class="afspr-tijd" data-t="'+esc(t)+'">'+esc(t)+' uur</button>'; }).join('')
              + '</div>';
-        }
-        if(state.gekozenDatum && state.gekozenTijd){
-          h += '<p style="font:600 .8rem/1.3 var(--sans); color:var(--muted-d); text-transform:uppercase; letter-spacing:.08em">3 · Jouw gegevens</p>'
-             + contactVelden()
+        } else {
+          h += '<p class="afspr-form-kop">Jouw gegevens</p>'
+             + gegevensVelden()
              + '<div class="btn-row" style="margin-top:.5rem"><button class="btn btn-primary" id="af-boek">Afspraak bevestigen</button></div>';
         }
       }
-      h += '<p style="margin-top:1.25rem"><button type="button" class="schakel" id="af-naar-voorstel">Geen van deze momenten past &rarr; zelf een dag/tijd voorstellen</button></p>'
+      h += '<p class="afspr-schakel"><button type="button" id="af-naar-voorstel">Geen van deze momenten past? Stel zelf een dag en tijd voor &rarr;</button></p>'
          + '<p id="afspraak-status" role="status"></p>';
       app.innerHTML = h;
       bind();
@@ -157,24 +234,29 @@
 
     function renderVoorstel(){
       app.innerHTML =
-        '<p style="color:var(--body-d)">Stel een dag en tijd voor. Je krijgt bericht of het lukt.</p>'
-        + contactVelden()
-        + '<div class="veld"><label for="af-vdat">Voorkeursdatum *</label><input id="af-vdat" type="date" min="'+esc(state.voorstel_min||'')+'" max="'+esc(state.voorstel_max||'')+'" required></div>'
-        + '<div class="veld"><label for="af-vtijd">Voorkeurstijd</label><input id="af-vtijd" type="text" placeholder="bijv. 14:00 of \'in de ochtend\'"></div>'
+        '<p style="color:var(--body-d); margin-top:0">Stel een dag en tijd voor. Je krijgt bericht of het lukt.</p>'
+        + gegevensVelden()
+        + '<div class="veld-2">'
+        + '<div class="veld"><label for="af-vdat">Voorkeursdatum *</label><input id="af-vdat" type="date" min="'+esc(state.voorstel_min||'')+'" max="'+esc(state.voorstel_max||'')+'"></div>'
+        + '<div class="veld"><label for="af-vtijd">Voorkeurstijd</label><input id="af-vtijd" type="text" placeholder="bijv. 14:00 of in de ochtend"></div>'
+        + '</div>'
         + '<div class="btn-row" style="margin-top:.5rem"><button class="btn btn-primary" id="af-voorstel">Voorstel versturen</button> '
         + '<button type="button" class="btn btn-secondary" id="af-terug">Terug naar de momenten</button></div>'
         + '<p id="afspraak-status" role="status"></p>';
       document.getElementById('af-terug').onclick = function(){ state.modus='slot'; render(); };
       document.getElementById('af-voorstel').onclick = verstuurVoorstel;
+      var toel = document.getElementById('af-toel'); if(toel) toel.closest('.veld').querySelector('label').textContent = 'Toelichting *';
     }
 
     function bind(){
-      Array.prototype.forEach.call(app.querySelectorAll('.dag-knop'), function(b){
+      Array.prototype.forEach.call(app.querySelectorAll('.afspr-dag'), function(b){
         b.onclick = function(){ state.gekozenDatum = b.dataset.d; state.gekozenTijd = null; render(); };
       });
-      Array.prototype.forEach.call(app.querySelectorAll('.tijd-knop'), function(b){
+      Array.prototype.forEach.call(app.querySelectorAll('.afspr-tijd'), function(b){
         b.onclick = function(){ state.gekozenTijd = b.dataset.t; render(); };
       });
+      var w = document.getElementById('af-wijzig-dag');
+      if(w) w.onclick = function(){ state.gekozenDatum = null; state.gekozenTijd = null; render(); };
       var nv = document.getElementById('af-naar-voorstel');
       if(nv) nv.onclick = function(){ state.modus='voorstel'; render(); };
       var bk = document.getElementById('af-boek');
@@ -184,6 +266,10 @@
     function melding(txt, ok){
       var s = document.getElementById('afspraak-status');
       if(s){ s.textContent = txt; s.style.color = ok ? 'var(--petrol-bright)' : '#e8a598'; }
+    }
+    function klaar(kop, tekst){
+      app.innerHTML = '<div class="afspr-klaar"><h3>'+esc(kop)+'</h3><p>'+tekst+'</p></div>';
+      zetStap();
     }
 
     function boek(){
@@ -196,12 +282,9 @@
         .then(function(r){ return r.json().then(function(d){ return { ok:r.ok, d:d }; }); })
         .then(function(res){
           if(res.ok && res.d && res.d.ok){
-            app.innerHTML = '<div style="background:var(--s-dark-2); border:1px solid var(--hair-p); border-radius:var(--r-md); padding:1.5rem">'
-              + '<p style="font-family:var(--serif); font-size:1.2rem; color:var(--ink-d); margin:0 0 .5rem">Afspraak bevestigd</p>'
-              + '<p style="color:var(--body-d); margin:0">'+esc(res.d.label)+' om '+esc(state.gekozenTijd)+' uur. '
-              + 'Je ontvangt een bevestiging met agenda-uitnodiging op '+esc(g.email)+'.</p></div>';
+            klaar('Afspraak bevestigd', esc(res.d.label)+' om '+esc(state.gekozenTijd)+' uur. Je ontvangt een bevestiging met agenda-uitnodiging op '+esc(g.email)+'.');
           } else {
-            melding((res.d && res.d.error) || 'Er ging iets mis. Probeer een ander moment.', false);
+            melding((res.d && res.d.error) || 'Er ging iets mis. Kies een ander moment.', false);
             btn.disabled = false; btn.textContent = 'Afspraak bevestigen';
           }
         })
@@ -219,9 +302,7 @@
         .then(function(r){ return r.json().then(function(d){ return { ok:r.ok, d:d }; }); })
         .then(function(res){
           if(res.ok && res.d && res.d.ok){
-            app.innerHTML = '<div style="background:var(--s-dark-2); border:1px solid var(--hair-p); border-radius:var(--r-md); padding:1.5rem">'
-              + '<p style="font-family:var(--serif); font-size:1.2rem; color:var(--ink-d); margin:0 0 .5rem">Voorstel ontvangen</p>'
-              + '<p style="color:var(--body-d); margin:0">Je hoort snel of het moment lukt, op '+esc(g.email)+'.</p></div>';
+            klaar('Voorstel ontvangen', 'Je hoort snel of het moment lukt, op '+esc(g.email)+'.');
           } else {
             melding((res.d && res.d.error) || 'Er ging iets mis.', false);
             btn.disabled = false; btn.textContent = 'Voorstel versturen';
