@@ -115,6 +115,7 @@ document.title=BRAND.platform+' — '+BRAND.suffix;
 (function(){var b=document.querySelector('.brand');if(b)b.innerHTML='<div class="wdot"></div>'+BRAND.platform+' <span style="color:var(--teal);margin-left:4px">'+BRAND.suffix+'</span>';})();
 let adminKey='',scans=[],callbacks=[],mnaList=[],rapporten=[],leads=[],proefAanvragen=[],activeTab='scans',scanFilter='',openRow=null;
 let gebruikerToken='',gebruikerInfo=null,isSuperAdmin=false;
+let postvakOngelezen=0;
 
 function toast(msg,type,dur){type=type||'ok';dur=dur||3500;var c=document.getElementById('toast-container');if(!c){c=document.createElement('div');c.id='toast-container';c.className='toast-container';c.setAttribute('role','status');c.setAttribute('aria-live','polite');document.body.appendChild(c);}var t=document.createElement('div');t.className='toast toast-'+type;var ico=type==='ok'?'✓':type==='err'?'✕':type==='warn'?'⚠':'ℹ';t.innerHTML='<span style="font-size:15px;flex-shrink:0;color:'+(type==='ok'?'var(--teal)':type==='err'?'var(--red)':type==='warn'?'var(--gold)':'#2a5ea0')+'">'+ico+'</span><span style="flex:1;line-height:1.5">'+String(msg).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</span><button onclick="this.parentElement.remove()" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px;padding:0;line-height:1;flex-shrink:0">&times;</button>';c.appendChild(t);setTimeout(function(){t.classList.add('hide');setTimeout(function(){if(t.parentElement)t.parentElement.removeChild(t);},220);},dur);return t;}
 
@@ -266,6 +267,7 @@ function renderDashboard(){
     +(isSuperAdmin?'<button class="tab'+(activeTab==='matching'?' active':'')+'" id="t-matching">&#128279; Matching</button>':'')
     +(isSuperAdmin?'<button class="tab'+(activeTab==='sourcing'?' active':'')+'" id="t-sourcing">&#128225; Sourcing</button>':'')
     +(isSuperAdmin?'<button class="tab'+(activeTab==='agenda'?' active':'')+'" id="t-agenda">&#128197; Agenda</button>':'')
+    +(isSuperAdmin?'<button class="tab'+(activeTab==='postvak'?' active':'')+'" id="t-postvak">&#128236; Postvak'+(postvakOngelezen>0?' ('+postvakOngelezen+')':'')+'</button>':'')
     +'</div>'
     +'<div id="tc"></div>';
   if(isSuperAdmin){var ts=document.getElementById('t-scans');if(ts)ts.addEventListener('click',function(){activeTab='scans';scanFilter='';openRow=null;renderDashboard();});var tc2=document.getElementById('t-cb');if(tc2)tc2.addEventListener('click',function(){activeTab='callbacks';renderDashboard();});var tld=document.getElementById('t-leads');if(tld)tld.addEventListener('click',function(){activeTab='leads';renderDashboard();});var tpf=document.getElementById('t-proef');if(tpf)tpf.addEventListener('click',function(){activeTab='proef';renderDashboard();});}
@@ -283,6 +285,7 @@ function renderDashboard(){
   if(isSuperAdmin){var mtb=document.getElementById('t-matching');if(mtb)mtb.addEventListener('click',function(){activeTab='matching';renderDashboard();});}
   if(isSuperAdmin){var srtb=document.getElementById('t-sourcing');if(srtb)srtb.addEventListener('click',function(){activeTab='sourcing';renderDashboard();});}
   if(isSuperAdmin){var agtb=document.getElementById('t-agenda');if(agtb)agtb.addEventListener('click',function(){activeTab='agenda';renderDashboard();});}
+  if(isSuperAdmin){var pvtb=document.getElementById('t-postvak');if(pvtb)pvtb.addEventListener('click',function(){activeTab='postvak';renderDashboard();});}
   renderTab();
   // Systeemwaarschuwingen: Signhost-herinnering bewust verwijderd (verzoek Marcel, juli 2026).
   // De container #sys-waarschuwingen blijft beschikbaar voor eventuele toekomstige meldingen.
@@ -307,7 +310,68 @@ function renderTab(){
   else if(activeTab==='matching')renderMatchingTab(el);
   else if(activeTab==='sourcing')renderSourcingTab(el);
   else if(activeTab==='agenda')renderAgendaTab(el);
+  else if(activeTab==='postvak')renderPostvakTab(el);
   else renderRapportenTab(el);
+}
+
+// POSTVAK TAB — alle interne/systeem-e-mail van het platform (backend: worker/29-postvak.js).
+// Uitgaand/archief: leads, proefaanvragen, contactformulier, scan-/verhuisscanresultaat,
+// admin-loginmelding, feedback, audit-alerts, bezoekers- en benchmark-reminder.
+var POSTVAK_LABELS={lead:'Lead',proefaanvraag:'Proefaanvraag',contact:'Contactformulier',terugbelverzoek:'Terugbelverzoek',feedback:'Feedback/melding',login:'Admin-login',audit:'Veiligheid',bezoekers:'Bezoekers',benchmark:'Benchmark-reminder',verhuisscan:'VerhuisScan',overig:'Overig'};
+async function renderPostvakTab(el){
+  el.innerHTML='<p style="color:var(--muted)">Postvak laden...</p>';
+  var d;
+  try{ d=await (await fetch(WORKER+'/mna/admin/postvak',{headers:{'x-admin-key':adminKey}})).json(); }
+  catch(e){ el.innerHTML='<p style="color:var(--red)">Kon het postvak niet laden.</p>'; return; }
+  if(!d||!d.ok){ el.innerHTML='<p style="color:var(--red)">Kon het postvak niet laden.</p>'; return; }
+  postvakOngelezen=d.ongelezen||0;
+  var berichten=d.berichten||[];
+  function post(pad,body){ return fetch(WORKER+pad,{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':adminKey},body:JSON.stringify(body||{})}).then(function(r){return r.json();}); }
+  function fmt(ts){ var dt=new Date(ts); return dt.toLocaleDateString('nl-NL',{day:'numeric',month:'short'})+' '+dt.toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'}); }
+  var h='<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem;margin-bottom:1rem">'
+    +'<div><strong>Postvak</strong> <span style="color:var(--muted);font-size:13px">&middot; alle platform-e-mail, ook per e-mail verstuurd &middot; '+berichten.length+' bericht(en), '+postvakOngelezen+' ongelezen</span></div>'
+    +'<button class="btn btn-sm" id="pv-alles-gelezen"'+(postvakOngelezen?'':' disabled')+'>Alles als gelezen</button>'
+    +'</div>';
+  if(!berichten.length){
+    h+='<p style="color:var(--muted)">Nog geen berichten.</p>';
+    el.innerHTML=h; var ag0=document.getElementById('pv-alles-gelezen'); if(ag0)ag0.addEventListener('click',function(){}); return;
+  }
+  h+='<table class="tbl" style="width:100%"><thead><tr><th style="width:110px">Wanneer</th><th style="width:150px">Soort</th><th>Onderwerp</th><th style="width:90px"></th></tr></thead><tbody>';
+  berichten.forEach(function(b,i){
+    var lbl=POSTVAK_LABELS[b.categorie]||b.categorie||'Overig';
+    h+='<tr class="pv-row" data-i="'+i+'" style="cursor:pointer'+(b.gelezen?'':';font-weight:600')+'">'
+      +'<td style="color:var(--muted);font-size:12px">'+fmt(b.ts)+'</td>'
+      +'<td><span style="font-size:11px;padding:2px 8px;border-radius:10px;border:1px solid var(--border)">'+esc(lbl)+'</span></td>'
+      +'<td>'+(b.gelezen?'':'<span style="color:var(--teal)">&#9679;</span> ')+esc(b.onderwerp||'(geen onderwerp)')+'</td>'
+      +'<td style="text-align:right">'+(b.gelezen?'':'<button class="btn btn-sm pv-lees" data-id="'+b.id+'">gelezen</button>')+'</td></tr>'
+      +'<tr class="pv-body" data-i="'+i+'" hidden><td colspan="4" style="background:var(--bg2,#faf9f7);padding:1rem"><div style="font-size:12px;color:var(--muted);margin-bottom:.5rem">Aan: '+esc(b.ontvanger||'-')+(b.meta?' &middot; '+esc(JSON.stringify(b.meta)):'')+'</div><div style="max-width:640px">'+(b.body_html||'<em>geen inhoud</em>')+'</div></td></tr>';
+  });
+  h+='</tbody></table>';
+  el.innerHTML=h;
+  Array.prototype.forEach.call(el.querySelectorAll('.pv-row'),function(r){
+    r.addEventListener('click',function(ev){
+      if(ev.target.classList.contains('pv-lees'))return;
+      var i=r.getAttribute('data-i');
+      var bodyRow=el.querySelector('.pv-body[data-i="'+i+'"]');
+      if(bodyRow)bodyRow.hidden=!bodyRow.hidden;
+    });
+  });
+  Array.prototype.forEach.call(el.querySelectorAll('.pv-lees'),function(btn){
+    btn.addEventListener('click',function(ev){
+      ev.stopPropagation();
+      btn.disabled=true;
+      post('/mna/admin/postvak/gelezen',{id:parseInt(btn.getAttribute('data-id'))}).then(function(res){
+        if(res&&res.ok){ renderPostvakTab(el); } else { toast('Kon niet bijwerken.','err'); btn.disabled=false; }
+      });
+    });
+  });
+  var ag=document.getElementById('pv-alles-gelezen');
+  if(ag)ag.addEventListener('click',function(){
+    ag.disabled=true;
+    post('/mna/admin/postvak/gelezen',{alles:true}).then(function(res){
+      if(res&&res.ok){ renderPostvakTab(el); } else { toast('Kon niet bijwerken.','err'); ag.disabled=false; }
+    });
+  });
 }
 
 // AGENDA TAB — zelf-boekbare afspraken (backend: worker/28-agenda.js).
