@@ -96,7 +96,25 @@ Voor het voettekst-/exportkader van gegenereerde documenten en het DD-dossier (n
 
 ---
 
-## 4. Volgorde van toepassing (na jurist-akkoord, per onderdeel)
+## 4. Per-traject bewaartermijn (VOK Artikel 5)
+
+**Aanleiding:** de standaard is 14 dagen na afsluiting, daarna volledige purge (Marcel, 22 aug 2026: "alle data asap weg"). Er is nu een technische mogelijkheid om per traject een langere bewaartermijn te zetten (kolom `mna_trajecten.bewaartermijn_dagen`, alleen door de beheerder, begrensd op 365 dagen, endpoint `POST /mna/admin/bewaartermijn/{id}`). Die staat standaard uit (NULL = 14).
+
+**Waarom dit langs de jurist moet:** VOK Artikel 5 zegt nu letterlijk "gedurende het traject en gedurende veertien (14) dagen na afsluiting". Een langere bewaartermijn voor een concreet traject wijkt daarvan af. De technische knop is bewust inert gelaten tot de VOK dit dekt.
+
+### 4a. Concept-aanpassing VOK Artikel 5 (alleen de bewaartermijn-zin)
+
+> Geüploade documenten en alle overige trajectgegevens worden bewaard gedurende het traject en gedurende veertien (14) dagen na afsluiting van het traject, dan wel gedurende een langere termijn van ten hoogste driehonderdvijfenzestig (365) dagen indien dat voor het betreffende traject uitdrukkelijk tussen Gebruiker en Bisschops Financing B.V. is overeengekomen. In die periode wordt een volledig dossier eenmalig als downloadbaar bestand beschikbaar gesteld aan Gebruiker. Na afloop van de toepasselijke termijn worden alle trajectgegevens definitief van het platform verwijderd, met uitzondering van de in dit artikel genoemde archiefregel.
+
+### 4b. Aandachtspunten voor de jurist
+
+- Dataminimalisatie (art. 5 lid 1 sub e AVG): een langere bewaartermijn moet per traject een concrete grondslag hebben (lopend geschil, wettelijke bewaarplicht die de adviseur bij ons wil beleggen). Wenselijk om dat als voorwaarde in de tekst te zetten?
+- De 365-dagen-bovengrens is een productkeuze (voorkomen dat het platform permanente opslag wordt). Akkoord, of anders?
+- Verhouding tot de 3-maanden-inactiviteitssluiting: die blijft ongewijzigd; de langere bewaartermijn gaat pas lopen ná (automatische of handmatige) afsluiting.
+
+---
+
+## 5. Volgorde van toepassing (na jurist-akkoord, per onderdeel)
 
 1. Handelsnaam-zin → in de vijf genoemde documenten; `WORKER_BRAND.kort` in de contracttekst kan daarna mee naar "Koers voor Morgen" of blijven, afhankelijk van de gekozen formulering.
 2. Reliance-clausule → AV + GV + de zichtbare korte variant in `bgDoc()` / DD-export.
