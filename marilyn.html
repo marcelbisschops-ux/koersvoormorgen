@@ -386,7 +386,7 @@ async function renderAgendaTab(el){
   function herl(){ renderAgendaTab(el); }
 
   var h='<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem">&#128197; Agenda</div>'
-    +'<div style="font-size:12px;color:var(--muted);max-width:720px;line-height:1.6;margin-bottom:1.25rem">Bezoekers boeken zelf via <a href="afspraak.html" target="_blank" rel="noopener">afspraak.html</a> een dinsdag- of donderdagmiddag (13:00–16:00, 1 uur, max één per dag; die dag is daarna dicht). Vaste slots worden automatisch bevestigd. Tijdvoorstellen bevestig of wijs je hieronder af. Zelf een afspraak op een ander moment plannen kan hieronder, met een videolink (Teams/Meet/Jitsi). Blokkeer dagen die je buiten het platform hebt vergeven.</div>';
+    +'<div style="font-size:12px;color:var(--muted);max-width:720px;line-height:1.6;margin-bottom:1.25rem">Bezoekers boeken zelf via <a href="afspraak.html" target="_blank" rel="noopener">afspraak.html</a> een dinsdag- of donderdagmiddag (13:00–16:00, 1 uur, max één per dag; die dag is daarna dicht). Vaste slots worden automatisch bevestigd. Tijdvoorstellen bevestig of wijs je hieronder af. Zelf een afspraak op een ander moment plannen kan hieronder, met een adres (standaard je eigen adres, direct te vervangen door dat van de klant), een vrij bericht aan de gast, en/of een videolink. Alle afspraakmail gaat uit onder de naam Marcel Bisschops. Blokkeer dagen die je buiten het platform hebt vergeven.</div>';
 
   // Zelf een afspraak plannen
   h+='<details style="margin-bottom:1.25rem;border:1px solid var(--border);border-radius:10px;background:var(--card)">'
@@ -400,7 +400,9 @@ async function renderAgendaTab(el){
     +'<label style="font-size:11px;color:var(--muted)">E-mail<br><input type="email" id="ag-n-mail" style="width:100%;font-size:12px;padding:4px 6px"></label>'
     +'<label style="font-size:11px;color:var(--muted)">Organisatie<br><input type="text" id="ag-n-bedrijf" style="width:100%;font-size:12px;padding:4px 6px"></label>'
     +'<label style="font-size:11px;color:var(--muted)">Onderwerp<br><input type="text" id="ag-n-ond" style="width:100%;font-size:12px;padding:4px 6px"></label>'
-    +'<label style="font-size:11px;color:var(--muted);grid-column:1/-1">Videolink (Teams/Meet/Jitsi)<br><span style="display:flex;gap:6px"><input type="url" id="ag-n-link" placeholder="https://..." style="flex:1;font-size:12px;padding:4px 6px"><button class="btn-ghost" id="ag-n-jitsi" style="font-size:10px;padding:2px 8px;white-space:nowrap">Jitsi-link</button></span></label>'
+    +'<label style="font-size:11px;color:var(--muted);grid-column:1/-1">Locatie / adres<br><input type="text" id="ag-n-loc" value="Koers voor Morgen, Grotestraat 13, Oploo (Land van Cuijk)" style="width:100%;font-size:12px;padding:4px 6px"></label>'
+    +'<label style="font-size:11px;color:var(--muted);grid-column:1/-1">Bericht aan de gast (optioneel)<br><textarea id="ag-n-bericht" rows="2" placeholder="Bijv. parkeren kan voor de deur; neem de jaarcijfers mee." style="width:100%;font-size:12px;padding:4px 6px"></textarea></label>'
+    +'<label style="font-size:11px;color:var(--muted);grid-column:1/-1">Videolink (optioneel, Teams/Meet/Jitsi)<br><span style="display:flex;gap:6px"><input type="url" id="ag-n-link" placeholder="https://..." style="flex:1;font-size:12px;padding:4px 6px"><button class="btn-ghost" id="ag-n-jitsi" style="font-size:10px;padding:2px 8px;white-space:nowrap">Jitsi-link</button></span></label>'
     +'<div style="grid-column:1/-1"><button class="btn" id="ag-n-add" style="font-size:11px;padding:5px 14px">Inplannen &amp; bevestiging sturen</button></div>'
     +'</div></details>';
 
@@ -416,9 +418,13 @@ async function renderAgendaTab(el){
         +'<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:4px">'
         +'<input type="date" class="ag-vd" data-id="'+esc(v.id)+'" value="'+esc(v.voorstel_datum||'')+'" style="font-size:11px;padding:3px 6px">'
         +'<input type="text" class="ag-vt" data-id="'+esc(v.id)+'" value="'+esc((v.voorstel_tijd||'').replace(/[^0-9:]/g,'')||'13:00')+'" placeholder="13:00" style="font-size:11px;padding:3px 6px;width:70px">'
-        +'<input type="url" class="ag-vlink" data-id="'+esc(v.id)+'" placeholder="videolink (optioneel)" style="font-size:11px;padding:3px 6px;width:180px">'
         +'<button class="btn ag-vbev" data-id="'+esc(v.id)+'" style="font-size:11px;padding:3px 10px">Bevestigen</button>'
         +'<button class="btn-ghost ag-vafw" data-id="'+esc(v.id)+'" style="font-size:11px;padding:3px 10px;color:var(--red);border-color:var(--red)">Afwijzen</button>'
+        +'<div style="flex-basis:100%;display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">'
+        +'<input type="text" class="ag-vloc" data-id="'+esc(v.id)+'" value="Koers voor Morgen, Grotestraat 13, Oploo (Land van Cuijk)" placeholder="locatie/adres" style="font-size:11px;padding:3px 6px;flex:1;min-width:220px">'
+        +'<input type="url" class="ag-vlink" data-id="'+esc(v.id)+'" placeholder="videolink (optioneel)" style="font-size:11px;padding:3px 6px;width:180px">'
+        +'<input type="text" class="ag-vber" data-id="'+esc(v.id)+'" placeholder="bericht aan de gast (optioneel)" style="font-size:11px;padding:3px 6px;flex:1;min-width:220px">'
+        +'</div>'
         +'</div></div>';
     });
   }
@@ -427,11 +433,11 @@ async function renderAgendaTab(el){
   h+='<div style="font-size:12px;font-weight:600;color:var(--head);margin:1.5rem 0 .5rem">Komende afspraken ('+(d.komend||[]).length+')</div>';
   if(!(d.komend||[]).length){ h+='<div class="empty" style="font-size:12px">Geen.</div>'; }
   else{
-    h+='<table style="font-size:12px"><thead><tr><th>Wanneer</th><th>Type</th><th>Wie</th><th>Onderwerp / videolink</th><th></th></tr></thead><tbody>';
+    h+='<table style="font-size:12px"><thead><tr><th>Wanneer</th><th>Type</th><th>Wie</th><th>Onderwerp / locatie</th><th></th></tr></thead><tbody>';
     d.komend.forEach(function(a){
       h+='<tr><td>'+esc(a.label)+' '+esc(a.tijd||'')+(a.duur_min&&a.duur_min!=60?(' ('+a.duur_min+'m)'):'')+'</td><td>'+esc(a.type==='platform'?'platform':'advies')+(a.bron==='marcel'?' <span style="color:var(--muted)">·zelf</span>':'')+'</td>'
         +'<td>'+esc(a.naam||'')+'<br><span style="color:var(--muted);font-size:11px">'+esc(a.email||'')+'</span></td>'
-        +'<td style="font-size:11px">'+esc(a.onderwerp||a.toelichting||'')+(a.meeting_link?('<br><a href="'+esc(a.meeting_link)+'" target="_blank" rel="noopener">videolink</a>'):'')+'</td>'
+        +'<td style="font-size:11px">'+esc(a.onderwerp||a.toelichting||'')+(a.locatie?('<br><span style="color:var(--muted)">'+esc(a.locatie)+'</span>'):'')+(a.meeting_link?('<br><a href="'+esc(a.meeting_link)+'" target="_blank" rel="noopener">videolink</a>'):'')+'</td>'
         +'<td><button class="btn-ghost ag-ann" data-id="'+esc(a.id)+'" style="font-size:10px;padding:2px 8px;color:var(--red);border-color:var(--red)">Annuleren</button></td></tr>';
     });
     h+='</tbody></table>';
@@ -454,7 +460,9 @@ async function renderAgendaTab(el){
     var id=this.getAttribute('data-id');
     var dt=document.querySelector('.ag-vd[data-id="'+id+'"]').value, tj=document.querySelector('.ag-vt[data-id="'+id+'"]').value;
     var lk=(document.querySelector('.ag-vlink[data-id="'+id+'"]')||{}).value||'';
-    post('/mna/admin/agenda/voorstel/'+id,{besluit:'bevestigen',datum:dt,tijd:tj,meeting_link:lk}).then(function(r){ if(r&&r.ok){toast('Afspraak bevestigd, bezoeker krijgt bericht.','ok');herl();}else{toast('Fout: '+((r&&r.error)||'onbekend'),'err');} });
+    var loc=(document.querySelector('.ag-vloc[data-id="'+id+'"]')||{}).value||'';
+    var ber=(document.querySelector('.ag-vber[data-id="'+id+'"]')||{}).value||'';
+    post('/mna/admin/agenda/voorstel/'+id,{besluit:'bevestigen',datum:dt,tijd:tj,meeting_link:lk,locatie:loc,bericht:ber}).then(function(r){ if(r&&r.ok){toast('Afspraak bevestigd, bezoeker krijgt bericht.','ok');herl();}else{toast('Fout: '+((r&&r.error)||'onbekend'),'err');} });
   });});
   var jitsiBtn=document.getElementById('ag-n-jitsi');
   if(jitsiBtn)jitsiBtn.addEventListener('click',function(e){ e.preventDefault(); document.getElementById('ag-n-link').value='https://meet.jit.si/KvM-'+Math.random().toString(36).slice(2,8)+Math.random().toString(36).slice(2,6); });
@@ -464,6 +472,7 @@ async function renderAgendaTab(el){
       duur_min:document.getElementById('ag-n-duur').value,type:document.getElementById('ag-n-type').value,
       naam:document.getElementById('ag-n-naam').value,email:document.getElementById('ag-n-mail').value,
       bedrijf:document.getElementById('ag-n-bedrijf').value,onderwerp:document.getElementById('ag-n-ond').value,
+      locatie:document.getElementById('ag-n-loc').value,bericht:document.getElementById('ag-n-bericht').value,
       meeting_link:document.getElementById('ag-n-link').value};
     if(!body.datum||!body.tijd||!body.naam||!body.email){toast('Datum, tijd, naam en e-mail zijn verplicht.','err');return;}
     post('/mna/admin/agenda/nieuw',body).then(function(r){ if(r&&r.ok){toast('Afspraak ingepland, bevestiging verstuurd.','ok');herl();}else{toast('Fout: '+((r&&r.error)||'onbekend'),'err');} });
@@ -4005,7 +4014,8 @@ var TARIEF_LABELS = {
   meekijker: 'Module-fee — Meekijker (eenmalig per aangemaakte code)',
   teaser: 'Module-fee — Teaser (eenmalig bij eerste generatie per traject)',
   verkoopmemorandum: 'Module-fee — Verkoopmemorandum (eenmalig bij eerste generatie per traject)',
-  matching: 'Module-fee — Matching (eenmalig per koper die zich aanmeldt)'
+  matching: 'Module-fee — Matching (eenmalig per koper die zich aanmeldt)',
+  dossier_opslag_maand: 'Opslag dossier/dataroom na closing (per maand)'
 };
 
 async function renderTarievenTab(el) {
