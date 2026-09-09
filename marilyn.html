@@ -3892,6 +3892,8 @@ async function renderGebruikersTab(el) {
           + '<input type="number" id="vk-limiet" min="1" value="' + (g.traject_limiet||1) + '" style="width:100px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--sub);font-size:14px;margin-bottom:1rem">'
           + '<div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:4px">Modules <span style="font-weight:400;text-transform:none;letter-spacing:normal">(aan/uit per adviseur — prijzen staan in &euro; Tarieven)</span></div>'
           + chk
+          + '<div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:1rem 0 4px">Beveiliging</div>'
+          + '<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--sub);padding:4px 0;cursor:pointer"><input type="checkbox" id="vk-mfa" '+((g.mfa===undefined||g.mfa===null||Number(g.mfa)===1)?'checked':'')+'> Tweestapsverificatie bij inloggen (code per e-mail)</label>'
           + '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1.25rem">'
           + '<button class="btn-ghost" id="vk-annuleer" style="font-size:12px;padding:7px 14px">Annuleren</button>'
           + '<button class="btn" id="vk-opslaan" style="font-size:12px;padding:7px 14px">Opslaan</button>'
@@ -3904,8 +3906,10 @@ async function renderGebruikersTab(el) {
           var nm = {};
           ov.querySelectorAll('.vk-mod').forEach(function(c){ nm[c.dataset.mod] = c.checked; });
           var lim = Math.max(1, parseInt(document.getElementById('vk-limiet').value, 10) || 1);
+          var mfaEl = document.getElementById('vk-mfa');
+          var mfaVal = (mfaEl && mfaEl.checked) ? 1 : 0;
           try {
-            var vr = await fetch(WORKER + '/gebruikers/verkoop/' + encodeURIComponent(g.id), { method: 'POST', headers: { 'x-admin-key': adminKey, 'Content-Type': 'application/json' }, body: JSON.stringify({ traject_limiet: lim, modules: nm }) });
+            var vr = await fetch(WORKER + '/gebruikers/verkoop/' + encodeURIComponent(g.id), { method: 'POST', headers: { 'x-admin-key': adminKey, 'Content-Type': 'application/json' }, body: JSON.stringify({ traject_limiet: lim, modules: nm, mfa: mfaVal }) });
             var vd = await vr.json();
             if (vd.ok) { toast('Verkoopinstellingen opgeslagen: limiet ' + vd.traject_limiet + '.', 'ok'); ov.remove(); var tcv = document.getElementById('tc'); if (tcv) renderGebruikersTab(tcv); }
             else toast(vd.error || 'Fout bij opslaan.', 'err');
