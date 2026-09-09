@@ -265,6 +265,7 @@ function renderDashboard(){
     +(isSuperAdmin?'<button class="tab'+(activeTab==='veiligheid'?' active':'')+'" id="t-veiligheid" style="border-left:2px solid var(--red)">&#128737; Veiligheid</button>':'')
     +(isSuperAdmin?'<button class="tab'+(activeTab==='matching'?' active':'')+'" id="t-matching">&#128279; Matching</button>':'')
     +(isSuperAdmin?'<button class="tab'+(activeTab==='sourcing'?' active':'')+'" id="t-sourcing">&#128225; Sourcing</button>':'')
+    +(isSuperAdmin?'<button class="tab'+(activeTab==='agenda'?' active':'')+'" id="t-agenda">&#128197; Agenda</button>':'')
     +'</div>'
     +'<div id="tc"></div>';
   if(isSuperAdmin){var ts=document.getElementById('t-scans');if(ts)ts.addEventListener('click',function(){activeTab='scans';scanFilter='';openRow=null;renderDashboard();});var tc2=document.getElementById('t-cb');if(tc2)tc2.addEventListener('click',function(){activeTab='callbacks';renderDashboard();});var tld=document.getElementById('t-leads');if(tld)tld.addEventListener('click',function(){activeTab='leads';renderDashboard();});var tpf=document.getElementById('t-proef');if(tpf)tpf.addEventListener('click',function(){activeTab='proef';renderDashboard();});}
@@ -281,6 +282,7 @@ function renderDashboard(){
   if(isSuperAdmin){var vtb=document.getElementById('t-veiligheid');if(vtb)vtb.addEventListener('click',function(){activeTab='veiligheid';renderDashboard();});}
   if(isSuperAdmin){var mtb=document.getElementById('t-matching');if(mtb)mtb.addEventListener('click',function(){activeTab='matching';renderDashboard();});}
   if(isSuperAdmin){var srtb=document.getElementById('t-sourcing');if(srtb)srtb.addEventListener('click',function(){activeTab='sourcing';renderDashboard();});}
+  if(isSuperAdmin){var agtb=document.getElementById('t-agenda');if(agtb)agtb.addEventListener('click',function(){activeTab='agenda';renderDashboard();});}
   renderTab();
   // Systeemwaarschuwingen: Signhost-herinnering bewust verwijderd (verzoek Marcel, juli 2026).
   // De container #sys-waarschuwingen blijft beschikbaar voor eventuele toekomstige meldingen.
@@ -304,7 +306,91 @@ function renderTab(){
   else if(activeTab==='veiligheid')renderVeiligheidTab(el);
   else if(activeTab==='matching')renderMatchingTab(el);
   else if(activeTab==='sourcing')renderSourcingTab(el);
+  else if(activeTab==='agenda')renderAgendaTab(el);
   else renderRapportenTab(el);
+}
+
+// AGENDA TAB — zelf-boekbare afspraken (backend: worker/28-agenda.js).
+async function renderAgendaTab(el){
+  el.innerHTML='<div style="padding:1rem;color:var(--muted);font-size:13px">Agenda laden…</div>';
+  var d;
+  try{ d=await (await fetch(WORKER+'/mna/admin/agenda',{headers:{'x-admin-key':adminKey}})).json(); }
+  catch(e){ el.innerHTML='<div style="color:var(--red);padding:1rem">Verbindingsfout.</div>'; return; }
+  if(!d||!d.ok){ el.innerHTML='<div style="color:var(--red);padding:1rem">Fout: '+esc((d&&d.error)||'onbekend')+'</div>'; return; }
+
+  function post(pad,body){ return fetch(WORKER+pad,{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':adminKey},body:JSON.stringify(body||{})}).then(function(r){return r.json();}); }
+  function herl(){ renderAgendaTab(el); }
+
+  var h='<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem">&#128197; Agenda</div>'
+    +'<div style="font-size:12px;color:var(--muted);max-width:720px;line-height:1.6;margin-bottom:1.25rem">Bezoekers boeken zelf via <a href="afspraak.html" target="_blank" rel="noopener">afspraak.html</a> een dinsdag- of donderdagmiddag (13:00–16:00, 1 uur, max één per dag; die dag is daarna dicht). Vaste slots worden automatisch bevestigd. Tijdvoorstellen bevestig of wijs je hieronder af. Blokkeer zelf dagen die je buiten het platform hebt vergeven.</div>';
+
+  // Openstaande voorstellen
+  h+='<div style="font-size:12px;font-weight:600;color:var(--head);margin:1rem 0 .5rem">Openstaande tijdvoorstellen ('+(d.voorstellen||[]).length+')</div>';
+  if(!(d.voorstellen||[]).length){ h+='<div class="empty" style="font-size:12px">Geen.</div>'; }
+  else{
+    d.voorstellen.forEach(function(v){
+      h+='<div style="border:1px solid var(--border);border-radius:10px;padding:.85rem 1rem;margin-bottom:.6rem;background:var(--panel)">'
+        +'<div style="font-size:12px;color:var(--sub)"><strong>'+esc(v.naam||'')+'</strong> · '+esc(v.email||'')+(v.bedrijf?(' · '+esc(v.bedrijf)):'')+' · '+esc(v.type==='platform'?'platform':'M&A-advies')+'</div>'
+        +'<div style="font-size:12px;color:var(--sub);margin:3px 0">Voorstel: <strong>'+esc(v.voorstel_datum||'')+' '+esc(v.voorstel_tijd||'')+'</strong></div>'
+        +(v.toelichting?'<div style="font-size:11px;color:var(--muted);margin-bottom:5px">'+esc(v.toelichting)+'</div>':'')
+        +'<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:4px">'
+        +'<input type="date" class="ag-vd" data-id="'+esc(v.id)+'" value="'+esc(v.voorstel_datum||'')+'" style="font-size:11px;padding:3px 6px">'
+        +'<input type="text" class="ag-vt" data-id="'+esc(v.id)+'" value="'+esc((v.voorstel_tijd||'').replace(/[^0-9:]/g,'')||'13:00')+'" placeholder="13:00" style="font-size:11px;padding:3px 6px;width:70px">'
+        +'<button class="btn ag-vbev" data-id="'+esc(v.id)+'" style="font-size:11px;padding:3px 10px">Bevestigen</button>'
+        +'<button class="btn-ghost ag-vafw" data-id="'+esc(v.id)+'" style="font-size:11px;padding:3px 10px;color:var(--red);border-color:var(--red)">Afwijzen</button>'
+        +'</div></div>';
+    });
+  }
+
+  // Komende afspraken
+  h+='<div style="font-size:12px;font-weight:600;color:var(--head);margin:1.5rem 0 .5rem">Komende afspraken ('+(d.komend||[]).length+')</div>';
+  if(!(d.komend||[]).length){ h+='<div class="empty" style="font-size:12px">Geen.</div>'; }
+  else{
+    h+='<table style="font-size:12px"><thead><tr><th>Wanneer</th><th>Type</th><th>Wie</th><th>Onderwerp</th><th></th></tr></thead><tbody>';
+    d.komend.forEach(function(a){
+      h+='<tr><td>'+esc(a.label)+' '+esc(a.tijd||'')+'</td><td>'+esc(a.type==='platform'?'platform':'advies')+'</td>'
+        +'<td>'+esc(a.naam||'')+'<br><span style="color:var(--muted);font-size:11px">'+esc(a.email||'')+'</span></td>'
+        +'<td style="font-size:11px">'+esc(a.onderwerp||a.toelichting||'')+'</td>'
+        +'<td><button class="btn-ghost ag-ann" data-id="'+esc(a.id)+'" style="font-size:10px;padding:2px 8px;color:var(--red);border-color:var(--red)">Annuleren</button></td></tr>';
+    });
+    h+='</tbody></table>';
+  }
+
+  // Blokkades
+  h+='<div style="font-size:12px;font-weight:600;color:var(--head);margin:1.5rem 0 .5rem">Geblokkeerde dagen</div>'
+    +'<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:.5rem">'
+    +'<input type="date" id="ag-blok-datum" style="font-size:12px;padding:4px 8px">'
+    +'<input type="text" id="ag-blok-reden" placeholder="reden (optioneel)" style="font-size:12px;padding:4px 8px">'
+    +'<button class="btn" id="ag-blok-add" style="font-size:11px;padding:4px 12px">Dag blokkeren</button></div>';
+  if((d.blokkades||[]).length){
+    h+='<ul style="font-size:12px;color:var(--sub);margin:0 0 0 1rem;padding:0">'
+      +d.blokkades.map(function(b){return '<li style="margin-bottom:2px">'+esc(b.datum)+(b.reden?(' — '+esc(b.reden)):'')+' <button class="btn-ghost ag-blok-del" data-d="'+esc(b.datum)+'" style="font-size:10px;padding:1px 7px;margin-left:6px">verwijder</button></li>';}).join('')+'</ul>';
+  }
+
+  el.innerHTML=h;
+
+  Array.prototype.forEach.call(document.querySelectorAll('.ag-vbev'),function(b){b.addEventListener('click',function(){
+    var id=this.getAttribute('data-id');
+    var dt=document.querySelector('.ag-vd[data-id="'+id+'"]').value, tj=document.querySelector('.ag-vt[data-id="'+id+'"]').value;
+    post('/mna/admin/agenda/voorstel/'+id,{besluit:'bevestigen',datum:dt,tijd:tj}).then(function(r){ if(r&&r.ok){toast('Afspraak bevestigd, bezoeker krijgt bericht.','ok');herl();}else{toast('Fout: '+((r&&r.error)||'onbekend'),'err');} });
+  });});
+  Array.prototype.forEach.call(document.querySelectorAll('.ag-vafw'),function(b){b.addEventListener('click',function(){
+    var id=this.getAttribute('data-id'); var m=prompt('Bericht aan de bezoeker (optioneel):'); if(m===null)return;
+    post('/mna/admin/agenda/voorstel/'+id,{besluit:'afwijzen',bericht:m}).then(function(r){ if(r&&r.ok){toast('Voorstel afgewezen.','ok');herl();}else{toast('Fout.','err');} });
+  });});
+  Array.prototype.forEach.call(document.querySelectorAll('.ag-ann'),function(b){b.addEventListener('click',function(){
+    var id=this.getAttribute('data-id'); if(!confirm('Deze afspraak annuleren? De bezoeker krijgt bericht.'))return;
+    var m=prompt('Reden/bericht (optioneel):')||'';
+    post('/mna/admin/agenda/annuleer/'+id,{bericht:m}).then(function(r){ if(r&&r.ok){toast('Afspraak geannuleerd.','ok');herl();}else{toast('Fout.','err');} });
+  });});
+  var addBtn=document.getElementById('ag-blok-add');
+  if(addBtn)addBtn.addEventListener('click',function(){
+    var dt=document.getElementById('ag-blok-datum').value; if(!dt){toast('Kies een datum.','err');return;}
+    post('/mna/admin/agenda/blokkade',{datum:dt,reden:document.getElementById('ag-blok-reden').value}).then(function(r){ if(r&&r.ok){toast('Dag geblokkeerd.','ok');herl();}else{toast('Fout: '+((r&&r.error)||''),'err');} });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.ag-blok-del'),function(b){b.addEventListener('click',function(){
+    post('/mna/admin/agenda/blokkade',{datum:this.getAttribute('data-d'),verwijder:true}).then(function(r){ if(r&&r.ok){toast('Blokkade verwijderd.','ok');herl();}else{toast('Fout.','err');} });
+  });});
 }
 
 // SOURCING TAB — wekelijkse deal-flow-radar (backend: worker/27-sourcing.js).

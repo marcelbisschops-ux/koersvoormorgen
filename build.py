@@ -30,7 +30,7 @@ def nav():
     <button class="nav__toggle" aria-label="Menu" aria-expanded="false">&#9776;</button>
     <nav class="nav__links" aria-label="Hoofdnavigatie">
       {links}
-      <a class="nav__cta" href="{{{{ROOT}}}}contact.html">Plan een gesprek</a>
+      <a class="nav__cta" href="{{{{ROOT}}}}afspraak.html">Plan een gesprek</a>
       <a class="nav__login" href="{{{{ROOT}}}}inloggen.html">Inloggen</a>
     </nav>
   </div>
@@ -228,6 +228,11 @@ PAGES = [
      "Bericht ontvangen · Koers voor Morgen",
      "Uw bericht is ontvangen. Marcel neemt doorgaans binnen één werkdag contact op.",
      "https://koersvoormorgen.nl/contact-verzonden", "hero-weg.jpg", "website", "noindex"),
+
+    ("afspraak.html", 0,
+     "Plan een afspraak · Koers voor Morgen",
+     "Plan zelf een gesprek op een dinsdag- of donderdagmiddag, of stel een eigen dag en tijd voor.",
+     "https://koersvoormorgen.nl/afspraak", "hero-weg.jpg", "website", "simple|Plan een afspraak"),
 
     ("registreer.html", 0,
      "Account activeren · Koers voor Morgen",
