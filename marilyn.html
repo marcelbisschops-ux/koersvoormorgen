@@ -322,7 +322,23 @@ async function renderAgendaTab(el){
   function herl(){ renderAgendaTab(el); }
 
   var h='<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem">&#128197; Agenda</div>'
-    +'<div style="font-size:12px;color:var(--muted);max-width:720px;line-height:1.6;margin-bottom:1.25rem">Bezoekers boeken zelf via <a href="afspraak.html" target="_blank" rel="noopener">afspraak.html</a> een dinsdag- of donderdagmiddag (13:00–16:00, 1 uur, max één per dag; die dag is daarna dicht). Vaste slots worden automatisch bevestigd. Tijdvoorstellen bevestig of wijs je hieronder af. Blokkeer zelf dagen die je buiten het platform hebt vergeven.</div>';
+    +'<div style="font-size:12px;color:var(--muted);max-width:720px;line-height:1.6;margin-bottom:1.25rem">Bezoekers boeken zelf via <a href="afspraak.html" target="_blank" rel="noopener">afspraak.html</a> een dinsdag- of donderdagmiddag (13:00–16:00, 1 uur, max één per dag; die dag is daarna dicht). Vaste slots worden automatisch bevestigd. Tijdvoorstellen bevestig of wijs je hieronder af. Zelf een afspraak op een ander moment plannen kan hieronder, met een videolink (Teams/Meet/Jitsi). Blokkeer dagen die je buiten het platform hebt vergeven.</div>';
+
+  // Zelf een afspraak plannen
+  h+='<details style="margin-bottom:1.25rem;border:1px solid var(--border);border-radius:10px;background:var(--card)">'
+    +'<summary style="cursor:pointer;padding:.7rem 1rem;font-size:12px;font-weight:600;color:var(--head)">+ Zelf een afspraak plannen (elk moment)</summary>'
+    +'<div style="padding:0 1rem 1rem;display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;align-items:end">'
+    +'<label style="font-size:11px;color:var(--muted)">Datum<br><input type="date" id="ag-n-datum" style="width:100%;font-size:12px;padding:4px 6px"></label>'
+    +'<label style="font-size:11px;color:var(--muted)">Tijd<br><input type="time" id="ag-n-tijd" value="10:00" style="width:100%;font-size:12px;padding:4px 6px"></label>'
+    +'<label style="font-size:11px;color:var(--muted)">Duur (min)<br><input type="number" id="ag-n-duur" value="60" min="15" step="15" style="width:100%;font-size:12px;padding:4px 6px"></label>'
+    +'<label style="font-size:11px;color:var(--muted)">Type<br><select id="ag-n-type" style="width:100%;font-size:12px;padding:4px 6px"><option value="advies">M&A-advies</option><option value="platform">Platform</option></select></label>'
+    +'<label style="font-size:11px;color:var(--muted)">Naam<br><input type="text" id="ag-n-naam" style="width:100%;font-size:12px;padding:4px 6px"></label>'
+    +'<label style="font-size:11px;color:var(--muted)">E-mail<br><input type="email" id="ag-n-mail" style="width:100%;font-size:12px;padding:4px 6px"></label>'
+    +'<label style="font-size:11px;color:var(--muted)">Organisatie<br><input type="text" id="ag-n-bedrijf" style="width:100%;font-size:12px;padding:4px 6px"></label>'
+    +'<label style="font-size:11px;color:var(--muted)">Onderwerp<br><input type="text" id="ag-n-ond" style="width:100%;font-size:12px;padding:4px 6px"></label>'
+    +'<label style="font-size:11px;color:var(--muted);grid-column:1/-1">Videolink (Teams/Meet/Jitsi)<br><span style="display:flex;gap:6px"><input type="url" id="ag-n-link" placeholder="https://..." style="flex:1;font-size:12px;padding:4px 6px"><button class="btn-ghost" id="ag-n-jitsi" style="font-size:10px;padding:2px 8px;white-space:nowrap">Jitsi-link</button></span></label>'
+    +'<div style="grid-column:1/-1"><button class="btn" id="ag-n-add" style="font-size:11px;padding:5px 14px">Inplannen &amp; bevestiging sturen</button></div>'
+    +'</div></details>';
 
   // Openstaande voorstellen
   h+='<div style="font-size:12px;font-weight:600;color:var(--head);margin:1rem 0 .5rem">Openstaande tijdvoorstellen ('+(d.voorstellen||[]).length+')</div>';
@@ -336,6 +352,7 @@ async function renderAgendaTab(el){
         +'<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:4px">'
         +'<input type="date" class="ag-vd" data-id="'+esc(v.id)+'" value="'+esc(v.voorstel_datum||'')+'" style="font-size:11px;padding:3px 6px">'
         +'<input type="text" class="ag-vt" data-id="'+esc(v.id)+'" value="'+esc((v.voorstel_tijd||'').replace(/[^0-9:]/g,'')||'13:00')+'" placeholder="13:00" style="font-size:11px;padding:3px 6px;width:70px">'
+        +'<input type="url" class="ag-vlink" data-id="'+esc(v.id)+'" placeholder="videolink (optioneel)" style="font-size:11px;padding:3px 6px;width:180px">'
         +'<button class="btn ag-vbev" data-id="'+esc(v.id)+'" style="font-size:11px;padding:3px 10px">Bevestigen</button>'
         +'<button class="btn-ghost ag-vafw" data-id="'+esc(v.id)+'" style="font-size:11px;padding:3px 10px;color:var(--red);border-color:var(--red)">Afwijzen</button>'
         +'</div></div>';
@@ -346,11 +363,11 @@ async function renderAgendaTab(el){
   h+='<div style="font-size:12px;font-weight:600;color:var(--head);margin:1.5rem 0 .5rem">Komende afspraken ('+(d.komend||[]).length+')</div>';
   if(!(d.komend||[]).length){ h+='<div class="empty" style="font-size:12px">Geen.</div>'; }
   else{
-    h+='<table style="font-size:12px"><thead><tr><th>Wanneer</th><th>Type</th><th>Wie</th><th>Onderwerp</th><th></th></tr></thead><tbody>';
+    h+='<table style="font-size:12px"><thead><tr><th>Wanneer</th><th>Type</th><th>Wie</th><th>Onderwerp / videolink</th><th></th></tr></thead><tbody>';
     d.komend.forEach(function(a){
-      h+='<tr><td>'+esc(a.label)+' '+esc(a.tijd||'')+'</td><td>'+esc(a.type==='platform'?'platform':'advies')+'</td>'
+      h+='<tr><td>'+esc(a.label)+' '+esc(a.tijd||'')+(a.duur_min&&a.duur_min!=60?(' ('+a.duur_min+'m)'):'')+'</td><td>'+esc(a.type==='platform'?'platform':'advies')+(a.bron==='marcel'?' <span style="color:var(--muted)">·zelf</span>':'')+'</td>'
         +'<td>'+esc(a.naam||'')+'<br><span style="color:var(--muted);font-size:11px">'+esc(a.email||'')+'</span></td>'
-        +'<td style="font-size:11px">'+esc(a.onderwerp||a.toelichting||'')+'</td>'
+        +'<td style="font-size:11px">'+esc(a.onderwerp||a.toelichting||'')+(a.meeting_link?('<br><a href="'+esc(a.meeting_link)+'" target="_blank" rel="noopener">videolink</a>'):'')+'</td>'
         +'<td><button class="btn-ghost ag-ann" data-id="'+esc(a.id)+'" style="font-size:10px;padding:2px 8px;color:var(--red);border-color:var(--red)">Annuleren</button></td></tr>';
     });
     h+='</tbody></table>';
@@ -372,8 +389,21 @@ async function renderAgendaTab(el){
   Array.prototype.forEach.call(document.querySelectorAll('.ag-vbev'),function(b){b.addEventListener('click',function(){
     var id=this.getAttribute('data-id');
     var dt=document.querySelector('.ag-vd[data-id="'+id+'"]').value, tj=document.querySelector('.ag-vt[data-id="'+id+'"]').value;
-    post('/mna/admin/agenda/voorstel/'+id,{besluit:'bevestigen',datum:dt,tijd:tj}).then(function(r){ if(r&&r.ok){toast('Afspraak bevestigd, bezoeker krijgt bericht.','ok');herl();}else{toast('Fout: '+((r&&r.error)||'onbekend'),'err');} });
+    var lk=(document.querySelector('.ag-vlink[data-id="'+id+'"]')||{}).value||'';
+    post('/mna/admin/agenda/voorstel/'+id,{besluit:'bevestigen',datum:dt,tijd:tj,meeting_link:lk}).then(function(r){ if(r&&r.ok){toast('Afspraak bevestigd, bezoeker krijgt bericht.','ok');herl();}else{toast('Fout: '+((r&&r.error)||'onbekend'),'err');} });
   });});
+  var jitsiBtn=document.getElementById('ag-n-jitsi');
+  if(jitsiBtn)jitsiBtn.addEventListener('click',function(e){ e.preventDefault(); document.getElementById('ag-n-link').value='https://meet.jit.si/KvM-'+Math.random().toString(36).slice(2,8)+Math.random().toString(36).slice(2,6); });
+  var nAdd=document.getElementById('ag-n-add');
+  if(nAdd)nAdd.addEventListener('click',function(){
+    var body={datum:document.getElementById('ag-n-datum').value,tijd:document.getElementById('ag-n-tijd').value,
+      duur_min:document.getElementById('ag-n-duur').value,type:document.getElementById('ag-n-type').value,
+      naam:document.getElementById('ag-n-naam').value,email:document.getElementById('ag-n-mail').value,
+      bedrijf:document.getElementById('ag-n-bedrijf').value,onderwerp:document.getElementById('ag-n-ond').value,
+      meeting_link:document.getElementById('ag-n-link').value};
+    if(!body.datum||!body.tijd||!body.naam||!body.email){toast('Datum, tijd, naam en e-mail zijn verplicht.','err');return;}
+    post('/mna/admin/agenda/nieuw',body).then(function(r){ if(r&&r.ok){toast('Afspraak ingepland, bevestiging verstuurd.','ok');herl();}else{toast('Fout: '+((r&&r.error)||'onbekend'),'err');} });
+  });
   Array.prototype.forEach.call(document.querySelectorAll('.ag-vafw'),function(b){b.addEventListener('click',function(){
     var id=this.getAttribute('data-id'); var m=prompt('Bericht aan de bezoeker (optioneel):'); if(m===null)return;
     post('/mna/admin/agenda/voorstel/'+id,{besluit:'afwijzen',bericht:m}).then(function(r){ if(r&&r.ok){toast('Voorstel afgewezen.','ok');herl();}else{toast('Fout.','err');} });
