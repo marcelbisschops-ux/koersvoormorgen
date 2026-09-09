@@ -599,7 +599,10 @@ async function renderSourcingTab(el){
       }).join('')+'</tbody></table>';
   }
 
+  html+='<div id="src-targets" style="margin-top:2.25rem;border-top:2px solid var(--border);padding-top:1.5rem"></div>';
+
   el.innerHTML=html;
+  renderTargetsBlok(el);
 
   Array.prototype.forEach.call(document.querySelectorAll('.src-fsec'),function(cb){
     cb.addEventListener('change',function(){ srcFilter.sectoren[this.getAttribute('data-s')]=this.checked; renderSourcingTab(el); });
@@ -631,6 +634,98 @@ async function renderSourcingTab(el){
         .catch(function(){toast('Verbindingsfout.','err');});
     });
   });
+}
+
+// PROACTIEVE DOELWITTEN (KvK) — bedrijven die niet te koop staan maar een logisch overnamedoel zijn.
+// Elke bulk-actie toont eerst een kosteninschatting. SBI/rechtsvorm en jaarrekening per bedrijf.
+var TGT_PROV=['Noord-Brabant','Limburg','Zuid-Holland','Gelderland','Noord-Holland','Utrecht','Overijssel'];
+var tgtFilterStatus='';
+async function renderTargetsBlok(el){
+  var box=el.querySelector('#src-targets'); if(!box)return;
+  box.innerHTML='<div style="font-size:12px;color:var(--muted)">Doelwitten laden…</div>';
+  var d;
+  try{ d=await (await fetch(WORKER+'/mna/admin/sourcing/targets'+(tgtFilterStatus?('?status='+tgtFilterStatus):''),{headers:{'x-admin-key':adminKey}})).json(); }
+  catch(e){ box.innerHTML='<div style="color:var(--red);font-size:12px">Kon doelwitten niet laden.</div>'; return; }
+  if(!d||!d.ok){ box.innerHTML='<div style="color:var(--red);font-size:12px">Kon doelwitten niet laden.</div>'; return; }
+  function post(pad,body){ return fetch(WORKER+pad,{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':adminKey},body:JSON.stringify(body||{})}).then(function(r){return r.json();}); }
+  var prijs=d.prijzen_cent||{zoeken:2,basisprofiel:2,jaarrekening:255};
+  var h='<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem">&#127919; Proactieve doelwitten (KvK)</div>'
+    +'<div style="font-size:12px;color:var(--muted);max-width:780px;line-height:1.6;margin-bottom:1rem">Bedrijven die <strong>niet</strong> te koop staan maar wel een logisch overnamedoel zijn, uit het KvK-handelsregister. Elke bulk-actie toont eerst een kosteninschatting. SBI/rechtsvorm en de jaarrekening haal je per bedrijf op.</div>';
+  if(!d.kvk_actief){
+    h+='<div style="font-size:12px;color:var(--gold-dark);background:var(--gold-bg);border:1px solid var(--gold);border-radius:8px;padding:.7rem 1rem;line-height:1.6">KvK-koppeling nog niet actief. Je hebt <strong>eHerkenning</strong> + een KvK API-contract nodig; daarna zet Claude de sleutel als secret (KVK_API_KEY). De structuur hieronder staat klaar.</div>';
+    box.innerHTML=h; return;
+  }
+  // Zoekformulier
+  h+='<details style="margin-bottom:1rem;border:1px solid var(--border);border-radius:10px;background:var(--card)">'
+    +'<summary style="cursor:pointer;padding:.7rem 1rem;font-size:12px;font-weight:600;color:var(--head)">+ Doelgroep zoeken in KvK</summary>'
+    +'<div style="padding:0 1rem 1rem">'
+    +'<label style="font-size:11px;color:var(--muted);display:block;margin-bottom:6px">Zoektermen (in de bedrijfsnaam), komma-gescheiden. Leeg = standaardset (accountant, administratiekantoor, boekhoudkantoor, belastingadvies, salaris-/loonadministratie).<br><input type="text" id="tgt-termen" placeholder="accountant, administratiekantoor, …" style="width:100%;font-size:12px;padding:5px 8px;margin-top:3px"></label>'
+    +'<div style="font-size:11px;color:var(--muted);margin:8px 0 4px">Provincies</div>'
+    +'<div style="display:flex;gap:12px;flex-wrap:wrap;font-size:12px">'+TGT_PROV.map(function(p){return '<label style="cursor:pointer"><input type="checkbox" class="tgt-prov" value="'+esc(p)+'"'+(/Brabant|Limburg/.test(p)?' checked':'')+'> '+esc(p)+'</label>';}).join('')+'</div>'
+    +'<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:end;margin-top:10px">'
+    +'<label style="font-size:11px;color:var(--muted)">Opgericht vóór (jaar)<br><input type="number" id="tgt-opg" placeholder="2010" style="width:90px;font-size:12px;padding:4px 6px"></label>'
+    +'<button class="btn-ghost" id="tgt-schat" style="font-size:11px;padding:5px 12px">Kosteninschatting</button>'
+    +'<span id="tgt-schat-uit" style="font-size:12px;color:var(--muted)"></span>'
+    +'</div>'
+    +'<div id="tgt-bevestig" style="display:none;margin-top:8px"><button class="btn" id="tgt-uitvoeren" style="font-size:11px;padding:5px 14px">Uitvoeren (kosten akkoord)</button></div>'
+    +'</div></details>';
+  // Statusfilter
+  h+='<div style="display:flex;gap:10px;align-items:center;font-size:12px;margin-bottom:.75rem"><span style="color:var(--muted)">Status:</span>'
+    +['','nieuw','bekeken','benaderd','afgevoerd'].map(function(s){return '<label style="cursor:pointer"><input type="radio" name="tgt-fstat" value="'+s+'"'+(tgtFilterStatus===s?' checked':'')+'> '+(s||'alle')+'</label>';}).join('&nbsp; ')+'</div>';
+  // Lijst
+  var targets=d.targets||[];
+  if(!targets.length){ h+='<div class="empty" style="font-size:12px">Nog geen doelwitten. Doe een zoekopdracht hierboven.</div>'; }
+  else{
+    h+='<table style="font-size:12px;width:100%"><thead><tr><th>Bedrijf</th><th>Plaats / provincie</th><th>SBI / rechtsvorm / opgericht</th><th>Match</th><th>Status</th><th></th></tr></thead><tbody>';
+    targets.forEach(function(t){
+      var m=(t.match||[]);
+      var mTxt=m.length?('<strong style="color:var(--teal)">'+esc(m[0].koper_naam)+'</strong> '+m[0].score+'/100'):'<span style="color:var(--muted)">—</span>';
+      var jr=t.jaarrekening;
+      h+='<tr style="border-top:1px solid var(--border)">'
+        +'<td style="padding:6px 8px"><div style="font-weight:600;color:var(--head)">'+esc(t.naam||'')+'</div><div style="font-size:10px;color:var(--muted)">KvK '+esc(t.kvk_nummer||'')+'</div>'+(jr?('<div style="font-size:10px;color:var(--muted)">balans '+(jr.balanstotaal?('€'+jr.balanstotaal.toLocaleString('nl-NL')):'?')+(jr.fte?(' · '+jr.fte+' fte'):'')+' → '+esc(t.grootte_band||'?')+'</div>'):'')+'</td>'
+        +'<td style="padding:6px 8px">'+esc(t.plaats||'')+'<br><span style="color:var(--muted)">'+esc(t.provincie||'')+'</span></td>'
+        +'<td style="padding:6px 8px;font-size:11px">'+(t.sbi_codes?(esc(t.sbi_codes)+'<br>'+esc(t.rechtsvorm||'')+(t.opgericht_jaar?(' · '+t.opgericht_jaar):'')):('<button class="btn-ghost tgt-verrijk" data-id="'+esc(t.id)+'" style="font-size:10px;padding:2px 7px">verrijk (~€'+(prijs.basisprofiel/100).toFixed(2)+')</button>'))+'</td>'
+        +'<td style="padding:6px 8px">'+mTxt+'</td>'
+        +'<td style="padding:6px 8px"><select class="tgt-stat" data-id="'+esc(t.id)+'" style="font-size:11px">'+['nieuw','bekeken','benaderd','afgevoerd'].map(function(s){return '<option'+(t.status===s?' selected':'')+'>'+s+'</option>';}).join('')+'</select></td>'
+        +'<td style="padding:6px 8px">'+(jr?'':'<button class="btn-ghost tgt-jr" data-id="'+esc(t.id)+'" style="font-size:10px;padding:2px 7px">€ jaarrekening (~€'+(prijs.jaarrekening/100).toFixed(2)+')</button>')+'</td>'
+        +'</tr>';
+    });
+    h+='</tbody></table>';
+  }
+  if((d.zoekopdrachten||[]).length){
+    h+='<div style="font-size:11px;color:var(--muted);margin-top:1rem">Zoekopdrachten: '+d.zoekopdrachten.map(function(z){return esc(new Date(z.gedraaid_op).toLocaleDateString('nl-NL'))+' — '+(z.aantal_toegevoegd||0)+' nieuw, €'+((z.kosten_cent||0)/100).toFixed(2);}).join(' · ')+'</div>';
+  }
+  box.innerHTML=h;
+
+  var schatBtn=box.querySelector('#tgt-schat');
+  function leesZoek(){
+    var termen=(box.querySelector('#tgt-termen').value||'').split(',').map(function(s){return s.trim();}).filter(Boolean);
+    var prov=Array.prototype.map.call(box.querySelectorAll('.tgt-prov:checked'),function(c){return c.value;});
+    var opg=parseInt(box.querySelector('#tgt-opg').value,10)||null;
+    return {termen:termen,provincies:prov,opgericht_voor:opg};
+  }
+  if(schatBtn)schatBtn.addEventListener('click',function(){
+    schatBtn.disabled=true; box.querySelector('#tgt-schat-uit').textContent='Bezig…';
+    post('/mna/admin/sourcing/targets/zoek',leesZoek()).then(function(res){
+      schatBtn.disabled=false;
+      if(!res||!res.ok){ box.querySelector('#tgt-schat-uit').textContent=(res&&res.error)||'Fout'; return; }
+      box.querySelector('#tgt-schat-uit').innerHTML='~'+res.geschat_resultaten_ruw+' ruwe treffers, ~'+res.geschat_kvk_bevragingen+' KvK-bevragingen, geschat <strong>€'+res.geschat_kosten_eur+'</strong>';
+      box.querySelector('#tgt-bevestig').style.display='block';
+    }).catch(function(){ schatBtn.disabled=false; box.querySelector('#tgt-schat-uit').textContent='Verbindingsfout'; });
+  });
+  var uitBtn=box.querySelector('#tgt-uitvoeren');
+  if(uitBtn)uitBtn.addEventListener('click',function(){
+    uitBtn.disabled=true; uitBtn.textContent='Bezig met KvK…';
+    var body=leesZoek(); body.bevestig=true;
+    post('/mna/admin/sourcing/targets/zoek',body).then(function(res){
+      if(res&&res.ok){ toast(res.aantal_toegevoegd+' doelwitten toegevoegd, €'+res.kosten_eur,'ok'); renderTargetsBlok(el); }
+      else { toast((res&&res.error)||'Fout','err'); uitBtn.disabled=false; uitBtn.textContent='Uitvoeren (kosten akkoord)'; }
+    }).catch(function(){ toast('Verbindingsfout','err'); uitBtn.disabled=false; });
+  });
+  Array.prototype.forEach.call(box.querySelectorAll('input[name="tgt-fstat"]'),function(r){ r.addEventListener('change',function(){ tgtFilterStatus=this.value; renderTargetsBlok(el); }); });
+  Array.prototype.forEach.call(box.querySelectorAll('.tgt-stat'),function(s){ s.addEventListener('change',function(){ post('/mna/admin/sourcing/targets/status',{id:s.getAttribute('data-id'),status:s.value}).then(function(){ toast('Status bijgewerkt.','ok'); }); }); });
+  Array.prototype.forEach.call(box.querySelectorAll('.tgt-verrijk'),function(b){ b.addEventListener('click',function(){ b.disabled=true;b.textContent='…'; post('/mna/admin/sourcing/targets/verrijk/'+encodeURIComponent(b.getAttribute('data-id')),{}).then(function(res){ if(res&&res.ok){toast('Verrijkt (€'+res.kosten_eur+').','ok');renderTargetsBlok(el);}else{toast((res&&res.error)||'Fout','err');b.disabled=false;b.textContent='verrijk';} }); }); });
+  Array.prototype.forEach.call(box.querySelectorAll('.tgt-jr'),function(b){ b.addEventListener('click',function(){ if(!confirm('Jaarrekening opvragen bij KvK? Dit kost ~€'+(prijs.jaarrekening/100).toFixed(2)+'.'))return; b.disabled=true;b.textContent='…'; post('/mna/admin/sourcing/targets/jaarrekening/'+encodeURIComponent(b.getAttribute('data-id')),{}).then(function(res){ if(res&&res.ok){toast('Jaarrekening opgehaald (€'+res.kosten_eur+').','ok');renderTargetsBlok(el);}else{toast((res&&res.error)||'Fout','err');b.disabled=false;b.textContent='€ jaarrekening';} }); }); });
 }
 
 // SCANS TAB
