@@ -264,6 +264,7 @@ function renderDashboard(){
     +(isSuperAdmin?'<button class="tab'+(activeTab==='tarieven'?' active':'')+'" id="t-tarieven">&euro; Tarieven</button>':'')
     +(isSuperAdmin?'<button class="tab'+(activeTab==='veiligheid'?' active':'')+'" id="t-veiligheid" style="border-left:2px solid var(--red)">&#128737; Veiligheid</button>':'')
     +(isSuperAdmin?'<button class="tab'+(activeTab==='matching'?' active':'')+'" id="t-matching">&#128279; Matching</button>':'')
+    +(isSuperAdmin?'<button class="tab'+(activeTab==='sourcing'?' active':'')+'" id="t-sourcing">&#128225; Sourcing</button>':'')
     +'</div>'
     +'<div id="tc"></div>';
   if(isSuperAdmin){var ts=document.getElementById('t-scans');if(ts)ts.addEventListener('click',function(){activeTab='scans';scanFilter='';openRow=null;renderDashboard();});var tc2=document.getElementById('t-cb');if(tc2)tc2.addEventListener('click',function(){activeTab='callbacks';renderDashboard();});var tld=document.getElementById('t-leads');if(tld)tld.addEventListener('click',function(){activeTab='leads';renderDashboard();});var tpf=document.getElementById('t-proef');if(tpf)tpf.addEventListener('click',function(){activeTab='proef';renderDashboard();});}
@@ -279,6 +280,7 @@ function renderDashboard(){
   if(isSuperAdmin){var ttb=document.getElementById('t-tarieven');if(ttb)ttb.addEventListener('click',function(){activeTab='tarieven';renderDashboard();});}
   if(isSuperAdmin){var vtb=document.getElementById('t-veiligheid');if(vtb)vtb.addEventListener('click',function(){activeTab='veiligheid';renderDashboard();});}
   if(isSuperAdmin){var mtb=document.getElementById('t-matching');if(mtb)mtb.addEventListener('click',function(){activeTab='matching';renderDashboard();});}
+  if(isSuperAdmin){var srtb=document.getElementById('t-sourcing');if(srtb)srtb.addEventListener('click',function(){activeTab='sourcing';renderDashboard();});}
   renderTab();
   // Systeemwaarschuwingen: Signhost-herinnering bewust verwijderd (verzoek Marcel, juli 2026).
   // De container #sys-waarschuwingen blijft beschikbaar voor eventuele toekomstige meldingen.
@@ -301,7 +303,114 @@ function renderTab(){
   else if(activeTab==='tarieven')renderTarievenTab(el);
   else if(activeTab==='veiligheid')renderVeiligheidTab(el);
   else if(activeTab==='matching')renderMatchingTab(el);
+  else if(activeTab==='sourcing')renderSourcingTab(el);
   else renderRapportenTab(el);
+}
+
+// SOURCING TAB — wekelijkse deal-flow-radar (backend: worker/27-sourcing.js).
+// Toont de gevonden "te koop"-listings in onze niche (accountancy/administratie/loon), met de
+// koper-matches, plus de laatste runs. "Draai nu" triggert een handmatige run.
+var SRC_OMZET=['< € 1 mln','€ 1–2 mln','€ 2–3 mln','€ 3–4 mln','€ 4–5 mln','> € 5 mln'];
+function srcOmzet(b){return (b===null||b===undefined)?'onbekend':(SRC_OMZET[b]||'onbekend');}
+function srcDatum(iso){if(!iso)return '';try{return new Date(iso).toLocaleDateString('nl-NL',{day:'numeric',month:'short',year:'numeric'});}catch(e){return '';}}
+
+async function renderSourcingTab(el){
+  el.innerHTML='<div style="padding:1rem;color:var(--muted);font-size:13px">Sourcing laden…</div>';
+  var r,d;
+  try{
+    r=await fetch(WORKER+'/mna/admin/sourcing/overzicht',{headers:{'x-admin-key':adminKey}});
+    d=await r.json();
+  }catch(e){ el.innerHTML='<div style="color:var(--red);padding:1rem">Verbindingsfout bij laden van sourcing.</div>'; return; }
+  if(!d||!d.ok){ el.innerHTML='<div style="color:var(--red);padding:1rem">Fout bij laden: '+esc((d&&d.error)||'onbekend')+'</div>'; return; }
+
+  var laatste=(d.runs||[])[0];
+  var metMatch=(d.listings||[]).filter(function(l){return l.matches&&l.matches.length;});
+  var zonder=(d.listings||[]).filter(function(l){return !(l.matches&&l.matches.length);});
+
+  var html='<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem">&#128225; Sourcing &mdash; deal-flow-radar</div>'
+    +'<div style="font-size:12px;color:var(--muted);max-width:760px;line-height:1.6;margin-bottom:1rem">Openbaar aangeboden accountants-, administratie- en loonverwerkingskantoren, wekelijks opgehaald (maandag 06:00) en gematcht tegen de koper-zoekprofielen uit het Matching-tabblad. Alle listings zijn anoniem &mdash; neem contact op met de vermelde bron. Bron deze fase: '+((d.bronnen||[]).map(function(b){return esc(b.naam);}).join(', ')||'—')+'.</div>'
+    +'<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:1.25rem;padding:.8rem 1rem;background:var(--card);border:1px solid var(--border);border-radius:10px">'
+    +'<button class="btn" id="src-run" style="font-size:12px;padding:6px 14px">&#8635; Draai nu</button>'
+    +'<span id="src-run-status" style="font-size:12px;color:var(--muted)"></span>'
+    +'<span style="flex:1"></span>'
+    +'<span style="font-size:11px;color:var(--muted)">'
+    +(laatste?('Laatste run: '+srcDatum(new Date(laatste.gestart).toISOString())+' · '+esc(laatste.trigger||'')+' · '+(laatste.nieuw_n||0)+' nieuw · '+(laatste.match_n||0)+' match'+((JSON.parse(laatste.fouten_json||'[]')||[]).length?(' · '+((JSON.parse(laatste.fouten_json||'[]')||[]).length)+' fout(en)'):'')):'Nog geen run')
+    +'</span></div>';
+
+  function listingKaart(l){
+    var feiten=[l.sub_sector||l.branche||null,
+      l.regio?('<span style="'+(l.regio_in_scope?'color:var(--sub);font-weight:600':'color:var(--muted)')+'">'+esc(l.regio.replace(/-/g,' '))+(l.regio_in_scope?'':' (buiten regio)')+'</span>'):'<span style="color:var(--muted)">regio onbekend</span>',
+      'omzet '+esc(srcOmzet(l.omzet_klasse)),
+      l.ebitda_band?('EBITDA '+esc(l.ebitda_band)):null,
+      l.fte_band?esc(l.fte_band):null,
+      l.vraagprijs?('vraagprijs '+esc(l.vraagprijs)):null].filter(Boolean).join(' &middot; ');
+    var h='<div style="border:1px solid var(--border);border-radius:10px;padding:.85rem 1rem;margin-bottom:.6rem;background:var(--panel)">'
+      +'<div style="font-weight:600;color:var(--head);font-size:13px;margin-bottom:3px">'+esc(l.titel)
+      +(l.status==='gewijzigd'?' <span style="font-size:10px;color:var(--gold);border:1px solid var(--gold);border-radius:4px;padding:0 4px">gewijzigd</span>':'')+'</div>'
+      +'<div style="font-size:12px;color:var(--sub);margin-bottom:3px">'+feiten+'</div>'
+      +(l.reden_verkoop?'<div style="font-size:11px;color:var(--muted);margin-bottom:3px">Reden: '+esc(l.reden_verkoop)+'</div>':'')
+      +'<div style="font-size:11px;margin-bottom:'+(l.matches&&l.matches.length?'6px':'0')+'"><a href="'+esc(l.bron_url)+'" target="_blank" rel="noopener">bron: '+esc(l.bron)+'</a>'+(l.datum_iso?(' · geplaatst '+srcDatum(l.datum_iso)):'')+'</div>';
+    if(l.matches&&l.matches.length){
+      h+='<div style="border-top:1px solid var(--border);padding-top:6px">'
+        +l.matches.map(function(m){return '<div style="font-size:12px;margin-bottom:2px"><strong style="color:var(--teal)">'+esc(m.koper_naam)+'</strong> <span style="color:var(--muted)">('+m.score+'/100)</span> &mdash; <span style="color:var(--muted)">'+esc(m.reden||'')+'</span></div>';}).join('')
+        +'<div style="font-size:11px;color:var(--muted);margin-top:4px">Actie: benader de bron namens de gematchte koper. '
+        +'<button class="btn-ghost src-mstat" data-id="'+esc(l.id)+'" data-s="afgehandeld" style="font-size:10px;padding:2px 7px;margin-left:4px">markeer afgehandeld</button> '
+        +'<button class="btn-ghost src-mstat" data-id="'+esc(l.id)+'" data-s="niet_relevant" style="font-size:10px;padding:2px 7px">niet relevant</button></div>'
+        +'</div>';
+    }
+    h+='</div>';
+    return h;
+  }
+
+  html+='<div style="font-size:12px;font-weight:600;color:var(--head);margin:1rem 0 .5rem">Met koper-match ('+metMatch.length+')</div>';
+  html+= metMatch.length ? metMatch.map(listingKaart).join('') : '<div class="empty" style="font-size:12px">Geen listings met een koper-match.</div>';
+
+  html+='<div style="font-size:12px;font-weight:600;color:var(--head);margin:1.25rem 0 .5rem">In de niche, geen koper-match ('+zonder.length+')</div>';
+  html+= zonder.length ? zonder.map(listingKaart).join('') : '<div class="empty" style="font-size:12px">Geen.</div>';
+
+  if((d.verdwenen||[]).length){
+    html+='<div style="font-size:12px;font-weight:600;color:var(--head);margin:1.25rem 0 .5rem">Verdwenen listings ('+d.verdwenen.length+') &mdash; mogelijk verkocht</div>'
+      +'<ul style="font-size:12px;color:var(--sub);margin:0 0 0 1rem;padding:0">'
+      +d.verdwenen.map(function(v){return '<li style="margin-bottom:2px">'+esc(v.titel)+' &mdash; <a href="'+esc(v.bron_url)+'" target="_blank" rel="noopener">bron</a></li>';}).join('')+'</ul>';
+  }
+
+  if((d.runs||[]).length){
+    html+='<div style="font-size:12px;font-weight:600;color:var(--head);margin:1.5rem 0 .5rem">Laatste runs</div>'
+      +'<table style="font-size:11px"><thead><tr><th>Wanneer</th><th>Trigger</th><th>Gescand</th><th>Nieuw</th><th>Match</th><th>Fouten</th></tr></thead><tbody>'
+      +d.runs.map(function(run){
+        var pb={};try{pb=JSON.parse(run.per_bron_json||'{}');}catch(e){}
+        var ddg=pb.dutchdreamgroup||{};
+        var f=[];try{f=JSON.parse(run.fouten_json||'[]');}catch(e){}
+        return '<tr><td>'+esc(new Date(run.gestart).toLocaleString('nl-NL'))+'</td><td>'+esc(run.trigger||'')+'</td><td>'+(ddg.gescand||0)+'</td><td>'+(run.nieuw_n||0)+'</td><td>'+(run.match_n||0)+'</td><td'+(f.length?' style="color:var(--red)"':'')+'>'+(f.length?esc(f.join(' | ')):'—')+'</td></tr>';
+      }).join('')+'</tbody></table>';
+  }
+
+  el.innerHTML=html;
+
+  document.getElementById('src-run').addEventListener('click',function(){
+    var btn=this, st=document.getElementById('src-run-status');
+    btn.disabled=true; st.textContent='Bezig… (haalt bronnen op, dit kan ~15 sec duren)';
+    fetch(WORKER+'/mna/admin/sourcing/run',{method:'POST',headers:{'x-admin-key':adminKey}})
+      .then(function(r){return r.json();})
+      .then(function(res){
+        if(res&&res.ok){
+          st.textContent='Klaar: '+res.gescand+' gescand, '+res.nieuw+' nieuw, '+res.match+' match'+(res.fouten&&res.fouten.length?(', '+res.fouten.length+' fout(en)'):'');
+          toast('Sourcing-run klaar.','ok');
+          setTimeout(function(){renderSourcingTab(el);},900);
+        }else{ st.textContent=''; toast('Fout: '+((res&&res.fouten&&res.fouten.join('; '))||'onbekend'),'err'); btn.disabled=false; }
+      })
+      .catch(function(){ st.textContent=''; toast('Verbindingsfout tijdens de run.','err'); btn.disabled=false; });
+  });
+
+  Array.prototype.forEach.call(document.querySelectorAll('.src-mstat'),function(b){
+    b.addEventListener('click',function(){
+      var id=this.getAttribute('data-id'), s=this.getAttribute('data-s');
+      fetch(WORKER+'/mna/admin/sourcing/match/status',{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':adminKey},body:JSON.stringify({listing_id:id,status:s})})
+        .then(function(r){return r.json();})
+        .then(function(res){ if(res&&res.ok){toast('Match bijgewerkt.','ok');renderSourcingTab(el);}else{toast('Fout bij bijwerken.','err');} })
+        .catch(function(){toast('Verbindingsfout.','err');});
+    });
+  });
 }
 
 // SCANS TAB
