@@ -538,7 +538,7 @@ async function laadDocFlowStatus(){
 // classificeerbare bevindingen, plus eigen bevindingen kunnen toevoegen. Elke rij is los opslaanbaar
 // (categorie+fase is de unieke sleutel in mna_beoordelingen, zie worker/19-info-fases.js).
 async function toonRisicoModal(faseId){
-  if(S.modules&&S.modules.ai_analyse===false){toast('Module AI-analyse niet actief. Neem contact op met ' + BRAND.kort + '.','err');return;}
+  if(S.modules&&S.modules.ai_analyse===false){toast('Module AI-analyse niet actief. Neem contact op via koersvoormorgen.nl.','err');return;}
   var fase=(FASES||[]).find(function(f){return f.id===faseId;});
   if(!fase)return;
   var ov=document.createElement('div');
@@ -609,7 +609,7 @@ async function toonRisicoModal(faseId){
       if(r.ok)laadRisicoBadges();
     };
     el.querySelector('.rk-ai-vraag').onclick=async function(){
-      if(!aiAnalyseAan){toast('Module AI-analyse niet actief. Neem contact op met ' + BRAND.kort + '.','err');return;}
+      if(!aiAnalyseAan){toast('Module AI-analyse niet actief. Neem contact op via koersvoormorgen.nl.','err');return;}
       var btn=this,outEl=el.querySelector('.rk-ai-out');
       btn.disabled=true;btn.textContent='Bezig...';
       outEl.style.display='block';
@@ -741,7 +741,7 @@ function renderBegeleiderDashboard(app){
         // achter een ándere module dan Contracten zitten (hier: Marketing) — als customDisabled
         // expliciet is meegegeven, wint die, en negeert deze rij de contractenAan-check volledig.
         var disabled=customDisabled!==undefined?customDisabled:(skipContractenGate?false:!contractenAan);
-        var titel=customDisabled!==undefined?(customDisabledTitel||''):'Module Contracten niet actief — neem contact op met ' + BRAND.kort;
+        var titel=customDisabled!==undefined?(customDisabledTitel||''):'Module Contracten niet actief — neem contact op via koersvoormorgen.nl';
         return '<div style="display:flex;gap:12px">'
           +'<div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0">'
           +'<div style="width:34px;height:34px;border-radius:50%;background:'+(disabled?'var(--panel)':kleur)+';border:2px solid '+(disabled?'var(--border2)':kleur)+';display:flex;align-items:center;justify-content:center;font-size:15px;'+(disabled?'opacity:.4':'')+'">'+icoon+'</div>'
@@ -789,9 +789,9 @@ function renderBegeleiderDashboard(app){
         // partij is; het verkoopmemorandum is voor een specifieke partij, pas ná diens NDA (eigen
         // bevestigingsstap in toonVerkoopmemoModal, vereist geen formele koper in het platform).
         +stapRij('bg-bem-actie','&#128203;','#2a5ea0','Bemiddelingsovereenkomst (BEM)',getekendStatus('bem_getekend','bem_datum'))
-        +stapRij('bg-teaser-actie','&#128226;','#1a7a5e',t.teaser_tekst?'Teaser bekijken/bewerken':'Genereer teaser',t.teaser_tekst?'<span style="color:var(--teal)">&#10003; Teaser klaar</span>':'Kort, anoniem verkoopdocument — vóór er een koper is',false,false,!marketingAan,'Module Marketing niet actief — neem contact op met ' + BRAND.kort)
+        +stapRij('bg-teaser-actie','&#128226;','#1a7a5e',t.teaser_tekst?'Teaser bekijken/bewerken':'Genereer teaser',t.teaser_tekst?'<span style="color:var(--teal)">&#10003; Teaser klaar</span>':'Kort, anoniem verkoopdocument — vóór er een koper is',false,false,!marketingAan,'Module Marketing niet actief — neem contact op via koersvoormorgen.nl')
         +stapRij('bg-nda-actie','&#128274;','#7c5cbf','Geheimhoudingsovereenkomst (NDA)',getekendStatus('nda_getekend','nda_getekend_datum'))
-        +stapRij('bg-verkoopmemo-actie','&#128220;','#8a5a00',t.verkoopmemorandum_tekst?'Verkoopmemorandum bekijken/bewerken':'Genereer verkoopmemorandum',t.verkoopmemorandum_tekst?'<span style="color:var(--teal)">&#10003; Verkoopmemorandum klaar</span>':'Uitgebreid document mét bedrijfsnaam, na NDA van die partij',false,false,!marketingAan,'Module Marketing niet actief — neem contact op met ' + BRAND.kort)
+        +stapRij('bg-verkoopmemo-actie','&#128220;','#8a5a00',t.verkoopmemorandum_tekst?'Verkoopmemorandum bekijken/bewerken':'Genereer verkoopmemorandum',t.verkoopmemorandum_tekst?'<span style="color:var(--teal)">&#10003; Verkoopmemorandum klaar</span>':'Uitgebreid document mét bedrijfsnaam, na NDA van die partij',false,false,!marketingAan,'Module Marketing niet actief — neem contact op via koersvoormorgen.nl')
         +stapRij('bg-bieding-actie','&#128233;','#a0522d','Indicatieve bieding','Klaar om te versturen')
         +stapRij('bg-loi-actie','&#128196;','var(--gold)','Intentieverklaring (LoI)',getekendStatus('loi_getekend','loi_getekend_datum'))
         // Persistent, zichtbaar gemaakt (21 aug 2026, Marcel kon de trigger niet vinden): stond
@@ -805,7 +805,7 @@ function renderBegeleiderDashboard(app){
         +stapRij('bg-risicoraamwerk-actie','&#129517;','#4a6ea0','Risicoraamwerk (SWOT/PESTEL/Porter)','Klik om te genereren')
         +stapRij('bg-spa-actie','&#128220;','#5a5470','Aandachtspunten koopovereenkomst (SPA)','Aandachtspuntenlijst — geen concept-overeenkomst')
         +stapRij('bg-closing-actie','&#127937;','var(--teal)','Closing-checklist','Laden...',true)
-        +(contractenAan?'':'<div style="font-size:11px;color:var(--muted);margin:.4rem 0 .6rem">&#128274; Module Contracten niet actief — neem contact op met ' + BRAND.kort + ' om deze module te activeren.</div>')
+        +(contractenAan?'':'<div style="font-size:11px;color:var(--muted);margin:.4rem 0 .6rem">&#128274; Module Contracten niet actief — neem contact op via koersvoormorgen.nl om deze module te activeren.</div>')
         +'<div style="padding:.85rem 0;border-top:1px dashed var(--border2)"><button class="btn-outline btn-sm" id="bg-eigendoc-actie">&#128206; Eigen document versturen</button><div style="font-size:11px;color:var(--muted);margin-top:4px">Upload een PDF of Word-bestand en deel het rechtstreeks met verkoper en/of koper — werkt ook zonder de module Contracten.</div></div>'
         +'</div></div>';
       // ── Communicatie (ingeklapt) ──
@@ -2359,27 +2359,27 @@ function renderBegeleiderDashboard(app){
   var bvBtnEl=document.getElementById('bg-biedingvergelijk-actie');
   if(bvBtnEl)bvBtnEl.onclick=function(){ toonBiedingVergelijkerModal(); };
 
-  document.getElementById('bg-nda-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op met ' + BRAND.kort + '.','err');return;} bgToonOfGenereerDoc('nda'); };
-  document.getElementById('bg-loi-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op met ' + BRAND.kort + '.','err');return;} bgToonOfGenereerDoc('loi'); };
-  document.getElementById('bg-bem-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op met ' + BRAND.kort + '.','err');return;} bgToonOfGenereerDoc('bem'); };
-  document.getElementById('bg-excl-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op met ' + BRAND.kort + '.','err');return;} bgToonOfGenereerDoc('excl'); };
-  document.getElementById('bg-dealvoorstel-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op met ' + BRAND.kort + '.','err');return;} toonDocWaarschuwing('dealvoorstel', function(){ toonDealvoorstelModal(); }); };
+  document.getElementById('bg-nda-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op via koersvoormorgen.nl.','err');return;} bgToonOfGenereerDoc('nda'); };
+  document.getElementById('bg-loi-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op via koersvoormorgen.nl.','err');return;} bgToonOfGenereerDoc('loi'); };
+  document.getElementById('bg-bem-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op via koersvoormorgen.nl.','err');return;} bgToonOfGenereerDoc('bem'); };
+  document.getElementById('bg-excl-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op via koersvoormorgen.nl.','err');return;} bgToonOfGenereerDoc('excl'); };
+  document.getElementById('bg-dealvoorstel-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op via koersvoormorgen.nl.','err');return;} toonDocWaarschuwing('dealvoorstel', function(){ toonDealvoorstelModal(); }); };
   // Geen contractenAan-gate hier: dit is interne analyse (geen document dat naar een tegenpartij
   // wordt verstuurd), zelfde redenering als de closing-checklist hieronder — wel aiAnalyseAan-gate
   // (23 aug 2026: module AI-analyse had tot dan toe nergens een client- of server-gate).
-  document.getElementById('bg-risicoraamwerk-actie').onclick=function(){ if(!aiAnalyseAan){toast('Module AI-analyse niet actief. Neem contact op met ' + BRAND.kort + '.','err');return;} toonRisicoraamwerkModal(); };
+  document.getElementById('bg-risicoraamwerk-actie').onclick=function(){ if(!aiAnalyseAan){toast('Module AI-analyse niet actief. Neem contact op via koersvoormorgen.nl.','err');return;} toonRisicoraamwerkModal(); };
   // 24 aug 2026: teaser/verkoopmemorandum staan nu als gewone rijen in de Documenten-flow (niet meer
   // een losse "Marketing"-sectie) — zelfde dubbele-verdediging-patroon als de andere module-gates
   // hierboven (rij is al visueel disabled, maar de click-handler checkt ook expliciet).
-  document.getElementById('bg-teaser-actie').onclick=function(){ if(!marketingAan){toast('Module Marketing niet actief. Neem contact op met ' + BRAND.kort + '.','err');return;} toonTeaserModal(); };
-  document.getElementById('bg-verkoopmemo-actie').onclick=function(){ if(!marketingAan){toast('Module Marketing niet actief. Neem contact op met ' + BRAND.kort + '.','err');return;} toonVerkoopmemoModal(); };
-  document.getElementById('bg-bieding-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op met ' + BRAND.kort + '.','err');return;} toonDocWaarschuwing('bieding', function(){ toonBiedingModal(); }); };
-  document.getElementById('bg-spa-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op met ' + BRAND.kort + '.','err');return;} toonDocWaarschuwing('spa', function(){ toonSpaModal(); }); };
+  document.getElementById('bg-teaser-actie').onclick=function(){ if(!marketingAan){toast('Module Marketing niet actief. Neem contact op via koersvoormorgen.nl.','err');return;} toonTeaserModal(); };
+  document.getElementById('bg-verkoopmemo-actie').onclick=function(){ if(!marketingAan){toast('Module Marketing niet actief. Neem contact op via koersvoormorgen.nl.','err');return;} toonVerkoopmemoModal(); };
+  document.getElementById('bg-bieding-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op via koersvoormorgen.nl.','err');return;} toonDocWaarschuwing('bieding', function(){ toonBiedingModal(); }); };
+  document.getElementById('bg-spa-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op via koersvoormorgen.nl.','err');return;} toonDocWaarschuwing('spa', function(){ toonSpaModal(); }); };
   // Geen toonDocWaarschuwing hier: de closing-checklist is een generieke controlelijst zonder
   // partij-naam-placeholders (in tegenstelling tot NDA/LoI/BEM/Excl/SPA), dus de kopernaam-/
   // kantoornaam-waarschuwing is hier niet relevant — en 'closing' staat niet in de labels-map van
   // die functie, wat een "undefined"-titel in de waarschuwingsdialoog zou opleveren.
-  document.getElementById('bg-closing-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op met ' + BRAND.kort + '.','err');return;} toonClosingModal(); };
+  document.getElementById('bg-closing-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op via koersvoormorgen.nl.','err');return;} toonClosingModal(); };
   document.getElementById('bg-eigendoc-actie').onclick=function(){ toonEigenDocumentModal(); };
   document.getElementById('bg-dataroom-actie').onclick=function(){ S.screen='dataroom'; loadDataroom(); };
 

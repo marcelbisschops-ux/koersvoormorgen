@@ -41,7 +41,7 @@ def nav():
 def foot():
     return """<footer class="foot">
   <div class="foot__grid">
-    <div class="foot__brand"><b>Koers voor Morgen</b>Van complexiteit naar koers, van besluit naar beweging. Een initiatief van Bisschops Financing B.V.</div>
+    <div class="foot__brand"><b>Koers voor Morgen</b>Van complexiteit naar koers, van besluit naar beweging. Koers voor Morgen is een handelsnaam van Bisschops Financing B.V.</div>
     <div><h4>Platform</h4><ul>
       <li><a href="{{ROOT}}platform/">Overzicht</a></li>
       <li><a href="{{ROOT}}platform/dataroom-en-fases.html">Dataroom &amp; fases</a></li>
@@ -151,7 +151,7 @@ PAGES = [
 
     ("proefaccount.html", 0,
      "Proefaccount aanvragen · Koers voor Morgen Platform",
-     "Vraag een proefaccount aan voor het M&amp;A-platform: één traject, dertig dagen, na goedkeuring door Bisschops Financing. Geen demo vooraf nodig.",
+     "Vraag een proefaccount aan voor het M&amp;A-platform: één traject, dertig dagen, na goedkeuring door koersvoormorgen.nl. Geen demo vooraf nodig.",
      "https://koersvoormorgen.nl/proefaccount", "platform-dashboard.jpg", "website", "simple|Proefaccount"),
 
     ("bedrijfsscan.html", 0,
