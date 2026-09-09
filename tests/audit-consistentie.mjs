@@ -572,6 +572,37 @@ log('11. Load-bearing pagina\'s (backend-gemailde/geredirecte frontend-URL\'s be
   }
 }
 
+// ── 12. Consistentiecheck-prompt: de "nooit een oordeel / nooit een gok"-guardrails blijven staan ──
+// (werkregel 19 — de AI-prompt in worker/30-consistentie.js genereert tekst die de begeleider
+//  gebruikt bij het beoordelen van tegenpartij-documenten. Deze check bewaakt dat een latere edit
+//  de kern-guardrails niet stilzwijgend verwijdert.)
+log('12. Cross-document consistentiecheck (worker/30-consistentie.js): AI-guardrails aanwezig');
+{
+  const rel = 'worker/30-consistentie.js';
+  const fp = path.join(ROOT, '..', 'koersvoormorgen-backend', 'backend', rel);
+  const fpAlt = path.join(ROOT, 'backend', rel);
+  const bestand = fs.existsSync(fp) ? fp : (fs.existsSync(fpAlt) ? fpAlt : null);
+  if (!bestand) {
+    ok('backend/' + rel + ' niet in deze repo — check overgeslagen (draait in de backend-repo-audit).');
+  } else {
+    const src = fs.readFileSync(bestand, 'utf8');
+    let problemen = 0;
+    if (!/NOOIT een oordeel over welke waarde de juiste is/i.test(src)) {
+      warn(rel + ' — de guardrail "NOOIT een oordeel over welke waarde de juiste is" ontbreekt in AI_SYSTEM. Zonder die regel kan de check zelf partij kiezen.');
+      problemen++;
+    }
+    if (!/onvoldoende_data/.test(src) || !/nooit een gok/i.test(src)) {
+      warn(rel + ' — de "bij twijfel: onvoldoende_data, nooit een gok"-regel lijkt te ontbreken/gewijzigd in AI_SYSTEM.');
+      problemen++;
+    }
+    if (!/Verzin geen waarden, geen documentnamen en geen citaten/i.test(src)) {
+      warn(rel + ' — de regel dat citaten/namen/waarden letterlijk uit de aangeleverde tekst moeten komen ontbreekt.');
+      problemen++;
+    }
+    if (!problemen) ok('AI_SYSTEM bevat de drie guardrails (geen oordeel over juistheid, bij twijfel onvoldoende_data, geen verzonnen citaten/waarden).');
+  }
+}
+
 // ── Samenvatting ──────────────────────────────────────────────────────────
 log('Samenvatting');
 if (!bevindingen) {
