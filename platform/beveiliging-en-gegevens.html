@@ -54,7 +54,9 @@
     <div class="wrap">
       <h1>Zo gaan we om met uw transactiedata.</h1>
       <p class="hero__sub">Een overnamedossier bevat het gevoeligste dat een onderneming heeft.
-      Hieronder staat waar het staat, wie erbij kan, en hoe lang het bewaard blijft.</p>
+      Hieronder staat waar het staat, wie erbij kan, hoe lang het bewaard blijft, en wat er gebeurt
+      als er iets misgaat. Geen certificeringslogo's die niet van ons zijn; alleen wat het platform
+      feitelijk doet.</p>
     </div>
   </section>
 
@@ -74,11 +76,11 @@
           <circle class="koersnode" cx="980" cy="20" r="5"></circle>
         </svg>
         <div class="proces__labels" style="grid-template-columns:repeat(5,1fr)">
-          <div><h3 style="font-size:var(--fs-md)">Dossier</h3><p>Documenten en data van één traject, gescheiden van alle andere.</p></div>
-          <div><h3 style="font-size:var(--fs-md)">EU-omgeving</h3><p>Opslag in Frankfurt (ISO 27001 / SOC 2), transport over TLS.</p></div>
+          <div><h3 style="font-size:var(--fs-md)">Dossier</h3><p>Documenten en data van één traject, technisch gescheiden van elk ander traject.</p></div>
+          <div><h3 style="font-size:var(--fs-md)">EU-omgeving</h3><p>Opslag bij Cloudflare in Frankfurt, versleuteld in rust, transport over TLS.</p></div>
           <div><h3 style="font-size:var(--fs-md)">Rol- &amp; fase-toegang</h3><p>Iedereen ziet alleen wat bij zijn rol en de huidige fase hoort.</p></div>
-          <div><h3 style="font-size:var(--fs-md)">AI onder SCC's</h3><p>Verwerking onder standaardcontractbepalingen; er wordt niet op uw data getraind.</p></div>
-          <div><h3 style="font-size:var(--fs-md)">Verwijderd</h3><p>Documenten binnen 14 dagen na afronding weg; audit-informatie is een gedocumenteerde uitzondering.</p></div>
+          <div><h3 style="font-size:var(--fs-md)">AI onder SCC's</h3><p>Documentanalyse bij Anthropic onder EU-modelcontractbepalingen; er wordt niet op uw data getraind.</p></div>
+          <div><h3 style="font-size:var(--fs-md)">Verwijderd</h3><p>Trajectdata 14 dagen na afronding weg; een kleine archiefregel is een gedocumenteerde uitzondering.</p></div>
         </div>
       </div>
     </div>
@@ -88,16 +90,19 @@
     <div class="wrap">
       <div class="section-head reveal">
         <p class="eyebrow">Opslag &amp; transport</p>
-        <h2>In de EU, versleuteld.</h2>
+        <h2>In de EU, versleuteld, gescheiden per traject.</h2>
       </div>
       <div class="grid grid-3 reveal" style="margin-top:2.5rem">
-        <div class="card"><h3>EU-opslag</h3><p>Documenten en data staan bij een Europese provider
-        (Frankfurt), gecertificeerd volgens ISO 27001 en SOC 2.</p></div>
-        <div class="card"><h3>Versleuteld transport</h3><p>Alle verbindingen lopen over TLS. Niets
-        gaat onversleuteld over het net.</p></div>
-        <div class="card"><h3>Scheiding tussen trajecten</h3><p>Trajecten van verschillende adviseurs
-        zijn technisch van elkaar afgeschermd. Inzage in andermans dossier is niet mogelijk, ook niet
-        per ongeluk.</p></div>
+        <div class="card"><h3>EU-opslag bij Cloudflare</h3><p>Documenten (objectopslag) en gestructureerde
+        data (database) staan in het Cloudflare-datacenter Frankfurt, versleuteld in rust. Cloudflare
+        houdt zelf de certificeringen ISO 27001 en SOC 2 voor die infrastructuur; dat zijn hún
+        certificeringen, niet die van het platform.</p></div>
+        <div class="card"><h3>Versleuteld transport</h3><p>Elke verbinding met het platform loopt over
+        HTTPS/TLS. Er gaat niets onversleuteld over het net, ook niet tussen de onderdelen onderling.</p></div>
+        <div class="card"><h3>Scheiding tussen trajecten</h3><p>Elk traject is een eigen dossier. De
+        scheiding tussen trajecten, en tussen adviseurs, is in de software afgedwongen: een verzoek om
+        andermans dossier wordt geweigerd, ook per ongeluk. Deze grens is de eerste die bij elke
+        wijziging opnieuw getest wordt, met het negatieve geval erbij (rol X mag data van rol Y niet zien).</p></div>
       </div>
     </div>
   </section>
@@ -105,25 +110,124 @@
   <section class="section s-light-2">
     <div class="wrap">
       <div class="section-head reveal">
-        <p class="eyebrow">Toegang &amp; bewaren</p>
-        <h2>Zo min mogelijk, zo kort mogelijk.</h2>
+        <p class="eyebrow">Toegang &amp; rollen</p>
+        <h2>Zo min mogelijk zien, zo kort mogelijk bewaren.</h2>
       </div>
       <div class="grid grid-3 reveal" style="margin-top:2.5rem">
-        <div class="card"><h3>Rol- en fase-toegang</h3><p>Iedereen ziet alleen wat bij zijn rol en de
-        huidige fase hoort. Interne stukken van de adviseur blijven intern.</p></div>
-        <div class="card"><h3>Meekijkers read-only &amp; intrekbaar</h3><p>Een meekijker kan lezen,
-        niet wijzigen, en de toegang is op elk moment in te trekken.</p></div>
-        <div class="card"><h3>AI-verwerking</h3><p>De AI-verwerking loopt onder standaard
-        contractbepalingen (SCC's); er wordt niet mee getraind op uw data.</p></div>
-        <div class="card"><h3>Verwijdering na 14 dagen</h3><p>Na afronding van een traject worden de
-        documenten binnen 14 dagen verwijderd. Bewust bewaarde audit-informatie is een gedocumenteerde
-        uitzondering.</p></div>
-        <div class="card"><h3>AVG-rechten</h3><p>Recht op inzage, correctie en verwijdering; een
-        verzoek wordt via de adviseur of rechtstreeks afgehandeld.</p></div>
-        <div class="card"><h3>Sub-verwerkers</h3><p>De lijst met sub-verwerkers is op aanvraag
-        beschikbaar, net als een verwerkersovereenkomst.</p></div>
+        <div class="card"><h3>Rol- en fase-toegang</h3><p>Verkoper, koper, adviseur en meekijker zien
+        elk hun eigen beeld van hetzelfde dossier. Interne stukken en notities van de adviseur blijven
+        intern; een koper krijgt pas toegang tot een fase als die fase is vrijgegeven.</p></div>
+        <div class="card"><h3>Meekijkers: alleen lezen, intrekbaar</h3><p>Een bank of accountant die
+        meekijkt, tekent eerst een vertrouwelijkheidsverklaring, ziet daarna alleen het toegewezen
+        deel, kan niets wijzigen, en de toegang is op elk moment in te trekken. Verkoper en koper zien
+        in hun dashboard altijd wie er meekijkt.</p></div>
+        <div class="card"><h3>Toegang van de beheerder</h3><p>De platformbeheerder heeft via het
+        beheerscherm geen toegang tot de prijsgevoelige inhoud van trajecten van adviseurs die zelf
+        geen klant zijn: dealprijzen, financiële cijfers, documenten, gespreksverslagen en de namen
+        van partijen. Die beperking is technisch afgedwongen, niet alleen een afspraak.</p></div>
+        <div class="card"><h3>Wijzigingen worden gelogd</h3><p>Elke inhoudelijke wijziging in een
+        dossier (een aangepast veld, een geüpload of verwijderd document) wordt vastgelegd in een
+        auditlogboek, met tijdstip en rol. De adviseur ziet daarvan een melding.</p></div>
+        <div class="card"><h3>Rate-limiting</h3><p>Endpoints die codes of tokens genereren of
+        valideren, en publieke formulieren, zijn begrensd tegen geautomatiseerd misbruik en
+        bruteforce.</p></div>
       </div>
-      <div class="btn-row"><a class="btn-ghost" href="../contact.html">Vraag een verwerkersovereenkomst aan &rarr;</a></div>
+    </div>
+  </section>
+
+  <section class="section s-light">
+    <div class="wrap">
+      <div class="section-head reveal">
+        <p class="eyebrow">AI-verwerking</p>
+        <h2>Wat de AI met uw documenten doet, en wat niet.</h2>
+      </div>
+      <div class="grid grid-3 reveal" style="margin-top:2.5rem">
+        <div class="card"><h3>Alleen binnen het traject</h3><p>Geüploade documenten en ingevoerde
+        gegevens worden voorgelegd aan de AI-dienst van Anthropic om ze te analyseren, gegevens te
+        extraheren en concepten te genereren. Dat gebeurt uitsluitend binnen de context van het
+        traject waarvoor ze zijn aangeleverd.</p></div>
+        <div class="card"><h3>Geen training op uw data</h3><p>De aangeleverde documenten en gegevens
+        worden niet gebruikt om AI-modellen te trainen of te verbeteren, van Anthropic noch van ons.</p></div>
+        <div class="card"><h3>Doorgifte onder SCC's</h3><p>Voor zover persoonsgegevens naar Anthropic
+        in de Verenigde Staten gaan, gebeurt dat op basis van de EU-modelcontractbepalingen
+        (Standard Contractual Clauses), ter waarborging van een passend beschermingsniveau onder de AVG.</p></div>
+        <div class="card"><h3>De mens beslist</h3><p>Elk document dat naar een tegenpartij of cliënt
+        gaat (een dealvoorstel, een concept-overeenkomst, een rapport) wordt door de adviseur
+        beoordeeld en vrijgegeven. Er is geen volautomatische besluitvorming met rechtsgevolg.</p></div>
+        <div class="card"><h3>Onzeker is onzeker</h3><p>Als de AI een waarde niet met zekerheid uit
+        een document kan halen, wordt die gemarkeerd als "niet vermeld" of "handmatig controleren",
+        nooit ingevuld met een gok.</p></div>
+        <div class="card"><h3>Sub-verwerkers</h3><p>Cloudflare (infrastructuur, EU), Anthropic
+        (AI-verwerking, VS), Resend (e-mail) en Signhost/Entrust (ondertekening). De volledige lijst
+        en een verwerkersovereenkomst zijn op aanvraag beschikbaar; wijzigingen worden ten minste
+        30 dagen vooraf aangekondigd.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section s-light-2">
+    <div class="wrap">
+      <div class="section-head reveal">
+        <p class="eyebrow">Bewaren, back-up &amp; herstel</p>
+        <h2>Kort bewaren, maar herstelbaar.</h2>
+      </div>
+      <div class="grid grid-3 reveal" style="margin-top:2.5rem">
+        <div class="card"><h3>14 dagen na afronding</h3><p>Na afsluiting van een traject staat het
+        volledige dossier 14 dagen als download klaar voor de adviseur. Daarna wordt alle trajectdata
+        definitief van het platform verwijderd, op een kleine archiefregel na (naam, sector, type,
+        data van aanmaak en afsluiting, betrokken partijen) voor administratie en geschillen.</p></div>
+        <div class="card"><h3>Slapende trajecten sluiten vanzelf</h3><p>Een traject zonder inhoudelijke
+        activiteit gedurende drie maanden wordt, na een waarschuwing en een extra termijn van 14 dagen,
+        automatisch afgesloten. Zo wordt het platform geen permanente opslag.</p></div>
+        <div class="card"><h3>Back-ups, los van het platform</h3><p>Voor rampherstel wordt de database
+        periodiek geëxporteerd naar een omgeving los van het draaiende platform. Database-back-ups
+        worden uiterlijk 60 dagen na het maken automatisch verwijderd en nooit voor iets anders
+        gebruikt dan herstel bij calamiteiten. Daarnaast houdt de database-infrastructuur zelf 30
+        dagen aan herstelpunten (point-in-time recovery).</p></div>
+        <div class="card"><h3>AVG-rechten</h3><p>Recht op inzage, correctie en verwijdering. Een
+        verzoek wordt via de adviseur of rechtstreeks afgehandeld; het verwijderrecht raakt ook de
+        automatische opruiming van oudere gegevens.</p></div>
+        <div class="card"><h3>Auditrecht van de adviseur</h3><p>De adviseur kan een keer per jaar
+        navraag doen naar de getroffen technische en organisatorische maatregelen, met een
+        samenvatting van recente beveiligingstoetsen. Vaker bij een concrete aanleiding.</p></div>
+        <div class="card"><h3>Uw eigen bewaarplicht</h3><p>Na de download bent u als adviseur zelf
+        verantwoordelijk voor archivering van het dossier volgens de op u rustende bewaarplichten,
+        waaronder de fiscale bewaarplicht van doorgaans zeven jaar.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section s-light">
+    <div class="wrap">
+      <div class="section-head reveal">
+        <p class="eyebrow">Toetsing &amp; incidenten</p>
+        <h2>Wat we doen om fouten te vinden, en als er toch iets misgaat.</h2>
+      </div>
+      <div class="grid grid-3 reveal" style="margin-top:2.5rem">
+        <div class="card"><h3>Doorlopende zelfcontrole</h3><p>Een geautomatiseerde set
+        beveiligingschecks draait dagelijks tegen de live omgeving en slaat aan bij een regressie op
+        een eerder gedichte kwetsbaarheid. Bij elke wijziging draaien daarnaast vaste checks op
+        rolgrenzen, dossierverwijdering en documentgeneratie voordat er iets live gaat.</p></div>
+        <div class="card"><h3>Periodieke, onafhankelijke review</h3><p>Maandelijks een volledige
+        interne audit van architectuur, code, beveiliging en de rekenmodellen; elk kwartaal
+        aanvullend een onafhankelijke, meer-ogen code-review los van de bouw. Geen bevindingen is
+        geen bewijs van foutloosheid, alleen dat er binnen die scope niets is gevonden.</p></div>
+        <div class="card"><h3>Melding binnen 72 uur</h3><p>Bij een inbreuk die persoonsgegevens raakt
+        wordt de adviseur zonder onredelijke vertraging geïnformeerd, en in ieder geval binnen 72 uur
+        na kennisname, met de op dat moment beschikbare informatie over aard, omvang en maatregelen.</p></div>
+        <div class="card"><h3>Vaste incidentprocedure</h3><p>Er is een vaste werkinstructie voor
+        beveiligingsincidenten: bewijs veiligstellen, insluiten (secret roteren, endpoint sluiten of
+        terugrollen), reikwijdte bepalen, melden, herstellen met een regressietest, en een
+        post-mortem. Monitoring op beschikbaarheid en databaseverbinding draait continu.</p></div>
+        <div class="card"><h3>Eerlijk over het verleden</h3><p>Dit platform heeft eerder
+        cross-rol- en cross-trajectlekken gehad. Elk daarvan is gedicht en omgezet in een permanente
+        test, en de discipline om die klasse fouten te voorkomen is sindsdien aangescherpt. We
+        vermelden dit omdat "nooit een incident gehad" bij een jong platform geen geruststelling is.</p></div>
+        <div class="card"><h3>Geen gegevensverkoop</h3><p>Uw trajectdata wordt niet verkocht en niet
+        voor advertenties gebruikt. Geanonimiseerde, geaggregeerde cijfers (niet herleidbaar tot een
+        traject, adviseur of klant) kunnen wel in sectorbenchmarks worden verwerkt.</p></div>
+      </div>
+      <div class="btn-row"><a class="btn-ghost" href="../contact.html">Vraag een verwerkersovereenkomst of de sub-verwerkerslijst aan &rarr;</a></div>
     </div>
   </section>
 
