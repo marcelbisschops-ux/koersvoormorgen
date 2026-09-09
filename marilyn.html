@@ -308,11 +308,14 @@ function renderTab(){
 }
 
 // SOURCING TAB — wekelijkse deal-flow-radar (backend: worker/27-sourcing.js).
-// Toont de gevonden "te koop"-listings in onze niche (accountancy/administratie/loon), met de
-// koper-matches, plus de laatste runs. "Draai nu" triggert een handmatige run.
-var SRC_OMZET=['< € 1 mln','€ 1–2 mln','€ 2–3 mln','€ 3–4 mln','€ 4–5 mln','> € 5 mln'];
+// Alle sectoren: openbaar aangeboden bedrijven (accountancy, mkb, zorg, IT/software), wekelijks
+// opgehaald en gematcht tegen de koper-zoekprofielen uit het Matching-tabblad.
+var SRC_OMZET=['< € 500k','€ 500k–1 mln','€ 1–2 mln','€ 2–5 mln','€ 5–10 mln','> € 10 mln'];
+var SRC_SECTOR={accountancy:'Accountancy',mkb:'MKB',zorg:'Zorg',itsoftware:'IT/software'};
 function srcOmzet(b){return (b===null||b===undefined)?'onbekend':(SRC_OMZET[b]||'onbekend');}
 function srcDatum(iso){if(!iso)return '';try{return new Date(iso).toLocaleDateString('nl-NL',{day:'numeric',month:'short',year:'numeric'});}catch(e){return '';}}
+var srcFilter={sectoren:{accountancy:true,mkb:true,zorg:true,itsoftware:true},alleenRegio:true};
+var SRC_MATCH_DREMPEL=55;
 
 async function renderSourcingTab(el){
   el.innerHTML='<div style="padding:1rem;color:var(--muted);font-size:13px">Sourcing laden…</div>';
@@ -324,38 +327,58 @@ async function renderSourcingTab(el){
   if(!d||!d.ok){ el.innerHTML='<div style="color:var(--red);padding:1rem">Fout bij laden: '+esc((d&&d.error)||'onbekend')+'</div>'; return; }
 
   var laatste=(d.runs||[])[0];
-  var metMatch=(d.listings||[]).filter(function(l){return l.matches&&l.matches.length;});
-  var zonder=(d.listings||[]).filter(function(l){return !(l.matches&&l.matches.length);});
+  var alle=(d.listings||[]);
+  function toon(l){
+    if(!srcFilter.sectoren[l.sector||'mkb'])return false;
+    if(srcFilter.alleenRegio && l.regio_scope && !l.regio_in_scope)return false; // buiten regio verbergen; onbekende regio blijft
+    return true;
+  }
+  function heeftMatch(l){return l.matches&&l.matches.length&&l.matches[0].score>=SRC_MATCH_DREMPEL;}
+  var zichtbaar=alle.filter(toon);
+  var metMatch=zichtbaar.filter(heeftMatch);
+  var zonder=zichtbaar.filter(function(l){return !heeftMatch(l);});
+  var verborgenN=alle.length-zichtbaar.length;
 
   var html='<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem">&#128225; Sourcing &mdash; deal-flow-radar</div>'
-    +'<div style="font-size:12px;color:var(--muted);max-width:760px;line-height:1.6;margin-bottom:1rem">Openbaar aangeboden accountants-, administratie- en loonverwerkingskantoren, wekelijks opgehaald (maandag 06:00) en gematcht tegen de koper-zoekprofielen uit het Matching-tabblad. Alle listings zijn anoniem &mdash; neem contact op met de vermelde bron. Bron deze fase: '+((d.bronnen||[]).map(function(b){return esc(b.naam);}).join(', ')||'—')+'.</div>'
-    +'<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:1.25rem;padding:.8rem 1rem;background:var(--card);border:1px solid var(--border);border-radius:10px">'
+    +'<div style="font-size:12px;color:var(--muted);max-width:780px;line-height:1.6;margin-bottom:1rem">Openbaar aangeboden bedrijven (alle sectoren), wekelijks opgehaald (maandag 06:00) en gematcht tegen de koper-zoekprofielen uit het Matching-tabblad. Alle listings zijn anoniem &mdash; neem contact op met de vermelde bron. Bron deze fase: '+((d.bronnen||[]).map(function(b){return esc(b.naam);}).join(', ')||'—')+'.</div>'
+    +'<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:.75rem;padding:.8rem 1rem;background:var(--card);border:1px solid var(--border);border-radius:10px">'
     +'<button class="btn" id="src-run" style="font-size:12px;padding:6px 14px">&#8635; Draai nu</button>'
     +'<span id="src-run-status" style="font-size:12px;color:var(--muted)"></span>'
     +'<span style="flex:1"></span>'
     +'<span style="font-size:11px;color:var(--muted)">'
     +(laatste?('Laatste run: '+srcDatum(new Date(laatste.gestart).toISOString())+' · '+esc(laatste.trigger||'')+' · '+(laatste.nieuw_n||0)+' nieuw · '+(laatste.match_n||0)+' match'+((JSON.parse(laatste.fouten_json||'[]')||[]).length?(' · '+((JSON.parse(laatste.fouten_json||'[]')||[]).length)+' fout(en)'):'')):'Nog geen run')
-    +'</span></div>';
+    +'</span></div>'
+    +'<div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-bottom:1.25rem;font-size:12px;color:var(--sub)">'
+    +'<span style="color:var(--muted)">Filter:</span>'
+    +Object.keys(SRC_SECTOR).map(function(s){return '<label style="cursor:pointer"><input type="checkbox" class="src-fsec" data-s="'+s+'"'+(srcFilter.sectoren[s]?' checked':'')+'> '+esc(SRC_SECTOR[s])+'</label>';}).join('')
+    +'<span style="width:1px;height:14px;background:var(--border)"></span>'
+    +'<label style="cursor:pointer"><input type="checkbox" id="src-fregio"'+(srcFilter.alleenRegio?' checked':'')+'> Alleen mijn regio’s (Zuid-NL, Randstad, Oost-NL)</label>'
+    +(verborgenN?('<span style="color:var(--muted)">'+verborgenN+' verborgen door filter</span>'):'')
+    +'</div>';
+
+  function badge(txt,kleur){return '<span style="font-size:10px;font-weight:600;border:1px solid '+kleur+';color:'+kleur+';border-radius:4px;padding:0 5px;margin-right:5px;white-space:nowrap">'+esc(txt)+'</span>';}
 
   function listingKaart(l){
     var feiten=[l.sub_sector||l.branche||null,
-      l.regio?('<span style="'+(l.regio_in_scope?'color:var(--sub);font-weight:600':'color:var(--muted)')+'">'+esc(l.regio.replace(/-/g,' '))+(l.regio_in_scope?'':' (buiten regio)')+'</span>'):'<span style="color:var(--muted)">regio onbekend</span>',
       'omzet '+esc(srcOmzet(l.omzet_klasse)),
       l.ebitda_band?('EBITDA '+esc(l.ebitda_band)):null,
       l.fte_band?esc(l.fte_band):null,
       l.vraagprijs?('vraagprijs '+esc(l.vraagprijs)):null].filter(Boolean).join(' &middot; ');
+    var regioTxt=l.regio?esc(l.regio.replace(/-/g,' ')):(l.regio_scope?esc(l.regio_scope):'regio onbekend');
     var h='<div style="border:1px solid var(--border);border-radius:10px;padding:.85rem 1rem;margin-bottom:.6rem;background:var(--panel)">'
-      +'<div style="font-weight:600;color:var(--head);font-size:13px;margin-bottom:3px">'+esc(l.titel)
-      +(l.status==='gewijzigd'?' <span style="font-size:10px;color:var(--gold);border:1px solid var(--gold);border-radius:4px;padding:0 4px">gewijzigd</span>':'')+'</div>'
+      +'<div style="margin-bottom:4px">'+badge(SRC_SECTOR[l.sector]||'MKB','var(--teal)')
+      +badge(regioTxt+(l.regio_scope&&!l.regio_in_scope?' · buiten regio':''), l.regio_in_scope?'var(--gold)':'var(--muted)')
+      +(l.status==='gewijzigd'?badge('gewijzigd','var(--gold)'):'')+'</div>'
+      +'<div style="font-weight:600;color:var(--head);font-size:13px;margin-bottom:3px">'+esc(l.titel)+'</div>'
       +'<div style="font-size:12px;color:var(--sub);margin-bottom:3px">'+feiten+'</div>'
       +(l.reden_verkoop?'<div style="font-size:11px;color:var(--muted);margin-bottom:3px">Reden: '+esc(l.reden_verkoop)+'</div>':'')
-      +'<div style="font-size:11px;margin-bottom:'+(l.matches&&l.matches.length?'6px':'0')+'"><a href="'+esc(l.bron_url)+'" target="_blank" rel="noopener">bron: '+esc(l.bron)+'</a>'+(l.datum_iso?(' · geplaatst '+srcDatum(l.datum_iso)):'')+'</div>';
+      +'<div style="font-size:11px;margin-bottom:'+(heeftMatch(l)?'6px':'0')+'"><a href="'+esc(l.bron_url)+'" target="_blank" rel="noopener">bron: '+esc(l.bron)+'</a>'+(l.datum_iso?(' · geplaatst '+srcDatum(l.datum_iso)):'')+'</div>';
     if(l.matches&&l.matches.length){
       h+='<div style="border-top:1px solid var(--border);padding-top:6px">'
-        +l.matches.map(function(m){return '<div style="font-size:12px;margin-bottom:2px"><strong style="color:var(--teal)">'+esc(m.koper_naam)+'</strong> <span style="color:var(--muted)">('+m.score+'/100)</span> &mdash; <span style="color:var(--muted)">'+esc(m.reden||'')+'</span></div>';}).join('')
-        +'<div style="font-size:11px;color:var(--muted);margin-top:4px">Actie: benader de bron namens de gematchte koper. '
+        +l.matches.map(function(m){var sterk=m.score>=SRC_MATCH_DREMPEL;return '<div style="font-size:12px;margin-bottom:2px'+(sterk?'':';opacity:.6')+'"><strong style="color:'+(sterk?'var(--teal)':'var(--muted)')+'">'+esc(m.koper_naam)+'</strong> <span style="color:var(--muted)">('+m.score+'/100)</span> &mdash; <span style="color:var(--muted)">'+esc(m.reden||'')+'</span>'+(m.status&&m.status!=='nieuw'?' <em style="color:var(--muted)">['+esc(m.status)+']</em>':'')+'</div>';}).join('')
+        +(heeftMatch(l)?('<div style="font-size:11px;color:var(--muted);margin-top:4px">Actie: benader de bron namens de gematchte koper. '
         +'<button class="btn-ghost src-mstat" data-id="'+esc(l.id)+'" data-s="afgehandeld" style="font-size:10px;padding:2px 7px;margin-left:4px">markeer afgehandeld</button> '
-        +'<button class="btn-ghost src-mstat" data-id="'+esc(l.id)+'" data-s="niet_relevant" style="font-size:10px;padding:2px 7px">niet relevant</button></div>'
+        +'<button class="btn-ghost src-mstat" data-id="'+esc(l.id)+'" data-s="niet_relevant" style="font-size:10px;padding:2px 7px">niet relevant</button></div>'):'')
         +'</div>';
     }
     h+='</div>';
@@ -365,7 +388,7 @@ async function renderSourcingTab(el){
   html+='<div style="font-size:12px;font-weight:600;color:var(--head);margin:1rem 0 .5rem">Met koper-match ('+metMatch.length+')</div>';
   html+= metMatch.length ? metMatch.map(listingKaart).join('') : '<div class="empty" style="font-size:12px">Geen listings met een koper-match.</div>';
 
-  html+='<div style="font-size:12px;font-weight:600;color:var(--head);margin:1.25rem 0 .5rem">In de niche, geen koper-match ('+zonder.length+')</div>';
+  html+='<div style="font-size:12px;font-weight:600;color:var(--head);margin:1.25rem 0 .5rem">Overig aanbod, geen koper-match ('+zonder.length+')</div>';
   html+= zonder.length ? zonder.map(listingKaart).join('') : '<div class="empty" style="font-size:12px">Geen.</div>';
 
   if((d.verdwenen||[]).length){
@@ -386,6 +409,12 @@ async function renderSourcingTab(el){
   }
 
   el.innerHTML=html;
+
+  Array.prototype.forEach.call(document.querySelectorAll('.src-fsec'),function(cb){
+    cb.addEventListener('change',function(){ srcFilter.sectoren[this.getAttribute('data-s')]=this.checked; renderSourcingTab(el); });
+  });
+  var fr=document.getElementById('src-fregio');
+  if(fr)fr.addEventListener('change',function(){ srcFilter.alleenRegio=this.checked; renderSourcingTab(el); });
 
   document.getElementById('src-run').addEventListener('click',function(){
     var btn=this, st=document.getElementById('src-run-status');
