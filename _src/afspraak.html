@@ -1,0 +1,192 @@
+  <section class="section s-dark">
+    <div class="wrap wrap--text">
+      <h1>Plan een afspraak.</h1>
+      <p class="hero__sub">Kies een dinsdag- of donderdagmiddag. Een gesprek duurt een uur. Je krijgt
+      meteen een bevestiging met een agenda-uitnodiging. Past geen van de momenten, stel dan zelf
+      een dag en tijd voor.</p>
+
+      <div id="afspraak-app" style="margin-top:2.5rem; max-width:34rem">
+        <p style="color:var(--muted)">Beschikbare momenten laden&hellip;</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section s-light">
+    <div class="wrap wrap--text">
+      <p style="font-size:var(--fs-sm); color:var(--muted)">Liever eerst een bericht sturen?
+      <a href="{{ROOT}}contact.html">Naar het contactformulier</a>.</p>
+    </div>
+  </section>
+
+  <style>
+    #afspraak-app .veld{display:flex; flex-direction:column; gap:.4rem; margin-bottom:1rem}
+    #afspraak-app label{font:600 .8rem/1.3 var(--sans); color:var(--ink-d)}
+    #afspraak-app input, #afspraak-app select, #afspraak-app textarea{
+      background:var(--s-dark-2); border:1px solid var(--hair-d); border-radius:var(--r-sm);
+      color:var(--ink-d); padding:.6rem .7rem; font:400 .95rem var(--sans); width:100%}
+    #afspraak-app input:focus, #afspraak-app select:focus, #afspraak-app textarea:focus{
+      outline:2px solid color-mix(in srgb, var(--koerslijn) 35%, transparent); border-color:var(--petrol-bright)}
+    #afspraak-app textarea{min-height:5rem; resize:vertical}
+    .dag-lijst{display:flex; flex-direction:column; gap:.4rem; margin:.5rem 0 1.25rem}
+    .dag-knop{text-align:left; background:var(--s-dark-2); border:1px solid var(--hair-d);
+      border-radius:var(--r-sm); color:var(--body-d); padding:.7rem .9rem; cursor:pointer; font:500 .95rem var(--sans)}
+    .dag-knop[aria-pressed="true"]{border-color:var(--petrol-bright); color:var(--ink-d); background:var(--s-dark)}
+    .tijd-rij{display:flex; flex-wrap:wrap; gap:.5rem; margin:.25rem 0 1.25rem}
+    .tijd-knop{background:var(--s-dark-2); border:1px solid var(--hair-d); border-radius:999px;
+      color:var(--body-d); padding:.4rem .9rem; cursor:pointer; font:500 .9rem var(--sans)}
+    .tijd-knop[aria-pressed="true"]{border-color:var(--petrol-bright); color:var(--s-dark); background:var(--petrol-bright)}
+    #afspraak-app .hp{position:absolute; left:-9999px}
+    #afspraak-status{margin-top:1rem; font-size:var(--fs-sm)}
+    .schakel{font-size:var(--fs-sm); color:var(--petrol-bright); background:none; border:0; cursor:pointer; padding:0; text-decoration:underline}
+  </style>
+
+  <script>
+  (function(){
+    var API = 'https://kantoorinzicht.marcel-bisschops.workers.dev';
+    var app = document.getElementById('afspraak-app');
+    var state = { slots: [], gekozenDatum: null, gekozenTijd: null, modus: 'slot' };
+
+    function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+    function veld(id, label, type, req){
+      return '<div class="veld"><label for="'+id+'">'+esc(label)+(req?' *':'')+'</label>'
+        + (type==='textarea'
+            ? '<textarea id="'+id+'"'+(req?' required':'')+'></textarea>'
+            : '<input id="'+id+'" type="'+type+'"'+(req?' required':'')+' autocomplete="'+(type==='email'?'email':(id==='af-naam'?'name':(id==='af-bedrijf'?'organization':'off')))+'">')
+        + '</div>';
+    }
+    function typeVeld(){
+      return '<div class="veld"><label for="af-type">Waar gaat het over? *</label>'
+        + '<select id="af-type"><option value="advies">Een transactie of vraagstuk (M&amp;A-advies)</option>'
+        + '<option value="platform">Het platform</option></select></div>';
+    }
+    function contactVelden(){
+      return typeVeld()
+        + veld('af-naam','Naam','text',true)
+        + veld('af-mail','E-mailadres','email',true)
+        + veld('af-bedrijf','Organisatie','text',false)
+        + veld('af-onderwerp','Kort onderwerp','text',false)
+        + veld('af-toel','Toelichting','textarea',false)
+        + '<div class="veld hp" aria-hidden="true"><label for="af-web">Laat leeg</label><input id="af-web" type="text" tabindex="-1" autocomplete="off"></div>';
+    }
+    function gemeen(){
+      return { naam:val('af-naam'), email:val('af-mail'), bedrijf:val('af-bedrijf'),
+               type:val('af-type'), website:val('af-web') };
+    }
+    function val(id){ var e=document.getElementById(id); return e?e.value.trim():''; }
+
+    function render(){
+      if(state.modus==='voorstel'){ renderVoorstel(); return; }
+      var h = '';
+      if(!state.slots.length){
+        h += '<p style="color:var(--body-d)">Er zijn nu geen vrije momenten in de komende twee maanden. '
+           + 'Stel gerust zelf een dag en tijd voor.</p>';
+      } else {
+        h += '<p style="font:600 .8rem/1.3 var(--sans); color:var(--muted-d); text-transform:uppercase; letter-spacing:.08em">1 · Kies een dag</p>'
+           + '<div class="dag-lijst">'
+           + state.slots.map(function(s){ return '<button type="button" class="dag-knop" data-d="'+esc(s.datum)+'" aria-pressed="'+(state.gekozenDatum===s.datum)+'">'+esc(s.label)+'</button>'; }).join('')
+           + '</div>';
+        if(state.gekozenDatum){
+          var slot = state.slots.filter(function(s){return s.datum===state.gekozenDatum;})[0];
+          h += '<p style="font:600 .8rem/1.3 var(--sans); color:var(--muted-d); text-transform:uppercase; letter-spacing:.08em">2 · Kies een tijd</p>'
+             + '<div class="tijd-rij">'
+             + slot.tijden.map(function(t){ return '<button type="button" class="tijd-knop" data-t="'+esc(t)+'" aria-pressed="'+(state.gekozenTijd===t)+'">'+esc(t)+'</button>'; }).join('')
+             + '</div>';
+        }
+        if(state.gekozenDatum && state.gekozenTijd){
+          h += '<p style="font:600 .8rem/1.3 var(--sans); color:var(--muted-d); text-transform:uppercase; letter-spacing:.08em">3 · Jouw gegevens</p>'
+             + contactVelden()
+             + '<div class="btn-row" style="margin-top:.5rem"><button class="btn btn-primary" id="af-boek">Afspraak bevestigen</button></div>';
+        }
+      }
+      h += '<p style="margin-top:1.25rem"><button type="button" class="schakel" id="af-naar-voorstel">Geen van deze momenten past &rarr; zelf een dag/tijd voorstellen</button></p>'
+         + '<p id="afspraak-status" role="status"></p>';
+      app.innerHTML = h;
+      bind();
+    }
+
+    function renderVoorstel(){
+      app.innerHTML =
+        '<p style="color:var(--body-d)">Stel een dag en tijd voor. Je krijgt bericht of het lukt.</p>'
+        + contactVelden()
+        + '<div class="veld"><label for="af-vdat">Voorkeursdatum *</label><input id="af-vdat" type="date" min="'+esc(state.voorstel_min||'')+'" max="'+esc(state.voorstel_max||'')+'" required></div>'
+        + '<div class="veld"><label for="af-vtijd">Voorkeurstijd</label><input id="af-vtijd" type="text" placeholder="bijv. 14:00 of \'in de ochtend\'"></div>'
+        + '<div class="btn-row" style="margin-top:.5rem"><button class="btn btn-primary" id="af-voorstel">Voorstel versturen</button> '
+        + '<button type="button" class="btn btn-secondary" id="af-terug">Terug naar de momenten</button></div>'
+        + '<p id="afspraak-status" role="status"></p>';
+      document.getElementById('af-terug').onclick = function(){ state.modus='slot'; render(); };
+      document.getElementById('af-voorstel').onclick = verstuurVoorstel;
+    }
+
+    function bind(){
+      Array.prototype.forEach.call(app.querySelectorAll('.dag-knop'), function(b){
+        b.onclick = function(){ state.gekozenDatum = b.dataset.d; state.gekozenTijd = null; render(); };
+      });
+      Array.prototype.forEach.call(app.querySelectorAll('.tijd-knop'), function(b){
+        b.onclick = function(){ state.gekozenTijd = b.dataset.t; render(); };
+      });
+      var nv = document.getElementById('af-naar-voorstel');
+      if(nv) nv.onclick = function(){ state.modus='voorstel'; render(); };
+      var bk = document.getElementById('af-boek');
+      if(bk) bk.onclick = boek;
+    }
+
+    function melding(txt, ok){
+      var s = document.getElementById('afspraak-status');
+      if(s){ s.textContent = txt; s.style.color = ok ? 'var(--petrol-bright)' : '#e8a598'; }
+    }
+
+    function boek(){
+      var g = gemeen();
+      if(!g.naam || !g.email){ melding('Vul je naam en e-mailadres in.', false); return; }
+      var btn = document.getElementById('af-boek'); btn.disabled = true; btn.textContent = 'Bezig…';
+      fetch(API + '/agenda/boek', { method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(Object.assign(g, { datum: state.gekozenDatum, tijd: state.gekozenTijd,
+          onderwerp: val('af-onderwerp'), toelichting: val('af-toel') })) })
+        .then(function(r){ return r.json().then(function(d){ return { ok:r.ok, d:d }; }); })
+        .then(function(res){
+          if(res.ok && res.d && res.d.ok){
+            app.innerHTML = '<div style="background:var(--s-dark-2); border:1px solid var(--hair-p); border-radius:var(--r-md); padding:1.5rem">'
+              + '<p style="font-family:var(--serif); font-size:1.2rem; color:var(--ink-d); margin:0 0 .5rem">Afspraak bevestigd</p>'
+              + '<p style="color:var(--body-d); margin:0">'+esc(res.d.label)+' om '+esc(state.gekozenTijd)+' uur. '
+              + 'Je ontvangt een bevestiging met agenda-uitnodiging op '+esc(g.email)+'.</p></div>';
+          } else {
+            melding((res.d && res.d.error) || 'Er ging iets mis. Probeer een ander moment.', false);
+            btn.disabled = false; btn.textContent = 'Afspraak bevestigen';
+          }
+        })
+        .catch(function(){ melding('Verbindingsfout. Probeer het opnieuw.', false); btn.disabled=false; btn.textContent='Afspraak bevestigen'; });
+    }
+
+    function verstuurVoorstel(){
+      var g = gemeen();
+      var toel = val('af-toel');
+      if(!g.naam || !g.email || !toel){ melding('Vul je naam, e-mailadres en een korte toelichting in.', false); return; }
+      if(!val('af-vdat')){ melding('Kies een voorkeursdatum.', false); return; }
+      var btn = document.getElementById('af-voorstel'); btn.disabled = true; btn.textContent = 'Bezig…';
+      fetch(API + '/agenda/voorstel', { method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(Object.assign(g, { toelichting: toel, voorstel_datum: val('af-vdat'), voorstel_tijd: val('af-vtijd') })) })
+        .then(function(r){ return r.json().then(function(d){ return { ok:r.ok, d:d }; }); })
+        .then(function(res){
+          if(res.ok && res.d && res.d.ok){
+            app.innerHTML = '<div style="background:var(--s-dark-2); border:1px solid var(--hair-p); border-radius:var(--r-md); padding:1.5rem">'
+              + '<p style="font-family:var(--serif); font-size:1.2rem; color:var(--ink-d); margin:0 0 .5rem">Voorstel ontvangen</p>'
+              + '<p style="color:var(--body-d); margin:0">Je hoort snel of het moment lukt, op '+esc(g.email)+'.</p></div>';
+          } else {
+            melding((res.d && res.d.error) || 'Er ging iets mis.', false);
+            btn.disabled = false; btn.textContent = 'Voorstel versturen';
+          }
+        })
+        .catch(function(){ melding('Verbindingsfout. Probeer het opnieuw.', false); btn.disabled=false; btn.textContent='Voorstel versturen'; });
+    }
+
+    fetch(API + '/agenda/slots')
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        state.slots = (d && d.slots) || [];
+        state.voorstel_min = d && d.voorstel_min;
+        state.voorstel_max = d && d.voorstel_max;
+        render();
+      })
+      .catch(function(){ app.innerHTML = '<p style="color:#e8a598">De agenda is nu niet bereikbaar. Probeer het later, of gebruik het <a href="./contact.html">contactformulier</a>.</p>'; });
+  })();
+  </script>
