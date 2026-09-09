@@ -41,7 +41,7 @@ def nav():
 def foot():
     return """<footer class="foot">
   <div class="foot__grid">
-    <div class="foot__brand"><b>Koers voor Morgen</b>Van complexiteit naar koers, van besluit naar beweging. Koers voor Morgen is een handelsnaam van Bisschops Financing B.V.</div>
+    <div class="foot__brand"><b>Koers voor Morgen</b>Van complexiteit naar koers, van besluit naar beweging.</div>
     <div><h4>Platform</h4><ul>
       <li><a href="{{ROOT}}platform/">Overzicht</a></li>
       <li><a href="{{ROOT}}platform/dataroom-en-fases.html">Dataroom &amp; fases</a></li>
@@ -220,8 +220,8 @@ PAGES = [
      "https://koersvoormorgen.nl/cases/portefeuille-deelnemingen", "expertise-staal.jpg", "article", "case|Portefeuille van deelnemingen"),
 
     ("contact.html", 0,
-     "Contact · plan een gesprek · Koers voor Morgen",
-     "Plan een gesprek over het platform of over een transactie of vraagstuk. marcel@bisschopsfinancing.nl · +31 6 38 68 98 88.",
+     "Contact · Koers voor Morgen",
+     "Stel uw vraag over het platform of over een transactie of vraagstuk, of leg direct een afspraak vast. marcel@bisschopsfinancing.nl · +31 6 38 68 98 88.",
      "https://koersvoormorgen.nl/contact", "hero-weg.jpg", "website", "simple|Contact"),
 
     ("contact-verzonden.html", 0,
