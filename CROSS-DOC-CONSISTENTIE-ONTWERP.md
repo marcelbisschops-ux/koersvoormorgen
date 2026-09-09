@@ -88,3 +88,18 @@ CONSISTENTIE TUSSEN DOCUMENTEN                          [ Opnieuw controleren ]
 5. Weergaveblok in `mna/04-begeleider-dashboard.js` + afvink-endpoint.
 6. Handleiding bijwerken in `mna/08-handleiding.js` én `adv.html` (werkregel 10).
 7. Testdossier met bewust ingebouwde tegenstrijdigheden (testdocumenten-standaard punt 3: ook het foutpad testen).
+
+---
+
+## Status 9 sep 2026: GEBOUWD en live
+
+Gekozen invulling van de twee open vragen (Marcel: "kies zelf optimale"):
+- **7 paren**: ongewijzigd overgenomen zoals hierboven.
+- **Blokkeren of waarschuwen**: alleen **waarschuwen**. Een openstaande afwijking blokkeert het
+  genereren van het verkoopmemorandum/dealvoorstel niet — een harde blokkade op een consistentie-
+  signaal zou de begeleider klemzetten bij een verklaarbaar verschil. Het blok toont het aantal open
+  afwijkingen prominent en klapt vanzelf open zolang er iets openstaat.
+
+Implementatie: `worker/30-consistentie.js`, tabel `mna_consistentie`, blok in het begeleider-
+dashboard (`mna/04`), handleiding in `mna/08` + `adv.html`, `scripts/check-consistentie-output.mjs`,
+audit-consistentie check 12.

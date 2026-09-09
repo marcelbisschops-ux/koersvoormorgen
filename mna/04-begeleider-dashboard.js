@@ -838,6 +838,8 @@ function renderBegeleiderDashboard(app){
     +'<div id="bg-verkoopmemo-out" style="display:none;margin-bottom:1.25rem"></div>'
     // Gesprek output
     +'<div id="bg-gesp-out" style="display:none;margin-bottom:1.25rem"></div>'
+    // Consistentie tussen documenten (backlog-item 8) — laadt lazy via bgLaadConsistentie()
+    +'<div id="bg-consistentie" style="margin-bottom:1.25rem"></div>'
     // DD data per fase
     +'<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem">Due diligence voortgang</div>';
 
@@ -904,6 +906,7 @@ function renderBegeleiderDashboard(app){
 
   laadRisicoBadges();
   laadDocFlowStatus();
+  bgLaadConsistentie();
   (function(){
     var chk=document.getElementById('bg-ca-chk'); var det=document.getElementById('bg-ca-detail');
     var btn=document.getElementById('bg-ca-opslaan');
@@ -2051,6 +2054,100 @@ function renderBegeleiderDashboard(app){
   // (mna_closing_checklist_status) zodat voortgang blijft staan tussen sessies. Nog steeds geen
   // juridisch/fiscaal advies en niet automatisch aangepast aan de transactiestructuur — dat blijft
   // een procesmatige controlelijst, geen gegenereerd document.
+  // ===== CONSISTENTIE TUSSEN DOCUMENTEN (backlog-item 8) — vergelijkt vaste documentparen binnen
+  // het dossier en meldt waar ze elkaar tegenspreken. Waarschuwt alleen; blokkeert niets. Nooit
+  // een oordeel over welke waarde juist is (backend werkregel 8). =====
+  var CONS_STATUS = { consistent:{ico:'&#10003;',kl:'var(--teal)',lbl:'consistent'}, afwijking:{ico:'&#9888;',kl:'var(--gold-dark)',lbl:'afwijking'}, onvoldoende_data:{ico:'&#8212;',kl:'var(--muted)',lbl:'onvoldoende data'} };
+  function bgConsKey(){ return S._bgKey || S.code; }
+  async function bgLaadConsistentie(){
+    var box=document.getElementById('bg-consistentie'); if(!box)return;
+    try{
+      var r=await fetch(WORKER+'/mna/consistentie/'+encodeURIComponent(S.code),{headers:{'x-tussen-key':bgConsKey()}});
+      var d=await r.json();
+      if(!r.ok||!d.ok){ box.innerHTML=''; return; }
+      bgRenderConsistentie(d);
+    }catch(e){ box.innerHTML=''; }
+  }
+  function bgRenderConsistentie(d){
+    var box=document.getElementById('bg-consistentie'); if(!box)return;
+    var res=d.resultaten||[];
+    var gedaan=!!d.laatste_check;
+    var tel={consistent:0,afwijking:0,onvoldoende_data:0};
+    res.forEach(function(x){ if(x.status && tel[x.status]!==undefined) tel[x.status]++; });
+    var openAfw=res.filter(function(x){return x.status==='afwijking' && !x.afgevinkt_op;}).length;
+    var h='<div class="panel" style="padding:0;border:1px solid '+(openAfw?'var(--gold)':'var(--border)')+'">'
+      +'<div id="cons-hdr" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;padding:.75rem 1rem">'
+      +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
+      +'<span style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">&#128269; Consistentie tussen documenten</span>'
+      +(gedaan?'<span style="font-size:11px;color:var(--muted)">'+tel.consistent+' consistent &middot; '+tel.afwijking+' afwijking &middot; '+tel.onvoldoende_data+' onvoldoende data</span>':'<span style="font-size:11px;color:var(--muted)">nog niet uitgevoerd</span>')
+      +(openAfw?'<span style="background:var(--gold);color:#1c1400;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px">'+openAfw+' open</span>':'')
+      +'</div><span id="cons-chevron" style="font-size:12px;color:var(--muted)">'+(openAfw?'&#9650;':'&#9660;')+'</span>'
+      +'</div>'
+      +'<div id="cons-body" style="display:'+(openAfw?'block':'none')+';padding:0 1rem 1rem">';
+    if(d.gewijzigd_sinds_check) h+='<div style="font-size:11px;color:var(--gold-dark);margin-bottom:.5rem">Er zijn documenten bijgekomen sinds de laatste controle.</div>';
+    h+='<div style="margin-bottom:.75rem"><button class="btn btn-sm" id="cons-run">'+(gedaan?'Opnieuw controleren':'Documenten controleren')+'</button>'
+      +(gedaan?'<span style="font-size:11px;color:var(--muted);margin-left:8px">laatste: '+new Date(d.laatste_check).toLocaleString('nl-NL',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})+'</span>':'')
+      +'</div>';
+    if(!gedaan){
+      h+='<div style="font-size:12px;color:var(--muted);line-height:1.6">Vergelijkt 7 vaste documentparen (omzet jaarrekening vs. verkoopmemorandum, werknemerslijst vs. loonadministratie, aandeelhoudersregister vs. UBO, fiscale eenheid vs. organogram, rekening-courant vs. koopprijsmechanisme, pensioen/bonus vs. SPA-garanties, EBITDA-normalisaties vs. grootboek). Toont per paar of ze overeenkomen, met de bronpassage erbij. Het systeem beoordeelt niet welke waarde juist is.</div>';
+    } else {
+      res.forEach(function(x){
+        var st=CONS_STATUS[x.status]||CONS_STATUS.onvoldoende_data;
+        var afgevinkt=!!x.afgevinkt_op;
+        h+='<div style="border-top:1px solid var(--border);padding:.6rem 0">'
+          +'<div style="display:flex;align-items:flex-start;gap:8px">'
+          +'<span style="color:'+st.kl+';font-weight:700;flex-shrink:0">'+st.ico+'</span>'
+          +'<div style="flex:1;min-width:0">'
+          +'<div style="font-size:12px;font-weight:600;color:var(--head)'+(afgevinkt?';opacity:.6':'')+'">'+esc(x.naam||x.check_sleutel)+'</div>';
+        if(x.status==='afwijking'){
+          h+='<div style="font-size:11px;color:var(--sub);margin-top:3px">'
+            +esc(x.doc_a||'?')+(x.doc_a_pagina?(' (p. '+esc(x.doc_a_pagina)+')'):'')+': <strong>'+esc(x.waarde_a||'—')+'</strong><br>'
+            +esc(x.doc_b||'?')+(x.doc_b_pagina?(' (p. '+esc(x.doc_b_pagina)+')'):'')+': <strong>'+esc(x.waarde_b||'—')+'</strong></div>';
+          if(x.citaat_a||x.citaat_b) h+='<div style="font-size:10px;color:var(--muted);font-style:italic;margin-top:2px">'+esc(x.citaat_a||'')+(x.citaat_a&&x.citaat_b?'  |  ':'')+esc(x.citaat_b||'')+'</div>';
+          if(x.toelichting) h+='<div style="font-size:11px;color:var(--muted);margin-top:2px">'+esc(x.toelichting)+'</div>';
+          if(afgevinkt){
+            h+='<div style="font-size:11px;color:var(--teal);margin-top:4px">&#10003; Verklaarbaar &mdash; '+esc(x.afgevinkt_door||'')+(x.afgevinkt_notitie?(': '+esc(x.afgevinkt_notitie)):'')+' <a href="#" class="cons-terug" data-k="'+esc(x.check_sleutel)+'" style="color:var(--muted)">(terugzetten)</a></div>';
+          } else {
+            h+='<div style="margin-top:5px"><button class="btn-outline btn-sm cons-afvink" data-k="'+esc(x.check_sleutel)+'" style="font-size:10px;padding:2px 8px">Verklaarbaar &mdash; notitie</button></div>';
+          }
+        } else if(x.status==='onvoldoende_data'){
+          h+='<div style="font-size:11px;color:var(--muted);margin-top:2px">'+esc(x.toelichting||'Onvoldoende gegevens om te vergelijken.')+'</div>';
+        } else {
+          h+='<div style="font-size:11px;color:var(--muted);margin-top:2px">'+esc(x.toelichting||(x.waarde_a?('Beide: '+x.waarde_a):'Komt overeen.'))+'</div>';
+        }
+        h+='</div></div></div>';
+      });
+    }
+    h+='</div></div>';
+    box.innerHTML=h;
+    var hdr=document.getElementById('cons-hdr');
+    if(hdr)hdr.addEventListener('click',function(){ var b=document.getElementById('cons-body'),c=document.getElementById('cons-chevron'); var open=b.style.display!=='none'; b.style.display=open?'none':'block'; if(c)c.innerHTML=open?'&#9660;':'&#9650;'; });
+    var run=document.getElementById('cons-run');
+    if(run)run.addEventListener('click',bgCheckConsistentie);
+    box.querySelectorAll('.cons-afvink').forEach(function(btn){ btn.addEventListener('click',function(){
+      var n=prompt('Waarom is dit verschil verklaarbaar? (notitie)'); if(n===null)return;
+      bgAfvinkConsistentie(btn.getAttribute('data-k'),n,false);
+    });});
+    box.querySelectorAll('.cons-terug').forEach(function(a){ a.addEventListener('click',function(e){ e.preventDefault(); bgAfvinkConsistentie(a.getAttribute('data-k'),'',true); });});
+  }
+  async function bgCheckConsistentie(){
+    var run=document.getElementById('cons-run'); if(run){run.disabled=true;run.textContent='Bezig met controleren…';}
+    try{
+      var r=await fetch(WORKER+'/mna/consistentie/check/'+encodeURIComponent(S.code),{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':bgConsKey()}});
+      var d=await r.json();
+      if(!r.ok||!d.ok){ toast((d&&d.error)||'De controle is niet gelukt.','err'); if(run){run.disabled=false;run.textContent='Documenten controleren';} return; }
+      toast('Consistentiecontrole klaar.','ok');
+      bgLaadConsistentie();
+    }catch(e){ toast('Verbindingsfout bij de controle.','err'); if(run){run.disabled=false;run.textContent='Documenten controleren';} }
+  }
+  async function bgAfvinkConsistentie(sleutel,notitie,terug){
+    try{
+      var r=await fetch(WORKER+'/mna/consistentie/afvink/'+encodeURIComponent(S.code),{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':bgConsKey()},body:JSON.stringify({check_sleutel:sleutel,notitie:notitie||'',terugzetten:!!terug})});
+      var d=await r.json();
+      if(r.ok&&d.ok){ bgLaadConsistentie(); } else { toast('Kon niet opslaan.','err'); }
+    }catch(e){ toast('Verbindingsfout.','err'); }
+  }
+
   // Risicoraamwerk (SWOT/PESTEL/Porter) — P3 uit de zesde heraudit (19 aug 2026). Zelfde
   // "toon bestaande versie eerst, genereer alleen op verzoek"-patroon als bgToonOfGenereerDoc
   // (NDA/LoI/BEM/Excl): een generatie die je alleen bekijkt mag niet stilzwijgend verdwijnen.
