@@ -136,13 +136,29 @@ exclusivity
 toevoegen met een use-case-onderbouwing, niet preventief. De overige ~100 componenten uit Marcels
 catalogus: alleen als toekomstig menu-item beschreven, niet gebouwd.
 
+**ECONOMICS-componenten worden gevoed door de bestaande rekenkern** (`MASTER-SPEC` D-18). De
+dataslots van `indicative_price`, `price_mechanism` en `payment_terms` — en later een expliciete
+`valuation`-component — krijgen hun waarden uit `mna/03-rekenkern-waardering.js` en de
+backend-waarderingslogica, met `provenance = CALCULATION` (welke figuur, welk model, welke
+parameters). De rekenkern en alle modellen (DCF, multiples, goodwill/overwinst, synergie, scenario,
+earn-out, vendor loan, aandelenruil, bod-vergelijker, opbrengst-brug, onderhandelruimte, BATNA)
+blijven ongewijzigd. De waarderingsspecialist reviewt de *inputs* (add-backs, multiple, aannames)
+en tekent de *uitkomst* af; de formules veranderen niet (werkregel 13).
+
 ---
 
 ## 6. AI-rol (D-07)
 
-Per component mag AI een **conceptvoorstel** in het vrije tekstveld zetten, op basis van de
-ingevulde dataslots en de dealcontext. Bijvoorbeeld: "Op basis van de ingevoerde dealgegevens is een
-concept-exclusiviteitsbepaling opgesteld."
+Per component maakt AI een **substantieel conceptvoorstel** in het vrije tekstveld, op basis van de
+ingevulde dataslots en de dealcontext — **precies zoals de bestaande jura-generatoren dat nu doen**.
+Dit geldt voor juridische componenten (concept-exclusiviteitsbepaling, concept-geheimhoudingsclausule,
+concept-kostenverdeling) én voor fiscale componenten (concept-fiscale aandachtsnotitie,
+concept-structureringsoverweging). De output is altijd `text_provenance = AI_INFERENCE`, zichtbaar
+als **concept, geen advies**.
+
+Optioneel kan de adviseur een eigen sjabloon uploaden dat het AI-concept seed; dat sjabloon wordt
+getoond met het label "eerdere sjabloontekst, niet getoetst — vervang door specialist-input". Koers
+voor Morgen onderhoudt en garandeert die sjabloontekst niet.
 
 Zodra de specialist of de adviseur de tekst wijzigt:
 

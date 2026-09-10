@@ -53,8 +53,15 @@ volgorde, en zien een **volledigheidscheck** die aangeeft wat een compleet docum
 waarom dat leverage kost. Dat is de `DocumentComposer` op het Block Framework en het is een
 kernfeature.
 
-**Wat vervalt** is uitsluitend een door Koers voor Morgen onderhouden bibliotheek van
-vooraf-getoetste clausule*teksten* binnen die componenten.
+**Wat vervalt** is uitsluitend een door Koers voor Morgen onderhouden, gecureerde en versiebeheerde
+bibliotheek van vooraf-getoetste clausule*teksten* waar het platform juridisch achter staat.
+
+**AI-voorstellen voor juridisch en fiscaal blijven — precies zoals nu.** Het "lege werkveld" is de
+opslagvorm, geen stap terug. AI vult het met een **substantieel concept** op basis van de
+dealgegevens en de context (een concept-exclusiviteitsbepaling, een concept-geheimhoudingsclausule,
+een fiscale aandachtsnotitie), gemarkeerd als `AI_INFERENCE` / concept, geen advies. Optioneel
+geseed door een door de adviseur geüpload sjabloon, met het label "eerdere sjabloontekst, niet
+getoetst". De specialistlaag (jurist/fiscalist) komt daar **bovenop**, niet in plaats van.
 
 **Gevolg voor de architectuur:** "Block Library" heet nu **Transaction Block Framework**. Een
 component in het menu = een **leeg gestructureerd werkveld** (dataslots + één vrij tekstveld +
@@ -97,7 +104,8 @@ implementeren vóór jurist-akkoord. `REQUIRES PRODUCT DECISION` = Marcel beslis
 | D-04 | De **MoU** is de eerste verticale slice die de architectuur bewijst | **DECIDED** |
 | D-05 | **Componentenmenu blijft** (Hans' voorstel): de `DocumentComposer` laat adviseur/specialist componenten kiezen + ordenen + een volledigheidscheck zien. Wat vervalt is de vooraf-getoetste-*tekst*-bibliotheek. Blocks = lege gestructureerde werkvelden. Fase 1: ~23 block-*definities* (welke componenten/werkvelden), geen tekstinhoud | **DECIDED** |
 | D-06 | ~~Juridische blocktekst als aparte `LEGAL CONTENT LIBRARY`-werkstroom~~ **VERVALLEN** door §1a. Er is geen standaardtekst-werkstroom; de specialist levert de tekst per dossier | **DECIDED** |
-| D-07 | AI mag een conceptvoorstel doen. Zodra de specialist óf de adviseur de tekst wijzigt, is AI niet meer eigenaar; de wijzigende partij wordt eigenaar/reviewer van die versie. AI "verbetert" nooit ongevraagd bestaande dossiertekst | **DECIDED** |
+| D-07 | AI blijft substantiële conceptvoorstellen doen voor juridische én fiscale componenten, zoals nu in de jura-generatoren (concept, `AI_INFERENCE`, geen advies; optioneel geseed door een adviseur-sjabloon). Zodra de specialist óf de adviseur de tekst wijzigt, is AI niet meer eigenaar; de wijzigende partij wordt eigenaar/reviewer van die versie. AI "verbetert" nooit ongevraagd bestaande dossiertekst | **DECIDED** |
+| D-18 | **De volledige rekenkern blijft ongewijzigd bestaan.** `mna/03-rekenkern-waardering.js` + alle backend-waarderingslogica + alle modellen: EBITDA/EBIT-multiple, DCF, intrinsieke waarde, liquidatiewaarde, goodwill via overwinst, synergie-analyse, scenario-analyse, earn-out, vendor loan, aandelenruil, bod-vergelijker (Deal Value Matrix), opbrengst-brug, onderhandelruimte, BATNA. De Transaction OS **voegt toe** (provenance op elke uitkomst, een reviewgate voor de waarderingsspecialist, de opbouwsheet) en raakt **geen formule** — werkregel 13 (GOUDEN STANDAARD) blijft heilig | **DECIDED** |
 | D-08 | Policy engine wordt de centrale autorisatielaag; migratie alleen met behoud van bestaand gedrag, geverifieerd door een uitgebreide `tests/policy-equivalentie.mjs` vóór verwijderen van client-side checks | **DECIDED** |
 | D-09 | Negatieve roltests voor alle kritieke rollen, in CI | **DECIDED** |
 | D-10 | `BlockReview` geldt voor `block_id + block_version + dossier`. Iedere inhoudelijke wijziging na goedkeuring → oude review `SUPERSEDED`/`REVOKED` + nieuwe review nodig, ongeacht wie wijzigt | **DECIDED** |
@@ -237,8 +245,12 @@ Iedere informatie-eenheid krijgt precies één type: `SOURCE_FACT` · `USER_FACT
 
 - De bestaande NDA/LoI/BEM/exclusiviteit/dealvoorstel/teaser/verkoopmemorandum-generatoren blijven
   productief. Geen nieuwe documentlogica erin.
-- DD-fases (sectorprofielen), rekenkern, VOK/GV/AV, agenda, sourcing, Postvak, MFA,
-  bewaartermijn-feature — ongewijzigd.
+- **De volledige rekenkern en alle waarderingsmodellen blijven onaangeroerd** (D-18). De Transaction
+  OS bouwt eromheen: uitkomsten krijgen een `CALCULATION`-provenance (welke figuur, welk model, welke
+  parameters) en voeden de economics-componenten; de waarderingsspecialist reviewt de *inputs*
+  (add-backs, multiple, aannames) en tekent de *uitkomst* af. De formules zelf veranderen niet.
+- DD-fases (sectorprofielen), VOK/GV/AV, agenda, sourcing, Postvak, MFA, bewaartermijn-feature —
+  ongewijzigd.
 - `worker/00-policy.js` blijft de bron; de nieuwe policy engine breidt uit, vervangt niet in één keer.
 
 ### Moet migreren

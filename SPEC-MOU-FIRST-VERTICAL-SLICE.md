@@ -105,6 +105,11 @@ Pas wanneer alle 13 werken en de teststrategie groen is, uitbreiden naar het vol
 - Domeinspecifieke "niet-gereviewd"-disclaimers uit sectie 0.3 — die komen met de echte
   specialistrollen; in de slice geldt: interim-review vereist óf de begeleider zet `specialist_review`
   op `uit` (gelogd) en de sectie-0.3-disclaimer wordt gestempeld.
+- **Wijzigingen aan de rekenkern of de waarderingsmodellen.** De slice *leest* de rekenkern-uitkomsten
+  voor de economics-componenten (met `CALCULATION`-provenance) en niets meer. De rekenkern
+  (`mna/03-rekenkern-waardering.js` + backend) en alle modellen blijven onaangeroerd (`MASTER-SPEC`
+  D-18). De waarderings-opbouwsheet en de reviewgate voor de waarderingsspecialist zijn fase C/D, geen
+  onderdeel van deze MoU-slice.
 
 ---
 
