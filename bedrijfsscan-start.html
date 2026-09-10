@@ -355,6 +355,24 @@ function setScanTitle(){
    zijn nu `let`-bindings die naar de config van de actieve sector (ST.sector) wijzen; setScanSector()
    wisselt ze om. Alleen 'accountancy' is nu gevuld — de andere sectoren volgen in fase 2 en vallen
    tot dan terug op accountancy. Zolang ST.sector 'accountancy' is, is het gedrag exact ongewijzigd. */
+// Diagnostische opdracht voor niet-accountancy-scans (10 sep 2026). Zonder gebronde benchmarks kan
+// het rapport niet vergelijken met de markt; deze instructie dwingt in plaats daarvan een expliciet
+// per-as overdrachtsgereedheids-oordeel + blinde vlekken af, zodat het rapport méér is dan een
+// samenvatting van wat de ondernemer zelf al invulde. Geen cijfers/normen — alleen structurele
+// beoordeling op basis van de ingevulde data.
+const NIET_ACC_DIAGNOSE =
+  'DIAGNOSTISCHE OPDRACHT (geen benchmarks beschikbaar voor deze sector): het rapport moet MEER zijn dan een samenvatting van de ingevulde antwoorden. Doe in de sectie ## Overdrachtsgereedheid een expliciete beoordeling per as, elk met het label STERK / AANDACHT / ZWAK en precies één concrete zin waarom, op basis van de ingevulde data:\n'
+  +'- Afhankelijkheid van de eigenaar (klantrelaties, kennis, netwerk, inkoop)\n'
+  +'- Tweede managementlaag / draait de onderneming door zonder de eigenaar\n'
+  +'- Klant- en leverancierconcentratie\n'
+  +'- Kwaliteit van de omzet (terugkerend/contractueel vs. project of eenmalig)\n'
+  +'- Resultaatnormalisatie (marktconform ondernemersloon, prive-onttrekkingen, incidentele posten, vastgoed in prive)\n'
+  +'- Sleutelpersoon-/bus-factor op kritieke kennis of relaties\n'
+  +'- Contract- en marktpositie (grote afnemers, zorgverzekeraars/gemeenten, leveranciers/hyperscalers, voor zover van toepassing)\n'
+  +'Laat een as weg als de scan er geen data over bevat, en noem hem dan onder BLINDE VLEKKEN.\n'
+  +'BLINDE VLEKKEN: sluit ## Overdrachtsgereedheid af met 1 tot 3 punten die een koper zeker zal opvragen en die nu niet in de scan zitten.\n'
+  +'GEEN vergelijkende uitspraken ("onder de norm", "laag voor de sector", "boven marktgemiddelde"); er is geen benchmark. Wel structurele uitspraken die een koper zou maken ("een marge van X laat een koper weinig ruimte om de overname te financieren").\n';
+
 const SECTIONS_BY_SECTOR={};
 const SCENARIOS_BY_SECTOR={};
 const REVERSE_BY_SECTOR={ accountancy:new Set(['p1','k1','k2','ai1','pe1']) };
@@ -1207,7 +1225,7 @@ async function generateAI(){
   }
 
   const mainPrompt=
-    'Schrijf een beknopt, direct strategisch adviesrapport in het Nederlands. Maximaal 600 woorden totaal — dit is een harde grens, geen richtlijn. Kort en to-the-point weegt zwaarder dan volledigheid.\n'
+    'Schrijf een beknopt, direct strategisch adviesrapport in het Nederlands. Maximaal '+(isAccountancyScan()?'600':'700')+' woorden totaal — dit is een harde grens, geen richtlijn. Kort en to-the-point weegt zwaarder dan volledigheid.\n'
     +TAAL_REGELS+'\n'
     +'TOON: De eigenaar weet al hoe zijn '+zn+' eruitziet. Beschrijf niet wat hij al weet — benoem kort en helder wat de cijfers en scores laten zien, zonder elk mogelijk gevolg uit te spellen. Vertrouw erop dat hij zelf ook kan nadenken; het rapport hoeft niet compleet te zijn, het moet een scherp startpunt zijn.\n'
     +'VERBOD beschrijvende taal: NOOIT "aandacht verdient", "het is van belang", "overwegen te", "het is raadzaam", "speelt een rol", "relevant is", "vraagt om", "vereist actief beheer". Vervang door een korte, concrete constatering.\n'
@@ -1227,6 +1245,7 @@ async function generateAI(){
     +'- Naam: '+naam+' | Type: '+kantoorType+(sbi?' | SBI: '+sbi:'')+'\n'
     +(isAccountancyScan()?'':'- LET OP: dit is GEEN accountantskantoor. Gebruik geen accountancy-jargon (Wwft, NBA, samenstelverklaring, kantoor) en geen accountancy-benchmarks. Schrijf over "'+zn+'"/"onderneming".\n')
     +(isAccountancyScan()?'':(SECTOR_AI_CONTEXT[ST.sector]||''))
+    +(isAccountancyScan()?'':NIET_ACC_DIAGNOSE)
     +sectorBenchmarkZin
     +(cbsGroeiIndex?'- CBS omzetgroei SBI 6920 ('+cbsGroeiPeriode+'): index '+cbsGroeiIndex+' (2021=100). Gebruik dit als sectorale groeicontext, niet als FTE-benchmark.\n':'')
     +'- Regio: '+(p.regio||'onbekend')+' | FTE: '+(p.fte||'?')+' | Omzet: \u20ac'+(p.omzet||'?')+'\n'
@@ -1252,6 +1271,7 @@ async function generateAI(){
     +'## Bedrijfsvoering en technologie\n'
     +'## Strategische positie en commerciele kracht\n'
     +'## Risicoprofiel\n'
+    +(isAccountancyScan()?'':'## Overdrachtsgereedheid\n')
     +'## Aanbeveling\n'
     +'INSTRUCTIE Aanbeveling: geef 2-3 suggesties, geen uitputtende lijst. Behandel ze als overwegingen (zie AANBEVELINGEN ZIJN SUGGESTIES hierboven), niet als opdrachten — een tijdshorizon (bijv. "op korte termijn"/"op langere termijn") mag, een harde deadline met dwingend gevolg niet. '
     +(isAccountancyScan()
@@ -1898,6 +1918,7 @@ async function genereerKantoorAI(o, container) {
     'Schrijf een strategisch rapport. Gebruik "uw ' + zn + '". Geen eerste persoon. Begin direct met ## Strategisch profiel.\n\n'
     + (oAcc?'':'LET OP: dit is GEEN accountantskantoor \u2014 geen accountancy-jargon of -benchmarks, schrijf over "' + zn + '".\n')
     + (oAcc?'':'Er is voor deze sector geen externe benchmark beschikbaar \u2014 noem geen marktgemiddelde, sectornorm of vergelijkingscijfer uit eigen kennis.\n')
+    + (oAcc?'':'DIAGNOSTISCH: onder ## Risicos en aandachtspunten een expliciet oordeel per as (eigenaarafhankelijkheid, tweede managementlaag, klant-/leverancierconcentratie, kwaliteit van de omzet, resultaatnormalisatie, sleutelpersoon-risico), elk met label STERK / AANDACHT / ZWAK en \u00e9\u00e9n concrete zin. Sluit af met 1-3 blinde vlekken die een koper zeker opvraagt en die nu niet in de scan zitten. Geen vergelijkende uitspraken, wel structurele.\n')
     + 'Baseer alles uitsluitend op de scores en gegevens hieronder. Verzin geen oorzaak, cijfer of externe norm die niet uit de scan volgt. Formuleer de aanbeveling als directe consequentie van de ingevulde scaninformatie; ontbreekt onderbouwing, benoem dat.\n'
     + (zn==='kantoor'?'Kantoor: ':zn==='praktijk'?'Praktijk: ':'Bedrijf: ') + (o.name||'Anoniem') + ' | Score: ' + o.overall + '/100\n'
     + 'Fte: ' + (o.fte||'?') + ' | Omzet: ' + (o.revenue||'?')
