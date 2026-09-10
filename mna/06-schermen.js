@@ -1162,7 +1162,9 @@ function bindAll(){
           checkVOK(code).then(function(vokStatus){
             // Ook opnieuw tonen als er een nieuwere versie is dan wat eerder getekend is —
             // anders wordt een tekstwijziging (bv. bewaartermijn) nooit meer voorgelegd.
-            if(!vokStatus.getekend||vokStatus.versie!==VOK_VERSIE){ toonVOKPopup(code, function(){ renderApp(); }); }
+            // Uitzondering: testers (en Bisschops-eigen/legacy trajecten) hoeven een versiebump
+            // niet opnieuw te tekenen — nooit-getekend blijft wél tekenen (Marcel, 10 sep 2026).
+            if(!vokStatus.getekend||(vokStatus.versie!==VOK_VERSIE&&!vokStatus.geen_herteken_bij_versiebump)){ toonVOKPopup(code, function(){ renderApp(); }); }
             else { renderApp(); }
           }).catch(function(){ renderApp(); });
           return; // renderApp wordt via checkVOK afgehandeld
