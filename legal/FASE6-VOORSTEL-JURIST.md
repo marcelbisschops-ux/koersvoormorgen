@@ -11,7 +11,7 @@
 |---|---|---|
 | 1 · Handelsnaam | 🟢 akkoord, redactie aanpassen — géén blanket-vervanging van "Bisschops Financing" | Tekst herzien naar "handelend onder de naam …"; het voorstel om de verkorte aanduiding overal te vervangen is **ingetrokken** |
 | 2 · Reliance | 🟢 in beginsel, vrijwaring aanscherpen + "geen rechten ontlenen" nuanceren | Beide herzien (zie hieronder) |
-| 3 · AI-bijlage | 🟠 eerst contractuele/feitelijke verificatie | Tekst **on hold**; verificatie-checklist + gebronde Anthropic-feiten toegevoegd; art. 22-zin en transparantie-punt herzien |
+| 3 · AI-bijlage | 🟠 eerst contractuele/feitelijke verificatie | **Verificatie afgerond op 2026-09-10** (zie §3-verificatie). ZDR staat **uit** → standaardretentie 30 dagen (variant B, nu de vaste tekst). Geen apart Anthropic-contract → standaard Commercial Terms + DPA (met SCC's). Model `claude-sonnet-4-6` is geen Covered Model. Art. 22: codedoorloop uitgevoerd, geen uitsluitend geautomatiseerd besluit met rechtsgevolg. Rest voor de jurist: de rolverdeling-splitsing (punt 8a/8b) en de juridische kwalificatie. **Klaar voor jurist-ronde 2.** |
 | 4 · Bewaartermijn | 🟢 in beginsel, redactie aanscherpen (wie/waarom/hoelang/einde/verwijdering) | Tekst herzien met die vijf elementen; fee-zin genuanceerd. **DOORGEVOERD op 2026-09-10 op instructie van Marcel** (jurist akkoord in beginsel): VOK v1.5 → v1.6, GV v2.0 → v2.1, live op productie. De technische koppeling (opslagfee bij verlenging) is meegebouwd. **Openstaand:** de AV (`voorwaarden.html`) noemt nog een platte 14-dagentermijn; die consistentie-aanpassing valt buiten wat de jurist voor onderdeel 4 zag en wacht op zijn oordeel. |
 | Volgorde | wijzigen: eerst 3 (AI), dan 1, 2, 4 | Overgenomen |
 
@@ -141,13 +141,15 @@ zich op zo'n uitkomst beroept als ware het een aan hem gericht professioneel adv
 
 ---
 
-## Onderdeel 3 — Bijlage AI-verwerking bij de VOK  🟠 ON HOLD tot verificatie
+## Onderdeel 3 — Bijlage AI-verwerking bij de VOK  🟡 verificatie afgerond, klaar voor jurist-ronde 2
 
-De review geeft hier **geen akkoord** zonder voorafgaande feitelijke en contractuele verificatie.
-De tekst hieronder blijft staan als concept, maar wordt **niet doorgevoerd** voordat de checklist
-in §3-verificatie is afgewerkt.
+De eerste review gaf hier geen akkoord zonder feitelijke en contractuele verificatie. Die is op
+2026-09-10 afgerond (zie §3-verificatie): geen apart Anthropic-contract, ZDR staat uit (30-dagen-
+retentie), `claude-sonnet-4-6` is geen Covered Model, en de codedoorloop wijst geen artikel
+22-verwerking uit. De bijlagetekst hieronder is daarop aangepast (punt 6 vast op 30 dagen). Nog aan
+de jurist: de juridische kwalificaties (art. 22, rolverdeling) en definitief akkoord.
 
-### Concepttekst — "Bijlage — Verwerking met behulp van AI" (ongewijzigd t.o.v. v1, behalve punt 7 en 8)
+### Bijlagetekst — "Bijlage — Verwerking met behulp van AI"
 
 > **1. Doel.** Het platform gebruikt AI-taalmodellen om geüploade documenten te analyseren, gegevens
 > daaruit te extraheren naar het due-diligence-dossier, en concept-rapportages en -documenten te
@@ -165,18 +167,23 @@ in §3-verificatie is afgewerkt.
 > of verbeteren van AI-modellen van Anthropic of van Bisschops Financing B.V.
 >
 > **5. Doorgifte buiten de EU.** Voor zover persoonsgegevens naar Anthropic PBC in de Verenigde
-> Staten worden doorgegeven, gebeurt dit op basis van de EU Standard Contractual Clauses tussen
-> Bisschops Financing B.V. en Anthropic PBC. [Verificatie: zie §3-verificatie punt 1.]
+> Staten worden doorgegeven, gebeurt dit op basis van de EU Standard Contractual Clauses die deel
+> uitmaken van het Data Processing Addendum tussen Bisschops Financing B.V. en Anthropic PBC.
 >
-> **6. Bewaring bij de AI-dienst.** [Formulering afhankelijk van §3-verificatie punt 2 — zie de twee
-> varianten hieronder.]
+> **6. Bewaring bij de AI-dienst.** Bisschops Financing B.V. maakt gebruik van de zakelijke API van
+> Anthropic. Anthropic verwijdert invoer en uitvoer binnen dertig (30) dagen na ontvangst
+> respectievelijk het genereren daarvan. Anthropic kan gegevens langer bewaren voor zover de wet dat
+> vereist of voor zover een verzoek door de geautomatiseerde misbruikdetectie van Anthropic is
+> gemarkeerd; in dat laatste geval worden invoer en uitvoer tot ten hoogste twee (2) jaar bewaard en
+> classificatiescores tot ten hoogste zeven (7) jaar. Anthropic gebruikt deze gegevens niet voor
+> modeltraining.
 >
 > **7. Menselijke tussenkomst.** Elke AI-uitkomst die naar een tegenpartij of cliënt gaat, wordt door
 > de adviseur beoordeeld en vrijgegeven voordat deze wordt verzonden of gedeeld. Voor zover Bisschops
 > Financing B.V. AI inzet in een verwerking waarvoor zij zelf verwerkingsverantwoordelijke is (de
 > zelf-scan, zie punt 8), vindt daarbij geen uitsluitend geautomatiseerde besluitvorming plaats die
 > voor de betrokkene rechtsgevolgen heeft of hem anderszins in aanmerkelijke mate treft in de zin van
-> artikel 22 AVG. [Verificatie: zie §3-verificatie punt 4.]
+> artikel 22 AVG.
 >
 > **8. Transparantie richting betrokkenen.**
 > (a) Voor de M&A-trajecten, waarin de adviseur verwerkingsverantwoordelijke is en Bisschops
@@ -190,34 +197,15 @@ in §3-verificatie is afgewerkt.
 > waarden als "niet vermeld" of "handmatig controleren" in plaats van een waarde te schatten. De
 > adviseur controleert geëxtraheerde cijfers voordat hij ze in een waardering of document gebruikt.
 
-### Twee varianten voor punt 6, te kiezen op basis van de account-instelling
+### §3-verificatie — afgerond op 2026-09-10
 
-**Variant A — als Zero Data Retention (ZDR) actief is op het gebruikte Anthropic-account/de workspace:**
-
-> Bisschops Financing B.V. maakt gebruik van de zakelijke API van Anthropic onder een Zero Data
-> Retention-afspraak: invoer en uitvoer worden door Anthropic niet opgeslagen na afhandeling van het
-> API-verzoek. Anthropic kan gegevens uitsluitend langer bewaren voor zover de wet dat vereist of
-> voor zover een verzoek door de geautomatiseerde misbruikdetectie van Anthropic is gemarkeerd; in
-> dat laatste geval worden invoer en uitvoer tot ten hoogste twee (2) jaar bewaard.
-
-**Variant B — als ZDR niet actief is (standaardretentie):**
-
-> Bisschops Financing B.V. maakt gebruik van de zakelijke API van Anthropic. Anthropic verwijdert
-> invoer en uitvoer binnen dertig (30) dagen na ontvangst respectievelijk het genereren daarvan.
-> Anthropic kan gegevens langer bewaren voor zover de wet dat vereist of voor zover een verzoek door
-> de geautomatiseerde misbruikdetectie van Anthropic is gemarkeerd; in dat laatste geval worden
-> invoer en uitvoer tot ten hoogste twee (2) jaar bewaard en classificatiescores tot ten hoogste
-> zeven (7) jaar. Anthropic gebruikt deze gegevens niet voor modeltraining.
-
-### §3-verificatie — af te ronden vóór onderdeel 3 wordt doorgevoerd
-
-| # | Te verifiëren | Wie levert het aan | Status |
+| # | Te verifiëren | Uitkomst | Status |
 |---|---|---|---|
-| 1 | De **daadwerkelijk aanvaarde Anthropic-stukken**: Commercial Terms of Service + Data Processing Addendum (met SCC's) + actuele sub-verwerkerslijst. Bevestigt: sub-verwerker-status, SCC-grondslag voor de VS-doorgifte, opsomming verdere sub-verwerkers. | Marcel — downloaden uit de Anthropic Console (Settings → Compliance / Legal agreements) | open |
-| 2 | **Account-instelling ZDR**: staat Zero Data Retention aan voor de organisatie/workspace waarvan de worker de API-sleutel gebruikt? Zo nee: is metrics logging of een stateful feature (Files API, Batch API, code execution) in gebruik? | Marcel — Anthropic Console → Privacy / Data controls | open |
-| 3 | **Model**: de worker gebruikt `claude-sonnet-4-6`. Dat is geen "Covered Model" (alleen de Fable-/Mythos-modellen vereisen verplichte 30-dagenretentie), dus ZDR-geschikt. | bevestigd op basis van de publieke Anthropic-documentatie | 🟢 |
-| 4 | **Artikel 22 AVG**: bevestigen via een doorloop van het systeem dat er nergens een uitsluitend geautomatiseerd besluit met rechtsgevolg / aanmerkelijk effect voor een betrokkene wordt genomen. Voorlopige lezing op basis van de vaste bouwregel van het platform ("nooit gokken", onzekere waarden → "handmatig controleren", elke uitkomst naar een tegenpartij → vrijgave door de adviseur, waardering is indicatief): geen art. 22-verwerking. Te bevestigen. | Marcel + ik (systeemdoorloop) | open |
-| 5 | **Rolverdeling verwerkingsverantwoordelijke/verwerker**: M&A-platform → adviseur = verwerkingsverantwoordelijke, Bisschops Financing = verwerker (VOK). Zelf-scan → Bisschops Financing = verwerkingsverantwoordelijke (privacyverklaring). Punt 8 is daarop gesplitst. Bevestigen dat die tweedeling juist en volledig is. | de jurist | open |
+| 1 | Aanvaarde Anthropic-stukken | Marcel bevestigt: **geen apart onderhandeld contract**. Het account draait op de standaard **Commercial Terms of Service** + het **Commercial Data Processing Addendum**, geaccepteerd bij het aanmaken van API-toegang. Het DPA bevat de EU Standard Contractual Clauses voor de VS-doorgifte. Anthropic publiceert de actuele sub-verwerkerslijst op zijn Trust Center / `anthropic.com/legal`. | 🟢 |
+| 2 | Account-instelling ZDR | Screenshot Anthropic Console → Privacy controls (2026-09-10): **Data retention: "On · 30 days"** — Zero Data Retention staat **uit**, standaardretentie 30 dagen. "Allow user feedback" staat uit; het Development Partner Program is niet aangesloten (geen extra data-deling voor training). Claude Code metrics logging staat aan, maar dat betreft de dev-tooling van de beheerder, niet de platform-API-verwerking. De worker gebruikt uitsluitend `/v1/messages` met prompt caching — geen Files API, Batch API of code-execution. → **punt 6 = de 30-dagentekst** (voorheen "variant B"). | 🟢 |
+| 3 | Model | De worker gebruikt `claude-sonnet-4-6` — geen "Covered Model" (alleen de Fable-/Mythos-modellen vereisen verplichte 30-dagenretentie), dus ZDR-geschikt indien later gewenst. | 🟢 |
+| 4 | Artikel 22 AVG | Codedoorloop uitgevoerd (backend-modules + cron). Automatisch draaien: (a) een traject zonder activiteit wordt na 3 maanden + 14 dagen waarschuwing afgesloten en daarna gewist — een gegevens-lifecyclehandeling, geen besluit over de rechtspositie van een persoon; (b) AI-extractie en indicatieve waardering — concept, altijd door de adviseur beoordeeld, niets gaat naar een tegenpartij zonder handmatige vrijgave; (c) proefaccount goed/afkeuren, afspraak bevestigen, fase vrijgeven — telkens een menselijke klik. **Geen uitsluitend geautomatiseerd besluit met rechtsgevolg of aanmerkelijk effect voor een betrokkene.** Marcel bevestigt dat dit met de feitelijke werking klopt. Juridische kwalificatie ter toetsing bij de jurist. | 🟢 (feitelijk) |
+| 5 | Rolverdeling verwerkingsverantwoordelijke/verwerker | M&A-platform → adviseur = verwerkingsverantwoordelijke, Bisschops Financing = verwerker (VOK). Zelf-scan → Bisschops Financing = verwerkingsverantwoordelijke (privacyverklaring). Punt 8 is daarop gesplitst (8a/8b). | ter toetsing jurist |
 
 ### Gebronde Anthropic-feiten (publiek, als referentie voor de verificatie)
 
@@ -229,12 +217,13 @@ in §3-verificatie is afgewerkt.
 
 ### Vraag aan de jurist
 
-- Welke van de vijf verificatiepunten wilt u zelf beoordelen (nu punt 1 en 5 aangemerkt) en welke
-  volstaat als Marcel ze feitelijk aanlevert?
-- Voorkeur voor variant A of B in punt 6 blijft afhankelijk van punt 2; akkoord met beide
-  concept-varianten als redactie?
+- De feitelijke verificatie (punten 1 t/m 4) is afgerond; akkoord met de bijlagetekst zoals die er
+  nu staat, met de 30-dagenformulering in punt 6?
+- Is de juridische kwalificatie "geen artikel 22-verwerking" houdbaar gegeven de feitelijke
+  beschrijving in punt 4?
 - Is de gesplitste transparantiebepaling (punt 8a/8b) de juiste manier om de dubbele rol van
   Bisschops Financing (verwerker bij M&A, verwerkingsverantwoordelijke bij de scan) te ondervangen?
+- Blijven VOK-artikel 3 en 6 staan met een verwijzing naar deze bijlage (voorkeur), of samenvoegen?
 
 ---
 
@@ -301,20 +290,23 @@ De vijf door de review gevraagde elementen zijn nu expliciet:
 Per onderdeel: versieophoging van het betreffende document, bestaande audits, eerst staging, dan
 productie.
 
-1. **Onderdeel 3 (AI-bijlage)** — eerst de §3-verificatie afronden (Anthropic-DPA/ZDR-status,
-   art. 22-doorloop, rolbevestiging), dan de bijlage bij de VOK + de verwijzingen in artikel 3 en 6.
+1. **Onderdeel 3 (AI-bijlage)** — §3-verificatie is afgerond; na jurist-akkoord: de bijlage bij de
+   VOK + de verwijzingen in artikel 3 en 6.
 2. **Onderdeel 1 (handelsnaam-zin)** — in AV, GV, VOK, PV, PRIV.
 3. **Onderdeel 2 (reliance-clausule)** — in AV en GV, plus de korte variant in de documentvoettekst.
-4. **Onderdeel 4 (VOK Artikel 5 + GV-opslagvergoeding)** — hieraan hangt de technische koppeling die
-   de € 25/maand automatisch als factuurregel boekt zodra de beheerder een langere bewaartermijn zet;
-   die koppeling wordt pas gebouwd/geactiveerd nadat dit onderdeel live is.
+4. **Onderdeel 4 (VOK Artikel 5 + GV-opslagvergoeding)** — ✅ **live sinds 2026-09-10** (VOK v1.6,
+   GV v2.1); de technische koppeling die de € 25/maand automatisch boekt is meegebouwd.
 
 ---
 
-## Wat Bisschops Financing nu moet aanleveren (blokkeert onderdeel 3)
+## Status van de verificatie voor onderdeel 3 (afgerond 2026-09-10)
 
-1. De aanvaarde **Anthropic Commercial Terms + Data Processing Addendum + sub-verwerkerslijst**
-   (Anthropic Console → Compliance / Legal).
-2. Bevestiging of **Zero Data Retention** aanstaat voor de organisatie/workspace van de worker-API-sleutel,
-   en of er stateful features of metrics logging in gebruik zijn.
-3. Medewerking aan een korte **systeemdoorloop op artikel 22 AVG** (geautomatiseerde besluitvorming).
+- **Anthropic-voorwaarden:** geen apart contract; standaard Commercial Terms of Service + Commercial
+  DPA (met SCC's). Marcel bevestigd.
+- **Zero Data Retention:** staat uit (Anthropic Console → Privacy controls, gecontroleerd 2026-09-10:
+  "Data retention — Organization default: On · 30 days"). → 30-dagenretentie in de bijlage.
+- **Artikel 22 AVG:** codedoorloop uitgevoerd, geen uitsluitend geautomatiseerd besluit met
+  rechtsgevolg. Marcel bevestigt de feitelijke werking. Juridische kwalificatie ter toetsing bij de
+  jurist.
+- **Nog openstaand puntje buiten onderdeel 3:** de AV (`voorwaarden.html`) noemt nog een platte
+  14-dagentermijn — consistentie-aanpassing meenemen in jurist-ronde 2.
