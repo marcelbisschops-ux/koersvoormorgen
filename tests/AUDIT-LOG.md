@@ -191,3 +191,5 @@ niet-geregistreerde pagina; draait in pre-push-hook, CI en elke worker-deploy). 
 bij een her-gestubde `registreer.html`. Alle 11 checks groen op de huidige boom.
 
 **2026-09-09 — diepe-audit-routine (scheduled task): geen open aanvraag in de wachtrij, maandelijkse cadans nog niet verstreken (dag 9, self-request alleen dag 1-3). Geen auditronde uitgevoerd; check draaide en is hiermee gelogd.**
+
+**2026-09-10 — diepe-audit-routine (scheduled task): geen open aanvraag in de wachtrij, maandelijkse cadans nog niet verstreken (dag 10, self-request alleen dag 1-3). Geen auditronde uitgevoerd; check draaide en is hiermee gelogd.**
