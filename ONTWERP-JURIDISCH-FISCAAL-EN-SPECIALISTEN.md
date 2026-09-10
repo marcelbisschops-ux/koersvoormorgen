@@ -11,9 +11,77 @@ werkwijze compléét maakt, niet half.
 
 Dit is het **optimale doelbeeld**, ongeacht omvang. De bouwvolgorde staat onderaan.
 
+**Status:** grondprincipe (sectie 0) vastgesteld door Marcel op 2026-09-10. Stappen 1 en 8 zijn
+volledig uitgewerkt ter verificatie in aparte specs: `SPEC-STAP-1-MOU-EN-VOETTEKST.md` en
+`SPEC-STAP-8-SPECIALISTENPOOL.md`.
+
+---
+
+## 0. Grondprincipe — regie, geen autoriteit
+
+Het platform doet geen uitspraak over recht, fiscaliteit of de juistheid van een waardering. Het
+verzamelt feiten, laat de grondslag zien, en legt het oordeel bij een gekwalificeerd mens. Dit
+principe ligt dwars over alle blokken hieronder; waar B t/m F het raken, staat een verwijzing naar
+deze sectie.
+
+### 0.1 Grondslag altijd expliciet
+
+Elke juridische, fiscale of cijfermatige uitspraak die het platform toont of oproept, draagt zijn
+herkomst:
+
+- **Juridisch:** welke clausule, uit welke standaardpassage (met toetsdatum en wie die heeft
+  getoetst), of uit welke DD-bevinding hij volgt. Nooit "het platform concludeert", altijd "clausule
+  X uit sjabloon Y, getoetst op datum Z" of "gemarkeerd omdat contract A een change-of-control-
+  bepaling bevat (document, pagina)".
+- **Fiscaal:** welk feit uit de DD de vraag oproept, en naar welke regeling het verwijst — benoemd,
+  niet uitgelegd. Het platform wijst de vraag aan, het beantwoordt hem niet.
+- **Cijfers:** welk bronbedrag, welke normalisatie-add-back met toelichting en bron, welke benchmark
+  met de 🟢/🟡/🔴-status. Dit is de bestaande "nooit gokken"-regel (werkregel 8/13), doorgetrokken.
+
+### 0.2 Inhoudelijke goedkeuring door een gekwalificeerd mens, per domein
+
+Raakt een traject een van de drie domeinen, dan is de betreffende output **"concept — wacht op
+goedkeuring"** tot een bevoegd persoon aftekent:
+
+| Domein | Tekent af |
+|---|---|
+| Juridische documenten / DD-bevindingen | jurist |
+| Fiscale DD / structureringsvragen | fiscalist |
+| Waardering / cijfermatige onderbouwing | waarderingsspecialist (of Register Valuator) |
+
+Tot die aftekening: niet verzendbaar naar een tegenpartij, niet "definitief" in het dealvoorstel,
+watermerk "concept, niet gereviewd". De aftekening = naam + hoedanigheid + datum, in de audit-log.
+De clausulebibliotheek (blok B) is de vooraf-goedkeuring: onbewerkte bibliotheekclausules zijn het
+lichte pad; een bewerkte of vrij-getypte clausule valt terug op jurist-aftekening of de opt-out
+hieronder.
+
+### 0.3 De adviseur mag de eis vooraf uitschakelen, per domein
+
+De begeleider zet bij de start van het traject de aftekeneis per domein (juridisch / fiscaal /
+cijfers, apart) aan of uit. Zet hij er een uit, dan:
+
+- draagt elk downstream-document en de dossier-export een **prominente, niet-verwijderbare
+  disclaimer**: "De [juridische / fiscale / cijfermatige] inhoud in dit traject is niet beoordeeld
+  door een gekwalificeerd [jurist / fiscalist / waarderingsspecialist]. De begeleidende adviseur
+  heeft die beoordeling bewust uitgeschakeld en draagt daarvoor de volledige verantwoordelijkheid.";
+- wordt de opt-out gelogd (wie, wanneer, welk domein) — de bescherming van het platform;
+- ziet ook de verkoper/koper die disclaimer in het stuk dat zij ontvangen;
+- stapelt de algemene reliance-disclaimer (FASE6 onderdeel 2) daar bovenop.
+
+### 0.4 Wat het platform zelf nooit doet
+
+Geen juridische conclusie ("deze clausule is afdwingbaar", "dit is naar Nederlands recht een
+dealbreaker"). Geen fiscaal oordeel ("dit kwalificeert voor de deelnemingsvrijstelling"). Geen
+waardering als formele taxatie. De AI vult placeholders, zet gekozen clausules achter elkaar,
+extraheert feiten en schrijft concepttekst — onder de bestaande strikte regel — en levert nooit het
+juridische of fiscale oordeel. De structureringsmodule (blok D) is "vraag + grondslag → naar
+fiscalist", geen "asset deal vs. share deal-advies".
+
 ---
 
 ## A. Rollen en toegang (fundament)
+
+> Beheerst door sectie 0.
 
 Twee nieuwe deelnemersrollen, per traject uitgenodigd door de begeleider (zoals de meekijker, maar
 met bijdragerecht):
@@ -35,6 +103,8 @@ met bijdragerecht):
 ---
 
 ## B. Documentwerkstroom: MoU → LoI → SPA, modulair
+
+> Beheerst door sectie 0.
 
 ### B1. Clausulebibliotheek (het kernbegrip)
 
@@ -104,6 +174,8 @@ advies of taxatierapport, niet bestemd voor gebruik door derden."
 
 ## C. Juridische due diligence — verdiept
 
+> Beheerst door sectie 0.
+
 Fase VI wordt een gestructureerde checklist in plaats van een handvol vrije velden:
 
 Entiteitsstructuur & organogram · aandeelhoudersovereenkomst · statuten & blokkeringsregeling ·
@@ -121,6 +193,8 @@ automatisch als voorstel in de documentbouwer).
 ---
 
 ## D. Fiscale due diligence en structurering — nieuw blok
+
+> Beheerst door sectie 0.
 
 ### D1. Fiscale DD-checklist
 
@@ -147,6 +221,8 @@ opbrengst-brug tonen de fiscale afdracht als aparte regel.
 
 ## E. Waardering — opbouw en adviseursheet
 
+> Beheerst door sectie 0.
+
 Een bewerkbaar, presentabel document dat toont hóe de waarde is opgebouwd, samen op te bouwen met de
 verkoper:
 
@@ -169,6 +245,8 @@ omgekeerd), zodat er één bron is.
 ---
 
 ## F. Specialisten aan boord — het bredere plaatje
+
+> Beheerst door sectie 0.
 
 - **Specialist-dashboard:** takenlijst ("review LoI", "fiscale DD fase 2", "bevestig structuur"), de
   documenten en fases binnen scope, een commentaar-/redline-werkruimte, een "gereviewd"-knop met
