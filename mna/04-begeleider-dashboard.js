@@ -2164,9 +2164,19 @@ function renderBegeleiderDashboard(app){
   // Regie, geen autoriteit. Het platform verbindt transactiedata, professionele beoordeling en
   // documenttekst; het claimt nooit dat de tekst juridisch/fiscaal juist is. Alle beslissingen
   // (gate, versiebeheer, invalidatie, manifest) staan in de worker (worker/31-tos.js) — dit is UI.
-  var MOU_PROV={USER_FACT:['&#128309;','ingevoerd'],SOURCE_FACT:['&#128309;','uit bron'],CALCULATION:['&#128994;','berekend'],
-    AI_INFERENCE:['&#129302;','AI-concept'],ASSUMPTION:['&#128993;','aanname'],SPECIALIST_ASSESSMENT:['&#9878;&#65039;','specialist'],
-    PLATFORM:['&#128274;','platform'],UNVERIFIED:['&#10068;','ongeverifieerd'],'':['&#9711;','leeg']};
+  // Herkomst van een veldwaarde — als leesbaar pil-label (geen los bolletje). [tekst, tekstkleur, achtergrond]
+  var MOU_PROV={
+    USER_FACT:['ingevoerd','#3a6ea5','#e9f0f7'], SOURCE_FACT:['uit document','#3a6ea5','#e9f0f7'],
+    CALCULATION:['berekend','#1a7a5e','#e5f3ee'], AI_INFERENCE:['AI-concept','#8a5a00','#faf1df'],
+    ASSUMPTION:['aanname','#8a6d00','#f9f2df'], SPECIALIST_ASSESSMENT:['afgetekend','#1a7a5e','#e5f3ee'],
+    PLATFORM:['vaste tekst','#5a5470','#efedf3'], UNVERIFIED:['te checken','#a03030','#f8e9e9'],
+    '':['leeg','#8a8880','#f0efec']};
+  function mouProvPil(pt){ var p=MOU_PROV[pt||'']||MOU_PROV['']; return '<span style="display:inline-block;font-size:9px;font-weight:600;padding:1px 5px;border-radius:8px;color:'+p[1]+';background:'+p[2]+'">'+p[0]+'</span>'; }
+  var MOU_PROV_LEGENDA='<div style="font-size:10.5px;color:var(--muted);line-height:1.7;margin-bottom:.6rem">Herkomst per veld: '
+    +'<strong>ingevoerd</strong> = door u of de verkoper &middot; <strong>uit document</strong> = uit een geüpload stuk &middot; '
+    +'<strong>berekend</strong> = uit de rekenkern &middot; <strong>aanname</strong> = voorlopige standaard, controleer &middot; '
+    +'<strong>AI-concept</strong> = door AI voorgesteld, nog te controleren &middot; <strong>afgetekend</strong> = door een specialist beoordeeld &middot; '
+    +'<strong>vaste tekst</strong> = door het platform beheerd.</div>';
   var MOU_REV={REQUIRED:['Beoordeling vereist','var(--muted)'],REQUESTED:['Beoordeling gevraagd','var(--gold)'],
     IN_REVIEW:['In beoordeling','var(--gold)'],CHANGES_REQUESTED:['Wijzigingen gevraagd','var(--gold-dark)'],
     APPROVED:['&#10003; Afgetekend','var(--teal)'],SUPERSEDED:['Vervallen na wijziging','var(--red)'],REVOKED:['Ingetrokken','var(--red)'],
@@ -2275,6 +2285,7 @@ function renderBegeleiderDashboard(app){
     }
     h+='</div></details>';
     // Componentkaarten
+    if(!bevroren) h+=MOU_PROV_LEGENDA;
     comps.filter(function(c){return c.instance_status==='ACTIVE';}).forEach(function(c){
       var rev=c.review||{status:'REQUIRED'};
       var rl=MOU_REV[rev.status]||['',''];
@@ -2290,8 +2301,8 @@ function renderBegeleiderDashboard(app){
       if(keys.length){
         h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:.5rem">';
         keys.forEach(function(k){
-          var cell=dv[k]||{}; var pb=MOU_PROV[cell.provenance_type||'']||MOU_PROV[''];
-          h+='<div><div style="font-size:10px;color:var(--muted);margin-bottom:1px">'+esc(k)+' <span title="'+esc(pb[1])+'">'+pb[0]+'</span></div>'
+          var cell=dv[k]||{};
+          h+='<div><div style="font-size:10px;color:var(--muted);margin-bottom:1px">'+esc(k)+' '+mouProvPil(cell.provenance_type)+'</div>'
             +'<input class="mou-dv" data-iid="'+esc(c.instance_id)+'" data-k="'+esc(k)+'" value="'+esc(cell.value==null?'':String(cell.value))+'" '+(bevroren?'disabled':'')
             +' style="width:100%;background:var(--panel);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-size:11px;padding:4px 7px"></div>';
         });
@@ -2300,7 +2311,7 @@ function renderBegeleiderDashboard(app){
       // vrije tekst
       h+='<div style="margin-top:.5rem"><textarea class="mou-text" data-iid="'+esc(c.instance_id)+'" '+(bevroren?'disabled':'')
         +' placeholder="Concepttekst voor dit onderdeel (optioneel)" style="width:100%;height:64px;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-size:11.5px;line-height:1.6;padding:7px;resize:vertical">'+esc(c.text||'')+'</textarea>';
-      h+='<div style="font-size:10px;color:var(--muted);margin-top:1px">herkomst tekst: '+(MOU_PROV[c.text_provenance||'']||MOU_PROV[''])[0]+' '+esc((MOU_PROV[c.text_provenance||'']||MOU_PROV[''])[1])+'</div>';
+      h+='<div style="font-size:10px;color:var(--muted);margin-top:1px">herkomst tekst: '+mouProvPil(c.text_provenance)+'</div>';
       if(!bevroren){
         h+='<div style="display:flex;gap:6px;margin-top:.4rem;flex-wrap:wrap">'
           +'<button class="btn-ghost mou-concept" data-iid="'+esc(c.instance_id)+'" style="font-size:10.5px;padding:4px 10px">&#129302; AI-concept</button>'
@@ -2313,14 +2324,31 @@ function renderBegeleiderDashboard(app){
       }
       h+='</div></div>';
     });
-    // Reviewinstelling per domein
+    // Beoordeling / aftekening
     if(!bevroren){
-      h+='<div style="border:1px solid var(--border2);border-radius:var(--r);padding:.6rem .8rem;margin-bottom:.75rem">'
-        +'<div style="font-size:11px;font-weight:600;color:var(--head);margin-bottom:.3rem">Specialistbeoordeling vereist voor</div>'
+      // openstaande reviews per domein tellen
+      var openPerDom={LEGAL:0,TAX:0,VALUATION:0};
+      comps.filter(function(c){return c.instance_status==='ACTIVE'&&c.review_domain&&c.review_domain!=='NONE'&&c.review_trigger!=='nooit';})
+        .forEach(function(c){ if(!(c.review&&c.review.status==='APPROVED')) openPerDom[c.review_domain]=(openPerDom[c.review_domain]||0)+1; });
+      var totOpen=openPerDom.LEGAL+openPerDom.TAX+openPerDom.VALUATION;
+      h+='<div style="border:1px solid var(--border2);border-radius:var(--r);padding:.7rem .8rem;margin-bottom:.75rem">'
+        +'<div style="font-size:11px;font-weight:600;color:var(--head);margin-bottom:.4rem">Beoordeling &amp; aftekening</div>';
+      if(totOpen){
+        h+='<div style="font-size:11px;color:var(--sub);margin-bottom:.4rem">'+totOpen+' onderdeel'+(totOpen===1?'':'en')+' nog niet afgetekend. U kunt per onderdeel aftekenen (knop op de kaart) of in één keer:</div>'
+          +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:.5rem">'
+          +'<button class="btn mou-rev-all" data-dom="" style="font-size:10.5px;padding:5px 12px;background:var(--teal)">Hele MoU aftekenen</button>'
+          +(openPerDom.LEGAL?'<button class="btn-ghost mou-rev-all" data-dom="LEGAL" style="font-size:10.5px;padding:5px 12px">Alles juridisch ('+openPerDom.LEGAL+')</button>':'')
+          +(openPerDom.TAX?'<button class="btn-ghost mou-rev-all" data-dom="TAX" style="font-size:10.5px;padding:5px 12px">Alles fiscaal ('+openPerDom.TAX+')</button>':'')
+          +(openPerDom.VALUATION?'<button class="btn-ghost mou-rev-all" data-dom="VALUATION" style="font-size:10.5px;padding:5px 12px">Alles cijfers ('+openPerDom.VALUATION+')</button>':'')
+          +'</div>';
+      } else {
+        h+='<div style="font-size:11px;color:var(--teal);margin-bottom:.4rem">&#10003; Alle onderdelen die een beoordeling nodig hebben, zijn afgetekend.</div>';
+      }
+      h+='<div style="font-size:10.5px;color:var(--muted);margin-bottom:.3rem">Beoordeling vereist voor:</div>'
         +[['juridisch','LEGAL'],['fiscaal','TAX'],['cijfers','VALUATION']].map(function(p){
           return '<label style="font-size:11.5px;color:var(--sub);margin-right:14px;cursor:pointer"><input type="checkbox" class="mou-eis" data-dom="'+p[0]+'" '+(eis[p[1]]?'checked':'')+'> '+p[0]+'</label>';
         }).join('')
-        +'<div style="font-size:10px;color:var(--muted);margin-top:.3rem">Uitzetten wordt gelogd en op het document vermeld.</div></div>';
+        +'<div style="font-size:10px;color:var(--muted);margin-top:.3rem">Een vakgebied uitzetten wordt gelogd en op het document vermeld. Wijzigt u later iets aan een afgetekend onderdeel, dan vervalt alleen díé aftekening.</div></div>';
     }
     // Exportpaneel
     h+='<div style="border-top:1px solid var(--border);padding-top:.7rem">';
@@ -2414,6 +2442,18 @@ function renderBegeleiderDashboard(app){
       var r=await bgMouApi('POST','/component/'+encodeURIComponent(iid)+'/review',{actie:'goedkeuren',naam:naam||'',hoedanigheid:hoed});
       if(r.ok&&r.json.ok){ toast('Onderdeel afgetekend','ok'); bgMouRender(); }
       else toast((r.json&&r.json.error)||'Aftekenen mislukt','err');
+    };});
+    out.querySelectorAll('.mou-rev-all').forEach(function(btn){ btn.onclick=async function(){
+      var dom=btn.getAttribute('data-dom')||'';
+      var wat=dom==='LEGAL'?'alle juridische onderdelen':dom==='TAX'?'alle fiscale onderdelen':dom==='VALUATION'?'alle cijfer-onderdelen':'het hele document';
+      if(!confirm('U tekent hiermee '+wat+' in één keer af. Onderliggend blijft het per onderdeel geregistreerd, zodat een latere wijziging aan één onderdeel alleen díé aftekening laat vervallen. Doorgaan?'))return;
+      var naam=prompt('Naam van de beoordelaar (leeg = uzelf, als eigen controle):','');
+      if(naam===null)return;
+      var hoed=naam?(prompt('Hoedanigheid (bijv. advocaat, RB, Register Valuator):','')||''):'';
+      btn.disabled=true; btn.textContent='Bezig…';
+      var r=await bgMouApi('POST','/document/'+encodeURIComponent(_mouDocId)+'/review-alles',{naam:naam||'',hoedanigheid:hoed,domein:dom||undefined});
+      if(r.ok&&r.json.ok){ toast(r.json.afgetekend+' onderdeel'+(r.json.afgetekend===1?'':'en')+' afgetekend','ok'); bgMouRender(); }
+      else { toast((r.json&&r.json.error)||'Aftekenen mislukt','err'); bgMouRender(); }
     };});
     out.querySelectorAll('.mou-eis').forEach(function(chk){ chk.onchange=async function(){
       var body={}; body[chk.getAttribute('data-dom')]=chk.checked?'vereist':'uit';
