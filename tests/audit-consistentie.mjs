@@ -605,6 +605,41 @@ log('12. Cross-document consistentiecheck (worker/30-consistentie.js): AI-guardr
   }
 }
 
+// ── 13. Reliance-voettekst (FASE6 onderdeel 2): constante bestaat + wordt overal aangehecht ──
+// (De jurist-goedgekeurde slotregel moet onder elk gegenereerd document staan — op scherm, in de
+//  print/PDF en in de verzendmail — en byte-identiek zijn met de backend-kopie. Deze check bewaakt
+//  dat een latere edit de constante niet hernoemt/wijzigt of een aanhechting stilzwijgend weghaalt.)
+log('13. Reliance-voettekst: constante aanwezig + aangehecht bij tonen/printen (mna/04 + mna/05)');
+{
+  const VERWACHT = 'Dit document is via het Koers voor Morgen-platform opgesteld als hulpmiddel voor de begeleidende adviseur en diens opdrachtgever. Het is geen professioneel advies of taxatierapport en is niet bestemd voor gebruik door derden.';
+  let problemen = 0;
+  const src04 = fs.readFileSync(path.join(ROOT, 'mna/04-begeleider-dashboard.js'), 'utf8');
+  const src05 = fs.readFileSync(path.join(ROOT, 'mna/05-documentflow-partijen.js'), 'utf8');
+  if (!src04.includes("var RELIANCE_VOETTEKST = '" + VERWACHT + "'")) {
+    warn('mna/04 — RELIANCE_VOETTEKST ontbreekt of wijkt af van de jurist-goedgekeurde tekst (FASE6 onderdeel 2). Byte-identiek houden met worker/02-config-constanten.js.');
+    problemen++;
+  }
+  if (!/bg-doc-tekst[\s\S]{0,800}RELIANCE_VOETTEKST/.test(src04)) {
+    warn('mna/04 — de reliance-voettekst wordt niet meer onder het gegenereerde document (bg-doc-tekst) getoond in bgDoc().');
+    problemen++;
+  }
+  if (!/doc-body[\s\S]{0,600}RELIANCE_VOETTEKST[\s\S]{0,500}doc-footer/.test(src05)) {
+    warn('mna/05 — printDoc() hangt de reliance-voettekst niet meer als slotblok tussen .doc-body en .doc-footer.');
+    problemen++;
+  }
+  // Backend-kopie (indien de backend-repo naast deze repo staat)
+  const bws = ['../koersvoormorgen-backend/backend/worker/02-config-constanten.js', 'backend/worker/02-config-constanten.js']
+    .map(p => path.join(ROOT, p)).find(p => fs.existsSync(p));
+  if (bws) {
+    const bsrc = fs.readFileSync(bws, 'utf8');
+    if (!bsrc.includes("export const RELIANCE_VOETTEKST = '" + VERWACHT + "'")) {
+      warn('backend worker/02 — RELIANCE_VOETTEKST ontbreekt of wijkt af; frontend- en backend-kopie moeten byte-identiek zijn.');
+      problemen++;
+    }
+  }
+  if (!problemen) ok('RELIANCE_VOETTEKST bestaat, is byte-identiek' + (bws ? ' (frontend + backend)' : '') + ', en wordt aangehecht in bgDoc() + printDoc().');
+}
+
 // ── Samenvatting ──────────────────────────────────────────────────────────
 log('Samenvatting');
 if (!bevindingen) {

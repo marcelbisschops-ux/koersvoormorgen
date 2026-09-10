@@ -74,6 +74,9 @@ function printDoc(tekst, titel, docType) {
     // 31 aug 2026, keuze Marcel: discrete regel).
     +(docType==='memo'?'<div style="background:#fbf3e3;border:1px solid #e0b84c;border-radius:4px;padding:6px 12px;margin-bottom:1.5rem;font-size:9pt;color:#7a5a00">Conceptversie &mdash; automatisch samengesteld uit de aangeleverde gegevens. Controleer de inhoud v&oacute;&oacute;r verspreiding.<\/div>':'')
     +'<div class="doc-body">'+fmt(tekst)+'<\/div>'
+    // Vaste reliance-voettekst als slotblok — altijd, ongeacht wat er in het tekstvak staat
+    // (FASE6 onderdeel 2). Byte-identiek met RELIANCE_VOETTEKST in mna/04 / de worker.
+    +(typeof RELIANCE_VOETTEKST!=='undefined'?'<div class="doc-reliance" style="margin-top:2rem;padding-top:.75rem;border-top:1px solid #e8e5df;font-size:8.5pt;color:#8a8880;line-height:1.6;font-style:italic">'+RELIANCE_VOETTEKST+'<\/div>':'')
     +'<div class="doc-footer">'
     +'<span>' + docBedrijf + ' &middot; ' + docAdres + '<\/span>'
     +'<span>Vertrouwelijk &mdash; uitsluitend bestemd voor geadresseerde(n)<\/span>'
