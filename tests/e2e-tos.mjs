@@ -165,6 +165,54 @@ async function run() {
   const p404 = await api('PATCH', '/mna/tos/component/tosinst-onbestaand', { headers: H, body: { text: 'x' } });
   check('PATCH onbekend component → 404', p404.status === 404, 'status ' + p404.status);
 
+  kop('STAP 14 · reviewlevenscyclus + aftekeninstelling + exportcheck');
+  // exportcheck op een verse MoU: er staan reviews open → niet exporteerbaar
+  const ec1 = await api('GET', '/mna/tos/document/' + docId + '/exportcheck', { headers: H });
+  check('exportcheck ok:false met blockers', ec1.json && ec1.json.ok === false && Array.isArray(ec1.json.blockers) && ec1.json.blockers.length > 0, JSON.stringify(ec1.json).slice(0, 200));
+  check('een REVIEW_MISSING op exclusivity', (ec1.json.blockers || []).some((b) => b.code === 'REVIEW_MISSING' && b.block_id === 'exclusivity'));
+
+  // review op een "nooit"-component (timeline) → 400
+  const tlIid = (g3.json.componenten || []).find((c) => c.block_id === 'timeline');
+  if (tlIid) {
+    const rNooit = await api('POST', '/mna/tos/component/' + tlIid.instance_id + '/review', { headers: H, body: { actie: 'aanvragen' } });
+    check('review op timeline (trigger nooit) → 400', rNooit.status === 400, 'status ' + rNooit.status);
+  } else { check('timeline-instance aanwezig', false, 'niet gevonden'); }
+
+  // ongeldige overgang: goedkeuren vanuit REQUIRED → 409
+  const rBad = await api('POST', '/mna/tos/component/' + exclIid + '/review', { headers: H, body: { actie: 'goedkeuren' } });
+  check('goedkeuren vanuit REQUIRED → 409', rBad.status === 409, 'status ' + rBad.status);
+
+  // volledige cyclus op exclusivity
+  const rA = await api('POST', '/mna/tos/component/' + exclIid + '/review', { headers: H, body: { actie: 'aanvragen' } });
+  check('review aanvragen → REQUESTED', rA.json && rA.json.review && rA.json.review.status === 'REQUESTED', JSON.stringify(rA.json));
+  const rB = await api('POST', '/mna/tos/component/' + exclIid + '/review', { headers: H, body: { actie: 'in_behandeling' } });
+  check('in behandeling → IN_REVIEW', rB.json && rB.json.review && rB.json.review.status === 'IN_REVIEW');
+  const rC = await api('POST', '/mna/tos/component/' + exclIid + '/review', { headers: H, body: { actie: 'wijzigingen_gevraagd', opmerking: 'graag startdatum toevoegen' } });
+  check('wijzigingen gevraagd → CHANGES_REQUESTED', rC.json && rC.json.review && rC.json.review.status === 'CHANGES_REQUESTED');
+  const rD = await api('POST', '/mna/tos/component/' + exclIid + '/review', { headers: H, body: { actie: 'goedkeuren', naam: 'Mr. Test Jurist', hoedanigheid: 'advocaat' } });
+  check('goedkeuren → APPROVED, review_kind ADVISOR (naam opgegeven)', rD.json && rD.json.review && rD.json.review.status === 'APPROVED' && rD.json.review.review_kind === 'ADVISOR', JSON.stringify(rD.json));
+  const g4 = await api('GET', '/mna/tos/document/' + docId, { headers: H });
+  check('doc toont exclusivity review APPROVED', (() => { const e = (g4.json.componenten || []).find((c) => c.block_id === 'exclusivity'); return e && e.review && e.review.status === 'APPROVED'; })());
+
+  // invalidatie: wijziging ná goedkeuring → SUPERSEDED
+  const inval = await api('PATCH', '/mna/tos/component/' + exclIid, { headers: H, body: { data_values: { startdatum: '2026-10-01' } } });
+  check('PATCH ná APPROVED → review_vervallen:true', inval.json && inval.json.review_vervallen === true, JSON.stringify(inval.json));
+  const g5 = await api('GET', '/mna/tos/document/' + docId, { headers: H });
+  check('doc toont exclusivity review SUPERSEDED', (() => { const e = (g5.json.componenten || []).find((c) => c.block_id === 'exclusivity'); return e && e.review && e.review.status === 'SUPERSEDED'; })());
+
+  // opnieuw aftekenen kan vanuit SUPERSEDED
+  await api('POST', '/mna/tos/component/' + exclIid + '/review', { headers: H, body: { actie: 'aanvragen' } });
+  const rReAppr = await api('POST', '/mna/tos/component/' + exclIid + '/review', { headers: H, body: { actie: 'goedkeuren', naam: 'Mr. Test Jurist', hoedanigheid: 'advocaat' } });
+  check('opnieuw goedkeuren na SUPERSEDED → APPROVED', rReAppr.json && rReAppr.json.review && rReAppr.json.review.status === 'APPROVED');
+
+  // aftekeneis uitschakelen voor juridisch → opt-out + geen LEGAL-blockers meer
+  const setUit = await api('POST', '/mna/tos/document/' + docId + '/setting', { headers: H, body: { juridisch: 'uit' } });
+  check('setting juridisch=uit, opt-out zichtbaar', setUit.json && setUit.json.setting && setUit.json.setting.juridisch === 'uit' && setUit.json.opt_out_zichtbaar_op_document === true, JSON.stringify(setUit.json));
+  const ec2 = await api('GET', '/mna/tos/document/' + docId + '/exportcheck', { headers: H });
+  check('exportcheck: geen REVIEW_MISSING/REVIEW_OPEN meer met juridisch=uit', !(ec2.json.blockers || []).some((b) => b.code === 'REVIEW_MISSING' || b.code === 'REVIEW_OPEN'), JSON.stringify(ec2.json.blockers));
+  // terugzetten
+  await api('POST', '/mna/tos/document/' + docId + '/setting', { headers: H, body: { juridisch: 'vereist' } });
+
   kop('NEGATIEF · cross-traject');
   const vreemd = await api('GET', '/mna/tos/document/' + docId + '?code=ZZZZZZZZ', {});
   check('document ophalen met onbekende code → 403', vreemd.status === 403, 'status ' + vreemd.status);
