@@ -2255,7 +2255,7 @@ function renderBegeleiderDashboard(app){
     if(divs.length){
       h+='<div style="background:var(--gold-bg);border:1px solid var(--gold);border-radius:var(--r);padding:.6rem .8rem;margin-bottom:.75rem;font-size:12px;color:var(--gold-dark)"><strong>&#9888; '+divs.length+' afwijking'+(divs.length===1?'':'en')+' tussen gekoppelde velden</strong>';
       divs.forEach(function(f){
-        var waarden=(f.instances||[]).map(function(b){return esc(b.bron==='transactionele_data'?'dealgegevens':'MoU')+': '+esc(b.value);});
+        var waarden=(f.instances||[]).map(function(b){return esc(b.bron==='transactionele_data'?'dealgegevens':'dit document')+': '+esc(b.value);});
         h+='<div style="margin-top:3px">'+esc(f.dataslot_key)+' &mdash; '+waarden.join(' / ')+'</div>';
       });
       h+='<div style="margin-top:3px;color:var(--muted)">Het platform bepaalt niet welke waarde juist is. Trek de gekoppelde velden gelijk.</div></div>';
@@ -2342,7 +2342,7 @@ function renderBegeleiderDashboard(app){
       if(totOpen){
         h+='<div style="font-size:11px;color:var(--sub);margin-bottom:.4rem">'+totOpen+' onderdeel'+(totOpen===1?'':'en')+' nog niet afgetekend. U kunt per onderdeel aftekenen (knop op de kaart) of in één keer:</div>'
           +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:.5rem">'
-          +'<button class="btn mou-rev-all" data-dom="" style="font-size:10.5px;padding:5px 12px;background:var(--teal)">Hele MoU aftekenen</button>'
+          +'<button class="btn mou-rev-all" data-dom="" style="font-size:10.5px;padding:5px 12px;background:var(--teal)">Hele '+esc(mouProfLabel().kort)+' aftekenen</button>'
           +(openPerDom.LEGAL?'<button class="btn-ghost mou-rev-all" data-dom="LEGAL" style="font-size:10.5px;padding:5px 12px">Alles juridisch ('+openPerDom.LEGAL+')</button>':'')
           +(openPerDom.TAX?'<button class="btn-ghost mou-rev-all" data-dom="TAX" style="font-size:10.5px;padding:5px 12px">Alles fiscaal ('+openPerDom.TAX+')</button>':'')
           +(openPerDom.VALUATION?'<button class="btn-ghost mou-rev-all" data-dom="VALUATION" style="font-size:10.5px;padding:5px 12px">Alles cijfers ('+openPerDom.VALUATION+')</button>':'')
