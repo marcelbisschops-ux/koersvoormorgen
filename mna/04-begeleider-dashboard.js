@@ -802,6 +802,7 @@ function renderBegeleiderDashboard(app){
         // MoU-/LoI-composer (Transaction OS) — stelt het document samen uit losse, apart af te tekenen
         // onderdelen. Geen module-gate: de composer zelf is geen te versturen contract; finaliseren/
         // versturen gaat via de aparte, geauthenticeerde tos-endpoints.
+        +stapRij('bg-nda-composer-actie','&#129513;','#5a5470','Geheimhoudingsovereenkomst (composer)','Kort en grotendeels bindend: doel, toegestane ontvangers, duur, boetebeding',false,true)
         +stapRij('bg-mou-actie','&#129513;','#5a5470','Memorandum of Understanding (composer)','Onderdelen samenstellen, laten aftekenen, finaliseren',false,true)
         +stapRij('bg-loi-composer-actie','&#129513;','#5a5470','Letter of Intent (composer)','Uitgebreider dan de MoU: garantiekader, MAC-clausule, DD en voorwaarden standaard erin',false,true)
         +stapRij('bg-bieding-actie','&#128233;','#a0522d','Indicatieve bieding','Klaar om te versturen')
@@ -2184,7 +2185,7 @@ function renderBegeleiderDashboard(app){
     NONE:['',''] };
   var _mouDocId=null;
   var _mouProfile='MOU';
-  var MOU_PROFIELEN={ MOU:{titel:'Memorandum of Understanding',kort:'MoU'}, LOI:{titel:'Letter of Intent',kort:'LoI'} };
+  var MOU_PROFIELEN={ MOU:{titel:'Memorandum of Understanding',kort:'MoU'}, LOI:{titel:'Letter of Intent',kort:'LoI'}, NDA:{titel:'Geheimhoudingsovereenkomst (NDA)',kort:'NDA'} };
   function mouProfLabel(){ return (MOU_PROFIELEN[_mouProfile]||MOU_PROFIELEN.MOU); }
   function bgMouKey(){ return S._bgKey || S.code; }
   async function bgMouApi(method,pad,body){
@@ -2791,6 +2792,8 @@ function renderBegeleiderDashboard(app){
   if(bgMouBtn)bgMouBtn.onclick=function(){ bgMouComposer('MOU'); };
   var bgLoiCompBtn=document.getElementById('bg-loi-composer-actie');
   if(bgLoiCompBtn)bgLoiCompBtn.onclick=function(){ bgMouComposer('LOI'); };
+  var bgNdaCompBtn=document.getElementById('bg-nda-composer-actie');
+  if(bgNdaCompBtn)bgNdaCompBtn.onclick=function(){ bgMouComposer('NDA'); };
   document.getElementById('bg-bem-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op via koersvoormorgen.nl.','err');return;} bgToonOfGenereerDoc('bem'); };
   document.getElementById('bg-excl-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op via koersvoormorgen.nl.','err');return;} bgToonOfGenereerDoc('excl'); };
   document.getElementById('bg-dealvoorstel-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op via koersvoormorgen.nl.','err');return;} toonDocWaarschuwing('dealvoorstel', function(){ toonDealvoorstelModal(); }); };

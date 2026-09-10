@@ -61,9 +61,11 @@ async function run() {
   kop('STAP 10 · componenten-seed');
   const comp = await api('GET', '/mna/tos/componenten', { headers: H });
   check('componenten opgehaald (ok)', comp.json && comp.json.ok === true, JSON.stringify(comp.json));
-  check('26 component-definities (23 gedeeld + 3 LoI-only)', comp.json && comp.json.aantal === 26, 'aantal ' + (comp.json && comp.json.aantal));
+  check('30 component-definities (23 gedeeld + 3 LoI + 4 NDA)', comp.json && comp.json.aantal === 30, 'aantal ' + (comp.json && comp.json.aantal));
   const bids = (comp.json && comp.json.componenten || []).map((c) => c.block_id);
   check('LoI-only componenten aanwezig (reps_warranties_kader/mac_clausule/break_fee)', ['reps_warranties_kader', 'mac_clausule', 'break_fee'].every((b) => bids.includes(b)));
+  check('NDA-only componenten aanwezig (nda_scope/nda_toegestane_ontvangers/nda_duur/nda_boetebeding)', ['nda_scope', 'nda_toegestane_ontvangers', 'nda_duur', 'nda_boetebeding'].every((b) => bids.includes(b)));
+  check('gedeeld component "parties" nu eligibility MOU+LOI+NDA', (() => { const p = (comp.json.componenten || []).find((c) => c.block_id === 'parties'); return p && (p.eligibility || []).includes('NDA') && (p.eligibility || []).includes('MOU'); })());
   check('exclusivity aanwezig, review_domain LEGAL, binding BINDING', (() => {
     const e = (comp.json.componenten || []).find((c) => c.block_id === 'exclusivity');
     return e && e.review_domain === 'LEGAL' && e.binding_default === 'BINDING' && e.review_trigger === 'bij_bewerking';
@@ -102,7 +104,7 @@ async function run() {
   const lijstKoper = await api('GET', '/mna/tos/documenten/' + trajectCode, { headers: { 'x-tussen-key': (c1.json && c1.json.koper_code) || 'GEEN' } });
   check('documentenlijst niet toegankelijk voor koper → 403', lijstKoper.status === 403, 'status ' + lijstKoper.status);
 
-  kop('STAP 12b · FASE D — LoI-DocumentProfiel');
+  kop('STAP 12b · FASE D — LoI- en NDA-DocumentProfiel');
   const menuMou = await api('GET', '/mna/tos/menu/' + trajectCode + '?profile=MOU', { headers: H });
   check('MoU-menu bevat GEEN reps_warranties_kader (LoI-only)', menuMou.json && !(menuMou.json.menu || []).some((m) => m.block_id === 'reps_warranties_kader'));
   const menuLoi = await api('GET', '/mna/tos/menu/' + trajectCode + '?profile=LOI', { headers: H });
@@ -124,6 +126,20 @@ async function run() {
   // reps_warranties_kader toevoegen aan een MoU kan NIET (niet in het MoU-profiel)
   const addRwMou = await api('POST', '/mna/tos/document/' + docId + '/component', { headers: H, body: { block_id: 'reps_warranties_kader' } });
   check('reps_warranties_kader toevoegen aan MoU → 400 (niet in profiel)', addRwMou.status === 400, 'status ' + addRwMou.status);
+
+  // NDA-profiel
+  const menuNda = await api('GET', '/mna/tos/menu/' + trajectCode + '?profile=NDA', { headers: H });
+  check('NDA-menu (ok), profiel NDA@1', menuNda.json && menuNda.json.ok === true && menuNda.json.profiel && menuNda.json.profiel.id === 'NDA');
+  check('NDA-menu bevat nda_scope/nda_duur + het gedeelde "parties" (eligibility-uitbreiding werkt)', (() => { const b = (menuNda.json.menu || []).map((m) => m.block_id); return b.includes('nda_scope') && b.includes('nda_duur') && b.includes('parties'); })());
+  check('NDA-menu bevat GEEN exclusivity/reps_warranties_kader (niet in NDA-profiel)', !(menuNda.json.menu || []).some((m) => m.block_id === 'exclusivity' || m.block_id === 'reps_warranties_kader'));
+  check('NDA required_reviews: alleen LEGAL', menuNda.json.required_reviews && menuNda.json.required_reviews.LEGAL === true && menuNda.json.required_reviews.TAX === false && menuNda.json.required_reviews.VALUATION === false);
+  const mkNda = await api('POST', '/mna/tos/document', { headers: H, body: { profile: 'NDA' } });
+  check('NDA aangemaakt (ok), doc_type nda', mkNda.json && mkNda.json.ok === true && !!mkNda.json.document_id, JSON.stringify(mkNda.json).slice(0, 160));
+  const ndaId = mkNda.json && mkNda.json.document_id;
+  const gNda = await api('GET', '/mna/tos/document/' + ndaId, { headers: H });
+  check('NDA-document: doc_type=nda, nda_scope + nda_duur + nda_boetebeding + parties geïnstantieerd', gNda.json && gNda.json.document.doc_type === 'nda' && ['nda_scope', 'nda_duur', 'nda_boetebeding', 'parties'].every((b) => (gNda.json.componenten || []).some((c) => c.block_id === b && c.instance_status === 'ACTIVE')));
+  const lijst3 = await api('GET', '/mna/tos/documenten/' + trajectCode, { headers: H });
+  check('documentenlijst bevat MoU, LoI én NDA', ['mou', 'loi', 'nda'].every((t) => (lijst3.json.documenten || []).some((d) => d.doc_type === t)));
 
   const get = await api('GET', '/mna/tos/document/' + docId, { headers: H });
   check('document ophalen (ok)', get.json && get.json.ok === true, JSON.stringify(get.json).slice(0, 200));
