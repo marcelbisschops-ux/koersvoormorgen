@@ -50,7 +50,7 @@ versie*, zonder de inhoud zelf. Kandidaat-velden:
 | block-ID's | nee |
 | block-versies | nee |
 | review-ID's | nee |
-| reviewer-hoedanigheid (bijv. "advocaat", "RB", "Register Valuator") | **te toetsen** — hoedanigheid zonder naam is vermoedelijk geen persoonsgegeven, mét naam wel |
+| reviewer-hoedanigheid (bijv. "advocaat", "RB", "Register Valuator") | **jurist akkoord** met hoedanigheid-zonder-naam. **Restrisico (architectuurreview):** in een kleine markt (weinig Register Valuators, de adviseur kent de ingeschakelde specialist) kan `hoedanigheid + timestamp + dossier-hash` alsnog herleiden. Terugvaloptie zonder de architectuur te raken: hoedanigheid degraderen naar een binaire vlag — `juridische_review_uitgevoerd: ja/nee` + datum — als het later te scherp blijkt |
 | review-status per block | nee |
 | timestamps (created, reviewed, exported) | nee |
 | policy-engine-versie | nee |

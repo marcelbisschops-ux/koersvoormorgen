@@ -40,12 +40,21 @@ elke nieuwe CONTENT-tabel met `traject_id`, volgens de CLAUDE.md-checklist voor 
 
 ## 2. Antwoord op de architectuur-reviewvragen
 
-### RV-1 — Kan een block worden verwijderd terwijl een document/review ernaar verwijst?
+### RV-1 — Kan een component verwijderd worden terwijl een document/review ernaar verwijst?
 
-**Nee.** Blocks en blockversies zijn append-only platformdata. Een block dat niet meer gebruikt mag
-worden krijgt `status=RETIRED`: niet meer selecteerbaar in nieuwe documenten, maar bestaande
-documentversies en reviews die ernaar verwijzen blijven geldig en reproduceerbaar. Er is geen
-hard-delete-pad voor blocks. (`O-01`, voorstel — te bevestigen in de architectuurreview.)
+**Twee gevallen:**
+
+- **Component-*definitie*:** nee. Definities en `BlockVersion`s zijn append-only platformdata. Een
+  definitie die niet meer gebruikt mag worden krijgt `status=RETIRED`: niet meer selecteerbaar in
+  nieuwe documenten, maar bestaande instances + reviews die ernaar verwijzen blijven geldig en
+  reproduceerbaar (ze zijn gepind op een onveranderlijke `block_version`). Een `RETIRED` definitie
+  waarvan een levend dossier nog een `SUPERSEDED` instance heeft, kan die instance opnieuw `APPROVED`
+  worden — de blokkade geldt alleen voor nieuwe selecties. Geen hard-delete-pad. (`O-01`.)
+- **Component-*instance* uit een levend document halen** (dus niet bij een case-purge): **geen hard
+  delete**. De instance krijgt `status = REMOVED_IN_v<n>` en blijft, met zijn laatste reviewstatus,
+  aan de vorige documentversie en in het manifest gekoppeld — zodat "component X is na
+  jurist-commentaar bewust verwijderd" in de geschiedenis blijft staan. Hard delete gebeurt alleen
+  bij de case-purge.
 
 ### RV-2 — Wat gebeurt er met een review wanneer de inhoud wordt gewijzigd (door specialist óf adviseur)?
 
@@ -101,6 +110,10 @@ Te verkennen in de spike:
   nieuwe `CREATE`/`ALTER` alleen in `initDB()`, nooit los in routemodules.
 - **Reads:** een case openen mag geen N+1 over blocks/reviews doen. Eén join-query per view, of
   lazy-load per block-detail.
+- **Divergentiecheck (D-17 / O-04) is event-driven, niet render-driven.** Hij draait alleen bij een
+  wijziging aan een **gekoppeld binding-dataslot**, vergelijkt alleen de instances die dat dataslot
+  delen (binnen het dossier), en schrijft een `divergence_flag` die de UI leest. Geen scan over alle
+  componenten of alle zusterdocumenten bij elke render.
 - **Writes:** audit events en manifest-writes gebatcht waar mogelijk; snapshot-write alleen bij
   officiële export, niet bij elke bewerking.
 - **Opslag:** `O-02` — leven snapshots/manifest in D1 (queryable, telt mee voor D1-limieten) of in

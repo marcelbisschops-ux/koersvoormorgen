@@ -58,6 +58,8 @@ text_provenance    AI_INFERENCE (concept)  →  SPECIALIST_ASSESSMENT (na bewerk
                                             →  USER_FACT (na bewerking door adviseur, buiten review)
 binding_status     effectief voor dit document
 review             koppeling naar BlockReview (zie §4)
+instance_status    ACTIVE | REMOVED_IN_v<n>   (uit een document gehaald = geen hard delete;
+                   blijft aan de vorige documentversie + het manifest gekoppeld — SPEC-DATA-LIFECYCLE RV-1)
 last_changed_by / at
 ```
 
@@ -84,9 +86,17 @@ OPTIONEEL       [+] Earn-out                     [+] Change of control
 ```
 
 Per component in het menu: titel, `binding_status`, reviewstatus, versie, en welke dataslots nog
-leeg zijn. De **volledigheidscheck** toont welke KERN-componenten ontbreken en één zin waarom laat
-vastleggen leverage kost. De adviseur bepaalt de selectie en de volgorde; de specialist kan binnen
-zijn domein componenten toevoegen of verwijderen.
+leeg zijn. De **volledigheidscheck** toont welke KERN-componenten ontbreken.
+
+**Grens (RV-5):** de volledigheidscheck noemt alleen **generiek verwachte componenten** met een
+**generieke, vooraf één keer geschreven en gereviewde** toelichting ("een MoU/LoI bevat gewoonlijk
+een change-of-control-bepaling; wie dat pas in de SPA regelt, geeft leverage weg"). Nooit een
+casus-specifiek oordeel ("in jouw situatie heb je X nodig vanwege Y"). De toelichtingsteksten zijn
+platform-copy, geen AI-generatie per dossier, en dragen zelf de reliance-disclaimer. De check
+adviseert niet, hij inventariseert.
+
+De adviseur bepaalt de selectie en de volgorde; de specialist kan binnen zijn domein componenten
+toevoegen of verwijderen (een verwijdering = `instance_status = REMOVED_IN_v<n>`, geen hard delete).
 
 ---
 

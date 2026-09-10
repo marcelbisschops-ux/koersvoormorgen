@@ -1,8 +1,11 @@
 # MASTER-SPEC — Koers voor Morgen Transaction OS
 
-**Datum:** 2026-09-10 · **Versie:** 2 (correctie: geen professionele tekstbibliotheek — zie §1a)
+**Datum:** 2026-09-10 · **Versie:** 3 (GO ontvangen; jurist akkoord; architectuurreview verwerkt)
 **Status:** architecture/design decision document. **Nog geen bouwopdracht.**
-**Beslissing gevraagd:** GO / NO-GO / CHANGES REQUIRED, samen met de jurist.
+**Besluit:** Marcel gaf **GO** op de architectuur + fasering (2026-09-10) en meldde **jurist akkoord**
+op `ADR-AVG-AUDIT-MANIFEST.md`. De architectuurreview (`ARCHITECTUURREVIEW-TRANSACTION-OS.md`) is
+afgerond en verwerkt: één tegenstrijdigheid opgelost, twee faseringsgaten gedicht, drie open
+ontwerpkeuzes aangescherpt. Volgende stap: FASE B-ontwerp (de MoU-slice concreet uittekenen).
 
 **Herkomst:** consolideert Marcels master-spec, twee reviewrondes, sectie 0 van
 `ONTWERP-JURIDISCH-FISCAAL-EN-SPECIALISTEN.md`, en de eerdere specs voor MoU en de specialistenpool.
@@ -13,7 +16,8 @@
 [`SPEC-MOU-FIRST-VERTICAL-SLICE.md`](SPEC-MOU-FIRST-VERTICAL-SLICE.md) ·
 [`SPEC-BLOCK-FRAMEWORK-V1.md`](SPEC-BLOCK-FRAMEWORK-V1.md) ·
 [`SPEC-DATA-LIFECYCLE.md`](SPEC-DATA-LIFECYCLE.md) ·
-[`TESTSTRATEGIE-TRANSACTION-OS.md`](TESTSTRATEGIE-TRANSACTION-OS.md)
+[`TESTSTRATEGIE-TRANSACTION-OS.md`](TESTSTRATEGIE-TRANSACTION-OS.md) ·
+[`ARCHITECTUURREVIEW-TRANSACTION-OS.md`](ARCHITECTUURREVIEW-TRANSACTION-OS.md)
 
 ---
 
@@ -112,7 +116,7 @@ implementeren vóór jurist-akkoord. `REQUIRES PRODUCT DECISION` = Marcel beslis
 | D-11 | Specialistenpool is een *provider van reviewers* binnen de algemene review-engine, niet een eigen reviewarchitectuur; nog niet volledig bouwen | **DECIDED** |
 | D-12 | Bestaande generatoren (NDA/LoI/BEM/dealvoorstel/teaser/memorandum) blijven werken tijdens migratie; geen nieuwe documentlogica erin | **DECIDED** |
 | D-13 | Naam overal: **Koers voor Morgen** (niet "van") | **DECIDED** |
-| D-14 | Gate-integriteit: elke uitgangsroute (preview, download, API, e-mail, background job, oude generator, export) loopt door dezelfde policy; een hard gate mag via geen enkele route te omzeilen zijn | **DECIDED** (uitwerking: `S-04`) |
+| D-14 | Gate-integriteit: elke uitgangsroute loopt door dezelfde policy; een hard gate mag via geen enkele route te omzeilen zijn. Routes: preview, download, API, e-mail, background job, oude generator, ZIP-export, **plus foutresponses, logs (`wrangler tail`) en de AI-context naar Anthropic** — geen documentinhoud in errors/logs, en geen tekst van een component onder specialist-hold als AI-context zonder expliciete instemming | **DECIDED** (uitwerking: `S-04`) |
 | D-15 | SPEC-STAP-1 deel 1A (reliance-voettekst op de bestaande generatoren) als losse, veilige levering — nu, of in de slice | **REQUIRES PRODUCT DECISION** |
 | D-16 | SPEC-STAP-1 deel 1B (MoU als losse template + `bgDoc('mou')`) **vervalt**, gaat op in de verticale slice | **DECIDED** |
 | D-17 | **Divergentiedetectie** (§1a): het platform signaleert verschil tussen transactionele data, professionele input en documenttekst — binnen één document en tussen documenten van hetzelfde dossier | **DECIDED** (mechaniek: `OPEN` O-04) |
@@ -130,7 +134,8 @@ implementeren vóór jurist-akkoord. `REQUIRES PRODUCT DECISION` = Marcel beslis
 | O-01 | Mag een block-*definitie* worden verwijderd terwijl een dossier/review ernaar verwijst? Voorstel: nee — append-only, alleen `status=RETIRED` | **OPEN** |
 | O-02 | Waar leven snapshots/manifest fysiek: D1 of R2 | **OPEN** |
 | O-03 | Concreet mechanisme om `AI_INFERENCE` te promoveren naar `USER_FACT`/`SPECIALIST_ASSESSMENT` (verplichte bevestigingsstap) | **OPEN** |
-| O-04 | Concrete divergentiedetectie-mechaniek (D-17): welke velden vergeleken worden, hoe een "gekoppeld" veld tussen dealdata en documenttekst wordt gedefinieerd, hoe de waarschuwing eruitziet | **OPEN** |
+| O-04 | Divergentiedetectie-mechaniek (D-17). **Aanbeveling uit de architectuurreview:** binding numerieke/datum-termen leven **uitsluitend in gestructureerde dataslots** (single source); de vrije tekst toont ze via een token. Overschrijft de specialist de tokenzin met een letterlijk getal, dan is dat een expliciete, gekoppelde **override** (gemarkeerde, review-triggerende handeling), niet iets wat het systeem uit proza raadt. Vrije proza zonder binding-term wordt niet vergeleken. Check is **event-driven** (bij wijziging aan een gekoppeld dataslot), niet bij elke render | **OPEN** (aanbeveling ligt er) |
+| O-05 | `DocumentProfile`-versionering: zelfde append-only versiemodel als een component-definitie; een document is gepind op een profielversie; een nieuwer profiel markeert bestaande documenten als "profiel v_n beschikbaar" zonder te forceren | **OPEN** (voorstel ligt er) |
 
 ---
 
@@ -270,7 +275,7 @@ Iedere informatie-eenheid krijgt precies één type: `SOURCE_FACT` · `USER_FACT
 ### Beslissingen die eerst moeten worden genomen
 
 `L-01`–`L-04` (jurist) · `P-01`–`P-03` (Marcel) · `D-15` (Marcel) · `S-01`–`S-04` (spikes) ·
-`O-01`–`O-04` (ontwerpkeuzes in de review).
+`O-01`–`O-05` (ontwerpkeuzes in de review).
 
 ---
 
@@ -297,7 +302,10 @@ als een echte reviewer die met naam + hoedanigheid + datum + versie heeft afgege
 1. Data model · 2. Block-framework-model · 3. Provenance model · 4. Review model · 5. Policy model ·
 6. Permission model · 7. Data lifecycle · 8. ADR's · 9. AVG/legal validation (`L-01`–`L-04`).
 
-**Poort:** geen slice-code merget vóór `L-01`/`L-04` = `DECIDED` en de vijf reviewvragen beantwoord.
+**Status FASE A:** GO gegeven, jurist akkoord op `L-01`–`L-04`, de vijf reviewvragen beantwoord in
+`ARCHITECTUURREVIEW-TRANSACTION-OS.md`. **Poort naar code:** het FASE B-ontwerp (datamodel-DDL,
+component-definitieschema, policy-engine-interface, composer-UX) + een korte `/code-review`-pass
+daarop. Geen code vóór dat FASE B-ontwerp er ligt.
 
 ### FASE B — EERSTE VERTICALE SLICE (MoU)
 
@@ -311,15 +319,29 @@ als een echte reviewer die met naam + hoedanigheid + datum + versie heeft afgege
 divergentietests · 24. Retention/purge-tests · 25. Performance-tests · 26. Gate-integriteitstests
 (RV-4) · 27. Autoriteitsgrens-tests (RV-5).
 
-### FASE D — EXPANSION
+### FASE D — EXPANSION (documentprofielen)
 
 28. LoI · 29. NDA-migratie · 30. Dealvoorstel · 31. Teaser · 32. Memorandum. Elk een nieuw
 `DocumentProfile`, geen nieuwe generator.
 
+### FASE D-bis — VERDIEPING INHOUD (Hans' oorspronkelijke vragen, onder sectie 0)
+
+33. **Juridische DD-checklist** — DD-fase VI wordt een gestructureerde checklist (organogram,
+    aandeelhoudersovereenkomst, change-of-control-scan op materiële contracten, vergunning-
+    overdraagbaarheid, lopende/dreigende procedures, compliance). Bevindingen werken door naar de
+    SPA-garantie-componenten als voorstel. AI maakt concepten; jurist tekent af.
+34. **Fiscale DD + structureringsmodule** — fiscale eenheid, deelnemingsvrijstelling, verrekenbare
+    verliezen, overdrachtsbelasting, transfer pricing, DGA-loon; asset deal vs. share deal, earn-out-
+    behandeling, BOR bij opvolging. AI maakt concepten; fiscalist tekent af. Werkt door naar de
+    netto-opbrengst-regel in het dealvoorstel.
+35. **Waarderings-opbouwsheet** — genormaliseerde EBITDA-brug (add-backs regel voor regel), multiple-
+    onderbouwing, equity-value-brug, kruischecks. **Leest de bestaande, onaangeroerde rekenkern**
+    (`D-18`), voegt provenance + een waarderingsspecialist-reviewgate toe. Formules ongewijzigd.
+
 ### FASE E — SPECIALISTENPOOL
 
-33. Reviewer-interface veralgemenen · 34. Assignment-abstractie · 35. Specialist profiles ·
-36. Conflict-check (na mini-ADR) · 37. Scoped access · 38. Fees · 39. Pool-UI (marilyn).
+36. Reviewer-interface veralgemenen · 37. Assignment-abstractie · 38. Specialist profiles ·
+39. Conflict-check (na mini-ADR `S-02`) · 40. Scoped access · 41. Fees · 42. Pool-UI (marilyn).
 
 ---
 

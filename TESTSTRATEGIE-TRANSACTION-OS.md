@@ -93,17 +93,28 @@ Uitbreidt `tests/e2e-crosspath-fixes.mjs` (de CONF-vertrouwelijkheidsmatrix).
 
 ---
 
-## 4b. Divergentiedetectie-tests (D-17 / RV-2 verwante)
+## 4b. Divergentiedetectie-tests (D-17 / RV-2)
 
-- Zet exclusiviteitsduur op 90 in de dealdata en de gegenereerde MoU-tekst → laat de specialist de
-  MoU-tekst naar 120 wijzigen → assert: het platform toont een **divergentiewaarschuwing** aan de
-  adviseur ("verschil tussen transactionele gegevens en juridisch aangepaste documenttekst").
-- Zelfde veld verschilt tussen twee documenten van hetzelfde dossier (MoU 120, LoI 90) → waarschuwing.
-- De adviseur past de dealdata aan naar 120 zodat alles gelijk is → de waarschuwing verdwijnt; de
-  eerder `APPROVED` MoU-component blijft `APPROVED` (de dealdata volgde de tekst, niet andersom) —
-  tenzij de dealdata-wijziging zelf een gekoppeld reviewveld raakt, dan `SUPERSEDED` (D-10).
-- Negatief: een niet-gekoppeld tekstverschil (bijv. een toelichtende zin) triggert **geen**
-  waarschuwing.
+Uitgangspunt: binding numerieke/datum-termen leven **uitsluitend in gestructureerde dataslots** van
+de component-instance (single source). De vrije tekst toont ze via een token. Een wijziging aan zo'n
+gekoppeld dataslot van een `APPROVED` instance zet de review **altijd** op `SUPERSEDED` — of de
+wijziging nu in de tekst of in de dealdata begint. De divergentiewaarschuwing en de
+review-invalidatie zijn twee kanten van dezelfde gebeurtenis.
+
+- Zet exclusiviteitsduur (dataslot) op 90 → component `APPROVED` → wijzig het dataslot naar 120
+  (als specialist, en in een tweede test als adviseur) → assert: (a) `BlockReview` → `SUPERSEDED`,
+  (b) export geblokkeerd, (c) **divergentiewaarschuwing** als een ander document van hetzelfde
+  dossier nog 90 in zijn gekoppelde dataslot heeft.
+- Zelfde dataslot verschilt tussen MoU-instance (120) en LoI-instance (90) van hetzelfde dossier →
+  waarschuwing, met beide bronnen genoemd.
+- De specialist overschrijft de tokenzin met een letterlijk getal dat afwijkt van het dataslot →
+  dit is een expliciete, gemarkeerde **override** → review `SUPERSEDED` + waarschuwing "documenttekst
+  wijkt af van het gekoppelde veld".
+- Alle gekoppelde dataslots weer gelijkgetrokken (120 overal) → de waarschuwing verdwijnt; de
+  reviews blijven `SUPERSEDED` tot ze opnieuw zijn afgetekend (gelijktrekken heft de invalidatie
+  niet op).
+- Negatief: een wijziging aan **niet-gekoppelde vrije prozatekst** (een toelichtende zin zonder
+  binding-term) triggert géén invalidatie en géén waarschuwing.
 
 ---
 
@@ -134,6 +145,10 @@ DOSSIER_ZIP_EXCLUDES_UNAPPROVED_DOCUMENT    (canExport per document)
 BACKGROUND_EXPORT_JOB_BLOCKED               (canExport namens de gebruiker)
 OLD_GENERATOR_HAS_NO_COMPOSER_OUTPUT_PATH   (de MoU/composer-uitgang bestaat niet in de oude generatoren)
 RELIANCE_MISSING_MAKES_EXPORT_INVALID       (export zonder correcte disclaimer-versie faalt)
+NO_DOCUMENT_CONTENT_IN_ERROR_RESPONSE       (een geblokkeerde export lekt geen tekst in de foutrespons)
+NO_DOCUMENT_CONTENT_IN_LOGS                 (geen componenttekst in console/wrangler-tail-logs)
+AI_CONTEXT_RESPECTS_SPECIALIST_HOLD         (tekst van een component onder specialist-hold gaat niet
+                                            als AI-context naar Anthropic zonder expliciete instemming)
 ```
 
 Plus: een export die wél slaagt bevat de juiste `disclaimer_version + hash`, en het manifest van die
