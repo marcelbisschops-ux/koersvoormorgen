@@ -267,6 +267,14 @@ async function run() {
     return f && f.instances.filter((b) => b.bron === 'component').length === 2;
   })(), JSON.stringify(gd3.json.divergenties));
 
+  kop('STAP 18 · append-only audit-keten');
+  const verifyBeg = await api('GET', '/mna/tos/manifest/verify', { headers: H });
+  check('audit-keten verifiëren door begeleider → 403 (alleen admin)', verifyBeg.status === 403, 'status ' + verifyBeg.status);
+  const verify = await api('GET', '/mna/tos/manifest/verify', { adminKey: ADMIN });
+  check('audit-keten intact (ok:true)', verify.json && verify.json.ok === true, JSON.stringify(verify.json));
+  check('keten bevat de events van deze test (rijen > 10)', verify.json && verify.json.rijen > 10, 'rijen ' + (verify.json && verify.json.rijen));
+  check('laatste_seq == aantal rijen (gaploos)', verify.json && verify.json.laatste_seq === verify.json.rijen, JSON.stringify(verify.json));
+
   kop('NEGATIEF · cross-traject + rol-scoping (stap 16)');
   const vreemd = await api('GET', '/mna/tos/document/' + docId + '?code=ZZZZZZZZ', {});
   check('document ophalen met onbekende code → 403', vreemd.status === 403, 'status ' + vreemd.status);
