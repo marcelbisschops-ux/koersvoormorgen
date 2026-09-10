@@ -232,6 +232,18 @@ async function run() {
   const rReAppr = await api('POST', '/mna/tos/component/' + exclIid + '/review', { headers: H, body: { actie: 'goedkeuren', naam: 'Mr. Test Jurist', hoedanigheid: 'advocaat' } });
   check('opnieuw goedkeuren na SUPERSEDED → APPROVED', rReAppr.json && rReAppr.json.review && rReAppr.json.review.status === 'APPROVED');
 
+  // bulk-aftekening: hele MoU in één actie
+  const revAll = await api('POST', '/mna/tos/document/' + docId + '/review-alles', { headers: H, body: { naam: 'Mr. Bulk Jurist', hoedanigheid: 'advocaat' } });
+  check('review-alles: ≥1 onderdeel afgetekend', revAll.json && revAll.json.ok === true && revAll.json.afgetekend >= 1, JSON.stringify(revAll.json).slice(0, 200));
+  const gAll = await api('GET', '/mna/tos/document/' + docId, { headers: H });
+  check('na review-alles: geen enkel LEGAL/TAX/VALUATION-onderdeel meer open', !(gAll.json.componenten || []).some((c) => ['LEGAL', 'TAX', 'VALUATION'].includes(c.review_domain) && c.review_trigger !== 'nooit' && !(c.review && c.review.status === 'APPROVED')));
+  const ecAll = await api('GET', '/mna/tos/document/' + docId + '/exportcheck', { headers: H });
+  check('na review-alles: exportcheck heeft geen REVIEW-blockers', !(ecAll.json.blockers || []).some((b) => b.code === 'REVIEW_MISSING' || b.code === 'REVIEW_OPEN'), JSON.stringify(ecAll.json.blockers));
+  const revAllLeeg = await api('POST', '/mna/tos/document/' + docId + '/review-alles', { headers: H, body: { naam: 'Mr. Bulk Jurist', hoedanigheid: 'advocaat' } });
+  check('review-alles nogmaals → 0 afgetekend (idempotent)', revAllLeeg.json && revAllLeeg.json.afgetekend === 0);
+  const revAllKoper = await api('POST', '/mna/tos/document/' + docId + '/review-alles', { headers: { 'x-tussen-key': (c1.json && c1.json.koper_code) || 'GEEN' }, body: { naam: 'x' } });
+  check('review-alles niet toegankelijk voor koper → 403', revAllKoper.status === 403, 'status ' + revAllKoper.status);
+
   // aftekeneis uitschakelen voor juridisch → opt-out + geen LEGAL-blockers meer
   const setUit = await api('POST', '/mna/tos/document/' + docId + '/setting', { headers: H, body: { juridisch: 'uit' } });
   check('setting juridisch=uit, opt-out zichtbaar', setUit.json && setUit.json.setting && setUit.json.setting.juridisch === 'uit' && setUit.json.opt_out_zichtbaar_op_document === true, JSON.stringify(setUit.json));

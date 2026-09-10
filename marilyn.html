@@ -2393,7 +2393,8 @@ async function toonDetail(id,naam){
     // ── Bewaartermijn na closing (per traject) ──────────────────────────────
     // Standaard 14 dagen (VOK Art. 5). Beheerder zet dit UITSLUITEND op schriftelijk verzoek van
     // de adviseur. Bij een extern adviseurstraject en > 14 dagen boekt de backend automatisch een
-    // opslagfee (€25 per aangevangen maand). Zichtbaar in beide takken (ook afgeschermd traject),
+    // opslagfee tegen het live tarief dossier_opslag_maand uit platform_fees (aanpasbaar in € Tarieven;
+    // seed-default 25). Zichtbaar in beide takken (ook afgeschermd traject),
     // want dit is een operationele retentie-instelling, geen prijsgevoelige inhoud.
     (function(){
       var bt=document.createElement('div');
@@ -2405,7 +2406,7 @@ async function toonDetail(id,naam){
         +'<button id="bt-opslaan" class="btn" style="font-size:12px;padding:6px 14px">Opslaan</button>'
         +'<button id="bt-reset" class="btn-ghost" style="font-size:12px;padding:6px 12px">Terug naar 14</button>'
         +'</div>'
-        +'<div style="font-size:11px;color:var(--mid);margin-top:.55rem;line-height:1.6">Alleen op schriftelijk verzoek van de adviseur (VOK Art. 5). Bij een extern adviseurstraject wordt boven 14 dagen automatisch &euro;25 per aangevangen maand als opslagfee geboekt.</div>';
+        +'<div style="font-size:11px;color:var(--mid);margin-top:.55rem;line-height:1.6">Alleen op schriftelijk verzoek van de adviseur (VOK Art. 5). Bij een extern adviseurstraject wordt boven 14 dagen automatisch een opslagfee per aangevangen maand geboekt tegen het tarief <code>dossier_opslag_maand</code> uit &euro; Tarieven (daar aanpasbaar).</div>';
       db.appendChild(bt);
       function laadBt(){
         fetch(WORKER+'/mna/admin/bewaartermijn/'+encodeURIComponent(id),{headers:{'x-admin-key':adminKey}})
