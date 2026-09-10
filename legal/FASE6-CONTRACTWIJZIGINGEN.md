@@ -1,19 +1,17 @@
-# FASE 6 — Voorstel ter verificatie door de jurist (v2, na eerste juridische review)
+# FASE 6 — Contractwijzigingen platform (na tweede juridische review — DOORGEVOERD)
 
-**Datum:** 2026-09-10 · **Versie:** 2 (redlines eerste jurist-review verwerkt)
-**Van:** Bisschops Financing B.V. (opgesteld ter voorbereiding, nog niet toegepast)
-**Aan:** de jurist, ter tweede toetsing en akkoord
-**Betreft:** vier samenhangende tekstwijzigingen in de contractdocumenten van het Koers voor Morgen-platform
+**Datum:** 2026-09-10 · **Versie:** 3 (beide jurist-reviews verwerkt; alle vier onderdelen live)
+**Van:** Bisschops Financing B.V.
+**Status:** de vier onderdelen zijn na de tweede review (🟢 op alle vier, met redlines) **doorgevoerd en live op productie**. Dit document is nu het implementatie-logboek; de jurist-eis van een cross-document eindcontrole is uitgevoerd (zie onderaan).
 
-## Verwerking van de eerste review
+## Status per onderdeel
 
-| Onderdeel | Oordeel eerste review | Verwerkt in v2 |
+| Onderdeel | Tweede review | Doorgevoerd |
 |---|---|---|
-| 1 · Handelsnaam | 🟢 akkoord, redactie aanpassen — géén blanket-vervanging van "Bisschops Financing" | Tekst herzien naar "handelend onder de naam …"; het voorstel om de verkorte aanduiding overal te vervangen is **ingetrokken** |
-| 2 · Reliance | 🟢 in beginsel, vrijwaring aanscherpen + "geen rechten ontlenen" nuanceren | Beide herzien (zie hieronder) |
-| 3 · AI-bijlage | 🟠 eerst contractuele/feitelijke verificatie | **Verificatie afgerond op 2026-09-10** (zie §3-verificatie). ZDR staat **uit** → standaardretentie 30 dagen (variant B, nu de vaste tekst). Geen apart Anthropic-contract → standaard Commercial Terms + DPA (met SCC's). Model `claude-sonnet-4-6` is geen Covered Model. Art. 22: codedoorloop uitgevoerd, geen uitsluitend geautomatiseerd besluit met rechtsgevolg. Rest voor de jurist: de rolverdeling-splitsing (punt 8a/8b) en de juridische kwalificatie. **Klaar voor jurist-ronde 2.** |
-| 4 · Bewaartermijn | 🟢 in beginsel, redactie aanscherpen (wie/waarom/hoelang/einde/verwijdering) | Tekst herzien met die vijf elementen; fee-zin genuanceerd. **DOORGEVOERD op 2026-09-10 op instructie van Marcel** (jurist akkoord in beginsel): VOK v1.5 → v1.6, GV v2.0 → v2.1, live op productie. De technische koppeling (opslagfee bij verlenging) is meegebouwd. **Openstaand:** de AV (`voorwaarden.html`) noemt nog een platte 14-dagentermijn; die consistentie-aanpassing valt buiten wat de jurist voor onderdeel 4 zag en wacht op zijn oordeel. |
-| Volgorde | wijzigen: eerst 3 (AI), dan 1, 2, 4 | Overgenomen |
+| 1 · Handelsnaam | 🟢 akkoord, laatste zin scherper ("ter aanduiding van de contractspartij") | ✅ 2026-09-10. VOK v1.7, GV v2.2, `voorwaarden.html` v2.3, `privacy.html` v1.10. "handelend onder de naam Koers voor Morgen; waar 'Koers voor Morgen' de contractspartij aanduidt, wordt Bisschops Financing B.V. bedoeld." Verkorte aanduiding in de lopende tekst ongewijzigd. |
+| 2 · Reliance | 🟢 akkoord, "voor zover rechtens toegestaan" toevoegen; vrijwaring versmald | ✅ 2026-09-10. Nieuw GV-artikel 6A en `voorwaarden.html` §6a "Geen advies aan of zorgplicht jegens derden". Geen renumbering (6A/6a) → geen kruisverwijzing-risico. |
+| 3 · AI-bijlage | 🟢 akkoord na herformulering art. 22 ("op basis van de huidige werking … geen uitsluitend geautomatiseerde besluitvorming"); 30-dagenretentie geaccepteerd, intern als wijzigingsbeheer bewaken | ✅ 2026-09-10. "Bijlage — Verwerking met behulp van AI" (9 punten) bij de VOK; verwijzingen in VOK-artikel 3 en 6; punt 8 gesplitst verwerker/verwerkingsverantwoordelijke. `privacy.html` hoofdstuk 9 hierop aangesloten. **Wijzigingsbeheer:** de 30-dagentekst opnieuw beoordelen zodra de Anthropic-configuratie (ZDR, model, features) verandert. |
+| 4 · Bewaartermijn | 🟢 akkoord; AV eerst gelijktrekken vóór productie | ✅ 2026-09-10. VOK Artikel 5 (v1.6) + GV-opslagvergoeding + automatische €25-fee al live sinds eerder die dag; nu **AV/PRIV gelijkgetrokken**: `voorwaarden.html` §4 en `privacy.html` (samenvatting, tabel, hoofdstuk 7) noemen de 14-dagen-standaard mét de 365-dagen-verlengregeling. |
 
 ---
 
@@ -285,28 +283,27 @@ De vijf door de review gevraagde elementen zijn nu expliciet:
 
 ---
 
-## Herziene volgorde van doorvoeren (na jurist-akkoord)
+## Cross-document eindcontrole (jurist-eis) — uitgevoerd 2026-09-10
 
-Per onderdeel: versieophoging van het betreffende document, bestaande audits, eerst staging, dan
-productie.
+Gecontroleerd op AV (`voorwaarden.html` v2.3), GV (v2.2), VOK (v1.7), PV (`platformvoorwaarden.html`,
+rendert de GV live) en PRIV (`privacy.html` v1.10), als één samenhangend geheel:
 
-1. **Onderdeel 3 (AI-bijlage)** — §3-verificatie is afgerond; na jurist-akkoord: de bijlage bij de
-   VOK + de verwijzingen in artikel 3 en 6.
-2. **Onderdeel 1 (handelsnaam-zin)** — in AV, GV, VOK, PV, PRIV.
-3. **Onderdeel 2 (reliance-clausule)** — in AV en GV, plus de korte variant in de documentvoettekst.
-4. **Onderdeel 4 (VOK Artikel 5 + GV-opslagvergoeding)** — ✅ **live sinds 2026-09-10** (VOK v1.6,
-   GV v2.1); de technische koppeling die de € 25/maand automatisch boekt is meegebouwd.
+| Punt | Resultaat |
+|---|---|
+| Oude bewaartermijnen | Geen losse "14 dagen zonder verlengregeling" meer waar het regime geldt. "7 jaar" komt alleen voor als de fiscale bewaarplicht van de adviseur zelf, en "zeven (7) jaar" als de Anthropic-classificatiescore-termijn — beide correct. De 365-dagenregeling staat consistent in AV §4, GV Art. 3, VOK Art. 5 en PRIV (samenvatting, tabel, hoofdstuk 7). |
+| KvK-nummer | Overal 08208520; geen enkele 82085200. |
+| Aansprakelijkheid | € 10.000-cap per traject ongewijzigd in AV §6 en GV Art. 6. De reliance-clausule (AV §6a / GV 6A) beperkt de *kring* van gerechtigden, niet het *bedrag*, en gebruikt "voor zover rechtens toegestaan" — geen tegenspraak met de cap of met de bestaande artikel 82 AVG-vrijwaring. |
+| Handelsnaam | Introductiezin aanwezig in AV, GV, VOK, PRIV; PV volgt de GV. Contractspartij blijft overal Bisschops Financing B.V. |
+| Datumlabels | AV/GV/PRIV/VOK nu allemaal "September 2026" bij de huidige versie. |
+| AI/Anthropic | VOK-bijlage en PRIV hoofdstuk 9 zeggen hetzelfde: sub-verwerker, 30-dagenretentie, SCC's via het DPA, geen training, geen art. 22-besluitvorming, gesplitste informatieplicht. |
 
----
+## Openstaand (klein, buiten de kern)
 
-## Status van de verificatie voor onderdeel 3 (afgerond 2026-09-10)
-
-- **Anthropic-voorwaarden:** geen apart contract; standaard Commercial Terms of Service + Commercial
-  DPA (met SCC's). Marcel bevestigd.
-- **Zero Data Retention:** staat uit (Anthropic Console → Privacy controls, gecontroleerd 2026-09-10:
-  "Data retention — Organization default: On · 30 days"). → 30-dagenretentie in de bijlage.
-- **Artikel 22 AVG:** codedoorloop uitgevoerd, geen uitsluitend geautomatiseerd besluit met
-  rechtsgevolg. Marcel bevestigt de feitelijke werking. Juridische kwalificatie ter toetsing bij de
-  jurist.
-- **Nog openstaand puntje buiten onderdeel 3:** de AV (`voorwaarden.html`) noemt nog een platte
-  14-dagentermijn — consistentie-aanpassing meenemen in jurist-ronde 2.
+1. **Zichtbare disclaimer-voettekst op gegenereerde documenten / de dossier-export** (onderdeel 2,
+   tweede variant): "Dit document is via het Koers voor Morgen-platform opgesteld als hulpmiddel …
+   niet bestemd voor gebruik door derden." Nog niet gebouwd — raakt de document-generatiepijplijn
+   (werkregel 19) en krijgt een eigen wijziging met de document-generatie-checks.
+2. **`buildAvTekst`** (de losse "Algemene Voorwaarden — M&A-advies en bemiddeling", versie 1.2, voor
+   directe advies­cliënten van Bisschops Financing — niet het platform): valt buiten deze fase, maar
+   voor volledige merkconsistentie kan de handelsnaam-zin daar bij een volgende AV-revisie mee.
+3. **`testvoorwaarden.html`** (testers, aansprakelijkheid nihil): bewust ongemoeid; apart regime.
