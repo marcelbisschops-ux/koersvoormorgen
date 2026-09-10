@@ -26,19 +26,19 @@ i.p.v. de kapotte `${{ secrets.X != '' }}`-expressie-conditie; code bevat een ex
 "Audit-fix P1 (24 aug 2026)"-commentaarregel. Laatst geverifieerd: 5 sep 2026.
 
 ### P1-2 · Dagelijkse D1-backup — stil gefaald, geen alert
-🟡 **Gedeeltelijk.** Het *silent-failure*-symptoom is gefixt (`scripts/backup.sh` onderdrukt de
-wrangler-output niet meer naar `/dev/null`, heeft nu `CI=true` + een timeout/watcher-mechanisme die
-een echte foutmelding + exitcode teruggeeft). **Maar de onderliggende oorzaak is niet weg:** het
-faalpatroon in `~/Library/Logs/kantoorinzicht-backup.log` blijft intermitterend optreden (25, 27, 29,
-30 aug, en **4 sep — de meest recente run, gisterennacht**) — steeds direct na een `wrangler whoami`-
-achtige account-/permissie-dump in plaats van de daadwerkelijke export, wat wijst op een OAuth/
-keychain-herauthenticatie-poging die niet non-interactief kan afronden onder launchd (bevestigt het
-24-aug-vermoeden). **Er is nog geen mailalert toegevoegd** (`grep -n "resend\|mail\|alert"
-scripts/backup.sh` → 0 treffers) — bij een faalrun ziet niemand het zonder zelf het logbestand te
-openen. Laatste geslaagde run: 3 sep 2026 20:00 (85 tabellen). **Aanbeveling:** wrangler op een
-API-token laten authenticeren i.p.v. OAuth voor deze niet-interactieve launchd-context (voorkomt de
-herauth-trigger), plus het geplande mailalert bij een faalrun. Vereist Marcels akkoord (credential-
-wijziging). Laatst geverifieerd: 5 sep 2026.
+🟢 **Gefixt (bewezen 10 sep 2026).** Twee delen:
+1. **Root cause** (OAuth-herauth die niet non-interactief kan afronden onder launchd): opgelost door
+   `CLOUDFLARE_API_TOKEN` in de launchd-plist te zetten (5 sep 16:27) i.p.v. de OAuth-login.
+2. **Mailalert**: `meld_backup_status()` in `scripts/backup.sh` post het resultaat naar
+   `/mna/admin/veiligheid/backup-melding`; de worker stuurt bij `ok:false` een e-mail ("🔴 Dagelijkse
+   D1-back-up mislukt") + logt het op het veiligheidsdashboard. ADMIN_KEY komt uit de plist.
+
+**Bewijs (`~/Library/Logs/kantoorinzicht-backup.log`):** vijf opeenvolgende geslaagde geplande runs
+sinds de API-token: 5 sep (86 tabellen), 6 sep (87), 7 sep (87), 8 sep (87), 9 sep (96). Geen enkele
+`Authentication error [code: 10000]` / OAuth-dump sinds 4 sep. R2-documenten: prod R2 is nu leeg
+(`SELECT COUNT(*) FROM mna_documenten WHERE r2_key<>''` = 0), dus de "⊘ geen documenten in R2"-regel
+in het log is correct, geen stille fout. Hiermee vervalt ook P3-33 (bewezen door echte geplande runs).
+Laatst geverifieerd: 10 sep 2026.
 
 ### P1-3 · Koperkaarten op matching-platform.html niet toetsenbord-bedienbaar
 🟢 **Gefixt** (24 aug 2026). Bewijs: `.buyer-card` heeft nu `tabindex="0" role="button"
@@ -236,7 +236,7 @@ resterend van de 10) eveneens nog open.
 `cloudflare-worker.js` beide dunne wrappers zijn die volledig naar deze module delegeren.
 
 ### P3-33 · Backup-fix nog niet bewezen door een echte geplande run
-🟡 CLOUDFLARE_API_TOKEN staat sinds 5 sep 16:27 in de plist — eerste echte test vanavond 20:00.
+🟢 Bewezen (10 sep 2026): 5 opeenvolgende geslaagde geplande runs 5-9 sep. Zie P1-2.
 
 ### P3-34 · Geen echte pagination
 🔴 **Bewust uitgesteld, nu met concrete cijfers onderbouwd (5 sep 2026).** Werkelijke rijentelling op
