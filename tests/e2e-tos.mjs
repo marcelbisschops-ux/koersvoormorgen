@@ -96,6 +96,11 @@ async function run() {
   check('standaardcomponenten geïnstantieerd (15–21)', mk.json && mk.json.componenten >= 15 && mk.json.componenten <= 21, 'aantal ' + (mk.json && mk.json.componenten));
   if (!docId) return;
 
+  const lijst = await api('GET', '/mna/tos/documenten/' + trajectCode, { headers: H });
+  check('documentenlijst bevat de nieuwe MoU', lijst.json && lijst.json.ok === true && (lijst.json.documenten || []).some((d) => d.id === docId && d.doc_type === 'mou' && d.status === 'draft'), JSON.stringify(lijst.json).slice(0, 200));
+  const lijstKoper = await api('GET', '/mna/tos/documenten/' + trajectCode, { headers: { 'x-tussen-key': (c1.json && c1.json.koper_code) || 'GEEN' } });
+  check('documentenlijst niet toegankelijk voor koper → 403', lijstKoper.status === 403, 'status ' + lijstKoper.status);
+
   const get = await api('GET', '/mna/tos/document/' + docId, { headers: H });
   check('document ophalen (ok)', get.json && get.json.ok === true, JSON.stringify(get.json).slice(0, 200));
   const cs = (get.json && get.json.componenten) || [];

@@ -792,6 +792,10 @@ function renderBegeleiderDashboard(app){
         +stapRij('bg-teaser-actie','&#128226;','#1a7a5e',t.teaser_tekst?'Teaser bekijken/bewerken':'Genereer teaser',t.teaser_tekst?'<span style="color:var(--teal)">&#10003; Teaser klaar</span>':'Kort, anoniem verkoopdocument — vóór er een koper is',false,false,!marketingAan,'Module Marketing niet actief — neem contact op via koersvoormorgen.nl')
         +stapRij('bg-nda-actie','&#128274;','#7c5cbf','Geheimhoudingsovereenkomst (NDA)',getekendStatus('nda_getekend','nda_getekend_datum'))
         +stapRij('bg-verkoopmemo-actie','&#128220;','#8a5a00',t.verkoopmemorandum_tekst?'Verkoopmemorandum bekijken/bewerken':'Genereer verkoopmemorandum',t.verkoopmemorandum_tekst?'<span style="color:var(--teal)">&#10003; Verkoopmemorandum klaar</span>':'Uitgebreid document mét bedrijfsnaam, na NDA van die partij',false,false,!marketingAan,'Module Marketing niet actief — neem contact op via koersvoormorgen.nl')
+        // MoU-composer (Transaction OS) — stelt een memorandum of understanding samen uit losse,
+        // apart af te tekenen onderdelen. Geen module-gate: de composer zelf is geen te versturen
+        // contract; finaliseren/versturen gaat via de aparte, geauthenticeerde tos-endpoints.
+        +stapRij('bg-mou-actie','&#129513;','#5a5470','Memorandum of Understanding (composer)','Onderdelen samenstellen, laten aftekenen, finaliseren',false,true)
         +stapRij('bg-bieding-actie','&#128233;','#a0522d','Indicatieve bieding','Klaar om te versturen')
         +stapRij('bg-loi-actie','&#128196;','var(--gold)','Intentieverklaring (LoI)',getekendStatus('loi_getekend','loi_getekend_datum'))
         // Persistent, zichtbaar gemaakt (21 aug 2026, Marcel kon de trigger niet vinden): stond
@@ -2148,6 +2152,278 @@ function renderBegeleiderDashboard(app){
     }catch(e){ toast('Verbindingsfout.','err'); }
   }
 
+  // ═══ Transaction OS — MoU-composer ═════════════════════════════════════════
+  // Regie, geen autoriteit. Het platform verbindt transactiedata, professionele beoordeling en
+  // documenttekst; het claimt nooit dat de tekst juridisch/fiscaal juist is. Alle beslissingen
+  // (gate, versiebeheer, invalidatie, manifest) staan in de worker (worker/31-tos.js) — dit is UI.
+  var MOU_PROV={USER_FACT:['&#128309;','ingevoerd'],SOURCE_FACT:['&#128309;','uit bron'],CALCULATION:['&#128994;','berekend'],
+    AI_INFERENCE:['&#129302;','AI-concept'],ASSUMPTION:['&#128993;','aanname'],SPECIALIST_ASSESSMENT:['&#9878;&#65039;','specialist'],
+    PLATFORM:['&#128274;','platform'],UNVERIFIED:['&#10068;','ongeverifieerd'],'':['&#9711;','leeg']};
+  var MOU_REV={REQUIRED:['Beoordeling vereist','var(--muted)'],REQUESTED:['Beoordeling gevraagd','var(--gold)'],
+    IN_REVIEW:['In beoordeling','var(--gold)'],CHANGES_REQUESTED:['Wijzigingen gevraagd','var(--gold-dark)'],
+    APPROVED:['&#10003; Afgetekend','var(--teal)'],SUPERSEDED:['Vervallen na wijziging','var(--red)'],REVOKED:['Ingetrokken','var(--red)'],
+    NONE:['',''] };
+  var _mouDocId=null;
+  function bgMouKey(){ return S._bgKey || S.code; }
+  async function bgMouApi(method,pad,body){
+    var opt={method:method,headers:{'x-tussen-key':bgMouKey()}};
+    if(body!==undefined){ opt.headers['Content-Type']='application/json'; opt.body=JSON.stringify(body); }
+    try{ var r=await fetch(WORKER+'/mna/tos'+pad,opt); var d=await r.json().catch(function(){return{};}); return {status:r.status,ok:r.ok,json:d}; }
+    catch(e){ return {status:0,ok:false,json:{error:'Verbindingsfout'}}; }
+  }
+  function bgMouFout(msg){
+    return '<div style="background:var(--red-bg);border:1px solid var(--red);border-radius:var(--r2);padding:1rem;font-size:13px;color:var(--red)">MoU-composer: '+esc(msg||'onbekende fout')+'</div>';
+  }
+  function bgMouDiscl(){
+    return '<div style="font-size:11px;color:var(--muted);line-height:1.55;margin:.5rem 0 .75rem">Elk onderdeel is een leeg werkveld. De AI stelt hoogstens een <em>concept</em> voor; een bevoegd specialist (jurist/fiscalist/waardeur) tekent de professionele tekst af per dossier. Koers voor Morgen beoordeelt de inhoud niet en houdt geen bibliotheek van goedgekeurde clausuleteksten.</div>';
+  }
+  async function bgMouComposer(){
+    var out=document.getElementById('bg-doc-out'); if(!out)return;
+    out.style.display='block';
+    out.innerHTML='<div style="color:var(--muted);font-size:13px;padding:1rem;background:var(--card);border-radius:var(--r2)">MoU-composer laden&hellip;</div>';
+    out.scrollIntoView({behavior:'smooth',block:'nearest'});
+    await bgMouApi('POST','/activeer/'+encodeURIComponent(S.code)); // idempotent
+    var lijst=await bgMouApi('GET','/documenten/'+encodeURIComponent(S.code));
+    if(!lijst.ok||!lijst.json.ok){ out.innerHTML=bgMouFout(lijst.json&&lijst.json.error); return; }
+    var docs=(lijst.json.documenten||[]).filter(function(x){return x.doc_type==='mou';});
+    if(!docs.length){
+      out.innerHTML='<div class="panel" style="padding:1.25rem">'
+        +'<div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:#5a5470">Memorandum of Understanding &mdash; composer</div>'
+        +bgMouDiscl()
+        +'<button id="mou-nieuw" class="btn btn-sm">MoU aanmaken</button></div>';
+      var nb=document.getElementById('mou-nieuw');
+      nb.onclick=async function(){ nb.disabled=true; nb.textContent='Bezig&hellip;';
+        var mk=await bgMouApi('POST','/document',{profile:'MOU'});
+        if(!mk.ok||!mk.json.ok){ toast((mk.json&&mk.json.error)||'Aanmaken mislukt','err'); nb.disabled=false; nb.textContent='MoU aanmaken'; return; }
+        _mouDocId=mk.json.document_id; toast('MoU aangemaakt','ok'); bgMouRender();
+      };
+      return;
+    }
+    if(!_mouDocId||!docs.some(function(d){return d.id===_mouDocId;})) _mouDocId=docs[0].id;
+    bgMouRender(docs.length>1?docs:null);
+  }
+  async function bgMouRender(alleDocs){
+    var out=document.getElementById('bg-doc-out'); if(!out||!_mouDocId)return;
+    var g=await bgMouApi('GET','/document/'+encodeURIComponent(_mouDocId));
+    if(!g.ok||!g.json.ok){ out.innerHTML=bgMouFout(g.json&&g.json.error); return; }
+    var doc=g.json.document, comps=g.json.componenten||[], divs=g.json.divergenties||[];
+    var bevroren=!!doc.bevroren;
+    var menu=await bgMouApi('GET','/menu/'+encodeURIComponent(S.code)+'?profile=MOU&document='+encodeURIComponent(_mouDocId));
+    var mj=menu.ok&&menu.json.ok?menu.json:{menu:[],ontbrekend_kern:[],required_reviews:{}};
+    var st=await bgMouApi('GET','/document/'+encodeURIComponent(_mouDocId)+'/exportcheck');
+    var blockers=(st.ok&&st.json&&Array.isArray(st.json.blockers))?st.json.blockers:[];
+    var eis=(st.ok&&st.json&&st.json.eis_per_domein)||{LEGAL:true,TAX:true,VALUATION:true};
+
+    var h='<div class="panel" style="padding:0;border:1px solid '+(bevroren?'var(--teal)':'#5a5470')+'">';
+    h+='<div style="display:flex;align-items:center;justify-content:space-between;padding:.8rem 1rem;border-bottom:1px solid var(--border)">'
+      +'<div><span style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:#5a5470">MoU-composer</span>'
+      +'<span style="font-size:11px;color:var(--muted);margin-left:8px">v'+esc(String(doc.current_version))+' &middot; '
+      +(doc.status==='draft'?'concept':doc.status==='exported'?'gefinaliseerd':doc.status==='verstuurd'?('verstuurd aan '+((doc.adressaten||[]).join(', ')||'&mdash;')):esc(doc.status))+'</span></div>'
+      +'<button id="mou-close" class="btn-ghost" style="font-size:11px;padding:3px 10px">Sluiten</button></div>';
+    h+='<div style="padding:1rem">';
+    h+=bgMouDiscl();
+    if(alleDocs&&alleDocs.length>1){
+      h+='<div style="font-size:11px;color:var(--muted);margin-bottom:.6rem">MoU: <select id="mou-kies" style="background:var(--panel);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-size:11px;padding:3px 6px">'
+        +alleDocs.map(function(d){return '<option value="'+esc(d.id)+'"'+(d.id===_mouDocId?' selected':'')+'>v'+esc(String(d.current_version))+' &middot; '+esc(d.status)+' &middot; '+new Date(d.created_at).toLocaleDateString('nl-NL')+'</option>';}).join('')
+        +'</select></div>';
+    }
+    // Divergentiebanner
+    if(divs.length){
+      h+='<div style="background:var(--gold-bg);border:1px solid var(--gold);border-radius:var(--r);padding:.6rem .8rem;margin-bottom:.75rem;font-size:12px;color:var(--gold-dark)"><strong>&#9888; '+divs.length+' afwijking'+(divs.length===1?'':'en')+' tussen gekoppelde velden</strong>';
+      divs.forEach(function(f){
+        var waarden=(f.instances||[]).map(function(b){return esc(b.bron==='transactionele_data'?'dealgegevens':'MoU')+': '+esc(b.value);});
+        h+='<div style="margin-top:3px">'+esc(f.dataslot_key)+' &mdash; '+waarden.join(' / ')+'</div>';
+      });
+      h+='<div style="margin-top:3px;color:var(--muted)">Het platform bepaalt niet welke waarde juist is. Trek de gekoppelde velden gelijk.</div></div>';
+    }
+    // Bevroren-banner + export/verstuur/manifest
+    if(bevroren){
+      h+='<div style="background:var(--teal-bg);border:1px solid var(--teal);border-radius:var(--r);padding:.7rem .9rem;margin-bottom:.75rem;font-size:12px;color:var(--teal-dim)">'
+        +'&#128274; Dit document is '+(doc.status==='verstuurd'?'verstuurd':'gefinaliseerd')+' en kan niet meer worden gewijzigd. Een aanpassing is een nieuw document.'
+        +'<div style="margin-top:.5rem;display:flex;gap:8px;flex-wrap:wrap">'
+        +(doc.status==='exported'?'<button id="mou-verstuur" class="btn btn-sm" style="background:#5a5470">&#9993; Versturen naar partijen</button>':'')
+        +'<button id="mou-manifest" class="btn-ghost" style="font-size:11px;padding:5px 12px">&#128203; Manifest bekijken</button>'
+        +'<button id="mou-nieuw2" class="btn-ghost" style="font-size:11px;padding:5px 12px">+ Nieuwe MoU</button>'
+        +'</div><div id="mou-manifest-out" style="margin-top:.5rem"></div></div>';
+    }
+    // Componentenmenu (in-/uitklapbaar)
+    var ontbr=mj.ontbrekend_kern||[];
+    h+='<details'+(ontbr.length?' open':'')+' style="margin-bottom:.75rem;border:1px solid var(--border2);border-radius:var(--r)">'
+      +'<summary style="cursor:pointer;padding:.55rem .8rem;font-size:12px;color:var(--head)">Onderdelen samenstellen'
+      +(ontbr.length?(' <span style="color:var(--gold-dark)">&mdash; '+ontbr.length+' KERN-onderdeel'+(ontbr.length===1?'':'en')+' nog niet opgenomen</span>'):' <span style="color:var(--teal)">&mdash; alle KERN-onderdelen opgenomen</span>')
+      +'</summary><div style="padding:.4rem .8rem .7rem">';
+    if(bevroren){ h+='<div style="font-size:11px;color:var(--muted)">Vergrendeld.</div>'; }
+    else{
+      ['kern','aanbevolen','optioneel'].forEach(function(rol){
+        var items=(mj.menu||[]).filter(function(m){return m.completeness_role===rol;});
+        if(!items.length)return;
+        h+='<div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:.4rem 0 .2rem">'+rol+'</div>';
+        items.forEach(function(m){
+          h+='<label style="display:flex;gap:7px;align-items:center;font-size:12px;color:var(--sub);padding:2px 0;cursor:pointer">'
+            +'<input type="checkbox" class="mou-menu-chk" data-block="'+esc(m.block_id)+'" '+(m.in_document?'checked':'')+'>'
+            +esc(m.title)+'</label>';
+        });
+      });
+    }
+    h+='</div></details>';
+    // Componentkaarten
+    comps.filter(function(c){return c.instance_status==='ACTIVE';}).forEach(function(c){
+      var rev=c.review||{status:'REQUIRED'};
+      var rl=MOU_REV[rev.status]||['',''];
+      h+='<div class="mou-card" data-iid="'+esc(c.instance_id)+'" style="border:1px solid var(--border);border-radius:var(--r);padding:.7rem .85rem;margin-bottom:.5rem">'
+        +'<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">'
+        +'<div style="font-size:12.5px;font-weight:600;color:var(--head)">'+esc(c.title)
+        +' <span style="font-size:10px;font-weight:500;color:var(--muted)">'+esc(c.binding_status||'')+'</span></div>'
+        +(rl[0]?'<span style="font-size:10.5px;color:'+rl[1]+'">'+rl[0]+(rev.status==='APPROVED'&&rev.reviewer_hoedanigheid?(' &middot; '+esc(rev.reviewer_hoedanigheid)):'')+'</span>':'')
+        +'</div>';
+      // dataslots
+      var dfs=(c.data_fields_ui||[]); // niet aanwezig; val terug op data_values-sleutels
+      var dv=c.data_values||{};
+      var keys=Object.keys(dv);
+      if(keys.length){
+        h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:.5rem">';
+        keys.forEach(function(k){
+          var cell=dv[k]||{}; var pb=MOU_PROV[cell.provenance_type||'']||MOU_PROV[''];
+          h+='<div><div style="font-size:10px;color:var(--muted);margin-bottom:1px">'+esc(k)+' <span title="'+esc(pb[1])+'">'+pb[0]+'</span></div>'
+            +'<input class="mou-dv" data-iid="'+esc(c.instance_id)+'" data-k="'+esc(k)+'" value="'+esc(cell.value==null?'':String(cell.value))+'" '+(bevroren?'disabled':'')
+            +' style="width:100%;background:var(--panel);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-size:11px;padding:4px 7px"></div>';
+        });
+        h+='</div>';
+      }
+      // vrije tekst
+      h+='<div style="margin-top:.5rem"><textarea class="mou-text" data-iid="'+esc(c.instance_id)+'" '+(bevroren?'disabled':'')
+        +' placeholder="Concepttekst voor dit onderdeel (optioneel)" style="width:100%;height:64px;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-size:11.5px;line-height:1.6;padding:7px;resize:vertical">'+esc(c.text||'')+'</textarea>';
+      h+='<div style="font-size:10px;color:var(--muted);margin-top:1px">herkomst tekst: '+(MOU_PROV[c.text_provenance||'']||MOU_PROV[''])[0]+' '+esc((MOU_PROV[c.text_provenance||'']||MOU_PROV[''])[1])+'</div>';
+      if(!bevroren){
+        h+='<div style="display:flex;gap:6px;margin-top:.4rem;flex-wrap:wrap">'
+          +'<button class="btn-ghost mou-concept" data-iid="'+esc(c.instance_id)+'" style="font-size:10.5px;padding:4px 10px">&#129302; AI-concept</button>'
+          +'<button class="btn-ghost mou-text-save" data-iid="'+esc(c.instance_id)+'" style="font-size:10.5px;padding:4px 10px">Tekst opslaan</button>';
+        if(c.review_domain&&c.review_domain!=='NONE'&&c.review_trigger!=='nooit'){
+          if(rev.status==='APPROVED') h+='<button class="btn-ghost mou-rev" data-iid="'+esc(c.instance_id)+'" data-act="intrekken" style="font-size:10.5px;padding:4px 10px">Aftekening intrekken</button>';
+          else h+='<button class="btn-ghost mou-rev" data-iid="'+esc(c.instance_id)+'" data-act="goedkeuren" style="font-size:10.5px;padding:4px 10px;border-color:var(--teal);color:var(--teal)">Markeer als beoordeeld</button>';
+        }
+        h+='</div>';
+      }
+      h+='</div></div>';
+    });
+    // Reviewinstelling per domein
+    if(!bevroren){
+      h+='<div style="border:1px solid var(--border2);border-radius:var(--r);padding:.6rem .8rem;margin-bottom:.75rem">'
+        +'<div style="font-size:11px;font-weight:600;color:var(--head);margin-bottom:.3rem">Specialistbeoordeling vereist voor</div>'
+        +[['juridisch','LEGAL'],['fiscaal','TAX'],['cijfers','VALUATION']].map(function(p){
+          return '<label style="font-size:11.5px;color:var(--sub);margin-right:14px;cursor:pointer"><input type="checkbox" class="mou-eis" data-dom="'+p[0]+'" '+(eis[p[1]]?'checked':'')+'> '+p[0]+'</label>';
+        }).join('')
+        +'<div style="font-size:10px;color:var(--muted);margin-top:.3rem">Uitzetten wordt gelogd en op het document vermeld.</div></div>';
+    }
+    // Exportpaneel
+    h+='<div style="border-top:1px solid var(--border);padding-top:.7rem">';
+    if(!bevroren){
+      if(blockers.length){
+        h+='<div style="font-size:11.5px;color:var(--gold-dark);margin-bottom:.4rem">Nog niet klaar om te finaliseren:</div><ul style="margin:.2rem 0 .6rem 1rem;padding:0;font-size:11.5px;color:var(--sub)">'
+          +blockers.map(function(b){return '<li>'+esc(b.msg||b.code)+(b.block_id?(' <span style="color:var(--muted)">('+esc(b.block_id)+')</span>'):'')+'</li>';}).join('')+'</ul>';
+      } else {
+        h+='<div style="font-size:11.5px;color:var(--teal);margin-bottom:.4rem">&#10003; Alle controles groen.</div>';
+      }
+      h+='<button id="mou-finaliseer" class="btn btn-sm"'+(blockers.length?' style="opacity:.6"':'')+'>Finaliseer &amp; exporteer</button>';
+    }
+    h+='</div></div></div>';
+    out.innerHTML=h;
+    bgMouWire(bevroren);
+  }
+  function bgMouWire(bevroren){
+    var out=document.getElementById('bg-doc-out'); if(!out)return;
+    var cl=document.getElementById('mou-close'); if(cl)cl.onclick=function(){ out.style.display='none'; out.innerHTML=''; };
+    var ks=document.getElementById('mou-kies'); if(ks)ks.onchange=function(){ _mouDocId=this.value; bgMouRender(); };
+    var n2=document.getElementById('mou-nieuw2'); if(n2)n2.onclick=async function(){ var mk=await bgMouApi('POST','/document',{profile:'MOU'}); if(mk.ok&&mk.json.ok){ _mouDocId=mk.json.document_id; toast('Nieuwe MoU aangemaakt','ok'); bgMouComposer(); } else toast('Aanmaken mislukt','err'); };
+    if(bevroren){
+      var mm=document.getElementById('mou-manifest'); if(mm)mm.onclick=async function(){
+        var m=await bgMouApi('GET','/document/'+encodeURIComponent(_mouDocId)+'/manifest');
+        var box=document.getElementById('mou-manifest-out'); if(!box)return;
+        if(!m.ok||!m.json.ok){ box.innerHTML='<span style="color:var(--red);font-size:11px">'+esc((m.json&&m.json.error)||'geen manifest')+'</span>'; return; }
+        var mf=m.json.manifest;
+        box.innerHTML='<pre style="white-space:pre-wrap;font-size:10.5px;color:var(--muted);background:var(--panel);border:1px solid var(--border2);border-radius:var(--r);padding:.6rem;margin:0">'
+          +'documentversie: '+esc(String(mf.document_version))+'\nprofiel: '+esc(mf.profile_ref)
+          +'\nonderdelen: '+esc((mf.component_refs||[]).join(', '))
+          +'\nbeoordelingen: '+esc((mf.review_refs||[]).map(function(r){return r.domain+'/'+(r.hoedanigheid||'?')+'/'+r.status;}).join(', ')||'geen')
+          +'\ndisclaimer: '+esc(mf.disclaimer_ref)+'\npolicy: '+esc(mf.policy_version)
+          +'\ncontent-hash: '+esc(mf.content_hash)+'\nmanifest-hash: '+esc(mf.manifest_hash)+'</pre>';
+      };
+      var vs=document.getElementById('mou-verstuur'); if(vs)vs.onclick=async function(){
+        var adr=[]; if(confirm('Versturen naar de VERKOPER?'))adr.push('verkoper'); if(confirm('Versturen naar de KOPER?'))adr.push('koper');
+        if(!adr.length){ toast('Geen ontvanger gekozen','err'); return; }
+        vs.disabled=true; vs.textContent='Versturen&hellip;';
+        var r=await bgMouApi('POST','/document/'+encodeURIComponent(_mouDocId)+'/verstuur',{adressaten:adr});
+        if(r.ok&&r.json.ok){ toast('Verstuurd'+(r.json.mail_verstuurd?(' ('+r.json.mail_verstuurd+' e-mail'+(r.json.mail_verstuurd===1?'':'s')+')'):''),'ok'); bgMouRender(); }
+        else { toast((r.json&&r.json.error)||'Versturen mislukt','err'); vs.disabled=false; vs.textContent='✉ Versturen naar partijen'; }
+      };
+      return;
+    }
+    out.querySelectorAll('.mou-menu-chk').forEach(function(chk){ chk.onchange=async function(){
+      var bid=chk.getAttribute('data-block');
+      var r=chk.checked
+        ? await bgMouApi('POST','/document/'+encodeURIComponent(_mouDocId)+'/component',{block_id:bid})
+        : await (async function(){ // eerst instance-id opzoeken
+            var g=await bgMouApi('GET','/document/'+encodeURIComponent(_mouDocId));
+            var inst=(g.json.componenten||[]).find(function(c){return c.block_id===bid&&c.instance_status==='ACTIVE';});
+            if(!inst)return {ok:false,json:{error:'niet gevonden'}};
+            return bgMouApi('POST','/document/'+encodeURIComponent(_mouDocId)+'/component/'+encodeURIComponent(inst.instance_id)+'/verwijder');
+          })();
+      if(r.ok&&r.json.ok){ toast(chk.checked?'Onderdeel toegevoegd':'Onderdeel verwijderd','ok'); bgMouRender(); }
+      else { toast((r.json&&r.json.error)||'Actie mislukt','err'); chk.checked=!chk.checked; }
+    };});
+    out.querySelectorAll('.mou-dv').forEach(function(inp){
+      inp.setAttribute('data-orig',inp.value);
+      inp.onblur=async function(){
+        if(inp.value===inp.getAttribute('data-orig'))return;
+        var dvo={}; dvo[inp.getAttribute('data-k')]=inp.value;
+        var r=await bgMouApi('PATCH','/component/'+encodeURIComponent(inp.getAttribute('data-iid')),{data_values:dvo});
+        if(r.ok&&r.json.ok){ toast('Veld opgeslagen'+(r.json.review_vervallen?' — aftekening vervallen':'')+(r.json.divergentie?' — let op: afwijking':''),r.json.divergentie?'info':'ok'); bgMouRender(); }
+        else { toast((r.json&&r.json.error)||'Opslaan mislukt','err'); inp.value=inp.getAttribute('data-orig'); }
+      };
+    });
+    out.querySelectorAll('.mou-text-save').forEach(function(btn){ btn.onclick=async function(){
+      var ta=out.querySelector('textarea.mou-text[data-iid="'+btn.getAttribute('data-iid')+'"]'); if(!ta)return;
+      var r=await bgMouApi('PATCH','/component/'+encodeURIComponent(btn.getAttribute('data-iid')),{text:ta.value});
+      if(r.ok&&r.json.ok){ toast('Tekst opgeslagen'+(r.json.review_vervallen?' — aftekening vervallen':''),'ok'); bgMouRender(); }
+      else toast((r.json&&r.json.error)||'Opslaan mislukt','err');
+    };});
+    out.querySelectorAll('.mou-concept').forEach(function(btn){ btn.onclick=async function(){
+      btn.disabled=true; btn.textContent='AI bezig…';
+      var r=await bgMouApi('POST','/component/'+encodeURIComponent(btn.getAttribute('data-iid'))+'/concept',{});
+      if(r.ok&&r.json.ok){ toast('AI-concept ingevuld — controleer en laat aftekenen','ok'); bgMouRender(); }
+      else { toast((r.json&&r.json.error)||'AI-concept mislukt','err'); btn.disabled=false; btn.textContent='🤖 AI-concept'; }
+    };});
+    out.querySelectorAll('.mou-rev').forEach(function(btn){ btn.onclick=async function(){
+      var act=btn.getAttribute('data-act'), iid=btn.getAttribute('data-iid');
+      if(act==='intrekken'){
+        var r0=await bgMouApi('POST','/component/'+encodeURIComponent(iid)+'/review',{actie:'intrekken'});
+        if(r0.ok&&r0.json.ok){ toast('Aftekening ingetrokken','ok'); bgMouRender(); } else toast((r0.json&&r0.json.error)||'Mislukt','err');
+        return;
+      }
+      var naam=prompt('Naam van de beoordelaar (leeg = jijzelf, als eigen controle):','');
+      if(naam===null)return;
+      var hoed=naam?(prompt('Hoedanigheid (bijv. advocaat, RB, Register Valuator):','')||''):'';
+      await bgMouApi('POST','/component/'+encodeURIComponent(iid)+'/review',{actie:'aanvragen'});
+      var r=await bgMouApi('POST','/component/'+encodeURIComponent(iid)+'/review',{actie:'goedkeuren',naam:naam||'',hoedanigheid:hoed});
+      if(r.ok&&r.json.ok){ toast('Onderdeel afgetekend','ok'); bgMouRender(); }
+      else toast((r.json&&r.json.error)||'Aftekenen mislukt','err');
+    };});
+    out.querySelectorAll('.mou-eis').forEach(function(chk){ chk.onchange=async function(){
+      var body={}; body[chk.getAttribute('data-dom')]=chk.checked?'vereist':'uit';
+      if(!chk.checked&&!confirm('Beoordeling voor "'+chk.getAttribute('data-dom')+'" uitzetten? Dit wordt gelogd en op het document vermeld.')){ chk.checked=true; return; }
+      var r=await bgMouApi('POST','/document/'+encodeURIComponent(_mouDocId)+'/setting',body);
+      if(r.ok&&r.json.ok){ toast('Instelling opgeslagen','ok'); bgMouRender(); } else { toast((r.json&&r.json.error)||'Mislukt','err'); chk.checked=!chk.checked; }
+    };});
+    var fb=document.getElementById('mou-finaliseer'); if(fb)fb.onclick=async function(){
+      if(!confirm('Het document finaliseren? Daarna kan niets meer worden gewijzigd.'))return;
+      fb.disabled=true; fb.textContent='Finaliseren…';
+      var r=await bgMouApi('POST','/document/'+encodeURIComponent(_mouDocId)+'/finaliseer',{});
+      if(r.ok&&r.json.ok){ toast('Gefinaliseerd — manifest weggeschreven','ok'); bgMouRender(); }
+      else if(r.ok&&r.json&&r.json.ok===false){ toast('Nog niet klaar: '+((r.json.blockers||[]).length)+' punt(en) open','info'); bgMouRender(); }
+      else { toast((r.json&&r.json.error)||'Finaliseren mislukt','err'); fb.disabled=false; fb.textContent='Finaliseer & exporteer'; }
+    };
+  }
+
   // Risicoraamwerk (SWOT/PESTEL/Porter) — P3 uit de zesde heraudit (19 aug 2026). Zelfde
   // "toon bestaande versie eerst, genereer alleen op verzoek"-patroon als bgToonOfGenereerDoc
   // (NDA/LoI/BEM/Excl): een generatie die je alleen bekijkt mag niet stilzwijgend verdwijnen.
@@ -2458,6 +2734,8 @@ function renderBegeleiderDashboard(app){
 
   document.getElementById('bg-nda-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op via koersvoormorgen.nl.','err');return;} bgToonOfGenereerDoc('nda'); };
   document.getElementById('bg-loi-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op via koersvoormorgen.nl.','err');return;} bgToonOfGenereerDoc('loi'); };
+  var bgMouBtn=document.getElementById('bg-mou-actie');
+  if(bgMouBtn)bgMouBtn.onclick=function(){ bgMouComposer(); };
   document.getElementById('bg-bem-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op via koersvoormorgen.nl.','err');return;} bgToonOfGenereerDoc('bem'); };
   document.getElementById('bg-excl-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op via koersvoormorgen.nl.','err');return;} bgToonOfGenereerDoc('excl'); };
   document.getElementById('bg-dealvoorstel-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op via koersvoormorgen.nl.','err');return;} toonDocWaarschuwing('dealvoorstel', function(){ toonDealvoorstelModal(); }); };
