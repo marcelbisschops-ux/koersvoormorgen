@@ -213,6 +213,38 @@ async function run() {
   // terugzetten
   await api('POST', '/mna/tos/document/' + docId + '/setting', { headers: H, body: { juridisch: 'vereist' } });
 
+  kop('STAP 15 · divergentiedetectie');
+  const sellerIid = (g5.json.componenten || []).find((c) => c.block_id === 'seller');
+  check('seller-instance gevonden', !!sellerIid);
+  // seller.naam wijkt af van de transactionele data (kantoor_naam) → flag
+  const dv1 = await api('PATCH', '/mna/tos/component/' + sellerIid.instance_id, { headers: H, body: { data_values: { naam: 'Heel Andere Naam BV' } } });
+  check('PATCH seller.naam → divergentie:true', dv1.json && dv1.json.divergentie === true, JSON.stringify(dv1.json));
+  const gd1 = await api('GET', '/mna/tos/document/' + docId, { headers: H });
+  check('doc toont open divergentie op seller.naam met 2 bronnen', (() => {
+    const f = (gd1.json.divergenties || []).find((x) => x.dataslot_key === 'seller.naam');
+    return f && Array.isArray(f.instances) && f.instances.length >= 2 &&
+      f.instances.some((b) => b.bron === 'transactionele_data') && f.instances.some((b) => b.bron === 'component');
+  })(), JSON.stringify(gd1.json.divergenties));
+  // terugzetten naar de trajectwaarde → convergeert, flag verdwijnt
+  const dv2 = await api('PATCH', '/mna/tos/component/' + sellerIid.instance_id, { headers: H, body: { data_values: { naam: 'E2E TOS Doelkantoor BV' } } });
+  check('PATCH terug naar trajectwaarde → divergentie:false', dv2.json && dv2.json.divergentie === false, JSON.stringify(dv2.json));
+  const gd2 = await api('GET', '/mna/tos/document/' + docId, { headers: H });
+  check('open divergentie op seller.naam is opgelost', !(gd2.json.divergenties || []).some((x) => x.dataslot_key === 'seller.naam'));
+
+  // cross-document: tweede MoU in hetzelfde traject, exclusivity.duur_dagen anders → flag
+  const mk2 = await api('POST', '/mna/tos/document', { headers: H, body: { profile: 'MOU' } });
+  check('tweede MoU aangemaakt', mk2.json && mk2.json.ok === true, JSON.stringify(mk2.json));
+  const doc2 = mk2.json && mk2.json.document_id;
+  const g2doc = await api('GET', '/mna/tos/document/' + doc2, { headers: H });
+  const excl2 = (g2doc.json.componenten || []).find((c) => c.block_id === 'exclusivity');
+  const dx = await api('PATCH', '/mna/tos/component/' + excl2.instance_id, { headers: H, body: { data_values: { duur_dagen: 120 } } });
+  check('doc1 heeft duur 90, doc2 → 120 → divergentie:true', dx.json && dx.json.divergentie === true, JSON.stringify(dx.json));
+  const gd3 = await api('GET', '/mna/tos/document/' + doc2, { headers: H });
+  check('cross-document flag op exclusivity.duur_dagen (2 componentbronnen)', (() => {
+    const f = (gd3.json.divergenties || []).find((x) => x.dataslot_key === 'exclusivity.duur_dagen');
+    return f && f.instances.filter((b) => b.bron === 'component').length === 2;
+  })(), JSON.stringify(gd3.json.divergenties));
+
   kop('NEGATIEF · cross-traject');
   const vreemd = await api('GET', '/mna/tos/document/' + docId + '?code=ZZZZZZZZ', {});
   check('document ophalen met onbekende code → 403', vreemd.status === 403, 'status ' + vreemd.status);
