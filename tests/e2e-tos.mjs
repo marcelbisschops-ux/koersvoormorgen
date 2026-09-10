@@ -245,9 +245,17 @@ async function run() {
     return f && f.instances.filter((b) => b.bron === 'component').length === 2;
   })(), JSON.stringify(gd3.json.divergenties));
 
-  kop('NEGATIEF · cross-traject');
+  kop('NEGATIEF · cross-traject + rol-scoping (stap 16)');
   const vreemd = await api('GET', '/mna/tos/document/' + docId + '?code=ZZZZZZZZ', {});
   check('document ophalen met onbekende code → 403', vreemd.status === 403, 'status ' + vreemd.status);
+  // koper-code: rol wordt herkend, maar tosCanAccess weigert een niet-verstuurd document
+  const koperGet = await api('GET', '/mna/tos/document/' + docId, { headers: { 'x-tussen-key': (c1.json && c1.json.koper_code) || 'GEEN' } });
+  check('koper leest een draft-document niet → 403', koperGet.status === 403, 'status ' + koperGet.status);
+  const koperMenu = await api('GET', '/mna/tos/menu/' + trajectCode, { headers: { 'x-tussen-key': (c1.json && c1.json.koper_code) || 'GEEN' } });
+  check('koper opent het menu niet → 403', koperMenu.status === 403, 'status ' + koperMenu.status);
+  // verkoper-code (de id-code): idem
+  const verkPatch = await api('PATCH', '/mna/tos/component/' + exclIid, { headers: { 'x-tussen-key': trajectCode }, body: { text: 'x' } });
+  check('verkoper mag geen component bewerken → 403', verkPatch.status === 403, 'status ' + verkPatch.status);
 }
 
 async function opruimen() {
