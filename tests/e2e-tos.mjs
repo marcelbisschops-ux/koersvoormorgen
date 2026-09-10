@@ -119,6 +119,52 @@ async function run() {
   check('elke component staat review REQUIRED', cs.every((c) => c.review && c.review.status === 'REQUIRED'));
   check('geen open divergenties bij een verse MoU', get.json && Array.isArray(get.json.divergenties) && get.json.divergenties.length === 0);
 
+  kop('STAP 13 · componenten toevoegen/verwijderen/bewerken + AI-concept');
+  const exclIid = (cs.find((c) => c.block_id === 'exclusivity') || {}).instance_id;
+  check('exclusivity-instance gevonden', !!exclIid);
+
+  // PATCH: dataslot wijzigen
+  const p1 = await api('PATCH', '/mna/tos/component/' + exclIid, { headers: H, body: { data_values: { duur_dagen: 90 } } });
+  check('PATCH dataslot ok, doc-versie omhoog', p1.json && p1.json.ok === true && p1.json.document_version >= 2, JSON.stringify(p1.json));
+  check('PATCH review_vervallen === false (nog geen review)', p1.json && p1.json.review_vervallen === false);
+  const g2 = await api('GET', '/mna/tos/document/' + docId, { headers: H });
+  check('duur_dagen = 90, provenance USER_FACT', (() => {
+    const e = (g2.json.componenten || []).find((c) => c.block_id === 'exclusivity');
+    return e && e.data_values.duur_dagen && e.data_values.duur_dagen.value === '90' && e.data_values.duur_dagen.provenance_type === 'USER_FACT';
+  })());
+
+  // component toevoegen
+  const add = await api('POST', '/mna/tos/document/' + docId + '/component', { headers: H, body: { block_id: 'announcements' } });
+  check('announcements toegevoegd', add.json && add.json.ok === true && !!add.json.instance_id, JSON.stringify(add.json));
+  const annIid = add.json && add.json.instance_id;
+  const addDup = await api('POST', '/mna/tos/document/' + docId + '/component', { headers: H, body: { block_id: 'announcements' } });
+  check('dubbel toevoegen → 409', addDup.status === 409, 'status ' + addDup.status);
+
+  // component verwijderen (soft)
+  const del = await api('POST', '/mna/tos/document/' + docId + '/component/' + annIid + '/verwijder', { headers: H });
+  check('announcements soft-verwijderd (REMOVED_IN_v)', del.json && del.json.ok === true && /^REMOVED_IN_v\d+$/.test(del.json.instance_status || ''), JSON.stringify(del.json));
+  const g3 = await api('GET', '/mna/tos/document/' + docId, { headers: H });
+  check('verwijderde instance blijft zichtbaar met REMOVED-status', (() => {
+    const a = (g3.json.componenten || []).find((c) => c.instance_id === annIid);
+    return a && /^REMOVED_IN_v/.test(a.instance_status);
+  })());
+
+  // AI-concept (echte Claude-call)
+  const conc = await api('POST', '/mna/tos/component/' + exclIid + '/concept', { headers: H, body: {} });
+  check('AI-concept ok, tekst niet leeg, provenance AI_INFERENCE', conc.json && conc.json.ok === true && typeof conc.json.text === 'string' && conc.json.text.length > 20 && conc.json.text_provenance === 'AI_INFERENCE', JSON.stringify(conc.json).slice(0, 160));
+
+  // mens bewerkt de tekst → provenance wisselt naar USER_FACT
+  const p2 = await api('PATCH', '/mna/tos/component/' + exclIid, { headers: H, body: { text: 'Exclusiviteit geldt voor 90 dagen vanaf ondertekening van deze MoU.' } });
+  check('PATCH tekst → provenance USER_FACT', p2.json && p2.json.ok === true && p2.json.text_provenance === 'USER_FACT', JSON.stringify(p2.json));
+
+  // AI mag door mens bewerkte tekst niet overschrijven
+  const conc2 = await api('POST', '/mna/tos/component/' + exclIid + '/concept', { headers: H, body: {} });
+  check('AI-concept op door mens bewerkte tekst → 409', conc2.status === 409, 'status ' + conc2.status);
+
+  // PATCH op onbekend component → 404
+  const p404 = await api('PATCH', '/mna/tos/component/tosinst-onbestaand', { headers: H, body: { text: 'x' } });
+  check('PATCH onbekend component → 404', p404.status === 404, 'status ' + p404.status);
+
   kop('NEGATIEF · cross-traject');
   const vreemd = await api('GET', '/mna/tos/document/' + docId + '?code=ZZZZZZZZ', {});
   check('document ophalen met onbekende code → 403', vreemd.status === 403, 'status ' + vreemd.status);
