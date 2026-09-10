@@ -108,6 +108,12 @@ met bijdragerecht):
 
 ### B1. Clausulebibliotheek (het kernbegrip)
 
+> **ACHTERHAALD (2026-09-10).** Marcel heeft de *onderhouden tekstbibliotheek* geschrapt: te zwaar,
+> te duur, aansprakelijkheidsgevoelig. Het **componentenmenu blijft** (adviseur/specialist kiezen
+> componenten + volgorde + volledigheidscheck), maar een component is een leeg werkveld — AI zet er
+> een concept in, de specialist maakt de professionele tekst per dossier. Leidende versie:
+> `MASTER-SPEC-TRANSACTION-OS.md` §1a + `SPEC-BLOCK-FRAMEWORK-V1.md`.
+
 Modulaire clausules in plaats van één monolithische template per documenttype. Per clausule:
 
 ```

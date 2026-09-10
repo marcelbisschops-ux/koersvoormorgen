@@ -14,9 +14,9 @@ omzeilen, en de vier architectuur-reviewvragen beantwoorden.
 | **Transaction / Case** | CONTENT | 14 dg na afsluiting, of ≤365 dg met grondslag (VOK Art. 5) | cascade: alles hieronder mee | nee (archiefregel blijft) |
 | **Facts** (alle provenance-typen) | CONTENT | met de case | hard delete | nee |
 | **Evidence / Source** | CONTENT | met de case | hard delete (ook R2-objecten) | nee |
-| **Block (definitie)** | PLATFORM | nooit met een case; alleen `RETIRED` | **nooit hard delete** (`O-01`) — zie §2 | n.v.t. (platformdata, geen persoonsgegevens) |
-| **BlockVersion** | PLATFORM | nooit | append-only, onveranderlijk | n.v.t. |
-| **Block-instance in een case** (gekozen block + ingevulde placeholders) | CONTENT | met de case | hard delete | nee |
+| **Component-definitie** (welke werkvelden/dataslots, menu-metadata — géén professionele tekst) | PLATFORM | nooit met een case; alleen `RETIRED` | **nooit hard delete** (`O-01`) — zie §2 | n.v.t. (platformdata, geen persoonsgegevens) |
+| **BlockVersion** (structuurversie) | PLATFORM | nooit | append-only, onveranderlijk | n.v.t. |
+| **Block-instance in een case** (gekozen component + ingevulde dataslots + de vrije tekst, AI-concept of specialist-input) | CONTENT | met de case | hard delete | nee |
 | **Document / DocumentVersion** (samengesteld) | CONTENT | met de case | hard delete | nee |
 | **Gegenereerd bestand** (PDF/tekst, verstuurd) | CONTENT | met de case | hard delete (R2) | nee |
 | **BlockReview** — inhoud (opmerkingen, redlines) | CONTENT | met de case | hard delete | nee |
@@ -47,11 +47,18 @@ worden krijgt `status=RETIRED`: niet meer selecteerbaar in nieuwe documenten, ma
 documentversies en reviews die ernaar verwijzen blijven geldig en reproduceerbaar. Er is geen
 hard-delete-pad voor blocks. (`O-01`, voorstel — te bevestigen in de architectuurreview.)
 
-### RV-2 — Wat gebeurt er met een review wanneer een block wordt gewijzigd?
+### RV-2 — Wat gebeurt er met een review wanneer de inhoud wordt gewijzigd (door specialist óf adviseur)?
 
-Elke inhoudelijke wijziging maakt een nieuwe `BlockVersion` (`exclusivity@v4` → `@v5`). De review op
-`@v4` krijgt status `SUPERSEDED` en blijft aan `@v4` gekoppeld. `@v5` heeft geen review en staat op
-`REQUIRED`. Een document dat `@v5` gebruikt kan niet exporteren tot `@v5` is `APPROVED`. Een oude
+Twee soorten wijziging:
+
+- **Structuurwijziging aan een component-definitie** (veld erbij, andere dataslots) → nieuwe
+  `block_version`. Bestaande dossier-instances blijven op hun oude versie tot iemand ze migreert.
+- **Inhoudelijke wijziging aan een dossier-instance** (de vrije tekst of een dataslot van dit
+  component in dit dossier), door de specialist óf door de adviseur → de `BlockReview` op die
+  instance-versie gaat naar `SUPERSEDED`/`REVOKED`, de nieuwe instance-versie staat op `REQUIRED`.
+
+In beide gevallen: een document dat de nieuwe versie gebruikt kan niet exporteren tot die versie
+`APPROVED` is. Een oude
 approval "schuift" nooit door naar een nieuwe versie. (`D-10`.)
 
 ### RV-3 — Wat blijft na de AVG-purge in de auditlaag?

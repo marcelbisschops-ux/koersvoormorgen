@@ -12,16 +12,20 @@ Koers voor Morgen wordt gebouwd rond één transactioneel regieplatform:
 ```
 ONE TRANSACTION DATA MODEL
  → ONE EVIDENCE / PROVENANCE LAYER
- → ONE TRANSACTION BLOCK LIBRARY
+ → ONE TRANSACTION BLOCK FRAMEWORK   (lege gestructureerde werkvelden, geen kennisbank)
  → ONE REVIEW ENGINE
  → ONE POLICY ENGINE
- → ONE DOCUMENT COMPOSER
+ → ONE DOCUMENT COMPOSER              (componentenmenu + volledigheidscheck)
  → MANY DOCUMENT TYPES (NDA, LoI, MoU, teaser, memorandum, dealvoorstel, later SPA e.a.)
 ```
 
-Documenten zijn composities van herbruikbare, geversioneerde **blocks**. Ze krijgen geen eigen
-inhoudelijke generatielogica. Het kernprincipe is **REGIE, GEEN AUTORITEIT** (sectie 0 van
-`ONTWERP-JURIDISCH-FISCAAL-EN-SPECIALISTEN.md`), technisch afgedwongen.
+Documenten zijn composities van herbruikbare, geversioneerde **componenten** die de adviseur en de
+specialist uit een menu kiezen. Een component is een leeg gestructureerd werkveld (dataslots + één
+vrij tekstveld + provenance + reviewstate); AI zet er een concept in, de specialist maakt de
+professionele tekst. Documenten krijgen geen eigen inhoudelijke generatielogica, en het platform
+onderhoudt **geen** bibliotheek van professionele standaardteksten. Het kernprincipe is
+**REGIE, GEEN AUTORITEIT** (sectie 0 van `ONTWERP-JURIDISCH-FISCAAL-EN-SPECIALISTEN.md`), technisch
+afgedwongen. Zie `MASTER-SPEC-TRANSACTION-OS.md` §1a.
 
 ## Status van deze beslissing
 
@@ -61,7 +65,8 @@ review en versiebeheer zijn per document opnieuw geregeld of afwezig.
 |---|---|
 | **Afzonderlijke documentgeneratoren** (huidige situatie) | Duplicatie, geen centrale governance, review per document is niet schaalbaar, elke nieuwe feature breekt latere op |
 | **Eén grote AI-prompt per documenttype** | Geen provenance, geen versiegebonden review, AI wordt de facto de bron van waarheid, niet reproduceerbaar, hallucinatierisico op juridische tekst |
-| **Template-only model** (vaste sjablonen, alleen placeholder-fill) | Geen modulariteit, geen block-level review, elke clausulevariant is een nieuw sjabloon, geen volledigheidslogica |
+| **Template-only model** (vaste sjablonen, alleen placeholder-fill) | Geen modulariteit, geen component-level review, geen volledigheidslogica |
+| **Componentenmenu mét onderhouden clausuletekstbibliotheek** | Maakt het platform zwaar, duur en aansprakelijkheidsgevoelig; botst met "regie, geen autoriteit"; doorlopend juridisch onderhoud. Geschrapt door Marcel op 2026-09-10 (`MASTER-SPEC` §1a). Het menu blijft, de tekstbibliotheek niet. |
 
 ---
 
@@ -69,19 +74,21 @@ review en versiebeheer zijn per document opnieuw geregeld of afwezig.
 
 ### Positief
 
-- Hergebruik van clausules en logica over alle documenttypen.
+- Hergebruik van **structuur** (welke componenten een documenttype heeft) over alle documenttypen.
 - Consistente governance: één plek voor provenance, review, gates, reliance.
-- Schaalbare specialistreview (per block, per versie).
+- Schaalbare specialistreview (per component, per versie, per dossier).
 - Betere auditability en reproduceerbaarheid.
 - Nieuwe documenttypen (SPA, aandeelhoudersovereenkomst, disclosure letter) worden goedkoop.
+- **Licht platform, buiten de professionele-aansprakelijkheidssfeer.** Geen onderhouden juridische
+  kennisbank; de specialist is verantwoordelijk voor zijn inhoud.
 
 ### Negatief / kosten
 
-- **Initieel complexer datamodel.** Meer tabellen (blocks, versies, reviews, profielen, manifest,
-  snapshots). Ontwerp eerst, UI later.
-- **De blockbibliotheek vereist doorlopend juridisch onderhoud.** Elke standaardpassage heeft een
-  juridisch eigenaar, toetsdatum en versiebeheer; een wijziging = her-toetsing. Aparte werkstroom
-  met eigen budget (`LEGAL CONTENT LIBRARY`).
+- **Initieel complexer datamodel.** Meer tabellen (component-definities, versies, dossier-instances,
+  reviews, profielen, manifest, snapshots). Ontwerp eerst, UI later.
+- **Zonder specialist blijft een document juridisch "concept".** Dat is bedoeld: het platform tekent
+  niet zelf af. Wel wringt het als een adviseur snel iets wil versturen zonder specialist — daarvoor
+  is de opt-out-met-disclaimer uit sectie 0.3.
 - **Migratie-inspanning.** De bestaande generatoren moeten geleidelijk worden ontmanteld;
   client-side checks moeten naar de policy engine.
 - **De policy engine wordt kritieke infrastructuur.** Eén bug = of legitiem werk hard geblokkeerd,
@@ -97,8 +104,9 @@ review en versiebeheer zijn per document opnieuw geregeld of afwezig.
 
 - **Verticale slices** in plaats van big-bang: elke architectuurlaag alleen zo ver bouwen als de
   MoU-slice die nodig heeft.
-- **Blockbibliotheek klein starten** (~23 blocks), rest als toekomstcatalogus.
-- **Juridische content als aparte werkstroom** met eigen planning en acceptance.
+- **Block Framework klein starten** (~23 component-definities), rest als toekomstig menu.
+- **Geen juridische tekstwerkstroom.** De specialist levert de professionele tekst per dossier; het
+  platform onderhoudt geen kennisbank (`MASTER-SPEC` §1a).
 - **Policy-equivalentietests** (`tests/policy-equivalentie.mjs`) uitbreiden vóór elke migratiestap;
   geen client-side check verwijderen zonder gedekte equivalent in de engine.
 - **Datalifecycle expliciet ontwerpen** (`SPEC-DATA-LIFECYCLE.md`) zodat versionering/audit de

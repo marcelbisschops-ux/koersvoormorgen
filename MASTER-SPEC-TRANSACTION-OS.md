@@ -1,16 +1,17 @@
 # MASTER-SPEC — Koers voor Morgen Transaction OS
 
-**Datum:** 2026-09-10 · **Status:** architecture/design decision document. **Nog geen bouwopdracht.**
+**Datum:** 2026-09-10 · **Versie:** 2 (correctie: geen professionele tekstbibliotheek — zie §1a)
+**Status:** architecture/design decision document. **Nog geen bouwopdracht.**
 **Beslissing gevraagd:** GO / NO-GO / CHANGES REQUIRED, samen met de jurist.
 
-**Herkomst:** consolideert Marcels master-spec, de reviewreactie, sectie 0 van
+**Herkomst:** consolideert Marcels master-spec, twee reviewrondes, sectie 0 van
 `ONTWERP-JURIDISCH-FISCAAL-EN-SPECIALISTEN.md`, en de eerdere specs voor MoU en de specialistenpool.
 
 **Deelt in met:**
 [`ADR-TRANSACTION-BLOCK-ARCHITECTURE.md`](ADR-TRANSACTION-BLOCK-ARCHITECTURE.md) ·
 [`ADR-AVG-AUDIT-MANIFEST.md`](ADR-AVG-AUDIT-MANIFEST.md) ·
 [`SPEC-MOU-FIRST-VERTICAL-SLICE.md`](SPEC-MOU-FIRST-VERTICAL-SLICE.md) ·
-[`SPEC-BLOCK-LIBRARY-V1.md`](SPEC-BLOCK-LIBRARY-V1.md) ·
+[`SPEC-BLOCK-FRAMEWORK-V1.md`](SPEC-BLOCK-FRAMEWORK-V1.md) ·
 [`SPEC-DATA-LIFECYCLE.md`](SPEC-DATA-LIFECYCLE.md) ·
 [`TESTSTRATEGIE-TRANSACTION-OS.md`](TESTSTRATEGIE-TRANSACTION-OS.md)
 
@@ -18,55 +19,114 @@
 
 ## 0. Kernprincipe
 
-**REGIE, GEEN AUTORITEIT.** Het platform organiseert informatie, bronnen, aannames, berekeningen,
-documenten, specialistische reviews en besluitvorming. Het neemt zelf geen juridische, fiscale of
-formele waarderingsautoriteit over. Dit principe wordt technisch in de architectuur afgedwongen, niet
-alleen in disclaimers. De volledige uitwerking staat in sectie 0 van
-`ONTWERP-JURIDISCH-FISCAAL-EN-SPECIALISTEN.md`; deze master-spec is de technische vertaling ervan.
+**REGIE, GEEN AUTORITEIT.** Het platform organiseert transactionele gegevens, bronnen, aannames,
+berekeningen, documenten, specialistische reviews en besluitvorming. Het neemt zelf geen juridische,
+fiscale of formele waarderingsautoriteit over. Technisch afgedwongen, niet alleen in disclaimers.
+Volledige uitwerking: sectie 0 van `ONTWERP-JURIDISCH-FISCAAL-EN-SPECIALISTEN.md`.
 
 ---
 
-## 1. OPEN ARCHITECTURE DECISIONS
+## 1a. CORRECTIE — geen professionele tekstbibliotheek (Marcel, 2026-09-10)
 
-Elk punt is getagd. `DECIDED` = vastgelegd, mag als uitgangspunt. `OPEN` = ontwerpkeuze te maken.
-`REQUIRES LEGAL VALIDATION` = niet implementeren vóór jurist-akkoord. `REQUIRES PRODUCT DECISION` =
-Marcel beslist. `REQUIRES TECHNICAL SPIKE` = eerst een korte technische verkenning.
+Een eerdere versie van deze spec ging uit van een **clausulebibliotheek met vooraf juridisch
+getoetste standaardteksten**. Dat is bewust geschrapt. Het maakt Koers voor Morgen zwaar, duur en
+aansprakelijkheidsgevoelig, en het botst met "regie, geen autoriteit".
+
+**De vaste regel:**
+
+> **GEEN JURIDISCHE, FISCALE OF WAARDERINGSTEKSTBIBLIOTHEEK.**
+> Koers voor Morgen onderhoudt geen inhoudelijke professionele kennisbank met standaardclausules of
+> fiscaal advies. Het platform levert uitsluitend de transactionele structuur, data, workflow,
+> provenance, versiebeheer en reviewmechaniek.
+> AI mag een conceptvoorstel doen. De bevoegde specialist kan dit volledig wijzigen, vervangen,
+> aanvullen of verwijderen. De door de specialist gewijzigde versie wordt als **dossier-specifieke
+> professionele input** opgeslagen, niet als herbruikbare bibliotheek-entry.
+> Iedere inhoudelijke wijziging ná specialistische goedkeuring maakt die goedkeuring ongeldig en
+> triggert een nieuwe review — óók als de adviseur wijzigt.
+> De specialist is verantwoordelijk voor zijn professionele inhoud; Koers voor Morgen faciliteert de
+> workflow en registreert wie wat wanneer heeft beoordeeld.
+
+**Wat WEL blijft — het componentenmenu (Hans' voorstel):** de adviseur en de specialist stellen een
+document samen uit een **menu van componenten** (earn-out, exclusiviteit, change of control,
+vermogensinstandhoudingsverklaring, garanties, geheimhouding, prijsmechanisme, …), kiezen de
+volgorde, en zien een **volledigheidscheck** die aangeeft wat een compleet document nog mist en
+waarom dat leverage kost. Dat is de `DocumentComposer` op het Block Framework en het is een
+kernfeature.
+
+**Wat vervalt** is uitsluitend een door Koers voor Morgen onderhouden bibliotheek van
+vooraf-getoetste clausule*teksten* binnen die componenten.
+
+**Gevolg voor de architectuur:** "Block Library" heet nu **Transaction Block Framework**. Een
+component in het menu = een **leeg gestructureerd werkveld** (dataslots + één vrij tekstveld +
+provenance + reviewstate). AI zet er een concept in; de specialist maakt de professionele tekst.
+Zie `SPEC-BLOCK-FRAMEWORK-V1.md`.
+
+### De drie waarheden
+
+Het platform verbindt drie dingen en houdt ze uit elkaar:
+
+1. **Transactionele waarheid** — wat partijen/adviseur als dealgegevens hebben ingevoerd (met
+   provenance-type per waarde).
+2. **Professionele beoordeling** — wat jurist, fiscalist en waarderingsspecialist er professioneel
+   van vinden, binnen hun eigen rol en verantwoordelijkheid.
+3. **Documenttekst** — wat uiteindelijk daadwerkelijk in het document staat.
+
+Koers voor Morgen verbindt de drie, maar claimt **nooit** dat de derde professioneel juist is.
+
+### Divergentiedetectie
+
+Wijkt de documenttekst af van de transactionele data, of van een ander document in hetzelfde
+dossier (bijv. exclusiviteit 90 dagen in de dealdata en de LoI, 120 in de door de jurist bewerkte
+MoU), dan waarschuwt het platform de adviseur: "verschil tussen de transactionele gegevens en de
+juridisch aangepaste documenttekst". De specialist functioneert dus als **professionele editor**,
+niet alleen als meekijker; het platform bewaakt de consistentie.
+
+---
+
+## 2. OPEN ARCHITECTURE DECISIONS
+
+`DECIDED` = vastgelegd. `OPEN` = ontwerpkeuze te maken. `REQUIRES LEGAL VALIDATION` = niet
+implementeren vóór jurist-akkoord. `REQUIRES PRODUCT DECISION` = Marcel beslist.
+`REQUIRES TECHNICAL SPIKE` = eerst een korte technische verkenning.
 
 | # | Beslissing | Status |
 |---|---|---|
-| D-01 | Doelarchitectuur: één transaction data model → één evidence/provenance-laag → één block library → één review engine → één policy engine → één document composer → veel documenttypen | **DECIDED** |
+| D-01 | Doelarchitectuur: één transaction data model → één evidence/provenance-laag → **één Transaction Block Framework** → één review engine → één policy engine → één document composer → veel documenttypen | **DECIDED** |
 | D-02 | REGIE, GEEN AUTORITEIT als afgedwongen invariant (sectie 0) | **DECIDED** |
 | D-03 | Geen big-bang. Elke architectuurlaag wordt gebouwd voor zover een concrete verticale slice die nodig heeft | **DECIDED** |
 | D-04 | De **MoU** is de eerste verticale slice die de architectuur bewijst | **DECIDED** |
-| D-05 | Fase 1 blockbibliotheek: max ~20–25 blocks; de rest is toekomstcatalogus | **DECIDED** (exacte lijst: zie D-18) |
-| D-06 | Juridische blocktekst is een aparte werkstroom (`LEGAL CONTENT LIBRARY`) met eigen planning/budget/acceptance, los van de softwarebouw | **DECIDED** |
-| D-07 | AI mag jurist-goedgekeurde blocktekst **nooit** herschrijven — harde invariant, technisch + testsuite | **DECIDED** |
+| D-05 | **Componentenmenu blijft** (Hans' voorstel): de `DocumentComposer` laat adviseur/specialist componenten kiezen + ordenen + een volledigheidscheck zien. Wat vervalt is de vooraf-getoetste-*tekst*-bibliotheek. Blocks = lege gestructureerde werkvelden. Fase 1: ~23 block-*definities* (welke componenten/werkvelden), geen tekstinhoud | **DECIDED** |
+| D-06 | ~~Juridische blocktekst als aparte `LEGAL CONTENT LIBRARY`-werkstroom~~ **VERVALLEN** door §1a. Er is geen standaardtekst-werkstroom; de specialist levert de tekst per dossier | **DECIDED** |
+| D-07 | AI mag een conceptvoorstel doen. Zodra de specialist óf de adviseur de tekst wijzigt, is AI niet meer eigenaar; de wijzigende partij wordt eigenaar/reviewer van die versie. AI "verbetert" nooit ongevraagd bestaande dossiertekst | **DECIDED** |
 | D-08 | Policy engine wordt de centrale autorisatielaag; migratie alleen met behoud van bestaand gedrag, geverifieerd door een uitgebreide `tests/policy-equivalentie.mjs` vóór verwijderen van client-side checks | **DECIDED** |
 | D-09 | Negatieve roltests voor alle kritieke rollen, in CI | **DECIDED** |
-| D-10 | `BlockReview` geldt voor `block_id + block_version`; nieuwe versie → oude review `SUPERSEDED` + nieuwe review nodig | **DECIDED** |
+| D-10 | `BlockReview` geldt voor `block_id + block_version + dossier`. Iedere inhoudelijke wijziging na goedkeuring → oude review `SUPERSEDED`/`REVOKED` + nieuwe review nodig, ongeacht wie wijzigt | **DECIDED** |
 | D-11 | Specialistenpool is een *provider van reviewers* binnen de algemene review-engine, niet een eigen reviewarchitectuur; nog niet volledig bouwen | **DECIDED** |
-| D-12 | Bestaande generatoren (NDA/LoI/BEM/dealvoorstel/teaser/memorandum) blijven werken tijdens migratie; geen nieuwe documentlogica meer erin | **DECIDED** |
-| D-13 | Naam overal: **Koers voor Morgen** (niet "van") — normaliseren in document/DB/UI/code/prompts/templates/comments/tests/gegenereerde documenten | **DECIDED** |
-| D-14 | Gate-integriteit: elke uitgangsroute (preview, download, API, e-mail, background job, oude generator, export) loopt door dezelfde policy; een hard gate mag via geen enkele route te omzeilen zijn | **DECIDED** (uitwerking: `REQUIRES TECHNICAL SPIKE`, zie S-04) |
-| D-15 | SPEC-STAP-1 deel 1A (reliance-voettekst op de bestaande generatoren) blijft een losse, veilige levering die nu al kan en het laatste FASE6-puntje sluit | **REQUIRES PRODUCT DECISION** (nu los leveren, of meenemen in de slice) |
-| D-16 | SPEC-STAP-1 deel 1B (MoU als losse template + `bgDoc('mou')`) **vervalt** en gaat op in de verticale slice | **DECIDED** |
-| L-01 | AVG vs. reproduceerbaarheid: `AUDIT MANIFEST ≠ CONTENT ARCHIVE`. Manifest (geen persoonsgegevens) mogelijk langdurig bewaren; inhoud/facts/evidence volgen de bestaande 14/365-dagenretentie | **REQUIRES LEGAL VALIDATION** — zie `ADR-AVG-AUDIT-MANIFEST.md` |
-| L-02 | Welke velden precies in het manifest mogen (bevatten ze echt geen herleidbare persoonsgegevens?) | **REQUIRES LEGAL VALIDATION** |
+| D-12 | Bestaande generatoren (NDA/LoI/BEM/dealvoorstel/teaser/memorandum) blijven werken tijdens migratie; geen nieuwe documentlogica erin | **DECIDED** |
+| D-13 | Naam overal: **Koers voor Morgen** (niet "van") | **DECIDED** |
+| D-14 | Gate-integriteit: elke uitgangsroute (preview, download, API, e-mail, background job, oude generator, export) loopt door dezelfde policy; een hard gate mag via geen enkele route te omzeilen zijn | **DECIDED** (uitwerking: `S-04`) |
+| D-15 | SPEC-STAP-1 deel 1A (reliance-voettekst op de bestaande generatoren) als losse, veilige levering — nu, of in de slice | **REQUIRES PRODUCT DECISION** |
+| D-16 | SPEC-STAP-1 deel 1B (MoU als losse template + `bgDoc('mou')`) **vervalt**, gaat op in de verticale slice | **DECIDED** |
+| D-17 | **Divergentiedetectie** (§1a): het platform signaleert verschil tussen transactionele data, professionele input en documenttekst — binnen één document en tussen documenten van hetzelfde dossier | **DECIDED** (mechaniek: `OPEN` O-04) |
+| L-01 | AVG vs. reproduceerbaarheid: `AUDIT MANIFEST ≠ CONTENT ARCHIVE`. Manifest (geen persoonsgegevens) mogelijk langdurig; inhoud/facts/evidence/specialisttekst volgen de bestaande 14/365-dagenretentie | **REQUIRES LEGAL VALIDATION** — zie `ADR-AVG-AUDIT-MANIFEST.md` |
+| L-02 | Welke velden precies in het manifest mogen (echt geen herleidbare persoonsgegevens?) | **REQUIRES LEGAL VALIDATION** |
 | L-03 | Reliance/disclaimer met eigen versiebeheer + hash; een export zonder correcte reliance is geen geldige export | **DECIDED** technisch; **REQUIRES LEGAL VALIDATION** op de tekst per versie |
-| P-01 | Exacte fase-1 blocklijst, op basis van de bestaande MoU/LoI-use cases van Marcel/Hans | **REQUIRES PRODUCT DECISION** — voorstel in `SPEC-BLOCK-LIBRARY-V1.md` |
+| L-04 | Aansprakelijkheid: de specialist is verantwoordelijk voor zijn professionele inhoud; het platform faciliteert en registreert. Vastleggen in VOK/GV en in de specialistovereenkomst | **REQUIRES LEGAL VALIDATION** |
+| P-01 | Exacte fase-1 block-*definitielijst* (welke werkvelden, per documentprofiel), op basis van de bestaande MoU/LoI-use cases van Marcel/Hans | **REQUIRES PRODUCT DECISION** — voorstel in `SPEC-BLOCK-FRAMEWORK-V1.md` |
 | P-02 | Welk documentprofiel na de MoU als eerste: LoI, of NDA-migratie | **REQUIRES PRODUCT DECISION** |
-| P-03 | Specialistenpool: fee-model (honorarium + platformmarge), timing van fase E | **REQUIRES PRODUCT DECISION** |
-| S-01 | D1-performance van diepe versionering + append-only audit + snapshots per export; `initDB` was al traag (~180 statements koude start) | **REQUIRES TECHNICAL SPIKE** — zie `SPEC-DATA-LIFECYCLE.md` §Performance |
-| S-02 | Cross-case conflict-check zonder een algemene dossierzoekfunctie te bouwen | **REQUIRES TECHNICAL SPIKE** — aparte mini-ADR vóór implementatie |
-| S-03 | Migratiepad: hoe extraheer je herbruikbare blocks uit de bestaande generatoren zonder productie te breken | **REQUIRES TECHNICAL SPIKE** |
+| P-03 | Specialistenpool: fee-model, timing van fase E | **REQUIRES PRODUCT DECISION** |
+| S-01 | D1-performance van diepe versionering + append-only audit + snapshots per export; `initDB` was al traag | **REQUIRES TECHNICAL SPIKE** — `SPEC-DATA-LIFECYCLE.md` §Performance |
+| S-02 | Cross-case conflict-check zonder een algemene dossierzoekfunctie te bouwen | **REQUIRES TECHNICAL SPIKE** — aparte mini-ADR |
+| S-03 | Migratiepad: hoe extraheer je herbruikbare **structuur** (werkvelden) uit de bestaande generatoren zonder productie te breken. NB: geen clausuletekst extraheren als bibliotheek | **REQUIRES TECHNICAL SPIKE** |
 | S-04 | Gate-integriteit over alle uitgangsroutes (D-14) | **REQUIRES TECHNICAL SPIKE** |
-| O-01 | Mag een block verwijderd worden terwijl een document/review ernaar verwijst? Voorstel: nee — blocks zijn append-only, alleen `status=RETIRED` | **OPEN** — zie `SPEC-DATA-LIFECYCLE.md` |
+| O-01 | Mag een block-*definitie* worden verwijderd terwijl een dossier/review ernaar verwijst? Voorstel: nee — append-only, alleen `status=RETIRED` | **OPEN** |
 | O-02 | Waar leven snapshots/manifest fysiek: D1 of R2 | **OPEN** |
-| O-03 | Concreet mechanisme om `AI_INFERENCE` te promoveren naar `USER_FACT`/`SPECIALIST_ASSESSMENT` (verplichte bevestigingsstap) | **OPEN** — zie sectie 3 |
+| O-03 | Concreet mechanisme om `AI_INFERENCE` te promoveren naar `USER_FACT`/`SPECIALIST_ASSESSMENT` (verplichte bevestigingsstap) | **OPEN** |
+| O-04 | Concrete divergentiedetectie-mechaniek (D-17): welke velden vergeleken worden, hoe een "gekoppeld" veld tussen dealdata en documenttekst wordt gedefinieerd, hoe de waarschuwing eruitziet | **OPEN** |
 
 ---
 
-## 2. Doelarchitectuur
+## 3. Doelarchitectuur
 
 ```
                          KOERS VOOR MORGEN
@@ -77,13 +137,10 @@ Marcel beslist. `REQUIRES TECHNICAL SPIKE` = eerst een korte technische verkenni
          FACTS & DATA          EVIDENCE             TIMELINE
              └────────────────────┼────────────────────┘
                                   │
-                         TRANSACTION BLOCKS  (block_id @ version)
+              TRANSACTION BLOCK FRAMEWORK  (lege werkvelden, per dossier ingevuld)
                                   │
-             ┌────────────────────┼────────────────────┐
-          LEGAL                FINANCIAL              TAX
-             └────────────────────┼────────────────────┘
-                                  │
-                    REVIEW / APPROVAL  (BlockReview per versie)
+                    AI-CONCEPT  →  SPECIALIST-EDITOR  →  REVIEW / APPROVAL
+                                  │            (per block_id@version@dossier)
                                   │
                          POLICY ENGINE   (canGenerate / canExport / …)
                                   │
@@ -93,152 +150,187 @@ Marcel beslist. `REQUIRES TECHNICAL SPIKE` = eerst een korte technische verkenni
        NDA         LoI           MoU          Teaser    Memorandum
         └───────────┴─────────────┼─────────────┴────────────┘
                                   │
+        DIVERGENTIEDETECTIE  (dealdata  ⇆  professionele input  ⇆  documenttekst)
+                                  │
                     RELIANCE / EXPORT  (disclaimer @ version + hash)
                                   │
                        AUDIT MANIFEST + SNAPSHOT
 ```
 
-**De belangrijkste regel:** bouw geen documentgeneratoren, bouw een transactionele block- en
-review-engine waar documenten uit worden samengesteld. LoI en MoU worden dan twee `DocumentProfile`s
-van dezelfde infrastructuur, geen losse features.
+**De belangrijkste regel:** bouw geen documentgeneratoren en geen kennisbank. Bouw een transactionele
+**werkveld- en review-engine** waarin adviseur + jurist + fiscalist + waarderingsspecialist
+samenwerken; documenten worden daaruit samengesteld.
 
 ---
 
-## 3. Provenance / informatietypen
+## 4. Workflow
 
-Iedere informatie-eenheid krijgt precies één type:
+```
+ADVISEUR
+   │  dealgegevens + gewenste transactie
+   ▼
+AI maakt een concept per werkveld
+   ▼
+JURIST        ziet alleen zijn domein: bewerken / vervangen / clausule toevoegen /
+   │          verwijderen / commentaar / vraag stellen / akkoord / terugsturen
+   ▼
+FISCALIST     ziet alleen de fiscale werkvelden en -data: aannames aanpassen /
+   │          opmerkingen / tekst aanpassen / ontbrekende feiten opvragen /
+   │          alternatief scenario / akkoord
+   ▼
+WAARDERINGSSPECIALIST (Register Valuator)
+   │          ziet omzet/EBITDA/add-backs/schulden/multiples/aannames:
+   │          cijfers corrigeren / add-backs wijzigen / aannames wijzigen /
+   │          methodiek kiezen / toelichting / aftekenen
+   ▼
+EINDVERSIE
+```
 
-`SOURCE_FACT` · `USER_FACT` · `AI_INFERENCE` · `CALCULATION` · `ASSUMPTION` · `SPECIALIST_ASSESSMENT`
-· `UNVERIFIED`
-
-- Geen materiële claim zonder herleidbare grondslag, tenzij expliciet als `ASSUMPTION` of
-  `AI_INFERENCE` gemarkeerd.
-- **AI mag nooit stilzwijgend `AI_INFERENCE` → `SOURCE_FACT` maken.** `O-03`: het promotiemechanisme
-  (een mens of specialist bevestigt expliciet, waarna het type wijzigt naar `USER_FACT` resp.
-  `SPECIALIST_ASSESSMENT`, met wie/wanneer in de audit) is nog uit te werken.
-- Provenance-velden per financiële/juridische claim: bron, locatie (document + pagina), datum,
-  transformatie/adjustment + reden, benchmarkstatus (🟢/🟡/🔴), verificatiestatus, reviewkoppeling.
+Iedere specialist ziet alleen zijn eigen domein, tenzij de begeleider expliciet meer toegang geeft.
+Zodra een specialist iets wijzigt, wordt hij eigenaar/reviewer van díé versie en is AI dat niet meer.
+Wijzigt de adviseur daarna een gekoppeld veld, dan **vervalt de betreffende specialistgoedkeuring
+automatisch** (D-10) en volgt een nieuwe review.
 
 ---
 
-## 4. Wat we nu bouwen — en wat bewust niet
+## 5. Provenance / informatietypen
+
+Iedere informatie-eenheid krijgt precies één type: `SOURCE_FACT` · `USER_FACT` · `AI_INFERENCE` ·
+`CALCULATION` · `ASSUMPTION` · `SPECIALIST_ASSESSMENT` · `UNVERIFIED`.
+
+- Geen materiële claim zonder herleidbare grondslag, tenzij expliciet `ASSUMPTION` of `AI_INFERENCE`.
+- **AI mag nooit stilzwijgend `AI_INFERENCE` → `SOURCE_FACT` maken** (`O-03`).
+- Een door de specialist bewerkte of vervangen tekst krijgt type `SPECIALIST_ASSESSMENT` met
+  wie/wanneer/hoedanigheid.
+
+---
+
+## 6. Wat we nu bouwen — en wat bewust niet
 
 ### Nu (fase A + B, de MoU-slice)
 
 - Transaction/Case datamodel (voor zover de MoU het raakt).
-- Evidence/provenance-model (typen + velden + het promotie-`OPEN`-punt).
-- `TransactionBlock` + `BlockVersion` (append-only).
-- `BlockReview` per `block_id@version`.
-- Policy engine met `canGenerate / canExport / requiredReviews / canAccess / canPublish`, gemigreerd
-  onder equivalentietests.
+- Evidence/provenance-model (typen + velden + promotie-`OPEN`).
+- **Transaction Block Framework**: block-*definities* (welke werkvelden) + `BlockVersion` append-only
+  + per-dossier block-instances met een vrij tekstveld.
+- AI-concept-generatie per werkveld (strikt: voorstel, geen autoriteit).
+- Specialist-editor-workflow + `BlockReview` per `block_id@version@dossier` + goedkeuring-invalidatie.
+- Divergentiedetectie tussen dealdata, professionele input en documenttekst (mechaniek `O-04`).
+- Policy engine (`canGenerate / canExport / requiredReviews / requiredDisclaimer / canAccess /
+  canPublish`), gemigreerd onder equivalentietests.
 - `DocumentComposer` + één `DocumentProfile` (MOU).
 - Reliance/disclaimer met versie + hash; export-gate.
-- Audit manifest + snapshot (manifest-only, zie `ADR-AVG-AUDIT-MANIFEST.md`).
-- ~23 fase-1-blocks (`SPEC-BLOCK-LIBRARY-V1.md`).
+- Audit manifest + snapshot (manifest-only, `ADR-AVG-AUDIT-MANIFEST.md`).
+- ~23 block-definities (`SPEC-BLOCK-FRAMEWORK-V1.md`).
 - De hele teststrategie (`TESTSTRATEGIE-TRANSACTION-OS.md`).
 
 ### Bewust nog niet
 
-- De volledige ~120-blockbibliotheek.
+- De volledige ~120-block-definitiecatalogus.
 - LoI / NDA / dealvoorstel / teaser / memorandum als composer-profielen (fase D).
-- De specialistenpool met `pool_specialisten` / `pool_opdrachten` / `pool_reviews` / fee-flow /
-  conflict-check / matching / marilyn-tab (fase E).
+- De specialistenpool met `pool_*`-tabellen / fee-flow / conflict-check / matching / marilyn-tab
+  (fase E).
 - De cross-case conflict-check (eerst mini-ADR, `S-02`).
-- Redlining/commentaar-UI, document comparison, readiness-dashboard, transaction timeline (fase C/D).
+- Readiness-dashboard, transaction timeline, document comparison als aparte UI (fase C/D).
 
 ### Blijft ongemoeid tijdens de migratie
 
 - De bestaande NDA/LoI/BEM/exclusiviteit/dealvoorstel/teaser/verkoopmemorandum-generatoren blijven
   productief. Geen nieuwe documentlogica erin.
-- De bestaande DD-fases (sectorprofielen), de rekenkern, de VOK/GV/AV, de agenda, sourcing, Postvak,
-  MFA, de bewaartermijn-feature — allemaal ongewijzigd.
-- `worker/00-policy.js` (`resolveRol` / `filterExternTraject`) blijft de bron; de nieuwe policy
-  engine breidt uit, vervangt niet in één keer.
+- DD-fases (sectorprofielen), rekenkern, VOK/GV/AV, agenda, sourcing, Postvak, MFA,
+  bewaartermijn-feature — ongewijzigd.
+- `worker/00-policy.js` blijft de bron; de nieuwe policy engine breidt uit, vervangt niet in één keer.
 
 ### Moet migreren
 
 - Client-side security-/governance-checks (bijv. `modules.contracten` in `mna/04`) → naar de policy
   engine, onder equivalentietests.
-- Herbruikbare clausuletekst uit de bestaande generatoren → naar de blockbibliotheek (`S-03`).
+- Herbruikbare **structuur** (welke werkvelden een NDA/LoI/MoU heeft) uit de bestaande generatoren →
+  naar de block-definities. **Geen clausuletekst als bibliotheek.**
 
 ### Juridische content die nog moet worden opgesteld
 
-- De ~23 fase-1-blockteksten met varianten, invulvelden, binding-status, reviewvereiste, juridisch
-  eigenaar, toetsdatum (`SPEC-BLOCK-LIBRARY-V1.md`, `LEGAL CONTENT LIBRARY`-werkstroom).
-- Reliance/disclaimer-tekst per versie (`L-03`).
-- De MoU-`DocumentProfile`-template.
+- **Geen standaardclausules meer.** Wel: reliance/disclaimer-tekst per versie (`L-03`), de
+  MoU-`DocumentProfile`-template (het kader/kopjes, niet de inhoudelijke bepalingen), en de
+  aansprakelijkheids-/verantwoordelijkheidsbepalingen voor de specialistrol in VOK/GV en de
+  specialistovereenkomst (`L-04`).
 
 ### Beslissingen die eerst moeten worden genomen
 
-`L-01`, `L-02`, `L-03` (jurist) · `P-01`, `P-02`, `P-03` (Marcel) · `D-15` (Marcel) ·
-`S-01`–`S-04` (technische spikes) · `O-01`–`O-03` (ontwerpkeuzes in de review).
+`L-01`–`L-04` (jurist) · `P-01`–`P-03` (Marcel) · `D-15` (Marcel) · `S-01`–`S-04` (spikes) ·
+`O-01`–`O-04` (ontwerpkeuzes in de review).
 
 ---
 
-## 5. Architectuur-reviewvragen — te beantwoorden vóór de eerste code-review
+## 7. Architectuur-reviewvragen — te beantwoorden vóór de eerste code-review
 
 | # | Vraag | Waar geadresseerd |
 |---|---|---|
-| RV-1 | Kan een block worden verwijderd terwijl een document/review ernaar verwijst? | `SPEC-DATA-LIFECYCLE.md` (`O-01`: nee, alleen `RETIRED`) |
-| RV-2 | Wat gebeurt er met een review wanneer een block wordt gewijzigd? | `D-10` + `SPEC-DATA-LIFECYCLE.md` (`SUPERSEDED`, nieuwe review vereist) |
+| RV-1 | Kan een block-definitie worden verwijderd terwijl een dossier/review ernaar verwijst? | `SPEC-DATA-LIFECYCLE.md` (`O-01`: nee, alleen `RETIRED`) |
+| RV-2 | Wat gebeurt er met een review wanneer de tekst wordt gewijzigd — door de specialist óf door de adviseur? | `D-10` + `SPEC-DATA-LIFECYCLE.md` (`SUPERSEDED`, nieuwe review vereist, ongeacht wie wijzigt) |
 | RV-3 | Wat blijft er na de AVG-purge precies in de auditlaag staan? | `ADR-AVG-AUDIT-MANIFEST.md` |
 | RV-4 | Kan iemand via een andere route (preview / download / API / e-mail / background job / oude generator) alsnog een hard gate omzeilen? | `D-14` + `S-04` + `TESTSTRATEGIE-TRANSACTION-OS.md` §Gate-integriteit |
+| RV-5 | Kan het platform ergens tóch documenttekst als "professioneel juist" presenteren, of een specialistgoedkeuring simuleren? | §1a + `TESTSTRATEGIE-TRANSACTION-OS.md` §Autoriteitsgrens |
 
-RV-4 is het belangrijkst en krijgt een eigen ontwerpeis: **één egress-policy**. Elk pad dat
-documentinhoud of dossierdata naar buiten brengt, roept dezelfde `canExport` / `canPublish` /
-`canAccess` aan; er is geen pad dat de policy overslaat.
+RV-4 en RV-5 zijn de belangrijkste. RV-4: één egress-policy. RV-5: het platform toont documenttekst
+altijd met zijn provenance-/reviewstatus, nooit als geverifieerd feit; een goedkeuring bestaat alleen
+als een echte reviewer die met naam + hoedanigheid + datum + versie heeft afgegeven.
 
 ---
 
-## 6. Uitvoeringsvolgorde
+## 8. Uitvoeringsvolgorde
 
-### FASE A — DESIGN (dit document + de zes deeldocumenten; geen code)
+### FASE A — DESIGN (deze documenten; geen code)
 
-1. Data model · 2. Block model · 3. Provenance model · 4. Review model · 5. Policy model ·
-6. Permission model · 7. Data lifecycle · 8. ADR's · 9. AVG/legal validation (`L-01`/`L-02`/`L-03`).
+1. Data model · 2. Block-framework-model · 3. Provenance model · 4. Review model · 5. Policy model ·
+6. Permission model · 7. Data lifecycle · 8. ADR's · 9. AVG/legal validation (`L-01`–`L-04`).
 
-**Poort:** geen slice-code merget vóór `L-01` = `DECIDED` en de vier reviewvragen beantwoord.
+**Poort:** geen slice-code merget vóór `L-01`/`L-04` = `DECIDED` en de vijf reviewvragen beantwoord.
 
 ### FASE B — EERSTE VERTICALE SLICE (MoU)
 
-10. MoU-blocks · 11. Block Composer · 12. MoU `DocumentProfile` · 13. `BlockReview` ·
-14. Policy gates · 15. Reliance injection · 16. Audit manifest · 17. Export.
+10. MoU-block-definities · 11. Block Composer · 12. MoU `DocumentProfile` · 13. AI-concept per veld ·
+14. Specialist-editor + `BlockReview` + invalidatie · 15. Divergentiedetectie · 16. Policy gates ·
+17. Reliance injection · 18. Audit manifest · 19. Export.
 
 ### FASE C — HARDENING
 
-18. Equivalentietests · 19. Negatieve roltests · 20. Versioning-tests · 21. Clause-integriteitstests
-· 22. Retention/purge-tests · 23. Performance-tests · 24. Gate-integriteitstests (RV-4).
+20. Equivalentietests · 21. Negatieve roltests · 22. Versioning-tests · 23. Invalidatie-/
+divergentietests · 24. Retention/purge-tests · 25. Performance-tests · 26. Gate-integriteitstests
+(RV-4) · 27. Autoriteitsgrens-tests (RV-5).
 
 ### FASE D — EXPANSION
 
-25. LoI · 26. NDA-migratie · 27. Dealvoorstel · 28. Teaser · 29. Memorandum.
-Elk een nieuw `DocumentProfile`, geen nieuwe generator.
+28. LoI · 29. NDA-migratie · 30. Dealvoorstel · 31. Teaser · 32. Memorandum. Elk een nieuw
+`DocumentProfile`, geen nieuwe generator.
 
 ### FASE E — SPECIALISTENPOOL
 
-30. Reviewer-interface veralgemenen · 31. Assignment-abstractie · 32. Specialist profiles ·
-33. Conflict-check (na mini-ADR) · 34. Scoped access · 35. Fees · 36. Pool-UI (marilyn).
+33. Reviewer-interface veralgemenen · 34. Assignment-abstractie · 35. Specialist profiles ·
+36. Conflict-check (na mini-ADR) · 37. Scoped access · 38. Fees · 39. Pool-UI (marilyn).
 
 ---
 
-## 7. ADR — samenvatting
+## 9. ADR — samenvatting
 
 Volledige tekst: `ADR-TRANSACTION-BLOCK-ARCHITECTURE.md`.
 
-- **Beslissing:** Transaction Block + Composer-architectuur.
+- **Beslissing:** Transaction Block Framework + Composer — **structuur, data, workflow, provenance,
+  versiebeheer en reviewmechaniek; géén professionele kennisbank**.
 - **Waarom:** voorkomt duplicatie van documentlogica; maakt provenance, review en versioning
-  centraal; maakt specialistreview schaalbaar; betere auditability; nieuwe documenttypen worden
-  configuratie i.p.v. code.
-- **Alternatieven:** afzonderlijke documentgeneratoren (huidige situatie) · één grote AI-prompt ·
-  template-only model.
-- **Consequenties positief:** hergebruik, consistente governance, schaalbare review, auditability,
-  eenvoudiger nieuwe documenttypen.
-- **Consequenties negatief:** initieel complexer datamodel; blockbibliotheek vereist doorlopend
-  juridisch onderhoud; migratie-inspanning; de policy engine wordt kritieke infrastructuur.
+  centraal; maakt specialistreview schaalbaar; houdt het platform licht en buiten de
+  professionele-aansprakelijkheidssfeer; nieuwe documenttypen worden configuratie i.p.v. code.
+- **Alternatieven:** afzonderlijke documentgeneratoren · één grote AI-prompt · template-only model ·
+  ~~clausulebibliotheek met getoetste standaardteksten~~ (geschrapt, §1a).
+- **Consequenties positief:** hergebruik van structuur, consistente governance, schaalbare review,
+  auditability, licht platform, geen doorlopend juridisch tekstonderhoud.
+- **Consequenties negatief:** initieel complexer datamodel; migratie-inspanning; de policy engine
+  wordt kritieke infrastructuur; zonder specialist blijft een document juridisch "concept" (dat is
+  bedoeld).
 
 ---
 
-## 8. Beslissing gevraagd
+## 10. Beslissing gevraagd
 
 Aan Marcel + jurist: **GO / NO-GO / CHANGES REQUIRED** op deze master-spec en de zes deeldocumenten,
 met per open beslissing (`L-*`, `P-*`, `S-*`, `O-*`) een richting. Geen code vóór die beslissing.

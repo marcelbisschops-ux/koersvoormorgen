@@ -73,15 +73,37 @@ Uitbreidt `tests/e2e-crosspath-fixes.mjs` (de CONF-vertrouwelijkheidsmatrix).
 
 ---
 
-## 4. Clause-integriteitstests (AI-invariant D-07)
+## 4. Autoriteitsgrens-tests (RV-5) + AI-eigenaarschap (D-07)
 
-- Genereer een MoU met alleen `ACTIVE`, jurist-goedgekeurde blocks → de blocktekst in de output is
-  **byte-identiek** aan de blockversie-tekst (op placeholder-invulling na).
-- Voer de compositie 20× uit met wisselende AI-runs → de goedgekeurde blocktekst verandert nooit.
-- Bewerk een block-instance handmatig → het systeem markeert de block als "afgeweken van v_n",
-  vereist een nieuwe `block_version` + review, en blokkeert export tot die er is.
-- Statische check (patroon van `audit-consistentie` check 8/9): de composer levert approved-blocktekst
-  letterlijk door en de AI-prompt bevat de expliciete "niet herschrijven"-instructie.
+- **AI mag goedgekeurde/bewerkte tekst niet herschrijven.** Zet een AI-concept in een component →
+  laat de specialist het bewerken (`text_provenance = SPECIALIST_ASSESSMENT`) → draai de compositie
+  20× met wisselende AI-runs → de specialist-tekst verandert **byte-identiek nooit**.
+- **Eigenaarschap wisselt bij bewerking.** Na een specialist-bewerking is `text_provenance` geen
+  `AI_INFERENCE` meer; na een adviseur-bewerking buiten review is het `USER_FACT`. Assert dat AI
+  daarna geen automatische wijziging meer aanbrengt.
+- **Goedkeuring-invalidatie.** Component `APPROVED` → wijzig de vrije tekst of een dataslot (als
+  specialist én, in een tweede test, als adviseur) → de `BlockReview` staat op `SUPERSEDED`, export
+  geblokkeerd tot nieuwe `APPROVED`.
+- **Het platform presenteert documenttekst nooit als "professioneel juist".** Statische + UI-check:
+  overal waar componenttekst wordt getoond staat de provenance-/reviewstatus erbij; er is geen
+  codepad dat een `APPROVED`-status zet zonder een echte reviewer (naam + hoedanigheid + datum +
+  versie); er is geen "gecontroleerd door Koers voor Morgen"-tekst.
+- Statische check (patroon `audit-consistentie` check 8/9): de composer levert de instance-tekst
+  letterlijk door en de AI-prompt bevat de expliciete "niet herschrijven / geen oordeel"-instructie.
+
+---
+
+## 4b. Divergentiedetectie-tests (D-17 / RV-2 verwante)
+
+- Zet exclusiviteitsduur op 90 in de dealdata en de gegenereerde MoU-tekst → laat de specialist de
+  MoU-tekst naar 120 wijzigen → assert: het platform toont een **divergentiewaarschuwing** aan de
+  adviseur ("verschil tussen transactionele gegevens en juridisch aangepaste documenttekst").
+- Zelfde veld verschilt tussen twee documenten van hetzelfde dossier (MoU 120, LoI 90) → waarschuwing.
+- De adviseur past de dealdata aan naar 120 zodat alles gelijk is → de waarschuwing verdwijnt; de
+  eerder `APPROVED` MoU-component blijft `APPROVED` (de dealdata volgde de tekst, niet andersom) —
+  tenzij de dealdata-wijziging zelf een gekoppeld reviewveld raakt, dan `SUPERSEDED` (D-10).
+- Negatief: een niet-gekoppeld tekstverschil (bijv. een toelichtende zin) triggert **geen**
+  waarschuwing.
 
 ---
 

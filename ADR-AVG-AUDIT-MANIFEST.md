@@ -32,9 +32,10 @@ Scheid twee dingen die de oorspronkelijke spec op één hoop gooide:
 
 ### `CONTENT ARCHIVE` — volgt het bestaande bewaarbeleid
 
-De inhoudelijke laag: transaction-data, facts, evidence, documentinhoud, blockinhoud-tekst,
-gegenereerde documenten. Wordt verwijderd volgens de bestaande 14/365-dagenretentie. **De nieuwe
-architectuur gaat niet uit van onbeperkte opslag van dossierinhoud.**
+De inhoudelijke laag: transaction-data, facts, evidence, documentinhoud, de vrije tekst per
+component-instance (AI-concept én specialist-input), gegenereerde documenten. Wordt verwijderd
+volgens de bestaande 14/365-dagenretentie. **De nieuwe architectuur gaat niet uit van onbeperkte
+opslag van dossierinhoud — ook niet van professionele input van de specialist.**
 
 ### `AUDIT MANIFEST` — mogelijk langdurig, mits geen persoonsgegevens
 
@@ -89,7 +90,7 @@ bestond uit block X@v4 (jurist-goedgekeurd op datum, review-ID …), block Y@v2 
 | Blijft | Verdwijnt |
 |---|---|
 | Audit manifest (bovenstaande velden) | Alle transaction-data, facts, evidence |
-| Audit events (append-only, geanonimiseerd — actor-rol i.p.v. actor-naam waar de purge dat eist) | Alle documentinhoud en blockinhoud-tekst |
+| Audit events (append-only, geanonimiseerd — actor-rol i.p.v. actor-naam waar de purge dat eist) | Alle documentinhoud en de vrije tekst per component (AI-concept én specialist-input) |
 | Content-/document-/disclaimer-hashes | Gegenereerde documenten (PDF/tekst) |
 | De bestaande minimale archiefregel uit VOK Art. 5 (trajectnaam, sector, type, data, betrokken partijen) — ongewijzigd | Reviews-met-inhoud (opmerkingen, redlines); alleen de review-ID + status + versie + hoedanigheid blijven in het manifest |
 | `mna_audit` zoals nu (bestaande uitzondering) | Snapshots met inhoud |
