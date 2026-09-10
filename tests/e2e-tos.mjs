@@ -119,6 +119,28 @@ async function run() {
   check('elke component staat review REQUIRED', cs.every((c) => c.review && c.review.status === 'REQUIRED'));
   check('geen open divergenties bij een verse MoU', get.json && Array.isArray(get.json.divergenties) && get.json.divergenties.length === 0);
 
+  kop('STAP 17 · reliance-injectie + PLATFORM-beheerde componenten');
+  check('POST /document geeft reliance {id,version,hash} terug', mk.json && mk.json.reliance && mk.json.reliance.id === 'reliance' && !!mk.json.reliance.hash, JSON.stringify(mk.json.reliance));
+  const relComp = cs.find((c) => c.block_id === 'reliance');
+  check('reliance-component heeft tekst, provenance PLATFORM', relComp && relComp.text && relComp.text.length > 30 && relComp.text_provenance === 'PLATFORM', JSON.stringify(relComp && { p: relComp.text_provenance, len: (relComp.text || '').length }));
+  const relEp = await api('GET', '/mna/tos/reliance', { headers: H });
+  check('GET /mna/tos/reliance ok, content + hash', relEp.json && relEp.json.ok === true && !!relEp.json.content && !!relEp.json.content_hash);
+  check('reliance-componenttekst == de centrale disclaimer', relComp && relEp.json && relComp.text === relEp.json.content);
+  const nbp = cs.find((c) => c.block_id === 'non_binding_provisions');
+  check('non_binding_provisions auto-tekst, provenance PLATFORM', nbp && nbp.text && nbp.text.length > 30 && nbp.text_provenance === 'PLATFORM');
+  const bp = cs.find((c) => c.block_id === 'binding_provisions');
+  check('binding_provisions auto-tekst noemt "bindend"', bp && /bindend/i.test(bp.text || ''));
+  // niet bewerkbaar / niet verwijderbaar / geen AI-concept
+  const relPatch = await api('PATCH', '/mna/tos/component/' + relComp.instance_id, { headers: H, body: { text: 'gehackt' } });
+  check('PATCH reliance → 409 (automatisch beheerd)', relPatch.status === 409, 'status ' + relPatch.status);
+  const relConc = await api('POST', '/mna/tos/component/' + relComp.instance_id + '/concept', { headers: H, body: {} });
+  check('AI-concept op reliance → 409', relConc.status === 409, 'status ' + relConc.status);
+  const relDel = await api('POST', '/mna/tos/document/' + docId + '/component/' + relComp.instance_id + '/verwijder', { headers: H });
+  check('verwijder reliance → 409', relDel.status === 409, 'status ' + relDel.status);
+  // exportcheck: PLATFORM-componenten leveren geen review-blocker
+  const ecR = await api('GET', '/mna/tos/document/' + docId + '/exportcheck', { headers: H });
+  check('exportcheck: geen blocker op reliance of non_binding_provisions', !(ecR.json.blockers || []).some((b) => b.block_id === 'reliance' || b.block_id === 'non_binding_provisions'), JSON.stringify(ecR.json.blockers));
+
   kop('STAP 13 · componenten toevoegen/verwijderen/bewerken + AI-concept');
   const exclIid = (cs.find((c) => c.block_id === 'exclusivity') || {}).instance_id;
   check('exclusivity-instance gevonden', !!exclIid);
