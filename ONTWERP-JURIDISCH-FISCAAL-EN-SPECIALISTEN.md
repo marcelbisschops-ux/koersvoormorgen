@@ -11,9 +11,9 @@ werkwijze compléét maakt, niet half.
 
 Dit is het **optimale doelbeeld**, ongeacht omvang. De bouwvolgorde staat onderaan.
 
-**Status:** grondprincipe (sectie 0) vastgesteld door Marcel op 2026-09-10. Stappen 1 en 8 zijn
-volledig uitgewerkt ter verificatie in aparte specs: `SPEC-STAP-1-MOU-EN-VOETTEKST.md` en
-`SPEC-STAP-8-SPECIALISTENPOOL.md`.
+**Status:** grondprincipe (sectie 0) vastgesteld door Marcel op 2026-09-10. Dit roadmapdocument is
+daarna **geconsolideerd in `MASTER-SPEC-TRANSACTION-OS.md`** (met ADR's en deelspecs); sectie 0 is
+daar de leidende versie. Dit bestand blijft als achtergrond/herkomst.
 
 ---
 

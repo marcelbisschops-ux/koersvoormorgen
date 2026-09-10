@@ -1,5 +1,10 @@
 # SPEC — Stap 1: MoU-generator + reliance-voettekst
 
+> **Deels achterhaald (2026-09-10).** Deel **1A** (reliance-voettekst op de bestaande generatoren)
+> blijft geldig als losse, veilige levering — zie `MASTER-SPEC-TRANSACTION-OS.md` D-15. Deel **1B**
+> (MoU als losse template + `bgDoc('mou')`) **vervalt** en is opgegaan in
+> `SPEC-MOU-FIRST-VERTICAL-SLICE.md`. Dit document blijft staan als herkomstregistratie.
+
 **Hoort bij:** `ONTWERP-JURIDISCH-FISCAAL-EN-SPECIALISTEN.md`, bouwvolgorde stap 1.
 **Datum:** 2026-09-10 · **Status:** ter verificatie door Marcel, nog niet gebouwd.
 **Doel:** het ontbrekende opstapdocument (MoU / term sheet) toevoegen, en meteen het laatste

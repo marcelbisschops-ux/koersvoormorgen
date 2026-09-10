@@ -1,5 +1,13 @@
 # SPEC — Stap 8: pool / marktplaats voor specialisten
 
+> **Herzien ingekaderd (2026-09-10).** De specialistenpool is nu FASE E in
+> `MASTER-SPEC-TRANSACTION-OS.md` (D-11): een *provider van reviewers* binnen de algemene
+> review-engine, niet een eigen reviewarchitectuur. Bouw eerst de algemene Reviewer-interface,
+> review-engine, scoped permissions en assignment-abstractie; daarna pas `pool_specialisten` /
+> `pool_opdrachten` / `pool_reviews` / fee-flow / conflict-check / matching / marilyn-tab. De
+> conflict-check krijgt een eigen mini-ADR (`S-02`). Dit document blijft het detailontwerp voor die
+> fase.
+
 **Hoort bij:** `ONTWERP-JURIDISCH-FISCAAL-EN-SPECIALISTEN.md`, bouwvolgorde stap 8.
 **Datum:** 2026-09-10 · **Status:** ter verificatie door Marcel, nog niet gebouwd.
 **Doel:** een adviseur zonder eigen jurist / fiscalist / waarderingsspecialist kan er één inschakelen
