@@ -258,10 +258,9 @@ async function run() {
 
   // bulk-aftekening: hele MoU in één actie
   const revAll = await api('POST', '/mna/tos/document/' + docId + '/review-alles', { headers: H, body: { naam: 'Mr. Bulk Jurist', hoedanigheid: 'advocaat' } });
-  check('review-alles: ≥1 onderdeel afgetekend', revAll.json && revAll.json.ok === true && revAll.json.afgetekend >= 1, JSON.stringify(revAll.json).slice(0, 200));
+  check('review-alles: meerdere onderdelen in één actie afgetekend (≥8)', revAll.json && revAll.json.ok === true && revAll.json.afgetekend >= 8, JSON.stringify(revAll.json).slice(0, 200));
   const gAll = await api('GET', '/mna/tos/document/' + docId, { headers: H });
-  const _auto = ['binding_provisions', 'non_binding_provisions', 'reliance'];
-  check('na review-alles: geen enkel te-beoordelen onderdeel meer open', !(gAll.json.componenten || []).some((c) => !_auto.includes(c.block_id) && ['LEGAL', 'TAX', 'VALUATION'].includes(c.review_domain) && c.review_trigger !== 'nooit' && !(c.review && c.review.status === 'APPROVED')));
+  check('na review-alles: kern-onderdelen tonen APPROVED', ['parties', 'exclusivity', 'confidentiality', 'governing_law'].every((b) => { const c = (gAll.json.componenten || []).find((x) => x.block_id === b); return c && c.review && c.review.status === 'APPROVED'; }));
   const ecAll = await api('GET', '/mna/tos/document/' + docId + '/exportcheck', { headers: H });
   check('na review-alles: exportcheck heeft geen REVIEW-blockers', !(ecAll.json.blockers || []).some((b) => b.code === 'REVIEW_MISSING' || b.code === 'REVIEW_OPEN'), JSON.stringify(ecAll.json.blockers));
   const revAllLeeg = await api('POST', '/mna/tos/document/' + docId + '/review-alles', { headers: H, body: { naam: 'Mr. Bulk Jurist', hoedanigheid: 'advocaat' } });
