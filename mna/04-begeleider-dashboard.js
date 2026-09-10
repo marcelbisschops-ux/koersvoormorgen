@@ -799,12 +799,13 @@ function renderBegeleiderDashboard(app){
         +stapRij('bg-teaser-actie','&#128226;','#1a7a5e',t.teaser_tekst?'Teaser bekijken/bewerken':'Genereer teaser',t.teaser_tekst?'<span style="color:var(--teal)">&#10003; Teaser klaar</span>':'Kort, anoniem verkoopdocument — vóór er een koper is',false,false,!marketingAan,'Module Marketing niet actief — neem contact op via koersvoormorgen.nl')
         +stapRij('bg-nda-actie','&#128274;','#7c5cbf','Geheimhoudingsovereenkomst (NDA)',getekendStatus('nda_getekend','nda_getekend_datum'))
         +stapRij('bg-verkoopmemo-actie','&#128220;','#8a5a00',t.verkoopmemorandum_tekst?'Verkoopmemorandum bekijken/bewerken':'Genereer verkoopmemorandum',t.verkoopmemorandum_tekst?'<span style="color:var(--teal)">&#10003; Verkoopmemorandum klaar</span>':'Uitgebreid document mét bedrijfsnaam, na NDA van die partij',false,false,!marketingAan,'Module Marketing niet actief — neem contact op via koersvoormorgen.nl')
-        // MoU-composer (Transaction OS) — stelt een memorandum of understanding samen uit losse,
-        // apart af te tekenen onderdelen. Geen module-gate: de composer zelf is geen te versturen
-        // contract; finaliseren/versturen gaat via de aparte, geauthenticeerde tos-endpoints.
+        // MoU-/LoI-composer (Transaction OS) — stelt het document samen uit losse, apart af te tekenen
+        // onderdelen. Geen module-gate: de composer zelf is geen te versturen contract; finaliseren/
+        // versturen gaat via de aparte, geauthenticeerde tos-endpoints.
         +stapRij('bg-mou-actie','&#129513;','#5a5470','Memorandum of Understanding (composer)','Onderdelen samenstellen, laten aftekenen, finaliseren',false,true)
+        +stapRij('bg-loi-composer-actie','&#129513;','#5a5470','Letter of Intent (composer)','Uitgebreider dan de MoU: garantiekader, MAC-clausule, DD en voorwaarden standaard erin',false,true)
         +stapRij('bg-bieding-actie','&#128233;','#a0522d','Indicatieve bieding','Klaar om te versturen')
-        +stapRij('bg-loi-actie','&#128196;','var(--gold)','Intentieverklaring (LoI)',getekendStatus('loi_getekend','loi_getekend_datum'))
+        +stapRij('bg-loi-actie','&#128196;','var(--gold)','Intentieverklaring (LoI) — sjabloongenerator',getekendStatus('loi_getekend','loi_getekend_datum'))
         // Persistent, zichtbaar gemaakt (21 aug 2026, Marcel kon de trigger niet vinden): stond
         // voorheen alleen als knop verstopt binnen het resultaatscherm van "Indicatieve bieding" —
         // nu een eigen stap in de flow, matchend met de "post-LoI"-terminologie die elders in de
@@ -2182,6 +2183,9 @@ function renderBegeleiderDashboard(app){
     APPROVED:['&#10003; Afgetekend','var(--teal)'],SUPERSEDED:['Vervallen na wijziging','var(--red)'],REVOKED:['Ingetrokken','var(--red)'],
     NONE:['',''] };
   var _mouDocId=null;
+  var _mouProfile='MOU';
+  var MOU_PROFIELEN={ MOU:{titel:'Memorandum of Understanding',kort:'MoU'}, LOI:{titel:'Letter of Intent',kort:'LoI'} };
+  function mouProfLabel(){ return (MOU_PROFIELEN[_mouProfile]||MOU_PROFIELEN.MOU); }
   function bgMouKey(){ return S._bgKey || S.code; }
   async function bgMouApi(method,pad,body){
     var opt={method:method,headers:{'x-tussen-key':bgMouKey()}};
@@ -2190,30 +2194,32 @@ function renderBegeleiderDashboard(app){
     catch(e){ return {status:0,ok:false,json:{error:'Verbindingsfout'}}; }
   }
   function bgMouFout(msg){
-    return '<div style="background:var(--red-bg);border:1px solid var(--red);border-radius:var(--r2);padding:1rem;font-size:13px;color:var(--red)">MoU-composer: '+esc(msg||'onbekende fout')+'</div>';
+    return '<div style="background:var(--red-bg);border:1px solid var(--red);border-radius:var(--r2);padding:1rem;font-size:13px;color:var(--red)">'+esc(mouProfLabel().kort)+'-composer: '+esc(msg||'onbekende fout')+'</div>';
   }
   function bgMouDiscl(){
-    return '<div style="font-size:11px;color:var(--muted);line-height:1.55;margin:.5rem 0 .75rem">Elk onderdeel is een leeg werkveld. De AI stelt hoogstens een <em>concept</em> voor; een bevoegd specialist (jurist/fiscalist/waardeur) tekent de professionele tekst af per dossier. Koers voor Morgen beoordeelt de inhoud niet en houdt geen bibliotheek van goedgekeurde clausuleteksten.</div>';
+    return '<div style="font-size:11px;color:var(--muted);line-height:1.55;margin:.5rem 0 .75rem">Elk onderdeel is een leeg werkveld. De AI stelt hoogstens een <em>concept</em> voor; een bevoegd specialist (jurist/fiscalist/waardeur) tekent de professionele tekst af per dossier. Koers voor Morgen beoordeelt de inhoud niet.</div>';
   }
-  async function bgMouComposer(){
+  async function bgMouComposer(profile){
+    _mouProfile=(profile||'MOU').toUpperCase(); if(!MOU_PROFIELEN[_mouProfile])_mouProfile='MOU';
+    var lbl=mouProfLabel();
     var out=document.getElementById('bg-doc-out'); if(!out)return;
     out.style.display='block';
-    out.innerHTML='<div style="color:var(--muted);font-size:13px;padding:1rem;background:var(--card);border-radius:var(--r2)">MoU-composer laden&hellip;</div>';
+    out.innerHTML='<div style="color:var(--muted);font-size:13px;padding:1rem;background:var(--card);border-radius:var(--r2)">'+esc(lbl.kort)+'-composer laden&hellip;</div>';
     out.scrollIntoView({behavior:'smooth',block:'nearest'});
     await bgMouApi('POST','/activeer/'+encodeURIComponent(S.code)); // idempotent
     var lijst=await bgMouApi('GET','/documenten/'+encodeURIComponent(S.code));
     if(!lijst.ok||!lijst.json.ok){ out.innerHTML=bgMouFout(lijst.json&&lijst.json.error); return; }
-    var docs=(lijst.json.documenten||[]).filter(function(x){return x.doc_type==='mou';});
+    var docs=(lijst.json.documenten||[]).filter(function(x){return x.doc_type===_mouProfile.toLowerCase();});
     if(!docs.length){
       out.innerHTML='<div class="panel" style="padding:1.25rem">'
-        +'<div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:#5a5470">Memorandum of Understanding &mdash; composer</div>'
+        +'<div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:#5a5470">'+esc(lbl.titel)+' &mdash; composer</div>'
         +bgMouDiscl()
-        +'<button id="mou-nieuw" class="btn btn-sm">MoU aanmaken</button></div>';
+        +'<button id="mou-nieuw" class="btn btn-sm">'+esc(lbl.kort)+' aanmaken</button></div>';
       var nb=document.getElementById('mou-nieuw');
       nb.onclick=async function(){ nb.disabled=true; nb.textContent='Bezig&hellip;';
-        var mk=await bgMouApi('POST','/document',{profile:'MOU'});
-        if(!mk.ok||!mk.json.ok){ toast((mk.json&&mk.json.error)||'Aanmaken mislukt','err'); nb.disabled=false; nb.textContent='MoU aanmaken'; return; }
-        _mouDocId=mk.json.document_id; toast('MoU aangemaakt','ok'); bgMouRender();
+        var mk=await bgMouApi('POST','/document',{profile:_mouProfile});
+        if(!mk.ok||!mk.json.ok){ toast((mk.json&&mk.json.error)||'Aanmaken mislukt','err'); nb.disabled=false; nb.textContent=lbl.kort+' aanmaken'; return; }
+        _mouDocId=mk.json.document_id; toast(lbl.kort+' aangemaakt','ok'); bgMouRender();
       };
       return;
     }
@@ -2226,7 +2232,7 @@ function renderBegeleiderDashboard(app){
     if(!g.ok||!g.json.ok){ out.innerHTML=bgMouFout(g.json&&g.json.error); return; }
     var doc=g.json.document, comps=g.json.componenten||[], divs=g.json.divergenties||[];
     var bevroren=!!doc.bevroren;
-    var menu=await bgMouApi('GET','/menu/'+encodeURIComponent(S.code)+'?profile=MOU&document='+encodeURIComponent(_mouDocId));
+    var menu=await bgMouApi('GET','/menu/'+encodeURIComponent(S.code)+'?profile='+encodeURIComponent(_mouProfile)+'&document='+encodeURIComponent(_mouDocId));
     var mj=menu.ok&&menu.json.ok?menu.json:{menu:[],ontbrekend_kern:[],required_reviews:{}};
     var st=await bgMouApi('GET','/document/'+encodeURIComponent(_mouDocId)+'/exportcheck');
     var blockers=(st.ok&&st.json&&Array.isArray(st.json.blockers))?st.json.blockers:[];
@@ -2234,14 +2240,14 @@ function renderBegeleiderDashboard(app){
 
     var h='<div class="panel" style="padding:0;border:1px solid '+(bevroren?'var(--teal)':'#5a5470')+'">';
     h+='<div style="display:flex;align-items:center;justify-content:space-between;padding:.8rem 1rem;border-bottom:1px solid var(--border)">'
-      +'<div><span style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:#5a5470">MoU-composer</span>'
+      +'<div><span style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:#5a5470">'+esc(mouProfLabel().kort)+'-composer</span>'
       +'<span style="font-size:11px;color:var(--muted);margin-left:8px">v'+esc(String(doc.current_version))+' &middot; '
       +(doc.status==='draft'?'concept':doc.status==='exported'?'gefinaliseerd':doc.status==='verstuurd'?('verstuurd aan '+((doc.adressaten||[]).join(', ')||'&mdash;')):esc(doc.status))+'</span></div>'
       +'<button id="mou-close" class="btn-ghost" style="font-size:11px;padding:3px 10px">Sluiten</button></div>';
     h+='<div style="padding:1rem">';
     h+=bgMouDiscl();
     if(alleDocs&&alleDocs.length>1){
-      h+='<div style="font-size:11px;color:var(--muted);margin-bottom:.6rem">MoU: <select id="mou-kies" style="background:var(--panel);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-size:11px;padding:3px 6px">'
+      h+='<div style="font-size:11px;color:var(--muted);margin-bottom:.6rem">'+esc(mouProfLabel().kort)+': <select id="mou-kies" style="background:var(--panel);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-size:11px;padding:3px 6px">'
         +alleDocs.map(function(d){return '<option value="'+esc(d.id)+'"'+(d.id===_mouDocId?' selected':'')+'>v'+esc(String(d.current_version))+' &middot; '+esc(d.status)+' &middot; '+new Date(d.created_at).toLocaleDateString('nl-NL')+'</option>';}).join('')
         +'</select></div>';
     }
@@ -2261,7 +2267,7 @@ function renderBegeleiderDashboard(app){
         +'<div style="margin-top:.5rem;display:flex;gap:8px;flex-wrap:wrap">'
         +(doc.status==='exported'?'<button id="mou-verstuur" class="btn btn-sm" style="background:#5a5470">&#9993; Versturen naar partijen</button>':'')
         +'<button id="mou-manifest" class="btn-ghost" style="font-size:11px;padding:5px 12px">&#128203; Manifest bekijken</button>'
-        +'<button id="mou-nieuw2" class="btn-ghost" style="font-size:11px;padding:5px 12px">+ Nieuwe MoU</button>'
+        +'<button id="mou-nieuw2" class="btn-ghost" style="font-size:11px;padding:5px 12px">+ Nieuwe '+esc(mouProfLabel().kort)+'</button>'
         +'</div><div id="mou-manifest-out" style="margin-top:.5rem"></div></div>';
     }
     // Componentenmenu (in-/uitklapbaar)
@@ -2369,7 +2375,7 @@ function renderBegeleiderDashboard(app){
     var out=document.getElementById('bg-doc-out'); if(!out)return;
     var cl=document.getElementById('mou-close'); if(cl)cl.onclick=function(){ out.style.display='none'; out.innerHTML=''; };
     var ks=document.getElementById('mou-kies'); if(ks)ks.onchange=function(){ _mouDocId=this.value; bgMouRender(); };
-    var n2=document.getElementById('mou-nieuw2'); if(n2)n2.onclick=async function(){ var mk=await bgMouApi('POST','/document',{profile:'MOU'}); if(mk.ok&&mk.json.ok){ _mouDocId=mk.json.document_id; toast('Nieuwe MoU aangemaakt','ok'); bgMouComposer(); } else toast('Aanmaken mislukt','err'); };
+    var n2=document.getElementById('mou-nieuw2'); if(n2)n2.onclick=async function(){ var mk=await bgMouApi('POST','/document',{profile:_mouProfile}); if(mk.ok&&mk.json.ok){ _mouDocId=mk.json.document_id; toast('Nieuwe '+mouProfLabel().kort+' aangemaakt','ok'); bgMouComposer(_mouProfile); } else toast('Aanmaken mislukt','err'); };
     if(bevroren){
       var mm=document.getElementById('mou-manifest'); if(mm)mm.onclick=async function(){
         var m=await bgMouApi('GET','/document/'+encodeURIComponent(_mouDocId)+'/manifest');
@@ -2782,7 +2788,9 @@ function renderBegeleiderDashboard(app){
   document.getElementById('bg-nda-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op via koersvoormorgen.nl.','err');return;} bgToonOfGenereerDoc('nda'); };
   document.getElementById('bg-loi-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op via koersvoormorgen.nl.','err');return;} bgToonOfGenereerDoc('loi'); };
   var bgMouBtn=document.getElementById('bg-mou-actie');
-  if(bgMouBtn)bgMouBtn.onclick=function(){ bgMouComposer(); };
+  if(bgMouBtn)bgMouBtn.onclick=function(){ bgMouComposer('MOU'); };
+  var bgLoiCompBtn=document.getElementById('bg-loi-composer-actie');
+  if(bgLoiCompBtn)bgLoiCompBtn.onclick=function(){ bgMouComposer('LOI'); };
   document.getElementById('bg-bem-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op via koersvoormorgen.nl.','err');return;} bgToonOfGenereerDoc('bem'); };
   document.getElementById('bg-excl-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op via koersvoormorgen.nl.','err');return;} bgToonOfGenereerDoc('excl'); };
   document.getElementById('bg-dealvoorstel-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op via koersvoormorgen.nl.','err');return;} toonDocWaarschuwing('dealvoorstel', function(){ toonDealvoorstelModal(); }); };

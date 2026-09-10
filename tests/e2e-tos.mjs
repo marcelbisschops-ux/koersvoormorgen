@@ -101,6 +101,29 @@ async function run() {
   const lijstKoper = await api('GET', '/mna/tos/documenten/' + trajectCode, { headers: { 'x-tussen-key': (c1.json && c1.json.koper_code) || 'GEEN' } });
   check('documentenlijst niet toegankelijk voor koper → 403', lijstKoper.status === 403, 'status ' + lijstKoper.status);
 
+  kop('STAP 12b · FASE D — LoI-DocumentProfiel');
+  const menuMou = await api('GET', '/mna/tos/menu/' + trajectCode + '?profile=MOU', { headers: H });
+  check('MoU-menu bevat GEEN reps_warranties_kader (LoI-only)', menuMou.json && !(menuMou.json.menu || []).some((m) => m.block_id === 'reps_warranties_kader'));
+  const menuLoi = await api('GET', '/mna/tos/menu/' + trajectCode + '?profile=LOI', { headers: H });
+  check('LoI-menu (ok), profiel LOI@1', menuLoi.json && menuLoi.json.ok === true && menuLoi.json.profiel && menuLoi.json.profiel.id === 'LOI', JSON.stringify(menuLoi.json && menuLoi.json.profiel));
+  check('LoI-menu bevat reps_warranties_kader + mac_clausule + break_fee', ['reps_warranties_kader', 'mac_clausule', 'break_fee'].every((b) => (menuLoi.json.menu || []).some((m) => m.block_id === b)));
+  check('LoI-menu: break_fee optioneel (niet in default)', (() => { const b = (menuLoi.json.menu || []).find((m) => m.block_id === 'break_fee'); return b && b.in_default === false; })());
+  check('LoI required_reviews: LEGAL + TAX', menuLoi.json.required_reviews && menuLoi.json.required_reviews.LEGAL === true && menuLoi.json.required_reviews.TAX === true);
+  const mkLoi = await api('POST', '/mna/tos/document', { headers: H, body: { profile: 'LOI' } });
+  check('LoI aangemaakt (ok), doc_type loi', mkLoi.json && mkLoi.json.ok === true && !!mkLoi.json.document_id, JSON.stringify(mkLoi.json).slice(0, 160));
+  const loiId = mkLoi.json && mkLoi.json.document_id;
+  const gLoi = await api('GET', '/mna/tos/document/' + loiId, { headers: H });
+  check('LoI-document: doc_type=loi, reps_warranties_kader + mac_clausule geïnstantieerd', gLoi.json && gLoi.json.document.doc_type === 'loi' && ['reps_warranties_kader', 'mac_clausule'].every((b) => (gLoi.json.componenten || []).some((c) => c.block_id === b && c.instance_status === 'ACTIVE')));
+  check('LoI-document: break_fee NIET standaard geïnstantieerd', gLoi.json && !(gLoi.json.componenten || []).some((c) => c.block_id === 'break_fee' && c.instance_status === 'ACTIVE'));
+  const lijst2 = await api('GET', '/mna/tos/documenten/' + trajectCode, { headers: H });
+  check('documentenlijst bevat nu MoU én LoI', (lijst2.json.documenten || []).some((d) => d.doc_type === 'mou') && (lijst2.json.documenten || []).some((d) => d.doc_type === 'loi'));
+  // break_fee toevoegen aan de LoI kan (staat in allowed)
+  const addBf = await api('POST', '/mna/tos/document/' + loiId + '/component', { headers: H, body: { block_id: 'break_fee' } });
+  check('break_fee toevoegen aan LoI → ok', addBf.json && addBf.json.ok === true, JSON.stringify(addBf.json).slice(0, 120));
+  // reps_warranties_kader toevoegen aan een MoU kan NIET (niet in het MoU-profiel)
+  const addRwMou = await api('POST', '/mna/tos/document/' + docId + '/component', { headers: H, body: { block_id: 'reps_warranties_kader' } });
+  check('reps_warranties_kader toevoegen aan MoU → 400 (niet in profiel)', addRwMou.status === 400, 'status ' + addRwMou.status);
+
   const get = await api('GET', '/mna/tos/document/' + docId, { headers: H });
   check('document ophalen (ok)', get.json && get.json.ok === true, JSON.stringify(get.json).slice(0, 200));
   const cs = (get.json && get.json.componenten) || [];
