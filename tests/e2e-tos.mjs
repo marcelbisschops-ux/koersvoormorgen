@@ -267,6 +267,57 @@ async function run() {
     return f && f.instances.filter((b) => b.bron === 'component').length === 2;
   })(), JSON.stringify(gd3.json.divergenties));
 
+  kop('STAP 19 · finaliseren + versturen + manifest');
+  // 1. finaliseren wordt geblokkeerd zolang er reviews openstaan (juridisch=vereist) — géén 403
+  await api('POST', '/mna/tos/document/' + docId + '/setting', { headers: H, body: { juridisch: 'vereist', fiscaal: 'vereist', cijfers: 'vereist' } });
+  const finGeblokkeerd = await api('POST', '/mna/tos/document/' + docId + '/finaliseer', { headers: H });
+  check('finaliseren met open reviews → ok:false + blockers (status 200)', finGeblokkeerd.status === 200 && finGeblokkeerd.json && finGeblokkeerd.json.ok === false && Array.isArray(finGeblokkeerd.json.blockers) && finGeblokkeerd.json.blockers.length > 0, JSON.stringify(finGeblokkeerd.json).slice(0, 200));
+
+  // 2. begeleider zet de aftekeneis voor alle domeinen uit → finaliseren kan
+  await api('POST', '/mna/tos/document/' + docId + '/setting', { headers: H, body: { juridisch: 'uit', fiscaal: 'uit', cijfers: 'uit' } });
+  const fin = await api('POST', '/mna/tos/document/' + docId + '/finaliseer', { headers: H });
+  check('finaliseren → ok:true, status exported', fin.json && fin.json.ok === true && fin.json.status === 'exported', JSON.stringify(fin.json).slice(0, 200));
+  check('manifest_id + content_hash + manifest_hash aanwezig', fin.json && !!fin.json.manifest_id && /^[0-9a-f]{64}$/.test(fin.json.content_hash || '') && /^[0-9a-f]{64}$/.test(fin.json.manifest_hash || ''), JSON.stringify(fin.json).slice(0, 200));
+  check('component_refs bevat "reliance@1" en "exclusivity@1"', fin.json && Array.isArray(fin.json.component_refs) && fin.json.component_refs.includes('reliance@1') && fin.json.component_refs.some((r) => r.startsWith('exclusivity@')), JSON.stringify(fin.json.component_refs));
+  check('disclaimer_ref = reliance@1, policy_version aanwezig', fin.json && fin.json.disclaimer_ref === 'reliance@1' && !!fin.json.policy_version);
+
+  // 3. dubbel finaliseren → 409
+  const finDup = await api('POST', '/mna/tos/document/' + docId + '/finaliseer', { headers: H });
+  check('nogmaals finaliseren → 409', finDup.status === 409, 'status ' + finDup.status);
+
+  // 4. bevroren: geen mutaties meer op een gefinaliseerd document
+  const frozenPatch = await api('PATCH', '/mna/tos/component/' + exclIid, { headers: H, body: { data_values: { duur_dagen: 45 } } });
+  check('PATCH op gefinaliseerd document → 409', frozenPatch.status === 409, 'status ' + frozenPatch.status);
+  const frozenAdd = await api('POST', '/mna/tos/document/' + docId + '/component', { headers: H, body: { block_id: 'earn_out' } });
+  check('component toevoegen aan gefinaliseerd document → 409', frozenAdd.status === 409, 'status ' + frozenAdd.status);
+  const frozenSet = await api('POST', '/mna/tos/document/' + docId + '/setting', { headers: H, body: { juridisch: 'vereist' } });
+  check('setting wijzigen op gefinaliseerd document → 409', frozenSet.status === 409, 'status ' + frozenSet.status);
+
+  // 5. versturen: eerst een verse MoU (nog draft) → 409, dan de gefinaliseerde → verstuurd
+  const verstuurDraft = await api('POST', '/mna/tos/document/' + doc2 + '/verstuur', { headers: H });
+  check('versturen van een nog niet gefinaliseerd document → 409', verstuurDraft.status === 409, 'status ' + verstuurDraft.status);
+  const verstuur = await api('POST', '/mna/tos/document/' + docId + '/verstuur', { headers: H, body: { adressaten: ['verkoper'] } });
+  check('versturen → ok:true, status verstuurd, adressaten [verkoper]', verstuur.json && verstuur.json.ok === true && verstuur.json.status === 'verstuurd' && JSON.stringify(verstuur.json.adressaten) === '["verkoper"]', JSON.stringify(verstuur.json));
+  check('geen mail naar een .invalid-adres (mail_overgeslagen)', verstuur.json && verstuur.json.mail_overgeslagen === true, JSON.stringify(verstuur.json));
+  const verstuurDup = await api('POST', '/mna/tos/document/' + docId + '/verstuur', { headers: H });
+  check('nogmaals versturen → 409', verstuurDup.status === 409, 'status ' + verstuurDup.status);
+
+  // 6. manifest ophalen (begeleider) — reproduceerbaarheid zonder inhoud
+  const man = await api('GET', '/mna/tos/document/' + docId + '/manifest', { headers: H });
+  check('manifest ophalen ok', man.json && man.json.ok === true && man.json.manifest, JSON.stringify(man.json).slice(0, 160));
+  check('manifest.content_hash == finaliseer.content_hash', man.json && man.json.manifest && man.json.manifest.content_hash === fin.json.content_hash);
+  check('manifest.review_refs bevat geen reviewer-naam', man.json && man.json.manifest && JSON.stringify(man.json.manifest.review_refs).indexOf('Test Jurist') === -1, JSON.stringify(man.json.manifest.review_refs));
+  const manDraft = await api('GET', '/mna/tos/document/' + doc2 + '/manifest', { headers: H });
+  check('manifest van een niet-gefinaliseerd document → 404', manDraft.status === 404, 'status ' + manDraft.status);
+
+  // 7. leestoegang: verkoper (adressaat) mag het verstuurde document nu lezen — maar zonder
+  //    interne composer-informatie (reviewer-naam, provenance-typering, divergentievlaggen)
+  const verkLees = await api('GET', '/mna/tos/document/' + docId, { headers: { 'x-tussen-key': trajectCode } });
+  check('verkoper leest het verstuurde document → 200, status verstuurd', verkLees.status === 200 && verkLees.json && verkLees.json.document && verkLees.json.document.status === 'verstuurd', 'status ' + verkLees.status);
+  check('verkoper-weergave lekt geen reviewer-naam / provenance / divergenties', verkLees.json && JSON.stringify(verkLees.json).indexOf('Test Jurist') === -1 && JSON.stringify(verkLees.json).indexOf('text_provenance') === -1 && JSON.stringify(verkLees.json).indexOf('provenance_type') === -1 && Array.isArray(verkLees.json.divergenties) && verkLees.json.divergenties.length === 0);
+  const koperLees = await api('GET', '/mna/tos/document/' + docId, { headers: { 'x-tussen-key': (c1.json && c1.json.koper_code) || 'GEEN' } });
+  check('koper (geen adressaat) leest het verstuurde document niet → 403', koperLees.status === 403, 'status ' + koperLees.status);
+
   kop('STAP 18 · append-only audit-keten');
   const verifyBeg = await api('GET', '/mna/tos/manifest/verify', { headers: H });
   check('audit-keten verifiëren door begeleider → 403 (alleen admin)', verifyBeg.status === 403, 'status ' + verifyBeg.status);
@@ -278,9 +329,9 @@ async function run() {
   kop('NEGATIEF · cross-traject + rol-scoping (stap 16)');
   const vreemd = await api('GET', '/mna/tos/document/' + docId + '?code=ZZZZZZZZ', {});
   check('document ophalen met onbekende code → 403', vreemd.status === 403, 'status ' + vreemd.status);
-  // koper-code: rol wordt herkend, maar tosCanAccess weigert een niet-verstuurd document
+  // koper-code: rol wordt herkend, maar tosCanAccess weigert (koper is geen adressaat van dit document)
   const koperGet = await api('GET', '/mna/tos/document/' + docId, { headers: { 'x-tussen-key': (c1.json && c1.json.koper_code) || 'GEEN' } });
-  check('koper leest een draft-document niet → 403', koperGet.status === 403, 'status ' + koperGet.status);
+  check('koper zonder adressaatrecht leest het document niet → 403', koperGet.status === 403, 'status ' + koperGet.status);
   const koperMenu = await api('GET', '/mna/tos/menu/' + trajectCode, { headers: { 'x-tussen-key': (c1.json && c1.json.koper_code) || 'GEEN' } });
   check('koper opent het menu niet → 403', koperMenu.status === 403, 'status ' + koperMenu.status);
   // verkoper-code (de id-code): idem
