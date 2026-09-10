@@ -267,6 +267,18 @@ async function run() {
     return f && f.instances.filter((b) => b.bron === 'component').length === 2;
   })(), JSON.stringify(gd3.json.divergenties));
 
+  kop('STAP 20 · gate-integriteit RV-4 (elke uitgang blokkeert bij een ontbrekende review)');
+  await api('POST', '/mna/tos/document/' + doc2 + '/setting', { headers: H, body: { juridisch: 'vereist', fiscaal: 'vereist', cijfers: 'vereist' } });
+  const ec20 = await api('GET', '/mna/tos/document/' + doc2 + '/exportcheck', { headers: H });
+  check('exportcheck blokkeert (review mist)', ec20.json && ec20.json.ok === false && Array.isArray(ec20.json.blockers) && ec20.json.blockers.length > 0);
+  const fin20 = await api('POST', '/mna/tos/document/' + doc2 + '/finaliseer', { headers: H });
+  check('finaliseren geblokkeerd → ok:false + blockers, GEEN 403', fin20.status === 200 && fin20.json && fin20.json.ok === false && Array.isArray(fin20.json.blockers) && fin20.json.blockers.length > 0, 'status ' + fin20.status);
+  const verstuur20 = await api('POST', '/mna/tos/document/' + doc2 + '/verstuur', { headers: H });
+  check('versturen kan niet vóór finaliseren → 409', verstuur20.status === 409, 'status ' + verstuur20.status);
+  const man20 = await api('GET', '/mna/tos/document/' + doc2 + '/manifest', { headers: H });
+  check('manifest bestaat nog niet → 404', man20.status === 404, 'status ' + man20.status);
+  check('geblokkeerde respons lekt geen componenttekst/dataslots', JSON.stringify(fin20.json).indexOf('data_values') === -1 && JSON.stringify(fin20.json).indexOf('text') === -1 && JSON.stringify(ec20.json).indexOf('data_values') === -1);
+
   kop('STAP 19 · finaliseren + versturen + manifest');
   // 1. finaliseren wordt geblokkeerd zolang er reviews openstaan (juridisch=vereist) — géén 403
   await api('POST', '/mna/tos/document/' + docId + '/setting', { headers: H, body: { juridisch: 'vereist', fiscaal: 'vereist', cijfers: 'vereist' } });
@@ -337,6 +349,24 @@ async function run() {
   // verkoper-code (de id-code): idem
   const verkPatch = await api('PATCH', '/mna/tos/component/' + exclIid, { headers: { 'x-tussen-key': trajectCode }, body: { text: 'x' } });
   check('verkoper mag geen component bewerken → 403', verkPatch.status === 403, 'status ' + verkPatch.status);
+
+  kop('STAP 21 · purge + reproduceerbaarheid (FASE C — CONTENT weg, MANIFEST blijft)');
+  const preManTr = await api('GET', '/mna/tos/manifest/traject/' + trajectCode, { adminKey: ADMIN });
+  check('reproduceerbaarheidsroute: ≥1 manifest vóór de purge', preManTr.json && preManTr.json.aantal >= 1, JSON.stringify(preManTr.json).slice(0, 160));
+  const preHash = fin.json && fin.json.content_hash;
+  const preVerify = await api('GET', '/mna/tos/manifest/verify', { adminKey: ADMIN });
+  const preRijen = preVerify.json && preVerify.json.rijen;
+  const purge = await api('POST', '/admin/delete/mna/' + trajectCode, { adminKey: ADMIN });
+  check('traject gepurged', purge.json && purge.json.ok === true, JSON.stringify(purge.json));
+  const naPurgeDoc = await api('GET', '/mna/tos/document/' + docId, { adminKey: ADMIN });
+  check('document-inhoud weg na purge → 404', naPurgeDoc.status === 404, 'status ' + naPurgeDoc.status);
+  const postManTr = await api('GET', '/mna/tos/manifest/traject/' + trajectCode, { adminKey: ADMIN });
+  check('manifest overleeft de purge (zelfde aantal)', postManTr.json && postManTr.json.aantal === preManTr.json.aantal, 'voor ' + (preManTr.json && preManTr.json.aantal) + ' na ' + (postManTr.json && postManTr.json.aantal));
+  check('manifest.content_hash ongewijzigd na purge', postManTr.json && (postManTr.json.manifesten || []).some((m) => m.content_hash === preHash));
+  check('manifest bevat geen rauwe trajectcode of klantnaam', postManTr.json && JSON.stringify(postManTr.json).indexOf(trajectCode) === -1 && JSON.stringify(postManTr.json).indexOf('E2E TOS Doelkantoor') === -1);
+  const postVerify = await api('GET', '/mna/tos/manifest/verify', { adminKey: ADMIN });
+  check('audit-keten nog intact ná de purge (rijen niet gekrompen)', postVerify.json && postVerify.json.ok === true && postVerify.json.rijen >= preRijen, JSON.stringify(postVerify.json));
+  trajectCode = null; // opruimen() hoeft dit traject niet meer te verwijderen
 }
 
 async function opruimen() {
