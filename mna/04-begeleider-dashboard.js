@@ -2276,8 +2276,7 @@ function renderBegeleiderDashboard(app){
         +' <span style="font-size:10px;font-weight:500;color:var(--muted)">'+esc(c.binding_status||'')+'</span></div>'
         +(rl[0]?'<span style="font-size:10.5px;color:'+rl[1]+'">'+rl[0]+(rev.status==='APPROVED'&&rev.reviewer_hoedanigheid?(' &middot; '+esc(rev.reviewer_hoedanigheid)):'')+'</span>':'')
         +'</div>';
-      // dataslots
-      var dfs=(c.data_fields_ui||[]); // niet aanwezig; val terug op data_values-sleutels
+      // dataslots (de GET-respons geeft de sleutels + herkomst per veld; labels = de sleutelnaam)
       var dv=c.data_values||{};
       var keys=Object.keys(dv);
       if(keys.length){
