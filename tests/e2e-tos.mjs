@@ -61,8 +61,9 @@ async function run() {
   kop('STAP 10 · componenten-seed');
   const comp = await api('GET', '/mna/tos/componenten', { headers: H });
   check('componenten opgehaald (ok)', comp.json && comp.json.ok === true, JSON.stringify(comp.json));
-  check('exact 23 component-definities', comp.json && comp.json.aantal === 23, 'aantal ' + (comp.json && comp.json.aantal));
+  check('26 component-definities (23 gedeeld + 3 LoI-only)', comp.json && comp.json.aantal === 26, 'aantal ' + (comp.json && comp.json.aantal));
   const bids = (comp.json && comp.json.componenten || []).map((c) => c.block_id);
+  check('LoI-only componenten aanwezig (reps_warranties_kader/mac_clausule/break_fee)', ['reps_warranties_kader', 'mac_clausule', 'break_fee'].every((b) => bids.includes(b)));
   check('exclusivity aanwezig, review_domain LEGAL, binding BINDING', (() => {
     const e = (comp.json.componenten || []).find((c) => c.block_id === 'exclusivity');
     return e && e.review_domain === 'LEGAL' && e.binding_default === 'BINDING' && e.review_trigger === 'bij_bewerking';
@@ -259,7 +260,8 @@ async function run() {
   const revAll = await api('POST', '/mna/tos/document/' + docId + '/review-alles', { headers: H, body: { naam: 'Mr. Bulk Jurist', hoedanigheid: 'advocaat' } });
   check('review-alles: ≥1 onderdeel afgetekend', revAll.json && revAll.json.ok === true && revAll.json.afgetekend >= 1, JSON.stringify(revAll.json).slice(0, 200));
   const gAll = await api('GET', '/mna/tos/document/' + docId, { headers: H });
-  check('na review-alles: geen enkel LEGAL/TAX/VALUATION-onderdeel meer open', !(gAll.json.componenten || []).some((c) => ['LEGAL', 'TAX', 'VALUATION'].includes(c.review_domain) && c.review_trigger !== 'nooit' && !(c.review && c.review.status === 'APPROVED')));
+  const _auto = ['binding_provisions', 'non_binding_provisions', 'reliance'];
+  check('na review-alles: geen enkel te-beoordelen onderdeel meer open', !(gAll.json.componenten || []).some((c) => !_auto.includes(c.block_id) && ['LEGAL', 'TAX', 'VALUATION'].includes(c.review_domain) && c.review_trigger !== 'nooit' && !(c.review && c.review.status === 'APPROVED')));
   const ecAll = await api('GET', '/mna/tos/document/' + docId + '/exportcheck', { headers: H });
   check('na review-alles: exportcheck heeft geen REVIEW-blockers', !(ecAll.json.blockers || []).some((b) => b.code === 'REVIEW_MISSING' || b.code === 'REVIEW_OPEN'), JSON.stringify(ecAll.json.blockers));
   const revAllLeeg = await api('POST', '/mna/tos/document/' + docId + '/review-alles', { headers: H, body: { naam: 'Mr. Bulk Jurist', hoedanigheid: 'advocaat' } });
