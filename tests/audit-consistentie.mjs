@@ -163,7 +163,9 @@ const GEVERIFIEERD_VEILIG_CHECK4 = [
   // 19-08-2026: handleiding-tekst (documentatiestring in mna/08-handleiding.js), geen
   // autorisatie-relevante UI-code — de heuristiek matcht hier puur op het woord "interne" in de
   // uitlegtekst zelf, niet op een daadwerkelijk conditioneel getoond blok.
-  { file: 'mna/08-handleiding.js', tekst: null, lineHint: 60 },
+  // 11-09-2026: van lineHint naar tekst-match (regelnummer verschoof door de nieuwe MoU-composer-stap
+  // 2d in dezelfde handleidingsectie).
+  { file: 'mna/08-handleiding.js', tekst: 'Puur interne analyse' },
   // 31-08-2026: dit is de AI-PROMPT-string van de interne onderhandelbijlage bij het dealvoorstel
   // (ChatGPT-review A2 — publieke/interne context-split), niet een aan de koper getoond UI-blok. De
   // bijlage wordt gegenereerd binnen toonDealvoorstelModal()/dv-ok, uitsluitend bereikbaar vanuit
