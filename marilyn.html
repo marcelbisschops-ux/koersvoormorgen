@@ -2390,6 +2390,60 @@ async function toonDetail(id,naam){
     db.querySelectorAll('.fase-hdr').forEach(function(hdr){hdr.addEventListener('click',function(){var body=db.querySelector('.fase-body[data-fase="'+hdr.dataset.fase+'"]');if(body)body.style.display=body.style.display==='none'?'block':'none';});});
     }
 
+    // ── Bewaartermijn na closing (per traject) ──────────────────────────────
+    // Standaard 14 dagen (VOK Art. 5). Beheerder zet dit UITSLUITEND op schriftelijk verzoek van
+    // de adviseur. Bij een extern adviseurstraject en > 14 dagen boekt de backend automatisch een
+    // opslagfee (€25 per aangevangen maand). Zichtbaar in beide takken (ook afgeschermd traject),
+    // want dit is een operationele retentie-instelling, geen prijsgevoelige inhoud.
+    (function(){
+      var bt=document.createElement('div');
+      bt.style.cssText='margin:1.25rem 0;border:1px solid var(--border);border-radius:var(--r2);padding:1rem 1.1rem;background:var(--card)';
+      bt.innerHTML='<div style="font-size:12px;font-weight:600;color:var(--head);margin-bottom:.5rem">&#128337; Bewaartermijn na closing</div>'
+        +'<div id="bt-status" style="font-size:12px;color:var(--muted);margin-bottom:.6rem">Laden…</div>'
+        +'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
+        +'<label style="font-size:12px;color:var(--sub)">Dagen (14–365): <input id="bt-dagen" type="number" min="14" max="365" style="width:80px;background:var(--bg);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);padding:4px 8px;font-size:12px"></label>'
+        +'<button id="bt-opslaan" class="btn" style="font-size:12px;padding:6px 14px">Opslaan</button>'
+        +'<button id="bt-reset" class="btn-ghost" style="font-size:12px;padding:6px 12px">Terug naar 14</button>'
+        +'</div>'
+        +'<div style="font-size:11px;color:var(--mid);margin-top:.55rem;line-height:1.6">Alleen op schriftelijk verzoek van de adviseur (VOK Art. 5). Bij een extern adviseurstraject wordt boven 14 dagen automatisch &euro;25 per aangevangen maand als opslagfee geboekt.</div>';
+      db.appendChild(bt);
+      function laadBt(){
+        fetch(WORKER+'/mna/admin/bewaartermijn/'+encodeURIComponent(id),{headers:{'x-admin-key':adminKey}})
+          .then(function(x){return x.json();}).then(function(res){
+            var st=document.getElementById('bt-status'); if(!st)return;
+            if(!res||!res.ok){st.textContent='Kon bewaartermijn niet laden.';return;}
+            var inp=document.getElementById('bt-dagen'); if(inp&&!inp.value)inp.value=res.bewaartermijn_dagen;
+            st.innerHTML='Huidig: <strong>'+res.bewaartermijn_dagen+' dagen</strong>'+(res.standaard?' (standaard)':'')
+              +(res.extern_traject?' &middot; <span style="color:var(--gold)">extern adviseurstraject &mdash; opslagfee van toepassing boven 14 dagen</span>':' &middot; eigen traject, geen opslagfee');
+          }).catch(function(){var st=document.getElementById('bt-status');if(st)st.textContent='Kon bewaartermijn niet laden.';});
+      }
+      laadBt();
+      document.getElementById('bt-opslaan').addEventListener('click',function(){
+        var v=parseInt(document.getElementById('bt-dagen').value,10);
+        if(!Number.isFinite(v)||v<14||v>365){toast('Vul een getal tussen 14 en 365 in.','err');return;}
+        this.disabled=true;var self=this;
+        post('/mna/admin/bewaartermijn/'+encodeURIComponent(id),{dagen:v}).then(function(res){
+          self.disabled=false;
+          if(res&&res.ok){
+            var f=res.opslagfee;
+            if(f&&f.geboekt>0)toast('Bewaartermijn '+res.bewaartermijn_dagen+' dgn. Opslagfee €'+f.geboekt.toFixed(2)+' geboekt ('+f.maanden+' mnd).','ok');
+            else if(f&&f.maanden>0&&f.geboekt===0)toast('Bewaartermijn '+res.bewaartermijn_dagen+' dgn. Geen extra fee (al gefactureerd bedrag ≥ nieuw totaal).','ok');
+            else toast('Bewaartermijn ingesteld op '+res.bewaartermijn_dagen+' dagen.','ok');
+            laadBt();
+          } else { toast('Fout: '+((res&&res.error)||'onbekend'),'err'); }
+        }).catch(function(e){self.disabled=false;toast('Verbindingsfout: '+e.message,'err');});
+      });
+      document.getElementById('bt-reset').addEventListener('click',function(){
+        if(!confirm('Bewaartermijn terugzetten naar de standaard van 14 dagen? Nog niet gefactureerde opslagfees voor dit traject vervallen.'))return;
+        this.disabled=true;var self=this;
+        post('/mna/admin/bewaartermijn/'+encodeURIComponent(id),{dagen:''}).then(function(res){
+          self.disabled=false;
+          if(res&&res.ok){document.getElementById('bt-dagen').value='14';toast('Terug naar standaard 14 dagen.','ok');laadBt();}
+          else{toast('Fout: '+((res&&res.error)||'onbekend'),'err');}
+        }).catch(function(e){self.disabled=false;toast('Verbindingsfout: '+e.message,'err');});
+      });
+    })();
+
     // Bemiddelingsovereenkomst knop
     document.getElementById('det-bem-btn').addEventListener('click',async function(){
       var btn=this;btn.disabled=true;btn.textContent='Genereren...';

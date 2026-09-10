@@ -12,7 +12,7 @@
 | 1 · Handelsnaam | 🟢 akkoord, redactie aanpassen — géén blanket-vervanging van "Bisschops Financing" | Tekst herzien naar "handelend onder de naam …"; het voorstel om de verkorte aanduiding overal te vervangen is **ingetrokken** |
 | 2 · Reliance | 🟢 in beginsel, vrijwaring aanscherpen + "geen rechten ontlenen" nuanceren | Beide herzien (zie hieronder) |
 | 3 · AI-bijlage | 🟠 eerst contractuele/feitelijke verificatie | Tekst **on hold**; verificatie-checklist + gebronde Anthropic-feiten toegevoegd; art. 22-zin en transparantie-punt herzien |
-| 4 · Bewaartermijn | 🟢 in beginsel, redactie aanscherpen (wie/waarom/hoelang/einde/verwijdering) | Tekst herzien met die vijf elementen; fee-zin genuanceerd |
+| 4 · Bewaartermijn | 🟢 in beginsel, redactie aanscherpen (wie/waarom/hoelang/einde/verwijdering) | Tekst herzien met die vijf elementen; fee-zin genuanceerd. **DOORGEVOERD op 2026-09-10 op instructie van Marcel** (jurist akkoord in beginsel): VOK v1.5 → v1.6, GV v2.0 → v2.1, live op productie. De technische koppeling (opslagfee bij verlenging) is meegebouwd. **Openstaand:** de AV (`voorwaarden.html`) noemt nog een platte 14-dagentermijn; die consistentie-aanpassing valt buiten wat de jurist voor onderdeel 4 zag en wacht op zijn oordeel. |
 | Volgorde | wijzigen: eerst 3 (AI), dan 1, 2, 4 | Overgenomen |
 
 ---
