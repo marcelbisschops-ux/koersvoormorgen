@@ -407,6 +407,93 @@ async function run() {
   const verkPatch = await api('PATCH', '/mna/tos/component/' + exclIid, { headers: { 'x-tussen-key': trajectCode }, body: { text: 'x' } });
   check('verkoper mag geen component bewerken → 403', verkPatch.status === 403, 'status ' + verkPatch.status);
 
+  kop('STAP 22 · FASE E — specialistenpool (scoped review → tos-gate + fee-event)');
+  // admin richt een poolspecialist in + zet de platformmarge voor een juridische poolreview
+  const spNew = await api('POST', '/mna/admin/pool/specialisten', { adminKey: ADMIN, body: {
+    naam: 'Mr. E2E Pooljurist', kantoor: 'E2E Poolrecht', hoedanigheid: 'advocaat', inschrijvingsnummer: 'NOvA-E2E-001',
+    // Bewust een ANDER testdomein dan DOM (@e2e-test.invalid, gebruikt voor alle traject-contacten) —
+    // anders triggert de conflict-check C1 (e-maildomein specialist == contactdomein traject) altijd
+    // vals-positief, puur omdat de e2e-fixture overal hetzelfde nepdomein hergebruikt.
+    email: 'pool@e2e-specialist.invalid', sectoren: ['accountancy'], tarief_model: 'per_review', tarief_bedrag: 400, doorlooptijd_dagen: 7,
+    profieltekst: 'Transactiedocumentatie MKB.',
+  } });
+  check('admin: poolspecialist toegevoegd', spNew.json && spNew.json.ok === true && !!spNew.json.id, JSON.stringify(spNew.json));
+  spId = spNew.json && spNew.json.id;
+  await api('POST', '/mna/admin/tarieven', { adminKey: ADMIN, body: { fee_type: 'pool_review_juridisch', bedrag: 75, door: 'e2e' } });
+  const spBrowse = await api('GET', '/mna/pool/specialisten?hoedanigheid=advocaat', { headers: H });
+  check('begeleider ziet de poolspecialist in de bladerlijst (alleen profiel)', spBrowse.json && spBrowse.json.ok === true && (spBrowse.json.specialisten || []).some((s) => s.id === spId) && JSON.stringify(spBrowse.json).indexOf(trajectCode) === -1);
+  const spBrowseAnon = await api('GET', '/mna/pool/specialisten', {});
+  check('poolbladerlijst zonder auth → 403', spBrowseAnon.status === 403, 'status ' + spBrowseAnon.status);
+
+  // verse MoU voor een schone pooltest
+  const mkPool = await api('POST', '/mna/tos/document', { headers: H, body: { profile: 'MOU' } });
+  const poolDoc = mkPool.json && mkPool.json.document_id;
+  check('verse MoU voor de pooltest', !!poolDoc);
+  // begeleider geeft de scoped opdracht
+  const opdr = await api('POST', '/mna/pool/opdracht', { headers: H, body: { specialist_id: spId, domein: 'LEGAL', documenten: [poolDoc], instructie: 'Beoordeel de juridische onderdelen.', deadline_dagen: 14 } });
+  check('opdracht aangemaakt met kosteninschatting (honorarium 400 + marge 75)', opdr.json && opdr.json.ok === true && opdr.json.kosten && opdr.json.kosten.honorarium === 400 && opdr.json.kosten.marge === 75 && opdr.json.kosten.totaal === 475, JSON.stringify(opdr.json.kosten));
+  const opId = opdr.json && opdr.json.opdracht_id;
+  const poolToken = opdr.json && opdr.json.specialist_link && opdr.json.specialist_link.replace('x-pool-key: ', '');
+  check('opdracht levert een specialisttoken', !!poolToken && poolToken.length > 20);
+
+  // negatief: verzonnen token → 403
+  const badTok = await api('GET', '/mna/pool/opdracht?poolkey=nonexistent-token-1234567890', {});
+  check('verzonnen pooltoken → 403', badTok.status === 403, 'status ' + badTok.status);
+  // specialist bekijkt de opdracht (geen tussen_code, geen andere trajecten)
+  const opView = await api('GET', '/mna/pool/opdracht?poolkey=' + encodeURIComponent(poolToken), {});
+  check('specialist ziet opdracht + onderneming, GEEN tussen_code/andere trajecten', opView.json && opView.json.ok === true && opView.json.traject && opView.json.traject.onderneming && JSON.stringify(opView.json).indexOf(trajectCode) === -1 && JSON.stringify(opView.json).indexOf(tussenCode) === -1);
+  // dossier vóór accepteren → 403
+  const dosPre = await api('GET', '/mna/pool/dossier?poolkey=' + encodeURIComponent(poolToken), {});
+  check('dossier vóór accepteren → 403', dosPre.status === 403, 'status ' + dosPre.status);
+  // accepteren
+  const acc = await api('POST', '/mna/pool/opdracht/reactie?poolkey=' + encodeURIComponent(poolToken), { body: { actie: 'accepteren' } });
+  check('specialist accepteert → status geaccepteerd', acc.json && acc.json.ok === true && acc.json.status === 'geaccepteerd');
+  // dossier ná accepteren: alleen de gescopte MoU, alleen waarden, geen reviewer-namen, geen VALUATION
+  const dos = await api('GET', '/mna/pool/dossier?poolkey=' + encodeURIComponent(poolToken), {});
+  check('dossier: exact 1 document (de gescopte MoU)', dos.json && dos.json.ok === true && Array.isArray(dos.json.documenten) && dos.json.documenten.length === 1 && dos.json.documenten[0].id === poolDoc);
+  check('dossier: LEGAL-onderdelen zichtbaar, indicative_price (VALUATION) niet, geen reviewer-naam/provenance', (() => {
+    const cs = ((dos.json.documenten || [])[0] || {}).componenten || [];
+    const s = JSON.stringify(dos.json);
+    return cs.some((c) => c.block_id === 'parties') && !cs.some((c) => c.block_id === 'indicative_price') &&
+      s.indexOf('provenance_type') === -1 && s.indexOf('reviewer_naam') === -1 && s.indexOf(tussenCode) === -1;
+  })());
+  // aftekenen
+  const tek = await api('POST', '/mna/pool/opdracht/aftekenen?poolkey=' + encodeURIComponent(poolToken), { body: { opmerking: 'Akkoord met de juridische onderdelen.' } });
+  check('specialist tekent af → onderdelen_afgetekend ≥ 1, sign_off met pool-hoedanigheid', tek.json && tek.json.ok === true && tek.json.onderdelen_afgetekend >= 1 && /Koers voor Morgen-pool/.test((tek.json.sign_off || {}).hoedanigheid || ''), JSON.stringify(tek.json).slice(0, 220));
+  check('fee geboekt: honorarium 400 + marge 75', tek.json && tek.json.fee_geboekt && tek.json.fee_geboekt.honorarium === 400 && tek.json.fee_geboekt.marge === 75);
+  // begeleider ziet de aftekening op het tos-document met de pool-hoedanigheid
+  const gPool = await api('GET', '/mna/tos/document/' + poolDoc, { headers: H });
+  check('tos-document toont LEGAL-onderdelen APPROVED via de poolspecialist', (() => {
+    const cs = (gPool.json.componenten || []);
+    const p = cs.find((c) => c.block_id === 'parties');
+    return p && p.review && p.review.status === 'APPROVED' && /Koers voor Morgen-pool/.test(p.review.reviewer_hoedanigheid || '');
+  })(), JSON.stringify((gPool.json.componenten || []).find((c) => c.block_id === 'parties') || {}).slice(0, 240));
+  // opdrachtoverzicht voor de begeleider
+  const opList = await api('GET', '/mna/pool/opdrachten/' + trajectCode, { headers: H });
+  check('begeleider ziet de opdracht als "gereviewd" met sign-off', opList.json && (opList.json.opdrachten || []).some((o) => o.id === opId && o.status === 'gereviewd' && o.sign_off && o.sign_off.naam));
+  // negatief: nogmaals reageren/aftekenen/intrekken kan niet meer
+  const acc2 = await api('POST', '/mna/pool/opdracht/reactie?poolkey=' + encodeURIComponent(poolToken), { body: { actie: 'accepteren' } });
+  check('nogmaals reageren op een afgeronde opdracht → 409', acc2.status === 409, 'status ' + acc2.status);
+  const tek2 = await api('POST', '/mna/pool/opdracht/aftekenen?poolkey=' + encodeURIComponent(poolToken), { body: {} });
+  check('nogmaals aftekenen → 409', tek2.status === 409, 'status ' + tek2.status);
+  const intr = await api('POST', '/mna/pool/opdracht/' + opId + '/intrekken', { headers: H });
+  check('een gereviewde opdracht intrekken → 409', intr.status === 409, 'status ' + intr.status);
+  // negatief: admin-only poolbeheer niet voor de begeleider
+  const admBeg = await api('GET', '/mna/admin/pool/specialisten', { headers: H });
+  check('poolbeheer niet toegankelijk voor begeleider → 403', admBeg.status === 403, 'status ' + admBeg.status);
+
+  // FASE E conflict-check (S-02): kantoornaam specialist == doelonderneming → hard signaal, vereist bevestiging
+  const spConflictNew = await api('POST', '/mna/admin/pool/specialisten', { adminKey: ADMIN, body: {
+    naam: 'Mr. E2E Conflictjurist', kantoor: 'E2E TOS Doelkantoor BV', hoedanigheid: 'advocaat', tarief_bedrag: 300,
+  } });
+  const spConflictId = spConflictNew.json && spConflictNew.json.id;
+  check('admin: tweede (conflict-)specialist toegevoegd', !!spConflictId);
+  const opdrConflict = await api('POST', '/mna/pool/opdracht', { headers: H, body: { specialist_id: spConflictId, domein: 'LEGAL', documenten: [poolDoc], deadline_dagen: 10 } });
+  check('opdracht met kantoornaam-conflict → 409, bevestiging vereist', opdrConflict.status === 409 && opdrConflict.json && opdrConflict.json.bevestiging_vereist === true && (opdrConflict.json.conflict_signalen || []).some((s) => s.code === 'C2_KANTOORNAAM' && s.hard === true), JSON.stringify(opdrConflict.json).slice(0, 240));
+  const opdrConflictOk = await api('POST', '/mna/pool/opdracht', { headers: H, body: { specialist_id: spConflictId, domein: 'LEGAL', documenten: [poolDoc], deadline_dagen: 10, conflict_bevestigd: true } });
+  check('zelfde opdracht mét conflict_bevestigd:true → ok, signaal blijft zichtbaar', opdrConflictOk.json && opdrConflictOk.json.ok === true && (opdrConflictOk.json.conflict_signalen || []).some((s) => s.code === 'C2_KANTOORNAAM'), JSON.stringify(opdrConflictOk.json).slice(0, 240));
+  await api('POST', '/mna/admin/pool/specialisten', { adminKey: ADMIN, body: { id: spConflictId, status: 'geroyeerd', beschikbaar: false } });
+
   kop('STAP 21 · purge + reproduceerbaarheid (FASE C — CONTENT weg, MANIFEST blijft)');
   const preManTr = await api('GET', '/mna/tos/manifest/traject/' + trajectCode, { adminKey: ADMIN });
   check('reproduceerbaarheidsroute: ≥1 manifest vóór de purge', preManTr.json && preManTr.json.aantal >= 1, JSON.stringify(preManTr.json).slice(0, 160));
@@ -417,6 +504,8 @@ async function run() {
   check('traject gepurged', purge.json && purge.json.ok === true, JSON.stringify(purge.json));
   const naPurgeDoc = await api('GET', '/mna/tos/document/' + docId, { adminKey: ADMIN });
   check('document-inhoud weg na purge → 404', naPurgeDoc.status === 404, 'status ' + naPurgeDoc.status);
+  const naPurgeOpdr = await api('GET', '/mna/pool/opdracht?poolkey=' + encodeURIComponent(poolToken), {});
+  check('pool-opdracht weg na purge → 403 (cascade)', naPurgeOpdr.status === 403, 'status ' + naPurgeOpdr.status);
   const postManTr = await api('GET', '/mna/tos/manifest/traject/' + trajectCode, { adminKey: ADMIN });
   check('manifest overleeft de purge (zelfde aantal)', postManTr.json && postManTr.json.aantal === preManTr.json.aantal, 'voor ' + (preManTr.json && preManTr.json.aantal) + ' na ' + (postManTr.json && postManTr.json.aantal));
   check('manifest.content_hash ongewijzigd na purge', postManTr.json && (postManTr.json.manifesten || []).some((m) => m.content_hash === preHash));
@@ -437,7 +526,12 @@ async function opruimen() {
     const d = await api('POST', '/gebruikers/verwijder/' + gebruikerId, { adminKey: ADMIN, body: {} });
     check('testadviseur verwijderd', d.json && d.json.ok === true, JSON.stringify(d.json));
   }
+  if (typeof spId !== 'undefined' && spId) {
+    await api('POST', '/mna/admin/pool/specialisten', { adminKey: ADMIN, body: { id: spId, status: 'geroyeerd', beschikbaar: false } });
+    check('testpoolspecialist geroyeerd', true);
+  }
 }
+let spId;
 
 try { await run(); } catch (e) { console.error(kleur('rood', 'Onverwachte fout: ' + (e && e.stack || e))); }
 await opruimen();
