@@ -4689,6 +4689,24 @@ async function renderVeiligheidTab(el) {
         + '<span id="audit-verzoek-status" style="font-size:11px;color:var(--muted)">' + auditVerzoekStatusTekst(ov.audit_verzoek) + '</span>'
         + '</div>'
         + '<div style="font-size:10px;color:var(--muted);margin-top:6px">Zet een aanvraag klaar die de dagelijkse routine (rond 06:00) oppikt: bestaande check-scripts + diff-review van recente commits + score + rapport-artifact (kost AI-tokens — max 1 tegelijk, min. 10 min tussen aanvragen). De volledige AUDIT-STANDAARD.md-ronde blijft een begeleide sessie / <code>/code-review ultra</code>.</div>'
+        + '</div></div>'
+
+        + '<div class="table-wrap" style="margin-bottom:1.5rem' + ((ov.red_team_pentest && ov.red_team_pentest.verouderd) || !ov.red_team_pentest ? ';border-color:var(--red)' : '') + '"><div class="table-hdr"><div class="table-title">4. Laatste red-team pentest</div>'
+        + (!ov.red_team_pentest || (ov.red_team_pentest && ov.red_team_pentest.verouderd) ? '<span class="tag" style="background:var(--red-bg);color:var(--red);border-color:var(--red)">&#9888; Verouderd — pentest is toe aan een nieuwe ronde</span>' : '<span class="tag" style="background:var(--teal-bg);color:var(--teal);border-color:var(--teal)">&#10003; Op schema</span>')
+        + '</div>'
+        + '<div style="padding:1.25rem">'
+        + (ov.red_team_pentest
+            ? '<div style="display:flex;gap:1.5rem;align-items:flex-start;flex-wrap:wrap">'
+              + '<div style="flex:0 0 230px">' + veiligheidGauge(ov.red_team_pentest.score, 'Pentest-oordeel', new Date(ov.red_team_pentest.datum).toLocaleDateString('nl-NL') + ' — ' + ov.red_team_pentest.dagen_geleden + ' dagen geleden') + '</div>'
+              + '<div style="flex:1;min-width:260px;font-size:12px;color:var(--mid);line-height:1.6"><strong>' + esc(ov.red_team_pentest.bron) + '</strong><br>' + esc(ov.red_team_pentest.samenvatting) + '</div>'
+              + '</div>'
+            : '<div class="empty" style="color:var(--red)">Nog geen red-team pentest gelogd.</div>')
+        + '<div style="font-size:11px;color:var(--muted);margin-top:1rem">Adversarial aanvalspoging tegen het platform zelf (cross-trajectory-aanvallen, AI/RAG-red-teaming, business-logic-manipulatie, F1-F16-regressie) volgens <code>RED-TEAM-PENTEST-STANDAARD.md</code>, met een verplicht GO / GO WITH CONDITIONS / NO-GO-eindoordeel. Zwaarder en trager dan de nachtelijke check hierboven — dit vervangt die niet, en wordt er ook niet door vervangen. Cadans: maandelijks (sectie 29 van de standaard) + op verzoek.</div>'
+        + '<div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border);display:flex;align-items:center;gap:12px;flex-wrap:wrap">'
+        + '<button class="btn" id="btn-pentest-aanvragen" style="font-size:12px;padding:8px 16px;background:var(--red);border-color:var(--red)">&#128737; Vraag red-team pentest aan</button>'
+        + '<span id="pentest-verzoek-status" style="font-size:11px;color:var(--muted)">' + auditVerzoekStatusTekst(ov.pentest_verzoek) + '</span>'
+        + '</div>'
+        + '<div style="font-size:10px;color:var(--muted);margin-top:6px">Zelfde wachtrij-mechanisme als de diepe audit hierboven — zet een aanvraag klaar die de dagelijkse routine oppikt en een begrensde red-team-ronde uitvoert (kost AI-tokens — max 1 tegelijk, min. 10 min tussen aanvragen).</div>'
         + '</div></div>';
 
       html += '<div class="table-wrap" style="margin-bottom:1.5rem"><div class="table-hdr"><div class="table-title">Open bevindingen (' + open.length + ')</div></div>';
@@ -4768,6 +4786,21 @@ async function renderVeiligheidTab(el) {
           laadVeiligheid();
         } catch(e) { toast('Verbindingsfout.', 'err'); }
         finally { auditAanvraagBtn.disabled = false; auditAanvraagBtn.textContent = '⚡ Draai diepe audit nu (frontend + backend)'; }
+      });
+
+      var pentestAanvraagBtn = document.getElementById('btn-pentest-aanvragen');
+      if (pentestAanvraagBtn) pentestAanvraagBtn.addEventListener('click', async function() {
+        if (!confirm('Volledige red-team pentest aanvragen (RED-TEAM-PENTEST-STANDAARD.md)? Dit is zwaarder dan de gewone diepe audit — actieve exploitpogingen tegen testtrajecten, kost meer AI-tokens en start niet direct: een cloud-routine pikt de aanvraag binnen ~15 min op.')) return;
+        pentestAanvraagBtn.disabled = true; pentestAanvraagBtn.textContent = 'Bezig...';
+        try {
+          var r = await fetch(WORKER + '/mna/admin/veiligheid/diepe-audit/aanvragen', { method: 'POST', headers: { 'x-admin-key': adminKey, 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'red_team_pentest' }) });
+          var d = await r.json();
+          if (!r.ok) { toast(d.error || 'Aanvraag mislukt.', 'err'); }
+          else if (d.al_in_behandeling) { toast('Er staat al een pentest-aanvraag open (status: ' + d.status + ').', 'warn'); }
+          else { toast('Red-team pentest aangevraagd — de routine pikt dit binnen ~15 min op.', 'ok'); }
+          laadVeiligheid();
+        } catch(e) { toast('Verbindingsfout.', 'err'); }
+        finally { pentestAanvraagBtn.disabled = false; pentestAanvraagBtn.textContent = '🛡 Vraag red-team pentest aan'; }
       });
 
       var nuBtn = document.getElementById('btn-veiligheid-nu');
