@@ -740,6 +740,18 @@ function renderBegeleiderDashboard(app){
       // (zelfde id, zelfde onclick-koppeling verderop) — alleen de visuele verpakking is nieuw.
       // Status van de 4 ondertekenbare documenten komt al mee met het traject; status van de overige
       // 4 (geen "getekend"-concept) wordt na render async ingeladen, zie laadDocFlowStatus().
+      //
+      // "Volgende stap"-markering (11 sep 2026, Marcel: "ik vind het platform moeilijk te
+      // begrijpen... hoe maak je het toegankelijker?") — met 12+ rijen in deze flow is voor een
+      // nieuwe begeleider niet vanzelfsprekend waar te beginnen. Bewust ALLEEN voor het strikt
+      // volgtijdelijke begin van een traject (BEM → teaser → NDA): daarna vertakt de flow in
+      // grotendeels parallelle, optionele stappen (dealvoorstel, informatieverzoek, exclusiviteit
+      // kunnen in elke volgorde) waar één "juiste" volgende stap aanwijzen zou neerkomen op gokken
+      // — en dat doet dit platform nergens, ook niet in de eigen UI-suggesties.
+      var volgendeStapId = !t.bem_getekend ? 'bg-bem-actie'
+        : (marketingAan && !t.teaser_tekst) ? 'bg-teaser-actie'
+        : !t.nda_getekend ? 'bg-nda-composer-actie'
+        : null;
       function stapRij(id, icoon, kleur, naam, statusHtml, isLaatste, skipContractenGate, customDisabled, customDisabledTitel){
         // Het informatieverzoek is een checklist/e-mailtool, geen ondertekenbaar contract — hoort dus
         // niet achter de betaalde module Contracten (zelfde als de bestaande "Informatieverzoek"-knop
@@ -755,7 +767,9 @@ function renderBegeleiderDashboard(app){
           +(isLaatste?'':'<div style="width:2px;flex:1;background:var(--border2);margin:2px 0;min-height:18px"></div>')
           +'</div>'
           +'<button id="'+id+'" class="stap-btn" '+(disabled?'disabled title="'+esc(titel)+'"':'')+' style="all:unset;cursor:'+(disabled?'not-allowed':'pointer')+';flex:1;padding-bottom:16px;'+(disabled?'opacity:.45':'')+'">'
-          +'<div style="font-size:13px;font-weight:600;color:var(--head)">'+naam+'</div>'
+          +'<div style="font-size:13px;font-weight:600;color:var(--head)">'+naam
+            +(id===volgendeStapId&&!disabled?' <span style="font-size:9.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#fff;background:var(--teal);border-radius:10px;padding:2px 8px;vertical-align:middle">Volgende stap</span>':'')
+            +'</div>'
           +'<div class="stap-status" data-doc="'+id+'" style="font-size:11px;color:var(--muted);margin-top:2px">'+(statusHtml||'')+'</div>'
           +'</button></div>';
       }
