@@ -649,6 +649,45 @@ async function run() {
   const esLijstNa = await api('GET', '/mna/eigen-specialisten/' + trajectCode, { headers: H });
   check('ingetrokken specialist staat niet meer in de actieve lijst', !(esLijstNa.json.specialisten || []).some((s) => s.id === eigenSpecId));
 
+  kop('STAP 24 · koper-bod (koper dient zelf een indicatief bod in, alleen bij sell-side mandaat)');
+  // Deze fixture (trajectCode) is een sell-side traject (opdrachtgever_rol default 'verkoper') —
+  // dekt het positieve pad. Het negatieve pad (buy-side/dual-mandate → geweigerd) staat los
+  // hieronder met een tweede, apart aangemaakt traject.
+  const vrijgeven = await api('POST', '/mna/admin/vrijgeven/' + trajectCode + '?force=1', { adminKey: ADMIN });
+  check('koper krijgt dossiertoegang (setup voor deze stap)', vrijgeven.json && vrijgeven.json.ok === true, JSON.stringify(vrijgeven.json));
+  const bodOnbekend = await api('POST', '/mna/koper/bod', { body: { code: 'NIETBESTAAND-XYZ', bedrag: 1000000 } });
+  check('bod indienen met onbekende code → 404', bodOnbekend.status === 404, 'status ' + bodOnbekend.status);
+  const bodVerkoperRol = await api('POST', '/mna/koper/bod', { body: { code: trajectCode, bedrag: 1000000 } });
+  check('trajectcode zelf is de verkoper-rol, geen koper → 403', bodVerkoperRol.status === 403, 'status ' + bodVerkoperRol.status);
+  const bodBegeleiderRol = await api('POST', '/mna/koper/bod', { body: { code: tussenCode, bedrag: 1000000 } });
+  check('tussen_code is de begeleider-rol, geen koper → 403', bodBegeleiderRol.status === 403, 'status ' + bodBegeleiderRol.status);
+  const bodGeen = await api('POST', '/mna/koper/bod', { headers: KH, body: { bedrag: 0 } });
+  check('bod van €0 geweigerd', bodGeen.status === 400, 'status ' + bodGeen.status);
+  const bodOk = await api('POST', '/mna/koper/bod', { headers: KH, body: { bedrag: 1850000, toelichting: 'Onder voorbehoud van financiering.' } });
+  check('koper dient een geldig bod in', bodOk.json && bodOk.json.ok === true && !!bodOk.json.id, JSON.stringify(bodOk.json));
+  const biedList = await api('GET', '/mna/begeleider/biedingen/' + trajectCode, { headers: H });
+  check('begeleider ziet het ingediende bod', biedList.json && biedList.json.ok === true && (biedList.json.biedingen || []).some((b) => b.bedrag === 1850000 && b.toelichting === 'Onder voorbehoud van financiering.'), JSON.stringify(biedList.json).slice(0, 200));
+  const biedListAnon = await api('GET', '/mna/begeleider/biedingen/' + trajectCode, {});
+  check('biedingenoverzicht zonder auth → 403', biedListAnon.status === 403, 'status ' + biedListAnon.status);
+  const biedListKoper = await api('GET', '/mna/begeleider/biedingen/' + trajectCode, { headers: KH });
+  check('koper zelf kan het begeleider-overzicht niet opvragen → 403', biedListKoper.status === 403, 'status ' + biedListKoper.status);
+
+  // Negatief pad: een tweede, buy-side traject (opdrachtgever_rol='koper') — Marcel expliciet:
+  // "alleen als de adviseur aan de kant van de verkoper staat". De koper-rol is daar al de eigen
+  // cliënt van de adviseur en dient dus geen bod in bij zichzelf.
+  const c3 = await api('POST', '/adviseur/create', { body: { email, wachtwoord: WW, traject: {
+    kantoor_naam: 'E2E TOS Buy-side Traject BV', contact_naam: 'Test Verkoper 3', contact_email: 'v3' + DOM,
+    koper_naam: 'E2E TOS Koper 3 BV', koper_contact: 'Test Koper 3', koper_email: 'k3' + DOM,
+    traject_type: 'Overname', opdrachtgever_rol: 'koper',
+  } } });
+  const trajectCode3 = c3.json && c3.json.code;
+  const KH3 = { 'x-tussen-key': (c3.json && c3.json.koper_code) || 'GEEN' };
+  check('buy-side traject aangemaakt (voor het negatieve pad)', !!trajectCode3);
+  await api('POST', '/mna/admin/vrijgeven/' + trajectCode3 + '?force=1', { adminKey: ADMIN });
+  const bodBuySide = await api('POST', '/mna/koper/bod', { headers: KH3, body: { bedrag: 500000 } });
+  check('koper-bod op een buy-side traject → 403 (opdrachtgever_rol != verkoper)', bodBuySide.status === 403, 'status ' + bodBuySide.status);
+  await api('POST', '/admin/delete/mna/' + trajectCode3, { adminKey: ADMIN });
+
   kop('STAP 21 · purge + reproduceerbaarheid (FASE C — CONTENT weg, MANIFEST blijft)');
   const preManTr = await api('GET', '/mna/tos/manifest/traject/' + trajectCode, { adminKey: ADMIN });
   check('reproduceerbaarheidsroute: ≥1 manifest vóór de purge', preManTr.json && preManTr.json.aantal >= 1, JSON.stringify(preManTr.json).slice(0, 160));
