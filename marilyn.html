@@ -196,6 +196,11 @@ async function doLogin(){
     try{var r5data=r5.ok?await r5.json().catch(()=>[]):[];leads=Array.isArray(r5data)?r5data:[];}catch(e){leads=[];}
     try{var r6data=r6.ok?await r6.json().catch(()=>[]):[];proefAanvragen=Array.isArray(r6data)?r6data:[];}catch(e){proefAanvragen=[];}
     adminKey=key;isSuperAdmin=true;gebruikerInfo=null;gebruikerToken='';
+    // Bevinding 11 sep 2026 (onafhankelijke publieke-claims-audit): de privacypagina/inlogscherm
+    // claimt "elke login wordt gelogd" — het backend-mechanisme (/admin/login-notify) bestond al,
+    // maar werd hier nooit aangeroepen. Fire-and-forget: een mislukte melding mag het inloggen zelf
+    // nooit blokkeren.
+    fetch(WORKER+'/admin/login-notify',{method:'POST',headers:{'x-admin-key':key,'Content-Type':'application/json'},body:JSON.stringify({})}).catch(function(){});
     document.getElementById('hdr-actions').style.display='flex';
     document.getElementById('btn-refresh').addEventListener('click',refreshData);
     document.getElementById('btn-logout').addEventListener('click',logout);

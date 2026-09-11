@@ -510,6 +510,39 @@ async function main() {
     check('nda blijft schrijfbaar met een koper-code (geen regressie)', ndaKoper.json && ndaKoper.json.ok === true, JSON.stringify(ndaKoper.json));
   }
 
+  // Bevinding 11 sep 2026 (onafhankelijke cross-path-audit): twee endpoints lekten dealdata van
+  // externe-adviseurstrajecten naar de platformbeheerder, zonder de al bestaande isEigenTraject-muur
+  // (SECURITY-INVARIANTS.md #9) toe te passen die elders (bijv. /mna/admin/pool/opdrachten) al wél
+  // gold — exact het "parallelle route mist een bestaande muur"-patroon uit F1-F13.
+  kop('Muur tegen externe adviseurs · koper-biedingen + tarieven-events (bevinding 11 sep 2026)');
+  {
+    // Verderop in dit bestand (F8-blok) is is_eigen bewust weer op true gezet voor een veilige
+    // cleanup — hier expliciet terug naar false, want dit blok test JUIST het externe-traject-pad.
+    await api('POST', '/gebruikers/eigen/' + opruimGebruikerId, { adminKey: ADMIN, body: { is_eigen: false } });
+    // Koper-bod: begeleider (eigen tussen_code) mag het bod zien; admin op hetzelfde EXTERNE traject
+    // moet een lege lijst krijgen, nooit het bedrag/de toelichting.
+    await api('POST', '/mna/admin/vrijgeven/' + traject.code + '?force=1', { adminKey: ADMIN });
+    const bodIndienen = await api('POST', '/mna/koper/bod', { body: { code: traject.koper_code, bedrag: 1234567, toelichting: 'E2E CONF — bod van de koper, mag nooit bij admin voor een extern traject' } });
+    check('koper kan een bod indienen (sell-side, vrijgegeven)', bodIndienen.json && bodIndienen.json.ok === true, JSON.stringify(bodIndienen.json));
+    const bodVanBegeleider = await api('GET', '/mna/begeleider/biedingen/' + traject.code, { headers: { 'x-tussen-key': traject.tussen_code } });
+    check('begeleider (eigen tussen_code) ziet het ingediende bod', bodVanBegeleider.json && bodVanBegeleider.json.ok === true && (bodVanBegeleider.json.biedingen || []).some(b => Number(b.bedrag) === 1234567), JSON.stringify(bodVanBegeleider.json));
+    const bodVanAdmin = await api('GET', '/mna/begeleider/biedingen/' + traject.code, { adminKey: ADMIN });
+    check('admin op EXTERN traject krijgt GEEN biedingen (muur, bevinding 11 sep 2026)', bodVanAdmin.json && bodVanAdmin.json.ok === true && Array.isArray(bodVanAdmin.json.biedingen) && bodVanAdmin.json.biedingen.length === 0, JSON.stringify(bodVanAdmin.json));
+
+    // Tarieven-events: kantoor_naam van dit externe traject moet gemaskeerd zijn in het admin-overzicht.
+    const tarievenEvents = await api('GET', '/mna/admin/tarieven/events?gebruiker_id=' + opruimGebruikerId, { adminKey: ADMIN });
+    const eventsVoorDitTraject = Array.isArray(tarievenEvents.json) ? tarievenEvents.json.filter(e => e.traject_id === traject.code) : [];
+    check('tarieven-events voor extern traject: kantoor_naam gemaskeerd (bevinding 11 sep 2026)', eventsVoorDitTraject.length > 0 && eventsVoorDitTraject.every(e => e.kantoor_naam === '(extern traject)'), JSON.stringify(eventsVoorDitTraject));
+
+    // Regressiecheck: zodra hetzelfde traject (tijdelijk) als eigen wordt gemarkeerd, mag admin het
+    // gewoon weer zien — de muur mag nooit permanent alles blokkeren, alleen externe trajecten.
+    await api('POST', '/gebruikers/eigen/' + opruimGebruikerId, { adminKey: ADMIN, body: { is_eigen: true } });
+    const bodVanAdminEigen = await api('GET', '/mna/begeleider/biedingen/' + traject.code, { adminKey: ADMIN });
+    check('admin op (tijdelijk) EIGEN traject ziet het bod wél', bodVanAdminEigen.json && bodVanAdminEigen.json.ok === true && (bodVanAdminEigen.json.biedingen || []).length === 1, JSON.stringify(bodVanAdminEigen.json));
+    // Op eigen=true laten staan (zelfde reden als het F8-blok hierboven): opruimen() verwijdert dit
+    // traject via de admin-route, die anders zelf door de F8-muur geraakt zou worden.
+  }
+
   await opruimen();
   process.exit(samenvatting() ? 0 : 1);
 }
