@@ -8,6 +8,12 @@ Afgeronde/afgewezen punten: `BACKLOG-ARCHIEF.md` (wordt niet standaard meegewoge
 **alleen wat nu nog open staat.** Volledig herschreven op **31 augustus 2026** (na de twee
 ChatGPT-reviewrondes) met pri[oriteit] + noodzaak per punt.
 
+**Geverifieerd tegen de huidige staat op 11 september 2026** (dit bestand liep flink achter — meerdere
+"nog open"-punten bleken al af): 0.1, 2.1's push-restpunt en 2.3's afwijs-toelichting/staging-cleanup
+zijn toen als afgerond gemarkeerd; 2.2 is als "status onduidelijk" gemarkeerd (het formulier waar het
+over gaat lijkt nergens meer gelinkt). Secties 1 (jouw beslissingen) en 3 (bewust geparkeerd) zijn
+niet apart tegen de code geverifieerd — check die zelf nog even inhoudelijk als je ze oppakt.
+
 **Prioriteit:** P1 = nu / deze week · P2 = binnenkort · P3 = later.
 **Noodzaak:** 🔴 moet gebeuren · 🟡 zou goed zijn · ⚪ afweging / optioneel.
 
@@ -15,7 +21,14 @@ ChatGPT-reviewrondes) met pri[oriteit] + noodzaak per punt.
 
 ## 0. Infrastructuur & hygiëne
 
-### 0.1 — Backend committen + pushen (en deploy-staat verifiëren) · **P1 · 🔴**
+### 0.1 — Backend committen + pushen (en deploy-staat verifiëren) · **AFGEROND, geverifieerd 11 sep 2026** ✅
+Geverifieerd: `git status` in beide repo's is schoon, `main` staat gelijk aan GitHub, en elke
+backend-wijziging deployt sindsdien standaard via `scripts/deploy.sh`/`wrangler deploy`
+(staging → productie). Onderstaande tekst is de oorspronkelijke (31 aug 2026) probleembeschrijving,
+bewaard voor context — niet meer actueel.
+
+<details><summary>Oorspronkelijke tekst (31 aug 2026, niet meer actueel)</summary>
+
 De **backend-repo** (`~/Documents/GitHub/koersvoormorgen-backend`) staat **20 commits vóór op GitHub
 én heeft ~21 ongecommitte bestanden** + `backend/predeploy.sh` untracked. Daarin zit al het
 backend-werk van de afgelopen ~2 weken: matching-platform, teaser-/verkoopmemorandum-generatoren,
@@ -31,6 +44,8 @@ server-side moduleslots (Q&A / AI-analyse / contracten / marketing), mkb AI-extr
   staging → productie-deploy via `scripts/deploy.sh backend`.
 - **Wie:** Marcel (review wat er in de 20 commits zit) + ik voor het opdelen/committen op verzoek.
   Auth-/betaal-/matching-code → eerst staging.
+
+</details>
 
 ### 0.2 — Allow-list DTO-architectuur voor deal-data-endpoints · **AFGEROND 1 sep 2026** ✅
 Volledig gebouwd, gereviewd en **live op productie**. Volledige log + ontwerp: `POLICY-LAAG-ONTWERP.md`.
@@ -94,26 +109,28 @@ nodig heeft; meld wat je wilt en ik pak het op.
 
 ## 2. Afronden wat al grotendeels gebouwd is
 
-### 2.1 — Bod-vergelijker: laatste stappen · **P2 · 🟡**
-Kern + code staan (onderdeel 4 van het onderhandel-playbook). De twee rekenfouten die jouw eerste
-vergelijking (T7OFKL11) liet zien zijn opgelost en met een los rekenscript nagerekend — details in
-`BACKLOG-ARCHIEF.md` #23. Rest:
-- Backend deployen (`scripts/deploy.sh backend`) — draagt o.a. de `kopieer_dd_van`-rij-id-fix in
-  `worker/10-mna-communicatie.js`. *(Zit in punt 0.1.)*
-- **Frontend pushen** — `mna/03-rekenkern-waardering.js`, `mna/08-handleiding.js`, `adv.html`,
-  `scripts/validate-bod-vergelijker.mjs`, `scripts/testklant-onderdeel6.mjs`.
+### 2.1 — Bod-vergelijker: laatste stappen · **grotendeels AFGEROND, geverifieerd 11 sep 2026**
+Kern + code staan (onderdeel 4 van het onderhandel-playbook). `git status` bevestigt: alle genoemde
+bestanden (`mna/03-rekenkern-waardering.js`, `mna/08-handleiding.js`, `adv.html`,
+`scripts/validate-bod-vergelijker.mjs`, `scripts/testklant-onderdeel6.mjs`) zijn gecommit en
+gepusht — dat restpunt is klaar. **Nog open, optioneel, ⚪:**
 - De **negatief-rolgeval-test** in `tests/e2e-crosspath-fixes.mjs` één keer tegen de live worker
   draaien (koper-code → 401, verkopercode → 401, onbekende code → 401, begeleidercode → 200
   "geen_groep").
 - Opnieuw testen met een gevulde testklant — `ADMIN_KEY=… node scripts/testklant-onderdeel6.mjs`
-  (`--leeg` voor een externe tester). Volg stap 2 in de scriptuitvoer: **belang% in beide trajecten
-  gelijk houden**, alleen escrow/earn-out/financiering/timing/fit variëren.
+  (`--leeg` voor een externe tester). Beide vereisen Marcels ADMIN_KEY (Claude Code heeft die niet
+  standaard) — commando's staan hierboven kant-en-klaar.
 
-### 2.2 — Cloudflare Turnstile aanzetten op het testtraject-formulier · **P3 · ⚪**
-Frontend + backend zijn klaar en **veilig uit** tot geconfigureerd (honeypot + rate-limiter dragen
-nu de bescherming; het formulier werkt ongewijzigd). Aanzetten:
+### 2.2 — Cloudflare Turnstile aanzetten op het testtraject-formulier · **STATUS ONDUIDELIJK, checken met Marcel**
+Bij nazoeken (11 sep 2026): geen enkele huidige pagina (`index.html`, `platform/voor-adviseurs.html`,
+`lead-aandragen.html`, of elders) linkt nog naar `/leads/testtraject` of bevat een
+`TT_TURNSTILE_SITEKEY`-widget — dat publieke formulier lijkt sinds de proefaccount-flow (zie 2.3)
+niet meer aan een pagina gekoppeld te zijn, al bestaat het backend-endpoint (`worker/23-leads.js`)
+nog. **Vraag aan Marcel:** is dit formulier bewust vervangen door de proefaccount-flow (dan is dit
+punt te schrappen of het dode endpoint op te ruimen), of hoort het nog ergens live te staan (dan
+alsnog Turnstile aanzetten via de 4 stappen hieronder)?
 1. Turnstile-widget aanmaken in Cloudflare (koersvoormorgen.nl).
-2. Site key in `index.html` (`TT_TURNSTILE_SITEKEY`).
+2. Site key in de betreffende pagina (`TT_TURNSTILE_SITEKEY`).
 3. `npx wrangler secret put TURNSTILE_SECRET`.
 4. **Werkregel 17:** dan een regel toevoegen aan `privacy.html` (Turnstile verwerkt IP +
    gedragssignaal voor botdetectie, cookieloos).
@@ -168,12 +185,15 @@ bijbehorende marilyn-wijziging (bij "Afwijzen" een optioneel toelichtingsveldje 
 staat **lokaal in `marilyn.html`, nog niet gecommit/gepusht** — zonder die push wijst marilyn wel af
 mét mail, alleen zonder het toelichtingsveld.
 
-**Restpunten (nog open):**
-- `marilyn.html` (afwijs-toelichting) committen + pushen.
-- Overweeg of dit de bestaande `/leads/testtraject`-flow (index.html) vervangt of ernaast blijft
-  bestaan. Nu staan er twee wegen naar "probeer het platform".
-- Opruimen (mag, geen haast): staging-testdata (`adviseur_proef_aanvragen` + testaccount
-  `G1788384100946REC6`).
+**Restpunten:**
+- ✅ `marilyn.html` (afwijs-toelichting) — geverifieerd 11 sep 2026: staat er, gecommit en gepusht
+  (de `prompt()` voor "reden" bij Afwijzen).
+- ✅ Staging-testdata opgeruimd (11 sep 2026): de 2 openstaande testaanvragen
+  (`proeftest+stg`/`previewtest+stg`) verwijderd; de testaccount `G1788384100946REC6` bleek al
+  automatisch opgeruimd (de nachtelijke purge-taak deed zijn werk).
+- **Nog open, jouw beslissing:** vervangt de proefaccount-flow de oudere `/leads/testtraject`-flow
+  volledig, of moeten die naast elkaar blijven bestaan? Zie ook punt 2.2 hierboven — dat formulier
+  lijkt inmiddels nergens meer gelinkt.
 
 ---
 
