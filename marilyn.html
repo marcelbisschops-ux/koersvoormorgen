@@ -266,6 +266,7 @@ function renderDashboard(){
     +(isSuperAdmin?'<button class="tab'+(activeTab==='veiligheid'?' active':'')+'" id="t-veiligheid" style="border-left:2px solid var(--red)">&#128737; Veiligheid</button>':'')
     +(isSuperAdmin?'<button class="tab'+(activeTab==='matching'?' active':'')+'" id="t-matching">&#128279; Matching</button>':'')
     +(isSuperAdmin?'<button class="tab'+(activeTab==='sourcing'?' active':'')+'" id="t-sourcing">&#128225; Sourcing</button>':'')
+    +(isSuperAdmin?'<button class="tab'+(activeTab==='pool'?' active':'')+'" id="t-pool">&#9878;&#65039; Pool</button>':'')
     +(isSuperAdmin?'<button class="tab'+(activeTab==='agenda'?' active':'')+'" id="t-agenda">&#128197; Agenda</button>':'')
     +(isSuperAdmin?'<button class="tab'+(activeTab==='postvak'?' active':'')+'" id="t-postvak">&#128236; Postvak'+(postvakOngelezen>0?' ('+postvakOngelezen+')':'')+'</button>':'')
     +'</div>'
@@ -284,6 +285,7 @@ function renderDashboard(){
   if(isSuperAdmin){var vtb=document.getElementById('t-veiligheid');if(vtb)vtb.addEventListener('click',function(){activeTab='veiligheid';renderDashboard();});}
   if(isSuperAdmin){var mtb=document.getElementById('t-matching');if(mtb)mtb.addEventListener('click',function(){activeTab='matching';renderDashboard();});}
   if(isSuperAdmin){var srtb=document.getElementById('t-sourcing');if(srtb)srtb.addEventListener('click',function(){activeTab='sourcing';renderDashboard();});}
+  if(isSuperAdmin){var pltb=document.getElementById('t-pool');if(pltb)pltb.addEventListener('click',function(){activeTab='pool';renderDashboard();});}
   if(isSuperAdmin){var agtb=document.getElementById('t-agenda');if(agtb)agtb.addEventListener('click',function(){activeTab='agenda';renderDashboard();});}
   if(isSuperAdmin){var pvtb=document.getElementById('t-postvak');if(pvtb)pvtb.addEventListener('click',function(){activeTab='postvak';renderDashboard();});}
   renderTab();
@@ -309,6 +311,7 @@ function renderTab(){
   else if(activeTab==='veiligheid')renderVeiligheidTab(el);
   else if(activeTab==='matching')renderMatchingTab(el);
   else if(activeTab==='sourcing')renderSourcingTab(el);
+  else if(activeTab==='pool')renderPoolTab(el);
   else if(activeTab==='agenda')renderAgendaTab(el);
   else if(activeTab==='postvak')renderPostvakTab(el);
   else renderRapportenTab(el);
@@ -505,6 +508,90 @@ function srcOmzet(b){return (b===null||b===undefined)?'onbekend':(SRC_OMZET[b]||
 function srcDatum(iso){if(!iso)return '';try{return new Date(iso).toLocaleDateString('nl-NL',{day:'numeric',month:'short',year:'numeric'});}catch(e){return '';}}
 var srcFilter={sectoren:{accountancy:true,mkb:true,zorg:true,itsoftware:true},alleenRegio:true};
 var SRC_MATCH_DREMPEL=55;
+
+// POOL TAB — beheer van de specialistenpool (worker/32-pool.js). Toelaten/royeren, credentials,
+// tarief, beschikbaarheid. De platformmarge per poolreview staat in de tab "€ Tarieven"
+// (pool_review_juridisch/fiscaal/cijfers).
+async function renderPoolTab(el){
+  el.innerHTML='<div style="padding:1rem;color:var(--muted);font-size:13px">Pool laden…</div>';
+  var lijst=[];
+  try{
+    var r=await fetch(WORKER+'/mna/admin/pool/specialisten',{headers:{'x-admin-key':adminKey}});
+    var d=await r.json();
+    if(r.ok&&d.ok)lijst=d.specialisten||[];
+  }catch(e){ el.innerHTML='<div style="padding:1rem;color:var(--red)">Kon de pool niet laden.</div>'; return; }
+  function rij(s){
+    var actief=s.status==='actief';
+    return '<tr style="border-top:1px solid var(--border)">'
+      +'<td style="padding:9px 10px"><div style="font-weight:600;color:var(--head)">'+esc(s.naam||'')+'</div>'
+        +'<div style="font-size:11px;color:var(--muted)">'+esc(s.hoedanigheid||'')+(s.inschrijvingsnummer?(' · '+esc(s.inschrijvingsnummer)):'')+(s.kantoor?(' · '+esc(s.kantoor)):'')+'</div>'
+        +'<div style="font-size:11px;color:var(--muted)">'+esc((s.sectoren||[]).join(', ')||'alle sectoren')+(s.email?(' · '+esc(s.email)):'')+'</div></td>'
+      +'<td style="padding:9px 10px"><input type="number" min="0" step="10" class="pool-tar" data-id="'+esc(s.id)+'" value="'+Number(s.tarief_bedrag||0)+'" style="width:90px;padding:5px 7px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--sub);font-family:IBM Plex Mono,monospace"><div style="font-size:10px;color:var(--muted)">'+esc(s.tarief_model||'per_review')+'</div></td>'
+      +'<td style="padding:9px 10px"><input type="number" min="1" max="60" class="pool-dl" data-id="'+esc(s.id)+'" value="'+Number(s.doorlooptijd_dagen||10)+'" style="width:60px;padding:5px 7px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--sub)"><div style="font-size:10px;color:var(--muted)">dagen</div></td>'
+      +'<td style="padding:9px 10px;font-size:11px"><span style="color:'+(actief?'var(--teal)':'var(--red)')+'">'+esc(s.status||'')+'</span>'+(s.beschikbaar?' · beschikbaar':' · niet beschikbaar')+'</td>'
+      +'<td style="padding:9px 10px;white-space:nowrap">'
+        +'<button class="btn-ghost pool-save" data-id="'+esc(s.id)+'" style="font-size:10px;padding:3px 8px;color:var(--gold);border-color:var(--gold)">Opslaan</button> '
+        +'<button class="btn-ghost pool-toggle" data-id="'+esc(s.id)+'" data-be="'+(s.beschikbaar?'0':'1')+'" style="font-size:10px;padding:3px 8px">'+(s.beschikbaar?'Op non-actief':'Beschikbaar maken')+'</button> '
+        +(actief?'<button class="btn-ghost pool-royeer" data-id="'+esc(s.id)+'" style="font-size:10px;padding:3px 8px;color:var(--red);border-color:var(--red)">Royeren</button>':'<button class="btn-ghost pool-herstel" data-id="'+esc(s.id)+'" style="font-size:10px;padding:3px 8px">Herstellen</button>')
+      +'</td></tr>';
+  }
+  el.innerHTML='<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:1rem">&#9878;&#65039; Specialistenpool</div>'
+    +'<div style="font-size:12px;color:var(--muted);line-height:1.6;margin-bottom:1rem;max-width:760px">Externe, geverifieerde juristen / fiscalisten / waarderingsspecialisten die een adviseur zonder eigen specialist kan inschakelen om een onderdeel van een MoU/LoI/NDA af te tekenen. Het bedrag hieronder is het <strong>honorarium van de specialist</strong>; de platformmarge per review staat in <strong>&euro; Tarieven</strong> (<code>pool_review_juridisch/fiscaal/cijfers</code>).</div>'
+    +'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="text-align:left;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.06em">'
+      +'<th style="padding:6px 10px">Specialist</th><th style="padding:6px 10px">Honorarium (&euro;)</th><th style="padding:6px 10px">Doorlooptijd</th><th style="padding:6px 10px">Status</th><th style="padding:6px 10px"></th></tr></thead>'
+      +'<tbody>'+(lijst.length?lijst.map(rij).join(''):'<tr><td colspan="5" style="padding:1rem;color:var(--muted);font-style:italic">Nog geen specialisten in de pool.</td></tr>')+'</tbody></table></div>'
+    +'<div style="margin-top:1.5rem;padding:1rem;border:1px solid var(--border);border-radius:var(--r2);background:var(--card);max-width:640px">'
+      +'<div style="font-size:12px;font-weight:600;color:var(--head);margin-bottom:.6rem">Specialist toevoegen</div>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
+      +'<input id="np-naam" placeholder="Naam" style="padding:6px 9px;border:1px solid var(--border2);border-radius:6px;background:var(--bg);color:var(--sub);font-size:12px">'
+      +'<input id="np-kantoor" placeholder="Kantoor" style="padding:6px 9px;border:1px solid var(--border2);border-radius:6px;background:var(--bg);color:var(--sub);font-size:12px">'
+      +'<input id="np-hoed" placeholder="Hoedanigheid (advocaat / RB / Register Valuator)" style="padding:6px 9px;border:1px solid var(--border2);border-radius:6px;background:var(--bg);color:var(--sub);font-size:12px">'
+      +'<input id="np-insch" placeholder="Inschrijvingsnummer (NOvA / RB / NIRV)" style="padding:6px 9px;border:1px solid var(--border2);border-radius:6px;background:var(--bg);color:var(--sub);font-size:12px">'
+      +'<input id="np-email" placeholder="E-mail" style="padding:6px 9px;border:1px solid var(--border2);border-radius:6px;background:var(--bg);color:var(--sub);font-size:12px">'
+      +'<input id="np-sectoren" placeholder="Sectoren, komma-gescheiden (leeg = alle)" style="padding:6px 9px;border:1px solid var(--border2);border-radius:6px;background:var(--bg);color:var(--sub);font-size:12px">'
+      +'<input id="np-tarief" type="number" min="0" step="10" placeholder="Honorarium € per review" style="padding:6px 9px;border:1px solid var(--border2);border-radius:6px;background:var(--bg);color:var(--sub);font-size:12px">'
+      +'<input id="np-dl" type="number" min="1" max="60" placeholder="Doorlooptijd (dagen)" style="padding:6px 9px;border:1px solid var(--border2);border-radius:6px;background:var(--bg);color:var(--sub);font-size:12px">'
+      +'</div>'
+      +'<textarea id="np-profiel" placeholder="Korte profieltekst (zichtbaar voor de adviseur bij het kiezen)" rows="2" style="width:100%;margin-top:8px;padding:6px 9px;border:1px solid var(--border2);border-radius:6px;background:var(--bg);color:var(--sub);font-size:12px;resize:vertical"></textarea>'
+      +'<button id="np-add" class="btn btn-sm" style="margin-top:8px;font-size:12px">Toevoegen</button>'
+    +'</div>';
+  function saveSpec(id,body){
+    return fetch(WORKER+'/mna/admin/pool/specialisten',{method:'POST',headers:{'x-admin-key':adminKey,'Content-Type':'application/json'},body:JSON.stringify(Object.assign({id:id},body))})
+      .then(function(x){return x.json();});
+  }
+  el.querySelectorAll('.pool-save').forEach(function(b){ b.addEventListener('click',function(){
+    var id=b.getAttribute('data-id');
+    var tar=el.querySelector('.pool-tar[data-id="'+id+'"]'), dl=el.querySelector('.pool-dl[data-id="'+id+'"]');
+    saveSpec(id,{tarief_bedrag:Number(tar.value)||0, doorlooptijd_dagen:Number(dl.value)||10}).then(function(d){
+      if(d&&d.ok){toast('Opgeslagen','ok');} else toast('Opslaan mislukt','err');
+    });
+  });});
+  el.querySelectorAll('.pool-toggle').forEach(function(b){ b.addEventListener('click',function(){
+    saveSpec(b.getAttribute('data-id'),{beschikbaar:b.getAttribute('data-be')==='1'}).then(function(d){ if(d&&d.ok){renderPoolTab(el);} else toast('Mislukt','err'); });
+  });});
+  el.querySelectorAll('.pool-royeer').forEach(function(b){ b.addEventListener('click',function(){
+    if(!confirm('Deze specialist royeren? Hij verdwijnt uit de bladerlijst voor adviseurs. Lopende opdrachten blijven staan.'))return;
+    saveSpec(b.getAttribute('data-id'),{status:'geroyeerd',beschikbaar:false}).then(function(d){ if(d&&d.ok){renderPoolTab(el);} else toast('Mislukt','err'); });
+  });});
+  el.querySelectorAll('.pool-herstel').forEach(function(b){ b.addEventListener('click',function(){
+    saveSpec(b.getAttribute('data-id'),{status:'actief'}).then(function(d){ if(d&&d.ok){renderPoolTab(el);} else toast('Mislukt','err'); });
+  });});
+  var addBtn=document.getElementById('np-add');
+  if(addBtn)addBtn.addEventListener('click',function(){
+    var naam=(document.getElementById('np-naam').value||'').trim();
+    var hoed=(document.getElementById('np-hoed').value||'').trim();
+    if(!naam||!hoed){toast('Naam en hoedanigheid zijn verplicht','err');return;}
+    var sect=(document.getElementById('np-sectoren').value||'').split(',').map(function(x){return x.trim();}).filter(Boolean);
+    fetch(WORKER+'/mna/admin/pool/specialisten',{method:'POST',headers:{'x-admin-key':adminKey,'Content-Type':'application/json'},body:JSON.stringify({
+      naam:naam, kantoor:(document.getElementById('np-kantoor').value||'').trim(), hoedanigheid:hoed,
+      inschrijvingsnummer:(document.getElementById('np-insch').value||'').trim(), email:(document.getElementById('np-email').value||'').trim(),
+      sectoren:sect, tarief_bedrag:Number(document.getElementById('np-tarief').value)||0,
+      doorlooptijd_dagen:Number(document.getElementById('np-dl').value)||10, profieltekst:(document.getElementById('np-profiel').value||'').trim(),
+    })}).then(function(x){return x.json();}).then(function(d){
+      if(d&&d.ok){toast('Specialist toegevoegd','ok');renderPoolTab(el);} else toast((d&&d.error)||'Toevoegen mislukt','err');
+    });
+  });
+}
 
 async function renderSourcingTab(el){
   el.innerHTML='<div style="padding:1rem;color:var(--muted);font-size:13px">Sourcing laden…</div>';

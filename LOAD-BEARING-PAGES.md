@@ -59,6 +59,7 @@ privacy.html | nee | Privacyverklaring. Idem: gelinkt vanuit worker-mailfooters 
 testvoorwaarden.html | nee | Testvoorwaarden. Gelinkt in de uitnodigingsmail voor testaccounts (worker/09-gebruikersbeheer.js, testerBlok). | Nodig een testaccount uit (is_tester:true) en volg de testvoorwaarden-link in de mail.
 mna.html | nee | Verkoper-/koperportaal. De worker mailt koersvoormorgen.nl/mna.html naar verkopers, kopers, begeleiders en Q&A-deelnemers (worker/10, 11, 12, 17, 08, 19c). Dit is het hoofdproduct; een redirect is alleen acceptabel als hij eindigt op een werkend inlogscherm mét de trajectcode-flow intact. | Open een van die mails, log in met de meegestuurde code.
 marilyn.html | nee | Admin-paneel. Gelinkt vanuit interne worker-notificaties (worker/11, cloudflare-worker.js). Geen publieke stub; moet blijven werken voor Marcel. | Open marilyn.html, log in.
+specialist.html | nee | Portaal voor een poolspecialist (FASE E). De begeleider genereert in de composer een link specialist.html?key=<opdracht-token> en stuurt die zelf naar de specialist; de pagina praat met de worker /mna/pool/opdracht|dossier|opdracht/reactie|opdracht/aftekenen (worker/32-pool.js). De URL wordt in de frontend samengesteld (geen worker-mail), dus check 11 in audit-consistentie grep't 'm niet — maar een verlopen/gestubde pagina breekt wél de aftekening van een poolreview. | Maak in de composer een pool-opdracht aan, open de getoonde specialist.html-link, accepteer, teken af; controleer dat de tos-onderdelen APPROVED worden.
 ```
 <!-- END-MANIFEST -->
 
