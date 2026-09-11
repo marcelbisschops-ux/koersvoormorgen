@@ -573,6 +573,82 @@ async function run() {
 
   await api('POST', '/mna/admin/pool/specialisten', { adminKey: ADMIN, body: { id: spConflictId, status: 'geroyeerd', beschikbaar: false } });
 
+  kop('STAP 23 · FASE E-bis — eigen (niet-pool) specialist (Marcel mag de identiteit NOOIT zien)');
+  await api('POST', '/mna/admin/tarieven', { adminKey: ADMIN, body: { fee_type: 'eigen_specialist_toevoegen', bedrag: 50, door: 'e2e' } });
+  // Negatief: het toevoegen zelf is ook geen adminhandeling.
+  const esAddAdmin = await api('POST', '/mna/eigen-specialist', { adminKey: ADMIN, body: { naam: 'X', hoedanigheid: 'advocaat' } });
+  check('eigen specialist toevoegen met x-admin-key → 403 (nooit een admin-actie)', esAddAdmin.status === 403, 'status ' + esAddAdmin.status);
+  // Toevoegen door de begeleider zelf — de enige toegestane weg.
+  const esAdd = await api('POST', '/mna/eigen-specialist', { headers: H, body: {
+    naam: 'Mr. E2E Eigen Jurist', kantoor: 'E2E Eigen Kantoor', hoedanigheid: 'advocaat',
+    inschrijvingsnummer: 'NOvA-EIGEN-001', email: 'eigen@e2e-specialist.invalid',
+  } });
+  check('begeleider voegt eigen specialist toe, fee 50 geboekt', esAdd.json && esAdd.json.ok === true && !!esAdd.json.id && esAdd.json.fee_geboekt === 50, JSON.stringify(esAdd.json));
+  const eigenSpecId = esAdd.json && esAdd.json.id;
+  // Lijst: de begeleider zelf ziet 'm gewoon (het is zijn eigen invoer).
+  const esLijst = await api('GET', '/mna/eigen-specialisten/' + trajectCode, { headers: H });
+  check('begeleider ziet de eigen specialist in de lijst', esLijst.json && esLijst.json.ok === true && (esLijst.json.specialisten || []).some((s) => s.id === eigenSpecId && s.naam === 'Mr. E2E Eigen Jurist'), JSON.stringify(esLijst.json));
+  // KERN-privacyinvariant: de lijst is met GEEN enkele sleutel door Marcel te zien — noch via
+  // x-admin-key, noch (de exploit die deze code-review-ronde ontdekte en fixte) via het ADMIN_KEY
+  // ALS x-tussen-key/?code=, wat begeleiderAuth normaliter als geldig 'admin'-bewijs accepteert.
+  const esLijstAdmin1 = await api('GET', '/mna/eigen-specialisten/' + trajectCode, { adminKey: ADMIN });
+  check('lijst met x-admin-key → 403 (Marcel mag dit nooit zien)', esLijstAdmin1.status === 403, 'status ' + esLijstAdmin1.status);
+  const esLijstAdmin2 = await api('GET', '/mna/eigen-specialisten/' + trajectCode, { headers: { 'x-tussen-key': ADMIN } });
+  check('lijst met ADMIN_KEY als x-tussen-key → 403 (de exploit die deze review vond)', esLijstAdmin2.status === 403, 'status ' + esLijstAdmin2.status);
+  const esLijstAnon = await api('GET', '/mna/eigen-specialisten/' + trajectCode, {});
+  check('lijst zonder auth → 403', esLijstAnon.status === 403, 'status ' + esLijstAnon.status);
+
+  // Cross-traject-scoping: een eigen-specialist-id van traject A mag niet bruikbaar zijn op traject B.
+  const c2 = await api('POST', '/adviseur/create', { body: { email, wachtwoord: WW, traject: {
+    kantoor_naam: 'E2E TOS Tweede Traject BV', contact_naam: 'Test Verkoper 2', contact_email: 'v2' + DOM,
+    koper_naam: 'E2E TOS Koper 2 BV', koper_contact: 'Test Koper 2', koper_email: 'k2' + DOM, traject_type: 'Verkoop',
+  } } });
+  const trajectCode2 = c2.json && c2.json.code;
+  const H2 = { 'x-tussen-key': c2.json && c2.json.tussen_code };
+  check('tweede traject aangemaakt (voor de cross-traject-test)', !!trajectCode2);
+  // Geen TOS-activatie/documenten nodig op traject 2: de eigen-specialist-lookup (traject-gescoped)
+  // faalt al vóór de documentvalidatie wordt bereikt — zie worker/32-pool.js.
+  const opdrCross = await api('POST', '/mna/pool/opdracht', { headers: H2, body: { specialist_id: eigenSpecId, specialist_bron: 'eigen', domein: 'LEGAL', documenten: ['dummy'], deadline_dagen: 10 } });
+  check('eigen-specialist-id van traject 1 gebruiken op traject 2 → 404 (traject-scoping)', opdrCross.status === 404, 'status ' + opdrCross.status);
+  await api('POST', '/admin/delete/mna/' + trajectCode2, { adminKey: ADMIN });
+
+  // De echte flow: begeleider zet zijn eigen specialist in op een scoped opdracht.
+  const mkEigenDoc = await api('POST', '/mna/tos/document', { headers: H, body: { profile: 'MOU' } });
+  const eigenDocId = mkEigenDoc.json && mkEigenDoc.json.document_id;
+  check('verse MoU voor de eigen-specialist-test', !!eigenDocId);
+  // Negatief: admin mag deze tak nooit gebruiken, ook niet met een geldige traject-code in de body
+  // (de respons zou anders sp.naam/inschrijvingsnummer teruggeven — exact het lek dat gefixt is).
+  const opdrEigenAdmin = await api('POST', '/mna/pool/opdracht', { adminKey: ADMIN, body: { code: trajectCode, specialist_id: eigenSpecId, specialist_bron: 'eigen', domein: 'LEGAL', documenten: [eigenDocId] } });
+  check('opdracht met specialist_bron eigen via x-admin-key → 403', opdrEigenAdmin.status === 403, 'status ' + opdrEigenAdmin.status);
+  const opdrEigen = await api('POST', '/mna/pool/opdracht', { headers: H, body: { specialist_id: eigenSpecId, specialist_bron: 'eigen', domein: 'LEGAL', documenten: [eigenDocId], instructie: 'Beoordeel de juridische onderdelen.', deadline_dagen: 10 } });
+  check('opdracht met eigen specialist: honorarium+marge beide 0 (geen platformbemiddeling)', opdrEigen.json && opdrEigen.json.ok === true && opdrEigen.json.kosten && opdrEigen.json.kosten.honorarium === 0 && opdrEigen.json.kosten.marge === 0, JSON.stringify(opdrEigen.json));
+  const eigenOpId = opdrEigen.json && opdrEigen.json.opdracht_id;
+  const eigenPoolToken = opdrEigen.json && opdrEigen.json.specialist_link && opdrEigen.json.specialist_link.replace('x-pool-key: ', '');
+  const eigenAcc = await api('POST', '/mna/pool/opdracht/reactie?poolkey=' + encodeURIComponent(eigenPoolToken), { body: { actie: 'accepteren' } });
+  check('eigen specialist accepteert', eigenAcc.json && eigenAcc.json.ok === true && eigenAcc.json.status === 'geaccepteerd');
+  const eigenDos = await api('GET', '/mna/pool/dossier?poolkey=' + encodeURIComponent(eigenPoolToken), {});
+  check('dossier voor eigen specialist: exact 1 document', eigenDos.json && eigenDos.json.ok === true && (eigenDos.json.documenten || []).length === 1);
+  const eigenTek = await api('POST', '/mna/pool/opdracht/aftekenen?poolkey=' + encodeURIComponent(eigenPoolToken), { body: { opmerking: 'Akkoord.' } });
+  check('eigen specialist tekent af, fee 0/0 (al betaald bij toevoegen)', eigenTek.json && eigenTek.json.ok === true && eigenTek.json.onderdelen_afgetekend >= 1 && eigenTek.json.fee_geboekt && eigenTek.json.fee_geboekt.honorarium === 0 && eigenTek.json.fee_geboekt.marge === 0, JSON.stringify(eigenTek.json).slice(0, 220));
+
+  // Begeleider ziet de eigen-opdracht gewoon in zijn eigen overzicht (met naam — is zijn eigen traject).
+  const eigenOpList = await api('GET', '/mna/pool/opdrachten/' + trajectCode, { headers: H });
+  check('begeleider ziet de eigen-opdracht met specialist_bron + naam', (eigenOpList.json.opdrachten || []).some((o) => o.id === eigenOpId && o.specialist_bron === 'eigen' && o.specialist_naam === 'Mr. E2E Eigen Jurist'));
+
+  // KERN-privacyinvariant #2: Marcels eigen admin-overzicht van ALLE pool-opdrachten bevat deze
+  // eigen-opdracht NIET — niet als rij, en de identiteit staat nergens in de ruwe respons.
+  const adminOpList = await api('GET', '/mna/admin/pool/opdrachten', { adminKey: ADMIN });
+  check('admin-overzicht bevat de eigen-opdracht NIET', adminOpList.json && adminOpList.json.ok === true && !(adminOpList.json.opdrachten || []).some((o) => o.id === eigenOpId));
+  check('admin-overzicht bevat nergens de naam/kantoor/e-mail van de eigen specialist', JSON.stringify(adminOpList.json).indexOf('E2E Eigen') === -1 && JSON.stringify(adminOpList.json).indexOf('eigen@e2e-specialist.invalid') === -1);
+
+  // Intrekken — alleen door de begeleider, nooit admin.
+  const esIntrekAdmin = await api('POST', '/mna/eigen-specialist/' + eigenSpecId + '/intrekken', { adminKey: ADMIN });
+  check('intrekken met x-admin-key → 403', esIntrekAdmin.status === 403, 'status ' + esIntrekAdmin.status);
+  const esIntrek = await api('POST', '/mna/eigen-specialist/' + eigenSpecId + '/intrekken', { headers: H });
+  check('begeleider trekt de eigen specialist in', esIntrek.json && esIntrek.json.ok === true, JSON.stringify(esIntrek.json));
+  const esLijstNa = await api('GET', '/mna/eigen-specialisten/' + trajectCode, { headers: H });
+  check('ingetrokken specialist staat niet meer in de actieve lijst', !(esLijstNa.json.specialisten || []).some((s) => s.id === eigenSpecId));
+
   kop('STAP 21 · purge + reproduceerbaarheid (FASE C — CONTENT weg, MANIFEST blijft)');
   const preManTr = await api('GET', '/mna/tos/manifest/traject/' + trajectCode, { adminKey: ADMIN });
   check('reproduceerbaarheidsroute: ≥1 manifest vóór de purge', preManTr.json && preManTr.json.aantal >= 1, JSON.stringify(preManTr.json).slice(0, 160));
