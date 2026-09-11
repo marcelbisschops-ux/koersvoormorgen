@@ -147,6 +147,17 @@ async function run() {
   check('NDA-menu bevat nda_scope/nda_duur + het gedeelde "parties" (eligibility-uitbreiding werkt)', (() => { const b = (menuNda.json.menu || []).map((m) => m.block_id); return b.includes('nda_scope') && b.includes('nda_duur') && b.includes('parties'); })());
   check('NDA-menu bevat GEEN exclusivity/reps_warranties_kader (niet in NDA-profiel)', !(menuNda.json.menu || []).some((m) => m.block_id === 'exclusivity' || m.block_id === 'reps_warranties_kader'));
   check('NDA required_reviews: alleen LEGAL', menuNda.json.required_reviews && menuNda.json.required_reviews.LEGAL === true && menuNda.json.required_reviews.TAX === false && menuNda.json.required_reviews.VALUATION === false);
+
+  // Structurele invariant (ChatGPT-tegenspraak op de manifest-fix, 11 sep 2026): niet alleen "NDA
+  // mist 'target' niet meer" losstaand testen, maar de onderliggende regel afdwingen voor ALLE
+  // profielen — anders vangt de test alleen de ÉÉN concrete fout die we al kenden, niet de volgende
+  // keer dat iemand een nieuw KERN-component toevoegt en vergeet het aan het default-rijtje toe te
+  // voegen. Voor elk profiel: elk KERN-onderdeel in het menu moet in_default zijn.
+  [['MOU', menuMou], ['LOI', menuLoi], ['NDA', menuNda]].forEach(([naam, m]) => {
+    const missend = (m.json.menu || []).filter((x) => x.completeness_role === 'kern' && x.in_default !== true);
+    check(naam + ': elk KERN-onderdeel staat in het default-rijtje', missend.length === 0, 'ontbreken: ' + missend.map((x) => x.block_id).join(', '));
+  });
+
   const mkNda = await api('POST', '/mna/tos/document', { headers: H, body: { profile: 'NDA' } });
   check('NDA aangemaakt (ok), doc_type nda', mkNda.json && mkNda.json.ok === true && !!mkNda.json.document_id, JSON.stringify(mkNda.json).slice(0, 160));
   const ndaId = mkNda.json && mkNda.json.document_id;
@@ -405,6 +416,28 @@ async function run() {
   const man20 = await api('GET', '/mna/tos/document/' + doc2 + '/manifest', { headers: H });
   check('manifest bestaat nog niet → 404', man20.status === 404, 'status ' + man20.status);
   check('geblokkeerde respons lekt geen componenttekst/dataslots', JSON.stringify(fin20.json).indexOf('data_values') === -1 && JSON.stringify(fin20.json).indexOf('text') === -1 && JSON.stringify(ec20.json).indexOf('data_values') === -1);
+
+  kop('STAP 20b · KERN-component toevoegen, weer verwijderen, dan finaliseren → geblokkeerd');
+  // ChatGPT-tegenspraak op de manifest-fix (11 sep 2026): de bestaande tests bewijzen alleen "nooit
+  // toegevoegd" ontbreekt terecht. Dit dekt het andere geval — WEL toegevoegd geweest, daarna weer
+  // verwijderd — waar berekenOntbrekendKern() via instance_status='ACTIVE' hetzelfde resultaat hoort
+  // te geven (het gaat om wat er NU in het document zit, niet om de geschiedenis).
+  const g20b = await api('GET', '/mna/tos/document/' + docId, { headers: H });
+  const costsIid = (g20b.json.componenten || []).find((c) => c.block_id === 'costs');
+  check('costs-instance gevonden op docId', !!costsIid);
+  const verwCosts = await api('POST', '/mna/tos/document/' + docId + '/component/' + costsIid.instance_id + '/verwijder', { headers: H });
+  check('costs verwijderen → ok', verwCosts.json && verwCosts.json.ok === true, JSON.stringify(verwCosts.json).slice(0, 120));
+  const menuNaVerw = await api('GET', '/mna/tos/menu/' + trajectCode + '?profile=MOU&document=' + docId, { headers: H });
+  check('ná verwijderen: costs staat in ontbrekend_kern', (menuNaVerw.json.ontbrekend_kern || []).some((m) => m.block_id === 'costs'), JSON.stringify(menuNaVerw.json.ontbrekend_kern));
+  await api('POST', '/mna/tos/document/' + docId + '/setting', { headers: H, body: { juridisch: 'uit', fiscaal: 'uit', cijfers: 'uit' } });
+  const finZonderCosts = await api('POST', '/mna/tos/document/' + docId + '/finaliseer', { headers: H });
+  check('finaliseren zonder costs → ok:false + KERN_ONTBREEKT (status 200)', finZonderCosts.status === 200 && finZonderCosts.json && finZonderCosts.json.ok === false && (finZonderCosts.json.blockers || []).some((b) => b.code === 'KERN_ONTBREEKT' && b.block_id === 'costs'), JSON.stringify(finZonderCosts.json).slice(0, 250));
+  // costs terugzetten, zodat de echte finalisatie in STAP 19 hierna gewoon slaagt
+  const heraddCosts = await api('POST', '/mna/tos/document/' + docId + '/component', { headers: H, body: { block_id: 'costs' } });
+  check('costs teruggezet → ok', heraddCosts.json && heraddCosts.json.ok === true, JSON.stringify(heraddCosts.json).slice(0, 120));
+  const menuNaHerstel = await api('GET', '/mna/tos/menu/' + trajectCode + '?profile=MOU&document=' + docId, { headers: H });
+  check('ná terugzetten: geen ontbrekend KERN-onderdeel meer', Array.isArray(menuNaHerstel.json.ontbrekend_kern) && menuNaHerstel.json.ontbrekend_kern.length === 0, JSON.stringify(menuNaHerstel.json.ontbrekend_kern));
+  // teruggezette costs heeft nog geen review — die moet zo meteen weer via review-alles in STAP 19.
 
   kop('STAP 19 · finaliseren + versturen + manifest');
   // 1. finaliseren wordt geblokkeerd zolang er reviews openstaan (juridisch=vereist) — géén 403
