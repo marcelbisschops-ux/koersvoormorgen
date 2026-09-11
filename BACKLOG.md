@@ -66,9 +66,12 @@ Kort:
 
 ## 1. Beslissingen die op jou wachten (geen code van mij nodig)
 
-### 1.1 — MKB-multiple: 2,5–4,5× herijken? · **AFGEROND 11 sep 2026** ✅
-Marcel: "ja" (ophogen richting Brookz). Herijkt naar **4,0–6,0×**, gecentreerd op het Brookz-gemiddelde
-van 5,0×. Details: `SECTORPROFIEL-BRONNEN.md`.
+### 1.1 — MKB-multiple: 2,5–4,5× herijken? · **AFGEROND 11 sep 2026 (herzien, zelfde dag)** ✅
+Marcel: "ja" (ophogen richting Brookz) → eerst herijkt naar 4,0–6,0×, gecentreerd op het Brookz-
+gemiddelde van 5,0×. Bij het 1.3b-onderzoek hieronder bleek dat gemiddelde het **blended** cijfer
+over alle sectoren te zijn, niet specifiek voor retail/horeca/handel/ambacht — de echte Brookz-
+cijfers per sector (retail 2,5×, horeca 3,3×) lagen juist ónder de nieuwe band. Zelf teruggezet naar
+de oorspronkelijke **2,5–4,5×**. Details: `SECTORPROFIEL-BRONNEN.md`.
 
 ### 1.2 — Zorg-multiple: 1–3× omzet begrenzen? · **AFGEROND 11 sep 2026** ✅
 Marcel koos (via vraag met twee opties): **omvangsafhankelijk maken**. Geïmplementeerd: groeps-FTE
@@ -85,6 +88,11 @@ gebronde data en de gouden standaard verbiedt verzonnen getallen. **Al gedaan (3
 aandachtspunten, koperstypes, geen cijfers. **Nog te doen:** echte, gebronde MKB-/zorg-/IT-
 kengetallen (EBITDA-marge-ranges, omzet/FTE per subsector, groei-index) toevoegen aan
 `/benchmarks` (backend) + wiren in de scan-prompt zoals accountancy dat heeft.
+**Deelbevinding 11 sep 2026:** Brookz Overnamebarometer H2-2025 geeft per sector (niet alleen het
+blended MKB-gemiddelde): Detailhandel 2,5×, Horeca/Toerisme/Recreatie 3,3×, IT-diensten 6,7×,
+Softwareontwikkeling 7,5×, Zorg & Farmacie 6,5×. Retail/horeca al verwerkt in 1.1 hierboven; de
+IT/software-multiple (nu 4–6×) ligt duidelijk onder de gevonden 6,7–7,5× — nog niet doorgevoerd,
+wacht op jouw beslissing. Handel/ambacht: geen aparte cijfers gevonden.
 - **Wie/wat:** jij levert of bevestigt de bron (Brookz-subsectoren, brancheorganisaties, CBS-SBI);
   ik bouw. Raakt de gouden standaard (herkomst benchmarks) — bron eerst vastleggen in
   `SECTORPROFIEL-BRONNEN.md`.

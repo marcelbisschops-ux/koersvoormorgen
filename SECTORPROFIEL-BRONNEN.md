@@ -28,10 +28,10 @@ Legenda: 🟢 geverifieerd tegen een externe bron · 🟡 plausibel, geen geveri
 | EBITDA-marge 15–25% | 🟡 | Gangbaar genoemd getal voor de sector; geen expliciete bron in de code. Marcel kan dit met hoge zekerheid bevestigen (bestuurder-achtergrond). |
 | omzet/FTE €80k–€140k, personeelskosten 55–65%, declarabiliteit >75%, verloop <15% | 🟡 | Idem — plausibele branchegetallen, geen citaat. Deels overlappend met de DB-benchmark `omzet_fte_accountant` (die wél een bron heeft: "Full Finance/Novak 2024-2025"). **Aanbeveling:** de `aiNormen`-tekst laten verwijzen naar diezelfde bron. |
 
-### MKB (retail/horeca/handel/ambacht) — `multiple 4,0–6,0× EBITDA`
+### MKB (retail/horeca/handel/ambacht) — `multiple 2,5–4,5× EBITDA`
 | Waarde | Status | Toelichting |
 |---|---|---|
-| multiple 4,0–6,0× EBITDA | 🟢 | **Herijkt 11 sep 2026** (Marcel akkoord op BACKLOG.md 1.1: "ophogen richting Brookz"). Was 2,5–4,5×, bovengrens lag onder de markt. Nieuwe band gecentreerd op het Brookz Overnamebarometer-gemiddelde (H2-2025) van 5,0 voor MKB-EBITDA-multiples ("hoogste in tien jaar", 291 M&A-advieskantoren, bedrijven €0,5–50 mln omzet), met een bewust bredere band dan accountancy (4,5–5,5×) omdat MKB (retail/horeca/handel/ambacht) onderling meer uiteenloopt. Bijgewerkt in `mna/01-config-sectorprofielen.js` + gesynchroniseerd naar `cloudflare-worker.js` (`scripts/sync-sectorprofielen.js --apply`) + de losse AI-analyse-prompt in `marilyn.html`. Geen DB-override actief op productie (geverifieerd), dus de code-default is direct leidend. |
+| multiple 2,5–4,5× EBITDA | 🟢 | **Tweede herijking, 11 sep 2026, zelfde dag.** De eerste herijking (2,5–4,5× → 4,0–6,0×, Marcel akkoord op BACKLOG 1.1 "ophogen richting Brookz") bleek op de verkeerde referentie te leunen: het "gemiddelde MKB-EBITDA-multiple van 5,0" is het **blended gemiddelde over alle Brookz-sectoren** (incl. software 7,5×/IT-diensten 6,7×/zorg 6,5×), niet specifiek voor retail/horeca/handel/ambacht. Bij nazoeken voor BACKLOG 1.3b bleek de Brookz Overnamebarometer H2-2025 juist per sector: **Detailhandel 2,5×, Horeca/Toerisme/Recreatie 3,3×** — beide onder de 4,0–6,0×-band die er na de eerste herijking stond. Teruggezet naar de oorspronkelijke 2,5–4,5×, die voor retail/horeca dus al redelijk kalibreerde. Handel/ambacht: geen aparte Brookz-cijfers gevonden, blijft binnen deze band tot een betere bron (zie 1.3b hieronder). Bijgewerkt in `mna/01-config-sectorprofielen.js` + `cloudflare-worker.js` + `marilyn.html`. |
 | EBITDA-marge 5–15% (horeca 8–12%, retail 5–10%, handel 6–12%), omzet/FTE €80k–€200k, personeelskosten 25–45%, voorraadomzet >6×/jr | 🟡 | Redelijke bandbreedtes, geen bron. De sub-sector-uitsplitsing (horeca/retail/handel) suggereert precisie die niet is onderbouwd. **Aanbeveling:** één publieke bron per sub-branche (bijv. ABN AMRO/RaboResearch sectorprognoses, CBS), of de uitsplitsing weghalen. |
 
 ### Zorg (huisarts/tandarts/fysiotherapie) — omvangsafhankelijk: `1–3× OMZET (klein)` of `6,0–7,3× EBITDA (groter)`
@@ -43,7 +43,7 @@ Legenda: 🟢 geverifieerd tegen een externe bron · 🟡 plausibel, geen geveri
 ### IT/software — `multiple 3–8× ARR (SaaS) of 4–6× EBITDA (maatwerk/diensten)`
 | Waarde | Status | Toelichting |
 |---|---|---|
-| multiple 4–6× EBITDA (maatwerk/diensten — de vastgelegde basis) | 🟡 | Plausibel voor een dienstverlenend/maatwerk-softwarebedrijf; geen bron in de code. Redelijk in lijn met bredere MKB-multiples. |
+| multiple 4–6× EBITDA (maatwerk/diensten — de vastgelegde basis) | 🟡 | **Bevinding 11 sep 2026 (BACKLOG 1.3b-onderzoek), nog niet doorgevoerd — wacht op Marcels beslissing:** Brookz Overnamebarometer H2-2025 geeft specifiek IT-diensten 6,7× en Softwareontwikkeling 7,5× — beide duidelijk boven de huidige 4–6×. Bewust niet zelf aangepast (geen expliciet akkoord zoals bij MKB/zorg) — mogelijk een derde herijkingskandidaat. |
 | multiple 3–8× ARR (SaaS) | 🟡 | ARR-multiples voor kleine/mid-market NL SaaS liggen doorgaans lager dan de vaak geciteerde beursgenoteerde SaaS-multiples; 3–8× is een brede, plausibele bandbreedte maar zonder bron. **Let op:** deze wordt bewust NIET als `multipleBasis` gebruikt (de code hanteert de EBITDA-variant) — de ARR-range staat alleen in de `aiNormen`-tekst richting de AI. |
 | ARR/MRR-groei >20%, churn <5%, LTV/CAC >3, NPS >30 | 🟡 | Dit zijn gangbare SaaS-vuistregels (breed geciteerd in de sector), geen harde NL-branchebron. Als kwalitatieve richtlijn acceptabel. |
 
@@ -51,10 +51,11 @@ Legenda: 🟢 geverifieerd tegen een externe bron · 🟡 plausibel, geen geveri
 
 ## Samengevat — wat moet er gebeuren
 
-1. ✅ **MKB-multiple** herijkt naar 4,0–6,0× (11 sep 2026, zie hierboven).
+1. ✅ **MKB-multiple** — twee herijkingen op 11 sep 2026: eerst naar 4,0–6,0× (verkeerde referentie), zelfde dag teruggezet naar 2,5–4,5× op basis van de echte per-sector Brookz-cijfers (retail 2,5×, horeca 3,3×). Zie hierboven.
 2. ✅ **Zorg-multiple** omvangsafhankelijk gemaakt (11 sep 2026, zie hierboven): ≤5 FTE = 1–3× omzet, >5 FTE = 6,0–7,3× EBITDA.
-3. **🟡 Alle `aiNormen`-tekst** een bronvermelding geven (of "indicatief, geen vastgestelde branchenorm" waar er echt geen bron is). Voor accountancy: koppelen aan de al gebronde DB-benchmark.
-4. **Vast kwartaalpunt:** deze tabel opnieuw langslopen (hangt aan de bestaande sjabloon-/benchmark-kwartaalcheck).
+3. **🟡 IT/software-multiple** — bevinding klaarliggend (Brookz IT-diensten 6,7×/Softwareontwikkeling 7,5× vs. de huidige 4–6×), wacht op Marcels beslissing.
+4. **🟡 Alle `aiNormen`-tekst** een bronvermelding geven (of "indicatief, geen vastgestelde branchenorm" waar er echt geen bron is). Voor accountancy: koppelen aan de al gebronde DB-benchmark.
+5. **Vast kwartaalpunt:** deze tabel opnieuw langslopen (hangt aan de bestaande sjabloon-/benchmark-kwartaalcheck).
 
 ## Vangnet dat al werkt
 - Een **ontbrekende** multiple-range toont sinds 31 aug een melding i.p.v. een gok (`bekend:false`).

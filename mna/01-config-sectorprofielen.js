@@ -288,15 +288,17 @@ var SECTOR_PROFIELEN = {
   // ── MKB GENERIEK (retail, horeca, handel, ambacht) ───────────────────────
   mkb: {
     label: 'MKB — Retail / Horeca / Handel / Ambacht',
-    // Bron-status (zie SECTORPROFIEL-BRONNEN.md): multiple herijkt op 11 sep 2026 — Marcel akkoord
-    // met "ophogen richting Brookz" nav BACKLOG.md 1.1. Was 2,5-4,5x (bovengrens lag onder de markt);
-    // nu 4,0-6,0x, gecentreerd op het actuele Brookz Overnamebarometer-gemiddelde (H2-2025) van 5,0
-    // voor MKB-EBITDA-multiples ("hoogste in tien jaar", 291 M&A-advieskantoren, bedrijven
-    // €0,5-50 mln omzet), met een bewust bredere band dan accountancy (4,5-5,5x) omdat MKB
-    // (retail/horeca/handel/ambacht) onderling meer uiteenloopt. Marge-/FTE-getallen 🟡 plausibel,
-    // geen bron.
-    aiNormen: 'EBITDA-marge norm 5-15% (sector afhankelijk: horeca 8-12%, retail 5-10%, handel 6-12%), omzet per FTE €80k-€200k, personeelskosten 25-45%, voorraadomzet >6x per jaar, multiple 4.0-6.0x',
-    multipleBasis: 'ebitda', multipleLaag: 4.0, multipleHoog: 6.0,
+    // Bron-status (zie SECTORPROFIEL-BRONNEN.md) — TWEEDE herijking, 11 sep 2026, zelfde dag: de
+    // eerste herijking (2,5-4,5x → 4,0-6,0x) bleek op een verkeerde referentie te leunen. "Het
+    // gemiddelde MKB-EBITDA-multiple van 5,0" uit BACKLOG.md 1.1 is het BLENDED gemiddelde over ALLE
+    // Brookz-sectoren (incl. hoge multiples voor software 7,5x/IT-diensten 6,7x/zorg 6,5x) — niet
+    // specifiek voor retail/horeca/handel/ambacht. De Brookz Overnamebarometer H2-2025 geeft juist
+    // per sector: Detailhandel 2,5x, Horeca/Toerisme/Recreatie 3,3x — beide ONDER de 4,0-6,0x-band
+    // die na de eerste herijking hier stond. Teruggezet naar de oorspronkelijke 2,5-4,5x, die voor
+    // retail/horeca dus al redelijk kalibreerde. Handel/ambacht hebben geen aparte Brookz-cijfers
+    // gevonden — blijft binnen deze band tot een betere bron zich aandient (BACKLOG 1.3b, open).
+    aiNormen: 'EBITDA-marge norm 5-15% (sector afhankelijk: horeca 8-12%, retail 5-10%, handel 6-12%), omzet per FTE €80k-€200k, personeelskosten 25-45%, voorraadomzet >6x per jaar, multiple 2.5-4.5x',
+    multipleBasis: 'ebitda', multipleLaag: 2.5, multipleHoog: 4.5,
     fases: [
       {id:'financieel',num:'I',title:'Financieel',desc:'Omzet, marge en werkkapitaal.',
        dataFields:[
