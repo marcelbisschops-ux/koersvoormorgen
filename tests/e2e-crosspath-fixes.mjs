@@ -490,6 +490,26 @@ async function main() {
     check('NF-1 · een onbekende/niet-herleidbare code krijgt geen berichten (leeg, geen cross-traject-lek)', Array.isArray(onbekend.json && onbekend.json.berichten) ? onbekend.json.berichten.length === 0 : true, JSON.stringify(onbekend.json));
   }
 
+  // ─────────────── SPA-concept: schrijftoegang beperkt tot de begeleider ───────────────
+  // 11 sep 2026: 'spa' is als vijfde doc_type toegevoegd aan /mna/document/concept-opslaan (was
+  // alleen nda/loi/bem/excl) om de nieuwe AI-concept-SPA te ondersteunen. Anders dan die vier is
+  // 'spa' tussenpersoon-only op de LEESkant (ROLGEBONDEN_DOCTYPES, worker/10) — zonder een
+  // gelijkwaardige check op de SCHRIJFkant zou een koper/verkoper met de eigen, geldige code toch
+  // een 'spa'-rij kunnen wegschrijven. Geen vertrouwelijkheidslek (ze kunnen 'm nooit terugleren via
+  // /mna/versies/), maar wel een ongewenste schrijfopening — hier expliciet negatief getest.
+  kop('SPA-concept-opslaan · alleen de begeleider mag schrijven, koper/verkoper niet');
+  {
+    const spaKoper = await api('POST', '/mna/document/concept-opslaan', { body: { code: traject.koper_code, doc_type: 'spa', tekst: 'E2E CONF — koper probeert een SPA-concept weg te schrijven' } });
+    check('koper-code kan geen spa-concept opslaan → 403', spaKoper.status === 403, JSON.stringify(spaKoper.json));
+    const spaVerkoper = await api('POST', '/mna/document/concept-opslaan', { body: { code: traject.code, doc_type: 'spa', tekst: 'E2E CONF — verkoper probeert een SPA-concept weg te schrijven' } });
+    check('verkoper-code (traject.code zelf) kan geen spa-concept opslaan → 403', spaVerkoper.status === 403, JSON.stringify(spaVerkoper.json));
+    const spaBegeleider = await api('POST', '/mna/document/concept-opslaan', { body: { code: traject.tussen_code, doc_type: 'spa', tekst: 'E2E — begeleider legt een SPA-concept vast' } });
+    check('begeleider (tussen_code) kan wél een spa-concept opslaan', spaBegeleider.json && spaBegeleider.json.ok === true, JSON.stringify(spaBegeleider.json));
+    // nda blijft ongewijzigd voor elke geldige rol schrijfbaar (geen regressie op de bestaande vier).
+    const ndaKoper = await api('POST', '/mna/document/concept-opslaan', { body: { code: traject.koper_code, doc_type: 'nda', tekst: 'E2E — nda-concept via koper-code, ongewijzigd gedrag' } });
+    check('nda blijft schrijfbaar met een koper-code (geen regressie)', ndaKoper.json && ndaKoper.json.ok === true, JSON.stringify(ndaKoper.json));
+  }
+
   await opruimen();
   process.exit(samenvatting() ? 0 : 1);
 }
