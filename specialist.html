@@ -1,0 +1,120 @@
+<!-- © 2026 Bisschops Financing B.V. Alle rechten voorbehouden. -->
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Specialist-review — Koers voor Morgen</title>
+<link rel="stylesheet" href="/assets/fonts.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--void:#f6f2ea;--panel:#fff;--card:#fbf9f4;--border:#d9dee3;--border2:#c8cfd6;--muted:#647581;--mid:#42525e;--sub:#16232e;--head:#0d1b2a;--teal:#3d6b63;--teal-bg:#e9f1ef;--gold:#b8860b;--gold-bg:#faf3e2;--red:#a03030;--red-bg:#f8ecec;--r:6px;--r2:10px}
+body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--sub);font-size:14px;line-height:1.7}
+.wrap{max-width:820px;margin:0 auto;padding:2.5rem 1.75rem 6rem}
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:1rem 0;border-bottom:1px solid var(--border);margin-bottom:2rem}
+.brand{font-size:11px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:8px}
+.wdot{width:6px;height:6px;border-radius:50%;background:var(--teal)}
+h1{font-family:'Playfair Display',serif;font-size:1.6rem;color:var(--head);font-weight:600;margin-bottom:.35rem}
+h2{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:1.75rem 0 .6rem}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.1rem 1.25rem;margin-bottom:1rem}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:.75rem .9rem;margin-bottom:.6rem}
+.kv{font-size:12px;color:var(--muted)}
+.kv b{color:var(--sub);font-weight:600}
+.slot{display:grid;grid-template-columns:180px 1fr;gap:8px;font-size:12.5px;padding:3px 0;border-top:1px dashed var(--border)}
+.slot:first-child{border-top:none}
+.slot .k{color:var(--muted)}
+.txt{white-space:pre-wrap;font-size:13px;color:var(--mid);background:var(--void);border:1px solid var(--border);border-radius:var(--r);padding:.6rem .75rem;margin-top:.5rem}
+button{font-family:inherit;cursor:pointer;border-radius:var(--r);border:1px solid var(--border2);background:var(--panel);color:var(--sub);font-size:12.5px;padding:7px 14px}
+button.primary{background:var(--teal);color:#fff;border-color:var(--teal)}
+button.danger{color:var(--red);border-color:var(--red)}
+button:disabled{opacity:.5;cursor:default}
+textarea{width:100%;font-family:inherit;font-size:13px;border:1px solid var(--border2);border-radius:var(--r);padding:.6rem .75rem;background:var(--panel);color:var(--sub);resize:vertical}
+.badge{display:inline-block;font-size:10px;font-weight:600;padding:1px 7px;border-radius:9px}
+.b-open{background:#f0efec;color:#647581}.b-ok{background:var(--teal-bg);color:var(--teal)}
+.note{font-size:11px;color:var(--muted);line-height:1.6;margin-top:.5rem}
+.err{background:var(--red-bg);border:1px solid var(--red);color:var(--red);border-radius:var(--r);padding:.75rem 1rem;font-size:13px}
+a{color:var(--teal)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="hdr"><div class="brand"><div class="wdot"></div>Koers voor Morgen</div><span style="font-size:11px;color:var(--muted)">Specialist-review</span></div>
+<div id="root"><div class="kv">Laden…</div></div>
+</div>
+<script>
+var WORKER=new URLSearchParams(location.search).get('worker')||'https://kantoorinzicht.marcel-bisschops.workers.dev';
+var KEY=new URLSearchParams(location.search).get('key')||'';
+var root=document.getElementById('root');
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function api(method,pad,body){
+  var opt={method:method,headers:{}};
+  if(body!==undefined){opt.headers['Content-Type']='application/json';opt.body=JSON.stringify(body);}
+  var sep=pad.indexOf('?')>=0?'&':'?';
+  return fetch(WORKER+pad+sep+'poolkey='+encodeURIComponent(KEY),opt).then(function(r){return r.json().then(function(j){return{status:r.status,ok:r.ok,json:j};}).catch(function(){return{status:r.status,ok:r.ok,json:{}};});});
+}
+function fout(msg){root.innerHTML='<div class="err">'+esc(msg||'Geen geldige toegang. Deze link is mogelijk verlopen of ingetrokken.')+'</div>';}
+
+async function laad(){
+  if(!KEY){fout('Geen toegangssleutel in de link.');return;}
+  var op=await api('GET','/mna/pool/opdracht');
+  if(!op.ok||!op.json.ok){fout(op.json&&op.json.error);return;}
+  var o=op.json.opdracht, t=op.json.traject||{};
+  var h='<h1>Reviewopdracht</h1>'
+    +'<div class="panel">'
+    +'<div class="kv"><b>Onderneming:</b> '+esc(t.onderneming||'—')+(t.sector?(' · '+esc(t.sector)):'')+(t.type?(' · '+esc(t.type)):'')+'</div>'
+    +'<div class="kv" style="margin-top:4px"><b>Domein:</b> '+esc(o.domein_label||o.domein)+' &nbsp; <b>Hoedanigheid:</b> '+esc(o.hoedanigheid||'—')+'</div>'
+    +'<div class="kv" style="margin-top:4px"><b>Deadline:</b> '+(o.deadline?new Date(o.deadline).toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'}):'—')+' &nbsp; <b>Honorarium:</b> &euro; '+esc(o.honorarium)+'</div>'
+    +(o.instructie?('<div class="txt" style="margin-top:.6rem">'+esc(o.instructie)+'</div>'):'')
+    +'</div>';
+  if(o.status==='aangevraagd'){
+    h+='<div class="panel"><div class="kv" style="margin-bottom:.6rem">Wilt u deze opdracht aannemen? U krijgt daarna toegang tot uitsluitend de gescopte onderdelen.</div>'
+      +'<button class="primary" id="acc">Opdracht aannemen</button> <button class="danger" id="afw">Afwijzen</button></div>';
+    root.innerHTML=h;
+    document.getElementById('acc').onclick=function(){ react('accepteren'); };
+    document.getElementById('afw').onclick=function(){ var r=prompt('Reden (optioneel):','')||''; react('afwijzen',r); };
+    return;
+  }
+  if(o.status==='afgewezen'||o.status==='ingetrokken'){ root.innerHTML=h+'<div class="err">Deze opdracht is '+esc(o.status)+'.</div>'; return; }
+  // geaccepteerd of gereviewd -> dossier tonen
+  var dos=await api('GET','/mna/pool/dossier');
+  if(!dos.ok||!dos.json.ok){ root.innerHTML=h+'<div class="err">'+esc((dos.json&&dos.json.error)||'Dossier niet beschikbaar.')+'</div>'; return; }
+  h+='<h2>Te beoordelen onderdelen</h2>';
+  (dos.json.documenten||[]).forEach(function(d){
+    h+='<div class="panel"><div class="kv" style="margin-bottom:.5rem"><b>'+esc((d.doc_type||'').toUpperCase())+'</b> · '+esc(d.profiel)+' · versie '+esc(d.current_version)+'</div>';
+    (d.componenten||[]).forEach(function(c){
+      var ok=c.review_status==='APPROVED';
+      h+='<div class="card"><div style="display:flex;justify-content:space-between;gap:8px"><div style="font-weight:600;color:var(--head)">'+esc(c.title)+' <span class="kv">'+esc(c.binding_status||'')+'</span></div>'
+        +'<span class="badge '+(ok?'b-ok':'b-open')+'">'+(ok?'afgetekend':'te beoordelen')+'</span></div>';
+      var keys=Object.keys(c.data_values||{});
+      if(keys.length){ h+='<div style="margin-top:.5rem">'; keys.forEach(function(k){ var v=c.data_values[k]&&c.data_values[k].value; if(v==null||v==='')return; h+='<div class="slot"><div class="k">'+esc(k)+'</div><div>'+esc(v)+'</div></div>'; }); h+='</div>'; }
+      if(c.text&&c.text.trim()) h+='<div class="txt">'+esc(c.text)+'</div>';
+      h+='</div>';
+    });
+    h+='</div>';
+  });
+  if(o.status==='gereviewd'){
+    h+='<div class="panel b-ok" style="background:var(--teal-bg);border-color:var(--teal)"><div class="kv"><b>U heeft deze onderdelen afgetekend.</b> De begeleider is hiervan op de hoogte. Dank.</div></div>';
+    root.innerHTML=h; return;
+  }
+  h+='<div class="panel"><h2 style="margin-top:0">Aftekenen</h2>'
+    +'<div class="kv" style="margin-bottom:.5rem">Met "Aftekenen" bevestigt u dat u de bovenstaande '+esc(o.domein_label||o.domein)+'-onderdelen heeft beoordeeld en akkoord bevindt. De aftekening wordt vastgelegd met uw naam en hoedanigheid en opent de finaliseer-poort voor de begeleider. Deze beoordeling is uw professionele verantwoordelijkheid, niet die van Koers voor Morgen of Bisschops Financing.</div>'
+    +'<textarea id="opm" rows="3" placeholder="Opmerkingen / voorbehouden (optioneel, gaat mee in het dossier)"></textarea>'
+    +'<div style="margin-top:.7rem"><button class="primary" id="tek">Aftekenen</button></div>'
+    +'<div class="note">Nog niet akkoord? Neem contact op met de begeleider; wijzigingen verlopen via hem.</div></div>';
+  root.innerHTML=h;
+  document.getElementById('tek').onclick=async function(){
+    if(!confirm('Definitief aftekenen? Dit kan daarna niet meer worden teruggedraaid via deze link.'))return;
+    this.disabled=true; this.textContent='Bezig…';
+    var r=await api('POST','/mna/pool/opdracht/aftekenen',{opmerking:document.getElementById('opm').value||''});
+    if(r.ok&&r.json.ok){ laad(); }
+    else { alert((r.json&&r.json.error)||'Aftekenen mislukt'); this.disabled=false; this.textContent='Aftekenen'; }
+  };
+}
+async function react(actie,reden){
+  var r=await api('POST','/mna/pool/opdracht/reactie',{actie:actie,reden:reden||''});
+  if(r.ok&&r.json.ok){ laad(); } else alert((r.json&&r.json.error)||'Mislukt');
+}
+laad();
+</script>
+</body>
+</html>

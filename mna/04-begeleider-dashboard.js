@@ -2347,7 +2347,9 @@ function renderBegeleiderDashboard(app){
           +(openPerDom.LEGAL?'<button class="btn-ghost mou-rev-all" data-dom="LEGAL" style="font-size:10.5px;padding:5px 12px">Alles juridisch ('+openPerDom.LEGAL+')</button>':'')
           +(openPerDom.TAX?'<button class="btn-ghost mou-rev-all" data-dom="TAX" style="font-size:10.5px;padding:5px 12px">Alles fiscaal ('+openPerDom.TAX+')</button>':'')
           +(openPerDom.VALUATION?'<button class="btn-ghost mou-rev-all" data-dom="VALUATION" style="font-size:10.5px;padding:5px 12px">Alles cijfers ('+openPerDom.VALUATION+')</button>':'')
-          +'</div>';
+          +'</div>'
+          +'<div style="font-size:10.5px;color:var(--muted);margin-bottom:.3rem">Geen eigen specialist voor een van deze vakgebieden? <a href="#" id="mou-pool-open" style="color:var(--teal)">Vraag een review aan uit de pool</a>.</div>'
+          +'<div id="mou-pool-box"></div>';
       } else {
         h+='<div style="font-size:11px;color:var(--teal);margin-bottom:.4rem">&#10003; Alle onderdelen die een beoordeling nodig hebben, zijn afgetekend.</div>';
       }
@@ -2371,6 +2373,61 @@ function renderBegeleiderDashboard(app){
     h+='</div></div></div>';
     out.innerHTML=h;
     bgMouWire(bevroren);
+  }
+  async function bgPoolApi(method,pad,body){
+    var opt={method:method,headers:{'x-tussen-key':bgMouKey()}};
+    if(body!==undefined){ opt.headers['Content-Type']='application/json'; opt.body=JSON.stringify(body); }
+    try{ var r=await fetch(WORKER+pad,opt); var d=await r.json().catch(function(){return{};}); return {status:r.status,ok:r.ok,json:d}; }
+    catch(e){ return {status:0,ok:false,json:{error:'Verbindingsfout'}}; }
+  }
+  async function bgMouPoolPaneel(){
+    var box=document.getElementById('mou-pool-box'); if(!box)return;
+    box.innerHTML='<div style="font-size:11px;color:var(--muted);padding:.4rem 0">Pool laden&hellip;</div>';
+    var sp=await bgPoolApi('GET','/mna/pool/specialisten');
+    if(!sp.ok||!sp.json.ok){ box.innerHTML='<div style="font-size:11px;color:var(--red)">'+esc((sp.json&&sp.json.error)||'Pool niet beschikbaar')+'</div>'; return; }
+    var lijst=sp.json.specialisten||[];
+    if(!lijst.length){ box.innerHTML='<div style="font-size:11px;color:var(--muted)">Er staan nog geen beschikbare specialisten in de pool. Vraag Bisschops Financing om de pool aan te vullen.</div>'; return; }
+    box.innerHTML='<div style="border:1px solid var(--border2);border-radius:var(--r);padding:.6rem .7rem;margin:.4rem 0;background:var(--card)">'
+      +'<div style="font-size:11px;font-weight:600;color:var(--head);margin-bottom:.4rem">Review aanvragen uit de pool</div>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">'
+      +'<select id="mp-dom" style="font-size:11px;padding:4px 6px;background:var(--panel);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub)"><option value="LEGAL">juridisch</option><option value="TAX">fiscaal</option><option value="VALUATION">cijfers</option></select>'
+      +'<select id="mp-spec" style="font-size:11px;padding:4px 6px;background:var(--panel);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub)">'
+        +lijst.map(function(s){return '<option value="'+esc(s.id)+'">'+esc(s.naam)+' — '+esc(s.hoedanigheid)+' (&euro; '+esc(s.tarief_bedrag)+')</option>';}).join('')+'</select>'
+      +'</div>'
+      +'<div id="mp-profiel" style="font-size:10.5px;color:var(--muted);margin:.3rem 0"></div>'
+      +'<textarea id="mp-instr" rows="2" placeholder="Korte instructie voor de specialist (optioneel)" style="width:100%;font-size:11px;background:var(--panel);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);padding:5px 7px;resize:vertical"></textarea>'
+      +'<label style="font-size:10.5px;color:var(--muted);display:block;margin-top:.3rem">Deadline: <input id="mp-dl" type="number" min="1" max="60" value="10" style="width:56px;font-size:11px;background:var(--panel);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);padding:3px 5px"> dagen</label>'
+      +'<div id="mp-kosten" style="font-size:10.5px;color:var(--muted);margin-top:.3rem"></div>'
+      +'<div style="margin-top:.5rem"><button id="mp-verstuur" class="btn btn-sm" style="font-size:10.5px;padding:5px 12px">Opdracht aanvragen</button> <button id="mp-annuleer" class="btn-ghost" style="font-size:10.5px;padding:5px 10px">Annuleren</button></div>'
+      +'<div id="mp-resultaat" style="margin-top:.5rem"></div></div>';
+    function toonProfiel(){
+      var s=lijst.find(function(x){return x.id===document.getElementById('mp-spec').value;});
+      var txt='';
+      if(s){ txt=(s.kantoor?(s.kantoor+' · '):'')+(s.profieltekst||''); if(s.doorlooptijd_dagen) txt+=' · ~'+s.doorlooptijd_dagen+' dagen'; }
+      document.getElementById('mp-profiel').textContent=txt;
+    }
+    toonProfiel();
+    document.getElementById('mp-spec').onchange=toonProfiel;
+    document.getElementById('mp-annuleer').onclick=function(){ box.innerHTML=''; };
+    document.getElementById('mp-verstuur').onclick=async function(){
+      var btn=this; btn.disabled=true; btn.textContent='Bezig…';
+      var r=await bgPoolApi('POST','/mna/pool/opdracht',{
+        specialist_id:document.getElementById('mp-spec').value,
+        domein:document.getElementById('mp-dom').value,
+        documenten:[_mouDocId],
+        instructie:document.getElementById('mp-instr').value||'',
+        deadline_dagen:Number(document.getElementById('mp-dl').value)||10,
+      });
+      if(!r.ok||!r.json.ok){ document.getElementById('mp-resultaat').innerHTML='<span style="color:var(--red);font-size:11px">'+esc((r.json&&r.json.error)||'Mislukt')+'</span>'; btn.disabled=false; btn.textContent='Opdracht aanvragen'; return; }
+      var k=r.json.kosten||{};
+      var link=location.origin+'/specialist.html?key='+encodeURIComponent((r.json.specialist_link||'').replace('x-pool-key: ',''));
+      var conflict=(r.json.conflict_signalen||[]).length?('<div style="color:var(--gold-dark);font-size:10.5px;margin-top:3px">&#9888; '+esc(r.json.conflict_signalen.join('; '))+'</div>'):'';
+      document.getElementById('mp-resultaat').innerHTML='<div style="background:var(--teal-bg);border:1px solid var(--teal);border-radius:var(--r);padding:.55rem .7rem;font-size:11px;color:var(--teal-dim)">'
+        +'&#10003; Opdracht aangevraagd. Kosten: honorarium &euro; '+esc(k.honorarium)+' + platformbemiddeling &euro; '+esc(k.marge)+' = <strong>&euro; '+esc(k.totaal)+'</strong>.'+conflict
+        +'<div style="margin-top:.4rem;color:var(--sub)">Stuur de specialist deze link:</div>'
+        +'<input readonly value="'+esc(link)+'" onclick="this.select()" style="width:100%;font-size:10px;font-family:monospace;background:var(--panel);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);padding:4px 6px;margin-top:2px"></div>';
+      btn.disabled=false; btn.textContent='Nog een aanvragen';
+    };
   }
   function bgMouWire(bevroren){
     var out=document.getElementById('bg-doc-out'); if(!out)return;
@@ -2462,6 +2519,8 @@ function renderBegeleiderDashboard(app){
       if(r.ok&&r.json.ok){ toast(r.json.afgetekend+' onderdeel'+(r.json.afgetekend===1?'':'en')+' afgetekend','ok'); bgMouRender(); }
       else { toast((r.json&&r.json.error)||'Aftekenen mislukt','err'); bgMouRender(); }
     };});
+    var poolOpen=document.getElementById('mou-pool-open');
+    if(poolOpen)poolOpen.onclick=function(e){ e.preventDefault(); bgMouPoolPaneel(); };
     out.querySelectorAll('.mou-eis').forEach(function(chk){ chk.onchange=async function(){
       var body={}; body[chk.getAttribute('data-dom')]=chk.checked?'vereist':'uit';
       if(!chk.checked&&!confirm('Beoordeling voor "'+chk.getAttribute('data-dom')+'" uitzetten? Dit wordt gelogd en op het document vermeld.')){ chk.checked=true; return; }
