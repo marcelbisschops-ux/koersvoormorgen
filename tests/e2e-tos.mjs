@@ -98,6 +98,13 @@ async function run() {
   check('document_id ontvangen', !!docId);
   check('standaardcomponenten geïnstantieerd (15–21)', mk.json && mk.json.componenten >= 15 && mk.json.componenten <= 21, 'aantal ' + (mk.json && mk.json.componenten));
   if (!docId) return;
+  // Bevinding 11 sep 2026 ("manifest error"): finaliseren blokkeert nu op ontbrekende KERN-onderdelen.
+  // Dat mag een default-aangemaakt document (MoU/LoI/NDA, ongewijzigd) nooit blokkeren — anders zou
+  // deze fix zelf een nieuwe regressie zijn (ChatGPT-tegenspraak op de diff wees hier expliciet op:
+  // de eerdere test bewees alleen dat tosCanExport() een AANGELEVERDE lijst blokkeert, niet dat het
+  // systeem die lijst in productie correct als leeg berekent voor een standaarddocument).
+  const menuMouNieuw = await api('GET', '/mna/tos/menu/' + trajectCode + '?profile=MOU&document=' + docId, { headers: H });
+  check('nieuw default-MoU: geen ontbrekend KERN-onderdeel', menuMouNieuw.json && Array.isArray(menuMouNieuw.json.ontbrekend_kern) && menuMouNieuw.json.ontbrekend_kern.length === 0, JSON.stringify(menuMouNieuw.json && menuMouNieuw.json.ontbrekend_kern));
 
   const lijst = await api('GET', '/mna/tos/documenten/' + trajectCode, { headers: H });
   check('documentenlijst bevat de nieuwe MoU', lijst.json && lijst.json.ok === true && (lijst.json.documenten || []).some((d) => d.id === docId && d.doc_type === 'mou' && d.status === 'draft'), JSON.stringify(lijst.json).slice(0, 200));
@@ -123,6 +130,8 @@ async function run() {
   const gLoi = await api('GET', '/mna/tos/document/' + loiId, { headers: H });
   check('LoI-document: doc_type=loi, reps_warranties_kader + mac_clausule geïnstantieerd', gLoi.json && gLoi.json.document.doc_type === 'loi' && ['reps_warranties_kader', 'mac_clausule'].every((b) => (gLoi.json.componenten || []).some((c) => c.block_id === b && c.instance_status === 'ACTIVE')));
   check('LoI-document: break_fee NIET standaard geïnstantieerd', gLoi.json && !(gLoi.json.componenten || []).some((c) => c.block_id === 'break_fee' && c.instance_status === 'ACTIVE'));
+  const menuLoiNieuw = await api('GET', '/mna/tos/menu/' + trajectCode + '?profile=LOI&document=' + loiId, { headers: H });
+  check('nieuw default-LoI: geen ontbrekend KERN-onderdeel', menuLoiNieuw.json && Array.isArray(menuLoiNieuw.json.ontbrekend_kern) && menuLoiNieuw.json.ontbrekend_kern.length === 0, JSON.stringify(menuLoiNieuw.json && menuLoiNieuw.json.ontbrekend_kern));
   const lijst2 = await api('GET', '/mna/tos/documenten/' + trajectCode, { headers: H });
   check('documentenlijst bevat nu MoU én LoI', (lijst2.json.documenten || []).some((d) => d.doc_type === 'mou') && (lijst2.json.documenten || []).some((d) => d.doc_type === 'loi'));
   // break_fee toevoegen aan de LoI kan (staat in allowed)
@@ -143,6 +152,11 @@ async function run() {
   const ndaId = mkNda.json && mkNda.json.document_id;
   const gNda = await api('GET', '/mna/tos/document/' + ndaId, { headers: H });
   check('NDA-document: doc_type=nda, nda_scope + nda_duur + nda_boetebeding + parties geïnstantieerd', gNda.json && gNda.json.document.doc_type === 'nda' && ['nda_scope', 'nda_duur', 'nda_boetebeding', 'parties'].every((b) => (gNda.json.componenten || []).some((c) => c.block_id === b && c.instance_status === 'ACTIVE')));
+  // 'target' (Doelonderneming) is de component die in het NDA-default-rijtje ontbrak (de zaai-fout
+  // achter de "manifest error") — expliciet meechecken dat een NIEUWE NDA 'm nu wél standaard heeft.
+  check('nieuwe NDA: "target" (Doelonderneming) nu standaard geïnstantieerd', (gNda.json.componenten || []).some((c) => c.block_id === 'target' && c.instance_status === 'ACTIVE'), JSON.stringify((gNda.json.componenten || []).map((c) => c.block_id)));
+  const menuNdaNieuw = await api('GET', '/mna/tos/menu/' + trajectCode + '?profile=NDA&document=' + ndaId, { headers: H });
+  check('nieuwe default-NDA: geen ontbrekend KERN-onderdeel', menuNdaNieuw.json && Array.isArray(menuNdaNieuw.json.ontbrekend_kern) && menuNdaNieuw.json.ontbrekend_kern.length === 0, JSON.stringify(menuNdaNieuw.json && menuNdaNieuw.json.ontbrekend_kern));
   const lijst3 = await api('GET', '/mna/tos/documenten/' + trajectCode, { headers: H });
   check('documentenlijst bevat MoU, LoI én NDA', ['mou', 'loi', 'nda'].every((t) => (lijst3.json.documenten || []).some((d) => d.doc_type === t)));
 
