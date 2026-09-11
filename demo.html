@@ -53,6 +53,7 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
 .slide-punten li{display:flex;gap:12px;font-size:16px;color:var(--sub);line-height:1.65}
 .slide-punten li:before{content:'';flex-shrink:0;width:7px;height:7px;border-radius:50%;background:var(--teal);margin-top:9px}
 .slide-note{margin-top:1.5rem;padding:.85rem 1.1rem;background:var(--teal-bg);border:1px solid var(--teal-dark);border-radius:var(--r);font-size:13px;color:var(--mid);line-height:1.7}
+.caption{margin-top:1rem;font-size:12px;color:var(--muted);line-height:1.6;font-style:italic}
 .footer-bar{display:flex;align-items:center;justify-content:space-between;padding:1.25rem 1.75rem;border-top:1px solid var(--border)}
 .dots{display:flex;gap:7px;flex-wrap:wrap;justify-content:center}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--border2);cursor:pointer;border:none;padding:0}
@@ -112,7 +113,7 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
 <div id="gate">
   <div class="gate-box">
     <div class="gate-title serif">Platformdemo</div>
-    <div class="gate-sub">Alleen voor intern gebruik door Bisschops Financing — voer uw beheersleutel in om te openen.</div>
+    <div class="gate-sub">Alleen voor intern gebruik door Bisschops Financing. Voer uw beheersleutel in om te openen.</div>
     <div class="field"><label>Sleutel</label><input type="password" id="gate-key" autocomplete="off"></div>
     <div id="gate-err">Sleutel incorrect of verbindingsfout.</div>
     <button class="btn" id="gate-btn" style="width:100%">Openen</button>
@@ -172,8 +173,7 @@ const SLIDES=[
     titel:'Eén platform voor het hele overnametraject',
     html:`<div class="hero-row">
       <div>
-        <p style="font-size:16.5px;color:var(--mid);line-height:1.75;margin-top:.5rem">Van het eerste gesprek tot de closing werken verkoper, koper en adviseur in dezelfde beveiligde omgeving — met dezelfde cijfers, dezelfde documenten en één actueel dossier, in plaats van losse e-mails, bijlagen en versies.</p>
-        <div class="slide-note">Deze presentatie doorloopt u samen tijdens een gesprek — elke stap laat zien wat u als partij in het traject daadwerkelijk te zien krijgt.</div>
+        <p style="font-size:16.5px;color:var(--mid);line-height:1.75;margin-top:.5rem">Van het eerste gesprek tot de closing werken verkoper, koper en adviseur in dezelfde beveiligde omgeving, met dezelfde cijfers en dezelfde documenten. Eén actueel dossier in plaats van losse e-mails, bijlagen en versies.</p>
       </div>
       <div class="hero-visual card-shadow">
         <svg viewBox="0 0 320 220" style="width:100%;height:auto;display:block">
@@ -204,25 +204,25 @@ const SLIDES=[
       <div class="rol-kaart card-shadow"><div class="ico-badge" style="background:var(--gold-bg)">&#129309;</div><h3>Koper</h3><p>Krijgt pas toegang na een ondertekende geheimhoudingsverklaring, en alleen tot de onderdelen die de adviseur vrijgeeft.</p></div>
       <div class="rol-kaart card-shadow"><div class="ico-badge" style="background:var(--purple-bg)">&#128202;</div><h3>Begeleider</h3><p>De adviseur die het traject regisseert: dossier, documenten, waardering en communicatie tussen partijen.</p></div>
     </div>
-    <div class="slide-note">Elke rol logt in met een eigen persoonlijke toegangscode — geen account of wachtwoord nodig.</div>`
+    <div class="caption">Elke rol logt in met een eigen persoonlijke toegangscode. Geen account of wachtwoord nodig.</div>`
   },
   {
     eyebrow:'Voor wie',
     titel:'Gebouwd voor meerdere sectoren',
     html:`<div class="sector-grid">
-      <div class="sector-kaart card-shadow"><span class="ico">&#129518;</span><h4>Accountancy</h4><p>Inclusief waardering &amp; sectorbenchmarks</p></div>
-      <div class="sector-kaart card-shadow"><span class="ico">&#127970;</span><h4>MKB</h4><p>Dossier, documenten &amp; proces</p></div>
-      <div class="sector-kaart card-shadow"><span class="ico">&#127973;</span><h4>Zorgpraktijken</h4><p>Dossier, documenten &amp; proces</p></div>
-      <div class="sector-kaart card-shadow"><span class="ico">&#128187;</span><h4>IT &amp; software</h4><p>Dossier, documenten &amp; proces</p></div>
+      <div class="sector-kaart card-shadow"><span class="ico">&#129518;</span><h4>Accountancy</h4><p>Met waardering &amp; sectorbenchmarks</p></div>
+      <div class="sector-kaart card-shadow"><span class="ico">&#127970;</span><h4>MKB</h4><p>Overname of bedrijfsopvolging</p></div>
+      <div class="sector-kaart card-shadow"><span class="ico">&#127973;</span><h4>Zorgpraktijken</h4><p>Praktijkoverdracht</p></div>
+      <div class="sector-kaart card-shadow"><span class="ico">&#128187;</span><h4>IT &amp; software</h4><p>Verkoop van een softwarebedrijf</p></div>
     </div>
-    <div class="slide-note">De onderbouwde waardering met sectorbenchmarks is tot nu toe uitgewerkt voor accountancykantoren. Voor de andere sectoren ondersteunt het platform het volledige dossier- en documentproces; waardering volgt daar zodra er gebronde benchmarks beschikbaar zijn — nooit met een geschat getal vooruitlopend daarop.</div>`
+    <div class="caption">Een onderbouwde waardering met sectorbenchmarks is er op dit moment voor accountancykantoren. Voor de andere sectoren regelt het platform het volledige dossier en documentproces.</div>`
   },
   {
     eyebrow:'Startpunt',
     titel:'Een traject is in enkele minuten opgezet',
     html:`<ul class="slide-punten">
       <li>De adviseur maakt het traject aan en ontvangt meteen een persoonlijke toegangscode voor de verkoper.</li>
-      <li>Die code gaat naar de verkoper — verder is er niets te installeren of te registreren.</li>
+      <li>Die code gaat naar de verkoper. Verder hoeft er niets geïnstalleerd of geregistreerd te worden.</li>
       <li>Zodra er een koper is, krijgt die een eigen, aparte toegangscode met een eigen, beperktere blik op het dossier.</li>
     </ul>`
   },
@@ -239,8 +239,8 @@ const SLIDES=[
       <div class="fase-chip"><span class="nr">7</span>Strategisch &amp; markt</div>
     </div>
     <ul class="slide-punten">
-      <li>Velden kunnen rechtstreeks worden ingevuld, of gevuld worden door documenten te uploaden — het platform leest ze uit en vult wat het met zekerheid kan afleiden.</li>
-      <li>Een waarde waar het platform niet zeker van is, wordt nooit geraden: die komt te staan als "handmatig controleren", zodat er nooit stilzwijgend een verkeerd cijfer in het dossier terechtkomt.</li>
+      <li>Velden vult u rechtstreeks in, of u uploadt documenten en het platform leest ze uit en vult wat het met zekerheid kan afleiden.</li>
+      <li>Een waarde waar het platform niet zeker van is, wordt nooit geraden: die komt te staan als "handmatig controleren". Zo komt er nooit stilzwijgend een verkeerd cijfer in het dossier terecht.</li>
     </ul>`
   },
   {
@@ -255,29 +255,40 @@ const SLIDES=[
       <div class="flow-item">&#128202; Dealvoorstel</div><span class="flow-pijl">&#8594;</span>
       <div class="flow-item">&#127937; Closing-checklist</div>
     </div>
-    <div class="slide-note">Geen van deze documenten wordt blind gegenereerd: elk concept is gebaseerd op de daadwerkelijk ingevulde traject- en dealgegevens, en blijft ter beoordeling van de betrokken adviseur vóórdat het de deur uitgaat.</div>`
+    <div class="caption">Elk concept bouwt voort op de daadwerkelijk ingevulde traject- en dealgegevens, en gaat pas de deur uit na beoordeling door de begeleidende adviseur.</div>`
   },
   {
     eyebrow:'Geheimhouding en intentieverklaring',
     titel:'Opgebouwd uit onderdelen, niet uit één tekstblok',
-    html:`<p style="font-size:15px;color:var(--mid);line-height:1.75;margin-top:.5rem">De geheimhoudingsovereenkomst en de intentieverklaring worden per onderdeel samengesteld — in plaats van als één AI-gegenereerde tekst.</p>
+    html:`<p style="font-size:15px;color:var(--mid);line-height:1.75;margin-top:.5rem">De geheimhoudingsovereenkomst en de intentieverklaring worden per onderdeel samengesteld, in plaats van als één AI-gegenereerde tekst.</p>
     <div class="blocks-row">
       <div class="block-chip">Partijen</div><div class="block-chip">Reikwijdte</div><div class="block-chip">Duur</div><div class="block-chip">Boetebeding</div><div class="block-chip">Prijsmechanisme</div><div class="block-chip">Opschortende voorwaarden</div>
     </div>
     <div class="blocks-arrow">&#8595;</div>
-    <div class="doc-result">&#10003; Geheimhoudingsovereenkomst — gereed voor beoordeling</div>
+    <div class="doc-result">&#10003; Geheimhoudingsovereenkomst, gereed voor beoordeling</div>
     <ul class="slide-punten" style="margin-top:1.6rem">
       <li>Elk onderdeel kan apart worden beoordeeld en afgetekend door een jurist, fiscalist of waarderingsdeskundige.</li>
-      <li>Bij het vastleggen van het document wordt vastgelegd wie wat heeft goedgekeurd — een aantoonbaar spoor, niet alleen een handtekening onderaan.</li>
+      <li>Bij het vastleggen van het document wordt vastgelegd wie wat heeft goedgekeurd: een aantoonbaar spoor, niet alleen een handtekening onderaan.</li>
       <li>Zodra het document is verstuurd, krijgt u het rechtstreeks op uw eigen scherm te lezen en kunt u er zelf digitaal akkoord op geven.</li>
     </ul>`
   },
   {
+    eyebrow:'Eigen specialisten',
+    titel:'Ook zonder eigen jurist of fiscalist verder',
+    html:`<p style="font-size:15px;color:var(--mid);line-height:1.75;margin-top:.5rem">Niet elke adviseur heeft voor elk vakgebied een eigen specialist paraat. Voor de juridische, fiscale of waarderingsbeoordeling van een onderdeel kan de adviseur een specialist inschakelen uit de pool van Bisschops Financing.</p>
+    <div class="rollen-grid" style="grid-template-columns:repeat(3,1fr)">
+      <div class="rol-kaart card-shadow"><div class="ico-badge" style="background:var(--teal-bg)">&#9878;&#65039;</div><h3>Jurist</h3><p>Beoordeelt de juridische onderdelen: partijen, reikwijdte, boetebeding, opschortende voorwaarden.</p></div>
+      <div class="rol-kaart card-shadow"><div class="ico-badge" style="background:var(--gold-bg)">&#128179;</div><h3>Fiscalist</h3><p>Beoordeelt de fiscale kant van het prijsmechanisme en de dealstructuur.</p></div>
+      <div class="rol-kaart card-shadow"><div class="ico-badge" style="background:var(--purple-bg)">&#128202;</div><h3>Waarderingsdeskundige</h3><p>Toetst de waardering en de onderbouwing daarachter.</p></div>
+    </div>
+    <div class="caption">De specialist ziet uitsluitend de onderdelen waarvoor hij is gevraagd, nooit het hele dossier of andere trajecten.</div>`
+  },
+  {
     eyebrow:'Waardering',
-    titel:'Een onderbouwde waardering, geen educated guess',
+    titel:'Een onderbouwde waardering, geen gok',
     html:`<div class="split-2" style="margin-bottom:0">
-      <div class="mini-panel"><h4>Rekenkern</h4><p>EBITDA- of omzetmultiple, DCF, intrinsieke waarde, liquidatiewaarde, goodwill — elke methode met een eigen, transparante berekening.</p></div>
-      <div class="mini-panel"><h4>AI-tweede mening</h4><p>Een onafhankelijke inschatting op basis van sectorbenchmarks, mét bronvermelding — als toetsing naast de rekenkern, niet als vervanging.</p></div>
+      <div class="mini-panel"><h4>Rekenkern</h4><p>EBITDA- of omzetmultiple, DCF, intrinsieke waarde, liquidatiewaarde, goodwill: elke methode met een eigen, transparante berekening.</p></div>
+      <div class="mini-panel"><h4>AI-tweede mening</h4><p>Een onafhankelijke inschatting op basis van sectorbenchmarks, mét bronvermelding, als toetsing naast de rekenkern, niet als vervanging.</p></div>
     </div>
     <div style="margin-top:1.6rem">
       <div style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--teal);margin-bottom:.3rem">De opbrengst-brug &middot; fictief rekenvoorbeeld</div>
@@ -305,8 +316,8 @@ const SLIDES=[
       </svg>
     </div>
     <ul class="slide-punten" style="margin-top:1rem">
-      <li>Laat precies zien wat er van de ondernemingswaarde overblijft na schuld, werkkapitaal en transactiekosten — het bedrag dat écht bij closing binnenkomt.</li>
-      <li>Ontbreekt een onderbouwd getal, dan verzint het platform er nooit een bij — die uitkomst blijft dan gewoon weg.</li>
+      <li>Laat precies zien wat er van de ondernemingswaarde overblijft na schuld, werkkapitaal en transactiekosten: het bedrag dat écht bij closing binnenkomt.</li>
+      <li>Ontbreekt een onderbouwd getal, dan verzint het platform er nooit een bij. Die uitkomst blijft dan gewoon weg.</li>
     </ul>`
   },
   {
@@ -325,7 +336,7 @@ const SLIDES=[
         <td>71<div class="score-bar-track"><div class="score-bar-fill" style="width:71%"></div></div></td>
       </tr>
     </table>
-    <div class="slide-note">Fictief voorbeeld. De weging (prijs 30% &middot; cash-zekerheid 25% &middot; deal-zekerheid 20% &middot; fit 15% &middot; timing 10%) staat vast; de matrix ordent, u beslist welke koper het beste past.</div>`
+    <div class="caption">Fictief voorbeeld. De weging (prijs 30%, cash-zekerheid 25%, deal-zekerheid 20%, fit 15%, timing 10%) staat vast. De matrix ordent, u beslist welke koper het beste past.</div>`
   },
   {
     eyebrow:'Vertrouwelijkheid',
@@ -338,7 +349,27 @@ const SLIDES=[
     <ul class="slide-punten" style="margin-top:1.8rem">
       <li>Een koper ziet vóór de ondertekende geheimhouding geen bedrijfsnaam of contactgegevens.</li>
       <li>Ná ondertekening geeft de adviseur zelf, per onderdeel van het dossier, aan wat de koper mag inzien.</li>
-      <li>Elke inzage, wijziging en verzending wordt vastgelegd in een logboek — zichtbaar voor de adviseur, niet voor de tegenpartij.</li>
+      <li>Elke inzage, wijziging en verzending wordt vastgelegd in een logboek, zichtbaar voor de adviseur, niet voor de tegenpartij.</li>
+    </ul>`
+  },
+  {
+    eyebrow:'Beveiliging',
+    titel:'Onder de motorkap net zo zorgvuldig',
+    html:`<ul class="slide-punten">
+      <li>Elke verbinding is versleuteld en gegevens staan opgeslagen in Europese datacenters (Frankfurt).</li>
+      <li>Alleen wie de juiste, persoonlijke toegangscode heeft, komt binnen. Een sessie verloopt vanzelf na een periode van inactiviteit.</li>
+      <li>Elke belangrijke gebeurtenis in een traject (wie iets inzag, wijzigde of verstuurde) komt in een logboek terecht dat de adviseur kan naslaan.</li>
+      <li>Sluit u een traject af, dan worden de gegevens na de afgesproken bewaartermijn definitief verwijderd, op een beperkte archiefregel na voor administratie en geschillen.</li>
+    </ul>`
+  },
+  {
+    eyebrow:'Wat dit platform onderscheidt',
+    titel:'Herleidbaar, van cijfer tot handtekening',
+    html:`<p style="font-size:15px;color:var(--mid);line-height:1.75;margin-top:.5rem">Het onderdeel waarmee dit platform zich het meest onderscheidt van "een AI die teksten schrijft": alles is naderhand te herleiden.</p>
+    <ul class="slide-punten">
+      <li>Elke waarde in het dossier draagt een herkomst: zelf ingevoerd, uit een document, berekend, een aanname, of een AI-concept. Die herkomst blijft zichtbaar, ook nadat een veld is ingevuld.</li>
+      <li>Een documentonderdeel dat door een specialist is beoordeeld, blijft dat totdat de tekst wijzigt. Past u iets aan, dan vervalt automatisch alleen die ene aftekening, niet de rest van het document.</li>
+      <li>Bij het vastleggen van een document ontstaat een vingerafdruk van de inhoud, zodat later nog aantoonbaar is waaruit die versie bestond, ook wanneer de trajectgegevens zelf inmiddels zijn verwijderd.</li>
     </ul>`
   },
   {
