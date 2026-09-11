@@ -492,6 +492,20 @@ async function run() {
   check('opdracht met kantoornaam-conflict → 409, bevestiging vereist', opdrConflict.status === 409 && opdrConflict.json && opdrConflict.json.bevestiging_vereist === true && (opdrConflict.json.conflict_signalen || []).some((s) => s.code === 'C2_KANTOORNAAM' && s.hard === true), JSON.stringify(opdrConflict.json).slice(0, 240));
   const opdrConflictOk = await api('POST', '/mna/pool/opdracht', { headers: H, body: { specialist_id: spConflictId, domein: 'LEGAL', documenten: [poolDoc], deadline_dagen: 10, conflict_bevestigd: true } });
   check('zelfde opdracht mét conflict_bevestigd:true → ok, signaal blijft zichtbaar', opdrConflictOk.json && opdrConflictOk.json.ok === true && (opdrConflictOk.json.conflict_signalen || []).some((s) => s.code === 'C2_KANTOORNAAM'), JSON.stringify(opdrConflictOk.json).slice(0, 240));
+
+  // Concurrency (werkregel 16): twee gelijktijdige aftekenverzoeken op dezelfde opdracht mogen niet
+  // allebei slagen (dat zou dubbele reviews + dubbele fee-events boeken).
+  const raceToken = (opdrConflictOk.json.specialist_link || '').replace('x-pool-key: ', '');
+  const raceAcc = await api('POST', '/mna/pool/opdracht/reactie?poolkey=' + encodeURIComponent(raceToken), { body: { actie: 'accepteren' } });
+  check('race-opdracht geaccepteerd (setup voor de concurrency-test)', raceAcc.json && raceAcc.json.ok === true);
+  const [raceA, raceB] = await Promise.all([
+    api('POST', '/mna/pool/opdracht/aftekenen?poolkey=' + encodeURIComponent(raceToken), { body: {} }),
+    api('POST', '/mna/pool/opdracht/aftekenen?poolkey=' + encodeURIComponent(raceToken), { body: {} }),
+  ]);
+  const raceOks = [raceA, raceB].filter((r) => r.json && r.json.ok === true).length;
+  const race409s = [raceA, raceB].filter((r) => r.status === 409).length;
+  check('gelijktijdig aftekenen: precies 1 slaagt, de ander krijgt 409 (geen dubbele fee-events)', raceOks === 1 && race409s === 1, JSON.stringify([raceA.status, raceB.status]));
+
   await api('POST', '/mna/admin/pool/specialisten', { adminKey: ADMIN, body: { id: spConflictId, status: 'geroyeerd', beschikbaar: false } });
 
   kop('STAP 21 · purge + reproduceerbaarheid (FASE C — CONTENT weg, MANIFEST blijft)');
