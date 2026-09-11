@@ -137,6 +137,12 @@ function renderCover(){
     +(isKoper()?'<button class="btn" id="to-main-btn2" style="width:100%;margin-top:1rem">Bekijk due diligence-informatie &#8594;</button>':'')
     +(isKoper()?'<button class="btn-outline" id="to-dataroom-btn2" style="width:100%;margin-top:.5rem">&#128196; Alle documenten bekijken</button>':'')
     +(isKoper()&&t.koper_vrijgegeven?'<button class="btn-outline" id="to-waardering-btn2" style="width:100%;margin-top:.5rem">&#9654; Waardering</button>':'')
+    // Koper-bod (11 sep 2026, Marcel: "kan de koper zelf een bod uitbrengen?" — "ja dat wil ik",
+    // met de expliciete randvoorwaarde "alleen als de adviseur aan de kant van de verkoper staat").
+    // Bij een buy-side/dual-mandate traject (opdrachtgever_rol != 'verkoper') is de koper-rol al de
+    // eigen cliënt van de adviseur — die dient geen bod in bij zichzelf, dus geen sectie. Gevuld in
+    // bindAll() (renderKoperBodSectie()), vandaar een lege placeholder hier.
+    +(isKoper()&&t.koper_vrijgegeven&&(t.opdrachtgever_rol||'verkoper')==='verkoper'?'<div id="koper-bod-sectie" style="margin-top:1.5rem"></div>':'')
     +'</div>';
 }
 
@@ -1083,6 +1089,39 @@ function contrastveiligeHuisstijlkleur(hex){
   return resultaat;
 }
 
+// Koper-bod (11 sep 2026, Marcel: "kan de koper in het platform een bod uitbrengen?" — "ja dat wil
+// ik", "alleen als de adviseur aan de kant van de verkoper staat"). Geen vast "format" nodig — de
+// koper vult alleen een bedrag + vrije toelichting in; de begeleider verwerkt het bod verder zelf
+// (bijv. via de bestaande "Indicatieve bieding"-tool om er een formele brief van te maken).
+function renderKoperBodSectie(el){
+  el.innerHTML='<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem">'
+    +'<div style="font-size:11px;font-weight:600;color:var(--gold-dark);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.6rem">&#128176; Bod uitbrengen</div>'
+    +'<div style="font-size:12px;color:var(--mid);margin-bottom:.75rem">Wilt u een indicatief bod doen op basis van de beschikbare informatie? Vul het bedrag en eventueel een toelichting in — uw adviseurscontact ontvangt dit bod en neemt contact met u op. Dit is nog niet bindend.</div>'
+    +'<div id="kb-form">'
+    +'<label for="kb-bedrag" style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:4px">Bodbedrag (&euro;)</label>'
+    +'<input type="number" id="kb-bedrag" min="1" step="1000" placeholder="Bijv. 1500000" style="width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:var(--r);font-family:\'IBM Plex Sans\',sans-serif;font-size:13px;padding:9px 11px;color:var(--sub);outline:none;box-sizing:border-box">'
+    +'<label for="kb-toelichting" style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin:.6rem 0 4px">Toelichting (optioneel)</label>'
+    +'<textarea id="kb-toelichting" rows="3" style="width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:var(--r);font-family:\'IBM Plex Sans\',sans-serif;font-size:13px;padding:9px 11px;color:var(--sub);resize:vertical;outline:none;box-sizing:border-box" placeholder="Voorwaarden, financieringsvoorbehoud, gewenste tijdlijn, etc."></textarea>'
+    +'<div id="kb-err" style="display:none;color:var(--red);font-size:12px;margin-top:.5rem"></div>'
+    +'<button class="btn" id="kb-verstuur" style="margin-top:.75rem;background:var(--gold)">&#128176; Bod indienen</button>'
+    +'</div><div id="kb-resultaat" style="margin-top:.75rem"></div></div>';
+  ge('kb-verstuur').onclick=async function(){
+    var btn=this, err=ge('kb-err');
+    err.style.display='none';
+    var bedrag=parseFloat(ge('kb-bedrag').value);
+    if(!bedrag||bedrag<=0){err.textContent='Vul een geldig bodbedrag in.';err.style.display='block';return;}
+    var toelichting=ge('kb-toelichting').value.trim();
+    btn.disabled=true;btn.textContent='Bezig...';
+    var r=await fetch(WORKER+'/mna/koper/bod',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:S.code,bedrag:bedrag,toelichting:toelichting})}).then(function(x){return x.json();}).catch(function(){return{};});
+    if(r.ok){
+      ge('kb-form').style.display='none';
+      ge('kb-resultaat').innerHTML='<div style="background:var(--teal-bg);border:1px solid var(--teal-dark);border-radius:var(--r);padding:.75rem 1rem;font-size:12.5px;color:var(--teal-dim)">&#10003; Uw bod van '+fmtGeld(bedrag)+' is ingediend. Uw adviseurscontact is op de hoogte en neemt contact met u op.</div>';
+    } else {
+      err.textContent=r.error||'Indienen mislukt.';err.style.display='block';btn.disabled=false;btn.textContent='💰 Bod indienen';
+    }
+  };
+}
+
 function bindAll(){
   var lb=ge('l-btn');
   if(lb){
@@ -1381,6 +1420,13 @@ function bindAll(){
     }
     if(S.traject&&S.traject.teaser_tekst)renderTeaserVerk(S.traject.teaser_tekst);else genereerTeaserVerk();
   };
+
+  // Koper-bod (11 sep 2026) — de koper dient zelf een indicatief bod in. Alleen relevant bij een
+  // sell-side mandaat; de HTML-placeholder in renderCover() bestaat dan ook alleen in dat geval,
+  // dus deze functie hoeft zelf geen aparte opdrachtgever_rol-check te doen (het element ontbreekt
+  // simpelweg als de sectie niet van toepassing is).
+  var koperBodSectie=ge('koper-bod-sectie');
+  if(koperBodSectie)renderKoperBodSectie(koperBodSectie);
 
   var ndaLees=ge('nda-lees-btn');
   if(ndaLees)ndaLees.onclick=function(){

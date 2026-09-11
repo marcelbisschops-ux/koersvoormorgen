@@ -529,7 +529,7 @@ async function laadRisicoBadges(){
 // worden pas als documentversie bewaard zodra ze daadwerkelijk verstuurd worden, niet bij het openen
 // van het scherm, dus daar blijft de statische tekst uit stapRij() staan).
 async function laadDocFlowStatus(){
-  var el=document.querySelector('.stap-status[data-doc="bg-closing-actie"]');
+  var el=document.querySelector('.stap-kaart-status[data-doc="bg-closing-actie"]');
   if(!el)return;
   var d=await fetch(WORKER+'/mna/closing-checklist/'+S.code,{headers:{'x-tussen-key':S._bgKey||''}}).then(function(r){return r.json();}).catch(function(){return{ok:false};});
   if(!d.ok)return;
@@ -713,6 +713,16 @@ function renderBegeleiderDashboard(app){
     +'<span id="wz-badge" style="display:none;background:var(--red);color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px"></span>'
     +'</div><span id="wz-chevron" style="font-size:12px;color:var(--muted)">&#9660;</span>'
     +'</div><div id="wz-body" style="display:none;padding:0 1rem 1rem"></div></div>'
+    // Koper-bod (11 sep 2026) — alleen relevant bij een sell-side mandaat, zelfde randvoorwaarde
+    // als de indien-kant in worker/35-koper-bod.js. Zelfde collapsible+badge-patroon als het
+    // Wijzigingen-paneel hierboven, voor een consistente ervaring.
+    +((t.opdrachtgever_rol||'verkoper')==='verkoper'?('<div class="panel" id="kb-panel" style="margin-bottom:1rem;padding:0">'
+      +'<div id="kb-toggle-hdr" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;padding:.75rem 1rem">'
+      +'<div style="display:flex;align-items:center;gap:8px">'
+      +'<span style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">&#128176; Biedingen van de koper</span>'
+      +'<span id="kb-badge" style="display:none;background:var(--gold);color:#1c1400;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px"></span>'
+      +'</div><span id="kb-chevron" style="font-size:12px;color:var(--muted)">&#9660;</span>'
+      +'</div><div id="kb-panel-body" style="display:none;padding:0 1rem 1rem"></div></div>'):'')
     +'<div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:1rem">'
     +'<div>'
     +'<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.25rem">Traject</div>'
@@ -722,6 +732,10 @@ function renderBegeleiderDashboard(app){
     +'<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
     +'<button class="btn-outline btn-sm" id="bg-groepsstructuur">&#127970; Groepsstructuur</button>'
     +'<button class="btn-outline btn-sm" id="bg-partners">&#129489;&#8205;&#128188; '+esc(getPartnerTerm().titel)+'</button>'
+    // Feedback/bug melden stond verstopt in de inklapbare "Analyse"-sectie, tussen analysetools waar
+    // het inhoudelijk niet bij hoort (Marcel, 11 sep 2026: "feedback bug knop zit helemaal
+    // verkeerd") — nu altijd zichtbaar in de trajectheader, geen sectie hoeft er open voor.
+    +'<button class="btn-outline btn-sm" id="bg-feedback-actie" style="border-color:var(--gold);color:var(--gold)">&#128172; Feedback / bug</button>'
     +(t.status==='afgesloten'?'':'<button class="btn-ghost btn-sm" id="bg-afsluiten" style="color:var(--red);border-color:var(--red)">&#127937; Traject afsluiten</button>')
     +'<span style="display:inline-block;padding:4px 12px;border-radius:12px;font-size:11px;font-weight:600;background:'+(t.status==='vergrendeld'?'var(--red-bg)':'var(--teal-bg)')+';color:'+(t.status==='vergrendeld'?'var(--red)':'var(--teal)')+';border:1px solid '+(t.status==='vergrendeld'?'var(--red)':'var(--teal-dark)')+'">'+esc(t.status||'actief')+'</span>'
     +'</div></div></div>'
@@ -752,6 +766,12 @@ function renderBegeleiderDashboard(app){
         : (marketingAan && !t.teaser_tekst) ? 'bg-teaser-actie'
         : !t.nda_getekend ? 'bg-nda-composer-actie'
         : null;
+      // Horizontale kaart i.p.v. verticale rij-met-lijn (11 sep 2026, Marcel: "documentflow wil ik
+      // horizontaal en niet verticaal") — zelfde knop-id's en dezelfde onclick-koppeling verderop,
+      // alleen de visuele verpakking is nieuw: een grid van kaarten (.stap-grid/.stap-kaart in
+      // mna.html) i.p.v. een stappenlijn met verbindingslijntjes. isLaatste is hierdoor overbodig
+      // geworden (geen lijn meer om af te breken) maar blijft als parameter bestaan zodat bestaande
+      // aanroepen ongewijzigd kunnen blijven.
       function stapRij(id, icoon, kleur, naam, statusHtml, isLaatste, skipContractenGate, customDisabled, customDisabledTitel){
         // Het informatieverzoek is een checklist/e-mailtool, geen ondertekenbaar contract — hoort dus
         // niet achter de betaalde module Contracten (zelfde als de bestaande "Informatieverzoek"-knop
@@ -761,17 +781,12 @@ function renderBegeleiderDashboard(app){
         // expliciet is meegegeven, wint die, en negeert deze rij de contractenAan-check volledig.
         var disabled=customDisabled!==undefined?customDisabled:(skipContractenGate?false:!contractenAan);
         var titel=customDisabled!==undefined?(customDisabledTitel||''):'Module Contracten niet actief — neem contact op via koersvoormorgen.nl';
-        return '<div style="display:flex;gap:12px">'
-          +'<div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0">'
-          +'<div style="width:34px;height:34px;border-radius:50%;background:'+(disabled?'var(--panel)':kleur)+';border:2px solid '+(disabled?'var(--border2)':kleur)+';display:flex;align-items:center;justify-content:center;font-size:15px;'+(disabled?'opacity:.4':'')+'">'+icoon+'</div>'
-          +(isLaatste?'':'<div style="width:2px;flex:1;background:var(--border2);margin:2px 0;min-height:18px"></div>')
-          +'</div>'
-          +'<button id="'+id+'" class="stap-btn" '+(disabled?'disabled title="'+esc(titel)+'"':'')+' style="all:unset;cursor:'+(disabled?'not-allowed':'pointer')+';flex:1;padding-bottom:16px;'+(disabled?'opacity:.45':'')+'">'
-          +'<div style="font-size:13px;font-weight:600;color:var(--head)">'+naam
-            +(id===volgendeStapId&&!disabled?' <span style="font-size:9.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#fff;background:var(--teal);border-radius:10px;padding:2px 8px;vertical-align:middle">Volgende stap</span>':'')
-            +'</div>'
-          +'<div class="stap-status" data-doc="'+id+'" style="font-size:11px;color:var(--muted);margin-top:2px">'+(statusHtml||'')+'</div>'
-          +'</button></div>';
+        return '<button id="'+id+'" class="stap-kaart" '+(disabled?'disabled title="'+esc(titel)+'"':'')+'>'
+          +'<div class="stap-kaart-ico" style="background:'+(disabled?'var(--panel)':kleur)+';'+(disabled?'opacity:.5;border:1px solid var(--border2)':'')+'">'+icoon+'</div>'
+          +'<div class="stap-kaart-naam">'+naam+'</div>'
+          +(id===volgendeStapId&&!disabled?'<span class="stap-kaart-badge">Volgende stap</span>':'')
+          +'<div class="stap-kaart-status" data-doc="'+id+'">'+(statusHtml||'')+'</div>'
+          +'</button>';
       }
       function getekendStatus(getekendVeld, datumVeld){
         var getekend=S.traject&&S.traject[getekendVeld];
@@ -804,7 +819,8 @@ function renderBegeleiderDashboard(app){
         // Expliciete instructie (Marcel, 11 sep 2026: "als een document gegenereerd moet worden, zie
         // je nog steeds niet waar") — deze lijst IS de plek, maar dat was nergens met zoveel woorden
         // gezegd; met 17 rijen in deze flow is dat kennelijk niet vanzelfsprekend.
-        +'<div style="font-size:11px;color:var(--muted);padding:.4rem 0 .6rem;border-bottom:1px dashed var(--border2);margin-bottom:.4rem">Klik op een document hieronder om het te genereren, te bekijken of te versturen — dit is de volledige documentenflow van dit traject, in de volgorde waarin ze normaal aan bod komen. Rechts van elke regel ziet u de status.</div>'
+        +'<div style="font-size:11px;color:var(--muted);padding:.4rem 0 .6rem;border-bottom:1px dashed var(--border2);margin-bottom:.4rem">Klik op een document hieronder om het te genereren, te bekijken of te versturen — dit is de volledige documentenflow van dit traject, in de volgorde waarin ze normaal aan bod komen. De status staat onderin elke kaart.</div>'
+        +'<div class="stap-grid">'
         // Volgorde volgt de daadwerkelijke dealstroom (Marcel, 21 aug 2026): BEM is het mandaat
         // tussen begeleider en opdrachtgever (Fase 0 in de eigen BEM-sjablonen, worker/02-config-
         // constanten.js) — wordt getekend vóórdat er met de tegenpartij iets gebeurt, dus hoort vóór
@@ -836,8 +852,9 @@ function renderBegeleiderDashboard(app){
         +stapRij('bg-dealvoorstel-actie','&#128202;','#8a5a00','Dealvoorstel','Klik om te genereren')
         +((t.opdrachtgever_rol==='koper')?'':stapRij('bg-biedingvergelijk-actie','&#9878;&#65039;','#7a5a00','Biedingen vergelijken','Gekoppelde trajecten van dezelfde verkoper — Deal Value Matrix',false,true))
         +stapRij('bg-risicoraamwerk-actie','&#129517;','#4a6ea0','Risicoraamwerk (SWOT/PESTEL/Porter)','Klik om te genereren')
-        +stapRij('bg-spa-actie','&#128220;','#5a5470','Aandachtspunten koopovereenkomst (SPA)','Aandachtspuntenlijst — geen concept-overeenkomst')
+        +stapRij('bg-spa-actie','&#128220;','#5a5470','Koopovereenkomst (SPA)','Klik om te genereren')
         +stapRij('bg-closing-actie','&#127937;','var(--teal)','Closing-checklist','Laden...',true)
+        +'</div>'
         +(contractenAan?'':'<div style="font-size:11px;color:var(--muted);margin:.4rem 0 .6rem">&#128274; Module Contracten niet actief — neem contact op via koersvoormorgen.nl om deze module te activeren.</div>')
         +'<div style="padding:.85rem 0;border-top:1px dashed var(--border2)"><button class="btn-outline btn-sm" id="bg-eigendoc-actie">&#128206; Eigen document versturen</button><div style="font-size:11px;color:var(--muted);margin-top:4px">Upload een PDF of Word-bestand en deel het rechtstreeks met verkoper en/of koper — werkt ook zonder de module Contracten.</div></div>'
         +'</div></div>';
@@ -850,14 +867,18 @@ function renderBegeleiderDashboard(app){
         +'<button class="btn" id="bg-infoverzoek-actie" style="background:var(--teal-dim);padding:10px;font-size:12px">&#128203; Informatieverzoek</button>'
         +'<button class="btn" id="bg-uitn-tussenp-btn" style="background:var(--teal-dim);padding:10px;font-size:12px">&#128101; Tussenpersoon-toegang</button>'
         +'</div></div></div>';
-      // ── Analyse (ingeklapt) ──
+      // ── Analyse (ingeklapt) ── Marcel, 11 sep 2026: "wat is verschil ai verificatie en ai
+      // analyse en waardering" — beide knoppen begonnen met "AI", zonder dat het label zei WAT ze
+      // elk laten zien. Waardering & analyse = de daadwerkelijke rekenkern/waarderingsuitkomst;
+      // Herkomst ingevulde gegevens = een audit-overzicht van welk % van de DD-velden via AI-
+      // documentextractie vs. handmatig is ingevuld — twee heel verschillende dingen die toevallig
+      // allebei AI gebruiken. Labels nu beschrijven wat je te zien krijgt, niet welke techniek erachter zit.
       html+='<div class="panel" style="margin-bottom:1.25rem;padding:0">'+secHdr('analyse','&#9881; Analyse').replace('&#9650;','&#9660;')
         +'<div class="bg-sec-body" data-sec="analyse" style="display:none;padding:0 1rem 1rem">'
         +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
-        +'<button class="btn" id="bg-waardering-actie" style="background:#6b7c93">&#9881; AI-analyse &amp; waardering</button>'
-        +'<button class="btn-outline btn-sm" id="bg-ai-status-actie">&#129302; AI-verificatiestatus</button>'
+        +'<button class="btn" id="bg-waardering-actie" style="background:#6b7c93">&#9881; Waardering &amp; analyse</button>'
+        +'<button class="btn-outline btn-sm" id="bg-ai-status-actie">&#129302; Herkomst ingevulde gegevens</button>'
         +'<button class="btn-outline btn-sm" id="bg-koperfit-actie">&#127919; Koper-fit strategie</button>'
-        +'<button class="btn-outline btn-sm" id="bg-feedback-actie" style="border-color:var(--gold);color:var(--gold)">&#128172; Feedback / bug melden</button>'
         +'</div></div></div>';
       return html;
     })()
@@ -1143,6 +1164,10 @@ function renderBegeleiderDashboard(app){
     var out=document.getElementById('bg-doc-out');
     out.style.display='block';
     out.innerHTML='<div style="color:var(--muted);font-size:13px;padding:1rem;background:var(--card);border-radius:var(--r2)">Laden...</div>';
+    // Marcel, 11 sep 2026: "als een document gegenereerd wordt moet dat zichtbaar gebeuren, zonder
+    // scrollen" — deze functie toont zowel een vers gegenereerd als een al bestaand document; scroll
+    // meteen (niet pas ná de fetch hieronder) zodat het "Laden..."-blok zelf al in beeld komt.
+    out.scrollIntoView({behavior:'smooth',block:'start'});
     var alle=await fetch(WORKER+'/mna/versies/'+S.code,{headers:{'x-tussen-key':S._bgKey||''}}).then(function(r){return r.json();}).catch(function(){return [];});
     var varianten=[type,type+'_upload'];
     var matches=(Array.isArray(alle)?alle:[]).filter(function(v){return varianten.indexOf(v.doc_type)!==-1;});
@@ -2074,11 +2099,16 @@ function renderBegeleiderDashboard(app){
     var titel='Aandachtspunten koopovereenkomst (SPA) — '+(t2.kantoor_naam||S.code);
     out.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem">'
       +'<div style="font-size:11px;font-weight:600;color:#5a5470;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.5rem">Aandachtspunten koopovereenkomst (SPA)</div>'
-      +'<div style="font-size:12px;color:var(--gold-dark);background:var(--gold-bg);border:1px solid var(--gold);border-radius:6px;padding:.5rem .75rem;margin-bottom:.75rem;line-height:1.5">&#9888; Dit is <strong>geen concept-overeenkomst</strong>. Het opstellen van de koopovereenkomst is voorbehouden aan uw jurist/notaris. Onderstaande lijst helpt u het gesprek daarmee voor te bereiden.</div>'
+      +'<div style="font-size:12px;color:var(--gold-dark);background:var(--gold-bg);border:1px solid var(--gold);border-radius:6px;padding:.5rem .75rem;margin-bottom:.75rem;line-height:1.5">&#9888; Dit is <strong>geen concept-overeenkomst</strong>. Het platform stelt de koopovereenkomst zelf niet op — die tekst is nooit juridisch getoetst. Onderstaande lijst helpt u het gesprek met uw jurist voor te bereiden.</div>'
       +'<textarea id="spa-doc-tekst" readonly style="width:100%;height:340px;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:Georgia,serif;font-size:12px;line-height:1.8;padding:1rem;outline:none;resize:vertical">'+esc(tekst)+'</textarea>'
       +'<div style="display:flex;gap:8px;margin-top:.75rem">'
       +'<button id="spa-print" class="btn-ghost" style="font-size:12px;padding:6px 14px">&#128196; Print / PDF</button>'
-      +'</div></div>';
+      +'</div>'
+      // Marcel, 11 sep 2026: "als hij een standaardtekst wil invoeren of een tekst die hij van een
+      // jurist heeft gekregen wil invoegen" — die weg bestond al (Eigen document versturen, verderop
+      // in de Documenten-flow), maar was hier nergens zichtbaar vanaf de SPA-checklist zelf.
+      +'<div style="font-size:11.5px;color:var(--muted);margin-top:.75rem;padding-top:.6rem;border-top:1px dashed var(--border2)">Heeft u zelf al een concept-koopovereenkomst — van uw eigen jurist, of een vast kantoorsjabloon? Upload en verstuur die rechtstreeks via <strong>"Eigen document versturen"</strong> onderaan de Documenten-flow; dat werkt met elk PDF- of Word-bestand.</div>'
+      +'</div>';
     document.getElementById('spa-print').onclick=function(){printDoc(document.getElementById('spa-doc-tekst').value,titel,'spa');};
   }
 
@@ -3378,6 +3408,56 @@ function renderBegeleiderDashboard(app){
         }
       };
       laadWijzigingen();
+    })();
+
+    // Biedingen van de koper (11 sep 2026) — zelfde collapsible+badge-patroon als het
+    // Wijzigingen-paneel hierboven. Het element bestaat alleen als de HTML-render dit een
+    // sell-side-mandaat vond (t.opdrachtgever_rol==='verkoper'), dus geen aparte check hier nodig.
+    (function initKoperBodPanel(){
+      var hdr=document.getElementById('kb-toggle-hdr');
+      var body=document.getElementById('kb-panel-body');
+      var badge=document.getElementById('kb-badge');
+      var chevron=document.getElementById('kb-chevron');
+      if(!hdr)return;
+      var biedingenData=[];
+      var gezienKey='ki_kb_gezien_'+S.code;
+      function laadBiedingen(){
+        fetch(WORKER+'/mna/begeleider/biedingen/'+S.code,{headers:{'x-tussen-key':S._bgKey||''}})
+          .then(function(r){return r.json();})
+          .then(function(d){
+            biedingenData=d.biedingen||[];
+            var laatstGezien=parseInt(localStorage.getItem(gezienKey)||'0',10);
+            var nieuw=biedingenData.filter(function(b){return b.ingediend_op>laatstGezien;}).length;
+            if(nieuw>0){badge.textContent=nieuw+' nieuw';badge.style.display='inline-block';}
+            else{badge.style.display='none';}
+          }).catch(function(){});
+      }
+      function renderLijst(){
+        if(!biedingenData.length){body.innerHTML='<div style="font-size:12px;color:var(--muted);font-style:italic;padding-top:.5rem">Nog geen biedingen ingediend door de koper.</div>';return;}
+        var html='<div style="font-size:11px;color:var(--muted);padding:.5rem 0 .3rem">Rechtstreeks door de koper ingediend, nog niet-bindend. Gebruik desgewenst "Indicatieve bieding" in de Documenten-flow om er een formele reactie op op te stellen.</div>'
+          +'<div style="display:flex;flex-direction:column;gap:6px;max-height:340px;overflow-y:auto">';
+        biedingenData.forEach(function(b){
+          var dt=new Date(b.ingediend_op).toLocaleString('nl-NL',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+          html+='<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:.6rem .75rem;font-size:12px">'
+            +'<div style="display:flex;justify-content:space-between;gap:8px;margin-bottom:.3rem">'
+            +'<span style="font-weight:700;color:var(--gold-dark);font-size:14px">'+fmtGeld(b.bedrag)+'</span>'
+            +'<span style="color:var(--muted);font-size:11px">'+dt+'</span>'
+            +'</div>'+(b.toelichting?'<div style="color:var(--sub);line-height:1.5;white-space:pre-wrap">'+esc(b.toelichting)+'</div>':'')+'</div>';
+        });
+        html+='</div>';
+        body.innerHTML=html;
+      }
+      hdr.onclick=function(){
+        var open=body.style.display!=='none';
+        if(open){body.style.display='none';chevron.innerHTML='&#9660;';}
+        else{
+          body.style.display='block';chevron.innerHTML='&#9650;';
+          renderLijst();
+          localStorage.setItem(gezienKey,String(Date.now()));
+          badge.style.display='none';
+        }
+      };
+      laadBiedingen();
     })();
 
     // Laad gesprekken voor begeleider

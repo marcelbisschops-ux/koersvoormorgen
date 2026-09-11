@@ -50,6 +50,7 @@ function renderHandleiding(){
     + stap(5,'Vragen stellen (Q&amp;A)','Per informatiefase kunt u vragen stellen via het Q&amp;A-register. De adviseur (of verkoper, via de adviseur) beantwoordt deze en de antwoorden blijven in het dossier bewaard. Ná een antwoord kunt u doorpraten: elke vraag heeft een reactiedraad waarin u en de adviseur kunnen blijven reageren.')
     + stap(6,'Letter of Intent','Zodra de hoofdpunten zijn afgestemd, stelt de adviseur een LoI op ter ondertekening door beide partijen — dit ontgrendelt bij de verkoper ook de diepere fase-2-vragen.')
     + stap(7,'Meekijkers','Onder "Wie kijkt er mee" op dit scherm ziet u of er een externe partij (bijvoorbeeld een bank of accountant) beperkte, alleen-lezen inzage heeft gekregen in dit traject, en in welk onderdeel. Dit gebeurt alleen met toestemming van de adviseur en is op elk moment intrekbaar.')
+    + stap(8,'Zelf een bod uitbrengen','Zodra u dossiertoegang heeft, kunt u op het startscherm zelf een indicatief bod indienen: vul een bedrag en desgewenst een toelichting in (voorwaarden, financieringsvoorbehoud, tijdlijn). Dit is nog niet bindend — de adviseur ontvangt uw bod en neemt daarna contact met u op. Deze optie staat alleen bij trajecten waar de adviseur de verkopende partij begeleidt.')
   );
 
   secties.begeleider = sectie('begeleider', '🧭 Begeleider (binnen een traject)', ''
