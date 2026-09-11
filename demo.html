@@ -1,0 +1,268 @@
+<!-- © 2026 Bisschops Financing B.V. Alle rechten voorbehouden. -->
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light dark">
+<meta name="robots" content="noindex, nofollow">
+<title>Koers voor Morgen · Platformdemo</title>
+<link rel="stylesheet" href="/assets/fonts.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html{color-scheme:light dark}
+:root{--void:#f2ece0;--panel:#fdfaf3;--card:#eae1d0;--border:#d8cfbd;--border2:#c7bda4;--muted:#556573;--mid:#33414c;--sub:#16232e;--head:#0d1b2a;--teal:#3d6b63;--teal-dim:#2c4f4a;--teal-dark:#12352d;--teal-bg:rgba(61,107,99,.1);--gold:#c49a4a;--gold-bg:rgba(196,154,74,.12);--gold-dark:#8a6a2e;--red:#e05252;--red-bg:rgba(224,82,82,.1);--info:#2a5ea0;--info-bg:#eef3fa;--purple:#7c5cbf;--purple-bg:#f3f0ff;--purple-border:#c8b8f0;--r:6px;--r2:10px}
+@media(prefers-color-scheme:dark){
+  :root{--void:#0d1b2a;--panel:#132534;--card:#16293a;--border:#24384a;--border2:#33485c;--muted:#8ba0ae;--mid:#c6d2da;--sub:#e2e9ee;--head:#f4f1e9;--teal:#5e9b8f;--teal-dim:#4a8377;--teal-dark:#9cc8bd;--teal-bg:rgba(94,155,143,.16);--gold:#d8b36a;--gold-bg:rgba(216,179,106,.14);--gold-dark:#e8cf9a;--red:#e8746b;--red-bg:rgba(232,116,107,.14);--info:#6ea8e0;--info-bg:rgba(110,168,224,.14);--purple:#b39ce0;--purple-bg:rgba(179,156,224,.16);--purple-border:#8f74b8}
+}
+body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--void);color:var(--sub);min-height:100vh;font-size:15px;line-height:1.6}
+.serif{font-family:'Newsreader',Georgia,'Times New Roman',serif}
+.mono{font-family:'IBM Plex Mono',monospace}
+.btn{background:var(--teal);color:#fff;font-family:inherit;font-size:13px;font-weight:600;padding:10px 20px;border-radius:var(--r);border:none;cursor:pointer}
+.btn:hover{background:var(--teal-dim)}
+.btn:disabled{background:var(--border2);color:var(--muted);cursor:default}
+.btn-ghost{background:transparent;border:1px solid var(--border2);color:var(--mid);font-family:inherit;font-size:13px;font-weight:500;padding:10px 20px;border-radius:var(--r);cursor:pointer}
+.btn-ghost:hover{border-color:var(--mid)}
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:1rem}
+.field label{font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.field input{background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:inherit;font-size:13px;padding:10px 12px;outline:none;width:100%}
+.field input:focus{border-color:var(--teal)}
+
+/* ── Poort ── */
+#gate{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:1.5rem}
+.gate-box{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:2.5rem;width:100%;max-width:380px}
+.gate-title{font-size:1.3rem;color:var(--head);font-weight:600;margin-bottom:.4rem}
+.gate-sub{font-size:13px;color:var(--muted);margin-bottom:1.5rem;line-height:1.7}
+#gate-err{color:var(--red);font-size:12px;margin-bottom:.75rem;display:none}
+
+/* ── Presentatie ── */
+#deck{display:none;min-height:100vh;flex-direction:column}
+.deck-hdr{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.75rem;border-bottom:1px solid var(--border)}
+.brand{font-size:11px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:8px}
+.wdot{width:6px;height:6px;border-radius:50%;background:var(--teal)}
+.deck-nav{display:flex;align-items:center;gap:14px}
+#slide-teller{font-size:12px;color:var(--muted);font-family:'IBM Plex Mono',monospace}
+.stage{flex:1;display:flex;align-items:center;justify-content:center;padding:2rem 1.5rem 1rem}
+.slide{max-width:920px;width:100%;display:none;animation:fadeIn .35s ease}
+.slide.actief{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.slide-eyebrow{font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--teal);margin-bottom:.6rem}
+.slide h1{font-family:'Newsreader',Georgia,'Times New Roman',serif;font-size:2.1rem;font-weight:600;color:var(--head);margin-bottom:1.1rem;line-height:1.25}
+.slide-punten{list-style:none;display:flex;flex-direction:column;gap:.85rem;margin-top:1.4rem}
+.slide-punten li{display:flex;gap:12px;font-size:16px;color:var(--sub);line-height:1.65}
+.slide-punten li:before{content:'';flex-shrink:0;width:7px;height:7px;border-radius:50%;background:var(--teal);margin-top:9px}
+.slide-note{margin-top:1.5rem;padding:.85rem 1.1rem;background:var(--teal-bg);border:1px solid var(--teal-dark);border-radius:var(--r);font-size:13px;color:var(--mid);line-height:1.7}
+.footer-bar{display:flex;align-items:center;justify-content:space-between;padding:1.25rem 1.75rem;border-top:1px solid var(--border)}
+.dots{display:flex;gap:7px;flex-wrap:wrap;justify-content:center}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--border2);cursor:pointer;border:none;padding:0}
+.dot.actief{background:var(--teal);width:22px;border-radius:5px}
+
+/* ── Diagram-bouwstenen ── */
+.rollen-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:1.5rem}
+@media(max-width:760px){.rollen-grid{grid-template-columns:1fr}}
+.rol-kaart{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem}
+.rol-kaart .ico{font-size:1.5rem;margin-bottom:.5rem}
+.rol-kaart h3{font-size:14px;color:var(--head);margin-bottom:.4rem}
+.rol-kaart p{font-size:12.5px;color:var(--muted);line-height:1.6}
+.fasen-rij{display:flex;gap:8px;flex-wrap:wrap;margin-top:1.5rem}
+.fase-chip{background:var(--card);border:1px solid var(--border2);border-radius:20px;padding:7px 14px;font-size:12px;color:var(--mid);display:flex;align-items:center;gap:6px}
+.fase-chip .nr{background:var(--teal);color:#fff;width:16px;height:16px;border-radius:50%;font-size:9px;display:flex;align-items:center;justify-content:center;font-weight:700}
+.flow-rij{display:flex;gap:0;flex-wrap:wrap;align-items:center;margin-top:1.5rem}
+.flow-item{background:var(--panel);border:1px solid var(--border);border-radius:var(--r);padding:9px 14px;font-size:12.5px;color:var(--sub);white-space:nowrap}
+.flow-pijl{color:var(--muted);padding:0 8px;font-size:14px}
+.split-2{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-top:1.5rem}
+@media(max-width:760px){.split-2{grid-template-columns:1fr}}
+.mini-panel{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.1rem 1.25rem}
+.mini-panel h4{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--teal);margin-bottom:.55rem}
+.mini-panel p{font-size:13px;color:var(--mid);line-height:1.7}
+</style>
+</head>
+<body>
+
+<div id="gate">
+  <div class="gate-box">
+    <div class="gate-title serif">Platformdemo</div>
+    <div class="gate-sub">Alleen voor intern gebruik door Bisschops Financing — voer uw beheersleutel in om te openen.</div>
+    <div class="field"><label>Sleutel</label><input type="password" id="gate-key" autocomplete="off"></div>
+    <div id="gate-err">Sleutel incorrect of verbindingsfout.</div>
+    <button class="btn" id="gate-btn" style="width:100%">Openen</button>
+  </div>
+</div>
+
+<div id="deck">
+  <div class="deck-hdr">
+    <div class="brand"><div class="wdot"></div>Koers voor Morgen <span style="color:var(--teal);margin-left:4px">Platformdemo</span></div>
+    <div class="deck-nav">
+      <span id="slide-teller"></span>
+      <button class="btn-ghost" id="fullscreen-btn" style="font-size:12px;padding:7px 14px">&#x26F6; Volledig scherm</button>
+    </div>
+  </div>
+  <div class="stage" id="stage"></div>
+  <div class="footer-bar">
+    <button class="btn-ghost" id="prev-btn">&#8592; Vorige</button>
+    <div class="dots" id="dots"></div>
+    <button class="btn" id="next-btn">Volgende &#8594;</button>
+  </div>
+</div>
+
+<script>
+const _WORKER_WHITELIST=['https://kantoorinzicht.marcel-bisschops.workers.dev','https://kantoorinzicht-staging.marcel-bisschops.workers.dev'];
+const _WORKER_PARAM=new URLSearchParams(location.search).get('worker')||'';
+const WORKER=_WORKER_WHITELIST.includes(_WORKER_PARAM)?_WORKER_PARAM:'https://kantoorinzicht.marcel-bisschops.workers.dev';
+
+// ── Poort: dezelfde beheersleutel als marilyn.html, gevalideerd via een echte, bestaande
+// admin-only aanroep — geen apart wachtwoord om te onthouden of te beheren. De sleutel blijft
+// alleen in het geheugen van dit tabblad (net als marilyn), nooit in localStorage.
+async function gateOpen(){
+  const btn=document.getElementById('gate-btn');
+  const err=document.getElementById('gate-err');
+  const key=document.getElementById('gate-key').value.trim();
+  if(!key)return;
+  btn.disabled=true;btn.textContent='Controleren...';err.style.display='none';
+  try{
+    const r=await fetch(WORKER+'/mna/admin/lijst',{headers:{'x-admin-key':key}});
+    if(!r.ok)throw new Error('unauthorized');
+    document.getElementById('gate').style.display='none';
+    document.getElementById('deck').style.display='flex';
+    initDeck();
+  }catch(e){
+    err.style.display='block';btn.disabled=false;btn.textContent='Openen';
+  }
+}
+document.getElementById('gate-btn').addEventListener('click',gateOpen);
+document.getElementById('gate-key').addEventListener('keydown',e=>{if(e.key==='Enter')gateOpen();});
+
+// ── Inhoud ──────────────────────────────────────────────────────────────────
+// Spreektekst voor Marcel tijdens een live gesprek met een verkopende of kopende partij.
+// Bewust generiek geformuleerd (multi-sector, geen accountancy-uitsluiting) en zonder interne
+// werkafspraken/testtaal — dit is klantgerichte tekst, geen procesbeschrijving voor onszelf.
+const SLIDES=[
+  {
+    eyebrow:'Koers voor Morgen',
+    titel:'Eén platform voor het hele overnametraject',
+    html:`<p style="font-size:16px;color:var(--mid);line-height:1.75;margin-top:.5rem">Van het eerste gesprek tot de closing werken verkoper, koper en adviseur in dezelfde beveiligde omgeving — met dezelfde cijfers, dezelfde documenten en één actueel dossier, in plaats van losse e-mails, bijlagen en versies.</p>
+      <div class="slide-note">Deze presentatie is bedoeld om samen door te lopen tijdens een gesprek — elke stap laat zien wat u als partij in het traject daadwerkelijk te zien krijgt.</div>`
+  },
+  {
+    eyebrow:'De rollen',
+    titel:'Iedereen ziet alleen wat voor hem bedoeld is',
+    html:`<div class="rollen-grid">
+      <div class="rol-kaart"><div class="ico">&#128188;</div><h3>Verkoper</h3><p>Vult het due diligence-dossier in, uploadt documenten, en behoudt overzicht over wat er met de koper is gedeeld.</p></div>
+      <div class="rol-kaart"><div class="ico">&#129309;</div><h3>Koper</h3><p>Krijgt pas toegang na een ondertekende geheimhoudingsverklaring, en alleen tot de onderdelen die de adviseur vrijgeeft.</p></div>
+      <div class="rol-kaart"><div class="ico">&#128202;</div><h3>Begeleider</h3><p>De adviseur die het traject regisseert: dossier, documenten, waardering en communicatie tussen partijen.</p></div>
+    </div>
+    <div class="slide-note">Elke rol logt in met een eigen persoonlijke toegangscode — geen account of wachtwoord nodig.</div>`
+  },
+  {
+    eyebrow:'Startpunt',
+    titel:'Een traject is in enkele minuten opgezet',
+    html:`<ul class="slide-punten">
+      <li>De adviseur maakt het traject aan en ontvangt meteen een persoonlijke toegangscode voor de verkoper.</li>
+      <li>Die code gaat naar de verkoper — verder is er niets te installeren of te registreren.</li>
+      <li>Zodra er een koper is, krijgt die een eigen, aparte toegangscode met een eigen, beperktere blik op het dossier.</li>
+    </ul>`
+  },
+  {
+    eyebrow:'Het dossier',
+    titel:'Eén due diligence-dossier, in zeven fases',
+    html:`<div class="fasen-rij">
+      <div class="fase-chip"><span class="nr">1</span>Financieel</div>
+      <div class="fase-chip"><span class="nr">2</span>Klanten &amp; commercieel</div>
+      <div class="fase-chip"><span class="nr">3</span>Partners &amp; personeel</div>
+      <div class="fase-chip"><span class="nr">4</span>Compliance &amp; kwaliteit</div>
+      <div class="fase-chip"><span class="nr">5</span>IT &amp; automatisering</div>
+      <div class="fase-chip"><span class="nr">6</span>Juridisch &amp; fiscaal</div>
+      <div class="fase-chip"><span class="nr">7</span>Strategisch &amp; markt</div>
+    </div>
+    <ul class="slide-punten">
+      <li>Velden kunnen rechtstreeks worden ingevuld, of gevuld worden door documenten te uploaden — het platform leest ze uit en vult wat het met zekerheid kan afleiden.</li>
+      <li>Een waarde waar het platform niet zeker van is, wordt nooit geraden: die komt te staan als "handmatig controleren", zodat er nooit stilzwijgend een verkeerd cijfer in het dossier terechtkomt.</li>
+    </ul>`
+  },
+  {
+    eyebrow:'Documenten',
+    titel:'Elk document bouwt voort op wat er al is ingevuld',
+    html:`<div class="flow-rij">
+      <div class="flow-item">Bemiddelingsovereenkomst</div><span class="flow-pijl">&#8594;</span>
+      <div class="flow-item">Teaser</div><span class="flow-pijl">&#8594;</span>
+      <div class="flow-item">Geheimhouding (NDA)</div><span class="flow-pijl">&#8594;</span>
+      <div class="flow-item">Verkoopmemorandum</div><span class="flow-pijl">&#8594;</span>
+      <div class="flow-item">Intentieverklaring (LoI)</div><span class="flow-pijl">&#8594;</span>
+      <div class="flow-item">Dealvoorstel</div><span class="flow-pijl">&#8594;</span>
+      <div class="flow-item">Closing-checklist</div>
+    </div>
+    <div class="slide-note">Geen van deze documenten wordt blind gegenereerd: elk concept is gebaseerd op de daadwerkelijk ingevulde traject- en dealgegevens, en blijft ter beoordeling van de betrokken adviseur vóórdat het de deur uitgaat.</div>`
+  },
+  {
+    eyebrow:'Geheimhouding en intentieverklaring',
+    titel:'Opgebouwd uit onderdelen, niet uit één tekstblok',
+    html:`<p style="font-size:15px;color:var(--mid);line-height:1.75;margin-top:.5rem">De geheimhoudingsovereenkomst en de intentieverklaring worden per onderdeel samengesteld — partijen, reikwijdte, duur, boetebeding, prijsmechanisme, opschortende voorwaarden — in plaats van als één AI-gegenereerde tekst.</p>
+    <ul class="slide-punten">
+      <li>Elk onderdeel kan apart worden beoordeeld en afgetekend door een jurist, fiscalist of waardeur.</li>
+      <li>Bij het vastleggen van het document wordt vastgelegd wie wat heeft goedgekeurd — een aantoonbaar spoor, niet alleen een handtekening onderaan.</li>
+      <li>Zodra het document is verstuurd, krijgt u het rechtstreeks op uw eigen scherm te lezen en kunt u er zelf digitaal akkoord op geven.</li>
+    </ul>`
+  },
+  {
+    eyebrow:'Waardering',
+    titel:'Een onderbouwde waardering, geen educated guess',
+    html:`<div class="split-2">
+      <div class="mini-panel"><h4>Rekenkern</h4><p>EBITDA- of omzetmultiple, DCF, intrinsieke waarde, liquidatiewaarde, goodwill — elke methode met een eigen, transparante berekening.</p></div>
+      <div class="mini-panel"><h4>AI-tweede mening</h4><p>Een onafhankelijke inschatting op basis van sectorbenchmarks, mét bronvermelding — als toetsing naast de rekenkern, niet als vervanging.</p></div>
+    </div>
+    <ul class="slide-punten">
+      <li>De opbrengst-brug laat precies zien wat er van de ondernemingswaarde overblijft na schuld, werkkapitaal en transactiekosten — het bedrag dat écht bij closing binnenkomt.</li>
+      <li>Ontbreekt een onderbouwd getal, dan verzint het platform er nooit een bij — die uitkomst blijft dan gewoon weg.</li>
+    </ul>`
+  },
+  {
+    eyebrow:'Vertrouwelijkheid',
+    titel:'Toegang die meegroeit met het traject',
+    html:`<ul class="slide-punten">
+      <li>Een koper ziet vóór de ondertekende geheimhouding alleen sector, type en status — geen bedrijfsnaam of contactgegevens.</li>
+      <li>Ná ondertekening geeft de adviseur zelf, per onderdeel van het dossier, aan wat de koper mag inzien.</li>
+      <li>Elke inzage, wijziging en verzending wordt vastgelegd in een logboek — zichtbaar voor de adviseur, niet voor de tegenpartij.</li>
+    </ul>`
+  },
+  {
+    eyebrow:'Tot slot',
+    titel:'Klaar om te beginnen?',
+    html:`<p style="font-size:16px;color:var(--mid);line-height:1.75;margin-top:.5rem">Een traject staat binnen enkele minuten klaar. Neem contact op met Bisschops Financing om een eigen traject te laten opzetten.</p>
+    <div class="slide-note"><strong style="color:var(--head)">Bisschops Financing B.V.</strong> &middot; Grotestraat 13, 5841AA Oploo</div>`
+  }
+];
+
+let huidige=0;
+function initDeck(){
+  document.getElementById('stage').innerHTML=SLIDES.map((s,i)=>
+    `<div class="slide" data-i="${i}"><div class="slide-eyebrow">${s.eyebrow}</div><h1>${s.titel}</h1>${s.html}</div>`
+  ).join('');
+  document.getElementById('dots').innerHTML=SLIDES.map((s,i)=>`<button class="dot" data-i="${i}" title="${s.titel}"></button>`).join('');
+  document.querySelectorAll('.dot').forEach(d=>d.addEventListener('click',()=>{huidige=parseInt(d.dataset.i,10);render();}));
+  document.getElementById('prev-btn').addEventListener('click',()=>{if(huidige>0){huidige--;render();}});
+  // next-btn krijgt zijn click-handler in render() zelf (onclick-property, niet addEventListener) —
+  // die tekst verandert immers per stand ("Volgende" vs. "Terug naar begin"), dus de gedragslogica
+  // moet daar in sync blijven. Een aparte addEventListener hier zou een tweede handler op dezelfde
+  // knop zetten en bij elke klik dubbel laten springen.
+  document.addEventListener('keydown',e=>{
+    if(document.getElementById('deck').style.display==='none')return;
+    if(e.key==='ArrowRight'&&huidige<SLIDES.length-1){huidige++;render();}
+    if(e.key==='ArrowLeft'&&huidige>0){huidige--;render();}
+  });
+  document.getElementById('fullscreen-btn').addEventListener('click',()=>{
+    if(!document.fullscreenElement)document.documentElement.requestFullscreen().catch(()=>{});
+    else document.exitFullscreen();
+  });
+  render();
+}
+function render(){
+  document.querySelectorAll('.slide').forEach(el=>el.classList.toggle('actief',parseInt(el.dataset.i,10)===huidige));
+  document.querySelectorAll('.dot').forEach(el=>el.classList.toggle('actief',parseInt(el.dataset.i,10)===huidige));
+  document.getElementById('slide-teller').textContent=(huidige+1)+' / '+SLIDES.length;
+  document.getElementById('prev-btn').disabled=huidige===0;
+  document.getElementById('next-btn').innerHTML=huidige===SLIDES.length-1?'Terug naar begin &#8594;':'Volgende &#8594;';
+  document.getElementById('next-btn').onclick=()=>{ if(huidige<SLIDES.length-1){huidige++;} else {huidige=0;} render(); };
+}
+</script>
+</body>
+</html>
