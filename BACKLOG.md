@@ -66,21 +66,15 @@ Kort:
 
 ## 1. Beslissingen die op jou wachten (geen code van mij nodig)
 
-### 1.1 — MKB-multiple: 2,5–4,5× herijken? · **P2 · 🟡**
-Het MKB-sectorprofiel gebruikt een EBITDA-multiple-range van **2,5–4,5×**. De actuele Brookz
-Overnamebarometer (H2-2025) geeft een **gemiddelde van 5,0×** ("hoogste in tien jaar"). De bovengrens
-van het profiel ligt daar dus onder. Bewust conservatief kan — maar het is een keuze.
-- **Beslissing:** laten staan (en in `SECTORPROFIEL-BRONNEN.md` documenteren als bewuste ondergrens),
-  of ophogen richting Brookz.
-- Volledige onderbouwing: `SECTORPROFIEL-BRONNEN.md`.
+### 1.1 — MKB-multiple: 2,5–4,5× herijken? · **AFGEROND 11 sep 2026** ✅
+Marcel: "ja" (ophogen richting Brookz). Herijkt naar **4,0–6,0×**, gecentreerd op het Brookz-gemiddelde
+van 5,0×. Details: `SECTORPROFIEL-BRONNEN.md`.
 
-### 1.2 — Zorg-multiple: 1–3× omzet begrenzen? · **P2 · 🟡**
-Het zorgprofiel waardeert op **1–3× omzet** ("praktijkwaarde"). Dat is alleen verdedigbaar voor
-**kleine, eigenaar-gedreven solopraktijken**; voor grotere praktijken/ketens hanteert de markt een
-EBITDA-multiple (~6,0–7,3×).
-- **Beslissing:** begrenzen tot kleine praktijken (met die randvoorwaarde in de tekst), of
-  omvangsafhankelijk maken (klein = omzet-multiple, groter = EBITDA-multiple). Evt. met een
-  zorgadviseur toetsen.
+### 1.2 — Zorg-multiple: 1–3× omzet begrenzen? · **AFGEROND 11 sep 2026** ✅
+Marcel koos (via vraag met twee opties): **omvangsafhankelijk maken**. Geïmplementeerd: groeps-FTE
+(`partner_fte`) ≤5 → 1–3× omzet blijft gelden; >5 FTE → 6,0–7,3× EBITDA (Brookz "zorg & farmacie").
+Onafhankelijk gevalideerd tegen het rekenvoorbeeld uit de bron (`scripts/validate-zorg-omvang-
+multiple.mjs`, 15/15 checks). Details: `SECTORPROFIEL-BRONNEN.md`.
 
 ### 1.3b — Gebronde benchmarkdata voor de niet-accountancy bedrijfsscan · **P2 · 🟡**
 De bedrijfsscan-AI is buiten accountancy "weinig zeggend" (Marcel, 31 aug 2026, over MKB). Oorzaak:
