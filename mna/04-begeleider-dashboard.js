@@ -2396,13 +2396,19 @@ function renderBegeleiderDashboard(app){
         +'<button id="mou-nieuw2" class="btn-ghost" style="font-size:11px;padding:5px 12px">+ Nieuwe '+esc(mouProfLabel().kort)+'</button>'
         +'</div><div id="mou-manifest-out" style="margin-top:.5rem"></div></div>';
     }
-    // Componentenmenu (in-/uitklapbaar)
+    // Componentenmenu (in-/uitklapbaar). Vóór finaliseren blokkeert de backend nu zelf op ontbrekende
+    // KERN-onderdelen (bevinding 11 sep 2026, "manifest error"), dus een NIET-vergrendeld document met
+    // een ontbrekend KERN-onderdeel is altijd nog te repareren hier. Een AL vergrendeld document kan
+    // dat onderdeel niet meer terugkrijgen (van vóór deze fix) — dan is de tekst neutraal/historisch,
+    // niet een actiegerichte waarschuwing die toch niets meer laat doen.
     var ontbr=mj.ontbrekend_kern||[];
-    h+='<details'+(ontbr.length?' open':'')+' style="margin-bottom:.75rem;border:1px solid var(--border2);border-radius:var(--r)">'
+    h+='<details'+(ontbr.length&&!bevroren?' open':'')+' style="margin-bottom:.75rem;border:1px solid var(--border2);border-radius:var(--r)">'
       +'<summary style="cursor:pointer;padding:.55rem .8rem;font-size:12px;color:var(--head)">Onderdelen samenstellen'
-      +(ontbr.length?(' <span style="color:var(--gold-dark)">&mdash; '+ontbr.length+' KERN-onderdeel'+(ontbr.length===1?'':'en')+' nog niet opgenomen</span>'):' <span style="color:var(--teal)">&mdash; alle KERN-onderdelen opgenomen</span>')
+      +(!ontbr.length?' <span style="color:var(--teal)">&mdash; alle KERN-onderdelen opgenomen</span>'
+        :(bevroren?' <span style="color:var(--muted)">&mdash; gefinaliseerd zonder '+ontbr.length+' KERN-onderdeel'+(ontbr.length===1?'':'en')+' (van vóór deze correctie)</span>'
+                  :' <span style="color:var(--gold-dark)">&mdash; '+ontbr.length+' KERN-onderdeel'+(ontbr.length===1?'':'en')+' nog niet opgenomen</span>'))
       +'</summary><div style="padding:.4rem .8rem .7rem">';
-    if(bevroren){ h+='<div style="font-size:11px;color:var(--muted)">Vergrendeld.</div>'; }
+    if(bevroren){ h+='<div style="font-size:11px;color:var(--muted)">Vergrendeld'+(ontbr.length?' &mdash; dit document is destijds gefinaliseerd vóórdat het platform ontbrekende KERN-onderdelen blokkeerde; nieuwe documenten kunnen dit niet meer.':'.')+'</div>'; }
     else{
       ['kern','aanbevolen','optioneel'].forEach(function(rol){
         var items=(mj.menu||[]).filter(function(m){return m.completeness_role===rol;});
