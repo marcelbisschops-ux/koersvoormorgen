@@ -15,7 +15,7 @@ html{color-scheme:light dark}
 @media(prefers-color-scheme:dark){
   :root{--void:#0d1b2a;--panel:#132534;--card:#16293a;--border:#24384a;--border2:#33485c;--muted:#8ba0ae;--mid:#c6d2da;--sub:#e2e9ee;--head:#f4f1e9;--teal:#5e9b8f;--teal-dim:#4a8377;--teal-dark:#9cc8bd;--teal-bg:rgba(94,155,143,.16);--gold:#d8b36a;--gold-bg:rgba(216,179,106,.14);--gold-dark:#e8cf9a;--red:#e8746b;--red-bg:rgba(232,116,107,.14);--info:#6ea8e0;--info-bg:rgba(110,168,224,.14);--purple:#b39ce0;--purple-bg:rgba(179,156,224,.16);--purple-border:#8f74b8}
 }
-body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--void);color:var(--sub);min-height:100vh;font-size:15px;line-height:1.6}
+body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--void);color:var(--sub);min-height:100vh;font-size:15px;line-height:1.6;background-image:radial-gradient(ellipse 900px 500px at 15% -10%,var(--teal-bg),transparent),radial-gradient(ellipse 700px 500px at 100% 110%,var(--gold-bg),transparent)}
 .serif{font-family:'Newsreader',Georgia,'Times New Roman',serif}
 .mono{font-family:'IBM Plex Mono',monospace}
 .btn{background:var(--teal);color:#fff;font-family:inherit;font-size:13px;font-weight:600;padding:10px 20px;border-radius:var(--r);border:none;cursor:pointer}
@@ -43,11 +43,12 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
 .deck-nav{display:flex;align-items:center;gap:14px}
 #slide-teller{font-size:12px;color:var(--muted);font-family:'IBM Plex Mono',monospace}
 .stage{flex:1;display:flex;align-items:center;justify-content:center;padding:2rem 1.5rem 1rem}
-.slide{max-width:920px;width:100%;display:none;animation:fadeIn .35s ease}
+.slide{max-width:960px;width:100%;display:none;animation:fadeIn .4s ease}
 .slide.actief{display:block}
-@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
-.slide-eyebrow{font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--teal);margin-bottom:.6rem}
-.slide h1{font-family:'Newsreader',Georgia,'Times New Roman',serif;font-size:2.1rem;font-weight:600;color:var(--head);margin-bottom:1.1rem;line-height:1.25}
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.slide-eyebrow{font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--teal);margin-bottom:.7rem;display:flex;align-items:center;gap:8px}
+.slide-eyebrow:before{content:'';width:18px;height:2px;background:var(--gold);display:inline-block}
+.slide h1{font-family:'Newsreader',Georgia,'Times New Roman',serif;font-size:2.5rem;font-weight:600;color:var(--head);margin-bottom:1.2rem;line-height:1.2;letter-spacing:-.01em;text-wrap:balance}
 .slide-punten{list-style:none;display:flex;flex-direction:column;gap:.85rem;margin-top:1.4rem}
 .slide-punten li{display:flex;gap:12px;font-size:16px;color:var(--sub);line-height:1.65}
 .slide-punten li:before{content:'';flex-shrink:0;width:7px;height:7px;border-radius:50%;background:var(--teal);margin-top:9px}
@@ -58,23 +59,52 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
 .dot.actief{background:var(--teal);width:22px;border-radius:5px}
 
 /* ── Diagram-bouwstenen ── */
+.card-shadow{box-shadow:0 1px 2px rgba(13,27,42,.04),0 6px 20px -8px rgba(13,27,42,.12)}
+.hero-row{display:grid;grid-template-columns:1.1fr .9fr;gap:2.5rem;align-items:center;margin-top:.5rem}
+@media(max-width:800px){.hero-row{grid-template-columns:1fr}}
+.hero-visual{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.5rem}
 .rollen-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:1.5rem}
 @media(max-width:760px){.rollen-grid{grid-template-columns:1fr}}
-.rol-kaart{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem}
-.rol-kaart .ico{font-size:1.5rem;margin-bottom:.5rem}
-.rol-kaart h3{font-size:14px;color:var(--head);margin-bottom:.4rem}
-.rol-kaart p{font-size:12.5px;color:var(--muted);line-height:1.6}
+.rol-kaart{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.4rem 1.25rem;transition:transform .15s ease}
+.rol-kaart .ico-badge{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.3rem;margin-bottom:.75rem}
+.rol-kaart h3{font-size:14.5px;color:var(--head);margin-bottom:.4rem;font-weight:700}
+.rol-kaart p{font-size:12.5px;color:var(--muted);line-height:1.65}
+.sector-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:1.5rem}
+@media(max-width:800px){.sector-grid{grid-template-columns:repeat(2,1fr)}}
+.sector-kaart{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.1rem .9rem;text-align:center}
+.sector-kaart .ico{font-size:1.6rem;margin-bottom:.5rem;display:block}
+.sector-kaart h4{font-size:12.5px;color:var(--head);font-weight:700;margin-bottom:.3rem}
+.sector-kaart p{font-size:11px;color:var(--muted);line-height:1.5}
 .fasen-rij{display:flex;gap:8px;flex-wrap:wrap;margin-top:1.5rem}
-.fase-chip{background:var(--card);border:1px solid var(--border2);border-radius:20px;padding:7px 14px;font-size:12px;color:var(--mid);display:flex;align-items:center;gap:6px}
-.fase-chip .nr{background:var(--teal);color:#fff;width:16px;height:16px;border-radius:50%;font-size:9px;display:flex;align-items:center;justify-content:center;font-weight:700}
+.fase-chip{background:var(--panel);border:1px solid var(--border2);border-radius:20px;padding:7px 14px 7px 7px;font-size:12px;color:var(--mid);display:flex;align-items:center;gap:8px}
+.fase-chip .nr{background:var(--teal);color:#fff;width:20px;height:20px;border-radius:50%;font-size:10px;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0}
 .flow-rij{display:flex;gap:0;flex-wrap:wrap;align-items:center;margin-top:1.5rem}
-.flow-item{background:var(--panel);border:1px solid var(--border);border-radius:var(--r);padding:9px 14px;font-size:12.5px;color:var(--sub);white-space:nowrap}
-.flow-pijl{color:var(--muted);padding:0 8px;font-size:14px}
+.flow-item{background:var(--panel);border:1px solid var(--border);border-radius:var(--r);padding:10px 14px;font-size:12.5px;color:var(--sub);white-space:nowrap;display:flex;align-items:center;gap:7px}
+.flow-pijl{color:var(--gold);padding:0 8px;font-size:15px}
 .split-2{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-top:1.5rem}
 @media(max-width:760px){.split-2{grid-template-columns:1fr}}
 .mini-panel{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.1rem 1.25rem}
-.mini-panel h4{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--teal);margin-bottom:.55rem}
+.mini-panel h4{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--teal);margin-bottom:.55rem}
 .mini-panel p{font-size:13px;color:var(--mid);line-height:1.7}
+.blocks-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:1.4rem}
+.block-chip{background:var(--panel);border:1.5px solid var(--purple-border);color:var(--purple);border-radius:8px;padding:6px 12px;font-size:11.5px;font-weight:600}
+.blocks-arrow{display:flex;align-items:center;color:var(--muted);font-size:20px;margin:.6rem 0}
+.doc-result{display:inline-flex;align-items:center;gap:8px;background:var(--teal-bg);border:1px solid var(--teal-dark);color:var(--teal-dim);border-radius:var(--r);padding:8px 16px;font-size:12.5px;font-weight:600}
+.compare-table{width:100%;border-collapse:separate;border-spacing:0;margin-top:1.4rem;font-size:12.5px}
+.compare-table th{text-align:left;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:0 10px 8px}
+.compare-table td{background:var(--panel);border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:9px 10px;color:var(--sub)}
+.compare-table tr td:first-child{border-left:1px solid var(--border);border-radius:var(--r) 0 0 var(--r);color:var(--muted);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.compare-table tr td:last-child{border-right:1px solid var(--border);border-radius:0 var(--r) var(--r) 0}
+.compare-table .win{color:var(--teal-dim);font-weight:700}
+.score-bar-track{background:var(--card);border-radius:4px;height:7px;overflow:hidden;margin-top:4px}
+.score-bar-fill{height:100%;background:var(--teal);border-radius:4px}
+.unlock-rij{display:flex;gap:0;margin-top:1.5rem;counter-reset:stap}
+.unlock-stap{flex:1;text-align:center;position:relative;padding:0 8px}
+.unlock-stap:not(:last-child):after{content:'';position:absolute;top:19px;left:60%;width:80%;height:2px;background:var(--border2)}
+.unlock-dot{width:38px;height:38px;border-radius:50%;background:var(--panel);border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;margin:0 auto 8px;font-size:15px;position:relative;z-index:1}
+.unlock-stap.on .unlock-dot{border-color:var(--teal);background:var(--teal-bg)}
+.unlock-stap h5{font-size:11.5px;color:var(--head);font-weight:700;margin-bottom:2px}
+.unlock-stap p{font-size:10.5px;color:var(--muted);line-height:1.4}
 </style>
 </head>
 <body>
@@ -140,18 +170,52 @@ const SLIDES=[
   {
     eyebrow:'Koers voor Morgen',
     titel:'Eén platform voor het hele overnametraject',
-    html:`<p style="font-size:16px;color:var(--mid);line-height:1.75;margin-top:.5rem">Van het eerste gesprek tot de closing werken verkoper, koper en adviseur in dezelfde beveiligde omgeving — met dezelfde cijfers, dezelfde documenten en één actueel dossier, in plaats van losse e-mails, bijlagen en versies.</p>
-      <div class="slide-note">Deze presentatie is bedoeld om samen door te lopen tijdens een gesprek — elke stap laat zien wat u als partij in het traject daadwerkelijk te zien krijgt.</div>`
+    html:`<div class="hero-row">
+      <div>
+        <p style="font-size:16.5px;color:var(--mid);line-height:1.75;margin-top:.5rem">Van het eerste gesprek tot de closing werken verkoper, koper en adviseur in dezelfde beveiligde omgeving — met dezelfde cijfers, dezelfde documenten en één actueel dossier, in plaats van losse e-mails, bijlagen en versies.</p>
+        <div class="slide-note">Deze presentatie doorloopt u samen tijdens een gesprek — elke stap laat zien wat u als partij in het traject daadwerkelijk te zien krijgt.</div>
+      </div>
+      <div class="hero-visual card-shadow">
+        <svg viewBox="0 0 320 220" style="width:100%;height:auto;display:block">
+          <line x1="160" y1="110" x2="160" y2="42" stroke="var(--border2)" stroke-width="2"/>
+          <line x1="160" y1="110" x2="60" y2="168" stroke="var(--border2)" stroke-width="2"/>
+          <line x1="160" y1="110" x2="260" y2="168" stroke="var(--border2)" stroke-width="2"/>
+          <circle cx="160" cy="110" r="38" style="fill:var(--teal)"/>
+          <text x="160" y="106" text-anchor="middle" style="fill:#fff;font-family:Inter,sans-serif;font-size:10px;font-weight:700">ÉÉN</text>
+          <text x="160" y="119" text-anchor="middle" style="fill:#fff;font-family:Inter,sans-serif;font-size:10px;font-weight:700">DOSSIER</text>
+          <circle cx="160" cy="30" r="26" style="fill:var(--panel);stroke:var(--gold);stroke-width:2"/>
+          <text x="160" y="36" text-anchor="middle" style="font-size:16px">&#128202;</text>
+          <text x="160" y="70" text-anchor="middle" style="fill:var(--head);font-family:Inter,sans-serif;font-size:11px;font-weight:700">Begeleider</text>
+          <circle cx="60" cy="180" r="26" style="fill:var(--panel);stroke:var(--teal);stroke-width:2"/>
+          <text x="60" y="186" text-anchor="middle" style="font-size:16px">&#128188;</text>
+          <text x="60" y="216" text-anchor="middle" style="fill:var(--head);font-family:Inter,sans-serif;font-size:11px;font-weight:700">Verkoper</text>
+          <circle cx="260" cy="180" r="26" style="fill:var(--panel);stroke:var(--teal);stroke-width:2"/>
+          <text x="260" y="186" text-anchor="middle" style="font-size:16px">&#129309;</text>
+          <text x="260" y="216" text-anchor="middle" style="fill:var(--head);font-family:Inter,sans-serif;font-size:11px;font-weight:700">Koper</text>
+        </svg>
+      </div>
+    </div>`
   },
   {
     eyebrow:'De rollen',
     titel:'Iedereen ziet alleen wat voor hem bedoeld is',
     html:`<div class="rollen-grid">
-      <div class="rol-kaart"><div class="ico">&#128188;</div><h3>Verkoper</h3><p>Vult het due diligence-dossier in, uploadt documenten, en behoudt overzicht over wat er met de koper is gedeeld.</p></div>
-      <div class="rol-kaart"><div class="ico">&#129309;</div><h3>Koper</h3><p>Krijgt pas toegang na een ondertekende geheimhoudingsverklaring, en alleen tot de onderdelen die de adviseur vrijgeeft.</p></div>
-      <div class="rol-kaart"><div class="ico">&#128202;</div><h3>Begeleider</h3><p>De adviseur die het traject regisseert: dossier, documenten, waardering en communicatie tussen partijen.</p></div>
+      <div class="rol-kaart card-shadow"><div class="ico-badge" style="background:var(--teal-bg)">&#128188;</div><h3>Verkoper</h3><p>Vult het due diligence-dossier in, uploadt documenten, en behoudt overzicht over wat er met de koper is gedeeld.</p></div>
+      <div class="rol-kaart card-shadow"><div class="ico-badge" style="background:var(--gold-bg)">&#129309;</div><h3>Koper</h3><p>Krijgt pas toegang na een ondertekende geheimhoudingsverklaring, en alleen tot de onderdelen die de adviseur vrijgeeft.</p></div>
+      <div class="rol-kaart card-shadow"><div class="ico-badge" style="background:var(--purple-bg)">&#128202;</div><h3>Begeleider</h3><p>De adviseur die het traject regisseert: dossier, documenten, waardering en communicatie tussen partijen.</p></div>
     </div>
     <div class="slide-note">Elke rol logt in met een eigen persoonlijke toegangscode — geen account of wachtwoord nodig.</div>`
+  },
+  {
+    eyebrow:'Voor wie',
+    titel:'Gebouwd voor meerdere sectoren',
+    html:`<div class="sector-grid">
+      <div class="sector-kaart card-shadow"><span class="ico">&#129518;</span><h4>Accountancy</h4><p>Inclusief waardering &amp; sectorbenchmarks</p></div>
+      <div class="sector-kaart card-shadow"><span class="ico">&#127970;</span><h4>MKB</h4><p>Dossier, documenten &amp; proces</p></div>
+      <div class="sector-kaart card-shadow"><span class="ico">&#127973;</span><h4>Zorgpraktijken</h4><p>Dossier, documenten &amp; proces</p></div>
+      <div class="sector-kaart card-shadow"><span class="ico">&#128187;</span><h4>IT &amp; software</h4><p>Dossier, documenten &amp; proces</p></div>
+    </div>
+    <div class="slide-note">De onderbouwde waardering met sectorbenchmarks is tot nu toe uitgewerkt voor accountancykantoren. Voor de andere sectoren ondersteunt het platform het volledige dossier- en documentproces; waardering volgt daar zodra er gebronde benchmarks beschikbaar zijn — nooit met een geschat getal vooruitlopend daarop.</div>`
   },
   {
     eyebrow:'Startpunt',
@@ -183,21 +247,26 @@ const SLIDES=[
     eyebrow:'Documenten',
     titel:'Elk document bouwt voort op wat er al is ingevuld',
     html:`<div class="flow-rij">
-      <div class="flow-item">Bemiddelingsovereenkomst</div><span class="flow-pijl">&#8594;</span>
-      <div class="flow-item">Teaser</div><span class="flow-pijl">&#8594;</span>
-      <div class="flow-item">Geheimhouding (NDA)</div><span class="flow-pijl">&#8594;</span>
-      <div class="flow-item">Verkoopmemorandum</div><span class="flow-pijl">&#8594;</span>
-      <div class="flow-item">Intentieverklaring (LoI)</div><span class="flow-pijl">&#8594;</span>
-      <div class="flow-item">Dealvoorstel</div><span class="flow-pijl">&#8594;</span>
-      <div class="flow-item">Closing-checklist</div>
+      <div class="flow-item">&#128203; Bemiddelingsovereenkomst</div><span class="flow-pijl">&#8594;</span>
+      <div class="flow-item">&#128226; Teaser</div><span class="flow-pijl">&#8594;</span>
+      <div class="flow-item">&#128274; Geheimhouding</div><span class="flow-pijl">&#8594;</span>
+      <div class="flow-item">&#128220; Verkoopmemorandum</div><span class="flow-pijl">&#8594;</span>
+      <div class="flow-item">&#128196; Intentieverklaring</div><span class="flow-pijl">&#8594;</span>
+      <div class="flow-item">&#128202; Dealvoorstel</div><span class="flow-pijl">&#8594;</span>
+      <div class="flow-item">&#127937; Closing-checklist</div>
     </div>
     <div class="slide-note">Geen van deze documenten wordt blind gegenereerd: elk concept is gebaseerd op de daadwerkelijk ingevulde traject- en dealgegevens, en blijft ter beoordeling van de betrokken adviseur vóórdat het de deur uitgaat.</div>`
   },
   {
     eyebrow:'Geheimhouding en intentieverklaring',
     titel:'Opgebouwd uit onderdelen, niet uit één tekstblok',
-    html:`<p style="font-size:15px;color:var(--mid);line-height:1.75;margin-top:.5rem">De geheimhoudingsovereenkomst en de intentieverklaring worden per onderdeel samengesteld — partijen, reikwijdte, duur, boetebeding, prijsmechanisme, opschortende voorwaarden — in plaats van als één AI-gegenereerde tekst.</p>
-    <ul class="slide-punten">
+    html:`<p style="font-size:15px;color:var(--mid);line-height:1.75;margin-top:.5rem">De geheimhoudingsovereenkomst en de intentieverklaring worden per onderdeel samengesteld — in plaats van als één AI-gegenereerde tekst.</p>
+    <div class="blocks-row">
+      <div class="block-chip">Partijen</div><div class="block-chip">Reikwijdte</div><div class="block-chip">Duur</div><div class="block-chip">Boetebeding</div><div class="block-chip">Prijsmechanisme</div><div class="block-chip">Opschortende voorwaarden</div>
+    </div>
+    <div class="blocks-arrow">&#8595;</div>
+    <div class="doc-result">&#10003; Geheimhoudingsovereenkomst — gereed voor beoordeling</div>
+    <ul class="slide-punten" style="margin-top:1.6rem">
       <li>Elk onderdeel kan apart worden beoordeeld en afgetekend door een jurist, fiscalist of waarderingsdeskundige.</li>
       <li>Bij het vastleggen van het document wordt vastgelegd wie wat heeft goedgekeurd — een aantoonbaar spoor, niet alleen een handtekening onderaan.</li>
       <li>Zodra het document is verstuurd, krijgt u het rechtstreeks op uw eigen scherm te lezen en kunt u er zelf digitaal akkoord op geven.</li>
@@ -206,20 +275,68 @@ const SLIDES=[
   {
     eyebrow:'Waardering',
     titel:'Een onderbouwde waardering, geen educated guess',
-    html:`<div class="split-2">
+    html:`<div class="split-2" style="margin-bottom:0">
       <div class="mini-panel"><h4>Rekenkern</h4><p>EBITDA- of omzetmultiple, DCF, intrinsieke waarde, liquidatiewaarde, goodwill — elke methode met een eigen, transparante berekening.</p></div>
       <div class="mini-panel"><h4>AI-tweede mening</h4><p>Een onafhankelijke inschatting op basis van sectorbenchmarks, mét bronvermelding — als toetsing naast de rekenkern, niet als vervanging.</p></div>
     </div>
-    <ul class="slide-punten">
-      <li>De opbrengst-brug laat precies zien wat er van de ondernemingswaarde overblijft na schuld, werkkapitaal en transactiekosten — het bedrag dat écht bij closing binnenkomt.</li>
+    <div style="margin-top:1.6rem">
+      <div style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--teal);margin-bottom:.3rem">De opbrengst-brug &middot; fictief rekenvoorbeeld</div>
+      <svg viewBox="0 0 560 210" style="width:100%;height:auto;display:block;max-width:520px">
+        <line x1="45" y1="170" x2="515" y2="170" stroke="var(--border2)" stroke-width="1"/>
+        <line x1="115" y1="40" x2="145" y2="40" stroke="var(--border2)" stroke-width="1.5" stroke-dasharray="3,3"/>
+        <line x1="215" y1="40" x2="245" y2="40" stroke="var(--border2)" stroke-width="1.5" stroke-dasharray="3,3"/>
+        <line x1="315" y1="69" x2="345" y2="69" stroke="var(--border2)" stroke-width="1.5" stroke-dasharray="3,3"/>
+        <line x1="415" y1="82" x2="445" y2="92" stroke="var(--border2)" stroke-width="1.5" stroke-dasharray="3,3"/>
+        <rect x="45" y="40" width="70" height="130" rx="4" style="fill:var(--teal)"/>
+        <text x="80" y="34" text-anchor="middle" style="fill:var(--head);font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700">&euro;2,4M</text>
+        <rect x="145" y="40" width="70" height="29" rx="4" style="fill:var(--border2)"/>
+        <text x="180" y="34" text-anchor="middle" style="fill:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:11px">&minus;&euro;0,5M</text>
+        <rect x="245" y="69" width="70" height="13" rx="4" style="fill:var(--border2)"/>
+        <text x="280" y="63" text-anchor="middle" style="fill:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:11px">&minus;&euro;0,25M</text>
+        <rect x="345" y="82" width="70" height="10" rx="4" style="fill:var(--border2)"/>
+        <text x="380" y="76" text-anchor="middle" style="fill:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:11px">&minus;&euro;0,2M</text>
+        <rect x="445" y="92" width="70" height="78" rx="4" style="fill:var(--gold)"/>
+        <text x="480" y="86" text-anchor="middle" style="fill:var(--head);font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700">&euro;1,45M</text>
+        <text x="80" y="188" text-anchor="middle" style="fill:var(--muted);font-family:Inter,sans-serif;font-size:10px">Ondernemings&#173;waarde</text>
+        <text x="180" y="188" text-anchor="middle" style="fill:var(--muted);font-family:Inter,sans-serif;font-size:10px">Netto schuld</text>
+        <text x="280" y="188" text-anchor="middle" style="fill:var(--muted);font-family:Inter,sans-serif;font-size:10px">Werkkapitaal</text>
+        <text x="380" y="188" text-anchor="middle" style="fill:var(--muted);font-family:Inter,sans-serif;font-size:10px">Kosten</text>
+        <text x="480" y="188" text-anchor="middle" style="fill:var(--head);font-family:Inter,sans-serif;font-size:10px;font-weight:700">Cash bij closing</text>
+      </svg>
+    </div>
+    <ul class="slide-punten" style="margin-top:1rem">
+      <li>Laat precies zien wat er van de ondernemingswaarde overblijft na schuld, werkkapitaal en transactiekosten — het bedrag dat écht bij closing binnenkomt.</li>
       <li>Ontbreekt een onderbouwd getal, dan verzint het platform er nooit een bij — die uitkomst blijft dan gewoon weg.</li>
     </ul>`
   },
   {
+    eyebrow:'Meerdere kopers',
+    titel:'Biedingen naast elkaar, op basis van dezelfde cijfers',
+    html:`<p style="font-size:14.5px;color:var(--mid);line-height:1.7;margin-top:.3rem">Loopt u voor dezelfde verkoper meerdere koperstrajecten parallel? Dan zet de Deal Value Matrix elk bod naast elkaar op een gewogen score.</p>
+    <table class="compare-table">
+      <tr><th></th><th>Koper A</th><th>Koper B</th><th>Koper C</th></tr>
+      <tr><td>Koopsom</td><td>&euro;2,1M</td><td class="win">&euro;2,4M</td><td>&euro;2,0M</td></tr>
+      <tr><td>Cash bij closing</td><td class="win">90%</td><td>70%</td><td>60%</td></tr>
+      <tr><td>Deal-zekerheid</td><td>Nog te regelen</td><td class="win">Eigen middelen</td><td>Commitment brief</td></tr>
+      <tr><td>Strategische fit</td><td>Midden</td><td>Midden</td><td class="win">Hoog</td></tr>
+      <tr><td>Totaalscore</td>
+        <td>62<div class="score-bar-track"><div class="score-bar-fill" style="width:62%"></div></div></td>
+        <td>78<div class="score-bar-track"><div class="score-bar-fill" style="width:78%;background:var(--gold)"></div></div></td>
+        <td>71<div class="score-bar-track"><div class="score-bar-fill" style="width:71%"></div></div></td>
+      </tr>
+    </table>
+    <div class="slide-note">Fictief voorbeeld. De weging (prijs 30% &middot; cash-zekerheid 25% &middot; deal-zekerheid 20% &middot; fit 15% &middot; timing 10%) staat vast; de matrix ordent, u beslist welke koper het beste past.</div>`
+  },
+  {
     eyebrow:'Vertrouwelijkheid',
     titel:'Toegang die meegroeit met het traject',
-    html:`<ul class="slide-punten">
-      <li>Een koper ziet vóór de ondertekende geheimhouding alleen sector, type en status — geen bedrijfsnaam of contactgegevens.</li>
+    html:`<div class="unlock-rij">
+      <div class="unlock-stap on"><div class="unlock-dot">&#128274;</div><h5>Vóór NDA</h5><p>Alleen sector, type &amp; status</p></div>
+      <div class="unlock-stap on"><div class="unlock-dot">&#128273;</div><h5>Ná NDA</h5><p>Bedrijfsnaam &amp; contact</p></div>
+      <div class="unlock-stap on"><div class="unlock-dot">&#128194;</div><h5>Per vrijgave</h5><p>Dossieronderdelen die u aanwijst</p></div>
+    </div>
+    <ul class="slide-punten" style="margin-top:1.8rem">
+      <li>Een koper ziet vóór de ondertekende geheimhouding geen bedrijfsnaam of contactgegevens.</li>
       <li>Ná ondertekening geeft de adviseur zelf, per onderdeel van het dossier, aan wat de koper mag inzien.</li>
       <li>Elke inzage, wijziging en verzending wordt vastgelegd in een logboek — zichtbaar voor de adviseur, niet voor de tegenpartij.</li>
     </ul>`
@@ -227,7 +344,7 @@ const SLIDES=[
   {
     eyebrow:'Tot slot',
     titel:'Klaar om te beginnen?',
-    html:`<p style="font-size:16px;color:var(--mid);line-height:1.75;margin-top:.5rem">Een traject staat binnen enkele minuten klaar. Neem contact op met Bisschops Financing om een eigen traject te laten opzetten.</p>
+    html:`<p style="font-size:16.5px;color:var(--mid);line-height:1.75;margin-top:.5rem">Een traject staat binnen enkele minuten klaar. Neem contact op met Bisschops Financing om een eigen traject te laten opzetten.</p>
     <div class="slide-note"><strong style="color:var(--head)">Bisschops Financing B.V.</strong> &middot; Grotestraat 13, 5841AA Oploo</div>`
   }
 ];
