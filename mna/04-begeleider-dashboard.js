@@ -2415,13 +2415,17 @@ function renderBegeleiderDashboard(app){
     var h=(hoedanigheid||'').toLowerCase();
     return (MP_VAKGEBIED_TREFWOORDEN[dom]||[]).some(function(t){return h.indexOf(t)!==-1;});
   }
-  function mpSpecOptiesHtml(lijst,dom){
+  function mpSpecOptiesHtml(lijst,dom,eigenLijst){
     var passend=lijst.filter(function(s){return mpPastBijVakgebied(dom,s.hoedanigheid);});
     var overig=lijst.filter(function(s){return !mpPastBijVakgebied(dom,s.hoedanigheid);});
     function opt(s){return '<option value="'+esc(s.id)+'">'+esc(s.naam)+' — '+esc(s.hoedanigheid)+' (&euro; '+esc(s.tarief_bedrag)+')</option>';}
+    // Eigen (niet-pool) specialisten: aparte waardevorm "eigen:<id>" zodat verstuurOpdracht() de bron
+    // herkent. Geen tarief getoond (dat regelt de adviseur rechtstreeks met de specialist).
+    function optEigen(s){return '<option value="eigen:'+esc(s.id)+'">'+esc(s.naam)+' — '+esc(s.hoedanigheid)+'</option>';}
     var html='';
     if(passend.length) html+='<optgroup label="Past bij dit vakgebied">'+passend.map(opt).join('')+'</optgroup>';
     if(overig.length) html+='<optgroup label="'+(passend.length?'Overige beschikbare specialisten':'Beschikbare specialisten')+'">'+overig.map(opt).join('')+'</optgroup>';
+    if(eigenLijst&&eigenLijst.length) html+='<optgroup label="Uw eigen specialisten">'+eigenLijst.map(optEigen).join('')+'</optgroup>';
     return html;
   }
   async function bgMouPoolPaneel(){
@@ -2431,37 +2435,61 @@ function renderBegeleiderDashboard(app){
     var sp=await bgPoolApi('GET','/mna/pool/specialisten'+sectorQ);
     if(!sp.ok||!sp.json.ok){ box.innerHTML='<div style="font-size:11px;color:var(--red)">'+esc((sp.json&&sp.json.error)||'Pool niet beschikbaar')+'</div>'; return; }
     var lijst=sp.json.specialisten||[];
-    if(!lijst.length){ box.innerHTML='<div style="font-size:11px;color:var(--muted)">Er staan nog geen beschikbare specialisten in de pool. Vraag Bisschops Financing om de pool aan te vullen.</div>'; return; }
+    // Eigen (niet-pool) specialisten van dit traject (11 sep 2026, Marcel: "verder hoef en mag ik
+    // niet weten wie hij inhuurt") — los endpoint, alleen bereikbaar met de eigen tussen_code, nooit
+    // door Marcel. Faalt deze aanroep, dan toont het paneel gewoon alleen de pool (geen harde eis).
+    var es=await bgPoolApi('GET','/mna/eigen-specialisten/'+encodeURIComponent(bgMouKey()));
+    var eigenLijst=(es.ok&&es.json&&es.json.ok)?(es.json.specialisten||[]):[];
+    if(!lijst.length&&!eigenLijst.length){
+      box.innerHTML='<div style="font-size:11px;color:var(--muted)">Er staan nog geen beschikbare specialisten in de pool.</div>'
+        +'<button id="mp-eigen-open" class="btn-ghost" style="font-size:10.5px;padding:5px 10px;margin-top:.4rem">+ Eigen specialist toevoegen</button>'
+        +'<div id="mp-eigen-form"></div>';
+      document.getElementById('mp-eigen-open').onclick=function(){ this.style.display='none'; toonEigenForm(function(){ bgMouPoolPaneel(); }); };
+      return;
+    }
     box.innerHTML='<div style="border:1px solid var(--border2);border-radius:var(--r);padding:.6rem .7rem;margin:.4rem 0;background:var(--card)">'
-      +'<div style="font-size:11px;font-weight:600;color:var(--head);margin-bottom:.4rem">Review aanvragen uit de pool</div>'
+      +'<div style="font-size:11px;font-weight:600;color:var(--head);margin-bottom:.4rem">Review aanvragen</div>'
       +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">'
       +'<select id="mp-dom" style="font-size:11px;padding:4px 6px;background:var(--panel);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub)"><option value="LEGAL">juridisch</option><option value="TAX">fiscaal</option><option value="VALUATION">cijfers</option></select>'
       +'<select id="mp-spec" style="font-size:11px;padding:4px 6px;background:var(--panel);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub)">'
-        +mpSpecOptiesHtml(lijst,'LEGAL')+'</select>'
+        +mpSpecOptiesHtml(lijst,'LEGAL',eigenLijst)+'</select>'
       +'</div>'
       +'<div id="mp-profiel" style="font-size:10.5px;color:var(--muted);margin:.3rem 0"></div>'
+      +'<button id="mp-eigen-open" class="btn-ghost" style="font-size:10px;padding:3px 8px;margin-bottom:.3rem">+ Eigen specialist toevoegen</button>'
+      +'<div id="mp-eigen-form"></div>'
       +'<textarea id="mp-instr" rows="2" placeholder="Korte instructie voor de specialist (optioneel)" style="width:100%;font-size:11px;background:var(--panel);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);padding:5px 7px;resize:vertical"></textarea>'
       +'<label style="font-size:10.5px;color:var(--muted);display:block;margin-top:.3rem">Deadline: <input id="mp-dl" type="number" min="1" max="60" value="10" style="width:56px;font-size:11px;background:var(--panel);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);padding:3px 5px"> dagen</label>'
       +'<div id="mp-kosten" style="font-size:10.5px;color:var(--muted);margin-top:.3rem"></div>'
       +'<div style="margin-top:.5rem"><button id="mp-verstuur" class="btn btn-sm" style="font-size:10.5px;padding:5px 12px">Opdracht aanvragen</button> <button id="mp-annuleer" class="btn-ghost" style="font-size:10.5px;padding:5px 10px">Annuleren</button></div>'
       +'<div id="mp-resultaat" style="margin-top:.5rem"></div></div>';
+    function huidigeWaarde(){ return document.getElementById('mp-spec').value; }
+    function isEigenWaarde(v){ return v.indexOf('eigen:')===0; }
     function toonProfiel(){
-      var s=lijst.find(function(x){return x.id===document.getElementById('mp-spec').value;});
+      var v=huidigeWaarde();
       var txt='';
-      if(s){ txt=(s.kantoor?(s.kantoor+' · '):'')+(s.profieltekst||''); if(s.doorlooptijd_dagen) txt+=' · ~'+s.doorlooptijd_dagen+' dagen'; }
+      if(isEigenWaarde(v)){
+        var es2=eigenLijst.find(function(x){return x.id===v.slice(6);});
+        if(es2) txt=(es2.kantoor?(es2.kantoor+' · '):'')+'eigen specialist — alleen zichtbaar voor u';
+      } else {
+        var s=lijst.find(function(x){return x.id===v;});
+        if(s){ txt=(s.kantoor?(s.kantoor+' · '):'')+(s.profieltekst||''); if(s.doorlooptijd_dagen) txt+=' · ~'+s.doorlooptijd_dagen+' dagen'; }
+      }
       document.getElementById('mp-profiel').textContent=txt;
     }
     toonProfiel();
     document.getElementById('mp-spec').onchange=toonProfiel;
     document.getElementById('mp-dom').onchange=function(){
-      document.getElementById('mp-spec').innerHTML=mpSpecOptiesHtml(lijst,this.value);
+      document.getElementById('mp-spec').innerHTML=mpSpecOptiesHtml(lijst,this.value,eigenLijst);
       toonProfiel();
     };
     document.getElementById('mp-annuleer').onclick=function(){ box.innerHTML=''; };
+    document.getElementById('mp-eigen-open').onclick=function(){ this.style.display='none'; toonEigenForm(function(){ bgMouPoolPaneel(); }); };
     async function verstuurOpdracht(bevestigd){
       var btn=document.getElementById('mp-verstuur');
+      var v=huidigeWaarde(), bronEigen=isEigenWaarde(v);
       var r=await bgPoolApi('POST','/mna/pool/opdracht',{
-        specialist_id:document.getElementById('mp-spec').value,
+        specialist_id:bronEigen?v.slice(6):v,
+        specialist_bron:bronEigen?'eigen':'pool',
         domein:document.getElementById('mp-dom').value,
         documenten:[_mouDocId],
         instructie:document.getElementById('mp-instr').value||'',
@@ -2484,13 +2512,51 @@ function renderBegeleiderDashboard(app){
       var k=r.json.kosten||{};
       var link=location.origin+'/specialist.html?key='+encodeURIComponent((r.json.specialist_link||'').replace('x-pool-key: ',''));
       var info=(r.json.conflict_signalen||[]).filter(function(s){return !s.hard;}).map(function(s){return esc(s.tekst);}).join('; ');
+      var kostenTxt=bronEigen
+        ? 'Geen platformbemiddelingskosten voor deze review — u regelt de vergoeding rechtstreeks met uw eigen specialist.'
+        : 'Kosten: honorarium &euro; '+esc(k.honorarium)+' + platformbemiddeling &euro; '+esc(k.marge)+' = <strong>&euro; '+esc(k.totaal)+'</strong>.';
       document.getElementById('mp-resultaat').innerHTML='<div style="background:var(--teal-bg);border:1px solid var(--teal);border-radius:var(--r);padding:.55rem .7rem;font-size:11px;color:var(--teal-dim)">'
-        +'&#10003; Opdracht aangevraagd. Kosten: honorarium &euro; '+esc(k.honorarium)+' + platformbemiddeling &euro; '+esc(k.marge)+' = <strong>&euro; '+esc(k.totaal)+'</strong>.'
+        +'&#10003; Opdracht aangevraagd. '+kostenTxt
         +(info?('<div style="color:var(--gold-dark);font-size:10.5px;margin-top:3px">'+info+'</div>'):'')
         +'<div style="margin-top:.4rem;color:var(--sub)">Stuur de specialist deze link:</div>'
         +'<input readonly value="'+esc(link)+'" onclick="this.select()" style="width:100%;font-size:10px;font-family:monospace;background:var(--panel);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);padding:4px 6px;margin-top:2px"></div>';
     }
     document.getElementById('mp-verstuur').onclick=function(){ this.disabled=true; this.textContent='Bezig…'; verstuurOpdracht(false); };
+  }
+  // Inline mini-formulier om een eigen (niet-pool) specialist toe te voegen — herbruikbaar vanuit het
+  // pool-paneel (mna.html-composer) én, met dezelfde velden, vanuit adv.html bij "aanmaken klant".
+  // Marcel (11 sep 2026): "verder hoef en mag ik niet weten wie hij inhuurt" — dit formulier post
+  // rechtstreeks naar /mna/eigen-specialist met de eigen tussen_code, nooit zichtbaar voor admin.
+  function toonEigenForm(naOpslaan){
+    var host=document.getElementById('mp-eigen-form'); if(!host)return;
+    host.innerHTML='<div style="border:1px dashed var(--border2);border-radius:var(--r);padding:.55rem .65rem;margin:.3rem 0;background:var(--panel)">'
+      +'<div style="font-size:10.5px;color:var(--muted);margin-bottom:.4rem">Uw eigen jurist/fiscalist/waarderingsdeskundige. Marcel/Koers voor Morgen ziet deze gegevens nooit — hier is een eenmalige vergoeding aan verbonden.</div>'
+      +'<input id="me-naam" placeholder="Naam *" style="width:100%;font-size:11px;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);padding:5px 7px;margin-bottom:4px">'
+      +'<input id="me-hoed" placeholder="Hoedanigheid * (bv. advocaat, RB, RV)" style="width:100%;font-size:11px;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);padding:5px 7px;margin-bottom:4px">'
+      +'<input id="me-kantoor" placeholder="Kantoor" style="width:100%;font-size:11px;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);padding:5px 7px;margin-bottom:4px">'
+      +'<input id="me-email" type="email" placeholder="E-mailadres" style="width:100%;font-size:11px;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);padding:5px 7px;margin-bottom:4px">'
+      +'<input id="me-insch" placeholder="Inschrijvingsnummer (optioneel)" style="width:100%;font-size:11px;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);padding:5px 7px;margin-bottom:6px">'
+      +'<div id="me-err" style="color:var(--red);font-size:10.5px;margin-bottom:4px;display:none"></div>'
+      +'<button id="me-opslaan" class="btn btn-sm" style="font-size:10.5px;padding:5px 12px">Toevoegen</button> <button id="me-annuleer" class="btn-ghost" style="font-size:10.5px;padding:5px 10px">Annuleren</button>'
+      +'</div>';
+    document.getElementById('me-annuleer').onclick=function(){ host.innerHTML=''; var op=document.getElementById('mp-eigen-open'); if(op)op.style.display=''; };
+    document.getElementById('me-opslaan').onclick=async function(){
+      var btn=this, err=document.getElementById('me-err');
+      var naam=document.getElementById('me-naam').value.trim(), hoed=document.getElementById('me-hoed').value.trim();
+      if(!naam||!hoed){ err.textContent='Naam en hoedanigheid zijn verplicht.'; err.style.display='block'; return; }
+      btn.disabled=true; btn.textContent='Bezig…';
+      var r=await bgPoolApi('POST','/mna/eigen-specialist',{
+        naam:naam, hoedanigheid:hoed,
+        kantoor:document.getElementById('me-kantoor').value.trim(),
+        email:document.getElementById('me-email').value.trim(),
+        inschrijvingsnummer:document.getElementById('me-insch').value.trim(),
+      });
+      if(!r.ok||!r.json.ok){ err.textContent=(r.json&&r.json.error)||'Toevoegen mislukt.'; err.style.display='block'; btn.disabled=false; btn.textContent='Toevoegen'; return; }
+      host.innerHTML='';
+      var fee=r.json.fee_geboekt;
+      toast('Eigen specialist toegevoegd'+(fee?(' — eenmalige fee €'+fee+' geboekt'):''),'ok');
+      if(naOpslaan) naOpslaan();
+    };
   }
   function bgMouWire(bevroren){
     var out=document.getElementById('bg-doc-out'); if(!out)return;

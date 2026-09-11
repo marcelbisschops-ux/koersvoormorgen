@@ -59,6 +59,22 @@ deny-list ervoor zorgde dat nieuwe kolommen (`bem_tekst`, `verkoopmemorandum_tek
     in `tests/e2e-crosspath-fixes.mjs` (of een e2e-broertje) vóór de fix als
     "klaar" geldt.
 
+12. **`mna_eigen_specialisten` (11 sep 2026, Marcel: "verder hoef en mag ik niet
+    weten wie hij inhuurt") is de EERSTE tabel waar de platformbeheerder zélf de
+    uitgesloten rol is — niet alleen koper/verkoper.** Geen enkel endpoint mag de
+    naam/kantoor/e-mail van een eigen specialist blootstellen aan `x-admin-key`,
+    ook niet indirect via een geldig traject-id + geraden id. Concreet:
+    `GET /mna/eigen-specialisten/{traject}` (`worker/34-eigen-specialisten.js`)
+    accepteert UITSLUITEND een echte begeleider-`tussen_code`, en weigert expliciet
+    `begeleiderAuth`'s eigen `rol==='admin'`-uitkomst (die normaliter overal geldig
+    is zodra de aanroeper de ADMIN_KEY als `x-tussen-key`/`?code=` meestuurt — zie
+    `worker/00-policy.js`). `POST /mna/pool/opdracht` weigert `specialist_bron:
+    'eigen'` voor `rol==='admin'` om dezelfde reden (de respons bevat anders
+    `sp.naam`/`sp.inschrijvingsnummer`). `GET /mna/admin/pool/opdrachten` sluit
+    `specialist_bron='eigen'`-rijen expliciet uit via een `WHERE`, niet alleen via
+    het toevallige gevolg van een INNER JOIN. Wordt hier ooit een `isAdmin()`-
+    bypass "voor het gemak" toegevoegd, is dat een directe schending van deze regel.
+
 ---
 
 ## Dataclassificatie (voor de rol-selecties)
@@ -70,6 +86,7 @@ deny-list ervoor zorgde dat nieuwe kolommen (`bem_tekst`, `verkoopmemorandum_tek
 | VERKOPER↔BEGELEIDER | `bem_tekst`, `waarderingsrapport`, `teaser_tekst` | ❌ | ✅ | ✅ |
 | BEGELEIDER-ONLY | `dealvoorstel_tekst`, `verkoopmemorandum_tekst`, `tussen_code`, `koper_code`, `trajectfee_*`, `gebruiker_id`, `aangedragen_door_*` | ❌ | ❌ | ✅ |
 | PLATFORMBEHEERDER-ONLY | `notitie` (marilyn), tekenbevoegdheid-notities | ❌ | ❌ | ❌ (alleen marilyn met admin-key) |
+| BEGELEIDER-ONLY, NOOIT PLATFORMBEHEERDER | `mna_eigen_specialisten.naam/kantoor/email/inschrijvingsnummer` | ❌ | ❌ | ✅ (alleen via een echte `tussen_code`, ADMIN_KEY expliciet geweigerd — zie invariant 12) |
 | SYSTEM_SECRET | `ADMIN_KEY`, `ANTHROPIC_API_KEY`, `RESEND_API_KEY`, Signhost-checksum | ❌ overal — staat alleen in Cloudflare-secrets |
 
 Bij twijfel: strengere klasse.
