@@ -150,6 +150,12 @@ async function gateOpen(){
   const key=document.getElementById('gate-key').value.trim();
   if(!key)return;
   btn.disabled=true;btn.textContent='Controleren...';err.style.display='none';
+  // Volledig scherm meteen bij deze klik aanvragen (Marcel, 11 sep 2026: "moet automatisch
+  // volledige pagina worden") — dit is nog binnen dezelfde gebruikersactie (de klik/Enter die
+  // gateOpen() startte), wat de browser vereist om requestFullscreen() toe te staan. Lukt het
+  // niet (bv. browser weigert), dan blijft de handmatige "Volledig scherm"-knop in de deck-balk
+  // gewoon beschikbaar — geen harde eis, geen foutmelding hierover.
+  if(!document.fullscreenElement)document.documentElement.requestFullscreen().catch(()=>{});
   try{
     const r=await fetch(WORKER+'/mna/admin/lijst',{headers:{'x-admin-key':key}});
     if(!r.ok)throw new Error('unauthorized');
@@ -176,22 +182,26 @@ const SLIDES=[
         <p style="font-size:16.5px;color:var(--mid);line-height:1.75;margin-top:.5rem">Van het eerste gesprek tot de closing werken verkoper, koper en adviseur in dezelfde beveiligde omgeving, met dezelfde cijfers en dezelfde documenten. Eén actueel dossier in plaats van losse e-mails, bijlagen en versies.</p>
       </div>
       <div class="hero-visual card-shadow">
-        <svg viewBox="0 0 320 220" style="width:100%;height:auto;display:block">
-          <line x1="160" y1="110" x2="160" y2="42" stroke="var(--border2)" stroke-width="2"/>
-          <line x1="160" y1="110" x2="60" y2="168" stroke="var(--border2)" stroke-width="2"/>
-          <line x1="160" y1="110" x2="260" y2="168" stroke="var(--border2)" stroke-width="2"/>
-          <circle cx="160" cy="110" r="38" style="fill:var(--teal)"/>
-          <text x="160" y="106" text-anchor="middle" style="fill:#fff;font-family:Inter,sans-serif;font-size:10px;font-weight:700">ÉÉN</text>
-          <text x="160" y="119" text-anchor="middle" style="fill:#fff;font-family:Inter,sans-serif;font-size:10px;font-weight:700">DOSSIER</text>
-          <circle cx="160" cy="30" r="26" style="fill:var(--panel);stroke:var(--gold);stroke-width:2"/>
-          <text x="160" y="36" text-anchor="middle" style="font-size:16px">&#128202;</text>
-          <text x="160" y="70" text-anchor="middle" style="fill:var(--head);font-family:Inter,sans-serif;font-size:11px;font-weight:700">Begeleider</text>
-          <circle cx="60" cy="180" r="26" style="fill:var(--panel);stroke:var(--teal);stroke-width:2"/>
-          <text x="60" y="186" text-anchor="middle" style="font-size:16px">&#128188;</text>
-          <text x="60" y="216" text-anchor="middle" style="fill:var(--head);font-family:Inter,sans-serif;font-size:11px;font-weight:700">Verkoper</text>
-          <circle cx="260" cy="180" r="26" style="fill:var(--panel);stroke:var(--teal);stroke-width:2"/>
-          <text x="260" y="186" text-anchor="middle" style="font-size:16px">&#129309;</text>
-          <text x="260" y="216" text-anchor="middle" style="fill:var(--head);font-family:Inter,sans-serif;font-size:11px;font-weight:700">Koper</text>
+        <svg viewBox="0 0 320 280" style="width:100%;height:auto;display:block">
+          <line x1="160" y1="130" x2="160" y2="60" stroke="var(--border2)" stroke-width="2"/>
+          <line x1="160" y1="130" x2="55" y2="130" stroke="var(--border2)" stroke-width="2"/>
+          <line x1="160" y1="130" x2="265" y2="130" stroke="var(--border2)" stroke-width="2"/>
+          <line x1="160" y1="130" x2="160" y2="204" stroke="var(--border2)" stroke-width="2"/>
+          <circle cx="160" cy="130" r="34" style="fill:var(--teal)"/>
+          <text x="160" y="126" text-anchor="middle" style="fill:#fff;font-family:Inter,sans-serif;font-size:10px;font-weight:700">ÉÉN</text>
+          <text x="160" y="139" text-anchor="middle" style="fill:#fff;font-family:Inter,sans-serif;font-size:10px;font-weight:700">DOSSIER</text>
+          <circle cx="160" cy="36" r="24" style="fill:var(--panel);stroke:var(--gold);stroke-width:2"/>
+          <text x="160" y="42" text-anchor="middle" style="font-size:15px">&#128202;</text>
+          <text x="160" y="74" text-anchor="middle" style="fill:var(--head);font-family:Inter,sans-serif;font-size:11px;font-weight:700">Begeleider</text>
+          <circle cx="55" cy="130" r="24" style="fill:var(--panel);stroke:var(--teal);stroke-width:2"/>
+          <text x="55" y="136" text-anchor="middle" style="font-size:15px">&#128188;</text>
+          <text x="55" y="112" text-anchor="middle" style="fill:var(--head);font-family:Inter,sans-serif;font-size:11px;font-weight:700">Verkoper</text>
+          <circle cx="265" cy="130" r="24" style="fill:var(--panel);stroke:var(--teal);stroke-width:2"/>
+          <text x="265" y="136" text-anchor="middle" style="font-size:15px">&#129309;</text>
+          <text x="265" y="112" text-anchor="middle" style="fill:var(--head);font-family:Inter,sans-serif;font-size:11px;font-weight:700">Koper</text>
+          <circle cx="160" cy="228" r="24" style="fill:var(--panel);stroke:var(--purple);stroke-width:2"/>
+          <text x="160" y="234" text-anchor="middle" style="font-size:15px">&#9878;&#65039;</text>
+          <text x="160" y="266" text-anchor="middle" style="fill:var(--head);font-family:Inter,sans-serif;font-size:11px;font-weight:700">Specialisten</text>
         </svg>
       </div>
     </div>`
@@ -199,10 +209,11 @@ const SLIDES=[
   {
     eyebrow:'De rollen',
     titel:'Iedereen ziet alleen wat voor hem bedoeld is',
-    html:`<div class="rollen-grid">
+    html:`<div class="rollen-grid" style="grid-template-columns:repeat(4,1fr)">
       <div class="rol-kaart card-shadow"><div class="ico-badge" style="background:var(--teal-bg)">&#128188;</div><h3>Verkoper</h3><p>Vult het due diligence-dossier in, uploadt documenten, en behoudt overzicht over wat er met de koper is gedeeld.</p></div>
       <div class="rol-kaart card-shadow"><div class="ico-badge" style="background:var(--gold-bg)">&#129309;</div><h3>Koper</h3><p>Krijgt pas toegang na een ondertekende geheimhoudingsverklaring, en alleen tot de onderdelen die de adviseur vrijgeeft.</p></div>
       <div class="rol-kaart card-shadow"><div class="ico-badge" style="background:var(--purple-bg)">&#128202;</div><h3>Begeleider</h3><p>De adviseur die het traject regisseert: dossier, documenten, waardering en communicatie tussen partijen.</p></div>
+      <div class="rol-kaart card-shadow"><div class="ico-badge" style="background:var(--purple-bg)">&#9878;&#65039;</div><h3>Specialisten</h3><p>Optioneel: een jurist, fiscalist of waarderingsdeskundige die de adviseur toevoegt om een onderdeel te beoordelen, met alleen zicht op wat daarvoor is vrijgegeven.</p></div>
     </div>
     <div class="caption">Elke rol logt in met een eigen persoonlijke toegangscode. Geen account of wachtwoord nodig.</div>`
   },
@@ -214,8 +225,7 @@ const SLIDES=[
       <div class="sector-kaart card-shadow"><span class="ico">&#127970;</span><h4>MKB</h4><p>Overname of bedrijfsopvolging</p></div>
       <div class="sector-kaart card-shadow"><span class="ico">&#127973;</span><h4>Zorgpraktijken</h4><p>Praktijkoverdracht</p></div>
       <div class="sector-kaart card-shadow"><span class="ico">&#128187;</span><h4>IT &amp; software</h4><p>Verkoop van een softwarebedrijf</p></div>
-    </div>
-    <div class="caption">Een onderbouwde waardering met sectorbenchmarks is er op dit moment voor accountancykantoren. Voor de andere sectoren regelt het platform het volledige dossier en documentproces.</div>`
+    </div>`
   },
   {
     eyebrow:'Startpunt',
@@ -239,7 +249,7 @@ const SLIDES=[
       <div class="fase-chip"><span class="nr">7</span>Strategisch &amp; markt</div>
     </div>
     <ul class="slide-punten">
-      <li>Velden vult u rechtstreeks in, of u uploadt documenten en het platform leest ze uit en vult wat het met zekerheid kan afleiden.</li>
+      <li>De verkoper vult velden rechtstreeks in, of uploadt documenten waaruit het platform automatisch overneemt wat het met zekerheid kan afleiden. De adviseur kan hetzelfde doen namens de verkoper.</li>
       <li>Een waarde waar het platform niet zeker van is, wordt nooit geraden: die komt te staan als "handmatig controleren". Zo komt er nooit stilzwijgend een verkeerd cijfer in het dossier terecht.</li>
     </ul>`
   },
@@ -259,8 +269,8 @@ const SLIDES=[
   },
   {
     eyebrow:'Geheimhouding en intentieverklaring',
-    titel:'Opgebouwd uit onderdelen, niet uit één tekstblok',
-    html:`<p style="font-size:15px;color:var(--mid);line-height:1.75;margin-top:.5rem">De geheimhoudingsovereenkomst en de intentieverklaring worden per onderdeel samengesteld, in plaats van als één AI-gegenereerde tekst.</p>
+    titel:'Zelf samengesteld uit losse onderdelen',
+    html:`<p style="font-size:15px;color:var(--mid);line-height:1.75;margin-top:.5rem">De geheimhoudingsovereenkomst en de intentieverklaring zijn geen kant-en-klare, dichtgetimmerde tekst, maar bestaan uit losse onderdelen die de adviseur apart kiest, invult en laat beoordelen. Past u later één onderdeel aan, dan vervalt alleen de beoordeling van dát onderdeel, niet van de rest van het document.</p>
     <div class="blocks-row">
       <div class="block-chip">Partijen</div><div class="block-chip">Reikwijdte</div><div class="block-chip">Duur</div><div class="block-chip">Boetebeding</div><div class="block-chip">Prijsmechanisme</div><div class="block-chip">Opschortende voorwaarden</div>
     </div>
@@ -274,8 +284,8 @@ const SLIDES=[
   },
   {
     eyebrow:'Eigen specialisten',
-    titel:'Ook zonder eigen jurist of fiscalist verder',
-    html:`<p style="font-size:15px;color:var(--mid);line-height:1.75;margin-top:.5rem">Niet elke adviseur heeft voor elk vakgebied een eigen specialist paraat. Voor de juridische, fiscale of waarderingsbeoordeling van een onderdeel kan de adviseur een specialist inschakelen uit de pool van Bisschops Financing.</p>
+    titel:'Een specialist toevoegen, wanneer u dat wilt',
+    html:`<p style="font-size:15px;color:var(--mid);line-height:1.75;margin-top:.5rem">De adviseur kan op elk moment een jurist, fiscalist of waarderingsdeskundige aan het traject toevoegen om een onderdeel te laten beoordelen, de eigen specialist, of desgewenst een profiel uit de pool van Bisschops Financing. De adviseur bepaalt zelf welk onderdeel van het dossier die specialist te zien krijgt.</p>
     <div class="rollen-grid" style="grid-template-columns:repeat(3,1fr)">
       <div class="rol-kaart card-shadow"><div class="ico-badge" style="background:var(--teal-bg)">&#9878;&#65039;</div><h3>Jurist</h3><p>Beoordeelt de juridische onderdelen: partijen, reikwijdte, boetebeding, opschortende voorwaarden.</p></div>
       <div class="rol-kaart card-shadow"><div class="ico-badge" style="background:var(--gold-bg)">&#128179;</div><h3>Fiscalist</h3><p>Beoordeelt de fiscale kant van het prijsmechanisme en de dealstructuur.</p></div>
@@ -375,8 +385,7 @@ const SLIDES=[
   {
     eyebrow:'Tot slot',
     titel:'Klaar om te beginnen?',
-    html:`<p style="font-size:16.5px;color:var(--mid);line-height:1.75;margin-top:.5rem">Een traject staat binnen enkele minuten klaar. Neem contact op met Bisschops Financing om een eigen traject te laten opzetten.</p>
-    <div class="slide-note"><strong style="color:var(--head)">Bisschops Financing B.V.</strong> &middot; Grotestraat 13, 5841AA Oploo</div>`
+    html:`<p style="font-size:16.5px;color:var(--mid);line-height:1.75;margin-top:.5rem">Een traject staat binnen enkele minuten klaar. Neem contact op met Bisschops Financing om een eigen traject te laten opzetten.</p>`
   }
 ];
 
