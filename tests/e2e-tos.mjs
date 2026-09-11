@@ -177,10 +177,15 @@ async function run() {
   // Leesinhoud: verkoper/koper krijgen de tekst, maar geen interne reviewer-naam/provenance (extern-strip).
   const ndaGetVerkoper = await api('GET', '/mna/tos/document/' + ndaId, { headers: VH });
   check('verkoper kan NDA-document lezen (ok)', ndaGetVerkoper.json && ndaGetVerkoper.json.ok === true, JSON.stringify(ndaGetVerkoper.json).slice(0, 160));
-  check('extern: component heeft tekst maar geen reviewer_naam/text_provenance', (() => {
+  check('extern: component aanwezig maar geen reviewer_naam/text_provenance gelekt', (() => {
+    // Geen tekst-inhoud geëist: nda_scope is hier nooit ingevuld (geen AI-concept/handmatige tekst
+    // gedraaid in deze teststap) — de component staat er met text=null, dat is verwacht ("leeg
+    // werkveld") en geen falen. Waar het om gaat: de externe rol krijgt nooit text_provenance of een
+    // reviewer_naam, ongeacht of er al tekst is (bevinding 11 sep 2026, eigen testfout: eiste eerder
+    // ten onrechte een gevulde tekst).
     const c = (ndaGetVerkoper.json.componenten || []).find((x) => x.block_id === 'nda_scope');
-    return c && typeof c.text === 'string' && c.text_provenance === undefined && (!c.review || c.review.reviewer_naam === undefined);
-  })());
+    return !!c && c.text_provenance === undefined && (!c.review || c.review.reviewer_naam === undefined);
+  })(), JSON.stringify((ndaGetVerkoper.json.componenten || []).find((x) => x.block_id === 'nda_scope')));
   check('extern: divergenties leeg (geen interne kruisverwijzingen naar buiten)', ndaGetVerkoper.json && Array.isArray(ndaGetVerkoper.json.divergenties) && ndaGetVerkoper.json.divergenties.length === 0);
   const mouGetKoper = await api('GET', '/mna/tos/document/' + docId, { headers: KH });
   check('koper kan NIET bij de (nog niet verstuurde) MoU → 403', mouGetKoper.status === 403, 'status ' + mouGetKoper.status);
