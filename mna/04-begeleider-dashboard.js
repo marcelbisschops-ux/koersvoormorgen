@@ -801,16 +801,18 @@ function renderBegeleiderDashboard(app){
         // bevestigingsstap in toonVerkoopmemoModal, vereist geen formele koper in het platform).
         +stapRij('bg-bem-actie','&#128203;','#2a5ea0','Bemiddelingsovereenkomst (BEM)',getekendStatus('bem_getekend','bem_datum'))
         +stapRij('bg-teaser-actie','&#128226;','#1a7a5e',t.teaser_tekst?'Teaser bekijken/bewerken':'Genereer teaser',t.teaser_tekst?'<span style="color:var(--teal)">&#10003; Teaser klaar</span>':'Kort, anoniem verkoopdocument — vóór er een koper is',false,false,!marketingAan,'Module Marketing niet actief — neem contact op via koersvoormorgen.nl')
-        +stapRij('bg-nda-actie','&#128274;','#7c5cbf','Geheimhoudingsovereenkomst (NDA) — sjabloongenerator',getekendStatus('nda_getekend','nda_getekend_datum'))
         +stapRij('bg-verkoopmemo-actie','&#128220;','#8a5a00',t.verkoopmemorandum_tekst?'Verkoopmemorandum bekijken/bewerken':'Genereer verkoopmemorandum',t.verkoopmemorandum_tekst?'<span style="color:var(--teal)">&#10003; Verkoopmemorandum klaar</span>':'Uitgebreid document mét bedrijfsnaam, na NDA van die partij',false,false,!marketingAan,'Module Marketing niet actief — neem contact op via koersvoormorgen.nl')
-        // MoU-/LoI-composer (Transaction OS) — stelt het document samen uit losse, apart af te tekenen
-        // onderdelen. Geen module-gate: de composer zelf is geen te versturen contract; finaliseren/
-        // versturen gaat via de aparte, geauthenticeerde tos-endpoints.
-        +stapRij('bg-nda-composer-actie','&#129513;','#5a5470','Geheimhoudingsovereenkomst (composer)','Kort en grotendeels bindend: doel, toegestane ontvangers, duur, boetebeding',false,true)
+        // MoU-/LoI-/NDA-composer (Transaction OS) — stelt het document samen uit losse, apart af te
+        // tekenen onderdelen. Sinds 11 sep 2026 (Marcel: "composer wordt de enige") de ENIGE weg om
+        // een NDA/LoI aan te maken — de oude sjabloongenerator-rijen zijn hier verwijderd. Geen
+        // module-gate: de composer zelf is geen te versturen contract; finaliseren/versturen gaat via
+        // de aparte, geauthenticeerde tos-endpoints. Verkoper/koper krijgen het gefinaliseerde en
+        // verstuurde document + een "akkoord & onderteken"-stap op hun eigen cover-scherm (mna/06,
+        // laadComposerPartijPaneel) — dat zet dezelfde nda_getekend/loi_getekend-vlag als voorheen.
+        +stapRij('bg-nda-composer-actie','&#128274;','#7c5cbf','Geheimhoudingsovereenkomst (NDA)',getekendStatus('nda_getekend','nda_getekend_datum'))
         +stapRij('bg-mou-actie','&#129513;','#5a5470','Memorandum of Understanding (composer)','Onderdelen samenstellen, laten aftekenen, finaliseren',false,true)
-        +stapRij('bg-loi-composer-actie','&#129513;','#5a5470','Letter of Intent (composer)','Uitgebreider dan de MoU: garantiekader, MAC-clausule, DD en voorwaarden standaard erin',false,true)
+        +stapRij('bg-loi-composer-actie','&#128196;','var(--gold)','Letter of Intent (LoI)',getekendStatus('loi_getekend','loi_getekend_datum'))
         +stapRij('bg-bieding-actie','&#128233;','#a0522d','Indicatieve bieding','Klaar om te versturen')
-        +stapRij('bg-loi-actie','&#128196;','var(--gold)','Intentieverklaring (LoI) — sjabloongenerator',getekendStatus('loi_getekend','loi_getekend_datum'))
         // Persistent, zichtbaar gemaakt (21 aug 2026, Marcel kon de trigger niet vinden): stond
         // voorheen alleen als knop verstopt binnen het resultaatscherm van "Indicatieve bieding" —
         // nu een eigen stap in de flow, matchend met de "post-LoI"-terminologie die elders in de
@@ -2880,8 +2882,6 @@ function renderBegeleiderDashboard(app){
   var bvBtnEl=document.getElementById('bg-biedingvergelijk-actie');
   if(bvBtnEl)bvBtnEl.onclick=function(){ toonBiedingVergelijkerModal(); };
 
-  document.getElementById('bg-nda-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op via koersvoormorgen.nl.','err');return;} bgToonOfGenereerDoc('nda'); };
-  document.getElementById('bg-loi-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op via koersvoormorgen.nl.','err');return;} bgToonOfGenereerDoc('loi'); };
   var bgMouBtn=document.getElementById('bg-mou-actie');
   if(bgMouBtn)bgMouBtn.onclick=function(){ bgMouComposer('MOU'); };
   var bgLoiCompBtn=document.getElementById('bg-loi-composer-actie');
