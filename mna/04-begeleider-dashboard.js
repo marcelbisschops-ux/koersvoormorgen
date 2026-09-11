@@ -2409,25 +2409,39 @@ function renderBegeleiderDashboard(app){
     toonProfiel();
     document.getElementById('mp-spec').onchange=toonProfiel;
     document.getElementById('mp-annuleer').onclick=function(){ box.innerHTML=''; };
-    document.getElementById('mp-verstuur').onclick=async function(){
-      var btn=this; btn.disabled=true; btn.textContent='Bezig…';
+    async function verstuurOpdracht(bevestigd){
+      var btn=document.getElementById('mp-verstuur');
       var r=await bgPoolApi('POST','/mna/pool/opdracht',{
         specialist_id:document.getElementById('mp-spec').value,
         domein:document.getElementById('mp-dom').value,
         documenten:[_mouDocId],
         instructie:document.getElementById('mp-instr').value||'',
         deadline_dagen:Number(document.getElementById('mp-dl').value)||10,
+        conflict_bevestigd:!!bevestigd,
       });
-      if(!r.ok||!r.json.ok){ document.getElementById('mp-resultaat').innerHTML='<span style="color:var(--red);font-size:11px">'+esc((r.json&&r.json.error)||'Mislukt')+'</span>'; btn.disabled=false; btn.textContent='Opdracht aanvragen'; return; }
+      if(r.status===409&&r.json&&r.json.bevestiging_vereist){
+        var lijst=(r.json.conflict_signalen||[]).map(function(s){return '<li>'+esc(s.tekst)+'</li>';}).join('');
+        document.getElementById('mp-resultaat').innerHTML='<div style="background:var(--gold-bg);border:1px solid var(--gold);border-radius:var(--r);padding:.55rem .7rem;font-size:11px;color:var(--gold-dark)">'
+          +'<strong>&#9888; Mogelijk belangenconflict gesignaleerd:</strong><ul style="margin:.3rem 0 .4rem 1.1rem;padding:0">'+lijst+'</ul>'
+          +'<label style="display:flex;gap:6px;align-items:flex-start;cursor:pointer;color:var(--sub)"><input type="checkbox" id="mp-bevestig" style="margin-top:2px"> Ik heb dit beoordeeld en wil deze opdracht toch aanmaken.</label>'
+          +'<button id="mp-verstuur2" class="btn btn-sm" style="font-size:10.5px;padding:5px 12px;margin-top:.4rem" disabled>Bevestigen &amp; aanvragen</button></div>';
+        var chk=document.getElementById('mp-bevestig'), btn2=document.getElementById('mp-verstuur2');
+        chk.onchange=function(){ btn2.disabled=!chk.checked; };
+        btn2.onclick=function(){ btn2.disabled=true; btn2.textContent='Bezig…'; verstuurOpdracht(true); };
+        if(btn){btn.disabled=false; btn.textContent='Opdracht aanvragen';}
+        return;
+      }
+      if(!r.ok||!r.json.ok){ document.getElementById('mp-resultaat').innerHTML='<span style="color:var(--red);font-size:11px">'+esc((r.json&&r.json.error)||'Mislukt')+'</span>'; if(btn){btn.disabled=false; btn.textContent='Opdracht aanvragen';} return; }
       var k=r.json.kosten||{};
       var link=location.origin+'/specialist.html?key='+encodeURIComponent((r.json.specialist_link||'').replace('x-pool-key: ',''));
-      var conflict=(r.json.conflict_signalen||[]).length?('<div style="color:var(--gold-dark);font-size:10.5px;margin-top:3px">&#9888; '+esc(r.json.conflict_signalen.join('; '))+'</div>'):'';
+      var info=(r.json.conflict_signalen||[]).filter(function(s){return !s.hard;}).map(function(s){return esc(s.tekst);}).join('; ');
       document.getElementById('mp-resultaat').innerHTML='<div style="background:var(--teal-bg);border:1px solid var(--teal);border-radius:var(--r);padding:.55rem .7rem;font-size:11px;color:var(--teal-dim)">'
-        +'&#10003; Opdracht aangevraagd. Kosten: honorarium &euro; '+esc(k.honorarium)+' + platformbemiddeling &euro; '+esc(k.marge)+' = <strong>&euro; '+esc(k.totaal)+'</strong>.'+conflict
+        +'&#10003; Opdracht aangevraagd. Kosten: honorarium &euro; '+esc(k.honorarium)+' + platformbemiddeling &euro; '+esc(k.marge)+' = <strong>&euro; '+esc(k.totaal)+'</strong>.'
+        +(info?('<div style="color:var(--gold-dark);font-size:10.5px;margin-top:3px">'+info+'</div>'):'')
         +'<div style="margin-top:.4rem;color:var(--sub)">Stuur de specialist deze link:</div>'
         +'<input readonly value="'+esc(link)+'" onclick="this.select()" style="width:100%;font-size:10px;font-family:monospace;background:var(--panel);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);padding:4px 6px;margin-top:2px"></div>';
-      btn.disabled=false; btn.textContent='Nog een aanvragen';
-    };
+    }
+    document.getElementById('mp-verstuur').onclick=function(){ this.disabled=true; this.textContent='Bezig…'; verstuurOpdracht(false); };
   }
   function bgMouWire(bevroren){
     var out=document.getElementById('bg-doc-out'); if(!out)return;
