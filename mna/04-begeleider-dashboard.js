@@ -2204,7 +2204,7 @@ function renderBegeleiderDashboard(app){
     return '<div style="background:var(--red-bg);border:1px solid var(--red);border-radius:var(--r2);padding:1rem;font-size:13px;color:var(--red)">'+esc(mouProfLabel().kort)+'-composer: '+esc(msg||'onbekende fout')+'</div>';
   }
   function bgMouDiscl(){
-    return '<div style="font-size:11px;color:var(--muted);line-height:1.55;margin:.5rem 0 .75rem">Elk onderdeel is een leeg werkveld. De AI stelt hoogstens een <em>concept</em> voor; een bevoegd specialist (jurist/fiscalist/waardeur) tekent de professionele tekst af per dossier. Koers voor Morgen beoordeelt de inhoud niet.</div>';
+    return '<div style="font-size:11px;color:var(--muted);line-height:1.55;margin:.5rem 0 .75rem">Elk onderdeel is een leeg werkveld. De AI stelt hoogstens een <em>concept</em> voor; een bevoegd specialist (jurist/fiscalist/waarderingsdeskundige) tekent de professionele tekst af per dossier. Koers voor Morgen beoordeelt de inhoud niet.</div>';
   }
   async function bgMouComposer(profile){
     _mouProfile=(profile||'MOU').toUpperCase(); if(!MOU_PROFIELEN[_mouProfile])_mouProfile='MOU';
