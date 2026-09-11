@@ -2082,34 +2082,108 @@ function renderBegeleiderDashboard(app){
     };
   }
 
-  // ===== AANDACHTSPUNTEN SPA (koopovereenkomst): checklist ter voorbereiding op de jurist =====
-  // Toont een aandachtspuntenlijst voor de SPA (géén ingevulde concept-overeenkomst — het opstellen
-  // van de koopovereenkomst is voorbehouden aan de jurist/notaris, zie Artikel 3 AV). Haalt alleen
-  // het (statische) sjabloon op en toont het, zonder deal-specifieke invoer of AI-invulling.
-  async function toonSpaModal(){
+  // ===== KOOPOVEREENKOMST (SPA): AI-concept, zelfde behandeling als NDA/LoI/BEM/Excl =====
+  // Marcel, 11 sep 2026, na het eerder afgeschermde "alleen een aandachtspuntenlijst": "Ja, altijd —
+  // zelfde behandeling als NDA/LoI/BEM", met de aanvulling "het platform moet zo min mogelijk
+  // beperken, maar alles moet wel vastgelegd worden... als een adviseur alle AI-voorstellen wil
+  // gebruiken dan mag dat, maar dan moet vastgelegd worden dat dit zijn eigen keuze was." Bewust
+  // GEEN eigen bgDoc()-branch: de SPA gaat — anders dan nda/loi/bem/excl — NOOIT via het platform
+  // naar de tegenpartij (ROLGEBONDEN_DOCTYPES: spa is en blijft tussenpersoon-only, worker/10), dus
+  // geen Verstuur/Signhost-knoppen; een aparte functie voorkomt dat bgDoc() zelf risicovoller wordt
+  // voor de wél-verzonden documenttypes. De tekst is en blijft bewerkbaar in het tekstvak — een
+  // adviseur die liever eigen tekst (van zijn jurist, of een vast kantoorsjabloon) gebruikt, plakt
+  // die er gewoon overheen vóór "Vastleggen".
+  async function bgDocSpa(){
+    function resterendePlaceholders(txt){
+      var set={}; var out=[]; var re=/\[[^\]\n]{1,60}\]|\{\{[^}\n]{1,60}\}\}/g; var m;
+      while((m=re.exec(String(txt||'')))){ var v=m[0]; if(!set[v]){ set[v]=1; out.push(v); } }
+      return out;
+    }
     var t2=S.traject||{};
-    var out=document.getElementById('bg-doc-out');out.style.display='block';
-    toast('⚙️ Bezig met genereren: Aandachtspunten koopovereenkomst (SPA)...','info',4000);
-    out.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem">Aandachtspuntenlijst laden...</div>';
-    var docOutEl=document.getElementById('bg-doc-out');
-    if(docOutEl)setTimeout(function(){docOutEl.scrollIntoView({behavior:'smooth',block:'nearest'});},100);
+    var out=document.getElementById('bg-doc-out'); out.style.display='block';
+    out.scrollIntoView({behavior:'smooth',block:'start'});
+    toast('⚙️ Bezig met genereren: Koopovereenkomst (SPA)...','info',4000);
+    out.innerHTML='<div style="color:var(--muted);font-size:13px;padding:1rem;background:var(--card);border-radius:var(--r2)">Genereren... (15-30 sec)</div>';
+    var datum=new Date().toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'});
+    var adviseur=t2.begeleider_naam||BRAND.bedrijf;
+    // Verkoper/Koper zijn bij een SPA absolute rollen (nooit relatief aan wie opdrachtgever is,
+    // anders dan bij de BEM-mandaatduiding) — kantoor_naam is en blijft het doelbedrijf/verkoper,
+    // koper_naam de koper, ongeacht opdrachtgever_rol.
     var tplD=await fetch(WORKER+'/mna/template/spa?email='+encodeURIComponent(t2.begeleider_email||'')+'&code='+encodeURIComponent(S.code)).then(function(r){return r.json();}).catch(function(){return{ok:false};});
-    var tekst=tplD.ok&&tplD.tekst?tplD.tekst:'[aandachtspuntenlijst niet beschikbaar]';
-    toast(tplD.ok?'✓ Aandachtspuntenlijst (SPA) is gegenereerd':'Genereren van aandachtspuntenlijst is mislukt',tplD.ok?'ok':'err');
-    var titel='Aandachtspunten koopovereenkomst (SPA) — '+(t2.kantoor_naam||S.code);
+    var tplTekst=tplD.ok&&tplD.tekst?tplD.tekst:'[standaard template]';
+    if(tplTekst.length>18000){
+      out.innerHTML='<div style="background:var(--red-bg);border:1px solid var(--red);border-radius:var(--r2);padding:1rem;font-size:13px;color:var(--red)"><strong>&#9888; Template te lang om veilig te genereren.</strong> Deze template ('+tplTekst.length+' tekens) overschrijdt de veilige limiet. Vul dit document handmatig in of splits de template op.</div>';
+      toast('Template te lang — generatie geweigerd','err');
+      return;
+    }
+    // Koopsom automatisch overnemen uit het laatst verstuurde dealvoorstel (zelfde patroon als de
+    // LoI in bgDoc()) — voorkomt een los, mogelijk afwijkend bedrag in de SPA t.o.v. wat al met de
+    // tegenpartij gedeeld is. Zonder dealvoorstel blijven de prijs-placeholders gewoon leeg staan.
+    var dvCijfers=null;
+    var dvVersies=await fetch(WORKER+'/mna/versies/'+encodeURIComponent(S.code)+'/dealvoorstel').then(function(r){return r.json();}).catch(function(){return [];});
+    var dvLaatste=Array.isArray(dvVersies)&&dvVersies.length?dvVersies[0]:null;
+    if(dvLaatste&&dvLaatste.cijfers_json){
+      try{var dvC=JSON.parse(dvLaatste.cijfers_json);if(dvC&&dvC.p&&dvC.closing)dvCijfers=dvC;}catch(dvParseErr){}
+    }
+    var clausuleRegel='STRIKTE REGELS voor het invullen:\n'
+      +'1. Wijzig, herschrijf, verkort, verleng, voeg toe of verwijder GEEN bestaande bepaling, zin of artikel uit de template. Neem de juridische tekst exact over.\n'
+      +'2. Vervang UITSLUITEND de expliciet aangewezen placeholders (tekst tussen [vierkante haken]).\n'
+      +'3. Kan een placeholder niet uit de gegeven context worden ingevuld, laat hem dan EXACT staan — verzin geen naam, bedrag, datum, percentage, drempel of andere waarde. De drempels/plafonds/termijnen in Artikel 10 en de aandelenpercentages/bedragen die hieronder niet expliciet gegeven zijn, zijn onderhandelde juridische keuzes — die vul jij nooit zelf in.\n'
+      +'4. Voeg geen eigen juridische clausules, kopjes, toelichtingen of standaardbepalingen toe.\n'
+      +'5. Geef alleen het ingevulde document terug, zonder commentaar.\n\n';
+    var prompt=clausuleRegel+'Vul de KOOPOVEREENKOMST (SPA) concept-template in.\n'
+      +'Verkoper (doelbedrijf): '+esc(t2.kantoor_naam||'[verkoper]')+', gevestigd te '+(t2.verkoper_adres||'[adres verkoper]')+'.\n'
+      +'Koper: '+esc(t2.koper_naam||'[koper]')+', gevestigd te '+(t2.koper_adres||'[adres koper]')+'.\n'
+      +'Datum: '+datum+'. Adviseur: '+adviseur+'.\n'
+      +(dvCijfers?('Neem de volgende koopsom EXACT over in Artikel 3, verzin geen ander bedrag: € '+Math.round(dvCijfers.closing.deelKoperBasis)+' voor '+dvCijfers.p.belangPct+'% van de aandelen (cash-and-debt-free, op bewezen EBITDA-basis).\n'):'Er is nog geen dealvoorstel gevonden — laat de koopprijs-placeholders in Artikel 3 leeg staan.\n')
+      +'\n\nTEMPLATE:\n'+tplTekst;
+    var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:16000})});
+    var rd=await resp.json();
+    var tekst=rd.text||'Fout bij genereren';
+    var bgPh=(tekst&&tekst!=='Fout bij genereren')?resterendePlaceholders(tekst):[];
+    var coOpgeslagen=true;
+    if(tekst&&tekst!=='Fout bij genereren'){
+      var coR=await fetch(WORKER+'/mna/document/concept-opslaan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:S.traject.id,doc_type:'spa',tekst:tekst})}).then(function(r){return r.json();}).catch(function(){return{ok:false};});
+      coOpgeslagen=!!(coR&&coR.ok);
+    }
+    if(tekst&&tekst!=='Fout bij genereren')toast('✓ Koopovereenkomst (SPA)-concept is gegenereerd','ok');
+    else toast('Genereren van de SPA is mislukt','err');
+    var titel='Koopovereenkomst (SPA) — concept — '+(t2.kantoor_naam||S.code);
     out.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem">'
-      +'<div style="font-size:11px;font-weight:600;color:#5a5470;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.5rem">Aandachtspunten koopovereenkomst (SPA)</div>'
-      +'<div style="font-size:12px;color:var(--gold-dark);background:var(--gold-bg);border:1px solid var(--gold);border-radius:6px;padding:.5rem .75rem;margin-bottom:.75rem;line-height:1.5">&#9888; Dit is <strong>geen concept-overeenkomst</strong>. Het platform stelt de koopovereenkomst zelf niet op — die tekst is nooit juridisch getoetst. Onderstaande lijst helpt u het gesprek met uw jurist voor te bereiden.</div>'
-      +'<textarea id="spa-doc-tekst" readonly style="width:100%;height:340px;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:Georgia,serif;font-size:12px;line-height:1.8;padding:1rem;outline:none;resize:vertical">'+esc(tekst)+'</textarea>'
+      +'<div style="font-size:11px;font-weight:600;color:#5a5470;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.75rem">Koopovereenkomst (SPA) — concept</div>'
+      +'<div style="font-size:12px;color:var(--gold-dark);background:var(--gold-bg);border:1px solid var(--gold);border-radius:6px;padding:.5rem .75rem;margin-bottom:.75rem;line-height:1.5">&#9888; Dit is een <strong>AI-gegenereerd concept, geen getoetste overeenkomst</strong>. Dit is het meest complexe en risicovolle document in het hele traject (garanties, aansprakelijkheid, opschortende voorwaarden). Laat de tekst — met name Artikel 7 t/m 10 — altijd door uw eigen jurist beoordelen en definitief vaststellen vóór ondertekening.</div>'
+      +(coOpgeslagen?'<div style="font-size:11px;margin-bottom:.75rem;color:var(--teal)">&#10003; Vastgelegd als versie — terug te vinden zonder opnieuw te genereren.</div>'
+        :'<div style="font-size:11px;margin-bottom:.75rem;color:var(--red)">&#9888; Vastleggen is mislukt — deze versie gaat verloren als u wegnavigeert. Probeer opnieuw te genereren.</div>')
+      +(dvCijfers?'<div style="font-size:11px;margin-bottom:.75rem;color:var(--teal)">&#10003; Koopsom automatisch overgenomen uit het laatst verstuurde dealvoorstel — controleer vóór gebruik.</div>':'<div style="font-size:11px;margin-bottom:.75rem;color:var(--muted)">&#8505; Geen eerder dealvoorstel gevonden — vul de koopprijs in Artikel 3 zelf in.</div>')
+      +(bgPh.length?('<div style="background:var(--gold-bg);border:1px solid var(--gold);border-radius:var(--r);padding:.6rem .8rem;margin-bottom:.75rem;font-size:12px;color:var(--gold)"><strong>&#9888; '+bgPh.length+' nog in te vullen plek'+(bgPh.length===1?'':'ken')+'</strong>, waaronder de juridisch te bepalen drempels/plafonds/termijnen in Artikel 10: '+bgPh.slice(0,10).map(esc).join(', ')+(bgPh.length>10?' &hellip;':'')+'.</div>'):'')
+      +'<textarea id="bg-doc-tekst" style="width:100%;height:340px;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:Georgia,serif;font-size:12px;line-height:1.8;padding:1rem;outline:none;resize:vertical">'+esc(tekst)+'</textarea>'
+      +'<div style="font-size:11px;color:var(--muted);margin-top:.4rem">Liever uw eigen tekst (van uw jurist, of een vast kantoorsjabloon) gebruiken? Plak die gewoon over de tekst hierboven vóór u op "Vastleggen" klikt — of gebruik <strong>"Eigen document versturen"</strong> onderaan de Documenten-flow om een los PDF/Word-bestand te delen.</div>'
+      +'<div style="margin-top:.4rem;padding:.5rem .7rem;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);font-size:11px;color:var(--muted);font-style:italic;line-height:1.6">'+esc(RELIANCE_VOETTEKST)+'<div style="font-style:normal;margin-top:2px;color:var(--muted);opacity:.8">Deze slotregel wordt automatisch onder het document gezet bij printen.</div></div>'
+      +akkoordHtml('spa-doc-akkoord')
+      +interneGoedkeuringHtml('spa-goedkeuring-naam')
+      +'<div style="font-size:10.5px;color:var(--muted);margin-top:.3rem">Wordt vastgelegd in het logboek — dit is uw eigen, verantwoordelijke keuze om deze tekst (AI-concept of uw eigen versie) te gebruiken, niet een beoordeling door {{BEGELEIDER}} of het platform.</div>'.replace('{{BEGELEIDER}}',esc(BRAND.kort||BRAND.bedrijf||''))
       +'<div style="display:flex;gap:8px;margin-top:.75rem">'
       +'<button id="spa-print" class="btn-ghost" style="font-size:12px;padding:6px 14px">&#128196; Print / PDF</button>'
+      +'<button id="spa-vastleggen" class="btn" style="font-size:12px;padding:6px 14px;background:#5a5470">&#128274; Vastleggen — ik gebruik deze tekst</button>'
       +'</div>'
-      // Marcel, 11 sep 2026: "als hij een standaardtekst wil invoeren of een tekst die hij van een
-      // jurist heeft gekregen wil invoegen" — die weg bestond al (Eigen document versturen, verderop
-      // in de Documenten-flow), maar was hier nergens zichtbaar vanaf de SPA-checklist zelf.
-      +'<div style="font-size:11.5px;color:var(--muted);margin-top:.75rem;padding-top:.6rem;border-top:1px dashed var(--border2)">Heeft u zelf al een concept-koopovereenkomst — van uw eigen jurist, of een vast kantoorsjabloon? Upload en verstuur die rechtstreeks via <strong>"Eigen document versturen"</strong> onderaan de Documenten-flow; dat werkt met elk PDF- of Word-bestand.</div>'
+      +'<div id="spa-vastleggen-out" style="margin-top:.6rem"></div>'
       +'</div>';
-    document.getElementById('spa-print').onclick=function(){printDoc(document.getElementById('spa-doc-tekst').value,titel,'spa');};
+    document.getElementById('spa-print').onclick=function(){printDoc(document.getElementById('bg-doc-tekst').value,titel,'spa');};
+    var spaGoedkeuringCtrl=wireInterneGoedkeuring('spa-goedkeuring-naam','spa-doc-akkoord',['spa-vastleggen']);
+    document.getElementById('spa-vastleggen').onclick=async function(){
+      var btn=this; btn.disabled=true; btn.textContent='Bezig...';
+      var huidigeTekst=document.getElementById('bg-doc-tekst').value;
+      var naam=spaGoedkeuringCtrl.getNaam();
+      // Vastlegging van "dit is mijn eigen keuze" (Marcel, 11 sep 2026) gaat via secAuditLog naar het
+      // bestaande auditlog-endpoint (mna_audit) — zelfde mechanisme als bij LoI/bieding hierboven,
+      // geen aparte kolom nodig op mna_doc_versies.
+      secAuditLog('interne_goedkeuring',{document_type:'spa',verzendkanaal:'eigen_gebruik',goedgekeurd_door:naam});
+      var r=await fetch(WORKER+'/mna/document/concept-opslaan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:S.traject.id,doc_type:'spa',tekst:huidigeTekst})}).then(function(x){return x.json();}).catch(function(){return{ok:false};});
+      document.getElementById('spa-vastleggen-out').innerHTML=(r&&r.ok)
+        ?'<div style="background:var(--teal-bg);border:1px solid var(--teal-dark);border-radius:var(--r);padding:.6rem .8rem;font-size:12px;color:var(--teal-dim)">&#10003; Vastgelegd — '+esc(naam)+' heeft deze versie in gebruik genomen, '+new Date().toLocaleString('nl-NL',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})+'.</div>'
+        :'<div style="color:var(--red);font-size:12px">Vastleggen mislukt — probeer opnieuw.</div>';
+      btn.disabled=false; btn.textContent='🔒 Vastleggen — ik gebruik deze tekst';
+    };
   }
 
   // ===== CLOSING-CHECKLIST: was tot 19 aug 2026 platte, niet-aanvinkbare tekst (BF_TEMPLATES.closing)
@@ -3039,7 +3113,7 @@ function renderBegeleiderDashboard(app){
   document.getElementById('bg-teaser-actie').onclick=function(){ if(!marketingAan){toast('Module Marketing niet actief. Neem contact op via koersvoormorgen.nl.','err');return;} toonTeaserModal(); };
   document.getElementById('bg-verkoopmemo-actie').onclick=function(){ if(!marketingAan){toast('Module Marketing niet actief. Neem contact op via koersvoormorgen.nl.','err');return;} toonVerkoopmemoModal(); };
   document.getElementById('bg-bieding-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op via koersvoormorgen.nl.','err');return;} toonDocWaarschuwing('bieding', function(){ toonBiedingModal(); }); };
-  document.getElementById('bg-spa-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op via koersvoormorgen.nl.','err');return;} toonDocWaarschuwing('spa', function(){ toonSpaModal(); }); };
+  document.getElementById('bg-spa-actie').onclick=function(){ if(!contractenAan){toast('Module Contracten niet actief. Neem contact op via koersvoormorgen.nl.','err');return;} toonDocWaarschuwing('spa', function(){ bgDocSpa(); }); };
   // Geen toonDocWaarschuwing hier: de closing-checklist is een generieke controlelijst zonder
   // partij-naam-placeholders (in tegenstelling tot NDA/LoI/BEM/Excl/SPA), dus de kopernaam-/
   // kantoornaam-waarschuwing is hier niet relevant — en 'closing' staat niet in de labels-map van
