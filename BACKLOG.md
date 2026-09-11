@@ -121,19 +121,13 @@ gepusht — dat restpunt is klaar. **Nog open, optioneel, ⚪:**
   (`--leeg` voor een externe tester). Beide vereisen Marcels ADMIN_KEY (Claude Code heeft die niet
   standaard) — commando's staan hierboven kant-en-klaar.
 
-### 2.2 — Cloudflare Turnstile aanzetten op het testtraject-formulier · **STATUS ONDUIDELIJK, checken met Marcel**
-Bij nazoeken (11 sep 2026): geen enkele huidige pagina (`index.html`, `platform/voor-adviseurs.html`,
-`lead-aandragen.html`, of elders) linkt nog naar `/leads/testtraject` of bevat een
-`TT_TURNSTILE_SITEKEY`-widget — dat publieke formulier lijkt sinds de proefaccount-flow (zie 2.3)
-niet meer aan een pagina gekoppeld te zijn, al bestaat het backend-endpoint (`worker/23-leads.js`)
-nog. **Vraag aan Marcel:** is dit formulier bewust vervangen door de proefaccount-flow (dan is dit
-punt te schrappen of het dode endpoint op te ruimen), of hoort het nog ergens live te staan (dan
-alsnog Turnstile aanzetten via de 4 stappen hieronder)?
-1. Turnstile-widget aanmaken in Cloudflare (koersvoormorgen.nl).
-2. Site key in de betreffende pagina (`TT_TURNSTILE_SITEKEY`).
-3. `npx wrangler secret put TURNSTILE_SECRET`.
-4. **Werkregel 17:** dan een regel toevoegen aan `privacy.html` (Turnstile verwerkt IP +
-   gedragssignaal voor botdetectie, cookieloos).
+### 2.2 — Cloudflare Turnstile op het testtraject-formulier · **GESCHRAPT 11 sep 2026** ✅
+Marcel (11 sep 2026, op de vraag hierboven): "geen idee, los op" — zelf besloten: het formulier
+was al vervangen door de proefaccount-flow (zie 2.3) en linkte nergens meer vanaf een pagina.
+Het dode backend-endpoint `/leads/testtraject` + de bijbehorende Turnstile-verificatie zijn uit
+`worker/23-leads.js` verwijderd (`/leads/aandragen`, ongerelateerd, blijft ongewijzigd). Bestaande
+`mna_leads`-rijen met bron='testtraject' blijven staan als historie. Geen Turnstile-secret was
+ooit ingesteld, dus dit had ook nooit effect.
 
 ### 2.3 — Proefaccount voor adviseurs · **LIVE 2 sep 2026** ✅ (één restpunt, zie onder)
 Marcel wil de drempel verlagen: naast "plan een demo" ook een **proefaccount na goedkeuring door
