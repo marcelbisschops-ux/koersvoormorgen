@@ -84,6 +84,22 @@ function dvSectorMultipleRange(){
   }
   var sectorProfiel=getSectorProfiel();
   if(sectorProfiel.multipleLaag&&sectorProfiel.multipleHoog){
+    // Omvangsafhankelijke schakelaar (11 sep 2026, BACKLOG 1.2, Marcel akkoord op "omvangsafhankelijk
+    // maken"): een omzet-multiple ("praktijkwaarde") is alleen een reële conventie voor een kleine,
+    // eigenaar-gedreven solopraktijk — voor een grotere praktijk/keten hanteert de markt een EBITDA-
+    // multiple (bron + exacte getallen: SECTORPROFIEL-BRONNEN.md). Alleen actief als het sectorprofiel
+    // de "Groot"-velden + een FTE-grens definieert (nu alleen zorg); zonder die velden ongewijzigd
+    // gedrag. De FTE komt uit het groepsniveau-veld partner_fte (VELD_AGGREGATIE.partner.fte='som',
+    // backend/worker/02-config-constanten.js) — nooit S.data, dat zou bij een groep met meerdere
+    // entiteiten alleen de toevallig actieve entiteit tellen (zie de groepsniveau-valkuil, CLAUDE.md).
+    // Is de FTE (nog) niet ingevuld, dan blijft de kleine/omzet-variant gelden — GEEN gok naar "groot".
+    if(sectorProfiel.multipleGrootFteGrens&&sectorProfiel.multipleLaagGroot&&sectorProfiel.multipleHoogGroot){
+      var fteGroep=parseGeld(S._groepData&&S._groepData['partner_fte']||'0');
+      if(fteGroep>sectorProfiel.multipleGrootFteGrens){
+        return {mLaag:sectorProfiel.multipleLaagGroot,mHoog:sectorProfiel.multipleHoogGroot,basis:sectorProfiel.multipleBasisGroot||'ebitda',bekend:true,omvang:'groot'};
+      }
+      return {mLaag:sectorProfiel.multipleLaag,mHoog:sectorProfiel.multipleHoog,basis:sectorProfiel.multipleBasis||'ebitda',bekend:true,omvang:'klein'};
+    }
     return {mLaag:sectorProfiel.multipleLaag,mHoog:sectorProfiel.multipleHoog,basis:sectorProfiel.multipleBasis||'ebitda',bekend:true};
   }
   var normen=sectorProfiel.aiNormen||'';

@@ -449,17 +449,21 @@ var SECTOR_PROFIELEN = {
   // ── ZORG (huisartsenpraktijken, tandartsen, fysiotherapie) ───────────────
   zorg: {
     label: 'Zorg — Huisarts / Tandarts / Fysiotherapie',
-    // Bron-status (zie SECTORPROFIEL-BRONNEN.md, 31 aug 2026): multiple 1-3x omzet = 🔴 AANDACHT —
-    // "praktijkwaarde ≈ deel van de jaaromzet" is een reële conventie voor KLEINE eigenaar-gedreven
-    // solopraktijken, maar voor grotere praktijken/ketens hanteert de markt een EBITDA-multiple
-    // (Brookz "zorg & farmacie" ~6,0-7,3x EBITDA). Bovengrens 3x omzet lijkt te hoog. Overweeg een
-    // omvangsafhankelijke schakelaar of begrens tot echt kleine praktijken.
-    aiNormen: 'EBITDA-marge norm 15-25% (huisarts 20-30%), omzet per FTE €60k-€120k, NZa-tarieven leidend, patiëntenbestand overdraagbaarheid cruciaal, multiple 1-3x omzet (praktijkwaarde)',
+    // Bron-status (zie SECTORPROFIEL-BRONNEN.md): omvangsafhankelijk gemaakt op 11 sep 2026 (Marcel
+    // akkoord op BACKLOG 1.2, "omvangsafhankelijk maken"). "Praktijkwaarde ≈ deel van de jaaromzet" is
+    // een reële conventie voor een KLEINE, eigenaar-gedreven solopraktijk; voor een grotere praktijk/
+    // keten hanteert de markt een EBITDA-multiple (Brookz "zorg & farmacie" ~6,0-7,3x, gem. 6,5x).
+    // Schakelaar op groeps-FTE (partner_fte) — zie dvSectorMultipleRange() in
+    // mna/03-rekenkern-waardering.js: >5 FTE (multipleGrootFteGrens, een operationeel ingesteld
+    // drempelgetal, geen gebronde marktnorm — pas aan in marilyn indien gewenst) → EBITDA-multiple;
+    // anders (of FTE nog onbekend) → de omzet-multiple hieronder blijft gelden.
+    aiNormen: 'EBITDA-marge norm 15-25% (huisarts 20-30%), omzet per FTE €60k-€120k, NZa-tarieven leidend, patiëntenbestand overdraagbaarheid cruciaal, multiple 1-3x omzet (praktijkwaarde, kleine solopraktijk) of 6,0-7,3x EBITDA (grotere praktijk/keten, >5 FTE)',
     // LET OP: dit is een OMZET-multiple (praktijkwaarde), geen EBITDA-multiple — zie dvSectorMultipleRange()
     // in mna/03-rekenkern-waardering.js. Het Dealvoorstel-scherm (prijsmechanisme/schuldaflossing/DCF)
     // blijft bewust EBITDA-based en gebruikt dus NIET automatisch deze omzet-range (bewuste scope-keuze,
     // 25 juli 2026) — alleen het hoofdwaarderingsscherm past 'm correct op omzet toe.
     multipleBasis: 'omzet', multipleLaag: 1, multipleHoog: 3,
+    multipleGrootFteGrens: 5, multipleBasisGroot: 'ebitda', multipleLaagGroot: 6.0, multipleHoogGroot: 7.3,
     fases: [
       {id:'financieel',num:'I',title:'Financieel',desc:'Praktijkomzet, declaraties en winstgevendheid.',
        dataFields:[
