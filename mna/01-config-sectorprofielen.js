@@ -3,6 +3,20 @@
 // staging-omgeving testen (Playwright UI-tests, of handmatig), nooit als permanente instelling
 // (geen localStorage/cookie: sluit je het tabblad, is het weer productie).
 var WORKER=new URLSearchParams(location.search).get('worker')||'https://kantoorinzicht.marcel-bisschops.workers.dev';
+// fetch() zelf timet nooit uit — bij een stallende verbinding (slechte wifi, cold-start-hik, een
+// proxy die de connectie openhoudt zonder data) blijft een aanroep zonder deze wrapper voor altijd
+// hangen: geen foutmelding, geen herstel, de knop blijft "Laden..." tonen. Vooral riskant op een
+// plek die vóór renderApp() zit (bijv. de VOK-check bij inloggen) — dan komt de gebruiker nooit
+// eens tot een foutscherm. fetchMetTimeout geeft zo'n aanroep altijd een eindpunt: na `ms` wordt
+// hij afgebroken en gooit hij, net als een echte netwerkfout, zodat de bestaande catch-afhandeling
+// (toast/foutmelding/knop weer actief) gewoon werkt (Marcel, 11 sep 2026: "blijft hangen met laden").
+function fetchMetTimeout(url, opts, ms) {
+  opts = opts || {};
+  ms = ms || 15000;
+  var ctrl = new AbortController();
+  var timer = setTimeout(function(){ ctrl.abort(); }, ms);
+  return fetch(url, Object.assign({}, opts, { signal: ctrl.signal })).finally(function(){ clearTimeout(timer); });
+}
 // White-label basis — centrale merkconfig. Eén plek om de productnaam/exploitant te wijzigen.
 // Later uitbreidbaar naar per-adviseur (uit de DB). Wijzig hier = overal in de UI-chrome.
 var BRAND = {

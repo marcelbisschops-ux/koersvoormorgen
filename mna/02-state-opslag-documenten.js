@@ -1802,7 +1802,7 @@ function syncDocVeldenVanTraject(d){
 async function refreshData(){
   var oldScreen = S.screen;
   try {
-    var r = await fetch(WORKER+'/mna/traject/'+S.code, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ts:Date.now()})});
+    var r = await fetchMetTimeout(WORKER+'/mna/traject/'+S.code, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ts:Date.now()})}, 15000);
     var d = await r.json();
     if(r.ok && !d.error) {
       S.traject = d.traject;
