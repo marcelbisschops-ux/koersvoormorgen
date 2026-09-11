@@ -101,8 +101,13 @@ async function run() {
 
   const lijst = await api('GET', '/mna/tos/documenten/' + trajectCode, { headers: H });
   check('documentenlijst bevat de nieuwe MoU', lijst.json && lijst.json.ok === true && (lijst.json.documenten || []).some((d) => d.id === docId && d.doc_type === 'mou' && d.status === 'draft'), JSON.stringify(lijst.json).slice(0, 200));
+  // Sinds 11 sep 2026 (Marcel: "composer wordt de enige [weg voor NDA/LoI]") krijgt de koper hier wél
+  // toegang, maar tosCanAccess() filtert 'm hard: alleen documenten met status='verstuurd' waarbij
+  // zijn rol in adressaten staat. Op dit punt in de test is nog niets verstuurd, dus 200 + lege lijst
+  // — geen 403 meer (dat zou nu juist een regressie zijn: zie STAP 12c hieronder voor het positieve
+  // geval ná verstuur).
   const lijstKoper = await api('GET', '/mna/tos/documenten/' + trajectCode, { headers: { 'x-tussen-key': (c1.json && c1.json.koper_code) || 'GEEN' } });
-  check('documentenlijst niet toegankelijk voor koper → 403', lijstKoper.status === 403, 'status ' + lijstKoper.status);
+  check('documentenlijst voor koper: 200 maar leeg (nog niets verstuurd)', lijstKoper.status === 200 && lijstKoper.json && lijstKoper.json.ok === true && Array.isArray(lijstKoper.json.documenten) && lijstKoper.json.documenten.length === 0, 'status ' + lijstKoper.status + ' ' + JSON.stringify(lijstKoper.json).slice(0, 160));
 
   kop('STAP 12b · FASE D — LoI- en NDA-DocumentProfiel');
   const menuMou = await api('GET', '/mna/tos/menu/' + trajectCode + '?profile=MOU', { headers: H });
@@ -140,6 +145,52 @@ async function run() {
   check('NDA-document: doc_type=nda, nda_scope + nda_duur + nda_boetebeding + parties geïnstantieerd', gNda.json && gNda.json.document.doc_type === 'nda' && ['nda_scope', 'nda_duur', 'nda_boetebeding', 'parties'].every((b) => (gNda.json.componenten || []).some((c) => c.block_id === b && c.instance_status === 'ACTIVE')));
   const lijst3 = await api('GET', '/mna/tos/documenten/' + trajectCode, { headers: H });
   check('documentenlijst bevat MoU, LoI én NDA', ['mou', 'loi', 'nda'].every((t) => (lijst3.json.documenten || []).some((d) => d.doc_type === t)));
+
+  kop('STAP 12c · verkoper/koper-leestoegang + digitaal accorderen (composer wordt enige weg NDA/LoI)');
+  const KH = { 'x-tussen-key': (c1.json && c1.json.koper_code) || 'GEEN' };
+  const VH = { 'x-tussen-key': trajectCode }; // verkoper logt in met de traject-id zelf als code
+  const ndaRevAll = await api('POST', '/mna/tos/document/' + ndaId + '/review-alles', { headers: H, body: { naam: 'Mr. NDA Jurist', hoedanigheid: 'advocaat' } });
+  check('NDA review-alles ok', ndaRevAll.json && ndaRevAll.json.ok === true, JSON.stringify(ndaRevAll.json).slice(0, 160));
+  const ndaFin = await api('POST', '/mna/tos/document/' + ndaId + '/finaliseer', { headers: H });
+  check('NDA finaliseren ok', ndaFin.json && ndaFin.json.ok === true, JSON.stringify(ndaFin.json).slice(0, 160));
+  // Vóór versturen: verkoper/koper zien 'm nog niet (status nog niet 'verstuurd').
+  const lijstVoorVerkoper = await api('GET', '/mna/tos/documenten/' + trajectCode, { headers: VH });
+  check('vóór verstuur: verkoper ziet de NDA nog niet', lijstVoorVerkoper.json && lijstVoorVerkoper.json.ok === true && !(lijstVoorVerkoper.json.documenten || []).some((d) => d.id === ndaId));
+  const ndaVerstuur = await api('POST', '/mna/tos/document/' + ndaId + '/verstuur', { headers: H, body: { adressaten: ['verkoper', 'koper'] } });
+  check('NDA versturen ok, naar verkoper+koper', ndaVerstuur.json && ndaVerstuur.json.ok === true && ndaVerstuur.json.status === 'verstuurd', JSON.stringify(ndaVerstuur.json).slice(0, 160));
+
+  // Na verstuur: zowel verkoper als koper zien 'm nu in hun eigen lijst.
+  const lijstNaVerkoper = await api('GET', '/mna/tos/documenten/' + trajectCode, { headers: VH });
+  check('ná verstuur: verkoper ziet de NDA (minimale DTO: id/doc_type/profiel/verstuurd_op)', (() => {
+    const d = (lijstNaVerkoper.json.documenten || []).find((x) => x.id === ndaId);
+    return d && d.doc_type === 'nda' && d.profiel === 'NDA@1' && !!d.verstuurd_op && !('status' in d) && !('current_version' in d);
+  })(), JSON.stringify(lijstNaVerkoper.json).slice(0, 200));
+  const lijstNaKoper = await api('GET', '/mna/tos/documenten/' + trajectCode, { headers: KH });
+  check('ná verstuur: koper ziet de NDA ook', (lijstNaKoper.json.documenten || []).some((d) => d.id === ndaId));
+
+  // Cross-traject-hardening: effTid() moet voor koper/verkoper het EIGEN auth.traject_id gebruiken,
+  // nooit een pad-argument — anders zou een geldige eigen code met een ANDER traject-id in het pad
+  // gecombineerd kunnen worden (11 sep 2026-fix, zie worker/31-tos.js effTid()).
+  const lijstGarbagePad = await api('GET', '/mna/tos/documenten/EEN-ANDER-TRAJECT', { headers: KH });
+  check('pad-argument genegeerd voor koper: traject_id blijft het eigen traject', lijstGarbagePad.json && lijstGarbagePad.json.traject_id === trajectCode, JSON.stringify(lijstGarbagePad.json).slice(0, 160));
+
+  // Leesinhoud: verkoper/koper krijgen de tekst, maar geen interne reviewer-naam/provenance (extern-strip).
+  const ndaGetVerkoper = await api('GET', '/mna/tos/document/' + ndaId, { headers: VH });
+  check('verkoper kan NDA-document lezen (ok)', ndaGetVerkoper.json && ndaGetVerkoper.json.ok === true, JSON.stringify(ndaGetVerkoper.json).slice(0, 160));
+  check('extern: component heeft tekst maar geen reviewer_naam/text_provenance', (() => {
+    const c = (ndaGetVerkoper.json.componenten || []).find((x) => x.block_id === 'nda_scope');
+    return c && typeof c.text === 'string' && c.text_provenance === undefined && (!c.review || c.review.reviewer_naam === undefined);
+  })());
+  check('extern: divergenties leeg (geen interne kruisverwijzingen naar buiten)', ndaGetVerkoper.json && Array.isArray(ndaGetVerkoper.json.divergenties) && ndaGetVerkoper.json.divergenties.length === 0);
+  const mouGetKoper = await api('GET', '/mna/tos/document/' + docId, { headers: KH });
+  check('koper kan NIET bij de (nog niet verstuurde) MoU → 403', mouGetKoper.status === 403, 'status ' + mouGetKoper.status);
+
+  // Digitaal accorderen: hergebruikt het bestaande /mna/teken-endpoint — zet dezelfde
+  // nda_getekend/loi_getekend-vlag als de vroegere sjabloonflow (fase-2-unlock, koper-identiteit).
+  const teken = await api('POST', '/mna/teken', { body: { code: trajectCode, document: 'nda', naam: 'Test Verkoper Tekenaar' } });
+  check('verkoper kan de composer-NDA tekenen via /mna/teken', teken.json && teken.json.ok === true, JSON.stringify(teken.json).slice(0, 160));
+  const trajNaTeken = await api('GET', '/mna/traject/' + trajectCode);
+  check('nda_getekend staat nu op het traject', trajNaTeken.json && trajNaTeken.json.traject && (trajNaTeken.json.traject.nda_getekend || '').includes('Test Verkoper Tekenaar'), JSON.stringify(trajNaTeken.json && trajNaTeken.json.traject && trajNaTeken.json.traject.nda_getekend));
 
   const get = await api('GET', '/mna/tos/document/' + docId, { headers: H });
   check('document ophalen (ok)', get.json && get.json.ok === true, JSON.stringify(get.json).slice(0, 200));

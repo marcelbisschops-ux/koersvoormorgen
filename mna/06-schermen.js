@@ -117,6 +117,13 @@ function renderCover(){
       +(S.loiDocId?'<a href="'+WORKER+'/mna/document/download/'+S.loiDocId+'?code='+encodeURIComponent(S.code)+'" target="_blank" rel="noopener" class="btn-ghost" style="font-size:12px;text-decoration:none">&#8681; Download LoI</a>':('<button id="loi-lees-btn" class="btn-ghost" style="font-size:12px">&#128065; Lees LoI</button>'+'<button id="loi-print2-btn" class="btn" style="font-size:12px;background:var(--gold)">&#128196; Download / Print</button>'))
       +(S.loiGetekend?'<div style="font-size:11px;padding:4px 10px;border-radius:12px;background:var(--gold-bg);border:1px solid var(--gold);color:var(--gold);display:flex;align-items:center;gap:4px">&#10003; Getekend door '+esc(S.loiGetekend)+'</div>':(!isAdmin()?'<button id="loi-teken-btn" class="btn-ghost" style="font-size:12px;border-color:var(--gold);color:var(--gold)">&#9998; Akkoord &amp; onderteken</button>':''))
       +'</div></div>':'')
+    // Composer-varianten van NDA/LoI (Transaction OS, 11 sep 2026 — vervangt de sjabloongenerator
+    // als enige weg om deze twee documenten aan te maken). Alleen geladen als er GEEN sjabloon-NDA/
+    // LoI is (S.ndaTekst/S.loiTekst leeg) — bestaande, al aangemaakte sjabloondocumenten blijven
+    // gewoon zichtbaar zoals ze waren; nieuwe trajecten hebben straks alleen nog de composer-tekst.
+    // Async gevuld in bindAll() (composerNdaLoiPanelen()), vandaar lege placeholders hier.
+    +((isVerkoper()||isKoper())&&!isAdmin()&&!S.ndaTekst?'<div id="composer-nda-slot"></div>':'')
+    +((isVerkoper()||isKoper())&&!isAdmin()&&!S.loiTekst?'<div id="composer-loi-slot"></div>':'')
     +(isVerkoper()&&(!S.modules||S.modules.marketing!==false)?'<div style="margin-top:1.5rem;background:var(--card);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem">'
       +'<div style="font-size:11px;font-weight:600;color:var(--teal);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.6rem">&#128226; Teaser</div>'
       +'<div style="font-size:12px;color:var(--mid);margin-bottom:.75rem">Een kort, anoniem verkoopdocument (geen bedrijfsnaam) om vroeg in het proces interesse te peilen bij potentiële kopers — vóór er een specifieke koper is. Uw adviseur kan deze ook voor u aanmaken.</div>'
@@ -1217,6 +1224,68 @@ function bindAll(){
       if(badge)badge.textContent=faseNamen[ld.traject_fase]||ld.traject_fase||'Voorgesprek';
     }catch(e){}
   })();
+
+  // Composer-NDA/LoI voor verkoper/koper (11 sep 2026): de composer (Transaction OS) is nu de
+  // enige weg om een NDA/LoI aan te maken — dit vult de placeholder-slots uit renderCover() met
+  // het gefinaliseerde en verstuurde document (indien aanwezig), in dezelfde stijl en met dezelfde
+  // "Akkoord & onderteken"-stap als de vroegere sjabloonpanelen. Hergebruikt bewust het bestaande
+  // /mna/teken-endpoint (zet dezelfde S.ndaGetekend/S.loiGetekend-vlag) — geen nieuw handtekening-
+  // mechanisme, wél een nieuwe brontekst.
+  function laadComposerPartijPaneel(type){
+    var slot=ge('composer-'+type+'-slot'); if(!slot)return;
+    var profielPrefix=type.toUpperCase();
+    var kleur=type==='nda'?'#7c5cbf':'var(--gold)';
+    var kleurBg=type==='nda'?'#f3f0ff':'var(--gold-bg)';
+    var titel=type==='nda'?'Non-Disclosure Agreement':'Letter of Intent';
+    fetchMetTimeout(WORKER+'/mna/tos/documenten/'+encodeURIComponent(S.code)+'?code='+encodeURIComponent(S.code),{},12000)
+      .then(function(r){return r.json();})
+      .then(function(d){
+        var doc=(d.documenten||[]).find(function(x){return (x.profiel||'').split('@')[0]===profielPrefix;});
+        if(!doc)return; // niets gefinaliseerd/verstuurd voor deze rol — geen paneel tonen
+        var getekend=type==='nda'?S.ndaGetekend:S.loiGetekend;
+        slot.innerHTML='<div style="margin-top:1.5rem;background:'+kleurBg+';border:1px solid '+kleur+';border-radius:var(--r2);padding:1.25rem">'
+          +'<div style="font-size:11px;font-weight:600;color:'+kleur+';letter-spacing:.1em;text-transform:uppercase;margin-bottom:.6rem">&#128274; '+titel+' beschikbaar</div>'
+          +'<div style="font-size:12px;color:var(--mid);margin-bottom:.75rem">'+(doc.verstuurd_op?'Verstuurd op '+new Date(doc.verstuurd_op).toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'})+'. ':'')+'Lees de '+titel+' door en geef akkoord.</div>'
+          +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:.5rem">'
+          +'<button id="composer-'+type+'-lees-btn" class="btn-ghost" style="font-size:12px;border-color:'+kleur+';color:'+kleur+'">&#128065; Lees '+profielPrefix+'</button>'
+          +(getekend?'<div style="font-size:11px;padding:4px 10px;border-radius:12px;background:'+kleurBg+';border:1px solid '+kleur+';color:'+kleur+';display:flex;align-items:center;gap:4px">&#10003; Getekend door '+esc(getekend)+'</div>'
+            :'<button id="composer-'+type+'-teken-btn" class="btn" style="font-size:12px;padding:6px 14px;background:'+kleur+'">&#9998; Akkoord &amp; onderteken</button>')
+          +'</div></div>';
+        var leesBtn=ge('composer-'+type+'-lees-btn');
+        if(leesBtn)leesBtn.onclick=function(){
+          leesBtn.disabled=true;var origTxt=leesBtn.textContent;leesBtn.textContent='Laden...';
+          fetchMetTimeout(WORKER+'/mna/tos/document/'+encodeURIComponent(doc.id)+'?code='+encodeURIComponent(S.code),{},12000)
+            .then(function(r2){return r2.json();})
+            .then(function(dd){
+              leesBtn.disabled=false;leesBtn.textContent=origTxt;
+              if(!dd.ok){toast('Kon '+profielPrefix+' niet laden.','err');return;}
+              var tekst=(dd.componenten||[]).map(function(c){return (c.title||'')+(c.text?('\n\n'+c.text):'');}).join('\n\n');
+              var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;display:flex;align-items:center;justify-content:center;padding:1.5rem';
+              var box=document.createElement('div');box.setAttribute('role','dialog');box.setAttribute('aria-modal','true');box.setAttribute('aria-labelledby','composer-'+type+'-lees-titel');box.style.cssText='background:var(--panel);border-radius:10px;padding:2rem;max-width:700px;width:100%;max-height:90vh;overflow-y:auto';
+              box.innerHTML='<div id="composer-'+type+'-lees-titel" style="font-family:Playfair Display,serif;font-size:1.2rem;font-weight:600;color:var(--head);margin-bottom:1rem">'+titel+'</div>'
+                +'<div style="font-family:Georgia,serif;font-size:13px;line-height:1.9;color:var(--sub);white-space:pre-wrap">'+esc(tekst)+'</div>'
+                +'<div style="display:flex;justify-content:flex-end;margin-top:1.25rem"><button style="background:transparent;border:1px solid #c8c5bc;border-radius:6px;padding:8px 18px;cursor:pointer;font-size:13px" id="composer-'+type+'-sluit">Sluiten</button></div>';
+              ov.appendChild(box);document.body.appendChild(ov);
+              ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
+              document.getElementById('composer-'+type+'-sluit').addEventListener('click',function(){document.body.removeChild(ov);});
+            }).catch(function(){leesBtn.disabled=false;leesBtn.textContent=origTxt;toast('Verbindingsfout.','err');});
+        };
+        var tekenBtn=ge('composer-'+type+'-teken-btn');
+        if(tekenBtn)tekenBtn.onclick=async function(){
+          var naam=prompt('Voer uw volledige naam in ter bevestiging van akkoord:');
+          if(!naam||!naam.trim())return;
+          if(!confirm('U gaat akkoord met de '+titel+' namens '+naam.trim()+'. Bevestigen?'))return;
+          try{
+            var r3=await fetchMetTimeout(WORKER+'/mna/teken',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:S.code,document:type,naam:naam.trim()})},12000);
+            var d3=await r3.json();
+            if(d3.ok){ if(type==='nda')S.ndaGetekend=naam.trim(); else S.loiGetekend=naam.trim(); toast(profielPrefix+' getekend. De adviseur is op de hoogte gesteld.','ok'); laadComposerPartijPaneel(type); }
+            else toast('Fout: '+(d3.error||'onbekend'),'err');
+          }catch(e){toast('Verbindingsfout.','err');}
+        };
+      }).catch(function(){});
+  }
+  laadComposerPartijPaneel('nda');
+  laadComposerPartijPaneel('loi');
 
   // LoI knoppen op cover
   var loiLees=ge('loi-lees-btn');
