@@ -2387,10 +2387,34 @@ function renderBegeleiderDashboard(app){
     try{ var r=await fetch(WORKER+pad,opt); var d=await r.json().catch(function(){return{};}); return {status:r.status,ok:r.ok,json:d}; }
     catch(e){ return {status:0,ok:false,json:{error:'Verbindingsfout'}}; }
   }
+  // Vakgebied-heuristiek (11 sep 2026, Marcel: "gerichter voorstel op basis van vakgebied/
+  // beschikbaarheid") — hoedanigheid is vrije tekst (advocaat/RB/Register Valuator/...), dus geen
+  // harde filter (zou een specialist met een afwijkende titel onterecht verbergen); in plaats
+  // daarvan de lijst per gekozen vakgebied groeperen: "past bij dit vakgebied" bovenaan, de rest
+  // eronder — de begeleider ziet nog steeds iedereen, maar de meest logische keuze staat vooraan.
+  var MP_VAKGEBIED_TREFWOORDEN={
+    LEGAL:['advocaat','jurist','notaris'],
+    TAX:['rb','fiscalist','belastingadvies','belastingadviseur'],
+    VALUATION:['rv','register valuator','waardeerder','waarderingsdeskundige','taxateur','ava'],
+  };
+  function mpPastBijVakgebied(dom,hoedanigheid){
+    var h=(hoedanigheid||'').toLowerCase();
+    return (MP_VAKGEBIED_TREFWOORDEN[dom]||[]).some(function(t){return h.indexOf(t)!==-1;});
+  }
+  function mpSpecOptiesHtml(lijst,dom){
+    var passend=lijst.filter(function(s){return mpPastBijVakgebied(dom,s.hoedanigheid);});
+    var overig=lijst.filter(function(s){return !mpPastBijVakgebied(dom,s.hoedanigheid);});
+    function opt(s){return '<option value="'+esc(s.id)+'">'+esc(s.naam)+' — '+esc(s.hoedanigheid)+' (&euro; '+esc(s.tarief_bedrag)+')</option>';}
+    var html='';
+    if(passend.length) html+='<optgroup label="Past bij dit vakgebied">'+passend.map(opt).join('')+'</optgroup>';
+    if(overig.length) html+='<optgroup label="'+(passend.length?'Overige beschikbare specialisten':'Beschikbare specialisten')+'">'+overig.map(opt).join('')+'</optgroup>';
+    return html;
+  }
   async function bgMouPoolPaneel(){
     var box=document.getElementById('mou-pool-box'); if(!box)return;
     box.innerHTML='<div style="font-size:11px;color:var(--muted);padding:.4rem 0">Pool laden&hellip;</div>';
-    var sp=await bgPoolApi('GET','/mna/pool/specialisten');
+    var sectorQ=(S.traject&&S.traject.sector)?('?sector='+encodeURIComponent(S.traject.sector)):'';
+    var sp=await bgPoolApi('GET','/mna/pool/specialisten'+sectorQ);
     if(!sp.ok||!sp.json.ok){ box.innerHTML='<div style="font-size:11px;color:var(--red)">'+esc((sp.json&&sp.json.error)||'Pool niet beschikbaar')+'</div>'; return; }
     var lijst=sp.json.specialisten||[];
     if(!lijst.length){ box.innerHTML='<div style="font-size:11px;color:var(--muted)">Er staan nog geen beschikbare specialisten in de pool. Vraag Bisschops Financing om de pool aan te vullen.</div>'; return; }
@@ -2399,7 +2423,7 @@ function renderBegeleiderDashboard(app){
       +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">'
       +'<select id="mp-dom" style="font-size:11px;padding:4px 6px;background:var(--panel);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub)"><option value="LEGAL">juridisch</option><option value="TAX">fiscaal</option><option value="VALUATION">cijfers</option></select>'
       +'<select id="mp-spec" style="font-size:11px;padding:4px 6px;background:var(--panel);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub)">'
-        +lijst.map(function(s){return '<option value="'+esc(s.id)+'">'+esc(s.naam)+' — '+esc(s.hoedanigheid)+' (&euro; '+esc(s.tarief_bedrag)+')</option>';}).join('')+'</select>'
+        +mpSpecOptiesHtml(lijst,'LEGAL')+'</select>'
       +'</div>'
       +'<div id="mp-profiel" style="font-size:10.5px;color:var(--muted);margin:.3rem 0"></div>'
       +'<textarea id="mp-instr" rows="2" placeholder="Korte instructie voor de specialist (optioneel)" style="width:100%;font-size:11px;background:var(--panel);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);padding:5px 7px;resize:vertical"></textarea>'
@@ -2415,6 +2439,10 @@ function renderBegeleiderDashboard(app){
     }
     toonProfiel();
     document.getElementById('mp-spec').onchange=toonProfiel;
+    document.getElementById('mp-dom').onchange=function(){
+      document.getElementById('mp-spec').innerHTML=mpSpecOptiesHtml(lijst,this.value);
+      toonProfiel();
+    };
     document.getElementById('mp-annuleer').onclick=function(){ box.innerHTML=''; };
     async function verstuurOpdracht(bevestigd){
       var btn=document.getElementById('mp-verstuur');

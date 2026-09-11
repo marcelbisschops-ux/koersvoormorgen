@@ -514,12 +514,47 @@ var SRC_MATCH_DREMPEL=55;
 // (pool_review_juridisch/fiscaal/cijfers).
 async function renderPoolTab(el){
   el.innerHTML='<div style="padding:1rem;color:var(--muted);font-size:13px">Pool laden…</div>';
-  var lijst=[];
+  var lijst=[],opdrachten=[];
   try{
     var r=await fetch(WORKER+'/mna/admin/pool/specialisten',{headers:{'x-admin-key':adminKey}});
     var d=await r.json();
     if(r.ok&&d.ok)lijst=d.specialisten||[];
+    var r2=await fetch(WORKER+'/mna/admin/pool/opdrachten',{headers:{'x-admin-key':adminKey}});
+    var d2=await r2.json();
+    if(r2.ok&&d2.ok)opdrachten=d2.opdrachten||[];
   }catch(e){ el.innerHTML='<div style="padding:1rem;color:var(--red)">Kon de pool niet laden.</div>'; return; }
+  // Openstaande-opdrachten-overzicht (11 sep 2026, Marcel: "beter overzicht van openstaande pool-
+  // opdrachten") — sorteert op dagen open (langst wachtend bovenaan), zodat een vastgelopen
+  // aanvraag of een naderende deadline meteen opvalt i.p.v. dat je per traject moet gaan kijken.
+  function statusLabel(s){return {aangevraagd:'Aangevraagd',geaccepteerd:'Geaccepteerd',afgewezen:'Afgewezen',ingetrokken:'Ingetrokken',afgerond:'Afgerond'}[s]||s;}
+  function deadlineHtml(o){
+    if(o.status==='afgerond'||o.status==='afgewezen'||o.status==='ingetrokken')return '<span style="color:var(--muted)">—</span>';
+    if(o.dagen_tot_deadline==null)return '<span style="color:var(--muted)">—</span>';
+    if(o.dagen_tot_deadline<0)return '<span style="color:var(--red);font-weight:600">'+Math.abs(o.dagen_tot_deadline)+' dg verlopen</span>';
+    if(o.dagen_tot_deadline<=2)return '<span style="color:var(--gold-dark);font-weight:600">nog '+o.dagen_tot_deadline+' dg</span>';
+    return '<span style="color:var(--muted)">nog '+o.dagen_tot_deadline+' dg</span>';
+  }
+  function opdrachtRij(o){
+    return '<tr style="border-top:1px solid var(--border)">'
+      +'<td style="padding:8px 10px">'+esc(o.kantoor_naam||'')+'</td>'
+      +'<td style="padding:8px 10px">'+esc(o.domein_label||'')+'</td>'
+      +'<td style="padding:8px 10px"><div style="font-weight:600;color:var(--head)">'+esc(o.specialist_naam||'')+'</div><div style="font-size:10.5px;color:var(--muted)">'+esc(o.specialist_hoedanigheid||'')+(o.specialist_beschikbaar?'':' · niet beschikbaar')+'</div></td>'
+      +'<td style="padding:8px 10px">'+esc(statusLabel(o.status))+'</td>'
+      +'<td style="padding:8px 10px">'+o.dagen_open+' dg</td>'
+      +'<td style="padding:8px 10px">'+deadlineHtml(o)+'</td>'
+      +'</tr>';
+  }
+  var open=opdrachten.filter(function(o){return o.status==='aangevraagd'||o.status==='geaccepteerd';})
+    .sort(function(a,b){return b.dagen_open-a.dagen_open;});
+  var afgesloten=opdrachten.filter(function(o){return o.status!=='aangevraagd'&&o.status!=='geaccepteerd';});
+  var opdrachtenHtml='<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">Openstaande pool-opdrachten'+(open.length?' ('+open.length+')':'')+'</div>'
+    +(open.length
+      ?'<div style="overflow-x:auto;margin-bottom:1rem"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="text-align:left;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.06em">'
+        +'<th style="padding:6px 10px">Traject</th><th style="padding:6px 10px">Vakgebied</th><th style="padding:6px 10px">Specialist</th><th style="padding:6px 10px">Status</th><th style="padding:6px 10px">Open sinds</th><th style="padding:6px 10px">Deadline</th></tr></thead>'
+        +'<tbody>'+open.map(opdrachtRij).join('')+'</tbody></table></div>'
+      :'<div style="font-size:12px;color:var(--muted);font-style:italic;margin-bottom:1rem">Geen openstaande pool-opdrachten.</div>')
+    +(afgesloten.length?'<details style="margin-bottom:1.5rem"><summary style="cursor:pointer;font-size:11px;color:var(--muted)">Geschiedenis ('+afgesloten.length+' afgerond/afgewezen/ingetrokken)</summary>'
+      +'<div style="overflow-x:auto;margin-top:.5rem"><table style="width:100%;border-collapse:collapse;font-size:12px"><tbody>'+afgesloten.map(opdrachtRij).join('')+'</tbody></table></div></details>':'');
   function rij(s){
     var actief=s.status==='actief';
     return '<tr style="border-top:1px solid var(--border)">'
@@ -535,7 +570,8 @@ async function renderPoolTab(el){
         +(actief?'<button class="btn-ghost pool-royeer" data-id="'+esc(s.id)+'" style="font-size:10px;padding:3px 8px;color:var(--red);border-color:var(--red)">Royeren</button>':'<button class="btn-ghost pool-herstel" data-id="'+esc(s.id)+'" style="font-size:10px;padding:3px 8px">Herstellen</button>')
       +'</td></tr>';
   }
-  el.innerHTML='<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:1rem">&#9878;&#65039; Specialistenpool</div>'
+  el.innerHTML=opdrachtenHtml
+    +'<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:1rem">&#9878;&#65039; Specialistenpool</div>'
     +'<div style="font-size:12px;color:var(--muted);line-height:1.6;margin-bottom:1rem;max-width:760px">Externe, geverifieerde juristen / fiscalisten / waarderingsspecialisten die een adviseur zonder eigen specialist kan inschakelen om een onderdeel van een MoU/LoI/NDA af te tekenen. Het bedrag hieronder is het <strong>honorarium van de specialist</strong>; de platformmarge per review staat in <strong>&euro; Tarieven</strong> (<code>pool_review_juridisch/fiscaal/cijfers</code>).</div>'
     +'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="text-align:left;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.06em">'
       +'<th style="padding:6px 10px">Specialist</th><th style="padding:6px 10px">Honorarium (&euro;)</th><th style="padding:6px 10px">Doorlooptijd</th><th style="padding:6px 10px">Status</th><th style="padding:6px 10px"></th></tr></thead>'
