@@ -406,6 +406,15 @@ async function run() {
   check('component_refs bevat "reliance@1" en "exclusivity@1"', fin.json && Array.isArray(fin.json.component_refs) && fin.json.component_refs.includes('reliance@1') && fin.json.component_refs.some((r) => r.startsWith('exclusivity@')), JSON.stringify(fin.json.component_refs));
   check('disclaimer_ref = reliance@1, policy_version aanwezig', fin.json && fin.json.disclaimer_ref === 'reliance@1' && !!fin.json.policy_version);
 
+  // 2b. Bevinding 11 sep 2026 (Marcel: "manifest error" — een gefinaliseerd/vergrendeld document
+  // toonde "1 KERN-onderdeel nog niet opgenomen"): GET /menu/…&document={id} laadde altijd de
+  // NIEUWSTE catalogusversie van het profiel i.p.v. de versie waartegen dít document is opgebouwd
+  // (doc.profile_version) — bij een latere profielwijziging zou een al compleet, bevroren document
+  // stilzwijgend als onvolledig getoond worden. Nu gefixt (laadProfiel(profileId, doc.profile_version)
+  // wanneer ?document= is meegegeven); dit is de directe regressietest.
+  const menuNaFin = await api('GET', '/mna/tos/menu/' + trajectCode + '?profile=MOU&document=' + docId, { headers: H });
+  check('menu ná finaliseren: profielversie gepind op het document (matcht profile_ref uit finaliseer), geen fantoom-KERN-melding', menuNaFin.json && menuNaFin.json.ok === true && (menuNaFin.json.profiel.id + '@' + menuNaFin.json.profiel.version) === fin.json.profile_ref && Array.isArray(menuNaFin.json.ontbrekend_kern) && menuNaFin.json.ontbrekend_kern.length === 0, JSON.stringify(menuNaFin.json).slice(0, 200) + ' vs profile_ref=' + fin.json.profile_ref);
+
   // 3. dubbel finaliseren → 409
   const finDup = await api('POST', '/mna/tos/document/' + docId + '/finaliseer', { headers: H });
   check('nogmaals finaliseren → 409', finDup.status === 409, 'status ' + finDup.status);
