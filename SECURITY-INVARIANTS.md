@@ -49,8 +49,10 @@ deny-list ervoor zorgde dat nieuwe kolommen (`bem_tekst`, `verkoopmemorandum_tek
    `/mna/traject/{code}`.
 
 9. **De platformbeheerder-muur (`isEigenTraject` / `stripAfgeschermdeVelden`) geldt
-   op élke route die trajectdata teruggeeft aan marilyn.html** — inclusief
-   e-mail-, audit- en exportroutes. (Zie F4/F8/F13 in `tests/e2e-crosspath-fixes.mjs`.)
+   op élke route die trajectdata teruggeeft aan marilyn.html of aan een admin-
+   key-aanroep in het algemeen** — inclusief e-mail-, audit-, export- en
+   fee-/facturatie-routes. (Zie F4/F8/F13 in `tests/e2e-crosspath-fixes.mjs`; ook
+   F14/F15, 11 sep 2026 — koper-biedingen en tarieven-events misten dezelfde muur.)
 
 10. **Foutmeldingen en logs lekken geen vertrouwelijke velden.** Geen deal-cijfers,
     documenttekst of partij-identiteit in een 4xx/5xx-body of in `console.log`.
@@ -72,8 +74,17 @@ deny-list ervoor zorgde dat nieuwe kolommen (`bem_tekst`, `verkoopmemorandum_tek
     'eigen'` voor `rol==='admin'` om dezelfde reden (de respons bevat anders
     `sp.naam`/`sp.inschrijvingsnummer`). `GET /mna/admin/pool/opdrachten` sluit
     `specialist_bron='eigen'`-rijen expliciet uit via een `WHERE`, niet alleen via
-    het toevallige gevolg van een INNER JOIN. Wordt hier ooit een `isAdmin()`-
-    bypass "voor het gemak" toegevoegd, is dat een directe schending van deze regel.
+    het toevallige gevolg van een INNER JOIN. `GET /mna/pool/opdrachten/{traject}`
+    (de begeleider/admin-detailroute, niet de admin-overzichtsroute) maskeert
+    `specialist_naam`/`sign_off` voor `specialist_bron='eigen'`-rijen wanneer de
+    aanroeper admin is — een vierde plek die de eerdere opsomming aanvankelijk
+    miste (bevinding 11 sep 2026, F16 in CROSS-PATH-SECURITY-STANDAARD.md). Wordt
+    hier ooit een `isAdmin()`-bypass "voor het gemak" toegevoegd, is dat een
+    directe schending van deze regel. **Les (11 sep 2026):** deze invariant geldt
+    voor ELKE route die deze data kan teruggeven, niet alleen de routes die er bij
+    het invoeren van de regel al waren — bij het toevoegen van een nieuwe
+    uitsluitingsregel altijd `grep -rn` op de betrokken tabel-/kolomnaam over alle
+    worker-modules, en die grep herhalen bij elke volgende audit.
 
 ---
 

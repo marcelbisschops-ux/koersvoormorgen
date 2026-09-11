@@ -95,6 +95,29 @@ secrets management; encryptie; hashing; tokenvalidatie; auditlogging; dependency
 least privilege; veilige configuratie; rate limiting; SQL-injection; NoSQL-injection; command
 injection; XSS; CSRF; SSRF; path traversal; insecure deserialization; CORS; security headers.
 
+**Publieke claims vs. code (toegevoegd 11 sep 2026, na een onafhankelijke totaal-audit op Marcels
+verzoek):** elke technische/beveiligingsclaim op de publieke site (`index.html`,
+`platform/beveiliging-en-gegevens.html`, `privacy.html`, `voorwaarden.html`) die verifieerbaar is
+met de aanwezige code, wordt bij elke volledige audit tegen de daadwerkelijke implementatie gelegd
+en geclassificeerd als BEWEZEN / WAARSCHIJNLIJK / NIET AANTOONBAAR / WEERLEGD — zie de
+werkwijze-toelichting in het logboek van 11 sep 2026 hieronder. Een claim die technisch niet
+aantoonbaar of weerlegd is, is geen "kleine tekstuele onnauwkeurigheid": bij een M&A-platform is dit
+precies het soort claim dat een kopende partij of adviseur bij due diligence zou toetsen. Eerste
+uitvoering vond één weerlegde claim ("elke login wordt gelogd" — mechanisme bestond, werd nooit
+aangeroepen vanuit marilyn.html) — gefixt dezelfde dag.
+
+**Financiële fee-event-integriteit (toegevoegd 11 sep 2026), los van waarderingscorrectheid:** voor
+elke plek die een financiële verplichting/fee registreert (`platform_fee_events`, trajectfee,
+module-verkoop, specialistkosten), controleren of de actie idempotent/race-vrij is — kan een
+dubbelklik, netwerk-retry of gelijktijdig verzoek dezelfde gebruikersactie twee keer laten
+resulteren in een financiële registratie? Vergelijk met het bestaande atomaire-claim-patroon
+(`UPDATE ... WHERE x IS NULL/status=?` + `changes`-check, zoals bij teaser-/verkoopmemorandum-fees
+en de TOS-finaliseer-gate) — ontbreekt dat patroon bij een nieuwe fee-schrijfactie, dan is dat een
+bevinding, ook zonder dat een daadwerkelijke dubbele registratie is waargenomen. Controleer ook of
+een eenmaal vastgelegde financiële uitkomst (dealvoorstel-cijfers, een fee-onderbouwing) een
+manifest-achtige vastlegging heeft (bron, datum, versie, formule) zodat ze achteraf reproduceerbaar
+is, analoog aan `tos_manifest` voor Transaction-OS-documenten.
+
 ### Teststrategie
 Unit tests; integratietests; regressietests; end-to-endtests; API-tests; performancetests;
 securitytests; edge cases; boundary testing; negatieve tests; testautomatisering; testdekking —
@@ -155,6 +178,22 @@ Automatische risicoscore; waarderingsadvies; onderbouwing van de waardering; con
 scenarioanalyse; benchmarking; detectie van ontbrekende data; kwaliteitscontrole van invoer;
 AI-verklaarbaarheid; consistentiecontrole.
 
+**Promptinjectie via geüploade documenten (toegevoegd 11 sep 2026):** dit platform voedt AI-prompts
+met tekst uit documenten die een (potentieel niet-welwillende) tegenpartij heeft geüpload. Controleer
+voor elke plek die documenttekst in een prompt plakt (`worker/04-ai-extractie.js` en vergelijkbaar)
+of die tekst expliciet gedemarceerd is als bronmateriaal, nooit als instructie — ontbreekt die
+demarcatie, dan is dat een bevinding ongeacht of een concrete exploit is aangetoond. Controleer ook
+de tweede-orde-keten: wordt een vrije-tekst-samenvatting van een geüpload document (bijv. een
+`analyse`-veld) ongefilterd hergebruikt in latere prompts (risicobeoordeling, waarderingsonderbouwing)
+— een geslaagde injectie plant zich dan voort. Controleer daarnaast **provenance-promotie**: kan een
+AI-gegenereerde waarde/tekst (`AI_INFERENCE`/AI-concept) ooit stilzwijgend, zonder expliciete
+menselijke actie, naar een hogere vertrouwensklasse (bronfeit, geverifieerd, definitief) worden
+opgewaardeerd? En **AI versus deterministische rekenkern**: waar een AI-second-opinion náást een
+deterministisch berekend getal bestaat, moet de AI-prompt het berekende getal als vaststaand gegeven
+krijgen (nooit zelf laten narekenen) en moet de server het numerieke AI-antwoord hoe dan ook
+overschrijven met de eigen berekening — zie `worker/19b-waardering-communicatie.js` als
+referentie-implementatie van dit patroon.
+
 ### Rapportage
 PDF; Excel; CSV; JSON; API-output; dashboards; grafieken; waterfall; gevoeligheidsanalyse;
 managementrapport; investeringsrapport; exportmogelijkheden; printvriendelijke rapporten.
@@ -171,6 +210,22 @@ disaster recovery; schaalbaarheid; beschikbaarheid/uptime; kostenoptimalisatie/c
 ### Compliance
 AVG/GDPR; audittrail; logging; versiebeheer van berekeningen; reproduceerbaarheid;
 herleidbaarheid; bewaartermijnen; gegevensclassificatie.
+
+**Verwijder-matrix (toegevoegd 11 sep 2026):** bij een claim als "data wordt na X dagen verwijderd"
+niet alleen de database-cascade controleren, maar expliciet per bewaarplek: live database, R2/object
+storage, exports/caches, back-ups, en — waar van toepassing — externe verwerkers (AI-provider,
+e-mailprovider, ondertekendienst). Elke plek waar dezelfde data ook terecht kan zijn gekomen, hoort
+in de verwijder-/retentieclaim, of het ontbreken daarvan wordt expliciet benoemd.
+
+**Documentworkflow-state-machine (toegevoegd 11 sep 2026):** voor elk documenttype met een eigen
+levenscyclus (concept/draft → gefinaliseerd → verstuurd → geaccepteerd/getekend, of vergelijkbaar)
+één keer per volledige audit expliciet doorlopen: kan een afgeronde/vergrendelde status alsnog
+gewijzigd worden via een andere route dan de bedoelde? Wordt dezelfde harde gate (bijv. een
+KERN-completeness- of reviewcheck) op ELKE plek toegepast waar die status opnieuw relevant wordt
+(niet alleen bij de overgang zelf, ook bij een latere her-aanroep zoals versturen) — en, net zo
+belangrijk, wordt zo'n gate NOOIT retroactief toegepast op een object dat al vóór de gate bestond
+op een manier die het alsnog blokkeert zonder dat er iets aan te doen valt? Dit is de periodieke,
+hele-systeem-variant van de per-wijziging-tegenspraak-stap uit werkregel 19 zone (d) in CLAUDE.md.
 
 ### Verwachte output
 Uitsluitend een auditrapport. Voor ieder controleonderdeel:
@@ -849,6 +904,46 @@ edge-breed gedeeld (zelfde beperking als de bestaande admin-limiter, zie P3 hier
   **Positief, expliciet herbevestigd (regressie zou hier zichtbaar worden):** geen SQL-injectie-oppervlak over 28 backend-modules; wachtwoord-hashing (PBKDF2/salt/constant-time) ongewijzigd; CORS-whitelist + volledige headerset; F1/F2, F6, F13 en de `tussen_code`-invariant blijven dicht; foreign keys + dubbele verwijder-cascade (nu automatisch cross-gecontroleerd); idempotency op alle documentverstuur-/ondertekenendpoints; eerdere N+1-fixes blijven gefixt; gedeelde `jsonHeaders()`-helper in 898/903 responses; sectorbenchmark-`null`-guard (nooit een stille gok) intact; AI overschrijft nergens een berekende waarderingsuitkomst.
 
   **Nog niet opgepakt binnen deze sessie** — de twee P1's vragen om een bewuste keuze van Marcel (auth-wijziging in een chat-route resp. een CI-diepgraving) vóór ze zelfstandig worden opgelost, conform werkregel 19 (tegenspraak-stap bij auth/rechtengrenzen — de onafhankelijke security-subagent geldt hier als die tegenspraak-stap, maar de daadwerkelijke fix + regressietest is nog niet doorgevoerd). Zie sessie-geheugen voor de volledige, geprioriteerde lijst.
+
+- **11 september 2026 — onafhankelijke totaal-audit, op Marcels expliciete verzoek** ("als je naar
+  totale security kijkt maar ook de financiële analyses, los van de laatste wijzigingen, wat kunnen
+  we nog leren"), los van de op dat moment actieve bouwsessie (de manifest-KERN-fix). Uitgevoerd via
+  zes parallelle, onafhankelijke deelonderzoeken (elk zelf de code lezend): publieke claims vs.
+  code, auth-kernel-edge-cases + inverse-autorisatie, cross-deal-informatiestroom + search,
+  AI/RAG-dataflow + provenance, financiële fee-integriteit, en een onafhankelijke rekenkern-toets.
+  Dit leverde vier nieuwe standaard-checklistcategorieën op (zie de betreffende secties hierboven:
+  Security → publieke claims + fee-integriteit, AI-functionaliteit → promptinjectie/provenance,
+  Compliance → verwijder-matrix + documentworkflow-state-machine) en de volgende bevindingen:
+
+  **Bevestigd en gefixt dezelfde dag:**
+  1. Twee cross-rol-lekken (F14/F15 in CROSS-PATH-SECURITY-STANDAARD.md): `worker/35-koper-bod.js`
+     en `worker/16-adviseur.js` misten de al bestaande muur tegen externe adviseurs.
+  2. Eén vierde gemiste plek in de al bekende privacy-invariant 12 (F16): `worker/32-pool.js`,
+     `GET /mna/pool/opdrachten/{traject}` toonde de identiteit van een 'eigen' specialist alsnog aan
+     admin.
+  3. Vier financiële fee-schrijfacties zonder de al bestaande atomaire-claim-bescherming
+     (dubbelklik/retry kon een dubbele fee opleveren): eigen-specialist-fee, meekijker-fee, en de
+     trajectfee bij traject-aanmaak (limietcheck-race). Dubbelklik-guards toegevoegd.
+  4. Geen promptinjectie-demarcatie voor geüploade documenttekst (`worker/04-ai-extractie.js`) —
+     demarcatie toegevoegd, zelfde patroon als elders in de codebase al bestond.
+  5. Eén weerlegde publieke claim: "elke login wordt gelogd" — mechanisme bestond, werd nooit
+     aangeroepen vanuit `marilyn.html`. Gefixt.
+
+  **Twee bevindingen bleken bij verificatie GEEN probleem** (scope-beperking van de onderzoekende
+  agent, geen echte platformbug) — belangrijk om te vermelden, want dit toont dat de tegenspraak-
+  stap ook fout-positieven moet kunnen weerleggen, niet alleen bevestigen: de rekenkern
+  (`mna/03-rekenkern-waardering.js`) mist inderdaad een interne grondslag&gt;0-gate, maar de enige
+  aanroepplek (`mna/04-begeleider-dashboard.js:1685-1688`) blokkeert dat scenario al sinds 1 sep
+  2026 vóór de aanroep.
+
+  **Nog niet gefixt, bewust vastgelegd als openstaand architectuurpunt (geen actief datalek):**
+  `bgDocSpa()` (dezelfde dag gebouwd) gebruikt de generieke `/ai`-proxy in strijd met de eigen
+  F12-richtlijn ("elke nieuwe trajectgebonden AI-feature krijgt een eigen, geauthenticeerde route").
+
+  **Verificatie:** `tests/policy-equivalentie.mjs` (84/84) + `tests/audit-backend.mjs` +
+  `tests/audit-consistentie.mjs` groen; nieuwe regressietest in `tests/e2e-crosspath-fixes.mjs` voor
+  F14/F15. F16 en de vier fee-race-fixes zijn nog niet in een geautomatiseerde e2e-test gedekt (F16
+  vereist TOS-document-opbouw, zie `tests/e2e-tos.mjs` als aanknopingspunt) — vervolgstap.
 
 ## Cross-path information-flow audit
 

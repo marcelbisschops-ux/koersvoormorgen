@@ -341,3 +341,44 @@ introduceert (nieuwe endpoint, nieuwe AI-functie, nieuwe export/notificatie), v�
   kern-invarianten van F3/F6/F8/F10/F13 live hertest — bij een gefaalde check ontstaat automatisch
   een nieuwe, kritieke bevinding + een waarschuwingsmail, zodat een toekomstige regressie niet stil
   kan sluipen tussen twee handmatige audits in.
+
+- **11 september 2026 — tweede uitvoering, op Marcels expliciete verzoek** ("als je naar totale
+  security kijkt... wat kunnen we nog leren"), uitgevoerd los van de op dat moment actieve
+  bouwsessie (manifest-KERN-fix) via zes parallelle, onafhankelijke deelonderzoeken: publieke
+  claims vs. code, auth-kernel-edge-cases + inverse-autorisatie, cross-deal-informatiestroom +
+  search, AI/RAG-dataflow + provenance, financiële fee-integriteit, en een onafhankelijke
+  rekenkern-toets (nooit-gokken/extremen/earn-out-algebra). Twee nieuwe, bevestigde
+  cross-rol-lekken — beide hetzelfde patroon als F1-F13 (een parallelle route mist een muur die
+  elders al bestond) — plus een vierde gemiste plek in de al bekende invariant-12-klasse:
+
+  | # | Bevinding (kort) | Status |
+  |---|---|---|
+  | F14 | `GET /mna/begeleider/biedingen/{traject}` (`worker/35-koper-bod.js`): admin-tak gebruikte het pad-argument rechtstreeks zonder `isEigenTraject`-check — bod-bedrag + toelichting (BEGELEIDER-ONLY-klasse) van een extern traject was zo opvraagbaar met alleen de ADMIN_KEY | **Gefixt** (11 sep 2026) — dezelfde muur toegepast als bij `/mna/admin/pool/opdrachten`; lege lijst i.p.v. 403, om het bestaan van het endpoint niet te laten lekken |
+  | F15 | `GET /mna/admin/tarieven/events` (`worker/16-adviseur.js`): `kantoor_naam` (de KLANT van een externe adviseur, niet de adviseur zelf) werd ongemaskeerd meegestuurd — het bestaande maskeringspatroon (zie F13/invariant 9) was hier nooit toegepast | **Gefixt** (11 sep 2026) — `kantoor_naam` wordt nu `'(extern traject)'` voor niet-eigen trajecten, per rij via `isEigenTraject({gebruiker_id})` |
+  | F16 | `GET /mna/pool/opdrachten/{traject}` (`worker/32-pool.js`): een vierde plek (naast de drie in invariant 12 genoemde) waar de identiteit van een 'eigen' (niet-pool) specialist alsnog aan `rol==='admin'` werd getoond — dezelfde privacy-invariant als `mna_eigen_specialisten`, hier gemist omdat deze route oorspronkelijk alleen voor de reguliere pool was gebouwd en later stilzwijgend ook 'eigen'-rijen ging tonen | **Gefixt** (11 sep 2026) — `specialist_naam`/`sign_off` gemaskeerd voor `specialist_bron='eigen'`-rijen wanneer de aanroeper admin is, ongeacht of het traject zelf eigen of extern is (zelfde onvoorwaardelijke lijn als `worker/34-eigen-specialisten.js`) |
+
+  **Les (toegevoegd aan de werkwijze, niet alleen deze drie bevindingen):** alle drie volgen hetzelfde
+  patroon — een beveiligingsmaatregel (muur tegen externe adviseurs, privacy-invariant 12) werd
+  correct op de PRIMAIRE/oorspronkelijke route toegepast, maar niet stelselmatig op elke LATERE
+  route die dezelfde onderliggende data ophaalt. Vaste aanvulling op de werkwijze hieronder: zodra
+  een muur/exclusie-regel wordt toegevoegd (isEigenTraject, een privacy-invariant zoals #12), meteen
+  `grep -rn` op de betrokken tabel/kolomnaam (bijv. `specialist_bron.*eigen`, `mna_eigen_specialisten`,
+  `kantoor_naam`) over ALLE worker-modules, niet alleen de route waarvoor de regel is geschreven —
+  en die grep herhalen bij elke volgende audit, niet alleen éénmalig bij het invoeren van de regel.
+
+  Verificatie: `tests/policy-equivalentie.mjs` (84/84) + `tests/audit-backend.mjs` groen; nieuwe
+  regressietest in `tests/e2e-crosspath-fixes.mjs` (F14/F15: admin op extern traject krijgt niets,
+  begeleider zelf wél, muur verdwijnt zodra het traject tijdelijk als eigen wordt gemarkeerd). F16
+  (specialist-naam-maskering op `/mna/pool/opdrachten/{traject}`) is nog niet in een geautomatiseerde
+  e2e-test gedekt — dat vereist een TOS-document + eigen-specialist-opdracht-opbouw en is aan
+  `tests/e2e-tos.mjs` toe te voegen als vervolgstap.
+
+  Twee bevindingen uit dezelfde audit-ronde bleken bij verificatie GEEN probleem (agent-scope-
+  beperking, geen echte platformbug): de rekenkern (`mna/03-rekenkern-waardering.js`) heeft
+  inderdaad geen interne grondslag&gt;0-gate in `dvBerekenClosing`/`dvBerekenPrijsmechanisme` zelf,
+  maar de enige aanroepplek (`mna/04-begeleider-dashboard.js:1685-1688`) blokkeert dat scenario al
+  sinds 1 sep 2026 vóór de aanroep — geverifieerd via `grep -rn` op alle call-sites. Nog niet
+  gefixt, bewust vastgelegd als openstaand architectuurpunt: `bgDocSpa()` (11 sep 2026 gebouwd)
+  gebruikt de generieke `/ai`-proxy in strijd met de eigen F12-richtlijn hierboven — praktisch risico
+  laag (de proxy leest zelf niets uit de database), maar verdient een eigen, code-geauthenticeerde
+  route zoals `/mna/risicoraamwerk/genereer`, analoog aan de andere trajectgebonden AI-features.

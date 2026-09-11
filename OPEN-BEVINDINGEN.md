@@ -373,6 +373,26 @@ verwijzingen en faalt (blokkeert push + CI + worker-deploy) als een genoemde pag
 redirect-stub is geworden, of niet in het register staat. Negatief getest: `registreer.html` opnieuw
 tot stub maken → audit exit 1, twee expliciete waarschuwingen die naar deze bug verwijzen.
 
+### P3-45 · `bgDocSpa()` gebruikt de generieke `/ai`-proxy, in strijd met de eigen F12-richtlijn
+🔴 **Open** (bevinding 11 sep 2026, onafhankelijke totaal-audit — zie AUDIT-STANDAARD.md-logboek
+11 sep 2026 en F12/F16 in CROSS-PATH-SECURITY-STANDAARD.md). `mna/04-begeleider-dashboard.js`
+(`bgDocSpa()`, dezelfde dag gebouwd) roept de generieke `/ai`-proxy aan voor het genereren van een
+SPA-conceptovereenkomst — het meest risicovolle documenttype in het traject — terwijl de vastgelegde
+regel is dat elke nieuwe trajectgebonden AI-feature een eigen, code-geauthenticeerde route krijgt
+(zoals `/mna/risicoraamwerk/genereer`), nooit de generieke proxy. Praktisch risico is laag (de proxy
+leest zelf niets uit de database, dus geen direct cross-traject-datalek), maar het is een
+architectuurafwijking van een expliciet vastgelegde regel, op precies het document waarvoor die
+regel het hardst zou moeten gelden. **Aanbevolen fix:** een dedicated `POST /mna/spa/genereer`-route
+naar analogie van `worker/19b-waardering-communicatie.js` (server-side promptopbouw met de al
+bestaande clausule-integriteitsregel + placeholder-check), en `bgDocSpa()` daarnaartoe laten
+verwijzen i.p.v. de generieke `/ai`-aanroep. Niet in dezelfde sessie gefixt: een grotere,
+zorgvuldige architectuurwijziging aan een net gebouwde, document-genererende AI-flow (werkregel
+19-zone b), geen quick-fix onder tijdsdruk.
+
+Ook nog niet in een geautomatiseerde e2e-test gedekt uit dezelfde audit-ronde: de F16-maskering
+(`worker/32-pool.js`, specialist-naam voor eigen-specialisten) en de vier fee-race-dubbelklikguards
+(eigen-specialist/meekijker/trajectfee) — code is gefixt en gedeployed, regressietest volgt.
+
 ---
 
 ## Samenvatting (5 september 2026 — bijgewerkt na een fixronde dezelfde dag)
