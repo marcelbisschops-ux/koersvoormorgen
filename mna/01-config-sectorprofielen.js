@@ -288,12 +288,15 @@ var SECTOR_PROFIELEN = {
   // ── MKB GENERIEK (retail, horeca, handel, ambacht) ───────────────────────
   mkb: {
     label: 'MKB — Retail / Horeca / Handel / Ambacht',
-    // Bron-status (zie SECTORPROFIEL-BRONNEN.md, 31 aug 2026): multiple 2,5-4,5x = 🔴 AANDACHT —
-    // de actuele Brookz Overnamebarometer (H2-2025) geeft een gemiddelde MKB-EBITDA-multiple van 5,0;
-    // de bovengrens hier ligt daaronder. Bewust conservatief kan, maar herijk tegen Brookz of
-    // documenteer expliciet als bewuste ondergrens. Marge-/FTE-getallen 🟡 plausibel, geen bron.
-    aiNormen: 'EBITDA-marge norm 5-15% (sector afhankelijk: horeca 8-12%, retail 5-10%, handel 6-12%), omzet per FTE €80k-€200k, personeelskosten 25-45%, voorraadomzet >6x per jaar, multiple 2.5-4.5x',
-    multipleBasis: 'ebitda', multipleLaag: 2.5, multipleHoog: 4.5,
+    // Bron-status (zie SECTORPROFIEL-BRONNEN.md): multiple herijkt op 11 sep 2026 — Marcel akkoord
+    // met "ophogen richting Brookz" nav BACKLOG.md 1.1. Was 2,5-4,5x (bovengrens lag onder de markt);
+    // nu 4,0-6,0x, gecentreerd op het actuele Brookz Overnamebarometer-gemiddelde (H2-2025) van 5,0
+    // voor MKB-EBITDA-multiples ("hoogste in tien jaar", 291 M&A-advieskantoren, bedrijven
+    // €0,5-50 mln omzet), met een bewust bredere band dan accountancy (4,5-5,5x) omdat MKB
+    // (retail/horeca/handel/ambacht) onderling meer uiteenloopt. Marge-/FTE-getallen 🟡 plausibel,
+    // geen bron.
+    aiNormen: 'EBITDA-marge norm 5-15% (sector afhankelijk: horeca 8-12%, retail 5-10%, handel 6-12%), omzet per FTE €80k-€200k, personeelskosten 25-45%, voorraadomzet >6x per jaar, multiple 4.0-6.0x',
+    multipleBasis: 'ebitda', multipleLaag: 4.0, multipleHoog: 6.0,
     fases: [
       {id:'financieel',num:'I',title:'Financieel',desc:'Omzet, marge en werkkapitaal.',
        dataFields:[

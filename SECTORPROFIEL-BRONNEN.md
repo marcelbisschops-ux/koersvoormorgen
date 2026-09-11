@@ -28,10 +28,10 @@ Legenda: 🟢 geverifieerd tegen een externe bron · 🟡 plausibel, geen geveri
 | EBITDA-marge 15–25% | 🟡 | Gangbaar genoemd getal voor de sector; geen expliciete bron in de code. Marcel kan dit met hoge zekerheid bevestigen (bestuurder-achtergrond). |
 | omzet/FTE €80k–€140k, personeelskosten 55–65%, declarabiliteit >75%, verloop <15% | 🟡 | Idem — plausibele branchegetallen, geen citaat. Deels overlappend met de DB-benchmark `omzet_fte_accountant` (die wél een bron heeft: "Full Finance/Novak 2024-2025"). **Aanbeveling:** de `aiNormen`-tekst laten verwijzen naar diezelfde bron. |
 
-### MKB (retail/horeca/handel/ambacht) — `multiple 2,5–4,5× EBITDA`
+### MKB (retail/horeca/handel/ambacht) — `multiple 4,0–6,0× EBITDA`
 | Waarde | Status | Toelichting |
 |---|---|---|
-| multiple 2,5–4,5× EBITDA | 🔴 | **De actuele Brookz Overnamebarometer (H2-2025) geeft een gemiddelde MKB-EBITDA-multiple van 5,0** ("hoogste in tien jaar", 291 M&A-advieskantoren, bedrijven €0,5–50 mln omzet). De profielrange loopt van 2,5 (bij de cliff) tot 4,5 (bij de prognose) — de bovengrens ligt daarmee onder het huidige marktgemiddelde. Bewust conservatief kán, maar het is een keuze die je expliciet moet maken, geen "de markt zegt dit". **Aanbeveling:** herijken tegen Brookz per branche, of expliciet als bewust-conservatieve ondergrens documenteren. |
+| multiple 4,0–6,0× EBITDA | 🟢 | **Herijkt 11 sep 2026** (Marcel akkoord op BACKLOG.md 1.1: "ophogen richting Brookz"). Was 2,5–4,5×, bovengrens lag onder de markt. Nieuwe band gecentreerd op het Brookz Overnamebarometer-gemiddelde (H2-2025) van 5,0 voor MKB-EBITDA-multiples ("hoogste in tien jaar", 291 M&A-advieskantoren, bedrijven €0,5–50 mln omzet), met een bewust bredere band dan accountancy (4,5–5,5×) omdat MKB (retail/horeca/handel/ambacht) onderling meer uiteenloopt. Bijgewerkt in `mna/01-config-sectorprofielen.js` + gesynchroniseerd naar `cloudflare-worker.js` (`scripts/sync-sectorprofielen.js --apply`) + de losse AI-analyse-prompt in `marilyn.html`. Geen DB-override actief op productie (geverifieerd), dus de code-default is direct leidend. |
 | EBITDA-marge 5–15% (horeca 8–12%, retail 5–10%, handel 6–12%), omzet/FTE €80k–€200k, personeelskosten 25–45%, voorraadomzet >6×/jr | 🟡 | Redelijke bandbreedtes, geen bron. De sub-sector-uitsplitsing (horeca/retail/handel) suggereert precisie die niet is onderbouwd. **Aanbeveling:** één publieke bron per sub-branche (bijv. ABN AMRO/RaboResearch sectorprognoses, CBS), of de uitsplitsing weghalen. |
 
 ### Zorg (huisarts/tandarts/fysiotherapie) — `multiple 1–3× OMZET (praktijkwaarde)`
@@ -51,8 +51,8 @@ Legenda: 🟢 geverifieerd tegen een externe bron · 🟡 plausibel, geen geveri
 
 ## Samengevat — wat moet er gebeuren
 
-1. **🔴 MKB-multiple (2,5–4,5×)** herijken tegen Brookz (gem. 5,0) óf expliciet documenteren als bewust-conservatieve ondergrens. — *Marcels call, hij kent de reden waarom het laag staat.*
-2. **🔴 Zorg-multiple (1–3× omzet)** — begrenzen tot kleine praktijken met die randvoorwaarde, of omvangsafhankelijk maken. — *Marcels call + eventueel een zorgadviseur.*
+1. ✅ **MKB-multiple** herijkt naar 4,0–6,0× (11 sep 2026, zie hierboven).
+2. **🔴 Zorg-multiple (1–3× omzet)** — begrenzen tot kleine praktijken met die randvoorwaarde, of omvangsafhankelijk maken. — *Marcels call + eventueel een zorgadviseur. Marcel antwoordde 11 sep 2026 "ja" op de keuzevraag, maar die had twee opties — nog te verduidelijken welke.*
 3. **🟡 Alle `aiNormen`-tekst** een bronvermelding geven (of "indicatief, geen vastgestelde branchenorm" waar er echt geen bron is). Voor accountancy: koppelen aan de al gebronde DB-benchmark.
 4. **Vast kwartaalpunt:** deze tabel opnieuw langslopen (hangt aan de bestaande sjabloon-/benchmark-kwartaalcheck).
 
