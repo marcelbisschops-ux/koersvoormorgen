@@ -14,10 +14,10 @@ var RELIANCE_VOETTEKST = 'Dit document is via het Koers voor Morgen-platform opg
 
 async function checkVOK(code) {
   try {
-    var r = await fetch(WORKER + '/mna/vok/status?code=' + encodeURIComponent(code));
+    var r = await fetchMetTimeout(WORKER + '/mna/vok/status?code=' + encodeURIComponent(code), {}, 12000);
     var d = await r.json();
     return d;
-  } catch(e) { return { getekend: false }; }
+  } catch(e) { return { getekend: false, _verbindingsfout: true }; }
 }
 
 function toonVOKPopup(code, onAkkoord) {
@@ -787,6 +787,10 @@ function renderBegeleiderDashboard(app){
       // letterlijk de eerste stap in deze flow) ──
       html+='<div class="panel" style="margin-bottom:.75rem;padding:0">'+secHdr('docs','&#128196; Documenten &mdash; flow')
         +'<div class="bg-sec-body" data-sec="docs" style="display:block;padding:.25rem 1rem 0">'
+        // Expliciete instructie (Marcel, 11 sep 2026: "als een document gegenereerd moet worden, zie
+        // je nog steeds niet waar") — deze lijst IS de plek, maar dat was nergens met zoveel woorden
+        // gezegd; met 17 rijen in deze flow is dat kennelijk niet vanzelfsprekend.
+        +'<div style="font-size:11px;color:var(--muted);padding:.4rem 0 .6rem;border-bottom:1px dashed var(--border2);margin-bottom:.4rem">Klik op een document hieronder om het te genereren, te bekijken of te versturen — dit is de volledige documentenflow van dit traject, in de volgorde waarin ze normaal aan bod komen. Rechts van elke regel ziet u de status.</div>'
         // Volgorde volgt de daadwerkelijke dealstroom (Marcel, 21 aug 2026): BEM is het mandaat
         // tussen begeleider en opdrachtgever (Fase 0 in de eigen BEM-sjablonen, worker/02-config-
         // constanten.js) — wordt getekend vóórdat er met de tegenpartij iets gebeurt, dus hoort vóór
@@ -797,7 +801,7 @@ function renderBegeleiderDashboard(app){
         // bevestigingsstap in toonVerkoopmemoModal, vereist geen formele koper in het platform).
         +stapRij('bg-bem-actie','&#128203;','#2a5ea0','Bemiddelingsovereenkomst (BEM)',getekendStatus('bem_getekend','bem_datum'))
         +stapRij('bg-teaser-actie','&#128226;','#1a7a5e',t.teaser_tekst?'Teaser bekijken/bewerken':'Genereer teaser',t.teaser_tekst?'<span style="color:var(--teal)">&#10003; Teaser klaar</span>':'Kort, anoniem verkoopdocument — vóór er een koper is',false,false,!marketingAan,'Module Marketing niet actief — neem contact op via koersvoormorgen.nl')
-        +stapRij('bg-nda-actie','&#128274;','#7c5cbf','Geheimhoudingsovereenkomst (NDA)',getekendStatus('nda_getekend','nda_getekend_datum'))
+        +stapRij('bg-nda-actie','&#128274;','#7c5cbf','Geheimhoudingsovereenkomst (NDA) — sjabloongenerator',getekendStatus('nda_getekend','nda_getekend_datum'))
         +stapRij('bg-verkoopmemo-actie','&#128220;','#8a5a00',t.verkoopmemorandum_tekst?'Verkoopmemorandum bekijken/bewerken':'Genereer verkoopmemorandum',t.verkoopmemorandum_tekst?'<span style="color:var(--teal)">&#10003; Verkoopmemorandum klaar</span>':'Uitgebreid document mét bedrijfsnaam, na NDA van die partij',false,false,!marketingAan,'Module Marketing niet actief — neem contact op via koersvoormorgen.nl')
         // MoU-/LoI-composer (Transaction OS) — stelt het document samen uit losse, apart af te tekenen
         // onderdelen. Geen module-gate: de composer zelf is geen te versturen contract; finaliseren/
@@ -2244,7 +2248,8 @@ function renderBegeleiderDashboard(app){
       +'<div><span style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:#5a5470">'+esc(mouProfLabel().kort)+'-composer</span>'
       +'<span style="font-size:11px;color:var(--muted);margin-left:8px">v'+esc(String(doc.current_version))+' &middot; '
       +(doc.status==='draft'?'concept':doc.status==='exported'?'gefinaliseerd':doc.status==='verstuurd'?('verstuurd aan '+((doc.adressaten||[]).join(', ')||'&mdash;')):esc(doc.status))+'</span></div>'
-      +'<button id="mou-close" class="btn-ghost" style="font-size:11px;padding:3px 10px">Sluiten</button></div>';
+      +'<div style="display:flex;gap:6px"><button id="mou-print" class="btn-ghost" style="font-size:11px;padding:3px 10px">&#128196; Print / PDF</button>'
+      +'<button id="mou-close" class="btn-ghost" style="font-size:11px;padding:3px 10px">Sluiten</button></div></div>';
     h+='<div style="padding:1rem">';
     h+=bgMouDiscl();
     if(alleDocs&&alleDocs.length>1){
@@ -2296,7 +2301,7 @@ function renderBegeleiderDashboard(app){
     comps.filter(function(c){return c.instance_status==='ACTIVE';}).forEach(function(c){
       var rev=c.review||{status:'REQUIRED'};
       var rl=MOU_REV[rev.status]||['',''];
-      h+='<div class="mou-card" data-iid="'+esc(c.instance_id)+'" style="border:1px solid var(--border);border-radius:var(--r);padding:.7rem .85rem;margin-bottom:.5rem">'
+      h+='<div class="mou-card" data-iid="'+esc(c.instance_id)+'" data-title="'+esc(c.title)+'" style="border:1px solid var(--border);border-radius:var(--r);padding:.7rem .85rem;margin-bottom:.5rem">'
         +'<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">'
         +'<div style="font-size:12.5px;font-weight:600;color:var(--head)">'+esc(c.title)
         +' <span style="font-size:10px;font-weight:500;color:var(--muted)">'+esc(c.binding_status||'')+'</span></div>'
@@ -2446,6 +2451,22 @@ function renderBegeleiderDashboard(app){
   function bgMouWire(bevroren){
     var out=document.getElementById('bg-doc-out'); if(!out)return;
     var cl=document.getElementById('mou-close'); if(cl)cl.onclick=function(){ out.style.display='none'; out.innerHTML=''; };
+    // Print/PDF (Marcel, 11 sep 2026: composer-documenten hadden geen printknop, in tegenstelling
+    // tot elk ander gegenereerd document). Bouwt de tekst uit de zichtbaar gerenderde onderdeelkaarten
+    // (title + vrije tekst) i.p.v. opnieuw op te halen — dat is precies wat er nu op het scherm staat,
+    // inclusief eventuele nog niet opgeslagen tekstwijzigingen. Elke titel als kop (## ) zodat
+    // printDoc() 'm als <h3> opmaakt, zelfde patroon als elk ander documenttype.
+    var mp=document.getElementById('mou-print'); if(mp)mp.onclick=function(){
+      var stukken=[];
+      out.querySelectorAll('.mou-card').forEach(function(card){
+        var titel=card.getAttribute('data-title')||'';
+        var txtEl=card.querySelector('.mou-text');
+        var tekst=txtEl?txtEl.value.trim():'';
+        stukken.push('## '+titel+(tekst?('\n\n'+tekst):'\n\n(geen tekst ingevuld)'));
+      });
+      var profLbl=mouProfLabel();
+      printDoc(stukken.join('\n\n'), profLbl.titel+' &mdash; '+(S.traject&&S.traject.kantoor_naam||S.code), _mouProfile.toLowerCase());
+    };
     var ks=document.getElementById('mou-kies'); if(ks)ks.onchange=function(){ _mouDocId=this.value; bgMouRender(); };
     var n2=document.getElementById('mou-nieuw2'); if(n2)n2.onclick=async function(){ var mk=await bgMouApi('POST','/document',{profile:_mouProfile}); if(mk.ok&&mk.json.ok){ _mouDocId=mk.json.document_id; toast('Nieuwe '+mouProfLabel().kort+' aangemaakt','ok'); bgMouComposer(_mouProfile); } else toast('Aanmaken mislukt','err'); };
     if(bevroren){

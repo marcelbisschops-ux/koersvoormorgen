@@ -1086,11 +1086,11 @@ function bindAll(){
       var err=ge('l-err');var load=ge('l-load');
       if(err)err.style.display='none';if(load)load.style.display='block';lb.disabled=true;
       try{
-        var resp=await fetch(WORKER+'/mna/traject/'+code, {
+        var resp=await fetchMetTimeout(WORKER+'/mna/traject/'+code, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ ts: Date.now() })
-        });
+        }, 15000);
         var d=await resp.json();
         if(!resp.ok){
           if(d&&d.error&&d.error.includes('verzoeken'))throw new Error('Te veel verzoeken. Wacht even en probeer opnieuw.');
@@ -1160,6 +1160,12 @@ function bindAll(){
         if(isTussen()){
           S._bgKey=code;S.screen=(schermOverride==='handleiding')?'handleiding':'begeleider';
           checkVOK(code).then(function(vokStatus){
+            // Een verbindingsfout/timeout betekent "we weten het niet", niet "nog niet getekend" —
+            // de VOK-popup tonen zou dan ten onrechte suggereren dat er iets geaccepteerd moet
+            // worden, terwijl de eigenlijke oorzaak een netwerkprobleem is. Gewoon een foutmelding
+            // + opnieuw-proberen, in plaats van het scherm voor altijd op "Laden..." te laten staan
+            // (Marcel, 11 sep 2026: "blijft hangen met laden").
+            if(vokStatus._verbindingsfout){ if(err){err.textContent='Verbindingsfout. Probeer het opnieuw.';err.style.display='block';} if(load)load.style.display='none';lb.disabled=false; return; }
             // Ook opnieuw tonen als er een nieuwere versie is dan wat eerder getekend is —
             // anders wordt een tekstwijziging (bv. bewaartermijn) nooit meer voorgelegd.
             // Uitzondering: testers (en Bisschops-eigen/legacy trajecten) hoeven een versiebump
