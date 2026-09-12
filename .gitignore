@@ -25,3 +25,8 @@ _mock/*.png
 # legal-holds.json en de engine zelf horen WEL in git.
 legal/retention/.data/
 legal/retention/reports/
+
+# Staging-only testsleutel voor tests/run-rolflows.sh (12 sep 2026, werkregel 29) — géén
+# productietoegang, uitsluitend geldig tegen kantoorinzicht-staging. Blijft BEWUST lokaal;
+# zie tests/README.md voor hoe opnieuw in te richten als dit bestand ontbreekt.
+tests/.env.staging.local

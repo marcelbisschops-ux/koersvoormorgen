@@ -15,13 +15,19 @@
 // ══════════════════════════════════════════════════════════════════
 
 import { test, expect } from '@playwright/test';
-import { api, leesAdminKey } from './lib.mjs';
+import { api, leesAdminKey, WORKER } from './lib.mjs';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
 
 const ADMIN = leesAdminKey();
 const WW = 'TestWachtwoord123!';
+// mna.html's eigen WORKER-constante (mna/01-config-sectorprofielen.js) is hardcoded op productie,
+// maar ondersteunt al een ?worker=-override in de URL. Zonder deze regel zou een browser-gedreven
+// test altijd tegen PRODUCTIE draaien, ongeacht WORKER_URL — dat werd pas ontdekt bij het optuigen
+// van tests/run-rolflows.sh (12 sep 2026, werkregel 29): de node-kant (api()) respecteerde
+// WORKER_URL al wel, de browser-kant niet. Beide moeten hetzelfde doel raken.
+const IS_STANDAARD_PRODUCTIE = WORKER === 'https://kantoorinzicht.marcel-bisschops.workers.dev';
 
 // VOK-versie live uit de bron lezen i.p.v. hardcoden — anders faalt de gating-test stil zodra
 // VOK_VERSIE in mna/04 wordt opgehoogd (gebeurd: 1.2 → 1.5, test bleef op 1.2 staan en de
@@ -35,7 +41,8 @@ const VOK_VERSIE = (() => {
 })();
 
 async function login(page, code) {
-  await page.goto('/mna.html');
+  const url = IS_STANDAARD_PRODUCTIE ? '/mna.html' : ('/mna.html?worker=' + encodeURIComponent(WORKER));
+  await page.goto(url);
   await page.locator('#l-code').fill(code);
   await page.locator('#l-btn').click();
 }
@@ -321,14 +328,19 @@ test.describe('Rol Click-Through: documentcontent-race (regressie 12 sep 2026)',
     await expect(ndaBtn).toBeVisible({ timeout: 15000 });
     await ndaBtn.click();
     await loiBtn.click(); // vlak na elkaar — geen wachttijd — reproduceert de gerapporteerde race
+    // Bugfix 12 sep 2026 (gevonden via live staging-run, niet via codelezing): de composer-kop is
+    // op enig moment van "LoI-composer"/"NDA-composer" (met een <span>) veranderd naar "Letter of
+    // Intent — composer" / "Geheimhoudingsovereenkomst (NDA) — composer" (in een <div>) — deze test
+    // bleef op de oude markup wachten en timede daardoor altijd uit, ook al werkte de onderliggende
+    // race-fix zelf nog gewoon correct (handmatig geverifieerd tegen staging: alleen de LoI-composer
+    // verschijnt, nooit de NDA). Nu op de actuele kop-tekst i.p.v. verouderde tag-structuur.
     await page.waitForFunction(() => {
       var out = document.getElementById('bg-doc-out');
-      return out && /composer<\/span>/.test(out.innerHTML) && !/laden/.test(out.innerHTML);
+      return out && /composer/.test(out.innerHTML) && !/laden/.test(out.innerHTML);
     }, null, { timeout: 20000 });
     const html = await page.locator('#bg-doc-out').innerHTML();
-    expect(html).toContain('LoI-composer');
-    expect(html).not.toContain('NDA-composer');
-    expect(html).not.toContain('Geheimhoudingsovereenkomst');
+    expect(html).toContain('Letter of Intent — composer');
+    expect(html).not.toContain('Geheimhoudingsovereenkomst (NDA) — composer');
   });
 });
 
@@ -377,14 +389,14 @@ test.describe('Login en rollen (eigen testtraject)', () => {
     const rol = await page.evaluate(() => S.rol);
     expect(rol).toBe('verkoper');
     // Verkoper ziet géén begeleider-documentknoppen
-    await expect(page.locator('#bg-nda-actie')).toHaveCount(0);
+    await expect(page.locator('#bg-nda-composer-actie')).toHaveCount(0);
   });
 
   test('begeleider-code opent dashboard met alle documentknoppen', async ({ page }) => {
     await login(page, tussenCode);
     await page.waitForFunction(() => window.S && S.traject && S.rol === 'tussenpersoon', null, { timeout: 15000 });
     // Alle zeven documentknoppen aanwezig en (module contracten AAN) actief
-    for (const id of ['bg-nda-actie', 'bg-loi-actie', 'bg-bem-actie', 'bg-excl-actie', 'bg-dealvoorstel-actie', 'bg-bieding-actie', 'bg-spa-actie']) {
+    for (const id of ['bg-nda-composer-actie', 'bg-loi-composer-actie', 'bg-bem-actie', 'bg-excl-actie', 'bg-dealvoorstel-actie', 'bg-bieding-actie', 'bg-spa-actie']) {
       await expect(page.locator('#' + id)).toBeVisible();
       await expect(page.locator('#' + id)).toBeEnabled();
     }
@@ -421,14 +433,23 @@ test.describe('Login en rollen (eigen testtraject)', () => {
     // Begeleider: velden read-only, geen "Document toevoegen"-knop op deze fase.
     await login(page, tussenCode);
     await page.waitForFunction(() => window.S && S.traject && S.rol === 'tussenpersoon', null, { timeout: 15000 });
-    await page.evaluate(() => { S.fase = FASES.findIndex(f => f.id === 'financieel'); renderApp(); });
+    // Begeleider start op S.screen='begeleider' (het dashboard), niet 'main' (het invulscherm) —
+    // openBegeleiderFase() is de echte navigatie die de begeleider ook zelf gebruikt. Alleen
+    // S.fase zetten (zoals de eerste versie van deze test deed) liet de test op het verkeerde
+    // scherm staan, waardoor de assertie voor de verkeerde reden zou "slagen". Gevonden doordat de
+    // test écht tegen staging draaide, niet doordat de code ernaast werd gelezen.
+    await page.evaluate(() => { openBegeleiderFase('financieel'); });
+    await page.waitForFunction(() => window.S && S.screen === 'main', null, { timeout: 15000 });
     await expect(page.locator('#df_omzet3')).toHaveCount(0);
     await expect(page.locator('.readonly-val').first()).toBeVisible();
     await expect(page.getByText('Document toevoegen')).toHaveCount(0);
     // Verkoper op dezelfde fase: gewoon een invulveld en de upload-knop.
     await login(page, verkoperCode);
     await page.waitForFunction(() => window.S && S.traject && S.rol === 'verkoper', null, { timeout: 15000 });
-    await page.evaluate(() => { S.fase = FASES.findIndex(f => f.id === 'financieel'); renderApp(); });
+    // Een verse verkoper start op het cover-letter-scherm, niet 'main' (dat gebeurt pas automatisch
+    // ná een getekende LoI + afgeronde fase 1) — expliciet naar 'main' zetten om dezelfde reden als
+    // hierboven bij de begeleider: alleen S.fase zetten laat het scherm ongewijzigd.
+    await page.evaluate(() => { S.screen = 'main'; S.fase = FASES.findIndex(f => f.id === 'financieel'); renderApp(); });
     await expect(page.locator('#df_omzet3')).toBeVisible();
     await expect(page.getByText('Document toevoegen')).toBeVisible();
   });
@@ -470,7 +491,7 @@ test.describe('Documentknoppen module-gating', () => {
     await login(page, tussenCode);
     await page.waitForFunction(() => window.S && S.traject && S.rol === 'tussenpersoon', null, { timeout: 15000 });
     // Knoppen bestaan maar zijn disabled (vergrendelde variant)
-    for (const id of ['bg-nda-actie', 'bg-dealvoorstel-actie', 'bg-bieding-actie', 'bg-spa-actie']) {
+    for (const id of ['bg-nda-composer-actie', 'bg-dealvoorstel-actie', 'bg-bieding-actie', 'bg-spa-actie']) {
       await expect(page.locator('#' + id)).toBeVisible();
       await expect(page.locator('#' + id)).toBeDisabled();
     }
@@ -524,15 +545,23 @@ test.describe('Cross-entiteit databeveiliging (regressie 18 aug 2026)', () => {
   });
 
   test('snel wisselen van entiteit tijdens invullen mag data niet bij de verkeerde entiteit opslaan', async ({ page }) => {
-    await login(page, tussenCode);
-    await page.waitForFunction(() => window.S && S.traject && S.rol === 'tussenpersoon', null, { timeout: 15000 });
+    // Was: ingelogd als begeleider (tussenCode). Sinds de fase-Financieel-blokkade voor de
+    // begeleider (12 sep 2026, "NEE, MOET VERKOPER DOEN") is dat veld voor die rol read-only, dus
+    // deze — verder ongerelateerde — cross-entiteit-race kon niet meer via de begeleider getest
+    // worden. De race zelf gaat over saveCurrent()'s snapshot-timing, niet over wélke rol tikt, dus
+    // overgezet naar de verkoper (die deze fase nog gewoon mag invullen) — de entiteiten zelf blijven
+    // via de begeleider-API aangemaakt in beforeAll, dat is ongewijzigd begeleider-only.
+    await login(page, verkoperCode);
+    await page.waitForFunction(() => window.S && S.traject && S.rol === 'verkoper', null, { timeout: 15000 });
     // loadEntiteiten() (aangeroepen tijdens login) is een aparte, niet-afgewachte fetch — expliciet
     // wachten tot beide testentiteiten geladen zijn vóórdat we naar de fase navigeren, anders is de
     // "Invullen voor"-kiezer (die alleen rendert als S._entiteiten al gevuld is) een race conditie.
     await page.waitForFunction(() => window.S && Array.isArray(S._entiteiten) && S._entiteiten.length >= 2, null, { timeout: 15000 });
 
-    await page.evaluate(() => openBegeleiderFase('financieel'));
-    await page.waitForFunction(() => window.S && S.screen === 'main', null, { timeout: 15000 });
+    // Verkoper heeft geen openBegeleiderFase() (dat is een begeleider-dashboardfunctie) — een verse
+    // verkoper start bovendien op het cover-letter-scherm, niet 'main'. Zelfde directe aanpak als
+    // de fase-Financieel-UI-test hierboven.
+    await page.evaluate(() => { S.screen = 'main'; S.fase = FASES.findIndex(f => f.id === 'financieel'); renderApp(); });
     await page.waitForSelector('#df_omzet3', { timeout: 15000 });
 
     // Default moet al op de eerste werkmaatschappij staan (fix "entiteiten vóór groep", 18 aug 2026).
