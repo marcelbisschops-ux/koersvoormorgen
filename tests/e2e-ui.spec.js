@@ -443,6 +443,19 @@ test.describe('Login en rollen (eigen testtraject)', () => {
     await expect(page.locator('#df_omzet3')).toHaveCount(0);
     await expect(page.locator('.readonly-val').first()).toBeVisible();
     await expect(page.getByText('Document toevoegen')).toHaveCount(0);
+    // Regressie 12 sep 2026 ("verkoper is ultimo verantwoordelijk voor zijn antwoorden" — geldt voor
+    // veldwaarden ÉN checklist/notitie): een checklist-vinkje mocht eerder nog lokaal "aanvinken"
+    // (S.checked wisselde en de UI rerenderde) terwijl de server de opslag toch al weigerde — een
+    // misleidende bevestiging. Nu mag een klik op zo'n item S.checked niet meer wijzigen.
+    const chkKeyVoor = await page.evaluate(() => JSON.stringify(S.checked));
+    const chkItem = page.locator('.chk-item[data-key]').first();
+    if (await chkItem.count()) {
+      await chkItem.click();
+      const chkKeyNa = await page.evaluate(() => JSON.stringify(S.checked));
+      expect(chkKeyNa).toBe(chkKeyVoor);
+    }
+    // Notitieveld: geen tekstinvoer, alleen de statische (evt. lege) weergave.
+    await expect(page.locator('#notitie_financieel')).toHaveCount(0);
     // Verkoper op dezelfde fase: gewoon een invulveld en de upload-knop.
     await login(page, verkoperCode);
     await page.waitForFunction(() => window.S && S.traject && S.rol === 'verkoper', null, { timeout: 15000 });

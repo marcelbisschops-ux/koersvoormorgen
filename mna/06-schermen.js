@@ -613,10 +613,14 @@ function renderMain(){
         }).join('')
         +'</div>';
     }
+    // Fase Financieel: notitie is voor de begeleider ook read-only (12 sep 2026, zelfde besluit als
+    // veldwaarden/checklist) — anders kon er getypt worden in een veld dat de server toch weigert,
+    // zonder dat direct duidelijk is dat dat niet wordt opgeslagen.
+    var notitieReadOnly=isKoper()||(isTussen()&&f.id==='financieel');
     var notHtml='<div class="panel"><div class="sec-hdr">Notities (intern)</div>'
-      +((isKoper())?'<div style="font-size:13px;color:var(--mid);font-style:italic">'+(S.notities[f.id]||'Geen notities.')+'</div>'
+      +(notitieReadOnly?'<div style="font-size:13px;color:var(--mid);font-style:italic">'+(S.notities[f.id]||'Geen notities.')+'</div>'
         :'<textarea id="notitie_'+f.id+'" style="width:100%;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:9px 11px;font-family:IBM Plex Sans,sans-serif;font-size:13px;color:var(--sub);resize:vertical;min-height:70px;outline:none" placeholder="Interne bevindingen en aandachtspunten..." oninput="schedSave()">'+(S.notities[f.id]||'')+'</textarea>')
-      +'<div style="display:flex;align-items:center;gap:.75rem;margin-top:.3rem"><div style="font-size:11px;color:var(--muted)">'+(isKoper()?'':'Wijzigingen worden automatisch opgeslagen.')+'</div><div id="save-ind" class="save-indicator">&#10003; Opgeslagen</div></div>'
+      +'<div style="display:flex;align-items:center;gap:.75rem;margin-top:.3rem"><div style="font-size:11px;color:var(--muted)">'+(notitieReadOnly?'':'Wijzigingen worden automatisch opgeslagen.')+'</div><div id="save-ind" class="save-indicator">&#10003; Opgeslagen</div></div>'
       +choiceLogHtml
       +'</div>';
     var aiText=S.aiTexts[f.id];var aiLoad=S.aiLoading[f.id];
@@ -1707,7 +1711,14 @@ function bindAll(){
     if(faseId==='financieel'&&BANKMUTATIES_ANALYSE===null)laadRedFlagAnalyse();
     renderApp();
   };});
-  if(!isKoper()){
+  // Fase Financieel is voor de begeleider volledig read-only (12 sep 2026, Marcel: "verkoper is
+  // ultimo verantwoordelijk voor zijn antwoorden" — geldt voor veldwaarden ÉN checklist/notities,
+  // niet alleen de cijfers). Zonder deze gate toonde een klik hier alsnog een schijnbare aanvinking
+  // (S.checked wijzigde lokaal en renderde meteen), terwijl saveCurrent() de opslag daarna toch al
+  // stil weigerde — een misleidende bevestiging, gevonden bij het narekenen van deze beslissing.
+  var chkFaseId=FASES[S.fase]&&FASES[S.fase].id;
+  var chkReadOnly=isKoper()||(isTussen()&&chkFaseId==='financieel');
+  if(!chkReadOnly){
     document.querySelectorAll('.chk-item[data-key]').forEach(function(el){el.onclick=function(){saveCurrent();S.checked[el.dataset.key]=!S.checked[el.dataset.key];renderApp();};});
   }
   // Centrale upload file input listener
