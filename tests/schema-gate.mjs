@@ -29,7 +29,7 @@
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { WORKER, leesAdminKey, heeftVlag, api, kleur } from './lib.mjs';
+import { WORKER, leesAdminKey, heeftVlag, api, kleur, zetMfaUitVoorTest } from './lib.mjs';
 
 const ADMIN = leesAdminKey();
 const UPDATE = heeftVlag('update');
@@ -97,6 +97,10 @@ async function main() {
   if (!inviteToken) { console.log(kleur('rood', 'Adviseur uitnodigen mislukt: ' + JSON.stringify(uit.json))); return false; }
   await api('POST', '/gebruikers/activeer', { body: { token: inviteToken, wachtwoord: WW } });
   await api('POST', '/gebruiker/voorwaarden/accepteren', { body: { email, wachtwoord: WW } });
+  // MFA voor dit testaccount uit (zie tests/lib.mjs) — anders geeft /adviseur/trajecten
+  // verderop alleen mfa_required terug en blijft die snapshot buiten deze run.
+  const mfaUit = zetMfaUitVoorTest(email);
+  if (!mfaUit.ok) console.log(kleur('geel', '⊘ MFA-bypass niet gelukt — /adviseur/trajecten en /gebruikers/mna/* blijven buiten deze run (' + mfaUit.reden + ')'));
   await api('POST', '/gebruikers/verkoop/' + gebruikerId, { adminKey: ADMIN, body: { traject_limiet: 1, modules: { traject: true, contracten: true, ai_analyse: true, qa: true, export: true, meekijker: true } } });
 
   const c = await api('POST', '/adviseur/create', { body: { email, wachtwoord: WW, traject: { kantoor_naam: 'Schema Gate Kantoor BV', contact_naam: 'Test Verkoper', contact_email: 'verkoper' + TEST_EMAIL_DOMEIN, koper_naam: 'Schema Gate Koper BV', koper_contact: 'Test Koper', koper_email: 'koper' + TEST_EMAIL_DOMEIN, traject_type: 'Verkoop' } } });

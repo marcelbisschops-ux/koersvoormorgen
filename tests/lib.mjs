@@ -62,6 +62,37 @@ export async function api(method, pad, { body, headers, adminKey } = {}) {
   }
 }
 
+// ── Test-only MFA-bypass (12 sep 2026) ──
+// Adviseur-login vereist sinds 9 sep 2026 een e-mailcode (MFA). Staging heeft geen RESEND-sleutel,
+// dus een geautomatiseerde test kan die code nooit ophalen — zonder deze bypass slaan de CONF-checks
+// achter /adviseur/trajecten permanent over. Er is bewust GEEN nieuw productie-/ADMIN_KEY-endpoint
+// voor toegevoegd (dat zou een nieuwe, blijvende auth-aanval-oppervlakte zijn voor iets dat alleen
+// een testscript nodig heeft) — in plaats daarvan een directe D1-write, met een harde guard die
+// alleen tegen kantoorinzicht-staging draait. Vereist een ingelogde `wrangler`-sessie (dezelfde
+// vereiste als tests/run-rolflows.sh al had voor ADMIN_KEY); ontbreekt die, dan faalt dit netjes en
+// blijft de aanroepende test net als voorheen overslaan (geen harde crash van de hele testrun).
+import { execFileSync } from 'node:child_process';
+import path from 'node:path';
+import os from 'node:os';
+
+const BACKEND_DIR = process.env.KVM_BACKEND_DIR
+  || path.join(os.homedir(), 'Documents', 'GitHub', 'koersvoormorgen-backend', 'backend');
+const STAGING_D1_NAAM = 'kantoorinzicht-staging';
+
+export function zetMfaUitVoorTest(email) {
+  if (!/staging/i.test(WORKER)) {
+    return { ok: false, reden: 'WORKER_URL is geen staging-omgeving — MFA-bypass geweigerd (veiligheidsgrens, nooit tegen productie)' };
+  }
+  const sql = "UPDATE bf_gebruikers SET mfa=0 WHERE email='" + String(email).replace(/'/g, "''") + "'";
+  try {
+    execFileSync('npx', ['wrangler', 'd1', 'execute', STAGING_D1_NAAM, '--remote', '--command', sql],
+      { cwd: BACKEND_DIR, stdio: ['ignore', 'pipe', 'pipe'] });
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, reden: 'wrangler d1 execute mislukt (staging niet bereikbaar via wrangler, of niet ingelogd): ' + String(e.message || e).slice(0, 200) };
+  }
+}
+
 export function samenvatting() {
   const totaal = resultaten.ok + resultaten.fail;
   console.log('\n' + kleur('vet', '─────────── SAMENVATTING ───────────'));

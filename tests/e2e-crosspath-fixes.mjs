@@ -8,7 +8,7 @@
 // Draaien: node tests/e2e-crosspath-fixes.mjs --key=ADMIN_KEY
 //          ADMIN_KEY=... node tests/e2e-crosspath-fixes.mjs
 // ══════════════════════════════════════════════════════════════════
-import { WORKER, leesAdminKey, api, check, kop, kleur, samenvatting, sla_over } from './lib.mjs';
+import { WORKER, leesAdminKey, api, check, kop, kleur, samenvatting, sla_over, zetMfaUitVoorTest } from './lib.mjs';
 
 const ADMIN = leesAdminKey();
 const TEST_EMAIL_DOMEIN = '@e2e-test.koersvoormorgen.invalid';
@@ -56,6 +56,11 @@ async function main() {
       await api('POST', '/gebruikers/activeer', { body: { token, wachtwoord: WW } });
       await api('POST', '/gebruiker/voorwaarden/accepteren', { body: { email, wachtwoord: WW } });
     }
+    // MFA voor dit testaccount uit (zie tests/lib.mjs) — anders geeft /adviseur/trajecten
+    // verderop alleen mfa_required terug en slaan de CONF-checks op /adviseur/trajecten en
+    // /gebruikers/mna/* permanent over.
+    const mfaUit = zetMfaUitVoorTest(email);
+    if (!mfaUit.ok) console.log('  ' + kleur('geel', '⊘') + ' MFA-bypass niet gelukt — CONF-checks verderop vallen terug op overslaan (' + mfaUit.reden + ')');
     await api('POST', '/gebruikers/verkoop/' + opruimGebruikerId, { adminKey: ADMIN, body: { traject_limiet: 1, modules: { traject: true, contracten: true, ai_analyse: true, qa: true, export: true, meekijker: true } } });
     const c = await api('POST', '/adviseur/create', { body: { email, wachtwoord: WW, traject: { kantoor_naam: 'E2E Crosspath Kantoor BV', contact_naam: 'Test Verkoper', contact_email: 'verkoper' + TEST_EMAIL_DOMEIN, koper_naam: 'E2E Crosspath Koper BV', koper_contact: 'Test Koper', koper_email: 'koper' + TEST_EMAIL_DOMEIN, traject_type: 'Verkoop' } } });
     check('extern traject aangemaakt', c.json && c.json.ok === true, JSON.stringify(c.json));
