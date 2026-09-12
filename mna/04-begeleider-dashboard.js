@@ -695,6 +695,47 @@ function renderBegeleiderDashboard(app){
   var marketingAan=!S.modules||S.modules.marketing!==false;
   var aiAnalyseAan=!S.modules||S.modules.ai_analyse!==false;
   var lb=partijLabels(t.traject_type||'Verkoop');
+  // Cliëntacceptatie / Wwft (juridische review 3 sep 2026) — de begeleider bevestigt dat hij dit
+  // heeft getoetst (openbare bronnen + bij de cliënt). Niet-blokkerend; wél een bevestigingsvraag
+  // bij het versturen/tekenen van een contract als het (nog) niet is aangevinkt.
+  // Bevinding 12 sep 2026 (Marcel: "ik zou cliëntacceptatie bovenaan zetten"): stond voorheen pas
+  // vlak boven de Documenten-sectie, ver onder de vouw — nu meteen onder de header, vóór al het
+  // overige. Variabelen daarom hier al berekend (vóór de grote html-keten), het HTML-fragment zelf
+  // is verplaatst naar direct ná de headerbalk hieronder.
+  var caGet=!!(S.traject&&S.traject.clientacceptatie_getoetst);
+  var caDoor=(S.traject&&S.traject.clientacceptatie_door)||'';
+  var caDat=(S.traject&&S.traject.clientacceptatie_datum)||0;
+  var caHtml='<div style="margin-bottom:1rem;padding:.75rem .9rem;border:1px solid '+(caGet?'var(--teal)':'var(--border2)')+';border-radius:var(--r2);background:'+(caGet?'var(--teal-bg)':'var(--card)')+'">'
+    +'<label style="display:flex;gap:9px;align-items:flex-start;cursor:pointer;font-size:12.5px;color:var(--sub);line-height:1.5">'
+    +'<input type="checkbox" id="bg-ca-chk" '+(caGet?'checked':'')+' style="margin-top:2px;flex:none">'
+    +'<span><strong>Cliëntacceptatie getoetst</strong> &mdash; ik heb de betrokken partijen getoetst via openbare bronnen (KvK, UBO-register, sanctielijsten, PEP) &eacute;n bij de cli&euml;nt zelf (identiteit, structuur, doel, herkomst van middelen). '
+    +(caGet?('<span style="color:var(--teal-dim)">&#10003; '+esc(caDoor||'')+(caDat?(' &middot; '+new Date(caDat).toLocaleDateString('nl-NL',{day:'2-digit',month:'short',year:'numeric'})):'')+'</span>'):'<span style="color:var(--muted)">Nog niet bevestigd.</span>')+'</span></label>'
+    +'<div id="bg-ca-detail" style="display:'+(caGet?'none':'block')+';margin-top:.6rem;padding-left:26px">'
+    +'<input type="text" id="bg-ca-door" value="'+esc(caDoor||(S.traject&&S.traject.begeleider_naam)||'')+'" placeholder="Uw naam" style="width:100%;max-width:320px;background:var(--panel);border:1px solid var(--border2);border-radius:var(--r);padding:6px 9px;font-size:12px;color:var(--sub);margin-bottom:6px">'
+    +'<textarea id="bg-ca-notitie" placeholder="Opmerkingen / openstaande punten (optioneel)" rows="2" style="width:100%;background:var(--panel);border:1px solid var(--border2);border-radius:var(--r);padding:6px 9px;font-size:12px;color:var(--sub);resize:vertical;margin-bottom:6px">'+esc((S.traject&&S.traject.clientacceptatie_notitie)||'')+'</textarea>'
+    +'<button id="bg-ca-opslaan" class="btn btn-sm" style="font-size:11px">Bevestigen &amp; opslaan</button>'
+    +' <a href="https://koersvoormorgen.nl/" onclick="return false" style="font-size:10px;color:var(--muted)">zie de cli&euml;ntacceptatie-beslisboom</a>'
+    +'</div></div>';
+  // Bevinding 12 sep 2026 (Marcel: "waardering en analyse zou ik plaatsen onder de tekst dat
+  // verkoper tekst heeft vrijgegeven"): dit paneel stond voorheen diep verstopt, ná Documenten en
+  // Communicatie. Verplaatst naar vlak boven de traject-infokaart (waar de "verkoper heeft dossier
+  // vrijgegeven"-banner staat) — bovenaan de pagina, i.p.v. een letterlijke positie ná die ene
+  // conditionele bannerregel (die niet bij elk traject zichtbaar is). Inhoud ongewijzigd overgenomen.
+  // secHdr() zelf is lokaal aan een andere IIFE verderop in deze functie — hier bewust inline
+  // dezelfde markup opgebouwd i.p.v. die afhankelijkheid naar boven te halen (kleinere, veiligere
+  // wijziging). Wiring (.bg-sec-hdr/.bg-sec-body/.bg-sec-chevron) gebeurt generiek via querySelectorAll
+  // op de hele app (regel ~1020), dus is DOM-positie-onafhankelijk.
+  var analyseHtml='<div class="panel" style="margin-bottom:1.25rem;padding:0">'
+    +'<div class="bg-sec-hdr" data-sec="analyse" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;padding:.75rem 1rem">'
+    +'<span style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">&#9881; Analyse</span>'
+    +'<span class="bg-sec-chevron" data-sec="analyse" style="font-size:12px;color:var(--muted)">&#9660;</span>'
+    +'</div>'
+    +'<div class="bg-sec-body" data-sec="analyse" style="display:none;padding:0 1rem 1rem">'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
+    +'<button class="btn" id="bg-waardering-actie" style="background:#6b7c93">&#9881; Waardering &amp; analyse</button>'
+    +'<button class="btn-outline btn-sm" id="bg-ai-status-actie">&#129302; Herkomst ingevulde gegevens</button>'
+    +'<button class="btn-outline btn-sm" id="bg-koperfit-actie">&#127919; Koper-fit strategie</button>'
+    +'</div></div></div>';
   var html='<div class="wrap anim">'
     +'<div class="hdr"><div class="brand">'+brandMerkHtml()+BRAND.platform+' &middot; M&A Begeleider'+versieLabel()+'</div>'
     +'<div style="display:flex;gap:8px">'
@@ -706,6 +747,8 @@ function renderBegeleiderDashboard(app){
     +'<button class="btn-ghost btn-sm" onclick="window.print()">&#128196; PDF</button>'
     +'<button class="btn-ghost btn-sm" onclick="uitloggen()">&#8592; Uitloggen</button>'
     +'</div></div>'
+    +caHtml
+    +analyseHtml
     // Traject info
     +'<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;margin-bottom:1.25rem">'
     +(t.verkoper_klaar?'<div style="background:var(--teal-bg);border:1px solid var(--teal);border-radius:var(--r);padding:.75rem 1rem;margin-bottom:1rem;display:flex;align-items:center;gap:10px"><span style="font-size:1.5rem">&#128228;</span><div><div style="font-size:13px;font-weight:600;color:var(--teal)">Verkoper heeft dossier vrijgegeven</div><div style="font-size:11px;color:var(--muted);margin-top:2px">'+(t.verkoper_klaar_naam?'Door: '+esc(t.verkoper_klaar_naam)+' &middot; ':'')+( t.verkoper_klaar_at?new Date(t.verkoper_klaar_at).toLocaleString('nl-NL',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'')+'</div></div></div>':'')
@@ -885,19 +928,9 @@ function renderBegeleiderDashboard(app){
         +'<button class="btn" id="bg-infoverzoek-actie" style="background:var(--teal-dim);padding:10px;font-size:12px">&#128203; Informatieverzoek</button>'
         +'<button class="btn" id="bg-uitn-tussenp-btn" style="background:var(--teal-dim);padding:10px;font-size:12px">&#128101; Tussenpersoon-toegang</button>'
         +'</div></div></div>';
-      // ── Analyse (ingeklapt) ── Marcel, 11 sep 2026: "wat is verschil ai verificatie en ai
-      // analyse en waardering" — beide knoppen begonnen met "AI", zonder dat het label zei WAT ze
-      // elk laten zien. Waardering & analyse = de daadwerkelijke rekenkern/waarderingsuitkomst;
-      // Herkomst ingevulde gegevens = een audit-overzicht van welk % van de DD-velden via AI-
-      // documentextractie vs. handmatig is ingevuld — twee heel verschillende dingen die toevallig
-      // allebei AI gebruiken. Labels nu beschrijven wat je te zien krijgt, niet welke techniek erachter zit.
-      html+='<div class="panel" style="margin-bottom:1.25rem;padding:0">'+secHdr('analyse','&#9881; Analyse').replace('&#9650;','&#9660;')
-        +'<div class="bg-sec-body" data-sec="analyse" style="display:none;padding:0 1rem 1rem">'
-        +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
-        +'<button class="btn" id="bg-waardering-actie" style="background:#6b7c93">&#9881; Waardering &amp; analyse</button>'
-        +'<button class="btn-outline btn-sm" id="bg-ai-status-actie">&#129302; Herkomst ingevulde gegevens</button>'
-        +'<button class="btn-outline btn-sm" id="bg-koperfit-actie">&#127919; Koper-fit strategie</button>'
-        +'</div></div></div>';
+      // Analyse-paneel (Waardering & analyse) is verplaatst naar vlak boven dit blok, zie
+      // analyseHtml hierboven in renderBegeleiderDashboard() — bevinding 12 sep 2026 (Marcel: "onder
+      // de tekst dat verkoper heeft vrijgegeven"). Hier bewust niet meer opgebouwd.
       return html;
     })()
     +'<div id="bg-ai-status-out" style="display:none;margin-bottom:1.25rem"></div>'
@@ -941,24 +974,6 @@ function renderBegeleiderDashboard(app){
     }
     html+='</div></div>';
   });
-
-  // Cliëntacceptatie / Wwft (juridische review 3 sep 2026) — de begeleider bevestigt dat hij dit
-  // heeft getoetst (openbare bronnen + bij de cliënt). Niet-blokkerend; wél een bevestigingsvraag
-  // bij het versturen/tekenen van een contract als het (nog) niet is aangevinkt.
-  var caGet=!!(S.traject&&S.traject.clientacceptatie_getoetst);
-  var caDoor=(S.traject&&S.traject.clientacceptatie_door)||'';
-  var caDat=(S.traject&&S.traject.clientacceptatie_datum)||0;
-  html+='<div style="margin-bottom:1rem;padding:.75rem .9rem;border:1px solid '+(caGet?'var(--teal)':'var(--border2)')+';border-radius:var(--r2);background:'+(caGet?'var(--teal-bg)':'var(--card)')+'">'
-    +'<label style="display:flex;gap:9px;align-items:flex-start;cursor:pointer;font-size:12.5px;color:var(--sub);line-height:1.5">'
-    +'<input type="checkbox" id="bg-ca-chk" '+(caGet?'checked':'')+' style="margin-top:2px;flex:none">'
-    +'<span><strong>Cliëntacceptatie getoetst</strong> &mdash; ik heb de betrokken partijen getoetst via openbare bronnen (KvK, UBO-register, sanctielijsten, PEP) &eacute;n bij de cli&euml;nt zelf (identiteit, structuur, doel, herkomst van middelen). '
-    +(caGet?('<span style="color:var(--teal-dim)">&#10003; '+esc(caDoor||'')+(caDat?(' &middot; '+new Date(caDat).toLocaleDateString('nl-NL',{day:'2-digit',month:'short',year:'numeric'})):'')+'</span>'):'<span style="color:var(--muted)">Nog niet bevestigd.</span>')+'</span></label>'
-    +'<div id="bg-ca-detail" style="display:'+(caGet?'none':'block')+';margin-top:.6rem;padding-left:26px">'
-    +'<input type="text" id="bg-ca-door" value="'+esc(caDoor||(S.traject&&S.traject.begeleider_naam)||'')+'" placeholder="Uw naam" style="width:100%;max-width:320px;background:var(--panel);border:1px solid var(--border2);border-radius:var(--r);padding:6px 9px;font-size:12px;color:var(--sub);margin-bottom:6px">'
-    +'<textarea id="bg-ca-notitie" placeholder="Opmerkingen / openstaande punten (optioneel)" rows="2" style="width:100%;background:var(--panel);border:1px solid var(--border2);border-radius:var(--r);padding:6px 9px;font-size:12px;color:var(--sub);resize:vertical;margin-bottom:6px">'+esc((S.traject&&S.traject.clientacceptatie_notitie)||'')+'</textarea>'
-    +'<button id="bg-ca-opslaan" class="btn btn-sm" style="font-size:11px">Bevestigen &amp; opslaan</button>'
-    +' <a href="https://koersvoormorgen.nl/" onclick="return false" style="font-size:10px;color:var(--muted)">zie de cli&euml;ntacceptatie-beslisboom</a>'
-    +'</div></div>';
 
   // Documenten
   html+='<div style="margin-bottom:1rem">'
