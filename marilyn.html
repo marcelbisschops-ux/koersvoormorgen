@@ -355,6 +355,7 @@ async function renderPostvakTab(el){
       +'<td><span style="font-size:11px;padding:2px 8px;border-radius:10px;border:1px solid var(--border)">'+esc(lbl)+'</span></td>'
       +'<td>'+(b.gelezen?'':'<span style="color:var(--teal)">&#9679;</span> ')+esc(b.onderwerp||'(geen onderwerp)')+'</td>'
       +'<td style="text-align:right;white-space:nowrap">'+(b.gelezen?'':'<button class="btn btn-sm pv-lees" data-id="'+b.id+'">gelezen</button> ')
+      +'<button class="btn-ghost btn-sm pv-beantwoorden" data-id="'+b.id+'" title="Beantwoorden">&#8617;</button> '
       +'<button class="btn-ghost btn-sm pv-doorsturen" data-id="'+b.id+'" title="Doorsturen">&#8618;</button> '
       +'<button class="btn-ghost btn-sm pv-verwijderen" data-id="'+b.id+'" style="color:var(--red)" title="Verwijderen">&#128465;</button></td></tr>'
       +'<tr class="pv-body" data-i="'+i+'" hidden><td colspan="4" style="background:var(--bg2,#faf9f7);padding:1rem"><div style="font-size:12px;color:var(--muted);margin-bottom:.5rem">Aan: '+esc(b.ontvanger||'-')+(b.meta?' &middot; '+esc(JSON.stringify(b.meta)):'')+'</div><div style="max-width:640px">'+(b.body_html||'<em>geen inhoud</em>')+'</div></td></tr>';
@@ -397,6 +398,20 @@ async function renderPostvakTab(el){
       post('/mna/admin/postvak/doorsturen',{id:parseInt(btn.getAttribute('data-id')),naar:naar.trim()}).then(function(res){
         btn.disabled=false;
         if(res&&res.ok){ toast('Doorgestuurd naar '+naar,'ok'); } else { toast('Doorsturen mislukt: '+((res&&res.error)||'onbekend'),'err'); }
+      });
+    });
+  });
+  Array.prototype.forEach.call(el.querySelectorAll('.pv-beantwoorden'),function(btn){
+    btn.addEventListener('click',function(ev){
+      ev.stopPropagation();
+      var naar=prompt('Antwoord versturen naar welk e-mailadres?');
+      if(!naar)return;
+      var bericht=prompt('Uw bericht (het origineel wordt eronder geciteerd):');
+      if(!bericht||!bericht.trim())return;
+      btn.disabled=true;
+      post('/mna/admin/postvak/beantwoorden',{id:parseInt(btn.getAttribute('data-id')),naar:naar.trim(),bericht:bericht.trim()}).then(function(res){
+        btn.disabled=false;
+        if(res&&res.ok){ toast('Antwoord verstuurd naar '+naar,'ok'); } else { toast('Versturen mislukt: '+((res&&res.error)||'onbekend'),'err'); }
       });
     });
   });
