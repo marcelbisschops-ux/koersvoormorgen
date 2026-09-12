@@ -334,7 +334,10 @@ function getMissing(){
 
 function saveCurrent(cb){
   var f=FASES[S.fase];
-  if(!f||S.screen!=='main'||isKoper())return;
+  // Fase Financieel is voor de begeleider read-only (12 sep 2026, Marcel: "NEE, MOET VERKOPER
+  // DOEN") — hier op de gedeelde ingang no-oppen zodat elke aanroeper (fase-wissel, Opslaan-knop,
+  // fase-afronden) automatisch is gedekt, i.p.v. per knop apart te moeten gaten.
+  if(!f||S.screen!=='main'||isKoper()||(isTussen()&&f.id==='financieel'))return;
   markDirty();
   if(S.traject&&S.traject.status==='vergrendeld'){if(cb)cb();return;}
   var inEntiteitContext=(S.data!==S._groepData);
@@ -383,7 +386,11 @@ function _verstuurGeplandeSave(pending){
   fetch(WORKER+'/mna/save',{method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify(pending.snapshot)
   }).then(function(r){return r.json();}).then(function(d){
-    if(d.error==='vergrendeld'){showAlert('Dit traject is vergrendeld. Uw wijzigingen zijn niet opgeslagen.');}
+    // Elke serverfout moet zichtbaar zijn — niet alleen 'vergrendeld'. Vóór deze fix toonde elke
+    // andere afwijzing (bijv. de nieuwe fase-Financieel-blokkade hierboven) alsnog "✓ Opgeslagen",
+    // een stille onterechte bevestiging (schending GOUDEN STANDAARD, gevonden bij onafhankelijke
+    // review 12 sep 2026).
+    if(d&&d.error){showAlert(d.error==='vergrendeld'?'Dit traject is vergrendeld. Uw wijzigingen zijn niet opgeslagen.':('Opslaan mislukt: '+d.error));}
     else{
       showSaveIndicator();
       // Groepsstructuur: bij een entiteit-save stuurt de server de bijgewerkte groepswaarden mee terug —
@@ -533,6 +540,11 @@ function saveAll(opts){
   if(!S.code||S.traject&&S.traject.status==='vergrendeld')return;
   var useBeacon=opts&&opts.beacon; // voor pagehide/beforeunload
   var fasesMetData=FASES.filter(function(f){
+    // Fase Financieel is voor de begeleider read-only (12 sep 2026) — dit is een los pad naar
+    // /mna/save, buiten saveCurrent() om (30s-autosave, beforeunload, na upload, fase-navigatie),
+    // dat anders bij elke aanroep een altijd-geweigerd verzoek voor deze fase zou blijven versturen
+    // (onafhankelijke review 12 sep 2026, gevonden nadat saveCurrent() zelf al was gefixt).
+    if(isTussen()&&f.id==='financieel')return false;
     return f.dataFields.some(function(df){return !df.header&&(S.data[f.id+'_'+df.id]||'').trim();});
   });
   if(!fasesMetData.length)return;
@@ -727,8 +739,10 @@ function toggleBankmutatiesRegels(importId) {
 function renderBankmutatiesSectie(faseId) {
   if (faseId !== 'financieel') return '';
   var isReadOnly = (S.traject && S.traject.status === 'vergrendeld');
-  var magUploaden = !isReadOnly && !isKoper();
-  var magVerwijderen = !isReadOnly && !isKoper();
+  // 12 sep 2026: bankmutaties zijn financiële brondata — begeleider mag deze fase niet meer
+  // aanpassen, dus ook hier niet kunnen uploaden/verwijderen.
+  var magUploaden = !isReadOnly && !isKoper() && !isTussen();
+  var magVerwijderen = !isReadOnly && !isKoper() && !isTussen();
 
   var uploadHtml = '';
   if (magUploaden) {
@@ -1649,10 +1663,13 @@ function renderDocumentSectie(faseId) {
   if(isKoper()) return '';
   var docs = getDocsForFase(faseId);
   var isReadOnly = (S.traject && S.traject.status === 'vergrendeld');
+  // Fase Financieel is voor de begeleider read-only (12 sep 2026) — anders kon een document-upload
+  // (met AI-extractie naar dezelfde velden) de invoerveld-blokkade omzeilen.
+  var financieelGeblokkeerdVoorBegeleider = isTussen() && faseId === 'financieel';
 
   // Compacte upload knop
   var uploadHtml = '';
-  if (!isReadOnly) {
+  if (!isReadOnly && !financieelGeblokkeerdVoorBegeleider) {
     var entiteitKiezer = '';
     if (S._entiteiten && S._entiteiten.length) {
       entiteitKiezer = '<select id="entiteit-select-'+faseId+'" style="font-size:11px;background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:5px 8px">'

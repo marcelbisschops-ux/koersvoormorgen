@@ -378,7 +378,10 @@ function renderMain(){
   var f=FASES[S.fase];
   var tp=(isVerkoper()||isKoper())?totalFillPct():Math.round(FASES.reduce(function(a,fase){return a+pct(fase.id);},0)/FASES.length);
   var vergrendeld=S.traject&&S.traject.status==='vergrendeld';
-  var isRO=isKoper()||vergrendeld;
+  // Bevinding 12 sep 2026 (Marcel, expliciet: "NEE, MOET VERKOPER DOEN"): fase Financieel is voor
+  // de begeleider read-only — de server (worker/11-mna-tekenen-beheer.js, /mna/save) weigert die
+  // schrijfactie sowieso al; hier alleen zodat de UI geen invoerveld toont dat toch geweigerd wordt.
+  var isRO=isKoper()||vergrendeld||(isTussen()&&f.id==='financieel');
   var loiGetekend = isLoiGetekend();
   var huidigeDDFase = loiGetekend ? '2' : '1';
 
@@ -454,7 +457,9 @@ function renderMain(){
         // Interactief: per afwijkend veld kiest de begeleider zelf welke waarde geldt — het aangeleverde
         // cijfer wint niet meer stilzwijgend (Marcel, 25 juli 2026). Alleen voor de begeleider; de
         // verkoper ziet dit keuzeblok niet (die vult in, de begeleider consolideert).
-        var magKiezen=isTussen();
+        // Uitzondering (12 sep 2026): voor fase Financieel mag de begeleider dit niet meer kiezen —
+        // dat raakt cijfers, en die mag alleen de verkoper aanpassen.
+        var magKiezen=isTussen()&&f.id!=='financieel';
         dataHtml+='<div style="background:var(--gold-bg);border:1px solid var(--gold);border-radius:var(--r);padding:.75rem 1rem;margin-bottom:1rem">'
           +'<div style="font-size:12px;font-weight:600;color:var(--gold-dark);margin-bottom:6px">&#9888; Aangeleverde groepscijfers wijken af van de som van de entiteiten</div>'
           +consolAfwijkingen.map(function(a){
@@ -1675,7 +1680,9 @@ function bindAll(){
   document.querySelectorAll('.fase-card[data-fi]').forEach(function(el){el.onclick=function(){
     // Sla huidige fase DIRECT op naar server (geen timer) voor navigatie
     var f=FASES[S.fase];
-    if(f&&S.screen==='main'&&!isKoper()&&!(S.traject&&S.traject.status==='vergrendeld')){
+    // Fase Financieel is voor de begeleider read-only (zie isRO in renderMain) — dan ook niet
+    // proberen op te slaan, dat wordt door de server toch geweigerd (/mna/save, 12 sep 2026).
+    if(f&&S.screen==='main'&&!isKoper()&&!(isTussen()&&f.id==='financieel')&&!(S.traject&&S.traject.status==='vergrendeld')){
       f.dataFields.forEach(function(df){
         if(df.header)return;
         var domEl=ge('df_'+df.id);
