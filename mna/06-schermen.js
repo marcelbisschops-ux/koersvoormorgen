@@ -124,12 +124,9 @@ function renderCover(){
     // Async gevuld in bindAll() (composerNdaLoiPanelen()), vandaar lege placeholders hier.
     +((isVerkoper()||isKoper())&&!isAdmin()&&!S.ndaTekst?'<div id="composer-nda-slot"></div>':'')
     +((isVerkoper()||isKoper())&&!isAdmin()&&!S.loiTekst?'<div id="composer-loi-slot"></div>':'')
-    +(isVerkoper()&&(!S.modules||S.modules.marketing!==false)?'<div style="margin-top:1.5rem;background:var(--card);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem">'
-      +'<div style="font-size:11px;font-weight:600;color:var(--teal);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.6rem">&#128226; Teaser</div>'
-      +'<div style="font-size:12px;color:var(--mid);margin-bottom:.75rem">Een kort, anoniem verkoopdocument (geen bedrijfsnaam) om vroeg in het proces interesse te peilen bij potentiële kopers — vóór er een specifieke koper is. Uw adviseur kan deze ook voor u aanmaken.</div>'
-      +'<button class="btn" id="teaser-verk-btn" style="font-size:12px;background:var(--teal)">'+(t.teaser_tekst?'Teaser bekijken/bewerken':'Genereer teaser')+'</button>'
-      +'<div id="teaser-verk-out" style="display:none;margin-top:.75rem"></div>'
-      +'</div>':'')
+    // Teaser-generatie stond hier ook voor de verkoper zelf (expliciet verzoek Marcel, 23 aug 2026).
+    // Op 12 sep 2026 teruggedraaid: de teaser wordt uitsluitend nog door de begeleider aangemaakt
+    // (bg-teaser-actie in mna/04), niet meer door de verkoper zelf.
     +'<div id="partij-docs-sectie" style="margin-top:1.5rem"></div>'
     +'<div id="partij-gesprekken-sectie" style="margin-top:1rem"></div>'
     +((isVerkoper()||isKoper())?'<div id="meekijkers-sectie" style="margin-top:1rem"></div>':'')
@@ -888,7 +885,7 @@ function renderSummary(){
     +'<div style="font-size:13px;color:var(--muted);margin-bottom:1.5rem">'+esc(S.traject&&S.traject.kantoor_naam||S.code)+' &middot; '+new Date().toLocaleDateString('nl-NL',{day:'2-digit',month:'long',year:'numeric'})+'</div>'
     +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:1.5rem">'
     +'<div class="panel" style="text-align:center;padding:1rem"><div style="font-family:Playfair Display,serif;font-size:1.8rem;font-weight:600;color:'+(tp===100?'var(--teal)':tp>50?'var(--gold)':'var(--red)')+'">'+tp+'%</div><div style="font-size:10px;text-transform:uppercase;color:var(--muted)">'+((isVerkoper()||isKoper())?'Ingevuld':'Checklist')+'</div></div>'
-    +'<div class="panel" style="text-align:center;padding:1rem"><div style="font-family:Playfair Display,serif;font-size:1.8rem;font-weight:600;color:var(--teal)">'+completeFases.length+'</div><div style="font-size:10px;text-transform:uppercase;color:var(--muted)">Fasen compleet</div></div>'
+    +'<div class="panel" style="text-align:center;padding:1rem"><div style="font-family:Playfair Display,serif;font-size:1.8rem;font-weight:600;color:var(--teal)">'+completeFases.length+'</div><div style="font-size:10px;text-transform:uppercase;color:var(--muted)" title="Alle verplichte velden van deze fase zijn ingevuld — dit zegt niets over of het bijbehorende brondocument ook daadwerkelijk is geüpload.">Fasen velden compleet</div></div>'
     +'<div class="panel" style="text-align:center;padding:1rem"><div style="font-family:Playfair Display,serif;font-size:1.8rem;font-weight:600;color:var(--red)">'+missing.reduce(function(a,m){return a+m.fields.length;},0)+'</div><div style="font-size:10px;text-transform:uppercase;color:var(--muted)">Velden ontbreken</div></div>'
     +'</div>'
     +entiteitOverzichtHtml()
@@ -1034,11 +1031,15 @@ async function generateAI(faseId){
   var sectorNormen=sectorProfiel.aiNormen||'';
   var prompt='Je bent ' + esc(S.traject&&S.traject.begeleider_naam||BRAND.contactpersoon) + ', senior M&A-adviseur. '+TAAL_REGELS+' Sector: '+sectorLabel+'. Traject: '+esc(S.traject&&S.traject.traject_type||'M&A')+' voor "'+esc(S.traject&&S.traject.kantoor_naam||S.code)+'".\n\nSECTOR NORMEN (indicatieve richtwaarden, geen vastgestelde branchenorm — niet als hard feit presenteren):\n'+(sectorNormen||'(geen sectorbenchmark beschikbaar — noem dan geen benchmark of marktgemiddelde uit eigen kennis)')+'\n\nFASE: '+f.title+'\n\nINGEVOERDE DATA:\n'+(dataLines.join('\n')||'Geen data')+'\n\nCHECKLIST:\nGereed: '+(chk.join(', ')||'niets')+'\nOpen: '+(open.join(', ')||'alles gereed')+'\n\nRODE VLAGGEN: '+(rfs.join(', ')||'geen')+'\n\nNOTITIES: '+(S.notities[faseId]||'geen')+'\n\nGeef beknopt strategisch advies voor deze sector. Analyseer de cijfers expliciet en vergelijk met de sectorgemiddelden hierboven — uitsluitend als die hierboven daadwerkelijk staan. Onderscheid feit (wat er staat), directe gevolgtrekking uit dat feit, en advies. Introduceer geen nieuwe oorzaken, percentages, normen of externe marktclaims die niet uit de data volgen. Bespreek: voortgang en prioriteiten, urgente openstaande punten, impact rode vlaggen, concrete vervolgstappen. Schrijf in ik-vorm. Gebruik ## koppen. Geen tabellen of bullets.';
   try{
+    // Bevinding 12 sep 2026 ("Genereer advies werkt niet"): deze aanroep verwachtte een SSE-stream
+    // (data:-regels met content_block_delta), maar /ai roept Anthropic aan met stream:false en geeft
+    // gewoon één JSON-object {text:...} terug (zie backend/worker/06-scantool.js) — collected bleef
+    // dus altijd leeg. Nu hetzelfde .json()-patroon als elders (bijv. mna/04 bgDoc()).
     var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}]})});
     if(!resp.ok)throw new Error('HTTP '+resp.status);
-    var reader=resp.body.getReader();var dec=new TextDecoder();var collected='';
-    while(true){var res=await reader.read();if(res.done)break;dec.decode(res.value,{stream:true}).split('\n').forEach(function(line){if(line.startsWith('data:')){var d=line.slice(5).trim();if(d==='[DONE]')return;try{var j=JSON.parse(d);if(j.type==='content_block_delta'&&j.delta&&j.delta.text)collected+=j.delta.text;}catch(e){}}});}
-    S.aiTexts[faseId]=collected;
+    var rd=await resp.json();
+    if(!rd.text)throw new Error(rd.error||'Leeg antwoord');
+    S.aiTexts[faseId]=rd.text;
   }catch(e){S.aiTexts[faseId]='__ERROR__';}
   S.aiLoading[faseId]=false;renderApp();
 }
@@ -1394,32 +1395,8 @@ function bindAll(){
     document.getElementById('bem-sluit').addEventListener('click',function(){document.body.removeChild(ov);});
   };
 
-  var teaserVerkBtn=ge('teaser-verk-btn');
-  if(teaserVerkBtn)teaserVerkBtn.onclick=function(){
-    var out=ge('teaser-verk-out');if(!out)return;
-    out.style.display='block';
-    function renderTeaserVerk(tekst){
-      out.innerHTML='<textarea id="teaser-verk-txt" rows="8" style="width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:var(--r);font-family:\'IBM Plex Sans\',sans-serif;font-size:13px;padding:9px 11px;color:var(--sub);resize:vertical;outline:none">'+esc(tekst||'')+'</textarea>'
-        +'<div style="font-size:11px;color:var(--muted);margin-top:6px">Anoniem, max. ~150 woorden, geen bedrijfsnaam. Controleer altijd zelf op onbedoeld identificerende details vóór verspreiding.</div>'
-        +'<div style="display:flex;gap:8px;margin-top:.75rem;flex-wrap:wrap"><button class="btn" id="teaser-verk-opslaan" style="background:var(--teal)" title="Bewaart de tekst bij dit traject — later terug te vinden via &quot;Teaser bekijken/bewerken&quot;. Er wordt geen bestand gedownload.">Opslaan</button><button class="btn-ghost" id="teaser-verk-print" style="font-size:12px;padding:6px 14px">&#128196; Print / PDF</button><button class="btn-outline btn-sm" id="teaser-verk-nieuw">&#8635; Opnieuw genereren</button></div>';
-      ge('teaser-verk-print').onclick=function(){ printDoc(ge('teaser-verk-txt').value||'', 'Teaser', 'teaser'); };
-      ge('teaser-verk-opslaan').onclick=async function(){
-        var btn=this;btn.disabled=true;btn.textContent='Bezig...';
-        var tekstNu=ge('teaser-verk-txt').value;
-        var r=await fetch(WORKER+'/mna/teaser/opslaan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:S.code,tekst:tekstNu})}).then(function(x){return x.json();}).catch(function(){return{};});
-        if(r.ok)toast('Teaser opgeslagen.','ok');else toast(r.error||'Opslaan mislukt.','err');
-        btn.disabled=false;btn.textContent='Opslaan';
-      };
-      ge('teaser-verk-nieuw').onclick=function(){genereerTeaserVerk();};
-    }
-    async function genereerTeaserVerk(){
-      out.innerHTML='<div style="color:var(--muted);font-size:12px">Genereren...</div>';
-      var r=await fetch(WORKER+'/mna/teaser/genereer',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:S.code})}).then(function(x){return x.json();}).catch(function(){return{};});
-      if(r.ok)renderTeaserVerk(r.teaser_tekst);
-      else out.innerHTML='<div style="color:var(--red);font-size:12px">'+esc(r.error||'Genereren mislukt.')+'</div>';
-    }
-    if(S.traject&&S.traject.teaser_tekst)renderTeaserVerk(S.traject.teaser_tekst);else genereerTeaserVerk();
-  };
+  // Teaser-generatie door de verkoper zelf is op 12 sep 2026 verwijderd (zie renderCover() hierboven)
+  // — de bijbehorende wiring (teaser-verk-btn e.d.) is met dezelfde wijziging opgeruimd.
 
   // Koper-bod (11 sep 2026) — de koper dient zelf een indicatief bod in. Alleen relevant bij een
   // sell-side mandaat; de HTML-placeholder in renderCover() bestaat dan ook alleen in dat geval,

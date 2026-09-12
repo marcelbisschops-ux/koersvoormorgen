@@ -1,5 +1,45 @@
 // © 2026 Bisschops Financing B.V. Alle rechten voorbehouden.
+// Reliance-bevestiging vóór printen/bekijken (12 sep 2026, Marcel — harde eis): de disclaimer stond
+// voorheen vast onder elk geprint document, wat het onbruikbaar maakte om een schone versie aan een
+// cliënt/derde te geven. Nu: een eenmalige pop-up per print-actie die de bevestiging in de database
+// vastlegt (secAuditLog → /mna/audit, zelfde mechanisme als elders), i.p.v. permanente tekst in het
+// printvenster zelf. Geldt voor ELK documenttype dat via printDoc() gaat — één centraal aanroeppunt,
+// dus geen los mechanisme per documenttype nodig (Foutpropagatie-check). Raakt uitsluitend het
+// print-/bekijkvenster van de adviseur; de daadwerkelijk VERSTUURDE kopie (e-mail/Signhost, backend
+// maakPDF()/maakDocEmail()) behoudt de voettekst ongewijzigd — dat is een formele, aan een echte
+// tegenpartij verstrekte kopie, een ander vraagstuk dan dit scherm-/printgebruik door de adviseur zelf.
+function toonRelianceAkkoord(titel, docType, onAkkoord) {
+  var ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:2000;display:flex;align-items:center;justify-content:center;padding:1.5rem';
+  var mo = document.createElement('div');
+  mo.setAttribute('role', 'dialog'); mo.setAttribute('aria-modal', 'true'); mo.setAttribute('aria-labelledby', 'reliance-modal-titel');
+  mo.style.cssText = 'background:var(--panel);border:1px solid var(--border2);border-radius:var(--r2);padding:2rem;max-width:520px;width:100%;max-height:90vh;overflow-y:auto';
+  var voettekst = (typeof RELIANCE_VOETTEKST !== 'undefined') ? RELIANCE_VOETTEKST : '';
+  mo.innerHTML = '<div id="reliance-modal-titel" style="font-family:Playfair Display,serif;font-size:1.15rem;color:var(--head);font-weight:600;margin-bottom:.75rem">Vóór het printen/bekijken</div>'
+    + '<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:.9rem 1rem;margin-bottom:1rem;font-size:12px;line-height:1.7;color:var(--sub);font-style:italic">' + esc(voettekst) + '</div>'
+    + '<div style="margin-bottom:.75rem"><label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Uw naam</label>'
+    + '<input type="text" id="reliance-naam" placeholder="Voor- en achternaam" style="width:100%;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:9px 12px;font-size:13px;font-family:IBM Plex Sans,sans-serif;color:var(--sub);outline:none"></div>'
+    + '<div id="reliance-err" style="display:none;color:var(--red);font-size:12px;margin-bottom:.5rem"></div>'
+    + '<div style="display:flex;gap:8px;justify-content:flex-end">'
+    + '<button id="reliance-ann" class="btn-ghost" style="font-size:12px;padding:7px 14px">Annuleren</button>'
+    + '<button id="reliance-ok" class="btn" style="font-size:12px;padding:7px 18px">&#10003; Ik heb kennisgenomen &mdash; doorgaan</button>'
+    + '</div>';
+  ov.appendChild(mo);
+  document.body.appendChild(ov);
+  document.getElementById('reliance-ann').onclick = function () { document.body.removeChild(ov); };
+  document.getElementById('reliance-ok').onclick = function () {
+    var naam = document.getElementById('reliance-naam').value.trim();
+    var errEl = document.getElementById('reliance-err');
+    if (!naam) { errEl.style.display = 'block'; errEl.textContent = 'Naam is verplicht.'; return; }
+    if (typeof secAuditLog === 'function') secAuditLog('reliance_bevestiging', { document_type: docType, titel: titel, bevestigd_door: naam });
+    document.body.removeChild(ov);
+    onAkkoord();
+  };
+}
 function printDoc(tekst, titel, docType) {
+  toonRelianceAkkoord(titel, docType, function () { printDocNaAkkoord(tekst, titel, docType); });
+}
+function printDocNaAkkoord(tekst, titel, docType) {
   var kleuren = {nda:'#7c5cbf',loi:'#c9a84c',bem:'#2a5ea0',bem_verk:'#2a5ea0',bem_koper:'#2a5ea0',excl:'#1a7a5e',exclusief:'#1a7a5e',bieding:'#a0522d',spa:'#5a5470',teaser:'#1a7a5e',memo:'#8a5a00'};
   var kleur = kleuren[docType] || '#1a7a5e';
   // Teaser en verkoopmemorandum zijn eind-informatiedocumenten die als zodanig naar een tegenpartij
@@ -74,9 +114,9 @@ function printDoc(tekst, titel, docType) {
     // 31 aug 2026, keuze Marcel: discrete regel).
     +(docType==='memo'?'<div style="background:#fbf3e3;border:1px solid #e0b84c;border-radius:4px;padding:6px 12px;margin-bottom:1.5rem;font-size:9pt;color:#7a5a00">Conceptversie &mdash; automatisch samengesteld uit de aangeleverde gegevens. Controleer de inhoud v&oacute;&oacute;r verspreiding.<\/div>':'')
     +'<div class="doc-body">'+fmt(tekst)+'<\/div>'
-    // Vaste reliance-voettekst als slotblok — altijd, ongeacht wat er in het tekstvak staat
-    // (FASE6 onderdeel 2). Byte-identiek met RELIANCE_VOETTEKST in mna/04 / de worker.
-    +(typeof RELIANCE_VOETTEKST!=='undefined'?'<div class="doc-reliance" style="margin-top:2rem;padding-top:.75rem;border-top:1px solid #e8e5df;font-size:8.5pt;color:#8a8880;line-height:1.6;font-style:italic">'+RELIANCE_VOETTEKST+'<\/div>':'')
+    // Geen vaste reliance-voettekst meer in het printvenster zelf (12 sep 2026, Marcel — harde eis):
+    // de bevestiging gebeurt nu vóóraf via toonRelianceAkkoord() en wordt in de database vastgelegd
+    // (secAuditLog), zodat dit printvenster een schone, aan een cliënt te geven versie oplevert.
     +'<div class="doc-footer">'
     +'<span>' + docBedrijf + ' &middot; ' + docAdres + '<\/span>'
     +'<span>Vertrouwelijk &mdash; uitsluitend bestemd voor geadresseerde(n)<\/span>'
