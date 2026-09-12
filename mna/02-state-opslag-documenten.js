@@ -635,8 +635,13 @@ var RED_FLAG_CATEGORIE_LABELS = {
 
 function renderRedFlagAnalyseSectie() {
   if (!isTussen()) return '';
-  var html = '<div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)">'
-    + '<div style="font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">&#128269; Red-flag-analyse <span style="font-weight:400;text-transform:none;letter-spacing:normal">(alleen zichtbaar voor u)</span></div>';
+  // Bevinding 12 sep 2026 ("waarom komen redflags niet duidelijk uit de analyse, en hoe beïnvloeden
+  // ze de prijs?"): de kop was even onopvallend als elk ander sectiekopje, en nergens stond expliciet
+  // dát een redflag bewust GEEN automatische invloed heeft op de waardering/prijs (dat is en blijft
+  // zo, GOUDEN STANDAARD werkregel 8 — hier alleen expliciet gemaakt wat al zo werkte).
+  var html = '<div style="margin-top:1rem;padding-top:1rem;border-top:2px solid var(--gold)">'
+    + '<div style="font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--gold-dark);margin-bottom:.3rem">&#9888;&#65039; Red-flag-analyse <span style="font-weight:400;text-transform:none;letter-spacing:normal;color:var(--muted)">(alleen zichtbaar voor u)</span></div>'
+    + '<div style="font-size:11px;color:var(--muted);margin-bottom:.6rem;line-height:1.5">Kwalitatieve signalen uit de bankmutaties — bedoeld om zelf te beoordelen en desgewenst mee te nemen in het gesprek met de verkoper. Deze signalen passen <strong>nooit automatisch</strong> de waardering, multiple of prijs aan.</div>';
 
   if (BANKMUTATIES_ANALYSE_BEZIG) {
     html += '<div style="font-size:12px;color:var(--muted);display:flex;align-items:center;gap:8px"><div class="spin" style="border-color:var(--border2);border-top-color:var(--teal);width:13px;height:13px;flex-shrink:0"></div>Analyse wordt gegenereerd (kan een minuut duren)...</div></div>';
@@ -1620,17 +1625,14 @@ async function consolideerAnalyse(faseId){
   var analyses=docs.map(function(d,i){return 'Doc '+(i+1)+': '+d.naam+'\n'+(d.analyse||'');}).join('\n---\n');
   var prompt='Geconsolideerde M&A analyse voor fase '+f.title+' van '+esc(S.traject&&S.traject.kantoor_naam||S.code)+'. '+TAAL_REGELS+'\n\nVelden:\n'+(lines.join('\n')||'leeg')+'\n\nAnalyses:\n'+analyses+'\n\nGeef trends, rode vlaggen en aanbevelingen — concreet, met ## koppen. Elke rode vlag en trend moet terug te voeren zijn op een concrete waarde of documentpassage hierboven; verzin geen verband, oorzaak of cijfer. Spreken twee bronnen elkaar tegen, noem dan BEIDE waarden en markeer het conflict — kies of reconstrueer niet zelf. Aanbevelingen mogen geen nieuw feit introduceren.';
   try{
+    // Zelfde bug + fix als generateAI() in mna/06-schermen.js (Foutpropagatie-check, 12 sep 2026):
+    // /ai geeft één JSON-object {text:...} terug, geen SSE-stream — de oude reader/decoder-lus vond
+    // dus nooit een match en col bleef altijd leeg.
     var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}]})});
     if(!resp.ok)throw new Error('HTTP '+resp.status);
-    var reader=resp.body.getReader(),dec=new TextDecoder(),col='';
-    while(true){var res=await reader.read();if(res.done)break;
-      dec.decode(res.value,{stream:true}).split('\n').forEach(function(line){
-        if(line.startsWith('data:')){var d=line.slice(5).trim();if(d==='[DONE]')return;
-          try{var j=JSON.parse(d);if(j.type==='content_block_delta'&&j.delta&&j.delta.text)col+=j.delta.text;}catch(e){}
-        }
-      });
-    }
-    S.aiTexts[faseId]=col;
+    var rd=await resp.json();
+    if(!rd.text)throw new Error(rd.error||'Leeg antwoord');
+    S.aiTexts[faseId]=rd.text;
   }catch(e){S.aiTexts[faseId]='__ERROR__';}
   S.aiLoading[faseId]=false;renderApp();
 }

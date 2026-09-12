@@ -111,6 +111,11 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--s
 .fase-nav{display:flex;gap:8px;align-items:center;margin-top:1.5rem;padding-top:1.25rem;border-top:1px solid var(--border)}
 .spin{width:12px;height:12px;border-radius:50%;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;animation:sp .7s linear infinite;display:inline-block}
 @keyframes sp{to{transform:rotate(360deg)}}
+/* Bevinding 12 sep 2026: gegenereerde documentuitvoer verscheen ver onder de aangeklikte knop, met
+   alleen scrollIntoView als hint — bij een lange fasepagina makkelijk te missen. Een korte, duidelijke
+   gloed rond de uitvoercontainer maakt onmiskenbaar wáár het net verschenen resultaat staat. */
+@keyframes docKlaarGloed{0%,100%{box-shadow:0 0 0 0 transparent}20%,60%{box-shadow:0 0 0 3px var(--teal)}}
+.doc-klaar-gloed{animation:docKlaarGloed 1.8s ease-in-out 2}
 .save-indicator{font-size:11px;color:var(--teal);font-family:'IBM Plex Mono',monospace;opacity:0;transition:opacity .3s}
 .save-indicator.show{opacity:1}
 /* Cover letter */

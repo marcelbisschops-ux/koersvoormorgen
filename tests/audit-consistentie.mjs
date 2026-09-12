@@ -232,6 +232,7 @@ const GEVERIFIEERD_VEILIG_CHECK5 = new Set([
   '/mna/signhost/stuur',           // ADMIN_KEY- of geldige tussen_code-gated, retourneert alleen transactiestatus
   '/mna/signhost/webhook',         // inkomend vanaf Signhost zelf, retourneert altijd platte tekst 'ok', nooit JSON
   '/mna/risicoraamwerk/genereer',  // begeleiderAuth-only (19-08-2026 geverifieerd), retourneert alleen swot/pestel/porter-AI-output
+  '/mna/spa/genereer',             // begeleiderAuth-only (12-09-2026 geverifieerd, P3-45), retourneert alleen {ok,tekst,dealvoorstel_gevonden} — nooit de rauwe traject-rij
   '/adviseur/export/',             // gebruikerViaToken + expliciete eigenaarschapscheck (gebruiker_id-match, geen /admin/-pad
                                     // maar wel evenwaardig beschermd), plus heeftModule('export')-gate (26-08-2026 geverifieerd).
                                     // SELECT * wordt alleen gebruikt om 9 met naam genoemde, niet-gevoelige velden te plukken
@@ -609,8 +610,14 @@ log('12. Cross-document consistentiecheck (worker/30-consistentie.js): AI-guardr
 // (De jurist-goedgekeurde slotregel moet onder elk gegenereerd document staan — op scherm, in de
 //  print/PDF en in de verzendmail — en byte-identiek zijn met de backend-kopie. Deze check bewaakt
 //  dat een latere edit de constante niet hernoemt/wijzigt of een aanhechting stilzwijgend weghaalt.)
-log('13. Reliance-voettekst: constante aanwezig + aangehecht bij tonen/printen (mna/04 + mna/05)');
+log('13. Reliance-voettekst: constante aanwezig + bevestiging vóór printen (mna/04 + mna/05)');
 {
+  // Bijgewerkt 12 sep 2026 (Marcel, harde eis): de voettekst hangt niet langer vast onder het
+  // geprinte document (dat maakte het onbruikbaar voor de adviseur om een schone versie te geven) —
+  // in plaats daarvan bevestigt de adviseur de tekst vooraf via een pop-up (toonRelianceAkkoord in
+  // mna/05), vastgelegd via secAuditLog i.p.v. in het document zelf. De VERSTUURDE kopie (backend
+  // maakPDF()/maakDocEmail()) is een ander vraagstuk (een formele kopie naar een echte tegenpartij)
+  // en behoudt de voettekst ongewijzigd — die kant blijft hieronder ongewijzigd gecontroleerd.
   const VERWACHT = 'Dit document is via het Koers voor Morgen-platform opgesteld als hulpmiddel voor de begeleidende adviseur en diens opdrachtgever. Het is geen professioneel advies of taxatierapport en is niet bestemd voor gebruik door derden.';
   let problemen = 0;
   const src04 = fs.readFileSync(path.join(ROOT, 'mna/04-begeleider-dashboard.js'), 'utf8');
@@ -619,15 +626,20 @@ log('13. Reliance-voettekst: constante aanwezig + aangehecht bij tonen/printen (
     warn('mna/04 — RELIANCE_VOETTEKST ontbreekt of wijkt af van de jurist-goedgekeurde tekst (FASE6 onderdeel 2). Byte-identiek houden met worker/02-config-constanten.js.');
     problemen++;
   }
-  if (!/bg-doc-tekst[\s\S]{0,800}RELIANCE_VOETTEKST/.test(src04)) {
-    warn('mna/04 — de reliance-voettekst wordt niet meer onder het gegenereerde document (bg-doc-tekst) getoond in bgDoc().');
+  if (!src05.includes('function toonRelianceAkkoord(')) {
+    warn('mna/05 — toonRelianceAkkoord() (de reliance-bevestigingspop-up vóór printen) ontbreekt.');
     problemen++;
   }
-  if (!/doc-body[\s\S]{0,600}RELIANCE_VOETTEKST[\s\S]{0,500}doc-footer/.test(src05)) {
-    warn('mna/05 — printDoc() hangt de reliance-voettekst niet meer als slotblok tussen .doc-body en .doc-footer.');
+  if (!/function printDoc\([^)]*\)\s*\{\s*toonRelianceAkkoord\(/.test(src05)) {
+    warn('mna/05 — printDoc() roept toonRelianceAkkoord() niet meer aan vóór het openen van het printvenster.');
     problemen++;
   }
-  // Backend-kopie (indien de backend-repo naast deze repo staat)
+  if (/doc-body[\s\S]{0,600}RELIANCE_VOETTEKST[\s\S]{0,500}doc-footer/.test(src05)) {
+    warn('mna/05 — de reliance-voettekst staat weer als vast slotblok in het printvenster zelf (dit moest juist een pop-up worden, 12 sep 2026).');
+    problemen++;
+  }
+  // Backend-kopie (indien de backend-repo naast deze repo staat) — ongewijzigd: de daadwerkelijk
+  // verstuurde/gemailde kopie behoudt de voettekst.
   const bws = ['../koersvoormorgen-backend/backend/worker/02-config-constanten.js', 'backend/worker/02-config-constanten.js']
     .map(p => path.join(ROOT, p)).find(p => fs.existsSync(p));
   if (bws) {
@@ -637,7 +649,61 @@ log('13. Reliance-voettekst: constante aanwezig + aangehecht bij tonen/printen (
       problemen++;
     }
   }
-  if (!problemen) ok('RELIANCE_VOETTEKST bestaat, is byte-identiek' + (bws ? ' (frontend + backend)' : '') + ', en wordt aangehecht in bgDoc() + printDoc().');
+  if (!problemen) ok('RELIANCE_VOETTEKST bestaat, is byte-identiek' + (bws ? ' (frontend + backend)' : '') + '; printDoc() vraagt vooraf bevestiging i.p.v. de tekst vast in het document te zetten.');
+}
+
+log('14. Documentcontent-race NDA/LoI/MOU (KVM-QUALITY-GATE.md, regressie 12 sep 2026)');
+{
+  // Bevinding 12 sep 2026: bgMouComposer()/bgMouRender() (mna/04) deelden _mouProfile/_mouDocId
+  // zonder generatiebewaking — snel na elkaar NDA dan LoI openen kon de inhoud van de eerste,
+  // tragere aanroep alsnog tonen/printen onder de titel van de tweede. Fix: een generatieteller
+  // (_mouGen) die na elke await controleert of er intussen een nieuwere aanroep is gestart, en de
+  // gedeelde _mouProfile/_mouDocId pas commit't op het moment dat de bijbehorende inhoud ook echt
+  // getoond wordt. Deze check vergrendelt dat patroon — verdwijnt de bewaking (bijv. bij een
+  // toekomstige "vereenvoudiging"), dan faalt de push vóórdat de race weer terugkomt.
+  const src04mou = fs.readFileSync(path.join(ROOT, 'mna/04-begeleider-dashboard.js'), 'utf8');
+  const guardCount = (src04mou.match(/if\(myGen!==_mouGen\)return;/g) || []).length;
+  if (guardCount < 4) {
+    warn('mna/04-begeleider-dashboard.js — generatiebewaking (myGen!==_mouGen) in bgMouComposer/bgMouRender telt nog maar ' + guardCount + ' controle(s) (verwacht: minstens 4, één per await-punt). Mogelijk (deels) verwijderd — dit opent opnieuw de NDA/LoI/MOU-documentcontent-race van 12 sep 2026.');
+  } else if (!/_mouProfile=prof;\s*_mouDocId=docId;/.test(src04mou)) {
+    warn('mna/04-begeleider-dashboard.js — de gedeelde _mouProfile/_mouDocId worden niet meer atomisch gecommit vlak vóór out.innerHTML in bgMouRender(). Dit opent opnieuw de NDA/LoI/MOU-documentcontent-race van 12 sep 2026.');
+  } else {
+    ok('Generatiebewaking (_mouGen) en het atomische commit-moment zijn nog aanwezig in bgMouComposer/bgMouRender.');
+  }
+}
+
+log('15. bgDocSpa() gebruikt de dedicated /mna/spa/genereer-route, niet de generieke /ai-proxy (P3-45)');
+{
+  // Bevinding 11/12 sep 2026 (architectuurafwijking): de SPA — het meest juridisch risicovolle
+  // documenttype — riep de generieke /ai-proxy aan i.p.v. een eigen, code-geauthenticeerde route
+  // (zoals /mna/risicoraamwerk/genereer en /mna/waardering/genereer). Gefixt 12 sep 2026 met een
+  // nieuwe backend-route (worker/10-mna-communicatie.js). Deze check vergrendelt dat bgDocSpa() niet
+  // stilzwijgend teruggezet wordt naar de generieke proxy.
+  const src04spa = fs.readFileSync(path.join(ROOT, 'mna/04-begeleider-dashboard.js'), 'utf8');
+  // Onafhankelijke review 12 sep 2026: de eerdere afbakening (niet-gulzig tot de eerste regel met
+  // exact 2-spaces-inspringende '}') leunde stilzwijgend op de huidige inspringstijl — een toekomstige
+  // edit die per ongeluk zo'n regel toevoegt vóórdat de echte functie eindigt, zou de match afkappen
+  // en een teruggekeerde /ai-aanroep kunnen missen (vals-negatief). Nu structureel afgebakend: van de
+  // start van bgDocSpa() tot de eerstvolgende functiedeclaratie op hetzelfde (top-level) niveau.
+  const spaStartIdx = src04spa.indexOf('async function bgDocSpa()');
+  let spaFnBody = null;
+  if (spaStartIdx !== -1) {
+    const restNaStart = src04spa.slice(spaStartIdx + 'async function bgDocSpa()'.length);
+    const volgendeFnMatch = /\n {0,2}(?:async )?function \w/.exec(restNaStart);
+    const spaEindIdx = volgendeFnMatch ? spaStartIdx + 'async function bgDocSpa()'.length + volgendeFnMatch.index : src04spa.length;
+    spaFnBody = src04spa.slice(spaStartIdx, spaEindIdx);
+  }
+  if (!spaFnBody) {
+    warn('mna/04-begeleider-dashboard.js — bgDocSpa() niet gevonden (functie hernoemd/verplaatst?) — check 15 kan niets controleren.');
+  } else {
+    if (/WORKER\+'\/ai'/.test(spaFnBody)) {
+      warn('mna/04-begeleider-dashboard.js — bgDocSpa() roept weer de generieke /ai-proxy aan i.p.v. /mna/spa/genereer. Dit is de architectuurafwijking van 11 sep 2026 die op 12 sep 2026 bewust is gefixt (OPEN-BEVINDINGEN P3-45) — niet opnieuw introduceren.');
+    } else if (!/WORKER\+'\/mna\/spa\/genereer'/.test(spaFnBody)) {
+      warn('mna/04-begeleider-dashboard.js — bgDocSpa() roept /mna/spa/genereer niet meer aan (en ook niet de oude /ai-proxy) — controleer welk mechanisme nu gebruikt wordt.');
+    } else {
+      ok('bgDocSpa() gebruikt de dedicated /mna/spa/genereer-route, geen generieke /ai-proxy meer.');
+    }
+  }
 }
 
 // ── Samenvatting ──────────────────────────────────────────────────────────

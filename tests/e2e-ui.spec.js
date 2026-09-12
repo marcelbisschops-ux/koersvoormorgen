@@ -280,6 +280,58 @@ test.describe('Rekenkern dealvoorstel', () => {
   });
 });
 
+// ───────────────────── 1B. ROL CLICK-THROUGH: DOCUMENTCONTENT-RACE ─────────────────────
+// Regressie 12 sep 2026 (KVM-QUALITY-GATE.md): een live adviseurstest (begeleider-rol) toonde dat
+// het printen van een NDA de inhoud van een andere composer (LoI/MOU) liet zien. Oorzaak:
+// bgMouComposer()/bgMouRender() lazen/schreven een gedeelde module-variabele (_mouProfile/
+// _mouDocId) zonder generatie-bewaking — een tweede klik (LoI vlak na NDA) overschreef die
+// variabele terwijl de eerste, nog lopende async-keten zijn eigen (inmiddels verouderde) inhoud
+// alsnog toonde. Deze test klikt écht op de twee composer-knoppen vlak na elkaar (geen kunstmatige
+// vertraging nodig — de fix maakt de uitkomst onafhankelijk van netwerktiming) en bewijst dat het
+// scherm na afloop altijd overeenkomt met de LAATST geklikte knop. Zelfde opzet als "Login en
+// rollen" hierboven: eigen adviseur + traject, module contracten AAN, ADMIN-key vereist.
+test.describe('Rol Click-Through: documentcontent-race (regressie 12 sep 2026)', () => {
+  test.skip(!ADMIN, 'Geen admin-key (ADMIN_KEY / --key=) — race-test overgeslagen');
+
+  let email, gid, verkoperCode, tussenCode;
+
+  test.beforeAll(async () => {
+    email = 'e2e-ui-mourace-' + Date.now() + '@bisschopsfinancing.test';
+    const uit = await api('POST', '/gebruikers/uitnodigen', { adminKey: ADMIN, body: { naam: 'E2E MouRace', bedrijf: 'E2E MouRace BV', email } });
+    gid = uit.json.id;
+    await api('POST', '/gebruikers/activeer', { body: { token: uit.json.token, wachtwoord: WW } });
+    await api('POST', '/gebruiker/voorwaarden/accepteren', { body: { email, wachtwoord: WW } });
+    await api('POST', '/gebruikers/verkoop/' + gid, { adminKey: ADMIN, body: { traject_limiet: 1, modules: { traject: true, contracten: true } } });
+    const c = await api('POST', '/adviseur/create', { body: { email, wachtwoord: WW, traject: { kantoor_naam: 'E2E MouRace Kantoor BV', traject_type: 'Verkoop' } } });
+    verkoperCode = c.json.code;
+    tussenCode = c.json.tussen_code;
+    await api('POST', '/mna/vok/teken', { body: { code: tussenCode, naam: 'E2E Test', versie: VOK_VERSIE, email } });
+  });
+
+  test.afterAll(async () => {
+    if (verkoperCode) await api('POST', '/admin/delete/mna/' + verkoperCode, { adminKey: ADMIN });
+    if (gid) await api('POST', '/gebruikers/verwijder/' + gid, { adminKey: ADMIN, body: {} });
+  });
+
+  test('snel na elkaar NDA dan LoI openen toont uiteindelijk alléén de LoI', async ({ page }) => {
+    await login(page, tussenCode);
+    await page.waitForFunction(() => window.S && S.traject && S.rol === 'tussenpersoon', null, { timeout: 15000 });
+    const ndaBtn = page.locator('#bg-nda-composer-actie');
+    const loiBtn = page.locator('#bg-loi-composer-actie');
+    await expect(ndaBtn).toBeVisible({ timeout: 15000 });
+    await ndaBtn.click();
+    await loiBtn.click(); // vlak na elkaar — geen wachttijd — reproduceert de gerapporteerde race
+    await page.waitForFunction(() => {
+      var out = document.getElementById('bg-doc-out');
+      return out && /composer<\/span>/.test(out.innerHTML) && !/laden/.test(out.innerHTML);
+    }, null, { timeout: 20000 });
+    const html = await page.locator('#bg-doc-out').innerHTML();
+    expect(html).toContain('LoI-composer');
+    expect(html).not.toContain('NDA-composer');
+    expect(html).not.toContain('Geheimhoudingsovereenkomst');
+  });
+});
+
 // ───────────────────── 2. LOGIN & ROLLEN ─────────────────────
 // Het foutpad heeft geen testtraject nodig en draait altijd.
 test.describe('Login — foutpad', () => {

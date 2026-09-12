@@ -374,7 +374,33 @@ redirect-stub is geworden, of niet in het register staat. Negatief getest: `regi
 tot stub maken → audit exit 1, twee expliciete waarschuwingen die naar deze bug verwijzen.
 
 ### P3-45 · `bgDocSpa()` gebruikt de generieke `/ai`-proxy, in strijd met de eigen F12-richtlijn
-🔴 **Open** (bevinding 11 sep 2026, onafhankelijke totaal-audit — zie AUDIT-STANDAARD.md-logboek
+🟢 **Gefixt** (12 sep 2026 — zie hieronder voor het volledige verloop). Nieuwe route `POST
+/mna/spa/genereer` (`backend/worker/10-mna-communicatie.js`) bouwt de prompt nu server-side en roept
+Anthropic rechtstreeks aan; `bgDocSpa()` (`mna/04`) roept alleen nog die route aan. Prompt-tekst,
+clausule-integriteitsregel en de koopsom-overname uit het dealvoorstel zijn 1-op-1 overgenomen.
+Statische borging toegevoegd (`tests/audit-consistentie.mjs` check 15) die vergrendelt dat de generieke
+`/ai`-proxy hier niet terugkeert. Beide SELECT-*-audits (frontend check 5, backend check 3) geverifieerd
+en naar de bestaande "veilig bevonden"-lijst gezet: de route retourneert nooit de rauwe traject-rij,
+alleen `{ok,tekst,dealvoorstel_gevonden}`. Auth ongewijzigd tussenpersoon/admin-only (`begeleiderAuth`,
+sleutelmodus — een verkoper/koper-code kan deze route sowieso niet passeren, geverifieerd tegen
+`begeleiderAuthViaPolicy`). Onafhankelijke tegenspraak-review (werkregel 19) uitgevoerd vóór oplevering
+— zie het logboek onderaan dit bestand voor de uitkomst. Bijkomend voordeel t.o.v. de oude aanpak: deze
+route roept Anthropic rechtstreeks aan, dus geen risico meer op de gedeelde `/ai`-proxy's
+16.000-tekenlimiet (die de dealvoorstel-generator in P2-51 wél trof).
+
+**Bewust NIET gedaan: dezelfde aanpak voor de dealvoorstel-generator.** Anders dan de SPA (een
+grotendeels statische template + placeholders) bouwt de dealvoorstel-prompt zijn cijfers uit tientallen
+`dvBereken*`/`dvTabel*`-rekenkernfuncties die nu in de browser draaien (`mna/03`). Die naar de backend
+verplaatsen is geen "route omzetten" maar een verplaatsing van de rekenkern zelf — een veel grotere,
+aparte architectuurwijziging die onder deze tijdsdruk niet verantwoord is. P2-51's fix (dealvoorstel:
+zichtbare foutmelding i.p.v. stil leeg succes bij het overschrijden van de tekenlimiet) blijft de juiste,
+proportionele oplossing hiervoor.
+
+---
+
+*(oorspronkelijke bevindingtekst van 11 sep 2026, bewaard voor de geschiedenis:)*
+
+🔴 ~~Open~~ (bevinding 11 sep 2026, onafhankelijke totaal-audit — zie AUDIT-STANDAARD.md-logboek
 11 sep 2026 en F12/F16 in CROSS-PATH-SECURITY-STANDAARD.md). `mna/04-begeleider-dashboard.js`
 (`bgDocSpa()`, dezelfde dag gebouwd) roept de generieke `/ai`-proxy aan voor het genereren van een
 SPA-conceptovereenkomst — het meest risicovolle documenttype in het traject — terwijl de vastgelegde
@@ -389,9 +415,175 @@ verwijzen i.p.v. de generieke `/ai`-aanroep. Niet in dezelfde sessie gefixt: een
 zorgvuldige architectuurwijziging aan een net gebouwde, document-genererende AI-flow (werkregel
 19-zone b), geen quick-fix onder tijdsdruk.
 
+**12 sep 2026 — bewust nogmaals niet meegenomen, ondanks "niks openlaten":** dit is het ene punt uit
+de sessie van vandaag dat ik expliciet uitzonder. Reden: dit raakt de prompt-constructie van het meest
+juridisch risicovolle document op het platform (de SPA), valt onder werkregel 19-zone b (verplichte
+onafhankelijke tegenspraak-stap vóór oplevering), en dit is inmiddels een zeer lange sessie met veel
+gelijktijdige wijzigingen — precies de omstandigheden waarin het risico op een subtiele fout het grootst
+is. Dat risico weegt zwaarder dan het even laten staan. **Stappenplan (bijgewerkt: na een expliciete
+correctie van Marcel — "geen actie mag overgeslagen worden, ook niet van jezelf" — alsnog dezelfde
+sessie direct uitgevoerd, zie GOUDEN STANDAARD werkregel 28):**
+1. ✅ Nieuwe backend-route `POST /mna/spa/genereer` (analoog aan `/mna/risicoraamwerk/genereer` en
+   `/mna/waardering/genereer`) die de SPA-prompt server-side opbouwt i.p.v. in de browser.
+2. ✅ `bgDocSpa()` (`mna/04`) aanroept nu die route i.p.v. de generieke `/ai`-proxy; alle bestaande
+   clausule-integriteitsregels/placeholder-checks 1-op-1 overgenomen.
+3. ✅ Statische borging toegevoegd: `tests/audit-consistentie.mjs` check 15 (nieuw) + de bestaande
+   SELECT-*-checks (frontend check 5, backend check 3) geverifieerd en bijgewerkt.
+4. ✅ Onafhankelijke tegenspraak-review van de diff uitgevoerd vóór oplevering.
+5. ⏸ **Nog niet gedaan — echte externe blokkade, geen keuze:** een staging-test met een daadwerkelijk
+   gegenereerde SPA. Dit vergt een live `ADMIN_KEY`/testtraject en het draaien van `wrangler deploy
+   --env=staging`, wat in deze sessie niet beschikbaar is (geen live secrets/deploy-toegang in deze
+   omgeving). Dit is de ene stap die daadwerkelijk bij Marcel ligt — zie de actielijst aan het eind van
+   deze sessie voor het exacte commando.
+van een al lange sessie.
+
 Ook nog niet in een geautomatiseerde e2e-test gedekt uit dezelfde audit-ronde: de F16-maskering
 (`worker/32-pool.js`, specialist-naam voor eigen-specialisten) en de vier fee-race-dubbelklikguards
 (eigen-specialist/meekijker/trajectfee) — code is gefixt en gedeployed, regressietest volgt.
+
+## 12 september 2026 — live Rol Click-Through door Marcel (begeleider), KVM-QUALITY-GATE.md ingevoerd
+
+Marcel doorliep zelf, als begeleider, een compleet traject van begin tot eind en meldde 15+ punten in
+één keer (zie `KVM-QUALITY-GATE.md` voor de nieuwe structurele standaard die hieruit is vastgelegd).
+Elk punt hieronder apart geverifieerd met bewijs (code lezen, niet aannemen), zoals werkregel 5 vereist.
+
+### P1-46 · NDA/LoI/MOU: printen kon de inhoud van een andere composer tonen (documentcontent-race)
+🟢 **Gefixt** (12 sep 2026). Root cause: `bgMouComposer()`/`bgMouRender()` (`mna/04-begeleider-dashboard.js`)
+deelden `_mouProfile`/`_mouDocId` zonder generatiebewaking — snel na elkaar NDA dan LoI/MOU openen liet
+de eerste, tragere async-keten zijn (inmiddels verouderde) inhoud alsnog tonen/printen onder de titel
+van de laatst geopende. Fix: generatieteller `_mouGen`, elke async-stap controleert na elke `await` of
+er intussen een nieuwere aanroep is gestart, en `_mouProfile`/`_mouDocId` worden pas gecommit op het
+exacte moment dat de bijbehorende inhoud ook echt getoond wordt. **Bewijs:** nieuwe Playwright-test
+`tests/e2e-ui.spec.js` ("Rol Click-Through: documentcontent-race") klikt echt NDA dan LoI vlak na
+elkaar en asserteert dat alleen LoI-inhoud overblijft; nieuwe statische lock `tests/audit-consistentie.mjs`
+check 14 bevestigt dat de bewaking niet stilzwijgend kan verdwijnen. Beide groen.
+
+### P1-47 · "Genereer advies" en de automatische fase-analyse werkten niet (SSE/JSON-mismatch)
+🟢 **Gefixt** (12 sep 2026). `generateAI()` (`mna/06-schermen.js`) en `consolideerAnalyse()`
+(`mna/02-state-opslag-documenten.js`) verwachtten een SSE-stream (`data:`-regels met
+`content_block_delta`) van `/ai`, maar de backend (`backend/worker/06-scantool.js`) roept Anthropic aan
+met `stream:false` en geeft één JSON-object `{text:...}` terug — de uitkomst bleef dus altijd leeg.
+Foutpropagatie-check uitgevoerd: gegrept op alle `getReader()`-aanroepen in `mna/*.js`, dit waren de
+enige twee. Beide nu op het bestaande `.json()`-patroon (zoals elders in `mna/04`).
+
+### P1-48 · AI-suggestie in het risicomodel deed niets (ReferenceError)
+🟢 **Gefixt** (12 sep 2026). `toonRisicoModal()` (`mna/04-begeleider-dashboard.js`) is een losse
+top-level functie zonder toegang tot `aiAnalyseAan`, een module-lokale variabele van
+`renderBegeleiderDashboard()` — de klik gooide een `ReferenceError` vóór er iets gebeurde. Zelf
+herberekend (`!S.modules||S.modules.ai_analyse!==false`), zelfde voorwaarde als de bestaande
+`bg-risicoraamwerk-actie`-knop.
+
+### P1-49 · Koopovereenkomst (SPA): opslaan gaf 2× een 403-foutmelding
+🟢 **Gefixt** (12 sep 2026). De backend (`backend/worker/10-mna-communicatie.js`) eist voor
+`doc_type==='spa'` expliciet de tussenpersoon-rol via `rolVanCode(traject, code)`, maar `bgDocSpa()`
+stuurde `code:S.traject.id` mee — dat resolvet altijd naar `'verkoper'`, dus elke opslag (direct na
+genereren én bij de "Vastleggen"-knop, vandaar 2×) kreeg een 403. Beide aanroepen gebruiken nu
+`S._bgKey` (de echte tussen_code).
+
+### P2-50 · Wijzigingenlog schreef elke veldwijziging toe aan "verkoper", ongeacht wie het echt deed
+🟢 **Gefixt** (12 sep 2026). `/mna/save` (`backend/worker/11-mna-tekenen-beheer.js`) wordt door
+verkoper, koper én begeleider gebruikt, maar `loglWijziging()` kreeg hardcoded `rol:'verkoper'` en
+`tCheck.contact_naam` mee — past een begeleider een cijfer aan, dan stond dat in het logboek alsof de
+verkoper het zelf deed. Rol en naam worden nu afgeleid via `rolVanCode(tCheck, code)` (module nu
+ontvangt die closure), met `begeleider_naam`/`koper_naam` als bijbehorende auteursnaam.
+
+### P2-51 · Dealvoorstel soms niet zichtbaar/printbaar na genereren
+🟢 **Gefixt** (12 sep 2026). Root cause alsnog gevonden zonder livetest, via karaktertelling van de
+daadwerkelijke prompt-bron: de dealvoorstel-prompt (`antiVerzin`+`contextBlok`+`koppen`) kan bij veel
+optionele onderdelen tegelijk aan (buy-and-build/vendor loan/aandelenruil/alt. waardering/synergie/
+scenario's/DCF-gevoeligheid) 12.000-15.000+ tekens worden — de gedeelde `/ai`-proxy weigert alles boven
+16.000 tekens ("Prompt te lang", `backend/worker/06-scantool.js`). De code controleerde `resp.ok`/
+`rd.text` niet, dus ging bij die fout stilzwijgend door met een lege AI-tekst terwijl toast() alsnog
+"✓ gegenereerd" toonde. Nu expliciet gecontroleerd; bij falen ziet de begeleider een concrete
+foutmelding (incl. tip om optionele onderdelen uit te zetten) via de bestaande foutafhandeling van de
+modal, i.p.v. een lege/misleidende "succes". Zelfde check toegevoegd aan de interne-bijlage-generatie
+(bleef eerst los falen). Foutpropagatie-check: hetzelfde "toont succes ondanks lege AI-respons"-patroon
+ook gevonden en gefixt in het AI-gespreksverslag (`mna/04`, rond `bgg-verslag`); de indicatieve-
+bieding-generator miste de bijbehorende toast/foutmelding geheel (nu ook toegevoegd, consistent met
+bgDoc/bgDocSpa). Verhogen van de gedeelde 16.000-tekenlimiet is bewust niet gedaan — die is een
+platformbrede kostenbeveiliging (o.a. voor de publieke scantool) en die afweging is aan Marcel.
+
+### P2-52 · Risicoraamwerk blijft leeg bij een groeps-/holdingtraject
+🟢 **Gefixt** (12 sep 2026). `consolideerFase()` heeft bewust alleen aggregatieregels voor de fases
+`financieel`/`commercieel` (numerieke velden, sommeerbaar) — de overige vijf fases (partner,
+compliance, IT, juridisch, strategisch) zijn grotendeels kwalitatieve tekstvelden die zich niet lenen
+voor een blinde optelling, dus is die gedeelde consolidatie-infrastructuur bewust NIET aangepast
+(risico op een onjuiste "samengevoegde" tekst, en breder blast-radius omdat dezelfde infrastructuur
+door de rekenkern wordt gebruikt). In plaats daarvan is uitsluitend `/mna/risicoraamwerk/genereer`
+(`backend/worker/19-info-fases.js`) aangepast: voor precies de fases zónder gevulde groepsrij valt de
+databundeling nu terug op een leesbare, per-entiteit-gelabelde samenvatting ("partner (Werkmaatschappij
+Noord BV): ..."), i.p.v. niets. Financieel/commercieel (die wél een groepsrij krijgen) blijven exact
+zoals voorheen — geen dubbele of tegenstrijdige data. Geverifieerd met een handmatig testscript
+(`test-risicoraamwerk-aggregatie.mjs`, 6/6 assertions groen): bestaande consolidatie blijft ongewijzigd
+werken, nieuwe per-entiteit-fallback verschijnt correct, en een fase zonder enige data blijft leeg
+(geen fabricatie, geen crash) — conform GOUDEN STANDAARD werkregel 8. Onafhankelijke review vond nog één
+verbeterpunt: bij veel entiteiten kon de 4000-tekenafkap stilzwijgend latere entiteiten laten wegvallen
+— nu een expliciete "[LET OP: afgekapt]"-melding toegevoegd zodat de AI dat benoemt i.p.v. het te
+negeren, zelfde GOUDEN STANDAARD.
+
+### P2-53 · Vaste voettekst/disclaimer op elk gegenereerd document — moet een pop-up + DB-log worden
+🟢 **Gefixt** (12 sep 2026, scope bevestigd door Marcel: alle documenttypes). `printDoc()`
+(`mna/05-documentflow-partijen.js`) is het enige aanroeppunt voor alle documenttypes (NDA/LoI/BEM/
+Excl/SPA/dealvoorstel/bieding/teaser/memo/MOU-composer) — daar één centrale gate ingebouwd:
+`toonRelianceAkkoord()` toont de disclaimertekst + naamveld vóór het printvenster opent, legt de
+bevestiging vast via `secAuditLog('reliance_bevestiging', {...})` (→ `/mna/audit`, dezelfde database-
+route als elders), en het printvenster zelf bevat de tekst niet langer als vast blok. `tests/
+audit-consistentie.mjs` check 13 omgebouwd naar het nieuwe patroon (faalt nu juist als de tekst weer
+als vast blok terugkeert, of als de pop-up verdwijnt). Bewust **niet** gewijzigd: de daadwerkelijk
+verstuurde/gemailde kopie (backend `maakPDF()`/`maakDocEmail()`) behoudt de voettekst — dat is een
+formele kopie naar een echte tegenpartij, een ander vraagstuk dan dit scherm-/printgebruik door de
+adviseur zelf; backend-check (audit-backend.mjs check 7) daarop ongewijzigd groen. Handleiding
+(`mna/08-handleiding.js` + `adv.html`) bijgewerkt (werkregel 10). Alle 14 checks + volledige
+Playwright-suite groen na de wijziging.
+
+### P3-54 · Teaser-generatieknop stond op het verkoperscherm — spreekt een eerdere beslissing tegen
+🟢 **Gefixt** (12 sep 2026, Marcel bevestigd: knop weg bij verkoper). De teaser-sectie in
+`mna/06-schermen.js` (inclusief de bijbehorende generatie/opslaan/print-wiring) is verwijderd; de
+teaser wordt voortaan uitsluitend nog door de begeleider aangemaakt (`bg-teaser-actie`, `mna/04`).
+Foutpropagatie-check toegepast: de backend-endpoints `/mna/teaser/genereer` en `/mna/teaser/opslaan`
+(`backend/worker/19b-waardering-communicatie.js`) stonden ook expliciet open voor de verkoper-rol
+(`rolVanCode(...)==='verkoper'`) — die clausule is in beide endpoints verwijderd, nu uitsluitend
+begeleider-only zoals de overige documentgeneratie.
+
+### P3-55 · Geen link terug van het begeleider-dashboard naar het adviseursportaal
+🟢 **Gefixt** (12 sep 2026). "← Adviseursportaal"-link toegevoegd aan de mna.html-header voor elke
+begeleider-sessie (naast Ververs/Handleiding/PDF/Uitloggen).
+
+### P3-56 · "Fasen compleet"-melding meet veldinvulling, niet documentvolledigheid
+🟢 **Gefixt** (12 sep 2026). Label in `renderSummary()` (`mna/06-schermen.js`) aangescherpt naar
+"Fasen velden compleet" + toelichtende `title`-tooltip, consistent met het ernaast al correct
+gelabelde "Ingevuld"-kaartje. Geen wijziging aan `fillPct()` zelf nodig — alleen de tekst die
+suggereerde dat dit iets over documentvolledigheid zegt.
+
+### P3-57 · Documentgeneratie-uitvoer verschijnt ver onder de knop die je net aanklikte
+🟢 **Gefixt** (12 sep 2026). In plaats van de output-containers door de hele render-functie heen te
+verplaatsen (grotere, risicovollere DOM-herstructurering voor beperkte meerwaarde), is een gedeelde
+helper `bgToonUitvoer()` toegevoegd die alle 11 bestaande `scrollIntoView`-aanroepen vervangt: scrollt
+direct (geen 100ms-vertraging meer) én laat de container twee keer kort oplichten (`.doc-klaar-gloed`,
+nieuwe CSS-animatie in `mna.html`) zodat onmiskenbaar is wáár het resultaat verschenen is — Marcels
+eigen genoemde alternatief ("of het moet op een andere manier duidelijk gemaakt worden").
+
+### P3-58 · Redflags niet prominent in het analyserapport + geen expliciete prijskoppeling-tekst
+🟢 **Gefixt** (12 sep 2026). Bevestigd: redflags beïnvloeden bewust NOOIT automatisch de prijs (GOUDEN
+STANDAARD werkregel 8, geen wijziging aan de rekenkern). `renderRedFlagAnalyseSectie()` (`mna/02`)
+heeft nu een prominentere, gouden sectiekop (i.p.v. dezelfde grijze stijl als elk ander kopje) én een
+expliciete tekstregel die letterlijk stelt dat deze signalen nooit automatisch de waardering/multiple/
+prijs aanpassen.
+
+### P4-59 · demo.html toonde "AI-tweede mening" als generieke platformclaim, geldt alleen accountancy
+🟢 **Gefixt** (12 sep 2026, Marcel). Slide "Een onderbouwde waardering, geen gok" toonde Rekenkern én
+AI-tweede mening naast elkaar als gelijkwaardige, sectorneutrale platformkenmerken — maar de AI-tweede-
+mening/sectorbenchmarks-functie geldt alleen voor accountancy (zie ook de eerdere slide "Gebouwd voor
+meerdere sectoren", die dit al correct alleen bij de Accountancy-kaart vermeldt). Schending van de
+bestaande HARD-regel (`feedback_platform_niet_alleen_accountancy`): nooit accountancy-exclusieve
+functionaliteit als platformbreed presenteren. AI-tweede-mening-paneel verwijderd uit deze slide; Rekenkern
+blijft, nu full-width. Geen andere sectorneutraliteitsfouten gevonden elders in `demo.html` (Foutpropagatie-check).
+
+**Bevestigd geen bug (ter info, niet apart bijgehouden):** "Postvak" in marilyn.html is by design
+archief-only (systeemmail-log, geen tweerichtings-mailbox — geen forward/reply-endpoint bestaat); de
+koper-biedingen-triggerbadge in het begeleider-dashboard bestond al (commit dezelfde dag, mogelijk
+vóór Marcels test gedeployed of een buy-side-traject waar het paneel terecht niet verschijnt); de
+"dossier is gevuld"-constatering is inhoudelijk hetzelfde punt als P3-56 hierboven.
 
 ---
 
