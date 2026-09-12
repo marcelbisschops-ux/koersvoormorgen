@@ -375,7 +375,9 @@ async function main() {
       // (notitie, checklist_json). Setup: fase-data mét notitie opslaan → meekijker-code aanmaken →
       // vertrouwelijkheidsverklaring accepteren → data ophalen.
       {
-        await api('POST', '/mna/save', { body: { code: traject.tussen_code, fase_id: 'financieel',
+        // Fase Financieel mag sinds 12 sep 2026 alleen door de verkoper zelf worden opgeslagen
+        // (begeleider-blokkade) — dus hier de verkopercode gebruiken, niet tussen_code.
+        await api('POST', '/mna/save', { body: { code: traject.code, fase_id: 'financieel',
           data_json: { omzet1: { label: 'Omzet', value: '1000000' } },
           checklist_json: { e2e_conf: true },
           notitie: 'E2E CONF interne begeleidernotitie — GEHEIM' } });

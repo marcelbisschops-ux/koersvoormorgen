@@ -106,7 +106,9 @@ async function main() {
   const advToken = (await api('POST', '/adviseur/trajecten', { body: { email, wachtwoord: WW } })).json?.sessie_token;
 
   // Eén DD-fase met inhoud, daarna vrijgeven aan de koper (force=1 = zonder NDA, alleen voor deze test).
-  await api('POST', '/mna/save', { body: { code: T.tussen_code, fase_id: 'financieel', data_json: { omzet1: { label: 'Omzet', value: '1000000' } }, checklist_json: { x: true }, notitie: 'interne notitie' } });
+  // Fase Financieel mag sinds 12 sep 2026 alleen door de verkoper zelf worden opgeslagen
+  // (begeleider-blokkade) — dus hier de verkopercode gebruiken, niet tussen_code.
+  await api('POST', '/mna/save', { body: { code: T.code, fase_id: 'financieel', data_json: { omzet1: { label: 'Omzet', value: '1000000' } }, checklist_json: { x: true }, notitie: 'interne notitie' } });
   await api('POST', '/mna/koper-categorieen/' + T.code + '?force=1', { headers: { 'x-tussen-key': T.tussen_code }, body: { categorieen: ['financieel'] } });
 
   // Eén documentversie (waarderingsrapport — geen e-mail/Signhost nodig) + een NDA-concept.
