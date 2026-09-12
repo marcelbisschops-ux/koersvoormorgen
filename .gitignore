@@ -20,9 +20,24 @@ backups/
 .wrangler/
 _mock/*.png
 
+# Interne documentatie/architectuur/audit-standaarden + schema.sql + legal/ — 12 sep 2026,
+# GOUDEN STANDAARD-bevinding: GitHub Pages publiceert de VOLLEDIGE repo-inhoud (geen Jekyll-
+# filtering door .nojekyll), dus stond dit alles — inclusief OPEN-BEVINDINGEN.md met op dat
+# moment 15 nog niet gefixte bevindingen, en het complete databaseschema — gewoon publiek op
+# https://koersvoormorgen.nl/<pad>. Uit git-TRACKING gehaald (niet van schijf — deze bestanden
+# blijven lokaal nodig, o.a. CLAUDE.md wordt door elke Claude Code-sessie gelezen), zodat ze
+# nooit meer meegepubliceerd worden. tests/ en scripts/ zijn hier BEWUST NIET in opgenomen —
+# .github/workflows/checks.yml en de pre-push-hook lezen die, dus die blijven gewoon getrackt.
+# Stond al in de git-HISTORIE vóór deze wijziging — dat is met een gewone commit niet te fixen
+# (zie werkregel 14 voor wanneer dat wél nodig is: git filter-repo + force-push); apart met
+# Marcel af te stemmen of dat ook nodig is.
+/*.md
+/schema.sql
+/legal/
+/.pages-rebuild-trigger
+
 # Retention-engine: de D1-snapshot bevat KLANTDATA (blijft lokaal), en de gegenereerde
-# rapporten zijn roterende output. De policies/, fixtures/, contracts/registry.json,
-# legal-holds.json en de engine zelf horen WEL in git.
+# rapporten zijn roterende output.
 legal/retention/.data/
 legal/retention/reports/
 
