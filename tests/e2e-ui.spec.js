@@ -389,6 +389,49 @@ test.describe('Login en rollen (eigen testtraject)', () => {
       await expect(page.locator('#' + id)).toBeEnabled();
     }
   });
+
+  // Regressietest 12 sep 2026 (Marcel, expliciet: "NEE, MOET VERKOPER DOEN" — begeleider mag
+  // fase Financieel niet aanpassen). Dit is een ECHTE rol-click-through: rechtstreeks tegen de
+  // live server, niet alleen een codelezing. Getest wordt zowel de serverafdwinging (de enige
+  // echte autoriteit) als de UI-weergave (fields read-only, upload-knop weg) — en, minstens zo
+  // belangrijk, dat de blokkade NIET te breed is: verkoper en andere fases blijven werken.
+  test('begeleider kan fase Financieel niet opslaan; verkoper en andere fases wel', async () => {
+    const dataJson = { omzet3: { value: '999999', label: 'Omzet jaar 3' } };
+    // 1. Begeleider op fase Financieel → geweigerd
+    const r1 = await api('POST', '/mna/save', { headers: { 'x-tussen-key': tussenCode }, body: { code: tussenCode, fase_id: 'financieel', data_json: dataJson, checklist_json: {} } });
+    expect(r1.status).toBe(403);
+    expect(r1.json && r1.json.error).toMatch(/verkoper/i);
+    // 2. Begeleider op een ANDERE fase → gewoon toegestaan (geen te brede blokkade)
+    const r2 = await api('POST', '/mna/save', { headers: { 'x-tussen-key': tussenCode }, body: { code: tussenCode, fase_id: 'strategisch', data_json: { niche: { value: 'E2E-testniche', label: 'Niche' } }, checklist_json: {} } });
+    expect(r2.status).toBe(200);
+    expect(r2.json && r2.json.error).toBeFalsy();
+    // 3. Verkoper op fase Financieel → gewoon toegestaan (geen regressie)
+    const r3 = await api('POST', '/mna/save', { body: { code: verkoperCode, fase_id: 'financieel', data_json: dataJson, checklist_json: {} } });
+    expect(r3.status).toBe(200);
+    expect(r3.json && r3.json.error).toBeFalsy();
+    // 4. Bankmutaties-upload door begeleider → geweigerd (zelfde blokkade, apart endpoint)
+    const fd = new FormData();
+    fd.append('code', tussenCode);
+    fd.append('file', new Blob(['datum,bedrag,omschrijving\n2026-01-01,100,test'], { type: 'text/csv' }), 'test.csv');
+    const r4resp = await fetch((process.env.WORKER_URL || 'https://kantoorinzicht.marcel-bisschops.workers.dev') + '/mna/bankmutaties/upload', { method: 'POST', body: fd });
+    expect(r4resp.status).toBe(403);
+  });
+
+  test('UI: fase Financieel toont read-only voor begeleider, invulveld/upload-knop voor verkoper', async ({ page }) => {
+    // Begeleider: velden read-only, geen "Document toevoegen"-knop op deze fase.
+    await login(page, tussenCode);
+    await page.waitForFunction(() => window.S && S.traject && S.rol === 'tussenpersoon', null, { timeout: 15000 });
+    await page.evaluate(() => { S.fase = FASES.findIndex(f => f.id === 'financieel'); renderApp(); });
+    await expect(page.locator('#df_omzet3')).toHaveCount(0);
+    await expect(page.locator('.readonly-val').first()).toBeVisible();
+    await expect(page.getByText('Document toevoegen')).toHaveCount(0);
+    // Verkoper op dezelfde fase: gewoon een invulveld en de upload-knop.
+    await login(page, verkoperCode);
+    await page.waitForFunction(() => window.S && S.traject && S.rol === 'verkoper', null, { timeout: 15000 });
+    await page.evaluate(() => { S.fase = FASES.findIndex(f => f.id === 'financieel'); renderApp(); });
+    await expect(page.locator('#df_omzet3')).toBeVisible();
+    await expect(page.getByText('Document toevoegen')).toBeVisible();
+  });
 });
 
 // ───────────────────── 3. DASHBOARD MODULE-GATING ─────────────────────
