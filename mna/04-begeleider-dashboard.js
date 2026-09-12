@@ -716,6 +716,17 @@ function renderBegeleiderDashboard(app){
     +'<button id="bg-ca-opslaan" class="btn btn-sm" style="font-size:11px">Bevestigen &amp; opslaan</button>'
     +' <a href="https://koersvoormorgen.nl/" onclick="return false" style="font-size:10px;color:var(--muted)">zie de cli&euml;ntacceptatie-beslisboom</a>'
     +'</div></div>';
+  // Bevinding 12 sep 2026 (Marcel: "geen trigger dat koper bieding heeft gedaan, mag heel duidelijk
+  // in dashboard zichtbaar worden" — en later: "vind melding nog erg mager" over de eerste, bescheiden
+  // versie hieronder). Het bestaande collapsible paneel (verderop, "💰 Biedingen van de koper") had
+  // alleen een klein badge-getalletje — onopvallend voor iets zo belangrijks als een echt bod van een
+  // koper. Nu een groot, opvallend banner bovenaan de pagina, alleen zichtbaar zolang er een nog-niet-
+  // geziene bieding is (zelfde localStorage-"gezien"-mechanisme als het bestaande paneel), met het
+  // bedrag er meteen bij. Wordt gevuld door initKoperBodPanel() verderop in deze functie.
+  var kbTopbannerHtml='<div id="kb-topbanner" style="display:none;margin-bottom:1rem;padding:1rem 1.25rem;background:var(--gold-bg);border:2px solid var(--gold);border-radius:var(--r2);display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap">'
+    +'<div style="display:flex;align-items:center;gap:12px"><span style="font-size:1.8rem">&#128176;</span><div><div style="font-size:14px;font-weight:700;color:var(--gold-dark)" id="kb-topbanner-titel">Nieuw bod van de koper</div><div style="font-size:12px;color:var(--sub)" id="kb-topbanner-detail"></div></div></div>'
+    +'<button class="btn btn-sm" id="kb-topbanner-btn" style="background:var(--gold-dark)">Bekijk bod</button>'
+    +'</div>';
   // Bevinding 12 sep 2026 (Marcel: "waardering en analyse zou ik plaatsen onder de tekst dat
   // verkoper tekst heeft vrijgegeven"): dit paneel stond voorheen diep verstopt, ná Documenten en
   // Communicatie. Verplaatst naar vlak boven de traject-infokaart (waar de "verkoper heeft dossier
@@ -747,6 +758,7 @@ function renderBegeleiderDashboard(app){
     +'<button class="btn-ghost btn-sm" onclick="window.print()">&#128196; PDF</button>'
     +'<button class="btn-ghost btn-sm" onclick="uitloggen()">&#8592; Uitloggen</button>'
     +'</div></div>'
+    +kbTopbannerHtml
     +caHtml
     +analyseHtml
     // Traject info
@@ -3595,9 +3607,23 @@ function renderBegeleiderDashboard(app){
           .then(function(d){
             biedingenData=d.biedingen||[];
             var laatstGezien=parseInt(localStorage.getItem(gezienKey)||'0',10);
-            var nieuw=biedingenData.filter(function(b){return b.ingediend_op>laatstGezien;}).length;
+            var nieuwBiedingen=biedingenData.filter(function(b){return b.ingediend_op>laatstGezien;});
+            var nieuw=nieuwBiedingen.length;
             if(nieuw>0){badge.textContent=nieuw+' nieuw';badge.style.display='inline-block';}
             else{badge.style.display='none';}
+            // Bevinding 12 sep 2026 ("vind melding nog erg mager"): groot topbanner erbij, naast het
+            // bestaande kleine badge-getalletje op het paneel zelf.
+            var topbanner=document.getElementById('kb-topbanner');
+            if(topbanner){
+              if(nieuw>0){
+                var laatsteNieuw=nieuwBiedingen.reduce(function(a,b){return b.ingediend_op>a.ingediend_op?b:a;});
+                document.getElementById('kb-topbanner-titel').textContent=nieuw===1?'Nieuw bod van de koper':nieuw+' nieuwe biedingen van de koper';
+                document.getElementById('kb-topbanner-detail').textContent='Laatste bod: '+fmtGeld(laatsteNieuw.bedrag)+(laatsteNieuw.toelichting?' — '+laatsteNieuw.toelichting.slice(0,80):'');
+                topbanner.style.display='flex';
+              } else {
+                topbanner.style.display='none';
+              }
+            }
           }).catch(function(){});
       }
       function renderLijst(){
@@ -3615,15 +3641,24 @@ function renderBegeleiderDashboard(app){
         html+='</div>';
         body.innerHTML=html;
       }
+      function toonEnMarkeerGezien(){
+        body.style.display='block';chevron.innerHTML='&#9650;';
+        renderLijst();
+        localStorage.setItem(gezienKey,String(Date.now()));
+        badge.style.display='none';
+        var topbanner=document.getElementById('kb-topbanner');
+        if(topbanner)topbanner.style.display='none';
+      }
       hdr.onclick=function(){
         var open=body.style.display!=='none';
         if(open){body.style.display='none';chevron.innerHTML='&#9660;';}
-        else{
-          body.style.display='block';chevron.innerHTML='&#9650;';
-          renderLijst();
-          localStorage.setItem(gezienKey,String(Date.now()));
-          badge.style.display='none';
-        }
+        else{toonEnMarkeerGezien();}
+      };
+      var topbannerBtn=document.getElementById('kb-topbanner-btn');
+      if(topbannerBtn)topbannerBtn.onclick=function(){
+        toonEnMarkeerGezien();
+        var panel=document.getElementById('kb-panel');
+        if(panel)panel.scrollIntoView({behavior:'smooth',block:'center'});
       };
       laadBiedingen();
     })();
