@@ -73,7 +73,7 @@ een pagina per ongeluk tot redirect-stub maken terwijl er een gemailde activatie
 - **`scripts/check-contrast.mjs`**: WCAG AA-kleurcontrast, alle tekst/oppervlak-tokencombinaties.
 - **`tests/schema-gate.mjs`** + **`tests/schema-baseline.json`**: bewaakt onbedoelde D1-schemadrift.
 
-## 4. Werkwijze per wijziging (CLAUDE.md, 27 werkregels — kern)
+## 4. Werkwijze per wijziging (CLAUDE.md, 28 werkregels — kern)
 
 - Eén wijziging tegelijk, echte test vóór de volgende stap (werkregel 1).
 - Diff tegen huidige versie, alleen gevraagde scope (4).
@@ -96,6 +96,11 @@ een pagina per ongeluk tot redirect-stub maken terwijl er een gemailde activatie
 - Nooit interne werkafspraken als zichtbare tekst op het platform/in juridische documenten (25).
 - **KVM Quality Gate** (27, nieuw 12 sep 2026): FEATURE → TECHNISCHE TEST → FUNCTIONELE TEST → ROL
   CLICK-THROUGH → FOUTPROPAGATIE-CHECK → REGRESSIE → DONE.
+- **Direct uitvoeren, geen backlog als uitweg** (28, nieuw 12 sep 2026, na een ChatGPT-review van deze
+  standaarden): een gevonden probleem wordt niet geregistreerd voor later als het nu uitvoerbaar is —
+  direct onderzoeken → oplossen → testen → regressievrij verklaren. Alleen een échte externe blokkade
+  (een menselijke beslissing, ontbrekende toegang, een externe partij) is een geldige reden om iets als
+  openstaand te melden, en dan wordt al het overige dat wél kan meteen afgehandeld.
 
 ## 5. Periodieke cadans
 

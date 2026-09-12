@@ -1372,13 +1372,19 @@ function renderBegeleiderDashboard(app){
     // Scroll naar doc output zodat knoppen zichtbaar zijn
     var docOutEl=document.getElementById('bg-doc-out');
     bgToonUitvoer(docOutEl);
-    document.getElementById('bg-email').onclick=async function(){
-      var ebtn=this;ebtn.disabled=true;ebtn.textContent='Versturen...';
+    document.getElementById('bg-email').onclick=function(){
+      var ebtn=this;
       if(type==='loi')secAuditLog('interne_goedkeuring',{document_type:'loi',verzendkanaal:'email',goedgekeurd_door:(bgGoedkeuringCtrl?bgGoedkeuringCtrl.getNaam():'')});
       var vt=document.getElementById('bg-doc-tekst').value;
       var vtPh=resterendePlaceholders(vt);
-      if(!(S.traject&&S.traject.clientacceptatie_getoetst) && !confirm('Cliëntacceptatie is voor dit traject nog niet als getoetst gemarkeerd (Wwft / AV art. 4). Toch versturen?')){ ebtn.disabled=false; ebtn.textContent='\u2709 Verstuur naar partijen'; return; }
-      if(vtPh.length && !confirm('Let op: er staan nog '+vtPh.length+' oningevulde plek'+(vtPh.length===1?'':'ken')+' in het document:\n\n'+vtPh.slice(0,12).join('\n')+'\n\nToch versturen naar partijen?')){ ebtn.disabled=false; ebtn.textContent='\u2709 Verstuur naar partijen'; return; }
+      if(!(S.traject&&S.traject.clientacceptatie_getoetst) && !confirm('Cliëntacceptatie is voor dit traject nog niet als getoetst gemarkeerd (Wwft / AV art. 4). Toch versturen?')){ return; }
+      if(vtPh.length && !confirm('Let op: er staan nog '+vtPh.length+' oningevulde plek'+(vtPh.length===1?'':'ken')+' in het document:\n\n'+vtPh.slice(0,12).join('\n')+'\n\nToch versturen naar partijen?')){ return; }
+      // Bevinding 12 sep 2026 (Marcel, harde eis -- zelfde besluit als bij printen): de reliance-
+      // voettekst staat niet meer vast in de verstuurde e-mail/PDF -- bevestiging gebeurt hier vooraf,
+      // vastgelegd in de database (toonRelianceAkkoord, mna/05), i.p.v. in elk bericht herhaald.
+      var titelLbl={nda:'NDA',loi:'Letter of Intent',bem:'Bemiddelingsovereenkomst',excl:'Exclusiviteitsbrief'}[type]||type;
+      toonRelianceAkkoord(titelLbl,type,async function(){
+      ebtn.disabled=true;ebtn.textContent='Versturen...';
       // BEM naar opdrachtgever: koper als koper opdrachtgever is, anders verkoper
       var toList;
       if(type==='bem'){
@@ -1403,6 +1409,7 @@ function renderBegeleiderDashboard(app){
       var er=await fetch(WORKER+ep,{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S.code},body:JSON.stringify(payload)});
       var ed=await er.json();
       if(ed.ok){ebtn.textContent='✓ Verstuurd';}else{toast('Fout: '+(ed.error||'onbekend'),'err');ebtn.disabled=false;ebtn.textContent='✉ Verstuur';}
+      });
     };
     // Handmatig markeren als getekend buiten Signhost om (bijv. per post of los ondertekend) —
     // hergebruikt het bestaande /mna/teken-endpoint dat de begeleider-rol al volledig tekenrecht geeft.
@@ -1476,6 +1483,11 @@ function renderBegeleiderDashboard(app){
         if(!(S.traject&&S.traject.clientacceptatie_getoetst) && !confirm('Cliëntacceptatie is voor dit traject nog niet als getoetst gemarkeerd (Wwft / AV art. 4). Toch via Signhost versturen?')){ btn.disabled=false; btn.textContent='\u270e Verstuur via Signhost'; return; }
         if(shPh.length && !confirm('Let op: er staan nog '+shPh.length+' oningevulde plek'+(shPh.length===1?'':'ken')+' in het document:\n\n'+shPh.slice(0,12).join('\n')+'\n\nToch via Signhost versturen?')){ btn.disabled=false; btn.textContent='\u270e Verstuur via Signhost'; return; }
         if(type==='loi')secAuditLog('interne_goedkeuring',{document_type:'loi',verzendkanaal:'signhost',goedgekeurd_door:(bgGoedkeuringCtrl?bgGoedkeuringCtrl.getNaam():'')});
+        // Bevinding 12 sep 2026 (Marcel, harde eis): zelfde bevestiging-vooraf als bij printen/e-mail \u2014
+        // Signhost had de vaste voettekst zelf al niet (maakPDF() krijgt hier geen reliance:true mee),
+        // maar de bevestiging + database-vastlegging horen consistent bij \u00e9lk kanaal waarmee het
+        // platform een concept-document daadwerkelijk laat vertrekken.
+        toonRelianceAkkoord(labels[type]||type,type,async function(){
         var r=await fetch(WORKER+'/mna/signhost/stuur',{method:'POST',
           headers:{'Content-Type':'application/json','x-tussen-key':S.code},
           body:JSON.stringify({code:S.traject.id,doc_type:type,ondertekenaar_naam:naam,ondertekenaar_email:email,doc_tekst:tekst})});
@@ -1489,6 +1501,7 @@ function renderBegeleiderDashboard(app){
           if(bgDocToggle&&bgDocBody&&bgDocBody.style.display!=='none')bgDocToggle.click();
         }
         else{errEl.style.display='block';errEl.textContent=rd.error||'Fout';btn.disabled=false;btn.textContent='Verstuur';}
+        });
       };
     };
   }
@@ -1912,8 +1925,12 @@ function renderBegeleiderDashboard(app){
         document.getElementById('dv-print').onclick=function(){printDealvoorstel(document.getElementById('dv-preview').innerHTML,titel);};
         var dvBijlPrintBtn=document.getElementById('dv-bijlage-print');
         if(dvBijlPrintBtn)dvBijlPrintBtn.onclick=function(){printDealvoorstel(document.getElementById('dv-bijlage').innerHTML,'INTERNE BIJLAGE (niet delen met de koper) — '+(t2.kantoor_naam||S.code));};
-        document.getElementById('dv-email').onclick=async function(){
-          var ebtn=this;ebtn.disabled=true;ebtn.textContent='Versturen...';
+        document.getElementById('dv-email').onclick=function(){
+          var ebtn=this;
+          // Bevinding 12 sep 2026 (Marcel, harde eis): bevestiging vooraf i.p.v. een vaste
+          // reliance-voettekst in de verstuurde e-mail/PDF — zelfde patroon als bgDoc() hierboven.
+          toonRelianceAkkoord('Dealvoorstel','dealvoorstel',async function(){
+          ebtn.disabled=true;ebtn.textContent='Versturen...';
           var toList=[t2.contact_email,t2.begeleider_email].filter(Boolean);
           var levendeHtml=document.getElementById('dv-preview').innerHTML;
           // cijfers_json (26 juli 2026): de daadwerkelijk gehanteerde dealparameters + berekende
@@ -1924,6 +1941,7 @@ function renderBegeleiderDashboard(app){
           var er=await fetch(WORKER+'/mna/dealvoorstel/email',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S.code},body:JSON.stringify(payload)});
           var ed=await er.json();
           if(ed.ok){ebtn.textContent='✓ Verstuurd';}else{toast('Fout: '+(ed.error||'onbekend'),'err');ebtn.disabled=false;ebtn.textContent='✉ Verstuur naar partijen';}
+          });
         };
       }catch(e){
         if(_origDataDv2)S.data=_origDataDv2; // vangnet: bij een fout halverwege de berekeningen niet op groepsniveau laten hangen
@@ -2039,8 +2057,10 @@ function renderBegeleiderDashboard(app){
           bdGoedkeuringCtrl.setPdfOverride(actief);
         });
         document.getElementById('bd-print').onclick=function(){printDoc(document.getElementById('bd-doc-tekst').value,titel,'bieding');};
-        document.getElementById('bd-email').onclick=async function(){
-          var ebtn=this;ebtn.disabled=true;ebtn.textContent='Versturen...';
+        document.getElementById('bd-email').onclick=function(){
+          var ebtn=this;
+          toonRelianceAkkoord('Indicatieve bieding','bieding',async function(){
+          ebtn.disabled=true;ebtn.textContent='Versturen...';
           secAuditLog('interne_goedkeuring',{document_type:'bieding',verzendkanaal:'email',goedgekeurd_door:bdGoedkeuringCtrl.getNaam()});
           var toList=[t2.contact_email,t2.begeleider_email,t2.koper_email].filter(Boolean);
           var payload={code:S.traject.id,bieding_tekst:document.getElementById('bd-doc-tekst').value,to:toList,goedgekeurd_door:bdGoedkeuringCtrl.getNaam()};
@@ -2048,6 +2068,7 @@ function renderBegeleiderDashboard(app){
           var er=await fetch(WORKER+'/mna/bieding/email',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S.code},body:JSON.stringify(payload)});
           var ed=await er.json();
           if(ed.ok){ebtn.textContent='✓ Verstuurd';}else{toast('Fout: '+(ed.error||'onbekend'),'err');ebtn.disabled=false;ebtn.textContent='✉ Verstuur naar partijen';}
+          });
         };
         document.getElementById('bd-naar-dd').onclick=async function(){
           var nbtn=this;nbtn.disabled=true;nbtn.textContent='Bezig...';

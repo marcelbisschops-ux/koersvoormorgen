@@ -338,27 +338,32 @@ async function renderPostvakTab(el){
   function fmt(ts){ var dt=new Date(ts); return dt.toLocaleDateString('nl-NL',{day:'numeric',month:'short'})+' '+dt.toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'}); }
   var h='<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem;margin-bottom:1rem">'
     +'<div><strong>Postvak</strong> <span style="color:var(--muted);font-size:13px">&middot; alle platform-e-mail, ook per e-mail verstuurd &middot; '+berichten.length+' bericht(en), '+postvakOngelezen+' ongelezen</span></div>'
-    +'<button class="btn btn-sm" id="pv-alles-gelezen"'+(postvakOngelezen?'':' disabled')+'>Alles als gelezen</button>'
-    +'</div>';
+    +'<div style="display:flex;gap:6px"><button class="btn btn-sm" id="pv-alles-gelezen"'+(postvakOngelezen?'':' disabled')+'>Alles als gelezen</button>'
+    // Bevinding 12 sep 2026 (Marcel, expliciet verzoek): "postvak kunnen legen" — bewust een aparte,
+    // met confirm() beveiligde knop (onomkeerbaar, geen Postvak-eigen prullenbak).
+    +'<button class="btn-ghost btn-sm" id="pv-legen" style="color:var(--red)"'+(berichten.length?'':' disabled')+'>Postvak legen</button>'
+    +'</div></div>';
   if(!berichten.length){
     h+='<p style="color:var(--muted)">Nog geen berichten.</p>';
     el.innerHTML=h; var ag0=document.getElementById('pv-alles-gelezen'); if(ag0)ag0.addEventListener('click',function(){}); return;
   }
-  h+='<table class="tbl" style="width:100%"><thead><tr><th style="width:110px">Wanneer</th><th style="width:150px">Soort</th><th>Onderwerp</th><th style="width:90px"></th></tr></thead><tbody>';
+  h+='<table class="tbl" style="width:100%"><thead><tr><th style="width:110px">Wanneer</th><th style="width:150px">Soort</th><th>Onderwerp</th><th style="width:190px"></th></tr></thead><tbody>';
   berichten.forEach(function(b,i){
     var lbl=POSTVAK_LABELS[b.categorie]||b.categorie||'Overig';
     h+='<tr class="pv-row" data-i="'+i+'" style="cursor:pointer'+(b.gelezen?'':';font-weight:600')+'">'
       +'<td style="color:var(--muted);font-size:12px">'+fmt(b.ts)+'</td>'
       +'<td><span style="font-size:11px;padding:2px 8px;border-radius:10px;border:1px solid var(--border)">'+esc(lbl)+'</span></td>'
       +'<td>'+(b.gelezen?'':'<span style="color:var(--teal)">&#9679;</span> ')+esc(b.onderwerp||'(geen onderwerp)')+'</td>'
-      +'<td style="text-align:right">'+(b.gelezen?'':'<button class="btn btn-sm pv-lees" data-id="'+b.id+'">gelezen</button>')+'</td></tr>'
+      +'<td style="text-align:right;white-space:nowrap">'+(b.gelezen?'':'<button class="btn btn-sm pv-lees" data-id="'+b.id+'">gelezen</button> ')
+      +'<button class="btn-ghost btn-sm pv-doorsturen" data-id="'+b.id+'" title="Doorsturen">&#8618;</button> '
+      +'<button class="btn-ghost btn-sm pv-verwijderen" data-id="'+b.id+'" style="color:var(--red)" title="Verwijderen">&#128465;</button></td></tr>'
       +'<tr class="pv-body" data-i="'+i+'" hidden><td colspan="4" style="background:var(--bg2,#faf9f7);padding:1rem"><div style="font-size:12px;color:var(--muted);margin-bottom:.5rem">Aan: '+esc(b.ontvanger||'-')+(b.meta?' &middot; '+esc(JSON.stringify(b.meta)):'')+'</div><div style="max-width:640px">'+(b.body_html||'<em>geen inhoud</em>')+'</div></td></tr>';
   });
   h+='</tbody></table>';
   el.innerHTML=h;
   Array.prototype.forEach.call(el.querySelectorAll('.pv-row'),function(r){
     r.addEventListener('click',function(ev){
-      if(ev.target.classList.contains('pv-lees'))return;
+      if(ev.target.classList.contains('pv-lees')||ev.target.classList.contains('pv-doorsturen')||ev.target.classList.contains('pv-verwijderen'))return;
       var i=r.getAttribute('data-i');
       var bodyRow=el.querySelector('.pv-body[data-i="'+i+'"]');
       if(bodyRow)bodyRow.hidden=!bodyRow.hidden;
@@ -373,11 +378,41 @@ async function renderPostvakTab(el){
       });
     });
   });
+  Array.prototype.forEach.call(el.querySelectorAll('.pv-verwijderen'),function(btn){
+    btn.addEventListener('click',function(ev){
+      ev.stopPropagation();
+      if(!confirm('Dit bericht definitief uit het postvak verwijderen?'))return;
+      btn.disabled=true;
+      post('/mna/admin/postvak/verwijderen',{id:parseInt(btn.getAttribute('data-id'))}).then(function(res){
+        if(res&&res.ok){ renderPostvakTab(el); } else { toast('Verwijderen mislukt.','err'); btn.disabled=false; }
+      });
+    });
+  });
+  Array.prototype.forEach.call(el.querySelectorAll('.pv-doorsturen'),function(btn){
+    btn.addEventListener('click',function(ev){
+      ev.stopPropagation();
+      var naar=prompt('Doorsturen naar welk e-mailadres?');
+      if(!naar)return;
+      btn.disabled=true;
+      post('/mna/admin/postvak/doorsturen',{id:parseInt(btn.getAttribute('data-id')),naar:naar.trim()}).then(function(res){
+        btn.disabled=false;
+        if(res&&res.ok){ toast('Doorgestuurd naar '+naar,'ok'); } else { toast('Doorsturen mislukt: '+((res&&res.error)||'onbekend'),'err'); }
+      });
+    });
+  });
   var ag=document.getElementById('pv-alles-gelezen');
   if(ag)ag.addEventListener('click',function(){
     ag.disabled=true;
     post('/mna/admin/postvak/gelezen',{alles:true}).then(function(res){
       if(res&&res.ok){ renderPostvakTab(el); } else { toast('Kon niet bijwerken.','err'); ag.disabled=false; }
+    });
+  });
+  var lg=document.getElementById('pv-legen');
+  if(lg)lg.addEventListener('click',function(){
+    if(!confirm('Het VOLLEDIGE postvak ('+berichten.length+' bericht(en)) definitief legen? Dit kan niet ongedaan worden gemaakt.'))return;
+    lg.disabled=true;
+    post('/mna/admin/postvak/verwijderen',{alles:true}).then(function(res){
+      if(res&&res.ok){ renderPostvakTab(el); } else { toast('Legen mislukt.','err'); lg.disabled=false; }
     });
   });
 }
