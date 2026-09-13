@@ -764,10 +764,6 @@ function renderBegeleiderDashboard(app){
     +'<button class="btn-ghost btn-sm" onclick="window.print()">&#128196; PDF</button>'
     +'<button class="btn-ghost btn-sm" onclick="uitloggen()">&#8592; Uitloggen</button>'
     +'</div></div>'
-    // Bevinding 13 sep 2026 (Marcel: "verversknop mag lager te vinden zijn... bij een ingevulde MoU
-    // is het heel ver naar boven scrollen"): dezelfde refreshData() nu ook als vaste knop linksonder
-    // (chat-fab in mna/07 zit rechtsonder, dus geen overlap), altijd in beeld ongeacht scrolpositie.
-    +'<button aria-label="Ververs" title="Ververs" onclick="refreshData()" style="position:fixed;bottom:24px;left:24px;z-index:500;display:flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:50%;background:var(--panel);border:1px solid var(--border2);box-shadow:0 4px 16px rgba(0,0,0,.15);cursor:pointer;font-size:18px;color:var(--sub)">&#8635;</button>'
     +kbTopbannerHtml
     +caHtml
     +analyseHtml
@@ -858,8 +854,15 @@ function renderBegeleiderDashboard(app){
       // voortgang op de LoI (die normaliter ná de NDA komt) is zelf al het bewijs dat deze stap in de
       // praktijk geen aandacht meer nodig heeft — verder blijven wijzen zou hier gokken zijn naar een
       // volgorde die de gebruiker al gepasseerd is.
+      // Bugfix 13 sep 2026 (zelfde dag, direct gemeld door Marcel: badge verdween helemaal): eerste
+      // versie hierboven telde ELKE tos_status.loi-waarde als "voortgang", ook een kale 'draft' — en
+      // het enkel ÉÉNMAAL openen van de LoI-composer maakt al automatisch zo'n leeg 'draft'-document
+      // aan (bgMouComposer → POST /activeer, idempotent maar altijd uitgevoerd). Daardoor verdween de
+      // badge zodra iemand de LoI-composer ook maar had geopend, zonder dat er ook maar iets in was
+      // ingevuld. Nu pas "voortgang" bij exported (gefinaliseerd) of verstuurd — dezelfde drempel als
+      // bij nda hierboven, en in lijn met Marcels oorspronkelijke klacht ("LoI al ingevuld").
       var ndaTosVerstuurd = !!(S.tos_status && S.tos_status.nda === 'verstuurd');
-      var loiTosVoortgang = !!(S.tos_status && S.tos_status.loi);
+      var loiTosVoortgang = !!(S.tos_status && (S.tos_status.loi === 'exported' || S.tos_status.loi === 'verstuurd'));
       var volgendeStapId = !t.bem_getekend ? 'bg-bem-actie'
         : (marketingAan && !t.teaser_tekst && !t.verkoopmemorandum_tekst) ? 'bg-teaser-actie'
         : (!t.nda_getekend && !ndaTosVerstuurd && !loiTosVoortgang) ? 'bg-nda-composer-actie'
@@ -1027,6 +1030,28 @@ function renderBegeleiderDashboard(app){
     +'</div>';
 
   app.innerHTML=html;
+
+  // Bugfix 13 sep 2026 (Marcel, direct na oplevering: knop bleef onvindbaar): de vaste Ververs-knop
+  // stond als onderdeel van de grote html-string binnen ".wrap.anim" — en .anim (fadeUp-animatie,
+  // mna.html) laat via animation-fill-mode:forwards een transform:translateY(0) achter, ook ná
+  // afloop. Elk element met een transform (ook translateY(0), niet "geen transform") vormt een
+  // nieuw containing block voor position:fixed-nakomelingen — dus de knop "hing" ergens onderin de
+  // paginahoogte van .wrap i.p.v. daadwerkelijk vast te blijven op het scherm. Los van .wrap
+  // toegevoegd, rechtstreeks aan <body>, zodat position:fixed weer echt viewport-relatief is.
+  // Idempotent: renderBegeleiderDashboard() draait bij elke refreshData()/renderApp() opnieuw, maar
+  // <body> blijft (i.t.t. #app) tussen renders bestaan — dus hergebruik het bestaande element i.p.v.
+  // telkens een nieuwe knop toe te voegen.
+  var bgVerversFab=document.getElementById('bg-ververs-fab');
+  if(!bgVerversFab){
+    bgVerversFab=document.createElement('button');
+    bgVerversFab.id='bg-ververs-fab';
+    bgVerversFab.setAttribute('aria-label','Ververs');
+    bgVerversFab.title='Ververs';
+    bgVerversFab.style.cssText='position:fixed;bottom:24px;left:24px;z-index:500;display:flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:50%;background:var(--panel);border:1px solid var(--border2);box-shadow:0 4px 16px rgba(0,0,0,.15);cursor:pointer;font-size:18px;color:var(--sub)';
+    bgVerversFab.innerHTML='&#8635;';
+    bgVerversFab.onclick=function(){ refreshData(); };
+    document.body.appendChild(bgVerversFab);
+  }
 
   laadRisicoBadges();
   laadDocFlowStatus();
