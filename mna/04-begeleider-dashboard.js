@@ -1571,15 +1571,27 @@ function renderBegeleiderDashboard(app){
       +'<button id="bg-handmatig-getekend" class="btn-ghost" style="font-size:12px;padding:6px 14px">&#128221; Buiten Signhost om getekend</button>'
       +'</div>'
       +eigenPdfHtml('bg-pdf')
+      // Bevinding 13 sep 2026 (Marcel: "wil deze ook van onderaan kunnen sluiten, niet alleen naar
+      // boven moeten scrollen"): dezelfde Inklappen-toggle als bovenaan, nu ook direct na de knoppen
+      // — scheelt terugscrollen bij een lang document.
+      +'<div style="display:flex;justify-content:center;margin-top:1rem"><button id="bg-doc-toggle-onder" class="btn-ghost" style="font-size:12px;padding:6px 16px">&#9650; Inklappen</button></div>'
       +'</div>'
       +'</div>';
     var bgDocToggle=document.getElementById('bg-doc-toggle');
+    var bgDocToggleOnder=document.getElementById('bg-doc-toggle-onder');
     var bgDocBody=document.getElementById('bg-doc-body');
-    if(bgDocToggle)bgDocToggle.onclick=function(){
+    var bgDocToggleFn=function(){
       var open=bgDocBody.style.display!=='none';
       bgDocBody.style.display=open?'none':'block';
-      bgDocToggle.innerHTML=open?'&#9660; Uitklappen':'&#9650; Inklappen';
+      var label=open?'&#9660; Uitklappen':'&#9650; Inklappen';
+      if(bgDocToggle)bgDocToggle.innerHTML=label;
+      // De onderste knop zit ZELF binnen bg-doc-body — bij inklappen verdwijnt hij dus mee, wat
+      // klopt (niets om uit te klappen onder een dichtgeklapt blok); bij een hernieuwde render staat
+      // hij er gewoon weer.
+      if(bgDocToggleOnder)bgDocToggleOnder.innerHTML=label;
     };
+    if(bgDocToggle)bgDocToggle.onclick=bgDocToggleFn;
+    if(bgDocToggleOnder)bgDocToggleOnder.onclick=bgDocToggleFn;
     var bgAkkoordCtrl=wireAkkoord('bg-doc-akkoord', ['bg-email','bg-signhost']);
     var bgGoedkeuringCtrl=type==='loi'?wireInterneGoedkeuring('bg-goedkeuring-naam','bg-doc-akkoord',['bg-email','bg-signhost']):null;
     var bgPdfStaat={base64:null,naam:null};
@@ -2118,7 +2130,10 @@ function renderBegeleiderDashboard(app){
         out.style.display='block';
         var titel='Dealvoorstel — '+(t2.kantoor_naam||S.code);
         out.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem">'
-          +'<div style="font-size:11px;font-weight:600;color:var(--gold-dark);text-transform:uppercase;letter-spacing:.1em;margin-bottom:.75rem">Dealvoorstel gegenereerd</div>'
+          +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">'
+          +'<div style="font-size:11px;font-weight:600;color:var(--gold-dark);text-transform:uppercase;letter-spacing:.1em">Dealvoorstel gegenereerd</div>'
+          +'<button id="dv-sluit-top" class="btn-ghost" title="Sluiten" style="font-size:11px;padding:3px 10px">&#10005;</button>'
+          +'</div>'
           +'<div style="font-size:11px;color:var(--teal);margin-bottom:.5rem">&#9998; Klik in de tekst hieronder om aan te passen vóór verzending.</div>'
           +'<div id="dv-preview" contenteditable="true" style="max-height:400px;overflow-y:auto;overflow-x:auto;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:1.25rem;font-family:Georgia,serif;font-size:12px;line-height:1.7;color:var(--sub);outline:none" onfocus="this.style.borderColor=\'var(--teal)\'" onblur="this.style.borderColor=\'var(--border2)\'">'+bodyHtml+'</div>'
           +akkoordHtmlDv('dv-doc-akkoord')
@@ -2133,9 +2148,18 @@ function renderBegeleiderDashboard(app){
             +'<div style="font-size:11px;color:#7a1f13;margin-bottom:.75rem">Onderhandelpositie van de verkoper (walk-awayprijs, LoI-checklist). <strong>Deel dit NIET met de koper.</strong> Zit bewust niet in het dealvoorstel hierboven en wordt niet meegestuurd met &bdquo;Verstuur naar partijen&rdquo;. Bespreek het los met de verkoper.</div>'
             +'<div id="dv-bijlage" style="max-height:320px;overflow:auto;background:#fff;border:1px solid #e0b8b0;border-radius:var(--r);padding:1rem;font-family:Georgia,serif;font-size:12px;line-height:1.7;color:#3a3a3a">'+bijlageHtml+'</div>'
             +'<div style="margin-top:.6rem"><button id="dv-bijlage-print" class="btn-ghost" style="font-size:12px;padding:6px 14px">&#128196; Print interne bijlage</button></div>'
-            +'</div>'):'');
+            +'</div>'):'')
+          // Bevinding 13 sep 2026 (Marcel: "ik kan document niet sluiten... wil deze ook van onderaan
+          // kunnen sluiten, niet alleen naar boven moeten scrollen"): het dealvoorstel had tot nu toe
+          // ÜBERHAUPT geen sluitmogelijkheid (bgDoc()'s NDA/LoI/BEM/Excl-uitvoer had wel een
+          // "Inklappen"-knop, maar alleen bovenaan). Nu een knop bovenaan (naast de titel) én
+          // onderaan, na de eventuele interne bijlage — beide sluiten hetzelfde blok.
+          +'<div style="display:flex;justify-content:center;margin-top:1rem"><button id="dv-sluit-onder" class="btn-ghost" style="font-size:12px;padding:6px 16px">&#9650; Sluiten</button></div>';
         var docOutEl=document.getElementById('bg-doc-out');
         bgToonUitvoer(docOutEl);
+        var dvSluiten=function(){ out.style.display='none'; out.innerHTML=''; };
+        var dvSluitTop=document.getElementById('dv-sluit-top'); if(dvSluitTop)dvSluitTop.onclick=dvSluiten;
+        var dvSluitOnder=document.getElementById('dv-sluit-onder'); if(dvSluitOnder)dvSluitOnder.onclick=dvSluiten;
         var dvAkkoordCtrl=wireAkkoord(['dv-doc-akkoord-bedrag','dv-doc-akkoord-intern','dv-doc-akkoord-clausule'], ['dv-email']);
         var dvPdfStaat={base64:null,naam:null};
         wireEigenPdf('dv-pdf', dvPdfStaat, function(actief){
