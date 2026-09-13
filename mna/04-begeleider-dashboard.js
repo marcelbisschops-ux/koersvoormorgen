@@ -2517,7 +2517,9 @@ function renderBegeleiderDashboard(app){
     if(!bevroren) h+=MOU_PROV_LEGENDA;
     comps.filter(function(c){return c.instance_status==='ACTIVE';}).forEach(function(c){
       var rev=c.review||{status:'REQUIRED'};
-      var rl=MOU_REV[rev.status]||['',''];
+      // PLATFORM-beheerde componenten (is_auto) tonen geen "Beoordeling vereist"-badge — ze blokkeren
+      // de export/verzending sowieso nooit (zelfde uitzondering als tosCanExport() backend-side).
+      var rl=c.is_auto?['','']:(MOU_REV[rev.status]||['','']);
       h+='<div class="mou-card" data-iid="'+esc(c.instance_id)+'" data-title="'+esc(c.title)+'" style="border:1px solid var(--border);border-radius:var(--r);padding:.7rem .85rem;margin-bottom:.5rem">'
         +'<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">'
         +'<div style="font-size:12.5px;font-weight:600;color:var(--head)">'+esc(c.title)
@@ -2545,7 +2547,7 @@ function renderBegeleiderDashboard(app){
         h+='<div style="display:flex;gap:6px;margin-top:.4rem;flex-wrap:wrap">'
           +'<button class="btn-ghost mou-concept" data-iid="'+esc(c.instance_id)+'" style="font-size:10.5px;padding:4px 10px">&#129302; AI-concept</button>'
           +'<button class="btn-ghost mou-text-save" data-iid="'+esc(c.instance_id)+'" style="font-size:10.5px;padding:4px 10px">Tekst opslaan</button>';
-        if(c.review_domain&&c.review_domain!=='NONE'&&c.review_trigger!=='nooit'){
+        if(!c.is_auto&&c.review_domain&&c.review_domain!=='NONE'&&c.review_trigger!=='nooit'){
           if(rev.status==='APPROVED') h+='<button class="btn-ghost mou-rev" data-iid="'+esc(c.instance_id)+'" data-act="intrekken" style="font-size:10.5px;padding:4px 10px">Aftekening intrekken</button>';
           else h+='<button class="btn-ghost mou-rev" data-iid="'+esc(c.instance_id)+'" data-act="goedkeuren" style="font-size:10.5px;padding:4px 10px;border-color:var(--teal);color:var(--teal)">Markeer als beoordeeld</button>';
         }
@@ -2557,7 +2559,7 @@ function renderBegeleiderDashboard(app){
     if(!bevroren){
       // openstaande reviews per domein tellen
       var openPerDom={LEGAL:0,TAX:0,VALUATION:0};
-      comps.filter(function(c){return c.instance_status==='ACTIVE'&&c.review_domain&&c.review_domain!=='NONE'&&c.review_trigger!=='nooit';})
+      comps.filter(function(c){return c.instance_status==='ACTIVE'&&!c.is_auto&&c.review_domain&&c.review_domain!=='NONE'&&c.review_trigger!=='nooit';})
         .forEach(function(c){ if(!(c.review&&c.review.status==='APPROVED')) openPerDom[c.review_domain]=(openPerDom[c.review_domain]||0)+1; });
       var totOpen=openPerDom.LEGAL+openPerDom.TAX+openPerDom.VALUATION;
       h+='<div style="border:1px solid var(--border2);border-radius:var(--r);padding:.7rem .8rem;margin-bottom:.75rem">'

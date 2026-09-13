@@ -1575,18 +1575,21 @@ function dvHtmlNaarTekst(html){
 // op een verborgen iframe als de browser de pop-up blokkeert. Voorheen deed elke printfunctie dit
 // zelf, zonder fallback — vandaar "soms opent alleen een lege HTML-pagina" / "er gebeurt niets".
 function printHtmlDocument(docHtml){
+  // Chrome/Safari-eigenaardigheid (13 sep 2026, gemeld door Marcel — bleek na de eerdere titel-fix
+  // van dezelfde dag nog steeds te spelen): de printdialoog toont in de voettekst de daadwerkelijke
+  // vensterlocatie, niet de <title>. Een venster geopend via window.open('','_blank')+document.write()
+  // navigeert nooit ergens naartoe — de locatie blijft letterlijk "about:blank", ook als het document
+  // zelf (en dus de titel) allang is vervangen. Enige betrouwbare fix: het venster een echte
+  // (blob:)-URL geven i.p.v. een lege, zodat er wél iets anders dan "about:blank" in de voettekst
+  // staat. De titel-fix hierboven (nu overbodig, <title> in docHtml wordt gewoon geladen als
+  // onderdeel van de echte navigatie) blijft verwijderd; dit vervangt 'm volledig, geen aanvulling.
   var win=null;
-  try{ win=window.open('','_blank'); }catch(e){ win=null; }
-  if(win && win.document){
-    win.document.write(docHtml+'<script>window.onload=function(){window.focus();window.print();}<\/script>');
-    win.document.close();
-    // Chrome/Safari-eigenaardigheid (13 sep 2026, gemeld door Marcel): een via window.open('','_blank')
-    // + document.write() geopend venster laat de printkop/-voettekst (optie "Kop- en voettekst" in de
-    // printdialoog) soms "about:blank" tonen i.p.v. de <title> uit de geschreven HTML — de titel-
-    // metadata die de printdialoog gebruikt volgt niet altijd de write(). Titel expliciet forceren lost
-    // dit betrouwbaar op.
-    var titelMatch = docHtml.match(/<title>([^<]*)<\/title>/i);
-    if(titelMatch) win.document.title = titelMatch[1];
+  try{
+    var blobUrl=URL.createObjectURL(new Blob([docHtml+'<script>window.onload=function(){window.focus();window.print();}<\/script>'],{type:'text/html'}));
+    win=window.open(blobUrl,'_blank');
+    if(win) setTimeout(function(){ try{ URL.revokeObjectURL(blobUrl); }catch(e){} },15000);
+  }catch(e){ win=null; }
+  if(win){
     return;
   }
   // ChatGPT-review 31 aug 2026: laat de iframe-fallback niet stil falen. Lukt print() daar ook niet,
