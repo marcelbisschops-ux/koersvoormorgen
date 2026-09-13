@@ -608,16 +608,19 @@ var SECTOR_PROFIELEN = {
   // ── IT & SOFTWARE ────────────────────────────────────────────────────────
   itsoftware: {
     label: 'IT & Software',
-    // Bron-status (zie SECTORPROFIEL-BRONNEN.md, 31 aug 2026): alle getallen 🟡 plausibel, geen bron
-    // in de code. multiple 4-6x EBITDA is de vastgelegde basis (redelijk voor maatwerk/diensten);
-    // de 3-8x ARR-range gaat alleen naar de AI-tekst, niet naar de rekenkern. ARR/MRR-groei/churn/
-    // LTV-CAC/NPS zijn gangbare SaaS-vuistregels, geen harde NL-branchebron.
-    aiNormen: 'EBITDA-marge norm 15-30% (SaaS 20-40%), ARR/MRR groei >20% is sterk, churn <5% is goed, LTV/CAC >3 vereist, NPS >30 positief, multiple 3-8x ARR (SaaS) of 4-6x EBITDA (maatwerk/diensten)',
+    // Bron-status (zie SECTORPROFIEL-BRONNEN.md, herzien 13 sep 2026): multiple 🟢 gebrond op Brookz
+    // Overnamebarometer H2-2025 (IT-diensten 6,7×, Softwareontwikkeling 7,5×) — Marcel akkoord
+    // 13 sep 2026 op de eerdere 11 sep-deelbevinding. De 3-8x ARR-range gaat alleen naar de AI-tekst,
+    // niet naar de rekenkern, en blijft 🟡 plausibel (geen harde NL-bron voor ARR-multiples). ARR/MRR-
+    // groei/churn/LTV-CAC/NPS zijn gangbare SaaS-vuistregels, geen harde NL-branchebron.
+    aiNormen: 'EBITDA-marge norm 15-30% (SaaS 20-40%), ARR/MRR groei >20% is sterk, churn <5% is goed, LTV/CAC >3 vereist, NPS >30 positief, multiple 3-8x ARR (SaaS) of 6,7-7,5x EBITDA (maatwerk/diensten, Brookz H2-2025)',
     // Dit sectorprofiel dekt zowel SaaS (ARR-multiple) als maatwerk/diensten (EBITDA-multiple) — het
     // platform heeft geen apart ARR-veld en de rest van het Dealvoorstel-scherm is EBITDA-based, dus
-    // hier bewust de EBITDA-variant (4-6x) als structureel vastgelegde basis; een zuiver SaaS-traject
-    // moet handmatig als kanttekening worden meegenomen (bekende beperking, 25 juli 2026).
-    multipleBasis: 'ebitda', multipleLaag: 4, multipleHoog: 6,
+    // hier bewust de EBITDA-variant als structureel vastgelegde basis. Band = de twee Brookz H2-2025-
+    // subsectorcijfers (IT-diensten 6,7× laag, Softwareontwikkeling 7,5× hoog) — geen gemiddelde,
+    // geen padding. Een zuiver SaaS-traject moet handmatig als kanttekening worden meegenomen
+    // (bekende beperking, 25 juli 2026).
+    multipleBasis: 'ebitda', multipleLaag: 6.7, multipleHoog: 7.5,
     fases: [
       {id:'financieel',num:'I',title:'Financieel',desc:'Omzet, ARR/MRR en unit economics.',
        dataFields:[
