@@ -1830,6 +1830,7 @@ async function refreshData(){
       if(d.data && d.data.length) loadDataFromDB(d.data);
       S.rol = d.rol;
       S.modules = d.modules || S.modules || null;
+      S.tos_status = d.tos_status || null;
       syncDocVeldenVanTraject(d);
       S.screen = oldScreen;
       renderApp();

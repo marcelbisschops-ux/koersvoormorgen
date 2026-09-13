@@ -1158,7 +1158,7 @@ function bindAll(){
         // reset, ondanks dat deze regel expliciet "geen datalek tussen trajecten" claimt — zie
         // dezelfde fix in uitloggen() (mna/02-state-opslag-documenten.js) voor de volledige toelichting.
         if(typeof CHAT!=='undefined'){CHAT.berichten=[];CHAT.serverBerichten=[];CHAT.open=false;CHAT.laden=false;CHAT.sturen=false;}
-        S={screen:'cover',code:code,rol:d.rol||'verkoper',traject:d.traject,modules:d.modules||null,_ivSelectie1:null,_ivSelectie2:null,
+        S={screen:'cover',code:code,rol:d.rol||'verkoper',traject:d.traject,modules:d.modules||null,tos_status:d.tos_status||null,_ivSelectie1:null,_ivSelectie2:null,
           fase:0,checked:{},data:{},docRefs:{},notities:{},aiTexts:{},aiLoading:{},
           saveTimer:null,showValidation:false,dataroomLoading:false,dataroom:null,
           _opy:{},_epy:{},_opySlotJaar:{},_conflicts:[],_userEdited:{},_docSource:{},_docFragment:{},koperReacties:{},loiTekst:'',loiDatum:0,

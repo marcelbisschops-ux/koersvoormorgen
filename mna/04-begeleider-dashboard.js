@@ -723,7 +723,13 @@ function renderBegeleiderDashboard(app){
   // koper. Nu een groot, opvallend banner bovenaan de pagina, alleen zichtbaar zolang er een nog-niet-
   // geziene bieding is (zelfde localStorage-"gezien"-mechanisme als het bestaande paneel), met het
   // bedrag er meteen bij. Wordt gevuld door initKoperBodPanel() verderop in deze functie.
-  var kbTopbannerHtml='<div id="kb-topbanner" style="display:none;margin-bottom:1rem;padding:1rem 1.25rem;background:var(--gold-bg);border:2px solid var(--gold);border-radius:var(--r2);display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap">'
+  // Bugfix 13 sep 2026 (Marcel: "heel snel en kort een oranje balk, kan niet lezen wat"): deze
+  // regel zette zowel display:none als (later in dezelfde regel) display:flex — de laatste wint bij
+  // een inline style, dus de banner stond bij élke render eerst gewoon zichtbaar (met nog lege
+  // titel/detail, vandaar onleesbaar) totdat laadBiedingen() hieronder — pas ná een async fetch —
+  // 'm alsnog verborg. Nu écht standaard verborgen; JS zet 'm pas op display:flex bij een reëel
+  // nieuw bod.
+  var kbTopbannerHtml='<div id="kb-topbanner" style="display:none;margin-bottom:1rem;padding:1rem 1.25rem;background:var(--gold-bg);border:2px solid var(--gold);border-radius:var(--r2);align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap">'
     +'<div style="display:flex;align-items:center;gap:12px"><span style="font-size:1.8rem">&#128176;</span><div><div style="font-size:14px;font-weight:700;color:var(--gold-dark)" id="kb-topbanner-titel">Nieuw bod van de koper</div><div style="font-size:12px;color:var(--sub)" id="kb-topbanner-detail"></div></div></div>'
     +'<button class="btn btn-sm" id="kb-topbanner-btn" style="background:var(--gold-dark)">Bekijk bod</button>'
     +'</div>';
@@ -758,6 +764,10 @@ function renderBegeleiderDashboard(app){
     +'<button class="btn-ghost btn-sm" onclick="window.print()">&#128196; PDF</button>'
     +'<button class="btn-ghost btn-sm" onclick="uitloggen()">&#8592; Uitloggen</button>'
     +'</div></div>'
+    // Bevinding 13 sep 2026 (Marcel: "verversknop mag lager te vinden zijn... bij een ingevulde MoU
+    // is het heel ver naar boven scrollen"): dezelfde refreshData() nu ook als vaste knop linksonder
+    // (chat-fab in mna/07 zit rechtsonder, dus geen overlap), altijd in beeld ongeacht scrolpositie.
+    +'<button aria-label="Ververs" title="Ververs" onclick="refreshData()" style="position:fixed;bottom:24px;left:24px;z-index:500;display:flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:50%;background:var(--panel);border:1px solid var(--border2);box-shadow:0 4px 16px rgba(0,0,0,.15);cursor:pointer;font-size:18px;color:var(--sub)">&#8635;</button>'
     +kbTopbannerHtml
     +caHtml
     +analyseHtml
@@ -840,9 +850,19 @@ function renderBegeleiderDashboard(app){
       // voelde alsof het overzicht "bleef hangen". Teaser én verkoopmemorandum vervullen dezelfde
       // rol in deze stap (een marketingdocument om een geïnteresseerde partij mee te benaderen);
       // is een van beide er, dan is deze stap voltooid.
+      // Fix 13 sep 2026 (2e melding, Marcel: "LoI al ingevuld en staat nog steeds bij NDA volgende
+      // stap"): nda_getekend is een veld uit de OUDE documentflow — een NDA opgesteld/verstuurd via
+      // de nieuwere MoU/LoI/NDA-composer (worker/31-tos.js) zet dat veld nooit, dus de badge wist
+      // niet dat er allang voorbij deze stap was gewerkt. tos_status (uit de traject-respons, zie
+      // backend) dekt dat nu: een daadwerkelijk verstuurde NDA via de composer telt ook, én reële
+      // voortgang op de LoI (die normaliter ná de NDA komt) is zelf al het bewijs dat deze stap in de
+      // praktijk geen aandacht meer nodig heeft — verder blijven wijzen zou hier gokken zijn naar een
+      // volgorde die de gebruiker al gepasseerd is.
+      var ndaTosVerstuurd = !!(S.tos_status && S.tos_status.nda === 'verstuurd');
+      var loiTosVoortgang = !!(S.tos_status && S.tos_status.loi);
       var volgendeStapId = !t.bem_getekend ? 'bg-bem-actie'
         : (marketingAan && !t.teaser_tekst && !t.verkoopmemorandum_tekst) ? 'bg-teaser-actie'
-        : !t.nda_getekend ? 'bg-nda-composer-actie'
+        : (!t.nda_getekend && !ndaTosVerstuurd && !loiTosVoortgang) ? 'bg-nda-composer-actie'
         : null;
       // Horizontale kaart i.p.v. verticale rij-met-lijn (11 sep 2026, Marcel: "documentflow wil ik
       // horizontaal en niet verticaal") — zelfde knop-id's en dezelfde onclick-koppeling verderop,
