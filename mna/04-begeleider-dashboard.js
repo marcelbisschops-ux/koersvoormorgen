@@ -1259,33 +1259,171 @@ function renderBegeleiderDashboard(app){
     var datum=S.traject&&S.traject[datumVeld];
     var isUpload=v.doc_type.indexOf('_upload')!==-1;
     var vd=await fetch(WORKER+'/mna/versie/'+v.id+'?code='+encodeURIComponent(S.code)).then(function(r){return r.json();}).catch(function(){return{};});
+    var t2=S.traject||{};
+    var isSell=(t2.opdrachtgever_rol==='koper')?false:(!t2.traject_type||t2.traject_type==='Verkoop'||t2.traject_type==='Opvolging');
+    var heeftTekst=!!(vd&&vd.tekst);
+    // Bugfix 13 sep 2026 (Marcel: "getekend, maar ik kan hem niet printen hier of nogmaals versturen
+    // of opslaan. moet overal kunnen."): deze weergave (een al bestaande/getekende versie, i.p.v.
+    // net gegenereerd) toonde tot nu toe alléén "Nieuwe versie genereren" — geen Print-, verstuur- of
+    // Signhost-knop, ook niet als het document al lang klaar was. Krijgt nu dezelfde actieknoppen als
+    // een vers gegenereerd document (zie bgDoc hieronder); Signhost/Buiten-Signhost-om alleen als het
+    // nog niet getekend is, Print en Verstuur altijd (een al getekend document opnieuw printen/
+    // versturen is een normale, legitieme actie — bijv. een kopie voor de andere partij).
     out.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem">'
       +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem;flex-wrap:wrap;gap:6px">'
       +'<div style="font-size:11px;font-weight:600;color:'+kleuren[type]+';text-transform:uppercase;letter-spacing:.1em">'+labels[type]+(isUpload?' (geüpload)':'')+' — laatste versie'+(v.versie?' v'+v.versie:'')+'</div>'
       +(getekend?'<span style="font-size:11px;padding:3px 10px;border-radius:12px;background:var(--teal-bg);border:1px solid var(--teal);color:var(--teal)">&#10003; Getekend door '+esc(getekend)+(datum?' &middot; '+new Date(datum).toLocaleDateString('nl-NL',{day:'2-digit',month:'short',year:'numeric'}):'')+'</span>'
         :'<span style="font-size:11px;padding:3px 10px;border-radius:12px;background:var(--gold-bg);border:1px solid var(--gold);color:var(--gold)">Nog niet getekend</span>')
       +'</div>'
-      +(vd&&vd.tekst
-        ?'<textarea readonly style="width:100%;height:280px;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:Georgia,serif;font-size:12px;line-height:1.8;padding:1rem;outline:none;resize:vertical">'+esc(vd.tekst)+'</textarea>'
+      +(heeftTekst
+        ?'<textarea id="bg-doc-tekst" readonly style="width:100%;height:280px;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:Georgia,serif;font-size:12px;line-height:1.8;padding:1rem;outline:none;resize:vertical">'+esc(vd.tekst)+'</textarea>'
         :'<div style="font-size:12px;color:var(--muted);padding:1rem;background:var(--card);border-radius:var(--r)">Geüpload bestand, geen tekstweergave beschikbaar. <a href="'+WORKER+'/mna/document/download/'+v.id+'?code='+encodeURIComponent(S.code)+'" target="_blank" rel="noopener" style="color:var(--teal)">&#8681; Download</a></div>')
-      +'<div style="display:flex;gap:8px;margin-top:.75rem">'
+      +(heeftTekst?'<div style="margin-top:.4rem;padding:.5rem .7rem;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);font-size:11px;color:var(--muted);font-style:italic;line-height:1.6">'+esc(RELIANCE_VOETTEKST)+'<div style="font-style:normal;margin-top:2px;color:var(--muted);opacity:.8">Bij versturen (e-mail/Signhost) wordt deze slotregel automatisch aan het document toegevoegd. Bij printen/bekijken vraagt het platform u dit eerst te bevestigen.</div></div>':'')
+      +(heeftTekst?akkoordHtml('bg-doc-akkoord'):'')
+      +(heeftTekst&&type==='loi'?interneGoedkeuringHtml('bg-goedkeuring-naam'):'')
+      +'<div style="display:flex;gap:8px;margin-top:.75rem;flex-wrap:wrap">'
+      +(heeftTekst?'<button id="bg-print" class="btn-ghost" style="font-size:12px;padding:6px 14px">&#128196; Print</button>':'')
+      +(heeftTekst?'<button id="bg-email" class="btn" style="font-size:12px;padding:6px 14px;background:'+kleuren[type]+'">&#9993; Verstuur naar partijen</button>':'')
+      +(heeftTekst&&!getekend?'<button id="bg-signhost" class="btn" style="font-size:12px;padding:6px 14px;background:var(--teal)">&#9998; Signhost</button>':'')
+      +(heeftTekst&&!getekend?'<button id="bg-handmatig-getekend" class="btn-ghost" style="font-size:12px;padding:6px 14px">&#128221; Buiten Signhost om getekend</button>':'')
       +'<button id="bg-doc-nieuw" class="btn-outline" style="font-size:12px;padding:6px 14px">&#8635; Nieuwe versie genereren</button>'
-      +'</div></div>';
+      +'</div>'
+      +(heeftTekst?eigenPdfHtml('bg-pdf'):'')
+      +'</div>';
     var nieuwBtn=document.getElementById('bg-doc-nieuw');
     if(nieuwBtn)nieuwBtn.onclick=function(){ toonDocWaarschuwing(type,function(){ bgDoc(type); }); };
+    if(!heeftTekst)return;
+    var bgAkkoordCtrl=wireAkkoord('bg-doc-akkoord', ['bg-email','bg-signhost'].filter(function(id){return document.getElementById(id);}));
+    var bgGoedkeuringCtrl=type==='loi'?wireInterneGoedkeuring('bg-goedkeuring-naam','bg-doc-akkoord',['bg-email','bg-signhost'].filter(function(id){return document.getElementById(id);})):null;
+    var bgPdfStaat={base64:null,naam:null};
+    wireEigenPdf('bg-pdf', bgPdfStaat, function(actief){
+      var pb=document.getElementById('bg-print');
+      if(pb){pb.disabled=actief;pb.style.opacity=actief?'.4':'1';}
+      bgAkkoordCtrl.setOverride(actief);
+      if(bgGoedkeuringCtrl)bgGoedkeuringCtrl.setPdfOverride(actief);
+    });
+    var printBtn=document.getElementById('bg-print');
+    if(printBtn)printBtn.onclick=function(){ printDoc(document.getElementById('bg-doc-tekst').value, {nda:'NDA',loi:'Letter of Intent',bem:'Bemiddelingsovereenkomst',excl:'Exclusiviteitsbrief'}[type]||type, type); };
+    var emailBtn=document.getElementById('bg-email');
+    if(emailBtn)emailBtn.onclick=function(){
+      var ebtn=this;
+      if(type==='loi')secAuditLog('interne_goedkeuring',{document_type:'loi',verzendkanaal:'email',goedgekeurd_door:(bgGoedkeuringCtrl?bgGoedkeuringCtrl.getNaam():'')});
+      var vt=document.getElementById('bg-doc-tekst').value;
+      var vtPh=resterendePlaceholders(vt);
+      if(!(S.traject&&S.traject.clientacceptatie_getoetst) && !confirm('Cliëntacceptatie is voor dit traject nog niet als getoetst gemarkeerd (Wwft / AV art. 4). Toch versturen?')){ return; }
+      if(vtPh.length && !confirm('Let op: er staan nog '+vtPh.length+' oningevulde plek'+(vtPh.length===1?'':'ken')+' in het document:\n\n'+vtPh.slice(0,12).join('\n')+'\n\nToch versturen naar partijen?')){ return; }
+      var titelLbl={nda:'NDA',loi:'Letter of Intent',bem:'Bemiddelingsovereenkomst',excl:'Exclusiviteitsbrief'}[type]||type;
+      toonRelianceAkkoord(titelLbl,type,async function(){
+      ebtn.disabled=true;ebtn.textContent='Versturen...';
+      var toList;
+      if(type==='bem'){
+        toList=isSell?[t2.contact_email,t2.begeleider_email].filter(Boolean):[t2.koper_email,t2.begeleider_email].filter(Boolean);
+      } else {
+        toList=[t2.contact_email,t2.begeleider_email,t2.koper_email].filter(Boolean);
+      }
+      var epMap={nda:'/mna/nda/email',loi:'/mna/loi/email',bem:'/mna/bem/email',excl:'/mna/exclusief/email'};
+      var ep=epMap[type]||'/mna/bem/email';
+      var payload={code:S.traject.id,to:toList};
+      if(type==='nda')payload.nda_tekst=vt;
+      else if(type==='loi'){payload.loi_tekst=vt;payload.goedgekeurd_door=bgGoedkeuringCtrl?bgGoedkeuringCtrl.getNaam():'';}
+      else if(type==='excl')payload.excl_tekst=vt;
+      else{payload.bem_tekst=vt;payload.type=isSell?'verkoop':'aankoop';}
+      if(bgPdfStaat.base64){payload.eigen_pdf_base64=bgPdfStaat.base64;payload.eigen_pdf_naam=bgPdfStaat.naam;payload.eigen_pdf_mime=bgPdfStaat.mime;}
+      var er=await fetch(WORKER+ep,{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S.code},body:JSON.stringify(payload)});
+      var ed=await er.json();
+      if(ed.ok){ebtn.textContent='✓ Verstuurd';}else{toast('Fout: '+(ed.error||'onbekend'),'err');ebtn.disabled=false;ebtn.textContent='✉ Verstuur';}
+      });
+    };
+    var handmatigBtn=document.getElementById('bg-handmatig-getekend');
+    if(handmatigBtn)handmatigBtn.onclick=function(){
+      var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:3000;display:flex;align-items:center;justify-content:center;padding:1.5rem';
+      var mo=document.createElement('div');mo.setAttribute('role','dialog');mo.setAttribute('aria-modal','true');mo.setAttribute('aria-labelledby','handmatig-getekend-modal-titel');mo.style.cssText='background:var(--panel);border:1px solid var(--border2);border-radius:var(--r2);padding:1.75rem;max-width:400px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.25)';
+      mo.innerHTML='<div id="handmatig-getekend-modal-titel" style="font-family:Playfair Display,serif;font-size:1.1rem;color:var(--head);font-weight:600;margin-bottom:1rem">&#128221; Buiten Signhost om getekend &mdash; '+(labels[type]||type)+'</div>'
+        +'<div class="field"><label for="bg-hg-naam">Naam van degene die getekend heeft</label><input type="text" id="bg-hg-naam"></div>'
+        +'<div id="bg-hg-err" style="display:none;color:var(--red);font-size:12px;margin-bottom:.5rem"></div>'
+        +'<div style="display:flex;gap:8px;justify-content:flex-end">'
+        +'<button class="btn-ghost" id="bg-hg-ann">Annuleren</button>'
+        +'<button class="btn" id="bg-hg-ok">Vastleggen</button>'
+        +'</div>';
+      ov.appendChild(mo);document.body.appendChild(ov);
+      ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
+      document.getElementById('bg-hg-ann').onclick=function(){document.body.removeChild(ov);};
+      var naamInput=document.getElementById('bg-hg-naam');
+      naamInput.focus();
+      document.getElementById('bg-hg-ok').onclick=async function(){
+        var naam=naamInput.value.trim();
+        var errEl=document.getElementById('bg-hg-err');
+        if(!naam){errEl.style.display='block';errEl.textContent='Naam verplicht';return;}
+        var btn=this;btn.disabled=true;btn.textContent='Vastleggen...';
+        var r=await fetch(WORKER+'/mna/teken',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:S.code,document:type,naam:naam})}).then(function(x){return x.json();}).catch(function(){return{};});
+        if(r.ok){
+          document.body.removeChild(ov);
+          toast('Vastgelegd: '+(labels[type]||type)+' getekend door '+naam,'ok');
+          if(type==='loi')S.loiGetekend=naam;
+          if(S.traject)S.traject[getekendVeld]=naam;
+          bgToonBestaandeVersie(type,v);
+        }
+        else{errEl.style.display='block';errEl.textContent=r.error||'Onbekende fout';btn.disabled=false;btn.textContent='Vastleggen';}
+      };
+    };
+    var shBtn=document.getElementById('bg-signhost');
+    if(shBtn)shBtn.onclick=function(){
+      var tekst=document.getElementById('bg-doc-tekst').value;
+      var defEmail=type==='bem'?(isSell?(t2.contact_email||''):(t2.koper_email||'')):(t2.contact_email||'');
+      var defNaam=type==='bem'?(isSell?(t2.contact_naam||''):(t2.koper_contact||t2.koper_naam||'')):(t2.contact_naam||'');
+      var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:3000;display:flex;align-items:center;justify-content:center;padding:1.5rem';
+      var mo=document.createElement('div');mo.setAttribute('role','dialog');mo.setAttribute('aria-modal','true');mo.setAttribute('aria-labelledby','signhost-modal-titel');mo.style.cssText='background:var(--panel);border:1px solid var(--border2);border-radius:var(--r2);padding:1.75rem;max-width:400px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.25)';
+      mo.innerHTML='<div id="signhost-modal-titel" style="font-family:Playfair Display,serif;font-size:1.1rem;color:var(--head);font-weight:600;margin-bottom:1rem">&#9998; Verstuur via Signhost &mdash; '+(labels[type]||type)+'</div>'
+        +'<div class="field"><label for="bg-sh-naam">Naam ondertekenaar</label><input type="text" id="bg-sh-naam" value="'+esc(defNaam)+'" placeholder="Voor- en achternaam"></div>'
+        +'<div class="field"><label for="bg-sh-email">E-mail ondertekenaar</label><input type="email" id="bg-sh-email" value="'+esc(defEmail)+'" placeholder="E-mailadres"></div>'
+        +'<div id="bg-sh-err" style="display:none;color:var(--red);font-size:12px;margin-bottom:.5rem"></div>'
+        +'<div style="display:flex;gap:8px;justify-content:flex-end">'
+        +'<button class="btn-ghost" id="bg-sh-ann">Annuleren</button>'
+        +'<button class="btn" id="bg-sh-ok" style="background:var(--teal)">&#9998; Verstuur via Signhost</button>'
+        +'</div>';
+      ov.appendChild(mo);document.body.appendChild(ov);
+      ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
+      document.getElementById('bg-sh-ann').onclick=function(){document.body.removeChild(ov);};
+      document.getElementById('bg-sh-ok').onclick=async function(){
+        var btn=this;btn.disabled=true;btn.textContent='Versturen...';
+        var naam=document.getElementById('bg-sh-naam').value.trim();
+        var email=document.getElementById('bg-sh-email').value.trim();
+        var errEl=document.getElementById('bg-sh-err');
+        if(!email){errEl.style.display='block';errEl.textContent='E-mail verplicht';btn.disabled=false;btn.textContent='Verstuur';return;}
+        var shPh=resterendePlaceholders(tekst);
+        if(!(S.traject&&S.traject.clientacceptatie_getoetst) && !confirm('Cliëntacceptatie is voor dit traject nog niet als getoetst gemarkeerd (Wwft / AV art. 4). Toch via Signhost versturen?')){ btn.disabled=false; btn.textContent='✎ Verstuur via Signhost'; return; }
+        if(shPh.length && !confirm('Let op: er staan nog '+shPh.length+' oningevulde plek'+(shPh.length===1?'':'ken')+' in het document:\n\n'+shPh.slice(0,12).join('\n')+'\n\nToch via Signhost versturen?')){ btn.disabled=false; btn.textContent='✎ Verstuur via Signhost'; return; }
+        if(type==='loi')secAuditLog('interne_goedkeuring',{document_type:'loi',verzendkanaal:'signhost',goedgekeurd_door:(bgGoedkeuringCtrl?bgGoedkeuringCtrl.getNaam():'')});
+        toonRelianceAkkoord(labels[type]||type,type,async function(){
+        var r=await fetch(WORKER+'/mna/signhost/stuur',{method:'POST',
+          headers:{'Content-Type':'application/json','x-tussen-key':S.code},
+          body:JSON.stringify({code:S.traject.id,doc_type:type,ondertekenaar_naam:naam,ondertekenaar_email:email,doc_tekst:tekst})});
+        var rd=await r.json();
+        if(rd.ok){
+          document.body.removeChild(ov);
+          toast('&#10003; '+(labels[type]||type)+' verstuurd via Signhost naar '+email,'ok',5000);
+          var shBtnEl=document.getElementById('bg-signhost');
+          if(shBtnEl){shBtnEl.disabled=true;shBtnEl.innerHTML='&#10003; Verstuurd';shBtnEl.style.opacity='.5';}
+        }
+        else{errEl.style.display='block';errEl.textContent=rd.error||'Fout';btn.disabled=false;btn.textContent='Verstuur';}
+        });
+      };
+    };
   }
 
   // Document genereren helper
+  // ISSUE-25 (juridische review 3 sep 2026): een gegenereerd document mag niet als definitief/
+  // verzendbaar worden aangeboden met nog-oningevulde placeholders. resterendePlaceholders()
+  // vindt [vierkante-haak]- en {{dubbele-accolade}}-plekken; de begeleider krijgt een zichtbare
+  // waarschuwing én een bevestigingsvraag bij versturen/Signhost. Gehoist naar deze buitenste scope
+  // (13 sep 2026) zodat ook bgToonBestaandeVersie() 'm kan gebruiken — was voorheen alleen lokaal
+  // binnen bgDoc() gedefinieerd.
+  function resterendePlaceholders(txt){
+    var set={}; var out=[]; var re=/\[[^\]\n]{1,60}\]|\{\{[^}\n]{1,60}\}\}/g; var m;
+    while((m=re.exec(String(txt||'')))){ var v=m[0]; if(!set[v]){ set[v]=1; out.push(v); } }
+    return out;
+  }
   async function bgDoc(type){
-    // ISSUE-25 (juridische review 3 sep 2026): een gegenereerd document mag niet als definitief/
-    // verzendbaar worden aangeboden met nog-oningevulde placeholders. resterendePlaceholders()
-    // vindt [vierkante-haak]- en {{dubbele-accolade}}-plekken; de begeleider krijgt een zichtbare
-    // waarschuwing én een bevestigingsvraag bij versturen/Signhost.
-    function resterendePlaceholders(txt){
-      var set={}; var out=[]; var re=/\[[^\]\n]{1,60}\]|\{\{[^}\n]{1,60}\}\}/g; var m;
-      while((m=re.exec(String(txt||'')))){ var v=m[0]; if(!set[v]){ set[v]=1; out.push(v); } }
-      return out;
-    }
     var out=document.getElementById('bg-doc-out');
     out.style.display='block';
     // Prominent zichtbaar maken (21 aug 2026, Marcel — herhaaldelijk gevraagd): een grijze regel
@@ -1298,7 +1436,13 @@ function renderBegeleiderDashboard(app){
     // isSell bepaald door opdrachtgever_rol: koper=buy-side, anders sell-side
     var isSell=(t2.opdrachtgever_rol==='koper')?false:(!t2.traject_type||t2.traject_type==='Verkoop'||t2.traject_type==='Opvolging');
     var isOpvolging=t2.traject_type==='Opvolging';
-    var tplType=type==='bem'?(isOpvolging?'bem_opvolging':(isSell?'bem_verk':'bem_koper')):type;
+    // Bugfix 13 sep 2026 (Marcel: "excl brief template ontbreekt"): geen ontbrekend template, maar
+    // een sleutel-mismatch — BF_TEMPLATES en de mna_templates-upload (marilyn) gebruiken voor de
+    // Exclusiviteitsbrief de sleutel 'exclusief', terwijl deze regel tot nu toe gewoon 'excl' opvroeg
+    // (de sleutel die elders — concept-opslaan, mna_doc_versies, bgToonOfGenereerDoc — wél correct is
+    // en dus ongewijzigd blijft). Resultaat: /mna/template/excl vond nooit iets, viel terug op
+    // '[standaard template]', terwijl er allang een volledige, echte template bestond.
+    var tplType=type==='bem'?(isOpvolging?'bem_opvolging':(isSell?'bem_verk':'bem_koper')):(type==='excl'?'exclusief':type);
     var tplD=await fetch(WORKER+'/mna/template/'+tplType+'?email='+encodeURIComponent(t2.begeleider_email||'')+'&code='+encodeURIComponent(S.code)).then(function(r){return r.json();}).catch(function(){return{ok:false};});
     // Cijfers uit het laatst verstuurde dealvoorstel automatisch overnemen in de LoI (26 juli 2026)
     // — voorkomt dat de begeleider dezelfde koopsom/multiple/escrow een tweede keer met de hand
@@ -3115,20 +3259,35 @@ function renderBegeleiderDashboard(app){
         +'</div>'
         +'<div style="background:var(--card);border-radius:6px;height:8px;overflow:hidden;margin-bottom:.75rem"><div style="background:'+(pct===100?'var(--teal)':'var(--gold)')+';height:100%;width:'+pct+'%;transition:width .3s"></div></div>'
         +'<div style="font-size:12px;color:var(--gold-dark);background:var(--gold-bg);border:1px solid var(--gold);border-radius:6px;padding:.5rem .75rem;margin-bottom:.75rem;line-height:1.5">&#9888; Algemene controlelijst ter voorbereiding op closing — geen juridisch of fiscaal advies, en niet automatisch aangepast aan de specifieke transactiestructuur van dit traject.</div>';
+      // Bugfix/uitbreiding 13 sep 2026 (Marcel: "ik wil zelf nog punten kunnen toevoegen aan de
+      // closing checklist"): items uit de vaste lijst zijn platte strings (key = ci_ii, positioneel
+      // — stabiel omdat die lijst nooit wijzigt); eigen, per traject toegevoegde items zijn objecten
+      // met een eigen stabiele key ('eigen_'+id) zodat verwijderen van het ene item de key van een
+      // ander niet laat verschuiven.
+      function itemTekst(item){ return (item&&typeof item==='object')?item.tekst:item; }
+      function itemKey(item,ci,ii){ return (item&&typeof item==='object'&&item.key)?item.key:(ci+'_'+ii); }
       checklist.forEach(function(cat,ci){
         html+='<div style="margin-bottom:.85rem"><div style="font-size:12px;font-weight:600;color:var(--head);margin-bottom:.4rem">'+esc(cat.categorie)+'</div>';
         cat.items.forEach(function(item,ii){
-          var key=ci+'_'+ii;
+          var key=itemKey(item,ci,ii);
           var st=status[key];
           var af=!!(st&&st.aangevinkt);
-          html+='<label style="display:flex;align-items:flex-start;gap:8px;padding:5px 0;font-size:12px;color:'+(af?'var(--muted)':'var(--sub)')+';cursor:pointer'+(af?';text-decoration:line-through':'')+'">'
+          var isEigen=!!(item&&typeof item==='object'&&item.id);
+          html+='<div style="display:flex;align-items:flex-start;gap:8px;padding:5px 0">'
+            +'<label style="display:flex;align-items:flex-start;gap:8px;flex:1;min-width:0;font-size:12px;color:'+(af?'var(--muted)':'var(--sub)')+';cursor:pointer'+(af?';text-decoration:line-through':'')+'">'
             +'<input type="checkbox" class="cc-check" data-key="'+key+'"'+(af?' checked':'')+' style="margin-top:2px;flex-shrink:0">'
-            +'<span>'+esc(item)+(af&&st.aangevinkt_door?' <span style="font-size:10px;color:var(--muted);text-decoration:none;font-style:italic">('+esc(st.aangevinkt_door)+')</span>':'')+'</span>'
-            +'</label>';
+            +'<span>'+esc(itemTekst(item))+(af&&st.aangevinkt_door?' <span style="font-size:10px;color:var(--muted);text-decoration:none;font-style:italic">('+esc(st.aangevinkt_door)+')</span>':'')+'</span>'
+            +'</label>'
+            +(isEigen?'<button class="btn-ghost cc-eigen-verwijder" data-id="'+esc(item.id)+'" title="Verwijderen" style="font-size:11px;padding:2px 8px;color:var(--red);border-color:var(--red);flex-shrink:0">&#10005;</button>':'')
+            +'</div>';
         });
         html+='</div>';
       });
-      html+='<div style="display:flex;gap:8px;margin-top:.5rem"><button id="closing-print" class="btn-ghost" style="font-size:12px;padding:6px 14px">&#128196; Print / PDF</button></div></div>';
+      html+='<div style="border-top:1px solid var(--border2);padding-top:.75rem;margin-top:.25rem;display:flex;gap:6px">'
+        +'<input type="text" id="cc-eigen-tekst" placeholder="Eigen punt toevoegen..." maxlength="300" style="flex:1;background:var(--card);border:1px solid var(--border2);border-radius:6px;padding:6px 10px;font-size:12px">'
+        +'<button id="cc-eigen-toevoegen" class="btn-outline" style="font-size:12px;padding:6px 14px;white-space:nowrap">&#43; Toevoegen</button>'
+        +'</div>'
+        +'<div style="display:flex;gap:8px;margin-top:.75rem"><button id="closing-print" class="btn-ghost" style="font-size:12px;padding:6px 14px">&#128196; Print / PDF</button></div></div>';
       out.innerHTML=html;
       out.querySelectorAll('.cc-check').forEach(function(cb){
         cb.onchange=async function(){
@@ -3139,14 +3298,43 @@ function renderBegeleiderDashboard(app){
           else{toast('Opslaan mislukt: '+(r.error||'onbekend'),'err');this.disabled=false;this.checked=!checked;}
         };
       });
+      out.querySelectorAll('.cc-eigen-verwijder').forEach(function(btn){
+        btn.onclick=async function(){
+          var id=this.dataset.id;
+          this.disabled=true;
+          var r=await fetch(WORKER+'/mna/closing-checklist/item/verwijderen',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||''},body:JSON.stringify({code:S.code,id:id})}).then(function(x){return x.json();}).catch(function(){return{};});
+          if(r.ok){
+            var eigenCat=checklist.find(function(c){return c.eigen;});
+            delete status['eigen_'+id];
+            if(eigenCat)eigenCat.items=eigenCat.items.filter(function(it){return it.id!==id;});
+            if(eigenCat&&!eigenCat.items.length)checklist=checklist.filter(function(c){return !c.eigen;});
+            render();
+          }else{toast('Verwijderen mislukt: '+(r.error||'onbekend'),'err');this.disabled=false;}
+        };
+      });
+      var eigenToevoegBtn=document.getElementById('cc-eigen-toevoegen');
+      var eigenInput=document.getElementById('cc-eigen-tekst');
+      if(eigenToevoegBtn)eigenToevoegBtn.onclick=async function(){
+        var tekst=(eigenInput.value||'').trim();
+        if(!tekst){toast('Vul eerst een tekst in','err');return;}
+        eigenToevoegBtn.disabled=true;eigenToevoegBtn.textContent='Toevoegen...';
+        var r=await fetch(WORKER+'/mna/closing-checklist/item/toevoegen',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||''},body:JSON.stringify({code:S.code,tekst:tekst,naam:S.traject&&S.traject.begeleider_naam||'Begeleider'})}).then(function(x){return x.json();}).catch(function(){return{};});
+        if(r.ok){
+          var eigenCat=checklist.find(function(c){return c.eigen;});
+          if(!eigenCat){eigenCat={categorie:'Eigen toegevoegde punten',eigen:true,items:[]};checklist.push(eigenCat);}
+          eigenCat.items.push({key:r.key,tekst:tekst,id:r.id});
+          render();
+        }else{toast('Toevoegen mislukt: '+(r.error||'onbekend'),'err');eigenToevoegBtn.disabled=false;eigenToevoegBtn.textContent='+ Toevoegen';}
+      };
+      if(eigenInput)eigenInput.onkeydown=function(e){ if(e.key==='Enter'){e.preventDefault();eigenToevoegBtn.click();} };
       var printBtn=document.getElementById('closing-print');
       if(printBtn)printBtn.onclick=function(){
         var tekst='CLOSING-CHECKLIST — '+(t2.kantoor_naam||S.code)+'\n\n';
         checklist.forEach(function(cat,ci){
           tekst+=cat.categorie.toUpperCase()+'\n';
           cat.items.forEach(function(item,ii){
-            var st=status[ci+'_'+ii];
-            tekst+=(st&&st.aangevinkt?'[x] ':'[ ] ')+item+'\n';
+            var st=status[itemKey(item,ci,ii)];
+            tekst+=(st&&st.aangevinkt?'[x] ':'[ ] ')+itemTekst(item)+'\n';
           });
           tekst+='\n';
         });

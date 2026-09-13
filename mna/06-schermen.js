@@ -1552,7 +1552,7 @@ function bindAll(){
       var html2='';
       if(sc2.waarschuwingen&&sc2.waarschuwingen.length){
         html2+='<div style="background:var(--red-bg);border:1px solid var(--red);border-radius:var(--r);padding:.6rem .85rem;margin-bottom:.85rem;font-size:12px;color:var(--red)">'
-          +'<strong>&#9888; Sanity-check geeft '+sc2.waarschuwingen.length+' aandachtspunt(en):</strong>'
+          +'<strong>&#9888; Plausibiliteitscontrole geeft '+sc2.waarschuwingen.length+' aandachtspunt(en):</strong>'
           +sc2.waarschuwingen.map(function(w){return '<div style="padding:2px 0">&bull; '+esc(w)+'</div>';}).join('')
           +'</div>';
       }
@@ -1564,10 +1564,16 @@ function bindAll(){
         +'<div style="font-size:12px;color:var(--mid);margin-bottom:.5rem"><strong>Methode:</strong> '+esc(w2.methode||'onbekend')+(w2.gehanteerde_multiple?' ('+esc(String(w2.gehanteerde_multiple))+'x)':'')+'</div>'
         +(w2.onderbouwing?'<div style="font-size:12px;color:var(--mid);margin-bottom:.5rem;line-height:1.6"><strong>Onderbouwing:</strong> '+esc(w2.onderbouwing)+'</div>':'')
         +(w2.risicofactoren?'<div style="font-size:12px;color:var(--mid);margin-bottom:.5rem;line-height:1.6"><strong>Risicofactoren:</strong> '+esc(w2.risicofactoren)+'</div>':'');
+      // Bevinding 13 sep 2026 (Marcel: "welke sectorinfo gebruikt hier ter vergelijking?"): zonder
+      // bronnen (geen accountancy-sector, of D1 mist nog kwantitatieve benchmarks voor deze sector)
+      // bleef dit blok gewoon leeg — geen antwoord op de vraag, leek eerder een omissie dan een
+      // bewust "geen benchmark toegepast". Expliciet benoemen i.p.v. stilzwijgend weglaten.
       if(bronnen2.length){
         html2+='<div style="font-size:11px;color:var(--muted);margin-top:.6rem;padding-top:.6rem;border-top:1px solid var(--border)"><strong>Benchmarkbronnen gebruikt:</strong>'
           +bronnen2.map(function(b){return '<div style="padding:1px 0">&bull; '+esc(b.sleutel)+': '+esc(String(b.waarde))+' ('+esc(b.bron||'onbekend')+(b.peildatum?', peildatum '+esc(b.peildatum):'')+')</div>';}).join('')
           +'</div>';
+      }else{
+        html2+='<div style="font-size:11px;color:var(--muted);margin-top:.6rem;padding-top:.6rem;border-top:1px solid var(--border)">Geen gebronde marktbenchmarks gebruikt bij deze inschatting — uitsluitend gebaseerd op de ingevulde due-diligence-gegevens en eerdere beoordelingen.</div>';
       }
       out2.innerHTML=html2;
       wAi2Btn.disabled=false;wAi2Btn.textContent='↻ Opnieuw genereren';

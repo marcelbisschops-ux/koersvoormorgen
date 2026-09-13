@@ -1575,27 +1575,18 @@ function dvHtmlNaarTekst(html){
 // op een verborgen iframe als de browser de pop-up blokkeert. Voorheen deed elke printfunctie dit
 // zelf, zonder fallback — vandaar "soms opent alleen een lege HTML-pagina" / "er gebeurt niets".
 function printHtmlDocument(docHtml){
-  // Chrome/Safari-eigenaardigheid (13 sep 2026, gemeld door Marcel — bleek na de eerdere titel-fix
-  // van dezelfde dag nog steeds te spelen): de printdialoog toont in de voettekst de daadwerkelijke
-  // vensterlocatie, niet de <title>. Een venster geopend via window.open('','_blank')+document.write()
-  // navigeert nooit ergens naartoe — de locatie blijft letterlijk "about:blank", ook als het document
-  // zelf (en dus de titel) allang is vervangen. Enige betrouwbare fix: het venster een echte
-  // (blob:)-URL geven i.p.v. een lege, zodat er wél iets anders dan "about:blank" in de voettekst
-  // staat. De titel-fix hierboven (nu overbodig, <title> in docHtml wordt gewoon geladen als
-  // onderdeel van de echte navigatie) blijft verwijderd; dit vervangt 'm volledig, geen aanvulling.
-  var win=null;
-  try{
-    var blobUrl=URL.createObjectURL(new Blob([docHtml+'<script>window.onload=function(){window.focus();window.print();}<\/script>'],{type:'text/html'}));
-    win=window.open(blobUrl,'_blank');
-    if(win) setTimeout(function(){ try{ URL.revokeObjectURL(blobUrl); }catch(e){} },15000);
-  }catch(e){ win=null; }
-  if(win){
-    return;
-  }
-  // ChatGPT-review 31 aug 2026: laat de iframe-fallback niet stil falen. Lukt print() daar ook niet,
-  // dan dezelfde zichtbare instructie tonen als de buitenste catch — anders lijkt de knop niets te doen.
+  // Bugfix 13 sep 2026 (Marcel, tweede melding dezelfde dag): de eerdere blob:-URL-fix loste
+  // "about:blank" in de printvoettekst op, maar leverde een even onleesbare, betekenisloze
+  // "blob:https://…/<uuid>"-regel op — Marcel: "die blob is lelijk en moet gewoon niet geprint
+  // worden, heeft geen toegevoegde waarde." Een pagina kan de voettekst van de browser-printdialoog
+  // (Chrome/Safari's eigen "Kop- en voettekst"-optie) niet uitzetten of aanpassen — de enige knop
+  // die we hebben is WÁT voor URL daar staat. Een los venster (blob: of about:blank) heeft altijd een
+  // kunstmatige URL; de hidden-iframe-aanpak (voorheen alleen de fallback als pop-ups geblokkeerd
+  // waren) print vanuit de HUIDIGE pagina zelf, dus de voettekst toont de echte, herkenbare
+  // koersvoormorgen.nl-URL — dat is het enige zinvolle resultaat dat haalbaar is. Nu de standaardweg,
+  // geen fallback meer; voorkomt ook meteen dat pop-up-blokkades ooit nog een rol spelen.
   var handmatigMelding=function(){
-    alert('Kon het printvenster niet openen. Sta pop-ups toe voor deze site, of gebruik '+(navigator.platform&&navigator.platform.indexOf('Mac')>-1?'⌘P':'Ctrl+P')+'.');
+    alert('Kon het document niet automatisch printen. Gebruik '+(navigator.platform&&navigator.platform.indexOf('Mac')>-1?'⌘P':'Ctrl+P')+'.');
   };
   var ifr=document.createElement('iframe');
   ifr.setAttribute('aria-hidden','true');
