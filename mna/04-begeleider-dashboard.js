@@ -835,8 +835,13 @@ function renderBegeleiderDashboard(app){
       // grotendeels parallelle, optionele stappen (dealvoorstel, informatieverzoek, exclusiviteit
       // kunnen in elke volgorde) waar één "juiste" volgende stap aanwijzen zou neerkomen op gokken
       // — en dat doet dit platform nergens, ook niet in de eigen UI-suggesties.
+      // Fix 13 sep 2026 (Marcel): de badge bleef "Genereer teaser" aanwijzen nadat het
+      // verkoopmemorandum — een later, uitgebreider marketingdocument — al was gegenereerd, wat
+      // voelde alsof het overzicht "bleef hangen". Teaser én verkoopmemorandum vervullen dezelfde
+      // rol in deze stap (een marketingdocument om een geïnteresseerde partij mee te benaderen);
+      // is een van beide er, dan is deze stap voltooid.
       var volgendeStapId = !t.bem_getekend ? 'bg-bem-actie'
-        : (marketingAan && !t.teaser_tekst) ? 'bg-teaser-actie'
+        : (marketingAan && !t.teaser_tekst && !t.verkoopmemorandum_tekst) ? 'bg-teaser-actie'
         : !t.nda_getekend ? 'bg-nda-composer-actie'
         : null;
       // Horizontale kaart i.p.v. verticale rij-met-lijn (11 sep 2026, Marcel: "documentflow wil ik
