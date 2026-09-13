@@ -1,0 +1,28 @@
+# Cache-busting-fix (13 sep 2026, aangescherpte werkregel 30, punt 2 van Marcels doorlichtings-
+# opdracht): Cloudflare Pages zette op alle statische bestanden een default
+# "Cache-Control: public, max-age=14400, must-revalidate" (bevestigd via curl -I op productie).
+# must-revalidate wil zeggen: de browser mag de eerste 4 uur na een fetch het lokale exemplaar
+# blijven gebruiken ZONDER ook maar contact met de server te maken — dus een terugkerende
+# bezoeker binnen dat venster na een deploy kan tot 4 uur lang functionele/security-fixes missen,
+# zonder enige foutmelding. Een handmatige hard-refresh-instructie aan gebruikers lost dit niet
+# structureel op (regel uit de opdracht: "geen oplossing waarbij de gebruiker zelf een hard
+# refresh moet uitvoeren").
+#
+# Fix: Cache-Control: no-cache (LET OP: dit is geen "niet cachen" — no-cache betekent "cache mag,
+# maar altijd eerst revalideren vóór gebruik"). Cloudflare Pages genereert al een ETag per bestand
+# (bevestigd via curl -I); no-cache dwingt de browser om bij ELK gebruik eerst een conditioneel
+# verzoek (If-None-Match) te sturen. Ongewijzigd bestand → server antwoordt 304 Not Modified
+# (goedkoop, geen download). Gewijzigd bestand (na een deploy) → direct de nieuwe inhoud, nooit
+# meer een stilzwijgend verouderde versie. Dit is geen build-pipeline/content-hashing nodig; het
+# hergebruikt de ETag-ondersteuning die er al is.
+#
+# Scope: alleen de functionele/gedragsbepalende bestanden (mna/*.js — de hele mna.html/adv.html-
+# applicatielogica — en assets/kvm.js, gedeeld over vrijwel elke publieke pagina). HTML-pagina's
+# hadden al "max-age=0, must-revalidate" (dus al effectief altijd-revalideren) en zijn dus geen
+# risico; fonts blijven lang gecachet (die veranderen nooit na publicatie, cache-busting daar
+# voegt niets toe en zou alleen onnodig extra round-trips kosten).
+/mna/*
+  Cache-Control: no-cache
+
+/assets/kvm.js
+  Cache-Control: no-cache

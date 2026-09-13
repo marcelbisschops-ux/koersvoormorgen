@@ -6,11 +6,14 @@
 #   1. Exporteert de VOLLEDIGE database (alle trajecten, DD-data, gebruikers,
 #      documenten-metadata, waarderingen, audit) naar een gedateerd .sql-bestand.
 #   2. Haalt de geüploade documenten uit R2 op (incrementeel — alleen nieuwe).
-#   3. Herinnert eraan om openstaande wijzigingen in de backend-repo te committen/pushen
+#   3. Kopieert de lokale, bewust niet-gecommitte .md-documentatie (CLAUDE.md, het technisch
+#      overdrachtsdocument, BACKLOG.md e.d. — zie .gitignore /*.md) mee, zodat operationele kennis
+#      niet uitsluitend op dit ene apparaat bestaat (toegevoegd 13 sep 2026, doorlichtingsopdracht).
+#   4. Herinnert eraan om openstaande wijzigingen in de backend-repo te committen/pushen
 #      (de backend-code zelf is sinds 25 juli 2026 canoniek in
 #      ~/Documents/GitHub/koersvoormorgen-backend/backend/ — dat IS al de git-back-up,
 #      dit script hoeft er niets meer naartoe te kopiëren).
-#   4. Ruimt database-back-ups ouder dan 60 dagen op.
+#   5. Ruimt database-back-ups ouder dan 60 dagen op.
 #
 # Bijgewerkt 25 juli 2026 (audit-fix P1/P3): dit script draaide voorheen vanuit/naar
 # ~/Downloads, dat na de repo-splitsing van 23 juli 2026 niet meer werd bijgewerkt —
@@ -154,7 +157,26 @@ else
   echo "   ⊘ geen documenten in R2 (of database niet bereikbaar)"
 fi
 
-echo "▶ 3/4  Backend-code-status controleren ..."
+echo "▶ 3/5  Lokale (niet-gecommitte) documentatie back-uppen ..."
+# Bevinding 13 sep 2026 (doorlichtingsopdracht, technisch overdrachtsdocument): CLAUDE.md, het
+# technisch overdrachtsdocument zelf (kantoorinzicht_documentatie.md), BACKLOG.md en alle overige
+# root-level .md-bestanden in deze repo staan bewust in .gitignore (/*.md) — ze bevatten
+# infrastructuur-ID's en interne werkafspraken die niet in de publieke repo horen (werkregel 25).
+# Daardoor stonden ze NERGENS geback-upt: bij verlies van dit apparaat was alle vastgelegde
+# operationele kennis (gouden regels, architectuur, herstelprocedures) weg, los van de D1-data zelf.
+DOCS_BACKUP_DIR="$BACKUP_DIR/lokale-documentatie_$STAMP"
+mkdir -p "$DOCS_BACKUP_DIR"
+DOC_COUNT=0
+for f in "$REPO_DIR"/*.md; do
+  [ -f "$f" ] || continue
+  cp "$f" "$DOCS_BACKUP_DIR/" && DOC_COUNT=$((DOC_COUNT+1))
+done
+echo "   ✓ $DOC_COUNT lokale .md-bestanden gekopieerd naar $DOCS_BACKUP_DIR"
+# Oudere kopieën van deze documentatie-back-up opruimen (>60 dagen, zelfde bewaartermijn als de
+# database-dumps hieronder) — voorkomt dat elke dagelijkse run een aparte, nooit-opgeruimde map achterlaat.
+find "$BACKUP_DIR" -maxdepth 1 -name "lokale-documentatie_*" -type d -mtime +60 -exec rm -rf {} + 2>/dev/null || true
+
+echo "▶ 4/5  Backend-code-status controleren ..."
 if [ ! -d "$BACKEND_REPO_DIR/.git" ]; then
   echo "   ⊘ $BACKEND_REPO_DIR bestaat niet (of is geen git-repo) — niets te controleren"
 elif [ -n "$(cd "$BACKEND_REPO_DIR" && git status --porcelain 2>/dev/null)" ]; then
@@ -163,7 +185,7 @@ else
   echo "   ✓ $BACKEND_REPO_DIR is schoon (alles gecommit)"
 fi
 
-echo "▶ 4/4  Oude database-back-ups opruimen (>60 dagen) ..."
+echo "▶ 5/5  Oude database-back-ups opruimen (>60 dagen) ..."
 find "$BACKUP_DIR" -maxdepth 1 -name "kantoorinzicht_*.sql" -mtime +60 -delete 2>/dev/null || true
 AANTAL=$(ls -1 "$BACKUP_DIR"/kantoorinzicht_*.sql 2>/dev/null | wc -l | tr -d ' ')
 echo "   ✓ $AANTAL database-back-up(s) in $BACKUP_DIR"

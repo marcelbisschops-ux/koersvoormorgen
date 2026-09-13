@@ -468,6 +468,185 @@ test.describe('Login en rollen (eigen testtraject)', () => {
   });
 });
 
+// ───────────────────── 2b. ROL CLICK-THROUGH: KOPER ─────────────────────
+// Werkregel 27-dekkingsgap (13 sep 2026): tot nu toe testte alleen verkoper/begeleider.
+// Koper krijgt hier een echte browser-login + de al bestaande, bewezen negatieve
+// serverchecks (waardering/geschiedenis 401) samen in één rolgerichte test, plus
+// een echte UI-content-check (niet alleen "API geeft array terug"): na vrijgave
+// van een categorie moet de koper de data ook daadwerkelijk op het scherm zien.
+test.describe('Rol Click-Through: koper', () => {
+  test.skip(!ADMIN, 'Geen admin-key (ADMIN_KEY / --key=) — koper-rollentest overgeslagen');
+
+  let email, gid, verkoperCode, koperCode, tussenCode, trajectCode;
+
+  test.beforeAll(async () => {
+    email = 'e2e-ui-koper-' + Date.now() + '@bisschopsfinancing.test';
+    const uit = await api('POST', '/gebruikers/uitnodigen', { adminKey: ADMIN, body: { naam: 'E2E Koper', bedrijf: 'E2E Koper BV', email } });
+    gid = uit.json.id;
+    await api('POST', '/gebruikers/activeer', { body: { token: uit.json.token, wachtwoord: WW } });
+    await api('POST', '/gebruiker/voorwaarden/accepteren', { body: { email, wachtwoord: WW } });
+    await api('POST', '/gebruikers/verkoop/' + gid, { adminKey: ADMIN, body: { traject_limiet: 1, modules: { traject: true, contracten: true } } });
+    const c = await api('POST', '/adviseur/create', { body: { email, wachtwoord: WW, traject: { kantoor_naam: 'E2E Koper Kantoor BV', koper_naam: 'E2E Koper Tegenpartij BV', traject_type: 'Verkoop' } } });
+    trajectCode = c.json.code;
+    verkoperCode = c.json.code;
+    koperCode = c.json.koper_code;
+    tussenCode = c.json.tussen_code;
+    await api('POST', '/mna/vok/teken', { body: { code: tussenCode, naam: 'E2E Test', versie: VOK_VERSIE, email } });
+    // Verkoper vult een herkenbare, unieke waarde in fase 'financieel' — dit is de waarde die de
+    // koper na vrijgave op het scherm moet zien (echte content-check, geen kale JSON-aanwezigheid).
+    await api('POST', '/mna/save', { body: { code: verkoperCode, fase_id: 'financieel', data_json: { omzet3: { value: 'E2E-KOPER-731954', label: 'Omzet jaar 3' } }, checklist_json: {} } });
+  });
+
+  test.afterAll(async () => {
+    if (trajectCode) await api('POST', '/admin/delete/mna/' + trajectCode, { adminKey: ADMIN });
+    if (gid) await api('POST', '/gebruikers/verwijder/' + gid, { adminKey: ADMIN, body: {} });
+  });
+
+  test('koper-code opent koperweergave, geen begeleider-knoppen', async ({ page }) => {
+    await login(page, koperCode);
+    await page.waitForFunction(() => window.S && S.traject && S.rol, null, { timeout: 15000 });
+    const rol = await page.evaluate(() => S.rol);
+    expect(rol).toBe('koper');
+    await expect(page.locator('#bg-nda-composer-actie')).toHaveCount(0);
+  });
+
+  test('negatief: koper krijgt Unauthorized op begeleider-only route (waardering/geschiedenis)', async () => {
+    const r = await api('GET', '/mna/waardering/geschiedenis/' + koperCode);
+    expect(r.status).toBe(401);
+  });
+
+  test('positief: koper ziet vrijgegeven data pas ná vrijgave, dan écht op het scherm', async ({ page }) => {
+    // Vóór vrijgave: entiteiten-endpoint leeg voor koper (bestaand, bewezen patroon).
+    const voor = await api('GET', '/mna/entiteiten/' + koperCode);
+    expect(Array.isArray(voor.json) ? voor.json.length : -1).toBe(0);
+    // Begeleider geeft categorie 'financieel' vrij aan de koper.
+    await api('POST', '/mna/koper-categorieen/' + trajectCode + '?force=1', { adminKey: ADMIN, body: { categorieen: ['financieel'] } });
+    // Nu moet de koper de daadwerkelijke waarde ook in de UI zien — niet alleen in een API-response.
+    await login(page, koperCode);
+    await page.waitForFunction(() => window.S && S.traject && S.rol === 'koper', null, { timeout: 15000 });
+    await page.evaluate(() => { S.screen = 'main'; S.fase = FASES.findIndex(f => f.id === 'financieel'); renderApp(); });
+    await expect(page.getByText('E2E-KOPER-731954')).toBeVisible({ timeout: 10000 });
+  });
+});
+
+// ───────────────────── 2c. ROL CLICK-THROUGH: MEEKIJKER ─────────────────────
+// Meekijker heeft geen mna.html-login maar een apart, volledig read-only portaal
+// (viewer.html). Test: echte inlog + voorwaarden-acceptatie + scope_fase-filtering
+// zichtbaar in de UI (niet alleen server-side) + het platform belooft "u kunt niets
+// wijzigen" — geverifieerd door te controleren dat er buiten het inlogscherm geen
+// enkel invoerveld in de DOM staat.
+test.describe('Rol Click-Through: meekijker', () => {
+  test.skip(!ADMIN, 'Geen admin-key (ADMIN_KEY / --key=) — meekijker-rollentest overgeslagen');
+
+  let email, gid, verkoperCode, tussenCode, trajectCode, viewerCode;
+
+  test.beforeAll(async () => {
+    email = 'e2e-ui-meekijker-' + Date.now() + '@bisschopsfinancing.test';
+    const uit = await api('POST', '/gebruikers/uitnodigen', { adminKey: ADMIN, body: { naam: 'E2E Meekijker', bedrijf: 'E2E Meekijker BV', email } });
+    gid = uit.json.id;
+    await api('POST', '/gebruikers/activeer', { body: { token: uit.json.token, wachtwoord: WW } });
+    await api('POST', '/gebruiker/voorwaarden/accepteren', { body: { email, wachtwoord: WW } });
+    await api('POST', '/gebruikers/verkoop/' + gid, { adminKey: ADMIN, body: { traject_limiet: 1, modules: { traject: true, contracten: true, meekijker: true } } });
+    const c = await api('POST', '/adviseur/create', { body: { email, wachtwoord: WW, traject: { kantoor_naam: 'E2E Meekijker Kantoor BV', traject_type: 'Verkoop' } } });
+    trajectCode = c.json.code;
+    verkoperCode = c.json.code;
+    tussenCode = c.json.tussen_code;
+    await api('POST', '/mna/vok/teken', { body: { code: tussenCode, naam: 'E2E Test', versie: VOK_VERSIE, email } });
+    // Twee fases gevuld — de meekijker mag straks alleen 'financieel' zien, NIET 'strategisch'.
+    await api('POST', '/mna/save', { body: { code: verkoperCode, fase_id: 'financieel', data_json: { omzet3: { value: 'E2E-VIEWER-ZICHTBAAR-482', label: 'Omzet jaar 3' } }, checklist_json: {} } });
+    await api('POST', '/mna/save', { body: { code: verkoperCode, fase_id: 'strategisch', data_json: { niche: { value: 'E2E-VIEWER-VERBORGEN-917', label: 'Niche' } }, checklist_json: {} } });
+    const v = await api('POST', '/mna/admin/viewer/aanmaken', {
+      headers: { 'x-tussen-key': tussenCode },
+      body: { traject_id: trajectCode, viewer_naam: 'E2E Testbank', viewer_type: 'bank', scope_fase: 'financieel', toestemming_bevestigd: true },
+    });
+    viewerCode = v.json && v.json.viewer_code;
+  });
+
+  test.afterAll(async () => {
+    if (trajectCode) await api('POST', '/admin/delete/mna/' + trajectCode, { adminKey: ADMIN });
+    if (gid) await api('POST', '/gebruikers/verwijder/' + gid, { adminKey: ADMIN, body: {} });
+  });
+
+  test('viewer-code werkt, voorwaarden-gate, scope_fase-filtering zichtbaar in UI', async ({ page }) => {
+    expect(viewerCode).toBeTruthy();
+    const url = IS_STANDAARD_PRODUCTIE ? '/viewer.html' : ('/viewer.html?worker=' + encodeURIComponent(WORKER));
+    await page.goto(url);
+    await page.locator('#vc-input').fill(viewerCode);
+    await page.locator('#vc-login').click();
+    // Vertrouwelijkheidsverklaring moet eerst geaccepteerd worden — geen data zonder akkoord.
+    await expect(page.locator('#vw-akkoord')).toBeVisible({ timeout: 10000 });
+    await page.locator('#vw-akkoord').check();
+    await page.locator('#vw-verder').click();
+    // Positief: de vrijgegeven fase is echt op het scherm zichtbaar.
+    await expect(page.getByText('E2E-VIEWER-ZICHTBAAR-482')).toBeVisible({ timeout: 10000 });
+    // Negatief: de NIET-vrijgegeven fase (scope_fase='financieel') staat nergens op het scherm.
+    await expect(page.getByText('E2E-VIEWER-VERBORGEN-917')).toHaveCount(0);
+    // "Alleen-lezen" is geen loze belofte: buiten het (inmiddels verdwenen) inlogscherm staat geen
+    // enkel invoerveld/knop-om-te-wijzigen in de DOM.
+    await expect(page.locator('input, textarea')).toHaveCount(0);
+  });
+
+  test('negatief: elke schrijfpoging op /mna/viewer/* wordt geweigerd (405)', async () => {
+    const r = await api('POST', '/mna/viewer/data', { body: { code: viewerCode } });
+    expect(r.status).toBe(405);
+  });
+});
+
+// ───────────────────── 2d. ROL CLICK-THROUGH: EIGEN SPECIALIST ─────────────────────
+// Eigen specialist heeft GEEN eigen portaal-login (bewust, zie worker/34-eigen-specialisten.js)
+// — het is een privacy-invariant: Marcel mag de identiteit nooit zien, in geen enkel endpoint.
+// De "click-through" voor déze rol is dus geen browserlogin maar het bewijs dat die
+// vertrouwelijkheid daadwerkelijk standhoudt: begeleider ziet de specialist, ADMIN_KEY niet —
+// zelfs niet via het traject-pad, terwijl ADMIN_KEY vrijwel overal elders wél werkt.
+test.describe('Rol Click-Through: eigen specialist', () => {
+  test.skip(!ADMIN, 'Geen admin-key (ADMIN_KEY / --key=) — eigen-specialist-test overgeslagen');
+
+  let email, gid, tussenCode, trajectCode;
+
+  test.beforeAll(async () => {
+    email = 'e2e-ui-eigenspec-' + Date.now() + '@bisschopsfinancing.test';
+    const uit = await api('POST', '/gebruikers/uitnodigen', { adminKey: ADMIN, body: { naam: 'E2E EigenSpec', bedrijf: 'E2E EigenSpec BV', email } });
+    gid = uit.json.id;
+    await api('POST', '/gebruikers/activeer', { body: { token: uit.json.token, wachtwoord: WW } });
+    await api('POST', '/gebruiker/voorwaarden/accepteren', { body: { email, wachtwoord: WW } });
+    await api('POST', '/gebruikers/verkoop/' + gid, { adminKey: ADMIN, body: { traject_limiet: 1, modules: { traject: true, contracten: true } } });
+    const c = await api('POST', '/adviseur/create', { body: { email, wachtwoord: WW, traject: { kantoor_naam: 'E2E EigenSpec Kantoor BV', traject_type: 'Verkoop' } } });
+    trajectCode = c.json.code;
+    tussenCode = c.json.tussen_code;
+    await api('POST', '/mna/vok/teken', { body: { code: tussenCode, naam: 'E2E Test', versie: VOK_VERSIE, email } });
+  });
+
+  test.afterAll(async () => {
+    if (trajectCode) await api('POST', '/admin/delete/mna/' + trajectCode, { adminKey: ADMIN });
+    if (gid) await api('POST', '/gebruikers/verwijder/' + gid, { adminKey: ADMIN, body: {} });
+  });
+
+  test('begeleider voegt eigen specialist toe en ziet die terug', async () => {
+    const naam = 'E2E Notaris Jansen';
+    const toev = await api('POST', '/mna/eigen-specialist', {
+      headers: { 'x-tussen-key': tussenCode },
+      body: { naam, hoedanigheid: 'Notaris', kantoor: 'E2E Notariskantoor', email: 'notaris@e2e-test.invalid' },
+    });
+    expect(toev.status).toBe(200);
+    expect(toev.json && toev.json.ok).toBe(true);
+    const lijst = await api('GET', '/mna/eigen-specialisten/' + trajectCode, { headers: { 'x-tussen-key': tussenCode } });
+    expect(lijst.status).toBe(200);
+    const namen = (lijst.json.specialisten || []).map(s => s.naam);
+    expect(namen).toContain(naam);
+  });
+
+  test('negatief: ADMIN_KEY krijgt de identiteit van de eigen specialist NOOIT te zien', async () => {
+    // Privacy-invariant (Marcel, 11 sep 2026, verbatim): "ik hoef en mag niet weten wie hij
+    // inhuurt." Dit endpoint accepteert daarom UITSLUITEND een echte begeleider-tussen_code —
+    // in tegenstelling tot vrijwel elk ander endpoint in dit platform werkt de ADMIN_KEY hier
+    // bewust NIET, ook niet via ?code=.
+    const viaAdminHeader = await api('GET', '/mna/eigen-specialisten/' + trajectCode, { adminKey: ADMIN });
+    expect(viaAdminHeader.status).not.toBe(200);
+    const viaAdminAlsCode = await fetch(WORKER + '/mna/eigen-specialisten/' + trajectCode + '?code=' + encodeURIComponent(ADMIN));
+    expect(viaAdminAlsCode.status).not.toBe(200);
+  });
+});
+
 // ───────────────────── 3. DASHBOARD MODULE-GATING ─────────────────────
 // Maakt een eigen testtraject via een adviseur met module "contracten" UIT,
 // logt in met de tussen-code en verifieert dat de documentknoppen vergrendeld

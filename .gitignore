@@ -45,3 +45,8 @@ legal/retention/reports/
 # productietoegang, uitsluitend geldig tegen kantoorinzicht-staging. Blijft BEWUST lokaal;
 # zie tests/README.md voor hoe opnieuw in te richten als dit bestand ontbreekt.
 tests/.env.staging.local
+
+# Cloudflare API-token (13 sep 2026, doorlichtingsopdracht punt 2 — cache-instelling koersvoormorgen.nl
+# zone-niveau onderzoeken/aanpassen). Scoped token: alleen Cache Purge + Page Rules/Zone Settings
+# Edit voor koersvoormorgen.nl. Blijft BEWUST lokaal, nooit committen.
+.cloudflare-api-token.local
