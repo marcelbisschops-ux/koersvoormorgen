@@ -1580,6 +1580,13 @@ function printHtmlDocument(docHtml){
   if(win && win.document){
     win.document.write(docHtml+'<script>window.onload=function(){window.focus();window.print();}<\/script>');
     win.document.close();
+    // Chrome/Safari-eigenaardigheid (13 sep 2026, gemeld door Marcel): een via window.open('','_blank')
+    // + document.write() geopend venster laat de printkop/-voettekst (optie "Kop- en voettekst" in de
+    // printdialoog) soms "about:blank" tonen i.p.v. de <title> uit de geschreven HTML — de titel-
+    // metadata die de printdialoog gebruikt volgt niet altijd de write(). Titel expliciet forceren lost
+    // dit betrouwbaar op.
+    var titelMatch = docHtml.match(/<title>([^<]*)<\/title>/i);
+    if(titelMatch) win.document.title = titelMatch[1];
     return;
   }
   // ChatGPT-review 31 aug 2026: laat de iframe-fallback niet stil falen. Lukt print() daar ook niet,

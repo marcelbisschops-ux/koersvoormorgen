@@ -2417,7 +2417,7 @@ function renderBegeleiderDashboard(app){
         +bgMouDiscl()
         +'<button id="mou-nieuw" class="btn btn-sm">'+esc(lbl.kort)+' aanmaken</button></div>';
       var nb=document.getElementById('mou-nieuw');
-      nb.onclick=async function(){ nb.disabled=true; nb.textContent='Bezig&hellip;';
+      nb.onclick=async function(){ nb.disabled=true; nb.textContent='Bezig…';
         var mk=await bgMouApi('POST','/document',{profile:prof});
         if(myGen!==_mouGen)return;
         if(!mk.ok||!mk.json.ok){ toast((mk.json&&mk.json.error)||'Aanmaken mislukt','err'); nb.disabled=false; nb.textContent=lbl.kort+' aanmaken'; return; }
@@ -2805,7 +2805,7 @@ function renderBegeleiderDashboard(app){
       var vs=document.getElementById('mou-verstuur'); if(vs)vs.onclick=async function(){
         var adr=[]; if(confirm('Versturen naar de VERKOPER?'))adr.push('verkoper'); if(confirm('Versturen naar de KOPER?'))adr.push('koper');
         if(!adr.length){ toast('Geen ontvanger gekozen','err'); return; }
-        vs.disabled=true; vs.textContent='Versturen&hellip;';
+        vs.disabled=true; vs.textContent='Versturen…';
         var r=await bgMouApi('POST','/document/'+encodeURIComponent(_mouDocId)+'/verstuur',{adressaten:adr});
         if(r.ok&&r.json.ok){ toast('Verstuurd'+(r.json.mail_verstuurd?(' ('+r.json.mail_verstuurd+' e-mail'+(r.json.mail_verstuurd===1?'':'s')+')'):''),'ok'); bgMouRender(); }
         else { toast((r.json&&r.json.error)||'Versturen mislukt','err'); vs.disabled=false; vs.textContent='✉ Versturen naar partijen'; }
@@ -4028,16 +4028,16 @@ function renderBegeleiderDashboard(app){
       var criteria=koperFitLeesFormulier();
       var r=await fetch(WORKER+'/mna/koper-criteria/opslaan',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||''},body:JSON.stringify({code:S.code,criteria:criteria})}).then(function(x){return x.json();}).catch(function(){return{ok:false};});
       if(r.ok){toast('Criteria opgeslagen.','ok');koperFitLaadEnToon();}
-      else{toast('Opslaan mislukt: '+(r.error||'onbekend'),'err');opslaanBtn.disabled=false;opslaanBtn.textContent='&#128190; Opslaan';}
+      else{toast('Opslaan mislukt: '+(r.error||'onbekend'),'err');opslaanBtn.disabled=false;opslaanBtn.textContent='💾 Opslaan';}
     };
     var beoordeelBtn=document.getElementById('kf-beoordeel');
     if(beoordeelBtn)beoordeelBtn.onclick=async function(){
       beoordeelBtn.disabled=true;beoordeelBtn.textContent='Bezig... (kan 15-30 sec duren)';
       var criteria=koperFitLeesFormulier();
       var saveR=await fetch(WORKER+'/mna/koper-criteria/opslaan',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||''},body:JSON.stringify({code:S.code,criteria:criteria})}).then(function(x){return x.json();}).catch(function(){return{ok:false};});
-      if(!saveR.ok){toast('Opslaan mislukt: '+(saveR.error||'onbekend'),'err');beoordeelBtn.disabled=false;beoordeelBtn.textContent='&#127919; Beoordeel fit';return;}
+      if(!saveR.ok){toast('Opslaan mislukt: '+(saveR.error||'onbekend'),'err');beoordeelBtn.disabled=false;beoordeelBtn.textContent='🎯 Beoordeel fit';return;}
       var r=await fetch(WORKER+'/mna/koper-criteria/beoordeel',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||''},body:JSON.stringify({code:S.code})}).then(function(x){return x.json();}).catch(function(){return{ok:false};});
-      if(!r.ok){toast('Beoordelen mislukt: '+(r.error||'onbekend'),'err');beoordeelBtn.disabled=false;beoordeelBtn.textContent='&#127919; Beoordeel fit';return;}
+      if(!r.ok){toast('Beoordelen mislukt: '+(r.error||'onbekend'),'err');beoordeelBtn.disabled=false;beoordeelBtn.textContent='🎯 Beoordeel fit';return;}
       toast('Beoordeling klaar.','ok');
       koperFitLaadEnToon();
     };
