@@ -9,6 +9,15 @@
 // maakPDF()/maakDocEmail()) behoudt de voettekst ongewijzigd — dat is een formele, aan een echte
 // tegenpartij verstrekte kopie, een ander vraagstuk dan dit scherm-/printgebruik door de adviseur zelf.
 function toonRelianceAkkoord(titel, docType, onAkkoord) {
+  // Eenmalig per sessie (13 sep 2026, Marcel: "komt erg vaak terug... belemmert het fijne gevoel" —
+  // de tekst is bij elke print identiek, dus herhaalde kennisname voegt niets toe). De eerste
+  // bevestiging binnen deze S-sessie volstaat; latere print-acties loggen gewoon door (audit-spoor
+  // blijft per actie bestaan, alleen zonder de popup opnieuw te tonen) tot uitloggen/herladen.
+  if (S._relianceBevestigdDoor) {
+    if (typeof secAuditLog === 'function') secAuditLog('reliance_bevestiging', { document_type: docType, titel: titel, bevestigd_door: S._relianceBevestigdDoor, herhaling: true });
+    onAkkoord();
+    return;
+  }
   var ov = document.createElement('div');
   ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:2000;display:flex;align-items:center;justify-content:center;padding:1.5rem';
   var mo = document.createElement('div');
@@ -31,6 +40,7 @@ function toonRelianceAkkoord(titel, docType, onAkkoord) {
     var naam = document.getElementById('reliance-naam').value.trim();
     var errEl = document.getElementById('reliance-err');
     if (!naam) { errEl.style.display = 'block'; errEl.textContent = 'Naam is verplicht.'; return; }
+    S._relianceBevestigdDoor = naam;
     if (typeof secAuditLog === 'function') secAuditLog('reliance_bevestiging', { document_type: docType, titel: titel, bevestigd_door: naam });
     document.body.removeChild(ov);
     onAkkoord();
