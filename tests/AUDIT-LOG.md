@@ -1,5 +1,18 @@
 # Audit-log — wekelijkse controle Koers voor Morgen
 
+## 2026-09-14
+
+**wekelijkse-audit (geautomatiseerde scheduled task) — alles groen, niets gewijzigd.**
+1. Syntax-check: `node --check` op de canonieke worker (`~/Documents/GitHub/koersvoormorgen-backend/backend/cloudflare-worker.js`) en op alle `mna/*.js`-modules in deze repo — allemaal OK.
+2. `node tests/audit-consistentie.mjs` — alle 15 checks (veldreferenties, functie-shadowing, begeleiderAuth-scoping, koper-afscherming, SELECT *-audit, traject-verwijder-cascade, gevoelige-termen, dealvoorstel publiek/intern-scheiding, bgDoc-clausule-integriteit, kleurcontrast, load-bearing pagina's, AI-guardrails, reliance-voettekst, NDA/LoI/MOU-documentcontent-race, bgDocSpa-route): "Geen bevindingen".
+3. `node tests/e2e-api.mjs` — geen `ADMIN_KEY` in deze sessie-omgeving, dus alleen health-check + toegangscode-weigering getest (stappen 3-9 overgeslagen). 4 geslaagd, 0 gefaald, 1 overgeslagen. Worker live en gezond (`/health` → 200, `ok:true`).
+
+**Bevindingen:** geen.
+
+**Zelfstandig opgelost:** niets nodig — geen bevindingen.
+
+**Wacht op Marcel's akkoord:** niets.
+
 ## 2026-09-11
 
 **diepe-audit-routine (geautomatiseerde scheduled task): geen open aanvraag, cadans nog niet verstreken.** Wachtrij (`/mna/veiligheid/audit-opdracht`) leeg. Laatste diepe audit: 6 september 2026, score 73/100 (5 dagen geleden) — ruim binnen de 25-dagen-cadans; vandaag (11e) valt bovendien buiten het 1e-3e-van-de-maand-venster. Geen zelf-aanvraag ingediend, geen audit uitgevoerd, niets gewijzigd.
