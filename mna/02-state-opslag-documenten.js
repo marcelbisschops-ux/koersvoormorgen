@@ -324,9 +324,20 @@ function isTussen(){return S.rol==='tussenpersoon';}
 function isAdmin(){return isTussen();}
 
 function getMissing(){
+  // Fix 15 sep 2026 (Marcel, live test: "deze post bestaat niet" — een fase-2/post-LOI-veld zoals
+  // ebitdaNorm stond als "verplicht, niet ingevuld" gemeld terwijl de verkoper nog geen LoI heeft
+  // getekend en dat veld dus nergens kan invullen — dezelfde bugklasse als de kapotte "voeg
+  // toelichting toe"-melding hiernaast. req:true op een fase:'2'-veld telt nu alleen mee als de
+  // LoI al is getekend (loiIsGetekend()); anders is dat veld voor deze gebruiker nu nog niet
+  // bereikbaar en hoort het niet als ontbrekend te worden gemeld.
+  var loiOk=loiIsGetekend();
   var missing=[];
   FASES.forEach(function(f,idx){
-    var missingFields=f.dataFields.filter(function(df){return df.req&&!df.header&&!((df.groepsniveau?S._groepData:S.data)[f.id+'_'+df.id]||'').trim();});
+    var missingFields=f.dataFields.filter(function(df){
+      if(!df.req||df.header)return false;
+      if(df.fase==='2'&&!loiOk)return false;
+      return !((df.groepsniveau?S._groepData:S.data)[f.id+'_'+df.id]||'').trim();
+    });
     if(missingFields.length)missing.push({fase:f.num+'. '+f.title,faseId:f.id,faseIdx:idx,fields:missingFields.map(function(df){return {id:df.id,label:df.label};})});
   });
   return missing;

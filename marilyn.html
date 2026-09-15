@@ -3645,7 +3645,7 @@ function toonNieuwModal(prefillLead){
   mo.innerHTML='<div class="modal-title">Nieuw M&amp;A traject aanmaken</div>'
     +'<div style="display:flex;gap:12px">'
     +'<div class="field" style="flex:1"><label for="m-t">Trajecttype <span style="color:var(--red)">*</span></label><select id="m-t"><option value="Verkoop">Verkoop</option><option value="Fusie">Fusie</option><option value="Opvolging">Opvolging</option><option value="PE-traject">PE-traject</option><option value="Overname">Overname</option></select></div>'
-    +'<div class="field" style="flex:1"><label for="m-sector">Sector <span style="color:var(--red)">*</span></label><select id="m-sector"><option value="accountancy">Accountancy & administratie</option><option value="mkb">MKB — Retail / Horeca / Ambacht</option><option value="zorg">Zorg — Huisarts / Tandarts / Fysiotherapie</option><option value="itsoftware">IT & Software</option><option value="bouw">Bouw & Installatietechniek</option><option value="transport">Transport & Logistiek</option><option value="handel">Handel / Groothandel</option><option value="consultancy">Zakelijke Dienstverlening / Consultancy</option><option value="verhuizingen">Verhuisbranche</option></select></div>'
+    +'<div class="field" style="flex:1"><label for="m-sector">Sector <span style="color:var(--red)">*</span></label><select id="m-sector"><option value="accountancy">Accountancy & administratie</option><option value="bouw">Bouw & Installatietechniek</option><option value="handel">Handel / Groothandel</option><option value="itsoftware">IT & Software</option><option value="mkb">MKB — Retail / Horeca / Ambacht</option><option value="transport">Transport & Logistiek</option><option value="verhuizingen">Verhuisbranche</option><option value="consultancy">Zakelijke Dienstverlening / Consultancy</option><option value="zorg">Zorg — Huisarts / Tandarts / Fysiotherapie</option></select></div>'
     +'</div>'
     +'<div style="border-bottom:1px solid var(--border);margin:.75rem 0 .75rem;padding-bottom:.25rem"><div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)" id="m-sectie1-hdr">Verkopende partij</div></div>'
     +'<div class="field"><label id="m-p1-naam-lbl">Naam onderneming <span style="color:var(--red)">*</span></label><div style="display:flex;gap:8px"><input type="text" id="m-k" placeholder="Naam van de onderneming" value="'+esc(pf.kantoor_naam||'')+'" style="flex:2"><input type="text" id="m-kvk" placeholder="KvK-nr" style="flex:1"></div></div>'
@@ -4570,7 +4570,7 @@ function auditVerzoekStatusTekst(verzoek) {
   return '';
 }
 
-var MATCH_SECTOREN=[['accountancy','Accountancy & administratie'],['mkb','Mkb'],['zorg','Zorg'],['itsoftware','IT/software'],['bouw','Bouw'],['transport','Transport'],['handel','Handel'],['consultancy','Consultancy'],['verhuizingen','Verhuizingen']];
+var MATCH_SECTOREN=[['accountancy','Accountancy & administratie'],['bouw','Bouw'],['consultancy','Consultancy'],['handel','Handel'],['itsoftware','IT/software'],['mkb','Mkb'],['transport','Transport'],['verhuizingen','Verhuizingen'],['zorg','Zorg']];
 var MATCH_REGIOS=['Noord-Nederland','Oost-Nederland','Randstad','Zuid-Nederland'];
 var MATCH_OMZETKLASSEN=['< €500k','€500k-€1mln','€1-2mln','€2-5mln','€5-10mln','> €10mln'];
 

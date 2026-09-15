@@ -794,19 +794,33 @@ function renderSummary(){
   var partnerBel=eigBelVeld?parseGeldCheck(S.data['financieel_'+eigBelVeld.veldId]):null;
   var eigBelLabel=eigBelVeld?eigBelVeld.label:'Eigenaar-/partnerbeloning';
 
-  // 1. Ontbrekende kritieke financiële velden
+  // Waarschuwingen (15 sep 2026, Marcel, akkoord): niet-blokkerende bevindingen — reële,
+  // berekenbare bedrijfssituaties (dalende omzet, eigenaar die bijstort i.p.v. onttrekt, een
+  // verlieslatend jaar, een ongebruikelijke omzetsprong) horen de gebruiker te waarschuwen, niet
+  // het dossier onvoorwaardelijk te blokkeren. De oude tekst verwees naar "voeg een toelichting
+  // toe in de notitie van fase Strategisch" — die toelichting-uitzondering bestond nergens in de
+  // code, dus dit blokkeerde de verkoper definitief, zonder uitweg (gevonden door Marcel, live op
+  // productie). Alleen bevindingen die een waardering echt onmogelijk maken (ontbrekende
+  // brondata, of twee ingevoerde getallen die elkaar rekenkundig tegenspreken) blijven blokkerend.
+  var waarschuwingen=[];
+
+  // 1. Ontbrekende kritieke financiële velden — blokkerend: zonder deze data is er letterlijk
+  // niets te berekenen, geen toelichting kan dat oplossen.
   if(!o1||!o2||!o3) kritiekeDiscrepanties.push('Jaaromzet voor alle drie jaren is verplicht voor een indicatieve waardering. Vul omzet jaar 1, 2 en 3 in.');
   if(!ebitdaAbs&&!ebitdaMarge) kritiekeDiscrepanties.push('EBITDA ontbreekt volledig (zowel absoluut als marge). Dit is de basis voor de waarderingsberekening.');
   // Alleen verplicht stellen als deze sector het concept ook daadwerkelijk kent (itsoftware: nooit).
   if(eigBelVeld&&!partnerBel) kritiekeDiscrepanties.push(eigBelLabel+' ontbreekt. Zonder dit gegeven kan de EBITDA niet genormaliseerd worden.');
 
-  // 2. EBITDA-marge buiten realistisch bereik
+  // 2. Negatieve EBITDA-marge — een verlieslatend jaar is een reële, berekenbare situatie
+  // (waarschuwing); een overduidelijk verkeerd ingevoerd percentage (>50%, vaak een decimale fout
+  // zoals 0.168 i.p.v. 16.8) blijft wél blokkerend, dat is vrijwel altijd een invoerfout.
   if(ebitdaMarge!==null){
-    if(ebitdaMarge<0) kritiekeDiscrepanties.push('EBITDA-marge is negatief ('+ebitdaMarge+'%). Een verlieslatend kantoor kan niet gewaardeerd worden zonder toelichting. Controleer de invoer.');
+    if(ebitdaMarge<0) waarschuwingen.push('EBITDA-marge is negatief ('+ebitdaMarge+'%) — een verlieslatend jaar. De waardering wordt hier expliciet op gebaseerd; controleer dat dit klopt.');
     if(ebitdaMarge>50) kritiekeDiscrepanties.push('EBITDA-marge is '+ebitdaMarge+'% — onrealistisch hoog voor de sector (norm 15-25%). Controleer of het percentage correct is ingevoerd (niet als decimaal 0.168 in plaats van 16.8%).');
   }
 
-  // 3. Consistentiecheck EBITDA-absoluut vs marge × omzet
+  // 3. Consistentiecheck EBITDA-absoluut vs marge × omzet — blokkerend: dit zijn twee door de
+  // gebruiker zelf ingevoerde getallen die elkaar rekenkundig tegenspreken, geen reëel scenario.
   if(o3&&ebitdaAbs&&ebitdaMarge){
     var berekendEbitda=o3*(ebitdaMarge/100);
     var afwijking=Math.abs(berekendEbitda-ebitdaAbs)/ebitdaAbs;
@@ -819,39 +833,42 @@ function renderSummary(){
     }
   }
 
-  // 4. Onverklaarbare omzetsprong (>50% jaar op jaar)
+  // 4. Onverklaarbare omzetsprong (>50% jaar op jaar) — waarschuwing: kan een reële oorzaak hebben
+  // (overname, groot eenmalig contract, COVID-effect); berekenbaar, geen blokkade nodig.
   if(o1&&o2){
     var groei12=((o2-o1)/o1)*100;
-    if(Math.abs(groei12)>50) kritiekeDiscrepanties.push(
-      'Omzetgroei jaar 1→2 is '+Math.round(groei12)+'% — ongebruikelijk groot. '
-      +'Controleer of de juiste jaren zijn ingevoerd of voeg een toelichting toe.'
+    if(Math.abs(groei12)>50) waarschuwingen.push(
+      'Omzetgroei jaar 1→2 is '+Math.round(groei12)+'% — ongebruikelijk groot. Controleer of de juiste jaren zijn ingevoerd.'
     );
   }
   if(o2&&o3){
     var groei23=((o3-o2)/o2)*100;
-    if(Math.abs(groei23)>50) kritiekeDiscrepanties.push(
-      'Omzetgroei jaar 2→3 is '+Math.round(groei23)+'% — ongebruikelijk groot. '
-      +'Controleer of de juiste jaren zijn ingevoerd of voeg een toelichting toe.'
+    if(Math.abs(groei23)>50) waarschuwingen.push(
+      'Omzetgroei jaar 2→3 is '+Math.round(groei23)+'% — ongebruikelijk groot. Controleer of de juiste jaren zijn ingevoerd.'
     );
   }
 
-  // 5. Dalende omzettrend (jaar 3 < jaar 1) zonder toelichting
+  // 5. Dalende omzettrend (jaar 3 < jaar 1) — waarschuwing: vervelend, maar prima te waarderen.
   if(o1&&o3&&o3<o1){
-    kritiekeDiscrepanties.push(
-      'Omzet jaar 3 ('+o3.toLocaleString('nl-NL')+') is lager dan omzet jaar 1 ('+o1.toLocaleString('nl-NL')+'). '
-      +'Een dalende trend vereist een toelichting in de notitie van fase Strategisch voordat het dossier kan worden vrijgegeven.'
+    waarschuwingen.push(
+      'Omzet jaar 3 ('+o3.toLocaleString('nl-NL')+') is lager dan omzet jaar 1 ('+o1.toLocaleString('nl-NL')+') — een dalende trend. Dit is een aandachtspunt voor een koper, geen reden om de waardering te blokkeren.'
     );
   }
 
-  // 6. Partnerbeloning hoger dan EBITDA (normalisatie-probleem)
+  // 6. Eigenaarsbeloning hoger dan EBITDA — waarschuwing, geen blokkade. Dit is niet per se een
+  // invoerfout: bij een slecht draaiende onderneming kan de eigenaar juist bijstorten in plaats
+  // van onttrekken (Marcel, 15 sep 2026: "de mogelijkheid dat een eigenaar i.p.v. salaris juist
+  // privéstortingen doet, als de tent gewoon slecht draait"). De genormaliseerde EBITDA mag dan
+  // negatief uitkomen — dat is precies het soort rode vlag die een koper moet zien, niet iets om
+  // achter "waardering onmogelijk" te verbergen.
   if(partnerBel&&ebitdaAbs&&partnerBel>ebitdaAbs){
-    kritiekeDiscrepanties.push(
-      eigBelLabel+' ('+partnerBel.toLocaleString('nl-NL')+') is hoger dan EBITDA absoluut ('+ebitdaAbs.toLocaleString('nl-NL')+'). '
-      +'Dit leidt tot een negatieve genormaliseerde EBITDA en maakt waardering onmogelijk. Controleer de invoer.'
+    waarschuwingen.push(
+      eigBelLabel+' ('+partnerBel.toLocaleString('nl-NL')+') is hoger dan EBITDA absoluut ('+ebitdaAbs.toLocaleString('nl-NL')+') — dit leidt tot een negatieve genormaliseerde EBITDA. Kan kloppen bij een slecht draaiende onderneming (eigenaar stort bij i.p.v. te onttrekken); controleer de invoer als dit onbedoeld is.'
     );
   }
 
   var heeftKritiek=kritiekeDiscrepanties.length>0;
+  var heeftWaarschuwing=waarschuwingen.length>0;
   // ── EINDE CHECK ─────────────────────────────────────────────────────────
 
   // Summary cards
@@ -919,6 +936,25 @@ function renderSummary(){
       }).join('')
       +'</div>'
       +'<button class="btn" id="naar-financieel-btn" style="margin-top:.875rem;font-size:12px;padding:8px 16px;background:var(--red)">&#128270; Naar fase Financieel &#8594;</button>'
+      +'</div>'
+    :'')
+    +(heeftWaarschuwing&&(isVerkoper()||isTussen())?
+      '<div style="background:var(--gold-bg);border:2px solid var(--gold);border-radius:var(--r2);padding:1.25rem;margin-top:1.5rem">'
+      +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:.75rem">'
+      +'<span style="font-size:1.5rem">&#9888;</span>'
+      +'<div style="font-family:Playfair Display,serif;font-size:1rem;font-weight:600;color:var(--gold-dark)">Aandachtspunten voor de waardering</div>'
+      +'</div>'
+      +'<div style="font-size:12px;color:var(--sub);margin-bottom:.75rem;line-height:1.6">'
+      +'De waardering wordt gewoon berekend en getoond — deze punten zijn reële bevindingen die een koper zal opmerken, geen invoerfouten. Neem ze mee in de toelichting bij fase Strategisch als dat helpt.'
+      +'</div>'
+      +'<div style="display:flex;flex-direction:column;gap:8px">'
+      +waarschuwingen.map(function(d,i){
+        return '<div style="background:var(--card);border:1px solid var(--gold);border-radius:var(--r);padding:.75rem 1rem;display:flex;gap:10px">'
+          +'<span style="color:var(--gold-dark);font-weight:700;flex-shrink:0">'+(i+1)+'.</span>'
+          +'<span style="font-size:12px;color:var(--sub);line-height:1.6">'+esc(d)+'</span>'
+          +'</div>';
+      }).join('')
+      +'</div>'
       +'</div>'
     :'')
     +'<div style="margin-top:1.5rem;background:var(--panel);border:2px solid '+(S.dossierVrijgegeven?'var(--teal)':heeftKritiek?'var(--border)':'var(--gold)')+';border-radius:var(--r2);padding:1.5rem">'
