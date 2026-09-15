@@ -196,6 +196,12 @@ async function laadFaseLabels(){
 }
 function faseLabel(id){return faseLabels[id]||id;}
 function veldLabel(faseId,veldId){var fl=window._viewerFieldLabels||{};return fl[faseId+'::'+veldId]||veldId;}
+// DD-velden in mna_data.data_json zijn altijd {value,label,...}-objecten (zelfde formaat als
+// overal elders in het platform, zie bijv. mna/02-state-opslag-documenten.js) — een kale
+// esc(velden[k]) toonde daardoor sitebreed "[object Object]" i.p.v. de echte waarde (bevinding
+// 15 sep 2026, red-team-pentestronde: getest en bevestigd via de Playwright-regressie hieronder).
+// Fallback op de rauwe waarde blijft staan voor het (theoretische) geval van een ongewrapte string.
+function veldWaarde(v){return (v&&typeof v==='object')?v.value:v;}
 
 function renderDashboard(){
   var scopeTekst=info.scope_fase&&info.scope_fase!=='alle'?('Alleen fase: '+esc(faseLabel(info.scope_fase))):'Alle fases';
@@ -215,11 +221,11 @@ function renderDashboard(){
     faseData.forEach(function(r){
       var velden;
       try{velden=JSON.parse(r.data_json||'{}');}catch(e){velden={};}
-      var keys=Object.keys(velden).filter(function(k){return velden[k]!==''&&velden[k]!=null;});
+      var keys=Object.keys(velden).filter(function(k){var w=veldWaarde(velden[k]);return w!==''&&w!=null;});
       if(!keys.length)return;
       html+='<div style="margin-bottom:1rem"><div style="font-size:11px;font-weight:600;color:var(--teal);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.4rem">'+esc(faseLabel(r.fase_id))+'</div>';
       keys.forEach(function(k){
-        html+='<div class="dv-row"><div class="dv-label">'+esc(veldLabel(r.fase_id,k))+'</div><div class="dv-val">'+esc(velden[k])+'</div></div>';
+        html+='<div class="dv-row"><div class="dv-label">'+esc(veldLabel(r.fase_id,k))+'</div><div class="dv-val">'+esc(veldWaarde(velden[k]))+'</div></div>';
       });
       html+='</div>';
     });
