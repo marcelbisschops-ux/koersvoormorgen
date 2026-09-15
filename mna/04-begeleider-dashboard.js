@@ -3566,7 +3566,14 @@ function renderBegeleiderDashboard(app){
         {id:'compliance',titel:'Vergunningen',items:['Bedrijfs-/opslagvergunningen','Lopende claims / geschillen','Huur-/magazijncontract overdraagbaar']},
         {id:'it',titel:'Systemen',items:['ERP / voorraadbeheersysteem (WMS)','E-commerce / B2B-portaal','Automatiseringsgraad']},
         {id:'juridisch',titel:'Juridisch & fiscaal',items:['Rechtsvorm + eigendomsstructuur','VPB/BTW openstaande discussies','Lopende claims']},
-        {id:'strategisch',titel:'Strategie',items:['Marktpositie + regio','Onderscheidend vermogen','Groeimogelijkheden','Gewenste vervolgstap + tijdlijn']}]
+        {id:'strategisch',titel:'Strategie',items:['Marktpositie + regio','Onderscheidend vermogen','Groeimogelijkheden','Gewenste vervolgstap + tijdlijn']}],
+      consultancy: [{id:'financieel',titel:'Financieel',items:['P&L 3 jaar + YTD','EBITDA-marge','DGA-salaris (normalisatie)','Utilisatiegraad (declarabele uren)','Contractportefeuille (12 mnd)']},
+        {id:'commercieel',titel:'Klanten & contracten',items:['Grootste klant + top-10 klanten (% omzet)','Retainer/contractbasis (%)','Contractvorm-mix (vast/uurtarief/retainer)','Change-of-control-clausules']},
+        {id:'partners',titel:'Personeel & organisatie',items:['Organogram / FTE-overzicht','Eigenaar-afhankelijkheid (klantrelaties op naam)','Sleuteladviseurs met eigen klantportefeuille','Interne opvolger aanwezig','Tweede echelon / managementlaag onder eigenaar','Key-person-afhankelijkheid (% omzet/relaties aan 1 persoon)']},
+        {id:'compliance',titel:'Verzekering & compliance',items:['Beroepsaansprakelijkheidsverzekering','Lopende claims / geschillen']},
+        {id:'it',titel:'Systemen',items:['Urenregistratie- en projectmanagementsysteem','CRM-systeem','Automatiseringsgraad']},
+        {id:'juridisch',titel:'Juridisch & fiscaal',items:['Rechtsvorm + eigendomsstructuur','VPB/BTW openstaande discussies','Lopende claims']},
+        {id:'strategisch',titel:'Strategie',items:['Marktpositie + regio','Specialisme / onderscheidend vermogen','Groeimogelijkheden','Gewenste vervolgstap + tijdlijn']}]
     };
 
     // Bepaal fase op basis van LoI-status — alleen een echte handtekening (loi_getekend) telt,
@@ -3629,7 +3636,14 @@ function renderBegeleiderDashboard(app){
         {id:'compliance',titel:'Compliance DD',items:['Kwaliteitscertificaten / keurmerken','Douane-/AEO-status bij import/export','Milieu-/omgevingsvergunning (opslag)','Openstaande procedures']},
         {id:'it',titel:'IT DD',items:['Overige systemen (inkoop/voorraad/HR)','Licenties overdraagbaar','Cybersecurity','AVG-compliance']},
         {id:'juridisch',titel:'Legal & Tax DD',items:['Huurcontract magazijn/kantoor overdraagbaarheid','Leverancierscontracten + exclusiviteit','Change-of-control clausules','Tax DD: BTW/loonheffing/VPB 3 jaar','Leaseverplichtingen apparatuur/voertuigen']},
-        {id:'strategisch',titel:'Operational DD',items:['Concurrenten + marktaandeel','Impact digitalisering/marktdisruptie (bijv. directe fabrikantverkoop)','Cultuurfit + integratieplan','Dealstructuur voorkeur']}]
+        {id:'strategisch',titel:'Operational DD',items:['Concurrenten + marktaandeel','Impact digitalisering/marktdisruptie (bijv. directe fabrikantverkoop)','Cultuurfit + integratieplan','Dealstructuur voorkeur']}],
+      consultancy: [{id:'financieel',titel:'Financial DD',items:['Genormaliseerde EBITDA (gevalideerd)','Onderhanden werk (onbelaste uren) gewaardeerd','Werkkapitaalanalyse (NWC)','Kostenstructuur inhuur zzp/freelance (% omzet)']},
+        {id:'commercieel',titel:'Commercial DD',items:['Gem. omzet per klant/opdracht','Change-of-control-clausules klantcontracten','Marktaandeel validatie','Schaalbaarheid van het adviesmodel']},
+        {id:'partners',titel:'HR DD',items:['Aanblijf-/retentieafspraken sleuteladviseurs (bonus, earn-in, lock-up)','Personeelsverloop adviseurs (%)','ZZP-afhankelijkheid (%)','Non-concurrentie-/relatiebedingen adviseurs','Vakcertificeringen']},
+        {id:'compliance',titel:'Compliance DD',items:['Kwaliteitscertificeringen (bijv. ISO 9001)','AVG/verwerkersovereenkomsten','Wwft (indien financieel/fiscaal advies)','Eigen methodieken/frameworks vastgelegd']},
+        {id:'it',titel:'IT DD',items:['Kennismanagement (methodieken/templates overdraagbaar)','Licenties overdraagbaar','Cybersecurity']},
+        {id:'juridisch',titel:'Legal & Tax DD',items:['Huisvesting (kantoor) overdraagbaarheid','Klantcontracten (looptijd/opzegtermijn/exclusiviteit)','Change-of-control clausules','Tax DD: BTW/loonheffing/VPB 3 jaar']},
+        {id:'strategisch',titel:'Operational DD',items:['Concurrenten + marktaandeel','Impact AI/automatisering op het adviesmodel','Cultuurfit + integratieplan','Dealstructuur voorkeur']}]
     };
 
     var categorieen = ivFase === '2' ? (sectoren2[sector]||sectoren2.accountancy) : sectoren[sector];

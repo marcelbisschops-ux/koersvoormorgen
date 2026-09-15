@@ -1218,6 +1218,158 @@ var SECTOR_PROFIELEN = {
        items:['Regionale concurrentieanalyse gedaan','Groeipotentieel gekwantificeerd','Cultuurfit beoordeeld'],
        redflags:['Structurele marktdaling in segment','Locatie-afhankelijkheid zonder huurzekerheid','Geen onderscheidend vermogen','Eigenaar is het merk']}
     ]
+  },
+
+  // ── ZAKELIJKE DIENSTVERLENING / CONSULTANCY ──────────────────────────────
+  consultancy: {
+    label: 'Zakelijke Dienstverlening / Consultancy',
+    // Bron-status (15 sep 2026, zie SECTORPROFIEL-BRONNEN.md): multiple 🟢 gebrond — Brookz Overname
+    // Barometer H1-2025 (editie 22, blz. 9, spreidingstabel): "Zakelijke dienstverlening" laagste 4,6 /
+    // gemiddeld 4,9 / hoogste 5,4. Dit is de Brookz-categorie waar managementadvies/consultancy (CBS
+    // SBI 70.22, ~173.000 bedrijven — verreweg het grootste deelsegment binnen "specialistische
+    // zakelijke dienstverlening") onder valt; Brookz splitst dit niet verder uit naar consultancy vs.
+    // juridisch/architecten/reclame, dus dit is de meest precieze bron die beschikbaar is. Scope van
+    // dit profiel is bewust gericht op advies-/consultancybedrijven (uren-/projectgedreven, geen
+    // fysieke voorraad) — juridisch/architecten/reclame vallen hier qua naam onder maar hebben eigen
+    // dynamiek (bijv. beëdiging, portefeuilleverzekering) die dit profiel nog niet dekt; apart oppakken
+    // wanneer nodig, niet stilzwijgend aannemen dat dit profiel daar ook goed op past.
+    aiNormen: 'EBITDA-multiple (Brookz H1-2025, Zakelijke dienstverlening): laagste 4,6x, gemiddeld 4,9x, hoogste 5,4x. Sector is mensenintensief (geen voorraad/materieel) — waarde zit in de adviseurs en klantrelaties, niet in activa. Geen aparte gebronde marge-/FTE-normen beschikbaar; utilisatiegraad (declarabele uren t.o.v. beschikbare uren) is de gangbare interne KPI maar niet extern gebrond.',
+    multipleBasis: 'ebitda', multipleLaag: 4.6, multipleHoog: 5.4,
+    fases: [
+      {id:'financieel',num:'I',title:'Financieel',desc:'Omzet, marge en onderhanden werk (onbelaste uren).',
+       dataFields:[
+        {id:'_hdr_pl',label:'— P&L (3 jaar + YTD)',ph:'',doc:false,req:false,header:true,fase:'1'},
+        {id:'omzet1',label:'Jaaromzet jaar 1 (oudste)',ph:'',doc:true,req:true,fase:'1'},
+        {id:'omzet2',label:'Jaaromzet jaar 2',ph:'',doc:true,req:true,fase:'1'},
+        {id:'omzet3',label:'Jaaromzet jaar 3 (meest recent)',ph:'',doc:true,req:true,fase:'1'},
+        {id:'omzetYTD',label:'Omzet YTD huidig jaar',ph:'',doc:true,req:true,fase:'1'},
+        {id:'ebitda',label:'EBITDA jaar 3 — absoluut bedrag (€)',ph:'',doc:false,req:true,fase:'1'},
+        {id:'ebitdaMarge',label:'EBITDA-marge jaar 3 — percentage van omzet (%)',ph:'',doc:false,req:true,fase:'1'},
+        {id:'dgaSalaris',label:'DGA-salaris / eigenaarsonttrekking per jaar (€)',ph:'',doc:false,req:true,fase:'1'},
+        {id:'normalisatie',label:'Normalisaties (eenmalige posten)',ph:'',doc:false,req:false,fase:'1'},
+        {id:'utilisatiegraad',label:'Utilisatiegraad — declarabele uren t.o.v. beschikbare uren (%)',ph:'',doc:false,req:true,fase:'1'},
+        {id:'orderportefeuille',label:'Contractportefeuille — verwachte omzet komende 12 maanden (€)',ph:'',doc:false,req:true,fase:'1'},
+        {id:'forecast',label:'Omzetforecast komend jaar (€)',ph:'',doc:false,req:false,fase:'1'},
+        {id:'_hdr_wk2',label:'— Werkkapitaal & balans (post-LOI)',ph:'',doc:false,req:false,header:true,fase:'2'},
+        {id:'ebitdaNorm',label:'Genormaliseerde EBITDA (gevalideerd)',ph:'',doc:true,req:true,fase:'2'},
+        {id:'ohwWaarde',label:'Onderhanden werk (OHW) — gewerkte, nog niet gefactureerde uren (€)',ph:'',doc:true,req:true,fase:'2'},
+        {id:'debiteuren',label:'Debiteuren totaal',ph:'',doc:true,req:false,fase:'2'},
+        {id:'crediteuren',label:'Crediteuren totaal',ph:'',doc:true,req:false,fase:'2'},
+        {id:'nwcAnalyse',label:'Netto werkkapitaalanalyse (NWC)',ph:'',doc:true,req:false,fase:'2'},
+        {id:'eigVermoeden',label:'Eigen vermogen',ph:'',doc:true,req:false,fase:'2'},
+        {id:'resultaat',label:'Nettoresultaat na belasting, meest recent boekjaar (€)',ph:'',doc:true,req:false,fase:'2'},
+        {id:'balansTotaal',label:'Balanstotaal / totale activa (€)',ph:'',doc:true,req:false,fase:'2'},
+        {id:'liquideMiddelen',label:'Liquide middelen — kas + bank (€)',ph:'',doc:true,req:false,fase:'2'},
+        {id:'kortlopendeSchulden',label:'Kortlopende schulden (€)',ph:'',doc:true,req:false,fase:'2'},
+        {id:'langlopendeSchulden',label:'Langlopende schulden / leningen (€)',ph:'',doc:true,req:false,fase:'2'},
+        {id:'_hdr_kost2',label:'— Kostenstructuur (jaar 3)',ph:'',doc:false,req:false,header:true,fase:'2'},
+        {id:'kostenPersoneel',label:'Personeelskosten (% omzet)',ph:'',doc:false,req:false,fase:'2'},
+        {id:'kostenHuisvesting',label:'Huur/huisvesting (% omzet)',ph:'',doc:false,req:false,fase:'2'},
+        {id:'kostenInhuur',label:'Inhuur zzp/freelance-adviseurs (% omzet)',ph:'',doc:false,req:false,fase:'2'},
+        {id:'kostenOverig',label:'Overige kosten (% omzet)',ph:'',doc:false,req:false,fase:'2'}
+       ],
+       items:['Jaarrekeningen 3 jaar beschikbaar','YTD-cijfers aangeleverd','Onderhanden werk (onbelaste uren) gewaardeerd','Utilisatiegraad inzichtelijk','Werkkapitaalbehoefte bepaald'],
+       redflags:['Dalende utilisatiegraad','Hoge OHW-waarde tov omzet (facturatie loopt achter)','Negatief eigen vermogen','Sterk wisselende omzet zonder verklaring']},
+      {id:'commercieel',num:'II',title:'Klanten & contracten',desc:'Klantconcentratie, contractvorm en herhaalomzet.',
+       dataFields:[
+        {id:'aantalKlanten',label:'Aantal actieve klanten / opdrachten per jaar',ph:'',doc:false,req:true,fase:'1'},
+        {id:'top1pct',label:'Grootste klant — aandeel in totale omzet (%)',ph:'',doc:false,req:true,fase:'1'},
+        {id:'top10pct',label:'Top 10 klanten samen — aandeel in totale omzet (%)',ph:'',doc:false,req:false,fase:'1'},
+        {id:'recurring',label:'Retainer/contractbasis — vaste, terugkerende omzet (%)',ph:'',doc:false,req:true,fase:'1'},
+        {id:'contractvorm',label:'Contractvorm — vaste prijs / uurtarief / retainer (verdeling %)',ph:'',doc:false,req:true,fase:'1'},
+        {id:'locaties',label:'Aantal vestigingen / werkgebied (regio\'s)',ph:'',doc:false,req:false,fase:'1'},
+        {id:'orderPortefeuille',label:'Contractportefeuille / pipeline',ph:'',doc:false,req:false,fase:'1'},
+        {id:'_hdr_com2',label:'— Commercial DD (post-LOI)',ph:'',doc:false,req:false,header:true,fase:'2'},
+        {id:'omzetPerKlant',label:'Gem. omzet per klant/opdracht',ph:'',doc:false,req:false,fase:'2'},
+        {id:'klantContractenAfhank',label:'Change-of-control-clausules in klantcontracten',ph:'',doc:true,req:false,fase:'2'},
+        {id:'marktaandeel',label:'Marktaandeel validatie',ph:'',doc:false,req:false,fase:'2'},
+        {id:'schaalbaarheid',label:'Operationele schaalbaarheid van het adviesmodel',ph:'',doc:false,req:false,fase:'2'}
+       ],
+       items:['Klantconcentratie geanalyseerd','Contractvorm-mix inzichtelijk','Retainer-aandeel vastgesteld','Change-of-control-clausules gecontroleerd'],
+       redflags:['Omzet bij 1-2 grote klanten','Nauwelijks retainer-/contractomzet (vrijwel alles ad-hoc)','Klantrelatie zit persoonlijk bij één adviseur, niet bij het bedrijf','Change-of-control-clausule laat klant vertrekken bij eigendomswissel']},
+      {id:'partner',num:'III',title:'Personeel & organisatie',desc:'Adviseurs, sleutelpersonen en overdraagbaarheid.',
+       dataFields:[
+        {id:'fte',label:'Totaal FTE',ph:'',doc:false,req:true,fase:'1'},
+        {id:'aantalP',label:'Aantal eigenaren / DGA',ph:'',doc:false,req:true,fase:'1'},
+        {id:'eigenaarAfhank',label:'Eigenaar-afhankelijkheid (klantrelaties op naam van eigenaar)',ph:'',doc:false,req:true,fase:'1'},
+        {id:'sleutelpersonen',label:'Sleutelpersonen buiten eigenaar (senior adviseurs met eigen klantportefeuille)',ph:'',doc:false,req:true,fase:'1'},
+        {id:'organogram',label:'Organogram / structuur',ph:'',doc:true,req:false,fase:'1'},
+        {id:'opvolging',label:'Interne opvolger aanwezig',ph:'',doc:false,req:true,fase:'1'},
+        {id:'_hdr_mgmt',label:'— Management & sleutelpersoon-afhankelijkheid',ph:'',doc:false,req:false,header:true,fase:'1'},
+        {id:'tweedeEchelon',label:'Tweede echelon — managementlaag onder eigenaar die de onderneming draaiend houdt (aanwezig? hoe sterk?)',ph:'',doc:false,req:true,fase:'1'},
+        {id:'keyPersonAfhank',label:'Key-person-afhankelijkheid — grootste aandeel omzet of klantrelaties dat aan één adviseur hangt (%)',ph:'',doc:false,req:true,fase:'1'},
+        {id:'_hdr_hr2',label:'— HR DD (post-LOI)',ph:'',doc:false,req:false,header:true,fase:'2'},
+        {id:'mgmtRetentie',label:'Aanblijf-/retentieafspraken voor sleuteladviseurs (bonus, earn-in, lock-up)',ph:'',doc:true,req:false,fase:'2'},
+        {id:'verloop',label:'Personeelsverloop — adviseurs uit dienst per jaar (%)',ph:'',doc:false,req:false,fase:'2'},
+        {id:'zzpAfhank',label:'Aandeel capaciteit via zzp\'ers/freelance adviseurs (%)',ph:'',doc:false,req:false,fase:'2'},
+        {id:'cao',label:'CAO van toepassing',ph:'',doc:true,req:false,fase:'2'},
+        {id:'vakkennis',label:'Vakcertificeringen (bijv. Prince2, Scrum, branche-erkenning)',ph:'',doc:false,req:false,fase:'2'},
+        {id:'nonConcurrentie',label:'Non-concurrentie-/relatiebedingen adviseurs',ph:'',doc:true,req:false,fase:'2'},
+        {id:'pContract',label:'Arbeidscontracten actueel',ph:'',doc:true,req:false,fase:'2'},
+        {id:'pensioenReg',label:'Pensioenregeling (soort + kosten)',ph:'',doc:true,req:false,fase:'2'},
+        {id:'ziekteverzuim',label:'Ziekteverzuim (%)',ph:'',doc:false,req:false,fase:'2'}
+       ],
+       items:['FTE-bezetting en functies in kaart','Sleuteladviseurs geïdentificeerd','Non-concurrentiebedingen gecontroleerd','Opvolgingsplan aanwezig'],
+       redflags:['Hele bedrijf draait op eigenaar (klantrelaties niet overdraagbaar)','Sleuteladviseur kan zonder beding vertrekken en klanten meenemen','Hoge zzp-afhankelijkheid zonder vaste kern','Geen tweede echelon onder de eigenaar']},
+      {id:'compliance',num:'IV',title:'Verzekering & compliance',desc:'Beroepsaansprakelijkheid en gegevensbescherming.',
+       dataFields:[
+        {id:'aansprakelijkheidsverz',label:'Beroepsaansprakelijkheidsverzekering (dekking en geldigheid)',ph:'',doc:true,req:true,fase:'1'},
+        {id:'tuchtzaken',label:'Lopende juridische procedures / claims',ph:'',doc:false,req:true,fase:'1'},
+        {id:'_hdr_comp2',label:'— Compliance DD (post-LOI)',ph:'',doc:false,req:false,header:true,fase:'2'},
+        {id:'certificeringen',label:'Kwaliteitscertificeringen / keurmerken (bijv. ISO 9001)',ph:'',doc:true,req:false,fase:'2'},
+        {id:'avg',label:'AVG-compliance (klantgegevens, verwerkersovereenkomsten)',ph:'',doc:true,req:false,fase:'2'},
+        {id:'wwft',label:'Wwft van toepassing en geïmplementeerd (indien financieel/fiscaal advies)',ph:'',doc:false,req:false,fase:'2'},
+        {id:'ip',label:'Eigen methodieken/frameworks (IP) vastgelegd',ph:'',doc:true,req:false,fase:'2'}
+       ],
+       items:['Beroepsaansprakelijkheidsverzekering gecontroleerd','AVG/verwerkersovereenkomsten op orde','Openstaande claims in kaart'],
+       redflags:['Geen of ontoereikende beroepsaansprakelijkheidsverzekering','Lopende claim die de verzekeringsdekking overschrijdt','Geen verwerkersovereenkomsten met klanten (AVG-risico)']},
+      {id:'it',num:'V',title:'Systemen & digitalisering',desc:'Urenregistratie, CRM en kennismanagement.',
+       dataFields:[
+        {id:'software',label:'Urenregistratie- en projectmanagementsysteem',ph:'',doc:false,req:true,fase:'1'},
+        {id:'crm',label:'CRM-systeem',ph:'',doc:false,req:false,fase:'1'},
+        {id:'autoGraad',label:'Automatiseringsgraad — Laag / Gemiddeld / Hoog',ph:'',doc:false,req:false,fase:'1'},
+        {id:'_hdr_it2',label:'— IT DD (post-LOI)',ph:'',doc:false,req:false,header:true,fase:'2'},
+        {id:'kennisSystemen',label:'Kennismanagement — methodieken/templates vastgelegd en overdraagbaar',ph:'',doc:false,req:false,fase:'2'},
+        {id:'licentiesOverdraagbaar',label:'Licenties overdraagbaar bij overname',ph:'',doc:false,req:false,fase:'2'},
+        {id:'security',label:'Cybersecurity en dataveiligheid',ph:'',doc:false,req:false,fase:'2'},
+        {id:'itRisico',label:'Bekende IT-risicos of legacy-systemen',ph:'',doc:false,req:false,fase:'2'}
+       ],
+       items:['ICT-landschap in kaart','Urenregistratie en licenties overdraagbaar','Kennis/methodieken vastgelegd (niet alleen in hoofden van adviseurs)'],
+       redflags:['Kennis zit alleen in hoofden van individuele adviseurs, niet vastgelegd','Urenregistratie/facturatie handmatig en foutgevoelig','Data en systemen niet overdraagbaar']},
+      {id:'juridisch',num:'VI',title:'Juridisch & fiscaal',desc:'Structuur, klantcontracten en fiscale risico.',
+       dataFields:[
+        {id:'rechtsvorm',label:'Rechtsvorm(en)',ph:'',doc:true,req:true,fase:'1'},
+        {id:'structuur',label:'Eigendomsstructuur',ph:'',doc:true,req:true,fase:'1'},
+        {id:'vpb',label:'VPB / BTW openstaande discussies',ph:'',doc:false,req:true,fase:'1'},
+        {id:'lopendeClaims',label:'Lopende claims / geschillen',ph:'',doc:false,req:true,fase:'1'},
+        {id:'_hdr_jur2',label:'— Legal & Tax DD (post-LOI)',ph:'',doc:false,req:false,header:true,fase:'2'},
+        {id:'huisvesting',label:'Huisvesting (kantoor) — huur of eigendom + overdraagbaarheid',ph:'',doc:true,req:false,fase:'2'},
+        {id:'klantcontracten',label:'Klantcontracten — looptijd, opzegtermijn, exclusiviteit',ph:'',doc:true,req:false,fase:'2'},
+        {id:'changeControl',label:'Change-of-control clausules sleutelcontracten',ph:'',doc:false,req:false,fase:'2'},
+        {id:'overigeClaims',label:'Claims, garanties, aansprakelijkheden (details)',ph:'',doc:true,req:false,fase:'2'},
+        {id:'fiscaalRisico',label:'Fiscale risicos (privégebruik, transfer pricing)',ph:'',doc:false,req:false,fase:'2'},
+        {id:'taxDD',label:'Tax DD: BTW, loonheffing, VPB-aangiften 3 jaar',ph:'',doc:true,req:false,fase:'2'}
+       ],
+       items:['Huisvesting overdraagbaar bevestigd','Klantcontracten inzichtelijk (looptijd + opzegtermijn)','VPB en BTW-positie beoordeeld','Aansprakelijkheden vastgesteld'],
+       redflags:['Huisvesting niet overdraagbaar','Klantcontracten kort opzegbaar zonder exclusiviteit','Openstaande fiscale schulden','Onbekende garantieverplichtingen']},
+      {id:'strategisch',num:'VII',title:'Markt & groeipotentieel',desc:'Marktpositie, specialisme en schaalbaarheid.',
+       dataFields:[
+        {id:'marktpos',label:'Marktpositie / regio',ph:'',doc:false,req:true,fase:'1'},
+        {id:'niche',label:'Specialisme / onderscheidend vermogen',ph:'',doc:false,req:true,fase:'1'},
+        {id:'groeipotentieel',label:'Groeimogelijkheden',ph:'',doc:false,req:true,fase:'1'},
+        {id:'synergie',label:'Gewenste vervolgstap eigenaar',ph:'',doc:false,req:true,fase:'1'},
+        {id:'tijdlijn',label:'Gewenste tijdlijn overdracht',ph:'',doc:false,req:true,fase:'1'},
+        {id:'risicoFactoren',label:'Grootste risicofactoren (eigen inschatting)',ph:'',doc:false,req:false,fase:'1'},
+        {id:'_hdr_str2',label:'— Commercial & Operational DD (post-LOI)',ph:'',doc:false,req:false,header:true,fase:'2'},
+        {id:'concurrenten',label:'Directe concurrenten + marktaandeel',ph:'',doc:false,req:false,fase:'2'},
+        {id:'cultuurFit',label:'Bedrijfscultuur en teamdynamiek',ph:'',doc:false,req:false,fase:'2'},
+        {id:'aiImpact',label:'Impact AI/automatisering op het adviesmodel',ph:'',doc:false,req:false,fase:'2'},
+        {id:'schaalbaarheid',label:'Schaalbaarheid — kan het model groeien zonder lineair meer FTE?',ph:'',doc:false,req:false,fase:'2'},
+        {id:'dealStructuur',label:'Voorkeur dealstructuur',ph:'',doc:false,req:false,fase:'2'}
+       ],
+       items:['Regionale concurrentieanalyse gedaan','Groeipotentieel gekwantificeerd','Cultuurfit beoordeeld','Schaalbaarheid van het model beoordeeld'],
+       redflags:['Structurele marktdaling in segment','Model schaalt niet zonder lineaire FTE-groei','Geen onderscheidend vermogen','Eigenaar is het merk/de expertise']}
+    ]
   }
 };
 
@@ -1245,7 +1397,7 @@ function getSectorFases() {
 // een niet-bestaand veld verplicht stellen (GOUDEN STANDAARD: nooit gokken/aannemen).
 function getEigenaarBeloningsVeld() {
   // bouw/transport/handel toegevoegd 13 sep 2026: zelfde DGA-structuur als mkb, dus 'dgaSalaris'.
-  var MAP = { accountancy: 'partnerBel', zorg: 'partnerBel', mkb: 'dgaSalaris', itsoftware: null, bouw: 'dgaSalaris', transport: 'dgaSalaris', handel: 'dgaSalaris' };
+  var MAP = { accountancy: 'partnerBel', zorg: 'partnerBel', mkb: 'dgaSalaris', itsoftware: null, bouw: 'dgaSalaris', transport: 'dgaSalaris', handel: 'dgaSalaris', consultancy: 'dgaSalaris' };
   var sector = (S.traject && S.traject.sector) || 'accountancy';
   var veldId = MAP.hasOwnProperty(sector) ? MAP[sector] : 'partnerBel';
   if (!veldId) return null;
@@ -1273,7 +1425,8 @@ function getPartnerTerm() {
     // eigenaar/DGA-structuur als mkb, zie ook getEigenaarBeloningsVeld() hierboven.
     bouw:        { enkel: 'eigenaar / DGA',        meer: 'eigenaren',               titel: 'Eigenaren' },
     transport:   { enkel: 'eigenaar / DGA',        meer: 'eigenaren',               titel: 'Eigenaren' },
-    handel:      { enkel: 'eigenaar / DGA',        meer: 'eigenaren',               titel: 'Eigenaren' }
+    handel:      { enkel: 'eigenaar / DGA',        meer: 'eigenaren',               titel: 'Eigenaren' },
+    consultancy: { enkel: 'eigenaar / DGA',        meer: 'eigenaren',               titel: 'Eigenaren' }
   };
   var sector = (S.traject && S.traject.sector) || 'accountancy';
   return MAP[sector] || MAP.accountancy;
