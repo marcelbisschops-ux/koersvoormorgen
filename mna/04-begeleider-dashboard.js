@@ -3541,7 +3541,32 @@ function renderBegeleiderDashboard(app){
         {id:'compliance',titel:'Beveiliging & compliance',items:['AVG/GDPR-compliance','Laatste penetratietest','Security incidents afgelopen 2 jaar','Open source licentie-compliance']},
         {id:'it',titel:'Technologie & architectuur',items:['Tech stack (talen, frameworks)','Hosting/cloud provider','CI/CD aanwezig','Schaalbaarheid architectuur']},
         {id:'juridisch',titel:'Juridisch & IP',items:['Rechtsvorm + aandeelhoudersstructuur','Klantcontracten (looptijd, opzegtermijn)','VPB en R&D-aftrek (WBSO)-situatie']},
-        {id:'strategisch',titel:'Markt & schaalbaarheid',items:['Marktpositie + category definition','Unieke waardepropositie (moat)','Groeimotor (PLG/SLG/partnerships)','Exit-tijdlijn']}]
+        {id:'strategisch',titel:'Markt & schaalbaarheid',items:['Marktpositie + category definition','Unieke waardepropositie (moat)','Groeimotor (PLG/SLG/partnerships)','Exit-tijdlijn']}],
+      // bouw/transport/handel toegevoegd 15 sep 2026 — zelfde reden als itsoftware hierboven: zonder
+      // deze entry valt een traject van deze sector stil terug op accountancy-categorieën (regel 3554
+      // hieronder). Items komen 1-op-1 uit de fase-1 dataFields van de bijbehorende sectorprofielen in
+      // mna/01-config-sectorprofielen.js, niets verzonnen.
+      bouw: [{id:'financieel',titel:'Financieel',items:['P&L 3 jaar + YTD','EBITDA + brutomarge op projecten','DGA-salaris (normalisatie)','Materieelwaarde (boekwaarde)','Opdrachtenportefeuille (12 mnd)']},
+        {id:'commercieel',titel:'Opdrachten & klanten',items:['Top-10 opdrachtgevers + onderaannemers','Grootste opdrachtgever (% omzet)','Herhaalopdrachten (%)','Seizoensgevoeligheid (winterstop)','Aandeel aanbestedingen/tenders']},
+        {id:'partners',titel:'Personeel & organisatie',items:['Organogram / FTE-overzicht','Eigenaar-afhankelijkheid (vergunningen op naam)','Sleutelpersonen (hoofduitvoerder, calculator)','Interne opvolger aanwezig','Tweede echelon / managementlaag onder eigenaar','Key-person-afhankelijkheid (% omzet/relaties aan 1 persoon)']},
+        {id:'compliance',titel:'Vergunningen',items:['Omgevingsvergunningen (overdraagbaar?)','Lopende claims / geschillen','Materieel in eigendom of lease']},
+        {id:'it',titel:'Systemen',items:['Calculatie- en projectplanningssoftware','BIM/tekeningsoftware','Automatiseringsgraad']},
+        {id:'juridisch',titel:'Juridisch & fiscaal',items:['Rechtsvorm + eigendomsstructuur','VPB/BTW openstaande discussies','Lopende claims']},
+        {id:'strategisch',titel:'Strategie',items:['Marktpositie + regio','Onderscheidend vermogen','Groeimogelijkheden','Gewenste vervolgstap + tijdlijn']}],
+      transport: [{id:'financieel',titel:'Financieel',items:['P&L 3 jaar + YTD','EBITDA + brutomarge (na brandstof)','DGA-salaris (normalisatie)','Wagenparkwaarde (boekwaarde)','Contractportefeuille (12 mnd)']},
+        {id:'commercieel',titel:'Opdrachten & klanten',items:['Top-10 verladers + onderaannemer-vervoerders','Grootste opdrachtgever (% omzet)','Vaste routes/contracten (%)','Seizoensgevoeligheid','Aandeel aanbestedingen/tenders']},
+        {id:'partners',titel:'Personeel & organisatie',items:['FTE + chauffeursbezetting','Eigenaar-afhankelijkheid (vergunningen op naam)','Sleutelpersonen (planner, hoofd wagenpark)','Interne opvolger aanwezig','Tweede echelon / managementlaag onder eigenaar','Key-person-afhankelijkheid (% omzet/relaties aan 1 persoon)']},
+        {id:'compliance',titel:'Vergunningen',items:['Eurovergunning / NIWO-vergunning','Lopende claims / geschillen','Wagenpark in eigendom of lease']},
+        {id:'it',titel:'Systemen',items:['TMS / planningssoftware','Telematica / boordcomputers / tracking','Automatiseringsgraad']},
+        {id:'juridisch',titel:'Juridisch & fiscaal',items:['Rechtsvorm + eigendomsstructuur','VPB/BTW openstaande discussies','Lopende claims']},
+        {id:'strategisch',titel:'Strategie',items:['Marktpositie + regio','Onderscheidend vermogen','Groeimogelijkheden','Gewenste vervolgstap + tijdlijn']}],
+      handel: [{id:'financieel',titel:'Financieel',items:['P&L 3 jaar + YTD','EBITDA + brutomarge (na inkoop)','DGA-salaris (normalisatie)','Voorraadwaarde indicatief','Orderportefeuille/pipeline']},
+        {id:'commercieel',titel:'Omzet & klanten',items:['Top-10 klanten + top-10 leveranciers','Grootste klant (% omzet)','Vaste/terugkerende omzet (%)','Seizoensgevoeligheid','Aandeel import/export']},
+        {id:'partners',titel:'Personeel & organisatie',items:['Organogram / FTE-overzicht','Eigenaar-afhankelijkheid (klanten/leveranciers)','Sleutelpersonen (inkoper, magazijnchef)','Interne opvolger aanwezig','Tweede echelon / managementlaag onder eigenaar','Key-person-afhankelijkheid (% omzet/relaties aan 1 persoon)']},
+        {id:'compliance',titel:'Vergunningen',items:['Bedrijfs-/opslagvergunningen','Lopende claims / geschillen','Huur-/magazijncontract overdraagbaar']},
+        {id:'it',titel:'Systemen',items:['ERP / voorraadbeheersysteem (WMS)','E-commerce / B2B-portaal','Automatiseringsgraad']},
+        {id:'juridisch',titel:'Juridisch & fiscaal',items:['Rechtsvorm + eigendomsstructuur','VPB/BTW openstaande discussies','Lopende claims']},
+        {id:'strategisch',titel:'Strategie',items:['Marktpositie + regio','Onderscheidend vermogen','Groeimogelijkheden','Gewenste vervolgstap + tijdlijn']}]
     };
 
     // Bepaal fase op basis van LoI-status — alleen een echte handtekening (loi_getekend) telt,
@@ -3581,7 +3606,30 @@ function renderBegeleiderDashboard(app){
         {id:'compliance',titel:'Security & Compliance DD',items:['ISO 27001/SOC2/NEN7510-status','Pentest-rapportage volledig','Open source licentie-audit (GPL-risico)','SLA-nakoming historisch']},
         {id:'it',titel:'Tech DD',items:['Vendor lock-in beoordeling','Uptime/availability-historie','Monitoring/DevOps-tooling','Technische schuld % van dev-capaciteit']},
         {id:'juridisch',titel:'Legal & IP DD',items:['IP-registraties (patenten/merken/octrooien)','Change-of-control-clausules klantcontracten','Fiscale risicos (WBSO/innovatiebox)','Openstaande IP-geschillen']},
-        {id:'strategisch',titel:'Operational DD',items:['Concurrentieanalyse gedetailleerd','AI-impact op product/concurrenten','Synergiemogelijkheden met koper gekwantificeerd','Cultuurfit engineering-team']}]
+        {id:'strategisch',titel:'Operational DD',items:['Concurrentieanalyse gedetailleerd','AI-impact op product/concurrenten','Synergiemogelijkheden met koper gekwantificeerd','Cultuurfit engineering-team']}],
+      // bouw/transport/handel toegevoegd 15 sep 2026 — zie toelichting bij sectoren.bouw hierboven.
+      // Items komen 1-op-1 uit de fase-2 dataFields van de bijbehorende sectorprofielen.
+      bouw: [{id:'financieel',titel:'Financial DD',items:['Genormaliseerde EBITDA (gevalideerd)','Onderhanden werk (OHW) per project gewaardeerd','Garantievoorziening (10-jaar aansprakelijkheid)','Werkkapitaalanalyse (NWC)','Capex-historie materieel + investeringsbehoefte']},
+        {id:'commercieel',titel:'Commercial DD',items:['Projectmix (woningbouw/utiliteit/infra/renovatie)','Afhankelijkheid vaste onderaannemers (contract/exclusiviteit)','Marktaandeel validatie','Operationele schaalbaarheid']},
+        {id:'partners',titel:'HR DD',items:['Aanblijf-/retentieafspraken management (bonus, earn-in, lock-up)','Personeelsverloop (%)','ZZP-afhankelijkheid (%)','CAO Bouw & Infra van toepassing','Vakbekwaamheidscertificaten (VCA-persoon, lasdiploma)','Pensioenregeling (bedrijfstakpensioenfonds)']},
+        {id:'compliance',titel:'Compliance DD',items:['VCA-certificering (niveau + geldigheid)','CAR-verzekering / aansprakelijkheidsverzekering','Lopende garantie-/gebrekenclaims','Milieu-/bodemrisico projectlocaties']},
+        {id:'it',titel:'IT DD',items:['Overige systemen (inkoop/materieelbeheer/HR)','Licenties overdraagbaar','Cybersecurity','AVG-documentatie']},
+        {id:'juridisch',titel:'Legal & Tax DD',items:['Huisvesting (kantoor/loods) overdraagbaarheid','Onderaannemers-/leverancierscontracten + exclusiviteit','Change-of-control clausules','Tax DD: BTW/loonheffing/VPB 3 jaar','Leaseverplichtingen materieel/voertuigen']},
+        {id:'strategisch',titel:'Operational DD',items:['Concurrenten + marktaandeel','Impact verduurzamingseisen (BENG/circulair bouwen)','Cultuurfit + integratieplan','Dealstructuur voorkeur']}],
+      transport: [{id:'financieel',titel:'Financial DD',items:['Genormaliseerde EBITDA (gevalideerd)','Werkkapitaalanalyse (NWC)','Capex-historie wagenpark + vervangingsinvestering','Kostenstructuur brandstof/energie (% omzet)']},
+        {id:'commercieel',titel:'Commercial DD',items:['Vervoersmix (binnenlands/internationaal/gekoeld/specialistisch)','Afhankelijkheid onderaannemer-vervoerders (contract/exclusiviteit)','Marktaandeel validatie','Operationele schaalbaarheid']},
+        {id:'partners',titel:'HR DD',items:['Aanblijf-/retentieafspraken management (bonus, earn-in, lock-up)','Personeelsverloop chauffeurs/staf (%)','Rijbewijs code 95 / nascholingscertificaten actueel','CAO Beroepsgoederenvervoer/Logistiek van toepassing','Pensioenregeling (bedrijfstakpensioenfonds Vervoer)']},
+        {id:'compliance',titel:'Compliance DD',items:['Kwaliteitscertificering (ISO/keurmerk transport)','CMR-verzekering / vervoerdersaansprakelijkheid','Milieuzone-toegang / Euro-emissieklasse wagenpark','Openstaande procedures']},
+        {id:'it',titel:'IT DD',items:['Overige systemen (facturatie/HR/onderhoudsbeheer)','Licenties overdraagbaar','Cybersecurity','AVG-compliance']},
+        {id:'juridisch',titel:'Legal & Tax DD',items:['Huisvesting (depot/kantoor) overdraagbaarheid','Onderaannemers-/leverancierscontracten + exclusiviteit','Change-of-control clausules','Tax DD: BTW/loonheffing/VPB 3 jaar','Leaseverplichtingen voertuigen/materieel']},
+        {id:'strategisch',titel:'Operational DD',items:['Concurrenten + marktaandeel','Impact vervoersverduurzaming (elektrificatie, CO2-normen)','Cultuurfit + integratieplan','Dealstructuur voorkeur']}],
+      handel: [{id:'financieel',titel:'Financial DD',items:['Genormaliseerde EBITDA (gevalideerd)','Voorraadomzetsnelheid (x per jaar)','Werkkapitaalanalyse (NWC)','Capex-historie magazijn/logistiek']},
+        {id:'commercieel',titel:'Commercial DD',items:['Productmix / assortiment (details)','Leveranciersafhankelijkheid (contract/exclusiviteit)','Marktaandeel validatie','Operationele schaalbaarheid']},
+        {id:'partners',titel:'HR DD',items:['Aanblijf-/retentieafspraken management (bonus, earn-in, lock-up)','Personeelsverloop (%)','CAO van toepassing','Pensioenregeling']},
+        {id:'compliance',titel:'Compliance DD',items:['Kwaliteitscertificaten / keurmerken','Douane-/AEO-status bij import/export','Milieu-/omgevingsvergunning (opslag)','Openstaande procedures']},
+        {id:'it',titel:'IT DD',items:['Overige systemen (inkoop/voorraad/HR)','Licenties overdraagbaar','Cybersecurity','AVG-compliance']},
+        {id:'juridisch',titel:'Legal & Tax DD',items:['Huurcontract magazijn/kantoor overdraagbaarheid','Leverancierscontracten + exclusiviteit','Change-of-control clausules','Tax DD: BTW/loonheffing/VPB 3 jaar','Leaseverplichtingen apparatuur/voertuigen']},
+        {id:'strategisch',titel:'Operational DD',items:['Concurrenten + marktaandeel','Impact digitalisering/marktdisruptie (bijv. directe fabrikantverkoop)','Cultuurfit + integratieplan','Dealstructuur voorkeur']}]
     };
 
     var categorieen = ivFase === '2' ? (sectoren2[sector]||sectoren2.accountancy) : sectoren[sector];

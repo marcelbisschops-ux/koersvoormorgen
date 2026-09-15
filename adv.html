@@ -361,7 +361,7 @@ function modChips(){
 function renderDashboard(){
   VIEW='dashboard';
   var actief=G.trajecten.filter(function(t){return t.status==='actief';}).length;
-  var sl={accountancy:'Accountancy',mkb:'MKB',zorg:'Zorg',itsoftware:'IT/Software'};
+  var sl={accountancy:'Accountancy',mkb:'MKB',zorg:'Zorg',itsoftware:'IT/Software',bouw:'Bouw',transport:'Transport',handel:'Handel'};
   var rows='';
   if(!G.trajecten.length){
     rows='<tr><td colspan="6"><div class="empty"><div class="empty-icon">📁</div>Nog geen trajecten.<br>Klik op "+ Nieuw traject" om te beginnen.</div></td></tr>';
@@ -896,6 +896,8 @@ function nieuwTraject(){
       <div class="field"><label for="n-sector">Sector *</label><select id="n-sector">
         <option value="accountancy">Accountancy</option><option value="mkb">MKB</option>
         <option value="zorg">Zorg</option><option value="itsoftware">IT & Software</option>
+        <option value="bouw">Bouw & Installatietechniek</option><option value="transport">Transport & Logistiek</option>
+        <option value="handel">Handel / Groothandel</option>
       </select></div>
     </div>
     <div class="field"><label for="n-structuur">Structuur *</label><select id="n-structuur">
@@ -1008,7 +1010,7 @@ function openTraject(id){
 function renderDetail(t){
   var id=t.id;
   VIEW='detail';
-  var sl={accountancy:'Accountancy',mkb:'MKB',zorg:'Zorg',itsoftware:'IT/Software'};
+  var sl={accountancy:'Accountancy',mkb:'MKB',zorg:'Zorg',itsoftware:'IT/Software',bouw:'Bouw',transport:'Transport',handel:'Handel'};
   render(`
     <div class="hdr">
       <div class="hdr-brand"><div class="hdr-dot"></div>${BRAND.platform} ${BRAND.suffix}</div>
