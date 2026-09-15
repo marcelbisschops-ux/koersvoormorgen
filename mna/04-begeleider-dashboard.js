@@ -889,12 +889,20 @@ function renderBegeleiderDashboard(app){
           +'<div class="stap-kaart-status" data-doc="'+id+'">'+(statusHtml||'')+'</div>'
           +'</button>';
       }
-      function getekendStatus(getekendVeld, datumVeld){
+      // tekstVeld (15 sep 2026, Marcel: eigen document uploaden voor BEM/Excl leek "niks te doen" op
+      // de kaart): deze functie keek uitsluitend naar het getekend-veld, dus een BEM/Excl die al wél
+      // is verstuurd (AI-tekst óf een eigen geüpload PDF/Word-bestand — het bestaande "eigen PDF"-
+      // toggle in de documentgenerator, /mna/bem/email en /mna/exclusief/email ondersteunen dit al
+      // langer) toonde altijd nog steeds "Nog niet getekend", zonder enig signaal dat de flow al is
+      // doorgezet. tekstVeld is optioneel — NDA/LoI (composer-gestuurd, hier bewust ongewijzigd)
+      // geven 'm niet mee en behouden exact het oude twee-staten-gedrag.
+      function getekendStatus(getekendVeld, datumVeld, tekstVeld){
         var getekend=S.traject&&S.traject[getekendVeld];
         var datum=S.traject&&S.traject[datumVeld];
-        return getekend
-          ?'<span style="color:var(--teal)">&#10003; Getekend door '+esc(getekend)+(datum?' &middot; '+new Date(datum).toLocaleDateString('nl-NL',{day:'2-digit',month:'short',year:'numeric'}):'')+'</span>'
-          :'Nog niet getekend';
+        if(getekend) return '<span style="color:var(--teal)">&#10003; Getekend door '+esc(getekend)+(datum?' &middot; '+new Date(datum).toLocaleDateString('nl-NL',{day:'2-digit',month:'short',year:'numeric'}):'')+'</span>';
+        var verzonden=tekstVeld&&S.traject&&S.traject[tekstVeld];
+        if(verzonden) return '<span style="color:var(--gold-dark)">&#9993; Verzonden'+(datum?' op '+new Date(datum).toLocaleDateString('nl-NL',{day:'2-digit',month:'short',year:'numeric'}):'')+' — nog niet getekend</span>';
+        return 'Nog niet getekend';
       }
       // Procesfase (23 aug 2026, op verzoek Marcel: het scherm toonde alleen losse knoppen, geen
       // processtroom). Afgeleid, geen nieuw databaseveld — "geen koper" betekent hier: nog geen
@@ -930,7 +938,7 @@ function renderBegeleiderDashboard(app){
         // volgorde tussen BEM en NDA: de teaser gaat al de markt op vóórdat er een geïnteresseerde
         // partij is; het verkoopmemorandum is voor een specifieke partij, pas ná diens NDA (eigen
         // bevestigingsstap in toonVerkoopmemoModal, vereist geen formele koper in het platform).
-        +stapRij('bg-bem-actie','&#128203;','#2a5ea0','Bemiddelingsovereenkomst (BEM)',getekendStatus('bem_getekend','bem_datum'))
+        +stapRij('bg-bem-actie','&#128203;','#2a5ea0','Bemiddelingsovereenkomst (BEM)',getekendStatus('bem_getekend','bem_datum','bem_tekst'))
         +stapRij('bg-teaser-actie','&#128226;','#1a7a5e',t.teaser_tekst?'Teaser bekijken/bewerken':'Genereer teaser',t.teaser_tekst?'<span style="color:var(--teal)">&#10003; Teaser klaar</span>':'Kort, anoniem verkoopdocument — vóór er een koper is',false,false,!marketingAan,'Module Marketing niet actief — neem contact op via koersvoormorgen.nl')
         +stapRij('bg-verkoopmemo-actie','&#128220;','#8a5a00',t.verkoopmemorandum_tekst?'Verkoopmemorandum bekijken/bewerken':'Genereer verkoopmemorandum',t.verkoopmemorandum_tekst?'<span style="color:var(--teal)">&#10003; Verkoopmemorandum klaar</span>':'Uitgebreid document mét bedrijfsnaam, na NDA van die partij',false,false,!marketingAan,'Module Marketing niet actief — neem contact op via koersvoormorgen.nl')
         // MoU-/LoI-/NDA-composer (Transaction OS) — stelt het document samen uit losse, apart af te
@@ -949,7 +957,7 @@ function renderBegeleiderDashboard(app){
         // nu een eigen stap in de flow, matchend met de "post-LoI"-terminologie die elders in de
         // code/sectorprofielen al werd gebruikt (zie openInformatieverzoek()).
         +stapRij('bg-infoverzoek2-actie','&#128203;','#2a6b8a','Informatieverzoek — volledige DD (post-LoI)',(S.traject&&S.traject.traject_fase==='due_diligence')?'<span style="color:var(--teal)">&#10003; Fase 2 gestart</span>':'Start de verdiepende DD-vragenlijst',false,true)
-        +stapRij('bg-excl-actie','&#128221;','#1a7a5e','Exclusiviteitsovereenkomst',getekendStatus('excl_getekend','excl_datum'))
+        +stapRij('bg-excl-actie','&#128221;','#1a7a5e','Exclusiviteitsovereenkomst',getekendStatus('excl_getekend','excl_datum','excl_tekst'))
         +stapRij('bg-dealvoorstel-actie','&#128202;','#8a5a00','Dealvoorstel','Klik om te genereren')
         +((t.opdrachtgever_rol==='koper')?'':stapRij('bg-biedingvergelijk-actie','&#9878;&#65039;','#7a5a00','Biedingen vergelijken','Gekoppelde trajecten van dezelfde verkoper — Deal Value Matrix',false,true))
         +stapRij('bg-risicoraamwerk-actie','&#129517;','#4a6ea0','Risicoraamwerk (SWOT/PESTEL/Porter)','Klik om te genereren')
@@ -1356,7 +1364,7 @@ function renderBegeleiderDashboard(app){
       if(bgPdfStaat.base64){payload.eigen_pdf_base64=bgPdfStaat.base64;payload.eigen_pdf_naam=bgPdfStaat.naam;payload.eigen_pdf_mime=bgPdfStaat.mime;}
       var er=await fetch(WORKER+ep,{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S.code},body:JSON.stringify(payload)});
       var ed=await er.json();
-      if(ed.ok){ebtn.textContent='✓ Verstuurd';}else{toast('Fout: '+(ed.error||'onbekend'),'err');ebtn.disabled=false;ebtn.textContent='✉ Verstuur';}
+      if(ed.ok){ebtn.textContent='✓ Verstuurd';if(ed.opslag_mislukt)toast('Verstuurd, maar het bestand kon niet blijvend worden opgeslagen in het platform — download achteraf werkt hierdoor niet. Bewaar zelf een kopie.','err',8000);}else{toast('Fout: '+(ed.error||'onbekend'),'err');ebtn.disabled=false;ebtn.textContent='✉ Verstuur';}
       });
     };
     var handmatigBtn=document.getElementById('bg-handmatig-getekend');
@@ -1641,7 +1649,7 @@ function renderBegeleiderDashboard(app){
       if(bgPdfStaat.base64){payload.eigen_pdf_base64=bgPdfStaat.base64;payload.eigen_pdf_naam=bgPdfStaat.naam;payload.eigen_pdf_mime=bgPdfStaat.mime;}
       var er=await fetch(WORKER+ep,{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S.code},body:JSON.stringify(payload)});
       var ed=await er.json();
-      if(ed.ok){ebtn.textContent='✓ Verstuurd';}else{toast('Fout: '+(ed.error||'onbekend'),'err');ebtn.disabled=false;ebtn.textContent='✉ Verstuur';}
+      if(ed.ok){ebtn.textContent='✓ Verstuurd';if(ed.opslag_mislukt)toast('Verstuurd, maar het bestand kon niet blijvend worden opgeslagen in het platform — download achteraf werkt hierdoor niet. Bewaar zelf een kopie.','err',8000);}else{toast('Fout: '+(ed.error||'onbekend'),'err');ebtn.disabled=false;ebtn.textContent='✉ Verstuur';}
       });
     };
     // Handmatig markeren als getekend buiten Signhost om (bijv. per post of los ondertekend) —
