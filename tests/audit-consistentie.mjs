@@ -482,7 +482,7 @@ log('10. Kleurcontrast (WCAG AA) — tekst-tokens tegen alle oppervlak-tokens');
 //  vanuit deze repo: de link wordt in de private backend-repo gebouwd, geen pagina op de site
 //  linkt ernaar, build.py kende 'm niet. Deze check maakt die afhankelijkheid expliciet en
 //  faalt als een backend-gelinkte pagina ontbreekt of een redirect-stub is geworden.
-//  Zie LOAD-BEARING-PAGES.md + CLAUDE.md werkregel 22.)
+//  Zie LOAD-BEARING-PAGES.md + CLAUDE.md werkregel 20.)
 log('11. Load-bearing pagina\'s (backend-gemailde/geredirecte frontend-URL\'s bestaan én zijn geen stub)');
 {
   const manifestPad = path.join(ROOT, 'LOAD-BEARING-PAGES.md');
@@ -519,7 +519,7 @@ log('11. Load-bearing pagina\'s (backend-gemailde/geredirecte frontend-URL\'s be
       if (eersteVeld.endsWith('.html')) manifestPaden.add(eersteVeld);
     });
   } else {
-    warn('LOAD-BEARING-PAGES.md ontbreekt — het register van pagina\'s waar een backend-flow van afhangt. Zie CLAUDE.md werkregel 22.');
+    warn('LOAD-BEARING-PAGES.md ontbreekt — het register van pagina\'s waar een backend-flow van afhangt. Zie CLAUDE.md werkregel 20.');
   }
 
   // (b) Elke manifest-pagina moet bestaan én geen stub zijn (werkt ook zonder backend-repo).
@@ -558,12 +558,12 @@ log('11. Load-bearing pagina\'s (backend-gemailde/geredirecte frontend-URL\'s be
     [...backendRefs].sort().forEach(rel => {
       const fp = path.join(ROOT, rel);
       if (!fs.existsSync(fp)) {
-        warn('De backend mailt/linkt naar koersvoormorgen.nl/' + rel + ', maar dat bestand bestaat niet in deze repo. Herstel de pagina of pas de backend-link aan. (werkregel 22)');
+        warn('De backend mailt/linkt naar koersvoormorgen.nl/' + rel + ', maar dat bestand bestaat niet in deze repo. Herstel de pagina of pas de backend-link aan. (werkregel 20)');
         refProblemen++;
         return;
       }
       if (isRedirectStub(fs.readFileSync(fp, 'utf8')) && !STUB_TOEGESTAAN_MITS_FLOW_DOORLOOPT.has(rel)) {
-        warn('De backend mailt/linkt naar koersvoormorgen.nl/' + rel + ', maar dat is een redirect-stub geworden. Een eenmalige token-/flow-link overleeft een redirect niet. Zet de functionele pagina terug. Dit is exact de registreer.html-bug van 8 sep 2026. (werkregel 22 / LOAD-BEARING-PAGES.md)');
+        warn('De backend mailt/linkt naar koersvoormorgen.nl/' + rel + ', maar dat is een redirect-stub geworden. Een eenmalige token-/flow-link overleeft een redirect niet. Zet de functionele pagina terug. Dit is exact de registreer.html-bug van 8 sep 2026. (werkregel 20 / LOAD-BEARING-PAGES.md)');
         refProblemen++;
       }
       if (!manifestPaden.has(rel)) {
@@ -576,7 +576,7 @@ log('11. Load-bearing pagina\'s (backend-gemailde/geredirecte frontend-URL\'s be
 }
 
 // ── 12. Consistentiecheck-prompt: de "nooit een oordeel / nooit een gok"-guardrails blijven staan ──
-// (werkregel 19 — de AI-prompt in worker/30-consistentie.js genereert tekst die de begeleider
+// (werkregel 26 — de AI-prompt in worker/30-consistentie.js genereert tekst die de begeleider
 //  gebruikt bij het beoordelen van tegenpartij-documenten. Deze check bewaakt dat een latere edit
 //  de kern-guardrails niet stilzwijgend verwijdert.)
 log('12. Cross-document consistentiecheck (worker/30-consistentie.js): AI-guardrails aanwezig');
