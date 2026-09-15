@@ -259,7 +259,7 @@ function bindOpeningScreen(){
     }
     var entChkEl=ge('op-pt-entiteiten');
     if(entChkEl){
-      if(!rows||!rows.length){entChkEl.innerHTML='Gekoppelde entiteiten: <span style="font-style:italic">geen entiteiten toegevoegd — deze partner geldt dan voor het hele traject.</span>';}
+      if(!rows||!rows.length){entChkEl.innerHTML='Gekoppelde entiteiten: <span style="font-style:italic">geen entiteiten toegevoegd — deze '+esc(getPartnerTerm().enkel)+' geldt dan voor het hele traject.</span>';}
       else{
         entChkEl.innerHTML='Gekoppelde entiteiten:<div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:4px">'
           +rows.map(function(r){return '<label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" class="op-pt-ent-chk" value="'+esc(r.id)+'"> '+esc(r.naam)+'</label>';}).join('')
@@ -1504,8 +1504,8 @@ function bindAll(){
     if(v.top10pct)lijnen.push('Aandeel top 10 klanten: '+v.top10pct.toFixed(1)+'%');
     if(v.aantalKlanten)lijnen.push('Aantal klanten: '+Math.round(v.aantalKlanten));
     if(v.fte)lijnen.push('Totaal FTE: '+v.fte);
-    if(v.aantalP)lijnen.push('Aantal partners: '+Math.round(v.aantalP));
-    if(v.omzetPerP)lijnen.push('Omzet per partner: '+fmtGeld(v.omzetPerP));
+    if(v.aantalP)lijnen.push('Aantal '+getPartnerTerm().meer+': '+Math.round(v.aantalP));
+    if(v.omzetPerP)lijnen.push('Omzet per '+getPartnerTerm().enkel+': '+fmtGeld(v.omzetPerP));
     if(v.debiteuren)lijnen.push('Debiteuren: '+fmtGeld(v.debiteuren));
     if(v.wip)lijnen.push('Onderhanden werk: '+fmtGeld(v.wip));
     if(v.declarab)lijnen.push('Declarabiliteit: '+v.declarab.toFixed(1)+'%');
@@ -1517,7 +1517,7 @@ function bindAll(){
     lijnen.push('Koopsom bij closing (indicatief): '+fmtGeld(v.fixedKoop)+', earn-out '+v.earnPct+'% over '+v.earnJaren+' jaar bij '+v.earnTarget+'% omzetgroei/jaar');
     var sectorProfielW=getSectorProfiel();
     var dataSamW='';
-    var faseLW={financieel:'Financieel',commercieel:'Klanten',partner:'Partners',compliance:'Compliance',it:'IT',juridisch:'Juridisch',strategisch:'Strategisch'};
+    var faseLW=getFaseLabels();
     (S._mnaData||[]).forEach(function(row){try{var dj=typeof row.data_json==='string'?JSON.parse(row.data_json):row.data_json;var gevuld=Object.values(dj||{}).filter(function(v2){return v2&&v2.value;});if(gevuld.length){dataSamW+='\n## '+(faseLW[row.fase_id]||row.fase_id)+'\n';gevuld.forEach(function(v2){dataSamW+='- '+v2.label+': '+v2.value+'\n';});}}catch(e){}});
     var prompt='Schrijf één samenhangend, professioneel M&A-rapport voor '+esc(S.traject&&S.traject.kantoor_naam||S.code)+' (sector: '+(sectorProfielW.label||'')+') — zowel de due-diligence-analyse als de daarop gebaseerde waardering, als één geheel. '+TAAL_REGELS+'\n\nSECTOR NORMEN (indicatieve richtwaarden, geen vastgestelde branchenorm — niet als hard feit presenteren): '+(sectorProfielW.aiNormen||'(geen sectorbenchmark beschikbaar — geen benchmark of marktgemiddelde uit eigen kennis noemen)')+'\n\nDUE DILIGENCE DATA:'+dataSamW+'\n\nCIJFERS VOOR DE WAARDERING (uitsluitend deze gebruiken, geen andere bedragen of percentages verzinnen):\n'+lijnen.join('\n')+'\n\nGa expliciet in op wat de cijfers zeggen over de kwaliteit en het risico van de omzet (concentratie, recurring, churn) waar die zijn aangeleverd. De waarderingssectie mag de bevindingen uit de due-diligence-sectie kwalitatief benoemen (welke factoren de waardering drukken of ondersteunen), maar mag het effect NIET zelf kwantificeren — geen "dit verlaagt de multiple met 0,5x" of een zelfbedachte bandbreedte. De enige multiple en waarderingsbedragen zijn die uit "CIJFERS VOOR DE WAARDERING" hierboven; verzin er geen bij en pas ze niet aan.\n\nBegin DIRECT met de eerste ## kop hieronder — geen eigen titel, geen bedrijfsnaam als kop, geen horizontale lijnen (---).\n\n## Samenvatting\n## Financieel\n## Sterktes\n## Risicos\n## Waarderingsmethodiek\n## As-is waardering\n## Kwaliteit van de cijfers\n## Groei- en waardepotentieel\n## Transactiestructuur\n## Conclusie en aanbevelingen\n\nGebruik bullets (met -) waar een opsomming duidelijker is dan lopende tekst. Max 800 woorden. In Conclusie en aanbevelingen: presenteer aanbevelingen als overwegingen voor de begeleider om mee te nemen, geen dwingende conclusies.';
     try{

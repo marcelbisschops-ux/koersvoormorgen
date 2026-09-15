@@ -438,7 +438,7 @@ function toonPartnersModal(app){
   async function laadEntiteitenCheckboxen(){
     var rows=(S._entiteiten&&S._entiteiten.length)?S._entiteiten:await fetch(WORKER+'/mna/entiteiten/'+S.code).then(function(r){return r.json();}).catch(function(){return [];});
     var el=document.getElementById('pt-entiteiten');
-    if(!rows||!rows.length){el.innerHTML='Gekoppelde entiteiten: <span style="font-style:italic">geen entiteiten geregistreerd — deze partner geldt dan voor het hele traject.</span>';return;}
+    if(!rows||!rows.length){el.innerHTML='Gekoppelde entiteiten: <span style="font-style:italic">geen entiteiten geregistreerd — deze '+esc(getPartnerTerm().enkel)+' geldt dan voor het hele traject.</span>';return;}
     el.innerHTML='Gekoppelde entiteiten:<div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:4px">'
       +rows.map(function(r){return '<label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" class="pt-ent-chk" value="'+esc(r.id)+'"> '+esc(r.naam)+'</label>';}).join('')
       +'</div>';
@@ -988,7 +988,7 @@ function renderBegeleiderDashboard(app){
     // DD data per fase
     +'<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem">Due diligence voortgang</div>';
 
-  var faseLabels={financieel:'I. Financieel',commercieel:'II. Klanten & commercieel',partner:'III. Partners & personeel',compliance:'IV. Compliance & kwaliteit',it:'V. IT & automatisering',juridisch:'VI. Juridisch & fiscaal',strategisch:'VII. Strategisch & markt'};
+  var faseLabels=getFaseLabels(true);
   Object.keys(faseLabels).forEach(function(faseId){
     var row=(S._mnaData||[]).find(function(r){return r.fase_id===faseId;});
     var items=[];
@@ -3853,7 +3853,7 @@ function renderBegeleiderDashboard(app){
       if(!hdr)return;
       var wijzigingenData=[];
       var gezienKey='ki_wz_gezien_'+S.code;
-      var faseLabels={financieel:'Financieel',commercieel:'Klanten',partner:'Partners',compliance:'Compliance',it:'IT',juridisch:'Juridisch',strategisch:'Strategisch'};
+      var faseLabels=getFaseLabels();
       var typeIcons={veld:'&#9998;',document_upload:'&#128196;',document_verwijderd:'&#128465;'};
       var rolLabels={verkoper:'Verkoper',koper:'Koper',tussenpersoon:'Begeleider',admin:'Beheer'};
       function laadWijzigingen(){
@@ -4217,7 +4217,7 @@ function renderBegeleiderDashboard(app){
     if(zichtbaar){out.style.display='none';return;}
     var st=berekenAiVerificatiestatus();
     var t=st.telling;
-    var faseL={financieel:'I. Financieel',commercieel:'II. Klanten & commercieel',partner:'III. Partners & personeel',compliance:'IV. Compliance & kwaliteit',it:'V. IT & automatisering',juridisch:'VI. Juridisch & fiscaal',strategisch:'VII. Strategisch & markt'};
+    var faseL=getFaseLabels(true);
     var html='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem">';
     html+='<div style="font-size:13px;font-weight:600;color:var(--head);margin-bottom:.75rem">&#129302; AI-verificatiestatus — wat is er automatisch gedaan, wat niet</div>';
     html+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:1rem">'

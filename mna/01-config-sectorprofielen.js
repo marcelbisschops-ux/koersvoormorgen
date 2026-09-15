@@ -1279,6 +1279,22 @@ function getPartnerTerm() {
   return MAP[sector] || MAP.accountancy;
 }
 
+// Sectorbewuste fase-titels (15 sep 2026, zelfde bugklasse als getPartnerTerm() hierboven — gevonden
+// doordat meerdere plekken (DD-voortgang, wijzigingenlijst, AI-verificatiestatus) een eigen hardcoded
+// {financieel:'Financieel',...,partner:'Partners',...}-kopie hadden i.p.v. de al bestaande, per sector
+// correct ingevulde fase.title uit SECTOR_PROFIELEN te gebruiken. Fase-ID's zelf zijn stabiel en
+// identiek over alle sectoren (financieel/commercieel/partner/compliance/it/juridisch/strategisch) —
+// alleen de title verschilt per sector, dus dit hoeft nooit hardcoded te worden herhaald.
+function getFaseLabels(metNummer) {
+  var sector = (S.traject && S.traject.sector) || 'accountancy';
+  var profiel = SECTOR_PROFIELEN[sector] || SECTOR_PROFIELEN.accountancy;
+  var labels = {};
+  profiel.fases.forEach(function(f) {
+    labels[f.id] = metNummer ? (f.num + '. ' + f.title) : f.title;
+  });
+  return labels;
+}
+
 // Structuurtype van het traject (31 aug 2026, backlogpunt 9-B). Expliciet opgeslagen op het traject
 // (mna_trajecten.structuur_type) — nooit afgeleid uit een vrij rechtsvorm-veld. Bepaalt of de
 // waardering/consolidatie de BV-logica (VPB, holding-uitsluiting) of de maatschap-logica (geen VPB,
