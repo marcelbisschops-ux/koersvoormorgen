@@ -719,9 +719,10 @@ async function run() {
   check('trajectcode zelf is de verkoper-rol, geen koper → 403', bodVerkoperRol.status === 403, 'status ' + bodVerkoperRol.status);
   const bodBegeleiderRol = await api('POST', '/mna/koper/bod', { body: { code: tussenCode, bedrag: 1000000 } });
   check('tussen_code is de begeleider-rol, geen koper → 403', bodBegeleiderRol.status === 403, 'status ' + bodBegeleiderRol.status);
-  const bodGeen = await api('POST', '/mna/koper/bod', { headers: KH, body: { bedrag: 0 } });
+  const koperCode = (c1.json && c1.json.koper_code) || 'GEEN';
+  const bodGeen = await api('POST', '/mna/koper/bod', { headers: KH, body: { code: koperCode, bedrag: 0 } });
   check('bod van €0 geweigerd', bodGeen.status === 400, 'status ' + bodGeen.status);
-  const bodOk = await api('POST', '/mna/koper/bod', { headers: KH, body: { bedrag: 1850000, toelichting: 'Onder voorbehoud van financiering.' } });
+  const bodOk = await api('POST', '/mna/koper/bod', { headers: KH, body: { code: koperCode, bedrag: 1850000, toelichting: 'Onder voorbehoud van financiering.' } });
   check('koper dient een geldig bod in', bodOk.json && bodOk.json.ok === true && !!bodOk.json.id, JSON.stringify(bodOk.json));
   const biedList = await api('GET', '/mna/begeleider/biedingen/' + trajectCode, { headers: H });
   check('begeleider ziet het ingediende bod', biedList.json && biedList.json.ok === true && (biedList.json.biedingen || []).some((b) => b.bedrag === 1850000 && b.toelichting === 'Onder voorbehoud van financiering.'), JSON.stringify(biedList.json).slice(0, 200));
@@ -739,10 +740,11 @@ async function run() {
     traject_type: 'Overname', opdrachtgever_rol: 'koper',
   } } });
   const trajectCode3 = c3.json && c3.json.code;
-  const KH3 = { 'x-tussen-key': (c3.json && c3.json.koper_code) || 'GEEN' };
+  const koperCode3 = (c3.json && c3.json.koper_code) || 'GEEN';
+  const KH3 = { 'x-tussen-key': koperCode3 };
   check('buy-side traject aangemaakt (voor het negatieve pad)', !!trajectCode3);
   await api('POST', '/mna/admin/vrijgeven/' + trajectCode3 + '?force=1', { adminKey: ADMIN });
-  const bodBuySide = await api('POST', '/mna/koper/bod', { headers: KH3, body: { bedrag: 500000 } });
+  const bodBuySide = await api('POST', '/mna/koper/bod', { headers: KH3, body: { code: koperCode3, bedrag: 500000 } });
   check('koper-bod op een buy-side traject → 403 (opdrachtgever_rol != verkoper)', bodBuySide.status === 403, 'status ' + bodBuySide.status);
   await api('POST', '/admin/delete/mna/' + trajectCode3, { adminKey: ADMIN });
 
