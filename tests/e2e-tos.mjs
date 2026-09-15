@@ -225,7 +225,11 @@ async function run() {
   const get = await api('GET', '/mna/tos/document/' + docId, { headers: H });
   check('document ophalen (ok)', get.json && get.json.ok === true, JSON.stringify(get.json).slice(0, 200));
   const cs = (get.json && get.json.componenten) || [];
-  check('parties + exclusivity + reliance aanwezig', ['parties', 'exclusivity', 'reliance'].every((b) => cs.some((c) => c.block_id === b)));
+  check('parties + exclusivity aanwezig', ['parties', 'exclusivity'].every((b) => cs.some((c) => c.block_id === b)));
+  // Herzien 13 sep 2026 (Marcel: "die vaste voettekst wil ik overal uit, ook de verstuurde versie"):
+  // reliance is geen documentcomponent meer op een NIEUW document (blijft wél bestaan als los
+  // disclaimer-mechanisme, zie STAP 17 hieronder) — zie backend-commit 636e48a.
+  check('reliance NIET meer als documentcomponent op een nieuwe MoU (13 sep 2026-besluit)', !cs.some((c) => c.block_id === 'reliance'));
   check('exclusivity binding_status = BINDING', (() => {
     const e = cs.find((c) => c.block_id === 'exclusivity');
     return e && e.binding_status === 'BINDING';
@@ -245,27 +249,31 @@ async function run() {
   check('elke component staat review REQUIRED', cs.every((c) => c.review && c.review.status === 'REQUIRED'));
   check('geen open divergenties bij een verse MoU', get.json && Array.isArray(get.json.divergenties) && get.json.divergenties.length === 0);
 
-  kop('STAP 17 · reliance-injectie + PLATFORM-beheerde componenten');
-  check('POST /document geeft reliance {id,version,hash} terug', mk.json && mk.json.reliance && mk.json.reliance.id === 'reliance' && !!mk.json.reliance.hash, JSON.stringify(mk.json.reliance));
-  const relComp = cs.find((c) => c.block_id === 'reliance');
-  check('reliance-component heeft tekst, provenance PLATFORM', relComp && relComp.text && relComp.text.length > 30 && relComp.text_provenance === 'PLATFORM', JSON.stringify(relComp && { p: relComp.text_provenance, len: (relComp.text || '').length }));
+  kop('STAP 17 · reliance-disclaimer (los mechanisme, geen documentcomponent meer) + PLATFORM-beheerde componenten');
+  // 13 sep 2026 (backend-commit 636e48a, Marcel expliciet): het vaste "Voettekst / reliance"-
+  // component is uit alle MoU/LoI/NDA-documenten gehaald, óók de verstuurde versie — hierboven al
+  // bevestigd dat cs geen 'reliance'-component meer bevat. De onderliggende disclaimer-tekst/hash
+  // (gebruikt door de print-tijd-bevestiging, P2-53) blijft wel bestaan als apart mechanisme, niet
+  // als documentinhoud — dat wordt hier getest.
+  check('POST /document geeft reliance {id,version,hash} terug (los disclaimer-mechanisme)', mk.json && mk.json.reliance && mk.json.reliance.id === 'reliance' && !!mk.json.reliance.hash, JSON.stringify(mk.json.reliance));
   const relEp = await api('GET', '/mna/tos/reliance', { headers: H });
   check('GET /mna/tos/reliance ok, content + hash', relEp.json && relEp.json.ok === true && !!relEp.json.content && !!relEp.json.content_hash);
-  check('reliance-componenttekst == de centrale disclaimer', relComp && relEp.json && relComp.text === relEp.json.content);
   const nbp = cs.find((c) => c.block_id === 'non_binding_provisions');
   check('non_binding_provisions auto-tekst, provenance PLATFORM', nbp && nbp.text && nbp.text.length > 30 && nbp.text_provenance === 'PLATFORM');
   const bp = cs.find((c) => c.block_id === 'binding_provisions');
   check('binding_provisions auto-tekst noemt "bindend"', bp && /bindend/i.test(bp.text || ''));
-  // niet bewerkbaar / niet verwijderbaar / geen AI-concept
-  const relPatch = await api('PATCH', '/mna/tos/component/' + relComp.instance_id, { headers: H, body: { text: 'gehackt' } });
-  check('PATCH reliance → 409 (automatisch beheerd)', relPatch.status === 409, 'status ' + relPatch.status);
-  const relConc = await api('POST', '/mna/tos/component/' + relComp.instance_id + '/concept', { headers: H, body: {} });
-  check('AI-concept op reliance → 409', relConc.status === 409, 'status ' + relConc.status);
-  const relDel = await api('POST', '/mna/tos/document/' + docId + '/component/' + relComp.instance_id + '/verwijder', { headers: H });
-  check('verwijder reliance → 409', relDel.status === 409, 'status ' + relDel.status);
-  // exportcheck: PLATFORM-componenten leveren geen review-blocker
+  // niet bewerkbaar / niet verwijderbaar / geen AI-concept — getest op non_binding_provisions,
+  // want reliance heeft sinds 13 sep 2026 geen instance_id meer om tegen te testen.
+  const nbpPatch = await api('PATCH', '/mna/tos/component/' + nbp.instance_id, { headers: H, body: { text: 'gehackt' } });
+  check('PATCH non_binding_provisions → 409 (automatisch beheerd)', nbpPatch.status === 409, 'status ' + nbpPatch.status);
+  const nbpConc = await api('POST', '/mna/tos/component/' + nbp.instance_id + '/concept', { headers: H, body: {} });
+  check('AI-concept op non_binding_provisions → 409', nbpConc.status === 409, 'status ' + nbpConc.status);
+  const nbpDel = await api('POST', '/mna/tos/document/' + docId + '/component/' + nbp.instance_id + '/verwijder', { headers: H });
+  check('verwijder non_binding_provisions → 409', nbpDel.status === 409, 'status ' + nbpDel.status);
+  // exportcheck: PLATFORM-componenten leveren geen review-blocker; reliance is geen KERN-vereiste meer
   const ecR = await api('GET', '/mna/tos/document/' + docId + '/exportcheck', { headers: H });
   check('exportcheck: geen blocker op reliance of non_binding_provisions', !(ecR.json.blockers || []).some((b) => b.block_id === 'reliance' || b.block_id === 'non_binding_provisions'), JSON.stringify(ecR.json.blockers));
+  check('exportcheck: geen RELIANCE_MISSING-blocker (13 sep 2026-besluit)', !(ecR.json.blockers || []).some((b) => b.code === 'RELIANCE_MISSING'), JSON.stringify(ecR.json.blockers));
 
   kop('STAP 13 · componenten toevoegen/verwijderen/bewerken + AI-concept');
   const exclIid = (cs.find((c) => c.block_id === 'exclusivity') || {}).instance_id;
@@ -450,7 +458,10 @@ async function run() {
   const fin = await api('POST', '/mna/tos/document/' + docId + '/finaliseer', { headers: H });
   check('finaliseren → ok:true, status exported', fin.json && fin.json.ok === true && fin.json.status === 'exported', JSON.stringify(fin.json).slice(0, 200));
   check('manifest_id + content_hash + manifest_hash aanwezig', fin.json && !!fin.json.manifest_id && /^[0-9a-f]{64}$/.test(fin.json.content_hash || '') && /^[0-9a-f]{64}$/.test(fin.json.manifest_hash || ''), JSON.stringify(fin.json).slice(0, 200));
-  check('component_refs bevat "reliance@1" en "exclusivity@1"', fin.json && Array.isArray(fin.json.component_refs) && fin.json.component_refs.includes('reliance@1') && fin.json.component_refs.some((r) => r.startsWith('exclusivity@')), JSON.stringify(fin.json.component_refs));
+  // Herzien 13 sep 2026: reliance is geen actieve documentcomponent meer, dus zit niet meer in
+  // component_refs (die alleen ACTIVE instances bevat) — disclaimer_ref (apart mechanisme,
+  // laadReliance()) blijft wél gevuld, dat is de eigenlijke manifest-referentie naar de disclaimer.
+  check('component_refs bevat "exclusivity@1", GEEN "reliance@1" meer', fin.json && Array.isArray(fin.json.component_refs) && fin.json.component_refs.some((r) => r.startsWith('exclusivity@')) && !fin.json.component_refs.includes('reliance@1'), JSON.stringify(fin.json.component_refs));
   check('disclaimer_ref = reliance@1, policy_version aanwezig', fin.json && fin.json.disclaimer_ref === 'reliance@1' && !!fin.json.policy_version);
 
   // 2b. Bevinding 11 sep 2026 (Marcel: "manifest error" — een gefinaliseerd/vergrendeld document
