@@ -339,6 +339,7 @@ const TAAL_REGELS='Schrijf in natuurlijk, vloeiend Nederlands — geen letterlij
 // "is gebruikelijk"). De AI mag hieruit geen algemene regel als feit overnemen — het zijn
 // aandachtspunten om tegen de concrete bedrijfssituatie te houden.
 const SECTOR_AI_CONTEXT={
+  verhuizingen:'SECTORCONTEXT overname van een verhuisbedrijf (kwalitatief — verzin GEEN benchmarkcijfers, multiples of bedragen; formuleer als beoordeling van dit specifieke bedrijf, niet als algemene marktregel): beoordeel in hoeverre de onderneming overdraagbaar is zonder de huidige eigenaar, en weeg daarbij: afhankelijkheid van de eigenaar/DGA (relaties met makelaars/vastgoedkantoren, zakelijke relocatie-contracten, offertes), de sterkte en ervaring van het uitvoerend team (ploegleiders, inpakkers) los van de eigenaar, klantconcentratie (spreiding particulier versus enkele grote zakelijke opdrachtgevers), seizoensgevoeligheid (piekdrukte rond zomer en maandwisselingen) en de wagenpark-/materieelstaat. Vergunningen en keurmerken (NIWO-vergunning, keurmerk Erkende Verhuizer, CMR-/vervoerdersaansprakelijkheidsverzekering) zijn in deze sector vaak doorslaggevend voor overdraagbaarheid — beoordeel of dat hier op orde is. Koperstypes: branchegenoot (regionale schaalvergroting), landelijke verhuisketen, en participatiemaatschappijen die actief zijn in logistiek/facilitaire dienstverlening. Een earn-out kan passen wanneer omzet sterk aan de eigenaar hangt — beoordeel of dat hier speelt, presenteer het niet als standaard.\n',
   mkb:'SECTORCONTEXT MKB-/familiebedrijfsoverdracht (kwalitatief — verzin GEEN benchmarkcijfers, multiples of bedragen; formuleer als beoordeling van dit specifieke bedrijf, niet als algemene marktregel): beoordeel in hoeverre de onderneming overdraagbaar is zonder de huidige eigenaar, en weeg daarbij: afhankelijkheid van de DGA/oprichter (klantrelaties, kennis, netwerk, inkoop), aanwezigheid van een tweede managementlaag, klantconcentratie, leveranciersafhankelijkheid, en of het resultaat genormaliseerd is (marktconform ondernemersloon, privé-onttrekkingen, incidentele posten, vastgoed in privé). Relevante koperstypes: strategische koper (branchegenoot), MBI-kandidaat (individuele manager die koopt), participatiemaatschappij of buy-and-build-platform, en management- of familiebuy-out. Een earn-out of verkoperslening kan passen wanneer er onzekerheid is over de overdraagbaarheid of de toekomstige prestaties — beoordeel of dat hier speelt, presenteer het niet als standaard.\n',
   zorg:'SECTORCONTEXT overname van een zorgpraktijk (kwalitatief — verzin GEEN benchmarkcijfers, multiples of bedragen; formuleer als beoordeling van deze praktijk, niet als algemene regel): beoordeel in hoeverre de continuïteit van de patiënten-/cliëntenstroom en het behandelteam losstaat van de praktijkhouder persoonlijk, en weeg: personele bezetting en openstaande vacatures voor behandelaars, afhankelijkheid van de praktijkhouder, de contractpositie met zorgverzekeraars/gemeenten en de daaruit volgende omzetzekerheid, de vastgoed-/huursituatie, en kwaliteits- en registratie-eisen. Koperstypes: collega-praktijk (regionale schaalvergroting), zorgketen of -groep, en participatiemaatschappijen die actief zijn in de eerstelijnszorg. Regelgeving rond winstuitkering in delen van de zorg kan de kopersgroep beperken — benoem dat als mogelijk aandachtspunt, niet als vaststaand feit voor deze praktijk.\n',
   itsoftware:'SECTORCONTEXT overname van een IT-/softwarebedrijf (kwalitatief — verzin GEEN benchmarkcijfers, multiples of bedragen; formuleer als beoordeling van dit bedrijf, niet als algemene regel): beoordeel de kwaliteit van de terugkerende omzet en de herhaalbaarheid van de sales, en weeg: aandeel contractuele/abonnementsomzet, netto omzetretentie en klantverloop, klantconcentratie, de bus-factor op kritieke technische kennis, eigendom van de code en IP, en afhankelijkheid van enkele grote klanten of leveranciers/hyperscalers. Koperstypes: strategische koper (product- of marktuitbreiding), grotere softwarepartij, en (buy-and-build-)participatiemaatschappijen. Bij IT-dienstverlening/detachering: weeg schaalbaarheid en marge, niet alleen omzetgroei.\n'
@@ -843,6 +844,121 @@ SCENARIOS_BY_SECTOR.itsoftware={
   },actions:[{t:'Unieke positie versterken',d:'Maak overnemen minder logisch via eigen data, integraties of een netwerk-effect.',h:'0-12 mnd'},{t:'Strategische allianties sluiten',d:'Technologie- of distributiepartnerschappen zonder volledige fusie.',h:'6-18 mnd'},{t:'Klantbinding verhogen',d:'Diepere integraties, meerjarencontracten, hoge switching-kosten.',h:'0-12 mnd'},{t:'Werkgeversmerk opbouwen',d:'Investeer in cultuur en techniek om ontwikkelaars te behouden.',h:'6-24 mnd'}]},
 };
 
+/* ─────────── Verhuisbranche (15 sep 2026, Marcel: "bouw ook verhuisbranche in") ───────────
+   Particuliere/zakelijke verhuizers, internationale verhuizingen, zelfopslag als nevendienst.
+   Zelfde 11 dimensie-id's en vraag-id-schema als de overige sectoren; de sector-specifieke
+   juridische vraag heet hier f4v (NIWO-vergunning/Erkende Verhuizer/CMR-verzekering). */
+SECTIONS_BY_SECTOR.verhuizingen=[
+  {id:'strategisch',label:'Strategische positie',icon:'I',desc:'Hoe helder en onderscheidend is de koers van het bedrijf?',questions:[
+    {id:'s1',q:'Het bedrijf heeft een uitgesproken positionering: particuliere verhuizingen, zakelijke/kantoorverhuizingen, internationale verhuizingen of opslag.',hint:null},
+    {id:'s2',q:'Er is een gedragen langetermijnvisie (3-5 jaar) die richting geeft aan investeringen (wagenpark, vestigingen, opslag).',hint:null},
+    {id:'s3',q:'Het bedrijf onderscheidt zich aantoonbaar van concurrenten op meer dan alleen prijs.',hint:'bijv. service, keurmerk, specialisme (piano/kunst/archief), snelheid'},
+  ]},
+  {id:'opvolging',label:'Opvolgingsrisico',icon:'II',desc:'Is de eigendoms- en leidinggevende continuiteit geborgd voor de komende 5-10 jaar?',questions:[
+    {id:'o1',q:'Er is een formeel en concreet opvolgingsplan voor de eigenaar of DGA.',hint:null},
+    {id:'o2',q:'Een of meer potentiele opvolgers (bijv. een ervaren ploegleider of planner) zijn aangewezen en worden actief klaargestoomd.',hint:null},
+    {id:'o3',q:'Het bedrijf kan operationeel doordraaien bij langdurige uitval van de eigenaar.',hint:null},
+  ]},
+  {id:'winst',label:'Winstkwaliteit',icon:'III',desc:'Zijn de inkomsten structureel, voorspelbaar en weerbaar tegen marktdruk?',questions:[
+    {id:'w1',q:'Een deel van de omzet is terugkerend of contractueel: vaste zakelijke relocatie-contracten, makelaars- of vastgoedpartners, opslagabonnementen.',hint:'terugkerende omzet is waarderingsrelevant'},
+    {id:'w2',q:'De EBITDA-marge is in lijn met of beter dan wat in de verhuisbranche gangbaar is.',hint:null},
+    {id:'w3',q:'De omzet per wagen/team is stabiel of groeiend over de afgelopen drie jaar.',hint:null},
+  ]},
+  {id:'schaal',label:'Schaalbaarheid',icon:'IV',desc:'Kan het bedrijf groeien zonder evenredige groei in wagenpark en personeel?',questions:[
+    {id:'sc1',q:'Planning, offertes en inventarisatie zijn gestandaardiseerd en grotendeels digitaal.',hint:null},
+    {id:'sc2',q:'30% meer verhuizingen per jaar is realiseerbaar zonder wagenpark en bezetting evenredig uit te breiden.',hint:null},
+    {id:'sc3',q:'Er zijn vaste samenwerkingen met onderaannemers/partnerverhuizers om piekvraag op te vangen zonder eigen overcapaciteit.',hint:null},
+  ]},
+  {id:'auto',label:'Automatisering & digitalisering',icon:'V',desc:'In hoeverre zijn planning en administratie gedigitaliseerd?',questions:[
+    {id:'a1',q:'Offertes, digitale inventarisatie (bijv. via foto/video) en planning verlopen grotendeels geautomatiseerd.',hint:null},
+    {id:'a2',q:'Klanten kunnen hun verhuizing online volgen (track&trace) of digitaal communiceren met de planning.',hint:null},
+    {id:'a3',q:'Het team heeft voldoende digitale vaardigheid om nieuwe tools zelfstandig te adopteren.',hint:null},
+  ]},
+  {id:'partner',label:'Sleutelpersoonafhankelijkheid',icon:'VI',desc:'Hoe kwetsbaar is het bedrijf als de eigenaar of een sleutelpersoon wegvalt?',questions:[
+    {id:'p1',q:'Klantrelaties (met name zakelijke opdrachtgevers en makelaars) zijn geborgd binnen het team - niet geconcentreerd bij een persoon.',hint:'1 = alles hangt aan een persoon (kwetsbaar) - 5 = volledig geborgd in het team'},
+    {id:'p2',q:'Ervaren ploegleiders en planners zijn niet vervangbaar op de korte termijn zonder kennisverlies.',hint:null},
+    {id:'p3',q:'Institutionele kennis (klantvoorkeuren, routes, partnernetwerk) is bedrijfsgebonden, niet persoonsgebonden.',hint:null},
+  ]},
+  {id:'klant',label:'Klantconcentratie',icon:'VII',desc:'Is de omzetbasis voldoende gespreid tussen particulier en zakelijk?',questions:[
+    {id:'k1',q:'Geen enkele zakelijke opdrachtgever of makelaarsrelatie vertegenwoordigt meer dan 10% van de totale omzet.',hint:'1 = een opdrachtgever is >10% (risico) - 5 = geen enkele is >10% (goed gespreid)'},
+    {id:'k2',q:'De top-10 zakelijke klanten/partners zijn samen goed voor minder dan 40% van de omzet.',hint:'1 = top-10 is >40% (geconcentreerd) - 5 = top-10 is <40% (goed gespreid)'},
+    {id:'k3',q:'Terugkerende opdrachtgevers (makelaars, bedrijven, relocatiebureaus) vormen een stabiele omzetbasis naast eenmalige particuliere verhuizingen.',hint:null},
+  ]},
+  {id:'fusie',label:'Overname- & verkoopgereedheid',icon:'VIII',desc:'Is het bedrijf klaar voor een verkoop, overname of strategische samenwerking?',questions:[
+    {id:'f1',q:'De financiele administratie, contracten en dossiers zijn op orde voor due diligence.',hint:null},
+    {id:'f2',q:'Het team staat open voor organisatorische verandering en externe samenwerking.',hint:null},
+    {id:'f3',q:'De eigenaar overweegt een verkoop, fusie of investeerder binnen 5 jaar.',hint:null},
+    {id:'f4v',q:'De NIWO-vergunning, het keurmerk Erkende Verhuizer (indien van toepassing) en de CMR-/vervoerdersaansprakelijkheidsverzekering zijn actueel en overdraagbaar.',hint:'ontbrekende of niet-overdraagbare vergunningen/verzekeringen zijn een dealbreaker bij due diligence'},
+    {id:'f5',q:'Wat is de huidige situatie rondom externe investeerders of aandeelhouders?',hint:'Dit bepaalt of een investeerder aan boord halen relevant is als scenario',type:'select',options:['Geen externe partij betrokken','Orienterend gesprek gevoerd','Letter of Intent getekend','Investeerder deels betrokken','Investeerder volledig aan boord']},
+  ]},
+  {id:'ai_dim',label:'AI-risico & weerbaarheid',icon:'IX',desc:'In hoeverre ondermijnt AI/automatisering het verdienmodel, en hoe goed is het bedrijf voorbereid?',questions:[
+    {id:'ai1',q:'Een deel van de omzet zit in werk dat automatisering binnen 3-5 jaar kan overnemen (offertes, planning, administratie - niet het fysieke verhuiswerk zelf).',hint:'1 = weinig risico (goed) - 5 = hoog risico (slecht)'},
+    {id:'ai2',q:'Het bedrijf investeert in wat niet automatiseerbaar is: service, vakmanschap, ontzorging, specialistisch transport.',hint:null},
+    {id:'ai3',q:'Het team experimenteert actief met digitale tools (offertetools, planningssoftware) en integreert deze in de werkpraktijk.',hint:null},
+  ]},
+  {id:'personeel',label:'Personeelsdruk & talent',icon:'X',desc:'Is het bedrijf in staat om verhuizers en planners aan te trekken, te ontwikkelen en te behouden?',questions:[
+    {id:'pe1',q:'Er zijn geen structurele vacatures voor verhuizers/chauffeurs die langer dan 3 maanden onvervuld blijven.',hint:'1 = veel langdurige vacatures (slecht) - 5 = geen langdurige vacatures (goed)'},
+    {id:'pe2',q:'Het personeelsverloop is lager dan wat in de verhuisbranche gangbaar is, ook in het hoogseizoen.',hint:null},
+    {id:'pe3',q:'Seizoenspieken (zomer, maandwisselingen) worden opgevangen met een vaste, betrouwbare flexschil - niet met permanente onderbezetting.',hint:null},
+    {id:'pe4',q:'Het team en de leiding staan aantoonbaar open voor verandering, nieuwe werkwijzen en externe samenwerking.',hint:null},
+  ]},
+  {id:'commercieel',label:'Commerciele kracht',icon:'XI',desc:'Hoe proactief en effectief is het bedrijf in het genereren van nieuwe en terugkerende opdrachten?',questions:[
+    {id:'c1',q:'Het bedrijf groeit via actieve acquisitie bij makelaars, bedrijven en relocatiebureaus - niet uitsluitend via vergelijkingsplatforms of mond-tot-mondreclame.',hint:null},
+    {id:'c2',q:'Er is een structureel en actief marketingbeleid met zichtbare output.',hint:'website, reviews, vergelijkingsplatforms, lokale zichtbaarheid'},
+    {id:'c3',q:'Aanvullende diensten (opslag, inpakservice, verzekering) worden systematisch en meetbaar aangeboden aan bestaande klanten.',hint:null},
+  ]},
+];
+REVERSE_BY_SECTOR.verhuizingen=new Set(['p1','k1','k2','ai1','pe1']);
+SCENARIOS_BY_SECTOR.verhuizingen={
+  'zelfstandig-doorgroeien':{name:'Zelfstandig doorgroeien',fit:s=>{
+    const base=Math.round((s.commercieel*0.3+s.winst*0.25+s.schaal*0.25+s.personeel*0.2));
+    const bonus=(s.opvolging>60?5:0)+(s.fusie<50?5:0);
+    return Math.min(100,base+bonus);
+  },actions:[{t:'Versterk de commerciele pijplijn',d:'Bouw structurele relaties met makelaars, bedrijven en relocatiebureaus.',h:'0-6 mnd'},{t:'Verbreed de managementlaag',d:'Benoem een ervaren planner/ploegleider als operationeel aanspreekpunt zodat groei niet afhangt van de eigenaar.',h:'6-12 mnd'},{t:'Verken aanvullende diensten',d:'Opslag, inpakservice of internationale verhuizingen als extra omzetbron.',h:'6-18 mnd'},{t:'Monitor KPIs maandelijks',d:'Omzet per wagen/team, klanttevredenheid en personeelsverloop als vaste stuurindicatoren.',h:'Continu'}]},
+  'regionaliseren':{name:'Regionaal uitbreiden',fit:s=>{
+    const base=Math.round((s.fusie*0.35+s.schaal*0.25+s.commercieel*0.2+s.auto*0.2));
+    const bonus=(s.fusie>65?8:0)+(s.schaal<60?5:0);
+    const penalty=(s.winst>80&&s.commercieel>80?-15:0);
+    return Math.min(100,base+bonus+penalty);
+  },actions:[{t:'Breng regionale groeikansen in kaart',d:"Analyseer welke regio's ondervoorzien zijn of waar concurrentie zwak is.",h:'0-3 mnd'},{t:'Versterk de regionale zichtbaarheid',d:'Investeer in lokale marketing, vergelijkingsplatforms en makelaarsrelaties.',h:'0-6 mnd'},{t:'Open een tweede vestiging of depot',d:'Verkort rijtijden en vergroot dekking in de doelregio.',h:'6-18 mnd'},{t:'Bouw regionale partnerrelaties op',d:'Actieve acquisitie bij lokale makelaars en bedrijven.',h:'Continu'}]},
+  'niche-specialisatie':{name:'Niche-specialisatie',fit:s=>{
+    const base=Math.round((s.winst*0.3+s.strategisch*0.3+(100-s.schaal)*0.2+s.klant*0.2));
+    const bonus=(s.strategisch>70?8:0)+(s.schaal<50?5:0);
+    return Math.min(100,base+bonus);
+  },actions:[{t:'Kies een specialisme',d:'Bijv. internationale verhuizingen, kantoorverhuizingen, kunst/piano-transport of archiefverhuizing.',h:'0-3 mnd'},{t:'Bouw autoriteit op in de niche',d:'Referenties, certificeringen en gerichte marketing naar de doelgroep.',h:'3-12 mnd'},{t:'Verdiep het aanbod',d:'Voeg specialistisch materieel of verzekeringen toe die generieke concurrenten missen.',h:'6-18 mnd'},{t:'Positioneer alle uitingen op de niche',d:'Herstel website, offertes en verkoopmateriaal.',h:'0-6 mnd'}]},
+  'fusiepartner-zoeken':{name:'Fusiepartner zoeken',fit:s=>{
+    const base=Math.round((s.fusie*0.4+(100-s.opvolging)*0.25+(100-s.schaal)*0.2+s.winst*0.15));
+    const bonus=(s.fusie>70?8:0)+((100-s.opvolging)>50?5:0);
+    return Math.min(100,base+bonus);
+  },actions:[{t:'Stel partnercriteria vast',d:'Complementaire regio, specialisme of wagenpark.',h:'0-2 mnd'},{t:'Adviseur inschakelen',d:'Werk met een adviseur met branche-ervaring in transport/logistiek.',h:'1-3 mnd'},{t:'Due diligence-materiaal op orde',d:'Drie jaar jaarrekeningen, vergunningen, verzekeringen, klantcontracten.',h:'0-4 mnd'},{t:'Verkenningsgesprekken starten',d:'Voer gesprekken met 3-5 partijen onder NDA.',h:'3-9 mnd'}]},
+  'opvolging-voorbereiden':{name:'Opvolging voorbereiden',fit:s=>{
+    const base=Math.round(((100-s.opvolging)*0.5+(100-s.partner)*0.3+s.winst*0.2));
+    const bonus=((100-s.opvolging)>50?10:0);
+    return Math.min(100,base+bonus);
+  },actions:[{t:'Opvolgingskandidaat benoemen',d:'Identificeer een ervaren ploegleider/planner of familietalent en start een formeel traject.',h:'0-3 mnd'},{t:'Formeel opvolgingsplan opstellen',d:'Documenteer tijdlijn, verantwoordelijkheden en financiele structuur.',h:'0-6 mnd'},{t:'Klant- en partnerrelaties overdragen',d:'Introduceer de opvolger actief bij makelaars en zakelijke opdrachtgevers.',h:'Onmiddellijk'},{t:'Bedrijfswaardering laten uitvoeren',d:'Verkrijg inzicht in de waarderingsbandbreedte.',h:'1-3 mnd'}]},
+  'pe-ready-maken':{name:'Investeringsklaar maken',fit:s=>{
+    const base=Math.round((s.winst*0.35+s.fusie*0.3+s.schaal*0.2+s.klant*0.15));
+    const bonus=(s.winst>70&&s.fusie>70?10:0)+(s.auto>70?5:0);
+    const penalty=(s.opvolging<50?-10:0);
+    return Math.min(100,base+bonus+penalty);
+  },actions:[{t:'Terugkerende omzet maximaliseren',d:'Verschuif naar vaste zakelijke relocatie-contracten en opslagabonnementen.',h:'0-12 mnd'},{t:'EBITDA-marge verbeteren',d:'Analyseer wagenpark-/brandstofkosten en personeelsplanning.',h:'6-18 mnd'},{t:'Klantconcentratie verlagen',d:'Target: geen zakelijke opdrachtgever boven ~8% van de omzet.',h:'12-24 mnd'},{t:'Managementrapportage professionaliseren',d:'Maandelijks KPI-dashboard: omzet per wagen, bezetting, marge.',h:'0-6 mnd'}]},
+  'verkoop-voorbereiden':{name:'Verkoop binnen 3 jaar',fit:s=>{
+    const base=Math.round((s.fusie*0.35+s.winst*0.3+(100-s.opvolging)*0.2+s.klant*0.15));
+    const bonus=(s.winst>75&&s.fusie>65?8:0);
+    return Math.min(100,base+bonus);
+  },actions:[{t:'Verkoopgereed-stappenplan opstellen',d:'Concrete mijlpalen per kwartaal.',h:'0-3 mnd'},{t:'Overdraagbaarheid vergroten',d:'Verminder persoonsgebonden klantrelaties, borg vergunningen/verzekeringen op de onderneming.',h:'0-18 mnd'},{t:'Winstgevendheid optimaliseren',d:'Focus op hoge-marge diensten (zakelijk, internationaal, opslag).',h:'0-12 mnd'},{t:'Bedrijfswaardering laten uitvoeren',d:'Begrijp de EBITDA-multiple-bandbreedte.',h:'3-6 mnd'}]},
+  'acquisitie':{name:'Groei via acquisitie',fit:s=>{
+    const base=Math.round((s.fusie*0.35+s.winst*0.25+s.commercieel*0.25+s.schaal*0.15));
+    const bonus=(s.fusie>65?8:0)+(s.winst>65?5:0)+(s.commercieel>65?5:0);
+    return Math.min(100,base+bonus);
+  },actions:[{t:'Overnamecriteria opstellen',d:'Definieer profiel van doelbedrijf: regio, wagenpark, specialisme, klantenbestand.',h:'0-2 mnd'},{t:'Longlist potentiele kandidaten',d:'Breng regionale verhuisbedrijven in kaart die strategisch passen.',h:'1-3 mnd'},{t:'Financieringsstructuur bepalen',d:'Eigen vermogen, bankfinanciering of earn-out constructie?',h:'1-3 mnd'},{t:'Eerste verkenningsgesprekken',d:'Informele gesprekken onder NDA met 3-5 kandidaten.',h:'3-9 mnd'}]},
+  'afweerstrategie':{name:'Consolidatie-afweer',fit:s=>{
+    const base=Math.round(((100-s.fusie)*0.3+s.klant*0.25+s.strategisch*0.25+(100-s.schaal)*0.2));
+    const bonus=(s.fusie<40?10:0)+(s.klant>70?5:0);
+    return Math.min(100,base+bonus);
+  },actions:[{t:'Unieke positionering versterken',d:'Maak overnemen minder logisch via specialisme en klantbinding.',h:'0-12 mnd'},{t:'Strategische allianties sluiten',d:'Samenwerken met partnerverhuizers in een netwerk zonder volledige fusie.',h:'6-18 mnd'},{t:'Klantloyaliteit verhogen',d:'Vaste contracten met makelaars/bedrijven en een sterk reviewsbeleid.',h:'0-12 mnd'},{t:'Werkgeversmerk opbouwen',d:'Investeer in arbeidsvoorwaarden en cultuur om verhuizers te behouden.',h:'6-24 mnd'}]},
+};
+
 // Actieve sector-config. Wissel via setScanSector(); ongevulde sectoren vallen terug op accountancy.
 let SECTIONS  = SECTIONS_BY_SECTOR.accountancy;
 let SCENARIOS = SCENARIOS_BY_SECTOR.accountancy;
@@ -861,12 +977,14 @@ const SECTOR_KEUZE=[
   {k:'mkb',label:'MKB / familiebedrijf',hint:'handel, productie, dienstverlening, bouw, horeca, ambacht'},
   {k:'zorg',label:'Zorg & praktijk',hint:'fysio, tandarts, huisarts, GGZ, dierenarts, apotheek, thuiszorg'},
   {k:'itsoftware',label:'IT & software',hint:'SaaS, softwarebouw, IT-dienstverlening, MSP, web/app'},
+  {k:'verhuizingen',label:'Verhuisbranche',hint:'particuliere, zakelijke en internationale verhuizingen, opslag'},
 ];
 const SECTOR_LABELS={
   accountancy:{zn:'kantoor',znMv:'kantoren',profielTitel:'Kantoorprofiel',introWat:'accountants- en administratiekantoren',typeLabel:'Type kantoor'},
   mkb:{zn:'bedrijf',znMv:'bedrijven',profielTitel:'Bedrijfsprofiel',introWat:'mkb- en familiebedrijven',typeLabel:'Type onderneming / branche'},
   zorg:{zn:'praktijk',znMv:'praktijken',profielTitel:'Praktijkprofiel',introWat:'zorgpraktijken en -organisaties',typeLabel:'Type praktijk'},
   itsoftware:{zn:'bedrijf',znMv:'bedrijven',profielTitel:'Bedrijfsprofiel',introWat:'IT- en softwarebedrijven',typeLabel:'Type onderneming'},
+  verhuizingen:{zn:'bedrijf',znMv:'bedrijven',profielTitel:'Bedrijfsprofiel',introWat:'verhuisbedrijven',typeLabel:'Type onderneming'},
 };
 function SL(){return SECTOR_LABELS[ST.sector]||SECTOR_LABELS.accountancy;}
 function isAccountancyScan(){return (ST.sector||'accountancy')==='accountancy';}
@@ -1587,7 +1705,7 @@ function rIntro(){
 <div class="route-desc">Bekijk alle ingediende scans, benchmarks en vergelijkingen van uw groep.</div>
 </div>
 </div>
-</div><div class="intro-foot">Vertrouwelijk &middot; Gebaseerd op PE &amp; M&amp;A-criteria &middot; Powered by Claude AI</div><div style="margin-top:1rem;max-width:540px;margin-left:auto;margin-right:auto"><div style="background:var(--panel);border:1px solid var(--teal);border-radius:var(--r2);padding:1.25rem;text-align:left;margin-bottom:1rem"><div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--teal);margin-bottom:.5rem">Wat is ${BRAND.platform}?</div><p style="font-size:12px;color:var(--mid);line-height:1.7;margin-bottom:.5rem">${BRAND.platform} is een strategisch zelfanalyse-instrument voor ${sectorGekozen?SL().introWat:'ondernemingen in de accountancy, het mkb, de zorg en IT &amp; software'}. De scan geeft inzicht in uw positie op elf strategische dimensies en maakt inzichtelijk hoe klaar uw ${sectorGekozen?SL().zn:'onderneming'} is voor de volgende fase - van groei en automatisering tot samenwerking, fusie of overdracht.</p><p style="font-size:11px;color:var(--muted);line-height:1.6"><strong style="color:var(--sub)">Let op:</strong> Deze scan is uitsluitend bedoeld voor ${sectorGekozen?SL().znMv:'ondernemingen'} zelf. Het gebruik door M&amp;A-adviseurs of intermediairs voor klantanalyse zonder licentieafspraak met ${BRAND.bedrijfKort} is niet toegestaan.</p></div><div style="font-size:11px;color:var(--muted);text-align:center;line-height:1.7;padding:8px 0">&#128274; Versleuteld via HTTPS &middot; Opgeslagen op Cloudflare-servers in Europa (Frankfurt, EU) &middot; Verwerking conform AVG &middot; <a href="privacy.html" style="color:var(--teal)">Privacyverklaring</a></div><div style="font-size:11px;color:var(--muted);text-align:center;margin-top:.5rem">&copy; ${new Date().getFullYear()} ${BRAND.bedrijfKort} &mdash; ${BRAND.platform}. Alle rechten voorbehouden.</div></div></div></div>`;}
+</div><div class="intro-foot">Vertrouwelijk &middot; Gebaseerd op PE &amp; M&amp;A-criteria &middot; Powered by Claude AI</div><div style="margin-top:1rem;max-width:540px;margin-left:auto;margin-right:auto"><div style="background:var(--panel);border:1px solid var(--teal);border-radius:var(--r2);padding:1.25rem;text-align:left;margin-bottom:1rem"><div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--teal);margin-bottom:.5rem">Wat is ${BRAND.platform}?</div><p style="font-size:12px;color:var(--mid);line-height:1.7;margin-bottom:.5rem">${BRAND.platform} is een strategisch zelfanalyse-instrument voor ${sectorGekozen?SL().introWat:'ondernemingen in de accountancy, het mkb, de zorg, IT &amp; software en de verhuisbranche'}. De scan geeft inzicht in uw positie op elf strategische dimensies en maakt inzichtelijk hoe klaar uw ${sectorGekozen?SL().zn:'onderneming'} is voor de volgende fase - van groei en automatisering tot samenwerking, fusie of overdracht.</p><p style="font-size:11px;color:var(--muted);line-height:1.6"><strong style="color:var(--sub)">Let op:</strong> Deze scan is uitsluitend bedoeld voor ${sectorGekozen?SL().znMv:'ondernemingen'} zelf. Het gebruik door M&amp;A-adviseurs of intermediairs voor klantanalyse zonder licentieafspraak met ${BRAND.bedrijfKort} is niet toegestaan.</p></div><div style="font-size:11px;color:var(--muted);text-align:center;line-height:1.7;padding:8px 0">&#128274; Versleuteld via HTTPS &middot; Opgeslagen op Cloudflare-servers in Europa (Frankfurt, EU) &middot; Verwerking conform AVG &middot; <a href="privacy.html" style="color:var(--teal)">Privacyverklaring</a></div><div style="font-size:11px;color:var(--muted);text-align:center;margin-top:.5rem">&copy; ${new Date().getFullYear()} ${BRAND.bedrijfKort} &mdash; ${BRAND.platform}. Alle rechten voorbehouden.</div></div></div></div>`;}
 
 function rGroupCreate(){return`<div class="page-wrap narrow"><div class="page-hdr"><div class="page-brand"><div class="wdot"></div>${BRAND.platform}</div><div class="page-step">Groep aanmaken</div></div><div class="group-panel anim"><div class="group-panel-title">Nieuwe groep aanmaken</div><div class="group-panel-sub">Na aanmaken kunt u de code direct kopiëren en opslaan.</div><div class="form-grid full"><div class="field"><label>Naam van de groep</label><input type="text" id="gc-name" placeholder="Naam van de groep"></div></div>
 <div class="note-box" style="border-color:var(--teal)"><strong>Dashboard zichtbaarheid:</strong><label style="display:flex;align-items:flex-start;gap:10px;margin-top:10px;cursor:pointer;font-size:13px;color:var(--sub)"><input type="checkbox" id="gc-public" checked style="width:16px;height:16px;accent-color:var(--teal);margin-top:2px;flex-shrink:0"><span>Deelnemers mogen het volledige dashboard zien, inclusief scores van andere kantoren</span></label></div>

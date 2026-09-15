@@ -156,7 +156,7 @@ PAGES = [
 
     ("bedrijfsscan.html", 0,
      "Gratis bedrijfsscan, weet of uw koers nog klopt",
-     "Een gratis strategische zelfanalyse met adviesrapport, voor accountancy, mkb, zorg en IT. ±15 minuten, direct resultaat.",
+     "Een gratis strategische zelfanalyse met adviesrapport, voor accountancy, mkb, zorg, IT en de verhuisbranche. ±15 minuten, direct resultaat.",
      "https://koersvoormorgen.nl/bedrijfsscan", "bedrijfsscan-polder.jpg", "website", "bedrijfsscan"),
 
     ("m-en-a-expertise/index.html", 1,

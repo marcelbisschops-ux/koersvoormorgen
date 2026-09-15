@@ -3573,7 +3573,14 @@ function renderBegeleiderDashboard(app){
         {id:'compliance',titel:'Verzekering & compliance',items:['Beroepsaansprakelijkheidsverzekering','Lopende claims / geschillen']},
         {id:'it',titel:'Systemen',items:['Urenregistratie- en projectmanagementsysteem','CRM-systeem','Automatiseringsgraad']},
         {id:'juridisch',titel:'Juridisch & fiscaal',items:['Rechtsvorm + eigendomsstructuur','VPB/BTW openstaande discussies','Lopende claims']},
-        {id:'strategisch',titel:'Strategie',items:['Marktpositie + regio','Specialisme / onderscheidend vermogen','Groeimogelijkheden','Gewenste vervolgstap + tijdlijn']}]
+        {id:'strategisch',titel:'Strategie',items:['Marktpositie + regio','Specialisme / onderscheidend vermogen','Groeimogelijkheden','Gewenste vervolgstap + tijdlijn']}],
+      verhuizingen: [{id:'financieel',titel:'Financieel',items:['P&L 3 jaar + YTD','EBITDA + brutomarge (na rit-/materiaalkosten)','DGA-salaris (normalisatie)','Boekwaarde wagenpark/liften','Boekingenportefeuille (12 mnd)']},
+        {id:'commercieel',titel:'Opdrachten & klanten',items:['Aantal verhuizingen (particulier + zakelijk)','Grootste zakelijke opdrachtgever/makelaar (% omzet)','Vaste relocatie-contracten (%)','Seizoensgevoeligheid','Aandeel internationale verhuizingen']},
+        {id:'partners',titel:'Personeel & organisatie',items:['FTE + verhuizersbezetting','Eigenaar-afhankelijkheid (vergunningen op naam)','Sleutelpersonen (planner, ploegleider)','Interne opvolger aanwezig','Tweede echelon / managementlaag onder eigenaar','Key-person-afhankelijkheid (% omzet/relaties aan 1 persoon)']},
+        {id:'compliance',titel:'Vergunningen',items:['NIWO-vergunning','Keurmerk Erkende Verhuizer (indien van toepassing)','Lopende claims / geschillen','Wagenpark/liften in eigendom of lease']},
+        {id:'it',titel:'Systemen',items:['Planningssoftware / offertesysteem','Track&trace','Automatiseringsgraad']},
+        {id:'juridisch',titel:'Juridisch & fiscaal',items:['Rechtsvorm + eigendomsstructuur','VPB/BTW openstaande discussies','Lopende claims']},
+        {id:'strategisch',titel:'Strategie',items:['Marktpositie + regio','Specialisme (internationaal/opslag/kunst)','Groeimogelijkheden','Gewenste vervolgstap + tijdlijn']}]
     };
 
     // Bepaal fase op basis van LoI-status — alleen een echte handtekening (loi_getekend) telt,
@@ -3643,7 +3650,14 @@ function renderBegeleiderDashboard(app){
         {id:'compliance',titel:'Compliance DD',items:['Kwaliteitscertificeringen (bijv. ISO 9001)','AVG/verwerkersovereenkomsten','Wwft (indien financieel/fiscaal advies)','Eigen methodieken/frameworks vastgelegd']},
         {id:'it',titel:'IT DD',items:['Kennismanagement (methodieken/templates overdraagbaar)','Licenties overdraagbaar','Cybersecurity']},
         {id:'juridisch',titel:'Legal & Tax DD',items:['Huisvesting (kantoor) overdraagbaarheid','Klantcontracten (looptijd/opzegtermijn/exclusiviteit)','Change-of-control clausules','Tax DD: BTW/loonheffing/VPB 3 jaar']},
-        {id:'strategisch',titel:'Operational DD',items:['Concurrenten + marktaandeel','Impact AI/automatisering op het adviesmodel','Cultuurfit + integratieplan','Dealstructuur voorkeur']}]
+        {id:'strategisch',titel:'Operational DD',items:['Concurrenten + marktaandeel','Impact AI/automatisering op het adviesmodel','Cultuurfit + integratieplan','Dealstructuur voorkeur']}],
+      verhuizingen: [{id:'financieel',titel:'Financial DD',items:['Genormaliseerde EBITDA (gevalideerd)','Werkkapitaalanalyse (NWC)','Capex-historie wagenpark/liften + vervangingsinvestering','Kostenstructuur brandstof/materiaal (% omzet)']},
+        {id:'commercieel',titel:'Commercial DD',items:['Dienstenmix (particulier/zakelijk/internationaal/opslag)','Afhankelijkheid onderaannemer-verhuizers (contract/exclusiviteit)','Marktaandeel validatie','Operationele schaalbaarheid']},
+        {id:'partners',titel:'HR DD',items:['Aanblijf-/retentieafspraken management (bonus, earn-in, lock-up)','Personeelsverloop verhuizers/staf (%)','Flexschil hoogseizoen (%)','CAO Verhuisbranche van toepassing','Pensioenregeling']},
+        {id:'compliance',titel:'Compliance DD',items:['Keurmerk Erkende Verhuizer (status)','CMR-verzekering / inboedelverzekering klant','Klachtenregeling/geschillencommissie','Openstaande procedures/klachten']},
+        {id:'it',titel:'IT DD',items:['Overige systemen (facturatie/HR/voorraad materiaal)','Licenties overdraagbaar','Cybersecurity','AVG-compliance']},
+        {id:'juridisch',titel:'Legal & Tax DD',items:['Huisvesting/opslagdepot overdraagbaarheid','Contracten met makelaars/relocatiebureaus + exclusiviteit','Change-of-control clausules','Tax DD: BTW/loonheffing/VPB 3 jaar','Leaseverplichtingen voertuigen/liften']},
+        {id:'strategisch',titel:'Operational DD',items:['Concurrenten + marktaandeel','Impact vervoersverduurzaming (elektrificatie, CO2-normen)','Cultuurfit + integratieplan','Dealstructuur voorkeur']}]
     };
 
     var categorieen = ivFase === '2' ? (sectoren2[sector]||sectoren2.accountancy) : sectoren[sector];
