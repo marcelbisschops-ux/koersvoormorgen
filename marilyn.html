@@ -3646,11 +3646,10 @@ function toonNieuwModal(prefillLead){
     +'<div style="display:flex;gap:12px">'
     +'<div class="field" style="flex:1"><label for="m-t">Trajecttype <span style="color:var(--red)">*</span></label><select id="m-t"><option value="Verkoop">Verkoop</option><option value="Fusie">Fusie</option><option value="Opvolging">Opvolging</option><option value="PE-traject">PE-traject</option><option value="Overname">Overname</option></select></div>'
     +'<div class="field" style="flex:1"><label for="m-sector">Sector <span style="color:var(--red)">*</span></label><select id="m-sector"><option value="accountancy">Accountancy & administratie</option><option value="mkb">MKB — Retail / Horeca / Ambacht</option><option value="zorg">Zorg — Huisarts / Tandarts / Fysiotherapie</option><option value="itsoftware">IT & Software</option><option value="bouw">Bouw & Installatietechniek</option><option value="transport">Transport & Logistiek</option><option value="handel">Handel / Groothandel</option><option value="consultancy">Zakelijke Dienstverlening / Consultancy</option><option value="verhuizingen">Verhuisbranche</option></select></div>'
-    +'<div class="field" style="flex:1"><label for="m-structuur">Structuur <span style="color:var(--red)">*</span></label><select id="m-structuur"><option value="bv">BV / NV — VPB</option><option value="maatschap">Maatschap — maten (box 1), geen VPB</option><option value="eenmanszaak">Eenmanszaak</option></select></div>'
     +'</div>'
     +'<div style="border-bottom:1px solid var(--border);margin:.75rem 0 .75rem;padding-bottom:.25rem"><div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)" id="m-sectie1-hdr">Verkopende partij</div></div>'
     +'<div class="field"><label id="m-p1-naam-lbl">Naam onderneming <span style="color:var(--red)">*</span></label><div style="display:flex;gap:8px"><input type="text" id="m-k" placeholder="Naam van de onderneming" value="'+esc(pf.kantoor_naam||'')+'" style="flex:2"><input type="text" id="m-kvk" placeholder="KvK-nr" style="flex:1"></div></div>'
-    +'<div class="field"><label id="m-p1-rv-lbl">Rechtsvorm <span style="color:var(--red)">*</span></label><select id="m-rv"><option value="">— Kies rechtsvorm —</option><option value="B.V.">B.V. (Besloten Vennootschap)</option><option value="N.V.">N.V. (Naamloze Vennootschap)</option><option value="Eenmanszaak">Eenmanszaak</option><option value="V.O.F.">V.O.F.</option><option value="Maatschap">Maatschap</option><option value="Coöperatie">Coöperatie</option><option value="Stichting">Stichting</option><option value="Holding B.V.">Holding B.V.</option><option value="C.V.">C.V.</option></select></div>'
+    +'<div class="field"><label id="m-p1-rv-lbl">Rechtsvorm <span style="color:var(--red)">*</span></label><select id="m-rv"><option value="">— Kies rechtsvorm —</option><option value="B.V.">B.V. (Besloten Vennootschap)</option><option value="N.V.">N.V. (Naamloze Vennootschap)</option><option value="Eenmanszaak">Eenmanszaak</option><option value="V.O.F.">V.O.F.</option><option value="Maatschap">Maatschap</option><option value="Coöperatie">Coöperatie</option><option value="Stichting">Stichting</option><option value="Holding B.V.">Holding B.V.</option><option value="C.V.">C.V.</option></select><div style="font-size:11px;color:var(--muted);margin-top:3px">Bepaalt ook de waarderingsmethode: bij een maatschap wordt gerekend op de winst ná een marktconform ondernemersloon per maat, zonder VPB-correctie.</div></div>'
     +'<div class="field"><label id="m-p1-adres-lbl">Adres <span style="color:var(--red)">*</span></label><input type="text" id="m-adres" placeholder="Adres"></div>'
     +'<div class="field"><label id="m-p1-contact-lbl">Contactpersoon <span style="color:var(--red)">*</span></label><input type="text" id="m-c" placeholder="Naam contactpersoon"></div>'
     +'<div class="field"><label id="m-p1-email-lbl">E-mail contactpersoon <span style="color:var(--red)">*</span></label><input type="email" id="m-e" placeholder="E-mailadres"></div>'
@@ -3658,12 +3657,12 @@ function toonNieuwModal(prefillLead){
     +'<div style="border-top:1px solid var(--border);margin:.75rem 0;padding-top:.75rem"><div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem">Begeleider (tussenpersoon)</div></div>'
     +'<div class="field"><label for="m-bg-naam">Naam begeleider</label><input type="text" id="m-bg-naam" value="Marcel Bisschops"></div>'
     +'<div class="field"><label for="m-bg-email">E-mail begeleider</label><input type="email" id="m-bg-email" value="marcel@bisschopsfinancing.nl"></div>'
-    +'<div style="border-top:1px solid var(--border);margin:.75rem 0;padding-top:.75rem"><div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem" id="m-sectie2-hdr">Kopende partij</div></div>'
-    +'<div class="field"><label id="m-p2-naam-lbl">Naam kopende partij <span style="color:var(--red)">*</span></label><div style="display:flex;gap:8px"><input type="text" id="m-koper-naam" placeholder="Naam kopende partij" style="flex:2"><input type="text" id="m-koper-kvk" placeholder="KvK-nr" style="flex:1"></div></div>'
-    +'<div class="field"><label id="m-p2-rv-lbl">Rechtsvorm koper <span style="color:var(--red)">*</span></label><select id="m-koper-rv"><option value="">— Kies rechtsvorm —</option><option value="B.V.">B.V. (Besloten Vennootschap)</option><option value="N.V.">N.V. (Naamloze Vennootschap)</option><option value="Eenmanszaak">Eenmanszaak</option><option value="V.O.F.">V.O.F.</option><option value="Maatschap">Maatschap</option><option value="Coöperatie">Coöperatie</option><option value="Stichting">Stichting</option><option value="Holding B.V.">Holding B.V.</option><option value="C.V.">C.V.</option></select></div>'
-    +'<div class="field"><label id="m-p2-adres-lbl">Adres koper <span style="color:var(--red)">*</span></label><input type="text" id="m-koper-adres" placeholder="Adres"></div>'
-    +'<div class="field"><label id="m-p2-contact-lbl">Contactpersoon koper <span style="color:var(--red)">*</span></label><input type="text" id="m-koper-contact" placeholder="Naam contactpersoon"></div>'
-    +'<div class="field"><label id="m-p2-email-lbl">E-mail koper <span style="color:var(--red)">*</span></label><input type="email" id="m-koper-email" placeholder="E-mailadres koper"></div>'
+    +'<div style="border-top:1px solid var(--border);margin:.75rem 0;padding-top:.75rem"><div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem" id="m-sectie2-hdr">Kopende partij <span style="font-weight:400;text-transform:none;letter-spacing:normal">(optioneel — vaak nog niet bekend bij aanmaken)</span></div></div>'
+    +'<div class="field"><label id="m-p2-naam-lbl">Naam kopende partij</label><div style="display:flex;gap:8px"><input type="text" id="m-koper-naam" placeholder="Naam kopende partij" style="flex:2"><input type="text" id="m-koper-kvk" placeholder="KvK-nr" style="flex:1"></div></div>'
+    +'<div class="field"><label id="m-p2-rv-lbl">Rechtsvorm koper</label><select id="m-koper-rv"><option value="">— Kies rechtsvorm —</option><option value="B.V.">B.V. (Besloten Vennootschap)</option><option value="N.V.">N.V. (Naamloze Vennootschap)</option><option value="Eenmanszaak">Eenmanszaak</option><option value="V.O.F.">V.O.F.</option><option value="Maatschap">Maatschap</option><option value="Coöperatie">Coöperatie</option><option value="Stichting">Stichting</option><option value="Holding B.V.">Holding B.V.</option><option value="C.V.">C.V.</option></select></div>'
+    +'<div class="field"><label id="m-p2-adres-lbl">Adres koper</label><input type="text" id="m-koper-adres" placeholder="Adres"></div>'
+    +'<div class="field"><label id="m-p2-contact-lbl">Contactpersoon koper</label><input type="text" id="m-koper-contact" placeholder="Naam contactpersoon"></div>'
+    +'<div class="field"><label id="m-p2-email-lbl">E-mail koper</label><input type="email" id="m-koper-email" placeholder="E-mailadres koper"></div>'
     +'<div style="border-top:1px solid var(--border);margin:.75rem 0;padding-top:.75rem"><div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem">Aangedragen door <span style="font-weight:400;text-transform:none;letter-spacing:normal">(optioneel — intern, nooit zichtbaar voor verkoper/koper)</span></div></div>'
     +'<div class="field"><label for="m-aandr-naam">Naam aandrager <span style="font-weight:400;color:var(--muted)">(bijv. contactpersoon bij bank/accountantskantoor)</span></label><input type="text" id="m-aandr-naam" value="'+esc(pf.naam||'')+'"></div>'
     +'<div class="field"><label for="m-aandr-org">Organisatie aandrager</label><input type="text" id="m-aandr-org" value="'+esc(pf.organisatie||'')+'"></div>'
@@ -3681,18 +3680,18 @@ function toonNieuwModal(prefillLead){
     var s1=document.getElementById('m-sectie1-hdr');
     var s2=document.getElementById('m-sectie2-hdr');
     if(s1)s1.textContent=lb.sectie1;
-    if(s2)s2.textContent=lb.sectie2;
+    if(s2)s2.innerHTML=esc(lb.sectie2)+' <span style="font-weight:400;text-transform:none;letter-spacing:normal">(optioneel — vaak nog niet bekend bij aanmaken)</span>';
     var map={
       'm-p1-naam-lbl': lb.partij1+' <span style="color:var(--red)">*</span>',
       'm-p1-rv-lbl': 'Rechtsvorm '+lb.sectie1.toLowerCase()+' <span style="color:var(--red)">*</span>',
       'm-p1-adres-lbl': lb.p1adres+' <span style="color:var(--red)">*</span>',
       'm-p1-contact-lbl': lb.p1contact+' <span style="color:var(--red)">*</span>',
       'm-p1-email-lbl': lb.p1email+' <span style="color:var(--red)">*</span>',
-      'm-p2-naam-lbl': lb.partij2+' <span style="color:var(--red)">*</span>',
-      'm-p2-rv-lbl': 'Rechtsvorm '+lb.sectie2.toLowerCase()+' <span style="color:var(--red)">*</span>',
-      'm-p2-adres-lbl': lb.p2adres+' <span style="color:var(--red)">*</span>',
+      'm-p2-naam-lbl': lb.partij2,
+      'm-p2-rv-lbl': 'Rechtsvorm '+lb.sectie2.toLowerCase(),
+      'm-p2-adres-lbl': lb.p2adres,
       'm-p2-contact-lbl': lb.p2contact,
-      'm-p2-email-lbl': lb.p2email+' <span style="color:var(--red)">*</span>'
+      'm-p2-email-lbl': lb.p2email
     };
     Object.keys(map).forEach(function(id){
       var el=document.getElementById(id);
@@ -3722,22 +3721,24 @@ function toonNieuwModal(prefillLead){
     if(!vv('m-bg-naam'))return fout('Naam begeleider is verplicht.');
     if(!vv('m-bg-email'))return fout('E-mail begeleider is verplicht.');
     if(!emailRe.test(vv('m-bg-email')))return fout('E-mail begeleider heeft geen geldig formaat.');
-    if(!vv('m-koper-naam'))return fout(lb.partij2+' naam is verplicht.');
-    if(!vv('m-koper-contact'))return fout('Contactpersoon '+lb.sectie2.toLowerCase()+' is verplicht.');
-    if(!vv('m-koper-rv'))return fout('Rechtsvorm '+lb.sectie2.toLowerCase()+' is verplicht.');
-    if(!vv('m-koper-email'))return fout('E-mail '+lb.sectie2.toLowerCase()+' is verplicht.');
-    if(!emailRe.test(vv('m-koper-email')))return fout('E-mail '+lb.sectie2.toLowerCase()+' heeft geen geldig formaat.');
-    if(!vv('m-koper-adres'))return fout('Adres '+lb.sectie2.toLowerCase()+' is verplicht.');
-    if(!vv('m-koper-kvk'))return fout('KvK-nummer '+lb.sectie2.toLowerCase()+' is verplicht.');
-    if(!kvkRe.test(vv('m-koper-kvk')))return fout('KvK-nummer '+lb.sectie2.toLowerCase()+' moet exact 8 cijfers zijn.');
+    // Kopende partij is bewust optioneel (13 sep 2026, Marcel: bij het aanmaken van een traject is er
+    // vaak nog geen koper — dat is precies waar teaser/NDA/matching voor bestaan). Alleen het formaat
+    // controleren als een veld wél is ingevuld, nooit verplicht stellen. Zelfde patroon als adv.html
+    // al hanteerde (daar was dit al optioneel) — marilyn.html was hier de uitzondering, niet de norm.
+    if(vv('m-koper-email')&&!emailRe.test(vv('m-koper-email')))return fout('E-mail '+lb.sectie2.toLowerCase()+' heeft geen geldig formaat.');
+    if(vv('m-koper-kvk')&&!kvkRe.test(vv('m-koper-kvk')))return fout('KvK-nummer '+lb.sectie2.toLowerCase()+' moet exact 8 cijfers zijn, indien ingevuld.');
     var kantoor=vv('m-k');
+    // structuur_type (fiscale/waarderingscategorie: bv/maatschap/eenmanszaak) wordt afgeleid uit de
+    // gekozen rechtsvorm i.p.v. apart gevraagd (13 sep 2026, Marcel: "waarom 2 keer de structuur
+    // invullen?") — voorkomt dat rechtsvorm en structuur inconsistent worden ingevuld.
+    var structuurType=({'Maatschap':'maatschap','Eenmanszaak':'eenmanszaak'})[vv('m-rv')]||'bv';
     var btn=document.getElementById('m-ok');btn.disabled=true;btn.textContent='Aanmaken...';
     try{
       var r=await fetch(WORKER+'/mna/create',{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':adminKey,'x-gebruiker-token':gebruikerToken||''},
         body:JSON.stringify({
           kantoor_naam:kantoor,
           kantoor_rechtsvorm:vv('m-rv'),
-          structuur_type:vv('m-structuur')||'bv',
+          structuur_type:structuurType,
           contact_naam:vv('m-c'),
           contact_email:vv('m-e'),
           verkoper_adres:vv('m-adres'),
