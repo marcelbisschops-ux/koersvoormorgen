@@ -10,7 +10,23 @@
 //
 // Zonder admin-key: alleen de publieke check (componenten-endpoint eist auth → 403).
 // ══════════════════════════════════════════════════════════════════
-import { WORKER, leesAdminKey, api, check, sla_over, kop, kleur, samenvatting } from './lib.mjs';
+import { WORKER, leesAdminKey, api as apiOrigineel, check, sla_over, kop, kleur, samenvatting } from './lib.mjs';
+
+// Throttle (16 sep 2026, "e2e-tos rate-limit-conditie"): deze suite deelt de generieke 120/min-
+// IP-bucket (cloudflare-worker.js) met al het overige staging-verkeer vanaf hetzelfde IP-adres.
+// Impact-scan toonde aan dat e2e-tos.mjs zelf niet structureel >120 req/min genereert (een schone
+// run gaf 225/225 PASS zonder één 429), maar bij toevallig gelijktijdig ander staging-verkeer kan
+// de gedeelde bucket alsnog vollopen (eerder: 12/225 fouten, uitsluitend 429's). Deze lokale
+// throttle mikt op ~80 req/min — ruim onder de limiet, met marge voor ander verkeer — en raakt
+// uitsluitend dit bestand: productiecode (cloudflare-worker.js) en tests/lib.mjs blijven ongewijzigd.
+const THROTTLE_MS = 750; // 60000 / 750 = 80 requests/minuut
+let _volgendeAanroepMag = 0;
+async function api(...args) {
+  const wachttijd = _volgendeAanroepMag - Date.now();
+  if (wachttijd > 0) await new Promise((r) => setTimeout(r, wachttijd));
+  _volgendeAanroepMag = Date.now() + THROTTLE_MS;
+  return apiOrigineel(...args);
+}
 
 const ADMIN = leesAdminKey();
 const WW = 'E2E-tos-' + Date.now() + '!';
