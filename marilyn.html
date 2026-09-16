@@ -4702,6 +4702,30 @@ async function renderVeiligheidTab(el) {
         return '<div style="font-size:11px;color:var(--mid)">' + naam + ': <span style="color:' + kleur + ';font-weight:600">' + run.checks_geslaagd + '/' + run.checks_totaal + '</span> — ' + new Date(run.ran_at).toLocaleString('nl-NL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) + '</div>';
       }
 
+      // Ochtendcontrole / Production Health (16 sep 2026) — feitelijke signalen, bewust geen
+      // samengestelde score: elke rij is het directe resultaat van één daadwerkelijk uitgevoerde
+      // check uit de laatste Ochtendcontrole-run (security_selfcheck_log, bron='ochtendcontrole').
+      var oc = ov.laatste_ochtendcontrole;
+      var ochtendTekst = oc ? (new Date(oc.ran_at).toLocaleString('nl-NL', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) + ' — ' + oc.checks_geslaagd + '/' + oc.checks_totaal + ' geslaagd') : 'Nog nooit gedraaid';
+      var ochtendGroen = oc && oc.checks_geslaagd === oc.checks_totaal;
+      var ochtendRijen = (oc && oc.details || []).map(function(c) {
+        return '<div style="font-size:11px;color:' + (c.geslaagd ? 'var(--mid)' : 'var(--red)') + '">' + (c.geslaagd ? '&#128994;' : '&#128308;') + ' ' + esc(c.omschrijving) + (c.fout ? ' — ' + esc(c.fout) : '') + '</div>';
+      }).join('');
+
+      // Queue/scheduler-signaal (16 sep 2026, n.a.v. de gevonden red-team-pentest-blokkade): dit test
+      // niet de applicatieketen zelf (dat doet de Ochtendcontrole hierboven), maar of de GEPLANDE
+      // audit-/pentest-routine daadwerkelijk nog loopt — precies het gat dat vandaag onopgemerkt bleef
+      // (/health stond groen terwijl de wachtrij dagenlang niet werd opgehaald). Hergebruikt uitsluitend
+      // de al bestaande ov.diepe_audit/ov.red_team_pentest-velden (dagen_geleden/verouderd bestonden
+      // al in dit endpoint) — geen nieuwe query, geen nieuwe stale-drempel.
+      function queueRegel(naam, info) {
+        if (!info) return '<div style="font-size:11px;color:var(--red)">&#128308; ' + naam + ': nog nooit gelogd</div>';
+        var kleur = info.verouderd ? 'var(--red)' : 'var(--mid)';
+        var icoon = info.verouderd ? '&#128308;' : '&#128994;';
+        return '<div style="font-size:11px;color:' + kleur + '">' + icoon + ' ' + naam + ': ' + info.dagen_geleden + ' dag(en) geleden' + (info.verouderd ? ' — verouderd' : '') + '</div>';
+      }
+      var queueRijen = queueRegel('Diepe audit', ov.diepe_audit) + queueRegel('Red-team pentest', ov.red_team_pentest);
+
       var html = '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;margin-bottom:.4rem">'
         + '<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">&#128737; Veiligheid</div>'
         + '<div style="display:flex;gap:8px;flex-wrap:wrap">'
@@ -4711,6 +4735,21 @@ async function renderVeiligheidTab(el) {
         + '</div>'
         + '<div id="rapport-link-out" style="display:none;margin-bottom:1rem;padding:.75rem 1rem;background:var(--teal-bg);border:1px solid var(--teal);border-radius:8px;font-size:12px;color:var(--sub);word-break:break-all"></div>'
         + '<div style="font-size:12px;color:var(--muted);margin-bottom:1.25rem;max-width:720px;line-height:1.6">Drie bewust gescheiden lagen — een groene "continue check" hierboven betekent nooit "het hele platform is veilig", alleen dat de daar getoetste punten kloppen. Voor de brede, redenerende beoordeling (architectuur, waardering, AI-kwaliteit, compliance) blijft de periodieke diepe audit leidend. Het externe rapport (knop rechtsboven) is <strong>niet publiek</strong> — alleen bereikbaar met de code in de link. Deel de link alleen rechtstreeks (mail/gesprek), nooit publiek plaatsen.</div>'
+
+        + '<div class="table-wrap" style="margin-bottom:1.25rem' + (oc && !ochtendGroen ? ';border-color:var(--red)' : '') + '"><div class="table-hdr"><div class="table-title">0. Ochtendcontrole — kan het platform vandaag daadwerkelijk gebruikt worden?</div></div>'
+        + '<div style="padding:1.25rem;display:flex;gap:2rem;flex-wrap:wrap;align-items:flex-start">'
+        + '<div style="flex:1;min-width:280px;display:flex;flex-direction:column;gap:.5rem">'
+        + '<div style="font-size:12px;color:var(--mid);line-height:1.6">Test de kernketen met een echt (fictief) testtraject: API/database &rarr; testgebruiker+adviseur+traject &rarr; echte DD-opslag (<code>/mna/save</code>) &rarr; echte AI-beoordeling &rarr; opruiming &mdash; elke stap onafhankelijk in D1 geverifieerd. Een technisch gezonde API betekent niet automatisch dat het platform operationeel gezond is.</div>'
+        + '<div style="font-size:13px;font-weight:600;color:' + (oc ? (ochtendGroen ? 'var(--teal)' : 'var(--red)') : 'var(--muted)') + '">' + esc(ochtendTekst) + '</div>'
+        + (ochtendRijen ? '<div style="display:flex;flex-direction:column;gap:2px;margin-top:2px">' + ochtendRijen + '</div>' : '')
+        + '<button class="btn" id="btn-ochtendcontrole-nu" style="font-size:12px;padding:8px 16px;align-self:flex-start;margin-top:6px">&#9728; Draai ochtendcontrole nu</button>'
+        + '</div>'
+        + '<div style="flex:0 0 220px;display:flex;flex-direction:column;gap:2px;padding-left:1.5rem;border-left:1px solid var(--border)">'
+        + '<div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:4px">Geplande audit-/pentest-routine</div>'
+        + queueRijen
+        + '<div style="font-size:10px;color:var(--muted);margin-top:6px;line-height:1.5">Signaal, geen directe scheduler-status — toont wanneer de laatste geplande run daadwerkelijk is afgerond.</div>'
+        + '</div>'
+        + '</div></div>'
 
         + '<div class="table-wrap" style="margin-bottom:1.25rem"><div class="table-hdr"><div class="table-title">1. Continue geautomatiseerde checks</div></div>'
         + '<div style="padding:1.25rem;display:flex;gap:2rem;flex-wrap:wrap;align-items:flex-start">'
@@ -4874,6 +4913,18 @@ async function renderVeiligheidTab(el) {
           else { toast(d.error || 'Fout bij selfcheck.', 'err'); }
         } catch(e) { toast('Verbindingsfout.', 'err'); }
         finally { nuBtn.disabled = false; nuBtn.textContent = '↻ Draai selfcheck nu'; }
+      });
+
+      var ochtendBtn = document.getElementById('btn-ochtendcontrole-nu');
+      if (ochtendBtn) ochtendBtn.addEventListener('click', async function() {
+        ochtendBtn.disabled = true; ochtendBtn.textContent = 'Bezig... (kan ~15s duren)';
+        try {
+          var r = await fetch(WORKER + '/mna/admin/veiligheid/ochtendcontrole-nu', { method: 'POST', headers: { 'x-admin-key': adminKey } });
+          var d = await r.json();
+          if (d.ok) { toast('Ochtendcontrole uitgevoerd: ' + (d.resultaat ? d.resultaat.checks_geslaagd + '/' + d.resultaat.checks_totaal + ' geslaagd' : ''), d.resultaat && d.resultaat.checks_geslaagd === d.resultaat.checks_totaal ? 'ok' : 'warn'); laadVeiligheid(); }
+          else { toast(d.error || 'Fout bij ochtendcontrole.', 'err'); }
+        } catch(e) { toast('Verbindingsfout.', 'err'); }
+        finally { ochtendBtn.disabled = false; ochtendBtn.textContent = '☀ Draai ochtendcontrole nu'; }
       });
       el.querySelectorAll('.btn-veiligheid-opgelost').forEach(function(btn){
         btn.addEventListener('click', async function() {
