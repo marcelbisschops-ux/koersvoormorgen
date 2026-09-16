@@ -268,7 +268,78 @@ async function batch3E() {
   }
 }
 
-const BATCHEN = { '3B': batch3B, '3C': batch3C, '3D': batch3D, '3E': batch3E };
+// ── Batch 3F-a — base64-fix bijlage-extractie (>8192 bytes) ─────────────────────────────────────
+// Handmatig opgebouwde, deterministische PDF (geen npm-afhankelijkheid, blijft dit ene bestand
+// zelfstandig). Bewust minimale ZICHTBARE paginatekst — de vereiste omvang (>8192 bytes, de
+// chunkgrens van de 3F-a-bug) komt uit een groot, niet-gerenderd /Keywords-metadataveld, niet uit
+// extra paginatekst. Dit voorkomt dat de aparte, nog niet gecommitte max_tokens-kwestie (Batch 3F)
+// deze test kan beinvloeden — het testcriterium hier is uitsluitend de bestandsgrootte t.o.v. de
+// 8192-byte-chunkgrens, niet de hoeveelheid te transcriberen tekst.
+function maak3FaTestPdf() {
+  const padding = 'A'.repeat(9000);
+  const objects = [];
+  objects.push('1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n');
+  objects.push('2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n');
+  objects.push('3 0 obj\n<< /Type /Page /Parent 2 0 R /Resources << /Font << /F1 5 0 R >> >> /MediaBox [0 0 612 792] /Contents 4 0 R >>\nendobj\n');
+  const content = 'BT /F1 12 Tf 72 720 Td (PROD-SMOKE 3F-a testdocument) Tj ET';
+  objects.push('4 0 obj\n<< /Length ' + content.length + ' >>\nstream\n' + content + '\nendstream\nendobj\n');
+  objects.push('5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n');
+  objects.push('6 0 obj\n<< /Keywords (' + padding + ') >>\nendobj\n');
+
+  let pdf = '%PDF-1.4\n';
+  const offsets = [0];
+  for (const obj of objects) {
+    offsets.push(pdf.length);
+    pdf += obj;
+  }
+  const xrefStart = pdf.length;
+  let xref = 'xref\n0 ' + (objects.length + 1) + '\n0000000000 65535 f \n';
+  for (let i = 1; i <= objects.length; i++) {
+    xref += String(offsets[i]).padStart(10, '0') + ' 00000 n \n';
+  }
+  pdf += xref;
+  pdf += 'trailer\n<< /Size ' + (objects.length + 1) + ' /Root 1 0 R /Info 6 0 R >>\nstartxref\n' + xrefStart + '\n%%EOF';
+  return Buffer.from(pdf, 'latin1');
+}
+
+async function batch3Fa() {
+  kop('3F-a · base64-fix bijlage-extractie (>8192 bytes)');
+  let code;
+  try {
+    const t = await maakAdminTraject('PROD-SMOKE 3F-a BV');
+    code = t.code;
+
+    const gesprek = await api('POST', '/mna/gesprek/opslaan', { body: {
+      code, datum: new Date().toISOString().slice(0, 10), deelnemers: 'Test', type: 'overig', ruwe_notities: 'Prod-smoke 3F-a',
+    } });
+    if (!gesprek.json || !gesprek.json.ok) faal('gesprek aanmaken mislukt', gesprek.json);
+    const gesprekId = gesprek.json.id;
+
+    const pdfBytes = maak3FaTestPdf();
+    if (pdfBytes.length <= 8192) faal('testfixture is niet groot genoeg (moet >8192 bytes zijn)', { lengte: pdfBytes.length });
+
+    const form = new FormData();
+    form.append('file', new Blob([pdfBytes], { type: 'application/pdf' }), 'prod-smoke-3fa.pdf');
+    const uploadResp = await fetch(WORKER + '/mna/admin/gesprek/bijlage/' + gesprekId, { method: 'POST', headers: { 'x-admin-key': ADMIN }, body: form });
+    const uploadJson = await uploadResp.json().catch(() => null);
+    check('upload: 200 ok:true', uploadResp.status === 200 && uploadJson && uploadJson.ok === true, JSON.stringify(uploadJson));
+    check('extractie: tekst_beschikbaar=true (base64-fix werkt bij >8192 bytes)', !!(uploadJson && uploadJson.tekst_beschikbaar === true), JSON.stringify(uploadJson));
+
+    const rijen = d1("SELECT bestand_grootte, length(tekst) AS tekst_len, r2_key FROM mna_gesprek_bijlagen WHERE gesprek_id='" + gesprekId + "'");
+    const rij = rijen[0] || {};
+    check('D1: bestandsgrootte >8192 bytes (de echte testconditie)', Number(rij.bestand_grootte) > 8192, JSON.stringify(rij));
+    check('D1: geëxtraheerde tekst aanwezig en niet leeg', Number(rij.tekst_len) > 0, JSON.stringify(rij));
+    check('D1: R2-sleutel aanwezig', !!rij.r2_key, JSON.stringify(rij));
+  } finally {
+    if (code) {
+      await ruimTrajectOp(code);
+      const rest = d1("SELECT id FROM mna_trajecten WHERE id='" + code + "'");
+      check('cleanup: traject weg', rest.length === 0, JSON.stringify(rest));
+    }
+  }
+}
+
+const BATCHEN = { '3B': batch3B, '3C': batch3C, '3D': batch3D, '3E': batch3E, '3F-A': batch3Fa };
 
 async function main() {
   const naam = (process.argv[2] || '').toUpperCase();
