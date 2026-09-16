@@ -22,6 +22,7 @@
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import os from 'node:os';
+import { pathToFileURL } from 'node:url';
 import { WORKER, leesAdminKey, api, check, kop, kleur, samenvatting } from './lib.mjs';
 
 const ADMIN = leesAdminKey();
@@ -251,9 +252,6 @@ async function batch3E() {
       context_docs: 'Jaarrekening 2024 toont een omzet van 3.850.000 euro en een genormaliseerd resultaat van 612.000 euro. EBITDA-marge 15,9%. Solvabiliteit 62%.',
     } });
     check('beoordeling/ai: 200', ai.status === 200 && ai.json && ai.json.ok === true, JSON.stringify(ai.json).slice(0, 200));
-    if (ai.json && ai.json.analyse && ai.json.analyse.score === null) {
-      console.log(kleur('geel', '  ⊘ Let op (geen 3E-fail, apart bekend aandachtspunt "3H"): score=null — het AI-antwoord kon niet als JSON worden geparsed (bijv. door een markdown-codeblok-omhulsel).'));
-    }
 
     const rijen = d1("SELECT categorie, score FROM mna_beoordelingen WHERE traject_id='" + code + "'");
     check('D1: beoordelingsrij aangemaakt', rijen.length === 1 && rijen[0].categorie === 'Financieel', JSON.stringify(rijen));
@@ -339,7 +337,63 @@ async function batch3Fa() {
   }
 }
 
-const BATCHEN = { '3B': batch3B, '3C': batch3C, '3D': batch3D, '3E': batch3E, '3F-A': batch3Fa };
+// ── Batch 3H — markdown-fence-robuustheid bij DD-beoordeling AI-parsing ─────────────────────────
+// Twee lagen (Marcel, 16 sep 2026): laag A test de daadwerkelijke productiefunctie zelf (geen
+// gekopieerde regex — een live AI-call kan het fence-scenario niet betrouwbaar op afroep
+// reproduceren, dus dit is de enige manier om de bugklasse zelf blijvend af te dekken); laag B is
+// één representatieve live regressie tegen de echte route, met dezelfde DD-data als de staging-/
+// productieregressie van vandaag.
+async function laagA_parseFunctie() {
+  const modulePad = path.join(BACKEND_DIR, 'worker', '03-parsers.js');
+  const { extraheerJsonUitAiTekst } = await import(pathToFileURL(modulePad).href);
+
+  const cases = [
+    { naam: 'normaal (ongefenced) JSON', input: '{"analyse":"Solide kantoor, gezonde marge.","score":7}', verwachtScore: 7 },
+    { naam: 'markdown-fenced JSON (```json ... ```)', input: '```json\n{"analyse":"Goed gedocumenteerd.","score":8}\n```', verwachtScore: 8 },
+    { naam: 'JSON met omringende prosa', input: 'Hier is de analyse:\n{"analyse":"Redelijk compleet.","score":6}\nLaat het weten als je meer wilt.', verwachtScore: 6 },
+  ];
+  for (const c of cases) {
+    let resultaat;
+    try { resultaat = extraheerJsonUitAiTekst(c.input); } catch (e) { resultaat = null; }
+    check('laag A · extraheerJsonUitAiTekst — ' + c.naam, !!resultaat && resultaat.score === c.verwachtScore, JSON.stringify(resultaat));
+  }
+}
+
+async function batch3H() {
+  kop('3H · markdown-fence-robuustheid DD-beoordeling (laag A: parsefunctie · laag B: live regressie)');
+  await laagA_parseFunctie();
+
+  let code;
+  try {
+    const t = await maakAdminTraject('PROD-SMOKE 3H BV');
+    code = t.code;
+
+    const save = await api('POST', '/mna/save', { adminKey: ADMIN, body: { code, fase_id: 'financieel', data_json: {
+      omzet_2024: { label: 'Omzet 2024', value: '3.850.000' },
+      marge_toelichting: { label: 'Toelichting marge', value: 'De EBITDA-marge is gestegen van 14,2 procent in 2022 naar 15,9 procent in 2024, gedreven door een verschuiving naar hogere-marge advieswerk en een gedisciplineerd uurtarievenbeleid, met een stabiele klantenportefeuille van circa 640 relaties zonder concentratierisico.' },
+    } } });
+    if (!save.json || !save.json.ok) faal('save fase financieel mislukt', save.json);
+
+    const ai = await api('POST', '/mna/beoordeling/ai', { adminKey: ADMIN, body: { code, fase: 'financieel', categorie: 'C' } });
+    check('laag B · beoordeling/ai: 200 ok:true', ai.status === 200 && ai.json && ai.json.ok === true, JSON.stringify(ai.json).slice(0, 200));
+    const analyse = ai.json && ai.json.analyse;
+    check('laag B · analyse correct geparsed (score niet null)', !!analyse && analyse.score !== null && analyse.score !== undefined, JSON.stringify(analyse).slice(0, 200));
+    check('laag B · analysetekst is schoon (geen markdown-fence lekt door)', !!analyse && typeof analyse.analyse === 'string' && !analyse.analyse.includes('```'), JSON.stringify(analyse).slice(0, 200));
+
+    const rijen = d1("SELECT categorie, score FROM mna_beoordelingen WHERE traject_id='" + code + "'");
+    check('D1: beoordelingsrij aangemaakt', rijen.length === 1 && rijen[0].categorie === 'C', JSON.stringify(rijen));
+  } finally {
+    if (code) {
+      await ruimTrajectOp(code);
+      const rest = d1("SELECT id FROM mna_trajecten WHERE id='" + code + "'");
+      const restBeoordeling = d1("SELECT id FROM mna_beoordelingen WHERE traject_id='" + code + "'");
+      check('cleanup: traject weg', rest.length === 0, JSON.stringify(rest));
+      check('cleanup: beoordelingsrij weg (cascade)', restBeoordeling.length === 0, JSON.stringify(restBeoordeling));
+    }
+  }
+}
+
+const BATCHEN = { '3B': batch3B, '3C': batch3C, '3D': batch3D, '3E': batch3E, '3F-A': batch3Fa, '3H': batch3H };
 
 async function main() {
   const naam = (process.argv[2] || '').toUpperCase();
