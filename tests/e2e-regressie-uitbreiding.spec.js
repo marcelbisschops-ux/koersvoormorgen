@@ -521,12 +521,24 @@ test('9. Koper Q&A-tegenvoorstel, begeleider accepteert; los tegenvoorstel wordt
     await page.evaluate(() => { S.screen = 'main'; S.fase = FASES.findIndex((f) => f.id === 'financieel'); renderApp(); });
     await page.waitForFunction(() => document.querySelectorAll('.qa-ant-btn').length > 0, null, { timeout: 10000 });
 
-    const acceptBtn = page.locator('.qa-ant-btn[data-status="geaccepteerd"]').first();
-    await acceptBtn.click();
-    await page.waitForTimeout(1000);
-    const afwijsBtn = page.locator('.qa-ant-btn[data-status="afgewezen"]').first();
-    await afwijsBtn.click();
-    await page.waitForTimeout(1000);
+    // Bewust op het exacte qId van elk voorstel targeten (bekend uit de API-respons hierboven), niet
+    // op .first(): een klik triggert in de app zelf een async POST + qaLaad()-herrender
+    // (mna/06-schermen.js) die de knoppenlijst herbouwt. Bij trage staging-respons (zoals gebeurde
+    // toen deze test ná de andere 8 in serie draaide) kon een blinde .first()-selector voor de
+    // tweede klik dezelfde, nog niet ververste rij raken als de eerste — twee gelijktijdige
+    // status-writes op hetzelfde Q&A-id, waarbij de laatste wint en het andere voorstel nooit
+    // beantwoord werd. Op het echte id klikken maakt dit deterministisch, ongeacht renderstiming.
+    const acceptId = voorstelA.json.id;
+    const afwijsId = voorstelB.json.id;
+    const acceptResp = page.waitForResponse((r) => r.url().includes('/mna/admin/qa/antwoord/' + acceptId) && r.request().method() === 'POST');
+    await page.locator('.qa-ant-btn[data-id="' + acceptId + '"][data-status="geaccepteerd"]').click();
+    await acceptResp;
+    await page.waitForTimeout(500); // qaLaad()-herrender na de respons laten voltooien
+
+    const afwijsResp = page.waitForResponse((r) => r.url().includes('/mna/admin/qa/antwoord/' + afwijsId) && r.request().method() === 'POST');
+    await page.locator('.qa-ant-btn[data-id="' + afwijsId + '"][data-status="afgewezen"]').click();
+    await afwijsResp;
+    await page.waitForTimeout(500);
 
     const rijen = d1("SELECT id, status FROM mna_qa WHERE traject_id='" + t.code + "' ORDER BY id ASC");
     expect(rijen.length, 'beide tegenvoorstellen aanwezig in D1').toBe(2);
