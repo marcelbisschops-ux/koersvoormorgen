@@ -4822,6 +4822,33 @@ async function renderVeiligheidTab(el) {
         + '<div style="font-size:11px;color:var(--muted);margin-top:1rem">Functionele klik-door-test van een echte gebruikersactie (werkregel 36 / <code>DAGELIJKSE-KNOPPENTEST-STANDAARD.md</code>) — roteert dagelijks trajecttype/sector/rol, lost gevonden fouten direct zelf op. Draait zelfstandig elke ochtend rond 06:19, geen wachtrij zoals de twee ronden hierboven — dit dashboard toont alleen het resultaat van de laatste run.</div>'
         + '</div></div>';
 
+      // 6. Dagelijkse 3-rollen E2E-regressietest (18 sep 2026) — gemeld door GitHub Actions via een
+      // smalle, doel-specifieke sleutel (E2E_REPORT_KEY), los van de knoppentest hierboven (die is
+      // AI-exploratief en draait op de Mac; dit is de vaste, deterministische regressiesuite tegen
+      // staging, zie tests/e2e-3rollen-regressie.spec.js). Zelfde visuele patroon als sectie 5.
+      {
+        var e2e = ov.e2e_regressie;
+        var e2ePct = e2e ? Math.round((e2e.checks_geslaagd / Math.max(1, e2e.checks_totaal)) * 100) : null;
+        var e2eGroen = e2e && e2e.checks_geslaagd === e2e.checks_totaal;
+        html += '<div class="table-wrap" style="margin-bottom:1.5rem' + ((e2e && (e2e.verouderd || !e2eGroen)) || !e2e ? ';border-color:var(--red)' : '') + '"><div class="table-hdr"><div class="table-title">6. Dagelijkse E2E-regressietest</div>'
+          + (!e2e ? '<span class="tag" style="background:var(--red-bg);color:var(--red);border-color:var(--red)">&#9888; Nog nooit uitgevoerd</span>'
+              : !e2eGroen ? '<span class="tag" style="background:var(--red-bg);color:var(--red);border-color:var(--red)">&#128308; FAIL</span>'
+              : e2e.verouderd ? '<span class="tag" style="background:var(--red-bg);color:var(--red);border-color:var(--red)">&#9888; Verouderd — meer dan 2 dagen geleden</span>'
+              : '<span class="tag" style="background:var(--teal-bg);color:var(--teal);border-color:var(--teal)">&#10003; PASS</span>')
+          + '</div>'
+          + '<div style="padding:1.25rem">'
+          + (e2e
+              ? '<div style="display:flex;gap:1.5rem;align-items:flex-start;flex-wrap:wrap">'
+                + '<div style="flex:0 0 230px">' + veiligheidGauge(e2ePct, e2e.checks_geslaagd + '/' + e2e.checks_totaal + ' PASS', new Date(e2e.ran_at).toLocaleString('nl-NL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) + ' — ' + (e2e.run_type === 'ai' ? 'AI + deterministisch' : 'deterministisch')) + '</div>'
+                + '<div style="flex:1;min-width:260px;font-size:12px;color:var(--mid);line-height:1.6">'
+                + (e2eGroen ? 'Laatste run: geen fouten.' : ((e2e.fails || []).map(function(f) { return '<div style="margin-bottom:4px">&#10060; <strong>' + esc(f.test) + '</strong><br><span class="mono" style="font-size:11px;color:var(--red)">' + esc(f.fout) + '</span></div>'; }).join('') || 'Laatste run had fouten (geen detail meegegeven).'))
+                + '</div>'
+                + '</div>'
+              : '<div class="empty" style="color:var(--red)">Nog geen dagelijkse E2E-regressietest gelogd.</div>')
+          + '<div style="font-size:11px;color:var(--muted);margin-top:1rem">Vaste, deterministische regressietest voor verkoper/koper/begeleider tegen staging (<code>tests/e2e-3rollen-regressie.spec.js</code>) — draait bij elke push/PR (16/16, geen AI-kosten) en dagelijks rond 06:30 ook met de 2 echte AI-stappen (18/18). Repareert nooit zelf code; een fout hier is het startpunt voor onderzoek.</div>'
+          + '</div></div>';
+      }
+
       html += '<div class="table-wrap" style="margin-bottom:1.5rem"><div class="table-hdr"><div class="table-title">Open bevindingen (' + open.length + ')</div></div>';
       if (!open.length) {
         html += '<div class="empty" style="color:var(--teal)">Geen openstaande bevindingen. &#127881;</div>';

@@ -120,9 +120,16 @@ jobs:
       - name: Playwright browsers installeren
         run: npx playwright install --with-deps chromium
 
+      # E2E_REPORT_KEY (18 sep 2026): smalle, doel-specifieke sleutel waarmee de test ZELF (in
+      # afterAll, tests/e2e-3rollen-regressie.spec.js) haar resultaat meldt aan de PRODUCTIE-Worker,
+      # zodat het zichtbaar wordt in Marilyn → Veiligheid — los van de staging-only ADMIN_KEY
+      # hierboven, die geen productietoegang heeft en dat ook niet moet krijgen. Ontbreekt dit
+      # secret, dan meldt de test dat zelf (niet kritiek) en blijft de teststatus leidend — zie
+      # meldResultaatAanMarilyn() in het testbestand.
       - name: 3-rollen regressietest (deterministisch — elke push/PR)
         env:
           ADMIN_KEY: ${{ secrets.STAGING_ADMIN_KEY }}
+          E2E_REPORT_KEY: ${{ secrets.E2E_REPORT_KEY }}
         run: npx playwright test tests/e2e-3rollen-regressie.spec.js
 
       # Alleen bij de dagelijkse cron — kost echte Anthropic-tokens, dus niet bij elke push.
@@ -130,5 +137,6 @@ jobs:
         if: ${{ github.event_name == 'schedule' }}
         env:
           ADMIN_KEY: ${{ secrets.STAGING_ADMIN_KEY }}
+          E2E_REPORT_KEY: ${{ secrets.E2E_REPORT_KEY }}
           KVM_DOE_AI: '1'
         run: npx playwright test tests/e2e-3rollen-regressie.spec.js

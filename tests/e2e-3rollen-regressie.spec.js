@@ -105,6 +105,51 @@ function record(rol, pagina, element, actie, verwacht, geslaagd, detail) {
   if (!geslaagd) console.log('  ✗ [' + rol + '] ' + actie + (detail ? ' — ' + detail : ''));
 }
 
+// ── Test-niveau resultaten (18 sep 2026) — apart van MATRIX (die telt losse checks binnen één
+// test, bv. de 6 CLEANUP-D1-tellingen). Voor de Marilyn-rapportage ("16/16"/"18/18") is het
+// PLAYWRIGHT-testniveau de juiste eenheid, niet het MATRIX-checkniveau — testInfo.status is de
+// enige betrouwbare bron daarvoor (afterAll zelf heeft geen toegang tot per-test-uitkomsten).
+const TEST_RESULTS = [];
+test.afterEach(async ({}, testInfo) => {
+  TEST_RESULTS.push({ title: testInfo.title, status: testInfo.status, fout: testInfo.error ? String(testInfo.error.message || testInfo.error).slice(0, 300).replace(/[\r\n]+/g, ' ') : '' });
+});
+
+// Productiedoel voor de resultaatmelding (18 sep 2026) — bewust NIET dezelfde WORKER als de test
+// zelf gebruikt: de tests draaien uitsluitend tegen staging (zie IS_STANDAARD_PRODUCTIE hierboven),
+// maar Marilyn → Veiligheid praat alleen met productie. Dit is de enige plek in dit bestand die
+// productie aanraakt, en uitsluitend via het smalle, hiervoor gebouwde E2E_REPORT_KEY-endpoint
+// (géén ADMIN_KEY, geen andere productietoegang) — zie worker/24-veiligheidsdashboard.js.
+// Overschrijfbaar via E2E_REPORT_URL (alleen voor het testen van dit mechanisme tegen staging
+// vóórdat de endpoint-code zelf naar productie is gedeployed) — zonder override altijd productie.
+const E2E_REPORT_URL = process.env.E2E_REPORT_URL || 'https://kantoorinzicht.marcel-bisschops.workers.dev/mna/veiligheid/e2e-resultaat';
+async function meldResultaatAanMarilyn() {
+  if (!TEST_RESULTS.length) return; // niets gedraaid (bv. setup mislukt vóór de eerste test) — niets te melden
+  if (!process.env.E2E_REPORT_KEY) { console.log('E2E_REPORT_KEY niet gezet — resultaat niet gemeld aan Marilyn (niet kritiek).'); return; }
+  try {
+    // Bugfix (18 sep 2026, tijdens het bouwen ontdekt): de 2 AI-gated tests (V5/B6) staan bij een
+    // gewone run (DOE_AI=false) op 'skipped' — dat is bedoeld gedrag, geen fout, en hoort dus niet
+    // in de noemer mee te tellen (anders toont Marilyn "16/18" i.p.v. de bedoelde "16/16").
+    const gedraaid = TEST_RESULTS.filter((t) => t.status !== 'skipped');
+    const geslaagd = gedraaid.filter((t) => t.status === 'passed').length;
+    const fails = gedraaid.filter((t) => t.status !== 'passed').map((t) => ({ test: t.title, fout: t.fout }));
+    const resp = await fetch(E2E_REPORT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-e2e-key': process.env.E2E_REPORT_KEY },
+      body: JSON.stringify({ checks_totaal: gedraaid.length, checks_geslaagd: geslaagd, type: DOE_AI ? 'ai' : 'deterministisch', fails }),
+    });
+    // Bugfix (18 sep 2026, tijdens het bouwen ontdekt): de productie-worker heeft een generieke
+    // catch-all die ELK onbekend pad met HTTP 200 beantwoordt ({"status":"...actief",...}) — resp.ok
+    // alleen checken zou dus stil "geslaagd" loggen zelfs als de route (nog) niet bestaat of de
+    // sleutel verkeerd is. Altijd de body-vorm controleren, nooit alleen de HTTP-status.
+    const json = await resp.json().catch(() => null);
+    if (!resp.ok || !json || json.ok !== true) console.log('Resultaatmelding aan Marilyn mislukt (niet kritiek): status ' + resp.status + ' — ' + JSON.stringify(json).slice(0, 200));
+  } catch (e) {
+    // Best-effort, nooit fataal: de melding zelf mag de teststatus nooit beïnvloeden — de
+    // oorspronkelijke PASS/FAIL van de suite (hieronder, via expect()) blijft leidend.
+    console.log('Resultaatmelding aan Marilyn mislukt (niet kritiek): ' + e.message);
+  }
+}
+
 test.describe('KANTOORINZICHT 3-ROLLEN E2E', () => {
   test.skip(!ADMIN, 'Geen admin-key (ADMIN_KEY / --key=) — 3-rollen-regressietest overgeslagen');
 
@@ -203,6 +248,11 @@ test.describe('KANTOORINZICHT 3-ROLLEN E2E', () => {
     } catch (e) {
       console.log('Rapport wegschrijven mislukt (niet kritiek): ' + e.message);
     }
+
+    // Resultaat melden aan Marilyn (18 sep 2026) — ná het schrijven van het lokale rapport, vóór de
+    // harde cleanup-assertie hieronder: ook bij een mislukte cleanup moet het testresultaat zelf nog
+    // gemeld worden. meldResultaatAanMarilyn() faalt zelf nooit fataal (zie de eigen try/catch).
+    await meldResultaatAanMarilyn();
 
     // Harde teardown-assertie: cleanup moet 100% zijn, anders faalt de hele suite (exitcode 1) —
     // ongeacht of de rest van de matrix slaagde. "Als cleanup niet volledig 0 is: TEST = FAIL."
