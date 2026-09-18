@@ -4807,6 +4807,19 @@ async function renderVeiligheidTab(el) {
         + '<span id="pentest-verzoek-status" style="font-size:11px;color:var(--muted)">' + auditVerzoekStatusTekst(ov.pentest_verzoek) + '</span>'
         + '</div>'
         + '<div style="font-size:10px;color:var(--muted);margin-top:6px">Zelfde wachtrij-mechanisme als de diepe audit hierboven — zet een aanvraag klaar die de dagelijkse routine oppikt en een begrensde red-team-ronde uitvoert (kost AI-tokens — max 1 tegelijk, min. 10 min tussen aanvragen).</div>'
+        + '</div></div>'
+
+        + '<div class="table-wrap" style="margin-bottom:1.5rem' + ((ov.knoppentest && ov.knoppentest.verouderd) || !ov.knoppentest ? ';border-color:var(--red)' : '') + '"><div class="table-hdr"><div class="table-title">5. Laatste dagelijkse knoppentest</div>'
+        + (!ov.knoppentest || (ov.knoppentest && ov.knoppentest.verouderd) ? '<span class="tag" style="background:var(--red-bg);color:var(--red);border-color:var(--red)">&#9888; Verouderd — meer dan 2 dagen geleden</span>' : '<span class="tag" style="background:var(--teal-bg);color:var(--teal);border-color:var(--teal)">&#10003; Op schema</span>')
+        + '</div>'
+        + '<div style="padding:1.25rem">'
+        + (ov.knoppentest
+            ? '<div style="display:flex;gap:1.5rem;align-items:flex-start;flex-wrap:wrap">'
+              + '<div style="flex:0 0 230px">' + veiligheidGauge(ov.knoppentest.score, 'Knoppentest-score', new Date(ov.knoppentest.datum).toLocaleDateString('nl-NL') + ' — ' + ov.knoppentest.dagen_geleden + ' dagen geleden') + '</div>'
+              + '<div style="flex:1;min-width:260px;font-size:12px;color:var(--mid);line-height:1.6"><strong>' + esc(ov.knoppentest.bron) + '</strong><br>' + esc(ov.knoppentest.samenvatting) + '</div>'
+              + '</div>'
+            : '<div class="empty" style="color:var(--red)">Nog geen dagelijkse knoppentest gelogd.</div>')
+        + '<div style="font-size:11px;color:var(--muted);margin-top:1rem">Functionele klik-door-test van een echte gebruikersactie (werkregel 36 / <code>DAGELIJKSE-KNOPPENTEST-STANDAARD.md</code>) — roteert dagelijks trajecttype/sector/rol, lost gevonden fouten direct zelf op. Draait zelfstandig elke ochtend rond 06:19, geen wachtrij zoals de twee ronden hierboven — dit dashboard toont alleen het resultaat van de laatste run.</div>'
         + '</div></div>';
 
       html += '<div class="table-wrap" style="margin-bottom:1.5rem"><div class="table-hdr"><div class="table-title">Open bevindingen (' + open.length + ')</div></div>';
