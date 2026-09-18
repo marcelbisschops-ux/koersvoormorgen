@@ -30,11 +30,24 @@ _mock/*.png
 # .github/workflows/checks.yml en de pre-push-hook lezen die, dus die blijven gewoon getrackt.
 # Stond al in de git-HISTORIE vóór deze wijziging — dat is met een gewone commit niet te fixen
 # (zie werkregel 14 voor wanneer dat wél nodig is: git filter-repo + force-push); apart met
-# Marcel af te stemmen of dat ook nodig is.
+# Marcel af te stemmen of dat ook nodig is. Uitzondering op "tests/ blijft getrackt": zie
+# tests/rapporten/ hieronder — diezelfde 12-sep-fout bleek zich op 18 sep te herhalen via een
+# nieuw pad dat toen nog niet bestond.
 /*.md
 /schema.sql
 /legal/
 /.pages-rebuild-trigger
+
+# Security-/pentest-/auditrapporten horen niet in de publiek gepubliceerde tests/-boom (18 sep
+# 2026, n.a.v. commit b3735d1 — een red-team-pentestrapport met exploit-relevante details en één
+# nog niet gefixte bevinding, ontdekt vóór push via een publicatie-/classificatie-audit). Precies
+# hetzelfde lekmechanisme als hierboven (12 sep), nu via tests/rapporten/, dat destijds bewust
+# buiten deze regel was gehouden omdat er toen alleen testCODE onder tests/ stond. tests/-code
+# zelf blijft bewust wel getracked (zie hierboven) — dit raakt uitsluitend gegenereerde
+# rapportage-inhoud. Geen uitzonderingen per bestand, ook niet voor een op dit moment onschuldig
+# rapport — de grens is structureel: tests/ = publieke testcode, tests/rapporten/ = interne
+# rapportage, ongeacht hoe onschuldig een individueel rapport lijkt.
+tests/rapporten/
 
 # Retention-engine: de D1-snapshot bevat KLANTDATA (blijft lokaal), en de gegenereerde
 # rapporten zijn roterende output.
