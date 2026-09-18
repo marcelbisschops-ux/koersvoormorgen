@@ -34,6 +34,12 @@ _mock/*.png
 # tests/rapporten/ hieronder — diezelfde 12-sep-fout bleek zich op 18 sep te herhalen via een
 # nieuw pad dat toen nog niet bestond.
 /*.md
+# Uitzondering (18 sep 2026, CI-blokkade): LOAD-BEARING-PAGES.md is geen interne/gevoelige
+# documentatie zoals de rest van deze /*.md-regel bedoelt — het is een getrackt CI-bronbestand
+# (check 11 in tests/audit-consistentie.mjs leest het, faalt hard als het ontbreekt) zonder
+# secrets/cliëntdata/open bevindingen. Viel ongewild mee onder de blanket-regel hierboven, nooit
+# eerder getrackt geweest (bevestigd via git log --all). Zie CLAUDE.md werkregel 20.
+!/LOAD-BEARING-PAGES.md
 /schema.sql
 /legal/
 /.pages-rebuild-trigger
