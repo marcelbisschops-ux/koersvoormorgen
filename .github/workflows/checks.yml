@@ -140,3 +140,18 @@ jobs:
           E2E_REPORT_KEY: ${{ secrets.E2E_REPORT_KEY }}
           KVM_DOE_AI: '1'
         run: npx playwright test tests/e2e-3rollen-regressie.spec.js
+
+      # Checkpoint 18 sep 2026 (Marcel, GO): 9 aanvullende, deterministische regressietests
+      # (tests/e2e-regressie-uitbreiding.spec.js) die eerder onontdekte gaten dichten — o.a. Marilyn
+      # had zelf geen directe UI-buttontests, en dossier-vrijgeven, documentverwijdering,
+      # sectorprofielen en Q&A-tegenvoorstellen hadden nog geen automatische dekking. Bewust alleen
+      # bij de dagelijkse cron, niet bij elke push: 0 AI-kosten (net als de 16/16 hierboven), maar
+      # ~1,8 min extra looptijd + eigen staging-testdata per run — geen releasepoort, een bredere
+      # dagelijkse controle naast de 16/16. Hergebruikt dezelfde reeds geïnstalleerde
+      # Playwright-browsers en hetzelfde STAGING_ADMIN_KEY-secret; geen E2E_REPORT_KEY (nog geen
+      # Marilyn-dashboardrapportage voor deze suite — apart besluit, bewust nu niet gebouwd).
+      - name: 9 regressie-uitbreidingstests (sectie D) — alleen dagelijkse cron
+        if: ${{ github.event_name == 'schedule' }}
+        env:
+          ADMIN_KEY: ${{ secrets.STAGING_ADMIN_KEY }}
+        run: npx playwright test tests/e2e-regressie-uitbreiding.spec.js
