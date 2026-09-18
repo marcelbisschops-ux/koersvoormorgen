@@ -19,31 +19,17 @@
 // Exit-code: 0 bij PASS, 1 bij FAIL of een onbekende/ontbrekende batchnaam — bruikbaar in een
 // eventuele toekomstige CI-stap.
 // ══════════════════════════════════════════════════════════════════
-import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import os from 'node:os';
 import { pathToFileURL } from 'node:url';
-import { WORKER, leesAdminKey, api, check, kop, kleur, samenvatting } from './lib.mjs';
+import { WORKER, leesAdminKey, api, check, kop, kleur, samenvatting, d1, D1_NAAM } from './lib.mjs';
 
 const ADMIN = leesAdminKey();
 const DOM = '@e2e-test.invalid';
 const BACKEND_DIR = process.env.KVM_BACKEND_DIR
   || path.join(os.homedir(), 'Documents', 'GitHub', 'koersvoormorgen-backend', 'backend');
-// Welke D1-database geraakt wordt volgt WORKER_URL: bewust geen aparte losse vlag, zodat een
-// staging-WORKER_URL nooit per ongeluk tegen de productie-database query't of andersom.
-const D1_NAAM = /staging/i.test(WORKER) ? 'kantoorinzicht-staging' : 'kantoorinzicht';
-
-function d1(sql) {
-  let out;
-  try {
-    out = execFileSync('npx', ['wrangler', 'd1', 'execute', D1_NAAM, '--remote', '--json', '--command', sql],
-      { cwd: BACKEND_DIR, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
-  } catch (e) {
-    throw new Error('wrangler d1 execute mislukt (D1 "' + D1_NAAM + '" niet bereikbaar via wrangler, of niet ingelogd): ' + String(e.message || e).slice(0, 300));
-  }
-  const parsed = JSON.parse(out);
-  return (parsed[0] && parsed[0].results) || [];
-}
+// d1()/D1_NAAM komen sinds 18 sep 2026 uit lib.mjs (gedeeld met tests/e2e-3rollen-regressie.spec.js
+// en tests/AUDIT-LOG.md-cleanup-verificaties) i.p.v. hier een eigen kopie te onderhouden.
 
 function faal(stap, detail) {
   throw new Error(stap + (detail ? ' — ' + JSON.stringify(detail).slice(0, 300) : ''));

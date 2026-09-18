@@ -93,6 +93,28 @@ export function zetMfaUitVoorTest(email) {
   }
 }
 
+// ── Rechtstreekse D1-verificatie via de wrangler-CLI (18 sep 2026) ──
+// Verplaatst uit tests/prod-smoke.mjs naar hier zodat elke test (o.a.
+// tests/e2e-3rollen-regressie.spec.js) dezelfde, al bewezen manier van onafhankelijk
+// controleren kan hergebruiken i.p.v. een eigen kopie te bouwen. Welke D1-database
+// geraakt wordt volgt WORKER_URL — nooit een losse vlag, zodat een staging-WORKER_URL
+// nooit per ongeluk tegen de productie-database query't of andersom.
+const D1_BACKEND_DIR = process.env.KVM_BACKEND_DIR
+  || path.join(os.homedir(), 'Documents', 'GitHub', 'koersvoormorgen-backend', 'backend');
+export const D1_NAAM = /staging/i.test(WORKER) ? 'kantoorinzicht-staging' : 'kantoorinzicht';
+
+export function d1(sql) {
+  let out;
+  try {
+    out = execFileSync('npx', ['wrangler', 'd1', 'execute', D1_NAAM, '--remote', '--json', '--command', sql],
+      { cwd: D1_BACKEND_DIR, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+  } catch (e) {
+    throw new Error('wrangler d1 execute mislukt (D1 "' + D1_NAAM + '" niet bereikbaar via wrangler, of niet ingelogd): ' + String(e.message || e).slice(0, 300));
+  }
+  const parsed = JSON.parse(out);
+  return (parsed[0] && parsed[0].results) || [];
+}
+
 export function samenvatting() {
   const totaal = resultaten.ok + resultaten.fail;
   console.log('\n' + kleur('vet', '─────────── SAMENVATTING ───────────'));
