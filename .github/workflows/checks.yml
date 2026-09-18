@@ -104,6 +104,13 @@ jobs:
         with:
           node-version: '22'
 
+      # 18 sep 2026 (CI-blokkade, eerste keer dat deze job daadwerkelijk draaide): deze job is een
+      # eigen, verse runner — checks (hierboven) deelt geen node_modules met deze job, en
+      # `npx playwright install` hieronder installeert alleen de playwright-browserbinaries in een
+      # ephemere npx-cache, niet het project-devDependency @playwright/test in node_modules/. Zonder
+      # deze stap faalt "npx playwright test" met "Cannot find package '@playwright/test'".
+      - run: npm ci
+
       # Marcel, 18 sep 2026, expliciet: dit kwaliteitshek mag NOOIT stilzwijgend "groen" ogen omdat
       # de test niet kon draaien — anders schijnzekerheid ("test niet uitgevoerd → toch groen").
       # Ontbreekt de secret, dan FAALT deze job hard, met een duidelijke reden — geen 'if:'-skip
