@@ -1294,7 +1294,14 @@ function intrekMeekijkerAdv(viewerId, trajectId, tussenCode){
 }
 
 // ===== VERKOPER/KOPER-GEGEVENS BEWERKEN (zelf-service, i.p.v. via Marcel) =====
-function toonAdvBewerkModal(id){
+async function toonAdvBewerkModal(id){
+  // Ververs eerst G.trajecten (zelfde endpoint als de "Ververs"-knop, hergebruikt sessietoken) —
+  // anders leest dit formulier de lokale G.trajecten-cache, die direct na het aanmaken van een
+  // traject nog een onvolledig object bevat (zie toonNieuwTrajectModal hierboven: de daar geplaatste
+  // G.trajecten.unshift(...) na aanmaken bevat bewust alleen een paar velden voor de tabelweergave,
+  // niet de volledige trajectdata). Zonder deze refresh toont "Bewerk gegevens" dan lege velden voor
+  // net ingevulde koper-/contactgegevens — en "Opslaan" zou die met een lege waarde overschrijven.
+  await ververs();
   var t=G.trajecten.find(function(x){return x.id===id;})||{};
   var ov=document.createElement('div');ov.className='overlay';
   ov.innerHTML=`<div class="modal" role="dialog" aria-modal="true" aria-labelledby="bewerk-modal-titel">
