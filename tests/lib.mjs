@@ -82,10 +82,13 @@ export function zetMfaUitVoorTest(email) {
   const sql = "UPDATE bf_gebruikers SET mfa=0 WHERE email='" + String(email).replace(/'/g, "''") + "'";
   try {
     execFileSync('npx', ['wrangler', 'd1', 'execute', STAGING_D1_NAAM, '--remote', '--command', sql],
-      { stdio: ['ignore', 'pipe', 'pipe'] });
+      { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
     return { ok: true };
   } catch (e) {
-    return { ok: false, reden: 'wrangler d1 execute mislukt (staging niet bereikbaar via wrangler, of niet ingelogd): ' + String(e.message || e).slice(0, 200) };
+    // Diagnostisch (18 sep 2026): wrangler schrijft zijn eigen foutmelding naar stdout, niet
+    // stderr/message — e.message alleen geeft altijd kale "Command failed: ..." zonder inhoud.
+    const detail = (e.stdout && String(e.stdout).trim()) || (e.stderr && String(e.stderr).trim()) || String(e.message || e);
+    return { ok: false, reden: 'wrangler d1 execute mislukt (staging niet bereikbaar via wrangler, of niet ingelogd): ' + detail.slice(0, 300) };
   }
 }
 
@@ -109,7 +112,10 @@ export function d1(sql) {
     out = execFileSync('npx', ['wrangler', 'd1', 'execute', D1_NAAM, '--remote', '--json', '--command', sql],
       { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
   } catch (e) {
-    throw new Error('wrangler d1 execute mislukt (D1 "' + D1_NAAM + '" niet bereikbaar via wrangler, of niet ingelogd): ' + String(e.message || e).slice(0, 300));
+    // Diagnostisch (18 sep 2026): wrangler schrijft zijn eigen foutmelding naar stdout, niet
+    // stderr/message — e.message alleen geeft altijd kale "Command failed: ..." zonder inhoud.
+    const detail = (e.stdout && String(e.stdout).trim()) || (e.stderr && String(e.stderr).trim()) || String(e.message || e);
+    throw new Error('wrangler d1 execute mislukt (D1 "' + D1_NAAM + '" niet bereikbaar via wrangler, of niet ingelogd): ' + detail.slice(0, 300));
   }
   const parsed = JSON.parse(out);
   return (parsed[0] && parsed[0].results) || [];
