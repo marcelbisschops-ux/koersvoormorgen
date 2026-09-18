@@ -3761,7 +3761,7 @@ function toonNieuwModal(prefillLead){
         })});
       var d=await r.json();
       if(d.ok){
-        mnaList.unshift({id:d.code,kantoor_naam:kantoor,traject_type:vv('m-t'),koper_code:d.koper_code,tussen_code:d.tussen_code,status:'actief',created_at:Date.now()});
+        mnaList.unshift({id:d.code,kantoor_naam:kantoor,kantoor_rechtsvorm:vv('m-rv'),traject_type:vv('m-t'),sector:vv('m-sector')||'accountancy',notitie:vv('m-n'),contact_naam:vv('m-c'),contact_email:vv('m-e'),verkoper_adres:vv('m-adres'),verkoper_kvk:vv('m-kvk'),begeleider_naam:vv('m-bg-naam')||'',begeleider_email:vv('m-bg-email')||'',koper_naam:vv('m-koper-naam'),koper_rechtsvorm:vv('m-koper-rv'),koper_contact:vv('m-koper-contact'),koper_email:vv('m-koper-email'),koper_adres:vv('m-koper-adres'),koper_kvk:vv('m-koper-kvk'),koper_code:d.koper_code,tussen_code:d.tussen_code,status:'actief',created_at:Date.now()});
         if(pf.id){var ldRef=leads.find(function(l){return String(l.id)===String(pf.id);});if(ldRef){ldRef.status='omgezet';ldRef.traject_id=d.code;}}
         var res=document.getElementById('m-res');res.style.display='block';
         res.innerHTML='<strong style="color:var(--teal-dim)">&#10003; Traject aangemaakt</strong><br>'
