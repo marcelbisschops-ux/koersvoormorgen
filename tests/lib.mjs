@@ -68,15 +68,11 @@ export async function api(method, pad, { body, headers, adminKey } = {}) {
 // achter /adviseur/trajecten permanent over. Er is bewust GEEN nieuw productie-/ADMIN_KEY-endpoint
 // voor toegevoegd (dat zou een nieuwe, blijvende auth-aanval-oppervlakte zijn voor iets dat alleen
 // een testscript nodig heeft) — in plaats daarvan een directe D1-write, met een harde guard die
-// alleen tegen kantoorinzicht-staging draait. Vereist een ingelogde `wrangler`-sessie (dezelfde
-// vereiste als tests/run-rolflows.sh al had voor ADMIN_KEY); ontbreekt die, dan faalt dit netjes en
-// blijft de aanroepende test net als voorheen overslaan (geen harde crash van de hele testrun).
+// alleen tegen kantoorinzicht-staging draait. Vereist een ingelogde `wrangler`-sessie (interactief
+// lokaal, of CLOUDFLARE_API_TOKEN in de omgeving); ontbreekt die, dan faalt dit netjes en blijft de
+// aanroepende test net als voorheen overslaan (geen harde crash van de hele testrun).
 import { execFileSync } from 'node:child_process';
-import path from 'node:path';
-import os from 'node:os';
 
-const BACKEND_DIR = process.env.KVM_BACKEND_DIR
-  || path.join(os.homedir(), 'Documents', 'GitHub', 'koersvoormorgen-backend', 'backend');
 const STAGING_D1_NAAM = 'kantoorinzicht-staging';
 
 export function zetMfaUitVoorTest(email) {
@@ -86,7 +82,7 @@ export function zetMfaUitVoorTest(email) {
   const sql = "UPDATE bf_gebruikers SET mfa=0 WHERE email='" + String(email).replace(/'/g, "''") + "'";
   try {
     execFileSync('npx', ['wrangler', 'd1', 'execute', STAGING_D1_NAAM, '--remote', '--command', sql],
-      { cwd: BACKEND_DIR, stdio: ['ignore', 'pipe', 'pipe'] });
+      { stdio: ['ignore', 'pipe', 'pipe'] });
     return { ok: true };
   } catch (e) {
     return { ok: false, reden: 'wrangler d1 execute mislukt (staging niet bereikbaar via wrangler, of niet ingelogd): ' + String(e.message || e).slice(0, 200) };
@@ -99,15 +95,19 @@ export function zetMfaUitVoorTest(email) {
 // controleren kan hergebruiken i.p.v. een eigen kopie te bouwen. Welke D1-database
 // geraakt wordt volgt WORKER_URL — nooit een losse vlag, zodat een staging-WORKER_URL
 // nooit per ongeluk tegen de productie-database query't of andersom.
-const D1_BACKEND_DIR = process.env.KVM_BACKEND_DIR
-  || path.join(os.homedir(), 'Documents', 'GitHub', 'koersvoormorgen-backend', 'backend');
+//
+// Geen `cwd` naar de backend-repo meer (18 sep 2026, CI-onderzoek): `wrangler d1 execute <naam>
+// --remote` resolvet de database rechtstreeks bij naam tegen het geauthenticeerde Cloudflare-
+// account — bewezen lokaal vanuit een lege map zonder wrangler.toml. Een cwd naar de private
+// backend-repo was dus nooit nodig voor dit commando, en bestond alleen op de Mac — op een verse
+// GitHub Actions-runner (geen toegang tot die private repo) gaf dat altijd ENOENT.
 export const D1_NAAM = /staging/i.test(WORKER) ? 'kantoorinzicht-staging' : 'kantoorinzicht';
 
 export function d1(sql) {
   let out;
   try {
     out = execFileSync('npx', ['wrangler', 'd1', 'execute', D1_NAAM, '--remote', '--json', '--command', sql],
-      { cwd: D1_BACKEND_DIR, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+      { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
   } catch (e) {
     throw new Error('wrangler d1 execute mislukt (D1 "' + D1_NAAM + '" niet bereikbaar via wrangler, of niet ingelogd): ' + String(e.message || e).slice(0, 300));
   }

@@ -133,10 +133,18 @@ jobs:
       # hierboven, die geen productietoegang heeft en dat ook niet moet krijgen. Ontbreekt dit
       # secret, dan meldt de test dat zelf (niet kritiek) en blijft de teststatus leidend — zie
       # meldResultaatAanMarilyn() in het testbestand.
+      # CLOUDFLARE_API_TOKEN (18 sep 2026, CI-onderzoek): onafhankelijke D1-verificatie (tests/lib.mjs
+      # d1()) draait via `wrangler d1 execute`, dat niet-interactief dit env-var verwacht. Deze
+      # spec-file gebruikt d1() uitsluitend voor SELECT — het token krijgt daarom alleen het D1
+      # Read-account-recht (nooit Edit), zodat schrijven — ook naar productie — server-side door
+      # Cloudflare zelf wordt geweigerd, ongeacht wat de testcode doet. D1-rechten zijn vandaag
+      # accountbreed (nog geen per-database-scoping bij Cloudflare), dus dit is de smalst haalbare
+      # credential voor een stap die op ÉLKE push/PR draait.
       - name: 3-rollen regressietest (deterministisch — elke push/PR)
         env:
           ADMIN_KEY: ${{ secrets.STAGING_ADMIN_KEY }}
           E2E_REPORT_KEY: ${{ secrets.E2E_REPORT_KEY }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN_D1_READ }}
         run: npx playwright test tests/e2e-3rollen-regressie.spec.js
 
       # Alleen bij de dagelijkse cron — kost echte Anthropic-tokens, dus niet bij elke push.
@@ -146,6 +154,7 @@ jobs:
           ADMIN_KEY: ${{ secrets.STAGING_ADMIN_KEY }}
           E2E_REPORT_KEY: ${{ secrets.E2E_REPORT_KEY }}
           KVM_DOE_AI: '1'
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN_D1_READ }}
         run: npx playwright test tests/e2e-3rollen-regressie.spec.js
 
       # Checkpoint 18 sep 2026 (Marcel, GO): 9 aanvullende, deterministische regressietests
@@ -157,8 +166,16 @@ jobs:
       # dagelijkse controle naast de 16/16. Hergebruikt dezelfde reeds geïnstalleerde
       # Playwright-browsers en hetzelfde STAGING_ADMIN_KEY-secret; geen E2E_REPORT_KEY (nog geen
       # Marilyn-dashboardrapportage voor deze suite — apart besluit, bewust nu niet gebouwd).
+      #
+      # CLOUDFLARE_API_TOKEN_D1_EDIT (18 sep 2026, bewuste isolatie): deze suite gebruikt d1() ook
+      # schrijvend (bv. opening_voltooid zetten) — heeft dus het bredere D1 Edit-accountrecht nodig,
+      # in tegenstelling tot de Read-only 16/16 hierboven. Staat daarom UITSLUITEND als env op déze
+      # ene stap, nooit op job-niveau — zo is het breder-bevoegde credential alleen actief tijdens de
+      # dagelijkse cron-run, niet bij elke push, en blijft de push-poort (16/16) op het smalst
+      # haalbare Read-only credential.
       - name: 9 regressie-uitbreidingstests (sectie D) — alleen dagelijkse cron
         if: ${{ github.event_name == 'schedule' }}
         env:
           ADMIN_KEY: ${{ secrets.STAGING_ADMIN_KEY }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN_D1_EDIT }}
         run: npx playwright test tests/e2e-regressie-uitbreiding.spec.js
