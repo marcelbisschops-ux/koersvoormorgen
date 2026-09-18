@@ -9,7 +9,9 @@
     "test:api:ai": "node tests/e2e-api.mjs --ai",
     "test:api:full": "node tests/e2e-api.mjs --full",
     "test:ui": "playwright test",
-    "test:ui:headed": "playwright test --headed"
+    "test:ui:headed": "playwright test --headed",
+    "test:3rollen": "playwright test tests/e2e-3rollen-regressie.spec.js",
+    "test:3rollen:ai": "KVM_DOE_AI=1 playwright test tests/e2e-3rollen-regressie.spec.js"
   },
   "devDependencies": {
     "@playwright/test": "^1.61.1"
