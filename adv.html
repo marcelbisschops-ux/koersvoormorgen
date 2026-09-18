@@ -1341,7 +1341,13 @@ async function toonAdvBewerkModal(id){
     </div>
   </div>`;
   document.body.appendChild(ov);
-  ge('bw-ann').onclick=function(){document.body.removeChild(ov);};
+  // Fix (18 sep 2026, vervolg op cd7abf8): await ververs() hierboven roept intern renderDashboard()
+  // aan, wat VIEW='dashboard' zet en de achtergrond (#app) vervangt door de trajectenlijst — vóórdat
+  // deze modal opent. Het Opslaan-pad herstelt dit al expliciet (renderDetail(t) verderop), maar
+  // Annuleren deed dat niet: de gebruiker kwam na annuleren op de trajectenlijst terecht i.p.v. terug
+  // op de detailpagina waar hij vandaan kwam. Render() raakt alleen #app, niet deze losse overlay op
+  // document.body — renderDetail(t) hier aanroepen is dus veilig, ongeacht de volgorde t.o.v. removeChild.
+  ge('bw-ann').onclick=function(){document.body.removeChild(ov);renderDetail(t);};
   ge('bw-ok').onclick=async function(){
     var btn=this;btn.disabled=true;btn.textContent='Opslaan...';
     var err=ge('bw-err');err.style.display='none';
