@@ -714,7 +714,7 @@ function renderBegeleiderDashboard(app){
     +'<input type="text" id="bg-ca-door" value="'+esc(caDoor||(S.traject&&S.traject.begeleider_naam)||'')+'" placeholder="Uw naam" style="width:100%;max-width:320px;background:var(--panel);border:1px solid var(--border2);border-radius:var(--r);padding:6px 9px;font-size:12px;color:var(--sub);margin-bottom:6px">'
     +'<textarea id="bg-ca-notitie" placeholder="Opmerkingen / openstaande punten (optioneel)" rows="2" style="width:100%;background:var(--panel);border:1px solid var(--border2);border-radius:var(--r);padding:6px 9px;font-size:12px;color:var(--sub);resize:vertical;margin-bottom:6px">'+esc((S.traject&&S.traject.clientacceptatie_notitie)||'')+'</textarea>'
     +'<button id="bg-ca-opslaan" class="btn btn-sm" style="font-size:11px">Bevestigen &amp; opslaan</button>'
-    +' <a href="https://koersvoormorgen.nl/" onclick="return false" style="font-size:10px;color:var(--muted)">zie de cli&euml;ntacceptatie-beslisboom</a>'
+    +' <a href="#" onclick="S.screen=\'handleiding\';renderApp();var el=document.getElementById(\'hl-begeleider\');if(el)el.scrollIntoView({behavior:\'smooth\'});return false" style="font-size:10px;color:var(--muted);text-decoration:underline;cursor:pointer">zie de cli&euml;ntacceptatie-beslisboom</a>'
     +'</div></div>';
   // Bevinding 12 sep 2026 (Marcel: "geen trigger dat koper bieding heeft gedaan, mag heel duidelijk
   // in dashboard zichtbaar worden" — en later: "vind melding nog erg mager" over de eerste, bescheiden
