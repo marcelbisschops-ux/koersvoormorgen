@@ -444,7 +444,94 @@ async function batchP264() {
   await p264TestSector('accountancy', 'PROD-SMOKE P264 Accountancy BV', true);
 }
 
-const BATCHEN = { '3B': batch3B, '3C': batch3C, '3D': batch3D, '3E': batch3E, '3F-A': batch3Fa, '3H': batch3H, 'P264': batchP264 };
+// ── Batch KERNFLOW-19SEP — kernflow-review-fixes: P0 (Signhost + nieuwe documentversie) en
+// P1 (/mna/document/eigen/versturen bewaart bestand niet, "Buiten Signhost om getekend" optioneel
+// bewijsstuk). P1 (UI-refresh na "Buiten Signhost om getekend") is puur frontend/DOM-gedrag, niet
+// zinvol API-only te testen — apart live geverifieerd in de browser (screenshots, sessieverslag).
+// P0 seedt zelf een "pending" Signhost-transactie via een directe D1-write (zelfde datamodel als een
+// echte /mna/signhost/stuur-aanroep zou zetten) — staging/productie hebben niet altijd een geldige
+// SIGNHOST_API_KEY beschikbaar voor een testrun, en dit bewijst sowieso de kern van de fix
+// (lokale status-machine + webhook-negatie) onafhankelijk van de echte Signhost-annuleringsaanroep
+// zelf (die blijft code-niveau bewezen, zie developer.signhost.com/openapi/transactions/deleteTransaction).
+async function batchKernflow19sep() {
+  kop('KERNFLOW-19SEP · P0 Signhost+nieuwe versie, P1 eigen-upload-bugs');
+  let code, tussenCode;
+  const MINI_PDF_B64 = 'JVBERi0xLjQKMSAwIG9iago8PC9UeXBlL0NhdGFsb2cvUGFnZXMgMiAwIFI+PgplbmRvYmoKMiAwIG9iago8PC9UeXBlL1BhZ2VzL0tpZHNbMyAwIFJdL0NvdW50IDE+PgplbmRvYmoKMyAwIG9iago8PC9UeXBlL1BhZ2UvUGFyZW50IDIgMCBSL01lZGlhQm94WzAgMCAyMDAgMjAwXT4+CmVuZG9iagp4cmVmCjAgNAowMDAwMDAwMDAwIDY1NTM1IGYgCnRyYWlsZXIKPDwvU2l6ZSA0L1Jvb3QgMSAwIFI+PgpzdGFydHhyZWYKMAolJUVPRg==';
+  try {
+    const create = await api('POST', '/mna/create', { adminKey: ADMIN, body: { kantoor_naam: 'PROD-SMOKE KERNFLOW-19SEP BV', contact_email: 'test@invalid', koper_email: 'koper-test@invalid', sector: 'accountancy' } });
+    if (!create.json || !create.json.ok) faal('traject aanmaken mislukt', create.json);
+    code = create.json.code; tussenCode = create.json.tussen_code;
+
+    // P0 stap 1: versie A (geen pending transactie, dus geen annulering).
+    const v1 = await api('POST', '/mna/document/concept-opslaan', { adminKey: ADMIN, body: { code, doc_type: 'bem', tekst: 'Bemiddelingsovereenkomst — versie A concept.' } });
+    check('P0: versie A opgeslagen', v1.status === 200 && v1.json && v1.json.ok, JSON.stringify(v1.json));
+    check('P0: geen annulering bij de allereerste versie', v1.json && v1.json.signhost_geannuleerd === 0, JSON.stringify(v1.json));
+
+    // P0 stap 2: "versie A → Signhost pending" — D1-seed, zelfde datamodel als een echte /mna/signhost/stuur.
+    const fakeTxA = 'FAKE-SH-A-' + Date.now();
+    const txListA = JSON.stringify([{ id: fakeTxA, doc_type: 'bem', ondertekenaar_email: 'tegenpartij-test@invalid', status: 'pending', created_at: Date.now() }]).replace(/'/g, "''");
+    d1(`UPDATE mna_trajecten SET signhost_transactions='${txListA}' WHERE id='${code}'`);
+
+    // P0 stap 3: "versie B maken" — moet versie A's pending transactie lokaal annuleren.
+    const v2 = await api('POST', '/mna/document/concept-opslaan', { adminKey: ADMIN, body: { code, doc_type: 'bem', tekst: 'Bemiddelingsovereenkomst — versie B, gewijzigd.' } });
+    check('P0: versie B opgeslagen', v2.status === 200 && v2.json && v2.json.ok, JSON.stringify(v2.json));
+    check('P0: versie B-aanmaak annuleert 1 pending transactie', v2.json && v2.json.signhost_geannuleerd === 1, JSON.stringify(v2.json));
+    const txA_afterV2 = JSON.parse(d1(`SELECT signhost_transactions FROM mna_trajecten WHERE id='${code}'`)[0]?.signhost_transactions || '[]').find(t => t.id === fakeTxA);
+    check('P0: versie A-transactie ondubbelzinnig gemarkeerd als vervangen', txA_afterV2 && txA_afterV2.status === 'vervangen_door_nieuwe_versie', JSON.stringify(txA_afterV2));
+
+    // P0 stap 4: "versie A kan niet meer stilzwijgend geldig worden afgerond" — late "ondertekend"-webhook.
+    const webhookLaat = await fetch(WORKER + '/mna/signhost/webhook', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ Id: fakeTxA, Status: 30, Reference: code + '_bem', Signers: [{ ScribbleName: 'Late Ondertekenaar Versie A' }] }) });
+    check('P0: late webhook voor vervangen transactie geaccepteerd (200)', webhookLaat.status === 200);
+    const trajNaLaat = d1(`SELECT bem_getekend FROM mna_trajecten WHERE id='${code}'`);
+    check('P0: bem_getekend NIET gezet door de vervangen (late) transactie A', !trajNaLaat[0]?.bem_getekend, JSON.stringify(trajNaLaat[0]));
+    const txA_final = JSON.parse(d1(`SELECT signhost_transactions FROM mna_trajecten WHERE id='${code}'`)[0]?.signhost_transactions || '[]').find(t => t.id === fakeTxA);
+    check('P0: transactie A eindstatus ondubbelzinnig "ondertekend_na_vervanging_genegeerd"', txA_final && txA_final.status === 'ondertekend_na_vervanging_genegeerd', JSON.stringify(txA_final));
+
+    // P0 stap 5: "versie B kan normaal opnieuw verstuurd/getekend worden" (begeleider-rol, bem-tekenrecht).
+    const tekenB = await api('POST', '/mna/teken', { adminKey: ADMIN, body: { code: tussenCode, document: 'bem', naam: 'Test Begeleider Versie B' } });
+    check('P0: versie B normaal te tekenen via Buiten Signhost', tekenB.status === 200 && tekenB.json && tekenB.json.ok, JSON.stringify(tekenB.json));
+    const trajNaTekenB = d1(`SELECT bem_getekend FROM mna_trajecten WHERE id='${code}'`);
+    check('P0: bem_getekend nu correct gezet op versie B (niet de vervangen A)', (trajNaTekenB[0]?.bem_getekend || '').includes('Test Begeleider Versie B'), JSON.stringify(trajNaTekenB[0]));
+
+    // P0 stap 6: "bestaande normale Signhost-flow blijft werken" — niet-vervangen transactie, ander doc_type.
+    const fakeTxNormal = 'FAKE-SH-NORMAL-' + Date.now();
+    const txListNormal = JSON.stringify([{ id: fakeTxNormal, doc_type: 'excl', ondertekenaar_email: 'tegenpartij-test@invalid', status: 'pending', created_at: Date.now() }]).replace(/'/g, "''");
+    d1(`UPDATE mna_trajecten SET signhost_transactions='${txListNormal}' WHERE id='${code}'`);
+    const webhookNormal = await fetch(WORKER + '/mna/signhost/webhook', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ Id: fakeTxNormal, Status: 30, Reference: code + '_excl', Signers: [{ ScribbleName: 'Normale Ondertekenaar' }] }) });
+    check('P0: normale (niet-vervangen) webhook geaccepteerd (200)', webhookNormal.status === 200);
+    const trajNormal = d1(`SELECT excl_getekend FROM mna_trajecten WHERE id='${code}'`);
+    check('P0: normale ondertekening werkt nog gewoon (excl_getekend gezet)', (trajNormal[0]?.excl_getekend || '').includes('Normale Ondertekenaar (Signhost)'), JSON.stringify(trajNormal[0]));
+
+    // P1: /mna/document/eigen/versturen bewaart het bestand.
+    const eigenResp = await api('POST', '/mna/document/eigen/versturen', { adminKey: ADMIN, body: { code, to: ['marcel@bisschopsfinancing.nl'], bestand_base64: MINI_PDF_B64, bestand_naam: 'test-eigen-document.pdf', bestand_mime: 'application/pdf' } });
+    check('P1: eigen document verstuurd (200, ok, mail geslaagd)', eigenResp.status === 200 && eigenResp.json && eigenResp.json.ok === true, JSON.stringify(eigenResp.json));
+    check('P1: bestand daadwerkelijk opgeslagen (doc_id aanwezig)', eigenResp.json && eigenResp.json.opslag_mislukt === false && !!eigenResp.json.doc_id, JSON.stringify(eigenResp.json));
+    if (eigenResp.json && eigenResp.json.doc_id) {
+      const dl = await fetch(WORKER + '/mna/document/download/' + eigenResp.json.doc_id, { headers: { 'x-admin-key': ADMIN } });
+      check('P1: bestand terug te vinden via bestaande download-route', dl.status === 200, dl.status);
+    }
+
+    // P1-c: "Buiten Signhost om getekend" met optioneel bewijsstuk (nda — apart doc_type, geen conflict met bem/excl hierboven).
+    const tekenMet = await api('POST', '/mna/teken', { adminKey: ADMIN, body: { code, document: 'nda', naam: 'Test Met Bewijs', eigen_pdf_base64: MINI_PDF_B64, eigen_pdf_naam: 'ondertekende-nda.pdf', eigen_pdf_mime: 'application/pdf' } });
+    check('P1-c: teken met bewijsstuk — 200, opgeslagen, doc_id aanwezig', tekenMet.status === 200 && tekenMet.json && tekenMet.json.bewijs_opgeslagen === true && !!tekenMet.json.doc_id, JSON.stringify(tekenMet.json));
+    // Verkeerd mime-type moet geweigerd worden (bestaande mime-validatie hergebruikt).
+    const tekenBadMime = await api('POST', '/mna/teken', { adminKey: ADMIN, body: { code, document: 'loi', naam: 'Test Verkeerd Mime', eigen_pdf_base64: MINI_PDF_B64, eigen_pdf_naam: 'virus.exe', eigen_pdf_mime: 'application/x-msdownload' } });
+    check('P1-c: verkeerd mime-type geweigerd (400)', tekenBadMime.status === 400, JSON.stringify(tekenBadMime.json));
+    // Zonder bestand blijft de bestaande registratie-flow ongewijzigd werken.
+    const tekenZonder = await api('POST', '/mna/teken', { adminKey: ADMIN, body: { code, document: 'loi', naam: 'Test Zonder Bewijs' } });
+    check('P1-c: teken zonder bewijsstuk — bestaande flow blijft werken', tekenZonder.status === 200 && tekenZonder.json && tekenZonder.json.bewijs_bijgevoegd === false && tekenZonder.json.bewijs_opgeslagen === null, JSON.stringify(tekenZonder.json));
+  } finally {
+    if (code) {
+      await ruimTrajectOp(code);
+      const rest = d1("SELECT id FROM mna_trajecten WHERE id='" + code + "'");
+      check('cleanup: traject weg', rest.length === 0, JSON.stringify(rest));
+    }
+  }
+}
+
+const BATCHEN = { '3B': batch3B, '3C': batch3C, '3D': batch3D, '3E': batch3E, '3F-A': batch3Fa, '3H': batch3H, 'P264': batchP264, 'KERNFLOW-19SEP': batchKernflow19sep };
 
 async function main() {
   const naam = (process.argv[2] || '').toUpperCase();

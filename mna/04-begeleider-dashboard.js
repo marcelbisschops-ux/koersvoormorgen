@@ -1235,6 +1235,28 @@ function renderBegeleiderDashboard(app){
       +'<div id="'+id+'-naam" style="font-size:11px;color:var(--teal);margin-top:4px;display:none"></div>'
       +'</div>';
   }
+  // Kernflow-review 19 sep 2026 (P1, "Buiten Signhost om getekend" uitbreiden met optioneel
+  // bewijsstuk): zelfde bestandsveld-UI/logica als eigenPdfHtml()/wireEigenPdf() hierboven, alleen
+  // met een andere, bij déze context passende tekst — hier vervangt het bestand niets, het is een
+  // OPTIONEEL bewijsstuk náást de naamregistratie. De bestaande registratie-zonder-bestand-flow moet
+  // onveranderd blijven werken (Marcel expliciet: niet verplicht maken).
+  function eigenPdfBewijsHtml(id){
+    return '<div style="margin:.5rem 0 .75rem;padding-top:.5rem;border-top:1px dashed var(--border2)">'
+      +'<label style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:6px;cursor:pointer">'
+      +'<input type="file" accept=".pdf,.docx,.doc,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword" id="'+id+'-file" style="font-size:11px;max-width:220px">'
+      +'<span>Ondertekend bestand toevoegen (optioneel)</span></label>'
+      +'<div id="'+id+'-naam" style="font-size:11px;color:var(--teal);margin-top:4px;display:none"></div>'
+      +'</div>';
+  }
+  // Bouwt de vervolgtekst voor de bevestigingsmelding na "Buiten Signhost om getekend" — Marcel
+  // expliciet: de UI moet ondubbelzinnig tonen of er een bestand bij zit, en zo ja of dat daadwerkelijk
+  // bewaard kon worden (niet stilzwijgend aannemen dat opslaan altijd lukt, zelfde patroon als de
+  // bestaande eigen-PDF-opslag-mislukt-meldingen bij nda/loi/bem/excl hierboven).
+  function hgBewijsToastSuffix(staat,resp){
+    if(!staat.base64)return ' — geen bestand toegevoegd.';
+    if(resp&&resp.bewijs_opgeslagen)return ' — bestand bewaard, terug te vinden bij dit document.';
+    return ' — LET OP: het bestand kon niet worden opgeslagen in het platform. Bewaar zelf een kopie.';
+  }
   // staat = {base64:null,naam:null,mime:null} — gedeeld object dat de verstuur-handler leest.
   // onWissel(actief) wordt aangeroepen zodra een bestand gekozen/verwijderd wordt (bv. om Print uit te schakelen).
   function wireEigenPdf(id, staat, onWissel){
@@ -1373,6 +1395,7 @@ function renderBegeleiderDashboard(app){
       var mo=document.createElement('div');mo.setAttribute('role','dialog');mo.setAttribute('aria-modal','true');mo.setAttribute('aria-labelledby','handmatig-getekend-modal-titel');mo.style.cssText='background:var(--panel);border:1px solid var(--border2);border-radius:var(--r2);padding:1.75rem;max-width:400px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.25)';
       mo.innerHTML='<div id="handmatig-getekend-modal-titel" style="font-family:Playfair Display,serif;font-size:1.1rem;color:var(--head);font-weight:600;margin-bottom:1rem">&#128221; Buiten Signhost om getekend &mdash; '+(labels[type]||type)+'</div>'
         +'<div class="field"><label for="bg-hg-naam">Naam van degene die getekend heeft</label><input type="text" id="bg-hg-naam"></div>'
+        +eigenPdfBewijsHtml('bg-hg-bewijs')
         +'<div id="bg-hg-err" style="display:none;color:var(--red);font-size:12px;margin-bottom:.5rem"></div>'
         +'<div style="display:flex;gap:8px;justify-content:flex-end">'
         +'<button class="btn-ghost" id="bg-hg-ann">Annuleren</button>'
@@ -1383,18 +1406,25 @@ function renderBegeleiderDashboard(app){
       document.getElementById('bg-hg-ann').onclick=function(){document.body.removeChild(ov);};
       var naamInput=document.getElementById('bg-hg-naam');
       naamInput.focus();
+      var hgBewijsStaat={base64:null,naam:null,mime:null};
+      wireEigenPdf('bg-hg-bewijs',hgBewijsStaat,null);
       document.getElementById('bg-hg-ok').onclick=async function(){
         var naam=naamInput.value.trim();
         var errEl=document.getElementById('bg-hg-err');
         if(!naam){errEl.style.display='block';errEl.textContent='Naam verplicht';return;}
         var btn=this;btn.disabled=true;btn.textContent='Vastleggen...';
-        var r=await fetch(WORKER+'/mna/teken',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:S.code,document:type,naam:naam})}).then(function(x){return x.json();}).catch(function(){return{};});
+        var hgPayload={code:S.code,document:type,naam:naam};
+        if(hgBewijsStaat.base64){hgPayload.eigen_pdf_base64=hgBewijsStaat.base64;hgPayload.eigen_pdf_naam=hgBewijsStaat.naam;hgPayload.eigen_pdf_mime=hgBewijsStaat.mime;}
+        var r=await fetch(WORKER+'/mna/teken',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(hgPayload)}).then(function(x){return x.json();}).catch(function(){return{};});
         if(r.ok){
           document.body.removeChild(ov);
-          toast('Vastgelegd: '+(labels[type]||type)+' getekend door '+naam,'ok');
-          if(type==='loi')S.loiGetekend=naam;
-          if(S.traject)S.traject[getekendVeld]=naam;
-          bgToonBestaandeVersie(type,v);
+          toast('Vastgelegd: '+(labels[type]||type)+' getekend door '+naam+hgBewijsToastSuffix(hgBewijsStaat,r),hgBewijsStaat.base64&&!r.bewijs_opgeslagen?'err':'ok',hgBewijsStaat.base64&&!r.bewijs_opgeslagen?8000:4000);
+          // Bugfix 19 sep 2026 (kernflow-review): een lokale veldpatch + partiële re-render liet de
+          // documentflow-kaart (status + VOLGENDE STAP-badge) stale staan tot een handmatige page-
+          // reload — die kaart wordt elders, op een hoger niveau, berekend uit S.traject en werd hier
+          // niet opnieuw gerenderd. refreshData() (bestaande functie, ook achter de "Ververs"-knop)
+          // haalt het volledige traject opnieuw op en rendert de hele app opnieuw, dus ook deze kaart.
+          await refreshData();
         }
         else{errEl.style.display='block';errEl.textContent=r.error||'Onbekende fout';btn.disabled=false;btn.textContent='Vastleggen';}
       };
@@ -1662,6 +1692,7 @@ function renderBegeleiderDashboard(app){
       var mo=document.createElement('div');mo.setAttribute('role','dialog');mo.setAttribute('aria-modal','true');mo.setAttribute('aria-labelledby','handmatig-getekend-modal-titel');mo.style.cssText='background:var(--panel);border:1px solid var(--border2);border-radius:var(--r2);padding:1.75rem;max-width:400px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.25)';
       mo.innerHTML='<div id="handmatig-getekend-modal-titel" style="font-family:Playfair Display,serif;font-size:1.1rem;color:var(--head);font-weight:600;margin-bottom:1rem">&#128221; Buiten Signhost om getekend &mdash; '+(labels[type]||type)+'</div>'
         +'<div class="field"><label for="bg-hg-naam">Naam van degene die getekend heeft</label><input type="text" id="bg-hg-naam"></div>'
+        +eigenPdfBewijsHtml('bg-hg-bewijs')
         +'<div id="bg-hg-err" style="display:none;color:var(--red);font-size:12px;margin-bottom:.5rem"></div>'
         +'<div style="display:flex;gap:8px;justify-content:flex-end">'
         +'<button class="btn-ghost" id="bg-hg-ann">Annuleren</button>'
@@ -1672,22 +1703,29 @@ function renderBegeleiderDashboard(app){
       document.getElementById('bg-hg-ann').onclick=function(){document.body.removeChild(ov);};
       var naamInput=document.getElementById('bg-hg-naam');
       naamInput.focus();
+      var hgBewijsStaat={base64:null,naam:null,mime:null};
+      wireEigenPdf('bg-hg-bewijs',hgBewijsStaat,null);
       document.getElementById('bg-hg-ok').onclick=async function(){
         var naam=naamInput.value.trim();
         var errEl=document.getElementById('bg-hg-err');
         if(!naam){errEl.style.display='block';errEl.textContent='Naam verplicht';return;}
         var btn=this;btn.disabled=true;btn.textContent='Vastleggen...';
-        var r=await fetch(WORKER+'/mna/teken',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:S.code,document:type,naam:naam})}).then(function(x){return x.json();}).catch(function(){return{};});
+        var hgPayload={code:S.code,document:type,naam:naam};
+        if(hgBewijsStaat.base64){hgPayload.eigen_pdf_base64=hgBewijsStaat.base64;hgPayload.eigen_pdf_naam=hgBewijsStaat.naam;hgPayload.eigen_pdf_mime=hgBewijsStaat.mime;}
+        var r=await fetch(WORKER+'/mna/teken',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(hgPayload)}).then(function(x){return x.json();}).catch(function(){return{};});
         if(r.ok){
           document.body.removeChild(ov);
-          toast('Vastgelegd: '+(labels[type]||type)+' getekend door '+naam,'ok');
+          toast('Vastgelegd: '+(labels[type]||type)+' getekend door '+naam+hgBewijsToastSuffix(hgBewijsStaat,r),hgBewijsStaat.base64&&!r.bewijs_opgeslagen?'err':'ok',hgBewijsStaat.base64&&!r.bewijs_opgeslagen?8000:4000);
           // Bugfix 26 juli 2026: bij een LoI moet fase 2 (post-LoI DD) meteen ontgrendeld zijn — de
           // koper/verkoper in-app-tekenflow zet S.loiGetekend al wél (mna/06-schermen.js), maar dit
           // begeleider-pad ("buiten Signhost om getekend") deed dat niet, waardoor de begeleider zelf
           // pas na een herlaad/herlogin fase-2-vragen te zien kreeg (ivFase leest S.loiGetekend).
-          if(type==='loi')S.loiGetekend=naam;
-          handmatigBtn.disabled=true;handmatigBtn.textContent='✓ Getekend vastgelegd';handmatigBtn.style.opacity='.5';
-          if(bgDocToggle&&bgDocBody&&bgDocBody.style.display!=='none')bgDocToggle.click();
+          // refreshData() (bugfix 19 sep 2026, kernflow-review) zet dit nu al goed via een verse
+          // S.traject-fetch, dus deze losse S.loiGetekend-zet is niet meer nodig als losstaande regel.
+          // Bugfix 19 sep 2026 (kernflow-review): dezelfde stale-documentflow-kaart-bug als de andere
+          // "Buiten Signhost om getekend"-flow hierboven — refreshData() (bestaande "Ververs"-functie)
+          // vervangt de eerdere lokale button-state-patch + het handmatig sluiten van het paneel.
+          await refreshData();
         }
         else{errEl.style.display='block';errEl.textContent=r.error||'Onbekende fout';btn.disabled=false;btn.textContent='Vastleggen';}
       };
@@ -3148,6 +3186,7 @@ function renderBegeleiderDashboard(app){
         var mo=document.createElement('div');mo.setAttribute('role','dialog');mo.setAttribute('aria-modal','true');mo.setAttribute('aria-labelledby','mou-hg-modal-titel');mo.style.cssText='background:var(--panel);border:1px solid var(--border2);border-radius:var(--r2);padding:1.75rem;max-width:400px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.25)';
         mo.innerHTML='<div id="mou-hg-modal-titel" style="font-family:Playfair Display,serif;font-size:1.1rem;color:var(--head);font-weight:600;margin-bottom:1rem">&#128221; Buiten Signhost om getekend &mdash; '+esc(profLblHg.titel)+'</div>'
           +'<div class="field"><label for="mou-hg-naam">Naam van degene die getekend heeft</label><input type="text" id="mou-hg-naam"></div>'
+          +eigenPdfBewijsHtml('mou-hg-bewijs')
           +'<div id="mou-hg-err" style="display:none;color:var(--red);font-size:12px;margin-bottom:.5rem"></div>'
           +'<div style="display:flex;gap:8px;justify-content:flex-end">'
           +'<button class="btn-ghost" id="mou-hg-ann">Annuleren</button>'
@@ -3158,17 +3197,24 @@ function renderBegeleiderDashboard(app){
         document.getElementById('mou-hg-ann').onclick=function(){document.body.removeChild(ov);};
         var naamInput=document.getElementById('mou-hg-naam');
         naamInput.focus();
+        var mouHgBewijsStaat={base64:null,naam:null,mime:null};
+        wireEigenPdf('mou-hg-bewijs',mouHgBewijsStaat,null);
         document.getElementById('mou-hg-ok').onclick=async function(){
           var naam=naamInput.value.trim();
           var errEl=document.getElementById('mou-hg-err');
           if(!naam){errEl.style.display='block';errEl.textContent='Naam verplicht';return;}
           var btn=this;btn.disabled=true;btn.textContent='Vastleggen...';
-          var r=await fetch(WORKER+'/mna/teken',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:S.code,document:_mouProfile.toLowerCase(),naam:naam})}).then(function(x){return x.json();}).catch(function(){return{};});
+          var mouHgPayload={code:S.code,document:_mouProfile.toLowerCase(),naam:naam};
+          if(mouHgBewijsStaat.base64){mouHgPayload.eigen_pdf_base64=mouHgBewijsStaat.base64;mouHgPayload.eigen_pdf_naam=mouHgBewijsStaat.naam;mouHgPayload.eigen_pdf_mime=mouHgBewijsStaat.mime;}
+          var r=await fetch(WORKER+'/mna/teken',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(mouHgPayload)}).then(function(x){return x.json();}).catch(function(){return{};});
           if(r.ok){
             document.body.removeChild(ov);
-            toast('Vastgelegd: '+profLblHg.kort+' getekend door '+naam,'ok');
-            if(_mouProfile==='LOI')S.loiGetekend=naam;
-            bgMouRender();
+            toast('Vastgelegd: '+profLblHg.kort+' getekend door '+naam+hgBewijsToastSuffix(mouHgBewijsStaat,r),mouHgBewijsStaat.base64&&!r.bewijs_opgeslagen?'err':'ok',mouHgBewijsStaat.base64&&!r.bewijs_opgeslagen?8000:4000);
+            // Bugfix 19 sep 2026 (kernflow-review): zelfde stale-documentflow-kaart-bug als de bgDoc-
+            // varianten hierboven — refreshData() (bestaande "Ververs"-functie) haalt S.traject opnieuw
+            // op en rendert de hele app opnieuw (inclusief dit MOU/LOI/NDA-composerpaneel), dus de
+            // losse bgMouRender()-aanroep hieronder is niet meer nodig.
+            await refreshData();
           } else { errEl.style.display='block'; errEl.textContent=r.error||'Onbekende fout'; btn.disabled=false; btn.textContent='Vastleggen'; }
         };
       };
