@@ -379,7 +379,72 @@ async function batch3H() {
   }
 }
 
-const BATCHEN = { '3B': batch3B, '3C': batch3C, '3D': batch3D, '3E': batch3E, '3F-A': batch3Fa, '3H': batch3H };
+// ── Batch P264 — sector-benchmarkfallback in documentanalyse (19 sep 2026) ─────────────────────
+// Zelfde reproductiemethode als de staging-regressietest (tests/regressie-p264-sectorbenchmark.mjs):
+// een échte documentupload + AI-analyse voor een sector zonder eigen docBenchmarks (bouw, transport)
+// mag NOOIT het accountancy-sectorlabel of de accountancy-EBITDA-margenorm (15-25%) krijgen; de
+// positieve controle (accountancy, die wél eigen docBenchmarks heeft) moet ongewijzigd blijven werken.
+const P264_ACCOUNTANCY_LABEL_RE = /accountants[- ]?(of|en)?\s*administratiekantoor/i;
+const P264_ACCOUNTANCY_MARGE_RE = /15[-–]25\s*%/;
+
+function p264Jaarrekening(sector, bedrijfsnaam) {
+  const sectorTekst = {
+    bouw: 'een regionale aannemer gespecialiseerd in utiliteitsbouw en installatietechniek',
+    transport: 'een middelgroot transport- en logistiekbedrijf met een eigen wagenpark',
+    accountancy: 'een regionaal accountants- en administratiekantoor met mkb-klanten in de regio',
+  }[sector] || 'een onderneming';
+  return 'JAARREKENING 2025\n' + bedrijfsnaam + '\nStatutair gevestigd te Barneveld, KvK 91234500\n\n'
+    + '1. BESTUURSVERSLAG\n' + bedrijfsnaam + ' is ' + sectorTekst + '. Het boekjaar 2025 kende een omzetgroei\n'
+    + 'van circa 8% ten opzichte van 2024. De personeelsbezetting groeide van 22 naar 26 FTE.\n\n'
+    + '2. BALANS PER 31 DECEMBER 2025 (in €, vergelijkende cijfers 2024)\n'
+    + 'ACTIVA                                    2025          2024\n'
+    + 'Materiële vaste activa                   1.180.000     1.010.000\n'
+    + 'Debiteuren                                  505.000       460.000\n'
+    + 'TOTAAL ACTIVA                             1.925.000     1.665.000\n\n'
+    + '3. WINST- EN VERLIESREKENING 2025 (in €, vergelijkende cijfers 2024 en 2023)\n'
+    + '                                          2025         2024         2023\n'
+    + 'Netto-omzet                            3.150.000    2.910.000    2.720.000\n'
+    + 'EBITDA                                    380.000      395.000      405.000\n'
+    + 'Resultaat na belasting                    195.000      216.000      230.000\n\n'
+    + 'EBITDA-marge 2025: 12,1% van de omzet.\n\n'
+    + '4. GRONDSLAGEN\nActiva en passiva worden gewaardeerd op nominale waarde, tenzij anders vermeld.\n\n'
+    + '5. OVERIGE GEGEVENS\nDeze jaarrekening is samengesteld overeenkomstig Titel 9 Boek 2 BW voor kleine\n'
+    + 'rechtspersonen; op grond van de wettelijke vrijstelling is geen accountantscontrole toegepast.';
+}
+
+async function p264TestSector(sector, bedrijfsnaam, verwachtAccountancyToegestaan) {
+  const t = await maakAdminTraject('PROD-SMOKE P264 ' + sector + ' BV', { sector });
+  const code = t.code;
+  try {
+    const bedrijfsnaamVol = bedrijfsnaam;
+    const form = new FormData();
+    form.append('file', new Blob([p264Jaarrekening(sector, bedrijfsnaamVol)], { type: 'text/plain' }), 'jaarrekening-2025.txt');
+    const uploadResp = await fetch(WORKER + '/mna/document/upload?code=' + code + '&fase_id=financieel&bewaar=false', { method: 'POST', body: form });
+    const uploadJson = await uploadResp.json().catch(() => null);
+    check(sector + ': upload ok:true, niet verworpen', uploadResp.status === 200 && uploadJson && uploadJson.ok === true && uploadJson.verworpen === false, JSON.stringify(uploadJson && { ok: uploadJson.ok, verworpen: uploadJson.verworpen }));
+
+    const analyse = (uploadJson && uploadJson.analyse) || '';
+    if (verwachtAccountancyToegestaan) {
+      check(sector + ' (positieve controle): analyse gegenereerd zonder fout', analyse.length > 0);
+    } else {
+      check(sector + ': GEEN accountancy-sectorlabel in de analyse', !P264_ACCOUNTANCY_LABEL_RE.test(analyse), analyse.slice(0, 300));
+      check(sector + ': GEEN accountancy-EBITDA-margenorm (15-25%) in de analyse', !P264_ACCOUNTANCY_MARGE_RE.test(analyse), analyse.slice(0, 300));
+    }
+  } finally {
+    await ruimTrajectOp(code);
+    const rest = d1("SELECT id FROM mna_trajecten WHERE id='" + code + "'");
+    check(sector + ' cleanup: traject weg', rest.length === 0, JSON.stringify(rest));
+  }
+}
+
+async function batchP264() {
+  kop('P264 · sector-benchmarkfallback in documentanalyse (bouw/transport/accountancy)');
+  await p264TestSector('bouw', 'PROD-SMOKE P264 Bouw BV', false);
+  await p264TestSector('transport', 'PROD-SMOKE P264 Transport BV', false);
+  await p264TestSector('accountancy', 'PROD-SMOKE P264 Accountancy BV', true);
+}
+
+const BATCHEN = { '3B': batch3B, '3C': batch3C, '3D': batch3D, '3E': batch3E, '3F-A': batch3Fa, '3H': batch3H, 'P264': batchP264 };
 
 async function main() {
   const naam = (process.argv[2] || '').toUpperCase();
