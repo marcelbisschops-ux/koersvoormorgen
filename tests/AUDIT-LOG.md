@@ -224,3 +224,75 @@ bij een her-gestubde `registreer.html`. Alle 11 checks groen op de huidige boom.
 Geen open aanvraag in de wachtrij (`/mna/veiligheid/audit-opdracht` gaf `opdracht:null`). Vandaag
 (18 sep) valt buiten het maandelijkse cadans-venster (1e-3e dag van de maand), dus geen zelf-
 ingediende `diepe_audit`-aanvraag conform de scheduled-task-instructie (Stap 1b). Geen actie nodig.
+
+## 2026-09-19 — dagelijkse-knoppentest-routine (scheduled task)
+
+**Rotatiekeuze:** sector **bouw** (nog niet eerder getest door deze routine — gisteren transport),
+trajecttype **Fusie** (gisteren Overname), `opdrachtgever_rol:"koper"` (Marcel als bemiddelaar
+namens de koper — gisteren niet gespecificeerd), rollen verkoper/koper/tussenpersoon, fasen
+Financieel + Juridisch & fiscaal (gisteren alleen Financieel). Reden: brede rotatie op combinatie
++ verhoogde prioriteit voor sector bouw omdat die tot de vijf sectoren behoort waar P2-64 (16 sep,
+zie `OPEN-BEVINDINGEN.md`) al voor transport was aangetoond — werkregel 15 ("historische fouten
+zijn risicosignalen": eerder gevonden foutpatroon → elders controleren, niet alleen bij transport).
+
+**Omgeving:** volledig tegen `kantoorinzicht-staging` (health-check 200 OK, `tests/.env.staging.local`
+aanwezig). Testtraject `DAILY_QA_20260919` (fictief: "Van der Steen Bouw & Infra B.V." / "Deltabouw
+Groep Holding B.V."), aangemaakt/getest/opgeruimd via een los Node-scriptje op basis van
+`tests/lib.mjs` (bouwstenen, geen dubbel werk met `tests/e2e-api.mjs`/`run-rolflows.sh`).
+
+**Doorlopen flow (klik → request → backend → database → response → UI-equivalent):**
+1. Traject aanmaken (`/mna/create`, admin-key) — sector/traject_type/codes geverifieerd via
+   `/mna/traject/{code}` voor alle drie rollen.
+2. Fase Financieel — rolgrenzen: verkoper mag opslaan, begeleider geblokkeerd (403, bekende regel
+   van 12 sep "verkoper moet dit zelf doen"), koper overal geblokkeerd (403, ook op juridisch).
+3. Fase Juridisch & fiscaal — begeleider mag wél opslaan; teruggelezen via een verse
+   `/mna/traject/{code}`-call (niet alleen het save-response) en waarde geverifieerd.
+4. Documentupload + echte AI-extractie: een realistische, meerdere-secties jaarrekening 2025
+   (bestuursverslag/balans+vergelijkende cijfers/W&V 3 jaar/kasstroom/grondslagen/toelichting/
+   vrijstellingsverklaring, geen kaal 1-pagina-document) voor de fictieve bouwonderneming, geüpload
+   als verkoper op fase Financieel. Upload slaagde, niet verworpen, velden geëxtraheerd.
+5. Reject-pad: een irrelevant document (meubilair-leveringscontract, andere bedrijfsnamen) geüpload
+   → correct verworpen zonder AI-kosten (entiteitscheck op tekstmatch, geen gok).
+6. P1-63-regressie (fix van 18 sep, nog niet naar productie): `/mna/gesprek/opslaan` met koper- én
+   verkoper-code geeft nu 403 ("Alleen de begeleider mag..."), begeleider-code geeft 200 — fix staat
+   nog overeind op staging.
+
+**Resultaat:** 21/21 checks OK bij de definitieve run (2 eerdere runs faalden op scriptfouten in het
+eigen testscript — verkeerd multipart-veldnaam `bestand` i.p.v. het echte `file`, en `sector`/
+`traject_type` op het verkeerde JSON-niveau gelezen; geen productiebug, wel 2 extra testtrajecten
+die meteen zijn opgeruimd samen met de definitieve). Geen nieuwe functionele fout gevonden binnen
+deze combinatie.
+
+**Bevinding (foutpropagatie, geen nieuwe bug — bevestiging van bestaande P2-64):** de documentupload-
+AI-analyse gaf voor het bouwbedrijf expliciet het sectorlabel "accountants- of administratiekantoor"
+en toetste de EBITDA-marge aan de accountancy-norm — live gereproduceerd op staging, zelfde
+onderliggende oorzaak als P2-64 (16 sep, sector transport): `worker/14-document-upload-analyse.js`
+valt terug op `DEFAULT_DOC_BENCHMARKS.accountancy` omdat geen van de vijf op 15 sep toegevoegde
+sectoren een `docBenchmarks`-veld in de database heeft (bevestigd via `GET /mna/sectorprofielen` op
+staging: `bouw`/`transport`/`handel`/`consultancy`/`verhuizingen` alle vijf `false`). Het AI-model
+signaleerde de mismatch overigens zelf in de analysetekst ("de sectorclassificatie ... is onjuist"),
+dus geen stille misleiding richting de gebruiker in dít specifieke geval — de onderliggende
+contextinjectie is wel degelijk fout. **Niet zelf gefixt**: dit is dezelfde bewust-aan-Marcel-
+voorgelegde architectuurkeuze als bij de oorspronkelijke P2-64-melding (gedeelde sector-normen-
+lookup vs. eigen doc-extractie-fallback) — een tweede reproductie verandert die scope-vraag niet,
+wel het gewicht ervan (2 van 5 sectoren nu concreet met een echte AI-call bevestigd, de overige 3
+alleen op DB-niveau). Volledig bijgewerkt in `OPEN-BEVINDINGEN.md` (P2-64).
+
+**Zelfstandig opgelost + gedeployed:** niets — geen nieuwe bug binnen deze combinatie, dus geen
+fix/deploy deze ronde.
+
+**Opgeruimd:** alle drie de testtrajecten (`5WUGG0IT`, `3U82ESKO`, `Y34S8U5C` — de eerste twee uit
+mislukte scriptpogingen) verwijderd via `/admin/delete/mna/` op staging; nul `DAILY_QA_20260919`-
+trajecten resterend, geverifieerd via `/mna/admin/lijst`.
+
+**Niet getest deze ronde (expliciet, geen gok):** rollen adviseur/meekijker/eigen specialist (nog
+geen enkele automatische knoppentest-run heeft deze gedekt — verdient prioriteit in een volgende
+rotatie); sectoren handel/consultancy/verhuizingen alleen op DB-niveau bevestigd voor P2-64, niet via
+een echte documentupload; entiteiten/holding-consolidatie niet apart getest deze ronde (al dekkend
+gecovered door de bestaande regressietest in `tests/e2e-api.mjs` STAP 6b, geen toegevoegde waarde om
+te herhalen — werkregel 40, test economy).
+
+**Score aan marilyn:** 75 (100 − 25). Geen nieuwe, ongeziene fout, maar wél een concreet gereproduceerde,
+nog niet opgeloste bevinding binnen de scope van vandaag (P2-64 voor sector bouw) — dat verdient
+eerlijk een aftrek, ook al is de onderliggende oorzaak al bekend en bewust bij Marcel neergelegd.
+100 zou ten onrechte "niets gevonden" suggereren.
