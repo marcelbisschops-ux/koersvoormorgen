@@ -285,6 +285,21 @@ fix/deploy deze ronde.
 mislukte scriptpogingen) verwijderd via `/admin/delete/mna/` op staging; nul `DAILY_QA_20260919`-
 trajecten resterend, geverifieerd via `/mna/admin/lijst`.
 
+**Zijstap: pre-push-testsuite gaf bij de eerste pushpoging 8 gefaalde tests.** Onderzocht vóórdans
+als "waarschijnlijk vals" af te doen (werkregel 4, geen diagnose zonder bewijs). Oorzaak gevonden:
+de pre-push-hook draaide `tests/e2e-3rollen-regressie.spec.js` + 2 andere Playwright-bestanden tegen
+staging op het moment dat dit sessies eigen daily-qa-script (met échte AI-documentuploads) óók nog
+tegen dezelfde staging-worker liep — resourcecontentie/timing, geen productiebug. Bewijs: een
+volledige, schone herhaling van `e2e-3rollen-regressie.spec.js` (18 tests, geen gelijktijdige
+belasting meer) gaf 16/16 geslaagd (2 bewust overgeslagen [AI]-tests); een volledige herhaling van
+`e2e-adv-bewerkmodal.spec.js` + `e2e-regressie-uitbreiding.spec.js` gaf 9/10 geslaagd, met de ene
+resterende faal (test 8, document-verwijderen) die bij een geïsoleerde herhaling meteen slaagde
+(11,7s, geen timeout). Geen enkele van de 8 oorspronkelijke fails was bij hertest nog reproduceerbaar.
+**Geleerde les (geen codewijziging, wel een procesnotitie):** een scheduled-task-sessie die zelf
+staging belast (documentuploads, trajecten aanmaken) moet dat niet gelijktijdig laten lopen met een
+`git push` naar dezelfde repo (de pre-push-hook draait zijn eigen staging-testsuite) — voortaan eerst
+het eigen testscript volledig laten afronden vóór een push.
+
 **Niet getest deze ronde (expliciet, geen gok):** rollen adviseur/meekijker/eigen specialist (nog
 geen enkele automatische knoppentest-run heeft deze gedekt — verdient prioriteit in een volgende
 rotatie); sectoren handel/consultancy/verhuizingen alleen op DB-niveau bevestigd voor P2-64, niet via
