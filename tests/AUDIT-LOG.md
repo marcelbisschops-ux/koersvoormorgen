@@ -311,3 +311,31 @@ te herhalen — werkregel 40, test economy).
 nog niet opgeloste bevinding binnen de scope van vandaag (P2-64 voor sector bouw) — dat verdient
 eerlijk een aftrek, ook al is de onderliggende oorzaak al bekend en bewust bij Marcel neergelegd.
 100 zou ten onrechte "niets gevonden" suggereren.
+
+## 2026-09-19 (vervolg) — P2-64 volledig opgelost (Marcel: expliciete GO)
+
+Naar aanleiding van de bevinding hierboven gaf Marcel expliciet akkoord om P2-64 zelfstandig
+volledig op te lossen t/m productie, buiten de normale dagelijkse-knoppentest-scope. Volledig
+verslag (oorzaak, exacte fix, bestanden/commits, regressietests, staging-/productieresultaat,
+production smoke, cleanup) staat in `OPEN-BEVINDINGEN.md` bij P2-64 ("Fix 19 sep 2026"). Kort:
+
+- **Oorzaak:** `worker/14-document-upload-analyse.js` viel bij een ontbrekende `docBenchmarks` voor
+  een sector stilzwijgend terug op de accountancy-benchmarktekst.
+- **Fix:** structurele terugvalvolgorde (DB-docBenchmarks → `DEFAULT_DOC_BENCHMARKS` → sector-eigen
+  `aiNormen`/`label` → neutrale "geen benchmark"-melding) — nooit meer een andere sector lenen.
+  Backend-commit `b8b7ad7`.
+- **Regressietests (nieuw):** `tests/regressie-p264-sectorbenchmark.mjs` (staging, 20/20) + nieuwe
+  production-smoke-batch `P264` in `tests/prod-smoke.mjs` (commits `c6fd12d`, `afb6942`).
+- **Bestaande regressietests herdraaid op staging:** `e2e-3rollen-regressie.spec.js` met
+  `KVM_DOE_AI=1` 18/18, `e2e-api.mjs --ai` 51/51, `audit-consistentie.mjs` 15/15 — allemaal groen.
+- **Staging → productie:** staging Version ID `20e9cefa`, productie Version ID `04c71416`.
+- **Production smoke:** `node tests/prod-smoke.mjs P264` — 11/11 PASS, D1-cleanup bevestigd.
+- **Niet meegenomen (expliciet buiten scope):** `SECTOR_EXTRACTIE_EXTRA`-velddekking voor de 5
+  nieuwere sectoren (P3-61, aparte al bestaande bevinding, ongewijzigd); geen andere openstaande
+  punten aangeraakt; Marcels WIP-bestanden (`mna/04-begeleider-dashboard.js`, `mna/06-schermen.js`,
+  `bedrijfsscan-start.html`) ongemoeid gelaten.
+- **Zijstap tijdens deze sessie:** de pre-push-testsuite gaf bij twee eerdere pushpogingen (van de
+  eerdere daily-QA-commits) telkens 1-8 tijdelijke fails door staging-resourcecontentie (eigen
+  testscript liep gelijktijdig) — nader onderzocht en bevestigd géén productieregressie (zie eerdere
+  logregel vandaag); Marcel heeft daarnaast bevestigd dat de WIP-diff in mna/04+mna/06 (alleen een
+  `fetchMetTimeout()`-toepassing) daar geen verklarende rol in speelt.
