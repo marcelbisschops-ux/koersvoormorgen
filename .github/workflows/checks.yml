@@ -11,6 +11,12 @@ on:
   # loginlimiter (worker/11-mna-tekenen-beheer.js, 15 pogingen/10 min) niet.
   schedule:
     - cron: '30 4 * * *'  # 04:30 UTC = 06:30 zomertijd / 05:30 wintertijd Amsterdam
+  # 19 sep 2026: ontbrak volledig — zonder workflow_dispatch was er geen enkele manier om de exacte
+  # dagelijkse keten handmatig te bewijzen (bijv. na een schedule-run die niet vuurde, zoals vandaag
+  # geconstateerd) zonder op de volgende cron te wachten. `if: github.event_name == 'schedule'`
+  # hieronder is daarom uitgebreid met `workflow_dispatch`, zodat een handmatige run ECHT de volle
+  # 27 tests (16 basis + 9 uitbreiding + 2 AI) doorloopt, niet alleen de 16 van een gewone push.
+  workflow_dispatch:
 
 # 18 sep 2026 (Checkpoint 2, 3-rollen-regressietest): serialiseert ALLE workflow-runs van dit
 # bestand tegen elkaar — dus ook de bestaande 'checks'-job, die via e2e-api.mjs al staging raakt.
@@ -157,9 +163,11 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: '280ee5671bc3c27b895246a620dbc97b'
         run: npx playwright test tests/e2e-3rollen-regressie.spec.js
 
-      # Alleen bij de dagelijkse cron — kost echte Anthropic-tokens, dus niet bij elke push.
+      # Alleen bij de dagelijkse cron (of een handmatige workflow_dispatch, 19 sep 2026 toegevoegd om
+      # de volledige dagelijkse keten op afroep te kunnen bewijzen) — kost echte Anthropic-tokens,
+      # dus niet bij elke push.
       - name: 3-rollen regressietest — incl. 2 echte AI-tests (alleen dagelijkse cron)
-        if: ${{ github.event_name == 'schedule' }}
+        if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
         env:
           ADMIN_KEY: ${{ secrets.STAGING_ADMIN_KEY }}
           E2E_REPORT_KEY: ${{ secrets.E2E_REPORT_KEY }}
@@ -185,7 +193,7 @@ jobs:
       # dagelijkse cron-run, niet bij elke push, en blijft de push-poort (16/16) op het smalst
       # haalbare Read-only credential.
       - name: 9 regressie-uitbreidingstests (sectie D) — alleen dagelijkse cron
-        if: ${{ github.event_name == 'schedule' }}
+        if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
         env:
           ADMIN_KEY: ${{ secrets.STAGING_ADMIN_KEY }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN_D1_EDIT }}
