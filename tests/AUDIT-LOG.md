@@ -1,5 +1,9 @@
 # Audit-log — wekelijkse controle Koers voor Morgen
 
+## 2026-09-19
+
+**diepe-audit-routine (geautomatiseerde scheduled task): geen open aanvraag, cadans nog niet verstreken.** Wachtrij (`/mna/veiligheid/audit-opdracht`) leeg (`{"ok":true,"opdracht":null}`). Vandaag (19e) valt buiten het 1e-3e-van-de-maand-venster voor de automatische maandelijkse cadans, dus geen zelf-aanvraag ingediend. Geen audit uitgevoerd, niets gewijzigd. Opmerking: de working tree van de frontend-repo had bij aanvang onopgeslagen wijzigingen (`bedrijfsscan-start.html`, `mna/04-begeleider-dashboard.js`, `mna/06-schermen.js`) + een aantal ongecommitte BATCH-patchbestanden op de repo-root — niet aangeraakt door deze routine, vermoedelijk lopend handwerk van Marcel/een eerdere sessie.
+
 ## 2026-09-14
 
 **wekelijkse-audit (geautomatiseerde scheduled task) — alles groen, niets gewijzigd.**
