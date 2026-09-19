@@ -155,7 +155,19 @@ jobs:
       # foutmelding wijst zelf naar deze oplossing: het account-id direct meegeven slaat die
       # opzoekstap over, zonder dat het token bredere rechten nodig heeft. Dit account-id is geen
       # secret (staat al publiek in CLAUDE.md, regel 24, en in elke Cloudflare-API-foutmelding).
+      # 19 sep 2026 (eerste echte cron/dispatch-run, direct gevonden): op schedule/workflow_dispatch
+      # draaide dit hele spec-bestand hier ÉN nog eens volledig in de stap hieronder (incl. AI) — twee
+      # complete passes van dezelfde ~17 testcases, elk met een eigen login per rol, binnen enkele
+      # minuten vanaf dezelfde CI-runner-IP. Dat duwt het cumulatieve aantal `/mna/traject/{code}`-
+      # aanroepen ruim over de bestaande login-rate-limiter (15 pogingen/10 min per IP,
+      # worker/11-mna-tekenen-beheer.js) — live geobserveerd: pass 1 16/16 groen (1,5 min), pass 2
+      # 9 gefaald/9 geslaagd met verspreide `page.waitForFunction`-timeouts (6,7 min), typisch
+      # patroon van een sliding-window-rate-limiter die halverwege de tweede pas begint te blokkeren.
+      # Fix: op schedule/workflow_dispatch is deze losse, AI-loze pass overbodig — de stap hieronder
+      # draait exact hetzelfde spec-bestand (een strikt superset, +2 AI-tests), dus wordt deze stap nu
+      # op die twee triggers overgeslagen. Bij een gewone push/PR verandert er niets.
       - name: 3-rollen regressietest (deterministisch — elke push/PR)
+        if: ${{ github.event_name != 'schedule' && github.event_name != 'workflow_dispatch' }}
         env:
           ADMIN_KEY: ${{ secrets.STAGING_ADMIN_KEY }}
           E2E_REPORT_KEY: ${{ secrets.E2E_REPORT_KEY }}
@@ -165,7 +177,8 @@ jobs:
 
       # Alleen bij de dagelijkse cron (of een handmatige workflow_dispatch, 19 sep 2026 toegevoegd om
       # de volledige dagelijkse keten op afroep te kunnen bewijzen) — kost echte Anthropic-tokens,
-      # dus niet bij elke push.
+      # dus niet bij elke push. Dekt op deze twee triggers ook de 16/17 deterministische tests
+      # (KVM_DOE_AI voegt alleen 2 tests TOE, vervangt niets) — zie de toelichting hierboven.
       - name: 3-rollen regressietest — incl. 2 echte AI-tests (alleen dagelijkse cron)
         if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
         env:
