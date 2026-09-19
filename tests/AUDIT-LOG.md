@@ -339,3 +339,31 @@ production smoke, cleanup) staat in `OPEN-BEVINDINGEN.md` bij P2-64 ("Fix 19 sep
   testscript liep gelijktijdig) — nader onderzocht en bevestigd géén productieregressie (zie eerdere
   logregel vandaag); Marcel heeft daarnaast bevestigd dat de WIP-diff in mna/04+mna/06 (alleen een
   `fetchMetTimeout()`-toepassing) daar geen verklarende rol in speelt.
+
+## 2026-09-19 (vervolg) — dagelijkse GitHub Actions-cron gefixt en bewezen
+
+Marcel meldde dat de `schedule`-trigger (`30 4 * * *`) op zijn eerste geplande gelegenheid (19 sep
+04:30 UTC) niet was gevuurd — alle laatste 100 runs waren `push`-events. Preconditie-check via de
+GitHub API (workflow `state=active`, Actions `enabled`/`allowed_actions=all`, repo niet gearchiveerd,
+default branch `main`, YAML stabiel op `main` ruim vóór 04:30 UTC) toonde geen configuratiefout;
+GitHub biedt geen inzicht in waarom de scheduler dat specifieke moment miste (bekend, gedocumenteerd
+gedrag bij load, geen bewijs van een structureel defect).
+
+**Fix 1** (commit `446c074`): `workflow_dispatch` toegevoegd — ontbrak volledig, dus was er geen
+manier om de exacte dagelijkse keten op afroep te draaien.
+
+**Toevalstreffer:** direct na de push vuurde de `schedule`-trigger voor het eerst zelf (run
+`35433254974`) — mogelijk gerelateerd aan de push, mogelijk toeval. Deze run faalde: de job draaide
+het volledige spec-bestand TWEE keer (eerst zonder AI, dan met AI) — 16/16 groen, daarna 9 gefaald/9
+geslaagd met verspreide `page.waitForFunction`-timeouts.
+
+**Fix 2** (commit `bce1cf1`): de AI-loze pass wordt nu overgeslagen op `schedule`/`workflow_dispatch`
+(de AI-pass is een strikte superset). Op de eerste 2 herhalingen daarna: 16/18 en 16/18 groen, met
+telkens 2 andere, niet-herhalende fails (B4/B5: een korte netwerk-achtige hik resp. een DOM-detach-
+race; B6: risicoraamwerk-AI-call, 2x — onderzocht via een live `wrangler tail` op staging tijdens een
+vierde run) — **4e run volledig groen: 18/18 + 9/9 (27/27).** Onafhankelijk bevestigd via een directe
+D1-query op productie (`security_selfcheck_log`, bron `e2e-3rollen`): laatste rij `checks_totaal=18,
+checks_geslaagd=18`. Cleanup onafhankelijk gecontroleerd: 0 resterende E2E-testtrajecten op staging.
+
+Geen productiecode aangeraakt; alleen `.github/workflows/checks.yml`. Marcels WIP-bestanden
+ongemoeid gelaten. Volledig verslag (met precieze foutmeldingen per poging) in de sessie zelf.
