@@ -779,12 +779,25 @@ function renderSummary(){
     if(isNaN(parsed))return null;
     return negatief?-parsed:parsed;
   }
+  // Percentageveld: hier IS '.' een decimaalteken (in tegenstelling tot parseGeldCheck hierboven,
+  // die voor eurobedragen '.' als NL-duizendtal-scheiding wegstript) — anders werd "8.2" gelezen
+  // als 82 (Marcel, 19 sep 2026, gevonden op EBITDA-marge in deze discrepantiecheck, blokkeerde
+  // dossier-vrijgeven op een niet-bestaande fout). Alleen de komma wordt naar een punt omgezet.
+  function parsePctCheck(v){
+    if(!v)return null;
+    var str=String(v).trim();
+    var negatief=/^[^\d]*[-−–—‑－]\s*\d/.test(str)||/\d\s*[-−–—‑－]\s*$/.test(str)||/^\(.*\d.*\)$/.test(str);
+    var n=str.replace(/[^0-9,.]/g,'').replace(',','.');
+    var parsed=parseFloat(n);
+    if(isNaN(parsed))return null;
+    return negatief?-parsed:parsed;
+  }
 
   var o1=parseGeldCheck(S.data['financieel_omzet1']);
   var o2=parseGeldCheck(S.data['financieel_omzet2']);
   var o3=parseGeldCheck(S.data['financieel_omzet3']);
   var ebitdaAbs=parseGeldCheck(S.data['financieel_ebitda']);
-  var ebitdaMarge=parseGeldCheck(S.data['financieel_ebitdaMarge']);
+  var ebitdaMarge=parsePctCheck(S.data['financieel_ebitdaMarge']);
   // Sectorafhankelijk (21 aug 2026, live-testbug): accountancy/zorg noemen dit 'partnerBel', mkb
   // gebruikt 'dgaSalaris', itsoftware kent dit concept niet — zie getEigenaarBeloningsVeld() in
   // mna/01-config-sectorprofielen.js. Voorheen hardcoded op 'financieel_partnerBel' met de tekst
