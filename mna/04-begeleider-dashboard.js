@@ -2421,7 +2421,7 @@ function renderBegeleiderDashboard(app){
     // de dedicated, code-geauthenticeerde backend-route POST /mna/spa/genereer (analoog aan
     // /mna/risicoraamwerk/genereer en /mna/waardering/genereer), i.p.v. de generieke /ai-proxy.
     // Zelfde clausule-integriteitsregels, nu server-side — geen inhoudelijke wijziging beoogd.
-    var spaR=await fetch(WORKER+'/mna/spa/genereer',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||''},body:JSON.stringify({code:S._bgKey})}).then(function(r){return r.json();}).catch(function(){return{error:'Verbindingsfout'};});
+    var spaR=await fetchMetTimeout(WORKER+'/mna/spa/genereer',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||''},body:JSON.stringify({code:S._bgKey})},60000).then(function(r){return r.json();}).catch(function(){return{error:'Genereren duurde te lang of de verbinding viel weg. Probeer het opnieuw.'};});
     if(!spaR.tekst){
       out.innerHTML='<div style="background:var(--red-bg);border:1px solid var(--red);border-radius:var(--r2);padding:1rem;font-size:13px;color:var(--red)"><strong>&#9888; Genereren mislukt.</strong> '+esc(spaR.error||'Onbekende fout')+'</div>';
       toast('Genereren van de SPA is mislukt','err');
@@ -2996,11 +2996,25 @@ function renderBegeleiderDashboard(app){
     // printDoc() 'm als <h3> opmaakt, zelfde patroon als elk ander documenttype.
     var mp=document.getElementById('mou-print'); if(mp)mp.onclick=function(){
       var stukken=[];
+      // Bugfix 19 sep 2026: nam voorheen alleen de vrije tekst (.mou-text) mee — de apart getoonde
+      // .mou-dv-structuurvelden (Naam/KvK/Adres e.d., al zichtbaar op de kaart) ontbraken daardoor in
+      // de print, met "(geen tekst ingevuld)" als resultaat zodra er nog geen AI-concept was, ook al
+      // stonden de structurele gegevens er wél. Zelfde consistentie-fix als eerder bij de e-mail-PDF
+      // en de verkoper/koper-leesweergave: structurele velden eerst, dan de vrije tekst erbij.
       out.querySelectorAll('.mou-card').forEach(function(card){
         var titel=card.getAttribute('data-title')||'';
+        var regels=[];
+        card.querySelectorAll('.mou-dv').forEach(function(inp){
+          var w=(inp.value||'').trim();
+          if(w)regels.push(inp.getAttribute('data-k')+': '+w);
+        });
         var txtEl=card.querySelector('.mou-text');
         var tekst=txtEl?txtEl.value.trim():'';
-        stukken.push('## '+titel+(tekst?('\n\n'+tekst):'\n\n(geen tekst ingevuld)'));
+        var blok='## '+titel;
+        if(regels.length)blok+='\n\n'+regels.join('\n');
+        if(tekst)blok+='\n\n'+tekst;
+        else if(!regels.length)blok+='\n\n(geen tekst ingevuld)';
+        stukken.push(blok);
       });
       var profLbl=mouProfLabel();
       printDoc(stukken.join('\n\n'), profLbl.titel+' &mdash; '+(S.traject&&S.traject.kantoor_naam||S.code), _mouProfile.toLowerCase());
@@ -3159,7 +3173,7 @@ function renderBegeleiderDashboard(app){
   async function genereerRisicoraamwerk(out){
     toast('⚙️ Bezig met genereren: Risicoraamwerk (SWOT/PESTEL/Porter)...','info',4000);
     out.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;color:var(--muted)">Genereren... (15-30 sec)</div>';
-    var r=await fetch(WORKER+'/mna/risicoraamwerk/genereer',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||''},body:JSON.stringify({code:S.code})}).then(function(x){return x.json();}).catch(function(){return{};});
+    var r=await fetchMetTimeout(WORKER+'/mna/risicoraamwerk/genereer',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||''},body:JSON.stringify({code:S.code})},60000).then(function(x){return x.json();}).catch(function(){return{error:'Genereren duurde te lang of de verbinding viel weg. Probeer het opnieuw.'};});
     if(!r.ok){toast('Genereren van Risicoraamwerk is mislukt','err');out.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;color:var(--red)">Genereren mislukt: '+esc(r.error||'onbekende fout')+'</div>';return;}
     toast('✓ Risicoraamwerk is gegenereerd','ok');
     out.innerHTML=renderRisicoraamwerk(r);
@@ -3211,7 +3225,7 @@ function renderBegeleiderDashboard(app){
     }
     async function genereerTeaser(){
       out.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;color:var(--muted)">Genereren...</div>';
-      var r=await fetch(WORKER+'/mna/teaser/genereer',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||''},body:JSON.stringify({code:S.code})}).then(function(x){return x.json();}).catch(function(){return{};});
+      var r=await fetchMetTimeout(WORKER+'/mna/teaser/genereer',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||''},body:JSON.stringify({code:S.code})},60000).then(function(x){return x.json();}).catch(function(){return{error:'Genereren duurde te lang of de verbinding viel weg. Probeer het opnieuw.'};});
       if(r.ok){t2.teaser_tekst=r.teaser_tekst;renderTeaser(r.teaser_tekst,'nieuw gegenereerd');}
       else{out.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;color:var(--red)">'+esc(r.error||'Genereren mislukt.')+'</div>';}
     }
@@ -3257,7 +3271,7 @@ function renderBegeleiderDashboard(app){
     }
     async function genereerVerkoopmemo(ndaBevestigd,ndaDoor){
       out.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;color:var(--muted)">Genereren...</div>';
-      var r=await fetch(WORKER+'/mna/verkoopmemorandum/genereer',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||''},body:JSON.stringify({code:S.code,nda_bevestigd:!!ndaBevestigd,nda_bevestigd_door:ndaDoor||''})}).then(function(x){return x.json();}).catch(function(){return{};});
+      var r=await fetchMetTimeout(WORKER+'/mna/verkoopmemorandum/genereer',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||''},body:JSON.stringify({code:S.code,nda_bevestigd:!!ndaBevestigd,nda_bevestigd_door:ndaDoor||''})},60000).then(function(x){return x.json();}).catch(function(){return{error:'Genereren duurde te lang of de verbinding viel weg. Probeer het opnieuw.'};});
       if(r.ok){t2.verkoopmemorandum_tekst=r.verkoopmemorandum_tekst;if(ndaDoor){t2.verkoopmemorandum_nda_door=ndaDoor;t2.verkoopmemorandum_nda_op=Date.now();}renderVerkoopmemo(r.verkoopmemorandum_tekst,'nieuw gegenereerd');}
       else{
         out.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem"><div style="color:var(--red);margin-bottom:.75rem">'+esc(r.error||'Genereren mislukt.')+'</div>'
