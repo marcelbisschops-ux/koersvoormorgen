@@ -1357,7 +1357,22 @@ function bindAll(){
             .then(function(dd){
               leesBtn.disabled=false;leesBtn.textContent=origTxt;
               if(!dd.ok){toast('Kon '+profielPrefix+' niet laden.','err');return;}
-              var tekst=(dd.componenten||[]).map(function(c){return (c.title||'')+(c.text?('\n\n'+c.text):'');}).join('\n\n');
+              // Bugfix 19 sep 2026: toonde voorheen alleen title+text en negeerde data_values
+              // volledig — ingevulde structurele velden (naam, KvK, adres, bedrag e.d.) waren
+              // daardoor onzichtbaar voor verkoper/koper in deze leesweergave, ook al gaf de backend
+              // (GET /mna/tos/document/{id}) ze wel terug. data_fields (labels) komt sinds vandaag
+              // ook mee in die respons.
+              var tekst=(dd.componenten||[]).map(function(c){
+                var regels=[c.title||''];
+                (c.data_fields||[]).forEach(function(f){
+                  if(!f||f.type==='x')return;
+                  var dv=c.data_values||{};
+                  var w=dv[f.key]&&dv[f.key].value!=null?String(dv[f.key].value).trim():'';
+                  if(w)regels.push((f.label||f.key)+': '+w);
+                });
+                if(c.text)regels.push('\n'+c.text);
+                return regels.join('\n');
+              }).join('\n\n');
               var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;display:flex;align-items:center;justify-content:center;padding:1.5rem';
               var box=document.createElement('div');box.setAttribute('role','dialog');box.setAttribute('aria-modal','true');box.setAttribute('aria-labelledby','composer-'+type+'-lees-titel');box.style.cssText='background:var(--panel);border-radius:10px;padding:2rem;max-width:700px;width:100%;max-height:90vh;overflow-y:auto';
               box.innerHTML='<div id="composer-'+type+'-lees-titel" style="font-family:Playfair Display,serif;font-size:1.2rem;font-weight:600;color:var(--head);margin-bottom:1rem">'+titel+'</div>'
@@ -1592,7 +1607,7 @@ function bindAll(){
     toast('⚙️ Bezig met genereren: AI-waardering (second opinion)...','info',4000);
     out2.innerHTML='<div style="color:var(--muted);font-size:13px">AI bepaalt een onafhankelijke waardering... (kan 15-30 sec duren)</div>';
     try{
-      var resp2=await fetch(WORKER+'/mna/waardering/genereer',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||S.code||''},body:JSON.stringify({code:S.code})});
+      var resp2=await fetchMetTimeout(WORKER+'/mna/waardering/genereer',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||S.code||''},body:JSON.stringify({code:S.code})},60000);
       var rd2=await resp2.json();
       if(!rd2.ok){out2.innerHTML='<div style="color:var(--red);font-size:13px">Fout: '+esc(rd2.error||'onbekende fout')+'</div>';wAi2Btn.disabled=false;wAi2Btn.textContent='🤖 Genereer AI-waardering (second opinion)';toast('Genereren van AI-waardering is mislukt','err');return;}
       var w2=rd2.waardering||{};
