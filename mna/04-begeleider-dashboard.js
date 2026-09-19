@@ -2699,6 +2699,14 @@ function renderBegeleiderDashboard(app){
       h+='<div style="margin-top:3px;color:var(--muted)">Het platform bepaalt niet welke waarde juist is. Trek de gekoppelde velden gelijk.</div></div>';
     }
     // Bevroren-banner + export/verstuur/manifest
+    // Ondertekenen (19 sep 2026, Marcel: "LOI/NDA misten Signhost/eigen-PDF/buiten-Signhost-om-
+    // getekend, die de oude bgDoc()-flow (BEM/Excl) nog wél heeft"): sinds 11 sep 2026 is de composer
+    // de enige weg om een NDA/LoI te maken (oude sjabloonrij verwijderd), maar kreeg toen zelf geen
+    // ondertekenknoppen mee. Alleen voor NDA/LoI — die hadden dit vóór de composer al (loi_getekend/
+    // nda_getekend bestaan al); MOU heeft nooit een voorganger met deze functionaliteit gehad, dus
+    // bewust geen scope-verruiming daarnaartoe zonder aparte afweging.
+    var mouGetekendVeld={NDA:'nda_getekend',LOI:'loi_getekend'}[prof];
+    var mouGetekend=mouGetekendVeld?(S.traject&&S.traject[mouGetekendVeld]):null;
     if(bevroren){
       h+='<div style="background:var(--teal-bg);border:1px solid var(--teal);border-radius:var(--r);padding:.7rem .9rem;margin-bottom:.75rem;font-size:12px;color:var(--teal-dim)">'
         +'&#128274; Dit document is '+(doc.status==='verstuurd'?'verstuurd':'gefinaliseerd')+' en kan niet meer worden gewijzigd. Een aanpassing is een nieuw document.'
@@ -2706,7 +2714,18 @@ function renderBegeleiderDashboard(app){
         +(doc.status==='exported'?'<button id="mou-verstuur" class="btn btn-sm" style="background:#5a5470">&#9993; Versturen naar partijen</button>':'')
         +'<button id="mou-manifest" class="btn-ghost" style="font-size:11px;padding:5px 12px">&#128203; Manifest bekijken</button>'
         +'<button id="mou-nieuw2" class="btn-ghost" style="font-size:11px;padding:5px 12px">+ Nieuwe '+esc(mouProfLabel(prof).kort)+'</button>'
-        +'</div><div id="mou-manifest-out" style="margin-top:.5rem"></div></div>';
+        +'</div><div id="mou-manifest-out" style="margin-top:.5rem"></div>'
+        +(mouGetekendVeld?(mouGetekend
+          ?'<div style="margin-top:.6rem;padding-top:.6rem;border-top:1px dashed var(--teal);font-size:12px;color:var(--teal-dim)">&#10003; Getekend door '+esc(mouGetekend)+'</div>'
+          :'<div style="margin-top:.6rem;padding-top:.6rem;border-top:1px dashed var(--teal)">'
+            +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
+            +'<button id="mou-signhost" class="btn btn-sm" style="background:var(--teal)">&#9998; Verstuur via Signhost</button>'
+            +'<button id="mou-handmatig-getekend" class="btn-ghost" style="font-size:11px;padding:5px 12px">&#128221; Buiten Signhost om getekend</button>'
+            +'</div>'
+            +eigenPdfHtml('mou-pdf')
+            +'</div>'
+          ):'')
+        +'</div>';
     }
     // Componentenmenu (in-/uitklapbaar). Vóór finaliseren blokkeert de backend nu zelf op ontbrekende
     // KERN-onderdelen (bevinding 11 sep 2026, "manifest error"), dus een NIET-vergrendeld document met
@@ -2994,13 +3013,12 @@ function renderBegeleiderDashboard(app){
     // (title + vrije tekst) i.p.v. opnieuw op te halen — dat is precies wat er nu op het scherm staat,
     // inclusief eventuele nog niet opgeslagen tekstwijzigingen. Elke titel als kop (## ) zodat
     // printDoc() 'm als <h3> opmaakt, zelfde patroon als elk ander documenttype.
-    var mp=document.getElementById('mou-print'); if(mp)mp.onclick=function(){
+    // Gedeelde tekstopbouw (19 sep 2026) — was tot nu toe alleen inline in mou-print; nu ook
+    // hergebruikt voor Signhost, zodat beide kanalen exact dezelfde, daadwerkelijk op het scherm
+    // staande inhoud versturen (structurele velden + vrije tekst, zelfde consistentie-fix als eerder
+    // bij de e-mail-PDF en de verkoper/koper-leesweergave).
+    function bgMouSamengesteldeTekst(){
       var stukken=[];
-      // Bugfix 19 sep 2026: nam voorheen alleen de vrije tekst (.mou-text) mee — de apart getoonde
-      // .mou-dv-structuurvelden (Naam/KvK/Adres e.d., al zichtbaar op de kaart) ontbraken daardoor in
-      // de print, met "(geen tekst ingevuld)" als resultaat zodra er nog geen AI-concept was, ook al
-      // stonden de structurele gegevens er wél. Zelfde consistentie-fix als eerder bij de e-mail-PDF
-      // en de verkoper/koper-leesweergave: structurele velden eerst, dan de vrije tekst erbij.
       out.querySelectorAll('.mou-card').forEach(function(card){
         var titel=card.getAttribute('data-title')||'';
         var regels=[];
@@ -3016,8 +3034,11 @@ function renderBegeleiderDashboard(app){
         else if(!regels.length)blok+='\n\n(geen tekst ingevuld)';
         stukken.push(blok);
       });
+      return stukken.join('\n\n');
+    }
+    var mp=document.getElementById('mou-print'); if(mp)mp.onclick=function(){
       var profLbl=mouProfLabel();
-      printDoc(stukken.join('\n\n'), profLbl.titel+' &mdash; '+(S.traject&&S.traject.kantoor_naam||S.code), _mouProfile.toLowerCase());
+      printDoc(bgMouSamengesteldeTekst(), profLbl.titel+' &mdash; '+(S.traject&&S.traject.kantoor_naam||S.code), _mouProfile.toLowerCase());
     };
     var ks=document.getElementById('mou-kies'); if(ks)ks.onchange=function(){ _mouDocId=this.value; bgMouRender(); };
     var n2=document.getElementById('mou-nieuw2'); if(n2)n2.onclick=async function(){
@@ -3044,13 +3065,112 @@ function renderBegeleiderDashboard(app){
           +'\ndisclaimer: '+esc(mf.disclaimer_ref)+'\npolicy: '+esc(mf.policy_version)
           +'\ncontent-hash: '+esc(mf.content_hash)+'\nmanifest-hash: '+esc(mf.manifest_hash)+'</pre>';
       };
+      // Eigen PDF/Word (19 sep 2026) — zelfde gedeeld object/patroon als bgDoc()/wireEigenPdf. Bij een
+      // gekozen bestand stuurt "Versturen naar partijen" dát bestand i.p.v. het samengestelde
+      // TOS-document, via het al bestaande, generieke /mna/document/eigen/versturen (geen nieuwe
+      // route, geen nieuw datamodel — precies wat elders op het platform al werkt, nu ook hier
+      // bereikbaar). Let op: dit vervangt alleen wat verstuurd wordt, net als bij de oude bgDoc()-
+      // flow; het is geen permanente opslag/koppeling als "ondertekend bewijsstuk" (dat bestaat nog
+      // nergens op het platform, ook niet in de oude flow — zie sessieverslag).
+      var mouPdfStaat={base64:null,naam:null,mime:null};
+      wireEigenPdf('mou-pdf',mouPdfStaat);
       var vs=document.getElementById('mou-verstuur'); if(vs)vs.onclick=async function(){
         var adr=[]; if(confirm('Versturen naar de VERKOPER?'))adr.push('verkoper'); if(confirm('Versturen naar de KOPER?'))adr.push('koper');
         if(!adr.length){ toast('Geen ontvanger gekozen','err'); return; }
         vs.disabled=true; vs.textContent='Versturen…';
+        if(mouPdfStaat.base64){
+          var t2v=S.traject||{};
+          var toList=[]; if(adr.indexOf('verkoper')!==-1&&t2v.contact_email)toList.push(t2v.contact_email); if(adr.indexOf('koper')!==-1&&t2v.koper_email)toList.push(t2v.koper_email);
+          if(!toList.length){ toast('Geen e-mailadres bekend voor de gekozen ontvanger(s)','err'); vs.disabled=false; vs.textContent='✉ Versturen naar partijen'; return; }
+          var re=await fetch(WORKER+'/mna/document/eigen/versturen',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S.code},
+            body:JSON.stringify({code:S.traject.id,bestand_base64:mouPdfStaat.base64,bestand_naam:mouPdfStaat.naam,bestand_mime:mouPdfStaat.mime,to:toList})}).then(function(x){return x.json();}).catch(function(){return{};});
+          if(re.ok){ toast('Eigen bestand verstuurd','ok'); bgMouRender(); }
+          else { toast(re.error||'Versturen mislukt','err'); vs.disabled=false; vs.textContent='✉ Versturen naar partijen'; }
+          return;
+        }
         var r=await bgMouApi('POST','/document/'+encodeURIComponent(_mouDocId)+'/verstuur',{adressaten:adr});
         if(r.ok&&r.json.ok){ toast('Verstuurd'+(r.json.mail_verstuurd?(' ('+r.json.mail_verstuurd+' e-mail'+(r.json.mail_verstuurd===1?'':'s')+')'):''),'ok'); bgMouRender(); }
         else { toast((r.json&&r.json.error)||'Versturen mislukt','err'); vs.disabled=false; vs.textContent='✉ Versturen naar partijen'; }
+      };
+      // Signhost — hergebruikt /mna/signhost/stuur ongewijzigd, met de daadwerkelijk samengestelde
+      // composer-tekst (zelfde bron als de printknop).
+      var shBtn=document.getElementById('mou-signhost'); if(shBtn)shBtn.onclick=function(){
+        var tekst=bgMouSamengesteldeTekst();
+        var profLblSh=mouProfLabel();
+        var t2sh=S.traject||{};
+        var defEmail=t2sh.contact_email||'';
+        var defNaam=t2sh.contact_naam||'';
+        var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:3000;display:flex;align-items:center;justify-content:center;padding:1.5rem';
+        var mo=document.createElement('div');mo.setAttribute('role','dialog');mo.setAttribute('aria-modal','true');mo.setAttribute('aria-labelledby','mou-signhost-modal-titel');mo.style.cssText='background:var(--panel);border:1px solid var(--border2);border-radius:var(--r2);padding:1.75rem;max-width:400px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.25)';
+        mo.innerHTML='<div id="mou-signhost-modal-titel" style="font-family:Playfair Display,serif;font-size:1.1rem;color:var(--head);font-weight:600;margin-bottom:1rem">&#9998; Verstuur via Signhost &mdash; '+esc(profLblSh.titel)+'</div>'
+          +'<div class="field"><label for="mou-sh-naam">Naam ondertekenaar</label><input type="text" id="mou-sh-naam" value="'+esc(defNaam)+'" placeholder="Voor- en achternaam"></div>'
+          +'<div class="field"><label for="mou-sh-email">E-mail ondertekenaar</label><input type="email" id="mou-sh-email" value="'+esc(defEmail)+'" placeholder="E-mailadres"></div>'
+          +'<div id="mou-sh-err" style="display:none;color:var(--red);font-size:12px;margin-bottom:.5rem"></div>'
+          +'<div style="display:flex;gap:8px;justify-content:flex-end">'
+          +'<button class="btn-ghost" id="mou-sh-ann">Annuleren</button>'
+          +'<button class="btn" id="mou-sh-ok" style="background:var(--teal)">&#9998; Verstuur via Signhost</button>'
+          +'</div>';
+        ov.appendChild(mo);document.body.appendChild(ov);
+        ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
+        document.getElementById('mou-sh-ann').onclick=function(){document.body.removeChild(ov);};
+        document.getElementById('mou-sh-ok').onclick=async function(){
+          var btn=this;btn.disabled=true;btn.textContent='Versturen...';
+          var naam=document.getElementById('mou-sh-naam').value.trim();
+          var email=document.getElementById('mou-sh-email').value.trim();
+          var errEl=document.getElementById('mou-sh-err');
+          if(!email){errEl.style.display='block';errEl.textContent='E-mail verplicht';btn.disabled=false;btn.textContent='Verstuur';return;}
+          // Zelfde twee veiligheidschecks als de legacy bgDoc()-Signhost-flow (Wwft-cliëntacceptatie
+          // + resterende placeholders) — bewust ook hier, anders is dit een zwakkere versie dan wat
+          // NDA/BEM/Excl al hadden.
+          var shPh=resterendePlaceholders(tekst);
+          if(!(S.traject&&S.traject.clientacceptatie_getoetst) && !confirm('Cliëntacceptatie is voor dit traject nog niet als getoetst gemarkeerd (Wwft / AV art. 4). Toch via Signhost versturen?')){ btn.disabled=false; btn.textContent='Verstuur'; return; }
+          if(shPh.length && !confirm('Let op: er staan nog '+shPh.length+' oningevulde plek'+(shPh.length===1?'':'ken')+' in het document:\n\n'+shPh.slice(0,12).join('\n')+'\n\nToch via Signhost versturen?')){ btn.disabled=false; btn.textContent='Verstuur'; return; }
+          // tos_document_id meegeven (19 sep 2026) zodat de backend na een geslaagde verzending het
+          // juiste tos_document naar status 'verstuurd' kan zetten — anders blokkeert een latere
+          // "Buiten Signhost om getekend"-actie ten onrechte.
+          var r=await fetch(WORKER+'/mna/signhost/stuur',{method:'POST',
+            headers:{'Content-Type':'application/json','x-tussen-key':S.code},
+            body:JSON.stringify({code:S.traject.id,doc_type:_mouProfile.toLowerCase(),ondertekenaar_naam:naam,ondertekenaar_email:email,doc_tekst:tekst,tos_document_id:_mouDocId})});
+          var rd=await r.json();
+          if(rd.ok){
+            document.body.removeChild(ov);
+            toast('&#10003; '+profLblSh.kort+' verstuurd via Signhost naar '+email,'ok',5000);
+            bgMouRender();
+          } else { errEl.style.display='block'; errEl.textContent=rd.error||'Fout'; btn.disabled=false; btn.textContent='Verstuur'; }
+        };
+      };
+      // Buiten Signhost om getekend — hergebruikt /mna/teken ongewijzigd (zelfde endpoint dat de
+      // koper/verkoper-eigen "Akkoord & onderteken"-knop in mna/06 en de Signhost-webhook al gebruiken
+      // — dus dezelfde loi_getekend/nda_getekend-vlag, geen los tweede statusveld).
+      var hgBtn=document.getElementById('mou-handmatig-getekend'); if(hgBtn)hgBtn.onclick=function(){
+        var profLblHg=mouProfLabel();
+        var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:3000;display:flex;align-items:center;justify-content:center;padding:1.5rem';
+        var mo=document.createElement('div');mo.setAttribute('role','dialog');mo.setAttribute('aria-modal','true');mo.setAttribute('aria-labelledby','mou-hg-modal-titel');mo.style.cssText='background:var(--panel);border:1px solid var(--border2);border-radius:var(--r2);padding:1.75rem;max-width:400px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.25)';
+        mo.innerHTML='<div id="mou-hg-modal-titel" style="font-family:Playfair Display,serif;font-size:1.1rem;color:var(--head);font-weight:600;margin-bottom:1rem">&#128221; Buiten Signhost om getekend &mdash; '+esc(profLblHg.titel)+'</div>'
+          +'<div class="field"><label for="mou-hg-naam">Naam van degene die getekend heeft</label><input type="text" id="mou-hg-naam"></div>'
+          +'<div id="mou-hg-err" style="display:none;color:var(--red);font-size:12px;margin-bottom:.5rem"></div>'
+          +'<div style="display:flex;gap:8px;justify-content:flex-end">'
+          +'<button class="btn-ghost" id="mou-hg-ann">Annuleren</button>'
+          +'<button class="btn" id="mou-hg-ok">Vastleggen</button>'
+          +'</div>';
+        ov.appendChild(mo);document.body.appendChild(ov);
+        ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
+        document.getElementById('mou-hg-ann').onclick=function(){document.body.removeChild(ov);};
+        var naamInput=document.getElementById('mou-hg-naam');
+        naamInput.focus();
+        document.getElementById('mou-hg-ok').onclick=async function(){
+          var naam=naamInput.value.trim();
+          var errEl=document.getElementById('mou-hg-err');
+          if(!naam){errEl.style.display='block';errEl.textContent='Naam verplicht';return;}
+          var btn=this;btn.disabled=true;btn.textContent='Vastleggen...';
+          var r=await fetch(WORKER+'/mna/teken',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:S.code,document:_mouProfile.toLowerCase(),naam:naam})}).then(function(x){return x.json();}).catch(function(){return{};});
+          if(r.ok){
+            document.body.removeChild(ov);
+            toast('Vastgelegd: '+profLblHg.kort+' getekend door '+naam,'ok');
+            if(_mouProfile==='LOI')S.loiGetekend=naam;
+            bgMouRender();
+          } else { errEl.style.display='block'; errEl.textContent=r.error||'Onbekende fout'; btn.disabled=false; btn.textContent='Vastleggen'; }
+        };
       };
       return;
     }
