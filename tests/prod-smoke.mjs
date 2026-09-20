@@ -22,7 +22,7 @@
 import path from 'node:path';
 import os from 'node:os';
 import { pathToFileURL } from 'node:url';
-import { WORKER, leesAdminKey, api, check, kop, kleur, samenvatting, d1, D1_NAAM } from './lib.mjs';
+import { WORKER, leesAdminKey, api, check, kop, kleur, samenvatting, d1, D1_NAAM, sla_over } from './lib.mjs';
 
 const ADMIN = leesAdminKey();
 const DOM = '@e2e-test.invalid';
@@ -684,12 +684,28 @@ async function batchPdfRendererTos20sep() {
     }
 
     kop('Signhost — ontbrekende configuratie faalt schoon, geen valse status');
-    const voorSh = d1(`SELECT signhost_transactions, nda_getekend FROM mna_trajecten WHERE id='${trajectCode}'`);
-    const shResp = await api('POST', '/mna/signhost/stuur', { headers: H, body: { code: trajectCode, doc_type: 'nda', ondertekenaar_naam: 'Smoke Tester', ondertekenaar_email: 'tegenpartij-test@invalid', doc_tekst: 'Testtekst met initiële waarde €250.000, diacritics ë ï é ü.' } });
-    check('Signhost zonder config → 503, duidelijke foutmelding (geen valse ok:true)', shResp.status === 503 && !shResp.json?.ok, JSON.stringify(shResp.json));
-    const naSh = d1(`SELECT signhost_transactions, nda_getekend FROM mna_trajecten WHERE id='${trajectCode}'`);
-    check('Signhost-fout: D1 volledig ongewijzigd (geen halfaangemaakte documentstatus)', JSON.stringify(naSh[0]) === JSON.stringify(voorSh[0]), JSON.stringify({ voor: voorSh[0], na: naSh[0] }));
-    console.log('  (LET OP: de daadwerkelijke Signhost-upload/PDF-generatie-stap is op staging niet live bewezen — de route maakt eerst de Signhost-transactie aan vóór de PDF gegenereerd wordt, en faalt hier al bij de ontbrekende sleutel vóór dat punt. De onderliggende renderer is elders in deze suite al bewezen.)');
+    // HARDE STAGING-ONLY GUARD (Marcel, 20 sep 2026, ná een echt incident): deze subtest doet een
+    // ECHTE POST naar /mna/signhost/stuur, die bij geldige Signhost-credentials een ECHTE Signhost-
+    // transactie aanmaakt. De aanname "geen SIGNHOST_API_KEY, dus 503" klopt uitsluitend op staging
+    // (bevestigd via `wrangler secret list`: productie heeft wél SIGNHOST_API_KEY/SIGNHOST_APP_KEY,
+    // staging niet). Deze test draaide ooit zonder guard tegen productie (via prod-smoke.mjs zonder
+    // WORKER_URL-override) en maakte daar een echte, pas achteraf handmatig geannuleerde transactie
+    // aan (e92a8c3c-6db9-4469-83d8-375df3fce039). Zelfde beschermingspatroon als zetMfaUitVoorTest()
+    // in lib.mjs: exacte hostname-match, geen losse "bevat staging"-substring-check (die had ditzelfde
+    // incident niet voorkomen, want de URL heette toen ook al "staging"-achtig in de aanroep-intentie,
+    // niet in de daadwerkelijk gebruikte WORKER_URL).
+    const isStagingWorker = /^https:\/\/kantoorinzicht-staging\.marcel-bisschops\.workers\.dev\/?$/i.test(WORKER);
+    check('Signhost-write-guard: WORKER_URL correct geclassificeerd vóór enige Signhost-aanroep', true, 'WORKER=' + WORKER + ' → staging=' + isStagingWorker);
+    if (!isStagingWorker) {
+      sla_over('Signhost zonder config → 503 (write-test)', 'WORKER_URL (' + WORKER + ') is geen herkende staging-omgeving — deze test doet NOOIT een schrijfaanroep naar /mna/signhost/stuur buiten staging (elke andere omgeving kan echte SIGNHOST_API_KEY/SIGNHOST_APP_KEY hebben en zou dus een ECHTE Signhost-transactie aanmaken)');
+    } else {
+      const voorSh = d1(`SELECT signhost_transactions, nda_getekend FROM mna_trajecten WHERE id='${trajectCode}'`);
+      const shResp = await api('POST', '/mna/signhost/stuur', { headers: H, body: { code: trajectCode, doc_type: 'nda', ondertekenaar_naam: 'Smoke Tester', ondertekenaar_email: 'tegenpartij-test@invalid', doc_tekst: 'Testtekst met initiële waarde €250.000, diacritics ë ï é ü.' } });
+      check('Signhost zonder config → 503, duidelijke foutmelding (geen valse ok:true)', shResp.status === 503 && !shResp.json?.ok, JSON.stringify(shResp.json));
+      const naSh = d1(`SELECT signhost_transactions, nda_getekend FROM mna_trajecten WHERE id='${trajectCode}'`);
+      check('Signhost-fout: D1 volledig ongewijzigd (geen halfaangemaakte documentstatus)', JSON.stringify(naSh[0]) === JSON.stringify(voorSh[0]), JSON.stringify({ voor: voorSh[0], na: naSh[0] }));
+      console.log('  (LET OP: de daadwerkelijke Signhost-upload/PDF-generatie-stap is op staging niet live bewezen — de route maakt eerst de Signhost-transactie aan vóór de PDF gegenereerd wordt, en faalt hier al bij de ontbrekende sleutel vóór dat punt. De onderliggende renderer is elders in deze suite al bewezen — o.a. door het incident zelf, zie sessieverslag 20 sep 2026.)');
+    }
   } finally {
     if (trajectCode) {
       await ruimTrajectOp(trajectCode);
