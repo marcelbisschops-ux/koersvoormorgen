@@ -8,6 +8,103 @@
 
 **diepe-audit-routine (geautomatiseerde scheduled task): geen open aanvraag, cadans nog niet verstreken.** Wachtrij (`/mna/veiligheid/audit-opdracht`) leeg (`{"ok":true,"opdracht":null}`). Vandaag (20e) valt buiten het 1e-3e-van-de-maand-venster, dus geen zelf-aanvraag ingediend. Geen audit uitgevoerd, niets gewijzigd. Opmerking: de working tree had bij aanvang `bedrijfsscan-start.html` gewijzigd + een reeks ongecommitte BATCH3-patchbestanden op de repo-root — niet aangeraakt door deze routine, vermoedelijk lopend handwerk van Marcel/een eerdere sessie.
 
+## 2026-09-20 (vervolg) — dagelijkse-knoppentest-routine (scheduled task)
+
+**Rotatiekeuze:** rol **meekijker** (nog geen enkele automatische knoppentest-run had deze rol gedekt —
+expliciet als prioriteit genoteerd op 19 sep), sector **zorg** (nog niet eerder getest door deze
+routine — 18 sep transport, 19 sep bouw), trajecttype **Opvolging** (nog niet eerder gebruikt — 18 sep
+Overname, 19 sep Fusie), fasen Financieel (scope van de meekijker) + Juridisch & fiscaal (om de
+scope-grens van de meekijker aantoonbaar te testen, niet alleen de fase die hij wél mag zien). Reden:
+brede combinatie-rotatie + gerichte dekking van de expliciete "niet getest deze ronde"-lijst van 19
+sep (werkregel 15/36 punt 1).
+
+**Omgeving:** volledig tegen `kantoorinzicht-staging` (health-check 200 OK, `tests/.env.staging.local`
+aanwezig). Testtraject `DAILY_QA_20260920` (fictief: "Zorggroep De Lindeboom B.V.", kleinschalige
+ouderenzorgorganisatie), aangemaakt/getest/opgeruimd via een los Node-testscript op basis van
+`tests/lib.mjs` (bouwstenen, geen dubbel werk met `tests/e2e-api.mjs`/`run-rolflows.sh`).
+
+**Doorlopen flow (klik → request → backend → database → response → resultaat), 39/39 checks OK bij de
+definitieve run (één eerdere run had 3 gefaalde checks — bleken alle drie testscriptbugs te zijn, geen
+platformbug: verkeerd gelezen responsvelden (`traject.sector`/`traject.traject_type` i.p.v. top-level,
+en `veld_extractie` i.p.v. het niet-bestaande `velden`) — bewijs hieronder onder "Foutpropagatie-
+check op de eigen bevindingen"):**
+1. Traject aanmaken (`/mna/create`, sector zorg, traject_type Opvolging) — sector/type correct
+   teruggelezen via `/mna/traject/{code}` voor de verkoper-rol.
+2. Fase Financieel: verkoper mag opslaan; koper expliciet geblokkeerd (403, bekende regel sinds
+   15 sep — koper heeft nergens schrijfrecht op DD-gegevens).
+3. Documentupload + echte AI-extractie: een realistische, meerdere-secties jaarrekening 2025 voor de
+   fictieve zorgorganisatie (bestuursverslag/balans+vergelijkende cijfers/W&V 3 jaar/kasstroom/
+   grondslagen conform RJ 655/toelichting/samenstellingsverklaring — geen kaal 1-paginadocument).
+   Upload geaccepteerd, velden geëxtraheerd, **geen** accountancy-sectorlabel-lek in de analysetekst
+   (P2-64-regressiecontrole voor sector zorg — zorg is een van de oudere sectoren met een eigen
+   `docBenchmarks`-rij, dus dit bevestigt vooral dat de 19-sep-structuurfix andere sectoren niet heeft
+   geraakt, geen nieuwe P2-64-reproductie).
+4. Reject-pad: een irrelevant document (meubilaircontract, andere entiteit) correct verworpen zonder
+   velden in te vullen.
+5. Fase Juridisch & fiscaal: begeleider mag opslaan (rolgrens correct, spiegelbeeld van punt 2).
+6. **Meekijker aanmaken** (`/mna/admin/viewer/aanmaken`, begeleider-rol via `tussen_code`, scope
+   Financieel): geweigerd zonder `toestemming_bevestigd:true` (GV Artikel 3-check), geslaagd mét.
+7. **Meekijker-flow, structureel getest tegen de eigen documentatie van `worker/21-meekijker.js`:**
+   - `/mna/viewer/info`: werkt zonder acceptatie, toont `voorwaarden_akkoord:false` en sector correct.
+   - `/mna/viewer/data` + `/mna/viewer/documenten`: beide 403 (`voorwaarden_niet_geaccepteerd`) vóór
+     acceptatie van de vertrouwelijkheidsverklaring.
+   - Ná `/mna/viewer/voorwaarden/accepteren`: beide endpoints 200, en **scope-filter werkt correct** —
+     alleen fase Financieel zichtbaar, het juridische veld (`kvk_nummer`) dat de begeleider apart
+     invulde is NIET in de viewer-data-respons aanwezig (geen scope-lek naar Juridisch).
+   - Geen `checklist_json`/`notitie` (interne DD-werknotities) in de viewer-data-respons — bevestigt
+     de bewuste ontwerpkeuze in de code-comments.
+   - Geen `r2_key`/downloadlink in de viewer-documentenrespons — bevestigt "inzicht, geen
+     documentbeheer" voor deze rol.
+   - Defense-in-depth: `POST /mna/viewer/data` expliciet 405 (viewer-routes zijn hard GET-only, op de
+     ene bewuste schrijfuitzondering na).
+   - Ongeldige viewer-code → 401, geen informatie-lek.
+   - Rolgrens: een geldige **koper**-code geeft GEEN toegang tot `/mna/admin/viewer/aanmaken` (401) —
+     alleen begeleider/admin mag meekijker-codes beheren.
+8. Begeleider-kant: `/mna/admin/viewer/lijst` toont de meekijker met `laatst_bekeken` correct gezet ná
+   de view-acties; `/mna/admin/viewer/log` bevat zowel een `data`- als een `documenten`-actieregel
+   (audit-logging, sessie 3 van het meekijker-bouwplan van 16 aug, werkt zoals gedocumenteerd).
+9. Intrekken (`/mna/admin/viewer/intrekken`): de viewer-code is **direct** ongeldig (401,
+   reden `ingetrokken`) — geen vertraging, geen cache-doorwerking.
+
+**Resultaat: geen enkele functionele of security-bevinding binnen deze combinatie.** De meekijker-rol
+(een rol die nog nooit door een automatische test was gedekt en die per ontwerp gevoelig is voor
+precies het soort rolgrens-lek dat eerder wél is gevonden bij koper/begeleider, zie
+`project_rolgrens_lek_koper_intern`) bleek bij eerste keer testen volledig conform de eigen
+documentatie en zonder scope-lekken.
+
+**Foutpropagatie-check op de eigen bevindingen (werkregel 4/38 — code- vs. reproductiebewijs niet
+vermengen):** de eerste testrun gaf 3 faalmeldingen. Vóór het als "bevinding" te loggen zijn deze
+onderzocht met losse curl/node-reproducties tegen de daadwerkelijke productiecode
+(`worker/11-mna-tekenen-beheer.js` regel ~460 e.v. voor de DTO, `worker/14-document-upload-analyse.js`
+voor de upload-respons): `/mna/traject/{code}` nestelt traject-velden bewust onder een `traject`-sleutel
+(niet top-level) en de upload-respons heet het extractieveld `veld_extractie` (niet `velden`) — beide
+bevestigd door de brondocumentatie/code zelf, dus test-scriptbugs, geen platformgedrag dat is gewijzigd.
+Na correctie: 39/39. Geen codewijziging nodig.
+
+**Zelfstandig opgelost + gedeployed:** niets — geen platformbug gevonden binnen deze combinatie.
+
+**Opgeruimd:** het testtraject verwijderd via `/admin/delete/mna/` op staging; 0 resterende
+`DAILY_QA_20260920`-trajecten geverifieerd via `/mna/admin/lijst`.
+
+**Niet getest deze ronde (expliciet, geen gok):** rollen adviseur en eigen specialist (nog steeds geen
+enkele automatische knoppentest-run heeft deze gedekt — blijft prioriteit voor een volgende rotatie);
+sectoren handel/consultancy/verhuizingen/mkb/itsoftware/accountancy (dit keer niet aan de beurt);
+concurrency/race-conditions op de meekijker-module (het bestaande, al gedocumenteerde
+`genViewerCode()`-race-fix van 15 sep is niet opnieuw belast — geen nieuwe aanleiding, werkregel 40
+test-economy); viewer.html zelf niet in de browser doorgeklikt (alleen de backend-API die de frontend
+aanroept is functioneel getest) — de frontend is een dunne laag over exact deze endpoints (bevestigd
+door de broncode van `viewer.html` te lezen), dus dit is een bewuste, beargumenteerde keuze, geen gok;
+rate-limiting op `/mna/viewer/*` (15/10min) niet uitgeput getest (zou 15+ aanroepen vergen voor geen
+nieuwe informatie boven wat de code al aantoont — werkregel 40).
+
+**Score aan marilyn:** 100 — geen bevindingen binnen de geteste combinatie vandaag. Dit betekent
+uitdrukkelijk niet dat het platform foutloos is, alleen dat deze specifieke combinatie (meekijker/
+zorg/Opvolging/Financieel+Juridisch) geen fout aan het licht bracht.
+
+**Opmerking working tree:** bij aanvang stonden `bedrijfsscan-start.html` (gewijzigd) en zeven
+ongecommitte `BATCH3*`-patchbestanden op de repo-root — niet aangeraakt door deze routine, lopend
+handwerk van Marcel/een eerdere sessie.
+
 ## 2026-09-14
 
 **wekelijkse-audit (geautomatiseerde scheduled task) — alles groen, niets gewijzigd.**
