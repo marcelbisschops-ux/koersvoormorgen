@@ -606,7 +606,101 @@ async function batchPdfRenderer20sep() {
   }
 }
 
-const BATCHEN = { '3B': batch3B, '3C': batch3C, '3D': batch3D, '3E': batch3E, '3F-A': batch3Fa, '3H': batch3H, 'P264': batchP264, 'KERNFLOW-19SEP': batchKernflow19sep, 'PDF-RENDERER-20SEP': batchPdfRenderer20sep };
+// ── Batch PDF-RENDERER-TOS-20SEP — TOS-composer (MOU/LOI/NDA) + Signhost door de centrale
+// renderer. Aanvulling op PDF-RENDERER-20SEP hierboven, op Marcels expliciete eis (20 sep 2026):
+// "de renderer zelf is bewezen ... maar ik wil vóór productie nog één gerichte staging-validatie
+// voor TOS en één voor Signhost." Dekt exact zijn tien controlepunten voor TOS (finaliseren, PDF-
+// generatie zonder fout, status/DB-mutaties, ondertekenblok waar van toepassing, geen valse
+// verstuurd-status bij een renderfout) via de ECHTE productieroutes (aanmaken → review-alles →
+// finaliseren → versturen), en voor Signhost specifiek wat staging kán bewijzen zonder
+// SIGNHOST_API_KEY: een ontbrekende configuratie faalt schoon (503), zonder D1-mutatie en zonder
+// valse ok:true — nooit een halfaangemaakte documentstatus.
+// Bewijsniveau (werkregel 38): de byte-/pixelniveau visuele controle van de gegenereerde PDF is dit
+// keer EENMALIG handmatig gedaan door Claude (via een tijdelijk, admin-key-gated debug-endpoint dat
+// ná de controle weer verwijderd is — geen bestaande route retourneert ooit composer-PDF-bytes,
+// alleen als e-mailbijlage) — deze batch bewijst herhaalbaar dat de route zelf foutloos doorloopt,
+// niet opnieuw de pixels. Zie sessieverslag 20 sep 2026 voor de daadwerkelijke visuele inspectie.
+async function batchPdfRendererTos20sep() {
+  kop('PDF-RENDERER-TOS-20SEP · TOS-composer (MOU/LOI/NDA) + Signhost-foutafhandeling');
+  let gebruikerId, trajectCode, koperCode;
+  try {
+    kop('Setup: adviseur + traject (met €/diacritics in trajectvelden)');
+    const email = 'prodsmoke-tos-' + Date.now() + DOM;
+    const uit = await api('POST', '/gebruikers/uitnodigen', { adminKey: ADMIN, body: { naam: 'PROD-SMOKE TOS Adviseur', bedrijf: 'PROD-SMOKE TOS BV', email } });
+    if (!uit.json || !uit.json.ok) faal('uitnodigen mislukt', uit.json);
+    gebruikerId = uit.json.id;
+    const ww = 'Prodsmoke-TOS-' + Date.now() + '!';
+    await api('POST', '/gebruikers/activeer', { body: { token: uit.json.token, wachtwoord: ww } });
+    await api('POST', '/gebruiker/voorwaarden/accepteren', { body: { email, wachtwoord: ww } });
+    await api('POST', '/gebruikers/verkoop/' + gebruikerId, { adminKey: ADMIN, body: { traject_limiet: 2, modules: { traject: true, contracten: true } } });
+
+    const c1 = await api('POST', '/adviseur/create', { body: { email, wachtwoord: ww, traject: {
+      kantoor_naam: 'PROD-SMOKE Coöperatieve TOS BV', contact_naam: 'Reële Tèster', contact_email: 'marcel@bisschopsfinancing.nl',
+      koper_naam: 'PROD-SMOKE Königlijke Overname BV', koper_contact: 'Ünieke Köper', koper_email: 'marcel@bisschopsfinancing.nl',
+      koper_kvk: '99887766', koper_adres: 'Coöperatiestraat 1, Oploo (initiële waarde €1.250.000)',
+      verkoper_kvk: '11223344', verkoper_adres: 'Financiëlelaan 2, Oploo', traject_type: 'Verkoop',
+    } } });
+    if (!c1.json || !c1.json.ok) faal('traject aanmaken mislukt', c1.json);
+    trajectCode = c1.json.code;
+    koperCode = c1.json.koper_code;
+    const tussenCode = c1.json.tussen_code;
+    if (!tussenCode) faal('geen tussen_code ontvangen', c1.json);
+    const H = { 'x-tussen-key': tussenCode };
+    await api('POST', '/mna/tos/activeer/' + trajectCode, { headers: H });
+
+    for (const profile of ['MOU', 'LOI', 'NDA']) {
+      kop('TOS ' + profile + ' — aanmaken → review-alles → finaliseren → versturen');
+      const mk = await api('POST', '/mna/tos/document', { headers: H, body: { profile } });
+      check(profile + ': aangemaakt', mk.json && mk.json.ok === true && !!mk.json.document_id, JSON.stringify(mk.json).slice(0, 160));
+      const docId = mk.json && mk.json.document_id;
+      if (!docId) continue;
+
+      const revAll = await api('POST', '/mna/tos/document/' + docId + '/review-alles', { headers: H, body: { naam: 'Mr. Smoke Jurist', hoedanigheid: 'advocaat' } });
+      check(profile + ': review-alles ok', revAll.json && revAll.json.ok === true, JSON.stringify(revAll.json).slice(0, 160));
+
+      const fin = await api('POST', '/mna/tos/document/' + docId + '/finaliseer', { headers: H });
+      check(profile + ': finaliseren ok:true', fin.json && fin.json.ok === true, JSON.stringify(fin.json).slice(0, 250));
+      const statusExported = d1(`SELECT status FROM tos_document WHERE id='${docId}'`);
+      check(profile + ': D1 status=exported ná finaliseren', statusExported[0]?.status === 'exported', JSON.stringify(statusExported[0]));
+
+      const man = await api('GET', '/mna/tos/document/' + docId + '/manifest', { headers: H });
+      check(profile + ': manifest bestaat (content_hash aanwezig)', man.json && man.json.ok === true && !!man.json.manifest && !!man.json.manifest.content_hash, JSON.stringify(man.json).slice(0, 200));
+
+      // Versturen: bewijst dat de centrale renderer in de ECHTE route foutloos doorloopt (geen
+      // "PDF-generatie is mislukt") én dat de mail daadwerkelijk verstuurd wordt (echt adres, geen
+      // .invalid — isEchtEmail() filtert dat bewust, zie worker/31-tos.js).
+      const verstuur = await api('POST', '/mna/tos/document/' + docId + '/verstuur', { headers: H, body: { adressaten: ['verkoper', 'koper'] } });
+      check(profile + ': versturen ok:true, status=verstuurd (renderer wierp geen fout)', verstuur.json && verstuur.json.ok === true && verstuur.json.status === 'verstuurd', JSON.stringify(verstuur.json).slice(0, 250));
+      check(profile + ': mail daadwerkelijk verstuurd (mail_verstuurd>0)', verstuur.json && verstuur.json.mail_verstuurd > 0, JSON.stringify(verstuur.json));
+      const statusVerstuurd = d1(`SELECT status, verstuurd_op FROM tos_document WHERE id='${docId}'`);
+      check(profile + ': D1 status=verstuurd + verstuurd_op gezet', statusVerstuurd[0]?.status === 'verstuurd' && !!statusVerstuurd[0]?.verstuurd_op, JSON.stringify(statusVerstuurd[0]));
+
+      // Idempotency: bewijst dat de statusmutatie echt is vastgelegd (niet alleen in de respons).
+      const nogmaals = await api('POST', '/mna/tos/document/' + docId + '/verstuur', { headers: H, body: { adressaten: ['verkoper'] } });
+      check(profile + ': nogmaals versturen → 409 (al verstuurd)', nogmaals.status === 409, 'status ' + nogmaals.status);
+
+      const lijstKoper = await api('GET', '/mna/tos/documenten/' + trajectCode, { headers: { 'x-tussen-key': koperCode } });
+      check(profile + ': koper ziet het verstuurde document', (lijstKoper.json && lijstKoper.json.documenten || []).some((d) => d.id === docId), JSON.stringify(lijstKoper.json).slice(0, 200));
+    }
+
+    kop('Signhost — ontbrekende configuratie faalt schoon, geen valse status');
+    const voorSh = d1(`SELECT signhost_transactions, nda_getekend FROM mna_trajecten WHERE id='${trajectCode}'`);
+    const shResp = await api('POST', '/mna/signhost/stuur', { headers: H, body: { code: trajectCode, doc_type: 'nda', ondertekenaar_naam: 'Smoke Tester', ondertekenaar_email: 'tegenpartij-test@invalid', doc_tekst: 'Testtekst met initiële waarde €250.000, diacritics ë ï é ü.' } });
+    check('Signhost zonder config → 503, duidelijke foutmelding (geen valse ok:true)', shResp.status === 503 && !shResp.json?.ok, JSON.stringify(shResp.json));
+    const naSh = d1(`SELECT signhost_transactions, nda_getekend FROM mna_trajecten WHERE id='${trajectCode}'`);
+    check('Signhost-fout: D1 volledig ongewijzigd (geen halfaangemaakte documentstatus)', JSON.stringify(naSh[0]) === JSON.stringify(voorSh[0]), JSON.stringify({ voor: voorSh[0], na: naSh[0] }));
+    console.log('  (LET OP: de daadwerkelijke Signhost-upload/PDF-generatie-stap is op staging niet live bewezen — de route maakt eerst de Signhost-transactie aan vóór de PDF gegenereerd wordt, en faalt hier al bij de ontbrekende sleutel vóór dat punt. De onderliggende renderer is elders in deze suite al bewezen.)');
+  } finally {
+    if (trajectCode) {
+      await ruimTrajectOp(trajectCode);
+      const rest = d1("SELECT id FROM mna_trajecten WHERE id='" + trajectCode + "'");
+      check('cleanup: traject weg', rest.length === 0, JSON.stringify(rest));
+    }
+    if (gebruikerId) await ruimGebruikerOp(gebruikerId);
+  }
+}
+
+const BATCHEN = { '3B': batch3B, '3C': batch3C, '3D': batch3D, '3E': batch3E, '3F-A': batch3Fa, '3H': batch3H, 'P264': batchP264, 'KERNFLOW-19SEP': batchKernflow19sep, 'PDF-RENDERER-20SEP': batchPdfRenderer20sep, 'PDF-RENDERER-TOS-20SEP': batchPdfRendererTos20sep };
 
 async function main() {
   const naam = (process.argv[2] || '').toUpperCase();
