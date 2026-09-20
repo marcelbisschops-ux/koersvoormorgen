@@ -683,6 +683,42 @@ async function batchPdfRendererTos20sep() {
       check(profile + ': koper ziet het verstuurde document', (lijstKoper.json && lijstKoper.json.documenten || []).some((d) => d.id === docId), JSON.stringify(lijstKoper.json).slice(0, 200));
     }
 
+    kop('0 geldige ontvangers — versturen mag NOOIT status verstuurd opleveren (bugfix 20 sep 2026)');
+    // Reproduceert de echte productiebevinding: een traject zonder contact_email/koper_email. Aparte,
+    // kale trajectaanmaak (niet via /adviseur/create met de gebruikelijke velden hierboven) — bewust
+    // net zo minimaal als het productietraject dat de bug blootlegde.
+    const legeCreate = await api('POST', '/mna/create', { adminKey: ADMIN, body: { kantoor_naam: 'PROD-SMOKE 0-Ontvangers BV', contact_email: '', koper_email: '', sector: 'accountancy' } });
+    check('leeg-ontvangers-traject aangemaakt', legeCreate.json && legeCreate.json.ok === true, JSON.stringify(legeCreate.json));
+    const legeCode = legeCreate.json && legeCreate.json.code;
+    const legeTussen = legeCreate.json && legeCreate.json.tussen_code;
+    if (legeCode && legeTussen) {
+      const LH = { 'x-tussen-key': legeTussen };
+      await api('POST', '/mna/tos/activeer/' + legeCode, { headers: LH });
+      const legeMk = await api('POST', '/mna/tos/document', { headers: LH, body: { profile: 'LOI' } });
+      const legeDocId = legeMk.json && legeMk.json.document_id;
+      check('leeg-ontvangers: LOI aangemaakt', !!legeDocId, JSON.stringify(legeMk.json).slice(0, 160));
+      if (legeDocId) {
+        await api('POST', '/mna/tos/document/' + legeDocId + '/review-alles', { headers: LH, body: { naam: 'Mr. Smoke Jurist', hoedanigheid: 'advocaat' } });
+        const legeFin = await api('POST', '/mna/tos/document/' + legeDocId + '/finaliseer', { headers: LH });
+        check('leeg-ontvangers: finaliseren ok:true', legeFin.json && legeFin.json.ok === true, JSON.stringify(legeFin.json).slice(0, 200));
+
+        const legeVerstuur = await api('POST', '/mna/tos/document/' + legeDocId + '/verstuur', { headers: LH, body: { adressaten: ['verkoper', 'koper'] } });
+        check('0 ontvangers: versturen → 400, duidelijke foutmelding (geen valse ok:true)', legeVerstuur.status === 400 && !legeVerstuur.json?.ok, JSON.stringify(legeVerstuur.json));
+        const legeStatus = d1(`SELECT status, verstuurd_op FROM tos_document WHERE id='${legeDocId}'`);
+        check('0 ontvangers: D1 status blijft/wordt weer exported, verstuurd_op leeg', legeStatus[0]?.status === 'exported' && !legeStatus[0]?.verstuurd_op, JSON.stringify(legeStatus[0]));
+        const legeAudit = d1(`SELECT action, meta_json FROM tos_audit_event WHERE object_id='${legeDocId}' ORDER BY seq DESC LIMIT 1`);
+        check('0 ontvangers: audit toont GEEN DOCUMENT_SENT (geen valse verzendregistratie)', legeAudit[0]?.action !== 'DOCUMENT_SENT', JSON.stringify(legeAudit[0]));
+
+        // Herstelbaarheid: na alsnog een geldig e-mailadres in te vullen, moet hetzelfde document
+        // gewoon opnieuw (en nu wél) te versturen zijn — "document blijft exported en opnieuw
+        // verzendbaar" was een expliciete eis.
+        d1(`UPDATE mna_trajecten SET contact_email='marcel@bisschopsfinancing.nl' WHERE id='${legeCode}'`);
+        const legeVerstuur2 = await api('POST', '/mna/tos/document/' + legeDocId + '/verstuur', { headers: LH, body: { adressaten: ['verkoper'] } });
+        check('na alsnog geldig e-mailadres: versturen slaagt alsnog (document was niet "vastgelopen")', legeVerstuur2.json && legeVerstuur2.json.ok === true && legeVerstuur2.json.status === 'verstuurd', JSON.stringify(legeVerstuur2.json).slice(0, 200));
+      }
+      await ruimTrajectOp(legeCode);
+    }
+
     kop('Signhost — ontbrekende configuratie faalt schoon, geen valse status');
     // HARDE STAGING-ONLY GUARD (Marcel, 20 sep 2026, ná een echt incident): deze subtest doet een
     // ECHTE POST naar /mna/signhost/stuur, die bij geldige Signhost-credentials een ECHTE Signhost-
