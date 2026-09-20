@@ -531,7 +531,82 @@ async function batchKernflow19sep() {
   }
 }
 
-const BATCHEN = { '3B': batch3B, '3C': batch3C, '3D': batch3D, '3E': batch3E, '3F-A': batch3Fa, '3H': batch3H, 'P264': batchP264, 'KERNFLOW-19SEP': batchKernflow19sep };
+// ── Batch PDF-RENDERER-20SEP — centrale professionele PDF-renderer (worker/36-pdf-renderer.js,
+// Cloudflare Browser Rendering) i.p.v. de primitieve Courier-maakPDF(). Deze batch bewijst de
+// centrale eis ("geen stille fallback") langs twee sporen:
+// 1. De echte, klantgerichte verzendroutes (LOI/NDA/BEM/Exclusiviteitsbrief) met tekst die bewust
+//    €/ë/ï/é/ü bevat — een 200+ok:true bewijst dat de asynchrone Browser-Rendering-aanroep in de
+//    ECHTE productieroute daadwerkelijk zonder fout doorloopt (niet alleen een geïsoleerde
+//    testfunctie). Faalt de renderer, dan geeft de route een foutstatus terug — dat is exact wat
+//    hier gecontroleerd wordt (geen valse ok:true).
+// 2. De bestaande /mna/admin/factuur/{id}-route (was al vóór deze wijziging aanwezig, dus GEEN
+//    nieuw testendpoint nodig — vgl. de MFA-bypass-toelichting in lib.mjs over waarom een nieuw
+//    endpoint puur voor test-gemak wordt vermeden) — deze retourneert de PDF-bytes rechtstreeks
+//    over HTTP, dus hier controleerbaar op geldige PDF-header + een omvang die een primitieve
+//    Courier-PDF nooit haalt (bewijst dat de nieuwe renderer daadwerkelijk gebruikt wordt, niet een
+//    toevallig lege/kapotte byte-reeks).
+// LET OP (bewijsniveau, werkregel 38): deze batch bewijst dat de renderer-aanroep slaagt en een
+// substantiële, valide PDF oplevert — geen automatische pixel-/OCR-controle van de opmaak zelf
+// (kleur/kop/€-glyph/watermerk). Die visuele controle is dit keer handmatig gedaan (Claude heeft de
+// daadwerkelijke BEM/LOI/factuur/DD-rapport-PDF's zelf geopend en gecontroleerd, sessie 20 sep 2026)
+// en hoort bij een volgende wijziging aan het HTML/CSS-sjabloon opnieuw handmatig te gebeuren — een
+// automatische tekst-extractiecheck had de destijds gevonden kop/body-regressie (headings die zonder
+// blanco regel aan de volgende tekst vastplakten) niet gedekt.
+async function batchPdfRenderer20sep() {
+  kop('PDF-RENDERER-20SEP · centrale professionele PDF-renderer (Browser Rendering)');
+  let code, tussenCode;
+  const UNICODE_TEKST = 'Artikel 1. Definities\n\nIn deze overeenkomst wordt verstaan onder "Initiële Waarde" het bedrag van €250.000 exclusief btw, zoals vastgesteld bij de cliëntacceptatie.\n\nArtikel 2. Financiële bepalingen\n\nDe koopsom bedraagt €1.250.000, coöperatieve samenwerking, reële inspanning, diacritics: ë ï é ü.';
+  try {
+    const create = await api('POST', '/mna/create', { adminKey: ADMIN, body: { kantoor_naam: 'PROD-SMOKE PDF-RENDERER-20SEP BV', contact_email: 'test@invalid', koper_email: 'koper-test@invalid', sector: 'accountancy' } });
+    if (!create.json || !create.json.ok) faal('traject aanmaken mislukt', create.json);
+    code = create.json.code; tussenCode = create.json.tussen_code;
+
+    const loi = await api('POST', '/mna/loi/email', { adminKey: ADMIN, body: { code, loi_tekst: UNICODE_TEKST, goedgekeurd_door: 'PROD-SMOKE Tester', to: ['marcel@bisschopsfinancing.nl'] } });
+    check('LOI-verzending met €/diacritics-tekst slaagt (renderer wierp geen fout)', loi.status === 200 && loi.json && loi.json.ok === true, JSON.stringify(loi.json));
+
+    const nda = await api('POST', '/mna/nda/email', { adminKey: ADMIN, body: { code, nda_tekst: UNICODE_TEKST, to: ['marcel@bisschopsfinancing.nl'] } });
+    check('NDA-verzending met €/diacritics-tekst slaagt', nda.status === 200 && nda.json && nda.json.ok === true, JSON.stringify(nda.json));
+
+    const bem = await api('POST', '/mna/bem/email', { adminKey: ADMIN, body: { code, bem_tekst: UNICODE_TEKST, to: ['marcel@bisschopsfinancing.nl'] } });
+    check('BEM-verzending met €/diacritics-tekst slaagt', bem.status === 200 && bem.json && bem.json.ok === true, JSON.stringify(bem.json));
+
+    const excl = await api('POST', '/mna/exclusief/email', { adminKey: ADMIN, body: { code, excl_tekst: UNICODE_TEKST, to: ['marcel@bisschopsfinancing.nl'] } });
+    check('Exclusiviteitsbrief-verzending met €/diacritics-tekst slaagt', excl.status === 200 && excl.json && excl.json.ok === true, JSON.stringify(excl.json));
+
+    // Spoor 2: bestaande factuur-route retourneert de PDF-bytes rechtstreeks — direct controleerbaar
+    // op een geldige PDF-header + een omvang die de oude Courier-renderer voor vergelijkbare tekst
+    // nooit haalde (een Browser-Rendering-PDF met Google Fonts is typisch tientallen KB's, de oude
+    // Courier-PDF voor eenzelfde hoeveelheid tekst was doorgaans maar een paar KB).
+    const uitn = await api('POST', '/gebruikers/uitnodigen', { adminKey: ADMIN, body: { naam: 'PROD-SMOKE Factuurtest', bedrijf: 'PROD-SMOKE Factuurtest BV', email: 'prodsmoke-factuur-' + Date.now() + DOM } });
+    let gebruikerId = null;
+    if (uitn.json && uitn.json.ok && uitn.json.id) {
+      gebruikerId = uitn.json.id;
+      d1(`INSERT INTO platform_fee_events (id, gebruiker_id, traject_id, fee_type, bedrag, omschrijving, created_at) VALUES ('FEE${Date.now()}', '${gebruikerId}', 'PRODSMOKETEST', 'basis', 100, 'PROD-SMOKE testregel', ${Date.now()})`);
+      const btwCfg = d1("SELECT waarde FROM kv_store WHERE sleutel='factuur_btwnr'");
+      const ibanCfg = d1("SELECT waarde FROM kv_store WHERE sleutel='factuur_iban'");
+      if (btwCfg[0]?.waarde && ibanCfg[0]?.waarde) {
+        const factResp = await fetch(WORKER + '/mna/admin/factuur/' + gebruikerId, { headers: { 'x-admin-key': ADMIN } });
+        const factBuf = Buffer.from(await factResp.arrayBuffer());
+        check('Factuur-route: 200', factResp.status === 200, factResp.status);
+        check('Factuur-route: geldige PDF-header (%PDF)', factBuf.slice(0, 4).toString('latin1') === '%PDF', factBuf.slice(0, 20).toString('latin1'));
+        check('Factuur-route: omvang past bij de professionele renderer (>15KB, niet de kale oude Courier-PDF)', factBuf.length > 15000, factBuf.length);
+      } else {
+        console.log('  (factuur-BTW/IBAN niet geconfigureerd op deze omgeving — spoor 2 overgeslagen, spoor 1 hierboven dekt de kern al)');
+      }
+    } else {
+      console.log('  (kon geen test-adviseur aanmaken voor spoor 2 — overgeslagen, spoor 1 hierboven dekt de kern al)');
+    }
+    if (gebruikerId) await api('POST', '/gebruikers/verwijder/' + gebruikerId, { adminKey: ADMIN });
+  } finally {
+    if (code) {
+      await ruimTrajectOp(code);
+      const rest = d1("SELECT id FROM mna_trajecten WHERE id='" + code + "'");
+      check('cleanup: traject weg', rest.length === 0, JSON.stringify(rest));
+    }
+  }
+}
+
+const BATCHEN = { '3B': batch3B, '3C': batch3C, '3D': batch3D, '3E': batch3E, '3F-A': batch3Fa, '3H': batch3H, 'P264': batchP264, 'KERNFLOW-19SEP': batchKernflow19sep, 'PDF-RENDERER-20SEP': batchPdfRenderer20sep };
 
 async function main() {
   const naam = (process.argv[2] || '').toUpperCase();

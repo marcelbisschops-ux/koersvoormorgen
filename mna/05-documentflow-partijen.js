@@ -59,9 +59,16 @@ function printDocNaAkkoord(tekst, titel, docType) {
   var toonWatermerk = !(docType === 'teaser' || docType === 'memo');
   function fmt(t) {
     if(!t) return '';
-    t = t.replace(/^(Artikel \d+[^\n]*)/gm, '<h3>$1</h3>');
-    t = t.replace(/^(##+ .+)/gm, function(m){ return '<h3>'+m.replace(/^#+\s*/,'')+'</h3>'; });
-    t = t.replace(/^([A-Z][A-Z\s&]{4,})$/gm, '<h3>$1</h3>');
+    // Elke kop krijgt bewust ONGEACHT omringende witregels een eigen alinea (\n\n vóór/na) — anders
+    // groepeert de paragraafsplitsing hieronder (\n\n+) een kopregel mét de daaropvolgende body-tekst
+    // in één blok zodra de brontekst geen blanco regel ná de kop heeft. Zonder deze isolatie viel
+    // zo'n hele alinea in de `p.startsWith('<h3>')`-kortsluiting hieronder, die de rest dan
+    // ongefilterd (geen <p>/<br>) teruggeeft — regels lopen dan visueel aaneen (bug gevonden 20 sep
+    // 2026 bij een PDF-controle van de gelijkluidende serverside-renderer, worker/36-pdf-renderer.js
+    // — zelfde regex-logica, zelfde bugklasse, hier consequent meegefixt voor ontwerpgelijkheid).
+    t = t.replace(/^(Artikel \d+[^\n]*)/gm, '\n\n<h3>$1</h3>\n\n');
+    t = t.replace(/^(##+ .+)/gm, function(m){ return '\n\n<h3>'+m.replace(/^#+\s*/,'')+'</h3>\n\n'; });
+    t = t.replace(/^([A-Z][A-Z\s&]{4,})$/gm, '\n\n<h3>$1</h3>\n\n');
     t = t.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
     t = t.replace(/(Naam|Handtekening|Plaats|Datum):\s*_{3,}/g,
       '<span style="display:inline-flex;align-items:baseline;gap:.5rem;min-width:260px;margin:.3rem 0">$1:&nbsp;<span style="display:inline-block;border-bottom:1px solid #2a2825;flex:1;min-width:140px">&nbsp;</span></span>');
