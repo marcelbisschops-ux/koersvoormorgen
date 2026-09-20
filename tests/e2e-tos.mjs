@@ -60,8 +60,14 @@ async function run() {
   }
   await api('POST', '/gebruikers/verkoop/' + gebruikerId, { adminKey: ADMIN, body: { traject_limiet: 2, modules: { traject: true, contracten: true } } });
 
+  // contact_email is bewust een ECHT adres (niet 'v'+DOM/.invalid): sinds de 0-ontvangers-bugfix
+  // (20 sep 2026, worker/31-tos.js) weigert /verstuur een document zodra er na isEchtEmail()-filtering
+  // geen enkele geldige ontvanger overblijft — met een .invalid-adres zou STAP 19 hieronder (die
+  // daadwerkelijke verzending test) dus nooit meer 'verstuurd' bereiken. De ".invalid-adres wordt
+  // overgeslagen"-situatie wordt al apart en grondig gedekt door tests/e2e-tos-review.mjs en de
+  // 0-ontvangers-subtest in tests/prod-smoke.mjs (batch PDF-RENDERER-TOS-20SEP).
   const c1 = await api('POST', '/adviseur/create', { body: { email, wachtwoord: WW, traject: {
-    kantoor_naam: 'E2E TOS Doelkantoor BV', contact_naam: 'Test Verkoper', contact_email: 'v' + DOM,
+    kantoor_naam: 'E2E TOS Doelkantoor BV', contact_naam: 'Test Verkoper', contact_email: 'marcel@bisschopsfinancing.nl',
     koper_naam: 'E2E TOS Koper BV', koper_contact: 'Test Koper', koper_email: 'k' + DOM,
     koper_kvk: '99887766', koper_adres: 'Koperstraat 1, Oploo', verkoper_kvk: '11223344',
     verkoper_adres: 'Verkoperlaan 2, Oploo', traject_type: 'Verkoop'
@@ -202,9 +208,11 @@ async function run() {
 
   // Na verstuur: zowel verkoper als koper zien 'm nu in hun eigen lijst.
   const lijstNaVerkoper = await api('GET', '/mna/tos/documenten/' + trajectCode, { headers: VH });
-  check('ná verstuur: verkoper ziet de NDA (minimale DTO: id/doc_type/profiel/verstuurd_op)', (() => {
+  // status is sinds 20 sep 2026 (partij-reviewcyclus) bewust wél onderdeel van de externe DTO — een
+  // partij moet kunnen zien of een document nog op haar reactie wacht. current_version blijft intern.
+  check('ná verstuur: verkoper ziet de NDA (minimale DTO: id/doc_type/profiel/status/verstuurd_op)', (() => {
     const d = (lijstNaVerkoper.json.documenten || []).find((x) => x.id === ndaId);
-    return d && d.doc_type === 'nda' && d.profiel === 'NDA@1' && !!d.verstuurd_op && !('status' in d) && !('current_version' in d);
+    return d && d.doc_type === 'nda' && d.profiel === 'NDA@1' && !!d.verstuurd_op && d.status === 'verstuurd' && !('current_version' in d);
   })(), JSON.stringify(lijstNaVerkoper.json).slice(0, 200));
   const lijstNaKoper = await api('GET', '/mna/tos/documenten/' + trajectCode, { headers: KH });
   check('ná verstuur: koper ziet de NDA ook', (lijstNaKoper.json.documenten || []).some((d) => d.id === ndaId));
@@ -506,7 +514,9 @@ async function run() {
   check('versturen van een nog niet gefinaliseerd document → 409', verstuurDraft.status === 409, 'status ' + verstuurDraft.status);
   const verstuur = await api('POST', '/mna/tos/document/' + docId + '/verstuur', { headers: H, body: { adressaten: ['verkoper'] } });
   check('versturen → ok:true, status verstuurd, adressaten [verkoper]', verstuur.json && verstuur.json.ok === true && verstuur.json.status === 'verstuurd' && JSON.stringify(verstuur.json.adressaten) === '["verkoper"]', JSON.stringify(verstuur.json));
-  check('geen mail naar een .invalid-adres (mail_overgeslagen)', verstuur.json && verstuur.json.mail_overgeslagen === true, JSON.stringify(verstuur.json));
+  // contact_email is een echt adres (zie toelichting bij de traject-aanmaak hierboven) → mail wordt
+  // daadwerkelijk verstuurd, niet overgeslagen (dat gedrag zit nu apart getest, zie die toelichting).
+  check('mail daadwerkelijk verstuurd (echt adres)', verstuur.json && verstuur.json.mail_overgeslagen === false && verstuur.json.mail_verstuurd === 1, JSON.stringify(verstuur.json));
   const verstuurDup = await api('POST', '/mna/tos/document/' + docId + '/verstuur', { headers: H });
   check('nogmaals versturen → 409', verstuurDup.status === 409, 'status ' + verstuurDup.status);
 

@@ -124,6 +124,9 @@ function renderCover(){
     // Async gevuld in bindAll() (composerNdaLoiPanelen()), vandaar lege placeholders hier.
     +((isVerkoper()||isKoper())&&!isAdmin()&&!S.ndaTekst?'<div id="composer-nda-slot"></div>':'')
     +((isVerkoper()||isKoper())&&!isAdmin()&&!S.loiTekst?'<div id="composer-loi-slot"></div>':'')
+    // MOU heeft nooit een sjabloon-generator gehad (uitsluitend TOS-composer) — geen S.mouTekst-guard
+    // nodig, altijd tonen zodra er een verstuurd MoU-document is (partij-reviewcyclus, 20 sep 2026).
+    +((isVerkoper()||isKoper())&&!isAdmin()?'<div id="composer-mou-slot"></div>':'')
     // Teaser-generatie stond hier ook voor de verkoper zelf (expliciet verzoek Marcel, 23 aug 2026).
     // Op 12 sep 2026 teruggedraaid: de teaser wordt uitsluitend nog door de begeleider aangemaakt
     // (bg-teaser-actie in mna/04), niet meer door de verkoper zelf.
@@ -1323,80 +1326,148 @@ function bindAll(){
     }catch(e){}
   })();
 
-  // Composer-NDA/LoI voor verkoper/koper (11 sep 2026): de composer (Transaction OS) is nu de
-  // enige weg om een NDA/LoI aan te maken — dit vult de placeholder-slots uit renderCover() met
-  // het gefinaliseerde en verstuurde document (indien aanwezig), in dezelfde stijl en met dezelfde
-  // "Akkoord & onderteken"-stap als de vroegere sjabloonpanelen. Hergebruikt bewust het bestaande
-  // /mna/teken-endpoint (zet dezelfde S.ndaGetekend/S.loiGetekend-vlag) — geen nieuw handtekening-
-  // mechanisme, wél een nieuwe brontekst.
+  // Composer-MOU/NDA/LoI voor verkoper/koper (11 sep 2026, uitgebreid 20 sep 2026 met de partij-
+  // reviewcyclus): de composer (Transaction OS) is nu de enige weg om deze documenten aan te maken —
+  // dit vult de placeholder-slots uit renderCover() met het gefinaliseerde en verstuurde document
+  // (indien aanwezig). Twee losse stappen, bewust niet samengevoegd: (1) inhoudelijk Akkoord/
+  // Wijziging vragen (nieuw, /mna/tos/document/{id}/reageren) — bepaalt of de tekst zelf akkoord is;
+  // (2) "Akkoord & onderteken" (bestaand, ongewijzigd, /mna/teken) — de daadwerkelijke handtekening,
+  // blijft beschikbaar zoals het al werkte. MOU heeft nooit een tekenstap gehad (niet-bindend
+  // memorandum, geen tekenrecht in /mna/teken) — daar wordt dus nooit een tekenknop getoond.
   function laadComposerPartijPaneel(type){
     var slot=ge('composer-'+type+'-slot'); if(!slot)return;
     var profielPrefix=type.toUpperCase();
-    var kleur=type==='nda'?'#7c5cbf':'var(--gold)';
-    var kleurBg=type==='nda'?'#f3f0ff':'var(--gold-bg)';
-    var titel=type==='nda'?'Non-Disclosure Agreement':'Letter of Intent';
+    var kleuren={nda:'#7c5cbf',loi:'var(--gold)',mou:'#5a5470'};
+    var kleurenBg={nda:'#f3f0ff',loi:'var(--gold-bg)',mou:'#efeef5'};
+    var titels={nda:'Non-Disclosure Agreement',loi:'Letter of Intent',mou:'Memorandum of Understanding'};
+    var kleur=kleuren[type], kleurBg=kleurenBg[type], titel=titels[type];
+    var kanTekenen=(type==='nda'||type==='loi'); // MOU: geen tekenrecht, zie toelichting hierboven
     fetchMetTimeout(WORKER+'/mna/tos/documenten/'+encodeURIComponent(S.code)+'?code='+encodeURIComponent(S.code),{},12000)
       .then(function(r){return r.json();})
       .then(function(d){
-        var doc=(d.documenten||[]).find(function(x){return (x.profiel||'').split('@')[0]===profielPrefix;});
-        if(!doc)return; // niets gefinaliseerd/verstuurd voor deze rol — geen paneel tonen
-        var getekend=type==='nda'?S.ndaGetekend:S.loiGetekend;
-        slot.innerHTML='<div style="margin-top:1.5rem;background:'+kleurBg+';border:1px solid '+kleur+';border-radius:var(--r2);padding:1.25rem">'
-          +'<div style="font-size:11px;font-weight:600;color:'+kleur+';letter-spacing:.1em;text-transform:uppercase;margin-bottom:.6rem">&#128274; '+titel+' beschikbaar</div>'
-          +'<div style="font-size:12px;color:var(--mid);margin-bottom:.75rem">'+(doc.verstuurd_op?'Verstuurd op '+new Date(doc.verstuurd_op).toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'})+'. ':'')+'Lees de '+titel+' door en geef akkoord.</div>'
-          +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:.5rem">'
-          +'<button id="composer-'+type+'-lees-btn" class="btn-ghost" style="font-size:12px;border-color:'+kleur+';color:'+kleur+'">&#128065; Lees '+profielPrefix+'</button>'
-          +(getekend?'<div style="font-size:11px;padding:4px 10px;border-radius:12px;background:'+kleurBg+';border:1px solid '+kleur+';color:'+kleur+';display:flex;align-items:center;gap:4px">&#10003; Getekend door '+esc(getekend)+'</div>'
-            :'<button id="composer-'+type+'-teken-btn" class="btn" style="font-size:12px;padding:6px 14px;background:'+kleur+'">&#9998; Akkoord &amp; onderteken</button>')
-          +'</div></div>';
-        var leesBtn=ge('composer-'+type+'-lees-btn');
-        if(leesBtn)leesBtn.onclick=function(){
-          leesBtn.disabled=true;var origTxt=leesBtn.textContent;leesBtn.textContent='Laden...';
-          fetchMetTimeout(WORKER+'/mna/tos/document/'+encodeURIComponent(doc.id)+'?code='+encodeURIComponent(S.code),{},12000)
-            .then(function(r2){return r2.json();})
-            .then(function(dd){
-              leesBtn.disabled=false;leesBtn.textContent=origTxt;
-              if(!dd.ok){toast('Kon '+profielPrefix+' niet laden.','err');return;}
-              // Bugfix 19 sep 2026: toonde voorheen alleen title+text en negeerde data_values
-              // volledig — ingevulde structurele velden (naam, KvK, adres, bedrag e.d.) waren
-              // daardoor onzichtbaar voor verkoper/koper in deze leesweergave, ook al gaf de backend
-              // (GET /mna/tos/document/{id}) ze wel terug. data_fields (labels) komt sinds vandaag
-              // ook mee in die respons.
-              var tekst=(dd.componenten||[]).map(function(c){
-                var regels=[c.title||''];
-                (c.data_fields||[]).forEach(function(f){
-                  if(!f||f.type==='x')return;
-                  var dv=c.data_values||{};
-                  var w=dv[f.key]&&dv[f.key].value!=null?String(dv[f.key].value).trim():'';
-                  if(w)regels.push((f.label||f.key)+': '+w);
-                });
-                if(c.text)regels.push('\n'+c.text);
-                return regels.join('\n');
-              }).join('\n\n');
-              var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;display:flex;align-items:center;justify-content:center;padding:1.5rem';
-              var box=document.createElement('div');box.setAttribute('role','dialog');box.setAttribute('aria-modal','true');box.setAttribute('aria-labelledby','composer-'+type+'-lees-titel');box.style.cssText='background:var(--panel);border-radius:10px;padding:2rem;max-width:700px;width:100%;max-height:90vh;overflow-y:auto';
-              box.innerHTML='<div id="composer-'+type+'-lees-titel" style="font-family:Playfair Display,serif;font-size:1.2rem;font-weight:600;color:var(--head);margin-bottom:1rem">'+titel+'</div>'
-                +'<div style="font-family:Georgia,serif;font-size:13px;line-height:1.9;color:var(--sub);white-space:pre-wrap">'+esc(tekst)+'</div>'
-                +'<div style="display:flex;justify-content:flex-end;margin-top:1.25rem"><button style="background:transparent;border:1px solid #c8c5bc;border-radius:6px;padding:8px 18px;cursor:pointer;font-size:13px" id="composer-'+type+'-sluit">Sluiten</button></div>';
-              ov.appendChild(box);document.body.appendChild(ov);
-              ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
-              document.getElementById('composer-'+type+'-sluit').addEventListener('click',function(){document.body.removeChild(ov);});
-            }).catch(function(){leesBtn.disabled=false;leesBtn.textContent=origTxt;toast('Verbindingsfout.','err');});
-        };
-        var tekenBtn=ge('composer-'+type+'-teken-btn');
-        if(tekenBtn)tekenBtn.onclick=async function(){
-          var naam=prompt('Voer uw volledige naam in ter bevestiging van akkoord:');
-          if(!naam||!naam.trim())return;
-          if(!confirm('U gaat akkoord met de '+titel+' namens '+naam.trim()+'. Bevestigen?'))return;
-          try{
-            var r3=await fetchMetTimeout(WORKER+'/mna/teken',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:S.code,document:type,naam:naam.trim()})},12000);
-            var d3=await r3.json();
-            if(d3.ok){ if(type==='nda')S.ndaGetekend=naam.trim(); else S.loiGetekend=naam.trim(); toast(profielPrefix+' getekend. De adviseur is op de hoogte gesteld.','ok'); laadComposerPartijPaneel(type); }
-            else toast('Fout: '+(d3.error||'onbekend'),'err');
-          }catch(e){toast('Verbindingsfout.','err');}
-        };
+        var docLijst=(d.documenten||[]).filter(function(x){return (x.profiel||'').split('@')[0]===profielPrefix;});
+        var doc=docLijst[0]; // server sorteert nieuwste eerst; 'vervangen' documenten zijn al uitgefilterd
+        if(!doc)return; // niets verstuurd voor deze rol — geen paneel tonen
+        // Volledige detail (incl. reacties) in één keer ophalen — hergebruikt door zowel het paneel
+        // zelf als de "Lees"-knop hieronder (geen dubbele fetch meer).
+        return fetchMetTimeout(WORKER+'/mna/tos/document/'+encodeURIComponent(doc.id)+'?code='+encodeURIComponent(S.code),{},12000)
+          .then(function(r2){return r2.json();})
+          .then(function(dd){ renderPaneel(doc, dd); });
       }).catch(function(){});
+
+    function renderPaneel(doc, dd){
+      var reacties=(dd&&dd.reacties)||[];
+      var eigenReactie=reacties.find(function(x){return x.party_role===S.rol;});
+      var anderRol=S.rol==='verkoper'?'koper':'verkoper';
+      var andersReactie=reacties.find(function(x){return x.party_role===anderRol;});
+      var getekend=type==='nda'?S.ndaGetekend:S.loiGetekend;
+
+      function reactieRegel(rol, r){
+        var naam=rol==='verkoper'?'Verkoper':'Koper';
+        if(!r)return '<span style="color:var(--muted)">'+naam+': nog geen reactie</span>';
+        var dt=r.responded_at?new Date(r.responded_at).toLocaleDateString('nl-NL',{day:'2-digit',month:'short',year:'numeric'}):'';
+        if(r.response==='akkoord')return '<span style="color:#1a7a5e">&#10003; '+naam+': akkoord'+(dt?' ('+dt+')':'')+'</span>';
+        return '<span style="color:var(--red)">&#9888; '+naam+': wijziging gevraagd'+(dt?' ('+dt+')':'')+'</span>'
+          +(r.toelichting?'<div style="font-size:11px;color:var(--mid);margin:2px 0 0 1.1rem;font-style:italic">"'+esc(r.toelichting)+'"</div>':'');
+      }
+
+      var statusBlok='';
+      var actieBlok='';
+      if(doc.status==='goedgekeurd'){
+        statusBlok='<div style="font-size:12px;font-weight:600;color:#1a7a5e;margin-bottom:.5rem">&#10003; Beide partijen akkoord — deze versie is goedgekeurd.</div>';
+      } else if(doc.status==='wijziging_gevraagd'){
+        statusBlok='<div style="font-size:12px;font-weight:600;color:var(--red);margin-bottom:.5rem">Er is een wijziging gevraagd. De begeleider bereidt een nieuwe versie voor — u ontvangt die zodra hij klaar is.</div>';
+      } else if(eigenReactie){
+        statusBlok='<div style="font-size:12px;color:var(--mid);margin-bottom:.5rem">Uw reactie is geregistreerd. Nog wachten op de andere partij.</div>';
+      }
+      // Reactieoverzicht (wie/wat/wanneer/welke versie) — alleen tonen zodra er iets te tonen is.
+      var overzicht = (reacties.length || doc.status!=='verstuurd') ? (
+        '<div style="font-size:11px;line-height:1.9;margin-bottom:.75rem;padding:.5rem .75rem;background:rgba(0,0,0,.03);border-radius:6px">'
+        +reactieRegel('verkoper', reacties.find(function(x){return x.party_role==='verkoper';}))+'<br>'
+        +reactieRegel('koper', reacties.find(function(x){return x.party_role==='koper';}))
+        +'</div>'
+      ) : '';
+
+      if(doc.status==='verstuurd' && !eigenReactie){
+        actieBlok='<button id="composer-'+type+'-akkoord-btn" class="btn" style="font-size:12px;padding:6px 14px;background:'+kleur+'">&#10003; Akkoord</button>'
+          +'<button id="composer-'+type+'-wijziging-btn" class="btn-ghost" style="font-size:12px;border-color:var(--red);color:var(--red)">&#9998; Wijziging vragen</button>';
+      } else if(kanTekenen){
+        actieBlok=(getekend?'<div style="font-size:11px;padding:4px 10px;border-radius:12px;background:'+kleurBg+';border:1px solid '+kleur+';color:'+kleur+';display:flex;align-items:center;gap:4px">&#10003; Getekend door '+esc(getekend)+'</div>'
+          :'<button id="composer-'+type+'-teken-btn" class="btn" style="font-size:12px;padding:6px 14px;background:'+kleur+'">&#9998; Akkoord &amp; onderteken</button>');
+      }
+
+      slot.innerHTML='<div style="margin-top:1.5rem;background:'+kleurBg+';border:1px solid '+kleur+';border-radius:var(--r2);padding:1.25rem">'
+        +'<div style="font-size:11px;font-weight:600;color:'+kleur+';letter-spacing:.1em;text-transform:uppercase;margin-bottom:.6rem">&#128274; '+titel+' beschikbaar</div>'
+        +'<div style="font-size:12px;color:var(--mid);margin-bottom:.75rem">'+(doc.verstuurd_op?'Verstuurd op '+new Date(doc.verstuurd_op).toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'})+'. ':'')+'Lees de '+titel+' door en geef akkoord, of vraag een wijziging.</div>'
+        +statusBlok+overzicht
+        +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:.5rem">'
+        +'<button id="composer-'+type+'-lees-btn" class="btn-ghost" style="font-size:12px;border-color:'+kleur+';color:'+kleur+'">&#128065; Lees '+profielPrefix+'</button>'
+        +actieBlok
+        +'</div></div>';
+
+      var leesBtn=ge('composer-'+type+'-lees-btn');
+      if(leesBtn)leesBtn.onclick=function(){
+        // Bugfix 19 sep 2026: toonde voorheen alleen title+text en negeerde data_values volledig —
+        // ingevulde structurele velden (naam, KvK, adres, bedrag e.d.) waren daardoor onzichtbaar.
+        var tekst=((dd&&dd.componenten)||[]).map(function(c){
+          var regels=[c.title||''];
+          (c.data_fields||[]).forEach(function(f){
+            if(!f||f.type==='x')return;
+            var dv=c.data_values||{};
+            var w=dv[f.key]&&dv[f.key].value!=null?String(dv[f.key].value).trim():'';
+            if(w)regels.push((f.label||f.key)+': '+w);
+          });
+          if(c.text)regels.push('\n'+c.text);
+          return regels.join('\n');
+        }).join('\n\n');
+        var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;display:flex;align-items:center;justify-content:center;padding:1.5rem';
+        var box=document.createElement('div');box.setAttribute('role','dialog');box.setAttribute('aria-modal','true');box.setAttribute('aria-labelledby','composer-'+type+'-lees-titel');box.style.cssText='background:var(--panel);border-radius:10px;padding:2rem;max-width:700px;width:100%;max-height:90vh;overflow-y:auto';
+        box.innerHTML='<div id="composer-'+type+'-lees-titel" style="font-family:Playfair Display,serif;font-size:1.2rem;font-weight:600;color:var(--head);margin-bottom:1rem">'+titel+'</div>'
+          +'<div style="font-family:Georgia,serif;font-size:13px;line-height:1.9;color:var(--sub);white-space:pre-wrap">'+esc(tekst)+'</div>'
+          +'<div style="display:flex;justify-content:flex-end;margin-top:1.25rem"><button style="background:transparent;border:1px solid #c8c5bc;border-radius:6px;padding:8px 18px;cursor:pointer;font-size:13px" id="composer-'+type+'-sluit">Sluiten</button></div>';
+        ov.appendChild(box);document.body.appendChild(ov);
+        ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
+        document.getElementById('composer-'+type+'-sluit').addEventListener('click',function(){document.body.removeChild(ov);});
+      };
+
+      var akkoordBtn=ge('composer-'+type+'-akkoord-btn');
+      if(akkoordBtn)akkoordBtn.onclick=async function(){
+        if(!confirm('U geeft hiermee inhoudelijk akkoord op de '+titel+'. Bevestigen?'))return;
+        akkoordBtn.disabled=true;
+        try{
+          var rr=await fetchMetTimeout(WORKER+'/mna/tos/document/'+encodeURIComponent(doc.id)+'/reageren?code='+encodeURIComponent(S.code),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({actie:'akkoord'})},12000);
+          var dr=await rr.json();
+          if(dr.ok){ toast('Akkoord geregistreerd.','ok'); laadComposerPartijPaneel(type); }
+          else { akkoordBtn.disabled=false; toast('Fout: '+(dr.error||'onbekend'),'err'); }
+        }catch(e){ akkoordBtn.disabled=false; toast('Verbindingsfout.','err'); }
+      };
+      var wijzigingBtn=ge('composer-'+type+'-wijziging-btn');
+      if(wijzigingBtn)wijzigingBtn.onclick=async function(){
+        var toelichting=prompt('Wat moet er aangepast worden? (verplicht — de begeleider ziet dit direct)');
+        if(!toelichting||!toelichting.trim())return;
+        wijzigingBtn.disabled=true;
+        try{
+          var rr2=await fetchMetTimeout(WORKER+'/mna/tos/document/'+encodeURIComponent(doc.id)+'/reageren?code='+encodeURIComponent(S.code),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({actie:'wijziging_gevraagd',toelichting:toelichting.trim()})},12000);
+          var dr2=await rr2.json();
+          if(dr2.ok){ toast('Wijziging aangevraagd. De begeleider is op de hoogte.','ok'); laadComposerPartijPaneel(type); }
+          else { wijzigingBtn.disabled=false; toast('Fout: '+(dr2.error||'onbekend'),'err'); }
+        }catch(e){ wijzigingBtn.disabled=false; toast('Verbindingsfout.','err'); }
+      };
+      var tekenBtn=ge('composer-'+type+'-teken-btn');
+      if(tekenBtn)tekenBtn.onclick=async function(){
+        var naam=prompt('Voer uw volledige naam in ter bevestiging van akkoord:');
+        if(!naam||!naam.trim())return;
+        if(!confirm('U gaat akkoord met de '+titel+' namens '+naam.trim()+'. Bevestigen?'))return;
+        try{
+          var r3=await fetchMetTimeout(WORKER+'/mna/teken',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:S.code,document:type,naam:naam.trim()})},12000);
+          var d3=await r3.json();
+          if(d3.ok){ if(type==='nda')S.ndaGetekend=naam.trim(); else S.loiGetekend=naam.trim(); toast(profielPrefix+' getekend. De adviseur is op de hoogte gesteld.','ok'); laadComposerPartijPaneel(type); }
+          else toast('Fout: '+(d3.error||'onbekend'),'err');
+        }catch(e){toast('Verbindingsfout.','err');}
+      };
+    }
   }
+  laadComposerPartijPaneel('mou');
   laadComposerPartijPaneel('nda');
   laadComposerPartijPaneel('loi');
 

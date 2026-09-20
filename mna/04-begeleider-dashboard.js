@@ -2703,7 +2703,7 @@ function renderBegeleiderDashboard(app){
     var g=await bgMouApi('GET','/document/'+encodeURIComponent(docId));
     if(myGen!==_mouGen)return;
     if(!g.ok||!g.json.ok){ out.innerHTML=bgMouFout(g.json&&g.json.error,prof); return; }
-    var doc=g.json.document, comps=g.json.componenten||[], divs=g.json.divergenties||[];
+    var doc=g.json.document, comps=g.json.componenten||[], divs=g.json.divergenties||[], reacties=g.json.reacties||[];
     var bevroren=!!doc.bevroren;
     var menu=await bgMouApi('GET','/menu/'+encodeURIComponent(S.code)+'?profile='+encodeURIComponent(prof)+'&document='+encodeURIComponent(docId));
     if(myGen!==_mouGen)return;
@@ -2717,7 +2717,9 @@ function renderBegeleiderDashboard(app){
     h+='<div style="display:flex;align-items:center;justify-content:space-between;padding:.8rem 1rem;border-bottom:1px solid var(--border)">'
       +'<div><span style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:#5a5470">'+esc(mouProfLabel(prof).kort)+'-composer</span>'
       +'<span style="font-size:11px;color:var(--muted);margin-left:8px">v'+esc(String(doc.current_version))+' &middot; '
-      +(doc.status==='draft'?'concept':doc.status==='exported'?'gefinaliseerd':doc.status==='verstuurd'?('verstuurd aan '+((doc.adressaten||[]).join(', ')||'&mdash;')):esc(doc.status))+'</span></div>'
+      // Statusweergave (20 sep 2026, partij-reviewcyclus): status is nu afgeleid uit de reacties
+      // hieronder — nooit rechtstreeks door één partij gezet (zie tosBerekenDocumentStatus()).
+      +({draft:'concept',exported:'gefinaliseerd',verstuurd:'verstuurd aan '+((doc.adressaten||[]).join(', ')||'&mdash;'),goedgekeurd:'&#10003; goedgekeurd door beide partijen',wijziging_gevraagd:'&#9888; wijziging gevraagd',vervangen:'vervangen door nieuwere versie'}[doc.status]||esc(doc.status))+'</span></div>'
       +'<div style="display:flex;gap:6px"><button id="mou-print" class="btn-ghost" style="font-size:11px;padding:3px 10px">&#128196; Print / PDF</button>'
       +'<button id="mou-close" class="btn-ghost" style="font-size:11px;padding:3px 10px">Sluiten</button></div></div>';
     h+='<div style="padding:1rem">';
@@ -2735,6 +2737,22 @@ function renderBegeleiderDashboard(app){
         h+='<div style="margin-top:3px">'+esc(f.dataslot_key)+' &mdash; '+waarden.join(' / ')+'</div>';
       });
       h+='<div style="margin-top:3px;color:var(--muted)">Het platform bepaalt niet welke waarde juist is. Trek de gekoppelde velden gelijk.</div></div>';
+    }
+    // Partij-reacties (20 sep 2026): wie heeft gereageerd, akkoord/wijziging gevraagd, wanneer, op
+    // welke versie — Marcel expliciet: "begeleider ziet de reactie duidelijk in het dossier".
+    if(reacties.length){
+      h+='<div style="border:1px solid '+(reacties.some(function(r){return r.response==='wijziging_gevraagd';})?'var(--red)':'var(--teal)')+';border-radius:var(--r);padding:.7rem .9rem;margin-bottom:.75rem;font-size:12px">'
+        +'<div style="font-weight:600;margin-bottom:.4rem;color:var(--sub)">Reacties op v'+esc(String(doc.current_version))+'</div>'
+        +reacties.map(function(r){
+          var naam=r.party_role==='verkoper'?'Verkoper':'Koper';
+          var dt=r.responded_at?new Date(r.responded_at).toLocaleString('nl-NL',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'';
+          if(r.response==='akkoord')return '<div style="color:var(--teal-dim)">&#10003; '+naam+': akkoord'+(dt?' &middot; '+dt:'')+'</div>';
+          return '<div style="color:var(--red)">&#9888; '+naam+': wijziging gevraagd'+(dt?' &middot; '+dt:'')+'</div>'
+            +(r.toelichting?'<div style="margin:2px 0 4px 1.1rem;color:var(--mid);font-style:italic">"'+esc(r.toelichting)+'"</div>':'')
+            +(r.wijzigingsvoorstel?'<div style="margin:0 0 4px 1.1rem;color:var(--mid)"><strong>Voorstel:</strong> '+esc(r.wijzigingsvoorstel)+'</div>':'');
+        }).join('')
+        +(doc.status==='wijziging_gevraagd'?'<div style="margin-top:.4rem;color:var(--muted)">Maak hieronder een nieuwe versie aan om de wijziging te verwerken — deze versie blijft bewaard, niet meer bewerkbaar.</div>':'')
+        +'</div>';
     }
     // Bevroren-banner + export/verstuur/manifest
     // Ondertekenen (19 sep 2026, Marcel: "LOI/NDA misten Signhost/eigen-PDF/buiten-Signhost-om-
