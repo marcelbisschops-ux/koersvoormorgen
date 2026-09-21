@@ -619,6 +619,76 @@ function laadBankmutaties() {
     .catch(function(){ BANKMUTATIES = []; renderApp(); });
 }
 
+// -- CASHFLOW-OVERZICHT (V1b Groep A, 22 sep 2026) — zichtbaar voor verkoper/begeleider/koper
+// (indien financieel vrijgegeven), zelfde brede zichtbaarheid als BANKMUTATIES hierboven, want dit
+// is deterministische financiële informatie, geen AI-oordeel (in tegenstelling tot de red-flag-
+// analyse hieronder, die bewust begeleider-only blijft). --
+var BANKMUTATIES_CASHFLOW = null; // null = nog niet geladen; object = wel
+var BANKMUTATIES_CASHFLOW_PERIODE = 12; // 3, 6 of 12
+
+function laadBankmutatiesCashflow(periode) {
+  if (!S.code) return;
+  // fetchMetTimeout (60s): zelfde patroon als elders in deze sectie — voorkomt dat een stallende
+  // verbinding de grafiek voor altijd op "laden" laat staan.
+  fetchMetTimeout(WORKER + '/mna/bankmutaties/cashflow/' + encodeURIComponent(S.code) + '?periode=' + periode, {}, 60000)
+    .then(function(r){ return r.json(); })
+    .then(function(d){ BANKMUTATIES_CASHFLOW = (d && d.ok) ? d : { maanden: [] }; renderApp(); })
+    .catch(function(){ BANKMUTATIES_CASHFLOW = { maanden: [] }; renderApp(); });
+}
+
+function wisselCashflowPeriode(periode) {
+  periode = Number(periode);
+  if (![3,6,12].includes(periode) || periode === BANKMUTATIES_CASHFLOW_PERIODE) return;
+  BANKMUTATIES_CASHFLOW_PERIODE = periode;
+  BANKMUTATIES_CASHFLOW = null;
+  renderApp();
+  laadBankmutatiesCashflow(periode);
+}
+
+function renderCashflowSectie() {
+  // Lazy load: alleen ophalen als er al minstens 1 import is — zelf-triggerend, dus geen wijziging
+  // nodig aan de bestaande aanroeppunten van laadBankmutaties()/laadRedFlagAnalyse() elders.
+  if (BANKMUTATIES_CASHFLOW === null && BANKMUTATIES && BANKMUTATIES.length > 0) {
+    laadBankmutatiesCashflow(BANKMUTATIES_CASHFLOW_PERIODE);
+    return '<div style="font-size:12px;color:var(--muted);font-style:italic;margin-top:.5rem">Cashflow-overzicht laden...</div>';
+  }
+  if (!BANKMUTATIES || !BANKMUTATIES.length) return '';
+  if (!BANKMUTATIES_CASHFLOW) return '<div style="font-size:12px;color:var(--muted);font-style:italic;margin-top:.5rem">Cashflow-overzicht laden...</div>';
+
+  var periodeToggle = '<div style="display:flex;gap:6px;margin:.6rem 0 .5rem">' + [3,6,12].map(function(p){
+    var actief = p === BANKMUTATIES_CASHFLOW_PERIODE;
+    return '<label style="display:flex;align-items:center;gap:4px;font-size:11px;color:'+(actief?'var(--sub)':'var(--muted)')+';cursor:pointer;padding:3px 8px;border-radius:var(--r);border:1px solid '+(actief?'var(--teal)':'var(--border2)')+(actief?';background:var(--teal-bg)':'')+'">'
+      + '<input type="radio" name="cashflow-periode" style="margin:0" '+(actief?'checked':'')+' onchange="wisselCashflowPeriode('+p+')"> '+p+' mnd</label>';
+  }).join('') + '</div>';
+
+  if (BANKMUTATIES_CASHFLOW.anker_datum === null) {
+    return '<div style="margin-top:.5rem"><div style="font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin-bottom:.2rem">Cashflow-overzicht</div>'
+      + periodeToggle
+      + '<div style="font-size:11px;color:var(--muted);font-style:italic">'+esc(BANKMUTATIES_CASHFLOW.melding||'Geen data beschikbaar voor deze periode.')+'</div></div>';
+  }
+
+  var maanden = BANKMUTATIES_CASHFLOW.maanden || [];
+  var items = maanden.map(function(m){
+    return { waarde: m.netto, label: m.maand.slice(5,7)+'/'+m.maand.slice(2,4), kleur: m.netto >= 0 ? 'var(--teal)' : 'var(--red)' };
+  });
+  var grafiekHtml = (typeof dvSvgBarChart === 'function' && items.length)
+    ? dvSvgBarChart(items, 'Netto cashflow per maand (laatste ' + BANKMUTATIES_CASHFLOW_PERIODE + ' maanden)')
+    : '';
+
+  var totInstroom = maanden.reduce(function(a,m){return a+(m.instroom||0);},0);
+  var totUitstroom = maanden.reduce(function(a,m){return a+(m.uitstroom||0);},0);
+
+  return '<div style="margin-top:.5rem">'
+    + '<div style="font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin-bottom:.2rem">Cashflow-overzicht</div>'
+    + periodeToggle
+    + '<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:.75rem;margin-bottom:.4rem">' + grafiekHtml + '</div>'
+    + '<div style="font-size:11px;color:var(--mid)">Instroom &euro; '+totInstroom.toLocaleString('nl-NL',{minimumFractionDigits:2,maximumFractionDigits:2})+' &middot; Uitstroom &euro; '+Math.abs(totUitstroom).toLocaleString('nl-NL',{minimumFractionDigits:2,maximumFractionDigits:2})+' &middot; Netto &euro; '+(totInstroom+totUitstroom).toLocaleString('nl-NL',{minimumFractionDigits:2,maximumFractionDigits:2})+'</div>'
+    + '<div style="font-size:10px;color:var(--muted);margin-top:2px">Periode: '+esc(BANKMUTATIES_CASHFLOW.periode_start||'')+' t/m '+esc(BANKMUTATIES_CASHFLOW.periode_eind||'')+' &middot; '+(BANKMUTATIES_CASHFLOW.aantal_regels_in_periode||0)+' transactie(s) in periode'
+    + (BANKMUTATIES_CASHFLOW.aantal_regels_buiten_periode ? ', '+BANKMUTATIES_CASHFLOW.aantal_regels_buiten_periode+' buiten periode' : '')
+    + (BANKMUTATIES_CASHFLOW.aantal_regels_onherkenbare_datum ? ', '+BANKMUTATIES_CASHFLOW.aantal_regels_onherkenbare_datum+' met onherkenbare datum (niet meegeteld)' : '')
+    + '</div></div>';
+}
+
 // -- RED-FLAG-ANALYSE (sessie 5, alleen begeleider — zelfde zichtbaarheid als Koper-fit strategie) --
 var BANKMUTATIES_ANALYSE = null; // null = nog niet geladen; false = geladen maar nog geen analyse; object = wel
 var BANKMUTATIES_ANALYSE_BEZIG = false;
@@ -820,11 +890,12 @@ function renderBankmutatiesSectie(faseId) {
     }).join('') + '</div>';
   }
 
+  var cashflowHtml = renderCashflowSectie();
   var redFlagHtml = renderRedFlagAnalyseSectie();
-  if (!uploadHtml && !lijstHtml && !redFlagHtml) return '';
+  if (!uploadHtml && !lijstHtml && !cashflowHtml && !redFlagHtml) return '';
   return '<div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)">'
     + '<div style="font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">&#127974; Bankmutaties</div>'
-    + uploadHtml + lijstHtml + redFlagHtml + '</div>';
+    + uploadHtml + lijstHtml + cashflowHtml + redFlagHtml + '</div>';
 }
 
 // -- DOCUMENT STATE ----------------------------------------------
@@ -1873,6 +1944,8 @@ function uitloggen(){
   Object.keys(BANKMUTATIES_REGELS).forEach(function(k){delete BANKMUTATIES_REGELS[k];});
   BANKMUTATIES_ANALYSE=null;
   BANKMUTATIES_ANALYSE_BEZIG=false;
+  BANKMUTATIES_CASHFLOW=null;
+  BANKMUTATIES_CASHFLOW_PERIODE=12;
   // Bugfix 19 aug 2026 (KRITIEK, cross-path-informatielek-audit F5): CHAT (mna/07-start-chat.js) is
   // module-scope, buiten S — werd hier nooit gereset. Bij twee opeenvolgende logins in hetzelfde
   // tabblad (normaal op een gedeeld/kantoor-device) bleven chatberichten van traject A zichtbaar
