@@ -127,6 +127,14 @@ function renderCover(){
     // MOU heeft nooit een sjabloon-generator gehad (uitsluitend TOS-composer) — geen S.mouTekst-guard
     // nodig, altijd tonen zodra er een verstuurd MoU-document is (partij-reviewcyclus, 20 sep 2026).
     +((isVerkoper()||isKoper())&&!isAdmin()?'<div id="composer-mou-slot"></div>':'')
+    // BEM-reviewcyclus (21 sep 2026): net als MOU altijd tonen zodra er een verstuurde BEM is — de
+    // backend (tosCanAccess/adressaten, dynamisch per bem_verk/bem_koper) bepaalt zelf of dit voor
+    // déze partij daadwerkelijk relevant is; geen client-side rolaanname nodig.
+    +((isVerkoper()||isKoper())&&!isAdmin()?'<div id="composer-bem-slot"></div>':'')
+    // Exclusiviteitsovereenkomst-reviewcyclus (22 sep 2026): net als BEM legacy-inhoud, dunne
+    // reviewlaag erbovenop — bindt beide partijen (Marcel expliciet bevestigd), dus altijd tonen
+    // aan zowel verkoper als koper zodra er een verstuurde Excl bestaat.
+    +((isVerkoper()||isKoper())&&!isAdmin()?'<div id="composer-excl-slot"></div>':'')
     // Teaser-generatie stond hier ook voor de verkoper zelf (expliciet verzoek Marcel, 23 aug 2026).
     // Op 12 sep 2026 teruggedraaid: de teaser wordt uitsluitend nog door de begeleider aangemaakt
     // (bg-teaser-actie in mna/04), niet meer door de verkoper zelf.
@@ -1337,9 +1345,9 @@ function bindAll(){
   function laadComposerPartijPaneel(type){
     var slot=ge('composer-'+type+'-slot'); if(!slot)return;
     var profielPrefix=type.toUpperCase();
-    var kleuren={nda:'#7c5cbf',loi:'var(--gold)',mou:'#5a5470'};
-    var kleurenBg={nda:'#f3f0ff',loi:'var(--gold-bg)',mou:'#efeef5'};
-    var titels={nda:'Non-Disclosure Agreement',loi:'Letter of Intent',mou:'Memorandum of Understanding'};
+    var kleuren={nda:'#7c5cbf',loi:'var(--gold)',mou:'#5a5470',bem:'#1a7a5e',excl:'#8a5a00'};
+    var kleurenBg={nda:'#f3f0ff',loi:'var(--gold-bg)',mou:'#efeef5',bem:'var(--teal-bg)',excl:'var(--gold-bg)'};
+    var titels={nda:'Non-Disclosure Agreement',loi:'Letter of Intent',mou:'Memorandum of Understanding',bem:'Bemiddelingsovereenkomst',excl:'Exclusiviteitsovereenkomst'};
     var kleur=kleuren[type], kleurBg=kleurenBg[type], titel=titels[type];
     var kanTekenen=(type==='nda'||type==='loi'); // MOU: geen tekenrecht, zie toelichting hierboven
     fetchMetTimeout(WORKER+'/mna/tos/documenten/'+encodeURIComponent(S.code)+'?code='+encodeURIComponent(S.code),{},12000)
@@ -1371,20 +1379,27 @@ function bindAll(){
           +(r.toelichting?'<div style="font-size:11px;color:var(--mid);margin:2px 0 0 1.1rem;font-style:italic">"'+esc(r.toelichting)+'"</div>':'');
       }
 
+      // P3-fix (Breaker-review 22 sep 2026): "Beide partijen"/twee reactieregels was hardcoded, ook
+      // voor documenten met maar één geadresseerde (bijv. de meeste BEM's) — dat suggereerde ten
+      // onrechte dat er een tweede partij moest reageren. Nu dynamisch op basis van
+      // dd.document.adressaten (backend-default ['verkoper','koper'] als die leeg is, zelfde default
+      // als tosBerekenDocumentStatus() hanteert).
+      var adressaten=(dd&&dd.document&&dd.document.adressaten&&dd.document.adressaten.length)?dd.document.adressaten:['verkoper','koper'];
+      var meerdereAdressaten=adressaten.length>1;
       var statusBlok='';
       var actieBlok='';
       if(doc.status==='goedgekeurd'){
-        statusBlok='<div style="font-size:12px;font-weight:600;color:#1a7a5e;margin-bottom:.5rem">&#10003; Beide partijen akkoord — deze versie is goedgekeurd.</div>';
+        statusBlok='<div style="font-size:12px;font-weight:600;color:#1a7a5e;margin-bottom:.5rem">&#10003; '+(meerdereAdressaten?'Beide partijen zijn':'Akkoord gegeven —')+' akkoord — deze versie is goedgekeurd.</div>';
       } else if(doc.status==='wijziging_gevraagd'){
         statusBlok='<div style="font-size:12px;font-weight:600;color:var(--red);margin-bottom:.5rem">Er is een wijziging gevraagd. De begeleider bereidt een nieuwe versie voor — u ontvangt die zodra hij klaar is.</div>';
       } else if(eigenReactie){
-        statusBlok='<div style="font-size:12px;color:var(--mid);margin-bottom:.5rem">Uw reactie is geregistreerd. Nog wachten op de andere partij.</div>';
+        statusBlok='<div style="font-size:12px;color:var(--mid);margin-bottom:.5rem">Uw reactie is geregistreerd.'+(meerdereAdressaten?' Nog wachten op de andere partij.':'')+'</div>';
       }
-      // Reactieoverzicht (wie/wat/wanneer/welke versie) — alleen tonen zodra er iets te tonen is.
+      // Reactieoverzicht (wie/wat/wanneer/welke versie) — alleen tonen zodra er iets te tonen is, en
+      // alleen regels voor daadwerkelijke geadresseerden (niet een partij die nooit gevraagd is).
       var overzicht = (reacties.length || doc.status!=='verstuurd') ? (
         '<div style="font-size:11px;line-height:1.9;margin-bottom:.75rem;padding:.5rem .75rem;background:rgba(0,0,0,.03);border-radius:6px">'
-        +reactieRegel('verkoper', reacties.find(function(x){return x.party_role==='verkoper';}))+'<br>'
-        +reactieRegel('koper', reacties.find(function(x){return x.party_role==='koper';}))
+        +adressaten.map(function(rol){return reactieRegel(rol, reacties.find(function(x){return x.party_role===rol;}));}).join('<br>')
         +'</div>'
       ) : '';
 
@@ -1420,10 +1435,22 @@ function bindAll(){
           if(c.text)regels.push('\n'+c.text);
           return regels.join('\n');
         }).join('\n\n');
+        // Legacy-documentreviewcyclus (BEM 21 sep 2026, Excl 22 sep 2026): deze twee hebben geen
+        // componenten — de inhoud komt uit dd.legacy_tekst (mna_doc_versies, via worker/31-tos.js).
+        // Bij een eigen PDF/Word-upload staat daar alleen een placeholder — dan een downloadlink
+        // tonen i.p.v. de placeholdertekst zelf.
+        var eigenPdfBem=false;
+        if((type==='bem'||type==='excl')&&dd){
+          if((dd.legacy_tekst||'').indexOf('[EIGEN PDF GEÜPLOAD:')===0){ eigenPdfBem=true; }
+          else { tekst=dd.legacy_tekst||''; }
+        }
         var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;display:flex;align-items:center;justify-content:center;padding:1.5rem';
         var box=document.createElement('div');box.setAttribute('role','dialog');box.setAttribute('aria-modal','true');box.setAttribute('aria-labelledby','composer-'+type+'-lees-titel');box.style.cssText='background:var(--panel);border-radius:10px;padding:2rem;max-width:700px;width:100%;max-height:90vh;overflow-y:auto';
         box.innerHTML='<div id="composer-'+type+'-lees-titel" style="font-family:Playfair Display,serif;font-size:1.2rem;font-weight:600;color:var(--head);margin-bottom:1rem">'+titel+'</div>'
-          +'<div style="font-family:Georgia,serif;font-size:13px;line-height:1.9;color:var(--sub);white-space:pre-wrap">'+esc(tekst)+'</div>'
+          +(eigenPdfBem
+            ?('<div style="font-size:13px;color:var(--mid);margin-bottom:1rem">Dit document is als bestand geüpload. Download het om de inhoud te beoordelen.</div>'
+              +(dd.legacy_bijlage_doc_id?('<a href="'+WORKER+'/mna/document/download/'+encodeURIComponent(dd.legacy_bijlage_doc_id)+'?code='+encodeURIComponent(S.code)+'" target="_blank" rel="noopener" class="btn" style="text-decoration:none;display:inline-block">&#8681; Download bestand</a>'):'<div style="font-size:12px;color:var(--muted)">Geen downloadbaar bestand gevonden — neem contact op met de begeleider.</div>'))
+            :'<div style="font-family:Georgia,serif;font-size:13px;line-height:1.9;color:var(--sub);white-space:pre-wrap">'+esc(tekst)+'</div>')
           +'<div style="display:flex;justify-content:flex-end;margin-top:1.25rem"><button style="background:transparent;border:1px solid #c8c5bc;border-radius:6px;padding:8px 18px;cursor:pointer;font-size:13px" id="composer-'+type+'-sluit">Sluiten</button></div>';
         ov.appendChild(box);document.body.appendChild(ov);
         ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
@@ -1470,6 +1497,8 @@ function bindAll(){
   laadComposerPartijPaneel('mou');
   laadComposerPartijPaneel('nda');
   laadComposerPartijPaneel('loi');
+  laadComposerPartijPaneel('bem');
+  laadComposerPartijPaneel('excl');
 
   // LoI knoppen op cover
   var loiLees=ge('loi-lees-btn');

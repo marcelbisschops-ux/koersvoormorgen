@@ -334,19 +334,22 @@ async function laadPartijDocs() {
   var opdRol = (S.traject && S.traject.opdrachtgever_rol) ? S.traject.opdrachtgever_rol : 'verkoper';
   var rolFilter;
   if (isVerkoper()) {
-    // Verkoper ziet: NDA + LoI + Excl (als verkoper opdrachtgever is = Excl naar koper)
+    // Verkoper ziet: NDA + LoI (Excl is verhuisd naar de reviewcyclus-composer, composer-excl-slot
+    // in mna/06-schermen.js, 22 sep 2026 — anders zou hetzelfde document dubbel verschijnen: hier
+    // platte tekst zonder akkoord/wijziging-knoppen, en daar de interactieve reviewweergave)
+    // + Dealvoorstel + Indicatieve bieding (22 sep 2026, terugweg-fix — categorie B: geen akkoord/
+    // wijziging-knoppen nodig, wel terugvindbaar in het dossier)
     // Verkoper ziet NOOIT de BEM — dat is een contract tussen Bisschops Financing en opdrachtgever
-    // Verkoper ziet altijd Excl — die is immers gericht aan de verkoper
-    rolFilter = ['nda','loi','nda_upload','loi_upload','excl','exclusief','excl_upload'];
+    rolFilter = ['nda','loi','nda_upload','loi_upload','dealvoorstel','bieding'];
   } else {
-    // Koper ziet: NDA + LoI + Excl (als koper opdrachtgever is = Excl naar verkoper)
-    // Koper ziet NOOIT de BEM tenzij koper zelf opdrachtgever is
-    rolFilter = ['nda','loi','nda_upload','loi_upload'];
+    // Koper ziet: NDA + LoI (Excl idem verhuisd naar de composer-slot) + Indicatieve bieding (koper
+    // ontvangt die ook al per mail, 22 sep 2026 terugweg-fix). Koper ziet NOOIT het Dealvoorstel —
+    // bewust, bestaande businesslogica (interne onderhandelbijlage, gaat nooit naar koper_email).
+    rolFilter = ['nda','loi','nda_upload','loi_upload','bieding'];
     if (opdRol === 'koper' || opdRol === 'beide') rolFilter.push('bem','bem_koper','bem_upload');
-    if (opdRol === 'verkoper' || opdRol === 'beide') rolFilter.push('excl','exclusief','excl_upload');
   }
-  var labels = {nda:'NDA',loi:'Letter of Intent',bem:'Bemiddelingsovereenkomst',bem_verk:'Bemiddelingsovereenkomst',bem_koper:'Bemiddelingsovereenkomst',excl:'Exclusiviteitsbrief',exclusief:'Exclusiviteitsbrief',bem_upload:'Bemiddelingsovereenkomst',excl_upload:'Exclusiviteitsbrief',nda_upload:'NDA',loi_upload:'Letter of Intent'};
-  var kleuren = {nda:'#7c5cbf',loi:'#c9a84c',bem:'#2a5ea0',bem_verk:'#2a5ea0',bem_koper:'#2a5ea0',excl:'#1a7a5e',exclusief:'#1a7a5e'};
+  var labels = {nda:'NDA',loi:'Letter of Intent',bem:'Bemiddelingsovereenkomst',bem_verk:'Bemiddelingsovereenkomst',bem_koper:'Bemiddelingsovereenkomst',excl:'Exclusiviteitsbrief',exclusief:'Exclusiviteitsbrief',bem_upload:'Bemiddelingsovereenkomst',excl_upload:'Exclusiviteitsbrief',nda_upload:'NDA',loi_upload:'Letter of Intent',dealvoorstel:'Dealvoorstel',bieding:'Indicatieve bieding'};
+  var kleuren = {nda:'#7c5cbf',loi:'#c9a84c',bem:'#2a5ea0',bem_verk:'#2a5ea0',bem_koper:'#2a5ea0',excl:'#1a7a5e',exclusief:'#1a7a5e',dealvoorstel:'#8a5a00',bieding:'#a0522d'};
   try {
     // Haal contractversies EN geüploade dataroom-bestanden parallel op
     var [versiesResp, docsResp] = await Promise.all([

@@ -1330,6 +1330,10 @@ function renderBegeleiderDashboard(app){
       +(getekend?'<span style="font-size:11px;padding:3px 10px;border-radius:12px;background:var(--teal-bg);border:1px solid var(--teal);color:var(--teal)">&#10003; Getekend door '+esc(getekend)+(datum?' &middot; '+new Date(datum).toLocaleDateString('nl-NL',{day:'2-digit',month:'short',year:'numeric'}):'')+'</span>'
         :'<span style="font-size:11px;padding:3px 10px;border-radius:12px;background:var(--gold-bg);border:1px solid var(--gold);color:var(--gold)">Nog niet getekend</span>')
       +'</div>'
+      // Legacy-documentreviewcyclus (BEM 21 sep 2026, Excl 22 sep 2026): reactiestatus van de
+      // partij(en) (async geladen, zie bgLaadLegacyReviewStatus hieronder — leeg zolang er geen
+      // tos_document voor dit document bestaat, bijv. verstuurd vóór deze feature).
+      +((type==='bem'||type==='excl')?'<div id="bg-legacy-review-status" style="margin-bottom:.75rem"></div>':'')
       +(heeftTekst
         ?'<textarea id="bg-doc-tekst" readonly style="width:100%;height:280px;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:Georgia,serif;font-size:12px;line-height:1.8;padding:1rem;outline:none;resize:vertical">'+esc(vd.tekst)+'</textarea>'
         :'<div style="font-size:12px;color:var(--muted);padding:1rem;background:var(--card);border-radius:var(--r)">Geüpload bestand, geen tekstweergave beschikbaar. <a href="'+WORKER+'/mna/document/download/'+v.id+'?code='+encodeURIComponent(S.code)+'" target="_blank" rel="noopener" style="color:var(--teal)">&#8681; Download</a></div>')
@@ -1347,6 +1351,7 @@ function renderBegeleiderDashboard(app){
       +'</div>';
     var nieuwBtn=document.getElementById('bg-doc-nieuw');
     if(nieuwBtn)nieuwBtn.onclick=function(){ toonDocWaarschuwing(type,function(){ bgDoc(type); }); };
+    if(type==='bem'||type==='excl')bgLaadLegacyReviewStatus(type);
     if(!heeftTekst)return;
     var bgAkkoordCtrl=wireAkkoord('bg-doc-akkoord', ['bg-email','bg-signhost'].filter(function(id){return document.getElementById(id);}));
     var bgGoedkeuringCtrl=type==='loi'?wireInterneGoedkeuring('bg-goedkeuring-naam','bg-doc-akkoord',['bg-email','bg-signhost'].filter(function(id){return document.getElementById(id);})):null;
@@ -1386,7 +1391,12 @@ function renderBegeleiderDashboard(app){
       if(bgPdfStaat.base64){payload.eigen_pdf_base64=bgPdfStaat.base64;payload.eigen_pdf_naam=bgPdfStaat.naam;payload.eigen_pdf_mime=bgPdfStaat.mime;}
       var er=await fetch(WORKER+ep,{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S.code},body:JSON.stringify(payload)});
       var ed=await er.json();
-      if(ed.ok){ebtn.textContent='✓ Verstuurd';if(ed.opslag_mislukt)toast('Verstuurd, maar het bestand kon niet blijvend worden opgeslagen in het platform — download achteraf werkt hierdoor niet. Bewaar zelf een kopie.','err',8000);}else{toast('Fout: '+(ed.error||'onbekend'),'err');ebtn.disabled=false;ebtn.textContent='✉ Verstuur';}
+      if(ed.ok){ebtn.textContent='✓ Verstuurd';if(ed.opslag_mislukt)toast('Verstuurd, maar het bestand kon niet blijvend worden opgeslagen in het platform — download achteraf werkt hierdoor niet. Bewaar zelf een kopie.','err',8000);
+        // P1-fix (Breaker-heropname 22 sep 2026): dit veld bestond al (bem/excl), maar werd nergens
+        // getoond — de begeleider zag dus nooit dat de reviewcyclus-registratie was mislukt (en dus
+        // dat tekenen terecht geblokkeerd blijft tot een geslaagde herverzending).
+        if(ed.review_registratie_mislukt)toast('Verstuurd, maar de koppeling aan de reviewcyclus is mislukt — de partij kan het document nog niet beoordelen. Verstuur het document opnieuw.','err',9000);
+      }else{toast('Fout: '+(ed.error||'onbekend'),'err');ebtn.disabled=false;ebtn.textContent='✉ Verstuur';}
       });
     };
     var handmatigBtn=document.getElementById('bg-handmatig-getekend');
@@ -1472,6 +1482,46 @@ function renderBegeleiderDashboard(app){
         });
       };
     };
+  }
+
+  // Legacy-documentreviewcyclus (BEM 21 sep 2026, gegeneraliseerd naar Excl 22 sep 2026): toont de
+  // begeleider de reactiestatus (akkoord/wijziging gevraagd) op het laatst verstuurde document —
+  // zelfde onderliggende architectuur/endpoints als MOU/LOI/NDA (worker/31-tos.js), alleen de
+  // weergave is hier lokaal (BEM/Excl hebben geen eigen composer-view zoals bgMouRender()). Toont
+  // niets als er geen tos_document bestaat (bijv. verstuurd vóór deze feature) — geen foutmelding,
+  // gewoon leeg. BEM: één opdrachtgever moet akkoord geven. Excl: BEIDE partijen (Marcel expliciet
+  // bevestigd, 22 sep 2026) — tosBerekenDocumentStatus() (backend) dwingt dat al generiek af, hier
+  // alleen de bijpassende tekst.
+  async function bgLaadLegacyReviewStatus(type){
+    var slot=document.getElementById('bg-legacy-review-status');
+    if(!slot)return;
+    var profielPrefix=type.toUpperCase();
+    try{
+      var d=await fetchMetTimeout(WORKER+'/mna/tos/documenten/'+encodeURIComponent(S.code)+'?code='+encodeURIComponent(S.code),{headers:{'x-tussen-key':S.code}},12000).then(function(r){return r.json();});
+      var docLijst=(d.documenten||[]).filter(function(x){return (x.profiel||'').split('@')[0]===profielPrefix;});
+      var doc=docLijst[0];
+      if(!doc)return;
+      var dd=await fetchMetTimeout(WORKER+'/mna/tos/document/'+encodeURIComponent(doc.id)+'?code='+encodeURIComponent(S.code),{headers:{'x-tussen-key':S.code}},12000).then(function(r){return r.json();});
+      var reacties=(dd&&dd.reacties)||[];
+      var wieMoetAkkoord=type==='excl'?'Beide partijen moeten':'De opdrachtgever moet';
+      var wieIsAkkoord=type==='excl'?'Beide partijen zijn':'De opdrachtgever is';
+      var labels2={verstuurd:['Verstuurd — '+wieMoetAkkoord.charAt(0).toLowerCase()+wieMoetAkkoord.slice(1)+' nog reageren','var(--gold)'],goedgekeurd:['&#10003; '+wieIsAkkoord+' inhoudelijk akkoord — nu ondertekenen mogelijk','#1a7a5e'],wijziging_gevraagd:['&#9888; Er is een wijziging gevraagd — maak een nieuwe versie','var(--red)']};
+      var statusInfo=labels2[doc.status]||[doc.status,'var(--muted)'];
+      var html='<div style="font-size:12px;font-weight:600;color:'+statusInfo[1]+';margin-bottom:.4rem">'+statusInfo[0]+'</div>';
+      if(reacties.length){
+        html+='<div style="font-size:11px;line-height:1.7;padding:.5rem .75rem;background:rgba(0,0,0,.03);border-radius:6px">'
+          +reacties.map(function(r){
+            var dt=r.responded_at?new Date(r.responded_at).toLocaleDateString('nl-NL',{day:'2-digit',month:'short',year:'numeric'}):'';
+            var naam=r.party_role==='verkoper'?'Verkoper':'Koper';
+            if(r.response==='akkoord')return '<div style="color:#1a7a5e">&#10003; '+naam+': akkoord'+(dt?' &middot; '+dt:'')+'</div>';
+            return '<div style="color:var(--red)">&#9888; '+naam+': wijziging gevraagd'+(dt?' &middot; '+dt:'')+'</div>'
+              +(r.toelichting?'<div style="margin:2px 0 0 1.1rem;color:var(--mid);font-style:italic">"'+esc(r.toelichting)+'"</div>':'')
+              +(r.wijzigingsvoorstel?'<div style="margin:0 0 0 1.1rem;color:var(--mid)"><strong>Voorstel:</strong> '+esc(r.wijzigingsvoorstel)+'</div>':'');
+          }).join('')
+          +'</div>';
+      }
+      slot.innerHTML=html;
+    }catch(e){}
   }
 
   // Document genereren helper
@@ -1679,7 +1729,12 @@ function renderBegeleiderDashboard(app){
       if(bgPdfStaat.base64){payload.eigen_pdf_base64=bgPdfStaat.base64;payload.eigen_pdf_naam=bgPdfStaat.naam;payload.eigen_pdf_mime=bgPdfStaat.mime;}
       var er=await fetch(WORKER+ep,{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S.code},body:JSON.stringify(payload)});
       var ed=await er.json();
-      if(ed.ok){ebtn.textContent='✓ Verstuurd';if(ed.opslag_mislukt)toast('Verstuurd, maar het bestand kon niet blijvend worden opgeslagen in het platform — download achteraf werkt hierdoor niet. Bewaar zelf een kopie.','err',8000);}else{toast('Fout: '+(ed.error||'onbekend'),'err');ebtn.disabled=false;ebtn.textContent='✉ Verstuur';}
+      if(ed.ok){ebtn.textContent='✓ Verstuurd';if(ed.opslag_mislukt)toast('Verstuurd, maar het bestand kon niet blijvend worden opgeslagen in het platform — download achteraf werkt hierdoor niet. Bewaar zelf een kopie.','err',8000);
+        // P1-fix (Breaker-heropname 22 sep 2026): dit veld bestond al (bem/excl), maar werd nergens
+        // getoond — de begeleider zag dus nooit dat de reviewcyclus-registratie was mislukt (en dus
+        // dat tekenen terecht geblokkeerd blijft tot een geslaagde herverzending).
+        if(ed.review_registratie_mislukt)toast('Verstuurd, maar de koppeling aan de reviewcyclus is mislukt — de partij kan het document nog niet beoordelen. Verstuur het document opnieuw.','err',9000);
+      }else{toast('Fout: '+(ed.error||'onbekend'),'err');ebtn.disabled=false;ebtn.textContent='✉ Verstuur';}
       });
     };
     // Handmatig markeren als getekend buiten Signhost om (bijv. per post of los ondertekend) —
@@ -3392,7 +3447,16 @@ function renderBegeleiderDashboard(app){
         +'<button class="btn-ghost" id="teaser-print-btn" style="font-size:12px;padding:6px 14px">&#128196; Print / PDF</button>'
         +'<button class="btn-outline btn-sm" id="teaser-nieuw-btn">&#8635; Opnieuw genereren</button>'
         +'<button class="btn-ghost" id="teaser-sluit-btn" style="margin-left:auto">Sluiten</button>'
-        +'</div></div>';
+        +'</div>'
+        // Verzendflow (22 sep 2026, categorie C — informatief, geen reviewcyclus): de teaser gaat naar
+        // een zelf-gekozen prospect, niet naar de vaste verkoper-/koper-adressen van het traject —
+        // vandaar een vrij invulbaar e-mailveld i.p.v. de vaste to-lijst die BEM/NDA/etc. gebruiken.
+        +'<div style="margin-top:.75rem;padding-top:.75rem;border-top:1px dashed var(--border2)">'
+        +'<label for="teaser-email-naar" style="display:block;font-size:12px;color:var(--muted);margin-bottom:3px">Verstuur naar (e-mailadres van de geïnteresseerde partij)</label>'
+        +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
+        +'<input type="email" id="teaser-email-naar" placeholder="naam@voorbeeld.nl" style="flex:1;min-width:200px;background:var(--bg);border:1.5px solid var(--border);border-radius:var(--r);font-family:\'IBM Plex Sans\',sans-serif;font-size:13px;padding:8px 11px;color:var(--sub);outline:none">'
+        +'<button class="btn" id="teaser-email-btn" style="background:var(--teal)">&#9993; Verstuur</button>'
+        +'</div></div></div>';
       document.getElementById('teaser-sluit-btn').onclick=function(){out.style.display='none';};
       document.getElementById('teaser-print-btn').onclick=function(){
         printDoc(document.getElementById('teaser-txt').value||'', 'Teaser', 'teaser');
@@ -3406,6 +3470,17 @@ function renderBegeleiderDashboard(app){
         btn.disabled=false;btn.textContent='Opslaan';
       };
       document.getElementById('teaser-nieuw-btn').onclick=function(){genereerTeaser();};
+      document.getElementById('teaser-email-btn').onclick=async function(){
+        var btn=this;
+        var naarAdres=(document.getElementById('teaser-email-naar').value||'').trim();
+        if(!naarAdres||naarAdres.indexOf('@')<0){toast('Vul een geldig e-mailadres in.','err');return;}
+        btn.disabled=true;btn.textContent='Versturen...';
+        var tekstNu=document.getElementById('teaser-txt').value;
+        var r=await fetchMetTimeout(WORKER+'/mna/teaser/email',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||''},body:JSON.stringify({code:S.code,teaser_tekst:tekstNu,to:[naarAdres]})},30000).then(function(x){return x.json();}).catch(function(){return{error:'Verbindingsfout.'};});
+        if(r.ok){toast('Teaser verstuurd naar '+naarAdres+'.','ok');document.getElementById('teaser-email-naar').value='';}
+        else{toast('Fout: '+(r.error||'onbekend'),'err');}
+        btn.disabled=false;btn.textContent='✉ Verstuur';
+      };
     }
     async function genereerTeaser(){
       out.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;color:var(--muted)">Genereren...</div>';
@@ -3434,7 +3509,16 @@ function renderBegeleiderDashboard(app){
         +'<button class="btn-ghost" id="verkoopmemo-print-btn" style="font-size:12px;padding:6px 14px">&#128196; Print / PDF</button>'
         +'<button class="btn-outline btn-sm" id="verkoopmemo-nieuw-btn">&#8635; Opnieuw genereren</button>'
         +'<button class="btn-ghost" id="verkoopmemo-sluit-btn" style="margin-left:auto">Sluiten</button>'
-        +'</div></div>';
+        +'</div>'
+        // Verzendflow (22 sep 2026, categorie C — informatief, geen reviewcyclus). Voorgevuld met
+        // koper_email indien al bekend (gemak), maar altijd vrij aan te passen — het verkoopmemo gaat
+        // naar wie de NDA heeft getekend, niet per se naar een reeds geregistreerde koper.
+        +'<div style="margin-top:.75rem;padding-top:.75rem;border-top:1px dashed var(--border2)">'
+        +'<label for="verkoopmemo-email-naar" style="display:block;font-size:12px;color:var(--muted);margin-bottom:3px">Verstuur naar (e-mailadres van de NDA-ondertekenaar)</label>'
+        +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
+        +'<input type="email" id="verkoopmemo-email-naar" value="'+esc(t2.koper_email||'')+'" placeholder="naam@voorbeeld.nl" style="flex:1;min-width:200px;background:var(--bg);border:1.5px solid var(--border);border-radius:var(--r);font-family:\'IBM Plex Sans\',sans-serif;font-size:13px;padding:8px 11px;color:var(--sub);outline:none">'
+        +'<button class="btn" id="verkoopmemo-email-btn" style="background:#8a5a00">&#9993; Verstuur</button>'
+        +'</div></div></div>';
       document.getElementById('verkoopmemo-sluit-btn').onclick=function(){out.style.display='none';};
       document.getElementById('verkoopmemo-print-btn').onclick=function(){
         printDoc(document.getElementById('verkoopmemo-txt').value||'', 'Verkoopmemorandum — '+(t2.kantoor_naam||S.code), 'memo');
@@ -3451,6 +3535,17 @@ function renderBegeleiderDashboard(app){
         // Zonder formeel getekende NDA vereist opnieuw genereren óók de bevestiging + naam — anders
         // 400 van de backend en een dood scherm. Mét NDA: direct opnieuw.
         if(t2.nda_getekend){genereerVerkoopmemo(false);}else{toonNdaBevestiging();}
+      };
+      document.getElementById('verkoopmemo-email-btn').onclick=async function(){
+        var btn=this;
+        var naarAdres=(document.getElementById('verkoopmemo-email-naar').value||'').trim();
+        if(!naarAdres||naarAdres.indexOf('@')<0){toast('Vul een geldig e-mailadres in.','err');return;}
+        btn.disabled=true;btn.textContent='Versturen...';
+        var tekstNu=document.getElementById('verkoopmemo-txt').value;
+        var r=await fetchMetTimeout(WORKER+'/mna/verkoopmemorandum/email',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||''},body:JSON.stringify({code:S.code,verkoopmemorandum_tekst:tekstNu,to:[naarAdres]})},30000).then(function(x){return x.json();}).catch(function(){return{error:'Verbindingsfout.'};});
+        if(r.ok){toast('Verkoopmemorandum verstuurd naar '+naarAdres+'.','ok');}
+        else{toast('Fout: '+(r.error||'onbekend'),'err');}
+        btn.disabled=false;btn.textContent='✉ Verstuur';
       };
     }
     async function genereerVerkoopmemo(ndaBevestigd,ndaDoor){
