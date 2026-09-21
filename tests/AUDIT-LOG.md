@@ -468,3 +468,7 @@ checks_geslaagd=18`. Cleanup onafhankelijk gecontroleerd: 0 resterende E2E-testt
 
 Geen productiecode aangeraakt; alleen `.github/workflows/checks.yml`. Marcels WIP-bestanden
 ongemoeid gelaten. Volledig verslag (met precieze foutmeldingen per poging) in de sessie zelf.
+
+---
+
+**2026-09-21** — diepe-audit-routine: geen open aanvraag in de wachtrij; vandaag is dag 21 van de maand (buiten het 1e-3e-dag-venster voor de maandelijkse cadans-trigger), dus geen eigen aanvraag ingediend. Geen verdere actie.
