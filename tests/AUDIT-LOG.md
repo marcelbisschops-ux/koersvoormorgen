@@ -472,3 +472,54 @@ ongemoeid gelaten. Volledig verslag (met precieze foutmeldingen per poging) in d
 ---
 
 **2026-09-21** — diepe-audit-routine: geen open aanvraag in de wachtrij; vandaag is dag 21 van de maand (buiten het 1e-3e-dag-venster voor de maandelijkse cadans-trigger), dus geen eigen aanvraag ingediend. Geen verdere actie.
+
+---
+
+## 2026-09-21 (vervolg) — wekelijkse-audit-routine (scheduled task)
+
+**Stap 1 — sync en syntax:** `node --check` op `backend/cloudflare-worker.js` (canonieke bron in de
+aparte backend-repo) en alle `backend/worker/*.js`-modules: allemaal groen. `node --check` op alle
+`mna/*.js`-modules (frontend): allemaal groen. Geen syntaxfouten.
+
+**Stap 2 — consistentie-/veiligheidsaudit:** `node tests/audit-consistentie.mjs` — alle 15 checks
+groen (veldreferenties, shadowing, begeleiderAuth-scoping, intern/koper-afscherming, SELECT *-scope,
+traject_id-verwijdercascade (41 tabellen), gevoelige-termen-check, dealvoorstel BATNA-scheiding,
+bgDoc-clausule-integriteit, kleurcontrast WCAG AA, load-bearing pagina's, cross-document-guardrails,
+reliance-voettekst, NDA/LoI/MOU-generatierace-bewaking, bgDocSpa-route). Geen bevindingen.
+
+**Stap 3 — functionele testsuite (`tests/e2e-api.mjs`, tegen productie):** kon niet volledig slagen.
+`/health` en de ongeldige-toegangscode-check (geen sleutel nodig) slaagden (4/13 checks groen); elke
+stap die de `ADMIN_KEY`-omgevingsvariabele nodig heeft (adviseur uitnodigen, verkoop-instelling,
+traject aanmaken/limiet) gaf `Unauthorized`/`Authenticatie mislukt`. Dit is beoordeeld als een
+**sleutel-/omgevingskwestie, geen platformbug**: stap 1 en 2 tonen geen enkele autorisatie-afwijking,
+en het geheugen van deze sessie bevestigt dat de productie-`ADMIN_KEY` op 19 sep 2026 is geroteerd na
+een per-ongeluk-blootstelling. Zeer aannemelijk dat de omgevingsvariabele die aan déze geplande taak
+gekoppeld is nog de vóór-19-sep-waarde bevat. Deze routine heeft geen eigen live `ADMIN_KEY`-toegang
+en kan/mag de sleutel niet zelf raden, invullen of tonen (GOUDEN STANDAARD secrets, werkregel/CLAUDE.md)
+— dit wacht dus op Marcel: de omgevingsvariabele van deze scheduled task bijwerken naar de huidige
+sleutel. Resterende teststappen (10-13) zijn als gevolg daarvan overgeslagen, geen platformdefect.
+
+**Stap 4 — zelfstandig verbetertraject:** geen bevindingen om op te lossen — stap 1 en 2 volledig
+groen, en de enige stap-3-uitval is de hierboven beschreven omgevingskwestie, niet iets dat in code
+te repareren is. Geen wijzigingen aan productie- of backend-code deze ronde.
+
+**Zijstap — bestaande working-tree-rommel gecontroleerd, niet aangeraakt:** `bedrijfsscan-start.html`
+had bij aanvang nog altijd de al eerder (19/20 sep) genoteerde 460 regels onopgeslagen toevoegingen
+(Marcels/een eerdere sessie's lopend handwerk) — ongemoeid gelaten. Zeven ongecommitte
+`BATCH3*`-patchbestanden op de repo-root nader bekeken (niet toegepast, alleen gelezen): BATCH3B
+(adviseur `opdrachtgever_rol`), BATCH3C (`mailFoutmelding`-nette foutafhandeling), BATCH3D
+(teaser-`max_tokens` 700→2000) en BATCH3E (info-fases-analyse-`max_tokens` 1000→2000) blijken
+inhoudelijk al live in de backend-repo te staan — deze patchbestanden zijn dus achterhaald.
+BATCH3F (bijlage-extractie-`max_tokens` 2000→8000) is **bewust niet** toegepast: de live code bevat
+al een gedateerde (16 sep 2026) toelichting die expliciet motiveert waarom 2000 gehandhaafd blijft na
+diagnostisch onderzoek (test-economy-regel, werkregel 40) — dit patchbestand is dus een achterhaald
+alternatief, geen openstaande fix. BATCH3Fa (base64-chunking-fix bij bijlagen >8192 bytes) staat óók
+al live (`btoa()` nu ná volledige concatenatie i.p.v. per chunk) — beide 3Fa-patchbestanden
+(testinfra + voorgestelde fix) zijn dus eveneens achterhaald. Niets verwijderd of gewijzigd (niet in
+scope van deze routine); Marcel kan deze zeven bestanden waarschijnlijk zonder gevolgen opruimen
+zodra hij dat zelf bevestigt.
+
+**Samenvatting:** 🟠 alles wat automatisch getest kon worden is groen (syntax + consistentie-audit);
+de functionele testsuite kon niet volledig draaien door een vermoedelijk verlopen `ADMIN_KEY` in de
+omgeving van deze geplande taak — geen aanwijzing voor een platformbug, wel een openstaand punt voor
+Marcel (sleutel bijwerken in de scheduled-task-omgeving). Geen code gewijzigd, geen deploy.
