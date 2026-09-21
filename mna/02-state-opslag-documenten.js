@@ -635,10 +635,13 @@ function genereerRedFlagAnalyse() {
   if (!isTussen() || BANKMUTATIES_ANALYSE_BEZIG) return;
   BANKMUTATIES_ANALYSE_BEZIG = true;
   renderApp();
-  fetch(WORKER + '/mna/bankmutaties/analyse/genereren', {
+  // fetchMetTimeout (60s): zelfde bugklasse als de fix van 15 sep 2026 — een kale fetch() op een
+  // AI-generatie-aanroep kon bij een stallende verbinding voor altijd op "Analyse wordt
+  // gegenereerd..." blijven staan (foutpropagatie-check, zie de document-upload-fix van 21 sep 2026).
+  fetchMetTimeout(WORKER + '/mna/bankmutaties/analyse/genereren', {
     method: 'POST', headers: { 'Content-Type': 'application/json', 'x-tussen-key': S.code },
     body: JSON.stringify({ traject_id: S.code })
-  }).then(function(r){ return r.json(); })
+  }, 60000).then(function(r){ return r.json(); })
     .then(function(d){
       BANKMUTATIES_ANALYSE_BEZIG = false;
       if (d && d.ok) { BANKMUTATIES_ANALYSE = { resultaat: d.resultaat, aantal_regels_geanalyseerd: d.aantal_regels_geanalyseerd, gegenereerd_op: Date.now() }; }
@@ -722,7 +725,10 @@ function uploadBankmutatiesBestand(input) {
   var fd = new FormData();
   fd.append('code', S.code);
   fd.append('file', file);
-  fetch(WORKER + '/mna/bankmutaties/upload', { method: 'POST', body: fd })
+  // fetchMetTimeout (60s): zelfde bugklasse als de fix van 15 sep 2026 (foutpropagatie-check, zie de
+  // document-upload-fix van 21 sep 2026) — kon bij een stallende verbinding voor altijd op "Bezig
+  // met verwerken..." blijven staan.
+  fetchMetTimeout(WORKER + '/mna/bankmutaties/upload', { method: 'POST', body: fd }, 60000)
     .then(function(r){ return r.json(); })
     .then(function(d){
       input.value = '';
@@ -920,7 +926,12 @@ async function uploadDocument(faseId, file, existingId, vervangtDocId) {
   var url = WORKER + '/mna/document/upload?code=' + S.code + '&fase_id=' + faseId + '&bewaar=' + bewaar + (entiteitId?'&entiteit_id='+encodeURIComponent(entiteitId):'') + (dubbeleCheck?'&dubbele_check=true':'') + (alleenBewijsstuk?'&alleen_bewijsstuk=true':'') + (vervangtDocId?'&vervangt='+encodeURIComponent(vervangtDocId):'');
 
   try {
-    var resp = await fetch(url, { method: 'POST', body: formData });
+    // fetchMetTimeout (60s): dezelfde AI-generatie-fetch-zonder-timeout-klasse als de bugfix van
+    // 15 sep 2026 (teaser/verkoopmemorandum/SPA/risicoraamwerk/waardering) — deze fase-uploadzone
+    // gebruikte nog een kale fetch() en kon dus voor altijd op "uploaden..." blijven hangen bij een
+    // stallende AI-respons. window.centraalUploadFiles() hieronder had voor exact dezelfde
+    // /mna/document/upload-aanroep al een 45s AbortController-timeout — deze plek was gemist.
+    var resp = await fetchMetTimeout(url, { method: 'POST', body: formData }, 60000);
     var d = await resp.json();
     if (d.ok) {
       // Replace temp with real — en bij een vervangende versie ook de oude versie uit de weergave
@@ -1653,7 +1664,7 @@ async function consolideerAnalyse(faseId){
     // Zelfde bug + fix als generateAI() in mna/06-schermen.js (Foutpropagatie-check, 12 sep 2026):
     // /ai geeft één JSON-object {text:...} terug, geen SSE-stream — de oude reader/decoder-lus vond
     // dus nooit een match en col bleef altijd leeg.
-    var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}]})});
+    var resp=await fetchMetTimeout(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}]})},60000);
     if(!resp.ok)throw new Error('HTTP '+resp.status);
     var rd=await resp.json();
     if(!rd.text)throw new Error(rd.error||'Leeg antwoord');

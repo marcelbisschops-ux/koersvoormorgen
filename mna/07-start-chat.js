@@ -136,10 +136,10 @@ async function chatVerstuur(tekst) {
       else if (b.auteur === 'ai') msgs.push({ role: 'assistant', content: b.tekst });
     });
     try {
-      var resp = await fetch(WORKER + '/ai', {
+      var resp = await fetchMetTimeout(WORKER + '/ai', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ system: systeemPrompt, messages: msgs, max_tokens: 400 })
-      });
+      }, 60000);
       var rd = await resp.json();
       var antwoord = rd.text || 'Sorry, er ging iets mis.';
       CHAT.berichten = CHAT.berichten.filter(function(b){ return !b.typing; });

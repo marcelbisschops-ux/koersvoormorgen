@@ -780,7 +780,10 @@ function uploadDocument(id, tussenCode){
       var fd=new FormData();
       fd.append('file',file);
       var alleenBewijsstuk=ge('up-bewijsstuk').checked;
-      var r=await fetch(WORKER+'/mna/document/upload?code='+encodeURIComponent(tussenCode)+'&fase_id='+encodeURIComponent(fase)+'&bewaar=1'+(alleenBewijsstuk?'&alleen_bewijsstuk=true':''),{method:'POST',body:fd});
+      // fetchMetTimeout (60s): zelfde bugklasse als de fix van 15 sep 2026 (teaser/verkoopmemorandum/
+      // SPA/risicoraamwerk/waardering) — deze adviseur-uploadmodal gebruikte nog een kale fetch() en
+      // kon dus voor altijd op "Uploaden..." blijven hangen bij een stallende AI-respons.
+      var r=await fetchMetTimeout(WORKER+'/mna/document/upload?code='+encodeURIComponent(tussenCode)+'&fase_id='+encodeURIComponent(fase)+'&bewaar=1'+(alleenBewijsstuk?'&alleen_bewijsstuk=true':''),{method:'POST',body:fd},60000);
       var d=await r.json();
       if(d.ok||d.id){
         toast('Geüpload: '+file.name,'ok');

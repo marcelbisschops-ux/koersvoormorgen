@@ -1057,7 +1057,7 @@ async function finaleCheck(){
     +'Geen tabellen, geen lijsten, geen pipe-tekens. Maximaal 200 woorden.';
 
   try{
-    var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:1000})});
+    var resp=await fetchMetTimeout(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:1000})},60000);
     var rd=await resp.json();
     var tekst=(rd.text||'Fout bij genereren.')
       .replace(/## ([^\n]+)/g,'<h3 style="font-family:Playfair Display,serif;font-size:.95rem;color:var(--head);margin:1rem 0 .35rem">$1</h3>')
@@ -1096,7 +1096,7 @@ async function generateAI(faseId){
     // (data:-regels met content_block_delta), maar /ai roept Anthropic aan met stream:false en geeft
     // gewoon één JSON-object {text:...} terug (zie backend/worker/06-scantool.js) — collected bleef
     // dus altijd leeg. Nu hetzelfde .json()-patroon als elders (bijv. mna/04 bgDoc()).
-    var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}]})});
+    var resp=await fetchMetTimeout(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}]})},60000);
     if(!resp.ok)throw new Error('HTTP '+resp.status);
     var rd=await resp.json();
     if(!rd.text)throw new Error(rd.error||'Leeg antwoord');
@@ -1656,7 +1656,7 @@ function bindAll(){
     (S._mnaData||[]).forEach(function(row){try{var dj=typeof row.data_json==='string'?JSON.parse(row.data_json):row.data_json;var gevuld=Object.values(dj||{}).filter(function(v2){return v2&&v2.value;});if(gevuld.length){dataSamW+='\n## '+(faseLW[row.fase_id]||row.fase_id)+'\n';gevuld.forEach(function(v2){dataSamW+='- '+v2.label+': '+v2.value+'\n';});}}catch(e){}});
     var prompt='Schrijf één samenhangend, professioneel M&A-rapport voor '+esc(S.traject&&S.traject.kantoor_naam||S.code)+' (sector: '+(sectorProfielW.label||'')+') — zowel de due-diligence-analyse als de daarop gebaseerde waardering, als één geheel. '+TAAL_REGELS+'\n\nSECTOR NORMEN (indicatieve richtwaarden, geen vastgestelde branchenorm — niet als hard feit presenteren): '+(sectorProfielW.aiNormen||'(geen sectorbenchmark beschikbaar — geen benchmark of marktgemiddelde uit eigen kennis noemen)')+'\n\nDUE DILIGENCE DATA:'+dataSamW+'\n\nCIJFERS VOOR DE WAARDERING (uitsluitend deze gebruiken, geen andere bedragen of percentages verzinnen):\n'+lijnen.join('\n')+'\n\nGa expliciet in op wat de cijfers zeggen over de kwaliteit en het risico van de omzet (concentratie, recurring, churn) waar die zijn aangeleverd. De waarderingssectie mag de bevindingen uit de due-diligence-sectie kwalitatief benoemen (welke factoren de waardering drukken of ondersteunen), maar mag het effect NIET zelf kwantificeren — geen "dit verlaagt de multiple met 0,5x" of een zelfbedachte bandbreedte. De enige multiple en waarderingsbedragen zijn die uit "CIJFERS VOOR DE WAARDERING" hierboven; verzin er geen bij en pas ze niet aan.\n\nBegin DIRECT met de eerste ## kop hieronder — geen eigen titel, geen bedrijfsnaam als kop, geen horizontale lijnen (---).\n\n## Samenvatting\n## Financieel\n## Sterktes\n## Risicos\n## Waarderingsmethodiek\n## As-is waardering\n## Kwaliteit van de cijfers\n## Groei- en waardepotentieel\n## Transactiestructuur\n## Conclusie en aanbevelingen\n\nGebruik bullets (met -) waar een opsomming duidelijker is dan lopende tekst. Max 800 woorden. In Conclusie en aanbevelingen: presenteer aanbevelingen als overwegingen voor de begeleider om mee te nemen, geen dwingende conclusies.';
     try{
-      var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:3600})});
+      var resp=await fetchMetTimeout(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:3600})},60000);
       var rd=await resp.json();
       var ruweTekst=rd.text||(rd.error?('AI fout: '+rd.error):'Fout bij genereren.');
       var tekstHtml=mdToHtml(ruweTekst);
@@ -2167,7 +2167,7 @@ function bindAll(){
         +'Gebruik uitsluitend feiten en kwalificaties die rechtstreeks uit de gegevens hieronder volgen; verzin geen oorzaak, marktnorm, benchmark, percentage of extern gegeven. Ontbreekt onderbouwing, schrijf dan dat de informatie onvoldoende is.\n'
         +bmTekst+'\nDUE DILIGENCE:'+dataSamenvatting+'\n\n## Samenvatting\n## Financieel profiel & waardering\n## Sterktes\n## Risicos\n## Aanbevelingen\n\nMax 500 woorden.';
       try{
-        var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:3000})});
+        var resp=await fetchMetTimeout(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:3000})},60000);
         var rd=await resp.json();
         var tekst=(rd.text||'Fout bij genereren.').replace(/## ([^\n]+)/g,'<strong style="display:block;margin:.75rem 0 .25rem;font-size:14px">$1</strong>').replace(/\n/g,'<br>');
         var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:200;display:flex;align-items:center;justify-content:center;padding:1.5rem';
