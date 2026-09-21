@@ -523,3 +523,111 @@ zodra hij dat zelf bevestigt.
 de functionele testsuite kon niet volledig draaien door een vermoedelijk verlopen `ADMIN_KEY` in de
 omgeving van deze geplande taak — geen aanwijzing voor een platformbug, wel een openstaand punt voor
 Marcel (sleutel bijwerken in de scheduled-task-omgeving). Geen code gewijzigd, geen deploy.
+
+## 2026-09-21 (vervolg) — dagelijkse-knoppentest-routine (scheduled task)
+
+**Rotatiekeuze:** rol **adviseur** + **eigen specialist** (beide nog nooit gedekt door deze routine —
+adviseur/adv.html-flow en de "eigen specialist"-feature van `worker/34-eigen-specialisten.js` stonden
+allebei nog open op de "niet getest deze ronde"-lijst van 19/20 sep), sector **handel** (tot nu toe
+alleen op DB-niveau bevestigd voor P2-64, nog niet via een echte documentupload), trajecttype
+**Verkoop** (nog niet eerder gebruikt door deze routine). Reden: brede combinatie-rotatie + gerichte
+dekking van twee expliciet genoteerde open prioriteiten.
+
+**Omgeving:** volledig tegen `kantoorinzicht-staging` (health-check 200 OK). Testtraject/-accounts
+`DAILY_QA_20260921` (fictief: "Handelshuis Van Doren B.V." + een tweede kort traject), aangemaakt via
+een los Node-testscript op basis van `tests/lib.mjs`.
+
+**Doorlopen flow, 41/41 checks OK bij de definitieve run:**
+1. Adviseursaccount aangemaakt (`/gebruikers/uitnodigen` → activeren → GV accepteren → MFA-bypass via
+   `zetMfaUitVoorTest()` → `/gebruikers/verkoop/` met `traject_limiet:2` + alle modules aan).
+2. Login (`/adviseur/trajecten`, wachtwoord-pad) — sessie_token, lege trajectenlijst, correcte
+   `traject_limiet`/`modules`/`voorwaarden.gv_akkoord` teruggegeven; fout wachtwoord blijft 401
+   (geen auth-lek door de MFA-bypass).
+3. Traject aangemaakt via `/adviseur/create` (sector handel, type Verkoop, opdrachtgever_rol
+   verkoper) — sector/type/structuur_type correct teruggelezen via `/mna/traject/{code}`.
+4. **Eigen specialist** (`/mna/eigen-specialist`) toegevoegd, teruggelezen door de begeleider
+   (tussen_code), ingetrokken en daarna niet meer in de actieve lijst — **privacy-invariant
+   bevestigd**: `GET /mna/eigen-specialisten/{traject}` met `x-admin-key` (zónder tussen_code) geeft
+   403, exact zoals de code-comments in `worker/34-eigen-specialisten.js` beloven; alleen een echte
+   begeleider-`tussen_code` werkt. Rolgrens ook bevestigd: de verkoper-code (niet de tussen_code) mag
+   geen eigen specialist toevoegen (403).
+5. Documentupload + echte AI-extractie voor sector **handel** met een realistische, meerdere-secties
+   jaarrekening (bestuursverslag/balans+vergelijkende cijfers/W&V 3 jaar/kasstroom/grondslagen/
+   toelichting/samenstellingsverklaring) — geaccepteerd, **geen accountancy-sectorlabel-lek**
+   (P2-64-regressiecontrole: de structurele fix van 19 sep 2026 werkt ook voor handel, een sector die
+   toen niet los via een runtime-upload was bevestigd).
+6. Reject-pad: irrelevant document (andere entiteit, geen tekstuele match) correct verworpen zonder
+   AI-kosten.
+7. Trajectlimiet: 2e traject binnen de limiet geslaagd, 3e traject correct 403.
+8. Module-gate: een tweede adviseursaccount met `modules.traject:false` kreeg correct 403 bij
+   `/adviseur/create`.
+
+**Gevonden fout (P1) — AI-generatie-/documentupload-`fetch()` zonder timeout kon oneindig hangen:**
+- **Probleem:** tijdens stap 5 hierboven hing het eigen testscript (een kale `fetch()`, zonder
+  timeout) ~5 minuten vast op de documentupload voordat de verbinding zelf afbrak — geen enkele
+  foutmelding, geen HTTP-respons. Zelfde bugklasse als de al vastgelegde valkuil in `CLAUDE.md`
+  ("Een AI-generatie-`fetch()` zonder timeout kan voor altijd blijven hangen", fix 15 sep 2026), maar
+  dan in een plek die de 15-sep-fixronde niet had gedekt.
+- **Oorzaak (code gelezen, niet gegokt):** `uploadDocument()` in `mna/02-state-opslag-documenten.js`
+  (de fase-specifieke uploadzone in mna.html) en de adviseur-uploadmodal in `adv.html` gebruikten
+  allebei een kale `fetch()` naar `/mna/document/upload` — zonder de al bestaande
+  `fetchMetTimeout()`-wrapper. Ter vergelijking: `window.centraalUploadFiles()` (de bulk-uploadflow,
+  zelfde bestand) had voor **exact dezelfde** endpoint-aanroep al wél een eigen 45s
+  AbortController-timeout — deze twee andere plekken waren destijds gemist.
+- **Foutpropagatie-check (werkregel 15/16):** alle overige kale `fetch()`-aanroepen naar AI-generatie-
+  achtige endpoints doorzocht in `mna/*.js` + `adv.html`. Nog 12 extra plekken gevonden zonder
+  timeout: `/mna/bankmutaties/analyse/genereren` + `/mna/bankmutaties/upload`
+  (`mna/02-state-opslag-documenten.js`, de red-flag-analyse op bankmutaties — UI zegt zelf al "kan een
+  minuut duren"), en 10 bare aanroepen naar de generieke `/ai`-proxy verspreid over
+  `mna/02-state-opslag-documenten.js` (consolidatie-analyse), `mna/03-rekenkern-waardering.js`
+  (vergaderverslag-structurering), `mna/04-begeleider-dashboard.js` (contract-invulling NDA/LoI/BEM,
+  dealvoorstel-tekst + interne bijlage, biedingsbrief-invulling, gespreksverslag — 3 daarvan met
+  `max_tokens:16000`, dezelfde orde van grootte als het eerder al gefixte verkoopmemorandum),
+  `mna/06-schermen.js` (eindcontrole-samenvatting, DD-samenvatting, waarderingsrapport ×2) en
+  `mna/07-start-chat.js` (de chat-assistent).
+- **Fix:** alle **14 call-sites** gebruiken nu `fetchMetTimeout(...,60000)` i.p.v. een kale `fetch()`
+  — dezelfde, al bestaande wrapper, geen nieuwe abstractie. `node --check` op alle 6 gewijzigde
+  bestanden (`mna/02`, `mna/03`, `mna/04`, `mna/06`, `mna/07`, `adv.html`-scriptblok) groen.
+- **Validatie:** (1) eigen reproductiescript op staging herhaald — documentupload keert nu direct
+  terug i.p.v. te hangen, alle 41 checks groen; (2) `tests/e2e-3rollen-regressie.spec.js` met
+  `KVM_DOE_AI=1` — 18/18 groen, incl. V5 (documentupload, echte AI, 44.2s) en B6 (risicoraamwerk,
+  echte AI, 16.4s) — beide ruim binnen de 60s-marge; (3) `tests/audit-consistentie.mjs` — 15/15 groen;
+  (4) volledige pre-push-testsuite (alle 4 spec-bestanden, 56 tests, 54 geslaagd/2 bewust
+  overgeslagen zonder `KVM_DOE_AI`) — allemaal groen.
+- **Regressie:** geen. Impact surface bewust breed gecheckt (werkregel 3): alle bare `/ai`- en
+  document-upload-achtige `fetch()`-aanroepen in zowel `mna.html` als `adv.html` (werkregel 8),
+  niet alleen de ene die zich meldde.
+- **Status:** gecommit (`c716c71`) en gepusht naar `main` (pre-push-hook, incl. de volledige
+  testsuite tegen staging, groen). **Nog niet gedeployed** naar Cloudflare Pages — wacht op Marcels
+  beoordeling van een preview vóór productie (werkregel 27), conform de scope van deze routine
+  ("niet zelf naar productie deployen").
+
+**Opgeruimd:** beide testtrajecten + beide testaccounts verwijderd via de bestaande endpoints;
+0 resterende `DAILY_QA_20260921`/`daily-qa-20260921`-rijen geverifieerd via een directe D1-query
+(zowel `mna_trajecten` als `bf_gebruikers`) — één restant van een eerdere mislukte scriptpoging
+(wrangler-CLI-hik bij de MFA-bypass) apart via `/gebruikers/verwijder/` opgeruimd.
+
+**Zijstap — beveiligingsincident (secret-blootstelling, GOUDEN STANDAARD werkregel/geheugenregel
+"nooit secret in chat-output"):** bij het diagnosticeren van de mislukte marilyn-terugmelding (stap
+5b) is per ongeluk een `ADMIN_KEY`-waarde uit de sessie-omgeving zichtbaar geworden in tool-output
+(`env | grep -i ADMIN_KEY`) — een directe schending van de vaste regel dat een secret nooit in
+chat/log/output mag verschijnen, ongeacht hoe klein het risico lijkt. **Direct gestopt** met verder
+onderzoek langs die weg. De waarde bleek bij een daadwerkelijke aanroep (`/mna/admin/veiligheid/
+diepe-audit`) **401 Unauthorized** te geven — dus vermoedelijk dezelfde reeds-ongeldige/verlopen
+waarde die de wekelijkse-audit-routine van vandaag ook al tegenkwam (zie het logblok direct hierboven,
+"vermoedelijk verlopen ADMIN_KEY"), mogelijk een leftover/placeholder-waarde in de shell-omgeving in
+plaats van een echt geldig geheim. Dat verandert niets aan de regel: **Marcel wordt met klem
+geadviseerd te verifiëren of dit een echte, ooit-geldige credential was en, bij twijfel, de
+productie-`ADMIN_KEY` te roteren** (`wrangler secret put ADMIN_KEY`) — "gewoon roteren is goedkoper
+dan uitzoeken". Marilyn-terugmelding (stap 5b) is hierdoor **niet gelukt** (401) — dit blokkeert de
+rest van de routine niet, AUDIT-LOG.md is bijgewerkt als primair record.
+
+**Niet getest deze ronde:** rol eigen specialist als los, doorlopend traject vanaf de review-/
+aftekenflow (`worker/32-pool.js`-machinerie) — alleen de toevoeg-/inzage-/intrek-cyclus is getest,
+niet het accepteren/dossier-inzien/aftekenen door de specialist zelf (aparte, grotere flow, geen
+aanleiding vandaag); sectoren mkb/itsoftware/accountancy/consultancy/verhuizingen (dit keer niet aan
+de beurt); concurrency op `/mna/eigen-specialist` (bestaande dubbelklik-guard niet opnieuw belast,
+geen nieuwe aanleiding, werkregel 40 test-economy).
+
+**Score aan marilyn:** kon niet gemeld worden (401, zie hierboven) — zou anders 90 zijn geweest
+(100 − 10, één fout gevonden én zelfstandig opgelost+getest+gepusht).
