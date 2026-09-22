@@ -2476,7 +2476,7 @@ function renderBegeleiderDashboard(app){
         });
         var base64=dataUrl.split(',')[1]||'';
         var mime=f.type||(f.name.toLowerCase().endsWith('.docx')?'application/vnd.openxmlformats-officedocument.wordprocessingml.document':f.name.toLowerCase().endsWith('.doc')?'application/msword':'application/pdf');
-        var r=await fetch(WORKER+'/mna/document/eigen/versturen',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+        var r=await fetch(WORKER+'/mna/document/eigen/versturen',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S.code},body:JSON.stringify({
           code:S.code, bestand_base64:base64, bestand_naam:f.name, bestand_mime:mime, to:toList, bericht:document.getElementById('ed-bericht').value.trim()
         })});
         var d=await r.json();
