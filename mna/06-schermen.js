@@ -698,6 +698,7 @@ function renderMain(){
   var nav='<div class="fase-nav">'
     +(isVerkoper()?'<button class="btn-ghost btn-sm" id="cover-btn">&#128196; Cover letter</button>':'')
     +(isKoper()?'<button class="btn-ghost btn-sm" id="cover-btn">&#8592; Terug naar overzicht</button>':'')
+    +(isTussen()?'<button class="btn-ghost btn-sm" onclick="saveCurrent();S.screen=\'begeleider\';renderApp()">&#8592; Terug naar dashboard</button>':'')
     +(S.fase>0?'<button class="btn-ghost btn-sm" id="prev-btn">&#8592; Vorige</button>':'')
     +'<div style="flex:1"></div>'
     +(!isKoper()&&!vergrendeld?'<button class="btn-ghost btn-sm" id="opslaan-btn" style="color:var(--teal);border-color:var(--teal)">&#128190; Opslaan</button>':'')
@@ -1769,7 +1770,7 @@ function bindAll(){
     saveAll();
   };
   var coverBtn=ge('cover-btn');if(coverBtn)coverBtn.onclick=function(){saveCurrent();S.screen='cover';renderApp();};
-  var backMain=ge('back-main');if(backMain)backMain.onclick=function(){S.screen='main';var fIdBm=FASES[S.fase]&&FASES[S.fase].id;if(fIdBm==='financieel'&&BANKMUTATIES===null)laadBankmutaties();if(fIdBm==='financieel'&&BANKMUTATIES_ANALYSE===null)laadRedFlagAnalyse();renderApp();};
+  var backMain=ge('back-main');if(backMain)backMain.onclick=function(){S.screen=(isTussen()?'begeleider':'main');var fIdBm=FASES[S.fase]&&FASES[S.fase].id;if(fIdBm==='financieel'&&BANKMUTATIES===null)laadBankmutaties();if(fIdBm==='financieel'&&BANKMUTATIES_ANALYSE===null)laadRedFlagAnalyse();renderApp();};
   // Alle huidige kritieke-discrepantiechecks gaan uitsluitend over Financieel-velden — als daar
   // ooit checks voor andere fases bijkomen, moet deze knop per discrepantie de juiste fase kiezen.
   var naarFinancieelBtn=ge('naar-financieel-btn');if(naarFinancieelBtn)naarFinancieelBtn.onclick=function(){S.screen='main';var fi=FASES.findIndex(function(f){return f.id==='financieel';});S.fase=fi>=0?fi:0;if(BANKMUTATIES===null)laadBankmutaties();if(BANKMUTATIES_ANALYSE===null)laadRedFlagAnalyse();renderApp();};
