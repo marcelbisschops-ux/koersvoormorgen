@@ -726,7 +726,7 @@ function renderMain(){
     +'<div class="hdr"><div class="brand">'+brandMerkHtml()+BRAND.platform+' &middot; M&amp;A'+versieLabel()+'</div>'
     +'<div style="display:flex;align-items:center;gap:8px">'
     +'<span style="font-size:11px;color:var(--muted)">'+esc(trajNaamWeergave)+'</span>'
-    +'<button class="btn-ghost btn-sm" onclick="S.screen=\'handleiding\';renderApp()">&#128214; Handleiding</button>'
+    +'<button class="btn-ghost btn-sm" onclick="saveCurrent();S.screen=\'handleiding\';renderApp()">&#128214; Handleiding</button>'
     +'<button class="btn-ghost btn-sm" onclick="window.print()">PDF</button>'
     +'</div></div>'
     +lockedBanner
