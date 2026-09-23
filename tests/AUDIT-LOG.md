@@ -631,3 +631,7 @@ geen nieuwe aanleiding, werkregel 40 test-economy).
 
 **Score aan marilyn:** kon niet gemeld worden (401, zie hierboven) — zou anders 90 zijn geweest
 (100 − 10, één fout gevonden én zelfstandig opgelost+getest+gepusht).
+
+## 2026-09-23
+
+**diepe-audit-routine (geautomatiseerde scheduled task): geen open aanvraag, cadans nog niet verstreken.** Wachtrij (`/mna/veiligheid/audit-opdracht`) leeg (`{"ok":true,"opdracht":null}`). Vandaag (23e) valt buiten het 1e-3e-van-de-maand-venster voor de automatische maandelijkse cadans, dus geen zelf-aanvraag ingediend. Geen audit uitgevoerd, niets gewijzigd. Opmerking: de working tree van de frontend-repo had bij aanvang onopgeslagen wijzigingen (`mna/04-begeleider-dashboard.js`, `mna/06-schermen.js`, `testvoorwaarden.html`, `viewer.html`, `voorwaarden.html`) — niet aangeraakt door deze routine, vermoedelijk lopend handwerk van Marcel/een eerdere sessie.
