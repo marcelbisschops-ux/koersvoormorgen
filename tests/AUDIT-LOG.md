@@ -635,3 +635,97 @@ geen nieuwe aanleiding, werkregel 40 test-economy).
 ## 2026-09-23
 
 **diepe-audit-routine (geautomatiseerde scheduled task): geen open aanvraag, cadans nog niet verstreken.** Wachtrij (`/mna/veiligheid/audit-opdracht`) leeg (`{"ok":true,"opdracht":null}`). Vandaag (23e) valt buiten het 1e-3e-van-de-maand-venster voor de automatische maandelijkse cadans, dus geen zelf-aanvraag ingediend. Geen audit uitgevoerd, niets gewijzigd. Opmerking: de working tree van de frontend-repo had bij aanvang onopgeslagen wijzigingen (`mna/04-begeleider-dashboard.js`, `mna/06-schermen.js`, `testvoorwaarden.html`, `viewer.html`, `voorwaarden.html`) — niet aangeraakt door deze routine, vermoedelijk lopend handwerk van Marcel/een eerdere sessie.
+
+## 2026-09-23 (vervolg) — dagelijkse-knoppentest-routine (scheduled task)
+
+**Vooraf geconstateerd, niet aangeraakt (relevant voor context):** bij aanvang stonden in **beide**
+repo's substantiële, onopgeslagen wijzigingen open — frontend (5 bestanden, zie hierboven) én
+backend (`~/Documents/GitHub/koersvoormorgen-backend`, 9 bestanden/274 regels: een nieuwe
+`worker/00d-platformvoorwaarden-gate.js` + wijzigingen in 8 andere modules, kennelijk een
+in-uitvoering-zijnde feature "S1.2/S1.2b — platformvoorwaarden-acceptatie + testaccount-IP-binding",
+gedateerd 22-23 sep in de code-comments zelf). Expliciet gecontroleerd of dit al ergens live stond
+vóórdat deze routine startte: `GET /mna/platformvoorwaarden/tekst` op staging gaf de generieke
+catch-all-respons ("Koers voor Morgen Worker actief"), niet de nieuwe routehandler — dus deze WIP is
+**niet** gedeployed, staging draait nog de laatst gecommitte code. Niet gewijzigd, niet gecommit, niet
+gestaged door deze routine (werkregel 1: geen ander werk vermengen). Enige aanbeveling: dit is
+substantieel werk dat nog nergens in git-historie staat (dus niet backed-up) — de moeite waard om bij
+gelegenheid af te ronden of expliciet even te bewaren (`git stash`/eigen branch), puur ter info, geen
+actie van deze routine zelf.
+
+**Rotatiekeuze:** sector **itsoftware** en trajecttype **PE-traject** (beide nog nooit eerder getest
+door deze routine — voorgaande dagen: transport/Overname, bouw/Fusie, zorg/Opvolging, handel/Verkoop),
+rollen verkoper/koper/tussenpersoon, fasen Financieel + Technologie & architectuur (it) + Beveiliging
+& compliance. Reden: brede sector-/trajecttype-rotatie; alle 6 rollen zijn inmiddels minstens één keer
+gedekt door eerdere rondes (18-21 sep), dus vandaag lag de nadruk weer op sector-/fase-dekking.
+
+**Omgeving:** volledig tegen `kantoorinzicht-staging` (health-check 200 OK, `tests/.env.staging.local`
+aanwezig).
+
+**Doorlopen flow (eigen Node-testscript op basis van `tests/lib.mjs`, klik→request→backend→database→
+response, geen dubbel werk met de bestaande suites):**
+1. Traject aangemaakt (`/mna/create`, admin-key, sector itsoftware, traject_type PE-traject,
+   opdrachtgever_rol verkoper) — sector/traject_type correct teruggelezen via `/mna/traject/{code}`
+   voor alle drie rollen (verkoper/koper/tussenpersoon correct geresolved).
+2. Fase Financieel: verkoper mag opslaan (ok:true), begeleider geblokkeerd (403, bekende regel
+   "moet verkoper zelf doen"), koper geblokkeerd (403).
+3. Fase Technologie & architectuur (it, nog niet eerder door deze routine getest): verkoper mag
+   opslaan, begeleider mag óók opslaan (niet-Financieel, dus toegestaan), koper geblokkeerd (403).
+4. Fase Beveiliging & compliance (nog niet eerder getest): begeleider slaat op, teruggelezen via een
+   verse `/mna/traject/{code}`-call en waarde geverifieerd (niet alleen het save-response).
+5. Documentupload + echte AI-extractie: een realistisch, 13-secties technologie-/
+   informatiebeveiligingsrapport (~1.100 woorden, geen kaal 1-pagina-document) voor de fictieve
+   itsoftware-onderneming, geüpload op fase 'it'. Upload slaagde, niet verworpen.
+6. Reject-pad: een irrelevant document (cateringfactuur, andere bedrijfsnamen) geüpload op fase
+   Financieel → correct herkend als niet-passend.
+7. Traject volledig opgeruimd (`/admin/delete/mna/`, ok:true).
+
+**Eigen testfout (geen platformbug), vastgelegd voor transparantie:** de eerste volledige testrun gaf
+1 FAIL ("AI-extractie heeft (extra) it-velden gevuld") — bleek een fout in mijn eigen testopzet: de
+backend `/mna/document/upload`-route persisteert geëxtraheerde velden bewust NIET zelf in `mna_data`
+(dat doet in de echte applicatie de frontend, `autoFillFromExtraction()` in `mna/02`, via een eigen
+vervolg-`/mna/save`-aanroep) — mijn ruwe API-test las dus terecht geen extra velden, want die worden
+nooit server-side weggeschreven zonder de frontend-laag. Losse, gerichte reproductie (1 run, niet de
+volledige suite herhaald — werkregel 40 test-economy) bevestigde: de 4 handmatig opgeslagen it-velden
+bleven na de upload exact ongewijzigd aanwezig (geen dataverlies), en de AI-extractie zelf werkte wél
+correct — de vrije tekst over ISO 27001-certificering uit het testdocument kwam terug in het
+`cybersecurity`-veld van de extractierespons.
+
+**Bevinding (nieuw, P2-65 — zie `OPEN-BEVINDINGEN.md` voor het volledige bewijs):** die laatste
+observatie leidde tot een gerichte verdiepingscontrole (werkregel 15/16 — bij twijfel het patroon
+uitzoeken): itsoftware's sectorprofielveld `compliance_iso` ("ISO 27001/SOC2/NEN7510 certificering",
+`doc:true`) heeft **geen enkele extractiekoppeling**, ondanks dat het testdocument de certificering
+expliciet en in detail noemde — het veld bleef na de upload leeg. Foutpropagatie-check breder
+uitgevoerd: dezelfde onderliggende oorzaak (ontbrekende `SECTOR_EXTRACTIE_EXTRA`-sleutel) geldt
+op code-niveau ook voor de complete fase-2-balansvelden-groep (resultaat/eigenVermogen/balansTotaal/
+liquideMiddelen/kortlopendeSchulden/langlopendeSchulden/rentelasten/aflossingVerplicht) bij 8 van de
+9 sectoren — alleen mkb kreeg deze koppeling ooit (20 aug 2026-fix). Niet zelf gefixt: de structureel
+juiste oplossing raakt het gedeelde basis-extractieschema voor alle sectoren (incl. accountancy),
+dezelfde categorie wijziging als P3-61/P2-64 die toen ook pas na Marcels expliciete GO zijn
+doorgevoerd — dus bewust aan Marcel voorgelegd i.p.v. zelfstandig ingevuld, conform de scope van deze
+dagelijkse routine.
+
+**Zelfstandig opgelost + gedeployed:** niets — de enige "fout" die de testrun opleverde was een fout
+in mijn eigen testscript (zie hierboven), geen platformbug om te fixen. De wél gevonden platformbug
+(P2-65) valt buiten de zelfstandige-fix-scope van deze routine (architectuurkeuze, zie boven).
+
+**Opgeruimd:** beide testtrajecten (het hoofdtraject uit de volledige run + het losse
+reproductietraject `DAILY_QA_20260923_REPRO`) verwijderd via `/admin/delete/mna/` op staging, beide
+`ok:true` bevestigd in de response.
+
+**Niet getest deze ronde (expliciet, geen gok):** rol eigen specialist als doorlopend traject
+vanaf de review-/aftekenflow (nog steeds niet opgepakt, zie 21 sep-notitie); sectoren mkb/zorg/
+accountancy/bouw/transport/handel/consultancy/verhuizingen (dit keer niet aan de beurt — zorg was al
+op 20 sep aan de beurt); concurrency (geen nieuwe aanleiding vandaag, werkregel 40 test-economy).
+
+**Score aan marilyn:** zou 75 zijn geweest (100 − 25, één nieuwe, concreet reproduceerbare bevinding
+P2-65 binnen de scope van vandaag, niet zelfstandig opgelost — architectuurkeuze, zelfde eerlijke
+aftrek-logica als de 19 sep-score voor P2-64 vóór die werd opgelost) — **melding aan marilyn is
+NIET gelukt: 401 Unauthorized** op `POST /mna/admin/veiligheid/diepe-audit` met de productie-`ADMIN_KEY`
+uit de sessie-omgeving. Zelfde symptoom als de 21 sep-run al meldde ("vermoedelijk verlopen ADMIN_KEY")
+— dit is dus een tweede, opeenvolgende dag met dezelfde 401 op dit specifieke endpoint, geen
+incidentele hik. De sleutelwaarde zelf is niet onderzocht/uitgeprint (GOUDEN STANDAARD: nooit een
+secret in output). **Aanbeveling aan Marcel (herhaald van 21 sep, nu met extra gewicht):** verifiëren
+of de `ADMIN_KEY` in `~/.zshrc` nog overeenkomt met de daadwerkelijke Cloudflare-secret op productie,
+en bij twijfel roteren (`wrangler secret put ADMIN_KEY`) — dit blokkeert al twee dagen op rij de
+zichtbaarheid van de dagelijkse knoppentest in marilyn.html → Veiligheid. Blokkeert de rest van deze
+routine niet — `tests/AUDIT-LOG.md` en `OPEN-BEVINDINGEN.md` zijn het primaire record.
