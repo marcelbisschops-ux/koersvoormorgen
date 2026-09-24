@@ -850,3 +850,47 @@ via `/admin/delete/mna/` op staging; geverifieerd met een directe D1-query
 
 **Score aan marilyn:** 80 (100 − 10 − 10, twee gevonden fouten, beide zelfstandig opgelost + getest +
 gedeployed naar staging binnen de scope van vandaag).
+
+**Addendum (zelfde dag) — pushstatus + derde gevonden/gefixte fout:**
+
+Bij het pushen van de logwijzigingen hierboven bleek de bestaande pre-push-hook (statische
+veiligheidsaudit, `tests/audit-consistentie.mjs`) een 3e bug op te leveren, gevonden tijdens
+diezelfde pushpoging:
+
+### P3-68 · Pre-push cascade-check (audit-consistentie.mjs, check 6) had een vaste 6000-tekens-scanvenster, inmiddels te klein
+🟢 **Gevonden + gefixt + hertest, dezelfde sessie.** De check scande `verwijderTrajectData()`
+(backend/worker/02-config-constanten.js) met een vaste `fnStart+6000`-tekens-vensterlengte. Die
+functie is door accumulerende uitlegcomments gegroeid tot >6250 tekens, waardoor de laatste 2
+DELETE-regels (`mna_eigen_specialisten`, `mna_koper_biedingen`) buiten het venster vielen en de
+check ze ten onrechte als "ontbrekend in de cascade" rapporteerde — terwijl ze er al in stonden
+(bevestigd via directe code-inspectie én de backend-eigen runtime-check, die al die tijd groen was,
+zie predeploy-audit hierboven). Dit blokkeerde een legitieme push. Fix: het scanvenster loopt nu tot
+de eerstvolgende top-level `export`, in plaats van een vaste lengte — groeit voortaan automatisch mee
+met de functie i.p.v. bij de volgende toevoeging opnieuw stil te breken (exact hetzelfde
+groeipatroon, P4-22, dat deze check zelf bewaakt). `node --check` groen, check 6 hertest: 42 tabellen
+gecontroleerd, allemaal gedekt, 0 bevindingen.
+
+**Pushstatus:** de 3 commits van vandaag (2× logboek/fix + deze check-fix) staan lokaal gecommit.
+Push naar `origin/main` lukte niet binnen deze sessie — niet door mijn eigen wijzigingen, maar
+doordat de pre-push-hook óók de volledige Playwright-suite (`tests/e2e-3rollen-regressie.spec.js`)
+tegen staging draait, en 3 tests faalden: B2/B3/B4 (allemaal begeleider-rol, "Geen begeleiderssessie
+zichtbaar na login"). **Vermoedelijke oorzaak (niet verder onderzocht — buiten scope, actief WIP van
+Marcel):** de nieuwe S1.2b-platformvoorwaarden-gate is sinds gisteren live op de staging-Worker (zie
+hierboven), en de bijbehorende frontend-UI-code (`mna/04-begeleider-dashboard.js`,
+`mna/06-schermen.js` — precies de 2 bestanden die al bij aanvang van deze sessie onopgeslagen in de
+working tree stonden) bevat wel al `platformvoorwaarden`-referenties, maar is zelf nog nooit
+gecommit of naar de staging-Pages-omgeving gedeployed. Als de backend-gate al blokkeert vóórdat de
+frontend weet hoe te accepteren, zou een echte browser-login van een begeleider inderdaad vastlopen
+— exact het Playwright-symptoom. **Dit is niet zelf verder gediagnosticeerd of gefixt**: dit raakt
+Marcels eigen, actief in ontwikkeling zijnde WIP-feature (werkregel 5 — geen wezenlijke
+productlogica-wijziging zonder overleg), en `git push --no-verify` is bewust niet gebruikt (de hook
+faalde niet door mijn wijzigingen, en overslaan zou een mogelijk echt kapotte begeleider-loginflow op
+staging kunnen maskeren). **Aanbevolen aan Marcel:** vóór de volgende push/deploy van de
+platformvoorwaarden-gate-feature, de frontend-UI (mna/04 + mna/06) en de backend-gate samen als één
+geheel testen/deployen — en dan pas de 3 lokale commits van vandaag alsnog pushen (`git push`, geen
+`--no-verify` nodig zodra de Playwright-suite weer groen is).
+
+**Terzijde geconstateerd (niet aangeraakt):** op staging bleken 7 losse `E2E-UITBR-...`-trajecten te
+bestaan (uit `tests/e2e-regressie-uitbreiding.spec.js`, tijdstempels van vóór vandaag) — geen
+`DAILY_QA_`-testdata van deze routine (die is volledig opgeruimd, 0 resterend, apart geverifieerd),
+dus buiten de opruimscope van deze routine. Vermeld puur ter info.
