@@ -319,7 +319,19 @@ if (backendFiles.length) {
     if (fnStart === -1) {
       warn('backend/worker/02-config-constanten.js: verwijderTrajectData() niet gevonden — is de gedeelde cascade verplaatst/hernoemd? Kan niet gevalideerd worden.');
     } else {
-      const fnScope = sharedFile.src.slice(fnStart, fnStart + 6000);
+      // Bugfix 24 sep 2026 (dagelijkse knoppentest, live gereproduceerd — blokkeerde een legitieme
+      // push met een vals-positieve "ontbrekende tabel"): een vaste 6000-tekens-vensterlengte was
+      // hier een nieuwe magische-getal-cliff van precies hetzelfde type als deze check zelf bewaakt
+      // (P4-22, groeiende bestanden) — de functie is inmiddels door accumulerende uitlegcomments
+      // gegroeid tot >6250 tekens, waardoor de laatste 2 DELETE-regels (mna_eigen_specialisten,
+      // mna_koper_biedingen) buiten het venster vielen en ten onrechte als "ontbrekend" werden
+      // gemeld, terwijl ze wel degelijk in de functie staan (bevestigd: backend/tests/audit-backend.mjs
+      // check 7 test dit al functioneel/runtime en was al die tijd groen). Vervangen door: scan tot de
+      // eerstvolgende top-level `export` ná de functie (of einde bestand), zodat dit meegroeit met de
+      // functie i.p.v. bij een volgende toevoeging opnieuw stil te breken.
+      const nextExportRel = sharedFile.src.slice(fnStart + fnMarker.length).search(/\nexport (async function|function|const)\s/);
+      const fnEnd = nextExportRel === -1 ? sharedFile.src.length : fnStart + fnMarker.length + nextExportRel;
+      const fnScope = sharedFile.src.slice(fnStart, fnEnd);
       const delRe = /DELETE FROM (\w+) WHERE traject_id=/g;
       const covered = new Set();
       let dm;
