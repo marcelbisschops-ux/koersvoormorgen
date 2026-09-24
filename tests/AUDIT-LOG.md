@@ -733,3 +733,120 @@ routine niet — `tests/AUDIT-LOG.md` en `OPEN-BEVINDINGEN.md` zijn het primaire
 ## 2026-09-24
 
 **diepe-audit-routine (geautomatiseerde scheduled task): geen open aanvraag, cadans nog niet verstreken.** Wachtrij (`/mna/veiligheid/audit-opdracht`) leeg (`{"ok":true,"opdracht":null}`). Vandaag (24e) valt buiten het 1e-3e-van-de-maand-venster voor de automatische maandelijkse cadans, dus geen zelf-aanvraag ingediend. Geen audit uitgevoerd, niets gewijzigd. Opmerking: de working tree had bij aanvang al de nodige onopgeslagen wijzigingen (o.a. `mna/04-begeleider-dashboard.js`, `mna/06-schermen.js`, meerdere `tests/*`-bestanden, `scripts/deploy.sh`, `voorwaarden.html`/`testvoorwaarden.html`/`viewer.html`) — niet aangeraakt door deze routine, vermoedelijk lopend handwerk van Marcel/een eerdere sessie. Zie ook de 23 sep-notitie in dit bestand: de ADMIN_KEY-401 op `/mna/admin/veiligheid/diepe-audit` was daar een probleem voor de knoppentest-routine, niet voor deze audit-routine (die gebruikt alleen `AUDIT_TRIGGER_KEY`, en die werkte vandaag probleemloos) — niet opnieuw getest vandaag, want niet relevant voor deze run.
+
+## 2026-09-24 (vervolg) — dagelijkse-knoppentest-routine (scheduled task)
+
+**Vooraf geconstateerd, niet aangeraakt (relevant voor context):** bij aanvang stonden in beide
+repo's dezelfde substantiële, onopgeslagen WIP-wijzigingen open als gisteren gemeld (S1.2/S1.2b
+platformvoorwaarden-gate). **Nieuw vandaag:** die gate bleek — ondanks nog steeds uncommitted lokaal
+— sinds gisteren daadwerkelijk **live gedeployed op staging** (`GET /mna/platformvoorwaarden/tekst`
+gaf nu echte inhoud i.p.v. de generieke catch-all-respons van gisteren; `/mna/save` zonder acceptatie
+gaf `{"error":"voorwaarden_niet_geaccepteerd"}`). Dit moet buiten deze routine om gebeurd zijn (een
+eigen sessie van Marcel, vermoedelijk) — geconstateerd, niet zelf gedaan. **Aandachtspunt voor
+Marcel:** de gate draait dus op staging zonder dat de bijbehorende code ergens gecommit is — bij
+sessieverlies is dit werk niet in git-historie terug te vinden. Verder niet aangeraakt (werkregel 1).
+
+**Rotatiekeuze:** sector **accountancy** (het vlaggenschip — opvallend genoeg nog nooit eerder door
+deze routine getest; voorgaande dagen: transport/Overname, bouw/Fusie, zorg/Opvolging, handel/Verkoop,
+itsoftware/PE-traject), trajecttype **Verkoop**, rollen verkoper/koper/begeleider, fasen Financieel +
+Compliance (NBA/Wwft/kwaliteitstoetsing — accountancy-specifiek, niet eerder getest). Extra: de
+"eigen specialist"-flow (`worker/34-eigen-specialisten.js`) werd voor het eerst getest door deze
+routine — de aftekencyclus via de specialistenpool (`worker/32-pool.js`) vereist een bestaand
+tos_document in scope (`POST /mna/pool/opdracht` valideert dit hard) en is dus een aparte, grotere
+flow die vandaag bewust niet is opgetuigd (zelfde afweging als 21/23 sep) — wel getest: toevoegen,
+privacy-invariant (admin/koper geen toegang), lijst, dubbelklik-guard, intrekken.
+
+**Omgeving:** volledig tegen `kantoorinzicht-staging` (health-check 200 OK, `tests/.env.staging.local`
+aanwezig).
+
+**Doorlopen flow (eigen Node-testscript op basis van `tests/lib.mjs`, klik→request→backend→database→
+response):**
+1. Traject aangemaakt (sector accountancy, type Verkoop, admin-key) — 3 codes teruggekregen.
+2. Platformvoorwaarden-gate: status vóór acceptatie `akkoord:false`; `/mna/save` zonder acceptatie
+   correct geblokkeerd (`voorwaarden_niet_geaccepteerd`); acceptatie voor alle 3 rolcodes gelukt en
+   onafhankelijk via `/mna/platformvoorwaarden/status` geverifieerd.
+3. Traject-readback per rol: sector/traject_type kwamen voor verkoper/koper/tussenpersoon correct terug.
+4. Fase Financieel: verkoper mag opslaan; begeleider 403 (bekende regel); koper 403.
+5. Fase Compliance (nooit eerder getest): verkoper slaat 6 velden op (nba/toetsDatum/toetsOordeel/
+   tuchtzaken/wwft/klachtenReg); begeleider leest ze correct terug via een verse call.
+6. Documentupload — zie P2-66 hieronder (gevonden én gefixt).
+7. Reject-pad (cateringfactuur, echt irrelevant): correct verworpen, vóór én na de P2-66-fix.
+8. Eigen specialist toevoegen/lijst/dubbelklik-guard/intrekken — zie P3-67 hieronder (gevonden én
+   gefixt). Privacy-invariant bevestigd: admin-key én koper-code krijgen beide correct 403 op de
+   specialistenlijst (worker/34-eigen-specialisten.js's eigen, bewuste uitsluiting van rol='admin').
+9. Cross-traject-check: intrekken van de specialist met een verkeerde (koper-)code correct 403.
+
+**Eigen testfout (geen platformbug), vastgelegd voor transparantie:** de eerste documentupload-poging
+gebruikte een jaarrekening met een ANDERE fictieve bedrijfsnaam dan de traject-`kantoor_naam` —
+correct verworpen door de entiteitscheck. Bij het herstellen daarvan (bedrijfsnaam gelijkgetrokken)
+bleef de verwerping echter bestaan — dát bleek geen testfout, maar een echte platformbug (P2-66).
+
+**Gevonden fouten (2, allebei dezelfde dag gereproduceerd, gefixt, hertest, gedeployed naar staging):**
+
+### 1. P2-66 — Documentupload verwerpt ten onrechte passende documenten bij een kantoornaam met interne punctuatie
+- **Probleem:** de entiteitscheck in `worker/14-document-upload-analyse.js` stript niet-alfanumerieke
+  tekens uit de woorden van de bekende kantoornaam vóór de substring-match, maar nooit uit de
+  documenttekst zelf. Een naam-"woord" met interne punctuatie (underscore, koppelteken zonder
+  spaties — bijv. testtrajectnamen als `DAILY_QA_...`, of een reële dubbele achternaam als
+  "Jansen-de-Vries") kan daardoor nooit matchen, ook al staat de naam letterlijk in het document.
+- **Reproductie:** een 830-woorden jaarrekening met de exacte traject-kantoornaam erin werd toch
+  verworpen ("Document bevat geen verwijzing naar ..."), zonder dat er een AI-call plaatsvond.
+- **Oorzaak:** asymmetrische normalisatie tussen het naam-woord (wél gestript) en `previewText`
+  (niet gestript) vóór de `includes()`-vergelijking.
+- **Fix:** `previewText` wordt nu identiek genormaliseerd vóór de vergelijking (5 regels,
+  `worker/14-document-upload-analyse.js`). Matchlogica zelf ongewijzigd.
+- **Validatie:** `node --check` groen; staging-deploy (predeploy-audit 45/45 groen, Version ID
+  `0de52cb8-0017-4d00-8f51-b2c1abb41618`); zelfde document opnieuw geüpload → `verworpen:false`,
+  78 velden geëxtraheerd (incl. correcte compliance-velden nba_status/afm_vergunning/
+  kwaliteitstoetsing_*/tuchtzaken/claims/wwft/integriteitsincidenten).
+- **Regressie:** de cateringfactuur (écht irrelevant) blijft na de fix correct `verworpen:true` —
+  de fix verzwakt de check niet.
+- **Foutpropagatie:** dit is een generieke matchfunctie (één plek, niet per sector gedupliceerd),
+  dus geen elders te herhalen variant gevonden — wel een nieuw datapunt voor werkregel 15: een
+  volgend "document wordt onterecht verworpen"-signaal verdient voortaan eerst deze functie te
+  checken vóór een AI-/extractieprobleem wordt vermoed.
+- **Niet naar productie gedeployed** — wacht op Marcels beoordeling (werkregel 27, buiten scope
+  van deze routine om zelf te beslissen).
+
+### 2. P3-67 — `?code=`-fallback voor de eigen-specialisten-lijst was inert (geen productie-impact)
+- **Probleem:** `GET /mna/eigen-specialisten/{traject}?code=<geldige tussen_code>` gaf altijd
+  `{"error":"Geen toegang"}`, ook met een net-succesvol-gebruikte tussen_code.
+- **Oorzaak:** `begeleiderAuth()` leest de credential uitsluitend via headers/`?key=`
+  (`worker/00-policy.js leesSleutel()`); het los meegegeven `code`-argument in
+  `worker/34-eigen-specialisten.js magBegeleider()` werd alleen gebruikt om het traject op te
+  zoeken, nooit als credential — de gedocumenteerde `?code=`-fallback werkte dus voor geen enkele
+  waarde. **Geen productie-impact:** de echte UI (`bgPoolApi()` in `mna/04-begeleider-dashboard.js`)
+  gebruikt altijd de `x-tussen-key`-header, nooit `?code=`.
+- **Fix:** een synthetische `x-tussen-key`-header wordt nu gezet wanneer alleen `?code=` is
+  meegegeven, vóór de aanroep naar `begeleiderAuth()`. De bestaande `rol==='begeleider'`-uitsluiting
+  blijft van kracht (geverifieerd: `rol==='admin'` faalt nog steeds op die check — geen nieuw
+  ADMIN_KEY-via-`?code=`-lek).
+- **Validatie:** `node --check` groen; zelfde staging-deploy als hierboven; `?code=`-aanroep werkt nu
+  correct; admin-key/koper-code via `?code=` blijven beide 403.
+- **Niet naar productie gedeployed** — wacht op Marcels beoordeling.
+
+**Positieve bevinding (geen bug, ter info):** de "nieuwe DB-tabel"-checklist uit CLAUDE.md (beide
+verwijder-cascades moeten élke traject-gebonden tabel dekken) is inmiddels structureel geborgd —
+`/admin/delete/mna/` én `/avg/verwijder` roepen nu allebei dezelfde gedeelde
+`verwijderTrajectData()` (`worker/02-config-constanten.js`) aan, die o.a. `pool_opdrachten`/
+`pool_reviews`/`mna_eigen_specialisten`/alle `tos_*`-tabellen dekt. Geverifieerd via grep — geen
+losse, onafhankelijk onderhouden tweede lijst meer (het historische risico dat CLAUDE.md nog als
+waarschuwing vermeldt, lijkt hiermee opgelost; niet apart live getest vandaag, want al bewezen via de
+predeploy-audit hierboven, checks 6/7).
+
+**P2-65 (open van 23 sep):** aanvullend live gereproduceerd voor accountancy vandaag — de
+balansveldenlacune blijkt dus niet itsoftware-specifiek maar platformbreed. Zie bijgewerkte
+`OPEN-BEVINDINGEN.md`. Nog steeds niet zelf gefixt (architectuurkeuze, zelfde afweging als eerder).
+
+**Niet getest deze ronde (expliciet, geen gok):** de volledige eigen-specialist-aftekencyclus via de
+specialistenpool (vereist een bestaand tos_document — aparte, grotere flow, geen aanleiding om dat
+vandaag op te tuigen); sectoren mkb/zorg/bouw/transport/handel/consultancy/verhuizingen (dit keer
+niet aan de beurt); concurrency (geen nieuwe aanleiding, werkregel 40 test-economy).
+
+**Opgeruimd:** alle 3 testtrajecten (het hoofdtraject uit het script + het losse debug-traject +
+een eerste handmatig aangemaakt probe-traject dat per ongeluk niet meteen was opgeruimd) verwijderd
+via `/admin/delete/mna/` op staging; geverifieerd met een directe D1-query
+(`SELECT COUNT(*) FROM mna_trajecten WHERE kantoor_naam LIKE '%DAILY_QA%'` → 0).
+
+**Score aan marilyn:** 80 (100 − 10 − 10, twee gevonden fouten, beide zelfstandig opgelost + getest +
+gedeployed naar staging binnen de scope van vandaag).
