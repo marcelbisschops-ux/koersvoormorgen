@@ -729,3 +729,7 @@ of de `ADMIN_KEY` in `~/.zshrc` nog overeenkomt met de daadwerkelijke Cloudflare
 en bij twijfel roteren (`wrangler secret put ADMIN_KEY`) — dit blokkeert al twee dagen op rij de
 zichtbaarheid van de dagelijkse knoppentest in marilyn.html → Veiligheid. Blokkeert de rest van deze
 routine niet — `tests/AUDIT-LOG.md` en `OPEN-BEVINDINGEN.md` zijn het primaire record.
+
+## 2026-09-24
+
+**diepe-audit-routine (geautomatiseerde scheduled task): geen open aanvraag, cadans nog niet verstreken.** Wachtrij (`/mna/veiligheid/audit-opdracht`) leeg (`{"ok":true,"opdracht":null}`). Vandaag (24e) valt buiten het 1e-3e-van-de-maand-venster voor de automatische maandelijkse cadans, dus geen zelf-aanvraag ingediend. Geen audit uitgevoerd, niets gewijzigd. Opmerking: de working tree had bij aanvang al de nodige onopgeslagen wijzigingen (o.a. `mna/04-begeleider-dashboard.js`, `mna/06-schermen.js`, meerdere `tests/*`-bestanden, `scripts/deploy.sh`, `voorwaarden.html`/`testvoorwaarden.html`/`viewer.html`) — niet aangeraakt door deze routine, vermoedelijk lopend handwerk van Marcel/een eerdere sessie. Zie ook de 23 sep-notitie in dit bestand: de ADMIN_KEY-401 op `/mna/admin/veiligheid/diepe-audit` was daar een probleem voor de knoppentest-routine, niet voor deze audit-routine (die gebruikt alleen `AUDIT_TRIGGER_KEY`, en die werkte vandaag probleemloos) — niet opnieuw getest vandaag, want niet relevant voor deze run.
