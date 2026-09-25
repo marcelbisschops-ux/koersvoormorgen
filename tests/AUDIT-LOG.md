@@ -898,3 +898,105 @@ dus buiten de opruimscope van deze routine. Vermeld puur ter info.
 ## 2026-09-25
 
 **diepe-audit-routine (geautomatiseerde scheduled task): geen open aanvraag, cadans nog niet verstreken.** Wachtrij (`/mna/veiligheid/audit-opdracht`) leeg (`{"ok":true,"opdracht":null}`). Vandaag (25e) valt buiten het 1e-3e-van-de-maand-venster voor de automatische maandelijkse cadans, dus geen zelf-aanvraag ingediend. Geen audit uitgevoerd, niets gewijzigd. Opmerking: de working tree had bij aanvang een groot aantal onopgeslagen wijzigingen (`mna/04-begeleider-dashboard.js`, `mna/06-schermen.js`, `scripts/deploy.sh`, meerdere `tests/*`-bestanden, `testvoorwaarden.html`, `viewer.html`, `voorwaarden.html`) — overeenkomend met de al eerder gelogde platformvoorwaarden-gate-WIP (zie logboek 19-24 sep) — niet aangeraakt door deze routine.
+
+## 2026-09-25 (vervolg) — dagelijkse-knoppentest-routine (scheduled task)
+
+**Vooraf geconstateerd, niet aangeraakt (relevant voor context):** bij aanvang stonden dezelfde
+substantiële, onopgeslagen WIP-wijzigingen open als de afgelopen dagen (S1.2/S1.2b
+platformvoorwaarden-gate), nu in **beide** repo's: frontend (20 bestanden, zie hierboven bij de
+diepe-audit-routine van vandaag) én backend (`~/Documents/GitHub/koersvoormorgen-backend`, o.a. een
+nieuwe, nog niet gecommitte `worker/00d-platformvoorwaarden-gate.js` + wijzigingen in 8 andere
+modules, plus nieuwe niet-gecommitte testbestanden `tests/s1.2b-platformvoorwaarden.mjs`,
+`tests/p1-ai-rate-limit.mjs`, `tests/audit-backend-cascade-scope.mjs`). Frontend blijft 12 commits
+vóór op `origin/main` (pushblokkade van 24 sep nog niet opgelost — zie addendum die dag). Niets van
+dit alles gewijzigd, gecommit of gestaged door deze routine (werkregel 1). De reeds bestaande,
+uncommitte `accepteerPlatformvoorwaarden()`-helper in `tests/lib.mjs` (van dezelfde WIP) is wél
+**read-only hergebruikt** in het testscript van vandaag — dezelfde functie die de daily-test-routine
+van 24 sep ook al gebruikte, dus geen nieuwe afhankelijkheid.
+
+**Rotatiekeuze:** sector **mkb** (nog nooit eerder getest door déze routine — voorgaande dagen:
+transport/Overname, bouw/Fusie, zorg/Opvolging, handel/Verkoop, itsoftware/PE-traject,
+accountancy/Verkoop; mkb was eerder wel apart getest via een los testpakket op 20 augustus 2026, maar
+niet via de volledige rol-/rechten-/workflow-dekking van déze dagelijkse routine), trajecttype
+**Overname** (langst niet meer getest — laatst 18 sep), rollen verkoper/koper/tussenpersoon, fasen
+Financieel + **Personeel & organisatie** ("partner"-fase-id, nog nooit eerder getest door deze
+routine). Reden: brede sector-/trajecttype-/fase-rotatie, met verhoogde aandacht voor mkb omdat die
+sector een bekende historische foutklasse heeft (veldkoppelingsbug 20 aug 2026, zie
+`project_mkb_testpakket_v2`-geheugen) — werkregel 15.
+
+**Omgeving:** volledig tegen `kantoorinzicht-staging` (health-check 200 OK, `tests/.env.staging.local`
+aanwezig). Testtraject `DAILY_QA_20260925` (fictief: "Warenhuis De Jonge-Bakker B.V.", retail/mkb),
+aangemaakt/getest/opgeruimd via een los Node-testscript op basis van `tests/lib.mjs` (bouwstenen,
+geen dubbel werk met `tests/e2e-api.mjs`/`run-rolflows.sh`).
+
+**Doorlopen flow (klik → request → backend → database → response → resultaat), 44/44 checks OK:**
+1. Traject aangemaakt (`/mna/create`, sector mkb, type Overname, admin-key) — 3 codes ontvangen.
+2. **S1.2b-platformvoorwaarden-contract expliciet geverifieerd** (nog niet eerder als los contract
+   getest door deze routine, alleen impliciet "geaccepteerd en toen werkte het" op 24 sep): vóór
+   acceptatie geeft `/mna/traject/{code}` voor alle 3 rolcodes uitsluitend `rol` +
+   `platform_voorwaarden_akkoord:false` + de voorwaardentekst terug — **geen** dossier
+   (sector/traject_type/data), exact zoals de code-comments in `worker/00d-platformvoorwaarden-gate.js`
+   en `worker/11-mna-tekenen-beheer.js` beloven. Ná acceptatie (voor alle 3 rollen, onafhankelijk
+   geverifieerd via `/mna/platformvoorwaarden/status`) verschijnt het dossier alsnog correct
+   (sector=mkb, traject_type=Overname, genest onder `traject.*`). **Eigen testfout onderweg (geen
+   platformbug):** de eerste versie van dit testscript verwachtte het dossier al vóór acceptatie —
+   faalde 6 checks, bleek na code-inspectie (`worker/00d-platformvoorwaarden-gate.js` regel ~65) een
+   verkeerde aanname in het testscript zelf te zijn, precies zoals eerder op 20 sep 2026 gebeurde met
+   een ander responsveld — zelfde geleerde les opnieuw bevestigd: eerst de daadwerkelijke
+   response-vorm verifiëren vóór een assertie schrijven.
+3. Onbekende code → 404, geen info-lek.
+4. Fase Financieel: verkoper mag opslaan, koper 403, begeleider 403 (bekende regel); teruggelezen en
+   waarde geverifieerd.
+5. Fase **Personeel & organisatie** ("partner", mkb-specifiek, voor het eerst getest door deze
+   routine): verkoper slaat aantalFte/sleutelpersonen/overdraagbaarheid op; koper 403; begeleider
+   leest de opgeslagen waarden correct terug via een verse call (begeleider mag hier wél lezen, ook al
+   mag hij niet opslaan).
+6. Documentupload + echte AI-extractie: een realistische, meerdere-secties jaarrekening (bestuurs-
+   verslag/balans met vergelijkende cijfers/W&V 3 jaar/kasstroom/grondslagen/toelichting/
+   samenstellingsverklaring, geen kaal 1-pagina-document) voor een fictieve retailonderneming met
+   **bewust een koppelteken in de kantoornaam** ("De Jonge-Bakker") — **P2-66-regressiecheck**: de op
+   24 sep gefixte entiteitscheck (`worker/14-document-upload-analyse.js`) faalt niet opnieuw, upload
+   slaagt (`verworpen:false`), fix houdt dus stand voor mkb. 121 extractiesleutels in de respons
+   (grotendeels `null` voor niet-aanwezige info — **geen hallucinatie**, expliciet gecontroleerd op
+   waardeniveau, niet alleen sleutelnamen: bijv. `nba_status`/`wwft`/`aandeelhoudersstructuur` — geen
+   van alle in het document — kwamen terug als `null`, nooit als verzonnen waarde, conform werkregel 6
+   GOUDEN STANDAARD). `_bron_fragmenten` en `_extractie_betrouwbaarheid:"gemiddeld"` correct meegegeven.
+7. **P2-65-gerelateerde aanvullende controle (geen nieuwe bevinding, bevestiging van de bestaande
+   code-analyse):** een los, gericht documentje met expliciete balanscijfers (eigen vermogen/
+   balanstotaal/liquide middelen/kortlopende+langlopende schulden/debiteuren) liet zien dat **mkb**
+   deze velden wél correct extraheert (alle 5 met de juiste waarde terug) — dit is precies wat
+   `OPEN-BEVINDINGEN.md` P2-65 als stand van zaken beschrijft (mkb is de ENIGE sector met de
+   `SECTOR_EXTRACTIE_EXTRA`-koppeling voor deze velden, sinds de fix van 20 aug 2026); de overige 8
+   sectoren missen 'm nog steeds (code-niveau, niet vandaag opnieuw voor alle 8 herbevestigd — geen
+   aanleiding, al twee keer runtime-bevestigd op 23/24 sep). Geen wijziging aan `OPEN-BEVINDINGEN.md`
+   nodig anders dan deze bevestigende regel.
+8. Reject-pad: een irrelevant document (menukaart, geen enkele relatie tot de onderneming) wordt
+   correct verworpen, ook ná de P2-66-fix — bevestigt dat de fix de check niet heeft verzwakt.
+9. Cross-traject-isolatie: een tweede, leeg traject (zonder platformvoorwaarden-acceptatie) bevat geen
+   enkele data van het hoofdtraject — geen lek tussen trajecten.
+
+**Gevonden fouten: 0.** Geen nieuwe platformbugs deze ronde — alle 44 checks slaagden na correctie van
+de eigen testscriptfout in stap 2 hierboven (die faalde 6x vóór correctie, telt niet mee als
+platformbevinding, zie werkregel 31/38-onderscheid: dit was code-niveau eigen-testfout, geen
+runtime-platformgedrag).
+
+**Niet getest deze ronde (expliciet, geen gok):** rollen meekijker/adviseur/eigen specialist (al
+eerder gedekt op 20/21/24 sep, geen nieuwe aanleiding vandaag — werkregel 40 test-economy); sectoren
+zorg/bouw/transport/handel/consultancy/verhuizingen/accountancy/itsoftware (niet aan de beurt); fasen
+Compliance/IT/Juridisch/Strategisch voor mkb (Financieel + Personeel & organisatie waren vandaag de
+prioriteit); concurrency (geen nieuwe aanleiding).
+
+**Opgeruimd:** beide testtrajecten van vandaag verwijderd via `/admin/delete/mna/` op staging;
+onafhankelijk geverifieerd met een directe D1-query
+(`SELECT COUNT(*) FROM mna_trajecten WHERE kantoor_naam LIKE '%DAILY_QA_20260925%'` → 0). Het losse
+debug-/verificatietraject van stap 2/6/7 hierboven (drie extra korte trajecten, gebruikt om de
+gate-response-vorm en de P2-65-balansvelden te controleren) is ook telkens direct na gebruik
+verwijderd via hetzelfde endpoint.
+
+**Pushstatus:** geen nieuwe code-wijzigingen vandaag (alleen dit logboek + evt. `OPEN-BEVINDINGEN.md`),
+dus geen nieuwe pushpoging ondernomen — de bestaande pushblokkade van 24 sep (Playwright-fails op
+begeleider-login door de niet-gedeployde WIP-frontend van de platformvoorwaarden-gate) is een
+onopgeloste, aan Marcel voorgelegde blokkade en niet opnieuw getest (zou toch hetzelfde resultaat
+geven zolang die WIP niet is afgerond — werkregel 40 test-economy, geen zinloze herhaling).
+
+**Score aan marilyn:** 100 (geen bevindingen deze ronde).
