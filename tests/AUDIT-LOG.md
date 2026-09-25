@@ -894,3 +894,7 @@ geheel testen/deployen — en dan pas de 3 lokale commits van vandaag alsnog pus
 bestaan (uit `tests/e2e-regressie-uitbreiding.spec.js`, tijdstempels van vóór vandaag) — geen
 `DAILY_QA_`-testdata van deze routine (die is volledig opgeruimd, 0 resterend, apart geverifieerd),
 dus buiten de opruimscope van deze routine. Vermeld puur ter info.
+
+## 2026-09-25
+
+**diepe-audit-routine (geautomatiseerde scheduled task): geen open aanvraag, cadans nog niet verstreken.** Wachtrij (`/mna/veiligheid/audit-opdracht`) leeg (`{"ok":true,"opdracht":null}`). Vandaag (25e) valt buiten het 1e-3e-van-de-maand-venster voor de automatische maandelijkse cadans, dus geen zelf-aanvraag ingediend. Geen audit uitgevoerd, niets gewijzigd. Opmerking: de working tree had bij aanvang een groot aantal onopgeslagen wijzigingen (`mna/04-begeleider-dashboard.js`, `mna/06-schermen.js`, `scripts/deploy.sh`, meerdere `tests/*`-bestanden, `testvoorwaarden.html`, `viewer.html`, `voorwaarden.html`) — overeenkomend met de al eerder gelogde platformvoorwaarden-gate-WIP (zie logboek 19-24 sep) — niet aangeraakt door deze routine.
