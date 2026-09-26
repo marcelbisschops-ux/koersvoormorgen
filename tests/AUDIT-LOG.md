@@ -1000,3 +1000,5 @@ onopgeloste, aan Marcel voorgelegde blokkade en niet opnieuw getest (zou toch he
 geven zolang die WIP niet is afgerond — werkregel 40 test-economy, geen zinloze herhaling).
 
 **Score aan marilyn:** 100 (geen bevindingen deze ronde).
+
+- 2026-09-26 — diepe-audit-routine: geen open aanvraag, cadans nog niet verstreken (dag 26, geen dag 1–3).
