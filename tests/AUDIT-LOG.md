@@ -1002,3 +1002,45 @@ geven zolang die WIP niet is afgerond — werkregel 40 test-economy, geen zinloz
 **Score aan marilyn:** 100 (geen bevindingen deze ronde).
 
 - 2026-09-26 — diepe-audit-routine: geen open aanvraag, cadans nog niet verstreken (dag 26, geen dag 1–3).
+
+## 2026-09-26 (vervolg) — dagelijkse-knoppentest-routine (scheduled task)
+
+**Rotatiekeuze:** sector **consultancy** (nog nooit door deze routine getest; voorgaande dagen
+transport/bouw/zorg/handel/itsoftware/accountancy/mkb), trajecttype **Fusie** (laatst 19 sep), rollen
+verkoper/koper/begeleider/**meekijker** (meekijker laatst 20 sep, nu met een andere scope), fasen
+Financieel + Klanten & contracten + Personeel & organisatie. Nieuw accent t.o.v. eerdere rondes:
+**gefaseerde koper-toegang per categorie** (alleen `commercieel` vrijgegeven) en de documentpaden
+van de koper (lijst + download), niet alleen de DD-data.
+
+**Omgeving:** volledig tegen `kantoorinzicht-staging` (health 200). Fictief traject
+`DAILY_QA_20260926` ("Adviesbureau Stroomlijn B.V."), los Node-script op basis van `tests/lib.mjs`.
+Wrangler-OAuth was bij de eerste run verlopen (D1-query faalde met code 10000); ververste zichzelf,
+tweede run normaal.
+
+**Doorlopen (36 checks + 3 reproductiechecks):** create (sector/type teruggelezen); verkoper slaat
+Financieel + Klanten & contracten op, koper en begeleider 403 op Financieel, DB-waarde onafhankelijk
+via D1 bevestigd; koper zonder vrijgave ziet geen DD-data; koper- en verkopercode kunnen geen
+categorie vrijgeven; vrijgave zonder NDA geblokkeerd (`nda_niet_getekend`); met force alleen
+`commercieel` vrij → koper ziet commercieel, geen financieel, geen tussen_code; upload rijke
+consultancy-jaarrekening (bestuursverslag/balans/W&V 3 jaar/kasstroom/grondslagen/toelichting) → AI
+extraheert o.a. omzet 3 jaar, EBITDA 662.000, OHW 286.000, declarabiliteit 71, retainer 38, grootste
+klant 14, en alle balansvelden (EV/balanstotaal/liquide/kort-/langlopend) correct (P2-65-correctie voor
+consultancy op staging dus actief); geen accountancy-label in de analyse (P2-64); meekijker met scope
+`commercieel`: aanmaken, dubbele aanmaak idempotent, verkopercode geweigerd, ziet alleen commercieel
+(data én documenten), intrekken → direct 401; koper-vrijgave intrekken → koper ziet niets.
+
+**Gevonden (1 platformbevinding): P1-93 / MASTER N-71** — autorisatiebevinding in de koper-documentpaden (koper kan onder bepaalde omstandigheden niet-vrijgegeven DD-documenten zien/downloaden). Runtime gereproduceerd op staging, productie draait dezelfde code (niet op productie gereproduceerd). Foutpropagatie uitgevoerd (backend-breed gegrept; meekijker- en versiepaden niet geraakt). Bewust geen mechanisme/regelnummers in dit publieke logboek zolang het open staat — volledige reproductie, oorzaak en fixopties in de lokale `OPEN-BEVINDINGEN.md` (P1-93). **Niet zelf gefixt:** autorisatie (werkregel 26 zone C) + productkeuze.
+
+**Eigen testfouten (geen platformbug):** (1) assertie "koper-respons zonder checklist_json/notitie"
+was fout: binnen een vrijgegeven categorie ziet de koper die bewust (Marcel 1 sep 2026, comment in
+`worker/11-mna-tekenen-beheer.js:486`); de interne notitie uit het niet-vrijgegeven Financieel lekte
+níet. (2) P2-64-regex matchte "accountantskantoor" uit de samenstellingsverklaring van mijn eigen
+testdocument; na aanscherping groen.
+
+**Niet getest:** adviseur/eigen specialist (21 sep gedekt), documentgeneratie en waardering (geen
+aanleiding deze ronde, werkregel 40), UI-klikpad in de browser (alleen API), productie.
+
+**Opgeruimd:** alle drie de staging-trajecten van vandaag via `/admin/delete/mna/` (200); D1-controle
+`kantoor_naam LIKE '%DAILY_QA_20260926%'` → 0.
+
+**Score aan marilyn:** 75 (1 bevinding, wacht op Marcel).
