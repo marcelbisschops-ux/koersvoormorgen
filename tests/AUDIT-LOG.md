@@ -1044,3 +1044,52 @@ aanleiding deze ronde, werkregel 40), UI-klikpad in de browser (alleen API), pro
 `kantoor_naam LIKE '%DAILY_QA_20260926%'` → 0.
 
 **Score aan marilyn:** 75 (1 bevinding, wacht op Marcel).
+
+## 2026-09-30 — dagelijkse-knoppentest-routine (scheduled task)
+
+**Rotatiekeuze:** sector **verhuizingen** (de enige sector die deze routine nog nooit had getest),
+trajecttype **Verkoop**, rollen verkoper/koper/begeleider, fasen Financieel + IT + Juridisch + Strategisch.
+Nieuw accent ten opzichte van eerdere rondes: de **documentlevenscyclus per rol** (uploaden, lijst,
+downloaden, verwijderen, herclassificeren, versies), met ook de acties die de UI voor een rol verbergt maar
+die via de directe API aan te roepen zijn. Daarnaast een hertest van het bekende risico N-71/P1-93
+(koper-documentpaden) en één teaser-generatie op een rijk gevuld traject (werkregel 30).
+
+**Omgeving:** volledig tegen `kantoorinzicht-staging`. Fictief traject `DAILY_QA_20260930`
+("Verhuizingen Zuidwest B.V."). Script lokaal, buiten git. Het wrangler-OAuth-token was bij de eerste
+run weer verlopen (D1 code 10000) en ververste zichzelf bij de volgende aanroep, net als op 26 sep.
+
+**Doorlopen (42 checks + 2 reproductiescripts):**
+- Create: sector/type onafhankelijk via D1 bevestigd.
+- Opslaan vóór platformvoorwaarden: 403.
+- Verkoper slaat verhuizingen-velden op (wagenparkWaarde e.d.), DB bevestigd.
+- Begeleider en koper krijgen 403 op Financieel, koper ook op IT. DB is ongewijzigd na de geweigerde pogingen.
+- Uploads (IT-systemenoverzicht, huurovereenkomst): de AI-analyse is aanwezig en er staat geen accountancy-label in.
+- Koper zonder vrijgave: ziet niets en een download geeft 403.
+- Vrijgave van alleen IT: de koper ziet het IT-document en kan het downloaden (200). Het juridisch document geeft 403.
+- N-71-hertest: een BEM-bestand in een wél vrijgegeven categorie blijft onzichtbaar en de download geeft 403 (fix houdt stand).
+- Koper op versies/herclassificeren/koppel-entiteit: 403/401/401.
+- Begeleider herclassificeert (DB bevestigd) en ziet de versies. De verkoper verwijdert een eigen document (DB bevestigd).
+- Teaser: koper en verkoper krijgen 401. Voor de begeleider werkt het; de teaser gaat over een verhuisbedrijf,
+  zonder bedrijfsnaam, zonder exacte omzet en zonder accountancy.
+
+**Gevonden (1 platformbevinding, 3 plekken): P1-94 / MASTER N-85.** Autorisatiebevinding in
+schrijfacties op de dataroom via de directe API (de koper kan acties uitvoeren die de UI voor hem
+verbergt). Runtime gereproduceerd op staging; productie draait dezelfde code (niet op productie
+gereproduceerd). Foutpropagatie is uitgevoerd over de verwante document-, save- en bankmutatieroutes.
+Mechanisme en regelnummers staan bewust niet in dit publieke logboek zolang het open staat. De volledige
+reproductie en de klaarliggende patch staan lokaal in `OPEN-BEVINDINGEN.md` P1-94.
+**Niet zelf gefixt:** dit is autorisatie (zone C, Breaker-review verplicht), en de backend-werkboom bevat
+veel niet-gecommitte wijzigingen die een deploy zou meenemen (werkregel 44.4). Er is dus niets gedeployed,
+niet naar staging en niet naar productie.
+
+**Eigen testfouten (geen platformbug):** een verkeerde kolomnaam (`analyse_json` in plaats van `analyse`) en
+een verkeerde tabelnaam in het reproductiescript. Beide zijn gecorrigeerd of bleken niet nodig.
+
+**Niet getest:** adviseur, meekijker en eigen specialist (niet aan de beurt), waardering/dealvoorstel,
+het UI-klikpad in de browser (alleen API), productie, en `upload-base64` voor de koper (alleen
+code-niveau).
+
+**Opgeruimd:** alle 5 staging-trajecten van vandaag via `/admin/delete/mna/` (ok:true). D1-controle
+`kantoor_naam LIKE '%DAILY_QA_20260930%'` gaf 0.
+
+**Score aan marilyn:** 75 (1 bevinding, wacht op Marcel).
