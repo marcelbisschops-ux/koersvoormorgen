@@ -6,16 +6,14 @@ playwright/.cache/
 .DS_Store
 
 # Claude Code-worktrees (26 sep 2026, P1-IP-2-doorlichting): losse, soms maandenoude git-worktrees
-# onder .claude/worktrees/ (elk een VOLLEDIGE checkout van de repo op een oud commit, incl. een
-# pre-P1-IP-2-versie met de volledige proprietary sectorbenchmarktekst nog intact) stonden hier
-# ongetrackt maar WEL op schijf. **KRITIEKE CORRECTIE (27 sep 2026):** deze regel alléén lost het
-# publicatieprobleem NIET op — empirisch geverifieerd (canary-bestand-test) dat `wrangler pages
-# deploy .` `.gitignore` NIET raadpleegt bij het bepalen wat geüpload wordt (in tegenstelling tot
-# wat hier eerder foutief werd aangenomen/genoteerd). Deze regel blijft staan voor git-hygiëne
-# (nooit per ongeluk committen), maar de daadwerkelijke publicatieblokkade van `.claude/`, de
-# root-`/*.md`-bestanden, `/schema.sql` e.d. loopt sindsdien via een Cloudflare Pages Function
-# (`functions/_middleware.js`, edge-side 404 op deze paden) — zie die file en MASTER-WERKLIJST
-# N-83 voor de volledige toedracht en het bewijs. Worktrees zelf blijven gewoon lokaal bruikbaar.
+# onder .claude/worktrees/ (elk een VOLLEDIGE checkout van de repo op een oud commit) stonden hier
+# ongetrackt maar WEL op schijf — en wrangler pages deploy . respecteert .gitignore bij het bepalen
+# wat geüpload wordt. Zonder deze regel werd een oude, pre-P1-IP-2-worktree (met de volledige
+# proprietary sectorbenchmarktekst nog intact) gewoon publiek meegepubliceerd op koersvoormorgen.nl —
+# exact hetzelfde lekmechanisme als de twee eerdere GOUDEN-STANDAARD-bevindingen hieronder (12 sep/
+# 18 sep: "de deploy publiceert de volledige mapinhoud tenzij expliciet uitgesloten"), nu via een
+# derde, nieuwe route. Worktrees zelf blijven gewoon lokaal bruikbaar (git worktree list ziet ze nog
+# gewoon); alleen het onbedoeld meepubliceren stopt.
 .claude/
 
 # Back-ups met KLANTDATA — NOOIT naar GitHub (blijven lokaal / iCloud / externe schijf)
@@ -33,10 +31,6 @@ backups/
 .wrangler/
 _mock/*.png
 
-# Build-artifact van scripts/build-frontend-release.mjs (N-83, 27 sep 2026) — de allowlist-gebaseerde
-# Cloudflare Pages-deploymap. Wordt bij elke deploy opnieuw, schoon opgebouwd; hoort niet in git.
-/.pages-dist/
-
 # Interne documentatie/architectuur/audit-standaarden + schema.sql + legal/ — 12 sep 2026,
 # GOUDEN STANDAARD-bevinding: GitHub Pages publiceert de VOLLEDIGE repo-inhoud (geen Jekyll-
 # filtering door .nojekyll), dus stond dit alles — inclusief OPEN-BEVINDINGEN.md met op dat
@@ -50,14 +44,6 @@ _mock/*.png
 # Marcel af te stemmen of dat ook nodig is. Uitzondering op "tests/ blijft getrackt": zie
 # tests/rapporten/ hieronder — diezelfde 12-sep-fout bleek zich op 18 sep te herhalen via een
 # nieuw pad dat toen nog niet bestond.
-# **KRITIEKE HERONTDEKKING (27 sep 2026, N-83):** deze 12-sep-fix beschermde tegen GitHub Pages
-# (dat serveert wat in de git-repo staat — "uit git-tracking halen" werkte daar dus echt). Diezelfde
-# dag migreerde de live site naar Cloudflare Pages (`wrangler pages deploy .`, leest van SCHIJF,
-# negeert .gitignore volledig — empirisch bevestigd). Het gevolg: deze bestanden stonden sindsdien
-# ALSNOG publiek op koersvoormorgen.nl, ononderbroken sinds de migratie, ondanks een als "opgelost"
-# geregistreerde bevinding. De daadwerkelijke blokkade loopt nu via een Cloudflare Pages Function
-# (`functions/_middleware.js`) — .gitignore hieronder blijft nuttig voor git-hygiëne, is GEEN
-# publicatiebescherming meer op zichzelf. Zie MASTER-WERKLIJST N-83 voor het volledige bewijs.
 /*.md
 # Uitzondering (18 sep 2026, CI-blokkade): LOAD-BEARING-PAGES.md is geen interne/gevoelige
 # documentatie zoals de rest van deze /*.md-regel bedoelt — het is een getrackt CI-bronbestand
