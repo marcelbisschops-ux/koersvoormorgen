@@ -122,6 +122,12 @@ test.describe('Rekenkern dealvoorstel', () => {
   // Beschermt (a) de maatschap-rekenwijze en (b) dat de BV-tak exact ongewijzigd blijft.
   test('maatschap: grondslag = winst ná ondernemersloon, geen VpB; BV ongewijzigd', async ({ page }) => {
     const res = await page.evaluate(() => {
+      // P1-IP-2 (live sinds 26 sep 2026): sector-multiples staan niet meer in de frontend-bron, ze
+      // komen pas na login via GET /mna/sectorprofielen. Deze rekenkerntest draait zonder login en
+      // zet daarom zelf een FICTIEVE range (3×–7×, mid 5,0×) — bewust niet de echte benchmark.
+      SECTOR_PROFIELEN.accountancy.multipleLaag = 3;
+      SECTOR_PROFIELEN.accountancy.multipleHoog = 7;
+      SECTOR_PROFIELEN.accountancy.multipleBasis = 'ebitda';
       const run = (structuur, data) => {
         window.S = { traject: { sector: 'accountancy', structuur_type: structuur, koper_naam: '' },
           _groepData: Object.assign({}, data), data: Object.assign({}, data) };
@@ -523,7 +529,10 @@ test.describe('Rol Click-Through: koper', () => {
     const voor = await api('GET', '/mna/entiteiten/' + koperCode);
     expect(Array.isArray(voor.json) ? voor.json.length : -1).toBe(0);
     // Begeleider geeft categorie 'financieel' vrij aan de koper.
-    await api('POST', '/mna/koper-categorieen/' + trajectCode + '?force=1', { adminKey: ADMIN, body: { categorieen: ['financieel'] } });
+    // N-81-patroon (4e keer, 30 sep 2026): dit traject is via /adviseur/create aangemaakt (extern) —
+    // sinds de muur van 25 sep (SECURITY-INVARIANTS.md #9) weigert /mna/koper-categorieen/ terecht
+    // een ADMIN_KEY-aanroep. Gebruik de tussen_code van dit traject, zoals een echte begeleider.
+    await api('POST', '/mna/koper-categorieen/' + trajectCode + '?force=1', { headers: { 'x-tussen-key': tussenCode }, body: { categorieen: ['financieel'] } });
     // Nu moet de koper de daadwerkelijke waarde ook in de UI zien — niet alleen in een API-response.
     await login(page, koperCode);
     await page.waitForFunction(() => window.S && S.traject && S.rol === 'koper', null, { timeout: 15000 });
@@ -670,6 +679,10 @@ test.describe('Documentknoppen module-gating', () => {
     await api('POST', '/gebruiker/voorwaarden/accepteren', { body: { email, wachtwoord: WW } });
     // Limiet 1, module traject AAN maar contracten UIT
     await api('POST', '/gebruikers/verkoop/' + gid, { adminKey: ADMIN, body: { traject_limiet: 1, modules: { traject: true, contracten: false } } });
+    // P1-PLAT-1 (live sinds 26 sep 2026): voor een account met kantoor_id heeft het modules-veld
+    // van /gebruikers/verkoop geen effect meer — modules zijn per kantoor (kantoor_modules). Het
+    // kantoor van een net uitgenodigd account is 'K' + gebruiker-id (zie verify-p1plat1-kantoor.mjs).
+    await api('POST', '/mna/admin/kantoren/K' + gid + '/module', { adminKey: ADMIN, body: { module_id: 'contracten', enabled: false } });
     const c = await api('POST', '/adviseur/create', { body: { email, wachtwoord: WW, traject: { kantoor_naam: 'E2E UI Gating Kantoor BV', traject_type: 'Verkoop' } } });
     trajectCode = c.json.code;
     tussenCode = c.json.tussen_code;

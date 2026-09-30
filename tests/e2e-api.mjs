@@ -122,10 +122,15 @@ async function main() {
 
     // Module traject uit → create moet falen met upsell-melding
     await api('POST', '/gebruikers/verkoop/' + opruimGebruikerId, { adminKey: ADMIN, body: { modules: { traject: false } } });
+    // P1-PLAT-1 (live sinds 26 sep 2026): voor een account met kantoor_id telt uitsluitend
+    // kantoor_modules — het modules-veld hierboven heeft dan geen effect meer. Kantoor = 'K' + gebruiker-id.
+    await api('POST', '/mna/admin/kantoren/K' + opruimGebruikerId + '/module', { adminKey: ADMIN, body: { module_id: 'traject', enabled: false } });
     const c4 = await api('POST', '/adviseur/create', { body: { email, wachtwoord: WW, traject: { kantoor_naam: 'E2E Geblokkeerd Kantoor BV' } } });
+    if (c4.json && c4.json.code) opruimTrajecten.push(c4.json.code); // ook bij onverwacht succes opruimen
     check('module "traject" uit → aanmaken geblokkeerd', c4.status === 403 && /Module Traject/i.test(c4.json && c4.json.error || ''), JSON.stringify(c4.json));
     // Module weer aan voor de rest van de tests
     await api('POST', '/gebruikers/verkoop/' + opruimGebruikerId, { adminKey: ADMIN, body: { modules: { traject: true } } });
+    await api('POST', '/mna/admin/kantoren/K' + opruimGebruikerId + '/module', { adminKey: ADMIN, body: { module_id: 'traject', enabled: true } });
   }
 
   if (!hoofdTraject) {
@@ -242,8 +247,10 @@ async function main() {
     // Tweede categorie met data zodat we filtering kunnen aantonen (financieel bestaat al uit stap 6)
     await api('POST', '/mna/save', { body: { code: hoofdTraject.code, fase_id: 'commercieel', data_json: { commercieel_klanten: { label: 'Aantal klanten', value: '120' } } } });
 
-    // Alleen 'financieel' vrijgeven (force=1 omslaat de NDA-check voor de test)
-    const zet = await api('POST', '/mna/koper-categorieen/' + hoofdTraject.code + '?force=1', { adminKey: ADMIN, body: { categorieen: ['financieel'] } });
+    // Alleen 'financieel' vrijgeven (force=1 omslaat de NDA-check voor de test). N-81-patroon (30 sep
+    // 2026): extern traject (/adviseur/create) — sinds de muur van 25 sep (SECURITY-INVARIANTS.md #9)
+    // weigert deze route terecht ADMIN_KEY; gebruik de tussen_code, zoals een echte begeleider.
+    const zet = await api('POST', '/mna/koper-categorieen/' + hoofdTraject.code + '?force=1', { headers: { 'x-tussen-key': hoofdTraject.tussen_code }, body: { categorieen: ['financieel'] } });
     check('categorie-vrijgave ok:true', zet.json && zet.json.ok === true, JSON.stringify(zet.json));
     check('endpoint zet koper_vrijgegeven=1', zet.json && zet.json.koper_vrijgegeven === 1, JSON.stringify(zet.json));
 
@@ -255,7 +262,7 @@ async function main() {
     check('login geeft koper_categorieen mee', kLogin.json && Array.isArray(kLogin.json.koper_categorieen) && kLogin.json.koper_categorieen[0] === 'financieel', JSON.stringify(kLogin.json && kLogin.json.koper_categorieen));
 
     // Volledig intrekken → koper ziet niets meer
-    const leeg = await api('POST', '/mna/koper-categorieen/' + hoofdTraject.code, { adminKey: ADMIN, body: { categorieen: [] } });
+    const leeg = await api('POST', '/mna/koper-categorieen/' + hoofdTraject.code, { headers: { 'x-tussen-key': hoofdTraject.tussen_code }, body: { categorieen: [] } });
     check('intrekken zet koper_vrijgegeven=0', leeg.json && leeg.json.koper_vrijgegeven === 0, JSON.stringify(leeg.json));
     const kLeeg = await api('POST', '/mna/traject/' + hoofdTraject.koper_code, { body: {} });
     check('koper ziet geen enkele DD-data na intrekken', kLeeg.json && Array.isArray(kLeeg.json.data) && kLeeg.json.data.length === 0, JSON.stringify(kLeeg.json && kLeeg.json.data && kLeeg.json.data.length));
