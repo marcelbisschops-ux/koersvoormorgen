@@ -140,19 +140,71 @@ export function zetMfaUitVoorTest(email) {
 // GitHub Actions-runner (geen toegang tot die private repo) gaf dat altijd ENOENT.
 export const D1_NAAM = /staging/i.test(WORKER) ? 'kantoorinzicht-staging' : 'kantoorinzicht';
 
-export function d1(sql) {
-  let out;
+// ── Transportfout-hardening (30 sep 2026, MASTER N-91) ──
+// Een tijdelijke netwerkstoring richting de Cloudflare-API liet een wrangler-aanroep eindeloos
+// hangen of met "fetch failed" falen — dat werd in de push-gate gepresenteerd als testfout. Nu:
+// harde timeout per poging, en maximaal ÉÉN herhaling, uitsluitend bij een aantoonbare
+// transportfout vóórdat er enig queryresultaat is. Wrangler rapporteert óók auth- (code 10000) en
+// SQL-fouten (code 7500, SQLITE_ERROR) als "A request to the Cloudflare API ... failed" — elke fout
+// mét een Cloudflare-API-foutcode is dus GEEN transportfout en blijft direct rood, net als een
+// onleesbaar resultaat of een geldig resultaat met een verkeerde waarde (dat laatste beoordeelt de
+// aanroeper met zijn eigen expect(), daar komt deze helper niet aan).
+// 10 s i.p.v. de voorgestelde 20 s: de centrale Playwright-testlimiet is 30 s (playwright.config.js).
+// Met 20 s kon het retry-pad (20 + 1 + 20) de test al afbreken vóór de INFRA-melding. Gemeten
+// 30 sep 2026: een complete aanroep kost 1,6–2,1 s (wrangler zelf: mediaan 0,5 s, max 2,4 s, n=271).
+export const D1_TIMEOUT_MS = 10000;
+const TRANSPORT_PATROON = /fetch failed|ECONNRESET|ECONNREFUSED|ENOTFOUND|EAI_AGAIN|ETIMEDOUT|ENETUNREACH|socket hang up|network (error|timeout)|UND_ERR_/i;
+
+function wranglerFout(e) {
+  // Wrangler schrijft zijn eigen (JSON-)foutmelding naar stdout, niet stderr/message (18 sep 2026).
+  const detail = (e.stdout && String(e.stdout).trim()) || (e.stderr && String(e.stderr).trim()) || String(e.message || e);
+  let apiCode = null, tekst = detail;
   try {
-    out = execFileSync('npx', ['wrangler', 'd1', 'execute', D1_NAAM, '--remote', '--json', '--command', sql],
-      { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
-  } catch (e) {
-    // Diagnostisch (18 sep 2026): wrangler schrijft zijn eigen foutmelding naar stdout, niet
-    // stderr/message — e.message alleen geeft altijd kale "Command failed: ..." zonder inhoud.
-    const detail = (e.stdout && String(e.stdout).trim()) || (e.stderr && String(e.stderr).trim()) || String(e.message || e);
-    throw new Error('wrangler d1 execute mislukt (D1 "' + D1_NAAM + '" niet bereikbaar via wrangler, of niet ingelogd): ' + detail.slice(0, 300));
+    const j = JSON.parse(e.stdout ? String(e.stdout) : '');
+    if (j && j.error) { apiCode = j.error.code ?? null; tekst = String(j.error.text || '') + ' ' + JSON.stringify(j.error.notes || ''); }
+  } catch (_) { /* geen JSON — beoordeel de ruwe tekst */ }
+  const timeout = e.code === 'ETIMEDOUT' || (e.signal === 'SIGTERM' && e.status === null);
+  const transport = timeout || (apiCode === null && TRANSPORT_PATROON.test(tekst));
+  return { transport, timeout, detail };
+}
+
+function standaardWranglerUitvoer(sql) {
+  return execFileSync('npx', ['wrangler', 'd1', 'execute', D1_NAAM, '--remote', '--json', '--command', sql],
+    { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: D1_TIMEOUT_MS, killSignal: 'SIGTERM' });
+}
+
+function korteWacht(ms) { Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms); }
+
+// Los geëxporteerd (met injecteerbare uitvoerder/logger/wacht) zodat het gedrag deterministisch te
+// testen is zonder netwerk — zie tests/d1-helper-infra.mjs. Aanroepers gebruiken gewoon d1(sql).
+export function _d1Met(sql, { uitvoer = standaardWranglerUitvoer, log = (m) => console.warn(m), wacht = korteWacht } = {}) {
+  let laatste = null;
+  for (let poging = 1; poging <= 2; poging++) {
+    let out;
+    try {
+      out = uitvoer(sql);
+    } catch (e) {
+      const f = wranglerFout(e);
+      if (!f.transport) {
+        throw new Error('wrangler d1 execute mislukt (D1 "' + D1_NAAM + '" niet bereikbaar via wrangler, of niet ingelogd): ' + f.detail.slice(0, 300));
+      }
+      laatste = f;
+      if (poging === 1) {
+        log('INFRA: D1-verificatie tijdelijk onbereikbaar — retry 1/1 (' + (f.timeout ? 'timeout ' + D1_TIMEOUT_MS + ' ms' : f.detail.replace(/\s+/g, ' ').slice(0, 80)) + ')');
+        wacht(1000);
+        continue;
+      }
+      break;
+    }
+    // Er is een antwoord: vanaf hier nooit meer herhalen. Onleesbare output = direct rood.
+    const parsed = JSON.parse(out);
+    return (parsed[0] && parsed[0].results) || [];
   }
-  const parsed = JSON.parse(out);
-  return (parsed[0] && parsed[0].results) || [];
+  throw new Error('INFRA: D1-verificatie onbereikbaar na 1 retry (D1 "' + D1_NAAM + '", ' + (laatste.timeout ? 'timeout ' + D1_TIMEOUT_MS + ' ms' : laatste.detail.replace(/\s+/g, ' ').slice(0, 200)) + ') — infrastructuur, geen productbevinding');
+}
+
+export function d1(sql) {
+  return _d1Met(sql);
 }
 
 // ── Platformvoorwaarden-acceptatie voor rolcodes (S1.2b-gate) ──
