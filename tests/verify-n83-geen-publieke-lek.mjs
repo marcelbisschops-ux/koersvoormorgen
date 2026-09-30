@@ -33,6 +33,27 @@ const MOET_GEBLOKKEERD_ZIJN = [
   '/.gevoelige-termen.local.txt',
   '/.cloudflare-api-token.local',
   '/tests/.env.staging.local',
+  // N-89 (30 sep 2026): interne ontwikkel-/test-/buildbestanden zonder publieke runtimefunctie.
+  '/tests/AUDIT-LOG.md',
+  '/tests/README.md',
+  '/tests/lib.mjs',
+  '/tests/',
+  '/TESTS/lib.mjs',
+  '/%74ests/lib.mjs',
+  '/scripts/deploy.sh',
+  '/scripts/',
+  '/.gitignore',
+  '/.assetsignore',
+  '/.nojekyll',
+  '/.githooks/pre-push',
+  '/build.py',
+  '/extract.js',
+  '/test_adviseur.sh',
+  '/package.json',
+  '/playwright.config.js',
+  '/_src/home.html',
+  '/_mock/huisstijl.html',
+  '/_gearchiveerd/verhuisscan/README.md',
 ];
 
 const MOET_BEREIKBAAR_ZIJN = [
@@ -45,7 +66,14 @@ const MOET_BEREIKBAAR_ZIJN = [
   '/mna/01-config-sectorprofielen.js',
   '/mna/03-rekenkern-waardering.js',
   '/assets/kvm.js',
-  '/tests/README.md',
+  // N-89: /tests/README.md stond hier eerder als "nog bereikbaar"-controle; is nu bewust
+  // geblokkeerd. Vervangen door andere bedoelde publieke bestanden.
+  '/assets/fonts.css',
+  '/robots.txt',
+  '/sitemap.xml',
+  '/testvoorwaarden',
+  '/platform/',
+  '/assets/downloads/koers-voor-morgen-command-center.pdf',
 ];
 
 async function checkStatus(path) {

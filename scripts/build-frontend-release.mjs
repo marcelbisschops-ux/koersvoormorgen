@@ -21,9 +21,17 @@ const DIST_DIR = join(REPO_ROOT, '.pages-dist');
 
 // Aanvullende, expliciete uitsluiting bovenop .gitignore — vangt reeds-getrackte bestanden die niet
 // met terugwerkende kracht uit een latere .gitignore-regel worden gehaald (zie toelichting hierboven).
-const EXTRA_EXCLUDE_PREFIXES = ['.claude/', '.github/', '.git/'];
+// N-89 (30 sep 2026): ook interne ontwikkel-/test-/buildbestanden zonder publieke runtimefunctie
+// horen niet in de publieke build — `git ls-files --others` nam bovendien ongetrackte lokale
+// bestanden (bijv. een diagnose-spec) mee. Tweede laag: functions/_middleware.js blokkeert dezelfde
+// paden nog eens edge-side.
+const EXTRA_EXCLUDE_PREFIXES = ['.claude/', '.github/', '.git/', '.githooks/', 'tests/', 'scripts/', '_src/', '_mock/', '_gearchiveerd/'];
+const EXTRA_EXCLUDE_EXACT = new Set(['build.py', 'extract.js', 'test_adviseur.sh', 'package.json', 'package-lock.json', 'playwright.config.js']);
 
 function isExtraExcluded(relPath) {
+  if (EXTRA_EXCLUDE_EXACT.has(relPath)) return true;
+  // Dotfiles/dotmappen op elk niveau (.gitignore, .assetsignore, .nojekyll, ...) — geen runtimefunctie.
+  if (relPath.split('/').some((deel) => deel.startsWith('.'))) return true;
   return EXTRA_EXCLUDE_PREFIXES.some((p) => relPath === p.replace(/\/$/, '') || relPath.startsWith(p));
 }
 
@@ -48,7 +56,7 @@ function main() {
   }
 
   console.log(`Build-output samengesteld: ${gekopieerd} bestanden in ${DIST_DIR}`);
-  console.log(`(bron: git ls-files --cached --others --exclude-standard, min. ${EXTRA_EXCLUDE_PREFIXES.join(', ')})`);
+  console.log(`(bron: git ls-files --cached --others --exclude-standard, min. ${EXTRA_EXCLUDE_PREFIXES.join(', ')}, dotfiles en ${[...EXTRA_EXCLUDE_EXACT].join(', ')})`);
 }
 
 main();

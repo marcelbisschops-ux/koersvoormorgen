@@ -34,18 +34,42 @@ const GEBLOKKEERDE_PREFIXEN = [
   '/.wrangler/',
 ];
 
+// N-89 (30 sep 2026): interne ontwikkel-/test-/buildbestanden zonder publieke runtimefunctie. Deze
+// zijn sinds N-83 ook uit de build gehaald (scripts/build-frontend-release.mjs); dit is de tweede
+// laag. Mappen worden zowel met als zonder afsluitende slash geblokkeerd.
+const N89_MAPPEN = ['/tests', '/scripts', '/_src', '/_mock', '/_gearchiveerd', '/.githooks'];
+const N89_BESTANDEN = new Set(['/build.py', '/extract.js', '/test_adviseur.sh', '/package.json', '/package-lock.json', '/playwright.config.js']);
+
 // Uitzondering (zie .gitignore, 18 sep 2026): LOAD-BEARING-PAGES.md is een getrackt CI-bronbestand
 // zonder gevoelige inhoud en moet publiek/leesbaar blijven zoals voorheen.
 const EXPLICIETE_UITZONDERINGEN = new Set(['/LOAD-BEARING-PAGES.md']);
 
+// N-89: vergelijk op een genormaliseerd pad (eenmaal gedecodeerd, dubbele slashes samengevoegd,
+// kleine letters voor de N-89-regels), zodat /TESTS/, /%74ests/ of //tests/ niet langs de blokkade
+// glippen. Een onleesbare codering wordt geweigerd i.p.v. doorgelaten.
+function normaliseer(pathname) {
+  let p;
+  try { p = decodeURIComponent(pathname); } catch (e) { return null; }
+  return p.replace(/\/{2,}/g, '/');
+}
+
 // Elk overig root-niveau .md-bestand (behalve de uitzondering hierboven) is per definitie interne
 // documentatie (zie .gitignore /*.md-regel) — geen allowlist per bestandsnaam nodig/gewenst, deze
 // categorie is bewust generiek geblokkeerd.
-function isGeblokkeerd(pathname) {
+function isGeblokkeerd(ruwPathname) {
+  const pathname = normaliseer(ruwPathname);
+  if (pathname === null) return true;
   if (EXPLICIETE_UITZONDERINGEN.has(pathname)) return false;
   if (GEBLOKKEERDE_PADEN_EXACT.has(pathname)) return true;
   if (/^\/[^/]+\.md$/i.test(pathname)) return true;
-  return GEBLOKKEERDE_PREFIXEN.some((p) => pathname.startsWith(p));
+  if (GEBLOKKEERDE_PREFIXEN.some((p) => pathname.startsWith(p))) return true;
+  const klein = pathname.toLowerCase();
+  if (N89_BESTANDEN.has(klein)) return true;
+  if (N89_MAPPEN.some((m) => klein === m || klein.startsWith(m + '/'))) return true;
+  // Dotfiles/dotmappen op elk niveau (.gitignore, .assetsignore, .nojekyll, ...), behalve
+  // /.well-known/ (standaardlocatie voor o.a. certificaatvalidatie en security.txt).
+  if (!klein.startsWith('/.well-known/') && klein.split('/').some((deel) => deel.startsWith('.'))) return true;
+  return false;
 }
 
 export async function onRequest(context) {
