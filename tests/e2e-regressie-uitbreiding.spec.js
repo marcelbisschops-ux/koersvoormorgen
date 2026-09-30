@@ -17,7 +17,7 @@
 import { test, expect } from '@playwright/test';
 import fs from 'fs';
 import path from 'path';
-import { api, leesAdminKey, WORKER, d1, zetMfaUitVoorTest } from './lib.mjs';
+import { api, leesAdminKey, WORKER, d1, zetMfaUitVoorTest, accepteerPlatformvoorwaarden } from './lib.mjs';
 
 const ADMIN = leesAdminKey();
 const WW = 'TestWachtwoord123!';
@@ -71,6 +71,9 @@ async function maakTraject(extra) {
   }, extra || {});
   const c = await api('POST', '/adviseur/create', { body: { email, wachtwoord: WW, traject: trajectData } });
   if (!c.json || !c.json.ok) throw new Error('traject aanmaken mislukt: ' + JSON.stringify(c.json));
+  // Platformvoorwaarden vóór elke andere gated /mna/*-aanroep (S1.2b-gate) — maakTraject() is de
+  // centrale helper voor alle 9 tests hieronder, dus dit dekt ze allemaal in één keer.
+  await accepteerPlatformvoorwaarden({ verkoper: c.json.code, koper: c.json.koper_code, tussenpersoon: c.json.tussen_code });
   // Een vers traject dwingt de verkoper eerst door het eenmalige opening-scherm (adres/KvK/
   // tekenbevoegde + entiteiten/partners) — geen van deze 9 tests gaat over die flow zelf, dus die
   // overslaan via een directe D1-zet (zelfde bewuste testopzet-patroon als elders in dit bestand).

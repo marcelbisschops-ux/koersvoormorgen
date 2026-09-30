@@ -17,7 +17,7 @@
 //   ADMIN_KEY=... WORKER_URL=https://kantoorinzicht-staging.marcel-bisschops.workers.dev \
 //     node tests/e2e-tos-review.mjs
 // ══════════════════════════════════════════════════════════════════
-import { WORKER, leesAdminKey, api, check, kop, kleur, samenvatting, d1 } from './lib.mjs';
+import { WORKER, leesAdminKey, api, check, kop, kleur, samenvatting, d1, accepteerPlatformvoorwaarden } from './lib.mjs';
 
 const ADMIN = leesAdminKey();
 const DOM = '@e2e-test.invalid';
@@ -32,6 +32,9 @@ async function testProfiel(profile) {
   const H = { 'x-tussen-key': tussenCode };
   const VH = { 'x-tussen-key': code };
   const KH = { 'x-tussen-key': koperCode };
+  // Vóór elke andere gated /mna/*-aanroep hieronder (S1.2b-gate) — deze suite gebruikt bewust
+  // x-tussen-key i.p.v. ADMIN_KEY, precies zoals verkoper/koper/begeleider dat in het echt doen.
+  await accepteerPlatformvoorwaarden({ verkoper: code, koper: koperCode, tussenpersoon: tussenCode });
   await api('POST', '/mna/tos/activeer/' + code, { headers: H });
 
   async function maakEnVerstuur(adressaten) {

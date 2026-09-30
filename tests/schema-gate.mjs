@@ -29,7 +29,7 @@
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { WORKER, leesAdminKey, heeftVlag, api, kleur, zetMfaUitVoorTest } from './lib.mjs';
+import { WORKER, leesAdminKey, heeftVlag, api, kleur, zetMfaUitVoorTest, accepteerPlatformvoorwaarden } from './lib.mjs';
 
 const ADMIN = leesAdminKey();
 const UPDATE = heeftVlag('update');
@@ -107,6 +107,8 @@ async function main() {
   if (!c.json || !c.json.code) { console.log(kleur('rood', 'Traject aanmaken mislukt: ' + JSON.stringify(c.json))); return false; }
   const T = { code: c.json.code, koper_code: c.json.koper_code, tussen_code: c.json.tussen_code };
   trajecten.push(T.code);
+  // Vóór de eerste niet-admin-key /mna/*-aanroep hieronder (/mna/save e.v., S1.2b-gate).
+  await accepteerPlatformvoorwaarden({ verkoper: T.code, koper: T.koper_code, tussenpersoon: T.tussen_code });
   const advToken = (await api('POST', '/adviseur/trajecten', { body: { email, wachtwoord: WW } })).json?.sessie_token;
 
   // Eén DD-fase met inhoud, daarna vrijgeven aan de koper (force=1 = zonder NDA, alleen voor deze test).

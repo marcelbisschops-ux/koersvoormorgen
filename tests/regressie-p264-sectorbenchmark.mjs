@@ -8,7 +8,7 @@
 // Draait uitsluitend tegen staging (nooit productie — maakt echte trajecten + AI-calls).
 // Gebruik: WORKER_URL=<staging> ADMIN_KEY=<staging-sleutel> node tests/regressie-p264-sectorbenchmark.mjs
 // ══════════════════════════════════════════════════════════════════
-import { api, WORKER, check, kop, resultaten, leesAdminKey, kleur } from './lib.mjs';
+import { api, WORKER, check, kop, resultaten, leesAdminKey, kleur, accepteerPlatformvoorwaarden } from './lib.mjs';
 
 const ADMIN = leesAdminKey();
 if (!ADMIN) { console.log('GEEN ADMIN_KEY — stop.'); process.exit(1); }
@@ -88,6 +88,8 @@ async function testSector(sector, bedrijfsnaam, { verwachtAccountancyLabelToeges
   const code = create.json && create.json.code;
   if (!code) { return; }
   opruimen.push(code);
+  // Vóór de niet-admin-key /mna/document/upload-aanroep hieronder (S1.2b-gate).
+  await accepteerPlatformvoorwaarden({ verkoper: code, koper: create.json.koper_code, tussenpersoon: create.json.tussen_code });
 
   const fd = new FormData();
   fd.append('file', new Blob([jaarrekening(sector, bedrijfsnaam)], { type: 'text/plain' }), 'jaarrekening-2025.txt');

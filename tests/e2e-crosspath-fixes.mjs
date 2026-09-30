@@ -8,7 +8,7 @@
 // Draaien: node tests/e2e-crosspath-fixes.mjs --key=ADMIN_KEY
 //          ADMIN_KEY=... node tests/e2e-crosspath-fixes.mjs
 // ══════════════════════════════════════════════════════════════════
-import { WORKER, leesAdminKey, api, check, kop, kleur, samenvatting, sla_over, zetMfaUitVoorTest } from './lib.mjs';
+import { WORKER, leesAdminKey, api, check, kop, kleur, samenvatting, sla_over, zetMfaUitVoorTest, accepteerPlatformvoorwaarden } from './lib.mjs';
 
 const ADMIN = leesAdminKey();
 const TEST_EMAIL_DOMEIN = '@e2e-test.koersvoormorgen.invalid';
@@ -71,6 +71,9 @@ async function main() {
   }
   if (!traject) { console.log('\n' + kleur('rood', 'Geen testtraject — resterende stappen overgeslagen.')); await opruimen(); return !samenvatting(); }
 
+  // Vóór de eerste niet-admin-key /mna/*-aanroep hieronder (S1.2b-gate).
+  await accepteerPlatformvoorwaarden(traject);
+
   // ─────────────── F3: koper-categorie-intrekking ───────────────
   kop('F3 · Koper-categorie-intrekking (entiteiten/partners/qa/bankmutaties)');
   {
@@ -87,8 +90,12 @@ async function main() {
     const partVoor = await api('GET', '/mna/partners/' + traject.koper_code);
     check('partner verborgen voor koper zonder vrijgave', Array.isArray(partVoor.json) && partVoor.json.length === 0, JSON.stringify(partVoor.json));
 
-    // Financieel vrijgeven (force=1 omzeilt de NDA-check voor deze test)
-    await api('POST', '/mna/koper-categorieen/' + traject.code + '?force=1', { adminKey: ADMIN, body: { categorieen: ['financieel'] } });
+    // Financieel vrijgeven (force=1 omzeilt de NDA-check voor deze test). N-81-fix (26 sep 2026):
+    // dit traject is EXTERN (is_eigen=0, zie SETUP) — adminKey wordt hier terecht geweigerd door de
+    // muur tegen externe adviseurs (magAdminDitTrajectSchrijven), exact het F14-patroon van eerder
+    // deze sessie. x-tussen-key (de eigen begeleider-auth van dit traject) omzeilt die admin-only-muur
+    // niet, want dat IS de eigenaar van het traject.
+    await api('POST', '/mna/koper-categorieen/' + traject.code + '?force=1', { headers: { 'x-tussen-key': traject.tussen_code }, body: { categorieen: ['financieel'] } });
 
     const entNa = await api('GET', '/mna/entiteiten/' + traject.koper_code);
     check('entiteiten zichtbaar zodra koper_vrijgegeven=1', Array.isArray(entNa.json) && entNa.json.length === 1, JSON.stringify(entNa.json));
@@ -109,8 +116,8 @@ async function main() {
     check('koper ziet financieel-qa', qaFases.includes('financieel'), JSON.stringify(qaFases));
     check('koper ziet GEEN commercieel-qa (categorie niet vrijgegeven)', !qaFases.includes('commercieel'), JSON.stringify(qaFases));
 
-    // Alles weer intrekken → koper mag niets meer zien, incl. bankmutaties
-    await api('POST', '/mna/koper-categorieen/' + traject.code, { adminKey: ADMIN, body: { categorieen: [] } });
+    // Alles weer intrekken → koper mag niets meer zien, incl. bankmutaties (N-81-fix: zelfde reden)
+    await api('POST', '/mna/koper-categorieen/' + traject.code, { headers: { 'x-tussen-key': traject.tussen_code }, body: { categorieen: [] } });
     const entWeg = await api('GET', '/mna/entiteiten/' + traject.koper_code);
     check('entiteiten weer leeg na volledig intrekken', Array.isArray(entWeg.json) && entWeg.json.length === 0, JSON.stringify(entWeg.json));
     const partWeg = await api('GET', '/mna/partners/' + traject.koper_code);
@@ -527,8 +534,10 @@ async function main() {
     // cleanup — hier expliciet terug naar false, want dit blok test JUIST het externe-traject-pad.
     await api('POST', '/gebruikers/eigen/' + opruimGebruikerId, { adminKey: ADMIN, body: { is_eigen: false } });
     // Koper-bod: begeleider (eigen tussen_code) mag het bod zien; admin op hetzelfde EXTERNE traject
-    // moet een lege lijst krijgen, nooit het bedrag/de toelichting.
-    await api('POST', '/mna/admin/vrijgeven/' + traject.code + '?force=1', { adminKey: ADMIN });
+    // moet een lege lijst krijgen, nooit het bedrag/de toelichting. N-81-fix (26 sep 2026): adminKey
+    // wordt hier terecht geweigerd (extern traject, muur) — x-tussen-key is het juiste, al elders
+    // bewezen patroon (zelfde aanpak als de AUTOCHECK-selfcheck, worker/24-veiligheidsdashboard.js).
+    await api('POST', '/mna/admin/vrijgeven/' + traject.code + '?force=1', { headers: { 'x-tussen-key': traject.tussen_code } });
     const bodIndienen = await api('POST', '/mna/koper/bod', { body: { code: traject.koper_code, bedrag: 1234567, toelichting: 'E2E CONF — bod van de koper, mag nooit bij admin voor een extern traject' } });
     check('koper kan een bod indienen (sell-side, vrijgegeven)', bodIndienen.json && bodIndienen.json.ok === true, JSON.stringify(bodIndienen.json));
     const bodVanBegeleider = await api('GET', '/mna/begeleider/biedingen/' + traject.code, { headers: { 'x-tussen-key': traject.tussen_code } });
@@ -548,6 +557,30 @@ async function main() {
     check('admin op (tijdelijk) EIGEN traject ziet het bod wél', bodVanAdminEigen.json && bodVanAdminEigen.json.ok === true && (bodVanAdminEigen.json.biedingen || []).length === 1, JSON.stringify(bodVanAdminEigen.json));
     // Op eigen=true laten staan (zelfde reden als het F8-blok hierboven): opruimen() verwijdert dit
     // traject via de admin-route, die anders zelf door de F8-muur geraakt zou worden.
+  }
+
+  // ─────────────── F17: N-71/P1-93 · BEM/exclusiviteit-documenten nooit koper-zichtbaar ───────────────
+  kop('F17 · Koper ziet/downloadt nooit een BEM/exclusiviteit-geüpload document, ongeacht bestandsnaam');
+  {
+    const f17Fd = new FormData();
+    f17Fd.append('file', new Blob(['Bemiddelingsovereenkomst — fictieve testinhoud, F17.'], { type: 'application/pdf' }), 'Bemiddelingsovereenkomst_F17.pdf');
+    const f17Up = await fetch(WORKER + '/mna/document/upload?code=' + traject.code + '&fase_id=juridisch&bewaar=true', { method: 'POST', body: f17Fd });
+    const f17UpJson = await f17Up.json().catch(() => null);
+    check('F17: BEM-testdocument geüpload', f17Up.status === 200 && f17UpJson && f17UpJson.ok !== false, 'status=' + f17Up.status + ' ' + JSON.stringify(f17UpJson));
+
+    const f17LijstVerkoper = await api('GET', '/mna/document/lijst/' + traject.code + '/juridisch');
+    const f17BemDoc = (f17LijstVerkoper.json || []).find(d => d.bestand_naam === 'Bemiddelingsovereenkomst_F17.pdf');
+    check('F17: BEM-document vindbaar via verkoper', !!f17BemDoc, JSON.stringify(f17LijstVerkoper.json));
+
+    const f17LijstKoper = await api('GET', '/mna/document/lijst/' + traject.koper_code + '/juridisch');
+    check('F17: BEM-document NIET in koper-documentenlijst (geen vrijgave)', !(f17LijstKoper.json || []).some(d => d.bestand_naam === 'Bemiddelingsovereenkomst_F17.pdf'), JSON.stringify(f17LijstKoper.json));
+
+    if (f17BemDoc) {
+      const f17Dl = await api('GET', '/mna/document/download/' + f17BemDoc.id + '?code=' + traject.koper_code);
+      check('F17: koper-download van BEM-document geeft 403', f17Dl.status === 403, 'status=' + f17Dl.status);
+      const f17DlVerkoper = await api('GET', '/mna/document/download/' + f17BemDoc.id + '?code=' + traject.code);
+      check('F17: verkoper kan eigen BEM-document nog gewoon downloaden (geen regressie)', f17DlVerkoper.status === 200, 'status=' + f17DlVerkoper.status);
+    }
   }
 
   await opruimen();

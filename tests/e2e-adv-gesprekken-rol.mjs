@@ -15,7 +15,7 @@
 // Draaien: WORKER_URL=https://kantoorinzicht-staging.marcel-bisschops.workers.dev \
 //          node tests/e2e-adv-gesprekken-rol.mjs --key=STAGING_ADMIN_KEY
 // ══════════════════════════════════════════════════════════════════
-import { WORKER, leesAdminKey, api, check, kop, kleur, samenvatting } from './lib.mjs';
+import { WORKER, leesAdminKey, api, check, kop, kleur, samenvatting, accepteerPlatformvoorwaarden } from './lib.mjs';
 
 const ADMIN = leesAdminKey();
 
@@ -40,6 +40,8 @@ async function main() {
   const koperCode = create.json && create.json.koper_code;
   const tussenCode = create.json && create.json.tussen_code;
   check('code + koper_code + tussen_code aanwezig', !!code && !!koperCode && !!tussenCode, JSON.stringify(create.json));
+  // Vóór de eerste niet-admin-key /mna/*-aanroep hieronder (S1.2b-gate).
+  await accepteerPlatformvoorwaarden({ verkoper: code, koper: koperCode, tussenpersoon: tussenCode });
 
   try {
     kop('STAP 1 · begeleider legt een gesprek vast (zichtbaar_voor default = begeleider)');

@@ -9,7 +9,7 @@
 //   ADMIN_KEY=... WORKER_URL=https://kantoorinzicht-staging.marcel-bisschops.workers.dev \
 //     node tests/e2e-bankmutaties-v1b-groepa.mjs
 // ══════════════════════════════════════════════════════════════════
-import { WORKER, leesAdminKey, api, check, kop, kleur, samenvatting } from './lib.mjs';
+import { WORKER, leesAdminKey, api, check, kop, kleur, samenvatting, accepteerPlatformvoorwaarden } from './lib.mjs';
 
 const ADMIN = leesAdminKey();
 
@@ -60,6 +60,8 @@ async function run() {
   });
   const code = create.json.code, koperCode = create.json.koper_code, tussenCode = create.json.tussen_code;
   check('traject aangemaakt', !!code, JSON.stringify(create.json));
+  // Vóór de eerste niet-admin-key /mna/*-aanroep hieronder (upload/cashflow, S1.2b-gate).
+  await accepteerPlatformvoorwaarden({ verkoper: code, koper: koperCode, tussenpersoon: tussenCode });
 
   // Ankerdatum wordt de meest recente regel hieronder: 2026-09-21 (vast, exact het voorbeeld uit
   // het vastgelegde plan). 14 maanden aan data zodat periode=12 een "buiten periode"-telling geeft.
@@ -164,6 +166,7 @@ async function run() {
   });
   const code2 = create2.json.code, tussenCode2 = create2.json.tussen_code;
   check('tweede testtraject aangemaakt', !!code2, JSON.stringify(create2.json));
+  await accepteerPlatformvoorwaarden({ verkoper: code2, koper: create2.json.koper_code, tussenpersoon: tussenCode2 });
 
   // Mix: 1 geldige datum (2026-09-21, moet de anker worden), 1 onzin-datum die lexicografisch NÁ
   // de geldige anker sorteert ('2026-13-99' > '2026-09-21' als kale string — exact de Breaker-bug),
@@ -195,7 +198,8 @@ async function run() {
     },
   });
   const code3 = create3.json.code;
-  var csvOngeldig = 'Datum,Bedrag,Naam tegenpartij,Omschrijving\n'
+  await accepteerPlatformvoorwaarden({ verkoper: code3, koper: create3.json.koper_code, tussenpersoon: create3.json.tussen_code });
+  var csvOngeldig ='Datum,Bedrag,Naam tegenpartij,Omschrijving\n'
     + '20261399,100.00,Onzin1,Maand13\n'
     + '20260230,200.00,Onzin2,30 februari bestaat nooit\n';
   var fdOngeldig = new FormData();

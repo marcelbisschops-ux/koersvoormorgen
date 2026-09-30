@@ -15,7 +15,7 @@
 // Zonder admin-key draaien alleen de publieke checks (health, login).
 // ══════════════════════════════════════════════════════════════════
 
-import { WORKER, leesAdminKey, heeftVlag, api, check, sla_over, kop, kleur, samenvatting } from './lib.mjs';
+import { WORKER, leesAdminKey, heeftVlag, api, check, sla_over, kop, kleur, samenvatting, accepteerPlatformvoorwaarden } from './lib.mjs';
 
 const ADMIN = leesAdminKey();
 const DOE_AI = heeftVlag('ai') || heeftVlag('full');
@@ -130,6 +130,21 @@ async function main() {
 
   if (!hoofdTraject) {
     console.log('\n' + kleur('rood', 'Geen hoofdtraject aangemaakt — resterende stappen worden overgeslagen.'));
+    return;
+  }
+
+  // ─────────────── STAP 4b: PLATFORMVOORWAARDEN ACCEPTEREN (S1.2b-gate) ───────────────
+  // Vóór elke andere gated /mna/*-aanroep hieronder (STAP 6 en verder) — anders blokkeert
+  // worker/00d-platformvoorwaarden-gate.js met 403 voorwaarden_niet_geaccepteerd.
+  kop('STAP 4b · Platformvoorwaarden accepteren (S1.2b-gate)');
+  let pvOk = false, pvFout = '';
+  try {
+    await accepteerPlatformvoorwaarden(hoofdTraject);
+    pvOk = true;
+  } catch (e) { pvFout = e.message; }
+  check('platformvoorwaarden geaccepteerd voor verkoper/koper/tussenpersoon', pvOk, pvFout);
+  if (!pvOk) {
+    console.log('\n' + kleur('rood', 'Platformvoorwaarden-acceptatie mislukt — resterende stappen worden overgeslagen.'));
     return;
   }
 

@@ -177,6 +177,8 @@
     "updated_at",
     "vergrendeld_op",
     "verkoopmemorandum_datum",
+    "verkoopmemorandum_nda_door",
+    "verkoopmemorandum_nda_op",
     "verkoopmemorandum_status",
     "verkoopmemorandum_tekst",
     "verkoper_adres",

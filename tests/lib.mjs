@@ -3,14 +3,48 @@
 // Geen externe dependencies — draait op kale Node (18+, native fetch).
 // ══════════════════════════════════════════════════════════════════
 
+import { execFileSync } from 'node:child_process';
+
 export const WORKER = process.env.WORKER_URL || 'https://kantoorinzicht.marcel-bisschops.workers.dev';
 
-// De admin-key komt UITSLUITEND uit de omgeving of een --key=... argument.
-// NOOIT hardcoden (secret-regel). Zonder key draaien alleen de publieke tests.
+// N-68 (26 sep 2026, structurele credential-fix): canonieke bron is de macOS Sleutelhanger —
+// versleuteld, geen ~/.zshrc-afhankelijkheid, geen risico op een verouderde/desynchrone waarde in
+// een shell-profiel (precies het probleem dat deze fix veroorzaakte: een verlopen ADMIN_KEY-
+// omgevingsvariabele gaf stilzwijgend 401 tegen productie). Hetzelfde patroon dat de bridge-.command-
+// scripts al gebruikten voor staging (`security find-generic-password ... -s
+// kantoorinzicht-staging-admin-key`), nu hier gecentraliseerd zodat ALLE testscripts/tools die via
+// deze ene functie lopen hem automatisch krijgen, en uitgebreid met een analoog productie-item.
+// Eenmalig instellen/roteren (Marcel typt de waarde zelf in ZIJN eigen terminal, nooit via Claude):
+//   security add-generic-password -U -a "$USER" -s kantoorinzicht-staging-admin-key -w
+//   security add-generic-password -U -a "$USER" -s kantoorinzicht-production-admin-key -w
+// (-U = overschrijf een bestaand item, dus dit is ook het rotatiecommando.)
+const _KEYCHAIN_SERVICE = /staging/i.test(WORKER) ? 'kantoorinzicht-staging-admin-key' : 'kantoorinzicht-production-admin-key';
+
+function leesUitSleutelhanger(service) {
+  try {
+    const account = process.env.USER || process.env.LOGNAME || '';
+    if (!account) return '';
+    return execFileSync('/usr/bin/security', ['find-generic-password', '-a', account, '-s', service, '-w'], { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
+  } catch (e) {
+    return ''; // geen item gevonden, geen Sleutelhanger beschikbaar (bijv. CI/Linux), of geweigerd — fail-closed, nooit gokken
+  }
+}
+
+// De admin-key komt uit: (1) een expliciete --key=...-vlag (eenmalig, overrulet alles), (2) de
+// macOS Sleutelhanger (canoniek, zie hierboven), (3) als laatste, zichtbaar-gelogde terugval de
+// ADMIN_KEY-omgevingsvariabele (bijv. voor CI/GitHub Actions, waar geen Sleutelhanger bestaat en de
+// waarde al expliciet en veilig via GitHub Secrets wordt aangeleverd). NOOIT hardcoden (secret-regel).
+// Zonder geldige key draaien alleen de publieke tests.
 export function leesAdminKey() {
   const argKey = process.argv.find(a => a.startsWith('--key='));
   if (argKey) return argKey.slice('--key='.length);
-  return process.env.ADMIN_KEY || '';
+  const uitSleutelhanger = leesUitSleutelhanger(_KEYCHAIN_SERVICE);
+  if (uitSleutelhanger) return uitSleutelhanger;
+  if (process.env.ADMIN_KEY) {
+    console.error('[leesAdminKey] Sleutelhanger-item "' + _KEYCHAIN_SERVICE + '" niet gevonden — teruggevallen op ADMIN_KEY-omgevingsvariabele (kan verouderd zijn, zie N-68). Overweeg: security add-generic-password -U -a "$USER" -s ' + _KEYCHAIN_SERVICE + ' -w');
+    return process.env.ADMIN_KEY;
+  }
+  return '';
 }
 
 export function heeftVlag(naam) {
@@ -71,7 +105,7 @@ export async function api(method, pad, { body, headers, adminKey } = {}) {
 // alleen tegen kantoorinzicht-staging draait. Vereist een ingelogde `wrangler`-sessie (interactief
 // lokaal, of CLOUDFLARE_API_TOKEN in de omgeving); ontbreekt die, dan faalt dit netjes en blijft de
 // aanroepende test net als voorheen overslaan (geen harde crash van de hele testrun).
-import { execFileSync } from 'node:child_process';
+// (execFileSync is al bovenaan dit bestand geïmporteerd, voor leesAdminKey()'s Sleutelhanger-lookup.)
 
 const STAGING_D1_NAAM = 'kantoorinzicht-staging';
 
@@ -119,6 +153,38 @@ export function d1(sql) {
   }
   const parsed = JSON.parse(out);
   return (parsed[0] && parsed[0].results) || [];
+}
+
+// ── Platformvoorwaarden-acceptatie voor rolcodes (S1.2b-gate) ──
+// worker/00d-platformvoorwaarden-gate.js blokkeert elke beschermde /mna/-route (verkoper/koper/
+// tussenpersoon) totdat de rol de platformvoorwaarden server-side heeft geaccepteerd
+// (POST /mna/platformvoorwaarden/accepteren). Roep dit zo vroeg mogelijk aan, direct na het
+// aanmaken/ophalen van de rolcodes en vóór de eerste andere gated /mna/*-aanroep — anders faalt
+// die aanroep met 403 voorwaarden_niet_geaccepteerd. Idempotent: de backend vervangt een eerdere
+// acceptatie (DELETE + INSERT), dus herhaald aanroepen voor dezelfde code is veilig. Accepteert elke
+// niet-lege code uit `codes` (array of {rol: code}-object) en verifieert daarna onafhankelijk via
+// GET /mna/platformvoorwaarden/status dat de acceptatie ook als actueel geldt (akkoord:true, zelfde
+// versie). Gooit een Error zodra een code niet geaccepteerd blijkt — zonder acceptatie heeft verder
+// draaien geen zin, elke volgende gated aanroep zou toch stuklopen.
+export async function accepteerPlatformvoorwaarden(codes) {
+  const lijst = [...new Set(
+    (Array.isArray(codes) ? codes : Object.values(codes || {}))
+      .map((c) => (typeof c === 'string' ? c.trim() : ''))
+      .filter(Boolean)
+  )];
+  const resultaten = [];
+  for (const code of lijst) {
+    const accept = await api('POST', '/mna/platformvoorwaarden/accepteren', { body: { code } });
+    const acceptOk = accept.status === 200 && !!(accept.json && accept.json.ok);
+    const status = await api('GET', '/mna/platformvoorwaarden/status?code=' + encodeURIComponent(code));
+    const actueelOk = status.status === 200 && !!(status.json && status.json.akkoord === true && status.json.versie === (accept.json && accept.json.versie));
+    const ok = acceptOk && actueelOk;
+    resultaten.push({ code, ok, acceptStatus: accept.status, statusStatus: status.status });
+    if (!ok) {
+      throw new Error('platformvoorwaarden-acceptatie mislukt voor code ' + code + ' (acceptStatus=' + accept.status + ' statusStatus=' + status.status + ')');
+    }
+  }
+  return resultaten;
 }
 
 export function samenvatting() {

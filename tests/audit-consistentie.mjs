@@ -240,6 +240,14 @@ const GEVERIFIEERD_VEILIG_CHECK5 = new Set([
                                     // géén tussen_code/koper_code/notitie/tekenbevoegdheid/gebruiker_id, zelfde stripping-
                                     // patroon als /mna/traject/ en /gebruikers/mna/detail/ hierboven. Adviseur ziet hiermee
                                     // uitsluitend data van zijn eigen, al toegankelijke traject — geen nieuwe blootstelling.
+  '/mna/document/bieding/genereer',          // begeleiderAuth+heeftModule('contracten') (P1-IP-4, 27-09-2026 geverifieerd) —
+                                              // JSON.stringify is de uitgaande Anthropic-requestbody, niet de response;
+                                              // retourneert uitsluitend {ok,tekst} of {error}.
+  '/mna/logboek-meeting/genereer',           // isAdmin||isBegeleider, zelfde bar als /mna/logboek/{code} (P1-IP-4,
+                                              // 27-09-2026 geverifieerd) — zelfde false-positive-reden als hierboven.
+  '/mna/dealvoorstel/hoofdstukken/genereer', // begeleiderAuth+heeftModule('contracten') (P1-IP-4, 27-09-2026
+                                              // geverifieerd) — SELECT * nodig omdat begeleider_bedrijf geen losse kolom
+                                              // is; retourneert uitsluitend {ok,tekst} of {error}.
 ]);
 if (backendFiles.length) {
   const selectRe = /SELECT \* FROM mna_(trajecten|gesprekken)\b/;
@@ -422,53 +430,119 @@ if (!fs.existsSync(termenPad)) {
 // (ChatGPT-promptreview A2, 31 aug 2026: BATNA/walk-awayprijs + de LoI-onderhandelchecklist zaten
 //  in dezelfde tekst die met "Verstuur naar partijen" gedeeld wordt. Ze horen nu UITSLUITEND in de
 //  interne bijlage. Deze check vergrendelt dat zodat een latere edit ze niet stilzwijgend terugzet
-//  in het deelbare dealvoorstel.)
-log('8. Dealvoorstel: BATNA/walk-away/LoI-checklist uitsluitend in de interne bijlage (mna/04)');
+//  in het deelbare dealvoorstel.
+//  P1-IP-4 (27 sep 2026): de instructietekst zelf (koppen/interneKoppen) verhuisde server-side naar
+//  worker/19b-waardering-communicatie.js (/mna/dealvoorstel/hoofdstukken+bijlage/genereer) — mna/04
+//  stuurt nu alleen nog de DATA (contextBlok/interneContext) als twee aparte requests. De check kijkt
+//  daarom eerst backend-side (waar de instructietekst nu staat); ontbreekt de backend-repo lokaal, dan
+//  valt hij terug op de oude frontend-only structuur (bijv. als deze migratie ooit teruggedraaid is).)
+log('8. Dealvoorstel: BATNA/walk-away/LoI-checklist uitsluitend in de interne bijlage');
 {
-  const f = 'mna/04-begeleider-dashboard.js';
-  const src = fs.readFileSync(path.join(ROOT, f), 'utf8');
-  // De PUBLIEKE promptdelen: van 'var contextBlok=' tot 'var interneContext', en van 'var koppen='
-  // tot 'var interneKoppen'. Alles daarbinnen mag GEEN onderhandelpositie-inhoud bevatten.
-  const knip = (van, tot) => {
+  const knip = (src, van, tot) => {
     const a = src.indexOf(van); const b = src.indexOf(tot, a + 1);
     return (a >= 0 && b > a) ? src.slice(a, b) : null;
   };
-  const publiekeContext = knip('var contextBlok=', 'var interneContext');
-  const publiekeKoppen = knip("var koppen='## Managementsamenvatting", 'var interneKoppen');
-  const interneKoppen = knip('var interneKoppen=', 'var antiVerzin');
   const verboden = [/\bbatna\b/i, /walk-?away/i, /LoI-checklist/i, /TABEL:BATNA/, /TABEL:LOICHECKLIST/, /walk-?awayprijs/i];
-  let problemen = 0;
-  if (!publiekeContext || !publiekeKoppen) {
-    warn(f + ' — kon de publieke/interne knip in de dealvoorstel-generatie niet vinden (var contextBlok / var koppen / var interneContext / var interneKoppen). Structuur gewijzigd? Controleer handmatig.');
-    problemen++;
+  const dvBackend = backendFiles.find(f => f.name === 'backend/worker/19b-waardering-communicatie.js');
+  if (dvBackend) {
+    const src = dvBackend.src;
+    const publiekeKoppen = knip(src, 'const dvhKoppen =', 'const dvhAdviseurNaam');
+    const interneKoppen = knip(src, 'const dvbInterneKoppen =', 'const dvbPrompt');
+    let problemen = 0;
+    if (!publiekeKoppen || !interneKoppen) {
+      warn('backend/worker/19b-waardering-communicatie.js — kon de dvhKoppen/dvbInterneKoppen-knip niet vinden. Structuur gewijzigd? Controleer handmatig.');
+      problemen++;
+    } else {
+      verboden.forEach(re => {
+        if (re.test(publiekeKoppen)) { warn('backend/worker/19b-waardering-communicatie.js — de PUBLIEKE dealvoorstel-hoofdstukken (dvhKoppen) bevatten "' + re.source + '" — hoort in dvbInterneKoppen.'); problemen++; }
+      });
+      if (!/TABEL:BATNA/.test(interneKoppen)) { warn('backend/worker/19b-waardering-communicatie.js — dvbInterneKoppen bevat geen [TABEL:BATNA] meer — is het BATNA-hoofdstuk verplaatst/verdwenen?'); problemen++; }
+    }
+    // mna/04 mag zelf geen instructietekst meer bevatten voor dit documenttype — alleen data
+    // (contextBlok/interneContext) versturen. Duikt "TABEL:BATNA" of "walk-away" daar weer op in de
+    // dealvoorstel-generatiefunctie, dan is de instructietekst stilzwijgend teruggezet client-side.
+    const feSrc = fs.readFileSync(path.join(ROOT, 'mna/04-begeleider-dashboard.js'), 'utf8');
+    const feDealvoorstelSectie = knip(feSrc, 'var contextBlok=', 'bgToonUitvoer(docOutEl)');
+    if (feDealvoorstelSectie && /interneKoppen\s*=|var koppen\s*=.*Managementsamenvatting/i.test(feDealvoorstelSectie)) {
+      warn('mna/04-begeleider-dashboard.js — bevat weer eigen koppen/interneKoppen-instructietekst voor het dealvoorstel; hoort sinds P1-IP-4 uitsluitend server-side te staan.');
+      problemen++;
+    }
+    if (!problemen) ok('dvhKoppen bevat geen BATNA/walk-away/LoI-checklist; die zitten uitsluitend in dvbInterneKoppen (interne bijlage-route). mna/04 stuurt alleen nog data, geen instructietekst.');
   } else {
-    verboden.forEach(re => {
-      if (re.test(publiekeContext)) { warn(f + ' — de PUBLIEKE dealvoorstel-context (contextBlok) bevat "' + re.source + '" — onderhandelpositie hoort in interneContext, niet in de deelbare tekst.'); problemen++; }
-      if (re.test(publiekeKoppen)) { warn(f + ' — de PUBLIEKE dealvoorstel-hoofdstukken (koppen) bevatten "' + re.source + '" — hoort in interneKoppen.'); problemen++; }
-    });
+    // Terugval: oude, volledig client-side structuur (vóór P1-IP-4, of als die migratie ooit is
+    // teruggedraaid).
+    const f = 'mna/04-begeleider-dashboard.js';
+    const src = fs.readFileSync(path.join(ROOT, f), 'utf8');
+    const publiekeContext = knip(src, 'var contextBlok=', 'var interneContext');
+    const publiekeKoppen = knip(src, "var koppen='## Managementsamenvatting", 'var interneKoppen');
+    const interneKoppen = knip(src, 'var interneKoppen=', 'var antiVerzin');
+    let problemen = 0;
+    if (!publiekeContext || !publiekeKoppen) {
+      warn(f + ' — kon de publieke/interne knip in de dealvoorstel-generatie niet vinden (var contextBlok / var koppen / var interneContext / var interneKoppen), en backend/ (met de sinds P1-IP-4 verhuisde instructietekst) is hier niet gevonden. Structuur gewijzigd? Controleer handmatig.');
+      problemen++;
+    } else {
+      verboden.forEach(re => {
+        if (re.test(publiekeContext)) { warn(f + ' — de PUBLIEKE dealvoorstel-context (contextBlok) bevat "' + re.source + '" — onderhandelpositie hoort in interneContext, niet in de deelbare tekst.'); problemen++; }
+        if (re.test(publiekeKoppen)) { warn(f + ' — de PUBLIEKE dealvoorstel-hoofdstukken (koppen) bevatten "' + re.source + '" — hoort in interneKoppen.'); problemen++; }
+      });
+    }
+    if (interneKoppen && !/TABEL:BATNA/.test(interneKoppen)) { warn(f + ' — interneKoppen bevat geen [TABEL:BATNA] meer — is het BATNA-hoofdstuk verplaatst/verdwenen?'); problemen++; }
+    if (!problemen) ok('contextBlok + koppen bevatten geen BATNA/walk-away/LoI-checklist; die zitten in interneContext/interneKoppen (interne bijlage, niet in dealvoorstel_tekst / de e-mail). [backend/ niet gevonden — alleen frontend-structuur gecontroleerd]');
   }
-  if (interneKoppen && !/TABEL:BATNA/.test(interneKoppen)) { warn(f + ' — interneKoppen bevat geen [TABEL:BATNA] meer — is het BATNA-hoofdstuk verplaatst/verdwenen?'); problemen++; }
-  if (!problemen) ok('contextBlok + koppen bevatten geen BATNA/walk-away/LoI-checklist; die zitten in interneContext/interneKoppen (interne bijlage, niet in dealvoorstel_tekst / de e-mail).');
 }
 
 // ── 9. Documentgenerator: clausule-integriteitsregel + afkap-weigering blijven staan ──
 // (ChatGPT-promptreview A1, 31 aug 2026: de AI mag alleen placeholders vervangen, geen bepaling
 //  wijzigen/toevoegen/weglaten; een template boven de limiet wordt geweigerd i.p.v. afgekapt.
-//  Deze check bewaakt dat een latere edit die twee regels niet stilzwijgend verwijdert.)
-log('9. Documentgenerator (bgDoc in mna/04): clausule-integriteitsregel + afkap-weigering aanwezig');
+//  Deze check bewaakt dat een latere edit die twee regels niet stilzwijgend verwijdert.
+//  P1-IP-4 (27 sep 2026): bem/excl/nda/loi genereren niet langer in bgDoc() zelf — de instructietekst
+//  (incl. de clausule-integriteitsregel) en de template-lengtecontrole staan nu server-side in
+//  worker/10-mna-communicatie.js (/mna/document/{type}/genereer). Check kijkt daarom eerst daar.)
+log('9. Documentgenerator ({bem,excl,nda,loi}/genereer): clausule-integriteitsregel + afkap-weigering aanwezig');
 {
-  const f = 'mna/04-begeleider-dashboard.js';
-  const src = fs.readFileSync(path.join(ROOT, f), 'utf8');
-  let problemen = 0;
-  if (!/STRIKTE REGELS voor het invullen/.test(src) || !/geen bestaande bepaling/i.test(src)) {
-    warn(f + ' — de clausule-integriteitsregel ("STRIKTE REGELS ... geen bestaande bepaling wijzigen/toevoegen/weglaten") ontbreekt in bgDoc(). Zonder die regel kan de AI juridische tekst herschrijven.');
-    problemen++;
+  const docBackend = backendFiles.find(f => f.name === 'backend/worker/10-mna-communicatie.js');
+  if (docBackend) {
+    const src = docBackend.src;
+    let problemen = 0;
+    if (!/STRIKTE REGELS voor het invullen/.test(src) || !/geen bestaande bepaling/i.test(src)) {
+      warn('backend/worker/10-mna-communicatie.js — de clausule-integriteitsregel ("STRIKTE REGELS ... geen bestaande bepaling wijzigen/toevoegen/weglaten") ontbreekt in de /mna/document/{type}/genereer-route. Zonder die regel kan de AI juridische tekst herschrijven.');
+      problemen++;
+    }
+    if (!/bxTplTekst\.length\s*>\s*\d{4,}[\s\S]{0,120}(geweigerd|weiger|return)/i.test(src)) {
+      warn('backend/worker/10-mna-communicatie.js — de afkap-weigering (te lange template → generatie stoppen i.p.v. substring) lijkt te ontbreken/gewijzigd in /mna/document/{type}/genereer. Controleer.');
+      problemen++;
+    }
+    // De regel moet gelden voor ALLE VIER de typen (bem/excl/nda/loi delen dezelfde bxClausuleRegel-
+    // constante) — verifieer dat elke type-tak hem ook daadwerkelijk in bxPrompt opneemt.
+    ["if (bxType === 'excl')", "else if (bxType === 'nda')", "else if (bxType === 'loi')"].forEach(marker => {
+      const idx = src.indexOf(marker);
+      const venster = idx >= 0 ? src.slice(idx, idx + 600) : '';
+      if (!venster || !/bxClausuleRegel/.test(venster)) {
+        warn('backend/worker/10-mna-communicatie.js — tak "' + marker + '" lijkt bxClausuleRegel niet toe te passen op bxPrompt.');
+        problemen++;
+      }
+    });
+    // bgDoc() zelf mag geen eigen instructietekst meer bevatten voor deze vier documenttypen.
+    const feSrc = fs.readFileSync(path.join(ROOT, 'mna/04-begeleider-dashboard.js'), 'utf8');
+    if (/var clausuleRegel\s*=/.test(feSrc) || /var prompts\s*=\s*\{/.test(feSrc)) {
+      warn('mna/04-begeleider-dashboard.js — bevat weer een eigen clausuleRegel/prompts-object in bgDoc(); hoort sinds P1-IP-4 uitsluitend server-side te staan.');
+      problemen++;
+    }
+    if (!problemen) ok('/mna/document/{type}/genereer bevat de clausule-integriteitsregel (alle vier typen) én weigert een te lange template i.p.v. hem af te kappen. bgDoc() bevat geen eigen instructietekst meer.');
+  } else {
+    const f = 'mna/04-begeleider-dashboard.js';
+    const src = fs.readFileSync(path.join(ROOT, f), 'utf8');
+    let problemen = 0;
+    if (!/STRIKTE REGELS voor het invullen/.test(src) || !/geen bestaande bepaling/i.test(src)) {
+      warn(f + ' — de clausule-integriteitsregel ("STRIKTE REGELS ... geen bestaande bepaling wijzigen/toevoegen/weglaten") ontbreekt in bgDoc(), en backend/ (met de sinds P1-IP-4 verhuisde instructietekst) is hier niet gevonden. Zonder die regel kan de AI juridische tekst herschrijven.');
+      problemen++;
+    }
+    if (!/tplTekst\.length\s*>\s*\d{4,}[\s\S]{0,120}(geweigerd|weiger|return)/i.test(src)) {
+      warn(f + ' — de afkap-weigering (te lange template → generatie stoppen i.p.v. substring) lijkt te ontbreken/gewijzigd in bgDoc(). Controleer.');
+      problemen++;
+    }
+    if (!problemen) ok('bgDoc() bevat de clausule-integriteitsregel én weigert een te lange template i.p.v. hem af te kappen. [backend/ niet gevonden — alleen frontend-structuur gecontroleerd]');
   }
-  if (!/tplTekst\.length\s*>\s*\d{4,}[\s\S]{0,120}(geweigerd|weiger|return)/i.test(src)) {
-    warn(f + ' — de afkap-weigering (te lange template → generatie stoppen i.p.v. substring) lijkt te ontbreken/gewijzigd in bgDoc(). Controleer.');
-    problemen++;
-  }
-  if (!problemen) ok('bgDoc() bevat de clausule-integriteitsregel én weigert een te lange template i.p.v. hem af te kappen.');
 }
 
 // ── 10. Kleurcontrast: --muted (en varianten) tegen elk oppervlak (WCAG AA) ──

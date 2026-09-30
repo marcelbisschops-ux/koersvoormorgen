@@ -39,7 +39,7 @@
 // ══════════════════════════════════════════════════════════════════
 
 import { test, expect } from '@playwright/test';
-import { api, leesAdminKey, WORKER, d1 } from './lib.mjs';
+import { api, leesAdminKey, WORKER, d1, accepteerPlatformvoorwaarden } from './lib.mjs';
 import fs from 'fs';
 import path from 'path';
 
@@ -96,6 +96,42 @@ async function login(page, code) {
   await page.locator('#l-btn').click();
   await page.waitForFunction(() => window.S && S.traject && S.rol, null, { timeout: 15000 }).catch(() => {});
   await page.evaluate(() => Promise.race([window.__entiteitenGeladen, new Promise((r) => setTimeout(r, 8000))])).catch(() => {});
+}
+
+// Veilige begeleider-login-wachtwijze (23 sep 2026, Breaker-bevinding B2-B4): S.rol/S.traject
+// worden synchroon gezet in mna/06-schermen.js, ruim vóórdat checkVOK(code) (mna/04-begeleider-
+// dashboard.js) is afgerond — pas in de then-tak van die async check volgt de daadwerkelijke
+// renderApp() die het begeleider-dashboard tekent (`return; // renderApp wordt via checkVOK
+// afgehandeld`). Wachten op alleen S.rol is dus geen bewijs dat het dashboard er al staat. Wacht
+// hier expliciet op hetzelfde zichtbare dashboardbewijs als B1 (#bg-nda-composer-actie) — dat
+// element bestaat pas ná de échte checkVOK-afgeronde renderApp(). Geen VOK-gate omzeilen en geen
+// renderApp() handmatig vooruitschuiven: als de VOK-popup verschijnt (niet getekend) blijft dit
+// element afwezig en faalt de wait terecht, precies zoals bedoeld.
+async function wachtOpBegeleiderDashboard(page) {
+  await page.waitForFunction(() => window.S && S.traject && S.rol === 'tussenpersoon', null, { timeout: 15000 });
+  await expect(page.locator('#bg-nda-composer-actie')).toBeVisible({ timeout: 20000 });
+}
+
+// Diagnostiek (alleen B3/B4, 23 sep 2026): als de begeleiderssessie niet binnen de wachttijd
+// zichtbaar wordt, leg de HTTP-status + een korte, niet-gevoelige foutmelding van de loginroute
+// (POST /mna/traject/{code}, dezelfde route als mna.html zelf gebruikt) vast — zodat een eventuele
+// 429 (rate limit) bij een volgende run aantoonbaar is in plaats van verborgen achter een generieke
+// Playwright-timeout. Eén extra aanroep, alleen ná een al opgetreden fout — geen retry, geen extra
+// belasting van de loginroute.
+async function begeleiderLoginDiagnose(code) {
+  const r = await api('POST', '/mna/traject/' + code, { body: { ts: Date.now() } });
+  const fout = r.json && r.json.error ? String(r.json.error).slice(0, 150) : '';
+  return 'loginroute-diagnose: status=' + r.status + (fout ? ' fout="' + fout + '"' : '');
+}
+
+async function wachtOpBegeleiderDashboardMetDiagnose(page, code) {
+  try {
+    await wachtOpBegeleiderDashboard(page);
+  } catch (e) {
+    let diag = 'diagnose mislukt';
+    try { diag = await begeleiderLoginDiagnose(code); } catch (e2) { diag = 'diagnose mislukt: ' + e2.message; }
+    throw new Error('Geen begeleiderssessie zichtbaar na login (' + diag + ')');
+  }
 }
 
 // ── Knoppeninventaris / regressiematrix — gevuld tijdens de run, weggeschreven in afterAll ──
@@ -155,6 +191,13 @@ test.describe('KANTOORINZICHT 3-ROLLEN E2E', () => {
 
   let email, gid, verkoperCode, koperCode, tussenCode, trajectCode;
   let setupOk = false;
+  // Vastgelegd P1/P2-bewijs (23 sep 2026 herstel, zie CLAUDE.md-sessie): de acceptatie zelf gebeurt
+  // hieronder onvoorwaardelijk in beforeAll, NIET meer in een losse, filterbare P2-test — een run met
+  // een grep die alleen bv. K5 selecteert, sloeg P2 en daarmee de acceptatie zelf over, waardoor elke
+  // andere gated aanroep dan tegen 403 voorwaarden_niet_geaccepteerd liep i.p.v. de eigen verwachte
+  // status. P1/P2 hieronder doen alleen nog een dunne assertie op dit al vastgelegde bewijs.
+  let p1Bewijs = null;
+  let p2Bewijs = null;
 
   test.beforeAll(async () => {
     email = 'e2e-3rollen-' + Date.now() + '@bisschopsfinancing.test';
@@ -179,6 +222,21 @@ test.describe('KANTOORINZICHT 3-ROLLEN E2E', () => {
     verkoperCode = c.json.code;
     koperCode = c.json.koper_code;
     tussenCode = c.json.tussen_code;
+
+    // ── Platformacceptatie: eerst het negatieve bewijs, dan onvoorwaardelijk accepteren ──
+    // Volgorde bewust: het bestaande negatieve P1-bewijs (vóór acceptatie geen traject, akkoord:false)
+    // wordt hier vastgelegd zolang de verkopercode nog niets heeft geaccepteerd — daarna accepteert
+    // accepteerPlatformvoorwaarden() (tests/lib.mjs) onvoorwaardelijk voor alle drie de rollen, ongeacht
+    // welke losse tests straks door een --grep-selectie daadwerkelijk draaien. accepteerPlatformvoorwaarden()
+    // gooit zelf een Error bij een mislukte acceptatie, dus een mislukking hier laat setupOk terecht false.
+    const p1Voor = await api('GET', '/mna/traject/' + verkoperCode);
+    p1Bewijs = {
+      status: p1Voor.status,
+      geenTraject: !(p1Voor.json && p1Voor.json.traject),
+      akkoordOnwaar: !!(p1Voor.json && p1Voor.json.platform_voorwaarden_akkoord === false),
+    };
+    p2Bewijs = await accepteerPlatformvoorwaarden({ verkoper: verkoperCode, koper: koperCode, begeleider: tussenCode });
+
     // VOK vooraf tekenen, anders blokkeert de popup het begeleider-dashboard.
     await api('POST', '/mna/vok/teken', { body: { code: tussenCode, naam: 'E2E Test', versie: VOK_VERSIE, email } });
     setupOk = true;
@@ -260,9 +318,47 @@ test.describe('KANTOORINZICHT 3-ROLLEN E2E', () => {
     expect(d1Ok, 'onafhankelijke D1-telling toont overal 0 testdata').toBe(true);
   });
 
+  // ─────────────────────────────────── PLATFORMACCEPTATIE (S1.2) ──────────────────────────────────
+  // Breaker-bevinding (23 sep 2026): deze suite loginde alle drie de rollen zonder ooit de verplichte,
+  // server-side platformvoorwaarden-acceptatie (POST /mna/platformvoorwaarden/accepteren) te doen —
+  // toonPlatformVoorwaardenPopup() (mna/06-schermen.js) blokkeert dan elke rolflow hieronder met een
+  // modal die login() nooit wegklikt, dus elke test liep vast op een popup-time-out. De beveiligingsgate
+  // zelf (worker/00d-platformvoorwaarden-gate.js) functioneerde correct; het ontbrak alleen aan de
+  // testacceptatie.
+  // Herstel (23 sep 2026, zelfde dag): de eerste fix deed de acceptatie zelf in een losse P2-test.
+  // Een grep die alleen een andere test selecteert (bv. K5) selecteert dan nooit P2, en dus gebeurt de
+  // acceptatie zelf ook nooit — elke andere gated aanroep loopt dan alsnog tegen 403
+  // voorwaarden_niet_geaccepteerd i.p.v. de eigen verwachte status. Acceptatie gebeurt daarom nu
+  // onvoorwaardelijk in beforeAll (na het aanmaken van de codes, vóór VOK), nooit meer alleen als
+  // bijwerking van een filterbare test. P1/P2 hieronder zijn dunne asserties op het daar al vastgelegde
+  // bewijs — ze bestaan nog steeds zodat de matrix/rapportage per rol zichtbaar blijft, maar de
+  // acceptatie zelf hangt niet meer van hun selectie af.
+  test.describe('Platformacceptatie', () => {
+    // P1/P2 doen hier bewust GEEN eigen netwerkaanroepen meer — de acceptatie zelf gebeurt
+    // onvoorwaardelijk in beforeAll (zie hierboven), zodat ze nooit van Playwrights testselectie
+    // afhangen. Deze twee tests zijn dunne asserties op het daar al vastgelegde bewijs.
+    test('P1 · negatief: /mna/traject/{code} geeft vóór acceptatie geen traject en akkoord:false', async () => {
+      test.skip(!setupOk, 'Setup mislukt — zie beforeAll');
+      const ok = !!p1Bewijs && p1Bewijs.status === 200 && p1Bewijs.geenTraject && p1Bewijs.akkoordOnwaar;
+      record('VERKOPER', 'API', 'GET /mna/traject/{verkoper_code}', 'vóór platformacceptatie: geen dossier, akkoord onwaar', 'geen traject + platform_voorwaarden_akkoord:false', ok, JSON.stringify(p1Bewijs));
+      expect(ok, 'server geeft vóór platformacceptatie geen trajectdata terug en een expliciet onware acceptatiestatus').toBe(true);
+    });
+
+    test('P2 · verkoper, koper en tussenpersoon accepteren de platformvoorwaarden (server-side gate)', async () => {
+      test.skip(!setupOk, 'Setup mislukt — zie beforeAll');
+      const alleOk = Array.isArray(p2Bewijs) && p2Bewijs.length === 3 && p2Bewijs.every((r) => r.ok);
+      for (const r of (p2Bewijs || [])) {
+        const rol = r.code === verkoperCode ? 'VERKOPER' : r.code === koperCode ? 'KOPER' : 'BEGELEIDER';
+        record(rol, 'API', 'POST /mna/platformvoorwaarden/accepteren', 'platformvoorwaarden accepteren + status actueel (in beforeAll)', 'accepteren ok:true + status akkoord:true (zelfde versie)', r.ok, 'acceptStatus=' + r.acceptStatus + ' statusStatus=' + r.statusStatus);
+      }
+      expect(alleOk, 'verkoper, koper en tussenpersoon hebben de platformvoorwaarden geaccepteerd en de status geldt als actueel').toBe(true);
+    });
+  });
+
   // ─────────────────────────────────────────── VERKOPER ───────────────────────────────────────────
   test.describe('Verkoper', () => {
     test('V1 · inloggen met verkoper-code opent verkopersweergave', async ({ page }) => {
+      test.setTimeout(90000); // marge boven de bestaande 15s-login- en 15s-UI-wachttijd tegen een echte stagingomgeving.
       test.skip(!setupOk, 'Setup mislukt — zie beforeAll');
       await login(page, verkoperCode);
       await page.waitForFunction(() => window.S && S.traject && S.rol, null, { timeout: 15000 }).catch(() => {});
@@ -273,6 +369,7 @@ test.describe('KANTOORINZICHT 3-ROLLEN E2E', () => {
     });
 
     test('V2 · fase Financieel invullen, opslaan, wegnavigeren en teruglezen', async ({ page }) => {
+      test.setTimeout(90000); // marge boven de bestaande 15s-login- en 15s-UI-wachttijd tegen een echte stagingomgeving (twee logins in deze test).
       test.skip(!setupOk, 'Setup mislukt — zie beforeAll');
       const waarde1 = MARKER + '-V2-' + Math.floor(Math.random() * 100000);
       await login(page, verkoperCode);
@@ -309,6 +406,7 @@ test.describe('KANTOORINZICHT 3-ROLLEN E2E', () => {
     // keer" en heeft daar geen tweede browsersessie voor nodig: de D1-telling is een even
     // onafhankelijke, direct-tegen-de-database geverifieerde bron van waarheid.
     test('V3 · dezelfde waarde wijzigen en opnieuw opslaan (round-trip #2, D1-geverifieerd)', async ({ page }) => {
+      test.setTimeout(90000); // marge boven de bestaande 15s-login- en 15s-UI-wachttijd tegen een echte stagingomgeving.
       test.skip(!setupOk, 'Setup mislukt — zie beforeAll');
       const waarde2 = MARKER + '-V3-GEWIJZIGD-' + Math.floor(Math.random() * 100000);
       await login(page, verkoperCode);
@@ -378,6 +476,7 @@ test.describe('KANTOORINZICHT 3-ROLLEN E2E', () => {
     // omzet3, en (2) de bestaande data_json eerst ophalen en meesturen (zoals de echte UI ook doet),
     // zodat deze race-test geen andere velden van hetzelfde gedeelde testtraject wist.
     test('V6 · twee snelle wijzigingen na elkaar — geen corruptie, laatste waarde wint', async ({ page }) => {
+      test.setTimeout(90000); // marge boven de bestaande 15s-login- en 15s-UI-wachttijd tegen een echte stagingomgeving.
       test.skip(!setupOk, 'Setup mislukt — zie beforeAll');
       const waardeA = MARKER + '-V6-A';
       const waardeB = MARKER + '-V6-B-' + Date.now();
@@ -414,6 +513,7 @@ test.describe('KANTOORINZICHT 3-ROLLEN E2E', () => {
   // ─────────────────────────────────────────── KOPER ───────────────────────────────────────────
   test.describe('Koper', () => {
     test('K1 · inloggen met koper-code opent koperweergave, geen begeleider-knoppen', async ({ page }) => {
+      test.setTimeout(90000); // marge boven de bestaande 15s-login- en 15s-UI-wachttijd tegen een echte stagingomgeving.
       test.skip(!setupOk, 'Setup mislukt — zie beforeAll');
       await login(page, koperCode);
       await page.waitForFunction(() => window.S && S.traject && S.rol, null, { timeout: 15000 }).catch(() => {});
@@ -433,10 +533,17 @@ test.describe('KANTOORINZICHT 3-ROLLEN E2E', () => {
     });
 
     test('K3 · ná vrijgave door begeleider ziet koper de daadwerkelijke waarde op het scherm', async ({ page }) => {
+      test.setTimeout(90000); // marge boven de bestaande 15s-login- en 15s-UI-wachttijd tegen een echte stagingomgeving.
       test.skip(!setupOk, 'Setup mislukt — zie beforeAll');
-      const zet = await api('POST', '/mna/koper-categorieen/' + trajectCode + '?force=1', { adminKey: ADMIN, body: { categorieen: ['financieel'] } });
+      // N-81-patroon (26 sep 2026, derde keer aangetroffen — eerder al gefixt in tests/e2e-
+      // crosspath-fixes.mjs): deze testtraject is via /adviseur/create aangemaakt (extern, niet
+      // is_eigen) — sinds de 25-sep-muur op /mna/koper-categorieen/ (SECURITY-INVARIANTS.md #9)
+      // wordt een ADMIN_KEY-aanroep hier terecht geweigerd (403). Gebruik de eigen tussen_code van
+      // dit traject, exact zoals een echte begeleider dat zou doen — geen muur omzeilen, gewoon de
+      // juiste sleutel voor deze rol.
+      const zet = await api('POST', '/mna/koper-categorieen/' + trajectCode + '?force=1', { headers: { 'x-tussen-key': tussenCode }, body: { categorieen: ['financieel'] } });
       const vrijgaveOk = !!(zet.json && zet.json.koper_vrijgegeven === 1);
-      record('BEGELEIDER', 'API (admin)', 'POST /mna/koper-categorieen/{code}', "categorie 'financieel' vrijgeven voor koper", 'koper_vrijgegeven: 1', vrijgaveOk, JSON.stringify(zet.json).slice(0, 150));
+      record('BEGELEIDER', 'API (begeleider)', 'POST /mna/koper-categorieen/{code}', "categorie 'financieel' vrijgeven voor koper", 'koper_vrijgegeven: 1', vrijgaveOk, JSON.stringify(zet.json).slice(0, 150));
       await login(page, koperCode);
       await page.waitForFunction(() => window.S && S.traject && S.rol === 'koper', null, { timeout: 15000 });
       await page.evaluate(() => { S.screen = 'main'; S.fase = FASES.findIndex(f => f.id === 'financieel'); renderApp(); });
@@ -469,6 +576,7 @@ test.describe('KANTOORINZICHT 3-ROLLEN E2E', () => {
     });
 
     test('K6 · refresh na login houdt rol en sessie consistent', async ({ page }) => {
+      test.setTimeout(90000); // marge boven de bestaande 15s-login- en 15s-UI-wachttijd tegen een echte stagingomgeving.
       test.skip(!setupOk, 'Setup mislukt — zie beforeAll');
       await login(page, koperCode);
       await page.waitForFunction(() => window.S && S.traject && S.rol === 'koper', null, { timeout: 15000 });
@@ -488,6 +596,7 @@ test.describe('KANTOORINZICHT 3-ROLLEN E2E', () => {
   // ─────────────────────────────────────────── BEGELEIDER ───────────────────────────────────────────
   test.describe('Begeleider', () => {
     test('B1 · inloggen met tussen_code opent dashboard met documentknoppen', async ({ page }) => {
+      test.setTimeout(90000); // marge boven de bestaande 15s-login- en 15s-UI-wachttijd tegen een echte stagingomgeving.
       test.skip(!setupOk, 'Setup mislukt — zie beforeAll');
       await login(page, tussenCode);
       await page.waitForFunction(() => window.S && S.traject && S.rol === 'tussenpersoon', null, { timeout: 15000 });
@@ -510,9 +619,10 @@ test.describe('KANTOORINZICHT 3-ROLLEN E2E', () => {
     // begeleider-schrijfacties specifiek op fase Financieel (zie B4 hieronder) — de checklist zou daar
     // dus ALTIJD client-side blijven hangen zonder ooit een echte D1-write te doen.
     test('B2 · checklist-item aanvinken op fase Commercieel, D1-geverifieerd', async ({ page }) => {
+      test.setTimeout(90000); // marge boven de bestaande 15s-login- en 15s-UI-wachttijd tegen een echte stagingomgeving.
       test.skip(!setupOk, 'Setup mislukt — zie beforeAll');
       await login(page, tussenCode);
-      await page.waitForFunction(() => window.S && S.traject && S.rol === 'tussenpersoon', null, { timeout: 15000 });
+      await wachtOpBegeleiderDashboard(page);
       await page.evaluate(() => { S.screen = 'main'; S.fase = FASES.findIndex(f => f.id === 'commercieel'); renderApp(); });
       const item = page.locator('.chk-item[data-key]').first();
       await expect(item).toBeVisible({ timeout: 10000 });
@@ -550,9 +660,10 @@ test.describe('KANTOORINZICHT 3-ROLLEN E2E', () => {
     // deelt de login-rate-limiter met login(); zie de toelichting bij V3 hierboven) — bewijst
     // bovendien preciezer wat gevraagd wordt: dat het reeds geladen dashboard de actuele waarde toont.
     test('B3 · begeleider ziet dezelfde, actuele verkoperwaarde (cross-role leesconsistentie)', async ({ page }) => {
+      test.setTimeout(90000); // marge boven de bestaande 15s-login- en 15s-UI-wachttijd tegen een echte stagingomgeving.
       test.skip(!setupOk, 'Setup mislukt — zie beforeAll');
       await login(page, tussenCode);
-      await page.waitForFunction(() => window.S && S.traject && S.rol === 'tussenpersoon', null, { timeout: 15000 });
+      await wachtOpBegeleiderDashboardMetDiagnose(page, tussenCode);
       // S.data bevat de veldwaarden van de HUIDIGE fase/entiteit voor de ingelogde rol; begeleider
       // opent zonder expliciete fase-navigatie niet automatisch 'financieel', dus die fase eerst
       // selecteren (zelfde navigatiepatroon als de andere rollen hierboven) en dan direct uit S.data lezen.
@@ -564,10 +675,11 @@ test.describe('KANTOORINZICHT 3-ROLLEN E2E', () => {
     });
 
     test('B4 · gesprek vastleggen, terugleesbaar op het scherm na herladen', async ({ page }) => {
+      test.setTimeout(90000); // marge boven de bestaande 15s-login- en 15s-UI-wachttijd tegen een echte stagingomgeving.
       test.skip(!setupOk, 'Setup mislukt — zie beforeAll');
       const verslagMarker = MARKER + '-B4-gespreksverslag';
       await login(page, tussenCode);
-      await page.waitForFunction(() => window.S && S.traject && S.rol === 'tussenpersoon', null, { timeout: 15000 });
+      await wachtOpBegeleiderDashboardMetDiagnose(page, tussenCode);
       // BELANGRIJK (18 sep 2026, gevonden tijdens het bouwen): #bg-gesprek-actie zit in een
       // standaard-INGEKLAPTE accordionsectie ("Communicatie", data-sec="comm",
       // mna/04-begeleider-dashboard.js:972, `style="display:none"` totdat de kop wordt aangeklikt).

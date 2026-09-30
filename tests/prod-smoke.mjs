@@ -22,7 +22,7 @@
 import path from 'node:path';
 import os from 'node:os';
 import { pathToFileURL } from 'node:url';
-import { WORKER, leesAdminKey, api, check, kop, kleur, samenvatting, d1, D1_NAAM, sla_over } from './lib.mjs';
+import { WORKER, leesAdminKey, api, check, kop, kleur, samenvatting, d1, D1_NAAM, sla_over, accepteerPlatformvoorwaarden } from './lib.mjs';
 
 const ADMIN = leesAdminKey();
 const DOM = '@e2e-test.invalid';
@@ -61,6 +61,10 @@ async function maakAdminTraject(kantoorNaam, extra) {
     body: Object.assign({ kantoor_naam: kantoorNaam, sector: 'accountancy', traject_type: 'Verkoop' }, extra || {})
   }));
   if (!r.json || !r.json.ok) faal('traject aanmaken mislukt (' + kantoorNaam + ')', r.json);
+  // Platformvoorwaarden vóór elke andere gated /mna/*-aanroep die batches ná maakAdminTraject() doen
+  // zonder zelf een ADMIN_KEY mee te sturen (bv. document/upload, tos/*) — anders 403
+  // voorwaarden_niet_geaccepteerd (S1.2b-gate). Centraal hier, dekt elke batch die deze helper gebruikt.
+  await accepteerPlatformvoorwaarden({ verkoper: r.json.code, koper: r.json.koper_code, tussenpersoon: r.json.tussen_code });
   return r.json;
 }
 
@@ -95,6 +99,9 @@ async function batch3B() {
     if (!sellCreate.json || !sellCreate.json.ok) faal('sell-side traject aanmaken mislukt', sellCreate.json);
     sellCode = sellCreate.json.code;
     const sellKoperCode = sellCreate.json.koper_code;
+
+    // Vóór de niet-admin-key /mna/koper/bod-aanroepen verderop (S1.2b-gate).
+    await accepteerPlatformvoorwaarden({ buyVerkoper: buyCode, buyKoper: buyKoperCode, sellVerkoper: sellCode, sellKoper: sellKoperCode });
 
     const rollen = d1("SELECT id, opdrachtgever_rol FROM mna_trajecten WHERE id='" + buyCode + "' OR id='" + sellCode + "'");
     const buyRol = (rollen.find(r => r.id === buyCode) || {}).opdrachtgever_rol;
@@ -488,11 +495,21 @@ async function batchKernflow19sep() {
     const txA_final = JSON.parse(d1(`SELECT signhost_transactions FROM mna_trajecten WHERE id='${code}'`)[0]?.signhost_transactions || '[]').find(t => t.id === fakeTxA);
     check('P0: transactie A eindstatus ondubbelzinnig "ondertekend_na_vervanging_genegeerd"', txA_final && txA_final.status === 'ondertekend_na_vervanging_genegeerd', JSON.stringify(txA_final));
 
-    // P0 stap 5: "versie B kan normaal opnieuw verstuurd/getekend worden" (begeleider-rol, bem-tekenrecht).
+    // P0 stap 5 (BACKLOG 5.1-fix, 25 sep 2026): tot 25 sep 2026 verwachtte deze test dat versie B —
+    // gemaakt via /mna/document/concept-opslaan, dus zonder ooit via de composer/'/mna/bem/email'
+    // verstuurd te zijn en dus zonder tos_document-rij — nog gewoon "Buiten Signhost om" getekend kon
+    // worden. Dat botst met de BEM-reviewcyclus-gate (tosVereistGoedgekeurdeVersie,
+    // worker/00c-tos-teken-gate.js) die al sinds vorige sessie (commit 5463d25) in productie staat:
+    // een NIEUW traject heeft geen bem_pre_reviewcyclus-vlag, dus een BEM zonder tos_document hoort
+    // NIET rechtstreeks tekenbaar te zijn — die moet eerst via de composer verstuurd én door de
+    // opdrachtgever goedgekeurd worden. Dit was dus geen regressie van de Signhost-versiebeheer-fix
+    // die deze batch verder bewijst, maar een verouderde testverwachting die de latere, al live zijnde
+    // reviewcyclus-gate niet meenam. Bijgewerkt naar het huidige, correcte gate-gedrag (409
+    // NIET_VERSTUURD) i.p.v. het legacy pre-reviewcyclus-pad kunstmatig te laten slagen.
     const tekenB = await api('POST', '/mna/teken', { adminKey: ADMIN, body: { code: tussenCode, document: 'bem', naam: 'Test Begeleider Versie B' } });
-    check('P0: versie B normaal te tekenen via Buiten Signhost', tekenB.status === 200 && tekenB.json && tekenB.json.ok, JSON.stringify(tekenB.json));
+    check('P0: versie B (nooit via de composer verstuurd) wordt terecht geblokkeerd door de BEM-reviewcyclus-gate (409)', tekenB.status === 409 && tekenB.json && typeof tekenB.json.error === 'string' && tekenB.json.error.includes('verstuurd'), JSON.stringify(tekenB.json));
     const trajNaTekenB = d1(`SELECT bem_getekend FROM mna_trajecten WHERE id='${code}'`);
-    check('P0: bem_getekend nu correct gezet op versie B (niet de vervangen A)', (trajNaTekenB[0]?.bem_getekend || '').includes('Test Begeleider Versie B'), JSON.stringify(trajNaTekenB[0]));
+    check('P0: bem_getekend blijft leeg zolang de reviewcyclus niet doorlopen is (geen stille bypass)', !trajNaTekenB[0]?.bem_getekend, JSON.stringify(trajNaTekenB[0]));
 
     // P0 stap 6: "bestaande normale Signhost-flow blijft werken" — niet-vervangen transactie, ander doc_type.
     const fakeTxNormal = 'FAKE-SH-NORMAL-' + Date.now();
@@ -645,6 +662,9 @@ async function batchPdfRendererTos20sep() {
     koperCode = c1.json.koper_code;
     const tussenCode = c1.json.tussen_code;
     if (!tussenCode) faal('geen tussen_code ontvangen', c1.json);
+    // Vóór de eerste niet-admin-key /mna/tos/*-aanroep hieronder (S1.2b-gate) — deze batch stuurt
+    // bewust x-tussen-key mee i.p.v. ADMIN_KEY, precies zoals een echte begeleider dat zou doen.
+    await accepteerPlatformvoorwaarden({ verkoper: trajectCode, koper: koperCode, tussenpersoon: tussenCode });
     const H = { 'x-tussen-key': tussenCode };
     await api('POST', '/mna/tos/activeer/' + trajectCode, { headers: H });
 
@@ -692,6 +712,7 @@ async function batchPdfRendererTos20sep() {
     const legeCode = legeCreate.json && legeCreate.json.code;
     const legeTussen = legeCreate.json && legeCreate.json.tussen_code;
     if (legeCode && legeTussen) {
+      await accepteerPlatformvoorwaarden({ tussenpersoon: legeTussen });
       const LH = { 'x-tussen-key': legeTussen };
       await api('POST', '/mna/tos/activeer/' + legeCode, { headers: LH });
       const legeMk = await api('POST', '/mna/tos/document', { headers: LH, body: { profile: 'LOI' } });

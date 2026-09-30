@@ -10,7 +10,7 @@
 //
 // Zonder admin-key: alleen de publieke check (componenten-endpoint eist auth → 403).
 // ══════════════════════════════════════════════════════════════════
-import { WORKER, leesAdminKey, api as apiOrigineel, check, sla_over, kop, kleur, samenvatting } from './lib.mjs';
+import { WORKER, leesAdminKey, api as apiOrigineel, check, sla_over, kop, kleur, samenvatting, accepteerPlatformvoorwaarden } from './lib.mjs';
 
 // Throttle (16 sep 2026, "e2e-tos rate-limit-conditie"): deze suite deelt de generieke 120/min-
 // IP-bucket (cloudflare-worker.js) met al het overige staging-verkeer vanaf hetzelfde IP-adres.
@@ -77,6 +77,10 @@ async function run() {
   tussenCode = c1.json && c1.json.tussen_code;
   check('traject + tussen-code ontvangen', !!(trajectCode && tussenCode));
   if (!tussenCode) return;
+
+  // Vóór elke andere gated /mna/*-aanroep hieronder (S1.2b-gate) — deze suite stuurt bewust
+  // x-tussen-key mee i.p.v. ADMIN_KEY, precies zoals een echte begeleider dat zou doen.
+  await accepteerPlatformvoorwaarden({ verkoper: trajectCode, koper: c1.json && c1.json.koper_code, tussenpersoon: tussenCode });
 
   const H = { 'x-tussen-key': tussenCode };
 
@@ -690,6 +694,7 @@ async function run() {
   const trajectCode2 = c2.json && c2.json.code;
   const H2 = { 'x-tussen-key': c2.json && c2.json.tussen_code };
   check('tweede traject aangemaakt (voor de cross-traject-test)', !!trajectCode2);
+  if (trajectCode2) await accepteerPlatformvoorwaarden({ verkoper: trajectCode2, koper: c2.json && c2.json.koper_code, tussenpersoon: c2.json && c2.json.tussen_code });
   // Geen TOS-activatie/documenten nodig op traject 2: de eigen-specialist-lookup (traject-gescoped)
   // faalt al vóór de documentvalidatie wordt bereikt — zie worker/32-pool.js.
   const opdrCross = await api('POST', '/mna/pool/opdracht', { headers: H2, body: { specialist_id: eigenSpecId, specialist_bron: 'eigen', domein: 'LEGAL', documenten: ['dummy'], deadline_dagen: 10 } });
@@ -769,6 +774,7 @@ async function run() {
   const koperCode3 = (c3.json && c3.json.koper_code) || 'GEEN';
   const KH3 = { 'x-tussen-key': koperCode3 };
   check('buy-side traject aangemaakt (voor het negatieve pad)', !!trajectCode3);
+  if (trajectCode3) await accepteerPlatformvoorwaarden({ verkoper: trajectCode3, koper: c3.json && c3.json.koper_code, tussenpersoon: c3.json && c3.json.tussen_code });
   await api('POST', '/mna/admin/vrijgeven/' + trajectCode3 + '?force=1', { adminKey: ADMIN });
   const bodBuySide = await api('POST', '/mna/koper/bod', { headers: KH3, body: { code: koperCode3, bedrag: 500000 } });
   check('koper-bod op een buy-side traject → 403 (opdrachtgever_rol != verkoper)', bodBuySide.status === 403, 'status ' + bodBuySide.status);
