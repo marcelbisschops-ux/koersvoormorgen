@@ -1020,74 +1020,14 @@ function renderSummary(){
     +'</div>';
 }
 
-async function finaleCheck(){
-  var btn=ge('finale-check-btn');
-  var out=ge('finale-check-out');
-  if(!btn||!out)return;
-  btn.disabled=true;btn.textContent='Bezig...';
-  out.innerHTML='<div style="color:var(--muted);font-size:13px;padding:1rem;background:var(--card);border-radius:var(--r)">Analyse loopt... (20-40 sec)</div>';
-
-  // Alleen fase-1 velden — relevant voor indicatieve waardering, niet de volledige fase-2 DD
-  var veldenSamenvatting='';
-  FASES.forEach(function(f){
-    var gevuld=f.dataFields.filter(function(df){
-      return !df.header && df.fase==='1' && (S.data[f.id+'_'+df.id]||'').trim();
-    });
-    if(gevuld.length){
-      veldenSamenvatting+='\n'+f.num+'. '+f.title+'\n';
-      gevuld.forEach(function(df){veldenSamenvatting+='  '+df.label+': '+S.data[f.id+'_'+df.id]+'\n';});
-    }
-  });
-
-  var docNamen=[];
-  Object.keys(DOCS).forEach(function(faseId){
-    (DOCS[faseId]||[]).filter(function(d){return !d.uploading&&!d.verworpen;}).forEach(function(d){
-      docNamen.push(d.naam);
-    });
-  });
-
-  if(!docNamen.length){
-    out.innerHTML='<div style="color:var(--gold);font-size:13px;padding:.75rem;background:var(--gold-bg);border-radius:var(--r);border:1px solid var(--gold)">⚠ Geen documenten geüpload.</div>';
-    btn.disabled=false;btn.innerHTML='&#9881; Voer finale check uit';
-    return;
-  }
-
-  var prompt='Je bent een M&A-adviseur die beoordeelt of de basisinformatie klopt voor een indicatieve waardering. '+TAAL_REGELS+'\n\n'
-    +'Kantoor: '+esc(S.traject&&S.traject.kantoor_naam||S.code)+'\n'
-    +'Geüploade documenten: '+docNamen.join(', ')+'\n\n'
-    +'INGEVULDE BASISVELDEN (fase 1 — pre-LoI):\n'+veldenSamenvatting+'\n\n'
-    +'Beoordeel uitsluitend of de ingevulde basisvelden intern consistent zijn en voldoende zijn voor een indicatieve waardering. '
-    +'Beoordeel alleen logische relaties die letterlijk uit de ingevulde velden te controleren zijn. Een ontbrekend veld is "onbekend", geen inconsistentie — leid niets af en verzin geen norm, benchmark of percentage. '
-    +'NIET beoordelen: ontbrekende fase-2 DD-documenten, arbeidscontracten, debiteurenadministratie, huurcontracten — die zijn pas relevant na de LoI.\n\n'
-    +'Schrijf maximaal 3 korte alineas in gewoon Nederlands:\n'
-    +'1. Wat klopt en consistent is (noem de cijfers)\n'
-    +'2. Wat afwijkt of intern inconsistent is (maximaal 2 punten)\n'
-    +'3. Eén zin eindoordeel: zijn de basisvelden voldoende voor een indicatieve waardering?\n\n'
-    +'Geen tabellen, geen lijsten, geen pipe-tekens. Maximaal 200 woorden.';
-
-  try{
-    var resp=await fetchMetTimeout(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:1000})},60000);
-    var rd=await resp.json();
-    var tekst=(rd.text||'Fout bij genereren.')
-      .replace(/## ([^\n]+)/g,'<h3 style="font-family:Playfair Display,serif;font-size:.95rem;color:var(--head);margin:1rem 0 .35rem">$1</h3>')
-      .replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>')
-      // Verwijder eventuele pipe-tabellen
-      .replace(/^\|[-| ]+\|$/gm,'')
-      .replace(/^\|.+\|$/gm,function(line){
-        return line.replace(/^\||\|$/g,'').split('|').map(function(s){return s.trim();}).filter(Boolean).join(' — ');
-      })
-      .split('\n\n').map(function(p){
-        p=p.trim();
-        if(!p)return '';
-        if(p.charAt(0)==='<')return p;
-        return '<p style="font-size:13px;color:var(--mid);line-height:1.7;margin-bottom:.75rem">'+p.replace(/\n/g,'<br>')+'</p>';
-      }).join('');
-    out.innerHTML='<div style="padding:.5rem 0">'+tekst+'</div>';
-  }catch(e){
-    out.innerHTML='<div style="color:var(--red);font-size:13px">Fout: '+e.message+'</div>';
-  }
-  btn.disabled=false;btn.innerHTML='&#9881; Opnieuw';
-}
+// P1-IP-4 (27 sep 2026): finaleCheck() (DD-consistentie-check-analyse) verwijderd — bewezen dode
+// code: het element finale-check-btn/-out werd nergens in de HTML-templates daadwerkelijk
+// gerenderd (bevestigd via repo-brede grep), dus btn/out waren altijd null en de functie keerde
+// via haar eigen if(!btn||!out)return; meteen terug — geen enkele caller kon deze ooit bereiken.
+// De volledige prompt-instructietekst stond desondanks nog wél in de publiek downloadbare bundel
+// (view-source-leak van KVM-methodiek, los van of de knop klikbaar was) — verwijderd in plaats van
+// migreren, want een backend-endpoint bouwen voor onbereikbare code is pure verspilling (werkregel
+// 41/43). Wordt dit ooit weer opgepakt, dan hoort de instructietekst vanaf het begin server-side.
 
 async function generateAI(faseId){
   var f=FASES.find(function(x){return x.id===faseId;});if(!f)return;
@@ -1099,17 +1039,15 @@ async function generateAI(faseId){
   var sectorProfiel=getSectorProfiel();
   var sectorLabel=sectorProfiel.label||'MKB';
   var sectorNormen=sectorProfiel.aiNormen||'';
-  var prompt='Je bent ' + esc(S.traject&&S.traject.begeleider_naam||BRAND.contactpersoon) + ', senior M&A-adviseur. '+TAAL_REGELS+' Sector: '+sectorLabel+'. Traject: '+esc(S.traject&&S.traject.traject_type||'M&A')+' voor "'+esc(S.traject&&S.traject.kantoor_naam||S.code)+'".\n\nSECTOR NORMEN (indicatieve richtwaarden, geen vastgestelde branchenorm — niet als hard feit presenteren):\n'+(sectorNormen||'(geen sectorbenchmark beschikbaar — noem dan geen benchmark of marktgemiddelde uit eigen kennis)')+'\n\nFASE: '+f.title+'\n\nINGEVOERDE DATA:\n'+(dataLines.join('\n')||'Geen data')+'\n\nCHECKLIST:\nGereed: '+(chk.join(', ')||'niets')+'\nOpen: '+(open.join(', ')||'alles gereed')+'\n\nRODE VLAGGEN: '+(rfs.join(', ')||'geen')+'\n\nNOTITIES: '+(S.notities[faseId]||'geen')+'\n\nGeef beknopt strategisch advies voor deze sector. Analyseer de cijfers expliciet en vergelijk met de sectorgemiddelden hierboven — uitsluitend als die hierboven daadwerkelijk staan. Onderscheid feit (wat er staat), directe gevolgtrekking uit dat feit, en advies. Introduceer geen nieuwe oorzaken, percentages, normen of externe marktclaims die niet uit de data volgen. Bespreek: voortgang en prioriteiten, urgente openstaande punten, impact rode vlaggen, concrete vervolgstappen. Schrijf in ik-vorm. Gebruik ## koppen. Geen tabellen of bullets.';
   try{
-    // Bevinding 12 sep 2026 ("Genereer advies werkt niet"): deze aanroep verwachtte een SSE-stream
-    // (data:-regels met content_block_delta), maar /ai roept Anthropic aan met stream:false en geeft
-    // gewoon één JSON-object {text:...} terug (zie backend/worker/06-scantool.js) — collected bleef
-    // dus altijd leeg. Nu hetzelfde .json()-patroon als elders (bijv. mna/04 bgDoc()).
-    var resp=await fetchMetTimeout(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}]})},60000);
+    // P1-IP-4 (27 sep 2026): instructietekst + AI-aanroep verhuisd naar worker/19-info-fases.js
+    // (/mna/analyse/fase/genereer) — hier alleen nog data die deze rol toch al ziet (eigen DD-velden,
+    // checklist, sectorbenchmark-tekst die na N-83 al geautoriseerd is opgehaald).
+    var resp=await fetchMetTimeout(WORKER+'/mna/analyse/fase/genereer',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:S.code,faseId:faseId,faseTitel:f.title,dataLines:dataLines,checklistGereed:chk,checklistOpen:open,redVlaggen:rfs,notities:S.notities[faseId],sectorLabel:sectorLabel,sectorNormen:sectorNormen,trajectType:S.traject&&S.traject.traject_type,kantoorNaam:S.traject&&S.traject.kantoor_naam,begeleiderNaam:S.traject&&S.traject.begeleider_naam})},60000);
     if(!resp.ok)throw new Error('HTTP '+resp.status);
     var rd=await resp.json();
-    if(!rd.text)throw new Error(rd.error||'Leeg antwoord');
-    S.aiTexts[faseId]=rd.text;
+    if(!rd.ok||!rd.tekst)throw new Error(rd.error||'Leeg antwoord');
+    S.aiTexts[faseId]=rd.tekst;
   }catch(e){S.aiTexts[faseId]='__ERROR__';}
   S.aiLoading[faseId]=false;renderApp();
 }
@@ -1193,6 +1131,60 @@ function renderKoperBodSectie(el){
   };
 }
 
+// Platform- en vertrouwelijkheidsvoorwaarden (S1.2, 23 sep 2026) — actieve, versiegebonden
+// acceptatie vóór toegang tot een traject, voor verkoper/koper/tussenpersoon (allemaal via een
+// code ingelogd, zie /mna/traject/{code}). Zelfde technische patroon als de VOK-popup (mna/04) en
+// de vertrouwelijkheidsverklaring in viewer.html (meekijker), hier voor de overige rollen.
+function toonPlatformVoorwaardenPopup(code,rol,tekst,versie,onAkkoord){
+  var ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:2000;display:flex;align-items:center;justify-content:center;padding:1.5rem';
+  var mo=document.createElement('div');
+  mo.setAttribute('role','dialog');mo.setAttribute('aria-modal','true');mo.setAttribute('aria-labelledby','pvw-modal-titel');
+  mo.style.cssText='background:var(--panel);border:1px solid var(--border2);border-radius:var(--r2);padding:2rem;max-width:600px;width:100%;max-height:90vh;overflow-y:auto';
+  mo.innerHTML='<div id="pvw-modal-titel" style="font-family:Playfair Display,serif;font-size:1.2rem;color:var(--head);font-weight:600;margin-bottom:.4rem">Platform- en vertrouwelijkheidsvoorwaarden</div>'
+    +'<div style="font-size:11px;color:var(--muted);margin-bottom:1rem">Versie '+esc(versie)+' &middot; vereist voor toegang tot dit traject</div>'
+    +'<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:1rem;max-height:260px;overflow-y:auto;font-size:12px;line-height:1.8;color:var(--sub);white-space:pre-wrap;margin-bottom:1rem">'+esc(tekst)+'</div>'
+    +'<div id="pvw-err" style="display:none;color:var(--red);font-size:12px;margin-bottom:.5rem"></div>'
+    +'<div style="display:flex;gap:8px;justify-content:flex-end">'
+    +'<button id="pvw-ok" class="btn" style="font-size:12px;padding:7px 18px">&#10003; Akkoord &amp; doorgaan</button>'
+    +'</div>';
+  ov.appendChild(mo);
+  document.body.appendChild(ov);
+  document.getElementById('pvw-ok').onclick=async function(){
+    var btn=this;btn.disabled=true;btn.textContent='Opslaan...';
+    var errEl=document.getElementById('pvw-err');
+    try{
+      var r=await fetch(WORKER+'/mna/platformvoorwaarden/accepteren',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:code})});
+      var rd=await r.json();
+      if(rd.ok){document.body.removeChild(ov);onAkkoord();}
+      else{errEl.style.display='block';errEl.textContent=rd.error||'Fout.';btn.disabled=false;btn.textContent='Akkoord & doorgaan';}
+    }catch(e){errEl.style.display='block';errEl.textContent='Verbindingsfout.';btn.disabled=false;btn.textContent='Akkoord & doorgaan';}
+  };
+}
+
+// P1-BUY-1 (25 sep 2026): een toegangscode kan óók een koopmandaat zijn (koper als opdrachtgever,
+// vóór er een specifiek traject bestaat) — eigen tabel/namespace in de backend, dus een aparte lookup
+// pas ná een "not found" op de gewone trajectroute (geen extra latency op het normale, veel vaker
+// voorkomende traject-inlogpad). Bewust géén DOCS/CHAT-koppeling — dat bestaat op dit niveau niet.
+async function probeerKoopmandaatLogin(code){
+  try{
+    var resp=await fetchMetTimeout(WORKER+'/mna/koopmandaat/'+code, {
+      method:'GET', headers:{'x-tussen-key':code}
+    }, 15000);
+    if(!resp.ok)return false;
+    var d=await resp.json();
+    if(!d||!d.ok)return false;
+    Object.keys(DOCS).forEach(function(k){delete DOCS[k];});
+    if(typeof CHAT!=='undefined'){CHAT.berichten=[];CHAT.serverBerichten=[];CHAT.open=false;CHAT.laden=false;CHAT.sturen=false;}
+    S={screen:'koopmandaat',code:code,kmRol:d.rol,kmMandaat:d.mandaat,kmTargets:d.targets||[]};
+    SEC.attempts=0;
+    secStartSession();
+    secAuditLog('login_koopmandaat',{koper:d.mandaat&&d.mandaat.koper_naam});
+    renderApp();
+    return true;
+  }catch(e){return false;}
+}
+
 function bindAll(){
   var lb=ge('l-btn');
   if(lb){
@@ -1211,7 +1203,18 @@ function bindAll(){
         var d=await resp.json();
         if(!resp.ok){
           if(d&&d.error&&d.error.includes('verzoeken'))throw new Error('Te veel verzoeken. Wacht even en probeer opnieuw.');
+          if(await probeerKoopmandaatLogin(code))return;
           throw new Error('not found');
+        }
+        // Platform- en vertrouwelijkheidsvoorwaarden (S1.2): moet actief geaccepteerd zijn vóórdat
+        // er verder wordt gegaan — geen S/renderApp opbouwen zolang dat niet zo is. Na accepteren
+        // opnieuw dezelfde login-aanroep doen (lb.click()) i.p.v. deze hele functie te herschrijven;
+        // de tweede keer geeft de backend platform_voorwaarden_akkoord:true terug en gaat de flow
+        // hieronder gewoon verder.
+        if(!d.platform_voorwaarden_akkoord){
+          if(load)load.style.display='none';lb.disabled=false;
+          toonPlatformVoorwaardenPopup(code,d.rol||'verkoper',d.platform_voorwaarden_tekst||'',d.platform_voorwaarden_versie||'',function(){lb.click();});
+          return;
         }
         // Volledige reset - geen datalek tussen trajecten
         Object.keys(DOCS).forEach(function(k){delete DOCS[k];});
@@ -1680,15 +1683,16 @@ function bindAll(){
     lijnen.push('Waardering hoog ('+v.mHoog+'x EBITDA): '+fmtGeld(v.wHoog));
     lijnen.push('Omzetmethode ('+v.omzetFactor+'x): '+fmtGeld(v.wOmzet));
     lijnen.push('Koopsom bij closing (indicatief): '+fmtGeld(v.fixedKoop)+', earn-out '+v.earnPct+'% over '+v.earnJaren+' jaar bij '+v.earnTarget+'% omzetgroei/jaar');
-    var sectorProfielW=getSectorProfiel();
-    var dataSamW='';
-    var faseLW=getFaseLabels();
-    (S._mnaData||[]).forEach(function(row){try{var dj=typeof row.data_json==='string'?JSON.parse(row.data_json):row.data_json;var gevuld=Object.values(dj||{}).filter(function(v2){return v2&&v2.value;});if(gevuld.length){dataSamW+='\n## '+(faseLW[row.fase_id]||row.fase_id)+'\n';gevuld.forEach(function(v2){dataSamW+='- '+v2.label+': '+v2.value+'\n';});}}catch(e){}});
-    var prompt='Schrijf één samenhangend, professioneel M&A-rapport voor '+esc(S.traject&&S.traject.kantoor_naam||S.code)+' (sector: '+(sectorProfielW.label||'')+') — zowel de due-diligence-analyse als de daarop gebaseerde waardering, als één geheel. '+TAAL_REGELS+'\n\nSECTOR NORMEN (indicatieve richtwaarden, geen vastgestelde branchenorm — niet als hard feit presenteren): '+(sectorProfielW.aiNormen||'(geen sectorbenchmark beschikbaar — geen benchmark of marktgemiddelde uit eigen kennis noemen)')+'\n\nDUE DILIGENCE DATA:'+dataSamW+'\n\nCIJFERS VOOR DE WAARDERING (uitsluitend deze gebruiken, geen andere bedragen of percentages verzinnen):\n'+lijnen.join('\n')+'\n\nGa expliciet in op wat de cijfers zeggen over de kwaliteit en het risico van de omzet (concentratie, recurring, churn) waar die zijn aangeleverd. De waarderingssectie mag de bevindingen uit de due-diligence-sectie kwalitatief benoemen (welke factoren de waardering drukken of ondersteunen), maar mag het effect NIET zelf kwantificeren — geen "dit verlaagt de multiple met 0,5x" of een zelfbedachte bandbreedte. De enige multiple en waarderingsbedragen zijn die uit "CIJFERS VOOR DE WAARDERING" hierboven; verzin er geen bij en pas ze niet aan.\n\nBegin DIRECT met de eerste ## kop hieronder — geen eigen titel, geen bedrijfsnaam als kop, geen horizontale lijnen (---).\n\n## Samenvatting\n## Financieel\n## Sterktes\n## Risicos\n## Waarderingsmethodiek\n## As-is waardering\n## Kwaliteit van de cijfers\n## Groei- en waardepotentieel\n## Transactiestructuur\n## Conclusie en aanbevelingen\n\nGebruik bullets (met -) waar een opsomming duidelijker is dan lopende tekst. Max 800 woorden. In Conclusie en aanbevelingen: presenteer aanbevelingen als overwegingen voor de begeleider om mee te nemen, geen dwingende conclusies.';
+    // P1-IP-3 (25 sep 2026): promptopbouw (template, sectorbenchmark, DD-datasamenvatting) staat nu
+    // server-side (backend/worker/19b-waardering-communicatie.js, /mna/waardering/rapport-genereren)
+    // — voorheen client-side opgebouwd en naar de publieke /ai-proxy gestuurd. `lijnen` blijft hier
+    // client-side: dat is de al berekende/geformatteerde uitkomst van de (nog niet gemigreerde)
+    // rekenkern, presentatielogica van cijfers die de rekenkern zelf al heeft vastgesteld — migratie
+    // daarvan hoort bij P1-IP-2 onderdeel C (de rekenkern zelf), niet hier.
     try{
-      var resp=await fetchMetTimeout(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:3600})},60000);
+      var resp=await fetchMetTimeout(WORKER+'/mna/waardering/rapport-genereren',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||S.code||''},body:JSON.stringify({code:S.code,lijnen:lijnen})},60000);
       var rd=await resp.json();
-      var ruweTekst=rd.text||(rd.error?('AI fout: '+rd.error):'Fout bij genereren.');
+      var ruweTekst=(rd&&rd.ok&&rd.text)||(rd&&rd.error?('AI fout: '+rd.error):'Fout bij genereren.');
       var tekstHtml=mdToHtml(ruweTekst);
       var snapshot={o1:v.o1,o2:v.o2,o3:v.o3,ebitdaAmt:v.ebitdaAmt,ebitdaPct:v.ebitdaPct,wLaag:v.wLaag,wMid:v.wMid,wHoog:v.wHoog};
       var nu=Date.now();
@@ -1774,7 +1778,6 @@ function bindAll(){
   // Alle huidige kritieke-discrepantiechecks gaan uitsluitend over Financieel-velden — als daar
   // ooit checks voor andere fases bijkomen, moet deze knop per discrepantie de juiste fase kiezen.
   var naarFinancieelBtn=ge('naar-financieel-btn');if(naarFinancieelBtn)naarFinancieelBtn.onclick=function(){S.screen='main';var fi=FASES.findIndex(function(f){return f.id==='financieel';});S.fase=fi>=0?fi:0;if(BANKMUTATIES===null)laadBankmutaties();if(BANKMUTATIES_ANALYSE===null)laadRedFlagAnalyse();renderApp();};
-  var finaleCheckBtn=ge('finale-check-btn');if(finaleCheckBtn)finaleCheckBtn.onclick=finaleCheck;
 
   // ── FASE AFRONDEN / HEROPENEN ────────────────────────────────
   var faseAfrondBtn=ge('fase-afronden-btn');
@@ -2192,14 +2195,13 @@ function bindAll(){
         bmTekst='BENCHMARKS: EBITDA-marge '+ebitdaPct+'% | Indicatieve EBITDA multiple '+eindMult.toFixed(1).replace('.',',')+'x (regulier/terugverdientijd-gedreven, o.b.v. Brookz Overname Barometer — dit is GEEN formele due-diligence-waardering, alleen een indicatie)\n';
       }
       var _b5Sec=(typeof getSectorProfiel==='function'&&getSectorProfiel().label)?getSectorProfiel().label:'';
-      var prompt='Je bent M&A-adviseur'+(_b5Sec?(' voor de sector '+_b5Sec):'')+'. Analyseer traject: '+esc(t3.kantoor_naam||S.code)+' ('+esc(t3.traject_type||'Verkoop')+'). '+TAAL_REGELS+'\n'
-        +(_b5Sec&&_b5Sec.toLowerCase().indexOf('accountanc')<0?'LET OP: dit is GEEN accountantskantoor — gebruik geen accountancy-jargon of -benchmarks.\n':'')
-        +'Gebruik uitsluitend feiten en kwalificaties die rechtstreeks uit de gegevens hieronder volgen; verzin geen oorzaak, marktnorm, benchmark, percentage of extern gegeven. Ontbreekt onderbouwing, schrijf dan dat de informatie onvoldoende is.\n'
-        +bmTekst+'\nDUE DILIGENCE:'+dataSamenvatting+'\n\n## Samenvatting\n## Financieel profiel & waardering\n## Sterktes\n## Risicos\n## Aanbevelingen\n\nMax 500 woorden.';
       try{
-        var resp=await fetchMetTimeout(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:3000})},60000);
+        // P1-IP-4 (27 sep 2026): instructietekst + AI-aanroep verhuisd naar worker/19-info-fases.js
+        // (/mna/analyse/traject/genereer, tussenpersoon-only, zelfde x-tussen-key-model als de
+        // waarderingsroutes hierboven) — hier alleen nog de al lokaal opgebouwde datasamenvatting.
+        var resp=await fetchMetTimeout(WORKER+'/mna/analyse/traject/genereer',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||S.code||''},body:JSON.stringify({code:S.code,dataSamenvatting:dataSamenvatting,benchmarkTekst:bmTekst,sectorLabel:_b5Sec,kantoorNaam:t3.kantoor_naam,trajectType:t3.traject_type})},60000);
         var rd=await resp.json();
-        var tekst=(rd.text||'Fout bij genereren.').replace(/## ([^\n]+)/g,'<strong style="display:block;margin:.75rem 0 .25rem;font-size:14px">$1</strong>').replace(/\n/g,'<br>');
+        var tekst=((rd&&rd.ok&&rd.tekst)?rd.tekst:'Fout bij genereren.').replace(/## ([^\n]+)/g,'<strong style="display:block;margin:.75rem 0 .25rem;font-size:14px">$1</strong>').replace(/\n/g,'<br>');
         var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:200;display:flex;align-items:center;justify-content:center;padding:1.5rem';
         var mo=document.createElement('div');mo.setAttribute('role','dialog');mo.setAttribute('aria-modal','true');mo.setAttribute('aria-labelledby','ai-analyse-modal-titel');mo.style.cssText='background:var(--panel);border-radius:10px;padding:2rem;max-width:680px;width:100%;max-height:90vh;overflow-y:auto';
         mo.innerHTML='<div id="ai-analyse-modal-titel" style="font-family:Playfair Display,serif;font-size:1.1rem;color:var(--head);font-weight:600;margin-bottom:1.25rem">&#9881; AI-analyse · '+esc(t3.kantoor_naam||S.code)+'</div>'

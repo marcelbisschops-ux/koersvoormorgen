@@ -113,7 +113,10 @@ const BRAND={platform:'Koers voor Morgen',bedrijf:'Bisschops Financing B.V.',suf
 const TAAL_REGELS='Schrijf in natuurlijk, vloeiend Nederlands — geen letterlijke vertaling uit het Engels. Gebruik uitsluitend de formele aanspreekvorm "u/uw", nooit "je/jij/jouw", ook niet losse keren door elkaar. Gebruik "geen [zelfstandig naamwoord]" i.p.v. de onnatuurlijke constructie "niet een [zelfstandig naamwoord]". Vermijd andere letterlijke Engelse constructies en verzin geen niet-bestaande woorden.';
 document.title=BRAND.platform+' — '+BRAND.suffix;
 (function(){var b=document.querySelector('.brand');if(b)b.innerHTML='<div class="wdot"></div>'+BRAND.platform+' <span style="color:var(--teal);margin-left:4px">'+BRAND.suffix+'</span>';})();
-let adminKey='',scans=[],callbacks=[],mnaList=[],rapporten=[],leads=[],proefAanvragen=[],activeTab='scans',scanFilter='',openRow=null;
+let adminKey='',scans=[],callbacks=[],mnaList=[],rapporten=[],leads=[],proefAanvragen=[],activeTab='scans',scanFilter='',openRow=null,kantorenOpenId=null;
+// P1-BUY-1 (25 sep 2026): koopmandaten (buy-side) — los van mnaList, lazy geladen zodra de MNA-tab
+// voor het eerst getoond wordt, zodat de bestaande doLogin/refreshData-kritische-pad niet geraakt wordt.
+let kmList=[],kmLoaded=false;
 let gebruikerToken='',gebruikerInfo=null,isSuperAdmin=false;
 let postvakOngelezen=0;
 
@@ -121,6 +124,25 @@ function toast(msg,type,dur){type=type||'ok';dur=dur||3500;var c=document.getEle
 
 function dc(v){return v>=70?'score-high':v>=50?'score-mid':'score-low';}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+// OPEN-BEVINDINGEN P2-11 (25 sep 2026): marilyn-modals misten role="dialog"/aria-modal — eerder
+// gefixt voor het €-Verkoop-modal (24 aug 2026), maar een preciezere hertelling (25 sep 2026) vond
+// 16 andere modal-openende functies, niet de eerder aangenomen "6 resterend van de 7". Één gedeelde
+// helper i.p.v. deze drie regels 16x losstaand kopiëren — voorkomt ID-botsingen/typefouten en is
+// de bedoelde architectuurkeuze bij zoveel bijna-identieke call sites (zie CLAUDE.md-werkregel over
+// de architectuurgate). Roep aan NADAT mo.innerHTML gezet is (moet .modal-title al kunnen vinden) en
+// NADAT ov aan de DOM is toegevoegd. Sluit bewust alleen role/aria-modal/aria-labelledby + Escape af
+// (zelfde, al eerder bewust begrensde scope als het €-Verkoop-modal) — een volledige focus-trap voor
+// alle marilyn-modals blijft bredere scope, niet hierin meegenomen.
+function a11yModal(ov,mo){
+  mo.setAttribute('role','dialog');
+  mo.setAttribute('aria-modal','true');
+  var t=mo.querySelector('.modal-title');
+  if(t){
+    if(!t.id)t.id='mt-'+Math.random().toString(36).slice(2,8);
+    mo.setAttribute('aria-labelledby',t.id);
+  }
+  ov.addEventListener('keydown',function(e){if(e.key==='Escape'&&document.body.contains(ov))document.body.removeChild(ov);});
+}
 function formatDate(ts){if(!ts)return '—';return new Date(ts).toLocaleDateString('nl-NL',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});}
 // Security-fix 17 aug 2026: downloads/exports gingen voorheen via <a href="...?key=admin-sleutel">
 // — daarmee stond de admin-sleutel letterlijk in de link (browsergeschiedenis, "kopieer link").
@@ -267,6 +289,7 @@ function renderDashboard(){
     +'<button class="tab'+(activeTab==='templates'?' active':'')+'" id="t-templates">&#128196; Templates</button>'
     +(isSuperAdmin?'<button class="tab'+(activeTab==='sectoren'?' active':'')+'" id="t-sectoren">&#127970; Sectoren</button>':'')
     +(isSuperAdmin?'<button class="tab'+(activeTab==='gebruikers'?' active':'')+'" id="t-geb" style="border-left:2px solid var(--gold)">&#128101; Gebruikers</button>':'')
+    +(isSuperAdmin?'<button class="tab'+(activeTab==='kantoren'?' active':'')+'" id="t-kantoren">&#127970; Kantoren</button>':'')
     +(isSuperAdmin?'<button class="tab'+(activeTab==='tarieven'?' active':'')+'" id="t-tarieven">&euro; Tarieven</button>':'')
     +(isSuperAdmin?'<button class="tab'+(activeTab==='veiligheid'?' active':'')+'" id="t-veiligheid" style="border-left:2px solid var(--red)">&#128737; Veiligheid</button>':'')
     +(isSuperAdmin?'<button class="tab'+(activeTab==='matching'?' active':'')+'" id="t-matching">&#128279; Matching</button>':'')
@@ -286,6 +309,7 @@ function renderDashboard(){
   document.getElementById('t-templates').addEventListener('click',function(){activeTab='templates';renderDashboard();});
   if(isSuperAdmin){var stb=document.getElementById('t-sectoren');if(stb)stb.addEventListener('click',function(){activeTab='sectoren';renderDashboard();});}
   if(isSuperAdmin){var gtb=document.getElementById('t-geb');if(gtb)gtb.addEventListener('click',function(){activeTab='gebruikers';renderDashboard();});}
+  if(isSuperAdmin){var ktb=document.getElementById('t-kantoren');if(ktb)ktb.addEventListener('click',function(){activeTab='kantoren';kantorenOpenId=null;renderDashboard();});}
   if(isSuperAdmin){var ttb=document.getElementById('t-tarieven');if(ttb)ttb.addEventListener('click',function(){activeTab='tarieven';renderDashboard();});}
   if(isSuperAdmin){var vtb=document.getElementById('t-veiligheid');if(vtb)vtb.addEventListener('click',function(){activeTab='veiligheid';renderDashboard();});}
   if(isSuperAdmin){var mtb=document.getElementById('t-matching');if(mtb)mtb.addEventListener('click',function(){activeTab='matching';renderDashboard();});}
@@ -312,6 +336,7 @@ function renderTab(){
   else if(activeTab==='templates')renderTemplatesTab(el);
   else if(activeTab==='sectoren')renderSectorenTab(el);
   else if(activeTab==='gebruikers')renderGebruikersTab(el);
+  else if(activeTab==='kantoren')renderKantorenTab(el);
   else if(activeTab==='tarieven')renderTarievenTab(el);
   else if(activeTab==='veiligheid')renderVeiligheidTab(el);
   else if(activeTab==='matching')renderMatchingTab(el);
@@ -1227,9 +1252,12 @@ function renderMnaTab(el){
     html+='</tbody></table>';
   }
   html+='</div>';
+  html+=kmSectionHtml();
   el.innerHTML=html;
   var rb=document.getElementById('btn-ref-m');if(rb)rb.addEventListener('click',refreshData);
   var bn=document.getElementById('btn-nieuw');if(bn)bn.addEventListener('click',toonNieuwModal);
+  bindKmSection(el);
+  if(!kmLoaded)laadKoopmandaten();
 
   el.querySelectorAll('.copy-btn').forEach(function(b){
     b.addEventListener('click',function(){
@@ -1259,6 +1287,127 @@ function renderMnaTab(el){
     btnDelM.disabled=true;btnDelM.textContent='Verwijderen...';
     for(var i=0;i<ids.length;i++){try{var rd=await fetch(WORKER+'/admin/delete/mna/'+ids[i],{headers:{'x-admin-key':adminKey},method:'POST'});var dd=await rd.json();if(dd.ok)mnaList=mnaList.filter(function(t){return t.id!==ids[i];});}catch(e){}}
     renderDashboard();
+  });
+}
+
+// KOOPMANDATEN (P1-BUY-1, 25 sep 2026) — koper als opdrachtgever, vóór er een verkoper/traject is.
+// Bewust een eigen, kleine sectie ONDER de bestaande trajecttabel — geen nieuwe tab, geen wijziging
+// aan de bestaande trajectlogica hierboven (werkregel 7: alleen noodzakelijke scope).
+function kmSectionHtml(){
+  var html='<div class="table-wrap" style="margin-top:1.5rem"><div class="table-hdr"><div class="table-title">Koopmandaten (buy-side) '+(kmLoaded?'('+kmList.length+')':'')+'</div>'
+    +'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
+    +'<button class="btn" style="font-size:12px;padding:7px 14px" id="btn-ref-km">&#8635; Verversen</button>'
+    +'<button class="btn" style="font-size:12px;padding:7px 14px" id="btn-nieuw-km">+ Nieuw koopmandaat</button>'
+    +'</div></div>';
+  if(!kmLoaded){
+    html+='<div class="empty">Laden...</div></div>';
+    return html;
+  }
+  if(!kmList.length){
+    html+='<div class="empty">Geen koopmandaten. Een koopmandaat is voor een koper die nog GEEN specifieke verkoper heeft — zoekprofiel + kandidaat-targets, vóór er een volwaardig traject is.</div></div>';
+    return html;
+  }
+  html+='<table><thead><tr><th>Koper</th><th>Zoekprofiel</th><th>Targets</th><th>Status</th><th>Tussen_code</th><th>Koper_code</th><th>Datum</th><th>Acties</th></tr></thead><tbody>';
+  kmList.forEach(function(m){
+    html+='<tr><td style="font-weight:500;color:var(--head)">'+esc(m.koper_naam||'—')
+      +(m.koper_contact_naam?'<div style="font-size:10px;color:var(--muted)">'+esc(m.koper_contact_naam)+'</div>':'')+'</td>'
+      +'<td style="font-size:11px">'+esc(m.zoekt_sectoren||'—')+(m.zoekt_regio?'<br><span style="color:var(--muted)">'+esc(m.zoekt_regio)+'</span>':'')
+      +((m.omzet_min||m.omzet_max)?'<br><span style="color:var(--muted)">&euro;'+(m.omzet_min?Number(m.omzet_min).toLocaleString('nl-NL'):'?')+' – &euro;'+(m.omzet_max?Number(m.omzet_max).toLocaleString('nl-NL'):'?')+'</span>':'')+'</td>'
+      +'<td style="text-align:center">'+(m.target_count||0)+'</td>'
+      +'<td><span class="tag">'+esc(m.status||'actief')+'</span></td>'
+      +'<td><span class="code-chip" style="background:var(--card);color:var(--mid)">'+esc(m.tussen_code)+'</span><button class="copy-btn" data-copy="'+esc(m.tussen_code)+'">⎘</button></td>'
+      +'<td><span class="code-chip" style="background:var(--gold-bg);color:var(--gold);border-color:var(--gold)">'+esc(m.koper_code)+'</span><button class="copy-btn" data-copy="'+esc(m.koper_code)+'">⎘</button></td>'
+      +'<td class="mono" style="font-size:11px">'+formatDate(m.created_at)+'</td>'
+      +'<td style="white-space:nowrap;display:flex;gap:4px;flex-wrap:wrap">'
+      +'<button class="btn btn-km-begeleider" data-code="'+esc(m.tussen_code)+'" style="font-size:11px;padding:3px 10px;background:var(--info)">&#128231; Begeleider</button>'
+      +'<button class="btn-red btn-del-km" data-code="'+esc(m.tussen_code)+'" data-naam="'+esc(m.koper_naam||m.tussen_code)+'" style="font-size:13px;padding:3px 8px;color:var(--red)" title="Koopmandaat permanent verwijderen">&#128465;</button>'
+      +'</td></tr>';
+  });
+  html+='</tbody></table></div>';
+  return html;
+}
+
+function bindKmSection(el){
+  var rb=document.getElementById('btn-ref-km');if(rb)rb.addEventListener('click',function(){kmLoaded=false;laadKoopmandaten();});
+  var bn=document.getElementById('btn-nieuw-km');if(bn)bn.addEventListener('click',toonNieuwKoopmandaatModal);
+  el.querySelectorAll('.btn-km-begeleider').forEach(function(b){b.addEventListener('click',function(){
+    window.open('mna.html?code='+encodeURIComponent(b.dataset.code),'_blank');
+  });});
+  el.querySelectorAll('.btn-del-km').forEach(function(b){b.addEventListener('click',function(){deleteKoopmandaat(b.dataset.code,b.dataset.naam);});});
+}
+
+async function laadKoopmandaten(){
+  try{
+    var r=await fetch(WORKER+'/mna/admin/koopmandaten',{headers:{'x-admin-key':adminKey}});
+    var d=r.ok?await r.json():{ok:false};
+    kmList=(d.ok&&d.mandaten)||[];
+  }catch(e){kmList=[];}
+  kmLoaded=true;
+  if(activeTab==='mna')renderTab();
+}
+
+async function deleteKoopmandaat(tussenCode,naam){
+  if(!confirm('Koopmandaat "'+naam+'" permanent verwijderen, inclusief alle targets? Een reeds gepromoveerd traject blijft bestaan (alleen de terugverwijzing verdwijnt).'))return;
+  try{
+    var r=await fetch(WORKER+'/mna/admin/koopmandaat/verwijderen/'+encodeURIComponent(tussenCode),{method:'POST',headers:{'x-admin-key':adminKey}});
+    var d=await r.json();
+    if(r.ok&&d.ok){toast('Koopmandaat verwijderd.','ok');kmList=kmList.filter(function(m){return m.tussen_code!==tussenCode;});renderTab();}
+    else{toast('Fout: '+(d.error||'onbekend'),'err');}
+  }catch(e){toast('Netwerkfout bij verwijderen.','err');}
+}
+
+function toonNieuwKoopmandaatModal(){
+  var ov=document.createElement('div');ov.className='modal-ov';ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:400;display:flex;align-items:center;justify-content:center;padding:1.5rem';
+  var mo=document.createElement('div');mo.setAttribute('role','dialog');mo.setAttribute('aria-modal','true');mo.setAttribute('aria-labelledby','km-modal-titel');mo.style.cssText='background:var(--panel);border-radius:10px;padding:1.75rem;max-width:520px;width:100%;max-height:90vh;overflow-y:auto';
+  mo.innerHTML='<div id="km-modal-titel" style="font-family:Playfair Display,serif;font-size:1.15rem;color:var(--head);font-weight:600;margin-bottom:1rem">Nieuw koopmandaat (buy-side)</div>'
+    +'<div class="field"><label for="km-koper-naam">Naam koper <span style="color:var(--red)">*</span></label><input type="text" id="km-koper-naam"></div>'
+    +'<div class="field"><label for="km-koper-contact">Contactpersoon koper</label><input type="text" id="km-koper-contact"></div>'
+    +'<div class="field"><label for="km-koper-email">E-mail contactpersoon koper</label><input type="email" id="km-koper-email"></div>'
+    +'<div style="border-top:1px solid var(--border);margin:.75rem 0;padding-top:.75rem"><div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">Begeleider</div></div>'
+    +'<div class="field"><label for="km-bg-naam">Naam begeleider <span style="color:var(--red)">*</span></label><input type="text" id="km-bg-naam"></div>'
+    +'<div class="field"><label for="km-bg-email">E-mail begeleider <span style="color:var(--red)">*</span></label><input type="email" id="km-bg-email"></div>'
+    +'<div style="border-top:1px solid var(--border);margin:.75rem 0;padding-top:.75rem"><div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">Zoekprofiel <span style="font-weight:400;text-transform:none;letter-spacing:normal">(optioneel, later aan te passen)</span></div></div>'
+    +'<div class="field"><label for="km-sectoren">Gezochte sector(en)</label><input type="text" id="km-sectoren" placeholder="bijv. accountancy"></div>'
+    +'<div class="field"><label for="km-regio">Gezochte regio</label><input type="text" id="km-regio"></div>'
+    +'<div class="field"><label>Omzetrange</label><div style="display:flex;gap:8px"><input type="number" id="km-omzet-min" placeholder="Min. (&euro;)" style="flex:1"><input type="number" id="km-omzet-max" placeholder="Max. (&euro;)" style="flex:1"></div></div>'
+    +'<div id="km-res" style="display:none;background:var(--teal-bg);border:1px solid var(--teal-dark);border-radius:var(--r);padding:1rem;margin-bottom:1rem;font-size:13px;line-height:2"></div>'
+    +'<div id="km-err" style="display:none;color:var(--red);font-size:12px;margin-bottom:.75rem"></div>'
+    +'<div style="display:flex;gap:10px;justify-content:flex-end"><button class="btn-ghost" id="km-ann">Annuleren</button><button class="btn" id="km-ok">Koopmandaat aanmaken</button></div>';
+  ov.appendChild(mo);document.body.appendChild(ov);a11yModal(ov,mo);
+  ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
+  document.getElementById('km-ann').addEventListener('click',function(){document.body.removeChild(ov);});
+  document.getElementById('km-ok').addEventListener('click',async function(){
+    var errDiv=document.getElementById('km-err');errDiv.style.display='none';
+    var emailRe=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    function fout(msg){errDiv.style.display='block';errDiv.textContent=msg;return false;}
+    function vv(id){var e=document.getElementById(id);return e?e.value.trim():'';}
+    if(!vv('km-koper-naam'))return fout('Naam koper is verplicht.');
+    if(!vv('km-bg-naam'))return fout('Naam begeleider is verplicht.');
+    if(!vv('km-bg-email'))return fout('E-mail begeleider is verplicht.');
+    if(!emailRe.test(vv('km-bg-email')))return fout('E-mail begeleider heeft geen geldig formaat.');
+    if(vv('km-koper-email')&&!emailRe.test(vv('km-koper-email')))return fout('E-mail contactpersoon koper heeft geen geldig formaat, indien ingevuld.');
+    var btn=document.getElementById('km-ok');btn.disabled=true;btn.textContent='Aanmaken...';
+    try{
+      var r=await fetch(WORKER+'/mna/koopmandaat/create',{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':adminKey},
+        body:JSON.stringify({
+          koper_naam:vv('km-koper-naam'),koper_contact_naam:vv('km-koper-contact'),koper_contact_email:vv('km-koper-email'),
+          begeleider_naam:vv('km-bg-naam'),begeleider_email:vv('km-bg-email'),
+          zoekt_sectoren:vv('km-sectoren'),zoekt_regio:vv('km-regio'),
+          omzet_min:vv('km-omzet-min')?Number(vv('km-omzet-min')):null,omzet_max:vv('km-omzet-max')?Number(vv('km-omzet-max')):null
+        })});
+      var d=await r.json();
+      if(d.ok){
+        kmList.unshift({id:d.id,koper_naam:vv('km-koper-naam'),koper_contact_naam:vv('km-koper-contact'),tussen_code:d.tussen_code,koper_code:d.koper_code,zoekt_sectoren:vv('km-sectoren'),zoekt_regio:vv('km-regio'),omzet_min:vv('km-omzet-min')?Number(vv('km-omzet-min')):null,omzet_max:vv('km-omzet-max')?Number(vv('km-omzet-max')):null,status:'actief',target_count:0,created_at:Date.now()});
+        var res=document.getElementById('km-res');res.style.display='block';
+        res.innerHTML='<strong style="color:var(--teal-dim)">&#10003; Koopmandaat aangemaakt</strong><br>'
+          +'<b>Begeleider (tussen_code):</b> <span class="code-chip">'+d.tussen_code+'</span> <button class="copy-btn res-copy" data-copy="'+d.tussen_code+'">&#8690; Kopieer</button><br>'
+          +'<b>Koper (koper_code):</b> <span class="code-chip" style="background:var(--gold-bg);color:var(--gold);border-color:var(--gold)">'+d.koper_code+'</span> <button class="copy-btn res-copy" data-copy="'+d.koper_code+'">&#8690; Kopieer</button>';
+        res.querySelectorAll('.res-copy').forEach(function(b){b.addEventListener('click',function(){navigator.clipboard.writeText(b.dataset.copy).then(function(){var o=b.textContent;b.textContent='✓';setTimeout(function(){b.textContent=o;},1500);});});});
+        btn.textContent='Aangemaakt';
+        document.body.removeChild(ov);
+        renderTab();
+      }else{errDiv.style.display='block';errDiv.textContent='Fout: '+(d.error||'onbekend');btn.disabled=false;btn.textContent='Koopmandaat aanmaken';}
+    }catch(e){errDiv.style.display='block';errDiv.textContent='Fout: '+e.message;btn.disabled=false;btn.textContent='Koopmandaat aanmaken';}
   });
 }
 
@@ -1389,7 +1538,7 @@ async function renderBenchmarksTab(el){
       +'<div id="pdf-err" style="color:var(--red);font-size:12px;margin-bottom:.5rem;display:none"></div>'
       +'<div id="pdf-preview" style="font-size:12px;color:var(--mid);margin-bottom:.75rem;display:none"></div>'
       +'<div style="display:flex;gap:10px;justify-content:flex-end"><button class="btn-ghost" id="pdf-ann">Annuleren</button><button class="btn" id="pdf-ok">Analyseren &amp; opslaan</button></div>';
-    ov.appendChild(mo);document.body.appendChild(ov);
+    ov.appendChild(mo);document.body.appendChild(ov);a11yModal(ov,mo);
     ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
     document.getElementById('pdf-ann').addEventListener('click',function(){document.body.removeChild(ov);});
     document.getElementById('pdf-ok').addEventListener('click',async function(){
@@ -1491,7 +1640,7 @@ async function renderBenchmarksTab(el){
       +'<div class="field"><label for="bm-datum">Peildatum</label><input type="text" id="bm-datum" placeholder="Peildatum"></div>'
       +'<div id="bm-err" style="color:var(--red);font-size:12px;margin-bottom:.5rem;display:none"></div>'
       +'<div style="display:flex;gap:10px;justify-content:flex-end"><button class="btn-ghost" id="bm-ann">Annuleren</button><button class="btn" id="bm-ok">Opslaan</button></div>';
-    ov.appendChild(mo);document.body.appendChild(ov);
+    ov.appendChild(mo);document.body.appendChild(ov);a11yModal(ov,mo);
     ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
     document.getElementById('bm-ann').addEventListener('click',function(){document.body.removeChild(ov);});
     document.getElementById('bm-ok').addEventListener('click',async function(){
@@ -1627,7 +1776,11 @@ function renderSectorenTab(el){
   var profielen={};
 
   function laad(){
-    fetch(WORKER+'/mna/sectorprofielen').then(function(r){return r.json();}).then(function(d){
+    // N-83 (27 sep 2026): zonder x-admin-key geeft dit endpoint nu alleen de gestripte structuur
+    // terug (geen benchmarkwaarden) — dit beheerscherm heeft de echte waarden nodig om te tonen/
+    // bewerken, dus de al beschikbare adminKey meesturen (was voorheen niet nodig, endpoint was toen
+    // nog volledig open).
+    fetch(WORKER+'/mna/sectorprofielen',{headers:{'x-admin-key':adminKey}}).then(function(r){return r.json();}).then(function(d){
       profielen=(d&&d.profielen)||{};
       teken(d&&d.bron);
     }).catch(function(){document.getElementById('sec-lijst').innerHTML='<div style="color:var(--red);font-size:13px">Kon profielen niet laden.</div>';});
@@ -1839,7 +1992,7 @@ async function renderWaarderingsmodelTab(el){
       +'<div class="field"><label for="mf-periode">Meetperiode</label><input type="text" id="mf-periode" placeholder="bijv. H1-2025" style="margin-bottom:.5rem"></div>'
       +'<div id="mf-err" style="color:var(--red);font-size:12px;margin-bottom:.5rem;display:none"></div>'
       +'<div style="display:flex;gap:10px;justify-content:flex-end"><button class="btn-ghost" id="mf-ann">Annuleren</button><button class="btn" id="mf-ok">Opslaan</button></div>';
-    ov.appendChild(mo);document.body.appendChild(ov);
+    ov.appendChild(mo);document.body.appendChild(ov);a11yModal(ov,mo);
     ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
     document.getElementById('mf-ann').addEventListener('click',function(){document.body.removeChild(ov);});
     document.getElementById('mf-ok').addEventListener('click',async function(){
@@ -2157,70 +2310,23 @@ function renderWaarderingTab(el){
       out.innerHTML='<div style="color:var(--muted);font-size:13px;padding:1rem 0">AI genereert waarderingsrapport... (20-40 seconden)</div>';
       var res3=bereken();
       var trajectNaam=selectedTraject?(mnaList.find(function(t){return t.id===selectedTraject;})||{}).kantoor_naam||selectedTraject:'(geen traject geselecteerd)';
-      var sectorRap={
-        accountancy:'Accountancy & administratie',
-        mkb:'MKB',
-        zorg:'Zorg',
-        itsoftware:'IT & Software',
-        bouw:'Bouw & Installatietechniek',
-        transport:'Transport & Logistiek',
-        handel:'Handel / Groothandel',
-        consultancy:'Zakelijke Dienstverlening / Consultancy',
-        verhuizingen:'Verhuisbranche'
-      };
-      var sectorBenchmarks={
-        accountancy:'BENCHMARKS (Dealsuite H1-2025; Accountancy Vanmorgen/FD mei 2025; CBS/ING Research): MKB gemiddeld 4,9x EBITDA (Dealsuite H1-2025). Grote kantoren PE-deal: 10–11x (Baker Tilly/Grant Thornton, mei 2025). Omzet/FTE norm €80k–€140k. EBITDA-marge gezond 15–25%. Gebruik Novak-benchmarkdata als primaire bron indien beschikbaar.',
-        mkb:'BENCHMARKS (Dealsuite H1-2025 en H2-2024, CBS): MKB-gemiddelde 4,9x EBITDA. Detailhandel 2,4x; horeca 2,5–3,5x; handel 3,5–5,0x. EBITDA-marge retail 3–8%; horeca 5–12%; handel 5–10%.',
-        zorg:'BENCHMARKS ZORG: Huisarts — NZa inschrijftarief 2026 €21,59/kwartaal; consulttarief €13,18 (NZa TB/REG-26611-01). Tandarts — klein: 1,5–4x EBITDA; middelgroot: 5–7x EBITDA; keten: tot 10x EBITDA (Aeternus 2024/ABN Amro 2025). Omzet per patiënt 2024: €220–€250 (dentalinfo.nl). Fysiotherapie — marge ~15%; personeelskosten norm 55% (Fact4Fysio 2024/MedischOndernemen 2024).',
-        itsoftware:'BENCHMARKS (Dealsuite H1-2025): Software/SaaS EBITDA-multiple 7,3x (hoogste sector NL). SaaS ARR-multiple 3–8x. Churn <5% gezond. Maatwerk IT EBITDA-marge 12–20%.',
-        bouw:'BENCHMARKS (Brookz Overname Barometer H1-2025, editie 22, blz. 9): Bouw & Installatietechniek EBITDA-multiple laagste 4,0x, gemiddeld 4,5x, hoogste 5,0x. Sector is materieelintensief, projectmatig en conjunctuurgevoelig — geen aparte gebronde marge-/FTE-normen beschikbaar.',
-        transport:'BENCHMARKS (Brookz Overname Barometer H1-2025, editie 22, blz. 9): Automotive, Transport & Logistiek EBITDA-multiple laagste 3,7x, gemiddeld 4,1x, hoogste 4,5x. Sector is kapitaal-/materieelintensief (wagenpark) en gevoelig voor brandstofprijzen en regelgeving.',
-        handel:'BENCHMARKS (Brookz Overname Barometer H1-2025, editie 22, blz. 9): Groothandel EBITDA-multiple laagste 4,8x, gemiddeld 5,2x, hoogste 5,9x. Sector kent doorgaans voorraadrisico en leveranciersconcentratie.',
-        consultancy:'BENCHMARKS (Brookz Overname Barometer H1-2025, editie 22, blz. 9): Zakelijke dienstverlening EBITDA-multiple laagste 4,6x, gemiddeld 4,9x, hoogste 5,4x. Sector is mensenintensief (geen voorraad/materieel) — waarde zit in adviseurs en klantrelaties, utilisatiegraad is de gangbare interne KPI.',
-        verhuizingen:'BENCHMARKS (Brookz Overname Barometer H1-2025, editie 22, blz. 9 — dichtstbijzijnde categorie Automotive/Transport & Logistiek, geen aparte Brookz-notering voor verhuisbedrijven): EBITDA-multiple laagste 3,7x, gemiddeld 4,1x, hoogste 4,5x. Sector is wagenpark-/materieelintensief en seizoensgevoelig (zomerpiek, maandwisselingen).'
-      };
       var _t3=selectedTraject?mnaList.find(function(t){return t.id===selectedTraject;})||{}:{};
-      var sectorRapLabel=sectorRap[_t3.sector]||'Accountancy';
-      var prompt='Je bent Marcel Bisschops, senior M&A-adviseur. Sector: '+sectorRapLabel+'. '+( sectorBenchmarks[_t3.sector]||'')+'. '+TAAL_REGELS+'\n\n'
-        +'Schrijf een professioneel waarderingsrapport voor traject: '+trajectNaam+'\n\n'
-        +'FINANCIËLE DATA:\n'
-        +'- Omzet jaar 1: '+fmtGeld(W.omzet1)+'\n'
-        +'- Omzet jaar 2: '+fmtGeld(W.omzet2)+'\n'
-        +'- Omzet jaar 3 (meest recent): '+fmtGeld(W.omzet3)+'\n'
-        +'- EBITDA-marge: '+W.ebitda+'%\n'
-        +'- EBITDA absoluut: '+fmtGeld(res3.ebitdaAmt)+'\n'
-        +'- FTE: '+W.fte+'\n'
-        +'- Recurring omzet: '+W.recurring+'%\n'
-        +'- Klantverloop: '+W.churn+'%\n\n'
-        +'WAARDERING AS-IS:\n'
-        +'- EBITDA-methode laag: '+fmtGeld(res3.waardeMultiLaag)+' ('+W.multiLaag+'×)\n'
-        +'- EBITDA-methode midden: '+fmtGeld(res3.waardeMultiMid)+' ('+W.multiMid+'×)\n'
-        +'- EBITDA-methode hoog: '+fmtGeld(res3.waardeMultiHoog)+' ('+W.multiHoog+'×)\n'
-        +'- Omzetmethode: '+fmtGeld(res3.waardeOmzet)+'\n'
-        +'- Risico-aftrek: '+W.risico+'%\n\n'
-        +'ROLLING FORECAST:\n'
-        +'- Gem. historische groei: '+res3.gemGroei.toFixed(1)+'%/jaar\n'
-        +res3.fc.map(function(o,i){return '- '+(i===0?'Huidig':'Jaar +'+i)+': omzet '+fmtGeld(o)+', EBITDA '+fmtGeld(res3.fcEbitda[i])+', waarde ~'+fmtGeld(res3.fcWaarde[i]);}).join('\n')+'\n\n'
-        +'EARN-OUT STRUCTUUR:\n'
-        +'- Vaste koopsom bij closing: '+fmtGeld(res3.koopsom*(1-W.earnPct/100))+'\n'
-        +'- Earn-out: '+W.earnPct+'% over '+W.earnJaren+' jaar bij '+W.earnTarget+'% omzetgroei/jaar\n'
-        +'- Totale koopsom bij target: '+fmtGeld(res3.koopsom)+'\n\n'
-        +'Schrijf een volledig waarderingsrapport met:\n'
-        +'## Executive summary\n'
-        +'## Waarderingsmethodiek en onderbouwing\n'
-        +'## As-is waardering\n'
-        +'## Groei- en waardepotentieel (rolling forecast)\n'
-        +'## Transactiestructuur en earn-out advies\n'
-        +'## Risicofactoren en correcties\n'
-        +'## Conclusie en aanbeveling\n\n'
-        +(_t3.traject_type==='PE-traject'
-          ?'CONTEXT: Dit betreft een PE-traject waarbij een private equity partij een meerderheidsbelang verwerft. Gebruik PE-specifieke waarderingslogica: EBITDA-multiple als primaire methode, aandacht voor management buy-in/buy-out structuur, earn-out mogelijkheden, en recurring revenue kwaliteit. Voor accountantskantoren: PE-deals worden momenteel gewaardeerd op 10–11x EBITDA (Baker Tilly/Grant Thornton precedenten, mei 2025). Bespreek platformstrategie, add-on potentieel en exitstrategie.'
-          :'')
-        +'\n\nSchrijf in professionele Nederlandse rapporttaal. Concreet, cijfermatig onderbouwd. Gebruik de benchmarknormen voor de sector. In de sectie Conclusie en aanbeveling: presenteer aanbevelingen als overwegingen voor Marcel om aan de klant voor te leggen, niet als dwingende conclusies — de uiteindelijke afweging blijft aan de adviseur en de klant.';
+      // P1-IP-2/P1-IP-4 (27 sep 2026): de sectorbenchmark-tekst (met concrete bronvermeldingen) en de
+      // instructietekst/AI-aanroep stonden hier hardcoded in de publieke bundel — verhuisd naar
+      // worker/19b-waardering-communicatie.js (/mna/marilyn/waardering-ai/genereer, ADMIN_KEY-only).
+      // Hier alleen nog de eigen ingevoerde cijfers als data.
+      var mwReeks=(res3.fc||[]).map(function(o,i){return {omzet:o,ebitda:res3.fcEbitda[i],waarde:res3.fcWaarde[i]};});
+      var mwPayload={
+        sector:_t3.sector,trajectNaam:trajectNaam,trajectType:_t3.traject_type,
+        financials:{omzet1:W.omzet1,omzet2:W.omzet2,omzet3:W.omzet3,ebitdaPct:W.ebitda,ebitdaAmt:res3.ebitdaAmt,fte:W.fte,recurring:W.recurring,churn:W.churn},
+        waardering:{waardeMultiLaag:res3.waardeMultiLaag,multiLaag:W.multiLaag,waardeMultiMid:res3.waardeMultiMid,multiMid:W.multiMid,waardeMultiHoog:res3.waardeMultiHoog,multiHoog:W.multiHoog,waardeOmzet:res3.waardeOmzet,risico:W.risico},
+        forecast:{gemGroei:res3.gemGroei,reeks:mwReeks,koopsom:res3.koopsom},
+        earnOut:{pct:W.earnPct,jaren:W.earnJaren,target:W.earnTarget}
+      };
       try{
-        var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:8000})});
+        var resp=await fetch(WORKER+'/mna/marilyn/waardering-ai/genereer',{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':adminKey},body:JSON.stringify(mwPayload)});
         var rd=await resp.json();
-        var tekst=rd.text||(rd.error?('AI fout: '+rd.error):'Fout bij genereren.');
+        var tekst=(rd&&rd.ok&&rd.tekst)?rd.tekst:((rd&&rd.error)?('AI fout: '+rd.error):'Fout bij genereren.');
         tekst=tekst.replace(/^## (.+)$/gm,'<h3 style="font-family:Newsreader,Georgia,serif;font-size:1rem;color:var(--head);margin:1.25rem 0 .5rem;border-top:1px solid var(--border);padding-top:1rem">$1</h3>');
         tekst=tekst.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
         tekst=tekst.replace(/\n\n/g,'</p><p style="font-size:13px;color:var(--mid);line-height:1.7;margin-bottom:.75rem">');
@@ -2281,7 +2387,7 @@ async function leesRapport(id){
   mo.innerHTML='<div class="modal-title">Laden...</div>'
     +'<div id="rapp-body" style="font-size:13px;color:var(--mid);line-height:1.8;max-height:65vh;overflow-y:auto;margin-bottom:1rem"></div>'
     +'<div style="display:flex;justify-content:flex-end"><button class="btn-ghost" id="rapp-sluit">Sluiten</button></div>';
-  ov.appendChild(mo);document.body.appendChild(ov);
+  ov.appendChild(mo);document.body.appendChild(ov);a11yModal(ov,mo);
   ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
   document.getElementById('rapp-sluit').addEventListener('click',function(){document.body.removeChild(ov);});
   try{
@@ -2439,7 +2545,7 @@ async function toonDetail(id,naam){
     +'</div>'
     +'<div id="qa-register-body" style="font-size:12px;color:var(--muted);font-style:italic">Klik op Laden om de Q&A te tonen.</div>'
     +'</div>';
-  ov.appendChild(mo);document.body.appendChild(ov);
+  ov.appendChild(mo);document.body.appendChild(ov);a11yModal(ov,mo);
   ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
   document.getElementById('det-sluit').addEventListener('click',function(){document.body.removeChild(ov);});
   laadDocumentdekking(id);
@@ -2484,7 +2590,7 @@ async function toonDetail(id,naam){
       +'<button class="btn-ghost" id="fase-ann">Annuleren</button>'
       +'<button class="btn" id="fase-ok">Uploaden</button>'
       +'</div></div>';
-    document.body.appendChild(faseOv);
+    document.body.appendChild(faseOv);a11yModal(faseOv,faseOv.querySelector('.modal'));
     var fase=await new Promise(function(resolve){
       document.getElementById('fase-ok').onclick=function(){resolve(document.getElementById('fase-keuze-sel').value);document.body.removeChild(faseOv);};
       document.getElementById('fase-ann').onclick=function(){resolve(null);document.body.removeChild(faseOv);};
@@ -2642,35 +2748,16 @@ async function toonDetail(id,naam){
       bemOut.style.display='block';
       bemOut.innerHTML='<div style="color:var(--muted);font-size:13px">Bemiddelingsovereenkomst wordt gegenereerd... (15-30 sec)</div>';
       try{
-        var datum=new Date().toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'});
         var isSell=!d.traject.traject_type||d.traject.traject_type==='Verkoop'||d.traject.traject_type==='Opvolging';
-        var isOpvolging=d.traject.traject_type==='Opvolging';
-        // Template ophalen
-        var bemTplType=isOpvolging?'bem_opvolging':(isSell?'bem_verk':'bem_koper');
-        var bemTplResp=await fetch(WORKER+'/mna/template/'+bemTplType+'?email='+encodeURIComponent(d.traject.begeleider_email||'marcel@bisschopsfinancing.nl')).catch(function(){return {json:function(){return {ok:false};}};});
-        var bemTplData=await bemTplResp.json().catch(function(){return {ok:false};});
-        // Geen lokale kopie van de volledige juridische tekst meer als fallback (18/19 aug 2026) —
-        // die raakte stil verouderd t.o.v. de canonieke bron in worker/02-config-constanten.js
-        // (bijv. de succesfee-staffel-wijziging van bem_verk). Zelfde minimale-placeholder-patroon
-        // als mna/04-begeleider-dashboard.js en mna/06-schermen.js al gebruiken.
-        var bemTplTekst=bemTplData.ok&&bemTplData.tekst?bemTplData.tekst:'[standaard Bemiddelingsovereenkomst-template — kon niet worden opgehaald, probeer het opnieuw]';
-        var koperNaamB=d.traject.koper_naam||'[INVULLEN]';
-        var koperContactB=d.traject.koper_contact||'[INVULLEN]';
-        var verkoperNaamB=d.traject.contact_naam||'[INVULLEN]';
-        var opdrachtgever=isSell?(d.traject.kantoor_naam||naam):koperNaamB;
-        var trajectType=d.traject.traject_type||'Verkoop';
-        var lb=partijLabels(trajectType);
-        var docTypeLabel=isSell?'Verkoop':'Aankoop';
-        if(trajectType==='Fusie')docTypeLabel='Fusie (begeleiding beide partijen)';
-        else if(trajectType==='Overname')docTypeLabel='Aankoop (buy-side)';
-        else if(trajectType==='Opvolging')docTypeLabel='Bedrijfsopvolging';
-        else if(trajectType==='PE-traject')docTypeLabel='PE-participatie';
-        var prompt='Vul de volgende ' + BRAND.kort + ' Bemiddelingsovereenkomst template in voor trajecttype: '+docTypeLabel+'. Vervang ALLE [tekst tussen haakjes]. Pas de partijbenamingen aan: '+lb.sectie1+' en '+lb.sectie2+'. Geef alleen het ingevulde document terug.\n\nBEKENDE GEGEVENS:\n- '+lb.sectie1+': '+esc(d.traject.kantoor_naam||naam)+', '+esc(d.traject.verkoper_adres||'[adres]')+', KvK: '+esc(d.traject.verkoper_kvk||'[KvK]')+'\n- Contactpersoon '+lb.sectie1.toLowerCase()+': '+esc(isSell?verkoperNaamB:koperContactB)+'\n- '+lb.sectie2+': '+esc(koperNaamB||'[invullen]')+' ('+esc(d.traject.koper_rechtsvorm||'[rechtsvorm]')+'), '+esc(d.traject.koper_adres||'[adres]')+', KvK: '+esc(d.traject.koper_kvk||'[KvK]')+'\n- Contactpersoon '+lb.sectie2.toLowerCase()+': '+esc(koperContactB||'[invullen]')+'\n- Datum: '+datum+'\n- Adviseur: ' + BRAND.bedrijf + ', Marcel Bisschops, Grotestraat 13 5841AA Oploo\n\nTEMPLATE:\n'+bemTplTekst;
-        var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:4000})});
+        // P1-IP-4 (27 sep 2026): prompt-opbouw + publieke /ai-aanroep vervangen door de geharde,
+        // geauthenticeerde route die bgDoc() (mna.html) hiervoor al gebruikt — geen client-side
+        // sjabloon/instructietekst meer, geen echte cliëntgegevens meer in een publiek aanroepbare
+        // request. Zie worker/10-mna-communicatie.js.
+        var resp=await fetch(WORKER+'/mna/document/bem/genereer',{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':adminKey},body:JSON.stringify({code:id})});
         var rawResp=await resp.text();
         var rd;try{rd=JSON.parse(rawResp);}catch(e){throw new Error('Parse fout: '+rawResp.substring(0,100));}
-        if(!resp.ok)throw new Error('AI fout '+resp.status+': '+(rd.error||rawResp.substring(0,150)));
-        var tekst=rd.text||(rd.error||'Fout bij genereren.');
+        if(!resp.ok||!rd.ok)throw new Error('Fout '+resp.status+': '+(rd.error||rawResp.substring(0,150)));
+        var tekst=rd.tekst||'Fout bij genereren.';
         var bemHtml=tekst.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n\n/g,'</p><p>').replace(/\n/g,'<br>');
         bemOut.innerHTML='<div style="font-size:11px;font-weight:600;color:var(--info);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.75rem">&#128203; Bemiddelingsovereenkomst · '+esc(d.traject.kantoor_naam||naam)+'</div>'
           +'<div style="font-size:11px;color:var(--muted);margin-bottom:.4rem">Bekijk en bewerk het document voor verzending:</div>'
@@ -2710,25 +2797,13 @@ async function toonDetail(id,naam){
       ndaOut.style.display='block';
       ndaOut.innerHTML='<div style="color:var(--muted);font-size:13px">NDA wordt gegenereerd... (15-30 sec)</div>';
       try{
-        var datum=new Date().toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'});
-        // Haal template op (eigen upload of BF standaard)
-        var bgEmailTpl=document.querySelector&&document.querySelector('#m-bg-email')?document.querySelector('#m-bg-email').value:'marcel@bisschopsfinancing.nl';
-        var ndaTplResp=await fetch(WORKER+'/mna/template/nda?email='+encodeURIComponent(d.traject.begeleider_email||'marcel@bisschopsfinancing.nl')).catch(function(){return {json:function(){return {ok:false};}};});
-        var ndaTplData=await ndaTplResp.json().catch(function(){return {ok:false};});
-        var ndaTplTekst=ndaTplData.ok&&ndaTplData.tekst?ndaTplData.tekst:'GEHEIMHOUDINGSOVEREENKOMST (NDA)\nPartijen\n[Naam Verstrekkende Partij], gevestigd te [adres], hierna: “Verstrekkende Partij”;\n[Naam Ontvangende Partij], gevestigd te [adres], hierna: “Ontvangende Partij”;\nHierna gezamenlijk: “Partijen”.\nArtikel 1 – Doel\nPartijen overwegen een mogelijke Transactie en zullen in dat kader vertrouwelijke informatie uitwisselen. Deze overeenkomst regelt de geheimhouding en het gebruik van deze informatie.\nArtikel 2 – Vertrouwelijke informatie\nOnder vertrouwelijke informatie wordt verstaan alle informatie, ongeacht vorm, waaronder begrepen:\nfinanciële gegevens;\nbedrijfsinformatie;\ncontracten;\nklanten- en leveranciersgegevens;\nstrategische plannen;\nmondeling verstrekte informatie.\nInformatie geldt ook als vertrouwelijk indien deze:\nredelijkerwijs als vertrouwelijk moet worden beschouwd;\nvoortvloeit uit analyse van ontvangen informatie.\nArtikel 3 – Verplichtingen Ontvangende Partij\nDe Ontvangende Partij zal:\nvertrouwelijke informatie strikt geheimhouden;\ndeze uitsluitend gebruiken voor beoordeling van de mogelijke Transactie;\nde informatie niet delen met derden, behoudens:\nwerknemers;\nadviseurs;\nfinanciers;\nmits deze gebonden zijn aan een gelijkwaardige geheimhoudingsplicht.\nArtikel 4 – Uitzonderingen\nDe geheimhoudingsplicht geldt niet voor informatie die:\nreeds openbaar was;\nrechtmatig van derden is verkregen;\nonafhankelijk is ontwikkeld;\nopenbaar moet worden gemaakt op grond van wet of rechterlijk bevel (met voorafgaande kennisgeving indien toegestaan).\nArtikel 5 – Duur\nDeze geheimhoudingsverplichtingen gelden gedurende drie (3) jaar na ondertekening. Bedrijfsgeheimen blijven vertrouwelijk zolang zij hun vertrouwelijke karakter behouden.\nArtikel 6 – Teruggave informatie\nOp eerste verzoek zal de Ontvangende Partij:\nalle ontvangen informatie retourneren of vernietigen;\nschriftelijk bevestigen dat dit is gebeurd.\nArtikel 7 – Geen verplichting tot transactie\nDeze overeenkomst verplicht Partijen niet tot het aangaan van een Transactie.\nArtikel 8 – Boetebeding\nBij overtreding van de geheimhoudingsplicht verbeurt de Ontvangende Partij een direct opeisbare boete van € 25.000 per overtreding, vermeerderd met € 2.500 voor iedere dag dat de overtreding voortduurt.\nDeze boete laat onverlet het recht van de Verstrekkende Partij om daarnaast vergoeding van de daadwerkelijk geleden schade te vorderen, voor zover deze de boete overstijgt.\nArtikel 9 – Rechtskeuze en forum\nOp deze overeenkomst is Nederlands recht van toepassing. Geschillen worden exclusief voorgelegd aan de Rechtbank Oost-Brabant.\nOndertekening\nPlaats: ____________________ Datum: ____________________\nVerstrekkende Partij\nNaam: ____________________\nHandtekening: ____________________\nOntvangende Partij\nNaam: ____________________\nHandtekening: ____________________';
-        var koperNaam=d.traject.koper_naam||'[INVULLEN]';
-        var koperRv=d.traject.koper_rechtsvorm||'[INVULLEN]';
-        var koperContact=d.traject.koper_contact||'[INVULLEN]';
-        var verkoperNaam=d.traject.contact_naam||'[INVULLEN]';
-        var verkoperAdres=d.traject.verkoper_adres||'[INVULLEN: adres]';
-        var verkoperKvk=d.traject.verkoper_kvk||'[INVULLEN: KvK]';
-        var koperAdres=d.traject.koper_adres||'[INVULLEN: adres]';
-        var koperKvk=d.traject.koper_kvk||'[INVULLEN: KvK]';
-        var lbNda=partijLabels(d.traject.traject_type||'Verkoop');
-        var prompt='Vul de volgende ' + BRAND.kort + ' NDA template in voor trajecttype: '+(d.traject.traject_type||'Verkoop')+'. Vervang ALLE [tekst tussen haakjes] door de werkelijke gegevens. Gebruik als partijbenamingen: '+lbNda.sectie1+' en '+lbNda.sectie2+' (in plaats van Verstrekkende/Ontvangende partij). Geef alleen het ingevulde document terug.\n\nBEKENDE GEGEVENS:\n- '+lbNda.sectie1+': '+esc(d.traject.kantoor_naam||naam)+', '+esc(verkoperAdres)+', KvK: '+esc(verkoperKvk)+'\n- Contactpersoon '+lbNda.sectie1.toLowerCase()+': '+esc(verkoperNaam)+'\n- '+lbNda.sectie2+': '+esc(koperNaam)+' ('+esc(koperRv)+'), '+esc(koperAdres)+', KvK: '+esc(koperKvk)+'\n- Contactpersoon '+lbNda.sectie2.toLowerCase()+': '+esc(koperContact)+'\n- Datum: '+datum+'\n- Adviseur: ' + BRAND.bedrijf + ', Marcel Bisschops, Grotestraat 13 5841AA Oploo\n\nTEMPLATE:\n'+ndaTplTekst;
-        var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:8000})});
-        var rd=await resp.json();
-        var tekst=rd.text||(rd.error||'Fout bij genereren.');
+        // P1-IP-4 (27 sep 2026): idem BEM hierboven — geharde, geauthenticeerde route i.p.v.
+        // client-side sjabloon/instructietekst + publieke /ai.
+        var resp=await fetch(WORKER+'/mna/document/nda/genereer',{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':adminKey},body:JSON.stringify({code:id})});
+        var rawResp=await resp.text();
+        var rd;try{rd=JSON.parse(rawResp);}catch(e){throw new Error('Parse fout: '+rawResp.substring(0,100));}
+        if(!resp.ok||!rd.ok)throw new Error('Fout '+resp.status+': '+(rd.error||rawResp.substring(0,150)));
+        var tekst=rd.tekst||'Fout bij genereren.';
         var ndaHtml=tekst.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n\n/g,'</p><p>').replace(/\n/g,'<br>');
         ndaOut.innerHTML='<div style="font-size:11px;font-weight:600;color:var(--purple);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.75rem">Non-Disclosure Agreement · '+esc(d.traject.kantoor_naam||naam)+'</div>'
           +'<div style="font-size:11px;color:var(--muted);margin-bottom:.4rem">Bekijk en bewerk het document voor verzending:</div>'
@@ -2797,7 +2872,7 @@ async function toonDetail(id,naam){
             +'<button class="btn-ghost" id="iv-ann">Annuleren</button>'
             +'<button class="btn" id="iv-stuur">&#9993; Verstuur informatieverzoek</button>'
             +'</div>';
-          ov2.appendChild(mo2);document.body.appendChild(ov2);
+          ov2.appendChild(mo2);document.body.appendChild(ov2);a11yModal(ov2,mo2);
           ov2.addEventListener('click',function(e){if(e.target===ov2)document.body.removeChild(ov2);});
           document.getElementById('iv-ann').onclick=function(){document.body.removeChild(ov2);};
           document.getElementById('iv-stuur').onclick=async function(){
@@ -2828,23 +2903,12 @@ async function toonDetail(id,naam){
       loiOut.style.display='block';
       loiOut.innerHTML='<div style="color:var(--muted);font-size:13px">LoI wordt gegenereerd... (15-30 sec)</div>';
       try{
-        var datum=new Date().toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'});
-        var koperAdresL=d.traject.koper_adres||'[INVULLEN: adres]';
-        var koperKvkL=d.traject.koper_kvk||'[INVULLEN: KvK]';
-        var verkoperAdresL=d.traject.verkoper_adres||'[INVULLEN: adres]';
-        var verkoperKvkL=d.traject.verkoper_kvk||'[INVULLEN: KvK]';
-        var loiTplResp=await fetch(WORKER+'/mna/template/loi?email='+encodeURIComponent(d.traject.begeleider_email||'marcel@bisschopsfinancing.nl')).catch(function(){return {json:function(){return {ok:false};}};});
-        var loiTplData=await loiTplResp.json().catch(function(){return {ok:false};});
-        var loiTplTekst=loiTplData.ok&&loiTplData.tekst?loiTplData.tekst:'INTENTIEVERKLARING (LETTER OF INTENT)\nPartijen\n[Naam Koper], gevestigd te [adres], rechtsgeldig vertegenwoordigd door [naam], hierna: “Koper”;\n[Naam Verkoper], gevestigd te [adres], rechtsgeldig vertegenwoordigd door [naam], hierna: “Verkoper”;\nIn aanwezigheid van en begeleid door ' + BRAND.bedrijf + '\nArtikel 1 – Doel en Transactie\nPartijen hebben de intentie om te komen tot een transactie waarbij Koper 100% van de aandelen in [Naam Target B.V.] zal verwerven van Verkoper (de “Transactie”).\nArtikel 2 – Indicatieve Koopprijs\nOp basis van de huidige informatie biedt Koper een indicatieve koopprijs van € [Bedrag] (Cash-and-Debt-Free basis).\nDeze prijs is gebaseerd op een genormaliseerde EBITDA van € [Bedrag] en een multiple van [X].\nDe definitieve prijs wordt vastgesteld na afronding van het Due Diligence onderzoek.\nArtikel 3 – Voorwaarden (Conditions Precedent)\nDe definitieve Transactie is afhankelijk van de vervulling van de volgende opschortende voorwaarden:\nSuccesvolle afronding van het Due Diligence onderzoek (financieel, fiscaal, juridisch en operationeel) naar tevredenheid van Koper.\nHet verkrijgen van passende financiering door Koper.\nOvereenstemming over de definitieve Koopovereenkomst (SPA).\n[Optioneel] Goedkeuring door de Autoriteit Consument & Markt (ACM) of andere toezichthouders.\nArtikel 4 – Due Diligence en Tijdlijn\nVerkoper verleent Koper en haar adviseurs toegang tot alle relevante informatie (via een Data Room) om het boekenonderzoek uit te voeren.\nStart Due Diligence: [Datum]\nStreefdatum Closing: [Datum]\nArtikel 5 – Exclusiviteit\nGedurende de periode tot [Datum] (de “Exclusiviteitsperiode”) verleent Verkoper aan Koper exclusiviteit. Verkoper zal gedurende deze periode niet met derden onderhandelen over een vergelijkbare transactie.\n(Zie ook de separate Exclusiviteitsbrief indien van toepassing).\nArtikel 6 – Bindend vs. Niet-bindend\nNiet-bindend: De voornemens in Artikel 1, 2 en 3 zijn uitsluitend intenties en scheppen geen juridische verplichting tot het tot stand brengen van de Transactie. Partijen kunnen zich te allen tijde terugtrekken zonder schadeplichtig te zijn (behoudens in geval van misbruik van recht).\nBindend: De bepalingen in Artikel 4 (Toegang), 5 (Exclusiviteit), 7 (Kosten), 8 (Geheimhouding) en 9 (Recht) zijn juridisch bindend.\nArtikel 7 – Kosten\nIedere partij draagt haar eigen kosten in verband met deze LOI, het Due Diligence onderzoek en de onderhandelingen.\n(Let op: Indien je voor de Verkoper werkt met "Kosten Koper", moet hier staan dat Koper de bemiddelingskosten van ' + BRAND.kort + ' draagt bij closing).\nArtikel 8 – Geheimhouding\nDe eerder getekende Geheimhoudingsovereenkomst (NDA) d.d. [Datum] blijft onverminderd van kracht.\nArtikel 9 – Rechtskeuze en Forum\nOp deze intentieverklaring is Nederlands recht van toepassing. Geschillen worden exclusief voorgelegd aan de Rechtbank Oost-Brabant.\nOndertekening\nPlaats: ____________________ Datum: ____________________\nKoper\nNaam: ____________________\nHandtekening: ____________________\nVerkoper\nNaam: ____________________\nHandtekening: ____________________';
-        var koperNaam=d.traject.koper_naam||'[INVULLEN: naam kopende partij]';
-        var koperRv=d.traject.koper_rechtsvorm||'[INVULLEN: rechtsvorm]';
-        var koperContact=d.traject.koper_contact||'[INVULLEN: contactpersoon]';
-        var verkoperNaam=d.traject.contact_naam||'[INVULLEN: naam verkopende partner]';
-        var lbLoi=partijLabels(d.traject.traject_type||'Verkoop');
-        var prompt='Vul de volgende ' + BRAND.kort + ' LoI template in voor trajecttype: '+(d.traject.traject_type||'Verkoop')+'. Vervang ALLE [tekst tussen haakjes]. Gebruik als partijbenamingen: '+lbLoi.sectie1+' en '+lbLoi.sectie2+' (in plaats van Verkoper/Koper). Geef alleen het ingevulde document terug.\n\nBEKENDE GEGEVENS:\n- '+lbLoi.sectie2+': '+esc(koperNaam)+' ('+esc(koperRv)+'), '+esc(koperAdresL)+', KvK: '+esc(koperKvkL)+'\n- Contactpersoon '+lbLoi.sectie2.toLowerCase()+': '+esc(koperContact)+'\n- '+lbLoi.sectie1+': '+esc(d.traject.kantoor_naam||naam)+', '+esc(verkoperAdresL)+', KvK: '+esc(verkoperKvkL)+'\n- Contactpersoon '+lbLoi.sectie1.toLowerCase()+': '+esc(verkoperNaam)+'\n- Datum: '+datum+'\n\nTEMPLATE:\n'+loiTplTekst;
-        var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:8000})});
-        var rd=await resp.json();
-        var tekst=rd.text||(rd.error||'Fout bij genereren.');
+        // P1-IP-4 (27 sep 2026): idem BEM/NDA hierboven.
+        var resp=await fetch(WORKER+'/mna/document/loi/genereer',{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':adminKey},body:JSON.stringify({code:id})});
+        var rawResp=await resp.text();
+        var rd;try{rd=JSON.parse(rawResp);}catch(e){throw new Error('Parse fout: '+rawResp.substring(0,100));}
+        if(!resp.ok||!rd.ok)throw new Error('Fout '+resp.status+': '+(rd.error||rawResp.substring(0,150)));
+        var tekst=rd.tekst||'Fout bij genereren.';
         loiOut.innerHTML='<div style="font-size:11px;font-weight:600;color:var(--gold);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.75rem">Letter of Intent · '+esc(d.traject.kantoor_naam||naam)+'</div>'
           +'<div style="font-size:11px;color:var(--muted);margin-bottom:.4rem">Bekijk en bewerk het document voor verzending:</div>'
           +'<textarea id="loi-edit" style="width:100%;height:320px;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:Georgia,serif;font-size:12px;line-height:1.8;padding:1rem;outline:none;resize:vertical"></textarea>'
@@ -2878,20 +2942,17 @@ async function toonDetail(id,naam){
       exclOut.style.display='block';
       exclOut.innerHTML='<div style="color:var(--muted);font-size:13px">Exclusiviteitsbrief wordt gegenereerd... (15-30 sec)</div>';
       try{
-        var datum=new Date().toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'});
-        // Datumvoorstel: start vandaag, einde over 8 weken
-        var startDatum=new Date();
-        var eindDatum=new Date();eindDatum.setDate(eindDatum.getDate()+56);
-        var startStr=startDatum.toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'});
-        var eindStr=eindDatum.toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'});
-        var exclTpl='EXCLUSIVITEITSBRIEF\nArtikel 1 \u2013 Verlening exclusiviteit\nVerkoper verleent aan Koper exclusiviteit voor onderhandelingen inzake een mogelijke Transactie met betrekking tot [Naam Target/Onderneming].\nDe exclusiviteitsperiode loopt van [Startdatum] tot en met [Einddatum].\nArtikel 2 \u2013 Verbod onderhandelingen met derden\nGedurende deze periode zal Verkoper:\ngeen gesprekken voeren met derden over verkoop of participatie;\ngeen informatie verstrekken aan derden (due diligence);\ngeen alternatieve transactiestructuren aangaan of initiëren.\nArtikel 3 \u2013 Schending\nBij schending van de exclusiviteit is Verkoper gehouden tot vergoeding van:\nalle door Koper gemaakte adviseurs- en onderzoekskosten;\naantoonbare directe schade.\nArtikel 4 \u2013 Rechtskeuze\nOp deze overeenkomst is Nederlands recht van toepassing. Geschillen worden voorgelegd aan de Rechtbank Oost-Brabant.\nOndertekening\nPlaats: ____________________ Datum: ____________________\nVerkoper (Verleent exclusiviteit)\nNaam: ____________________\nHandtekening: ____________________\nKoper (Ontvangt exclusiviteit)\nNaam: ____________________\nHandtekening: ____________________\nVoor gezien en begeleiding:\n' + BRAND.bedrijf + '\nNaam: ____________________\nHandtekening: ____________________';
-        var lb=partijLabels(d.traject.traject_type||'Verkoop');
-        var prompt='Vul de volgende ' + BRAND.kort + ' Exclusiviteitsbrief in. Vervang ALLE [tekst tussen haakjes] door de werkelijke gegevens. Geef alleen het ingevulde document terug, geen toelichting.\n\nBEKENDE GEGEVENS:\n- '+lb.sectie1+' (verleent exclusiviteit): '+esc(d.traject.kantoor_naam||naam)+', '+esc(d.traject.verkoper_adres||'[adres]')+'\n- Contactpersoon '+lb.sectie1.toLowerCase()+': '+esc(d.traject.contact_naam||'[invullen]')+'\n- '+lb.sectie2+' (ontvangt exclusiviteit): '+esc(d.traject.koper_naam||'[invullen]')+', '+esc(d.traject.koper_adres||'[adres]')+'\n- Contactpersoon '+lb.sectie2.toLowerCase()+': '+esc(d.traject.koper_contact||'[invullen]')+'\n- Startdatum exclusiviteit: '+startStr+'\n- Einddatum exclusiviteit: '+eindStr+' (8 weken)\n- Datum: '+datum+'\n- Begeleider: ' + BRAND.bedrijf + ', Marcel Bisschops, Grotestraat 13 5841AA Oploo\n\nTEMPLATE:\n'+exclTpl;
-        var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:3000})});
-        var rd=await resp.json();
-        var tekst=rd.text||(rd.error||'Fout bij genereren.');
+        // P1-IP-4 (27 sep 2026): idem BEM/NDA/LoI hierboven — geharde route, nu ook consistent met
+        // de canonieke template-keten (eigen adviseur-template -> platform-standaard -> BF_TEMPLATES.
+        // exclusief) i.p.v. het eigen losse, niet-aanpasbare hardcoded sjabloon dat deze knop
+        // voorheen had. Periode staat nu net als in bgDoc() vast op 6 weken (was hier 8 weken).
+        var resp=await fetch(WORKER+'/mna/document/excl/genereer',{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':adminKey},body:JSON.stringify({code:id})});
+        var rawResp=await resp.text();
+        var rd;try{rd=JSON.parse(rawResp);}catch(e){throw new Error('Parse fout: '+rawResp.substring(0,100));}
+        if(!resp.ok||!rd.ok)throw new Error('Fout '+resp.status+': '+(rd.error||rawResp.substring(0,150)));
+        var tekst=rd.tekst||'Fout bij genereren.';
         exclOut.innerHTML='<div style="font-size:11px;font-weight:600;color:var(--teal);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.75rem">&#128196; Exclusiviteitsbrief &middot; '+esc(d.traject.kantoor_naam||naam)+'</div>'
-          +'<div style="font-size:11px;color:var(--muted);margin-bottom:.4rem">Exclusiviteitsperiode: '+esc(startStr)+' t/m '+esc(eindStr)+'. Bekijk en bewerk voor verzending:</div>'
+          +'<div style="font-size:11px;color:var(--muted);margin-bottom:.4rem">Exclusiviteitsperiode: 6 weken vanaf vandaag. Bekijk en bewerk voor verzending:</div>'
           +'<textarea id="excl-edit" style="width:100%;height:300px;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:Georgia,serif;font-size:12px;line-height:1.8;padding:1rem;outline:none;resize:vertical"></textarea>'
           +'<div style="display:flex;gap:8px;margin-top:.75rem">'
           +'<button id="excl-print-btn" class="btn-ghost" style="font-size:12px;padding:6px 14px">&#128196; Print / PDF</button>'
@@ -2929,14 +2990,24 @@ async function toonDetail(id,naam){
         var faseLabelsAI={financieel:'Financieel',commercieel:'Klanten & commercieel',partner:'Partners & personeel',compliance:'Compliance & kwaliteit',it:'IT & automatisering',juridisch:'Juridisch & fiscaal',strategisch:'Strategisch & markt'};
         var dataSamenvatting='';
         (d.data||[]).forEach(function(row){try{var dj=typeof row.data_json==='string'?JSON.parse(row.data_json):row.data_json;var lbl=faseLabelsAI[row.fase_id]||row.fase_id;var gevuld=Object.values(dj||{}).filter(function(v){return v&&v.value;});if(gevuld.length){dataSamenvatting+='\n## '+lbl+'\n';gevuld.forEach(function(v){dataSamenvatting+='- '+v.label+': '+v.value+'\n';});}}catch(e){}});
-        var sectorNormsM={accountancy:'EBITDA 15-25%, omzet/FTE €80k-€140k, multiple 4.5-5.5x EBITDA',mkb:'EBITDA 5-15%, brutomarge sector-afhankelijk, multiple 2.5-4.5x',zorg:'EBITDA 15-25%, kleine solopraktijk (<=5 FTE) praktijkwaarde 1-3x omzet, grotere praktijk/keten (>5 FTE) 6,0-7,3x EBITDA, goodwill conform LHV-richtlijn',itsoftware:'SaaS ARR-multiple 3-8x, churn <5%, LTV/CAC >3; maatwerk EBITDA 4-6x',bouw:'EBITDA-marge 5-10%, orderportefeuille/backlog is cruciaal, multiple 4,0-5,0x EBITDA (Brookz H1-2025)',transport:'EBITDA-marge 5-12%, wagenpark/vergunningen zwaarwegend, multiple 3,7-4,5x EBITDA (Brookz H1-2025)',handel:'Brutomarge en voorraadrotatie leidend, multiple 4,8-5,9x EBITDA (Brookz H1-2025, groothandel)',consultancy:'Utilisatiegraad en klantconcentratie leidend, mensenintensief (geen voorraad/materieel), multiple 4,6-5,4x EBITDA (Brookz H1-2025, zakelijke dienstverlening)',verhuizingen:'Wagenpark/liften en seizoensgevoeligheid zwaarwegend, multiple 3,7-4,5x EBITDA (Brookz H1-2025, dichtstbijzijnde categorie transport/logistiek — geen aparte Brookz-notering voor verhuisbedrijven)'};
+        // P1-IP-2 (26 sep 2026, security-cleanup): sectorNormsM stond hier hardgecodeerd met de
+        // volledige proprietary benchmarktekst per sector — publiek leesbaar in deze bron (marilyn.html
+        // is admin-key-gated qua GEBRUIK, niet qua broncode-geheimhouding). Zelfde patroon als
+        // mna/01-config-sectorprofielen.js, nu ook hier via de al bestaande, autoritatieve backend-
+        // bron gehaald (GET /mna/sectorprofielen) i.p.v. hardgecodeerd — geen nieuwe architectuur,
+        // hergebruik van het al bestaande endpoint.
         var sectorKeyM=d.traject.sector||'accountancy';
-        var sectorLabelM={accountancy:'Accountancy & administratie',mkb:'MKB',zorg:'Zorg',itsoftware:'IT & Software',bouw:'Bouw & Installatietechniek',transport:'Transport & Logistiek',handel:'Handel / Groothandel',consultancy:'Zakelijke Dienstverlening / Consultancy',verhuizingen:'Verhuisbranche'}[sectorKeyM]||'Accountancy';
-        var bmTekst='SECTOR: '+sectorLabelM+'\nNORMEN: '+(sectorNormsM[sectorKeyM]||sectorNormsM.accountancy)+'\n'+(bms&&bms['ebitda_marge_admin']?'Benchmark EBITDA: '+bms['ebitda_marge_admin'].waarde+'%\n':'');
-        var prompt='Je bent Marcel Bisschops, senior M&A-adviseur. Sector: '+sectorLabelM+'. '+TAAL_REGELS+' Analyseer:\nTRAJECT: '+d.traject.kantoor_naam+' ('+d.traject.traject_type+')\n'+bmTekst+'\nDUE DILIGENCE:'+dataSamenvatting+'\n\n## Samenvatting\n## Financieel profiel & waardering\n## Sterktes\n## Risicos\n## Aanbevelingen\n\nMax 500 woorden. Gebruik de sectornormen als referentie. Aanbevelingen zijn overwegingen voor Marcel om mee te nemen, geen dwingende conclusies.';
-        var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:3000})});
+        var sectorProfielenM={};
+        try{var spr=await fetch(WORKER+'/mna/sectorprofielen',{headers:{'x-admin-key':adminKey}});var spd=await spr.json();if(spd&&spd.profielen)sectorProfielenM=spd.profielen;}catch(e){}
+        var sectorProfielM=sectorProfielenM[sectorKeyM]||sectorProfielenM.accountancy||{};
+        var sectorLabelM=sectorProfielM.label||'Accountancy & administratie';
+        var normsTekstM=sectorProfielM.aiNormen||(sectorProfielM.multipleLaag&&sectorProfielM.multipleHoog?('multiple '+sectorProfielM.multipleLaag+'-'+sectorProfielM.multipleHoog+'x '+(sectorProfielM.multipleBasis||'ebitda')):'geen sectornormen beschikbaar');
+        var bmTekst='SECTOR: '+sectorLabelM+'\nNORMEN: '+normsTekstM+'\n'+(bms&&bms['ebitda_marge_admin']?'Benchmark EBITDA: '+bms['ebitda_marge_admin'].waarde+'%\n':'');
+        // P1-IP-4 (27 sep 2026): instructietekst + AI-aanroep verhuisd naar worker/19-info-fases.js
+        // (/mna/analyse/traject/genereer, variant:'marilyn' voor exact dezelfde uitvoer als voorheen).
+        var resp=await fetch(WORKER+'/mna/analyse/traject/genereer',{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':adminKey},body:JSON.stringify({code:id,variant:'marilyn',dataSamenvatting:dataSamenvatting,benchmarkTekst:bmTekst,sectorLabel:sectorLabelM,kantoorNaam:d.traject.kantoor_naam,trajectType:d.traject.traject_type})});
         var rd=await resp.json();
-        var tekst=rd.text||(rd.error||'Fout.');
+        var tekst=(rd&&rd.ok&&rd.tekst)?rd.tekst:((rd&&rd.error)||'Fout.');
         tekst=tekst.replace(/^## (.+)$/gm,'<h3 style="font-family:Newsreader,Georgia,serif;font-size:.95rem;color:var(--head);margin:1rem 0 .4rem">$1</h3>');
         tekst=tekst.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
         tekst=tekst.replace(/\n\n/g,'</p><p style="font-size:13px;color:var(--mid);line-height:1.7;margin-bottom:.6rem">');
@@ -3191,7 +3262,7 @@ async function toonBewerkModal(id, naam){
     +'<div class="field"><label for="bw-koper-kvk">KvK-nummer koper</label><input type="text" id="bw-koper-kvk" value="'+esc(t.koper_kvk||'')+'"></div>'
     +'<div class="field"><label for="bw-koper-adres">Adres koper <span style="color:var(--red)">*</span></label><input type="text" id="bw-koper-adres" value="'+esc(t.koper_adres||'')+'"></div>'
     +'<div style="border-bottom:1px solid var(--border);margin:.75rem 0;padding-bottom:.25rem"><div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">Tekenbevoegdheid</div></div>'    +'<div style="font-size:11px;color:var(--muted);margin-bottom:.75rem;line-height:1.6">Leg vast wie namens welke partij bevoegd is te tekenen. Dit wordt gebruikt bij het opstellen en verzenden van overeenkomsten.</div>'    +'<div style="display:flex;gap:12px">'    +'<div class="field" style="flex:1"><label for="bw-verk-teken">Tekenbevoegde verkoper</label><input type="text" id="bw-verk-teken" value="'+esc(t.verkoper_teken||t.contact_naam||'')+'" placeholder="Naam(en) bevoegd te tekenen"></div>'    +'<div class="field" style="flex:1"><label for="bw-verk-teken-grond">Functie / grondslag</label><input type="text" id="bw-verk-teken-grond" value="'+esc(t.verkoper_teken_grond||'')+'" placeholder="Functie of grondslag"></div>'    +'</div>'    +'<div class="field"><label for="bw-verk-teken2">Overige tekenaars verkoper <span style="font-weight:400;color:var(--muted)">(optioneel)</span></label><input type="text" id="bw-verk-teken2" value="'+esc(t.verkoper_teken2||'')+'" placeholder="Overige tekenaars verkoper"></div>'    +'<div style="display:flex;gap:12px">'    +'<div class="field" style="flex:1"><label for="bw-koper-teken">Tekenbevoegde koper</label><input type="text" id="bw-koper-teken" value="'+esc(t.koper_teken||t.koper_contact||'')+'" placeholder="Naam bevoegd te tekenen"></div>'    +'<div class="field" style="flex:1"><label for="bw-koper-teken-grond">Functie / grondslag</label><input type="text" id="bw-koper-teken-grond" value="'+esc(t.koper_teken_grond||'')+'" placeholder="Functie of grondslag"></div>'    +'</div>'    +'<div class="field"><label for="bw-teken-status">Tekeningsstatus</label><select id="bw-teken-status"><option value="">— Niet gecheckt —</option><option value="geverifieerd"'+(t.teken_status==='geverifieerd'?' selected':'')+'>✓ Geverifieerd (KvK / volmacht gezien)</option><option value="op_basis_volmacht"'+(t.teken_status==='op_basis_volmacht'?' selected':'')+'>Op basis van volmacht (niet geverifieerd)</option><option value="actie_vereist"'+(t.teken_status==='actie_vereist'?' selected':'')+'>⚠ Actie vereist — bevoegdheid nog te bevestigen</option></select></div>'    +'<div style="border-bottom:1px solid var(--border);margin:.75rem 0;padding-bottom:.25rem"><div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">Notities & context</div></div>'    +'<div class="field"><label for="bw-notitie">Interne notitie</label><textarea id="bw-notitie" rows="4" placeholder="Context, afspraken, bijzonderheden, contacten buiten het systeem...">'+esc(t.notitie||'')+'</textarea></div>'    +'<div class="field"><label>Cli\u00ebntacceptatie / Wwft</label><div style="font-size:12px;padding:8px 10px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:'+((t.clientacceptatie_getoetst)?'var(--teal-dim)':'var(--muted)')+'">'+((t.clientacceptatie_getoetst)?('\u2713 Getoetst door '+esc(t.clientacceptatie_door||'\u2014')+(t.clientacceptatie_datum?(' op '+formatDate(t.clientacceptatie_datum)):'')+(t.clientacceptatie_notitie?('<br><span style="color:var(--muted)">'+esc(t.clientacceptatie_notitie)+'</span>'):'')):'Nog niet als getoetst gemarkeerd door de begeleider.')+'</div></div>'    +'<div style="display:flex;gap:12px">'    +'<div class="field" style="flex:1"><label for="bw-volgend-overleg">Volgend overleg</label><input type="text" id="bw-volgend-overleg" value="'+esc(t.volgend_overleg||'')+'" placeholder="Volgend overleg"></div>'    +'<div class="field" style="flex:1"><label for="bw-extra-contact">Extra contactpersoon verkoper</label><input type="text" id="bw-extra-contact" value="'+esc(t.extra_contact||'')+'" placeholder="Extra contactpersoon"></div>'    +'</div>'    +'<div id="bw-err" style="display:none;color:var(--red);font-size:12px;margin-bottom:.5rem"></div>'    +'<div style="display:flex;gap:10px;justify-content:flex-end;margin-top:.5rem"><button class="btn-ghost" id="bw-ann">Annuleren</button><button class="btn" id="bw-ok">&#10003; Opslaan</button></div>';
-  ov.appendChild(mo);document.body.appendChild(ov);
+  ov.appendChild(mo);document.body.appendChild(ov);a11yModal(ov,mo);
   ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
   document.getElementById('bw-ann').addEventListener('click',function(){document.body.removeChild(ov);});
 
@@ -3302,7 +3373,7 @@ function toonGesprekModal(trajectId, bestaand, onSaved){
     +'<button class="btn" id="gs-ok">Opslaan</button>'
     +'</div>';
 
-  ov2.appendChild(mo2);document.body.appendChild(ov2);
+  ov2.appendChild(mo2);document.body.appendChild(ov2);a11yModal(ov2,mo2);
   ov2.addEventListener('click',function(e){if(e.target===ov2)document.body.removeChild(ov2);});
   document.getElementById('gs-ann').addEventListener('click',function(){document.body.removeChild(ov2);});
 
@@ -3434,17 +3505,14 @@ function toonGesprekModal(trajectId, bestaand, onSaved){
     var deelnemers=(document.getElementById('gs-deelnemers').value||'').trim();
     var datum=(document.getElementById('gs-datum').value||'');
     var type=(document.getElementById('gs-type').value||'gesprek');
-    var typeLabels={gesprek:'Gesprek',kennismaking:'Kennismaking',onderhandeling:'Onderhandeling',vergadering:'Vergadering',telefonisch:'Telefonisch overleg',email:'E-mailwisseling',andere:'Overig'};
-    var prompt='Maak een professioneel gespreksverslag van een M&A traject.'
-      +'\n\nGesprek: '+(typeLabels[type]||type)+' | Datum: '+(datum||'onbekend')+' | Deelnemers: '+(deelnemers||'onbekend')
-      +(notities?'\n\nNOTITIES:\n'+notities:'')
-      +(bijlagenTekst?'\n\nBIJLAGEN:\n'+bijlagenTekst:'')
-      +'\n\nGeef het verslag terug in dit formaat:\n\n## Samenvatting\n[2-3 zinnen]\n\n## Besproken punten\n[per punt]\n\n## Beslissingen & afspraken\n[concreet]\n\n## Actiepunten\n[wie, wat, wanneer]\n\n## Volgende stap\n[gepland]\n\nProfessioneel, derde persoon, bondig.';
     try{
-      var resp=await fetch(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],max_tokens:1500})});
+      // P1-IP-4 (27 sep 2026): instructietekst + AI-aanroep verhuisd naar worker/12-mna-gesprekken-
+      // logboek.js (/mna/gesprek/verslag/genereer, variant:'marilyn' voor exact dezelfde uitvoer als
+      // voorheen) — hier alleen nog de eigen getypte notities + bijlagentekst.
+      var resp=await fetch(WORKER+'/mna/gesprek/verslag/genereer',{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':adminKey},body:JSON.stringify({code:trajectId,variant:'marilyn',gesprekType:type,datum:datum,deelnemers:deelnemers,notities:notities,bijlagenTekst:bijlagenTekst})});
       var rd=await resp.json();
-      document.getElementById('gs-verslag').value=rd.text||rd.content||'';
-      st.textContent='✓ Verslag gegenereerd';
+      document.getElementById('gs-verslag').value=(rd&&rd.ok&&rd.tekst)?rd.tekst:'';
+      st.textContent=(rd&&rd.ok&&rd.tekst)?'✓ Verslag gegenereerd':'Genereren mislukt: '+((rd&&rd.error)||'onbekende fout');
     }catch(err){st.textContent='Fout bij genereren';}
     btn2.disabled=false;
   });
@@ -3488,7 +3556,7 @@ function toonBegeleiderModal(trajectId, trajectNaam, tussenCode){
     +'<button class="btn-ghost" id="bg-kopieer" style="color:var(--teal);border-color:var(--teal)">&#8690; Kopieer code</button>'
     +'<button class="btn" id="bg-verstuur">&#9993; Stuur uitnodiging</button>'
     +'</div>';
-  ov.appendChild(mo);document.body.appendChild(ov);
+  ov.appendChild(mo);document.body.appendChild(ov);a11yModal(ov,mo);
   ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
   document.getElementById('bg-ann').addEventListener('click',function(){document.body.removeChild(ov);});
   document.getElementById('bg-kopieer').addEventListener('click',function(){
@@ -3559,7 +3627,7 @@ async function toonMeekijkersModal(trajectId, trajectNaam, sector){
     +'<button class="btn-ghost" id="mk-sluit">Sluiten</button>'
     +'<button class="btn" id="mk-toevoegen">+ Meekijker aanmaken</button>'
     +'</div></div>';
-  ov.appendChild(mo);document.body.appendChild(ov);
+  ov.appendChild(mo);document.body.appendChild(ov);a11yModal(ov,mo);
   ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
   document.getElementById('mk-sluit').addEventListener('click',function(){document.body.removeChild(ov);});
 
@@ -3670,7 +3738,7 @@ function toonNieuwModal(prefillLead){
     +'<div id="m-res" style="display:none;background:var(--teal-bg);border:1px solid var(--teal-dark);border-radius:var(--r);padding:1rem;margin-bottom:1rem;font-size:13px;line-height:2"></div>'
     +'<div id="m-err" style="display:none;color:var(--red);font-size:12px;margin-bottom:.75rem"></div>'
     +'<div style="display:flex;gap:10px;justify-content:flex-end"><button class="btn-ghost" id="m-ann">Annuleren</button><button class="btn" id="m-ok">Traject aanmaken</button></div>';
-  ov.appendChild(mo);document.body.appendChild(ov);
+  ov.appendChild(mo);document.body.appendChild(ov);a11yModal(ov,mo);
   ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
   document.getElementById('m-ann').addEventListener('click',function(){document.body.removeChild(ov);});
 
@@ -3853,7 +3921,7 @@ function wisTrajectData(id, naam) {
     + '<button class="btn-ghost" id="wis-ann">Annuleren</button>'
     + '<button class="btn" id="wis-ok" style="background:var(--red);border:none">&#129529; Wissen</button>'
     + '</div>';
-  ov.appendChild(mo); document.body.appendChild(ov);
+  ov.appendChild(mo); document.body.appendChild(ov); a11yModal(ov,mo);
   ov.addEventListener('click', function(e) { if (e.target === ov) document.body.removeChild(ov); });
   document.getElementById('wis-ann').addEventListener('click', function() { document.body.removeChild(ov); });
   document.getElementById('wis-ok').addEventListener('click', async function() {
@@ -3942,7 +4010,7 @@ function koppelTrajectAanGebruiker(id, naam) {
     + '<button class="btn-ghost" id="kg-ann">Annuleren</button>'
     + '<button class="btn" id="kg-ok">&#128279; Koppelen</button>'
     + '</div>';
-  ov.appendChild(mo); document.body.appendChild(ov);
+  ov.appendChild(mo); document.body.appendChild(ov); a11yModal(ov,mo);
   ov.addEventListener('click', function(e) { if (e.target === ov) document.body.removeChild(ov); });
   document.getElementById('kg-ann').addEventListener('click', function() { document.body.removeChild(ov); });
   document.getElementById('kg-ok').addEventListener('click', async function() {
@@ -4146,6 +4214,7 @@ function toonVeldenDebug(trajectId, naam, d) {
   mo.innerHTML = html;
   ov.appendChild(mo);
   document.body.appendChild(ov);
+  a11yModal(ov,mo);
   ov.addEventListener('click', function(e) { if (e.target === ov) document.body.removeChild(ov); });
   document.getElementById('debug-sluit').addEventListener('click', function() { document.body.removeChild(ov); });
 }
@@ -4343,6 +4412,132 @@ async function renderGebruikersTab(el) {
     });
   } catch(e) {
     el.innerHTML = '<div style="color:var(--red);font-size:13px;padding:1rem">Fout bij laden: ' + esc(e.message) + '</div>';
+  }
+}
+
+// P1-PLAT-1 (26 sep 2026) — Marilyn tenant-/module-control-plane. Zelfde bekende module-set als de
+// bestaande "€ Verkoop"-modal hierboven (renderGebruikersTab) — geen tweede, afwijkende modulelijst.
+var KANTOOR_MODULE_DEFS = [['traject','Traject (basis)'],['contracten','Contracten & ondertekening'],['ai_analyse','AI-analyse'],['qa','Q&A'],['meekijker','Meekijkers'],['export','Export & rapportage']];
+
+async function renderKantorenTab(el) {
+  el.innerHTML = '<div style="padding:1rem;color:var(--muted);font-size:13px">Laden...</div>';
+  try {
+    var r = await fetch(WORKER + '/mna/admin/kantoren', { headers: { 'x-admin-key': adminKey } });
+    var kantoren = await r.json();
+    var html = '<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.4rem">&#127970; Kantoren (' + kantoren.length + ')</div>'
+      + '<div style="font-size:12px;color:var(--muted);margin-bottom:1.25rem;max-width:640px;line-height:1.6">Elk kantoor is een groep gebruikers die dezelfde trajecten delen en dezelfde modules afneemt. Een nieuw, los uitgenodigd account krijgt automatisch een eigen kantoor van 1 — voeg een collega toe via een bestaand kantoor-ID bij het uitnodigen, of verplaats een bestaand account hieronder.</div>';
+    if (!kantoren.length) {
+      html += '<div style="color:var(--muted);font-size:13px;font-style:italic">Nog geen kantoren.</div>';
+    } else {
+      html += '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr>'
+        + '<th style="text-align:left;padding:8px 12px;font-size:11px;color:var(--muted);border-bottom:1px solid var(--border)">Kantoor</th>'
+        + '<th style="text-align:left;padding:8px 12px;font-size:11px;color:var(--muted);border-bottom:1px solid var(--border)">ID</th>'
+        + '<th style="text-align:left;padding:8px 12px;font-size:11px;color:var(--muted);border-bottom:1px solid var(--border)">Status</th>'
+        + '<th style="text-align:left;padding:8px 12px;font-size:11px;color:var(--muted);border-bottom:1px solid var(--border)">Leden</th>'
+        + '<th style="text-align:left;padding:8px 12px;font-size:11px;color:var(--muted);border-bottom:1px solid var(--border)">Actieve modules</th>'
+        + '<th style="padding:8px 12px;border-bottom:1px solid var(--border)"></th>'
+        + '</tr></thead><tbody>';
+      kantoren.forEach(function(k) {
+        html += '<tr style="border-bottom:1px solid var(--border)">'
+          + '<td style="padding:10px 12px;font-weight:600;color:var(--sub)">' + esc(k.naam) + '</td>'
+          + '<td style="padding:10px 12px;font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--muted)">' + esc(k.id) + '</td>'
+          + '<td style="padding:10px 12px;font-size:11px;color:' + (k.status==='actief'?'var(--teal)':'var(--red)') + '">' + esc(k.status) + '</td>'
+          + '<td style="padding:10px 12px">' + k.aantal_leden + '</td>'
+          + '<td style="padding:10px 12px">' + k.aantal_actieve_modules + '</td>'
+          + '<td style="padding:10px 12px"><button class="btn-ghost btn-kantoor-open" data-id="' + esc(k.id) + '" style="font-size:11px;padding:4px 10px">' + (kantorenOpenId===k.id?'Sluiten':'Bekijken') + '</button></td>'
+          + '</tr>';
+        if (kantorenOpenId === k.id) {
+          html += '<tr><td colspan="6" style="padding:0;border-bottom:1px solid var(--border)"><div id="kantoor-detail-' + esc(k.id) + '" style="padding:1rem 1.5rem;background:var(--card)">Laden...</div></td></tr>';
+        }
+      });
+      html += '</tbody></table></div>';
+    }
+    el.innerHTML = html;
+    el.querySelectorAll('.btn-kantoor-open').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        kantorenOpenId = (kantorenOpenId === btn.dataset.id) ? null : btn.dataset.id;
+        renderKantorenTab(el);
+      });
+    });
+    if (kantorenOpenId) laadKantoorDetail(kantorenOpenId);
+  } catch (e) {
+    el.innerHTML = '<div style="color:var(--red);font-size:13px">Fout bij laden: ' + esc(e.message) + '</div>';
+  }
+}
+
+async function laadKantoorDetail(kId) {
+  var target = document.getElementById('kantoor-detail-' + kId);
+  if (!target) return;
+  try {
+    var r = await fetch(WORKER + '/mna/admin/kantoren/' + encodeURIComponent(kId), { headers: { 'x-admin-key': adminKey } });
+    var d = await r.json();
+    if (!d || !d.kantoor) { target.innerHTML = '<div style="color:var(--red);font-size:12px">Niet gevonden.</div>'; return; }
+    var html = '<div style="display:flex;gap:2.5rem;flex-wrap:wrap;align-items:flex-start">';
+    // Leden
+    html += '<div style="flex:1;min-width:260px"><div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:8px">Leden (' + d.leden.length + ')</div>';
+    d.leden.forEach(function(l) {
+      html += '<div style="font-size:12px;color:var(--sub);padding:4px 0;display:flex;justify-content:space-between;gap:8px">'
+        + '<span>' + esc(l.naam) + ' <span style="color:var(--muted);font-size:11px">(' + esc(l.email) + ')</span></span>'
+        + '<span style="font-size:10px;font-weight:600;color:' + (l.kantoor_rol==='eigenaar'?'var(--gold)':'var(--muted)') + '">' + esc(l.kantoor_rol) + '</span>'
+        + '</div>';
+    });
+    html += '<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)"><input type="text" id="kantoor-nieuwenaam-' + kId + '" placeholder="Nieuwe kantoornaam" value="' + esc(d.kantoor.naam) + '" style="font-size:12px;padding:5px 8px;width:70%;margin-right:6px">'
+      + '<button class="btn-ghost btn-kantoor-naam" data-id="' + kId + '" style="font-size:11px;padding:5px 10px">Naam opslaan</button></div>'
+      + '<div style="margin-top:10px"><input type="text" id="kantoor-verplaats-gid-' + kId + '" placeholder="gebruiker-ID om hierheen te verplaatsen" style="font-size:11px;padding:5px 8px;width:70%;margin-right:6px">'
+      + '<button class="btn-ghost btn-kantoor-verplaats" data-id="' + kId + '" style="font-size:11px;padding:5px 10px">Verplaatsen</button></div>'
+      + '</div>';
+    // Modules
+    html += '<div style="flex:1;min-width:280px"><div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:8px">Modules</div>';
+    var modMap = {}; (d.modules || []).forEach(function(m) { modMap[m.module_id] = m; });
+    KANTOOR_MODULE_DEFS.forEach(function(md) {
+      var m = modMap[md[0]] || { module_id: md[0], enabled: 1, prijs: null, catalogusprijs: null };
+      var aan = Number(m.enabled) === 1;
+      html += '<div style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:12px;color:var(--sub)">'
+        + '<label style="display:flex;align-items:center;gap:6px;flex:1;cursor:pointer"><input type="checkbox" class="kantoor-mod-toggle" data-id="' + kId + '" data-mod="' + md[0] + '" ' + (aan?'checked':'') + '> ' + md[1] + '</label>'
+        + '<input type="number" class="kantoor-mod-prijs" data-id="' + kId + '" data-mod="' + md[0] + '" placeholder="' + (m.catalogusprijs!=null?('cat. €'+m.catalogusprijs):'€') + '" value="' + (m.prijs!=null?m.prijs:'') + '" style="width:80px;font-size:11px;padding:4px 6px">'
+        + '</div>';
+    });
+    html += '<div style="font-size:10px;color:var(--muted);margin-top:6px">Prijsveld leeg = catalogusprijs. Wijzigingen aan het vinkje slaan direct op; een prijs wijzigt pas op bij het verlaten van het veld.</div></div>';
+    // Audit
+    html += '<div style="flex:1;min-width:260px"><div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:8px">Recente wijzigingen</div>';
+    if (!d.audit.length) html += '<div style="font-size:11px;color:var(--muted);font-style:italic">Nog geen wijzigingen.</div>';
+    (d.audit || []).slice(0, 15).forEach(function(a) {
+      html += '<div style="font-size:11px;color:var(--muted);padding:2px 0">' + new Date(a.ts).toLocaleString('nl-NL', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) + ' — <strong>' + esc(a.module_id) + '.' + esc(a.veld) + '</strong>: ' + esc(String(a.oude_waarde)) + ' &rarr; ' + esc(String(a.nieuwe_waarde)) + '</div>';
+    });
+    html += '</div></div>';
+    target.innerHTML = html;
+
+    target.querySelectorAll('.kantoor-mod-toggle').forEach(function(cb) {
+      cb.addEventListener('change', async function() {
+        await fetch(WORKER + '/mna/admin/kantoren/' + encodeURIComponent(cb.dataset.id) + '/module', { method: 'POST', headers: { 'x-admin-key': adminKey, 'Content-Type': 'application/json' }, body: JSON.stringify({ module_id: cb.dataset.mod, enabled: cb.checked }) }).catch(function() {});
+        laadKantoorDetail(cb.dataset.id);
+      });
+    });
+    target.querySelectorAll('.kantoor-mod-prijs').forEach(function(inp) {
+      inp.addEventListener('change', async function() {
+        var waarde = inp.value.trim() === '' ? null : Number(inp.value);
+        await fetch(WORKER + '/mna/admin/kantoren/' + encodeURIComponent(inp.dataset.id) + '/module', { method: 'POST', headers: { 'x-admin-key': adminKey, 'Content-Type': 'application/json' }, body: JSON.stringify({ module_id: inp.dataset.mod, prijs: waarde }) }).catch(function() {});
+        laadKantoorDetail(inp.dataset.id);
+      });
+    });
+    var naamBtn = target.querySelector('.btn-kantoor-naam');
+    if (naamBtn) naamBtn.addEventListener('click', async function() {
+      var nieuweNaam = document.getElementById('kantoor-nieuwenaam-' + kId).value.trim();
+      if (!nieuweNaam) return;
+      await fetch(WORKER + '/mna/admin/kantoren/' + encodeURIComponent(kId) + '/naam', { method: 'POST', headers: { 'x-admin-key': adminKey, 'Content-Type': 'application/json' }, body: JSON.stringify({ naam: nieuweNaam }) }).catch(function() {});
+      renderKantorenTab(document.getElementById('tc'));
+    });
+    var verplaatsBtn = target.querySelector('.btn-kantoor-verplaats');
+    if (verplaatsBtn) verplaatsBtn.addEventListener('click', async function() {
+      var gid = document.getElementById('kantoor-verplaats-gid-' + kId).value.trim();
+      if (!gid) return;
+      var resp = await fetch(WORKER + '/mna/admin/kantoren/' + encodeURIComponent(kId) + '/leden', { method: 'POST', headers: { 'x-admin-key': adminKey, 'Content-Type': 'application/json' }, body: JSON.stringify({ gebruiker_id: gid }) }).then(function(x){return x.json();}).catch(function(){return null;});
+      if (!resp || !resp.ok) { alert('Verplaatsen mislukt: ' + (resp && resp.error || 'onbekende fout')); return; }
+      if (resp.waarschuwing_historische_trajecten > 0) alert('Let op: deze gebruiker heeft ' + resp.waarschuwing_historische_trajecten + ' bestaand(e) traject(en) — die worden nu zichtbaar voor de eigenaar van dit kantoor.');
+      laadKantoorDetail(kId);
+    });
+  } catch (e) {
+    target.innerHTML = '<div style="color:var(--red);font-size:12px">Fout: ' + esc(e.message) + '</div>';
   }
 }
 
@@ -4633,7 +4828,7 @@ async function renderMatchingTab(el){
       var ov=document.createElement('div');
       ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center';
       ov.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:1.75rem;width:100%;max-width:440px;max-height:85vh;overflow-y:auto">'
-        +'<div style="font-size:15px;font-weight:600;color:var(--head);margin-bottom:1rem">Nieuw koper-zoekprofiel</div>'
+        +'<div id="mk-nieuw-titel" style="font-size:15px;font-weight:600;color:var(--head);margin-bottom:1rem">Nieuw koper-zoekprofiel</div>'
         +'<div class="field"><label for="mk-naam">Naam (fictief voor demo\'s)</label><input type="text" id="mk-naam" placeholder="bijv. PE-platform X"></div>'
         +'<div style="font-size:11px;font-weight:600;text-transform:uppercase;color:var(--muted);margin:.75rem 0 4px">Zoekt sector(en)</div>'
         +MATCH_SECTOREN.map(function(s){return '<label style="display:flex;gap:6px;align-items:center;font-size:13px;padding:2px 0"><input type="checkbox" class="mk-sector" value="'+s[0]+'"> '+s[1]+'</label>';}).join('')
@@ -4648,6 +4843,10 @@ async function renderMatchingTab(el){
         +'<button class="btn-ghost" id="mk-ann">Annuleren</button><button class="btn" id="mk-opslaan">Opslaan</button>'
         +'</div></div>';
       document.body.appendChild(ov);
+      ov.firstElementChild.setAttribute('role','dialog');
+      ov.firstElementChild.setAttribute('aria-modal','true');
+      ov.firstElementChild.setAttribute('aria-labelledby','mk-nieuw-titel');
+      ov.addEventListener('keydown',function(e){if(e.key==='Escape')ov.remove();});
       document.getElementById('mk-ann').addEventListener('click',function(){ov.remove();});
       document.getElementById('mk-opslaan').addEventListener('click',async function(){
         var naam=document.getElementById('mk-naam').value.trim();
@@ -4726,7 +4925,26 @@ async function renderVeiligheidTab(el) {
       }
       var queueRijen = queueRegel('Diepe audit', ov.diepe_audit) + queueRegel('Red-team pentest', ov.red_team_pentest);
 
-      var html = '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;margin-bottom:.4rem">'
+      // Overkoepelende "veiligheid actueel"-status (26 sep 2026, N-70-vervolg): "0 open bevindingen"
+      // hieronder (sectie 2) betekent uitsluitend "geen bekende openstaande bevinding", niet "alle
+      // verplichte controles zijn actueel" — die twee liepen visueel door elkaar. Puur afgeleid van
+      // al bestaande verouderd-vlaggen (geen nieuwe D1-query, geen fictieve bevinding aangemaakt).
+      var e2eVoorStatus = ov.e2e_regressie;
+      var e2eGroenVoorStatus = e2eVoorStatus && e2eVoorStatus.checks_geslaagd === e2eVoorStatus.checks_totaal;
+      var verlopenControles = [];
+      if (ov.open_kritiek_hoog > 0) verlopenControles.push(ov.open_kritiek_hoog + ' open kritieke/hoge bevinding(en)');
+      if (!ov.diepe_audit || ov.diepe_audit.verouderd) verlopenControles.push('diepe audit verouderd');
+      if (!ov.red_team_pentest || ov.red_team_pentest.verouderd) verlopenControles.push('red-team pentest verouderd');
+      if (!ov.knoppentest || ov.knoppentest.verouderd) verlopenControles.push('dagelijkse knoppentest verouderd');
+      if (!e2eVoorStatus || e2eVoorStatus.verouderd || !e2eGroenVoorStatus) verlopenControles.push('E2E-regressietest verouderd of rood');
+      var veiligheidActueel = verlopenControles.length === 0;
+
+      var html = '<div style="padding:1rem 1.25rem;margin-bottom:1.25rem;border-radius:8px;border:1px solid ' + (veiligheidActueel ? 'var(--teal)' : 'var(--red)') + ';background:' + (veiligheidActueel ? 'var(--teal-bg)' : 'var(--red-bg)') + '">'
+        + '<div style="font-size:13px;font-weight:700;color:' + (veiligheidActueel ? 'var(--teal)' : 'var(--red)') + '">' + (veiligheidActueel ? '&#10003; Veiligheid actueel — alle verplichte controles op schema, geen open kritieke/hoge bevinding' : '&#9888; Veiligheid NIET actueel: ' + esc(verlopenControles.join('; '))) + '</div>'
+        + '<div style="font-size:11px;color:var(--muted);margin-top:4px">Samengevat over alle secties hieronder. "0 open bevindingen" in sectie 2 betekent uitdrukkelijk niet "alles is actueel gecontroleerd" — zie de toelichting daar.</div>'
+        + '</div>'
+
+        + '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;margin-bottom:.4rem">'
         + '<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">&#128737; Veiligheid</div>'
         + '<div style="display:flex;gap:8px;flex-wrap:wrap">'
         + '<button class="btn" id="btn-rapport-link" style="font-size:12px;padding:7px 14px">&#128196; Beveiligingsrapport ophalen</button>'
@@ -4765,11 +4983,11 @@ async function renderVeiligheidTab(el) {
         + '</div>'
         + '</div></div>'
 
-        + '<div class="table-wrap" style="margin-bottom:1.25rem"><div class="table-hdr"><div class="table-title">2. Open bevindingen (uit alle bronnen)</div></div>'
+        + '<div class="table-wrap" style="margin-bottom:1.25rem"><div class="table-hdr"><div class="table-title">2. Bekende bevindingen opgelost (uit alle bronnen)</div></div>'
         + '<div style="padding:1.25rem;display:flex;gap:2rem;flex-wrap:wrap;align-items:flex-start">'
-        + '<div style="flex:0 0 230px">' + veiligheidGauge(ov.gauges.bevindingen_score, 'Open bevindingen', ov.open_totaal + ' open (' + ov.open_kritiek_hoog + ' kritiek/hoog) · ' + ov.gefixt_totaal + ' gefixt') + '</div>'
+        + '<div style="flex:0 0 230px">' + veiligheidGauge(ov.gauges.bevindingen_score, 'Bekende bevindingen opgelost', ov.open_totaal + ' open (' + ov.open_kritiek_hoog + ' kritiek/hoog) · ' + ov.gefixt_totaal + ' gefixt') + '</div>'
         + '<div style="flex:1;min-width:260px;display:flex;flex-direction:column;justify-content:center;gap:.6rem;padding-top:.5rem">'
-        + '<div style="font-size:12px;color:var(--mid);line-height:1.6">Alle nog openstaande bevindingen, ongeacht bron (nachtelijke check, statische audit, of handmatig gelogd bij een diepe audit). Elke open kritieke/hoge bevinding trekt fors af van de score — 0 open kritiek/hoog is de enige manier om hier op 100 te staan.</div>'
+        + '<div style="font-size:12px;color:var(--mid);line-height:1.6"><strong>Let op: dit is geen totale actuele securityscore.</strong> Deze gauge toont uitsluitend of elke ooit gevonden bevinding inmiddels is opgelost — 0 open kritiek/hoog is de enige manier om hier op 100 te staan, ook wanneer de periodieke controles hieronder (secties 3-6) allang verouderd zijn. Zie de samengevatte status bovenaan deze pagina voor het overkoepelende oordeel.</div>'
         + '</div>'
         + '</div>'
 
@@ -5005,6 +5223,7 @@ function toonUitnodigenModal() {
     + '</div>';
   ov.appendChild(mo);
   document.body.appendChild(ov);
+  a11yModal(ov,mo);
   ov.addEventListener('click', function(e) { if (e.target === ov) document.body.removeChild(ov); });
   document.getElementById('inv-ann').addEventListener('click', function() { document.body.removeChild(ov); });
   document.getElementById('inv-ok').addEventListener('click', async function() {

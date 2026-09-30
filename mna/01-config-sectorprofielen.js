@@ -102,16 +102,14 @@ var SECTOR_PROFIELEN = {
   // ── ACCOUNTANCY (bestaand, ongewijzigd) ─────────────────────────────────
   accountancy: {
     label: 'Accountancy & administratie',
-    // Bron-status (zie SECTORPROFIEL-BRONNEN.md, 31 aug 2026): multiple 4,5-5,5x = 🟢 geverifieerd
-    // (Brookz-curve NL M&A-/accountantskantoren, zelfde bron als het waarderingsscherm). Overige
-    // getallen 🟡 plausibel maar zonder citaat in de code (overlappen deels met DB-benchmark
-    // omzet_fte_accountant, bron "Full Finance/Novak 2024-2025").
-    aiNormen: 'EBITDA-marge norm 15-25%, omzet per FTE €80k-€140k, personeelskosten 55-65%, declarabiliteit >75%, multiple 4.5-5.5x',
+    // Bron-status/exacte benchmarkgetallen: zie SECTORPROFIEL-BRONNEN.md (backend-only document,
+    // niet in dit publieke bestand — P1-IP-2, 25 sep 2026).
+    aiNormen: null, // P1-IP-2 (25 sep 2026): waarde nu uitsluitend backend (GET /mna/sectorprofielen); dit was de proprietary benchmarktekst
     // multipleBasis/multipleLaag/multipleHoog (25 juli 2026, vierde kwartaalaudit P1 #1): expliciet,
     // gestructureerd vastgelegd i.p.v. met een regex uit de vrije aiNormen-tekst geparst — die regex
     // kon niet onderscheiden of de gevonden range een EBITDA-, omzet- of ARR-multiple was (zie zorg/
     // itsoftware hieronder), waardoor bij zorg tot >70% waarderingsafwijking kon ontstaan.
-    multipleBasis: 'ebitda', multipleLaag: 4.5, multipleHoog: 5.5,
+    multipleBasis: 'ebitda', multipleLaag: null, multipleHoog: null, // P1-IP-2: waarden nu uitsluitend backend
     fases: [
       {id:'financieel',num:'I',title:'Financieel',desc:'Kwaliteit en duurzaamheid van omzet en winst.',
        dataFields:[
@@ -289,22 +287,16 @@ var SECTOR_PROFIELEN = {
   mkb: {
     label: 'MKB — Retail / Horeca / Ambacht',
     // 15 sep 2026: "Handel" uit de label/scope gehaald — er is nu een apart, specifiek gebronde
-    // sectorprofiel 'handel' (groothandel, Brookz H1-2025: 4,8-5,9x EBITDA) dat dat woord dekt.
-    // Deze mkb-band (2,5-4,5x) bleef altijd een fallback voor kleinhandel/detailhandel zonder eigen
-    // cijfers (BACKLOG 1.3b) — nu een echte trajectkeuze bestaat, blijft "handel" hier verwarrend.
-    // Detailhandel/kleine winkel blijft impliciet binnen deze band vallen (past qua schaal/marge
-    // beter bij retail dan bij de nieuwe groothandel-band); bij twijfel per geval navragen.
-    // Bron-status (zie SECTORPROFIEL-BRONNEN.md) — TWEEDE herijking, 11 sep 2026, zelfde dag: de
-    // eerste herijking (2,5-4,5x → 4,0-6,0x) bleek op een verkeerde referentie te leunen. "Het
-    // gemiddelde MKB-EBITDA-multiple van 5,0" uit BACKLOG.md 1.1 is het BLENDED gemiddelde over ALLE
-    // Brookz-sectoren (incl. hoge multiples voor software 7,5x/IT-diensten 6,7x/zorg 6,5x) — niet
-    // specifiek voor retail/horeca/handel/ambacht. De Brookz Overnamebarometer H2-2025 geeft juist
-    // per sector: Detailhandel 2,5x, Horeca/Toerisme/Recreatie 3,3x — beide ONDER de 4,0-6,0x-band
-    // die na de eerste herijking hier stond. Teruggezet naar de oorspronkelijke 2,5-4,5x, die voor
-    // retail/horeca dus al redelijk kalibreerde. Handel/ambacht hebben geen aparte Brookz-cijfers
-    // gevonden — blijft binnen deze band tot een betere bron zich aandient (BACKLOG 1.3b, open).
-    aiNormen: 'EBITDA-marge norm 5-15% (sector afhankelijk: horeca 8-12%, retail 5-10%), omzet per FTE €80k-€200k, personeelskosten 25-45%, voorraadomzet >6x per jaar, multiple 2.5-4.5x',
-    multipleBasis: 'ebitda', multipleLaag: 2.5, multipleHoog: 4.5,
+    // sectorprofiel 'handel' (groothandel) dat dat woord dekt. Deze mkb-band bleef altijd een fallback
+    // voor kleinhandel/detailhandel zonder eigen cijfers (BACKLOG 1.3b) — nu een echte trajectkeuze
+    // bestaat, blijft "handel" hier verwarrend. Detailhandel/kleine winkel blijft impliciet binnen
+    // deze band vallen (past qua schaal/marge beter bij retail dan bij de nieuwe groothandel-band);
+    // bij twijfel per geval navragen. Twee herijkingen op 11 sep 2026 (zelfde dag) — de eerste bleek
+    // op een verkeerde (blended, niet sectorspecifieke) referentie te leunen, teruggezet op basis van
+    // de echte per-sector cijfers. Bron-status/exacte benchmarkgetallen: zie SECTORPROFIEL-BRONNEN.md
+    // (backend-only document, niet in dit publieke bestand — P1-IP-2, 25 sep 2026).
+    aiNormen: null, // P1-IP-2 (25 sep 2026): waarde nu uitsluitend backend (GET /mna/sectorprofielen); dit was de proprietary benchmarktekst
+    multipleBasis: 'ebitda', multipleLaag: null, multipleHoog: null, // P1-IP-2: waarden nu uitsluitend backend
     fases: [
       {id:'financieel',num:'I',title:'Financieel',desc:'Omzet, marge en werkkapitaal.',
        dataFields:[
@@ -457,21 +449,22 @@ var SECTOR_PROFIELEN = {
   // ── ZORG (huisartsenpraktijken, tandartsen, fysiotherapie) ───────────────
   zorg: {
     label: 'Zorg — Huisarts / Tandarts / Fysiotherapie',
-    // Bron-status (zie SECTORPROFIEL-BRONNEN.md): omvangsafhankelijk gemaakt op 11 sep 2026 (Marcel
-    // akkoord op BACKLOG 1.2, "omvangsafhankelijk maken"). "Praktijkwaarde ≈ deel van de jaaromzet" is
-    // een reële conventie voor een KLEINE, eigenaar-gedreven solopraktijk; voor een grotere praktijk/
-    // keten hanteert de markt een EBITDA-multiple (Brookz "zorg & farmacie" ~6,0-7,3x, gem. 6,5x).
+    // Omvangsafhankelijk gemaakt op 11 sep 2026 (Marcel akkoord op BACKLOG 1.2, "omvangsafhankelijk
+    // maken"). "Praktijkwaarde ≈ deel van de jaaromzet" is een reële conventie voor een KLEINE,
+    // eigenaar-gedreven solopraktijk; voor een grotere praktijk/keten hanteert de markt een EBITDA-
+    // multiple. Bron-status/exacte benchmarkgetallen: zie SECTORPROFIEL-BRONNEN.md (backend-only
+    // document, niet in dit publieke bestand — P1-IP-2, 25 sep 2026).
     // Schakelaar op groeps-FTE (partner_fte) — zie dvSectorMultipleRange() in
     // mna/03-rekenkern-waardering.js: >5 FTE (multipleGrootFteGrens, een operationeel ingesteld
     // drempelgetal, geen gebronde marktnorm — pas aan in marilyn indien gewenst) → EBITDA-multiple;
     // anders (of FTE nog onbekend) → de omzet-multiple hieronder blijft gelden.
-    aiNormen: 'EBITDA-marge norm 15-25% (huisarts 20-30%), omzet per FTE €60k-€120k, NZa-tarieven leidend, patiëntenbestand overdraagbaarheid cruciaal, multiple 1-3x omzet (praktijkwaarde, kleine solopraktijk) of 6,0-7,3x EBITDA (grotere praktijk/keten, >5 FTE)',
+    aiNormen: null, // P1-IP-2 (25 sep 2026): waarde nu uitsluitend backend (GET /mna/sectorprofielen); dit was de proprietary benchmarktekst
     // LET OP: dit is een OMZET-multiple (praktijkwaarde), geen EBITDA-multiple — zie dvSectorMultipleRange()
     // in mna/03-rekenkern-waardering.js. Het Dealvoorstel-scherm (prijsmechanisme/schuldaflossing/DCF)
     // blijft bewust EBITDA-based en gebruikt dus NIET automatisch deze omzet-range (bewuste scope-keuze,
     // 25 juli 2026) — alleen het hoofdwaarderingsscherm past 'm correct op omzet toe.
-    multipleBasis: 'omzet', multipleLaag: 1, multipleHoog: 3,
-    multipleGrootFteGrens: 5, multipleBasisGroot: 'ebitda', multipleLaagGroot: 6.0, multipleHoogGroot: 7.3,
+    multipleBasis: 'omzet', multipleLaag: null, multipleHoog: null, // P1-IP-2: waarden nu uitsluitend backend
+    multipleGrootFteGrens: null, multipleBasisGroot: null, multipleLaagGroot: null, multipleHoogGroot: null, // P1-IP-2: waarden nu uitsluitend backend
     fases: [
       {id:'financieel',num:'I',title:'Financieel',desc:'Praktijkomzet, declaraties en winstgevendheid.',
        dataFields:[
@@ -614,19 +607,17 @@ var SECTOR_PROFIELEN = {
   // ── IT & SOFTWARE ────────────────────────────────────────────────────────
   itsoftware: {
     label: 'IT & Software',
-    // Bron-status (zie SECTORPROFIEL-BRONNEN.md, herzien 13 sep 2026): multiple 🟢 gebrond op Brookz
-    // Overnamebarometer H2-2025 (IT-diensten 6,7×, Softwareontwikkeling 7,5×) — Marcel akkoord
-    // 13 sep 2026 op de eerdere 11 sep-deelbevinding. De 3-8x ARR-range gaat alleen naar de AI-tekst,
-    // niet naar de rekenkern, en blijft 🟡 plausibel (geen harde NL-bron voor ARR-multiples). ARR/MRR-
-    // groei/churn/LTV-CAC/NPS zijn gangbare SaaS-vuistregels, geen harde NL-branchebron.
-    aiNormen: 'EBITDA-marge norm 15-30% (SaaS 20-40%), ARR/MRR groei >20% is sterk, churn <5% is goed, LTV/CAC >3 vereist, NPS >30 positief, multiple 3-8x ARR (SaaS) of 6,7-7,5x EBITDA (maatwerk/diensten, Brookz H2-2025)',
+    // ARR/MRR-groei/churn/LTV-CAC/NPS zijn gangbare SaaS-vuistregels, geen harde NL-branchebron.
+    // Bron-status/exacte benchmarkgetallen: zie SECTORPROFIEL-BRONNEN.md (backend-only document,
+    // niet in dit publieke bestand — P1-IP-2, 25 sep 2026).
+    aiNormen: null, // P1-IP-2 (25 sep 2026): waarde nu uitsluitend backend (GET /mna/sectorprofielen); dit was de proprietary benchmarktekst
     // Dit sectorprofiel dekt zowel SaaS (ARR-multiple) als maatwerk/diensten (EBITDA-multiple) — het
     // platform heeft geen apart ARR-veld en de rest van het Dealvoorstel-scherm is EBITDA-based, dus
-    // hier bewust de EBITDA-variant als structureel vastgelegde basis. Band = de twee Brookz H2-2025-
-    // subsectorcijfers (IT-diensten 6,7× laag, Softwareontwikkeling 7,5× hoog) — geen gemiddelde,
-    // geen padding. Een zuiver SaaS-traject moet handmatig als kanttekening worden meegenomen
+    // hier bewust de EBITDA-variant als structureel vastgelegde basis, gebaseerd op twee sub-
+    // sectorcijfers (geen gemiddelde, geen padding — zie SECTORPROFIEL-BRONNEN.md voor de exacte
+    // waarden). Een zuiver SaaS-traject moet handmatig als kanttekening worden meegenomen
     // (bekende beperking, 25 juli 2026).
-    multipleBasis: 'ebitda', multipleLaag: 6.7, multipleHoog: 7.5,
+    multipleBasis: 'ebitda', multipleLaag: null, multipleHoog: null, // P1-IP-2: waarden nu uitsluitend backend
     fases: [
       {id:'financieel',num:'I',title:'Financieel',desc:'Omzet, ARR/MRR en unit economics.',
        dataFields:[
@@ -757,14 +748,12 @@ var SECTOR_PROFIELEN = {
   // ── BOUW & INSTALLATIETECHNIEK ───────────────────────────────────────────
   bouw: {
     label: 'Bouw & Installatietechniek',
-    // Bron-status (13 sep 2026, zie SECTORPROFIEL-BRONNEN.md): multiple 🟢 gebrond — Brookz Overname
-    // Barometer H1-2025 (editie 22, blz. 9, spreidingstabel "Multiples per sector"): Bouw &
-    // Installatietechniek laagste 4,0 / gemiddeld 4,5 / hoogste 5,0. Rechtstreeks uit het PDF-rapport
-    // gehaald (niet via een samenvatting), zelfde bronsoort als de al bestaande sectoren hierboven.
     // Geen aparte EBITDA-marge-/omzet-per-FTE-normen gevonden voor deze sector — die kwalitatieve
-    // aiNormen-tekst hieronder blijft daarom bewust beperkt tot wat wél gebrond is (de multiple).
-    aiNormen: 'EBITDA-multiple (Brookz H1-2025, Bouw & Installatietechniek): laagste 4,0x, gemiddeld 4,5x, hoogste 5,0x. Sector is materieelintensief, projectmatig en conjunctuurgevoelig — geen aparte gebronde marge-/FTE-normen beschikbaar, dus geen cijfer daarover presenteren als marktnorm.',
-    multipleBasis: 'ebitda', multipleLaag: 4.0, multipleHoog: 5.0,
+    // aiNormen-tekst blijft daarom bewust beperkt tot wat wél gebrond is (de multiple). Bron-status/
+    // exacte benchmarkgetallen: zie SECTORPROFIEL-BRONNEN.md (backend-only document, niet in dit
+    // publieke bestand — P1-IP-2, 25 sep 2026).
+    aiNormen: null, // P1-IP-2 (25 sep 2026): waarde nu uitsluitend backend (GET /mna/sectorprofielen); dit was de proprietary benchmarktekst
+    multipleBasis: 'ebitda', multipleLaag: null, multipleHoog: null, // P1-IP-2: waarden nu uitsluitend backend
     fases: [
       {id:'financieel',num:'I',title:'Financieel',desc:'Omzet, marge, onderhanden werk en materieel.',
        dataFields:[
@@ -918,11 +907,10 @@ var SECTOR_PROFIELEN = {
   // ── TRANSPORT & LOGISTIEK ────────────────────────────────────────────────
   transport: {
     label: 'Transport & Logistiek',
-    // Bron-status (13 sep 2026, zie SECTORPROFIEL-BRONNEN.md): multiple 🟢 gebrond — Brookz Overname
-    // Barometer H1-2025 (editie 22, blz. 9, spreidingstabel): Automotive, Transport & Logistiek
-    // laagste 3,7 / gemiddeld 4,1 / hoogste 4,5. Rechtstreeks uit het PDF-rapport gehaald.
-    aiNormen: 'EBITDA-multiple (Brookz H1-2025, Automotive, Transport & Logistiek): laagste 3,7x, gemiddeld 4,1x, hoogste 4,5x. Sector is kapitaal-/materieelintensief (wagenpark) en gevoelig voor brandstofprijzen en regelgeving — geen aparte gebronde marge-/FTE-normen beschikbaar.',
-    multipleBasis: 'ebitda', multipleLaag: 3.7, multipleHoog: 4.5,
+    // Bron-status/exacte benchmarkgetallen: zie SECTORPROFIEL-BRONNEN.md (backend-only document,
+    // niet in dit publieke bestand — P1-IP-2, 25 sep 2026).
+    aiNormen: null, // P1-IP-2 (25 sep 2026): waarde nu uitsluitend backend (GET /mna/sectorprofielen); dit was de proprietary benchmarktekst
+    multipleBasis: 'ebitda', multipleLaag: null, multipleHoog: null, // P1-IP-2: waarden nu uitsluitend backend
     fases: [
       {id:'financieel',num:'I',title:'Financieel',desc:'Omzet, marge en wagenpark.',
        dataFields:[
@@ -1073,13 +1061,12 @@ var SECTOR_PROFIELEN = {
   // ── HANDEL / GROOTHANDEL ─────────────────────────────────────────────────
   handel: {
     label: 'Handel / Groothandel',
-    // Bron-status (13 sep 2026, zie SECTORPROFIEL-BRONNEN.md): multiple 🟢 gebrond — Brookz Overname
-    // Barometer H1-2025 (editie 22, blz. 9, spreidingstabel): Groothandel laagste 4,8 / gemiddeld
-    // 5,2 / hoogste 5,9. Rechtstreeks uit het PDF-rapport gehaald. "Groothandel" is de dichtstbijzijnde
-    // Brookz-categorie voor algemene handel — geen aparte notering voor detailhandel-in-groothandel-
-    // achtige tussenvormen; bij twijfel over de precieze subsector navragen bij Marcel.
-    aiNormen: 'EBITDA-multiple (Brookz H1-2025, Groothandel): laagste 4,8x, gemiddeld 5,2x, hoogste 5,9x. Sector kent doorgaans voorraadrisico en leveranciersconcentratie — geen aparte gebronde marge-/FTE-normen beschikbaar.',
-    multipleBasis: 'ebitda', multipleLaag: 4.8, multipleHoog: 5.9,
+    // "Groothandel" is de dichtstbijzijnde Brookz-categorie voor algemene handel — geen aparte
+    // notering voor detailhandel-in-groothandel-achtige tussenvormen; bij twijfel over de precieze
+    // subsector navragen bij Marcel. Bron-status/exacte benchmarkgetallen: zie SECTORPROFIEL-
+    // BRONNEN.md (backend-only document, niet in dit publieke bestand — P1-IP-2, 25 sep 2026).
+    aiNormen: null, // P1-IP-2 (25 sep 2026): waarde nu uitsluitend backend (GET /mna/sectorprofielen); dit was de proprietary benchmarktekst
+    multipleBasis: 'ebitda', multipleLaag: null, multipleHoog: null, // P1-IP-2: waarden nu uitsluitend backend
     fases: [
       {id:'financieel',num:'I',title:'Financieel',desc:'Omzet, marge, voorraad en werkkapitaal.',
        dataFields:[
@@ -1232,18 +1219,17 @@ var SECTOR_PROFIELEN = {
   // ── ZAKELIJKE DIENSTVERLENING / CONSULTANCY ──────────────────────────────
   consultancy: {
     label: 'Zakelijke Dienstverlening / Consultancy',
-    // Bron-status (15 sep 2026, zie SECTORPROFIEL-BRONNEN.md): multiple 🟢 gebrond — Brookz Overname
-    // Barometer H1-2025 (editie 22, blz. 9, spreidingstabel): "Zakelijke dienstverlening" laagste 4,6 /
-    // gemiddeld 4,9 / hoogste 5,4. Dit is de Brookz-categorie waar managementadvies/consultancy (CBS
-    // SBI 70.22, ~173.000 bedrijven — verreweg het grootste deelsegment binnen "specialistische
-    // zakelijke dienstverlening") onder valt; Brookz splitst dit niet verder uit naar consultancy vs.
-    // juridisch/architecten/reclame, dus dit is de meest precieze bron die beschikbaar is. Scope van
-    // dit profiel is bewust gericht op advies-/consultancybedrijven (uren-/projectgedreven, geen
-    // fysieke voorraad) — juridisch/architecten/reclame vallen hier qua naam onder maar hebben eigen
-    // dynamiek (bijv. beëdiging, portefeuilleverzekering) die dit profiel nog niet dekt; apart oppakken
-    // wanneer nodig, niet stilzwijgend aannemen dat dit profiel daar ook goed op past.
-    aiNormen: 'EBITDA-multiple (Brookz H1-2025, Zakelijke dienstverlening): laagste 4,6x, gemiddeld 4,9x, hoogste 5,4x. Sector is mensenintensief (geen voorraad/materieel) — waarde zit in de adviseurs en klantrelaties, niet in activa. Geen aparte gebronde marge-/FTE-normen beschikbaar; utilisatiegraad (declarabele uren t.o.v. beschikbare uren) is de gangbare interne KPI maar niet extern gebrond.',
-    multipleBasis: 'ebitda', multipleLaag: 4.6, multipleHoog: 5.4,
+    // Dit is de Brookz-categorie waar managementadvies/consultancy (CBS SBI 70.22, verreweg het
+    // grootste deelsegment binnen "specialistische zakelijke dienstverlening") onder valt; Brookz
+    // splitst dit niet verder uit naar consultancy vs. juridisch/architecten/reclame. Scope van dit
+    // profiel is bewust gericht op advies-/consultancybedrijven (uren-/projectgedreven, geen fysieke
+    // voorraad) — juridisch/architecten/reclame vallen hier qua naam onder maar hebben eigen dynamiek
+    // (bijv. beëdiging, portefeuilleverzekering) die dit profiel nog niet dekt; apart oppakken wanneer
+    // nodig, niet stilzwijgend aannemen dat dit profiel daar ook goed op past. Bron-status/exacte
+    // benchmarkgetallen: zie SECTORPROFIEL-BRONNEN.md (backend-only document, niet in dit publieke
+    // bestand — P1-IP-2, 25 sep 2026).
+    aiNormen: null, // P1-IP-2 (25 sep 2026): waarde nu uitsluitend backend (GET /mna/sectorprofielen); dit was de proprietary benchmarktekst
+    multipleBasis: 'ebitda', multipleLaag: null, multipleHoog: null, // P1-IP-2: waarden nu uitsluitend backend
     fases: [
       {id:'financieel',num:'I',title:'Financieel',desc:'Omzet, marge en onderhanden werk (onbelaste uren).',
        dataFields:[
@@ -1384,16 +1370,15 @@ var SECTOR_PROFIELEN = {
   // ── VERHUISBRANCHE ────────────────────────────────────────────────────────
   verhuizingen: {
     label: 'Verhuisbranche',
-    // Bron-status (15 sep 2026, zie SECTORPROFIEL-BRONNEN.md, Marcel: "bouw ook verhuisbranche in"):
-    // Brookz Overname Barometer H1-2025 (editie 22, blz. 9) heeft GEEN aparte categorie voor
-    // verhuisbedrijven — de dichtstbijzijnde, meest logische Brookz-categorie is "Automotive,
-    // Transport & Logistiek" (laagste 3,7 / gemiddeld 4,1 / hoogste 4,5), dezelfde die ook voor het
-    // 'transport'-sectorprofiel hierboven wordt gebruikt. Expliciet hergebruikt, niet apart
-    // "ontdekt" — verhuisbedrijven zijn wagenpark-/vergunningsintensieve vervoersbedrijven, wat deze
-    // categorie tot de best beschikbare, eerlijke benadering maakt. Bij twijfel of dit voor een
-    // specifiek verhuisbedrijf klopt: navragen, niet aannemen.
-    aiNormen: 'EBITDA-multiple (Brookz H1-2025, dichtstbijzijnde categorie Automotive/Transport & Logistiek — geen aparte Brookz-notering voor verhuisbedrijven): laagste 3,7x, gemiddeld 4,1x, hoogste 4,5x. Sector is kapitaal-/materieelintensief (verhuiswagens, liften, materiaal) en seizoensgevoelig (piekdrukte zomer/maandwisselingen) — geen aparte gebronde marge-/FTE-normen beschikbaar.',
-    multipleBasis: 'ebitda', multipleLaag: 3.7, multipleHoog: 4.5,
+    // Geen aparte brancheCategorie beschikbaar voor verhuisbedrijven (Marcel: "bouw ook verhuisbranche
+    // in") — hergebruikt expliciet dezelfde multiple-range als het 'transport'-sectorprofiel hierboven
+    // (wagenpark-/vergunningsintensieve vervoersbedrijven, best beschikbare eerlijke benadering,
+    // geen 1-op-1 gebronde waarde voor déze sector specifiek). Bij twijfel of dit voor een specifiek
+    // verhuisbedrijf klopt: navragen, niet aannemen. Bron-status/exacte benchmarkgetallen: zie
+    // SECTORPROFIEL-BRONNEN.md (backend-only document, niet in dit publieke bestand — P1-IP-2,
+    // 25 sep 2026).
+    aiNormen: null, // P1-IP-2 (25 sep 2026): waarde nu uitsluitend backend (GET /mna/sectorprofielen); dit was de proprietary benchmarktekst
+    multipleBasis: 'ebitda', multipleLaag: null, multipleHoog: null, // P1-IP-2: waarden nu uitsluitend backend
     fases: [
       {id:'financieel',num:'I',title:'Financieel',desc:'Omzet, marge en wagenpark/materieel.',
        dataFields:[

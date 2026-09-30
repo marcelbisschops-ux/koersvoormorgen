@@ -263,6 +263,7 @@ document.addEventListener('keydown', function (e) {
 
 function pct(id){var f=FASES.find(function(x){return x.id===id;});if(!f)return 0;var d=f.items.filter(function(_,i){return S.checked[id+'_'+i];}).length;return f.items.length?Math.round(d/f.items.length*100):0;}
 function checkOmzetSom(){
+  if(!S.data)return;
   var ids=['omzetJaarwerk','omzetAdvies','omzetLoon','omzetFiscaal','omzetOverig'];
   var som=0;
   var heeftWaarden=false;
@@ -610,6 +611,30 @@ window.addEventListener('beforeunload',function(){
 // -- BANKMUTATIES STATE (sessie 4, hoort bij fase "financieel") --
 var BANKMUTATIES = null; // null = nog niet geladen; anders array van imports
 var BANKMUTATIES_REGELS = {}; // { importId: [regels] }, on-demand geladen bij uitklappen
+var BANKMUTATIES_CLASSIFICATIE_BEZIG = false;
+var DD_CLASSIFICATIE_LABELS = { omzet: 'Omzet', leverancier: 'Leverancier', personeel: 'Personeel', belasting: 'Belasting', lening_financiering: 'Lening/financiering', prive_gelieerd: 'Privé/gelieerd', overig_zakelijk: 'Overig zakelijk', onbekend: 'Onbekend' };
+
+// N-54, gap #3: classificeert transacties in batches van max. 300 per aanroep (zie backend-comment) —
+// bij meer dan 300 nog-niet-geclassificeerde regels toont dit een melding en moet nogmaals geklikt
+// worden; idempotent (herhaalde klik kost niets extra voor al geclassificeerde regels).
+function classificeerBankmutaties() {
+  if (!S.code || !isTussen() || BANKMUTATIES_CLASSIFICATIE_BEZIG) return;
+  BANKMUTATIES_CLASSIFICATIE_BEZIG = true;
+  renderApp();
+  fetchMetTimeout(WORKER + '/mna/bankmutaties/classificeer', {
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'x-tussen-key': S.code },
+    body: JSON.stringify({ traject_id: S.code })
+  }, 60000).then(function(r){ return r.json(); })
+    .then(function(d){
+      BANKMUTATIES_CLASSIFICATIE_BEZIG = false;
+      if (d && d.ok) {
+        var msg = d.melding || (d.aantal_geclassificeerd + ' transactie(s) geclassificeerd.' + (d.aantal_resterend ? ' Nog ' + d.aantal_resterend + ' te gaan — klik nogmaals.' : ''));
+        toast(msg, 'ok');
+        Object.keys(BANKMUTATIES_REGELS).forEach(function(importId){ laadBankmutatiesRegels(importId); });
+      } else { toast((d && d.error) || 'Classificeren mislukt.', 'err'); }
+      renderApp();
+    }).catch(function(){ BANKMUTATIES_CLASSIFICATIE_BEZIG = false; toast('Verbindingsfout.', 'err'); renderApp(); });
+}
 
 function laadBankmutaties() {
   if (!S.code) return;
@@ -686,12 +711,26 @@ function renderCashflowSectie() {
     + '<div style="font-size:10px;color:var(--muted);margin-top:2px">Periode: '+esc(BANKMUTATIES_CASHFLOW.periode_start||'')+' t/m '+esc(BANKMUTATIES_CASHFLOW.periode_eind||'')+' &middot; '+(BANKMUTATIES_CASHFLOW.aantal_regels_in_periode||0)+' transactie(s) in periode'
     + (BANKMUTATIES_CASHFLOW.aantal_regels_buiten_periode ? ', '+BANKMUTATIES_CASHFLOW.aantal_regels_buiten_periode+' buiten periode' : '')
     + (BANKMUTATIES_CASHFLOW.aantal_regels_onherkenbare_datum ? ', '+BANKMUTATIES_CASHFLOW.aantal_regels_onherkenbare_datum+' met onherkenbare datum (niet meegeteld)' : '')
-    + '</div></div>';
+    + '</div>'
+    + renderVolledigheidscontroleNotitie(BANKMUTATIES_CASHFLOW.volledigheid)
+    + '</div>';
+}
+
+// N-54, gap #2: feitelijke melding (nooit een hard oordeel — de begeleider/verkoper kan een lege
+// maand alsnog bevestigen als terecht) dat een of meer maanden binnen de 12-maandenperiode geen
+// enkele geregistreerde mutatie hebben — een sterke indicatie dat een bankafschrift ontbreekt.
+function renderVolledigheidscontroleNotitie(v) {
+  if (!v || v.oordeel === 'compleet') return '';
+  return '<div style="font-size:10.5px;color:var(--gold-dark);margin-top:4px;padding:4px 8px;background:var(--gold-bg,rgba(201,168,76,.08));border-radius:4px">'
+    + '&#9888;&#65039; ' + v.aantal_lege_maanden + ' van de 12 maanden heeft/hebben geen enkele geregistreerde mutatie ('
+    + v.lege_maanden.map(function(m){ return m.slice(5,7)+'/'+m.slice(2,4); }).join(', ')
+    + ') — controleer of hiervoor een bankafschrift ontbreekt.</div>';
 }
 
 // -- RED-FLAG-ANALYSE (sessie 5, alleen begeleider — zelfde zichtbaarheid als Koper-fit strategie) --
 var BANKMUTATIES_ANALYSE = null; // null = nog niet geladen; false = geladen maar nog geen analyse; object = wel
 var BANKMUTATIES_ANALYSE_BEZIG = false;
+var DD_BEVINDINGEN = null; // N-54: persistente bevindingen (dd_bevinding), null = nog niet geladen
 
 function laadRedFlagAnalyse() {
   if (!S.code || !isTussen()) return;
@@ -699,6 +738,46 @@ function laadRedFlagAnalyse() {
     .then(function(r){ return r.json(); })
     .then(function(d){ BANKMUTATIES_ANALYSE = (d && d.analyse) || false; renderApp(); })
     .catch(function(){ BANKMUTATIES_ANALYSE = false; renderApp(); });
+  laadDdBevindingen();
+}
+
+// N-54: bewust apart van laadRedFlagAnalyse() (die het meest recente AI-rapport ophaalt) — dit haalt
+// de PERSISTENTE, per-bevinding lifecycle op (dd_bevinding), die blijft bestaan over meerdere
+// her-analyses heen en waar de begeleider zelf een status aan geeft.
+function laadDdBevindingen() {
+  if (!S.code || !isTussen()) return;
+  fetch(WORKER + '/mna/dd-bevinding/lijst/' + encodeURIComponent(S.code), { headers: { 'x-tussen-key': S.code } })
+    .then(function(r){ return r.json(); })
+    .then(function(d){ DD_BEVINDINGEN = (d && d.ok && d.bevindingen) || []; renderApp(); })
+    .catch(function(){ DD_BEVINDINGEN = []; renderApp(); });
+}
+
+var DD_BEVINDING_STATUS_LABELS = { open: 'Open', vraag_uitstaand: 'Vraag uitstaand', beantwoord: 'Beantwoord', gesloten: 'Gesloten', vervallen: 'Vervallen' };
+
+function wijzigDdBevindingStatus(id, status) {
+  if (!S.code || !isTussen()) return;
+  fetchMetTimeout(WORKER + '/mna/dd-bevinding/' + encodeURIComponent(id) + '/status', {
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'x-tussen-key': S.code },
+    body: JSON.stringify({ status: status })
+  }, 30000).then(function(r){ return r.json(); })
+    .then(function(d){
+      if (d && d.ok) { toast('Status bijgewerkt.', 'ok'); laadDdBevindingen(); }
+      else { toast((d && d.error) || 'Bijwerken mislukt.', 'err'); laadDdBevindingen(); }
+    }).catch(function(){ toast('Verbindingsfout.', 'err'); laadDdBevindingen(); });
+}
+
+// N-54, gap #9: zet een bevinding om in een gewone Q&A-vraag (bestaand mna_qa-mechanisme, geen nieuw
+// systeem — zie MASTER-reuse-besluit). Na aanmaken staat de vraag gewoon tussen de andere Q&A-items
+// van deze fase; dit knopje bespaart alleen het handmatig overtypen van de bevinding.
+function maakDdBevindingVraag(id) {
+  if (!S.code || !isTussen()) return;
+  fetchMetTimeout(WORKER + '/mna/dd-bevinding/' + encodeURIComponent(id) + '/naar-vraag', {
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'x-tussen-key': S.code }
+  }, 30000).then(function(r){ return r.json(); })
+    .then(function(d){
+      if (d && d.ok) { toast('Vraag #' + d.vraag_nr + ' aangemaakt. Zichtbaar bij Q&A hieronder.', 'ok'); laadDdBevindingen(); }
+      else { toast((d && d.error) || 'Aanmaken mislukt.', 'err'); }
+    }).catch(function(){ toast('Verbindingsfout.', 'err'); });
 }
 
 function genereerRedFlagAnalyse() {
@@ -714,7 +793,7 @@ function genereerRedFlagAnalyse() {
   }, 60000).then(function(r){ return r.json(); })
     .then(function(d){
       BANKMUTATIES_ANALYSE_BEZIG = false;
-      if (d && d.ok) { BANKMUTATIES_ANALYSE = { resultaat: d.resultaat, aantal_regels_geanalyseerd: d.aantal_regels_geanalyseerd, gegenereerd_op: Date.now() }; }
+      if (d && d.ok) { BANKMUTATIES_ANALYSE = { resultaat: d.resultaat, aantal_regels_geanalyseerd: d.aantal_regels_geanalyseerd, gegenereerd_op: Date.now() }; laadDdBevindingen(); }
       else { toast((d && d.error) || 'Analyse mislukt.', 'err'); }
       renderApp();
     }).catch(function(){ BANKMUTATIES_ANALYSE_BEZIG = false; toast('Verbindingsfout.', 'err'); renderApp(); });
@@ -735,9 +814,17 @@ function renderRedFlagAnalyseSectie() {
   // ze de prijs?"): de kop was even onopvallend als elk ander sectiekopje, en nergens stond expliciet
   // dát een redflag bewust GEEN automatische invloed heeft op de waardering/prijs (dat is en blijft
   // zo, GOUDEN STANDAARD werkregel 8 — hier alleen expliciet gemaakt wat al zo werkte).
+  // N-74 (26 sep 2026, Marcel productbesluit "Bankanalyse ook pre-LOI"): dezelfde engine/UI, alleen
+  // het label en de duiding verschillen op basis van het bestaande loiGetekend-onderscheid (geen
+  // nieuw fase-/toegangsmodel nodig — bank-DD-upload/analyse had al GEEN eigen fase-gate, zie
+  // MASTER N-74: alleen de framing ontbrak om dit als bewust vroege, lichtere analyse te
+  // positioneren t.o.v. de volledige Bank-DD later in het traject).
+  var quickScanFase = typeof isLoiGetekend === 'function' && !isLoiGetekend();
   var html = '<div style="margin-top:1rem;padding-top:1rem;border-top:2px solid var(--gold)">'
-    + '<div style="font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--gold-dark);margin-bottom:.3rem">&#9888;&#65039; Red-flag-analyse <span style="font-weight:400;text-transform:none;letter-spacing:normal;color:var(--muted)">(alleen zichtbaar voor u)</span></div>'
-    + '<div style="font-size:11px;color:var(--muted);margin-bottom:.6rem;line-height:1.5">Kwalitatieve signalen uit de bankmutaties — bedoeld om zelf te beoordelen en desgewenst mee te nemen in het gesprek met de verkoper. Deze signalen passen <strong>nooit automatisch</strong> de waardering, multiple of prijs aan.</div>';
+    + '<div style="font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--gold-dark);margin-bottom:.3rem">&#9888;&#65039; '+(quickScanFase?'Financiële Quick Scan':'Volledige Bank-DD')+' <span style="font-weight:400;text-transform:none;letter-spacing:normal;color:var(--muted)">(alleen zichtbaar voor u)</span></div>'
+    + '<div style="font-size:11px;color:var(--muted);margin-bottom:.6rem;line-height:1.5">'+(quickScanFase
+        ? 'Een vroege financiële analyse ter ondersteuning van waardering, bieding en LOI-voorwaarden — dit is <strong>geen volledige due diligence</strong>. '
+        : '')+'Kwalitatieve signalen uit de bankmutaties — bedoeld om zelf te beoordelen en desgewenst mee te nemen in het gesprek met de verkoper. Deze signalen passen <strong>nooit automatisch</strong> de waardering, multiple of prijs aan.</div>';
 
   if (BANKMUTATIES_ANALYSE_BEZIG) {
     html += '<div style="font-size:12px;color:var(--muted);display:flex;align-items:center;gap:8px"><div class="spin" style="border-color:var(--border2);border-top-color:var(--teal);width:13px;height:13px;flex-shrink:0"></div>Analyse wordt gegenereerd (kan een minuut duren)...</div></div>';
@@ -752,24 +839,42 @@ function renderRedFlagAnalyseSectie() {
   }
 
   var res = BANKMUTATIES_ANALYSE.resultaat;
-  var ernstKleur = { laag: 'var(--muted)', midden: 'var(--gold)', hoog: 'var(--red)' };
-  html += '<div style="font-size:10px;color:var(--muted);margin-bottom:.6rem">Gegenereerd op basis van '+(BANKMUTATIES_ANALYSE.aantal_regels_geanalyseerd||0)+' transactieregel(s) · '+(BANKMUTATIES_ANALYSE.gegenereerd_op?new Date(BANKMUTATIES_ANALYSE.gegenereerd_op).toLocaleString('nl-NL',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'')+'</div>';
+  var ernstKleur = { laag: 'var(--muted)', midden: 'var(--gold)', hoog: 'var(--red)', onbekend: 'var(--muted)' };
+  html += '<div style="font-size:10px;color:var(--muted);margin-bottom:.6rem">Laatste analyse op basis van '+(BANKMUTATIES_ANALYSE.aantal_regels_geanalyseerd||0)+' transactieregel(s) · '+(BANKMUTATIES_ANALYSE.gegenereerd_op?new Date(BANKMUTATIES_ANALYSE.gegenereerd_op).toLocaleString('nl-NL',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'')+'</div>';
   if (res.samenvatting) html += '<div style="font-size:12px;color:var(--sub);line-height:1.6;background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:.6rem .8rem;margin-bottom:.75rem">'+esc(res.samenvatting)+'</div>';
 
+  // N-54: de bevindingen zelf tonen we vanuit DD_BEVINDINGEN (persistent, met lifecycle-status) i.p.v.
+  // vanuit het vluchtige AI-rapport van dit ene analyseresultaat — zo blijft een bevinding zichtbaar
+  // en behoudt hij zijn status ook na een her-analyse (zie persisteerBevindingen(), backend-repo).
+  if (DD_BEVINDINGEN === null) {
+    html += '<div style="font-size:11px;color:var(--muted);font-style:italic">Bevindingen laden...</div></div>';
+    return html;
+  }
+  var perCategorie = {};
+  DD_BEVINDINGEN.forEach(function(b){ (perCategorie[b.categorie] = perCategorie[b.categorie] || []).push(b); });
+
   Object.keys(RED_FLAG_CATEGORIE_LABELS).forEach(function(cat){
-    var catData = (res.categorieen || {})[cat];
-    var bevindingen = (catData && catData.bevindingen) || [];
+    var bevindingen = perCategorie[cat] || [];
     html += '<div style="margin-bottom:.6rem">'
       + '<div style="font-size:11.5px;font-weight:600;color:var(--head);margin-bottom:.3rem">'+esc(RED_FLAG_CATEGORIE_LABELS[cat])+'</div>';
     if (!bevindingen.length) {
       html += '<div style="font-size:11px;color:var(--muted);font-style:italic;padding-left:.5rem">Geen bijzonderheden gevonden.</div>';
     } else {
       bevindingen.forEach(function(b){
-        var kleur = ernstKleur[b.ernst] || 'var(--muted)';
-        html += '<div style="padding:5px 8px;background:var(--card);border-left:3px solid '+kleur+';border-radius:0 var(--r) var(--r) 0;margin-bottom:4px">'
-          + '<div style="display:flex;align-items:center;gap:6px"><span style="font-size:11.5px;font-weight:600;color:var(--sub)">'+esc(b.signaal||'')+'</span><span style="font-size:9px;font-weight:700;text-transform:uppercase;color:'+kleur+'">'+esc(b.ernst||'')+'</span></div>'
-          + (b.toelichting?'<div style="font-size:11px;color:var(--mid);margin-top:2px">'+esc(b.toelichting)+'</div>':'')
-          + (b.bewijs?'<div style="font-size:10px;color:var(--muted);margin-top:2px;font-style:italic">'+esc(b.bewijs)+'</div>':'')
+        var kleur = ernstKleur[b.materialiteit] || 'var(--muted)';
+        var vervallenStijl = (b.status === 'vervallen') ? 'opacity:.55' : '';
+        html += '<div style="padding:5px 8px;background:var(--card);border-left:3px solid '+kleur+';border-radius:0 var(--r) var(--r) 0;margin-bottom:4px;'+vervallenStijl+'">'
+          + '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">'
+          + '<span style="font-size:11.5px;font-weight:600;color:var(--sub);flex:1 1 auto">'+esc(b.titel||'')+'</span>'
+          + '<span style="font-size:9px;font-weight:700;text-transform:uppercase;color:'+kleur+'">'+esc(b.materialiteit||'')+'</span>'
+          + '<select onchange="wijzigDdBevindingStatus(\''+esc(b.id)+'\',this.value)" style="font-size:10px;padding:2px 4px;border:1px solid var(--border);border-radius:4px;background:var(--bg);color:var(--sub)">'
+          + Object.keys(DD_BEVINDING_STATUS_LABELS).map(function(s){ return '<option value="'+s+'"'+(b.status===s?' selected':'')+'>'+DD_BEVINDING_STATUS_LABELS[s]+'</option>'; }).join('')
+          + '</select>'
+          + '</div>'
+          + (b.omschrijving?'<div style="font-size:11px;color:var(--mid);margin-top:2px">'+esc(b.omschrijving)+'</div>':'')
+          + (b.qa_id
+              ? '<div style="font-size:10px;color:var(--muted);margin-top:3px">&#10003; Vraag hiervan gemaakt (zie Q&amp;A hieronder)</div>'
+              : '<div style="margin-top:3px"><button class="btn-sm" style="background:none;border:1px solid var(--border);color:var(--sub);border-radius:4px;padding:2px 8px;font-size:10px;cursor:pointer" onclick="maakDdBevindingVraag(\''+esc(b.id)+'\')">Maak hier een vraag van</button></div>')
           + '</div>';
       });
     }
@@ -862,15 +967,23 @@ function renderBankmutatiesSectie(faseId) {
         } else if (!regels.length) {
           regelsHtml = '<div style="font-size:11px;color:var(--muted);padding:.5rem 0">Geen transactieregels.</div>';
         } else {
-          regelsHtml = '<div style="overflow-x:auto;margin-top:.4rem"><table style="width:100%;border-collapse:collapse;font-size:11px">'
-            + '<thead><tr style="text-align:left;color:var(--muted)"><th style="padding:3px 6px">Datum</th><th style="padding:3px 6px">Bedrag</th><th style="padding:3px 6px">Tegenpartij</th><th style="padding:3px 6px">Omschrijving</th></tr></thead><tbody>'
+          var aantalOnbeklasseerd = regels.filter(function(r){ return !r.classificatie; }).length;
+          var classificeerKnopHtml = (isTussen() && aantalOnbeklasseerd)
+            ? '<button class="btn-sm" '+(BANKMUTATIES_CLASSIFICATIE_BEZIG?'disabled':'')+' style="background:none;border:1px solid var(--border2);color:var(--sub);border-radius:4px;padding:2px 8px;font-size:10px;cursor:'+(BANKMUTATIES_CLASSIFICATIE_BEZIG?'default':'pointer')+';margin-bottom:.4rem" onclick="classificeerBankmutaties()">'+(BANKMUTATIES_CLASSIFICATIE_BEZIG?'Classificeren...':'Classificeer transacties ('+aantalOnbeklasseerd+' nog niet geclassificeerd, alle imports van dit traject)')+'</button>'
+            : '';
+          regelsHtml = classificeerKnopHtml
+            + '<div style="overflow-x:auto;margin-top:.4rem"><table style="width:100%;border-collapse:collapse;font-size:11px">'
+            + '<thead><tr style="text-align:left;color:var(--muted)"><th style="padding:3px 6px">Datum</th><th style="padding:3px 6px">Bedrag</th><th style="padding:3px 6px">Tegenpartij</th><th style="padding:3px 6px">Omschrijving</th><th style="padding:3px 6px">Classificatie</th></tr></thead><tbody>'
             + regels.map(function(r){
                 var bedragKleur = (r.bedrag||0) < 0 ? 'var(--red)' : 'var(--teal)';
+                var classLabel = DD_CLASSIFICATIE_LABELS[r.classificatie] || (r.classificatie ? r.classificatie : '—');
+                var classTitel = r.classificatie_zekerheid ? ('zekerheid: '+r.classificatie_zekerheid) : '';
                 return '<tr style="border-top:1px solid var(--border)">'
                   + '<td style="padding:3px 6px;white-space:nowrap">'+esc(r.datum||'—')+'</td>'
                   + '<td style="padding:3px 6px;white-space:nowrap;color:'+bedragKleur+'">&euro; '+(r.bedrag!==null&&r.bedrag!==undefined?Number(r.bedrag).toLocaleString('nl-NL',{minimumFractionDigits:2,maximumFractionDigits:2}):'—')+'</td>'
                   + '<td style="padding:3px 6px">'+esc(r.tegenpartij||'—')+'</td>'
                   + '<td style="padding:3px 6px">'+esc(r.omschrijving||'—')+'</td>'
+                  + '<td style="padding:3px 6px;white-space:nowrap" title="'+esc(classTitel)+'">'+esc(classLabel)+'</td>'
                   + '</tr>';
               }).join('')
             + '</tbody></table></div>';
@@ -1711,6 +1824,18 @@ function _autoFillFromExtractionBody(faseId, velden, forceOverwrite, docNaam) {
     setIfEmpty('juridisch_ipRegistraties',velden.ip_registraties);
     setIfEmpty('juridisch_klantcontracten',velden.klantcontracten_looptijd);
     setIfEmpty('strategisch_groei',velden.groeimotor);
+    // P2-65 (25 sep 2026, architectuurcorrectie): deze functie is sectoronafhankelijk — de 7
+    // financieel_resultaat/balansTotaal/liquideMiddelen/kortlopendeSchulden/langlopendeSchulden/
+    // rentelasten/aflossingVerplicht-regels hierboven (bij mkb toegevoegd) draaien al onvoorwaardelijk
+    // voor ELKE sector. Alleen het veld-ID voor "eigen vermogen" verschilt per sector (eigVermoeden
+    // hierboven voor mkb/bouw/transport/handel/consultancy/verhuizingen, eigenVermogen hieronder voor
+    // accountancy/zorg/itsoftware) — dat is dus de enige regel die hier nog apart hoeft te staan.
+    // (Eerder per sector letterlijk gedupliceerd; opgeruimd toen dat de derde bijna-identieke kopie
+    // dreigde te worden — zie de gedeelde BALANS_FASE2_VELDEN-constante in de backend.)
+    setIfEmpty('financieel_eigenVermogen',cleanGetal(velden.eigen_vermogen));
+    // P2-65 (25 sep 2026): ISO/SOC2/NEN7510-certificering (itsoftware, compliance_iso — apart gemeld
+    // in dezelfde bevinding, los van de balansvelden hierboven).
+    setIfEmpty('compliance_iso',velden.iso_certificering);
   }
 }
 
@@ -1730,16 +1855,15 @@ async function consolideerAnalyse(faseId){
   S.aiLoading[faseId]=true;renderApp();
   var lines=[];f.dataFields.forEach(function(df){var v=S.data[f.id+'_'+df.id];if(v&&!df.header)lines.push(df.label+': '+v);});
   var analyses=docs.map(function(d,i){return 'Doc '+(i+1)+': '+d.naam+'\n'+(d.analyse||'');}).join('\n---\n');
-  var prompt='Geconsolideerde M&A analyse voor fase '+f.title+' van '+esc(S.traject&&S.traject.kantoor_naam||S.code)+'. '+TAAL_REGELS+'\n\nVelden:\n'+(lines.join('\n')||'leeg')+'\n\nAnalyses:\n'+analyses+'\n\nGeef trends, rode vlaggen en aanbevelingen — concreet, met ## koppen. Elke rode vlag en trend moet terug te voeren zijn op een concrete waarde of documentpassage hierboven; verzin geen verband, oorzaak of cijfer. Spreken twee bronnen elkaar tegen, noem dan BEIDE waarden en markeer het conflict — kies of reconstrueer niet zelf. Aanbevelingen mogen geen nieuw feit introduceren.';
   try{
-    // Zelfde bug + fix als generateAI() in mna/06-schermen.js (Foutpropagatie-check, 12 sep 2026):
-    // /ai geeft één JSON-object {text:...} terug, geen SSE-stream — de oude reader/decoder-lus vond
-    // dus nooit een match en col bleef altijd leeg.
-    var resp=await fetchMetTimeout(WORKER+'/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}]})},60000);
+    // P1-IP-4 (27 sep 2026): instructietekst + AI-aanroep verhuisd naar worker/19-info-fases.js
+    // (/mna/analyse/consolideer/genereer) — hier alleen nog de eigen, al zichtbare DD-velden en
+    // documentanalyses als data, geauthenticeerd via S.code (rolVanCode, zelfde model als /mna/save).
+    var resp=await fetchMetTimeout(WORKER+'/mna/analyse/consolideer/genereer',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:S.code,faseTitel:f.title,dataLines:lines,analyses:analyses,kantoorNaam:S.traject&&S.traject.kantoor_naam})},60000);
     if(!resp.ok)throw new Error('HTTP '+resp.status);
     var rd=await resp.json();
-    if(!rd.text)throw new Error(rd.error||'Leeg antwoord');
-    S.aiTexts[faseId]=rd.text;
+    if(!rd.ok||!rd.tekst)throw new Error(rd.error||'Leeg antwoord');
+    S.aiTexts[faseId]=rd.tekst;
   }catch(e){S.aiTexts[faseId]='__ERROR__';}
   S.aiLoading[faseId]=false;renderApp();
 }
@@ -1922,6 +2046,14 @@ async function refreshData(){
       S.checked = {};
       if(d.data && d.data.length) loadDataFromDB(d.data);
       S.rol = d.rol;
+      // N-83 (27 sep 2026): ééns per sessie, ná de eerste geslaagde login, de volledige
+      // sectorprofielen (incl. benchmarkwaarden) alsnog ophalen — vóór login gaf laadSectorProfielen()
+      // hierboven alleen de gestripte structuur (zie mna/07-start-chat.js). Guard voorkomt herhaalde
+      // fetches bij elke refreshData()-aanroep (bijv. polling).
+      if (!S._volledigeSectorProfielenGeladen && typeof laadSectorProfielen === 'function' && S.code) {
+        S._volledigeSectorProfielenGeladen = true;
+        laadSectorProfielen(S.code);
+      }
       S.modules = d.modules || S.modules || null;
       S.tos_status = d.tos_status || null;
       syncDocVeldenVanTraject(d);
@@ -1942,8 +2074,10 @@ function uitloggen(){
   Object.keys(DOCS).forEach(function(k){delete DOCS[k];});
   BANKMUTATIES=null;
   Object.keys(BANKMUTATIES_REGELS).forEach(function(k){delete BANKMUTATIES_REGELS[k];});
+  BANKMUTATIES_CLASSIFICATIE_BEZIG=false;
   BANKMUTATIES_ANALYSE=null;
   BANKMUTATIES_ANALYSE_BEZIG=false;
+  DD_BEVINDINGEN=null;
   BANKMUTATIES_CASHFLOW=null;
   BANKMUTATIES_CASHFLOW_PERIODE=12;
   // Bugfix 19 aug 2026 (KRITIEK, cross-path-informatielek-audit F5): CHAT (mna/07-start-chat.js) is
