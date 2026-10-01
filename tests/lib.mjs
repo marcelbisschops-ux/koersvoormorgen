@@ -251,3 +251,85 @@ export function samenvatting() {
   }
   return resultaten.fail === 0;
 }
+
+// ── N-104 (1 okt 2026): opruimen van EIGEN synthetische testdata op STAGING ──
+// Sinds besluit D1 mag ADMIN_KEY een traject van een externe adviseur niet meer verwijderen. Tests die
+// via /adviseur/create een (extern) testtraject maken, ruimen het op via de staging-only route
+// /test/opruimen (backend worker/39-test-opruiming.js): eigen testsleutel TEST_CLEANUP_KEY (uit
+// tests/.env.staging.local, nooit in productie), plus de tussen_code van precies dat traject als
+// eigendomsbewijs. De backend weigert alles wat niet aantoonbaar synthetisch is (adviseur op een
+// gereserveerd testdomein). Buiten staging doet deze helper niets en meldt dat (fail-closed).
+export const IS_STAGING_WORKER = WORKER.replace(/\/+$/, "") === "https://kantoorinzicht-staging.marcel-bisschops.workers.dev";
+async function testOpruimAanroep(body) {
+  if (!IS_STAGING_WORKER) return { ok: false, status: 0, reden: "test-opruiming alleen op staging" };
+  const sleutel = process.env.TEST_CLEANUP_KEY || "";
+  if (!sleutel) return { ok: false, status: 0, reden: "TEST_CLEANUP_KEY ontbreekt (tests/.env.staging.local)" };
+  // Begrensde herhaling bij 429 (gedeelde staging-rate-limiter) of een netwerkfout: max. 4 pogingen.
+  let laatste = { ok: false, status: 0, reden: "niet geprobeerd" };
+  for (const wacht of [0, 5000, 10000, 20000]) {
+    if (wacht) await new Promise((r) => setTimeout(r, wacht));
+    try {
+      const r = await fetch(WORKER.replace(/\/+$/, "") + "/test/opruimen", { method: "POST", headers: { "Content-Type": "application/json", "x-test-cleanup-key": sleutel }, body: JSON.stringify(body) });
+      const j = await r.json().catch(() => null);
+      laatste = { ok: r.status === 200 && !!(j && j.ok), status: r.status, json: j };
+      if (r.status !== 429) return laatste;
+    } catch (e) { laatste = { ok: false, status: 0, reden: "netwerkfout: " + e.message }; }
+  }
+  return laatste;
+}
+export async function ruimTestTrajectOp(code, tussenCode) {
+  if (!code || !tussenCode) return { ok: false, status: 0, reden: "code en tussen_code verplicht" };
+  return testOpruimAanroep({ type: "traject", code: String(code), tussen_code: String(tussenCode) });
+}
+export async function ruimTestKoopmandaatOp(id, tussenCode) {
+  if (!id || !tussenCode) return { ok: false, status: 0, reden: "id en tussen_code verplicht" };
+  return testOpruimAanroep({ type: "koopmandaat", id: String(id), tussen_code: String(tussenCode) });
+}
+
+// N-104: generieke opruiming voor suites die alleen de trajectcode bijhouden. Op staging: tussen_code
+// van het EIGEN testtraject uit de staging-D1 lezen → test-opruimroute (backend weigert alles wat niet
+// aantoonbaar synthetisch is). Alleen als die route het object niet als synthetische testdata
+// accepteert (bijv. een eigen/platformtraject zonder adviseur) valt dit terug op de gewone admin-delete,
+// die voor eigen trajecten onveranderd is toegestaan en voor externe trajecten (D1) blijft geweigerd.
+// Retourvorm compatibel met api(): { ok, status, json }.
+export async function ruimTrajectOp(code, adminKey) {
+  if (IS_STAGING_WORKER && code) {
+    let t = null;
+    try { t = d1("SELECT tussen_code FROM mna_trajecten WHERE id='" + String(code).replace(/'/g, "''") + "'")[0] || null; }
+    catch (e) { return { ok: false, status: 0, json: { ok: false, reden: 'D1-lookup mislukt: ' + String(e.message).slice(0, 120) } }; }
+    if (!t) return { ok: true, status: 404, json: { ok: true, reden: 'traject bestaat niet (meer)' } };
+    if (t.tussen_code) {
+      const r = await ruimTestTrajectOp(code, t.tussen_code);
+      if (r.ok) return { ok: true, status: r.status, json: r.json };
+      // Alleen terugvallen op de admin-delete als de route het object expliciet NIET als synthetische
+      // testdata herkent (bijv. een eigen/platformtraject). Bij 429/5xx/netwerk: echte reden teruggeven.
+      if (!(r.status === 403 && r.json && r.json.error === 'Geen synthetische testdata')) {
+        return { ok: false, status: r.status, json: r.json || { ok: false, reden: r.reden } };
+      }
+    }
+  }
+  const a = await api('POST', '/admin/delete/mna/' + code, { adminKey });
+  return { ok: !!(a.json && a.json.ok), status: a.status, json: a.json };
+}
+
+// N-104 / Breaker-bevinding (1 okt 2026): verwijder een testadviseur ALLEEN als er geen traject of
+// koopmandaat meer naar verwijst. Anders zou een mislukte trajectopruiming een "wees" achterlaten
+// (traject met een niet-bestaande eigenaar telt als extern: niet meer via de API op te ruimen). Bij een
+// D1-fout fail-closed: niet verwijderen. Retourvorm compatibel met api(): { ok, status, json }.
+export async function verwijderTestGebruiker(gid, adminKey) {
+  if (!gid) return { ok: false, status: 0, json: { ok: false, reden: 'geen gebruiker-id' } };
+  let nog;
+  try {
+    const q = "'" + String(gid).replace(/'/g, "''") + "'";
+    const r = d1('SELECT (SELECT COUNT(*) FROM mna_trajecten WHERE gebruiker_id=' + q + ') + (SELECT COUNT(*) FROM mna_koopmandaat WHERE gebruiker_id=' + q + ') AS n')[0];
+    nog = Number(r && r.n);
+  } catch (e) {
+    return { ok: false, status: 0, json: { ok: false, reden: 'D1-controle mislukt, testadviseur bewust niet verwijderd' } };
+  }
+  if (nog !== 0) {
+    console.warn('[verwijderTestGebruiker] ' + gid + ' NIET verwijderd: er verwijzen nog ' + nog + ' traject(en)/mandaat(en) naar (opruiming eerder mislukt).');
+    return { ok: false, status: 0, json: { ok: false, reden: 'nog ' + nog + ' traject(en)/mandaat(en) gekoppeld' } };
+  }
+  const a = await api('POST', '/gebruikers/verwijder/' + gid, { adminKey, body: {} });
+  return { ok: !!(a.json && a.json.ok), status: a.status, json: a.json };
+}

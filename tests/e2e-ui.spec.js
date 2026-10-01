@@ -15,7 +15,7 @@
 // ══════════════════════════════════════════════════════════════════
 
 import { test, expect } from '@playwright/test';
-import { api, leesAdminKey, WORKER, accepteerPlatformvoorwaarden } from './lib.mjs';
+import { api, leesAdminKey, WORKER, accepteerPlatformvoorwaarden, ruimTestTrajectOp, verwijderTestGebruiker } from './lib.mjs';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -323,8 +323,8 @@ test.describe('Rol Click-Through: documentcontent-race (regressie 12 sep 2026)',
   });
 
   test.afterAll(async () => {
-    if (verkoperCode) await api('POST', '/admin/delete/mna/' + verkoperCode, { adminKey: ADMIN });
-    if (gid) await api('POST', '/gebruikers/verwijder/' + gid, { adminKey: ADMIN, body: {} });
+    if (verkoperCode) await ruimTestTrajectOp(verkoperCode, tussenCode); // N-104: extern testtraject → staging-only opruimroute
+    if (gid) await verwijderTestGebruiker(gid, ADMIN);
   });
 
   test('snel na elkaar NDA dan LoI openen toont uiteindelijk alléén de LoI', async ({ page }) => {
@@ -387,8 +387,8 @@ test.describe('Login en rollen (eigen testtraject)', () => {
   });
 
   test.afterAll(async () => {
-    if (verkoperCode) await api('POST', '/admin/delete/mna/' + verkoperCode, { adminKey: ADMIN });
-    if (gid) await api('POST', '/gebruikers/verwijder/' + gid, { adminKey: ADMIN, body: {} });
+    if (verkoperCode) await ruimTestTrajectOp(verkoperCode, tussenCode); // N-104: extern testtraject → staging-only opruimroute
+    if (gid) await verwijderTestGebruiker(gid, ADMIN);
   });
 
   test('verkoper-code opent verkopersweergave', async ({ page }) => {
@@ -507,8 +507,8 @@ test.describe('Rol Click-Through: koper', () => {
   });
 
   test.afterAll(async () => {
-    if (trajectCode) await api('POST', '/admin/delete/mna/' + trajectCode, { adminKey: ADMIN });
-    if (gid) await api('POST', '/gebruikers/verwijder/' + gid, { adminKey: ADMIN, body: {} });
+    if (trajectCode) await ruimTestTrajectOp(trajectCode, tussenCode); // N-104: extern testtraject → staging-only opruimroute
+    if (gid) await verwijderTestGebruiker(gid, ADMIN);
   });
 
   test('koper-code opent koperweergave, geen begeleider-knoppen', async ({ page }) => {
@@ -576,8 +576,8 @@ test.describe('Rol Click-Through: meekijker', () => {
   });
 
   test.afterAll(async () => {
-    if (trajectCode) await api('POST', '/admin/delete/mna/' + trajectCode, { adminKey: ADMIN });
-    if (gid) await api('POST', '/gebruikers/verwijder/' + gid, { adminKey: ADMIN, body: {} });
+    if (trajectCode) await ruimTestTrajectOp(trajectCode, tussenCode); // N-104: extern testtraject → staging-only opruimroute
+    if (gid) await verwijderTestGebruiker(gid, ADMIN);
   });
 
   test('viewer-code werkt, voorwaarden-gate, scope_fase-filtering zichtbaar in UI', async ({ page }) => {
@@ -631,8 +631,8 @@ test.describe('Rol Click-Through: eigen specialist', () => {
   });
 
   test.afterAll(async () => {
-    if (trajectCode) await api('POST', '/admin/delete/mna/' + trajectCode, { adminKey: ADMIN });
-    if (gid) await api('POST', '/gebruikers/verwijder/' + gid, { adminKey: ADMIN, body: {} });
+    if (trajectCode) await ruimTestTrajectOp(trajectCode, tussenCode); // N-104: extern testtraject → staging-only opruimroute
+    if (gid) await verwijderTestGebruiker(gid, ADMIN);
   });
 
   test('begeleider voegt eigen specialist toe en ziet die terug', async () => {
@@ -694,8 +694,8 @@ test.describe('Documentknoppen module-gating', () => {
   });
 
   test.afterAll(async () => {
-    if (trajectCode) await api('POST', '/admin/delete/mna/' + trajectCode, { adminKey: ADMIN });
-    if (gid) await api('POST', '/gebruikers/verwijder/' + gid, { adminKey: ADMIN, body: {} });
+    if (trajectCode) await ruimTestTrajectOp(trajectCode, tussenCode); // N-104: extern testtraject → staging-only opruimroute
+    if (gid) await verwijderTestGebruiker(gid, ADMIN);
   });
 
   test('module contracten uit → documentknoppen vergrendeld', async ({ page }) => {
@@ -752,8 +752,8 @@ test.describe('Cross-entiteit databeveiliging (regressie 18 aug 2026)', () => {
   });
 
   test.afterAll(async () => {
-    if (verkoperCode) await api('POST', '/admin/delete/mna/' + verkoperCode, { adminKey: ADMIN });
-    if (gid) await api('POST', '/gebruikers/verwijder/' + gid, { adminKey: ADMIN, body: {} });
+    if (verkoperCode) await ruimTestTrajectOp(verkoperCode, tussenCode); // N-104: extern testtraject → staging-only opruimroute
+    if (gid) await verwijderTestGebruiker(gid, ADMIN);
   });
 
   test('snel wisselen van entiteit tijdens invullen mag data niet bij de verkeerde entiteit opslaan', async ({ page }) => {
@@ -849,8 +849,8 @@ test.describe('Gelijktijdige multi-upload', () => {
   });
 
   test.afterAll(async () => {
-    if (verkoperCode) await api('POST', '/admin/delete/mna/' + verkoperCode, { adminKey: ADMIN });
-    if (gid) await api('POST', '/gebruikers/verwijder/' + gid, { adminKey: ADMIN, body: {} });
+    if (verkoperCode) await ruimTestTrajectOp(verkoperCode, tussenCode); // N-104: extern testtraject → staging-only opruimroute
+    if (gid) await verwijderTestGebruiker(gid, ADMIN);
     if (tmpDir) fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 

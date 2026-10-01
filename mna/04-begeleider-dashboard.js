@@ -456,19 +456,20 @@ function renderLogin(){
 }
 
 // Gefaseerde koper-toegang: vrijgegeven categorieën uit het traject lezen.
-// null = "alles vrij" (oude trajecten, backward compat); array = alleen die fase_id's.
+// N-103 (1 okt 2026): zelfde regel als de backend (fail-closed) — niets ingesteld (null) betekent
+// "nog niets vrijgegeven", nooit meer "alles vrij". Array = alleen die fase_id's.
 function koperCatsVan(t){
-  if(!t || t.koper_categorieen==null) return null;
+  if(!t || t.koper_categorieen==null) return [];
   try{ var c=JSON.parse(t.koper_categorieen); return Array.isArray(c)?c:[]; }catch(e){ return []; }
 }
 
 // Modal: begeleider vinkt per DD-categorie aan wat de koper mag inzien
-function toonKoperToegangModal(app){
+function toonKoperToegangModal(app, naOpslaan){
   var t=S.traject||{};
   var fases=(window.FASES&&FASES.length)?FASES:[];
   var huidige=koperCatsVan(t);
-  // null (alles) → bij binaire oude vrijgave alles aangevinkt; anders de opgeslagen selectie
-  var voorGeselecteerd = huidige===null ? (t.koper_vrijgegeven?fases.map(function(f){return f.id;}):[]) : huidige;
+  // N-103: alleen wat expliciet is vrijgegeven staat aangevinkt (niets ingesteld = niets aangevinkt).
+  var voorGeselecteerd = huidige;
   var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:400;display:flex;align-items:center;justify-content:center;padding:1.5rem';
   var mo=document.createElement('div');mo.setAttribute('role','dialog');mo.setAttribute('aria-modal','true');mo.setAttribute('aria-labelledby','kopertoegang-modal-titel');mo.style.cssText='background:var(--panel);border-radius:10px;padding:1.75rem;max-width:520px;width:100%;max-height:90vh;overflow-y:auto';
   var rijen=fases.map(function(f){
@@ -510,7 +511,7 @@ function toonKoperToegangModal(app){
       secAuditLog('koper_categorieen_bijgewerkt',{aantal:cats.length});
       document.body.removeChild(ov);
       toast(cats.length?('Koper-toegang bijgewerkt ('+cats.length+' categorie'+(cats.length===1?'':'ën')+')'):'Koper-toegang volledig ingetrokken','ok');
-      renderBegeleiderDashboard(app);
+      if(typeof naOpslaan==='function') naOpslaan(); else renderBegeleiderDashboard(app);
     } else { errEl.style.display='block';errEl.textContent=r.error||'Fout bij opslaan';btn.disabled=false;btn.textContent='Opslaan'; }
   };
 }
@@ -949,10 +950,10 @@ function renderBegeleiderDashboard(app){
     // vindbaar"). Klikt nog steeds gewoon toonKoperToegangModal() aan, alleen de verpakking is nieuw.
     +(function(){
       var kc=koperCatsVan(t); var tot=(window.FASES&&FASES.length)||7; var lbl,kl,bg,bd;
-      if(kc===null){ lbl=t.koper_vrijgegeven?'Alles vrijgegeven aan koper':'Nog geen toegang gegeven'; }
-      else if(kc.length){ lbl=kc.length+' van de '+tot+' DD-categorieën vrijgegeven aan koper'; }
+      if(kc.length){ lbl=kc.length+' van de '+tot+' DD-categorieën vrijgegeven aan koper'; }
+      else if(t.koper_vrijgegeven){ lbl='Nog geen DD-categorieën vrijgegeven: de koper ziet nog geen dossierinhoud'; }
       else { lbl='Nog geen toegang gegeven'; }
-      var heeftToegang=(kc===null&&t.koper_vrijgegeven)||(kc&&kc.length);
+      var heeftToegang=kc.length>0;
       kl=heeftToegang?'var(--teal)':'var(--gold-dark)'; bg=heeftToegang?'var(--teal-bg)':'var(--gold-bg)'; bd=heeftToegang?'var(--teal)':'var(--gold)';
       return '<div style="background:'+bg+';border:1px solid '+bd+';border-radius:var(--r);padding:.85rem 1rem;margin-bottom:1rem;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">'
         +'<div style="display:flex;align-items:center;gap:10px"><span style="font-size:1.4rem">&#128275;</span><div><div style="font-size:13px;font-weight:600;color:'+kl+'">Koper-toegang</div><div style="font-size:11px;color:var(--muted);margin-top:2px">'+esc(lbl)+'</div></div></div>'

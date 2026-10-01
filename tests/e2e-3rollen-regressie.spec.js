@@ -39,7 +39,7 @@
 // ══════════════════════════════════════════════════════════════════
 
 import { test, expect } from '@playwright/test';
-import { api, leesAdminKey, WORKER, d1, accepteerPlatformvoorwaarden } from './lib.mjs';
+import { api, leesAdminKey, WORKER, d1, accepteerPlatformvoorwaarden, ruimTestTrajectOp, verwijderTestGebruiker } from './lib.mjs';
 import fs from 'fs';
 import path from 'path';
 
@@ -246,11 +246,12 @@ test.describe('KANTOORINZICHT 3-ROLLEN E2E', () => {
     // Cleanup draait ALTIJD, ook als bovenstaande setup of een van de tests hieronder faalde.
     const cleanupResultaten = [];
     if (trajectCode) {
-      const d = await api('POST', '/admin/delete/mna/' + trajectCode, { adminKey: ADMIN });
-      cleanupResultaten.push({ stap: 'traject verwijderd (API)', ok: !!(d.json && d.json.ok) });
+      // N-104: extern testtraject → staging-only test-opruimroute (ADMIN_KEY mag dit sinds D1 niet meer).
+      const d = await ruimTestTrajectOp(trajectCode, tussenCode);
+      cleanupResultaten.push({ stap: 'traject verwijderd (test-opruimroute)', ok: d.ok, detail: d.status + ' ' + (d.reden || JSON.stringify(d.json)) });
     }
     if (gid) {
-      const d = await api('POST', '/gebruikers/verwijder/' + gid, { adminKey: ADMIN, body: {} });
+      const d = await verwijderTestGebruiker(gid, ADMIN);
       cleanupResultaten.push({ stap: 'testadviseur verwijderd (API)', ok: !!(d.json && d.json.ok) });
     }
 
@@ -314,7 +315,7 @@ test.describe('KANTOORINZICHT 3-ROLLEN E2E', () => {
 
     // Harde teardown-assertie: cleanup moet 100% zijn, anders faalt de hele suite (exitcode 1) —
     // ongeacht of de rest van de matrix slaagde. "Als cleanup niet volledig 0 is: TEST = FAIL."
-    for (const r of cleanupResultaten) expect(r.ok, r.stap).toBe(true);
+    for (const r of cleanupResultaten) expect(r.ok, r.stap + (r.detail ? ' — ' + r.detail : '')).toBe(true);
     expect(d1Ok, 'onafhankelijke D1-telling toont overal 0 testdata').toBe(true);
   });
 

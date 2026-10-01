@@ -1,7 +1,7 @@
 // N-83 (27 sep 2026) — gerichte autorisatietest voor GET /mna/sectorprofielen (Breaker-bevinding 8:
 // er was nog geen enkele test die deze logica zelf bewijst). Draait tegen STAGING, volledig fictieve
 // testdata, ruimt zichzelf op.
-import { WORKER, leesAdminKey, api, check, kop, samenvatting, zetMfaUitVoorTest } from './lib.mjs';
+import { WORKER, leesAdminKey, api, check, kop, samenvatting, zetMfaUitVoorTest, ruimTrajectOp } from './lib.mjs';
 
 const ADMIN = leesAdminKey();
 if (!ADMIN) { console.log('Geen admin-key.'); process.exit(1); }
@@ -55,7 +55,7 @@ async function main() {
   check('nep-sessietoken: aiNormen null/afwezig', !heeftBenchmark(rNepToken), JSON.stringify(rNepToken.json).slice(0, 150));
 
   kop('OPRUIMEN');
-  await api('POST', '/admin/delete/mna/' + code, { adminKey: ADMIN });
+  await ruimTrajectOp(code, ADMIN);
   await api('POST', '/gebruikers/deactiveer/' + uit.json.id, { adminKey: ADMIN });
 
   samenvatting();

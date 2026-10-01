@@ -22,7 +22,7 @@
 import path from 'node:path';
 import os from 'node:os';
 import { pathToFileURL } from 'node:url';
-import { WORKER, leesAdminKey, api, check, kop, kleur, samenvatting, d1, D1_NAAM, sla_over, accepteerPlatformvoorwaarden } from './lib.mjs';
+import { WORKER, leesAdminKey, api, check, kop, kleur, samenvatting, d1, D1_NAAM, sla_over, accepteerPlatformvoorwaarden, verwijderTestGebruiker, ruimTrajectOp as ruimTrajectOpLib } from './lib.mjs';
 
 const ADMIN = leesAdminKey();
 const DOM = '@e2e-test.invalid';
@@ -48,12 +48,17 @@ async function maakFictieveAdviseur(tag) {
   return { email, wachtwoord: ww, gebruikerId: uit.json.id };
 }
 
+// N-104 / Breaker (1 okt 2026): alleen verwijderen als er geen traject/mandaat meer naar deze
+// testadviseur verwijst — anders blijft na besluit D1 een onverwijderbaar "wees"-traject achter.
 async function ruimGebruikerOp(gebruikerId) {
-  return api('POST', '/gebruikers/verwijder/' + gebruikerId, { adminKey: ADMIN });
+  return verwijderTestGebruiker(gebruikerId, ADMIN);
 }
 
+// N-104: op staging via de test-opruimroute (externe testtrajecten), anders de admin-delete. Op
+// PRODUCTIE bestaat de opruimroute bewust niet; externe testtrajecten blijven daar na besluit D1 staan
+// (bekende releaseblokkade, MASTER N-105) — de testadviseur wordt dan ook niet verwijderd (geen wezen).
 async function ruimTrajectOp(code) {
-  return api('POST', '/admin/delete/mna/' + code, { adminKey: ADMIN });
+  return ruimTrajectOpLib(code, ADMIN);
 }
 
 async function maakAdminTraject(kantoorNaam, extra) {

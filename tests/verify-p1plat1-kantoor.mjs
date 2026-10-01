@@ -1,7 +1,7 @@
 // Verificatiescript P1-PLAT-1 (kantoor/multi-user + Marilyn control-plane), 26 sep 2026.
 // Draait tegen STAGING, volledig fictieve testdata, ruimt zichzelf op.
 // Gebruik: ADMIN_KEY=... node tests/verify-p1plat1-kantoor.mjs
-import { WORKER, leesAdminKey, api, check, kop, samenvatting, zetMfaUitVoorTest } from './lib.mjs';
+import { WORKER, leesAdminKey, api, check, kop, samenvatting, zetMfaUitVoorTest, ruimTrajectOp } from './lib.mjs';
 
 const ADMIN = leesAdminKey();
 if (!ADMIN) { console.log('Geen admin-key.'); process.exit(1); }
@@ -104,7 +104,7 @@ async function main() {
 
   kop('OPRUIMEN');
   for (const code of [trajectCodeA, trajectCodeVanLid]) {
-    const del = await api('POST', '/admin/delete/mna/' + code, { adminKey: ADMIN });
+    const del = await ruimTrajectOp(code, ADMIN);
     check('traject ' + code + ' verwijderd', del.json && del.json.ok === true, JSON.stringify(del.json));
   }
   for (const gid of [gId1, uit2.json.id, uit3.json.id]) {

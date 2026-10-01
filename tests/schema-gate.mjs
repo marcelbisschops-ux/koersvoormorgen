@@ -29,7 +29,7 @@
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { WORKER, leesAdminKey, heeftVlag, api, kleur, zetMfaUitVoorTest, accepteerPlatformvoorwaarden } from './lib.mjs';
+import { WORKER, leesAdminKey, heeftVlag, api, kleur, zetMfaUitVoorTest, accepteerPlatformvoorwaarden, ruimTrajectOp } from './lib.mjs';
 
 const ADMIN = leesAdminKey();
 const UPDATE = heeftVlag('update');
@@ -84,7 +84,7 @@ let gebruikerId = null;
 const trajecten = [];
 
 async function opruimen() {
-  for (const code of trajecten) await api('POST', '/admin/delete/mna/' + code, { adminKey: ADMIN });
+  for (const code of trajecten) await ruimTrajectOp(code, ADMIN);
   if (gebruikerId) await api('POST', '/gebruikers/deactiveer/' + gebruikerId, { adminKey: ADMIN });
 }
 

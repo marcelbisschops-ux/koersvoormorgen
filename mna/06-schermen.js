@@ -1908,20 +1908,10 @@ function bindAll(){
     el.onclick=function(){triggerFileUpload(el.dataset.fase);};
   });
   var vb=ge('vrijgeven-btn');
-  if(vb)vb.onclick=async function(){
-    var auth=S._bgKey||'';
-    var r=await fetch(WORKER+'/mna/admin/vrijgeven/'+S.traject.id,{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':auth}}).then(function(x){return x.json();}).catch(function(){return{};});
-    if(r.ok){S.traject.koper_vrijgegeven=1;renderApp();}
-    else if(r.nda_niet_getekend){
-      var doorgaan=confirm("\u26a0 De NDA is nog NIET getekend.\n\nKoper krijgt toegang zonder geheimhoudingsovereenkomst. Toch vrijgeven?");
-      if(doorgaan){
-        var r2=await fetch(WORKER+'/mna/admin/vrijgeven/'+S.traject.id+'?force=1',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':auth}}).then(function(x){return x.json();}).catch(function(){return{};});
-        if(r2.ok){S.traject.koper_vrijgegeven=1;renderApp();}
-        else toast('Fout: '+(r2.error||'onbekend'),'err');
-      }
-    }
-    else toast('Fout: '+(r.error||'onbekend'),'err');
-  };
+  // N-103 (1 okt 2026): de koper krijgt alleen toegang per expliciet vrijgegeven DD-categorie (backend
+  // fail-closed). Een binaire "vrijgeven" zonder categorieën zou de koper niets laten zien — deze knop
+  // opent daarom de categorie-keuze (inclusief de bestaande NDA-waarschuwing).
+  if(vb)vb.onclick=function(){ toonKoperToegangModal(null, function(){ renderApp(); }); };
   // Koper reactie knoppen
   // Q&A laden en versturen — vraag óf tegenvoorstel; begeleider kan direct vanuit dit scherm reageren
   var qaCurFase=FASES[S.fase];

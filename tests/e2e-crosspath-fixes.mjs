@@ -8,7 +8,7 @@
 // Draaien: node tests/e2e-crosspath-fixes.mjs --key=ADMIN_KEY
 //          ADMIN_KEY=... node tests/e2e-crosspath-fixes.mjs
 // ══════════════════════════════════════════════════════════════════
-import { WORKER, leesAdminKey, api, check, kop, kleur, samenvatting, sla_over, zetMfaUitVoorTest, accepteerPlatformvoorwaarden } from './lib.mjs';
+import { WORKER, leesAdminKey, api, check, kop, kleur, samenvatting, sla_over, zetMfaUitVoorTest, accepteerPlatformvoorwaarden, ruimTestTrajectOp } from './lib.mjs';
 
 const ADMIN = leesAdminKey();
 const TEST_EMAIL_DOMEIN = '@e2e-test.koersvoormorgen.invalid';
@@ -27,12 +27,14 @@ if (!ADMIN) {
 
 let opruimGebruikerId = null;
 let opruimTrajecten = [];
+const opruimTussen = {}; // code → tussen_code (eigendomsbewijs voor de N-104-opruimroute)
 
 async function opruimen() {
   kop('OPRUIMEN · Testdata verwijderen');
   for (const code of opruimTrajecten) {
-    const r = await api('POST', '/admin/delete/mna/' + code, { adminKey: ADMIN });
-    check('traject ' + code + ' verwijderd', r.json && r.json.ok === true, JSON.stringify(r.json));
+    // N-104: extern testtraject → staging-only test-opruimroute (ADMIN_KEY mag dit sinds D1 niet meer).
+    const r = await ruimTestTrajectOp(code, opruimTussen[code]);
+    check('traject ' + code + ' verwijderd', r.ok, r.status + ' ' + (r.reden || JSON.stringify(r.json)));
   }
   if (opruimGebruikerId) {
     const r = await api('POST', '/gebruikers/deactiveer/' + opruimGebruikerId, { adminKey: ADMIN });
@@ -67,6 +69,7 @@ async function main() {
     if (c.json && c.json.code) {
       traject = { code: c.json.code, koper_code: c.json.koper_code, tussen_code: c.json.tussen_code };
       opruimTrajecten.push(c.json.code);
+      opruimTussen[c.json.code] = c.json.tussen_code;
     }
   }
   if (!traject) { console.log('\n' + kleur('rood', 'Geen testtraject — resterende stappen overgeslagen.')); await opruimen(); return !samenvatting(); }
@@ -139,14 +142,20 @@ async function main() {
     check('verkoper-code zonder key krijgt Unauthorized', zonderKey.status === 401, 'status=' + zonderKey.status);
     const alsKoper = await api('GET', '/mna/waardering/geschiedenis/' + traject.koper_code);
     check('koper-code krijgt Unauthorized', alsKoper.status === 401, 'status=' + alsKoper.status);
+    // PILOT fase 2 (besluit D2, 1 okt 2026): dit traject is EXTERN — de centrale beheerdersmuur weigert
+    // admin hier nu. De begeleider zelf (eigen tussen_code) houdt toegang (geen overbreek).
     const metAdmin = await api('GET', '/mna/waardering/geschiedenis/' + traject.code, { adminKey: ADMIN });
-    check('admin-key op eigen/extern traject krijgt gewoon toegang (geen overbreek)', metAdmin.status === 200 && metAdmin.json && metAdmin.json.ok === true, 'status=' + metAdmin.status + ' ' + JSON.stringify(metAdmin.json));
+    check('admin-key op EXTERN traject → geweigerd (centrale muur, D2)', metAdmin.status === 401 || metAdmin.status === 403, 'status=' + metAdmin.status + ' ' + JSON.stringify(metAdmin.json));
+    const metBegeleider = await api('GET', '/mna/waardering/geschiedenis/' + traject.code, { headers: { 'x-tussen-key': traject.tussen_code } });
+    check('begeleider (eigen tussen_code) krijgt gewoon toegang (geen overbreek)', metBegeleider.status === 200 && metBegeleider.json && metBegeleider.json.ok === true, 'status=' + metBegeleider.status);
   }
 
   // ─────────────── F8 + F13: muur tegen externe adviseurs ───────────────
   kop('F8/F13 · Muur tegen externe adviseurs (gesprek-bijlagen + meekijkers)');
   {
-    const gAanm = await api('POST', '/mna/admin/gesprekken/' + traject.code, { adminKey: ADMIN, body: { datum: '2026-08-19', deelnemers: 'E2E test', verslag: 'E2E testgesprek' } });
+    // PILOT fase 2 (D2): aanmaken als begeleider (eigen tussen_code) — admin wordt op dit externe traject
+    // terecht geweigerd; de muur op het LEZEN van bijlagen door admin wordt hieronder getest.
+    const gAanm = await api('POST', '/mna/admin/gesprekken/' + traject.code, { headers: { 'x-tussen-key': traject.tussen_code }, body: { datum: '2026-08-19', deelnemers: 'E2E test', verslag: 'E2E testgesprek' } });
     check('gesprek aangemaakt (via tussen_code, geen admin-muur van toepassing op de eigenaar zelf)', gAanm.json && gAanm.json.ok === true, JSON.stringify(gAanm.json));
     const gesprekId = gAanm.json && gAanm.json.id;
 
@@ -543,7 +552,9 @@ async function main() {
     const bodVanBegeleider = await api('GET', '/mna/begeleider/biedingen/' + traject.code, { headers: { 'x-tussen-key': traject.tussen_code } });
     check('begeleider (eigen tussen_code) ziet het ingediende bod', bodVanBegeleider.json && bodVanBegeleider.json.ok === true && (bodVanBegeleider.json.biedingen || []).some(b => Number(b.bedrag) === 1234567), JSON.stringify(bodVanBegeleider.json));
     const bodVanAdmin = await api('GET', '/mna/begeleider/biedingen/' + traject.code, { adminKey: ADMIN });
-    check('admin op EXTERN traject krijgt GEEN biedingen (muur, bevinding 11 sep 2026)', bodVanAdmin.json && bodVanAdmin.json.ok === true && Array.isArray(bodVanAdmin.json.biedingen) && bodVanAdmin.json.biedingen.length === 0, JSON.stringify(bodVanAdmin.json));
+    // PILOT fase 2 (D2): de centrale muur weigert admin nu volledig (401/403); een lege lijst (oud gedrag)
+    // is even veilig. Nooit het bedrag.
+    check('admin op EXTERN traject krijgt GEEN biedingen (muur, bevinding 11 sep 2026)', (bodVanAdmin.status === 401 || bodVanAdmin.status === 403) || (bodVanAdmin.json && bodVanAdmin.json.ok === true && Array.isArray(bodVanAdmin.json.biedingen) && bodVanAdmin.json.biedingen.length === 0), bodVanAdmin.status + ' ' + JSON.stringify(bodVanAdmin.json));
 
     // Tarieven-events: kantoor_naam van dit externe traject moet gemaskeerd zijn in het admin-overzicht.
     const tarievenEvents = await api('GET', '/mna/admin/tarieven/events?gebruiker_id=' + opruimGebruikerId, { adminKey: ADMIN });

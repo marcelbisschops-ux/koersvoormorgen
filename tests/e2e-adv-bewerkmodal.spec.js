@@ -18,7 +18,7 @@
 // ══════════════════════════════════════════════════════════════════
 
 import { test, expect } from '@playwright/test';
-import { api, leesAdminKey, WORKER, zetMfaUitVoorTest } from './lib.mjs';
+import { api, leesAdminKey, WORKER, zetMfaUitVoorTest, ruimTestTrajectOp, verwijderTestGebruiker } from './lib.mjs';
 
 const ADMIN = leesAdminKey();
 const WW = 'TestWachtwoord123!';
@@ -33,6 +33,7 @@ test.describe('adv.html — Bewerk-modal: stale cache na aanmaken + Annuleren-na
 
   let email, gid;
   let trajectCode = null;
+  let trajectTussen = null;
   let setupOk = false;
 
   test.beforeAll(async () => {
@@ -51,8 +52,8 @@ test.describe('adv.html — Bewerk-modal: stale cache na aanmaken + Annuleren-na
   });
 
   test.afterAll(async () => {
-    if (trajectCode) await api('POST', '/admin/delete/mna/' + trajectCode, { adminKey: ADMIN });
-    if (gid) await api('POST', '/gebruikers/verwijder/' + gid, { adminKey: ADMIN, body: {} });
+    if (trajectCode) await ruimTestTrajectOp(trajectCode, trajectTussen); // N-104: extern testtraject
+    if (gid) await verwijderTestGebruiker(gid, ADMIN);
   });
 
   test('nieuw traject aanmaken + direct Bewerk gegevens toont echte data, Annuleren keert terug naar detail', async ({ page }) => {
@@ -82,6 +83,7 @@ test.describe('adv.html — Bewerk-modal: stale cache na aanmaken + Annuleren-na
     const crBody = await cr.json().catch(() => null);
     expect(crBody && crBody.ok, 'traject succesvol aangemaakt').toBe(true);
     trajectCode = crBody && crBody.code;
+    trajectTussen = crBody && crBody.tussen_code;
     expect(trajectCode, 'trajectcode ontvangen (nodig voor cleanup)').toBeTruthy();
 
     // "Annuleren" heet ná een geslaagde aanmaak "Sluiten" (zie adv.html ge('n-ann').textContent='Sluiten')

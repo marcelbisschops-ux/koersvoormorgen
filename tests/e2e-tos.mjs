@@ -10,7 +10,7 @@
 //
 // Zonder admin-key: alleen de publieke check (componenten-endpoint eist auth → 403).
 // ══════════════════════════════════════════════════════════════════
-import { WORKER, leesAdminKey, api as apiOrigineel, check, sla_over, kop, kleur, samenvatting, accepteerPlatformvoorwaarden } from './lib.mjs';
+import { WORKER, leesAdminKey, api as apiOrigineel, check, sla_over, kop, kleur, samenvatting, accepteerPlatformvoorwaarden, ruimTrajectOp, verwijderTestGebruiker } from './lib.mjs';
 
 // Throttle (16 sep 2026, "e2e-tos rate-limit-conditie"): deze suite deelt de generieke 120/min-
 // IP-bucket (cloudflare-worker.js) met al het overige staging-verkeer vanaf hetzelfde IP-adres.
@@ -699,7 +699,7 @@ async function run() {
   // faalt al vóór de documentvalidatie wordt bereikt — zie worker/32-pool.js.
   const opdrCross = await api('POST', '/mna/pool/opdracht', { headers: H2, body: { specialist_id: eigenSpecId, specialist_bron: 'eigen', domein: 'LEGAL', documenten: ['dummy'], deadline_dagen: 10 } });
   check('eigen-specialist-id van traject 1 gebruiken op traject 2 → 404 (traject-scoping)', opdrCross.status === 404, 'status ' + opdrCross.status);
-  await api('POST', '/admin/delete/mna/' + trajectCode2, { adminKey: ADMIN });
+  await ruimTrajectOp(trajectCode2, ADMIN);
 
   // De echte flow: begeleider zet zijn eigen specialist in op een scoped opdracht.
   const mkEigenDoc = await api('POST', '/mna/tos/document', { headers: H, body: { profile: 'MOU' } });
@@ -742,7 +742,8 @@ async function run() {
   // Deze fixture (trajectCode) is een sell-side traject (opdrachtgever_rol default 'verkoper') —
   // dekt het positieve pad. Het negatieve pad (buy-side/dual-mandate → geweigerd) staat los
   // hieronder met een tweede, apart aangemaakt traject.
-  const vrijgeven = await api('POST', '/mna/admin/vrijgeven/' + trajectCode + '?force=1', { adminKey: ADMIN });
+  // PILOT fase 2 (D2): extern traject → vrijgeven als de eigen begeleider (tussen-key), niet met ADMIN_KEY.
+  const vrijgeven = await api('POST', '/mna/admin/vrijgeven/' + trajectCode + '?force=1', { headers: { 'x-tussen-key': tussenCode } });
   check('koper krijgt dossiertoegang (setup voor deze stap)', vrijgeven.json && vrijgeven.json.ok === true, JSON.stringify(vrijgeven.json));
   const bodOnbekend = await api('POST', '/mna/koper/bod', { body: { code: 'NIETBESTAAND-XYZ', bedrag: 1000000 } });
   check('bod indienen met onbekende code → 404', bodOnbekend.status === 404, 'status ' + bodOnbekend.status);
@@ -775,10 +776,13 @@ async function run() {
   const KH3 = { 'x-tussen-key': koperCode3 };
   check('buy-side traject aangemaakt (voor het negatieve pad)', !!trajectCode3);
   if (trajectCode3) await accepteerPlatformvoorwaarden({ verkoper: trajectCode3, koper: c3.json && c3.json.koper_code, tussenpersoon: c3.json && c3.json.tussen_code });
-  await api('POST', '/mna/admin/vrijgeven/' + trajectCode3 + '?force=1', { adminKey: ADMIN });
+  // PILOT fase 2 (D2) + Breaker: vrijgeven als eigen begeleider, en HARD controleren dat het lukte —
+  // anders faalt het bod hieronder op "nog geen toegang" i.p.v. op de opdrachtgever_rol-check.
+  const vrij3 = await api('POST', '/mna/admin/vrijgeven/' + trajectCode3 + '?force=1', { headers: { 'x-tussen-key': (c3.json && c3.json.tussen_code) || 'GEEN' } });
+  check('buy-side traject: koper vrijgegeven (setup, anders bewijst de volgende check niets)', vrij3.json && vrij3.json.ok === true, JSON.stringify(vrij3.json));
   const bodBuySide = await api('POST', '/mna/koper/bod', { headers: KH3, body: { code: koperCode3, bedrag: 500000 } });
-  check('koper-bod op een buy-side traject → 403 (opdrachtgever_rol != verkoper)', bodBuySide.status === 403, 'status ' + bodBuySide.status);
-  await api('POST', '/admin/delete/mna/' + trajectCode3, { adminKey: ADMIN });
+  check('koper-bod op een buy-side traject → 403 (opdrachtgever_rol != verkoper)', bodBuySide.status === 403 && !!(bodBuySide.json && /niet beschikbaar voor dit traject/i.test(bodBuySide.json.error || '')), 'status ' + bodBuySide.status + ' ' + JSON.stringify(bodBuySide.json));
+  await ruimTrajectOp(trajectCode3, ADMIN);
 
   kop('STAP 21 · purge + reproduceerbaarheid (FASE C — CONTENT weg, MANIFEST blijft)');
   const preManTr = await api('GET', '/mna/tos/manifest/traject/' + trajectCode, { adminKey: ADMIN });
@@ -786,7 +790,7 @@ async function run() {
   const preHash = fin.json && fin.json.content_hash;
   const preVerify = await api('GET', '/mna/tos/manifest/verify', { adminKey: ADMIN });
   const preRijen = preVerify.json && preVerify.json.rijen;
-  const purge = await api('POST', '/admin/delete/mna/' + trajectCode, { adminKey: ADMIN });
+  const purge = await ruimTrajectOp(trajectCode, ADMIN);
   check('traject gepurged', purge.json && purge.json.ok === true, JSON.stringify(purge.json));
   const naPurgeDoc = await api('GET', '/mna/tos/document/' + docId, { adminKey: ADMIN });
   check('document-inhoud weg na purge → 404', naPurgeDoc.status === 404, 'status ' + naPurgeDoc.status);
@@ -805,11 +809,11 @@ async function opruimen() {
   kop('OPRUIMEN');
   if (!ADMIN) return sla_over('opruimen', 'geen admin-key');
   if (trajectCode) {
-    const d = await api('POST', '/admin/delete/mna/' + trajectCode, { adminKey: ADMIN });
+    const d = await ruimTrajectOp(trajectCode, ADMIN);
     check('traject + tos-data verwijderd', d.json && d.json.ok === true, JSON.stringify(d.json));
   }
   if (gebruikerId) {
-    const d = await api('POST', '/gebruikers/verwijder/' + gebruikerId, { adminKey: ADMIN, body: {} });
+    const d = await verwijderTestGebruiker(gebruikerId, ADMIN);
     check('testadviseur verwijderd', d.json && d.json.ok === true, JSON.stringify(d.json));
   }
   if (typeof spId !== 'undefined' && spId) {

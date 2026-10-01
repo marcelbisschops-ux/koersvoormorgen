@@ -15,7 +15,7 @@
 // Zonder admin-key draaien alleen de publieke checks (health, login).
 // ══════════════════════════════════════════════════════════════════
 
-import { WORKER, leesAdminKey, heeftVlag, api, check, sla_over, kop, kleur, samenvatting, accepteerPlatformvoorwaarden } from './lib.mjs';
+import { WORKER, leesAdminKey, heeftVlag, api, check, sla_over, kop, kleur, samenvatting, accepteerPlatformvoorwaarden, ruimTrajectOp, verwijderTestGebruiker } from './lib.mjs';
 
 const ADMIN = leesAdminKey();
 const DOE_AI = heeftVlag('ai') || heeftVlag('full');
@@ -322,11 +322,11 @@ async function opruimen() {
   if (!ADMIN) { sla_over('opruimen', 'geen admin-key'); return; }
   for (const code of opruimTrajecten) {
     if (code === 'UZ24377') { console.log('  ' + kleur('rood', '‼ WEIGERT De Vries-demodossier te verwijderen — overgeslagen')); continue; }
-    const d = await api('POST', '/admin/delete/mna/' + code, { adminKey: ADMIN });
+    const d = await ruimTrajectOp(code, ADMIN);
     check('traject ' + code + ' verwijderd', d.json && d.json.ok === true, JSON.stringify(d.json));
   }
   if (opruimGebruikerId) {
-    const d = await api('POST', '/gebruikers/verwijder/' + opruimGebruikerId, { adminKey: ADMIN, body: {} });
+    const d = await verwijderTestGebruiker(opruimGebruikerId, ADMIN);
     check('testadviseur verwijderd', d.json && d.json.ok === true, JSON.stringify(d.json));
   }
 }

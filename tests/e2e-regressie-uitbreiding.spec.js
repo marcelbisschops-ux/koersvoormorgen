@@ -17,7 +17,7 @@
 import { test, expect } from '@playwright/test';
 import fs from 'fs';
 import path from 'path';
-import { api, leesAdminKey, WORKER, d1, zetMfaUitVoorTest, accepteerPlatformvoorwaarden } from './lib.mjs';
+import { api, leesAdminKey, WORKER, d1, zetMfaUitVoorTest, accepteerPlatformvoorwaarden, ruimTestTrajectOp, verwijderTestGebruiker } from './lib.mjs';
 
 const ADMIN = leesAdminKey();
 const WW = 'TestWachtwoord123!';
@@ -82,8 +82,8 @@ async function maakTraject(extra) {
 }
 
 async function ruimGebruikerEnTrajectOp(t) {
-  if (t.code) await api('POST', '/admin/delete/mna/' + t.code, { adminKey: ADMIN });
-  if (t.gid) await api('POST', '/gebruikers/verwijder/' + t.gid, { adminKey: ADMIN, body: {} });
+  if (t.code) await ruimTestTrajectOp(t.code, t.tussenCode); // N-104: extern testtraject → staging-only opruimroute
+  if (t.gid) await verwijderTestGebruiker(t.gid, ADMIN);
 }
 
 function d1CountTraject(code) {
@@ -388,7 +388,7 @@ test('6. adv.html MFA: wordt afgedwongen, foutieve code correct geweigerd (posit
     const verifyOnbekend = await api('POST', '/adviseur/mfa/verify', { body: { mfa_token: 'niet-bestaand-token', code: '123456' } });
     expect(verifyOnbekend.status, 'onbekend mfa_token → geweigerd').not.toBe(200);
   } finally {
-    if (gid) await api('POST', '/gebruikers/verwijder/' + gid, { adminKey: ADMIN, body: {} });
+    if (gid) await verwijderTestGebruiker(gid, ADMIN);
     if (gid) expect(d1CountGebruiker(gid), 'cleanup: testgebruiker weg').toBe(0);
   }
 });

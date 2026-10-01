@@ -1,7 +1,7 @@
 // Verificatiescript P1-REL-1 (centrale relatielaag / CRM-kern), 26 sep 2026.
 // Draait tegen STAGING, volledig fictieve testdata, ruimt zichzelf op.
 // Gebruik: ADMIN_KEY=... node tests/verify-p1rel1-crm.mjs
-import { WORKER, leesAdminKey, api, check, kop, samenvatting, zetMfaUitVoorTest, d1 } from './lib.mjs';
+import { WORKER, leesAdminKey, api, check, kop, samenvatting, zetMfaUitVoorTest, d1, ruimTrajectOp } from './lib.mjs';
 
 const ADMIN = leesAdminKey();
 if (!ADMIN) { console.log('Geen admin-key.'); process.exit(1); }
@@ -127,7 +127,7 @@ async function main() {
   const trajCode = createTraj.json.code;
   const actTraject = await api('POST', '/gebruikers/crm/organisaties/' + orgId + '/activiteiten', { headers: { 'x-gebruiker-token': tokenEig }, body: { type: 'notitie', tekst: 'DAILY_QA traject-gekoppelde activiteit', traject_id: trajCode } });
   check('traject-gekoppelde activiteit aangemaakt', actTraject.json.ok, JSON.stringify(actTraject.json));
-  await api('POST', '/admin/delete/mna/' + trajCode, { adminKey: ADMIN });
+  await ruimTrajectOp(trajCode, ADMIN);
   const detailNaTrajectVerwijderen = await api('GET', '/gebruikers/crm/organisaties/' + orgId, { headers: { 'x-gebruiker-token': tokenEig } });
   const trajActiviteitWeg = !(detailNaTrajectVerwijderen.json.activiteiten || []).some(a => a.tekst.includes('traject-gekoppelde'));
   check('traject-gekoppelde activiteit is weg ná trajectverwijdering', trajActiviteitWeg, JSON.stringify((detailNaTrajectVerwijderen.json.activiteiten || []).map(a => a.tekst)));
