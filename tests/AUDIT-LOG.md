@@ -1095,3 +1095,52 @@ code-niveau).
 **Score aan marilyn:** 75 (1 bevinding, wacht op Marcel).
 
 - 2026-10-01 — diepe-audit-routine: geen open aanvraag, cadans nog niet verstreken. Wachtrij leeg (`{"ok":true,"opdracht":null}`). Vandaag is dag 1 (binnen het venster), maar de laatste `diepe_audit` in het dashboard is van 6 sep 2026 17:23 (24,5 dagen, worker meldt `dagen_geleden: 24`), dus niet >25 dagen: geen zelf-aanvraag. Bij ongewijzigde stand valt de run van 3 okt wél over de grens (26,5 dagen). Procesnotitie: de `ADMIN_KEY` die de scheduled-task-shell erft gaf 401; na `source ~/.zshrc` gaf dezelfde aanroep 200 (verouderde waarde in de geërfde omgeving, geen platformprobleem).
+
+## 2026-10-01 — dagelijkse-knoppentest-routine (scheduled task)
+
+**Rotatiekeuze:** sector **transport** (het langst geleden getest: 18 sep), trajecttype **Opvolging** (alleen
+op 20 sep gebruikt), rollen **adviseur** (extern traject via `/adviseur/create`, laatst 21 sep), verkoper,
+koper en begeleider (tussen-key), fasen Financieel + Compliance. Nieuw accent: de **closing-checklist**
+(eigen punten, aanvinken, verwijderen, concurrency, cross-traject) en de **Q&A-levenscyclus** (vraag →
+antwoord → reactie, categoriefilter, intrekken), beide nog nooit door deze routine getest. Daarnaast de
+begeleider-only routes per rol en een hertest van het bekende risico P1-94 (werkregel 15).
+Script: `reports/daily-qa/daily-qa-20261001.mjs` (alleen staging).
+
+**Resultaat: 73 van 74 checks geslaagd.** Doorlopen (klik-equivalent → request → backend → D1 → response):
+- Adviseur uitgenodigd, geactiveerd, GV geaccepteerd; twee externe trajecten aangemaakt. D1 bevestigt sector
+  transport, type Opvolging, sell-side en koppeling aan de adviseur. Adviseur ziet beide trajecten in het
+  adv-overzicht.
+- Verkoper slaat financieel op (teruggelezen uit D1). Upload van een wagenpark-/vergunningenoverzicht met
+  echte AI-analyse: de analyse stelt correct vast dat er geen gerealiseerde financiële cijfers in staan en
+  laat de financiële velden leeg (geen gok, werkregel 6).
+- Closing-checklist, infofase, waarderingsgeschiedenis, documentdekking en biedingen: begeleider 200;
+  verkoper-code, koper-code, geen sleutel en de begeleider van een ander traject worden geweigerd; admin-key
+  krijgt op een extern traject geen bodgegevens (muur).
+- Closing-checklist: twee verschillende items gelijktijdig aangevinkt (beide bewaard, geen verloren update);
+  hetzelfde item 4x gelijktijdig (precies 1 rij); uitvinken bewaard; verkoper en koper kunnen niet vinken;
+  3 eigen punten gelijktijdig toegevoegd (precies 3 rijen); 301 tekens en lege tekst → 400; eigen punt is
+  zichtbaar met vinkstatus; verwijderpoging vanuit een ander traject laat het punt staan; verwijderen haalt
+  punt én vinkstatus weg. UI-escaping van de punttekst gecontroleerd in `mna/04` (code-niveau).
+- Q&A: koper stelt 3 vragen (nummers 1, 2, 3); lege vraag → 400; begeleider antwoordt; verkoper-code en
+  begeleider van een ander traject kunnen niet antwoorden; koper reageert in de thread; koper van een ander
+  traject → 404, ongeldige code → 401. Koper ziet alleen de vraag in de vrijgegeven categorie plus de
+  algemene vraag, met antwoord en reactie; verkoper ziet alle 3; koper van een ander traject ziet niets;
+  admin-key op extern traject krijgt een lege lijst. Na intrekken van de categorie verdwijnt de bijbehorende
+  vraag voor de koper.
+
+**Gevonden: geen nieuwe bevinding.** De enige rode check is de **bekende open bevinding P1-94 / MASTER N-85**,
+vandaag opnieuw runtime gereproduceerd op staging, nu ook op een **extern adviseurstraject** (eerder alleen
+op een eigen traject). Details staan lokaal in `OPEN-BEVINDINGEN.md` P1-94. Niet zelf gefixt (zone C,
+Breaker-review verplicht). Wel veranderd sinds 30 sep: de backend-werkboom is nu schoon (laatste commit
+`61a3755`), dus de tweede reden om niet te deployen (werkregel 44.4) is vervallen.
+
+**Infra (geen productbevinding):** de eerste run brak af op tijdelijke netwerk-/D1-onbereikbaarheid vanaf
+deze machine (`fetch failed`, D1-timeout). Achtergebleven testdata direct opgeruimd; tweede run volledig.
+
+**Niet getest:** meekijker en eigen specialist (niet aan de beurt), waardering/dealvoorstel en
+documentgeneratie, het UI-klikpad in de browser (alleen API + code-review van de renderfunctie), productie.
+
+**Opgeruimd:** alle 4 staging-trajecten van beide runs via `/admin/delete/mna/` (ok:true), beide
+testadviseurs via `/gebruikers/verwijder/`. D1-controle `kantoor_naam LIKE '%DAILY_QA_20261001%'` gaf 0.
+
+**Score aan marilyn:** 75 (geen nieuwe bevinding; bekende P1-94 nog open en wacht op Marcel).
