@@ -1093,3 +1093,5 @@ code-niveau).
 `kantoor_naam LIKE '%DAILY_QA_20260930%'` gaf 0.
 
 **Score aan marilyn:** 75 (1 bevinding, wacht op Marcel).
+
+- 2026-10-01 — diepe-audit-routine: geen open aanvraag, cadans nog niet verstreken. Wachtrij leeg (`{"ok":true,"opdracht":null}`). Vandaag is dag 1 (binnen het venster), maar de laatste `diepe_audit` in het dashboard is van 6 sep 2026 17:23 (24,5 dagen, worker meldt `dagen_geleden: 24`), dus niet >25 dagen: geen zelf-aanvraag. Bij ongewijzigde stand valt de run van 3 okt wél over de grens (26,5 dagen). Procesnotitie: de `ADMIN_KEY` die de scheduled-task-shell erft gaf 401; na `source ~/.zshrc` gaf dezelfde aanroep 200 (verouderde waarde in de geërfde omgeving, geen platformprobleem).
