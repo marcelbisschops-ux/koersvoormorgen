@@ -1194,3 +1194,4 @@ trajecten/gebruikers/eigen specialisten met `DAILY_QA_20261002` = 0/0/0. **Let o
 fix-branch (`f55fa6b2`); een volgende `scripts/deploy.sh` vanaf main zet dat terug.
 
 **Score aan marilyn:** 55 (2 fouten zelf opgelost op staging −20, 1 bevinding wacht op Marcel −25).
+Melding aan marilyn (stap 5b) mislukt: 401 met de lokale ADMIN_KEY (zelfde oorzaak als de diepe-audit-notitie van vandaag, N-110).
