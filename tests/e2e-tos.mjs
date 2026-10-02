@@ -245,7 +245,13 @@ async function run() {
 
   // Digitaal accorderen: hergebruikt het bestaande /mna/teken-endpoint — zet dezelfde
   // nda_getekend/loi_getekend-vlag als de vroegere sjabloonflow (fase-2-unlock, koper-identiteit).
-  const teken = await api('POST', '/mna/teken', { body: { code: trajectCode, document: 'nda', naam: 'Test Verkoper Tekenaar' } });
+  // Sinds de tekengate (worker/00c-tos-teken-gate.js, 21 sep 2026) moeten de partijen de NDA eerst
+  // inhoudelijk goedkeuren (status 'goedgekeurd') vóór ondertekening; zonder deze stap faalde dit.
+  for (const [rolH, rol] of [[VH, 'verkoper'], [KH, 'koper']]) {
+    const rx = await api('POST', '/mna/tos/document/' + ndaId + '/reageren', { headers: rolH, body: { actie: 'akkoord' } });
+    check(rol + ' geeft akkoord op de verstuurde NDA', rx.json && rx.json.ok === true, JSON.stringify(rx.json).slice(0, 160));
+  }
+  const teken =await api('POST', '/mna/teken', { body: { code: trajectCode, document: 'nda', naam: 'Test Verkoper Tekenaar' } });
   check('verkoper kan de composer-NDA tekenen via /mna/teken', teken.json && teken.json.ok === true, JSON.stringify(teken.json).slice(0, 160));
   const trajNaTeken = await api('GET', '/mna/traject/' + trajectCode);
   check('nda_getekend staat nu op het traject', trajNaTeken.json && trajNaTeken.json.traject && (trajNaTeken.json.traject.nda_getekend || '').includes('Test Verkoper Tekenaar'), JSON.stringify(trajNaTeken.json && trajNaTeken.json.traject && trajNaTeken.json.traject.nda_getekend));

@@ -1145,3 +1145,52 @@ testadviseurs via `/gebruikers/verwijder/`. D1-controle `kantoor_naam LIKE '%DAI
 
 **Score aan marilyn:** 75 (geen nieuwe bevinding; bekende P1-94 nog open en wacht op Marcel).
 - 2026-10-02 — diepe-audit-routine: geen open aanvraag (`{"ok":true,"opdracht":null}`, AUDIT_TRIGGER_KEY werkt). Dag 2 valt in het venster; volgens de notitie van 1 okt was de laatste `diepe_audit` op 6 sep 17:23, dus om 06:13 vandaag ~25,5 dagen (worker rondt af op 25 dagen, niet >25). Cadans kon niet live worden bevestigd en een zelf-aanvraag kon niet worden ingediend: `ADMIN_KEY` uit `~/.zshenv` geeft 401 op `/mna/admin/veiligheid/overzicht`, ook na `source ~/.zshrc` (gisteren nog 200, vermoedelijk geroteerd). Geen audit uitgevoerd, niets gewijzigd. Actie Marcel: lokale `ADMIN_KEY` in `~/.zshenv` bijwerken naar de huidige Cloudflare-waarde; de run van 3 okt valt hoe dan ook over de grens (~26,5 dagen) en heeft die sleutel nodig om zelf de aanvraag in te dienen (of Marcel klikt "Draai diepe audit nu" in marilyn).
+
+## 2026-10-02 — dagelijkse-knoppentest-routine (scheduled task)
+
+**Rotatiekeuze:** sector **bouw** (het langst geleden getest: 19 sep), trajecttype **Overname** (het langst
+geleden: 18 sep), `opdrachtgever_rol:"koper"` (koperszijde), rollen adviseur (extern traject), verkoper, koper,
+begeleider en **eigen specialist**. Accent: de volledige review-/aftekenflow van de eigen specialist (opdracht →
+accepteren → dossier → aftekenen via de pool-tokenmachinerie), die op 21 sep expliciet als "niet getest" stond.
+Script: `reports/daily-qa/daily-qa-20261002.mjs` (alleen staging).
+
+**Doorlopen (51 checks eerste run):** adviseur + 2 externe trajecten (D1: bouw/Overname/koper); verkoper slaat
+financieel op (teruggelezen) en uploadt een orderportefeuille (echte AI-analyse, correct herkend als operationeel
+brondocument); TOS activeren en MoU maken (verkoper/koper geweigerd); eigen specialist toevoegen (koper en
+ADMIN_KEY-als-?code= geweigerd, fee 50 zonder identiteit in omschrijving, admin-lijst 403, begeleider B ziet niets);
+review-opdracht (admin 403, begeleider B kan specialist van A niet hergebruiken, koper 403, lege scope 400,
+conflictsignaal C1 correct met bevestiging); specialist: token, ongeldig token 403, dossier/aftekenen vóór
+accepteren geweigerd, 3x gelijktijdig accepteren → precies 1x 200, dossier zonder VALUATION-onderdelen, 2x
+gelijktijdig aftekenen → precies 1x 200, 16 APPROVED reviews, 1 pool_reviews-rij, geen pool-fee; admin-overzichten
+maskeren/sluiten uit; afgeronde review niet intrekbaar; intrekken specialist blokkeert nieuwe opdrachten.
+
+**Gevonden en (op staging) opgelost:**
+1. **P1-95 / N-111 — privacy-invariant 12:** `GET /mna/tos/document/{id}` met `x-admin-key` gaf na aftekenen de
+   naam en het inschrijvingsnummer van de eigen specialist terug (runtime gereproduceerd). Oorzaak: niet-externe
+   aanroepers kregen de ruwe review-rij. Fix: admin krijgt nooit `reviewer_naam` (geen frontend leest dit veld).
+2. **N-112 — onjuiste tekst:** aftekening door een eigen specialist kreeg ", via de Koers voor Morgen-pool" in de
+   hoedanigheid (zichtbaar voor partijen). Fix: alleen bij poolspecialist.
+   Backend-branch `fix/daily-qa-20261002-eigen-specialist`, commit `896346a`, **staging `f55fa6b2`**, niet naar
+   productie (zone C, Breaker-review + akkoord Marcel nodig). Hertest: 47/49 groen, naam weg voor admin.
+   **Foutpropagatie:** alle lees-paden van `reviewer_naam`/`reviewer_hoedanigheid` gegrept (backend + mna/adv/
+   marilyn): alleen 31-tos.js (document-GET, manifest met alleen hoedanigheid) en 32-pool.js; geen PDF/ZIP-export
+   en geen frontend gebruikt de naam. Restant: het inschrijvingsnummer zit in de hoedanigheid en blijft voor
+   admin zichtbaar (beslissing Marcel, N-112).
+   **Regressie:** `tests/e2e-tos.mjs` 228/228 na een testcorrectie: de test tekende de NDA direct na versturen,
+   terwijl de tekengate sinds 21 sep eerst akkoord van de partijen vraagt (2 rode checks, testfout, niet door
+   deze fix; test aangevuld met de akkoord-stap).
+
+**Gevonden, niet zelf gewijzigd (wacht op Marcel):** N-113 / P3-70 — een al uitgegeven reviewtoken blijft werken
+nadat de begeleider de eigen specialist intrekt (geen UI-knop, alleen API); `specialist.html` toont
+platformbeheerde/niet-domein-onderdelen blijvend als "te beoordelen".
+
+**Infra:** eerste run: MFA-bypass via wrangler faalde eenmalig (tijdelijk), flow liep door; één D1-retry.
+
+**Niet getest:** meekijker (niet aan de beurt), poolspecialist (alleen eigen), waardering/dealvoorstel, het
+UI-klikpad in de browser (alleen API + code-lezing van specialist.html), productie.
+
+**Opgeruimd:** 4 staging-trajecten (2 runs) via `/admin/delete/mna/` (ok:true), beide testadviseurs. D1-controle
+trajecten/gebruikers/eigen specialisten met `DAILY_QA_20261002` = 0/0/0. **Let op:** staging draait nu de
+fix-branch (`f55fa6b2`); een volgende `scripts/deploy.sh` vanaf main zet dat terug.
+
+**Score aan marilyn:** 55 (2 fouten zelf opgelost op staging −20, 1 bevinding wacht op Marcel −25).
