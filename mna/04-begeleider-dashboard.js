@@ -267,6 +267,101 @@ function renderApp(){
 var KM_STATUS_LABEL={kandidaat:'Kandidaat',in_gesprek:'In gesprek',geparkeerd:'Geparkeerd',afgewezen:'Afgewezen',gepromoveerd:'Gepromoveerd naar traject'};
 var KM_STATUS_KLEUR={kandidaat:'#8a8880',in_gesprek:'#1a7a5e',geparkeerd:'#b8860b',afgewezen:'#c0392b',gepromoveerd:'#1a7a5e'};
 
+// N-115 (P1B, 3 okt 2026) — introductieovereenkomst met de target, gecontroleerde teaser en
+// afzonderlijke identiteitsvrijgave. A/B/C-classificatie (MASTER N-115): de koper ziet vóór vrijgave
+// uitsluitend de door de begeleider goedgekeurde teaser (A); naam/sector/trajectreferentie (B) alleen
+// als de backend vrijgave_status 'vrijgegeven' meestuurt; notities/contactlog/bron/codes (C) nooit.
+// De functies tussen de N115-PURE-markers zijn bewust zuiver (geen DOM/fetch) zodat
+// tests/n115-ui.mjs ze los kan uitvoeren.
+// N115-PURE-BEGIN
+var KM_TEASER_REGIO={noord:'Noord-Nederland',oost:'Oost-Nederland',zuid:'Zuid-Nederland',west:'West-Nederland',midden:'Midden-Nederland',landelijk:'Landelijk'};
+var KM_TEASER_OMZET={tot_1m:'omzet tot € 1 mln','1m_2_5m':'omzet € 1 – 2,5 mln','2_5m_5m':'omzet € 2,5 – 5 mln','5m_10m':'omzet € 5 – 10 mln','10m_25m':'omzet € 10 – 25 mln',boven_25m:'omzet boven € 25 mln'};
+var KM_TEASER_MW={'1_10':'1 – 10 medewerkers','11_25':'11 – 25 medewerkers','26_50':'26 – 50 medewerkers','51_100':'51 – 100 medewerkers',boven_100:'meer dan 100 medewerkers'};
+// Uitsluitend deze bekende staging-worker gaat als ?worker= mee in de targetlink; introductie.html
+// accepteert dezelfde whitelist als marilyn.html. Productie (of een onbekende worker) → geen parameter.
+var KM_STAGING_WORKER='https://kantoorinzicht-staging.marcel-bisschops.workers.dev';
+
+function kmTeaserRegels(teaser,sectorLabels){
+  var t=teaser&&typeof teaser==='object'?teaser:null;
+  if(!t)return [];
+  var r=[];
+  if(KM_TEASER_REGIO[t.regio])r.push(KM_TEASER_REGIO[t.regio]);
+  if(typeof t.sector==='string'&&t.sector)r.push((sectorLabels&&sectorLabels[t.sector])||t.sector);
+  if(KM_TEASER_OMZET[t.omzetklasse])r.push(KM_TEASER_OMZET[t.omzetklasse]);
+  if(KM_TEASER_MW[t.medewerkersklasse])r.push(KM_TEASER_MW[t.medewerkersklasse]);
+  return r;
+}
+
+// Koperkaart: leest alleen de expliciete koper-allow-list (id/status/vrijgave_status/teaser en, na
+// vrijgave, naam/sector/traject_ref). Velden die er ondanks alles in zouden staan, worden genegeerd.
+function kmKoperTargetHtml(t,sectorLabels){
+  t=t||{};
+  var vrij=t.vrijgave_status==='vrijgegeven';
+  var naam=vrij&&typeof t.naam==='string'&&t.naam.trim()?t.naam.trim():'';
+  var sector=vrij&&typeof t.sector==='string'&&t.sector.trim()?t.sector.trim():'';
+  var ref=vrij&&typeof t.traject_ref==='string'&&t.traject_ref?t.traject_ref:'';
+  var kleur=KM_STATUS_KLEUR[t.status]||'#8a8880';
+  var regels=kmTeaserRegels(t.teaser,sectorLabels);
+  var omschrijving=t.teaser&&typeof t.teaser.omschrijving==='string'?t.teaser.omschrijving:'';
+  return '<div class="panel km-koper-kaart" style="margin-bottom:.85rem;border-left:3px solid '+kleur+'">'
+    +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap">'
+    +'<div><div style="font-weight:600;color:var(--head);font-size:14px">'+(naam?esc(naam):'Anonieme kandidaat')+'</div>'
+    +'<div style="font-size:11px;color:var(--muted);margin-top:.2rem">'+(vrij?'Identiteit vrijgegeven door uw begeleider':'Identiteit nog afgeschermd')+(sector?' &middot; '+esc(sector):'')+(ref?' &middot; Trajectreferentie '+esc(ref):'')+'</div></div>'
+    +'<span class="tag" style="background:'+kleur+'1a;color:'+kleur+';border-color:'+kleur+'">'+esc(KM_STATUS_LABEL[t.status]||'Onbekend')+'</span>'
+    +'</div>'
+    +(regels.length||omschrijving
+      ?'<div style="margin-top:.6rem;font-size:12px;color:var(--sub)">'+(regels.length?'<div>'+regels.map(esc).join(' &middot; ')+'</div>':'')+(omschrijving?'<div style="margin-top:.3rem;color:var(--mid)">'+esc(omschrijving)+'</div>':'')+'</div>'
+      :'<div style="margin-top:.6rem;font-size:12px;color:var(--muted)">Nog geen goedgekeurde anonieme omschrijving.</div>')
+    +'</div>';
+}
+
+function kmIntroLink(origin,worker,token){
+  var u=origin+'/introductie.html?token='+encodeURIComponent(token);
+  if(worker===KM_STAGING_WORKER)u+='&worker='+encodeURIComponent(worker);
+  return u;
+}
+
+// Afgeleide status van de ACTUELE versie: alleen een akkoord met dezelfde versie én inhoud telt.
+function kmIntroStatus(ovz,nu){
+  ovz=ovz||{};
+  var hv=ovz.huidige_versie||null;
+  var reacties=Array.isArray(ovz.reacties)?ovz.reacties:[];
+  var st={versie:hv?hv.versie:null,akkoord:null,wijzigingen:[],link:'geen',link_verloopt_op:null,
+    vrijgegeven:!!(ovz.vrijgave&&ovz.vrijgave.status==='vrijgegeven'),
+    beeindigd:!!(ovz.bewaring&&ovz.bewaring.relatie_einde_op),alleen_lezen:!!ovz.alleen_lezen};
+  if(!hv)return st;
+  reacties.forEach(function(r){
+    if(!r||r.versie!==hv.versie||r.inhoud_hash!==hv.inhoud_hash)return;
+    if(r.soort==='akkoord'&&!st.akkoord)st.akkoord={naam:r.naam||'',op:r.created_at||null};
+    else if(r.soort==='wijzigingsverzoek')st.wijzigingen.push({toelichting:r.toelichting||'',op:r.created_at||null});
+  });
+  var l=hv.link||{};
+  if(l.actief){st.link=Number(l.verloopt_op)>nu?'actief':'verlopen';st.link_verloopt_op=l.verloopt_op||null;}
+  else if(l.ingetrokken_op)st.link='ingetrokken';
+  return st;
+}
+
+// Productbesluit N-115: identiteitsvrijgave uitsluitend door de begeleider (niet door de beheerder),
+// alleen op een akkoord op de actuele versie. De backend dwingt dit af; de UI toont de knop niet eens.
+function kmMagVrijgeven(rol,ovz,st){
+  return rol==='begeleider'&&!!(ovz&&ovz.huidige_versie)&&!!(st&&st.akkoord)&&!st.vrijgegeven&&!st.alleen_lezen&&!st.beeindigd;
+}
+
+function kmIntroMailto(email,contactNaam,link,verlooptOp,begeleiderNaam){
+  var tot=verlooptOp?new Date(verlooptOp).toLocaleString('nl-NL',{day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'}):'';
+  var body=(contactNaam?'Geachte '+contactNaam+',':'Geachte heer/mevrouw,')+'\n\n'
+    +'Via onderstaande persoonlijke link kunt u de introductieovereenkomst lezen en daarna akkoord geven of een wijziging vragen.'+(tot?' De link is geldig tot '+tot+'.':'')+'\n\n'
+    +link+'\n\nDeze link is uitsluitend voor u bedoeld; stuur hem niet door.\n\nMet vriendelijke groet,\n'+(begeleiderNaam||'');
+  return 'mailto:'+encodeURIComponent(email||'').replace(/%40/g,'@')+'?subject='+encodeURIComponent('Introductieovereenkomst — uw beoordeling')+'&body='+encodeURIComponent(body);
+}
+// N115-PURE-END
+
+function kmSectorLabels(){
+  var m={};
+  try{Object.keys(SECTOR_PROFIELEN).forEach(function(k){m[k]=SECTOR_PROFIELEN[k].label||k;});}catch(e){}
+  return m;
+}
+
 async function kmRefresh(){
   try{
     var resp=await fetchMetTimeout(WORKER+'/mna/koopmandaat/'+S.code,{method:'GET',headers:{'x-tussen-key':S.code}},15000);
@@ -300,6 +395,11 @@ function renderKoopmandaatScherm(app){
 
   if(!targets.length){
     html+='<div class="empty">Nog geen targets toegevoegd.'+(magBewerken?' Voeg een kandidaat-onderneming toe om te starten — zonder dat er al een verkoper bij betrokken hoeft te zijn.':'')+'</div>';
+  }else if(!magBewerken){
+    // N-115: koperweergave — anoniem tot expliciete vrijgave door de begeleider.
+    var sectorLabels=kmSectorLabels();
+    html+='<div style="font-size:12px;color:var(--muted);margin-bottom:.85rem;line-height:1.6">Kandidaten blijven anoniem totdat de onderneming akkoord heeft gegeven en uw begeleider de identiteit uitdrukkelijk aan u vrijgeeft.</div>'
+      +targets.map(function(t){return kmKoperTargetHtml(t,sectorLabels);}).join('');
   }else{
     html+=targets.map(function(t){
       var isGeprom=t.status==='gepromoveerd';
@@ -329,6 +429,13 @@ function renderKoopmandaatScherm(app){
             +'</div>';
         }
         kaart+='<div style="margin-top:.5rem;display:flex;gap:6px"><input type="text" class="km-contact-input" data-id="'+esc(t.id)+'" placeholder="Contactmoment toevoegen..." style="flex:1;font-size:12px;padding:5px 8px;border:1px solid var(--border2);border-radius:6px;background:var(--card);color:var(--sub)"><button class="btn-ghost km-contact-toevoegen" data-id="'+esc(t.id)+'" style="font-size:11px;padding:5px 10px">Toevoegen</button></div>';
+        // N-115: wat de koper van deze target ziet, plus toegang tot overeenkomst/teaser/vrijgave.
+        var kmVrij=t.vrijgave_status==='vrijgegeven';
+        kaart+='<div style="margin-top:.6rem;padding-top:.6rem;border-top:1px dashed var(--border);display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:11px;color:var(--muted)">'
+          +'<span>Koper ziet: <b style="color:'+(kmVrij?'var(--teal)':'var(--gold-dark)')+'">'+(kmVrij?'naam en sector (vrijgegeven)':'alleen de anonieme teaser')+'</b></span>'
+          +'<span>&middot; Teaser: '+(t.teaser?'goedgekeurd':'nog niet goedgekeurd')+'</span>'
+          +'<button class="btn-ghost km-intro-btn" data-id="'+esc(t.id)+'" style="font-size:11px;padding:4px 10px">Introductieovereenkomst &amp; vrijgave</button>'
+          +'</div>';
       }
       kaart+='</div>';
       return kaart;
@@ -400,6 +507,382 @@ function bindKoopmandaatScherm(magBewerken){
       }catch(e){toast('Netwerkfout.','err');btn.disabled=false;btn.textContent='▶ Promoveer naar volwaardig traject';}
     });
   });
+  document.querySelectorAll('.km-intro-btn').forEach(function(btn){
+    btn.addEventListener('click',function(){toonKmIntroductieModal(btn.dataset.id);});
+  });
+}
+
+// ── N-115 · begeleiderbeheer introductieovereenkomst per target ──
+// Backendcontract: GET/POST /mna/koopmandaat/{code}/target/{id}/introductie (x-tussen-key). De
+// overeenkomsttekst stelt de begeleider zelf vast — het platform levert geen standaardtekst en voegt
+// geen bepalingen toe; juridische eindvalidatie gebeurt afzonderlijk. Het ruwe linktoken leeft alleen
+// in dit venster (geen opslag, geen log, geen URL van deze pagina); sluiten = weg.
+function kmIntroApi(targetId,body){
+  var opt={method:body?'POST':'GET',headers:{'x-tussen-key':S.code},cache:'no-store'};
+  if(body){opt.headers['Content-Type']='application/json';opt.body=JSON.stringify(body);}
+  return fetchMetTimeout(WORKER+'/mna/koopmandaat/'+encodeURIComponent(S.code)+'/target/'+encodeURIComponent(targetId)+'/introductie',opt,15000)
+    .then(function(r){return r.json().catch(function(){return {};}).then(function(j){j=j||{};return {ok:r.ok&&j.ok===true,status:r.status,json:j};});})
+    .catch(function(){return {ok:false,status:0,json:{}};});
+}
+
+var KM_INTRO_SOORT={versie_vastgesteld:'Versie vastgesteld',link_uitgegeven:'Link aangemaakt',link_ingetrokken:'Link ingetrokken',akkoord:'Akkoord door de onderneming',wijzigingsverzoek:'Wijziging gevraagd door de onderneming',vrijgave:'Identiteit vrijgegeven aan de koper',teaser_goedgekeurd:'Teaser goedgekeurd',teaser_ingetrokken:'Teaser ingetrokken',relatie_einde:'Introductierelatie beëindigd',legal_hold_aan:'Langere bewaring vanwege geschil/juridische noodzaak ingesteld',legal_hold_uit:'Langere bewaring opgeheven',contact_gewijzigd:'Contactgegevens gewijzigd',operationeel_einde:'Einde operationele noodzaak contactgegevens'};
+
+function kmDatum(ms,metTijd){
+  if(!ms)return '';
+  var o={day:'numeric',month:'short',year:'numeric'};
+  if(metTijd){o.hour='2-digit';o.minute='2-digit';}
+  return new Date(Number(ms)).toLocaleString('nl-NL',o);
+}
+
+function toonKmIntroductieModal(targetId){
+  var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:400;display:flex;align-items:center;justify-content:center;padding:1.5rem';
+  var mo=document.createElement('div');mo.id='km-intro-modal';mo.setAttribute('role','dialog');mo.setAttribute('aria-modal','true');mo.setAttribute('aria-labelledby','km-intro-titel');
+  mo.style.cssText='background:var(--panel);border-radius:10px;padding:1.75rem;max-width:780px;width:100%;max-height:92vh;overflow-y:auto';
+  ov.appendChild(mo);document.body.appendChild(ov);
+  var linkInGeheugen=null; // {link, versie, verloopt_op} — uitsluitend in deze closure
+  var gewijzigd=false;
+  function sluit(){linkInGeheugen=null;if(ov.parentNode)ov.parentNode.removeChild(ov);if(gewijzigd)kmRefresh();}
+  ov.addEventListener('click',function(e){if(e.target===ov)sluit();});
+  var invoer='width:100%;font-size:12px;padding:6px 8px;border:1px solid var(--border2);border-radius:6px;background:var(--card);color:var(--sub);font-family:inherit';
+  var kop='font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:1.25rem 0 .5rem';
+  function sectie(titel){return '<div style="'+kop+'">'+titel+'</div>';}
+
+  function melding(soort,tekst){
+    var el=ge('km-intro-melding');if(!el)return;
+    var okk=soort==='ok';
+    el.setAttribute('role',okk?'status':'alert');
+    el.style.cssText='display:'+(tekst?'block':'none')+';margin:.75rem 0;border-radius:6px;padding:.55rem .75rem;font-size:12px;background:'+(okk?'var(--teal-bg)':'var(--red-bg)')+';border:1px solid '+(okk?'var(--teal)':'var(--red)')+';color:'+(okk?'var(--teal-dim)':'var(--red)');
+    el.textContent=tekst||'';
+  }
+
+  async function laad(okTekst){
+    mo.innerHTML='<div style="font-size:12px;color:var(--muted)">Laden…</div>';
+    var r=await kmIntroApi(targetId);
+    if(!ov.parentNode)return;
+    if(!r.ok){
+      // Geen verouderde status tonen: zonder actuele gegevens alleen de fout en sluiten.
+      mo.innerHTML='<div id="km-intro-titel" style="font-family:Playfair Display,serif;font-size:1.15rem;color:var(--head);font-weight:600;margin-bottom:.75rem">Introductieovereenkomst</div>'
+        +'<div id="km-intro-melding"></div>'
+        +'<div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn-ghost" id="km-intro-opnieuw">Opnieuw laden</button><button class="btn" id="km-intro-sluit">Sluiten</button></div>';
+      melding('err',(okTekst?okTekst+' ':'')+'De actuele gegevens konden niet worden geladen'+(r.json&&r.json.error?' ('+r.json.error+')':'')+'. Er wordt geen verouderde status getoond.');
+      ge('km-intro-sluit').onclick=sluit;
+      ge('km-intro-opnieuw').onclick=function(){laad();};
+      return;
+    }
+    render(r.json);
+    if(okTekst)melding('ok',okTekst);
+  }
+
+  async function actie(btn,body,okTekst){
+    melding('',null);
+    if(btn)btn.disabled=true;
+    var r=await kmIntroApi(targetId,body);
+    if(!ov.parentNode)return null;
+    if(!r.ok){
+      var fout=r.status?((r.json&&r.json.error)||'De actie is niet uitgevoerd.'):'Geen verbinding — niet bevestigd dat er iets is vastgelegd. Laad opnieuw en controleer de status.';
+      // 409 = de status is intussen gewijzigd (nieuwe versie, akkoord, promotie): eerst de actuele stand
+      // laden, zodat er nooit op een verouderd scherm verder wordt gewerkt.
+      if(r.status===409){await laad();if(!ov.parentNode)return null;}
+      else if(btn)btn.disabled=false;
+      melding('err',fout);
+      return null;
+    }
+    gewijzigd=true;
+    if(okTekst!==null)await laad(okTekst);
+    return r.json;
+  }
+
+  function render(d){
+    var nu=Date.now();
+    var hv=d.huidige_versie||null;
+    var st=kmIntroStatus(d,nu);
+    var tgt=d.target||{};
+    var p=(hv&&hv.partijen)||{};
+    var mandaat=S.kmMandaat||{};
+    var contact=d.contact||{};
+    var bew=d.bewaring||{};
+    var teaser=d.teaser||null;
+    var bewerkbaar=!st.alleen_lezen&&!st.beeindigd;
+    if(linkInGeheugen&&!(hv&&linkInGeheugen.versie===hv.versie&&st.link==='actief'))linkInGeheugen=null;
+
+    var h='<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem">'
+      +'<div><div id="km-intro-titel" style="font-family:Playfair Display,serif;font-size:1.15rem;color:var(--head);font-weight:600">Introductieovereenkomst &mdash; '+esc(tgt.naam||'target')+'</div>'
+      +'<div style="font-size:11px;color:var(--muted);margin-top:.2rem">Eigen overeenkomst met de target, los van de bemiddelingsovereenkomst. Geselecteerde koper: '+esc(mandaat.koper_naam||'—')+'</div></div>'
+      +'<button class="btn-ghost" id="km-intro-sluit" style="font-size:12px">Sluiten</button></div>'
+      +'<div id="km-intro-melding" style="display:none;margin-top:.75rem"></div>';
+    if(st.alleen_lezen)h+='<div style="margin-top:.75rem;padding:.55rem .75rem;border:1px solid var(--border2);border-radius:6px;font-size:12px;color:var(--sub);background:var(--card)">Deze target is gepromoveerd naar een traject. De overeenkomst en het akkoord blijven alleen-lezen bewaard; er kunnen geen nieuwe versies, links of vrijgaven meer worden gemaakt.</div>';
+    if(st.beeindigd)h+='<div style="margin-top:.75rem;padding:.55rem .75rem;border:1px solid var(--border2);border-radius:6px;font-size:12px;color:var(--sub);background:var(--card)">De introductierelatie is beëindigd op '+esc(kmDatum(bew.relatie_einde_op))+'. Link en vrijgave zijn vervallen; het bewijs wordt bewaard.</div>';
+
+    // 1. Overeenkomst
+    h+=sectie('1. Overeenkomst');
+    if(hv){
+      h+='<div style="font-size:12px;color:var(--sub);margin-bottom:.4rem"><b>Versie '+esc(String(hv.versie))+'</b> &middot; vastgesteld '+esc(kmDatum(hv.aangemaakt_op,true))
+        +' &middot; partijen: '+esc(p.target_naam||'—')+' / '+esc(p.geselecteerde_koper||'—')+' / begeleider '+esc(p.begeleider_naam||'—')+'</div>'
+        +'<div style="font-size:12px;margin-bottom:.4rem">'
+        +(st.akkoord?'<span style="color:var(--teal)">&#10003; Akkoord door '+esc(st.akkoord.naam||'onbekend')+' op '+esc(kmDatum(st.akkoord.op,true))+'</span>':'<span style="color:var(--gold-dark)">Nog geen akkoord op deze versie</span>')
+        +'</div>';
+      if(st.wijzigingen.length){
+        h+='<div style="font-size:12px;color:var(--sub);margin-bottom:.4rem"><b>Gevraagde wijzigingen op deze versie:</b>'
+          +st.wijzigingen.map(function(w){return '<div style="margin-top:.3rem;padding:.4rem .6rem;background:var(--card);border-radius:5px;white-space:pre-wrap">'+esc(kmDatum(w.op,true))+' &middot; '+esc(w.toelichting)+'</div>';}).join('')+'</div>';
+      }
+      h+='<div id="km-intro-huidig" style="white-space:pre-wrap;font-size:12px;color:var(--mid);background:var(--card);border:1px solid var(--border);border-radius:6px;padding:.6rem .75rem;max-height:220px;overflow-y:auto"></div>';
+    }else{
+      h+='<div style="font-size:12px;color:var(--muted)">Er is nog geen overeenkomst vastgesteld voor deze target.</div>';
+    }
+    if(bewerkbaar){
+      h+='<div style="margin-top:.75rem;font-size:11px;color:var(--muted);line-height:1.6">U voert de overeenkomsttekst zelf in. Goedgekeurde richting (nog juridisch te valideren): partijen en vertegenwoordiging; doel en geselecteerde koper; de target betaalt geen fee; transparantie over uw betaalde koperopdracht; vertrouwelijkheid en doelgebonden informatiegebruik; begrensde introductiebescherming; geen transactieplicht; wijzigingsverzoek vóór akkoord; nieuw akkoord bij een nieuwe inhoudelijke versie; afzonderlijke vrijgave; einde en bewaring. Neem geen boete-, duur- of andere bepalingen op waarover nog niet is besloten.</div>'
+        +'<textarea id="km-intro-tekst" rows="8" maxlength="20000" placeholder="Overeenkomsttekst zoals door u vastgesteld" style="'+invoer+';margin-top:.4rem"></textarea>'
+        +'<button class="btn btn-sm" id="km-intro-versie" style="margin-top:.4rem;font-size:12px">'+(hv?'Nieuwe versie vaststellen':'Versie 1 vaststellen')+'</button>';
+    }
+
+    // 2. Link naar de target
+    h+=sectie('2. Link naar de onderneming');
+    if(hv){
+      var linkTekst={actief:'Actieve link, geldig tot '+kmDatum(st.link_verloopt_op,true),verlopen:'De link is verlopen',ingetrokken:'De link is ingetrokken',geen:'Er is voor deze versie nog geen link aangemaakt'}[st.link];
+      h+='<div style="font-size:12px;color:'+(st.link==='actief'?'var(--teal)':'var(--muted)')+';margin-bottom:.4rem">'+esc(linkTekst)+'</div>';
+    }
+    if(linkInGeheugen){
+      h+='<div style="background:var(--teal-bg);border:1px solid var(--teal);border-radius:6px;padding:.55rem .7rem;font-size:12px;color:var(--sub);margin-bottom:.5rem">'
+        +'<div style="margin-bottom:.3rem">Persoonlijke link voor versie '+esc(String(linkInGeheugen.versie))+' (alleen nu zichtbaar; een nieuwe link maakt deze ongeldig):</div>'
+        +'<input readonly id="km-intro-link" style="'+invoer+';font-family:monospace;font-size:11px">'
+        +'<div style="margin-top:.4rem;display:flex;gap:8px;flex-wrap:wrap"><button class="btn-ghost" id="km-intro-kopieer" style="font-size:11px;padding:4px 10px">Link kopiëren</button><button class="btn-ghost" id="km-intro-mail" style="font-size:11px;padding:4px 10px">E-mail openen in uw mailprogramma</button></div>'
+        +'<div style="font-size:10.5px;color:var(--muted);margin-top:.3rem">Er wordt niets automatisch verstuurd: u verstuurt de e-mail zelf vanuit uw eigen mailprogramma.</div></div>';
+    }
+    if(hv&&bewerkbaar){
+      h+='<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:12px">'
+        +'<label for="km-intro-dagen" style="color:var(--muted)">Geldig</label><input type="number" id="km-intro-dagen" min="1" max="30" value="14" style="'+invoer+';width:64px"><span style="color:var(--muted)">dagen</span>'
+        +'<button class="btn btn-sm" id="km-intro-link-uit" style="font-size:12px">'+(st.link==='actief'?'Nieuwe link aanmaken':'Link aanmaken')+'</button>'
+        +(st.link==='actief'?'<button class="btn-ghost" id="km-intro-link-in" style="font-size:12px;color:var(--red);border-color:var(--red)">Link intrekken</button>':'')
+        +'</div>';
+    }
+
+    // 3. Contactpersoon (operationeel; los van het akkoordbewijs)
+    h+=sectie('3. Contactpersoon bij de onderneming');
+    h+='<div style="font-size:11px;color:var(--muted);margin-bottom:.4rem">Alleen voor het versturen van de link. Nooit zichtbaar voor de koper; ook niet na vrijgave van de bedrijfsidentiteit. Leeg laten mag.'
+      +(contact.noodzaak_einde_op?' Operationele noodzaak beëindigd op '+esc(kmDatum(contact.noodzaak_einde_op))+'.':'')+'</div>';
+    if(!st.beeindigd){
+      h+='<div style="display:flex;gap:6px;flex-wrap:wrap"><input type="text" id="km-intro-cnaam" maxlength="200" placeholder="Naam contactpersoon" style="flex:1;min-width:160px;'+invoer+'"><input type="email" id="km-intro-cemail" maxlength="200" placeholder="E-mailadres" style="flex:1;min-width:160px;'+invoer+'">'
+        +'<button class="btn-ghost" id="km-intro-contact" style="font-size:11px;padding:5px 10px">Opslaan</button></div>';
+    }else{
+      h+='<div style="font-size:12px;color:var(--sub)">'+esc(contact.naam||'—')+(contact.email?' &middot; '+esc(contact.email):'')+'</div>';
+    }
+
+    // 4. Teaser (klasse A)
+    h+=sectie('4. Anonieme teaser voor de koper');
+    h+='<div style="font-size:11px;color:var(--muted);margin-bottom:.4rem">De koper ziet vóór vrijgave uitsluitend deze teaser. Er wordt niets automatisch overgenomen uit naam, vrije sector, notities of bron. '
+      +(teaser?'Huidige teaser goedgekeurd op '+esc(kmDatum(teaser.goedgekeurd_op,true))+'.':'Nog geen goedgekeurde teaser.')+'</div>';
+    var opties=function(map,huidig){return '<option value="">— niet tonen —</option>'+Object.keys(map).map(function(k){return '<option value="'+esc(k)+'"'+(huidig===k?' selected':'')+'>'+esc(map[k])+'</option>';}).join('');};
+    var sectorLabels=kmSectorLabels();
+    if(teaser&&teaser.sector&&!sectorLabels[teaser.sector])sectorLabels[teaser.sector]=teaser.sector;
+    h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">'
+      +'<select id="km-teaser-regio" aria-label="Brede regio" style="'+invoer+'">'+opties(KM_TEASER_REGIO,teaser&&teaser.regio)+'</select>'
+      +'<select id="km-teaser-sector" aria-label="Gestandaardiseerde sector" style="'+invoer+'">'+opties(sectorLabels,teaser&&teaser.sector)+'</select>'
+      +'<select id="km-teaser-omzet" aria-label="Omzetklasse" style="'+invoer+'">'+opties(KM_TEASER_OMZET,teaser&&teaser.omzetklasse)+'</select>'
+      +'<select id="km-teaser-mw" aria-label="Medewerkersklasse" style="'+invoer+'">'+opties(KM_TEASER_MW,teaser&&teaser.medewerkersklasse)+'</select>'
+      +'</div>'
+      +'<textarea id="km-teaser-omschrijving" rows="2" maxlength="300" placeholder="Korte anonieme omschrijving (max. 300 tekens)" style="'+invoer+';margin-top:6px"></textarea>'
+      +'<label style="display:flex;gap:8px;align-items:flex-start;font-size:12px;color:var(--sub);margin-top:.4rem;cursor:pointer"><input type="checkbox" id="km-teaser-akkoord" style="margin-top:2px"> Ik heb gecontroleerd dat deze teaser geanonimiseerd is: geen naam, plaats, unieke kenmerken of andere informatie waarmee de onderneming herleidbaar is.</label>'
+      +'<div style="margin-top:.4rem;display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-sm" id="km-teaser-opslaan" style="font-size:12px" disabled>Teaser goedkeuren</button>'
+      +(teaser?'<button class="btn-ghost" id="km-teaser-intrekken" style="font-size:12px;color:var(--red);border-color:var(--red)">Teaser intrekken</button>':'')+'</div>';
+
+    // 5. Identiteitsvrijgave (klasse B) — afzonderlijk van het akkoord
+    h+=sectie('5. Identiteit vrijgeven aan de koper');
+    h+='<div style="font-size:12px;color:var(--sub);margin-bottom:.4rem">Status: <b style="color:'+(st.vrijgegeven?'var(--teal)':'var(--gold-dark)')+'">'+(st.vrijgegeven?'vrijgegeven':'afgeschermd')+'</b>'
+      +(st.vrijgegeven&&d.vrijgave&&d.vrijgave.vrijgegeven_op?' op '+esc(kmDatum(d.vrijgave.vrijgegeven_op,true)):'')+'</div>'
+      +'<div style="font-size:11px;color:var(--muted);margin-bottom:.4rem">Een akkoord geeft de identiteit niet automatisch vrij. Na vrijgave ziet de koper de bedrijfsnaam en sector — geen contactpersoon of andere gegevens. Wat de koper eenmaal heeft gezien, kan niet worden teruggenomen.</div>';
+    if(kmMagVrijgeven(S.kmRol,d,st)){
+      h+='<button class="btn btn-sm" id="km-intro-vrijgeven" style="font-size:12px">Identiteit vrijgeven aan de koper</button>';
+    }else if(!st.vrijgegeven){
+      var waarom=S.kmRol!=='begeleider'?'Vrijgeven kan uitsluitend de begeleider van dit koopmandaat.'
+        :st.alleen_lezen||st.beeindigd?'Vrijgeven is niet meer mogelijk.'
+        :!hv?'Stel eerst een overeenkomst vast.'
+        :'Vrijgeven kan pas na akkoord van de onderneming op de actuele versie '+esc(String(hv.versie))+'.';
+      h+='<div style="font-size:12px;color:var(--muted)">'+waarom+'</div>';
+    }
+
+    // 6. Einde, bewaring en gerichte langere bewaring
+    var hold=bew.legal_hold||null;
+    h+=sectie('6. Einde en bewaring');
+    h+='<div style="font-size:11px;color:var(--muted);line-height:1.6;margin-bottom:.4rem">Bewaarbeleid (productbeleid, nog juridisch/privacy te valideren): overeenkomst en akkoordbewijs vijf jaar na einde van de introductierelatie; contactgegevens tot het einde van de operationele noodzaak, daarna uiterlijk zes maanden; overige registraties twaalf maanden. Promotie start geen termijn opnieuw.</div>'
+      +'<div style="font-size:12px;color:var(--sub);margin-bottom:.4rem">Langere bewaring vanwege geschil of juridische noodzaak: '+(hold?'<b>ingesteld</b> op '+esc(kmDatum(hold.op))+' &mdash; reden: '+esc(hold.reden||''):'niet ingesteld')+'</div>'
+      +'<input type="text" id="km-intro-reden" maxlength="1000" placeholder="Reden (verplicht voor de acties hieronder)" style="'+invoer+'">'
+      +'<div style="margin-top:.4rem;display:flex;gap:8px;flex-wrap:wrap">'
+      +(hv&&!st.beeindigd?'<button class="btn-ghost" id="km-intro-einde" style="font-size:11px;padding:4px 10px;color:var(--red);border-color:var(--red)">Introductierelatie beëindigen</button>':'')
+      +(hv?'<button class="btn-ghost" id="km-intro-hold" style="font-size:11px;padding:4px 10px">'+(hold?'Langere bewaring opheffen':'Langere bewaring instellen (alleen noodzakelijk bewijs)')+'</button>':'')
+      +(!contact.noodzaak_einde_op?'<button class="btn-ghost" id="km-intro-opeinde" style="font-size:11px;padding:4px 10px">Einde operationele noodzaak contactgegevens</button>':'')
+      +'</div>';
+
+    // 7. Historie
+    var reacties=Array.isArray(d.reacties)?d.reacties:[];
+    if(reacties.length){
+      h+=sectie('Historie');
+      h+='<div style="font-size:11px;color:var(--sub)">'+reacties.slice().reverse().map(function(r){
+        var extra=r.soort==='akkoord'?(r.naam?' &middot; '+esc(r.naam):''):(r.toelichting?' &middot; '+esc(r.toelichting):'');
+        return '<div style="padding:.3rem 0;border-top:1px solid var(--border)">'+esc(kmDatum(r.created_at,true))+' &middot; '+esc(KM_INTRO_SOORT[r.soort]||r.soort)+(r.versie?' (versie '+esc(String(r.versie))+')':'')+extra+'</div>';
+      }).join('')+'</div>';
+    }
+
+    mo.innerHTML=h;
+    if(hv){var huidigEl=ge('km-intro-huidig');if(huidigEl)huidigEl.textContent=hv.tekst||'';}
+    var tekstEl=ge('km-intro-tekst');if(tekstEl&&hv)tekstEl.value=hv.tekst||'';
+    var omsEl=ge('km-teaser-omschrijving');if(omsEl)omsEl.value=(teaser&&teaser.omschrijving)||'';
+    var cn=ge('km-intro-cnaam');if(cn)cn.value=contact.naam||'';
+    var ce=ge('km-intro-cemail');if(ce)ce.value=contact.email||'';
+    var linkEl=ge('km-intro-link');if(linkEl&&linkInGeheugen)linkEl.value=linkInGeheugen.link;
+    bind(d,hv,st,contact);
+  }
+
+  function bind(d,hv,st,contact){
+    ge('km-intro-sluit').onclick=sluit;
+    var reden=function(){var el=ge('km-intro-reden');var v=el?el.value.trim():'';if(!v)melding('err','Vul eerst een reden in.');return v;};
+
+    var vBtn=ge('km-intro-versie');
+    if(vBtn)vBtn.onclick=function(){
+      var tekst=(ge('km-intro-tekst').value||'').trim();
+      if(!tekst){melding('err','Vul de overeenkomsttekst in.');return;}
+      if(hv&&tekst===(hv.tekst||'').trim()){melding('err','De tekst is niet gewijzigd; er is geen nieuwe versie nodig.');return;}
+      var vraag=hv
+        ?'Nieuwe versie vaststellen?\n\nVersie '+hv.versie+' wordt vervangen. Daardoor vervallen:\n- de huidige link naar de onderneming;\n- een eventueel akkoord op versie '+hv.versie+';\n- een eventuele identiteitsvrijgave aan de koper.\n\nDe onderneming moet de nieuwe versie opnieuw beoordelen.'
+        :'Versie 1 van de introductieovereenkomst vaststellen?\n\nU bent zelf verantwoordelijk voor de inhoud; juridische eindvalidatie gebeurt afzonderlijk.';
+      if(!confirm(vraag))return;
+      linkInGeheugen=null;
+      actie(vBtn,{actie:'versie',tekst:tekst},'Versie vastgesteld.');
+    };
+
+    var luBtn=ge('km-intro-link-uit');
+    if(luBtn)luBtn.onclick=async function(){
+      var dagen=parseInt(ge('km-intro-dagen').value,10);
+      if(!(dagen>=1&&dagen<=30)){melding('err','Kies een geldigheid van 1 tot en met 30 dagen.');return;}
+      if(st.link==='actief'&&!confirm('Een nieuwe link maakt de huidige link ongeldig. Doorgaan?'))return;
+      var j=await actie(luBtn,{actie:'link_uitgeven',geldig_dagen:dagen},null);
+      if(!j)return;
+      if(typeof j.token!=='string'||!j.token){melding('err','De server gaf geen link terug. Trek de link in en maak een nieuwe aan.');await laad();return;}
+      linkInGeheugen={link:kmIntroLink(location.origin,WORKER,j.token),versie:j.versie,verloopt_op:j.verloopt_op};
+      await laad('Link aangemaakt. Kopieer de link of open een e-mail; hij wordt niet opgeslagen.');
+    };
+    var liBtn=ge('km-intro-link-in');
+    if(liBtn)liBtn.onclick=function(){
+      if(!confirm('Link intrekken? De onderneming kan de overeenkomst daarna niet meer openen via deze link.'))return;
+      linkInGeheugen=null;
+      actie(liBtn,{actie:'link_intrekken'},'Link ingetrokken.');
+    };
+    var kopBtn=ge('km-intro-kopieer');
+    if(kopBtn)kopBtn.onclick=function(){
+      var el=ge('km-intro-link');if(!el||!linkInGeheugen)return;
+      el.select();
+      var klaar=function(){toast('Link gekopieerd.','ok');};
+      if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(linkInGeheugen.link).then(klaar,function(){toast('Kopiëren lukte niet; selecteer de link en kopieer handmatig.','err');});
+      else{try{document.execCommand('copy');klaar();}catch(e){toast('Kopiëren lukte niet; selecteer de link en kopieer handmatig.','err');}}
+    };
+    var mailBtn=ge('km-intro-mail');
+    if(mailBtn)mailBtn.onclick=function(){
+      if(!linkInGeheugen)return;
+      var naam=(ge('km-intro-cnaam')||{}).value||contact.naam||'';
+      var email=(ge('km-intro-cemail')||{}).value||contact.email||'';
+      window.location.href=kmIntroMailto(email.trim(),naam.trim(),linkInGeheugen.link,linkInGeheugen.verloopt_op,(S.kmMandaat&&S.kmMandaat.begeleider_naam)||'');
+    };
+
+    var cBtn=ge('km-intro-contact');
+    if(cBtn)cBtn.onclick=function(){
+      var email=ge('km-intro-cemail').value.trim();
+      if(email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){melding('err','Ongeldig e-mailadres.');return;}
+      actie(cBtn,{actie:'contact',naam:ge('km-intro-cnaam').value.trim(),email:email},'Contactgegevens opgeslagen.');
+    };
+
+    var tChk=ge('km-teaser-akkoord'),tBtn=ge('km-teaser-opslaan');
+    if(tChk&&tBtn)tChk.onchange=function(){tBtn.disabled=!tChk.checked;};
+    if(tBtn)tBtn.onclick=function(){
+      if(!tChk||!tChk.checked){melding('err','Bevestig eerst dat de teaser geanonimiseerd is.');return;}
+      var body={actie:'teaser',goedgekeurd:true};
+      var regio=ge('km-teaser-regio').value,sector=ge('km-teaser-sector').value,omzet=ge('km-teaser-omzet').value,mw=ge('km-teaser-mw').value,oms=ge('km-teaser-omschrijving').value.trim();
+      if(regio)body.regio=regio;
+      if(sector)body.sector=sector;
+      if(omzet)body.omzetklasse=omzet;
+      if(mw)body.medewerkersklasse=mw;
+      if(oms)body.omschrijving=oms;
+      if(Object.keys(body).length<=2){melding('err','Vul minstens één teaseronderdeel in.');return;}
+      actie(tBtn,body,'Teaser goedgekeurd en opgeslagen.');
+    };
+    var tiBtn=ge('km-teaser-intrekken');
+    if(tiBtn)tiBtn.onclick=function(){
+      if(!confirm('Teaser intrekken? De koper ziet deze kandidaat daarna zonder omschrijving.'))return;
+      actie(tiBtn,{actie:'teaser_intrekken'},'Teaser ingetrokken.');
+    };
+
+    var vrBtn=ge('km-intro-vrijgeven');
+    if(vrBtn)vrBtn.onclick=function(){
+      if(!kmMagVrijgeven(S.kmRol,d,st))return;
+      if(!confirm('Identiteit vrijgeven aan de koper?\n\nDe koper ziet daarna de bedrijfsnaam en sector van deze onderneming (op basis van het akkoord van '+(st.akkoord.naam||'de onderneming')+' op versie '+hv.versie+'). Wat de koper eenmaal heeft gezien, kan niet worden teruggenomen.'))return;
+      actie(vrBtn,{actie:'vrijgeven',inhoud_hash:hv.inhoud_hash},'Identiteit vrijgegeven aan de koper.');
+    };
+
+    var eBtn=ge('km-intro-einde');
+    if(eBtn)eBtn.onclick=function(){
+      var r=reden();if(!r)return;
+      if(!confirm('Introductierelatie beëindigen?\n\nDe link en een eventuele vrijgave vervallen en er kunnen geen nieuwe versies meer worden gemaakt. Het bewijs blijft vijf jaar bewaard.'))return;
+      linkInGeheugen=null;
+      actie(eBtn,{actie:'relatie_einde',reden:r},'Introductierelatie beëindigd.');
+    };
+    var hBtn=ge('km-intro-hold');
+    if(hBtn)hBtn.onclick=function(){
+      var r=reden();if(!r)return;
+      var aan=!(d.bewaring&&d.bewaring.legal_hold);
+      if(!confirm(aan?'Langere bewaring instellen? Alleen het noodzakelijke bewijs wordt langer bewaard, met de opgegeven reden.':'Langere bewaring opheffen? De normale bewaartermijnen gelden dan weer.'))return;
+      actie(hBtn,{actie:'legal_hold',aan:aan,reden:r},aan?'Langere bewaring ingesteld.':'Langere bewaring opgeheven.');
+    };
+    var oBtn=ge('km-intro-opeinde');
+    if(oBtn)oBtn.onclick=function(){
+      var r=reden();if(!r)return;
+      if(!confirm('Einde operationele noodzaak van de contactgegevens vastleggen? Daarna worden ze uiterlijk na zes maanden verwijderd.'))return;
+      actie(oBtn,{actie:'operationeel_einde',reden:r},'Einde operationele noodzaak vastgelegd.');
+    };
+  }
+
+  laad();
+}
+
+// ── N-115 · alleen-lezen introductiebewijs bij een gepromoveerd traject ──
+// GET /mna/koopmandaat/traject/{code}/introductie — uitsluitend de begeleider van het traject; de
+// koper nooit (backend weigert; dit scherm is alleen bereikbaar binnen het begeleiderdashboard).
+async function toonTrajectIntroductie(){
+  if(!isTussen())return;
+  var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:400;display:flex;align-items:center;justify-content:center;padding:1.5rem';
+  var mo=document.createElement('div');mo.setAttribute('role','dialog');mo.setAttribute('aria-modal','true');mo.setAttribute('aria-labelledby','tr-intro-titel');
+  mo.style.cssText='background:var(--panel);border-radius:10px;padding:1.75rem;max-width:720px;width:100%;max-height:90vh;overflow-y:auto';
+  mo.innerHTML='<div style="font-size:12px;color:var(--muted)">Laden…</div>';
+  ov.appendChild(mo);document.body.appendChild(ov);
+  var sluit=function(){if(ov.parentNode)ov.parentNode.removeChild(ov);};
+  ov.addEventListener('click',function(e){if(e.target===ov)sluit();});
+  var d=null,status=0;
+  try{
+    var r=await fetchMetTimeout(WORKER+'/mna/koopmandaat/traject/'+encodeURIComponent(S.code)+'/introductie',{method:'GET',headers:{'x-tussen-key':S.code},cache:'no-store'},15000);
+    status=r.status;d=await r.json().catch(function(){return null;});
+  }catch(e){d=null;}
+  if(!ov.parentNode)return;
+  var h='<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;margin-bottom:.75rem"><div id="tr-intro-titel" style="font-family:Playfair Display,serif;font-size:1.15rem;color:var(--head);font-weight:600">Introductieovereenkomst (alleen-lezen)</div><button class="btn-ghost" id="tr-intro-sluit" style="font-size:12px">Sluiten</button></div>';
+  if(!d||d.ok!==true){
+    h+='<div style="font-size:12px;color:'+(status===404?'var(--muted)':'var(--red)')+'" id="tr-intro-fout"></div>';
+    mo.innerHTML=h;
+    ge('tr-intro-fout').textContent=status===404?'Er is geen introductieovereenkomst aan dit traject gekoppeld.':((d&&d.error)||'De overeenkomst kon niet worden geladen.');
+    ge('tr-intro-sluit').onclick=sluit;
+    return;
+  }
+  var bewijs=Array.isArray(d.bewijs)?d.bewijs:[];
+  h+='<div style="font-size:11px;color:var(--muted);margin-bottom:.75rem">Vastgelegd vóór de promotie; bewaard bij de oorspronkelijke target. Promotie start geen nieuwe bewaartermijn.'+(d.relatie_einde_op?' Introductierelatie beëindigd op '+esc(kmDatum(d.relatie_einde_op))+'.':'')+'</div>';
+  if(bewijs.length){
+    h+='<div style="font-size:12px;color:var(--sub);margin-bottom:.75rem">'+bewijs.map(function(b){
+      return '<div style="padding:.3rem 0;border-top:1px solid var(--border)">'+esc(kmDatum(b.op,true))+' &middot; '+esc(KM_INTRO_SOORT[b.soort]||b.soort)+(b.versie?' (versie '+esc(String(b.versie))+')':'')+(b.soort==='akkoord'&&b.naam?' &middot; '+esc(b.naam):'')+'</div>';
+    }).join('')+'</div>';
+  }
+  var versies=Array.isArray(d.versies)?d.versies.slice().reverse():[];
+  h+=versies.map(function(v,i){
+    var p=v.partijen||{};
+    return '<div style="margin-top:.75rem"><div style="font-size:12px;color:var(--sub);margin-bottom:.3rem"><b>Versie '+esc(String(v.versie))+'</b>'+(v.status==='actief'?'':' (vervangen)')+' &middot; '+esc(kmDatum(v.aangemaakt_op,true))+' &middot; '+esc(p.target_naam||'—')+' / '+esc(p.geselecteerde_koper||'—')+'</div>'
+      +'<div class="tr-intro-tekst" data-i="'+i+'" style="white-space:pre-wrap;font-size:12px;color:var(--mid);background:var(--card);border:1px solid var(--border);border-radius:6px;padding:.6rem .75rem;max-height:240px;overflow-y:auto"></div></div>';
+  }).join('');
+  mo.innerHTML=h;
+  mo.querySelectorAll('.tr-intro-tekst').forEach(function(el){var v=versies[Number(el.dataset.i)];el.textContent=(v&&v.tekst)||'';});
+  ge('tr-intro-sluit').onclick=sluit;
 }
 
 function toonKmNieuwTargetModal(){
@@ -990,6 +1473,8 @@ function renderBegeleiderDashboard(app){
     // het inhoudelijk niet bij hoort (Marcel, 11 sep 2026: "feedback bug knop zit helemaal
     // verkeerd") — nu altijd zichtbaar in de trajectheader, geen sectie hoeft er open voor.
     +'<button class="btn-outline btn-sm" id="bg-feedback-actie" style="border-color:var(--gold);color:var(--gold)">&#128172; Feedback / bug</button>'
+    // N-115: alleen-lezen introductieovereenkomst bij een uit een koopmandaat gepromoveerd traject.
+    +((t.koopmandaat_target_id||t.opdrachtgever_rol==='koper')?'<button class="btn-outline btn-sm" id="bg-introductie-actie" onclick="toonTrajectIntroductie()">&#128196; Introductieovereenkomst</button>':'')
     +(t.status==='afgesloten'?'':'<button class="btn-ghost btn-sm" id="bg-afsluiten" style="color:var(--red);border-color:var(--red)">&#127937; Traject afsluiten</button>')
     +'<span style="display:inline-block;padding:4px 12px;border-radius:12px;font-size:11px;font-weight:600;background:'+(t.status==='vergrendeld'?'var(--red-bg)':'var(--teal-bg)')+';color:'+(t.status==='vergrendeld'?'var(--red)':'var(--teal)')+';border:1px solid '+(t.status==='vergrendeld'?'var(--red)':'var(--teal-dark)')+'">'+esc(t.status||'actief')+'</span>'
     +'</div></div></div>'

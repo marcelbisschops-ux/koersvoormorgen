@@ -1,0 +1,256 @@
+<!-- © 2026 Bisschops Financing B.V. Alle rechten voorbehouden. -->
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src https://kantoorinzicht.marcel-bisschops.workers.dev https://kantoorinzicht-staging.marcel-bisschops.workers.dev; base-uri 'none'; form-action 'none'">
+<title>Introductieovereenkomst — Koers voor Morgen</title>
+<link rel="stylesheet" href="/assets/fonts.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--void:#f6f2ea;--panel:#fff;--card:#fbf9f4;--border:#d9dee3;--border2:#c8cfd6;--muted:#647581;--mid:#42525e;--sub:#16232e;--head:#0d1b2a;--teal:#3d6b63;--teal-bg:#e9f1ef;--gold-dark:#7a5a06;--gold-bg:#faf3e2;--red:#a03030;--red-bg:#f8ecec;--r:6px;--r2:10px}
+body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--sub);font-size:14px;line-height:1.7}
+.wrap{max-width:820px;margin:0 auto;padding:2.5rem 1.75rem 6rem}
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:1rem 0;border-bottom:1px solid var(--border);margin-bottom:2rem}
+.brand{font-size:11px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:8px}
+.wdot{width:6px;height:6px;border-radius:50%;background:var(--teal)}
+h1{font-family:'Playfair Display',serif;font-size:1.6rem;color:var(--head);font-weight:600;margin-bottom:.35rem}
+h2{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:1.75rem 0 .6rem}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.1rem 1.25rem;margin-bottom:1rem}
+.kv{font-size:12.5px;color:var(--muted)}
+.kv b{color:var(--sub);font-weight:600}
+.tekst{white-space:pre-wrap;word-wrap:break-word;font-size:13.5px;color:var(--sub);background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:.9rem 1rem}
+label{display:block;font-size:12.5px;color:var(--sub);margin:.6rem 0 .25rem}
+label.chk{display:flex;gap:8px;align-items:flex-start;cursor:pointer;line-height:1.5}
+label.chk input{margin-top:3px;flex:none}
+input[type=text],textarea{width:100%;font-family:inherit;font-size:13px;border:1px solid var(--border2);border-radius:var(--r);padding:.55rem .7rem;background:var(--panel);color:var(--sub)}
+textarea{resize:vertical}
+button{font-family:inherit;cursor:pointer;border-radius:var(--r);border:1px solid var(--border2);background:var(--panel);color:var(--sub);font-size:13px;padding:8px 16px;margin-top:.6rem}
+button.primary{background:var(--teal);color:#fff;border-color:var(--teal)}
+button:disabled{opacity:.5;cursor:default}
+.note{font-size:12px;color:var(--muted);line-height:1.6;margin-top:.5rem}
+.err{background:var(--red-bg);border:1px solid var(--red);color:var(--red);border-radius:var(--r);padding:.75rem 1rem;font-size:13px;margin-bottom:1rem}
+.ok{background:var(--teal-bg);border:1px solid var(--teal);color:var(--teal);border-radius:var(--r);padding:.75rem 1rem;font-size:13px;margin-bottom:1rem}
+.wacht{background:var(--gold-bg);border:1px solid var(--gold-dark);color:var(--gold-dark);border-radius:var(--r);padding:.75rem 1rem;font-size:13px;margin-bottom:1rem}
+a{color:var(--teal)}
+.voet{margin-top:2rem;font-size:11px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="hdr"><div class="brand"><div class="wdot"></div>Koers voor Morgen</div><span style="font-size:11px;color:var(--muted)">Introductieovereenkomst</span></div>
+<div id="root"><div class="kv">Laden…</div></div>
+<div class="voet"><a href="/privacy.html" rel="noopener">Privacyverklaring</a></div>
+</div>
+<script>
+// N-115 (P1B, 3 okt 2026) — publieke pagina waar de target (de onderneming) de introductieovereenkomst
+// leest en akkoord geeft of een wijziging vraagt. Het doelgebonden token uit de link is de enige
+// credential: het staat alleen in het geheugen van deze pagina, wordt direct na inlezen uit de
+// adresbalk gehaald (history.replaceState), nooit opgeslagen (geen localStorage/sessionStorage/
+// cookie) en nooit gelogd. Alle servergegevens worden als tekst (textContent) getoond, nooit als HTML.
+// Geen externe scripts, geen analytics. Succes wordt uitsluitend getoond na een expliciete
+// ok-bevestiging van de server.
+(function(){
+'use strict';
+// Zelfde whitelist als marilyn.html (security-fix 17 aug 2026): een willekeurige ?worker=-waarde
+// zou het linktoken naar een vreemde server sturen. Alleen de bekende staging-worker is toegestaan.
+const _WORKER_WHITELIST=['https://kantoorinzicht.marcel-bisschops.workers.dev','https://kantoorinzicht-staging.marcel-bisschops.workers.dev'];
+const _WORKER_PARAM=new URLSearchParams(location.search).get('worker')||'';
+const WORKER=_WORKER_WHITELIST.includes(_WORKER_PARAM)?_WORKER_PARAM:'https://kantoorinzicht.marcel-bisschops.workers.dev';
+
+var TOKEN=new URLSearchParams(location.search).get('token')||'';
+try{
+  var params=new URLSearchParams(location.search);
+  if(params.has('token')&&history&&typeof history.replaceState==='function'){
+    params.delete('token');
+    var rest=params.toString();
+    history.replaceState(null,'',location.pathname+(rest?'?'+rest:''));
+  }
+}catch(e){}
+
+var root=document.getElementById('root');
+var bevestiging='';
+
+function el(tag,cls,tekst){
+  var n=document.createElement(tag);
+  if(cls)n.className=cls;
+  if(tekst!=null)n.textContent=String(tekst);
+  return n;
+}
+function leeg(n){while(n.firstChild)n.removeChild(n.firstChild);}
+function datum(ms,metTijd){
+  if(!ms)return '';
+  var o={day:'numeric',month:'long',year:'numeric'};
+  if(metTijd){o.hour='2-digit';o.minute='2-digit';}
+  try{return new Date(Number(ms)).toLocaleString('nl-NL',o);}catch(e){return '';}
+}
+function foutVoorStatus(s){
+  if(s===404)return 'Deze link is ongeldig, ingetrokken of verlopen. Vraag uw begeleider om een nieuwe link.';
+  if(s===409)return 'De overeenkomst is gewijzigd of de link is niet meer geldig. Er is niets vastgelegd.';
+  if(s===429)return 'Te veel verzoeken. Probeer het later opnieuw.';
+  return 'Er is iets misgegaan. Er is niets bevestigd; probeer het later opnieuw.';
+}
+
+async function api(method,body){
+  try{
+    var opt={method:method,cache:'no-store',credentials:'omit',referrerPolicy:'no-referrer',headers:{}};
+    if(body){opt.headers['Content-Type']='application/json';opt.body=JSON.stringify(body);}
+    var res=await fetch(WORKER+'/mna/koopmandaat/introductie/'+encodeURIComponent(TOKEN),opt);
+    var j=null;
+    try{j=await res.json();}catch(e){j=null;}
+    if(res.ok&&j&&j.ok===true)return {ok:true,status:res.status,json:j};
+    return {ok:false,status:res.status,fout:(j&&typeof j.error==='string'&&j.error)||foutVoorStatus(res.status)};
+  }catch(e){
+    return {ok:false,status:0,fout:'Geen verbinding met de server. Er is niets bevestigd; probeer het later opnieuw.'};
+  }
+}
+
+function toonFout(tekst,herlaadbaar){
+  leeg(root);
+  root.appendChild(el('h1',null,'Introductieovereenkomst'));
+  if(bevestiging)root.appendChild(el('div','ok',bevestiging));
+  root.appendChild(el('div','err',tekst));
+  if(herlaadbaar){
+    var b=el('button',null,'Opnieuw laden');
+    b.id='intro-herlaad';
+    b.addEventListener('click',function(){laad();});
+    root.appendChild(b);
+  }
+}
+
+async function laad(){
+  if(!/^[A-Za-z0-9_-]{43}$/.test(TOKEN)){
+    toonFout('Deze link is onvolledig of ongeldig. Open de link uit uw e-mail opnieuw, of vraag uw begeleider om een nieuwe link.',false);
+    return;
+  }
+  leeg(root);
+  root.appendChild(el('div','kv','Laden…'));
+  var r=await api('GET');
+  if(!r.ok){toonFout(r.fout,r.status!==404&&r.status!==400);return;}
+  toon(r.json);
+}
+
+function toon(d){
+  var o=d.overeenkomst||{};
+  var p=o.partijen||{};
+  var onderneming=typeof p.target_naam==='string'&&p.target_naam?p.target_naam:'';
+  leeg(root);
+  root.appendChild(el('h1',null,'Introductieovereenkomst'));
+  if(bevestiging)root.appendChild(el('div','ok',bevestiging));
+
+  var info=el('div','panel');
+  var regels=[['Onderneming',onderneming],['Geselecteerde koper',p.geselecteerde_koper],['Begeleider',p.begeleider_naam],['Versie',o.versie!=null?String(o.versie):''],['Link geldig tot',datum(o.verloopt_op,true)]];
+  regels.forEach(function(r){
+    if(!r[1])return;
+    var k=el('div','kv');
+    k.appendChild(el('b',null,r[0]+': '));
+    k.appendChild(document.createTextNode(String(r[1])));
+    info.appendChild(k);
+  });
+  root.appendChild(info);
+
+  root.appendChild(el('h2',null,'Tekst van de overeenkomst'));
+  var tekst=el('div','tekst',typeof o.tekst==='string'?o.tekst:'');
+  tekst.id='intro-tekst';
+  root.appendChild(tekst);
+
+  root.appendChild(el('h2',null,'Uw reactie'));
+  if(d.status==='akkoord'){
+    var ok=el('div','ok','Op deze versie is akkoord gegeven'+(d.akkoord_op?' op '+datum(d.akkoord_op,true):'')+'. U hoeft niets meer te doen.');
+    ok.id='intro-status-akkoord';
+    root.appendChild(ok);
+    root.appendChild(el('div','note','Uw akkoord maakt de identiteit van uw onderneming niet automatisch bekend aan de koper; dat is een afzonderlijke stap van uw begeleider.'));
+    return;
+  }
+  if(d.status==='wijziging_gevraagd'){
+    var w=el('div','wacht','U heeft een wijziging gevraagd. Uw begeleider kan een aangepaste versie sturen; die beoordeelt u dan opnieuw. U kunt deze versie ook alsnog accepteren.');
+    w.id='intro-status-wijziging';
+    root.appendChild(w);
+  }
+
+  var form=el('div','panel');
+  var melding=el('div','err');
+  melding.id='intro-melding';
+  melding.style.display='none';
+  form.appendChild(melding);
+
+  form.appendChild(el('div','kv','Akkoord geven'));
+  var lNaam=el('label',null,'Uw volledige naam');
+  lNaam.setAttribute('for','intro-naam');
+  form.appendChild(lNaam);
+  var naam=el('input');
+  naam.type='text';naam.id='intro-naam';naam.setAttribute('maxlength','200');naam.setAttribute('autocomplete','name');
+  form.appendChild(naam);
+  var lBev=el('label','chk');
+  var bev=el('input');
+  bev.type='checkbox';bev.id='intro-bevoegd';
+  lBev.appendChild(bev);
+  lBev.appendChild(el('span',null,'Ik bevestig dat ik bevoegd ben om namens '+(onderneming||'de onderneming')+' akkoord te geven op versie '+(o.versie!=null?o.versie:'')+' van deze overeenkomst, en dat ik de tekst hierboven heb gelezen.'));
+  form.appendChild(lBev);
+  var akkBtn=el('button','primary','Akkoord geven');
+  akkBtn.id='intro-akkoord';akkBtn.disabled=true;
+  form.appendChild(akkBtn);
+  form.appendChild(el('div','note','Uw akkoord maakt de identiteit van uw onderneming niet automatisch bekend aan de koper; dat is een afzonderlijke stap van uw begeleider. Bij een nieuwe inhoudelijke versie wordt u opnieuw om akkoord gevraagd.'));
+
+  form.appendChild(el('h2',null,'Of: wijziging vragen'));
+  var lToel=el('label',null,'Welke wijziging wilt u?');
+  lToel.setAttribute('for','intro-toelichting');
+  form.appendChild(lToel);
+  var toel=el('textarea');
+  toel.id='intro-toelichting';toel.rows=4;toel.setAttribute('maxlength','5000');
+  form.appendChild(toel);
+  var wijzBtn=el('button',null,'Wijziging vragen');
+  wijzBtn.id='intro-wijziging';wijzBtn.disabled=true;
+  form.appendChild(wijzBtn);
+  root.appendChild(form);
+
+  var bezig=false;
+  function bijwerken(){
+    akkBtn.disabled=bezig||!(bev.checked&&naam.value.trim().length>=2);
+    wijzBtn.disabled=bezig||!toel.value.trim();
+  }
+  naam.addEventListener('input',bijwerken);
+  bev.addEventListener('change',bijwerken);
+  toel.addEventListener('input',bijwerken);
+
+  async function verstuur(body){
+    if(bezig)return;
+    bezig=true;bijwerken();
+    melding.style.display='none';melding.textContent='';
+    var r=await api('POST',body);
+    if(r.ok&&(r.json.status==='akkoord'||r.json.status==='wijziging_gevraagd')){
+      bevestiging=r.json.status==='akkoord'
+        ?'Uw akkoord op versie '+(r.json.versie!=null?r.json.versie:'')+' is vastgelegd.'
+        :'Uw wijzigingsverzoek is vastgelegd en doorgegeven aan uw begeleider.';
+      await laad();
+      return;
+    }
+    bezig=false;bijwerken();
+    melding.textContent=r.ok?'Onverwacht antwoord van de server. Er is niets bevestigd; laad de pagina opnieuw.':r.fout;
+    melding.style.display='block';
+    if(r.status===409||r.status===0||r.ok){
+      var h=el('button',null,'Actuele versie laden');
+      h.id='intro-herlaad';
+      h.addEventListener('click',function(){laad();});
+      melding.appendChild(document.createElement('br'));
+      melding.appendChild(h);
+    }
+  }
+  akkBtn.addEventListener('click',function(){
+    if(!(bev.checked&&naam.value.trim().length>=2))return;
+    verstuur({actie:'akkoord',naam:naam.value.trim(),inhoud_hash:o.inhoud_hash});
+  });
+  wijzBtn.addEventListener('click',function(){
+    if(!toel.value.trim())return;
+    verstuur({actie:'wijziging',toelichting:toel.value.trim(),inhoud_hash:o.inhoud_hash});
+  });
+}
+
+laad();
+})();
+</script>
+</body>
+</html>

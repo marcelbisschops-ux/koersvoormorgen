@@ -792,6 +792,21 @@ log('15. bgDocSpa() gebruikt de dedicated /mna/spa/genereer-route, niet de gener
   }
 }
 
+log('16. N-115 introductie-UI (tests/n115-ui.mjs): koper A/B/C, inerte overeenkomst, worker-whitelist, geen vals succes');
+{
+  // N-115 (P1B, 3 okt 2026): de lokale UI-test draait de echte introductie.html-code en de zuivere
+  // N-115-functies uit mna/04 in node:vm met een minimale DOM-fixture — geen netwerk, geen browser.
+  try {
+    const { draaiN115UiChecks } = await import('./n115-ui.mjs');
+    const resultaten = await draaiN115UiChecks(ROOT);
+    const gefaald = resultaten.filter(r => !r.ok);
+    gefaald.forEach(r => warn('N-115: ' + r.msg));
+    if (!gefaald.length) ok('Alle ' + resultaten.length + ' N-115-UI-checks geslaagd (koper ziet vóór vrijgave alleen de teaser, overeenkomsttekst inert, token alleen naar de whitelist-worker, geen succes zonder serverbevestiging).');
+  } catch (e) {
+    warn('tests/n115-ui.mjs kon niet worden uitgevoerd: ' + String((e && e.message) || e));
+  }
+}
+
 // ── Samenvatting ──────────────────────────────────────────────────────────
 log('Samenvatting');
 if (!bevindingen) {
