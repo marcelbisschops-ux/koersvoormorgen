@@ -161,6 +161,98 @@ tr:hover td{background:var(--bg);cursor:pointer}
 var _WORKER_WHITELIST=['https://kantoorinzicht.marcel-bisschops.workers.dev','https://kantoorinzicht-staging.marcel-bisschops.workers.dev'];
 var _WORKER_PARAM=new URLSearchParams(location.search).get('worker')||'';
 var WORKER=_WORKER_WHITELIST.includes(_WORKER_PARAM)?_WORKER_PARAM:'https://kantoorinzicht.marcel-bisschops.workers.dev';
+
+// ===== P1C (N-95, 3 okt 2026) — promotie van een koopmandaat-target en eigen trajectdoorgang =====
+// mna.html (koopmandaat) opent dit portaal met ?promotie={mandaatcode}&target={id} of ?traject={id}.
+// Die context wordt hieronder één keer gelezen, direct uit de adresbalk gehaald (history.replaceState,
+// alleen een bekende ?worker= blijft staan) en daarna alleen in geheugen bewaard. Pas na de gewone
+// login (wachtwoord, verificatiecode, gebruiksvoorwaarden) volgt de doelgerichte stap. De server beslist
+// over eigenaarschap, prijs, limiet en proef; de UI rekent niets zelf en kiest niets stil.
+// De functies tussen de P1C-ADV-PURE-markers zijn zuiver, zodat tests/p1c-ui.mjs ze los kan draaien.
+// P1C-ADV-PURE-BEGIN
+var P1C_CODE_VORM=/^[A-Za-z0-9]{4,20}$/;
+var P1C_ID_VORM=/^[A-Za-z0-9_-]{1,64}$/;
+function p1cLeesContext(search){
+  var q=new URLSearchParams(search||'');
+  var promotie=q.get('promotie'),target=q.get('target'),traject=q.get('traject');
+  if(promotie===null&&target===null&&traject===null)return null;
+  if(traject===null&&P1C_CODE_VORM.test(promotie||'')&&P1C_ID_VORM.test(target||''))return {soort:'promotie',mandaat:promotie,target:target};
+  if(promotie===null&&target===null&&P1C_CODE_VORM.test(traject||''))return {soort:'traject',traject:traject};
+  return {soort:'ongeldig'};
+}
+function p1cSchoneUrl(pathname,search,whitelist){
+  var w=new URLSearchParams(search||'').get('worker')||'';
+  return pathname+(whitelist.indexOf(w)>=0?'?worker='+encodeURIComponent(w):'');
+}
+function p1cMnaUrl(code,worker,staging){
+  return 'mna.html?code='+encodeURIComponent(code)+(worker===staging?'&worker='+encodeURIComponent(worker):'');
+}
+// Bestaand traject: uitsluitend exact dit id uit de eigen (server-geleverde) trajectenlijst, geopend met
+// de eigen begeleiderscode. Geen treffer of geen code → geen doorgang (nooit het id zelf als code).
+function p1cEigenTrajectCode(trajecten,id){
+  var t=(trajecten||[]).filter(function(x){return x&&x.id===id;})[0];
+  return t&&typeof t.tussen_code==='string'&&P1C_CODE_VORM.test(t.tussen_code)?t.tussen_code:'';
+}
+function p1cQuoteGeldig(q){
+  if(!q||q.ok!==true||typeof q.pakket_verplicht!=='boolean'||typeof q.fee_vrijgesteld!=='boolean'||typeof q.test_boeking!=='boolean')return false;
+  if(!Array.isArray(q.pakketten)||!q.pakketten.length)return false;
+  return q.pakketten.every(function(p){return p&&typeof p.pakket==='string'&&/^[a-z_]{2,30}$/.test(p.pakket)&&typeof p.label==='string'&&p.label&&typeof p.bedrag==='number'&&isFinite(p.bedrag)&&p.bedrag>=0;});
+}
+function p1cBedragTekst(b){
+  return '€ '+Number(b).toLocaleString('nl-NL',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+// Sectoren uitsluitend uit de bestaande sectorprofielenbron ({profielen:{sleutel:{label}}}).
+function p1cSectoren(d){
+  var p=d&&d.profielen&&typeof d.profielen==='object'?d.profielen:null;
+  if(!p)return null;
+  var uit={},n=0;
+  Object.keys(p).forEach(function(k){if(/^[a-z0-9_-]{2,40}$/.test(k)){uit[k]=(p[k]&&typeof p[k].label==='string'&&p[k].label)||k;n++;}});
+  return n?uit:null;
+}
+function p1cStartSector(q,sectoren){
+  return q&&typeof q.sector==='string'&&sectoren&&Object.prototype.hasOwnProperty.call(sectoren,q.sector)?q.sector:'';
+}
+// Body exact {pakket, sector}, of null zolang de keuze niet volledig/geldig is. keuze===null betekent
+// "nog niets gekozen"; '' is de expliciete keuze "zonder pakket" (alleen als de server dat toestaat).
+function p1cBody(q,keuze,sector,sectoren){
+  if(!p1cQuoteGeldig(q)||typeof keuze!=='string')return null;
+  if(!sector||!sectoren||!Object.prototype.hasOwnProperty.call(sectoren,sector))return null;
+  var bekend=q.pakketten.some(function(p){return p.pakket===keuze;});
+  if(keuze===''){if(q.pakket_verplicht)return null;return {pakket:null,sector:sector};}
+  return bekend?{pakket:keuze,sector:sector}:null;
+}
+function p1cFoutMelding(status,j){
+  j=j||{};
+  if(!status)return 'Geen (tijdig) antwoord van de server. Er is niets bevestigd; probeer het opnieuw.';
+  var m=(typeof j.message==='string'&&j.message)||(typeof j.error==='string'&&j.error)||'';
+  if(m)return m.slice(0,400);
+  if(status===401)return 'Geen toegang tot dit koopmandaat met deze link.';
+  if(status===404)return 'Deze target bestaat niet (meer) in dit koopmandaat.';
+  if(status===409)return 'Deze target is al gepromoveerd.';
+  return 'De server heeft dit niet bevestigd (status '+status+'). Er is niets gestart.';
+}
+// Succes alleen met de begeleidersrol van het nieuwe traject en een geldige code.
+function p1cVervolgCode(d){
+  var v=d&&d.ok===true&&d.vervolg;
+  return v&&v.rol==='tussenpersoon'&&typeof v.login_code==='string'&&P1C_CODE_VORM.test(v.login_code)?v.login_code:'';
+}
+function p1cTrajectRef(d){
+  return d&&typeof d.traject_ref==='string'&&/^[A-Za-z0-9_-]{1,40}$/.test(d.traject_ref)?d.traject_ref:'';
+}
+// Eén POST tegelijk (dubbelklik → genegeerd); na een fout is opnieuw proberen mogelijk.
+async function p1cBevestig(st,body,post){
+  if(st.bezig||!body)return {soort:'genegeerd'};
+  st.bezig=true;
+  try{
+    var r=await post(body);
+    if(!r||!r.ok)return {soort:'fout',melding:p1cFoutMelding(r?r.status:0,r?r.json:null)};
+    var code=p1cVervolgCode(r.json);
+    return {soort:code?'succes':'zonder_vervolg',code:code,traject_ref:p1cTrajectRef(r.json)};
+  }finally{st.bezig=false;}
+}
+// P1C-ADV-PURE-END
+var P1C_CTX=p1cLeesContext(location.search);
+if(P1C_CTX){try{history.replaceState(null,'',p1cSchoneUrl(location.pathname,location.search,_WORKER_WHITELIST));}catch(e){}}
 // White-label basis — centrale merkconfig (zelfde patroon als mna.html). Eén plek wijzigen = overal.
 var BRAND = { platform:'Koers voor Morgen', bedrijf:'Bisschops Financing B.V.', bedrijfKort:'Bisschops Financing BV', suffix:'M&A', kort:'Koers voor Morgen' };
 document.title = BRAND.platform + ' — Adviseur';
@@ -206,6 +298,7 @@ function renderLogin(){
     <div class="login-brand"><div class="login-dot"></div><span class="login-brand-name">${BRAND.platform} ${BRAND.suffix}</span></div>
     <div class="login-title">Adviseur portaal</div>
     <div class="login-sub">Log in met uw e-mailadres en wachtwoord.</div>
+    ${P1C_CTX?'<div class="info-box" id="p1c-login-hint">'+(P1C_CTX.soort==='promotie'?'Log in met het account dat eigenaar is van dit koopmandaat om de promotie van de target te bevestigen.':P1C_CTX.soort==='traject'?'Log in om dit traject als begeleider te openen.':'Deze link is onvolledig of ongeldig. U kunt gewoon inloggen.')+'</div>':''}
     <div class="field"><label for="l-e">E-mailadres</label><input type="email" id="l-e" placeholder="E-mailadres" autofocus></div>
     <div class="field"><label for="l-w">Wachtwoord</label><input type="password" id="l-w" placeholder="••••••••"></div>
     <div id="l-err" class="err-msg"></div>
@@ -256,6 +349,14 @@ function toepassenLoginPayload(d,email){
   G.email=email;G.token=d.sessie_token||G.token||'';G.naam=d.naam;G.bedrijf=d.bedrijf;G.trajecten=d.trajecten||[];G.limiet=d.traject_limiet||1;G.modules=d.modules||{traject:true};G.isTester=!!d.is_tester;G.proef=!!d.proef;G.proefTot=d.proef_tot||null;G.branding=d.branding||{brand_naam:'',brand_kleur:'',brand_logo_url:''};
   var vw=d.voorwaarden||{gv_akkoord:true};
   if(!vw.gv_akkoord){ renderVoorwaardenAcceptatie(vw); return; }
+  naInlogVervolg();
+}
+
+// P1C: na een volledige login (en eventueel de voorwaarden) de doelgerichte stap, anders het dashboard.
+function naInlogVervolg(){
+  if(P1C_CTX&&P1C_CTX.soort==='promotie')return renderP1cPromotie();
+  if(P1C_CTX&&P1C_CTX.soort==='traject')return renderP1cTraject();
+  if(P1C_CTX&&P1C_CTX.soort==='ongeldig')return renderP1cMelding('Link ongeldig','<div class="err-msg" id="p1c-fout" style="display:block">Deze link is onvolledig of ongeldig. Er is niets gestart.</div>');
   renderDashboard();
 }
 
@@ -342,7 +443,7 @@ function renderVoorwaardenAcceptatie(vw){
         var r=await fetch(WORKER+'/gebruiker/voorwaarden/accepteren',{method:'POST',headers:{'Content-Type':'application/json','x-gebruiker-token':G.token},body:JSON.stringify({})});
         var rd=await r.json();
         if(!r.ok||!rd.ok){err.textContent=rd.error||'Kon niet worden verwerkt.';err.style.display='block';btn.disabled=false;btn.textContent='Ga akkoord en verder';return;}
-        renderDashboard();
+        naInlogVervolg();
       }catch(e){err.textContent='Verbindingsfout — probeer opnieuw.';err.style.display='block';btn.disabled=false;btn.textContent='Ga akkoord en verder';}
     };
   }).catch(function(){ ge('vw-tekst').textContent='Kon de voorwaarden niet laden. Ververs de pagina.'; });
@@ -454,7 +555,7 @@ function renderAdvHandleiding(){
 
       ${sectie('🧭 Begeleider (binnen een traject, op mna.html)',
         stap(1,'Inloggen','Klik op een traject in uw trajectenlijst, of log rechtstreeks in op mna.html met de tussenpersoonscode van dat traject. Bij de eerste keer moet u de verwerkersovereenkomst (VOK) accepteren.')
-        + stap('1a','Koopmandaat — koper als opdrachtgever, vóór er een traject bestaat (25 sep 2026)','Begeleidt u een koper die nog geen specifieke verkoper heeft? Dan kan Bisschops Financing u een aparte <strong>koopmandaat-code</strong> geven — u logt daarmee in op hetzelfde mna.html-inlogscherm. Daarin legt u het zoekprofiel vast en volgt u meerdere kandidaat-ondernemingen ("targets") met status, contactlog en eigen notities (nooit zichtbaar voor de koper). Wordt een target concreet, dan promoveert u die naar een volwaardig traject — met behoud van alle informatie. Een koopmandaat staat nog niet in uw trajectenlijst hierboven (dat is een aparte administratie); u ontvangt de code rechtstreeks.')
+        + stap('1a','Koopmandaat — koper als opdrachtgever, vóór er een traject bestaat (25 sep 2026)','Begeleidt u een koper die nog geen specifieke verkoper heeft? Dan kan Bisschops Financing u een aparte <strong>koopmandaat-code</strong> geven — u logt daarmee in op hetzelfde mna.html-inlogscherm. Daarin legt u het zoekprofiel vast en volgt u meerdere kandidaat-ondernemingen ("targets") met status, contactlog en eigen notities (nooit zichtbaar voor de koper). Wordt een target concreet, dan promoveert u die naar een volwaardig traject — met behoud van alle informatie. "Promoveer" opent dit portaal: na het inloggen ziet u de actuele pakketprijzen van de server, kiest u zelf het pakket en de sector en bevestigt u; weigert de server, dan is er niets gestart. Daarna gaat u met "Verder als begeleider" naar het nieuwe traject. Een koopmandaat staat nog niet in uw trajectenlijst hierboven (dat is een aparte administratie); u ontvangt de code rechtstreeks.')
         + stap('1c','Introductieovereenkomst met de target en vrijgave van de identiteit (3 okt 2026)','De koper ziet kandidaat-targets standaard anoniem: alleen de status en een door u goedgekeurde, geanonimiseerde teaser (brede regio, gestandaardiseerde sector, omzet- en medewerkersklasse, korte omschrijving). Per target opent u in het koopmandaat "Introductieovereenkomst &amp; vrijgave": u voert de overeenkomsttekst zelf in (eigen overeenkomst, geen bemiddelingsovereenkomst; de goedgekeurde richting is nog juridisch te valideren en het platform levert geen standaardtekst of niet-besloten boete- of duurbepalingen), maakt een persoonlijke link van 1 tot 30 dagen en verstuurt die zelf — kopiëren of een e-mail openen in uw eigen mailprogramma, er gaat niets automatisch uit. De target leest de overeenkomst, bevestigt bevoegd te zijn en geeft akkoord of vraagt een wijziging. Een nieuwe versie vraagt uw bevestiging en laat de link, een eventueel akkoord en een eventuele vrijgave vervallen. Een akkoord geeft de identiteit niet vrij: pas als u daarna zelf op "Identiteit vrijgeven aan de koper" klikt, ziet de koper naam en sector — nooit contactpersonen, de overeenkomst of het akkoordbewijs. Alleen de begeleider kan vrijgeven, niet de platformbeheerder. Verder legt u met een reden het einde van de introductierelatie, het einde van de operationele noodzaak van contactgegevens en zo nodig een gerichte langere bewaring van het noodzakelijke bewijs vast (bewaarbeleid nog juridisch/privacy te valideren). Na promotie blijft de overeenkomst alleen-lezen beschikbaar via "Introductieovereenkomst" in het begeleiderdashboard van het traject.')
         + stap(2,'Documenten genereren','Is de module "Contracten" actief, dan kunt u vanuit het traject-dashboard NDA, LoI, BEM (bemiddelingsovereenkomst), Excl (exclusiviteitsovereenkomst), Dealvoorstel, Bieding, SPA en een Closing-checklist genereren en digitaal laten ondertekenen via Signhost. Bij LoI en Bieding is vóór verzending een verplicht veld "Intern goedgekeurd door" ingebouwd, vastgelegd in het logboek (bij een fusietraject twee namen — één per fusiepartij — omdat een fusie goedkeuring vanuit beide besturen vereist). De BEM-knop kiest zelf de juiste tekst op basis van het trajecttype (verkoop/aankoop met succesfee-staffel 5%/4%/3%/2%, min. €25.000; bij "Opvolging" een apart bedrijfsopvolgings-sjabloon). Zodra u de bemiddelingsovereenkomst per e-mail verstuurt, krijgt de opdrachtgever (bij verkoop de verkoper, bij aankoop de koper) op zijn eigen coverscherm dezelfde reviewcyclus als bij MoU/LoI/NDA: "Akkoord" of "Wijziging vragen" (met toelichting) — zichtbaar als reactiestatus onder het document in uw eigen dashboard. Vraagt de opdrachtgever een wijziging, dan blijft de verstuurde versie ongewijzigd bewaard; een opnieuw verstuurde tekst start automatisch een nieuwe, opnieuw te beoordelen versie. Signhost en "Buiten Signhost om getekend" zijn pas beschikbaar nadat de opdrachtgever inhoudelijk akkoord heeft gegeven. Onder elk gegenereerd document staat een vaste slotregel dat het via het platform is opgesteld als hulpmiddel en geen professioneel advies of taxatierapport is. Bij versturen (e-mail/Signhost) wordt die regel automatisch aangehecht; bij printen/bekijken vraagt het platform u dit eerst te bevestigen in een pop-up (vastgelegd, niet in het document zelf), zodat u ook een schone versie kunt printen.')
         + stap('2h','Terugweg naar het portaal + Exclusiviteit/Dealvoorstel/Bieding (22 sep 2026)','Elke e-mail met een MoU, LoI, NDA, BEM, Exclusiviteitsovereenkomst, Dealvoorstel of Indicatieve bieding bevat nu een automatische inloglink terug naar het portaal. De Exclusiviteitsovereenkomst kreeg dezelfde Akkoord/Wijziging-cyclus als BEM, met dit verschil: omdat exclusiviteit beide partijen bindt, telt het pas als "goedgekeurd" zodra zowel verkoper als koper akkoord zijn — één akkoord is niet genoeg, en tekenen kan pas daarna. Dealvoorstel en Indicatieve bieding blijven onderhandelingsdocumenten zonder formeel akkoord, maar zijn nu wel terugvindbaar in het portaal i.p.v. alleen een PDF in de mail.')
@@ -564,7 +665,7 @@ function renderAdvHandleiding(){
 // sessietoken bleef tot 8 uur geldig op de server, ook na uitloggen. Nu ook server-side intrekken.
 async function doLogout(){
   var tok=G.token;
-  G.token='';G.email='';
+  G.token='';G.email='';P1C_CTX=null;
   try{ if(tok) await fetch(WORKER+'/gebruikers/logout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessie_token:tok})}); }catch(e){}
   renderLogin();
 }
@@ -575,6 +676,113 @@ async function ververs(){
     var d=await r.json();
     if(d.ok){G.trajecten=d.trajecten||[];G.limiet=d.traject_limiet||G.limiet||1;G.modules=d.modules||G.modules;G.isTester=!!d.is_tester;renderDashboard();}
   }catch(e){}
+}
+
+// ===== P1C · PROMOTIE EN EIGEN TRAJECTDOORGANG (schermen) =====
+function renderP1cMelding(titel,inhoud){
+  render(`
+    <div class="hdr">
+      <div class="hdr-brand"><div class="hdr-dot"></div>${BRAND.platform} ${BRAND.suffix}</div>
+      <div class="hdr-right">
+        <span class="hdr-user">Ingelogd als <span class="hdr-name">${esc(G.naam)}</span></span>
+        <button class="btn-outline" id="p1c-dashboard">Naar dashboard</button>
+        <button class="btn-outline" onclick="doLogout()">Uitloggen</button>
+      </div>
+    </div>
+    <div class="main"><div class="card"><div class="card-hdr"><div class="card-title">${esc(titel)}</div></div>
+      <div class="card-body" id="p1c-inhoud">${inhoud}</div></div></div>`);
+  ge('p1c-dashboard').onclick=function(){P1C_CTX=null;renderDashboard();ververs();};
+}
+
+function p1cPromotieApi(ctx,method,body){
+  var opt={method:method,headers:{'x-tussen-key':ctx.mandaat,'x-gebruiker-token':G.token},cache:'no-store'};
+  if(body){opt.headers['Content-Type']='application/json';opt.body=JSON.stringify(body);}
+  return fetchMetTimeout(WORKER+'/mna/koopmandaat/'+encodeURIComponent(ctx.mandaat)+'/target/'+encodeURIComponent(ctx.target)+'/promoveer',opt,20000)
+    .then(function(r){return r.json().catch(function(){return {};}).then(function(j){j=j||{};return {status:r.status,ok:r.ok&&j.ok===true,json:j};});})
+    .catch(function(){return {status:0,ok:false,json:{}};});
+}
+
+function p1cLaadSectoren(){
+  return fetchMetTimeout(WORKER+'/mna/sectorprofielen',{cache:'no-store'},15000)
+    .then(function(r){return r.ok?r.json():null;}).then(p1cSectoren).catch(function(){return null;});
+}
+
+async function renderP1cPromotie(){
+  var ctx=P1C_CTX;
+  renderP1cMelding('Target promoveren naar een M&A-traject','<div style="font-size:13px;color:var(--muted)">Actuele prijzen en voorwaarden ophalen...</div>');
+  var res=await Promise.all([p1cPromotieApi(ctx,'GET'),p1cLaadSectoren()]);
+  if(P1C_CTX!==ctx)return;
+  var el=ge('p1c-inhoud');if(!el)return;
+  var q=res[0],sectoren=res[1];
+  var opnieuw='<button class="btn-outline" id="p1c-opnieuw">Opnieuw ophalen</button>';
+  if(!q.ok||!p1cQuoteGeldig(q.json)){
+    el.innerHTML='<div class="err-msg" id="p1c-fout" style="display:block">'+esc(q.ok?'Onvolledig antwoord van de server. Er is niets gestart.':p1cFoutMelding(q.status,q.json))+'</div>'+opnieuw;
+    ge('p1c-opnieuw').onclick=renderP1cPromotie;return;
+  }
+  if(!sectoren){
+    el.innerHTML='<div class="err-msg" id="p1c-fout" style="display:block">De sectorlijst kon niet worden geladen. Zonder geldige sector wordt er niets gestart.</div>'+opnieuw;
+    ge('p1c-opnieuw').onclick=renderP1cPromotie;return;
+  }
+  var quote=q.json,startSector=p1cStartSector(quote,sectoren);
+  var h='<div style="font-size:13px;color:var(--sub);line-height:1.6;margin-bottom:1rem">U promoveert een target uit uw koopmandaat naar een volwaardig M&amp;A-traject. Naam, sector en uw werkaantekeningen gaan mee. Dit kan niet ongedaan worden gemaakt.</div>';
+  if(quote.test_boeking)h+='<div class="info-box" id="p1c-test"><strong>Testaccount.</strong> Hieronder staan de actuele platformprijzen; de pakketfee wordt voor uw account als testboeking vastgelegd.</div>';
+  if(quote.fee_vrijgesteld)h+='<div class="info-box" id="p1c-vrijgesteld"><strong>Vrijgesteld van de pakketfee.</strong> Voor dit mandaat geldt een vrijstelling; een pakket kiezen is optioneel.</div>';
+  else if(quote.pakket_verplicht)h+='<div class="info-box" id="p1c-betaler">Kies het pakket waarmee dit traject start. Het bedrag van het gekozen pakket wordt bij bevestigen als trajectfee op uw account geregistreerd.</div>';
+  h+='<fieldset style="border:1px solid var(--border);border-radius:var(--r);padding:.75rem 1rem;margin-bottom:1rem"><legend style="font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);padding:0 4px">Pakket'+(quote.pakket_verplicht?' (verplicht)':' (optioneel)')+'</legend>';
+  quote.pakketten.forEach(function(p){
+    h+='<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--sub);margin:.35rem 0;cursor:pointer"><input type="radio" name="p1c-pakket" value="'+esc(p.pakket)+'"> <strong>'+esc(p.label)+'</strong> &mdash; <span class="p1c-bedrag">'+esc(p1cBedragTekst(p.bedrag))+'</span></label>';
+  });
+  if(!quote.pakket_verplicht)h+='<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--sub);margin:.35rem 0;cursor:pointer"><input type="radio" name="p1c-pakket" value=""> Zonder pakket</label>';
+  h+='<div style="font-size:11px;color:var(--muted);margin-top:.4rem">Bedragen zoals nu door de server opgegeven (actuele platformtarieven).</div></fieldset>';
+  h+='<div class="field"><label for="p1c-sector">Sector *</label><select id="p1c-sector"><option value="">— Kies een sector —</option>'
+    +Object.keys(sectoren).sort().map(function(k){return '<option value="'+esc(k)+'"'+(k===startSector?' selected':'')+'>'+esc(sectoren[k])+'</option>';}).join('')+'</select>'
+    +(startSector?'':'<div id="p1c-sector-onbekend" style="font-size:11px;color:var(--gold-dark);margin-top:4px">'+(quote.sector?'De vastgelegde sector van deze target ('+esc(quote.sector)+') is geen bekende sector.':'Voor deze target is geen sector vastgelegd.')+' Kies de juiste sector; er wordt niets aangenomen.</div>')+'</div>';
+  h+='<label style="display:flex;align-items:flex-start;gap:8px;font-size:13px;color:var(--sub);margin-bottom:1rem;cursor:pointer"><input type="checkbox" id="p1c-akkoord" style="margin-top:3px"> <span>Ik bevestig dat ik deze target met het gekozen pakket en de gekozen sector promoveer naar een M&amp;A-traject.</span></label>';
+  h+='<div class="err-msg" id="p1c-fout"></div><button class="btn" id="p1c-bevestig" disabled>Bevestig promotie</button>';
+  el.innerHTML=h;
+
+  var st={bezig:false};
+  function keuze(){var r=document.querySelector('input[name="p1c-pakket"]:checked');return r?r.value:null;}
+  function body(){return p1cBody(quote,keuze(),ge('p1c-sector').value,sectoren);}
+  function bijwerken(){var b=ge('p1c-bevestig');if(b)b.disabled=st.bezig||!body()||!ge('p1c-akkoord').checked;}
+  document.querySelectorAll('input[name="p1c-pakket"]').forEach(function(r){r.addEventListener('change',bijwerken);});
+  ge('p1c-sector').addEventListener('change',bijwerken);
+  ge('p1c-akkoord').addEventListener('change',bijwerken);
+  ge('p1c-bevestig').onclick=async function(){
+    var b=body();
+    if(st.bezig||!b||!ge('p1c-akkoord').checked)return;
+    var btn=this,fout=ge('p1c-fout');
+    btn.disabled=true;btn.textContent='Bezig met promoveren...';fout.style.display='none';
+    var uit=await p1cBevestig(st,b,function(x){return p1cPromotieApi(ctx,'POST',x);});
+    if(uit.soort==='genegeerd')return;
+    if(uit.soort==='fout'){fout.textContent=uit.melding;fout.style.display='block';btn.textContent='Opnieuw proberen';bijwerken();return;}
+    P1C_CTX=null;
+    renderP1cResultaat(uit);
+  };
+}
+
+function renderP1cResultaat(uit){
+  var ref=uit.traject_ref?'<div style="margin-bottom:.75rem">Trajectreferentie: <strong id="p1c-ref">'+esc(uit.traject_ref)+'</strong></div>':'';
+  if(uit.soort==='succes'){
+    renderP1cMelding('Traject gestart','<div class="ok-msg" id="p1c-succes" style="display:block">De target is gepromoveerd naar een volwaardig M&amp;A-traject.</div>'+ref
+      +'<div style="font-size:12px;color:var(--muted);line-height:1.6;margin-bottom:1rem">U gaat verder als begeleider van het nieuwe traject. Ververs daarna het koopmandaatscherm om de nieuwe status te zien.</div>'
+      +'<a class="btn" id="p1c-verder" href="'+esc(p1cMnaUrl(uit.code,WORKER,_WORKER_WHITELIST[1]))+'" style="text-decoration:none">Verder als begeleider &rarr;</a>');
+    return;
+  }
+  renderP1cMelding('Promotie bevestigd','<div class="info-box" id="p1c-zonder-vervolg">De server heeft de promotie bevestigd, maar gaf geen geldige begeleidersdoorgang terug. Open het traject via uw trajectenlijst.</div>'+ref);
+}
+
+function renderP1cTraject(){
+  var id=P1C_CTX.traject;
+  var code=p1cEigenTrajectCode(G.trajecten,id);
+  P1C_CTX=null;
+  if(!code){
+    renderP1cMelding('Traject openen','<div class="err-msg" id="p1c-geweigerd" style="display:block">Dit traject staat niet met een eigen begeleiderscode in de trajectenlijst van dit account. Er wordt geen andere toegang gebruikt. Log in met het account dat eigenaar is van dit traject.</div>');
+    return;
+  }
+  var t=G.trajecten.filter(function(x){return x&&x.id===id;})[0]||{};
+  renderP1cMelding('Traject openen','<div style="font-size:13px;color:var(--sub);margin-bottom:1rem">'+esc(t.kantoor_naam||'Traject')+'</div>'
+    +'<a class="btn" id="p1c-open-begeleider" href="'+esc(p1cMnaUrl(code,WORKER,_WORKER_WHITELIST[1]))+'" style="text-decoration:none">Open als begeleider &rarr;</a>');
 }
 
 // ===== EIGEN HUISSTIJL (v1: naam, accentkleur, logo-URL) =====

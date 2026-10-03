@@ -312,6 +312,11 @@ function kmKoperTargetHtml(t,sectorLabels){
     +(regels.length||omschrijving
       ?'<div style="margin-top:.6rem;font-size:12px;color:var(--sub)">'+(regels.length?'<div>'+regels.map(esc).join(' &middot; ')+'</div>':'')+(omschrijving?'<div style="margin-top:.3rem;color:var(--mid)">'+esc(omschrijving)+'</div>':'')+'</div>'
       :'<div style="margin-top:.6rem;font-size:12px;color:var(--muted)">Nog geen goedgekeurde anonieme omschrijving.</div>')
+    +(kmKoperMagDoorgang(t)
+      ?'<div style="margin-top:.6rem"><button class="btn-ghost km-koper-traject-btn" data-id="'+esc(t.id)+'" style="font-size:12px;color:var(--teal);border-color:var(--teal)">Open eigen traject &#8594;</button>'
+        +'<div class="km-koper-traject-melding" data-id="'+esc(t.id)+'" role="status" style="display:none;margin-top:.4rem;font-size:12px;color:var(--red)"></div>'
+        +'<div style="margin-top:.3rem;font-size:11px;color:var(--muted)">U opent het traject met uw eigen kopertoegang. De NDA en de door uw begeleider vrijgegeven informatiecategorieën gelden daar zoals gebruikelijk.</div></div>'
+      :'')
     +'</div>';
 }
 
@@ -354,6 +359,33 @@ function kmIntroMailto(email,contactNaam,link,verlooptOp,begeleiderNaam){
     +link+'\n\nDeze link is uitsluitend voor u bedoeld; stuur hem niet door.\n\nMet vriendelijke groet,\n'+(begeleiderNaam||'');
   return 'mailto:'+encodeURIComponent(email||'').replace(/%40/g,'@')+'?subject='+encodeURIComponent('Introductieovereenkomst — uw beoordeling')+'&body='+encodeURIComponent(body);
 }
+
+// P1C (N-95, 3 okt 2026) — promotie en eigen doorgang. Promoveren gebeurt niet meer hier (alleen de
+// mandaatcode bewijst niet wie promoveert), maar in adv.html na de bestaande adviseurslogin: dit scherm
+// opent daar alleen een context (mandaatcode + target-id, of een bestaand traject-id). adv.html haalt
+// die direct uit de adresbalk. Nooit een sessietoken of wachtwoord in de URL.
+// P1C-PURE-BEGIN
+function kmAdvContextUrl(worker,ctx){
+  var q=[];
+  if(ctx&&ctx.promotie&&ctx.target)q.push('promotie='+encodeURIComponent(ctx.promotie),'target='+encodeURIComponent(ctx.target));
+  else if(ctx&&ctx.traject)q.push('traject='+encodeURIComponent(ctx.traject));
+  else return '';
+  if(worker===KM_STAGING_WORKER)q.push('worker='+encodeURIComponent(worker));
+  return 'adv.html?'+q.join('&');
+}
+// Koperdoorgang alleen bij een vrijgegeven én gepromoveerde target met trajectreferentie; de backend
+// beslist daarna opnieuw (geldige actuele vrijgave, zelfde mandaat).
+function kmKoperMagDoorgang(t){
+  return !!t&&t.vrijgave_status==='vrijgegeven'&&t.status==='gepromoveerd'&&typeof t.traject_ref==='string'&&!!t.traject_ref;
+}
+// Uitsluitend de eigen koperrol met een geldige code; anders geen doorgang (geen terugval op een id).
+function kmKoperVervolgUrl(d,worker){
+  if(!d||d.ok!==true||!d.vervolg||d.vervolg.rol!=='koper')return '';
+  var c=d.vervolg.login_code;
+  if(typeof c!=='string'||!/^[A-Za-z0-9]{4,20}$/.test(c))return '';
+  return 'mna.html?code='+encodeURIComponent(c)+(worker===KM_STAGING_WORKER?'&worker='+encodeURIComponent(worker):'');
+}
+// P1C-PURE-END
 // N115-PURE-END
 
 function kmSectorLabels(){
@@ -417,9 +449,12 @@ function renderKoopmandaatScherm(app){
           +['kandidaat','in_gesprek','geparkeerd','afgewezen'].map(function(s){return '<option value="'+s+'"'+(t.status===s?' selected':'')+'>'+KM_STATUS_LABEL[s]+'</option>';}).join('')
           +(isGeprom?'<option value="gepromoveerd" selected>'+KM_STATUS_LABEL.gepromoveerd+'</option>':'')
           +'</select>'
+          // P1C: beide acties via de bestaande adviseurslogin in adv.html (nieuw tabblad). Het traject-id
+          // dient daar alleen om het traject in de eigen trajectenlijst op te zoeken; het opent nooit
+          // als code (dat zou de verkopersrol zijn).
           +(isGeprom
-            ?'<a href="mna.html?code='+esc(t.gepromoveerd_naar_traject_id)+'" target="_blank" rel="noopener" style="font-size:12px;color:var(--teal)">&#8594; Open het traject</a>'
-            :'<button class="btn-ghost km-promoveer-btn" data-id="'+esc(t.id)+'" data-naam="'+esc(t.naam)+'" style="font-size:12px;color:var(--teal);border-color:var(--teal)">&#9654; Promoveer naar volwaardig traject</button>')
+            ?(t.gepromoveerd_naar_traject_id?'<a class="km-open-traject" href="'+esc(kmAdvContextUrl(WORKER,{traject:t.gepromoveerd_naar_traject_id}))+'" target="_blank" rel="noopener" style="font-size:12px;color:var(--teal)">&#8594; Open het traject (adviseurslogin)</a>':'')
+            :'<a class="btn-ghost km-promoveer-btn" href="'+esc(kmAdvContextUrl(WORKER,{promotie:S.code,target:t.id}))+'" target="_blank" rel="noopener" style="font-size:12px;color:var(--teal);border-color:var(--teal);text-decoration:none">&#9654; Promoveer naar volwaardig traject</a>')
           +'</div>';
         kaart+='<div style="margin-top:.6rem"><textarea class="km-notitie-input" data-id="'+esc(t.id)+'" placeholder="Eigen werkaantekeningen (nooit zichtbaar voor de koper)" rows="2" style="width:100%;font-size:12px;padding:.5rem;border:1px solid var(--border2);border-radius:6px;background:var(--card);color:var(--sub);font-family:inherit">'+esc(t.notities||'')+'</textarea>'
           +'<button class="btn-ghost km-notitie-opslaan" data-id="'+esc(t.id)+'" style="margin-top:.3rem;font-size:11px;padding:4px 10px">Notitie opslaan</button></div>';
@@ -449,7 +484,33 @@ function renderKoopmandaatScherm(app){
 function bindKoopmandaatScherm(magBewerken){
   var uitBtn=ge('km-uitloggen');
   if(uitBtn)uitBtn.onclick=function(){S={screen:'login'};renderApp();};
-  if(!magBewerken)return;
+  if(!magBewerken){
+    // P1C: koperdoorgang naar het eigen traject. Alleen een door de backend bevestigde koperrol met
+    // geldige code opent het traject; elke andere uitkomst geeft een melding en geen doorgang.
+    document.querySelectorAll('.km-koper-traject-btn').forEach(function(btn){
+      btn.addEventListener('click',async function(){
+        if(btn.disabled)return;
+        var meld=document.querySelector('.km-koper-traject-melding[data-id="'+btn.dataset.id+'"]');
+        var tekst=btn.textContent;
+        btn.disabled=true;btn.textContent='Bezig...';
+        if(meld){meld.style.display='none';meld.textContent='';}
+        var fout='';
+        try{
+          var r=await fetchMetTimeout(WORKER+'/mna/koopmandaat/'+encodeURIComponent(S.code)+'/target/'+encodeURIComponent(btn.dataset.id)+'/traject',{method:'GET',cache:'no-store'},15000);
+          var d=await r.json().catch(function(){return {};});
+          var url=r.ok?kmKoperVervolgUrl(d,WORKER):'';
+          if(url){location.assign(url);return;}
+          fout=r.status===404?'Er is (nog) geen vrijgegeven traject beschikbaar voor deze kandidaat. Vraag uw begeleider naar de stand van zaken.'
+            :r.status===401?'U heeft met deze code geen toegang tot dit traject.'
+            :r.ok?'Het traject kon niet worden geopend: onvolledig antwoord van de server.'
+            :((d&&typeof d.error==='string'&&d.error)||'Het traject kon niet worden geopend.');
+        }catch(e){fout='Geen verbinding met de server. Probeer het opnieuw.';}
+        btn.disabled=false;btn.textContent=tekst;
+        if(meld){meld.textContent=fout;meld.style.display='block';}
+      });
+    });
+    return;
+  }
 
   var nieuwBtn=ge('km-nieuw-target-btn');
   if(nieuwBtn)nieuwBtn.onclick=toonKmNieuwTargetModal;
@@ -495,17 +556,9 @@ function bindKoopmandaatScherm(magBewerken){
       }catch(e){toast('Netwerkfout.','err');btn.disabled=false;}
     });
   });
-  document.querySelectorAll('.km-promoveer-btn').forEach(function(btn){
-    btn.addEventListener('click',async function(){
-      if(!confirm('"'+btn.dataset.naam+'" promoveren naar een volwaardig transactietraject?\n\nAlle informatie (naam, sector, notities) blijft behouden. Dit kan niet ongedaan worden gemaakt.'))return;
-      btn.disabled=true;btn.textContent='Bezig...';
-      try{
-        var r=await fetch(WORKER+'/mna/koopmandaat/'+S.code+'/target/'+btn.dataset.id+'/promoveer',{method:'POST',headers:{'x-tussen-key':S.code}});
-        var d=await r.json();
-        if(d.ok){toast('Gepromoveerd naar traject '+d.traject_id+'.','ok');kmRefresh();}
-        else{toast('Fout: '+(d.error||'onbekend'),'err');btn.disabled=false;btn.textContent='▶ Promoveer naar volwaardig traject';}
-      }catch(e){toast('Netwerkfout.','err');btn.disabled=false;btn.textContent='▶ Promoveer naar volwaardig traject';}
-    });
+  // P1C: de promotie zelf (prijs, pakket, sector, bevestiging) gebeurt in adv.html na de adviseurslogin.
+  document.querySelectorAll('.km-promoveer-btn').forEach(function(a){
+    a.addEventListener('click',function(){toast('Bevestig de promotie in het adviseursportaal (nieuw tabblad) en ververs daarna dit scherm.','ok');});
   });
   document.querySelectorAll('.km-intro-btn').forEach(function(btn){
     btn.addEventListener('click',function(){toonKmIntroductieModal(btn.dataset.id);});

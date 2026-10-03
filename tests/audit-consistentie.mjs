@@ -807,6 +807,21 @@ log('16. N-115 introductie-UI (tests/n115-ui.mjs): koper A/B/C, inerte overeenko
   }
 }
 
+log('17. P1C promotie-UI en eigen trajectdoorgang (tests/p1c-ui.mjs): context, prijzen/keuze, dubbelklik, rolcorrecte doorgang, koper A/B/C');
+{
+  // P1C (N-95, 3 okt 2026): zuivere P1C-functies uit adv.html en mna/04 in node:vm plus statische
+  // bewaking van de UI-glue — geen netwerk, geen browser. De browserflow staat in tests/p1c-promotie.spec.js.
+  try {
+    const { draaiP1cUiChecks } = await import('./p1c-ui.mjs');
+    const resultaten = await draaiP1cUiChecks(ROOT);
+    const gefaald = resultaten.filter(r => !r.ok);
+    gefaald.forEach(r => warn('P1C: ' + r.msg));
+    if (!gefaald.length) ok('Alle ' + resultaten.length + ' P1C-UI-checks geslaagd (context uit de adresbalk, geen opslag, serverprijzen en expliciete keuze, geen dubbele POST, alleen eigen rol bij doorgang).');
+  } catch (e) {
+    warn('tests/p1c-ui.mjs kon niet worden uitgevoerd: ' + String((e && e.message) || e));
+  }
+}
+
 // ── Samenvatting ──────────────────────────────────────────────────────────
 log('Samenvatting');
 if (!bevindingen) {
