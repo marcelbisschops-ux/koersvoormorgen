@@ -1616,11 +1616,34 @@ function bindAll(){
   // rijker aan indicatoren, server-side bewaard mét cijfer-snapshot en versiegeschiedenis, zodat
   // duidelijk is of een nieuw rapport dezelfde cijfers herformuleert of dat de cijfers zijn gewijzigd.
   var wAiBtn=ge('w-ai-btn');
-  function wToonRapport(tekstHtml, ts, versie){
+  // N-118: opgeslagen rapportversies (ook historische) zijn onbetrouwbare HTML. Parsen in een inert
+  // <template> en opnieuw opbouwen met alleen eenvoudige documentopmaaktags, zonder attributen;
+  // actieve/foreign tags vallen inclusief inhoud weg, onbekende tags worden uitgepakt tot hun tekst.
+  var W_RAPPORT_TAGS={P:1,BR:1,H1:1,H2:1,H3:1,H4:1,STRONG:1,B:1,EM:1,I:1,U:1,UL:1,OL:1,LI:1,BLOCKQUOTE:1,HR:1,TABLE:1,THEAD:1,TBODY:1,TR:1,TH:1,TD:1};
+  var W_RAPPORT_WEG={SCRIPT:1,STYLE:1,TEMPLATE:1,IFRAME:1,FRAME:1,FRAMESET:1,OBJECT:1,EMBED:1,APPLET:1,NOSCRIPT:1,NOEMBED:1,NOFRAMES:1,TEXTAREA:1,SELECT:1,OPTION:1,TITLE:1,XMP:1,PLAINTEXT:1,IMG:1,PICTURE:1,VIDEO:1,AUDIO:1,SOURCE:1,TRACK:1,CANVAS:1,LINK:1,META:1,BASE:1,FORM:1,INPUT:1,BUTTON:1};
+  function wSaneerRapport(html){
+    var tpl=document.createElement('template');
+    tpl.innerHTML=String(html||'');
+    var doel=document.createDocumentFragment();
+    (function kopieer(bron,naar){
+      for(var n=bron.firstChild;n;n=n.nextSibling){
+        if(n.nodeType===3){naar.appendChild(document.createTextNode(n.nodeValue));continue;}
+        if(n.nodeType!==1)continue;
+        if(n.namespaceURI!=='http://www.w3.org/1999/xhtml')continue;
+        var tag=String(n.tagName).toUpperCase();
+        if(W_RAPPORT_WEG[tag])continue;
+        if(W_RAPPORT_TAGS[tag]){var el=document.createElement(tag.toLowerCase());kopieer(n,el);naar.appendChild(el);}
+        else kopieer(n,naar);
+      }
+    })(tpl.content,doel);
+    return doel;
+  }
+  function wToonRapport(tekstHtml, ts, versie, nietOpgeslagen){
     var out=ge('w-ai-out');if(!out)return;
     out.style.display='block';
-    out.innerHTML='<div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">Waarderingsrapport'+(versie?' &middot; versie '+versie:'')+' &middot; gegenereerd '+new Date(ts).toLocaleString('nl-NL',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})+'</div>'
-      +'<div class="ai-body" style="padding:0">'+tekstHtml+'</div>';
+    out.innerHTML='<div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">Waarderingsrapport'+(nietOpgeslagen?' &middot; niet opgeslagen':(versie?' &middot; versie '+esc(String(versie)):''))+' &middot; gegenereerd '+esc(new Date(ts).toLocaleString('nl-NL',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}))+'</div>'
+      +'<div class="ai-body" style="padding:0"></div>';
+    out.querySelector('.ai-body').appendChild(wSaneerRapport(tekstHtml));
   }
   async function wLaadGeschiedenis(){
     var histEl=ge('w-ai-hist');if(!histEl)return;
@@ -1696,12 +1719,21 @@ function bindAll(){
       var tekstHtml=mdToHtml(ruweTekst);
       var snapshot={o1:v.o1,o2:v.o2,o3:v.o3,ebitdaAmt:v.ebitdaAmt,ebitdaPct:v.ebitdaPct,wLaag:v.wLaag,wMid:v.wMid,wHoog:v.wHoog};
       var nu=Date.now();
-      var saveResp=await fetch(WORKER+'/mna/waardering/rapport',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:S.code,rapport_tekst:tekstHtml,cijfers_json:snapshot})}).then(function(r){return r.json();}).catch(function(){return null;});
-      wToonRapport(tekstHtml, nu, saveResp&&saveResp.versie);
-      wLaadGeschiedenis();
+      // N-118: opslaan vereist begeleiderAuth — zelfde x-tussen-key als rapport-genereren. Alleen een
+      // echte 2xx zonder foutmelding telt als opgeslagen; 401/netwerk/mislukt toont "niet opgeslagen".
+      var saveResp=await fetch(WORKER+'/mna/waardering/rapport',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||S.code||''},body:JSON.stringify({code:S.code,rapport_tekst:tekstHtml,cijfers_json:snapshot})}).then(function(r){
+        if(!r.ok)return null;
+        return r.json().then(function(d){return (d&&d.ok!==false&&!d.error)?d:null;});
+      }).catch(function(){return null;});
+      wToonRapport(tekstHtml, nu, saveResp&&saveResp.versie, !saveResp);
       wAiBtn.textContent='↻ Opnieuw genereren';wAiBtn.disabled=false;
-      toast('✓ AI-analyse & waardering is gegenereerd','ok');
-    }catch(e){out.innerHTML='<div style="color:var(--red);font-size:13px">Fout: '+e.message+'</div>';wAiBtn.disabled=false;wAiBtn.textContent='Genereer AI-analyse & waardering';toast('Genereren van AI-analyse & waardering is mislukt','err');}
+      if(saveResp){
+        wLaadGeschiedenis();
+        toast('✓ AI-analyse & waardering is gegenereerd','ok');
+      }else{
+        toast('AI-analyse & waardering is gegenereerd, maar opslaan is mislukt','err');
+      }
+    }catch(e){out.innerHTML='<div style="color:var(--red);font-size:13px">Fout: '+esc(e.message)+'</div>';wAiBtn.disabled=false;wAiBtn.textContent='Genereer AI-analyse & waardering';toast('Genereren van AI-analyse & waardering is mislukt','err');}
   });
   // AI-waardering second opinion — onafhankelijke AI-multiple/range, los van de rekenkern hierboven.
   var wAi2Btn=ge('w-ai2-btn');
