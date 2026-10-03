@@ -1196,3 +1196,45 @@ fix-branch (`f55fa6b2`); een volgende `scripts/deploy.sh` vanaf main zet dat ter
 **Score aan marilyn:** 55 (2 fouten zelf opgelost op staging −20, 1 bevinding wacht op Marcel −25).
 Melding aan marilyn (stap 5b) mislukt: 401 met de lokale ADMIN_KEY (zelfde oorzaak als de diepe-audit-notitie van vandaag, N-110).
 - 2026-10-03 — diepe-audit-routine: geen open aanvraag; cadans verstreken (laatste diepe audit 6 sep, 27 dagen). Zelf-aanvraag en terugmelding onmogelijk (ADMIN_KEY 401, N-110), daarom de begrensde ronde lokaal gedraaid zonder aanvraag-id. Alle statische checks groen; P1-94 fix staat op main maar niet in productie; score 60/100. Rapport `tests/rapporten/diepe_audit-20261003.html`. Score staat NIET in het marilyn-dashboard.
+
+## 2026-10-03 — dagelijkse-knoppentest-routine (scheduled task)
+
+**Rotatiekeuze:** sector **zorg** (het langst geleden: 20 sep), trajecttype **Fusie** (het langst geleden: 19 sep),
+sell-side, extern adviseurstraject. Rollen adviseur, verkoper, koper, begeleider en **meekijker** (laatst 26 sep). Accent:
+meekijker-levenscyclus gecombineerd met dossier-vrijgave + zacht verwijderen, en de **waarderingsrapport-flow** per rol
+(stond bij elke eerdere run als "niet getest"). Script: `reports/daily-qa/daily-qa-20261003.mjs` (alleen staging).
+
+**Resultaat: 48 van 50 checks geslaagd.** Doorlopen: adviseur + 2 trajecten (D1: zorg/Fusie/verkoper/adviseur); verkoper
+slaat financieel op en uploadt 2 documenten (echte AI-analyse, beide met analyse in D1); meekijker aanmaken (zonder
+toestemming 400, koper-/verkopercode en begeleider B geweigerd, 2 fee-events); voorwaarden-gate (data vóór akkoord 403);
+meekijker ziet financieel zonder checklist/notitie; POST op viewer-route 405; viewer-code via /mna/save wijzigt niets;
+scope financieel strikt; geen r2_key; viewerlijst cross-traject geweigerd; dossier vrijgeven + zacht verwijderen (D1
+verwijderd=1, verkoperlijst toont het niet); rapport-genereren en waardering-geschiedenis geweigerd voor koper, verkoper,
+begeleider B en (muur) admin; begeleider genereert waarderingsrapport met echte AI (10 verplichte koppen, aangeleverde
+waarde 1.755.000 genoemd, geen accountancy-norm in een zorgtraject); koper kan rapporten niet lezen; intrekken
+(begeleider B geweigerd, ingetrokken code 401, andere meekijker blijft werken).
+
+**Gevonden (2, beide runtime gereproduceerd op staging, niet zelf gewijzigd):**
+1. **P1-96 / MASTER N-118** — autorisatie-/integriteitsbevinding rond de waarderingsrapport-flow (een rol buiten de
+   begeleider kan iets wegschrijven dat de begeleider daarna te zien krijgt). Zone C. Bewust geen mechanisme in dit
+   publieke logboek zolang het open staat; reproductie, oorzaak, foutpropagatie en fixvoorstel staan lokaal in
+   `OPEN-BEVINDINGEN.md` P1-96 en de MASTER.
+2. **P2-67 / MASTER N-119** — de meekijker ziet documenten die de verkoper na dossier-vrijgave heeft verwijderd.
+   Minimale patch klaar (lokaal, `reports/`), past schoon op backend-HEAD. Foutpropagatie: andere lees-paden nemen
+   verwijderde stukken ook mee (mogelijk bewust, beslissing nodig), details lokaal.
+
+**Niet gedeployed, waarom:** staging stond op de "bewezen stagingversie" van de N-100-releasegate (2 okt) en de
+backend-werkboom bevat niet-gecommitte wijzigingen van een andere sessie (werkregel 44.4). Beide fixes raken een
+rolgrens (zone C) en vragen Breaker-review + akkoord.
+
+**Infra:** Sleutelhanger-sleutel en `ADMIN_KEY` uit `tests/.env.staging.local` geven op staging 401; `STAGING_ADMIN_KEY`
+werkt (aanvulling bij N-117). Productie-`ADMIN_KEY` gaf eerder 401 (N-110).
+
+**Niet getest:** teaser/verkoopmemorandum/dealvoorstel-generatie, de weergave van bevinding 1 in een echte browser
+(mna.html wijst naar de productie-worker), koper-Q&A en biedingen (eerder gedekt), eigen specialist, productie.
+
+**Opgeruimd:** beide trajecten via de staging-opruimroute (ok), testadviseur verwijderd; D1-controle trajecten en
+meekijkers met `DAILY_QA_20261003` = 0/0.
+
+**Score:** 50 (2 bevindingen niet zelf opgelost, −25 elk).
+Melding aan marilyn (stap 5b) mislukt: 401 met de lokale productie-ADMIN_KEY (N-110, ongewijzigd).
