@@ -822,6 +822,22 @@ log('17. P1C promotie-UI en eigen trajectdoorgang (tests/p1c-ui.mjs): context, p
   }
 }
 
+log('18. Waarderingsrapport genereren (tests/waardering-genereren.mjs): mislukte generatie nooit als rapport opgeslagen');
+{
+  // Weekend kern-UI/UX (4 okt 2026): HTTP-fout/ok:false/rd.error werd als "AI fout"-tekst als nieuwe
+  // rapportversie opgeslagen met succestoast. De test draait de echte handler uit mna/06 in node:vm
+  // met fetch/DOM-fixtures — geen netwerk, geen browser.
+  try {
+    const { draaiWaarderingGenererenChecks } = await import('./waardering-genereren.mjs');
+    const resultaten = await draaiWaarderingGenererenChecks(ROOT);
+    const gefaald = resultaten.filter(r => !r.ok);
+    gefaald.forEach(r => warn('Waarderingsrapport: ' + r.msg));
+    if (!gefaald.length) ok('Alle ' + resultaten.length + ' waarderingsrapport-checks geslaagd (HTTP-/JSON-fout, ok:false en lege tekst: geen opslag of succes en opnieuw proberen mogelijk; succes bewaart met begeleider-header en gesaneerde weergave; mislukte opslag geeft geen vals succes).');
+  } catch (e) {
+    warn('tests/waardering-genereren.mjs kon niet worden uitgevoerd: ' + String((e && e.message) || e));
+  }
+}
+
 // ── Samenvatting ──────────────────────────────────────────────────────────
 log('Samenvatting');
 if (!bevindingen) {

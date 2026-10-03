@@ -1714,9 +1714,11 @@ function bindAll(){
     // daarvan hoort bij P1-IP-2 onderdeel C (de rekenkern zelf), niet hier.
     try{
       var resp=await fetchMetTimeout(WORKER+'/mna/waardering/rapport-genereren',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||S.code||''},body:JSON.stringify({code:S.code,lijnen:lijnen})},60000);
-      var rd=await resp.json();
-      var ruweTekst=(rd&&rd.ok&&rd.text)||(rd&&rd.error?('AI fout: '+rd.error):'Fout bij genereren.');
-      var tekstHtml=mdToHtml(ruweTekst);
+      var rd=await resp.json().catch(function(){return null;});
+      // Alleen een echte 2xx met ok:true en niet-lege tekst is een rapport. Anders het bestaande
+      // foutpad (catch hieronder): geen opslag, geen nieuwe versie, geen succesmelding, knop weer actief.
+      if(!resp.ok||!rd||rd.ok!==true||typeof rd.text!=='string'||!rd.text.trim())throw new Error((rd&&rd.error)?String(rd.error):'Genereren mislukt (HTTP '+resp.status+')');
+      var tekstHtml=mdToHtml(rd.text);
       var snapshot={o1:v.o1,o2:v.o2,o3:v.o3,ebitdaAmt:v.ebitdaAmt,ebitdaPct:v.ebitdaPct,wLaag:v.wLaag,wMid:v.wMid,wHoog:v.wHoog};
       var nu=Date.now();
       // N-118: opslaan vereist begeleiderAuth — zelfde x-tussen-key als rapport-genereren. Alleen een
