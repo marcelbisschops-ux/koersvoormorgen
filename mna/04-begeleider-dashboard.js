@@ -3113,6 +3113,7 @@ function renderBegeleiderDashboard(app){
         +mpSpecOptiesHtml(lijst,'LEGAL',eigenLijst)+'</select>'
       +'</div>'
       +'<div id="mp-profiel" style="font-size:10.5px;color:var(--muted);margin:.3rem 0"></div>'
+      +'<button id="mp-eigen-intrek" class="btn-ghost" style="font-size:10px;padding:3px 8px;margin:0 .3rem .3rem 0;color:var(--red);display:none">Eigen specialist intrekken</button>'
       +'<button id="mp-eigen-open" class="btn-ghost" style="font-size:10px;padding:3px 8px;margin-bottom:.3rem">+ Eigen specialist toevoegen</button>'
       +'<div id="mp-eigen-form"></div>'
       +'<textarea id="mp-instr" rows="2" placeholder="Korte instructie voor de specialist (optioneel)" style="width:100%;font-size:11px;background:var(--panel);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);padding:5px 7px;resize:vertical"></textarea>'
@@ -3124,15 +3125,17 @@ function renderBegeleiderDashboard(app){
     function isEigenWaarde(v){ return v.indexOf('eigen:')===0; }
     function toonProfiel(){
       var v=huidigeWaarde();
-      var txt='';
+      var txt='', toonIntrek=false;
       if(isEigenWaarde(v)){
         var es2=eigenLijst.find(function(x){return x.id===v.slice(6);});
-        if(es2) txt=(es2.kantoor?(es2.kantoor+' · '):'')+'eigen specialist — alleen zichtbaar voor u';
+        if(es2){ txt=(es2.kantoor?(es2.kantoor+' · '):'')+'eigen specialist — alleen zichtbaar voor u'; toonIntrek=true; }
       } else {
         var s=lijst.find(function(x){return x.id===v;});
         if(s){ txt=(s.kantoor?(s.kantoor+' · '):'')+(s.profieltekst||''); if(s.doorlooptijd_dagen) txt+=' · ~'+s.doorlooptijd_dagen+' dagen'; }
       }
       document.getElementById('mp-profiel').textContent=txt;
+      // N-113: intrekknop alleen bij een geselecteerde eigen specialist — nooit bij een poolprofiel.
+      var ik=document.getElementById('mp-eigen-intrek'); if(ik)ik.style.display=toonIntrek?'':'none';
     }
     toonProfiel();
     document.getElementById('mp-spec').onchange=toonProfiel;
@@ -3142,6 +3145,27 @@ function renderBegeleiderDashboard(app){
     };
     document.getElementById('mp-annuleer').onclick=function(){ box.innerHTML=''; };
     document.getElementById('mp-eigen-open').onclick=function(){ this.style.display='none'; toonEigenForm(function(){ bgMouPoolPaneel(); }); };
+    // N-113: bestaande intrekking (POST /mna/eigen-specialist/{id}/intrekken, uitsluitend begeleider)
+    // bereikbaar maken. Id + naam worden vóór de bevestiging vastgelegd, zodat een selectiewijziging
+    // tijdens confirm/request nooit een andere specialist laat intrekken dan de bevestigde.
+    document.getElementById('mp-eigen-intrek').onclick=async function(){
+      var btn=this, v=huidigeWaarde();
+      if(!isEigenWaarde(v))return;
+      var eigenId=v.slice(6);
+      var spec=eigenLijst.find(function(x){return x.id===eigenId;}); if(!spec)return;
+      var res=document.getElementById('mp-resultaat'); if(res)res.textContent='';
+      if(!confirm('Eigen specialist "'+(spec.naam||'')+'" intrekken?\n\nDeze specialist kan daarna niet meer voor nieuwe opdrachten worden gekozen en de bestaande toegang tot lopende opdrachten vervalt. Reeds afgeronde reviews en aftekeningen blijven behouden.'))return;
+      btn.disabled=true; btn.textContent='Bezig…';
+      var r=await bgPoolApi('POST','/mna/eigen-specialist/'+encodeURIComponent(eigenId)+'/intrekken');
+      if(!(r.ok&&r.json&&r.json.ok)){
+        btn.disabled=false; btn.textContent='Eigen specialist intrekken';
+        res=document.getElementById('mp-resultaat');
+        if(res){ res.innerHTML='<span style="color:var(--red);font-size:11px"></span>'; res.firstChild.textContent='Intrekken mislukt: '+((r.json&&r.json.error)||'onbekende fout')+'. Er is geen bevestiging van intrekking ontvangen; controleer de lijst en probeer het zo nodig opnieuw.'; }
+        return;
+      }
+      toast('Eigen specialist ingetrokken — bestaande aftekeningen blijven behouden','ok');
+      bgMouPoolPaneel();
+    };
     async function verstuurOpdracht(bevestigd){
       var btn=document.getElementById('mp-verstuur');
       var v=huidigeWaarde(), bronEigen=isEigenWaarde(v);
