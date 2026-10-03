@@ -1195,3 +1195,4 @@ fix-branch (`f55fa6b2`); een volgende `scripts/deploy.sh` vanaf main zet dat ter
 
 **Score aan marilyn:** 55 (2 fouten zelf opgelost op staging −20, 1 bevinding wacht op Marcel −25).
 Melding aan marilyn (stap 5b) mislukt: 401 met de lokale ADMIN_KEY (zelfde oorzaak als de diepe-audit-notitie van vandaag, N-110).
+- 2026-10-03 — diepe-audit-routine: geen open aanvraag; cadans verstreken (laatste diepe audit 6 sep, 27 dagen). Zelf-aanvraag en terugmelding onmogelijk (ADMIN_KEY 401, N-110), daarom de begrensde ronde lokaal gedraaid zonder aanvraag-id. Alle statische checks groen; P1-94 fix staat op main maar niet in productie; score 60/100. Rapport `tests/rapporten/diepe_audit-20261003.html`. Score staat NIET in het marilyn-dashboard.
