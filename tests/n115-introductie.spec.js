@@ -146,7 +146,7 @@ test.describe('N-115 · koopmandaatscherm (mna.html)', () => {
     await expect(page.locator('#km-intro-vrijgeven')).toHaveCount(0);
     await page.click('#km-intro-link-uit');
     await expect(page.locator('#km-intro-link')).toHaveValue(new URL(page.url()).origin + '/introductie.html?token=' + TOKEN + '&worker=' + encodeURIComponent(STAGING));
-    const post = net.staging.find((r) => r.method === 'POST');
+    const post = net.staging.find((r) => r.method === 'POST' && r.pad === '/mna/koopmandaat/' + BEGELEIDER + '/target/t1/introductie');
     expect(JSON.parse(post.body)).toEqual({ actie: 'link_uitgeven', geldig_dagen: 14 });
     expect(await page.evaluate((t) => JSON.stringify(localStorage).includes(t) || JSON.stringify(sessionStorage).includes(t), TOKEN)).toBe(false);
   });
