@@ -812,7 +812,10 @@ async function doorloopReguliereTraject({ omg, nieuwePagina, kPage, advPage, tra
     await naTrajectLogin(btPage, 'tussenpersoon');
     await expect(btPage.locator('#bg-toegang')).toBeVisible({ timeout: 30000 });
     await btPage.evaluate(() => { S.screen = 'main'; S.fase = FASES.findIndex((x) => x.id === 'financieel'); delete DOCS.financieel; loadDocsForFase('financieel'); renderApp(); });
-    await expect(btPage.locator('#df_omzet3')).toHaveValue(VRIJ, { timeout: 15000 });
+    // De begeleider ziet Financieel alleen-lezen (schrijven is verkoper-only, zie e2e-3rollen B5):
+    // er is dan geen invulveld #df_omzet3 maar een .readonly-val. De waarde moet daar zichtbaar staan.
+    await expect(btPage.locator('#df_omzet3')).toHaveCount(0);
+    await expect(btPage.locator('.readonly-val', { hasText: VRIJ })).toBeVisible({ timeout: 15000 });
     await expect(btPage.locator('body')).toContainText(DOCNAAM, { timeout: 20000 });
   });
 

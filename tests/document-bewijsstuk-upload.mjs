@@ -10,6 +10,9 @@
 // de echte renderDocumentSectie en maakt de checkboxes opnieuw aan zoals de browser dat doet; fetch is
 // een stub die de echte request-URL vastlegt. Geen netwerk, geen browser, synthetische gegevens.
 //
+// Foutpropagatie (zelfde dag): entiteitkeuze en "Extra controle" hadden hetzelfde verlies; leesUploadKeuzes
+// legt nu alle drie de keuzes in één keer vast. Ook die paden worden hieronder gecontroleerd.
+//
 // Gebruik: node tests/document-bewijsstuk-upload.mjs   (vanuit de repo-root)
 // Wordt ook aangeroepen door tests/audit-consistentie.mjs (check 24).
 
@@ -51,6 +54,7 @@ function laad(root) {
     knip(src02, 'function getDocsForFase(faseId) {', '\n}\n'),
     knip(src02, 'function entiteitNaam(id){', '\n}\n'),
     knip(src02, 'function gokEntiteitId(entiteitNaamAI, alleenZeker){', '\n}\n'),
+    knip(src02, 'function leesUploadKeuzes(faseId) {', '\n}\n'),
     knip(src02, 'window.uploadDocumentenSequentieel = async function(faseId, files) {', '\n};\n'),
     knip(src02, 'async function uploadDocument(faseId, file, existingId, vervangtDocId', '\n}\n'),
     knip(src02, 'function renderDocumentSectie(faseId) {', '\n}\n'),
@@ -69,6 +73,7 @@ function laad(root) {
     log.html = html;
     for (const m of html.matchAll(/<input type="checkbox" id="([^"]+)"([^>]*)>/g)) els[m[1]] = maakEl(m[1], /\schecked[\s>=]/.test(m[2] + '>'));
     for (const m of html.matchAll(/<div id="(upload-status-[^"]+)"/g)) els[m[1]] = maakEl(m[1]);
+    for (const m of html.matchAll(/<select id="([^"]+)"[^>]*>([\s\S]*?)<\/select>/g)) { const sel = m[2].match(/<option value="([^"]*)"[^>]*\sselected/); const el = maakEl(m[1]); el.value = sel ? sel[1] : ''; els[m[1]] = el; }
   }
 
   const fetch = (url, opts = {}) => {
@@ -101,8 +106,9 @@ function laad(root) {
 
   const nieuwBestand = (naam) => new File(['Synthetisch bewijsstuk (geen echte gegevens).'], naam, { type: 'text/plain' });
   // Gebruiker opent de fase: uploadzone getekend, vinkt eventueel "Alleen als bewijsstuk" aan.
-  const begin = (aanvinken) => {
+  const begin = (aanvinken, entiteiten) => {
     ctx.DOCS[FASE] = [];
+    ctx.S._entiteiten = entiteiten || [];
     log.renders = 0; log.requests = []; log.overig = []; log.autoFill = 0; log.toasts = [];
     renderApp();
     if (aanvinken) els[CB].checked = true;
@@ -176,6 +182,50 @@ export async function draaiDocumentBewijsstukUploadChecks(root = process.cwd()) 
     await new Promise((r) => setTimeout(r, 20));
     const r = t.log.requests;
     check(r.length === 1 && metVlag(r[0]) && /[?&]vervangt=doc_oud_1(&|$)/.test(r[0].url), 'vervangen (directe caller): request-URL behoudt &vervangt= en bevat &alleen_bewijsstuk=true · ' + (r[0] && r[0].url));
+  });
+
+  // Foutpropagatie (4 okt 2026, zelfde mechanisme): ook de entiteitkeuze en "Extra controle" werden
+  // pas ná renderApp gelezen; de hertekende <select> staat dan weer op "Groep/hoofdentiteit".
+  const ENT = [{ id: 'ent_syn_1', naam: 'Synth Werk BV' }, { id: 'ent_syn_2', naam: 'Synth Holding BV' }];
+  await probeer('batch entiteit', async () => {
+    const t = laad(root);
+    t.begin(false, ENT);
+    check(t.els['entiteit-select-' + FASE] && t.els['entiteit-select-' + FASE].value === '', 'entiteit: echte uploadzone tekent de entiteitkiezer, standaard Groep/hoofdentiteit');
+    t.els['entiteit-select-' + FASE].value = 'ent_syn_1';
+    await t.ctx.uploadDocumentenSequentieel(FASE, [t.nieuwBestand('syn-h.txt'), t.nieuwBestand('syn-i.txt')]);
+    const r = t.log.requests;
+    check(r.length === 2 && r.every((x) => /[?&]entiteit_id=ent_syn_1(&|$)/.test(x.url)), 'batch entiteit: gekozen entiteit blijft in beide request-URL\'s · ' + r.map((x) => x.url).join(' | '));
+  });
+  await probeer('direct entiteit', async () => {
+    const t = laad(root);
+    t.begin(false, ENT);
+    t.els['entiteit-select-' + FASE].value = 'ent_syn_2';
+    await t.ctx.uploadDocument(FASE, t.nieuwBestand('syn-j.txt'));
+    const r = t.log.requests;
+    check(r.length === 1 && /[?&]entiteit_id=ent_syn_2(&|$)/.test(r[0].url), 'direct entiteit: gekozen entiteit blijft in de request-URL · ' + (r[0] && r[0].url));
+  });
+  await probeer('batch geen entiteit', async () => {
+    const t = laad(root);
+    t.begin(false, ENT);
+    await t.ctx.uploadDocumentenSequentieel(FASE, [t.nieuwBestand('syn-k.txt')]);
+    const r = t.log.requests;
+    check(r.length === 1 && r[0].url.indexOf('entiteit_id') < 0, 'batch zonder entiteitkeuze: geen entiteit_id (groep/hoofdentiteit, ongewijzigd)');
+  });
+  await probeer('batch extra controle', async () => {
+    const t = laad(root);
+    t.begin(false);
+    t.els['dubbele-check-' + FASE].checked = true;
+    await t.ctx.uploadDocumentenSequentieel(FASE, [t.nieuwBestand('syn-l.txt'), t.nieuwBestand('syn-m.txt')]);
+    const r = t.log.requests;
+    check(r.length === 2 && r.every((x) => /[?&]dubbele_check=true(&|$)/.test(x.url) && x.url.indexOf('alleen_bewijsstuk') < 0), 'batch extra controle: &dubbele_check=true in beide request-URL\'s, geen bewijsstukmodus · ' + r.map((x) => x.url).join(' | '));
+  });
+  await probeer('direct extra controle', async () => {
+    const t = laad(root);
+    t.begin(false);
+    t.els['dubbele-check-' + FASE].checked = true;
+    await t.ctx.uploadDocument(FASE, t.nieuwBestand('syn-n.txt'));
+    const r = t.log.requests;
+    check(r.length === 1 && /[?&]dubbele_check=true(&|$)/.test(r[0].url), 'direct extra controle: &dubbele_check=true in de request-URL · ' + (r[0] && r[0].url));
   });
 
   return res;
