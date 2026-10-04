@@ -177,7 +177,9 @@ export async function draaiN77bUiChecks(root = process.cwd()) {
       && !a.n77bKlaar(B, true, false, info) && !a.n77bKlaar(B, false, true, info) && a.n77bKlaar(B, true, true, info)
       && a.n77bKlaar(N, true, false, null) && !a.n77bKlaar(N, false, false, null), 'knop pas bij alle noodzakelijke vakjes; gewone gebruiker alleen GV');
     check(JSON.stringify(a.n77bAcceptBody(T, info)) === '{"testvoorwaarden_akkoord":true,"testvoorwaarden_versie":"1.3"}' && JSON.stringify(a.n77bAcceptBody(N, null)) === '{}',
-      'POST-body tester exact {testvoorwaarden_akkoord:true, testvoorwaarden_versie}; gewone gebruiker ongewijzigd {}');
+      'POST-body tester-only exact {testvoorwaarden_akkoord:true, testvoorwaarden_versie} zonder GV-property; gewone gebruiker ongewijzigd {}');
+    check(JSON.stringify(a.n77bAcceptBody(B, info)) === '{"testvoorwaarden_akkoord":true,"testvoorwaarden_versie":"1.3","gv_akkoord":true}' && JSON.stringify(a.n77bAcceptBody(B, null)) === '{}',
+      'POST-body beide ontbreken: expliciet gv_akkoord:true naast het testerakkoord; zonder serverversie niets');
     const u = (s, j, v = '1.3') => a.n77bAcceptUitkomst(s, j, v).soort;
     check(u(200, { ok: true, testvoorwaarden: TV_OK }) === 'ok', 'succes: HTTP 2xx + ok:true + serverbevestigd akkoord op exact deze versie');
     check(['fout', 'fout', 'fout', 'fout', 'fout', 'fout'].join() === [u(200, { ok: false }), u(200, { ok: true, gv_versie: '2.0' }), u(200, { ok: true, testvoorwaarden: TV_OPEN }),
@@ -267,7 +269,22 @@ export async function draaiN77bUiChecks(root = process.cwd()) {
     await s.vink('vw-tv');
     check(alleenTv && alleenGv && !s.el('vw-ok').disabled, 'knop pas bij beide vakjes');
     await s.klik('vw-ok');
-    check(posts(s.net, '/gebruiker/voorwaarden/accepteren').length === 1 && s.bereikt().join() === 'dashboard', 'beide geaccepteerd → herladen → dashboard');
+    const p = posts(s.net, '/gebruiker/voorwaarden/accepteren');
+    check(p.length === 1 && JSON.stringify(JSON.parse(p[0].body)) === '{"testvoorwaarden_akkoord":true,"testvoorwaarden_versie":"1.3","gv_akkoord":true}' && s.bereikt().join() === 'dashboard',
+      'beide geaccepteerd: POST met expliciet gv_akkoord:true + testerakkoord → herladen → dashboard');
+  });
+
+  await probeer('tester met eerder (legacy) GV-akkoord', async () => {
+    // Backend rekent een tester met een eerdere GV-versie (bijv. 2.3) als gv_akkoord:true; dat bewijs
+    // mag een tester-only akkoord niet vernieuwen.
+    const s = laadScherm(root, backend().api);
+    s.ctx.toepassenLoginPayload(onboardingPayload(true), 'tester@voorbeeld.test');
+    await flush();
+    await s.vink('vw-tv');
+    await s.klik('vw-ok');
+    const p = posts(s.net, '/gebruiker/voorwaarden/accepteren');
+    check(!s.el('vw-gv') && p.length === 1 && !('gv_akkoord' in JSON.parse(p[0].body)) && s.bereikt().join() === 'dashboard',
+      'legacy GV door server als akkoord gemeld: geen GV-vakje en geen GV-property in de tester-POST');
   });
 
   await probeer('false/failed accept', async () => {

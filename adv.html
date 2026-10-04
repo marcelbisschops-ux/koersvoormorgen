@@ -281,8 +281,13 @@ function n77bTvInfo(d){
 function n77bKlaar(ob,gvAan,tvAan,info){
   return (!ob.gv||gvAan===true)&&(!ob.tester||(tvAan===true&&!!info));
 }
+// GV-akkoord alleen expliciet meesturen als het GV-vakje getoond werd (ob.gv); de klikhandler laat
+// verwerking pas toe na n77bKlaar, dat dan het aangevinkte GV-vakje vereist. Tester-only: geen GV-property.
 function n77bAcceptBody(ob,info){
-  return ob.tester&&info?{testvoorwaarden_akkoord:true,testvoorwaarden_versie:info.versie}:{};
+  if(!ob.tester||!info)return {};
+  var body={testvoorwaarden_akkoord:true,testvoorwaarden_versie:info.versie};
+  if(ob.gv===true)body.gv_akkoord=true;
+  return body;
 }
 // Succes uitsluitend bij HTTP-succes, ok:true en een serverbevestigd akkoord op exact de verstuurde versie.
 function n77bAcceptUitkomst(status,j,versie){

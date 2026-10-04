@@ -67,8 +67,9 @@ function backend({ tester = true, gv = true, mfa = false, versie = () => '1.3', 
         if (body.testvoorwaarden_akkoord !== true) return { status: 400, json: { error: 'testvoorwaarden_akkoord_niet_expliciet' } };
         if (body.testvoorwaarden_versie !== versie()) return { status: 409, json: { error: 'testvoorwaarden_versie_onjuist', testvoorwaarden: { versie: versie() } } };
         st.akkoord = true;
-      }
-      st.gv = true;
+        // Nieuw contract: tester-POST werkt GV alleen bij expliciet gv_akkoord === true bij.
+        if (body.gv_akkoord === true) st.gv = true;
+      } else st.gv = true;
       return { json: Object.assign({ ok: true, gv_versie: '2.0' }, tester ? { testvoorwaarden: tv() } : {}) };
     }
     return null;
@@ -155,6 +156,7 @@ test.describe('N-77b · expliciet testerakkoord in adv.html', () => {
     await page.click('#vw-ok');
     await expect(page.locator('body')).toContainText('Synth Traject BV');
     expect(accepts(net)).toHaveLength(1);
+    expect(JSON.parse(accepts(net)[0].body)).toEqual({ testvoorwaarden_akkoord: true, testvoorwaarden_versie: '1.3', gv_akkoord: true });
     expect(b.st.gv && b.st.akkoord).toBe(true);
   });
 
