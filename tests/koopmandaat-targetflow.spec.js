@@ -795,6 +795,8 @@ async function doorloopReguliereTraject({ omg, nieuwePagina, kPage, advPage, tra
   });
 }
 
+test.use({ trace: 'off', screenshot: 'off', video: 'off' });
+
 test.describe('Koopmandaat-targetflow · LOKAAL geïntercepteerd (echte koopmandaathandler, geen staging)', () => {
   test.skip(LIVE, 'Live-modus actief; de lokale modus draait apart en telt niet als livebewijs.');
 
@@ -816,7 +818,6 @@ test.describe('Koopmandaat-targetflow · LOKAAL geïntercepteerd (echte koopmand
 
 test.describe('Koopmandaat-targetflow · LIVE staging (echte staging-API, synthetische data)', () => {
   test.skip(!LIVE, 'Live-modus uit: zet KVM_TARGETFLOW_LIVE=1 en WORKER_URL op de staging-worker.');
-  test.use({ trace: 'off', screenshot: 'off', video: 'off' });
 
   test('drie targets A/B/C tot en met A als verkoper in het reguliere traject', async ({ browser, baseURL }) => {
     test.setTimeout(900000);
