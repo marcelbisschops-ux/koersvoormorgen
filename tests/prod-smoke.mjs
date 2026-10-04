@@ -22,7 +22,7 @@
 import path from 'node:path';
 import os from 'node:os';
 import { pathToFileURL } from 'node:url';
-import { WORKER, leesAdminKey, api, check, kop, kleur, samenvatting, d1, D1_NAAM, sla_over, accepteerPlatformvoorwaarden, verwijderTestGebruiker, ruimTrajectOp as ruimTrajectOpLib } from './lib.mjs';
+import { WORKER, leesAdminKey, api, check, kop, kleur, samenvatting, d1, D1_NAAM, sla_over, accepteerPlatformvoorwaarden, verwijderTestGebruiker, ruimTrajectOp as ruimTrajectOpLib, IS_STAGING_WORKER } from './lib.mjs';
 
 const ADMIN = leesAdminKey();
 const DOM = '@e2e-test.invalid';
@@ -55,8 +55,10 @@ async function ruimGebruikerOp(gebruikerId) {
 }
 
 // N-104: op staging via de test-opruimroute (externe testtrajecten), anders de admin-delete. Op
-// PRODUCTIE bestaat de opruimroute bewust niet; externe testtrajecten blijven daar na besluit D1 staan
-// (bekende releaseblokkade, MASTER N-105) — de testadviseur wordt dan ook niet verwijderd (geen wezen).
+// PRODUCTIE bestaat de opruimroute bewust niet; externe testtrajecten zouden daar na besluit D1 blijven
+// staan. Daarom maken 3B en PDF-RENDERER-TOS-20SEP op productie (MASTER N-105) uitsluitend eigen
+// trajecten via maakAdminTraject() (/mna/create), die de admin-delete wél opruimt. De externe
+// /adviseur/create-route wordt dus alleen op staging (IS_STAGING_WORKER uit lib.mjs) bewezen.
 async function ruimTrajectOp(code) {
   return ruimTrajectOpLib(code, ADMIN);
 }
@@ -86,24 +88,40 @@ async function batch3B() {
   kop('3B · opdrachtgever_rol (koper-bod-autorisatiegrens)');
   let buy, sell, buyCode, sellCode;
   try {
-    buy = await maakFictieveAdviseur('3B-buy');
-    sell = await maakFictieveAdviseur('3B-sell');
-
-    const buyCreate = await api('POST', '/adviseur/create', { body: { email: buy.email, wachtwoord: buy.wachtwoord, traject: {
+    const buyVelden = {
       kantoor_naam: 'PROD-SMOKE 3B Buyside BV', contact_naam: 'Verkoper', contact_email: 'v-3b-buy' + DOM,
       koper_naam: 'Koper BV', koper_email: 'k-3b-buy' + DOM, traject_type: 'Overname', opdrachtgever_rol: 'koper',
-    } } });
-    if (!buyCreate.json || !buyCreate.json.ok) faal('buy-side traject aanmaken mislukt', buyCreate.json);
-    buyCode = buyCreate.json.code;
-    const buyKoperCode = buyCreate.json.koper_code;
-
-    const sellCreate = await api('POST', '/adviseur/create', { body: { email: sell.email, wachtwoord: sell.wachtwoord, traject: {
+    };
+    const sellVelden = {
       kantoor_naam: 'PROD-SMOKE 3B Sellside BV', contact_naam: 'Verkoper', contact_email: 'v-3b-sell' + DOM,
       koper_naam: 'Koper BV', koper_email: 'k-3b-sell' + DOM, traject_type: 'Overname',
-    } } });
-    if (!sellCreate.json || !sellCreate.json.ok) faal('sell-side traject aanmaken mislukt', sellCreate.json);
-    sellCode = sellCreate.json.code;
-    const sellKoperCode = sellCreate.json.koper_code;
+    };
+    let buyKoperCode, sellKoperCode;
+    if (IS_STAGING_WORKER) {
+      // Staging: de externe adviseursroute zelf (/adviseur/create) blijft hier bewezen.
+      buy = await maakFictieveAdviseur('3B-buy');
+      sell = await maakFictieveAdviseur('3B-sell');
+
+      const buyCreate = await api('POST', '/adviseur/create', { body: { email: buy.email, wachtwoord: buy.wachtwoord, traject: buyVelden } });
+      if (!buyCreate.json || !buyCreate.json.ok) faal('buy-side traject aanmaken mislukt', buyCreate.json);
+      buyCode = buyCreate.json.code;
+      buyKoperCode = buyCreate.json.koper_code;
+
+      const sellCreate = await api('POST', '/adviseur/create', { body: { email: sell.email, wachtwoord: sell.wachtwoord, traject: sellVelden } });
+      if (!sellCreate.json || !sellCreate.json.ok) faal('sell-side traject aanmaken mislukt', sellCreate.json);
+      sellCode = sellCreate.json.code;
+      sellKoperCode = sellCreate.json.koper_code;
+    } else {
+      // Productie (N-105): eigen trajecten via /mna/create, opruimbaar via admin-delete. Bewijst de
+      // opslag van opdrachtgever_rol en de koper-bod-grens, NIET de externe /adviseur/create-route.
+      const buyCreate = await maakAdminTraject(buyVelden.kantoor_naam, buyVelden);
+      buyCode = buyCreate.code;
+      buyKoperCode = buyCreate.koper_code;
+      const sellCreate = await maakAdminTraject(sellVelden.kantoor_naam, sellVelden);
+      sellCode = sellCreate.code;
+      sellKoperCode = sellCreate.koper_code;
+      console.log('  (productie: trajecten via /mna/create — de externe /adviseur/create-route wordt alleen op staging bewezen)');
+    }
 
     // Vóór de niet-admin-key /mna/koper/bod-aanroepen verderop (S1.2b-gate).
     await accepteerPlatformvoorwaarden({ buyVerkoper: buyCode, buyKoper: buyKoperCode, sellVerkoper: sellCode, sellKoper: sellKoperCode });
@@ -646,27 +664,38 @@ async function batchPdfRendererTos20sep() {
   kop('PDF-RENDERER-TOS-20SEP · TOS-composer (MOU/LOI/NDA) + Signhost-foutafhandeling');
   let gebruikerId, trajectCode, koperCode;
   try {
-    kop('Setup: adviseur + traject (met €/diacritics in trajectvelden)');
-    const email = 'prodsmoke-tos-' + Date.now() + DOM;
-    const uit = await api('POST', '/gebruikers/uitnodigen', { adminKey: ADMIN, body: { naam: 'PROD-SMOKE TOS Adviseur', bedrijf: 'PROD-SMOKE TOS BV', email } });
-    if (!uit.json || !uit.json.ok) faal('uitnodigen mislukt', uit.json);
-    gebruikerId = uit.json.id;
-    const ww = 'Prodsmoke-TOS-' + Date.now() + '!';
-    await api('POST', '/gebruikers/activeer', { body: { token: uit.json.token, wachtwoord: ww } });
-    await api('POST', '/gebruiker/voorwaarden/accepteren', { body: { email, wachtwoord: ww } });
-    await api('POST', '/gebruikers/verkoop/' + gebruikerId, { adminKey: ADMIN, body: { traject_limiet: 2, modules: { traject: true, contracten: true } } });
-
-    const c1 = await api('POST', '/adviseur/create', { body: { email, wachtwoord: ww, traject: {
+    const trajectVelden = {
       kantoor_naam: 'PROD-SMOKE Coöperatieve TOS BV', contact_naam: 'Reële Tèster', contact_email: 'marcel@bisschopsfinancing.nl',
       koper_naam: 'PROD-SMOKE Königlijke Overname BV', koper_contact: 'Ünieke Köper', koper_email: 'marcel@bisschopsfinancing.nl',
       koper_kvk: '99887766', koper_adres: 'Coöperatiestraat 1, Oploo (initiële waarde €1.250.000)',
       verkoper_kvk: '11223344', verkoper_adres: 'Financiëlelaan 2, Oploo', traject_type: 'Verkoop',
-    } } });
-    if (!c1.json || !c1.json.ok) faal('traject aanmaken mislukt', c1.json);
-    trajectCode = c1.json.code;
-    koperCode = c1.json.koper_code;
-    const tussenCode = c1.json.tussen_code;
-    if (!tussenCode) faal('geen tussen_code ontvangen', c1.json);
+    };
+    let c1;
+    if (IS_STAGING_WORKER) {
+      // Staging: extern traject via de echte adviseursroute (/adviseur/create).
+      kop('Setup: adviseur + traject (met €/diacritics in trajectvelden)');
+      const email = 'prodsmoke-tos-' + Date.now() + DOM;
+      const uit = await api('POST', '/gebruikers/uitnodigen', { adminKey: ADMIN, body: { naam: 'PROD-SMOKE TOS Adviseur', bedrijf: 'PROD-SMOKE TOS BV', email } });
+      if (!uit.json || !uit.json.ok) faal('uitnodigen mislukt', uit.json);
+      gebruikerId = uit.json.id;
+      const ww = 'Prodsmoke-TOS-' + Date.now() + '!';
+      await api('POST', '/gebruikers/activeer', { body: { token: uit.json.token, wachtwoord: ww } });
+      await api('POST', '/gebruiker/voorwaarden/accepteren', { body: { email, wachtwoord: ww } });
+      await api('POST', '/gebruikers/verkoop/' + gebruikerId, { adminKey: ADMIN, body: { traject_limiet: 2, modules: { traject: true, contracten: true } } });
+
+      const r = await api('POST', '/adviseur/create', { body: { email, wachtwoord: ww, traject: trajectVelden } });
+      if (!r.json || !r.json.ok) faal('traject aanmaken mislukt', r.json);
+      c1 = r.json;
+    } else {
+      // Productie (N-105): eigen traject via /mna/create (zelfde velden), opruimbaar via admin-delete;
+      // geen testadviseuraccount nodig. Bewijst de TOS-composer, NIET de externe /adviseur/create-route.
+      kop('Setup: eigen traject via /mna/create (met €/diacritics in trajectvelden) — productie, N-105');
+      c1 = await maakAdminTraject(trajectVelden.kantoor_naam, trajectVelden);
+    }
+    trajectCode = c1.code;
+    koperCode = c1.koper_code;
+    const tussenCode = c1.tussen_code;
+    if (!tussenCode) faal('geen tussen_code ontvangen', c1);
     // Vóór de eerste niet-admin-key /mna/tos/*-aanroep hieronder (S1.2b-gate) — deze batch stuurt
     // bewust x-tussen-key mee i.p.v. ADMIN_KEY, precies zoals een echte begeleider dat zou doen.
     await accepteerPlatformvoorwaarden({ verkoper: trajectCode, koper: koperCode, tussenpersoon: tussenCode });
