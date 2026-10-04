@@ -822,6 +822,22 @@ log('17. P1C promotie-UI en eigen trajectdoorgang (tests/p1c-ui.mjs): context, p
   }
 }
 
+log('17b. N-77b expliciet testerakkoord (tests/n77b-ui.mjs): onboarding, serverbevestiging, dataherlaad, MFA en gewone gebruiker');
+{
+  // N-77b (4 okt 2026): zuivere N77B-functies plus de echte login-/voorwaardenschermen uit adv.html in
+  // node:vm met nep-DOM en nep-fetch — geen netwerk, geen browser. De browserflow staat in
+  // tests/n77b-tester-voorwaarden.spec.js.
+  try {
+    const { draaiN77bUiChecks } = await import('./n77b-ui.mjs');
+    const resultaten = await draaiN77bUiChecks(ROOT);
+    const gefaald = resultaten.filter(r => !r.ok);
+    gefaald.forEach(r => warn('N-77b: ' + r.msg));
+    if (!gefaald.length) ok('Alle ' + resultaten.length + ' N-77b-UI-checks geslaagd (eigen niet-aangevinkt testervakje, serverversie, geen vals succes, herladen vóór dashboard, gewone gebruiker ongewijzigd).');
+  } catch (e) {
+    warn('tests/n77b-ui.mjs kon niet worden uitgevoerd: ' + String((e && e.message) || e));
+  }
+}
+
 log('18. Waarderingsrapport genereren (tests/waardering-genereren.mjs): mislukte generatie nooit als rapport opgeslagen');
 {
   // Weekend kern-UI/UX (4 okt 2026): HTTP-fout/ok:false/rd.error werd als "AI fout"-tekst als nieuwe

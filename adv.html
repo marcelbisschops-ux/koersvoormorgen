@@ -253,6 +253,73 @@ async function p1cBevestig(st,body,post){
 // P1C-ADV-PURE-END
 var P1C_CTX=p1cLeesContext(location.search);
 if(P1C_CTX){try{history.replaceState(null,'',p1cSchoneUrl(location.pathname,location.search,_WORKER_WHITELIST));}catch(e){}}
+
+// ===== N-77b (4 okt 2026) — expliciet testerakkoord binnen de bestaande voorwaardenonboarding =====
+// Een testaccount zonder geldig akkoord op de actuele Testvoorwaarden krijgt van de server bij login
+// (ook na de verificatiecode) en bij ververs() alleen onboardinggegevens (testvoorwaarden_vereist,
+// géén trajecten). Dan volgt het bestaande acceptatiescherm met een eigen, niet vooraf aangevinkt
+// vakje voor de Testvoorwaarden (het GV-vakje alleen als de GV óók ontbreekt). Versie en documentlink
+// komen uitsluitend uit het actuele GET /gebruiker/voorwaarden (met sessie). Succes pas bij een
+// serverbevestigd akkoord; daarna eerst de volledige trajectenlijst opnieuw ophalen. Gewone gebruikers
+// ongewijzigd. De functies tussen de N77B-ADV-PURE-markers zijn zuiver (tests/n77b-ui.mjs).
+// N77B-ADV-PURE-BEGIN
+var N77B_TV_DOC='https://koersvoormorgen.nl/testvoorwaarden.html';
+var N77B_VERSIE_VORM=/^\d{1,3}(\.\d{1,3}){0,2}$/;
+// Welke akkoorden ontbreken volgens de loginpayload. Zonder testvoorwaarden-info: geen testerplicht.
+function n77bOnboarding(d){
+  var vw=(d&&d.voorwaarden)||{gv_akkoord:true};
+  var tv=vw.testvoorwaarden||(d&&d.testvoorwaarden)||null;
+  var tester=!!(d&&d.testvoorwaarden_vereist===true)||!!(tv&&typeof tv==='object'&&tv.vereist===true&&tv.akkoord!==true);
+  return {gv:!vw.gv_akkoord,tester:tester};
+}
+// Actuele versie + link uit GET /gebruiker/voorwaarden; onbekend document of vreemde versie → null.
+function n77bTvInfo(d){
+  var tv=d&&d.testvoorwaarden;
+  if(!tv||typeof tv.versie!=='string'||!N77B_VERSIE_VORM.test(tv.versie)||tv.url!==N77B_TV_DOC)return null;
+  return {versie:tv.versie,url:N77B_TV_DOC};
+}
+function n77bKlaar(ob,gvAan,tvAan,info){
+  return (!ob.gv||gvAan===true)&&(!ob.tester||(tvAan===true&&!!info));
+}
+function n77bAcceptBody(ob,info){
+  return ob.tester&&info?{testvoorwaarden_akkoord:true,testvoorwaarden_versie:info.versie}:{};
+}
+// Succes uitsluitend bij HTTP-succes, ok:true en een serverbevestigd akkoord op exact de verstuurde versie.
+function n77bAcceptUitkomst(status,j,versie){
+  j=j||{};
+  var tv=j.testvoorwaarden;
+  if(status>=200&&status<300&&j.ok===true&&tv&&tv.akkoord===true&&tv.versie===versie)return {soort:'ok'};
+  if(status===409||j.error==='testvoorwaarden_versie_onjuist'||(tv&&typeof tv.versie==='string'&&tv.versie!==versie))
+    return {soort:'verouderd',melding:'De Testvoorwaarden zijn intussen bijgewerkt. Lees de actuele versie en bevestig opnieuw.'};
+  if(!status)return {soort:'fout',melding:'Geen (tijdig) antwoord van de server. Er is niets bevestigd; probeer het opnieuw.'};
+  if(j.error==='ip_niet_toegestaan')return {soort:'fout',melding:'Dit testaccount is niet toegestaan vanaf deze verbinding. Er is niets vastgelegd.'};
+  return {soort:'fout',melding:'Uw akkoord is niet door de server bevestigd'+(status>=300?' (status '+status+')':'')+'. Probeer het opnieuw.'};
+}
+// Na het akkoord mag alleen een volledige trajectenpayload zonder openstaande testerplicht door.
+function n77bVervolgGeldig(status,d){
+  return status>=200&&status<300&&!!d&&d.ok===true&&!d.mfa_required&&!n77bOnboarding(d).tester&&Array.isArray(d.trajecten);
+}
+function n77bAntwoord(r){
+  return r.json().then(function(j){return {status:r.status,json:j};},function(){return {status:r.status,json:null};});
+}
+// Eén verwerking tegelijk. st.bevestigd onthoudt een serverbevestigd akkoord, zodat een retry na een
+// mislukte herlaadpoging alleen opnieuw ophaalt en niet opnieuw accepteert.
+async function n77bVerwerk(st,ob,info,io){
+  if(st.bezig||!info)return {soort:'genegeerd'};
+  st.bezig=true;
+  try{
+    if(!st.bevestigd){
+      var a=await io.accepteer(n77bAcceptBody(ob,info)).catch(function(){return null;});
+      var u=n77bAcceptUitkomst(a?a.status:0,a?a.json:null,info.versie);
+      if(u.soort!=='ok')return u;
+      st.bevestigd=true;
+    }
+    var t=await io.trajecten().catch(function(){return null;});
+    if(!t||!n77bVervolgGeldig(t.status,t.json))return {soort:'fout',melding:'Uw akkoord is vastgelegd, maar uw gegevens konden niet worden geladen. Probeer het opnieuw.'};
+    return {soort:'ok',payload:t.json};
+  }finally{st.bezig=false;}
+}
+// N77B-ADV-PURE-END
 // White-label basis — centrale merkconfig (zelfde patroon als mna.html). Eén plek wijzigen = overal.
 var BRAND = { platform:'Koers voor Morgen', bedrijf:'Bisschops Financing B.V.', bedrijfKort:'Bisschops Financing BV', suffix:'M&A', kort:'Koers voor Morgen' };
 document.title = BRAND.platform + ' — Adviseur';
@@ -348,6 +415,8 @@ function renderForgot(){
 function toepassenLoginPayload(d,email){
   G.email=email;G.token=d.sessie_token||G.token||'';G.naam=d.naam;G.bedrijf=d.bedrijf;G.trajecten=d.trajecten||[];G.limiet=d.traject_limiet||1;G.modules=d.modules||{traject:true};G.isTester=!!d.is_tester;G.proef=!!d.proef;G.proefTot=d.proef_tot||null;G.branding=d.branding||{brand_naam:'',brand_kleur:'',brand_logo_url:''};
   var vw=d.voorwaarden||{gv_akkoord:true};
+  var ob=n77bOnboarding(d);
+  if(ob.tester){ renderVoorwaardenAcceptatie(vw,ob); return; }
   if(!vw.gv_akkoord){ renderVoorwaardenAcceptatie(vw); return; }
   naInlogVervolg();
 }
@@ -412,33 +481,73 @@ async function submitMfa(mfaToken,email){
 // NB: de Algemene Voorwaarden van Bisschops Financing gelden voor de M&A-adviesrelatie van BF zelf
 // en zijn niet van toepassing op een adviseur die uitsluitend het platform gebruikt — daarom hier
 // bewust niet opgenomen (gecorrigeerd juli 2026).
-function renderVoorwaardenAcceptatie(vw){
+// N-77b: ob={gv,tester} (n77bOnboarding). Zonder ob: het bestaande GV-scherm, ongewijzigd.
+function renderVoorwaardenAcceptatie(vw,ob,melding){
+  ob=ob||{gv:true,tester:false};
+  var vwTitel=!ob.tester?'Gebruiksvoorwaarden accepteren':ob.gv?'Voorwaarden accepteren':'Testvoorwaarden accepteren';
+  var vwSub=!ob.tester?'Voordat u verder kunt, dient u de Gebruiksvoorwaarden van het platform te accepteren.'
+    :'Dit is een testaccount. Voordat u verder kunt, dient u '+(ob.gv?'de Gebruiksvoorwaarden van het platform en ':'')+'de Testvoorwaarden uitdrukkelijk te accepteren.';
   render(`<div class="login-outer"><div class="login-card" style="max-width:640px">
     <div class="login-brand"><div class="login-dot"></div><span class="login-brand-name">${BRAND.platform} ${BRAND.suffix}</span></div>
-    <div class="login-title">Gebruiksvoorwaarden accepteren</div>
-    <div class="login-sub">Voordat u verder kunt, dient u de Gebruiksvoorwaarden van het platform te accepteren.</div>
+    <div class="login-title">${vwTitel}</div>
+    <div class="login-sub">${vwSub}</div>
+    ${melding?'<div class="err-msg" id="vw-melding" style="display:block">'+esc(melding)+'</div>':''}
     <div id="vw-tekst" style="font-size:12px;color:var(--muted);padding:2rem 0;text-align:center">Laden...</div>
     <div id="vw-vakjes" style="display:none">
-      <label style="display:flex;align-items:flex-start;gap:8px;font-size:13px;color:var(--sub);margin-bottom:1.25rem;cursor:pointer">
+      ${ob.gv?`<label style="display:flex;align-items:flex-start;gap:8px;font-size:13px;color:var(--sub);margin-bottom:1.25rem;cursor:pointer">
         <input type="checkbox" id="vw-gv" style="margin-top:3px">
         <span>Ik heb de Gebruiksvoorwaarden hierboven gelezen en ga hiermee akkoord.</span>
-      </label>
+      </label>`:''}
+      ${ob.tester?`<div id="vw-tv-blok" style="font-size:13px;color:var(--sub);background:var(--void);border:1px solid var(--border);border-radius:var(--r);padding:1rem;margin-bottom:1rem">
+        Als tester gelden voor u de <a id="vw-tv-link" target="_blank" rel="noopener" style="color:var(--teal)">Testvoorwaarden (versie <span class="vw-tv-v"></span>)</a>. Lees deze voordat u akkoord gaat.
+      </div>
+      <label style="display:flex;align-items:flex-start;gap:8px;font-size:13px;color:var(--sub);margin-bottom:1.25rem;cursor:pointer">
+        <input type="checkbox" id="vw-tv" style="margin-top:3px">
+        <span>Ik heb de Testvoorwaarden (versie <span class="vw-tv-v"></span>) gelezen en ga hiermee akkoord.</span>
+      </label>`:''}
       <div id="vw-err" class="err-msg"></div>
       <button class="btn" id="vw-ok" style="width:100%" disabled>Ga akkoord en verder</button>
     </div>
+    ${ob.tester?'<div style="text-align:center;margin-top:1rem"><a class="link-subtle" id="vw-uit">Uitloggen</a></div>':''}
   </div></div>`);
+  if(ge('vw-uit'))ge('vw-uit').onclick=function(){doLogout();};
 
-  fetch(WORKER+'/gebruiker/voorwaarden').then(function(r){return r.json();}).then(function(d){
+  // Testers: met de bestaande sessie en zonder cache, zodat de server de actuele testerversie meestuurt.
+  var vwGet=ob.tester?fetchMetTimeout(WORKER+'/gebruiker/voorwaarden',{headers:{'x-gebruiker-token':G.token},cache:'no-store'},15000):fetch(WORKER+'/gebruiker/voorwaarden');
+  vwGet.then(function(r){if(ob.tester&&!r.ok)throw new Error('status '+r.status);return r.json();}).then(function(d){
+    var info=ob.tester?n77bTvInfo(d):null;
+    if(ob.tester&&!info)throw new Error('testvoorwaarden onbekend');
     var tekstDiv=ge('vw-tekst');
-    var gv=(d.gv&&d.gv.tekst)||'';
-    tekstDiv.innerHTML='<div style="max-height:320px;overflow-y:auto;text-align:left;background:var(--void);border:1px solid var(--border);border-radius:var(--r);padding:1rem;font-size:11px;color:var(--mid);white-space:pre-wrap;line-height:1.6" id="vw-doc-gv">'+gv.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</div>';
-    tekstDiv.style.textAlign='left';tekstDiv.style.padding='0';
+    if(ob.gv){
+      var gv=(d.gv&&d.gv.tekst)||'';
+      tekstDiv.innerHTML='<div style="max-height:320px;overflow-y:auto;text-align:left;background:var(--void);border:1px solid var(--border);border-radius:var(--r);padding:1rem;font-size:11px;color:var(--mid);white-space:pre-wrap;line-height:1.6" id="vw-doc-gv">'+gv.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</div>';
+      tekstDiv.style.textAlign='left';tekstDiv.style.padding='0';
+    }else tekstDiv.style.display='none';
+    if(info){
+      ge('vw-tv-link').href=info.url;
+      document.querySelectorAll('.vw-tv-v').forEach(function(el){el.textContent=info.versie;});
+    }
     ge('vw-vakjes').style.display='block';
-    function checkKlaar(){ge('vw-ok').disabled=!ge('vw-gv').checked;}
-    ge('vw-gv').onchange=checkKlaar;
+    function vinkje(id){var el=ge(id);return !!(el&&el.checked);}
+    function checkKlaar(){ge('vw-ok').disabled=!n77bKlaar(ob,vinkje('vw-gv'),vinkje('vw-tv'),info);}
+    if(ge('vw-gv'))ge('vw-gv').onchange=checkKlaar;
+    if(ge('vw-tv'))ge('vw-tv').onchange=checkKlaar;
+    var st={bezig:false,bevestigd:false};
     ge('vw-ok').onclick=async function(){
+      if(!n77bKlaar(ob,vinkje('vw-gv'),vinkje('vw-tv'),info))return;
       var btn=this;btn.disabled=true;btn.textContent='Verwerken...';
       var err=ge('vw-err');err.style.display='none';
+      if(ob.tester){
+        var u=await n77bVerwerk(st,ob,info,{
+          accepteer:function(body){return fetchMetTimeout(WORKER+'/gebruiker/voorwaarden/accepteren',{method:'POST',headers:{'Content-Type':'application/json','x-gebruiker-token':G.token},body:JSON.stringify(body),cache:'no-store'},15000).then(n77bAntwoord);},
+          trajecten:function(){return post('/adviseur/trajecten',{}).then(n77bAntwoord);}
+        });
+        if(u.soort==='genegeerd')return;
+        if(u.soort==='ok'){toepassenLoginPayload(u.payload,G.email);return;}
+        if(u.soort==='verouderd'){renderVoorwaardenAcceptatie(vw,ob,u.melding);return;}
+        err.textContent=u.melding;err.style.display='block';btn.disabled=false;btn.textContent=st.bevestigd?'Opnieuw laden':'Ga akkoord en verder';
+        return;
+      }
       try{
         var r=await fetch(WORKER+'/gebruiker/voorwaarden/accepteren',{method:'POST',headers:{'Content-Type':'application/json','x-gebruiker-token':G.token},body:JSON.stringify({})});
         var rd=await r.json();
@@ -446,7 +555,13 @@ function renderVoorwaardenAcceptatie(vw){
         naInlogVervolg();
       }catch(e){err.textContent='Verbindingsfout — probeer opnieuw.';err.style.display='block';btn.disabled=false;btn.textContent='Ga akkoord en verder';}
     };
-  }).catch(function(){ ge('vw-tekst').textContent='Kon de voorwaarden niet laden. Ververs de pagina.'; });
+  }).catch(function(){
+    if(!ob.tester){ ge('vw-tekst').textContent='Kon de voorwaarden niet laden. Ververs de pagina.'; return; }
+    // Tester: sessie staat alleen in geheugen — opnieuw laden binnen het scherm i.p.v. de pagina verversen.
+    var t=ge('vw-tekst');if(!t)return;
+    t.innerHTML='<div class="err-msg" id="vw-laadfout" style="display:block">Kon de actuele Testvoorwaarden niet laden. Er is niets vastgelegd.</div><button class="btn" id="vw-opnieuw" style="width:100%">Opnieuw laden</button>';
+    ge('vw-opnieuw').onclick=function(){renderVoorwaardenAcceptatie(vw,ob);};
+  });
 }
 
 // ===== DASHBOARD =====
@@ -548,7 +663,7 @@ function renderAdvHandleiding(){
         + stap(2,'Een traject starten',`Klik op "+ Nieuw traject", vul de gegevens van de onderneming (en desgewenst de koper) in. Zijn e-mailadressen ingevuld, dan verstuurt het platform automatisch een uitnodigingsmail met code en instructies naar verkoper en/of koper — anders geeft u de codes zelf handmatig door. Bracht een bank, accountant of ander contact u bij deze opdracht? Vul dat in bij "Aangedragen door" (optioneel) — dit is uw eigen administratie voor de referral-afspraak met die aandrager, los van het platform.`)
         + stap(3,'Eigen huisstijl (optioneel)','Via "🎨 Huisstijl" stelt u een eigen platformnaam, accentkleur en logo in. Dit geldt voor alle trajecten die u vanaf dat moment aanmaakt. Kiest u een kleur die op een donkere achtergrond moeilijk leesbaar zou zijn, dan waarschuwt het scherm dit direct — en wordt de kleur voor uw cliënten automatisch iets aangepast voor leesbaarheid.')
         + stap(4,'Modules en limieten','Uw account heeft een trajectlimiet en een set modules (Contracten, AI-analyse, Q&amp;A, Meekijkers, Marketing, Export &amp; rapportage), zichtbaar als chips boven uw trajectenlijst. Een module met een slotje is niet actief — neem contact op met uw platformbeheerder.'+(G.proef?' Dit is een <strong>proefaccount</strong>: één traject en een looptijd van 30 dagen'+(G.proefTot?' (tot '+new Date(G.proefTot).toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'})+')':'')+'. Wilt u daarna doorgaan, neem dan contact op via koersvoormorgen.nl.':'')+(G.isTester?'':' Via de knop "€ Kosten" bovenaan ziet u op elk moment uw eigen platformkosten (trajectfees, module-fees, matching-fees) — zo weet u vooraf wat bijvoorbeeld een matching-tarief kost vóórdat u de module gebruikt.'))
-        + stap(5,'Voorwaarden','Bij eerste gebruik accepteert u de <a href="platformvoorwaarden.html">Gebruiksvoorwaarden</a>. Zie ook de <a href="privacy.html">Privacyverklaring</a>.')
+        + stap(5,'Voorwaarden','Bij eerste gebruik accepteert u de <a href="platformvoorwaarden.html">Gebruiksvoorwaarden</a>. Met een testaccount accepteert u daarnaast uitdrukkelijk de <a href="testvoorwaarden.html">Testvoorwaarden</a>; bij een nieuwe versie vraagt het portaal dat opnieuw. Zie ook de <a href="privacy.html">Privacyverklaring</a>.')
         + stap(6,'Meekijkers','Bij elk traject kunt u onder "Meekijkers" een bank, accountant of andere aandrager beperkte, alleen-lezen inzage geven in (een deel van) dat traject. U bevestigt daarbij expliciet dat u toestemming heeft van uw opdrachtgever — zonder die bevestiging kan er geen toegangscode ontstaan. De meekijker moet zelf eerst een vertrouwelijkheidsverklaring accepteren voordat hij iets te zien krijgt, en verkoper/koper zien in hun eigen dashboard altijd wie er meekijkt. Toegang is altijd alleen-lezen en door u op elk moment intrekbaar.')
         + stap(7,'Dossier exporteren','Is de module "Export &amp; rapportage" actief, dan staat bij elk van uw trajecten een kaart "Export" met de knop "Dossier downloaden" — een compleet tekstbestand met de due-diligence-gegevens, Q&amp;A, gespreksverslagen, documentenlijst en toegangslog van dat traject. Uitsluitend voor uw eigen trajecten.')
       )}
@@ -674,6 +789,7 @@ async function ververs(){
   try{
     var r=await post('/adviseur/trajecten',{});
     var d=await r.json();
+    if(d.ok&&n77bOnboarding(d).tester){renderVoorwaardenAcceptatie(d.voorwaarden||{gv_akkoord:true},n77bOnboarding(d));return;}
     if(d.ok){G.trajecten=d.trajecten||[];G.limiet=d.traject_limiet||G.limiet||1;G.modules=d.modules||G.modules;G.isTester=!!d.is_tester;renderDashboard();}
   }catch(e){}
 }
