@@ -444,8 +444,8 @@ function renderKoopmandaatScherm(app){
         +'</div>';
       if(magBewerken){
         kaart+='<div style="margin-top:.75rem;display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
-          +'<label style="font-size:11px;color:var(--muted)">Status:</label>'
-          +'<select class="km-status-select" data-id="'+esc(t.id)+'"'+(isGeprom?' disabled':'')+' style="font-size:12px;padding:4px 8px;border:1px solid var(--border2);border-radius:5px;background:var(--card);color:var(--sub)">'
+          +'<label for="km-status-'+esc(t.id)+'" style="font-size:11px;color:var(--muted)">Status:</label>'
+          +'<select id="km-status-'+esc(t.id)+'" class="km-status-select" data-id="'+esc(t.id)+'"'+(isGeprom?' disabled':'')+' style="font-size:12px;padding:4px 8px;border:1px solid var(--border2);border-radius:5px;background:var(--card);color:var(--sub)">'
           +['kandidaat','in_gesprek','geparkeerd','afgewezen'].map(function(s){return '<option value="'+s+'"'+(t.status===s?' selected':'')+'>'+KM_STATUS_LABEL[s]+'</option>';}).join('')
           +(isGeprom?'<option value="gepromoveerd" selected>'+KM_STATUS_LABEL.gepromoveerd+'</option>':'')
           +'</select>'
@@ -1900,8 +1900,12 @@ function renderBegeleiderDashboard(app){
     var stl='width:100%;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:7px 11px;font-family:IBM Plex Sans,sans-serif;font-size:13px';
     if(_isFusieTraject()){
       var pl=partijLabels('Fusie');
-      return '<div style="margin-top:.6rem"><label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Intern goedgekeurd door — beide besturen, verplicht vóór verzending</label>'
+      // P2-28: de kop geldt voor twee velden en is dus geen label; elk veld krijgt een eigen gekoppeld label.
+      var lbl='font-size:11px;color:var(--muted);display:block;margin-bottom:4px';
+      return '<div style="margin-top:.6rem"><div style="'+lbl+'">Intern goedgekeurd door — beide besturen, verplicht vóór verzending</div>'
+        +'<label for="'+id+'" style="'+lbl+'">Naam — namens '+esc(pl.sectie1)+'</label>'
         +'<input type="text" id="'+id+'" placeholder="Naam — namens '+esc(pl.sectie1)+'" style="'+stl+';margin-bottom:6px">'
+        +'<label for="'+id+'-b" style="'+lbl+'">Naam — namens '+esc(pl.sectie2)+'</label>'
         +'<input type="text" id="'+id+'-b" placeholder="Naam — namens '+esc(pl.sectie2)+'" style="'+stl+'"></div>';
     }
     return '<div style="margin-top:.6rem"><label for="'+id+'" style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Intern goedgekeurd door (naam) — verplicht vóór verzending</label>'

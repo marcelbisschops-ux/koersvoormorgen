@@ -872,6 +872,22 @@ log('19. N-121 lange AI-generaties (tests/n121-ai-timeouts.mjs): 13 AI-calls beg
   }
 }
 
+log('20. P2-28 expliciete labels mna/04 (tests/p228-labels.mjs): Status per targetkaart en beide Fusie-bestuursnamen');
+{
+  // P2-28 (4 okt 2026): de echte render-/goedkeuringsfuncties uit mna/04 in node:vm met een minimale
+  // DOM-fixture — unieke id/for-relaties, labelnaam en labelklik/focus. Geen netwerk, geen browser.
+  try {
+    const { draaiP228LabelChecks } = await import('./p228-labels.mjs');
+    const resultaten = await draaiP228LabelChecks(ROOT);
+    const gefaald = resultaten.filter(r => !r.ok);
+    gefaald.forEach(r => warn('P2-28: ' + r.msg));
+    if (!resultaten.length) warn('P2-28: geen checks uitgevoerd.');
+    else if (!gefaald.length) ok('Alle ' + resultaten.length + ' P2-28-labelchecks geslaagd (uniek Status-label per targetkaart, eigen label per Fusiebestuur, labelklik focust het juiste veld, data-id en goedkeuringsvereisten ongewijzigd).');
+  } catch (e) {
+    warn('tests/p228-labels.mjs kon niet worden uitgevoerd: ' + String((e && e.message) || e));
+  }
+}
+
 // ── Samenvatting ──────────────────────────────────────────────────────────
 log('Samenvatting');
 if (!bevindingen) {
