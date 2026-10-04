@@ -292,10 +292,30 @@ async function bevestigingTotLink(page, id, { teaser } = {}) {
 }
 
 // Platformvoorwaarden (bestaande popup) accepteren als die verschijnt; daarna wachten op de rol.
+// pvw-ok roept na akkoord opnieuw de login aan (lb.click()); secCanLogin weigert die binnen de bestaande
+// SEC.LOGIN_COOLDOWN_MS na de vorige poging. Daarom vóór de klik wachten tot die cooldown voorbij is —
+// SEC zelf blijft ongemoeid. Bij falen alleen gemaskeerde diagnostiek (rol/scherm/zichtbare meldingen).
 async function naTrajectLogin(page, rol) {
-  await page.waitForFunction(() => !!document.getElementById('pvw-ok') || !!(window.S && S.traject && S.rol), null, { timeout: 30000 });
-  if (await page.locator('#pvw-ok').count()) await page.click('#pvw-ok');
-  await page.waitForFunction((r) => !!(window.S && S.traject && S.rol === r), rol, { timeout: 30000 });
+  try {
+    await page.waitForFunction(() => !!document.getElementById('pvw-ok') || !!(window.S && S.traject && S.rol), null, { timeout: 30000 });
+    if (await page.locator('#pvw-ok').count()) {
+      await page.waitForFunction(() => typeof SEC !== 'undefined' && Date.now() - SEC.lastAttemptAt >= SEC.LOGIN_COOLDOWN_MS, null, { timeout: 10000 });
+      await page.click('#pvw-ok');
+    }
+    await page.waitForFunction((r) => !!(window.S && S.traject && S.rol === r), rol, { timeout: 30000 });
+  } catch (e) {
+    const diag = await page.evaluate(() => {
+      const tekst = (el) => (el && el.offsetParent !== null ? el.innerText.trim().slice(0, 200) : null);
+      return {
+        rol: (window.S && S.rol) || null,
+        screen: (window.S && S.screen) || null,
+        l_err: tekst(document.getElementById('l-err')),
+        pvw_err: tekst(document.getElementById('pvw-err')),
+        toast: [...document.querySelectorAll('#toast-container > *')].map((t) => t.innerText.trim().slice(0, 200)),
+      };
+    }).catch(() => ({ diagnostiek: 'niet beschikbaar' }));
+    throw new Error(maskeer('naTrajectLogin(' + rol + ') faalde: ' + String((e && e.message) || e).split('\n')[0].slice(0, 200) + ' · diagnostiek ' + JSON.stringify(diag)));
+  }
 }
 const zichtbaar = (page, waarde) => page.evaluate((w) => document.body.innerText.includes(w) || [...document.querySelectorAll('input,textarea')].some((e) => e.value === w), waarde);
 const naarFase = (page, fase) => page.evaluate((f) => { S.screen = 'main'; S.fase = FASES.findIndex((x) => x.id === f); renderApp(); }, fase);
