@@ -198,6 +198,67 @@ met één lid. Kantoor verwijderen geeft dan een melding met "1 lid" en het kant
 Verplaats het lid en verwijder opnieuw: het kantoor verdwijnt uit de lijst. Verwijder nooit
 klantkantoren en niets op productie om dit te testen.
 
+## Deel F — Koopmandaat: generieke targetflow (`tests/koopmandaat-targetflow-ui.mjs`, `tests/koopmandaat-targetflow.spec.js`)
+Backendcontract: `docs/koopmandaat-targetflow.md` in de private backendrepo
+(`worker/37-koopmandaat.js`). Er zijn drie soorten bewijs. Ze vervangen elkaar niet.
+
+**1. DOM-handlertest** (`node tests/koopmandaat-targetflow-ui.mjs`, ook check 23 van
+`tests/audit-consistentie.mjs`). Draait de echte koopmandaatcode uit `mna/04` (kaarten,
+targetformulier, targetflow-acties, historie, bevestigingsvenster, koperkaart), de P1C-meldingen
+uit `adv.html` en het script van `introductie.html` in `node:vm`, met een minimale DOM-fixture en
+een nep-worker volgens het contract. Er wordt echt geklikt, ingevuld en bevestigd. Geen netwerk,
+geen browser, alleen synthetische gegevens. Dit bewijst welke verzoeken de UI stuurt en wat de
+gebruiker daarna ziet. Het bewijst niet dat de backend of de gebruikersflow werkt.
+
+**2. Browserflow, lokaal geïntercepteerd** (`npx playwright test tests/koopmandaat-targetflow.spec.js`).
+Echte pagina's in Chromium. Verzoeken naar `/mna/koopmandaat/…` gaan naar de echte
+`handleKoopmandaat` uit de gekoppelde backend op `node:sqlite` (`tests/n115-e2e-lokaal.mjs`).
+De adviseurslogin en de sectorlijst van `adv.html` zijn fixtures. Al het andere buiten localhost
+wordt afgebroken. De flow:
+- een leeg koopmandaat (0 targets) opslaan, sluiten en heropenen;
+- drie targets via het formulier (altijd generiek), elk apart bewerken, status en contactlog;
+- target A: concept → vaststellen → link → mailprogrammaknop (mailto-inhoud gecontroleerd) →
+  "Link aangemaakt" en "verzonden" als aparte stappen → document opnieuw openen na verversen →
+  akkoord van de onderneming → teaser → voorstellen → koper kiest zelf (geen interesse, daarna
+  interesse) → expliciete match (koper blijft anoniem) → afzonderlijke vrijgave → P1C-promotie met
+  kostenbevestiging. Gegevens worden overgenomen zonder herinvoer en het bewijs blijft bewaard;
+- target B: wijzigingsverzoek (versie, status en tijd zichtbaar), daarna archiveren, herstellen en
+  opnieuw archiveren. De link is ingetrokken en niets is verwijderd;
+- target C blijft na de promotie van A los bruikbaar;
+- rollen: koper, begeleider, ander mandaat, plus de allow-list van de koperlijst;
+- koperdoorgang naar de eigen trajectkopercode.
+
+Het reguliere traject na de promotie zit niet in de lokale handler. Die test staat lokaal
+expliciet als *overgeslagen*, niet als geslaagd.
+
+**3. Dezelfde flow live op staging** (de coördinator draait dit):
+```
+KVM_TARGETFLOW_LIVE=1 WORKER_URL=https://kantoorinzicht-staging.marcel-bisschops.workers.dev \
+  npx playwright test tests/koopmandaat-targetflow.spec.js
+```
+- Echte verzoeken naar de bestaande staging-host. Elke andere host, ook productie, wordt afgebroken.
+- Sleutels komen uitsluitend tijdens het draaien uit de bestaande helpers in `tests/lib.mjs`
+  (`leesAdminKey`, `TEST_CLEANUP_KEY`, `d1` via wrangler, `zetMfaUitVoorTest`).
+- Er wordt niets weggeschreven. Trace, screenshot en video staan uit, en eigen meldingen maskeren
+  codes, tokens en sessies.
+- Een synthetische adviseur (`.test`-adres) maakt het koopmandaat via de bestaande adviseursroute.
+  Daarna volgt dezelfde flow, met de echte adviseurslogin in `adv.html`.
+- Daarna wordt A een gewone verkoper in het bestaande reguliere traject. De verkoper vult
+  Financieel in en levert een document aan als bewijsstuk (zonder AI). De adviseur controleert
+  dat. De koper ziet vóór de vrijgave niets. De adviseur geeft via "Beheer koper-toegang" alleen
+  Financieel vrij. De koper ziet daarna die waarde, maar niet wat in Commercieel staat.
+- De VOK van de nieuwe begeleider wordt via de bestaande route getekend, zoals in
+  `e2e-3rollen-regressie.spec.js`.
+- Opruimen gebeurt altijd via de bestaande staging-opruimroutes, met een onafhankelijke D1-telling.
+  Synthetische bewijsregels die buiten die opruiming vallen, staan als annotatie in het rapport.
+- De isolatie tussen verschillende mandaten wordt alleen lokaal getest.
+
+In geen van beide modi wordt een e-mail echt bezorgd. De knop "E-mail openen in uw
+mailprogramma" wordt geklikt. Alleen de overdracht aan het besturingssysteem wordt opgevangen,
+en het rapport meldt dat als "niet uitgevoerd". Een geslaagde lokale run is geen
+staging-acceptatie. Een geslaagde live-run is geen productie- of juridische acceptatie: de
+bevestigingstekst en het bewaarbeleid zijn nog juridisch te valideren.
+
 ## Afspraak
 Alle checks van `tests/audit-consistentie.mjs` groen vóór elke worker-deploy en vóór elke frontend-push.
 Draait ook **wekelijks automatisch** (geplande taak, zie hieronder) — bij

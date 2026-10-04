@@ -264,8 +264,8 @@ function renderApp(){
 // Bewust dun en losstaand van renderMain/renderCover/FASES: een koopmandaat heeft geen dataroom,
 // geen chat, geen sectorprofiel — dat ontstaat pas zodra een target promoveert naar een volwaardig
 // mna_trajecten-record (dan gebruikt dat traject 100% van de bestaande, hier ongewijzigde machinery).
-var KM_STATUS_LABEL={kandidaat:'Kandidaat',in_gesprek:'In gesprek',geparkeerd:'Geparkeerd',afgewezen:'Afgewezen',gepromoveerd:'Gepromoveerd naar traject'};
-var KM_STATUS_KLEUR={kandidaat:'#8a8880',in_gesprek:'#1a7a5e',geparkeerd:'#b8860b',afgewezen:'#c0392b',gepromoveerd:'#1a7a5e'};
+var KM_STATUS_LABEL={kandidaat:'Kandidaat',in_gesprek:'In gesprek',geparkeerd:'Geparkeerd',afgewezen:'Afgewezen',gepromoveerd:'Gepromoveerd naar traject',nieuw:'Nieuw',benaderd:'Benaderd',voorgesteld:'Voorgesteld aan de koper',interesse:'Interesse van de koper',geen_interesse:'Geen interesse',match:'Match'};
+var KM_STATUS_KLEUR={kandidaat:'#8a8880',in_gesprek:'#1a7a5e',geparkeerd:'#b8860b',afgewezen:'#c0392b',gepromoveerd:'#1a7a5e',nieuw:'#8a8880',benaderd:'#3d6b63',voorgesteld:'#3d6b63',interesse:'#1a7a5e',geen_interesse:'#c0392b',match:'#1a7a5e'};
 
 // N-115 (P1B, 3 okt 2026) — introductieovereenkomst met de target, gecontroleerde teaser en
 // afzonderlijke identiteitsvrijgave. A/B/C-classificatie (MASTER N-115): de koper ziet vóór vrijgave
@@ -312,12 +312,37 @@ function kmKoperTargetHtml(t,sectorLabels){
     +(regels.length||omschrijving
       ?'<div style="margin-top:.6rem;font-size:12px;color:var(--sub)">'+(regels.length?'<div>'+regels.map(esc).join(' &middot; ')+'</div>':'')+(omschrijving?'<div style="margin-top:.3rem;color:var(--mid)">'+esc(omschrijving)+'</div>':'')+'</div>'
       :'<div style="margin-top:.6rem;font-size:12px;color:var(--muted)">Nog geen goedgekeurde anonieme omschrijving.</div>')
+    +kmKoperInteresseHtml(t)
     +(kmKoperMagDoorgang(t)
       ?'<div style="margin-top:.6rem"><button class="btn-ghost km-koper-traject-btn" data-id="'+esc(t.id)+'" style="font-size:12px;color:var(--teal);border-color:var(--teal)">Open eigen traject &#8594;</button>'
         +'<div class="km-koper-traject-melding" data-id="'+esc(t.id)+'" role="status" style="display:none;margin-top:.4rem;font-size:12px;color:var(--red)"></div>'
         +'<div style="margin-top:.3rem;font-size:11px;color:var(--muted)">U opent het traject met uw eigen kopertoegang. De NDA en de door uw begeleider vrijgegeven informatiecategorieën gelden daar zoals gebruikelijk.</div></div>'
       :'')
     +'</div>';
+}
+
+// Generieke targetflow: de koper geeft alleen zijn EIGEN keuze (interesse/geen interesse) op een aan hem
+// voorgestelde anonieme kandidaat. Leest uitsluitend koper_interesse en interesse_mogelijk uit de
+// koper-allow-list; een keuze geeft nooit een identiteit vrij en is geen match.
+var KM_KOPER_INTERESSE={interesse:'Interesse',geen_interesse:'Geen interesse'};
+function kmKoperInteresseHtml(t){
+  t=t||{};
+  var keuze=Object.prototype.hasOwnProperty.call(KM_KOPER_INTERESSE,t.koper_interesse)?t.koper_interesse:'';
+  var mogelijk=t.interesse_mogelijk===true;
+  if(!keuze&&!mogelijk)return '';
+  var id=esc(t.id);
+  var h='<div class="km-koper-interesse" data-id="'+id+'" style="margin-top:.6rem;padding-top:.6rem;border-top:1px dashed var(--border);font-size:12px;color:var(--sub)">'
+    +(keuze?'<div class="km-koper-interesse-keuze" data-id="'+id+'">Uw keuze: <b>'+esc(KM_KOPER_INTERESSE[keuze])+'</b></div>':'');
+  if(mogelijk){
+    h+='<div style="margin-top:.35rem;display:flex;gap:8px;flex-wrap:wrap">'
+      +['interesse','geen_interesse'].map(function(w){
+        return '<button class="btn-ghost km-koper-interesse-btn" data-id="'+id+'" data-waarde="'+w+'" aria-pressed="'+(keuze===w?'true':'false')+'" style="font-size:12px;padding:4px 10px">'+(w==='interesse'?'Ik heb interesse':'Geen interesse')+'</button>';
+      }).join('')
+      +'</div>'
+      +'<div class="km-koper-interesse-melding" data-id="'+id+'" role="status" style="display:none;margin-top:.4rem;font-size:12px"></div>'
+      +'<div style="margin-top:.3rem;font-size:11px;color:var(--muted)">Uw keuze gaat naar uw begeleider. De identiteit blijft afgeschermd: uw begeleider beslist daarna over een match en geeft de naam pas afzonderlijk vrij nadat de onderneming akkoord heeft gegeven.</div>';
+  }
+  return h+'</div>';
 }
 
 function kmIntroLink(origin,worker,token){
@@ -352,12 +377,15 @@ function kmMagVrijgeven(rol,ovz,st){
   return rol==='begeleider'&&!!(ovz&&ovz.huidige_versie)&&!!(st&&st.akkoord)&&!st.vrijgegeven&&!st.alleen_lezen&&!st.beeindigd;
 }
 
-function kmIntroMailto(email,contactNaam,link,verlooptOp,begeleiderNaam){
+// bevestiging=true: generieke targetflow (document heet daar BEMIDDELINGS-/INTRODUCTIEBEVESTIGING);
+// zonder die vlag exact de bestaande tekst voor de introductieovereenkomst.
+function kmIntroMailto(email,contactNaam,link,verlooptOp,begeleiderNaam,bevestiging){
   var tot=verlooptOp?new Date(verlooptOp).toLocaleString('nl-NL',{day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'}):'';
+  var doc=bevestiging?'bemiddelings-/introductiebevestiging':'introductieovereenkomst';
   var body=(contactNaam?'Geachte '+contactNaam+',':'Geachte heer/mevrouw,')+'\n\n'
-    +'Via onderstaande persoonlijke link kunt u de introductieovereenkomst lezen en daarna akkoord geven of een wijziging vragen.'+(tot?' De link is geldig tot '+tot+'.':'')+'\n\n'
+    +'Via onderstaande persoonlijke link kunt u de '+doc+' lezen en daarna akkoord geven of een wijziging vragen.'+(tot?' De link is geldig tot '+tot+'.':'')+'\n\n'
     +link+'\n\nDeze link is uitsluitend voor u bedoeld; stuur hem niet door.\n\nMet vriendelijke groet,\n'+(begeleiderNaam||'');
-  return 'mailto:'+encodeURIComponent(email||'').replace(/%40/g,'@')+'?subject='+encodeURIComponent('Introductieovereenkomst — uw beoordeling')+'&body='+encodeURIComponent(body);
+  return 'mailto:'+encodeURIComponent(email||'').replace(/%40/g,'@')+'?subject='+encodeURIComponent((bevestiging?'Bemiddelings-/introductiebevestiging':'Introductieovereenkomst')+' — uw beoordeling')+'&body='+encodeURIComponent(body);
 }
 
 // P1C (N-95, 3 okt 2026) — promotie en eigen doorgang. Promoveren gebeurt niet meer hier (alleen de
@@ -394,12 +422,18 @@ function kmSectorLabels(){
   return m;
 }
 
-async function kmRefresh(){
+// Haalt mandaat en targets opnieuw op zonder te renderen (bijv. terwijl een venster open staat).
+async function kmHerlaadTargets(){
   try{
-    var resp=await fetchMetTimeout(WORKER+'/mna/koopmandaat/'+S.code,{method:'GET',headers:{'x-tussen-key':S.code}},15000);
+    var resp=await fetchMetTimeout(WORKER+'/mna/koopmandaat/'+S.code,{method:'GET',headers:{'x-tussen-key':S.code},cache:'no-store'},15000);
     var d=await resp.json();
-    if(d&&d.ok){S.kmMandaat=d.mandaat;S.kmTargets=d.targets||[];}
+    if(d&&d.ok){S.kmMandaat=d.mandaat;S.kmTargets=d.targets||[];return true;}
   }catch(e){}
+  return false;
+}
+
+async function kmRefresh(){
+  await kmHerlaadTargets();
   renderApp();
 }
 
@@ -420,8 +454,12 @@ function renderKoopmandaatScherm(app){
     +'<div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border);font-size:12px;color:var(--sub)"><b>Zoekprofiel:</b> '+esc(m.zoekt_sectoren||'Nog niet ingevuld')+(m.zoekt_regio?' &middot; '+esc(m.zoekt_regio):'')+(omzetRange?' &middot; '+omzetRange:'')+'</div>'
     +'</div>';
 
+  // Targetflow: de begeleider ziet actieve en gearchiveerde targets gescheiden (archiveren is zacht; er
+  // wordt niets verwijderd). De koper krijgt gearchiveerde targets van de backend niet eens mee.
+  var actief=magBewerken?targets.filter(function(t){return !(t&&t.archief);}):targets;
+  var gearchiveerd=magBewerken?targets.filter(function(t){return !!(t&&t.archief);}):[];
   html+='<div class="panel"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:8px">'
-    +'<div style="font-family:Playfair Display,serif;font-size:1.15rem;color:var(--head);font-weight:600">Kandidaat-targets ('+targets.length+')</div>'
+    +'<div style="font-family:Playfair Display,serif;font-size:1.15rem;color:var(--head);font-weight:600">Potentiële targets ('+actief.length+')</div>'
     +(magBewerken?'<button class="btn" id="km-nieuw-target-btn" style="font-size:12px;padding:7px 14px">+ Target toevoegen</button>':'')
     +'</div>';
 
@@ -430,56 +468,335 @@ function renderKoopmandaatScherm(app){
   }else if(!magBewerken){
     // N-115: koperweergave — anoniem tot expliciete vrijgave door de begeleider.
     var sectorLabels=kmSectorLabels();
-    html+='<div style="font-size:12px;color:var(--muted);margin-bottom:.85rem;line-height:1.6">Kandidaten blijven anoniem totdat de onderneming akkoord heeft gegeven en uw begeleider de identiteit uitdrukkelijk aan u vrijgeeft.</div>'
+    html+='<div style="font-size:12px;color:var(--muted);margin-bottom:.85rem;line-height:1.6">Kandidaten blijven anoniem totdat de onderneming akkoord heeft gegeven en uw begeleider de identiteit uitdrukkelijk aan u vrijgeeft. Bij een aan u voorgestelde kandidaat kunt u aangeven of u interesse heeft.</div>'
       +targets.map(function(t){return kmKoperTargetHtml(t,sectorLabels);}).join('');
   }else{
-    html+=targets.map(function(t){
-      var isGeprom=t.status==='gepromoveerd';
-      var kleur=KM_STATUS_KLEUR[t.status]||'#8a8880';
-      var kaart='<div class="panel" style="margin-bottom:.85rem;border-left:3px solid '+kleur+'">'
-        +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap">'
-        +'<div><div style="font-weight:600;color:var(--head);font-size:14px">'+esc(t.naam)+'</div>'
-        +'<div style="font-size:11px;color:var(--muted);margin-top:.2rem">'+esc(t.sector||'Sector onbekend')+(magBewerken&&t.bron?' &middot; '+esc(t.bron):'')+'</div></div>'
-        +'<span class="tag" style="background:'+kleur+'1a;color:'+kleur+';border-color:'+kleur+'">'+esc(KM_STATUS_LABEL[t.status]||t.status)+'</span>'
-        +'</div>';
-      if(magBewerken){
-        kaart+='<div style="margin-top:.75rem;display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
-          +'<label for="km-status-'+esc(t.id)+'" style="font-size:11px;color:var(--muted)">Status:</label>'
-          +'<select id="km-status-'+esc(t.id)+'" class="km-status-select" data-id="'+esc(t.id)+'"'+(isGeprom?' disabled':'')+' style="font-size:12px;padding:4px 8px;border:1px solid var(--border2);border-radius:5px;background:var(--card);color:var(--sub)">'
-          +['kandidaat','in_gesprek','geparkeerd','afgewezen'].map(function(s){return '<option value="'+s+'"'+(t.status===s?' selected':'')+'>'+KM_STATUS_LABEL[s]+'</option>';}).join('')
-          +(isGeprom?'<option value="gepromoveerd" selected>'+KM_STATUS_LABEL.gepromoveerd+'</option>':'')
-          +'</select>'
-          // P1C: beide acties via de bestaande adviseurslogin in adv.html (nieuw tabblad). Het traject-id
-          // dient daar alleen om het traject in de eigen trajectenlijst op te zoeken; het opent nooit
-          // als code (dat zou de verkopersrol zijn).
-          +(isGeprom
-            ?(t.gepromoveerd_naar_traject_id?'<a class="km-open-traject" href="'+esc(kmAdvContextUrl(WORKER,{traject:t.gepromoveerd_naar_traject_id}))+'" target="_blank" rel="noopener" style="font-size:12px;color:var(--teal)">&#8594; Open het traject (adviseurslogin)</a>':'')
-            :'<a class="btn-ghost km-promoveer-btn" href="'+esc(kmAdvContextUrl(WORKER,{promotie:S.code,target:t.id}))+'" target="_blank" rel="noopener" style="font-size:12px;color:var(--teal);border-color:var(--teal);text-decoration:none">&#9654; Promoveer naar volwaardig traject</a>')
-          +'</div>';
-        kaart+='<div style="margin-top:.6rem"><textarea class="km-notitie-input" data-id="'+esc(t.id)+'" placeholder="Eigen werkaantekeningen (nooit zichtbaar voor de koper)" rows="2" style="width:100%;font-size:12px;padding:.5rem;border:1px solid var(--border2);border-radius:6px;background:var(--card);color:var(--sub);font-family:inherit">'+esc(t.notities||'')+'</textarea>'
-          +'<button class="btn-ghost km-notitie-opslaan" data-id="'+esc(t.id)+'" style="margin-top:.3rem;font-size:11px;padding:4px 10px">Notitie opslaan</button></div>';
-        if(t.contactlog&&t.contactlog.length){
-          kaart+='<div style="margin-top:.6rem;font-size:11px;color:var(--muted)"><b>Contactlog:</b>'
-            +t.contactlog.slice().reverse().map(function(c){return '<div style="margin-top:.3rem;padding:.4rem .6rem;background:var(--card);border-radius:5px">'+esc(new Date(c.datum).toLocaleDateString('nl-NL'))+' &middot; '+esc(c.tekst)+'</div>';}).join('')
-            +'</div>';
-        }
-        kaart+='<div style="margin-top:.5rem;display:flex;gap:6px"><input type="text" class="km-contact-input" data-id="'+esc(t.id)+'" placeholder="Contactmoment toevoegen..." style="flex:1;font-size:12px;padding:5px 8px;border:1px solid var(--border2);border-radius:6px;background:var(--card);color:var(--sub)"><button class="btn-ghost km-contact-toevoegen" data-id="'+esc(t.id)+'" style="font-size:11px;padding:5px 10px">Toevoegen</button></div>';
-        // N-115: wat de koper van deze target ziet, plus toegang tot overeenkomst/teaser/vrijgave.
-        var kmVrij=t.vrijgave_status==='vrijgegeven';
-        kaart+='<div style="margin-top:.6rem;padding-top:.6rem;border-top:1px dashed var(--border);display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:11px;color:var(--muted)">'
-          +'<span>Koper ziet: <b style="color:'+(kmVrij?'var(--teal)':'var(--gold-dark)')+'">'+(kmVrij?'naam en sector (vrijgegeven)':'alleen de anonieme teaser')+'</b></span>'
-          +'<span>&middot; Teaser: '+(t.teaser?'goedgekeurd':'nog niet goedgekeurd')+'</span>'
-          +'<button class="btn-ghost km-intro-btn" data-id="'+esc(t.id)+'" style="font-size:11px;padding:4px 10px">Introductieovereenkomst &amp; vrijgave</button>'
-          +'</div>';
-      }
-      kaart+='</div>';
-      return kaart;
-    }).join('');
+    html+='<div style="font-size:11px;color:var(--muted);margin-bottom:.85rem;line-height:1.6">Elke target volgt zijn eigen stappen; een actie op de ene target verandert niets aan de andere. De koper ziet per target alleen de status en de door u goedgekeurde anonieme teaser, en pas na uw afzonderlijke vrijgave naam en sector.</div>';
+    if(!actief.length)html+='<div class="empty">Geen actieve targets. Gearchiveerde targets staan hieronder.</div>';
+    html+=actief.map(function(t){return kmTfBegeleiderKaart(t);}).join('');
+    if(gearchiveerd.length){
+      html+='<details id="km-archief" style="margin-top:1rem"><summary style="cursor:pointer;font-size:12px;color:var(--sub)">Gearchiveerde targets ('+gearchiveerd.length+')</summary>'
+        +'<div style="font-size:11px;color:var(--muted);margin:.5rem 0 .85rem;line-height:1.6">Gearchiveerd is niet verwijderd. Overeenkomstversies, akkoorden, vrijgave, teaser, contactlog en historie blijven bewaard volgens het bestaande bewaarbeleid. Met "Herstellen" (met reden) gaat u verder waar u was.</div>'
+        +gearchiveerd.map(function(t){return kmTfBegeleiderKaart(t);}).join('')
+        +'</details>';
+    }
   }
   html+='</div></div>';
   app.innerHTML=html;
   bindKoopmandaatScherm(magBewerken);
 }
+
+// ── Generieke koopmandaat-targetflow (GO 4 okt 2026) ──
+// Backendcontract: docs/koopmandaat-targetflow.md in de privé backendrepo (worker/37-koopmandaat.js).
+// Opt-in per target: nieuwe targets krijgen targetflow 'generiek'; bestaande (legacy) targets houden hun
+// gedrag tot een expliciete, herkenbare overgang (actie targetflow_generiek). Alles in dit blok is
+// uitsluitend voor begeleider/beheerder; de koper ziet alleen kmKoperTargetHtml (allow-list).
+// Tussen de TARGETFLOW-PURE-markers staat geen DOM-/fetch-code (wel S/WORKER/esc), zodat
+// tests/koopmandaat-targetflow-ui.mjs en tests/p228-labels.mjs dit los kunnen uitvoeren.
+// TARGETFLOW-PURE-BEGIN
+var KM_TF_STATUS_LEGACY=['kandidaat','in_gesprek','geparkeerd','afgewezen'];
+var KM_TF_STATUS_GENERIEK=['nieuw','benaderd','in_gesprek','geparkeerd','afgewezen'];
+var KM_TF_START_STATUS=['nieuw','benaderd','in_gesprek'];
+var KM_TF_EMAIL=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// Zelfde veldnamen, maxima en vormregels als TARGET_VELDEN in de backend (contact_* = intro_contact_*).
+var KM_TF_VELDEN=[
+  {k:'naam',label:'Bedrijfsnaam',max:200,verplicht:true,groep:'onderneming'},
+  {k:'anonieme_naam',label:'Interne anonieme naam (alleen intern)',max:100,groep:'onderneming',hint:'Uw eigen werknaam voor deze target. Nooit zichtbaar voor de koper en nooit automatisch gedeeld; de koper ziet uitsluitend de door u goedgekeurde teaser.'},
+  {k:'sector',label:'Sector',max:60,groep:'onderneming',placeholder:'bijv. accountancy'},
+  {k:'bron',label:'Bron',max:500,groep:'onderneming',placeholder:'bijv. eigen netwerk, sourcing, referral'},
+  {k:'kvk_nummer',label:'KvK-nummer',max:8,groep:'onderneming',placeholder:'8 cijfers'},
+  {k:'rechtsvorm',label:'Rechtsvorm',max:60,groep:'onderneming',placeholder:'bijv. B.V.'},
+  {k:'bedrijfsadres',label:'Bedrijfsadres',max:300,groep:'onderneming'},
+  {k:'contact_naam',label:'Naam contactpersoon',max:200,groep:'contact'},
+  {k:'contact_email',label:'E-mailadres contactpersoon',max:200,groep:'contact',type:'email'},
+  {k:'contact_telefoon',label:'Telefoonnummer contactpersoon',max:30,groep:'contact',type:'tel',hint:'Alleen samen met een contactnaam of e-mailadres (zelfde bewaartermijn).'},
+  {k:'eerste_benadering_op',label:'Datum eerste benadering',max:10,groep:'benadering',type:'date'},
+  {k:'eerste_benadering_kanaal',label:'Kanaal eerste benadering',max:100,groep:'benadering',placeholder:'bijv. telefoon, e-mail, netwerkevent'}
+];
+var KM_TF_VELD_LABEL={naam:'bedrijfsnaam',anonieme_naam:'interne anonieme naam',sector:'sector',bron:'bron',kvk_nummer:'KvK-nummer',rechtsvorm:'rechtsvorm',bedrijfsadres:'bedrijfsadres',contact_naam:'contactnaam',contact_email:'e-mailadres contactpersoon',contact_telefoon:'telefoonnummer',eerste_benadering_op:'datum eerste benadering',eerste_benadering_kanaal:'kanaal eerste benadering',notities:'notitie'};
+var KM_TF_HIST_LABEL={aangemaakt:'Target aangemaakt',gewijzigd:'Gegevens gewijzigd',status:'Status gewijzigd',gearchiveerd:'Gearchiveerd',hersteld:'Hersteld uit het archief',targetflow_generiek:'Overgezet naar de generieke targetflow',voorgesteld:'Voorgesteld aan de koper (anonieme teaser)',interesse:'Interessekeuze van de koper vastgelegd',match:'Match vastgelegd',match_ingetrokken:'Match ingetrokken',gepromoveerd:'Gepromoveerd naar traject'};
+// Vaste tekst van het contactmoment waarmee de begeleider vastlegt dat hij de link zelf heeft verstuurd.
+var KM_TF_VERZEND_TOELICHTING=' — door de begeleider zelf verstuurd vanuit het eigen mailprogramma en hier vastgelegd; het platform heeft geen bezorgbevestiging.';
+
+function kmTfIsGeneriek(t){return !!t&&t.targetflow==='generiek';}
+function kmTfDocNaam(t){return kmTfIsGeneriek(t)?'Introductiebevestiging':'Introductieovereenkomst';}
+function kmTfStatusOpties(t){return (kmTfIsGeneriek(t)?KM_TF_STATUS_GENERIEK:KM_TF_STATUS_LEGACY).slice();}
+
+function kmTfDatum(w,metTijd){
+  if(!w)return '';
+  var d;
+  if(typeof w==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(w)){var p=w.split('-');d=new Date(Number(p[0]),Number(p[1])-1,Number(p[2]));metTijd=false;}
+  else d=new Date(Number(w));
+  if(isNaN(d.getTime()))return '';
+  var o={day:'numeric',month:'short',year:'numeric'};
+  if(metTijd){o.hour='2-digit';o.minute='2-digit';}
+  return d.toLocaleString('nl-NL',o);
+}
+
+// "Link aangemaakt" (link_uitgegeven_op) bewijst alleen dat er een link bestaat. "Verzonden" geldt
+// uitsluitend als de begeleider dat zelf als contactmoment voor DEZE versie heeft vastgelegd, na het
+// aanmaken van de link. Het platform claimt nooit mailbezorging.
+function kmTfVerzendTekst(t,versie){return kmTfDocNaam(t)+' verzonden (versie '+versie+')';}
+function kmTfVerzendingVastgelegd(t){
+  t=t||{};
+  var is=t.introductie_stand||{};
+  if(is.versie==null||!is.link_uitgegeven_op)return null;
+  var prefixen=['Introductiebevestiging verzonden (versie '+is.versie+')','Introductieovereenkomst verzonden (versie '+is.versie+')'];
+  var log=Array.isArray(t.contactlog)?t.contactlog:[];
+  var gevonden=null;
+  log.forEach(function(c){
+    if(!c||typeof c.tekst!=='string'||!(Number(c.datum)>=Number(is.link_uitgegeven_op)))return;
+    if(prefixen.some(function(p){return c.tekst.indexOf(p)===0;}))gevonden=c;
+  });
+  return gevonden;
+}
+
+function kmTfVoortgang(t){
+  t=t||{};
+  var gen=kmTfIsGeneriek(t);
+  var is=t.introductie_stand||{};
+  var eb=t.eerste_benadering||{};
+  var ki=t.koper_interesse||null;
+  var verz=kmTfVerzendingVastgelegd(t);
+  var doc=kmTfDocNaam(t);
+  var s=[
+    {sleutel:'benaderd',label:'Eerste benadering',klaar:!!eb.op,detail:eb.op?kmTfDatum(eb.op)+(eb.kanaal?', '+eb.kanaal:''):''},
+    {sleutel:'versie',label:doc+' vastgesteld',klaar:is.versie!=null,detail:is.versie!=null?'versie '+is.versie:''},
+    {sleutel:'link',label:'Link aangemaakt',klaar:!!is.link_uitgegeven_op,detail:is.link_uitgegeven_op?kmTfDatum(is.link_uitgegeven_op,true):''},
+    {sleutel:'verzonden',label:doc+' verzonden',klaar:!!verz,detail:verz?'door u vastgelegd op '+kmTfDatum(verz.datum,true):''},
+    {sleutel:'akkoord',label:'Akkoord van de onderneming',klaar:!!is.akkoord_op,detail:is.akkoord_op?kmTfDatum(is.akkoord_op,true):''},
+    {sleutel:'teaser',label:'Anonieme teaser goedgekeurd',klaar:!!(is.teaser_beschikbaar||t.teaser),detail:''}
+  ];
+  if(gen){
+    s.push({sleutel:'voorgesteld',label:'Voorgesteld aan de koper',klaar:!!t.voorgesteld_op,detail:t.voorgesteld_op?kmTfDatum(t.voorgesteld_op,true):''});
+    s.push({sleutel:'interesse',label:'Interesse van de koper',klaar:!!(ki&&ki.waarde==='interesse'),
+      detail:ki?(ki.waarde==='interesse'?'interesse':'geen interesse')+(ki.bron==='koper'?', door de koper zelf':ki.bron==='begeleider'?', door u vastgelegd':'')+(ki.op?', '+kmTfDatum(ki.op,true):''):''});
+    s.push({sleutel:'match',label:'Match vastgelegd',klaar:!!t.match,detail:t.match&&t.match.op?kmTfDatum(t.match.op,true):''});
+  }
+  s.push({sleutel:'vrijgave',label:'Identiteit vrijgegeven aan de koper',klaar:!!(is.vrijgegeven||t.vrijgave_status==='vrijgegeven'),detail:''});
+  s.push({sleutel:'gepromoveerd',label:'Gepromoveerd naar traject',klaar:t.status==='gepromoveerd',detail:''});
+  return s;
+}
+
+function kmTfVolgendeStap(t){
+  t=t||{};
+  if(t.status==='gepromoveerd')return 'Gepromoveerd: u werkt verder in het traject.';
+  if(t.archief)return 'Gearchiveerd. Herstel de target (met reden) om verder te gaan.';
+  if(!kmTfIsGeneriek(t))return '';
+  var is=t.introductie_stand||{};
+  var ki=t.koper_interesse||null;
+  var vrij=!!(is.vrijgegeven||t.vrijgave_status==='vrijgegeven');
+  if(is.versie==null)return 'Volgende stap: genereer het concept van de bemiddelings-/introductiebevestiging, pas het aan en stel het vast.';
+  if(!is.link_uitgegeven_op)return 'Volgende stap: maak een persoonlijke link aan en verstuur die vanuit uw eigen mailprogramma.';
+  if(!is.akkoord_op&&!kmTfVerzendingVastgelegd(t))return 'Volgende stap: verstuur de link vanuit uw eigen mailprogramma en leg de verzending vast.';
+  if(!(is.teaser_beschikbaar||t.teaser))return 'Volgende stap: keur een anonieme teaser goed.';
+  if(t.match){
+    if(!is.akkoord_op)return 'Wacht op akkoord van de onderneming op de actuele versie; daarna kunt u de identiteit afzonderlijk vrijgeven.';
+    if(!vrij)return 'Volgende stap: geef de identiteit afzonderlijk vrij aan de koper.';
+    return 'Klaar voor promotie naar een volwaardig traject.';
+  }
+  if(t.status==='interesse'&&ki&&ki.waarde==='interesse')return 'De koper heeft interesse. Volgende stap: leg de match expliciet vast.';
+  if(t.status==='geen_interesse')return 'De koper heeft geen interesse. U kunt de target archiveren of opnieuw voorstellen.';
+  if(t.status==='voorgesteld')return 'Wacht op de interessekeuze van de koper (of leg die zelf vast als de koper die aan u doorgaf).';
+  return 'Volgende stap: stel de target voor aan de koper (de koper ziet alleen de anonieme teaser).';
+}
+
+// '' = promotieknop tonen. Legacy: ongewijzigd (alleen gearchiveerd blokkeert, zoals de backend).
+function kmTfPromotieBlokkade(t){
+  t=t||{};
+  if(t.archief)return 'Gearchiveerd: herstel de target eerst; promoveren kan niet.';
+  if(!kmTfIsGeneriek(t))return '';
+  var pv=t.promotie_voorwaarden||{};
+  if(pv.gereed===true)return '';
+  var mis=[];
+  if(pv.match!==true)mis.push('een vastgelegde match met de koper');
+  if(pv.vrijgave!==true)mis.push('de afzonderlijke identiteitsvrijgave');
+  return mis.length?'Promoveren kan pas na '+mis.join(' en ')+'.':'Promoveren is nu niet mogelijk.';
+}
+
+function kmTfActorTekst(a){
+  a=String(a||'');
+  if(a==='koper')return 'de koper';
+  if(a==='admin')return 'de beheerder';
+  if(a.indexOf('begeleider')===0)return 'de begeleider';
+  return a?'onbekend':'';
+}
+function kmTfHistorieTekst(h){
+  h=h||{};
+  var d=h.details&&typeof h.details==='object'?h.details:{};
+  var delen=[KM_TF_HIST_LABEL[h.soort]||String(h.soort||'onbekend')];
+  if(h.soort==='aangemaakt'){
+    if(d.targetflow)delen.push(d.targetflow==='generiek'?'generieke targetflow':'bestaande flow');
+    if(d.status)delen.push('startstatus '+(KM_STATUS_LABEL[d.status]||d.status));
+  }else if(d.naar)delen.push((KM_STATUS_LABEL[d.van]||d.van||'?')+' → '+(KM_STATUS_LABEL[d.naar]||d.naar));
+  if(d.waarde)delen.push((d.waarde==='interesse'?'interesse':'geen interesse')+(d.bron==='koper'?' (door de koper zelf)':d.bron==='begeleider'?' (door de begeleider vastgelegd)':''));
+  if(Array.isArray(d.velden)&&d.velden.length)delen.push('velden: '+d.velden.map(function(v){return KM_TF_VELD_LABEL[v]||v;}).join(', '));
+  if(typeof d.reden==='string'&&d.reden)delen.push('reden: '+d.reden);
+  if(typeof d.traject_ref==='string'&&d.traject_ref)delen.push('trajectreferentie '+d.traject_ref);
+  var actor=kmTfActorTekst(h.actor);
+  return kmTfDatum(h.op,true)+' · '+delen.join(' · ')+(actor?' · door '+actor:'');
+}
+
+// Formulierwaarden uit de begeleider-DTO (contactnaam/-e-mail = de N-115-contactbron).
+function kmTfHuidig(t){
+  t=t||{};
+  var c=t.contact||{},eb=t.eerste_benadering||{};
+  var w={naam:t.naam,anonieme_naam:t.anonieme_naam,sector:t.sector,bron:t.bron,kvk_nummer:t.kvk_nummer,rechtsvorm:t.rechtsvorm,bedrijfsadres:t.bedrijfsadres,
+    contact_naam:c.naam,contact_email:c.email,contact_telefoon:c.telefoon,eerste_benadering_op:eb.op,eerste_benadering_kanaal:eb.kanaal};
+  Object.keys(w).forEach(function(k){w[k]=typeof w[k]==='string'?w[k].trim():'';});
+  return w;
+}
+function kmTfValideer(w){
+  w=w||{};
+  for(var i=0;i<KM_TF_VELDEN.length;i++){
+    var v=KM_TF_VELDEN[i],x=String(w[v.k]||'');
+    if(v.verplicht&&!x)return v.label+' is verplicht.';
+    if(x.length>v.max)return v.label+' is te lang (max. '+v.max+' tekens).';
+  }
+  if(w.kvk_nummer&&!/^\d{8}$/.test(w.kvk_nummer))return 'KvK-nummer moet uit 8 cijfers bestaan.';
+  if(w.contact_email&&!KM_TF_EMAIL.test(w.contact_email))return 'Ongeldig e-mailadres.';
+  if(w.contact_telefoon&&!/^\+?[0-9() -]{6,30}$/.test(w.contact_telefoon))return 'Ongeldig telefoonnummer.';
+  if(w.contact_telefoon&&!w.contact_naam&&!w.contact_email)return 'Een telefoonnummer wordt alleen vastgelegd bij een contactnaam of e-mailadres.';
+  if(w.eerste_benadering_op&&!/^\d{4}-\d{2}-\d{2}$/.test(w.eerste_benadering_op))return 'Datum eerste benadering moet een geldige datum zijn.';
+  return '';
+}
+// Nieuwe target: altijd de generieke targetflow; alleen ingevulde velden.
+function kmTfAanmaakBody(w,status,notitie){
+  var b={targetflow:'generiek',naam:String(w.naam||'').trim(),status:KM_TF_START_STATUS.indexOf(status)>=0?status:'nieuw'};
+  KM_TF_VELDEN.forEach(function(v){var x=String(w[v.k]||'').trim();if(v.k!=='naam'&&x)b[v.k]=x;});
+  if(notitie)b.notities=String(notitie);
+  return b;
+}
+// Bewerken: uitsluitend gewijzigde velden (leeg = wissen); null als er niets is gewijzigd.
+function kmTfBewerkBody(huidig,w){
+  var b={actie:'bewerken'},n=0;
+  KM_TF_VELDEN.forEach(function(v){
+    var oud=String((huidig&&huidig[v.k])||'').trim(),nieuw=String((w&&w[v.k])||'').trim();
+    if(oud!==nieuw){b[v.k]=nieuw;n++;}
+  });
+  return n?b:null;
+}
+function kmTfFoutTekst(r){
+  r=r||{};
+  if(!r.status)return 'Geen verbinding — niet bevestigd dat er iets is vastgelegd. Ververs het scherm en controleer de status.';
+  var j=r.json||{};
+  if(typeof j.error==='string'&&j.error)return j.error;
+  return 'De actie is niet uitgevoerd (status '+r.status+').';
+}
+
+function kmTfGegevensHtml(t){
+  var c=t.contact||{},eb=t.eerste_benadering||{};
+  var r=[];
+  if(c.naam||c.email||c.telefoon)r.push('<b>Contact:</b> '+[c.naam,c.email,c.telefoon].filter(Boolean).map(esc).join(' &middot; '));
+  if(t.kvk_nummer)r.push('<b>KvK:</b> '+esc(t.kvk_nummer));
+  if(t.rechtsvorm)r.push('<b>Rechtsvorm:</b> '+esc(t.rechtsvorm));
+  if(t.bedrijfsadres)r.push('<b>Adres:</b> '+esc(t.bedrijfsadres));
+  if(eb.op||eb.kanaal)r.push('<b>Eerste benadering:</b> '+esc([kmTfDatum(eb.op),eb.kanaal].filter(Boolean).join(', ')));
+  if(!r.length)return kmTfIsGeneriek(t)?'<div class="km-tf-gegevens" style="margin-top:.5rem;font-size:11px;color:var(--muted)">Nog geen contactpersoon of bedrijfsgegevens vastgelegd.</div>':'';
+  return '<div class="km-tf-gegevens" style="margin-top:.5rem;font-size:11px;color:var(--sub);line-height:1.7">'+r.join('<br>')+'</div>';
+}
+
+function kmTfVoortgangHtml(t){
+  var volgende=kmTfVolgendeStap(t);
+  return '<div style="margin-top:.6rem;padding:.5rem .65rem;background:var(--card);border-radius:6px">'
+    +'<div style="font-size:10.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)">Voortgang</div>'
+    +'<ul class="km-tf-voortgang" data-id="'+esc(t.id)+'" style="list-style:none;padding:0;margin:.3rem 0 0;display:flex;flex-wrap:wrap;gap:3px 14px">'
+    +kmTfVoortgang(t).map(function(s){
+      return '<li class="km-tf-stap" data-stap="'+s.sleutel+'" data-klaar="'+(s.klaar?'1':'0')+'" style="font-size:11px;color:'+(s.klaar?'var(--teal)':'var(--muted)')+'">'+(s.klaar?'&#10003; ':'&#9675; ')+esc(s.label)+(s.detail?' <span style="color:var(--muted)">('+esc(s.detail)+')</span>':'')+'</li>';
+    }).join('')
+    +'</ul>'
+    +(volgende?'<div class="km-tf-volgende" style="margin-top:.35rem;font-size:11.5px;color:var(--sub)">'+esc(volgende)+'</div>':'')
+    +'</div>';
+}
+
+function kmTfKnop(t,actie,tekst,extra){
+  extra=extra||{};
+  return '<button class="btn-ghost km-tf-actie" data-id="'+esc(t.id)+'" data-actie="'+actie+'"'+(extra.waarde?' data-waarde="'+extra.waarde+'"':'')+(extra.disabled?' disabled':'')
+    +' style="font-size:11px;padding:4px 10px'+(extra.rood?';color:var(--red);border-color:var(--red)':'')+'">'+tekst+'</button>';
+}
+function kmTfActiesHtml(t){
+  var gen=kmTfIsGeneriek(t),k=[],hint='';
+  if(t.status==='gepromoveerd')return '<div style="margin-top:.5rem;display:flex;gap:6px;flex-wrap:wrap">'+kmTfKnop(t,'historie','Historie')+'</div>';
+  if(t.archief){
+    k.push(kmTfKnop(t,'herstellen','Herstellen'));
+  }else{
+    k.push(kmTfKnop(t,'bewerk_formulier','Gegevens bewerken'));
+    if(!gen)k.push(kmTfKnop(t,'targetflow_generiek','Overzetten naar de generieke targetflow'));
+    else if(!t.match){
+      if(['voorgesteld','interesse'].indexOf(t.status)<0){
+        var teaser=!!((t.introductie_stand&&t.introductie_stand.teaser_beschikbaar)||t.teaser);
+        k.push(kmTfKnop(t,'voorstellen',t.status==='geen_interesse'?'Opnieuw voorstellen aan de koper':'Voorstellen aan de koper',{disabled:!teaser}));
+        if(!teaser)hint='Voorstellen kan pas na goedkeuring van een anonieme teaser.';
+      }
+      if(['voorgesteld','interesse','geen_interesse'].indexOf(t.status)>=0){
+        k.push(kmTfKnop(t,'interesse_registreren','Interesse koper vastleggen',{waarde:'interesse'}));
+        k.push(kmTfKnop(t,'interesse_registreren','Geen interesse vastleggen',{waarde:'geen_interesse'}));
+      }
+      if(t.status==='interesse'&&t.koper_interesse&&t.koper_interesse.waarde==='interesse')k.push(kmTfKnop(t,'match','Match vastleggen'));
+    }else k.push(kmTfKnop(t,'match_intrekken','Match intrekken',{rood:true}));
+    k.push(kmTfKnop(t,'archiveren','Archiveren',{rood:true}));
+  }
+  k.push(kmTfKnop(t,'historie','Historie'));
+  return '<div style="margin-top:.5rem;display:flex;gap:6px;flex-wrap:wrap;align-items:center">'+k.join('')+(hint?'<span class="km-tf-hint" style="font-size:11px;color:var(--muted)">'+esc(hint)+'</span>':'')+'</div>';
+}
+
+function kmTfBegeleiderKaart(t){
+  t=t||{};
+  var id=esc(t.id);
+  var gen=kmTfIsGeneriek(t);
+  var isGeprom=t.status==='gepromoveerd';
+  var arch=!!t.archief;
+  var m=S.kmMandaat||{};
+  var kleur=KM_STATUS_KLEUR[t.status]||'#8a8880';
+  var opties=kmTfStatusOpties(t);
+  var blokkade=isGeprom?'':kmTfPromotieBlokkade(t);
+  var invoer='font-size:12px;padding:.5rem;border:1px solid var(--border2);border-radius:6px;background:var(--card);color:var(--sub);font-family:inherit';
+  var kaart='<div class="panel km-target-kaart" data-id="'+id+'" data-targetflow="'+(gen?'generiek':'legacy')+'" style="margin-bottom:.85rem;border-left:3px solid '+kleur+'">'
+    +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap">'
+    +'<div><div style="font-weight:600;color:var(--head);font-size:14px">'+esc(t.naam)+'</div>'
+    +(t.anonieme_naam?'<div class="km-tf-anoniem" style="font-size:11px;color:var(--gold-dark);margin-top:.15rem">Interne anonieme naam: '+esc(t.anonieme_naam)+' <span style="color:var(--muted)">(alleen intern, nooit automatisch naar de koper)</span></div>':'')
+    +'<div style="font-size:11px;color:var(--muted);margin-top:.2rem">'+esc(t.sector||'Sector onbekend')+(t.bron?' &middot; '+esc(t.bron):'')+' &middot; '+(gen?'generieke targetflow':'bestaande flow')+'</div></div>'
+    +'<span class="tag" style="background:'+kleur+'1a;color:'+kleur+';border-color:'+kleur+'">'+esc(KM_STATUS_LABEL[t.status]||t.status)+'</span>'
+    +'</div>';
+  if(arch)kaart+='<div class="km-tf-archief" style="margin-top:.6rem;padding:.5rem .7rem;border:1px solid var(--border2);border-radius:6px;font-size:12px;color:var(--sub);background:var(--card)">Gearchiveerd op '+esc(kmTfDatum(t.archief.gearchiveerd_op,true))+(t.archief.reden?' &mdash; reden: '+esc(t.archief.reden):'')+'. Er is niets verwijderd: versies, akkoorden, vrijgave, teaser, contactlog en historie blijven bewaard. Een eventuele actieve persoonlijke link is ingetrokken en de koper ziet deze target niet meer.</div>';
+  kaart+=kmTfGegevensHtml(t);
+  if(t.match)kaart+='<div class="km-tf-match" style="margin-top:.5rem;font-size:12px;color:var(--teal)">Match vastgelegd op '+esc(kmTfDatum(t.match.op,true))+' met de koper van dit mandaat'+(m.koper_naam?' ('+esc(m.koper_naam)+')':'')+'. Een match geeft de identiteit niet vrij.</div>';
+  kaart+=kmTfVoortgangHtml(t);
+  kaart+='<div style="margin-top:.75rem;display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
+    +'<label for="km-status-'+id+'" style="font-size:11px;color:var(--muted)">Status:</label>'
+    +'<select id="km-status-'+id+'" class="km-status-select" data-id="'+id+'"'+(isGeprom||arch||t.match?' disabled':'')+' style="font-size:12px;padding:4px 8px;border:1px solid var(--border2);border-radius:5px;background:var(--card);color:var(--sub)">'
+    +opties.map(function(s){return '<option value="'+s+'"'+(t.status===s?' selected':'')+'>'+KM_STATUS_LABEL[s]+'</option>';}).join('')
+    +(isGeprom?'<option value="gepromoveerd" selected>'+KM_STATUS_LABEL.gepromoveerd+'</option>'
+      :(t.status&&opties.indexOf(t.status)<0?'<option value="'+esc(t.status)+'" selected disabled>'+esc(KM_STATUS_LABEL[t.status]||t.status)+'</option>':''))
+    +'</select>'
+    // P1C: beide acties via de bestaande adviseurslogin in adv.html (nieuw tabblad). Het traject-id
+    // dient daar alleen om het traject in de eigen trajectenlijst op te zoeken; het opent nooit
+    // als code (dat zou de verkopersrol zijn). Generiek: pas na match + afzonderlijke vrijgave.
+    +(isGeprom
+      ?(t.gepromoveerd_naar_traject_id?'<a class="km-open-traject" href="'+esc(kmAdvContextUrl(WORKER,{traject:t.gepromoveerd_naar_traject_id}))+'" target="_blank" rel="noopener" style="font-size:12px;color:var(--teal)">&#8594; Open het traject (adviseurslogin)</a>':'')
+      :(blokkade
+        ?'<span class="km-tf-promotie-blokkade" data-id="'+id+'" style="font-size:11px;color:var(--muted)">'+esc(blokkade)+'</span>'
+        :'<a class="btn-ghost km-promoveer-btn" href="'+esc(kmAdvContextUrl(WORKER,{promotie:S.code,target:t.id}))+'" target="_blank" rel="noopener" style="font-size:12px;color:var(--teal);border-color:var(--teal);text-decoration:none">&#9654; Promoveer naar volwaardig traject</a>'))
+    +'</div>';
+  kaart+=kmTfActiesHtml(t);
+  kaart+='<div style="margin-top:.6rem"><textarea class="km-notitie-input" data-id="'+id+'" placeholder="Eigen werkaantekeningen (nooit zichtbaar voor de koper)" rows="2"'+(arch?' readonly':'')+' style="width:100%;'+invoer+'">'+esc(t.notities||'')+'</textarea>'
+    +(arch?'':'<button class="btn-ghost km-notitie-opslaan" data-id="'+id+'" style="margin-top:.3rem;font-size:11px;padding:4px 10px">Notitie opslaan</button>')+'</div>';
+  if(t.contactlog&&t.contactlog.length){
+    kaart+='<div style="margin-top:.6rem;font-size:11px;color:var(--muted)"><b>Contactlog:</b>'
+      +t.contactlog.slice().reverse().map(function(c){return '<div style="margin-top:.3rem;padding:.4rem .6rem;background:var(--card);border-radius:5px">'+esc(new Date(c.datum).toLocaleDateString('nl-NL'))+' &middot; '+esc(c.tekst)+'</div>';}).join('')
+      +'</div>';
+  }
+  if(!arch)kaart+='<div style="margin-top:.5rem;display:flex;gap:6px"><input type="text" class="km-contact-input" data-id="'+id+'" aria-label="Contactmoment toevoegen" placeholder="Contactmoment toevoegen..." style="flex:1;font-size:12px;padding:5px 8px;border:1px solid var(--border2);border-radius:6px;background:var(--card);color:var(--sub)"><button class="btn-ghost km-contact-toevoegen" data-id="'+id+'" style="font-size:11px;padding:5px 10px">Toevoegen</button></div>';
+  // N-115: wat de koper van deze target ziet, plus toegang tot bevestiging/overeenkomst, teaser en vrijgave.
+  var kmVrij=t.vrijgave_status==='vrijgegeven';
+  kaart+='<div style="margin-top:.6rem;padding-top:.6rem;border-top:1px dashed var(--border);display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:11px;color:var(--muted)">'
+    +'<span>Koper ziet: <b style="color:'+(kmVrij&&!arch?'var(--teal)':'var(--gold-dark)')+'">'+(arch?'niets (gearchiveerd)':kmVrij?'naam en sector (vrijgegeven)':'alleen de anonieme teaser')+'</b></span>'
+    +'<span>&middot; Teaser: '+(t.teaser?'goedgekeurd':'nog niet goedgekeurd')+'</span>'
+    +'<button class="btn-ghost km-intro-btn" data-id="'+id+'" style="font-size:11px;padding:4px 10px">'+(gen?'Bemiddelings-/introductiebevestiging, teaser &amp; vrijgave':'Introductieovereenkomst &amp; vrijgave')+'</button>'
+    +'</div>';
+  return kaart+'</div>';
+}
+// TARGETFLOW-PURE-END
 
 function bindKoopmandaatScherm(magBewerken){
   var uitBtn=ge('km-uitloggen');
@@ -509,6 +826,27 @@ function bindKoopmandaatScherm(magBewerken){
         if(meld){meld.textContent=fout;meld.style.display='block';}
       });
     });
+    // Generieke targetflow: de koper legt alleen de eigen keuze vast (POST …/interesse). Succes pas na
+    // serverbevestiging; daarna de actuele lijst. Geen identiteit, geen match, geen opslag.
+    document.querySelectorAll('.km-koper-interesse-btn').forEach(function(btn){
+      btn.addEventListener('click',async function(){
+        var id=btn.dataset.id,waarde=btn.dataset.waarde;
+        var knoppen=document.querySelectorAll('.km-koper-interesse-btn[data-id="'+id+'"]');
+        if(btn.disabled)return;
+        knoppen.forEach(function(b){b.disabled=true;});
+        var meld=document.querySelector('.km-koper-interesse-melding[data-id="'+id+'"]');
+        if(meld){meld.style.display='none';meld.textContent='';}
+        var fout='';
+        try{
+          var r=await fetchMetTimeout(WORKER+'/mna/koopmandaat/'+encodeURIComponent(S.code)+'/target/'+encodeURIComponent(id)+'/interesse',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({interesse:waarde}),cache:'no-store'},15000);
+          var d=await r.json().catch(function(){return {};});
+          if(r.ok&&d&&d.ok===true&&d.koper_interesse===waarde){toast('Uw keuze is vastgelegd.','ok');kmRefresh();return;}
+          fout=(d&&typeof d.error==='string'&&d.error)||'Uw keuze is niet vastgelegd.';
+        }catch(e){fout='Geen verbinding met de server. Uw keuze is niet bevestigd; probeer het opnieuw.';}
+        knoppen.forEach(function(b){b.disabled=false;});
+        if(meld){meld.textContent=fout;meld.style.color='var(--red)';meld.style.display='block';}
+      });
+    });
     return;
   }
 
@@ -523,6 +861,7 @@ function bindKoopmandaatScherm(magBewerken){
         var r=await fetch(WORKER+'/mna/koopmandaat/'+S.code+'/target/'+id,{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S.code},body:JSON.stringify({status:nieuweStatus})});
         var d=await r.json();
         if(d.ok){toast('Status bijgewerkt.','ok');kmRefresh();}
+        else if(r.status===409){toast('Fout: '+(d.error||'onbekend'),'err');kmRefresh();}
         else{toast('Fout: '+(d.error||'onbekend'),'err');sel.disabled=false;}
       }catch(e){toast('Netwerkfout.','err');sel.disabled=false;}
     });
@@ -563,22 +902,135 @@ function bindKoopmandaatScherm(magBewerken){
   document.querySelectorAll('.km-intro-btn').forEach(function(btn){
     btn.addEventListener('click',function(){toonKmIntroductieModal(btn.dataset.id);});
   });
+  document.querySelectorAll('.km-tf-actie').forEach(function(btn){
+    btn.addEventListener('click',function(){kmTfKlik(btn);});
+  });
+}
+
+// ── Generieke targetflow · acties per target (GET/POST …/target/{id}/targetflow) ──
+// Elke actie raakt uitsluitend de eigen target (target-id in het pad). Succes pas na serverbevestiging;
+// bij 409 (gelijktijdige wijziging, gearchiveerd, match) eerst de actuele stand laden.
+function kmTfApi(targetId,body){
+  var opt={method:body?'POST':'GET',headers:{'x-tussen-key':S.code},cache:'no-store'};
+  if(body){opt.headers['Content-Type']='application/json';opt.body=JSON.stringify(body);}
+  return fetchMetTimeout(WORKER+'/mna/koopmandaat/'+encodeURIComponent(S.code)+'/target/'+encodeURIComponent(targetId)+'/targetflow',opt,15000)
+    .then(function(r){return r.json().catch(function(){return {};}).then(function(j){j=j||{};return {ok:r.ok&&j.ok===true,status:r.status,json:j};});})
+    .catch(function(){return {ok:false,status:0,json:{}};});
+}
+
+function kmTfTarget(id){return (S.kmTargets||[]).filter(function(t){return t&&t.id===id;})[0]||null;}
+
+function kmTfReden(vraag){
+  var r=prompt(vraag,'');
+  if(r===null)return null;
+  r=String(r).trim();
+  if(!r){toast('Vul een reden in; er is niets gewijzigd.','err');return null;}
+  if(r.length>500){toast('De reden is te lang (max. 500 tekens); er is niets gewijzigd.','err');return null;}
+  return r;
+}
+
+async function kmTfActie(btn,targetId,body,okTekst){
+  if(btn.disabled)return null;
+  btn.disabled=true;
+  var r=await kmTfApi(targetId,body);
+  if(!r.ok){
+    toast(kmTfFoutTekst(r),'err');
+    if(r.status===409)kmRefresh();else btn.disabled=false;
+    return null;
+  }
+  toast(typeof okTekst==='function'?okTekst(r.json):okTekst,'ok');
+  kmRefresh();
+  return r.json;
+}
+
+function kmTfKlik(btn){
+  var id=btn.dataset.id,actie=btn.dataset.actie;
+  var t=kmTfTarget(id);
+  if(!t)return;
+  var koper=(S.kmMandaat&&S.kmMandaat.koper_naam)||'de koper';
+  if(actie==='bewerk_formulier')return toonKmTargetFormulier(t);
+  if(actie==='historie')return toonKmTfHistorie(id);
+  if(actie==='targetflow_generiek'){
+    if(!confirm('Target "'+(t.naam||'')+'" overzetten naar de generieke targetflow?\n\nDit is eenmalig en niet terug te draaien. Daarna geldt voor promotie: eerst een vastgelegde match met de koper én de afzonderlijke identiteitsvrijgave. Bestaande gegevens, versies en bewijs blijven ongewijzigd.'))return;
+    return kmTfActie(btn,id,{actie:'targetflow_generiek',bevestigd:true},'Target overgezet naar de generieke targetflow.');
+  }
+  if(actie==='voorstellen'){
+    if(!confirm('Target voorstellen aan de koper?\n\nDe koper ziet uitsluitend de goedgekeurde anonieme teaser: geen bedrijfsnaam, interne anonieme naam, contactgegevens of notities. Een eerdere interessekeuze vervalt.'))return;
+    return kmTfActie(btn,id,{actie:'voorstellen'},'Voorgesteld aan de koper (alleen de anonieme teaser).');
+  }
+  if(actie==='interesse_registreren'){
+    var w=btn.dataset.waarde==='interesse'?'interesse':'geen_interesse';
+    if(!confirm('Interessekeuze van de koper vastleggen: "'+(w==='interesse'?'Interesse':'Geen interesse')+'"?\n\nDoe dit alleen als de koper dit zelf aan u heeft doorgegeven. In de historie staat dat u het heeft vastgelegd.'))return;
+    return kmTfActie(btn,id,{actie:'interesse_registreren',waarde:w},'Interessekeuze vastgelegd.');
+  }
+  if(actie==='match'){
+    if(!confirm('Match vastleggen tussen "'+(t.naam||'')+'" en de koper van dit mandaat ('+koper+')?\n\nEen match geeft de identiteit NIET vrij aan de koper; dat blijft een afzonderlijke stap na akkoord van de onderneming.'))return;
+    return kmTfActie(btn,id,{actie:'match',bevestigd:true},'Match vastgelegd. De identiteit is niet vrijgegeven.');
+  }
+  var reden;
+  if(actie==='match_intrekken'){
+    reden=kmTfReden('Reden voor het intrekken van de match (verplicht, max. 500 tekens). De status wordt weer "Interesse van de koper".');
+    if(reden===null)return;
+    return kmTfActie(btn,id,{actie:'match_intrekken',reden:reden},'Match ingetrokken.');
+  }
+  if(actie==='archiveren'){
+    reden=kmTfReden('Reden voor archiveren van "'+(t.naam||'')+'" (verplicht, max. 500 tekens).\n\nArchiveren verwijdert niets: versies, akkoorden, vrijgave, teaser, contactlog en historie blijven bewaard. Een actieve persoonlijke link wordt ingetrokken en de koper ziet deze target niet meer. U kunt later herstellen.');
+    if(reden===null)return;
+    return kmTfActie(btn,id,{actie:'archiveren',reden:reden},function(j){return 'Target gearchiveerd.'+(j&&j.link_ingetrokken?' De actieve persoonlijke link is ingetrokken.':'')+' Er is niets verwijderd.';});
+  }
+  if(actie==='herstellen'){
+    reden=kmTfReden('Reden voor herstellen van "'+(t.naam||'')+'" (verplicht, max. 500 tekens). De status blijft zoals die was; een eerder ingetrokken link blijft ingetrokken.');
+    if(reden===null)return;
+    return kmTfActie(btn,id,{actie:'herstellen',reden:reden},'Target hersteld.');
+  }
+}
+
+function toonKmTfHistorie(targetId){
+  var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:400;display:flex;align-items:center;justify-content:center;padding:1.5rem';
+  var mo=document.createElement('div');mo.id='km-tf-historie';mo.setAttribute('role','dialog');mo.setAttribute('aria-modal','true');mo.setAttribute('aria-labelledby','km-tf-historie-titel');
+  mo.style.cssText='background:var(--panel);border-radius:10px;padding:1.75rem;max-width:720px;width:100%;max-height:90vh;overflow-y:auto';
+  mo.innerHTML='<div style="font-size:12px;color:var(--muted)">Laden…</div>';
+  ov.appendChild(mo);document.body.appendChild(ov);
+  var sluit=function(){if(ov.parentNode)ov.parentNode.removeChild(ov);};
+  ov.addEventListener('click',function(e){if(e.target===ov)sluit();});
+  kmTfApi(targetId).then(function(r){
+    if(!ov.parentNode)return;
+    var t=r.ok&&r.json.target;
+    var h='<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;margin-bottom:.75rem"><div id="km-tf-historie-titel" style="font-family:Playfair Display,serif;font-size:1.15rem;color:var(--head);font-weight:600">Historie'+(t?' &mdash; '+esc(t.naam):'')+'</div><button class="btn-ghost" id="km-tf-historie-sluit" style="font-size:12px">Sluiten</button></div>';
+    if(!t){
+      h+='<div id="km-tf-historie-fout" style="font-size:12px;color:var(--red)">'+esc(kmTfFoutTekst(r))+' Er wordt geen verouderde historie getoond.</div>';
+    }else{
+      var hist=Array.isArray(r.json.historie)?r.json.historie.slice().reverse():[];
+      h+='<div style="font-size:11px;color:var(--muted);margin-bottom:.6rem;line-height:1.6">Alleen voor u zichtbaar, nooit voor de koper. De historie bevat veldnamen, statussen, interessekeuzes en redenen, geen contactgegevens. Introductie-, link-, akkoord- en vrijgaveregels ziet u in het venster van de '+(kmTfIsGeneriek(t)?'bemiddelings-/introductiebevestiging':'introductieovereenkomst')+'; contactmomenten op de targetkaart.</div>'
+        +(hist.length?'<div class="km-tf-historie-lijst" style="font-size:12px;color:var(--sub)">'+hist.map(function(x){return '<div class="km-tf-historie-regel" style="padding:.3rem 0;border-top:1px solid var(--border)">'+esc(kmTfHistorieTekst(x))+'</div>';}).join('')+'</div>'
+          :'<div style="font-size:12px;color:var(--muted)">Nog geen historieregels voor deze target (bestaande targets krijgen historie vanaf de eerste wijziging).</div>');
+    }
+    mo.innerHTML=h;
+    ge('km-tf-historie-sluit').onclick=sluit;
+  });
 }
 
 // ── N-115 · begeleiderbeheer introductieovereenkomst per target ──
 // Backendcontract: GET/POST /mna/koopmandaat/{code}/target/{id}/introductie (x-tussen-key). De
-// overeenkomsttekst stelt de begeleider zelf vast — het platform levert geen standaardtekst en voegt
-// geen bepalingen toe; juridische eindvalidatie gebeurt afzonderlijk. Het ruwe linktoken leeft alleen
-// in dit venster (geen opslag, geen log, geen URL van deze pagina); sluiten = weg.
-function kmIntroApi(targetId,body){
+// overeenkomsttekst stelt de begeleider zelf vast — het platform voegt geen bepalingen toe;
+// juridische eindvalidatie gebeurt afzonderlijk. Generieke targetflow: het document heet daar
+// BEMIDDELINGS-/INTRODUCTIEBEVESTIGING en de begeleider kan een concept laden uit het vaste
+// backendsjabloon (GET …/introductie/concept: geen AI, niets opgeslagen); vaststellen blijft de
+// bestaande actie 'versie'. Het ruwe linktoken leeft alleen in dit venster (geen opslag, geen log,
+// geen URL van deze pagina); sluiten = weg.
+function kmIntroApi(targetId,body,pad){
   var opt={method:body?'POST':'GET',headers:{'x-tussen-key':S.code},cache:'no-store'};
   if(body){opt.headers['Content-Type']='application/json';opt.body=JSON.stringify(body);}
-  return fetchMetTimeout(WORKER+'/mna/koopmandaat/'+encodeURIComponent(S.code)+'/target/'+encodeURIComponent(targetId)+'/introductie',opt,15000)
+  return fetchMetTimeout(WORKER+'/mna/koopmandaat/'+encodeURIComponent(S.code)+'/target/'+encodeURIComponent(targetId)+'/introductie'+(pad||''),opt,15000)
     .then(function(r){return r.json().catch(function(){return {};}).then(function(j){j=j||{};return {ok:r.ok&&j.ok===true,status:r.status,json:j};});})
     .catch(function(){return {ok:false,status:0,json:{}};});
 }
 
 var KM_INTRO_SOORT={versie_vastgesteld:'Versie vastgesteld',link_uitgegeven:'Link aangemaakt',link_ingetrokken:'Link ingetrokken',akkoord:'Akkoord door de onderneming',wijzigingsverzoek:'Wijziging gevraagd door de onderneming',vrijgave:'Identiteit vrijgegeven aan de koper',teaser_goedgekeurd:'Teaser goedgekeurd',teaser_ingetrokken:'Teaser ingetrokken',relatie_einde:'Introductierelatie beëindigd',legal_hold_aan:'Langere bewaring vanwege geschil/juridische noodzaak ingesteld',legal_hold_uit:'Langere bewaring opgeheven',contact_gewijzigd:'Contactgegevens gewijzigd',operationeel_einde:'Einde operationele noodzaak contactgegevens'};
+
+// Opent de mailto:-link in het eigen mailprogramma van de begeleider (er gaat niets via het platform).
+// Losse functie zodat de browsertest de echte knop kan klikken en de opgebouwde link kan controleren.
+function kmOpenMailprogramma(url){window.location.href=url;}
 
 function kmDatum(ms,metTijd){
   if(!ms)return '';
@@ -655,19 +1107,25 @@ function toonKmIntroductieModal(targetId){
     var contact=d.contact||{};
     var bew=d.bewaring||{};
     var teaser=d.teaser||null;
-    var bewerkbaar=!st.alleen_lezen&&!st.beeindigd;
+    // Targetflow uit de kaartgegevens: terminologie (generiek) en archief (geen versie/link/vrijgave).
+    var kaartT=kmTfTarget(targetId)||{};
+    var gen=kmTfIsGeneriek(kaartT);
+    var gearch=!!kaartT.archief;
+    var docNaam=gen?'bemiddelings-/introductiebevestiging':'introductieovereenkomst';
+    var bewerkbaar=!st.alleen_lezen&&!st.beeindigd&&!gearch;
     if(linkInGeheugen&&!(hv&&linkInGeheugen.versie===hv.versie&&st.link==='actief'))linkInGeheugen=null;
 
     var h='<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem">'
-      +'<div><div id="km-intro-titel" style="font-family:Playfair Display,serif;font-size:1.15rem;color:var(--head);font-weight:600">Introductieovereenkomst &mdash; '+esc(tgt.naam||'target')+'</div>'
-      +'<div style="font-size:11px;color:var(--muted);margin-top:.2rem">Eigen overeenkomst met de target, los van de bemiddelingsovereenkomst. Geselecteerde koper: '+esc(mandaat.koper_naam||'—')+'</div></div>'
+      +'<div><div id="km-intro-titel" style="font-family:Playfair Display,serif;font-size:1.15rem;color:var(--head);font-weight:600">'+(gen?'Bemiddelings-/introductiebevestiging':'Introductieovereenkomst')+' &mdash; '+esc(tgt.naam||'target')+'</div>'
+      +'<div style="font-size:11px;color:var(--muted);margin-top:.2rem">'+(gen?'Eigen bevestiging met de onderneming: geen verkoopopdracht en geen bemiddelingsovereenkomst (BEM); de BEM blijft ongewijzigd.':'Eigen overeenkomst met de target, los van de bemiddelingsovereenkomst.')+' Geselecteerde koper: '+esc(mandaat.koper_naam||'—')+'</div></div>'
       +'<button class="btn-ghost" id="km-intro-sluit" style="font-size:12px">Sluiten</button></div>'
       +'<div id="km-intro-melding" style="display:none;margin-top:.75rem"></div>';
     if(st.alleen_lezen)h+='<div style="margin-top:.75rem;padding:.55rem .75rem;border:1px solid var(--border2);border-radius:6px;font-size:12px;color:var(--sub);background:var(--card)">Deze target is gepromoveerd naar een traject. De overeenkomst en het akkoord blijven alleen-lezen bewaard; er kunnen geen nieuwe versies, links of vrijgaven meer worden gemaakt.</div>';
     if(st.beeindigd)h+='<div style="margin-top:.75rem;padding:.55rem .75rem;border:1px solid var(--border2);border-radius:6px;font-size:12px;color:var(--sub);background:var(--card)">De introductierelatie is beëindigd op '+esc(kmDatum(bew.relatie_einde_op))+'. Link en vrijgave zijn vervallen; het bewijs wordt bewaard.</div>';
+    if(gearch&&!st.alleen_lezen)h+='<div id="km-intro-gearchiveerd" style="margin-top:.75rem;padding:.55rem .75rem;border:1px solid var(--border2);border-radius:6px;font-size:12px;color:var(--sub);background:var(--card)">Deze target is gearchiveerd. Versies, akkoorden, vrijgave en teaser blijven bewaard, maar er kan geen nieuwe versie, link of vrijgave worden gemaakt tot u de target herstelt.</div>';
 
-    // 1. Overeenkomst
-    h+=sectie('1. Overeenkomst');
+    // 1. Overeenkomst / bevestiging
+    h+=sectie(gen?'1. Bemiddelings-/introductiebevestiging':'1. Overeenkomst');
     if(hv){
       h+='<div style="font-size:12px;color:var(--sub);margin-bottom:.4rem"><b>Versie '+esc(String(hv.versie))+'</b> &middot; vastgesteld '+esc(kmDatum(hv.aangemaakt_op,true))
         +' &middot; partijen: '+esc(p.target_naam||'—')+' / '+esc(p.geselecteerde_koper||'—')+' / begeleider '+esc(p.begeleider_naam||'—')+'</div>'
@@ -682,7 +1140,13 @@ function toonKmIntroductieModal(targetId){
     }else{
       h+='<div style="font-size:12px;color:var(--muted)">Er is nog geen overeenkomst vastgesteld voor deze target.</div>';
     }
-    if(bewerkbaar){
+    if(bewerkbaar&&gen){
+      h+='<div style="margin-top:.75rem;font-size:11px;color:var(--muted);line-height:1.6">Laad een concept uit het vaste sjabloon (niet door AI opgesteld, er wordt niets opgeslagen), pas het aan en stel het daarna zelf vast als versie. Ontbrekende gegevens staan als [in te vullen: …] in de tekst. Het concept volgt de goedgekeurde richting en bevat geen bedragen, percentages, boetes of termijnen buiten het bestaande bewaarbeleid. Juridische validatie gebeurt afzonderlijk.</div>'
+        +'<div style="margin-top:.4rem;display:flex;gap:8px;flex-wrap:wrap"><button class="btn-ghost" id="km-intro-concept" style="font-size:12px">Concept BEMIDDELINGS-/INTRODUCTIEBEVESTIGING laden</button></div>'
+        +'<div id="km-intro-concept-info" style="display:none;margin-top:.4rem;font-size:11px;color:var(--sub);background:var(--gold-bg);border:1px solid var(--gold-dark);border-radius:6px;padding:.45rem .6rem"></div>'
+        +'<textarea id="km-intro-tekst" rows="10" maxlength="20000" aria-label="Tekst van de bemiddelings-/introductiebevestiging" placeholder="Tekst van de bemiddelings-/introductiebevestiging" style="'+invoer+';margin-top:.4rem"></textarea>'
+        +'<button class="btn btn-sm" id="km-intro-versie" style="margin-top:.4rem;font-size:12px">'+(hv?'Nieuwe versie vaststellen':'Versie 1 vaststellen')+'</button>';
+    }else if(bewerkbaar){
       h+='<div style="margin-top:.75rem;font-size:11px;color:var(--muted);line-height:1.6">U voert de overeenkomsttekst zelf in. Goedgekeurde richting (nog juridisch te valideren): partijen en vertegenwoordiging; doel en geselecteerde koper; de target betaalt geen fee; transparantie over uw betaalde koperopdracht; vertrouwelijkheid en doelgebonden informatiegebruik; begrensde introductiebescherming; geen transactieplicht; wijzigingsverzoek vóór akkoord; nieuw akkoord bij een nieuwe inhoudelijke versie; afzonderlijke vrijgave; einde en bewaring. Neem geen boete-, duur- of andere bepalingen op waarover nog niet is besloten.</div>'
         +'<textarea id="km-intro-tekst" rows="8" maxlength="20000" placeholder="Overeenkomsttekst zoals door u vastgesteld" style="'+invoer+';margin-top:.4rem"></textarea>'
         +'<button class="btn btn-sm" id="km-intro-versie" style="margin-top:.4rem;font-size:12px">'+(hv?'Nieuwe versie vaststellen':'Versie 1 vaststellen')+'</button>';
@@ -690,17 +1154,30 @@ function toonKmIntroductieModal(targetId){
 
     // 2. Link naar de target
     h+=sectie('2. Link naar de onderneming');
+    var verzKnop='';
     if(hv){
       var linkTekst={actief:'Actieve link, geldig tot '+kmDatum(st.link_verloopt_op,true),verlopen:'De link is verlopen',ingetrokken:'De link is ingetrokken',geen:'Er is voor deze versie nog geen link aangemaakt'}[st.link];
       h+='<div style="font-size:12px;color:'+(st.link==='actief'?'var(--teal)':'var(--muted)')+';margin-bottom:.4rem">'+esc(linkTekst)+'</div>';
+      // "Link aangemaakt" is geen bewijs van verzending: dat legt de begeleider zelf vast als contactmoment.
+      var linkOp=hv.link&&hv.link.uitgegeven_op;
+      if(linkOp){
+        var verz=kmTfVerzendingVastgelegd({targetflow:kaartT.targetflow,contactlog:kaartT.contactlog,introductie_stand:{versie:hv.versie,link_uitgegeven_op:linkOp}});
+        h+='<div id="km-intro-verzending" style="font-size:12px;margin-bottom:.4rem;color:'+(verz?'var(--teal)':'var(--gold-dark)')+'">'
+          +'Link aangemaakt op '+esc(kmDatum(linkOp,true))+'. '
+          +(verz?'&#10003; Verzending vastgelegd op '+esc(kmDatum(verz.datum,true))+' (door u; het platform heeft geen bezorgbevestiging).'
+            :'Nog niet vastgelegd dat u de e-mail met deze link heeft verstuurd. Het platform verstuurt zelf niets.')
+          +'</div>';
+        if(!verz&&st.link==='actief'&&bewerkbaar)verzKnop='<div style="margin-bottom:.5rem"><button class="btn-ghost" id="km-intro-verzonden" style="font-size:11px;padding:4px 10px">Ik heb de e-mail verstuurd — verzending vastleggen</button></div>';
+      }
     }
     if(linkInGeheugen){
       h+='<div style="background:var(--teal-bg);border:1px solid var(--teal);border-radius:6px;padding:.55rem .7rem;font-size:12px;color:var(--sub);margin-bottom:.5rem">'
         +'<div style="margin-bottom:.3rem">Persoonlijke link voor versie '+esc(String(linkInGeheugen.versie))+' (alleen nu zichtbaar; een nieuwe link maakt deze ongeldig):</div>'
         +'<input readonly id="km-intro-link" style="'+invoer+';font-family:monospace;font-size:11px">'
         +'<div style="margin-top:.4rem;display:flex;gap:8px;flex-wrap:wrap"><button class="btn-ghost" id="km-intro-kopieer" style="font-size:11px;padding:4px 10px">Link kopiëren</button><button class="btn-ghost" id="km-intro-mail" style="font-size:11px;padding:4px 10px">E-mail openen in uw mailprogramma</button></div>'
-        +'<div style="font-size:10.5px;color:var(--muted);margin-top:.3rem">Er wordt niets automatisch verstuurd: u verstuurt de e-mail zelf vanuit uw eigen mailprogramma.</div></div>';
+        +'<div style="font-size:10.5px;color:var(--muted);margin-top:.3rem">Er wordt niets automatisch verstuurd: u verstuurt de e-mail zelf vanuit uw eigen mailprogramma. Leg daarna hieronder vast dat u hem heeft verstuurd.</div></div>';
     }
+    h+=verzKnop;
     if(hv&&bewerkbaar){
       h+='<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:12px">'
         +'<label for="km-intro-dagen" style="color:var(--muted)">Geldig</label><input type="number" id="km-intro-dagen" min="1" max="30" value="14" style="'+invoer+';width:64px"><span style="color:var(--muted)">dagen</span>'
@@ -712,6 +1189,7 @@ function toonKmIntroductieModal(targetId){
     // 3. Contactpersoon (operationeel; los van het akkoordbewijs)
     h+=sectie('3. Contactpersoon bij de onderneming');
     h+='<div style="font-size:11px;color:var(--muted);margin-bottom:.4rem">Alleen voor het versturen van de link. Nooit zichtbaar voor de koper; ook niet na vrijgave van de bedrijfsidentiteit. Leeg laten mag.'
+      +(gen?' Dit is dezelfde contactpersoon als op de targetkaart (één bron); telefoon en bedrijfsgegevens wijzigt u via "Gegevens bewerken".':'')
       +(contact.noodzaak_einde_op?' Operationele noodzaak beëindigd op '+esc(kmDatum(contact.noodzaak_einde_op))+'.':'')+'</div>';
     if(!st.beeindigd){
       h+='<div style="display:flex;gap:6px;flex-wrap:wrap"><input type="text" id="km-intro-cnaam" maxlength="200" placeholder="Naam contactpersoon" style="flex:1;min-width:160px;'+invoer+'"><input type="email" id="km-intro-cemail" maxlength="200" placeholder="E-mailadres" style="flex:1;min-width:160px;'+invoer+'">'
@@ -743,11 +1221,13 @@ function toonKmIntroductieModal(targetId){
     h+='<div style="font-size:12px;color:var(--sub);margin-bottom:.4rem">Status: <b style="color:'+(st.vrijgegeven?'var(--teal)':'var(--gold-dark)')+'">'+(st.vrijgegeven?'vrijgegeven':'afgeschermd')+'</b>'
       +(st.vrijgegeven&&d.vrijgave&&d.vrijgave.vrijgegeven_op?' op '+esc(kmDatum(d.vrijgave.vrijgegeven_op,true)):'')+'</div>'
       +'<div style="font-size:11px;color:var(--muted);margin-bottom:.4rem">Een akkoord geeft de identiteit niet automatisch vrij. Na vrijgave ziet de koper de bedrijfsnaam en sector — geen contactpersoon of andere gegevens. Wat de koper eenmaal heeft gezien, kan niet worden teruggenomen.</div>';
-    if(kmMagVrijgeven(S.kmRol,d,st)){
+    if(gen)h+='<div style="font-size:11px;color:var(--muted);margin-bottom:.4rem">Ook interesse van de koper of een vastgelegde match geeft de identiteit niet vrij.</div>';
+    if(kmMagVrijgeven(S.kmRol,d,st)&&!gearch){
       h+='<button class="btn btn-sm" id="km-intro-vrijgeven" style="font-size:12px">Identiteit vrijgeven aan de koper</button>';
     }else if(!st.vrijgegeven){
       var waarom=S.kmRol!=='begeleider'?'Vrijgeven kan uitsluitend de begeleider van dit koopmandaat.'
         :st.alleen_lezen||st.beeindigd?'Vrijgeven is niet meer mogelijk.'
+        :gearch?'Gearchiveerd: herstel de target eerst.'
         :!hv?'Stel eerst een overeenkomst vast.'
         :'Vrijgeven kan pas na akkoord van de onderneming op de actuele versie '+esc(String(hv.versie))+'.';
       h+='<div style="font-size:12px;color:var(--muted)">'+waarom+'</div>';
@@ -782,24 +1262,73 @@ function toonKmIntroductieModal(targetId){
     var cn=ge('km-intro-cnaam');if(cn)cn.value=contact.naam||'';
     var ce=ge('km-intro-cemail');if(ce)ce.value=contact.email||'';
     var linkEl=ge('km-intro-link');if(linkEl&&linkInGeheugen)linkEl.value=linkInGeheugen.link;
-    bind(d,hv,st,contact);
+    bind(d,hv,st,contact,gen,kaartT);
   }
 
-  function bind(d,hv,st,contact){
+  function bind(d,hv,st,contact,gen,kaartT){
     ge('km-intro-sluit').onclick=sluit;
     var reden=function(){var el=ge('km-intro-reden');var v=el?el.value.trim():'';if(!v)melding('err','Vul eerst een reden in.');return v;};
+
+    // Concept uit het vaste backendsjabloon in het tekstvak laden: niets opgeslagen, niets vastgesteld.
+    var conBtn=ge('km-intro-concept');
+    if(conBtn)conBtn.onclick=async function(){
+      var ta=ge('km-intro-tekst');if(!ta)return;
+      var huidig=(ta.value||'').trim();
+      if(huidig&&huidig!==((hv&&hv.tekst)||'').trim()&&!confirm('Het tekstvak bevat tekst die nog niet is vastgesteld. Vervangen door een nieuw concept?'))return;
+      melding('',null);
+      conBtn.disabled=true;
+      var r=await kmIntroApi(targetId,null,'/concept');
+      if(!ov.parentNode)return;
+      conBtn.disabled=false;
+      var c=r.ok&&r.json.concept;
+      if(!c||typeof c.tekst!=='string'||!c.tekst){melding('err',r.status?((r.json&&r.json.error)||'Het concept kon niet worden geladen.'):'Geen verbinding — er is geen concept geladen.');return;}
+      ta.value=c.tekst;
+      var open=Array.isArray(c.open_punten)?c.open_punten.filter(function(p){return typeof p==='string'&&p;}):[];
+      var info=ge('km-intro-concept-info');
+      if(info){
+        info.innerHTML='<b>Concept geladen</b> — nog niet opgeslagen, niet vastgesteld en niet verstuurd. Niet door AI opgesteld; juridische validatie gebeurt afzonderlijk.'
+          +(open.length?'<div style="margin-top:.3rem">Nog in te vullen:</div><ul id="km-intro-open-punten" style="margin:.2rem 0 0 1.1rem">'+open.map(function(p){return '<li>'+esc(p)+'</li>';}).join('')+'</ul>':'');
+        info.style.display='block';
+      }
+      melding('ok','Concept geladen in het tekstvak. Pas het aan en stel het daarna vast; er is nog niets vastgelegd.');
+    };
 
     var vBtn=ge('km-intro-versie');
     if(vBtn)vBtn.onclick=function(){
       var tekst=(ge('km-intro-tekst').value||'').trim();
       if(!tekst){melding('err','Vul de overeenkomsttekst in.');return;}
       if(hv&&tekst===(hv.tekst||'').trim()){melding('err','De tekst is niet gewijzigd; er is geen nieuwe versie nodig.');return;}
+      var openPunten=(tekst.match(/\[in te vullen:/g)||[]).length;
+      if(openPunten&&!confirm('De tekst bevat nog '+openPunten+' open punt(en) "[in te vullen: …]". Toch vaststellen?'))return;
       var vraag=hv
         ?'Nieuwe versie vaststellen?\n\nVersie '+hv.versie+' wordt vervangen. Daardoor vervallen:\n- de huidige link naar de onderneming;\n- een eventueel akkoord op versie '+hv.versie+';\n- een eventuele identiteitsvrijgave aan de koper.\n\nDe onderneming moet de nieuwe versie opnieuw beoordelen.'
-        :'Versie 1 van de introductieovereenkomst vaststellen?\n\nU bent zelf verantwoordelijk voor de inhoud; juridische eindvalidatie gebeurt afzonderlijk.';
+        :'Versie 1 van de '+(gen?'bemiddelings-/introductiebevestiging':'introductieovereenkomst')+' vaststellen?\n\nU bent zelf verantwoordelijk voor de inhoud; juridische eindvalidatie gebeurt afzonderlijk.';
       if(!confirm(vraag))return;
       linkInGeheugen=null;
       actie(vBtn,{actie:'versie',tekst:tekst},'Versie vastgesteld.');
+    };
+
+    // Verzending vastleggen: contactmoment via de bestaande target-route (contact_toevoegen). Dat is het
+    // enige bewijs dat de begeleider de link zelf heeft verstuurd; het platform claimt geen bezorging.
+    var vzBtn=ge('km-intro-verzonden');
+    if(vzBtn)vzBtn.onclick=async function(){
+      if(!hv)return;
+      var docNaam=gen?'bemiddelings-/introductiebevestiging':'introductieovereenkomst';
+      if(!confirm('Vastleggen dat u de '+docNaam+' (versie '+hv.versie+') zelf heeft verstuurd vanuit uw eigen mailprogramma?\n\nHet platform verstuurt zelf niets en kan niet controleren of de e-mail is aangekomen. Dit wordt vastgelegd als contactmoment (nooit zichtbaar voor de koper).'))return;
+      melding('',null);
+      vzBtn.disabled=true;
+      var fout='';
+      try{
+        var r=await fetchMetTimeout(WORKER+'/mna/koopmandaat/'+encodeURIComponent(S.code)+'/target/'+encodeURIComponent(targetId),{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S.code},cache:'no-store',
+          body:JSON.stringify({contact_toevoegen:kmTfVerzendTekst(kaartT,hv.versie)+KM_TF_VERZEND_TOELICHTING})},15000);
+        var j=await r.json().catch(function(){return {};});
+        if(!(r.ok&&j&&j.ok===true))fout=(j&&j.error)||'De verzending is niet vastgelegd.';
+      }catch(e){fout='Geen verbinding — niet bevestigd dat er iets is vastgelegd.';}
+      if(!ov.parentNode)return;
+      if(fout){vzBtn.disabled=false;melding('err',fout);return;}
+      gewijzigd=true;
+      await kmHerlaadTargets();
+      await laad('Verzending vastgelegd als contactmoment. Het platform heeft geen bezorgbevestiging.');
     };
 
     var luBtn=ge('km-intro-link-uit');
@@ -832,7 +1361,7 @@ function toonKmIntroductieModal(targetId){
       if(!linkInGeheugen)return;
       var naam=(ge('km-intro-cnaam')||{}).value||contact.naam||'';
       var email=(ge('km-intro-cemail')||{}).value||contact.email||'';
-      window.location.href=kmIntroMailto(email.trim(),naam.trim(),linkInGeheugen.link,linkInGeheugen.verloopt_op,(S.kmMandaat&&S.kmMandaat.begeleider_naam)||'');
+      kmOpenMailprogramma(kmIntroMailto(email.trim(),naam.trim(),linkInGeheugen.link,linkInGeheugen.verloopt_op,(S.kmMandaat&&S.kmMandaat.begeleider_naam)||'',gen));
     };
 
     var cBtn=ge('km-intro-contact');
@@ -938,32 +1467,61 @@ async function toonTrajectIntroductie(){
   ge('tr-intro-sluit').onclick=sluit;
 }
 
-function toonKmNieuwTargetModal(){
+function toonKmNieuwTargetModal(){toonKmTargetFormulier(null);}
+
+// Targetformulier (generieke targetflow): nieuw = POST …/target met targetflow 'generiek'; bewerken =
+// targetflow-actie 'bewerken' met uitsluitend de gewijzigde velden. Contactnaam/-e-mail zijn dezelfde
+// bron als het contact in de introductiebevestiging (intro_contact_*), dus geen dubbele invoer.
+function toonKmTargetFormulier(t){
+  var nieuw=!t;
+  var huidig=nieuw?{}:kmTfHuidig(t);
   var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:400;display:flex;align-items:center;justify-content:center;padding:1.5rem';
-  var mo=document.createElement('div');mo.setAttribute('role','dialog');mo.setAttribute('aria-modal','true');mo.setAttribute('aria-labelledby','km-target-modal-titel');mo.style.cssText='background:var(--panel);border-radius:10px;padding:1.75rem;max-width:480px;width:100%;max-height:90vh;overflow-y:auto';
-  mo.innerHTML='<div id="km-target-modal-titel" style="font-family:Playfair Display,serif;font-size:1.15rem;color:var(--head);font-weight:600;margin-bottom:1rem">Kandidaat-target toevoegen</div>'
-    +'<div class="f" style="margin-bottom:.75rem"><label for="kmt-naam">Naam onderneming <span style="color:var(--red)">*</span></label><input type="text" id="kmt-naam"></div>'
-    +'<div class="f" style="margin-bottom:.75rem"><label for="kmt-sector">Sector</label><input type="text" id="kmt-sector" placeholder="bijv. accountancy"></div>'
-    +'<div class="f" style="margin-bottom:.75rem"><label for="kmt-bron">Bron</label><input type="text" id="kmt-bron" placeholder="bijv. eigen netwerk, sourcing, referral"></div>'
-    +'<div class="f" style="margin-bottom:.75rem"><label for="kmt-notities">Eerste notitie (optioneel)</label><textarea id="kmt-notities" rows="2" style="width:100%;font-family:inherit"></textarea></div>'
-    +'<div id="kmt-err" style="display:none;color:var(--red);font-size:12px;margin-bottom:.75rem"></div>'
-    +'<div style="display:flex;gap:10px;justify-content:flex-end"><button class="btn-ghost" id="kmt-ann">Annuleren</button><button class="btn" id="kmt-ok">Toevoegen</button></div>';
+  var mo=document.createElement('div');mo.id='km-target-modal';mo.setAttribute('role','dialog');mo.setAttribute('aria-modal','true');mo.setAttribute('aria-labelledby','km-target-modal-titel');mo.style.cssText='background:var(--panel);border-radius:10px;padding:1.75rem;max-width:560px;width:100%;max-height:90vh;overflow-y:auto';
+  var kop='font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:1rem 0 .4rem';
+  var veld=function(v){
+    return '<div class="f" style="margin-bottom:.6rem"><label for="kmt-'+v.k+'">'+esc(v.label)+(v.verplicht?' <span style="color:var(--red)">*</span>':'')+'</label>'
+      +'<input type="'+(v.type||'text')+'" id="kmt-'+v.k+'" maxlength="'+v.max+'"'+(v.placeholder?' placeholder="'+esc(v.placeholder)+'"':'')+' value="'+esc(huidig[v.k]||'')+'">'
+      +(v.hint?'<div style="font-size:11px;color:var(--muted);margin-top:2px">'+esc(v.hint)+'</div>':'')+'</div>';
+  };
+  var groep=function(g){return KM_TF_VELDEN.filter(function(v){return v.groep===g;}).map(veld).join('');};
+  mo.innerHTML='<div id="km-target-modal-titel" style="font-family:Playfair Display,serif;font-size:1.15rem;color:var(--head);font-weight:600;margin-bottom:.3rem">'+(nieuw?'Potentiële target toevoegen':'Gegevens bewerken &mdash; '+esc(t.naam))+'</div>'
+    +'<div style="font-size:11px;color:var(--muted);line-height:1.6">'+(nieuw?'Nieuwe targets volgen de generieke targetflow: eigen voortgang, voorstellen aan de koper, interesse, match en daarna pas promotie. ':(kmTfIsGeneriek(t)?'':'Bestaande flow: bewerken verandert de flow niet. '))+'Alle gegevens hieronder zijn intern; de koper ziet ze nooit.</div>'
+    +'<div style="'+kop+'">Onderneming</div>'+groep('onderneming')
+    +'<div style="'+kop+'">Contactpersoon bij de onderneming</div>'
+    +'<div style="font-size:11px;color:var(--muted);margin-bottom:.4rem">Dezelfde contactpersoon als voor de link naar de bevestiging (één bron). Nooit zichtbaar voor de koper, ook niet na vrijgave.</div>'+groep('contact')
+    +'<div style="'+kop+'">Eerste benadering</div>'+groep('benadering')
+    +(nieuw?'<div style="'+kop+'">Start</div>'
+      +'<div class="f" style="margin-bottom:.6rem"><label for="kmt-status">Startstatus</label><select id="kmt-status">'+KM_TF_START_STATUS.map(function(s){return '<option value="'+s+'">'+esc(KM_STATUS_LABEL[s])+'</option>';}).join('')+'</select></div>'
+      +'<div class="f" style="margin-bottom:.6rem"><label for="kmt-notities">Eerste notitie (optioneel, nooit zichtbaar voor de koper)</label><textarea id="kmt-notities" rows="2" maxlength="5000" style="width:100%;font-family:inherit"></textarea></div>':'')
+    +'<div id="kmt-err" role="alert" style="display:none;color:var(--red);font-size:12px;margin:.5rem 0 .75rem"></div>'
+    +'<div style="display:flex;gap:10px;justify-content:flex-end"><button class="btn-ghost" id="kmt-ann">Annuleren</button><button class="btn" id="kmt-ok">'+(nieuw?'Toevoegen':'Opslaan')+'</button></div>';
   ov.appendChild(mo);document.body.appendChild(ov);
-  ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
-  document.getElementById('kmt-ann').onclick=function(){document.body.removeChild(ov);};
-  document.getElementById('kmt-ok').onclick=async function(){
-    var errEl=document.getElementById('kmt-err');errEl.style.display='none';
-    var naam=document.getElementById('kmt-naam').value.trim();
-    if(!naam){errEl.style.display='block';errEl.textContent='Naam is verplicht.';return;}
-    var btn=this;btn.disabled=true;btn.textContent='Toevoegen...';
-    try{
-      var r=await fetch(WORKER+'/mna/koopmandaat/'+S.code+'/target',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S.code},body:JSON.stringify({
-        naam:naam,sector:document.getElementById('kmt-sector').value.trim(),bron:document.getElementById('kmt-bron').value.trim(),notities:document.getElementById('kmt-notities').value.trim()
-      })});
-      var d=await r.json();
-      if(d.ok){document.body.removeChild(ov);toast('Target toegevoegd.','ok');kmRefresh();}
-      else{errEl.style.display='block';errEl.textContent='Fout: '+(d.error||'onbekend');btn.disabled=false;btn.textContent='Toevoegen';}
-    }catch(e){errEl.style.display='block';errEl.textContent='Netwerkfout.';btn.disabled=false;btn.textContent='Toevoegen';}
+  var sluit=function(){if(ov.parentNode)ov.parentNode.removeChild(ov);};
+  ov.addEventListener('click',function(e){if(e.target===ov)sluit();});
+  ge('kmt-ann').onclick=sluit;
+  var bezig=false;
+  ge('kmt-ok').onclick=async function(){
+    if(bezig)return;
+    var btn=this,errEl=ge('kmt-err');
+    var fout=function(tekst){errEl.textContent=tekst;errEl.style.display='block';};
+    errEl.style.display='none';
+    var w={};
+    KM_TF_VELDEN.forEach(function(v){var el=ge('kmt-'+v.k);w[v.k]=el?String(el.value||'').trim():'';});
+    var ongeldig=kmTfValideer(w);
+    if(ongeldig){fout(ongeldig);return;}
+    var body=nieuw?kmTfAanmaakBody(w,ge('kmt-status').value,ge('kmt-notities').value.trim()):kmTfBewerkBody(huidig,w);
+    if(!body){fout('Er is niets gewijzigd.');return;}
+    bezig=true;btn.disabled=true;btn.textContent=nieuw?'Toevoegen...':'Opslaan...';
+    var r;
+    if(nieuw){
+      r=await fetchMetTimeout(WORKER+'/mna/koopmandaat/'+encodeURIComponent(S.code)+'/target',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S.code},body:JSON.stringify(body),cache:'no-store'},15000)
+        .then(function(x){return x.json().catch(function(){return {};}).then(function(j){j=j||{};return {ok:x.ok&&j.ok===true&&!!j.id,status:x.status,json:j};});})
+        .catch(function(){return {ok:false,status:0,json:{}};});
+    }else r=await kmTfApi(t.id,body);
+    bezig=false;
+    if(r.ok){sluit();toast(nieuw?'Target toegevoegd (generieke targetflow).':'Gegevens opgeslagen.','ok');kmRefresh();return;}
+    btn.disabled=false;btn.textContent=nieuw?'Toevoegen':'Opslaan';
+    fout(kmTfFoutTekst(r)+(r.status===409?' Sluit dit venster en ververs het scherm voor de actuele gegevens.':''));
   };
 }
 

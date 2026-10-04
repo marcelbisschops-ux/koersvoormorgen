@@ -924,6 +924,25 @@ log('22. N-123/N-124 Marilyn: kantoor verwijderen (tests/n123-kantoor-ui.mjs)');
   }
 }
 
+log('23. Koopmandaat generieke targetflow (tests/koopmandaat-targetflow-ui.mjs): targets, formulier, acties, bevestiging, koperinteresse');
+{
+  // Generieke targetflow (GO 4 okt 2026): de echte koopmandaatcode uit mna/04 (kaarten, formulier,
+  // targetflow-acties, historie, bevestigingsvenster, koperkaart) plus adv.html-P1C en introductie.html
+  // in node:vm met een minimale DOM-fixture en een nep-worker — echte klikken en handlers, geen netwerk,
+  // geen browser. De browserflow (lokaal met de echte backendhandler, apart live op staging) staat in
+  // tests/koopmandaat-targetflow.spec.js; deze check is geen bewijs van de volledige gebruikersflow.
+  try {
+    const { draaiKoopmandaatTargetflowUiChecks } = await import('./koopmandaat-targetflow-ui.mjs');
+    const resultaten = await draaiKoopmandaatTargetflowUiChecks(ROOT);
+    const gefaald = resultaten.filter(r => !r.ok);
+    gefaald.forEach(r => warn('Targetflow: ' + r.msg));
+    if (!resultaten.length) warn('Targetflow: geen checks uitgevoerd.');
+    else if (!gefaald.length) ok('Alle ' + resultaten.length + ' targetflow-UI-checks geslaagd (meerdere targets los van elkaar, metadata en interne anonieme naam alleen voor de begeleider, nieuwe targets generiek, bewerken alleen gewijzigde velden, acties met bevestiging/reden en zonder vals succes bij 409/netwerk, archief zonder verwijdering, promotie pas na match + vrijgave, concept zonder opslag, vaststellen via de bestaande versieactie, "link aangemaakt" los van "verzonden", koper alleen eigen interessekeuze en allow-list).');
+  } catch (e) {
+    warn('tests/koopmandaat-targetflow-ui.mjs kon niet worden uitgevoerd: ' + String((e && e.message) || e));
+  }
+}
+
 // ── Samenvatting ──────────────────────────────────────────────────────────
 log('Samenvatting');
 if (!bevindingen) {

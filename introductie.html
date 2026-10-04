@@ -41,7 +41,7 @@ a{color:var(--teal)}
 </head>
 <body>
 <div class="wrap">
-<div class="hdr"><div class="brand"><div class="wdot"></div>Koers voor Morgen</div><span style="font-size:11px;color:var(--muted)">Introductieovereenkomst</span></div>
+<div class="hdr"><div class="brand"><div class="wdot"></div>Koers voor Morgen</div><span id="intro-kop" style="font-size:11px;color:var(--muted)">Introductieovereenkomst</span></div>
 <div id="root"><div class="kv">Laden…</div></div>
 <div class="voet"><a href="/privacy.html" rel="noopener">Privacyverklaring</a></div>
 </div>
@@ -73,6 +73,18 @@ try{
 
 var root=document.getElementById('root');
 var bevestiging='';
+// Generieke koopmandaat-targetflow: het document heet daar BEMIDDELINGS-/INTRODUCTIEBEVESTIGING (titel
+// bovenaan de vastgestelde tekst). Eerder vastgestelde introductieovereenkomsten houden hun naam.
+var BEV_TITEL='BEMIDDELINGS-/INTRODUCTIEBEVESTIGING';
+var titel='Introductieovereenkomst';
+function zetTitel(tekst){
+  var isBev=typeof tekst==='string'&&tekst.trim().indexOf(BEV_TITEL)===0;
+  titel=isBev?'Bemiddelings-/introductiebevestiging':'Introductieovereenkomst';
+  var kop=document.getElementById('intro-kop');
+  if(kop)kop.textContent=titel;
+  try{document.title=titel+' — Koers voor Morgen';}catch(e){}
+  return isBev;
+}
 
 function el(tag,cls,tekst){
   var n=document.createElement(tag);
@@ -110,7 +122,7 @@ async function api(method,body){
 
 function toonFout(tekst,herlaadbaar){
   leeg(root);
-  root.appendChild(el('h1',null,'Introductieovereenkomst'));
+  root.appendChild(el('h1',null,titel));
   if(bevestiging)root.appendChild(el('div','ok',bevestiging));
   root.appendChild(el('div','err',tekst));
   if(herlaadbaar){
@@ -137,8 +149,10 @@ function toon(d){
   var o=d.overeenkomst||{};
   var p=o.partijen||{};
   var onderneming=typeof p.target_naam==='string'&&p.target_naam?p.target_naam:'';
+  var isBev=zetTitel(o.tekst);
+  var docWoord=isBev?'bevestiging':'overeenkomst';
   leeg(root);
-  root.appendChild(el('h1',null,'Introductieovereenkomst'));
+  root.appendChild(el('h1',null,titel));
   if(bevestiging)root.appendChild(el('div','ok',bevestiging));
 
   var info=el('div','panel');
@@ -152,7 +166,7 @@ function toon(d){
   });
   root.appendChild(info);
 
-  root.appendChild(el('h2',null,'Tekst van de overeenkomst'));
+  root.appendChild(el('h2',null,'Tekst van de '+docWoord));
   var tekst=el('div','tekst',typeof o.tekst==='string'?o.tekst:'');
   tekst.id='intro-tekst';
   root.appendChild(tekst);
@@ -200,7 +214,7 @@ function toon(d){
   var bev=el('input');
   bev.type='checkbox';bev.id='intro-bevoegd';
   lBev.appendChild(bev);
-  lBev.appendChild(el('span',null,'Ik bevestig dat ik bevoegd ben om namens '+(onderneming||'de onderneming')+' akkoord te geven op versie '+(o.versie!=null?o.versie:'')+' van deze overeenkomst, en dat ik de tekst hierboven heb gelezen.'));
+  lBev.appendChild(el('span',null,'Ik bevestig dat ik bevoegd ben om namens '+(onderneming||'de onderneming')+' akkoord te geven op versie '+(o.versie!=null?o.versie:'')+' van deze '+docWoord+', en dat ik de tekst hierboven heb gelezen.'));
   form.appendChild(lBev);
   var akkBtn=el('button','primary','Akkoord geven');
   akkBtn.id='intro-akkoord';akkBtn.disabled=true;

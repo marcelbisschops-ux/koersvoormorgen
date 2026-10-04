@@ -6,6 +6,11 @@
 // de database leeft alleen in dit proces en de aanroeper sluit hem in finally.
 // Fail-closed: ontbreekt de backend of node:sqlite, dan gooit maakLokaleBackend() — nooit een skip.
 // Alle gegevens zijn synthetisch.
+//
+// Generieke targetflow (4 okt 2026, tests/koopmandaat-targetflow.spec.js): additief een synthetische
+// adviseurssessie (registreerSessie → token dat alleen in dit proces bestaat; gebruikerViaToken zoekt
+// het op), synthetische pakkettarieven en de trajecttabellen die de bestaande promoveer-route schrijft.
+// De adviseurslogin in adv.html zelf is GEEN handlerroute: die beantwoordt de spec met een fixture.
 
 import { randomBytes } from 'node:crypto';
 
@@ -13,7 +18,7 @@ const BACKEND_37 = new URL('../../backend/backend/worker/37-koopmandaat.js', imp
 // Alleen de bestaande koopmandaatroutes gaan naar de handler; al het andere is voor de aanroeper "onbekend".
 const KM_ROUTE = /^\/mna\/koopmandaat\//;
 // De browser mag uitsluitend deze headers doorgeven (nooit een beheerderssleutel).
-const BROWSER_HEADERS = ['content-type', 'x-tussen-key'];
+const BROWSER_HEADERS = ['content-type', 'x-tussen-key', 'x-gebruiker-token'];
 
 export async function maakLokaleBackend({ origin }) {
   let DatabaseSync, handleKoopmandaat;
@@ -51,7 +56,20 @@ export async function maakLokaleBackend({ origin }) {
   db.exec('CREATE TABLE bf_gebruikers (id TEXT PRIMARY KEY, is_eigen INTEGER)');
   db.exec(`CREATE TABLE mna_trajecten (id TEXT PRIMARY KEY, kantoor_naam TEXT, contact_naam TEXT, contact_email TEXT, traject_type TEXT, sector TEXT,
     notitie TEXT, status TEXT, created_at INTEGER, updated_at INTEGER, koper_code TEXT, tussen_code TEXT, begeleider_naam TEXT, begeleider_email TEXT,
-    koper_naam TEXT, koper_contact TEXT, koper_email TEXT, opdrachtgever_rol TEXT, gebruiker_id TEXT, trajectfee_type TEXT, trajectfee_bedrag REAL, trajectfee_gepind_op INTEGER)`);
+    koper_naam TEXT, koper_contact TEXT, koper_email TEXT, opdrachtgever_rol TEXT, gebruiker_id TEXT, trajectfee_type TEXT, trajectfee_bedrag REAL, trajectfee_gepind_op INTEGER,
+    kantoor_rechtsvorm TEXT, verkoper_adres TEXT, verkoper_kvk TEXT)`);
+  db.exec(`CREATE TABLE mna_traject_start (traject_id TEXT PRIMARY KEY, traject_ref TEXT, pakket TEXT, organisatie_id TEXT, crm_opportunity_id TEXT,
+    start_bron TEXT, start_snapshot TEXT, fee_event_id TEXT, created_at INTEGER)`);
+  // Synthetische tarieven (geen echte prijzen): alleen zodat de bestaande GET …/promoveer een volledige quote geeft.
+  db.exec('CREATE TABLE platform_fees (fee_type TEXT PRIMARY KEY, bedrag REAL)');
+  db.exec("INSERT INTO platform_fees (fee_type, bedrag) VALUES ('pakket_workflow', 11), ('pakket_ai_toeslag', 22), ('pakket_documenten_toeslag', 33)");
+
+  // Synthetische adviseurssessies: token → gebruiker. Alleen in dit proces; nooit een echte sessie.
+  const sessies = new Map();
+  const gebruikerViaToken = async (request) => {
+    const t = request.headers.get('x-gebruiker-token') || '';
+    return (t && sessies.get(t)) || null;
+  };
 
   const cors = { 'Access-Control-Allow-Origin': origin };
   async function roep(method, href, headers, body) {
@@ -61,7 +79,7 @@ export async function maakLokaleBackend({ origin }) {
     const request = new Request(u.href, init);
     const resp = await handleKoopmandaat({
       request, env, ctx: {}, path: u.pathname, url: u, checkRateLimit: () => false, clientIP: '127.0.0.1',
-      gebruikerViaToken: async () => null, GV_VERSIE: 'gv-synth', standaardSectoren: ['mkb', 'accountancy'],
+      gebruikerViaToken, GV_VERSIE: 'gv-synth', standaardSectoren: ['mkb', 'accountancy'],
     }, () => ({ ...cors }));
     if (!resp) return null;
     return { status: resp.status, headers: Object.fromEntries(resp.headers), body: await resp.text() };
@@ -89,6 +107,31 @@ export async function maakLokaleBackend({ origin }) {
       const tj = t && JSON.parse(t.body);
       if (!t || t.status !== 200 || !tj.ok) throw new Error('N-115 E2E: target aanmaken mislukt: ' + (t && t.body));
       return { mandaatId: mj.id, begeleiderCode: mj.tussen_code, koperCode: mj.koper_code, targetId: tj.id };
+    },
+    // Alleen een (beheerders)mandaat, zonder target: de targets maakt de test via de echte UI aan.
+    async maakMandaat(mandaat) {
+      const m = await roep('POST', 'https://lokaal.invalid/mna/koopmandaat/create', { 'content-type': 'application/json', 'x-admin-key': env.ADMIN_KEY }, JSON.stringify(mandaat));
+      const mj = m && JSON.parse(m.body);
+      if (!m || m.status !== 200 || !mj.ok) throw new Error('E2E: mandaat aanmaken mislukt: ' + (m && m.body));
+      return { mandaatId: mj.id, begeleiderCode: mj.tussen_code, koperCode: mj.koper_code };
+    },
+    // Bestaande (legacy) target in een bestaand mandaat via de ongewijzigde route (body zonder targetflow).
+    async voegLegacyTargetToe(begeleiderCode, target) {
+      const t = await roep('POST', 'https://lokaal.invalid/mna/koopmandaat/' + begeleiderCode + '/target', { 'content-type': 'application/json', 'x-tussen-key': begeleiderCode }, JSON.stringify(target));
+      const tj = t && JSON.parse(t.body);
+      if (!t || t.status !== 200 || !tj.ok) throw new Error('E2E: legacy-target aanmaken mislukt: ' + (t && t.body));
+      return tj.id;
+    },
+    // Directe aanroep van de echte handler met expliciete headers (rolproeven buiten de browser).
+    async roepDirect(method, pad, headers, body) {
+      return roep(method, 'https://lokaal.invalid' + pad, { 'content-type': 'application/json', ...(headers || {}) }, body === undefined ? undefined : JSON.stringify(body));
+    },
+    // Synthetische sessie voor de bestaande promoveer-route (is_eigen = platformbeheerder, zoals bij een
+    // beheerdersmandaat vereist). Het token bestaat alleen in dit proces.
+    registreerSessie({ id = 'gebr_synth_' + randomBytes(4).toString('hex'), is_eigen = 1 } = {}) {
+      const token = 'synth-sessie-' + randomBytes(16).toString('hex');
+      sessies.set(token, { id, is_eigen });
+      return token;
     },
     alle: (sql, ...a) => db.prepare(sql).all(...a).map((r) => ({ ...r })),
     een: (sql, ...a) => { const r = db.prepare(sql).get(...a); return r ? { ...r } : null; },
