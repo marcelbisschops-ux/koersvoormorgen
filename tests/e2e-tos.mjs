@@ -225,7 +225,16 @@ async function run() {
   // nooit een pad-argument — anders zou een geldige eigen code met een ANDER traject-id in het pad
   // gecombineerd kunnen worden (11 sep 2026-fix, zie worker/31-tos.js effTid()).
   const lijstGarbagePad = await api('GET', '/mna/tos/documenten/EEN-ANDER-TRAJECT', { headers: KH });
-  check('pad-argument genegeerd voor koper: traject_id blijft het eigen traject', lijstGarbagePad.json && lijstGarbagePad.json.traject_id === trajectCode, JSON.stringify(lijstGarbagePad.json).slice(0, 160));
+  // N-120: de externe DTO bevat geen top-level traject_id meer (dat is de verkopercode) — de proef
+  // vergelijkt daarom de document-id-set met de eigen lijst van hierboven (lijstNaKoper).
+  check('pad-argument genegeerd voor koper: zelfde documenten als eigen traject, geen traject_id', (() => {
+    const g = lijstGarbagePad.json;
+    if (!g || g.ok !== true || 'traject_id' in g || !Array.isArray(g.documenten)) return false;
+    const ids = (l) => (l || []).map((d) => d.id).sort();
+    const gIds = ids(g.documenten);
+    const eigenIds = ids(lijstNaKoper.json && lijstNaKoper.json.documenten);
+    return gIds.includes(ndaId) && JSON.stringify(gIds) === JSON.stringify(eigenIds);
+  })(), JSON.stringify(lijstGarbagePad.json).slice(0, 160));
 
   // Leesinhoud: verkoper/koper krijgen de tekst, maar geen interne reviewer-naam/provenance (extern-strip).
   const ndaGetVerkoper = await api('GET', '/mna/tos/document/' + ndaId, { headers: VH });
