@@ -71,7 +71,18 @@ async function maakAdminTraject(kantoorNaam, extra) {
   // Platformvoorwaarden vóór elke andere gated /mna/*-aanroep die batches ná maakAdminTraject() doen
   // zonder zelf een ADMIN_KEY mee te sturen (bv. document/upload, tos/*) — anders 403
   // voorwaarden_niet_geaccepteerd (S1.2b-gate). Centraal hier, dekt elke batch die deze helper gebruikt.
-  await accepteerPlatformvoorwaarden({ verkoper: r.json.code, koper: r.json.koper_code, tussenpersoon: r.json.tussen_code });
+  // N-105: mislukt de acceptatie, dan heeft de aanroeper de code nog niet (dus geen finally-cleanup) —
+  // ruim daarom hier exact dit zojuist eigen aangemaakte traject op via de admin-delete, controleer
+  // dat resultaat en gooi daarna de oorspronkelijke fout opnieuw.
+  try {
+    await accepteerPlatformvoorwaarden({ verkoper: r.json.code, koper: r.json.koper_code, tussenpersoon: r.json.tussen_code });
+  } catch (e) {
+    if (r.json.code) {
+      const del = await api('POST', '/admin/delete/mna/' + r.json.code, { adminKey: ADMIN });
+      check('cleanup na mislukte voorwaarden-acceptatie: eigen traject ' + r.json.code + ' verwijderd', !!(del.json && del.json.ok), 'status ' + del.status + ' ' + JSON.stringify(del.json));
+    }
+    throw e;
+  }
   return r.json;
 }
 
@@ -96,7 +107,7 @@ async function batch3B() {
       kantoor_naam: 'PROD-SMOKE 3B Sellside BV', contact_naam: 'Verkoper', contact_email: 'v-3b-sell' + DOM,
       koper_naam: 'Koper BV', koper_email: 'k-3b-sell' + DOM, traject_type: 'Overname',
     };
-    let buyKoperCode, sellKoperCode;
+    let buyKoperCode, sellKoperCode, buyTussenCode, sellTussenCode;
     if (IS_STAGING_WORKER) {
       // Staging: de externe adviseursroute zelf (/adviseur/create) blijft hier bewezen.
       buy = await maakFictieveAdviseur('3B-buy');
@@ -106,11 +117,13 @@ async function batch3B() {
       if (!buyCreate.json || !buyCreate.json.ok) faal('buy-side traject aanmaken mislukt', buyCreate.json);
       buyCode = buyCreate.json.code;
       buyKoperCode = buyCreate.json.koper_code;
+      buyTussenCode = buyCreate.json.tussen_code;
 
       const sellCreate = await api('POST', '/adviseur/create', { body: { email: sell.email, wachtwoord: sell.wachtwoord, traject: sellVelden } });
       if (!sellCreate.json || !sellCreate.json.ok) faal('sell-side traject aanmaken mislukt', sellCreate.json);
       sellCode = sellCreate.json.code;
       sellKoperCode = sellCreate.json.koper_code;
+      sellTussenCode = sellCreate.json.tussen_code;
     } else {
       // Productie (N-105): eigen trajecten via /mna/create, opruimbaar via admin-delete. Bewijst de
       // opslag van opdrachtgever_rol en de koper-bod-grens, NIET de externe /adviseur/create-route.
@@ -132,8 +145,18 @@ async function batch3B() {
     check('D1: buy-side traject heeft opdrachtgever_rol=koper', buyRol === 'koper', 'was: ' + buyRol);
     check('D1: sell-side traject heeft opdrachtgever_rol=verkoper (default)', sellRol === 'verkoper', 'was: ' + sellRol);
 
-    await api('POST', '/mna/admin/vrijgeven/' + buyCode + '?force=1', { adminKey: ADMIN });
-    await api('POST', '/mna/admin/vrijgeven/' + sellCode + '?force=1', { adminKey: ADMIN });
+    // Staging: externe trajecten — ADMIN_KEY mag die na besluit D1 niet vrijgeven, dus als de eigen
+    // begeleider (x-tussen-key), zelfde patroon als tests/e2e-tos.mjs. Productie: eigen trajecten via
+    // admin. Vrijgave HARD controleren, anders faalt het buy-side-bod op ontbrekende dossiertoegang
+    // i.p.v. op de opdrachtgever_rol-grens (valse PASS).
+    const vrijgaveOpties = (tussenCode) => IS_STAGING_WORKER
+      ? { headers: { 'x-tussen-key': tussenCode || 'GEEN' } }
+      : { adminKey: ADMIN };
+    const vrijBuy = await api('POST', '/mna/admin/vrijgeven/' + buyCode + '?force=1', vrijgaveOpties(buyTussenCode));
+    check('buy-side traject: koper vrijgegeven (setup, anders bewijst de 403 hieronder niets)', vrijBuy.json && vrijBuy.json.ok === true, 'status ' + vrijBuy.status + ' ' + JSON.stringify(vrijBuy.json));
+    const vrijSell = await api('POST', '/mna/admin/vrijgeven/' + sellCode + '?force=1', vrijgaveOpties(sellTussenCode));
+    check('sell-side traject: koper vrijgegeven (setup)', vrijSell.json && vrijSell.json.ok === true, 'status ' + vrijSell.status + ' ' + JSON.stringify(vrijSell.json));
+    if (!(vrijBuy.json && vrijBuy.json.ok === true) || !(vrijSell.json && vrijSell.json.ok === true)) faal('koper-vrijgave mislukt — bod-checks zouden niets bewijzen');
 
     const bodBuy = await api('POST', '/mna/koper/bod', { body: { code: buyKoperCode, bedrag: 750000 } });
     check('koper-bod op buy-side traject → 403', bodBuy.status === 403, 'status ' + bodBuy.status);
@@ -662,7 +685,7 @@ async function batchPdfRenderer20sep() {
 // niet opnieuw de pixels. Zie sessieverslag 20 sep 2026 voor de daadwerkelijke visuele inspectie.
 async function batchPdfRendererTos20sep() {
   kop('PDF-RENDERER-TOS-20SEP · TOS-composer (MOU/LOI/NDA) + Signhost-foutafhandeling');
-  let gebruikerId, trajectCode, koperCode;
+  let gebruikerId, trajectCode, koperCode, legeCode;
   try {
     const trajectVelden = {
       kantoor_naam: 'PROD-SMOKE Coöperatieve TOS BV', contact_naam: 'Reële Tèster', contact_email: 'marcel@bisschopsfinancing.nl',
@@ -743,12 +766,17 @@ async function batchPdfRendererTos20sep() {
     // net zo minimaal als het productietraject dat de bug blootlegde.
     const legeCreate = await api('POST', '/mna/create', { adminKey: ADMIN, body: { kantoor_naam: 'PROD-SMOKE 0-Ontvangers BV', contact_email: '', koper_email: '', sector: 'accountancy' } });
     check('leeg-ontvangers-traject aangemaakt', legeCreate.json && legeCreate.json.ok === true, JSON.stringify(legeCreate.json));
-    const legeCode = legeCreate.json && legeCreate.json.code;
+    // Eigen variabele (functiescope) zodat de finally-tak dit traject ook bij een exception opruimt,
+    // los van het hoofdtraject (trajectCode).
+    legeCode = legeCreate.json && legeCreate.json.code;
     const legeTussen = legeCreate.json && legeCreate.json.tussen_code;
     if (legeCode && legeTussen) {
-      await accepteerPlatformvoorwaarden({ tussenpersoon: legeTussen });
+      // Alle drie de eigen rolcodes, zelfde patroon als tests/e2e-tos-review.mjs.
+      await accepteerPlatformvoorwaarden({ verkoper: legeCode, koper: legeCreate.json.koper_code, tussenpersoon: legeTussen });
       const LH = { 'x-tussen-key': legeTussen };
-      await api('POST', '/mna/tos/activeer/' + legeCode, { headers: LH });
+      const legeAct = await api('POST', '/mna/tos/activeer/' + legeCode, { headers: LH });
+      check('leeg-ontvangers: TOS geactiveerd (setup)', legeAct.json && legeAct.json.ok === true, 'status ' + legeAct.status + ' ' + JSON.stringify(legeAct.json));
+      if (!(legeAct.json && legeAct.json.ok === true)) faal('leeg-ontvangers: TOS-activatie mislukt', legeAct.json);
       const legeMk = await api('POST', '/mna/tos/document', { headers: LH, body: { profile: 'LOI' } });
       const legeDocId = legeMk.json && legeMk.json.document_id;
       check('leeg-ontvangers: LOI aangemaakt', !!legeDocId, JSON.stringify(legeMk.json).slice(0, 160));
@@ -771,7 +799,6 @@ async function batchPdfRendererTos20sep() {
         const legeVerstuur2 = await api('POST', '/mna/tos/document/' + legeDocId + '/verstuur', { headers: LH, body: { adressaten: ['verkoper'] } });
         check('na alsnog geldig e-mailadres: versturen slaagt alsnog (document was niet "vastgelopen")', legeVerstuur2.json && legeVerstuur2.json.ok === true && legeVerstuur2.json.status === 'verstuurd', JSON.stringify(legeVerstuur2.json).slice(0, 200));
       }
-      await ruimTrajectOp(legeCode);
     }
 
     kop('Signhost — ontbrekende configuratie faalt schoon, geen valse status');
@@ -802,6 +829,11 @@ async function batchPdfRendererTos20sep() {
       await ruimTrajectOp(trajectCode);
       const rest = d1("SELECT id FROM mna_trajecten WHERE id='" + trajectCode + "'");
       check('cleanup: traject weg', rest.length === 0, JSON.stringify(rest));
+    }
+    if (legeCode) {
+      await ruimTrajectOp(legeCode);
+      const legeRest = d1("SELECT id FROM mna_trajecten WHERE id='" + legeCode + "'");
+      check('cleanup: leeg-ontvangers-traject weg', legeRest.length === 0, JSON.stringify(legeRest));
     }
     if (gebruikerId) await ruimGebruikerOp(gebruikerId);
   }
