@@ -428,7 +428,7 @@ async function doorloopFlow({ browser, baseURL, omg }) {
       await expect(bPage.locator('#km-intro-modal')).toContainText('Versie 1');
       await expect(bPage.locator('#km-intro-huidig')).toHaveText(bevA.tekst);
       await expect(bPage.locator('#km-intro-verzending')).toContainText('Verzending vastgelegd op');
-      await expect(bPage.locator('#km-intro-modal')).toContainText('Teaser goedgekeurd op');
+      await expect(bPage.locator('#km-intro-modal')).toContainText('teaser goedgekeurd op');
       await bPage.click('#km-intro-sluit');
     });
 
