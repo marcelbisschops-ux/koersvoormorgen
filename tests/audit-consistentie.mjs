@@ -906,6 +906,24 @@ log('21. N-122/N-124 Marilyn: gekozen records verwijderen (tests/n122-marilyn-ve
   }
 }
 
+log('22. N-123/N-124 Marilyn: kantoor verwijderen (tests/n123-kantoor-ui.mjs)');
+{
+  // N-123/N-124 (4 okt 2026): de Kantoren-tab kreeg een losse verwijderactie voor het geopende kantoor
+  // via de bestaande backendroute POST /mna/admin/kantoren/{id}/verwijderen (logisch verwijderen,
+  // gekoppeld kantoor → 409). De test laadt het echte marilyn.html-script in node:vm met een minimale
+  // DOM-fixture en een nep-worker — echte login, klikken en handlers; geen netwerk, geen browser.
+  try {
+    const { draaiN123KantoorChecks } = await import('./n123-kantoor-ui.mjs');
+    const resultaten = await draaiN123KantoorChecks(ROOT);
+    const gefaald = resultaten.filter(r => !r.ok);
+    gefaald.forEach(r => warn('N-123: ' + r.msg));
+    if (!resultaten.length) warn('N-123: geen checks uitgevoerd.');
+    else if (!gefaald.length) ok('Alle ' + resultaten.length + ' N-123-checks geslaagd (alleen het geopende kantoor via de bestaande route met gecodeerd padsegment, annuleren verstuurt niets, dubbelklik één POST, herladen en detail sluiten alleen na serverbevestigd succes, 409 met opsomming en niets gewijzigd, 401/403/404/500/netwerk/onjuiste JSON/ok:false zonder vals succes of herhaling en knop hersteld, begrijpelijke laadfouten, geen actie zonder superadmin of sleutel, documentatie feitelijk).');
+  } catch (e) {
+    warn('tests/n123-kantoor-ui.mjs kon niet worden uitgevoerd: ' + String((e && e.message) || e));
+  }
+}
+
 // ── Samenvatting ──────────────────────────────────────────────────────────
 log('Samenvatting');
 if (!bevindingen) {

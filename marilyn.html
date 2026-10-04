@@ -4511,9 +4511,15 @@ async function renderKantorenTab(el) {
   el.innerHTML = '<div style="padding:1rem;color:var(--muted);font-size:13px">Laden...</div>';
   try {
     var r = await fetch(WORKER + '/mna/admin/kantoren', { headers: { 'x-admin-key': adminKey } });
-    var kantoren = await r.json();
+    var kantoren = await r.json().catch(function() { return null; });
+    // N-123/N-124: een geweigerde of mislukte lijst is geen lege lijst — gewone melding, geen technische details.
+    if (!r.ok || !Array.isArray(kantoren)) {
+      el.innerHTML = '<div style="color:var(--red);font-size:13px">' + ((r.status === 401 || r.status === 403) ? 'De kantoren konden niet worden geladen: geen toegang. Log opnieuw in met de beheerderssleutel.' : 'De kantoren konden niet worden geladen door een tijdelijke storing aan de serverkant. Probeer het later opnieuw via het tabblad Kantoren.') + '</div>';
+      return;
+    }
     var html = '<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.4rem">&#127970; Kantoren (' + kantoren.length + ')</div>'
-      + '<div style="font-size:12px;color:var(--muted);margin-bottom:1.25rem;max-width:640px;line-height:1.6">Elk kantoor is een groep gebruikers die dezelfde trajecten delen en dezelfde modules afneemt. Een nieuw, los uitgenodigd account krijgt automatisch een eigen kantoor van 1 — voeg een collega toe via een bestaand kantoor-ID bij het uitnodigen, of verplaats een bestaand account hieronder.</div>';
+      + '<div style="font-size:12px;color:var(--muted);margin-bottom:1.25rem;max-width:640px;line-height:1.6">Elk kantoor is een groep gebruikers die dezelfde trajecten delen en dezelfde modules afneemt. Een nieuw, los uitgenodigd account krijgt automatisch een eigen kantoor van 1 — voeg een collega toe via een bestaand kantoor-ID bij het uitnodigen, of verplaats een bestaand account hieronder.</div>'
+      + '<div class="kantoor-verwijder-uitleg" style="font-size:12px;color:var(--muted);margin-bottom:1.25rem;max-width:640px;line-height:1.6"><strong style="color:var(--sub)">Kantoor verwijderen:</strong> open het kantoor met Bekijken en kies <strong style="color:var(--sub)">Kantoor verwijderen</strong>. Alleen een leeg kantoor kan worden verwijderd: zonder leden (ook geen uitgenodigde of inactieve), CRM-organisaties, CRM-opportunities, CRM-activiteiten of koopmandaten. Is het kantoor nog gekoppeld, dan wordt er niets verwijderd en ziet u hoeveel er nog aan hangt; verplaats of rond dat eerst af. Er wordt niets gewist: het kantoor verdwijnt uit deze lijst, maar de kantoorgegevens, modules en prijsafspraken en de wijzigingshistorie blijven bewaard. Terugzetten kan niet vanuit Marilyn.</div>';
     if (!kantoren.length) {
       html += '<div style="color:var(--muted);font-size:13px;font-style:italic">Nog geen kantoren.</div>';
     } else {
@@ -4535,7 +4541,12 @@ async function renderKantorenTab(el) {
           + '<td style="padding:10px 12px"><button class="btn-ghost btn-kantoor-open" data-id="' + esc(k.id) + '" style="font-size:11px;padding:4px 10px">' + (kantorenOpenId===k.id?'Sluiten':'Bekijken') + '</button></td>'
           + '</tr>';
         if (kantorenOpenId === k.id) {
-          html += '<tr><td colspan="6" style="padding:0;border-bottom:1px solid var(--border)"><div id="kantoor-detail-' + esc(k.id) + '" style="padding:1rem 1.5rem;background:var(--card)">Laden...</div></td></tr>';
+          html += '<tr><td colspan="6" style="padding:0;border-bottom:1px solid var(--border)"><div id="kantoor-detail-' + esc(k.id) + '" style="padding:1rem 1.5rem;background:var(--card)">Laden...</div>'
+            + (isSuperAdmin && adminKey ? '<div style="padding:0 1.5rem 1rem;background:var(--card);display:flex;align-items:center;gap:12px;flex-wrap:wrap">'
+              + '<button class="btn-ghost btn-kantoor-verwijderen" data-id="' + esc(k.id) + '" style="font-size:11px;padding:5px 10px;color:var(--red);border-color:var(--red)">Kantoor verwijderen</button>'
+              + '<span style="font-size:11px;color:var(--muted)">Alleen een leeg kantoor; historie blijft bewaard, koppelingen worden niet verwijderd.</span>'
+              + '<div class="kantoor-verwijder-melding" role="status" style="flex-basis:100%;font-size:12px;color:var(--red);display:none"></div></div>' : '')
+            + '</td></tr>';
         }
       });
       html += '</tbody></table></div>';
@@ -4547,10 +4558,60 @@ async function renderKantorenTab(el) {
         renderKantorenTab(el);
       });
     });
+    el.querySelectorAll('.btn-kantoor-verwijderen').forEach(function(btn) {
+      var kantoor = kantoren.find(function(k) { return k.id === btn.dataset.id; });
+      btn.addEventListener('click', function() { verwijderKantoor(kantoor, btn, el); });
+    });
     if (kantorenOpenId) laadKantoorDetail(kantorenOpenId);
   } catch (e) {
-    el.innerHTML = '<div style="color:var(--red);font-size:13px">Fout bij laden: ' + esc(e.message) + '</div>';
+    el.innerHTML = '<div style="color:var(--red);font-size:13px">De kantoren konden niet worden geladen: geen verbinding met de server. Controleer de verbinding en probeer het opnieuw via het tabblad Kantoren.</div>';
   }
+}
+
+// N-123/N-124 (4 okt 2026): één geopend kantoor verwijderen via de bestaande, superadmin-afgeschermde
+// route POST /mna/admin/kantoren/{id}/verwijderen (backend: logisch verwijderen, alleen een leeg kantoor,
+// historie blijft). Precies één POST per bevestigde klik, geen automatische herhaling. Alleen bij HTTP-ok
+// met {ok:true, status:'verwijderd'} geldt het als gelukt: dan pas detail sluiten en de lijst herladen.
+// Bij elke fout blijft alles staan en is de knop weer bruikbaar. Meldingen zonder ID's of servertekst.
+var KANTOOR_KOPPEL_LABELS = [['leden','lid','leden'],['crm_organisaties','CRM-organisatie','CRM-organisaties'],['crm_opportunities','CRM-opportunity','CRM-opportunities'],['crm_activiteiten','CRM-activiteit','CRM-activiteiten'],['koopmandaten','koopmandaat','koopmandaten']];
+async function verwijderKantoor(kantoor, knop, el) {
+  if (!kantoor || !kantoor.id || !isSuperAdmin || !adminKey) return null;
+  if (knop.disabled) return null;
+  var naam = kantoor.naam ? '"' + kantoor.naam + '"' : 'zonder naam';
+  var vraag = 'Kantoor ' + naam + ' verwijderen?'
+    + '\n\nAlleen een leeg kantoor kan worden verwijderd: zonder leden, CRM-gegevens of koopmandaten. Is het kantoor nog gekoppeld, dan wordt er niets verwijderd en ziet u wat er nog aan hangt.'
+    + '\n\nKoppelingen en historie worden niet verwijderd: het kantoor verdwijnt uit de lijst, maar de kantoorgegevens, modules en prijsafspraken en de wijzigingshistorie blijven bewaard. Terugzetten kan niet vanuit Marilyn.';
+  if (!confirm(vraag)) return null;
+  var knopTekst = knop.textContent;
+  knop.disabled = true; knop.textContent = 'Verwijderen...';
+  var melding = knop.parentElement ? knop.parentElement.querySelector('.kantoor-verwijder-melding') : null;
+  if (melding) { melding.style.display = 'none'; melding.textContent = ''; }
+  var r = null, d = null, fout;
+  try {
+    r = await fetch(WORKER + '/mna/admin/kantoren/' + encodeURIComponent(kantoor.id) + '/verwijderen', { method: 'POST', headers: { 'x-admin-key': adminKey } });
+    d = await r.json().catch(function() { return null; });
+  } catch (e) { r = null; }
+  if (r && r.ok && d && d.ok === true && d.status === 'verwijderd') {
+    toast(d.al_verwijderd ? 'Kantoor ' + naam + ' was al verwijderd.' : 'Kantoor ' + naam + ' is verwijderd. De historie blijft bewaard.', 'ok');
+    kantorenOpenId = null;
+    await renderKantorenTab(el);
+    return { gelukt: true };
+  }
+  if (!r) fout = 'geen verbinding met de server. Het verwijderen is niet bevestigd; laad de lijst opnieuw om de actuele stand te zien.';
+  else if (r.status === 401 || r.status === 403) fout = 'geen toegang. Log opnieuw in met de beheerderssleutel.';
+  else if (r.status === 404) fout = 'het kantoor is niet meer gevonden. Laad de lijst opnieuw om de actuele stand te zien.';
+  else if (r.status === 409) {
+    var k = (d && d.koppelingen) || {};
+    var delen = KANTOOR_KOPPEL_LABELS.filter(function(l) { return Number(k[l[0]]) > 0; }).map(function(l) { var n = Math.floor(Number(k[l[0]])); return n + ' ' + (n === 1 ? l[1] : l[2]); });
+    fout = 'er ' + (delen.length ? 'hangt nog aan: ' + (delen.length > 1 ? delen.slice(0, -1).join(', ') + ' en ' + delen[delen.length - 1] : delen[0]) : 'is nog iets aan gekoppeld') + '. Verplaats of rond dat eerst af; alleen een leeg kantoor kan worden verwijderd. Er is niets gewijzigd.';
+  }
+  else if (r.status >= 500) fout = 'tijdelijke storing aan de serverkant. Er is niets gewijzigd; probeer het later opnieuw.';
+  else fout = 'de server heeft het verwijderen niet bevestigd. Laad de lijst opnieuw om de actuele stand te zien.';
+  var tekst = 'Kantoor ' + naam + ' is niet verwijderd: ' + fout;
+  if (melding) { melding.textContent = tekst; melding.style.display = 'block'; }
+  toast(tekst, 'err', 9000);
+  knop.disabled = false; knop.textContent = knopTekst;
+  return { gelukt: false };
 }
 
 async function laadKantoorDetail(kId) {

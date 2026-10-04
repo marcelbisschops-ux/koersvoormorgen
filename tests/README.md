@@ -145,10 +145,58 @@ Verwijder geen klantdata en verwijder niets op productie om dit te testen.
 **Bewust zonder groepsverwijdering (alleen losse verwijderknop):** Gebruikers,
 Sectoren, Benchmarks, Matching-zoekprofielen, Agenda-blokkades en, in de trajectdetails,
 documenten, versies en gesprekken. Het Postvak houdt zijn bestaande losse knop en
-"Alles"-actie, ongewijzigd. Pool, specialisten, templates en kantoren hebben in
-Marilyn geen verwijderactie. Groepsverwijdering voor gebruikers, pool, specialisten,
-templates en kantoren vraagt eerst een eigen beoordeling van de koppelingen en
-historie; die valt buiten deze wijziging.
+"Alles"-actie, ongewijzigd. Pool, specialisten en templates hebben in Marilyn geen
+verwijderactie. Kantoren hebben alleen de losse actie uit Deel E (één geopend kantoor
+tegelijk). Groepsverwijdering voor gebruikers, pool, specialisten, templates en
+kantoren is er niet.
+
+## Deel E — Marilyn: kantoor verwijderen (`tests/n123-kantoor-ui.mjs`, N-123/N-124)
+Lokale runtimetest met dezelfde opzet als Deel D: het echte script uit `marilyn.html`
+in `node:vm`, een minimale DOM-fixture en een nep-worker die het backendcontract volgt.
+Geen netwerk, geen browser, geen node_modules, alleen synthetische kantoren. Draait ook
+als check 22 van `tests/audit-consistentie.mjs`.
+
+```
+node tests/n123-kantoor-ui.mjs
+```
+
+Wat er in Marilyn veranderd is (tab **Kantoren**, alleen voor de beheerder met
+beheerderssleutel):
+- Open een kantoor met **Bekijken**; onder het detail staat de knop **Kantoor verwijderen**.
+  Die geldt alleen voor dat geopende kantoor. Boven de lijst staat een korte uitleg.
+- Eerst volgt een bevestiging met de kantoornaam (geen technisch ID). Annuleren verstuurt niets.
+- Na bevestigen gaat er precies één `POST /mna/admin/kantoren/{id}/verwijderen` met
+  `x-admin-key` en gecodeerd padsegment naar de bestaande backendroute. Er is geen bulkroute,
+  er wordt niet automatisch opnieuw geprobeerd en een dubbelklik geeft geen tweede verzoek.
+- Wat de backend doet: alleen een leeg kantoor wordt verwijderd, dus zonder leden (ook niet
+  uitgenodigd of inactief), CRM-organisaties, CRM-opportunities, CRM-activiteiten of
+  koopmandaten. Het verwijderen is logisch: het kantoor krijgt status `verwijderd` en
+  verdwijnt uit de lijst. De kantoorrij, modules en prijsafspraken en de wijzigingshistorie
+  blijven bewaard, en de verwijdering wordt zelf als wijziging vastgelegd. Er wordt niets
+  fysiek gewist en koppelingen worden niet verwijderd. Terugzetten kan niet vanuit Marilyn.
+- Een gekoppeld kantoor weigert de backend met HTTP 409. Er wordt dan niets verwijderd, en
+  Marilyn meldt per soort hoeveel er nog aan hangt (bijvoorbeeld "2 leden en 1
+  CRM-organisatie"). Verplaats of rond die eerst af.
+- Alleen als de server het verwijderen bevestigt (`ok:true`, status `verwijderd`), sluit
+  Marilyn het detail en laadt de lijst opnieuw. Bij geen toegang, niet gevonden, een gekoppeld
+  kantoor, een storing, een onleesbaar antwoord of geen verbinding blijft alles staan. Er komt
+  dan een gewone melding zonder statuscode of servertekst en de knop is weer bruikbaar.
+- Als de kantorenlijst zelf niet laadt (geen toegang, storing, onleesbaar antwoord of geen
+  verbinding), staat er een gewone melding in plaats van een lege lijst of technische fout.
+
+Wat de test controleert: alleen het geopende kantoor wordt verwijderd · annuleren verstuurt
+niets · exacte route met gecodeerd padsegment en sleutel · dubbelklik geeft één POST ·
+herladen en detail sluiten alleen na succes · 409 met opsomming, niets gewijzigd · 401/403/404/500,
+netwerkfout, onjuiste JSON en `ok:false` zonder vals succes en zonder herhaling, knop hersteld ·
+laadfouten van de lijst begrijpelijk · geen knop of actie zonder superadmin of sleutel · deze
+sectie en de uitleg in Marilyn beschrijven het feitelijke gedrag.
+
+**Acceptatie op staging (handmatig, alleen synthetische kantoren):** open
+`marilyn.html?worker=https://kantoorinzicht-staging.marcel-bisschops.workers.dev` en volg de
+acceptatiestappen uit het backenddocument `docs/beheer-kantoren.md`. Maak een synthetisch kantoor
+met één lid. Kantoor verwijderen geeft dan een melding met "1 lid" en het kantoor blijft staan.
+Verplaats het lid en verwijder opnieuw: het kantoor verdwijnt uit de lijst. Verwijder nooit
+klantkantoren en niets op productie om dit te testen.
 
 ## Afspraak
 Alle checks van `tests/audit-consistentie.mjs` groen vóór elke worker-deploy en vóór elke frontend-push.
