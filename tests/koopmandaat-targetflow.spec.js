@@ -141,6 +141,7 @@ function vul(sql, params) {
 function liveOmgeving() {
   const net = { staging: [], extern: [] };
   const staat = { gid: null, mandaatId: null, T: null, trajectId: null, targetIds: [] };
+  const regels = new WeakMap(); // Playwright-request → netwerkregel, voor de status uit het response-event
   const adviseur = { email: 'koopmandaat-tf-' + RUN + '-' + Date.now() + '@voorbeeld.test', wachtwoord: 'Synth-' + randomBytes(12).toString('base64url') + '!9' };
   registreer(adviseur.wachtwoord, 'wachtwoord');
   let ADMIN = '';
@@ -182,9 +183,12 @@ function liveOmgeving() {
       if (u.origin !== STAGING) { net.extern.push(u.origin + u.pathname); return route.abort(); }
       const regel = { rol, method: req.method(), pad: u.pathname, body: req.postData(), status: null };
       net.staging.push(regel);
-      const resp = await route.fetch();
-      regel.status = resp.status();
-      return route.fulfill({ response: resp });
+      // Live verzoeken gaan ongewijzigd door; de werkelijke status komt uit het response-event (koppel).
+      regels.set(req, regel);
+      return route.continue();
+    },
+    koppel(context) {
+      context.on('response', (resp) => { const regel = regels.get(resp.request()); if (regel) regel.status = resp.status(); });
     },
     async direct(method, pad, headers, body) { const r = await api(method, pad, { headers, body }); return { status: r.status, json: r.json }; },
     rijen: (sql, params = []) => d1(vul(sql, params)),
@@ -335,6 +339,7 @@ async function doorloopFlow({ browser, baseURL, omg }) {
   async function nieuwePagina(rol) {
     const context = await browser.newContext({ baseURL });
     contexten.push(context);
+    if (omg.koppel) omg.koppel(context);
     await context.route('**/*', (route) => omg.routeer(route, rol));
     const page = await context.newPage();
     koppelDialogen(page, rol);
@@ -733,7 +738,7 @@ async function doorloopFlow({ browser, baseURL, omg }) {
     waar(await bPage.evaluate((t) => localStorage.length === 0 && sessionStorage.length === 0 && !document.cookie.includes(t), bevA.token), 'begeleiderpagina bewaart niets in localStorage/sessionStorage/cookie');
   } catch (e) {
     // Primaire fout vóór het sluiten van de contexten gemaskeerd bewaren en tonen, zodat een latere
-    // afsluitfout (bv. route.fetch op een gesloten context) haar niet verdringt.
+    // afsluitfout (bv. een routecallback op een gesloten context) haar niet verdringt.
     primaireFout = e;
     if (e && typeof e === 'object') {
       try { if (typeof e.message === 'string') e.message = maskeer(e.message); } catch (x) { /* niet schrijfbaar */ }
@@ -782,7 +787,10 @@ async function doorloopReguliereTraject({ omg, nieuwePagina, kPage, advPage, tra
     await vPage.locator('input[type="file"][multiple]').setInputFiles({ name: DOCNAAM, mimeType: 'text/plain', buffer: Buffer.from('Synthetisch bewijsstuk ' + RUN + ' (geen echte gegevens).') });
     const upr = await up;
     const upj = await upr.json().catch(() => null);
-    waar(upr.ok() && upj && upj.ok === true && !!upj.doc_id && upj.alleen_bewijsstuk, 'verkoper: document aangeleverd als bewijsstuk (zonder AI-analyse)');
+    // Diagnostiek: alleen status, booleans en (indien aanwezig) de fouttekst; nooit de ruwe responsebody.
+    const upDiag = { status: upr.status(), ok: !!(upj && upj.ok === true), doc_id: !!(upj && upj.doc_id), alleen_bewijsstuk: !!(upj && upj.alleen_bewijsstuk) };
+    if (upj && typeof upj.error === 'string' && upj.error) upDiag.error = upj.error.slice(0, 200);
+    waar(upr.ok() && upj && upj.ok === true && !!upj.doc_id && upj.alleen_bewijsstuk, 'verkoper: document aangeleverd als bewijsstuk (zonder AI-analyse) · diagnostiek ' + JSON.stringify(upDiag));
     await naarFase(vPage, 'commercieel');
     const veldC = vPage.locator('input[id^="df_"]:not([type]):visible, input[id^="df_"][type="text"]:visible, textarea[id^="df_"]:visible').first();
     await expect(veldC).toBeVisible({ timeout: 15000 });
