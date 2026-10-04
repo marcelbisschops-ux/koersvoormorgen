@@ -888,6 +888,24 @@ log('20. P2-28 expliciete labels mna/04 (tests/p228-labels.mjs): Status per targ
   }
 }
 
+log('21. N-122/N-124 Marilyn: gekozen records verwijderen (tests/n122-marilyn-verwijderen.mjs)');
+{
+  // N-122/N-124 (4 okt 2026): leads, proefaanvragen en koopmandaten kregen een groepsselectie; de
+  // bestaande groepsacties (scans, terugbelverzoeken, trajecten, documenten, scan-rapporten) melden
+  // mislukte verwijderingen. De test laadt het echte marilyn.html-script in node:vm met een minimale
+  // DOM-fixture en een nep-worker — echte login, klikken en handlers; geen netwerk, geen browser.
+  try {
+    const { draaiN122VerwijderChecks } = await import('./n122-marilyn-verwijderen.mjs');
+    const resultaten = await draaiN122VerwijderChecks(ROOT);
+    const gefaald = resultaten.filter(r => !r.ok);
+    gefaald.forEach(r => warn('N-122: ' + r.msg));
+    if (!resultaten.length) warn('N-122: geen checks uitgevoerd.');
+    else if (!gefaald.length) ok('Alle ' + resultaten.length + ' N-122-checks geslaagd (annuleren verstuurt niets, alleen aangevinkte records via de bestaande individuele routes met gecodeerd padsegment, niet-gekozen records blijven, 403/404/500/netwerkfout gemeld zonder technische details en zonder herhaling, dubbelklik geeft geen dubbele verwijdering, knop hersteld na fout, verversen, vergrendelde/afgeschermde records en niet-superadmin uitgesloten, uitleg over behouden proefaccount en koopmandaat-targets).');
+  } catch (e) {
+    warn('tests/n122-marilyn-verwijderen.mjs kon niet worden uitgevoerd: ' + String((e && e.message) || e));
+  }
+}
+
 // ── Samenvatting ──────────────────────────────────────────────────────────
 log('Samenvatting');
 if (!bevindingen) {

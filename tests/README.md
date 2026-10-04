@@ -82,8 +82,76 @@ Vereist dat `backend/cloudflare-worker.js` gesynct is vanuit `~/Downloads/cloudf
 en 5 zijn heuristisch (regelvenster-gebaseerd, geen echte parser) — een melding
 betekent "controleer dit handmatig", niet automatisch "dit is stuk".
 
+## Deel D — Marilyn: gekozen records verwijderen (`tests/n122-marilyn-verwijderen.mjs`, N-122/N-124)
+Lokale runtimetest, geen netwerk, geen browser, geen node_modules. Laadt het echte
+script uit `marilyn.html` in `node:vm` met een minimale DOM-fixture en een nep-worker,
+logt in via de echte `doLogin()` en klikt tabbladen, vinkjes en knoppen. Alle data
+is synthetisch. Draait ook als check 21 van `tests/audit-consistentie.mjs`.
+
+```
+node tests/n122-marilyn-verwijderen.mjs
+```
+
+Wat er in Marilyn veranderd is:
+- **Leads**, **Proefaanvragen** en **Koopmandaten** (onder M&A Trajecten) hebben nu
+  selectievakjes, een kopvakje dat alle records in die lijst aanvinkt en een knop
+  **Verwijder geselecteerde (n)**. Onder elke lijst staat een korte instructie.
+- De bestaande groepsacties (scans, terugbelverzoeken, trajecten, documenten,
+  scan-rapporten) melden nu hoeveel records wél en níet verwijderd zijn, met een
+  reden in gewone taal (geen toegang, niet meer gevonden, geen verbinding,
+  storing). Eerder werden mislukte verwijderingen bij scans, terugbelverzoeken,
+  trajecten en scan-rapporten stil overgeslagen.
+- Groepsactie en losse prullenbak van leads, proefaanvragen en koopmandaten gebruiken
+  dezelfde helper (`verwijderGekozen()` in `marilyn.html`): eerst een bevestiging met
+  aantal en namen, daarna per record één POST naar de bestaande individuele route
+  (`/admin/delete/lead/{id}`, `/adviseur/proef/aanvraag/{id}/verwijderen`,
+  `/mna/admin/koopmandaat/verwijderen/{tussen_code}`), met gecodeerd padsegment.
+  Er is geen bulk-endpoint, en een mislukte verwijdering wordt niet automatisch
+  opnieuw geprobeerd. Daarna wordt de lijst altijd ververst en is de knop weer bruikbaar.
+- Een proefaanvraag verwijderen haalt alleen de aanvraag weg. Een al aangemaakt
+  proefaccount blijft bestaan en verwijdert u apart via Gebruikers. De bevestiging
+  legt dit uit, zonder technische gebruikers-ID.
+- Een koopmandaat verwijderen verwijdert ook de bijbehorende targets (dat deed de
+  bestaande route al). Trajecten die al vanuit het koopmandaat zijn gestart blijven
+  bestaan; alleen de verwijzing verdwijnt. De bevestiging noemt dit.
+- Uitgesloten van selectie: vergrendelde trajecten en documenten (vakje
+  uitgeschakeld), afgeschermde trajecten en koopmandaten van externe adviseurs
+  (slotje, geen vakje en geen verwijderknop). De backendmuur is ongewijzigd.
+  Bij documenten en scan-rapporten vinkt het kopvakje alleen de zichtbare rijen
+  aan, en wat door de zoekterm verdwijnt gaat uit de selectie.
+
+Wat de test controleert: annuleren verstuurt niets · 2 aangevinkte records worden
+verwijderd en het niet-aangevinkte record blijft · HTTP 403/404/500 en netwerkfout
+worden gemeld zonder statuscode of serverfouttekst · een gedeeltelijk mislukte actie
+wordt als gedeeltelijk gemeld · geen automatische herhaling · dubbelklik geeft geen
+dubbele POST · knop hersteld na fout (ook als verversen mislukt) · lijst ververst ·
+vergrendelde/afgeschermde records en een sessie zonder superadmin of beheerderssleutel
+uitgesloten · uitleg over behouden proefaccount en koopmandaat-targets.
+
+**Acceptatie op staging (handmatig, alleen synthetische testrecords):**
+open `marilyn.html?worker=https://kantoorinzicht-staging.marcel-bisschops.workers.dev`,
+log in en maak per lijst minstens drie eigen testrecords aan. Controleer per lijst
+(Leads, Proefaanvragen, Koopmandaten):
+1. Vink twee records aan; de knop toont "Verwijder geselecteerde (2)".
+2. Klik en kies **Annuleren**: er verdwijnt niets.
+3. Klik opnieuw en bevestig: de bevestiging noemt beide namen (bij een proefaanvraag
+   met account: dat het proefaccount blijft bestaan; bij koopmandaten: dat de targets
+   ook verdwijnen en gestarte trajecten blijven). Na afloop staan de twee records er
+   niet meer, het derde wel, en er verschijnt een gewone succesmelding.
+4. Bij een proefaanvraag met account: het account staat nog onder Gebruikers.
+5. Bij een koopmandaat waaruit een traject is gestart: dat traject staat er nog.
+Verwijder geen klantdata en verwijder niets op productie om dit te testen.
+
+**Bewust zonder groepsverwijdering (alleen losse verwijderknop):** Gebruikers,
+Sectoren, Benchmarks, Matching-zoekprofielen, Agenda-blokkades en, in de trajectdetails,
+documenten, versies en gesprekken. Het Postvak houdt zijn bestaande losse knop en
+"Alles"-actie, ongewijzigd. Pool, specialisten, templates en kantoren hebben in
+Marilyn geen verwijderactie. Groepsverwijdering voor gebruikers, pool, specialisten,
+templates en kantoren vraagt eerst een eigen beoordeling van de koppelingen en
+historie; die valt buiten deze wijziging.
+
 ## Afspraak
-Alle vijf checks groen vóór elke worker-deploy en vóór elke frontend-push.
+Alle checks van `tests/audit-consistentie.mjs` groen vóór elke worker-deploy en vóór elke frontend-push.
 Draait ook **wekelijks automatisch** (geplande taak, zie hieronder) — bij
 bevindingen worden kleine/duidelijke fixes zelfstandig doorgevoerd en gemeld;
 bij twijfel of impact wordt eerst gewacht op Marcels akkoord in de eerstvolgende sessie.

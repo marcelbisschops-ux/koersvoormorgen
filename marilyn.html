@@ -1003,7 +1003,7 @@ function renderScansTab(el){
   if(cbAllS)cbAllS.addEventListener('change',function(){el.querySelectorAll('.scan-cb').forEach(function(cb){cb.checked=cbAllS.checked;});updSelScans();});
   el.querySelectorAll('.scan-cb').forEach(function(cb){cb.addEventListener('change',updSelScans);});
   var btnDelS=document.getElementById('btn-del-sel-scans');
-  if(btnDelS)btnDelS.addEventListener('click',async function(){var ids=Array.from(el.querySelectorAll('.scan-cb:checked')).map(function(cb){return cb.dataset.id;});if(!ids.length)return;if(!confirm('Verwijder '+ids.length+' scan(s)?'))return;btnDelS.disabled=true;btnDelS.textContent='Verwijderen...';for(var i=0;i<ids.length;i++){try{await fetch(WORKER+'/admin/delete/scan/'+ids[i],{headers:{'x-admin-key':adminKey},method:'POST'});}catch(e){}}await refreshData();});
+  if(btnDelS)btnDelS.addEventListener('click',function(){verwijderGekozen({ids:Array.from(el.querySelectorAll('.scan-cb:checked')).map(function(cb){return cb.dataset.id;}),pad:function(id){return '/admin/delete/scan/'+encodeURIComponent(id);},een:'scan',meer:'scans',knop:btnDelS,ververs:refreshData});});
 }
 
 // CALLBACKS TAB
@@ -1042,21 +1042,22 @@ function renderCallbacksTab(el){
   if(cbAllC)cbAllC.addEventListener('change',function(){el.querySelectorAll('.cb-cb').forEach(function(cb){cb.checked=cbAllC.checked;});updSelCb();});
   el.querySelectorAll('.cb-cb').forEach(function(cb){cb.addEventListener('change',updSelCb);});
   var btnDelC=document.getElementById('btn-del-sel-cb');
-  if(btnDelC)btnDelC.addEventListener('click',async function(){var ids=Array.from(el.querySelectorAll('.cb-cb:checked')).map(function(cb){return cb.dataset.id;});if(!ids.length)return;if(!confirm('Verwijder '+ids.length+' terugbelverzoek(en)?'))return;btnDelC.disabled=true;btnDelC.textContent='Verwijderen...';for(var i=0;i<ids.length;i++){try{await fetch(WORKER+'/admin/delete/callback/'+ids[i],{headers:{'x-admin-key':adminKey},method:'POST'});}catch(e){}}await refreshData();});
+  if(btnDelC)btnDelC.addEventListener('click',function(){verwijderGekozen({ids:Array.from(el.querySelectorAll('.cb-cb:checked')).map(function(cb){return cb.dataset.id;}),pad:function(id){return '/admin/delete/callback/'+encodeURIComponent(id);},een:'terugbelverzoek',meer:'terugbelverzoeken',knop:btnDelC,ververs:refreshData});});
 }
 
 // LEADS TAB
 function renderLeadsTab(el){
   var html='<div class="table-wrap"><div class="table-hdr"><div class="table-title">Leads</div>'
-    +'<div style="display:flex;gap:8px;align-items:center"><button class="btn" style="font-size:12px;padding:7px 14px" id="btn-ref-ld">&#8635; Verversen</button></div></div>';
+    +'<div style="display:flex;gap:8px;align-items:center"><button class="btn-red" id="btn-del-sel-ld" style="font-size:12px;padding:7px 14px;display:none">&#10005; Verwijder geselecteerde (<span id="sel-cnt-ld">0</span>)</button><button class="btn" style="font-size:12px;padding:7px 14px" id="btn-ref-ld">&#8635; Verversen</button></div></div>';
   if(!leads.length){
     html+='<div class="empty">Nog geen leads aangedragen.</div>';
   } else {
-    html+='<table><thead><tr><th>Datum</th><th>Type</th><th>Kantoor / organisatie</th><th>Aanvrager</th><th>Contact</th><th>Toelichting</th><th>Status</th><th>Acties</th></tr></thead><tbody>';
+    html+='<table><thead><tr><th style="width:32px"><input type="checkbox" id="cb-all-ld" title="Alle leads in deze lijst aanvinken"></th><th>Datum</th><th>Type</th><th>Kantoor / organisatie</th><th>Aanvrager</th><th>Contact</th><th>Toelichting</th><th>Status</th><th>Acties</th></tr></thead><tbody>';
     leads.forEach(function(l){
       var omgezet=l.status==='omgezet';
       var isTt=l.bron==='testtraject';
       html+='<tr>'
+        +'<td><input type="checkbox" class="ld-cb" data-id="'+esc(l.id)+'" data-naam="'+esc(l.kantoor_naam||l.naam||'Lead zonder naam')+'" data-omgezet="'+(omgezet?'1':'')+'" style="cursor:pointer"></td>'
         +'<td class="mono" style="font-size:11px;white-space:nowrap">'+formatDate(l.created_at)+'</td>'
         +'<td><span class="tag" style="font-size:10px'+(isTt?';background:var(--gold-bg);color:var(--gold);border-color:var(--gold)':'')+'">'+(isTt?'Testtraject':'Overname')+'</span></td>'
         +'<td style="font-weight:500;color:var(--head)">'+esc(l.kantoor_naam||'—')+(l.kvk?'<div class="mono" style="color:var(--muted);font-size:10px">KvK '+esc(l.kvk)+'</div>':'')+'</td>'
@@ -1064,24 +1065,32 @@ function renderLeadsTab(el){
         +'<td style="font-size:12px"><a href="mailto:'+esc(l.email)+'" style="color:var(--teal);text-decoration:none">'+esc(l.email||'—')+'</a>'+(l.telefoon?'<div><a href="tel:'+esc(l.telefoon)+'" style="color:var(--teal);text-decoration:none;font-size:11px">'+esc(l.telefoon)+'</a></div>':'')+'</td>'
         +'<td style="font-size:12px;max-width:260px">'+esc(l.toelichting||'—')+'</td>'
         +'<td>'+(omgezet?'<span class="tag" style="background:var(--teal-bg);color:var(--teal-dim);border-color:var(--teal)">&#10003; Omgezet</span><div style="margin-top:3px"><span class="code-chip" style="font-size:10px">'+esc(l.traject_id||'')+'</span></div>':'<span class="tag">Nieuw</span>')+'</td>'
-        +'<td style="white-space:nowrap">'+(omgezet?'':'<button class="btn-lead-omzetten" data-id="'+esc(l.id)+'" style="font-size:10px;padding:4px 8px;margin-right:4px">&#8594; Traject</button>')+'<button class="btn-del-lead btn-red" data-id="'+esc(l.id)+'" style="font-size:10px;padding:2px 6px">&#10005;</button></td>'
+        +'<td style="white-space:nowrap">'+(omgezet?'':'<button class="btn-lead-omzetten" data-id="'+esc(l.id)+'" style="font-size:10px;padding:4px 8px;margin-right:4px">&#8594; Traject</button>')+'<button class="btn-del-lead btn-red" data-id="'+esc(l.id)+'" data-naam="'+esc(l.kantoor_naam||l.naam||'Lead zonder naam')+'" data-omgezet="'+(omgezet?'1':'')+'" style="font-size:10px;padding:2px 6px" title="Lead verwijderen">&#10005;</button></td>'
         +'</tr>';
     });
     html+='</tbody></table>';
+    html+='<div style="padding:10px 14px;color:var(--muted);font-size:11px;border-top:1px solid var(--border)">Meerdere leads tegelijk verwijderen: vink ze aan en kies <strong>Verwijder geselecteerde</strong>. Het vakje in de kop vinkt alle leads in deze lijst aan. Alleen aangevinkte leads worden verwijderd; een traject dat al vanuit een lead is gestart blijft bestaan.</div>';
   }
   html+='</div>';
   el.innerHTML=html;
   var rbl=document.getElementById('btn-ref-ld');
   if(rbl)rbl.addEventListener('click',refreshData);
+  // N-122: losse prullenbak en groepsactie via dezelfde helper en dezelfde bestaande route.
+  function verwijderLeads(cbs,knop){
+    var omgezet=cbs.filter(function(cb){return cb.dataset.omgezet==='1';}).length;
+    verwijderGekozen({ids:cbs.map(function(cb){return cb.dataset.id;}),namen:cbs.map(function(cb){return cb.dataset.naam;}),
+      pad:function(id){return '/admin/delete/lead/'+encodeURIComponent(id);},een:'lead',meer:'leads',knop:knop,ververs:refreshData,
+      extra:omgezet?'Een traject dat al vanuit een lead is gestart, blijft bestaan.':''});
+  }
   el.querySelectorAll('.btn-del-lead').forEach(function(b){
-    b.addEventListener('click',async function(){
-      if(!confirm('Lead verwijderen?'))return;
-      var r=await fetch(WORKER+'/admin/delete/lead/'+b.dataset.id,{method:'POST',headers:{'x-admin-key':adminKey}});
-      var d=await r.json();
-      if(d.ok){leads=leads.filter(function(l){return String(l.id)!==String(b.dataset.id);});renderDashboard();}
-      else toast('Fout: '+(d.error||'onbekend'),'err');
-    });
+    b.addEventListener('click',function(){verwijderLeads([b],b);});
   });
+  function updSelLd(){var n=el.querySelectorAll('.ld-cb:checked').length;var btn=document.getElementById('btn-del-sel-ld');var cnt=document.getElementById('sel-cnt-ld');if(btn)btn.style.display=n>0?'inline-block':'none';if(cnt)cnt.textContent=n;}
+  var cbAllL=document.getElementById('cb-all-ld');
+  if(cbAllL)cbAllL.addEventListener('change',function(){el.querySelectorAll('.ld-cb:not(:disabled)').forEach(function(cb){cb.checked=cbAllL.checked;});updSelLd();});
+  el.querySelectorAll('.ld-cb').forEach(function(cb){cb.addEventListener('change',updSelLd);});
+  var btnDelL=document.getElementById('btn-del-sel-ld');
+  if(btnDelL)btnDelL.addEventListener('click',function(){verwijderLeads(Array.from(el.querySelectorAll('.ld-cb:checked')),btnDelL);});
   el.querySelectorAll('.btn-lead-omzetten').forEach(function(b){
     b.addEventListener('click',function(){
       var lead=leads.find(function(l){return String(l.id)===String(b.dataset.id);});
@@ -1093,11 +1102,11 @@ function renderLeadsTab(el){
 // PROEFAANVRAGEN TAB — adviseurs die een proefaccount aanvragen
 function renderProefTab(el){
   var html='<div class="table-wrap"><div class="table-hdr"><div class="table-title">Proefaanvragen adviseurs</div>'
-    +'<div style="display:flex;gap:8px;align-items:center"><button class="btn" style="font-size:12px;padding:7px 14px" id="btn-ref-pf">&#8635; Verversen</button></div></div>';
+    +'<div style="display:flex;gap:8px;align-items:center"><button class="btn-red" id="btn-del-sel-pf" style="font-size:12px;padding:7px 14px;display:none">&#10005; Verwijder geselecteerde (<span id="sel-cnt-pf">0</span>)</button><button class="btn" style="font-size:12px;padding:7px 14px" id="btn-ref-pf">&#8635; Verversen</button></div></div>';
   if(!proefAanvragen.length){
     html+='<div class="empty">Nog geen proefaanvragen.</div>';
   } else {
-    html+='<table><thead><tr><th>Datum</th><th>Kantoor / KvK</th><th>Aanvrager</th><th>Contact</th><th>Motivatie</th><th>Status</th><th>Acties</th></tr></thead><tbody>';
+    html+='<table><thead><tr><th style="width:32px"><input type="checkbox" id="cb-all-pf" title="Alle proefaanvragen in deze lijst aanvinken"></th><th>Datum</th><th>Kantoor / KvK</th><th>Aanvrager</th><th>Contact</th><th>Motivatie</th><th>Status</th><th>Acties</th></tr></thead><tbody>';
     proefAanvragen.forEach(function(p){
       var open=p.status==='open';
       var goedgekeurd=p.status==='goedgekeurd';
@@ -1115,8 +1124,10 @@ function renderProefTab(el){
       } else {
         acties='';
       }
-      acties+='<button class="btn-red pf-verwijderen" data-id="'+esc(p.id)+'" data-email="'+esc(p.email||'')+'" data-gid="'+esc(p.gebruiker_id||'')+'" style="font-size:10px;padding:4px 8px;margin-left:4px" title="Definitief verwijderen">&#128465; Verwijderen</button>';
+      var pfNaam=(p.organisatie||p.naam||'Aanvraag zonder naam')+(p.email?' ('+p.email+')':'');
+      acties+='<button class="btn-red pf-verwijderen" data-id="'+esc(p.id)+'" data-naam="'+esc(pfNaam)+'" data-account="'+(p.gebruiker_id?'1':'')+'" style="font-size:10px;padding:4px 8px;margin-left:4px" title="Definitief verwijderen">&#128465; Verwijderen</button>';
       html+='<tr>'
+        +'<td><input type="checkbox" class="pf-cb" data-id="'+esc(p.id)+'" data-naam="'+esc(pfNaam)+'" data-account="'+(p.gebruiker_id?'1':'')+'" style="cursor:pointer"></td>'
         +'<td class="mono" style="font-size:11px;white-space:nowrap">'+formatDate(p.created_at)+'</td>'
         +'<td style="font-weight:500;color:var(--head)">'+esc(p.organisatie||'—')+(p.kvk?'<div class="mono" style="color:var(--muted);font-size:10px">KvK '+esc(p.kvk)+'</div>':'')+'</td>'
         +'<td style="font-size:12px">'+esc(p.naam||'—')+'</td>'
@@ -1128,7 +1139,7 @@ function renderProefTab(el){
     });
     html+='</tbody></table>';
   }
-  html+='<div style="padding:10px 14px;color:var(--muted);font-size:11px;border-top:1px solid var(--border)">Goedkeuren maakt automatisch een proefaccount aan (1 traject, dossier + AI-analyse + Q&amp;A, contracten/export uit) en stuurt de activatiemail. De proef verloopt na het aantal ingestelde dagen.</div>';
+  html+='<div style="padding:10px 14px;color:var(--muted);font-size:11px;border-top:1px solid var(--border)">Goedkeuren maakt automatisch een proefaccount aan (1 traject, dossier + AI-analyse + Q&amp;A, contracten/export uit) en stuurt de activatiemail. De proef verloopt na het aantal ingestelde dagen.<br>Meerdere aanvragen tegelijk verwijderen: vink ze aan en kies <strong>Verwijder geselecteerde</strong>; het vakje in de kop vinkt alle aanvragen in deze lijst aan. Verwijderen haalt alleen de aanvraag weg. Een proefaccount dat al is aangemaakt blijft bestaan; dat verwijdert u zo nodig apart via Gebruikers.</div>';
   html+='</div>';
   el.innerHTML=html;
   var rpf=document.getElementById('btn-ref-pf');
@@ -1164,20 +1175,23 @@ function renderProefTab(el){
       }catch(e){toast('Netwerkfout bij afwijzen.','err');b.disabled=false;}
     });
   });
+  // N-122: losse knop en groepsactie via dezelfde helper en dezelfde bestaande route. De route
+  // verwijdert alleen de aanvraag; een al aangemaakt proefaccount blijft bewust bestaan.
+  function verwijderProef(cbs,knop){
+    var metAccount=cbs.filter(function(cb){return cb.dataset.account==='1';}).length;
+    verwijderGekozen({ids:cbs.map(function(cb){return cb.dataset.id;}),namen:cbs.map(function(cb){return cb.dataset.naam;}),
+      pad:function(id){return '/adviseur/proef/aanvraag/'+encodeURIComponent(id)+'/verwijderen';},een:'proefaanvraag',meer:'proefaanvragen',knop:knop,ververs:refreshData,
+      extra:metAccount?(cbs.length===1?'Voor deze aanvraag is al een proefaccount aangemaakt.':'Voor '+metAccount+' van deze aanvragen is al een proefaccount aangemaakt.')+' Alleen de aanvraag wordt verwijderd; het proefaccount blijft bestaan. Verwijder dat zo nodig apart via Gebruikers.':''});
+  }
   el.querySelectorAll('.pf-verwijderen').forEach(function(b){
-    b.addEventListener('click',async function(){
-      var em=b.dataset.email?(' ('+b.dataset.email+')'):'';
-      var extra=b.dataset.gid?('\n\nLet op: het gekoppelde proefaccount '+b.dataset.gid+' blijft bestaan — verwijder dat zo nodig apart via Gebruikers.'):'';
-      if(!confirm('Proefaanvraag'+em+' definitief verwijderen? Dit kan niet ongedaan worden gemaakt.'+extra))return;
-      b.disabled=true;b.textContent='Bezig...';
-      try{
-        var r=await fetch(WORKER+'/adviseur/proef/aanvraag/'+encodeURIComponent(b.dataset.id)+'/verwijderen',{method:'POST',headers:{'x-admin-key':adminKey}});
-        var d=await r.json();
-        if(r.ok&&d.ok){toast('Proefaanvraag verwijderd.','ok');await refreshData();}
-        else{toast('Fout: '+(d.error||'onbekend'),'err');b.disabled=false;b.textContent='Verwijderen';}
-      }catch(e){toast('Netwerkfout bij verwijderen.','err');b.disabled=false;b.textContent='Verwijderen';}
-    });
+    b.addEventListener('click',function(){verwijderProef([b],b);});
   });
+  function updSelPf(){var n=el.querySelectorAll('.pf-cb:checked').length;var btn=document.getElementById('btn-del-sel-pf');var cnt=document.getElementById('sel-cnt-pf');if(btn)btn.style.display=n>0?'inline-block':'none';if(cnt)cnt.textContent=n;}
+  var cbAllP=document.getElementById('cb-all-pf');
+  if(cbAllP)cbAllP.addEventListener('change',function(){el.querySelectorAll('.pf-cb:not(:disabled)').forEach(function(cb){cb.checked=cbAllP.checked;});updSelPf();});
+  el.querySelectorAll('.pf-cb').forEach(function(cb){cb.addEventListener('change',updSelPf);});
+  var btnDelP=document.getElementById('btn-del-sel-pf');
+  if(btnDelP)btnDelP.addEventListener('click',function(){verwijderProef(Array.from(el.querySelectorAll('.pf-cb:checked')),btnDelP);});
   el.querySelectorAll('.pf-omzetten').forEach(function(b){
     b.addEventListener('click',async function(){
       if(!confirm('Dit proefaccount omzetten naar een gewoon account? De proef-vlag gaat eraf; stel daarna de trajectlimiet en modules in via € Tarieven.'))return;
@@ -1292,13 +1306,11 @@ function renderMnaTab(el){
   if(cbAllM)cbAllM.addEventListener('change',function(){el.querySelectorAll('.mna-cb:not(:disabled)').forEach(function(cb){cb.checked=cbAllM.checked;});updSelMna();});
   el.querySelectorAll('.mna-cb').forEach(function(cb){cb.addEventListener('change',updSelMna);});
   var btnDelM=document.getElementById('btn-del-sel-mna');
-  if(btnDelM)btnDelM.addEventListener('click',async function(){
-    var ids=Array.from(el.querySelectorAll('.mna-cb:checked')).map(function(cb){return cb.dataset.id;}).filter(Boolean);
-    if(!ids.length)return;
-    if(!confirm('Verwijder '+ids.length+' traject(en) inclusief alle data en documenten?'))return;
-    btnDelM.disabled=true;btnDelM.textContent='Verwijderen...';
-    for(var i=0;i<ids.length;i++){try{var rd=await fetch(WORKER+'/admin/delete/mna/'+ids[i],{headers:{'x-admin-key':adminKey},method:'POST'});var dd=await rd.json();if(dd.ok)mnaList=mnaList.filter(function(t){return t.id!==ids[i];});}catch(e){}}
-    renderDashboard();
+  if(btnDelM)btnDelM.addEventListener('click',function(){
+    // Vergrendelde trajecten hebben een uitgeschakeld vakje, afgeschermde externe trajecten geen vakje.
+    var cbs=Array.from(el.querySelectorAll('.mna-cb:checked')).filter(function(cb){return !cb.disabled;});
+    verwijderGekozen({ids:cbs.map(function(cb){return cb.dataset.id;}),pad:function(id){return '/admin/delete/mna/'+encodeURIComponent(id);},
+      een:'traject',meer:'trajecten',extra:'Per traject worden ook alle bijbehorende data en documenten verwijderd.',knop:btnDelM,ververs:refreshData});
   });
 }
 
@@ -1308,6 +1320,7 @@ function renderMnaTab(el){
 function kmSectionHtml(){
   var html='<div class="table-wrap" style="margin-top:1.5rem"><div class="table-hdr"><div class="table-title">Koopmandaten (buy-side) '+(kmLoaded?'('+kmList.length+')':'')+'</div>'
     +'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
+    +'<button class="btn-red" id="btn-del-sel-km" style="font-size:12px;padding:7px 14px;display:none">&#10005; Verwijder geselecteerde (<span id="sel-cnt-km">0</span>)</button>'
     +'<button class="btn" style="font-size:12px;padding:7px 14px" id="btn-ref-km">&#8635; Verversen</button>'
     +'<button class="btn" style="font-size:12px;padding:7px 14px" id="btn-nieuw-km">+ Nieuw koopmandaat</button>'
     +'</div></div>';
@@ -1319,9 +1332,14 @@ function kmSectionHtml(){
     html+='<div class="empty">Geen koopmandaten. Een koopmandaat is voor een koper die nog GEEN specifieke verkoper heeft — zoekprofiel + kandidaat-targets, vóór er een volwaardig traject is.</div></div>';
     return html;
   }
-  html+='<table><thead><tr><th>Koper</th><th>Zoekprofiel</th><th>Targets</th><th>Status</th><th>Tussen_code</th><th>Koper_code</th><th>Datum</th><th>Acties</th></tr></thead><tbody>';
+  html+='<table><thead><tr><th style="width:32px"><input type="checkbox" id="cb-all-km" title="Alle eigen koopmandaten in deze lijst aanvinken"></th><th>Koper</th><th>Zoekprofiel</th><th>Targets</th><th>Status</th><th>Tussen_code</th><th>Koper_code</th><th>Datum</th><th>Acties</th></tr></thead><tbody>';
   kmList.forEach(function(m){
-    html+='<tr><td style="font-weight:500;color:var(--head)">'+esc(m.koper_naam||'—')
+    // N-122: een koopmandaat van een externe adviseur is afgeschermd (backendmuur) — geen vakje en
+    // geen verwijderknop; alleen eigen koopmandaten met een eigen code zijn te selecteren.
+    var kmAfg=!!m.extern||!m.tussen_code;
+    var kmSlot='<span style="opacity:.5" title="Afgeschermd — koopmandaat van externe adviseur">&#128274;</span>';
+    html+='<tr><td>'+(kmAfg?kmSlot:'<input type="checkbox" class="km-cb" data-code="'+esc(m.tussen_code)+'" data-naam="'+esc(m.koper_naam||'Koopmandaat zonder naam')+'" style="cursor:pointer">')+'</td>'
+      +'<td style="font-weight:500;color:var(--head)">'+esc(m.koper_naam||'—')
       +(m.koper_contact_naam?'<div style="font-size:10px;color:var(--muted)">'+esc(m.koper_contact_naam)+'</div>':'')+'</td>'
       +'<td style="font-size:11px">'+esc(m.zoekt_sectoren||'—')+(m.zoekt_regio?'<br><span style="color:var(--muted)">'+esc(m.zoekt_regio)+'</span>':'')
       +((m.omzet_min||m.omzet_max)?'<br><span style="color:var(--muted)">&euro;'+(m.omzet_min?Number(m.omzet_min).toLocaleString('nl-NL'):'?')+' – &euro;'+(m.omzet_max?Number(m.omzet_max).toLocaleString('nl-NL'):'?')+'</span>':'')+'</td>'
@@ -1332,10 +1350,11 @@ function kmSectionHtml(){
       +'<td class="mono" style="font-size:11px">'+formatDate(m.created_at)+'</td>'
       +'<td style="white-space:nowrap;display:flex;gap:4px;flex-wrap:wrap">'
       +'<button class="btn btn-km-begeleider" data-code="'+esc(m.tussen_code)+'" style="font-size:11px;padding:3px 10px;background:var(--info)">&#128231; Begeleider</button>'
-      +'<button class="btn-red btn-del-km" data-code="'+esc(m.tussen_code)+'" data-naam="'+esc(m.koper_naam||m.tussen_code)+'" style="font-size:13px;padding:3px 8px;color:var(--red)" title="Koopmandaat permanent verwijderen">&#128465;</button>'
+      +(kmAfg?kmSlot:'<button class="btn-red btn-del-km" data-code="'+esc(m.tussen_code)+'" data-naam="'+esc(m.koper_naam||'Koopmandaat zonder naam')+'" style="font-size:13px;padding:3px 8px;color:var(--red)" title="Koopmandaat permanent verwijderen">&#128465;</button>')
       +'</td></tr>';
   });
-  html+='</tbody></table></div>';
+  html+='</tbody></table>'
+    +'<div style="padding:10px 14px;color:var(--muted);font-size:11px;border-top:1px solid var(--border)">Meerdere koopmandaten tegelijk verwijderen: vink ze aan en kies <strong>Verwijder geselecteerde</strong>. Per koopmandaat worden ook alle bijbehorende targets verwijderd. Een traject dat al vanuit een koopmandaat is gestart blijft bestaan; alleen de verwijzing naar het koopmandaat verdwijnt. Afgeschermde koopmandaten (&#128274;) van externe adviseurs zijn niet te selecteren.</div></div>';
   return html;
 }
 
@@ -1345,7 +1364,13 @@ function bindKmSection(el){
   el.querySelectorAll('.btn-km-begeleider').forEach(function(b){b.addEventListener('click',function(){
     window.open('mna.html?code='+encodeURIComponent(b.dataset.code),'_blank');
   });});
-  el.querySelectorAll('.btn-del-km').forEach(function(b){b.addEventListener('click',function(){deleteKoopmandaat(b.dataset.code,b.dataset.naam);});});
+  el.querySelectorAll('.btn-del-km').forEach(function(b){b.addEventListener('click',function(){deleteKoopmandaat([b],b);});});
+  function updSelKm(){var n=el.querySelectorAll('.km-cb:checked').length;var btn=document.getElementById('btn-del-sel-km');var cnt=document.getElementById('sel-cnt-km');if(btn)btn.style.display=n>0?'inline-block':'none';if(cnt)cnt.textContent=n;}
+  var cbAllK=document.getElementById('cb-all-km');
+  if(cbAllK)cbAllK.addEventListener('change',function(){el.querySelectorAll('.km-cb:not(:disabled)').forEach(function(cb){cb.checked=cbAllK.checked;});updSelKm();});
+  el.querySelectorAll('.km-cb').forEach(function(cb){cb.addEventListener('change',updSelKm);});
+  var btnDelK=document.getElementById('btn-del-sel-km');
+  if(btnDelK)btnDelK.addEventListener('click',function(){deleteKoopmandaat(Array.from(el.querySelectorAll('.km-cb:checked')),btnDelK);});
 }
 
 async function laadKoopmandaten(){
@@ -1358,14 +1383,13 @@ async function laadKoopmandaten(){
   if(activeTab==='mna')renderTab();
 }
 
-async function deleteKoopmandaat(tussenCode,naam){
-  if(!confirm('Koopmandaat "'+naam+'" permanent verwijderen, inclusief alle targets? Een reeds gepromoveerd traject blijft bestaan (alleen de terugverwijzing verdwijnt).'))return;
-  try{
-    var r=await fetch(WORKER+'/mna/admin/koopmandaat/verwijderen/'+encodeURIComponent(tussenCode),{method:'POST',headers:{'x-admin-key':adminKey}});
-    var d=await r.json();
-    if(r.ok&&d.ok){toast('Koopmandaat verwijderd.','ok');kmList=kmList.filter(function(m){return m.tussen_code!==tussenCode;});renderTab();}
-    else{toast('Fout: '+(d.error||'onbekend'),'err');}
-  }catch(e){toast('Netwerkfout bij verwijderen.','err');}
+// N-122: losse prullenbak en groepsactie via dezelfde helper en dezelfde bestaande route. Die route
+// verwijdert per koopmandaat ook de targets; gestarte trajecten blijven bestaan (geen nieuwe cascade).
+function deleteKoopmandaat(els,knop){
+  return verwijderGekozen({ids:els.map(function(e){return e.dataset.code;}),namen:els.map(function(e){return e.dataset.naam;}),
+    pad:function(code){return '/mna/admin/koopmandaat/verwijderen/'+encodeURIComponent(code);},een:'koopmandaat',meer:'koopmandaten',knop:knop,
+    extra:'Per koopmandaat worden ook alle bijbehorende targets verwijderd. Een traject dat al vanuit een koopmandaat is gestart blijft bestaan; alleen de verwijzing naar het koopmandaat verdwijnt.',
+    ververs:function(){kmLoaded=false;return laadKoopmandaten();}});
 }
 
 function toonNieuwKoopmandaatModal(){
@@ -1435,8 +1459,8 @@ async function renderDocsTab(el){
 
   function updateSelCount(){var checked=document.querySelectorAll('.doc-cb:checked').length;var btn=document.getElementById('btn-del-selected');var cnt=document.getElementById('sel-count');if(btn){btn.style.display=checked>0?'inline-block':'none';}if(cnt)cnt.textContent=checked;}
 
-  document.getElementById('btn-del-selected').addEventListener('click',async function(){var ids=Array.from(document.querySelectorAll('.doc-cb:checked')).map(function(cb){return cb.dataset.id;});if(!ids.length)return;if(!confirm('Verwijder '+ids.length+' geselecteerde document(en)?'))return;var btn=this;btn.disabled=true;btn.textContent='Verwijderen...';var ok=0,fail=0;for(var i=0;i<ids.length;i++){try{var r=await fetch(WORKER+'/mna/document/delete/'+ids[i],{headers:{'x-admin-key':adminKey},method:'POST'});if(r.ok)ok++;else fail++;}catch(e){fail++;}}toast(ok+' document(en) verwijderd'+(fail>0?', '+fail+' mislukt':''),'err');
- document.getElementById('btn-load-docs').click();});
+  var btnDelD=document.getElementById('btn-del-selected');
+  btnDelD.addEventListener('click',function(){verwijderGekozen({ids:Array.from(document.querySelectorAll('.doc-cb:checked')).filter(function(cb){return !cb.disabled;}).map(function(cb){return cb.dataset.id;}),pad:function(id){return '/mna/document/delete/'+encodeURIComponent(id);},een:'document',meer:'documenten',knop:btnDelD,ververs:function(){document.getElementById('btn-load-docs').click();}});});
 
   document.getElementById('btn-load-docs').addEventListener('click',async function(){
     var db=document.getElementById('docs-body');
@@ -1471,8 +1495,9 @@ async function renderDocsTab(el){
       });
       html+='</tbody></table>';
       db.innerHTML=html;
-      var ds=document.getElementById('doc-search');if(ds)ds.addEventListener('input',function(){var q=this.value.toLowerCase();db.querySelectorAll('tr').forEach(function(r){r.style.display=r.textContent.toLowerCase().includes(q)?'':'none';});});
-      var cbAll=document.getElementById('cb-all');if(cbAll){cbAll.addEventListener('change',function(){document.querySelectorAll('.doc-cb:not(:disabled)').forEach(function(cb){cb.checked=cbAll.checked;});updateSelCount();});}
+      // N-122: alleen zichtbare rijen zijn aangevinkt — wat door de zoekterm verdwijnt, gaat uit de selectie.
+      var ds=document.getElementById('doc-search');if(ds)ds.addEventListener('input',function(){var q=this.value.toLowerCase();db.querySelectorAll('tr').forEach(function(r){var zicht=r.textContent.toLowerCase().includes(q);r.style.display=zicht?'':'none';var cb=r.querySelector('.doc-cb');if(cb&&!zicht)cb.checked=false;});updateSelCount();});
+      var cbAll=document.getElementById('cb-all');if(cbAll){cbAll.addEventListener('change',function(){document.querySelectorAll('.doc-cb:not(:disabled)').forEach(function(cb){if(cb.closest('tr').style.display!=='none')cb.checked=cbAll.checked;});updateSelCount();});}
       db.querySelectorAll('.doc-cb').forEach(function(cb){cb.addEventListener('change',updateSelCount);});
       db.querySelectorAll('.btn-del-doc').forEach(function(b){b.addEventListener('click',function(){verwijderDoc(b.dataset.id);});});
       db.querySelectorAll('.btn-verg-doc').forEach(function(b){b.addEventListener('click',function(){vergrendelDoc(b.dataset.id,true);});});
@@ -2382,15 +2407,16 @@ function renderRapportenTab(el){
   var rb=document.getElementById('btn-ref-rapp');
   if(rb)rb.addEventListener('click',async function(){var r=await fetch(WORKER+'/admin/rapporten',{headers:{'x-admin-key':adminKey}});rapporten=r.ok?await r.json():[];renderDashboard();});
   var rs=document.getElementById('rapp-search');
-  if(rs)rs.addEventListener('input',function(){var q=this.value.toLowerCase();el.querySelectorAll('.rapp-row').forEach(function(r){r.style.display=r.textContent.toLowerCase().includes(q)?'':'none';});});
+  // N-122: alleen zichtbare rijen zijn aangevinkt — wat door de zoekterm verdwijnt, gaat uit de selectie.
+  if(rs)rs.addEventListener('input',function(){var q=this.value.toLowerCase();el.querySelectorAll('.rapp-row').forEach(function(r){var zicht=r.textContent.toLowerCase().includes(q);r.style.display=zicht?'':'none';var cb=r.querySelector('.rapp-cb');if(cb&&!zicht)cb.checked=false;});updSelRapp();});
   el.querySelectorAll('.btn-del-rapp').forEach(function(b){b.addEventListener('click',function(){verwijderRapport(b.dataset.id);});});
   el.querySelectorAll('.btn-lees-rapp').forEach(function(b){b.addEventListener('click',function(){leesRapport(b.dataset.id);});});
   function updSelRapp(){var n=el.querySelectorAll('.rapp-cb:checked').length;var btn=document.getElementById('btn-del-sel-rapp');var cnt=document.getElementById('sel-cnt-rapp');if(btn)btn.style.display=n>0?'inline-block':'none';if(cnt)cnt.textContent=n;}
   var cbAllR=document.getElementById('cb-all-rapp');
-  if(cbAllR)cbAllR.addEventListener('change',function(){el.querySelectorAll('.rapp-cb').forEach(function(cb){cb.checked=cbAllR.checked;});updSelRapp();});
+  if(cbAllR)cbAllR.addEventListener('change',function(){el.querySelectorAll('.rapp-cb').forEach(function(cb){if(cb.closest('tr').style.display!=='none')cb.checked=cbAllR.checked;});updSelRapp();});
   el.querySelectorAll('.rapp-cb').forEach(function(cb){cb.addEventListener('change',updSelRapp);});
   var btnDelR=document.getElementById('btn-del-sel-rapp');
-  if(btnDelR)btnDelR.addEventListener('click',async function(){var ids=Array.from(el.querySelectorAll('.rapp-cb:checked')).map(function(cb){return cb.dataset.id;});if(!ids.length)return;if(!confirm('Verwijder '+ids.length+' rapport(en)?'))return;btnDelR.disabled=true;btnDelR.textContent='Verwijderen...';for(var i=0;i<ids.length;i++){try{await fetch(WORKER+'/admin/delete/rapport/'+ids[i],{headers:{'x-admin-key':adminKey},method:'POST'});}catch(e){}}var rb2=document.getElementById('btn-ref-rapp');if(rb2)rb2.click();});
+  if(btnDelR)btnDelR.addEventListener('click',function(){verwijderGekozen({ids:Array.from(el.querySelectorAll('.rapp-cb:checked')).map(function(cb){return cb.dataset.id;}),pad:function(id){return '/admin/delete/rapport/'+encodeURIComponent(id);},een:'rapport',meer:'rapporten',knop:btnDelR,ververs:function(){var rb2=document.getElementById('btn-ref-rapp');if(rb2)rb2.click();}});});
 }
 
 async function leesRapport(id){
@@ -2451,6 +2477,53 @@ async function vergrendelDoc(id,lock){
 }
 
 // DELETE FUNCTIES
+// N-122/N-124 (4 okt 2026): verwijderen van door de beheerder zelf aangevinkte records — één kleine
+// gedeelde helper voor de groepsactie "Verwijder geselecteerde" én de losse prullenbak (leads,
+// proefaanvragen, koopmandaten). Per gekozen record precies één POST naar de bestaande individuele,
+// server-side afgeschermde delete-route (geen bulk-endpoint, geen automatische herhaling); succes
+// alleen bij HTTP-ok én {ok:true}. Daarna altijd verversen, zodat wat niet verwijderd kon worden
+// zichtbaar blijft. Meldingen in gewone taal, zonder technische ID's of serverfoutteksten.
+// o: {ids, pad(id) → bestaande route, een/meer (enkel-/meervoud), namen, extra, knop, ververs}
+async function verwijderGekozen(o){
+  var ids=(o.ids||[]).filter(function(id,i,a){return id&&a.indexOf(id)===i;});
+  if(!ids.length||!adminKey||!isSuperAdmin)return null;
+  if(o.knop&&o.knop.disabled)return null;
+  var n=ids.length,namen=(o.namen||[]).filter(Boolean);
+  var vraag=(n===1?'Deze '+o.een:'Deze '+n+' aangevinkte '+o.meer)+' definitief verwijderen?'
+    +(namen.length?'\n\n'+namen.slice(0,8).map(function(x){return '• '+x;}).join('\n')+(namen.length>8?'\n• en nog '+(namen.length-8)+' meer':''):'')
+    +(o.extra?'\n\n'+o.extra:'')
+    +'\n\nAlleen wat u heeft aangevinkt wordt verwijderd. Dit kan niet ongedaan worden gemaakt.';
+  if(!confirm(vraag))return null;
+  var knopHtml=o.knop?o.knop.innerHTML:'';
+  if(o.knop){o.knop.disabled=true;o.knop.textContent='Verwijderen...';}
+  var gelukt=0,geenToegang=0,nietGevonden=0,geenVerbinding=0,storing=0;
+  for(var i=0;i<ids.length;i++){
+    try{
+      var r=await fetch(WORKER+o.pad(ids[i]),{method:'POST',headers:{'x-admin-key':adminKey}});
+      var d=await r.json().catch(function(){return null;});
+      if(r.ok&&d&&d.ok)gelukt++;
+      else if(r.status===401||r.status===403)geenToegang++;
+      else if(r.status===404)nietGevonden++;
+      else storing++;
+    }catch(e){geenVerbinding++;}
+  }
+  var mislukt=n-gelukt;
+  if(!mislukt){
+    toast(n===1?'De '+o.een+' is verwijderd.':'Alle '+n+' aangevinkte '+o.meer+' zijn verwijderd.','ok');
+  }else{
+    var redenen=[];
+    if(geenToegang)redenen.push((n===1?'':geenToegang+' ')+'geen toegang (bijvoorbeeld afgeschermd)');
+    if(nietGevonden)redenen.push((n===1?'':nietGevonden+' ')+'niet meer gevonden (mogelijk al verwijderd)');
+    if(geenVerbinding)redenen.push((n===1?'':geenVerbinding+' ')+'geen verbinding met de server');
+    if(storing)redenen.push((n===1?'':storing+' ')+'tijdelijke storing aan de serverkant');
+    toast((n===1?'De '+o.een+' is niet verwijderd: ':gelukt+' van '+n+' '+o.meer+' verwijderd, '+mislukt+' niet: ')
+      +redenen.join('; ')+'. Wat niet verwijderd is, staat nog in het overzicht.',gelukt?'warn':'err',9000);
+  }
+  try{await o.ververs();}catch(e){}
+  if(o.knop){o.knop.disabled=false;o.knop.innerHTML=knopHtml;}
+  return {gelukt:gelukt,mislukt:mislukt};
+}
+
 async function deleteScan(id){
   if(!id){toast('Geen ID voor deze scan.','err');return;}
   if(!confirm('Scan permanent verwijderen?'))return;
