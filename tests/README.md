@@ -259,6 +259,15 @@ en het rapport meldt dat als "niet uitgevoerd". Een geslaagde lokale run is geen
 staging-acceptatie. Een geslaagde live-run is geen productie- of juridische acceptatie: de
 bevestigingstekst en het bewaarbeleid zijn nog juridisch te valideren.
 
+## Deel G — Bewijsstuk-upload (`tests/document-bewijsstuk-upload.mjs`, check 24)
+Regressie op de live stagingfout: "Alleen als bewijsstuk toevoegen" aangevinkt, upload 200/ok,
+maar `alleen_bewijsstuk=false` — `renderApp` tekende de checkbox leeg vóórdat `uploadDocument` hem
+las. Draait de echte `uploadDocumentenSequentieel`, `uploadDocument`, `vervangDocument` en
+`renderDocumentSectie` (mna/02) met de echte `fetchMetTimeout` (mna/01) in `node:vm`, met een
+DOM-fixture en fetch-stub. Controleert dat hertekenen de checkbox wist, dat de request-URL bij batch,
+directe upload en vervangen toch `&alleen_bewijsstuk=true` bevat (en zonder vinkje niet), en dat
+er in bewijsstukmodus geen AI-route loopt. Geen vervanging van de live browserflow in Deel F.
+
 ## Afspraak
 Alle checks van `tests/audit-consistentie.mjs` groen vóór elke worker-deploy en vóór elke frontend-push.
 Draait ook **wekelijks automatisch** (geplande taak, zie hieronder) — bij

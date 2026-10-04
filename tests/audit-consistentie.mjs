@@ -943,6 +943,24 @@ log('23. Koopmandaat generieke targetflow (tests/koopmandaat-targetflow-ui.mjs):
   }
 }
 
+log('24. Bewijsstuk-upload (tests/document-bewijsstuk-upload.mjs): aangevinkte keuze overleeft het hertekenen');
+{
+  // Live stagingproef (4 okt 2026): aangevinkt "Alleen als bewijsstuk", upload 200/ok maar
+  // alleen_bewijsstuk=false — renderApp wiste de checkbox vóór uploadDocument hem las. De test draait
+  // de echte upload-/renderfuncties uit mna/02 en fetchMetTimeout uit mna/01 in node:vm met een
+  // DOM-fixture en fetch-stub — geen netwerk, geen browser.
+  try {
+    const { draaiDocumentBewijsstukUploadChecks } = await import('./document-bewijsstuk-upload.mjs');
+    const resultaten = await draaiDocumentBewijsstukUploadChecks(ROOT);
+    const gefaald = resultaten.filter(r => !r.ok);
+    gefaald.forEach(r => warn('Bewijsstuk-upload: ' + r.msg));
+    if (!resultaten.length) warn('Bewijsstuk-upload: geen checks uitgevoerd.');
+    else if (!gefaald.length) ok('Alle ' + resultaten.length + ' bewijsstuk-uploadchecks geslaagd (hertekenen wist de checkbox, toch &alleen_bewijsstuk=true bij batch, directe upload en vervangen; niet aangevinkt geen vlag; geen AI-route in bewijsstukmodus).');
+  } catch (e) {
+    warn('tests/document-bewijsstuk-upload.mjs kon niet worden uitgevoerd: ' + String((e && e.message) || e));
+  }
+}
+
 // ── Samenvatting ──────────────────────────────────────────────────────────
 log('Samenvatting');
 if (!bevindingen) {

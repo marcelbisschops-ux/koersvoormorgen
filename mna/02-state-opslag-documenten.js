@@ -1070,7 +1070,12 @@ function saveEntiteitData(entiteitId, faseIds){
 // bestand 1 helemaal klaar was. Nu meteen bij de start een wachtrij-plek voor ALLE geselecteerde
 // bestanden + een voortgangstekst, zodat direct zichtbaar is dat de rest ook nog komt. Gevonden
 // (opnieuw gemeld door Marcel als "pakt maar 1 document") 24 juli 2026.
+// De bewijsstuk-keuze wordt vóór renderApp vastgelegd: renderApp tekent de uploadzone opnieuw met
+// een lege checkbox, waardoor uploadDocument de keuze anders kwijt was (live staging 4 okt 2026:
+// aangevinkt, upload ok maar alleen_bewijsstuk=false). Dezelfde keuze geldt voor alle bestanden.
 window.uploadDocumentenSequentieel = async function(faseId, files) {
+  var bewijsstukKeuzeEl = document.getElementById('bewijsstuk-alleen-'+faseId);
+  var alleenBewijsstukKeuze = !!(bewijsstukKeuzeEl && bewijsstukKeuzeEl.checked);
   if (!DOCS[faseId]) DOCS[faseId] = [];
   var wachtrijIds = [];
   for (var q = files.length - 1; q >= 0; q--) {
@@ -1082,12 +1087,18 @@ window.uploadDocumentenSequentieel = async function(faseId, files) {
   var statusEl = document.getElementById('upload-status-' + faseId);
   for (var i = 0; i < files.length; i++) {
     if (statusEl) statusEl.textContent = files.length > 1 ? ('Bestand ' + (i + 1) + ' van ' + files.length + ' verwerken...') : 'Bestand verwerken...';
-    await uploadDocument(faseId, files[i], wachtrijIds[i]);
+    await uploadDocument(faseId, files[i], wachtrijIds[i], undefined, alleenBewijsstukKeuze);
   }
   if (statusEl) statusEl.textContent = '';
 };
 
-async function uploadDocument(faseId, file, existingId, vervangtDocId) {
+// alleenBewijsstukKeuze (optioneel): door uploadDocumentenSequentieel vóór renderApp vastgelegd.
+// Zonder dat argument wordt de checkbox hier gelezen, vóór de renderApp van de directe upload.
+async function uploadDocument(faseId, file, existingId, vervangtDocId, alleenBewijsstukKeuze) {
+  if (typeof alleenBewijsstukKeuze !== 'boolean') {
+    var bewijsstukEl = document.getElementById('bewijsstuk-alleen-'+faseId);
+    alleenBewijsstukKeuze = !!(bewijsstukEl && bewijsstukEl.checked);
+  }
   if (!S.code || isKoper()) return;
   if (S.traject && S.traject.status === 'vergrendeld') { toast('Traject is vergrendeld.','warn'); if (existingId) DOCS[faseId] = DOCS[faseId].filter(function(x){ return x.id !== existingId; }); return; }
   var maxSize = 20 * 1024 * 1024;
@@ -1105,8 +1116,7 @@ async function uploadDocument(faseId, file, existingId, vervangtDocId) {
   var entiteitId = entiteitSel ? entiteitSel.value : '';
   var dubbeleCheckEl = document.getElementById('dubbele-check-'+faseId);
   var dubbeleCheck = dubbeleCheckEl && dubbeleCheckEl.checked;
-  var bewijsstukEl = document.getElementById('bewijsstuk-alleen-'+faseId);
-  var alleenBewijsstuk = bewijsstukEl && bewijsstukEl.checked;
+  var alleenBewijsstuk = alleenBewijsstukKeuze;
   var url = WORKER + '/mna/document/upload?code=' + S.code + '&fase_id=' + faseId + '&bewaar=' + bewaar + (entiteitId?'&entiteit_id='+encodeURIComponent(entiteitId):'') + (dubbeleCheck?'&dubbele_check=true':'') + (alleenBewijsstuk?'&alleen_bewijsstuk=true':'') + (vervangtDocId?'&vervangt='+encodeURIComponent(vervangtDocId):'');
 
   try {
