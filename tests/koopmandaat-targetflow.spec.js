@@ -323,6 +323,7 @@ const naarFase = (page, fase) => page.evaluate((f) => { S.screen = 'main'; S.fas
 // ── De gedeelde flow (beide modi) ──
 async function doorloopFlow({ browser, baseURL, omg }) {
   const contexten = [];
+  let primaireFout = null;
   const dialogen = [];
   const promptAntwoorden = [];
   const net = omg.net;
@@ -730,8 +731,27 @@ async function doorloopFlow({ browser, baseURL, omg }) {
     waar(net.extern.every((x) => !x.startsWith(PROD)), 'geen enkel verzoek naar productie');
     waar(net.extern.every((x) => !x.includes(bevA.token) && !x.includes(bevB.token)), 'linktokens nooit naar een externe host');
     waar(await bPage.evaluate((t) => localStorage.length === 0 && sessionStorage.length === 0 && !document.cookie.includes(t), bevA.token), 'begeleiderpagina bewaart niets in localStorage/sessionStorage/cookie');
+  } catch (e) {
+    // Primaire fout vóór het sluiten van de contexten gemaskeerd bewaren en tonen, zodat een latere
+    // afsluitfout (bv. route.fetch op een gesloten context) haar niet verdringt.
+    primaireFout = e;
+    if (e && typeof e === 'object') {
+      try { if (typeof e.message === 'string') e.message = maskeer(e.message); } catch (x) { /* niet schrijfbaar */ }
+      try { if (typeof e.stack === 'string') e.stack = maskeer(e.stack); } catch (x) { /* niet schrijfbaar */ }
+    }
+    const kort = maskeer(String((e && e.message) || e).split('\n').slice(0, 6).join(' ⏎ ').slice(0, 800));
+    annoteer('primaire fout', kort);
+    console.error('[koopmandaat-targetflow] primaire fout: ' + kort);
   } finally {
-    for (const c of contexten) await c.close().catch(() => {});
+    // Eerst lopende routecallbacks laten afronden (geen ignoreErrors), dan pas de context sluiten.
+    const afsluitFouten = [];
+    for (const c of contexten) {
+      try { await c.unrouteAll({ behavior: 'wait' }); } catch (e) { afsluitFouten.push(maskeer(String((e && e.message) || e).split('\n')[0].slice(0, 200))); }
+      await c.close().catch(() => {});
+    }
+    if (afsluitFouten.length) annoteer('afsluitfout (secundair)', afsluitFouten.join('; '));
+    if (primaireFout) throw primaireFout;
+    if (afsluitFouten.length) throw new Error('Afsluiten van de browsercontexten faalde: ' + afsluitFouten.join('; '));
   }
 }
 
