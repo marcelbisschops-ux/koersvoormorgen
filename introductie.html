@@ -177,6 +177,18 @@ function toon(d){
   melding.style.display='none';
   form.appendChild(melding);
 
+  // N-115 transparantie: korte privacy-uitleg vóór de reactie (doel, minimaal bewijs, link). Geen
+  // nieuwe toestemming of clausule; de volledige uitleg en termijnen staan in de privacyverklaring.
+  var priv=el('div','note');
+  priv.id='intro-privacy';
+  priv.appendChild(document.createTextNode('Privacy: bij uw reactie wordt alleen het minimaal noodzakelijke bewijs vastgelegd — welke versie van de overeenkomst (met inhoudscontrole) het betreft, bij akkoord uw naam, het tijdstip en het IP-adres, en bij een wijzigingsverzoek uw toelichting. Dit dient uitsluitend om de introductie en een latere identiteitsvrijgave door uw begeleider te kunnen aantonen en te beveiligen. De koper ontvangt deze gegevens niet. Uw akkoord is geen algemene toestemming voor gegevensverwerking. Bewaartermijnen en uw rechten (waaronder bezwaar en verwijdering): '));
+  var privLink=el('a',null,'privacyverklaring');
+  privLink.setAttribute('href','/privacy.html');
+  privLink.setAttribute('rel','noopener');
+  priv.appendChild(privLink);
+  priv.appendChild(document.createTextNode('.'));
+  form.appendChild(priv);
+
   form.appendChild(el('div','kv','Akkoord geven'));
   var lNaam=el('label',null,'Uw volledige naam');
   lNaam.setAttribute('for','intro-naam');
