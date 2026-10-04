@@ -1043,7 +1043,7 @@ async function generateAI(faseId){
     // P1-IP-4 (27 sep 2026): instructietekst + AI-aanroep verhuisd naar worker/19-info-fases.js
     // (/mna/analyse/fase/genereer) — hier alleen nog data die deze rol toch al ziet (eigen DD-velden,
     // checklist, sectorbenchmark-tekst die na N-83 al geautoriseerd is opgehaald).
-    var resp=await fetchMetTimeout(WORKER+'/mna/analyse/fase/genereer',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:S.code,faseId:faseId,faseTitel:f.title,dataLines:dataLines,checklistGereed:chk,checklistOpen:open,redVlaggen:rfs,notities:S.notities[faseId],sectorLabel:sectorLabel,sectorNormen:sectorNormen,trajectType:S.traject&&S.traject.traject_type,kantoorNaam:S.traject&&S.traject.kantoor_naam,begeleiderNaam:S.traject&&S.traject.begeleider_naam})},60000);
+    var resp=await fetchMetTimeout(WORKER+'/mna/analyse/fase/genereer',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:S.code,faseId:faseId,faseTitel:f.title,dataLines:dataLines,checklistGereed:chk,checklistOpen:open,redVlaggen:rfs,notities:S.notities[faseId],sectorLabel:sectorLabel,sectorNormen:sectorNormen,trajectType:S.traject&&S.traject.traject_type,kantoorNaam:S.traject&&S.traject.kantoor_naam,begeleiderNaam:S.traject&&S.traject.begeleider_naam})},180000);
     if(!resp.ok)throw new Error('HTTP '+resp.status);
     var rd=await resp.json();
     if(!rd.ok||!rd.tekst)throw new Error(rd.error||'Leeg antwoord');
@@ -1713,7 +1713,7 @@ function bindAll(){
     // rekenkern, presentatielogica van cijfers die de rekenkern zelf al heeft vastgesteld — migratie
     // daarvan hoort bij P1-IP-2 onderdeel C (de rekenkern zelf), niet hier.
     try{
-      var resp=await fetchMetTimeout(WORKER+'/mna/waardering/rapport-genereren',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||S.code||''},body:JSON.stringify({code:S.code,lijnen:lijnen})},60000);
+      var resp=await fetchMetTimeout(WORKER+'/mna/waardering/rapport-genereren',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||S.code||''},body:JSON.stringify({code:S.code,lijnen:lijnen})},180000);
       var rd=await resp.json().catch(function(){return null;});
       // Alleen een echte 2xx met ok:true en niet-lege tekst is een rapport. Anders het bestaande
       // foutpad (catch hieronder): geen opslag, geen nieuwe versie, geen succesmelding, knop weer actief.
@@ -1746,7 +1746,7 @@ function bindAll(){
     toast('⚙️ Bezig met genereren: AI-waardering (second opinion)...','info',4000);
     out2.innerHTML='<div style="color:var(--muted);font-size:13px">AI bepaalt een onafhankelijke waardering... (kan 15-30 sec duren)</div>';
     try{
-      var resp2=await fetchMetTimeout(WORKER+'/mna/waardering/genereer',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||S.code||''},body:JSON.stringify({code:S.code})},60000);
+      var resp2=await fetchMetTimeout(WORKER+'/mna/waardering/genereer',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||S.code||''},body:JSON.stringify({code:S.code})},180000);
       var rd2=await resp2.json();
       if(!rd2.ok){out2.innerHTML='<div style="color:var(--red);font-size:13px">Fout: '+esc(rd2.error||'onbekende fout')+'</div>';wAi2Btn.disabled=false;wAi2Btn.textContent='🤖 Genereer AI-waardering (second opinion)';toast('Genereren van AI-waardering is mislukt','err');return;}
       var w2=rd2.waardering||{};
@@ -2223,7 +2223,7 @@ function bindAll(){
         // P1-IP-4 (27 sep 2026): instructietekst + AI-aanroep verhuisd naar worker/19-info-fases.js
         // (/mna/analyse/traject/genereer, tussenpersoon-only, zelfde x-tussen-key-model als de
         // waarderingsroutes hierboven) — hier alleen nog de al lokaal opgebouwde datasamenvatting.
-        var resp=await fetchMetTimeout(WORKER+'/mna/analyse/traject/genereer',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||S.code||''},body:JSON.stringify({code:S.code,dataSamenvatting:dataSamenvatting,benchmarkTekst:bmTekst,sectorLabel:_b5Sec,kantoorNaam:t3.kantoor_naam,trajectType:t3.traject_type})},60000);
+        var resp=await fetchMetTimeout(WORKER+'/mna/analyse/traject/genereer',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||S.code||''},body:JSON.stringify({code:S.code,dataSamenvatting:dataSamenvatting,benchmarkTekst:bmTekst,sectorLabel:_b5Sec,kantoorNaam:t3.kantoor_naam,trajectType:t3.traject_type})},180000);
         var rd=await resp.json();
         var tekst=((rd&&rd.ok&&rd.tekst)?rd.tekst:'Fout bij genereren.').replace(/## ([^\n]+)/g,'<strong style="display:block;margin:.75rem 0 .25rem;font-size:14px">$1</strong>').replace(/\n/g,'<br>');
         var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:200;display:flex;align-items:center;justify-content:center;padding:1.5rem';

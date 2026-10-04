@@ -2313,7 +2313,7 @@ function renderBegeleiderDashboard(app){
       // bundel. Nu op dezelfde geharde, geauthenticeerde route als bem/excl (worker/10-mna-
       // communicatie.js, sinds vandaag ook nda/loi-varianten) — geen losse /ai-aanroep meer over
       // in bgDoc(), ook niet in een pad dat vandaag niet bereikt wordt.
-      var bxResp=await fetchMetTimeout(WORKER+'/mna/document/'+type+'/genereer',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||S.code},body:JSON.stringify({code:S._bgKey||S.code})},60000);
+      var bxResp=await fetchMetTimeout(WORKER+'/mna/document/'+type+'/genereer',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||S.code},body:JSON.stringify({code:S._bgKey||S.code})},180000);
       var bxRd=await bxResp.json().catch(function(){return{};});
       tekst=(bxRd&&bxRd.ok&&bxRd.tekst)?bxRd.tekst:'Fout bij genereren';
     }else{
@@ -2860,7 +2860,7 @@ function renderBegeleiderDashboard(app){
         // gokken, werkregel 6): welke hoofdstukken worden gegenereerd blijft exact zo deterministisch
         // als voorheen.
         var dvVlaggen={grondslagOmzet:_grondslagOmzet,altWaardering:!!altWaardering,synergie:!!synergie,scenarios:!!scenarios,earnOut:!!earnOut,dcfGevoeligheid:!!dcfGevoeligheid,buyAndBuild:!!p.buyAndBuild,vendorLoanRows:!!vendorLoanRows,ruilverhouding:!!ruilverhouding};
-        var resp=await fetchMetTimeout(WORKER+'/mna/dealvoorstel/hoofdstukken/genereer',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||S.code},body:JSON.stringify({code:S._bgKey||S.code,contextBlok:contextBlok,vlaggen:dvVlaggen})},60000);
+        var resp=await fetchMetTimeout(WORKER+'/mna/dealvoorstel/hoofdstukken/genereer',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||S.code},body:JSON.stringify({code:S._bgKey||S.code,contextBlok:contextBlok,vlaggen:dvVlaggen})},180000);
         var rd=await resp.json().catch(function(){return{};});
         if(!resp.ok||!rd.ok||!rd.tekst){
           throw new Error(rd.error||'Genereren van het dealvoorstel is mislukt (leeg antwoord). Zijn er veel optionele onderdelen tegelijk aangevinkt (buy-and-build, vendor loan, aandelenruil, alternatieve waardering, synergie, scenario’s, DCF-gevoeligheid)? Zet er een paar uit en probeer opnieuw — de gecombineerde tekst kan dan de maximale lengte overschrijden.');
@@ -2873,7 +2873,7 @@ function renderBegeleiderDashboard(app){
         var bijlageHtml='';
         if(isSellDv){
           try{
-            var bijlResp=await fetchMetTimeout(WORKER+'/mna/dealvoorstel/bijlage/genereer',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||S.code},body:JSON.stringify({code:S._bgKey||S.code,interneContext:interneContext})},60000);
+            var bijlResp=await fetchMetTimeout(WORKER+'/mna/dealvoorstel/bijlage/genereer',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||S.code},body:JSON.stringify({code:S._bgKey||S.code,interneContext:interneContext})},180000);
             var bijlRd=await bijlResp.json().catch(function(){return{};});
             if(!bijlResp.ok||!bijlRd.ok||!bijlRd.tekst) throw new Error(bijlRd.error||'leeg antwoord');
             bijlageHtml=dvBouwRapportHtml(bijlRd.tekst,tabelMap);
@@ -3000,7 +3000,7 @@ function renderBegeleiderDashboard(app){
         // P1-IP-4 (27 sep 2026): idem bem/excl/nda/loi/dealvoorstel hierboven — de instructietekst en
         // de AI-aanroep staan nu server-side (worker/10-mna-communicatie.js, /mna/document/bieding/
         // genereer); deze modal stuurt alleen de zelf getypte biedingsparameters als data mee.
-        var resp=await fetchMetTimeout(WORKER+'/mna/document/bieding/genereer',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||S.code},body:JSON.stringify({code:S._bgKey||S.code,ebitda:ebitda,multLaag:multLaag,multHoog:multHoog,betaling:betaling,exclWeken:exclWeken,geldigTot:geldigTotV})},60000);
+        var resp=await fetchMetTimeout(WORKER+'/mna/document/bieding/genereer',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||S.code},body:JSON.stringify({code:S._bgKey||S.code,ebitda:ebitda,multLaag:multLaag,multHoog:multHoog,betaling:betaling,exclWeken:exclWeken,geldigTot:geldigTotV})},180000);
         var rd=await resp.json().catch(function(){return{};});
         var tekst=(rd&&rd.ok&&rd.tekst)?rd.tekst:'Fout bij genereren';
         // Foutpropagatie-check 12 sep 2026: deze flow toonde bij een mislukte generatie alleen de
@@ -3152,7 +3152,7 @@ function renderBegeleiderDashboard(app){
     // de dedicated, code-geauthenticeerde backend-route POST /mna/spa/genereer (analoog aan
     // /mna/risicoraamwerk/genereer en /mna/waardering/genereer), i.p.v. de generieke /ai-proxy.
     // Zelfde clausule-integriteitsregels, nu server-side — geen inhoudelijke wijziging beoogd.
-    var spaR=await fetchMetTimeout(WORKER+'/mna/spa/genereer',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||''},body:JSON.stringify({code:S._bgKey})},60000).then(function(r){return r.json();}).catch(function(){return{error:'Genereren duurde te lang of de verbinding viel weg. Probeer het opnieuw.'};});
+    var spaR=await fetchMetTimeout(WORKER+'/mna/spa/genereer',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||''},body:JSON.stringify({code:S._bgKey})},180000).then(function(r){return r.json();}).catch(function(){return{error:'Genereren duurde te lang of de verbinding viel weg. Probeer het opnieuw.'};});
     if(!spaR.tekst){
       out.innerHTML='<div style="background:var(--red-bg);border:1px solid var(--red);border-radius:var(--r2);padding:1rem;font-size:13px;color:var(--red)"><strong>&#9888; Genereren mislukt.</strong> '+esc(spaR.error||'Onbekende fout')+'</div>';
       toast('Genereren van de SPA is mislukt','err');
@@ -4074,7 +4074,7 @@ function renderBegeleiderDashboard(app){
   async function genereerRisicoraamwerk(out){
     toast('⚙️ Bezig met genereren: Risicoraamwerk (SWOT/PESTEL/Porter)...','info',4000);
     out.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;color:var(--muted)">Genereren... (15-30 sec)</div>';
-    var r=await fetchMetTimeout(WORKER+'/mna/risicoraamwerk/genereer',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||''},body:JSON.stringify({code:S.code})},60000).then(function(x){return x.json();}).catch(function(){return{error:'Genereren duurde te lang of de verbinding viel weg. Probeer het opnieuw.'};});
+    var r=await fetchMetTimeout(WORKER+'/mna/risicoraamwerk/genereer',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||''},body:JSON.stringify({code:S.code})},180000).then(function(x){return x.json();}).catch(function(){return{error:'Genereren duurde te lang of de verbinding viel weg. Probeer het opnieuw.'};});
     if(!r.ok){toast('Genereren van Risicoraamwerk is mislukt','err');out.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;color:var(--red)">Genereren mislukt: '+esc(r.error||'onbekende fout')+'</div>';return;}
     toast('✓ Risicoraamwerk is gegenereerd','ok');
     out.innerHTML=renderRisicoraamwerk(r);
@@ -4146,7 +4146,7 @@ function renderBegeleiderDashboard(app){
     }
     async function genereerTeaser(){
       out.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;color:var(--muted)">Genereren...</div>';
-      var r=await fetchMetTimeout(WORKER+'/mna/teaser/genereer',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||''},body:JSON.stringify({code:S.code})},60000).then(function(x){return x.json();}).catch(function(){return{error:'Genereren duurde te lang of de verbinding viel weg. Probeer het opnieuw.'};});
+      var r=await fetchMetTimeout(WORKER+'/mna/teaser/genereer',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||''},body:JSON.stringify({code:S.code})},180000).then(function(x){return x.json();}).catch(function(){return{error:'Genereren duurde te lang of de verbinding viel weg. Probeer het opnieuw.'};});
       if(r.ok){t2.teaser_tekst=r.teaser_tekst;renderTeaser(r.teaser_tekst,'nieuw gegenereerd');}
       else{out.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;color:var(--red)">'+esc(r.error||'Genereren mislukt.')+'</div>';}
     }
@@ -4212,7 +4212,7 @@ function renderBegeleiderDashboard(app){
     }
     async function genereerVerkoopmemo(ndaBevestigd,ndaDoor){
       out.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;color:var(--muted)">Genereren...</div>';
-      var r=await fetchMetTimeout(WORKER+'/mna/verkoopmemorandum/genereer',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||''},body:JSON.stringify({code:S.code,nda_bevestigd:!!ndaBevestigd,nda_bevestigd_door:ndaDoor||''})},60000).then(function(x){return x.json();}).catch(function(){return{error:'Genereren duurde te lang of de verbinding viel weg. Probeer het opnieuw.'};});
+      var r=await fetchMetTimeout(WORKER+'/mna/verkoopmemorandum/genereer',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||''},body:JSON.stringify({code:S.code,nda_bevestigd:!!ndaBevestigd,nda_bevestigd_door:ndaDoor||''})},180000).then(function(x){return x.json();}).catch(function(){return{error:'Genereren duurde te lang of de verbinding viel weg. Probeer het opnieuw.'};});
       if(r.ok){t2.verkoopmemorandum_tekst=r.verkoopmemorandum_tekst;if(ndaDoor){t2.verkoopmemorandum_nda_door=ndaDoor;t2.verkoopmemorandum_nda_op=Date.now();}renderVerkoopmemo(r.verkoopmemorandum_tekst,'nieuw gegenereerd');}
       else{
         out.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem"><div style="color:var(--red);margin-bottom:.75rem">'+esc(r.error||'Genereren mislukt.')+'</div>'
@@ -5108,7 +5108,7 @@ function renderBegeleiderDashboard(app){
           // P1-IP-4 (27 sep 2026): instructietekst + AI-aanroep verhuisd naar worker/12-mna-
           // gesprekken-logboek.js (/mna/gesprek/verslag/genereer, begeleider-only, zelfde bar als
           // /mna/admin/gesprekken/{code} hierboven) — hier alleen nog de eigen getypte notities.
-          var rd=await fetchMetTimeout(WORKER+'/mna/gesprek/verslag/genereer',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||S.code},body:JSON.stringify({code:S._bgKey||S.code,gesprekType:document.getElementById('bgg-type').value,datum:document.getElementById('bgg-datum').value,deelnemers:document.getElementById('bgg-deelnemers').value,notities:notities})},60000).then(function(r){return r.json();}).catch(function(){return{};});
+          var rd=await fetchMetTimeout(WORKER+'/mna/gesprek/verslag/genereer',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||S.code},body:JSON.stringify({code:S._bgKey||S.code,gesprekType:document.getElementById('bgg-type').value,datum:document.getElementById('bgg-datum').value,deelnemers:document.getElementById('bgg-deelnemers').value,notities:notities})},180000).then(function(r){return r.json();}).catch(function(){return{};});
           // Foutpropagatie-check 12 sep 2026 (zelfde patroon als het dealvoorstel): meldde eerder altijd
           // "✓ Verslag gegenereerd", ook als rd.tekst ontbrak (netwerkfout/lege AI-respons) — het tekstvak
           // werd dan stil leeggemaakt terwijl de status succes toonde.

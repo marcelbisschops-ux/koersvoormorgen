@@ -854,6 +854,24 @@ log('18. Waarderingsrapport genereren (tests/waardering-genereren.mjs): mislukte
   }
 }
 
+log('19. N-121 lange AI-generaties (tests/n121-ai-timeouts.mjs): 13 AI-calls begrensd op 180s, defaults/uploads ongewijzigd');
+{
+  // N-121 (4 okt 2026): staging mat 57/62s voor rijke trajecten; de 60000 ms-timeout van de 13
+  // AI-generatiecalls in mna/04 en mna/06 gaf een valse fout. De test draait de echte fetchMetTimeout
+  // (mna/01) en de echte verkoopmemorandum-handler (mna/04) in node:vm met virtuele klok en
+  // gecontroleerde fetch — geen netwerk, geen browser, geen echte wachttijd.
+  try {
+    const { draaiN121AiTimeoutChecks } = await import('./n121-ai-timeouts.mjs');
+    const resultaten = await draaiN121AiTimeoutChecks(ROOT);
+    const gefaald = resultaten.filter(r => !r.ok);
+    gefaald.forEach(r => warn('N-121: ' + r.msg));
+    if (!resultaten.length) warn('N-121: geen checks uitgevoerd.');
+    else if (!gefaald.length) ok('Alle ' + resultaten.length + ' N-121-checks geslaagd (13 AI-calls op 180000 ms met ongewijzigde headers/body, antwoord na 62s slaagt, hangend verzoek afgebroken op 180s met timer weg, netwerkfout reject, default 15s en uploads 60s ongewijzigd, verkoopmemorandum: laat succes getoond, time-out zonder valse opslag en met werkende herstart).');
+  } catch (e) {
+    warn('tests/n121-ai-timeouts.mjs kon niet worden uitgevoerd: ' + String((e && e.message) || e));
+  }
+}
+
 // ── Samenvatting ──────────────────────────────────────────────────────────
 log('Samenvatting');
 if (!bevindingen) {
