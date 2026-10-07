@@ -961,6 +961,25 @@ log('24. Bewijsstuk-upload (tests/document-bewijsstuk-upload.mjs): aangevinkte k
   }
 }
 
+log('25. Documentupload-status (tests/document-processing-ui.mjs): blijvende status, concrete fouten en veilige batchstop');
+{
+  // 7 okt 2026: uploadDocument noemde elke fout (ook JSON/mapping/render) "Verbindingsfout" en wiste de
+  // rij ook als de server al een doc_id had; de lijst negeerde verwerking_status; de centrale upload telde
+  // NEEDS_REVIEW als verwerkt. De test draait de echte upload-/lijst-/render-/batchfuncties uit mna/02 en
+  // fetchMetTimeout uit mna/01 in node:vm tegen synthetische serverantwoorden (vorm backend worker/14+15)
+  // — geen netwerk, geen browser, geen live API. Browserbewijs volgt op staging.
+  try {
+    const { draaiDocumentProcessingUiChecks } = await import('./document-processing-ui.mjs');
+    const resultaten = await draaiDocumentProcessingUiChecks(ROOT);
+    const gefaald = resultaten.filter(r => !r.ok);
+    gefaald.forEach(r => warn('Uploadstatus: ' + r.msg));
+    if (!resultaten.length) warn('Uploadstatus: geen checks uitgevoerd.');
+    else if (!gefaald.length) ok('Alle ' + resultaten.length + ' uploadstatuschecks geslaagd (PROCESSED/STORED/NEEDS_REVIEW/FAILED met eigen status en reden, non-200 met doc_id blijft zichtbaar en na herladen, geen fictieve rij zonder doc_id, timeout/netwerk/onleesbaar antwoord/lokale fout gescheiden zonder automatische herupload, batch met uitkomst per bestand en annuleren van alleen niet-gestarte bestanden, geen vreemde state na uitloggen, oude versie blijft bij mislukte vervanging, lijst-503 behoudt cache, geen veldinvulling uit foutdocumenten, escaping).');
+  } catch (e) {
+    warn('tests/document-processing-ui.mjs kon niet worden uitgevoerd: ' + String((e && e.message) || e));
+  }
+}
+
 // ── Samenvatting ──────────────────────────────────────────────────────────
 log('Samenvatting');
 if (!bevindingen) {

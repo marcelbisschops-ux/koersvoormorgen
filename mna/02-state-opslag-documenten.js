@@ -1018,24 +1018,52 @@ function getDocsForFase(faseId) {
   return DOCS[faseId] || [];
 }
 
+// Verwerkingsstatus (backendprotocol 7 okt 2026, verkoper/begeleider): RECEIVED/STORED/PROCESSING/
+// PROCESSED/NEEDS_REVIEW/FAILED. Ontbreekt de status (legacy-rij), dan is de verwerking onbekend — de
+// rij blijft zoals vroeger getoond, zonder statuslabel en zonder succesclaim. Alleen PROCESSED (of
+// legacy) levert analyse/velden aan de rest van de app; van een STORED/NEEDS_REVIEW/FAILED-document
+// worden nooit gegevens verwerkt. Een mislukte lijstlading (bijv. 503) is een fout, geen lege lijst:
+// de bestaande cache blijft staan met een melding. Lokale, nog lopende uploads van dit traject blijven
+// bij het herladen behouden (anders verdween de wachtrij en de annuleerknop tijdens een reeks).
 function loadDocsForFase(faseId) {
   if (!S.code || isKoper()) return;
-  fetch(WORKER + '/mna/document/lijst/' + S.code + '/' + faseId)
-    .then(function(r){ return r.json(); })
-    .then(function(docs){
+  var code = S.code;
+  function laadFout(tekst) {
+    if (S.code !== code) return;
+    if (!S._docsLaadFout) S._docsLaadFout = {};
+    S._docsLaadFout[faseId] = tekst;
+    renderApp();
+  }
+  fetch(WORKER + '/mna/document/lijst/' + code + '/' + faseId)
+    .then(function(r){
+      return r.json().then(function(docs){ return { r: r, docs: docs }; }, function(){ return { r: r, docs: null }; });
+    }, function(){ return { netwerk: true }; })
+    .then(function(res){
+      if (S.code !== code) return;
+      if (res.netwerk) { laadFout('Geen verbinding: de documentenlijst kon niet worden geladen.'); return; }
+      if (!res.r.ok || !Array.isArray(res.docs)) {
+        laadFout((res.docs && typeof res.docs.error === 'string' && res.docs.error) ? res.docs.error : ('De documentenlijst kon niet worden geladen (HTTP ' + res.r.status + ').'));
+        return;
+      }
       // Dedupliceer op id — server kan dubbele records hebben
       var seen={};
-      DOCS[faseId] = docs.filter(function(d){ if(seen[d.id])return false; seen[d.id]=true; return true; })
+      var lokaal = (DOCS[faseId] || []).filter(function(d){ return d.uploading && d.traject_code === code; });
+      DOCS[faseId] = lokaal.concat(res.docs.filter(function(d){ if(seen[d.id])return false; seen[d.id]=true; return true; })
         .map(function(d){
+          var status = d.verwerking_status || null;
+          var bruikbaar = !status || status === 'PROCESSED';
           return {
             id: d.id, naam: d.bestand_naam, type: d.bestand_type,
-            grootte: d.bestand_grootte, analyse: d.analyse,
-            velden: (function(s){try{var r=JSON.parse(s||'{}');return r&&typeof r==='object'&&!Array.isArray(r)?r:{};}catch(e){return {};}})(d.veld_extractie),
+            grootte: d.bestand_grootte, analyse: bruikbaar ? d.analyse : '',
+            velden: bruikbaar ? (function(s){try{var r=JSON.parse(s||'{}');return r&&typeof r==='object'&&!Array.isArray(r)?r:{};}catch(e){return {};}})(d.veld_extractie) : {},
             uploaded_at: d.uploaded_at||null, entiteit_id: d.entiteit_id||'',
             bewaard: !!d.bewaard, methode: d.methode, uploading: false,
-            versie: d.versie||1, heeft_eerdere_versies: !!d.heeft_eerdere_versies
+            versie: d.versie||1, heeft_eerdere_versies: !!d.heeft_eerdere_versies,
+            verwerking_status: status, verwerking_fout: d.verwerking_fout||null, verwerking_reden: d.verwerking_reden||null,
+            bestand_opgeslagen: status ? !!d.bestand_opgeslagen : undefined, inhoud_hash: d.inhoud_hash||null
           };
-        });
+        }));
+      if (S._docsLaadFout) delete S._docsLaadFout[faseId];
       renderApp();
     }).catch(function(){});
 }
@@ -1084,37 +1112,110 @@ function leesUploadKeuzes(faseId) {
     alleenBewijsstuk: !!(bewijsstukEl && bewijsstukEl.checked)
   };
 }
+// Uitkomst per bestand (7 okt 2026): de aangeboden FileList wordt eerst gekopieerd (de aanroeper wist
+// input.value na afloop), elk bestand houdt zijn eigen uitkomst (uploadDocument geeft die terug) en een
+// fout bij één bestand houdt de volgende niet tegen. "Annuleer resterende bestanden" (zie
+// annuleerResterendeUploads) markeert alleen nog niet gestarte wachtrij-plekken; het lopende verzoek
+// wordt nooit afgebroken (of de server dan opruimt is onbekend) en een al verstuurd bestand nooit als
+// geannuleerd getoond. De reeks is gebonden aan het traject (S.code) — na uitloggen of wisselen start er
+// niets meer en wordt niets in de nieuwe sessie geschreven. Samenvatting in S._uploadUitkomst[faseId].
 window.uploadDocumentenSequentieel = async function(faseId, files) {
   var uploadKeuzes = leesUploadKeuzes(faseId);
+  var bestanden = Array.prototype.slice.call(files || []);
+  if (!bestanden.length || !S.code) return null;
+  var batchCode = S.code;
   if (!DOCS[faseId]) DOCS[faseId] = [];
-  var wachtrijIds = [];
-  for (var q = files.length - 1; q >= 0; q--) {
-    var qid = 'wachtrij_' + Date.now() + '_' + q;
-    wachtrijIds[q] = qid;
-    DOCS[faseId].unshift({ id: qid, naam: files[q].name, type: files[q].type, grootte: files[q].size, analyse: '', velden: {}, uploading: true });
-  }
+  var stempel = Date.now();
+  var wachtrij = bestanden.map(function(f, q){
+    return { id: 'wachtrij_' + stempel + '_' + q, naam: f.name, type: f.type, grootte: f.size, analyse: '', velden: {}, uploading: true, wachtrij: true, gestart: false, traject_code: batchCode };
+  });
+  for (var q = wachtrij.length - 1; q >= 0; q--) DOCS[faseId].unshift(wachtrij[q]);
+  var uitkomst = { code: batchCode, totaal: bestanden.length, bezig: true, items: [], samenvatting: '' };
+  if (!S._uploadUitkomst) S._uploadUitkomst = {};
+  S._uploadUitkomst[faseId] = uitkomst;
   renderApp();
-  var statusEl = document.getElementById('upload-status-' + faseId);
-  for (var i = 0; i < files.length; i++) {
-    if (statusEl) statusEl.textContent = files.length > 1 ? ('Bestand ' + (i + 1) + ' van ' + files.length + ' verwerken...') : 'Bestand verwerken...';
-    await uploadDocument(faseId, files[i], wachtrijIds[i], undefined, uploadKeuzes);
+  for (var i = 0; i < bestanden.length; i++) {
+    if (S.code !== batchCode) return uitkomst;
+    if (wachtrij[i].geannuleerd) {
+      uitkomst.items.push({ naam: bestanden[i].name, soort: 'niet_aangeboden', tekst: 'Geannuleerd vóór verzending — niet geüpload.' });
+      continue;
+    }
+    var statusEl = document.getElementById('upload-status-' + faseId);
+    if (statusEl) statusEl.textContent = bestanden.length > 1 ? ('Bestand ' + (i + 1) + ' van ' + bestanden.length + ' verwerken...') : 'Bestand verwerken...';
+    var res;
+    try {
+      res = await uploadDocument(faseId, bestanden[i], wachtrij[i].id, undefined, uploadKeuzes);
+    } catch (e) {
+      res = { naam: bestanden[i].name, soort: 'onbekend', tekst: 'Fout in dit scherm tijdens het verwerken van dit bestand. Controleer de documentenlijst voordat u het opnieuw uploadt.' };
+    }
+    uitkomst.items.push(res || { naam: bestanden[i].name, soort: 'niet_aangeboden', tekst: 'Niet verzonden.' });
   }
-  if (statusEl) statusEl.textContent = '';
+  if (S.code !== batchCode) return uitkomst;
+  var tel = { verwerkt: 0, opgeslagen: 0, controle: 0, mislukt: 0, onbekend: 0, niet_aangeboden: 0 };
+  uitkomst.items.forEach(function(x){ var k = x.soort === 'lokale_fout' ? 'mislukt' : x.soort; tel[k] = (tel[k] || 0) + 1; });
+  var aangeboden = uitkomst.items.length - tel.niet_aangeboden;
+  var delen = [];
+  if (tel.verwerkt) delen.push(tel.verwerkt + ' geanalyseerd en verwerkt');
+  if (tel.opgeslagen) delen.push(tel.opgeslagen + ' opgeslagen zonder analyse');
+  if (tel.controle) delen.push(tel.controle + ' controle nodig');
+  if (tel.mislukt) delen.push(tel.mislukt + ' mislukt');
+  if (tel.onbekend) delen.push(tel.onbekend + ' uitkomst onbekend');
+  uitkomst.samenvatting = bestanden.length + ' bestand(en) gekozen, ' + aangeboden + ' aangeboden' + (delen.length ? ': ' + delen.join(', ') : '') + (tel.niet_aangeboden ? ' · ' + tel.niet_aangeboden + ' niet aangeboden' : '') + '.';
+  uitkomst.bezig = false;
+  var statusElEind = document.getElementById('upload-status-' + faseId);
+  if (statusElEind) statusElEind.textContent = '';
+  if (bestanden.length > 1) toast(uitkomst.samenvatting, (tel.controle || tel.mislukt || tel.onbekend || tel.niet_aangeboden) ? 'warn' : 'ok', 8000);
+  renderApp();
+  return uitkomst;
+};
+
+window.annuleerResterendeUploads = function(faseId) {
+  var lijst = DOCS[faseId] || [];
+  var n = 0;
+  lijst.forEach(function(d){ if (d.wachtrij && !d.gestart && !d.geannuleerd && d.traject_code === S.code) { d.geannuleerd = true; n++; } });
+  if (!n) return;
+  DOCS[faseId] = lijst.filter(function(d){ return !d.geannuleerd; });
+  toast(n + ' nog niet verzonden bestand(en) geannuleerd. Het bestand dat nu wordt verwerkt, loopt gewoon door.', 'ok');
+  renderApp();
 };
 
 // uploadKeuzes (optioneel): door uploadDocumentenSequentieel vóór renderApp vastgelegd.
 // Zonder dat argument worden de keuzes hier gelezen, vóór de renderApp van de directe upload.
+// Geeft de uitkomst van dit ene bestand terug: { naam, soort, tekst } met soort verwerkt (PROCESSED),
+// opgeslagen (STORED, bewust niet geanalyseerd), controle (NEEDS_REVIEW), mislukt, onbekend (timeout/
+// netwerk/onleesbaar antwoord — of het bestand is opgeslagen weten we niet) of niet_aangeboden.
+// Foutpaden zijn gescheiden: verzoek (netwerk/timeout), antwoord lezen, serverfout (non-200/ok:false)
+// en lokale verwerking/weergave — alleen een echte netwerkfout heet "geen verbinding".
 async function uploadDocument(faseId, file, existingId, vervangtDocId, uploadKeuzes) {
   if (!uploadKeuzes || typeof uploadKeuzes !== 'object') uploadKeuzes = leesUploadKeuzes(faseId);
-  if (!S.code || isKoper()) return;
-  if (S.traject && S.traject.status === 'vergrendeld') { toast('Traject is vergrendeld.','warn'); if (existingId) DOCS[faseId] = DOCS[faseId].filter(function(x){ return x.id !== existingId; }); return; }
+  var tempId = existingId || ('uploading_' + Date.now());
+  var uploadCode = S.code;
+  function zonderTijdelijk() { if (DOCS[faseId]) DOCS[faseId] = DOCS[faseId].filter(function(x){ return x.id !== tempId; }); }
+  function nietAangeboden(tekst) { if (existingId) zonderTijdelijk(); return { naam: file.name, soort: 'niet_aangeboden', tekst: tekst }; }
+  // Uitgelogd of ander traject geopend terwijl het verzoek liep: niets in de nieuwe sessie schrijven.
+  function nogActueel() { return !!uploadCode && S.code === uploadCode && !!DOCS[faseId]; }
+  // Geen (leesbaar) antwoord: niet doen alsof er een document is, niet automatisch opnieuw uploaden —
+  // wel de lijst herladen, zodat een wél opgeslagen document met zijn echte status verschijnt.
+  function uitkomstOnbekend(oorzaak) {
+    var tekst = oorzaak + ' Of het bestand is opgeslagen, is onbekend. De documentenlijst wordt opnieuw geladen; controleer die voordat u het bestand opnieuw uploadt.';
+    if (!nogActueel()) return { naam: file.name, soort: 'onbekend', tekst: tekst };
+    zonderTijdelijk();
+    toast('"' + file.name + '": ' + tekst, 'warn', 10000);
+    loadDocsForFase(faseId);
+    renderApp();
+    return { naam: file.name, soort: 'onbekend', tekst: tekst };
+  }
+  if (!S.code || isKoper()) return nietAangeboden('Niet verzonden: uploaden is hier niet mogelijk.');
+  if (S.traject && S.traject.status === 'vergrendeld') { toast('Traject is vergrendeld.','warn'); return nietAangeboden('Niet verzonden: het traject is vergrendeld.'); }
   var maxSize = 20 * 1024 * 1024;
-  if (file.size > maxSize) { toast('Bestand te groot (max 20MB). Huidig: ' + Math.round(file.size/1024/1024) + 'MB','warn'); if (existingId) DOCS[faseId] = DOCS[faseId].filter(function(x){ return x.id !== existingId; }); return; }
+  if (file.size > maxSize) { toast('Bestand te groot (max 20MB). Huidig: ' + Math.round(file.size/1024/1024) + 'MB','warn'); return nietAangeboden('Niet verzonden: bestand te groot (max 20MB).'); }
 
   // Show uploading state — hergebruik de wachtrij-plek als die er al is (batch-upload), anders nieuw.
   if (!DOCS[faseId]) DOCS[faseId] = [];
-  var tempId = existingId || ('uploading_' + Date.now());
-  if (!existingId) { DOCS[faseId].unshift({ id: tempId, naam: file.name, type: file.type, grootte: file.size, analyse: '', velden: {}, uploading: true }); renderApp(); }
+  if (!existingId) { DOCS[faseId].unshift({ id: tempId, naam: file.name, type: file.type, grootte: file.size, analyse: '', velden: {}, uploading: true, traject_code: uploadCode }); renderApp(); }
+  // Vanaf hier is het verzoek gestart: "Annuleer resterende bestanden" raakt deze plek niet meer.
+  var tempRij = (DOCS[faseId] || []).find(function(x){ return x.id === tempId; });
+  if (tempRij) tempRij.gestart = true;
 
   var formData = new FormData();
   formData.append('file', file);
@@ -1124,37 +1225,79 @@ async function uploadDocument(faseId, file, existingId, vervangtDocId, uploadKeu
   var alleenBewijsstuk = uploadKeuzes.alleenBewijsstuk;
   var url = WORKER + '/mna/document/upload?code=' + S.code + '&fase_id=' + faseId + '&bewaar=' + bewaar + (entiteitId?'&entiteit_id='+encodeURIComponent(entiteitId):'') + (dubbeleCheck?'&dubbele_check=true':'') + (alleenBewijsstuk?'&alleen_bewijsstuk=true':'') + (vervangtDocId?'&vervangt='+encodeURIComponent(vervangtDocId):'');
 
+  // 1. Verzoek. fetchMetTimeout (60s): dezelfde AI-generatie-fetch-zonder-timeout-klasse als de bugfix
+  // van 15 sep 2026 (teaser/verkoopmemorandum/SPA/risicoraamwerk/waardering) — deze fase-uploadzone
+  // gebruikte nog een kale fetch() en kon dus voor altijd op "uploaden..." blijven hangen bij een
+  // stallende AI-respons.
+  var resp;
   try {
-    // fetchMetTimeout (60s): dezelfde AI-generatie-fetch-zonder-timeout-klasse als de bugfix van
-    // 15 sep 2026 (teaser/verkoopmemorandum/SPA/risicoraamwerk/waardering) — deze fase-uploadzone
-    // gebruikte nog een kale fetch() en kon dus voor altijd op "uploaden..." blijven hangen bij een
-    // stallende AI-respons. window.centraalUploadFiles() hieronder had voor exact dezelfde
-    // /mna/document/upload-aanroep al een 45s AbortController-timeout — deze plek was gemist.
-    var resp = await fetchMetTimeout(url, { method: 'POST', body: formData }, 60000);
-    var d = await resp.json();
-    if (d.ok) {
-      // Replace temp with real — en bij een vervangende versie ook de oude versie uit de weergave
-      // halen (de server sluit "vervangen" documenten al uit van /mna/document/lijst, maar de
+    resp = await fetchMetTimeout(url, { method: 'POST', body: formData }, 60000);
+  } catch (e) {
+    return uitkomstOnbekend(e && e.name === 'AbortError' ? 'Geen antwoord van de server binnen 60 seconden.' : 'Geen verbinding met de server.');
+  }
+  // 2. Antwoord lezen — een onleesbaar antwoord is geen verbindingsfout.
+  var d = null;
+  try { d = await resp.json(); } catch (e) { d = null; }
+  if (!d || typeof d !== 'object' || Array.isArray(d)) return uitkomstOnbekend('Het antwoord van de server was onleesbaar (HTTP ' + resp.status + ').');
+  if (!nogActueel()) return { naam: file.name, soort: 'onbekend', tekst: 'Niet meer getoond: u bent intussen uitgelogd of van traject gewisseld.' };
+  var status = typeof d.verwerking_status === 'string' ? d.verwerking_status : '';
+
+  // 3. Serverfout (non-200 of ok:false). Heeft de server een doc_id vastgelegd, dan blijft dát record
+  // zichtbaar met zijn echte status en de vaste fouttekst; een te vervangen oude versie blijft staan.
+  if (!resp.ok || d.ok !== true) {
+    var foutTekst = (typeof d.error === 'string' && d.error) ? d.error : ('Upload mislukt (HTTP ' + resp.status + ').');
+    zonderTijdelijk();
+    if (d.doc_id) {
+      DOCS[faseId] = DOCS[faseId].filter(function(x){ return x.id !== d.doc_id; });
+      DOCS[faseId].unshift({
+        id: d.doc_id, naam: file.name, type: file.type, grootte: file.size, analyse: '', velden: {},
+        bewaard: !!d.bestand_opgeslagen, uploaded_at: Date.now(), uploading: false, entiteit_id: entiteitId || '',
+        versie: 1, heeft_eerdere_versies: false, alleen_bewijsstuk: alleenBewijsstuk,
+        verwerking_status: status || null, verwerking_fout: d.fout || null, verwerking_reden: foutTekst,
+        bestand_opgeslagen: !!d.bestand_opgeslagen, inhoud_hash: d.inhoud_hash || null, upload_mislukt: true
+      });
+    }
+    toast('"' + file.name + '": ' + foutTekst + (vervangtDocId ? ' De vorige versie blijft ongewijzigd staan.' : ''), 'err', 8000);
+    renderApp();
+    return { naam: file.name, soort: 'mislukt', tekst: foutTekst };
+  }
+
+  // 4. Succes (200): alleen PROCESSED (of een antwoord zonder status volgens het oude contract, niet
+  // verworpen/bewijsstuk) is een geslaagde analyse. Alleen PROCESSED/STORED vervangt een oude versie.
+  var analyseGeslaagd = status === 'PROCESSED' || (!status && !d.verworpen && !d.alleen_bewijsstuk);
+  var magVervangen = status === 'PROCESSED' || status === 'STORED' || (!status && !d.verworpen);
+  var soort = status === 'PROCESSED' ? 'verwerkt' : status === 'STORED' ? 'opgeslagen' : status === 'NEEDS_REVIEW' ? 'controle' : status === 'FAILED' ? 'mislukt'
+    : status ? 'onbekend' : (d.alleen_bewijsstuk ? 'opgeslagen' : d.verworpen ? 'controle' : 'verwerkt');
+  var reviewReden = (typeof d.verworpen_reden === 'string' && d.verworpen_reden) ? d.verworpen_reden : 'Het bestand is opgeslagen, maar vraagt handmatige beoordeling. Er zijn geen gegevens overgenomen.';
+  var uitkomstTekst = soort === 'verwerkt' ? 'Geanalyseerd en verwerkt.' : soort === 'opgeslagen' ? 'Opgeslagen zonder analyse.' : soort === 'controle' ? reviewReden : 'Opgeslagen; verwerking niet afgerond.';
+  try {
+      // Replace temp with real — en bij een geslaagde vervangende versie ook de oude versie uit de
+      // weergave halen (de server sluit "vervangen" documenten al uit van /mna/document/lijst, maar de
       // lokale DOCS-cache is los daarvan en wordt pas bij een volgende loadDocsForFase ververst).
-      DOCS[faseId] = DOCS[faseId].filter(function(x){ return x.id !== tempId && x.id !== vervangtDocId; });
+      DOCS[faseId] = DOCS[faseId].filter(function(x){ return x.id !== tempId && x.id !== d.doc_id && !(magVervangen && vervangtDocId && x.id === vervangtDocId); });
       // d.entiteit_naam is een los top-level responsveld (de server verwijdert het uit veld_extractie
       // vóórdat die als losse velden teruggaat) — voor de "handmatig koppelen"-badge (die op elk
       // render-moment, ook ná een pagina-herlaad, opnieuw uit doc.velden.entiteit_naam herberekent)
       // moet het hier alsnog in velden terechtkomen, anders klopt de badge alleen bij deze ene render.
-      var veldenMetEntNaam = Object.assign({}, d.veld_extractie || {});
-      if (d.entiteit_naam) veldenMetEntNaam.entiteit_naam = d.entiteit_naam;
+      var veldenMetEntNaam = analyseGeslaagd ? Object.assign({}, d.veld_extractie || {}) : {};
+      if (analyseGeslaagd && d.entiteit_naam) veldenMetEntNaam.entiteit_naam = d.entiteit_naam;
       DOCS[faseId].unshift({
         id: d.doc_id, naam: file.name, type: file.type, grootte: file.size,
-        analyse: d.analyse, velden: veldenMetEntNaam, bewaard: !!d.r2_opgeslagen,
-        uploaded_at: Date.now(), uploading: false, verworpen: !!d.verworpen, verworpen_reden: d.verworpen_reden||null,
+        analyse: analyseGeslaagd ? d.analyse : '', velden: veldenMetEntNaam, bewaard: !!d.r2_opgeslagen,
+        uploaded_at: Date.now(), uploading: false, verworpen: !status && !!d.verworpen, verworpen_reden: d.verworpen_reden||null,
         entiteit_id: entiteitId || '',
-        versie: d.versie||1, heeft_eerdere_versies: !!vervangtDocId,
-        alleen_bewijsstuk: !!d.alleen_bewijsstuk
+        versie: d.versie||1, heeft_eerdere_versies: !!vervangtDocId && magVervangen,
+        alleen_bewijsstuk: !!d.alleen_bewijsstuk,
+        verwerking_status: status || null, verwerking_fout: d.fout || null,
+        verwerking_reden: status === 'NEEDS_REVIEW' ? reviewReden : null,
+        bestand_opgeslagen: status ? d.r2_opgeslagen !== false : undefined, inhoud_hash: d.inhoud_hash || null
       });
       // Bewijsstuk-only: server stuurt bewust geen veld_extractie/crosschecks mee (zie hieronder,
       // die blokken worden dan vanzelf overgeslagen) — wel een eigen, duidelijke melding.
       if (d.alleen_bewijsstuk) toast('"'+file.name+'" toegevoegd als bewijsstuk — niet automatisch geanalyseerd.','ok');
-      if (d.veld_extractie) {
+      else if (soort === 'controle') toast('"'+file.name+'": '+reviewReden+(vervangtDocId?' De vorige versie blijft staan.':''),'warn',10000);
+      else if (!analyseGeslaagd) toast('"'+file.name+'": '+uitkomstTekst+' Er zijn geen gegevens overgenomen.'+(vervangtDocId&&!magVervangen?' De vorige versie blijft staan.':''),'warn',8000);
+      if (analyseGeslaagd && d.veld_extractie) {
         // Geen entiteit gekozen bij upload. Als de AI zeker (exacte naam-match) één geregistreerde
         // entiteit herkent, routeren we automatisch daarnaartoe. GOUDEN STANDAARD (Marcel, 24 juli
         // 2026): bij twijfel NOOIT gokken — dus als er meerdere entiteiten zijn en de AI wél een
@@ -1184,6 +1327,7 @@ async function uploadDocument(faseId, file, existingId, vervangtDocId, uploadKeu
           }
         }
         if (behoeftHandmatigeKoppeling) {
+          uitkomstTekst = 'Geanalyseerd, maar de entiteit is niet zeker herkend — cijfers niet verwerkt; koppel het document handmatig.';
           toast('⚠ "'+file.name+'": entiteit niet zeker herkend ("'+d.entiteit_naam+'") — cijfers zijn NIET verwerkt. Koppel het document handmatig aan de juiste entiteit via de dataroom.','warn',8000);
           renderApp();
         } else {
@@ -1217,7 +1361,7 @@ async function uploadDocument(faseId, file, existingId, vervangtDocId, uploadKeu
         }
       }
       // Toon crosscheck waarschuwingen (AI-zelfrapportage + deterministische sanity-check)
-      if((d.crosschecks&&d.crosschecks.length)||(d.sanity_waarschuwingen&&d.sanity_waarschuwingen.length)||(d.entiteit_naam&&S.traject&&S.traject.kantoor_naam)||(d.extractie_betrouwbaarheid&&d.extractie_betrouwbaarheid!=='hoog')){
+      if(analyseGeslaagd&&((d.crosschecks&&d.crosschecks.length)||(d.sanity_waarschuwingen&&d.sanity_waarschuwingen.length)||(d.entiteit_naam&&S.traject&&S.traject.kantoor_naam)||(d.extractie_betrouwbaarheid&&d.extractie_betrouwbaarheid!=='hoog'))){
         var msgs=[];
         // Entiteit check
         if(d.entiteit_naam&&S.traject&&S.traject.kantoor_naam){
@@ -1244,43 +1388,36 @@ async function uploadDocument(faseId, file, existingId, vervangtDocId, uploadKeu
           if(uz){var w=document.createElement('div');w.innerHTML=md;uz.parentNode.insertBefore(w,uz.nextSibling);}
         }
       }
-    } else {
-      DOCS[faseId] = DOCS[faseId].filter(function(x){ return x.id !== tempId; });
-      toast('Upload fout: ' + (d.error || 'onbekend'),'err');
-    }
+      renderApp();
   } catch(e) {
-    DOCS[faseId] = DOCS[faseId].filter(function(x){ return x.id !== tempId; });
-    toast('Verbindingsfout bij uploaden.','err');
+    // 5. Lokale verwerkings-/weergavefout ná een geslaagd serverantwoord: het document staat op de
+    // server (en blijft in de lijst); geen verbindingsfout melden en niet laten herhalen.
+    var lokaleTekst = 'Het bestand is op de server vastgelegd, maar het verwerken in dit scherm is mislukt. Upload het niet opnieuw; de documentenlijst wordt opnieuw geladen.';
+    toast('"' + file.name + '": ' + lokaleTekst, 'err', 10000);
+    if (nogActueel()) { zonderTijdelijk(); loadDocsForFase(faseId); }
+    try { renderApp(); } catch (e2) { /* weergave blijft de vorige */ }
+    return { naam: file.name, soort: 'lokale_fout', tekst: lokaleTekst };
   }
-  renderApp();
+  return { naam: file.name, soort: soort, tekst: uitkomstTekst };
 }
 
-// Centrale upload: verwerk bestanden en laat AI alle fases invullen
+// Centrale upload: verwerk bestanden en laat AI alle fases invullen. Sinds 7 okt 2026 geen eigen
+// upload-/mappinglogica meer: per fase (bestaande bestandsnaamindeling, ongewijzigd) gaat de reeks door
+// dezelfde wachtrij als de fase-uploadzone (uploadDocumentenSequentieel → uploadDocument), zodat status,
+// uitkomst per bestand, annuleren en het niet-verwerken van STORED/NEEDS_REVIEW/FAILED overal gelijk zijn.
 window.centraalUploadFiles = async function(files) {
-  if(!files||!files.length)return;
-  var totaal=files.length;
-  var verwerkt=0;
-  var fouten=0;
-
-  // Status in een aparte vaste div buiten de render-cyclus
-  var statusDiv=document.getElementById('centraal-upload-status');
+  var bestanden=Array.prototype.slice.call(files||[]);
+  if(!bestanden.length||!S.code)return;
+  var code=S.code;
   function toonStatus(html){
     // Zoek element opnieuw na elke renderApp
     var el=document.getElementById('centraal-upload-status');
     if(el)el.innerHTML=html;
   }
-  function toonVoortgang(huidig,totaalN,naam){
-    var pct=Math.round(huidig/totaalN*100);
-    var breedte=Math.max(4,pct);
-    toonStatus('<div style="margin-bottom:4px;font-size:12px;color:var(--teal)">&#9881; Bezig: <strong>'+naam+'</strong> ('+huidig+'/'+totaalN+')</div>'
-      +'<div style="background:var(--border);border-radius:4px;height:6px;overflow:hidden"><div style="background:var(--teal);height:100%;width:'+breedte+'%;transition:width .3s"></div></div>'
-      +'<div style="font-size:11px;color:var(--muted);margin-top:3px">'+pct+'% — dit kan 15-30 seconden per bestand duren</div>');
-  }
+  var perFase={}, volgorde=[];
 
-  for(var i=0;i<files.length;i++){
-    var file=files[i];
-    toonVoortgang(i+1,totaal,file.name);
-
+  for(var i=0;i<bestanden.length;i++){
+    var file=bestanden[i];
     var naam=file.name.toLowerCase();
     var faseId='financieel';
     if(naam.includes('loon')||naam.includes('salaris')||naam.includes('personeel'))faseId='partner';
@@ -1289,64 +1426,20 @@ window.centraalUploadFiles = async function(files) {
     else if(naam.includes('it')||naam.includes('software')||naam.includes('ict')||naam.includes('systeem'))faseId='it';
     else if(naam.includes('kwaliteit')||naam.includes('audit')||naam.includes('compliance')||naam.includes('avg'))faseId='compliance';
     else if(naam.includes('strateg')||naam.includes('markt')||naam.includes('plan'))faseId='strategisch';
-
-    var formData=new FormData();
-    formData.append('file',file);
-    var bewaar=S.traject&&S.traject.bewaar_docs!==false;
-    var url=WORKER+'/mna/document/upload?code='+S.code+'&fase_id='+faseId+'&bewaar='+bewaar;
-
-    try{
-      // 60 seconden timeout per bestand
-      var controller=new AbortController();
-      var timeoutId=setTimeout(function(){controller.abort();},45000);
-      var resp=await fetch(url,{method:'POST',body:formData,signal:controller.signal});
-      clearTimeout(timeoutId);
-      var d=await resp.json();
-      if(d.ok){
-        if(!DOCS[faseId])DOCS[faseId]=[];
-        DOCS[faseId].unshift({id:d.doc_id,naam:file.name,type:file.type,grootte:file.size,analyse:d.analyse||'',velden:d.veld_extractie||{},bewaard:!!d.r2_opgeslagen,uploaded_at:Date.now(),uploading:false});
-        if(d.veld_extractie&&Object.keys(d.veld_extractie).length&&!d.verworpen){
-          S._conflicts=[];
-          var alleFases2=['financieel','commercieel','partner','compliance','it','juridisch','strategisch'];
-          alleFases2.forEach(function(fid){ autoFillFromExtraction(fid,d.veld_extractie,false,file.name); });
-        }
-        verwerkt++;
-        // Toon verworpen melding direct en ga door
-        if(d.verworpen&&d.verworpen_reden){
-          var statusEl3=document.getElementById('centraal-upload-status');
-          if(statusEl3)statusEl3.innerHTML=(statusEl3.innerHTML||'')+'<div style="background:var(--red-bg);border:1px solid var(--red);border-radius:6px;padding:.5rem .75rem;margin-top:.4rem;font-size:12px;color:var(--red)">🚫 <strong>'+esc(file.name)+'</strong> genegeerd: '+esc(d.verworpen_reden)+'</div>';
-          // Direct doorgaan naar volgend bestand
-          renderApp();
-          continue;
-        }
-        // Toon crosscheck waarschuwingen als die er zijn (AI-zelfrapportage + deterministische sanity-check)
-        var alleWarn=(d.crosschecks||[]).concat(d.sanity_waarschuwingen||[]);
-        if(alleWarn.length){
-          var warnHtml='<div style="background:var(--gold-bg);border:1px solid var(--gold);border-radius:6px;padding:.75rem;margin-top:.5rem">'
-            +'<div style="font-size:11px;font-weight:600;color:var(--gold-dark);margin-bottom:.4rem">⚠ '+file.name+' — '+alleWarn.length+' aandachtspunt(en)</div>';
-          alleWarn.forEach(function(w){warnHtml+='<div style="font-size:12px;color:var(--gold-dark);padding:2px 0">• '+esc(w)+'</div>';});
-          // Entiteit check
-          if(d.entiteit_naam&&S.traject&&S.traject.kantoor_naam){
-            var naam1=(d.entiteit_naam||'').toLowerCase();
-            var naam2=(S.traject.kantoor_naam||'').toLowerCase();
-            if(!naam1.includes(naam2.split(' ')[0])&&!naam2.includes(naam1.split(' ')[0])){
-              warnHtml+='<div style="font-size:12px;color:var(--gold-dark);padding:2px 0;font-weight:500">⚠ Entiteit in document ("'+esc(d.entiteit_naam)+'") wijkt af van kantoornaam ("'+esc(S.traject.kantoor_naam)+'") — controleer of dit het juiste bestand is.</div>';
-            }
-          }
-          warnHtml+='</div>';
-          var statusEl2=document.getElementById('centraal-upload-status');
-          if(statusEl2)statusEl2.innerHTML=(statusEl2.innerHTML||'')+warnHtml;
-        }
-      } else {
-        fouten++;
-        toonStatus('<span style="color:var(--red)">Fout bij '+file.name+': '+(d.error||'onbekend')+'</span>');
-      }
-    }catch(e){
-      fouten++;
-      var msg=e.name==='AbortError'?'Timeout (90s) — probeer een kleiner bestand of upload PDF in plaats van CSV':e.message;
-      toonStatus('<span style="color:var(--red)">Fout bij '+file.name+': '+msg+'</span>');
-    }
+    if(!perFase[faseId]){perFase[faseId]=[];volgorde.push(faseId);}
+    perFase[faseId].push(file);
   }
+
+  var regels=[];
+  for(var j=0;j<volgorde.length;j++){
+    if(S.code!==code)return;
+    var fid=volgorde[j];
+    var faseTitel=(FASES.find(function(f){return f.id===fid;})||{}).title||fid;
+    toonStatus('<div style="font-size:12px;color:var(--teal)">&#9881; Bezig: '+perFase[fid].length+' bestand(en) voor <strong>'+esc(faseTitel)+'</strong> — dit kan 15-30 seconden per bestand duren</div>');
+    var uitkomst=await window.uploadDocumentenSequentieel(fid,perFase[fid]);
+    if(uitkomst&&uitkomst.samenvatting)regels.push('<div><strong>'+esc(faseTitel)+'</strong>: '+esc(uitkomst.samenvatting)+'</div>');
+  }
+  if(S.code!==code)return;
 
   // Sla eerst alle data op naar server VOORDAT renderApp de DOM overschrijft
   if(Object.keys(S.data).length) saveAll();
@@ -1354,7 +1447,7 @@ window.centraalUploadFiles = async function(files) {
   // Render zodat gebruiker velden ziet
   renderApp();
   setTimeout(function(){
-    toonStatus('<span style="color:var(--teal)">&#10003; '+verwerkt+' van '+totaal+' bestanden verwerkt'+(fouten?' ('+fouten+' fout)':'')+'. Controleer de velden hieronder.</span>');
+    toonStatus('<div style="font-size:12px;color:var(--mid)">'+regels.join('')+'<div style="color:var(--muted);margin-top:3px">Details per bestand staan bij de documenten van elke fase.</div></div>');
   },500);
 };
 
@@ -1930,6 +2023,41 @@ function renderDocumentSectie(faseId) {
       + '</div>';
   }
 
+  // Verwerkingsstatus (7 okt 2026): menselijke weergave van de serverstatus. Geen status = legacy,
+  // verwerking onbekend → geen label (en geen succesclaim). Alleen PROCESSED is een geslaagde analyse.
+  var STATUS_WEERGAVE = {
+    PROCESSED: { tekst: 'Geanalyseerd', kleur: 'var(--teal)', bg: 'var(--teal-bg)' },
+    STORED: { tekst: 'Opgeslagen, niet geanalyseerd', kleur: 'var(--muted)', bg: 'var(--panel)' },
+    NEEDS_REVIEW: { tekst: 'Controle nodig', kleur: 'var(--gold-dark)', bg: 'var(--gold-bg)', rand: 'var(--gold)' },
+    FAILED: { tekst: 'Mislukt', kleur: 'var(--red)', bg: 'var(--red-bg)', rand: 'var(--red)' },
+    RECEIVED: { tekst: 'Ontvangen, verwerking niet afgerond', kleur: 'var(--gold-dark)', bg: 'var(--gold-bg)', rand: 'var(--gold)' },
+    PROCESSING: { tekst: 'Verwerking niet afgerond', kleur: 'var(--gold-dark)', bg: 'var(--gold-bg)', rand: 'var(--gold)' }
+  };
+
+  // Lopende/afgeronde uploadreeks van deze fase (alleen van het eigen traject) en een mislukte lijstlading.
+  var batchHtml = '';
+  var wachtend = docs.filter(function(d){ return d.wachtrij && !d.gestart && !d.geannuleerd && d.traject_code === S.code; }).length;
+  var reeks = S._uploadUitkomst && S._uploadUitkomst[faseId];
+  if (reeks && reeks.code !== S.code) reeks = null;
+  if ((reeks && reeks.bezig) || wachtend) {
+    batchHtml = '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:11px;color:var(--muted);margin-bottom:.5rem">'
+      + (reeks ? '<span>Uploadreeks: '+reeks.items.length+' van '+reeks.totaal+' bestand(en) afgerond.</span>' : '')
+      + (wachtend ? '<button onclick="annuleerResterendeUploads(\''+faseId+'\')" title="Stopt alleen bestanden die nog niet zijn verstuurd; het bestand dat nu wordt verwerkt loopt door" style="background:none;border:1px solid var(--border2);color:var(--sub);border-radius:var(--r);cursor:pointer;font-size:10px;padding:1px 8px">Annuleer resterende bestanden ('+wachtend+')</button>' : '')
+      + '</div>';
+  } else if (reeks && reeks.samenvatting) {
+    batchHtml = '<div style="font-size:11px;color:var(--sub);background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:6px 8px;margin-bottom:.5rem">'
+      + '<div style="display:flex;gap:6px;align-items:flex-start"><span style="flex:1;font-weight:600">'+esc(reeks.samenvatting)+'</span>'
+      + '<button onclick="if(S._uploadUitkomst)delete S._uploadUitkomst[\''+faseId+'\'];renderApp();" title="Overzicht sluiten" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:10px;padding:0 2px">✕</button></div>'
+      + reeks.items.map(function(x){ return '<div style="padding-top:2px">'+esc(x.naam)+': '+esc(x.tekst)+'</div>'; }).join('')
+      + '</div>';
+  }
+  var laadFout = S._docsLaadFout && S._docsLaadFout[faseId];
+  if (laadFout) {
+    batchHtml += '<div style="font-size:11px;color:var(--red);background:var(--red-bg);border:1px solid var(--red);border-radius:var(--r);padding:6px 8px;margin-bottom:.5rem">'
+      + esc(laadFout) + (docs.length ? ' De getoonde lijst kan verouderd zijn.' : '')
+      + ' <button onclick="loadDocsForFase(\''+faseId+'\')" style="background:none;border:1px solid var(--red);color:var(--red);border-radius:var(--r);cursor:pointer;font-size:10px;padding:1px 6px">Opnieuw laden</button></div>';
+  }
+
   // Documenten lijst — compact
   var docsHtml = '';
   if (docs.length) {
@@ -1939,10 +2067,11 @@ function renderDocumentSectie(faseId) {
       if (doc.uploading) {
         return '<div style="display:flex;align-items:center;gap:8px;padding:5px 8px;background:var(--card);border-radius:var(--r);border:1px solid var(--border)">'
           + '<div class="spin" style="border-color:var(--border2);border-top-color:var(--teal);width:11px;height:11px;flex-shrink:0"></div>'
-          + '<span style="font-size:11px;color:var(--muted)">'+esc(doc.naam)+'</span>'
+          + '<span style="font-size:11px;color:var(--muted)">'+esc(doc.naam)+(doc.wachtrij && !doc.gestart ? ' — in wachtrij' : '')+'</span>'
           + '</div>';
       }
-      if (doc.verworpen) {
+      var statusW = STATUS_WEERGAVE[doc.verwerking_status] || (doc.upload_mislukt ? STATUS_WEERGAVE.FAILED : null);
+      if (doc.verworpen && !statusW) {
         return '<div style="display:flex;align-items:center;gap:6px;padding:5px 8px;background:var(--red-bg);border-radius:var(--r);border:1px solid var(--red)">'
           + '<span style="font-size:11px">🚫</span>'
           + '<span style="font-size:11px;color:var(--red);flex:1">'+esc(doc.naam)+'</span>'
@@ -1950,7 +2079,10 @@ function renderDocumentSectie(faseId) {
           + '</div>';
       }
       var entNaamDoc = entiteitNaam(doc.entiteit_id);
-      var toonKoppelenDoc = !isReadOnly && S._entiteiten && S._entiteiten.length;
+      // Alleen een goed document (legacy, PROCESSED, STORED) kan aan een entiteit gekoppeld worden; van
+      // een mislukt/te beoordelen document worden nooit gegevens verwerkt.
+      var statusGoed = !doc.upload_mislukt && (!doc.verwerking_status || doc.verwerking_status === 'PROCESSED' || doc.verwerking_status === 'STORED');
+      var toonKoppelenDoc = statusGoed && !isReadOnly && S._entiteiten && S._entiteiten.length;
       var gokIdDoc = (toonKoppelenDoc && !doc.entiteit_id) ? gokEntiteitId((doc.velden||{}).entiteit_naam) : '';
       var geselecteerdDoc = doc.entiteit_id || gokIdDoc;
       // GOUDEN STANDAARD: bij onzekere entiteitsherkenning (AI noemde wél een bedrijfsnaam, maar die
@@ -1965,20 +2097,30 @@ function renderDocumentSectie(faseId) {
           ? ' <span style="font-size:9px;font-weight:700;color:#fff;background:var(--gold);border-radius:8px;padding:1px 6px;margin-left:2px">&#9888; Handmatig koppelen</span>'
           : ' <span style="font-size:9px;font-weight:600;color:var(--muted);background:var(--panel);border-radius:8px;padding:1px 6px;margin-left:2px">Groepsniveau</span>')
         : '';
-      return '<div style="display:flex;align-items:center;gap:6px;padding:5px 8px;background:'+(behoeftKoppelingDoc?'var(--gold-bg)':'var(--card)')+';border-radius:var(--r);border:1px solid '+(behoeftKoppelingDoc?'var(--gold)':'var(--border)')+';flex-wrap:wrap">'
+      // Bewijsstuk (STORED) heeft al het eigen label; elke andere bekende status krijgt een statuslabel.
+      var toonStatusLabel = statusW && !(isBewijsstuk && doc.verwerking_status === 'STORED' && !doc.upload_mislukt);
+      var statusBadgeDoc = toonStatusLabel ? ' <span style="font-size:9px;font-weight:700;color:'+statusW.kleur+';background:'+statusW.bg+';border-radius:8px;padding:1px 6px;margin-left:2px">'+esc(statusW.tekst)+'</span>' : '';
+      var redenDoc = (statusW && doc.verwerking_reden) ? '<div style="flex-basis:100%;font-size:10px;color:'+statusW.kleur+';padding-left:19px">'+esc(doc.verwerking_reden)+'</div>' : '';
+      // Downloadlink alleen als het bestand daadwerkelijk is opgeslagen (bestand_opgeslagen; ontbreekt
+      // bij legacy-rijen → bestaande regel) én als dataroomdocument bewaard.
+      var magDownloaden = doc.bewaard && doc.bestand_opgeslagen !== false;
+      var randKleurDoc = (statusW && statusW.rand) || (behoeftKoppelingDoc ? 'var(--gold)' : 'var(--border)');
+      var achtergrondDoc = (statusW && statusW.rand) ? statusW.bg : (behoeftKoppelingDoc ? 'var(--gold-bg)' : 'var(--card)');
+      return '<div style="display:flex;align-items:center;gap:6px;padding:5px 8px;background:'+achtergrondDoc+';border-radius:var(--r);border:1px solid '+randKleurDoc+';flex-wrap:wrap">'
         + '<span style="font-size:13px">'+icon+'</span>'
-        + '<span style="font-size:11px;color:'+(behoeftKoppelingDoc?'var(--head)':'var(--teal)')+';flex:1">'+(doc.bewaard?'<a href="'+WORKER+'/mna/document/download/'+doc.id+'?code='+encodeURIComponent(S.code)+'" target="_blank" rel="noopener" style="color:'+(behoeftKoppelingDoc?'var(--head)':'var(--teal)')+';text-decoration:'+(behoeftKoppelingDoc?'underline':'none')+'">'+esc(doc.naam)+'</a>':esc(doc.naam))+(entNaamDoc?' <span style="font-size:9px;font-weight:600;color:var(--teal);background:var(--teal-bg);border-radius:8px;padding:1px 6px;margin-left:2px">'+esc(entNaamDoc)+'</span>':groepsniveauBadgeDoc)+bewijsstukBadgeDoc+((doc.versie||1)>1?' <span style="font-size:9px;font-weight:600;color:var(--muted);background:var(--panel);border-radius:8px;padding:1px 6px;margin-left:2px" title="Dit is versie '+(doc.versie||1)+' — vervangt een eerder geüpload document">v'+(doc.versie||1)+'</span>':'')+'</span>'
+        + '<span style="font-size:11px;color:'+(behoeftKoppelingDoc?'var(--head)':'var(--teal)')+';flex:1">'+(magDownloaden?'<a href="'+WORKER+'/mna/document/download/'+encodeURIComponent(doc.id)+'?code='+encodeURIComponent(S.code)+'" target="_blank" rel="noopener" style="color:'+(behoeftKoppelingDoc?'var(--head)':'var(--teal)')+';text-decoration:'+(behoeftKoppelingDoc?'underline':'none')+'">'+esc(doc.naam)+'</a>':esc(doc.naam))+statusBadgeDoc+(entNaamDoc?' <span style="font-size:9px;font-weight:600;color:var(--teal);background:var(--teal-bg);border-radius:8px;padding:1px 6px;margin-left:2px">'+esc(entNaamDoc)+'</span>':groepsniveauBadgeDoc)+bewijsstukBadgeDoc+((doc.versie||1)>1?' <span style="font-size:9px;font-weight:600;color:var(--muted);background:var(--panel);border-radius:8px;padding:1px 6px;margin-left:2px" title="Dit is versie '+(doc.versie||1)+' — vervangt een eerder geüpload document">v'+(doc.versie||1)+'</span>':'')+'</span>'
         + '<span style="font-size:10px;color:var(--muted)">'+(doc.grootte/1024/1024).toFixed(1)+'MB</span>'
         + (toonKoppelenDoc?'<select id="fd-ent-'+doc.id+'" style="font-size:10px;background:var(--panel);border:1px solid var(--border2);border-radius:var(--r);padding:2px 4px"><option value="">'+(doc.entiteit_id?'— Groepsniveau (ontkoppelen) —':'— Koppel aan entiteit —')+'</option>'+S._entiteiten.map(function(e){return '<option value="'+esc(e.id)+'"'+(e.id===geselecteerdDoc?' selected':'')+'>'+esc(e.naam)+(e.id===gokIdDoc&&!doc.entiteit_id?' (AI-suggestie)':'')+'</option>';}).join('')+'</select><button onclick="koppelDocumentAanEntiteit(\''+doc.id+'\',\'fd-ent-\')" style="background:none;border:1px solid var(--teal);color:var(--teal);border-radius:var(--r);cursor:pointer;font-size:10px;padding:1px 6px">&#128279;</button>':'')
         + ((doc.heeft_eerdere_versies||(doc.versie||1)>1)?'<button onclick="toonVersieGeschiedenis(\''+doc.id+'\')" title="Eerdere versies bekijken" style="background:none;border:1px solid var(--border2);color:var(--muted);border-radius:var(--r);cursor:pointer;font-size:10px;padding:1px 6px">&#128337; Versies</button>':'')
         + (!isReadOnly?'<button onclick="vervangDocument(\''+faseId+'\',\''+doc.id+'\')" title="Nieuwe versie uploaden (vervangt dit document)" style="background:none;border:1px solid var(--border2);color:var(--muted);border-radius:var(--r);cursor:pointer;font-size:10px;padding:1px 6px">&#8635; Vervangen</button>':'')
         + (!isReadOnly?'<button onclick="deleteDocument(\''+doc.id+'\',\''+faseId+'\')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:10px;padding:0 2px">✕</button>':'')
+        + redenDoc
         + '</div>';
     }).join('');
     docsHtml += '</div>';
   }
 
-  return '<div style="margin-bottom:1rem">'+uploadHtml+docsHtml+'</div>';
+  return '<div style="margin-bottom:1rem">'+uploadHtml+batchHtml+docsHtml+'</div>';
 }
 
 // Nieuwe versie van een bestaand document uploaden (Documentversiebeheer, 25 juli 2026): opent een
@@ -2247,11 +2389,23 @@ async function loadDataroom(){
   // koper geen overzicht van (getekende) documenten zien (Marcel, 25 juli 2026).
   if(!S.code)return;
   S.dataroomLoading=true;renderApp();
-  try{
-    var resp=await fetch(WORKER+'/mna/document/lijst/'+S.code);
-    var docs=await resp.json();
-    S.dataroom=docs.map(function(d){var velden={};try{velden=d.veld_extractie?JSON.parse(d.veld_extractie):{};}catch(e){}return{id:d.id,naam:d.bestand_naam,type:d.bestand_type,grootte:d.bestand_grootte,fase_id:d.fase_id,bewaard:!!d.bewaard,uploaded_at:d.uploaded_at,entiteit_id:d.entiteit_id||'',velden:velden};});
-  }catch(e){S.dataroom=[];}
+  // Een mislukte lijst (netwerk, 503, onleesbaar) is een fout — niet "geen documenten" (7 okt 2026).
+  // In het overzicht alleen goede documenten (legacy, PROCESSED, STORED) met een echt opgeslagen
+  // bestand; documenten met een verwerkingsprobleem staan met status in de lijst van hun fase.
+  var code=S.code, resp=null, docs=null, fout='';
+  try{ resp=await fetch(WORKER+'/mna/document/lijst/'+code); }catch(e){ fout='Geen verbinding: het documentoverzicht kon niet worden geladen.'; }
+  if(resp){
+    try{ docs=await resp.json(); }catch(e){ docs=null; }
+    if(!resp.ok||!Array.isArray(docs)) fout=(docs&&typeof docs.error==='string'&&docs.error)||('Het documentoverzicht kon niet worden geladen (HTTP '+resp.status+').');
+  }
+  if(S.code!==code)return;
+  S.dataroomFout=fout||null;
+  S.dataroomProbleem=0;
+  if(!fout){
+    var goed=docs.filter(function(d){return (!d.verwerking_status||d.verwerking_status==='PROCESSED'||d.verwerking_status==='STORED')&&!(d.verwerking_status&&!d.bestand_opgeslagen);});
+    S.dataroomProbleem=docs.length-goed.length;
+    S.dataroom=goed.map(function(d){var velden={};try{velden=d.veld_extractie?JSON.parse(d.veld_extractie):{};}catch(e){}return{id:d.id,naam:d.bestand_naam,type:d.bestand_type,grootte:d.bestand_grootte,fase_id:d.fase_id,bewaard:!!d.bewaard,uploaded_at:d.uploaded_at,entiteit_id:d.entiteit_id||'',velden:velden};});
+  }
   S.dataroomLoading=false;renderApp();
 }
 
@@ -2266,7 +2420,9 @@ function renderDataroom(){
     +'<button class="btn-ghost btn-sm" onclick="S.screen=(isTussen()?\'begeleider\':\'main\');renderApp()">&#8592; Terug</button></div></div>'
     +'<div style="font-family:Playfair Display,serif;font-size:1.4rem;color:var(--head);font-weight:600;margin-bottom:.25rem">Dataroom</div>'
     +'<div style="font-size:13px;color:var(--muted);margin-bottom:1.5rem">'+esc(S.traject&&S.traject.kantoor_naam||(typeof isKoper==='function'&&isKoper()?'Verkooptraject':S.code))+' &middot; '+totaal+' document'+(totaal!==1?'en':'')+' opgeslagen</div>';
-  if(!docs.length){html+='<div class="panel" style="text-align:center;padding:2rem;color:var(--muted);font-size:13px;font-style:italic">Geen documenten opgeslagen.</div>';}
+  if(S.dataroomFout)html+='<div class="panel" style="padding:1rem;color:var(--red);font-size:13px;margin-bottom:1rem">'+esc(S.dataroomFout)+(docs.length?' Het overzicht hieronder kan verouderd zijn.':'')+' <button class="btn-ghost btn-sm" onclick="loadDataroom()">Opnieuw laden</button></div>';
+  if(S.dataroomProbleem&&!isKoper())html+='<div style="font-size:12px;color:var(--gold-dark);margin-bottom:1rem">'+S.dataroomProbleem+' document(en) met een verwerkingsprobleem staan niet in dit overzicht; u vindt ze met hun status bij de documenten van de betreffende fase.</div>';
+  if(!docs.length){if(!S.dataroomFout)html+='<div class="panel" style="text-align:center;padding:2rem;color:var(--muted);font-size:13px;font-style:italic">Geen documenten opgeslagen.</div>';}
   else{
     Object.keys(fL).forEach(function(faseId){
       var fd=(byFase[faseId]||[]).filter(function(d){return d.bewaard;});
