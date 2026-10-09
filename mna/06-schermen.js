@@ -748,6 +748,9 @@ function renderMain(){
     +'<div style="font-size:13px;color:var(--muted);margin-bottom:'+(isVerkoper()&&VERKOPER_FASE_INTRO[f.id]?'.5rem':'1.25rem')+'">'+f.desc+'</div>'
     +(isVerkoper()&&VERKOPER_FASE_INTRO[f.id]?'<div style="font-size:12px;color:var(--sub);line-height:1.6;background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:.75rem 1rem;margin-bottom:1.25rem">'+esc(VERKOPER_FASE_INTRO[f.id])+'</div>':'')
     +'<div class="data-grid-sidebar">'+dataHtml+renderDocumentSectie(f.id)+renderBankmutatiesSectie(f.id)+'</div>'
+    // Productpunt 3 (9 okt 2026): financiële broncontrole (mna/09) — alleen verkoper/begeleider in fase
+    // Financieel; de functie zelf geeft voor koper/andere fases een lege string en doet dan geen verzoek.
+    +renderFinancieleBroncontrole(f.id)
     +extraHtml+nav+'</div>';
 }
 

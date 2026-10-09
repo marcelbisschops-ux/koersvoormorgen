@@ -998,6 +998,24 @@ log('26. Documentuitvoer (tests/document-output-security.mjs): veilige tekstopma
   }
 }
 
+log('27. Financiële broncontrole UI (tests/financial-source-ui.mjs): rollen, scopebinding, bronweergave en gemotiveerde correctie');
+{
+  // Productpunt 3 (9 okt 2026): de test draait de echte mna/09 met fetchMetTimeout (mna/01), esc/rolhelpers
+  // (mna/02) en parseGeld (mna/03) in node:vm tegen synthetische antwoorden in de vorm van de gecommitte
+  // backendroutes GET/POST /mna/financieel/broncontrole — geen netwerk, geen browser, geen live API of AI.
+  // Docs-, staging- en productiebewijs staan apart open; zie docs/financial-source-ui.md.
+  try {
+    const { draaiFinancialSourceUiChecks } = await import('./financial-source-ui.mjs');
+    const resultaten = await draaiFinancialSourceUiChecks(ROOT);
+    const gefaald = resultaten.filter(r => !r.ok);
+    gefaald.forEach(r => warn('Financiële broncontrole UI: ' + r.msg));
+    if (!resultaten.length) warn('Financiële broncontrole UI: geen checks uitgevoerd.');
+    else if (!gefaald.length) ok('Alle ' + resultaten.length + ' broncontrole-UI-checks geslaagd (koper/onbekende rol zonder paneel of verzoek, alleen laden na klik, exacte GET-scope, BRONFEIT/AI-INTERPRETATIE/ONZEKER, origineel vs. genormaliseerd, ACTUAL/FORECAST, enkelvoudig/geconsolideerd/onbekend, trajectniveau niet automatisch geconsolideerd, crosscheckverschillen, ontbrekende gegevens, XSS-escaping, 404/403/500/netwerk/onleesbaar/malformed zonder vals succes, stale antwoorden na entiteit-/traject-/rol-/schermwissel genegeerd, begeleider alleen lezen, correctie alleen verkoper met exacte payload, canonieke bedragen zonder NaN/null-als-nul, reden/brondocument/bevestiging verplicht, dubbelklik één POST, 409 alleen herladen zonder retry, lokale invoer nooit stil overschreven, begrensde weergave met melding).');
+  } catch (e) {
+    warn('tests/financial-source-ui.mjs kon niet worden uitgevoerd: ' + String((e && e.message) || e));
+  }
+}
+
 // ── Samenvatting ──────────────────────────────────────────────────────────
 log('Samenvatting');
 if (!bevindingen) {
