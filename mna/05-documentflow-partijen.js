@@ -59,6 +59,14 @@ function printDocNaAkkoord(tekst, titel, docType) {
   var toonWatermerk = !(docType === 'teaser' || docType === 'memo');
   function fmt(t) {
     if(!t) return '';
+    // P0 documentuitvoer (7 okt 2026): documenttekst is onvertrouwd. Alleen attribuutloze simpele
+    // opmaak uit de bron omzetten (<br> → regel, <em>/<i> → tekst, <b>/<strong> → **…**), daarna ALLES
+    // escapen met esc() — zelfde volgorde als fmtDocumentTekst() in backend worker/36 (die escapet
+    // eerst). Overige HTML blijft zichtbaar als inerte tekst, nooit als markup.
+    t = String(t).replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<(em|i)>([^<]*)<\/\1>/gi, '$2')
+      .replace(/<(strong|b)>([^<*]*)<\/\1>/gi, function(_, n, i){ return i.trim() ? '**'+i.trim()+'**' : i; });
+    t = esc(t);
     // Elke kop krijgt bewust ONGEACHT omringende witregels een eigen alinea (\n\n vóór/na) — anders
     // groepeert de paragraafsplitsing hieronder (\n\n+) een kopregel mét de daaropvolgende body-tekst
     // in één blok zodra de brontekst geen blanco regel ná de kop heeft. Zonder deze isolatie viel
@@ -68,7 +76,8 @@ function printDocNaAkkoord(tekst, titel, docType) {
     // — zelfde regex-logica, zelfde bugklasse, hier consequent meegefixt voor ontwerpgelijkheid).
     t = t.replace(/^(Artikel \d+[^\n]*)/gm, '\n\n<h3>$1</h3>\n\n');
     t = t.replace(/^(##+ .+)/gm, function(m){ return '\n\n<h3>'+m.replace(/^#+\s*/,'')+'</h3>\n\n'; });
-    t = t.replace(/^([A-Z][A-Z\s&]{4,})$/gm, '\n\n<h3>$1</h3>\n\n');
+    // Na esc() is "&" "&amp;" — als één teken meetellen, zodat "FUSIE & OVERNAME" een kop blijft.
+    t = t.replace(/^([A-Z](?:[A-Z\s]|&amp;){4,})$/gm, '\n\n<h3>$1</h3>\n\n');
     t = t.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
     t = t.replace(/(Naam|Handtekening|Plaats|Datum):\s*_{3,}/g,
       '<span style="display:inline-flex;align-items:baseline;gap:.5rem;min-width:260px;margin:.3rem 0">$1:&nbsp;<span style="display:inline-block;border-bottom:1px solid #2a2825;flex:1;min-width:140px">&nbsp;</span></span>');
@@ -83,15 +92,26 @@ function printDocNaAkkoord(tekst, titel, docType) {
     }).join('\n');
   }
   var datum = new Date().toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'});
-  var code = (typeof S !== 'undefined' && S && S.code) ? S.code : '';
+  // De kop toonde voorheen de trajectcode (= toegangscode). Nu uitsluitend de publieke trajectreferentie uit de
+  // backend-DTO (S.traject.publieke_referentie), en alleen als die exact de TR-vorm heeft (zelfde regex
+  // als backend worker/36). Ontbreekt of afwijkend → geen referentie; nooit een terugval op een code/id.
+  var pubRef = (typeof S !== 'undefined' && S && S.traject && typeof S.traject.publieke_referentie === 'string'
+    && /^TR-[2-9A-HJ-NP-Z]{4}(?:-[2-9A-HJ-NP-Z]{4}){3}$/.test(S.traject.publieke_referentie)) ? S.traject.publieke_referentie : '';
   // White-label: toon het logo/bedrijf van de daadwerkelijke begeleider (adviseur) i.p.v. altijd
   // de platformeigenaar — anders lekt "Bisschops Financing" in documenten van andere adviseurs.
   var docBedrijf = (typeof S !== 'undefined' && S && S.traject && S.traject.begeleider_bedrijf) || BRAND.bedrijfKort;
   var docAdres = (typeof S !== 'undefined' && S && S.traject && S.traject.begeleider_adres) || BRAND.adres;
-  var docLogoImg = BRAND._logoUrl
-    ? '<img src="'+String(BRAND._logoUrl).replace(/"/g,'&quot;')+'" alt="'+docBedrijf+'">'
+  // Logo alleen bij een https-URL (zoals de R2-logoroute) of een base64-afbeelding; al het andere
+  // (javascript:, data:text/html, quotes/spaties) → geen logo. Waarde en alt-tekst geëscapet.
+  var logoUrl = BRAND._logoUrl ? String(BRAND._logoUrl) : '';
+  var logoVeilig = /^https:\/\/[^\s"'<>\\]+$/i.test(logoUrl) || /^data:image\/(?:png|jpe?g|webp|gif|svg\+xml);base64,[A-Za-z0-9+\/]+={0,2}$/i.test(logoUrl);
+  var docLogoImg = logoVeilig
+    ? '<img src="'+esc(logoUrl)+'" alt="'+esc(docBedrijf)+'">'
     : '';
-  var docHtml = '<!DOCTYPE html><html lang="nl"><head><meta charset="UTF-8"><title>'+titel+'<\/title>'
+  // Titel geëscapet; bestaande named/numerieke entiteiten die aanroepers bewust meegeven (bijv.
+  // "&mdash;" in de MoU-titel) blijven werken — een entiteit is tekst, geen markup.
+  var titelHtml = esc(titel).replace(/&amp;(#\d{1,7}|#x[0-9a-fA-F]{1,6}|[A-Za-z][A-Za-z0-9]{1,31});/g, '&$1;');
+  var docHtml = '<!DOCTYPE html><html lang="nl"><head><meta charset="UTF-8"><title>'+titelHtml+'<\/title>'
     +'<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">'
     +'<style>'
     +'*{box-sizing:border-box;margin:0;padding:0}'
@@ -120,10 +140,10 @@ function printDocNaAkkoord(tekst, titel, docType) {
     +'<\/style><\/head><body>'
     +'<div class="page">'
     +'<div class="doc-header">'
-    +'<div class="doc-header-left"><div class="doc-title">'+titel+'<\/div><\/div>'
+    +'<div class="doc-header-left"><div class="doc-title">'+titelHtml+'<\/div><\/div>'
     +'<div class="doc-header-right">'
     +docLogoImg
-    +datum+'<br>Vertrouwelijk'+(code?'<br><span style="font-family:monospace;font-size:8pt;color:#c8c5bc">'+code+'<\/span>':'')
+    +datum+'<br>Vertrouwelijk'+(pubRef?'<br><span style="font-family:monospace;font-size:8pt;color:#c8c5bc">Trajectreferentie: '+esc(pubRef)+'<\/span>':'')
     +'<\/div><\/div>'
     // Verkoopmemorandum: geen groot CONCEPT-watermerk (zou het als "niet af" laten lezen richting een
     // serieuze koper), maar wél een discrete statusregel — het is een automatisch gegenereerd,
@@ -135,7 +155,7 @@ function printDocNaAkkoord(tekst, titel, docType) {
     // de bevestiging gebeurt nu vóóraf via toonRelianceAkkoord() en wordt in de database vastgelegd
     // (secAuditLog), zodat dit printvenster een schone, aan een cliënt te geven versie oplevert.
     +'<div class="doc-footer">'
-    +'<span>' + docBedrijf + ' &middot; ' + docAdres + '<\/span>'
+    +'<span>' + esc(docBedrijf) + ' &middot; ' + esc(docAdres) + '<\/span>'
     +'<span>Vertrouwelijk &mdash; uitsluitend bestemd voor geadresseerde(n)<\/span>'
     +'<\/div><\/div><\/body><\/html>';
   // Gedeelde helper (mna/03): apart printvenster + auto-print, met iframe-fallback bij een

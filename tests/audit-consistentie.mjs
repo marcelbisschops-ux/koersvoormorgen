@@ -980,6 +980,24 @@ log('25. Documentupload-status (tests/document-processing-ui.mjs): blijvende sta
   }
 }
 
+log('26. Documentuitvoer (tests/document-output-security.mjs): veilige tekstopmaak en publieke trajectreferentie');
+{
+  // P0 7 okt 2026: mdToHtml (mna/02) gaf bron-HTML als actieve HTML door; printDocNaAkkoord (mna/05)
+  // escapete tekst/titel/branding niet en drukte de toegangscode in de kop af. De test draait de echte
+  // mdToHtml/esc en printDocNaAkkoord in node:vm met synthetisch window/document — geen netwerk, geen
+  // browser. Browserbewijs volgt op staging; zie docs/document-output.md.
+  try {
+    const { draaiDocumentOutputSecurityChecks } = await import('./document-output-security.mjs');
+    const resultaten = await draaiDocumentOutputSecurityChecks(ROOT);
+    const gefaald = resultaten.filter(r => !r.ok);
+    gefaald.forEach(r => warn('Documentuitvoer: ' + r.msg));
+    if (!resultaten.length) warn('Documentuitvoer: geen checks uitgevoerd.');
+    else if (!gefaald.length) ok('Alle ' + resultaten.length + ' documentuitvoer-checks geslaagd (geen bron-HTML/attributen/handlers als markup in rapport of print, <b>/<strong>/<em>/<i>/<br> leesbaar zonder markers, bestaande Markdown-/printopmaak en branding behouden, titel/bedrijf/adres/logo-alt geëscapet, logo alleen https/base64-afbeelding, alleen "Trajectreferentie: TR-…" en nooit een toegangscode/id, print zonder API-/opslag-/navigatie-effect en zonder wijziging van S).');
+  } catch (e) {
+    warn('tests/document-output-security.mjs kon niet worden uitgevoerd: ' + String((e && e.message) || e));
+  }
+}
+
 // ── Samenvatting ──────────────────────────────────────────────────────────
 log('Samenvatting');
 if (!bevindingen) {

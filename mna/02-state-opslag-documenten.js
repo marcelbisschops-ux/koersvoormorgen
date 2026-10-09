@@ -23,6 +23,18 @@ function switchEntiteit(entiteitId){
 function mdToHtml(text){
   if(!text)return '';
   var h=String(text);
+  // P0 documentuitvoer (7 okt 2026): de brontekst (AI/gebruiker) is onvertrouwd en ging voorheen als
+  // actieve HTML door (bijv. <img onerror>). Nu: alleen attribuutloze simpele opmaak omzetten naar
+  // Markdown/platte tekst (<br> → regel, <em>/<i> → tekst, <b>/<strong> → **…**), overige tags
+  // (incl. script/style-inhoud en commentaar) weglaten, en daarna ALLES escapen met esc() — pas dan
+  // genereert de code hieronder de eigen, statische markdown-HTML.
+  h=h.replace(/<br\s*\/?>/gi,'\n')
+    .replace(/<(em|i)>([^<]*)<\/\1>/gi,'$2')
+    .replace(/<(strong|b)>([^<*]*)<\/\1>/gi,function(_,t,i){return i.trim()?'**'+i.trim()+'**':i;});
+  h=h.replace(/<!--[\s\S]*?-->/g,'')
+    .replace(/<(script|style)\b[\s\S]*?<\/\1\s*>/gi,'')
+    .replace(/<\/?[A-Za-z][A-Za-z0-9-]*(?:\s[^<>]*)?\/?>/g,'');
+  h=esc(h);
   // Pipe-tabellen (| Veld | Status |) omzetten naar leesbare tekst zonder pipes
   h=h.replace(/^\|[-| ]+\|$/gm,'');
   h=h.replace(/^\|.+\|$/gm,function(line){
