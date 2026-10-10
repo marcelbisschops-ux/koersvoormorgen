@@ -4904,6 +4904,25 @@ function veiligheidGauge(waarde, label, subtekst) {
     + '</div>';
 }
 
+// Productpunt 22 (10 okt 2026): de nachtelijke selfcheck en de ochtendcontrole tellen mee in de
+// overkoepelende status. Groen uitsluitend bij een geldige run (teller > 0, per-check details
+// consistent met de teller, elke check daadwerkelijk geslaagd) die niet ouder is dan dezelfde
+// 2-dagengrens als knoppentest/E2E (backend 24-veiligheidsdashboard.js). Ontbrekend, 0/0, malformed
+// of FAIL is nooit groen. zonderTijd: voor het directe resultaat van "Draai nu" (heeft geen ran_at).
+var VEILIGHEID_DAGELIJKS_MAX_MS = 2 * 24 * 60 * 60 * 1000;
+function dagelijkseRunOordeel(run, zonderTijd) {
+  if (!run || typeof run !== 'object') return { groen: false, reden: zonderTijd ? 'geen resultaat ontvangen' : 'nog nooit uitgevoerd' };
+  var tot = run.checks_totaal, ok = run.checks_geslaagd, det = run.details;
+  if (!Number.isInteger(tot) || !Number.isInteger(ok) || tot <= 0 || ok < 0 || ok > tot) return { groen: false, reden: 'ongeldig resultaat (teller)' };
+  if (!Array.isArray(det) || det.length !== tot || det.some(function(c) { return !c || typeof c !== 'object' || typeof c.geslaagd !== 'boolean'; })
+      || det.filter(function(c) { return c.geslaagd === true; }).length !== ok) return { groen: false, reden: 'ongeldig resultaat (details per check kloppen niet met de teller)' };
+  if (ok !== tot) return { groen: false, reden: 'FAIL (' + ok + '/' + tot + ' geslaagd)' };
+  if (zonderTijd) return { groen: true, reden: '' };
+  if (typeof run.ran_at !== 'number' || !isFinite(run.ran_at) || run.ran_at <= 0 || run.ran_at - Date.now() > VEILIGHEID_DAGELIJKS_MAX_MS) return { groen: false, reden: 'ongeldig tijdstip' };
+  if (Date.now() - run.ran_at > VEILIGHEID_DAGELIJKS_MAX_MS) return { groen: false, reden: 'verouderd (meer dan 2 dagen geleden)' };
+  return { groen: true, reden: '' };
+}
+
 function auditVerzoekStatusTekst(verzoek) {
   if (!verzoek) return 'Nog geen aanvraag ingediend.';
   var tijd = function(ms) { return new Date(ms).toLocaleString('nl-NL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }); };
@@ -5038,16 +5057,18 @@ async function renderVeiligheidTab(el) {
       var ov = await ovR.json();
       var bvR = await fetch(WORKER + '/mna/admin/veiligheid/bevindingen', { headers: { 'x-admin-key': adminKey } });
       var bv = await bvR.json();
-      if (!ov.ok) { el.innerHTML = '<div style="color:var(--red);font-size:13px;padding:1rem">Fout bij laden: ' + esc(ov.error || 'onbekend') + '</div>'; return; }
+      if (!ovR.ok || !ov || ov.ok !== true) { el.innerHTML = '<div style="color:var(--red);font-size:13px;padding:1rem">Fout bij laden: ' + esc((ov && ov.error) || 'onbekend') + '</div>'; return; }
       var open = (bv.bevindingen || []).filter(function(b){ return b.status === 'open'; });
       var gefixt = (bv.bevindingen || []).filter(function(b){ return b.status !== 'open'; }).slice(0, 15);
       var laatsteRun = ov.laatste_selfcheck;
       var laatsteRunTekst = laatsteRun ? (new Date(laatsteRun.ran_at).toLocaleString('nl-NL', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) + ' — ' + laatsteRun.checks_geslaagd + '/' + laatsteRun.checks_totaal + ' geslaagd') : 'Nog nooit gedraaid';
       function pushBadge(naam, run) {
         if (!run) return '<div style="font-size:11px;color:var(--muted)">' + naam + ': nog geen push gemeld</div>';
-        var groen = run.checks_geslaagd === run.checks_totaal;
+        // Productpunt 22: historisch gegeven (laatst gemelde push), geen actuele run en geen vaste
+        // cadans — daarom met volledige datum, en 0/0 of een ongeldige teller is nooit groen.
+        var groen = Number.isInteger(run.checks_totaal) && run.checks_totaal > 0 && run.checks_geslaagd === run.checks_totaal;
         var kleur = groen ? 'var(--teal)' : 'var(--red)';
-        return '<div style="font-size:11px;color:var(--mid)">' + naam + ': <span style="color:' + kleur + ';font-weight:600">' + run.checks_geslaagd + '/' + run.checks_totaal + '</span> — ' + new Date(run.ran_at).toLocaleString('nl-NL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) + '</div>';
+        return '<div style="font-size:11px;color:var(--mid)">' + naam + ': <span style="color:' + kleur + ';font-weight:600">' + esc(String(run.checks_geslaagd)) + '/' + esc(String(run.checks_totaal)) + '</span> — historisch, laatst gemeld ' + new Date(run.ran_at).toLocaleString('nl-NL', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) + '</div>';
       }
 
       // Ochtendcontrole / Production Health (16 sep 2026) — feitelijke signalen, bewust geen
@@ -5055,8 +5076,11 @@ async function renderVeiligheidTab(el) {
       // check uit de laatste Ochtendcontrole-run (security_selfcheck_log, bron='ochtendcontrole').
       var oc = ov.laatste_ochtendcontrole;
       var ochtendTekst = oc ? (new Date(oc.ran_at).toLocaleString('nl-NL', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) + ' — ' + oc.checks_geslaagd + '/' + oc.checks_totaal + ' geslaagd') : 'Nog nooit gedraaid';
-      var ochtendGroen = oc && oc.checks_geslaagd === oc.checks_totaal;
-      var ochtendRijen = (oc && oc.details || []).map(function(c) {
+      var ochtendOordeel = dagelijkseRunOordeel(oc);
+      var ochtendGroen = ochtendOordeel.groen;
+      var nachtOordeel = dagelijkseRunOordeel(laatsteRun);
+      var ochtendRijen = (oc && Array.isArray(oc.details) ? oc.details : []).map(function(c) {
+        c = c && typeof c === 'object' ? c : {};
         return '<div style="font-size:11px;color:' + (c.geslaagd ? 'var(--mid)' : 'var(--red)') + '">' + (c.geslaagd ? '&#128994;' : '&#128308;') + ' ' + esc(c.omschrijving) + (c.fout ? ' — ' + esc(c.fout) : '') + '</div>';
       }).join('');
 
@@ -5086,6 +5110,8 @@ async function renderVeiligheidTab(el) {
       if (!ov.red_team_pentest || ov.red_team_pentest.verouderd) verlopenControles.push('red-team pentest verouderd');
       if (!ov.knoppentest || ov.knoppentest.verouderd) verlopenControles.push('dagelijkse knoppentest verouderd');
       if (!e2eVoorStatus || e2eVoorStatus.verouderd || !e2eGroenVoorStatus) verlopenControles.push('E2E-regressietest verouderd of rood');
+      if (!nachtOordeel.groen) verlopenControles.push('nachtelijke selfcheck ' + nachtOordeel.reden);
+      if (!ochtendOordeel.groen) verlopenControles.push('ochtendcontrole ' + ochtendOordeel.reden);
       var veiligheidActueel = verlopenControles.length === 0;
 
       var html = '<div style="padding:1rem 1.25rem;margin-bottom:1.25rem;border-radius:8px;border:1px solid ' + (veiligheidActueel ? 'var(--teal)' : 'var(--red)') + ';background:' + (veiligheidActueel ? 'var(--teal-bg)' : 'var(--red-bg)') + '">'
@@ -5107,7 +5133,7 @@ async function renderVeiligheidTab(el) {
         + '<div style="padding:1.25rem;display:flex;gap:2rem;flex-wrap:wrap;align-items:flex-start">'
         + '<div style="flex:1;min-width:280px;display:flex;flex-direction:column;gap:.5rem">'
         + '<div style="font-size:12px;color:var(--mid);line-height:1.6">Test de kernketen met een echt (fictief) testtraject: API/database &rarr; testgebruiker+adviseur+traject &rarr; echte DD-opslag (<code>/mna/save</code>) &rarr; echte AI-beoordeling &rarr; opruiming &mdash; elke stap onafhankelijk in D1 geverifieerd. Een technisch gezonde API betekent niet automatisch dat het platform operationeel gezond is.</div>'
-        + '<div style="font-size:13px;font-weight:600;color:' + (oc ? (ochtendGroen ? 'var(--teal)' : 'var(--red)') : 'var(--muted)') + '">' + esc(ochtendTekst) + '</div>'
+        + '<div id="veiligheid-ochtend-status" style="font-size:13px;font-weight:600;color:' + (oc ? (ochtendGroen ? 'var(--teal)' : 'var(--red)') : 'var(--muted)') + '">' + esc(ochtendTekst) + (oc && !ochtendGroen ? ' — ' + esc(ochtendOordeel.reden) : '') + '</div>'
         + (ochtendRijen ? '<div style="display:flex;flex-direction:column;gap:2px;margin-top:2px">' + ochtendRijen + '</div>' : '')
         + '<button class="btn" id="btn-ochtendcontrole-nu" style="font-size:12px;padding:8px 16px;align-self:flex-start;margin-top:6px">&#9728; Draai ochtendcontrole nu</button>'
         + '</div>'
@@ -5120,11 +5146,12 @@ async function renderVeiligheidTab(el) {
 
         + '<div class="table-wrap" style="margin-bottom:1.25rem"><div class="table-hdr"><div class="table-title">1. Continue geautomatiseerde checks</div></div>'
         + '<div style="padding:1.25rem;display:flex;gap:2rem;flex-wrap:wrap;align-items:flex-start">'
-        + '<div style="flex:0 0 230px">' + veiligheidGauge(ov.gauges.dagelijkse_check_score, 'Nachtelijke gedragschecks', laatsteRunTekst) + '</div>'
+        + '<div style="flex:0 0 230px">' + veiligheidGauge(ov.gauges.dagelijkse_check_score, 'Nachtelijke gedragschecks', laatsteRunTekst)
+        + '<div id="veiligheid-nacht-status" style="font-size:11px;font-weight:600;text-align:center;margin-top:4px;color:' + (nachtOordeel.groen ? 'var(--teal)' : 'var(--red)') + '">' + (nachtOordeel.groen ? '&#10003; Actueel en volledig geslaagd' : '&#9888; Niet actueel: ' + esc(nachtOordeel.reden)) + '</div></div>'
         + '<div style="flex:1;min-width:260px;display:flex;flex-direction:column;justify-content:center;gap:.6rem;padding-top:.5rem">'
         + '<div style="font-size:12px;color:var(--mid);line-height:1.6">Elke nacht, live in productie: admin-endpoints weigeren zonder key, security-headers aanwezig, een SQL-injectie-achtige payload geeft geen crash/data, plus de cross-path-invarianten (koper-categorie-intrekking, muur tegen externe adviseurs, existence-oracles, koper-biedingen, tarieven-events, eigen-specialist-identiteit — F3 t/m F16). Een gefaalde check schrijft direct een kritieke bevinding + waarschuwingsmail.</div>'
         + '<div style="display:flex;flex-direction:column;gap:2px;margin-top:4px;padding-top:8px;border-top:1px solid var(--border)">'
-        + '<div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:2px">Statische code-audit (bij elke push, git-hook)</div>'
+        + '<div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:2px">Statische code-audit (git-hook, laatst gemelde push — historisch, telt niet mee in de actuele status)</div>'
         + pushBadge('Frontend-repo', ov.statische_audit && ov.statische_audit.frontend)
         + pushBadge('Backend-repo', ov.statische_audit && ov.statische_audit.backend)
         + '</div>'
@@ -5261,7 +5288,7 @@ async function renderVeiligheidTab(el) {
         fetch(WORKER + '/mna/admin/veiligheid/rapport-link' + (nieuw ? '?nieuw=1' : ''), { headers: { 'x-admin-key': adminKey } })
           .then(function(r){ return r.json(); })
           .then(function(d){
-            if (!d.ok) { toast(d.error || 'Fout bij ophalen link.', 'err'); return; }
+            if (!d || d.ok !== true || typeof d.url !== 'string' || !d.url) { toast((d && d.error) || 'Fout bij ophalen link.', 'err'); return; }
             out.style.display = 'block';
             out.innerHTML = '<strong>Niet-publieke link (alleen delen via mail/gesprek):</strong><br>' + esc(d.url)
               + '<br><button class="btn-ghost" id="btn-rapport-open" style="font-size:11px;padding:3px 10px;margin-top:8px">&#8599; Open</button>'
@@ -5287,7 +5314,7 @@ async function renderVeiligheidTab(el) {
         try {
           var r = await fetch(WORKER + '/mna/admin/veiligheid/diepe-audit/aanvragen', { method: 'POST', headers: { 'x-admin-key': adminKey } });
           var d = await r.json();
-          if (!r.ok) { toast(d.error || 'Aanvraag mislukt.', 'err'); }
+          if (!r.ok || !d || d.ok !== true) { toast((d && d.error) || 'Aanvraag mislukt.', 'err'); }
           else if (d.al_in_behandeling) { toast('Er staat al een aanvraag open (status: ' + d.status + ').', 'warn'); }
           else { toast('Audit aangevraagd — de routine pikt dit binnen ~15 min op.', 'ok'); }
           laadVeiligheid();
@@ -5302,7 +5329,7 @@ async function renderVeiligheidTab(el) {
         try {
           var r = await fetch(WORKER + '/mna/admin/veiligheid/diepe-audit/aanvragen', { method: 'POST', headers: { 'x-admin-key': adminKey, 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'red_team_pentest' }) });
           var d = await r.json();
-          if (!r.ok) { toast(d.error || 'Aanvraag mislukt.', 'err'); }
+          if (!r.ok || !d || d.ok !== true) { toast((d && d.error) || 'Aanvraag mislukt.', 'err'); }
           else if (d.al_in_behandeling) { toast('Er staat al een pentest-aanvraag open (status: ' + d.status + ').', 'warn'); }
           else { toast('Red-team pentest aangevraagd — de routine pikt dit binnen ~15 min op.', 'ok'); }
           laadVeiligheid();
@@ -5316,8 +5343,9 @@ async function renderVeiligheidTab(el) {
         try {
           var r = await fetch(WORKER + '/mna/admin/veiligheid/selfcheck-nu', { method: 'POST', headers: { 'x-admin-key': adminKey } });
           var d = await r.json();
-          if (d.ok) { toast('Selfcheck uitgevoerd: ' + (d.resultaat ? d.resultaat.checks_geslaagd + '/' + d.resultaat.checks_totaal + ' geslaagd' : ''), d.resultaat && d.resultaat.checks_geslaagd === d.resultaat.checks_totaal ? 'ok' : 'warn'); laadVeiligheid(); }
-          else { toast(d.error || 'Fout bij selfcheck.', 'err'); }
+          var nuOordeel = dagelijkseRunOordeel(d && d.resultaat, true);
+          if (r.ok && d && d.ok === true) { toast('Selfcheck uitgevoerd: ' + (nuOordeel.groen ? d.resultaat.checks_geslaagd + '/' + d.resultaat.checks_totaal + ' geslaagd' : 'niet volledig geslaagd — ' + nuOordeel.reden), nuOordeel.groen ? 'ok' : 'warn'); laadVeiligheid(); }
+          else { toast((d && d.error) || 'Fout bij selfcheck.', 'err'); }
         } catch(e) { toast('Verbindingsfout.', 'err'); }
         finally { nuBtn.disabled = false; nuBtn.textContent = '↻ Draai selfcheck nu'; }
       });
@@ -5328,8 +5356,9 @@ async function renderVeiligheidTab(el) {
         try {
           var r = await fetch(WORKER + '/mna/admin/veiligheid/ochtendcontrole-nu', { method: 'POST', headers: { 'x-admin-key': adminKey } });
           var d = await r.json();
-          if (d.ok) { toast('Ochtendcontrole uitgevoerd: ' + (d.resultaat ? d.resultaat.checks_geslaagd + '/' + d.resultaat.checks_totaal + ' geslaagd' : ''), d.resultaat && d.resultaat.checks_geslaagd === d.resultaat.checks_totaal ? 'ok' : 'warn'); laadVeiligheid(); }
-          else { toast(d.error || 'Fout bij ochtendcontrole.', 'err'); }
+          var ocNuOordeel = dagelijkseRunOordeel(d && d.resultaat, true);
+          if (r.ok && d && d.ok === true) { toast('Ochtendcontrole uitgevoerd: ' + (ocNuOordeel.groen ? d.resultaat.checks_geslaagd + '/' + d.resultaat.checks_totaal + ' geslaagd' : 'niet volledig geslaagd — ' + ocNuOordeel.reden), ocNuOordeel.groen ? 'ok' : 'warn'); laadVeiligheid(); }
+          else { toast((d && d.error) || 'Fout bij ochtendcontrole.', 'err'); }
         } catch(e) { toast('Verbindingsfout.', 'err'); }
         finally { ochtendBtn.disabled = false; ochtendBtn.textContent = '☀ Draai ochtendcontrole nu'; }
       });
@@ -5339,8 +5368,8 @@ async function renderVeiligheidTab(el) {
           try {
             var r = await fetch(WORKER + '/mna/admin/veiligheid/bevinding', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-key': adminKey }, body: JSON.stringify({ id: btn.dataset.id, status: 'gefixt' }) });
             var d = await r.json();
-            if (d.ok) { toast('Bevinding gemarkeerd als opgelost.', 'ok'); laadVeiligheid(); }
-            else { toast(d.error || 'Fout.', 'err'); btn.disabled = false; }
+            if (r.ok && d && d.ok === true) { toast('Bevinding gemarkeerd als opgelost.', 'ok'); laadVeiligheid(); }
+            else { toast((d && d.error) || 'Fout.', 'err'); btn.disabled = false; }
           } catch(e) { toast('Verbindingsfout.', 'err'); btn.disabled = false; }
         });
       });

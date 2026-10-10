@@ -1072,6 +1072,24 @@ log('30. Expliciete groepsdocumenten UI (tests/group-documents-ui.mjs): optionel
   }
 }
 
+log('31. Marilyn Veiligheid (tests/marilyn-veiligheid.mjs): nacht- en ochtendcontrole tellen echt mee, actieknoppen zonder vals succes');
+{
+  // Productpunt 22 (10 okt 2026): de echte marilyn.html in node:vm met een minimale DOM-fixture en een
+  // nep-worker (werkwijze van check 21) — echte login, elke veiligheidssectie, elke actieknop tegen
+  // synthetische antwoorden. Geen netwerk, AI, audit, mail of deploy. UI-functioneel bewijs, geen bewijs
+  // van een echte controlerun; zie docs/marilyn-veiligheid.md.
+  try {
+    const { draaiMarilynVeiligheidChecks } = await import('./marilyn-veiligheid.mjs');
+    const resultaten = await draaiMarilynVeiligheidChecks(ROOT);
+    const gefaald = resultaten.filter(r => !r.ok);
+    gefaald.forEach(r => warn('Marilyn Veiligheid: ' + r.msg));
+    if (!resultaten.length) warn('Marilyn Veiligheid: geen checks uitgevoerd.');
+    else if (!gefaald.length) ok('Alle ' + resultaten.length + ' Marilyn-Veiligheid-checks geslaagd (ontbrekende, 0/0, FAIL, malformed, verouderde of ongeldig getimede nachtelijke selfcheck/ochtendcontrole nooit "actueel", bestaande 2-dagengrens, bestaande statuscriteria behouden, push-audit historisch met datum, elke sectie gerenderd, selfcheck/ochtendcontrole/audit/pentest/rapport/opgelost met annuleren, succes, 401/403/500/netwerk/onjuiste JSON/ok:false zonder vals succes, geen tab of actie zonder superadmin/geldige sleutel).');
+  } catch (e) {
+    warn('tests/marilyn-veiligheid.mjs kon niet worden uitgevoerd: ' + String((e && e.message) || e));
+  }
+}
+
 // ── Samenvatting ──────────────────────────────────────────────────────────
 log('Samenvatting');
 if (!bevindingen) {
