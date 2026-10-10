@@ -1,9 +1,13 @@
 # Expliciete groepsdocumenten: UI (productpunt 6)
 
-Status 10 okt 2026: **frontend gebouwd en synthetisch getest, niet live.** De backend (productpunt 6,
-commit `fd2bf7d`, backend `docs/group-documents.md`) is READY maar niet uitgerold. Deze UI is niet op
-staging of productie gezet. Backend-live, UI-staging, productie en acceptatie met echte documenten staan
-**OPEN** tot er een bewezen release is (zie onderaan).
+Status 10 okt 2026: **backend en UI van productpunt 6 staan in productie.** Backendrelease
+`bf53a54b003c6cdac3cbbe41048296563ea619a8` (Worker-versie `51d97c77-71ab-4904-bba5-05a64eb50084`) en
+frontendrelease `615603a34030410277532aaabc1e09d74f4790e9` (Pages-deployment
+`042e9351-60d7-44cb-a1f9-e1160c7f5215`) zijn uitgerold; zie "Release" onderaan. Live acceptatie met echte
+klantdocumenten en de kwaliteit van live AI-extractie blijven **OPEN**.
+
+Historie: de UI is eerst gebouwd en synthetisch getest tegen backendcommit `fd2bf7d` (backend
+`docs/group-documents.md`), toen de backend READY maar nog niet uitgerold was.
 
 Code: `mna/12-documentclassificatie.js` (gewone scriptmodule, in `mna.html` geladen na
 `mna/01-config-sectorprofielen.js` en vóór `mna/02-state-opslag-documenten.js`) en een kleine integratie in
@@ -127,13 +131,29 @@ echte mna/02-uploadintegratie in node:vm. Antwoorden zijn synthetisch, in de vor
 backendcontract. Er is geen netwerk, geen browser en geen AI. De bestaande upload-, bewijsstuk-,
 broncontrole-, juridische en groepsbeeldchecks (24, 25, 27, 28, 29) blijven ongewijzigd.
 
+## Release (10 okt 2026)
+
+- **In productie**: backend `bf53a54b003c6cdac3cbbe41048296563ea619a8` / Worker
+  `51d97c77-71ab-4904-bba5-05a64eb50084` en frontend `615603a34030410277532aaabc1e09d74f4790e9` / Pages
+  `042e9351-60d7-44cb-a1f9-e1160c7f5215`. Beide native releasetaken DONE.
+- **Vóór release**: backendtests (112) en UI-tests (101), native audit, onafhankelijke reviews en de
+  review van de compositietest PASS.
+- **Staging**: 13 specifieke API-, browser- en opruimchecks plus 18 kernrollen PASS. Twee optionele
+  AI-checks zijn overgeslagen.
+- **Productie**: 13 specifieke checks PASS, waaronder: een prognose overschrijft geen realisatie, de
+  oorspronkelijke hash blijft behouden, herladen en DTO kloppen en ongeautoriseerde uploads worden
+  geweigerd. Behoud van productpunten 3/4/5, smoke, autorisatie, live bytes, live versies,
+  publicatiebeveiliging en opruimen PASS.
+- Bewijs: `inbox/productpunt6-ui/afgerond.json`.
+
 ## Beperkingen en OPEN
 
-- **Backend productpunt 6 niet live**: de UI hoort pas uitgerold te worden samen met of na de backend.
-  Tot die tijd negeert een oude backend de parameters. De UI toont dan "niet geclassificeerd" en neemt bij
-  niet-jaarrealisatie geen velden over.
-- **UI-staging en productie**: niet uitgerold, niet live geaccepteerd.
-- **Echte documenten**: alleen synthetische proeven, geen acceptatie met echte (groeps)jaarstukken,
-  begrotingen of prognoses.
+- **Volgorde backend/UI** (historie, vervuld): de UI hoorde pas uitgerold te worden samen met of na de
+  backend. Een oude backend negeert de parameters; de UI toont dan "niet geclassificeerd" en neemt bij
+  niet-jaarrealisatie geen velden over. Dat terugvalgedrag blijft in de code staan.
+- **Echte documenten**: staging en productie zijn bewezen met eigen synthetische prognosetekst/CSV. Er is
+  geen acceptatie met echte klant(groeps)jaarstukken, begrotingen of prognoses, en de kwaliteit van live
+  AI-extractie is niet bewezen.
+- Een groepsdocument blijft een eigen indeling van de gebruiker, geen officiële consolidatie.
 - Geen GENERAL (productpunt 7), geen gebruik van de classificatie in broncontrole, groepsbeeld of
   AI-analyse en geen achteraf wijzigen van een classificatie (er is daarvoor geen API).
