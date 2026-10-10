@@ -1,8 +1,15 @@
 # Juridische broncontrole: UI (productpunt 4)
 
-Status 10 okt 2026: de frontend is gebouwd en technisch getest met synthetische data. Staging, echte
-documenten (KvK-uittreksels, statuten) en productie staan nog **OPEN** (zie onderaan). Deze bouwtaak
-bevat geen deployment en geen release.
+Actuele status 10 okt 2026: **in productie** op https://koersvoormorgen.nl, fase **Juridisch**.
+Release: backend `72d909e58204a31c3f04caa6896012a3f0363a52` (Worker-deploy
+`0d79e7f0-5103-4903-9c2c-d8a6eb595fff`) en frontend `85fa1f383851d8683e47a4aeab69a00f3928143b`
+(Pages-deploy `fe606eaf-6a1c-4ab7-8ec0-404c05eb6d3a`); beide native releasetaken DONE. Releasebewijs:
+`inbox/release-juridische-broncontrole/afgerond.json`. Live AI-extractie, echte juridische documenten
+en juridische totaalgoedkeuring zijn **niet** bewezen en staan **OPEN** (zie onderaan).
+
+Historie (bouwstatus, eerder op 10 okt 2026): de frontend was gebouwd en technisch getest met
+synthetische data; staging, echte documenten en productie stonden toen nog open en die bouwtaak bevatte
+geen deployment en geen release.
 
 Code: `mna/10-juridische-broncontrole.js` (gewone scriptmodule, in `mna.html` geladen na
 `mna/09-financiele-broncontrole.js` en vóór `mna/06-schermen.js`) en één aanroep
@@ -19,10 +26,10 @@ De UI gebruikt alleen de bestaande, gecommitte backendroutes (backend `docs/lega
 - `POST /mna/juridisch/broncontrole/beoordeling` met precies `code`, `snapshot_digest`, `beslissing`
   (`BEVESTIGD`/`AFGEWEZEN`), `reden` en optioneel `verschil_id`.
 
-De backend is nog niet gereleased. Zolang deze routes niet op de gebruikte worker draaien, geeft de UI
-de melding "niet beschikbaar (404): de serverfunctie is mogelijk nog niet vrijgegeven". Dat is nooit
-een succes. Releasevolgorde: eerst de backend, dan deze frontend. De financiële release blijft hiervan
-los en is niet aangeraakt.
+De backend is gereleased (backend `72d909e`, vóór deze frontend, volgens de releasevolgorde eerst
+backend en dan frontend). Draaien deze routes niet op de gebruikte worker, dan geeft de UI de melding
+"niet beschikbaar (404): de serverfunctie is mogelijk nog niet vrijgegeven". Dat is nooit een succes.
+De bestaande financiële broncontrole blijft hiervan los en is in productie behouden.
 
 ## Gebruikersstappen
 
@@ -125,11 +132,27 @@ onbekenden, AI niet als feit, bron/versie/hash, historische beoordeling, XSS,
 malformed/404/403/503/netwerk, 409 zonder retry, dubbelklik, late antwoorden bij een andere klant of
 ander scherm, onopgeslagen formulierinvoer, motivatievalidatie, geen entiteitmutatie en geen AI.
 
+## Releasebewijs (10 okt 2026)
+
+Bron: `inbox/release-juridische-broncontrole/afgerond.json`.
+
+- **Staging**: 14 synthetische checks PASS, waaronder een echte browserknop met motivatie en
+  bevestiging → snapshotaudit → herladen, en cleanup. Kernrollen: 18 PASS; twee optionele AI-checks
+  zijn niet gedraaid. Publicatiebeveiliging PASS.
+- **Productie** (eigen synthetisch traject): juridische broncontrole met onbekende status eerlijk
+  getoond, verkoper alleen lezen, koper geweigerd, browserpaneel; bestaande financiële broncorrectie
+  behouden; smoke, autorisatie, exacte versie, live bytes en cleanup PASS.
+- De testfixture gebruikt expliciet een synthetisch servervoorstel; dit is geen claim over echte
+  AI-extractie.
+- Een begeleider moet eerst de bestaande actuele VOK 1.7 accepteren voordat het scherm normaal te
+  bedienen is. De oorspronkelijke testproeven sloegen die bestaande stap over; dat was geen productfout.
+
 ## OPEN
 
-- Backenddeploy van de juridische routes (nog niet gereleased) en daarna frontendrelease.
-- Stagingvalidatie in een echte browser met echte rollen en platformvoorwaarden.
-- Validatie met echte juridische documenten; de AI-kwaliteit van de bronvoorstellen is onbewezen.
-- Productie.
+- ~~Backenddeploy, frontendrelease, stagingvalidatie en productie~~: afgerond op 10 okt 2026 (zie
+  Releasebewijs).
+- Live AI-extractie: niet bewezen; de AI-kwaliteit van de bronvoorstellen is onbewezen.
+- Validatie met echte juridische documenten (KvK-uittreksels, statuten): niet bewezen.
+- Juridische totaalgoedkeuring: niet bewezen; het paneel geeft die ook niet.
 - De bestaande begeleiderweergave "Wijzigingen" toont de auditenvelop nog als tekst (backendbeperking,
   niet in deze taak).
