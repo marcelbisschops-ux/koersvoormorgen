@@ -1067,8 +1067,10 @@ function loadDocsForFase(faseId) {
           return {
             id: d.id, naam: d.bestand_naam, type: d.bestand_type,
             grootte: d.bestand_grootte, analyse: bruikbaar ? d.analyse : '',
-            velden: bruikbaar ? (function(s){try{var r=JSON.parse(s||'{}');return r&&typeof r==='object'&&!Array.isArray(r)?r:{};}catch(e){return {};}})(d.veld_extractie) : {},
+            velden: bruikbaar ? (function(s){try{var r=JSON.parse(s||'{}');if(r&&typeof r==='object'&&!Array.isArray(r)){delete r._documentclassificatie;return r;}return {};}catch(e){return {};}})(d.veld_extractie) : {},
             uploaded_at: d.uploaded_at||null, entiteit_id: d.entiteit_id||'',
+            // Productpunt 6: alleen de gesaneerde serverclassificatie (mna/12), nooit het ruwe record.
+            documentclassificatie: typeof dclSaneer === 'function' ? dclSaneer(d.documentclassificatie, d.entiteit_id || null) : null,
             bewaard: !!d.bewaard, methode: d.methode, uploading: false,
             versie: d.versie||1, heeft_eerdere_versies: !!d.heeft_eerdere_versies,
             verwerking_status: status, verwerking_fout: d.verwerking_fout||null, verwerking_reden: d.verwerking_reden||null,
@@ -1114,15 +1116,23 @@ function saveEntiteitData(entiteitId, faseIds){
 // renderApp tekent de uploadzone opnieuw met lege checkboxes en een entiteitkiezer op "Groep", waardoor
 // uploadDocument de keuze anders kwijt was (live staging 4 okt 2026: bewijsstuk aangevinkt, upload ok
 // maar alleen_bewijsstuk=false; zelfde mechanisme bij entiteit en extra controle). Geldt voor alle bestanden.
+// Productpunt 6 (10 okt 2026): ook de optionele documentclassificatie (mna/12) wordt hier in dezelfde
+// momentopname vastgelegd. Alleen bij een aangezet keuzeblok komt er een sleutel classificatie bij
+// ({ ok, fout | params, jaarrealisatie }); anders is het resultaat exact het oude object.
 function leesUploadKeuzes(faseId) {
   var entiteitSel = document.getElementById('entiteit-select-'+faseId);
   var dubbeleCheckEl = document.getElementById('dubbele-check-'+faseId);
   var bewijsstukEl = document.getElementById('bewijsstuk-alleen-'+faseId);
-  return {
+  var keuzes = {
     entiteitId: entiteitSel ? entiteitSel.value : '',
     dubbeleCheck: !!(dubbeleCheckEl && dubbeleCheckEl.checked),
     alleenBewijsstuk: !!(bewijsstukEl && bewijsstukEl.checked)
   };
+  if (typeof dclSnapshot === 'function') {
+    var klas = dclSnapshot(document, faseId, { rol: S.rol, code: S.code, vergrendeld: !!(S.traject && S.traject.status === 'vergrendeld'), entiteitId: keuzes.entiteitId, entiteiten: S._entiteiten });
+    if (klas) keuzes.classificatie = klas;
+  }
+  return keuzes;
 }
 // Uitkomst per bestand (7 okt 2026): de aangeboden FileList wordt eerst gekopieerd (de aanroeper wist
 // input.value na afloop), elk bestand houdt zijn eigen uitkomst (uploadDocument geeft die terug) en een
@@ -1133,8 +1143,21 @@ function leesUploadKeuzes(faseId) {
 // niets meer en wordt niets in de nieuwe sessie geschreven. Samenvatting in S._uploadUitkomst[faseId].
 window.uploadDocumentenSequentieel = async function(faseId, files) {
   var uploadKeuzes = leesUploadKeuzes(faseId);
+  // Optioneel derde argument { zonderClassificatie: true } (centrale upload): de fase komt daar uit de
+  // bestandsnaam, dus een classificatie uit het keuzeblok gaat nooit mee.
+  if (arguments[2] && arguments[2].zonderClassificatie) delete uploadKeuzes.classificatie;
   var bestanden = Array.prototype.slice.call(files || []);
   if (!bestanden.length || !S.code) return null;
+  // Onvolledige of tegenstrijdige classificatie: de hele reeks wordt vóór elk verzoek geweigerd, zonder
+  // renderApp (het keuzeblok blijft ingevuld staan om te corrigeren).
+  if (uploadKeuzes.classificatie && !uploadKeuzes.classificatie.ok) {
+    var blokTekst = 'Niet verzonden: ' + uploadKeuzes.classificatie.fout;
+    toast(blokTekst, 'err', 10000);
+    var statusElBlok = document.getElementById('upload-status-' + faseId);
+    if (statusElBlok) statusElBlok.textContent = blokTekst;
+    return { code: S.code, totaal: bestanden.length, bezig: false, geblokkeerd: true, samenvatting: blokTekst,
+      items: bestanden.map(function(f){ return { naam: f.name, soort: 'niet_aangeboden', tekst: blokTekst }; }) };
+  }
   var batchCode = S.code;
   if (!DOCS[faseId]) DOCS[faseId] = [];
   var stempel = Date.now();
@@ -1221,6 +1244,9 @@ async function uploadDocument(faseId, file, existingId, vervangtDocId, uploadKeu
   if (S.traject && S.traject.status === 'vergrendeld') { toast('Traject is vergrendeld.','warn'); return nietAangeboden('Niet verzonden: het traject is vergrendeld.'); }
   var maxSize = 20 * 1024 * 1024;
   if (file.size > maxSize) { toast('Bestand te groot (max 20MB). Huidig: ' + Math.round(file.size/1024/1024) + 'MB','warn'); return nietAangeboden('Niet verzonden: bestand te groot (max 20MB).'); }
+  // Productpunt 6: een ongeldige classificatie gaat nooit naar de server (ook niet bij Vervangen).
+  var klasKeuze = uploadKeuzes.classificatie || null;
+  if (klasKeuze && !klasKeuze.ok) { toast('Niet verzonden: ' + klasKeuze.fout, 'err', 10000); return nietAangeboden('Niet verzonden: ' + klasKeuze.fout); }
 
   // Show uploading state — hergebruik de wachtrij-plek als die er al is (batch-upload), anders nieuw.
   if (!DOCS[faseId]) DOCS[faseId] = [];
@@ -1235,7 +1261,7 @@ async function uploadDocument(faseId, file, existingId, vervangtDocId, uploadKeu
   var entiteitId = uploadKeuzes.entiteitId;
   var dubbeleCheck = uploadKeuzes.dubbeleCheck;
   var alleenBewijsstuk = uploadKeuzes.alleenBewijsstuk;
-  var url = WORKER + '/mna/document/upload?code=' + S.code + '&fase_id=' + faseId + '&bewaar=' + bewaar + (entiteitId?'&entiteit_id='+encodeURIComponent(entiteitId):'') + (dubbeleCheck?'&dubbele_check=true':'') + (alleenBewijsstuk?'&alleen_bewijsstuk=true':'') + (vervangtDocId?'&vervangt='+encodeURIComponent(vervangtDocId):'');
+  var url = WORKER + '/mna/document/upload?code=' + S.code + '&fase_id=' + faseId + '&bewaar=' + bewaar + (entiteitId?'&entiteit_id='+encodeURIComponent(entiteitId):'') + (klasKeuze && typeof dclQuery === 'function' ? dclQuery(klasKeuze.params) : '') + (dubbeleCheck?'&dubbele_check=true':'') + (alleenBewijsstuk?'&alleen_bewijsstuk=true':'') + (vervangtDocId?'&vervangt='+encodeURIComponent(vervangtDocId):'');
 
   // 1. Verzoek. fetchMetTimeout (60s): dezelfde AI-generatie-fetch-zonder-timeout-klasse als de bugfix
   // van 15 sep 2026 (teaser/verkoopmemorandum/SPA/risicoraamwerk/waardering) — deze fase-uploadzone
@@ -1266,7 +1292,8 @@ async function uploadDocument(faseId, file, existingId, vervangtDocId, uploadKeu
         bewaard: !!d.bestand_opgeslagen, uploaded_at: Date.now(), uploading: false, entiteit_id: entiteitId || '',
         versie: 1, heeft_eerdere_versies: false, alleen_bewijsstuk: alleenBewijsstuk,
         verwerking_status: status || null, verwerking_fout: d.fout || null, verwerking_reden: foutTekst,
-        bestand_opgeslagen: !!d.bestand_opgeslagen, inhoud_hash: d.inhoud_hash || null, upload_mislukt: true
+        bestand_opgeslagen: !!d.bestand_opgeslagen, inhoud_hash: d.inhoud_hash || null, upload_mislukt: true,
+        documentclassificatie: (klasKeuze && typeof dclSaneer === 'function') ? dclSaneer(d.documentclassificatie, entiteitId || null) : null
       });
     }
     toast('"' + file.name + '": ' + foutTekst + (vervangtDocId ? ' De vorige versie blijft ongewijzigd staan.' : ''), 'err', 8000);
@@ -1282,6 +1309,16 @@ async function uploadDocument(faseId, file, existingId, vervangtDocId, uploadKeu
     : status ? 'onbekend' : (d.alleen_bewijsstuk ? 'opgeslagen' : d.verworpen ? 'controle' : 'verwerkt');
   var reviewReden = (typeof d.verworpen_reden === 'string' && d.verworpen_reden) ? d.verworpen_reden : 'Het bestand is opgeslagen, maar vraagt handmatige beoordeling. Er zijn geen gegevens overgenomen.';
   var uitkomstTekst = soort === 'verwerkt' ? 'Geanalyseerd en verwerkt.' : soort === 'opgeslagen' ? 'Opgeslagen zonder analyse.' : soort === 'controle' ? reviewReden : 'Opgeslagen; verwerking niet afgerond.';
+  // Productpunt 6: getoond wordt alleen wat de server bevestigt. Bevestigt die een gevraagde classificatie
+  // niet (bijv. een backend zonder dit contract), dan geen eigen classificatie verzinnen, en bij een
+  // prognose/begroting/year-to-date/deelperiode ook geen gegevens overnemen.
+  var klasDto = (klasKeuze && typeof dclSaneer === 'function') ? dclSaneer(d.documentclassificatie, entiteitId || null) : null;
+  var klasOnbevestigd = !!klasKeuze && !klasDto;
+  if (klasOnbevestigd && !klasKeuze.jaarrealisatie && analyseGeslaagd) {
+    analyseGeslaagd = false;
+    soort = 'controle';
+    uitkomstTekst = 'Opgeslagen; classificatie niet bevestigd, geen gegevens overgenomen.';
+  }
   try {
       // Replace temp with real — en bij een geslaagde vervangende versie ook de oude versie uit de
       // weergave halen (de server sluit "vervangen" documenten al uit van /mna/document/lijst, maar de
@@ -1292,6 +1329,7 @@ async function uploadDocument(faseId, file, existingId, vervangtDocId, uploadKeu
       // render-moment, ook ná een pagina-herlaad, opnieuw uit doc.velden.entiteit_naam herberekent)
       // moet het hier alsnog in velden terechtkomen, anders klopt de badge alleen bij deze ene render.
       var veldenMetEntNaam = analyseGeslaagd ? Object.assign({}, d.veld_extractie || {}) : {};
+      delete veldenMetEntNaam._documentclassificatie;
       if (analyseGeslaagd && d.entiteit_naam) veldenMetEntNaam.entiteit_naam = d.entiteit_naam;
       DOCS[faseId].unshift({
         id: d.doc_id, naam: file.name, type: file.type, grootte: file.size,
@@ -1301,9 +1339,11 @@ async function uploadDocument(faseId, file, existingId, vervangtDocId, uploadKeu
         versie: d.versie||1, heeft_eerdere_versies: !!vervangtDocId && magVervangen,
         alleen_bewijsstuk: !!d.alleen_bewijsstuk,
         verwerking_status: status || null, verwerking_fout: d.fout || null,
-        verwerking_reden: status === 'NEEDS_REVIEW' ? reviewReden : null,
-        bestand_opgeslagen: status ? d.r2_opgeslagen !== false : undefined, inhoud_hash: d.inhoud_hash || null
+        verwerking_reden: status === 'NEEDS_REVIEW' ? reviewReden : (klasOnbevestigd ? DCL_TEKST.onbevestigd : null),
+        bestand_opgeslagen: status ? d.r2_opgeslagen !== false : undefined, inhoud_hash: d.inhoud_hash || null,
+        documentclassificatie: klasDto
       });
+      if (klasOnbevestigd) toast('"'+file.name+'": '+DCL_TEKST.onbevestigd,'warn',10000);
       // Bewijsstuk-only: server stuurt bewust geen veld_extractie/crosschecks mee (zie hieronder,
       // die blokken worden dan vanzelf overgeslagen) — wel een eigen, duidelijke melding.
       if (d.alleen_bewijsstuk) toast('"'+file.name+'" toegevoegd als bewijsstuk — niet automatisch geanalyseerd.','ok');
@@ -1322,7 +1362,9 @@ async function uploadDocument(faseId, file, existingId, vervangtDocId, uploadKeu
         // precies het soort onzichtbare aanname die tot de groepscijfer-discrepanties leidde.
         var effectiefEntiteitId = entiteitId;
         var behoeftHandmatigeKoppeling = false;
-        if (!effectiefEntiteitId && S._entiteiten && S._entiteiten.length) {
+        // Expliciet geclassificeerd (productpunt 6): de gebruiker koos zelf groep of entiteit, dus geen
+        // naamherkenning en geen automatische koppeling (die zou de entiteit van de rij wijzigen).
+        if (!effectiefEntiteitId && !klasKeuze && S._entiteiten && S._entiteiten.length) {
           var gokIdUpload = gokEntiteitId(d.entiteit_naam, true);
           if (gokIdUpload) {
             effectiefEntiteitId = gokIdUpload;
@@ -1448,7 +1490,7 @@ window.centraalUploadFiles = async function(files) {
     var fid=volgorde[j];
     var faseTitel=(FASES.find(function(f){return f.id===fid;})||{}).title||fid;
     toonStatus('<div style="font-size:12px;color:var(--teal)">&#9881; Bezig: '+perFase[fid].length+' bestand(en) voor <strong>'+esc(faseTitel)+'</strong> — dit kan 15-30 seconden per bestand duren</div>');
-    var uitkomst=await window.uploadDocumentenSequentieel(fid,perFase[fid]);
+    var uitkomst=await window.uploadDocumentenSequentieel(fid,perFase[fid],{zonderClassificatie:true});
     if(uitkomst&&uitkomst.samenvatting)regels.push('<div><strong>'+esc(faseTitel)+'</strong>: '+esc(uitkomst.samenvatting)+'</div>');
   }
   if(S.code!==code)return;
@@ -2031,6 +2073,7 @@ function renderDocumentSectie(faseId) {
       + '<input type="checkbox" id="bewijsstuk-alleen-'+faseId+'" style="margin:0" onchange="if(this.checked){var d=document.getElementById(\'dubbele-check-'+faseId+'\');if(d)d.checked=false;}"> Alleen als bewijsstuk toevoegen (geen AI-analyse)'
       + '</label>'
       + '<div id="upload-status-'+faseId+'" style="font-size:11px;color:var(--muted)"></div>'
+      + (typeof dclRenderPaneel === 'function' ? dclRenderPaneel(faseId, { rol: S.rol, code: S.code, vergrendeld: isReadOnly }) : '')
       + (faseId==='financieel'?'<div style="font-size:10px;color:var(--muted);flex-basis:100%">Ook een SBR/XBRL-jaarrekeningbestand kan hier geüpload worden — de officiële cijfers worden dan automatisch uitgelezen. Let op: bij kleine/middelgrote rechtspersonen bevat dit wettelijk geen apart omzetcijfer (pas vanaf brutomarge).</div>':'')
       + '</div>';
   }
@@ -2094,7 +2137,11 @@ function renderDocumentSectie(faseId) {
       // Alleen een goed document (legacy, PROCESSED, STORED) kan aan een entiteit gekoppeld worden; van
       // een mislukt/te beoordelen document worden nooit gegevens verwerkt.
       var statusGoed = !doc.upload_mislukt && (!doc.verwerking_status || doc.verwerking_status === 'PROCESSED' || doc.verwerking_status === 'STORED');
-      var toonKoppelenDoc = statusGoed && !isReadOnly && S._entiteiten && S._entiteiten.length;
+      // Productpunt 6: een door de server bevestigde classificatie is gebonden aan de entiteit van de rij;
+      // koppelen/ontkoppelen zou die ongeldig maken, dus dan geen koppel-UI en geen groepsniveau-badge.
+      var klasDoc = doc.documentclassificatie || null;
+      var klasHtml = typeof dclRenderWeergave === 'function' ? dclRenderWeergave(klasDoc, { entNaam: klasDoc && klasDoc.entiteit_id ? entiteitNaam(klasDoc.entiteit_id) : '', verwerkingFout: doc.verwerking_fout, toonOnbekend: faseId === 'financieel' }) : '';
+      var toonKoppelenDoc = statusGoed && !isReadOnly && !klasDoc && S._entiteiten && S._entiteiten.length;
       var gokIdDoc = (toonKoppelenDoc && !doc.entiteit_id) ? gokEntiteitId((doc.velden||{}).entiteit_naam) : '';
       var geselecteerdDoc = doc.entiteit_id || gokIdDoc;
       // GOUDEN STANDAARD: bij onzekere entiteitsherkenning (AI noemde wél een bedrijfsnaam, maar die
@@ -2127,6 +2174,7 @@ function renderDocumentSectie(faseId) {
         + (!isReadOnly?'<button onclick="vervangDocument(\''+faseId+'\',\''+doc.id+'\')" title="Nieuwe versie uploaden (vervangt dit document)" style="background:none;border:1px solid var(--border2);color:var(--muted);border-radius:var(--r);cursor:pointer;font-size:10px;padding:1px 6px">&#8635; Vervangen</button>':'')
         + (!isReadOnly?'<button onclick="deleteDocument(\''+doc.id+'\',\''+faseId+'\')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:10px;padding:0 2px">✕</button>':'')
         + redenDoc
+        + klasHtml
         + '</div>';
     }).join('');
     docsHtml += '</div>';
@@ -2170,10 +2218,14 @@ window.toonVersieGeschiedenis = async function(docId) {
     if (!d.ok || !d.versies || !d.versies.length) { box.innerHTML = '<div id="versiegeschiedenis-modal-titel" style="font-family:Playfair Display,serif;font-size:1.05rem;color:var(--head);font-weight:600;margin-bottom:.75rem">Versiegeschiedenis</div><div style="font-size:12px;color:var(--muted)">Geen geschiedenis gevonden.</div>'; return; }
     var lijst = d.versies.slice().reverse().map(function(v) {
       var datum = v.uploaded_at ? new Date(v.uploaded_at).toLocaleString('nl-NL') : '';
-      return '<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--card);border:1px solid var(--border);border-radius:var(--r)">'
+      // Productpunt 6: per versie alleen de eigen, gesaneerde classificatie (nooit van een andere versie).
+      var klasV = typeof dclSaneer === 'function' ? dclSaneer(v.documentclassificatie, v.entiteit_id || null) : null;
+      var klasVHtml = typeof dclRenderWeergave === 'function' ? dclRenderWeergave(klasV, { entNaam: klasV && klasV.entiteit_id ? entiteitNaam(klasV.entiteit_id) : '', verwerkingFout: v.verwerking_fout, toonOnbekend: true }) : '';
+      return '<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--card);border:1px solid var(--border);border-radius:var(--r);flex-wrap:wrap">'
         + '<span style="font-size:9px;font-weight:700;color:#fff;background:var(--teal);border-radius:8px;padding:1px 6px;flex-shrink:0">v'+(v.versie||1)+'</span>'
         + '<span style="font-size:12px;flex:1">'+(v.bewaard?'<a href="'+WORKER+'/mna/document/download/'+v.id+'?code='+encodeURIComponent(S.code)+'" target="_blank" rel="noopener" style="color:var(--teal)">'+esc(v.bestand_naam)+'</a>':esc(v.bestand_naam))+'</span>'
         + '<span style="font-size:10px;color:var(--muted)">'+esc(datum)+'</span>'
+        + klasVHtml
         + '</div>';
     }).join('');
     box.innerHTML = '<div id="versiegeschiedenis-modal-titel" style="font-family:Playfair Display,serif;font-size:1.05rem;color:var(--head);font-weight:600;margin-bottom:.75rem">Versiegeschiedenis</div><div style="display:flex;flex-direction:column;gap:6px;margin-bottom:1rem">'+lijst+'</div><button id="versies-sluiten-btn" style="background:var(--teal);color:#fff;border:none;border-radius:var(--r);padding:6px 16px;cursor:pointer;font-size:12px">Sluiten</button>';

@@ -1053,6 +1053,25 @@ log('29. Groepsbeeld UI (tests/group-consolidation-ui.mjs): bruto berekend versu
   }
 }
 
+log('30. Expliciete groepsdocumenten UI (tests/group-documents-ui.mjs): optionele classificatie bij de financiële upload, gesaneerde weergave');
+{
+  // Productpunt 6 (10 okt 2026): de test draait de echte mna/12 en de echte uploadintegratie uit mna/02
+  // (leesUploadKeuzes, reeks/directe/vervangupload, lijst, versies) in node:vm tegen synthetische antwoorden
+  // in de vorm van het gecommitte backendcontract (worker/43, worker/14/15) — geen netwerk, geen browser,
+  // geen live API of AI. Backend-live, staging, productie en echte documenten staan apart open; zie
+  // docs/group-documents-ui.md.
+  try {
+    const { draaiGroupDocumentsUiChecks } = await import('./group-documents-ui.mjs');
+    const resultaten = await draaiGroupDocumentsUiChecks(ROOT);
+    const gefaald = resultaten.filter(r => !r.ok);
+    gefaald.forEach(r => warn('Groepsdocumenten UI: ' + r.msg));
+    if (!resultaten.length) warn('Groepsdocumenten UI: geen checks uitgevoerd.');
+    else if (!gefaald.length) ok('Alle ' + resultaten.length + ' groepsdocumenten-UI-checks geslaagd (laadvolgorde mna/12 vóór mna/02 zonder uitvoering bij laden, uit = legacy keuzes en parameters byte-gelijk, volledige GROUP/ENTITY met exact vier queryparameters en behouden entiteit_id, ontbrekende/tegenstrijdige/vreemde entiteit en ambigue periode vóór elk verzoek geweigerd, enums/datums/jaargrenzen, prognose/begroting/YTD/deelperiode nooit jaarrealisatie, momentopname vóór renderApp bij reeks/direct/vervangen, bewijsstuk en extra controle behouden, geen hergebruik van oude-versieclassificatie, rollen/vergrendeling/trajectwissel/centrale upload, gesaneerde DTO uit upload/lijst/versies, legacy expliciet niet geclassificeerd, escaping zonder ruwe record/binding/interne id\'s, geen netwerk of AI vanuit mna/12).');
+  } catch (e) {
+    warn('tests/group-documents-ui.mjs kon niet worden uitgevoerd: ' + String((e && e.message) || e));
+  }
+}
+
 // ── Samenvatting ──────────────────────────────────────────────────────────
 log('Samenvatting');
 if (!bevindingen) {
