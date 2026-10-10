@@ -1016,6 +1016,25 @@ log('27. Financiële broncontrole UI (tests/financial-source-ui.mjs): rollen, sc
   }
 }
 
+log('28. Juridische broncontrole UI (tests/legal-structure-ui.mjs): rollen, scopebinding, bronweergave en begeleiderbeoordeling');
+{
+  // Productpunt 4 (10 okt 2026): de test draait de echte mna/10 met fetchMetTimeout (mna/01) en de
+  // rolhelpers (mna/02) in node:vm tegen synthetische antwoorden in de vorm van de gecommitte backendroutes
+  // GET /mna/juridisch/broncontrole/{code} en POST /mna/juridisch/broncontrole/beoordeling — geen netwerk,
+  // geen browser, geen live API of AI. Staging, echte documenten en productie staan apart open; zie
+  // docs/legal-structure-ui.md.
+  try {
+    const { draaiLegalStructureUiChecks } = await import('./legal-structure-ui.mjs');
+    const resultaten = await draaiLegalStructureUiChecks(ROOT);
+    const gefaald = resultaten.filter(r => !r.ok);
+    gefaald.forEach(r => warn('Juridische broncontrole UI: ' + r.msg));
+    if (!resultaten.length) warn('Juridische broncontrole UI: geen checks uitgevoerd.');
+    else if (!gefaald.length) ok('Alle ' + resultaten.length + ' juridische-broncontrole-UI-checks geslaagd (laadvolgorde mna/10 vóór mna/06 met behoud van mna/09, koper/meekijker/onbekende rol zonder paneel of verzoek, alleen laden na klik, exacte GET zonder beheerderssleutel, platform versus bronvoorstel, verschillen/onbekenden, AI-voorstel nooit als bewezen, document-id/versie/hash/pagina/fragment en ontbrekend bewijs, ACTUEEL versus HISTORISCH_VEROUDERD, XSS-escaping, verkoper alleen lezen, admin/geen recht/vergrendeld/geen bron/ongeldige digest zonder knop of POST, exacte POST-body, motivatie 10–1000 tekens en bevestiging verplicht, dubbelklik één POST, 409 alleen herladen zonder retry, 403/404/503/500/netwerk/malformed zonder vals succes met behoud van motivatie, late GET/POST na klant-/rol-/scherm-/fasewissel genegeerd, geen cache tussen klanten, niet-opgeslagen formulierinvoer intact, geen entiteitmutatie, begrensde weergave met melding, geen AI-aanroep).');
+  } catch (e) {
+    warn('tests/legal-structure-ui.mjs kon niet worden uitgevoerd: ' + String((e && e.message) || e));
+  }
+}
+
 // ── Samenvatting ──────────────────────────────────────────────────────────
 log('Samenvatting');
 if (!bevindingen) {
