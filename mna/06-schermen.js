@@ -751,6 +751,9 @@ function renderMain(){
     // Productpunt 3 (9 okt 2026): financiële broncontrole (mna/09) — alleen verkoper/begeleider in fase
     // Financieel; de functie zelf geeft voor koper/andere fases een lege string en doet dan geen verzoek.
     +renderFinancieleBroncontrole(f.id)
+    // Productpunt 5 (10 okt 2026): read-only groepsbeeld (mna/11) uit de al geladen S._mnaData — alleen
+    // verkoper/begeleider in fase Financieel; geen verzoek, geen opslag, geen berekening.
+    +renderGroepsbeeld(f.id)
     // Productpunt 4 (10 okt 2026): juridische broncontrole (mna/10) — alleen verkoper/begeleider in fase
     // Juridisch; voor koper/andere fases een lege string en dan geen verzoek.
     +renderJuridischeBroncontrole(f.id)

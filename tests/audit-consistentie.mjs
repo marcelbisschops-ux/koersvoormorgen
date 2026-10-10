@@ -1035,6 +1035,24 @@ log('28. Juridische broncontrole UI (tests/legal-structure-ui.mjs): rollen, scop
   }
 }
 
+log('29. Groepsbeeld UI (tests/group-consolidation-ui.mjs): bruto berekend versus aangeleverd, read-only uit S._mnaData');
+{
+  // Productpunt 5 (10 okt 2026): de test draait de echte mna/11 met de rolhelpers (mna/02) en de bestaande
+  // bedragopmaak (mna/09) in node:vm tegen synthetische S._mnaData in de vorm van de gecommitte backend-
+  // metadata (worker/42, consolidatieCheck.groepsbeeld) — geen netwerk, geen browser, geen live API of AI.
+  // Backend-live, staging, echte documenten en productie staan apart open; zie docs/group-consolidation-ui.md.
+  try {
+    const { draaiGroupConsolidationUiChecks } = await import('./group-consolidation-ui.mjs');
+    const resultaten = await draaiGroupConsolidationUiChecks(ROOT);
+    const gefaald = resultaten.filter(r => !r.ok);
+    gefaald.forEach(r => warn('Groepsbeeld UI: ' + r.msg));
+    if (!resultaten.length) warn('Groepsbeeld UI: geen checks uitgevoerd.');
+    else if (!gefaald.length) ok('Alle ' + resultaten.length + ' groepsbeeld-UI-checks geslaagd (laadvolgorde mna/11 na mna/10 en vóór mna/06, bestaande panelen en consolidatieCheck-melding behouden, koper/meekijker/onbekende rol en andere fase zonder paneel of verwerking, alleen groepsrij financieel met entiteit_id null/ontbrekend, bruto versus aangeleverde echte 0 met oorspronkelijke invoer, onvolledig/onbruikbaar/ambigu/PROGNOSE/periode onbekend, eliminaties en correcties onbekend nooit 0, gereconcilieerd null/niet mogelijk, verschil als signaal geen foutbewijs, rekenselectie met aantallen en kring niet bewezen, geen/malformed/legacy/onbekende metadata expliciet zonder crash, XSS-escaping, onverklaarde statussen, max 40 velden met melding, rol-/fase-/trajectwissel zonder cache, geen netwerk/save/AI, formulier- en serverdata byte-gelijk).');
+  } catch (e) {
+    warn('tests/group-consolidation-ui.mjs kon niet worden uitgevoerd: ' + String((e && e.message) || e));
+  }
+}
+
 // ── Samenvatting ──────────────────────────────────────────────────────────
 log('Samenvatting');
 if (!bevindingen) {
