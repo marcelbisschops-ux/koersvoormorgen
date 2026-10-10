@@ -1,7 +1,11 @@
 # Groepsbeeld: UI (productpunt 5)
 
-Status 10 okt 2026: **gebouwd en alleen synthetisch getest**, niet gereleased. Backend-live, staging,
-echte documenten en productie staan **OPEN** tot een bewezen release (zie onderaan).
+Status 10 okt 2026: **live in productie** op koersvoormorgen.nl. Frontend `6bc13ae` (Pages-deployment
+`6c7fc05f-1544-43b4-987f-45e51cd72489`) en backend `d889d28` (Worker-versie
+`5f75c91c-24f5-4a89-81c9-8d8a57e107e1`) zijn live. De frontendtaak is DONE. De backendtaak staat op
+READY, niet native DONE: productie- en releasebewijs zijn vastgelegd, maar de administratieve
+DONE-overgang blokkeert omdat een historische architectuurbron later in de native werkboom is gewijzigd.
+Echte klantdocumenten en live AI blijven **OPEN** (zie onderaan). Bewijs: `inbox/productpunt5-ui/afgerond.json`.
 
 Code: `mna/11-groepsbeeld.js` (gewone scriptmodule, in `mna.html` geladen na
 `mna/10-juridische-broncontrole.js` en vóór `mna/06-schermen.js`) en één aanroep
@@ -18,7 +22,8 @@ De UI leest alleen de metadata die de backend additief in `data_json` van de gro
 `velden[veld]`. De bron is de al geladen serverdata `S._mnaData` (gezet bij het laden van het
 traject in `mna/06`). De UI berekent niets zelf.
 
-Backend `3a36fd2` is gecommit maar **nog niet live**. Zolang de metadata ontbreekt, toont het paneel
+De backend met deze metadata staat live (release `d889d28`). Zolang de metadata in een groepsrij
+ontbreekt, toont het paneel
 "Nog geen brongebonden groepsbeeldinformatie beschikbaar" en noemt het het bestaande groepsgetal nooit
 officieel, geconsolideerd of bruto berekend.
 
@@ -68,11 +73,21 @@ onbekend, eliminaties onbekend nooit 0, verschil geen foutbewijs, geen/malformed
 metadata, HTML-injectie, onverklaarde statussen, afkapping, rol-/trajectwissel zonder cache, geen
 netwerk/save/AI en byte-gelijke formulier- en serverdata. Dit is technisch bewijs, geen browserbewijs.
 
+Releasebewijs (10 okt 2026): UI-checks (70), native audit en onafhankelijke review PASS; samenhangende
+releasetest en review PASS. Staging: 16 synthetische API-/browserchecks en 18 kernrolchecks PASS (2
+optionele AI-checks niet uitgevoerd). Productie, eigen synthetisch traject: groepssom 800000 exclusief
+holding (9000000), aangeleverde correctie 1234600.5 behouden; audit, bronreferentie, UI, rollen en de
+financiële en juridische functies behouden; versies, live bytes, publicatiebeveiliging en cleanup PASS.
+De eerste gecombineerde postdeploy-proeven gingen uit van een verkeerde verwachting over de
+standaardentiteit en de invoerselector; met de zichtbare Groep-kiezer en het bestaande readonly-veld
+slaagden dezelfde assertions. Er was geen productfix nodig.
+
 ## Beperkingen en OPEN
 
 - `S._mnaData` wordt alleen bij het laden van het traject gezet. Na het opslaan van entiteitcijfers in
   dezelfde sessie toont het paneel de oude stand tot opnieuw laden; het paneel meldt dat.
-- Backend `3a36fd2` niet live: in de huidige omgeving toont het paneel overal "nog geen brongebonden
-  groepsbeeldinformatie".
-- OPEN tot een bewezen release: backend live, nieuwe UI op staging, gedrag met echte documenten en
-  klantdata, productie. `.pages-dist/` is niet bijgewerkt (buiten scope; geen deploy).
+- Geen officiële consolidatie; eliminaties blijven onbekend (nooit 0) en de juridische
+  consolidatiekring is niet bewezen.
+- OPEN: gedrag met echte klantdocumenten en klantdata, en live AI. Productie is alleen met een eigen
+  synthetisch traject bewezen.
+- Backendtaak administratief READY, niet native DONE (zie Status bovenaan).
