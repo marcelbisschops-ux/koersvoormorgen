@@ -63,3 +63,119 @@ andere aantallen (4 en 3).
 
 De nieuwe UI is **nog niet live**: niet gedeployed tot de releasegates (onafhankelijke review,
 commitgate, staging/productie-goedkeuring) PASS zijn.
+
+## Verwijderbeheer (10 okt 2026)
+
+Status: **gericht onderdeel, geen volledig verwijderbeheer.** Deze sectie beschrijft alleen wat
+aantoonbaar is gebouwd en getest. Ze claimt geen volledige dekking van bulkbeheer, gevolgen of
+retentie.
+
+### Stap 1 — foutafhandeling
+
+De backend geeft bij een databasefout op `POST /gebruikers/verwijder/{id}` en
+`POST /admin/benchmarks/delete/{sleutel}` een 500 met `{ok:false,error}` in plaats van een fictief
+succes (zie `docs/marilyn-verwijderbeheer.md` in de backend-repo). Marilyn telt een verwijdering
+daarom alleen als geslaagd bij HTTP-ok **én** `{ok:true}`, en toont nooit servertekst.
+
+### Gebruikersoverzicht: gekozen gebruikers verwijderen
+
+Plaats: `renderGebruikersTab()` in `marilyn.html` (tab **Gebruikers**, alleen voor de hoofdbeheerder).
+
+| Onderdeel | Gedrag |
+|---|---|
+| Wie | Alleen bij `isSuperAdmin` én een beheerderssleutel (`adminKey`). Anders toont het overzicht geen vakjes, geen ✕ en geen groepsknop, en verstuurt de helper niets. De server controleert de sleutel bij elke POST opnieuw. |
+| Selectie | Een vakje per gebruiker in het geladen overzicht. Niets is vooraf aangevinkt. Het kopvakje vinkt alleen de rijen aan die op dat moment in het overzicht staan. Het overzicht heeft geen filter of verborgen rijen, en elke getoonde gebruiker had al een losse ✕. |
+| Knop | "Verwijder geselecteerde (n)" is alleen zichtbaar bij n > 0; de teller en het kopvakje volgen elk aan- en uitvinken. |
+| Route | Per gekozen gebruiker precies één `POST /gebruikers/verwijder/{id}` (bestaande individuele route, `encodeURIComponent` op het ID, header `x-admin-key`). Geen nieuw endpoint, geen bulkroute, geen cascade, geen nieuw recht en geen automatische herhaling. |
+| Losse ✕ | Gebruikt dezelfde helper (`verwijderGekozen()`), dezelfde route en dezelfde uitleg als de groepsactie. |
+| Bevestiging | Toont vóór elke POST het aantal en de gekozen namen (met e-mail), plus de beperkte gevolgen: alleen het gebruikersaccount wordt verwijderd via de bestaande route, er wordt niet apart iets gewist van gekoppelde trajecten, documenten of administratie, en bij een weigering vanwege gekoppelde gegevens blijft de gebruiker staan. Er wordt niet beloofd dat gekoppelde gegevens gewist worden. |
+| Annuleren | Verstuurt niets; selectie en bediening blijven ongewijzigd. |
+| Overlap | Zolang er een verwijdering loopt (los of groep), staan alle ✕-knoppen, vakjes en het kopvakje uit, en weigert de handler een tweede start (`gebVerwijderBezig`). Een dubbelklik geeft één bevestiging en één POST per gebruiker. |
+| Uitkomst | Alleen geslaagd bij HTTP-ok **én** `{ok:true}`. 401/403 wordt "geen toegang", 404 "niet meer gevonden", 409 "geweigerd omdat er nog gegevens aan gekoppeld zijn", een netwerkfout "geen verbinding", en 500, `ok:false` of een antwoord zonder JSON "tijdelijke storing". Bij een gemengde uitkomst een melding per reden, zonder statuscodes, ID's of servertekst. |
+| Verversen | Na elke bevestigde actie wordt het overzicht opnieuw geladen. Lukt dat niet (netwerkfout, of geen toegang tot `/gebruikers/lijst`), dan staat er een zichtbare laadfout in plaats van een leeg overzicht of "Nog geen gebruikers". |
+
+Bestaande acties per gebruiker (verkoop, eigen/extern, opnieuw sturen, wachtwoord resetten,
+(de)activeren, uitnodigen) zijn ongewijzigd. In de gedeelde helper `verwijderGekozen()` krijgt
+HTTP 409 nu een eigen reden ("geweigerd omdat er nog gegevens aan gekoppeld zijn"); voorheen viel
+409 onder "tijdelijke storing". Dat geldt voor alle overzichten die de helper gebruiken; verder
+verandert de uitkomstbepaling daar niet.
+
+### Benchmarkmelding: benchmark verwijderen
+
+Plaats: de `.btn-del-bench`-klikhandler in `marilyn.html` (benchmarkoverzicht). Na bevestiging gaat
+één `POST /admin/benchmarks/delete/{sleutel}` (bestaande route, header `x-admin-key`). Alleen
+HTTP-ok **én** `{ok:true}` herlaadt de lijst. Bij 500, 401, `ok:false`, een antwoord zonder `ok`,
+onjuiste JSON of een netwerkfout verschijnt precies één neutrale foutmelding ("De benchmark kon niet
+worden verwijderd. Probeer het later opnieuw.") zonder herladen en zonder servertekst. Annuleren
+verstuurt niets. De handler gebruikt geen `innerHTML` en slikt geen fetch-fouten meer in.
+
+### Benchmarkoverzicht: gekozen benchmarks verwijderen (10 okt 2026)
+
+Plaats: `renderBenchmarksTab()` in `marilyn.html` (tab **Benchmarks**). Status: **alleen lokaal en
+synthetisch bewezen, niet live** — er is niets uitgerold of tegen staging/productie geprobeerd.
+
+| Onderdeel | Gedrag |
+|---|---|
+| Wie | Vakjes, kopvakje en groepsknop alleen bij `isSuperAdmin` én `adminKey`. Anders worden ze niet getoond en verstuurt de helper niets. De server controleert `x-admin-key` bij elke POST opnieuw. |
+| Selectie | Een vakje per benchmark in het geladen overzicht; niets vooraf aangevinkt. Het kopvakje vinkt alleen de getoonde rijen aan. Het overzicht heeft geen filter of verborgen rijen. Er is geen "alles wissen". |
+| Route | Per aangevinkte benchmark precies één `POST /admin/benchmarks/delete/{sleutel}` (bestaande individuele route, `encodeURIComponent` op de sleutel) via de gedeelde helper `verwijderGekozen()`. Geen nieuw endpoint, geen bulkroute, geen backendwijziging, geen automatische herhaling. |
+| Losse ✕ | Ongewijzigd: eigen bevestiging, eigen neutrale foutmelding, dezelfde route. Nieuw is alleen dat de ✕ uit staat zolang zijn eigen verzoek of een groepsverwijdering loopt. |
+| Bevestiging | Vooraf aantal en gekozen namen (sleutel + omschrijving), plus de gevolgen: alleen de benchmarkconfiguratie (waarde met bron en peildatum) wordt verwijderd; klantdocumenten, trajecten en de waarderingshistorie worden niet gewist. |
+| Annuleren | Verstuurt niets; selectie en bediening blijven staan. |
+| Overlap | Tijdens een groepsverwijdering staan groepsknop ("Verwijderen..."), vakjes, kopvakje en alle ✕ uit (`benchVerwijderBezig`); loopt een losse ✕, dan doet de groepsknop niets. Een dubbelklik geeft één bevestiging en één POST per benchmark. |
+| Uitkomst | Alleen geslaagd bij HTTP 2xx **én** `ok === true` (de helper telt sinds deze stap ook in andere overzichten alleen exact `true`, niet een andere "waar"-waarde). 401/403 "geen toegang", 404 "niet meer gevonden", netwerkfout "geen verbinding", 500/`ok:false`/geen JSON "tijdelijke storing"; bij een gemengde uitkomst een melding per reden, zonder statuscodes of servertekst. |
+| Verversen | Na elke bevestigde actie wordt de lijst opnieuw geladen; de selectie is daarna leeg en de knop verborgen. Mislukt het laden, dan staat er een laadfout en geen verouderde lijst met vinkjes. |
+
+Scope en retentie: de backendroute verwijdert alleen de rij in `benchmarks` (op sleutel of id). De
+backendtests bevestigen dat `benchmarks_historie` niet wordt geraakt. Klantdocumenten, trajecten en
+waarderingen worden niet aangeraakt. Een verwijderde benchmark is niet terug te zetten via de app;
+alleen opnieuw toevoegen (handmatig, PDF of "Bronnen updaten"). Er zijn geen bewaartermijnen
+vastgelegd. Backendrelease `781654f` (DONE, `verwijderBenchmarkAdmin` in `backend/cloudflare-worker.js`)
+geeft voor een onbekende sleutel 404 met `{ok:false}` en bij een databasefout of onbetrouwbaar
+DB-resultaat 500 met `{ok:false}`; alleen een werkelijk verwijderde rij geeft `{ok:true}`.
+
+### Bewaking
+
+`tests/n122-marilyn-verwijderen.mjs` (verplicht via check 21 in `node tests/audit-consistentie.mjs`,
+elke gefaalde check telt als bevinding) laadt het echte script uit `marilyn.html` in `node:vm` met
+een minimale DOM-fixture en een nep-worker; geen netwerk, geen browser, geen echte gegevens.
+
+- **Gebruikers:** selectie en alleen-gekozen (teller 2 → 1 → 2, gecodeerd padsegment, niet-gekozen
+  blijven staan), nulselectie, annuleren, bevestigingstekst, kopvakje, dubbelklik en overlap
+  los/groep, gedeeltelijke uitkomst (ok + 409 + netwerkfout), 500/`ok:false`/geen JSON zonder
+  herhaling, mislukte verversing zichtbaar, authfail (401) als "geen toegang", en rol (zonder
+  superadmin of sleutel geen bediening en geen POST).
+- **Benchmarks:** de echte `.btn-del-bench`-handler in een eigen `node:vm`-context: annuleren zonder
+  verzoek; succes via de bestaande URL/POST/`x-admin-key` herlaadt precies één keer; 500, 401,
+  `ok:false`, zonder `ok`, 500 met `ok:true`, onjuiste JSON en netwerkfout tonen elk precies één
+  neutrale foutmelding zonder herladen of servertekst; geen `innerHTML` in de handler; een
+  uitgeschakelde ✕ vraagt en verstuurt niets.
+- **Benchmarks groepsverwijdering:** echte login en Benchmarks-tab: vakjes en teller, annuleren,
+  bevestiging met aantal/namen/gevolgen, dubbelklik plus ✕ en kopvakje tijdens de actie (één POST per
+  gekozen benchmark, gecodeerde sleutel), verversen zonder restselectie, losse ✕ ongewijzigd,
+  kopvakje aan/uit, gedeeltelijke uitkomst (ok + 403 + netwerkfout), 500/`ok:false`/geen JSON/
+  `ok:"true"` zonder herhaling, 401 als "geen toegang", overlap los → groep, mislukte verversing, en
+  rol (zonder superadmin geen vakjes of groepsknop en geen POST).
+
+### Open (niet in deze stap)
+
+- **Afhankelijkheden en retentie:** wat er met gekoppelde trajecten, documenten, sessies,
+  kantoorlidmaatschappen, CRM en administratie gebeurt als een gebruikersaccount verwijderd wordt,
+  is niet onderzocht of geregeld. Er wordt niets beloofd over opruiming of behoud, en er zijn geen
+  bewaartermijnen vastgelegd.
+- **Overige overzichten:** de andere verwijderpaden in `marilyn.html` (o.a. `deleteScan`,
+  `deleteCallback`, `deleteMna`) zijn in deze stap niet opnieuw beoordeeld; hun dekking staat alleen
+  in de bestaande N-122/N-124-checks.
+- **Echte omgeving:** de proef draait uitsluitend tegen een nep-worker. Gedrag op staging of
+  productie vraagt de bestaande staging-, release- en postdeploy-gates.
+- `tests/README.md` noemt het gebruikersoverzicht en de benchmarkgroepsverwijdering nog niet bij de
+  helper `verwijderGekozen()`.
+- **Benchmarks:** `.pages-dist/marilyn.html` is niet bijgewerkt (buiten scope); de groepsverwijdering
+  is pas live na de bestaande build-, staging-, release- en postdeploy-gates.
+
+## Productpunt 22 — dagelijkse CI-dekking: OPEN
+
+Status: **OPEN**. De dagelijkse CI-dekking met read-only backendbroncontext (credential
+`BACKEND_SOURCE_READ_TOKEN`) maakt geen deel uit van deze benchmarkbulkrelease en wordt hier niet als
+meegenomen of live geclaimd. Dat de echte dagelijkse GitHub-run met volledige E2E slaagt en de
+rapportage in Marilyn → Veiligheid PASS toont, is **ONBEWEZEN**; dit document is geen PASS-rapport.

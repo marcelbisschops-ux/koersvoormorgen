@@ -1508,9 +1508,17 @@ async function renderDocsTab(el){
 }
 
 
+// Benchmarks bulkbeheer (10 okt 2026): "Verwijder geselecteerde" alleen voor de hoofdbeheerder met
+// beheerderssleutel, via de gedeelde helper verwijderGekozen() en per aangevinkte benchmark één POST naar
+// de bestaande route /admin/benchmarks/delete/{sleutel}. Geen alles-wissen; de losse ✕ blijft zoals hij was.
+// Tijdens het verwijderen staan vakjes en ✕ uit; daarna altijd verversen (selectie leeg).
+var benchVerwijderBezig=false;
+var BENCH_GEVOLGEN='Alleen de benchmarkconfiguratie (de ingestelde waarde met bron en peildatum) wordt verwijderd, per benchmark via de bestaande verwijderroute. Klantdocumenten, trajecten en de waarderingshistorie worden niet gewist.';
 async function renderBenchmarksTab(el){
+  var magBulk=isSuperAdmin&&!!adminKey;
   el.innerHTML='<div class="table-wrap"><div class="table-hdr"><div class="table-title">Benchmarks</div>'
     +'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
+    +(magBulk?'<button class="btn-red" id="btn-del-sel-bench" style="font-size:12px;padding:7px 14px;display:none">&#10005; Verwijder geselecteerde (<span id="sel-cnt-bench">0</span>)</button>':'')
     +'<button class="btn" style="font-size:12px;padding:7px 14px" id="btn-bench-refresh">&#8635; Bronnen updaten</button>'
     +'<button class="btn" style="font-size:12px;padding:7px 14px" id="btn-bench-add">+ Handmatig toevoegen</button>'
     +'<button class="btn" style="font-size:12px;padding:7px 14px;background:var(--teal-bg);color:var(--teal);border:1px solid var(--teal-dark)" id="btn-bench-pdf">&#128196; PDF analyseren</button>'
@@ -1522,12 +1530,13 @@ async function renderBenchmarksTab(el){
     try{
       var r=await fetch(WORKER+'/benchmarks');
       var data=await r.json();
-      if(!data.length){db.innerHTML='<div class="empty">Nog geen benchmarks. Klik op Bronnen updaten om de eerste data op te halen.</div>';return;}
-      var html='<table><thead><tr><th>Sleutel</th><th>Omschrijving</th><th>Waarde</th><th>Bron</th><th>Peildatum</th><th>Bijgewerkt</th><th></th></tr></thead><tbody>';
+      if(!data.length){db.innerHTML='<div class="empty">Nog geen benchmarks. Klik op Bronnen updaten om de eerste data op te halen.</div>';updSelBench();return;}
+      var html='<table><thead><tr>'+(magBulk?'<th style="width:32px"><input type="checkbox" id="cb-all-bench" title="Alle benchmarks in deze lijst aanvinken"></th>':'')+'<th>Sleutel</th><th>Omschrijving</th><th>Waarde</th><th>Bron</th><th>Peildatum</th><th>Bijgewerkt</th><th></th></tr></thead><tbody>';
       data.forEach(function(b){
         var dt=b.updated_at?new Date(b.updated_at).toLocaleString('nl-NL',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'--';
         var valFmt=b.waarde>1000?'€'+(b.waarde/1000).toFixed(0)+'K':b.waarde.toFixed(2)+'x';
         html+='<tr>'
+          +(magBulk?'<td><input type="checkbox" class="bench-cb" data-sleutel="'+esc(b.sleutel)+'" data-naam="'+esc(b.sleutel+(b.omschrijving?' — '+b.omschrijving:''))+'" style="cursor:pointer"></td>':'')
           +'<td class="mono" style="font-size:11px;color:var(--teal)">'+esc(b.sleutel)+'</td>'
           +'<td style="font-size:12px">'+esc(b.omschrijving||'--')+'</td>'
           +'<td class="mono" style="font-weight:600;color:var(--head)">'+valFmt+'</td>'
@@ -1538,16 +1547,67 @@ async function renderBenchmarksTab(el){
           +'</tr>';
       });
       html+='</tbody></table>';
+      if(magBulk)html+='<div style="padding:10px 14px;color:var(--muted);font-size:11px;border-top:1px solid var(--border)">Meerdere benchmarks tegelijk verwijderen: vink ze aan en kies <strong>Verwijder geselecteerde</strong>; het vakje in de kop vinkt alle benchmarks in deze lijst aan. Alleen aangevinkte benchmarks worden verwijderd, elk via de bestaande verwijderroute. Klantdocumenten, trajecten en de waarderingshistorie worden niet gewist.</div>';
       db.innerHTML=html;
       db.querySelectorAll('.btn-del-bench').forEach(function(btn){
         btn.addEventListener('click',async function(){
+          // Uit tijdens een lopende (groeps)verwijdering; zolang dit verzoek loopt doet de groepsknop niets.
+          if(btn.disabled)return;
           if(!confirm('Benchmark "'+btn.dataset.sleutel+'" verwijderen?'))return;
-          await fetch(WORKER+'/admin/benchmarks/delete/'+btn.dataset.sleutel,{headers:{'x-admin-key':adminKey},method:'POST'}).catch(function(){});
+          // Marilyn verwijderbeheer (10 okt 2026): de backend geeft bij een databasefout 500 met {ok:false};
+          // alleen 2xx met ok:true telt als verwijderd, anders een neutrale foutmelding (nooit servertekst).
+          var gelukt=false;
+          btn.disabled=true;
+          try{
+            var r=await fetch(WORKER+'/admin/benchmarks/delete/'+btn.dataset.sleutel,{headers:{'x-admin-key':adminKey},method:'POST'});
+            var d=await r.json().catch(function(){return null;});
+            gelukt=r.ok&&!!d&&d.ok===true;
+          }catch(e){gelukt=false;}
+          btn.disabled=false;
+          if(!gelukt){toast('De benchmark kon niet worden verwijderd. Probeer het later opnieuw.','err');return;}
           laadBenchmarks();
         });
       });
-    }catch(e){db.innerHTML='<div class="empty">Fout bij laden: '+e.message+'</div>';}
+      if(magBulk){
+        var cbAllB=document.getElementById('cb-all-bench');
+        if(cbAllB)cbAllB.addEventListener('change',function(){if(benchVerwijderBezig)return;db.querySelectorAll('.bench-cb:not(:disabled)').forEach(function(cb){cb.checked=cbAllB.checked;});updSelBench();});
+        db.querySelectorAll('.bench-cb').forEach(function(cb){cb.addEventListener('change',updSelBench);});
+      }
+      updSelBench();
+      if(benchVerwijderBezig)benchBediening(false);
+    }catch(e){db.innerHTML='<div class="empty">Fout bij laden: '+e.message+'</div>';updSelBench();}
   }
+  function updSelBench(){
+    var db=document.getElementById('bench-body');
+    var n=db?db.querySelectorAll('.bench-cb:checked').length:0,totaal=db?db.querySelectorAll('.bench-cb').length:0;
+    var b=document.getElementById('btn-del-sel-bench'),c=document.getElementById('sel-cnt-bench'),ca=document.getElementById('cb-all-bench');
+    if(b)b.style.display=n>0?'inline-block':'none';
+    if(c)c.textContent=n;
+    if(ca)ca.checked=n>0&&n===totaal;
+  }
+  function benchBediening(aan){
+    var db=document.getElementById('bench-body');if(!db)return;
+    db.querySelectorAll('.btn-del-bench').forEach(function(x){x.disabled=!aan;});
+    db.querySelectorAll('.bench-cb').forEach(function(cb){cb.disabled=!aan;});
+    var ca=document.getElementById('cb-all-bench');if(ca)ca.disabled=!aan;
+  }
+  async function verwijderBenchmarks(cbs,knop){
+    var db=document.getElementById('bench-body');
+    if(benchVerwijderBezig||!cbs.length||(db&&db.querySelector('.btn-del-bench:disabled')))return;
+    benchVerwijderBezig=true;
+    benchBediening(false);
+    try{
+      await verwijderGekozen({ids:cbs.map(function(cb){return cb.dataset.sleutel;}),namen:cbs.map(function(cb){return cb.dataset.naam;}),
+        pad:function(s){return '/admin/benchmarks/delete/'+encodeURIComponent(s);},een:'benchmark',meer:'benchmarks',knop:knop,extra:BENCH_GEVOLGEN,
+        ververs:laadBenchmarks});
+    }finally{
+      benchVerwijderBezig=false;
+      benchBediening(true);
+      updSelBench();
+    }
+  }
+  var btnDelB=document.getElementById('btn-del-sel-bench');
+  if(btnDelB)btnDelB.addEventListener('click',function(){var db=document.getElementById('bench-body');if(db)verwijderBenchmarks(Array.from(db.querySelectorAll('.bench-cb:checked')),btnDelB);});
   laadBenchmarks();
 
   document.getElementById('btn-bench-refresh').addEventListener('click',async function(){
@@ -2496,14 +2556,15 @@ async function verwijderGekozen(o){
   if(!confirm(vraag))return null;
   var knopHtml=o.knop?o.knop.innerHTML:'';
   if(o.knop){o.knop.disabled=true;o.knop.textContent='Verwijderen...';}
-  var gelukt=0,geenToegang=0,nietGevonden=0,geenVerbinding=0,storing=0;
+  var gelukt=0,geenToegang=0,nietGevonden=0,gekoppeld=0,geenVerbinding=0,storing=0;
   for(var i=0;i<ids.length;i++){
     try{
       var r=await fetch(WORKER+o.pad(ids[i]),{method:'POST',headers:{'x-admin-key':adminKey}});
       var d=await r.json().catch(function(){return null;});
-      if(r.ok&&d&&d.ok)gelukt++;
+      if(r.ok&&d&&d.ok===true)gelukt++;
       else if(r.status===401||r.status===403)geenToegang++;
       else if(r.status===404)nietGevonden++;
+      else if(r.status===409)gekoppeld++;
       else storing++;
     }catch(e){geenVerbinding++;}
   }
@@ -2514,6 +2575,7 @@ async function verwijderGekozen(o){
     var redenen=[];
     if(geenToegang)redenen.push((n===1?'':geenToegang+' ')+'geen toegang (bijvoorbeeld afgeschermd)');
     if(nietGevonden)redenen.push((n===1?'':nietGevonden+' ')+'niet meer gevonden (mogelijk al verwijderd)');
+    if(gekoppeld)redenen.push((n===1?'':gekoppeld+' ')+'geweigerd omdat er nog gegevens aan gekoppeld zijn');
     if(geenVerbinding)redenen.push((n===1?'':geenVerbinding+' ')+'geen verbinding met de server');
     if(storing)redenen.push((n===1?'':storing+' ')+'tijdelijke storing aan de serverkant');
     toast((n===1?'De '+o.een+' is niet verwijderd: ':gelukt+' van '+n+' '+o.meer+' verwijderd, '+mislukt+' niet: ')
@@ -4310,21 +4372,31 @@ function toonVeldenDebug(trajectId, naam, d) {
 
 
 // ── GEBRUIKERS TAB (super-admin) ─────────────────────────────────────────────
+// Loopt er een gebruikersverwijdering (los of groep), dan doen alle verwijderknoppen en vakjes in het
+// gebruikersoverzicht niets — ook na een tussentijdse herteken — zodat acties elkaar niet overlappen.
+var gebVerwijderBezig = false;
 async function renderGebruikersTab(el) {
   el.innerHTML = '<div style="padding:1rem;color:var(--muted);font-size:13px">Laden...</div>';
   try {
     var r = await fetch(WORKER + '/gebruikers/lijst', { headers: { 'x-admin-key': adminKey } });
-    var lijst = await r.json();
+    var lijst = await r.json().catch(function(){ return null; });
+    if (!r.ok || !Array.isArray(lijst)) throw new Error('lijst');
+    // Verwijderen (los én groep) alleen voor de hoofdbeheerder met beheerderssleutel; de server
+    // controleert dat bij elke POST opnieuw.
+    var magVerwijderen = isSuperAdmin && !!adminKey;
     var html = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem">'
       + '<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">'
       + '&#128101; Adviseurs &amp; gebruikers (' + lijst.length + ')</div>'
+      + '<div style="display:flex;gap:8px;align-items:center">'
+      + (magVerwijderen && lijst.length ? '<button class="btn-red" id="btn-del-sel-geb" style="font-size:12px;padding:7px 14px;display:none">&#10005; Verwijder geselecteerde (<span id="sel-cnt-geb">0</span>)</button>' : '')
       + '<button class="btn" id="btn-uitnodigen" style="font-size:12px;padding:7px 14px">&#9993; Uitnodigen</button>'
-      + '</div>';
+      + '</div></div>';
     if (!lijst.length) {
       html += '<div style="color:var(--muted);font-size:13px;font-style:italic;padding:1rem 0">Nog geen gebruikers uitgenodigd.</div>';
     } else {
       html += '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">'
         + '<thead><tr>'
+        + (magVerwijderen ? '<th style="width:32px;padding:8px 12px;border-bottom:1px solid var(--border)"><input type="checkbox" id="cb-all-geb" title="Alle gebruikers in deze lijst aanvinken"></th>' : '')
         + '<th style="text-align:left;padding:8px 12px;font-size:11px;color:var(--muted);border-bottom:1px solid var(--border);font-weight:600">Naam</th>'
         + '<th style="text-align:left;padding:8px 12px;font-size:11px;color:var(--muted);border-bottom:1px solid var(--border);font-weight:600">Bedrijf</th>'
         + '<th style="text-align:left;padding:8px 12px;font-size:11px;color:var(--muted);border-bottom:1px solid var(--border);font-weight:600">E-mail</th>'
@@ -4339,7 +4411,9 @@ async function renderGebruikersTab(el) {
         var statusLabel = g.status==='actief'?'✓ Actief':g.status==='uitgenodigd'?'⏳ Uitgenodigd':'✕ Inactief';
         var llDatum = g.last_login ? new Date(g.last_login).toLocaleDateString('nl-NL') : '—';
         var aanDatum = new Date(g.created_at).toLocaleDateString('nl-NL');
+        var gebNaam = (g.naam || 'Gebruiker zonder naam') + (g.email ? ' (' + g.email + ')' : '');
         html += '<tr style="border-bottom:1px solid var(--border)">'
+          + (magVerwijderen ? '<td style="padding:10px 12px"><input type="checkbox" class="geb-cb" data-id="'+esc(g.id)+'" data-naam="'+esc(gebNaam)+'" style="cursor:pointer"></td>' : '')
           + '<td style="padding:10px 12px;font-weight:600;color:var(--sub)">' + esc(g.naam) + '</td>'
           + '<td style="padding:10px 12px;color:var(--mid)">' + esc(g.bedrijf||'—') + '</td>'
           + '<td style="padding:10px 12px;color:var(--mid);font-family:IBM Plex Mono,monospace;font-size:11px">' + esc(g.email) + '</td>'
@@ -4357,13 +4431,54 @@ async function renderGebruikersTab(el) {
           + (g.status==='inactief'
               ?'<button class="btn-ghost btn-act" data-id="'+esc(g.id)+'" style="font-size:10px;padding:3px 8px;color:var(--teal)">Activeren</button>'
               :'<button class="btn-ghost btn-deact" data-id="'+esc(g.id)+'" style="font-size:10px;padding:3px 8px;color:var(--red)">Deactiveren</button>')
-          + '<button class="btn-ghost btn-del-user" data-id="'+esc(g.id)+'" data-naam="'+esc(g.naam)+'" style="font-size:10px;padding:3px 8px;color:var(--red);border-color:var(--red)">✕</button>'
+          + (magVerwijderen ? '<button class="btn-ghost btn-del-user" data-id="'+esc(g.id)+'" data-naam="'+esc(gebNaam)+'" style="font-size:10px;padding:3px 8px;color:var(--red);border-color:var(--red)" title="Gebruiker verwijderen">✕</button>' : '')
           + '</td>'
           + '</tr>';
       });
       html += '</tbody></table></div>';
+      if (magVerwijderen) html += '<div style="padding:10px 12px;color:var(--muted);font-size:11px">Meerdere gebruikers tegelijk verwijderen: vink ze aan en kies <strong>Verwijder geselecteerde</strong>; het vakje in de kop vinkt alle gebruikers in deze lijst aan. Alleen aangevinkte gebruikersaccounts worden verwijderd, elk via de bestaande verwijderroute. Er wordt niet apart iets gewist van gekoppelde trajecten, documenten of administratie.</div>';
     }
     el.innerHTML = html;
+
+    // Gebruikers verwijderen (10 okt 2026): losse ✕ en "Verwijder geselecteerde" via de gedeelde helper
+    // verwijderGekozen() en de bestaande route POST /gebruikers/verwijder/{id} — per gekozen gebruiker
+    // één POST, geen cascade of extra wisactie. Tijdens het verwijderen staan alle andere
+    // verwijderknoppen en vakjes uit; daarna altijd verversen.
+    var GEB_GEVOLGEN = 'Alleen het gebruikersaccount wordt verwijderd, via de bestaande verwijderroute. Er wordt niet apart iets gewist van gekoppelde trajecten, documenten of administratie; dit is geen opruiming daarvan. Weigert de server omdat er nog gegevens aan gekoppeld zijn, dan blijft de gebruiker staan.';
+    function gebBediening(aan, behalve) {
+      el.querySelectorAll('.btn-del-user').forEach(function(b){ if (b !== behalve) b.disabled = !aan; });
+      el.querySelectorAll('.geb-cb').forEach(function(cb){ cb.disabled = !aan; });
+      var ca = document.getElementById('cb-all-geb'); if (ca) ca.disabled = !aan;
+    }
+    async function verwijderGebruikers(els, knop) {
+      if (gebVerwijderBezig || !els.length) return;
+      gebVerwijderBezig = true;
+      gebBediening(false, knop);
+      try {
+        await verwijderGekozen({ids:els.map(function(e){ return e.dataset.id; }), namen:els.map(function(e){ return e.dataset.naam; }),
+          pad:function(id){ return '/gebruikers/verwijder/' + encodeURIComponent(id); }, een:'gebruiker', meer:'gebruikers', knop:knop, extra:GEB_GEVOLGEN,
+          ververs:function(){ var tcv = document.getElementById('tc'); if (tcv && activeTab === 'gebruikers') return renderGebruikersTab(tcv); }});
+      } finally {
+        gebVerwijderBezig = false;
+        gebBediening(true);
+      }
+    }
+    function updSelGeb() {
+      var n = el.querySelectorAll('.geb-cb:checked').length, totaal = el.querySelectorAll('.geb-cb').length;
+      var b = document.getElementById('btn-del-sel-geb'), c = document.getElementById('sel-cnt-geb'), ca = document.getElementById('cb-all-geb');
+      if (b) b.style.display = n > 0 ? 'inline-block' : 'none';
+      if (c) c.textContent = n;
+      if (ca) ca.checked = n > 0 && n === totaal;
+    }
+    var cbAllG = document.getElementById('cb-all-geb');
+    if (cbAllG) cbAllG.addEventListener('change', function(){ if (gebVerwijderBezig) return; el.querySelectorAll('.geb-cb:not(:disabled)').forEach(function(cb){ cb.checked = cbAllG.checked; }); updSelGeb(); });
+    el.querySelectorAll('.geb-cb').forEach(function(cb){ cb.addEventListener('change', updSelGeb); });
+    var btnDelG = document.getElementById('btn-del-sel-geb');
+    if (btnDelG) btnDelG.addEventListener('click', function(){ verwijderGebruikers(Array.from(el.querySelectorAll('.geb-cb:checked')), btnDelG); });
+    el.querySelectorAll('.btn-del-user').forEach(function(btn) {
+      btn.addEventListener('click', function(){ verwijderGebruikers([btn], btn); });
+    });
+    if (gebVerwijderBezig) gebBediening(false);
 
     // Uitnodigen knop
     var uitnBtn = document.getElementById('btn-uitnodigen');
@@ -4462,15 +4577,6 @@ async function renderGebruikersTab(el) {
         else toast(dd.error || 'Fout bij resetten.', 'err');
       });
     });
-    el.querySelectorAll('.btn-del-user').forEach(function(btn) {
-      btn.addEventListener('click', async function() {
-        if (!confirm('Gebruiker "'+btn.dataset.naam+'" definitief verwijderen? Dit kan niet ongedaan worden gemaakt.')) return;
-        var dr = await fetch(WORKER + '/gebruikers/verwijder/' + btn.dataset.id, {method:'POST',headers:{'x-admin-key':adminKey}});
-        var dd = await dr.json();
-        if (dd.ok) { toast('Gebruiker verwijderd.', 'ok'); var tc3=document.getElementById('tc'); if(tc3)renderGebruikersTab(tc3); }
-        else toast(dd.error || 'Fout bij verwijderen.', 'err');
-      });
-    });
     el.querySelectorAll('.btn-deact').forEach(function(btn) {
       btn.addEventListener('click', async function() {
         if (!confirm('Gebruiker deactiveren? Ze kunnen dan niet meer inloggen.')) return;
@@ -4499,7 +4605,7 @@ async function renderGebruikersTab(el) {
       });
     });
   } catch(e) {
-    el.innerHTML = '<div style="color:var(--red);font-size:13px;padding:1rem">Fout bij laden: ' + esc(e.message) + '</div>';
+    el.innerHTML = '<div style="color:var(--red);font-size:13px;padding:1rem">Fout bij laden: het gebruikersoverzicht kon niet worden opgehaald. Probeer het opnieuw.</div>';
   }
 }
 
