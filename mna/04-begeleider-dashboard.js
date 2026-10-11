@@ -3901,6 +3901,91 @@ function renderBegeleiderDashboard(app){
   // out.innerHTML), zodat ze altijd overeenkomen met wat zichtbaar is — ook voor bgMouWire()'s
   // knop-handlers (print, versturen, aftekenen, e.d.), die deze gedeelde staat op klikmoment lezen.
   var _mouGen=0;
+  // Onopgeslagen composerinvoer (productpunt 19, 11 okt 2026). Bevinding in Chromium: een geslaagde
+  // blur-PATCH van veld A riep bgMouRender() aan, dat de hele composer via out.innerHTML opnieuw
+  // opbouwde — een ander, nog niet opgeslagen veld en de vrije tekst (die alleen via "Tekst opslaan"
+  // wordt bewaard) verdwenen daarmee stil, en een mislukte opslag zette het veld stil terug. Nu houdt
+  // elke invoer een concept bij in het geheugen van déze composer (geen tweede opslag: geen
+  // localStorage, geen backend), per traject + document en per onderdeel/veld. bgMouRender() zet
+  // concepten na het hertekenen terug in precies hetzelfde veld van hetzelfde document. Elke invoer
+  // krijgt een volgnummer: een (oudere) opslag die slaagt wist het concept alleen als er sindsdien
+  // niets nieuws is getypt; een mislukte opslag laat de invoer staan met een zichtbare fout. Een
+  // bevroren document krijgt nooit concepten terug (de velden zijn dan ook disabled).
+  var _mouConcepten={};
+  var _mouConceptSeq=0;
+  var _mouHertekent=false;
+  function bgMouConceptDocSleutel(code,docId){ return JSON.stringify([String(code||''),String(docId||'')]); }
+  function bgMouConceptDoc(code,docId,maak){
+    var dk=bgMouConceptDocSleutel(code,docId);
+    if(maak&&!_mouConcepten[dk])_mouConcepten[dk]={};
+    return _mouConcepten[dk]||null;
+  }
+  function bgMouVeldSleutel(el){
+    return JSON.stringify([el.classList.contains('mou-text')?'tekst':'veld',el.getAttribute('data-iid')||'',el.getAttribute('data-k')||'']);
+  }
+  function bgMouMarkeer(el,c){
+    el.style.borderColor=c?(c.fout?'var(--red)':'var(--gold)'):'var(--border2)';
+    el.title=c?(c.fout?'Niet opgeslagen: '+c.fout:'Nog niet opgeslagen'):'';
+    if(c&&c.fout)el.setAttribute('aria-invalid','true'); else el.removeAttribute('aria-invalid');
+  }
+  // Bij elke invoer: concept bijwerken, of wissen zodra de waarde weer gelijk is aan de opgeslagen waarde.
+  function bgMouConceptInvoer(el){
+    var docC=bgMouConceptDoc(S.code,_mouDocId,true), k=bgMouVeldSleutel(el);
+    if(el.value===el.getAttribute('data-orig'))delete docC[k];
+    else docC[k]={waarde:el.value,seq:++_mouConceptSeq,fout:null};
+    bgMouMarkeer(el,docC[k]||null);
+  }
+  function bgMouVeldZoek(out,k){
+    var gevonden=null;
+    out.querySelectorAll('.mou-dv,.mou-text').forEach(function(el){ if(!gevonden&&bgMouVeldSleutel(el)===k)gevonden=el; });
+    return gevonden;
+  }
+  // Gedeelde opslag voor veld (blur) en vrije tekst (knop) via de bestaande PATCH. Traject, document,
+  // veld en volgnummer worden vóór de await vastgelegd; hertekenen alleen als hetzelfde document nog
+  // zichtbaar is (anders zou een late reactie een inmiddels gekozen ander document opnieuw laden).
+  async function bgMouConceptOpslaan(el,body,okTekst){
+    var code=S.code, docId=_mouDocId, k=bgMouVeldSleutel(el);
+    var docC0=bgMouConceptDoc(code,docId,false), c0=docC0&&docC0[k];
+    if(!c0||c0.waarde!==el.value){ bgMouConceptInvoer(el); docC0=bgMouConceptDoc(code,docId,false); c0=docC0&&docC0[k]; }
+    var seq=c0?c0.seq:0;
+    var r=await bgMouApi('PATCH','/component/'+encodeURIComponent(el.getAttribute('data-iid')),body);
+    var docC=bgMouConceptDoc(code,docId,false), c=docC&&docC[k];
+    var zelfde=S.code===code&&_mouDocId===docId;
+    if(r.ok&&r.json.ok){
+      if(c&&c.seq===seq)delete docC[k];
+      toast(okTekst(r.json),r.json.divergentie?'info':'ok');
+      if(zelfde)bgMouRender();
+      return;
+    }
+    var fout=(r.json&&r.json.error)||'Opslaan mislukt';
+    if(c)c.fout=fout;
+    toast(esc(fout)+' — uw invoer is niet opgeslagen en blijft staan','err',6000);
+    var out=document.getElementById('bg-doc-out');
+    var huidig=zelfde&&c&&out?bgMouVeldZoek(out,k):null;
+    if(huidig)bgMouMarkeer(huidig,c);
+  }
+  // Na elke volledige hertekening: concepten van dít traject + document terugzetten in hetzelfde veld,
+  // en focus/cursor terug naar het veld waarin werd getypt. Bevroren: niets terugzetten; resterende
+  // concepten van dit document vervallen met een eerlijke melding (het kan niet meer worden gewijzigd).
+  function bgMouConceptenToepassen(out,bevroren,focus){
+    var docC=bgMouConceptDoc(S.code,_mouDocId,false);
+    if(bevroren){
+      var n=docC?Object.keys(docC).length:0;
+      delete _mouConcepten[bgMouConceptDocSleutel(S.code,_mouDocId)];
+      if(n)toast(n+' niet-opgeslagen wijziging'+(n===1?'':'en')+' niet toegepast: dit document is vergrendeld. Een aanpassing is een nieuw document.','err',8000);
+      return;
+    }
+    out.querySelectorAll('.mou-dv,.mou-text').forEach(function(el){
+      var k=bgMouVeldSleutel(el), c=docC&&docC[k];
+      if(c){ el.value=c.waarde; bgMouMarkeer(el,c); }
+      if(focus&&focus.sleutel===k){ el.focus(); try{ el.setSelectionRange(focus.start,focus.eind); }catch(e){} }
+    });
+  }
+  function bgMouFocusVastleggen(out){
+    var a=document.activeElement;
+    if(!a||!a.classList||!out.contains(a)||!(a.classList.contains('mou-dv')||a.classList.contains('mou-text')))return null;
+    return {sleutel:bgMouVeldSleutel(a),start:a.selectionStart,eind:a.selectionEnd};
+  }
   var MOU_PROFIELEN={ MOU:{titel:'Memorandum of Understanding',kort:'MoU'}, LOI:{titel:'Letter of Intent',kort:'LoI'}, NDA:{titel:'Geheimhoudingsovereenkomst (NDA)',kort:'NDA'} };
   function mouProfLabel(p){ return (MOU_PROFIELEN[p||_mouProfile]||MOU_PROFIELEN.MOU); }
   function bgMouKey(){ return S._bgKey || S.code; }
@@ -4150,8 +4235,13 @@ function renderBegeleiderDashboard(app){
     // inhoud ook echt op het scherm komt (geen await hierboven meer), zodat _mouProfile/_mouDocId altijd
     // overeenkomen met wat zichtbaar is voor de klik-handlers in bgMouWire (print, versturen, aftekenen).
     _mouProfile=prof; _mouDocId=docId;
-    out.innerHTML=h;
+    // Productpunt 19: focus vastleggen vóór het vervangen; tijdens het vervangen telt een blur van het
+    // verdwijnende veld (Chromium kan die vuren) niet als opslagactie van de gebruiker; daarna
+    // onopgeslagen concepten van dit traject/document terugzetten.
+    var focus=bgMouFocusVastleggen(out);
+    _mouHertekent=true; out.innerHTML=h; _mouHertekent=false;
     bgMouWire(bevroren);
+    bgMouConceptenToepassen(out,bevroren,focus);
   }
   async function bgPoolApi(method,pad,body){
     var opt={method:method,headers:{'x-tussen-key':bgMouKey()}};
@@ -4375,7 +4465,10 @@ function renderBegeleiderDashboard(app){
       var profLbl=mouProfLabel();
       printDoc(bgMouSamengesteldeTekst(), profLbl.titel+' &mdash; '+(S.traject&&S.traject.kantoor_naam||S.code), _mouProfile.toLowerCase());
     };
-    var ks=document.getElementById('mou-kies'); if(ks)ks.onchange=function(){ _mouDocId=this.value; bgMouRender(); };
+    // Productpunt 19: het gekozen document als argument meegeven i.p.v. _mouDocId hier al te zetten —
+    // anders zou invoer in het nog zichtbare oude document tijdens het laden onder het nieuwe document
+    // vallen. bgMouRender() commit _mouDocId zelf, op het moment dat het nieuwe document getoond wordt.
+    var ks=document.getElementById('mou-kies'); if(ks)ks.onchange=function(){ bgMouRender(undefined,undefined,undefined,this.value); };
     var n2=document.getElementById('mou-nieuw2'); if(n2)n2.onclick=async function(){
       // Onafhankelijke review 12 sep 2026: ontbrak de myGen-bewaking die bgMouComposer/bgMouRender wél
       // hebben — klikte de gebruiker tijdens deze await op een andere composer-knop (bijv. LoI terwijl
@@ -4530,23 +4623,29 @@ function renderBegeleiderDashboard(app){
       if(r.ok&&r.json.ok){ toast(chk.checked?'Onderdeel toegevoegd':'Onderdeel verwijderd','ok'); bgMouRender(); }
       else { toast((r.json&&r.json.error)||'Actie mislukt','err'); chk.checked=!chk.checked; }
     };});
+    // data-orig = de opgeslagen (server)waarde: bgMouConceptenToepassen() zet concepten pas ná deze
+    // wiring terug, zodat een teruggezet concept nog steeds als gewijzigd telt.
+    out.querySelectorAll('.mou-dv,.mou-text').forEach(function(el){
+      el.setAttribute('data-orig',el.value);
+      el.oninput=function(){ bgMouConceptInvoer(el); };
+    });
     out.querySelectorAll('.mou-dv').forEach(function(inp){
-      inp.setAttribute('data-orig',inp.value);
-      inp.onblur=async function(){
+      inp.onblur=function(){
+        if(_mouHertekent)return; // blur door onze eigen hertekening, niet door de gebruiker
         if(inp.value===inp.getAttribute('data-orig'))return;
         var dvo={}; dvo[inp.getAttribute('data-k')]=inp.value;
-        var r=await bgMouApi('PATCH','/component/'+encodeURIComponent(inp.getAttribute('data-iid')),{data_values:dvo});
-        if(r.ok&&r.json.ok){ toast('Veld opgeslagen'+(r.json.review_vervallen?' — aftekening vervallen':'')+(r.json.divergentie?' — let op: afwijking':''),r.json.divergentie?'info':'ok'); bgMouRender(); }
-        else { toast((r.json&&r.json.error)||'Opslaan mislukt','err'); inp.value=inp.getAttribute('data-orig'); }
+        return bgMouConceptOpslaan(inp,{data_values:dvo},function(j){ return 'Veld opgeslagen'+(j.review_vervallen?' — aftekening vervallen':'')+(j.divergentie?' — let op: afwijking':''); });
       };
     });
-    out.querySelectorAll('.mou-text-save').forEach(function(btn){ btn.onclick=async function(){
+    out.querySelectorAll('.mou-text-save').forEach(function(btn){ btn.onclick=function(){
       var ta=out.querySelector('textarea.mou-text[data-iid="'+btn.getAttribute('data-iid')+'"]'); if(!ta)return;
-      var r=await bgMouApi('PATCH','/component/'+encodeURIComponent(btn.getAttribute('data-iid')),{text:ta.value});
-      if(r.ok&&r.json.ok){ toast('Tekst opgeslagen'+(r.json.review_vervallen?' — aftekening vervallen':''),'ok'); bgMouRender(); }
-      else toast((r.json&&r.json.error)||'Opslaan mislukt','err');
+      return bgMouConceptOpslaan(ta,{text:ta.value},function(j){ return 'Tekst opgeslagen'+(j.review_vervallen?' — aftekening vervallen':''); });
     };});
     out.querySelectorAll('.mou-concept').forEach(function(btn){ btn.onclick=async function(){
+      // Niet-opgeslagen tekst gaat vóór: anders zou het teruggezette concept het AI-resultaat op het
+      // scherm verbergen. Geen AI-aanroep zolang er onopgeslagen tekst in dit onderdeel staat.
+      var tc=bgMouConceptDoc(S.code,_mouDocId,false);
+      if(tc&&tc[JSON.stringify(['tekst',btn.getAttribute('data-iid')||'',''])]){ toast('Dit onderdeel heeft niet-opgeslagen tekst. Sla die eerst op of zet de tekst terug; er is geen AI-concept gevraagd.','err',6000); return; }
       btn.disabled=true; btn.textContent='AI bezig…';
       var r=await bgMouApi('POST','/component/'+encodeURIComponent(btn.getAttribute('data-iid'))+'/concept',{});
       if(r.ok&&r.json.ok){ toast('AI-concept ingevuld — controleer en laat aftekenen','ok'); bgMouRender(); }
@@ -4588,7 +4687,8 @@ function renderBegeleiderDashboard(app){
       if(r.ok&&r.json.ok){ toast('Instelling opgeslagen','ok'); bgMouRender(); } else { toast((r.json&&r.json.error)||'Mislukt','err'); chk.checked=!chk.checked; }
     };});
     var fb=document.getElementById('mou-finaliseer'); if(fb)fb.onclick=async function(){
-      if(!confirm('Het document finaliseren? Daarna kan niets meer worden gewijzigd.'))return;
+      var nOnopg=Object.keys(bgMouConceptDoc(S.code,_mouDocId,false)||{}).length;
+      if(!confirm((nOnopg?'Let op: niet-opgeslagen wijzigingen ('+nOnopg+') worden niet meegenomen en vervallen na finaliseren.\n\n':'')+'Het document finaliseren? Daarna kan niets meer worden gewijzigd.'))return;
       fb.disabled=true; fb.textContent='Finaliseren…';
       var r=await bgMouApi('POST','/document/'+encodeURIComponent(_mouDocId)+'/finaliseer',{});
       if(r.ok&&r.json.ok){ toast('Gefinaliseerd — manifest weggeschreven','ok'); bgMouRender(); }

@@ -9,6 +9,11 @@
 // printHtmlDocument — geen netwerk, geen browser, geen live API. Alle gegevens zijn synthetisch.
 // Browserbewijs (staging/E2E) volgt apart; dit is geen productieclaim.
 //
+// Sectie G (productpunt 19, 11 okt 2026) draait de ECHTE MoU/LoI/NDA-composer (bgMouRender/bgMouWire
+// uit mna/04) op een minimale synthetische DOM met vertraagde PATCH-antwoorden: twee velden + vrije
+// tekst, oudere/mislukte opslag, documentwissel, ander traject en bevroren document. Sectie H vergrendelt
+// statisch de aanhaakpunten van die fix in mna/04 (zelfde drie bronchecks als check 14 van de audit).
+//
 // Gebruik: node tests/document-output-security.mjs   (vanuit de repo-root)
 // Wordt ook aangeroepen door tests/audit-consistentie.mjs (check 26).
 
@@ -96,6 +101,147 @@ function print(root, tekst, titel, docType, opts = {}) {
   return { ...r, html: r.eff.html[0] || '', snap };
 }
 const kop = (html) => { const a = html.indexOf('<div class="doc-header">'); return html.slice(a, html.indexOf('<div class="doc-body">', a)); };
+
+// ── Composer (mna/04, productpunt 19): minimale synthetische DOM voor de ECHTE bgMouRender/bgMouWire ──
+// Parseert alleen de door bgMouRender zelf opgebouwde HTML (elke tag wordt een element met attributen;
+// <textarea>-inhoud en input-value worden de waarde). Ondersteunde selectors: tag, .klasse en
+// [attr="waarde"], komma-gescheiden — een andere selector faalt luid i.p.v. stil niets te vinden.
+const WORKER_T = 'https://worker.test';
+const ontEsc = (s) => String(s).replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&amp;/g, '&');
+function selectorPast(el, sel) {
+  return sel.split(',').some((s) => {
+    const m = s.trim().match(/^([a-zA-Z]+)?((?:\.[\w-]+)*)((?:\[[\w-]+="[^"]*"\])*)$/);
+    if (!m) throw new Error('selector niet ondersteund in synthetische DOM: ' + s);
+    if (m[1] && el.tagName !== m[1].toUpperCase()) return false;
+    if (!(m[2].match(/\.[\w-]+/g) || []).every((c) => el.classList.contains(c.slice(1)))) return false;
+    return [...m[3].matchAll(/\[([\w-]+)="([^"]*)"\]/g)].every((a) => el.getAttribute(a[1]) === a[2]);
+  });
+}
+function maakDom(opts) {
+  const doc = { body: { tagName: 'BODY' }, activeElement: null };
+  doc.activeElement = doc.body;
+  const blurBijVerwijderen = [];
+  class El {
+    constructor(tag, attrs) {
+      this.tagName = tag.toUpperCase(); this._a = attrs; this.style = {}; this.title = '';
+      this.value = attrs.value != null ? attrs.value : ''; this.disabled = 'disabled' in attrs; this.checked = 'checked' in attrs;
+      this.selectionStart = this.selectionEnd = this.value.length; this.textContent = '';
+    }
+    getAttribute(k) { return Object.prototype.hasOwnProperty.call(this._a, k) ? this._a[k] : null; }
+    setAttribute(k, v) { this._a[k] = String(v); }
+    removeAttribute(k) { delete this._a[k]; }
+    get id() { return this._a.id || ''; }
+    get classList() { const c = (this._a.class || '').split(/\s+/).filter(Boolean); return { contains: (x) => c.includes(x) }; }
+    matches(sel) { return selectorPast(this, sel); }
+    focus() { doc.activeElement = this; }
+    setSelectionRange(a, b) { this.selectionStart = a; this.selectionEnd = b; }
+  }
+  function parse(h) {
+    const els = []; const re = /<([a-zA-Z][a-zA-Z0-9]*)([^>]*)>/g; let m;
+    while ((m = re.exec(h))) {
+      const attrs = {};
+      m[2].replace(/\s([a-zA-Z-]+)(?:="([^"]*)")?/g, (_, k, v) => { attrs[k.toLowerCase()] = v == null ? '' : ontEsc(v); return ''; });
+      const el = new El(m[1], attrs);
+      if (el.tagName === 'TEXTAREA') {
+        const eind = h.indexOf('</textarea>', re.lastIndex);
+        el.value = ontEsc(h.slice(re.lastIndex, eind)); el.selectionStart = el.selectionEnd = el.value.length; re.lastIndex = eind;
+      }
+      els.push(el);
+    }
+    return els;
+  }
+  const out = {
+    id: 'bg-doc-out', style: {}, _els: [], _html: '',
+    get innerHTML() { return this._html; },
+    set innerHTML(h) {
+      const oud = this._els; const actief = doc.activeElement;
+      this._html = String(h); this._els = parse(this._html);
+      if (oud.includes(actief)) {
+        doc.activeElement = doc.body;
+        // Chromium kan blur vuren op een gefocust veld dat uit de DOM verdwijnt (synchroon, tijdens het vervangen).
+        if (opts.chromiumBlur && typeof actief.onblur === 'function') blurBijVerwijderen.push(actief.onblur.call(actief));
+      }
+    },
+    querySelectorAll(sel) { return this._els.filter((e) => e.matches(sel)); },
+    querySelector(sel) { return this.querySelectorAll(sel)[0] || null; },
+    contains(e) { return this._els.includes(e); },
+  };
+  doc.getElementById = (id) => (id === 'bg-doc-out' ? out : out._els.find((e) => e.id === id) || null);
+  doc.createElement = () => ({ style: {}, setAttribute() {}, appendChild() {} });
+  return { doc, out, blurBijVerwijderen };
+}
+function compSyn(iid, dv, text) {
+  const data_values = {}; Object.keys(dv).forEach((k) => { data_values[k] = { value: dv[k], provenance_type: 'USER_FACT' }; });
+  return { instance_id: iid, block_id: 'parties', title: 'Partijen', instance_status: 'ACTIVE', is_auto: false, binding_status: '', review: { status: 'REQUIRED' },
+    review_domain: 'LEGAL', review_trigger: 'altijd', data_values, text, text_provenance: 'USER_FACT' };
+}
+function laadComposer(root, opts = {}) {
+  const src02 = lees(root, 'mna/02-state-opslag-documenten.js');
+  const src04 = lees(root, 'mna/04-begeleider-dashboard.js');
+  const fn = knip(src04, 'var MOU_PROV={', '\n  // Risicoraamwerk (SWOT');
+  const { doc, out, blurBijVerwijderen } = maakDom(opts);
+  const srv = {
+    docs: {
+      'doc-A': { document: { id: 'doc-A', status: 'draft', current_version: 3, bevroren: false }, componenten: [compSyn('i-a1', { koper: 'Koper Synthetisch BV', verkoper: 'Verkoper Synthetisch BV' }, 'Bestaande tekst A')] },
+      'doc-B': { document: { id: 'doc-B', status: 'draft', current_version: 1, bevroren: false }, componenten: [compSyn('i-b1', { koper: 'Koper B BV', verkoper: 'Verkoper B BV' }, 'Tekst B')] },
+    },
+    wachtrij: [], verzoeken: [], houdVast: () => false,
+  };
+  const eff = { toasts: [], confirms: [], opslag: 0 };
+  const antw = (status, json) => ({ ok: status >= 200 && status < 300, status, json: () => Promise.resolve(json) });
+  function route(method, pad) {
+    let m;
+    if (method === 'GET' && (m = pad.match(/^\/mna\/tos\/document\/([^/]+)\/exportcheck$/))) return [200, { ok: true, blockers: [], eis_per_domein: { LEGAL: true, TAX: true, VALUATION: true } }];
+    if (method === 'GET' && (m = pad.match(/^\/mna\/tos\/document\/([^/]+)$/))) {
+      const d = srv.docs[decodeURIComponent(m[1])];
+      return d ? [200, JSON.parse(JSON.stringify({ ok: true, document: d.document, componenten: d.componenten, divergenties: [], reacties: [] }))] : [404, { error: 'Niet gevonden' }];
+    }
+    if (method === 'GET' && /^\/mna\/tos\/menu\//.test(pad)) return [200, { ok: true, menu: [], ontbrekend_kern: [], required_reviews: {} }];
+    return [500, { error: 'onverwacht synthetisch verzoek ' + method + ' ' + pad }];
+  }
+  const fetch = (url, o = {}) => {
+    const method = String(o.method || 'GET').toUpperCase(); const pad = String(url).replace(WORKER_T, '');
+    const body = o.body ? JSON.parse(o.body) : undefined;
+    srv.verzoeken.push({ method, pad, body });
+    if (method === 'PATCH' || srv.houdVast(method, pad)) return new Promise((res) => srv.wachtrij.push({ method, pad, body, los: (s, j) => res(antw(s, j)) }));
+    return Promise.resolve(antw(...route(method, pad)));
+  };
+  const opslag = { getItem: () => null, setItem: () => { eff.opslag++; }, removeItem: () => { eff.opslag++; } };
+  const S = { code: 'TSYN-TRAJECT-1', _bgKey: 'TSYN0003', rol: 'tussenpersoon', traject: {} };
+  const ctx = vm.createContext({
+    S, WORKER: WORKER_T, document: doc, fetch, localStorage: opslag, sessionStorage: opslag,
+    window: { localStorage: opslag, sessionStorage: opslag },
+    toast: (msg, type) => { eff.toasts.push({ msg: String(msg), type }); },
+    confirm: (msg) => { eff.confirms.push(String(msg)); return false; },
+    prompt: () => null, printDoc: () => {}, bgToonUitvoer: () => {}, refreshData: async () => {},
+    eigenPdfHtml: () => '', eigenPdfBewijsHtml: () => '', wireEigenPdf: () => {}, hgBewijsToastSuffix: () => '', resterendePlaceholders: () => [],
+  });
+  vm.runInContext([regel(src02, /^function esc\(s\)\{.*\}$/m, 'esc'), fn].join('\n'), ctx, { filename: 'mna/04#composer' });
+  // Een PATCH uit de wachtrij beantwoorden: bij ok wordt de synthetische server bijgewerkt (zoals worker/31).
+  const los = (filter, ok, fout) => {
+    const i = srv.wachtrij.findIndex(filter); if (i < 0) throw new Error('geen wachtend verzoek gevonden');
+    const q = srv.wachtrij.splice(i, 1)[0];
+    if (q.method === 'PATCH' && ok) {
+      const iid = decodeURIComponent(q.pad.split('/').pop());
+      Object.values(srv.docs).forEach((d) => d.componenten.forEach((c) => {
+        if (c.instance_id !== iid) return;
+        Object.keys((q.body && q.body.data_values) || {}).forEach((k) => { c.data_values[k] = { value: String(q.body.data_values[k]), provenance_type: 'USER_FACT' }; });
+        if (q.body && typeof q.body.text === 'string') c.text = q.body.text;
+      }));
+      q.los(200, { ok: true, review_vervallen: false, divergentie: false });
+    } else if (ok) q.los(...route(q.method, q.pad));
+    else q.los((fout && fout.status) || 500, { error: (fout && fout.error) || 'Synthetische opslagfout' });
+  };
+  const veld = (k) => out.querySelector('.mou-dv[data-k="' + k + '"]');
+  const tekst = () => out.querySelector('textarea.mou-text');
+  const typ = (el, w) => { el.focus(); el.value = w; el.setSelectionRange(w.length, w.length); el.oninput(); };
+  const naar = (van, doel) => { if (doel) doel.focus(); else doc.activeElement = doc.body; return typeof van.onblur === 'function' ? van.onblur() : undefined; };
+  const concepten = (docId) => { const d = ctx.bgMouConceptDoc(S.code, docId, false); return d ? Object.keys(d).length : 0; };
+  const patches = () => srv.verzoeken.filter((v) => v.method === 'PATCH');
+  return { ctx, S, srv, eff, out, doc, blurBijVerwijderen, los, veld, tekst, typ, naar, concepten, patches };
+}
+const rust = async () => { for (let i = 0; i < 6; i++) await new Promise((r) => setImmediate(r)); };
+const isPatch = (q) => q.method === 'PATCH';
 
 export async function draaiDocumentOutputSecurityChecks(root = process.cwd()) {
   const res = [];
@@ -202,6 +348,164 @@ export async function draaiDocumentOutputSecurityChecks(root = process.cwd()) {
   tryCheck('statisch', () => {
     const fn = knip(lees(root, 'mna/05-documentflow-partijen.js'), 'function printDocNaAkkoord(tekst, titel, docType) {', '\n}\n');
     check(!/S\.code|koper_code|tussen_code|_bgKey|S\.traject\.id\b/.test(fn), 'mna/05 printDocNaAkkoord: geen S.code/koper_code/tussen_code/_bgKey/traject.id in de functie');
+  });
+
+  // ── G. Composer (mna/04, productpunt 19): onopgeslagen invoer bij blur, opslaan en hertekenen ──
+  // Draait de ECHTE bgMouRender/bgMouWire/bgMouApi (plus esc uit mna/02) in node:vm met de synthetische
+  // DOM hierboven, nep-fetch met vertraagde PATCH en synthetische documenten — geen netwerk, geen
+  // browser, geen live API of AI. Dit is geen Chromium-bewijs; zie docs/document-output.md.
+  const tryAsync = async (naam, f) => { try { await f(); } catch (e) { check(false, naam + ': kon niet worden getest: ' + String((e && e.message) || e)); } };
+
+  await tryAsync('composer twee velden', async () => {
+    const t = laadComposer(root, { chromiumBlur: true });
+    await t.ctx.bgMouRender(undefined, undefined, 'MOU', 'doc-A');
+    check(t.veld('koper') && t.veld('verkoper') && t.tekst() && t.veld('koper').value === 'Koper Synthetisch BV' && t.tekst().value === 'Bestaande tekst A',
+      'composer: echte bgMouRender toont twee velden en de vrije tekst van doc-A');
+    t.typ(t.tekst(), 'Nieuwe vrije tekst, nog niet opgeslagen');
+    t.typ(t.veld('koper'), 'Koper Nieuw BV');
+    const s1 = t.naar(t.veld('koper'), t.veld('verkoper')); // blur A → vertraagde PATCH
+    t.typ(t.veld('verkoper'), 'Verkoper Nieuw'); // B gefocust, nog niet geblurd
+    check(t.srv.wachtrij.length === 1 && JSON.stringify(t.srv.wachtrij[0].body) === '{"data_values":{"koper":"Koper Nieuw BV"}}',
+      'composer: blur van veld A stuurt alleen veld A (geen tekst, geen veld B)');
+    t.los(isPatch, true); await s1; await rust();
+    const A = t.veld('koper'), B = t.veld('verkoper'), T = t.tekst();
+    check(A.value === 'Koper Nieuw BV' && A.getAttribute('aria-invalid') === null && A.title === '',
+      'composer: na geslaagde opslag + hertekenen toont veld A de opgeslagen waarde, niet meer als onopgeslagen gemarkeerd');
+    check(B.value === 'Verkoper Nieuw' && B.title === 'Nog niet opgeslagen', 'composer: ander dirty veld B overleeft het volledige hertekenen na de opslag van A');
+    check(T.value === 'Nieuwe vrije tekst, nog niet opgeslagen' && T.title === 'Nog niet opgeslagen', 'composer: onopgeslagen vrije tekst (textarea) overleeft het hertekenen');
+    check(t.doc.activeElement === B && B.selectionStart === 'Verkoper Nieuw'.length, 'composer: focus en cursor terug in het veld waarin werd getypt');
+    check(t.blurBijVerwijderen.length === 1 && t.blurBijVerwijderen[0] === undefined && t.srv.wachtrij.length === 0 && t.patches().length === 1,
+      'composer: Chromium-achtige blur van het verdwijnende veld tijdens hertekenen start geen ongevraagde opslag');
+    const s2 = t.naar(B, null); t.los(isPatch, true); await s2; await rust();
+    check(t.veld('verkoper').value === 'Verkoper Nieuw' && t.veld('verkoper').title === '' && t.tekst().value === 'Nieuwe vrije tekst, nog niet opgeslagen',
+      'composer: daarna opgeslagen veld B is schoon; de vrije tekst staat nog als concept');
+    const s3 = t.out.querySelector('.mou-text-save').onclick();
+    check(t.srv.wachtrij.length === 1 && JSON.stringify(t.srv.wachtrij[0].body) === '{"text":"Nieuwe vrije tekst, nog niet opgeslagen"}', 'composer: "Tekst opslaan" stuurt uitsluitend de tekst');
+    t.los(isPatch, true); await s3; await rust();
+    const c = t.srv.docs['doc-A'].componenten[0];
+    check(t.concepten('doc-A') === 0 && c.data_values.koper.value === 'Koper Nieuw BV' && c.data_values.verkoper.value === 'Verkoper Nieuw'
+      && c.text === 'Nieuwe vrije tekst, nog niet opgeslagen' && t.tekst().title === '', 'composer: alle drie de invoeren via de bestaande PATCH opgeslagen; geen concepten meer over');
+    check(t.patches().length === 3 && t.eff.opslag === 0 && !t.srv.verzoeken.some((v) => /\/concept$|finaliseer|verstuur/.test(v.pad)),
+      'composer: precies drie PATCHes, geen localStorage/sessionStorage, geen AI-/finaliseer-/verstuurverzoek');
+  });
+
+  await tryAsync('composer oude opslag', async () => {
+    const t = laadComposer(root, {});
+    await t.ctx.bgMouRender(undefined, undefined, 'MOU', 'doc-A');
+    t.typ(t.veld('koper'), 'Waarde 1');
+    const s1 = t.naar(t.veld('koper'), t.veld('verkoper'));
+    t.typ(t.veld('koper'), 'Waarde 2'); // terug in A en verder getypt terwijl opslag 1 nog loopt
+    t.los(isPatch, true); await s1; await rust();
+    const A = t.veld('koper');
+    check(t.srv.docs['doc-A'].componenten[0].data_values.koper.value === 'Waarde 1' && A.value === 'Waarde 2' && A.title === 'Nog niet opgeslagen' && t.doc.activeElement === A,
+      'composer: geslaagde OUDERE opslag (Waarde 1) overschrijft de nieuwere invoer (Waarde 2) niet; die blijft zichtbaar als onopgeslagen, met focus');
+    const s2 = t.naar(A, null);
+    check(t.srv.wachtrij.length === 1 && t.srv.wachtrij[0].body.data_values.koper === 'Waarde 2', 'composer: de volgende blur verstuurt de nieuwere waarde');
+    t.los(isPatch, true); await s2; await rust();
+    check(t.veld('koper').value === 'Waarde 2' && t.veld('koper').title === '' && t.concepten('doc-A') === 0, 'composer: na opslag van de nieuwere waarde schoon, geen concept meer');
+    t.typ(t.tekst(), 'Tekst 1');
+    const s3 = t.out.querySelector('.mou-text-save').onclick();
+    t.typ(t.tekst(), 'Tekst 2');
+    t.los(isPatch, true); await s3; await rust();
+    check(t.srv.docs['doc-A'].componenten[0].text === 'Tekst 1' && t.tekst().value === 'Tekst 2' && t.tekst().title === 'Nog niet opgeslagen',
+      'composer: vertraagde tekstopslag (Tekst 1) overschrijft de daarna getypte tekst (Tekst 2) niet');
+  });
+
+  await tryAsync('composer mislukte opslag', async () => {
+    const t = laadComposer(root, {});
+    await t.ctx.bgMouRender(undefined, undefined, 'MOU', 'doc-A');
+    t.typ(t.veld('koper'), 'Fout waarde');
+    const s1 = t.naar(t.veld('koper'), null);
+    t.los(isPatch, false, { status: 500, error: 'Synthetische opslagfout <b>x</b>' }); await s1; await rust();
+    const A = t.veld('koper'); const laatste = t.eff.toasts[t.eff.toasts.length - 1];
+    check(A.value === 'Fout waarde' && A.getAttribute('aria-invalid') === 'true' && A.title.includes('Synthetische opslagfout'),
+      'composer: mislukte opslag laat de invoer staan (niet stil teruggezet) en markeert het veld met de fout');
+    check(laatste && laatste.type === 'err' && laatste.msg.includes('Synthetische opslagfout &lt;b&gt;x&lt;/b&gt;') && laatste.msg.includes('niet opgeslagen'),
+      'composer: eerlijke foutmelding (geëscapet) die zegt dat de invoer niet is opgeslagen');
+    check(t.srv.docs['doc-A'].componenten[0].data_values.koper.value === 'Koper Synthetisch BV', 'composer: server ongewijzigd na mislukte opslag');
+    await t.ctx.bgMouRender();
+    check(t.veld('koper').value === 'Fout waarde' && t.veld('koper').getAttribute('aria-invalid') === 'true', 'composer: na een volgende hertekening blijven invoer en foutmarkering staan');
+    t.typ(t.tekst(), 'Tekst die niet lukt');
+    const s2 = t.out.querySelector('.mou-text-save').onclick();
+    t.los(isPatch, false, { status: 0, error: 'Verbindingsfout' }); await s2; await rust();
+    check(t.tekst().value === 'Tekst die niet lukt' && t.tekst().getAttribute('aria-invalid') === 'true' && t.eff.toasts.some((x) => x.type === 'err' && x.msg.startsWith('Verbindingsfout')),
+      'composer: mislukte tekstopslag houdt de tekst met zichtbare fout');
+  });
+
+  await tryAsync('composer documentwissel', async () => {
+    const t = laadComposer(root, {});
+    const lijst = [{ id: 'doc-A', current_version: 3, status: 'draft', created_at: 0 }, { id: 'doc-B', current_version: 1, status: 'draft', created_at: 0 }];
+    await t.ctx.bgMouRender(lijst, undefined, 'MOU', 'doc-A');
+    t.typ(t.veld('koper'), 'Concept alleen voor A');
+    t.srv.houdVast = (m, p) => m === 'GET' && p === '/mna/tos/document/doc-B';
+    const kies = t.doc.getElementById('mou-kies'); kies.value = 'doc-B';
+    const wissel = kies.onchange.call(kies); await rust();
+    t.typ(t.veld('koper'), 'Getypt tijdens wissel'); // het A-veld is nog zichtbaar terwijl doc-B laadt
+    check(t.ctx._mouDocId === 'doc-A' && t.concepten('doc-B') === 0 && t.concepten('doc-A') === 1,
+      'composer: invoer tijdens het laden van een ander document blijft bij het zichtbare doc-A (niet onder doc-B)');
+    t.srv.houdVast = () => false;
+    t.los((q) => q.pad === '/mna/tos/document/doc-B', true); await wissel; await rust();
+    const B = t.veld('koper');
+    check(t.ctx._mouDocId === 'doc-B' && B.getAttribute('data-iid') === 'i-b1' && B.value === 'Koper B BV' && B.title === '' && t.tekst().value === 'Tekst B'
+      && !t.out.querySelectorAll('.mou-dv,.mou-text').some((e) => /Getypt|Concept alleen/.test(e.value)) && t.concepten('doc-B') === 0 && t.patches().length === 0,
+      'composer: na documentwissel toont doc-B uitsluitend eigen waarden; een concept van doc-A wordt nooit overgedragen of opgeslagen');
+    await t.ctx.bgMouRender(undefined, undefined, 'MOU', 'doc-A');
+    check(t.veld('koper').value === 'Getypt tijdens wissel' && t.veld('koper').getAttribute('data-iid') === 'i-a1' && t.veld('koper').title === 'Nog niet opgeslagen',
+      'composer: terug naar doc-A zet het concept terug in hetzelfde veld van hetzelfde document');
+    t.typ(t.veld('verkoper'), 'Verkoper tijdens wissel');
+    const s1 = t.naar(t.veld('verkoper'), null);
+    await t.ctx.bgMouRender(undefined, undefined, 'MOU', 'doc-B');
+    const getsVoor = t.srv.verzoeken.filter((v) => v.method === 'GET').length;
+    t.los(isPatch, true); await s1; await rust();
+    check(t.ctx._mouDocId === 'doc-B' && t.veld('koper').getAttribute('data-iid') === 'i-b1' && t.srv.verzoeken.filter((v) => v.method === 'GET').length === getsVoor
+      && t.srv.docs['doc-A'].componenten[0].data_values.verkoper.value === 'Verkoper tijdens wissel' && t.srv.docs['doc-B'].componenten[0].data_values.verkoper.value === 'Verkoper B BV',
+      'composer: late geslaagde opslag van doc-A na wissel naar doc-B schrijft alleen doc-A en hertekent doc-B niet');
+    t.S.code = 'TSYN-TRAJECT-2';
+    await t.ctx.bgMouRender(undefined, undefined, 'MOU', 'doc-A');
+    check(t.veld('koper').value === 'Koper Synthetisch BV' && t.veld('koper').title === '', 'composer: concepten zijn per traject — onder een ander traject nooit toegepast');
+  });
+
+  await tryAsync('composer bevroren', async () => {
+    const t = laadComposer(root, {});
+    await t.ctx.bgMouRender(undefined, undefined, 'MOU', 'doc-A');
+    t.typ(t.veld('koper'), 'Concept vóór finaliseren');
+    t.typ(t.tekst(), 'Tekst vóór finaliseren');
+    t.typ(t.veld('verkoper'), 'Verkoper vóór finaliseren');
+    const s1 = t.naar(t.veld('verkoper'), null); // PATCH loopt nog
+    Object.assign(t.srv.docs['doc-A'].document, { bevroren: true, status: 'exported' });
+    await t.ctx.bgMouRender();
+    const A = t.veld('koper');
+    check(A.disabled && A.value === 'Koper Synthetisch BV' && A.title === '' && t.tekst().disabled && t.tekst().value === 'Bestaande tekst A' && t.veld('verkoper').value === 'Verkoper Synthetisch BV',
+      'composer: bevroren document krijgt geen onopgeslagen concepten terug; velden disabled met de opgeslagen waarden');
+    check(t.concepten('doc-A') === 0 && t.eff.toasts.some((x) => x.type === 'err' && x.msg.includes('3 niet-opgeslagen wijzigingen niet toegepast: dit document is vergrendeld')),
+      'composer: eerlijke melding dat 3 onopgeslagen wijzigingen niet zijn toegepast; concepten van het bevroren document vervallen');
+    t.los(isPatch, false, { status: 409, error: 'Document is gefinaliseerd en kan niet meer worden gewijzigd.' }); await s1; await rust();
+    check(t.concepten('doc-A') === 0 && t.veld('verkoper').value === 'Verkoper Synthetisch BV' && t.patches().length === 1
+      && t.eff.toasts.some((x) => x.type === 'err' && x.msg.startsWith('Document is gefinaliseerd')),
+      'composer: late 409 na bevriezen toont de fout, maakt geen concept opnieuw aan en verstuurt niets opnieuw');
+  });
+
+  await tryAsync('composer AI/finaliseren', async () => {
+    const t = laadComposer(root, {});
+    await t.ctx.bgMouRender(undefined, undefined, 'MOU', 'doc-A');
+    t.typ(t.tekst(), 'Eigen onopgeslagen tekst');
+    await t.out.querySelector('.mou-concept').onclick();
+    check(!t.srv.verzoeken.some((v) => /\/concept$/.test(v.pad)) && t.tekst().value === 'Eigen onopgeslagen tekst' && t.eff.toasts.some((x) => x.type === 'err' && x.msg.includes('niet-opgeslagen tekst')),
+      'composer: geen AI-conceptverzoek zolang er onopgeslagen tekst in het onderdeel staat; de tekst blijft');
+    await t.doc.getElementById('mou-finaliseer').onclick();
+    check(t.eff.confirms.length === 1 && t.eff.confirms[0].includes('niet-opgeslagen wijzigingen (1)') && !t.srv.verzoeken.some((v) => /finaliseer/.test(v.pad)),
+      'composer: finaliseren waarschuwt eerst voor onopgeslagen invoer; na annuleren geen finaliseerverzoek');
+  });
+
+  // ── H. Statisch (mna/04, productpunt 19): aanhaakpunten van de composerfix in de bron ──
+  // Inhoudelijk gelijk aan de drie #19-bronchecks in check 14 van tests/audit-consistentie.mjs, hier
+  // ondergebracht zodat ze via de bestaande import van deze suite (check 26) meedraaien.
+  tryCheck('composer statisch', () => {
+    const src04 = lees(root, 'mna/04-begeleider-dashboard.js');
+    check(/out\.innerHTML=h;\s*_mouHertekent=false;\s*bgMouWire\(bevroren\);\s*bgMouConceptenToepassen\(out,bevroren,focus\);/.test(src04),
+      'mna/04 bgMouRender: onopgeslagen composerconcepten worden ná out.innerHTML en bgMouWire teruggezet (geen formulierverlies bij hertekenen)');
+    check(!/inp\.value=inp\.getAttribute\('data-orig'\)/.test(src04), 'mna/04: een mislukte veldopslag zet de invoer niet stil terug naar de oude waarde (data-orig)');
+    check(!/_mouDocId=this\.value/.test(src04), 'mna/04 documentkeuze (mou-kies): _mouDocId wordt niet vóór het laden gezet');
   });
   return res;
 }

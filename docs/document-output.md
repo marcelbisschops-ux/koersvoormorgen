@@ -37,7 +37,56 @@ Stand: 7 okt 2026, branch `codex/weekend-option2`. Dit bestand beschrijft de hui
 - **Backend worker/36** zet `<b>`/`<br>` uit de bron niet om. In de verstuurde PDF blijven die als geëscapete tekst zichtbaar. De printweergave toont ze als opmaak. De backend is hier alleen-lezen en is niet aangepast.
 - Een eerdere handmatige bevinding (opmaakmarkers in een document) is met deze formatterproeven **niet** als volledig opgelost aangetoond. De oorspronkelijke plek is historisch niet genoeg bewezen.
 
+## Composer: onopgeslagen invoer bij blur en hertekenen (productpunt 19, 11 okt 2026)
+
+### Oorzaak (`mna/04-begeleider-dashboard.js`)
+
+- Een veld in de MoU/LoI/NDA-composer slaat op bij `blur` (bestaande `PATCH /mna/tos/component/{iid}`). Na een geslaagde opslag riep de handler `bgMouRender()` aan. Die bouwt de hele composer opnieuw op via `out.innerHTML`. Alles wat nog niet was opgeslagen, verdween daardoor stil: een ander veld waarin nog werd getypt en de vrije tekst (die alleen via "Tekst opslaan" wordt bewaard). De focus ging ook verloren.
+- Bij een mislukte opslag zette de handler het veld stil terug naar de oude waarde (`inp.value=data-orig`).
+- De documentkeuze (`mou-kies`) zette `_mouDocId` al vóór het laden. Invoer in het nog zichtbare oude document kon zo onder het nieuwe document vallen.
+
+### Huidig gedrag
+
+- Elke invoer (`input`) houdt een concept bij **in het geheugen van de composer**. Dat gebeurt per traject (`S.code`), per document, per onderdeel (`instance_id`) en per veld (of de vrije tekst). Er is geen tweede opslagsysteem: geen localStorage of sessionStorage, geen backend- of schemawijziging. Opslaan gaat alleen via de bestaande PATCH.
+- Na elke volledige hertekening (`bgMouRender`, ná `bgMouWire`) worden concepten van **hetzelfde traject en document** teruggezet in hetzelfde veld. Focus en cursor gaan terug naar het veld waarin werd getypt. Velden met onopgeslagen invoer krijgen een gouden rand met de titel "Nog niet opgeslagen".
+- Elke invoer krijgt een volgnummer. Een geslaagde opslag wist het concept alleen als er sindsdien niets nieuws is getypt. Een oudere, vertraagde opslag overschrijft nieuwere invoer dus niet.
+- Na een mislukte opslag blijft de invoer staan. Het veld krijgt een rode rand, `aria-invalid` en de foutmelding als titel. De melding zegt: "… uw invoer is niet opgeslagen en blijft staan". De fout blijft ook na een volgende hertekening zichtbaar.
+- Wanneer een vertraagd antwoord binnenkomt nadat al een ander document is gekozen, wordt dat andere document niet opnieuw geladen. De opslag geldt alleen voor het onderdeel waarvoor hij is verstuurd.
+- **Bevroren documenten** (gefinaliseerd of verstuurd) krijgen nooit concepten terug. De velden blijven disabled met de opgeslagen waarden. De concepten van dat document vervallen, met de melding "N niet-opgeslagen wijzigingen niet toegepast: dit document is vergrendeld". De backend weigert een PATCH op een bevroren document al (409). Er wordt niets opnieuw verstuurd.
+- Een blur die ontstaat doordat de composer zelf het veld vervangt (Chromium kan die vuren), start geen opslag.
+- "AI-concept" vraagt niets aan zolang het onderdeel onopgeslagen tekst heeft. Anders zou het teruggezette concept het AI-resultaat op het scherm verbergen. Er is geen automatische AI-aanroep of verzending.
+- "Finaliseer & exporteer" waarschuwt eerst als er onopgeslagen wijzigingen zijn.
+- Print/PDF en Signhost lezen, zoals voorheen, wat op het scherm staat.
+
+### Grenzen en open punten
+
+- Concepten leven alleen zolang deze dashboardweergave bestaat. Een volledige dashboard-hertekening (`refreshData`/"Ververs", bijvoorbeeld na "Buiten Signhost om getekend") of het herladen van de pagina sluit de composer, en dan zijn de concepten weg. Bewust: geen tweede opslag.
+- Twee begeleiders die tegelijk hetzelfde document bewerken: het lokale concept gaat op het scherm vóór de serverwaarde. Het blijft gemarkeerd als "Nog niet opgeslagen". Er is geen conflictdetectie (die zat er ook niet).
+- **Stand van het bewijs (11 okt 2026).**
+  - Native: de bridge meldt de productcode op `76319fe` als READY.
+  - Chromium: buiten deze repo is een aparte proef gedaan met echte Chromium en een synthetisch netwerk. Het resultaat staat in `productpunt19-bewijs/chromium-acceptatie.json`. Die proef hoort bij `mna/04-begeleider-dashboard.js` met SHA-256 `7513195d549d71f1b77712aec2c8944082aa1864cfd6d92604345dd6c4e460de`. Volgens die proef blijft een tweede, nog niet opgeslagen invoer behouden (SECOND UNSAVED). Deze documentatiewijziging heeft die proef niet zelf gedraaid en het bestand niet zelf ingezien. Er is ook geen Playwright-run gedaan in deze repo, en `tests/e2e-ui.spec.js` valt buiten de scope.
+  - Staging en productie staan nog **open**. `.pages-dist/` is niet bijgewerkt (buildartefact).
+
 ## Bewijs
+
+**Composer (sectie G van `tests/document-output-security.mjs`).** De proef draait de echte `bgMouRender`/`bgMouWire`/`bgMouApi` uit mna/04 en `esc` uit mna/02 in `node:vm`. Daarbij horen een minimale synthetische DOM, een nep-fetch met vertraagde PATCH-antwoorden en twee synthetische documenten. De proef controleert:
+
+- Twee velden en de vrije tekst blijven behouden over blur, een geslaagde opslag en het volledig hertekenen. Focus en cursor komen terug. Een Chromium-achtige blur bij het vervangen start geen opslag.
+- Een oudere, vertraagde veld- of tekstopslag overschrijft nieuwere invoer niet.
+- Een mislukte opslag houdt de invoer, met een geëscapete, eerlijke fout. Dat geldt ook na een nieuwe hertekening.
+- Bij een documentwissel wordt niets naar het andere document overgedragen, ook niet bij invoer tijdens het laden. Een late opslag hertekent het nieuwe document niet. Onder een ander traject worden geen concepten toegepast.
+- Een bevroren document krijgt geen concepten terug, de velden zijn disabled en er komt een eerlijke melding. Een late 409 maakt geen concept opnieuw aan.
+- Er gaat geen AI-verzoek uit zolang er onopgeslagen tekst is. Finaliseren waarschuwt eerst. Er is geen localStorage of sessionStorage.
+
+**Aanhaakpunten in de bron (sectie H van `tests/document-output-security.mjs`).** Drie statische checks op mna/04 controleren het volgende:
+
+- In `bgMouRender` gaan de concepten pas terug ná `out.innerHTML` en `bgMouWire` (volgorde `innerHTML` → `bgMouWire` → `bgMouConceptenToepassen`).
+- Er is geen stille terugzetting `inp.value=…data-orig` meer.
+- `_mouDocId=this.value` komt niet meer voor in de documentkeuze.
+
+Dezelfde drie checks staan ook in check 14 van `tests/audit-consistentie.mjs`, maar in die versie van de audit zit ook nog niet vrijgegeven CI-werk (#22). Voor een beperkte release van #19 hoeft die audit dus niet mee. De suite draait via de bestaande import en `await` in check 26 (`draaiDocumentOutputSecurityChecks`). Productcode, audit en workflow zijn hiervoor niet gewijzigd.
+
+**Documentuitvoer.**
 
 `tests/document-output-security.mjs` (ook check 26 in `tests/audit-consistentie.mjs`) draait de echte `esc`/`mdToHtml` uit mna/02 en de echte `printDocNaAkkoord` uit mna/05 in `node:vm`, met een synthetisch window/document, nep-fetch en een vastgelegde `printHtmlDocument`. De proef controleert:
 
