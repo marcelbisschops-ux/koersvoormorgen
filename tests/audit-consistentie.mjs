@@ -9,11 +9,327 @@
 // bestaande e2e-suite niet had gevangen. Dit script legt die aanpak vast zodat hij herhaalbaar is.
 //
 // Gebruik: node tests/audit-consistentie.mjs   (vanuit de repo-root)
+//          node tests/audit-consistentie.mjs --bronhash <relpad>   (workflow: alleen bron-sha256 binden, geen audit)
 // Exit code 0 = niets verdachts, exit code 1 = bevindingen (zie output).
 
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
+import crypto from 'crypto';
 import { execSync } from 'child_process';
+
+// ── Productpunt 22 (10 okt 2026): gebonden, read-only backendbroncontext voor de dagelijkse checks.yml-keten ──
+// GitHub run 38045970745 liet zien dat de private backend in CI ontbrak: audit-checks 8/9 vielen terug op
+// de oude frontend-structuur en faalden, waardoor de afhankelijke dagelijkse e2e-3rollen-job nooit draaide.
+// checks.yml checkt de backend daarom op vertrouwde triggers (schedule, workflow_dispatch, push naar de
+// default branch) gericht en read-only uit op een vast pad. Dit blok bevat:
+//   1. bepaalBackendBron() — de enige plek waar deze audit de backendbron vandaan haalt: alleen het vaste
+//      pad BACKEND_BRON_RELPAD (geen externe/ongevalideerde paden, geen symlinks), gebonden aan de
+//      bron-sha256 die de workflow direct na de checkout vastlegt (via --bronhash hieronder);
+//   2. draaiCiBackendBroncontextChecks() — synthetische proeven op die resolver en een statische analyse
+//      van .github/workflows/checks.yml (check 32). Geen netwerk, geen echte secrets, geen git, geen AI.
+// Geïntegreerd vanuit tests/ci-backend-broncontext.mjs (blijft als historisch bronbewijs bestaan, maar
+// deze audit en checks.yml hebben het niet meer nodig).
+const BACKEND_BRON_RELPAD = '.kvm-backend-bron/backend';
+const BACKEND_BRON_REPOSITORY = 'marcelbisschops-ux/koersvoormorgen-backend';
+const VERTROUWD_EXPRESSIE = "${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch))) && '1' || '0' }}";
+const VERTROUWD_IF = "if: ${{ env.BACKEND_BRON_VERTROUWD == '1' }}";
+
+const sha256 = b => crypto.createHash('sha256').update(b).digest('hex');
+const isBestand = p => { try { return fs.lstatSync(p).isFile(); } catch { return false; } };
+const isMap = p => { try { return fs.lstatSync(p).isDirectory(); } catch { return false; } };
+
+// Leest exact de bestanden die de audit gebruikt (entry + worker/*.js, gesorteerd) en hasht dezelfde
+// buffers — zo is de gebonden hash bewijsbaar die van de bron waarop de audit draaide.
+function leesBron(dir) {
+  const rels = ['cloudflare-worker.js'];
+  const workerDir = path.join(dir, 'worker');
+  if (fs.existsSync(workerDir)) fs.readdirSync(workerDir).filter(f => f.endsWith('.js')).sort().forEach(f => rels.push('worker/' + f));
+  const delen = rels.map(rel => {
+    const buf = fs.readFileSync(path.join(dir, rel));
+    return { name: 'backend/' + rel, src: buf.toString('utf8'), hashDeel: rel + '\0' + sha256(buf) + '\n' };
+  });
+  return { bestanden: delen.map(({ name, src }) => ({ name, src })), hash: sha256(delen.map(d => d.hashDeel).join('')) };
+}
+
+// Foutmeldingen bevatten bewust alleen paden/aantallen/hashes, nooit broninhoud.
+function valideerExplicieteBron(root, rel) {
+  if (rel !== BACKEND_BRON_RELPAD) return { fout: 'KVM_BACKEND_BRON moet exact "' + BACKEND_BRON_RELPAD + '" zijn (relatief aan de repo-root); andere of externe paden worden geweigerd.' };
+  const verwacht = path.join(fs.realpathSync(root), rel);
+  let echt;
+  try { echt = fs.realpathSync(path.join(root, rel)); } catch { return { fout: 'backendbroncontext ontbreekt op ' + rel + '.' }; }
+  if (echt !== verwacht) return { fout: rel + ' wijst via een symlink buiten het vaste pad — geweigerd.' };
+  if (!isBestand(path.join(echt, 'cloudflare-worker.js'))) return { fout: rel + '/cloudflare-worker.js ontbreekt of is geen gewoon bestand.' };
+  const workerDir = path.join(echt, 'worker');
+  if (!isMap(workerDir)) return { fout: rel + '/worker ontbreekt of is geen gewone map.' };
+  const modules = fs.readdirSync(workerDir).filter(f => f.endsWith('.js'));
+  if (!modules.length) return { fout: rel + '/worker bevat geen .js-modules.' };
+  const vreemd = modules.filter(f => !isBestand(path.join(workerDir, f)));
+  if (vreemd.length) return { fout: vreemd.length + ' worker-module(s) in ' + rel + ' zijn geen gewoon bestand (symlink?) — geweigerd.' };
+  return { dir: echt };
+}
+
+// KVM_BACKEND_BRON gezet → uitsluitend dat vaste pad, zonder terugval. KVM_BACKEND_BRON_VERPLICHT=1
+// (vertrouwde CI-run) → ontbrekende bron of ontbrekende/afwijkende hashbinding is een fout, nooit "overgeslagen".
+// Zonder beide: het bestaande lokale gedrag (kandidaatmappen, ontbreken = checks overslaan).
+function bepaalBackendBron({ root, env = {}, kandidaten = [] }) {
+  const verplicht = env.KVM_BACKEND_BRON_VERPLICHT === '1';
+  const leeg = { bestanden: [], hash: null, gebonden: false, verplicht, fout: null };
+  if (env.KVM_BACKEND_BRON) {
+    const v = valideerExplicieteBron(root, env.KVM_BACKEND_BRON);
+    if (v.fout) return { ...leeg, fout: v.fout };
+    const verwacht = env.KVM_BACKEND_BRON_SHA256 || '';
+    if (verwacht && !/^[0-9a-f]{64}$/.test(verwacht)) return { ...leeg, fout: 'KVM_BACKEND_BRON_SHA256 is geen geldige sha256.' };
+    if (verplicht && !verwacht) return { ...leeg, fout: 'KVM_BACKEND_BRON_SHA256 ontbreekt — de backendbron is niet aan een gebonden versie gekoppeld.' };
+    const { bestanden, hash } = leesBron(v.dir);
+    if (verwacht && verwacht !== hash) return { ...leeg, fout: 'bron-sha256 wijkt af van de gebonden waarde (gebonden ' + verwacht + ', gelezen ' + hash + ').' };
+    return { ...leeg, bestanden, hash, gebonden: Boolean(verwacht) };
+  }
+  if (verplicht) return { ...leeg, fout: 'KVM_BACKEND_BRON ontbreekt terwijl backendbroncontext verplicht is (KVM_BACKEND_BRON_VERPLICHT=1) — backenddekking kan niet als PASS gelden.' };
+  const dir = kandidaten.find(p => fs.existsSync(path.join(p, 'cloudflare-worker.js')));
+  return dir ? { ...leeg, ...leesBron(dir) } : leeg;
+}
+
+function bronhash(root, rel) {
+  const r = bepaalBackendBron({ root, env: { KVM_BACKEND_BRON: rel } });
+  if (r.fout) throw new Error(r.fout);
+  return r.hash;
+}
+
+// CLI-modus voor checks.yml: uitsluitend de bron-sha256 berekenen en stoppen, vóór elke auditstap — geen
+// auditoutput, geen bevindingen, geen andere bestanden gelezen. Synchroon schrijven zodat process.exit
+// niets afkapt.
+if (process.argv[2] === '--bronhash') {
+  try { fs.writeSync(1, bronhash(process.cwd(), process.argv[3] || '') + '\n'); process.exit(0); }
+  catch (e) { fs.writeSync(2, 'Backendbroncontext ongeldig: ' + e.message + '\n'); process.exit(1); }
+}
+
+// ── Minimale, op deze workflow afgestemde YAML-indeling (geen dependency) ────────────────────────
+function jobsUit(yml) {
+  const deel = yml.slice(yml.indexOf('\njobs:\n'));
+  const posities = [];
+  const re = /^  ([A-Za-z0-9_-]+):\s*$/gm;
+  let m;
+  while ((m = re.exec(deel))) posities.push({ naam: m[1], idx: m.index });
+  const jobs = {};
+  posities.forEach((p, i) => { jobs[p.naam] = deel.slice(p.idx, i + 1 < posities.length ? posities[i + 1].idx : deel.length); });
+  return jobs;
+}
+
+function stappenUit(jobTekst) {
+  const stappen = [];
+  let huidig = null;
+  jobTekst.split('\n').forEach(regel => {
+    if (/^      - /.test(regel)) { huidig = [regel]; stappen.push(huidig); }
+    else if (/^      #/.test(regel) || /^ {0,5}\S/.test(regel)) huidig = null;
+    else if (huidig) huidig.push(regel);
+  });
+  return stappen.map(r => r.join('\n'));
+}
+
+const naamVan = stap => ((stap.match(/name:\s*(.+)/) || [])[1] || '').trim();
+const ifVan = stap => ((stap.match(/^\s+if:\s*(.+)$/m) || [])[0] || '').trim();
+const aantal = (tekst, sub) => tekst.split(sub).length - 1;
+
+function blokRegels(stap, sleutel) {
+  const regels = stap.split('\n');
+  const start = regels.findIndex(r => r.trim() === sleutel + ': |');
+  if (start < 0) return null;
+  const inspring = regels[start].search(/\S/);
+  const uit = [];
+  for (let i = start + 1; i < regels.length; i++) {
+    if (regels[i].trim() && regels[i].search(/\S/) <= inspring) break;
+    if (regels[i].trim()) uit.push(regels[i].trim());
+  }
+  return uit;
+}
+
+// Vertaalt uitsluitend de bekende vertrouwensexpressie naar JS om echte triggercombinaties door te rekenen.
+function evalueerVertrouwd(expr, ctx) {
+  const js = expr.replace(/^\$\{\{\s*/, '').replace(/\s*\}\}$/, '')
+    .replace(/format\('refs\/heads\/\{0\}', github\.event\.repository\.default_branch\)/g, "('refs/heads/' + ctx.default_branch)")
+    .replace(/github\.event_name/g, 'ctx.event_name')
+    .replace(/github\.ref\b/g, 'ctx.ref')
+    .replace(/==/g, '===');
+  if (/github\.|secrets\.|vars\.|env\./.test(js)) throw new Error('onverwachte context in vertrouwensexpressie');
+  return new Function('ctx', 'return (' + js + ');')(ctx);
+}
+
+// ── Synthetische bron ─────────────────────────────────────────────────────────────────────────────
+const GEHEIM = 'SYNTHETISCHE-PRIVEBRON-' + crypto.randomBytes(8).toString('hex');
+
+function maakBron(root, { entry = true, modules = { '02-config-constanten.js': 'const x = "' + GEHEIM + '";\n' } } = {}) {
+  const dir = path.join(root, BACKEND_BRON_RELPAD);
+  fs.mkdirSync(path.join(dir, 'worker'), { recursive: true });
+  if (entry) fs.writeFileSync(path.join(dir, 'cloudflare-worker.js'), '// ' + GEHEIM + '\nexport default {};\n');
+  Object.entries(modules).forEach(([f, inhoud]) => fs.writeFileSync(path.join(dir, 'worker', f), inhoud));
+  return dir;
+}
+
+async function draaiCiBackendBroncontextChecks(ROOT) {
+  const resultaten = [];
+  const check = (ok, msg) => resultaten.push({ ok: Boolean(ok), msg });
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'kvm-ci-bron-'));
+  const nieuweRoot = naam => { const r = path.join(tmp, naam); fs.mkdirSync(r, { recursive: true }); return r; };
+  const vrijVanBron = r => !JSON.stringify({ fout: r.fout }).includes(GEHEIM);
+
+  try {
+    // A. Resolver: ontbrekend, ongeldig, extern, symlink, hashbinding.
+    const leegRoot = nieuweRoot('leeg');
+    let r = bepaalBackendBron({ root: leegRoot, env: { KVM_BACKEND_BRON_VERPLICHT: '1' } });
+    check(r.fout && /ontbreekt/.test(r.fout) && !r.bestanden.length, 'verplicht zonder KVM_BACKEND_BRON moet FAIL geven');
+    r = bepaalBackendBron({ root: leegRoot, env: {} });
+    check(!r.fout && !r.bestanden.length && !r.gebonden, 'lokaal zonder bron en zonder verplichting: geen fout, geen bestanden (bestaand overslaan-gedrag)');
+    r = bepaalBackendBron({ root: leegRoot, env: { KVM_BACKEND_BRON: BACKEND_BRON_RELPAD, KVM_BACKEND_BRON_VERPLICHT: '1', KVM_BACKEND_BRON_SHA256: 'a'.repeat(64) } });
+    check(r.fout && /ontbreekt/.test(r.fout), 'verplicht met ontbrekende map moet FAIL geven');
+
+    const geldig = nieuweRoot('geldig');
+    const geldigDir = maakBron(geldig);
+    ['../koersvoormorgen-backend/backend', '/etc', 'backend', '.kvm-backend-bron/backend/../../x', geldigDir].forEach(p => {
+      const x = bepaalBackendBron({ root: geldig, env: { KVM_BACKEND_BRON: p } });
+      check(x.fout && /exact/.test(x.fout) && !x.bestanden.length, 'ander/extern pad "' + p + '" moet geweigerd worden zonder terugval');
+    });
+    const kandidaatMetBron = path.join(nieuweRoot('kandidaat'), 'backend');
+    maakBron(path.dirname(kandidaatMetBron));
+    r = bepaalBackendBron({ root: leegRoot, env: { KVM_BACKEND_BRON: 'elders' }, kandidaten: [path.join(path.dirname(kandidaatMetBron), BACKEND_BRON_RELPAD)] });
+    check(r.fout && !r.bestanden.length, 'ongeldige KVM_BACKEND_BRON mag niet stilzwijgend terugvallen op een kandidaatmap');
+
+    const hash = bronhash(geldig, BACKEND_BRON_RELPAD);
+    check(/^[0-9a-f]{64}$/.test(hash) && hash === bronhash(geldig, BACKEND_BRON_RELPAD), 'bronhash is een deterministische sha256');
+    r = bepaalBackendBron({ root: geldig, env: { KVM_BACKEND_BRON: BACKEND_BRON_RELPAD, KVM_BACKEND_BRON_VERPLICHT: '1', KVM_BACKEND_BRON_SHA256: hash } });
+    check(!r.fout && r.gebonden && r.hash === hash && r.bestanden.map(b => b.name).join(',') === 'backend/cloudflare-worker.js,backend/worker/02-config-constanten.js', 'geldige gebonden bron wordt geladen met exact de entry + worker-modules');
+    r = bepaalBackendBron({ root: geldig, env: { KVM_BACKEND_BRON: BACKEND_BRON_RELPAD, KVM_BACKEND_BRON_VERPLICHT: '1' } });
+    check(r.fout && /SHA256 ontbreekt/.test(r.fout) && !r.bestanden.length, 'verplicht zonder hashbinding moet FAIL geven');
+    r = bepaalBackendBron({ root: geldig, env: { KVM_BACKEND_BRON: BACKEND_BRON_RELPAD, KVM_BACKEND_BRON_SHA256: 'NIET-HEX' } });
+    check(r.fout && /geen geldige sha256/.test(r.fout), 'ongeldige hashwaarde moet FAIL geven');
+    fs.appendFileSync(path.join(geldigDir, 'worker', '02-config-constanten.js'), '// gewijzigd na binding\n');
+    r = bepaalBackendBron({ root: geldig, env: { KVM_BACKEND_BRON: BACKEND_BRON_RELPAD, KVM_BACKEND_BRON_VERPLICHT: '1', KVM_BACKEND_BRON_SHA256: hash } });
+    check(r.fout && /wijkt af/.test(r.fout) && !r.bestanden.length, 'bron die na binding wijzigt moet FAIL geven (HEAD/hash-binding)');
+    check(vrijVanBron(r), 'hash-foutmelding bevat geen broninhoud');
+
+    const zonderEntry = nieuweRoot('zonder-entry');
+    maakBron(zonderEntry, { entry: false });
+    r = bepaalBackendBron({ root: zonderEntry, env: { KVM_BACKEND_BRON: BACKEND_BRON_RELPAD } });
+    check(r.fout && /cloudflare-worker\.js/.test(r.fout), 'ontbrekende cloudflare-worker.js moet FAIL geven');
+    const zonderModules = nieuweRoot('zonder-modules');
+    maakBron(zonderModules, { modules: {} });
+    r = bepaalBackendBron({ root: zonderModules, env: { KVM_BACKEND_BRON: BACKEND_BRON_RELPAD } });
+    check(r.fout && /geen \.js-modules/.test(r.fout), 'lege worker-map moet FAIL geven');
+
+    const extern = nieuweRoot('extern');
+    maakBron(extern);
+    const symMap = nieuweRoot('symlink-map');
+    fs.symlinkSync(path.join(extern, '.kvm-backend-bron'), path.join(symMap, '.kvm-backend-bron'));
+    r = bepaalBackendBron({ root: symMap, env: { KVM_BACKEND_BRON: BACKEND_BRON_RELPAD } });
+    check(r.fout && /symlink/.test(r.fout) && !r.bestanden.length, 'symlink naar een externe bronmap moet geweigerd worden');
+    const symBestand = nieuweRoot('symlink-bestand');
+    const symDir = maakBron(symBestand, { entry: false });
+    fs.symlinkSync(path.join(extern, BACKEND_BRON_RELPAD, 'cloudflare-worker.js'), path.join(symDir, 'cloudflare-worker.js'));
+    r = bepaalBackendBron({ root: symBestand, env: { KVM_BACKEND_BRON: BACKEND_BRON_RELPAD } });
+    check(r.fout && /geen gewoon bestand/.test(r.fout), 'gesymlinkte cloudflare-worker.js moet geweigerd worden');
+    const symModule = nieuweRoot('symlink-module');
+    const symModDir = maakBron(symModule);
+    fs.symlinkSync(path.join(extern, BACKEND_BRON_RELPAD, 'worker', '02-config-constanten.js'), path.join(symModDir, 'worker', '99-extern.js'));
+    r = bepaalBackendBron({ root: symModule, env: { KVM_BACKEND_BRON: BACKEND_BRON_RELPAD } });
+    check(r.fout && /symlink/.test(r.fout), 'gesymlinkte worker-module moet geweigerd worden');
+    let cliFout = '';
+    try { bronhash(leegRoot, BACKEND_BRON_RELPAD); } catch (e) { cliFout = e.message; }
+    check(/ontbreekt/.test(cliFout), '--bronhash faalt hard bij ontbrekende bron');
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+
+  // B. Statische workflowanalyse.
+  const ymlPad = path.join(ROOT, '.github/workflows/checks.yml');
+  if (!fs.existsSync(ymlPad)) { check(false, '.github/workflows/checks.yml ontbreekt'); return resultaten; }
+  const yml = fs.readFileSync(ymlPad, 'utf8');
+  const triggers = yml.slice(0, yml.indexOf('\njobs:'));
+  const jobs = jobsUit(yml);
+  check(Object.keys(jobs).join(',') === 'checks,e2e-3rollen', 'exact de bestaande jobs checks en e2e-3rollen (geen nieuwe job/scheduler)');
+  check(/^  push:\s*$/m.test(triggers) && /^  pull_request:\s*$/m.test(triggers) && /^  workflow_dispatch:\s*$/m.test(triggers) && !/pull_request_target/.test(yml), 'triggers push/pull_request/workflow_dispatch behouden, geen pull_request_target');
+  check(aantal(yml, 'cron:') === 1 && /- cron: '30 4 \* \* \*'/.test(triggers), 'exact één cron, ongewijzigd 30 4 * * *');
+  check(/concurrency:\n  group: kantoorinzicht-staging-e2e\n  cancel-in-progress: false\n/.test(yml), 'concurrency ongewijzigd (kantoorinzicht-staging-e2e, cancel-in-progress false)');
+  ['continue-on-error', 'upload-artifact', 'upload-pages-artifact', 'deploy-pages', 'set -x', 'ACTIONS_STEP_DEBUG', 'pages: write'].forEach(v => check(!yml.includes(v), 'workflow bevat geen "' + v + '"'));
+  check(!/(echo|printf)[^\n]*\$\{?BACKEND_SOURCE_READ_TOKEN/.test(yml), 'token-waarde wordt nergens geëchood');
+
+  const checksJob = jobs.checks || '';
+  const e2eJob = jobs['e2e-3rollen'] || '';
+  const kop = checksJob.split('\n    steps:\n')[0];
+  const vertrouwdRegel = (kop.match(/^      BACKEND_BRON_VERTROUWD:\s*(.+)$/m) || [])[1] || '';
+  check(vertrouwdRegel === VERTROUWD_EXPRESSIE, 'job-env BACKEND_BRON_VERTROUWD gebruikt exact de vertrouwensexpressie');
+  check(!/secrets\./.test(vertrouwdRegel) && !/BACKEND_SOURCE_READ_TOKEN/.test(kop), 'backendtoken staat niet op job-niveau');
+  check(/^      BACKEND_BRON_REPOSITORY: marcelbisschops-ux\/koersvoormorgen-backend$/m.test(kop), 'job-env BACKEND_BRON_REPOSITORY is de vaste backendrepository');
+  [
+    [{ event_name: 'schedule', ref: 'refs/heads/main', default_branch: 'main' }, '1'],
+    [{ event_name: 'workflow_dispatch', ref: 'refs/heads/main', default_branch: 'main' }, '1'],
+    [{ event_name: 'push', ref: 'refs/heads/main', default_branch: 'main' }, '1'],
+    [{ event_name: 'push', ref: 'refs/heads/feature-x', default_branch: 'main' }, '0'],
+    [{ event_name: 'push', ref: 'refs/tags/v1', default_branch: 'main' }, '0'],
+    [{ event_name: 'pull_request', ref: 'refs/pull/7/merge', default_branch: 'main' }, '0'],
+    [{ event_name: 'pull_request', ref: 'refs/heads/main', default_branch: 'main' }, '0'],
+    [{ event_name: 'pull_request_target', ref: 'refs/heads/main', default_branch: 'main' }, '0'],
+  ].forEach(([ctx, verwacht]) => {
+    let uit = 'fout';
+    try { uit = evalueerVertrouwd(vertrouwdRegel || "${{ '?' }}", ctx); } catch {}
+    check(uit === verwacht, 'vertrouwd(' + ctx.event_name + ' ' + ctx.ref + ') = ' + verwacht);
+  });
+
+  const stappen = stappenUit(checksJob);
+  const idx = f => stappen.findIndex(f);
+  const tokenStappen = stappen.filter(s => s.includes('secrets.BACKEND_SOURCE_READ_TOKEN'));
+  check(aantal(yml, 'secrets.BACKEND_SOURCE_READ_TOKEN') === 2 && tokenStappen.length === 2, 'BACKEND_SOURCE_READ_TOKEN alleen in poortstap en backendcheckout');
+  check(tokenStappen.every(s => ifVan(s) === VERTROUWD_IF), 'elke stap met het backendtoken draait uitsluitend als BACKEND_BRON_VERTROUWD == 1');
+  check(!/BACKEND|kvm-backend-bron/.test(e2eJob), 'e2e-3rollen krijgt geen backendtoken of private bron');
+
+  const iPoort = idx(s => s.includes('-z "${BACKEND_SOURCE_READ_TOKEN}"'));
+  const iCheckout = idx(s => s.includes('repository: ' + BACKEND_BRON_REPOSITORY));
+  // Binding moet via deze audit lopen (--bronhash), niet via het historische tests/ci-backend-broncontext.mjs.
+  const iBind = idx(s => s.includes('node tests/audit-consistentie.mjs --bronhash'));
+  const iAudit = idx(s => naamVan(s) === 'Veiligheids- en consistentie-audit');
+  const iCleanup = idx(s => s.includes('rm -rf .kvm-backend-bron'));
+  const iDeps = idx(s => naamVan(s) === 'Dependency-scan (npm audit)');
+  const iFrontend = idx(s => /^      - uses: actions\/checkout@/.test(s));
+  check(iFrontend === 0 && iPoort > iFrontend && iCheckout > iPoort && iBind > iCheckout && iAudit > iBind && iCleanup === iAudit + 1 && iDeps > iCleanup, 'volgorde: frontendcheckout → poort → backendcheckout → binding (audit-consistentie.mjs --bronhash) → audit → cleanup → dependency-scan');
+
+  const poort = stappen[iPoort] || '';
+  check(ifVan(poort) === VERTROUWD_IF && /BACKEND_BRON_REPOSITORY/.test(poort) && /BACKEND_BRON_REF/.test(poort) && aantal(poort, 'exit 1') >= 3, 'poortstap faalt hard bij ontbrekend secret, ongeldige repository of ongeldige ref');
+
+  const co = stappen[iCheckout] || '';
+  const versies = [...yml.matchAll(/uses: actions\/checkout@(\S+)/g)].map(m => m[1]);
+  check(versies.length === 3 && versies.every(v => v === versies[0]), 'backendcheckout gebruikt dezelfde actions/checkout-versie als de bestaande checkouts');
+  check(/persist-credentials: false/.test(co), 'backendcheckout: persist-credentials: false');
+  check(/fetch-depth: 1\b/.test(co), 'backendcheckout: fetch-depth: 1');
+  check(/path: \.kvm-backend-bron\s*$/m.test(co) && /token: \$\{\{ secrets\.BACKEND_SOURCE_READ_TOKEN \}\}/.test(co) && /ref: \$\{\{ env\.BACKEND_BRON_REF \}\}/.test(co), 'backendcheckout: vast pad, read-only token, gevalideerde ref');
+  check(JSON.stringify(blokRegels(co, 'sparse-checkout')) === JSON.stringify(['/backend/cloudflare-worker.js', '/backend/worker/']) && /sparse-checkout-cone-mode: false/.test(co), 'backendcheckout: alleen backend/cloudflare-worker.js en backend/worker/');
+
+  const bind = stappen[iBind] || '';
+  check(ifVan(bind) === VERTROUWD_IF && /rev-parse --verify/.test(bind) && /\[0-9a-f\]\{40\}/.test(bind) && /remote\.origin\.url/.test(bind), 'binding: exacte 40-hex HEAD en repository-URL hard gecontroleerd');
+  check(/extraheader/.test(bind) && /-type l/.test(bind) && /backend\/worker/.test(bind), 'binding: geen achtergebleven credential, geen symlinks, geen bestanden buiten de sparse-set');
+  check(/KVM_BACKEND_BRON_SHA256=/.test(bind) && /GITHUB_ENV/.test(bind) && /HEAD=\$\{head\}/.test(bind), 'binding: repository, HEAD en bron-sha256 gelogd en aan de audit doorgegeven');
+
+  const audit = stappen[iAudit] || '';
+  check(aantal(audit, 'node tests/audit-consistentie.mjs') === 2 && !/^\s+if:/m.test(audit), 'auditstap draait altijd (vertrouwd én PR), bestaande aanroep behouden');
+  check(audit.includes('KVM_BACKEND_BRON=' + BACKEND_BRON_RELPAD) && audit.includes('KVM_BACKEND_BRON_VERPLICHT=1'), 'vertrouwde audit gebruikt het vaste pad in verplichte modus');
+  check(/RUNNER_TEMP/.test(audit) && /> "\$log" 2>&1/.test(audit) && /exit "\$code"/.test(audit) && /sha256sum/.test(audit), 'vertrouwde audituitvoer naar tijdelijke runnerlocatie, alleen hash/exit-samenvatting, echte exitcode behouden');
+  check(!/\b(cat|tee|head|tail|less|more|sed)\b/.test(audit), 'auditlog met mogelijke broninhoud wordt niet naar de publieke log geschreven');
+
+  const cleanup = stappen[iCleanup] || '';
+  check(ifVan(cleanup) === 'if: ${{ always() }}' && /RUNNER_TEMP/.test(cleanup), 'cleanup van private checkout en auditlog draait altijd, ook na een fout');
+  const melding = stappen.find(s => ifVan(s) === "if: ${{ env.BACKEND_BRON_VERTROUWD != '1' }}") || '';
+  check(/::warning::/.test(melding) && /niet/i.test(melding), 'onvertrouwde trigger meldt ontbrekende backenddekking expliciet (geen stille PASS)');
+
+  // C. Bestaande stappen/rollen/rapportage ongewijzigd.
+  ['Syntax-check mna-modules', 'Veiligheids- en consistentie-audit', 'Dependency-scan (npm audit)', 'Basale secret-patroonscan', 'Publieke e2e-checks tegen staging (health-check, geen admin-key nodig)', 'Volledige e2e-testsuite tegen staging (admin-key vereist)']
+    .forEach(n => check(stappen.some(s => naamVan(s) === n), 'bestaande checks-stap behouden: ' + n));
+  check(/npm audit --audit-level=high/.test(checksJob) && /node tests\/e2e-api\.mjs --key="\$STAGING_ADMIN_KEY"/.test(checksJob) && /if: \$\{\{ env\.STAGING_ADMIN_KEY != '' \}\}/.test(checksJob), 'dependency-scan en staging-API-rollen ongewijzigd');
+  check(/^    needs: checks$/m.test(e2eJob) && aantal(e2eJob, 'run: npx playwright test ') === 3 && aantal(yml, "KVM_DOE_AI: '1'") === 1 && aantal(e2eJob, 'E2E_REPORT_KEY: ${{ secrets.E2E_REPORT_KEY }}') === 2, 'e2e-3rollen: needs checks, drie bestaande playwright-runs, één AI-stap, rapportage behouden');
+  check(e2eJob.includes("if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}") && e2eJob.includes("if: ${{ github.event_name != 'schedule' && github.event_name != 'workflow_dispatch' }}"), 'e2e-3rollen: bestaande dagelijkse/push-condities ongewijzigd');
+
+  const doc = path.join(ROOT, 'docs/marilyn-veiligheid.md');
+  const docTekst = fs.existsSync(doc) ? fs.readFileSync(doc, 'utf8') : '';
+  check(/BACKEND_SOURCE_READ_TOKEN/.test(docTekst) && /ONBEWEZEN/.test(docTekst), 'docs/marilyn-veiligheid.md documenteert credential-instelling en ONBEWEZEN dagelijkse E2E');
+  return resultaten;
+}
 
 const ROOT = process.cwd();
 let bevindingen = 0;
@@ -92,16 +408,14 @@ const BACKEND_CANDIDATES = [
   path.join(ROOT, 'backend'),
   path.join(ROOT, '..', 'koersvoormorgen-backend', 'backend'),
 ];
-const backendDir = BACKEND_CANDIDATES.find(p => fs.existsSync(path.join(p, 'cloudflare-worker.js')));
-const workerPath = backendDir ? path.join(backendDir, 'cloudflare-worker.js') : null;
-const workerModulesDir = backendDir ? path.join(backendDir, 'worker') : null;
-const backendFiles = [];
-if (workerPath) backendFiles.push({ name: 'backend/cloudflare-worker.js', src: fs.readFileSync(workerPath, 'utf8') });
-if (workerModulesDir && fs.existsSync(workerModulesDir)) {
-  fs.readdirSync(workerModulesDir).filter(f => f.endsWith('.js')).forEach(f => {
-    backendFiles.push({ name: 'backend/worker/' + f, src: fs.readFileSync(path.join(workerModulesDir, f), 'utf8') });
-  });
-}
+// Productpunt 22 (10 okt 2026): in de vertrouwde dagelijkse CI-run zet checks.yml KVM_BACKEND_BRON (vast
+// pad .kvm-backend-bron/backend), KVM_BACKEND_BRON_SHA256 (bron-hash direct na de checkout) en
+// KVM_BACKEND_BRON_VERPLICHT=1. Dan geldt uitsluitend dat pad; ontbrekend/ongeldig/afwijkend = bevinding,
+// nooit "overgeslagen". Zie bepaalBackendBron() bovenaan dit bestand en docs/marilyn-veiligheid.md.
+const backendBron = bepaalBackendBron({ root: ROOT, env: process.env, kandidaten: BACKEND_CANDIDATES });
+if (backendBron.fout) warn('Backendbroncontext: ' + backendBron.fout);
+else if (backendBron.gebonden) ok('Backendbroncontext gebonden: ' + BACKEND_BRON_RELPAD + ', ' + backendBron.bestanden.length + ' bestanden, bron-sha256 ' + backendBron.hash + '.');
+const backendFiles = backendBron.bestanden;
 if (!backendFiles.length) {
   ok('backend/ niet gevonden (leeft sinds 23 juli 2026 in de privé-repo koersvoormorgen-backend) — checks 2/3/5 overgeslagen. Draai dit script vanuit die repo voor volledige dekking.');
 } else {
@@ -667,14 +981,13 @@ log('11. Load-bearing pagina\'s (backend-gemailde/geredirecte frontend-URL\'s be
 //  de kern-guardrails niet stilzwijgend verwijdert.)
 log('12. Cross-document consistentiecheck (worker/30-consistentie.js): AI-guardrails aanwezig');
 {
+  // Productpunt 22: via dezelfde gebonden backendFiles als checks 2-9, zodat CI deze check ook echt draait.
   const rel = 'worker/30-consistentie.js';
-  const fp = path.join(ROOT, '..', 'koersvoormorgen-backend', 'backend', rel);
-  const fpAlt = path.join(ROOT, 'backend', rel);
-  const bestand = fs.existsSync(fp) ? fp : (fs.existsSync(fpAlt) ? fpAlt : null);
+  const bestand = backendFiles.find(f => f.name === 'backend/' + rel);
   if (!bestand) {
     ok('backend/' + rel + ' niet in deze repo — check overgeslagen (draait in de backend-repo-audit).');
   } else {
-    const src = fs.readFileSync(bestand, 'utf8');
+    const src = bestand.src;
     let problemen = 0;
     if (!/NOOIT een oordeel over welke waarde de juiste is/i.test(src)) {
       warn(rel + ' — de guardrail "NOOIT een oordeel over welke waarde de juiste is" ontbreekt in AI_SYSTEM. Zonder die regel kan de check zelf partij kiezen.');
@@ -1088,6 +1401,102 @@ log('31. Marilyn Veiligheid (tests/marilyn-veiligheid.mjs): nacht- en ochtendcon
   } catch (e) {
     warn('tests/marilyn-veiligheid.mjs kon niet worden uitgevoerd: ' + String((e && e.message) || e));
   }
+}
+
+log('32. CI-backendbroncontext (draaiCiBackendBroncontextChecks hierboven): gebonden read-only bron, alleen op vertrouwde triggers, geen bron in logs');
+{
+  // Productpunt 22 (10 okt 2026): synthetische proeven op de bronresolver (ontbrekend/extern/symlink/
+  // hashbinding) en statische analyse van checks.yml (trust-conditie, token, checkout, cleanup, ongewijzigde
+  // E2E/cron/concurrency). Geen netwerk, echte secrets, git of AI. Bewijst NIET dat de echte dagelijkse
+  // GitHub-run slaagt; zie docs/marilyn-veiligheid.md.
+  try {
+    const resultaten = await draaiCiBackendBroncontextChecks(ROOT);
+    const gefaald = resultaten.filter(r => !r.ok);
+    gefaald.forEach(r => warn('CI-backendbroncontext: ' + r.msg));
+    if (!resultaten.length) warn('CI-backendbroncontext: geen checks uitgevoerd.');
+    else if (!gefaald.length) ok('Alle ' + resultaten.length + ' CI-backendbroncontext-checks geslaagd (ontbrekende/externe/gesymlinkte/ongebonden bron = FAIL, token alleen op schedule/workflow_dispatch/default-branch-push, persist-credentials false, fetch-depth 1, alleen cloudflare-worker.js + worker/, HEAD/hash-binding, auditlog alleen als hash/exit-samenvatting, cleanup altijd, E2E/cron/concurrency/rapportage ongewijzigd).');
+  } catch (e) {
+    warn('CI-backendbroncontext-checks konden niet worden uitgevoerd: ' + String((e && e.message) || e));
+  }
+}
+
+log('33. Marilyn verwijderbeheer: benchmarkverwijdering (.btn-del-bench) leest het antwoord, geen fictief succes');
+{
+  // Vervolg op backend ab49b69 (10 okt 2026): POST /admin/benchmarks/delete/{sleutel} geeft bij een
+  // databasefout 500 met {ok:false,error}. De echte klikhandler uit marilyn.html wordt in node:vm gedraaid
+  // tegen synthetische antwoorden. Geen netwerk, geen echte data.
+  const bmFouten = [];
+  try {
+    const vm = await import('vm');
+    const src = fs.readFileSync(path.join(ROOT, 'marilyn.html'), 'utf8');
+    const start = src.indexOf("db.querySelectorAll('.btn-del-bench').forEach(");
+    if (start < 0) throw new Error('.btn-del-bench-handler niet gevonden in marilyn.html');
+    // Haakjes tellen vanaf forEach( tot de bijbehorende sluiting; stringliterals overslaan.
+    let i = src.indexOf('(', start + "db.querySelectorAll('.btn-del-bench')".length), diepte = 0, q = null;
+    for (; i < src.length; i++) {
+      const c = src[i];
+      if (q) { if (c === '\\') i++; else if (c === q) q = null; continue; }
+      if (c === "'" || c === '"' || c === '`') { q = c; continue; }
+      if (c === '(') diepte++;
+      else if (c === ')' && --diepte === 0) break;
+    }
+    const code = src.slice(start, i + 1);
+    if (/innerHTML/.test(code)) bmFouten.push('handler gebruikt innerHTML');
+    if (/\.catch\(function\(\)\{\}\)/.test(code)) bmFouten.push('handler slikt fetch-fouten nog stil in (.catch(function(){}))');
+
+    const SERVERTEKST = '<img src=x onerror=alert(1)> SQLITE_ERROR DELETE FROM benchmarks';
+    const draai = async ({ bevestig = true, antwoord }) => {
+      const st = { fetches: [], toasts: [], herladen: 0, handler: null };
+      const btn = { dataset: { sleutel: 'synth-sleutel' }, addEventListener: (t, f) => { if (t === 'click') st.handler = f; } };
+      const ctx = vm.createContext({
+        WORKER: 'https://worker.test', adminKey: 'synthetische-beheersleutel',
+        db: { querySelectorAll: () => [btn] },
+        confirm: () => bevestig,
+        toast: (msg, type) => st.toasts.push({ msg: String(msg), type }),
+        laadBenchmarks: () => { st.herladen++; },
+        fetch: async (url, opts) => { st.fetches.push({ url, opts }); return antwoord(); },
+      });
+      vm.runInContext(code, ctx);
+      if (!st.handler) throw new Error('geen klikhandler geregistreerd');
+      await st.handler();
+      return st;
+    };
+    const resp = (status, body) => async () => ({ ok: status >= 200 && status < 300, status, json: async () => (typeof body === 'string' ? JSON.parse(body) : body) });
+
+    // Annuleren: geen verzoek, geen herladen, geen melding.
+    const ann = await draai({ bevestig: false, antwoord: resp(200, { ok: true }) });
+    if (ann.fetches.length || ann.herladen || ann.toasts.length) bmFouten.push('annuleren doet toch een verzoek, herlaadt of meldt iets');
+
+    // Succes: bestaande URL/header/methode, lijst herladen, geen foutmelding.
+    const suc = await draai({ antwoord: resp(200, { ok: true }) });
+    const f0 = suc.fetches[0];
+    if (!f0 || f0.url !== 'https://worker.test/admin/benchmarks/delete/synth-sleutel' || f0.opts.method !== 'POST' || f0.opts.headers['x-admin-key'] !== 'synthetische-beheersleutel')
+      bmFouten.push('succesverzoek gebruikt niet de bestaande URL/POST/x-admin-key-header');
+    if (suc.herladen !== 1 || suc.toasts.some(t => t.type === 'err')) bmFouten.push('succes herlaadt de lijst niet precies één keer of toont een foutmelding');
+
+    // Mislukkingen: altijd een neutrale foutmelding, nooit herladen-als-succes, nooit servertekst/technische details.
+    const scenario = {
+      '500 {ok:false,error}': resp(500, { ok: false, error: SERVERTEKST }),
+      '401 Unauthorized': resp(401, { error: 'Unauthorized' }),
+      '200 {ok:false}': resp(200, { ok: false, error: SERVERTEKST }),
+      '200 zonder ok:true': resp(200, {}),
+      '500 met ok:true': resp(500, { ok: true }),
+      '200 onjuiste JSON': resp(200, 'geen-json{'),
+      'netwerkfout': async () => { throw new TypeError('Failed to fetch'); },
+    };
+    for (const [naam, antwoord] of Object.entries(scenario)) {
+      const s = await draai({ antwoord });
+      const fout = s.toasts.filter(t => t.type === 'err');
+      if (fout.length !== 1) bmFouten.push(naam + ': geen (of meer dan één) foutmelding getoond');
+      if (s.toasts.some(t => t.type !== 'err')) bmFouten.push(naam + ': toont een niet-foutmelding (fictief succes)');
+      if (s.herladen) bmFouten.push(naam + ': herlaadt de lijst alsof de verwijdering gelukt is');
+      if (s.toasts.some(t => /SQLITE|DELETE FROM|<img|Unauthorized|Failed to fetch|JSON/i.test(t.msg))) bmFouten.push(naam + ': foutmelding bevat servertekst of technische details');
+    }
+  } catch (e) {
+    bmFouten.push('check kon niet worden uitgevoerd: ' + String((e && e.message) || e));
+  }
+  bmFouten.forEach(m => warn('Benchmarkverwijdering: ' + m));
+  if (!bmFouten.length) ok('Benchmarkverwijdering: annuleren zonder verzoek, succes (2xx + ok:true) herlaadt via bestaande URL/POST/x-admin-key, 500/401/ok:false/zonder ok/onjuiste JSON/netwerkfout tonen één neutrale foutmelding zonder herladen of servertekst, geen innerHTML.');
 }
 
 // ── Samenvatting ──────────────────────────────────────────────────────────

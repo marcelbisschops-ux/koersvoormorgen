@@ -37,9 +37,20 @@ jobs:
     # STAGING_ADMIN_KEY staat hier op job-niveau (i.p.v. alleen bij de laatste stap) omdat een
     # `if:`-conditie op een stap alleen job-/workflow-niveau env-vars ziet, niet een env-var die op
     # diezelfde stap zelf wordt gezet — zie de P1-fix hieronder bij de laatste stap.
+    #
+    # Productpunt 22 (10 okt 2026, Marcel: expliciet GO voor uitsluitend read-only broncode): GitHub run
+    # 38045970745 — private backend ontbrak, audit-checks 8/9 FAIL, e2e-3rollen (needs: checks) daardoor
+    # nooit gedraaid. BACKEND_BRON_VERTROUWD is '1' uitsluitend op schedule, workflow_dispatch (alleen
+    # mogelijk met schrijfrechten) en push naar de default branch — nooit op pull_request, zodat
+    # (fork-)PR-code nooit de private bron of het backend-leestoken te zien krijgt. Het token staat
+    # bewust NIET op job-niveau, alleen op de twee stappen die het nodig hebben. BACKEND_BRON_REF leeg =
+    # default branch van de backendrepo; de exacte HEAD wordt na de checkout gebonden en gelogd.
     env:
       WORKER_URL: https://kantoorinzicht-staging.marcel-bisschops.workers.dev
       STAGING_ADMIN_KEY: ${{ secrets.STAGING_ADMIN_KEY }}
+      BACKEND_BRON_VERTROUWD: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch))) && '1' || '0' }}
+      BACKEND_BRON_REPOSITORY: marcelbisschops-ux/koersvoormorgen-backend
+      BACKEND_BRON_REF: ${{ vars.BACKEND_SOURCE_REF }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -50,8 +61,118 @@ jobs:
         run: |
           for f in mna/*.js; do node --check "$f"; done
 
+      # Productpunt 22: harde poort vóór de backendcheckout. Ontbrekend secret, of een repository/ref die
+      # niet aan het verwachte formaat voldoet, is een FAIL — nooit stilzwijgend zonder backend verder.
+      - name: Backendbroncontext-poort (secret, repository, ref — hard FAIL)
+        if: ${{ env.BACKEND_BRON_VERTROUWD == '1' }}
+        env:
+          BACKEND_SOURCE_READ_TOKEN: ${{ secrets.BACKEND_SOURCE_READ_TOKEN }}
+        run: |
+          if [ -z "${BACKEND_SOURCE_READ_TOKEN}" ]; then
+            echo "::error::Secret BACKEND_SOURCE_READ_TOKEN ontbreekt — backendbroncontext kan niet worden opgehaald. FAIL, geen overgeslagen stap. Zie docs/marilyn-veiligheid.md."
+            exit 1
+          fi
+          if [ "${BACKEND_BRON_REPOSITORY}" != "marcelbisschops-ux/koersvoormorgen-backend" ]; then
+            echo "::error::Onverwachte backendrepository '${BACKEND_BRON_REPOSITORY}' — geweigerd."
+            exit 1
+          fi
+          if [ -n "${BACKEND_BRON_REF}" ] && { ! printf '%s' "${BACKEND_BRON_REF}" | grep -Eq '^[A-Za-z0-9][A-Za-z0-9._/-]{0,199}$' || printf '%s' "${BACKEND_BRON_REF}" | grep -q '\.\.'; }; then
+            echo "::error::Ongeldige backend-ref in BACKEND_SOURCE_REF — geweigerd."
+            exit 1
+          fi
+          echo "Backendbroncontext-poort: secret aanwezig, repository=${BACKEND_BRON_REPOSITORY}, ref=${BACKEND_BRON_REF:-default branch}."
+
+      # Gerichte, read-only checkout: alleen de twee paden die de audit leest, ondiep, en zonder dat het
+      # token in .git/config achterblijft. Pad binnen de workspace (actions/checkout vereist dat), maar
+      # buiten elke publicatie: deze workflow uploadt geen artifacts en publiceert geen Pages.
+      - uses: actions/checkout@v4
+        if: ${{ env.BACKEND_BRON_VERTROUWD == '1' }}
+        with:
+          repository: marcelbisschops-ux/koersvoormorgen-backend
+          ref: ${{ env.BACKEND_BRON_REF }}
+          token: ${{ secrets.BACKEND_SOURCE_READ_TOKEN }}
+          path: .kvm-backend-bron
+          persist-credentials: false
+          fetch-depth: 1
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /backend/cloudflare-worker.js
+            /backend/worker/
+
+      # Versiebinding: exacte HEAD (40-hex), juiste repository-URL, geen achtergebleven credential, geen
+      # symlinks of bestanden buiten de sparse-set; daarna de bron-sha256 over precies de bestanden die de
+      # audit leest. Gelogd worden alleen repository, HEAD en hash — nooit broninhoud of credential.
+      - name: Backendbroncontext binden en valideren (repository, HEAD, hash, alleen benodigde bron)
+        if: ${{ env.BACKEND_BRON_VERTROUWD == '1' }}
+        run: |
+          bron=.kvm-backend-bron
+          head=$(git -C "$bron" rev-parse --verify 'HEAD^{commit}' 2>/dev/null || true)
+          if ! printf '%s' "$head" | grep -Eq '^[0-9a-f]{40}$'; then
+            echo "::error::Backendbron heeft geen geldige HEAD — FAIL."
+            exit 1
+          fi
+          url=$(git -C "$bron" config --get remote.origin.url || true)
+          if [ "$url" != "https://github.com/${BACKEND_BRON_REPOSITORY}" ] && [ "$url" != "https://github.com/${BACKEND_BRON_REPOSITORY}.git" ]; then
+            echo "::error::Backendbron komt niet uit ${BACKEND_BRON_REPOSITORY} — FAIL."
+            exit 1
+          fi
+          if git -C "$bron" config --get-regexp 'extraheader' >/dev/null 2>&1; then
+            echo "::error::Credentialrest (extraheader) in de backendcheckout — persist-credentials:false niet effectief. FAIL."
+            exit 1
+          fi
+          if [ -n "$(find "$bron" -path "$bron/.git" -prune -o -type l -print)" ]; then
+            echo "::error::Symlink(s) in de backendcheckout — FAIL."
+            exit 1
+          fi
+          extra=$(find "$bron" -path "$bron/.git" -prune -o -type f -print | { grep -Ev "^$bron/backend/cloudflare-worker\.js$|^$bron/backend/worker/[^/]+$" || true; } | wc -l)
+          if [ "$extra" -ne 0 ]; then
+            echo "::error::${extra} bestand(en) buiten backend/cloudflare-worker.js en backend/worker/ — FAIL."
+            exit 1
+          fi
+          hash=$(node tests/audit-consistentie.mjs --bronhash "$bron/backend")
+          if ! printf '%s' "$hash" | grep -Eq '^[0-9a-f]{64}$'; then
+            echo "::error::Bron-sha256 kon niet worden bepaald — FAIL."
+            exit 1
+          fi
+          echo "KVM_BACKEND_BRON_SHA256=${hash}" >> "$GITHUB_ENV"
+          echo "Backendbroncontext gebonden: repository=${BACKEND_BRON_REPOSITORY} HEAD=${head} bron-sha256=${hash}"
+
+      - name: Backenddekking niet beschikbaar op deze trigger (eerlijke melding, geen PASS)
+        if: ${{ env.BACKEND_BRON_VERTROUWD != '1' }}
+        run: |
+          echo "::warning::Backendbroncontext wordt op '${GITHUB_EVENT_NAME}' bewust niet opgehaald (onvertrouwde code). Backend-afhankelijke auditchecks zijn hier niet uitgevoerd en gelden niet als PASS."
+
+      # Vertrouwd: de audit leest private bron, dus kunnen bevindingen bronfragmenten bevatten. Uitvoer gaat
+      # naar een tijdelijke runnerlocatie; de publieke log krijgt alleen exitcode, uitvoer-sha256, aantal
+      # bevindingen en de (vaste) sectietitels met bevindingen. De echte exitcode blijft leidend.
+      # Onvertrouwd (PR, overige pushes): ongewijzigd, zonder private bron.
       - name: Veiligheids- en consistentie-audit
-        run: node tests/audit-consistentie.mjs
+        run: |
+          if [ "${BACKEND_BRON_VERTROUWD}" = "1" ]; then
+            log="${RUNNER_TEMP}/audit-consistentie.log"
+            set +e
+            KVM_BACKEND_BRON=.kvm-backend-bron/backend KVM_BACKEND_BRON_VERPLICHT=1 node tests/audit-consistentie.mjs > "$log" 2>&1
+            code=$?
+            set -e
+            echo "Audit met private backendbroncontext: exitcode=${code} uitvoer-sha256=$(sha256sum "$log" | cut -d' ' -f1) bevindingen=$(grep -c '⚠' "$log" || true)"
+            awk 'index($0, "\033[1m") == 1 { s = $0; gsub(/\033\[[0-9;]*m/, "", s) } index($0, "⚠") { n[s]++ } END { for (k in n) print "  sectie met bevinding(en): " k " (" n[k] ")" }' "$log"
+            rm -f "$log"
+            exit "$code"
+          else
+            node tests/audit-consistentie.mjs
+          fi
+
+      # Altijd (ook na FAIL of annulering): private checkout en tijdelijke auditlog verwijderen, zodat de
+      # bron niet beschikbaar is voor de staging-stappen hieronder of achterblijft op de runner.
+      - name: Private backendbroncontext en credentialrest opruimen (altijd)
+        if: ${{ always() }}
+        run: |
+          rm -rf .kvm-backend-bron "${RUNNER_TEMP}/audit-consistentie.log"
+          if [ -e .kvm-backend-bron ]; then
+            echo "::error::Private backendcheckout kon niet worden verwijderd — FAIL."
+            exit 1
+          fi
+          echo "Private backendbroncontext opgeruimd (of nooit aanwezig)."
 
       # P3 (19 aug 2026, kwaliteitsaudit): dependency-vulnerability-scanning ontbrak volledig —
       # geen npm audit in CI, geen Dependabot. Enige dependency is @playwright/test (devDependency,
