@@ -254,6 +254,11 @@ PAGES = [
      "Stukken die een vraagstuk scherper maken, over M&amp;A, due diligence, integratie, strategie en AI in M&amp;A.",
      "https://koersvoormorgen.nl/inzichten", "expertise-staal.jpg", "website", "simple|Inzichten"),
 
+    ("inzichten/de-toekomst-van-m-en-a.html", 1,
+     "De toekomst van M&amp;A: waar verdient de adviseur van morgen zijn geld? &middot; Koers voor Morgen",
+     "Ondernemers weten elkaar steeds beter te vinden. AI maakt marktinformatie toegankelijker en financi&euml;le analyses eenvoudiger. Wat betekent dat voor de onafhankelijke M&amp;A-adviseur?",
+     "https://koersvoormorgen.nl/inzichten/de-toekomst-van-m-en-a", "expertise-oversteek.jpg", "article", "post|M&A|De toekomst van M&A: waar verdient de adviseur van morgen zijn geld?"),
+
     ("inzichten/ebitda-is-geen-strategie.html", 1,
      "EBITDA is een stuurgetal, geen strategie &middot; Koers voor Morgen",
      "Grant Thornton Nederland ging voor &euro;185,1 miljoen naar de Amerikanen; de accountant waarschuwt voor frauderisico bij EBITDA-targets. Wat dit betekent voor kopers en verkopers.",
