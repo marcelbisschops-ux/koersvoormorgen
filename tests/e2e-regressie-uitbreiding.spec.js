@@ -17,7 +17,7 @@
 import { test, expect } from '@playwright/test';
 import fs from 'fs';
 import path from 'path';
-import { api, leesAdminKey, WORKER, d1, zetMfaUitVoorTest, accepteerPlatformvoorwaarden, ruimTestTrajectOp, verwijderTestGebruiker } from './lib.mjs';
+import { api, leesAdminKey, WORKER, d1, zetMfaUitVoorTest, accepteerPlatformvoorwaarden, ruimTestTrajectOp, verwijderTestGebruiker, IS_STAGING_WORKER } from './lib.mjs';
 
 const ADMIN = leesAdminKey();
 const WW = 'TestWachtwoord123!';
@@ -272,36 +272,184 @@ test('3. Marilyn: M&A-traject volledige CRUD-keten (nieuw → bewerk → vergren
 // ═══════════════════════════════════════════════════════════════════
 // 4. MARILYN: wisTrajectData (destructieve data-wis-actie)
 // Data-verlies-risico (C1) — nooit getest of verwijderen daadwerkelijk correct/compleet is.
+//
+// Productpunt 22 (12 okt 2026): sinds de muur (worker/13, isEigenTraject) weigert de backend
+// wis-data op een traject van een externe adviseur, en toont Marilyn daar geen .btn-wis-data meer
+// (alleen een slot). De positieve wisproef draait daarom op een EIGEN intern synthetisch traject
+// (/mna/create met admin-key, zelfde route als test 3); een tweede eigen traject dient als controle
+// dat niets anders geraakt wordt. Het externe traject uit maakTraject() blijft apart behouden als
+// negatieve fixture: afgeschermde rij zonder wisknop, backend weigert, data byte-gelijk.
+// Geen productrechten gewijzigd, geen eigendom via D1 omgezet, geen AI-stappen.
 // ═══════════════════════════════════════════════════════════════════
-test('4. Marilyn: wisTrajectData wist exact de gekozen data, niets meer en niets minder', async ({ page }) => {
-  const t = await maakTraject();
-  try {
-    const marker = 'WISTEST-' + MARKER;
-    const save = await api('POST', '/mna/save', { body: { code: t.code, fase_id: 'commercieel', data_json: { klantenportefeuille: { label: 'Klantenportefeuille', value: marker } }, checklist_json: { items: { 0: true }, redflags: {} } } });
-    expect(save.json && save.json.ok, 'testdata vooraf opgeslagen (DD-veld + checklist)').toBe(true);
-    const voorRij = d1("SELECT data_json, checklist_json FROM mna_data WHERE traject_id='" + t.code + "' AND fase_id='commercieel'");
-    expect(voorRij[0] && voorRij[0].data_json.includes(marker), 'D1: testdata staat er vóór het wissen').toBe(true);
+async function maakEigenWisTraject(label) {
+  const r = await api('POST', '/mna/create', { adminKey: ADMIN, body: {
+    kantoor_naam: '🔒 ' + MARKER + ' Wis ' + label + ' BV', traject_type: 'Verkoop', contact_naam: 'E2E Contact',
+    contact_email: 'wis-' + label.toLowerCase() + '-' + Date.now() + '@bisschopsfinancing.test', opdrachtgever_rol: 'verkoper',
+  } });
+  if (!r.json || !r.json.ok || !r.json.code) throw new Error('eigen wistraject (' + label + ') aanmaken mislukt: ' + JSON.stringify(r.json));
+  return { code: r.json.code, koperCode: r.json.koper_code, tussenCode: r.json.tussen_code };
+}
 
+// Onafhankelijke D1-momentopname van alles wat wis-data (zonder documenten/ondertekeningen) NIET
+// mag raken: de volledige trajectrij (incl. signhost_transactions, ondertekeningen, status),
+// documenten/-versies en banktransacties — plus de DD-rijen zelf en het logboek.
+function d1WisMomentopname(code) {
+  const q = "'" + code + "'";
+  const tellingen = d1('SELECT'
+    + " (SELECT json_group_array(json_object('id', id, 'data_json', data_json, 'checklist_json', checklist_json, 'updated_at', updated_at))"
+    + ' FROM (SELECT id, data_json, checklist_json, updated_at FROM mna_data WHERE traject_id=' + q + ' ORDER BY id)) AS mna_data,'
+    + ' (SELECT COUNT(*) FROM mna_documenten WHERE traject_id=' + q + ') AS documenten,'
+    + ' (SELECT COUNT(*) FROM mna_doc_versies WHERE traject_id=' + q + ') AS doc_versies,'
+    + ' (SELECT COUNT(*) FROM mna_bankmutaties_import WHERE traject_id=' + q + ') AS bank_imports,'
+    + ' (SELECT COUNT(*) FROM mna_bankmutaties_regel WHERE traject_id=' + q + ') AS bank_regels,'
+    + ' (SELECT COUNT(*) FROM mna_logboek WHERE traject_id=' + q + ') AS logboek')[0] || {};
+  const traject = d1('SELECT * FROM mna_trajecten WHERE id=' + q)[0] || null;
+  return { ...tellingen, traject: traject ? JSON.stringify(traject) : null };
+}
+
+test('4. Marilyn: wisTrajectData wist exact de gekozen data, niets meer en niets minder', async ({ page }) => {
+  test.setTimeout(180000); // drie fixtures + ~20 onafhankelijke D1-reads (elk ~2 s); 30s globaal timeout is te krap
+  // Destructieve wisactie + D1-reads/-opruiming: uitsluitend tegen de staging-worker (fail-closed).
+  if (!IS_STAGING_WORKER) throw new Error('test 4 draait uitsluitend tegen de staging-worker (WORKER_URL=' + WORKER + ')');
+  let intern = null, controle = null, extern = null;
+  const internMarker = 'WISTEST-' + MARKER;
+  const controleMarker = 'WISCONTROLE-' + MARKER;
+  const externMarker = 'WISEXTERN-' + MARKER;
+  const leeg = (v) => v == null || v === '' || v === '{}';
+  try {
+    // ── Fixtures ────────────────────────────────────────────────────
+    intern = await maakEigenWisTraject('Intern');
+    controle = await maakEigenWisTraject('Controle');
+    for (const t of [intern, controle]) {
+      await accepteerPlatformvoorwaarden({ verkoper: t.code, koper: t.koperCode, tussenpersoon: t.tussenCode });
+      d1("UPDATE mna_trajecten SET opening_voltooid=1 WHERE id='" + t.code + "'"); // zelfde testopzet als maakTraject()
+    }
+    extern = await maakTraject();
+
+    const saveIntern = await api('POST', '/mna/save', { body: { code: intern.code, fase_id: 'commercieel', data_json: { klantenportefeuille: { label: 'Klantenportefeuille', value: internMarker } }, checklist_json: { items: { 0: true }, redflags: {} } } });
+    expect(saveIntern.json && saveIntern.json.ok, 'intern: testdata vooraf opgeslagen (DD-veld + checklist)').toBe(true);
+    const saveControle = await api('POST', '/mna/save', { body: { code: controle.code, fase_id: 'commercieel', data_json: { klantenportefeuille: { label: 'Klantenportefeuille', value: controleMarker } }, checklist_json: { items: { 0: true }, redflags: {} } } });
+    expect(saveControle.json && saveControle.json.ok, 'controle: testdata vooraf opgeslagen (DD-veld + checklist)').toBe(true);
+    const saveExtern = await api('POST', '/mna/save', { body: { code: extern.code, fase_id: 'commercieel', data_json: { klantenportefeuille: { label: 'Klantenportefeuille', value: externMarker } } } });
+    expect(saveExtern.json && saveExtern.json.ok, 'extern: synthetische DD-waarde vooraf opgeslagen (verkoper)').toBe(true);
+    // Eén synthetisch document op het interne traject, zodat "documenten ongewijzigd" iets bewijst.
+    // Zelfde upload-base64-route als test 8 (geen AI-extractie).
+    const uploadResp = await fetch(WORKER + '/mna/document/upload-base64', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'data=' + encodeURIComponent(JSON.stringify({ code: intern.code, fase_id: 'commercieel', bestand_naam: 'e2e-wis-behouden.csv', base64: Buffer.from('Kolom\nE2E ' + MARKER + '\n').toString('base64') })),
+    });
+    const upload = await uploadResp.json().catch(() => null);
+    expect(upload && upload.ok, 'intern: synthetisch document geüpload (blijft na wissen bestaan)').toBe(true);
+
+    // ── Onafhankelijke D1-read vóór het wissen ──────────────────────
+    const internVoor = d1WisMomentopname(intern.code);
+    const controleVoor = d1WisMomentopname(controle.code);
+    const externVoor = d1WisMomentopname(extern.code);
+    const internDataVoor = JSON.parse(internVoor.mna_data || '[]');
+    const internRijVoor = internDataVoor.find((r) => String(r.data_json || '').includes(internMarker));
+    expect(internRijVoor, 'D1: intern DD-veld staat er vóór het wissen').toBeTruthy();
+    const chkVoor = JSON.parse(internRijVoor.checklist_json || '{}');
+    expect(chkVoor && chkVoor.items && Object.keys(chkVoor.items).length > 0, 'D1: intern checklist staat er vóór het wissen').toBe(true);
+    expect(Number(internVoor.documenten), 'D1: intern document staat er vóór het wissen').toBe(1);
+    expect(controleVoor.mna_data.includes(controleMarker), 'D1: controle-DD-veld staat er vóór het wissen').toBe(true);
+    expect(externVoor.mna_data.includes(externMarker), 'D1: externe DD-waarde staat er vóór de weigerproef').toBe(true);
+    const externCreatedAt = Number(JSON.parse(externVoor.traject).created_at);
+
+    // ── Marilyn: externe rij afgeschermd, geen wisknop ──────────────
     await loginMarilyn(page);
     await page.locator('#t-mna').click();
     await page.waitForTimeout(500);
-    await page.locator('.btn-wis-data[data-id="' + t.code + '"]').click();
+    // De afgeschermde lijstrij draagt bewust geen id/naam (N-102, filterExternTraject) — de rij is
+    // alleen terug te vinden via de zichtbare created_at uit de onafhankelijke D1-read.
+    const externIdx = await page.evaluate((ca) => mnaList.map((t, i) => (t.inhoud_afgeschermd && Number(t.created_at) === ca ? i : -1)).filter((i) => i >= 0), externCreatedAt);
+    expect(externIdx.length, 'Marilyn: precies één afgeschermde rij voor het externe testtraject').toBe(1);
+    const externLijstRij = await page.evaluate((i) => mnaList[i], externIdx[0]);
+    expect(externLijstRij.id, 'lijst-API: externe rij zonder traject-id').toBeUndefined();
+    // begeleider_naam/-email zijn bewust zichtbaar (EXTERN_TRAJECT_ZICHTBAAR) en dragen de adviseursnaam
+    // met MARKER — daarom alleen de EXTERN_TRAJECT_LEEG-velden, id/codes en de externe DD-waarde toetsen.
+    const externLeeg = ['kantoor_rechtsvorm', 'contact_naam', 'contact_email', 'koper_naam', 'koper_rechtsvorm', 'koper_contact', 'koper_email', 'koper_adres', 'koper_kvk', 'verkoper_adres', 'verkoper_kvk', 'notitie'];
+    for (const k of externLeeg) expect(externLijstRij[k], 'lijst-API: externe rij ' + k + ' leeg').toBe('');
+    expect(externLijstRij.kantoor_naam, 'lijst-API: externe rij kantoor_naam is het slot-label').toBe('🔒 Extern traject (afgeschermd)');
+    expect(Object.keys(externLijstRij).filter((k) => /(^|_)code$/.test(k)), 'lijst-API: externe rij zonder codevelden').toEqual([]);
+    expect(JSON.stringify(externLijstRij).includes(extern.code), 'lijst-API: externe trajectcode niet in de rij').toBe(false);
+    expect(JSON.stringify(externLijstRij).includes(externMarker), 'lijst-API: externe DD-waarde niet in de rij').toBe(false);
+    const externTr = page.locator('table:has(#cb-all-mna) > tbody > tr').nth(externIdx[0]);
+    await expect(externTr, 'externe rij toont het slot-label').toContainText('Extern traject (afgeschermd)');
+    await expect(externTr.locator('.btn-wis-data'), 'externe rij: geen .btn-wis-data').toHaveCount(0);
+    await expect(externTr.locator('span[title^="Afgeschermd"]', { hasText: 'Wis data' }), 'externe rij: wisactie alleen als slot').toHaveCount(1);
+    await expect(page.locator('.btn-wis-data[data-id="' + extern.code + '"]'), 'nergens een wisknop voor de externe code').toHaveCount(0);
+    expect((await page.content()).includes(extern.code), 'externe trajectcode komt nergens in de Marilyn-pagina voor').toBe(false);
+
+    // ── Marilyn: echte wisknop + confirm op het interne traject ──────
+    const wisBtn = page.locator('.btn-wis-data[data-id="' + intern.code + '"]');
+    await expect(wisBtn, 'intern: wisknop zichtbaar').toBeVisible({ timeout: 10000 });
+    await wisBtn.click();
     await page.waitForSelector('#wis-ok', { timeout: 5000 });
     // Standaard-selectie (DD-velden + checklist aangevinkt, documenten/tekenen uit) bewust ongewijzigd
     // gelaten — dit is het meest gebruikte, representatieve pad.
-    page.once('dialog', (d) => d.accept());
+    await expect(page.locator('#wis-dd')).toBeChecked();
+    await expect(page.locator('#wis-chk')).toBeChecked();
+    await expect(page.locator('#wis-docs')).not.toBeChecked();
+    await expect(page.locator('#wis-teken')).not.toBeChecked();
+    let dialoog = null;
+    page.once('dialog', async (d) => { dialoog = { type: d.type(), tekst: d.message() }; await d.accept(); });
+    const wisResp = page.waitForResponse((r) => r.url().includes('/mna/admin/wis-data/' + intern.code) && r.request().method() === 'POST', { timeout: 15000 });
     await page.locator('#wis-ok').click();
-    await page.waitForSelector('text=Klaar!', { timeout: 15000 }).catch(() => {});
+    const wr = await wisResp;
+    const wrBody = await wr.json().catch(() => null);
+    // Expliciet de worker-route: anders zou de UI-fallback (fase-voor-fase /mna/save) een kapotte route maskeren.
+    expect(wr.status() === 200 && !!(wrBody && wrBody.ok), 'wis-data via de echte knop: worker-route slaagde').toBe(true);
+    await expect(page.locator('#wis-progress'), 'UI meldt Klaar!').toContainText('Klaar!', { timeout: 15000 });
+    expect(dialoog && dialoog.type, 'bevestigings-confirm verscheen').toBe('confirm');
+    expect(dialoog.tekst, 'confirm noemt DD-velden').toContain('DD-velden');
+    expect(dialoog.tekst, 'confirm noemt checklist').toContain('Checklist-statussen');
+    expect(dialoog.tekst, 'confirm noemt géén documenten').not.toContain('Geüploade documenten');
+    expect(dialoog.tekst, 'confirm noemt géén ondertekeningen').not.toContain('Ondertekeningen');
 
-    const naRij = d1("SELECT data_json, checklist_json FROM mna_data WHERE traject_id='" + t.code + "' AND fase_id='commercieel'");
-    const dataLeeg = !naRij[0] || naRij[0].data_json === '{}' || !naRij[0].data_json.includes(marker);
-    expect(dataLeeg, 'D1: DD-data daadwerkelijk gewist').toBe(true);
-    // Traject zelf moet blijven bestaan (wisTrajectData wist alleen data, niet het traject).
-    expect(d1CountTraject(t.code), 'traject zelf blijft bestaan (alleen data gewist, geen traject-verwijdering)').toBe(1);
+    // ── Extern: backend-weigering volgens bestaand routecontract ─────
+    const weiger = await api('POST', '/mna/admin/wis-data/' + extern.code, { adminKey: ADMIN, body: {} });
+    expect(weiger.status, 'backend weigert wis-data op extern traject (403)').toBe(403);
+    expect(weiger.json && weiger.json.error, 'weigering met bestaand foutcontract').toBe('Geen toegang tot dit traject');
+
+    // ── Onafhankelijke D1-read ná het wissen ─────────────────────────
+    const internNa = d1WisMomentopname(intern.code);
+    const internDataNa = JSON.parse(internNa.mna_data || '[]');
+    expect(internDataNa.some((r) => String(r.data_json || '').includes(internMarker)), 'D1: intern DD-veld gewist').toBe(false);
+    expect(internDataNa.every((r) => leeg(r.data_json) && leeg(r.checklist_json)), 'D1: intern DD-velden + checklist leeg').toBe(true);
+    expect(internNa.traject, 'traject zelf blijft bestaan (alleen data gewist, geen traject-verwijdering)').not.toBeNull();
+    expect(internNa.traject, 'D1: trajectrij incl. signhost/ondertekeningen/status ongewijzigd').toBe(internVoor.traject);
+    expect({ d: internNa.documenten, v: internNa.doc_versies, bi: internNa.bank_imports, br: internNa.bank_regels }, 'D1: documenten/versies/banktransacties ongewijzigd')
+      .toEqual({ d: internVoor.documenten, v: internVoor.doc_versies, bi: internVoor.bank_imports, br: internVoor.bank_regels });
+    expect(d1WisMomentopname(controle.code), 'D1: tweede eigen controletraject volledig ongewijzigd').toEqual(controleVoor);
+    expect(d1WisMomentopname(extern.code), 'D1: extern traject (DD-waarde, logboek, trajectrij) volledig ongewijzigd').toEqual(externVoor);
   } finally {
-    await ruimGebruikerEnTrajectOp(t);
-    expect(d1CountTraject(t.code), 'cleanup: traject weg').toBe(0);
-    expect(d1CountGebruiker(t.gid), 'cleanup: testadviseur weg').toBe(0);
+    // Eerst álle opruimingen, pas daarna de controles — één mislukte expect mag geen fixture laten staan.
+    const opruimStatus = {};
+    for (const t of [intern, controle]) {
+      if (!t || !t.code) continue;
+      const r = await api('POST', '/admin/delete/mna/' + t.code, { adminKey: ADMIN });
+      opruimStatus[t.code] = r.status;
+    }
+    if (extern) await ruimGebruikerEnTrajectOp(extern); // staging-testopruiming + testgebruiker
+    const codes = [intern, controle, extern].filter((t) => t && t.code).map((t) => t.code);
+    for (const code of Object.keys(opruimStatus)) expect(opruimStatus[code], 'cleanup: eigen traject ' + code + ' via /admin/delete/mna/').toBe(200);
+    if (codes.length) {
+      const lijst = codes.map((c) => "'" + c + "'").join(',');
+      const rest = d1('SELECT'
+        + ' (SELECT COUNT(*) FROM mna_trajecten WHERE id IN (' + lijst + ')) AS trajecten,'
+        + " (SELECT COUNT(*) FROM mna_trajecten WHERE kantoor_naam LIKE '%" + MARKER + " Wis %') AS marker_trajecten,"
+        + ' (SELECT COUNT(*) FROM mna_data WHERE traject_id IN (' + lijst + ')) AS data,'
+        + ' (SELECT COUNT(*) FROM mna_documenten WHERE traject_id IN (' + lijst + ')) AS documenten,'
+        + ' (SELECT COUNT(*) FROM mna_logboek WHERE traject_id IN (' + lijst + ')) AS logboek,'
+        + ' (SELECT COUNT(*) FROM mna_platform_akkoord WHERE traject_id IN (' + lijst + ')) AS akkoord')[0] || {};
+      expect(rest, 'cleanup: onafhankelijke D1-nultelling operationele fixtures').toEqual({ trajecten: 0, marker_trajecten: 0, data: 0, documenten: 0, logboek: 0, akkoord: 0 });
+      // mna_audit blijft bewust bewaard (verwijderTrajectData wist het niet) — historische
+      // verwijderregel per fixture expliciet aanwezig, en hier nooit opgeruimd.
+      const audit = d1("SELECT code, COUNT(*) AS n FROM mna_audit WHERE code IN (" + lijst + ") AND actie LIKE 'traject_verwijderd%' GROUP BY code");
+      expect(codes.filter((c) => !audit.some((a) => a.code === c && Number(a.n) > 0)), 'audit: verwijderregel per fixture bewaard').toEqual([]);
+    }
+    if (extern && extern.gid) expect(d1CountGebruiker(extern.gid), 'cleanup: externe testadviseur weg').toBe(0);
   }
 });
 

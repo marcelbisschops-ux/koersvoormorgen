@@ -61,8 +61,9 @@ andere aantallen (4 en 3).
 
 ## Status
 
-De nieuwe UI is **nog niet live**: niet gedeployed tot de releasegates (onafhankelijke review,
-commitgate, staging/productie-goedkeuring) PASS zijn.
+De Veiligheid-UI hierboven is native afgerond (DONE, taak 7fb3, commit `97aeee4`). Dit document
+claimt haar **nog niet live**: een productieclaim volgt pas uit de bestaande releasegates
+(onafhankelijke review, commitgate, staging/productie-goedkeuring, postdeploy).
 
 ## Verwijderbeheer (10 okt 2026)
 
@@ -111,8 +112,9 @@ verstuurt niets. De handler gebruikt geen `innerHTML` en slikt geen fetch-fouten
 
 ### Benchmarkoverzicht: gekozen benchmarks verwijderen (10 okt 2026)
 
-Plaats: `renderBenchmarksTab()` in `marilyn.html` (tab **Benchmarks**). Status: **alleen lokaal en
-synthetisch bewezen, niet live** — er is niets uitgerold of tegen staging/productie geprobeerd.
+Plaats: `renderBenchmarksTab()` in `marilyn.html` (tab **Benchmarks**). Status: de gebruikers- en
+benchmarkgroepsverwijdering zitten in de actuele frontendproductierelease `0202ce1` (DONE, taak 1935,
+Pages-deployment `d792cc81`). De proeven in "Bewaking" hieronder blijven synthetisch (nep-worker).
 
 | Onderdeel | Gedrag |
 |---|---|
@@ -130,7 +132,7 @@ Scope en retentie: de backendroute verwijdert alleen de rij in `benchmarks` (op 
 backendtests bevestigen dat `benchmarks_historie` niet wordt geraakt. Klantdocumenten, trajecten en
 waarderingen worden niet aangeraakt. Een verwijderde benchmark is niet terug te zetten via de app;
 alleen opnieuw toevoegen (handmatig, PDF of "Bronnen updaten"). Er zijn geen bewaartermijnen
-vastgelegd. Backendrelease `781654f` (DONE, `verwijderBenchmarkAdmin` in `backend/cloudflare-worker.js`)
+vastgelegd. Backendrelease `781654f` (DONE, taak f4a3, `verwijderBenchmarkAdmin` in `backend/cloudflare-worker.js`)
 geeft voor een onbekende sleutel 404 met `{ok:false}` en bij een databasefout of onbetrouwbaar
 DB-resultaat 500 met `{ok:false}`; alleen een werkelijk verwijderde rij geeft `{ok:true}`.
 
@@ -165,17 +167,94 @@ een minimale DOM-fixture en een nep-worker; geen netwerk, geen browser, geen ech
   bewaartermijnen vastgelegd.
 - **Overige overzichten:** de andere verwijderpaden in `marilyn.html` (o.a. `deleteScan`,
   `deleteCallback`, `deleteMna`) zijn in deze stap niet opnieuw beoordeeld; hun dekking staat alleen
-  in de bestaande N-122/N-124-checks.
-- **Echte omgeving:** de proef draait uitsluitend tegen een nep-worker. Gedrag op staging of
-  productie vraagt de bestaande staging-, release- en postdeploy-gates.
+  in de bestaande N-122/N-124-checks. Callbackverwijderen is apart afgerond (DONE, taak 889d,
+  release `b3f69cc`); dit document beschrijft die wijziging niet.
+- **Echte omgeving:** de proeven hierboven draaien uitsluitend tegen een nep-worker. Het
+  productiebewijs voor de gebruikers- en benchmarkgroepsverwijdering is release `0202ce1`; andere
+  onderdelen in dit document worden niet als live geclaimd.
 - `tests/README.md` noemt het gebruikersoverzicht en de benchmarkgroepsverwijdering nog niet bij de
   helper `verwijderGekozen()`.
-- **Benchmarks:** `.pages-dist/marilyn.html` is niet bijgewerkt (buiten scope); de groepsverwijdering
-  is pas live na de bestaande build-, staging-, release- en postdeploy-gates.
 
 ## Productpunt 22 — dagelijkse CI-dekking: OPEN
 
-Status: **OPEN**. De dagelijkse CI-dekking met read-only backendbroncontext (credential
-`BACKEND_SOURCE_READ_TOKEN`) maakt geen deel uit van deze benchmarkbulkrelease en wordt hier niet als
-meegenomen of live geclaimd. Dat de echte dagelijkse GitHub-run met volledige E2E slaagt en de
-rapportage in Marilyn → Veiligheid PASS toont, is **ONBEWEZEN**; dit document is geen PASS-rapport.
+Status: **OPEN**. De CI-reparatie staat in de bron sinds commit `6fee47d`
+(`.github/workflows/checks.yml` en `tests/audit-consistentie.mjs`) en gaat ongewijzigd mee in de
+release met drie paden; er komen geen nieuwe of historische hulpbestanden bij.
+
+Wat de bestaande code doet (job `checks`):
+
+- **Vertrouwde triggers:** `BACKEND_BRON_VERTROUWD` is `1` alleen bij `schedule`, `workflow_dispatch`
+  en `push` naar de default branch. Bij `pull_request` en andere pushes wordt geen private bron
+  opgehaald en komt het token niet in de job; een waarschuwing meldt dat backend-afhankelijke checks
+  daar niet als PASS gelden.
+- **Poort:** zonder secret `BACKEND_SOURCE_READ_TOKEN`, met een andere repository of een ongeldige
+  `BACKEND_SOURCE_REF` faalt de stap hard; er wordt nooit stilzwijgend zonder backend doorgegaan. Het
+  token staat alleen op de poort- en checkoutstap, niet op jobniveau.
+- **Read-only checkout:** `marcelbisschops-ux/koersvoormorgen-backend`, ondiep, `persist-credentials:
+  false`, sparse alleen `backend/cloudflare-worker.js` en `backend/worker/`, naar `.kvm-backend-bron`.
+- **Binding:** de workflow controleert HEAD, herkomst, geen credentialrest, geen symlinks en geen
+  bestanden buiten de sparse-set. Daarna legt `node tests/audit-consistentie.mjs --bronhash` de
+  bron-sha256 vast in `KVM_BACKEND_BRON_SHA256`. Gelogd worden alleen repository, HEAD en hash.
+- **Audit:** draait met `KVM_BACKEND_BRON=.kvm-backend-bron/backend` en `KVM_BACKEND_BRON_VERPLICHT=1`.
+  Een ontbrekende, externe, gesymlinkte of ongebonden bron is een bevinding. De volledige uitvoer gaat
+  naar een tijdelijk bestand; de publieke log toont alleen exitcode, uitvoer-sha256, aantal
+  bevindingen en sectietitels. De echte exitcode blijft leidend.
+- **Opruimen:** altijd (`always()`, ook na FAIL of annulering) worden `.kvm-backend-bron` en de
+  tijdelijke log verwijderd; lukt dat niet, dan faalt de stap.
+- **Ongewijzigd:** E2E-job `e2e-3rollen`, cron `30 4 * * *`, concurrency en de rapportage naar
+  Marilyn (`E2E_REPORT_KEY`).
+
+Bewijs, gescheiden:
+
+- **Synthetisch:** check 32 in `node tests/audit-consistentie.mjs` test de bronresolver
+  (ontbrekend/extern/symlink/hashbinding) en analyseert `checks.yml` statisch. Geen netwerk, geen echte
+  secrets.
+- **Configuratie:** dat secret `BACKEND_SOURCE_READ_TOKEN` bestaat, is op 10 okt 2026 via GitHub
+  bevestigd. De waarde en geldigheid zijn niet gecontroleerd.
+- **Echte CI-run (nog uit te voeren):** of de echte dagelijkse GitHub-run met private backendbron en
+  volledige E2E slaagt en de rapportage in Marilyn → Veiligheid PASS toont, is **ONBEWEZEN** tot een
+  echte run PASS geeft. Productpunt #22 blijft OPEN; dit document is geen PASS-rapport.
+
+### Opruimcredentials voor eigen staging-testdata (11 okt 2026)
+
+Aanleiding: GitHub-run `38130393446` (`workflow_dispatch`, #499). Staging-admin werkte en de functionele
+API-checks slaagden, maar de opruiming in de job `checks` faalde: de stap
+`Volledige e2e-testsuite tegen staging (admin-key vereist)` kreeg geen D1-credential mee.
+`tests/lib.mjs` `ruimTrajectOp` en `verwijderTestGebruiker` lezen eerst de staging-D1 via `d1()`
+(alleen SELECT). Daarna roept de staging-only helper `testOpruimAanroep` de route `/test/opruimen` aan
+met `TEST_CLEANUP_KEY`. Gebruik in de specs: `tests/e2e-api.mjs` (`ruimTrajectOp`,
+`verwijderTestGebruiker`), en `tests/e2e-3rollen-regressie.spec.js` en
+`tests/e2e-regressie-uitbreiding.spec.js` (`ruimTestTrajectOp`, `verwijderTestGebruiker`).
+
+Wijziging in `.github/workflows/checks.yml`:
+
+- **Job `checks`, admin-E2E-stap:** krijgt het bestaande `CLOUDFLARE_API_TOKEN_D1_READ` (Read-only,
+  nooit Edit), het bestaande account-id `280ee5671bc3c27b895246a620dbc97b` (geen secret) en
+  `TEST_CLEANUP_KEY`. Beide credentials staan uitsluitend op deze stap en zijn alleen gevuld als
+  `BACKEND_BRON_VERTROUWD == '1'`. Op `pull_request` en forks blijven ze leeg.
+- **Job `e2e-3rollen`:** `E2E_STAGING_VERTROUWD` is de vertrouwensvlag op jobniveau, met dezelfde
+  expressie. Het is geen credential. `TEST_CLEANUP_KEY` staat uitsluitend op de drie bestaande
+  playwright-stappen (3-rollen push/PR, 3-rollen incl. AI, uitbreiding) en is alleen op vertrouwde
+  triggers gevuld. De bestaande D1-tokens per stap (Read, en Edit alleen bij de uitbreiding) zijn
+  ongewijzigd.
+- **Fail-closed poort:** beide jobs hebben vóór de eerste testdatacreatie een stap
+  `Opruimcredentials-poort voor staging-testdata (hard FAIL vóór creatie)`. Die draait op vertrouwde
+  triggers (in `checks` alleen als de admin-E2E-stap ook draait). Ontbreekt
+  `CLOUDFLARE_API_TOKEN_D1_READ` of `TEST_CLEANUP_KEY`, dan faalt de stap hard. Er wordt niets
+  overgeslagen en er is geen override. Gelogd wordt alleen of een secret aanwezig is, nooit de waarde.
+- **Ongewijzigd:** triggers, cron, concurrency, de backendbroncontext-keten, de audit, de
+  dependency-scan, de secret-scan, de publieke E2E, de AI-stap en de rapportage (`E2E_REPORT_KEY`).
+  De testhelpers en de backend zijn ook niet aangepast.
+
+Bekende grens: op onvertrouwde triggers (`pull_request` uit dezelfde repo, pushes naar een andere
+branch dan de default branch) krijgen de E2E-stappen bewust geen opruimcredentials. De bestaande
+opruimchecks melden daar nog steeds FAIL, zoals vóór deze wijziging. Dat is geen PASS en is niet
+verzwakt.
+
+**Menselijke credentialinvoer nodig (OPEN):** volgens een read-only controle van de secretnamen op
+11 okt 2026 bestaan `CLOUDFLARE_API_TOKEN_D1_READ`, `CLOUDFLARE_API_TOKEN_D1_EDIT`, `E2E_REPORT_KEY`
+en `STAGING_ADMIN_KEY`. **`TEST_CLEANUP_KEY` ontbreekt.** Marcel moet dit secret zelf aanmaken via
+repo Settings → Secrets and variables → Actions, met de staging-testopruimsleutel (nooit een
+productiesleutel). Tot dat gebeurd is, faalt elke vertrouwde run bewust hard op de opruimpoort. De
+waarden en geldigheid van de secrets zijn niet gecontroleerd. Productpunt **#22 blijft OPEN**: de
+volledige dagelijkse E2E met opruiming is **ONBEWEZEN** tot een echte run PASS geeft.
