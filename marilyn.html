@@ -3872,7 +3872,7 @@ function toonNieuwModal(prefillLead){
     +'<div style="border-top:1px solid var(--border);margin:.75rem 0;padding-top:.75rem"><div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem">Begeleider (tussenpersoon)</div></div>'
     +'<div class="field"><label for="m-bg-naam">Naam begeleider</label><input type="text" id="m-bg-naam" value="Marcel Bisschops"></div>'
     +'<div class="field"><label for="m-bg-email">E-mail begeleider</label><input type="email" id="m-bg-email" value="marcel@bisschopsfinancing.nl"></div>'
-    +'<div style="border-top:1px solid var(--border);margin:.75rem 0;padding-top:.75rem"><div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem" id="m-sectie2-hdr">Kopende partij <span style="font-weight:400;text-transform:none;letter-spacing:normal">(optioneel — vaak nog niet bekend bij aanmaken)</span></div></div>'
+    +'<div style="border-top:1px solid var(--border);margin:.75rem 0;padding-top:.75rem"><div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem" id="m-sectie2-hdr">Kopende partij <span style="font-weight:400;text-transform:none;letter-spacing:normal">(optioneel)</span></div></div>'
     +'<div class="field"><label id="m-p2-naam-lbl">Naam kopende partij</label><div style="display:flex;gap:8px"><input type="text" id="m-koper-naam" placeholder="Naam kopende partij" style="flex:2"><input type="text" id="m-koper-kvk" placeholder="KvK-nr" style="flex:1"></div></div>'
     +'<div class="field"><label id="m-p2-rv-lbl">Rechtsvorm koper</label><select id="m-koper-rv"><option value="">— Kies rechtsvorm —</option><option value="B.V.">B.V. (Besloten Vennootschap)</option><option value="N.V.">N.V. (Naamloze Vennootschap)</option><option value="Eenmanszaak">Eenmanszaak</option><option value="V.O.F.">V.O.F.</option><option value="Maatschap">Maatschap</option><option value="Coöperatie">Coöperatie</option><option value="Stichting">Stichting</option><option value="Holding B.V.">Holding B.V.</option><option value="C.V.">C.V.</option></select></div>'
     +'<div class="field"><label id="m-p2-adres-lbl">Adres koper</label><input type="text" id="m-koper-adres" placeholder="Adres"></div>'
@@ -3895,7 +3895,7 @@ function toonNieuwModal(prefillLead){
     var s1=document.getElementById('m-sectie1-hdr');
     var s2=document.getElementById('m-sectie2-hdr');
     if(s1)s1.textContent=lb.sectie1;
-    if(s2)s2.innerHTML=esc(lb.sectie2)+' <span style="font-weight:400;text-transform:none;letter-spacing:normal">(optioneel — vaak nog niet bekend bij aanmaken)</span>';
+    if(s2)s2.innerHTML=esc(lb.sectie2)+' <span style="font-weight:400;text-transform:none;letter-spacing:normal">(optioneel)</span>';
     var map={
       'm-p1-naam-lbl': lb.partij1+' <span style="color:var(--red)">*</span>',
       'm-p1-rv-lbl': 'Rechtsvorm '+lb.sectie1.toLowerCase()+' <span style="color:var(--red)">*</span>',
@@ -5162,10 +5162,20 @@ async function renderVeiligheidTab(el) {
       var ovR = await fetch(WORKER + '/mna/admin/veiligheid/overzicht', { headers: { 'x-admin-key': adminKey } });
       var ov = await ovR.json();
       var bvR = await fetch(WORKER + '/mna/admin/veiligheid/bevindingen', { headers: { 'x-admin-key': adminKey } });
-      var bv = await bvR.json();
+      var bv = await bvR.json().catch(function(){ return null; });
       if (!ovR.ok || !ov || ov.ok !== true) { el.innerHTML = '<div style="color:var(--red);font-size:13px;padding:1rem">Fout bij laden: ' + esc((ov && ov.error) || 'onbekend') + '</div>'; return; }
-      var open = (bv.bevindingen || []).filter(function(b){ return b.status === 'open'; });
-      var gefixt = (bv.bevindingen || []).filter(function(b){ return b.status !== 'open'; }).slice(0, 15);
+      // Productpunt 23 (12 okt 2026): een geldig overzicht maakt een mislukte bevindingenlijst (401/403/500,
+      // onjuiste JSON, ok!==true, geen array) niet tot "geen bevindingen" — de lijst is dan onbeschikbaar en
+      // de overkoepelende status nooit groen. Recent afgehandeld: alleen bekende statussen, gesorteerd op een
+      // geldige opgelost_op (ontbrekend = onbekend, onderaan; nooit gevonden_op als oplosdatum) vóór de slice.
+      var bvLijst = bvR.ok && bv && bv.ok === true && Array.isArray(bv.bevindingen) && bv.bevindingen.every(function(b){ return b && typeof b === 'object'; }) ? bv.bevindingen : null;
+      var bvReden = bvLijst ? '' : (bvR.status === 401 || bvR.status === 403) ? 'geen toegang (HTTP ' + bvR.status + ')' : !bvR.ok ? 'HTTP ' + bvR.status : 'ongeldig antwoord';
+      var geldigeOplosdatum = function(b){ return typeof b.opgelost_op === 'number' && isFinite(b.opgelost_op) && b.opgelost_op > 0; };
+      var open = (bvLijst || []).filter(function(b){ return b.status === 'open'; });
+      var gefixt = (bvLijst || []).filter(function(b){ return b.status === 'gefixt' || b.status === 'bewust_uitgesteld'; })
+        .sort(function(a, b){ var da = geldigeOplosdatum(a), db = geldigeOplosdatum(b); return da && db ? b.opgelost_op - a.opgelost_op : da ? -1 : db ? 1 : 0; })
+        .slice(0, 15);
+      var onbekendeStatus = (bvLijst || []).filter(function(b){ return b.status !== 'open' && b.status !== 'gefixt' && b.status !== 'bewust_uitgesteld'; });
       var laatsteRun = ov.laatste_selfcheck;
       var laatsteRunTekst = laatsteRun ? (new Date(laatsteRun.ran_at).toLocaleString('nl-NL', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) + ' — ' + laatsteRun.checks_geslaagd + '/' + laatsteRun.checks_totaal + ' geslaagd') : 'Nog nooit gedraaid';
       function pushBadge(naam, run) {
@@ -5218,6 +5228,8 @@ async function renderVeiligheidTab(el) {
       if (!e2eVoorStatus || e2eVoorStatus.verouderd || !e2eGroenVoorStatus) verlopenControles.push('E2E-regressietest verouderd of rood');
       if (!nachtOordeel.groen) verlopenControles.push('nachtelijke selfcheck ' + nachtOordeel.reden);
       if (!ochtendOordeel.groen) verlopenControles.push('ochtendcontrole ' + ochtendOordeel.reden);
+      if (!bvLijst) verlopenControles.push('bevindingenlijst onbeschikbaar: ' + bvReden);
+      if (onbekendeStatus.length) verlopenControles.push(onbekendeStatus.length + ' bevinding(en) met onbekende status');
       var veiligheidActueel = verlopenControles.length === 0;
 
       var html = '<div style="padding:1rem 1.25rem;margin-bottom:1.25rem;border-radius:8px;border:1px solid ' + (veiligheidActueel ? 'var(--teal)' : 'var(--red)') + ';background:' + (veiligheidActueel ? 'var(--teal-bg)' : 'var(--red-bg)') + '">'
@@ -5349,14 +5361,17 @@ async function renderVeiligheidTab(el) {
           + '</div></div>';
       }
 
-      html += '<div class="table-wrap" style="margin-bottom:1.5rem"><div class="table-hdr"><div class="table-title">Open bevindingen (' + open.length + ')</div></div>';
-      if (!open.length) {
+      var bvOnbeschikbaarHtml = '<div class="empty" style="color:var(--red)">&#9888; Bevindingenlijst onbeschikbaar (' + esc(bvReden) + ') — dit betekent niet dat er geen bevindingen zijn.</div>';
+      html += '<div class="table-wrap" style="margin-bottom:1.5rem"><div class="table-hdr"><div class="table-title">Open bevindingen (' + (bvLijst ? open.length : 'onbekend') + ')</div></div>';
+      if (!bvLijst) {
+        html += bvOnbeschikbaarHtml;
+      } else if (!open.length) {
         html += '<div class="empty" style="color:var(--teal)">Geen openstaande bevindingen. &#127881;</div>';
       } else {
         html += '<table><thead><tr><th>Ernst</th><th>Code</th><th>Titel</th><th>Omschrijving</th><th>Gevonden</th><th></th></tr></thead><tbody>';
         open.sort(function(a,b){ var o={kritiek:0,hoog:1,midden:2,laag:3}; return (o[a.ernst]||9)-(o[b.ernst]||9) || b.gevonden_op-a.gevonden_op; }).forEach(function(b){
           html += '<tr>'
-            + '<td><span class="tag" style="background:' + ERNST_KLEUR[b.ernst] + '22;color:' + ERNST_KLEUR[b.ernst] + ';border-color:' + ERNST_KLEUR[b.ernst] + '">' + (ERNST_LABEL[b.ernst] || b.ernst) + '</span></td>'
+            + '<td><span class="tag" style="background:' + ERNST_KLEUR[b.ernst] + '22;color:' + ERNST_KLEUR[b.ernst] + ';border-color:' + ERNST_KLEUR[b.ernst] + '">' + esc(ERNST_LABEL[b.ernst] || b.ernst) + '</span></td>'
             + '<td class="mono" style="font-size:11px;color:var(--muted)">' + esc(b.code || '—') + '</td>'
             + '<td style="font-size:12px;font-weight:600">' + esc(b.titel) + '</td>'
             + '<td style="font-size:11px;color:var(--muted);max-width:340px">' + esc(b.omschrijving || '') + '</td>'
@@ -5369,19 +5384,27 @@ async function renderVeiligheidTab(el) {
       html += '</div>';
 
       html += '<div class="table-wrap"><div class="table-hdr"><div class="table-title">Recent gefixt / afgehandeld</div></div>';
-      if (!gefixt.length) {
+      if (!bvLijst) {
+        html += bvOnbeschikbaarHtml;
+      } else if (!gefixt.length) {
         html += '<div class="empty">Nog niets.</div>';
       } else {
         html += '<table><thead><tr><th>Status</th><th>Code</th><th>Titel</th><th>Opgelost</th></tr></thead><tbody>';
         gefixt.forEach(function(b){
           html += '<tr>'
-            + '<td><span class="tag" style="background:var(--teal-bg);color:var(--teal);border-color:var(--teal)">' + (b.status === 'gefixt' ? 'Gefixt' : 'Bewust uitgesteld') + '</span></td>'
+            + (b.status === 'gefixt'
+                ? '<td><span class="tag" style="background:var(--teal-bg);color:var(--teal);border-color:var(--teal)">Gefixt</span></td>'
+                : '<td><span class="tag" style="background:var(--gold-bg);color:var(--gold);border-color:var(--gold)">Bewust uitgesteld</span></td>')
             + '<td class="mono" style="font-size:11px;color:var(--muted)">' + esc(b.code || '—') + '</td>'
             + '<td style="font-size:12px">' + esc(b.titel) + '</td>'
-            + '<td class="mono" style="font-size:11px">' + (b.opgelost_op ? new Date(b.opgelost_op).toLocaleDateString('nl-NL') : '—') + '</td>'
+            + '<td class="mono" style="font-size:11px">' + (geldigeOplosdatum(b) ? new Date(b.opgelost_op).toLocaleDateString('nl-NL') : 'onbekend') + '</td>'
             + '</tr>';
         });
         html += '</tbody></table>';
+      }
+      if (onbekendeStatus.length) {
+        html += '<div style="padding:.75rem 1rem;font-size:12px;color:var(--red);border-top:1px solid var(--border)">&#9888; ' + onbekendeStatus.length + ' bevinding(en) met onbekende status — niet als afgehandeld geteld: '
+          + onbekendeStatus.map(function(b){ return esc(b.code || b.titel || '—') + ' (status: ' + esc(String(b.status)) + ')'; }).join('; ') + '</div>';
       }
       html += '</div>';
 

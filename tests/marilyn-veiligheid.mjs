@@ -11,6 +11,14 @@
 // 500, netwerkfout, onjuiste JSON, ok:false. Alle gegevens zijn synthetisch; er wordt nooit een echte
 // omgeving, betaalde AI, audit, mail of deploy aangeroepen.
 //
+// Productpunt 23 (12 okt 2026): een mislukte bevindingenlijst (401/403/500, onjuiste JSON, ok/array
+// ongeldig) bij een geldig overzicht is nooit groen of "geen bevindingen"; "Recent gefixt / afgehandeld"
+// sorteert op een geldige opgelost_op vóór de 15-limiet, toont een ontbrekende datum als "onbekend" en
+// een onbekende status nooit als bewust uitgesteld of groen (sectie H).
+//
+// Productpunt 20 (12 okt 2026): het kopendepartijlabel in "Nieuw traject" (statisch en per trajecttype)
+// toont alleen "(optioneel)", zonder "vaak nog niet bekend bij aanmaken"; validatie ongewijzigd (sectie I).
+//
 // Dit is UI-functioneel bewijs, GEEN bewijs dat de echte nachtelijke selfcheck of ochtendcontrole
 // draait — zie docs/marilyn-veiligheid.md.
 //
@@ -190,7 +198,7 @@ const ACTIES = {
 };
 
 function maakWorker() {
-  const srv = { overzicht: groenOverzicht(), overzichtUit: 'ok', bevindingen: [], uit: {}, calls: [], onbekend: [] };
+  const srv = { overzicht: groenOverzicht(), overzichtUit: 'ok', bevindingen: [], bevindingenUit: 'ok', uit: {}, calls: [], onbekend: [] };
   // uitkomst: 'net' | 'malformed' | [status, body]
   const lever = (uit) => {
     if (uit === 'net') return Promise.reject(new TypeError('Failed to fetch'));
@@ -211,13 +219,20 @@ function maakWorker() {
       return lever(srv.overzichtUit === 'ok' ? [200, srv.overzicht] : srv.overzichtUit);
     }
     if (methode === 'GET' && u.pathname === '/mna/admin/veiligheid/bevindingen') {
-      return Promise.resolve(geautoriseerd ? antwoord(200, { ok: true, bevindingen: srv.bevindingen }) : antwoord(401, { error: 'Unauthorized' }));
+      if (!geautoriseerd) return Promise.resolve(antwoord(401, { error: 'Unauthorized' }));
+      return lever(srv.bevindingenUit === 'ok' ? [200, { ok: true, bevindingen: srv.bevindingen }] : srv.bevindingenUit);
     }
     for (const [naam, [m, p]] of Object.entries(ACTIES)) {
       if (methode !== m || u.pathname !== p) continue;
       call.actie = naam;
       if (!geautoriseerd) return Promise.resolve(antwoord(401, { error: 'Unauthorized' }));
-      return lever(srv.uit[naam] || [200, { ok: true }]);
+      const uit = srv.uit[naam] || [200, { ok: true }];
+      // Zoals backend 24-veiligheidsdashboard.js: open → niet-open zet opgelost_op = nu.
+      if (naam === 'opgelost' && Array.isArray(uit) && uit[0] === 200 && uit[1] && uit[1].ok === true) {
+        const b = JSON.parse(opts.body || '{}'), rij = srv.bevindingen.find((x) => x.id === b.id);
+        if (rij && rij.status === 'open' && b.status !== 'open') { rij.status = b.status; rij.opgelost_op = Date.now(); }
+      }
+      return lever(uit);
     }
     srv.onbekend.push(call);
     return Promise.resolve(antwoord(404, { error: 'Not found' }));
@@ -464,6 +479,119 @@ export async function draaiMarilynVeiligheidChecks(root = process.cwd()) {
     knop().click(); await settle();
     const p = o.srv.acties('opgelost');
     check(p.length === 1 && JSON.parse(p[0].body).id === 'SYN-B1' && JSON.parse(p[0].body).status === 'gefixt' && o.st.toasts[0].type === 'ok' && o.srv.overzichtGets() === 1, 'markeer opgelost succes: één POST voor deze bevinding, overzicht herladen');
+  });
+
+  // ── H. Productpunt 23: recent afgehandeld en bevindingenlijst waarheidsgetrouw ──
+  const sectie = (o, titel) => { const t = o.tc().querySelectorAll('.table-title').find((e) => e.textContent.startsWith(titel)); return t ? t.closest('.table-wrap') : null; };
+  const recentRijen = (o) => { const w = sectie(o, 'Recent gefixt / afgehandeld'); return w ? w.querySelectorAll('tr').filter((r) => r.querySelector('td')).map((r) => r.querySelectorAll('td').map((c) => c.textContent)) : []; };
+  const datum = (ms) => new Date(ms).toLocaleDateString('nl-NL');
+  // Backendvolgorde is gevonden_op DESC (24-veiligheidsdashboard.js), niet opgelost_op.
+  const afgehandeld = (n, extra = {}) => Array.from({ length: n }, (_, i) => ({ id: 'SYN-G' + (i + 1), status: 'gefixt', ernst: 'laag', code: 'SYNG' + (i + 1), titel: 'Afgehandeld ' + (i + 1), gevonden_op: Date.now() - (i + 1) * UUR, opgelost_op: Date.now() - (30 + ((i * 7) % 16)) * DAG, ...extra }));
+
+  await probeer('recent afgehandeld', async () => {
+    const o = await maakOmgeving(root);
+    // Echte flow: login → Veiligheid → markeer opgelost → herladen → bovenaan recent, ook bij 16 oudere items.
+    o.srv.bevindingen = afgehandeld(16).concat([{ id: 'SYN-NU', status: 'open', ernst: 'midden', code: 'SYNNU', titel: 'Zojuist opgelost', gevonden_op: Date.now() - 90 * DAG }]);
+    await o.veiligheid(groenOverzicht());
+    o.srv.uit.opgelost = [200, { ok: true }]; o.srv.reset();
+    o.tc().querySelector('.btn-veiligheid-opgelost').click(); await settle();
+    let rijen = recentRijen(o);
+    check(o.srv.overzichtGets() === 1 && rijen.length === 15 && rijen[0][2] === 'Zojuist opgelost' && rijen[0][3] === datum(Date.now()), 'recent: na oplossen en herladen staat de zojuist opgeloste bevinding bovenaan (16 oudere items, max 15 getoond)');
+
+    // 16 items: gesorteerd op opgelost_op (nieuwste eerst) vóór de slice; de oudste valt af.
+    const zestien = afgehandeld(16);
+    o.srv.bevindingen = zestien;
+    await o.veiligheid(groenOverzicht());
+    rijen = recentRijen(o);
+    const verwacht = zestien.slice().sort((a, b) => b.opgelost_op - a.opgelost_op).slice(0, 15).map((b) => b.titel);
+    check(rijen.length === 15 && rijen.every((r, i) => r[2] === verwacht[i]), '16 items: 15 getoond, gesorteerd op opgelost_op en de oudst opgeloste valt af');
+
+    // Missende/ongeldige oplosdatum: "onbekend", onder de bekende datums, nooit de vondstdatum.
+    const gevonden = Date.now() - 2 * DAG;
+    o.srv.bevindingen = [
+      { id: 'SYN-M1', status: 'gefixt', ernst: 'laag', code: 'SYNM1', titel: 'Zonder datum', gevonden_op: gevonden, opgelost_op: null },
+      { id: 'SYN-M2', status: 'gefixt', ernst: 'laag', code: 'SYNM2', titel: 'Datum als tekst', gevonden_op: gevonden, opgelost_op: 'gisteren' },
+      { id: 'SYN-M3', status: 'gefixt', ernst: 'laag', code: 'SYNM3', titel: 'Met datum', gevonden_op: gevonden - DAG, opgelost_op: Date.now() - 40 * DAG },
+    ];
+    await o.veiligheid(groenOverzicht());
+    rijen = recentRijen(o);
+    check(rijen.length === 3 && rijen[0][2] === 'Met datum' && rijen.slice(1).every((r) => r[3] === 'onbekend') && !rijen.some((r) => r[3] === datum(gevonden)), 'missende datum: expliciet "onbekend", lager dan bekende datums, vondstdatum nooit als oplosdatum');
+    o.srv.bevindingen = afgehandeld(15).concat([{ id: 'SYN-M4', status: 'gefixt', ernst: 'laag', code: 'SYNM4', titel: 'Zonder datum nieuw gevonden', gevonden_op: Date.now(), opgelost_op: undefined }]);
+    await o.veiligheid(groenOverzicht());
+    check(!recentRijen(o).some((r) => r[2] === 'Zonder datum nieuw gevonden'), 'missende datum: verdringt geen bekende oplosdatum uit de 15 recentste');
+
+    // Labels: gefixt en bewust uitgesteld expliciet; onbekende status nooit "Bewust uitgesteld" of groen.
+    o.srv.bevindingen = [
+      { id: 'SYN-L1', status: 'gefixt', ernst: 'laag', code: 'SYNL1', titel: 'Fix', gevonden_op: Date.now() - 3 * DAG, opgelost_op: Date.now() - DAG },
+      { id: 'SYN-L2', status: 'bewust_uitgesteld', ernst: 'laag', code: 'SYNL2', titel: 'Uitgesteld', gevonden_op: Date.now() - 3 * DAG, opgelost_op: Date.now() - 2 * DAG },
+      { id: 'SYN-L3', status: 'in_onderzoek', ernst: 'kritiek', code: 'SYNL3', titel: 'Vreemde status', gevonden_op: Date.now() - 3 * DAG, opgelost_op: Date.now() },
+    ];
+    await o.veiligheid(groenOverzicht());
+    rijen = recentRijen(o);
+    const tags = sectie(o, 'Recent gefixt / afgehandeld').querySelectorAll('.tag');
+    check(rijen.length === 2 && rijen[0][0] === 'Gefixt' && rijen[1][0] === 'Bewust uitgesteld' && tags[0].style.color === 'var(--teal)' && tags[1].style.color !== 'var(--teal)', 'labels: "Gefixt" groen, "Bewust uitgesteld" expliciet en niet groen');
+    const recentTekst = sectie(o, 'Recent gefixt / afgehandeld').textContent;
+    check(!rijen.some((r) => r[2] === 'Vreemde status') && /onbekende status/.test(recentTekst) && /in_onderzoek/.test(recentTekst) && o.banner().rood && /1 bevinding\(en\) met onbekende status/.test(o.banner().tekst), 'onbekende status: niet als afgehandeld/bewust uitgesteld getoond, expliciet gemeld en algemene status NIET actueel');
+
+    // XSS: servertekst in titel/code/ernst/status wordt ge-escaped.
+    o.srv.bevindingen = [
+      { id: 'SYN-X1', status: 'open', ernst: '<b id="xss-ernst">x</b>', code: '<b id="xss-code">x</b>', titel: '<b id="xss-titel">x</b>', gevonden_op: Date.now() },
+      { id: 'SYN-X2', status: 'gefixt', ernst: 'laag', code: 'SYNX2', titel: '<img id="xss-recent">', gevonden_op: Date.now(), opgelost_op: Date.now() },
+      { id: 'SYN-X3', status: '<b id="xss-status">x</b>', ernst: 'laag', code: '<b id="xss-ocode">x</b>', titel: 'x', gevonden_op: Date.now() },
+    ];
+    await o.veiligheid(groenOverzicht());
+    check(['xss-ernst', 'xss-code', 'xss-titel', 'xss-recent', 'xss-status', 'xss-ocode'].every((id) => !o.$(id)) && o.tc().textContent.includes('<img id="xss-recent">'), 'XSS: servertekst in open/recent/onbekende status ge-escaped');
+  });
+
+  await probeer('bevindingenlijst onbeschikbaar', async () => {
+    const o = await maakOmgeving(root);
+    o.srv.bevindingen = [{ id: 'SYN-B1', status: 'open', ernst: 'hoog', code: 'SYN1', titel: 'Synthetisch', gevonden_op: Date.now() }];
+    const fouten = STATUS_FOUTEN.filter(([n]) => n !== 'netwerkfout').concat([
+      ['ok:true zonder lijst', [200, { ok: true }]], ['bevindingen geen array', [200, { ok: true, bevindingen: { a: 1 } }]],
+      ['array zonder ok', [200, { bevindingen: [] }]], ['kale array', [200, []]], ['element null', [200, { ok: true, bevindingen: [null] }]],
+    ]);
+    for (const [naam, uit] of fouten) {
+      o.srv.bevindingenUit = uit;
+      await o.veiligheid(groenOverzicht());
+      const t = o.tc().textContent;
+      const reden = naam === '401' || naam === '403' ? /bevindingenlijst onbeschikbaar: geen toegang \(HTTP 40[13]\)/ : /bevindingenlijst onbeschikbaar/;
+      check(!o.banner().groen && o.banner().rood && reden.test(o.banner().tekst) && !/Geen openstaande bevindingen/.test(t) && !/Nog niets\./.test(t) && /Bevindingenlijst onbeschikbaar/.test(t) && /Open bevindingen \(onbekend\)/.test(t) && !o.tc().querySelector('.btn-veiligheid-opgelost'), 'bevindingen ' + naam + ' bij overzicht 200: onbeschikbaar getoond, geen groen, geen "geen bevindingen", geen actieknop');
+    }
+    o.srv.bevindingenUit = 'net';
+    await o.veiligheid(groenOverzicht());
+    check(/Fout bij laden/.test(o.tc().textContent) && !o.banner().groen && !/Geen openstaande bevindingen/.test(o.tc().textContent), 'bevindingen netwerkfout: foutmelding, geen groen');
+    // Lege maar geldige lijst blijft gewoon "geen openstaande bevindingen".
+    o.srv.bevindingenUit = 'ok'; o.srv.bevindingen = [];
+    await o.veiligheid(groenOverzicht());
+    check(o.banner().groen && /Geen openstaande bevindingen/.test(o.tc().textContent), 'bevindingen geldig en leeg: bestaand gedrag (actueel, geen openstaande bevindingen) behouden');
+    // Rolweigering na login: sleutel ongeldig → beide routes weigeren, geen groen en geen acties.
+    o.srv.bevindingen = [{ id: 'SYN-B1', status: 'open', ernst: 'hoog', code: 'SYN1', titel: 'Synthetisch', gevonden_op: Date.now() }];
+    o.run("adminKey='ONGELDIG'");
+    await o.veiligheid(groenOverzicht());
+    check(/Fout bij laden/.test(o.tc().textContent) && !o.banner().groen && !o.tc().querySelector('.btn-veiligheid-opgelost') && !o.$('btn-veiligheid-nu'), 'rolweigering: ongeldige sleutel → geen groen, geen bevindingen en geen acties');
+  });
+
+  // ── I. Productpunt 20: kopendepartijlabel in "Nieuw traject" toont alleen "(optioneel)" ──
+  await probeer('kopendepartijlabel', async () => {
+    const FRASE = /vaak nog niet bekend bij aanmaken/;
+    const bron = fs.readFileSync(path.join(root, 'marilyn.html'), 'utf8');
+    const statisch = bron.split('\n').find((r) => r.includes('id="m-sectie2-hdr">')) || '';
+    check(statisch.includes('id="m-sectie2-hdr">Kopende partij <span style="font-weight:400;text-transform:none;letter-spacing:normal">(optioneel)</span>') && !FRASE.test(statisch), 'kopende partij statisch label: "(optioneel)" behouden, ongewenste frase weg');
+    const o = await maakOmgeving(root);
+    o.srv.reset();
+    o.run('toonNieuwModal()');
+    const hdr = () => o.$('m-sectie2-hdr');
+    check(hdr() && hdr().textContent === 'Kopende partij (optioneel)' && hdr().querySelector('span') && hdr().querySelector('span').textContent === '(optioneel)', 'kopende partij dynamisch label (Verkoop): "Kopende partij (optioneel)" zonder ongewenste frase');
+    const typen = [['Fusie', 'Fusiepartij B'], ['Overname', 'Overnemende partij'], ['PE-traject', 'PE-partij'], ['Opvolging', 'Opvolgend eigenaar'], ['Verkoop', 'Kopende partij']];
+    for (const [type, sectie2] of typen) {
+      o.$('m-t').value = type; o.$('m-t').dispatch('change');
+      check(hdr().textContent === sectie2 + ' (optioneel)' && !FRASE.test(hdr().textContent) && o.$('m-p2-naam-lbl').textContent === o.run('partijLabels(' + JSON.stringify(type) + ').partij2'), 'kopende partij dynamisch label ' + type + ': "' + sectie2 + ' (optioneel)", partijlabels wisselen mee');
+    }
+    o.$('m-sector').value = 'zorg'; o.$('m-sector').dispatch('change');
+    check(o.$('m-sector').value === 'zorg' && hdr().textContent === 'Kopende partij (optioneel)', 'sectorwissel: sectorkeuze blijft staan en laat het partijlabel ongemoeid');
+    check(!FRASE.test(o.doc.body.textContent) && /Aangedragen door \(optioneel — intern/.test(o.doc.body.textContent), 'nieuw traject: frase nergens meer in de modal, overige optioneel-hint ongewijzigd');
+    o.$('m-ok').click(); await settle();
+    check(o.$('m-err').textContent === 'Naam onderneming is verplicht.' && !o.srv.calls.some((c) => c.methode === 'POST'), 'nieuw traject: bestaande validatie ongewijzigd, niets opgeslagen zonder verplichte velden');
   });
 
   // ── F. Rollen: geen Veiligheid-tab of actie zonder superadmin / geldige sleutel ──
