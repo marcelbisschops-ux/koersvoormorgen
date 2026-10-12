@@ -400,6 +400,53 @@ export async function draaiDocumentProcessingUiChecks(root = process.cwd()) {
     check(!/Documentenlijst tijdelijk niet beschikbaar/.test(t.log.html), 'lijst: foutmelding verdwijnt na een geslaagde lading');
   });
 
+  // Lijstlading loopt nog terwijl de gebruiker uitlogt en direct opnieuw inlogt (nieuw S-object, DOCS
+  // geleegd). Het oude antwoord (succes, HTTP-fout, ongeldige JSON, netwerkfout) mag de nieuwe sessie
+  // niet raken — ook niet bij dezelfde code — en bij een andere code evenmin.
+  const lijstNaOpnieuwInloggen = async (naam, oudAntwoord, nieuweCode) => {
+    const t = laad(root);
+    t.begin([{ id: 'doc_oud_cache', naam: 'syn-oud-cache.txt', type: 'text/plain', grootte: 40, analyse: '', velden: {}, bewaard: true, uploading: false, versie: 1 }]);
+    const u = t.uitgesteld();
+    t.opzet.lijst.push({ uitgesteld: u });
+    t.ctx.loadDocsForFase(FASE);
+    await u.binnen;
+    Object.keys(t.ctx.DOCS).forEach((k) => { delete t.ctx.DOCS[k]; });
+    t.ctx.S = { code: '', rol: '', traject: null, data: {} };
+    const nieuweS = { code: nieuweCode, rol: 'verkoper', traject: { status: 'actief', bewaar_docs: true }, _entiteiten: [], data: { financieel_omzet: '777' }, _docsLaadFout: { [FASE]: 'Synthetische fout van de nieuwe sessie.' } };
+    t.ctx.S = nieuweS;
+    const nieuwDoc = { id: 'doc_nieuw_lijst', naam: 'syn-nieuw.txt', type: 'text/plain', grootte: 40, analyse: '', velden: {}, bewaard: true, uploading: false, versie: 1, verwerking_status: 'PROCESSED' };
+    t.ctx.DOCS[FASE] = [nieuwDoc];
+    t.log.toasts = []; t.log.html = ''; t.log.autoFill = [];
+    const saveVoor = t.log.saveAll;
+    u.geef(oudAntwoord);
+    await wacht(10);
+    check(t.ctx.DOCS[FASE].length === 1 && t.ctx.DOCS[FASE][0] === nieuwDoc && Object.keys(t.ctx.DOCS).length === 1, naam + ': nieuwe DOCS ongewijzigd (oude lijst vervangt niets)');
+    check(t.ctx.S === nieuweS && JSON.stringify(nieuweS._docsLaadFout) === JSON.stringify({ [FASE]: 'Synthetische fout van de nieuwe sessie.' }), naam + ': foutstatus van de nieuwe sessie niet gezet, overschreven of gewist');
+    check(JSON.stringify(nieuweS.data) === '{"financieel_omzet":"777"}' && t.log.autoFill.length === 0 && t.log.saveAll === saveVoor, naam + ': handmatige financiële invoer onaangeroerd, geen autofill of opslag');
+    check(t.log.html === '' && t.log.toasts.length === 0 && t.log.lijst.length === 1, naam + ': geen render, toast of extra lijstlading in de nieuwe sessie');
+  };
+  const oudeLijst = { status: 200, body: [{ id: 'doc_oud_lijst', bestand_naam: 'syn-oud-lijst.txt', bestand_type: 'text/plain', bestand_grootte: 40, bewaard: 1, analyse: 'Oude analyse.', veld_extractie: '{"omzet":"1"}', methode: 'ai_text', uploaded_at: 1, fase_id: FASE, versie: 1, verwerking_status: 'PROCESSED', bestand_opgeslagen: true }] };
+  await probeer('lijst, zelfde code, oud succes', () => lijstNaOpnieuwInloggen('lijst zelfde code + oud succes', oudeLijst, CODE));
+  await probeer('lijst, zelfde code, oude HTTP-fout', () => lijstNaOpnieuwInloggen('lijst zelfde code + oude HTTP-fout', { status: 503, body: { error: 'Oude synthetische lijstfout' } }, CODE));
+  await probeer('lijst, zelfde code, oude JSON-fout', () => lijstNaOpnieuwInloggen('lijst zelfde code + oude JSON-fout', { status: 200, ongeldigeJson: true }, CODE));
+  await probeer('lijst, zelfde code, oude netwerkfout', () => lijstNaOpnieuwInloggen('lijst zelfde code + oude netwerkfout', { netwerk: true }, CODE));
+  await probeer('lijst, andere code, oud succes', () => lijstNaOpnieuwInloggen('lijst andere code + oud succes', oudeLijst, 'SYN-ANDERE-CODE'));
+
+  await probeer('lijst, zelfde sessie, uitgesteld', async () => {
+    // Positieve controle: binnen dezelfde sessie wordt een vertraagd antwoord gewoon verwerkt en blijft
+    // een lokale, nog lopende upload van dit traject in de lijst staan.
+    const t = laad(root);
+    const lokaal = { id: 'tmp_syn_1', naam: 'syn-lopend.txt', type: 'text/plain', grootte: 40, analyse: '', velden: {}, uploading: true, traject_code: CODE };
+    t.begin([lokaal]);
+    const u = t.uitgesteld();
+    t.opzet.lijst.push({ uitgesteld: u });
+    t.ctx.loadDocsForFase(FASE);
+    await u.binnen;
+    u.geef(oudeLijst);
+    await wacht(10);
+    check(t.docs().length === 2 && t.docs()[0] === lokaal && t.doc('doc_oud_lijst'), 'lijst zelfde sessie: vertraagd antwoord verwerkt, lokale uploadwachtrij behouden');
+  });
+
   await probeer('XSS', async () => {
     const t = laad(root);
     t.begin();

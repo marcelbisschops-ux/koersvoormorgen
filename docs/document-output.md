@@ -89,6 +89,14 @@ Stand: 7 okt 2026, branch `codex/weekend-option2`. Dit bestand beschrijft de hui
 
 **Bewijs.** `tests/document-processing-ui.mjs` (check 25 van `tests/audit-consistentie.mjs`) draait de echte functies met synthetische, uitgestelde antwoorden: een lopende upload, uitloggen, opnieuw inloggen met dezelfde code met nieuwe `S`/`DOCS`/handmatige data, daarna een oud succes en een oude fout, plus een centrale upload over twee fases. Gecontroleerd: geen tweede verzoek, nieuwe `DOCS` en data ongewijzigd, geen autofill, toast, render, lijstherlaad of opslag, en een eerlijke uitkomst. Synthetisch bewijs in `node:vm`, geen browser-, staging- of productiebewijs.
 
+### Vervolg: documentenlijst tijdens uitloggen en opnieuw inloggen met dezelfde code (productpunt 1, 12 okt 2026)
+
+**Oorzaak (`mna/02-state-opslag-documenten.js`).** `loadDocsForFase` en de interne `laadFout` controleerden na de fetch alleen `S.code`. Dit randgeval stond nog open sinds de rootcausematrix van 7 okt. Bij direct opnieuw inloggen met dezelfde code kon een oude lijstreactie de nieuwe `DOCS[fase]` vervangen. Een oude fout kon `_docsLaadFout` in de nieuwe sessie zetten of wissen en een hertekening geven.
+
+**Huidig gedrag.** `loadDocsForFase` legt bij de start het `S`-object vast, net als de upload- en batchfuncties. Een antwoord wordt alleen verwerkt als `S` nog hetzelfde object is én de code gelijk is. Dat geldt voor succes, HTTP-fout, ongeldige JSON en netwerkfout. Er komt geen nieuwe requestplanner en geen nieuwe opslag. Ongewijzigd zijn het gewone laden, het behouden van de cache bij een fout, de lokale uploadwachtrij van hetzelfde traject en het negeren van een andere code.
+
+**Bewijs.** `tests/document-processing-ui.mjs` (check 25) laat de echte `loadDocsForFase` een uitgesteld lijstantwoord krijgen. Tussendoor wordt uitgelogd en opnieuw ingelogd met dezelfde code, met een nieuwe `S`, een nieuw document in `DOCS`, handmatige financiële invoer en een eigen foutstatus. Daarna komt een oud succes, een oude 503, ongeldige JSON of een netwerkfout binnen, en voor de controle ook een oud succes bij een andere code. Gecontroleerd: `DOCS`, foutstatus en data blijven ongewijzigd, en er volgt geen render, toast, autofill, opslag of extra lijstlading. Een positieve controle laat zien dat een vertraagd antwoord binnen dezelfde sessie gewoon wordt verwerkt en dat de lokale lopende upload blijft staan. Synthetisch bewijs in `node:vm`, geen browser-, staging- of productiebewijs.
+
 ## Bewijs
 
 **Composer (sectie G van `tests/document-output-security.mjs`).** De proef draait de echte `bgMouRender`/`bgMouWire`/`bgMouApi` uit mna/04 en `esc` uit mna/02 in `node:vm`. Daarbij horen een minimale synthetische DOM, een nep-fetch met vertraagde PATCH-antwoorden en twee synthetische documenten. De proef controleert:

@@ -1037,11 +1037,14 @@ function getDocsForFase(faseId) {
 // worden nooit gegevens verwerkt. Een mislukte lijstlading (bijv. 503) is een fout, geen lege lijst:
 // de bestaande cache blijft staan met een melding. Lokale, nog lopende uploads van dit traject blijven
 // bij het herladen behouden (anders verdween de wachtrij en de annuleerknop tijdens een reeks).
+// Het antwoord is gebonden aan het traject (S.code) én aan de sessie (het S-object), zoals bij de
+// upload/batch: na uitloggen en opnieuw inloggen met dezelfde code raakt een oud antwoord niets meer.
 function loadDocsForFase(faseId) {
   if (!S.code || isKoper()) return;
-  var code = S.code;
+  var code = S.code, sessie = S;
+  function actueel() { return S === sessie && S.code === code; }
   function laadFout(tekst) {
-    if (S.code !== code) return;
+    if (!actueel()) return;
     if (!S._docsLaadFout) S._docsLaadFout = {};
     S._docsLaadFout[faseId] = tekst;
     renderApp();
@@ -1051,7 +1054,7 @@ function loadDocsForFase(faseId) {
       return r.json().then(function(docs){ return { r: r, docs: docs }; }, function(){ return { r: r, docs: null }; });
     }, function(){ return { netwerk: true }; })
     .then(function(res){
-      if (S.code !== code) return;
+      if (!actueel()) return;
       if (res.netwerk) { laadFout('Geen verbinding: de documentenlijst kon niet worden geladen.'); return; }
       if (!res.r.ok || !Array.isArray(res.docs)) {
         laadFout((res.docs && typeof res.docs.error === 'string' && res.docs.error) ? res.docs.error : ('De documentenlijst kon niet worden geladen (HTTP ' + res.r.status + ').'));
