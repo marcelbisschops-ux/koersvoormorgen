@@ -67,6 +67,20 @@ Stand: 7 okt 2026, branch `codex/weekend-option2`. Dit bestand beschrijft de hui
   - Chromium: buiten deze repo is een aparte proef gedaan met echte Chromium en een synthetisch netwerk. Het resultaat staat in `productpunt19-bewijs/chromium-acceptatie.json`. Die proef hoort bij `mna/04-begeleider-dashboard.js` met SHA-256 `7513195d549d71f1b77712aec2c8944082aa1864cfd6d92604345dd6c4e460de`. Volgens die proef blijft een tweede, nog niet opgeslagen invoer behouden (SECOND UNSAVED). Deze documentatiewijziging heeft die proef niet zelf gedraaid en het bestand niet zelf ingezien. Er is ook geen Playwright-run gedaan in deze repo, en `tests/e2e-ui.spec.js` valt buiten de scope.
   - Staging en productie staan nog **open**. `.pages-dist/` is niet bijgewerkt (buildartefact).
 
+### Vervolg: sluiten met een lopende opslag (12 okt 2026)
+
+**Oorzaak.** "Sluiten" (`mou-close`) verbergt en leegt `bg-doc-out`, maar `_mouDocId` blijft staan. Een opslag die nog liep, zag na de `await` nog steeds "zelfde traject en document" en riep `bgMouRender()` aan. Die vulde de gesloten (verborgen) composer opnieuw en startte een nieuwe `_mouGen`. Was intussen een andere composer geopend (bijvoorbeeld LoI na het sluiten van de MoU), dan brak die af en verscheen de MoU in plaats van de LoI. Hetzelfde gebeurde bij een documentwissel (`mou-kies`) die nog aan het laden was: de late reactie laadde het oude document opnieuw en de wissel ging verloren.
+
+**Huidig gedrag.**
+
+- Na een opslag wordt alleen hertekend als hetzelfde traject en document nog getoond worden, de composer nog in beeld is (`mou-close` bestaat) en de laatst gestarte `bgMouRender` ook voor dit document is (`_mouDocDoel`). Anders wordt niets hertekend en blijft `_mouGen` ongewijzigd.
+- Bij een geslaagde late opslag vervalt het concept, zoals voorheen alleen als er sindsdien niets nieuws is getypt. Bij een late fout blijft het concept staan, met de fout. De melding (toast) verschijnt in beide gevallen.
+- Na sluiten blijven de concepten van andere velden en van de vrije tekst in het geheugen. Bij **expliciet heropenen** van hetzelfde document komen ze terug, een mislukt veld met de foutmarkering. Sluiten en heropenen versturen niets automatisch: geen PATCH, geen AI, niet finaliseren of versturen.
+- Een gewone opslag in een composer die open is, hertekent zoals voorheen. Een lopende hertekening van hetzelfde document blokkeert dat niet. Er is geen algemene onderdrukking van hertekenen.
+- Ongewijzigd: de scheiding per traject en document, het bevroren document (geen concepten terug, eerlijke melding), de generatiebewaking en de rechtencontrole in de backend.
+
+**Bewijs (sectie G).** `composer sluiten`, `composer sluiten andere weergave` en `composer sluiten traject/bevroren` gebruiken de echte `bgMouComposer` om te openen en te heropenen. Ze dekken: een vrije tekst en een tweede veld met onopgeslagen invoer, twee PATCHes die nog lopen, sluiten, daarna een late geslaagde opslag en een late fout (geen GET, geen nieuwe generatie, de DOM blijft leeg), heropenen van hetzelfde document, een LoI die opent terwijl de late MoU-reactie binnenkomt, een documentwissel die nog laadt, een trajectwissel en een document dat intussen bevroren is. Dit is synthetisch bewijs in `node:vm`, geen Chromium-, staging- of productiebewijs.
+
 ## Bewijs
 
 **Composer (sectie G van `tests/document-output-security.mjs`).** De proef draait de echte `bgMouRender`/`bgMouWire`/`bgMouApi` uit mna/04 en `esc` uit mna/02 in `node:vm`. Daarbij horen een minimale synthetische DOM, een nep-fetch met vertraagde PATCH-antwoorden en twee synthetische documenten. De proef controleert:

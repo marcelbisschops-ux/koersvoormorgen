@@ -11,7 +11,8 @@
 //
 // Sectie G (productpunt 19, 11 okt 2026) draait de ECHTE MoU/LoI/NDA-composer (bgMouRender/bgMouWire
 // uit mna/04) op een minimale synthetische DOM met vertraagde PATCH-antwoorden: twee velden + vrije
-// tekst, oudere/mislukte opslag, documentwissel, ander traject en bevroren document. Sectie H vergrendelt
+// tekst, oudere/mislukte opslag, documentwissel, ander traject en bevroren document; sinds 12 okt ook
+// sluiten (mou-close) met late opslagreactie en heropenen via de echte bgMouComposer. Sectie H vergrendelt
 // statisch de aanhaakpunten van die fix in mna/04 (zelfde drie bronchecks als check 14 van de audit).
 //
 // Gebruik: node tests/document-output-security.mjs   (vanuit de repo-root)
@@ -185,6 +186,8 @@ function laadComposer(root, opts = {}) {
       'doc-A': { document: { id: 'doc-A', status: 'draft', current_version: 3, bevroren: false }, componenten: [compSyn('i-a1', { koper: 'Koper Synthetisch BV', verkoper: 'Verkoper Synthetisch BV' }, 'Bestaande tekst A')] },
       'doc-B': { document: { id: 'doc-B', status: 'draft', current_version: 1, bevroren: false }, componenten: [compSyn('i-b1', { koper: 'Koper B BV', verkoper: 'Verkoper B BV' }, 'Tekst B')] },
     },
+    // Documentlijst voor de echte bgMouComposer (expliciet openen/heropenen).
+    lijst: [{ id: 'doc-A', doc_type: 'mou', current_version: 3, status: 'draft', created_at: 0 }, { id: 'doc-B', doc_type: 'mou', current_version: 1, status: 'draft', created_at: 0 }],
     wachtrij: [], verzoeken: [], houdVast: () => false,
   };
   const eff = { toasts: [], confirms: [], opslag: 0 };
@@ -197,6 +200,8 @@ function laadComposer(root, opts = {}) {
       return d ? [200, JSON.parse(JSON.stringify({ ok: true, document: d.document, componenten: d.componenten, divergenties: [], reacties: [] }))] : [404, { error: 'Niet gevonden' }];
     }
     if (method === 'GET' && /^\/mna\/tos\/menu\//.test(pad)) return [200, { ok: true, menu: [], ontbrekend_kern: [], required_reviews: {} }];
+    if (method === 'POST' && /^\/mna\/tos\/activeer\//.test(pad)) return [200, { ok: true }];
+    if (method === 'GET' && /^\/mna\/tos\/documenten\//.test(pad)) return [200, { ok: true, documenten: JSON.parse(JSON.stringify(srv.lijst)) }];
     return [500, { error: 'onverwacht synthetisch verzoek ' + method + ' ' + pad }];
   }
   const fetch = (url, o = {}) => {
@@ -495,6 +500,102 @@ export async function draaiDocumentOutputSecurityChecks(root = process.cwd()) {
     await t.doc.getElementById('mou-finaliseer').onclick();
     check(t.eff.confirms.length === 1 && t.eff.confirms[0].includes('niet-opgeslagen wijzigingen (1)') && !t.srv.verzoeken.some((v) => /finaliseer/.test(v.pad)),
       'composer: finaliseren waarschuwt eerst voor onopgeslagen invoer; na annuleren geen finaliseerverzoek');
+  });
+
+  // Productpunt 19 vervolg (12 okt 2026): sluiten (mou-close) terwijl een opslag nog loopt, late
+  // reactie, en expliciet heropenen via de echte bgMouComposer.
+  await tryAsync('composer sluiten', async () => {
+    const t = laadComposer(root, {});
+    const gets = () => t.srv.verzoeken.filter((v) => v.method === 'GET').length;
+    await t.ctx.bgMouComposer('MOU'); await rust();
+    check(t.ctx._mouDocId === 'doc-A' && t.out.style.display === 'block' && t.veld('koper') && t.veld('koper').value === 'Koper Synthetisch BV',
+      'composer sluiten: echte bgMouComposer opent doc-A');
+    t.typ(t.tekst(), 'Tekst vóór sluiten');
+    t.typ(t.veld('koper'), 'Koper vóór sluiten');
+    const s1 = t.naar(t.veld('koper'), t.veld('verkoper'));
+    t.typ(t.veld('verkoper'), 'Verkoper vóór sluiten');
+    const s2 = t.naar(t.veld('verkoper'), null); // een klik op Sluiten blurt eerst het gefocuste veld
+    t.doc.getElementById('mou-close').onclick();
+    const g0 = gets(), gen0 = t.ctx._mouGen;
+    check(t.out.style.display === 'none' && t.out.innerHTML === '' && t.srv.wachtrij.length === 2,
+      'composer sluiten: Sluiten verbergt en leegt de composer terwijl twee veldopslagen nog lopen');
+    t.los((q) => isPatch(q) && 'koper' in q.body.data_values, true); await s1; await rust();
+    check(t.out.style.display === 'none' && t.out.innerHTML === '' && gets() === g0 && t.ctx._mouGen === gen0,
+      'composer sluiten: late geslaagde opslag hertekent de gesloten composer niet (geen GET, geen nieuwe generatie, DOM blijft leeg)');
+    t.los(isPatch, false, { status: 500, error: 'Synthetische late fout' }); await s2; await rust();
+    check(t.out.style.display === 'none' && t.out.innerHTML === '' && t.eff.toasts.some((x) => x.type === 'err' && x.msg.startsWith('Synthetische late fout')),
+      'composer sluiten: late mislukte opslag meldt de fout eerlijk maar heropent de gesloten composer niet');
+    const c = t.srv.docs['doc-A'].componenten[0];
+    check(c.data_values.koper.value === 'Koper vóór sluiten' && c.data_values.verkoper.value === 'Verkoper Synthetisch BV' && c.text === 'Bestaande tekst A' && t.concepten('doc-A') === 2,
+      'composer sluiten: alleen de geslaagde opslag staat op de server; mislukt veld en vrije tekst blijven als lokaal concept bewaard');
+    await t.ctx.bgMouComposer('MOU'); await rust();
+    const A = t.veld('koper'), B = t.veld('verkoper'), T = t.tekst();
+    check(t.out.style.display === 'block' && t.ctx._mouDocId === 'doc-A' && A.value === 'Koper vóór sluiten' && A.title === ''
+      && B.value === 'Verkoper vóór sluiten' && B.getAttribute('aria-invalid') === 'true' && T.value === 'Tekst vóór sluiten' && T.title === 'Nog niet opgeslagen',
+      'composer sluiten: expliciet heropenen van hetzelfde document toont de opgeslagen waarde en zet het mislukte veld (met fout) en de vrije tekst terug');
+    check(t.patches().length === 2 && t.eff.opslag === 0 && !t.srv.verzoeken.some((v) => /\/concept$|finaliseer|verstuur/.test(v.pad)),
+      'composer sluiten: sluiten en heropenen verzenden niets automatisch (geen extra PATCH, geen browseropslag, geen AI/finaliseren/versturen)');
+    const s3 = t.out.querySelector('.mou-text-save').onclick(); t.los(isPatch, true); await s3; await rust();
+    check(t.tekst().value === 'Tekst vóór sluiten' && t.tekst().title === '' && c.text === 'Tekst vóór sluiten',
+      'composer sluiten: na heropenen hertekent een gewone opslag weer normaal');
+  });
+
+  await tryAsync('composer sluiten andere weergave', async () => {
+    const t = laadComposer(root, {});
+    t.srv.docs['doc-L'] = { document: { id: 'doc-L', status: 'draft', current_version: 1, bevroren: false }, componenten: [compSyn('i-l1', { koper: 'Koper L BV', verkoper: 'Verkoper L BV' }, 'Tekst L')] };
+    t.srv.lijst.push({ id: 'doc-L', doc_type: 'loi', current_version: 1, status: 'draft', created_at: 0 });
+    await t.ctx.bgMouComposer('MOU'); await rust();
+    t.typ(t.veld('koper'), 'Koper MoU');
+    const s1 = t.naar(t.veld('koper'), null);
+    t.doc.getElementById('mou-close').onclick();
+    t.srv.houdVast = (m, p) => m === 'GET' && /^\/mna\/tos\/documenten\//.test(p);
+    const loi = t.ctx.bgMouComposer('LOI'); await rust();
+    t.los(isPatch, true); await s1; await rust(); // late MoU-reactie terwijl de LoI nog laadt
+    t.srv.houdVast = () => false;
+    t.los((q) => /\/documenten\//.test(q.pad), true); await loi; await rust();
+    check(t.ctx._mouProfile === 'LOI' && t.ctx._mouDocId === 'doc-L' && t.veld('koper').getAttribute('data-iid') === 'i-l1' && t.veld('koper').value === 'Koper L BV' && t.out.style.display === 'block',
+      'composer sluiten: late opslag van de gesloten MoU breekt de daarna geopende LoI niet af en toont geen MoU in plaats van de LoI');
+    check(t.srv.docs['doc-A'].componenten[0].data_values.koper.value === 'Koper MoU' && t.srv.docs['doc-L'].componenten[0].data_values.koper.value === 'Koper L BV' && t.concepten('doc-L') === 0,
+      'composer sluiten: de late opslag schrijft alleen het MoU-document; de LoI krijgt geen waarde of concept');
+    // Lopende documentwissel: een late opslag van het vorige document mag die wissel niet afbreken.
+    await t.ctx.bgMouRender(t.srv.lijst.filter((d) => d.doc_type === 'mou'), undefined, 'MOU', 'doc-A');
+    t.typ(t.veld('verkoper'), 'Verkoper A tijdens wissel');
+    const s2 = t.naar(t.veld('verkoper'), null);
+    t.srv.houdVast = (m, p) => m === 'GET' && p === '/mna/tos/document/doc-B';
+    const kies = t.doc.getElementById('mou-kies'); kies.value = 'doc-B';
+    const wissel = kies.onchange.call(kies); await rust();
+    t.los(isPatch, true); await s2; await rust();
+    t.srv.houdVast = () => false;
+    t.los((q) => q.pad === '/mna/tos/document/doc-B', true); await wissel; await rust();
+    check(t.ctx._mouDocId === 'doc-B' && t.veld('koper').getAttribute('data-iid') === 'i-b1' && t.veld('verkoper').value === 'Verkoper B BV'
+      && t.srv.docs['doc-A'].componenten[0].data_values.verkoper.value === 'Verkoper A tijdens wissel' && t.concepten('doc-A') === 0,
+      'composer: late geslaagde opslag van doc-A tijdens een lopende wissel naar doc-B breekt die wissel niet af; doc-A is wel opgeslagen');
+  });
+
+  await tryAsync('composer sluiten traject/bevroren', async () => {
+    const t = laadComposer(root, {});
+    const gets = () => t.srv.verzoeken.filter((v) => v.method === 'GET').length;
+    await t.ctx.bgMouComposer('MOU'); await rust();
+    t.typ(t.tekst(), 'Tekst traject 1');
+    t.typ(t.veld('koper'), 'Koper traject 1');
+    const s1 = t.naar(t.veld('koper'), null);
+    t.doc.getElementById('mou-close').onclick();
+    t.S.code = 'TSYN-TRAJECT-2';
+    const g0 = gets();
+    t.los(isPatch, false, { status: 403, error: 'Geen toegang' }); await s1; await rust();
+    check(t.out.innerHTML === '' && gets() === g0 && t.concepten('doc-A') === 0,
+      'composer sluiten: late fout na sluiten en trajectwissel hertekent niets en maakt onder het nieuwe traject geen concept aan');
+    await t.ctx.bgMouComposer('MOU'); await rust();
+    check(t.veld('koper').value === 'Koper Synthetisch BV' && t.veld('koper').title === '' && t.tekst().value === 'Bestaande tekst A' && t.tekst().title === '',
+      'composer sluiten: heropenen onder een ander traject toont geen concepten of fout van het vorige traject');
+    t.doc.getElementById('mou-close').onclick();
+    t.S.code = 'TSYN-TRAJECT-1';
+    Object.assign(t.srv.docs['doc-A'].document, { bevroren: true, status: 'exported' });
+    await t.ctx.bgMouComposer('MOU'); await rust();
+    check(t.veld('koper').disabled && t.veld('koper').value === 'Koper Synthetisch BV' && t.tekst().value === 'Bestaande tekst A' && t.concepten('doc-A') === 0
+      && t.eff.toasts.some((x) => x.type === 'err' && x.msg.includes('2 niet-opgeslagen wijzigingen niet toegepast')),
+      'composer sluiten: heropenen van een intussen bevroren document zet geen concepten terug en meldt dat eerlijk');
+    check(t.patches().length === 1 && t.eff.opslag === 0, 'composer sluiten: geen herhaalde of automatische verzending na sluiten, trajectwissel of bevriezen');
   });
 
   // ── H. Statisch (mna/04, productpunt 19): aanhaakpunten van de composerfix in de bron ──

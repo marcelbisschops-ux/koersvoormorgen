@@ -4044,6 +4044,7 @@ function renderBegeleiderDashboard(app){
   var _mouConcepten={};
   var _mouConceptSeq=0;
   var _mouHertekent=false;
+  var _mouDocDoel=null; // document dat de laatst gestarte bgMouRender() gaat tonen (zie bgMouConceptOpslaan)
   function bgMouConceptDocSleutel(code,docId){ return JSON.stringify([String(code||''),String(docId||'')]); }
   function bgMouConceptDoc(code,docId,maak){
     var dk=bgMouConceptDocSleutel(code,docId);
@@ -4080,7 +4081,12 @@ function renderBegeleiderDashboard(app){
     var seq=c0?c0.seq:0;
     var r=await bgMouApi('PATCH','/component/'+encodeURIComponent(el.getAttribute('data-iid')),body);
     var docC=bgMouConceptDoc(code,docId,false), c=docC&&docC[k];
-    var zelfde=S.code===code&&_mouDocId===docId;
+    // Productpunt 19 (12 okt 2026): alleen hertekenen als deze composer dit document nog toont én er geen
+    // wissel naar een ander document loopt. Na Sluiten (mou-close leegt de DOM), na vervanging door een
+    // andere composer/uitvoer of tijdens een lopende documentwissel zou bgMouRender() de gesloten weergave
+    // stil vullen of — via een nieuwe _mouGen — de door de gebruiker gekozen andere weergave afbreken.
+    // Concepten blijven in _mouConcepten en komen terug bij expliciet heropenen van dit document.
+    var zelfde=S.code===code&&_mouDocId===docId&&_mouDocDoel===docId&&!!document.getElementById('mou-close');
     if(r.ok&&r.json.ok){
       if(c&&c.seq===seq)delete docC[k];
       toast(okTekst(r.json),r.json.divergentie?'info':'ok');
@@ -4170,6 +4176,7 @@ function renderBegeleiderDashboard(app){
     if(prof===undefined){ prof=_mouProfile; }
     if(docId===undefined){ docId=_mouDocId; }
     var out=document.getElementById('bg-doc-out'); if(!out||!docId)return;
+    _mouDocDoel=docId;
     var g=await bgMouApi('GET','/document/'+encodeURIComponent(docId));
     if(myGen!==_mouGen)return;
     if(!g.ok||!g.json.ok){ out.innerHTML=bgMouFout(g.json&&g.json.error,prof); return; }
