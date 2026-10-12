@@ -1144,30 +1144,95 @@ function renderKoperBodSectie(el){
 // acceptatie vóór toegang tot een traject, voor verkoper/koper/tussenpersoon (allemaal via een
 // code ingelogd, zie /mna/traject/{code}). Zelfde technische patroon als de VOK-popup (mna/04) en
 // de vertrouwelijkheidsverklaring in viewer.html (meekijker), hier voor de overige rollen.
-function toonPlatformVoorwaardenPopup(code,rol,tekst,versie,onAkkoord){
-  var ov=document.createElement('div');
-  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:2000;display:flex;align-items:center;justify-content:center;padding:1.5rem';
-  var mo=document.createElement('div');
-  mo.setAttribute('role','dialog');mo.setAttribute('aria-modal','true');mo.setAttribute('aria-labelledby','pvw-modal-titel');
-  mo.style.cssText='background:var(--panel);border:1px solid var(--border2);border-radius:var(--r2);padding:2rem;max-width:600px;width:100%;max-height:90vh;overflow-y:auto';
-  mo.innerHTML='<div id="pvw-modal-titel" style="font-family:Playfair Display,serif;font-size:1.2rem;color:var(--head);font-weight:600;margin-bottom:.4rem">Platform- en vertrouwelijkheidsvoorwaarden</div>'
-    +'<div style="font-size:11px;color:var(--muted);margin-bottom:1rem">Versie '+esc(versie)+' &middot; vereist voor toegang tot dit traject</div>'
-    +'<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:1rem;max-height:260px;overflow-y:auto;font-size:12px;line-height:1.8;color:var(--sub);white-space:pre-wrap;margin-bottom:1rem">'+esc(tekst)+'</div>'
-    +'<div id="pvw-err" style="display:none;color:var(--red);font-size:12px;margin-bottom:.5rem"></div>'
-    +'<div style="display:flex;gap:8px;justify-content:flex-end">'
-    +'<button id="pvw-ok" class="btn" style="font-size:12px;padding:7px 18px">&#10003; Akkoord &amp; doorgaan</button>'
-    +'</div>';
-  ov.appendChild(mo);
-  document.body.appendChild(ov);
-  document.getElementById('pvw-ok').onclick=async function(){
-    var btn=this;btn.disabled=true;btn.textContent='Opslaan...';
-    var errEl=document.getElementById('pvw-err');
+// #21 (12 okt 2026): geen aparte schermvullende overlay meer, maar één acceptatiestap binnen het
+// bestaande loginpaneel (onder de inlogknop), met exact de servertekst/-versie en een expliciete
+// Akkoord-knop (stabiele id pvw-ok). Bewezen fout in de oude flow: na een snel akkoord (binnen
+// SEC.LOGIN_COOLDOWN_MS na de loginpoging) weigerde secCanLogin() de directe lb.click(), waardoor de
+// popup verdween maar er nooit werd ingelogd. Nu: na een échte serverbevestiging (HTTP 2xx + ok:true)
+// wordt precies één hervatting via dezelfde loginroute ingepland, pas zodra de bestaande cooldown
+// rechtmatig voorbij is. SEC zelf (cooldown/attempts) blijft ongewijzigd en acceptatie wordt nooit
+// lokaal op waar gezet — de tweede login krijgt het akkoord gewoon van de server terug.
+// De stap is gebonden aan de oorspronkelijke code en de actuele login-DOM; een codewijziging,
+// navigatie/hertekening of een inmiddels gestarte (andere) sessie annuleert de stap en de hervatting.
+var PVW={ctx:null};
+
+function pvwAnnuleer(){
+  var c=PVW.ctx;
+  if(!c)return;
+  PVW.ctx=null;
+  clearTimeout(c.timer);
+  if(c.inp)c.inp.removeEventListener('input',c.opInput);
+  window.removeEventListener('popstate',pvwAnnuleer);
+  window.removeEventListener('pagehide',pvwAnnuleer);
+  if(c.el&&c.el.parentNode)c.el.parentNode.removeChild(c.el);
+}
+
+function pvwContextGeldig(c){
+  var inp=ge('l-code');
+  return PVW.ctx===c&&S.screen==='login'&&!S.code&&ge('l-btn')===c.lb&&inp===c.inp&&c.el.isConnected
+    &&((inp.value||'').trim().toUpperCase()===c.code);
+}
+
+function toonPlatformVoorwaardenStap(code,rol,tekst,versie,lb){
+  var inp=ge('l-code');
+  // Al een stap voor dezelfde code die bezig is met opslaan of al een hervatting heeft ingepland:
+  // die laten staan — geen tweede stap en geen tweede accept/hervatting naast de lopende.
+  if(PVW.ctx&&PVW.ctx.code===code&&(PVW.ctx.bezig||PVW.ctx.gepland)&&pvwContextGeldig(PVW.ctx))return;
+  pvwAnnuleer();
+  if(!lb||!lb.parentNode||!inp)return;
+  var el=document.createElement('div');
+  el.id='pvw-stap';
+  el.setAttribute('role','region');el.setAttribute('aria-labelledby','pvw-modal-titel');
+  el.style.cssText='margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)';
+  // Zonder servertekst/-versie valt er niets te accepteren — dan geen akkoordknop tonen.
+  var compleet=!!(tekst&&versie);
+  el.innerHTML='<div id="pvw-modal-titel" tabindex="-1" style="font-family:Playfair Display,serif;font-size:1.05rem;color:var(--head);font-weight:600;margin-bottom:.3rem;outline:none">Platform- en vertrouwelijkheidsvoorwaarden</div>'
+    +'<div id="pvw-versie" style="font-size:11px;color:var(--muted);margin-bottom:.75rem">Versie '+esc(versie)+' &middot; vereist voor toegang tot dit traject</div>'
+    +(compleet?'<div id="pvw-tekst" tabindex="0" aria-label="Tekst platform- en vertrouwelijkheidsvoorwaarden" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:.75rem;max-height:240px;overflow-y:auto;font-size:12px;line-height:1.7;color:var(--sub);white-space:pre-wrap;margin-bottom:.75rem">'+esc(tekst)+'</div>':'')
+    +'<div id="pvw-status" role="status" aria-live="polite" style="display:none;color:var(--muted);font-size:12px;margin-bottom:.5rem"></div>'
+    +'<div id="pvw-err" role="alert" style="display:'+(compleet?'none':'block')+';color:var(--red);font-size:12px;margin-bottom:.5rem">'+(compleet?'':'De voorwaarden konden niet worden geladen. Probeer opnieuw in te loggen.')+'</div>'
+    +(compleet?'<div style="display:flex;gap:8px;justify-content:flex-end"><button id="pvw-ok" class="btn" style="font-size:12px;padding:7px 18px">&#10003; Akkoord &amp; doorgaan</button></div>':'');
+  lb.parentNode.insertAdjacentElement('afterend',el);
+  var c={code:code,rol:rol,versie:versie,lb:lb,inp:inp,el:el,timer:null,bezig:false,gepland:false};
+  c.opInput=function(){if((inp.value||'').trim().toUpperCase()!==c.code)pvwAnnuleer();};
+  inp.addEventListener('input',c.opInput);
+  window.addEventListener('popstate',pvwAnnuleer);
+  window.addEventListener('pagehide',pvwAnnuleer);
+  PVW.ctx=c;
+  var titel=ge('pvw-modal-titel');if(titel)titel.focus();
+  var btn=ge('pvw-ok');
+  if(!btn)return;
+  btn.onclick=async function(){
+    if(c.bezig||c.gepland||PVW.ctx!==c)return;
+    c.bezig=true;
+    var errEl=ge('pvw-err'),stEl=ge('pvw-status');
+    btn.disabled=true;btn.textContent='Opslaan...';
+    errEl.style.display='none';
+    function fout(msg){
+      c.bezig=false;
+      if(PVW.ctx!==c)return;
+      errEl.textContent=msg;errEl.style.display='block';
+      btn.disabled=false;btn.innerHTML='&#10003; Akkoord &amp; doorgaan';
+    }
+    var r,rd;
     try{
-      var r=await fetch(WORKER+'/mna/platformvoorwaarden/accepteren',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:code})});
-      var rd=await r.json();
-      if(rd.ok){document.body.removeChild(ov);onAkkoord();}
-      else{errEl.style.display='block';errEl.textContent=rd.error||'Fout.';btn.disabled=false;btn.textContent='Akkoord & doorgaan';}
-    }catch(e){errEl.style.display='block';errEl.textContent='Verbindingsfout.';btn.disabled=false;btn.textContent='Akkoord & doorgaan';}
+      r=await fetchMetTimeout(WORKER+'/mna/platformvoorwaarden/accepteren',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:code})},15000);
+    }catch(e){fout('Verbindingsfout. Uw akkoord is niet opgeslagen; probeer het opnieuw.');return;}
+    try{rd=await r.json();}catch(e){fout('Onverwacht antwoord van de server ('+r.status+'). Uw akkoord is niet opgeslagen; probeer het opnieuw.');return;}
+    if(!r.ok||!rd||rd.ok!==true){fout(((rd&&rd.error)||'Opslaan mislukt')+' ('+r.status+'). Uw akkoord is niet opgeslagen; probeer het opnieuw.');return;}
+    c.bezig=false;
+    // Context intussen gewijzigd (andere code, navigatie, andere sessie): het akkoord staat server-side
+    // vast voor de oorspronkelijke code, maar er wordt niet automatisch ingelogd.
+    if(!pvwContextGeldig(c)){if(PVW.ctx===c)pvwAnnuleer();return;}
+    c.gepland=true;
+    btn.textContent='Akkoord opgeslagen';
+    stEl.textContent='Akkoord opgeslagen. U wordt automatisch ingelogd...';stEl.style.display='block';
+    var wacht=Math.max(0,SEC.LOGIN_COOLDOWN_MS-(Date.now()-SEC.lastAttemptAt))+50;
+    c.timer=setTimeout(function(){
+      if(!pvwContextGeldig(c)){if(PVW.ctx===c)pvwAnnuleer();return;}
+      pvwAnnuleer();
+      lb.click();
+    },wacht);
   };
 }
 
@@ -1217,14 +1282,15 @@ function bindAll(){
         }
         // Platform- en vertrouwelijkheidsvoorwaarden (S1.2): moet actief geaccepteerd zijn vóórdat
         // er verder wordt gegaan — geen S/renderApp opbouwen zolang dat niet zo is. Na accepteren
-        // opnieuw dezelfde login-aanroep doen (lb.click()) i.p.v. deze hele functie te herschrijven;
+        // hervat de acceptatiestap zelf (één keer, na de bestaande cooldown) dezelfde login-aanroep;
         // de tweede keer geeft de backend platform_voorwaarden_akkoord:true terug en gaat de flow
         // hieronder gewoon verder.
         if(!d.platform_voorwaarden_akkoord){
           if(load)load.style.display='none';lb.disabled=false;
-          toonPlatformVoorwaardenPopup(code,d.rol||'verkoper',d.platform_voorwaarden_tekst||'',d.platform_voorwaarden_versie||'',function(){lb.click();});
+          toonPlatformVoorwaardenStap(code,d.rol||'verkoper',d.platform_voorwaarden_tekst||'',d.platform_voorwaarden_versie||'',lb);
           return;
         }
+        pvwAnnuleer();
         // Volledige reset - geen datalek tussen trajecten
         Object.keys(DOCS).forEach(function(k){delete DOCS[k];});
         // Bugfix 19 aug 2026 (KRITIEK, cross-path-informatielek-audit F5): CHAT stond hier niet in de

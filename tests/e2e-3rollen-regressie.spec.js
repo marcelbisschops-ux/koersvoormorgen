@@ -33,6 +33,8 @@
 // Draaien:
 //   npx playwright test tests/e2e-3rollen-regressie.spec.js
 //   KVM_DOE_AI=1 npx playwright test tests/e2e-3rollen-regressie.spec.js   (incl. AI-stappen)
+//   KVM_PVW21_LIVE=1 npx playwright test tests/e2e-3rollen-regressie.spec.js   (alleen de echte #21-
+//     loginreis P3/P4 + de gesimuleerde randgevallen; eigen loginbudget, zie de toelichting bij P3)
 // Vereist ADMIN_KEY (env of --key=, zie lib.mjs) en WORKER_URL tegen staging
 // (tests/run-rolflows.sh zet dit al goed — gebruik die wrapper i.p.v. dit bestand los te
 // draaien tegen een onbekende WORKER_URL).
@@ -46,6 +48,13 @@ import path from 'path';
 const ADMIN = leesAdminKey();
 const WW = 'TestWachtwoord123!';
 const DOE_AI = process.env.KVM_DOE_AI === '1';
+// #21 (12 okt 2026): de echte eerste-acceptatie→automatische-login-reis draait in een EIGEN run, want
+// de loginroute is begrensd op 15 aanroepen per 10 min per IP (checkLoginLimit, backend
+// cloudflare-worker.js) en de gewone run gebruikt dat budget al volledig (1 GET in beforeAll + 14
+// login()-aanroepen). Met deze vlag draaien uitsluitend P1–P4 (+ de gesimuleerde S-tests); alle
+// rolreizen die zelf inloggen worden dan overgeslagen, zodat deze run 1 + 7 = 8 loginaanroepen kost.
+const PVW21_LIVE = process.env.KVM_PVW21_LIVE === '1';
+const PVW21_SKIP_REDEN = 'KVM_PVW21_LIVE: aparte #21-run met eigen loginbudget — rolreizen draaien in de gewone run';
 const IS_STANDAARD_PRODUCTIE = WORKER === 'https://kantoorinzicht.marcel-bisschops.workers.dev';
 const MARKER = 'E2E-REGRESSION-' + Date.now();
 
@@ -134,6 +143,44 @@ async function wachtOpBegeleiderDashboardMetDiagnose(page, code) {
   }
 }
 
+// #21: echte login zonder de login()-helper (die wacht op S.traject en zou de acceptatiestap
+// overslaan). Telt de POST-aanroepen naar de loginroute en de acceptatieroute en geeft de eerste
+// loginrespons terug, zodat de getoonde tekst/versie tegen exact de serverwaarde vergeleken wordt.
+async function startLoginMetTelling(page, code) {
+  const tel = { login: 0, accept: 0 };
+  page.on('request', (r) => {
+    if (r.method() !== 'POST') return;
+    const p = new URL(r.url()).pathname;
+    if (p === '/mna/traject/' + code) tel.login++;
+    if (p === '/mna/platformvoorwaarden/accepteren') tel.accept++;
+  });
+  await page.goto('/mna.html?worker=' + encodeURIComponent(WORKER));
+  await page.locator('#l-code').fill(code);
+  const eersteResp = page.waitForResponse((r) => new URL(r.url()).pathname === '/mna/traject/' + code && r.request().method() === 'POST', { timeout: 20000 });
+  await page.locator('#l-btn').click();
+  // Status apart vastleggen: een 429 van de login-rate-limiter moet als zodanig zichtbaar zijn in het
+  // rapport, niet verborgen achter "automatic_login=false".
+  const resp = await eersteResp.catch(() => null);
+  const eersteStatus = resp ? resp.status() : null;
+  const eerste = resp ? await resp.json().catch(() => null) : null;
+  return { tel, eerste, eersteStatus };
+}
+
+// Zichtbare acceptatiestap: tekst/versie zoals getoond, en het bewijs dat het één stap binnen het
+// bestaande loginpaneel is (geen aparte schermvullende overlay/modal).
+function leesAcceptatiestap(page) {
+  return page.evaluate(() => {
+    const ok = document.getElementById('pvw-ok');
+    const lb = document.getElementById('l-btn');
+    return {
+      tekst: (document.getElementById('pvw-tekst') || {}).textContent || null,
+      versie: (document.getElementById('pvw-versie') || {}).textContent || '',
+      inLoginPaneel: !!(ok && lb && ok.closest('.panel') && ok.closest('.panel') === lb.closest('.panel')),
+      geenOverlay: !document.querySelector('[aria-modal="true"]'),
+    };
+  });
+}
+
 // ── Knoppeninventaris / regressiematrix — gevuld tijdens de run, weggeschreven in afterAll ──
 const MATRIX = [];
 function record(rol, pagina, element, actie, verwacht, geslaagd, detail) {
@@ -160,6 +207,8 @@ test.afterEach(async ({}, testInfo) => {
 const E2E_REPORT_URL = process.env.E2E_REPORT_URL || 'https://kantoorinzicht.marcel-bisschops.workers.dev/mna/veiligheid/e2e-resultaat';
 async function meldResultaatAanMarilyn() {
   if (!TEST_RESULTS.length) return; // niets gedraaid (bv. setup mislukt vóór de eerste test) — niets te melden
+  // De aparte #21-run is een deelrun; als suiteresultaat melden zou een onvolledige telling tonen.
+  if (PVW21_LIVE) { console.log('KVM_PVW21_LIVE-deelrun — resultaat niet als suiteresultaat gemeld aan Marilyn (zie lokaal rapport).'); return; }
   if (!process.env.E2E_REPORT_KEY) { console.log('E2E_REPORT_KEY niet gezet — resultaat niet gemeld aan Marilyn (niet kritiek).'); return; }
   try {
     // Bugfix (18 sep 2026, tijdens het bouwen ontdekt): de 2 AI-gated tests (V5/B6) staan bij een
@@ -198,6 +247,11 @@ test.describe('KANTOORINZICHT 3-ROLLEN E2E', () => {
   // status. P1/P2 hieronder doen alleen nog een dunne assertie op dit al vastgelegde bewijs.
   let p1Bewijs = null;
   let p2Bewijs = null;
+  // #21 (12 okt 2026): tweede, bewust NIET vooraf geaccepteerd testtraject voor de echte
+  // eerste-acceptatie→automatische-login-reis per rol (de codes hierboven zijn in beforeAll al via de
+  // API geaccepteerd en tonen de acceptatiestap dus nooit meer).
+  let pvwTraject = null, pvwCodes = null, pvwSetupOk = false;
+  const pvwGeaccepteerd = {};
 
   test.beforeAll(async () => {
     email = 'e2e-3rollen-' + Date.now() + '@bisschopsfinancing.test';
@@ -211,7 +265,7 @@ test.describe('KANTOORINZICHT 3-ROLLEN E2E', () => {
     await api('POST', '/gebruiker/voorwaarden/accepteren', { body: { email, wachtwoord: WW } });
     // Alle modules aan — de matrix raakt contracten (gesprekken/documenten), ai_analyse
     // (risicoraamwerk/extractie), qa (Q&A-round-trip).
-    await api('POST', '/gebruikers/verkoop/' + gid, { adminKey: ADMIN, body: { traject_limiet: 1, modules: { traject: true, contracten: true, ai_analyse: true, qa: true, export: true } } });
+    await api('POST', '/gebruikers/verkoop/' + gid, { adminKey: ADMIN, body: { traject_limiet: 2, modules: { traject: true, contracten: true, ai_analyse: true, qa: true, export: true } } });
     const trajectData = {
       kantoor_naam: '🔒 ' + MARKER + ' BV', contact_naam: 'E2E Verkoper', contact_email: 'v' + email,
       koper_naam: 'E2E Koper Tegenpartij BV', koper_contact: 'E2E Koper', koper_email: 'k' + email, traject_type: 'Verkoop',
@@ -240,6 +294,19 @@ test.describe('KANTOORINZICHT 3-ROLLEN E2E', () => {
     // VOK vooraf tekenen, anders blokkeert de popup het begeleider-dashboard.
     await api('POST', '/mna/vok/teken', { body: { code: tussenCode, naam: 'E2E Test', versie: VOK_VERSIE, email } });
     setupOk = true;
+
+    // #21: tweede traject zonder platformacceptatie (wel VOK, die hoort niet bij deze reis) — alleen in
+    // de aparte KVM_PVW21_LIVE-run, de enige run die het gebruikt.
+    if (!PVW21_LIVE) return;
+    const c2 = await api('POST', '/adviseur/create', { body: { email, wachtwoord: WW, traject: Object.assign({}, trajectData, {
+      kantoor_naam: '🔒 ' + MARKER + ' PVW BV', contact_email: 'pv' + email, koper_email: 'pk' + email,
+    }) } });
+    if (c2.json && c2.json.ok) {
+      pvwTraject = c2.json.code;
+      pvwCodes = { verkoper: c2.json.code, koper: c2.json.koper_code, tussenpersoon: c2.json.tussen_code };
+      await api('POST', '/mna/vok/teken', { body: { code: pvwCodes.tussenpersoon, naam: 'E2E Test', versie: VOK_VERSIE, email } });
+      pvwSetupOk = !!(pvwCodes.koper && pvwCodes.tussenpersoon);
+    }
   });
 
   test.afterAll(async () => {
@@ -250,6 +317,10 @@ test.describe('KANTOORINZICHT 3-ROLLEN E2E', () => {
       const d = await ruimTestTrajectOp(trajectCode, tussenCode);
       cleanupResultaten.push({ stap: 'traject verwijderd (test-opruimroute)', ok: d.ok, detail: d.status + ' ' + (d.reden || JSON.stringify(d.json)) });
     }
+    if (pvwTraject && pvwCodes && pvwCodes.tussenpersoon) {
+      const d = await ruimTestTrajectOp(pvwTraject, pvwCodes.tussenpersoon);
+      cleanupResultaten.push({ stap: '#21-traject verwijderd (test-opruimroute)', ok: d.ok, detail: d.status + ' ' + (d.reden || JSON.stringify(d.json)) });
+    }
     if (gid) {
       const d = await verwijderTestGebruiker(gid, ADMIN);
       cleanupResultaten.push({ stap: 'testadviseur verwijderd (API)', ok: !!(d.json && d.json.ok) });
@@ -258,11 +329,11 @@ test.describe('KANTOORINZICHT 3-ROLLEN E2E', () => {
     // Onafhankelijke D1-verificatie (rechtstreeks, niet via de API die we net zelf aanriepen) —
     // zelfde patroon als voerOchtendcontroleUit() (worker/24-veiligheidsdashboard.js).
     let d1Ok = true;
-    if (trajectCode) {
+    for (const tc of [trajectCode, pvwTraject].filter(Boolean)) {
       for (const tabel of ['mna_trajecten', 'mna_data', 'mna_gesprekken', 'mna_qa', 'mna_documenten']) {
         try {
           const kolom = tabel === 'mna_trajecten' ? 'id' : 'traject_id';
-          const rows = d1('SELECT count(*) as n FROM ' + tabel + " WHERE " + kolom + "='" + trajectCode + "'");
+          const rows = d1('SELECT count(*) as n FROM ' + tabel + " WHERE " + kolom + "='" + tc + "'");
           const n = rows[0] ? Number(rows[0].n) : -1;
           const ok = n === 0;
           if (!ok) d1Ok = false;
@@ -356,8 +427,64 @@ test.describe('KANTOORINZICHT 3-ROLLEN E2E', () => {
     });
   });
 
+  // ─────────────────────── ACCEPTATIESTAP IN LOGIN (#21, 12 okt 2026) ───────────────────────
+  // Bewezen fout (voorwaarden21-eerste-snellogin): een akkoord binnen SEC.LOGIN_COOLDOWN_MS na de
+  // loginpoging sloot de oude popup, maar de directe lb.click() werd door secCanLogin() geweigerd —
+  // S.code bleef leeg bij alle drie de rollen. Deze tests klikken bewust METEEN (geen wachten op de
+  // cooldown, geen SEC-override) en eisen automatic_login=true. Elke rol kost twee echte
+  // /mna/traject/-aanroepen (eerste poging + de ene hervatting), P4 nog één: 7 in totaal. Dat past
+  // niet meer binnen het loginbudget van de gewone run (15 per 10 min per IP, zie PVW21_LIVE en V3),
+  // dus deze tests draaien uitsluitend in de aparte run met KVM_PVW21_LIVE=1, in een eigen
+  // 10-minutenvenster (niet direct na een gewone run vanaf hetzelfde IP).
+  test.describe('Platformacceptatie in loginstap (#21)', () => {
+    for (const [label, rol] of [['VERKOPER', 'verkoper'], ['KOPER', 'koper'], ['BEGELEIDER', 'tussenpersoon']]) {
+      test('P3 · ' + rol + ': eerste snelle acceptatie binnen de cooldown → automatische login', async ({ page }) => {
+        test.setTimeout(90000);
+        test.skip(!PVW21_LIVE, 'Alleen in de aparte run met KVM_PVW21_LIVE=1 (loginbudget, zie bestandskop)');
+        test.skip(!pvwSetupOk, 'Setup #21-traject mislukt — zie beforeAll');
+        const code = pvwCodes[rol];
+        const { tel, eerste, eersteStatus } = await startLoginMetTelling(page, code);
+        await expect(page.locator('#pvw-ok')).toBeVisible({ timeout: 15000 });
+        const stap = await leesAcceptatiestap(page);
+        const tekstExact = !!eerste && eerste.platform_voorwaarden_akkoord === false && !!eerste.platform_voorwaarden_tekst
+          && stap.tekst === eerste.platform_voorwaarden_tekst && stap.versie.includes('Versie ' + eerste.platform_voorwaarden_versie);
+        const binnenCooldown = await page.evaluate(() => {
+          const binnen = Date.now() - SEC.lastAttemptAt < SEC.LOGIN_COOLDOWN_MS;
+          document.getElementById('pvw-ok').click();
+          return binnen;
+        });
+        let automaticLogin = false;
+        try { await page.waitForFunction((c) => !!(window.S && S.code === c && S.traject), code, { timeout: 20000 }); automaticLogin = true; } catch (e) {}
+        const rolNa = await page.evaluate(() => window.S && S.rol).catch(() => null);
+        let d1Rij = null;
+        try { d1Rij = d1("SELECT versie, datum FROM mna_platform_akkoord WHERE traject_id='" + pvwTraject + "' AND code='" + code + "'"); } catch (e) {}
+        const d1Ok = Array.isArray(d1Rij) && d1Rij.length === 1 && !!eerste && d1Rij[0].versie === eerste.platform_voorwaarden_versie && Number(d1Rij[0].datum) > 0;
+        const ok = tekstExact && stap.inLoginPaneel && stap.geenOverlay && binnenCooldown && automaticLogin && rolNa === rol && tel.accept === 1 && tel.login === 2 && d1Ok;
+        if (automaticLogin && tel.accept === 1) pvwGeaccepteerd[rol] = eerste && eerste.platform_voorwaarden_versie;
+        record(label, 'mna.html login', '#pvw-ok (stap in loginpaneel)', 'eerste acceptatie binnen cooldown → automatische login', 'automatic_login=true, 1 accept, 2 loginaanroepen, D1 versie gelijk', ok,
+          'eersteStatus=' + eersteStatus + ' automatic_login=' + automaticLogin + ' rol=' + rolNa + ' binnenCooldown=' + binnenCooldown + ' tekstExact=' + tekstExact + ' inLoginPaneel=' + stap.inLoginPaneel + ' geenOverlay=' + stap.geenOverlay + ' accept=' + tel.accept + ' login=' + tel.login + ' d1Ok=' + d1Ok);
+        expect(ok, rol + ': snelle eerste acceptatie leidt tot automatische login via de bestaande loginroute').toBe(true);
+      });
+    }
+
+    test('P4 · herlogin met dezelfde versie vraagt geen nieuwe acceptatie', async ({ page }) => {
+      test.setTimeout(90000);
+      test.skip(!PVW21_LIVE, 'Alleen in de aparte run met KVM_PVW21_LIVE=1 (loginbudget, zie bestandskop)');
+      test.skip(!pvwSetupOk || !pvwGeaccepteerd.verkoper, 'P3 verkoper niet geslaagd — geen eerdere acceptatie om op te herloggen');
+      const { tel, eerste, eersteStatus } = await startLoginMetTelling(page, pvwCodes.verkoper);
+      let ingelogd = false;
+      try { await page.waitForFunction((c) => !!(window.S && S.code === c && S.rol === 'verkoper'), pvwCodes.verkoper, { timeout: 20000 }); ingelogd = true; } catch (e) {}
+      const geenStap = (await page.locator('#pvw-stap').count()) === 0;
+      const ok = ingelogd && geenStap && !!eerste && eerste.platform_voorwaarden_akkoord === true && eerste.platform_voorwaarden_versie === pvwGeaccepteerd.verkoper && tel.accept === 0 && tel.login === 1;
+      record('VERKOPER', 'mna.html login', '#l-btn', 'herlogin zelfde versie', 'direct ingelogd, geen acceptatiestap, geen accept', ok, 'eersteStatus=' + eersteStatus + ' ingelogd=' + ingelogd + ' geenStap=' + geenStap + ' accept=' + tel.accept + ' login=' + tel.login);
+      expect(ok, 'zelfde versie al geaccepteerd: geen herhaling van de acceptatie').toBe(true);
+    });
+  });
+
   // ─────────────────────────────────────────── VERKOPER ───────────────────────────────────────────
   test.describe('Verkoper', () => {
+    test.beforeEach(() => { test.skip(PVW21_LIVE, PVW21_SKIP_REDEN); });
+
     test('V1 · inloggen met verkoper-code opent verkopersweergave', async ({ page }) => {
       test.setTimeout(90000); // marge boven de bestaande 15s-login- en 15s-UI-wachttijd tegen een echte stagingomgeving.
       test.skip(!setupOk, 'Setup mislukt — zie beforeAll');
@@ -513,6 +640,8 @@ test.describe('KANTOORINZICHT 3-ROLLEN E2E', () => {
 
   // ─────────────────────────────────────────── KOPER ───────────────────────────────────────────
   test.describe('Koper', () => {
+    test.beforeEach(() => { test.skip(PVW21_LIVE, PVW21_SKIP_REDEN); });
+
     test('K1 · inloggen met koper-code opent koperweergave, geen begeleider-knoppen', async ({ page }) => {
       test.setTimeout(90000); // marge boven de bestaande 15s-login- en 15s-UI-wachttijd tegen een echte stagingomgeving.
       test.skip(!setupOk, 'Setup mislukt — zie beforeAll');
@@ -596,6 +725,8 @@ test.describe('KANTOORINZICHT 3-ROLLEN E2E', () => {
 
   // ─────────────────────────────────────────── BEGELEIDER ───────────────────────────────────────────
   test.describe('Begeleider', () => {
+    test.beforeEach(() => { test.skip(PVW21_LIVE, PVW21_SKIP_REDEN); });
+
     test('B1 · inloggen met tussen_code opent dashboard met documentknoppen', async ({ page }) => {
       test.setTimeout(90000); // marge boven de bestaande 15s-login- en 15s-UI-wachttijd tegen een echte stagingomgeving.
       test.skip(!setupOk, 'Setup mislukt — zie beforeAll');
@@ -736,5 +867,147 @@ test.describe('KANTOORINZICHT 3-ROLLEN E2E', () => {
       record('BEGELEIDER', 'Risicoraamwerk', '#bg-risicoraamwerk-actie', 'AI-documentgeneratie', 'SWOT/PESTEL-secties met echte inhoud in #bg-doc-out', ok, 'genOk=' + genOk + ' echteInhoud=' + echteInhoud);
       expect(ok, 'risicoraamwerk-generatie levert echte, gestructureerde inhoud op').toBe(true);
     });
+  });
+});
+
+// ─────────────── ACCEPTATIESTAP #21 — NEGATIEVE/RANDGEVALLEN (gesimuleerde worker) ───────────────
+// Versiewijziging, 401/403/500/ongeldige JSON/netwerkfout, dubbelklik en contextwissel zijn op staging
+// niet deterministisch op te wekken zonder backend- of datawijziging. Daarom hier de echte mna.html in
+// Chromium met route-interceptie op uitsluitend de worker-origin: geen enkel verzoek bereikt
+// staging, geen echte codes of klantdata. Bewijst alleen het clientgedrag; de echte serverreis staat
+// in P3/P4 hierboven. SEC blijft ongemoeid: de tests wachten de echte cooldown af.
+const PVW_MOCK_CODE = 'PVWMOCK21';
+const PVW_MOCK_TEKST = 'Synthetische platformvoorwaarden (testfixture).\nArtikel 1 · Vertrouwelijkheid.';
+
+async function simuleerWorker(page, opties) {
+  const st = Object.assign({ versie: '9.0', geaccepteerd: null, login: 0, accept: 0, loginFout: () => false }, opties);
+  if (!st.accepteer) st.accepteer = () => ({ status: 200, json: { ok: true, versie: st.versie } });
+  const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Content-Type, x-tussen-key, x-gebruiker-token', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Cache-Control': 'no-store' };
+  const antwoord = (route, status, body) => route.fulfill({ status, headers: cors, contentType: 'application/json', body: typeof body === 'string' ? body : JSON.stringify(body) });
+  const origin = new URL(WORKER).origin;
+  await page.route((url) => url.origin === origin, async (route) => {
+    const req = route.request();
+    const p = new URL(req.url()).pathname;
+    if (req.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cors });
+    if (p === '/mna/traject/' + PVW_MOCK_CODE && req.method() === 'POST') {
+      st.login++;
+      if (st.loginFout(st.login)) return antwoord(route, 500, { error: 'fixture: serverfout' });
+      if (st.geaccepteerd !== st.versie) {
+        return antwoord(route, 200, { ok: true, rol: 'tussenpersoon', platform_voorwaarden_akkoord: false, platform_voorwaarden_versie: st.versie, platform_voorwaarden_tekst: PVW_MOCK_TEKST + '\nVersie ' + st.versie });
+      }
+      return antwoord(route, 200, { ok: true, rol: 'tussenpersoon', data: [], platform_voorwaarden_akkoord: true, platform_voorwaarden_versie: st.versie,
+        traject: { id: PVW_MOCK_CODE, kantoor_naam: 'Synth Kantoor BV', sector: 'accountancy', traject_type: 'Verkoop', status: 'actief', begeleider_naam: 'Synth Begeleider', koper_categorieen: null, koper_vrijgegeven: 0 } });
+    }
+    if (p === '/mna/platformvoorwaarden/accepteren' && req.method() === 'POST') {
+      st.accept++;
+      const a = st.accepteer(st.accept);
+      if (a.wacht) await new Promise((r) => setTimeout(r, a.wacht));
+      if (a.netwerk) return route.abort('failed');
+      if (a.status === 200 && a.json && a.json.ok === true) st.geaccepteerd = st.versie;
+      return antwoord(route, a.status, a.ruw !== undefined ? a.ruw : a.json);
+    }
+    if (p === '/mna/vok/status') return antwoord(route, 200, { getekend: true, geen_herteken_bij_versiebump: true });
+    return antwoord(route, 404, { error: 'fixture: onbekend' });
+  });
+  return st;
+}
+
+async function startGesimuleerdeLogin(page) {
+  await page.goto('/mna.html?worker=' + encodeURIComponent(WORKER));
+  await page.locator('#l-code').fill(PVW_MOCK_CODE);
+  await page.locator('#l-btn').click();
+  await expect(page.locator('#pvw-ok')).toBeVisible({ timeout: 10000 });
+}
+const gesimuleerdIngelogd = (page) => page.evaluate((c) => !!(window.S && S.code === c && S.rol === 'tussenpersoon'), PVW_MOCK_CODE);
+// Ruim voorbij de bestaande SEC-cooldown (2000 ms) wachten: een eventuele (onterechte) hervatting
+// zou dan al zichtbaar zijn in de logintelling.
+const naCooldown = (page) => page.waitForTimeout(2600);
+
+test.describe('Acceptatiestap #21 · randgevallen (gesimuleerde worker)', () => {
+  test('S1 · gewijzigde versie vereist opnieuw acceptatie in de loginstap, daarna automatische login', async ({ page }) => {
+    const st = await simuleerWorker(page, { versie: '9.1', geaccepteerd: '9.0' });
+    await startGesimuleerdeLogin(page);
+    const stap = await leesAcceptatiestap(page);
+    expect(stap.tekst).toBe(PVW_MOCK_TEKST + '\nVersie 9.1');
+    expect(stap.versie).toContain('Versie 9.1');
+    expect(stap.inLoginPaneel && stap.geenOverlay).toBe(true);
+    await page.locator('#pvw-ok').click();
+    await page.waitForFunction((c) => !!(window.S && S.code === c), PVW_MOCK_CODE, { timeout: 10000 });
+    expect(await gesimuleerdIngelogd(page)).toBe(true);
+    expect({ login: st.login, accept: st.accept, geaccepteerd: st.geaccepteerd }).toEqual({ login: 2, accept: 1, geaccepteerd: '9.1' });
+  });
+
+  test('S2 · 401/403/500/ongeldige JSON/netwerkfout: fout zichtbaar, knop herbruikbaar, geen login; daarna wél', async ({ page }) => {
+    test.setTimeout(60000);
+    const fouten = [
+      { naam: '401', status: 401, json: { error: 'Niet geautoriseerd' } },
+      { naam: '403', status: 403, json: { error: 'Geen toegang' } },
+      { naam: '500', status: 500, json: { error: 'Interne fout' } },
+      { naam: 'ongeldige JSON', status: 200, ruw: 'geen-json{' },
+      { naam: 'ok:false', status: 200, json: { ok: false, error: 'Code niet gevonden' } },
+      { naam: 'netwerk', netwerk: true },
+    ];
+    const st = await simuleerWorker(page, { accepteer: (n) => fouten[n - 1] || { status: 200, json: { ok: true, versie: '9.0' } } });
+    await startGesimuleerdeLogin(page);
+    for (const f of fouten) {
+      await page.locator('#pvw-ok').click();
+      await expect(page.locator('#pvw-err'), f.naam + ': foutmelding zichtbaar').toBeVisible();
+      await expect(page.locator('#pvw-ok'), f.naam + ': knop weer bruikbaar').toBeEnabled();
+      expect((await page.locator('#pvw-err').innerText()).trim().length, f.naam + ': niet-lege melding').toBeGreaterThan(0);
+    }
+    await naCooldown(page);
+    expect(await gesimuleerdIngelogd(page), 'geen login zonder geslaagde acceptatie').toBe(false);
+    expect({ login: st.login, accept: st.accept, geaccepteerd: st.geaccepteerd }).toEqual({ login: 1, accept: fouten.length, geaccepteerd: null });
+    await page.locator('#pvw-ok').click();
+    await page.waitForFunction((c) => !!(window.S && S.code === c), PVW_MOCK_CODE, { timeout: 10000 });
+    expect({ login: st.login, accept: st.accept }).toEqual({ login: 2, accept: fouten.length + 1 });
+  });
+
+  test('S3 · dubbelklik: één accept, precies één geplande hervatting', async ({ page }) => {
+    const st = await simuleerWorker(page, { accepteer: () => ({ status: 200, json: { ok: true, versie: '9.0' }, wacht: 400 }) });
+    await startGesimuleerdeLogin(page);
+    await page.locator('#pvw-ok').dblclick();
+    await page.evaluate(() => { const b = document.getElementById('pvw-ok'); if (b) b.click(); });
+    await page.waitForFunction((c) => !!(window.S && S.code === c), PVW_MOCK_CODE, { timeout: 10000 });
+    await naCooldown(page);
+    expect({ login: st.login, accept: st.accept }).toEqual({ login: 2, accept: 1 });
+  });
+
+  test('S4 · contextwissel: andere code of hertekening annuleert de hervatting', async ({ page }) => {
+    // a) Code gewijzigd terwijl de acceptatie onderweg is: stap weg, geen automatische login.
+    const st = await simuleerWorker(page, { accepteer: () => ({ status: 200, json: { ok: true, versie: '9.0' }, wacht: 300 }) });
+    await startGesimuleerdeLogin(page);
+    await page.locator('#pvw-ok').click();
+    await page.locator('#l-code').fill('ANDERE01');
+    await naCooldown(page);
+    expect(await page.locator('#pvw-stap').count()).toBe(0);
+    expect(await page.evaluate(() => !!(window.S && S.code))).toBe(false);
+    expect({ login: st.login, accept: st.accept }).toEqual({ login: 1, accept: 1 });
+
+    // b) Na een geslaagde acceptatie, vóór de hervatting: scherm hertekend (navigatie) → geen hervatting.
+    st.versie = '9.2';
+    await page.locator('#l-code').fill(PVW_MOCK_CODE);
+    await page.waitForFunction(() => Date.now() - SEC.lastAttemptAt >= SEC.LOGIN_COOLDOWN_MS);
+    await page.locator('#l-btn').click();
+    await expect(page.locator('#pvw-ok')).toBeVisible();
+    await page.locator('#pvw-ok').click();
+    await expect(page.locator('#pvw-status')).toBeVisible();
+    await page.evaluate(() => renderApp());
+    await naCooldown(page);
+    expect(await page.evaluate(() => !!(window.S && S.code))).toBe(false);
+    expect({ login: st.login, accept: st.accept }).toEqual({ login: 2, accept: 2 });
+  });
+
+  test('S5 · hervatte login faalt: fout zichtbaar en inlogknop herbruikbaar', async ({ page }) => {
+    const st = await simuleerWorker(page, { loginFout: (n) => n === 2 });
+    await startGesimuleerdeLogin(page);
+    await page.locator('#pvw-ok').click();
+    await expect(page.locator('#l-err')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('#l-btn')).toBeEnabled();
+    expect(await gesimuleerdIngelogd(page)).toBe(false);
+    await page.waitForFunction(() => Date.now() - SEC.lastAttemptAt >= SEC.LOGIN_COOLDOWN_MS);
+    await page.locator('#l-btn').click();
+    await page.waitForFunction((c) => !!(window.S && S.code === c), PVW_MOCK_CODE, { timeout: 10000 });
+    expect({ login: st.login, accept: st.accept }).toEqual({ login: 3, accept: 1 });
   });
 });
