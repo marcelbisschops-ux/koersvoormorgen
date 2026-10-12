@@ -388,7 +388,7 @@ function saveCurrent(cb){
   // Gevonden 18 augustus 2026 bij het verifiëren van taak 24: twee entiteiten kregen na kort na
   // elkaar uploaden + wisselen exact dezelfde (verkeerde) cijfers in de database.
   var saveSnapshot={code:S.code,fase_id:f.id,data_json:getDataForFase(f.id),checklist_json:getChecklistForFase(f.id),notitie:S.notities[f.id]||'',entiteit_id:S._actieveEntiteit||undefined};
-  var nieuwePending={snapshot:saveSnapshot,faseId:f.id,groepsniveauGewijzigd:groepsniveauGewijzigd,cb:cb};
+  var nieuwePending={snapshot:saveSnapshot,faseId:f.id,groepsniveauGewijzigd:groepsniveauGewijzigd,cb:cb,sessie:S};
   // Staat er al een save van een ANDERE fase/entiteit te wachten (nog niet verstuurd)? Dan die eerst
   // direct versturen i.p.v. zomaar annuleren — anders raakt die wijziging stilzwijgend kwijt zodra de
   // gebruiker binnen 800ms twee keer van entiteit wisselt (elke saveCurrent()-aanroep annuleerde tot nu
@@ -436,25 +436,36 @@ function gbOpslagKlaar(tk,d){
 }
 function _verstuurGeplandeSave(pending){
   var gbTk=gbOpslagStart(pending.snapshot.code,pending.snapshot.fase_id,pending.snapshot.entiteit_id);
+  // Productpunt 19 (12 okt 2026): "Opgeslagen ✓" alleen na HTTP 2xx + leesbare JSON met ok:true, en bij
+  // een groepsniveau-wijziging pas als óók de groepsrij-save zo is bevestigd. Netwerkfout, onleesbaar of
+  // leeg antwoord gaf tot nu toe geen enkele melding; nu een eerlijke melding. Alleen in dezelfde sessie.
+  var sessie=pending.sessie||S;
+  var http=false,groepAck=null;
   fetch(WORKER+'/mna/save',{method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify(pending.snapshot)
-  }).then(function(r){return r.json();}).then(function(d){
+  }).then(function(r){http=!!(r&&r.ok);return r.json();}).then(null,function(){return null;}).then(function(d){
+    var eigen=S===sessie&&S.code===pending.snapshot.code;
+    var nietBevestigd='Opslaan niet bevestigd door de server (geen verbinding, foutmelding of onleesbaar antwoord). Uw wijzigingen staan nog in dit scherm maar zijn niet opgeslagen; probeer het opnieuw.';
     // Elke serverfout moet zichtbaar zijn — niet alleen 'vergrendeld'. Vóór deze fix toonde elke
     // andere afwijzing (bijv. de nieuwe fase-Financieel-blokkade hierboven) alsnog "✓ Opgeslagen",
     // een stille onterechte bevestiging (schending GOUDEN STANDAARD, gevonden bij onafhankelijke
     // review 12 sep 2026).
-    if(d&&d.error){showAlert(d.error==='vergrendeld'?'Dit traject is vergrendeld. Uw wijzigingen zijn niet opgeslagen.':('Opslaan mislukt: '+d.error));}
-    else{
-      showSaveIndicator();
-      // Groepsstructuur: bij een entiteit-save stuurt de server de bijgewerkte groepswaarden mee terug —
-      // direct verwerken in S._groepData zodat "Groep"-weergave meteen klopt, ook zonder herfetch.
-      if(d.groepswaarden)Object.keys(d.groepswaarden).forEach(function(k){var v=d.groepswaarden[k];if(v&&v.value!==undefined)S._groepData[pending.faseId+'_'+k]=v.value;});
+    if(eigen){
+      if(d&&d.error){showAlert(d.error==='vergrendeld'?'Dit traject is vergrendeld. Uw wijzigingen zijn niet opgeslagen.':('Opslaan mislukt: '+d.error));}
+      else if(!http||!d||typeof d!=='object'||d.ok!==true){showAlert(nietBevestigd);}
+      else (groepAck||Promise.resolve(true)).then(function(g){
+        if(S!==sessie)return;
+        if(g===true)showSaveIndicator();else showAlert(nietBevestigd);
+      });
     }
+    // Groepsstructuur: bij een entiteit-save stuurt de server de bijgewerkte groepswaarden mee terug —
+    // direct verwerken in S._groepData zodat "Groep"-weergave meteen klopt, ook zonder herfetch.
+    if(eigen&&d&&!d.error&&d.groepswaarden)Object.keys(d.groepswaarden).forEach(function(k){var v=d.groepswaarden[k];if(v&&v.value!==undefined)S._groepData[pending.faseId+'_'+k]=v.value;});
     gbOpslagKlaar(gbTk,d);
   }).catch(function(){gbOpslagKlaar(gbTk,null);});
   // Groepsniveau-veld gewijzigd terwijl een entiteit actief was: die hoort niet in de
   // entiteit-eigen save hierboven (getDataForFase sluit 'm al uit) — apart naar de groepsrij.
-  if(pending.groepsniveauGewijzigd)saveGroepsniveauVelden(pending.faseId);
+  if(pending.groepsniveauGewijzigd)groepAck=saveGroepsniveauVelden(pending.faseId);
   if(pending.cb)pending.cb();
 }
 
@@ -496,9 +507,11 @@ function saveGroepsniveauVelden(faseId){
   var payload=getDataForFase(faseId);
   S.data=origData;
   var gbTk=gbOpslagStart(S.code,faseId,null);
-  fetch(WORKER+'/mna/save',{method:'POST',headers:{'Content-Type':'application/json'},
+  // Geeft (productpunt 19) true terug alleen bij HTTP 2xx + JSON ok:true — zie _verstuurGeplandeSave.
+  var http=false;
+  return fetch(WORKER+'/mna/save',{method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({code:S.code,fase_id:faseId,data_json:payload,checklist_json:getChecklistForFase(faseId),notitie:S.notities[faseId]||''})
-  }).then(function(r){return r.json();}).then(function(d){gbOpslagKlaar(gbTk,d);}).catch(function(){gbOpslagKlaar(gbTk,null);});
+  }).then(function(r){http=!!(r&&r.ok);return r.json();}).then(function(d){gbOpslagKlaar(gbTk,d);return http&&!!d&&typeof d==='object'&&d.ok===true&&!d.error;}).catch(function(){gbOpslagKlaar(gbTk,null);}).then(function(ok){return ok===true;});
 }
 function getChecklistForFase(id){var out={items:{},redflags:{}};var f=FASES.find(function(x){return x.id===id;});if(!f)return out;f.items.forEach(function(_,i){out.items[i]=!!S.checked[id+'_'+i];});f.redflags.forEach(function(_,i){out.redflags[i]=!!S.checked[id+'_rf_'+i];});return out;}
 
@@ -562,15 +575,29 @@ function showSaveIndicator(tekst){var el=ge('save-ind');if(!el)return;el.textCon
 function showAlert(msg){toast(msg,"warn");}
 function toast(msg,type,dur){type=type||'ok';dur=dur||3500;var c=document.getElementById('toast-container');if(!c){c=document.createElement('div');c.id='toast-container';c.className='toast-container';c.setAttribute('role','status');c.setAttribute('aria-live','polite');document.body.appendChild(c);}var t=document.createElement('div');t.className='toast toast-'+type;var ico=type==='ok'?'✓':type==='err'?'✕':type==='warn'?'⚠':'ℹ';t.innerHTML='<span style="font-size:15px;flex-shrink:0;color:'+(type==='ok'?'var(--teal)':type==='err'?'var(--red)':type==='warn'?'var(--gold)':'#2a5ea0')+'">'+ico+'</span><span style="flex:1;line-height:1.5">'+String(msg).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</span><button onclick="this.parentElement.remove()" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px;padding:0;line-height:1;flex-shrink:0">&times;</button>';c.appendChild(t);setTimeout(function(){t.classList.add('hide');setTimeout(function(){if(t.parentElement)t.parentElement.removeChild(t);},220);},dur);return t;}
 
-function schedSave(){if(S.traject&&S.traject.status==='vergrendeld')return;markDirty();clearTimeout(S.saveTimer);S.saveTimer=setTimeout(function(){saveCurrent();},1200);}
+// Een late timer van een vorige sessie (uitloggen + opnieuw inloggen, ook met dezelfde code) start
+// geen saveCurrent() in de nieuwe sessie.
+function schedSave(){if(S.traject&&S.traject.status==='vergrendeld')return;markDirty();clearTimeout(S.saveTimer);var sessie=S;S.saveTimer=setTimeout(function(){if(S===sessie)saveCurrent();},1200);}
 function userEdit(el){
   // Markeer veld als handmatig bewerkt door gebruiker
-  var faseId=FASES[S.fase]&&FASES[S.fase].id;
+  var f=FASES[S.fase];
+  var faseId=f&&f.id;
   if(el&&el.id&&faseId){
     var dfId=el.id.replace('df_','');
     S._userEdited[faseId+'_'+dfId]=true;
     // Wis docSource want gebruiker overschrijft nu zelf
     if(S._docSource)delete S._docSource[faseId+'_'+dfId];
+    // Productpunt 19 (12 okt 2026): de invoer direct in het bestaande datamodel van deze sessie/fase/
+    // entiteit zetten (S.data, of S._groepData voor een groepsniveau-veld — zelfde keuze als saveCurrent
+    // en de render in mna/06). Tot nu toe stond de waarde tot de debounce (1200ms) alleen in de DOM; een
+    // renderApp daartussen (bv. een ander paneel dat klaar was met laden) tekende het veld leeg uit S.data,
+    // waarna saveCurrent een lege waarde verstuurde en de server die als geslaagd bevestigde.
+    // Dezelfde poorten als saveCurrent: geen koper, geen begeleider in Financieel, niet vergrendeld.
+    var df=f.dataFields&&f.dataFields.find(function(x){return x.id===dfId;});
+    if(df&&!df.header&&typeof el.value==='string'&&S.screen==='main'&&!isKoper()&&!(isTussen()&&faseId==='financieel')&&!(S.traject&&S.traject.status==='vergrendeld')){
+      if(df.groepsniveau)S._groepData[faseId+'_'+dfId]=el.value;
+      else S.data[faseId+'_'+dfId]=el.value;
+    }
   }
   schedSave();checkOmzetSom();
 }
@@ -588,12 +615,21 @@ function _dataHash(){
   });
   return parts.join('|');
 }
-function markDirty(){S._dirty=true;}
+// S._dirtyRev telt elke wijziging; een opslagbevestiging maakt S alleen schoon als er sinds het
+// versturen niets meer is gewijzigd (ook niet iets dat de hash niet raakt, zoals een notitie).
+function markDirty(){S._dirty=true;S._dirtyRev=(S._dirtyRev||0)+1;}
 function isDirty(){return !!S._dirty;}
 
+// Productpunt 19 (12 okt 2026): saveAll zette S._dirty=false en _lastSavedHash al direct na het
+// VERSTUREN, en de 30s-autosave toonde meteen "Auto-opgeslagen ✓" — ook als het verzoek daarna faalde.
+// Nu pas schoon/groen als ALLE fasen HTTP 2xx + leesbare JSON met ok:true terugmelden, in dezelfde
+// sessie (S-object, code en rol), en alleen als er intussen niets nieuws is ingevoerd. Bij een fout
+// (netwerk, HTTP, JSON, leeg/onbekend antwoord, één fase van meerdere) blijft alles dirty, met één
+// eerlijke melding. Een beacon in de wachtrij is geen serverbevestiging: dirty blijft staan, geen melding,
+// en per wijzigingsstand hooguit één beaconronde (pagehide én beforeunload).
 function saveAll(opts){
   if(!S.code||S.traject&&S.traject.status==='vergrendeld')return;
-  var useBeacon=opts&&opts.beacon; // voor pagehide/beforeunload
+  var useBeacon=opts&&opts.beacon&&navigator.sendBeacon; // voor pagehide/beforeunload
   var fasesMetData=FASES.filter(function(f){
     // Fase Financieel is voor de begeleider read-only (12 sep 2026) — dit is een los pad naar
     // /mna/save, buiten saveCurrent() om (30s-autosave, beforeunload, na upload, fase-navigatie),
@@ -603,32 +639,56 @@ function saveAll(opts){
     return f.dataFields.some(function(df){return !df.header&&(S.data[f.id+'_'+df.id]||'').trim();});
   });
   if(!fasesMetData.length)return;
+  // Wat er nu verstuurd wordt; alleen dit mag later als opgeslagen gelden.
+  var sessie=S,code=S.code,rol=S.rol,rev=S._dirtyRev||0,hash=_dataHash();
+  var open=fasesMetData.length,mislukt=false;
+  if(useBeacon){
+    if(sessie._beaconRev===rev)return;
+    sessie._beaconRev=rev;
+  }else sessie._saveAllBezig=(sessie._saveAllBezig||0)+1;
   fasesMetData.forEach(function(f){
     var payload={code:S.code,fase_id:f.id,data_json:getDataForFase(f.id),checklist_json:getChecklistForFase(f.id),notitie:S.notities[f.id]||'',entiteit_id:S._actieveEntiteit||undefined};
     var body=JSON.stringify(payload);
-    if(useBeacon&&navigator.sendBeacon){
-      // sendBeacon: gegarandeerd verstuurd ook als tabblad sluit
-      var blob=new Blob([body],{type:'application/json'});
-      navigator.sendBeacon(WORKER+'/mna/save',blob);
+    if(useBeacon){
+      // sendBeacon: alleen in de wachtrij van de browser gezet (ook als tabblad sluit) — géén
+      // serverbevestiging. false of een exceptie verandert niets aan dirty/hash en geeft geen melding.
+      try{navigator.sendBeacon(WORKER+'/mna/save',new Blob([body],{type:'application/json'}));}catch(e){}
     } else {
       var gbTk=gbOpslagStart(payload.code,f.id,payload.entiteit_id);
+      var http=false,klaar=false;
+      var faseKlaar=function(ok,d){
+        if(klaar)return;
+        klaar=true;open--;
+        var eigen=S===sessie&&S.code===code&&S.rol===rol;
+        if(!ok&&!mislukt){
+          mislukt=true;
+          if(eigen){
+            S._dirty=true;
+            showAlert(d&&d.error==='vergrendeld'?'Dit traject is vergrendeld. Uw wijzigingen zijn niet opgeslagen.'
+              :'Opslaan mislukt'+(d&&typeof d.error==='string'?': '+d.error:' (geen verbinding, foutmelding of onleesbaar antwoord van de server)')+'. Uw wijzigingen staan nog in dit scherm maar zijn niet opgeslagen; probeer het opnieuw.');
+          }
+        }
+        if(open)return;
+        sessie._saveAllBezig=Math.max(0,(sessie._saveAllBezig||0)-1);
+        if(mislukt||!eigen||(S._dirtyRev||0)!==rev||_dataHash()!==hash)return;
+        S._dirty=false;
+        _lastSavedHash=hash;
+        showSaveIndicator(opts&&opts.melding);
+      };
       fetch(WORKER+'/mna/save',{method:'POST',headers:{'Content-Type':'application/json'},body:body
-      }).then(function(r){return r.json();}).then(function(d){
-        if(d.error==='vergrendeld')showAlert('Dit traject is vergrendeld.');
-        else if(!d.error){showSaveIndicator();}
+      }).then(function(r){http=!!(r&&r.ok);return r.json();}).then(null,function(){return null;}).then(function(d){
+        faseKlaar(http&&!!d&&typeof d==='object'&&d.ok===true&&!d.error,d);
         gbOpslagKlaar(gbTk,d);
-      }).catch(function(){gbOpslagKlaar(gbTk,null);});
+      }).catch(function(){gbOpslagKlaar(gbTk,null);}).then(function(){faseKlaar(false,null);});
     }
   });
-  S._dirty=false;
-  _lastSavedHash=_dataHash();
 }
 
-// Auto-save elke 30 seconden als er dirty wijzigingen zijn
+// Auto-save elke 30 seconden als er dirty wijzigingen zijn. "Auto-opgeslagen ✓" pas na de bevestiging
+// (zie saveAll); zolang een vorige ronde nog loopt geen tweede.
 setInterval(function(){
-  if(S.screen==='main'&&S.code&&isDirty()){
-    saveAll();
-    showSaveIndicator('Auto-opgeslagen ✓');
+  if(S.screen==='main'&&S.code&&isDirty()&&!S._saveAllBezig){
+    saveAll({melding:'Auto-opgeslagen ✓'});
   }
 },30000);
 

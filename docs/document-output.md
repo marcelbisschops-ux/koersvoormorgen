@@ -97,6 +97,38 @@ Stand: 7 okt 2026, branch `codex/weekend-option2`. Dit bestand beschrijft de hui
 
 **Bewijs.** `tests/document-processing-ui.mjs` (check 25) laat de echte `loadDocsForFase` een uitgesteld lijstantwoord krijgen. Tussendoor wordt uitgelogd en opnieuw ingelogd met dezelfde code, met een nieuwe `S`, een nieuw document in `DOCS`, handmatige financiële invoer en een eigen foutstatus. Daarna komt een oud succes, een oude 503, ongeldige JSON of een netwerkfout binnen, en voor de controle ook een oud succes bij een andere code. Gecontroleerd: `DOCS`, foutstatus en data blijven ongewijzigd, en er volgt geen render, toast, autofill, opslag of extra lijstlading. Een positieve controle laat zien dat een vertraagd antwoord binnen dezelfde sessie gewoon wordt verwerkt en dat de lokale lopende upload blijft staan. Synthetisch bewijs in `node:vm`, geen browser-, staging- of productiebewijs.
 
+### Vervolg: autosave bevestigt alleen wat werkelijk is opgeslagen (productpunt 19, 12 okt 2026)
+
+**Oorzaak (`mna/02-state-opslag-documenten.js`).** Twee paden:
+
+- `saveAll` zette `S._dirty=false` en `_lastSavedHash` al direct na het **versturen**. Het 30s-interval toonde meteen "Auto-opgeslagen ✓". Faalde het verzoek daarna (netwerk, HTTP-fout, onleesbaar antwoord), dan bleef de groene melding staan, was de staat schoon en volgde geen nieuwe poging.
+- `userEdit` zette getypte invoer tot de debounce (1200 ms) alleen in de DOM. Een `renderApp` in die tussentijd tekende het veld leeg uit `S.data`. Daarna verstuurde `saveCurrent` een lege financiële waarde en meldde de server die als geslaagd (staging-tijdlijn: invoer → 39 ms lege render → 2010 ms leeg verzoek → 200 ok). Er is geen backendfout; de server sloeg op wat hij kreeg.
+
+**Huidig gedrag (criteria).**
+
+- Een opslag telt alleen als bevestigd bij **HTTP 2xx én leesbare JSON met `ok:true` en zonder `error`**. Netwerkfout, ongeldige JSON, lege body, onbekend antwoord (`{}`, `null`, `ok` ontbreekt of `false`) en elke non-2xx zijn een fout.
+- `saveAll` (30s-interval, tabwissel, uitloggen, na upload) maakt `S` pas schoon (`_dirty=false`, `_lastSavedHash`) en toont pas "Auto-opgeslagen ✓"/"Opgeslagen ✓" als **alle** verstuurde fasen zo zijn bevestigd. Bij één mislukte fase (ook als de andere slagen) blijft alles dirty en verschijnt één eerlijke melding: "… niet opgeslagen; probeer het opnieuw". De volgende intervaltik probeert het opnieuw; zolang een ronde loopt, start het interval geen tweede.
+- `markDirty` telt een wijzigingsnummer (`S._dirtyRev`). Een bevestiging maakt alleen schoon als sinds het versturen niets is gewijzigd en de hash gelijk is. Een nieuwere invoer met dezelfde hash (bv. een notitie, of dezelfde waarde opnieuw getypt) blijft dus dirty.
+- Een antwoord telt alleen voor hetzelfde `S`-object, dezelfde code en dezelfde rol. Na uitloggen en opnieuw inloggen (ook met dezelfde code) of een rolwissel geeft een oud antwoord geen groen, geen melding, maakt niets schoon en schrijft geen groepswaarden. Een late debouncetimer start geen `saveCurrent` in een nieuwe sessie.
+- `sendBeacon` (pagehide/beforeunload) is alleen "in de wachtrij gezet", geen serverbevestiging: dirty en hash blijven staan en er komt geen melding. `false` of een exceptie geeft geen valse opslag. Per wijzigingsstand gaat hooguit één beaconronde uit.
+- `saveCurrent`/`_verstuurGeplandeSave` toont "Opgeslagen ✓" volgens dezelfde regel. Bij een groepsniveau-veld in entiteitcontext pas als ook de groepsrij-save (`saveGroepsniveauVelden`) zo is bevestigd. Een netwerkfout of onleesbaar antwoord geeft nu een melding in plaats van stilte.
+- `userEdit` zet elke invoer direct in het bestaande datamodel van de sessie/fase/entiteit (`S.data`, of `S._groepData` voor een groepsniveau-veld). Dit gebeurt met dezelfde poorten als `saveCurrent`: niet voor de koper, niet voor de begeleider in Financieel en niet bij een vergrendeld traject. De bronstatus "handmatig" blijft zoals hij was. Een hertekening vóór de debounce toont de waarde dus, en de opslag verstuurt exact wat is getypt.
+
+Ongewijzigd: snapshot/pending per fase/entiteit in `saveCurrent`, rol- en vergrendelpoorten, de groepsbeeld-callbacks (`gbOpslagStart`/`gbOpslagKlaar`, productpunt 5), de upload- en lijstsessieveiligheid, de API, het schema en de backend. Er is geen nieuwe opslag of planner bijgekomen.
+
+**Bewijs.** `tests/document-processing-ui.mjs` (check 25) draait de echte `markDirty`/`_dataHash`/`saveAll`, het 30s-interval en de visibilitychange/pagehide/beforeunload-handlers. Daarnaast draait de test `userEdit`/`schedSave`/`saveCurrent`/`_verstuurGeplandeSave`/`saveGroepsniveauVelden`/`getDataForFase`/`loadDataFromDB`/`showSaveIndicator`, zonder saveAll-stub, tegen uitgestelde synthetische `/mna/save`-antwoorden. De test controleert:
+
+- pending (dirty, hash oud, geen groen);
+- elke foutsoort hierboven, met daarna een nieuwe poging;
+- meerdere fasen met een gedeeltelijke fout en in omgekeerde volgorde;
+- een nieuwere edit met dezelfde hash;
+- sessiereset met dezelfde code, een andere rol en een rolwissel;
+- beacon `true`/`false`/exceptie;
+- de invoerroute: exact `234567` → hertekening vóór de 1200 ms-timer → opslag → bevestiging → heropenen als verkoper en als begeleider via `loadDataFromDB`;
+- fouten op het `saveCurrent`-pad, een geannuleerde debounce (uitlogpad), een entiteitwissel en een groepsniveau-veld met twee bevestigingen.
+
+Dit is synthetisch bewijs in `node:vm`, geen browser-, staging- of productiebewijs. Wat de koper ziet vóór en na de financiële vrijgave bepaalt de backend. Dat wordt na de release in de volledige bestaande LIVE-targetflow gecontroleerd en valt buiten deze frontendtest.
+
 ## Bewijs
 
 **Composer (sectie G van `tests/document-output-security.mjs`).** De proef draait de echte `bgMouRender`/`bgMouWire`/`bgMouApi` uit mna/04 en `esc` uit mna/02 in `node:vm`. Daarbij horen een minimale synthetische DOM, een nep-fetch met vertraagde PATCH-antwoorden en twee synthetische documenten. De proef controleert:

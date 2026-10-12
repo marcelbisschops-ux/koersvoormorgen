@@ -14,6 +14,9 @@
 // renderDocumentSectie; fetch is een stub met synthetische serverantwoorden (vorm zoals backend
 // worker/14 + worker/15). Geen netwerk, geen browser, geen live API — browserbewijs volgt op staging.
 //
+// Productpunt 19 (12 okt 2026, onderaan): de echte autosave (markDirty/saveAll/30s-interval/beacon) en
+// invoerbehoud vóór de debounce (userEdit/schedSave/saveCurrent), zie laadAutosave en docs/document-output.md.
+//
 // Gebruik: node tests/document-processing-ui.mjs   (vanuit de repo-root)
 // Wordt ook aangeroepen door tests/audit-consistentie.mjs (check 25).
 
@@ -157,6 +160,87 @@ function laad(root) {
   // telt dus precies één keer per document waarvan de velden zijn verwerkt.
   const ingevuld = () => log.autoFill.filter((x) => x.fid === FASE).length;
   return { ctx, els, log, opzet, begin, bestand, uitgesteld, docs, doc, verbindingsToast, ingevuld, renderApp };
+}
+
+// Productpunt 19 (12 okt 2026): autosave en invoer. Draait de ECHTE markDirty/_dataHash/saveAll, het
+// 30s-interval en de visibilitychange/pagehide/beforeunload-handlers, plus userEdit/schedSave/saveCurrent/
+// _verstuurGeplandeSave/saveGroepsniveauVelden/getDataForFase/loadDataFromDB/showSaveIndicator uit mna/02 —
+// géén saveAll-stub. fetch geeft elk /mna/save-verzoek uitgesteld terug; de test bepaalt het synthetische
+// antwoord (HTTP-status + body). Timers en interval zijn handmatig; renderApp is een synthetische hertekening
+// die de invoervelden, net als renderMain in mna/06, opnieuw uit S.data/S._groepData opbouwt.
+const AUTOSAVE_FASES = () => [
+  { id: 'financieel', title: 'Financieel', items: [], redflags: [], dataFields: [{ id: 'omzet', label: 'Omzet', req: true }, { id: 'ebitda', label: 'EBITDA' }, { id: 'aantalPartners', label: 'Aantal partners', groepsniveau: true }] },
+  { id: 'juridisch', title: 'Juridisch', items: [], redflags: [], dataFields: [{ id: 'kvk', label: 'KvK-nummer' }] },
+];
+const OK_ACK = { ok: true, fase_id: 'financieel', velden: 1 };
+function maakAutosaveS(extra = {}) {
+  const s = { screen: 'main', code: CODE, rol: 'verkoper', traject: { status: 'actief' }, fase: 0, checked: {}, data: {}, notities: {}, _userEdited: {}, _docSource: {}, _docFragment: {}, dataPerEntiteit: {}, _actieveEntiteit: null, _entiteiten: [], saveTimer: null, ...extra };
+  if (!s._groepData) s._groepData = s.data;
+  return s;
+}
+function laadAutosave(root) {
+  const src02 = lees(root, 'mna/02-state-opslag-documenten.js');
+  const delen = [
+    regel(src02, /^function ge\(id\)\{.*\}$/m, 'ge'),
+    regel(src02, /^function isKoper\(\)\{.*\}$/m, 'isKoper'),
+    regel(src02, /^function isTussen\(\)\{.*\}$/m, 'isTussen'),
+    regel(src02, /^function veldBron\(key\)\{[\s\S]*?\n\}/m, 'veldBron'),
+    regel(src02, /^function getDataForFase\(id\)\{[\s\S]*?\n\}/m, 'getDataForFase'),
+    regel(src02, /^function getChecklistForFase\(id\)\{.*\}$/m, 'getChecklistForFase'),
+    regel(src02, /^function saveGroepsniveauVelden\(faseId\)\{[\s\S]*?\n\}/m, 'saveGroepsniveauVelden'),
+    regel(src02, /^function saveCurrent\(cb\)\{[\s\S]*?\n\}/m, 'saveCurrent'),
+    regel(src02, /^function gbOpslagStart\(code,faseId,entiteitId\)\{[\s\S]*?\n\}/m, 'gbOpslagStart'),
+    regel(src02, /^function gbOpslagKlaar\(tk,d\)\{[\s\S]*?\n\}/m, 'gbOpslagKlaar'),
+    regel(src02, /^function _verstuurGeplandeSave\(pending\)\{[\s\S]*?\n\}/m, '_verstuurGeplandeSave'),
+    knip(src02, 'function loadDataFromDB(dbData){', 'koperReacties[id]=row.koper_reactie;}});}'),
+    regel(src02, /^function showSaveIndicator\(tekst\)\{.*\}$/m, 'showSaveIndicator'),
+    regel(src02, /^function schedSave\(\)\{.*\}$/m, 'schedSave'),
+    knip(src02, 'function userEdit(el){', '\n}\n'),
+    knip(src02, '// Dirty tracking — weet of er onopgeslagen wijzigingen zijn', '// -- BANKMUTATIES STATE'),
+  ];
+  const log = { req: [], beacon: [], toasts: [], groen: [], renders: 0 };
+  const opzet = { beacon: () => true };
+  const timers = [];
+  const intervals = [];
+  const handlers = {};
+  const dom = {};
+  const saveInd = { textContent: '', classList: { add() { log.groen.push(saveInd.textContent); }, remove() {} } };
+  const fetch = (url, opts) => new Promise((resolve, reject) => {
+    const r = { url: String(url), body: JSON.parse(opts.body) };
+    const antwoord = (status, json) => resolve({ ok: status >= 200 && status < 300, status, json });
+    r.geef = (status, body) => antwoord(status, () => Promise.resolve(JSON.parse(JSON.stringify(body))));
+    r.ongeldig = (status = 200) => antwoord(status, () => Promise.reject(new SyntaxError('Unexpected token < in JSON')));
+    r.leeg = (status = 200) => antwoord(status, () => Promise.reject(new SyntaxError('Unexpected end of JSON input')));
+    r.netwerk = () => reject(new TypeError('Failed to fetch'));
+    log.req.push(r);
+  });
+  function renderApp() {
+    log.renders++;
+    const S = ctx.S; const f = ctx.FASES[S.fase];
+    Object.keys(dom).forEach((k) => { delete dom[k]; });
+    f.dataFields.forEach((df) => { if (!df.header) dom['df_' + df.id] = { id: 'df_' + df.id, value: (df.groepsniveau ? S._groepData : S.data)[f.id + '_' + df.id] || '' }; });
+  }
+  const ctx = vm.createContext({
+    console, WORKER, FASES: AUTOSAVE_FASES(),
+    Blob: function (delen, o) { this.delen = delen; this.type = o && o.type; },
+    navigator: { sendBeacon: (url, blob) => { log.beacon.push({ url, body: JSON.parse(blob.delen[0]) }); return opzet.beacon(); } },
+    document: { getElementById: (id) => (id === 'save-ind' ? saveInd : dom[id] || null), addEventListener: (type, fn) => { handlers[type] = fn; }, hidden: false },
+    addEventListener: (type, fn) => { handlers[type] = fn; },
+    fetch, renderApp, checkOmzetSom() {},
+    setTimeout: (fn, ms) => { timers.push({ fn, ms }); return timers.length; },
+    clearTimeout: (id) => { if (id && timers[id - 1]) timers[id - 1].fn = null; },
+    setInterval: (fn, ms) => { intervals.push({ fn, ms }); return intervals.length; },
+    showAlert: (msg) => log.toasts.push(String(msg)),
+    S: maakAutosaveS(),
+  });
+  ctx.window = ctx;
+  vm.runInContext(delen.join('\n\n'), ctx, { filename: 'mna/02#autosave' });
+  // Eerstvolgende nog lopende timer met deze vertraging afgaan (1200 = schedSave, 800 = saveCurrent).
+  const timer = (ms) => { const t = timers.find((x) => x.fn && x.ms === ms); if (!t) return false; const fn = t.fn; t.fn = null; fn(); return true; };
+  const autosave = () => intervals.find((i) => i.ms === 30000).fn();
+  const typ = (id, waarde) => { const el = dom['df_' + id]; el.value = waarde; ctx.userEdit(el); return el; };
+  const flush = async () => { for (let i = 0; i < 25; i++) await new Promise((r) => setImmediate(r)); };
+  return { ctx, log, opzet, dom, handlers, intervals, timer, autosave, typ, flush, renderApp };
 }
 
 export async function draaiDocumentProcessingUiChecks(root = process.cwd()) {
@@ -484,6 +568,226 @@ export async function draaiDocumentProcessingUiChecks(root = process.cwd()) {
     await t.ctx.loadDataroom();
     const html2 = t.ctx.renderDataroom();
     check(/syn-ok\.txt/.test(html2) && !/syn-fail\.txt/.test(html2) && /1 document\(en\) met een verwerkingsprobleem/.test(html2), 'dataroom: mislukt document niet als opgeslagen document getoond, wel benoemd');
+  });
+
+  // ── Productpunt 19: autosave bevestigt alleen wat de server werkelijk heeft opgeslagen ──────────
+  await probeer('autosave: echte functies', async () => {
+    const t = laadAutosave(root);
+    check(typeof t.ctx.saveAll === 'function' && typeof t.ctx.markDirty === 'function' && t.intervals.length === 1 && t.intervals[0].ms === 30000 && ['visibilitychange', 'pagehide', 'beforeunload'].every((k) => typeof t.handlers[k] === 'function'), 'autosave: echte saveAll/markDirty, 30s-interval en visibilitychange/pagehide/beforeunload uit mna/02 geladen (geen stub)');
+  });
+
+  await probeer('autosave: pending → succes', async () => {
+    const t = laadAutosave(root); const S = t.ctx.S;
+    t.renderApp(); t.typ('omzet', '234567');
+    t.autosave();
+    const r = t.log.req[0];
+    check(t.log.req.length === 1 && r.url === WORKER + '/mna/save' && r.body.data_json.omzet.value === '234567', 'autosave: 30s-interval verstuurt de actuele invoer via de bestaande /mna/save');
+    check(S._dirty === true && t.ctx._lastSavedHash === '' && t.log.groen.length === 0 && t.log.toasts.length === 0, 'pending: vóór het HTTP-antwoord blijft S dirty, _lastSavedHash ongewijzigd en geen "Auto-opgeslagen ✓"');
+    t.autosave();
+    check(t.log.req.length === 1, 'pending: een volgende intervaltik start geen tweede ronde zolang de vorige loopt');
+    r.geef(200, OK_ACK); await t.flush();
+    check(S._dirty === false && t.ctx._lastSavedHash === 'financieel_omzet=234567' && t.log.groen.join('|') === 'Auto-opgeslagen ✓' && t.log.toasts.length === 0, 'succes (HTTP 200 + JSON ok:true): pas dan schoon, hash = verstuurde stand en één "Auto-opgeslagen ✓"');
+    t.autosave();
+    check(t.log.req.length === 1, 'succes: schoon → geen nieuwe autosave');
+  });
+
+  for (const [naam, af] of [
+    ['netwerkfout', (r) => r.netwerk()],
+    ['ongeldige JSON', (r) => r.ongeldig(200)],
+    ['lege body', (r) => r.leeg(200)],
+    ['HTTP 500 met ok:true', (r) => r.geef(500, { ok: true })],
+    ['HTTP 403 met fout', (r) => r.geef(403, { error: 'Geen toegang (synthetisch)' })],
+    ['HTTP 200 ok:false', (r) => r.geef(200, { ok: false })],
+    ['HTTP 200 onbekend antwoord {}', (r) => r.geef(200, {})],
+    ['HTTP 200 null', (r) => r.geef(200, null)],
+    ['HTTP 200 ok:true met error', (r) => r.geef(200, { ok: true, error: 'Synthetische fout' })],
+    ['HTTP 200 vergrendeld', (r) => r.geef(200, { error: 'vergrendeld' })],
+  ]) {
+    await probeer('autosave: ' + naam, async () => {
+      const t = laadAutosave(root); const S = t.ctx.S;
+      t.renderApp(); t.typ('omzet', '234567');
+      t.autosave();
+      af(t.log.req[0]); await t.flush();
+      check(S._dirty === true && t.ctx._lastSavedHash === '' && t.log.groen.length === 0, naam + ': blijft dirty, hash niet bijgewerkt, geen groen');
+      check(t.log.toasts.length === 1 && /niet opgeslagen/.test(t.log.toasts[0]) && S.data.financieel_omzet === '234567', naam + ': één eerlijke melding "niet opgeslagen", invoer blijft staan · ' + t.log.toasts[0]);
+      t.autosave();
+      check(t.log.req.length === 2, naam + ': volgende intervaltik probeert het opnieuw (één verzoek per ronde)');
+      t.log.req[1].geef(200, OK_ACK); await t.flush();
+      check(S._dirty === false && t.log.groen.join('|') === 'Auto-opgeslagen ✓', naam + ': na een latere bevestiging wél schoon en groen');
+    });
+  }
+
+  await probeer('autosave: meerdere fasen', async () => {
+    const zet = () => { const t = laadAutosave(root); t.ctx.S.data.financieel_omzet = '234567'; t.ctx.S.data.juridisch_kvk = '12345678'; t.ctx.markDirty(); t.autosave(); return t; };
+    const a = zet();
+    check(a.log.req.length === 2 && a.log.req.map((r) => r.body.fase_id).join(',') === 'financieel,juridisch', 'meerdere fasen: één verzoek per fase met data');
+    a.log.req[0].geef(200, OK_ACK); await a.flush();
+    check(a.ctx.S._dirty === true && a.log.groen.length === 0 && a.ctx._lastSavedHash === '', 'meerdere fasen: eerste bevestiging alleen → nog dirty, geen groen');
+    a.log.req[1].geef(503, { error: 'Tijdelijk niet beschikbaar (synthetisch)' }); await a.flush();
+    check(a.ctx.S._dirty === true && a.log.groen.length === 0 && a.ctx._lastSavedHash === '' && a.log.toasts.length === 1 && /Tijdelijk niet beschikbaar/.test(a.log.toasts[0]), 'meerdere fasen, gedeeltelijke fout: dirty, geen groen, één concrete melding');
+    const b = zet();
+    b.log.req[0].netwerk(); await b.flush();
+    b.log.req[1].geef(200, { ok: true, fase_id: 'juridisch', velden: 1 }); await b.flush();
+    check(b.ctx.S._dirty === true && b.log.groen.length === 0 && b.log.toasts.length === 1, 'meerdere fasen, eerste faalt en tweede slaagt later: dirty, geen groen, één melding');
+    const c = zet();
+    c.log.req[1].geef(200, { ok: true, fase_id: 'juridisch', velden: 1 }); await c.flush();
+    check(c.log.groen.length === 0 && c.ctx.S._dirty === true, 'meerdere fasen, omgekeerde volgorde: na de eerste bevestiging nog geen groen');
+    c.log.req[0].geef(200, OK_ACK); await c.flush();
+    check(c.ctx.S._dirty === false && c.log.groen.join('|') === 'Auto-opgeslagen ✓' && c.ctx._lastSavedHash === 'financieel_omzet=234567|juridisch_kvk=12345678', 'meerdere fasen: pas na ALLE bevestigingen schoon en één keer groen');
+  });
+
+  await probeer('autosave: nieuwere invoer tijdens pending', async () => {
+    // (a) Notitie-invoer: schedSave → markDirty zonder dat de hash (S.data) verandert.
+    const a = laadAutosave(root);
+    a.renderApp(); a.typ('omzet', '234567'); a.autosave();
+    const hashVoor = a.ctx._dataHash();
+    a.ctx.schedSave();
+    a.log.req[0].geef(200, OK_ACK); await a.flush();
+    check(a.ctx._dataHash() === hashVoor && a.ctx.S._dirty === true && a.ctx._lastSavedHash === '' && a.log.groen.length === 0, 'nieuwere edit met dezelfde hash (markDirty vóór de DOM in S.data staat): oude bevestiging maakt niet schoon, geen groen');
+    // (b) Dezelfde waarde opnieuw getypt: hash gelijk, toch een nieuwe edit.
+    const b = laadAutosave(root);
+    b.renderApp(); b.typ('omzet', '234567'); b.autosave();
+    b.typ('omzet', '234567');
+    b.log.req[0].geef(200, OK_ACK); await b.flush();
+    check(b.ctx.S._dirty === true && b.log.groen.length === 0, 'zelfde waarde opnieuw ingevoerd tijdens pending: blijft dirty');
+    // (c) Andere waarde tijdens pending: blijft dirty; de volgende ronde verstuurt en bevestigt de nieuwe waarde.
+    const c = laadAutosave(root);
+    c.renderApp(); c.typ('omzet', '234567'); c.autosave();
+    c.typ('omzet', '2345678');
+    c.log.req[0].geef(200, OK_ACK); await c.flush();
+    check(c.ctx.S._dirty === true && c.log.groen.length === 0 && c.ctx.S.data.financieel_omzet === '2345678', 'andere waarde tijdens pending: blijft dirty, nieuwe invoer intact');
+    c.autosave();
+    c.log.req[1].geef(200, OK_ACK); await c.flush();
+    check(c.log.req[1].body.data_json.omzet.value === '2345678' && c.ctx.S._dirty === false && c.ctx._lastSavedHash === 'financieel_omzet=2345678' && c.log.groen.length === 1, 'volgende ronde verstuurt en bevestigt de nieuwe waarde');
+  });
+
+  for (const [naam, wissel] of [
+    ['nieuwe sessie zelfde code', (t) => { t.ctx.S = maakAutosaveS({ data: { financieel_omzet: '777' } }); t.ctx.S._dirty = true; t.ctx.S._dirtyRev = 0; }],
+    ['nieuwe sessie andere rol', (t) => { t.ctx.S = maakAutosaveS({ rol: 'tussenpersoon', data: { financieel_omzet: '777' } }); t.ctx.S._dirty = true; t.ctx.S._dirtyRev = 0; }],
+    ['rolwissel in dezelfde staat', (t) => { t.ctx.S.rol = 'tussenpersoon'; }],
+  ]) {
+    for (const [uitkomst, af] of [['succes', (r) => r.geef(200, OK_ACK)], ['fout', (r) => r.geef(500, { error: 'Oude synthetische fout' })]]) {
+      await probeer('autosave: ' + naam + ', oud ' + uitkomst, async () => {
+        const t = laadAutosave(root);
+        t.renderApp(); t.typ('omzet', '234567'); t.autosave();
+        wissel(t);
+        const nieuw = t.ctx.S; const dataVoor = JSON.stringify(nieuw.data);
+        af(t.log.req[0]); await t.flush();
+        check(nieuw._dirty === true && t.ctx._lastSavedHash === '' && t.log.groen.length === 0 && t.log.toasts.length === 0 && JSON.stringify(nieuw.data) === dataVoor, naam + ' + oud ' + uitkomst + ': nieuwe S blijft dirty en ongewijzigd, geen groen of melding, hash niet bijgewerkt');
+      });
+    }
+  }
+
+  await probeer('autosave: late debouncetimer na sessiewissel', async () => {
+    const t = laadAutosave(root);
+    t.renderApp(); t.typ('omzet', '234567');
+    t.ctx.S = maakAutosaveS({ data: { financieel_omzet: '777' } }); t.renderApp();
+    const nieuw = t.ctx.S;
+    t.timer(1200);
+    check(!t.timer(800) && t.log.req.length === 0 && !nieuw._pendingSave && nieuw._dirty === undefined && nieuw.data.financieel_omzet === '777', 'late schedSave-timer van de oude sessie start geen saveCurrent in de nieuwe sessie (zelfde code)');
+  });
+
+  await probeer('autosave: beacon', async () => {
+    const t = laadAutosave(root); const S = t.ctx.S;
+    t.renderApp(); t.typ('omzet', '234567');
+    t.handlers.pagehide();
+    check(t.log.beacon.length === 1 && t.log.beacon[0].body.data_json.omzet.value === '234567' && t.log.req.length === 0, 'beacon: pagehide zet de actuele invoer in de beaconwachtrij');
+    check(S._dirty === true && t.ctx._lastSavedHash === '' && t.log.groen.length === 0 && t.log.toasts.length === 0, 'beacon in de wachtrij is geen serverbevestiging: dirty blijft, hash ongewijzigd, geen groen');
+    t.handlers.beforeunload(); t.handlers.pagehide();
+    check(t.log.beacon.length === 1, 'beacon: geen herhaalde beaconronde voor dezelfde stand (beforeunload + pagehide)');
+    t.typ('omzet', '2345678'); t.handlers.pagehide();
+    check(t.log.beacon.length === 2 && t.log.beacon[1].body.data_json.omzet.value === '2345678', 'beacon: na een nieuwe wijziging hooguit één nieuwe ronde');
+    t.opzet.beacon = () => false;
+    t.typ('omzet', '3456789'); t.handlers.pagehide(); t.handlers.beforeunload();
+    check(t.log.beacon.length === 3 && S._dirty === true && t.log.groen.length === 0 && t.ctx._lastSavedHash === '', 'beacon false: geen valse opslag, geen extra pogingen');
+    t.opzet.beacon = () => { throw new Error('synthetische beaconfout'); };
+    t.typ('omzet', '4567890');
+    let fout = null; try { t.handlers.pagehide(); } catch (e) { fout = e; }
+    check(!fout && t.log.beacon.length === 4 && S._dirty === true && t.log.groen.length === 0, 'beacon gooit: geen exceptie naar buiten, blijft dirty, geen groen');
+    t.autosave();
+    t.log.req[0].geef(200, OK_ACK); await t.flush();
+    check(S._dirty === false && t.log.groen.length === 1, 'na beacon blijft de gewone autosave werken en bevestigt pas op het serverantwoord');
+  });
+
+  // Invoerbehoud vóór debounce: getypte waarde → hertekening vóór de 1200ms-timer → opslag → bevestiging.
+  await probeer('invoer: hertekening vóór debounce', async () => {
+    const t = laadAutosave(root); const S = t.ctx.S;
+    t.renderApp(); t.typ('omzet', '234567');
+    check(S.data.financieel_omzet === '234567' && S._userEdited.financieel_omzet === true, 'invoer: waarde direct in S.data van deze sessie/fase, gemarkeerd als handmatig');
+    t.renderApp();
+    check(t.dom.df_omzet.value === '234567', 'invoer: hertekening (39ms) vóór de 1200ms-timer tekent het veld mét de waarde');
+    check(t.timer(1200) && t.timer(800) && t.log.req.length === 1, 'invoer: debounce → saveCurrent → één /mna/save');
+    const body = t.log.req[0].body;
+    check(body.fase_id === 'financieel' && body.data_json.omzet && body.data_json.omzet.value === '234567' && body.data_json.omzet.bron === 'handmatig', 'invoer: verzoek bevat exact 234567 met bron handmatig (geen lege financiële opslag)');
+    check(t.log.groen.length === 0, 'invoer: geen "Opgeslagen ✓" vóór het antwoord');
+    t.log.req[0].geef(200, OK_ACK); await t.flush();
+    check(t.log.groen.join('|') === 'Opgeslagen ✓' && t.log.toasts.length === 0, 'invoer: "Opgeslagen ✓" pas na HTTP 200 + ok:true');
+    for (const rol of ['verkoper', 'tussenpersoon']) {
+      t.ctx.S = maakAutosaveS({ rol });
+      t.ctx.loadDataFromDB(JSON.parse(JSON.stringify([{ fase_id: 'financieel', data_json: body.data_json, checklist_json: body.checklist_json, notitie: body.notitie }])));
+      t.renderApp();
+      check(t.ctx.S._groepData.financieel_omzet === '234567' && t.ctx.S._userEdited.financieel_omzet === true && t.dom.df_omzet.value === '234567', 'heropenen als ' + rol + ' (echte loadDataFromDB van de verstuurde rij): exact 234567, bron handmatig');
+    }
+  });
+
+  for (const [naam, af] of [['HTTP 500', (r) => r.geef(500, { ok: true })], ['netwerkfout', (r) => r.netwerk()], ['ongeldige JSON', (r) => r.ongeldig(200)], ['lege body', (r) => r.leeg(200)], ['ok ontbreekt', (r) => r.geef(200, { velden: 1 })]]) {
+    await probeer('invoer: opslagfout ' + naam, async () => {
+      const t = laadAutosave(root); const S = t.ctx.S;
+      t.renderApp(); t.typ('omzet', '234567'); t.renderApp();
+      t.timer(1200); t.timer(800);
+      af(t.log.req[0]); await t.flush();
+      check(t.log.groen.length === 0 && t.log.toasts.length === 1 && /niet opgeslagen/.test(t.log.toasts[0]) && S.data.financieel_omzet === '234567' && S._dirty === true && t.dom.df_omzet.value === '234567', 'saveCurrent + ' + naam + ': geen "Opgeslagen ✓", eerlijke melding, invoer en dirty blijven');
+    });
+  }
+
+  await probeer('invoer: annuleren/uitloggen vóór debounce', async () => {
+    // uitloggen() annuleert de debouncetimer en roept saveAll() aan: de waarde staat al in S.data.
+    const t = laadAutosave(root);
+    t.renderApp(); t.typ('omzet', '234567');
+    t.ctx.clearTimeout(t.ctx.S.saveTimer);
+    t.ctx.saveAll();
+    check(!t.timer(1200) && t.log.req.length === 1 && t.log.req[0].body.data_json.omzet.value === '234567', 'geannuleerde debounce: saveAll verstuurt toch exact 234567');
+  });
+
+  await probeer('invoer: entiteitwissel en groepsniveau', async () => {
+    const dataA = {}, dataB = { financieel_omzet: '111' }, groep = { financieel_aantalPartners: '2' };
+    const t = laadAutosave(root);
+    t.ctx.S = maakAutosaveS({ data: dataA, _groepData: groep, dataPerEntiteit: { ENT_A: dataA, ENT_B: dataB }, _actieveEntiteit: 'ENT_A', _entiteiten: [{ id: 'ENT_A', naam: 'Alfa BV' }, { id: 'ENT_B', naam: 'Beta BV' }] });
+    const S = t.ctx.S;
+    t.renderApp(); t.typ('omzet', '234567');
+    // Zoals switchEntiteit (mna/06): eerst saveCurrent() in de oude context, dan wisselen en hertekenen.
+    t.ctx.saveCurrent(); S.data = dataB; S._actieveEntiteit = 'ENT_B'; t.renderApp();
+    // (saveCurrent stuurt in entiteitcontext ook de groepsrij mee zodra een groepsniveau-veld een waarde heeft.)
+    check(!t.timer(1200) && t.timer(800) && t.log.req[0].body.entiteit_id === 'ENT_A' && t.log.req[0].body.data_json.omzet.value === '234567' && t.log.req.slice(1).every((r) => r.body.entiteit_id === undefined && !r.body.data_json.omzet), 'entiteitwissel: de save gaat met exact 234567 naar de oude entiteit, niet naar de groepsrij');
+    check(dataA.financieel_omzet === '234567' && dataB.financieel_omzet === '111' && t.dom.df_omzet.value === '111' && groep.financieel_omzet === undefined, 'entiteitwissel: geen overdracht naar de nieuwe entiteit of de groep');
+    // Groepsniveau-veld in entiteitcontext: groen pas als entiteit- én groepsrij-save zijn bevestigd.
+    const g = (groepAntwoord) => { const u = laadAutosave(root); u.ctx.S = maakAutosaveS({ data: { financieel_omzet: '5' }, _groepData: { financieel_aantalPartners: '2' }, _actieveEntiteit: 'ENT_A' }); u.renderApp(); u.typ('aantalPartners', '3'); u.timer(1200); u.timer(800); return u; };
+    const ok = g();
+    check(ok.ctx.S._groepData.financieel_aantalPartners === '3' && ok.ctx.S.data.financieel_aantalPartners === undefined && ok.log.req.length === 2 && ok.log.req[1].body.entiteit_id === undefined && ok.log.req[1].body.data_json.aantalPartners.value === '3', 'groepsniveau: invoer direct in S._groepData, entiteit- en groepsrij-save verstuurd');
+    ok.log.req[0].geef(200, OK_ACK); await ok.flush();
+    check(ok.log.groen.length === 0, 'groepsniveau: entiteitbevestiging alleen → nog geen groen');
+    ok.log.req[1].geef(200, OK_ACK); await ok.flush();
+    check(ok.log.groen.join('|') === 'Opgeslagen ✓' && ok.log.toasts.length === 0, 'groepsniveau: groen pas na beide bevestigingen');
+    const fout = g();
+    fout.log.req[0].geef(200, OK_ACK); fout.log.req[1].geef(500, { error: 'Synthetische groepsfout' }); await fout.flush();
+    check(fout.log.groen.length === 0 && fout.log.toasts.length === 1 && /niet opgeslagen/.test(fout.log.toasts[0]), 'groepsniveau: groepsrij-save faalt → geen groen, eerlijke melding');
+  });
+
+  await probeer('invoer: rol- en vergrendelpoorten', async () => {
+    for (const [naam, extra] of [['koper', { rol: 'koper' }], ['begeleider in Financieel', { rol: 'tussenpersoon' }], ['vergrendeld', { traject: { status: 'vergrendeld' } }]]) {
+      const t = laadAutosave(root); t.ctx.S = maakAutosaveS(extra);
+      t.renderApp(); t.typ('omzet', '234567');
+      check(t.ctx.S.data.financieel_omzet === undefined, naam + ': invoer wordt niet in het datamodel gezet (zelfde poort als saveCurrent)');
+    }
+  });
+
+  await probeer('invoer: late saveCurrent-bevestiging na sessiewissel', async () => {
+    const t = laadAutosave(root);
+    t.renderApp(); t.typ('omzet', '234567'); t.timer(1200); t.timer(800);
+    t.ctx.S = maakAutosaveS({ data: { financieel_omzet: '777' } });
+    const nieuw = t.ctx.S;
+    t.log.req[0].geef(200, { ...OK_ACK, groepswaarden: { omzet: { value: '999' } } }); await t.flush();
+    check(t.log.groen.length === 0 && t.log.toasts.length === 0 && nieuw._groepData.financieel_omzet === '777', 'oude bevestiging na sessiewissel (zelfde code): geen groen, geen melding, geen groepswaarden in de nieuwe sessie');
   });
 
   return res;
