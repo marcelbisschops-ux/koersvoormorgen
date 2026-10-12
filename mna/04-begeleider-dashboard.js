@@ -1015,15 +1015,35 @@ function toonKmTfHistorie(targetId){
 // overeenkomsttekst stelt de begeleider zelf vast — het platform voegt geen bepalingen toe;
 // juridische eindvalidatie gebeurt afzonderlijk. Generieke targetflow: het document heet daar
 // BEMIDDELINGS-/INTRODUCTIEBEVESTIGING en de begeleider kan een concept laden uit het vaste
-// backendsjabloon (GET …/introductie/concept: geen AI, niets opgeslagen); vaststellen blijft de
-// bestaande actie 'versie'. Het ruwe linktoken leeft alleen in dit venster (geen opslag, geen log,
+// backendsjabloon (GET …/introductie/concept: geen AI, niets opgeslagen) of optioneel een onbevestigd
+// AI-voorstel opvragen (POST …/introductie/concept met uitsluitend {actie:'ai_voorstel'}, productpunt
+// 11; niets opgeslagen); vaststellen blijft de bestaande actie 'versie'. Het ruwe linktoken leeft alleen in dit venster (geen opslag, geen log,
 // geen URL van deze pagina); sluiten = weg.
+// Deadline: alleen het AI-voorstel (POST …/concept met actie 'ai_voorstel') wacht eindig 180 s — de
+// bestaande upstreamdeadline van callClaudeLight (150 s) plus netwerkmarge. Alle andere
+// introductieroutes houden 15 s. Geen retry of extra AI-aanroep.
+var KM_INTRO_AI_DEADLINE_MS=180000;
 function kmIntroApi(targetId,body,pad){
   var opt={method:body?'POST':'GET',headers:{'x-tussen-key':S.code},cache:'no-store'};
   if(body){opt.headers['Content-Type']='application/json';opt.body=JSON.stringify(body);}
-  return fetchMetTimeout(WORKER+'/mna/koopmandaat/'+encodeURIComponent(S.code)+'/target/'+encodeURIComponent(targetId)+'/introductie'+(pad||''),opt,15000)
+  var ms=(pad==='/concept'&&body&&body.actie==='ai_voorstel')?KM_INTRO_AI_DEADLINE_MS:15000;
+  return fetchMetTimeout(WORKER+'/mna/koopmandaat/'+encodeURIComponent(S.code)+'/target/'+encodeURIComponent(targetId)+'/introductie'+(pad||''),opt,ms)
     .then(function(r){return r.json().catch(function(){return {};}).then(function(j){j=j||{};return {ok:r.ok&&j.ok===true,status:r.status,json:j};});})
     .catch(function(){return {ok:false,status:0,json:{}};});
+}
+
+// Productpunt 11: optioneel AI-voorstel (POST …/introductie/concept met uitsluitend {actie:'ai_voorstel'}).
+// Alleen het exacte servercontract telt als voorstel: ai/voorstel true, niets opgeslagen, vastgesteld,
+// akkoord, vrijgegeven of juridisch goedgekeurd, en een niet-lege tekst van maximaal 20000 tekens.
+// Anders null: geen succes en niets overschreven.
+function kmIntroAiVoorstel(r){
+  var j=r&&r.ok&&r.json;
+  if(!j||j.ok!==true||j.ai!==true||j.voorstel!==true)return null;
+  if(j.opgeslagen!==false||j.vastgesteld!==false||j.akkoord!==false||j.vrijgegeven!==false||j.juridisch_goedgekeurd!==false)return null;
+  var c=j.concept;
+  if(!c||typeof c!=='object'||typeof c.tekst!=='string'||!c.tekst.trim()||c.tekst.length>20000)return null;
+  if(c.open_punten!=null&&!Array.isArray(c.open_punten))return null;
+  return c;
 }
 
 var KM_INTRO_SOORT={versie_vastgesteld:'Versie vastgesteld',link_uitgegeven:'Link aangemaakt',link_ingetrokken:'Link ingetrokken',akkoord:'Akkoord door de onderneming',wijzigingsverzoek:'Wijziging gevraagd door de onderneming',vrijgave:'Identiteit vrijgegeven aan de koper',teaser_goedgekeurd:'Teaser goedgekeurd',teaser_ingetrokken:'Teaser ingetrokken',relatie_einde:'Introductierelatie beëindigd',legal_hold_aan:'Langere bewaring vanwege geschil/juridische noodzaak ingesteld',legal_hold_uit:'Langere bewaring opgeheven',contact_gewijzigd:'Contactgegevens gewijzigd',operationeel_einde:'Einde operationele noodzaak contactgegevens'};
@@ -1046,6 +1066,10 @@ function toonKmIntroductieModal(targetId){
   ov.appendChild(mo);document.body.appendChild(ov);
   var linkInGeheugen=null; // {link, versie, verloopt_op} — uitsluitend in deze closure
   var gewijzigd=false;
+  // Gedeelde guard voor vast concept, AI-voorstel en vaststellen: nooit twee tegelijk. Zoekt de knoppen
+  // telkens opnieuw op, zodat ook na een herrender de juiste knoppen worden hersteld.
+  var conceptBezig=false;
+  function zetConceptBezig(b){conceptBezig=b;['km-intro-concept','km-intro-ai','km-intro-versie'].forEach(function(id){var el=ge(id);if(el)el.disabled=b;});}
   function sluit(){linkInGeheugen=null;if(ov.parentNode)ov.parentNode.removeChild(ov);if(gewijzigd)kmRefresh();}
   ov.addEventListener('click',function(e){if(e.target===ov)sluit();});
   var invoer='width:100%;font-size:12px;padding:6px 8px;border:1px solid var(--border2);border-radius:6px;background:var(--card);color:var(--sub);font-family:inherit';
@@ -1141,8 +1165,12 @@ function toonKmIntroductieModal(targetId){
       h+='<div style="font-size:12px;color:var(--muted)">Er is nog geen overeenkomst vastgesteld voor deze target.</div>';
     }
     if(bewerkbaar&&gen){
-      h+='<div style="margin-top:.75rem;font-size:11px;color:var(--muted);line-height:1.6">Laad een concept uit het vaste sjabloon (niet door AI opgesteld, er wordt niets opgeslagen), pas het aan en stel het daarna zelf vast als versie. Ontbrekende gegevens staan als [in te vullen: …] in de tekst. Het concept volgt de goedgekeurde richting en bevat geen bedragen, percentages, boetes of termijnen buiten het bestaande bewaarbeleid. Juridische validatie gebeurt afzonderlijk.</div>'
-        +'<div style="margin-top:.4rem;display:flex;gap:8px;flex-wrap:wrap"><button class="btn-ghost" id="km-intro-concept" style="font-size:12px">Concept BEMIDDELINGS-/INTRODUCTIEBEVESTIGING laden</button></div>'
+      // AI-voorstel alleen voor de bewerkende rollen (begeleider/admin); de backend weigert de rest ook.
+      var magAi=S.kmRol==='begeleider'||S.kmRol==='admin';
+      h+='<div style="margin-top:.75rem;font-size:11px;color:var(--muted);line-height:1.6">Laad een concept uit het vaste sjabloon (niet door AI opgesteld, er wordt niets opgeslagen), pas het aan en stel het daarna zelf vast als versie. Ontbrekende gegevens staan als [in te vullen: …] in de tekst. Het concept volgt de goedgekeurde richting en bevat geen bedragen, percentages, boetes of termijnen buiten het bestaande bewaarbeleid. Juridische validatie gebeurt afzonderlijk.'
+        +(magAi?' Optioneel vraagt u een AI-voorstel op: een taalkundige variant van hetzelfde sjabloon; uw tekst en partijgegevens gaan niet naar AI. Een AI-voorstel is onbevestigd: niet opgeslagen, niet vastgesteld, niet verstuurd, niet vrijgegeven en niet juridisch goedgekeurd.':'')+'</div>'
+        +'<div style="margin-top:.4rem;display:flex;gap:8px;flex-wrap:wrap"><button class="btn-ghost" id="km-intro-concept" style="font-size:12px">Concept BEMIDDELINGS-/INTRODUCTIEBEVESTIGING laden</button>'
+        +(magAi?'<button class="btn-ghost" id="km-intro-ai" style="font-size:12px">AI-voorstel opvragen (optioneel)</button>':'')+'</div>'
         +'<div id="km-intro-concept-info" style="display:none;margin-top:.4rem;font-size:11px;color:var(--sub);background:var(--gold-bg);border:1px solid var(--gold-dark);border-radius:6px;padding:.45rem .6rem"></div>'
         +'<textarea id="km-intro-tekst" rows="10" maxlength="20000" aria-label="Tekst van de bemiddelings-/introductiebevestiging" placeholder="Tekst van de bemiddelings-/introductiebevestiging" style="'+invoer+';margin-top:.4rem"></textarea>'
         +'<button class="btn btn-sm" id="km-intro-versie" style="margin-top:.4rem;font-size:12px">'+(hv?'Nieuwe versie vaststellen':'Versie 1 vaststellen')+'</button>';
@@ -1263,38 +1291,63 @@ function toonKmIntroductieModal(targetId){
     var ce=ge('km-intro-cemail');if(ce)ce.value=contact.email||'';
     var linkEl=ge('km-intro-link');if(linkEl&&linkInGeheugen)linkEl.value=linkInGeheugen.link;
     bind(d,hv,st,contact,gen,kaartT);
+    if(conceptBezig)zetConceptBezig(true);
   }
 
   function bind(d,hv,st,contact,gen,kaartT){
     ge('km-intro-sluit').onclick=sluit;
     var reden=function(){var el=ge('km-intro-reden');var v=el?el.value.trim():'';if(!v)melding('err','Vul eerst een reden in.');return v;};
 
-    // Concept uit het vaste backendsjabloon in het tekstvak laden: niets opgeslagen, niets vastgesteld.
-    var conBtn=ge('km-intro-concept');
-    if(conBtn)conBtn.onclick=async function(){
+    // Concept in het tekstvak laden: vast backendsjabloon (GET) of optioneel AI-voorstel (POST met
+    // uitsluitend {actie:'ai_voorstel'}). Niets opgeslagen, niets vastgesteld. Het tekstvak wordt alleen
+    // overschreven als het venster en hetzelfde tekstvak er nog zijn en de tekst sinds de aanvraag niet
+    // is gewijzigd; anders blijft de eigen tekst staan (geen late overwrite).
+    async function laadConcept(ai){
+      if(conceptBezig)return;
       var ta=ge('km-intro-tekst');if(!ta)return;
       var huidig=(ta.value||'').trim();
-      if(huidig&&huidig!==((hv&&hv.tekst)||'').trim()&&!confirm('Het tekstvak bevat tekst die nog niet is vastgesteld. Vervangen door een nieuw concept?'))return;
+      if(huidig&&huidig!==((hv&&hv.tekst)||'').trim()&&!confirm(ai
+        ?'Het tekstvak bevat tekst die nog niet is vastgesteld. Vervangen door een AI-voorstel?\n\nUw tekst wordt niet naar AI gestuurd. Het voorstel is onbevestigd: er wordt niets opgeslagen, vastgesteld of verstuurd.'
+        :'Het tekstvak bevat tekst die nog niet is vastgesteld. Vervangen door een nieuw concept?'))return;
       melding('',null);
-      conBtn.disabled=true;
-      var r=await kmIntroApi(targetId,null,'/concept');
+      var voor=ta.value;
+      zetConceptBezig(true);
+      var r=ai?await kmIntroApi(targetId,{actie:'ai_voorstel'},'/concept'):await kmIntroApi(targetId,null,'/concept');
       if(!ov.parentNode)return;
-      conBtn.disabled=false;
-      var c=r.ok&&r.json.concept;
-      if(!c||typeof c.tekst!=='string'||!c.tekst){melding('err',r.status?((r.json&&r.json.error)||'Het concept kon niet worden geladen.'):'Geen verbinding — er is geen concept geladen.');return;}
+      zetConceptBezig(false);
+      var c=ai?kmIntroAiVoorstel(r):(r.ok&&r.json.concept);
+      if(!c||typeof c.tekst!=='string'||!c.tekst){
+        if(!ai){melding('err',r.status?((r.json&&r.json.error)||'Het concept kon niet worden geladen.'):'Geen verbinding — er is geen concept geladen.');return;}
+        var srvFout=r.json&&typeof r.json.error==='string'?r.json.error.slice(0,300):'';
+        melding('err',(!r.status?'Geen verbinding — er is geen AI-voorstel geladen.':r.ok?'Het antwoord was geen geldig AI-voorstel en is niet overgenomen.':(srvFout||'Het AI-voorstel is niet beschikbaar.'))
+          +' Uw tekst is ongewijzigd; het vaste sjabloon blijft beschikbaar via "Concept BEMIDDELINGS-/INTRODUCTIEBEVESTIGING laden".');
+        return;
+      }
+      if(ge('km-intro-tekst')!==ta||ta.value!==voor){
+        melding('err',(ai?'Het AI-voorstel':'Het concept')+' is niet overgenomen: het tekstvak is intussen gewijzigd of opnieuw geladen. Uw tekst blijft staan.');
+        return;
+      }
       ta.value=c.tekst;
       var open=Array.isArray(c.open_punten)?c.open_punten.filter(function(p){return typeof p==='string'&&p;}):[];
       var info=ge('km-intro-concept-info');
       if(info){
-        info.innerHTML='<b>Concept geladen</b> — nog niet opgeslagen, niet vastgesteld en niet verstuurd. Niet door AI opgesteld; juridische validatie gebeurt afzonderlijk.'
+        info.setAttribute('data-bron',ai?'ai':'sjabloon');
+        info.innerHTML=(ai
+          ?'<b>AI-voorstel geladen — onbevestigd</b> — niet opgeslagen, niet vastgesteld, niet verstuurd, niet vrijgegeven en niet juridisch goedgekeurd. Beoordeel en pas de tekst aan; pas als u hem zelf als versie vaststelt, wordt het een versie. Juridische eindvalidatie gebeurt afzonderlijk.'
+          :'<b>Concept geladen</b> — nog niet opgeslagen, niet vastgesteld en niet verstuurd. Niet door AI opgesteld; juridische validatie gebeurt afzonderlijk.')
           +(open.length?'<div style="margin-top:.3rem">Nog in te vullen:</div><ul id="km-intro-open-punten" style="margin:.2rem 0 0 1.1rem">'+open.map(function(p){return '<li>'+esc(p)+'</li>';}).join('')+'</ul>':'');
         info.style.display='block';
       }
-      melding('ok','Concept geladen in het tekstvak. Pas het aan en stel het daarna vast; er is nog niets vastgelegd.');
-    };
+      melding('ok',ai?'AI-voorstel geladen in het tekstvak (onbevestigd). Er is niets opgeslagen, vastgesteld of verstuurd.':'Concept geladen in het tekstvak. Pas het aan en stel het daarna vast; er is nog niets vastgelegd.');
+    }
+    var conBtn=ge('km-intro-concept');
+    if(conBtn)conBtn.onclick=function(){return laadConcept(false);};
+    var aiBtn=ge('km-intro-ai');
+    if(aiBtn)aiBtn.onclick=function(){return laadConcept(true);};
 
     var vBtn=ge('km-intro-versie');
     if(vBtn)vBtn.onclick=function(){
+      if(conceptBezig)return;
       var tekst=(ge('km-intro-tekst').value||'').trim();
       if(!tekst){melding('err','Vul de overeenkomsttekst in.');return;}
       if(hv&&tekst===(hv.tekst||'').trim()){melding('err','De tekst is niet gewijzigd; er is geen nieuwe versie nodig.');return;}
@@ -1305,7 +1358,9 @@ function toonKmIntroductieModal(targetId){
         :'Versie 1 van de '+(gen?'bemiddelings-/introductiebevestiging':'introductieovereenkomst')+' vaststellen?\n\nU bent zelf verantwoordelijk voor de inhoud; juridische eindvalidatie gebeurt afzonderlijk.';
       if(!confirm(vraag))return;
       linkInGeheugen=null;
-      actie(vBtn,{actie:'versie',tekst:tekst},'Versie vastgesteld.');
+      zetConceptBezig(true);
+      var klaar=function(){zetConceptBezig(false);};
+      actie(vBtn,{actie:'versie',tekst:tekst},'Versie vastgesteld.').then(klaar,klaar);
     };
 
     // Verzending vastleggen: contactmoment via de bestaande target-route (contact_toevoegen). Dat is het

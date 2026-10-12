@@ -191,16 +191,40 @@ function maakOmgeving(root, { rol = 'begeleider', targets = [] } = {}) {
     }
     return { status: 404, json: { error: 'fixture: onbekend ' + m + ' ' + pad } };
   };
-  const nepFetch = (url, o = {}) => {
+  const nepFetch = (url, o = {}, ms) => {
     const u = new URL(String(url));
     const m = (o.method || 'GET').toUpperCase();
     let body = null;
     try { body = o.body ? JSON.parse(o.body) : null; } catch (e) { body = '<<ongeldig>>'; }
-    const regel = { m, url: u.href, pad: u.pathname, headers: o.headers || {}, body, cache: o.cache };
+    const regel = { m, url: u.href, pad: u.pathname, headers: o.headers || {}, body, cache: o.cache, ms };
     omg.calls.push(regel);
     const r = (omg.api && omg.api(m, u.pathname, body, regel)) || standaard(m, u.pathname);
+    const antwoord = (x) => (x === 'netwerk' ? Promise.reject(new Error('offline (fixture)')) : { ok: x.status >= 200 && x.status < 300, status: x.status, json: async () => x.json });
+    // Een Promise als antwoord = uitgesteld antwoord (de test bepaalt wanneer het binnenkomt). Een
+    // abort (deadline van de fetchMetTimeout-stub) wijst hem af zoals echte fetch (AbortError).
+    if (r && typeof r.then === 'function') {
+      return new Promise((los, weiger) => {
+        if (o.signal) o.signal.addEventListener('abort', () => { regel.afgebroken = true; weiger(new DOMException('This operation was aborted', 'AbortError')); });
+        r.then(antwoord).then(los, weiger);
+      });
+    }
     if (r === 'netwerk') return Promise.reject(new Error('offline (fixture)'));
-    return Promise.resolve({ ok: r.status >= 200 && r.status < 300, status: r.status, json: async () => r.json });
+    return Promise.resolve(antwoord(r));
+  };
+  // fetchMetTimeout-stub met dezelfde semantiek als mna/01 (ms||15000, abort op de deadline, timer weg na
+  // afloop), maar op een virtuele klok: o.tik(ms) laat de tijd verstrijken zonder echt te wachten.
+  const klok = { nu: 0, timers: new Set() };
+  const fetchMetTimeout = (url, o = {}, ms) => {
+    ms = ms || 15000;
+    const ctrl = new AbortController();
+    const timer = { at: klok.nu + ms, abort: () => ctrl.abort() };
+    klok.timers.add(timer);
+    return nepFetch(url, Object.assign({}, o, { signal: ctrl.signal }), ms).finally(() => { klok.timers.delete(timer); });
+  };
+  const tik = async (ms) => {
+    klok.nu += ms;
+    for (const t of [...klok.timers]) if (t.at <= klok.nu) { klok.timers.delete(t); t.abort(); }
+    await flush();
   };
   const sandbox = {
     document: doc, window: { location: { href: '' } }, location: { origin: 'https://koersvoormorgen.test' }, navigator: {},
@@ -208,7 +232,7 @@ function maakOmgeving(root, { rol = 'begeleider', targets = [] } = {}) {
     toast: (m, t) => omg.toasts.push({ m: String(m), t }),
     confirm: (m) => { omg.dialogen.push({ soort: 'confirm', m: String(m) }); return omg.confirms.length ? omg.confirms.shift() : false; },
     prompt: (m) => { omg.dialogen.push({ soort: 'prompt', m: String(m) }); return omg.prompts.length ? omg.prompts.shift() : null; },
-    fetch: nepFetch, fetchMetTimeout: (u, o) => nepFetch(u, o), URL, setTimeout, clearTimeout,
+    fetch: nepFetch, fetchMetTimeout, URL, setTimeout, clearTimeout,
   };
   for (const naam of ['localStorage', 'sessionStorage', 'console', 'indexedDB']) {
     Object.defineProperty(sandbox, naam, { get() { omg.verboden.push(naam); return undefined; } });
@@ -218,7 +242,8 @@ function maakOmgeving(root, { rol = 'begeleider', targets = [] } = {}) {
   ctx.S = { screen: 'koopmandaat', code: rol === 'koper' ? K : T, kmRol: rol, kmMandaat: MANDAAT, kmTargets: omg.state.targets.map((t) => JSON.parse(JSON.stringify(t))) };
   ctx.renderApp();
   return Object.assign(omg, {
-    ctx, doc,
+    ctx, doc, tik,
+    openTimers: () => klok.timers.size,
     byId: (id) => doc.getElementById(id),
     alle: (sel) => doc.querySelectorAll(sel),
     een: (sel) => doc.querySelector(sel),
@@ -531,6 +556,312 @@ export async function draaiKoopmandaatTargetflowUiChecks(root = process.cwd()) {
     check(o.verboden.length === 0 && o.doc.fouten.length === 0 && o2.doc.fouten.length === 0, 'geen opslag/console-toegang en geen handlerfouten in het venster');
   });
 
+  // ── F2. Productpunt 11: optioneel AI-voorstel in hetzelfde bevestigingsvenster ──
+  await veilig('F2. AI-voorstel', async () => {
+    const start = target({ id: 'tf_a', naam: 'Synth Alfa BV', status: 'benaderd' });
+    const o = maakOmgeving(root, { targets: [start, DELTA()] });
+    const introPad = '/mna/koopmandaat/' + T + '/target/tf_a/introductie';
+    const conceptPad = introPad + '/concept';
+    const VAST = 'BEMIDDELINGS-/INTRODUCTIEBEVESTIGING — CONCEPT\nSynth vast sjabloon';
+    const AI_TEKST = 'BEMIDDELINGS-/INTRODUCTIEBEVESTIGING — AI-VOORSTEL\n<img src=x onerror=alert(1)>\n1.1 Synth AI-tekst';
+    const EIGEN = 'Synth eigen tekst';
+    const aiOk = (tekst) => ({ status: 200, json: { ok: true, concept: { titel: 'BEMIDDELINGS-/INTRODUCTIEBEVESTIGING', tekst, open_punten: ['naam begeleider', '<b>bescherming</b>'] },
+      ai: true, voorstel: true, opgeslagen: false, vastgesteld: false, akkoord: false, vrijgegeven: false, juridisch_goedgekeurd: false, juridische_validatie: 'afzonderlijk_vereist' } });
+    let hv = null, extraOvz = {}, ai = aiOk(AI_TEKST), versieAntwoord = null;
+    const ovz = () => Object.assign({ ok: true, target: { id: 'tf_a', naam: 'Synth Alfa BV', status: 'benaderd' }, alleen_lezen: false, huidige_versie: hv, versies: hv ? [hv] : [], reacties: [],
+      vrijgave: { status: 'afgeschermd' }, teaser: null, contact: { naam: '', email: '', noodzaak_einde_op: null }, bewaring: { relatie_einde_op: null, legal_hold: null } }, extraOvz);
+    o.api = (m, pad, body) => {
+      if (pad === conceptPad && m === 'GET') return { status: 200, json: { ok: true, concept: { titel: 'BEMIDDELINGS-/INTRODUCTIEBEVESTIGING', tekst: VAST, open_punten: [] }, ai: false, opgeslagen: false } };
+      if (pad === conceptPad && m === 'POST') return ai;
+      if (m === 'GET' && pad.endsWith('/introductie')) return { status: 200, json: ovz() };
+      if (pad === introPad && m === 'POST' && body.actie === 'contact') return { status: 200, json: { ok: true } };
+      if (pad === introPad && m === 'POST' && body.actie === 'versie') return versieAntwoord;
+      return null;
+    };
+    const ta = () => o.byId('km-intro-tekst');
+    const meld = () => o.byId('km-intro-melding');
+    const info = () => o.byId('km-intro-concept-info');
+    const KNOPPEN = ['km-intro-ai', 'km-intro-concept', 'km-intro-versie'];
+    const knoppenVrij = () => KNOPPEN.every((id) => o.byId(id) && o.byId(id).disabled === false);
+    const knoppenBezet = () => KNOPPEN.every((id) => o.byId(id) && o.byId(id).disabled === true);
+    const aiPosts = () => o.posts(conceptPad);
+    const uitgesteld = () => { let los; const p = new Promise((r) => { los = r; }); return { p, los }; };
+
+    await o.klik(o.kaart('tf_a').querySelector('.km-intro-btn'));
+    check(o.byId('km-intro-ai') && o.byId('km-intro-ai').textContent === 'AI-voorstel opvragen (optioneel)' && !!o.byId('km-intro-concept') && aiPosts().length === 0,
+      'AI-voorstel: begeleider ziet naast het vaste concept een expliciete optionele knop; openen vraagt niets aan bij AI');
+
+    // Succes: exact één POST met uitsluitend {actie:'ai_voorstel'}; onbevestigd, niets vastgelegd
+    await o.klik(o.byId('km-intro-ai'));
+    const p0 = aiPosts();
+    check(p0.length === 1 && JSON.stringify(p0[0].body) === JSON.stringify({ actie: 'ai_voorstel' }) && p0[0].headers['x-tussen-key'] === T && p0[0].cache === 'no-store' && o.posts().length === 1 && o.dialogen.length === 0,
+      'AI-voorstel: exact één POST …/introductie/concept met uitsluitend {actie:"ai_voorstel"} (geen tekst of partijgegevens); leeg tekstvak → geen vervangvraag');
+    check(ta().value === AI_TEKST && info().attrs['data-bron'] === 'ai' && info().style.display === 'block'
+      && ['onbevestigd', 'niet opgeslagen', 'niet vastgesteld', 'niet verstuurd', 'niet vrijgegeven', 'niet juridisch goedgekeurd'].every((s) => info().textContent.includes(s)) && meld().attrs.role === 'status',
+      'AI-voorstel in het tekstvak, gemarkeerd als onbevestigd: niet opgeslagen, vastgesteld, verstuurd, vrijgegeven of juridisch goedgekeurd');
+    check(o.byId('km-intro-modal').querySelectorAll('img').length === 0 && o.byId('km-intro-open-punten').querySelectorAll('li').length === 2 && !o.byId('km-intro-open-punten').querySelector('b') && knoppenVrij(),
+      'AI-tekst uitsluitend als tekstvakwaarde (geen HTML), open punten ge-escaped; knoppen weer bruikbaar');
+    check(o.posts(introPad).length === 0 && o.ctx.window.location.href === '', 'AI-voorstel: geen versie, link, akkoord, mail of vrijgave');
+
+    // Eigen tekst + annuleren: niets aangevraagd
+    ta().value = EIGEN;
+    o.confirms.push(false);
+    await o.klik(o.byId('km-intro-ai'));
+    check(aiPosts().length === 1 && ta().value === EIGEN && o.dialogen.pop().m.includes('Vervangen door een AI-voorstel?'), 'eigen tekst + vervanging geannuleerd: niets aangevraagd, tekst blijft staan');
+
+    // 401/429/502/503/netwerk: geen succes, eigen tekst blijft, vast sjabloon blijft beschikbaar
+    const fouten = [
+      ['401', { status: 401, json: { error: 'Niet geautoriseerd' } }],
+      ['429', { status: 429, json: { error: 'Te veel AI-voorstellen. Probeer het later opnieuw.', ai: false, opgeslagen: false } }],
+      ['502', { status: 502, json: { error: 'AI-voorstel mislukt; er is niets vastgelegd.', ai: false, opgeslagen: false, reden: 'ai_fout' } }],
+      ['503', { status: 503, json: { error: 'AI-voorstel niet beschikbaar: AI is niet geconfigureerd.', ai: false, opgeslagen: false, reden: 'ai_niet_geconfigureerd' } }],
+      ['netwerkfout', 'netwerk'],
+    ];
+    for (const [naam, antw] of fouten) {
+      ai = antw;
+      o.confirms.push(true);
+      const n = aiPosts().length;
+      await o.klik(o.byId('km-intro-ai'));
+      check(aiPosts().length === n + 1 && ta().value === EIGEN && meld().attrs.role === 'alert' && meld().textContent.includes('vaste sjabloon blijft beschikbaar') && knoppenVrij() && info().attrs['data-bron'] === 'ai',
+        'AI ' + naam + ': geen succes, eigen tekst behouden, vast sjabloon blijft beschikbaar en alle knoppen weer bruikbaar');
+    }
+    check(meld().textContent.startsWith('Geen verbinding'), 'AI netwerkfout: eerlijke melding "Geen verbinding"');
+    o.confirms.push(true);
+    await o.klik(o.byId('km-intro-concept'));
+    check(ta().value === VAST && info().attrs['data-bron'] === 'sjabloon' && info().textContent.includes('Niet door AI') && knoppenVrij(), 'na AI-fouten laadt het vaste sjabloon (GET) gewoon');
+
+    // Ongeldige 200-responses: geen succes, niets overschreven
+    const basis = aiOk(AI_TEKST).json;
+    const ongeldig = [
+      { ai: false }, { voorstel: undefined }, { opgeslagen: true }, { vastgesteld: true }, { akkoord: undefined }, { vrijgegeven: 'false' }, { juridisch_goedgekeurd: true },
+      { concept: { tekst: '   ' } }, { concept: { tekst: 'a'.repeat(20001) } }, { concept: 'x' }, { concept: null }, { concept: { tekst: 'x', open_punten: 'x' } }, { ok: undefined },
+    ];
+    let alleGeweigerd = true;
+    for (const extra of ongeldig) {
+      ai = { status: 200, json: Object.assign({}, basis, extra) };
+      o.confirms.push(true);
+      await o.klik(o.byId('km-intro-ai'));
+      alleGeweigerd = alleGeweigerd && ta().value === VAST && meld().attrs.role === 'alert' && info().attrs['data-bron'] === 'sjabloon' && knoppenVrij();
+    }
+    check(alleGeweigerd, 'ongeldige 200-responses (ai/voorstel niet true, opgeslagen/vastgesteld/akkoord/vrijgegeven/juridisch_goedgekeurd niet exact false, lege of te lange tekst, geen concept) zijn geen succes en overschrijven niets');
+    ai = aiOk('a'.repeat(20000));
+    o.confirms.push(true);
+    await o.klik(o.byId('km-intro-ai'));
+    check(ta().value.length === 20000 && info().attrs['data-bron'] === 'ai', 'grens: een voorstel van precies 20000 tekens wordt geaccepteerd');
+
+    // Edit tijdens de aanvraag: gedeelde guard en geen late overwrite
+    let u = uitgesteld();
+    ai = u.p;
+    ta().value = EIGEN;
+    o.confirms.push(true);
+    await o.klik(o.byId('km-intro-ai'));
+    const n1 = aiPosts().length, g1 = o.gets(conceptPad).length;
+    check(knoppenBezet(), 'tijdens de AI-aanvraag: AI, vast concept en vaststellen uitgeschakeld');
+    await o.byId('km-intro-ai').onclick();
+    await o.byId('km-intro-concept').onclick();
+    o.byId('km-intro-versie').onclick();
+    await flush();
+    check(aiPosts().length === n1 && o.gets(conceptPad).length === g1 && o.posts(introPad).length === 0, 'gedeelde guard: geen tweede AI-verzoek, geen vast concept en geen vaststelling tijdens een lopende aanvraag (ook niet via de handler zelf)');
+    ta().value = EIGEN + ' — tijdens de aanvraag aangepast';
+    u.los(aiOk(AI_TEKST));
+    await flush();
+    check(ta().value === EIGEN + ' — tijdens de aanvraag aangepast' && meld().textContent.includes('niet overgenomen') && knoppenVrij(), 'late response na eigen edit: geen overwrite, melding, knoppen hersteld');
+
+    // Herrender tijdens de aanvraag (andere actie laadt het venster opnieuw): achterhaalde response genegeerd
+    u = uitgesteld();
+    ai = u.p;
+    ta().value = '';
+    await o.klik(o.byId('km-intro-ai'));
+    const oudTa = ta();
+    await o.klik(o.byId('km-intro-contact'));
+    check(ta() !== oudTa && knoppenBezet(), 'herrender tijdens de AI-aanvraag: de nieuwe knoppen blijven geblokkeerd');
+    u.los(aiOk(AI_TEKST));
+    await flush();
+    check(ta().value === '' && meld().textContent.includes('niet overgenomen') && knoppenVrij(), 'achterhaalde response na herrender: niets overschreven, knoppen hersteld');
+
+    // Venster gesloten tijdens de aanvraag
+    u = uitgesteld();
+    ai = u.p;
+    ta().value = EIGEN;
+    o.confirms.push(true);
+    await o.klik(o.byId('km-intro-ai'));
+    await o.klik(o.byId('km-intro-sluit'));
+    u.los(aiOk(AI_TEKST));
+    await flush();
+    check(!o.byId('km-intro-modal') && o.doc.fouten.length === 0, 'venster gesloten tijdens de aanvraag: late response genegeerd, geen fouten');
+    await o.klik(o.kaart('tf_a').querySelector('.km-intro-btn'));
+    check(ta().value === '' && knoppenVrij() && info().style.display !== 'block', 'opnieuw geopend venster: geen late AI-tekst, knoppen vrij');
+
+    // Vaststellen blijft de aparte, expliciete actie 'versie'; tijdens vaststellen geen AI-verzoek
+    const TEKST2 = 'BEMIDDELINGS-/INTRODUCTIEBEVESTIGING — AI-VOORSTEL\n1.1 Synth AI-tekst zonder open punten';
+    ai = aiOk(TEKST2);
+    await o.klik(o.byId('km-intro-ai'));
+    check(ta().value === TEKST2 && !o.posts(introPad).some((c) => c.body.actie === 'versie'), 'AI-voorstel leidt niet automatisch tot een versie');
+    const uv = uitgesteld();
+    versieAntwoord = uv.p;
+    o.confirms.push(true);
+    await o.klik(o.byId('km-intro-versie'));
+    const v = o.posts(introPad).filter((c) => c.body.actie === 'versie');
+    check(v.length === 1 && JSON.stringify(v[0].body) === JSON.stringify({ actie: 'versie', tekst: TEKST2 }) && o.dialogen.filter((d) => d.soort === 'confirm').pop().m.startsWith('Versie 1 van de bemiddelings-/introductiebevestiging vaststellen?') && knoppenBezet(),
+      'vaststellen: aparte expliciete actie "versie" met eigen bevestiging; tijdens vaststellen zijn AI en vast concept geblokkeerd');
+    const n2 = aiPosts().length;
+    await o.byId('km-intro-ai').onclick();
+    await flush();
+    check(aiPosts().length === n2, 'tijdens vaststellen geen AI-verzoek');
+    hv = { id: 'v1', versie: 1, tekst: TEKST2, inhoud_hash: 'h'.repeat(64), partijen: {}, status: 'actief', aangemaakt_op: T0, link: { actief: false } };
+    uv.los({ status: 200, json: { ok: true, versie: 1 } });
+    await flush();
+    check(meld().textContent === 'Versie vastgesteld.' && knoppenVrij(), 'na vaststellen: knoppen weer vrij');
+    check(aiPosts().every((c) => JSON.stringify(c.body) === JSON.stringify({ actie: 'ai_voorstel' })) && o.posts().every((c) => c.pad === conceptPad || (c.pad === introPad && ['contact', 'versie'].includes(c.body.actie))) && o.ctx.window.location.href === '',
+      'in de hele AI-flow: AI-verzoeken altijd exact {actie:"ai_voorstel"}; geen link, mail, akkoord of vrijgave');
+    o.byId('km-intro-sluit').click();
+    await flush();
+
+    // Rollen en toestanden zonder AI-knop
+    const zonderKnop = [];
+    for (const rolNaam of ['koper', 'meekijker']) {
+      o.ctx.S.kmRol = rolNaam;
+      o.ctx.toonKmIntroductieModal('tf_a');
+      await flush();
+      if (o.byId('km-intro-ai')) zonderKnop.push(rolNaam);
+      o.byId('km-intro-sluit').click();
+    }
+    o.ctx.S.kmRol = 'admin';
+    o.ctx.toonKmIntroductieModal('tf_a');
+    await flush();
+    const admin = !!o.byId('km-intro-ai');
+    o.byId('km-intro-sluit').click();
+    o.ctx.S.kmRol = 'begeleider';
+    check(!zonderKnop.length && admin, 'AI-knop alleen voor de bewerkende rollen (begeleider/admin); niet voor koper of meekijker');
+    o.ctx.toonKmIntroductieModal('tf_d');
+    await flush();
+    check(o.byId('km-intro-gearchiveerd') && !o.byId('km-intro-ai') && !o.byId('km-intro-concept'), 'gearchiveerde target: geen AI-knop');
+    o.byId('km-intro-sluit').click();
+    extraOvz = { alleen_lezen: true };
+    o.ctx.toonKmIntroductieModal('tf_a');
+    await flush();
+    check(o.byId('km-intro-modal').textContent.includes('gepromoveerd') && !o.byId('km-intro-ai') && !o.byId('km-intro-versie'), 'gepromoveerde (alleen-lezen) target: geen AI-knop');
+    o.byId('km-intro-sluit').click();
+    check(o.verboden.length === 0 && o.doc.fouten.length === 0, 'AI-flow: geen opslag/console-toegang en geen handlerfouten');
+  });
+
+  // ── F3. Productpunt 11 stagingherstel: eindige AI-wachttijd (virtuele klok, geen echte wachttijd) ──
+  // Staging: de echte browser faalde op het AI-voorstel; de browser brak af op 15 s terwijl de backend
+  // (callClaudeLight) tot 150 s wacht. Een geldig AI-antwoord ná 15 s is daar niet waargenomen, alleen deze
+  // mismatch. Alleen het AI-voorstel wacht nu eindig 180 s; de rest blijft 15 s.
+  await veilig('F3. AI-deadline', async () => {
+    const o = maakOmgeving(root, { targets: [target({ id: 'tf_a', naam: 'Synth Alfa BV', status: 'benaderd' })] });
+    const introPad = '/mna/koopmandaat/' + T + '/target/tf_a/introductie';
+    const conceptPad = introPad + '/concept';
+    const AI_TEKST = 'BEMIDDELINGS-/INTRODUCTIEBEVESTIGING — AI-VOORSTEL\n1.1 Synth trage AI-tekst';
+    const EIGEN = 'Synth eigen tekst';
+    const aiOk = () => ({ status: 200, json: { ok: true, concept: { titel: 'BEMIDDELINGS-/INTRODUCTIEBEVESTIGING', tekst: AI_TEKST, open_punten: [] },
+      ai: true, voorstel: true, opgeslagen: false, vastgesteld: false, akkoord: false, vrijgegeven: false, juridisch_goedgekeurd: false, juridische_validatie: 'afzonderlijk_vereist' } });
+    const ovz = { ok: true, target: { id: 'tf_a', naam: 'Synth Alfa BV', status: 'benaderd' }, alleen_lezen: false, huidige_versie: null, versies: [], reacties: [],
+      vrijgave: { status: 'afgeschermd' }, teaser: null, contact: { naam: '', email: '', noodzaak_einde_op: null }, bewaring: { relatie_einde_op: null, legal_hold: null } };
+    let ai = null;
+    o.api = (m, pad) => {
+      if (pad === conceptPad && m === 'GET') return { status: 200, json: { ok: true, concept: { titel: 'BEMIDDELINGS-/INTRODUCTIEBEVESTIGING', tekst: 'Synth vast sjabloon', open_punten: [] }, ai: false, opgeslagen: false } };
+      if (pad === conceptPad && m === 'POST') return ai;
+      if (m === 'GET' && pad === introPad) return { status: 200, json: ovz };
+      return null;
+    };
+    const ta = () => o.byId('km-intro-tekst');
+    const meld = () => o.byId('km-intro-melding');
+    const info = () => o.byId('km-intro-concept-info');
+    const KNOPPEN = ['km-intro-ai', 'km-intro-concept', 'km-intro-versie'];
+    const knoppenVrij = () => KNOPPEN.every((id) => o.byId(id) && o.byId(id).disabled === false);
+    const knoppenBezet = () => KNOPPEN.every((id) => o.byId(id) && o.byId(id).disabled === true);
+    const aiPosts = () => o.posts(conceptPad);
+    const uitgesteld = () => { let los; const p = new Promise((r) => { los = r; }); return { p, los }; };
+
+    await o.klik(o.kaart('tf_a').querySelector('.km-intro-btn'));
+    check(o.gets(introPad).length >= 1 && o.gets(introPad).every((c) => c.ms === 15000), 'deadline: overzicht GET …/introductie blijft 15000 ms');
+
+    // 1. Geldig AI-antwoord ná 15 s maar vóór de deadline wordt gewoon overgenomen
+    let u = uitgesteld();
+    ai = u.p;
+    await o.klik(o.byId('km-intro-ai'));
+    const p1 = aiPosts();
+    check(p1.length === 1 && p1[0].ms === 180000 && JSON.stringify(p1[0].body) === JSON.stringify({ actie: 'ai_voorstel' }) && o.openTimers() === 1,
+      'deadline: AI-voorstel (POST …/introductie/concept, {actie:"ai_voorstel"}) wacht eindig 180000 ms (upstream 150 s + marge)');
+    await o.tik(15000);
+    check(!p1[0].afgebroken && knoppenBezet() && ta().value === '' && !meld().textContent,'na 15 s (oude grens): AI-aanvraag loopt nog, knoppen bezet, niets afgebroken of gemeld');
+    await o.tik(164999);
+    check(!p1[0].afgebroken && knoppenBezet(), 'net vóór de deadline (179999 ms): nog niet afgebroken');
+    u.los(aiOk());
+    await flush();
+    check(ta().value === AI_TEKST && info().attrs['data-bron'] === 'ai' && info().textContent.includes('onbevestigd') && knoppenVrij() && aiPosts().length === 1 && o.openTimers() === 0 && o.posts(introPad).length === 0,
+      'geldig AI-antwoord ná 15 s en vóór de deadline: als onbevestigd voorstel geladen, knoppen vrij, timer weg, één verzoek, niets vastgelegd');
+
+    // 2. Hangend verzoek: afgebroken op de eindige deadline; eigen tekst blijft, geen retry
+    ta().value = EIGEN;
+    o.confirms.push(true);
+    u = uitgesteld();
+    ai = u.p;
+    await o.klik(o.byId('km-intro-ai'));
+    const p2 = aiPosts()[aiPosts().length - 1];
+    await o.tik(179999);
+    check(!p2.afgebroken && knoppenBezet(), 'hangend AI-verzoek: open tot 179999 ms');
+    await o.tik(1);
+    check(p2.afgebroken === true && ta().value === EIGEN && meld().attrs.role === 'alert' && meld().textContent.startsWith('Geen verbinding') && meld().textContent.includes('Uw tekst is ongewijzigd')
+      && knoppenVrij() && o.openTimers() === 0,
+      'op 180000 ms afgebroken (eindig): eerlijke melding, eigen tekst behouden, knoppen vrij, timer weg');
+    u.los(aiOk());
+    await flush();
+    check(ta().value === EIGEN && aiPosts().length === 2 && o.posts(introPad).length === 0, 'na afbreken: laat antwoord genegeerd, geen automatische retry of extra AI-aanroep');
+
+    // 3. Edit tijdens een trage aanvraag, daarna deadline: eigen tekst blijft
+    o.confirms.push(true);
+    u = uitgesteld();
+    ai = u.p;
+    await o.klik(o.byId('km-intro-ai'));
+    await o.tik(20000);
+    ta().value = EIGEN + ' — tijdens trage aanvraag aangepast';
+    await o.tik(160000);
+    check(aiPosts()[aiPosts().length - 1].afgebroken === true && ta().value === EIGEN + ' — tijdens trage aanvraag aangepast' && knoppenVrij() && aiPosts().length === 3,
+      'late edit + deadline: afgebroken, eigen bewerking behouden, knoppen vrij, geen extra verzoek');
+
+    // 4. Edit tijdens een trage aanvraag, daarna geldig antwoord ná 15 s: geen late overwrite
+    o.confirms.push(true);
+    u = uitgesteld();
+    ai = u.p;
+    await o.klik(o.byId('km-intro-ai'));
+    await o.tik(16000);
+    ta().value = EIGEN + ' — tweede aanpassing';
+    u.los(aiOk());
+    await flush();
+    check(ta().value === EIGEN + ' — tweede aanpassing' && meld().textContent.includes('niet overgenomen') && knoppenVrij() && o.openTimers() === 0,
+      'late edit + geldig antwoord ná 15 s: geen overwrite, melding, knoppen vrij');
+
+    // 5. Venster gesloten tijdens een trage aanvraag, daarna deadline: geen fouten, geen late tekst
+    o.confirms.push(true);
+    u = uitgesteld();
+    ai = u.p;
+    await o.klik(o.byId('km-intro-ai'));
+    await o.tik(30000);
+    await o.klik(o.byId('km-intro-sluit'));
+    await o.tik(150000);
+    check(aiPosts()[aiPosts().length - 1].afgebroken === true && !o.byId('km-intro-modal') && o.doc.fouten.length === 0 && o.openTimers() === 0,
+      'venster gesloten tijdens trage aanvraag: afgebroken op de deadline zonder fouten, timer weg');
+    await o.klik(o.kaart('tf_a').querySelector('.km-intro-btn'));
+    check(ta().value === '' && knoppenVrij() && info().style.display !== 'block' && aiPosts().length === 5, 'opnieuw geopend venster: geen late AI-tekst, knoppen vrij, geen extra AI-verzoek');
+
+    // 6. Alle overige introductieroutes behouden 15000 ms. De uitgestelde AI-fixture uit stap 5 wordt hier
+    // vervangen door een direct 400-antwoord, zodat POST …/concept met een andere body niet blijft hangen.
+    ai = { status: 400, json: { error: 'Ongeldige actie (fixture)' } };
+    await o.klik(o.byId('km-intro-concept'));
+    const n = o.calls.length;
+    for (const [body, pad] of [[undefined, undefined], [null, '/concept'], [{ actie: 'versie', tekst: 'x' }], [{ actie: 'link_uitgeven' }], [{ actie: 'link_intrekken' }], [{ actie: 'contact' }],
+      [{ actie: 'vrijgeven' }], [{ actie: 'teaser_intrekken' }], [{ actie: 'relatie_einde' }], [{ actie: 'ai_voorstel' }], [{ actie: 'versie' }, '/concept']]) await o.ctx.kmIntroApi('tf_a', body, pad);
+    const overig = o.calls.filter((c) => c.pad.startsWith(introPad) && !(c.pad === conceptPad && c.m === 'POST' && c.body && c.body.actie === 'ai_voorstel'));
+    check(o.calls.length === n + 11 && overig.length >= 13 && overig.every((c) => c.ms === 15000) && o.gets(conceptPad).length === 2 && aiPosts().filter((c) => c.body.actie === 'ai_voorstel').every((c) => c.ms === 180000),
+      'deadline: GET-overzicht, vast concept, versie, link, vrijgave, contact en overige routes (ook ai_voorstel buiten /concept) houden 15000 ms');
+    o.byId('km-intro-sluit').click();
+    await flush();
+    check(o.verboden.length === 0 && o.doc.fouten.length === 0, 'AI-deadline: geen opslag/console-toegang en geen handlerfouten');
+  });
+
   // ── G. adv.html: begrijpelijke promotieweigering ──
   await veilig('G. adv.html', async () => {
     const html = fs.readFileSync(path.join(root, 'adv.html'), 'utf8');
@@ -574,7 +905,15 @@ export async function draaiKoopmandaatTargetflowUiChecks(root = process.cwd()) {
       'koperinteresse leest alleen koper_interesse/interesse_mogelijk (geen interne velden)');
     check(/'\/introductie'\+\(pad\|\|''\)/.test(src04) && /kmIntroApi\(targetId,null,'\/concept'\)/.test(src04) && /actie\(vBtn,\{actie:'versie',tekst:tekst\},'Versie vastgesteld\.'\)/.test(src04),
       'concept via de nieuwe scoped GET-route; vaststellen blijft de bestaande actie "versie"');
+    check(/kmIntroApi\(targetId,\{actie:'ai_voorstel'\},'\/concept'\)/.test(src04) && !/innerHTML[^;]*c\.tekst/.test(src04),
+      'AI-voorstel via de bestaande POST-conceptroute met uitsluitend {actie:"ai_voorstel"}; AI-tekst nooit via innerHTML');
+    const introApi = knip(src04, 'function kmIntroApi(', 'function kmIntroAiVoorstel(', 'kmIntroApi');
+    check(/^var KM_INTRO_AI_DEADLINE_MS=180000;$/m.test(src04) && /var ms=\(pad==='\/concept'&&body&&body\.actie==='ai_voorstel'\)\?KM_INTRO_AI_DEADLINE_MS:15000;/.test(introApi)
+      && /'\/introductie'\+\(pad\|\|''\),opt,ms\)/.test(introApi) && (introApi.match(/fetchMetTimeout\(/g) || []).length === 1 && !/setTimeout|retry|opnieuw/i.test(introApi),
+      'kmIntroApi: alleen ai_voorstel op /concept eindig 180000 ms, overige routes 15000 ms; één fetch, geen retry');
     const hl = fs.readFileSync(path.join(root, 'mna/08-handleiding.js'), 'utf8');
+    check(/AI-voorstel opvragen \(optioneel\)/.test(hl) && /onbevestigd/.test(hl) && /vaste sjabloon gewoon beschikbaar/.test(hl) && /juridische eindvalidatie gebeurt altijd afzonderlijk/.test(hl),
+      'handleiding mna/08: AI-knop, onbevestigd voorstel, vast sjabloon als terugval en afzonderlijke juridische eindvalidatie');
     const adv = fs.readFileSync(path.join(root, 'adv.html'), 'utf8');
     check(/Potentiële targets/.test(hl) && /Link aangemaakt/.test(hl) && /geen bezorgbevestiging/.test(hl) && /stap\('1d'/.test(adv), 'handleidingen (mna/08 en adv.html) beschrijven de targetflow, inclusief "link aangemaakt ≠ verzonden"');
   } catch (e) {
