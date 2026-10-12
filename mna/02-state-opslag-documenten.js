@@ -1139,8 +1139,9 @@ function leesUploadKeuzes(faseId) {
 // fout bij één bestand houdt de volgende niet tegen. "Annuleer resterende bestanden" (zie
 // annuleerResterendeUploads) markeert alleen nog niet gestarte wachtrij-plekken; het lopende verzoek
 // wordt nooit afgebroken (of de server dan opruimt is onbekend) en een al verstuurd bestand nooit als
-// geannuleerd getoond. De reeks is gebonden aan het traject (S.code) — na uitloggen of wisselen start er
-// niets meer en wordt niets in de nieuwe sessie geschreven. Samenvatting in S._uploadUitkomst[faseId].
+// geannuleerd getoond. De reeks is gebonden aan het traject (S.code) én aan de sessie (het S-object, dat
+// uitloggen() en de login elk opnieuw aanmaken) — na uitloggen, wisselen of opnieuw inloggen met dezelfde
+// code start er niets meer en wordt niets in de nieuwe sessie geschreven. Samenvatting in S._uploadUitkomst[faseId].
 window.uploadDocumentenSequentieel = async function(faseId, files) {
   var uploadKeuzes = leesUploadKeuzes(faseId);
   // Optioneel derde argument { zonderClassificatie: true } (centrale upload): de fase komt daar uit de
@@ -1159,6 +1160,8 @@ window.uploadDocumentenSequentieel = async function(faseId, files) {
       items: bestanden.map(function(f){ return { naam: f.name, soort: 'niet_aangeboden', tekst: blokTekst }; }) };
   }
   var batchCode = S.code;
+  var batchSessie = S;
+  function batchActueel() { return S === batchSessie && S.code === batchCode; }
   if (!DOCS[faseId]) DOCS[faseId] = [];
   var stempel = Date.now();
   var wachtrij = bestanden.map(function(f, q){
@@ -1170,7 +1173,7 @@ window.uploadDocumentenSequentieel = async function(faseId, files) {
   S._uploadUitkomst[faseId] = uitkomst;
   renderApp();
   for (var i = 0; i < bestanden.length; i++) {
-    if (S.code !== batchCode) return uitkomst;
+    if (!batchActueel()) return uitkomst;
     if (wachtrij[i].geannuleerd) {
       uitkomst.items.push({ naam: bestanden[i].name, soort: 'niet_aangeboden', tekst: 'Geannuleerd vóór verzending — niet geüpload.' });
       continue;
@@ -1185,7 +1188,7 @@ window.uploadDocumentenSequentieel = async function(faseId, files) {
     }
     uitkomst.items.push(res || { naam: bestanden[i].name, soort: 'niet_aangeboden', tekst: 'Niet verzonden.' });
   }
-  if (S.code !== batchCode) return uitkomst;
+  if (!batchActueel()) return uitkomst;
   var tel = { verwerkt: 0, opgeslagen: 0, controle: 0, mislukt: 0, onbekend: 0, niet_aangeboden: 0 };
   uitkomst.items.forEach(function(x){ var k = x.soort === 'lokale_fout' ? 'mislukt' : x.soort; tel[k] = (tel[k] || 0) + 1; });
   var aangeboden = uitkomst.items.length - tel.niet_aangeboden;
@@ -1225,10 +1228,12 @@ async function uploadDocument(faseId, file, existingId, vervangtDocId, uploadKeu
   if (!uploadKeuzes || typeof uploadKeuzes !== 'object') uploadKeuzes = leesUploadKeuzes(faseId);
   var tempId = existingId || ('uploading_' + Date.now());
   var uploadCode = S.code;
+  var uploadSessie = S;
   function zonderTijdelijk() { if (DOCS[faseId]) DOCS[faseId] = DOCS[faseId].filter(function(x){ return x.id !== tempId; }); }
   function nietAangeboden(tekst) { if (existingId) zonderTijdelijk(); return { naam: file.name, soort: 'niet_aangeboden', tekst: tekst }; }
-  // Uitgelogd of ander traject geopend terwijl het verzoek liep: niets in de nieuwe sessie schrijven.
-  function nogActueel() { return !!uploadCode && S.code === uploadCode && !!DOCS[faseId]; }
+  // Uitgelogd, ander traject geopend of opnieuw ingelogd (ook met dezelfde code: nieuw S-object) terwijl
+  // het verzoek liep: niets in de nieuwe sessie schrijven.
+  function nogActueel() { return !!uploadCode && S === uploadSessie && S.code === uploadCode && !!DOCS[faseId]; }
   // Geen (leesbaar) antwoord: niet doen alsof er een document is, niet automatisch opnieuw uploaden —
   // wel de lijst herladen, zodat een wél opgeslagen document met zijn echte status verschijnt.
   function uitkomstOnbekend(oorzaak) {
@@ -1277,7 +1282,7 @@ async function uploadDocument(faseId, file, existingId, vervangtDocId, uploadKeu
   var d = null;
   try { d = await resp.json(); } catch (e) { d = null; }
   if (!d || typeof d !== 'object' || Array.isArray(d)) return uitkomstOnbekend('Het antwoord van de server was onleesbaar (HTTP ' + resp.status + ').');
-  if (!nogActueel()) return { naam: file.name, soort: 'onbekend', tekst: 'Niet meer getoond: u bent intussen uitgelogd of van traject gewisseld.' };
+  if (!nogActueel()) return { naam: file.name, soort: 'onbekend', tekst: 'Niet meer getoond: u bent intussen uitgelogd, opnieuw ingelogd of van traject gewisseld. Het bestand kan wel op de server zijn opgeslagen; controleer de documentenlijst.' };
   var status = typeof d.verwerking_status === 'string' ? d.verwerking_status : '';
 
   // 3. Serverfout (non-200 of ok:false). Heeft de server een doc_id vastgelegd, dan blijft dát record
@@ -1471,7 +1476,7 @@ async function uploadDocument(faseId, file, existingId, vervangtDocId, uploadKeu
 window.centraalUploadFiles = async function(files) {
   var bestanden=Array.prototype.slice.call(files||[]);
   if(!bestanden.length||!S.code)return;
-  var code=S.code;
+  var code=S.code, sessie=S;
   function toonStatus(html){
     // Zoek element opnieuw na elke renderApp
     var el=document.getElementById('centraal-upload-status');
@@ -1495,14 +1500,14 @@ window.centraalUploadFiles = async function(files) {
 
   var regels=[];
   for(var j=0;j<volgorde.length;j++){
-    if(S.code!==code)return;
+    if(S!==sessie||S.code!==code)return;
     var fid=volgorde[j];
     var faseTitel=(FASES.find(function(f){return f.id===fid;})||{}).title||fid;
     toonStatus('<div style="font-size:12px;color:var(--teal)">&#9881; Bezig: '+perFase[fid].length+' bestand(en) voor <strong>'+esc(faseTitel)+'</strong> — dit kan 15-30 seconden per bestand duren</div>');
     var uitkomst=await window.uploadDocumentenSequentieel(fid,perFase[fid],{zonderClassificatie:true});
     if(uitkomst&&uitkomst.samenvatting)regels.push('<div><strong>'+esc(faseTitel)+'</strong>: '+esc(uitkomst.samenvatting)+'</div>');
   }
-  if(S.code!==code)return;
+  if(S!==sessie||S.code!==code)return;
 
   // Sla eerst alle data op naar server VOORDAT renderApp de DOM overschrijft
   if(Object.keys(S.data).length) saveAll();

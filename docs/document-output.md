@@ -81,6 +81,14 @@ Stand: 7 okt 2026, branch `codex/weekend-option2`. Dit bestand beschrijft de hui
 
 **Bewijs (sectie G).** `composer sluiten`, `composer sluiten andere weergave` en `composer sluiten traject/bevroren` gebruiken de echte `bgMouComposer` om te openen en te heropenen. Ze dekken: een vrije tekst en een tweede veld met onopgeslagen invoer, twee PATCHes die nog lopen, sluiten, daarna een late geslaagde opslag en een late fout (geen GET, geen nieuwe generatie, de DOM blijft leeg), heropenen van hetzelfde document, een LoI die opent terwijl de late MoU-reactie binnenkomt, een documentwissel die nog laadt, een trajectwissel en een document dat intussen bevroren is. Dit is synthetisch bewijs in `node:vm`, geen Chromium-, staging- of productiebewijs.
 
+### Vervolg: upload tijdens uitloggen en opnieuw inloggen met dezelfde code (productpunt 1, 12 okt 2026)
+
+**Oorzaak (`mna/02-state-opslag-documenten.js`).** `uploadDocumentenSequentieel`, `uploadDocument` (`nogActueel`) en `centraalUploadFiles` controleerden na de `await` alleen of `S.code` nog gelijk was. `uitloggen()` en de login (`mna/06`) maken elk een nieuw `S`-object, maar bij direct opnieuw inloggen met dezelfde code was de oude reactie dan toch weer "actueel". Die kon een rij in de nieuwe `DOCS` zetten, financiële velden automatisch invullen, toasts en hertekening geven, en de volgende oude batch- of fasebestanden alsnog versturen.
+
+**Huidig gedrag.** Elke reeks en elk verzoek legt bij de start het `S`-object vast (bestaand sessiepatroon, geen nieuwe opslag). Alleen als `S` nog hetzelfde object is én de code gelijk is, wordt iets geschreven of de volgende upload gestart. Een oude reactie (succes of fout) krijgt de uitkomst "onbekend": niet meer getoond, het bestand kan wel op de server zijn opgeslagen, controleer de documentenlijst. Er wordt niets op de server gewist en niets als geannuleerd gepresenteerd. Ongewijzigd: gewone upload, gedeeltelijke fout, annuleren, trajectwissel, GROUP/ENTITY/GENERAL-classificatie, handmatige invoer en bronmapping.
+
+**Bewijs.** `tests/document-processing-ui.mjs` (check 25 van `tests/audit-consistentie.mjs`) draait de echte functies met synthetische, uitgestelde antwoorden: een lopende upload, uitloggen, opnieuw inloggen met dezelfde code met nieuwe `S`/`DOCS`/handmatige data, daarna een oud succes en een oude fout, plus een centrale upload over twee fases. Gecontroleerd: geen tweede verzoek, nieuwe `DOCS` en data ongewijzigd, geen autofill, toast, render, lijstherlaad of opslag, en een eerlijke uitkomst. Synthetisch bewijs in `node:vm`, geen browser-, staging- of productiebewijs.
+
 ## Bewijs
 
 **Composer (sectie G van `tests/document-output-security.mjs`).** De proef draait de echte `bgMouRender`/`bgMouWire`/`bgMouApi` uit mna/04 en `esc` uit mna/02 in `node:vm`. Daarbij horen een minimale synthetische DOM, een nep-fetch met vertraagde PATCH-antwoorden en twee synthetische documenten. De proef controleert:

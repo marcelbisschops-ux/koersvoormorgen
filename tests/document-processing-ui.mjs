@@ -309,6 +309,51 @@ export async function draaiDocumentProcessingUiChecks(root = process.cwd()) {
     check(t.log.requests.length === 1 && Object.keys(t.ctx.DOCS).length === 0 && t.log.autoFill.length === 0, 'uitloggen: geen volgende upload, niets in de nieuwe sessie geschreven of ingevuld');
   });
 
+  // Uitloggen en direct opnieuw inloggen met DEZELFDE code terwijl een upload loopt: uitloggen() en de
+  // login maken elk een nieuw S-object; het oude antwoord (succes of fout) mag de nieuwe sessie niet raken.
+  const zelfdeCodeOpnieuw = async (naam, oudAntwoord) => {
+    const t = laad(root);
+    t.begin();
+    const u1 = t.uitgesteld();
+    t.opzet.upload.push({ uitgesteld: u1 }, ANTW.processed('doc_z2'));
+    const p = t.ctx.uploadDocumentenSequentieel(FASE, [t.bestand('syn-z1.txt'), t.bestand('syn-z2.txt')]);
+    await u1.binnen;
+    Object.keys(t.ctx.DOCS).forEach((k) => { delete t.ctx.DOCS[k]; });
+    t.ctx.S = { code: '', rol: '', traject: null, data: {} };
+    const nieuweS = { code: CODE, rol: 'verkoper', traject: { status: 'actief', bewaar_docs: true }, _entiteiten: [], data: { financieel_omzet: '777' } };
+    t.ctx.S = nieuweS;
+    const nieuwDoc = { id: 'doc_nieuw_1', naam: 'syn-nieuw.txt', type: 'text/plain', grootte: 40, analyse: '', velden: {}, bewaard: true, uploading: false, versie: 1, verwerking_status: 'PROCESSED' };
+    t.ctx.DOCS[FASE] = [nieuwDoc];
+    t.log.toasts = []; t.log.html = '';
+    const saveVoor = t.log.saveAll;
+    u1.geef(oudAntwoord);
+    const uit = await p;
+    await wacht(10);
+    check(t.log.requests.length === 1, naam + ': de volgende oude batchupload start niet');
+    check(t.ctx.DOCS[FASE].length === 1 && t.ctx.DOCS[FASE][0] === nieuwDoc && Object.keys(t.ctx.DOCS).length === 1, naam + ': nieuwe DOCS ongewijzigd (geen oude rij of wachtrij-plek)');
+    check(t.log.autoFill.length === 0 && t.ctx.S === nieuweS && JSON.stringify(nieuweS.data) === '{"financieel_omzet":"777"}' && !nieuweS._uploadUitkomst, naam + ': geen financiële autofill, nieuwe invoer en status onaangeroerd');
+    check(t.log.toasts.length === 0 && t.log.html === '' && t.log.lijst.length === 0 && t.log.saveAll === saveVoor, naam + ': geen toast, render, lijstherlaad of opslag in de nieuwe sessie');
+    check(uit.items.length === 1 && uit.items[0].soort === 'onbekend' && /opnieuw ingelogd/.test(uit.items[0].tekst) && /op de server zijn opgeslagen/.test(uit.items[0].tekst) && !/geannuleerd/i.test(uit.items[0].tekst), naam + ': eerlijke uitkomst voor het oude bestand (mogelijk opgeslagen, niet geannuleerd)');
+  };
+  await probeer('opnieuw inloggen zelfde code, oud succes', () => zelfdeCodeOpnieuw('zelfde code + oud succes', ANTW.processed('doc_z1')));
+  await probeer('opnieuw inloggen zelfde code, oude fout', () => zelfdeCodeOpnieuw('zelfde code + oude fout', ANTW.aiFailed('doc_z1')));
+
+  await probeer('centrale upload, opnieuw inloggen zelfde code', async () => {
+    const t = laad(root);
+    t.begin();
+    const u1 = t.uitgesteld();
+    t.opzet.upload.push({ uitgesteld: u1 }, ANTW.processed('doc_c2'));
+    const p = t.ctx.centraalUploadFiles([t.bestand('syn-jaarcijfers.txt'), t.bestand('syn-loonlijst.txt')]);
+    await u1.binnen;
+    Object.keys(t.ctx.DOCS).forEach((k) => { delete t.ctx.DOCS[k]; });
+    t.ctx.S = { code: CODE, rol: 'verkoper', traject: { status: 'actief', bewaar_docs: true }, _entiteiten: [], data: { financieel_omzet: '777' } };
+    const saveVoor = t.log.saveAll;
+    u1.geef(ANTW.processed('doc_c1'));
+    await p;
+    await wacht(10);
+    check(t.log.requests.length === 1 && t.log.saveAll === saveVoor && t.log.autoFill.length === 0 && Object.keys(t.ctx.DOCS).length === 0, 'centrale upload + zelfde code: geen volgende fasebatch, geen opslag/autofill in de nieuwe sessie');
+  });
+
   await probeer('vervangen', async () => {
     const t = laad(root);
     const oud = { id: 'doc_oud_9', naam: 'syn-oud.txt', type: 'text/plain', grootte: 40, analyse: '', velden: {}, bewaard: true, uploading: false, versie: 1, verwerking_status: 'PROCESSED' };
