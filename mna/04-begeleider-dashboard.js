@@ -1022,11 +1022,13 @@ function toonKmTfHistorie(targetId){
 // Deadline: alleen het AI-voorstel (POST …/concept met actie 'ai_voorstel') wacht eindig 180 s — de
 // bestaande upstreamdeadline van callClaudeLight (150 s) plus netwerkmarge. Alle andere
 // introductieroutes houden 15 s. Geen retry of extra AI-aanroep.
+// Productpunt 12: het AI-teaservoorstel (POST …/introductie zelf, actie 'teaser_ai_voorstel') gebruikt
+// dezelfde eindige 180 s; alle overige acties op …/introductie houden 15 s.
 var KM_INTRO_AI_DEADLINE_MS=180000;
 function kmIntroApi(targetId,body,pad){
   var opt={method:body?'POST':'GET',headers:{'x-tussen-key':S.code},cache:'no-store'};
   if(body){opt.headers['Content-Type']='application/json';opt.body=JSON.stringify(body);}
-  var ms=(pad==='/concept'&&body&&body.actie==='ai_voorstel')?KM_INTRO_AI_DEADLINE_MS:15000;
+  var ms=((pad==='/concept'&&body&&body.actie==='ai_voorstel')||(!pad&&body&&body.actie==='teaser_ai_voorstel'))?KM_INTRO_AI_DEADLINE_MS:15000;
   return fetchMetTimeout(WORKER+'/mna/koopmandaat/'+encodeURIComponent(S.code)+'/target/'+encodeURIComponent(targetId)+'/introductie'+(pad||''),opt,ms)
     .then(function(r){return r.json().catch(function(){return {};}).then(function(j){j=j||{};return {ok:r.ok&&j.ok===true,status:r.status,json:j};});})
     .catch(function(){return {ok:false,status:0,json:{}};});
@@ -1044,6 +1046,24 @@ function kmIntroAiVoorstel(r){
   if(!c||typeof c!=='object'||typeof c.tekst!=='string'||!c.tekst.trim()||c.tekst.length>20000)return null;
   if(c.open_punten!=null&&!Array.isArray(c.open_punten))return null;
   return c;
+}
+
+// Productpunt 12: optioneel AI-teaservoorstel (POST …/introductie met {actie:'teaser_ai_voorstel'} plus
+// uitsluitend de gekozen vaste kenmerken). Alleen het exacte servercontract telt: ai true, niets
+// opgeslagen, goedgekeurd, vrijgegeven, voorgesteld aan de koper of juridisch goedgekeurd, en een voorstel
+// met exact de verstuurde kenmerken plus een niet-lege omschrijving van maximaal 300 tekens.
+// Anders null: geen succes en niets overschreven.
+function kmIntroTeaserAiVoorstel(r,kenmerken){
+  var j=r&&r.ok&&r.json;
+  if(!j||j.ok!==true||j.ai!==true)return null;
+  if(j.opgeslagen!==false||j.goedgekeurd!==false||j.vrijgegeven!==false||j.voorgesteld_aan_koper!==false||j.juridisch_goedgekeurd!==false)return null;
+  var v=j.voorstel;
+  if(!v||typeof v!=='object'||Array.isArray(v)||!kenmerken||typeof kenmerken!=='object')return null;
+  var verwacht=Object.keys(kenmerken).concat('omschrijving').sort();
+  if(JSON.stringify(Object.keys(v).sort())!==JSON.stringify(verwacht))return null;
+  if(Object.keys(kenmerken).some(function(k){return v[k]!==kenmerken[k];}))return null;
+  if(typeof v.omschrijving!=='string'||!v.omschrijving.trim()||v.omschrijving.length>300)return null;
+  return {omschrijving:v.omschrijving};
 }
 
 var KM_INTRO_SOORT={versie_vastgesteld:'Versie vastgesteld',link_uitgegeven:'Link aangemaakt',link_ingetrokken:'Link ingetrokken',akkoord:'Akkoord door de onderneming',wijzigingsverzoek:'Wijziging gevraagd door de onderneming',vrijgave:'Identiteit vrijgegeven aan de koper',teaser_goedgekeurd:'Teaser goedgekeurd',teaser_ingetrokken:'Teaser ingetrokken',relatie_einde:'Introductierelatie beëindigd',legal_hold_aan:'Langere bewaring vanwege geschil/juridische noodzaak ingesteld',legal_hold_uit:'Langere bewaring opgeheven',contact_gewijzigd:'Contactgegevens gewijzigd',operationeel_einde:'Einde operationele noodzaak contactgegevens'};
@@ -1070,6 +1090,9 @@ function toonKmIntroductieModal(targetId){
   // telkens opnieuw op, zodat ook na een herrender de juiste knoppen worden hersteld.
   var conceptBezig=false;
   function zetConceptBezig(b){conceptBezig=b;['km-intro-concept','km-intro-ai','km-intro-versie'].forEach(function(id){var el=ge(id);if(el)el.disabled=b;});}
+  // Productpunt 12: eigen guard voor het AI-teaservoorstel (één aanvraag tegelijk, ook na een herrender).
+  var teaserAiBezig=false;
+  function zetTeaserAiBezig(b){teaserAiBezig=b;var el=ge('km-teaser-ai');if(el)el.disabled=b;}
   function sluit(){linkInGeheugen=null;if(ov.parentNode)ov.parentNode.removeChild(ov);if(gewijzigd)kmRefresh();}
   ov.addEventListener('click',function(e){if(e.target===ov)sluit();});
   var invoer='width:100%;font-size:12px;padding:6px 8px;border:1px solid var(--border2);border-radius:6px;background:var(--card);color:var(--sub);font-family:inherit';
@@ -1238,8 +1261,14 @@ function toonKmIntroductieModal(targetId){
       +'<select id="km-teaser-sector" aria-label="Gestandaardiseerde sector" style="'+invoer+'">'+opties(sectorLabels,teaser&&teaser.sector)+'</select>'
       +'<select id="km-teaser-omzet" aria-label="Omzetklasse" style="'+invoer+'">'+opties(KM_TEASER_OMZET,teaser&&teaser.omzetklasse)+'</select>'
       +'<select id="km-teaser-mw" aria-label="Medewerkersklasse" style="'+invoer+'">'+opties(KM_TEASER_MW,teaser&&teaser.medewerkersklasse)+'</select>'
-      +'</div>'
-      +'<textarea id="km-teaser-omschrijving" rows="2" maxlength="300" placeholder="Korte anonieme omschrijving (max. 300 tekens)" style="'+invoer+';margin-top:6px"></textarea>'
+      +'</div>';
+    // Productpunt 12: optioneel AI-teaservoorstel, alleen voor begeleider/admin op een bewerkbare target.
+    if(bewerkbaar&&(S.kmRol==='begeleider'||S.kmRol==='admin')){
+      h+='<div style="margin-top:.4rem;font-size:11px;color:var(--muted);line-height:1.6">Optioneel vraagt u een AI-voorstel voor de omschrijving op. Alleen de hierboven gekozen vaste keuzes (regio, sector uit de standaardlijst, omzet- en medewerkersklasse) gaan naar AI — geen naam, omschrijving, notities, contactgegevens of codes. Het voorstel is onbevestigd: niet opgeslagen, niet goedgekeurd, niet voorgesteld aan de koper, niet vrijgegeven en niet juridisch goedgekeurd.</div>'
+        +'<div style="margin-top:.3rem"><button class="btn-ghost" id="km-teaser-ai" style="font-size:12px">AI-teaservoorstel opvragen (optioneel)</button></div>'
+        +'<div id="km-teaser-ai-info" style="display:none;margin-top:.4rem;font-size:11px;color:var(--sub);background:var(--gold-bg);border:1px solid var(--gold-dark);border-radius:6px;padding:.45rem .6rem"></div>';
+    }
+    h+='<textarea id="km-teaser-omschrijving" rows="2" maxlength="300" placeholder="Korte anonieme omschrijving (max. 300 tekens)" style="'+invoer+';margin-top:6px"></textarea>'
       +'<label style="display:flex;gap:8px;align-items:flex-start;font-size:12px;color:var(--sub);margin-top:.4rem;cursor:pointer"><input type="checkbox" id="km-teaser-akkoord" style="margin-top:2px"> Ik heb gecontroleerd dat deze teaser geanonimiseerd is: geen naam, plaats, unieke kenmerken of andere informatie waarmee de onderneming herleidbaar is.</label>'
       +'<div style="margin-top:.4rem;display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-sm" id="km-teaser-opslaan" style="font-size:12px" disabled>Teaser goedkeuren</button>'
       +(teaser?'<button class="btn-ghost" id="km-teaser-intrekken" style="font-size:12px;color:var(--red);border-color:var(--red)">Teaser intrekken</button>':'')+'</div>';
@@ -1292,6 +1321,7 @@ function toonKmIntroductieModal(targetId){
     var linkEl=ge('km-intro-link');if(linkEl&&linkInGeheugen)linkEl.value=linkInGeheugen.link;
     bind(d,hv,st,contact,gen,kaartT);
     if(conceptBezig)zetConceptBezig(true);
+    if(teaserAiBezig)zetTeaserAiBezig(true);
   }
 
   function bind(d,hv,st,contact,gen,kaartT){
@@ -1439,6 +1469,51 @@ function toonKmIntroductieModal(targetId){
       if(oms)body.omschrijving=oms;
       if(Object.keys(body).length<=2){melding('err','Vul minstens één teaseronderdeel in.');return;}
       actie(tBtn,body,'Teaser goedgekeurd en opgeslagen.');
+    };
+
+    // Productpunt 12: AI-teaservoorstel. Body uitsluitend actie + de gekozen vaste keuzes (nooit naam,
+    // omschrijving, notities, contact of codes). Niets opgeslagen of goedgekeurd: een geldig voorstel komt
+    // alleen in het omschrijvingsveld, de anonimiteitscontrole gaat uit en goedkeuren blijft de bestaande
+    // handmatige actie 'teaser'. Late responses (venster dicht, herrender, of omschrijving/keuzes/vinkje
+    // intussen gewijzigd) worden nooit toegepast.
+    var taiBtn=ge('km-teaser-ai');
+    if(taiBtn)taiBtn.onclick=async function(){
+      if(teaserAiBezig)return;
+      var velden={regio:'km-teaser-regio',sector:'km-teaser-sector',omzetklasse:'km-teaser-omzet',medewerkersklasse:'km-teaser-mw'};
+      var els={},kenmerken={};
+      Object.keys(velden).forEach(function(k){els[k]=ge(velden[k]);if(els[k]&&els[k].value)kenmerken[k]=els[k].value;});
+      var omsEl=ge('km-teaser-omschrijving'),chkEl=ge('km-teaser-akkoord');
+      if(!omsEl||!chkEl)return;
+      if(!Object.keys(kenmerken).length){melding('err','Kies eerst minstens één vaste keuze (regio, sector, omzet- of medewerkersklasse) voor een AI-teaservoorstel.');return;}
+      if(omsEl.value.trim()&&!confirm('De omschrijving bevat al tekst. Vervangen door een AI-teaservoorstel?\n\nUw tekst wordt niet naar AI gestuurd. Het voorstel is onbevestigd: er wordt niets opgeslagen, goedgekeurd of aan de koper voorgesteld.'))return;
+      melding('',null);
+      var voor={oms:omsEl.value,chk:chkEl.checked,keuzes:Object.keys(velden).map(function(k){return els[k]?els[k].value:'';}).join('\n')};
+      zetTeaserAiBezig(true);
+      var r=await kmIntroApi(targetId,Object.assign({actie:'teaser_ai_voorstel'},kenmerken));
+      if(!ov.parentNode)return;
+      zetTeaserAiBezig(false);
+      var v=kmIntroTeaserAiVoorstel(r,kenmerken);
+      if(!v){
+        var srvFout=r.json&&typeof r.json.error==='string'?r.json.error.slice(0,300):'';
+        melding('err',(!r.status?'Geen verbinding — er is geen AI-teaservoorstel geladen.':r.ok?'Het antwoord was geen geldig AI-teaservoorstel en is niet overgenomen.':(srvFout||'Het AI-teaservoorstel is niet beschikbaar.'))
+          +' Uw omschrijving en keuzes zijn ongewijzigd; de handmatige teaser blijft beschikbaar.');
+        return;
+      }
+      var zelfde=ge('km-teaser-omschrijving')===omsEl&&ge('km-teaser-akkoord')===chkEl&&Object.keys(velden).every(function(k){return ge(velden[k])===els[k];});
+      if(!zelfde||omsEl.value!==voor.oms||chkEl.checked!==voor.chk||Object.keys(velden).map(function(k){return els[k]?els[k].value:'';}).join('\n')!==voor.keuzes){
+        melding('err','Het AI-teaservoorstel is niet overgenomen: de omschrijving, keuzes of anonimiteitscontrole zijn intussen gewijzigd of opnieuw geladen. Uw invoer blijft staan.');
+        return;
+      }
+      omsEl.value=v.omschrijving;
+      chkEl.checked=false;
+      var opslaan=ge('km-teaser-opslaan');if(opslaan)opslaan.disabled=true;
+      var info=ge('km-teaser-ai-info');
+      if(info){
+        info.setAttribute('data-bron','ai');
+        info.innerHTML='<b>AI-teaservoorstel geladen — onbevestigd</b> — niet opgeslagen, niet goedgekeurd, niet voorgesteld aan de koper, niet vrijgegeven en niet juridisch goedgekeurd. Controleer en pas de omschrijving zo nodig aan, vink daarna zelf de anonimiteitscontrole opnieuw aan en kies "Teaser goedkeuren".';
+        info.style.display='block';
+      }
+      melding('ok','AI-teaservoorstel geladen in de omschrijving (onbevestigd). Er is niets opgeslagen, goedgekeurd of aan de koper voorgesteld.');
     };
     var tiBtn=ge('km-teaser-intrekken');
     if(tiBtn)tiBtn.onclick=function(){

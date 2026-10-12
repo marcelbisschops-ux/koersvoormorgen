@@ -862,6 +862,256 @@ export async function draaiKoopmandaatTargetflowUiChecks(root = process.cwd()) {
     check(o.verboden.length === 0 && o.doc.fouten.length === 0, 'AI-deadline: geen opslag/console-toegang en geen handlerfouten');
   });
 
+  // ── F4. Productpunt 12: optioneel AI-teaservoorstel in het bestaande teaserblok ──
+  // Synthetische nep-worker en virtuele klok; geen netwerk en geen echte AI. Bewijst de UI-handler: exacte
+  // body (alleen vaste keuzes), strikte contractcontrole, niets opgeslagen/goedgekeurd, bescherming tegen
+  // late responses en dubbelklik, eindige deadline en de expliciete handmatige goedkeuring daarna.
+  await veilig('F4. AI-teaservoorstel', async () => {
+    const o = maakOmgeving(root, { targets: [ALFA(), DELTA()] });
+    const introPad = '/mna/koopmandaat/' + T + '/target/tf_a/introductie';
+    const conceptPad = introPad + '/concept';
+    const OMS = 'Anonieme onderneming; uitsluitend de genoemde grove kenmerken worden gedeeld.';
+    const KEUZE = { regio: 'zuid', sector: 'mkb', omzetklasse: '1m_2_5m' };
+    const EIGEN = 'Synth eigen omschrijving';
+    const aiOk = (voorstel) => ({ status: 200, json: { ok: true, voorstel, woording: 'neutraal', ai: true, opgeslagen: false, goedgekeurd: false, vrijgegeven: false, voorgesteld_aan_koper: false,
+      juridisch_goedgekeurd: false, vervolg: 'Synth vervolg' } });
+    const geldig = () => aiOk(Object.assign({}, KEUZE, { omschrijving: OMS }));
+    let ai = geldig(), extraOvz = {};
+    const ovz = () => Object.assign({ ok: true, target: { id: 'tf_a', naam: 'Synth Alfa BV', status: 'benaderd' }, alleen_lezen: false, huidige_versie: null, versies: [], reacties: [],
+      vrijgave: { status: 'afgeschermd' }, teaser: null, contact: { naam: 'Synth Contact Alfa', email: 'alfa@voorbeeld.test', noodzaak_einde_op: null }, bewaring: { relatie_einde_op: null, legal_hold: null } }, extraOvz);
+    o.api = (m, pad, body) => {
+      if (m === 'GET' && pad.endsWith('/introductie')) return { status: 200, json: ovz() };
+      if (m === 'POST' && pad === introPad && body.actie === 'teaser_ai_voorstel') return ai;
+      if (m === 'POST' && pad === introPad && ['teaser', 'contact'].includes(body.actie)) return { status: 200, json: { ok: true } };
+      return null;
+    };
+    const btn = () => o.byId('km-teaser-ai');
+    const oms = () => o.byId('km-teaser-omschrijving');
+    const chk = () => o.byId('km-teaser-akkoord');
+    const opslaan = () => o.byId('km-teaser-opslaan');
+    const meld = () => o.byId('km-intro-melding');
+    const info = () => o.byId('km-teaser-ai-info');
+    const SEL = { regio: 'km-teaser-regio', sector: 'km-teaser-sector', omzetklasse: 'km-teaser-omzet', medewerkersklasse: 'km-teaser-mw' };
+    const kies = (k) => Object.keys(SEL).forEach((s) => { o.byId(SEL[s]).value = k[s] || ''; });
+    const keuzes = () => Object.fromEntries(Object.keys(SEL).filter((s) => o.byId(SEL[s]).value).map((s) => [s, o.byId(SEL[s]).value]));
+    const aiPosts = () => o.posts(introPad).filter((c) => c.body && c.body.actie === 'teaser_ai_voorstel');
+    const teaserPosts = () => o.posts(introPad).filter((c) => c.body && c.body.actie === 'teaser');
+    // Na de ene expliciete handmatige goedkeuring hieronder mag er nooit een tweede teaseropslag bijkomen.
+    const nietToegepast = () => info().style.display !== 'block' && teaserPosts().length === 1;
+    const uitgesteld = () => { let los; const p = new Promise((r) => { los = r; }); return { p, los }; };
+
+    await o.klik(o.kaart('tf_a').querySelector('.km-intro-btn'));
+    check(btn() && btn().textContent === 'AI-teaservoorstel opvragen (optioneel)' && btn().disabled === false && !!o.byId('km-intro-ai') && !!opslaan() && aiPosts().length === 0,
+      'AI-teaser: begeleider ziet in het teaserblok een expliciete optionele knop naast de handmatige teaser; #11-AI-knop blijft; openen vraagt niets aan');
+
+    // Zonder vaste keuze: geen aanvraag
+    await o.klik(btn());
+    check(aiPosts().length === 0 && meld().attrs.role === 'alert' && meld().textContent.includes('minstens één vaste keuze'), 'AI-teaser zonder vaste keuze: geen aanvraag, eerlijke melding');
+
+    // Succes: exacte body met uitsluitend de gekozen vaste keuzes; geen opslag, geen goedkeuring
+    kies(KEUZE);
+    await o.klik(btn());
+    const p0 = aiPosts();
+    check(p0.length === 1 && JSON.stringify(p0[0].body) === JSON.stringify({ actie: 'teaser_ai_voorstel', regio: 'zuid', sector: 'mkb', omzetklasse: '1m_2_5m' }) && p0[0].headers['x-tussen-key'] === T
+      && p0[0].cache === 'no-store' && p0[0].pad === introPad && !o.posts(conceptPad).length && o.posts().length === 1 && o.dialogen.length === 0,
+      'AI-teaser: exact één POST …/introductie (niet /concept) met uitsluitend actie + gekozen regio/sector/omzetklasse; leeg veld → geen vervangvraag');
+    const ruw = JSON.stringify(p0[0].body);
+    check(!['Synth', 'alfa@', 'tf_a', T, '12345678', 'Project', 'Synthstraat', 'omschrijving', 'naam', 'notities'].some((s) => ruw.includes(s)),
+      'AI-teaser privacy: geen naam, anonieme naam, omschrijving, notities, contact, KvK, adres, ids of codes in de body');
+    check(oms().value === OMS && chk().checked === false && opslaan().disabled === true && JSON.stringify(keuzes()) === JSON.stringify(KEUZE)
+      && info().attrs['data-bron'] === 'ai' && info().style.display === 'block' && meld().attrs.role === 'status'
+      && ['onbevestigd', 'niet opgeslagen', 'niet goedgekeurd', 'niet voorgesteld aan de koper', 'niet vrijgegeven', 'niet juridisch goedgekeurd'].every((s) => info().textContent.includes(s)),
+      'geldig voorstel: alleen het omschrijvingsveld gevuld, keuzes ongewijzigd, gemarkeerd als onbevestigd, anonimiteitscheck uit en goedkeuren uitgeschakeld');
+    check(!teaserPosts().length && o.posts().length === 1 && o.ctx.window.location.href === '' && !o.toasts.length, 'geldig voorstel: geen automatische opslag, goedkeuring, voorstel aan de koper, vrijgave of mail');
+
+    // Expliciete handmatige goedkeuring: aangepaste omschrijving + opnieuw zelf de anonimiteitscheck
+    oms().value = OMS + ' Synth aangepast.';
+    await o.klik(opslaan());
+    check(!teaserPosts().length, 'zonder opnieuw aangevinkte anonimiteitscheck: goedkeuren niet mogelijk');
+    await o.klik(chk());
+    check(opslaan().disabled === false, 'pas na zelf aanvinken wordt "Teaser goedkeuren" bruikbaar');
+    await o.klik(opslaan());
+    const tp = teaserPosts();
+    check(tp.length === 1 && JSON.stringify(tp[0].body) === JSON.stringify({ actie: 'teaser', goedgekeurd: true, regio: 'zuid', sector: 'mkb', omzetklasse: '1m_2_5m', omschrijving: OMS + ' Synth aangepast.' }) && tp[0].ms === 15000
+      && meld().textContent === 'Teaser goedgekeurd en opgeslagen.' && aiPosts().length === 1,
+      'handmatige goedkeuring blijft de bestaande actie "teaser" (goedgekeurd:true, 15000 ms) met de door de begeleider beoordeelde tekst; geen extra AI-aanvraag');
+
+    // Bestaande niet-lege tekst: expliciete vervangbevestiging; annuleren = niets aangevraagd
+    kies(KEUZE);
+    oms().value = EIGEN;
+    o.confirms.push(false);
+    await o.klik(btn());
+    check(aiPosts().length === 1 && oms().value === EIGEN && o.dialogen.pop().m.includes('Vervangen door een AI-teaservoorstel?'), 'eigen omschrijving + vervanging geannuleerd: niets aangevraagd, tekst blijft staan');
+
+    // Afwijzingen en fouten: nooit succes, invoer en keuzes blijven, handmatige teaser blijft
+    const fouten = [
+      ['400 sector_niet_veilig', { status: 400, json: { error: 'Voor een AI-voorstel is alleen een sector uit de vaste standaardcatalogus toegestaan; laat de sector weg of gebruik de handmatige teaser.', reden: 'sector_niet_veilig', ai: false, opgeslagen: false } }],
+      ['400 onvoldoende_context', { status: 400, json: { error: 'Onvoldoende veilige context.', reden: 'onvoldoende_context', ai: false, opgeslagen: false } }],
+      ['403', { status: 403, json: { error: 'Geen toegang' } }],
+      ['409 gearchiveerd', { status: 409, json: { error: 'Deze target is gearchiveerd. Herstel de target eerst.', reden: 'gearchiveerd', ai: false, opgeslagen: false } }],
+      ['429', { status: 429, json: { error: 'Te veel AI-voorstellen. Probeer het later opnieuw.', reden: 'rate_limit', ai: false, opgeslagen: false } }],
+      ['502 ai_fout', { status: 502, json: { error: 'AI-voorstel mislukt; er is niets vastgelegd.', reden: 'ai_fout', ai: false, opgeslagen: false } }],
+      ['502 ai_uitkomst_ongeldig', { status: 502, json: { error: 'De AI-uitkomst voldeed niet aan de vaste keuzewaarden en is afgewezen.', reden: 'ai_uitkomst_ongeldig', ai: false, opgeslagen: false } }],
+      ['503', { status: 503, json: { error: 'AI-voorstel niet beschikbaar: AI is niet geconfigureerd.', reden: 'ai_niet_geconfigureerd', ai: false, opgeslagen: false } }],
+      ['200 FAIL', { status: 200, json: { ok: false, error: 'FAIL' } }],
+      ['netwerkfout', 'netwerk'],
+    ];
+    for (const [naam, antw] of fouten) {
+      ai = antw;
+      o.confirms.push(true);
+      const n = aiPosts().length;
+      await o.klik(btn());
+      const fout = typeof antw === 'object' && antw.json.error;
+      check(aiPosts().length === n + 1 && oms().value === EIGEN && JSON.stringify(keuzes()) === JSON.stringify(KEUZE) && meld().attrs.role === 'alert'
+        && meld().textContent.includes('handmatige teaser blijft beschikbaar') && (!fout || meld().textContent.startsWith(fout)) && btn().disabled === false && nietToegepast(),
+        'AI-teaser ' + naam + ': geen succes, eerlijke melding, omschrijving en keuzes behouden, knop weer bruikbaar, niets opgeslagen');
+    }
+    check(meld().textContent.startsWith('Geen verbinding'), 'AI-teaser netwerkfout: eerlijke melding "Geen verbinding"');
+
+    // Vrije (niet-standaard) sector: exact meegestuurd, niet gemaskeerd of weggelaten; afwijzing eerlijk
+    kies({ regio: 'zuid', sector: 'synth vrije sector' });
+    ai = fouten[0][1];
+    o.confirms.push(true);
+    await o.klik(btn());
+    const pv = aiPosts()[aiPosts().length - 1];
+    check(JSON.stringify(pv.body) === JSON.stringify({ actie: 'teaser_ai_voorstel', regio: 'zuid', sector: 'synth vrije sector' }) && meld().textContent.includes('standaardcatalogus') && oms().value === EIGEN && nietToegepast(),
+      'vrije sector: ongewijzigd meegestuurd en door de backend afgewezen; geen terugval of verzwegen sector als AI-succes');
+
+    // Ongeldige 200-contracten: nooit toepassen
+    kies(KEUZE);
+    const basis = geldig().json;
+    const metV = (v) => ({ voorstel: Object.assign({}, KEUZE, { omschrijving: OMS }, v) });
+    const ongeldig = [
+      { ai: false }, { ai: undefined }, { opgeslagen: true }, { opgeslagen: undefined }, { goedgekeurd: true }, { goedgekeurd: undefined }, { vrijgegeven: 'false' },
+      { voorgesteld_aan_koper: true }, { voorgesteld_aan_koper: undefined }, { juridisch_goedgekeurd: true }, { juridisch_goedgekeurd: undefined },
+      { voorstel: null }, { voorstel: [] }, { voorstel: 'x' }, { voorstel: { regio: 'zuid', sector: 'mkb', omschrijving: OMS } }, metV({ medewerkersklasse: '1_10' }), metV({ regio: 'noord' }),
+      metV({ naam: 'Synth Alfa BV' }), metV({ omschrijving: '' }), metV({ omschrijving: '   ' }), metV({ omschrijving: 'a'.repeat(301) }), metV({ omschrijving: 5 }),
+    ];
+    let alleGeweigerd = true;
+    for (const extra of ongeldig) {
+      ai = { status: 200, json: Object.assign({}, basis, extra) };
+      o.confirms.push(true);
+      await o.klik(btn());
+      alleGeweigerd = alleGeweigerd && oms().value === EIGEN && meld().attrs.role === 'alert' && meld().textContent.includes('geen geldig AI-teaservoorstel') && nietToegepast() && btn().disabled === false;
+    }
+    check(alleGeweigerd, 'ongeldige 200-contracten (ai/vlaggen niet exact, ontbrekend/extra/gewijzigd kenmerk, extra veld, lege/te lange/niet-tekst omschrijving) worden nooit toegepast');
+    ai = aiOk(Object.assign({}, KEUZE, { omschrijving: '<img src=x onerror=alert(1)>' + 'a'.repeat(272) }));
+    o.confirms.push(true);
+    await o.klik(btn());
+    check(oms().value.length === 300 && info().attrs['data-bron'] === 'ai' && o.byId('km-intro-modal').querySelectorAll('img').length === 0,
+      'grens: een omschrijving van precies 300 tekens wordt geaccepteerd; AI-tekst uitsluitend als veldwaarde (geen HTML)');
+
+    // Wijziging tijdens de aanvraag (omschrijving, keuze, vinkje) + dubbelklik: geen late overwrite, één aanvraag
+    const wijzigingen = [
+      ['omschrijving', () => { oms().value = EIGEN + ' — tijdens de aanvraag'; }, () => oms().value === EIGEN + ' — tijdens de aanvraag'],
+      ['keuze', () => { o.byId('km-teaser-mw').value = '11_25'; }, () => oms().value === EIGEN && o.byId('km-teaser-mw').value === '11_25'],
+      ['vinkje', () => { o.byId('km-teaser-akkoord').click(); }, () => oms().value === EIGEN && chk().checked === true],
+    ];
+    for (const [naam, wijzig, behouden] of wijzigingen) {
+      kies(KEUZE);
+      oms().value = EIGEN;
+      chk().checked = false;
+      const u = uitgesteld();
+      ai = u.p;
+      o.confirms.push(true);
+      await o.klik(btn());
+      const n = aiPosts().length;
+      await o.klik(btn());
+      await btn().onclick();
+      check(btn().disabled === true && aiPosts().length === n, 'dubbelklik tijdens AI-teaseraanvraag (' + naam + '): knop bezet, geen tweede aanvraag');
+      wijzig();
+      u.los(geldig());
+      await flush();
+      check(behouden() && meld().textContent.includes('niet overgenomen') && btn().disabled === false && o.openTimers() === 0,
+        'wijziging van ' + naam + ' tijdens de aanvraag: late response niet toegepast, invoer behouden, knop weer vrij');
+    }
+
+    // Herrender tijdens de aanvraag: nieuwe knop blijft bezet, achterhaalde response genegeerd
+    kies(KEUZE);
+    oms().value = '';
+    let u = uitgesteld();
+    ai = u.p;
+    await o.klik(btn());
+    const oudOms = oms();
+    await o.klik(o.byId('km-intro-contact'));
+    check(oms() !== oudOms && btn().disabled === true, 'herrender tijdens de AI-teaseraanvraag: de nieuwe knop blijft bezet');
+    u.los(geldig());
+    await flush();
+    check(oms().value === '' && meld().textContent.includes('niet overgenomen') && btn().disabled === false && info().style.display !== 'block', 'achterhaalde response na herrender: niets overschreven, knop hersteld');
+
+    // Venster gesloten tijdens de aanvraag
+    kies(KEUZE);
+    u = uitgesteld();
+    ai = u.p;
+    await o.klik(btn());
+    await o.klik(o.byId('km-intro-sluit'));
+    u.los(geldig());
+    await flush();
+    check(!o.byId('km-intro-modal') && o.doc.fouten.length === 0, 'venster gesloten tijdens de AI-teaseraanvraag: late response genegeerd, geen fouten');
+    await o.klik(o.kaart('tf_a').querySelector('.km-intro-btn'));
+    check(oms().value === '' && btn().disabled === false && info().style.display !== 'block' && !teaserPosts().slice(1).length, 'opnieuw geopend venster: geen late AI-tekst, knop vrij, niets goedgekeurd');
+
+    // Eindige deadline 180000 ms op de virtuele klok; geen retry
+    kies(KEUZE);
+    oms().value = EIGEN;
+    u = uitgesteld();
+    ai = u.p;
+    o.confirms.push(true);
+    await o.klik(btn());
+    const pd = aiPosts()[aiPosts().length - 1], nd = aiPosts().length;
+    check(pd.ms === 180000 && o.openTimers() === 1, 'deadline: AI-teaservoorstel wacht eindig 180000 ms');
+    await o.tik(15000);
+    check(!pd.afgebroken && btn().disabled === true && oms().value === EIGEN, 'na 15 s: AI-teaseraanvraag loopt nog');
+    await o.tik(164999);
+    check(!pd.afgebroken, 'net vóór de deadline (179999 ms): nog niet afgebroken');
+    await o.tik(1);
+    check(pd.afgebroken === true && oms().value === EIGEN && meld().textContent.startsWith('Geen verbinding') && btn().disabled === false && o.openTimers() === 0,
+      'op 180000 ms afgebroken: eerlijke melding, omschrijving behouden, knop vrij, timer weg');
+    u.los(geldig());
+    await flush();
+    check(oms().value === EIGEN && aiPosts().length === nd && nietToegepast(), 'na afbreken: laat antwoord genegeerd, geen automatische retry');
+
+    // Overige routes houden 15000 ms (ook teaser_ai_voorstel op /concept, handmatige teaser en intrekken)
+    const n15 = o.calls.length;
+    for (const [body, pad] of [[undefined, undefined], [{ actie: 'teaser', goedgekeurd: true }], [{ actie: 'teaser_intrekken' }], [{ actie: 'contact' }], [{ actie: 'teaser_ai_voorstel' }, '/concept']]) await o.ctx.kmIntroApi('tf_a', body, pad);
+    check(o.calls.slice(n15).length === 5 && o.calls.slice(n15).every((c) => c.ms === 15000) && o.gets(introPad).every((c) => c.ms === 15000),
+      'deadline: overzicht, handmatige teaser, intrekken, contact en teaser_ai_voorstel buiten de introductieroute houden 15000 ms');
+    check(aiPosts().every((c) => c.pad === introPad && c.ms === 180000 && Object.keys(c.body).every((k) => ['actie', 'regio', 'sector', 'omzetklasse', 'medewerkersklasse'].includes(k))),
+      'in de hele flow: AI-teaseraanvragen alleen op …/introductie, eindig 180000 ms en uitsluitend actie + vaste keuzes');
+    check(o.posts().every((c) => (c.pad === introPad && ['teaser_ai_voorstel', 'teaser', 'teaser_intrekken', 'contact'].includes(c.body.actie)) || (c.pad === conceptPad && c.body.actie === 'teaser_ai_voorstel'))
+      && o.ctx.window.location.href === '',
+      'in de hele flow: geen versie, link, voorstel aan de koper, vrijgave of mail');
+    o.byId('km-intro-sluit').click();
+    await flush();
+
+    // Rol en toegang
+    const metKnop = [];
+    for (const rolNaam of ['koper', 'meekijker']) {
+      o.ctx.S.kmRol = rolNaam;
+      o.ctx.toonKmIntroductieModal('tf_a');
+      await flush();
+      if (btn()) metKnop.push(rolNaam);
+      o.byId('km-intro-sluit').click();
+    }
+    o.ctx.S.kmRol = 'admin';
+    o.ctx.toonKmIntroductieModal('tf_a');
+    await flush();
+    const admin = !!btn();
+    o.byId('km-intro-sluit').click();
+    o.ctx.S.kmRol = 'begeleider';
+    check(!metKnop.length && admin, 'AI-teaserknop alleen voor begeleider/admin; niet voor koper of meekijker');
+    o.ctx.toonKmIntroductieModal('tf_d');
+    await flush();
+    check(o.byId('km-intro-gearchiveerd') && !btn() && !!opslaan(), 'gearchiveerde target: geen AI-teaserknop (handmatige teaser ongewijzigd)');
+    o.byId('km-intro-sluit').click();
+    extraOvz = { alleen_lezen: true };
+    o.ctx.toonKmIntroductieModal('tf_a');
+    await flush();
+    check(o.byId('km-intro-modal').textContent.includes('gepromoveerd') && !btn(), 'gepromoveerde (alleen-lezen) target: geen AI-teaserknop');
+    o.byId('km-intro-sluit').click();
+    check(o.verboden.length === 0 && o.doc.fouten.length === 0, 'AI-teaser: geen opslag/console-toegang en geen handlerfouten');
+  });
+
   // ── G. adv.html: begrijpelijke promotieweigering ──
   await veilig('G. adv.html', async () => {
     const html = fs.readFileSync(path.join(root, 'adv.html'), 'utf8');
@@ -908,12 +1158,17 @@ export async function draaiKoopmandaatTargetflowUiChecks(root = process.cwd()) {
     check(/kmIntroApi\(targetId,\{actie:'ai_voorstel'\},'\/concept'\)/.test(src04) && !/innerHTML[^;]*c\.tekst/.test(src04),
       'AI-voorstel via de bestaande POST-conceptroute met uitsluitend {actie:"ai_voorstel"}; AI-tekst nooit via innerHTML');
     const introApi = knip(src04, 'function kmIntroApi(', 'function kmIntroAiVoorstel(', 'kmIntroApi');
-    check(/^var KM_INTRO_AI_DEADLINE_MS=180000;$/m.test(src04) && /var ms=\(pad==='\/concept'&&body&&body\.actie==='ai_voorstel'\)\?KM_INTRO_AI_DEADLINE_MS:15000;/.test(introApi)
+    check(/^var KM_INTRO_AI_DEADLINE_MS=180000;$/m.test(src04)
+      && /var ms=\(\(pad==='\/concept'&&body&&body\.actie==='ai_voorstel'\)\|\|\(!pad&&body&&body\.actie==='teaser_ai_voorstel'\)\)\?KM_INTRO_AI_DEADLINE_MS:15000;/.test(introApi)
       && /'\/introductie'\+\(pad\|\|''\),opt,ms\)/.test(introApi) && (introApi.match(/fetchMetTimeout\(/g) || []).length === 1 && !/setTimeout|retry|opnieuw/i.test(introApi),
-      'kmIntroApi: alleen ai_voorstel op /concept eindig 180000 ms, overige routes 15000 ms; één fetch, geen retry');
+      'kmIntroApi: alleen ai_voorstel op /concept en teaser_ai_voorstel op …/introductie eindig 180000 ms, overige routes 15000 ms; één fetch, geen retry');
+    check(/kmIntroApi\(targetId,Object\.assign\(\{actie:'teaser_ai_voorstel'\},kenmerken\)\)/.test(src04) && !/innerHTML[^;]*v\.omschrijving/.test(src04) && /omsEl\.value=v\.omschrijving;/.test(src04),
+      'AI-teaservoorstel via de bestaande POST …/introductie met uitsluitend actie + vaste keuzes; AI-tekst alleen als veldwaarde, nooit via innerHTML');
     const hl = fs.readFileSync(path.join(root, 'mna/08-handleiding.js'), 'utf8');
     check(/AI-voorstel opvragen \(optioneel\)/.test(hl) && /onbevestigd/.test(hl) && /vaste sjabloon gewoon beschikbaar/.test(hl) && /juridische eindvalidatie gebeurt altijd afzonderlijk/.test(hl),
       'handleiding mna/08: AI-knop, onbevestigd voorstel, vast sjabloon als terugval en afzonderlijke juridische eindvalidatie');
+    check(/AI-teaservoorstel opvragen \(optioneel\)/.test(hl) && /standaardlijst/.test(hl) && /anonimiteitscontrole opnieuw zelf aan/.test(hl) && /handmatige teaser blijft altijd beschikbaar/.test(hl),
+      'handleiding mna/08: AI-teaserknop, alleen vaste keuzes/standaardsector, opnieuw zelf aanvinken en handmatige teaser als terugval');
     const adv = fs.readFileSync(path.join(root, 'adv.html'), 'utf8');
     check(/Potentiële targets/.test(hl) && /Link aangemaakt/.test(hl) && /geen bezorgbevestiging/.test(hl) && /stap\('1d'/.test(adv), 'handleidingen (mna/08 en adv.html) beschrijven de targetflow, inclusief "link aangemaakt ≠ verzonden"');
   } catch (e) {
