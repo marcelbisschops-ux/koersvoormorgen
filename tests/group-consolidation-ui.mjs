@@ -6,6 +6,8 @@
 // gecommitte backendmetadata (worker/42 bouwGroepsbeeld → consolidatieCheck.groepsbeeld in data_json van
 // de groepsrij). Geen netwerk, geen browser, geen live API, geen AI — dit is technisch bewijs; backend-
 // live-, staging-, echte-document- en productiebewijs staan apart OPEN (docs/group-consolidation-ui.md).
+// Sectie 12 (12 okt 2026) draait daarnaast de echte financiële opslagpaden uit mna/02 met uitgestelde
+// synthetische /mna/save-antwoorden: succes, fout, malformed, uit volgorde, sessie-/rolwissel, dirty invoer.
 //
 // Gebruik: node tests/group-consolidation-ui.mjs   (vanuit de repo-root)
 // Wordt ook aangeroepen door tests/audit-consistentie.mjs (check 29).
@@ -109,6 +111,82 @@ function laad(root, { rol = 'verkoper', code = 'VSYN0001', fase = 0, mnaData } =
   return { ctx, S, log, render };
 }
 const standaard = (asString = true) => [rij('financieel', null, groepsDj(), asString)];
+
+// ── Opslagpad (12 okt 2026): echte mna/02-opslagfuncties met uitgestelde synthetische /mna/save ──────
+// fetch geeft een promise terug die de test zelf afrondt (succes, serverfout, netwerkfout, kapotte JSON),
+// zodat volgorde, sessiewissel en dirty invoer exact te sturen zijn. Geen echte API, geen browser.
+const OPSLAG_FASES = () => [
+  { id: 'financieel', items: [], redflags: [], dataFields: [{ id: 'omzet3', label: 'Omzet jaar 3' }, { id: 'ebitda', label: 'EBITDA' }, { id: 'forecast', label: 'Omzetforecast' }, { id: 'aantalPartners', label: 'Partners', groepsniveau: true }] },
+  { id: 'juridisch', items: [], redflags: [], dataFields: [{ id: 'kvk', label: 'KvK' }] },
+];
+const nieuwDj = (w) => groepsDj({ omzet3: veld({ bruto_berekend: w, bruto_status: 'COMPLEET_VOOR_SELECTIE', invoer: { status: 'COMPLEET_VOOR_SELECTIE', met_waarde: 2, ontbrekend: 0, onbruikbaar: 0, ambigu: 0, onleesbaar: 0 } }) });
+const okAntwoord = (gw, extra = {}) => ({ ok: true, fase_id: 'financieel', velden: 3, groepswaarden: gw, ...extra });
+const flush = async () => { for (let i = 0; i < 10; i++) await new Promise((r) => setImmediate(r)); };
+function maakS(code, rol, mnaData, entiteit = 'ENT_A') {
+  const groep = { financieel_omzet3: '0', financieel_ebitda: '300000', financieel_aantalPartners: '2' };
+  const ent = { financieel_omzet3: '700000' };
+  return { screen: 'main', code, rol, traject: { status: 'actief' }, fase: 0, data: entiteit ? ent : groep, _groepData: groep,
+    dataPerEntiteit: { ENT_A: ent }, _actieveEntiteit: entiteit, _entiteiten: [{ id: 'ENT_A', naam: 'Alfa BV' }],
+    notities: {}, checked: {}, _userEdited: {}, _docSource: {}, _docFragment: {}, _mnaData: mnaData };
+}
+function laadOpslag(root, { rol = 'verkoper', code = 'VSYN0001', entiteit = 'ENT_A', mnaData = standaard() } = {}) {
+  const src02 = lees(root, 'mna/02-state-opslag-documenten.js');
+  const src09 = lees(root, 'mna/09-financiele-broncontrole.js');
+  const src11 = lees(root, 'mna/11-groepsbeeld.js');
+  const delen = [
+    regel(src02, /^function ge\(id\)\{.*\}$/m, 'ge'),
+    regel(src02, /^function isVerkoper\(\)\{.*\}$/m, 'isVerkoper'),
+    regel(src02, /^function isKoper\(\)\{.*\}$/m, 'isKoper'),
+    regel(src02, /^function isTussen\(\)\{.*\}$/m, 'isTussen'),
+    regel(src02, /^function veldBron\(key\)\{[\s\S]*?\n\}/m, 'veldBron'),
+    regel(src02, /^function getDataForFase\(id\)\{[\s\S]*?\n\}/m, 'getDataForFase'),
+    regel(src02, /^function getChecklistForFase\(id\)\{.*\}$/m, 'getChecklistForFase'),
+    regel(src02, /^function saveGroepsniveauVelden\(faseId\)\{[\s\S]*?\n\}/m, 'saveGroepsniveauVelden'),
+    regel(src02, /^function saveCurrent\(cb\)\{[\s\S]*?\n\}/m, 'saveCurrent'),
+    regel(src02, /^function gbOpslagStart\(code,faseId,entiteitId\)\{[\s\S]*?\n\}/m, 'gbOpslagStart'),
+    regel(src02, /^function gbOpslagKlaar\(tk,d\)\{[\s\S]*?\n\}/m, 'gbOpslagKlaar'),
+    regel(src02, /^function _verstuurGeplandeSave\(pending\)\{[\s\S]*?\n\}/m, '_verstuurGeplandeSave'),
+    regel(src02, /^function saveAll\(opts\)\{[\s\S]*?\n\}/m, 'saveAll'),
+    regel(src02, /^function saveEntiteitData\(entiteitId, faseIds\)\{[\s\S]*?\n\}/m, 'saveEntiteitData'),
+    regel(src09, /^function fbcEsc\(v\)\{[\s\S]*?\n\}/m, 'fbcEsc'),
+    regel(src09, /^function fbcOnbekend\(tekst\)\{.*\}$/m, 'fbcOnbekend'),
+    regel(src09, /^function fbcBedrag\(v,legacy\)\{[\s\S]*?\n\}/m, 'fbcBedrag'),
+    regel(src09, /^function fbcCanoniekBedrag\(invoer\)\{[\s\S]*?\n\}/m, 'fbcCanoniekBedrag'),
+    regel(src09, /^function fbcVeldDef\(veldId\)\{[\s\S]*?\n\}/m, 'fbcVeldDef'),
+    regel(src09, /^function fbcVeldLabel\(veldId\)\{.*\}$/m, 'fbcVeldLabel'),
+  ];
+  const log = { req: [], renderApp: 0, paneel: 0, beacon: 0 };
+  const dom = {};
+  const invoer = (id, value) => (dom[id] = { id, value, selectionStart: value.length, selectionEnd: value.length });
+  // Het paneel als los DOM-element: outerHTML vervangen is de enige toegestane UI-mutatie na een antwoord.
+  function paneel(html) {
+    const el = { id: 'gb-panel' };
+    Object.defineProperty(el, 'outerHTML', { get: () => html, set: (v) => { log.paneel++; if (v.includes('id="gb-panel"')) dom['gb-panel'] = paneel(v); else delete dom['gb-panel']; } });
+    return el;
+  }
+  const timers = [];
+  const ctx = {
+    console, FASES: OPSLAG_FASES(), WORKER: 'https://synthetisch.invalid', Blob: function () {},
+    navigator: { sendBeacon: () => { log.beacon++; return true; } },
+    document: { getElementById: (id) => dom[id] || null, activeElement: null },
+    fetch: (url, opt) => new Promise((resolve, reject) => {
+      log.req.push({ url, body: JSON.parse(opt.body),
+        antwoord: (d) => resolve({ json: () => Promise.resolve(d) }),
+        kapotteJson: () => resolve({ json: () => Promise.reject(new SyntaxError('synthetisch: geen JSON')) }),
+        netwerkfout: () => reject(new Error('synthetisch: netwerkfout')) });
+    }),
+    setTimeout: (f) => { timers.push(f); return timers.length; }, clearTimeout: (id) => { if (id) timers[id - 1] = null; },
+    markDirty() {}, showAlert() {}, showSaveIndicator() {}, renderApp() { log.renderApp++; }, _dataHash: () => '', _lastSavedHash: '',
+  };
+  ctx.window = ctx;
+  ctx.S = maakS(code, rol, mnaData, entiteit);
+  vm.createContext(ctx);
+  vm.runInContext(delen.join('\n') + '\n' + src11, ctx, { filename: 'mna/02+11#opslag' });
+  const toon = () => { dom['gb-panel'] = paneel(ctx.renderGroepsbeeld('financieel')); };
+  const html = () => (dom['gb-panel'] ? dom['gb-panel'].outerHTML : '');
+  const timersAf = () => { for (let i = 0; i < timers.length; i++) { const f = timers[i]; if (f) { timers[i] = null; f(); } } };
+  return { ctx, log, dom, invoer, toon, html, timersAf };
+}
 const tel = (html, re) => (html.match(re) || []).length;
 const tekst = (html) => html.replace(/<[^>]*>/g, '');
 
@@ -130,7 +208,7 @@ export async function draaiGroupConsolidationUiChecks(root = process.cwd()) {
     const code = s11.replace(/^\s*\/\/.*$/gm, '');
     check(!/fetch|XMLHttpRequest|WORKER|saveCurrent|\/mna\/|consolideer|anthropic|ai-proxy|genereer|localStorage|sessionStorage|loadDataFromDB|sendBeacon/i.test(code), 'mna/11 doet geen netwerk-, opslag-, consolidatie-, AI- of laadaanroep');
     check(!/\bS\.[A-Za-z_$][\w$]*(\[[^\]]*\])?\s*(=(?!=)|\+\+|--|\+=|-=)|\.(push|splice|pop|shift|unshift|sort|reverse)\(|delete\s/.test(code.replace(/\.slice\(/g, '')), 'mna/11 wijst niets toe aan S en muteert geen arrays (alleen-lezen)');
-    check(!/\bS\.data\b|S\._groepData|S\.dataPerEntiteit/.test(code), 'mna/11 leest S.data/_groepData/dataPerEntiteit niet (alleen S._mnaData)');
+    check(!/\bS\.data\b|S\._groepData|S\.dataPerEntiteit/.test(code), 'mna/11 leest S.data/_groepData/dataPerEntiteit niet (alleen S._mnaData en S._gbBevestigd)');
     check(!/<a\s|href=|<button|<input|<select|<textarea|onclick=/i.test(code), 'mna/11 bevat geen knop, invoer, actie of (fictieve) documentlink');
   }
 
@@ -318,6 +396,158 @@ export async function draaiGroupConsolidationUiChecks(root = process.cwd()) {
     const voor2 = JSON.stringify(mo);
     t2.render();
     check(JSON.stringify(mo) === voor2 && mo[0].data_json.omzet3.value === '0' && typeof mo[0].data_json === 'object', 'data_json-object (niet-string) wordt niet gemuteerd; originele waarde "0" behouden');
+  }
+
+  // 12. Na financiële opslag (12 okt 2026): echte saveCurrent/_verstuurGeplandeSave, saveAll,
+  // saveEntiteitData en saveGroepsniveauVelden met uitgestelde synthetische /mna/save-antwoorden.
+  const stand = (h) => { const m = h.match(/data-stand="([A-Z]+)"/); return m ? m[1] : null; };
+  {
+    const s02 = lees(root, 'mna/02-state-opslag-documenten.js'); const s11 = lees(root, 'mna/11-groepsbeeld.js').replace(/^\s*\/\/.*$/gm, '');
+    const helpers = regel(s02, /^function gbOpslagStart\(code,faseId,entiteitId\)\{[\s\S]*?\n\}/m, 'gbOpslagStart') + regel(s02, /^function gbOpslagKlaar\(tk,d\)\{[\s\S]*?\n\}/m, 'gbOpslagKlaar');
+    check(!/fetch|renderApp|_mnaData|_groepData|S\.data\b|\/mna\/|setTimeout|localStorage|sessionStorage|innerHTML/.test(helpers), 'mna/02-groepsbeeldhelpers: geen request, geen renderApp, geen opslag en geen wijziging van formulier- of laaddata');
+    const paden = ['_verstuurGeplandeSave\\(pending\\)', 'saveAll\\(opts\\)', 'saveEntiteitData\\(entiteitId, faseIds\\)', 'saveGroepsniveauVelden\\(faseId\\)'];
+    check(paden.every((p) => { const f = regel(s02, new RegExp('^function ' + p + '\\{[\\s\\S]*?\\n\\}', 'm'), p); return f.includes('var gbTk=gbOpslagStart(') && f.includes('gbOpslagKlaar(gbTk,d)') && f.includes('.catch(function(){gbOpslagKlaar(gbTk,null);})'); }), 'alle vier financiële opslagpaden in mna/02 geven succes én fout door aan gbOpslagKlaar');
+    check(!/renderApp|outerHTML|innerHTML/.test(s11), 'mna/11 blijft een renderer: geen renderApp en geen DOM-vervanging');
+  }
+  {
+    // Succes via saveCurrent (entiteit) → alleen het paneel vervangen; dirty invoer, focus en caret intact.
+    const t = laadOpslag(root); const S = t.ctx.S;
+    t.toon();
+    t.invoer('df_omzet3', '700000'); const focus = t.invoer('df_ebitda', '4'); t.ctx.document.activeElement = focus;
+    t.ctx.saveCurrent(); t.timersAf();
+    check(t.log.req.length === 1 && t.log.req[0].url === 'https://synthetisch.invalid/mna/save' && t.log.req[0].body.entiteit_id === 'ENT_A' && t.log.req[0].body.fase_id === 'financieel', 'saveCurrent: één bestaande /mna/save voor de entiteit');
+    focus.value = '45678'; focus.selectionStart = 3; focus.selectionEnd = 3; S._userEdited.financieel_ebitda = true;
+    const mnaVoor = JSON.stringify(S._mnaData);
+    check(t.html().includes('1.200.000') && stand(t.html()) === 'GELADEN' && t.log.paneel === 0, 'antwoord nog onderweg: laadstand ongewijzigd, niets vervangen');
+    t.log.req[0].antwoord(okAntwoord(nieuwDj(1500000))); await flush();
+    const h = t.html();
+    check(h.includes('1.500.000') && !h.includes('1.200.000') && stand(h) === 'BEVESTIGD' && h.includes('Bijgewerkt met de groepsrij die de server') && t.log.paneel === 1, 'succes: paneel toont de door de server teruggemelde groepsrij, zonder herladen');
+    check(t.log.renderApp === 0 && focus.value === '45678' && focus.selectionStart === 3 && focus.selectionEnd === 3 && t.ctx.document.activeElement === focus && S._userEdited.financieel_ebitda === true && t.dom.df_omzet3.value === '700000', 'succes: geen renderApp; onopgeslagen invoer, focus en caret blijven staan');
+    check(JSON.stringify(S._mnaData) === mnaVoor && S.dataPerEntiteit.ENT_A.financieel_ebitda === '4', 'succes: S._mnaData (laaddata) en entiteitinvoer ongewijzigd; geen eigen som');
+    check(t.log.req.length === 1 && geenOfficieel(h) && h.includes('geen officiële consolidatie'), 'succes: geen extra leesverzoek en nog steeds geen officiële consolidatie');
+    // Daarna een mislukte opslag: laatst bevestigde stand blijft zichtbaar met eerlijke status.
+    t.ctx.saveEntiteitData('ENT_A', ['financieel']);
+    t.log.req[1].antwoord({ error: 'Opslaan mislukt (synthetisch)' }); await flush();
+    const h2 = t.html();
+    check(h2.includes('1.500.000') && stand(h2) === 'ONBEVESTIGD' && h2.includes('mogelijk niet actueel') && !h2.includes('Bijgewerkt met'), 'fout na succes: laatst bevestigde stand blijft, met eerlijke status (niet actueel geclaimd)');
+  }
+  {
+    // Fout/malformed zonder eerdere bevestiging: laadstand blijft, nooit vals actueel.
+    const fouten = [
+      ['serverfout', (r) => r.antwoord({ error: 'x' })],
+      ['netwerkfout', (r) => r.netwerkfout()],
+      ['geen JSON', (r) => r.kapotteJson()],
+      ['leeg antwoord', (r) => r.antwoord(null)],
+      ['groepswaarden null', (r) => r.antwoord(okAntwoord(null))],
+      ['groepswaarden array', (r) => r.antwoord(okAntwoord([1, 2]))],
+      ['groepswaarden tekst', (r) => r.antwoord(okAntwoord('{"x":1}'))],
+      ['andere fase', (r) => r.antwoord(okAntwoord(nieuwDj(9000), { fase_id: 'juridisch' }))],
+      ['ok ontbreekt', (r) => r.antwoord({ groepswaarden: nieuwDj(9000) })],
+    ];
+    for (const [naam, af] of fouten) {
+      const t = laadOpslag(root); t.toon();
+      t.invoer('df_omzet3', '700000'); t.ctx.saveCurrent(); t.timersAf();
+      af(t.log.req[0]); await flush();
+      const h = t.html();
+      check(h.includes('1.200.000') && !h.includes('9.000') && stand(h) === 'ONBEVESTIGD' && t.ctx.S._gbBevestigd.data_json === null && t.log.renderApp === 0, naam + ': laadstand blijft, status niet bevestigd, geen renderApp');
+    }
+  }
+  {
+    // Uit volgorde: een ouder antwoord overschrijft nooit een nieuwere stand.
+    const t = laadOpslag(root); t.toon();
+    t.ctx.saveEntiteitData('ENT_A', ['financieel']); t.ctx.saveEntiteitData('ENT_A', ['financieel']);
+    t.log.req[1].antwoord(okAntwoord(nieuwDj(2000000))); await flush();
+    t.log.req[0].antwoord(okAntwoord(nieuwDj(1500000))); await flush();
+    check(t.html().includes('2.000.000') && !t.html().includes('1.500.000') && stand(t.html()) === 'BEVESTIGD', 'uit volgorde: ouder succesantwoord overschrijft de nieuwere stand niet');
+    const t2 = laadOpslag(root); t2.toon();
+    t2.ctx.saveEntiteitData('ENT_A', ['financieel']); t2.ctx.saveEntiteitData('ENT_A', ['financieel']);
+    t2.log.req[1].antwoord(okAntwoord(nieuwDj(2000000))); await flush();
+    t2.log.req[0].netwerkfout(); await flush();
+    check(t2.html().includes('2.000.000') && stand(t2.html()) === 'BEVESTIGD', 'uit volgorde: late fout van een ouder verzoek maakt een nieuwere bevestiging niet onbevestigd');
+    const t3 = laadOpslag(root); t3.toon();
+    t3.ctx.saveEntiteitData('ENT_A', ['financieel']); t3.ctx.saveEntiteitData('ENT_A', ['financieel']);
+    t3.log.req[0].antwoord(okAntwoord(nieuwDj(1500000))); await flush();
+    t3.log.req[1].antwoord(okAntwoord(nieuwDj(2000000))); await flush();
+    check(t3.html().includes('2.000.000') && t3.ctx.S._gbBevestigd.volgnr === 2, 'in volgorde: het laatste antwoord wint');
+  }
+  {
+    // Sessiereset met dezelfde code, andere code, rolwissel en uitloggen: oud antwoord raakt niets.
+    for (const [naam, wissel] of [
+      ['nieuwe sessie zelfde code/rol', () => maakS('VSYN0001', 'verkoper', [rij('financieel', null, nieuwDj(333000))])],
+      ['nieuwe sessie andere code', () => maakS('VSYN0002', 'verkoper', [rij('financieel', null, nieuwDj(333000))])],
+      ['nieuwe sessie begeleider', () => maakS('TSYN0001', 'tussenpersoon', [rij('financieel', null, nieuwDj(333000))], null)],
+    ]) {
+      const t = laadOpslag(root); t.toon();
+      const oudS = t.ctx.S;
+      t.ctx.saveEntiteitData('ENT_A', ['financieel']);
+      t.ctx.S = wissel(); t.toon();
+      t.log.req[0].antwoord(okAntwoord(nieuwDj(1500000))); await flush();
+      check(t.ctx.S._gbBevestigd === undefined && oudS._gbBevestigd === undefined && t.html().includes('333.000') && !t.html().includes('1.500.000') && stand(t.html()) === 'GELADEN' && t.log.paneel === 0, naam + ': laat antwoord raakt de nieuwe sessie en het paneel niet');
+    }
+    {
+      const t = laadOpslag(root); t.toon();
+      t.ctx.saveEntiteitData('ENT_A', ['financieel']);
+      t.ctx.S.rol = 'tussenpersoon';
+      t.log.req[0].antwoord(okAntwoord(nieuwDj(1500000))); await flush();
+      check(t.ctx.S._gbBevestigd === undefined && t.log.paneel === 0, 'rolwissel binnen dezelfde staat: antwoord genegeerd');
+      t.ctx.S = { screen: 'login', code: '', rol: '', fase: 0, data: {} };
+      check(t.ctx.gbOpslagStart('', 'financieel', 'ENT_A') === null && t.ctx.gbOpslagStart('VSYN0001', 'financieel', 'ENT_A') === null && t.ctx.S._gbVolgnr === undefined, 'na uitloggen of bij een andere code geen groepsbeeldvolgnummer');
+    }
+    {
+      const t = laadOpslag(root);
+      t.ctx.S._gbBevestigd = { code: 'ANDERS01', volgnr: 1, status: 'BEVESTIGD', data_json: nieuwDj(777000) };
+      t.toon();
+      check(t.html().includes('1.200.000') && !t.html().includes('777.000') && stand(t.html()) === 'GELADEN', 'mna/11 negeert een bevestigde stand met een andere trajectcode');
+    }
+  }
+  {
+    // Groepsrij-save: server meldt geen groepsbeeld terug → eigen invoer nooit als servermetadata.
+    const t = laadOpslag(root, { entiteit: null }); t.toon();
+    t.invoer('df_omzet3', '999999'); t.ctx.saveCurrent(); t.timersAf();
+    check(t.log.req.length === 1 && t.log.req[0].body.entiteit_id === undefined, 'groepsrij-save via saveCurrent');
+    t.log.req[0].antwoord(okAntwoord(null)); await flush();
+    const h = t.html();
+    check(stand(h) === 'VEROUDERD' && h.includes('1.200.000') && !h.includes('999.999') && t.ctx.S._gbBevestigd.data_json === null && h.includes('mogelijk niet meer actueel'), 'groepsrij-save: oude stand met status verouderd; verstuurde invoer niet als metadata getoond');
+    t.ctx.S._actieveEntiteit = 'ENT_A'; t.ctx.S.data = t.ctx.S.dataPerEntiteit.ENT_A;
+    t.ctx.saveEntiteitData('ENT_A', ['financieel']);
+    t.log.req[1].antwoord(okAntwoord(nieuwDj(1500000))); await flush();
+    check(stand(t.html()) === 'BEVESTIGD' && t.html().includes('1.500.000'), 'volgende entiteit-save herstelt een bevestigde stand');
+  }
+  {
+    // Groepsniveau-veld in entiteitcontext: entiteit-save én groepsrij-save; de latere groepsrij-save wint.
+    const t = laadOpslag(root); t.toon();
+    t.invoer('df_aantalPartners', '3'); t.ctx.saveCurrent(); t.timersAf();
+    check(t.log.req.length === 2 && t.log.req[0].body.entiteit_id === 'ENT_A' && t.log.req[1].body.entiteit_id === undefined, 'groepsniveau-veld: entiteit-save en saveGroepsniveauVelden verstuurd');
+    t.log.req[1].antwoord(okAntwoord(null)); await flush();
+    t.log.req[0].antwoord(okAntwoord(nieuwDj(1500000))); await flush();
+    check(stand(t.html()) === 'VEROUDERD' && !t.html().includes('1.500.000'), 'groepsrij-save ná de entiteit-save: oudere entiteitrij wordt niet als actueel getoond');
+  }
+  {
+    // saveAll: zelfde regels; beacon zonder antwoord raakt de stand niet.
+    const t = laadOpslag(root); t.toon();
+    t.ctx.saveAll();
+    check(t.log.req.length === 1 && t.log.req[0].body.fase_id === 'financieel', 'saveAll: alleen de financiële fase met data');
+    t.log.req[0].antwoord(okAntwoord(nieuwDj(1500000))); await flush();
+    check(stand(t.html()) === 'BEVESTIGD' && t.html().includes('1.500.000') && t.log.renderApp === 0, 'saveAll: bevestigde stand in paneel, geen renderApp');
+    const voor = JSON.stringify(t.ctx.S._gbBevestigd);
+    t.ctx.saveAll({ beacon: true });
+    check(t.log.beacon === 1 && t.log.req.length === 1 && JSON.stringify(t.ctx.S._gbBevestigd) === voor, 'saveAll met beacon: geen antwoord, stand ongewijzigd');
+  }
+  {
+    // Andere fase, begeleider en paneel buiten beeld.
+    const t = laadOpslag(root); t.toon();
+    t.ctx.S.fase = 1; t.invoer('df_kvk', '12345678'); t.ctx.saveCurrent(); t.timersAf();
+    t.log.req[0].antwoord({ ok: true, fase_id: 'juridisch', velden: 1, groepswaarden: nieuwDj(1500000) }); await flush();
+    check(t.ctx.S._gbBevestigd === undefined && t.log.paneel === 0, 'opslag van een andere fase raakt het groepsbeeld niet');
+    const b = laadOpslag(root, { rol: 'tussenpersoon', code: 'TSYN0001', entiteit: null }); b.toon();
+    b.invoer('df_omzet3', '1'); b.ctx.saveCurrent(); b.timersAf();
+    check(b.log.req.length === 0 && stand(b.html()) === 'GELADEN', 'begeleider: Financieel blijft read-only, geen opslag, laadstand');
+    const u = laadOpslag(root);
+    u.ctx.saveEntiteitData('ENT_A', ['financieel']);
+    let fout = null;
+    try { u.log.req[0].antwoord(okAntwoord(nieuwDj(1500000))); await flush(); } catch (e) { fout = e; }
+    u.toon();
+    check(!fout && u.log.paneel === 0 && stand(u.html()) === 'BEVESTIGD' && u.html().includes('1.500.000'), 'paneel niet in beeld: stand wordt bewaard en bij de volgende render getoond');
   }
 
   return res;

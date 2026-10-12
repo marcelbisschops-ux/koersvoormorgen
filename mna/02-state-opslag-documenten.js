@@ -406,7 +406,36 @@ function saveCurrent(cb){
     _verstuurGeplandeSave(pending);
   },800);
 }
+// Productpunt 5 (12 okt 2026): laatst door de server bevestigde groepsrij Financieel voor het
+// groepsbeeldpaneel (mna/11). S._mnaData wordt alleen bij het laden gezet; na een financiële opslag
+// legt gbOpslagKlaar vast wat de server terugmeldt, zonder zelf iets te berekenen:
+// - entiteit-save: /mna/save geeft de volledige groepsrij-data_json terug (groepswaarden, incl.
+//   consolidatieCheck.groepsbeeld) → status BEVESTIGD met precies die rij;
+// - groepsrij-save: de server vervangt data_json door de verstuurde invoer en geeft niets terug → de
+//   getoonde stand blijft, met status VEROUDERD (de eigen invoer wordt nooit als servermetadata gebruikt);
+// - foutmelding, netwerkfout, onleesbaar of onvolledig antwoord → oude stand blijft, status ONBEVESTIGD.
+// Bewust geen extra leesverzoek: /mna/traject telt server-side als login (rate limit en audit-'login').
+// Een antwoord telt alleen voor dezelfde sessie (S wordt bij elke login/uitlog als nieuw object
+// opgebouwd), dezelfde code en rol, en nooit over een later verstuurde opslag heen (volgnummer).
+// Alleen het paneel zelf wordt vervangen (geen renderApp): invoer, focus en caret blijven staan.
+function gbOpslagStart(code,faseId,entiteitId){
+  if(faseId!=='financieel'||!S.code||code!==S.code)return null;
+  S._gbVolgnr=(S._gbVolgnr||0)+1;
+  return {sessie:S,code:S.code,rol:S.rol,volgnr:S._gbVolgnr,entiteit:!!entiteitId};
+}
+function gbOpslagKlaar(tk,d){
+  if(!tk||S!==tk.sessie||S.code!==tk.code||S.rol!==tk.rol)return;
+  var oud=S._gbBevestigd;
+  if(oud&&oud.volgnr>=tk.volgnr)return;
+  var ok=!!d&&typeof d==='object'&&d.ok===true&&!d.error;
+  var gw=ok&&tk.entiteit&&(d.fase_id===undefined||d.fase_id==='financieel')?d.groepswaarden:null;
+  var geldig=!!gw&&typeof gw==='object'&&!Array.isArray(gw);
+  S._gbBevestigd={code:tk.code,volgnr:tk.volgnr,status:geldig?'BEVESTIGD':(ok&&!tk.entiteit?'VEROUDERD':'ONBEVESTIGD'),data_json:geldig?gw:(oud?oud.data_json:null)};
+  var el=typeof renderGroepsbeeld==='function'?ge('gb-panel'):null;
+  if(el){var f=FASES[S.fase];el.outerHTML=renderGroepsbeeld(f?f.id:'');}
+}
 function _verstuurGeplandeSave(pending){
+  var gbTk=gbOpslagStart(pending.snapshot.code,pending.snapshot.fase_id,pending.snapshot.entiteit_id);
   fetch(WORKER+'/mna/save',{method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify(pending.snapshot)
   }).then(function(r){return r.json();}).then(function(d){
@@ -421,7 +450,8 @@ function _verstuurGeplandeSave(pending){
       // direct verwerken in S._groepData zodat "Groep"-weergave meteen klopt, ook zonder herfetch.
       if(d.groepswaarden)Object.keys(d.groepswaarden).forEach(function(k){var v=d.groepswaarden[k];if(v&&v.value!==undefined)S._groepData[pending.faseId+'_'+k]=v.value;});
     }
-  }).catch(function(){});
+    gbOpslagKlaar(gbTk,d);
+  }).catch(function(){gbOpslagKlaar(gbTk,null);});
   // Groepsniveau-veld gewijzigd terwijl een entiteit actief was: die hoort niet in de
   // entiteit-eigen save hierboven (getDataForFase sluit 'm al uit) — apart naar de groepsrij.
   if(pending.groepsniveauGewijzigd)saveGroepsniveauVelden(pending.faseId);
@@ -465,9 +495,10 @@ function saveGroepsniveauVelden(faseId){
   S.data=S._groepData;
   var payload=getDataForFase(faseId);
   S.data=origData;
+  var gbTk=gbOpslagStart(S.code,faseId,null);
   fetch(WORKER+'/mna/save',{method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({code:S.code,fase_id:faseId,data_json:payload,checklist_json:getChecklistForFase(faseId),notitie:S.notities[faseId]||''})
-  }).catch(function(){});
+  }).then(function(r){return r.json();}).then(function(d){gbOpslagKlaar(gbTk,d);}).catch(function(){gbOpslagKlaar(gbTk,null);});
 }
 function getChecklistForFase(id){var out={items:{},redflags:{}};var f=FASES.find(function(x){return x.id===id;});if(!f)return out;f.items.forEach(function(_,i){out.items[i]=!!S.checked[id+'_'+i];});f.redflags.forEach(function(_,i){out.redflags[i]=!!S.checked[id+'_rf_'+i];});return out;}
 
@@ -580,11 +611,13 @@ function saveAll(opts){
       var blob=new Blob([body],{type:'application/json'});
       navigator.sendBeacon(WORKER+'/mna/save',blob);
     } else {
+      var gbTk=gbOpslagStart(payload.code,f.id,payload.entiteit_id);
       fetch(WORKER+'/mna/save',{method:'POST',headers:{'Content-Type':'application/json'},body:body
       }).then(function(r){return r.json();}).then(function(d){
         if(d.error==='vergrendeld')showAlert('Dit traject is vergrendeld.');
         else if(!d.error){showSaveIndicator();}
-      }).catch(function(){});
+        gbOpslagKlaar(gbTk,d);
+      }).catch(function(){gbOpslagKlaar(gbTk,null);});
     }
   });
   S._dirty=false;
@@ -1094,12 +1127,14 @@ function saveEntiteitData(entiteitId, faseIds){
   faseIds.forEach(function(faseId){
     var payload=getDataForFase(faseId);
     if(!Object.keys(payload).length)return;
+    var gbTk=gbOpslagStart(S.code,faseId,entiteitId);
     fetch(WORKER+'/mna/save',{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({code:S.code,fase_id:faseId,data_json:payload,entiteit_id:entiteitId})
     }).then(function(r){return r.json();}).then(function(d){
       if(d.groepswaarden)Object.keys(d.groepswaarden).forEach(function(k){var v=d.groepswaarden[k];if(v&&v.value!==undefined)S._groepData[faseId+'_'+k]=v.value;});
+      gbOpslagKlaar(gbTk,d);
       renderApp();
-    }).catch(function(){});
+    }).catch(function(){gbOpslagKlaar(gbTk,null);});
   });
   S.data=origData;
 }

@@ -11,8 +11,9 @@ Code: `mna/11-groepsbeeld.js` (gewone scriptmodule, in `mna.html` geladen na
 `mna/10-juridische-broncontrole.js` en vóór `mna/06-schermen.js`) en één aanroep
 `renderGroepsbeeld(f.id)` in `renderMain` (`mna/06-schermen.js`), direct na de financiële broncontrole.
 Er is geen nieuwe API, geen nieuw schema, geen dependency, geen netwerkaanroep en geen AI-aanroep.
-`loadDataFromDB`, `mna/02`, de formulieren, `S.data`/`S._groepData` en de bestaande
-consolidatieCheck-melding met keuzeknoppen zijn niet gewijzigd.
+`loadDataFromDB`, de formulieren, `S.data`/`S._groepData` en de bestaande consolidatieCheck-melding
+met keuzeknoppen zijn niet gewijzigd. Sinds 12 okt 2026 houden de financiële opslagpaden in `mna/02` de
+laatst door de server bevestigde groepsrij bij (zie "Actuele stand na opslaan").
 
 ## Backendafhankelijkheid
 
@@ -20,7 +21,35 @@ De UI leest alleen de metadata die de backend additief in `data_json` van de gro
 (backend `docs/group-consolidation.md`, `backend/worker/42-groepsbeeld.js`, commit `3a36fd2`):
 `consolidatieCheck.groepsbeeld` met `versie: 1`, `selectie`, `eliminaties`, `drempel_pct` en
 `velden[veld]`. De bron is de al geladen serverdata `S._mnaData` (gezet bij het laden van het
-traject in `mna/06`). De UI berekent niets zelf.
+traject in `mna/06`) of, na een financiële opslag in dezelfde sessie, de groepsrij die de server
+daarbij terugmeldt (zie "Actuele stand na opslaan"). De UI berekent niets zelf.
+
+## Actuele stand na opslaan (12 okt 2026)
+
+`mna/02` houdt per sessie in `S._gbBevestigd` de laatst door de server bevestigde groepsrij Financieel
+bij (`gbOpslagStart`/`gbOpslagKlaar`). Dat gebeurt in de vier bestaande financiële opslagpaden:
+`saveCurrent` → `_verstuurGeplandeSave`, `saveAll` (niet de beacon bij het sluiten), `saveEntiteitData`
+en `saveGroepsniveauVelden`. Er komt geen nieuw verzoek, geen nieuwe route en geen scheduler bij.
+
+| Antwoord van `/mna/save` | Stand in het paneel |
+| --- | --- |
+| Entiteit-save met `ok: true` en `groepswaarden` als object (de volledige groepsrij-`data_json` na `consolideerFase`, inclusief `consolidatieCheck.groepsbeeld`) | Precies die serverrij, status "bijgewerkt met de groepsrij die de server terugmeldde" |
+| Groepsrij-save met `ok: true` (de server vervangt `data_json` door de verstuurde invoer en geeft geen groepsrij terug) | Vorige stand blijft, met waarschuwing "mogelijk niet meer actueel"; de verstuurde invoer wordt nooit als metadata getoond |
+| Foutmelding, netwerkfout, geen JSON, leeg antwoord, `groepswaarden` ontbreekt/geen object, andere `fase_id` | Vorige stand blijft, met waarschuwing "geen bruikbare bevestiging"; nooit als actueel aangemerkt |
+
+- Een antwoord telt alleen als het bij dezelfde sessie hoort (bij elke login en uitlog wordt `S` een
+  nieuw object, ook bij dezelfde code), met dezelfde code en rol. Een volgnummer per sessie zorgt dat een
+  ouder antwoord (succes of fout) nooit een later verstuurde opslag overschrijft. De volgorde is die van
+  versturen; de server bevestigt zelf geen volgorde.
+- Alleen het element `#gb-panel` wordt vervangen (`outerHTML`), geen `renderApp`. Formulierinvoer die
+  nog niet is opgeslagen, focus en caret blijven staan. Staat het paneel niet in beeld, dan toont de
+  volgende render de bewaarde stand. `S._mnaData`, `S.data` en de entiteitdata worden hiervoor niet
+  gewijzigd. `mna/11` blijft een renderer zonder netwerk en leest `S._gbBevestigd` alleen als de code
+  overeenkomt.
+- Bewust geen herlezing via `/mna/traject/{code}`: die route telt server-side als login (rate limit van
+  15 per 10 minuten per IP en een audit-regel `login`). Automatisch herlezen na elke opslag zou de echte
+  login kunnen blokkeren en het audit-log vervuilen. Na een groepsrij-save blijft de stand daarom
+  "mogelijk niet meer actueel" tot de volgende entiteit-save of opnieuw laden.
 
 De backend met deze metadata staat live (release `d889d28`). Zolang de metadata in een groepsrij
 ontbreekt, toont het paneel
@@ -57,8 +86,8 @@ officieel, geconsolideerd of bruto berekend.
   meerdere groepsrijen, onleesbare `data_json` (parsefout zonder crash), ontbrekende (legacy) of
   onbekende metadata → expliciet geen brongebonden informatie.
 - Geen moduletoestand of cache: elke render leest opnieuw uit `S`, dat bij inloggen volledig wordt
-  herbouwd. Rol-, fase- en trajectwissel geven dus direct het juiste (of geen) paneel; er is geen request
-  en dus geen laat antwoord.
+  herbouwd. Rol-, fase- en trajectwissel geven dus direct het juiste (of geen) paneel. `mna/11` doet zelf
+  geen request; late opslagantwoorden worden in `mna/02` aan sessie, code en rol getoetst.
 - Alle servertekst (veldnamen, statussen, toelichting, oorspronkelijke invoer) gaat door `gbEsc`.
   Bedragen gebruiken de bestaande opmaak `fbcBedrag` (mna/09) op een stringkopie; er wordt geen eenheid
   toegevoegd. Er worden geen document- of entiteitnamen of codes getoond of verzonnen.
@@ -71,7 +100,12 @@ synthetische `S._mnaData` in de vorm van worker/42. Gedekt: laadvolgorde en inte
 juiste groepsrij, bruto versus aangeleverde echte 0, onvolledig/onbruikbaar/ambigu/PROGNOSE/periode
 onbekend, eliminaties onbekend nooit 0, verschil geen foutbewijs, geen/malformed/legacy/onbekende
 metadata, HTML-injectie, onverklaarde statussen, afkapping, rol-/trajectwissel zonder cache, geen
-netwerk/save/AI en byte-gelijke formulier- en serverdata. Dit is technisch bewijs, geen browserbewijs.
+netwerk/save/AI en byte-gelijke formulier- en serverdata. Sectie 12 draait de echte opslagfuncties uit
+`mna/02` met uitgestelde synthetische `/mna/save`-antwoorden: succes zonder herladen, fout/malformed na
+en zonder eerdere bevestiging, uit volgorde, nieuwe sessie met dezelfde of een andere code, rolwissel,
+groepsrij-save, groepsniveau-veld in entiteitcontext, `saveAll` met en zonder beacon, andere fase,
+begeleider en paneel buiten beeld, plus behoud van dirty invoer, focus en caret zonder `renderApp`.
+Dit is technisch bewijs, geen browserbewijs.
 
 Releasebewijs (10 okt 2026): UI-checks (70), native audit en onafhankelijke review PASS; samenhangende
 releasetest en review PASS. Staging: 16 synthetische API-/browserchecks en 18 kernrolchecks PASS (2
@@ -84,8 +118,14 @@ slaagden dezelfde assertions. Er was geen productfix nodig.
 
 ## Beperkingen en OPEN
 
-- `S._mnaData` wordt alleen bij het laden van het traject gezet. Na het opslaan van entiteitcijfers in
-  dezelfde sessie toont het paneel de oude stand tot opnieuw laden; het paneel meldt dat.
+- Opgelost (12 okt 2026): na het opslaan van entiteitcijfers toont het paneel de door de server
+  teruggemelde groepsrij zonder herladen (zie "Actuele stand na opslaan").
+- Na een groepsrij-save meldt de server geen groepsbeeld terug; het paneel toont dan de vorige stand
+  met de waarschuwing "mogelijk niet meer actueel" tot de volgende entiteit-save of opnieuw laden.
+- Buiten scope en ongewijzigd: de directe opslag bij het wisselen van fasekaart in `mna/06` houdt
+  `S._gbBevestigd` niet bij; het paneel kan na zo'n opslag dus een oudere stand tonen zonder waarschuwing.
+  De bestaande verwerking van `groepswaarden` in `S._groepData` in `mna/02`/`mna/06` controleert de sessie
+  niet; die is niet aangepast.
 - Geen officiële consolidatie; eliminaties blijven onbekend (nooit 0) en de juridische
   consolidatiekring is niet bewezen.
 - OPEN: gedrag met echte klantdocumenten en klantdata, en live AI. Productie is alleen met een eigen

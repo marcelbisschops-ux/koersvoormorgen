@@ -1,8 +1,10 @@
 // © 2026 Bisschops Financing B.V. Alle rechten voorbehouden.
 // Productpunt 5 — groepsbeeld (UI, 10 okt 2026). Read-only weergave van de bestaande groepsbeeld-metadata
 // die de backend (worker/42-groepsbeeld.js, docs/group-consolidation.md) additief in data_json van de
-// groepsrij zet: consolidatieCheck.groepsbeeld. Bron is uitsluitend de al geladen serverdata S._mnaData
-// (gezet bij het laden in mna/06). Geen netwerk, geen API, geen AI, geen opslag, geen berekening.
+// groepsrij zet: consolidatieCheck.groepsbeeld. Bron is de al geladen serverdata S._mnaData (gezet bij
+// het laden in mna/06) of, na een financiële opslag in dezelfde sessie, de groepsrij die de server
+// daarbij terugmeldde (S._gbBevestigd, bijgehouden door gbOpslagKlaar in mna/02) met een eerlijke
+// standstatus. Geen netwerk, geen API, geen AI, geen opslag, geen berekening.
 //
 // Regels (bewust strikt):
 // - Alleen verkoper en begeleider in fase Financieel; koper, meekijker en elke andere rol krijgen geen
@@ -38,13 +40,22 @@ function gbTelling(v){ return gbIsGetal(v)&&v>=0&&Math.floor(v)===v?gbEsc(v):gbO
 function gbLabel(veld){ return typeof fbcVeldLabel==='function'?fbcVeldLabel(veld):gbEsc(veld); }
 
 // ── Groepsrij en metadata lezen (geen mutatie, parsefouten nooit fataal) ──────────────────────────
+// Laatste serverstand na opslag (mna/02), alleen als die bij de huidige trajectcode hoort.
+function gbBevestigd(){
+  var b=S._gbBevestigd;
+  return gbIsObj(b)&&b.code===S.code&&typeof b.status==='string'?b:null;
+}
 function gbLeesGroepsbeeld(){
-  var rijen=(Array.isArray(S._mnaData)?S._mnaData:[]).filter(function(r){
-    return gbIsObj(r)&&r.fase_id==='financieel'&&(r.entiteit_id===null||r.entiteit_id===undefined);
-  });
-  if(!rijen.length)return { status:'GEEN_GROEPSRIJ' };
-  if(rijen.length>1)return { status:'MEERDERE_GROEPSRIJEN' };
-  var dj=rijen[0].data_json;
+  var b=gbBevestigd(), dj;
+  if(b&&b.data_json!==null&&b.data_json!==undefined)dj=b.data_json;
+  else{
+    var rijen=(Array.isArray(S._mnaData)?S._mnaData:[]).filter(function(r){
+      return gbIsObj(r)&&r.fase_id==='financieel'&&(r.entiteit_id===null||r.entiteit_id===undefined);
+    });
+    if(!rijen.length)return { status:'GEEN_GROEPSRIJ' };
+    if(rijen.length>1)return { status:'MEERDERE_GROEPSRIJEN' };
+    dj=rijen[0].data_json;
+  }
   if(typeof dj==='string'){ try{ dj=JSON.parse(dj||'{}'); }catch(e){ return { status:'ONLEESBAAR' }; } }
   if(dj===undefined||dj===null)dj={};
   if(!gbIsObj(dj))return { status:'ONLEESBAAR' };
@@ -77,6 +88,11 @@ var GB_ONTBREKEND = {
   eliminaties_onbekend: 'eliminaties onbekend',
   periode_onbekend: 'periode onbekend',
   consolidatiekring_onbewezen: 'consolidatiekring niet bewezen'
+};
+var GB_STAND = {
+  BEVESTIGD: 'Bijgewerkt met de groepsrij die de server na de laatste financiële opslag in deze sessie terugmeldde.',
+  VEROUDERD: 'Na deze stand zijn groepscijfers opgeslagen; de server meldt daarbij geen groepsbeeld terug. De getoonde stand is mogelijk niet meer actueel — bijgewerkt na een volgende opslag van entiteitcijfers of na opnieuw laden.',
+  ONBEVESTIGD: 'De laatste financiële opslag gaf geen bruikbare bevestiging van de server. De getoonde stand is mogelijk niet actueel — bijgewerkt na een volgende geslaagde opslag van entiteitcijfers of na opnieuw laden.'
 };
 var GB_GEEN_INFO = {
   GEEN_GROEPSRIJ: 'Er is geen groepsrij voor Financieel geladen.',
@@ -154,12 +170,20 @@ function gbRenderVeld(veld,o,dj){
     +'</div>';
 }
 
+// Herkomst van de getoonde stand; alleen BEVESTIGD is een serverbevestiging na opslag, nooit groen.
+function gbStand(){
+  var b=gbBevestigd();
+  if(!b)return '<div id="gb-stand" data-stand="GELADEN" style="font-size:11px;color:var(--muted);margin-bottom:.5rem">Stand van de serverdata bij het laden van dit traject; na het opslaan van entiteitcijfers in Financieel wordt dit bijgewerkt met de groepsrij die de server terugmeldt.</div>';
+  var st=gbUit(GB_STAND,b.status)?b.status:'ONBEVESTIGD';
+  return '<div id="gb-stand" data-stand="'+gbEsc(st)+'" style="font-size:11px;color:'+(st==='BEVESTIGD'?'var(--muted)':'var(--gold-dark)')+';margin-bottom:.5rem">'
+    +(st==='BEVESTIGD'?'':'&#9888; ')+gbEsc(GB_STAND[st])+'</div>';
+}
 function renderGroepsbeeld(faseId){
   if(faseId!=='financieel'||!gbMagTonen())return '';
   var html='<div class="panel" id="gb-panel" style="margin-bottom:1rem">'
     +'<div class="sec-hdr" style="margin:0">&#128202; Groepsbeeld: bruto berekend versus aangeleverd</div>'
     +'<div style="font-size:12px;color:var(--sub);line-height:1.6;margin:.4rem 0">Alleen lezen. Het <strong>bruto berekende groepsbeeld</strong> is een optelling van entiteitcijfers volgens een rekenselectie en <strong>geen officiële consolidatie</strong>. Een aangeleverde groepswaarde blijft <strong>niet geverifieerd</strong>. Eliminaties en correcties zijn onbekend, nooit 0.</div>'
-    +'<div style="font-size:11px;color:var(--muted);margin-bottom:.5rem">Stand van de serverdata bij het laden van dit traject; na opslaan wordt dit pas na opnieuw laden bijgewerkt.</div>';
+    +gbStand();
   var g=gbLeesGroepsbeeld();
   if(g.status!=='OK'){
     return html+'<div id="gb-geen-info" style="font-size:12px;color:var(--sub);background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:.5rem .75rem">'
