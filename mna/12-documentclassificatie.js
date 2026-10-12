@@ -7,8 +7,10 @@
 // Regels (bewust strikt):
 // - Gewone module, geladen vóór mna/02. Bij het laden wordt niets uitgevoerd en S niet gelezen; elke helper
 //   krijgt zijn invoer als argument. Geen netwerk, geen opslag, geen AI.
-// - Uitsluitend GROUP en ENTITY met overzicht, periode en cijfersoort (productpunt 6). Een andere scope uit
-//   de server (zoals GENERAL) wordt hier niet gebouwd of getoond, maar als "classificatie onbekend" behandeld.
+// - GROUP en ENTITY met overzicht, periode en cijfersoort (productpunt 6), alleen in fase Financieel.
+//   Productpunt 7 (12 okt 2026): GENERAL = algemeen dataroomdocument, alleen doc_scope, zonder entiteit en
+//   zonder overzicht/periode/cijfersoort; in elke uploadzone van de verkoper. Nooit een jaarrealisatie.
+//   Elke andere of afwijkende scope uit de server wordt als "classificatie onbekend" behandeld.
 // - Nooit raden en geen standaardkeuze: zonder expliciet aangezet keuzeblok gaat de upload ongewijzigd
 //   (legacy). Niets wordt afgeleid uit bestandsnaam, ontbrekende entiteit of een eerdere versie.
 // - GROUP is een eigen indeling van de gebruiker, nooit een officiële consolidatie. Alleen ACTUAL over een
@@ -17,13 +19,14 @@
 //   _documentclassificatie, binding of id. Alle tekst gaat door dclEsc.
 
 var DCL_SCOPE = ['GROUP', 'ENTITY'];
+var DCL_ALGEMEEN = 'GENERAL';
 var DCL_STATEMENT = ['P&L', 'BALANCE_SHEET', 'CASH_FLOW'];
 var DCL_DATATYPE = ['ACTUAL', 'YTD_ACTUAL', 'BUDGET', 'FORECAST'];
 var DCL_JAAR_MIN = 1990, DCL_JAAR_MAX = 2100;
 var DCL_ID_RE = /^[A-Za-z0-9_\-]{1,100}$/;
 
 var DCL_LABEL = {
-  scope: { GROUP: 'Groepsdocument (de groep als geheel)', ENTITY: 'Document van één entiteit' },
+  scope: { GROUP: 'Groepsdocument (de groep als geheel)', ENTITY: 'Document van één entiteit', GENERAL: 'Algemeen dataroomdocument (geen entiteit, geen financiële gegevens)' },
   statement: { 'P&L': 'Winst-en-verliesrekening', BALANCE_SHEET: 'Balans', CASH_FLOW: 'Kasstroomoverzicht' },
   datatype: { ACTUAL: 'Realisatie (werkelijke cijfers)', YTD_ACTUAL: 'Realisatie tot nu toe dit jaar (year-to-date)', BUDGET: 'Begroting (budget)', FORECAST: 'Prognose (forecast)' }
 };
@@ -32,6 +35,7 @@ var DCL_TEKST = {
   geenJaarrealisatie: 'Geen jaarrealisatie: prognose, begroting, year-to-date of deelperiode. Cijfers worden niet als jaarcijfers overgenomen; het document kan op "Controle nodig" blijven staan.',
   geenConsolidatie: 'Eigen indeling van de gebruiker, geen officiële consolidatie.',
   nietGeclassificeerd: 'Niet geclassificeerd (classificatie onbekend).',
+  algemeen: 'Algemeen document: geen entiteit, overzicht, periode of cijfersoort. Opgeslagen zonder analyse en niet als financiële bron gebruikt.',
   onbevestigd: 'De server heeft de opgegeven classificatie niet bevestigd. Het document staat als niet geclassificeerd; bij een prognose, begroting of deelperiode zijn geen gegevens overgenomen.'
 };
 
@@ -79,21 +83,41 @@ function dclIsJaarrealisatie(datatype,periode){
 }
 
 // ── Rol en invoer ──────────────────────────────────────────────────────────────────────────────────
-// Alleen de verkoper, in fase Financieel, in een niet-vergrendeld traject.
+// Alleen de verkoper, in een niet-vergrendeld traject. In elke fase alleen GENERAL; GROUP/ENTITY (met
+// financiële gegevens) uitsluitend in fase Financieel (dclMagFinancieel).
 function dclMagClassificeren(ctx){
-  return !!ctx&&!!ctx.code&&ctx.rol==='verkoper'&&ctx.faseId==='financieel'&&!ctx.vergrendeld;
+  return !!ctx&&!!ctx.code&&ctx.rol==='verkoper'&&typeof ctx.faseId==='string'&&!!ctx.faseId&&!ctx.vergrendeld;
+}
+function dclMagFinancieel(ctx){
+  return dclMagClassificeren(ctx)&&ctx.faseId==='financieel';
 }
 
-// Valideert de ruwe keuzes. Uit: { ok:true, params, jaarrealisatie } of { ok:false, fout }.
+// Valideert de ruwe keuzes. Uit: { ok:true, params, jaarrealisatie[, algemeen] } of { ok:false, fout }.
 // ruw: { scope, statement, periodeSoort, boekjaar, begin, eind, datatype } (strings, leeg = niet gekozen).
 // entiteitId: de huidige waarde van de bestaande entiteitkeuze; entiteiten: [{id}] van dit traject.
-function dclValideer(ruw,entiteitId,entiteiten){
+// opties.alleenAlgemeen: buiten fase Financieel is alleen GENERAL toegestaan.
+function dclValideer(ruw,entiteitId,entiteiten,opties){
   ruw=dclIsObj(ruw)?ruw:{};
   var t=function(k){ return typeof ruw[k]==='string'?ruw[k].trim():''; };
   var fouten=[];
   var scope=t('scope'), statement=t('statement'), soort=t('periodeSoort'), datatype=t('datatype');
   var boekjaar=t('boekjaar'), begin=t('begin'), eind=t('eind');
-  if(!scope)fouten.push('kies of dit een groepsdocument of een document van één entiteit is');
+  var ent=typeof entiteitId==='string'?entiteitId:'';
+  // GENERAL: niets van de financiële velden of de entiteitkeuze wordt stil weggegooid; ingevuld = weigeren.
+  if(scope===DCL_ALGEMEEN){
+    var gevuld=[];
+    if(statement)gevuld.push('overzicht');
+    if(soort||boekjaar||begin||eind)gevuld.push('periode');
+    if(datatype)gevuld.push('cijfersoort');
+    if(gevuld.length)fouten.push('een algemeen dataroomdocument heeft geen '+gevuld.join(', ')+': maak '+(gevuld.length>1?'die velden':'dat veld')+' leeg of kies een groeps- of entiteitsdocument');
+    if(ent)fouten.push('een algemeen dataroomdocument hoort niet bij één entiteit: zet de entiteitkeuze op "Groep/hoofdentiteit"');
+    if(fouten.length)return { ok:false, fout:'Documentclassificatie: '+fouten.join('; ')+'.' };
+    return { ok:true, params:{ doc_scope:DCL_ALGEMEEN }, jaarrealisatie:false, algemeen:true };
+  }
+  if(dclIsObj(opties)&&opties.alleenAlgemeen){
+    return { ok:false, fout:'Documentclassificatie: '+(scope?'in deze fase kan alleen "Algemeen dataroomdocument" worden gekozen; groeps- en entiteitsdocumenten met financiële gegevens horen in de fase Financieel':'kies "Algemeen dataroomdocument" of zet het vinkje uit')+'.' };
+  }
+  if(!scope)fouten.push('kies of dit een groepsdocument of een document van één entiteit is, of een algemeen dataroomdocument');
   else if(!dclIn(DCL_SCOPE,scope))fouten.push('onbekende documentsoort');
   if(!statement)fouten.push('kies het overzicht (winst-en-verliesrekening, balans of kasstroomoverzicht)');
   else if(!dclIn(DCL_STATEMENT,statement))fouten.push('onbekend overzicht');
@@ -114,7 +138,6 @@ function dclValideer(ruw,entiteitId,entiteiten){
     else if(!dclLeesPeriode(begin+'/'+eind))fouten.push('een datumbereik is maximaal één jaar');
     else periodeLabel=begin+'/'+eind;
   } else fouten.push('onbekende periodesoort');
-  var ent=typeof entiteitId==='string'?entiteitId:'';
   if(scope==='GROUP'&&ent)fouten.push('een groepsdocument hoort niet bij één entiteit: zet de entiteitkeuze op "Groep/hoofdentiteit" of kies "Document van één entiteit"');
   if(scope==='ENTITY'){
     var lijst=Array.isArray(entiteiten)?entiteiten:[];
@@ -128,8 +151,10 @@ function dclValideer(ruw,entiteitId,entiteiten){
 }
 
 // Queryparameters in vaste volgorde, alleen query (nooit tegelijk als formulierveld).
+// GENERAL: uitsluitend doc_scope; de overige doc_* gaan nooit mee (ook niet als leeg/undefined/null).
 function dclQuery(params){
   if(!dclIsObj(params))return '';
+  if(params.doc_scope===DCL_ALGEMEEN)return '&doc_scope='+DCL_ALGEMEEN;
   return ['doc_scope','doc_statement','doc_periode','doc_datatype'].map(function(k){ return '&'+k+'='+encodeURIComponent(String(params[k])); }).join('');
 }
 
@@ -149,7 +174,7 @@ function dclSnapshot(doc,faseId,ctx){
   if(!dclMagClassificeren({ rol:ctx.rol, code:ctx.code, faseId:faseId, vergrendeld:ctx.vergrendeld }))return null;
   var ruw=dclLeesRuw(doc,faseId);
   if(!ruw)return null;
-  var v=dclValideer(ruw,ctx.entiteitId,ctx.entiteiten);
+  var v=dclValideer(ruw,ctx.entiteitId,ctx.entiteiten,{ alleenAlgemeen:faseId!=='financieel' });
   if(v.ok)Object.freeze(v.params);
   return Object.freeze(v);
 }
@@ -160,13 +185,22 @@ function dclSnapshot(doc,faseId,ctx){
 function dclSaneer(dto,rijEntiteitId){
   if(!dclIsObj(dto))return null;
   var scope=dclEigen(dto,'scope'), statement=dclEigen(dto,'statement'), datatype=dclEigen(dto,'datatype');
-  if(!dclIn(DCL_SCOPE,scope)||!dclIn(DCL_STATEMENT,statement)||!dclIn(DCL_DATATYPE,datatype))return null;
   if(dclEigen(dto,'herkomst')!=='GEBRUIKER'||dclEigen(dto,'officiele_consolidatie')!==false)return null;
+  var ent=dclEigen(dto,'entiteit_id');
+  var rij=typeof rijEntiteitId==='string'&&rijEntiteitId?rijEntiteitId:null;
+  // GENERAL: alleen geldig met exact null voor overzicht/periode/cijfersoort/entiteit, een rij zonder
+  // entiteit en geen realisatieclaim. Alles daarbuiten is tegenstrijdig → onbekend.
+  if(scope===DCL_ALGEMEEN){
+    if(statement!==null||dclEigen(dto,'periode')!==null||datatype!==null||ent!==null||rij!==null)return null;
+    var rt=dclEigen(dto,'realisatie_toepasbaar');
+    if(rt!==undefined&&rt!==false)return null;
+    return { scope:DCL_ALGEMEEN, statement:null, periode:null, datatype:null, entiteit_id:null,
+      herkomst:'GEBRUIKER', officiele_consolidatie:false, realisatie_toepasbaar:false };
+  }
+  if(!dclIn(DCL_SCOPE,scope)||!dclIn(DCL_STATEMENT,statement)||!dclIn(DCL_DATATYPE,datatype))return null;
   var p=dclEigen(dto,'periode');
   var periode=dclIsObj(p)?dclLeesPeriode(dclEigen(p,'label')):null;
   if(!periode)return null;
-  var ent=dclEigen(dto,'entiteit_id');
-  var rij=typeof rijEntiteitId==='string'&&rijEntiteitId?rijEntiteitId:null;
   if(scope==='GROUP'&&(ent!==null&&ent!==undefined||rij!==null))return null;
   if(scope==='ENTITY'&&(typeof ent!=='string'||!DCL_ID_RE.test(ent)||ent!==rij))return null;
   return { scope:scope, statement:statement, periode:periode, datatype:datatype, entiteit_id:scope==='ENTITY'?ent:null,
@@ -183,6 +217,7 @@ function dclPeriodeTekst(periode){
 // Statuslabel: nooit "jaarrealisatie" bij prognose, begroting, year-to-date of deelperiode.
 function dclStatusLabel(klas,verwerkingFout){
   if(!dclIsObj(klas))return DCL_TEKST.nietGeclassificeerd;
+  if(klas.scope===DCL_ALGEMEEN)return DCL_TEKST.algemeen;
   var basis=dclIsJaarrealisatie(klas.datatype,klas.periode)?DCL_TEKST.jaarrealisatie:DCL_TEKST.geenJaarrealisatie;
   return verwerkingFout==='GEEN_JAARREALISATIE'?'Te beoordelen. '+DCL_TEKST.geenJaarrealisatie:basis;
 }
@@ -191,6 +226,11 @@ function dclRenderWeergave(klas,opts){
   opts=dclIsObj(opts)?opts:{};
   var stijl='flex-basis:100%;font-size:10px;padding-left:19px;';
   if(!dclIsObj(klas))return opts.toonOnbekend?'<div class="dcl-weergave" style="'+stijl+'color:var(--muted)">'+dclEsc(DCL_TEKST.nietGeclassificeerd)+'</div>':'';
+  if(klas.scope===DCL_ALGEMEEN){
+    return '<div class="dcl-weergave" style="'+stijl+'color:var(--sub)">'
+      +'<strong>Eigen classificatie</strong> (herkomst: gebruiker, niet geverifieerd): '+dclEsc(DCL_LABEL.scope.GENERAL)
+      +'<br>'+dclEsc(dclStatusLabel(klas))+'</div>';
+  }
   var wie=klas.scope==='GROUP'?DCL_LABEL.scope.GROUP:(DCL_LABEL.scope.ENTITY+': '+(opts.entNaam?opts.entNaam:'entiteit niet in de huidige lijst'));
   return '<div class="dcl-weergave" style="'+stijl+'color:var(--sub)">'
     +'<strong>Eigen classificatie</strong> (herkomst: gebruiker, niet geverifieerd): '
@@ -200,19 +240,35 @@ function dclRenderWeergave(klas,opts){
 }
 
 // Keuzeblok bij de bestaande uploadzone. Alles staat standaard leeg/uit; zonder vinkje gaat de upload als vroeger.
+// Buiten Financieel alleen de keuze "Algemeen dataroomdocument" (geen financiële velden in de HTML).
 function dclRenderPaneel(faseId,ctx){
   ctx=dclIsObj(ctx)?ctx:{};
-  if(!dclMagClassificeren({ rol:ctx.rol, code:ctx.code, faseId:faseId, vergrendeld:ctx.vergrendeld }))return '';
+  var mctx={ rol:ctx.rol, code:ctx.code, faseId:faseId, vergrendeld:ctx.vergrendeld };
+  if(!dclMagClassificeren(mctx))return '';
   var f=dclEsc(faseId);
   var sel='font-size:11px;background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:4px 6px';
   var opties=function(lijst,labels,leeg){ return '<option value="">'+dclEsc(leeg)+'</option>'+lijst.map(function(v){ return '<option value="'+dclEsc(v)+'">'+dclEsc(labels[v])+'</option>'; }).join(''); };
   var toggle="var v=document.getElementById('doc-klas-velden-"+f+"');if(v)v.style.display=this.checked?'flex':'none';";
+  var uitlegAlgemeen='Algemeen dataroomdocument: een stuk zonder eigen entiteit en zonder financiële cijfers (bijvoorbeeld een organigram of presentatie). '
+    +'Er worden geen overzicht, periode of cijfersoort meegestuurd en geen entiteit gekoppeld; het origineel wordt opgeslagen zonder AI-analyse en niet als financiële bron gebruikt ("Extra controle" heeft dan geen effect). ';
+  if(!dclMagFinancieel(mctx)){
+    return '<div class="dcl-paneel" style="flex-basis:100%;font-size:11px;color:var(--muted)">'
+      +'<label style="display:flex;align-items:center;gap:5px;cursor:pointer" title="Optioneel. Zonder vinkje wordt het document geüpload zoals altijd, zonder classificatie.">'
+      +'<input type="checkbox" id="doc-klas-aan-'+f+'" style="margin:0" onchange="'+toggle+'"> Documentclassificatie opgeven (optioneel, geldt voor alle bestanden die u hierna selecteert of vervangt)'
+      +'</label>'
+      +'<div id="doc-klas-velden-'+f+'" style="display:none;flex-wrap:wrap;gap:6px;align-items:center;margin-top:4px">'
+      +'<select id="doc-klas-scope-'+f+'" style="'+sel+'">'+opties([DCL_ALGEMEEN],DCL_LABEL.scope,'Soort document?')+'</select>'
+      +'<div style="flex-basis:100%;font-size:10px;line-height:1.45">'+uitlegAlgemeen
+      +'Zet de entiteitkeuze op "Groep/hoofdentiteit". Groeps- en entiteitsdocumenten met financiële gegevens classificeert u in de fase Financieel. '
+      +'Een tegenstrijdige keuze wordt vóór het verzenden geweigerd.'
+      +'</div></div></div>';
+  }
   return '<div class="dcl-paneel" style="flex-basis:100%;font-size:11px;color:var(--muted)">'
     +'<label style="display:flex;align-items:center;gap:5px;cursor:pointer" title="Optioneel. Zonder vinkje wordt het document geüpload zoals altijd, zonder classificatie.">'
     +'<input type="checkbox" id="doc-klas-aan-'+f+'" style="margin:0" onchange="'+toggle+'"> Documentclassificatie opgeven (optioneel, geldt voor alle bestanden die u hierna selecteert of vervangt)'
     +'</label>'
     +'<div id="doc-klas-velden-'+f+'" style="display:none;flex-wrap:wrap;gap:6px;align-items:center;margin-top:4px">'
-    +'<select id="doc-klas-scope-'+f+'" style="'+sel+'">'+opties(DCL_SCOPE,DCL_LABEL.scope,'Groep of entiteit?')+'</select>'
+    +'<select id="doc-klas-scope-'+f+'" style="'+sel+'">'+opties(DCL_SCOPE.concat([DCL_ALGEMEEN]),DCL_LABEL.scope,'Groep, entiteit of algemeen?')+'</select>'
     +'<select id="doc-klas-statement-'+f+'" style="'+sel+'">'+opties(DCL_STATEMENT,DCL_LABEL.statement,'Overzicht?')+'</select>'
     +'<select id="doc-klas-periodesoort-'+f+'" style="'+sel+'"><option value="">Periode?</option><option value="BOEKJAAR">Boekjaar</option><option value="DATUMBEREIK">Datumbereik (max. één jaar)</option></select>'
     +'<input type="number" id="doc-klas-boekjaar-'+f+'" min="'+DCL_JAAR_MIN+'" max="'+DCL_JAAR_MAX+'" step="1" placeholder="Boekjaar" style="'+sel+';width:80px">'
@@ -222,6 +278,7 @@ function dclRenderPaneel(faseId,ctx){
     +'<div style="flex-basis:100%;font-size:10px;line-height:1.45">'
     +'Groepsdocument: een stuk over de groep als geheel; kies dan bij de entiteit "Groep/hoofdentiteit". Dit is uw eigen indeling en geen officiële consolidatie. '
     +'Document van één entiteit: kies de entiteit in de entiteitkeuze hiernaast. '
+    +uitlegAlgemeen+'Laat bij die keuze overzicht, periode en cijfersoort leeg en zet de entiteitkeuze op "Groep/hoofdentiteit"; ingevulde velden worden niet weggegooid maar de upload wordt dan geweigerd. '
     +'Alleen realisatie over een volledig jaar geldt als jaarrealisatie. Een prognose, begroting, year-to-date of deelperiode wordt niet als jaarcijfers overgenomen en kan op "Controle nodig" blijven staan. '
     +'Bij Vervangen wordt de classificatie van de vorige versie niet overgenomen; alleen wat hier is ingevuld gaat mee. '
     +'Een onvolledige of tegenstrijdige keuze wordt vóór het verzenden geweigerd.'

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Expliciete groepsdocumenten UI (productpunt 6, 10 okt 2026).
+// Expliciete groepsdocumenten UI (productpunt 6, 10 okt 2026; GENERAL productpunt 7, 12 okt 2026, sectie 15).
 //
 // Draait de ECHTE module mna/12-documentclassificatie.js en de ECHTE uploadintegratie uit mna/02
 // (leesUploadKeuzes, uploadDocumentenSequentieel, uploadDocument, vervangDocument, centraalUploadFiles,
@@ -186,7 +186,8 @@ export async function draaiGroupDocumentsUiChecks(root = process.cwd()) {
     check(fout(V({ begin: '2026-01-01', eind: '2026-12-31' }), /óf een boekjaar óf een datumbereik/) && fout(V({ periodeSoort: 'DATUMBEREIK', begin: '2026-01-01', eind: '2026-12-31' }), /óf een boekjaar óf een datumbereik/), 'validatie: ambigue periode (boekjaar én datums) geweigerd');
     check(fout(V({ boekjaar: '1989' }), /tussen 1990 en 2100/) && fout(V({ boekjaar: '2101' }), /tussen 1990 en 2100/) && fout(V({ boekjaar: '20x6' }), /vier cijfers/), 'validatie: boekjaargrenzen en opmaak');
     check(fout(V({ periodeSoort: 'DATUMBEREIK', boekjaar: '', begin: '2026-01-01', eind: '2027-01-01' }), /maximaal één jaar/) && fout(V({ periodeSoort: 'DATUMBEREIK', boekjaar: '', begin: '2026-02-30', eind: '2026-12-31' }), /bestaande datums/) && fout(V({ periodeSoort: 'DATUMBEREIK', boekjaar: '', begin: '2026-01-01', eind: '' }), /begin- als de einddatum/), 'validatie: datumbereik te lang, onbestaand of onvolledig');
-    check(fout(V({ datatype: 'ACTUALS' }), /onbekende cijfersoort/) && fout(V({ statement: 'p&l' }), /onbekend overzicht/) && fout(V({ scope: 'GENERAL' }), /onbekende documentsoort/), 'validatie: enums hoofdlettergevoelig exact; GENERAL wordt hier niet gebouwd');
+    // Productpunt 7: GENERAL wordt wél gebouwd; met achtergebleven financiële velden geweigerd (sectie 15).
+    check(fout(V({ datatype: 'ACTUALS' }), /onbekende cijfersoort/) && fout(V({ statement: 'p&l' }), /onbekend overzicht/) && fout(V({ scope: 'general' }), /onbekende documentsoort/) && fout(V({ scope: 'GENERAL' }), /algemeen dataroomdocument heeft geen overzicht, periode, cijfersoort/), 'validatie: enums hoofdlettergevoelig exact; GENERAL met financiële velden geweigerd');
     check(fout(V({}, 'ENT_SYN_A'), /groepsdocument hoort niet bij één entiteit/), 'validatie: GROUP met gekozen entiteit tegenstrijdig');
     check(fout(V({ scope: 'ENTITY' }, ''), /kies .*ook de entiteit/) && fout(V({ scope: 'ENTITY' }, 'ENT_ANDER_TRAJECT'), /hoort niet \(meer\) bij dit traject/) && fout(V({ scope: 'ENTITY' }, 'ENT_SYN_A', []), /geen geregistreerde entiteiten/), 'validatie: ENTITY zonder, met vreemde of zonder geregistreerde entiteit geweigerd');
     check(ctx.dclQuery(g.params) === QUERY_GROEP, 'query: vaste volgorde en encoding (P&L → P%26L) · ' + ctx.dclQuery(g.params));
@@ -200,7 +201,7 @@ export async function draaiGroupDocumentsUiChecks(root = process.cwd()) {
     check(s && Object.keys(s).join(',') === 'scope,statement,periode,datatype,entiteit_id,herkomst,officiele_consolidatie,realisatie_toepasbaar' && !JSON.stringify(s).includes(BINDING) && !JSON.stringify(s).includes('doc_x'), 'saneren: alleen bekende sleutels, geen binding/doc_id/hash');
     check(s && s.realisatie_toepasbaar === false, 'saneren: realisatie lokaal herberekend (FORECAST nooit realisatie, ook als de server iets anders zegt)');
     check(ctx.dclSaneer(dto('GROUP', 'P&L', 'FY2026', 'ACTUAL', null, { officiele_consolidatie: true }), null) === null && ctx.dclSaneer(dto('GROUP', 'P&L', 'FY2026', 'ACTUAL', null, { herkomst: 'AI' }), null) === null, 'saneren: officiële-consolidatieclaim of andere herkomst → onbekend');
-    check(ctx.dclSaneer({ scope: 'GENERAL', statement: null, periode: null, datatype: null, entiteit_id: null, herkomst: 'GEBRUIKER', officiele_consolidatie: false }, null) === null, 'saneren: GENERAL (productpunt 7) wordt hier niet getoond');
+    check(ctx.dclSaneer({ scope: 'GENERAL', statement: null, periode: null, datatype: null, entiteit_id: null, herkomst: 'GEBRUIKER', officiele_consolidatie: false }, null).scope === 'GENERAL', 'saneren: GENERAL (productpunt 7) wordt getoond (details in sectie 15)');
     check(ctx.dclSaneer(dto('ENTITY', 'BALANCE_SHEET', 'FY2025', 'ACTUAL', 'ENT_SYN_A'), 'ENT_SYN_B') === null && ctx.dclSaneer(dto('GROUP', 'P&L', 'FY2026', 'ACTUAL'), 'ENT_SYN_A') === null && ctx.dclSaneer(dto('ENTITY', 'P&L', 'FY2026', 'ACTUAL', 'ENT_SYN_A'), 'ENT_SYN_A').entiteit_id === 'ENT_SYN_A', 'saneren: entiteit moet exact bij de rij passen');
     check(ctx.dclSaneer(dto('GROUP', 'P&L', '2026-01-01/2027-06-30', 'ACTUAL'), null) === null && ctx.dclSaneer('{"scope":"GROUP"}', null) === null && ctx.dclSaneer(null, null) === null && ctx.dclSaneer([], null) === null, 'saneren: ongeldige periode, string, null en array → onbekend');
     const L = (dt, l) => ctx.dclStatusLabel(ctx.dclSaneer(dto('GROUP', 'P&L', l, dt), null));
@@ -229,8 +230,10 @@ export async function draaiGroupDocumentsUiChecks(root = process.cwd()) {
       const kz = t.ctx.leesUploadKeuzes(FASE);
       check(!('classificatie' in kz), 'rol ' + (rol || '(leeg)') + ': ook een los ingevuld keuzeblok in de DOM levert geen classificatie op');
     }
+    // Productpunt 7: in een andere fase alleen de algemene keuze, geen GROUP/ENTITY en geen financiële velden.
     const j = laad(root); j.begin('juridisch');
-    check(/Document toevoegen/.test(j.log.html) && !/doc-klas/.test(j.log.html), 'verkoper in andere fase: gewone upload, geen keuzeblok');
+    const jp = j.log.html.slice(j.log.html.indexOf('dcl-paneel'));
+    check(/Document toevoegen/.test(j.log.html) && /id="doc-klas-aan-juridisch"/.test(j.log.html) && /<option value="GENERAL">/.test(jp) && !/value="(GROUP|ENTITY)"/.test(jp) && !/doc-klas-(statement|periodesoort|boekjaar|begin|eind|datatype)-/.test(j.log.html), 'verkoper in andere fase: gewone upload plus alleen de keuze "Algemeen dataroomdocument"');
     const l = laad(root, { vergrendeld: true }); l.begin();
     check(!/doc-klas/.test(l.log.html) && !/Document toevoegen/.test(l.log.html), 'vergrendeld traject: geen upload en geen keuzeblok');
     const lu = await l.ctx.uploadDocument(FASE, l.bestand('syn-lock.txt'), null, undefined, { entiteitId: '', dubbeleCheck: false, alleenBewijsstuk: false, classificatie: Object.freeze({ ok: true, params: { doc_scope: 'GROUP', doc_statement: 'P&L', doc_periode: 'FY2026', doc_datatype: 'ACTUAL' }, jaarrealisatie: true }) });
@@ -386,10 +389,10 @@ export async function draaiGroupDocumentsUiChecks(root = process.cwd()) {
     ] });
     t.ctx.loadDocsForFase(FASE); await wacht();
     const doc = (id) => t.ctx.DOCS[FASE].find((d) => d.id === id);
-    check(doc('doc_legacy').documentclassificatie === null && doc('doc_vals').documentclassificatie === null && doc('doc_gen').documentclassificatie === null, 'lijst: legacy, officiële-consolidatieclaim en GENERAL → geen classificatie');
+    check(doc('doc_legacy').documentclassificatie === null && doc('doc_vals').documentclassificatie === null && doc('doc_gen').documentclassificatie && doc('doc_gen').documentclassificatie.scope === 'GENERAL', 'lijst: legacy en officiële-consolidatieclaim → geen classificatie; GENERAL (productpunt 7) bewaard');
     check(doc('doc_klas').documentclassificatie && !('binding' in doc('doc_klas').documentclassificatie) && !('_documentclassificatie' in doc('doc_klas').velden) && doc('doc_klas').velden.omzet === '5', 'lijst: gesaneerde DTO bewaard, ruw record uit velden verwijderd, overige velden behouden');
     const html = t.log.html, w = weergaven(html);
-    check((w.match(/Niet geclassificeerd/g) || []).length === 3 && /Volledige jaarrealisatie/.test(w) && /2026-01-01 t\/m 2026-06-30 \(deelperiode\)/.test(w) && /Te beoordelen\. Geen jaarrealisatie/.test(w), 'lijst: legacy/ongeldig expliciet niet geclassificeerd; deelperiode nooit realisatie');
+    check((w.match(/Niet geclassificeerd/g) || []).length === 2 && /Algemeen dataroomdocument/.test(w) && /Volledige jaarrealisatie/.test(w) && /2026-01-01 t\/m 2026-06-30 \(deelperiode\)/.test(w) && /Te beoordelen\. Geen jaarrealisatie/.test(w), 'lijst: legacy/ongeldig expliciet niet geclassificeerd; deelperiode nooit realisatie');
     check(!html.includes(BINDING) && !/_documentclassificatie|binding/.test(html) && !/ENT_SYN_A|doc_klas|VSYN0001/.test(w) && !/<b>groep/.test(html), 'lijst: geen binding, ruw record, interne id of toegangscode in de weergave; bestandsnaam geëscaped');
     check(/fd-ent-doc_legacy/.test(html) && !/fd-ent-doc_klas/.test(html), 'lijst: koppel-UI blijft voor legacy, niet voor een geclassificeerd document');
     const g = laad(root, { rol: 'tussenpersoon' }); g.begin();
@@ -408,6 +411,127 @@ export async function draaiGroupDocumentsUiChecks(root = process.cwd()) {
     await v.ctx.toonVersieGeschiedenis('doc_v2');
     const box = v.log.modals.map((n) => n.innerHTML).find((h) => /Versiegeschiedenis/.test(h) && /v2/.test(h)) || '';
     check(/Niet geclassificeerd/.test(box) && /Kasstroomoverzicht/.test(box) && /Geen jaarrealisatie/.test(box) && !box.includes(BINDING) && !/<img src=x>/.test(box), 'versies: per versie eigen classificatie of "niet geclassificeerd", geen binding, geëscaped');
+  });
+
+  // 15. Productpunt 7: GENERAL (algemeen dataroomdocument) — alleen doc_scope, geen entiteit/financiële metadata.
+  await probeer('algemeen', async () => {
+    const GEN = () => ({ scope: 'GENERAL', statement: null, periode: null, datatype: null, entiteit_id: null, herkomst: 'GEBRUIKER', officiele_consolidatie: false, realisatie_toepasbaar: false });
+    const algemeenAntw = (docId, extra = {}) => ({ status: 200, body: { ok: true, doc_id: docId, analyse: '', veld_extractie: {}, r2_opgeslagen: true, verworpen: false, versie: 1, verwerking_status: 'STORED', geanalyseerd: false, inhoud_hash: 'd'.repeat(64), documentclassificatie: GEN(), ...extra } });
+    const Q_GEN = '&bewaar=true&doc_scope=GENERAL';
+    const zuiverAlgemeen = (u) => u.includes('&doc_scope=GENERAL') && !/doc_(statement|periode|datatype)=|entiteit_id=|undefined|null/.test(u);
+
+    // Helpers: validatie, query, saneren, labels.
+    const { ctx } = laad(root);
+    const leeg = { scope: 'GENERAL', statement: '', periodeSoort: '', boekjaar: '', begin: '', eind: '', datatype: '' };
+    const g = ctx.dclValideer(leeg, '', ENT());
+    check(g.ok && g.algemeen === true && g.jaarrealisatie === false && JSON.stringify(g.params) === '{"doc_scope":"GENERAL"}', 'algemeen validatie: alleen doc_scope, geen boekjaar of andere velden vereist');
+    check(ctx.dclQuery(g.params) === '&doc_scope=GENERAL' && ctx.dclQuery({ doc_scope: 'GENERAL', doc_statement: 'P&L' }) === '&doc_scope=GENERAL', 'algemeen query: uitsluitend doc_scope, nooit undefined/null of overige doc_*');
+    const gf = (k, ent = '') => ctx.dclValideer(Object.assign({}, leeg, k), ent, ENT());
+    check(!gf({}, 'ENT_SYN_A').ok && /hoort niet bij één entiteit: zet de entiteitkeuze op "Groep\/hoofdentiteit"/.test(gf({}, 'ENT_SYN_A').fout), 'algemeen validatie: gekozen entiteit geweigerd met aanwijzing');
+    check(/geen overzicht: maak dat veld leeg/.test(gf({ statement: 'P&L' }).fout) && /geen periode/.test(gf({ boekjaar: '2026' }).fout) && /geen periode/.test(gf({ periodeSoort: 'DATUMBEREIK' }).fout) && /geen cijfersoort/.test(gf({ datatype: 'ACTUAL' }).fout), 'algemeen validatie: elk achtergebleven financieel veld concreet benoemd');
+    check(!ctx.dclValideer(Object.assign({}, leeg, { scope: 'GROUP' }), '', ENT(), { alleenAlgemeen: true }).ok && /alleen "Algemeen dataroomdocument"/.test(ctx.dclValideer(Object.assign({}, leeg, { scope: 'ENTITY' }), 'ENT_SYN_A', ENT(), { alleenAlgemeen: true }).fout) && /kies "Algemeen dataroomdocument"/.test(ctx.dclValideer(Object.assign({}, leeg, { scope: '' }), '', ENT(), { alleenAlgemeen: true }).fout) && ctx.dclValideer(leeg, '', ENT(), { alleenAlgemeen: true }).ok, 'algemeen validatie: buiten Financieel geen GROUP/ENTITY');
+    const s = ctx.dclSaneer(Object.assign(GEN(), { binding: BINDING, doc_id: 'doc_x' }), null);
+    check(s && Object.keys(s).join(',') === 'scope,statement,periode,datatype,entiteit_id,herkomst,officiele_consolidatie,realisatie_toepasbaar' && s.statement === null && s.periode === null && s.datatype === null && s.entiteit_id === null && s.realisatie_toepasbaar === false && !JSON.stringify(s).includes(BINDING), 'algemeen saneren: alleen null financiële velden, geen entiteit/binding');
+    const ongeldig = [
+      Object.assign(GEN(), { statement: 'P&L' }), Object.assign(GEN(), { datatype: 'ACTUAL' }), Object.assign(GEN(), { periode: { soort: 'BOEKJAAR', label: 'FY2026', boekjaar: 2026, begin: null, eind: null } }),
+      Object.assign(GEN(), { entiteit_id: 'ENT_SYN_A' }), Object.assign(GEN(), { officiele_consolidatie: true }), Object.assign(GEN(), { herkomst: 'AI' }), Object.assign(GEN(), { realisatie_toepasbaar: true }),
+      (() => { const x = GEN(); delete x.statement; return x; })(), Object.assign(GEN(), { scope: 'general' }),
+    ];
+    check(ongeldig.every((x) => ctx.dclSaneer(x, null) === null) && ctx.dclSaneer(GEN(), 'ENT_SYN_A') === null, 'algemeen saneren: metadata, entiteit (DTO of rij), consolidatie, herkomst, realisatieclaim, ontbrekend veld of kleine letters → onbekend');
+    const w = ctx.dclRenderWeergave(s, { verwerkingFout: 'GEEN_JAARREALISATIE' });
+    check(/Algemeen dataroomdocument/.test(w) && /herkomst: gebruiker, niet geverifieerd/.test(w) && !/jaarrealisatie|Controle nodig|Te beoordelen|Groepsdocument|consolidatie/i.test(w) && /Algemeen document/.test(ctx.dclStatusLabel(s)), 'algemeen weergave: "Algemeen document", nooit jaarrealisatie/controle nodig/groep');
+
+    // Keuzeblok Financieel: GENERAL naast GROUP/ENTITY; financiële velden blijven zichtbaar en ingevuld.
+    const v = laad(root); v.begin();
+    const vp = v.log.html.slice(v.log.html.indexOf('dcl-paneel'));
+    check(/<option value="GROUP">/.test(vp) && /<option value="ENTITY">/.test(vp) && /<option value="GENERAL">Algemeen dataroomdocument/.test(vp) && /ingevulde velden worden niet weggegooid/.test(vp) && /zonder AI-analyse/.test(vp), 'algemeen keuzeblok Financieel: expliciete keuze naast groep/entiteit, uitleg weigering i.p.v. weggooien');
+
+    // Batch in Financieel na rerender: alleen doc_scope, bestaande extra controle behouden, geen autoapply/koppeling.
+    const b = laad(root); b.begin(); b.kies({ scope: 'GENERAL' });
+    b.els['dubbele-check-' + FASE].checked = true;
+    b.opzet.upload.push(algemeenAntw('doc_a1'), algemeenAntw('doc_a2'));
+    await b.ctx.uploadDocumentenSequentieel(FASE, [b.bestand('syn-org-1.txt'), b.bestand('syn-org-2.txt')]);
+    const r = b.log.requests;
+    check(r.length === 2 && r.every((x) => x.url.endsWith(Q_GEN + '&dubbele_check=true') && zuiverAlgemeen(x.url) && x.rendersVoorRequest >= 2 && x.paneelAanBijRequest === false && alleenFile(x.body)), 'algemeen batch: momentopname vóór renderApp, exact doc_scope=GENERAL, extra controle ongewijzigd, alleen bestand in formulier · ' + (r[0] && r[0].url));
+    const bd = b.ctx.DOCS[FASE];
+    check(bd.length === 2 && bd.every((d) => d.documentclassificatie && d.documentclassificatie.scope === 'GENERAL' && d.entiteit_id === '' && Object.keys(d.velden).length === 0) && b.log.autoFill === 0 && !b.log.overig.some((u) => /koppel-entiteit/.test(u)), 'algemeen batch: rijen GENERAL zonder entiteit/velden, geen veldinvulling of koppelverzoek');
+    const bw = weergaven(b.log.html);
+    check(/Algemeen dataroomdocument/.test(bw) && !/jaarrealisatie/i.test(bw) && !/>Controle nodig<|Groepsniveau<|Handmatig koppelen|fd-ent-doc_a/.test(b.log.html), 'algemeen batch: lijst toont algemeen document, geen controle nodig/groepsniveau/koppel-UI');
+
+    // Bewijsstuk-keuze blijft staan naast GENERAL.
+    const bs = laad(root); bs.begin(); bs.kies({ scope: 'GENERAL' });
+    bs.els['bewijsstuk-alleen-' + FASE].checked = true;
+    bs.opzet.upload.push(algemeenAntw('doc_bs', { alleen_bewijsstuk: true }));
+    await bs.ctx.uploadDocumentenSequentieel(FASE, [bs.bestand('syn-bewijs.txt')]);
+    check(bs.log.requests[0] && bs.log.requests[0].url.endsWith(Q_GEN + '&alleen_bewijsstuk=true') && bs.ctx.DOCS[FASE][0].alleen_bewijsstuk === true, 'algemeen bewijsstuk: alleen_bewijsstuk=true ongewijzigd meegestuurd');
+
+    // Server wijkt af (PROCESSED met velden en herkende naam): toch geen autoapply of entiteitgok.
+    const p = laad(root); p.begin(); p.kies({ scope: 'GENERAL' });
+    p.opzet.upload.push(ANTW.processed('doc_p1', { entiteit_naam: 'Beta BV', documentclassificatie: GEN() }), ANTW.processed('doc_p2', { entiteit_naam: 'Beta BV' }));
+    await p.ctx.uploadDocumentenSequentieel(FASE, [p.bestand('syn-p1.txt'), p.bestand('syn-p2.txt')]);
+    const pd = (id) => p.ctx.DOCS[FASE].find((d) => d.id === id);
+    check(p.log.autoFill === 0 && !p.log.overig.some((u) => /koppel-entiteit/.test(u)) && pd('doc_p1').entiteit_id === '' && Object.keys(pd('doc_p1').velden).length === 0 && !pd('doc_p1').behoeftHandmatigeKoppeling && pd('doc_p2').documentclassificatie === null, 'algemeen: ook bij PROCESSED of onbevestigde classificatie geen veldinvulling, gok of koppeling');
+
+    // Tegenstrijdige keuze: nul verzoeken, invoer blijft staan (geen stil weggooien).
+    const tegen = [
+      ['entiteit gekozen', { scope: 'GENERAL', entiteit: 'ENT_SYN_A' }, /Groep\/hoofdentiteit/, 'entiteit-select-' + FASE, 'ENT_SYN_A'],
+      ['overzicht ingevuld', { scope: 'GENERAL', statement: 'BALANCE_SHEET' }, /geen overzicht/, 'doc-klas-statement-' + FASE, 'BALANCE_SHEET'],
+      ['boekjaar ingevuld', { scope: 'GENERAL', soort: 'BOEKJAAR', boekjaar: '2026' }, /geen periode/, 'doc-klas-boekjaar-' + FASE, '2026'],
+      ['cijfersoort ingevuld', { scope: 'GENERAL', datatype: 'FORECAST' }, /geen cijfersoort/, 'doc-klas-datatype-' + FASE, 'FORECAST'],
+    ];
+    for (const [naam, keuze, re, elId, waarde] of tegen) {
+      const t = laad(root); t.begin(); t.kies(keuze);
+      const uit = await t.ctx.uploadDocumentenSequentieel(FASE, [t.bestand('syn-1.txt'), t.bestand('syn-2.txt')]);
+      const d = await t.ctx.uploadDocument(FASE, t.bestand('syn-3.txt'));
+      check(t.log.requests.length === 0 && t.log.overig.length === 0 && uit.geblokkeerd && re.test(uit.samenvatting) && d.soort === 'niet_aangeboden' && t.log.renders === 1 && t.els[elId].value === waarde && t.els['doc-klas-aan-' + FASE].checked === true, 'algemeen weigering (' + naam + '): nul verzoeken, concrete aanwijzing, invoer blijft staan');
+    }
+
+    // Niet-financiële fase: GENERAL beschikbaar; GROUP via gemanipuleerde DOM geweigerd vóór fetch.
+    const j = laad(root); j.begin('juridisch'); j.kies({ scope: 'GENERAL' }, 'juridisch');
+    j.opzet.upload.push(algemeenAntw('doc_j1'));
+    await j.ctx.uploadDocumentenSequentieel('juridisch', [j.bestand('syn-statuten.txt')]);
+    check(j.log.requests.length === 1 && /fase_id=juridisch&bewaar=true&doc_scope=GENERAL$/.test(j.log.requests[0].url) && zuiverAlgemeen(j.log.requests[0].url) && j.log.autoFill === 0 && /Algemeen dataroomdocument/.test(weergaven(j.log.html)), 'algemeen juridisch: upload met alleen doc_scope, weergave algemeen document · ' + (j.log.requests[0] && j.log.requests[0].url));
+    const jm = laad(root); jm.begin('juridisch'); jm.kies({ scope: 'GENERAL' }, 'juridisch');
+    jm.els['doc-klas-scope-juridisch'].value = 'GROUP';
+    const jmu = await jm.ctx.uploadDocumentenSequentieel('juridisch', [jm.bestand('syn-x.txt')]);
+    check(jm.log.requests.length === 0 && /alleen "Algemeen dataroomdocument"/.test(jmu.samenvatting), 'algemeen juridisch: GROUP buiten Financieel geweigerd vóór fetch');
+
+    // Rollen/vergrendeling: geen uploadclassificatie in een niet-financiële fase.
+    for (const rol of ['koper', 'tussenpersoon', 'meekijker', '']) {
+      const t = laad(root, { rol }); t.begin('juridisch');
+      t.els['doc-klas-aan-juridisch'] = Object.assign(maakEl('doc-klas-aan-juridisch'), { checked: true });
+      t.els['doc-klas-scope-juridisch'] = Object.assign(maakEl(''), { value: 'GENERAL' });
+      check(!/doc-klas/.test(t.log.html) && !('classificatie' in t.ctx.leesUploadKeuzes('juridisch')), 'algemeen rol ' + (rol || '(leeg)') + ': geen keuzeblok en geen classificatie in juridisch');
+    }
+    const l = laad(root, { vergrendeld: true }); l.begin('juridisch');
+    check(!/doc-klas/.test(l.log.html), 'algemeen vergrendeld: geen keuzeblok');
+
+    // Vervangen na rerender: huidige GENERAL-keuze, vervangt behouden, oude versie vervangen.
+    const oud = { id: 'doc_oud', naam: 'syn-oud.txt', type: 'text/plain', grootte: 40, analyse: '', velden: {}, bewaard: true, uploading: false, versie: 1, verwerking_status: 'STORED' };
+    const c = laad(root); c.ctx.DOCS[FASE] = [oud]; c.begin(); c.kies({ scope: 'GENERAL' });
+    c.opzet.upload.push(algemeenAntw('doc_nieuw', { versie: 2 }));
+    c.ctx.vervangDocument(FASE, 'doc_oud'); c.ctx._laatsteKiezer.files = [c.bestand('syn-nieuw.txt')]; c.ctx._laatsteKiezer.onchange(); await wacht();
+    const cu = c.log.requests[0] && c.log.requests[0].url;
+    check(cu && cu.endsWith(Q_GEN + '&vervangt=doc_oud') && zuiverAlgemeen(cu) && c.log.requests[0].rendersVoorRequest >= 2 && c.log.requests[0].paneelAanBijRequest === false, 'algemeen vervangen: momentopname vóór renderApp, alleen doc_scope + vervangt · ' + cu);
+    check(!c.ctx.DOCS[FASE].some((d) => d.id === 'doc_oud') && c.ctx.DOCS[FASE][0].id === 'doc_nieuw' && c.ctx.DOCS[FASE][0].heeft_eerdere_versies === true && c.ctx.DOCS[FASE][0].documentclassificatie.scope === 'GENERAL', 'algemeen vervangen: STORED vervangt de oude versie (bestaand gedrag)');
+
+    // Reload en versiehistorie.
+    const h = laad(root); h.begin();
+    h.opzet.lijst.push({ status: 200, body: [
+      { id: 'doc_gen', bestand_naam: 'syn-gen.txt', bestand_type: 'text/plain', bestand_grootte: 40, bewaard: 1, analyse: '', veld_extractie: '{}', uploaded_at: 1, versie: 2, heeft_eerdere_versies: true, verwerking_status: 'STORED', bestand_opgeslagen: true, entiteit_id: null, documentclassificatie: GEN() },
+      { id: 'doc_gen_vals', bestand_naam: 'syn-gen-vals.txt', bestand_type: 'text/plain', bestand_grootte: 40, bewaard: 1, analyse: '', veld_extractie: '{}', uploaded_at: 2, versie: 1, verwerking_status: 'STORED', bestand_opgeslagen: true, entiteit_id: 'ENT_SYN_A', documentclassificatie: GEN() },
+    ] });
+    h.ctx.loadDocsForFase(FASE); await wacht();
+    const hd = (id) => h.ctx.DOCS[FASE].find((d) => d.id === id);
+    const hw = weergaven(h.log.html);
+    check(hd('doc_gen').documentclassificatie.scope === 'GENERAL' && hd('doc_gen_vals').documentclassificatie === null && /Algemeen dataroomdocument/.test(hw) && /Niet geclassificeerd/.test(hw) && !/jaarrealisatie/i.test(hw) && !/>Controle nodig<|fd-ent-doc_gen"/.test(h.log.html), 'algemeen reload: GENERAL getoond; GENERAL op een rij met entiteit fail-closed onbekend');
+    h.opzet.versies.push({ status: 200, body: { ok: true, versies: [
+      { id: 'doc_g1', bestand_naam: 'syn-g1.txt', versie: 1, bewaard: 1, uploaded_at: 1, entiteit_id: null, documentclassificatie: dto('GROUP', 'P&L', 'FY2026', 'FORECAST') },
+      { id: 'doc_g2', bestand_naam: 'syn-g2.txt', versie: 2, bewaard: 1, uploaded_at: 2, entiteit_id: null, documentclassificatie: Object.assign(GEN(), { binding: BINDING }) },
+    ] } });
+    await h.ctx.toonVersieGeschiedenis('doc_g2');
+    const box = h.log.modals.map((n) => n.innerHTML).find((x) => /Versiegeschiedenis/.test(x) && /v2/.test(x)) || '';
+    check(/Algemeen dataroomdocument/.test(box) && /Prognose \(forecast\)/.test(box) && (box.match(/jaarrealisatie/gi) || []).length === 1 && !box.includes(BINDING), 'algemeen versies: v2 algemeen document, v1 behoudt eigen groepsclassificatie, geen binding');
   });
 
   return res;

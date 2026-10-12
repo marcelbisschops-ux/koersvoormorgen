@@ -6,6 +6,12 @@ frontendrelease `615603a34030410277532aaabc1e09d74f4790e9` (Pages-deployment
 `042e9351-60d7-44cb-a1f9-e1160c7f5215`) zijn uitgerold; zie "Release" onderaan. Live acceptatie met echte
 klantdocumenten en de kwaliteit van live AI-extractie blijven **OPEN**.
 
+**Productpunt 7 (12 okt 2026, OPEN):** de UI voor `GENERAL` (algemeen dataroomdocument) is gebouwd en
+synthetisch getest tegen de ontwikkelbackend `c976e778` (backend `docs/group-documents.md`, sectie
+"Algemene documenten (GENERAL)"). Die backend is **niet** uitgerold; productie draait alleen productpunt 6.
+Deze UI hoort pas samen met of na die backend uitgerold te worden. Staging- en live-acceptatie van
+productpunt 7 staan **OPEN**; zie "Algemeen dataroomdocument (productpunt 7)" en "Beperkingen en OPEN".
+
 Historie: de UI is eerst gebouwd en synthetisch getest tegen backendcommit `fd2bf7d` (backend
 `docs/group-documents.md`), toen de backend READY maar nog niet uitgerold was.
 
@@ -29,9 +35,11 @@ Vier optionele parameters op `POST /mna/document/upload`, alle vier samen of gee
 
 De UI stuurt ze uitsluitend als queryparameter (nooit ook als formulierveld, dus geen dubbelzinnige
 query+formwaarden), in vaste volgorde en met `encodeURIComponent` (`P&L` → `P%26L`). `entiteit_id` blijft
-de bestaande queryparameter uit de bestaande entiteitkeuze. De backendscope `GENERAL` (productpunt 7) wordt
-hier niet gebouwd: de UI biedt hem niet aan en toont een `GENERAL`-classificatie uit de server als
-"niet geclassificeerd (classificatie onbekend)".
+de bestaande queryparameter uit de bestaande entiteitkeuze.
+
+Productpunt 7: bij `doc_scope=GENERAL` stuurt de UI **alleen** `&doc_scope=GENERAL`. `doc_statement`,
+`doc_periode`, `doc_datatype` en `entiteit_id` gaan dan niet mee (ook niet leeg, `undefined` of `null`).
+De backend weigert anders met `GENERAL_MET_METADATA` of `GENERAL_MET_ENTITEIT`.
 
 ## Bediening
 
@@ -53,6 +61,37 @@ hier niet gebouwd: de UI biedt hem niet aan en toont een `GENERAL`-classificatie
 5. **Vervangen** gebruikt alleen wat op dat moment in het keuzeblok staat. De classificatie van de vorige
    versie wordt nooit hergebruikt of gekopieerd. Staat het vinkje uit, dan krijgt de nieuwe versie geen
    classificatie.
+
+## Algemeen dataroomdocument (productpunt 7)
+
+1. **Financieel**: zet het vinkje aan en kies bij "Groep, entiteit of algemeen?" de optie **Algemeen
+   dataroomdocument (geen entiteit, geen financiële gegevens)**. Laat overzicht, periode en cijfersoort
+   leeg en zet de entiteitkeuze op "Groep/hoofdentiteit". Er hoeft geen boekjaar ingevuld te worden.
+2. **Elke andere fase** (bijvoorbeeld Juridisch): de verkoper ziet hetzelfde vinkje. Het keuzeblok bevat
+   daar alleen "Soort document?" met de enige optie **Algemeen dataroomdocument**. Overzicht, periode en
+   cijfersoort staan daar niet in de HTML. Groeps- en entiteitsdocumenten blijven alleen in Financieel
+   beschikbaar; een `GROUP`/`ENTITY`-waarde buiten Financieel (bijvoorbeeld via een gemanipuleerde DOM)
+   wordt vóór verzenden geweigerd.
+3. De financiële velden blijven in Financieel zichtbaar en worden **niet** stil leeggemaakt of weggegooid.
+   Staat er bij "Algemeen" nog een overzicht, periode (soort, boekjaar of datum), cijfersoort of entiteit,
+   dan wordt de hele selectie vóór elk verzoek geweigerd. De melding noemt het concrete veld, bijvoorbeeld
+   "een algemeen dataroomdocument heeft geen overzicht: maak dat veld leeg …" of "… hoort niet bij één
+   entiteit: zet de entiteitkeuze op "Groep/hoofdentiteit"". Het keuzeblok blijft ingevuld staan.
+4. De keuze geldt voor de hele reeks en voor **Vervangen** (momentopname vóór de hertekening). "Alleen als
+   bewijsstuk" en "Extra controle" worden niet aangepast en gaan mee zoals gekozen. De server slaat een
+   algemeen document op zonder AI-analyse, dus "Extra controle" heeft dan geen effect.
+5. Het origineel wordt opgeslagen (`STORED`, "Opgeslagen, niet geanalyseerd"). Er volgt geen veldinvulling,
+   geen financiële autoapply, geen entiteitgok en geen koppelverzoek. Dat geldt ook als een server
+   onverwacht `PROCESSED` of velden terugstuurt.
+6. Lijst en "Versies" tonen **Eigen classificatie (herkomst: gebruiker, niet geverifieerd): Algemeen
+   dataroomdocument** met "Algemeen document: geen entiteit, overzicht, periode of cijfersoort. Opgeslagen
+   zonder analyse en niet als financiële bron gebruikt." Er staat nooit (groeps)jaarrealisatie, "Te
+   beoordelen", koppel-dropdown of "Groepsniveau" bij. Het ontbreken van financiële metadata leidt ook
+   niet tot "Controle nodig".
+7. Saneren van `GENERAL`: alleen geldig met exact `statement`/`periode`/`datatype`/`entiteit_id` `null`, een rij
+   zonder entiteit, `herkomst: 'GEBRUIKER'`, `officiele_consolidatie: false` en geen
+   `realisatie_toepasbaar: true`. Anders wordt hij fail-closed getoond als "niet geclassificeerd
+   (classificatie onbekend)". Een onbekende scope (ook `general` in kleine letters) blijft onbekend.
 
 ## Controles vóór verzenden
 
@@ -98,7 +137,7 @@ Per document in de lijst (en per versie in "Versies") staat één regel. Alleen 
 
 Saneren (`dclSaneer`): alleen bekende enums, een opnieuw gelezen periode, `herkomst: 'GEBRUIKER'`,
 `officiele_consolidatie: false` en een entiteit die exact bij de rij past. Een record dat officiële
-consolidatie claimt, een andere herkomst, `GENERAL` of een afwijkende entiteit telt als onbekend. Of het een
+consolidatie claimt, een andere herkomst, een `GENERAL` met metadata of entiteit, of een afwijkende entiteit telt als onbekend. Of het een
 jaarrealisatie is, wordt lokaal herberekend en niet van de server overgenomen. Het ruwe record
 `_documentclassificatie`, de `binding`, document-id's, hashes en toegangscodes worden nooit getoond. Het ruwe
 record wordt ook uit de lokale velden verwijderd. De entiteit verschijnt als naam en nooit als id. Elke
@@ -113,8 +152,9 @@ begroting, year-to-date of deelperiode worden dan ook geen velden overgenomen.
 
 ## Rollen en grenzen
 
-- Alleen de **verkoper** krijgt het keuzeblok, alleen in fase Financieel en alleen in een niet-vergrendeld
-  traject. Zelfs een los ingevuld keuzeblok in de DOM levert voor een andere rol geen classificatie op.
+- Alleen de **verkoper** krijgt het keuzeblok, alleen in een niet-vergrendeld traject. `GROUP`/`ENTITY`
+  alleen in fase Financieel; in andere fases alleen `GENERAL` (productpunt 7). Zelfs een los ingevuld
+  keuzeblok in de DOM levert voor een andere rol geen classificatie op.
 - De **begeleider** ziet de classificatie alleen-lezen. De financiële upload blijft voor de begeleider dicht (ongewijzigd).
 - **Koper** en **meekijker** krijgen geen classificatie-UI en er gaan geen nieuwe verzoeken uit (de koper
   ziet de documentsectie niet en laadt de lijst niet).
@@ -130,6 +170,21 @@ begroting, year-to-date of deelperiode worden dan ook geen velden overgenomen.
 echte mna/02-uploadintegratie in node:vm. Antwoorden zijn synthetisch, in de vorm van het gecommitte
 backendcontract. Er is geen netwerk, geen browser en geen AI. De bestaande upload-, bewijsstuk-,
 broncontrole-, juridische en groepsbeeldchecks (24, 25, 27, 28, 29) blijven ongewijzigd.
+
+Productpunt 7 (sectie 15 van de test) dekt de volgende gevallen:
+- `GENERAL`-verzoeken met alleen `doc_scope`, zonder overzicht, periode, cijfersoort of entiteit. Dat geldt
+  ook voor een reeks en voor Vervangen na de hertekening, in Financieel en in Juridisch.
+- Extra controle en bewijsstuk blijven behouden.
+- Er is geen autoapply en geen koppelverzoek, ook niet bij een afwijkende `PROCESSED`-respons.
+- Een tegenstrijdige keuze geeft nul verzoeken, en de invoer blijft staan.
+- Er wordt geen boekjaar geforceerd.
+- `GENERAL` wordt getoond na herladen en in de versiehistorie; een ongeldige DTO is fail-closed onbekend.
+- Rollen, vergrendeling en `GROUP` buiten Financieel worden geweigerd.
+
+Drie oude asserties zijn bewust vervangen door de `GENERAL`-verwachting:
+- de validatie weigert `GENERAL` niet meer als onbekend;
+- saneren en de lijst tonen `GENERAL`;
+- de verkoper in een andere fase krijgt nu de algemene keuze.
 
 ## Release (10 okt 2026)
 
@@ -155,5 +210,15 @@ broncontrole-, juridische en groepsbeeldchecks (24, 25, 27, 28, 29) blijven onge
   geen acceptatie met echte klant(groeps)jaarstukken, begrotingen of prognoses, en de kwaliteit van live
   AI-extractie is niet bewezen.
 - Een groepsdocument blijft een eigen indeling van de gebruiker, geen officiële consolidatie.
-- Geen GENERAL (productpunt 7), geen gebruik van de classificatie in broncontrole, groepsbeeld of
-  AI-analyse en geen achteraf wijzigen van een classificatie (er is daarvoor geen API).
+- **Productpunt 7 `GENERAL` — OPEN**: de UI is alleen synthetisch getest (node:vm, geen browser, geen
+  live API). De backend `c976e778` staat niet in productie. Deze punten zijn nog niet gedaan:
+  - een gezamenlijke release van backend en UI;
+  - staging-acceptatie in een echte browser: upload in Financieel en in een niet-financiële fase, reeks,
+    Vervangen, herladen, Versies, rollen en vergrendeling;
+  - live-acceptatie.
+
+  Hoe de huidige productiebackend op `doc_scope=GENERAL` reageert, is niet getest. De UI toont alleen
+  een classificatie die de server bevestigt. In elk ander geval toont ze de serverfout of "niet
+  geclassificeerd", en neemt ze geen velden over.
+- Geen gebruik van de classificatie in broncontrole, groepsbeeld of AI-analyse en geen achteraf wijzigen
+  van een classificatie (er is daarvoor geen API).

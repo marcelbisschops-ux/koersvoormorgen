@@ -1319,6 +1319,14 @@ async function uploadDocument(faseId, file, existingId, vervangtDocId, uploadKeu
     soort = 'controle';
     uitkomstTekst = 'Opgeslagen; classificatie niet bevestigd, geen gegevens overgenomen.';
   }
+  // Productpunt 7: een algemeen dataroomdocument (GENERAL) is nooit een financiële bron — ook als de server
+  // toch velden of PROCESSED terugstuurt: geen veldinvulling, geen entiteitgok en geen koppelverzoek.
+  var klasAlgemeen = !!klasKeuze && !!klasKeuze.algemeen;
+  if (klasAlgemeen && analyseGeslaagd) {
+    analyseGeslaagd = false;
+    soort = 'opgeslagen';
+    uitkomstTekst = 'Opgeslagen als algemeen document; geen gegevens overgenomen.';
+  }
   try {
       // Replace temp with real — en bij een geslaagde vervangende versie ook de oude versie uit de
       // weergave halen (de server sluit "vervangen" documenten al uit van /mna/document/lijst, maar de
@@ -1347,6 +1355,7 @@ async function uploadDocument(faseId, file, existingId, vervangtDocId, uploadKeu
       // Bewijsstuk-only: server stuurt bewust geen veld_extractie/crosschecks mee (zie hieronder,
       // die blokken worden dan vanzelf overgeslagen) — wel een eigen, duidelijke melding.
       if (d.alleen_bewijsstuk) toast('"'+file.name+'" toegevoegd als bewijsstuk — niet automatisch geanalyseerd.','ok');
+      else if (klasAlgemeen && klasDto && soort === 'opgeslagen') toast('"'+file.name+'" opgeslagen als algemeen dataroomdocument — niet geanalyseerd, geen gegevens overgenomen.','ok');
       else if (soort === 'controle') toast('"'+file.name+'": '+reviewReden+(vervangtDocId?' De vorige versie blijft staan.':''),'warn',10000);
       else if (!analyseGeslaagd) toast('"'+file.name+'": '+uitkomstTekst+' Er zijn geen gegevens overgenomen.'+(vervangtDocId&&!magVervangen?' De vorige versie blijft staan.':''),'warn',8000);
       if (analyseGeslaagd && d.veld_extractie) {
