@@ -53,6 +53,8 @@ async function logIn(page) {
   await page.goto('/mna.html?worker=' + W);
   await page.fill('#l-code', CODE);
   await page.click('#l-btn');
+  // UX 05-11-2026: Koper-toegang is een eigen scherm; open het via het menu links, zoals een gebruiker.
+  await page.click('#mt-zij [data-mt-naar="toegang"]');
   await expect(page.locator('#bg-toegang')).toBeVisible();
   return page.evaluate(() => FASES.map((f) => f.id));
 }

@@ -118,7 +118,9 @@ async function login(page, code) {
 // element afwezig en faalt de wait terecht, precies zoals bedoeld.
 async function wachtOpBegeleiderDashboard(page) {
   await page.waitForFunction(() => window.S && S.traject && S.rol === 'tussenpersoon', null, { timeout: 15000 });
-  await expect(page.locator('#bg-nda-composer-actie')).toBeVisible({ timeout: 20000 });
+  // UX 05-11-2026: de cliëntacceptatie staat altijd op het dashboard; de NDA-kaart kan in een ingeklapte journeyfase
+  // staan (afhankelijk van de voortgang van het traject) en is daarom geen betrouwbaar laadbewijs meer.
+  await expect(page.locator('#bg-ca-chk')).toBeVisible({ timeout: 20000 });
 }
 
 // Diagnostiek (alleen B3/B4, 23 sep 2026): als de begeleiderssessie niet binnen de wachttijd
@@ -863,6 +865,8 @@ test.describe('KANTOORINZICHT 3-ROLLEN E2E', () => {
       // opent zonder expliciete fase-navigatie niet automatisch 'financieel', dus die fase eerst
       // selecteren (zelfde navigatiepatroon als de andere rollen hierboven) en dan direct uit S.data lezen.
       await page.evaluate(() => { S.screen = 'main'; S.fase = FASES.findIndex(f => f.id === 'financieel'); renderApp(); });
+      // Wacht tot de fasegegevens er zijn (het dashboard tekent kort na het inloggen nog één keer opnieuw).
+      await page.waitForFunction(() => window.S && S.data && S.data['financieel_omzet3'], null, { timeout: 10000 }).catch(() => {});
       const veldWaarde = await page.evaluate(() => (window.S && S.data && S.data['financieel_omzet3']) || null).catch(() => null);
       const ok = typeof veldWaarde === 'string' && veldWaarde.includes(MARKER) && veldWaarde.includes('V3-GEWIJZIGD');
       record('BEGELEIDER', 'Dashboard', 'S.data (al ingelogde sessie)', "verkoper's laatste waarde bekijken", 'zelfde waarde als V3', ok, 'kreeg ' + JSON.stringify(veldWaarde));
@@ -880,7 +884,8 @@ test.describe('KANTOORINZICHT 3-ROLLEN E2E', () => {
       // mna/04-begeleider-dashboard.js:972, `style="display:none"` totdat de kop wordt aangeklikt).
       // Geen productbug — het is bewust een ingeklapt paneel — maar deze test moet de sectie eerst
       // openklappen, exact zoals een echte gebruiker dat ook doet.
-      await page.locator('.bg-sec-hdr[data-sec="comm"]').click();
+      // UX 05-11-2026: Communicatie is een eigen scherm (menu links); daar staat de sectie al open.
+      await page.locator('#mt-zij [data-mt-naar="communicatie"]').click();
       await page.locator('#bg-gesprek-actie').click();
       await expect(page.locator('#bgg-verslag')).toBeVisible({ timeout: 10000 });
       await page.locator('#bgg-deelnemers').fill('E2E Regressietest');
