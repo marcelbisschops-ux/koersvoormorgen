@@ -4,7 +4,7 @@
 const { api, leesAdminKey, accepteerPlatformvoorwaarden, ruimTrajectOp, IS_STAGING_WORKER } = await import('./lib.mjs');
 if (!IS_STAGING_WORKER) process.exit(2);
 const ADMIN = leesAdminKey();
-const c = await api('POST', '/mna/create', { adminKey: ADMIN, body: { kantoor_naam: 'Synth N151 Proef B.V.', sector: 'accountancy', traject_type: 'Verkoop', contact_email: 'marcel@bisschopsfinancing.nl' } });
+const c = await api('POST', '/mna/create', { adminKey: ADMIN, body: { kantoor_naam: 'Synth N151 Proef B.V.', sector: 'accountancy', traject_type: 'Verkoop', contact_email: 'delivered@resend.dev' } });
 const V = c.json.code, T = c.json.tussen_code, K = c.json.koper_code, B = { 'x-tussen-key': T };
 const uit = [];
 try {

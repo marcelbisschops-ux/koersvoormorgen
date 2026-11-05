@@ -15,7 +15,7 @@ const kb = (f) => ['Rekening;Omschrijving;Debet;Credit', '0100;Inventaris;' + f(
 const nl = (n) => n.toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 kop('#91 verkoopstraat · end-to-end op staging (fictief accountantskantoor)');
-const c = await api('POST', '/mna/create', { adminKey: ADMIN, body: { kantoor_naam: 'Synth Voorbeeld Administratie B.V.', sector: 'accountancy', traject_type: 'Verkoop', contact_email: 'marcel@bisschopsfinancing.nl' } });
+const c = await api('POST', '/mna/create', { adminKey: ADMIN, body: { kantoor_naam: 'Synth Voorbeeld Administratie B.V.', sector: 'accountancy', traject_type: 'Verkoop', contact_email: 'delivered@resend.dev' } });
 const V = c.json && c.json.code, T = c.json && c.json.tussen_code;
 check('traject aangemaakt', !!(V && T), 'status ' + c.status);
 const B = { 'x-tussen-key': T };

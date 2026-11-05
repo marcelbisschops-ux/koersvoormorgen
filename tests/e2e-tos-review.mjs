@@ -9,7 +9,7 @@
 //   6.   een niet-geadresseerde partij krijgt 403
 //   7.   MOU, LOI, NDA lopen door exact dezelfde routes/logica (deze test draait 3x, ongewijzigd)
 //
-// Gebruikt bewust een echt e-mailadres (marcel@bisschopsfinancing.nl) i.p.v. .invalid — isEchtEmail()
+// Gebruikt het testadres van Resend (delivered@resend.dev, simuleert bezorging, niemand ontvangt een mail) i.p.v. .invalid — isEchtEmail()
 // filtert .invalid-adressen bewust uit (RFC 2606), en zonder een geldige ontvanger bereikt een
 // document nooit status 'verstuurd' (zelfde les als PDF-RENDERER-TOS-20SEP eerder deze sessie).
 //
@@ -26,7 +26,7 @@ async function testProfiel(profile) {
   kop('=== ' + profile + ' ===');
   // isEchtEmail() filtert .invalid-adressen bewust uit (RFC 2606) — een echt adres nodig om
   // daadwerkelijk 'verstuurd' te bereiken (zelfde les als eerder vandaag bij PDF-RENDERER-TOS-20SEP).
-  const create = await api('POST', '/mna/create', { adminKey: ADMIN, body: { kantoor_naam: 'TOS-Review ' + profile + ' BV', contact_email: 'marcel@bisschopsfinancing.nl', koper_email: 'marcel@bisschopsfinancing.nl', sector: 'accountancy' } });
+  const create = await api('POST', '/mna/create', { adminKey: ADMIN, body: { kantoor_naam: 'TOS-Review ' + profile + ' BV', contact_email: 'delivered@resend.dev', koper_email: 'delivered@resend.dev', sector: 'accountancy' } });
   check(profile + ': traject aangemaakt', create.json && create.json.ok === true, JSON.stringify(create.json));
   const code = create.json.code, koperCode = create.json.koper_code, tussenCode = create.json.tussen_code;
   const H = { 'x-tussen-key': tussenCode };

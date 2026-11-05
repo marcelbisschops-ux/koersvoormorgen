@@ -716,10 +716,10 @@ test.describe('KANTOORINZICHT 3-ROLLEN E2E', () => {
       record('KOPER', 'API', 'GET /mna/entiteiten/{koper_code}', 'vrijgave zonder geldige NDA', 'nog geen data (N-151)', negOk, JSON.stringify(zonderNda.json).slice(0, 80));
       const BH = { 'x-tussen-key': tussenCode }, KH = { 'x-tussen-key': koperCode };
       // Versturen vereist een echt koper-adres (isEchtEmail weigert .test); zelfde precedent als tests/e2e-tos-review.mjs:
-      // alleen voor deze stap het koper-adres op Marcels eigen adres zetten en uitsluitend naar de koper versturen.
+      // alleen voor deze stap het koper-adres op het Resend-testadres (delivered@resend.dev) zetten: geldig voor isEchtEmail, maar niemand ontvangt een mail (N-170).
       const upd = await api('POST', '/adviseur/traject/update/' + trajectCode, { body: { email, wachtwoord: WW,
         kantoor_naam: '🔒 ' + MARKER + ' BV', contact_naam: 'E2E Verkoper', contact_email: 'v' + email,
-        koper_naam: 'E2E Koper Tegenpartij BV', koper_contact: 'E2E Koper', koper_email: 'marcel@bisschopsfinancing.nl' } });
+        koper_naam: 'E2E Koper Tegenpartij BV', koper_contact: 'E2E Koper', koper_email: 'delivered@resend.dev' } });
       await api('POST', '/mna/tos/activeer/' + trajectCode, { headers: BH }); // documentflow eerst activeren (idempotent)
       const mk = await api('POST', '/mna/tos/document', { headers: BH, body: { profile: 'NDA' } });
       const ndaId = mk.json && mk.json.document_id;

@@ -568,7 +568,7 @@ async function batchKernflow19sep() {
     check('P0: normale ondertekening werkt nog gewoon (excl_getekend gezet)', (trajNormal[0]?.excl_getekend || '').includes('Normale Ondertekenaar (Signhost)'), JSON.stringify(trajNormal[0]));
 
     // P1: /mna/document/eigen/versturen bewaart het bestand.
-    const eigenResp = await api('POST', '/mna/document/eigen/versturen', { adminKey: ADMIN, body: { code, to: ['marcel@bisschopsfinancing.nl'], bestand_base64: MINI_PDF_B64, bestand_naam: 'test-eigen-document.pdf', bestand_mime: 'application/pdf' } });
+    const eigenResp = await api('POST', '/mna/document/eigen/versturen', { adminKey: ADMIN, body: { code, to: ['delivered@resend.dev'], bestand_base64: MINI_PDF_B64, bestand_naam: 'test-eigen-document.pdf', bestand_mime: 'application/pdf' } });
     check('P1: eigen document verstuurd (200, ok, mail geslaagd)', eigenResp.status === 200 && eigenResp.json && eigenResp.json.ok === true, JSON.stringify(eigenResp.json));
     check('P1: bestand daadwerkelijk opgeslagen (doc_id aanwezig)', eigenResp.json && eigenResp.json.opslag_mislukt === false && !!eigenResp.json.doc_id, JSON.stringify(eigenResp.json));
     if (eigenResp.json && eigenResp.json.doc_id) {
@@ -624,16 +624,16 @@ async function batchPdfRenderer20sep() {
     if (!create.json || !create.json.ok) faal('traject aanmaken mislukt', create.json);
     code = create.json.code; tussenCode = create.json.tussen_code;
 
-    const loi = await api('POST', '/mna/loi/email', { adminKey: ADMIN, body: { code, loi_tekst: UNICODE_TEKST, goedgekeurd_door: 'PROD-SMOKE Tester', to: ['marcel@bisschopsfinancing.nl'] } });
+    const loi = await api('POST', '/mna/loi/email', { adminKey: ADMIN, body: { code, loi_tekst: UNICODE_TEKST, goedgekeurd_door: 'PROD-SMOKE Tester', to: ['delivered@resend.dev'] } });
     check('LOI-verzending met €/diacritics-tekst slaagt (renderer wierp geen fout)', loi.status === 200 && loi.json && loi.json.ok === true, JSON.stringify(loi.json));
 
-    const nda = await api('POST', '/mna/nda/email', { adminKey: ADMIN, body: { code, nda_tekst: UNICODE_TEKST, to: ['marcel@bisschopsfinancing.nl'] } });
+    const nda = await api('POST', '/mna/nda/email', { adminKey: ADMIN, body: { code, nda_tekst: UNICODE_TEKST, to: ['delivered@resend.dev'] } });
     check('NDA-verzending met €/diacritics-tekst slaagt', nda.status === 200 && nda.json && nda.json.ok === true, JSON.stringify(nda.json));
 
-    const bem = await api('POST', '/mna/bem/email', { adminKey: ADMIN, body: { code, bem_tekst: UNICODE_TEKST, to: ['marcel@bisschopsfinancing.nl'] } });
+    const bem = await api('POST', '/mna/bem/email', { adminKey: ADMIN, body: { code, bem_tekst: UNICODE_TEKST, to: ['delivered@resend.dev'] } });
     check('BEM-verzending met €/diacritics-tekst slaagt', bem.status === 200 && bem.json && bem.json.ok === true, JSON.stringify(bem.json));
 
-    const excl = await api('POST', '/mna/exclusief/email', { adminKey: ADMIN, body: { code, excl_tekst: UNICODE_TEKST, to: ['marcel@bisschopsfinancing.nl'] } });
+    const excl = await api('POST', '/mna/exclusief/email', { adminKey: ADMIN, body: { code, excl_tekst: UNICODE_TEKST, to: ['delivered@resend.dev'] } });
     check('Exclusiviteitsbrief-verzending met €/diacritics-tekst slaagt', excl.status === 200 && excl.json && excl.json.ok === true, JSON.stringify(excl.json));
 
     // Spoor 2: bestaande factuur-route retourneert de PDF-bytes rechtstreeks — direct controleerbaar
@@ -688,8 +688,8 @@ async function batchPdfRendererTos20sep() {
   let gebruikerId, trajectCode, koperCode, legeCode;
   try {
     const trajectVelden = {
-      kantoor_naam: 'PROD-SMOKE Coöperatieve TOS BV', contact_naam: 'Reële Tèster', contact_email: 'marcel@bisschopsfinancing.nl',
-      koper_naam: 'PROD-SMOKE Königlijke Overname BV', koper_contact: 'Ünieke Köper', koper_email: 'marcel@bisschopsfinancing.nl',
+      kantoor_naam: 'PROD-SMOKE Coöperatieve TOS BV', contact_naam: 'Reële Tèster', contact_email: 'delivered@resend.dev',
+      koper_naam: 'PROD-SMOKE Königlijke Overname BV', koper_contact: 'Ünieke Köper', koper_email: 'delivered@resend.dev',
       koper_kvk: '99887766', koper_adres: 'Coöperatiestraat 1, Oploo (initiële waarde €1.250.000)',
       verkoper_kvk: '11223344', verkoper_adres: 'Financiëlelaan 2, Oploo', traject_type: 'Verkoop',
     };
@@ -795,7 +795,7 @@ async function batchPdfRendererTos20sep() {
         // Herstelbaarheid: na alsnog een geldig e-mailadres in te vullen, moet hetzelfde document
         // gewoon opnieuw (en nu wél) te versturen zijn — "document blijft exported en opnieuw
         // verzendbaar" was een expliciete eis.
-        d1(`UPDATE mna_trajecten SET contact_email='marcel@bisschopsfinancing.nl' WHERE id='${legeCode}'`);
+        d1(`UPDATE mna_trajecten SET contact_email='delivered@resend.dev' WHERE id='${legeCode}'`);
         const legeVerstuur2 = await api('POST', '/mna/tos/document/' + legeDocId + '/verstuur', { headers: LH, body: { adressaten: ['verkoper'] } });
         check('na alsnog geldig e-mailadres: versturen slaagt alsnog (document was niet "vastgelopen")', legeVerstuur2.json && legeVerstuur2.json.ok === true && legeVerstuur2.json.status === 'verstuurd', JSON.stringify(legeVerstuur2.json).slice(0, 200));
       }

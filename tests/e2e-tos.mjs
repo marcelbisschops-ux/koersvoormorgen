@@ -67,7 +67,7 @@ async function run() {
   // overgeslagen"-situatie wordt al apart en grondig gedekt door tests/e2e-tos-review.mjs en de
   // 0-ontvangers-subtest in tests/prod-smoke.mjs (batch PDF-RENDERER-TOS-20SEP).
   const c1 = await api('POST', '/adviseur/create', { body: { email, wachtwoord: WW, traject: {
-    kantoor_naam: 'E2E TOS Doelkantoor BV', contact_naam: 'Test Verkoper', contact_email: 'marcel@bisschopsfinancing.nl',
+    kantoor_naam: 'E2E TOS Doelkantoor BV', contact_naam: 'Test Verkoper', contact_email: 'delivered@resend.dev',
     koper_naam: 'E2E TOS Koper BV', koper_contact: 'Test Koper', koper_email: 'k' + DOM,
     koper_kvk: '99887766', koper_adres: 'Koperstraat 1, Oploo', verkoper_kvk: '11223344',
     verkoper_adres: 'Verkoperlaan 2, Oploo', traject_type: 'Verkoop'

@@ -33,7 +33,7 @@ async function main() {
   kop('SETUP · traject aanmaken');
   const create = await api('POST', '/mna/create', { adminKey: ADMIN, body: {
     kantoor_naam: 'E2E ADV-Gesprekken-Rol BV', sector: 'accountancy', traject_type: 'Verkoop',
-    contact_email: 'marcel@bisschopsfinancing.nl', koper_email: 'marcel@bisschopsfinancing.nl',
+    contact_email: 'delivered@resend.dev', koper_email: 'delivered@resend.dev',
   } });
   check('traject aangemaakt', create.json && create.json.ok === true, JSON.stringify(create.json));
   const code = create.json && create.json.code;

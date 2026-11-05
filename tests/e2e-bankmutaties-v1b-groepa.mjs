@@ -55,7 +55,7 @@ async function run() {
   const create = await api('POST', '/mna/create', {
     adminKey: ADMIN, body: {
       kantoor_naam: 'E2E V1b GroepA BV', sector: 'accountancy', traject_type: 'Verkoop',
-      contact_email: 'marcel@bisschopsfinancing.nl', koper_email: 'marcel@bisschopsfinancing.nl',
+      contact_email: 'delivered@resend.dev', koper_email: 'delivered@resend.dev',
     },
   });
   const code = create.json.code, koperCode = create.json.koper_code, tussenCode = create.json.tussen_code;
@@ -161,7 +161,7 @@ async function run() {
   const create2 = await api('POST', '/mna/create', {
     adminKey: ADMIN, body: {
       kantoor_naam: 'E2E V1b P1regressie BV', sector: 'accountancy', traject_type: 'Verkoop',
-      contact_email: 'marcel@bisschopsfinancing.nl', koper_email: 'marcel@bisschopsfinancing.nl',
+      contact_email: 'delivered@resend.dev', koper_email: 'delivered@resend.dev',
     },
   });
   const code2 = create2.json.code, tussenCode2 = create2.json.tussen_code;
@@ -194,7 +194,7 @@ async function run() {
   const create3 = await api('POST', '/mna/create', {
     adminKey: ADMIN, body: {
       kantoor_naam: 'E2E V1b P1regressie2 BV', sector: 'accountancy', traject_type: 'Verkoop',
-      contact_email: 'marcel@bisschopsfinancing.nl', koper_email: 'marcel@bisschopsfinancing.nl',
+      contact_email: 'delivered@resend.dev', koper_email: 'delivered@resend.dev',
     },
   });
   const code3 = create3.json.code;

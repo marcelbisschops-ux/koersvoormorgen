@@ -333,8 +333,11 @@ test.describe('Rol Click-Through: documentcontent-race (regressie 12 sep 2026)',
     const ndaBtn = page.locator('#bg-nda-composer-actie');
     const loiBtn = page.locator('#bg-loi-composer-actie');
     await expect(ndaBtn).toBeVisible({ timeout: 15000 });
-    await ndaBtn.click();
-    await loiBtn.click(); // vlak na elkaar — geen wachttijd — reproduceert de gerapporteerde race
+    await expect(loiBtn).toBeVisible({ timeout: 15000 });
+    // N-170 (05-11-2026): de NDA-klik opent de composer direct en verbergt daarmee de LoI-kaart, zodat een tweede
+    // Playwright-klik via de interface niet meer kan. De race zit in de twee asynchrone ketens die vlak na elkaar
+    // starten; die starten we daarom in hetzelfde moment (beide knoppen bestaan dan nog), zonder wachttijd.
+    await page.evaluate(() => { document.getElementById('bg-nda-composer-actie').click(); document.getElementById('bg-loi-composer-actie').click(); });
     // Bugfix 12 sep 2026 (gevonden via live staging-run, niet via codelezing): de composer-kop is
     // op enig moment van "LoI-composer"/"NDA-composer" (met een <span>) veranderd naar "Letter of
     // Intent — composer" / "Geheimhoudingsovereenkomst (NDA) — composer" (in een <div>) — deze test
@@ -533,6 +536,25 @@ test.describe('Rol Click-Through: koper', () => {
     // sinds de muur van 25 sep (SECURITY-INVARIANTS.md #9) weigert /mna/koper-categorieen/ terecht
     // een ADMIN_KEY-aanroep. Gebruik de tussen_code van dit traject, zoals een echte begeleider.
     await api('POST', '/mna/koper-categorieen/' + trajectCode + '?force=1', { headers: { 'x-tussen-key': tussenCode }, body: { categorieen: ['financieel'] } });
+    // N-151/N-163 (N-170, 05-11-2026): een vrijgave geeft pas toegang na een geldige NDA. Eerst negatief: vrijgave zonder
+    // NDA geeft nog geen data. Dan de NDA via de bestaande documentflow, door de koper zelf getekend (zelfde stappen als
+    // tests/e2e-3rollen-regressie.spec.js K3). Ontvanger is het Resend-testadres: geldig voor isEchtEmail, niemand ontvangt een mail.
+    const zonderNda = await api('GET', '/mna/entiteiten/' + koperCode);
+    expect(Array.isArray(zonderNda.json) ? zonderNda.json.length : -1).toBe(0);
+    const BH = { 'x-tussen-key': tussenCode };
+    const upd = await api('POST', '/adviseur/traject/update/' + trajectCode, { body: { email, wachtwoord: WW, kantoor_naam: 'E2E Koper Kantoor BV',
+      koper_naam: 'E2E Koper Tegenpartij BV', koper_contact: 'E2E Koper', koper_email: 'delivered@resend.dev' } });
+    expect(upd.json && upd.json.ok).toBe(true);
+    await api('POST', '/mna/tos/activeer/' + trajectCode, { headers: BH });
+    const mk = await api('POST', '/mna/tos/document', { headers: BH, body: { profile: 'NDA' } });
+    const ndaId = mk.json && mk.json.document_id;
+    expect(ndaId, 'NDA-document aangemaakt').toBeTruthy();
+    expect((await api('POST', '/mna/tos/document/' + ndaId + '/review-alles', { headers: BH, body: { naam: 'Synth Jurist', hoedanigheid: 'advocaat' } })).status).toBe(200);
+    expect((await api('POST', '/mna/tos/document/' + ndaId + '/finaliseer', { headers: BH })).status).toBe(200);
+    const vst = await api('POST', '/mna/tos/document/' + ndaId + '/verstuur', { headers: BH, body: { adressaten: ['koper'] } });
+    expect(vst.status, 'NDA verstuurd naar het testadres: ' + JSON.stringify(vst.json).slice(0, 200)).toBe(200);
+    expect(((await api('POST', '/mna/tos/document/' + ndaId + '/reageren', { headers: { 'x-tussen-key': koperCode }, body: { actie: 'akkoord' } })).json || {}).ok).toBe(true);
+    expect(((await api('POST', '/mna/teken', { body: { code: koperCode, document: 'nda', naam: 'Synth Koper Tekenaar' } })).json || {}).ok).toBe(true);
     // Nu moet de koper de daadwerkelijke waarde ook in de UI zien — niet alleen in een API-response.
     await login(page, koperCode);
     await page.waitForFunction(() => window.S && S.traject && S.rol === 'koper', null, { timeout: 15000 });

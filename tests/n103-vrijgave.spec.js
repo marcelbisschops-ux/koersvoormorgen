@@ -154,7 +154,7 @@ test.describe('N-103 · per-categorie koper-vrijgave (mna.html, begeleider)', ()
 
     await page.click('#kt-ok');
     await expect.poll(() => dialogen.length).toBe(1);
-    expect(dialogen[0]).toContain('De NDA is nog NIET getekend');
+    expect(dialogen[0]).toContain('Er is nog geen geldig ondertekende NDA van de koper'); // N-151/N-163: actuele melding (N-170)
     await expect(page.locator('#kt-ok')).toBeEnabled();
     await expect(page.locator('#kt-ok')).toHaveText('Opslaan');
     await expect(modal(page)).toBeVisible();

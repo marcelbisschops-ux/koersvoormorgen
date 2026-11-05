@@ -18,7 +18,7 @@ async function uploadDoc(code, faseId, bestandsnaam, tekst) {
 async function main() {
   kop('SETUP · testtraject');
   const create = await api('POST', '/mna/create', {
-    body: { kantoor_naam: 'DAILY_QA_N71 Testkantoor', traject_type: 'Verkoop', contact_naam: 'Test Contact', contact_email: 'marcel@bisschopsfinancing.nl', koper_email: 'marcel@bisschopsfinancing.nl' },
+    body: { kantoor_naam: 'DAILY_QA_N71 Testkantoor', traject_type: 'Verkoop', contact_naam: 'Test Contact', contact_email: 'delivered@resend.dev', koper_email: 'delivered@resend.dev' },
     adminKey: ADMIN,
   });
   const code = create.json.code, koperCode = create.json.koper_code, tussenCode = create.json.tussen_code;
@@ -63,7 +63,7 @@ async function main() {
 
   kop('NEGATIEF 4 · ander traject faalt (cross-traject IDOR)');
   const create2 = await api('POST', '/mna/create', {
-    body: { kantoor_naam: 'DAILY_QA_N71 Ander Testkantoor', traject_type: 'Verkoop', contact_naam: 'Test Contact 2', contact_email: 'marcel@bisschopsfinancing.nl', koper_email: 'marcel@bisschopsfinancing.nl' },
+    body: { kantoor_naam: 'DAILY_QA_N71 Ander Testkantoor', traject_type: 'Verkoop', contact_naam: 'Test Contact 2', contact_email: 'delivered@resend.dev', koper_email: 'delivered@resend.dev' },
     adminKey: ADMIN,
   });
   const koperCode2 = create2.json.koper_code;
