@@ -46,6 +46,8 @@ html[data-ui="2"]{
   --red:var(--k2-fout); --red-bg:var(--k2-fout-vlak);
   --info:var(--k2-info); --info-bg:var(--k2-info-vlak); --info-dim:var(--k2-info);
   --r:var(--k2-r-m);
+  /* zelfde betekenis in adv.html, viewer.html, specialist.html */
+  --bg:var(--k2-bg); --teal-light:var(--k2-accent-vlak); --teal-border:var(--k2-accent); --red-light:var(--k2-fout-vlak); --gold-border:var(--k2-let);
 }
 
 /* 3 — Basis */
@@ -283,3 +285,53 @@ html[data-ui="2"] .jr2 .jr-chip,html[data-ui="2"] .jr-chip{font-family:var(--k2-
   html[data-ui="2"] #app.mt-shell .wrap>[data-mt-scherm="altijd"]:first-child div:has(>button){flex-wrap:nowrap!important;overflow-x:auto;gap:6px;max-width:100%}
   html[data-ui="2"] #app.mt-shell .wrap>[data-mt-scherm="altijd"]:first-child button{white-space:nowrap;flex:0 0 auto}
 }
+
+/* ───────────── R2 (N-174): overige schermen, consistente onderdelen, restpunten R1 ───────────── */
+html[data-ui="2"] #app.mt-shell .wrap{width:100%;box-sizing:border-box}
+html[data-ui="2"] [style*="Playfair"]{font-family:var(--k2-font)!important;font-weight:700!important;letter-spacing:-.01em}
+html[data-ui="2"] .btn-outline,html[data-ui="2"] .btn-sm.btn-outline{font-family:var(--k2-font);background:var(--k2-vlak);border:1px solid var(--k2-lijn-2);color:var(--k2-tekst);border-radius:var(--k2-r-m);font-weight:600}
+html[data-ui="2"] .btn-outline:hover{background:var(--k2-vlak-2)}
+html[data-ui="2"] .btn-sm{min-height:32px}
+/* Communicatie: vier acties als nette actiebalk */
+html[data-ui="2"] #bg-gesprek-actie,html[data-ui="2"] #bg-uitnodigen-btn,html[data-ui="2"] #bg-infoverzoek-actie,html[data-ui="2"] #bg-uitn-tussenp-btn{background:var(--k2-vlak)!important;color:var(--k2-tekst)!important;border:1px solid var(--k2-lijn-2)!important;font-weight:600;min-height:42px}
+html[data-ui="2"] #bg-gesprek-actie{background:var(--k2-nav)!important;color:#fff!important;border-color:var(--k2-nav)!important}
+html[data-ui="2"] div:has(>#bg-gesprek-actie){grid-template-columns:repeat(auto-fit,minmax(180px,1fr))!important}
+/* Koper-toegang: rustige kaart in plaats van goudvlak */
+html[data-ui="2"] div:has(>#bg-toegang){background:var(--k2-vlak)!important;border-color:var(--k2-lijn)!important}
+html[data-ui="2"] #bg-toegang{background:var(--k2-nav)!important;border-color:var(--k2-nav)!important}
+/* Inklapbare sectiekoppen (bg-sec) als rustige kaartkop */
+html[data-ui="2"] .bg-sec-hdr,html[data-ui="2"] [data-sec-hdr]{font-family:var(--k2-font)}
+/* Tabellen in schermen */
+html[data-ui="2"] #app table{font-family:var(--k2-font)}
+html[data-ui="2"] #app table th{color:var(--k2-tekst-3)}
+/* Kandidaten: op mobiel kaarten i.p.v. afgesneden tabel */
+@media (max-width:640px){
+  html[data-ui="2"] #kd-plek table,html[data-ui="2"] #kd-plek tbody,html[data-ui="2"] #kd-plek tr,html[data-ui="2"] #kd-plek td{display:block;width:100%;box-sizing:border-box}
+  html[data-ui="2"] #kd-plek thead{display:none}
+  html[data-ui="2"] #kd-plek tr{border:1px solid var(--k2-lijn);border-radius:10px;padding:8px 10px;margin-bottom:10px;background:var(--k2-vlak)}
+  html[data-ui="2"] #kd-plek td{border:0!important;padding:3px 0!important}
+}
+/* Restpunten R1: kopknoppen nooit afbreken; zwevende knoppen niet over inhoud op klein scherm */
+html[data-ui="2"] #app.mt-shell .wrap>[data-mt-scherm="altijd"]:first-child button{white-space:nowrap}
+@media (max-width:960px){
+  html[data-ui="2"] body.mt-shell-aan #bg-ververs-fab{bottom:auto!important;top:62px!important;right:12px!important;width:36px!important;height:36px!important}
+  html[data-ui="2"] #chat-fab{width:46px!important;height:46px!important;right:12px!important;bottom:12px!important}
+}
+/* Rollen zonder begeleidersschil (verkoper, koper, meekijker, specialist, koopmandaat): bredere, rustige werkkolom */
+html[data-ui="2"] body:not(.mt-shell-aan) .wrap{max-width:1180px}
+html[data-ui="2"] body:not(.mt-shell-aan) .hdr{border-bottom:1px solid var(--k2-lijn)}
+/* Handleiding in Design 2.0 */
+html[data-ui="2"] .hl-wrap h2,html[data-ui="2"] .hl-wrap h3{font-family:var(--k2-font)}
+
+/* R2: koppen die in de oude stijl het serif-lettertype gebruikten (mna, adv, marilyn, viewer, specialist) */
+html[data-ui="2"] .ai-body h3,
+html[data-ui="2"] .ai-title,
+html[data-ui="2"] .cover-letter h2,
+html[data-ui="2"] .jr-titel,
+html[data-ui="2"] .kd-titel,
+html[data-ui="2"] .login-title,
+html[data-ui="2"] .modal-title,
+html[data-ui="2"] .mt-tegels-kop h2,
+html[data-ui="2"] .mt-zij-merk,
+html[data-ui="2"] .wr-titel,
+html[data-ui="2"] h1{font-family:var(--k2-font)!important;font-weight:700;letter-spacing:-.01em}

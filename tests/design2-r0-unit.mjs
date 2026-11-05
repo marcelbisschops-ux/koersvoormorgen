@@ -19,16 +19,13 @@ function draai(host, search, opgeslagen, opslagKapot) {
   vm.runInNewContext(SCH, { location: { hostname: host, search }, localStorage: ls, URLSearchParams, document: { documentElement: { setAttribute: (k, v) => { attrs[k] = v; } } } });
   return { aan: attrs['data-ui'] === '2', store };
 }
-check('preview ?ui=2 zet aan', draai('abc.kantoorinzicht-frontend.pages.dev', '?ui=2').aan);
-check('preview zonder keuze blijft uit', !draai('abc.kantoorinzicht-frontend.pages.dev', '').aan);
-check('opgeslagen keuze 2 blijft aan', draai('localhost', '', '2').aan);
-check('?ui=1 zet terug naar uit en bewaart dat', (() => { const r = draai('localhost', '?ui=1', '2'); return !r.aan && r.store['kvm-ui'] === '1'; })());
-check('productie koersvoormorgen.nl: ?ui=2 doet niets', !draai('koersvoormorgen.nl', '?ui=2', '2').aan);
-check('productie www.koersvoormorgen.nl: ?ui=2 doet niets', !draai('www.koersvoormorgen.nl', '?ui=2', '2').aan);
-check('productie: niets opgeslagen', Object.keys(draai('koersvoormorgen.nl', '?ui=2').store).length === 0);
-check('lijkende host nepkoersvoormorgen.nl telt niet als productie', draai('nepkoersvoormorgen.nl', '?ui=2').aan);
-check('geblokkeerde opslag: ?ui=2 werkt alleen voor deze pagina, geen fout', draai('localhost', '?ui=2', null, true).aan);
-check('onbekende waarde ?ui=9 laat uit', !draai('localhost', '?ui=9').aan);
+check('standaard aan (geen keuze)', draai('koersvoormorgen.nl', '').aan);
+check('preview standaard aan', draai('abc.kantoorinzicht-frontend.pages.dev', '').aan);
+check('?ui=1 zet uit en bewaart dat', (() => { const r = draai('koersvoormorgen.nl', '?ui=1'); return !r.aan && r.store['kvm-ui'] === '1'; })());
+check('opgeslagen keuze 1 blijft uit', !draai('koersvoormorgen.nl', '', '1').aan);
+check('?ui=2 zet weer aan na eerder uit', (() => { const r = draai('koersvoormorgen.nl', '?ui=2', '1'); return r.aan && r.store['kvm-ui'] === '2'; })());
+check('geblokkeerde opslag: standaard aan, ?ui=1 uit voor deze pagina', draai('localhost', '', null, true).aan && !draai('localhost', '?ui=1', null, true).aan);
+check('onbekende waarde ?ui=9 laat standaard aan', draai('localhost', '?ui=9').aan);
 
 // 2 — hulpfuncties
 const k2 = {};

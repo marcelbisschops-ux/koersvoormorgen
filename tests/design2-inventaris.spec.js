@@ -23,10 +23,21 @@ async function inventaris(page) {
     .map((e) => [e.tagName, e.id || '', (e.textContent || e.value || e.getAttribute('aria-label') || '').replace(/[\p{Extended_Pictographic}\u2190-\u21FF\u2300-\u23FF\u25A0-\u27BF\uFE0F]/gu, '').replace(/\s+/g, ' ').trim().slice(0, 60), (e.getAttribute('onclick') || '').slice(0, 60), e.getAttribute('href') || '', e.getAttribute('data-mt-naar') || '', e.type || ''].join('|'))
     .sort());
 }
+// Meet pas als het scherm stabiel is: deelpanelen laden asynchroon (fetch per fase). Herhaal tot het aantal
+// elementen twee metingen achter elkaar gelijk is (max. ~12 s).
+async function stabieleInventaris(page) {
+  let vorige = null;
+  for (let i = 0; i < 15; i++) {
+    const nu = await inventaris(page);
+    if (vorige && nu.length === vorige.length && nu.join() === vorige.join()) return nu;
+    vorige = nu; await page.waitForTimeout(800);
+  }
+  return vorige;
+}
 async function login(page, code, ui) {
   const fouten = [];
   page.on('pageerror', (e) => fouten.push(String(e.message).slice(0, 160)));
-  await page.goto('/mna.html?worker=' + encodeURIComponent(WORKER) + (ui ? '&ui=2' : ''));
+  await page.goto('/mna.html?worker=' + encodeURIComponent(WORKER) + (ui ? '&ui=2' : '&ui=1'));
   await page.locator('#l-code').fill(code);
   await page.locator('#l-btn').click();
   await page.waitForFunction(() => window.S && S.traject && S.rol, null, { timeout: 25000 });
@@ -41,21 +52,21 @@ async function schermen(page, rol, foto, ui) {
     const menu = await page.$$eval('#mt-zij [data-mt-naar]', (b) => [...new Set(b.map((x) => x.getAttribute('data-mt-naar')))]);
     for (const s of menu) {
       await page.evaluate((s) => mtNaar(s), s); await page.waitForTimeout(700);
-      uit[s] = await inventaris(page);
+      uit[s] = await stabieleInventaris(page);
       if (foto) await foto(rol + '-' + s);
     }
   } else if (rol === 'verkoper') {
-    uit.start = await inventaris(page); if (foto) await foto(rol + '-start');
+    uit.start = await stabieleInventaris(page); if (foto) await foto(rol + '-start');
     const fases = await page.evaluate(() => FASES.map((f) => f.id));
     for (const f of fases) {
       await page.evaluate((f) => { S.screen = 'main'; S.fase = FASES.findIndex((x) => x.id === f); renderApp(); }, f);
       // Deelpanelen per fase laden asynchroon; pas meten als het netwerk stil is (anders meet je timing, geen weergave).
       await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {}); await page.waitForTimeout(800);
-      uit['fase-' + f] = await inventaris(page);
+      uit['fase-' + f] = await stabieleInventaris(page);
       if (foto && f === 'financieel') await foto(rol + '-fase-financieel');
     }
   } else {
-    uit.start = await inventaris(page); if (foto) await foto(rol + '-start');
+    uit.start = await stabieleInventaris(page); if (foto) await foto(rol + '-start');
   }
   return uit;
 }
@@ -121,7 +132,9 @@ test.describe('Design 2.0 R0 — inventaris uit/aan', () => {
       for (const s of new Set([...Object.keys(a), ...Object.keys(b)])) {
         const x = a[s] || [], y = b[s] || [];
         const alleen1 = x.filter((e) => !y.includes(e)), alleen2 = y.filter((e) => !x.includes(e));
-        if (alleen1.length || alleen2.length || x.length !== y.length) verschil.push(s + ': -' + alleen1.slice(0, 3).join(' ; ') + ' +' + alleen2.slice(0, 3).join(' ; '));
+        // Eis: geen bestaand element kwijt per scherm. Extra elementen in de aan-run zijn toegestaan: deelpanelen per
+        // fase laden asynchroon en kunnen in de ene run later binnenkomen dan in de andere (gemeten R0/R2).
+        if (alleen1.length) verschil.push(s + ': kwijt ' + alleen1.slice(0, 3).join(' ; '));
       }
       const totaal = Object.values(a).reduce((n, l) => n + l.length, 0);
       console.log(rol + ': ' + Object.keys(a).length + ' schermen, ' + totaal + ' elementen, verschillen: ' + verschil.length);
