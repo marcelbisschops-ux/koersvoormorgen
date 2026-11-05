@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="nl" data-ui="2">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex,nofollow">
+<meta name="color-scheme" content="light dark">
+<title>KVM Design 2.0 componenten</title>
+<link rel="stylesheet" href="/assets/fonts.css">
+<link rel="stylesheet" href="/assets/kvm-design2.css">
+<style>
+body{margin:0}
+.pg{max-width:1200px;margin:0 auto;padding:32px 24px 64px;display:flex;flex-direction:column;gap:24px}
+.twee{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:20px}
+.rij{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.sec{font:700 12px var(--k2-font);text-transform:uppercase;letter-spacing:.06em;color:var(--k2-tekst-3);margin:8px 0 0}
+</style>
+</head>
+<body>
+<main class="pg">
+<header><h1 style="margin:0;font-size:28px">KVM Design 2.0 · componenten</h1><p style="margin:6px 0 0;color:var(--k2-tekst-3)">Richting B, R0. Interne voorbeeldpagina met fictieve waarden; geen koppeling met gegevens.</p></header>
+
+<p class="sec">Knoppen</p>
+<div class="rij"><button class="k2-knop k2-knop--primair" type="button">Primaire actie</button><button class="k2-knop" type="button">Secundaire actie</button><button class="k2-knop k2-knop--klein" type="button">Klein</button><button class="k2-knop" type="button" disabled>Niet beschikbaar</button></div>
+
+<p class="sec">Statuslabels</p>
+<div class="rij"><span class="k2-chip k2-chip--ok">Gereed</span><span class="k2-chip k2-chip--info">Bezig</span><span class="k2-chip">Open</span><span class="k2-chip k2-chip--let">Aandacht</span><span class="k2-chip k2-chip--fout">Afwijking</span></div>
+
+<p class="sec">KPI-rij</p>
+<div class="k2-kpi-rij" id="kpis"></div>
+
+<p class="sec">Kaarten, journey-taken en tabel</p>
+<div class="twee">
+<section class="k2-kaart"><div class="k2-kaart__kop"><h2 class="k2-kaart__titel">Fase 11 · Due diligence</h2><span class="k2-chip k2-chip--info">Bezig</span><a class="k2-kaart__actie" href="#taken">Alle taken</a></div>
+<div id="voortgang"></div><div id="taken" role="table" aria-label="Taken"></div></section>
+<section class="k2-kaart"><div class="k2-kaart__kop"><h2 class="k2-kaart__titel">Winst- en verliesrekening</h2></div>
+<div class="k2-tabel-box"><table class="k2-tabel"><thead><tr><th>Post</th><th class="k2-getal">Jaar 1</th><th class="k2-getal">Jaar 2</th><th class="k2-getal">Jaar 3</th><th>Herkomst</th></tr></thead>
+<tbody><tr><td>Omzet</td><td class="k2-getal">2.410.000</td><td class="k2-getal">2.585.000</td><td class="k2-getal">2.760.000</td><td><span class="k2-chip k2-chip--info">Jaarrekening</span></td></tr>
+<tr><td>EBITDA</td><td class="k2-getal">518.000</td><td class="k2-getal">566.000</td><td class="k2-getal">612.000</td><td><span class="k2-chip k2-chip--info">Jaarrekening</span></td></tr>
+<tr><td>Normalisatie</td><td class="k2-getal">—</td><td class="k2-getal">—</td><td class="k2-getal">38.000</td><td><span class="k2-chip">Handmatig</span></td></tr></tbody></table></div></section>
+</div>
+
+<p class="sec">Formulier, tabs, melding en lege staat</p>
+<div class="twee">
+<section class="k2-kaart">
+<div class="k2-tabs" role="tablist"><button class="k2-tab" role="tab" aria-selected="true" type="button">Gegevens</button><button class="k2-tab" role="tab" aria-selected="false" type="button">Broncontrole</button><button class="k2-tab" role="tab" aria-selected="false" type="button">Normalisaties</button><button class="k2-tab" role="tab" aria-selected="false" type="button">Q&amp;A</button></div>
+<div class="k2-veld"><label for="v1">Jaaromzet jaar 3</label><input id="v1" value="2.760.000"><div class="k2-veld__herkomst"><span class="k2-chip k2-chip--info">Jaarrekening</span><span class="k2-chip k2-chip--let">wijkt af van kolommenbalans</span></div></div>
+<div class="k2-veld"><label for="v2">Recurring omzet (%)</label><input id="v2" value="82"></div>
+</section>
+<section class="k2-kaart">
+<div class="k2-melding k2-melding--let">Omzet in de jaarrekening wijkt af van de kolommenbalans. Controleer de bron.</div>
+<div class="k2-melding">Volgende stap: openstaande vragen van de koper beantwoorden.</div>
+<div class="k2-leeg">Nog geen documenten in deze fase.</div>
+</section>
+</div>
+</main>
+<script src="/assets/kvm-design2.js"></script>
+<script>
+document.getElementById('kpis').innerHTML = k2Kpi('Due diligence', '62%', '58 van 94 velden') + k2Kpi('Documenten', '24', '3 te controleren') + k2Kpi('Kandidaten', '3', 'shortlist') + k2Kpi('Open taken', '4', 'over alle rollen');
+document.getElementById('voortgang').innerHTML = k2Voortgang(5, 9);
+var knop = '<button class="k2-knop k2-knop--klein" type="button">Openen</button>';
+document.getElementById('taken').innerHTML = [
+  { label: 'Dataroom ingericht en vrijgegeven', status: 'gereed', eigenaar: 'begeleider' },
+  { label: 'Financiële stukken geanalyseerd', status: 'gereed', eigenaar: 'begeleider' },
+  { label: 'Vragen van de koper beantwoorden', status: 'bezig', eigenaar: 'begeleider' },
+  { label: 'Huurovereenkomst aanleveren', status: 'open', eigenaar: 'verkoper' },
+  { label: 'Onderzoeksrapport opstellen', status: 'open', eigenaar: 'koper' }
+].map(function (t, i) { return k2TaakRij(t, i === 2 ? knop : ''); }).join('');
+</script>
+</body>
+</html>

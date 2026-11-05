@@ -1,0 +1,119 @@
+/* © 2026 Bisschops Financing B.V. Alle rechten voorbehouden.
+   KVM Design 2.0 — designsysteem richting B (N-174, R0).
+   ALLES staat onder html[data-ui="2"]: zonder schakelaar (assets/kvm-ui-schakelaar.js) heeft dit bestand
+   geen enkel effect. Alleen weergave; geen gedrag.
+   Opbouw: 1 tokens · 2 bestaande variabelen omgezet naar tokens · 3 basis (lettertype, achtergrond)
+   · 4 bestaande basisklassen in nieuwe stijl · 5 componenten .k2-* (voor R1 en verder). */
+
+/* 1 — Tokens (licht) */
+html[data-ui="2"]{
+  --k2-nav:#0E1B2C; --k2-nav-actief:#1C3150; --k2-nav-tekst:#C9D3E0; --k2-nav-sub:#8FA0B6;
+  --k2-bg:#F4F6F9; --k2-vlak:#FFFFFF; --k2-vlak-2:#F6F8FB; --k2-lijn:#E3E8EF; --k2-lijn-2:#D8DFE8;
+  --k2-tekst:#13213A; --k2-tekst-2:#3A4A60; --k2-tekst-3:#56657A;
+  --k2-accent:#0B7A6C; --k2-accent-sterk:#075A50; --k2-accent-vlak:#E3F4F1; --k2-voortgang:#12A08C;
+  --k2-info:#2450A6; --k2-info-vlak:#E6EEFB;
+  --k2-let:#9A4A06; --k2-let-vlak:#FDF0E3;
+  --k2-fout:#A42323; --k2-fout-vlak:#FCE9E9;
+  --k2-neutraal:#3A4A60; --k2-neutraal-vlak:#EEF1F5;
+  --k2-font:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --k2-fs-xs:11px; --k2-fs-s:12px; --k2-fs-m:14px; --k2-fs-l:16px; --k2-fs-xl:20px; --k2-fs-2xl:24px; --k2-fs-3xl:28px;
+  --k2-r-s:6px; --k2-r-m:9px; --k2-r-l:12px;
+  --k2-schaduw:0 1px 2px rgba(14,27,44,.06);
+  --k2-focus:0 0 0 3px rgba(36,80,166,.28);
+}
+/* 1b — Tokens (donker) */
+@media (prefers-color-scheme:dark){
+  html[data-ui="2"]{
+    --k2-nav:#0A1422; --k2-nav-actief:#1C3150;
+    --k2-bg:#0F1826; --k2-vlak:#16223A; --k2-vlak-2:#1B2943; --k2-lijn:#26354F; --k2-lijn-2:#33456A;
+    --k2-tekst:#E6ECF4; --k2-tekst-2:#C2CDDB; --k2-tekst-3:#9AA9BC;
+    --k2-accent:#3CC2AE; --k2-accent-sterk:#7FDCCB; --k2-accent-vlak:rgba(60,194,174,.14); --k2-voortgang:#3CC2AE;
+    --k2-info:#8DB0F0; --k2-info-vlak:rgba(141,176,240,.14);
+    --k2-let:#F0B36A; --k2-let-vlak:rgba(240,179,106,.14);
+    --k2-fout:#F09A9A; --k2-fout-vlak:rgba(240,154,154,.14);
+    --k2-neutraal:#C2CDDB; --k2-neutraal-vlak:#22304A;
+    --k2-schaduw:none;
+  }
+}
+
+/* 2 — Bestaande variabelen (mna.html :root) volgen de tokens. Zo krijgt alle bestaande code die
+   var(--x) gebruikt de nieuwe kleuren, zonder dat schermlogica verandert. */
+html[data-ui="2"]{
+  --void:var(--k2-bg); --panel:var(--k2-vlak); --card:var(--k2-vlak-2); --border:var(--k2-lijn); --border2:var(--k2-lijn-2);
+  --muted:var(--k2-tekst-3); --mid:var(--k2-tekst-2); --sub:var(--k2-tekst); --head:var(--k2-tekst);
+  --teal:var(--k2-accent); --teal-dim:var(--k2-accent-sterk); --teal-dark:var(--k2-accent-sterk); --teal-bg:var(--k2-accent-vlak);
+  --gold:var(--k2-let); --gold-bg:var(--k2-let-vlak); --gold-dark:var(--k2-let);
+  --red:var(--k2-fout); --red-bg:var(--k2-fout-vlak);
+  --info:var(--k2-info); --info-bg:var(--k2-info-vlak); --info-dim:var(--k2-info);
+  --r:var(--k2-r-m);
+}
+
+/* 3 — Basis */
+html[data-ui="2"] body{font-family:var(--k2-font);background:var(--k2-bg);color:var(--k2-tekst);font-size:var(--k2-fs-m);line-height:1.5;font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
+html[data-ui="2"] h1,html[data-ui="2"] h2,html[data-ui="2"] h3{font-family:var(--k2-font);letter-spacing:-.01em;color:var(--k2-tekst)}
+html[data-ui="2"] :focus-visible{outline:none;box-shadow:var(--k2-focus)}
+
+/* 4 — Bestaande basisklassen in de nieuwe stijl (zelfde klassen, zelfde gedrag) */
+html[data-ui="2"] .btn,html[data-ui="2"] .btn-gen{font-family:var(--k2-font);background:var(--k2-nav);color:#fff;border-radius:var(--k2-r-m);font-weight:600;border:1px solid var(--k2-nav)}
+html[data-ui="2"] .btn:hover,html[data-ui="2"] .btn-gen:hover{background:var(--k2-nav-actief)}
+html[data-ui="2"] .btn-ghost{font-family:var(--k2-font);background:var(--k2-vlak);border:1px solid var(--k2-lijn-2);color:var(--k2-tekst);border-radius:var(--k2-r-m);font-weight:600}
+html[data-ui="2"] .btn-ghost:hover{background:var(--k2-vlak-2)}
+html[data-ui="2"] .panel,html[data-ui="2"] .ai-panel,html[data-ui="2"] .doc-card,html[data-ui="2"] .fase-card,html[data-ui="2"] .stap-kaart{background:var(--k2-vlak);border:1px solid var(--k2-lijn);border-radius:var(--k2-r-l);box-shadow:var(--k2-schaduw)}
+html[data-ui="2"] .f label{font-size:var(--k2-fs-s);font-weight:600;color:var(--k2-tekst-2);letter-spacing:0;text-transform:none}
+html[data-ui="2"] .f input,html[data-ui="2"] .f textarea,html[data-ui="2"] .f select{font-family:var(--k2-font);font-size:var(--k2-fs-m);background:var(--k2-vlak);border:1px solid var(--k2-lijn-2);border-radius:var(--k2-r-m);color:var(--k2-tekst)}
+html[data-ui="2"] .f input:focus,html[data-ui="2"] .f textarea:focus,html[data-ui="2"] .f select:focus{border-color:var(--k2-info);box-shadow:var(--k2-focus)}
+html[data-ui="2"] .prog-bar,html[data-ui="2"] .fase-bar{background:var(--k2-lijn);border-radius:3px}
+html[data-ui="2"] .prog-fill,html[data-ui="2"] .fase-fill{background:var(--k2-voortgang);border-radius:3px}
+html[data-ui="2"] .modal{border-radius:var(--k2-r-l);font-family:var(--k2-font)}
+html[data-ui="2"] .toast{font-family:var(--k2-font);border-radius:var(--k2-r-m)}
+
+/* 5 — Componenten (k2). Klassenamen zijn nieuw en botsen niet met bestaande code. */
+html[data-ui="2"] .k2-knop{display:inline-flex;align-items:center;gap:8px;font:600 13px/1.2 var(--k2-font);padding:9px 14px;border-radius:var(--k2-r-m);border:1px solid var(--k2-lijn-2);background:var(--k2-vlak);color:var(--k2-tekst);cursor:pointer;min-height:36px}
+html[data-ui="2"] .k2-knop:hover{background:var(--k2-vlak-2)}
+html[data-ui="2"] .k2-knop--primair{background:var(--k2-nav);border-color:var(--k2-nav);color:#fff}
+html[data-ui="2"] .k2-knop--primair:hover{background:var(--k2-nav-actief)}
+html[data-ui="2"] .k2-knop--klein{padding:5px 10px;font-size:12px;min-height:28px}
+html[data-ui="2"] .k2-knop:disabled{opacity:.5;cursor:not-allowed}
+html[data-ui="2"] .k2-chip{display:inline-flex;align-items:center;gap:4px;font:700 11px/1.3 var(--k2-font);padding:3px 9px;border-radius:var(--k2-r-s);white-space:nowrap;background:var(--k2-neutraal-vlak);color:var(--k2-neutraal)}
+html[data-ui="2"] .k2-chip--ok{background:var(--k2-accent-vlak);color:var(--k2-accent-sterk)}
+html[data-ui="2"] .k2-chip--info{background:var(--k2-info-vlak);color:var(--k2-info)}
+html[data-ui="2"] .k2-chip--let{background:var(--k2-let-vlak);color:var(--k2-let)}
+html[data-ui="2"] .k2-chip--fout{background:var(--k2-fout-vlak);color:var(--k2-fout)}
+html[data-ui="2"] .k2-kaart{background:var(--k2-vlak);border:1px solid var(--k2-lijn);border-radius:var(--k2-r-l);padding:18px 20px;display:flex;flex-direction:column;gap:14px;min-width:0;box-shadow:var(--k2-schaduw)}
+html[data-ui="2"] .k2-kaart__kop{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+html[data-ui="2"] .k2-kaart__titel{font:700 15px/1.3 var(--k2-font);margin:0;color:var(--k2-tekst)}
+html[data-ui="2"] .k2-kaart__actie{margin-left:auto;font:600 12px var(--k2-font);color:var(--k2-accent);text-decoration:none}
+html[data-ui="2"] .k2-kpi-rij{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
+html[data-ui="2"] .k2-kpi{background:var(--k2-vlak);border:1px solid var(--k2-lijn);border-radius:var(--k2-r-l);padding:16px 18px;display:flex;flex-direction:column;gap:8px;min-width:0}
+html[data-ui="2"] .k2-kpi__label{font:600 12px var(--k2-font);color:var(--k2-tekst-3)}
+html[data-ui="2"] .k2-kpi__waarde{font:800 26px/1.15 var(--k2-font);letter-spacing:-.02em;color:var(--k2-tekst);display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+html[data-ui="2"] .k2-kpi__toelichting{font-size:12px;color:var(--k2-tekst-3)}
+html[data-ui="2"] .k2-voortgang{height:6px;border-radius:3px;background:var(--k2-lijn);overflow:hidden}
+html[data-ui="2"] .k2-voortgang > i{display:block;height:100%;border-radius:3px;background:var(--k2-voortgang)}
+html[data-ui="2"] .k2-tabel-box{overflow-x:auto;border:1px solid var(--k2-lijn);border-radius:var(--k2-r-l);background:var(--k2-vlak)}
+html[data-ui="2"] .k2-tabel{width:100%;border-collapse:collapse;font-size:13px}
+html[data-ui="2"] .k2-tabel th{text-align:left;font:700 11px var(--k2-font);text-transform:uppercase;letter-spacing:.05em;color:var(--k2-tekst-3);padding:9px 12px;background:var(--k2-vlak-2);border-bottom:1px solid var(--k2-lijn);white-space:nowrap}
+html[data-ui="2"] .k2-tabel td{padding:10px 12px;border-bottom:1px solid var(--k2-lijn);vertical-align:middle;color:var(--k2-tekst)}
+html[data-ui="2"] .k2-tabel tr:last-child td{border-bottom:0}
+html[data-ui="2"] .k2-tabel .k2-getal{text-align:right;font-variant-numeric:tabular-nums}
+html[data-ui="2"] .k2-veld{display:flex;flex-direction:column;gap:6px;min-width:0}
+html[data-ui="2"] .k2-veld label{font:600 12px var(--k2-font);color:var(--k2-tekst-2)}
+html[data-ui="2"] .k2-veld input,html[data-ui="2"] .k2-veld select,html[data-ui="2"] .k2-veld textarea{font:14px var(--k2-font);padding:9px 11px;border:1px solid var(--k2-lijn-2);border-radius:var(--k2-r-m);background:var(--k2-vlak);color:var(--k2-tekst)}
+html[data-ui="2"] .k2-veld__herkomst{display:flex;gap:6px;flex-wrap:wrap}
+html[data-ui="2"] .k2-tabs{display:flex;gap:4px;overflow-x:auto;background:var(--k2-vlak-2);border-radius:var(--k2-r-m);padding:4px}
+html[data-ui="2"] .k2-tab{font:600 12px var(--k2-font);padding:7px 11px;border:0;border-radius:7px;background:none;color:var(--k2-tekst-2);white-space:nowrap;cursor:pointer}
+html[data-ui="2"] .k2-tab[aria-selected="true"]{background:var(--k2-vlak);color:var(--k2-tekst);box-shadow:0 1px 2px rgba(14,27,44,.12)}
+html[data-ui="2"] .k2-leeg{border:1px dashed var(--k2-lijn-2);border-radius:var(--k2-r-l);padding:20px;text-align:center;color:var(--k2-tekst-3);font-size:13px}
+html[data-ui="2"] .k2-melding{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:var(--k2-r-m);background:var(--k2-info-vlak);color:var(--k2-tekst);font-size:13px}
+html[data-ui="2"] .k2-melding--let{background:var(--k2-let-vlak)}
+html[data-ui="2"] .k2-melding--fout{background:var(--k2-fout-vlak)}
+/* Journey-taak (besluit 2): status, eigenaar, voortgang en actie; een termijn-cel bestaat alleen als de
+   backend een termijn levert (k2TaakRij in assets/kvm-design2.js). Zonder termijn geen lege kolom. */
+html[data-ui="2"] .k2-taak{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;gap:12px;align-items:center;padding:11px 0;border-bottom:1px solid var(--k2-lijn)}
+html[data-ui="2"] .k2-taak--met-termijn{grid-template-columns:minmax(0,1fr) auto auto auto auto}
+html[data-ui="2"] .k2-taak__label{font-weight:600;min-width:0}
+html[data-ui="2"] .k2-taak__eigenaar,html[data-ui="2"] .k2-taak__termijn{font-size:12px;color:var(--k2-tekst-3);white-space:nowrap}
+@media (max-width:767px){
+  html[data-ui="2"] .k2-taak,html[data-ui="2"] .k2-taak--met-termijn{grid-template-columns:minmax(0,1fr) auto;row-gap:6px}
+  html[data-ui="2"] .k2-kpi__waarde{font-size:22px}
+}
