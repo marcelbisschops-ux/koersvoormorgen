@@ -334,6 +334,9 @@ test.describe('Rol Click-Through: documentcontent-race (regressie 12 sep 2026)',
     const loiBtn = page.locator('#bg-loi-composer-actie');
     await expect(ndaBtn).toBeVisible({ timeout: 15000 });
     await expect(loiBtn).toBeVisible({ timeout: 15000 });
+    // Het dashboard tekent zich kort na het inloggen nog één keer opnieuw (tweede laadronde); een composer die vóór die
+    // ronde opent wordt daarbij gewist. Een gebruiker klikt na het laden: wacht dus tot het netwerk rustig is (N-170).
+    await page.waitForLoadState('networkidle');
     // N-170 (05-11-2026): de NDA-klik opent de composer direct en verbergt daarmee de LoI-kaart, zodat een tweede
     // Playwright-klik via de interface niet meer kan. De race zit in de twee asynchrone ketens die vlak na elkaar
     // starten; die starten we daarom in hetzelfde moment (beide knoppen bestaan dan nog), zonder wachttijd.
