@@ -116,6 +116,40 @@ De eerste gecombineerde postdeploy-proeven gingen uit van een verkeerde verwacht
 standaardentiteit en de invoerselector; met de zichtbare Groep-kiezer en het bestaande readonly-veld
 slaagden dezelfde assertions. Er was geen productfix nodig.
 
+## Partnerregister: Bewerken (productpunt 18, 13 okt 2026)
+
+Beide bestaande partneroverzichten hebben per rij een knop **Bewerken**: de begeleidermodal
+(`toonPartnersModal`, `mna/04-begeleider-dashboard.js`) en het openingsscherm van de verkoper
+(`renderOpening`/`bindOpeningScreen`, `mna/06-schermen.js`). Backendafhankelijkheid: de
+resultaatcontrole in de bewerktak van `POST /mna/partners/:code` (backend `docs/group-consolidation.md`,
+C2, nog niet gepubliceerd; gezamenlijke release vereist).
+
+- Hetzelfde formulier wordt voorgevuld uit de laatst van de server gelezen rij: naam, leeftijd,
+  veranderbereidheid, opvolgingskandidaat, omzet incl. team, winstaandeel (maatschap) en de
+  entiteitkoppelingen. Een status "Bewerken: naam" en een knop **Annuleren** verschijnen; de hoofdknop
+  heet dan **Opslaan**.
+- Opslaan stuurt het bestaande `id` naar dezelfde POST-route met dezelfde headers als toevoegen
+  (begeleider: `x-tussen-key`; verkoper: geen extra header). Geen verwijderen en opnieuw aanmaken,
+  geen nieuwe route. Koppelingen waarvoor geen checkbox in beeld is en het winstaandeel zonder
+  invoerveld gaan ongewijzigd mee. In het openingsscherm vervalt alleen de koppeling met een entiteit
+  die tijdens het bewerken is verwijderd.
+- Succes alleen bij HTTP 2xx met `ok: true` en hetzelfde `id`. Daarna wordt het formulier leeg en de lijst
+  opnieuw van de server gelezen. Bij een fout, 404 ("Partner niet gevonden"), 401/403 ("Geen
+  toestemming…"), netwerkfout of onbruikbaar antwoord blijven de invoer en de bewerkmodus staan.
+- **Annuleren** doet geen request en zet de invoer terug van vóór de eerste Bewerken-klik.
+- Een antwoord telt alleen voor dezelfde sessie (`S`), code en rol en een formulier dat nog in beeld is.
+  Een intussen gestarte nieuwere bewerking wordt door een laat antwoord niet gesloten of gewist; een
+  late fout wordt gemeld als "Opslaan van naam mislukt: …". Een leesantwoord telt alleen als laatste
+  leesverzoek voor een overzicht dat nog in beeld is. Namen gaan via `esc` of `textContent`.
+
+Testbewijs: sectie 13 van `tests/group-consolidation-ui.mjs` draait voor beide overzichten de echte
+functies met een minimale DOM en een synthetische `/mna/partners` volgens het backendcontract:
+voorvullen, opslaan, herladen met gelijk id en behouden koppelingen, geen winstaandeelveld, Annuleren,
+serverfout, 404, 401/403, netwerkfout, kapotte JSON, `ok` zonder of met ander id, nieuwere bewerking,
+nieuwe sessie, andere code, rolwissel, gesloten of opnieuw getekend scherm, oud leesantwoord,
+HTML-escaping en (openingsscherm) entiteit verwijderen tijdens bewerken. Dit is technisch bewijs, geen
+browser-, staging- of productiebewijs.
+
 ## Beperkingen en OPEN
 
 - Opgelost (12 okt 2026): na het opslaan van entiteitcijfers toont het paneel de door de server

@@ -291,6 +291,7 @@ function renderDashboard(){
     +(isSuperAdmin?'<button class="tab'+(activeTab==='gebruikers'?' active':'')+'" id="t-geb" style="border-left:2px solid var(--gold)">&#128101; Gebruikers</button>':'')
     +(isSuperAdmin?'<button class="tab'+(activeTab==='kantoren'?' active':'')+'" id="t-kantoren">&#127970; Kantoren</button>':'')
     +(isSuperAdmin?'<button class="tab'+(activeTab==='tarieven'?' active':'')+'" id="t-tarieven">&euro; Tarieven</button>':'')
+    +(isSuperAdmin?'<button class="tab'+(activeTab==='facturatie'?' active':'')+'" id="t-facturatie">&#129534; Facturatie</button>':'')
     +(isSuperAdmin?'<button class="tab'+(activeTab==='veiligheid'?' active':'')+'" id="t-veiligheid" style="border-left:2px solid var(--red)">&#128737; Veiligheid</button>':'')
     +(isSuperAdmin?'<button class="tab'+(activeTab==='matching'?' active':'')+'" id="t-matching">&#128279; Matching</button>':'')
     +(isSuperAdmin?'<button class="tab'+(activeTab==='sourcing'?' active':'')+'" id="t-sourcing">&#128225; Sourcing</button>':'')
@@ -311,6 +312,7 @@ function renderDashboard(){
   if(isSuperAdmin){var gtb=document.getElementById('t-geb');if(gtb)gtb.addEventListener('click',function(){activeTab='gebruikers';renderDashboard();});}
   if(isSuperAdmin){var ktb=document.getElementById('t-kantoren');if(ktb)ktb.addEventListener('click',function(){activeTab='kantoren';kantorenOpenId=null;renderDashboard();});}
   if(isSuperAdmin){var ttb=document.getElementById('t-tarieven');if(ttb)ttb.addEventListener('click',function(){activeTab='tarieven';renderDashboard();});}
+  if(isSuperAdmin){var ftb=document.getElementById('t-facturatie');if(ftb)ftb.addEventListener('click',function(){activeTab='facturatie';factOpenId=null;renderDashboard();});}
   if(isSuperAdmin){var vtb=document.getElementById('t-veiligheid');if(vtb)vtb.addEventListener('click',function(){activeTab='veiligheid';renderDashboard();});}
   if(isSuperAdmin){var mtb=document.getElementById('t-matching');if(mtb)mtb.addEventListener('click',function(){activeTab='matching';renderDashboard();});}
   if(isSuperAdmin){var srtb=document.getElementById('t-sourcing');if(srtb)srtb.addEventListener('click',function(){activeTab='sourcing';renderDashboard();});}
@@ -338,6 +340,7 @@ function renderTab(){
   else if(activeTab==='gebruikers')renderGebruikersTab(el);
   else if(activeTab==='kantoren')renderKantorenTab(el);
   else if(activeTab==='tarieven')renderTarievenTab(el);
+  else if(activeTab==='facturatie')renderFacturatieTab(el);
   else if(activeTab==='veiligheid')renderVeiligheidTab(el);
   else if(activeTab==='matching')renderMatchingTab(el);
   else if(activeTab==='sourcing')renderSourcingTab(el);
@@ -1220,11 +1223,17 @@ function renderMnaTab(el){
     html+='<table><thead><tr><th style="width:32px"><input type="checkbox" id="cb-all-mna" title="Alles"></th><th>Kantoor</th><th>Type</th><th>Status</th><th>Verkoperscode</th><th>Koperscode</th><th>Koper</th><th>Begeleider</th><th>Datum</th><th>Acties</th></tr></thead><tbody>';
     mnaList.forEach(function(t,i){
       var verg=t.status==='vergrendeld';
-      // N-102: externe (afgeschermde) rij heeft geen traject-id — geen selectievak en geen id-afhankelijke acties.
+      // N-102: externe (afgeschermde) rij heeft geen traject-id — geen id-afhankelijke acties; alleen een vakje als de backend een verwijzing geeft (#45).
       var afg=!!t.inhoud_afgeschermd;
       var afgSlot=function(label){return '<span class="btn-ghost" style="font-size:11px;padding:3px 8px;opacity:.5;cursor:not-allowed" title="Afgeschermd — traject van externe adviseur">'+label+'</span>';};
+      // #45: een extern traject dat aantoonbaar geen lopend dossier is (testaccount of verstreken
+      // bewaartermijn) krijgt van de backend een verwijzing (geen code) en is dan wel aan te vinken.
+      var extRef=afg&&/^[0-9a-f]{32}$/.test(String(t.extern_ref||''))?String(t.extern_ref):'';
+      var extTitel=t.extern_verwijderbaar==='test'?'Extern testtraject (testaccount) — mag worden opgeruimd':'Extern traject, afgesloten en bewaartermijn verstreken — mag worden opgeruimd';
       html+='<tr><td>'+(afg
-          ?'<span style="opacity:.5" title="Afgeschermd — traject van externe adviseur">&#128274;</span>'
+          ?(extRef
+            ?'<input type="checkbox" class="mna-cb" data-id="'+esc(extRef)+'" data-extern="1" title="'+esc(extTitel)+'" style="cursor:pointer">'
+            :'<span style="opacity:.5" title="Afgeschermd — lopend traject van externe adviseur, niet te verwijderen">&#128274;</span>')
           :'<input type="checkbox" class="mna-cb" data-id="'+esc(t.id)+'"'+(verg?' disabled title="Vergrendeld"':'')+' style="cursor:pointer">')+'</td>'
         +'<td style="font-weight:500;color:'+(t.inhoud_afgeschermd?'var(--muted)':'var(--head)')+'" title="'+(t.inhoud_afgeschermd?'Extern adviseurstraject — bedrijfsnaam en overige identiteitsvelden afgeschermd voor Bisschops Financing':'')+'">'+esc(t.kantoor_naam||'—')+'</td>'
         +'<td>'+esc(t.traject_type||'—')+(t.sector&&t.sector!=='accountancy'?'<br><span style="font-size:10px;background:var(--teal-bg);color:var(--teal-dim);border:1px solid var(--teal-dark);border-radius:3px;padding:1px 5px">'+esc({mkb:'MKB',zorg:'Zorg',itsoftware:'IT/SW',bouw:'Bouw',transport:'Transport',handel:'Handel',consultancy:'Consultancy',verhuizingen:'Verhuizingen'}[t.sector]||t.sector)+'</span>':'')+'</td>'
@@ -1307,10 +1316,13 @@ function renderMnaTab(el){
   el.querySelectorAll('.mna-cb').forEach(function(cb){cb.addEventListener('change',updSelMna);});
   var btnDelM=document.getElementById('btn-del-sel-mna');
   if(btnDelM)btnDelM.addEventListener('click',function(){
-    // Vergrendelde trajecten hebben een uitgeschakeld vakje, afgeschermde externe trajecten geen vakje.
+    // Vergrendelde trajecten hebben een uitgeschakeld vakje; lopende externe trajecten geen vakje.
     var cbs=Array.from(el.querySelectorAll('.mna-cb:checked')).filter(function(cb){return !cb.disabled;});
-    verwijderGekozen({ids:cbs.map(function(cb){return cb.dataset.id;}),pad:function(id){return '/admin/delete/mna/'+encodeURIComponent(id);},
-      een:'traject',meer:'trajecten',extra:'Per traject worden ook alle bijbehorende data en documenten verwijderd.',knop:btnDelM,ververs:refreshData});
+    // #45: externe test- of verlopen trajecten via hun eigen route (verwijzing i.p.v. code).
+    var extern={};cbs.forEach(function(cb){if(cb.dataset.extern==='1')extern[cb.dataset.id]=true;});
+    var nExt=Object.keys(extern).length;
+    verwijderGekozen({ids:cbs.map(function(cb){return cb.dataset.id;}),pad:function(id){return (extern[id]?'/admin/delete/mna-extern/':'/admin/delete/mna/')+encodeURIComponent(id);},
+      een:'traject',meer:'trajecten',extra:'Per traject worden ook alle bijbehorende data en documenten verwijderd.'+(nExt?' Daarvan '+(nExt===1?'is 1 traject':'zijn '+nExt+' trajecten')+' van een externe adviseur (testaccount of verstreken bewaartermijn); daarvan blijft alleen de wettelijke archiefregel bewaard.':'')+' Gefactureerde kostenposten blijven altijd bewaard.',knop:btnDelM,ververs:refreshData});
   });
 }
 
@@ -4808,6 +4820,150 @@ var TARIEF_LABELS = {
   eigen_specialist_toevoegen: 'Eigen specialist toevoegen (eenmalig, adviseur’s eigen jurist/fiscalist)'
 };
 
+// ── #49 (24 okt 2026): Facturatie per kantoor — maandelijks achteraf, concept → definitief → pdf →
+// betaling → creditnota. Tarieven (met ingangsdatum) starten als test en vereisen expliciete activering;
+// een kantoor start in testmodus en gaat pas na bevestiging live. Alles via /mna/admin/facturatie/*.
+var factSub='facturen', factPeriode='', factOpenId=null;
+function factVorigeMaand(){var d=new Date();d.setUTCDate(1);d.setUTCMonth(d.getUTCMonth()-1);return d.toISOString().slice(0,7);}
+function factEur(n){return '&euro;&nbsp;'+Number(n||0).toLocaleString('nl-NL',{minimumFractionDigits:2,maximumFractionDigits:2});}
+function factDatum(ms){return ms?new Date(ms).toLocaleDateString('nl-NL',{timeZone:'UTC'}):'—';}
+async function factApi(methode,pad,body){
+  var r=await fetch(WORKER+'/mna/admin/facturatie/'+pad,{method:methode,headers:Object.assign({'x-admin-key':adminKey},body?{'Content-Type':'application/json'}:{}),body:body?JSON.stringify(body):undefined});
+  var d=await r.json().catch(function(){return null;});
+  return {ok:r.ok&&d&&d.ok===true,status:r.status,d:d||{}};
+}
+function factMeld(res,okTekst){
+  if(res.ok){toast(okTekst,'ok');return true;}
+  toast((res.d&&res.d.error)?res.d.error:'Dat is niet gelukt. Probeer het opnieuw.','err',9000);return false;
+}
+var FACT_STATUS={concept:'Concept',bezig:'Bezig',definitief:'Definitief',betaald:'Betaald',gecrediteerd:'Gecrediteerd'};
+// Bedrag in Nederlandse notatie lezen: komma = decimaal, punt = duizendtal (1.234,56). Een punt met
+// precies drie cijfers erachter zonder komma (1.234) is dubbelzinnig en wordt geweigerd; nooit gokken.
+function factBedrag(invoer){var t=String(invoer==null?'':invoer).replace(/[\s€]/g,'');if(!t)return NaN;
+  if(/^-?\d{1,3}(\.\d{3})*,\d{1,2}$|^-?\d+,\d{1,2}$/.test(t))return Number(t.replace(/\./g,'').replace(',','.'));
+  if(/^-?\d+(\.\d{1,2})?$/.test(t))return Number(t);
+  if(/^-?\d{1,3}(\.\d{3})+$/.test(t))return NaN;
+  return NaN;}
+function factBedragFout(){toast('Vul het bedrag in als 1234,56 (komma voor de centen). Er is niets opgeslagen.','err',9000);}
+var FACT_BLOK={GEEN_TARIEF:'een module heeft geen tarief',MODULE_UITGESCHAKELD:'een uitgeschakelde module wordt nog gefactureerd (zet een einddatum of schakel de module weer in)',TESTTARIEF_BIJ_LIVE_KANTOOR:'testtarief bij een live kantoor',FACTUURGEGEVENS_ONVOLLEDIG:'factuurgegevens kantoor onvolledig'};
+async function renderFacturatieTab(el){
+  if(!factPeriode)factPeriode=factVorigeMaand();
+  var nav='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1rem">'
+    +['facturen','kantoren','tarieven'].map(function(s){return '<button class="btn'+(factSub===s?'':'-ghost')+' fact-sub" data-sub="'+s+'" style="font-size:12px;padding:6px 14px">'+({facturen:'Facturen',kantoren:'Kantoren en factuurgegevens',tarieven:'Tarieven'}[s])+'</button>';}).join('')
+    +'</div>';
+  el.innerHTML=nav+'<div id="fact-inhoud" style="padding:1rem;color:var(--muted);font-size:13px">Laden...</div>';
+  el.querySelectorAll('.fact-sub').forEach(function(b){b.addEventListener('click',function(){factSub=b.dataset.sub;factOpenId=null;renderFacturatieTab(el);});});
+  var c=document.getElementById('fact-inhoud');
+  try{
+    if(factSub==='tarieven')await factTarieven(c,el);
+    else if(factSub==='kantoren')await factKantoren(c,el);
+    else if(factOpenId)await factDetail(c,el);
+    else await factFacturen(c,el);
+  }catch(e){c.innerHTML='<div class="empty">Laden mislukt. Ververs de pagina.</div>';}
+}
+async function factFacturen(c,el){
+  var res=await factApi('GET','facturen?periode='+encodeURIComponent(factPeriode));
+  var lijst=(res.d&&res.d.facturen)||[];
+  var h='<div style="font-size:12px;color:var(--muted);margin-bottom:.75rem;line-height:1.6">Facturen worden maandelijks achteraf per kantoor gemaakt. Een concept kunt u herberekenen; pas bij &ldquo;Definitief maken&rdquo; krijgt de factuur een nummer en wijzigt hij niet meer. Correcties lopen via een creditnota. Testdocumenten (kantoor in testmodus) krijgen een eigen TEST-nummer en claimen geen echte kosten.</div>'
+    +'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:1rem"><label style="font-size:12px;color:var(--muted)">Periode</label><input type="month" id="fact-periode" value="'+esc(factPeriode)+'" style="padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--head)">'
+    +'<button class="btn" id="fact-alle" style="font-size:12px;padding:6px 14px">Concepten maken voor alle kantoren</button></div>';
+  if(!lijst.length)h+='<div class="empty">Nog geen facturen voor deze periode.</div>';
+  else{
+    h+='<table><thead><tr><th>Kantoor</th><th>Soort</th><th>Nummer</th><th>Status</th><th>Totaal</th><th>Datum</th><th></th></tr></thead><tbody>';
+    lijst.forEach(function(f){
+      h+='<tr><td>'+esc(f.kantoor_naam||f.kantoor_id)+(f.is_test?' <span class="tag" style="color:var(--red);border-color:var(--red)">TEST</span>':'')+'</td><td>'+(f.soort==='creditnota'?'Creditnota':'Factuur')+'</td><td class="mono">'+esc(f.nummer||'—')+'</td><td>'+esc(FACT_STATUS[f.status]||f.status)+(f.blokkades?'<div style="font-size:10px;color:var(--red)">Geblokkeerd</div>':'')+'</td><td class="mono">'+factEur(f.totaal)+'</td><td class="mono" style="font-size:11px">'+factDatum(f.factuurdatum||f.created_at)+'</td><td><button class="btn-ghost fact-open" data-id="'+esc(f.id)+'" style="font-size:11px;padding:3px 10px">Bekijk</button></td></tr>';
+    });
+    h+='</tbody></table>';
+  }
+  c.innerHTML=h;
+  var p=document.getElementById('fact-periode');if(p)p.addEventListener('change',function(){if(/^\d{4}-\d{2}$/.test(p.value)){factPeriode=p.value;renderFacturatieTab(el);}});
+  var a=document.getElementById('fact-alle');if(a)a.addEventListener('click',async function(){
+    if(!confirm('Concepten maken (of herberekenen) voor alle kantoren over '+factPeriode+'? Bestaande definitieve facturen blijven ongewijzigd.'))return;
+    a.disabled=true;a.textContent='Bezig...';
+    var r=await factApi('POST','concepten',{periode:factPeriode});
+    if(r.ok){var n=(r.d.resultaten||[]).filter(function(x){return x.resultaat==='concept';}).length,o=(r.d.resultaten||[]).filter(function(x){return x.resultaat==='overgeslagen';}).length;toast(n+' concept(en) gemaakt'+(o?', '+o+' kantoor/kantoren overgeslagen (al gefactureerd of niet mogelijk)':'')+'.','ok',7000);}
+    else factMeld(r,'');
+    renderFacturatieTab(el);
+  });
+  c.querySelectorAll('.fact-open').forEach(function(b){b.addEventListener('click',function(){factOpenId=b.dataset.id;renderFacturatieTab(el);});});
+}
+async function factDetail(c,el){
+  var res=await factApi('GET','factuur/'+encodeURIComponent(factOpenId));
+  if(!res.ok){c.innerHTML='<div class="empty">Factuur niet gevonden.</div>';factOpenId=null;return;}
+  var f=res.d.factuur;
+  var h='<button class="btn-ghost" id="fact-terug" style="font-size:11px;padding:3px 10px;margin-bottom:1rem">&larr; Terug naar overzicht</button>'
+    +'<div style="font-size:15px;font-weight:600;color:var(--head);margin-bottom:.25rem">'+(f.soort==='creditnota'?'Creditnota ':'Factuur ')+esc(f.nummer||'(concept)')+(f.is_test?' <span class="tag" style="color:var(--red);border-color:var(--red)">TEST</span>':'')+'</div>'
+    +'<div style="font-size:12px;color:var(--muted);margin-bottom:1rem">Status: '+esc(FACT_STATUS[f.status]||f.status)+' &middot; Periode '+esc(f.periode||'—')+(f.vervaldatum?' &middot; Vervaldatum '+factDatum(f.vervaldatum):'')+(f.credit_van_nummer?' &middot; Creditering van '+esc(f.credit_van_nummer):'')+'</div>';
+  if(f.blokkades)h+='<div style="font-size:12px;color:var(--red);background:var(--red-bg);border:1px solid var(--red);border-radius:6px;padding:8px 12px;margin-bottom:1rem">Kan nog niet definitief: '+esc(f.blokkades.split(',').map(function(b){return FACT_BLOK[b]||b;}).join('; '))+'.</div>';
+  h+='<table><thead><tr><th>Omschrijving</th><th>Adviseur / traject</th><th>Bedrag</th></tr></thead><tbody>';
+  (f.regels||[]).forEach(function(r){
+    h+='<tr><td>'+esc(r.omschrijving||'')+(r.fout?'<div style="font-size:10px;color:var(--red)">Geen tarief</div>':'')+(r.gecrediteerd_door?'<div style="font-size:10px;color:var(--muted)">Gecrediteerd</div>':'')+'</td><td style="font-size:11px;color:var(--muted)">'+esc(r.soort==='traject'?(r.adviseur_naam||'')+' · '+(r.traject_ref||''):'')+'</td><td class="mono">'+factEur(r.bedrag)+'</td></tr>';
+  });
+  h+='</tbody></table><div style="text-align:right;font-size:13px;margin:.75rem 0">Subtotaal '+factEur(f.subtotaal)+' &middot; Btw 21% '+factEur(f.btw)+' &middot; <strong>Totaal '+factEur(f.totaal)+'</strong></div>';
+  var knoppen=[];
+  if(f.status==='concept'){knoppen.push(['fact-herbereken','Herberekenen']);knoppen.push(['fact-correctie','Correctieregel toevoegen']);knoppen.push(['fact-definitief','Definitief maken']);knoppen.push(['fact-verwijder','Concept verwijderen']);}
+  if(f.nummer)knoppen.push(['fact-pdf','PDF downloaden']);
+  if(f.soort==='factuur'&&(f.status==='definitief'||f.status==='betaald'))knoppen.push(['fact-betaling','Betaling registreren']);
+  if(f.soort==='factuur'&&['definitief','betaald','gecrediteerd'].indexOf(f.status)>=0&&(f.regels||[]).some(function(r){return !r.gecrediteerd_door;}))knoppen.push(['fact-crediteer','Crediteren']);
+  h+='<div style="display:flex;gap:8px;flex-wrap:wrap">'+knoppen.map(function(k){return '<button class="'+(k[0]==='fact-verwijder'||k[0]==='fact-crediteer'?'btn-red':'btn')+'" id="'+k[0]+'" style="font-size:12px;padding:6px 14px">'+k[1]+'</button>';}).join('')+'</div>';
+  if((f.betalingen||[]).length)h+='<div style="margin-top:1rem;font-size:12px;color:var(--muted)">Betalingen: '+f.betalingen.map(function(b){return esc(b.datum)+' '+factEur(b.bedrag);}).join(', ')+'</div>';
+  h+='<div style="margin-top:1rem;font-size:11px;color:var(--muted)">Audit: '+(f.audit||[]).map(function(a){return esc(a.actie)+' ('+factDatum(a.ts)+')';}).join(' &middot; ')+'</div>';
+  c.innerHTML=h;
+  var $=function(id){return document.getElementById(id);};
+  $('fact-terug').addEventListener('click',function(){factOpenId=null;renderFacturatieTab(el);});
+  if($('fact-herbereken'))$('fact-herbereken').addEventListener('click',async function(){var r=await factApi('POST','concept',{kantoor_id:f.kantoor_id,periode:f.periode});if(r.ok&&r.d&&r.d.leeg){toast(r.d.melding||'Voor deze periode zijn er geen kosten om te factureren; er is geen concept meer.','warn',9000);factOpenId=null;}else if(factMeld(r,'Concept herberekend.')&&r.d.factuur)factOpenId=r.d.factuur.id;else if(r.ok)factOpenId=null;renderFacturatieTab(el);});
+  if($('fact-correctie'))$('fact-correctie').addEventListener('click',async function(){var oms=prompt('Omschrijving van de correctie:','');if(oms===null)return;var b=prompt('Bedrag excl. btw (negatief voor een korting):','');if(b===null)return;var bc=factBedrag(b);if(!Number.isFinite(bc)){factBedragFout();return;}var r=await factApi('POST','factuur/'+encodeURIComponent(f.id)+'/correctieregel',{omschrijving:oms,bedrag:bc});factMeld(r,'Correctieregel toegevoegd.');renderFacturatieTab(el);});
+  if($('fact-definitief'))$('fact-definitief').addEventListener('click',async function(){if(!confirm('Deze '+(f.is_test?'TESTfactuur':'factuur')+' definitief maken? Hij krijgt een nummer en kan daarna niet meer worden gewijzigd; correcties lopen via een creditnota.'))return;var r=await factApi('POST','factuur/'+encodeURIComponent(f.id)+'/definitief',{});factMeld(r,'Factuur definitief: '+((r.d.factuur&&r.d.factuur.nummer)||''));renderFacturatieTab(el);});
+  if($('fact-verwijder'))$('fact-verwijder').addEventListener('click',async function(){if(!confirm('Dit concept verwijderen?'))return;var r=await factApi('POST','factuur/'+encodeURIComponent(f.id)+'/verwijder',{});if(factMeld(r,'Concept verwijderd.'))factOpenId=null;renderFacturatieTab(el);});
+  if($('fact-pdf'))$('fact-pdf').addEventListener('click',function(){downloadMetAdminKey(WORKER+'/mna/admin/facturatie/factuur/'+encodeURIComponent(f.id)+'/pdf',(f.soort==='creditnota'?'Creditnota-':'Factuur-')+f.nummer+'.pdf');});
+  if($('fact-betaling'))$('fact-betaling').addEventListener('click',async function(){var dt=prompt('Betaaldatum (JJJJ-MM-DD):',new Date().toISOString().slice(0,10));if(dt===null)return;var b=prompt('Betaald bedrag (incl. btw):',Number(f.totaal).toFixed(2).replace('.',','));if(b===null)return;var bb=factBedrag(b);if(!Number.isFinite(bb)){factBedragFout();return;}var ref=prompt('Referentie (optioneel):','');if(ref===null)return;var r=await factApi('POST','factuur/'+encodeURIComponent(f.id)+'/betaling',{datum:dt,bedrag:bb,referentie:ref});factMeld(r,r.d&&r.d.volledig_betaald?'Betaling geregistreerd; factuur volledig betaald.':'Betaling geregistreerd.');renderFacturatieTab(el);});
+  if($('fact-crediteer'))$('fact-crediteer').addEventListener('click',async function(){var reden=prompt('Reden voor de creditnota (verplicht):','');if(reden===null)return;var her=confirm('Moeten de gecrediteerde trajectkosten opnieuw op een volgende factuur kunnen komen?\n\nOK = ja, opnieuw factureren · Annuleren = nee');if(!confirm('Alle nog niet gecrediteerde regels van factuur '+f.nummer+' crediteren? Er komt een creditnota met een eigen nummer.'))return;var r=await factApi('POST','factuur/'+encodeURIComponent(f.id)+'/crediteer',{reden:reden,herfactureren:her});factMeld(r,'Creditnota '+((r.d.creditnota&&r.d.creditnota.nummer)||'')+' aangemaakt.');renderFacturatieTab(el);});
+}
+async function factKantoren(c,el){
+  var res=await factApi('GET','kantoren');
+  var lijst=(res.d&&res.d.kantoren)||[];
+  var h='<div style="font-size:12px;color:var(--muted);margin-bottom:1rem;line-height:1.6">Standaard betaaltermijn: <strong>'+esc(String(res.d.standaard_betaaltermijn))+' dagen</strong> (instellen in &euro; Tarieven &rarr; Facturatiegegevens). Een kantoor staat standaard in <strong>testmodus</strong>: facturen zijn dan testdocumenten. Pas na volledige factuurgegevens en bevestiging gaat een kantoor live.</div>';
+  if(!lijst.length)h+='<div class="empty">Geen kantoren.</div>';
+  lijst.forEach(function(k){
+    h+='<div style="border:1px solid var(--border);border-radius:8px;padding:1rem;margin-bottom:1rem;background:var(--card)">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px"><div style="font-weight:600;color:var(--head)">'+esc(k.naam)+' <span style="font-size:11px;color:var(--muted);font-weight:400">'+k.aantal_leden+' adviseur(s)</span></div>'
+      +'<div><span class="tag" style="'+(k.modus==='live'?'color:var(--teal);border-color:var(--teal)':'color:var(--red);border-color:var(--red)')+'">'+(k.modus==='live'?'LIVE':'TEST')+'</span> <button class="btn-ghost fact-modus" data-id="'+esc(k.id)+'" data-modus="'+(k.modus==='live'?'test':'live')+'" style="font-size:11px;padding:3px 10px">'+(k.modus==='live'?'Terug naar test':'Live zetten')+'</button></div></div>'
+      +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin-top:.75rem">'
+      +[['tenaamstelling','Tenaamstelling'],['adres','Adres'],['postcode','Postcode'],['plaats','Plaats'],['land','Land'],['kvk','KvK-nummer'],['btw_nummer','Btw-nummer'],['factuur_email','Factuur-e-mail'],['betaaltermijn_dagen','Betaaltermijn (dagen, leeg = standaard)']].map(function(v){return '<label style="font-size:11px;color:var(--muted)">'+v[1]+'<input class="fact-veld" data-id="'+esc(k.id)+'" data-veld="'+v[0]+'" value="'+esc(k[v[0]]===null||k[v[0]]===undefined?'':String(k[v[0]]))+'" style="width:100%;padding:5px 7px;border:1px solid var(--border);border-radius:5px;background:var(--bg);color:var(--head)"></label>';}).join('')
+      +'</div><button class="btn fact-opslaan" data-id="'+esc(k.id)+'" style="font-size:11px;padding:5px 12px;margin-top:.5rem">Factuurgegevens opslaan</button>'
+      +'<div style="margin-top:.75rem;font-size:12px;color:var(--sub)">Gefactureerde modules (facturatieperiode):</div><table style="margin-top:.25rem"><thead><tr><th>Module</th><th>Ingangsdatum</th><th>Einddatum</th><th></th></tr></thead><tbody>'
+      +(k.modules||[]).map(function(m){return '<tr><td>'+esc(m.module_id)+'</td><td class="mono">'+esc(m.ingangsdatum||'niet gefactureerd')+'</td><td class="mono">'+esc(m.einddatum||'—')+'</td><td><button class="btn-ghost fact-modper" data-id="'+esc(k.id)+'" data-module="'+esc(m.module_id)+'" data-ing="'+esc(m.ingangsdatum||'')+'" data-eind="'+esc(m.einddatum||'')+'" style="font-size:11px;padding:2px 8px">Wijzig</button></td></tr>';}).join('')
+      +'</tbody></table><button class="btn-ghost fact-modper" data-id="'+esc(k.id)+'" data-module="" style="font-size:11px;padding:3px 10px;margin-top:.25rem">+ Module toevoegen</button></div>';
+  });
+  c.innerHTML=h;
+  c.querySelectorAll('.fact-opslaan').forEach(function(b){b.addEventListener('click',async function(){var body={};c.querySelectorAll('.fact-veld[data-id="'+b.dataset.id+'"]').forEach(function(i){body[i.dataset.veld]=i.value;});if(body.betaaltermijn_dagen==='')body.betaaltermijn_dagen=null;else{var bt=Number(body.betaaltermijn_dagen);if(!Number.isInteger(bt)||bt<0||bt>120){toast('Vul als betaaltermijn een heel aantal dagen in (0 tot 120), of laat het veld leeg voor de standaard. Er is niets opgeslagen.','err',9000);return;}body.betaaltermijn_dagen=bt;}var r=await factApi('POST','kantoor/'+encodeURIComponent(b.dataset.id)+'/gegevens',body);factMeld(r,'Factuurgegevens opgeslagen.');renderFacturatieTab(el);});});
+  c.querySelectorAll('.fact-modus').forEach(function(b){b.addEventListener('click',async function(){var live=b.dataset.modus==='live';if(live&&!confirm('Dit kantoor live zetten? Nieuwe definitieve facturen worden dan echte facturen met een nummer uit de doorlopende reeks en claimen de kosten van de adviseurs.'))return;var r=await factApi('POST','kantoor/'+encodeURIComponent(b.dataset.id)+'/modus',{modus:b.dataset.modus,bevestiging:live?'LIVE':undefined});factMeld(r,live?'Kantoor staat live.':'Kantoor staat in testmodus.');renderFacturatieTab(el);});});
+  c.querySelectorAll('.fact-modper').forEach(function(b){b.addEventListener('click',async function(){var mod=b.dataset.module||prompt('Module (bijvoorbeeld contracten, crm, export):','');if(!mod)return;var ing=prompt('Ingangsdatum facturatie (JJJJ-MM-DD, leeg = niet factureren):',b.dataset.ing||'');if(ing===null)return;var eind=prompt('Einddatum (JJJJ-MM-DD, leeg = doorlopend):',b.dataset.eind||'');if(eind===null)return;var r=await factApi('POST','kantoor/'+encodeURIComponent(b.dataset.id)+'/moduleperiode',{module_id:String(mod).trim(),ingangsdatum:ing.trim()||null,einddatum:eind.trim()||null});factMeld(r,'Facturatieperiode opgeslagen.');renderFacturatieTab(el);});});
+}
+async function factTarieven(c,el){
+  var res=await factApi('GET','tarieven');var lijst=(res.d&&res.d.tarieven)||[];
+  var kres=await factApi('GET','kantoren');var kn={};((kres.d&&kres.d.kantoren)||[]).forEach(function(k){kn[k.id]=k.naam;});
+  var h='<div style="font-size:12px;color:var(--muted);margin-bottom:1rem;line-height:1.6">Tarieven zijn bedragen per maand, exclusief btw. Een nieuw tarief geldt vanaf de ingangsdatum; eerdere tarieven blijven bewaard, en een definitieve factuur wijzigt nooit. Een nieuw tarief is altijd eerst een <strong>testtarief</strong>; activeer het pas als het commercieel juist is. Een kantoortarief gaat voor het standaardtarief.</div>'
+    +'<button class="btn" id="fact-tarief-nieuw" style="font-size:12px;padding:6px 14px;margin-bottom:1rem">+ Tarief toevoegen</button>';
+  if(!lijst.length)h+='<div class="empty">Nog geen tarieven.</div>';
+  else{
+    h+='<table><thead><tr><th>Module</th><th>Geldt voor</th><th>Per maand</th><th>Vanaf</th><th>Status</th><th></th></tr></thead><tbody>';
+    lijst.forEach(function(t){h+='<tr><td>'+esc(t.module_id)+'</td><td>'+esc(t.kantoor_id?(kn[t.kantoor_id]||t.kantoor_id):'Standaard (alle kantoren)')+'</td><td class="mono">'+factEur(t.bedrag_per_maand)+'</td><td class="mono">'+esc(t.ingangsdatum)+'</td><td>'+(t.status==='commercieel'?'<span class="tag" style="color:var(--teal);border-color:var(--teal)">Commercieel</span>':'<span class="tag" style="color:var(--red);border-color:var(--red)">Test</span>')+'</td><td style="white-space:nowrap">'+(t.status==='test'?'<button class="btn-ghost fact-tact" data-id="'+esc(t.id)+'" style="font-size:11px;padding:2px 8px">Activeren</button> <button class="btn-ghost fact-tdel" data-id="'+esc(t.id)+'" style="font-size:11px;padding:2px 8px;color:var(--red)">Verwijderen</button>':'')+'</td></tr>';});
+    h+='</tbody></table>';
+  }
+  c.innerHTML=h;
+  document.getElementById('fact-tarief-nieuw').addEventListener('click',async function(){
+    var mod=prompt('Module (bijvoorbeeld contracten, crm, export):','');if(!mod)return;
+    var kid=prompt('Kantoor-id voor een afwijkend kantoortarief (leeg = standaardtarief voor alle kantoren):','');if(kid===null)return;
+    var b=prompt('Bedrag per maand, excl. btw:','');if(b===null)return;var bt=factBedrag(b);if(!Number.isFinite(bt)){factBedragFout();return;}
+    var ing=prompt('Ingangsdatum (JJJJ-MM-DD):',new Date().toISOString().slice(0,10));if(ing===null)return;
+    var r=await factApi('POST','tarieven',{module_id:String(mod).trim(),kantoor_id:String(kid).trim()||null,bedrag_per_maand:bt,ingangsdatum:String(ing).trim()});
+    factMeld(r,'Testtarief toegevoegd. Activeer het als het commercieel juist is.');renderFacturatieTab(el);
+  });
+  c.querySelectorAll('.fact-tact').forEach(function(b){b.addEventListener('click',async function(){if(!confirm('Dit tarief activeren voor echte facturen? Het wordt dan gebruikt op definitieve facturen van live kantoren.'))return;var r=await factApi('POST','tarieven/'+encodeURIComponent(b.dataset.id)+'/activeer',{bevestiging:'COMMERCIEEL'});factMeld(r,'Tarief geactiveerd.');renderFacturatieTab(el);});});
+  c.querySelectorAll('.fact-tdel').forEach(function(b){b.addEventListener('click',async function(){if(!confirm('Dit testtarief verwijderen?'))return;var r=await factApi('POST','tarieven/'+encodeURIComponent(b.dataset.id)+'/verwijder',{});factMeld(r,'Testtarief verwijderd.');renderFacturatieTab(el);});});
+}
+
 async function renderTarievenTab(el) {
   el.innerHTML = '<div style="padding:1rem;color:var(--muted);font-size:13px">Laden...</div>';
   try {
@@ -4842,12 +4998,12 @@ async function renderTarievenTab(el) {
     });
     html += '</tbody></table></div>';
 
-    // Openstaand per adviseur (24 aug 2026, Marcel: "factuur die ik kan versturen") — som van
-    // fee-events zonder gefactureerd_op, gegroepeerd op gebruiker_id, met een knop die het nieuwe
-    // /mna/admin/factuur/{id}-endpoint aanroept en de PDF-download start.
+    // Openstaand per adviseur — som van fee-events zonder gefactureerd_op, gegroepeerd op
+    // gebruiker_id. Alleen ter informatie: sinds #49 (24 okt 2026) wordt per kantoor gefactureerd
+    // (tab Facturatie); de factuur per adviseur is vervallen.
     var openstaandPerGeb = {};
     events.forEach(function(ev) {
-      if (ev.gefactureerd_op || !ev.gebruiker_id) return;
+      if (ev.gefactureerd_op || ev.geannuleerd_op || !ev.gebruiker_id) return;
       if (!openstaandPerGeb[ev.gebruiker_id]) openstaandPerGeb[ev.gebruiker_id] = { naam: ev.gebruiker_naam, email: ev.gebruiker_email, totaal: 0, aantal: 0 };
       openstaandPerGeb[ev.gebruiker_id].totaal += Number(ev.bedrag) || 0;
       openstaandPerGeb[ev.gebruiker_id].aantal++;
@@ -4864,8 +5020,9 @@ async function renderTarievenTab(el) {
       + '<button class="btn btn-sm" id="fc-opslaan" style="font-size:11px;padding:6px 14px">Opslaan</button>'
       + '</div>';
 
-    html += '<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem">Openstaand per adviseur — BTW-factuur genereren</div>';
-    if (!fcCompleet) html += '<div style="font-size:12px;color:var(--gold-dark);background:var(--gold-bg);border:1px solid var(--gold);border-radius:6px;padding:8px 12px;margin-bottom:.75rem">Vul eerst het BTW-nummer en IBAN hierboven in — zonder deze gegevens kan er geen factuur worden gegenereerd.</div>';
+    html += '<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem">Openstaand per adviseur</div>'
+      + '<div style="font-size:12px;color:var(--muted);margin-bottom:.75rem">Deze posten worden per kantoor gefactureerd via de tab Facturatie (maandelijks achteraf). De factuur per adviseur is vervallen.</div>';
+    if (!fcCompleet) html += '<div style="font-size:12px;color:var(--gold-dark);background:var(--gold-bg);border:1px solid var(--gold);border-radius:6px;padding:8px 12px;margin-bottom:.75rem">Vul eerst het BTW-nummer en IBAN hierboven in — zonder deze gegevens kan er geen definitieve kantoorfactuur worden gemaakt (tab Facturatie).</div>';
     if (!openGebIds.length) {
       html += '<div style="color:var(--muted);font-size:13px;font-style:italic;padding:.5rem 0 1.25rem">Geen openstaande (nog niet gefactureerde) kosten.</div>';
     } else {
@@ -4875,7 +5032,6 @@ async function renderTarievenTab(el) {
         html += '<div style="display:flex;align-items:center;gap:12px;padding:.75rem 1rem;background:var(--card);border:1px solid var(--border);border-radius:8px">'
           + '<div style="flex:1"><div style="font-weight:600;color:var(--sub)">' + esc(o.naam || '—') + '</div><div style="font-size:11px;color:var(--muted)">' + esc(o.email || '') + ' &middot; ' + o.aantal + ' openstaande post(en)</div></div>'
           + '<div style="font-family:IBM Plex Mono,monospace;font-weight:600;color:var(--teal)">&euro;' + o.totaal.toLocaleString('nl-NL') + '</div>'
-          + '<button class="btn btn-sm fact-genereer" data-gid="' + esc(gid) + '" style="font-size:11px;padding:5px 12px">&#128196; Factuur genereren</button>'
           + '</div>';
       });
       html += '</div>';
@@ -4885,8 +5041,16 @@ async function renderTarievenTab(el) {
     if (!events.length) {
       html += '<div style="color:var(--muted);font-size:13px;font-style:italic;padding:1rem 0">Nog geen fee-events gelogd.</div>';
     } else {
+      // #44 (24 okt 2026): nog niet gefactureerde posten in één handeling annuleren, met reden.
+      // Gefactureerde en al geannuleerde posten hebben geen vakje; "alles" geldt voor de hele lijst.
+      var annuleerbaar = events.filter(function(ev) { return !ev.gefactureerd_op && !ev.geannuleerd_op; }).length;
+      html += '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:.5rem">'
+        + '<span style="font-size:12px;color:var(--muted)">' + annuleerbaar + ' open ' + (annuleerbaar === 1 ? 'post' : 'posten') + ' te annuleren. Gefactureerde posten zijn niet te annuleren.</span>'
+        + '<button class="btn-red" id="btn-ann-fee" style="font-size:12px;padding:7px 14px;display:none">&#10005; Annuleer geselecteerde (<span id="sel-cnt-fee">0</span>)</button>'
+        + '</div>';
       html += '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">'
         + '<thead><tr>'
+        + '<th style="width:32px;padding:8px 12px;border-bottom:1px solid var(--border)">' + (annuleerbaar ? '<input type="checkbox" id="cb-all-fee" title="Alle open posten in de lijst aanvinken">' : '') + '</th>'
         + '<th style="text-align:left;padding:8px 12px;font-size:11px;color:var(--muted);border-bottom:1px solid var(--border);font-weight:600">Datum</th>'
         + '<th style="text-align:left;padding:8px 12px;font-size:11px;color:var(--muted);border-bottom:1px solid var(--border);font-weight:600">Adviseur</th>'
         + '<th style="text-align:left;padding:8px 12px;font-size:11px;color:var(--muted);border-bottom:1px solid var(--border);font-weight:600">Traject</th>'
@@ -4898,8 +5062,12 @@ async function renderTarievenTab(el) {
       events.forEach(function(ev) {
         var statusHtml = ev.gefactureerd_op
           ? '<span style="color:var(--teal)">&#10003; ' + new Date(ev.gefactureerd_op).toLocaleDateString('nl-NL') + '</span><div style="font-size:10px;color:var(--muted)">' + esc(ev.factuur_referentie || '') + '</div>'
-          : '<span style="color:var(--gold-dark)">Open</span>';
+          : ev.geannuleerd_op
+            ? '<span style="color:var(--muted)">Geannuleerd ' + new Date(ev.geannuleerd_op).toLocaleDateString('nl-NL') + '</span><div style="font-size:10px;color:var(--muted)">' + esc(ev.geannuleerd_reden || '') + '</div>'
+            : '<span style="color:var(--gold-dark)">Open</span>';
+        var feeVakje = (!ev.gefactureerd_op && !ev.geannuleerd_op) ? '<input type="checkbox" class="fee-cb" data-id="' + esc(ev.id) + '" style="cursor:pointer">' : '';
         html += '<tr style="border-bottom:1px solid var(--border)">'
+          + '<td style="padding:10px 12px">' + feeVakje + '</td>'
           + '<td style="padding:10px 12px;font-size:11px;color:var(--muted)">' + new Date(ev.created_at).toLocaleDateString('nl-NL') + '</td>'
           + '<td style="padding:10px 12px;color:var(--sub)">' + esc(ev.gebruiker_naam || '—') + (ev.gebruiker_email ? '<div style="font-size:11px;color:var(--muted)">' + esc(ev.gebruiker_email) + '</div>' : '') + '</td>'
           + '<td style="padding:10px 12px;color:var(--mid)">' + esc(ev.kantoor_naam || ev.traject_id) + '</td>'
@@ -4913,28 +5081,37 @@ async function renderTarievenTab(el) {
     }
     el.innerHTML = html;
 
-    el.querySelectorAll('.fact-genereer').forEach(function(btn) {
-      btn.addEventListener('click', function() {
-        var gid = btn.dataset.gid;
-        btn.disabled = true; btn.textContent = 'Bezig...';
-        fetch(WORKER + '/mna/admin/factuur/' + encodeURIComponent(gid), { headers: { 'x-admin-key': adminKey } })
-          .then(function(r) {
-            if (!r.ok) return r.json().then(function(d) { throw new Error(d.error || 'Onbekende fout'); });
-            var cd = r.headers.get('Content-Disposition') || '';
-            var naamMatch = cd.match(/filename="([^"]+)"/);
-            return r.blob().then(function(blob) { return { blob: blob, naam: naamMatch ? naamMatch[1] : 'factuur.pdf' }; });
-          })
-          .then(function(res) {
-            var url = URL.createObjectURL(res.blob);
-            var a = document.createElement('a');
-            a.href = url; a.download = res.naam; document.body.appendChild(a); a.click();
-            setTimeout(function() { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
-            toast('Factuur gegenereerd en gedownload — ' + res.naam, 'ok');
-            var tct = document.getElementById('tc'); if (tct) renderTarievenTab(tct);
-          })
-          .catch(function(e) { toast('Fout: ' + e.message, 'err'); btn.disabled = false; btn.textContent = '📄 Factuur genereren'; });
-      });
+    function updSelFee() { var n = el.querySelectorAll('.fee-cb:checked').length; var b = document.getElementById('btn-ann-fee'); var c = document.getElementById('sel-cnt-fee'); if (b) b.style.display = n > 0 ? 'inline-block' : 'none'; if (c) c.textContent = n; }
+    var cbAllFee = document.getElementById('cb-all-fee');
+    if (cbAllFee) cbAllFee.addEventListener('change', function() { el.querySelectorAll('.fee-cb').forEach(function(cb) { cb.checked = cbAllFee.checked; }); updSelFee(); });
+    el.querySelectorAll('.fee-cb').forEach(function(cb) { cb.addEventListener('change', updSelFee); });
+    var btnAnnFee = document.getElementById('btn-ann-fee');
+    if (btnAnnFee) btnAnnFee.addEventListener('click', async function() {
+      if (btnAnnFee.disabled) return;
+      var ids = Array.from(el.querySelectorAll('.fee-cb:checked')).map(function(cb) { return cb.dataset.id; });
+      if (!ids.length) return;
+      var reden = prompt('Reden voor het annuleren van ' + (ids.length === 1 ? 'deze kostenpost' : 'deze ' + ids.length + ' kostenposten') + ' (verplicht, wordt vastgelegd):', '');
+      if (reden === null) return;
+      reden = String(reden).trim();
+      if (reden.length < 3) { toast('Geef een reden op van minimaal 3 tekens. Er is niets geannuleerd.', 'warn'); return; }
+      if (!confirm((ids.length === 1 ? 'Deze kostenpost' : 'Deze ' + ids.length + ' kostenposten') + ' annuleren?\n\nReden: ' + reden + '\n\nDe posten blijven zichtbaar als "geannuleerd" en komen niet meer op een factuur. Gefactureerde posten worden overgeslagen.')) return;
+      btnAnnFee.disabled = true; btnAnnFee.textContent = 'Annuleren...';
+      try {
+        var r = await fetch(WORKER + '/mna/admin/tarieven/events/annuleren', { method: 'POST', headers: { 'x-admin-key': adminKey, 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: ids, reden: reden }) });
+        var d = await r.json().catch(function() { return null; });
+        if (r.ok && d && d.ok === true) {
+          var over = (d.overgeslagen || []).length;
+          if (!over) toast(d.geannuleerd === 1 ? 'De kostenpost is geannuleerd.' : 'Alle ' + d.geannuleerd + ' aangevinkte kostenposten zijn geannuleerd.', 'ok');
+          else toast(d.geannuleerd + ' van ' + ids.length + ' kostenposten geannuleerd; ' + over + ' overgeslagen (al gefactureerd, al geannuleerd of niet meer gevonden).', d.geannuleerd ? 'warn' : 'err', 9000);
+        } else {
+          toast('Annuleren is niet gelukt' + (d && d.error ? ': ' + d.error : '') + '. Er is niets gewijzigd.', 'err', 9000);
+        }
+      } catch (e) {
+        toast('Geen verbinding met de server; controleer na verversen wat er is geannuleerd.', 'err', 9000);
+      }
+      var tct = document.getElementById('tc'); if (tct) renderTarievenTab(tct);
     });
+
 
     var fcBtn = document.getElementById('fc-opslaan');
     if (fcBtn) fcBtn.addEventListener('click', function() {

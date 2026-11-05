@@ -193,8 +193,43 @@ function record(rol, pagina, element, actie, verwacht, geslaagd, detail) {
 // PLAYWRIGHT-testniveau de juiste eenheid, niet het MATRIX-checkniveau — testInfo.status is de
 // enige betrouwbare bron daarvoor (afterAll zelf heeft geen toegang tot per-test-uitkomsten).
 const TEST_RESULTS = [];
+// N-155/N-156 (30-10-2026): wisselende mislukkingen zonder herleidbare oorzaak. Per test worden scriptfouten,
+// consolefouten en mislukte bestandsverzoeken van de pagina verzameld en alleen bij een mislukte test in de uitslag
+// en het rapport gezet. Geen toegangscodes in het rapport: de app zet codes in het PAD (POST /mna/traject/{code}),
+// dus van elke URL blijft alleen het pad over, met elk segment dat geen routewoord (kleine letters) of bestandsnaam
+// is vervangen door ':code'; losse code-achtige tokens (hoofdletters/cijfers, 6+ tekens) in vrije tekst worden gemaskeerd.
+let PAGINA_FOUTEN = [];
+function zonderCodesUrl(u) {
+  let p;
+  try { p = new URL(u).pathname; } catch { p = String(u).replace(/[?#].*$/, ''); }
+  return p.split('/').map((s) => (!s || /^[a-z][a-z-]*$/.test(s) || /^[\w.-]+\.(m?js|css|html?|json|png|svg|ico|woff2?)$/i.test(s)) ? s : ':code').join('/');
+}
+function zonderCodes(tekst) {
+  return String(tekst)
+    .replace(/https?:\/\/[^\s'"<>()]+/g, zonderCodesUrl)
+    .replace(/\b[A-Z0-9][A-Z0-9-]{5,}\b/g, '[code]')
+    .replace(/[\r\n]+/g, ' ')
+    .slice(0, 200);
+}
+test.beforeEach(async ({ page }) => {
+  PAGINA_FOUTEN = [];
+  page.on('pageerror', (e) => PAGINA_FOUTEN.push(zonderCodes('scriptfout: ' + ((e && e.message) || e))));
+  page.on('console', (m) => {
+    if (m.type() !== 'error') return;
+    const loc = m.location() || {};
+    PAGINA_FOUTEN.push(zonderCodes('console: ' + m.text() + (loc.url ? ' @ ' + zonderCodesUrl(loc.url) + ':' + (loc.lineNumber || 0) : '')));
+  });
+  page.on('requestfailed', (r) => PAGINA_FOUTEN.push(zonderCodes('verzoek mislukt: ' + zonderCodesUrl(r.url()) + ' ' + ((r.failure() || {}).errorText || ''))));
+  // HTTP-fouten (404/500) komen niet in requestfailed; zonder dit blijft alleen "Failed to load resource" zonder URL over.
+  page.on('response', (r) => { if (r.status() >= 400) PAGINA_FOUTEN.push(zonderCodes('HTTP ' + r.status() + ': ' + r.request().method() + ' ' + zonderCodesUrl(r.url()))); });
+});
 test.afterEach(async ({}, testInfo) => {
-  TEST_RESULTS.push({ title: testInfo.title, status: testInfo.status, fout: testInfo.error ? String(testInfo.error.message || testInfo.error).slice(0, 300).replace(/[\r\n]+/g, ' ') : '' });
+  const mislukt = testInfo.status !== testInfo.expectedStatus;
+  const diag = mislukt && PAGINA_FOUTEN.length ? 'paginafouten: ' + PAGINA_FOUTEN.slice(0, 8).join(' ; ').slice(0, 900) : '';
+  if (diag) console.log('  ' + diag + ' (bij ' + testInfo.title + ')');
+  // Foutveld gaat naar het productie-endpoint (meldResultaatAanMarilyn): diag daar begrensd op 300 extra tekens.
+  TEST_RESULTS.push({ title: testInfo.title, status: testInfo.status, fout: (testInfo.error ? String(testInfo.error.message || testInfo.error).slice(0, 300).replace(/[\r\n]+/g, ' ') : '') + (diag ? ' | ' + diag.slice(0, 300) : '') });
+  if (diag) MATRIX.push({ rol: 'DIAG', pagina: testInfo.title.slice(0, 60), element: 'pagina', actie: 'fouten op de pagina bij deze mislukking', verwacht: 'informatief', status: 'INFO', detail: diag.slice(14) });
 });
 
 // Productiedoel voor de resultaatmelding (18 sep 2026) — bewust NIET dezelfde WORKER als de test
@@ -365,8 +400,9 @@ test.describe('KANTOORINZICHT 3-ROLLEN E2E', () => {
       let md = '# KANTOORINZICHT 3-ROLLEN REGRESSIE — ' + new Date().toISOString() + '\n\n';
       md += 'Marker: `' + MARKER + '` · DOE_AI: ' + DOE_AI + ' · Worker: ' + WORKER + '\n\n';
       md += '| Rol | Pagina | Element | Actie | Verwacht | Status | Detail |\n|---|---|---|---|---|---|---|\n';
-      for (const r of MATRIX) md += '| ' + r.rol + ' | ' + r.pagina + ' | ' + r.element + ' | ' + r.actie + ' | ' + r.verwacht + ' | ' + r.status + ' | ' + r.detail.replace(/\|/g, '\\|').slice(0, 200) + ' |\n';
-      const totaal = MATRIX.length, pass = MATRIX.filter(r => r.status === 'PASS').length;
+      for (const r of MATRIX) md += '| ' + r.rol + ' | ' + r.pagina + ' | ' + r.element + ' | ' + r.actie + ' | ' + r.verwacht + ' | ' + r.status + ' | ' + r.detail.replace(/\|/g, '\\|').slice(0, r.rol === 'DIAG' ? 900 : 200) + ' |\n';
+      const telbaar = MATRIX.filter(r => r.status !== 'INFO'); // DIAG-regels (N-156) zijn informatief en tellen niet mee
+      const totaal = telbaar.length, pass = telbaar.filter(r => r.status === 'PASS').length;
       md += '\n**Totaal:** ' + pass + '/' + totaal + ' PASS\n';
       for (const rol of rollen) {
         const subset = MATRIX.filter(r => r.rol === rol);
@@ -672,7 +708,34 @@ test.describe('KANTOORINZICHT 3-ROLLEN E2E', () => {
       // dit traject, exact zoals een echte begeleider dat zou doen — geen muur omzeilen, gewoon de
       // juiste sleutel voor deze rol.
       const zet = await api('POST', '/mna/koper-categorieen/' + trajectCode + '?force=1', { headers: { 'x-tussen-key': tussenCode }, body: { categorieen: ['financieel'] } });
-      const vrijgaveOk = !!(zet.json && zet.json.koper_vrijgegeven === 1);
+      let vrijgaveOk = !!(zet.json && zet.json.koper_vrijgegeven === 1);
+      // N-151 (besluit Marcel 29-10-2026): een vrijgave geeft pas toegang na een geldige NDA. Eerst negatief bewijzen
+      // (vrijgave zonder NDA → nog geen data), dan de NDA via de bestaande documentflow laten ondertekenen door de koper.
+      const zonderNda = await api('GET', '/mna/entiteiten/' + koperCode);
+      const negOk = Array.isArray(zonderNda.json) && zonderNda.json.length === 0;
+      record('KOPER', 'API', 'GET /mna/entiteiten/{koper_code}', 'vrijgave zonder geldige NDA', 'nog geen data (N-151)', negOk, JSON.stringify(zonderNda.json).slice(0, 80));
+      const BH = { 'x-tussen-key': tussenCode }, KH = { 'x-tussen-key': koperCode };
+      // Versturen vereist een echt koper-adres (isEchtEmail weigert .test); zelfde precedent als tests/e2e-tos-review.mjs:
+      // alleen voor deze stap het koper-adres op Marcels eigen adres zetten en uitsluitend naar de koper versturen.
+      const upd = await api('POST', '/adviseur/traject/update/' + trajectCode, { body: { email, wachtwoord: WW,
+        kantoor_naam: '🔒 ' + MARKER + ' BV', contact_naam: 'E2E Verkoper', contact_email: 'v' + email,
+        koper_naam: 'E2E Koper Tegenpartij BV', koper_contact: 'E2E Koper', koper_email: 'marcel@bisschopsfinancing.nl' } });
+      await api('POST', '/mna/tos/activeer/' + trajectCode, { headers: BH }); // documentflow eerst activeren (idempotent)
+      const mk = await api('POST', '/mna/tos/document', { headers: BH, body: { profile: 'NDA' } });
+      const ndaId = mk.json && mk.json.document_id;
+      const stappen = [!!(upd.json && upd.json.ok), !!ndaId];
+      if (ndaId) {
+        stappen.push((await api('POST', '/mna/tos/document/' + ndaId + '/review-alles', { headers: BH, body: { naam: 'Synth Jurist', hoedanigheid: 'advocaat' } })).status === 200);
+        stappen.push((await api('POST', '/mna/tos/document/' + ndaId + '/finaliseer', { headers: BH })).status === 200);
+        const vst = await api('POST', '/mna/tos/document/' + ndaId + '/verstuur', { headers: BH, body: { adressaten: ['koper'] } });
+        // N-155: bij een mislukte verzending de status en foutmelding in het rapport (geen herhaalpoging, de fout blijft zichtbaar).
+        stappen.push(vst.status === 200); if (vst.status !== 200) stappen.push('verstuur ' + vst.status + ' ' + JSON.stringify(vst.json).slice(0, 300));
+        for (const H of [KH]) stappen.push(((await api('POST', '/mna/tos/document/' + ndaId + '/reageren', { headers: H, body: { actie: 'akkoord' } })).json || {}).ok === true);
+        stappen.push(((await api('POST', '/mna/teken', { body: { code: koperCode, document: 'nda', naam: 'Synth Koper Tekenaar' } })).json || {}).ok === true);
+      }
+      const ndaOk = stappen.every((x) => x === true);
+      record('KOPER', 'API', 'NDA-documentflow + POST /mna/teken (koper)', 'koper tekent de NDA zelf op het platform', 'geldige NDA', ndaOk, JSON.stringify(stappen) + (ndaId ? '' : ' aanmaken: ' + mk.status + ' ' + JSON.stringify(mk.json).slice(0, 160)));
+      vrijgaveOk = vrijgaveOk && negOk && ndaOk;
       record('BEGELEIDER', 'API (begeleider)', 'POST /mna/koper-categorieen/{code}', "categorie 'financieel' vrijgeven voor koper", 'koper_vrijgegeven: 1', vrijgaveOk, JSON.stringify(zet.json).slice(0, 150));
       await login(page, koperCode);
       await page.waitForFunction(() => window.S && S.traject && S.rol === 'koper', null, { timeout: 15000 });

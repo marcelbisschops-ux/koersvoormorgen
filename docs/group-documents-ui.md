@@ -163,6 +163,14 @@ begroting, year-to-date of deelperiode worden dan ook geen velden overgenomen.
   leeg opnieuw getekend en de bestaande traject-binding van de reeks stopt verdere verzoeken.
 - Bestaande uploadstatus, opruimen van tijdelijke rijen, batchstop/annuleren, "geen fictief succes",
   privacy en tenant-/broncontrole zijn ongewijzigd.
+- Upload (13 okt 2026): het scherm weigert een bestand niet meer zelf boven de oude 20MB-grens; het
+  volledige bestand gaat naar de server en alleen de status uit het serverantwoord wordt getoond. De
+  synchrone documentupload heeft een eindige deadline van 900000 ms (15 minuten), omdat de server een
+  groot document in meerdere AI-delen (elk tot 150s) plus een eventuele dubbele check verwerkt. Loopt die
+  deadline af, dan is de uitkomst "onbekend" en wordt de documentenlijst herladen, zonder tweede upload of
+  vals "verwerkt". De overige 60s-calls (onder meer de bankmutatie-upload) zijn ongewijzigd. Bewijs:
+  `tests/document-processing-ui.mjs` (bestand > 20MB met naam/bytes/sha256, deadline 15 min) en
+  `tests/n121-ai-timeouts.mjs`.
 
 ## Bewijs
 

@@ -55,6 +55,7 @@ function renderCover(){
     +'<button class="btn-ghost btn-sm" onclick="refreshData()">&#8635;</button>'
     +'<button class="btn-ghost btn-sm" onclick="uitloggen()">&#8592; Uitloggen</button>'
     +'</div></div>'
+      +'<div id="jr-portaal" class="jr-plek" style="margin-bottom:1rem"></div>' // #97 M&A Journey (koper vóór vrijgave: alleen fasen + eigen NDA-stap)
       +'<div class="cover-letter" style="text-align:center;padding:3rem 2rem">'
       +'<div style="font-size:2rem;margin-bottom:1rem">&#128274;</div>'
       +'<div style="font-family:Playfair Display,serif;font-size:1.3rem;color:var(--head);font-weight:600;margin-bottom:.75rem">Informatie nog niet beschikbaar</div>'
@@ -97,6 +98,7 @@ function renderCover(){
     +(t.koper_vrijgegeven?'<button class="btn btn-sm" id="to-waardering-btn" style="background:var(--gold)">&#9654; Waardering</button>':''))
     +'</div></div>'
     +(vergrendeld?'<div style="background:var(--red-bg);border:1px solid var(--red);border-radius:var(--r);padding:10px 14px;margin-bottom:1rem;font-size:13px;color:var(--red)">&#128274; <strong>Dit traject is vergrendeld op '+(t.vergrendeld_op?new Date(t.vergrendeld_op).toLocaleString('nl-NL'):'onbekend')+'.</strong> Verdere wijzigingen zijn niet meer mogelijk.</div>':'')
+    +((isVerkoper()||isKoper())?'<div id="jr-portaal" class="jr-plek" style="margin-bottom:1rem"></div>':'') // #97 M&A Journey
     +'<div class="cover-letter">'
     +'<div style="font-size:11px;color:var(--muted);margin-bottom:.5rem">' + esc(t.begeleider_bedrijf||BRAND.bedrijfKort) + ' &middot; M&amp;A Begeleiding &middot; '+datum+'</div>'
     +'<h2>'+( isVerkoper()?'Informatieverzoek due diligence':'Due diligence overzicht')+'</h2>'
@@ -221,6 +223,7 @@ function renderOpening(){
     +'<div style="font-family:Playfair Display,serif;font-size:1.05rem;color:var(--head);font-weight:600;margin-bottom:.25rem">&#129489;&#8205;&#128188; '+esc(pt.titel)+'</div>'
     +'<div style="font-size:12px;color:var(--muted);margin-bottom:1rem">Leg elke '+esc(pt.enkel)+' één keer vast. Werkt een '+esc(pt.enkel)+' bij meerdere entiteiten hierboven? Koppel deze dan aan alle betreffende entiteiten.</div>'
     +'<div id="op-pt-lijst" style="margin-bottom:1rem;font-size:13px;color:var(--muted);font-style:italic">Laden...</div>'
+    +'<div id="op-pt-bewerk-status" style="display:none;font-size:12px;color:var(--teal);font-weight:600;margin-bottom:6px"></div>'
     +'<div style="display:flex;gap:8px;margin-bottom:6px">'
     +'<input type="text" id="op-pt-naam" placeholder="Naam '+esc(pt.enkel)+'" style="flex:2;background:var(--card);border:1px solid var(--border2);border-radius:6px;padding:7px 11px;font-size:13px">'
     +'<input type="text" id="op-pt-leeftijd" placeholder="Leeftijd" style="flex:1;background:var(--card);border:1px solid var(--border2);border-radius:6px;padding:7px 11px;font-size:13px">'
@@ -233,6 +236,7 @@ function renderOpening(){
     +(isMaatschap()?'<div style="display:flex;gap:8px;margin-bottom:6px"><input type="text" id="op-pt-winstaandeel" placeholder="Winstaandeel deze maat (%)" style="flex:1;background:var(--card);border:1px solid var(--border2);border-radius:6px;padding:7px 11px;font-size:13px"></div>':'')
     +'<div id="op-pt-entiteiten" style="font-size:12px;color:var(--muted);margin-bottom:8px">Gekoppelde entiteiten: <span style="font-style:italic">laden...</span></div>'
     +'<button id="op-pt-toevoegen" style="background:var(--teal);color:#fff;border:none;padding:7px 14px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600">+ Toevoegen</button>'
+    +'<button id="op-pt-annuleren" style="display:none;margin-left:8px;background:transparent;border:1px solid var(--border2);padding:7px 14px;border-radius:6px;cursor:pointer;font-size:13px">Annuleren</button>'
     +'<div id="op-pt-err" style="display:none;color:var(--red);font-size:12px;margin-top:.5rem"></div>'
     +'</div>'
     +'<div id="op-voltooien-err" style="display:none;color:var(--red);font-size:13px;margin-bottom:.75rem;max-width:640px"></div>'
@@ -249,7 +253,10 @@ function bindOpeningScreen(){
   async function laadOpeningEntiteiten(){
     var lijstEl=ge('op-gs-lijst');
     if(!lijstEl)return;
-    var rows=await fetch(WORKER+'/mna/entiteiten/'+S.code).then(function(r){return r.json();}).catch(function(){return [];});
+    var sessie=S,code=S.code;
+    var rows=await fetch(WORKER+'/mna/entiteiten/'+code).then(function(r){return r.json();}).catch(function(){return [];});
+    // Een laat antwoord voor een vorige sessie/code of een vervangen scherm raakt niets.
+    if(S!==sessie||S.code!==code||!lijstEl.isConnected)return;
     S._entiteiten=rows||[];
     if(!rows||!rows.length){lijstEl.innerHTML='<span style="font-style:italic">Nog geen entiteiten toegevoegd.</span>';}
     else{
@@ -270,18 +277,104 @@ function bindOpeningScreen(){
     }
     var entChkEl=ge('op-pt-entiteiten');
     if(entChkEl){
+      // Tijdens een bewerking: aangevinkte keuze overnemen; een koppeling met een zojuist
+      // verwijderde entiteit vervalt (de server ontkoppelt die al), andere koppelingen blijven.
+      if(ptBewerk){
+        var vorigZichtbaar=ptChecks().map(function(c){return c.value;});
+        var nuIds=(rows||[]).map(function(r){return String(r.id);});
+        ptBewerk.ids=ptHuidigeIds(ptBewerk).filter(function(id){return nuIds.indexOf(id)>=0||vorigZichtbaar.indexOf(id)<0;});
+      }
       if(!rows||!rows.length){entChkEl.innerHTML='Gekoppelde entiteiten: <span style="font-style:italic">geen entiteiten toegevoegd — deze '+esc(getPartnerTerm().enkel)+' geldt dan voor het hele traject.</span>';}
       else{
         entChkEl.innerHTML='Gekoppelde entiteiten:<div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:4px">'
           +rows.map(function(r){return '<label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" class="op-pt-ent-chk" value="'+esc(r.id)+'"> '+esc(r.naam)+'</label>';}).join('')
           +'</div>';
+        if(ptBewerk)ptZetChecks(ptBewerk.ids);
       }
     }
   }
+
+  // Bewerken (productpunt 18, 13 okt 2026), zelfde regels als toonPartnersModal in mna/04: hetzelfde
+  // formulier, voorgevuld uit de laatst gelezen rij; opslaan stuurt het bestaande id naar dezelfde
+  // POST /mna/partners (update van die rij, 404 bij onbekend id). Geen verwijderen + opnieuw
+  // aanmaken, geen nieuwe route. Entiteit-id's zonder checkbox en het winstaandeel zonder invoerveld
+  // gaan ongewijzigd mee. Een antwoord telt alleen voor dezelfde sessie (S), code en rol en een
+  // scherm dat nog in beeld is; succes alleen na HTTP 2xx met ok:true en hetzelfde id, daarna wordt
+  // de lijst opnieuw van de server gelezen. Een intussen gestarte nieuwere bewerking blijft staan.
+  var ptBewerk=null,ptRijen=[],ptLaadNr=0,ptKnop=ge('op-pt-toevoegen');
+  var PT_VELDEN=[['op-pt-naam','naam'],['op-pt-leeftijd','leeftijd'],['op-pt-verandering','veranderbereidheid'],['op-pt-opvolging','opvolgingskandidaat'],['op-pt-omzet','omzet_incl_team'],['op-pt-winstaandeel','winstaandeel_pct']];
+  function ptChecks(){return Array.prototype.slice.call(document.querySelectorAll('.op-pt-ent-chk'));}
+  function ptZetChecks(ids){ptChecks().forEach(function(c){c.checked=ids.indexOf(c.value)>=0;});}
+  // Aangevinkte entiteiten plus de oorspronkelijke koppelingen waarvoor geen checkbox in beeld is.
+  function ptHuidigeIds(bewerk){
+    var chks=ptChecks(),zichtbaar=chks.map(function(c){return c.value;});
+    return chks.filter(function(c){return c.checked;}).map(function(c){return c.value;}).concat(bewerk.ids.filter(function(id){return zichtbaar.indexOf(id)<0;}));
+  }
+  function ptToonModus(){
+    var st=ge('op-pt-bewerk-status'),an=ge('op-pt-annuleren'),btn=ge('op-pt-toevoegen');
+    if(!st||!an||!btn||btn!==ptKnop)return; // scherm vervangen: nooit een ander formulier aanpassen
+    st.style.display=ptBewerk?'block':'none';st.textContent=ptBewerk?'Bewerken: '+ptBewerk.naam:'';
+    an.style.display=ptBewerk?'inline-block':'none';
+    if(!btn.disabled)btn.textContent=ptBewerk?'Opslaan':'+ Toevoegen';
+  }
+  function ptVulFormulier(waarden,ids){
+    PT_VELDEN.forEach(function(v,i){var el=ge(v[0]);if(el)el.value=waarden[i];});
+    ptZetChecks(ids);
+  }
+  function ptStartBewerk(id){
+    if(!ptKnop||!ptKnop.isConnected)return;
+    var errEl=ge('op-pt-err');errEl.style.display='none';
+    var rij=ptRijen.find(function(r){return r&&String(r.id)===id;});
+    if(!rij){errEl.textContent='Deze '+getPartnerTerm().enkel+' staat niet meer in de lijst.';errEl.style.display='block';return;}
+    // Onopgeslagen invoer van vóór de eerste Bewerken-klik komt terug bij Annuleren.
+    var vorig=ptBewerk?ptBewerk.vorig:{waarden:PT_VELDEN.map(function(v){var el=ge(v[0]);return el?el.value:'';}),ids:ptChecks().filter(function(c){return c.checked;}).map(function(c){return c.value;})};
+    ptBewerk={id:rij.id,naam:String(rij.naam==null?'':rij.naam),ids:(Array.isArray(rij.entiteit_ids)?rij.entiteit_ids:[]).map(String),winst:rij.winstaandeel_pct==null?'':String(rij.winstaandeel_pct),vorig:vorig};
+    ptVulFormulier(PT_VELDEN.map(function(v){return rij[v[1]]==null?'':String(rij[v[1]]);}),ptBewerk.ids);
+    ptToonModus();
+  }
+  async function ptSlaBewerkingOp(btn){
+    var bewerk=ptBewerk,sessie=S,code=S.code,rol=S.rol;
+    var errEl=ge('op-pt-err');errEl.style.display='none';
+    var waarde=function(id){return ge(id).value.trim();};
+    var naam=waarde('op-pt-naam');
+    if(!naam){errEl.textContent='Naam is verplicht.';errEl.style.display='block';return;}
+    var winstEl=ge('op-pt-winstaandeel');
+    var body={id:bewerk.id,naam:naam,leeftijd:waarde('op-pt-leeftijd'),veranderbereidheid:waarde('op-pt-verandering'),opvolgingskandidaat:waarde('op-pt-opvolging'),omzet_incl_team:waarde('op-pt-omzet'),winstaandeel_pct:winstEl?winstEl.value.trim():bewerk.winst,entiteit_ids:ptHuidigeIds(bewerk)};
+    btn.disabled=true;btn.textContent='...';
+    var res=await fetch(WORKER+'/mna/partners/'+code,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
+      .then(function(x){return x.json().then(function(d){return {http:!!x.ok,status:x.status,d:d&&typeof d==='object'?d:{}};},function(){return {http:!!x.ok,status:x.status,d:{}};});})
+      .catch(function(){return {http:false,status:0,d:{}};});
+    if(S!==sessie||S.code!==code||S.rol!==rol||!btn.isConnected)return;
+    var gelukt=res.http&&res.d.ok===true&&res.d.id===bewerk.id;
+    btn.disabled=false;
+    if(gelukt){
+      // Alleen de bewerking die nog open staat sluiten; een nieuwere bewerking of Annuleren blijft staan.
+      if(ptBewerk===bewerk){ptBewerk=null;ptVulFormulier(PT_VELDEN.map(function(){return '';}),[]);}
+      ptToonModus();laadOpeningPartners();return;
+    }
+    ptToonModus();
+    // Invoer blijft staan; bij een intussen gestarte andere bewerking wordt die niet aangeraakt.
+    var fout=res.status===401||res.status===403?'Geen toestemming om deze '+getPartnerTerm().enkel+' te bewerken.':(typeof res.d.error==='string'&&res.d.error)||'Fout bij opslaan';
+    errEl.textContent=(ptBewerk!==bewerk?'Opslaan van '+bewerk.naam+' mislukt: ':'')+fout;
+    errEl.style.display='block';
+  }
+  var ptAnnulerenBtn=ge('op-pt-annuleren');
+  if(ptAnnulerenBtn)ptAnnulerenBtn.onclick=function(){
+    if(!ptBewerk)return;
+    var vorig=ptBewerk.vorig;ptBewerk=null;
+    ptVulFormulier(vorig.waarden,vorig.ids);
+    ge('op-pt-err').style.display='none';
+    ptToonModus();
+  };
+
   async function laadOpeningPartners(){
     var lijstEl=ge('op-pt-lijst');
     if(!lijstEl)return;
-    var rows=await fetch(WORKER+'/mna/partners/'+S.code).then(function(r){return r.json();}).catch(function(){return [];});
+    var nr=++ptLaadNr,sessie=S,code=S.code;
+    var rows=await fetch(WORKER+'/mna/partners/'+code).then(function(r){return r.json();}).catch(function(){return [];});
+    // Alleen het laatst gestarte leesverzoek, in dezelfde sessie en op het nog getoonde scherm, telt.
+    if(nr!==ptLaadNr||S!==sessie||S.code!==code||!lijstEl.isConnected)return;
+    ptRijen=Array.isArray(rows)?rows:[];
     if(!rows||!rows.length){lijstEl.innerHTML='<span style="font-style:italic">Nog geen '+esc(getPartnerTerm().meer)+' toegevoegd.</span>';return;}
     lijstEl.style.fontStyle='normal';
     lijstEl.innerHTML=rows.map(function(r){
@@ -295,9 +388,13 @@ function bindOpeningScreen(){
         +(r.winstaandeel_pct?'<div style="font-size:11px;color:var(--muted)">Winstaandeel: '+esc(r.winstaandeel_pct)+'%</div>':'')
         +(entNamen?'<div style="font-size:11px;color:var(--teal)">'+esc(entNamen)+'</div>':'')
         +'</div>'
+        +'<button class="op-pt-bewerk" data-id="'+esc(r.id)+'" style="background:transparent;border:1px solid var(--border2);color:var(--teal);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px">Bewerken</button>'
         +'<button class="op-pt-verwijder" data-id="'+esc(r.id)+'" style="background:transparent;border:1px solid var(--border2);color:var(--red);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px">Verwijderen</button>'
         +'</div>';
     }).join('');
+    lijstEl.querySelectorAll('.op-pt-bewerk').forEach(function(btn){
+      btn.onclick=function(){ ptStartBewerk(btn.dataset.id); };
+    });
     lijstEl.querySelectorAll('.op-pt-verwijder').forEach(function(btn){
       btn.onclick=async function(){
         await fetch(WORKER+'/mna/partners/'+S.code,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({actie:'verwijderen',id:btn.dataset.id})});
@@ -320,6 +417,7 @@ function bindOpeningScreen(){
   var ptToevoegenBtn=ge('op-pt-toevoegen');
   if(ptToevoegenBtn)ptToevoegenBtn.onclick=async function(){
     var btn=this;
+    if(ptBewerk)return ptSlaBewerkingOp(btn);
     var naamEl=ge('op-pt-naam'),leeftijdEl=ge('op-pt-leeftijd'),verEl=ge('op-pt-verandering'),opvEl=ge('op-pt-opvolging'),omzetEl=ge('op-pt-omzet'),winstEl=ge('op-pt-winstaandeel');
     var errEl=ge('op-pt-err');errEl.style.display='none';
     var naam=naamEl.value.trim();
@@ -327,8 +425,9 @@ function bindOpeningScreen(){
     var entIds=Array.prototype.slice.call(document.querySelectorAll('.op-pt-ent-chk:checked')).map(function(c){return c.value;});
     btn.disabled=true;btn.textContent='...';
     var r=await fetch(WORKER+'/mna/partners/'+S.code,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({naam:naam,leeftijd:leeftijdEl.value.trim(),veranderbereidheid:verEl.value.trim(),opvolgingskandidaat:opvEl.value.trim(),omzet_incl_team:omzetEl.value.trim(),winstaandeel_pct:winstEl?winstEl.value.trim():'',entiteit_ids:entIds})}).then(function(x){return x.json();}).catch(function(){return {};});
-    btn.disabled=false;btn.textContent='+ Toevoegen';
-    if(r.ok){naamEl.value='';leeftijdEl.value='';verEl.value='';opvEl.value='';omzetEl.value='';if(winstEl)winstEl.value='';document.querySelectorAll('.op-pt-ent-chk').forEach(function(c){c.checked=false;});laadOpeningPartners();}
+    btn.disabled=false;btn.textContent='+ Toevoegen';ptToonModus();
+    // Een laat toevoeg-antwoord wist een intussen gestarte bewerking niet.
+    if(r.ok){if(!ptBewerk){naamEl.value='';leeftijdEl.value='';verEl.value='';opvEl.value='';omzetEl.value='';if(winstEl)winstEl.value='';document.querySelectorAll('.op-pt-ent-chk').forEach(function(c){c.checked=false;});}laadOpeningPartners();}
     else{errEl.textContent=r.error||'Fout bij opslaan';errEl.style.display='block';}
   };
   voltooienBtn.onclick=async function(){
@@ -630,7 +729,7 @@ function renderMain(){
     var notitieReadOnly=isKoper()||(isTussen()&&f.id==='financieel');
     var notHtml='<div class="panel"><div class="sec-hdr">Notities (intern)</div>'
       +(notitieReadOnly?'<div style="font-size:13px;color:var(--mid);font-style:italic">'+(S.notities[f.id]||'Geen notities.')+'</div>'
-        :'<textarea id="notitie_'+f.id+'" style="width:100%;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:9px 11px;font-family:IBM Plex Sans,sans-serif;font-size:13px;color:var(--sub);resize:vertical;min-height:70px;outline:none" placeholder="Interne bevindingen en aandachtspunten..." oninput="schedSave()">'+(S.notities[f.id]||'')+'</textarea>')
+        :'<textarea id="notitie_'+f.id+'" style="width:100%;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:9px 11px;font-family:IBM Plex Sans,sans-serif;font-size:13px;color:var(--sub);resize:vertical;min-height:70px;outline:none" placeholder="Interne bevindingen en aandachtspunten..." oninput="notitieEdit(this)">'+(S.notities[f.id]||'')+'</textarea>')
       +'<div style="display:flex;align-items:center;gap:.75rem;margin-top:.3rem"><div style="font-size:11px;color:var(--muted)">'+(notitieReadOnly?'':'Wijzigingen worden automatisch opgeslagen.')+'</div><div id="save-ind" class="save-indicator">&#10003; Opgeslagen</div></div>'
       +choiceLogHtml
       +'</div>';
@@ -727,9 +826,13 @@ function renderMain(){
     +'<div style="display:flex;align-items:center;gap:8px">'
     +'<span style="font-size:11px;color:var(--muted)">'+esc(trajNaamWeergave)+'</span>'
     +'<button class="btn-ghost btn-sm" onclick="saveCurrent();S.screen=\'handleiding\';renderApp()">&#128214; Handleiding</button>'
+    +legUitKnop('fase')
     +'<button class="btn-ghost btn-sm" onclick="window.print()">PDF</button>'
     +'</div></div>'
     +lockedBanner
+    // MASTER #91 F5 (28 okt 2026): verkopersreview van het concept-IM (mna/14) — alleen de verkoper, en
+    // alleen zodra de adviseur een versie heeft gedeeld; anders een lege string.
+    +renderImReviewVerkoper()
     // Juridische documenten (19 aug 2026, op verzoek Marcel: NDA/LoI/etc. waren voor verkoper/koper
     // alleen zichtbaar op het openingsscherm (renderCover, S.screen='cover'), dat na de eerste keer
     // inloggen niet meer bezocht wordt — dus feitelijk onvindbaar tijdens het reguliere invullen.
@@ -751,12 +854,27 @@ function renderMain(){
     // Productpunt 3 (9 okt 2026): financiële broncontrole (mna/09) — alleen verkoper/begeleider in fase
     // Financieel; de functie zelf geeft voor koper/andere fases een lege string en doet dan geen verzoek.
     +renderFinancieleBroncontrole(f.id)
+    // MASTER #91 F3 (28 okt 2026): kolommenbalans en exploitatieoverzicht (mna/15), alleen fase Financieel.
+    +renderKolommenbalans(f.id)
+    // MASTER #91 fase B: normalisaties, prognose en kerncijfers (mna/16), alleen fase Financieel.
+    +renderFinancieleAnalyse(f.id)
+    // MASTER #91 fase C: verdienmodel, klanten, werksoort en tarieven (mna/17), alleen fase Commercieel.
+    +renderKlantanalyse(f.id)
+    // MASTER #91 fase D: personeel (Partners & personeel), huisvesting (Juridisch & fiscaal), IT (mna/18).
+    +renderOrganisatie(f.id)
+    // MASTER #91 fase E v4b: beeldmateriaal voor het IM (mna/19), alleen fase Strategisch & markt.
+    +renderImBeeld(f.id)
+    // MASTER #91 fase E v4: contracten en juridische aandachtspunten (mna/20), alleen fase Juridisch & fiscaal.
+    +renderJuridisch(f.id)
     // Productpunt 5 (10 okt 2026): read-only groepsbeeld (mna/11) uit de al geladen S._mnaData — alleen
     // verkoper/begeleider in fase Financieel; geen verzoek, geen opslag, geen berekening.
     +renderGroepsbeeld(f.id)
     // Productpunt 4 (10 okt 2026): juridische broncontrole (mna/10) — alleen verkoper/begeleider in fase
     // Juridisch; voor koper/andere fases een lege string en dan geen verzoek.
     +renderJuridischeBroncontrole(f.id)
+    // MASTER #91 F2 (28 okt 2026): transactievorm (mna/13) — alleen verkoper/begeleider in fase
+    // Strategisch & markt; voor koper/andere fases een lege string en dan geen verzoek.
+    +renderTransactiemodel(f.id)
     +extraHtml+nav+'</div>';
 }
 
@@ -1720,11 +1838,21 @@ function bindAll(){
       +'<div class="ai-body" style="padding:0"></div>';
     out.querySelector('.ai-body').appendChild(wSaneerRapport(tekstHtml));
   }
+  // Productpunt 16 (13 okt 2026): alleen HTTP 2xx met een array telt als geschiedenis; een leesfout
+  // (netwerk, 401/403/5xx, onleesbaar) geeft een eerlijke melding met opnieuw proberen, nooit stil
+  // "geen eerdere versies". Een antwoord geldt alleen voor dezelfde S/code en dezelfde weergave.
+  function wHistLeesfout(histEl, tekst, opnieuw){
+    histEl.innerHTML='<div style="font-size:12px;color:var(--muted);margin-top:1rem;padding:.5rem .75rem;background:var(--card);border-radius:var(--r)">'+tekst+' <button class="btn-ghost btn-sm w-hist-opnieuw" style="font-size:11px">Opnieuw proberen</button></div>';
+    var rb=histEl.querySelector('.w-hist-opnieuw');if(rb)rb.addEventListener('click',function(){opnieuw();});
+  }
   async function wLaadGeschiedenis(){
     var histEl=ge('w-ai-hist');if(!histEl)return;
+    var sessie=S,code=S.code;
     try{
-      var lijst=await fetch(WORKER+'/mna/versies/'+S.code+'/waarderingsrapport').then(function(r){return r.json();});
-      if(!Array.isArray(lijst)||lijst.length<2){histEl.innerHTML='';return;}
+      var lijst=await fetch(WORKER+'/mna/versies/'+S.code+'/waarderingsrapport').then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();});
+      if(!Array.isArray(lijst))throw new Error('onleesbaar antwoord');
+      if(S!==sessie||S.code!==code||ge('w-ai-hist')!==histEl)return;
+      if(lijst.length<2){histEl.innerHTML='';return;}
       var actueel=dvBerekenWaardering();
       var vorige=lijst.slice(1);
       histEl.innerHTML='<div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:1rem 0 .5rem;padding-top:.75rem;border-top:1px solid var(--border)">Eerdere versies ('+vorige.length+')</div>'
@@ -1751,7 +1879,10 @@ function bindAll(){
           }
         });
       });
-    }catch(e){histEl.innerHTML='';}
+    }catch(e){
+      if(S!==sessie||S.code!==code||ge('w-ai-hist')!==histEl)return;
+      wHistLeesfout(histEl,'Eerdere versies van het waarderingsrapport konden niet worden geladen.',wLaadGeschiedenis);
+    }
   }
   if(wAiBtn)wAiBtn.addEventListener('click',async function(){
     var out=ge('w-ai-out');if(!out)return;
@@ -1858,22 +1989,35 @@ function bindAll(){
       toast('✓ AI-waardering (second opinion) is gegenereerd','ok');
     }catch(e){out2.innerHTML='<div style="color:var(--red);font-size:13px">Fout: '+esc(e.message)+'</div>';wAi2Btn.disabled=false;wAi2Btn.textContent='🤖 Genereer AI-waardering (second opinion)';toast('Genereren van AI-waardering is mislukt','err');}
   });
-  // Eerder gegenereerd waarderingsrapport ophalen (server, niet meer lokaal) en tonen
-  if(wAiBtn){
-    (async function(){
-      try{
-        var lijst=await fetch(WORKER+'/mna/versies/'+S.code+'/waarderingsrapport').then(function(r){return r.json();});
-        if(!Array.isArray(lijst)||!lijst.length)return;
-        var laatste=lijst[0];
-        var vd=await fetch(WORKER+'/mna/versie/'+laatste.id+'?code='+encodeURIComponent(S.code)).then(function(r){return r.json();});
-        if(vd&&vd.tekst){
-          wToonRapport(vd.tekst, vd.created_at, vd.versie);
-          wAiBtn.textContent='↻ Opnieuw genereren';
-          wLaadGeschiedenis();
-        }
-      }catch(e){}
-    })();
+  // Eerder gegenereerd waarderingsrapport ophalen (server, niet meer lokaal) en tonen. Productpunt 16:
+  // een leesfout is "onbekend", niet "nog geen rapport" — eerlijke melding met opnieuw proberen in
+  // w-ai-hist; niets gegenereerd of gewist. Een antwoord na een sessie-/codewissel, een nieuwe weergave
+  // of terwijl intussen een rapport wordt gegenereerd/getoond, doet niets.
+  async function wLaadLaatsteRapport(){
+    var sessie=S,code=S.code,knop=wAiBtn;
+    function actueel(){var o=ge('w-ai-out');return S===sessie&&S.code===code&&ge('w-ai-btn')===knop&&!knop.disabled&&!(o&&o.style.display==='block');}
+    function leesfout(){var h=ge('w-ai-hist');if(h&&actueel())wHistLeesfout(h,'Eerder opgeslagen waarderingsrapporten konden niet worden geladen; er is niets gewijzigd of gegenereerd.',wLaadLaatsteRapport);}
+    var lijst;
+    try{
+      lijst=await fetch(WORKER+'/mna/versies/'+S.code+'/waarderingsrapport').then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();});
+      if(!Array.isArray(lijst))throw new Error('onleesbaar antwoord');
+    }catch(e){leesfout();return;}
+    if(!actueel())return;
+    var h0=ge('w-ai-hist');if(h0)h0.innerHTML='';
+    if(!lijst.length)return;
+    var laatste=lijst[0];
+    var vd;
+    try{
+      vd=await fetch(WORKER+'/mna/versie/'+laatste.id+'?code='+encodeURIComponent(S.code)).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();});
+    }catch(e){leesfout();return;}
+    if(!actueel())return;
+    if(vd&&vd.tekst){
+      wToonRapport(vd.tekst, vd.created_at, vd.versie);
+      wAiBtn.textContent='↻ Opnieuw genereren';
+      wLaadGeschiedenis();
+    }
   }
+  if(wAiBtn)wLaadLaatsteRapport();
   var opslaanBtn=ge('opslaan-btn');if(opslaanBtn)opslaanBtn.onclick=function(){
     saveCurrent(function(){
       var btn=ge('opslaan-btn');
@@ -1980,10 +2124,16 @@ function bindAll(){
       });
       var nel=ge('notitie_'+f.id);if(nel)S.notities[f.id]=nel.value;
       clearTimeout(S.saveTimer);
+      // Productpunt 37: alleen een entiteitsave werkt S._groepData bij; de groepswaarden na een groepsrij-save
+      // zijn alleen voor het groepsbeeldpaneel (anders overschrijven ze net ingevoerde groepswaarden).
+      var entVerstuurd=S._actieveEntiteit||null;
+      var navPl=metBasis({code:S.code,fase_id:f.id,data_json:getDataForFase(f.id),checklist_json:getChecklistForFase(f.id),notitie:S.notities[f.id]||'',entiteit_id:S._actieveEntiteit||undefined}),navSessie=S;
       fetch(WORKER+'/mna/save',{method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({code:S.code,fase_id:f.id,data_json:getDataForFase(f.id),checklist_json:getChecklistForFase(f.id),notitie:S.notities[f.id]||'',entiteit_id:S._actieveEntiteit||undefined})
-      }).then(function(r){return r.json();}).then(function(d){
-        if(d&&d.groepswaarden)Object.keys(d.groepswaarden).forEach(function(k){var v=d.groepswaarden[k];if(v&&v.value!==undefined)S._groepData[f.id+'_'+k]=v.value;});
+        body:JSON.stringify(navPl)
+      }).then(function(r){return r.json();}).then(null,function(){return null;}).then(function(d){
+        // N-154: ook bij een netwerkfout (d null), zodat de basis van deze opslag wordt afgemeld.
+        naOpslag(navPl,d,navSessie);
+        if(entVerstuurd&&d&&d.groepswaarden)Object.keys(d.groepswaarden).forEach(function(k){var v=d.groepswaarden[k];if(v&&v.value!==undefined)S._groepData[f.id+'_'+k]=v.value;});
       }).catch(function(){});
     }
     var newFase=parseInt(el.dataset.fi);
@@ -2186,8 +2336,9 @@ function bindAll(){
     gesprekCoverBtn.onclick=function(){ openBgGesprekForm(null); };
   }
 
-      // Laad concept bij openen
-      fetch(WORKER+'/mna/gesprek/concept/'+S.code)
+      // Laad concept bij openen. N-148 (28 okt 2026): alleen de begeleider heeft een gespreksconcept; voor
+      // verkoper en koper gaf dit verzoek bij elke paginalading een 403 (door de backend terecht geweigerd).
+      if(isTussen()) fetch(WORKER+'/mna/gesprek/concept/'+S.code)
         .then(function(r){return r.json();})
         .then(function(concept){
           if(!concept)return;

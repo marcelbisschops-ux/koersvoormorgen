@@ -28,12 +28,12 @@ Stand: 7 okt 2026, branch `codex/weekend-option2`. Dit bestand beschrijft de hui
 - **Bedrijf en adres** (footer) en de **alt-tekst van het logo** worden geëscapet. Een attribuut- of title-injectie is daardoor niet mogelijk.
 - **Logo**: wordt alleen getoond bij een `https://`-URL zonder spaties, quotes of `<>`, zoals de bestaande R2-logoroute `…/adviseur/logo/{id}?v=…`. Een `data:image/(png|jpeg|webp|gif|svg+xml);base64,…` mag ook. Bij alle andere waarden komt er geen logo: `javascript:`, `data:text/html`, `http:` en waarden met quotes. De waarde wordt geëscapet.
 - **Referentie in de kop**: alleen `Trajectreferentie: TR-XXXX-XXXX-XXXX-XXXX` uit `S.traject.publieke_referentie`. Die komt uit de backend-DTO van `GET/POST /mna/traject/{code}`. De referentie wordt alleen getoond als de waarde precies dezelfde vorm heeft als in backend worker/36. Ontbreekt de waarde, is hij leeg of heeft hij een andere vorm (bijvoorbeeld de vorm van een code)? Dan staat er **geen** referentie. Er is nooit een terugval op `S.code`, `id`, `koper_code` of `tussen_code`.
-- Ongewijzigd: de reliance-pop-up en audit (`toonRelianceAkkoord`/`secAuditLog`), het CONCEPT-watermerk (niet bij teaser/memo), de statusregel bij memo, `printHtmlDocument`, de auth en rolgrenzen.
+- Ongewijzigd: de reliance-pop-up en audit (`toonRelianceAkkoord`/`secAuditLog`), het CONCEPT-watermerk (niet bij de teaser), de statusregel bij memo, `printHtmlDocument`, de auth en rolgrenzen. Sinds 14 okt 2026 (B2, zie onder) krijgt het verkoopmemorandumconcept (`memo`) wél het watermerk; alleen `memo_definitief` niet. Sinds 17 okt 2026 (productpunt 14, zie onder) heeft ook een definitieve MOU/LoI/NDA geen watermerk, maar alleen na servercontrole van de printtekst. Een docType alleen zet het watermerk nooit uit.
 
 ## Grenzen en open punten
 
 - **Al verstuurde of ondertekende documenten** (Signhost-PDF's, R2, documentversies) en eerder opgeslagen `rapport_tekst` worden **niet** herschreven. Eerder geprinte of verspreide documenten kunnen de oude code nog bevatten. Of codes geroteerd moeten worden, is een aparte beslissing.
-- **Titels die aanroepers zelf opbouwen**: een paar aanroepen in `mna/04` gebruiken `kantoor_naam||S.code` als titel voor MoU, verkoopmemorandum en closing-checklist. Als `kantoor_naam` ontbreekt, kan de code dus nog via de *titel* in de print komen. Dat valt buiten deze wijziging (`mna/04` hoort niet bij de scope) en staat open als vervolgpunt.
+- **Titels die aanroepers zelf opbouwen**: een paar aanroepen in `mna/04` gebruiken `kantoor_naam||S.code` als titel voor MoU en closing-checklist. Als `kantoor_naam` ontbreekt, kan de code dus nog via de *titel* in de print komen. Dat staat open als vervolgpunt. Het verkoopmemorandum valt sinds B2 (14 okt 2026) niet meer terug op `S.code`: zonder `kantoor_naam` is de titel alleen "Verkoopmemorandum".
 - **Backend worker/36** zet `<b>`/`<br>` uit de bron niet om. In de verstuurde PDF blijven die als geëscapete tekst zichtbaar. De printweergave toont ze als opmaak. De backend is hier alleen-lezen en is niet aangepast.
 - Een eerdere handmatige bevinding (opmaakmarkers in een document) is met deze formatterproeven **niet** als volledig opgelost aangetoond. De oorspronkelijke plek is historisch niet genoeg bewezen.
 
@@ -56,7 +56,7 @@ Stand: 7 okt 2026, branch `codex/weekend-option2`. Dit bestand beschrijft de hui
 - Een blur die ontstaat doordat de composer zelf het veld vervangt (Chromium kan die vuren), start geen opslag.
 - "AI-concept" vraagt niets aan zolang het onderdeel onopgeslagen tekst heeft. Anders zou het teruggezette concept het AI-resultaat op het scherm verbergen. Er is geen automatische AI-aanroep of verzending.
 - "Finaliseer & exporteer" waarschuwt eerst als er onopgeslagen wijzigingen zijn.
-- Print/PDF en Signhost lezen, zoals voorheen, wat op het scherm staat.
+- Print/PDF en Signhost lezen, zoals voorheen, wat op het scherm staat. Uitzondering sinds 17 okt 2026: Print/PDF van een definitieve MOU/LoI/NDA gebruikt de geverifieerde servertekst (productpunt 14, zie onder).
 
 ### Grenzen en open punten
 
@@ -128,6 +128,163 @@ Ongewijzigd: snapshot/pending per fase/entiteit in `saveCurrent`, rol- en vergre
 - fouten op het `saveCurrent`-pad, een geannuleerde debounce (uitlogpad), een entiteitwissel en een groepsniveau-veld met twee bevestigingen.
 
 Dit is synthetisch bewijs in `node:vm`, geen browser-, staging- of productiebewijs. Wat de koper ziet vóór en na de financiële vrijgave bepaalt de backend. Dat wordt na de release in de volledige bestaande LIVE-targetflow gecontroleerd en valt buiten deze frontendtest.
+
+**Vervolg fasenotitie (15 okt 2026).** De textarea `notitie_<fase>` (mna/06) had alleen `oninput="schedSave()"`. `saveCurrent` las `S.notities[fase]` pas na de debounce uit de DOM. Een `renderApp` in die tussentijd tekende de textarea opnieuw uit de oude `S.notities`, waarna de oude notitie werd verstuurd en door de server als geslaagd bevestigd. Nu roept de textarea `notitieEdit(this)` aan (mna/02, naast `userEdit`). Die zet de waarde direct in `S.notities` van de huidige sessie/fase en roept daarna `schedSave` aan. De poorten zijn dezelfde als bij `userEdit`/`saveCurrent`: niet voor de koper, niet voor de begeleider in Financieel en niet bij een vergrendeld traject. De pending/snapshot/entiteitlogica in `saveCurrent` is ongewijzigd. De test controleert (synthetisch, `node:vm`): notitie getypt → hertekening vóór de 1200 ms-timer → het verzoek bevat de nieuwe notitie → "Opgeslagen ✓" pas na het antwoord. Daarnaast: koper/begeleider-in-Financieel/vergrendeld muteren `S.notities` niet, en de gewone opslag (notitie zonder hertekening, alleen veldinvoer) blijft ongewijzigd.
+
+### Vervolg: leesfouten in de documentgeschiedenis (productpunt 16, 13 okt 2026)
+
+**Oorzaak.** De backend (`GET /mna/versies/:code[/type]`, backendtaak T20261013-083323-d1cc, commit `3f46b10`) geeft bij een DB-leesfout nu een veilige 5xx. `200 []` betekent alleen nog een echt lege historie. De frontend maakte dat onderscheid niet. Sommige leespaden vingen fouten af als `[]`. Andere lazen de JSON zonder HTTP-controle of arraycontrole. Gevolgen:
+
+- `toonDocWaarschuwing` (mna/05) gaf dan een onterechte blokkade ("BEM nog niet aangemaakt"). Of er kwam geen waarschuwing, waarna `onDoorgaan` (genereren) direct startte.
+- `bgToonOfGenereerDoc` (mna/04) zag "geen versie" en ging naar het genereerpad, terwijl er al een versie kon bestaan.
+- `laadBgDocs` (mna/04) toonde bij `{error}` "Nog geen documenten.".
+- `laadPartijDocs` (mna/05) en het waarderingsrapport (mna/06) verdwenen stil. Het rapport leek dan "nog niet gegenereerd".
+- De LoI-melding in `bgDoc` zei "geen eerder dealvoorstel gevonden".
+
+**Huidig gedrag.**
+
+- Eén kleine helper `leesVersieLijst(url, opts)` in mna/05 wordt ook vanuit mna/04 aangeroepen. Alleen HTTP 2xx met een leesbare array telt als historie. Netwerkfout, 401/403/5xx, ongeldige JSON, `null` of een object gooien een fout. mna/06 doet dezelfde controle inline, omdat `tests/waardering-genereren.mjs` dat fragment los draait. Er zijn geen nieuwe API's, modules of instellingen bijgekomen, en de headers en rolfilters zijn ongewijzigd.
+- **Legitiem `200 []`** volgt overal de bestaande workflow: de bestaande blokkades en waarschuwingen, het genereerpad, "Nog geen documenten" en het lege waarderingsoverzicht.
+- **Bij een leesfout** verschijnt in de huidige context een neutrale melding met "Opnieuw proberen". Er komt geen ruwe foutmelding in beeld. Per plek:
+  - `toonDocWaarschuwing`: een blokkerende modal met alleen de leesfout. Er volgt geen aanwezigheidsoordeel en geen "Toch doorgaan". `onDoorgaan` wordt niet aangeroepen.
+  - `bgToonOfGenereerDoc`: geen documentwaarschuwing en geen generatie.
+  - `laadBgDocs` en `laadPartijDocs`: de melding staat in de documentsectie.
+  - Waarderingsrapport: de melding staat in `w-ai-hist`. Een mislukte lezing van de laatste versie (`/mna/versie/:id`) telt ook als leesfout. Het getoonde rapport blijft staan.
+  - LoI (`bgLeesDealvoorstelCijfers`): de melding zegt dat het dealvoorstel niet gelezen kon worden en dat er geen cijfers zijn overgenomen. De expliciet gevraagde, server-side generatie gaat gewoon door, want die gebruikt deze cijfers niet.
+- Er wordt niets automatisch opgeslagen, leeggemaakt, gegenereerd of verstuurd op basis van een onbekende historie. Getypte en geladen tekst elders op het scherm blijft staan.
+- **Oude antwoorden.** Een antwoord wordt alleen verwerkt als aan alle voorwaarden voor die plek is voldaan:
+  - het `S`-object en de code zijn nog dezelfde (zo nodig ook de rol en het scherm);
+  - de doelsectie wordt nog getoond;
+  - bij `bgToonOfGenereerDoc` en `laadBgDocs`: het is de laatste aanroep (volgnummer). Bij `bgToonOfGenereerDoc` moet ook het eigen "Laden..."-blok nog in `bg-doc-out` staan;
+  - bij het waarderingsrapport: er wordt intussen geen rapport gegenereerd of getoond.
+
+  Anders gebeurt er niets. `bgDoc` stopt na de dealvoorstellezing als de sessie of het traject is gewisseld.
+
+**Grenzen.**
+
+- `bgToonOfGenereerDoc` vervangt, zoals voorheen, bij de klik meteen de inhoud van `bg-doc-out` door "Laden...". Dat gebeurt los van de leesuitkomst.
+- `/mna/versie/:id` (één versie lezen), de dataroomlijst en de Signhost-status zijn niet aangepast, behalve de genoemde lezing van het laatste waarderingsrapport.
+- `marilyn.html` valt buiten de scope. `.pages-dist/` (buildartefact) is niet bijgewerkt.
+
+**Bewijs (sectie I van `tests/document-output-security.mjs`).** De test draait de echte `toonDocWaarschuwing`, `laadPartijDocs`, `bgToonOfGenereerDoc`, `bgLeesDealvoorstelCijfers`, `laadBgDocs`, `wLaadGeschiedenis` en `wLaadLaatsteRapport` met de echte `leesVersieLijst` en `esc`. De DOM en de antwoorden zijn synthetisch. Per functie dekt de test:
+
+- de antwoorden geldig, `200 []`, 500, 401, 403, netwerkfout, ongeldige JSON, `200 {…}` en `200 null`;
+- opnieuw proberen;
+- behoud van getypte tekst en van het getoonde rapport;
+- geen onterechte `onDoorgaan`, generatie of vervolgverzoek;
+- late antwoorden na een sessie-, traject-, rol-, scherm- of weergavewissel, een dubbelklik of een herlaad.
+
+Een statische check eist bovendien dat elke `/mna/versies`-lezing in mna/04, 05 en 06 via de helper of met een HTTP-controle loopt.
+
+Dit is synthetisch bewijs in `node:vm`. Tijdens het bouwen is de suite niet lokaal gedraaid; de bridge voert hem uit via check 26. Browser-, staging- en productiebewijs staan nog open. De frontend gaat alleen samen met de backend naar staging en release; een backend-READY telt niet als product-DONE.
+
+### Vervolg: verkoopmemorandum concept → definitief in de bestaande UI (B2, productpunten 13/14/16, 14 okt 2026)
+
+**Oorzaak.** De backend (B1, `worker/19b-waardering-communicatie.js`, zie `docs/verkoopmemorandum-lifecycle.md` in de backendrepo) kent sinds productpunt 14 de status `definitief`, met snapshot en hash. Het bestaande memorandumvenster in `mna/04` (`toonVerkoopmemoModal`) kon dat niet gebruiken. Het toonde de status als losse tekst, sloeg op met `fetch` zonder HTTP-controle (`.catch → {}`), had geen vaststelling en geen nieuwe conceptversie, en drukte elk memorandum zonder watermerk af. Een 409 van de backend werd alleen als toast getoond.
+
+**Backendcontract (alleen gelezen, niet gewijzigd).**
+
+- `POST /mna/verkoopmemorandum/opslaan` `{code, tekst}`; op een definitief memorandum alleen met `nieuw_concept:true` + `definitief_sha256` (SHA-256, 64 hex, van de actuele definitieve tekst). Antwoord `{ok, status:'bewerkt', tekst_sha256}`, bij een nieuw concept ook `nieuw_concept:true`, `basis_definitief_sha256`, `audit_id`. 409 `DEFINITIEF` of `VEROUDERD`.
+- `POST /mna/verkoopmemorandum/definitief` `{code, tekst_sha256, vastgesteld_door (1–120), tekst}` met `x-tussen-key`. Antwoord `{ok, status:'definitief', definitief_versie, tekst_sha256, audit_id, vastgesteld_door, vastgesteld_op, al_definitief}`. 409 `VEROUDERD`/`GEEN_MEMORANDUM`, 400/401/403/500/503.
+- De hash is SHA-256 over exact de opgeslagen tekst (de backend slaat getrimd op). Het snapshot staat in `mna_wijzigingen` (`type 'verkoopmemorandum_definitief'`, `nieuwe_waarde` = envelop `verkoopmemorandum-lifecycle/1` met `definitief_versie` en `tekst_sha256`). Dat is leesbaar via de bestaande, begeleider-only route `GET /mna/wijzigingen/{code}`.
+- Readiness komt uitsluitend uit `/mna/verkoopmemorandum/genereer`: `readiness.blocking_validations` (400 `ONVOLDOENDE_DATA`; minimale basis omzet3/financieel, fte/partner, niche/strategisch) en `readiness.warnings` (andere fases ontbreken; geen blokkade).
+- De memorandumstatus (`verkoopmemorandum_status`) zit al in de begeleider-DTO van `POST /mna/traject/{code}`.
+
+**Huidig gedrag (`mna/04`).**
+
+- Bovenaan staat "CONCEPT · \<status>" of "DEFINITIEF · versie N". De status komt uit de server. Bij een definitief memorandum leest het venster het snapshot via `/mna/wijzigingen`. Alleen als de hash van dat snapshot gelijk is aan de SHA-256 van de opgeslagen tekst, telt de vaststelling als bevestigd en toont het venster de versie, de vaststeller en de datum. Lukt dat niet (leesfout, afgeschermd, geen of afwijkend snapshot), dan verschijnt een eerlijke melding met "Opnieuw lezen", en Print / PDF krijgt het CONCEPT-watermerk.
+- Readiness: de blokkades en waarschuwingen uit het genereerantwoord worden letterlijk (geëscapet) getoond. De frontend rekent zelf geen readiness uit en blokkeert vaststellen niet op ontbrekende fases.
+- **Opslaan** (`fetchMetTimeout`, 30 s) telt alleen als geslaagd bij HTTP 2xx, leesbare JSON en `ok:true`. Bij een nieuwe conceptversie moet ook `nieuw_concept:true` terugkomen. Daarna nemen `S.traject.verkoopmemorandum_tekst/_status` de bevestigde waarden over.
+- **Definitief vaststellen** is een expliciete handeling: de tekst moet opgeslagen zijn (anders "Sla eerst op"), en er zijn een naam (max. 120 tekens) en een aangevinkte bevestiging nodig. De browser berekent de SHA-256 (WebCrypto) van exact de opgeslagen tekst en stuurt hash, naam en tekst mee. Als definitief getoond wordt het pas na een 2xx met `ok:true`, `status:'definitief'` en dezelfde hash. Daarna is het tekstvak alleen-lezen en verdwijnen Opslaan en Opnieuw genereren.
+- **409, netwerkfout, time-out of een onleesbaar/afwijkend 2xx-antwoord**: de tekst blijft staan, er is niets als opgeslagen of definitief getoond en de melding vraagt om "Opnieuw lezen". Opslaan en vaststellen zijn geblokkeerd tot er opnieuw is gelezen. Er wordt nooit iets geforceerd en er gaat nooit automatisch een `nieuw_concept` mee. "Opnieuw lezen" gebruikt dezelfde trajectaanroep als `refreshData` en neemt alleen de memorandumtekst en -status over. Een eigen tekst die afwijkt, blijft als "Uw eigen tekst" zichtbaar en kan worden teruggezet. Een bekende serverfout (400/401/403/500) mag direct opnieuw geprobeerd worden.
+- **Nieuwe conceptversie**: alleen via de knop. Die opent eerst lokaal een bewerkbaar concept, zonder verzoek. Pas Opslaan stuurt `nieuw_concept:true` + `definitief_sha256`. Het definitieve snapshot blijft op de server staan. Vaststellen of verzenden van een nog niet opgeslagen nieuwe conceptversie kan niet. Annuleren gaat terug naar de definitieve weergave, en de getypte tekst blijft als "Uw eigen tekst" staan.
+- **Dubbelklik**: zolang een opslag, vaststelling of herlezing loopt, worden extra klikken genegeerd en zijn de knoppen uitgeschakeld.
+- **Late antwoorden**: een antwoord wordt alleen verwerkt voor hetzelfde `S`-object, dezelfde code en hetzelfde `S.traject`. Na een sessiewissel (ook met dezelfde code) gebeurt er niets. Na sluiten of heropenen werkt alleen het traject bij met de door de server bevestigde waarde. Er komt dan geen render en geen toast, en de nieuwe weergave en de invoer daarin blijven onaangeroerd.
+- **Print / PDF** (`mna/05`): `memo` (concept) heeft nu het CONCEPT-watermerk plus de bestaande conceptregel. `memo_definitief` heeft geen watermerk en geen conceptregel, met "(definitieve versie N)" in de titel. Dat wordt alleen gebruikt bij een bevestigd snapshot en dan met exact de opgeslagen tekst. De titel valt niet meer terug op `S.code`. De teaser is ongewijzigd.
+- E-mail: bij een definitief memorandum gaat exact de opgeslagen tekst mee (de backend eist dat). Bij een nieuwe, nog niet opgeslagen conceptversie is verzenden verborgen. Bij een concept werkt het zoals voorheen.
+- NDA: "Annuleren" in de NDA-bevestiging gaat, als er al een memorandum is, terug naar de editor met de eigen concepttekst in plaats van het venster te sluiten.
+- Geen autosave en geen automatische vaststelling: openen, heropenen, sluiten en opnieuw lezen versturen nooit opslaan of definitief.
+
+**Bewijs (sectie K van `tests/document-output-security.mjs`).** De test draait de echte `toonVerkoopmemoModal` met de echte `fetchMetTimeout`/`esc`/`bgToonUitvoer` tegen een synthetische backend die het B1-contract volgt, met de hash via `node:crypto`. Hij dekt:
+
+- de reis open → bewerken → opslaan → heropenen → definitief → PDF → heropenen definitief → nieuwe conceptversie → versie 2, waarbij de printaanroep door de echte `printDocNaAkkoord` gaat (watermerk concept vs. definitief);
+- de controle dat niet vastgesteld wordt met onopgeslagen tekst, zonder naam of zonder bevestiging;
+- dubbelklik op opslaan en vaststellen;
+- stale 409 → opnieuw lezen → eigen tekst terug → bewust opslaan en vaststellen;
+- 409 `DEFINITIEF` bij opslaan;
+- koper- en verkopercode (401);
+- 500 met HTML, een netwerkfout, ongeldige JSON en een 2xx met een afwijkende hash;
+- een time-out met een server die toch vastlegde;
+- late antwoorden na een sessiewissel, sluiten en heropenen;
+- backendreadiness (blokkade en waarschuwing, geen eigen frontendreadiness) en genereren op een intussen definitief memorandum;
+- NDA-bevestiging en annuleren;
+- een niet-controleerbaar snapshot (ontbreekt, andere tekst, 500, netwerk, afgeschermd);
+- een statische check: geen interval, browseropslag of force.
+
+De bestaande N-121-proef (`tests/n121-ai-timeouts.mjs`) draait dezelfde functie en blijft ongewijzigd. Dit is synthetisch bewijs in `node:vm`. Tijdens het bouwen is niets lokaal gedraaid (geen shell); de bridge voert de suite uit via check 26. Echte gegenereerde PDF's, browser, staging en productie staan nog open.
+
+**Grenzen.** Readiness is alleen zichtbaar direct na genereren in dezelfde weergave; bij heropenen rekent de frontend die niet zelf na. De volgorde van `mna_wijzigingen` (max. 300 rijen) is van de backend. Bij een traject met meer dan 300 wijzigingen kan het snapshot buiten de lijst vallen, en dan krijgt Print / PDF eerlijk het CONCEPT-watermerk. `.pages-dist/` (buildartefact) is niet bijgewerkt.
+
+### Vervolg: niet-opgeslagen memorandumtekst blijft bij sluiten/heropenen (productpunt 19, 16 okt 2026)
+
+Dit vervolg dekt alleen het nog openstaande criterium uit de acceptatie van 7 okt (§22): conceptbehoud in de memorandumeditor. Het is geen afronding van productpunt 19 als geheel. De aanleiding was een Chromium-proef met de productiecode (`productie19-memo-sluiten.json`). Daarin werd nieuwe, nog niet opgeslagen invoer na sluiten en heropenen vervangen door de opgeslagen brontekst.
+
+- **Waar het concept staat**: alleen in het geheugen van het sessieobject (`S._vmConcept`). Het wordt synchroon bijgewerkt bij elke invoer (`oninput`), bij elke render en bij Sluiten. Er is geen autosave, geen browseropslag, geen nieuwe route en geen verzoek. Uitloggen vervangt `S`, dus het concept is dan weg. Openen in een ander traject (`S.code`) wist het concept; het verschijnt daar nooit.
+- **Heropenen** (ook na hertekening van de flow, bijvoorbeeld na verversen) in dezelfde sessie en hetzelfde traject toont de eigen tekst weer in de editor. Dat gebeurt alleen als de opgeslagen tekst en status gelijk zijn aan die waarop het concept rust. Is een expliciet geopende nieuwe conceptversie op een definitief memorandum nog open, dan komt die ook terug. Een eerder bewaarde melding dat het memorandum verouderd is (409 of onbekende uitkomst), komt mee terug, met "Opnieuw lezen". Opslaan blijft dan geblokkeerd, zoals voorheen.
+- **Gewijzigde basis**: is de opgeslagen tekst of status intussen anders, bijvoorbeeld door een collega of omdat het memorandum definitief is geworden? Dan blijft de opgeslagen of definitieve tekst in de editor staan (definitief: read-only). De eigen tekst komt apart onder "Uw eigen tekst". Een definitieve tekst wordt nooit overschreven.
+- **Opslaan**: een bevestigde opslag (ack) ruimt het concept alleen op als het precies de bevestigde tekst is. Dat geldt ook als het antwoord pas na het sluiten komt. Wat na de klik nog is getypt, blijft staan. Bij een fout of een laat 409 blijft de eigen tekst staan.
+
+**Bewijs** (`tests/document-output-security.mjs`, blok "verkoopmemo conceptbehoud", synthetisch in `node:vm`). Het blok dekt deze gevallen:
+
+- getypt → sluiten → heropenen;
+- hertekening met dezelfde en met een gewijzigde servertekst;
+- opslaan tegenover nieuwere invoer, ook met een late ack na sluiten;
+- een serverfout (500) en een late 409 na sluiten, met daarna opnieuw lezen;
+- een nieuwe sessie en een ander traject;
+- een definitief memorandum met een nieuwe conceptversie en annuleren;
+- een memorandum dat intussen definitief is geworden;
+- dat er geen automatisch verzoek gaat.
+
+Er is tijdens het bouwen niets lokaal gedraaid. Herhaling in een echte browser staat nog open.
+
+### Vervolg: definitieve MOU/LoI/NDA-print uit de geverifieerde serverversie (productpunt 14, frontenddeel, 17 okt 2026)
+
+Status: frontendwijziging, nog niet uitgerold. Productpunt 14 is **niet** af: de gezamenlijke FE/BE-acceptatie op staging en de productieacceptatie volgen nog. Het backenddeel is `GET /mna/tos/document/{id}/printversie` (backend `docs/tos-ontvangers.md`, check 31 van `tests/audit-backend.mjs`).
+
+Wat er mis was: de knop **Print / PDF** in de composer drukte ook een gefinaliseerd, verstuurd of goedgekeurd document altijd met het CONCEPT-watermerk af.
+
+Wat de gebruiker ziet: dezelfde knop. Bij een concept (en elke andere niet-definitieve status) werkt die precies als voorheen: de tekst op het scherm, inclusief onopgeslagen invoer, met CONCEPT-watermerk. Bij de status `exported`, `verstuurd` of `goedgekeurd` gebeurt het volgende:
+
+- `mna/04` (`bgMouPrintDefinitief`) vraagt via de bestaande `bgMouApi` de printversie op. Vooraf worden sessie, sleutel, document-id, profiel, status en versie vastgelegd.
+- `mna/05` (`printTosDefinitief.controleer`) controleert het hele contract: `ok:true`, `document.id`/`doc_type`/`status`/`version` gelijk aan het getoonde document (type `mou`/`loi`/`nda`, definitieve status, versie ≥ 2 als getal), `titel` en een niet-lege `printtekst` als tekst, en `print_hash`, `content_hash` en `manifest_hash` alle drie als 64 kleine hex-tekens. Daarna rekent de browser `print_hash` zelf na: SHA-256 over de `printtekst` via WebCrypto.
+- Na het antwoord, na de hashcontrole en in de callback van de reliance-pop-up wordt opnieuw gecontroleerd of hetzelfde document nog in beeld is, met dezelfde status en versie, in dezelfde sessie, en of er geen nieuwere klik is. Is dat niet zo, door een documentwissel, sluiten, uitloggen of een nieuwere versie, dan wordt niets afgedrukt.
+- Alleen dan gaat exact de servertekst door de bestaande escapende printflow (`printDocNaAkkoord`): reliance-pop-up en audit, footer, publieke trajectreferentie en het printvenster blijven zoals ze waren. Het watermerk vervalt door een eenmalige vrijgave die alleen een geverifieerd resultaat kan zetten. Er is geen nieuw docType en geen nieuwe PDF-engine.
+- In de titel komt alleen "(definitief — versie N, status)". De titel valt niet terug op `S.code`. Er komen geen document-id's, hashes of interne referenties in het printvenster.
+
+Bij een fout komt er geen PDF, ook niet als concept, maar een gerichte melding: geen toegang (401/403), definitieve versie niet bevestigd (409), tijdelijk niet te controleren (503, andere 5xx of een netwerkfout), niet te verifiëren (afwijkend of onvolledig antwoord, verkeerde hash, ongeldige JSON), het document is intussen gewijzigd, of in deze browser niet te controleren (geen WebCrypto). De serverfouttekst wordt niet getoond. Invoer en composerstaat (productpunt 19) blijven onaangeroerd. Memorandum, teaser, andere contracten, Signhost, mail, finaliseren, review en rollen zijn niet gewijzigd.
+
+**Bewijs (sectie L van `tests/document-output-security.mjs`).** De echte composer uit mna/04 en de echte reliance- en printketen uit mna/05 draaien tegen een synthetische printversie volgens het contract van worker/31, met echte WebCrypto (`node:crypto`). De proef dekt:
+
+- MOU, LoI en NDA definitief: de body is gelijk aan die van de bestaande printflow, zonder watermerk, met status en versie in de titel, en zonder id, hash, code of sleutel;
+- concept: de schermtekst mét CONCEPT, zonder printversie-aanvraag, en de invoer blijft intact;
+- een verkeerde, ontbrekende of verkeerd opgemaakte hash, een ander id/type/speciaal type/versie/status, een ontbrekend veld, ongeldige JSON, HTTP 401/403/404/409/500/503, een netwerkfout, geen WebCrypto en een falende digest;
+- een laat antwoord na documentwissel, uitloggen, nieuwere versie of sluiten, een dubbele klik, en reliance annuleren of na een documentwissel bevestigen;
+- geen omzeiling: een speciaal docType, een "definitieve" titel, een zelfgemaakt resultaatobject, een losse vrijgave of een vervalste clientstatus geven nooit een print zonder watermerk.
+
+Tijdens het bouwen is niets lokaal gedraaid. Een echte browser en staging volgen nog.
+
+### Vervolg: dealvoorstel stuurt een gestructureerde cijferlijst (productpunt 13 §31 fase 1b, frontenddeel, 17 okt 2026)
+
+Status: frontendwijziging, nog niet uitgerold. Gaat alleen samen met backend 2b18cc0 live: die eist `cijfers` voor `POST /mna/dealvoorstel/hoofdstukken/genereer` en `/mna/dealvoorstel/bijlage/genereer`, laat de AI cijfers uitsluitend als `[CIJFER:sleutel]` schrijven en vult ze zelf in (backend `docs/document-processing.md`, fase 1b).
+
+- `mna/04` (`dvBouwCijfers`) bouwt naast `contextBlok`/`interneContext` een lijst `{sleutel, label, eenheid, waarde}` uit de al berekende rekenkernresultaten. De lijst bevat alleen wat nu al in de context staat, met exact hetzelfde getal: bedragen via dezelfde `Math.round`, afgeleide percentages via dezelfde `toFixed`, invoerwaarden (multiples, percentages, looptijden) ongewijzigd. Er is geen nieuwe rekenlogica en geen nieuwe `S.data`-lezing; `dvManagementRisico()` wordt één keer aangeroepen en gedeeld door context en lijst.
+- Eenheden: `eur`, `pct`, `multiple`, `aantal` (ook looptijden en procentpunten) en `tekst` (partijnamen). Een waarde die niet eindig of niet eenduidig is (NaN, exponentnotatie, tekst langer dan 120 tekens) wordt weggelaten, nooit afgerond of ingekort.
+- Twee lijsten, net als de context (A2): `cijfers` bij hoofdstukken bevat alleen publieke waarden; `cijfers` bij de bijlage bevat alleen de waarden uit `interneContext` (cash bij closing, totale tegenprestatie, BATNA/walk-away). BATNA komt nooit in de publieke lijst.
+- Fouten: 502 `BRONFEITEN_AFWIJKING` → vaste melding "De AI-tekst bevatte een cijfer dat niet uit de berekening komt; er is niets overgenomen. Probeer opnieuw."; 400 `CIJFERS_ONTBREKEN`/`CIJFERS_ONGELDIG` → de servermelding. Weergave via `textContent` (hoofddocument) of `esc()` (bijlage). Timeout (180 s) en `fetchMetTimeout` blijven gelijk; `[TABEL:]`-afhandeling (`dvBouwRapportHtml`, mna/03) is niet aangeraakt.
+- `tests/n121-ai-timeouts.mjs` legt de twee verzoekopties nu vast met het veld `cijfers`; headers en 180000 ms zijn gelijk gebleven.
+- Handleiding (mna/08, begeleider stap 4): één zin dat cijfers in de AI-tekst uitsluitend uit de berekening komen en een afwijkende tekst wordt geweigerd. `adv.html` heeft geen dealvoorstel-AI-aanroep (alleen beschrijvende handleidingtekst) en is niet gewijzigd.
+
+**Bewijs (sectie M van `tests/document-output-security.mjs`).** De echte `toonDealvoorstelModal`-handler, `dvBouwCijfers` en `dvGenereerFout` uit mna/04 draaien met `esc` uit mna/02 tegen synthetische rekenkernresultaten met decimalen en een gestubde `fetchMetTimeout`. De proef controleert: beide lijsten voldoen aan het contract van `dvValideerCijfers` (sleutelpatroon, uniek, label, eenheid, eenduidige waarde, max. 300); elke waarde staat letterlijk in de context van hetzelfde request; bedragen zijn `Math.round` van de rekenkernwaarde en invoer is niet afgerond; BATNA alleen in de bijlagelijst; koperzijde stuurt alleen het hoofdstukkenverzoek; 502/400-meldingen bij hoofdstukken en bijlage, met HTML in de servermelding als tekst of ge-escaped. Tijdens het bouwen is niets lokaal gedraaid; staging met de backend volgt nog.
 
 ## Bewijs
 

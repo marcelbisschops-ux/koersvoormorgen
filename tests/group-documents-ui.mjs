@@ -66,9 +66,12 @@ function laad(root, { rol = 'verkoper', code = 'VSYN0001', vergrendeld = false, 
     knip(src02, 'window.annuleerResterendeUploads = function(faseId) {', '\n};\n'),
     knip(src02, 'async function uploadDocument(faseId, file, existingId, vervangtDocId', '\n}\n'),
     knip(src02, 'window.centraalUploadFiles = async function(files) {', '\n};\n'),
+    knip(src02, 'function aandachtspuntenHtml(doc) {', '\n}\n'),
     knip(src02, 'function renderDocumentSectie(faseId) {', '\n}\n'),
     knip(src02, 'window.vervangDocument = function(faseId, docId) {', '\n};\n'),
     knip(src02, 'window.toonVersieGeschiedenis = async function(docId) {', '\n};\n'),
+    regel(src02, /^var DCLW_ONBEKEND = .*$/m, 'DCLW_ONBEKEND'),
+    knip(src02, 'window.wijzigDocumentClassificatie = function(faseId, docId) {', '\n};\n'),
   ];
   const els = {};
   const log = { renders: 0, requests: [], overig: [], autoFill: 0, toasts: [], html: '', fase: FASE, modals: [] };
@@ -131,6 +134,109 @@ function laad(root, { rol = 'verkoper', code = 'VSYN0001', vergrendeld = false, 
   };
   return { ctx, els, log, opzet, begin, kies, bestand, renderApp };
 }
+// Productpunt 38 (22 okt 2026): groepsdocument-keuzevenster met de actuele bruto som. Draait de ECHTE
+// autoFillFromExtraction, verwerkGroepsdocument, toonConflictDialog/wachtrij, saveEntiteitData,
+// saveGroepsniveauVelden, uploadDocument en de finWerk-registratie uit mna/02 in node:vm. Entiteitsaves en
+// uploads blijven onderweg tot de proef ze beantwoordt; de 60 s-wachttijd is een gestubde timer.
+const GW_FASES = () => [
+  { id: 'financieel', title: 'Financieel', items: [], redflags: [], dataFields: ['omzet1', 'omzet2', 'omzet3', 'omzetYTD', 'ebitda', 'ebitdaNorm', 'ebitdaMarge', 'wip', 'debiteuren', 'partnerBel'].map((id) => ({ id, label: id })) },
+  { id: 'partner', title: 'Partners', items: [], redflags: [], dataFields: [{ id: 'fte', label: 'FTE' }] },
+];
+function laadGroepswacht(root) {
+  const src01 = lees(root, 'mna/01-config-sectorprofielen.js');
+  const src02 = lees(root, 'mna/02-state-opslag-documenten.js');
+  const delen = [
+    regel(src01, /^function fetchMetTimeout\(url, opts, ms\) \{[\s\S]*?\n\}/m, 'fetchMetTimeout'),
+    regel(src02, /^function ge\(id\)\{.*\}$/m, 'ge'),
+    regel(src02, /^function esc\(s\)\{.*\}$/m, 'esc'),
+    regel(src02, /^function isKoper\(\)\{.*\}$/m, 'isKoper'),
+    regel(src02, /^function isTussen\(\)\{.*\}$/m, 'isTussen'),
+    knip(src02, 'function entiteitNaam(id){', '\n}\n'),
+    knip(src02, 'function gokEntiteitId(entiteitNaamAI, alleenZeker){', '\n}\n'),
+    knip(src02, 'function isGroepsniveauVeld(key){', '\n}\n'),
+    regel(src02, /^function doelData\(key\)\{.*\}$/m, 'doelData'),
+    knip(src02, 'function cleanGetal(v) {', '\n}\n'),
+    knip(src02, 'var AI_VELD_MAP = {', '\n}\n'),
+    knip(src02, 'function autoFillFromExtraction(faseId, velden, forceOverwrite, docNaam, entiteitId, opties) {', '\n}\n'),
+    knip(src02, 'var GROEPSDOC_BEDRAGVELDEN = {', '\n};\n'),
+    knip(src02, 'function _autoFillFromExtractionBody(faseId, velden, forceOverwrite, docNaam, opties) {', '\n}\n'),
+    regel(src02, /^function finWerkStart\(soort\)\{[\s\S]*?\n\}/m, 'finWerkStart'),
+    regel(src02, /^function finWerkLopend\(sessie,grens\)\{[\s\S]*?\n\}/m, 'finWerkLopend'),
+    regel(src02, /^function finWerkAfwachten\(grens,ms\)\{[\s\S]*?\n\}/m, 'finWerkAfwachten'),
+    knip(src02, 'function verwerkGroepsdocument(velden, docNaam, velden2) {', '\n}\n'),
+    knip(src02, 'function opslaanGroepsdocument(fases){', '\n}\n'),
+    regel(src02, /^function saveEntiteitData\(entiteitId, faseIds\)\{[\s\S]*?\n\}/m, 'saveEntiteitData'),
+    knip(src02, 'async function uploadDocument(faseId, file, existingId, vervangtDocId', '\n}\n'),
+    regel(src02, /^function veldBron\(key\)\{[\s\S]*?\n\}/m, 'veldBron'),
+    regel(src02, /^function getDataForFase\(id\)\{[\s\S]*?\n\}/m, 'getDataForFase'), regel(src02, /^function opslagRij\([\s\S]*?(?=^function getDataForFase\(id\))/m, 'N-154-basis'),
+    regel(src02, /^function getChecklistForFase\(id\)\{.*\}$/m, 'getChecklistForFase'),
+    regel(src02, /^function saveGroepsniveauVelden\(faseId\)\{[\s\S]*?\n\}/m, 'saveGroepsniveauVelden'),
+    regel(src02, /^function gbOpslagStart\(code,faseId,entiteitId\)\{[\s\S]*?\n\}/m, 'gbOpslagStart'),
+    regel(src02, /^function gbOpslagKlaar\(tk,d\)\{[\s\S]*?\n\}/m, 'gbOpslagKlaar'),
+    knip(src02, 'function loadDataFromDB(dbData){', 'koperReacties[id]=row.koper_reactie;}});}'),
+    knip(src02, 'function fmtConflictWaarde(v){', '\n}\n'),
+    knip(src02, 'function toonConflictDialog(conflicts, contextLabel, naAfloop) {', '\n}\n'),
+    knip(src02, 'function sluitConflictDialoogEnGaVerder(){', '\n}\n'),
+  ];
+  const log = { entSave: [], groepSave: [], uploads: [], overig: [], toasts: [] };
+  const gemaakt = [];
+  const timers = [];
+  const domEl = (tag) => {
+    const el = { tag, kinderen: [], style: {}, l: {}, attrs: {}, textContent: '', innerHTML: '', checked: false, name: '', value: '', type: '', className: '', id: '',
+      appendChild(c) { this.kinderen.push(c); return c; }, setAttribute(k, v) { this.attrs[k] = v; }, addEventListener(t, f) { this.l[t] = f; } };
+    gemaakt.push(el);
+    return el;
+  };
+  const json = (d) => ({ ok: true, status: 200, json: () => Promise.resolve(JSON.parse(JSON.stringify(d))) });
+  // Entiteitsaves en uploads blijven onderweg tot de proef antwoord() aanroept; groepsrij-saves direct ok.
+  const fetch = (url, opts = {}) => {
+    const u = String(url);
+    if (u.indexOf(WORKER + '/mna/document/upload?') === 0) return new Promise((res) => log.uploads.push({ url: u, antwoord: (b) => res(json(b)) }));
+    if (u === WORKER + '/mna/save') {
+      const body = JSON.parse(opts.body);
+      if (body.entiteit_id) return new Promise((res) => log.entSave.push({ body, antwoord: (d) => res(json(d)) }));
+      log.groepSave.push(body);
+      return Promise.resolve(json({ ok: true, fase_id: body.fase_id }));
+    }
+    log.overig.push(u);
+    return Promise.resolve(json({ ok: true }));
+  };
+  const ctx = vm.createContext({
+    console, WORKER, FASES: GW_FASES(), fetch, FormData, AbortController, DOCS: {},
+    document: { createElement: domEl, createTextNode: (t) => ({ tekst: t }), body: { appendChild() {}, removeChild() {} }, getElementById: () => null },
+    // Alleen de 60 s-wachttijd (en langer, zoals de uploaddeadline) blijft staan; korte timers lopen direct.
+    setTimeout: (fn, ms) => { if ((ms || 0) >= 60000) { timers.push({ fn, ms }); return timers.length; } fn(); return 0; },
+    clearTimeout: (id) => { if (id && timers[id - 1]) timers[id - 1].fn = null; },
+    renderApp() {}, markDirty() {}, schedSave() {}, showSaveIndicator() {},
+    toast: (msg, type) => log.toasts.push({ msg: String(msg), type }),
+    vergelijkDubbelePassOverigeVelden: () => [],
+    S: null,
+  });
+  ctx.window = ctx;
+  vm.runInContext(delen.join('\n\n'), ctx, { filename: 'mna/01+02#groepswacht' });
+  // Groep met bruto som 3.000.000 (alleen entiteit A meegeteld); entiteit B nog niet in de som.
+  const opzet = () => {
+    const dataA = { financieel_omzet3: '3000000' };
+    ctx.S = { code: 'VSYN0001', rol: 'verkoper', traject: { status: 'actief', bewaar_docs: true }, data: dataA, _groepData: {}, dataPerEntiteit: { ENT_A: dataA, ENT_B: { financieel_omzet3: '500000' } }, _actieveEntiteit: 'ENT_A',
+      _entiteiten: [{ id: 'ENT_A', naam: 'Alfa BV' }, { id: 'ENT_B', naam: 'Beta BV' }], _opy: {}, _epy: {}, _opySlotJaar: {}, _conflicts: [], _userEdited: {}, _docSource: {}, _docFragment: {}, notities: {}, checked: {} };
+    ctx.loadDataFromDB([{ fase_id: 'financieel', entiteit_id: null, data_json: JSON.stringify({ omzet2: { value: '2500000', label: '', auto: true }, omzet3: { value: '3000000', label: '', auto: true } }) }]);
+    ctx.DOCS[FASE] = [];
+    gemaakt.length = 0; log.entSave.length = 0; log.groepSave.length = 0; log.uploads.length = 0; log.overig.length = 0; log.toasts.length = 0;
+    return ctx.S;
+  };
+  const somAB = { ok: true, fase_id: 'financieel', groepswaarden: { omzet3: { value: '3500000', label: '', auto: true } } };
+  const venster = () => gemaakt.map((e) => (e.innerHTML || '') + ' ' + (e.textContent || '')).join('\n');
+  const geopend = () => gemaakt.some((e) => e.textContent === 'Afwijkende waarden gevonden');
+  const knop = (tekst) => gemaakt.filter((e) => e.tag === 'button' && e.textContent === tekst).pop();
+  const radios = () => gemaakt.filter((e) => e.tag === 'input' && /^cf_/.test(e.name));
+  const wachttijdVerstreken = () => { timers.forEach((t) => { if (t.fn && t.ms === 60000) { const f = t.fn; t.fn = null; f(); } }); };
+  const flush = async () => { for (let i = 0; i < 25; i++) await new Promise((r) => setImmediate(r)); };
+  const bestand = (naam) => new File(['Synthetisch document (geen echte gegevens).'], naam, { type: 'text/plain' });
+  const uploadAntw = (docId, velden) => ({ ok: true, doc_id: docId, analyse: 'Synthetisch.', veld_extractie: velden, r2_opgeslagen: true, verworpen: false, crosschecks: [], entiteit_naam: null, versie: 1, verwerking_status: 'PROCESSED', fout: null, inhoud_hash: 'e'.repeat(64) });
+  return { ctx, log, gemaakt, opzet, somAB, venster, geopend, knop, radios, wachttijdVerstreken, flush, bestand, uploadAntw };
+}
+const GROEPSDOC = () => ({ boekjaar: '2024', omzet: '3200000' });
+
 const vollGroep = { scope: 'GROUP', statement: 'P&L', soort: 'BOEKJAAR', boekjaar: '2026', datatype: 'FORECAST' };
 const QUERY_GROEP = '&doc_scope=GROUP&doc_statement=P%26L&doc_periode=FY2026&doc_datatype=FORECAST';
 const wacht = (ms = 20) => new Promise((r) => setTimeout(r, ms));
@@ -532,6 +638,171 @@ export async function draaiGroupDocumentsUiChecks(root = process.cwd()) {
     await h.ctx.toonVersieGeschiedenis('doc_g2');
     const box = h.log.modals.map((n) => n.innerHTML).find((x) => /Versiegeschiedenis/.test(x) && /v2/.test(x)) || '';
     check(/Algemeen dataroomdocument/.test(box) && /Prognose \(forecast\)/.test(box) && (box.match(/jaarrealisatie/gi) || []).length === 1 && !box.includes(BINDING), 'algemeen versies: v2 algemeen document, v1 behoudt eigen groepsclassificatie, geen binding');
+  });
+
+  // Productpunt 38: keuzevenster groepsdocument met de actuele bruto som (of expliciet "nog niet actueel").
+  const NIET_ACTUEEL = 'nog niet actueel: verwerking van een ander document loopt nog';
+  await probeer('B1 entiteitsave onderweg', async () => {
+    const g = laadGroepswacht(root); const S = g.opzet();
+    g.ctx.saveEntiteitData('ENT_B', ['financieel']);
+    const uit = g.ctx.verwerkGroepsdocument(GROEPSDOC(), 'syn-groep.txt', null);
+    await g.flush();
+    check(g.log.entSave.length === 1 && uit.uitgesteld === true && uit.conflicten === 0 && !g.geopend() && S._groepData.financieel_omzet3 === '3000000' && g.log.groepSave.length === 0, 'B1: entiteitsave B onderweg → groepsdocument wacht; nog geen keuzevenster, niets opgeslagen');
+    g.log.entSave[0].antwoord(g.somAB); await g.flush();
+    const v = g.venster();
+    check(g.geopend() && /3\.500\.000/.test(v) && !/3\.000\.000/.test(v) && /bruto berekende som van de entiteiten/.test(v) && !v.includes(NIET_ACTUEEL), 'B1: venster opent pas na het B-antwoord en toont de bruto som A+B (3.500.000) · ' + (v.match(/<strong[^>]*>[^<]*<\/strong>/g) || []).join(' '));
+    check((S._lopendFinWerk || []).length === 0, 'B1: geen lopend financieel werk meer geregistreerd');
+    g.radios().forEach((r) => { r.checked = r.value === 'nieuw'; });
+    g.knop('Toepassen').l.click(); await g.flush();
+    const gs = g.log.groepSave.find((b) => b.fase_id === 'financieel');
+    check(S._groepData.financieel_omzet3 === '3200000' && gs && gs.data_json.omzet3.value === '3200000' && gs.data_json.omzet3.auto === undefined, 'B1: kiezen werkt — documentcijfer als aangeleverde groepswaarde opgeslagen');
+  });
+  await probeer('B2 upload B in verwerking', async () => {
+    const g = laadGroepswacht(root); const S = g.opzet();
+    const pB = g.ctx.uploadDocument(FASE, g.bestand('syn-b.txt'), null, undefined, { entiteitId: 'ENT_B', dubbeleCheck: false, alleenBewijsstuk: false });
+    const pG = g.ctx.uploadDocument(FASE, g.bestand('syn-groep.txt'), null, undefined, { entiteitId: '', groepsdocument: true, dubbeleCheck: false, alleenBewijsstuk: false });
+    check(g.log.uploads.length === 2 && (S._lopendFinWerk || []).length === 2, 'B2: twee uploads aangemeld als lopend werk');
+    g.log.uploads[1].antwoord(g.uploadAntw('doc_syn_g', GROEPSDOC())); const uG = await pG; await g.flush();
+    check(uG && uG.soort === 'verwerkt' && !g.geopend() && S._groepData.financieel_omzet3 === '3000000' && g.log.groepSave.length === 0, 'B2: groepsdocument G klaar terwijl upload B nog loopt → G wacht (eigen upload telt niet mee)');
+    g.log.uploads[0].antwoord(g.uploadAntw('doc_syn_b', { debiteuren: '50000' })); const uB = await pB; await g.flush();
+    check(uB && uB.soort === 'verwerkt' && g.log.entSave.length === 1 && g.log.entSave[0].body.entiteit_id === 'ENT_B' && !g.geopend(), 'B2: upload B verwerkt, entiteitsave B onderweg → G wacht nog steeds');
+    g.log.entSave[0].antwoord(g.somAB); await g.flush();
+    const v = g.venster();
+    check(g.geopend() && /3\.500\.000/.test(v) && !/3\.000\.000/.test(v) && /bruto berekende som van de entiteiten/.test(v) && !v.includes(NIET_ACTUEEL) && (S._lopendFinWerk || []).length === 0, 'B2: venster na upload én save van B, met bruto som A+B; daarna niets meer geregistreerd');
+  });
+  await probeer('B3 wachtrij', async () => {
+    const g = laadGroepswacht(root); const S = g.opzet();
+    g.ctx.toonConflictDialog([{ key: 'financieel_wip', label: 'WIP', huidig: '1', nieuw: '2', bron: 'syn-ander.txt', doel: S._groepData }], 'Voor: ander document');
+    const behoud = g.knop('Alles behouden');
+    const uit = g.ctx.verwerkGroepsdocument(GROEPSDOC(), 'syn-groep.txt', null);
+    check(uit.conflicten === 1 && S._conflictWachtrij.length === 1 && S._conflictWachtrij[0].conflicts[0].huidig === '3000000', 'B3: G-venster in de wachtrij achter een ander venster (opgebouwd met som 3.000.000)');
+    S._groepData.financieel_omzet3 = '3500000'; S._groepAuto.financieel_omzet3 = '3500000';
+    g.gemaakt.length = 0;
+    behoud.l.click(); await g.flush();
+    const v = g.venster();
+    check(g.geopend() && /3\.500\.000/.test(v) && !/3\.000\.000/.test(v) && /bruto berekende som van de entiteiten/.test(v) && !v.includes(NIET_ACTUEEL), 'B3: bij openen uit de wachtrij de actuele bruto som (3.500.000)');
+  });
+  await probeer('B4 wachttijd verstreken', async () => {
+    const g = laadGroepswacht(root); const S = g.opzet();
+    g.ctx.saveEntiteitData('ENT_B', ['financieel']);
+    const uit = g.ctx.verwerkGroepsdocument(GROEPSDOC(), 'syn-groep.txt', null);
+    await g.flush();
+    check(uit.uitgesteld === true && !g.geopend(), 'B4: groepsdocument wacht op de lopende entiteitsave');
+    g.wachttijdVerstreken(); await g.flush();
+    const v = g.venster();
+    check(g.geopend() && v.includes(NIET_ACTUEEL) && !/bruto berekende som van de entiteiten/.test(v), 'B4: na 60 s label "nog niet actueel", geen definitief bruto-som-label');
+    check(g.gemaakt.some((e) => e.tag === 'div' && /^Let op: de huidige groepswaarde is nog niet actueel/.test(e.textContent)) && !g.gemaakt.some((e) => /^Let op/.test(e.innerHTML)), 'B4: zichtbare melding bovenaan het venster (via textContent)');
+    check(g.radios().filter((r) => r.name === 'cf_0').map((r) => r.value).join(',') === 'huidig,nieuw,geen', 'B4: kiezen blijft mogelijk (huidig, document, geen van beide)');
+    g.knop('Toepassen').l.click(); await g.flush();
+    const keuze = S._choiceLog[S._choiceLog.length - 1];
+    check(S._groepData.financieel_omzet3 === '3000000' && g.log.groepSave.length === 0 && keuze.gekozen === 'huidig' && !S._conflictDialoogOpen, 'B4: "Huidig" schrijft niets en slaat niets op');
+  });
+  await probeer('B5 conflict vervalt', async () => {
+    const g = laadGroepswacht(root); const S = g.opzet();
+    g.ctx.toonConflictDialog([{ key: 'financieel_wip', label: 'WIP', huidig: '1', nieuw: '2', bron: 'syn-ander.txt', doel: S._groepData }], 'Voor: ander document');
+    const behoud = g.knop('Alles behouden');
+    g.ctx.verwerkGroepsdocument(GROEPSDOC(), 'syn-groep.txt', null);
+    check(S._conflictWachtrij.length === 1 && S._pendingConflicts.financieel_omzet3 === '3200000', 'B5: G-conflict in de wachtrij');
+    S._groepData.financieel_omzet3 = '3200000'; S._groepAuto.financieel_omzet3 = '3200000';
+    g.gemaakt.length = 0;
+    behoud.l.click(); await g.flush();
+    check(!g.geopend() && !S._conflictDialoogOpen && S._conflictWachtrij.length === 0 && S._pendingConflicts.financieel_omzet3 === undefined, 'B5: huidig gelijk aan het documentcijfer na verversen → conflict vervalt, geen venster');
+  });
+  await probeer('B6 sessiewissel', async () => {
+    for (const manier of ['antwoord', 'wachttijd']) {
+      const g = laadGroepswacht(root); const oud = g.opzet();
+      g.ctx.saveEntiteitData('ENT_B', ['financieel']);
+      g.ctx.verwerkGroepsdocument(GROEPSDOC(), 'syn-groep.txt', null);
+      await g.flush();
+      const req = g.log.entSave[0];
+      const nieuw = g.opzet();
+      if (manier === 'antwoord') req.antwoord(g.somAB); else g.wachttijdVerstreken();
+      await g.flush();
+      check(nieuw !== oud && !g.geopend() && g.log.groepSave.length === 0 && nieuw._groepData.financieel_omzet3 === '3000000' && oud._groepData.financieel_omzet3 === '3000000' && !nieuw._pendingConflicts && !oud._pendingConflicts, 'B6 (' + manier + '): sessiewissel tijdens wachten → niets verwerkt, getoond of opgeslagen');
+    }
+  });
+
+
+  // ── Productpunt 15 (23 okt 2026): classificatie achteraf wijzigen ──
+  await probeer('P15 classificatie wijzigen', async () => {
+    const m = laad(root);
+    const c = m.ctx;
+    const basis = dto('GROUP', 'P&L', 'FY2025', 'ACTUAL');
+    const metM = c.dclSaneer({ ...basis, hercontrole_nodig: true, herclassificeerd_op: 1792700000000 }, null);
+    check(metM && metM.hercontrole_nodig === true && metM.herclassificeerd_op === 1792700000000, 'P15: dclSaneer geeft een geldige markering door');
+    const zonder = c.dclSaneer(basis, null), slecht = c.dclSaneer({ ...basis, hercontrole_nodig: 'ja', herclassificeerd_op: '<b>' }, null);
+    check(zonder && zonder.hercontrole_nodig === undefined && slecht && slecht.hercontrole_nodig === undefined && slecht.herclassificeerd_op === undefined, 'P15: geen of ongeldige markering wordt niet overgenomen');
+    const wM = c.dclRenderWeergave(metM, {}), wZ = c.dclRenderWeergave(zonder, {});
+    check(/Classificatie gewijzigd op \d{2}-\d{2}-\d{4}\. Controleer de cijfers/.test(wM) && !/Classificatie gewijzigd/.test(wZ), 'P15: weergave toont de markering met datum alleen bij een gewijzigde classificatie');
+    const doc = { id: 'DOCW1', naam: 'syn<b>.pdf', inhoud_hash: 'h1', documentclassificatie: zonder, fase_id: FASE };
+    check(c.dclMagWijzigen(doc, { rol: 'verkoper', code: 'V1', faseId: FASE, vergrendeld: false }) === true
+      && c.dclMagWijzigen(doc, { rol: 'koper', code: 'K1', faseId: FASE }) === false
+      && c.dclMagWijzigen(doc, { rol: 'tussenpersoon', code: 'T1', faseId: FASE }) === false
+      && c.dclMagWijzigen(doc, { rol: 'verkoper', code: 'V1', faseId: FASE, vergrendeld: true }) === false
+      && c.dclMagWijzigen({ ...doc, inhoud_hash: null }, { rol: 'verkoper', code: 'V1', faseId: FASE }) === false
+      && c.dclMagWijzigen({ ...doc, uploading: true }, { rol: 'verkoper', code: 'V1', faseId: FASE }) === false, 'P15: wijzigen alleen voor de verkoper, niet vergrendeld, met inhoud_hash, niet tijdens upload');
+    const vFin = c.dclRenderWijzigVelden('financieel', dto('ENTITY', 'BALANCE_SHEET', 'FY2024', 'FORECAST', 'ENT_A'), [{ id: 'ENT_A', naam: 'Synth <A>' }, { id: 'ENT_B', naam: 'Synth B' }]);
+    check(/<option value="ENTITY" selected>/.test(vFin) && /<option value="BALANCE_SHEET" selected>/.test(vFin) && /<option value="FORECAST" selected>/.test(vFin) && /id="dclw-boekjaar"[^>]*value="2024"/.test(vFin)
+      && /<option value="ENT_A" selected>Synth &lt;A&gt;<\/option>/.test(vFin) && !/Synth <A>/.test(vFin), 'P15: wijzigformulier Financieel voorgevuld met de huidige classificatie, namen geëscapet');
+    const vJur = c.dclRenderWijzigVelden('juridisch', null, []);
+    check(/id="dclw-scope"/.test(vJur) && !/value="GROUP"/.test(vJur) && !/value="ENTITY"/.test(vJur) && !/dclw-statement|dclw-datatype|dclw-entiteit/.test(vJur), 'P15: buiten Financieel alleen "Algemeen" zonder financiële velden');
+    // Knop in de documentlijst
+    m.begin();
+    c.DOCS[FASE] = [{ id: 'DOCW1', naam: 'syn.pdf', type: 'application/pdf', grootte: 1000, bewaard: true, verwerking_status: 'PROCESSED', inhoud_hash: 'h1', documentclassificatie: zonder }];
+    m.renderApp();
+    check(/wijzigDocumentClassificatie\('financieel','DOCW1'\)/.test(m.log.html), 'P15: knop "Classificatie wijzigen" bij een document met inhoud_hash voor de verkoper');
+    c.DOCS[FASE][0].inhoud_hash = null; m.renderApp();
+    check(!/wijzigDocumentClassificatie/.test(m.log.html), 'P15: geen knop zonder inhoud_hash (legacy)');
+    for (const [rol, verg] of [['koper', false], ['tussenpersoon', false], ['verkoper', true]]) {
+      const mk = laad(root, { rol, vergrendeld: verg }); mk.begin();
+      mk.ctx.DOCS[FASE] = [{ id: 'DOCW1', naam: 'syn.pdf', type: 'application/pdf', grootte: 1000, bewaard: true, verwerking_status: 'PROCESSED', inhoud_hash: 'h1', documentclassificatie: zonder }];
+      mk.renderApp();
+      check(!/wijzigDocumentClassificatie/.test(mk.log.html), 'P15: geen knop voor ' + rol + (verg ? ' (vergrendeld)' : ''));
+    }
+    // Opslaan-flow: geldig (200), conflict (409), ongeldig (geen verzoek)
+    c.DOCS[FASE][0].inhoud_hash = 'h1';
+    const ids = ['dclw-scope', 'dclw-entiteit', 'dclw-statement', 'dclw-periodesoort', 'dclw-boekjaar', 'dclw-begin', 'dclw-eind', 'dclw-datatype', 'dclw-fout', 'dclw-annuleer', 'dclw-opslaan'];
+    const open = () => { for (const id of ids) m.els[id] = maakEl(id); c.wijzigDocumentClassificatie(FASE, 'DOCW1'); };
+    const vul = (v) => { for (const [k, w] of Object.entries(v)) m.els['dclw-' + k].value = w; };
+    const verzoeken = [];
+    let antwoordP15 = null;
+    c.fetch = (url, opts = {}) => { verzoeken.push({ url: String(url), body: opts.body }); if (String(url).indexOf('/mna/document/classificatie/') !== -1) return Promise.resolve({ ok: antwoordP15.status === 200, status: antwoordP15.status, json: () => Promise.resolve(antwoordP15.body) }); return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve([]) }); };
+    const wacht = () => new Promise((r) => setTimeout(r, 0)).then(() => new Promise((r) => setTimeout(r, 0)));
+    open(); vul({ scope: 'ENTITY', entiteit: 'ENT_SYN_A', statement: 'P&L', periodesoort: 'BOEKJAAR', boekjaar: '2025', datatype: 'FORECAST' });
+    antwoordP15 = { status: 200, body: { ok: true, doc_id: 'DOCW1', documentclassificatie: { ...dto('ENTITY', 'P&L', 'FY2025', 'FORECAST', 'ENT_SYN_A'), hercontrole_nodig: true, herclassificeerd_op: 1792700000000 } } };
+    m.log.toasts = [];
+    m.els['dclw-opslaan'].onclick(); await wacht();
+    const req = verzoeken.find((x) => x.url.indexOf('/mna/document/classificatie/DOCW1') !== -1);
+    const body = req ? JSON.parse(req.body) : {};
+    check(!!req && body.code === 'VSYN0001' && body.verwacht_inhoud_hash === 'h1' && body.doc_scope === 'ENTITY' && body.doc_statement === 'P&L' && body.doc_periode === 'FY2025' && body.doc_datatype === 'FORECAST' && body.entiteit_id === 'ENT_SYN_A', 'P15: geldig → één POST met code, verwacht_inhoud_hash, vier parameters en entiteit_id · ' + (req && req.body));
+    const d1 = c.DOCS[FASE][0];
+    check(d1.documentclassificatie && d1.documentclassificatie.scope === 'ENTITY' && d1.documentclassificatie.hercontrole_nodig === true && d1.entiteit_id === 'ENT_SYN_A' && m.log.toasts.some((t) => t.type === 'ok' && /Controleer de cijfers/.test(t.msg)), 'P15: 200 → document bijgewerkt met markering en entiteit, melding om cijfers te controleren');
+    verzoeken.length = 0; open(); vul({ scope: 'GROUP', entiteit: '', statement: 'P&L', periodesoort: 'BOEKJAAR', boekjaar: '2025', datatype: 'ACTUAL' });
+    antwoordP15 = { status: 409, body: { ok: false, error: 'Het document is intussen gewijzigd.', fout: 'GEWIJZIGD' } };
+    m.log.toasts = [];
+    m.els['dclw-opslaan'].onclick(); await wacht();
+    check(m.log.toasts.some((t) => t.type === 'warn' && /intussen gewijzigd/.test(t.msg)) && verzoeken.some((x) => x.url.indexOf('/mna/document/lijst/') !== -1), 'P15: 409 → waarschuwing en documentenlijst opnieuw geladen (niets lokaal als gewijzigd getoond)');
+    c.DOCS[FASE] = [{ id: 'DOCW1', naam: 'syn.pdf', type: 'application/pdf', grootte: 1000, bewaard: true, verwerking_status: 'PROCESSED', inhoud_hash: 'h1', documentclassificatie: zonder }];
+    verzoeken.length = 0; open(); vul({ scope: 'GROUP', entiteit: 'ENT_SYN_A', statement: 'P&L', periodesoort: 'BOEKJAAR', boekjaar: '2025', datatype: 'ACTUAL' });
+    m.els['dclw-opslaan'].onclick(); await wacht();
+    check(verzoeken.length === 0 && /groepsdocument hoort niet bij één entiteit/.test(m.els['dclw-fout'].textContent), 'P15: tegenstrijdige keuze (groep met entiteit) → geen verzoek, foutmelding in het venster');
+    // Uitkomst onbekend: time-out/netwerkfout of 5xx/onleesbaar → nooit "niets gewijzigd", wel lijst herladen
+    for (const [naam, gedrag] of [['netwerkfout/time-out', 'gooi'], ['500 onleesbaar', 500]]) {
+      c.DOCS[FASE] = [{ id: 'DOCW1', naam: 'syn.pdf', type: 'application/pdf', grootte: 1000, bewaard: true, verwerking_status: 'PROCESSED', inhoud_hash: 'h1', documentclassificatie: zonder }];
+      verzoeken.length = 0; m.log.toasts = []; open(); vul({ scope: 'GROUP', entiteit: '', statement: 'P&L', periodesoort: 'BOEKJAAR', boekjaar: '2025', datatype: 'ACTUAL' });
+      const oudFetch = c.fetch;
+      c.fetch = (url, opts = {}) => { verzoeken.push({ url: String(url), body: opts.body }); if (String(url).indexOf('/mna/document/classificatie/') !== -1) return gedrag === 'gooi' ? Promise.reject(new Error('netwerk')) : Promise.resolve({ ok: false, status: 500, json: () => Promise.reject(new Error('geen json')) }); return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve([]) }); };
+      const foutEl = m.els['dclw-fout'];
+      m.els['dclw-opslaan'].onclick(); await wacht(); await wacht();
+      c.fetch = oudFetch;
+      check(m.log.toasts.some((t) => t.type === 'warn' && /niet bevestigd of de classificatie is gewijzigd/.test(t.msg)) && !m.log.toasts.some((t) => /niets gewijzigd/.test(t.msg)) && !/niets gewijzigd/.test(foutEl.textContent) && verzoeken.some((x) => x.url.indexOf('/mna/document/lijst/') !== -1), 'P15: ' + naam + ' → "uitkomst onbekend" en lijst herladen, nooit "niets gewijzigd"');
+    }
+    // 200 met een door de client afgekeurde classificatie → niet lokaal "niet geclassificeerd" tonen, lijst herladen
+    c.DOCS[FASE] = [{ id: 'DOCW1', naam: 'syn.pdf', type: 'application/pdf', grootte: 1000, bewaard: true, verwerking_status: 'PROCESSED', inhoud_hash: 'h1', documentclassificatie: zonder }];
+    verzoeken.length = 0; open(); vul({ scope: 'GROUP', entiteit: '', statement: 'P&L', periodesoort: 'BOEKJAAR', boekjaar: '2025', datatype: 'ACTUAL' });
+    antwoordP15 = { status: 200, body: { ok: true, doc_id: 'DOCW1', documentclassificatie: { scope: 'ONBEKEND' } } };
+    m.els['dclw-opslaan'].onclick(); await wacht();
+    check(verzoeken.some((x) => x.url.indexOf('/mna/document/lijst/') !== -1), 'P15: 200 met afgekeurde classificatie → lijst herladen i.p.v. lokaal "niet geclassificeerd"');
   });
 
   return res;

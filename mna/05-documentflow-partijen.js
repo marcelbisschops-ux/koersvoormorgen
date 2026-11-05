@@ -49,14 +49,105 @@ function toonRelianceAkkoord(titel, docType, onAkkoord) {
 function printDoc(tekst, titel, docType) {
   toonRelianceAkkoord(titel, docType, function () { printDocNaAkkoord(tekst, titel, docType); });
 }
+// Definitieve MOU/LoI/NDA-print (productpunt 14, 17 okt 2026). Een definitief composerdocument werd
+// altijd met CONCEPT-watermerk afgedrukt. Nu: alleen de door de backend geverifieerde printtekst
+// (GET /mna/tos/document/{id}/printversie, worker/31: snapshot/manifest/canonieke hash) mag zonder
+// watermerk. controleer() bindt het antwoord aan het getoonde document (id/type/status/versie), eist
+// het volledige contract met 64-hex-hashes en rekent print_hash zelf na met WebCrypto. Alleen een
+// resultaat van controleer() kan via print() door de bestaande reliance-/printflow; de vrijgave van het
+// watermerk is eenmalig en wordt synchroon vlak vóór printDocNaAkkoord() gezet en daarin verbruikt.
+// Een docType of titel alleen schakelt het watermerk dus nooit uit. Iedere fout → geen print.
+var printTosDefinitief = (function () {
+  var STATUS = { exported: 'gefinaliseerd', verstuurd: 'verstuurd', goedgekeurd: 'goedgekeurd door beide partijen' };
+  var TYPES = { mou: true, loi: true, nda: true };
+  var MELDING = {
+    toegang: 'U heeft geen toegang tot de definitieve printversie van dit document. Er is niets afgedrukt.',
+    conflict: 'De definitieve versie van dit document kon niet worden bevestigd. Er is geen definitieve PDF gemaakt.',
+    onbeschikbaar: 'De definitieve printversie kan nu niet worden gecontroleerd. Probeer het later opnieuw. Er is niets afgedrukt.',
+    ongeldig: 'De definitieve printversie kon niet worden geverifieerd. Er is geen definitieve PDF gemaakt.',
+    type: 'Een definitieve printversie bestaat alleen voor MOU, LoI en NDA. Er is niets afgedrukt.',
+    verouderd: 'Het document is intussen gewijzigd. Er is niets afgedrukt; open het document opnieuw.',
+    browser: 'De definitieve printversie kan in deze browser niet worden gecontroleerd. Er is niets afgedrukt.'
+  };
+  var geverifieerd = typeof WeakSet === 'function' ? new WeakSet() : null;
+  var vrijgave = null;
+  var isHash = function (h) { return typeof h === 'string' && /^[0-9a-f]{64}$/.test(h); };
+  var fout = function (k) { return { ok: false, fout: MELDING[k] }; };
+  async function sha256Hex(t) {
+    if (typeof crypto === 'undefined' || !crypto || !crypto.subtle || typeof crypto.subtle.digest !== 'function' || typeof TextEncoder !== 'function') return null;
+    try {
+      var buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t));
+      return Array.prototype.map.call(new Uint8Array(buf), function (b) { return ('0' + b.toString(16)).slice(-2); }).join('');
+    } catch (e) { return null; }
+  }
+  // antw: {status, ok, json} van bgMouApi; verwacht: {id, doc_type, status, version} van het getoonde document.
+  async function controleer(antw, verwacht) {
+    if (!geverifieerd || !verwacht || !TYPES[verwacht.doc_type]) return fout('type');
+    if (!STATUS.hasOwnProperty(verwacht.status)) return fout('conflict');
+    if (!antw || !antw.ok) {
+      var st = antw ? antw.status : 0;
+      if (st === 401 || st === 403) return fout('toegang');
+      if (st === 409) return fout('conflict');
+      if (st === 0 || st >= 500) return fout('onbeschikbaar');
+      return fout('ongeldig');
+    }
+    var j = antw.json, d = j && j.document;
+    if (!j || j.ok !== true || !d || typeof d !== 'object') return fout('ongeldig');
+    if (typeof d.id !== 'string' || d.id !== String(verwacht.id) || d.doc_type !== verwacht.doc_type) return fout('ongeldig');
+    if (!STATUS.hasOwnProperty(d.status) || typeof d.version !== 'number' || !Number.isInteger(d.version) || d.version < 2) return fout('ongeldig');
+    if (d.status !== verwacht.status || d.version !== Number(verwacht.version)) return fout('verouderd');
+    if (typeof j.titel !== 'string' || typeof j.printtekst !== 'string' || !j.printtekst.trim()) return fout('ongeldig');
+    if (!isHash(j.print_hash) || !isHash(j.content_hash) || !isHash(j.manifest_hash)) return fout('ongeldig');
+    var h = await sha256Hex(j.printtekst);
+    if (h === null) return fout('browser');
+    if (h !== j.print_hash) return fout('ongeldig');
+    var res = Object.freeze({ ok: true, tekst: j.printtekst, docType: d.doc_type, status: d.status, version: d.version, statusLabel: STATUS[d.status] });
+    geverifieerd.add(res);
+    return res;
+  }
+  // Alleen zichtbare metadata: definitief, versie en status — geen id's, hashes of referenties.
+  // nogGeldig() wordt in de reliance-callback opnieuw gevraagd (documentwissel/uitloggen/nieuwere versie).
+  function print(res, titel, nogGeldig) {
+    if (!res || !geverifieerd || !geverifieerd.has(res)) return false;
+    var titelDef = titel + ' (definitief &mdash; versie ' + res.version + ', ' + res.statusLabel + ')';
+    toonRelianceAkkoord(titelDef, res.docType, function () {
+      if (typeof nogGeldig === 'function' && !nogGeldig()) return;
+      vrijgave = { tekst: res.tekst, docType: res.docType };
+      try { printDocNaAkkoord(res.tekst, titelDef, res.docType); } finally { vrijgave = null; }
+    });
+    return true;
+  }
+  function vrijgegeven(tekst, docType) {
+    var v = vrijgave; vrijgave = null;
+    return !!v && v.tekst === tekst && v.docType === docType;
+  }
+  return { isDefinitief: function (s) { return STATUS.hasOwnProperty(s); }, controleer: controleer, print: print, vrijgegeven: vrijgegeven };
+})();
 function printDocNaAkkoord(tekst, titel, docType) {
-  var kleuren = {nda:'#7c5cbf',loi:'#c9a84c',bem:'#2a5ea0',bem_verk:'#2a5ea0',bem_koper:'#2a5ea0',excl:'#1a7a5e',exclusief:'#1a7a5e',bieding:'#a0522d',spa:'#5a5470',teaser:'#1a7a5e',memo:'#8a5a00'};
+  // #91 F4 (28 okt 2026): zelfde IM-opmaak als de backendrenderer (worker/36): voorblad, inhoudsopgave uit
+  // de ##-koppen, paginanummering en een vaste disclaimer. De tekst is een concept dat vóór commercieel
+  // gebruik juridisch wordt getoetst; houd hem gelijk aan VM_DISCLAIMER_CONCEPT in worker/36.
+  var VM_DISCLAIMER_CONCEPT = 'Dit informatiememorandum is uitsluitend opgesteld om een beperkte kring van geselecteerde partijen te informeren over een mogelijke overname. '
+  + 'De informatie is afkomstig van de onderneming en haar eigenaren en is niet door een accountant of andere deskundige geverifieerd, tenzij uitdrukkelijk anders vermeld. '
+  + 'Aan dit document kunnen geen rechten worden ontleend. Het vormt geen aanbod en geen uitnodiging tot het doen van een aanbod. '
+  + 'Elke geïnteresseerde partij dient een eigen onderzoek te doen en zich zelfstandig te laten adviseren. '
+  + 'Prognoses en verwachtingen zijn onzeker en worden niet gegarandeerd. '
+  + 'Dit document is strikt vertrouwelijk en mag zonder voorafgaande schriftelijke toestemming niet geheel of gedeeltelijk worden verveelvoudigd of aan derden worden verstrekt.';
+  function imKoppenUitTekst(tekst) {
+    return String(tekst || '').split('\n').map(function(r){ return r.trim(); }).filter(function(r){ return /^##\s+\S/.test(r); }).map(function(r){ return r.replace(/^#+\s*/, '').trim(); });
+  }
+  var isIm = docType === 'memo' || docType === 'memo_definitief';
+  var kleuren = {nda:'#7c5cbf',loi:'#c9a84c',bem:'#2a5ea0',bem_verk:'#2a5ea0',bem_koper:'#2a5ea0',excl:'#1a7a5e',exclusief:'#1a7a5e',bieding:'#a0522d',spa:'#5a5470',teaser:'#1a7a5e',memo:'#8a5a00',memo_definitief:'#8a5a00'};
   var kleur = kleuren[docType] || '#1a7a5e';
-  // Teaser en verkoopmemorandum zijn eind-informatiedocumenten die als zodanig naar een tegenpartij
-  // gaan — geen concept van een te ondertekenen contract. Voor die twee geen CONCEPT-watermerk
-  // (dat zou een ontvanger ten onrechte als "nog niet definitief" lezen). Alle contract-/biedings-
-  // documenten houden het watermerk.
-  var toonWatermerk = !(docType === 'teaser' || docType === 'memo');
+  // De teaser is een eind-informatiedocument zonder CONCEPT-watermerk (ongewijzigd). Het
+  // verkoopmemorandum (B2, 14 okt 2026) volgt de backendlifecycle (worker/19b): een concept ('memo')
+  // krijgt wél het CONCEPT-watermerk; alleen een bevoegd, hashgebonden vastgesteld memorandum
+  // ('memo_definitief', alleen door mna/04 na controle van het snapshot) wordt zonder watermerk
+  // afgedrukt. Alle contract-/biedingsdocumenten houden het watermerk, behalve een MOU/LoI/NDA waarvan
+  // printTosDefinitief zojuist precies deze servertekst heeft geverifieerd en vrijgegeven (productpunt 14).
+  var tosDefinitief = (docType === 'mou' || docType === 'loi' || docType === 'nda')
+    && typeof printTosDefinitief !== 'undefined' && printTosDefinitief.vrijgegeven(tekst, docType);
+  var toonWatermerk = !(docType === 'teaser' || docType === 'memo_definitief' || tosDefinitief);
   function fmt(t) {
     if(!t) return '';
     // P0 documentuitvoer (7 okt 2026): documenttekst is onvertrouwd. Alleen attribuutloze simpele
@@ -84,6 +175,13 @@ function printDocNaAkkoord(tekst, titel, docType) {
     return t.split(/\n\n+/).map(function(p){
       p = p.trim(); if(!p) return '';
       if(p.startsWith('<h3>')) return p;
+      // #91 fase C: markdown-tabel, zelfde regel als fmtDocumentTekst() in worker/36. Cellen zijn al ge-escaped.
+      var tr = p.split(/\n/);
+      if(tr.length >= 2 && tr.every(function(l){ return /^\|.*\|$/.test(l.trim()); })){
+        var rijen = tr.filter(function(l){ return !/^\|[\s:|-]+\|$/.test(l.trim()); }).map(function(l){ return l.trim().replace(/^\||\|$/g,'').split('|').map(function(c){ return c.trim(); }); });
+        return '<table class="doc-tabel"><thead><tr>'+rijen[0].map(function(c){ return '<th>'+c+'</th>'; }).join('')+'</tr></thead><tbody>'
+          +rijen.slice(1).map(function(r){ return '<tr>'+r.map(function(c){ return '<td>'+c+'</td>'; }).join('')+'</tr>'; }).join('')+'</tbody></table>';
+      }
       if(/^[-•]\s/m.test(p)){
         var items = p.split(/\n/).map(function(l){ return l.replace(/^[-•]\s/,''); }).filter(Boolean);
         return '<ul>'+items.map(function(i){ return '<li>'+i+'</li>'; }).join('')+'</ul>';
@@ -119,6 +217,7 @@ function printDocNaAkkoord(tekst, titel, docType) {
     // Watermerk: dit printvenster toont altijd een concept-tekst (gegenereerd of nog niet definitief
     // ondertekend) — nooit het daadwerkelijk ondertekende document (dat loopt via Signhost). Een
     // duidelijk "CONCEPT"-watermerk voorkomt dat een printout per ongeluk als definitief circuleert.
+    // Uitzonderingen alleen via toonWatermerk hierboven (teaser, memo_definitief, geverifieerde MOU/LoI/NDA).
     +(toonWatermerk?'body::before{content:"CONCEPT";position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-35deg);font-size:110pt;font-weight:700;color:rgba(0,0,0,.06);z-index:0;pointer-events:none;white-space:nowrap;font-family:IBM Plex Sans,sans-serif}':'')
     +'.page{max-width:720px;margin:0 auto;padding:2cm;position:relative;z-index:1}'
     +'.doc-header{display:flex;align-items:flex-end;justify-content:space-between;padding-bottom:1.25rem;border-bottom:3px solid '+kleur+';margin-bottom:2rem}'
@@ -128,6 +227,7 @@ function printDocNaAkkoord(tekst, titel, docType) {
     +'h3{font-size:10pt;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:'+kleur+';margin:1.75rem 0 .5rem;padding-bottom:.3rem;border-bottom:1px solid #e8e5df}'
     +'p{margin-bottom:.75rem;color:#2a2825;font-size:10.5pt}'
     +'ul{margin:.5rem 0 .75rem 1.75rem}'
+    +'.doc-tabel{width:100%;border-collapse:collapse;margin:.5rem 0 1rem;font-size:9.5pt;page-break-inside:avoid}.doc-tabel th{text-align:left;font-weight:600;border-bottom:1px solid #2a2825;padding:.3rem .4rem}.doc-tabel td{border-bottom:1px solid #e8e5df;padding:.3rem .4rem;color:#2a2825}'
     +'li{margin-bottom:.35rem;color:#2a2825;font-size:10.5pt}'
     +'strong{font-weight:600}'
     +'.doc-footer{margin-top:3rem;padding-top:1rem;border-top:1px solid #e8e5df;font-size:8pt;color:#aaa8a2;display:flex;justify-content:space-between}'
@@ -137,18 +237,28 @@ function printDocNaAkkoord(tekst, titel, docType) {
     +'  @page{margin:2cm 2cm 2.5cm 2cm;size:A4}'
     +'  .doc-footer{position:static;margin-top:2rem;border-top:1px solid #e8e5df;padding-top:.4rem}'
     +'}'
+    +(isIm?'.im-voorblad{min-height:23cm;display:flex;flex-direction:column;justify-content:center;page-break-after:always}'
+      +'.im-voorblad .im-naam{font-family:Playfair Display,serif;font-size:30pt;font-weight:600;color:'+kleur+';line-height:1.2;margin-bottom:.75rem}'
+      +'.im-voorblad .im-sub{font-size:14pt;color:#2a2825;margin-bottom:2.5rem}.im-voorblad .im-meta{font-size:10pt;color:#6b6862;line-height:1.8;border-top:3px solid '+kleur+';padding-top:1rem}'
+      +'.im-toc{page-break-after:always}.im-toc ul{margin:1rem 0 0 1.5rem;list-style:decimal}.im-toc li{font-size:11pt;margin-bottom:.45rem}'
+      +'.im-disclaimer{page-break-after:always}.im-disclaimer p{font-size:9.5pt;color:#4a4842}'
+      +'@page{@bottom-center{content:"Strikt vertrouwelijk \\00B7  pagina " counter(page) " van " counter(pages);font-size:8pt;color:#8a8880}}':'')
     +'<\/style><\/head><body>'
     +'<div class="page">'
+    +(isIm?'<div class="im-voorblad"><div class="im-naam">'+esc((S&&S.traject&&S.traject.kantoor_naam)||titel)+'<\/div><div class="im-sub">Informatiememorandum<\/div>'
+      +'<div class="im-meta">'+datum+'<br>Strikt vertrouwelijk'+(pubRef?'<br>Trajectreferentie: '+esc(pubRef):'')+'<\/div><\/div>'
+      // #91 fase E: disclaimer VOORIN, direct na het voorblad (zelfde volgorde als de server-PDF, worker/36).
+      +'<div class="im-disclaimer"><h3>Disclaimer<\/h3><p>'+esc(VM_DISCLAIMER_CONCEPT)+'<\/p><\/div>'
+      +(imKoppenUitTekst(tekst).length?'<div class="im-toc"><h3>Inhoud<\/h3><ul>'+imKoppenUitTekst(tekst).map(function(k){ return '<li>'+esc(k)+'<\/li>'; }).join('')+'<\/ul><\/div>':''):'')
     +'<div class="doc-header">'
     +'<div class="doc-header-left"><div class="doc-title">'+titelHtml+'<\/div><\/div>'
     +'<div class="doc-header-right">'
     +docLogoImg
     +datum+'<br>Vertrouwelijk'+(pubRef?'<br><span style="font-family:monospace;font-size:8pt;color:#c8c5bc">Trajectreferentie: '+esc(pubRef)+'<\/span>':'')
     +'<\/div><\/div>'
-    // Verkoopmemorandum: geen groot CONCEPT-watermerk (zou het als "niet af" laten lezen richting een
-    // serieuze koper), maar wél een discrete statusregel — het is een automatisch gegenereerd,
-    // bewerkbaar document dat de begeleider hoort te controleren vóór verspreiding (ChatGPT-review
-    // 31 aug 2026, keuze Marcel: discrete regel).
+    // Verkoopmemorandum-concept: naast het watermerk de bestaande discrete statusregel (31 aug 2026) —
+    // automatisch samengesteld en bewerkbaar, te controleren vóór verspreiding. Niet bij
+    // 'memo_definitief'.
     +(docType==='memo'?'<div style="background:#fbf3e3;border:1px solid #e0b84c;border-radius:4px;padding:6px 12px;margin-bottom:1.5rem;font-size:9pt;color:#7a5a00">Conceptversie &mdash; automatisch samengesteld uit de aangeleverde gegevens. Controleer de inhoud v&oacute;&oacute;r verspreiding.<\/div>':'')
     +'<div class="doc-body">'+fmt(tekst)+'<\/div>'
     // Geen vaste reliance-voettekst meer in het printvenster zelf (12 sep 2026, Marcel — harde eis):
@@ -228,6 +338,18 @@ function docProcesCheck(docType) {
   return { waarschuwingen: waarschuwingen, geblokkeerd: geblokkeerd };
 }
 
+// Documentgeschiedenis lezen (GET /mna/versies/:code[/type], productpunt 16, 13 okt 2026). Alleen een
+// geslaagd HTTP-antwoord met een leesbare array telt als historie; 200 [] is een echte lege historie.
+// Netwerkfout, 401/403/5xx, ongeldige JSON of een ander antwoord gooit — de aanroeper toont dan een
+// leesfout en neemt nooit "geen versies" aan. Ook gebruikt door mna/04.
+async function leesVersieLijst(url, opts) {
+  var r = await fetch(url, opts);
+  if (!r || !r.ok) throw new Error('HTTP ' + (r ? r.status : '?'));
+  var lijst = await r.json();
+  if (!Array.isArray(lijst)) throw new Error('onleesbaar antwoord');
+  return lijst;
+}
+
 async function toonDocWaarschuwing(docType, onDoorgaan) {
   // Anti-stapel (31 aug 2026): dit is een async-functie (fetch vóór de modal verschijnt). Twee klikken
   // vlak na elkaar op een documentstap gaven twee overlays; "Annuleren" sloot er dan maar één en het
@@ -237,12 +359,17 @@ async function toonDocWaarschuwing(docType, onDoorgaan) {
   if (window.__docWaarschuwingBezig) return;
   window.__docWaarschuwingBezig = true;
   try {
-  // Haal versies op voor realtime blokkadecheck
+  // Haal versies op voor realtime blokkadecheck. Productpunt 16: een mislukte leesactie is "onbekend",
+  // niet "geen documenten" — dan geen blokkade-/aanwezigheidsoordeel en nooit onDoorgaan (geen
+  // generatie), alleen een eerlijke melding met opnieuw proberen. Een antwoord dat binnenkomt na een
+  // sessie-, traject-, rol- of schermwissel doet niets.
+  var sessie = S, code = S.code, rol = S.rol, scherm = S.screen;
   var versies = [];
+  var leesfout = false;
   try {
-    var vr = await fetch(WORKER+'/mna/versies/'+S.code);
-    versies = await vr.json();
-  } catch(e) {}
+    versies = await leesVersieLijst(WORKER+'/mna/versies/'+S.code);
+  } catch(e) { versies = []; leesfout = true; }
+  if (S !== sessie || S.code !== code || S.rol !== rol || S.screen !== scherm) { window.__docWaarschuwingBezig = false; return; }
 
   var t = S.traject || {};
   // Een document telt als "aanwezig" wanneer er ofwel een gegenereerde/geüploade versie in de
@@ -296,8 +423,12 @@ async function toonDocWaarschuwing(docType, onDoorgaan) {
   if (docType === 'dealvoorstel') {
     if (!t.excl_getekend) waarschuwingen.push('⚠ De Exclusiviteitsovereenkomst is nog niet getekend — koper onderhandelt (nog) niet exclusief.');
   }
+  if (leesfout) {
+    waarschuwingen = ['⚠ De documentgeschiedenis kon niet worden geladen. Daardoor is niet te controleren welke documenten er al zijn; er is niets aangemaakt. Probeer het opnieuw.'];
+    geblokkeerd = true;
+  }
 
-  var check = { waarschuwingen: waarschuwingen, geblokkeerd: geblokkeerd };
+  var check ={ waarschuwingen: waarschuwingen, geblokkeerd: geblokkeerd };
   if (!check.waarschuwingen.length) { window.__docWaarschuwingBezig = false; onDoorgaan(); return; }
 
   function sluitDw(el){ try{ el.remove(); }catch(e){} window.__docWaarschuwingBezig = false; }
@@ -326,12 +457,19 @@ async function toonDocWaarschuwing(docType, onDoorgaan) {
     + '</div>'
     + '<div style="display:flex;gap:8px;justify-content:flex-end">'
     + '<button class="btn-ghost" id="dw-ann">Annuleren</button>'
+    + (leesfout ? '<button class="btn" id="dw-opnieuw" style="background:' + kleur + '">Opnieuw proberen</button>' : '')
     + (!check.geblokkeerd ? '<button class="btn" id="dw-door" style="background:' + kleur + '">Toch doorgaan</button>' : '')
     + '</div>';
 
   ov.appendChild(mo); document.body.appendChild(ov);
   ov.addEventListener('click', function(e) { if(e.target===ov) sluitDw(ov); });
   document.getElementById('dw-ann').onclick = function() { sluitDw(ov); };
+  if (leesfout) {
+    document.getElementById('dw-opnieuw').onclick = function() {
+      sluitDw(ov);
+      toonDocWaarschuwing(docType, onDoorgaan);
+    };
+  }
   if (!check.geblokkeerd) {
     document.getElementById('dw-door').onclick = function() {
       sluitDw(ov);
@@ -370,14 +508,26 @@ async function laadPartijDocs() {
   }
   var labels = {nda:'NDA',loi:'Letter of Intent',bem:'Bemiddelingsovereenkomst',bem_verk:'Bemiddelingsovereenkomst',bem_koper:'Bemiddelingsovereenkomst',excl:'Exclusiviteitsbrief',exclusief:'Exclusiviteitsbrief',bem_upload:'Bemiddelingsovereenkomst',excl_upload:'Exclusiviteitsbrief',nda_upload:'NDA',loi_upload:'Letter of Intent',dealvoorstel:'Dealvoorstel',bieding:'Indicatieve bieding'};
   var kleuren = {nda:'#7c5cbf',loi:'#c9a84c',bem:'#2a5ea0',bem_verk:'#2a5ea0',bem_koper:'#2a5ea0',excl:'#1a7a5e',exclusief:'#1a7a5e',dealvoorstel:'#8a5a00',bieding:'#a0522d'};
+  // Productpunt 16: een antwoord geldt alleen voor dezelfde sessie, code, rol en nog getoonde sectie.
+  var sessie = S, code = S.code, rol = S.rol;
+  function actueel() { return S === sessie && S.code === code && S.rol === rol && document.getElementById('partij-docs-sectie') === el; }
   try {
     // Haal contractversies EN geüploade dataroom-bestanden parallel op
-    var [versiesResp, docsResp] = await Promise.all([
-      fetch(WORKER+'/mna/versies/'+S.code),
-      fetch(WORKER+'/mna/document/lijst/'+S.code)
+    var [versies, docsResp] = await Promise.all([
+      leesVersieLijst(WORKER+'/mna/versies/'+S.code).catch(function(){ return null; }),
+      fetch(WORKER+'/mna/document/lijst/'+S.code).catch(function(){ return null; })
     ]);
-    var versies = await versiesResp.json();
+    if (!actueel()) return;
+    // Mislukte historie (netwerk, 401/403/5xx, onleesbaar): eerlijke melding, nooit "Nog geen documenten".
+    if (!versies) {
+      el.innerHTML='<div style="margin-top:1.5rem;font-size:12px;color:var(--muted)">Uw documentenoverzicht kon nu niet worden geladen. <button class="btn-ghost partij-docs-opnieuw" style="font-size:11px;padding:4px 12px">Opnieuw proberen</button></div>';
+      var opnieuwBtn = el.querySelector('.partij-docs-opnieuw');
+      if (opnieuwBtn) opnieuwBtn.addEventListener('click', function(){ laadPartijDocs(); });
+      return;
+    }
+    if (!docsResp) throw new Error('dataroomlijst niet bereikbaar');
     var alleDocs = await docsResp.json();
+    if (!actueel()) return;
 
     // Filter contractversies op rol
     versies = versies.filter(function(v){ return rolFilter.indexOf(v.doc_type) !== -1; });
@@ -397,6 +547,7 @@ async function laadPartijDocs() {
       var shD = await shR.json();
       shTransacties = shD.transactions || [];
     } catch(e) {}
+    if (!actueel()) return;
 
     // Contractversies (NDA, BEM, LoI, Excl)
     versies.forEach(function(v) {
@@ -508,7 +659,7 @@ async function laadPartijDocs() {
         };
       });
     });
-  } catch(e) { el.innerHTML=''; }
+  } catch(e) { if (actueel()) el.innerHTML=''; }
 }
 
 async function laadPartijGesprekken() {

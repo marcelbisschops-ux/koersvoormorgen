@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<meta name="referrer" content="no-referrer">
+<title>Uitnodiging · Koers voor Morgen</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500&family=Inter:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="./assets/kvm.css">
+<style>
+/* KVM-FUNC-WF-001: beveiligde kandidaatpagina (worker/60). Toont alleen wat bij deze persoonlijke uitnodiging hoort. */
+.kd-wrap{max-width:640px;margin:0 auto;padding:40px 16px 64px}
+.kd-kaart{background:var(--paper,#fff);border:1px solid rgba(0,0,0,.12);border-radius:12px;padding:24px}
+.kd-kaart h1{font-family:Newsreader,Georgia,serif;font-weight:500;font-size:28px;margin:0 0 12px}
+.kd-teaser{white-space:pre-wrap;line-height:1.6;margin:16px 0;padding:16px;border-left:3px solid #3d6b63;background:rgba(61,107,99,.06)}
+.kd-knoppen{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+.kd-knoppen button,.kd-form button{font:600 14px Inter,system-ui,sans-serif;padding:10px 16px;border-radius:8px;border:1px solid #3d6b63;cursor:pointer}
+.kd-ja{background:#3d6b63;color:#fff}.kd-nee{background:transparent;color:#3d6b63}
+.kd-form{display:grid;gap:10px;margin-top:12px}
+.kd-form label{display:grid;gap:4px;font-size:14px}
+.kd-form input{font:15px Inter,system-ui,sans-serif;padding:9px 10px;border:1px solid rgba(0,0,0,.25);border-radius:6px}
+.kd-melding{margin-top:14px;padding:10px 12px;border-radius:8px;font-size:14px}
+.kd-ok{background:rgba(61,107,99,.12)}.kd-fout{background:rgba(224,82,82,.12)}
+.kd-klein{font-size:13px;opacity:.8}
+.kd-info{margin-top:20px;padding-top:14px;border-top:1px solid rgba(0,0,0,.12);font-size:13px;line-height:1.6}
+.kd-info h2{font:600 14px Inter,system-ui,sans-serif;margin:0 0 6px}
+.kd-info p{margin:0 0 8px}
+.kd-stop{background:transparent;color:#a33;border:1px solid #a33;font:600 13px Inter,system-ui,sans-serif;padding:8px 12px;border-radius:8px;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:2px solid #c49a4a;outline-offset:2px}
+</style>
+</head>
+<body>
+<header class="nav"><div class="nav__in"><span class="nav__brand">Koers voor <b>Morgen</b></span></div></header>
+<main class="kd-wrap"><div class="kd-kaart" id="kd" aria-live="polite"><p>Laden…</p></div></main>
+<script>
+(function () {
+  var LIJST = ['https://kantoorinzicht.marcel-bisschops.workers.dev', 'https://kantoorinzicht-staging.marcel-bisschops.workers.dev'];
+  var q = new URLSearchParams(location.search), wp = q.get('worker') || '';
+  var WORKER = LIJST.indexOf(wp) >= 0 ? wp : LIJST[0];
+  var t = (q.get('t') || '').trim();
+  // Token na het uitlezen uit de adresbalk halen (zelfde aanpak als introductie.html); alleen in het geheugen.
+  try { if (q.has('t') && history && typeof history.replaceState === 'function') { q.delete('t'); var rest = q.toString(); history.replaceState(null, '', location.pathname + (rest ? '?' + rest : '')); } } catch (e) {}
+  var el = document.getElementById('kd');
+  function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
+  function api(m, pad, body) {
+    var o = { method: m, headers: {}, cache: 'no-store', referrerPolicy: 'no-referrer' };
+    if (body) { o.headers['Content-Type'] = 'application/json'; o.body = JSON.stringify(body); }
+    return fetch(WORKER + pad, o).then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { return { s: r.status, j: j }; }); }).catch(function () { return { s: 0, j: { error: 'Geen verbinding. Probeer het later opnieuw.' } }; });
+  }
+  function fout(tekst) { el.innerHTML = '<h1>Uitnodiging</h1><div class="kd-melding kd-fout" role="alert">' + esc(tekst) + '</div>'; }
+  function geldig(d) { return d.geldig_tot ? '<p class="kd-klein">Deze persoonlijke link is geldig tot ' + esc(new Date(d.geldig_tot).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })) + '. Stuur hem niet door.</p>' : ''; }
+  function reageer(body, knop) {
+    knop.disabled = true;
+    api('POST', '/mna/kandidaat/uitnodiging/reactie', Object.assign({ t: t }, body)).then(function (r) {
+      if (r.s !== 200) { knop.disabled = false; var m = document.getElementById('kd-m'); m.className = 'kd-melding kd-fout'; m.textContent = r.j.error || 'Dat lukte niet. Probeer het opnieuw.'; return; }
+      laad();
+    });
+  }
+  // Art. 14 AVG: informatie bij indirect verkregen gegevens, en afmelden (bezwaar) zonder account.
+  function info(d) {
+    var wie = d.adviseur ? esc(d.adviseur) : 'de adviseur die je deze uitnodiging stuurde';
+    return '<section class="kd-info" aria-labelledby="kd-info-t"><h2 id="kd-info-t">Waarom je dit ontvangt en wat er met je gegevens gebeurt</h2>'
+      + '<p>' + wie + ' begeleidt een overnametraject en heeft jouw organisatie geselecteerd als mogelijk geïnteresseerde partij. ' + wie + ' is verantwoordelijk voor deze benadering; Koers voor Morgen (Bisschops Financing B.V.) levert het platform waarmee de uitnodiging wordt verstuurd.</p>'
+      + '<p>Vastgelegd zijn de naam en vestigingsplaats van je organisatie, je naam en zakelijke e-mailadres, de verzending en het openen van deze link en je reactie. Bij een geheimhoudingsovereenkomst ook naam, functie en e-mailadres van de ondertekenaar. Deze gegevens komen van ' + wie + ', uit eigen relatiegegevens of openbare zakelijke bronnen.</p>'
+      + '<p>Doel is je informeren over deze mogelijke overnamekans en het vervolg afhandelen. Dat gebeurt op basis van het gerechtvaardigd belang om geschikte partijen voor een overname te benaderen. De gegevens worden bewaard zolang het traject loopt en uiterlijk veertien dagen na afsluiting verwijderd, tenzij voor dat traject een langere termijn van ten hoogste een jaar is afgesproken.</p>'
+      + '<p>Je kunt ' + wie + ' vragen om inzage, correctie of verwijdering van je gegevens. Lees meer in de <a href="/privacy.html" target="_blank" rel="noopener">privacyverklaring</a>.</p>'
+      + (stop ? '<div class="kd-melding kd-ok" role="status">Je bent afgemeld. Je wordt voor deze kans niet meer benaderd en je contactgegevens zijn verwijderd.</div>'
+        : (bevestigStop ? '<p><b>Niet meer benaderen?</b> Je contactgegevens worden verwijderd en deze link werkt daarna niet meer. Alleen een versleuteld kenmerk blijft bewaard, zodat je voor deze kans niet opnieuw wordt benaderd.</p><div class="kd-knoppen"><button type="button" class="kd-stop" id="kd-stop-ja">Ja, niet meer benaderen</button><button type="button" class="kd-nee" id="kd-stop-nee">Annuleren</button></div>'
+          : '<button type="button" class="kd-stop" id="kd-stop">Niet meer benaderen</button>'))
+      + '</section>';
+  }
+  var stop = false, bevestigStop = false, laatste = null;
+  function stopKoppel() {
+    var a = document.getElementById('kd-stop'), j = document.getElementById('kd-stop-ja'), n = document.getElementById('kd-stop-nee');
+    if (a) a.addEventListener('click', function () { bevestigStop = true; teken(laatste); });
+    if (n) n.addEventListener('click', function () { bevestigStop = false; teken(laatste); });
+    if (j) j.addEventListener('click', function () {
+      j.disabled = true;
+      api('POST', '/mna/kandidaat/uitnodiging/reactie', { t: t, reactie: 'bezwaar' }).then(function (r) {
+        if (r.s !== 200) { j.disabled = false; var m = document.getElementById('kd-m'); m.className = 'kd-melding kd-fout'; m.textContent = r.j.error || 'Dat lukte niet. Probeer het opnieuw.'; return; }
+        stop = true; bevestigStop = false; teken(laatste);
+      });
+    });
+  }
+  function teken(d) {
+    laatste = d;
+    if (stop) { el.innerHTML = '<h1>Afgemeld</h1>' + info(d); return; }
+    var h = '';
+    var bedankt = { interesse: 'Dank je. Je adviseur neemt contact met je op over de vervolgstap.', geen_interesse: 'Dank je voor je reactie. We nemen je niet verder mee voor deze kans.', nda_gegevens: 'Dank je. De geheimhoudingsovereenkomst wordt naar de opgegeven ondertekenaar gestuurd.' };
+    if (d.soort === 'teaser') {
+      h += '<h1>Een mogelijke overnamekans</h1><p>Hieronder staat een anonieme beschrijving van een onderneming. Past dit bij ' + esc(d.kandidaat || 'jouw organisatie') + '?</p>';
+      h += '<div class="kd-teaser">' + esc(d.teaser || 'De beschrijving is nog niet beschikbaar.') + '</div>';
+      if (d.reactie) h += '<div class="kd-melding kd-ok" role="status">' + esc(bedankt[d.reactie] || 'Je reactie is ontvangen.') + '</div>';
+      else h += '<div class="kd-knoppen"><button type="button" class="kd-ja" data-r="interesse">Ja, ik heb interesse</button><button type="button" class="kd-nee" data-r="geen_interesse">Nee, geen interesse</button></div>';
+    } else {
+      h += '<h1>Geheimhoudingsovereenkomst</h1><p>Om meer informatie te kunnen delen, vragen we je een geheimhoudingsovereenkomst te ondertekenen. Geef hieronder door wie namens ' + esc(d.kandidaat || 'jouw organisatie') + ' ondertekent. De overeenkomst zelf ontvang je daarna ter ondertekening.</p>';
+      if (d.reactie) h += '<div class="kd-melding kd-ok" role="status">' + esc(bedankt[d.reactie] || 'Je reactie is ontvangen.') + '</div>';
+      else h += '<form class="kd-form" id="kd-form"><label>Naam ondertekenaar<input name="naam" required maxlength="120" autocomplete="name"></label><label>Functie<input name="functie" required maxlength="120" autocomplete="organization-title"></label><label>E-mailadres ondertekenaar<input name="email" type="email" required maxlength="200" autocomplete="email"></label>'
+        + '<div class="kd-knoppen"><button type="submit" class="kd-ja">Gegevens versturen</button><button type="button" class="kd-nee" data-r="geen_interesse">Toch geen interesse</button></div></form>';
+    }
+    h += '<div id="kd-m" role="status"></div>' + geldig(d) + (d.adviseur ? '<p class="kd-klein">Vragen? Neem contact op met ' + esc(d.adviseur) + '.</p>' : '');
+    el.innerHTML = h + info(d);
+    stopKoppel();
+    el.querySelectorAll('[data-r]').forEach(function (b) { b.addEventListener('click', function () { reageer({ reactie: b.getAttribute('data-r') }, b); }); });
+    var f = document.getElementById('kd-form');
+    if (f) f.addEventListener('submit', function (e) { e.preventDefault(); reageer({ reactie: 'nda_gegevens', ondertekenaar: { naam: f.naam.value, functie: f.functie.value, email: f.email.value } }, f.querySelector('button[type=submit]')); });
+  }
+  function laad() {
+    if (!/^[0-9a-f]{64}$/.test(t)) { fout('Deze link is ongeldig of verlopen. Neem contact op met de adviseur die je de uitnodiging stuurde.'); return; }
+    api('GET', '/mna/kandidaat/uitnodiging?t=' + encodeURIComponent(t)).then(function (r) { if (r.s !== 200) { fout(r.j.error || 'Deze link is ongeldig of verlopen.'); return; } teken(r.j); });
+  }
+  laad();
+})();
+</script>
+</body>
+</html>

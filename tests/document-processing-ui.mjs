@@ -23,6 +23,7 @@
 import fs from 'fs';
 import path from 'path';
 import vm from 'vm';
+import crypto from 'crypto';
 import { fileURLToPath, pathToFileURL } from 'url';
 
 const WORKER = 'https://worker.test';
@@ -73,15 +74,20 @@ function laad(root) {
     knip(src02, 'window.annuleerResterendeUploads = function(faseId) {', '\n};\n'),
     knip(src02, 'async function uploadDocument(faseId, file, existingId, vervangtDocId', '\n}\n'),
     knip(src02, 'window.centraalUploadFiles = async function(files) {', '\n};\n'),
+    knip(src02, 'function aandachtspuntenHtml(doc) {', '\n}\n'),
     knip(src02, 'function renderDocumentSectie(faseId) {', '\n}\n'),
     knip(src02, 'window.vervangDocument = function(faseId, docId) {', '\n};\n'),
     knip(src02, 'async function loadDataroom(){', '\n}\n'),
     knip(src02, 'function renderDataroom(){', '\n}\n'),
+    // Productpunt 5 (22 okt 2026): expliciete groepsverwerking en het koppelmenu.
+    knip(src02, 'function verwerkGroepsdocument(velden, docNaam, velden2) {', '\n}\n'),
+    knip(src02, 'function opslaanGroepsdocument(fases){', '\n}\n'),
+    knip(src02, 'window.koppelDocumentAanEntiteit = async function(docId, selectPrefix){', '\n};\n'),
   ];
 
   const els = {};
-  const log = { requests: [], lijst: [], overig: [], autoFill: [], toasts: [], html: '', saveAll: 0 };
-  const opzet = { upload: [], lijst: [], autoFillGooit: false, snelleTimeout: false };
+  const log = { requests: [], lijst: [], overig: [], autoFill: [], toasts: [], html: '', saveAll: 0, timers: [], handTimers: [], groepSave: [] };
+  const opzet = { upload: [], lijst: [], autoFillGooit: false, snelleTimeout: false, handTimer: false };
 
   function renderApp() {
     const html = ctx.renderDocumentSectie(FASE);
@@ -129,12 +135,21 @@ function laad(root) {
       createElement: (tag) => { const el = maakEl('nieuw-' + tag); el.click = () => { ctx._laatsteKiezer = el; }; return el; },
       body: { appendChild() {} },
     },
-    renderApp, fetch, FormData, AbortController, clearTimeout, console,
-    setTimeout: (fn, ms, ...a) => setTimeout(fn, (opzet.snelleTimeout && ms === 60000) ? 5 : ms, ...a),
+    renderApp, fetch, FormData, AbortController, console,
+    // Elke gevraagde timerduur wordt vastgelegd. snelleTimeout verkort de upload-deadline (en een
+    // eventuele regressie naar 60000) tot 5 ms; handTimer houdt de 900000 ms-timer vast, zodat de test
+    // hem zelf laat aflopen (echte abort via fetchMetTimeout) of ziet dat hij na een antwoord gewist is.
+    setTimeout: (fn, ms, ...a) => {
+      log.timers.push(ms);
+      if (opzet.handTimer && ms === 900000) { const h = { fn, ms, gewist: false }; log.handTimers.push(h); return h; }
+      return setTimeout(fn, (opzet.snelleTimeout && (ms === 900000 || ms === 60000)) ? 5 : ms, ...a);
+    },
+    clearTimeout: (id) => { if (id && typeof id === 'object' && 'gewist' in id) id.gewist = true; else clearTimeout(id); },
     toast: (msg, type) => log.toasts.push({ msg: String(msg), type }),
-    autoFillFromExtraction: (fid, velden) => { if (opzet.autoFillGooit) throw new TypeError('synthetische lokale fout'); log.autoFill.push({ fid, velden }); },
+    autoFillFromExtraction: (...a) => { if (opzet.autoFillGooit) throw new TypeError('synthetische lokale fout'); log.autoFill.push({ fid: a[0], velden: a[1], entiteitId: a[4], opties: a[5], argc: a.length }); },
     vergelijkDubbelePassOverigeVelden: () => [], toonConflictDialog() {},
     markDirty() {}, schedSave() {}, saveEntiteitData() {}, saveAll() { log.saveAll++; },
+    saveGroepsniveauVelden: (fid) => { log.groepSave.push(fid); return Promise.resolve(true); }, showSaveIndicator() {}, confirm: () => true,
     brandMerkHtml: () => '', versieLabel: () => '', secAuditLog() {},
   });
   ctx.window = ctx;
@@ -143,8 +158,8 @@ function laad(root) {
   const bestand = (naam) => new File(['Synthetisch document (geen echte gegevens).'], naam, { type: 'text/plain' });
   const begin = (docs) => {
     ctx.DOCS[FASE] = docs || [];
-    log.requests = []; log.lijst = []; log.overig = []; log.autoFill = []; log.toasts = [];
-    opzet.upload = []; opzet.lijst = []; opzet.autoFillGooit = false; opzet.snelleTimeout = false;
+    log.requests = []; log.lijst = []; log.overig = []; log.autoFill = []; log.toasts = []; log.timers = []; log.handTimers = [];
+    opzet.upload = []; opzet.lijst = []; opzet.autoFillGooit = false; opzet.snelleTimeout = false; opzet.handTimer = false;
     renderApp();
   };
   const uitgesteld = () => {
@@ -185,7 +200,7 @@ function laadAutosave(root) {
     regel(src02, /^function isKoper\(\)\{.*\}$/m, 'isKoper'),
     regel(src02, /^function isTussen\(\)\{.*\}$/m, 'isTussen'),
     regel(src02, /^function veldBron\(key\)\{[\s\S]*?\n\}/m, 'veldBron'),
-    regel(src02, /^function getDataForFase\(id\)\{[\s\S]*?\n\}/m, 'getDataForFase'),
+    regel(src02, /^function getDataForFase\(id\)\{[\s\S]*?\n\}/m, 'getDataForFase'), regel(src02, /^function opslagRij\([\s\S]*?(?=^function getDataForFase\(id\))/m, 'N-154-basis'),
     regel(src02, /^function getChecklistForFase\(id\)\{.*\}$/m, 'getChecklistForFase'),
     regel(src02, /^function saveGroepsniveauVelden\(faseId\)\{[\s\S]*?\n\}/m, 'saveGroepsniveauVelden'),
     regel(src02, /^function saveCurrent\(cb\)\{[\s\S]*?\n\}/m, 'saveCurrent'),
@@ -196,6 +211,7 @@ function laadAutosave(root) {
     regel(src02, /^function showSaveIndicator\(tekst\)\{.*\}$/m, 'showSaveIndicator'),
     regel(src02, /^function schedSave\(\)\{.*\}$/m, 'schedSave'),
     knip(src02, 'function userEdit(el){', '\n}\n'),
+    knip(src02, 'function notitieEdit(el){', '\n}\n'),
     knip(src02, '// Dirty tracking — weet of er onopgeslagen wijzigingen zijn', '// -- BANKMUTATIES STATE'),
   ];
   const log = { req: [], beacon: [], toasts: [], groen: [], renders: 0 };
@@ -219,6 +235,7 @@ function laadAutosave(root) {
     const S = ctx.S; const f = ctx.FASES[S.fase];
     Object.keys(dom).forEach((k) => { delete dom[k]; });
     f.dataFields.forEach((df) => { if (!df.header) dom['df_' + df.id] = { id: 'df_' + df.id, value: (df.groepsniveau ? S._groepData : S.data)[f.id + '_' + df.id] || '' }; });
+    dom['notitie_' + f.id] = { id: 'notitie_' + f.id, value: S.notities[f.id] || '' };
   }
   const ctx = vm.createContext({
     console, WORKER, FASES: AUTOSAVE_FASES(),
@@ -239,8 +256,90 @@ function laadAutosave(root) {
   const timer = (ms) => { const t = timers.find((x) => x.fn && x.ms === ms); if (!t) return false; const fn = t.fn; t.fn = null; fn(); return true; };
   const autosave = () => intervals.find((i) => i.ms === 30000).fn();
   const typ = (id, waarde) => { const el = dom['df_' + id]; el.value = waarde; ctx.userEdit(el); return el; };
+  const typNotitie = (waarde) => { const el = dom['notitie_' + ctx.FASES[ctx.S.fase].id]; el.value = waarde; ctx.notitieEdit(el); return el; };
   const flush = async () => { for (let i = 0; i < 25; i++) await new Promise((r) => setImmediate(r)); };
-  return { ctx, log, opzet, dom, handlers, intervals, timer, autosave, typ, flush, renderApp };
+  return { ctx, log, opzet, dom, handlers, intervals, timer, autosave, typ, typNotitie, flush, renderApp };
+}
+
+// Productpunt 5 (22 okt 2026): geconsolideerd groepsdocument. Draait de ECHTE autoFillFromExtraction/
+// _autoFillFromExtractionBody, verwerkGroepsdocument, toonConflictDialog, loadDataFromDB en
+// saveGroepsniveauVelden/getDataForFase uit mna/02 in node:vm, met een minimale nep-DOM voor het keuzevenster
+// en een fetch-stub die elk /mna/save-verzoek vastlegt. Synthetische cijfers, geen netwerk.
+const GROEP_FASES = () => [
+  { id: 'financieel', title: 'Financieel', items: [], redflags: [], dataFields: ['omzet1', 'omzet2', 'omzet3', 'omzetYTD', 'ebitda', 'ebitdaNorm', 'ebitdaMarge', 'wip', 'debiteuren', 'partnerBel'].map((id) => ({ id, label: id })) },
+  { id: 'partner', title: 'Partners', items: [], redflags: [], dataFields: [{ id: 'fte', label: 'FTE' }] },
+];
+function laadGroepsdocument(root) {
+  const src02 = lees(root, 'mna/02-state-opslag-documenten.js');
+  const delen = [
+    regel(src02, /^function esc\(s\)\{.*\}$/m, 'esc'),
+    regel(src02, /^function isKoper\(\)\{.*\}$/m, 'isKoper'),
+    regel(src02, /^function isTussen\(\)\{.*\}$/m, 'isTussen'),
+    knip(src02, 'function isGroepsniveauVeld(key){', '\n}\n'),
+    regel(src02, /^function doelData\(key\)\{.*\}$/m, 'doelData'),
+    knip(src02, 'function cleanGetal(v) {', '\n}\n'),
+    knip(src02, 'var AI_VELD_MAP = {', '\n}\n'),
+    knip(src02, 'function autoFillFromExtraction(faseId, velden, forceOverwrite, docNaam, entiteitId, opties) {', '\n}\n'),
+    knip(src02, 'var GROEPSDOC_BEDRAGVELDEN = {', '\n};\n'),
+    knip(src02, 'function _autoFillFromExtractionBody(faseId, velden, forceOverwrite, docNaam, opties) {', '\n}\n'),
+    knip(src02, 'function verwerkGroepsdocument(velden, docNaam, velden2) {', '\n}\n'),
+    knip(src02, 'function opslaanGroepsdocument(fases){', '\n}\n'),
+    regel(src02, /^function veldBron\(key\)\{[\s\S]*?\n\}/m, 'veldBron'),
+    regel(src02, /^function getDataForFase\(id\)\{[\s\S]*?\n\}/m, 'getDataForFase'), regel(src02, /^function opslagRij\([\s\S]*?(?=^function getDataForFase\(id\))/m, 'N-154-basis'),
+    regel(src02, /^function getChecklistForFase\(id\)\{.*\}$/m, 'getChecklistForFase'),
+    regel(src02, /^function saveGroepsniveauVelden\(faseId\)\{[\s\S]*?\n\}/m, 'saveGroepsniveauVelden'),
+    regel(src02, /^function gbOpslagStart\(code,faseId,entiteitId\)\{[\s\S]*?\n\}/m, 'gbOpslagStart'),
+    regel(src02, /^function gbOpslagKlaar\(tk,d\)\{[\s\S]*?\n\}/m, 'gbOpslagKlaar'),
+    knip(src02, 'function loadDataFromDB(dbData){', 'koperReacties[id]=row.koper_reactie;}});}'),
+    knip(src02, 'function fmtConflictWaarde(v){', '\n}\n'),
+    knip(src02, 'function toonConflictDialog(conflicts, contextLabel, naAfloop) {', '\n}\n'),
+    knip(src02, 'function sluitConflictDialoogEnGaVerder(){', '\n}\n'),
+  ];
+  const log = { save: [], toasts: [], schedSave: 0, indicator: 0 };
+  const gemaakt = [];
+  const domEl = (tag) => {
+    const el = { tag, kinderen: [], style: {}, l: {}, attrs: {}, textContent: '', innerHTML: '', checked: false, name: '', value: '', type: '', className: '', id: '',
+      appendChild(c) { this.kinderen.push(c); return c; }, setAttribute(k, v) { this.attrs[k] = v; }, addEventListener(t, f) { this.l[t] = f; } };
+    gemaakt.push(el);
+    return el;
+  };
+  const fetch = (url, opts) => { log.save.push({ url: String(url), body: JSON.parse(opts.body) }); return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ ok: true }) }); };
+  const ctx = vm.createContext({
+    console, WORKER, FASES: GROEP_FASES(), fetch,
+    document: { createElement: domEl, createTextNode: (t) => ({ tekst: t }), body: { appendChild() {}, removeChild() {} }, getElementById: () => null },
+    setTimeout: (fn) => { fn(); return 0; }, clearTimeout() {},
+    renderApp() {}, markDirty() {}, schedSave: () => { log.schedSave++; }, showSaveIndicator: () => { log.indicator++; },
+    toast: (msg, type) => log.toasts.push({ msg: String(msg), type }),
+    S: null,
+  });
+  ctx.window = ctx;
+  vm.runInContext(delen.join('\n\n'), ctx, { filename: 'mna/02#groepsdocument' });
+  // Groep met twee entiteiten; actieve context = entiteit A (zoals loadEntiteiten standaard kiest). De groepsrij
+  // komt via de echte loadDataFromDB binnen met bruto sommen (auto:true) in omzet2, omzet3, debiteuren en ebitda.
+  const opzetGroep = () => {
+    const dataA = {};
+    ctx.S = { code: CODE, rol: 'verkoper', traject: { status: 'actief' }, data: dataA, _groepData: {}, dataPerEntiteit: { ENT_A: dataA }, _actieveEntiteit: 'ENT_A',
+      _entiteiten: [{ id: 'ENT_A', naam: 'Alfa BV' }, { id: 'ENT_B', naam: 'Beta BV' }], _opy: {}, _epy: {}, _opySlotJaar: {}, _conflicts: [], _userEdited: {}, _docSource: {}, _docFragment: {}, notities: {}, checked: {} };
+    ctx.loadDataFromDB([
+      { fase_id: 'financieel', entiteit_id: null, data_json: JSON.stringify({ omzet2: { value: '2500000', label: '', auto: true }, omzet3: { value: '3000000', label: '', auto: true }, debiteuren: { value: '400000', label: '', auto: true }, ebitda: { value: '450000', label: '', auto: true } }) },
+      { fase_id: 'financieel', entiteit_id: 'ENT_A', data_json: JSON.stringify({ omzet3: { value: '1000000', label: 'Omzet' } }) },
+    ]);
+    gemaakt.length = 0; log.save.length = 0; log.toasts.length = 0; log.schedSave = 0; log.indicator = 0;
+    return ctx.S;
+  };
+  // Keuzevenster bedienen zoals een gebruiker: per veldlabel "Huidig" of "Uit document" kiezen, dan een knop.
+  const labels = () => gemaakt.filter((e) => e.tag === 'div' && /letter-spacing:\.02em/.test(e.style.cssText || '')).map((e) => e.textContent);
+  const kies = (keuzes) => {
+    labels().forEach((lbl, i) => {
+      const k = Object.keys(keuzes).find((x) => lbl.indexOf(x) === 0);
+      const radios = gemaakt.filter((e) => e.tag === 'input' && e.name === 'cf_' + i);
+      radios.forEach((r) => { r.checked = !!k && r.value === keuzes[k]; });
+      if (!k) radios.forEach((r) => { r.checked = r.value === 'huidig'; });
+    });
+  };
+  const knop = (tekst) => gemaakt.find((e) => e.tag === 'button' && e.textContent === tekst);
+  const flush = async () => { for (let i = 0; i < 10; i++) await new Promise((r) => setImmediate(r)); };
+  return { ctx, log, gemaakt, opzetGroep, labels, kies, knop, flush };
 }
 
 export async function draaiDocumentProcessingUiChecks(root = process.cwd()) {
@@ -323,7 +422,8 @@ export async function draaiDocumentProcessingUiChecks(root = process.cwd()) {
     t.opzet.snelleTimeout = true;
     t.opzet.upload.push({ hangt: true });
     const a = await t.ctx.uploadDocument(FASE, t.bestand('syn-traag.txt'));
-    check(a.soort === 'onbekend' && /60 seconden/.test(a.tekst) && /onbekend/.test(a.tekst), 'timeout (echte fetchMetTimeout-abort): uitkomst onbekend, geen verbindingsfout');
+    check(a.soort === 'onbekend' && /binnen 15 minuten/.test(a.tekst) && !/60 seconden/.test(a.tekst) && /onbekend/.test(a.tekst), 'timeout (echte fetchMetTimeout-abort): uitkomst onbekend met "binnen 15 minuten", geen verbindingsfout');
+    check(t.log.timers.includes(900000) && !t.log.timers.includes(60000) && t.log.requests[0].opts.signal.aborted, 'timeout: deadline gevraagd met 900000 ms (niet 60000), verzoek werkelijk afgebroken');
     check(t.log.requests.length === 1 && t.docs().length === 0 && t.log.lijst.length === 1, 'timeout: geen fictief document, geen automatische tweede upload, lijst wordt herladen');
     await wacht(10);
 
@@ -348,6 +448,82 @@ export async function draaiDocumentProcessingUiChecks(root = process.cwd()) {
     check(d.soort === 'lokale_fout' && /in dit scherm is mislukt/.test(d.tekst) && !t.verbindingsToast(), 'lokale verwerkingsfout: eigen melding, geen verbindingsfout');
     await wacht(10);
     check(t.doc('doc_syn_lokaal') && t.log.requests.length === 1 && t.log.lijst.length === 1, 'lokale verwerkingsfout: het op de server vastgelegde document staat (na herladen) in de lijst, geen herhaalde upload');
+  });
+
+  // Upload-deadline 15 min (900000 ms): de server analyseert synchroon in meerdere AI-delen (elk tot 150s)
+  // plus een eventuele dubbele check. De timer wordt hier vastgehouden (geen echte 15 min wachten).
+  await probeer('upload-deadline 15 min', async () => {
+    const t = laad(root);
+    // (a) Laat antwoord (ruim na 60s, vóór 15 min): de deadline staat nog open en het antwoord telt.
+    t.begin();
+    t.opzet.handTimer = true;
+    const u = t.uitgesteld();
+    t.opzet.upload.push({ uitgesteld: u });
+    const p = t.ctx.uploadDocument(FASE, t.bestand('syn-laat.txt'));
+    const opts = await u.binnen;
+    const h = t.log.handTimers[0];
+    check(t.log.handTimers.length === 1 && h.ms === 900000 && !h.gewist && !opts.signal.aborted && !t.log.timers.includes(60000),
+      'deadline: upload start één 900000 ms-timer via de echte fetchMetTimeout (geen 60000), verzoek loopt nog');
+    u.geef(ANTW.processed('doc_syn_laat'));
+    const a = await p;
+    check(a.soort === 'verwerkt' && t.doc('doc_syn_laat') && h.gewist && !opts.signal.aborted && t.log.requests.length === 1,
+      'deadline: laat PROCESSED-antwoord vóór 15 min geldt als verwerkt, timer gewist, niet afgebroken, één verzoek');
+    await wacht(10);
+
+    // (b) Echte afloop: de vastgehouden 900000 ms-timer gaat af → echte abort van het lopende verzoek.
+    t.begin();
+    t.opzet.handTimer = true;
+    t.opzet.upload.push({ hangt: true });
+    const p2 = t.ctx.uploadDocument(FASE, t.bestand('syn-hangt.txt'));
+    await wacht(5);
+    const h2 = t.log.handTimers[0];
+    const opts2 = t.log.requests[0] && t.log.requests[0].opts;
+    const nogOpen = h2 && h2.ms === 900000 && opts2 && !opts2.signal.aborted && t.docs().some((d) => d.uploading);
+    h2.fn();
+    const b = await p2;
+    await wacht(10);
+    check(nogOpen && opts2.signal.aborted && b.soort === 'onbekend' && /binnen 15 minuten/.test(b.tekst),
+      'deadline afgelopen: verzoek via fetchMetTimeout afgebroken, uitkomst onbekend met "binnen 15 minuten"');
+    check(t.log.requests.length === 1 && t.docs().length === 0 && !t.docs().some((d) => d.uploading || d.verwerking_status === 'PROCESSED') && t.log.lijst.length === 1 && t.ingevuld() === 0,
+      'deadline afgelopen: geen tweede upload, geen vals PROCESSED, geen eeuwig "uploaden", lijst herladen');
+  });
+
+  // Een echt bestand boven de oude 20MB-grens gaat volledig (naam, grootte, bytes, hash) naar de server;
+  // de getoonde status komt uitsluitend uit het serverantwoord.
+  await probeer('bestand > 20MB', async () => {
+    const t = laad(root);
+    const grootte = 21 * 1024 * 1024 + 7;
+    const bytes = new Uint8Array(grootte);
+    for (let i = 0, x = 12345; i < grootte; i++) { x = (x * 1103515245 + 12345) >>> 0; bytes[i] = x >>> 24; }
+    const sha = crypto.createHash('sha256').update(bytes).digest('hex');
+    const naam = 'syn-groot-jaarstuk.pdf';
+    const groot = new File([bytes], naam, { type: 'application/pdf' });
+    const verstuurd = async (r) => { const f = r.opts.body.get('file'); return f && { naam: f.name, grootte: f.size, sha: crypto.createHash('sha256').update(new Uint8Array(await f.arrayBuffer())).digest('hex') }; };
+
+    t.begin();
+    t.opzet.upload.push(ANTW.processed('doc_syn_groot', { inhoud_hash: sha }));
+    const a = await t.ctx.uploadDocument(FASE, groot);
+    const v = t.log.requests[0] && await verstuurd(t.log.requests[0]);
+    check(groot.size > 20 * 1024 * 1024 && t.log.requests.length === 1 && v && v.naam === naam && v.grootte === grootte && v.sha === sha,
+      '> 20MB: één verzoek met het volledige bestand (zelfde naam, ' + grootte + ' bytes, zelfde sha256)');
+    check(!t.log.toasts.some((x) => /te groot|max 20/i.test(x.msg)) && a.soort !== 'niet_aangeboden' && t.log.timers.includes(900000),
+      '> 20MB: geen client-afwijzing "te groot", upload met de 15 min-deadline');
+    const d = t.doc('doc_syn_groot');
+    check(a.soort === 'verwerkt' && d && d.verwerking_status === 'PROCESSED' && d.grootte === grootte && d.inhoud_hash === sha && t.docs().length === 1,
+      '> 20MB + server PROCESSED: rij met serverstatus, echte grootte en serverhash');
+
+    t.begin();
+    t.opzet.upload.push(ANTW.stored('doc_syn_groot_st'));
+    const b = await t.ctx.uploadDocument(FASE, groot);
+    const ds = t.doc('doc_syn_groot_st');
+    check(b.soort === 'opgeslagen' && ds && ds.verwerking_status === 'STORED' && t.ingevuld() === 0 && !/>Geanalyseerd</.test(t.log.html),
+      '> 20MB + server STORED: alleen "opgeslagen", geen vals "geanalyseerd" of veldinvulling');
+
+    t.begin();
+    t.opzet.upload.push(ANTW.storageFailed('doc_syn_groot_f'));
+    const c = await t.ctx.uploadDocument(FASE, groot);
+    check(c.soort === 'mislukt' && t.doc('doc_syn_groot_f') && t.doc('doc_syn_groot_f').verwerking_status === 'FAILED' && t.ingevuld() === 0,
+      '> 20MB + serverfout: mislukt met de serverstatus, geen succes');
   });
 
   await probeer('batch', async () => {
@@ -540,6 +716,52 @@ export async function draaiDocumentProcessingUiChecks(root = process.cwd()) {
     t.opzet.upload.push(fail);
     await t.ctx.uploadDocument(FASE, t.bestand(kwaad));
     check(!/<img src=x/.test(t.log.html) && !/<script>/.test(t.log.html) && /&lt;img src=x/.test(t.log.html) && /&lt;script&gt;/.test(t.log.html), 'XSS: bestandsnaam en servertekst worden ge-escaped weergegeven');
+  });
+
+  // ── Productpunt 35: extractiewaarschuwingen (Aandachtspunten) blijvend bij het document ──────────
+  await probeer('aandachtspunten: zichtbaar na renderApp', async () => {
+    const t = laad(root);
+    t.begin();
+    const cc = ['EBITDA niet overgenomen: geen als EBITDA herkenbare bronregel', 'Omzet 2020 niet overgenomen: bronregel niet eenduidig'];
+    const sw = ['Synthetische sanity-waarschuwing: personeelskosten > omzet'];
+    t.opzet.upload.push(ANTW.processed('doc_aand', { crosschecks: cc, sanity_waarschuwingen: sw, extractie_betrouwbaarheid: 'gemiddeld' }));
+    await t.ctx.uploadDocument(FASE, t.bestand('syn-aandacht.txt'));
+    t.renderApp();
+    const html = t.log.html;
+    const blok = html.indexOf('⚠ Aandachtspunten bij syn-aandacht.txt');
+    check(blok >= 0, 'aandachtspunten: blok "Aandachtspunten bij <bestand>" staat in de gerenderde documentsectie');
+    const verwacht = ['ℹ AI geeft een gemiddelde betrouwbaarheid aan'].concat(cc, sw.map((s) => s.replace('>', '&gt;')));
+    const posities = verwacht.map((m) => html.indexOf(m, blok));
+    check(posities.every((p) => p > blok) && posities.every((p, i) => i === 0 || p > posities[i - 1]), 'aandachtspunten: elke melding (betrouwbaarheid, crosschecks, sanity) in ongewijzigde volgorde zichtbaar · ' + posities.join(','));
+    const d = t.doc('doc_aand');
+    check(d && Array.isArray(d.aandachtspunten) && d.aandachtspunten.length === 4, 'aandachtspunten: bewaard op het documentobject in DOCS');
+    check(t.log.requests.length === 1 && t.log.overig.length === 0, 'aandachtspunten: geen extra serververzoek (meldingen niet naar de server)');
+    // Herladen van de lijst (server kent de meldingen niet): lokaal per document-id behouden.
+    t.opzet.lijst.push({ status: 200, body: [{ id: 'doc_aand', bestand_naam: 'syn-aandacht.txt', bestand_type: 'text/plain', bestand_grootte: 40, bewaard: 1, analyse: '', veld_extractie: '{}', methode: 'ai_text', uploaded_at: 1, entiteit_id: '', versie: 1, verwerking_status: 'PROCESSED', bestand_opgeslagen: true }] });
+    t.ctx.loadDocsForFase(FASE);
+    await wacht(10);
+    check(/Aandachtspunten bij syn-aandacht\.txt/.test(t.log.html) && /EBITDA niet overgenomen/.test(t.log.html), 'aandachtspunten: na herladen van de documentenlijst nog zichtbaar');
+  });
+
+  await probeer('aandachtspunten: geen meldingen', async () => {
+    const t = laad(root);
+    t.begin();
+    t.opzet.upload.push(ANTW.processed('doc_geen', { extractie_betrouwbaarheid: 'hoog' }));
+    await t.ctx.uploadDocument(FASE, t.bestand('syn-geen.txt'));
+    t.renderApp();
+    const d = t.doc('doc_geen');
+    check(d && !/Aandachtspunten/.test(t.log.html) && !d.aandachtspunten, 'aandachtspunten: zonder meldingen geen blok');
+  });
+
+  await probeer('aandachtspunten: XSS', async () => {
+    const t = laad(root);
+    t.begin();
+    t.opzet.upload.push(ANTW.processed('doc_aand_xss', { crosschecks: ['<img src=x onerror=alert(3)>'], sanity_waarschuwingen: ['<script>alert(4)</script>'] }));
+    await t.ctx.uploadDocument(FASE, t.bestand('syn-<b>x</b>.txt'));
+    t.renderApp();
+    const html = t.log.html;
+    check(/Aandachtspunten bij syn-&lt;b&gt;x&lt;\/b&gt;\.txt/.test(html) && /&lt;img src=x onerror=alert\(3\)&gt;/.test(html) && /&lt;script&gt;alert\(4\)&lt;\/script&gt;/.test(html), 'aandachtspunten XSS: bestandsnaam en meldingen ge-escaped zichtbaar');
+    check(!/<img src=x/.test(html) && !/<script>/.test(html) && !/<b>x<\/b>/.test(html), 'aandachtspunten XSS: geen ruwe HTML uit meldingen in de sectie');
   });
 
   await probeer('centrale upload', async () => {
@@ -781,6 +1003,41 @@ export async function draaiDocumentProcessingUiChecks(root = process.cwd()) {
     }
   });
 
+  // Fasenotitie (15 okt 2026): zelfde renderverlies als de veldinvoer hierboven, nu voor notitie_<fase>.
+  await probeer('notitie: hertekening vóór debounce', async () => {
+    const t = laadAutosave(root); t.ctx.S = maakAutosaveS({ notities: { financieel: 'OUDE NOTITIE' } }); const S = t.ctx.S;
+    t.renderApp(); t.typNotitie('NIEUWE NOTITIE');
+    check(S.notities.financieel === 'NIEUWE NOTITIE', 'notitie: getypte waarde direct in S.notities van deze sessie/fase');
+    t.renderApp();
+    check(t.dom.notitie_financieel.value === 'NIEUWE NOTITIE', 'notitie: hertekening vóór de 1200ms-timer tekent de textarea mét de nieuwe notitie');
+    check(t.timer(1200) && t.timer(800) && t.log.req.length === 1 && t.log.req[0].body.notitie === 'NIEUWE NOTITIE', 'notitie: debounce → saveCurrent → verzoek bevat de nieuwe notitie, niet de oude');
+    t.log.req[0].geef(200, OK_ACK); await t.flush();
+    check(t.log.groen.join('|') === 'Opgeslagen ✓' && t.log.toasts.length === 0, 'notitie: "Opgeslagen ✓" pas na het serverantwoord');
+    const src06 = lees(root, 'mna/06-schermen.js');
+    check(/<textarea id="notitie_'\+f\.id\+'"[^>]*oninput="notitieEdit\(this\)"/.test(src06) && !/id="notitie_'\+f\.id\+'"[^>]*oninput="schedSave\(\)"/.test(src06), 'notitie: textarea in mna/06 roept notitieEdit(this) aan (niet alleen schedSave)');
+  });
+
+  await probeer('notitie: gewone opslag ongewijzigd', async () => {
+    const t = laadAutosave(root); const S = t.ctx.S;
+    t.renderApp(); t.typNotitie('Notitie zonder hertekening');
+    check(t.timer(1200) && t.timer(800) && t.log.req.length === 1 && t.log.req[0].body.notitie === 'Notitie zonder hertekening', 'notitie zonder hertekening: verzoek bevat de getypte notitie');
+    const u = laadAutosave(root); u.ctx.S = maakAutosaveS({ notities: { financieel: 'Bestaand' } });
+    u.renderApp(); u.typ('omzet', '234567'); u.timer(1200); u.timer(800);
+    check(u.log.req.length === 1 && u.log.req[0].body.notitie === 'Bestaand' && u.log.req[0].body.data_json.omzet.value === '234567', 'alleen veldinvoer: bestaande notitie en veldwaarde ongewijzigd verstuurd');
+    check(S.notities.juridisch === undefined, 'notitie: geen overdracht naar een andere fase');
+  });
+
+  await probeer('notitie: rol- en vergrendelpoorten', async () => {
+    for (const [naam, extra] of [['koper', { rol: 'koper' }], ['begeleider in Financieel', { rol: 'tussenpersoon' }], ['vergrendeld', { traject: { status: 'vergrendeld' } }]]) {
+      const t = laadAutosave(root); t.ctx.S = maakAutosaveS({ ...extra, notities: { financieel: 'OUD' } });
+      t.renderApp(); t.typNotitie('NIEUW');
+      check(t.ctx.S.notities.financieel === 'OUD', naam + ': notitie wordt niet in S.notities gezet (zelfde poort als userEdit/saveCurrent)');
+    }
+    const t = laadAutosave(root); t.ctx.S = maakAutosaveS({ rol: 'tussenpersoon', fase: 1 });
+    t.renderApp(); t.typNotitie('Begeleidersnotitie');
+    check(t.ctx.S.notities.juridisch === 'Begeleidersnotitie', 'begeleider buiten Financieel: notitie wel direct in S.notities');
+  });
+
   await probeer('invoer: late saveCurrent-bevestiging na sessiewissel', async () => {
     const t = laadAutosave(root);
     t.renderApp(); t.typ('omzet', '234567'); t.timer(1200); t.timer(800);
@@ -788,6 +1045,87 @@ export async function draaiDocumentProcessingUiChecks(root = process.cwd()) {
     const nieuw = t.ctx.S;
     t.log.req[0].geef(200, { ...OK_ACK, groepswaarden: { omzet: { value: '999' } } }); await t.flush();
     check(t.log.groen.length === 0 && t.log.toasts.length === 0 && nieuw._groepData.financieel_omzet === '777', 'oude bevestiging na sessiewissel (zelfde code): geen groen, geen melding, geen groepswaarden in de nieuwe sessie');
+  });
+
+  // ── Productpunt 5 (22 okt 2026): geconsolideerd groepsdocument expliciet op groepsniveau ──
+  const TWEE_ENT = [{ id: 'ent_syn_1', naam: 'Synth Werk BV' }, { id: 'ent_syn_2', naam: 'Synth Dienst BV' }];
+  const fin = (t) => t.log.autoFill.filter((x) => x.fid === FASE);
+
+  await probeer('groepsdocument: uploadkeuze Groep', async () => {
+    const t = laad(root);
+    t.ctx.S._entiteiten = TWEE_ENT; t.ctx.S._groepData = t.ctx.S.data;
+    t.begin();
+    check(/<option value="">Automatisch herkennen<\/option><option value="__GROEP__">Groep \(geconsolideerd document\)<\/option>/.test(t.log.html), 'groepsdocument: entiteitkiezer toont "Automatisch herkennen" (\'\') en "Groep (geconsolideerd document)" (__GROEP__)');
+    t.els['entiteit-select-' + FASE].value = '__GROEP__';
+    t.opzet.upload.push(ANTW.processed('doc_syn_groep', { entiteit_naam: 'Synth Groep Holding BV' }));
+    const u = await t.ctx.uploadDocument(FASE, t.bestand('syn-geconsolideerd.txt'));
+    const d = t.doc('doc_syn_groep');
+    check(u && u.soort === 'verwerkt' && !/[?&]entiteit_id=/.test(t.log.requests[0].url), 'groepsdocument: verwerkt en verstuurd zonder entiteit_id (groepsniveau)');
+    check(fin(t).length === 1 && fin(t)[0].opties && fin(t)[0].opties.groepsdocument === true && !fin(t)[0].entiteitId && t.log.autoFill.length === 7, 'groepsdocument: autoFill op groepsniveau (zonder entiteitId, met groepsdocument-optie), alle 7 fasen');
+    check(t.log.overig.every((x) => x.indexOf('koppel-entiteit') < 0), 'groepsdocument: geen koppel-entiteit-aanroep (geen gok op de AI-entiteitnaam)');
+    check(d && !d.behoeftHandmatigeKoppeling && d.groepsniveauVerwerkt && !/Handmatig koppelen/.test(t.log.html) && /Groepsniveau</.test(t.log.html) && !t.log.toasts.some((x) => /niet zeker herkend/.test(x.msg)), 'groepsdocument: geen "handmatig koppelen", badge Groepsniveau');
+  });
+
+  await probeer('groepsdocument: automatisch herkennen ongewijzigd', async () => {
+    const t = laad(root);
+    t.ctx.S._entiteiten = TWEE_ENT;
+    t.begin();
+    t.opzet.upload.push(ANTW.processed('doc_syn_onzeker', { entiteit_naam: 'Synth Groep Holding BV' }));
+    const u = await t.ctx.uploadDocument(FASE, t.bestand('syn-onzeker.txt'));
+    const d = t.doc('doc_syn_onzeker');
+    check(u && t.log.autoFill.length === 0 && d && d.behoeftHandmatigeKoppeling && !d.groepsniveauVerwerkt && t.log.toasts.some((x) => /niet zeker herkend/.test(x.msg)), '\'\' + onzekere naam: ongewijzigd "handmatig koppelen", niets ingevuld');
+    check(t.log.overig.every((x) => x.indexOf('koppel-entiteit') < 0) && /Handmatig koppelen/.test(t.log.html), '\'\' + onzekere naam: geen koppel-aanroep, badge "Handmatig koppelen"');
+    check(/<select id="fd-ent-doc_syn_onzeker"[^>]*><option value="">— Koppel aan entiteit —<\/option><option value="__GROEP__">Groepsniveau \(geconsolideerd\)<\/option>/.test(t.log.html), 'koppelmenu (fd-ent-): optie "Groepsniveau (geconsolideerd)" bij een document met "handmatig koppelen"');
+    // (d) Koppelmenu-optie: de opgeslagen extractie op groepsniveau, zonder koppel-entiteit-aanroep.
+    t.els['fd-ent-doc_syn_onzeker'].value = '__GROEP__';
+    await t.ctx.koppelDocumentAanEntiteit('doc_syn_onzeker', 'fd-ent-');
+    check(fin(t).length === 1 && fin(t)[0].opties && fin(t)[0].opties.groepsdocument === true && !fin(t)[0].entiteitId && fin(t)[0].velden.omzet === '1000000', 'koppelmenu (fd-ent-): groepsniveau verwerkt de opgeslagen extractie op groepsniveau');
+    check(t.log.overig.every((x) => x.indexOf('koppel-entiteit') < 0) && t.doc('doc_syn_onzeker').entiteit_id === '' && t.log.toasts.some((x) => /op groepsniveau verwerkt/.test(x.msg)), 'koppelmenu (fd-ent-): geen koppel-entiteit-aanroep, entiteit niet geraden');
+    t.renderApp();
+    check(!/Handmatig koppelen/.test(t.log.html) && !/__GROEP__">Groepsniveau/.test(t.log.html), 'koppelmenu (fd-ent-): na verwerking geen "handmatig koppelen" meer');
+    // Dataroom (dr-ent-): zelfde optie en hetzelfde pad.
+    t.log.autoFill = []; t.log.overig = [];
+    t.ctx.S.dataroom = [{ id: 'doc_syn_dr', naam: 'syn-groep-dr.pdf', type: 'application/pdf', grootte: 1024, fase_id: FASE, bewaard: true, uploaded_at: 1, entiteit_id: '', velden: { omzet: '2000000', entiteit_naam: 'Synth Groep Holding BV' } }];
+    const dr = t.ctx.renderDataroom();
+    check(/<select id="dr-ent-doc_syn_dr"[^>]*><option value="">— Koppel aan entiteit —<\/option><option value="__GROEP__">Groepsniveau \(geconsolideerd\)<\/option>/.test(dr), 'koppelmenu (dr-ent-): optie "Groepsniveau (geconsolideerd)" in de dataroom');
+    t.els['dr-ent-doc_syn_dr'] = maakEl('dr-ent-doc_syn_dr'); t.els['dr-ent-doc_syn_dr'].value = '__GROEP__';
+    await t.ctx.koppelDocumentAanEntiteit('doc_syn_dr');
+    check(fin(t).length === 1 && fin(t)[0].opties && fin(t)[0].opties.groepsdocument === true && !fin(t)[0].entiteitId && t.log.overig.every((x) => x.indexOf('koppel-entiteit') < 0), 'koppelmenu (dr-ent-): groepsniveau zonder koppel-entiteit-aanroep');
+  });
+
+  await probeer('groepsdocument: geen entiteiten ongewijzigd', async () => {
+    const t = laad(root);
+    t.begin();
+    check(!/entiteit-select-/.test(t.log.html) && JSON.stringify(t.ctx.leesUploadKeuzes(FASE)) === '{"entiteitId":"","dubbeleCheck":false,"alleenBewijsstuk":false}', 'geen entiteiten: geen entiteitkiezer, uploadkeuzes exact als voorheen');
+    t.opzet.upload.push(ANTW.processed('doc_syn_solo', { entiteit_naam: 'Synth Solo BV' }));
+    await t.ctx.uploadDocument(FASE, t.bestand('syn-solo.txt'));
+    check(fin(t).length === 1 && t.log.autoFill.every((x) => x.argc === 5 && x.entiteitId === '' && x.opties === undefined) && t.log.groepSave.length === 0 && t.log.overig.length === 0, 'geen entiteiten: autoFill exact als voorheen (5 argumenten, geen groepsdocument-optie, geen extra opslag of koppeling)');
+  });
+
+  await probeer('groepsdocument: bruto som niet automatisch vervangen', async () => {
+    const g = laadGroepsdocument(root);
+    const velden = { boekjaar: '2024', omzet: '3200000', debiteuren: '450.000', ebitda_abs: '500000', entiteit_naam: 'Synth Groep Holding BV' };
+    // Controle: zonder groepsdocument-optie slaat setIfEmpty een bestaande EBITDA stil over (bestaand gedrag).
+    let S = g.opzetGroep(); S.data = S._groepData;
+    g.ctx.autoFillFromExtraction('financieel', Object.assign({}, velden), false, 'syn-groep.txt', '');
+    check(S._conflicts.some((c) => c.key === 'financieel_omzet3') && !S._conflicts.some((c) => c.key === 'financieel_ebitda'), 'controle: zonder groepsdocument-optie blijft setIfEmpty (EBITDA) ongewijzigd stil');
+    S = g.opzetGroep();
+    const uit = g.ctx.verwerkGroepsdocument(Object.assign({}, velden), 'syn-groep.txt', null);
+    const lbl = g.labels();
+    check(uit.conflicten === 3 && lbl.some((l) => /^Jaaromzet jaar 3/.test(l)) && lbl.some((l) => /^Debiteuren totaal/.test(l)) && lbl.some((l) => /^EBITDA \(€, absoluut\)/.test(l)), 'groepsdocument: conflicten (keuzevenster) voor omzet3, debiteuren en EBITDA (ook het setIfEmpty-veld)');
+    check(S._groepData.financieel_omzet3 === '3000000' && S._groepData.financieel_debiteuren === '400000' && S._groepData.financieel_ebitda === '450000' && g.log.save.length === 0, 'groepsdocument: vóór de keuze niets stil overschreven en niets opgeslagen');
+    check(S.data.financieel_omzet3 === '1000000' && Object.keys(S.data).length === 1, 'groepsdocument: de actieve entiteit (Alfa BV) blijft onaangeroerd');
+    check(g.gemaakt.some((e) => /bruto berekende som van de entiteiten/.test(e.innerHTML)) && g.gemaakt.some((e) => e.textContent === 'Voor: Groep (geconsolideerd document)') && !g.gemaakt.some((e) => /eliminatie/i.test(e.innerHTML + ' ' + e.textContent)), 'groepsdocument: keuzevenster noemt de bruto som en het groepsniveau, geen eliminatietekst');
+    g.kies({ 'Jaaromzet jaar 3': 'nieuw', 'Debiteuren totaal': 'huidig', 'EBITDA': 'huidig' });
+    g.knop('Toepassen').l.click();
+    await g.flush();
+    const save = g.log.save.filter((r) => /\/mna\/save$/.test(r.url));
+    const dj = save.length === 1 ? save[0].body.data_json : {};
+    check(S._groepData.financieel_omzet3 === '3200000' && S._groepData.financieel_debiteuren === '400000' && S._groepData.financieel_ebitda === '450000', 'groepsdocument: gekozen documentcijfer staat in de groep, gekozen bruto sommen blijven staan');
+    check(save.length === 1 && save[0].body.fase_id === 'financieel' && save[0].body.entiteit_id === undefined, 'groepsdocument: na de keuze één opslag van de groepsrij Financieel (geen entiteit_id)');
+    check(dj.omzet3 && dj.omzet3.value === '3200000' && dj.omzet3.auto === undefined && dj.omzet3.bron === 'ai_document' && dj.omzet3.bron_doc === 'syn-groep.txt', 'groepsdocument: gekozen documentcijfer gaat als aangeleverd (niet-auto, bron document) naar de groepsrij');
+    check(dj.debiteuren && dj.debiteuren.value === '400000' && dj.debiteuren.auto === true && dj.ebitda && dj.ebitda.auto === true && dj.omzet2 && dj.omzet2.auto === true, 'groepsdocument: gekozen/ongemoeide bruto sommen blijven auto:true (blijven bruto berekend)');
+    check(S.data.financieel_omzet3 === '1000000' && g.log.indicator === 1, 'groepsdocument: entiteit ongewijzigd, opslag bevestigd');
   });
 
   return res;

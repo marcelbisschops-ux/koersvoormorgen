@@ -558,8 +558,12 @@ async function main() {
 
     // Tarieven-events: kantoor_naam van dit externe traject moet gemaskeerd zijn in het admin-overzicht.
     const tarievenEvents = await api('GET', '/mna/admin/tarieven/events?gebruiker_id=' + opruimGebruikerId, { adminKey: ADMIN });
-    const eventsVoorDitTraject = Array.isArray(tarievenEvents.json) ? tarievenEvents.json.filter(e => e.traject_id === traject.code) : [];
-    check('tarieven-events voor extern traject: kantoor_naam gemaskeerd (bevinding 11 sep 2026)', eventsVoorDitTraject.length > 0 && eventsVoorDitTraject.every(e => e.kantoor_naam === '(extern traject)'), JSON.stringify(eventsVoorDitTraject));
+    // N-140 (24 okt 2026): de backend geeft bij een extern traject geen traject_id (= verkopercode) meer
+    // mee; deze adviseur heeft alleen dit externe traject, dus alle posten van de adviseur horen erbij.
+    const eventsVoorDitTraject = Array.isArray(tarievenEvents.json) ? tarievenEvents.json.filter(e => e.gebruiker_id === opruimGebruikerId) : [];
+    check('tarieven-events voor extern traject: kantoor_naam gemaskeerd (bevinding 11 sep 2026)', eventsVoorDitTraject.length > 0 && eventsVoorDitTraject.every(e => e.kantoor_naam === '(extern traject)'), JSON.stringify(eventsVoorDitTraject).slice(0, 300));
+    const tarievenTekst = JSON.stringify(tarievenEvents.json || []);
+    check('N-140: tarieven-events voor extern traject bevatten geen verkoper-, koper- of tussen_code en traject_id is leeg', eventsVoorDitTraject.every(e => e.traject_id === null && e.traject_extern === true) && ![traject.code, traject.koper_code, traject.tussen_code].some(c => c && tarievenTekst.includes(c)), tarievenTekst.slice(0, 300));
 
     // Regressiecheck: zodra hetzelfde traject (tijdelijk) als eigen wordt gemarkeerd, mag admin het
     // gewoon weer zien — de muur mag nooit permanent alles blokkeren, alleen externe trajecten.

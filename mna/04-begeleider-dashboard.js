@@ -1,9 +1,9 @@
 // © 2026 Bisschops Financing B.V. Alle rechten voorbehouden.
 // LET OP: canonieke VOK-tekst leeft in de backend (bouwVokTekst() in worker/20-signhost-vok.js) en
-// is opvraagbaar via GET /mna/vok/tekst. Onderstaande VOK_TEKST is daar verbatim mee gelijk (v1.7);
+// is opvraagbaar via GET /mna/vok/tekst. Onderstaande VOK_TEKST is daar verbatim mee gelijk (v1.8);
 // wijzig je de VOK, wijzig dan de backend-bron en trek deze kopie daar woordelijk mee gelijk.
-var VOK_VERSIE = '1.7';
-var VOK_TEKST = 'VERWERKERSOVEREENKOMST\n' + BRAND.bedrijf + ' — ' + BRAND.platform + ' Platform\nVersie 1.7 | September 2026\n\nPartijen\nVerwerkingsverantwoordelijke: De tussenpersoon/adviseur die gebruik maakt van het ' + BRAND.platform + '-platform.\nVerwerker: ' + BRAND.bedrijf + ', statutair gevestigd te Oploo, ingeschreven in het handelsregister onder nummer 08208520, ' + BRAND.adres + ', handelend onder de naam ' + BRAND.platform + '. Waar in deze overeenkomst "' + BRAND.platform + '" wordt gebruikt ter aanduiding van de contractspartij, wordt daarmee ' + BRAND.bedrijf + ' bedoeld.\n\nArtikel 1 — Doel en grondslag\n' + BRAND.kort + ' verwerkt persoonsgegevens uitsluitend ten behoeve van de dienstverlening via het ' + BRAND.platform + '-platform. Gebruiker blijft te allen tijde verwerkingsverantwoordelijke voor de gegevens van zijn klanten.\n\nArtikel 2 — Aard van de verwerking\n' + BRAND.kort + ' verwerkt uitsluitend de persoonsgegevens die door of namens Gebruiker worden ingevoerd. Dit omvat: contactgegevens, financiële bedrijfsdata, documenten en communicatie in het kader van M&A-trajecten. Gebruiker en diens klanten behouden te allen tijde alle rechten, waaronder eigendom, op de door hen ingevoerde gegevens en geüploade documenten; ' + BRAND.kort + ' verkrijgt daarop geen eigendomsrecht en gebruikt deze uitsluitend voor het leveren van het platform.\n\nArtikel 3 — Verwerking met behulp van AI\nHet platform maakt gebruik van AI-taalmodellen (Anthropic Claude) om geüploade documenten te analyseren, gegevens daaruit te extraheren naar het due diligence-dossier, en concept-rapportages en -documenten te genereren. Hiertoe worden de inhoud van geüploade documenten en ingevoerde gegevens voorgelegd aan de AI-dienst van Anthropic PBC. Deze verwerking vindt plaats ten behoeve van automatisering van het due diligence-proces en vindt uitsluitend plaats binnen de context van het specifieke traject waarvoor de gegevens zijn aangeleverd. Gegevens worden niet gebruikt om AI-modellen te trainen. De wijze waarop AI wordt ingezet is nader uitgewerkt in de Bijlage — Verwerking met behulp van AI, die deel uitmaakt van deze overeenkomst.\n\nArtikel 4 — Beveiliging\n' + BRAND.kort + ' treft passende technische en organisatorische maatregelen. Gegevens worden opgeslagen in Cloudflare-datacenters binnen de EU (Frankfurt). Verbindingen zijn versleuteld via HTTPS.\n\nArtikel 5 — Bewaartermijn\nGeüploade documenten en alle overige trajectgegevens (ingevulde due diligence-velden, gesprekken, vragen en antwoorden, waarderingen en overige trajectdata) worden bewaard gedurende het traject en gedurende veertien (14) dagen na afsluiting daarvan. In die periode wordt een volledig dossier eenmalig als downloadbaar bestand aan Gebruiker beschikbaar gesteld. Op schriftelijk verzoek van Gebruiker kan deze bewaartermijn voor een concreet traject worden verlengd, indien en voor zover Gebruiker daarbij een concrete noodzaak aangeeft, zoals een lopend of dreigend geschil ten aanzien van de betreffende transactie, of een op Gebruiker rustende wettelijke bewaarplicht die Gebruiker via het platform wenst na te komen. De verlenging wordt vastgelegd voor een bepaalde termijn van ten hoogste driehonderdvijfenzestig (365) dagen na afsluiting van het traject en eindigt op de overeengekomen einddatum, dan wel zodra de aangegeven noodzaak eerder komt te vervallen; Gebruiker meldt dat laatste zonder onredelijke vertraging aan ' + BRAND.kort + '. Na afloop van de toepasselijke termijn (de standaardtermijn van veertien dagen, dan wel de overeengekomen verlengde termijn) worden alle trajectgegevens definitief van het platform verwijderd, met uitzondering van een beperkte archiefregel (trajectnaam, sector, type, datum van aanmaak en afsluiting, en de namen van de betrokken partijen) die wordt bewaard ten behoeve van administratie en geschillenbeslechting. Gebruiker (de adviseur) is na download zelf verantwoordelijk voor archivering van het dossier conform de op hem rustende wettelijke bewaarplichten (waaronder de fiscale bewaarplicht van doorgaans 7 jaar). Een traject dat gedurende drie (3) maanden geen inhoudelijke activiteit kent (geen gewijzigde of aangevulde gegevens, documenten, gesprekken of vragen) wordt, ná een waarschuwing aan Gebruiker en een aanvullende termijn van veertien (14) dagen zonder activiteit, automatisch afgesloten, waarna bovenstaande bewaartermijn van toepassing wordt — zo kan het platform niet ongewild als permanente opslag worden gebruikt. Voor rampherstel maakt ' + BRAND.kort + ' daarnaast periodieke back-ups, los van het draaiende platform; back-ups van de database worden uiterlijk zestig (60) dagen na het maken ervan automatisch verwijderd, en back-ups van documenten worden voor hetzelfde doel bewaard en nooit voor iets anders gebruikt dan herstel bij calamiteiten.\n\nArtikel 6 — Sub-verwerkers en doorgifte buiten de EU\nCloudflare Inc. (infrastructuur, EU), Anthropic PBC (AI-verwerking van documenten en gegevens, Verenigde Staten), Resend Inc. (e-mail), Signhost/Entrust (handtekeningen). Voor zover persoonsgegevens worden doorgegeven aan Anthropic PBC in de Verenigde Staten, gebeurt dit op basis van de EU Standard Contractual Clauses (modelcontractbepalingen) die deel uitmaken van het Data Processing Addendum tussen ' + BRAND.bedrijf + ' en Anthropic PBC, ter waarborging van een passend beschermingsniveau conform de AVG. Zie voor de AI-verwerking door Anthropic PBC de Bijlage — Verwerking met behulp van AI. Gebruiker geeft hierbij algemene toestemming voor het inschakelen van deze en toekomstige sub-verwerkers. ' + BRAND.kort + ' informeert Gebruiker ten minste dertig (30) dagen voordat een nieuwe sub-verwerker wordt ingeschakeld of een bestaande wordt vervangen; Gebruiker kan binnen die termijn op redelijke, aan gegevensbescherming gerelateerde gronden bezwaar maken. Leidt dat niet tot een oplossing, dan kan Gebruiker het platformgebruik beëindigen voor zover dit die sub-verwerker betreft.\n\nArtikel 7 — Rechten betrokkenen\nGebruiker is verantwoordelijk voor het faciliteren van de rechten van betrokkenen. ' + BRAND.kort + ' verleent hiertoe medewerking op verzoek.\n\nArtikel 8 — Datalekken\n' + BRAND.kort + ' informeert Gebruiker zonder onredelijke vertraging, en in ieder geval niet later dan tweeënzeventig (72) uur, nadat ' + BRAND.kort + ' bekend is geworden met een inbreuk op de beveiliging die persoonsgegevens raakt die via het platform zijn verwerkt, met de op dat moment beschikbare informatie over aard, omvang en getroffen maatregelen.\n\nArtikel 9 — Auditrecht\nGebruiker heeft het recht om, na voorafgaande schriftelijke aankondiging en niet vaker dan één keer per kalenderjaar (tenzij een datalek of een andere gerede aanleiding een aanvullend verzoek rechtvaardigt), bij ' + BRAND.kort + ' navraag te doen naar de getroffen technische en organisatorische beveiligingsmaatregelen, waaronder een samenvatting van recente beveiligingstoetsen. ' + BRAND.kort + ' beantwoordt een dergelijk verzoek binnen redelijke termijn en op vertrouwelijke basis. Een controle ter plaatse is mogelijk in onderling overleg en op kosten van Gebruiker, tenzij de controle een aan ' + BRAND.kort + ' toerekenbare tekortkoming aan het licht brengt; in dat geval draagt ' + BRAND.kort + ' de redelijke kosten daarvan.\n\nArtikel 10 — Toepasselijk recht\nNederlands recht. Geschillen: Rechtbank Oost-Brabant.\n\nArtikel 11 — Geaggregeerde verwerking\n' + BRAND.kort + ' mag geanonimiseerde en geaggregeerde gegevens — niet herleidbaar tot een individueel traject, Gebruiker of diens klant — verzamelen en verwerken ten behoeve van sectorbenchmarks en marktinzichten. Deze inzichten kunnen (mede) beschikbaar worden gesteld aan gebruikers van het platform.\n\nArtikel 12 — Toegangsbeperking beheerder\n' + BRAND.kort + ' heeft via het beheerscherm van het platform geen toegang tot prijsgevoelige gegevens van trajecten van Gebruikers die niet zelf klant zijn van ' + BRAND.kort + ' — waaronder in ieder geval: dealprijzen en -voorstellen, financiële due-diligence-cijfers, gegenereerde en geüploade documenten, gespreksverslagen, vragen en antwoorden, en identificerende gegevens van de betrokken partijen. Deze beperking is technisch afgedwongen in de software.\nToegang tot deze gegevens door ' + BRAND.kort + ' is uitsluitend mogelijk (a) op uitdrukkelijk verzoek van Gebruiker, bijvoorbeeld voor technische ondersteuning, of (b) in het kader van regulier technisch infrastructuurbeheer (waaronder back-ups), in welk geval de gegevens niet worden geraadpleegd, geanalyseerd of voor enig ander doel gebruikt.\n\nBijlage — Verwerking met behulp van AI\n1. Doel. Het platform gebruikt AI-taalmodellen om geüploade documenten te analyseren, gegevens daaruit te extraheren naar het due diligence-dossier, en concept-rapportages en -documenten te genereren. De AI-uitkomsten zijn concept en worden door de adviseur beoordeeld.\n2. Ingeschakelde dienst. De AI-verwerking vindt plaats bij Anthropic PBC (Verenigde Staten), via de Claude-modellen op de zakelijke API, waarbij Anthropic optreedt als sub-verwerker.\n3. Welke gegevens. Aan de AI-dienst worden voorgelegd: de inhoud van door of namens Gebruiker geüploade documenten en de in het traject ingevoerde gegevens, voor zover nodig voor de in punt 1 genoemde taken, en uitsluitend binnen de context van het betreffende traject.\n4. Geen training. De aangeleverde gegevens en documenten worden niet gebruikt voor het trainen of verbeteren van AI-modellen van Anthropic of van ' + BRAND.kort + '.\n5. Doorgifte buiten de EU. Voor zover persoonsgegevens naar Anthropic PBC in de Verenigde Staten worden doorgegeven, gebeurt dit op basis van de EU Standard Contractual Clauses die deel uitmaken van het Data Processing Addendum tussen ' + BRAND.bedrijf + ' en Anthropic PBC.\n6. Bewaring bij de AI-dienst. ' + BRAND.kort + ' maakt gebruik van de zakelijke API van Anthropic. Anthropic verwijdert invoer en uitvoer binnen dertig (30) dagen na ontvangst respectievelijk het genereren daarvan. Anthropic kan gegevens langer bewaren voor zover de wet dat vereist of voor zover een verzoek door de geautomatiseerde misbruikdetectie van Anthropic is gemarkeerd; in dat laatste geval worden invoer en uitvoer tot ten hoogste twee (2) jaar bewaard en classificatiescores tot ten hoogste zeven (7) jaar. Anthropic gebruikt deze gegevens niet voor modeltraining.\n7. Menselijke tussenkomst. Iedere AI-uitkomst die aan een tegenpartij of cliënt wordt verstrekt, wordt door de adviseur beoordeeld en vrijgegeven voordat deze wordt verzonden of gedeeld. Op basis van de huidige werking van het platform vindt geen uitsluitend geautomatiseerde besluitvorming plaats die voor de betrokkene rechtsgevolgen heeft of hem anderszins in aanmerkelijke mate treft als bedoeld in artikel 22 AVG.\n8. Transparantie richting betrokkenen. (a) Voor M&A-trajecten, waarin Gebruiker verwerkingsverantwoordelijke is en ' + BRAND.bedrijf + ' verwerker: Gebruiker informeert zijn cliënten overeenkomstig de toepasselijke informatieverplichtingen over het gebruik van AI voor documentanalyse en conceptgeneratie. Het platform stelt daarvoor standaardtekst beschikbaar. (b) Voor verwerkingen waarvoor ' + BRAND.bedrijf + ' zelf verwerkingsverantwoordelijke is, waaronder de zelf-scan: ' + BRAND.bedrijf + ' informeert de betrokkene overeenkomstig de toepasselijke informatieverplichtingen via de privacyverklaring en, waar passend, een melding bij het scanresultaat.\n9. Nauwkeurigheid. AI-extractie kan onjuist of onvolledig zijn. Het platform markeert onzekere waarden als "niet vermeld" of "handmatig controleren" in plaats van een waarde te schatten. De adviseur controleert geëxtraheerde cijfers voordat hij ze in een waardering of document gebruikt.';
+var VOK_VERSIE = '1.8';
+var VOK_TEKST = 'VERWERKERSOVEREENKOMST\n' + BRAND.bedrijf + ' — ' + BRAND.platform + ' Platform\nVersie 1.8 | November 2026\n\nPartijen\nVerwerkingsverantwoordelijke: De tussenpersoon/adviseur die gebruik maakt van het ' + BRAND.platform + '-platform.\nVerwerker: ' + BRAND.bedrijf + ', statutair gevestigd te Oploo, ingeschreven in het handelsregister onder nummer 08208520, ' + BRAND.adres + ', handelend onder de naam ' + BRAND.platform + '. Waar in deze overeenkomst "' + BRAND.platform + '" wordt gebruikt ter aanduiding van de contractspartij, wordt daarmee ' + BRAND.bedrijf + ' bedoeld.\n\nArtikel 1 — Doel en grondslag\n' + BRAND.kort + ' verwerkt persoonsgegevens uitsluitend ten behoeve van de dienstverlening via het ' + BRAND.platform + '-platform. Gebruiker blijft te allen tijde verwerkingsverantwoordelijke voor de gegevens van zijn klanten.\n\nArtikel 2 — Aard van de verwerking\n' + BRAND.kort + ' verwerkt uitsluitend de persoonsgegevens die door of namens Gebruiker worden ingevoerd. Dit omvat: contactgegevens, financiële bedrijfsdata, documenten en communicatie in het kader van M&A-trajecten. Categorieën betrokkenen: cliënten van Gebruiker en hun vertegenwoordigers; potentiële kopers, verkopers en fusiepartners; contactpersonen van door of namens Gebruiker benaderde ondernemingen (kandidaten), inclusief hun reacties, uitnodigingsstatus en contacthistorie; ondertekenaars van geheimhoudingsovereenkomsten (naam, functie, zakelijk e-mailadres en ondertekenstatus); medewerkers van Gebruiker die het platform gebruiken (naam, rol, acties, besluiten en bijdragen aan de kantoorwerkruimte en kennisbank); en, voor zover Gebruiker een financiële koppeling activeert, de via die koppeling opgehaalde gegevens. Gebruiker bepaalt welke kandidaten worden benaderd en is verantwoordelijk voor de rechtmatigheid daarvan, waaronder de grondslag, het informeren van betrokkenen en de regels voor elektronische berichten. Gebruiker en diens klanten behouden te allen tijde alle rechten, waaronder eigendom, op de door hen ingevoerde gegevens en geüploade documenten; ' + BRAND.kort + ' verkrijgt daarop geen eigendomsrecht en gebruikt deze uitsluitend voor het leveren van het platform.\n\nArtikel 3 — Verwerking met behulp van AI\nHet platform maakt gebruik van AI-taalmodellen (Anthropic Claude) om geüploade documenten te analyseren, gegevens daaruit te extraheren naar het due diligence-dossier, en concept-rapportages en -documenten te genereren. Hiertoe worden de inhoud van geüploade documenten en ingevoerde gegevens voorgelegd aan de AI-dienst van Anthropic PBC. Deze verwerking vindt plaats ten behoeve van automatisering van het due diligence-proces en vindt uitsluitend plaats binnen de context van het specifieke traject waarvoor de gegevens zijn aangeleverd. Gegevens worden niet gebruikt om AI-modellen te trainen. De wijze waarop AI wordt ingezet is nader uitgewerkt in de Bijlage — Verwerking met behulp van AI, die deel uitmaakt van deze overeenkomst.\n\nArtikel 4 — Beveiliging\n' + BRAND.kort + ' treft passende technische en organisatorische maatregelen. Gegevens worden opgeslagen in Cloudflare-datacenters binnen de EU (Frankfurt). Verbindingen zijn versleuteld via HTTPS.\n\nArtikel 5 — Bewaartermijn\nGeüploade documenten en alle overige trajectgegevens (ingevulde due diligence-velden, gesprekken, vragen en antwoorden, waarderingen en overige trajectdata) worden bewaard gedurende het traject en gedurende veertien (14) dagen na afsluiting daarvan. In die periode wordt een volledig dossier eenmalig als downloadbaar bestand aan Gebruiker beschikbaar gesteld. Op schriftelijk verzoek van Gebruiker kan deze bewaartermijn voor een concreet traject worden verlengd, indien en voor zover Gebruiker daarbij een concrete noodzaak aangeeft, zoals een lopend of dreigend geschil ten aanzien van de betreffende transactie, of een op Gebruiker rustende wettelijke bewaarplicht die Gebruiker via het platform wenst na te komen. De verlenging wordt vastgelegd voor een bepaalde termijn van ten hoogste driehonderdvijfenzestig (365) dagen na afsluiting van het traject en eindigt op de overeengekomen einddatum, dan wel zodra de aangegeven noodzaak eerder komt te vervallen; Gebruiker meldt dat laatste zonder onredelijke vertraging aan ' + BRAND.kort + '. Na afloop van de toepasselijke termijn (de standaardtermijn van veertien dagen, dan wel de overeengekomen verlengde termijn) worden alle trajectgegevens definitief van het platform verwijderd, met uitzondering van een beperkte archiefregel (trajectnaam, sector, type, datum van aanmaak en afsluiting, en de namen van de betrokken partijen) die wordt bewaard ten behoeve van administratie en geschillenbeslechting. Gebruiker (de adviseur) is na download zelf verantwoordelijk voor archivering van het dossier conform de op hem rustende wettelijke bewaarplichten (waaronder de fiscale bewaarplicht van doorgaans 7 jaar). Een traject dat gedurende drie (3) maanden geen inhoudelijke activiteit kent (geen gewijzigde of aangevulde gegevens, documenten, gesprekken of vragen) wordt, ná een waarschuwing aan Gebruiker en een aanvullende termijn van veertien (14) dagen zonder activiteit, automatisch afgesloten, waarna bovenstaande bewaartermijn van toepassing wordt — zo kan het platform niet ongewild als permanente opslag worden gebruikt. Voor rampherstel maakt ' + BRAND.kort + ' daarnaast periodieke back-ups, los van het draaiende platform; back-ups van de database worden uiterlijk zestig (60) dagen na het maken ervan automatisch verwijderd, en back-ups van documenten worden voor hetzelfde doel bewaard en nooit voor iets anders gebruikt dan herstel bij calamiteiten.\n\nArtikel 6 — Sub-verwerkers en doorgifte buiten de EU\nCloudflare Inc. (infrastructuur, EU), Anthropic PBC (AI-verwerking van documenten en gegevens, Verenigde Staten), Resend Inc. (e-mail, waaronder persoonlijke uitnodigingen aan kandidaten; Verenigde Staten, op basis van de EU Standard Contractual Clauses), Signhost/Entrust (handtekeningen). Voor zover persoonsgegevens worden doorgegeven aan Anthropic PBC in de Verenigde Staten, gebeurt dit op basis van de EU Standard Contractual Clauses (modelcontractbepalingen) die deel uitmaken van het Data Processing Addendum tussen ' + BRAND.bedrijf + ' en Anthropic PBC, ter waarborging van een passend beschermingsniveau conform de AVG. Zie voor de AI-verwerking door Anthropic PBC de Bijlage — Verwerking met behulp van AI. Gebruiker geeft hierbij algemene toestemming voor het inschakelen van deze en toekomstige sub-verwerkers. ' + BRAND.kort + ' informeert Gebruiker ten minste dertig (30) dagen voordat een nieuwe sub-verwerker wordt ingeschakeld of een bestaande wordt vervangen; Gebruiker kan binnen die termijn op redelijke, aan gegevensbescherming gerelateerde gronden bezwaar maken. Leidt dat niet tot een oplossing, dan kan Gebruiker het platformgebruik beëindigen voor zover dit die sub-verwerker betreft.\n\nArtikel 7 — Rechten betrokkenen\nGebruiker is verantwoordelijk voor het faciliteren van de rechten van betrokkenen. ' + BRAND.kort + ' verleent hiertoe medewerking op verzoek. Het platform biedt Gebruiker daarvoor in ieder geval: het verwijderen van een kandidaat met alle bijbehorende uitnodigingen en historie, en voor benaderde kandidaten een afmeldmogelijkheid via hun persoonlijke link, waarna hun contactgegevens worden verwijderd en zij voor dat traject niet meer via het platform worden benaderd (daartoe blijft alleen een onomkeerbaar versleuteld kenmerk van het e-mailadres bewaard, tot het traject wordt verwijderd); een al getekende overeenkomst blijft onderdeel van het dossier. Gegevens van kandidaten volgen de bewaartermijn van het traject (artikel 5).\n\nArtikel 8 — Datalekken\n' + BRAND.kort + ' informeert Gebruiker zonder onredelijke vertraging, en in ieder geval niet later dan tweeënzeventig (72) uur, nadat ' + BRAND.kort + ' bekend is geworden met een inbreuk op de beveiliging die persoonsgegevens raakt die via het platform zijn verwerkt, met de op dat moment beschikbare informatie over aard, omvang en getroffen maatregelen.\n\nArtikel 9 — Auditrecht\nGebruiker heeft het recht om, na voorafgaande schriftelijke aankondiging en niet vaker dan één keer per kalenderjaar (tenzij een datalek of een andere gerede aanleiding een aanvullend verzoek rechtvaardigt), bij ' + BRAND.kort + ' navraag te doen naar de getroffen technische en organisatorische beveiligingsmaatregelen, waaronder een samenvatting van recente beveiligingstoetsen. ' + BRAND.kort + ' beantwoordt een dergelijk verzoek binnen redelijke termijn en op vertrouwelijke basis. Een controle ter plaatse is mogelijk in onderling overleg en op kosten van Gebruiker, tenzij de controle een aan ' + BRAND.kort + ' toerekenbare tekortkoming aan het licht brengt; in dat geval draagt ' + BRAND.kort + ' de redelijke kosten daarvan.\n\nArtikel 10 — Toepasselijk recht\nNederlands recht. Geschillen: Rechtbank Oost-Brabant.\n\nArtikel 11 — Geaggregeerde verwerking\n' + BRAND.kort + ' mag geanonimiseerde en geaggregeerde gegevens — niet herleidbaar tot een individueel traject, Gebruiker of diens klant — verzamelen en verwerken ten behoeve van sectorbenchmarks en marktinzichten. Deze inzichten kunnen (mede) beschikbaar worden gesteld aan gebruikers van het platform.\n\nArtikel 12 — Toegangsbeperking beheerder\n' + BRAND.kort + ' heeft via het beheerscherm van het platform geen toegang tot prijsgevoelige gegevens van trajecten van Gebruikers die niet zelf klant zijn van ' + BRAND.kort + ' — waaronder in ieder geval: dealprijzen en -voorstellen, financiële due-diligence-cijfers, gegenereerde en geüploade documenten, gespreksverslagen, vragen en antwoorden, en identificerende gegevens van de betrokken partijen. Deze beperking is technisch afgedwongen in de software.\nToegang tot deze gegevens door ' + BRAND.kort + ' is uitsluitend mogelijk (a) op uitdrukkelijk verzoek van Gebruiker, bijvoorbeeld voor technische ondersteuning, of (b) in het kader van regulier technisch infrastructuurbeheer (waaronder back-ups), in welk geval de gegevens niet worden geraadpleegd, geanalyseerd of voor enig ander doel gebruikt.\n\nArtikel 13 — Instructies en vertrouwelijkheid\n' + BRAND.kort + ' verwerkt persoonsgegevens uitsluitend op basis van de schriftelijke instructies van Gebruiker, waaronder deze overeenkomst en de instellingen en handelingen van Gebruiker in het platform, tenzij een wettelijke verplichting anders vereist; in dat geval informeert ' + BRAND.kort + ' Gebruiker vooraf, tenzij de wet dat verbiedt. Personen die onder het gezag van ' + BRAND.kort + ' toegang hebben tot persoonsgegevens zijn tot geheimhouding verplicht. ' + BRAND.kort + ' stelt Gebruiker op verzoek de informatie ter beschikking die nodig is om de nakoming van deze overeenkomst aan te tonen (zie ook artikel 9).\n\nBijlage — Verwerking met behulp van AI\n1. Doel. Het platform gebruikt AI-taalmodellen om geüploade documenten te analyseren, gegevens daaruit te extraheren naar het due diligence-dossier, en concept-rapportages en -documenten te genereren. De AI-uitkomsten zijn concept en worden door de adviseur beoordeeld.\n2. Ingeschakelde dienst. De AI-verwerking vindt plaats bij Anthropic PBC (Verenigde Staten), via de Claude-modellen op de zakelijke API, waarbij Anthropic optreedt als sub-verwerker.\n3. Welke gegevens. Aan de AI-dienst worden voorgelegd: de inhoud van door of namens Gebruiker geüploade documenten en de in het traject ingevoerde gegevens, voor zover nodig voor de in punt 1 genoemde taken, en uitsluitend binnen de context van het betreffende traject.\n4. Geen training. De aangeleverde gegevens en documenten worden niet gebruikt voor het trainen of verbeteren van AI-modellen van Anthropic of van ' + BRAND.kort + '.\n5. Doorgifte buiten de EU. Voor zover persoonsgegevens naar Anthropic PBC in de Verenigde Staten worden doorgegeven, gebeurt dit op basis van de EU Standard Contractual Clauses die deel uitmaken van het Data Processing Addendum tussen ' + BRAND.bedrijf + ' en Anthropic PBC.\n6. Bewaring bij de AI-dienst. ' + BRAND.kort + ' maakt gebruik van de zakelijke API van Anthropic. Anthropic verwijdert invoer en uitvoer binnen dertig (30) dagen na ontvangst respectievelijk het genereren daarvan. Anthropic kan gegevens langer bewaren voor zover de wet dat vereist of voor zover een verzoek door de geautomatiseerde misbruikdetectie van Anthropic is gemarkeerd; in dat laatste geval worden invoer en uitvoer tot ten hoogste twee (2) jaar bewaard en classificatiescores tot ten hoogste zeven (7) jaar. Anthropic gebruikt deze gegevens niet voor modeltraining.\n7. Menselijke tussenkomst. Iedere AI-uitkomst die aan een tegenpartij of cliënt wordt verstrekt, wordt door de adviseur beoordeeld en vrijgegeven voordat deze wordt verzonden of gedeeld. Op basis van de huidige werking van het platform vindt geen uitsluitend geautomatiseerde besluitvorming plaats die voor de betrokkene rechtsgevolgen heeft of hem anderszins in aanmerkelijke mate treft als bedoeld in artikel 22 AVG.\n8. Transparantie richting betrokkenen. (a) Voor M&A-trajecten, waarin Gebruiker verwerkingsverantwoordelijke is en ' + BRAND.bedrijf + ' verwerker: Gebruiker informeert zijn cliënten overeenkomstig de toepasselijke informatieverplichtingen over het gebruik van AI voor documentanalyse en conceptgeneratie. Het platform stelt daarvoor standaardtekst beschikbaar. (b) Voor verwerkingen waarvoor ' + BRAND.bedrijf + ' zelf verwerkingsverantwoordelijke is, waaronder de zelf-scan: ' + BRAND.bedrijf + ' informeert de betrokkene overeenkomstig de toepasselijke informatieverplichtingen via de privacyverklaring en, waar passend, een melding bij het scanresultaat.\n9. Nauwkeurigheid. AI-extractie kan onjuist of onvolledig zijn. Het platform markeert onzekere waarden als "niet vermeld" of "handmatig controleren" in plaats van een waarde te schatten. De adviseur controleert geëxtraheerde cijfers voordat hij ze in een waardering of document gebruikt.';
 
 // Vaste reliance-/aansprakelijkheidsvoettekst onder elk gegenereerd document (FASE6 onderdeel 2,
 // jurist-goedgekeurd). BYTE-IDENTIEK houden met RELIANCE_VOETTEKST in worker/02-config-constanten.js
@@ -256,6 +256,7 @@ function renderApp(){
   else if(S.screen==='handleiding')app.innerHTML=renderHandleiding();
   else if(S.screen==='koopmandaat')renderKoopmandaatScherm(app);
   bindAll();
+  if(typeof jrMount==='function')jrMount(); // #97 M&A Journey
 }
 
 // ============================================================
@@ -452,7 +453,8 @@ function renderKoopmandaatScherm(app){
     +'<div style="font-size:12px;color:var(--muted);margin-top:.3rem">Koopmandaat (buy-side) &middot; '+(rol==='koper'?'u bent de koper (opdrachtgever)':'u begeleidt dit koopmandaat')+'</div>'
     +(magBewerken&&(m.koper_contact_naam||m.koper_contact_email)?'<div style="margin-top:.75rem;font-size:12px;color:var(--sub)"><b>Contact koper:</b> '+esc(m.koper_contact_naam||'')+(m.koper_contact_email?' &middot; '+esc(m.koper_contact_email):'')+'</div>':'')
     +'<div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border);font-size:12px;color:var(--sub)"><b>Zoekprofiel:</b> '+esc(m.zoekt_sectoren||'Nog niet ingevuld')+(m.zoekt_regio?' &middot; '+esc(m.zoekt_regio):'')+(omzetRange?' &middot; '+omzetRange:'')+'</div>'
-    +'</div>';
+    +'</div>'
+    +'<div id="jr-koopmandaat" class="jr-plek" style="margin-bottom:1.5rem"></div>';
 
   // Targetflow: de begeleider ziet actieve en gearchiveerde targets gescheiden (archiveren is zacht; er
   // wordt niets verwijderd). De koper krijgt gearchiveerde targets van de backend niet eens mee.
@@ -1726,7 +1728,8 @@ function toonKoperToegangModal(app, naOpslaan){
     }
     var r=await verstuur(false);
     if(r.nda_niet_getekend){
-      if(confirm('⚠ De NDA is nog NIET getekend.\n\nKoper krijgt toegang zonder geheimhoudingsovereenkomst. Toch vrijgeven?')){ r=await verstuur(true); }
+      // N-151: met force wordt alleen de keuze vastgelegd; de server geeft de koper pas toegang na een geldige NDA.
+      if(confirm('Er is nog geen geldig ondertekende NDA van de koper.\n\nU kunt de categorieën nu al vastleggen; de koper krijgt pas toegang zodra de NDA geldig is ondertekend (door de koper op het platform, via Signhost, of met een ondertekend bestand bij het tekenen). Vastleggen?')){ r=await verstuur(true); }
       else { btn.disabled=false;btn.textContent='Opslaan';return; }
     }
     if(r.ok){
@@ -1813,6 +1816,7 @@ function toonPartnersModal(app){
     +'<div id="pt-reconciliatie"></div>'
     +'<div id="pt-lijst" style="margin-bottom:1rem;font-size:13px;color:#8a8880;font-style:italic">Laden...</div>'
     +'<div style="border-top:1px solid #e5e2d8;padding-top:.85rem;margin-top:.5rem">'
+    +'<div id="pt-bewerk-status" style="display:none;font-size:12px;color:#1a7a5e;font-weight:600;margin-bottom:6px"></div>'
     +'<div style="display:flex;gap:8px;margin-bottom:6px">'
     +'<input type="text" id="pt-naam" placeholder="Naam '+esc(pt.enkel)+'" style="flex:2;background:#f0eeea;color:#2a2825;border:1px solid #c8c5bc;border-radius:6px;padding:7px 11px;font-size:13px">'
     +'<input type="text" id="pt-leeftijd" placeholder="Leeftijd" style="flex:1;background:#f0eeea;color:#2a2825;border:1px solid #c8c5bc;border-radius:6px;padding:7px 11px;font-size:13px">'
@@ -1825,6 +1829,7 @@ function toonPartnersModal(app){
     +(isMaatschap()?'<div style="display:flex;gap:8px;margin-bottom:6px"><input type="text" id="pt-winstaandeel" placeholder="Winstaandeel deze maat (%)" style="flex:1;background:#f0eeea;color:#2a2825;border:1px solid #c8c5bc;border-radius:6px;padding:7px 11px;font-size:13px"></div>':'')
     +'<div id="pt-entiteiten" style="font-size:12px;color:#8a8880;margin-bottom:8px">Gekoppelde entiteiten: <span style="font-style:italic">laden...</span></div>'
     +'<button id="pt-toevoegen" style="background:#1a7a5e;color:#fff;border:none;padding:7px 14px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600">+ Toevoegen</button>'
+    +'<button id="pt-annuleren" style="display:none;margin-left:8px;background:transparent;border:1px solid #c8c5bc;padding:7px 14px;border-radius:6px;cursor:pointer;font-size:13px">Annuleren</button>'
     +'</div>'
     +'<div id="pt-err" style="display:none;color:#e05252;font-size:12px;margin:.5rem 0"></div>'
     +'<div style="display:flex;justify-content:flex-end;margin-top:1rem">'
@@ -1841,7 +1846,80 @@ function toonPartnersModal(app){
     el.innerHTML='Gekoppelde entiteiten:<div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:4px">'
       +rows.map(function(r){return '<label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" class="pt-ent-chk" value="'+esc(r.id)+'"> '+esc(r.naam)+'</label>';}).join('')
       +'</div>';
+    if(ptBewerk)ptZetChecks(ptBewerk.ids);
   }
+
+  // Bewerken (productpunt 18, 13 okt 2026): hetzelfde formulier, voorgevuld uit de laatst gelezen
+  // rij; opslaan stuurt het bestaande id naar dezelfde POST (backend: update van die rij, 404 bij
+  // onbekend id). Geen verwijderen + opnieuw aanmaken, geen nieuwe route. Entiteit-id's zonder
+  // checkbox en het winstaandeel zonder invoerveld gaan ongewijzigd mee terug, zodat bewerken geen
+  // koppeling of waarde stil wist. Een antwoord telt alleen voor dezelfde sessie (S), code en rol en
+  // een formulier dat nog in beeld is; succes alleen na HTTP 2xx met ok:true en hetzelfde id, daarna
+  // wordt de lijst opnieuw van de server gelezen. Een intussen gestarte nieuwere bewerking blijft staan.
+  var ptBewerk=null,ptRijen=[],ptLaadNr=0,ptKnop=document.getElementById('pt-toevoegen');
+  var PT_VELDEN=[['pt-naam','naam'],['pt-leeftijd','leeftijd'],['pt-verandering','veranderbereidheid'],['pt-opvolging','opvolgingskandidaat'],['pt-omzet','omzet_incl_team'],['pt-winstaandeel','winstaandeel_pct']];
+  function ptChecks(){return Array.prototype.slice.call(document.querySelectorAll('.pt-ent-chk'));}
+  function ptZetChecks(ids){ptChecks().forEach(function(c){c.checked=ids.indexOf(c.value)>=0;});}
+  // Aangevinkte entiteiten plus de oorspronkelijke koppelingen waarvoor geen checkbox in beeld is.
+  function ptHuidigeIds(bewerk){
+    var chks=ptChecks(),zichtbaar=chks.map(function(c){return c.value;});
+    return chks.filter(function(c){return c.checked;}).map(function(c){return c.value;}).concat(bewerk.ids.filter(function(id){return zichtbaar.indexOf(id)<0;}));
+  }
+  function ptToonModus(){
+    var st=document.getElementById('pt-bewerk-status'),an=document.getElementById('pt-annuleren'),btn=document.getElementById('pt-toevoegen');
+    if(!st||!an||btn!==ptKnop)return; // modal gesloten of vervangen: nooit een ander formulier aanpassen
+    st.style.display=ptBewerk?'block':'none';st.textContent=ptBewerk?'Bewerken: '+ptBewerk.naam:'';
+    an.style.display=ptBewerk?'inline-block':'none';
+    if(!btn.disabled)btn.textContent=ptBewerk?'Opslaan':'+ Toevoegen';
+  }
+  function ptVulFormulier(waarden,ids){
+    PT_VELDEN.forEach(function(v,i){var el=document.getElementById(v[0]);if(el)el.value=waarden[i];});
+    ptZetChecks(ids);
+  }
+  function ptStartBewerk(id){
+    if(!ptKnop.isConnected)return;
+    var errEl=document.getElementById('pt-err');errEl.style.display='none';
+    var rij=ptRijen.find(function(r){return r&&String(r.id)===id;});
+    if(!rij){errEl.textContent='Deze '+pt.enkel+' staat niet meer in de lijst.';errEl.style.display='block';return;}
+    // Onopgeslagen invoer van vóór de eerste Bewerken-klik komt terug bij Annuleren.
+    var vorig=ptBewerk?ptBewerk.vorig:{waarden:PT_VELDEN.map(function(v){var el=document.getElementById(v[0]);return el?el.value:'';}),ids:ptChecks().filter(function(c){return c.checked;}).map(function(c){return c.value;})};
+    ptBewerk={id:rij.id,naam:String(rij.naam==null?'':rij.naam),ids:(Array.isArray(rij.entiteit_ids)?rij.entiteit_ids:[]).map(String),winst:rij.winstaandeel_pct==null?'':String(rij.winstaandeel_pct),vorig:vorig};
+    ptVulFormulier(PT_VELDEN.map(function(v){return rij[v[1]]==null?'':String(rij[v[1]]);}),ptBewerk.ids);
+    ptToonModus();
+  }
+  async function ptSlaBewerkingOp(btn){
+    var bewerk=ptBewerk,sessie=S,code=S.code,rol=S.rol;
+    var errEl=document.getElementById('pt-err');errEl.style.display='none';
+    var waarde=function(id){return document.getElementById(id).value.trim();};
+    var naam=waarde('pt-naam');
+    if(!naam){errEl.textContent='Naam is verplicht.';errEl.style.display='block';return;}
+    var winstEl=document.getElementById('pt-winstaandeel');
+    var body={id:bewerk.id,naam:naam,leeftijd:waarde('pt-leeftijd'),veranderbereidheid:waarde('pt-verandering'),opvolgingskandidaat:waarde('pt-opvolging'),omzet_incl_team:waarde('pt-omzet'),winstaandeel_pct:winstEl?winstEl.value.trim():bewerk.winst,entiteit_ids:ptHuidigeIds(bewerk)};
+    btn.disabled=true;btn.textContent='...';
+    var res=await fetch(WORKER+'/mna/partners/'+code,{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey},body:JSON.stringify(body)})
+      .then(function(x){return x.json().then(function(d){return {http:!!x.ok,status:x.status,d:d&&typeof d==='object'?d:{}};},function(){return {http:!!x.ok,status:x.status,d:{}};});})
+      .catch(function(){return {http:false,status:0,d:{}};});
+    if(S!==sessie||S.code!==code||S.rol!==rol||!btn.isConnected)return;
+    var gelukt=res.http&&res.d.ok===true&&res.d.id===bewerk.id;
+    btn.disabled=false;
+    if(gelukt){
+      // Alleen de bewerking die nog open staat sluiten; een nieuwere bewerking of Annuleren blijft staan.
+      if(ptBewerk===bewerk){ptBewerk=null;ptVulFormulier(PT_VELDEN.map(function(){return '';}),[]);}
+      ptToonModus();laadLijst();return;
+    }
+    ptToonModus();
+    // Invoer blijft staan; bij een intussen gestarte andere bewerking wordt die niet aangeraakt.
+    var fout=res.status===401||res.status===403?'Geen toestemming om deze '+pt.enkel+' te bewerken.':(typeof res.d.error==='string'&&res.d.error)||'Fout bij opslaan';
+    errEl.textContent=(ptBewerk!==bewerk?'Opslaan van '+bewerk.naam+' mislukt: ':'')+fout;
+    errEl.style.display='block';
+  }
+  document.getElementById('pt-annuleren').onclick=function(){
+    if(!ptBewerk)return;
+    var vorig=ptBewerk.vorig;ptBewerk=null;
+    ptVulFormulier(vorig.waarden,vorig.ids);
+    document.getElementById('pt-err').style.display='none';
+    ptToonModus();
+  };
 
   // Audit-fix P1 (25 juli 2026, vijfde ronde): het partnerregister en de oudere, losse DD-velden
   // partner_aantalP/partner_omzetPerP zijn twee niet-gesynchroniseerde databronnen — de waardering
@@ -1865,9 +1943,12 @@ function toonPartnersModal(app){
       +'</div>';
   }
   async function laadLijst(){
-    var lijstEl=document.getElementById('pt-lijst');
+    var lijstEl=document.getElementById('pt-lijst'),nr=++ptLaadNr,sessie=S,code=S.code;
     lijstEl.textContent='Laden...';
-    var rows=await fetch(WORKER+'/mna/partners/'+S.code).then(function(r){return r.json();}).catch(function(){return [];});
+    var rows=await fetch(WORKER+'/mna/partners/'+code).then(function(r){return r.json();}).catch(function(){return [];});
+    // Alleen het laatst gestarte leesverzoek, in dezelfde sessie en in deze nog geopende modal, telt.
+    if(nr!==ptLaadNr||S!==sessie||S.code!==code||!lijstEl.isConnected)return;
+    ptRijen=Array.isArray(rows)?rows:[];
     toonReconciliatie(rows);
     if(!rows||!rows.length){lijstEl.innerHTML='<span style="font-style:italic">Nog geen '+esc(pt.meer)+' geregistreerd.</span>';return;}
     lijstEl.style.fontStyle='normal';
@@ -1882,9 +1963,13 @@ function toonPartnersModal(app){
         +(r.winstaandeel_pct?'<div style="font-size:11px;color:var(--muted)">Winstaandeel: '+esc(r.winstaandeel_pct)+'%</div>':'')
         +(entNamen?'<div style="font-size:11px;color:var(--teal)">'+esc(entNamen)+'</div>':'')
         +'</div>'
+        +'<button class="pt-bewerk" data-id="'+esc(r.id)+'" style="background:transparent;border:1px solid #c8c5bc;color:#1a7a5e;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px">Bewerken</button>'
         +'<button class="pt-verwijder" data-id="'+esc(r.id)+'" style="background:transparent;border:1px solid #c8c5bc;color:#e05252;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px">Verwijderen</button>'
         +'</div>';
     }).join('');
+    lijstEl.querySelectorAll('.pt-bewerk').forEach(function(btn){
+      btn.onclick=function(){ ptStartBewerk(btn.dataset.id); };
+    });
     lijstEl.querySelectorAll('.pt-verwijder').forEach(function(btn){
       btn.onclick=async function(){
         await fetch(WORKER+'/mna/partners/'+S.code,{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey},body:JSON.stringify({actie:'verwijderen',id:btn.dataset.id})});
@@ -1894,6 +1979,7 @@ function toonPartnersModal(app){
   }
   document.getElementById('pt-toevoegen').onclick=async function(){
     var btn=this;
+    if(ptBewerk)return ptSlaBewerkingOp(btn);
     var naamEl=document.getElementById('pt-naam'),leeftijdEl=document.getElementById('pt-leeftijd'),verEl=document.getElementById('pt-verandering'),opvEl=document.getElementById('pt-opvolging'),omzetEl=document.getElementById('pt-omzet'),winstEl=document.getElementById('pt-winstaandeel');
     var errEl=document.getElementById('pt-err');errEl.style.display='none';
     var naam=naamEl.value.trim();
@@ -1901,8 +1987,9 @@ function toonPartnersModal(app){
     var entIds=Array.prototype.slice.call(document.querySelectorAll('.pt-ent-chk:checked')).map(function(c){return c.value;});
     btn.disabled=true;btn.textContent='...';
     var r=await fetch(WORKER+'/mna/partners/'+S.code,{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey},body:JSON.stringify({naam:naam,leeftijd:leeftijdEl.value.trim(),veranderbereidheid:verEl.value.trim(),opvolgingskandidaat:opvEl.value.trim(),omzet_incl_team:omzetEl.value.trim(),winstaandeel_pct:winstEl?winstEl.value.trim():'',entiteit_ids:entIds})}).then(function(x){return x.json();}).catch(function(){return {};});
-    btn.disabled=false;btn.textContent='+ Toevoegen';
-    if(r.ok){naamEl.value='';leeftijdEl.value='';verEl.value='';opvEl.value='';omzetEl.value='';if(winstEl)winstEl.value='';document.querySelectorAll('.pt-ent-chk').forEach(function(c){c.checked=false;});laadLijst();}
+    btn.disabled=false;btn.textContent='+ Toevoegen';ptToonModus();
+    // Een laat toevoeg-antwoord wist een intussen gestarte bewerking niet.
+    if(r.ok){if(!ptBewerk){naamEl.value='';leeftijdEl.value='';verEl.value='';opvEl.value='';omzetEl.value='';if(winstEl)winstEl.value='';document.querySelectorAll('.pt-ent-chk').forEach(function(c){c.checked=false;});}laadLijst();}
     else{errEl.textContent=r.error||'Fout bij opslaan';errEl.style.display='block';}
   };
   laadEntiteitenCheckboxen();
@@ -2159,7 +2246,7 @@ function renderBegeleiderDashboard(app){
     // alleen via het browsertabblad. Zichtbaar voor elke begeleider, ongeacht hoe dit scherm bereikt is.
     +'<a href="adv.html" class="btn-ghost btn-sm" style="text-decoration:none;display:inline-flex;align-items:center">&#8592; Adviseursportaal</a>'
     +'<button class="btn-ghost btn-sm" onclick="refreshData()">&#8635; Ververs</button>'
-    +'<button class="btn-ghost btn-sm" onclick="S.screen=\'handleiding\';renderApp()">&#128214; Handleiding</button>'
+    +'<button class="btn-ghost btn-sm" onclick="S.screen=\'handleiding\';renderApp()">&#128214; Handleiding</button>'+legUitKnop('begeleider')
     +'<button class="btn-ghost btn-sm" onclick="window.print()">&#128196; PDF</button>'
     +'<button class="btn-ghost btn-sm" onclick="uitloggen()">&#8592; Uitloggen</button>'
     +'</div></div>'
@@ -2324,13 +2411,18 @@ function renderBegeleiderDashboard(app){
       // ── Documenten (24 aug 2026, Marcel: "teaser en verkoopmemorandum gewoon in de flow plaatsen,
       // niet onder Marketing" — altijd open/zichtbaar, ook vóór er een koper is, want de teaser is nu
       // letterlijk de eerste stap in deze flow) ──
-      html+='<div class="panel" style="margin-bottom:.75rem;padding:0">'+secHdr('docs','&#128196; Documenten &mdash; flow')
+      // #97 / KVM-UAT-019 (30-10-2026): de vlakke documentenflow is vervangen door de M&A Journey (mna/22-journey.js).
+      // De journey komt uit het centrale backendmodel; de bestaande documentkaarten hieronder (zelfde id's en koppelingen)
+      // verhuizen naar de fase waar ze horen. Lukt het laden niet, dan blijft deze kaartenlijst zoals voorheen staan.
+      html+='<div class="panel" style="margin-bottom:.75rem;padding:0">'+secHdr('docs','&#129517; M&amp;A Journey')
         +'<div class="bg-sec-body" data-sec="docs" style="display:block;padding:.25rem 1rem 0">'
+        +'<div id="jr-begeleider"></div>'
         // Expliciete instructie (Marcel, 11 sep 2026: "als een document gegenereerd moet worden, zie
         // je nog steeds niet waar") — deze lijst IS de plek, maar dat was nergens met zoveel woorden
         // gezegd; met 17 rijen in deze flow is dat kennelijk niet vanzelfsprekend.
-        +'<div style="font-size:11px;color:var(--muted);padding:.4rem 0 .6rem;border-bottom:1px dashed var(--border2);margin-bottom:.4rem">Klik op een document hieronder om het te genereren, te bekijken of te versturen — dit is de volledige documentenflow van dit traject, in de volgorde waarin ze normaal aan bod komen. De status staat onderin elke kaart.</div>'
-        +'<div class="stap-grid">'
+        +'<div id="jr-fallback-kop" style="font-size:11px;color:var(--muted);padding:.4rem 0 .6rem;border-bottom:1px dashed var(--border2);margin-bottom:.4rem">Klik op een document hieronder om het te genereren, te bekijken of te versturen — dit is de volledige documentenflow van dit traject, in de volgorde waarin ze normaal aan bod komen. De status staat onderin elke kaart.</div>'
+        +'<div id="jr-overig" class="jr-sub" hidden style="margin:.6rem 0 .3rem">Overige documenten</div>'
+        +'<div class="stap-grid" id="jr-kaartenbak">'
         // Volgorde volgt de daadwerkelijke dealstroom (Marcel, 21 aug 2026): BEM is het mandaat
         // tussen begeleider en opdrachtgever (Fase 0 in de eigen BEM-sjablonen, worker/02-config-
         // constanten.js) — wordt getekend vóórdat er met de tegenpartij iets gebeurt, dus hoort vóór
@@ -2341,7 +2433,7 @@ function renderBegeleiderDashboard(app){
         // bevestigingsstap in toonVerkoopmemoModal, vereist geen formele koper in het platform).
         +stapRij('bg-bem-actie','&#128203;','#2a5ea0','Bemiddelingsovereenkomst (BEM)',getekendStatus('bem_getekend','bem_datum','bem_tekst'))
         +stapRij('bg-teaser-actie','&#128226;','#1a7a5e',t.teaser_tekst?'Teaser bekijken/bewerken':'Genereer teaser',t.teaser_tekst?'<span style="color:var(--teal)">&#10003; Teaser klaar</span>':'Kort, anoniem verkoopdocument — vóór er een koper is',false,false,!marketingAan,'Module Marketing niet actief — neem contact op via koersvoormorgen.nl')
-        +stapRij('bg-verkoopmemo-actie','&#128220;','#8a5a00',t.verkoopmemorandum_tekst?'Verkoopmemorandum bekijken/bewerken':'Genereer verkoopmemorandum',t.verkoopmemorandum_tekst?'<span style="color:var(--teal)">&#10003; Verkoopmemorandum klaar</span>':'Uitgebreid document mét bedrijfsnaam, na NDA van die partij',false,false,!marketingAan,'Module Marketing niet actief — neem contact op via koersvoormorgen.nl')
+        +stapRij('bg-verkoopmemo-actie','&#128220;','#8a5a00',t.verkoopmemorandum_tekst?'Verkoopmemorandum bekijken/bewerken':'Genereer verkoopmemorandum',t.verkoopmemorandum_tekst?(t.verkoopmemorandum_status==='definitief'?'<span style="color:var(--teal)">&#10003; Verkoopmemorandum definitief vastgesteld</span>':'<span style="color:var(--teal)">&#10003; Verkoopmemorandum klaar (concept)</span>'):'Uitgebreid document mét bedrijfsnaam, na NDA van die partij',false,false,!marketingAan,'Module Marketing niet actief — neem contact op via koersvoormorgen.nl')
         // MoU-/LoI-/NDA-composer (Transaction OS) — stelt het document samen uit losse, apart af te
         // tekenen onderdelen. Sinds 11 sep 2026 (Marcel: "composer wordt de enige") de ENIGE weg om
         // een NDA/LoI aan te maken — de oude sjabloongenerator-rijen zijn hier verwijderd. Geen
@@ -2690,17 +2782,31 @@ function renderBegeleiderDashboard(app){
   // Zoekt zowel de AI-gegenereerde variant (bijv. 'nda') als de geüploade variant ('nda_upload') en
   // toont de meest recente van de twee; alleen als geen van beide bestaat, gaat het gewone genereer-
   // pad (toonDocWaarschuwing + bgDoc) alsnog van start.
+  // Productpunt 16 (13 okt 2026): volgnummer van de laatste bgToonOfGenereerDoc-aanroep; een ouder
+  // antwoord (dubbelklik, ander documenttype, andere weergave in bg-doc-out) doet niets.
+  var bgVersieLaadNr=0;
   async function bgToonOfGenereerDoc(type){
     var out=document.getElementById('bg-doc-out');
+    var nr=++bgVersieLaadNr, sessie=S, code=S.code;
     out.style.display='block';
-    out.innerHTML='<div style="color:var(--muted);font-size:13px;padding:1rem;background:var(--card);border-radius:var(--r2)">Laden...</div>';
+    out.innerHTML='<div id="bg-doc-versie-laad" data-nr="'+nr+'" style="color:var(--muted);font-size:13px;padding:1rem;background:var(--card);border-radius:var(--r2)">Laden...</div>';
     // Marcel, 11 sep 2026: "als een document gegenereerd wordt moet dat zichtbaar gebeuren, zonder
     // scrollen" — deze functie toont zowel een vers gegenereerd als een al bestaand document; scroll
     // meteen (niet pas ná de fetch hieronder) zodat het "Laden..."-blok zelf al in beeld komt.
     bgToonUitvoer(out);
-    var alle=await fetch(WORKER+'/mna/versies/'+S.code,{headers:{'x-tussen-key':S._bgKey||''}}).then(function(r){return r.json();}).catch(function(){return [];});
+    // Een mislukte leesactie (netwerk, 401/403/5xx, onleesbaar) is "onbekend", niet "geen versie": dan
+    // geen documentwaarschuwing/generatie, maar een eerlijke melding met opnieuw proberen.
+    var alle=await leesVersieLijst(WORKER+'/mna/versies/'+S.code,{headers:{'x-tussen-key':S._bgKey||''}}).catch(function(){return null;});
+    var laadEl=document.getElementById('bg-doc-versie-laad');
+    if(nr!==bgVersieLaadNr||S!==sessie||S.code!==code||document.getElementById('bg-doc-out')!==out||!laadEl||laadEl.getAttribute('data-nr')!==String(nr))return;
+    if(!alle){
+      out.innerHTML='<div style="background:var(--red-bg);border:1px solid var(--red);border-radius:var(--r2);padding:1rem;font-size:13px;color:var(--red)">De documentgeschiedenis kon niet worden geladen. Daardoor is niet te zien of er al een versie bestaat; er is niets gegenereerd. <button id="bg-doc-versie-opnieuw" class="btn-ghost" style="font-size:12px;padding:4px 12px;margin-left:6px">Opnieuw proberen</button></div>';
+      var opnieuwBtn=document.getElementById('bg-doc-versie-opnieuw');
+      if(opnieuwBtn)opnieuwBtn.onclick=function(){ bgToonOfGenereerDoc(type); };
+      return;
+    }
     var varianten=[type,type+'_upload'];
-    var matches=(Array.isArray(alle)?alle:[]).filter(function(v){return varianten.indexOf(v.doc_type)!==-1;});
+    var matches=alle.filter(function(v){return varianten.indexOf(v.doc_type)!==-1;});
     matches.sort(function(a,b){return b.created_at-a.created_at;});
     if(matches.length){
       await bgToonBestaandeVersie(type,matches[0]);
@@ -2941,8 +3047,22 @@ function renderBegeleiderDashboard(app){
     while((m=re.exec(String(txt||'')))){ var v=m[0]; if(!set[v]){ set[v]=1; out.push(v); } }
     return out;
   }
+  // Laatst verstuurde dealvoorstel-cijfers voor de LoI-melding (zie bgDoc). Productpunt 16: een
+  // mislukte leesactie geeft leesfout:true i.p.v. stil "geen dealvoorstel gevonden".
+  async function bgLeesDealvoorstelCijfers(){
+    var dvVersies;
+    try{ dvVersies=await leesVersieLijst(WORKER+'/mna/versies/'+encodeURIComponent(S.code)+'/dealvoorstel'); }
+    catch(e){ return {cijfers:null,leesfout:true}; }
+    var dvLaatste=dvVersies.length?dvVersies[0]:null;
+    var dvCijfers=null;
+    if(dvLaatste&&dvLaatste.cijfers_json){
+      try{var dvC=JSON.parse(dvLaatste.cijfers_json);if(dvC&&dvC.p&&dvC.closing)dvCijfers=dvC;}catch(dvParseErr){}
+    }
+    return {cijfers:dvCijfers,leesfout:false};
+  }
   async function bgDoc(type){
     var out=document.getElementById('bg-doc-out');
+    var bgDocSessie=S, bgDocCode=S.code;
     out.style.display='block';
     // Prominent zichtbaar maken (21 aug 2026, Marcel — herhaaldelijk gevraagd): een grijze regel
     // onderin een uitgeklapt paneel werd gemist. Toast() verschijnt altijd bovenop, ongeacht scrollpositie.
@@ -2966,13 +3086,13 @@ function renderBegeleiderDashboard(app){
     // intikt, met risico op afwijkende cijfers richting een echte tegenpartij. Alleen gebruiken als
     // de structuur klopt (p+closing aanwezig); zonder dealvoorstel blijft de LoI werken zoals voorheen
     // (placeholders die de begeleider zelf invult) — nooit een gegokt bedrag.
-    var dvCijfers=null;
+    // Een onleesbaar dealvoorstel blokkeert de (expliciet gevraagde, server-side) generatie niet, maar
+    // de melding zegt dan eerlijk dat het niet gelezen kon worden. Na een sessie-/trajectwissel stopt bgDoc.
+    var dvCijfers=null, dvLeesfout=false;
     if(type==='loi'){
-      var dvVersies=await fetch(WORKER+'/mna/versies/'+encodeURIComponent(S.code)+'/dealvoorstel').then(function(r){return r.json();}).catch(function(){return [];});
-      var dvLaatste=Array.isArray(dvVersies)&&dvVersies.length?dvVersies[0]:null;
-      if(dvLaatste&&dvLaatste.cijfers_json){
-        try{var dvC=JSON.parse(dvLaatste.cijfers_json);if(dvC&&dvC.p&&dvC.closing)dvCijfers=dvC;}catch(dvParseErr){}
-      }
+      var dvR=await bgLeesDealvoorstelCijfers();
+      if(S!==bgDocSessie||S.code!==bgDocCode)return;
+      dvCijfers=dvR.cijfers; dvLeesfout=dvR.leesfout;
     }
     // Bepaal partijgegevens op basis van opdrachtgever_rol
     var opdrNaam   = isSell ? (t2.kantoor_naam||'[verkoper]') : (t2.koper_naam||'[koper]');
@@ -3033,7 +3153,7 @@ function renderBegeleiderDashboard(app){
       +'<div id="bg-doc-body">'
       +(coOpgeslagen?'<div style="font-size:11px;margin-bottom:.75rem;color:var(--teal)">&#10003; Vastgelegd als versie — terug te vinden zonder opnieuw te genereren, ook zonder te versturen/tekenen.</div>'
         :'<div style="font-size:11px;margin-bottom:.75rem;color:var(--red)">&#9888; Vastleggen is mislukt — deze versie gaat verloren als je wegnavigeert zonder te versturen of te tekenen. Probeer opnieuw te genereren.</div>')
-      +(type==='loi'?('<div style="font-size:11px;margin-bottom:.75rem;color:'+(dvCijfers?'var(--teal)':'var(--muted)')+'">'+(dvCijfers?'&#10003; Koopsom, multiple en escrow automatisch overgenomen uit het laatst verstuurde dealvoorstel — controleer vóór verzending.':'&#8505; Geen eerder dealvoorstel gevonden voor dit traject — vul de financiële placeholders zelf in.')+'</div>'):'')
+      +(type==='loi'?('<div style="font-size:11px;margin-bottom:.75rem;color:'+(dvCijfers?'var(--teal)':(dvLeesfout?'var(--red)':'var(--muted)'))+'">'+(dvCijfers?'&#10003; Koopsom, multiple en escrow automatisch overgenomen uit het laatst verstuurde dealvoorstel — controleer vóór verzending.':(dvLeesfout?'&#9888; Het laatste dealvoorstel kon niet worden gelezen (tijdelijke fout) — er zijn geen cijfers overgenomen; controleer of vul de financiële placeholders zelf in.':'&#8505; Geen eerder dealvoorstel gevonden voor dit traject — vul de financiële placeholders zelf in.'))+'</div>'):'')
       +(bgPh.length?('<div style="background:var(--gold-bg);border:1px solid var(--gold);border-radius:var(--r);padding:.6rem .8rem;margin-bottom:.75rem;font-size:12px;color:var(--gold)"><strong>&#9888; '+bgPh.length+' nog in te vullen plek'+(bgPh.length===1?'':'ken')+'</strong> in dit document: '+bgPh.slice(0,10).map(esc).join(', ')+(bgPh.length>10?' &hellip;':'')+'. Vul deze hieronder in vóór verzending.</div>'):'')
       +'<textarea id="bg-doc-tekst" style="width:100%;height:280px;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);color:var(--sub);font-family:Georgia,serif;font-size:12px;line-height:1.8;padding:1rem;outline:none;resize:vertical">'+esc(tekst)+'</textarea>'
       +'<div style="margin-top:.4rem;padding:.5rem .7rem;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);font-size:11px;color:var(--muted);font-style:italic;line-height:1.6">'+esc(RELIANCE_VOETTEKST)+'<div style="font-style:normal;margin-top:2px;color:var(--muted);opacity:.8">Bij versturen (e-mail/Signhost) wordt deze slotregel automatisch aan het document toegevoegd. Bij printen/bekijken vraagt het platform u dit eerst te bevestigen — dat wordt vastgelegd, niet in het document zelf, zodat u ook een schone versie kunt printen.</div></div>'
@@ -3227,6 +3347,176 @@ function renderBegeleiderDashboard(app){
     };
   }
 
+  // Productpunt 13 §31 fase 1b (17 okt 2026): gestructureerde cijferlijst voor de dealvoorstel-requests.
+  // De server (worker/19b dvValideerCijfers) laat de AI cijfers uitsluitend als [CIJFER:sleutel] schrijven
+  // en vult ze zelf in; elk ander cijfer → 502 BRONFEITEN_AFWIJKING. Elke waarde hieronder is exact het getal
+  // dat contextBlok (publieke lijst) resp. interneContext (lijst voor de bijlage) nu al bevat — bedragen via dezelfde Math.round,
+  // afgeleide percentages via dezelfde toFixed, invoerwaarden ongewijzigd. Geen nieuwe rekenlogica en geen
+  // S.data-lezing: r bevat de al berekende rekenkernresultaten. Gescheiden lijsten, net als de context
+  // (ChatGPT-review A2): BATNA/walk-away zit nooit in de publieke lijst.
+  function dvBouwCijfers(p,r){
+    function lijst(){
+      var uit=[],gezien={};
+      uit.voeg=function(sleutel,label,eenheid,waarde){
+        if(gezien[sleutel])return;
+        if(eenheid==='tekst'){ if(typeof waarde!=='string'||!waarde.trim()||waarde.length>120)return; }
+        else if(typeof waarde!=='number'||!isFinite(waarde)||/e/i.test(String(waarde)))return; // niet eenduidig → weglaten, nooit afronden
+        gezien[sleutel]=true;
+        uit.push({sleutel:sleutel,label:label,eenheid:eenheid,waarde:waarde});
+      };
+      return uit;
+    }
+    var R=Math.round,ob=r.opbrengstBrug,vb=r.verkBedr,z=r.zopa,c=lijst();
+    c.voeg('verkoper_naam','Verkopende partij','tekst',r.verkoperNaam);
+    c.voeg('koper_naam','Kopende partij','tekst',p.koperNaam);
+    c.voeg('ebitda_bewezen','Bewezen EBITDA laatste boekjaar','eur',R(p.ebitdaBewezen));
+    c.voeg('ebitda_prognose','Prognose-EBITDA komend jaar','eur',R(p.ebitdaPrognose));
+    if(r.grondslagOmzet){
+      c.voeg('omzet_bewezen','Bewezen omzet laatste boekjaar','eur',R(p.grondslagBewezen));
+      c.voeg('omzet_prognose','Prognose-omzet komend jaar','eur',R(p.grondslagPrognose));
+    }
+    c.voeg('belang_koper_pct','Belang koper bij closing','pct',p.belangPct);
+    c.voeg('multiple_basis','Basismultiple','multiple',p.multipleBasis);
+    c.voeg('multiple_bovengrens','Bovengrens-multiple','multiple',p.multipleBovengrens);
+    c.voeg('cliff_pct','Cliff-drempel (% van de prognose)','pct',p.cliffPct);
+    c.voeg('escrow_pct','Escrow','pct',p.escrowPct);
+    c.voeg('escrow_maanden','Escrowduur (maanden)','aantal',p.escrowMaanden);
+    c.voeg('bank_leverage','Bankfinanciering (× bewezen EBITDA)','multiple',p.bankLeverage);
+    c.voeg('netto_schuld_doelwit','Bestaande netto schuld doelwit','eur',R(ob.nettoSchuld));
+    c.voeg('acquisitiefinanciering','Nieuwe acquisitiefinanciering koper','eur',R(p.ebitdaBewezen*p.bankLeverage));
+    c.voeg('ev_verkocht_belang','Toegerekende ondernemingswaarde koper-belang (bewezen basis)','eur',R(vb.toegerekendeEVVerkochtBelang));
+    c.voeg('cash_closing_verkoper','Cash bij closing voor de verkoper','eur',R(vb.verkopersopbrengstCashClosing));
+    c.voeg('opbrengst_verwacht','Verwachte gerealiseerde opbrengst verkoper','eur',R(vb.verkopersopbrengstVerwacht));
+    c.voeg('behouden_belang_pct','Behouden belang verkoper','pct',100-p.belangPct);
+    c.voeg('behouden_belang_waarde','Waarde behouden belang','eur',R(vb.retainedEquity));
+    c.voeg('earnup_ev','Earn-up EV-toerekening','eur',R(vb.earnUpEVAllocation));
+    c.voeg('earnup_verkoper','Earn-up op equity/cash-basis verkoper','eur',R(vb.earnUpSellerConsideration));
+    c.voeg('discontovoet_pct','Discontovoet/WACC','pct',p.discontovoetPct);
+    c.voeg('groei_pct','Terminale groeivoet','pct',p.groeiPct);
+    if(r.dcf&&r.dcf.geldig)c.voeg('ev_dcf','Ondernemingswaarde DCF','eur',R(r.dcf.evDcf));
+    c.voeg('ev_multiple_bewezen','Ondernemingswaarde multiple (bewezen)','eur',R(r.closing.evBasis));
+    if(r.managementRisico&&!r.managementRisico.onvoldoendeData){
+      c.voeg('mgmt_risicopunten','Management-/sleutelpersoonrisico (risicopunten)','aantal',r.managementRisico.totaal);
+      c.voeg('mgmt_risicopunten_max','Management-/sleutelpersoonrisico (maximum risicopunten)','aantal',r.managementRisico.maxTotaal);
+    }
+    c.voeg('brug_ev','Opbrengst-brug: ondernemingswaarde','eur',R(ob.ev));
+    c.voeg('brug_debt_like','Opbrengst-brug: debt-like items','eur',R(ob.debtLike));
+    c.voeg('brug_wc_correctie','Opbrengst-brug: werkkapitaalcorrectie','eur',R(ob.wcCorrectie));
+    c.voeg('brug_transactiekosten','Opbrengst-brug: transactiekosten','eur',R(ob.transactiekosten));
+    c.voeg('brug_transactiekosten_pct','Opbrengst-brug: transactiekosten (% van EV)','pct',ob.transactiekostenPct);
+    c.voeg('brug_equity_value','Opbrengst-brug: equity value','eur',R(ob.equityValue100));
+    c.voeg('brug_belang_pct','Opbrengst-brug: verkocht belang','pct',ob.belangPct);
+    c.voeg('brug_verkocht_belang','Opbrengst-brug: waarde verkocht belang','eur',R(ob.verkochtBelangWaarde));
+    c.voeg('brug_escrow','Opbrengst-brug: escrow','eur',R(ob.escrowBedrag));
+    if(ob.earnOutAan)c.voeg('brug_earnout_uitgesteld','Opbrengst-brug: uitgestelde earn-out','eur',R(ob.earnOutUitgesteld));
+    c.voeg('brug_cash_closing','Opbrengst-brug: cash bij closing','eur',R(ob.cashBijClosing));
+    c.voeg('brug_verwacht','Opbrengst-brug: verwachte gerealiseerde waarde','eur',R(ob.verwachteGerealiseerd));
+    c.voeg('zopa_totaal','Waardepositie verkoper','eur',R(z.totaal));
+    c.voeg('zopa_zeker','Zeker bij closing','eur',R(z.zekerNu));
+    c.voeg('zopa_zeker_pct','Zeker bij closing (aandeel)','pct',Number(z.pctZekerBijClosing.toFixed(0)));
+    c.voeg('zopa_escrow','Escrow (waardepositie)','eur',R(z.escrow));
+    c.voeg('zopa_escrow_pct','Escrow (aandeel)','pct',Number(z.pctEscrow.toFixed(0)));
+    c.voeg('zopa_voorwaardelijk','Voorwaardelijk/uitgesteld','eur',R(z.voorwaardelijk));
+    c.voeg('zopa_voorwaardelijk_pct','Voorwaardelijk/uitgesteld (aandeel)','pct',Number(z.pctVoorwaardelijk.toFixed(0)));
+    if(z.earnUp>0)c.voeg('zopa_earnup','Earn-up (voorwaardelijke laag)','eur',R(z.earnUp));
+    c.voeg('zopa_behouden','Behouden belang (waardepositie)','eur',R(z.behoudenBelangWaarde));
+    c.voeg('zopa_behouden_pct','Behouden belang (aandeel)','pct',Number(z.pctBehoudenBelang.toFixed(0)));
+    c.voeg('zopa_earnup_ev','Earn-up EV-toerekening (waardepositie)','eur',R(z.earnUpEVAllocation));
+    c.voeg('zopa_ev_equity_factor_pct','Herrekenfactor EV naar equity/cash','pct',Number((z.evNaarEquityFactor*100).toFixed(0)));
+    if(r.earnOut){
+      c.voeg('earnout_basis','Earn-out: koopsom bij closing (bewezen basis)','eur',R(r.earnOut.earnBase));
+      c.voeg('earnout_vast','Earn-out: direct uitgekeerd','eur',R(r.earnOut.vastBedrag));
+      c.voeg('earnout_totaal','Earn-out: aangehouden bedrag','eur',R(r.earnOut.earnOutTotaal));
+      c.voeg('earnout_pct','Earn-out: aangehouden deel','pct',p.earnOutPct);
+      c.voeg('earnout_jaren','Earn-out: aantal jaarlijkse tranches','aantal',p.earnOutJaren);
+      c.voeg('earnout_tranche','Earn-out: jaarlijkse tranche','eur',R(r.earnOut.jaarlijks));
+      c.voeg('earnout_doelgroei_pct','Earn-out: doelomzetgroei per jaar','pct',p.earnOutTargetPct);
+    }
+    if(r.vendorLoanRows){
+      c.voeg('vl_bedrag','Vendor loan: bedrag','eur',R(p.vendorLoanBedrag));
+      c.voeg('vl_rente_pct','Vendor loan: rente','pct',p.vendorLoanRentePct);
+      c.voeg('vl_jaren','Vendor loan: looptijd (jaren)','aantal',p.vendorLoanJaren);
+    }
+    var rv=r.ruilverhouding;
+    if(rv){
+      c.voeg('ruil_waarde_verkoperdeel','Aandelenruil: waarde deel bij closing','eur',R(rv.waardeVerkoperDeel));
+      c.voeg('ruil_koperswaarde','Aandelenruil: waarde onderneming koper (extern)','eur',R(rv.koperswaardeExtern));
+      c.voeg('ruil_pct_verkoper','Aandelenruil: aandeel verkoper-aandeelhouders','pct',Number(rv.pctVerkoper.toFixed(1)));
+      c.voeg('ruil_pct_koper','Aandelenruil: aandeel bestaande aandeelhouders koper','pct',Number(rv.pctKoper.toFixed(1)));
+      if(rv.nieuweAandelen!==null){
+        c.voeg('ruil_nieuwe_aandelen','Aandelenruil: nieuwe aandelen (indicatief)','aantal',rv.nieuweAandelen);
+        c.voeg('ruil_aandelen_koper','Aandelenruil: bestaande aandelen koper','aantal',rv.aandelenKoperAantal);
+      }
+    }
+    var aw=r.altWaardering;
+    if(aw){
+      if(aw.intrinsiek!==null)c.voeg('alt_intrinsiek','Intrinsieke waarde','eur',R(aw.intrinsiek));
+      if(aw.liquidatiewaarde!==null){
+        c.voeg('alt_liquidatiewaarde','Liquidatiewaarde','eur',R(aw.liquidatiewaarde));
+        c.voeg('liq_debiteuren_pct','Liquidatie: debiteuren inbaar','pct',p.liqDebiteurenPct);
+        c.voeg('liq_wip_pct','Liquidatie: OHW inbaar','pct',p.liqWipPct);
+        c.voeg('liq_kosten_pct','Liquidatie: liquidatiekosten','pct',p.liqKostenPct);
+      }
+      if(aw.goodwill!==null){
+        c.voeg('alt_goodwill','Goodwill (overwinstmethode)','eur',R(aw.goodwill));
+        c.voeg('alt_nettowinst_norm','Genormaliseerde nettowinst','eur',R(aw.nettowinstNorm));
+        c.voeg('alt_normale_winst','Normale winst','eur',R(aw.normaleWinst));
+        c.voeg('goodwill_normrendement_pct','Goodwill: normrendement','pct',p.goodwillNormrendementPct);
+        c.voeg('alt_overwinst','Overwinst','eur',R(aw.overwinst));
+        c.voeg('goodwill_kapitalisatie_pct','Goodwill: kapitalisatievoet','pct',p.goodwillKapitalisatievoetPct);
+      }
+    }
+    if(r.synergie){
+      c.voeg('syn_kosten','Kostensynergie per jaar','eur',R(p.synergieKostenJaarlijks));
+      c.voeg('syn_omzet','Omzetsynergie per jaar','eur',R(p.synergieOmzetJaarlijks));
+      c.voeg('syn_realisatie_jaren','Synergie: opbouw (jaren)','aantal',p.synergieRealisatieJaren);
+      c.voeg('syn_implementatie','Synergie: eenmalige implementatiekosten','eur',R(p.synergieImplementatiekosten));
+      c.voeg('horizon_jaren','Horizon (jaren)','aantal',p.horizonJaren);
+      c.voeg('vpb_pct','Vennootschapsbelasting','pct',p.vpbPct);
+      c.voeg('syn_npv','NPV synergieën','eur',R(r.synergie.npv));
+    }
+    if(r.scenarios){
+      c.voeg('scenario_groei_delta','Scenario-afwijking op de groeivoet (procentpunt)','aantal',p.scenarioGroeiDeltaPct);
+      c.voeg('horizon_jaren','Horizon (jaren)','aantal',p.horizonJaren);
+      r.scenarios.forEach(function(s,i){
+        var k='scenario_'+(i+1)+'_',l='Scenario '+String(s.label||(i+1)).slice(0,40)+': ';
+        c.voeg(k+'groei_pct',l+'groeivoet per jaar','pct',Number(s.groeiPct.toFixed(1)));
+        c.voeg(k+'eind',l+'grondslag na de horizon','eur',R(s.ebitdaEind));
+        c.voeg(k+'waarde_laag',l+'ondernemingswaarde laag','eur',R(s.waardeLaag));
+        c.voeg(k+'waarde_hoog',l+'ondernemingswaarde hoog','eur',R(s.waardeHoog));
+      });
+    }
+    if(r.dcfGevoeligheid){
+      c.voeg('dcf_wacc_delta','DCF-gevoeligheid: WACC-bandbreedte (± procentpunt)','aantal',p.dcfWaccDeltaPct);
+      c.voeg('dcf_groei_delta','DCF-gevoeligheid: groeivoet-bandbreedte (± procentpunt)','aantal',p.dcfGroeiDeltaPct);
+    }
+    var ic=lijst(),b=r.batna;
+    if(r.isSellDv){
+      ic.voeg('verkoper_naam','Verkopende partij','tekst',r.verkoperNaam);
+      ic.voeg('cash_closing_verkoper','Cash bij closing voor de verkoper','eur',R(vb.verkopersopbrengstCashClosing));
+      ic.voeg('totale_tegenprestatie','Totale tegenprestatie verkocht belang','eur',R((b&&b.totaalVerkocht)||ob.verkochtBelangWaarde));
+      if(b&&b.status!=='nietIngevuld'){
+        ic.voeg('batna_walk_away','Walk-awayprijs','eur',R(b.walkAway));
+        ic.voeg('batna_cash_nu','Zekere cash bij closing','eur',R(b.cashNu));
+        ic.voeg('batna_marge_cash','Marge cash t.o.v. walk-away','eur',R(b.margeCash));
+        ic.voeg('batna_totaal_verkocht','Totale tegenprestatie verkocht belang (BATNA)','eur',R(b.totaalVerkocht));
+        ic.voeg('batna_marge_totaal','Marge totaal t.o.v. walk-away','eur',R(b.margeTotaal));
+        if(b.batnaWaarde>0)ic.voeg('batna_waarde','Geschatte waarde alternatief','eur',R(b.batnaWaarde));
+      }
+    }
+    delete c.voeg; delete ic.voeg;
+    return {publiek:c,intern:ic};
+  }
+  // Foutmelding bij een mislukte dealvoorstel-generatie. 502 BRONFEITEN_AFWIJKING: vaste melding (de server
+  // heeft niets teruggegeven); 400 CIJFERS_ONTBREKEN/CIJFERS_ONGELDIG: de servermelding. Weergave altijd via
+  // textContent of esc().
+  function dvGenereerFout(resp,rd,standaard){
+    rd=rd||{};
+    if(resp&&resp.status===502&&rd.code==='BRONFEITEN_AFWIJKING')return 'De AI-tekst bevatte een cijfer dat niet uit de berekening komt; er is niets overgenomen. Probeer opnieuw.';
+    if(resp&&resp.status===400&&(rd.code==='CIJFERS_ONTBREKEN'||rd.code==='CIJFERS_ONGELDIG')&&rd.error)return String(rd.error);
+    return rd.error||standaard;
+  }
+
   // ===== DEALVOORSTEL: parameterformulier + generatie =====
   function toonDealvoorstelModal(){
     var t2=S.traject||{};
@@ -3261,7 +3551,7 @@ function renderBegeleiderDashboard(app){
       +(d.isMaatschap&&d.maatschapGrondslagOnbekend?'<div style="font-size:12px;color:var(--red);background:var(--red-bg);border:1px solid var(--red);border-radius:6px;padding:8px 12px;margin-bottom:1rem"><strong>&#9888; Grondslag onbekend.</strong> Dit is een maatschap — de waardering rekent op de winst ná een marktconform ondernemersloon. Vul eerst het veld <strong>eigenaar-/partnerbeloning totaal per jaar</strong> in (fase Financieel), of vul "Bewezen EBITDA" hieronder handmatig met de reeds gecorrigeerde winst. Nu voorgevuld op 0 om geen ongecorrigeerd cijfer te suggereren.</div>':'')
       +'<div style="margin-bottom:1rem"><label for="dv-koper" style="'+lbl+'">Tegenpartij (koper)</label><input type="text" id="dv-koper" value="'+esc(d.koperNaam)+'" placeholder="Naam kopende partij" style="'+inp+'"></div>'
       +sectie('EBITDA & belang')
-      +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('dv-belang','Belang koper bij closing (%)',d.belangPct)+veld('dv-ebitda-bewezen','Bewezen EBITDA laatste boekjaar (€)',d.ebitdaBewezen)+'</div>'
+      +'<div id="dv-fin-hint"></div>'+'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('dv-belang','Belang koper bij closing (%)',d.belangPct)+veld('dv-ebitda-bewezen','Bewezen EBITDA laatste boekjaar (€)',d.ebitdaBewezen)+'</div>'
       +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('dv-ebitda-prognose','Prognose-EBITDA komend jaar (€)',d.ebitdaPrognose)+veld('dv-cliff','Cliff-drempel (% van prognose)',d.cliffPct)+'</div>'
       +(d.grondslag==='omzet'
         ? '<div style="font-size:12px;color:var(--gold-dark);background:var(--gold-bg);border:1px solid var(--gold);border-radius:6px;padding:8px 12px;margin-bottom:1rem">Deze sector waardeert op een <strong>omzet-multiple</strong> (praktijkwaarde), niet op EBITDA. De multiple hieronder wordt op de <strong>omzet</strong> toegepast; de EBITDA-velden blijven nodig voor het schuldafbouw-/DCF-model (schuldcapaciteit is EBITDA-gedreven).</div>'
@@ -3346,6 +3636,8 @@ function renderBegeleiderDashboard(app){
     ov.appendChild(mo);document.body.appendChild(ov);
     ov.addEventListener('click',function(e){if(e.target===ov)document.body.removeChild(ov);});
     document.getElementById('dv-ann').onclick=function(){document.body.removeChild(ov);};
+    // MASTER #91 fase B: genormaliseerde EBITDA / goedgekeurde prognose als expliciete keuze (mna/16).
+    if(typeof finDealvoorstelHint==='function')finDealvoorstelHint(document.getElementById('dv-fin-hint'));
     document.getElementById('dv-eo-aan').onchange=function(){document.getElementById('dv-eo-velden').style.display=this.checked?'block':'none';};
     document.getElementById('dv-bab-aan').onchange=function(){document.getElementById('dv-bab-velden').style.display=this.checked?'block':'none';};
     document.getElementById('dv-vl-aan').onchange=function(){document.getElementById('dv-vl-velden').style.display=this.checked?'block':'none';};
@@ -3471,6 +3763,8 @@ function renderBegeleiderDashboard(app){
         var gevoeligheid=dvBerekenGevoeligheid(p);
         var dcf=dvBerekenDCF(p,schuldafbouw);
         var opbrengstBrug=dvBerekenOpbrengstBrug(p,closing);
+        // MASTER #91 F2: transactiemodel (worker/43) voor de scenariotabel; bij een fout of geen model null → geen tabel.
+        var tmModel=(typeof tmHaalModel==='function')?await tmHaalModel():null;
         var verkBedr=dvVerkoperBedragen(p,closing,opbrengstBrug);
         var zopa=dvBerekenZopaTradeSpace(p,closing,opbrengstBrug);
         var batna=isSellDv?dvBerekenBatna(p,closing,opbrengstBrug):null;
@@ -3478,7 +3772,7 @@ function renderBegeleiderDashboard(app){
           CIJFERS:dvTabelCijfers(),
           CIJFEROVERZICHT:dvTabelCijferoverzicht(),
           MGMTRISICO:dvTabelManagementRisico(),
-          OPBRENGSTBRUG:dvTabelOpbrengstBrug(opbrengstBrug),
+          OPBRENGSTBRUG:dvTabelOpbrengstBrug(opbrengstBrug)+dvTabelTransactieScenarios(tmModel,opbrengstBrug),
           ZOPA:dvTabelZopaTradeSpace(zopa),
           BATNA:batna?dvTabelBatna(batna):'',
           LOICHECKLIST:isSellDv?dvTabelLoiChecklist(p):'',
@@ -3507,6 +3801,7 @@ function renderBegeleiderDashboard(app){
         // uitsluitend voor de verkoper + begeleider is (BATNA / walk-awayprijs, LoI-onderhandelchecklist)
         // zit NIET hier maar in `interneContext` hieronder, en gaat naar een aparte interne bijlage die
         // nooit in `dealvoorstel_tekst` / de e-mail belandt.
+        var _mrDv=dvManagementRisico(); // één keer, gedeeld door contextBlok en de cijferlijst (zelfde aanroep als voorheen inline)
         var contextBlok='Sector: '+(sectorProfiel.label||'MKB')+'. Verkopende partij: '+(t2.kantoor_naam||S.code)+'. Kopende partij: '+p.koperNaam+'.\n'
           +'Bewezen EBITDA laatste boekjaar: €'+Math.round(p.ebitdaBewezen)+'. Prognose-EBITDA komend jaar: €'+Math.round(p.ebitdaPrognose)+'.\n'
           +(_grondslagOmzet?('Bewezen omzet laatste boekjaar: €'+Math.round(p.grondslagBewezen)+'. Prognose-omzet komend jaar: €'+Math.round(p.grondslagPrognose)+'. LET OP: deze sector waardeert op een OMZET-multiple (praktijkwaarde), NIET op een EBITDA-multiple — de multiple hieronder en de ondernemingswaarde worden op de omzet toegepast. Het schuldafbouw-/DCF-model rekent wél op EBITDA (schuldcapaciteit is EBITDA-gedreven).\n'):'')
@@ -3521,7 +3816,7 @@ function renderBegeleiderDashboard(app){
           +'  • Earn-up (voorwaardelijk, alleen bij volledige realisatie van de prognose): EV-toerekening €'+Math.round(verkBedr.earnUpEVAllocation)+', herrekend naar de equity/cash-basis van de verkoper €'+Math.round(verkBedr.earnUpSellerConsideration)+'.\n'
           +'DCF-kruiscontrole (discontovoet/WACC '+p.discontovoetPct+'%, terminale groeivoet '+p.groeiPct+'%): ondernemingswaarde DCF '+(dcf.geldig?'€'+Math.round(dcf.evDcf):'n.v.t. (discontovoet ≤ groeivoet, Gordon Growth-formule ongeldig bij deze combinatie)')+' t.o.v. ondernemingswaarde EBITDA-multiple (bewezen) €'+Math.round(closing.evBasis)+'. Bij een kleine marge tussen WACC en groeivoet weegt de terminal value zwaar mee.\n'
           +'Transactiestructuur: koper verwerft '+p.belangPct+'% bij closing; de verkopende partij behoudt '+(100-p.belangPct)+'%.'
-          +('\nManagement- & sleutelpersoonrisico (kwalitatieve indicatie uit de DD-velden, GEEN correctie op de waardering): '+(function(){var mr=dvManagementRisico();return mr.onvoldoendeData?'onvoldoende ingevuld voor een oordeel':(mr.band+' ('+mr.totaal+'/'+mr.maxTotaal+' risicopunten)');})()+'.')
+          +('\nManagement- & sleutelpersoonrisico (kwalitatieve indicatie uit de DD-velden, GEEN correctie op de waardering): '+(function(){var mr=_mrDv;return mr.onvoldoendeData?'onvoldoende ingevuld voor een oordeel':(mr.band+' ('+mr.totaal+'/'+mr.maxTotaal+' risicopunten)');})()+'.')
           +('\nOpbrengst-brug (aannames van de begeleider, geen platformberekening): ondernemingswaarde €'+Math.round(opbrengstBrug.ev)+' − netto schuld €'+Math.round(opbrengstBrug.nettoSchuld)+' − debt-like €'+Math.round(opbrengstBrug.debtLike)+' − werkkapitaalcorrectie €'+Math.round(opbrengstBrug.wcCorrectie)+' − transactiekosten €'+Math.round(opbrengstBrug.transactiekosten)+' ('+opbrengstBrug.transactiekostenPct+'% van EV) = equity value €'+Math.round(opbrengstBrug.equityValue100)+'. Verkocht belang '+opbrengstBrug.belangPct+'% = €'+Math.round(opbrengstBrug.verkochtBelangWaarde)+', minus escrow €'+Math.round(opbrengstBrug.escrowBedrag)+(opbrengstBrug.earnOutAan?' en uitgestelde earn-out €'+Math.round(opbrengstBrug.earnOutUitgesteld):'')+' = cash bij closing €'+Math.round(opbrengstBrug.cashBijClosing)+'. Verwachte gerealiseerde waarde (bij volledige escrow-vrijgave'+(opbrengstBrug.earnOutAan?' en behaalde earn-out':'')+'): €'+Math.round(opbrengstBrug.verwachteGerealiseerd)+'.')
           +('\nOnderhandelruimte / trade-space (waardepositie van de verkoper opgesplitst naar zekerheid × timing; bouwt op de opbrengst-brug + de voorwaardelijke earn-up, geen losse nieuwe aannames): waardepositie verkoper €'+Math.round(zopa.totaal)+' — zeker bij closing (contante cash) €'+Math.round(zopa.zekerNu)+' ('+zopa.pctZekerBijClosing.toFixed(0)+'%), escrow €'+Math.round(zopa.escrow)+' ('+zopa.pctEscrow.toFixed(0)+'%), voorwaardelijk/uitgesteld €'+Math.round(zopa.voorwaardelijk)+' ('+zopa.pctVoorwaardelijk.toFixed(0)+'%'+((zopa.earnOut>0||zopa.earnUp>0||zopa.vendorLoan>0)?': '+[zopa.earnOut>0?'earn-out':'',zopa.earnUp>0?'earn-up €'+Math.round(zopa.earnUp):'',zopa.vendorLoan>0?'verkoperslening':''].filter(Boolean).join(' + '):'')+'), behouden belang €'+Math.round(zopa.behoudenBelangWaarde)+' ('+zopa.pctBehoudenBelang.toFixed(0)+'%; niet door de koper betaald). De earn-up in de voorwaardelijke laag is de EV-toerekening €'+Math.round(zopa.earnUpEVAllocation)+' herrekend naar equity/cash-basis (factor '+(zopa.evNaarEquityFactor*100).toFixed(0)+'%). Dit is een feitelijke opbouw van de tegenprestatie naar zekerheid en timing — beschrijf hem neutraal, niet als onderhandeltactiek.')
           +(earnOut?('\nEarn-out (prestatieafhankelijke naverrekening, los van de earn-up hierboven): van de koopsom bij closing op bewezen basis (€'+Math.round(earnOut.earnBase)+') wordt €'+Math.round(earnOut.vastBedrag)+' direct uitgekeerd en €'+Math.round(earnOut.earnOutTotaal)+' ('+p.earnOutPct+'%) aangehouden en uitgekeerd in '+p.earnOutJaren+' jaarlijkse tranches van €'+Math.round(earnOut.jaarlijks)+', gekoppeld aan een doelomzetgroei van '+p.earnOutTargetPct+'% per jaar (zelf gekozen aanname, geen vastgestelde norm).'):'')
@@ -3552,10 +3847,14 @@ function renderBegeleiderDashboard(app){
         // gokken, werkregel 6): welke hoofdstukken worden gegenereerd blijft exact zo deterministisch
         // als voorheen.
         var dvVlaggen={grondslagOmzet:_grondslagOmzet,altWaardering:!!altWaardering,synergie:!!synergie,scenarios:!!scenarios,earnOut:!!earnOut,dcfGevoeligheid:!!dcfGevoeligheid,buyAndBuild:!!p.buyAndBuild,vendorLoanRows:!!vendorLoanRows,ruilverhouding:!!ruilverhouding};
-        var resp=await fetchMetTimeout(WORKER+'/mna/dealvoorstel/hoofdstukken/genereer',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||S.code},body:JSON.stringify({code:S._bgKey||S.code,contextBlok:contextBlok,vlaggen:dvVlaggen})},180000);
+        // Productpunt 13 §31 fase 1b: dezelfde al berekende waarden als in contextBlok/interneContext, als
+        // gestructureerde lijst (zie dvBouwCijfers); publiek → hoofdstukken, intern → bijlage.
+        var _dvCijferSets=dvBouwCijfers(p,{verkoperNaam:(t2.kantoor_naam||S.code),grondslagOmzet:_grondslagOmzet,opbrengstBrug:opbrengstBrug,verkBedr:verkBedr,closing:closing,dcf:dcf,zopa:zopa,earnOut:earnOut,vendorLoanRows:vendorLoanRows,ruilverhouding:ruilverhouding,altWaardering:altWaardering,synergie:synergie,scenarios:scenarios,dcfGevoeligheid:dcfGevoeligheid,managementRisico:_mrDv,batna:batna,isSellDv:isSellDv});
+        var dvCijfers=_dvCijferSets.publiek, dvCijfersIntern=_dvCijferSets.intern;
+        var resp=await fetchMetTimeout(WORKER+'/mna/dealvoorstel/hoofdstukken/genereer',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||S.code},body:JSON.stringify({code:S._bgKey||S.code,contextBlok:contextBlok,vlaggen:dvVlaggen,cijfers:dvCijfers})},180000);
         var rd=await resp.json().catch(function(){return{};});
         if(!resp.ok||!rd.ok||!rd.tekst){
-          throw new Error(rd.error||'Genereren van het dealvoorstel is mislukt (leeg antwoord). Zijn er veel optionele onderdelen tegelijk aangevinkt (buy-and-build, vendor loan, aandelenruil, alternatieve waardering, synergie, scenario’s, DCF-gevoeligheid)? Zet er een paar uit en probeer opnieuw — de gecombineerde tekst kan dan de maximale lengte overschrijden.');
+          throw new Error(dvGenereerFout(resp,rd,'Genereren van het dealvoorstel is mislukt (leeg antwoord). Zijn er veel optionele onderdelen tegelijk aangevinkt (buy-and-build, vendor loan, aandelenruil, alternatieve waardering, synergie, scenario’s, DCF-gevoeligheid)? Zet er een paar uit en probeer opnieuw — de gecombineerde tekst kan dan de maximale lengte overschrijden.'));
         }
         var bodyHtml=dvBouwRapportHtml(rd.tekst,tabelMap);
         // INTERNE bijlage (ChatGPT-review A2): BATNA/walk-away + LoI-checklist als apart document dat
@@ -3565,9 +3864,9 @@ function renderBegeleiderDashboard(app){
         var bijlageHtml='';
         if(isSellDv){
           try{
-            var bijlResp=await fetchMetTimeout(WORKER+'/mna/dealvoorstel/bijlage/genereer',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||S.code},body:JSON.stringify({code:S._bgKey||S.code,interneContext:interneContext})},180000);
+            var bijlResp=await fetchMetTimeout(WORKER+'/mna/dealvoorstel/bijlage/genereer',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||S.code},body:JSON.stringify({code:S._bgKey||S.code,interneContext:interneContext,cijfers:dvCijfersIntern})},180000);
             var bijlRd=await bijlResp.json().catch(function(){return{};});
-            if(!bijlResp.ok||!bijlRd.ok||!bijlRd.tekst) throw new Error(bijlRd.error||'leeg antwoord');
+            if(!bijlResp.ok||!bijlRd.ok||!bijlRd.tekst) throw new Error(dvGenereerFout(bijlResp,bijlRd,'leeg antwoord'));
             bijlageHtml=dvBouwRapportHtml(bijlRd.tekst,tabelMap);
           }catch(bijlErr){ bijlageHtml='<p style="color:#c0392b">Interne bijlage kon niet worden gegenereerd: '+esc(bijlErr.message||'')+'</p>'; }
         }
@@ -4045,6 +4344,11 @@ function renderBegeleiderDashboard(app){
   var _mouConceptSeq=0;
   var _mouHertekent=false;
   var _mouDocDoel=null; // document dat de laatst gestarte bgMouRender() gaat tonen (zie bgMouConceptOpslaan)
+  // Productpunt 14: id/type/status/versie van het getoonde document (samen met _mouDocId gecommit) en
+  // een volgnummer per definitieve printaanvraag, zodat een laat antwoord nooit het verkeerde document print.
+  var _mouPrintMeta=null;
+  var _mouPrintSeq=0;
+  var MOU_DEFINITIEVE_STATUS={exported:true,verstuurd:true,goedgekeurd:true};
   function bgMouConceptDocSleutel(code,docId){ return JSON.stringify([String(code||''),String(docId||'')]); }
   function bgMouConceptDoc(code,docId,maak){
     var dk=bgMouConceptDocSleutel(code,docId);
@@ -4371,7 +4675,7 @@ function renderBegeleiderDashboard(app){
     // Pas hier committen aan de gedeelde staat — op het exacte, synchrone moment dat de bijbehorende
     // inhoud ook echt op het scherm komt (geen await hierboven meer), zodat _mouProfile/_mouDocId altijd
     // overeenkomen met wat zichtbaar is voor de klik-handlers in bgMouWire (print, versturen, aftekenen).
-    _mouProfile=prof; _mouDocId=docId;
+    _mouProfile=prof; _mouDocId=docId; _mouPrintMeta={id:docId,doc_type:prof.toLowerCase(),status:doc.status,version:doc.current_version};
     // Productpunt 19: focus vastleggen vóór het vervangen; tijdens het vervangen telt een blur van het
     // verdwijnende veld (Chromium kan die vuren) niet als opslagactie van de gebruiker; daarna
     // onopgeslagen concepten van dit traject/document terugzetten.
@@ -4567,6 +4871,27 @@ function renderBegeleiderDashboard(app){
       if(naOpslaan) naOpslaan();
     };
   }
+  // Productpunt 14 (17 okt 2026): definitieve MOU/LoI/NDA-print uitsluitend uit de geverifieerde
+  // serverprinttekst (printTosDefinitief, mna/05). Sessie/sleutel/document/profiel/status/versie worden
+  // vóór de aanvraag vastgelegd en na het antwoord, na de hashcontrole en in de reliance-callback opnieuw
+  // vergeleken: documentwissel, sluiten, uitloggen, een nieuwere versie of een nieuwere klik ⇒ niets
+  // afgedrukt. Raakt geen invoer of composerstaat.
+  async function bgMouPrintDefinitief(meta,titel){
+    var seq=++_mouPrintSeq, sRef=S, code=S.code, key=bgMouKey(), prof=_mouProfile;
+    function actueel(){
+      var m=_mouPrintMeta;
+      return seq===_mouPrintSeq&&S===sRef&&S.code===code&&bgMouKey()===key&&_mouDocId===meta.id&&_mouProfile===prof
+        &&!!m&&m.id===meta.id&&m.doc_type===meta.doc_type&&m.status===meta.status&&m.version===meta.version&&!!document.getElementById('mou-print');
+    }
+    function verouderd(){ if(seq===_mouPrintSeq&&S===sRef)toast('Het document is intussen gewijzigd of gesloten. Er is niets afgedrukt.','err'); }
+    if(typeof printTosDefinitief==='undefined'){ toast('De definitieve printversie kan nu niet worden gecontroleerd. Er is niets afgedrukt.','err'); return; }
+    var r=await bgMouApi('GET','/document/'+encodeURIComponent(meta.id)+'/printversie');
+    if(!actueel())return verouderd();
+    var c=await printTosDefinitief.controleer(r,meta);
+    if(!actueel())return verouderd();
+    if(!c.ok){ toast(c.fout,'err'); return; }
+    printTosDefinitief.print(c,titel,function(){ if(actueel())return true; verouderd(); return false; });
+  }
   function bgMouWire(bevroren){
     var out=document.getElementById('bg-doc-out'); if(!out)return;
     var cl=document.getElementById('mou-close'); if(cl)cl.onclick=function(){ out.style.display='none'; out.innerHTML=''; };
@@ -4600,6 +4925,14 @@ function renderBegeleiderDashboard(app){
     }
     var mp=document.getElementById('mou-print'); if(mp)mp.onclick=function(){
       var profLbl=mouProfLabel();
+      // Productpunt 14: een definitieve status gaat altijd via de servercontrole (nooit schermtekst zonder
+      // CONCEPT, nooit stil als concept); de titel krijgt dan geen trajectcode als terugval.
+      var meta=_mouPrintMeta;
+      if(meta&&meta.id===_mouDocId&&MOU_DEFINITIEVE_STATUS.hasOwnProperty(meta.status)){
+        var kantoor=S.traject&&S.traject.kantoor_naam;
+        bgMouPrintDefinitief(meta,profLbl.titel+(kantoor?' &mdash; '+kantoor:''));
+        return;
+      }
       printDoc(bgMouSamengesteldeTekst(), profLbl.titel+' &mdash; '+(S.traject&&S.traject.kantoor_naam||S.code), _mouProfile.toLowerCase());
     };
     // Productpunt 19: het gekozen document als argument meegeven i.p.v. _mouDocId hier al te zetten —
@@ -4958,51 +5291,289 @@ function renderBegeleiderDashboard(app){
   async function toonVerkoopmemoModal(){
     var out=document.getElementById('bg-verkoopmemo-out');out.style.display='block';
     var t2=S.traject||{};
+    // B2 (14 okt 2026, productpunten 13/14/16): concept → definitief via de bestaande backendroutes van
+    // worker/19b — /opslaan (concept, of expliciet nieuw_concept + definitief_sha256) en /definitief
+    // (tekst_sha256 + vastgesteld_door + exact de opgeslagen tekst). Status, readiness en vaststelling
+    // komen uitsluitend uit backendantwoorden; er is geen eigen frontendreadiness. Succes pas na ack
+    // (2xx + ok:true). Een 409 of onbekende uitkomst (netwerk/time-out) behoudt de tekst en vereist
+    // opnieuw lezen — nooit forceren. Late antwoorden raken alleen dezelfde sessie en hetzelfde traject
+    // (S, S.code, S.traject) en tekenen alleen in de nog getoonde, laatst geopende weergave
+    // (out._vmGen). Geen autosave, geen automatische vaststelling. Zie docs/document-output.md.
+    var VM_DEF='definitief';
+    var sessie=S,code=S.code,gen=(out._vmGen||0)+1;out._vmGen=gen;
+    var bezig=false,verouderd=false,nieuwConcept=false;
+    var readiness=null,defInfo=null,eigenTekst='',melding='',label='',defNaam='',internOntbrekend=null,redactie=null;
+    function zelfdeSessie(){return S===sessie&&S.code===code&&(S.traject||t2)===t2;}
+    function actueel(){return zelfdeSessie()&&out._vmGen===gen&&document.getElementById('bg-verkoopmemo-out')===out&&out.style.display!=='none';}
+    function isDef(){return t2.verkoopmemorandum_status===VM_DEF;}
+    function opgeslagen(){return String(t2.verkoopmemorandum_tekst||'').trim();}
+    function editor(){var e=document.getElementById('verkoopmemo-txt');return e?String(e.value||''):'';}
+    function titel(){return 'Verkoopmemorandum'+(t2.kantoor_naam?' — '+t2.kantoor_naam:'');}
+    // #19 conceptbehoud (16 okt 2026): niet-opgeslagen invoer blijft binnen dezelfde sessie (S) en
+    // hetzelfde traject (S.code) bewaard bij sluiten/heropenen en bij hertekening van de flow. Alleen in
+    // het geheugen van het sessieobject (S._vmConcept), synchroon bij elke invoer: geen autosave, geen
+    // browseropslag, geen serververzoek. Uitloggen vervangt S en wist het; een ander traject wist het.
+    // 'basis' is de opgeslagen tekst (en status) waarop het concept rust; is die bij heropenen anders,
+    // dan komt de eigen tekst apart als "Uw eigen tekst" — nooit over de opgeslagen of definitieve tekst.
+    // 'verouderd' reist alleen mee met bewaarde eigen tekst; zonder concept blijft heropenen als voorheen.
+    function conceptLeeg(b){return !b.tekst&&!b.eigen&&!b.nieuwConcept;}
+    function bewaarConcept(){
+      if(!actueel())return;
+      var e=editor(),b={code:code,basis:opgeslagen(),status:t2.verkoopmemorandum_status||'',
+        tekst:((!isDef()||nieuwConcept)&&e.trim()&&e.trim()!==opgeslagen())?e:'',eigen:eigenTekst,nieuwConcept:nieuwConcept,verouderd:verouderd,melding:verouderd?melding:''};
+      S._vmConcept=conceptLeeg(b)?null:b;
+    }
+    // Na een opslaguitkomst, ook als de weergave intussen gesloten is: een ack ruimt alleen de
+    // daadwerkelijk bevestigde tekst op (nieuwere invoer blijft); een fout bewaart 'verouderd'.
+    function conceptNaOpslag(basisVoor,bevestigd,alsNieuw){
+      var b=S._vmConcept;
+      if(!b||b.code!==code||b.basis!==basisVoor)return;
+      if(bevestigd!==null){
+        if(b.tekst.trim()===bevestigd)b.tekst='';
+        b.basis=bevestigd;b.status=t2.verkoopmemorandum_status||'';b.verouderd=false;b.melding='';
+        if(alsNieuw)b.nieuwConcept=false;
+      }else{b.verouderd=verouderd;b.melding=verouderd?melding:'';}
+      if(conceptLeeg(b))S._vmConcept=null;
+    }
+    // Bij openen: geeft de te tonen eigen editortekst terug ('' = opgeslagen tekst tonen).
+    function herstelConcept(){
+      var b=S._vmConcept;
+      if(!b)return '';
+      if(b.code!==code){S._vmConcept=null;return '';}
+      if(b.basis===opgeslagen()&&b.status===(t2.verkoopmemorandum_status||'')){
+        eigenTekst=b.eigen||'';nieuwConcept=!!b.nieuwConcept&&isDef();verouderd=!!b.verouderd;melding=verouderd?b.melding:'';
+        return (!isDef()||nieuwConcept)?b.tekst:'';
+      }
+      eigenTekst=(b.tekst&&b.tekst.trim()!==opgeslagen())?b.tekst:(b.eigen||'');
+      return '';
+    }
+    // Zelfde SHA-256 (hex, kleine letters) als vmSha256 in worker/19b, over exact de opgeslagen tekst.
+    function sha256(t){
+      if(typeof crypto==='undefined'||!crypto||!crypto.subtle||typeof TextEncoder==='undefined')return Promise.reject(new Error('SHA-256 niet beschikbaar'));
+      return crypto.subtle.digest('SHA-256',new TextEncoder().encode(t)).then(function(b){return Array.prototype.map.call(new Uint8Array(b),function(x){return (x<16?'0':'')+x.toString(16);}).join('');});
+    }
+    // {http, ok, j}: netwerkfout/time-out → http 0; ongeldige JSON → j null en nooit ok.
+    // #91 fase E / MASTER #96: toelichting bij een geweigerde opslag of vaststelling door de bronintegriteitscontrole.
+    function vmFeitDetail(j){
+      if(!j)return '';
+      if(j.code==='FEITCONTROLE_AFWIJKING'&&Array.isArray(j.afwijkingen)&&j.afwijkingen.length)return ' Niet herleidbaar: '+j.afwijkingen.slice(0,12).map(function(a){return esc(a.fragment);}).join(', ')+(j.afwijkingen.length>12?' en meer':'')+'.';
+      if((j.code==='FEITEN_VEROUDERD'||j.code==='FEITENBLOK_GEWIJZIGD')&&Array.isArray(j.koppen)&&j.koppen.length)return ' Betreft: '+j.koppen.map(function(k){return esc(k);}).join(', ')+'.';
+      return '';
+    }
+    function leesAntw(p){
+      return p.then(function(x){return x.json().then(function(j){return{http:x.status,ok:!!x.ok,j:(j&&typeof j==='object')?j:null};},function(){return{http:x.status,ok:false,j:null};});},function(){return{http:0,ok:false,j:null};});
+    }
+    function zetBezig(aan){
+      bezig=aan;if(!actueel())return;
+      ['verkoopmemo-opslaan-btn','verkoopmemo-def-btn','verkoopmemo-nieuwconcept-btn','verkoopmemo-nieuwconcept-ann','verkoopmemo-nieuw-btn','verkoopmemo-herlees-btn','verkoopmemo-eigen-terug-btn','verkoopmemo-kern-btn'].forEach(function(id){var b=document.getElementById(id);if(b)b.disabled=aan;});
+    }
     function renderVerkoopmemo(tekst,status){
+      label=status||'';
+      var def=isDef()&&!nieuwConcept;
+      var dis=bezig?' disabled':'';
+      var kop=def?'DEFINITIEF'+(defInfo?' &middot; versie '+esc(String(defInfo.versie)):'')
+        :'CONCEPT'+(nieuwConcept?' &middot; nieuwe conceptversie, nog niet opgeslagen':((label&&label!==VM_DEF)?' &middot; '+esc(label):''));
+      var info=def
+        ?(defInfo?'Vastgesteld door '+esc(defInfo.door||'onbekend')+(defInfo.op?' op '+esc(new Date(defInfo.op).toLocaleDateString('nl-NL')):'')+'. Deze tekst is vergrendeld; wijzigen kan alleen via een nieuwe conceptversie. Print / PDF zonder CONCEPT-watermerk.'
+          :'Status volgens de server: definitief. Versie en controlegetal worden gecontroleerd; zolang dat niet gelukt is, krijgt Print / PDF het CONCEPT-watermerk.')
+        :(nieuwConcept?'U bewerkt een nieuwe conceptversie. De definitieve versie'+(defInfo?' '+esc(String(defInfo.versie)):'')+' blijft ongewijzigd bewaard; pas na Opslaan en bevestiging door de server is het nieuwe concept vastgelegd.'
+          :'Concept: Print / PDF krijgt het CONCEPT-watermerk. Alleen een definitief vastgestelde versie wordt zonder watermerk afgedrukt.'+(defInfo?' Laatste definitieve versie: '+esc(String(defInfo.versie))+' (blijft bewaard).':''));
+      // #91 F4: het document zelf noemt nooit ontbrekende informatie; de begeleider ziet hier (alleen intern)
+      // welke onderdelen zonder brongegevens zijn weggelaten, zodat hij gericht kan uitvragen.
+      var rdLijst=(!def&&Array.isArray(internOntbrekend)&&internOntbrekend.length)?internOntbrekend.map(function(o){return esc((o&&o.onderdeel)||'')+((o&&o.reden)?' ('+esc(o.reden)+')':'');})
+        :((!def&&readiness&&Array.isArray(readiness.warnings))?readiness.warnings.map(function(w){return esc((w&&w.reden)||'');}):[]);
+      var rd=rdLijst.length
+        ?'<div style="font-size:12px;color:#8a5a00;background:#fbf3e3;border:1px solid #e0b84c;border-radius:var(--r);padding:6px 10px;margin-bottom:.6rem">Alleen voor u zichtbaar, niet in het document: deze onderdelen zijn weggelaten omdat er geen brongegevens voor zijn. Vraag ze zo nodig aanvullend uit.<ul style="margin:.25rem 0 0 1.25rem">'+rdLijst.map(function(x){return '<li>'+x+'</li>';}).join('')+'</ul></div>':'';
       out.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem">'
-        +'<div style="font-size:11px;font-weight:600;color:#8a5a00;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.75rem">&#128220; Verkoopmemorandum'+(status?' &mdash; '+esc(status):'')+'</div>'
-        +'<textarea id="verkoopmemo-txt" rows="16" style="width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:var(--r);font-family:\'IBM Plex Sans\',sans-serif;font-size:13px;padding:9px 11px;color:var(--sub);resize:vertical;outline:none">'+esc(tekst||'')+'</textarea>'
+        +'<div style="font-size:11px;font-weight:600;color:#8a5a00;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.4rem">&#128220; Verkoopmemorandum &mdash; '+kop+'</div>'
+        +'<div id="verkoopmemo-status" style="font-size:12px;color:var(--muted);margin-bottom:.6rem">'+info+'</div>'
+        +(melding?'<div id="verkoopmemo-melding" role="alert" style="font-size:12px;color:var(--red);border:1px solid var(--red);border-radius:var(--r);padding:6px 10px;margin-bottom:.6rem">'+melding+' <button class="btn-outline btn-sm" id="verkoopmemo-herlees-btn"'+dis+'>&#8635; Opnieuw lezen</button></div>':'')
+        +rd
+        // #91 fase E v4: redactionele waarschuwingen (veldvervuiling, herhaalde zinnen) na generatie; geen blokkade.
+        +((!def&&Array.isArray(redactie)&&redactie.length)?'<div style="font-size:12px;color:#8a5a00;background:#fbf3e3;border:1px solid #e0b84c;border-radius:var(--r);padding:6px 10px;margin-bottom:.6rem">Redactionele controle (alleen voor u zichtbaar): pas deze zinnen aan voordat u het memorandum vaststelt.<ul style="margin:.25rem 0 0 1.25rem">'+redactie.slice(0,10).map(function(w){return '<li>'+(w&&w.soort==='veldvervuiling'?'Letterlijk overgenomen veldwaarde ('+esc(w.woord||'')+'): ':'Herhaalde zin: ')+'&ldquo;'+esc((w&&w.zin)||'')+'&rdquo;</li>';}).join('')+'</ul></div>':'')
+        +'<textarea id="verkoopmemo-txt" rows="16"'+(def?' readonly':'')+' style="width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:var(--r);font-family:\'IBM Plex Sans\',sans-serif;font-size:13px;padding:9px 11px;color:var(--sub);resize:vertical;outline:none">'+esc((def?opgeslagen():tekst)||'')+'</textarea>'
         +'<div style="font-size:11px;color:var(--muted);margin-top:6px">Bevat de bedrijfsnaam — controleer vóór verspreiding altijd of dit alleen naar de partij gaat die de NDA heeft getekend.'
         +((t2.verkoopmemorandum_nda_door&&!t2.nda_getekend)?(' <span style="color:var(--teal)">NDA-ondertekening bevestigd door '+esc(t2.verkoopmemorandum_nda_door)+(t2.verkoopmemorandum_nda_op?(' op '+new Date(t2.verkoopmemorandum_nda_op).toLocaleDateString('nl-NL')):'')+'.</span>'):'')
         +'</div>'
+        // Eigen, niet-opgeslagen tekst na een 409/opnieuw lezen of geannuleerde conceptversie: blijft
+        // zichtbaar en terug te zetten, wordt nooit stil weggegooid of automatisch opgeslagen.
+        +(eigenTekst?'<div style="margin-top:.6rem"><label for="verkoopmemo-eigen-txt" style="display:block;font-size:12px;color:var(--muted);margin-bottom:3px">Uw eigen tekst (niet opgeslagen, niet vastgesteld)</label><textarea id="verkoopmemo-eigen-txt" rows="5" readonly style="width:100%;background:var(--bg);border:1.5px dashed var(--border2);border-radius:var(--r);font-size:12px;padding:8px 10px;color:var(--sub)">'+esc(eigenTekst)+'</textarea><button class="btn-ghost btn-sm" id="verkoopmemo-eigen-terug-btn"'+dis+'>'+(def?'Als nieuwe conceptversie openen':'Terugzetten in de editor')+'</button></div>':'')
         +'<div style="display:flex;gap:8px;margin-top:.75rem;flex-wrap:wrap">'
-        +'<button class="btn" id="verkoopmemo-opslaan-btn" style="background:#8a5a00" title="Bewaart de tekst bij dit traject — later terug te vinden via &quot;Verkoopmemorandum bekijken/bewerken&quot;. Er wordt geen bestand gedownload.">Opslaan</button>'
+        +(def?'':'<button class="btn" id="verkoopmemo-opslaan-btn" style="background:#8a5a00"'+dis+' title="Bewaart de tekst bij dit traject — later terug te vinden via &quot;Verkoopmemorandum bekijken/bewerken&quot;. Er wordt geen bestand gedownload.">Opslaan</button>')
         +'<button class="btn-ghost" id="verkoopmemo-print-btn" style="font-size:12px;padding:6px 14px">&#128196; Print / PDF</button>'
-        +'<button class="btn-outline btn-sm" id="verkoopmemo-nieuw-btn">&#8635; Opnieuw genereren</button>'
+        // #91 fase E: exact de PDF die een koper ontvangt (voorblad, disclaimer, inhoud, grafieken, huisstijl), en de
+        // kerngegevens opnieuw uit de bron zetten (MASTER #96: feiten wijzigen bij de bron, niet in deze tekst).
+        +'<button class="btn-ghost" id="verkoopmemo-pdf-btn" style="font-size:12px;padding:6px 14px" title="Toont het informatiememorandum zoals een koper het ontvangt, met grafieken uit de brongegevens.">&#128209; PDF zoals de koper hem ontvangt</button>'
+        +(def?'':'<button class="btn-ghost btn-sm" id="verkoopmemo-kern-btn"'+dis+' title="Zet de secties met kerncijfers en kerngegevens opnieuw op basis van de actuele brongegevens. De verkoper moet daarna opnieuw akkoord geven.">&#8635; Kerngegevens vernieuwen</button>')
+        +(def?'<button class="btn-outline btn-sm" id="verkoopmemo-nieuwconcept-btn"'+dis+'>&#9998; Nieuwe conceptversie</button>'
+          :nieuwConcept?'<button class="btn-ghost btn-sm" id="verkoopmemo-nieuwconcept-ann"'+dis+'>Nieuwe conceptversie annuleren</button>'
+          :'<button class="btn-outline btn-sm" id="verkoopmemo-nieuw-btn"'+dis+'>&#8635; Opnieuw genereren</button>')
         +'<button class="btn-ghost" id="verkoopmemo-sluit-btn" style="margin-left:auto">Sluiten</button>'
         +'</div>'
+        // Vaststellen: expliciete handeling met naam + bevestiging, alleen op de opgeslagen tekst.
+        +((def||nieuwConcept)?'':'<div style="margin-top:.75rem;padding-top:.75rem;border-top:1px dashed var(--border2)">'
+          +'<div style="font-size:12px;color:var(--muted);margin-bottom:6px">Definitief vaststellen legt exact de <strong>opgeslagen</strong> tekst vast, met controlegetal, als expliciete handeling van u. Het is geen verzending en geen juridische goedkeuring. Daarna is de tekst vergrendeld; wijzigen kan via een nieuwe conceptversie.</div>'
+          +'<label for="verkoopmemo-def-naam" style="display:block;font-size:12px;color:var(--muted);margin-bottom:3px">Vastgesteld door (uw naam)</label>'
+          +'<input type="text" id="verkoopmemo-def-naam" maxlength="120" value="'+esc(defNaam)+'" placeholder="Voor- en achternaam" style="width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:var(--r);font-family:\'IBM Plex Sans\',sans-serif;font-size:13px;padding:8px 11px;color:var(--sub);outline:none;margin-bottom:6px">'
+          +'<label style="display:flex;align-items:flex-start;gap:8px;font-size:12px;color:var(--sub);cursor:pointer;margin-bottom:6px"><input type="checkbox" id="verkoopmemo-def-chk" style="margin-top:2px"> Ik heb de opgeslagen tekst gecontroleerd en stel deze vast als definitieve versie.</label>'
+          +'<button class="btn" id="verkoopmemo-def-btn" style="background:#1a7a5e"'+dis+'>&#10003; Definitief vaststellen</button>'
+          +'</div>')
         // Verzendflow (22 sep 2026, categorie C — informatief, geen reviewcyclus). Voorgevuld met
         // koper_email indien al bekend (gemak), maar altijd vrij aan te passen — het verkoopmemo gaat
-        // naar wie de NDA heeft getekend, niet per se naar een reeds geregistreerde koper.
-        +'<div style="margin-top:.75rem;padding-top:.75rem;border-top:1px dashed var(--border2)">'
+        // naar wie de NDA heeft getekend, niet per se naar een reeds geregistreerde koper. Bij een
+        // definitief memorandum gaat exact de vastgestelde tekst mee (backend eist dat ook).
+        +(nieuwConcept?'':'<div style="margin-top:.75rem;padding-top:.75rem;border-top:1px dashed var(--border2)">'
         +'<label for="verkoopmemo-email-naar" style="display:block;font-size:12px;color:var(--muted);margin-bottom:3px">Verstuur naar (e-mailadres van de NDA-ondertekenaar)</label>'
         +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
         +'<input type="email" id="verkoopmemo-email-naar" value="'+esc(t2.koper_email||'')+'" placeholder="naam@voorbeeld.nl" style="flex:1;min-width:200px;background:var(--bg);border:1.5px solid var(--border);border-radius:var(--r);font-family:\'IBM Plex Sans\',sans-serif;font-size:13px;padding:8px 11px;color:var(--sub);outline:none">'
-        +'<button class="btn" id="verkoopmemo-email-btn" style="background:#8a5a00">&#9993; Verstuur</button>'
-        +'</div></div></div>';
-      document.getElementById('verkoopmemo-sluit-btn').onclick=function(){out.style.display='none';};
+        +'<button class="btn" id="verkoopmemo-email-btn" style="background:#8a5a00"'+(t2.nda_getekend?'':' disabled')+'>&#9993; Verstuur</button>'
+        +'</div>'
+        // #91 F4, aangescherpt 28-10-2026 (besluit Marcel): versturen kan alleen na een via het platform ondertekende NDA.
+        +(t2.nda_getekend?'':'<div style="font-size:12px;color:var(--muted);margin-top:.5rem">Versturen kan pas nadat de ontvangende partij de geheimhoudingsverklaring (NDA) via het platform heeft ondertekend. Het concept kunt u wel al opstellen en met de verkoper beoordelen.</div>')
+        +'</div>')
+        // MASTER #91 F5: verkopersreview (mna/14) onder het memorandum.
+        +'<div id="imr-bg"></div>'
+        // MASTER #91 fase E v4: optionele bijlage kolommenbalans (mna/21).
+        +'<div id="imbj-bg"></div>'
+        +'</div>';
+      if(typeof imrBgLaad==='function')imrBgLaad();
+      if(typeof imbjLaad==='function')imbjLaad();
+      document.getElementById('verkoopmemo-sluit-btn').onclick=function(){bewaarConcept();out.style.display='none';};
+      document.getElementById('verkoopmemo-txt').oninput=bewaarConcept;
+      bewaarConcept();
+      var pdfb=document.getElementById('verkoopmemo-pdf-btn');
+      if(pdfb)pdfb.onclick=async function(){
+        if(editor().trim()!==opgeslagen()&&!confirm('De PDF toont de opgeslagen versie; uw niet-opgeslagen wijzigingen staan er niet in. Doorgaan?'))return;
+        var w=window.open('','_blank');
+        try{
+          var r=await fetchMetTimeout(WORKER+'/mna/verkoopmemorandum/pdf?code='+encodeURIComponent(S.code),{method:'GET',headers:{'x-tussen-key':S._bgKey||''}},180000);
+          if(!r.ok){var jj=await r.json().catch(function(){return {};});if(w)w.close();toast(jj.error||'De PDF kon niet worden gemaakt.','err');return;}
+          var url=URL.createObjectURL(await r.blob());
+          if(w)w.location=url;else window.open(url,'_blank');
+          setTimeout(function(){URL.revokeObjectURL(url);},120000);
+        }catch(e){if(w)w.close();toast('De PDF kon niet worden gemaakt (verbinding of time-out).','err');}
+      };
+      var kernb=document.getElementById('verkoopmemo-kern-btn');
+      if(kernb)kernb.onclick=async function(){
+        if(bezig)return;
+        if(editor().trim()!==opgeslagen()){toast('Sla eerst uw wijzigingen op; daarna kunt u de kerngegevens vernieuwen.','err');return;}
+        if(!confirm('De secties met kerncijfers en kerngegevens worden opnieuw opgebouwd uit de actuele brongegevens. Een eerder akkoord van de verkoper vervalt. Doorgaan?'))return;
+        zetBezig(true);
+        var r=await leesAntw(fetchMetTimeout(WORKER+'/mna/verkoopmemorandum/kerngegevens',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||''},body:JSON.stringify({code:S.code})},30000));
+        zetBezig(false);
+        if(!actueel())return;
+        var j=r.j||{};
+        if(r.ok&&j.ok===true){
+          if(j.gewijzigd){t2.verkoopmemorandum_tekst=j.verkoopmemorandum_tekst;t2.verkoopmemorandum_status='bewerkt';renderVerkoopmemo(j.verkoopmemorandum_tekst,'bewerkt');toast('Kerngegevens vernieuwd. Laat de verkoper de nieuwe versie opnieuw beoordelen.');}
+          else toast('De kerngegevens zijn al actueel.');
+        }else toast(j.error||'Vernieuwen is niet gelukt.','err');
+      };
       document.getElementById('verkoopmemo-print-btn').onclick=function(){
-        printDoc(document.getElementById('verkoopmemo-txt').value||'', 'Verkoopmemorandum — '+(t2.kantoor_naam||S.code), 'memo');
+        // Zonder watermerk uitsluitend een bevestigd definitief memorandum waarvan het controlegetal
+        // overeenkomt met de opgeslagen tekst; anders altijd CONCEPT.
+        if(isDef()&&!nieuwConcept){
+          if(defInfo&&defInfo.tekst===opgeslagen()){printDoc(opgeslagen(), titel()+' (definitieve versie '+defInfo.versie+')', 'memo_definitief');}
+          else{toast('De vaststelling is (nog) niet gecontroleerd; het document wordt met CONCEPT-watermerk afgedrukt.','err');printDoc(opgeslagen(), titel(), 'memo');}
+        }else{printDoc(editor(), titel(), 'memo');}
       };
-      document.getElementById('verkoopmemo-opslaan-btn').onclick=async function(){
-        var btn=this;btn.disabled=true;btn.textContent='Bezig...';
-        var tekstNu=document.getElementById('verkoopmemo-txt').value;
-        var r=await fetch(WORKER+'/mna/verkoopmemorandum/opslaan',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||''},body:JSON.stringify({code:S.code,tekst:tekstNu})}).then(function(x){return x.json();}).catch(function(){return{};});
-        if(r.ok){toast('Verkoopmemorandum opgeslagen.','ok');t2.verkoopmemorandum_tekst=tekstNu;}
-        else{toast(r.error||'Opslaan mislukt.','err');}
-        btn.disabled=false;btn.textContent='Opslaan';
+      var ob=document.getElementById('verkoopmemo-opslaan-btn');
+      if(ob)ob.onclick=async function(){
+        if(bezig)return;
+        var tekstNu=editor();
+        if(!tekstNu.trim()){toast('Het memorandum is leeg; er is niets opgeslagen.','err');return;}
+        if(verouderd){toast('Lees het memorandum eerst opnieuw in; er is niets opgeslagen.','err');return;}
+        var alsNieuw=nieuwConcept,basisVoor=opgeslagen();
+        zetBezig(true);this.textContent='Bezig...';
+        var body={code:S.code,tekst:tekstNu};
+        if(alsNieuw){
+          try{body.nieuw_concept=true;body.definitief_sha256=await sha256(opgeslagen());}
+          catch(e){zetBezig(false);melding='De definitieve versie kon in deze browser niet worden gecontroleerd; er is niets opgeslagen. Uw tekst blijft staan.';if(actueel())renderVerkoopmemo(editor(),label);return;}
+        }
+        var r=await leesAntw(fetchMetTimeout(WORKER+'/mna/verkoopmemorandum/opslaan',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||''},body:JSON.stringify(body)},30000));
+        zetBezig(false);
+        if(!zelfdeSessie())return;
+        var j=r.j||{};
+        if(r.ok&&j.ok===true&&!j.error&&(!alsNieuw||j.nieuw_concept===true)){
+          t2.verkoopmemorandum_tekst=tekstNu.trim();t2.verkoopmemorandum_status=j.status||'bewerkt';
+          if(alsNieuw)nieuwConcept=false;
+          melding='';
+          conceptNaOpslag(basisVoor,opgeslagen(),alsNieuw);
+          if(!actueel())return;
+          toast(alsNieuw?'Nieuwe conceptversie opgeslagen; de definitieve versie blijft bewaard.':'Verkoopmemorandum opgeslagen.','ok');
+          renderVerkoopmemo(editor(),t2.verkoopmemorandum_status);
+        }else{
+          if(r.http===409||r.http===0||(r.http>=200&&r.http<300))verouderd=true;
+          melding=esc(j.error||(r.http===0?'Geen bevestiging van de server (verbinding of time-out); niet bekend of de tekst is opgeslagen.':'Opslaan mislukt.'))+' Uw tekst blijft staan.'+vmFeitDetail(j)+(verouderd?' Lees het memorandum opnieuw in voordat u verder gaat.':'');
+          conceptNaOpslag(basisVoor,null,alsNieuw);
+          if(!actueel())return;
+          toast('Verkoopmemorandum niet opgeslagen.','err');
+          renderVerkoopmemo(editor(),label);
+        }
       };
-      document.getElementById('verkoopmemo-nieuw-btn').onclick=function(){
-        // Zonder formeel getekende NDA vereist opnieuw genereren óók de bevestiging + naam — anders
-        // 400 van de backend en een dood scherm. Mét NDA: direct opnieuw.
-        if(t2.nda_getekend){genereerVerkoopmemo(false);}else{toonNdaBevestiging();}
+      var db=document.getElementById('verkoopmemo-def-btn');
+      if(db)db.onclick=async function(){
+        if(bezig)return;
+        var naamEl=document.getElementById('verkoopmemo-def-naam'),chk=document.getElementById('verkoopmemo-def-chk');
+        var naam=String((naamEl&&naamEl.value)||'').trim();defNaam=naam;
+        if(verouderd){toast('Lees het memorandum eerst opnieuw in; er is niets vastgesteld.','err');return;}
+        var vast=opgeslagen();
+        if(!vast){toast('Er is nog geen opgeslagen memorandum om vast te stellen.','err');return;}
+        if(editor().trim()!==vast){toast('Er zijn niet-opgeslagen wijzigingen. Sla eerst op: alleen de opgeslagen tekst kan definitief worden vastgesteld.','err');return;}
+        if(!naam||naam.length>120){toast('Vul uw naam in (max. 120 tekens); die wordt bij de vaststelling vastgelegd.','err');return;}
+        if(!chk||!chk.checked){toast('Bevestig eerst dat u de opgeslagen tekst als definitieve versie vaststelt.','err');return;}
+        zetBezig(true);this.textContent='Vaststellen...';
+        var h;
+        try{h=await sha256(vast);}catch(e){zetBezig(false);toast('Deze browser kan het controlegetal niet berekenen; er is niets vastgesteld.','err');if(actueel())renderVerkoopmemo(editor(),label);return;}
+        var r=await leesAntw(fetchMetTimeout(WORKER+'/mna/verkoopmemorandum/definitief',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||''},body:JSON.stringify({code:S.code,tekst_sha256:h,vastgesteld_door:naam,tekst:vast})},30000));
+        zetBezig(false);
+        if(!zelfdeSessie())return;
+        var j=r.j||{};
+        if(r.ok&&j.ok===true&&j.status===VM_DEF&&j.tekst_sha256===h&&opgeslagen()===vast){
+          var nogGetypt=editor();
+          t2.verkoopmemorandum_status=VM_DEF;
+          defInfo={versie:j.definitief_versie,hash:h,tekst:vast,door:j.vastgesteld_door||naam,op:j.vastgesteld_op};
+          melding='';
+          if(!actueel())return;
+          if(nogGetypt.trim()&&nogGetypt.trim()!==vast)eigenTekst=nogGetypt;
+          toast('Verkoopmemorandum definitief vastgesteld (versie '+j.definitief_versie+').','ok');
+          renderVerkoopmemo(vast,VM_DEF);
+        }else{
+          if(r.http===409||r.http===0||(r.http>=200&&r.http<300))verouderd=true;
+          melding=esc(j.error||(r.http===0?'Geen bevestiging van de server (verbinding of time-out); niet bekend of de vaststelling is vastgelegd.':'Vaststellen mislukt.'))+' Het memorandum wordt niet als definitief getoond; uw tekst blijft staan.'+vmFeitDetail(j)+(verouderd?' Lees het memorandum opnieuw in en controleer.':'');
+          if(!actueel())return;
+          toast('Verkoopmemorandum niet definitief vastgesteld.','err');
+          renderVerkoopmemo(editor(),label);
+        }
       };
-      document.getElementById('verkoopmemo-email-btn').onclick=async function(){
+      var nc=document.getElementById('verkoopmemo-nieuwconcept-btn');
+      if(nc)nc.onclick=function(){if(bezig)return;nieuwConcept=true;melding='';renderVerkoopmemo(opgeslagen(),label);};
+      var nca=document.getElementById('verkoopmemo-nieuwconcept-ann');
+      if(nca)nca.onclick=function(){if(bezig)return;var e=editor();if(e.trim()&&e.trim()!==opgeslagen())eigenTekst=e;nieuwConcept=false;renderVerkoopmemo(opgeslagen(),label);};
+      var hl=document.getElementById('verkoopmemo-herlees-btn');
+      if(hl)hl.onclick=function(){return herlees();};
+      var et=document.getElementById('verkoopmemo-eigen-terug-btn');
+      if(et)et.onclick=function(){
+        if(bezig)return;
+        var terug=eigenTekst,e=editor();
+        eigenTekst=(!isDef()||nieuwConcept)&&e.trim()&&e.trim()!==opgeslagen()?e:'';
+        if(isDef())nieuwConcept=true;
+        renderVerkoopmemo(terug,label);
+      };
+      var nb=document.getElementById('verkoopmemo-nieuw-btn');
+      if(nb)nb.onclick=function(){
+        if(bezig)return;
+        var e=editor();if(e.trim()&&e.trim()!==opgeslagen())eigenTekst=e;
+        // #91 F4: een concept mag vóór de NDA worden gegenereerd; de NDA geldt bij versturen/vrijgave.
+        genereerVerkoopmemo(false);
+      };
+      var eb=document.getElementById('verkoopmemo-email-btn');
+      if(eb)eb.onclick=async function(){
         var btn=this;
         var naarAdres=(document.getElementById('verkoopmemo-email-naar').value||'').trim();
         if(!naarAdres||naarAdres.indexOf('@')<0){toast('Vul een geldig e-mailadres in.','err');return;}
+        if(!t2.nda_getekend){toast('Versturen kan pas na een via het platform ondertekende NDA.','err');return;}
         btn.disabled=true;btn.textContent='Versturen...';
-        var tekstNu=document.getElementById('verkoopmemo-txt').value;
+        var tekstNu=(isDef()&&!nieuwConcept)?opgeslagen():document.getElementById('verkoopmemo-txt').value;
         var r=await fetchMetTimeout(WORKER+'/mna/verkoopmemorandum/email',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||''},body:JSON.stringify({code:S.code,verkoopmemorandum_tekst:tekstNu,to:[naarAdres]})},30000).then(function(x){return x.json();}).catch(function(){return{error:'Verbindingsfout.'};});
         if(r.ok){toast('Verkoopmemorandum verstuurd naar '+naarAdres+'.','ok');}
         else{toast('Fout: '+(r.error||'onbekend'),'err');}
@@ -5012,35 +5583,80 @@ function renderBegeleiderDashboard(app){
     async function genereerVerkoopmemo(ndaBevestigd,ndaDoor){
       out.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;color:var(--muted)">Genereren...</div>';
       var r=await fetchMetTimeout(WORKER+'/mna/verkoopmemorandum/genereer',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||''},body:JSON.stringify({code:S.code,nda_bevestigd:!!ndaBevestigd,nda_bevestigd_door:ndaDoor||''})},180000).then(function(x){return x.json();}).catch(function(){return{error:'Genereren duurde te lang of de verbinding viel weg. Probeer het opnieuw.'};});
-      if(r.ok){t2.verkoopmemorandum_tekst=r.verkoopmemorandum_tekst;if(ndaDoor){t2.verkoopmemorandum_nda_door=ndaDoor;t2.verkoopmemorandum_nda_op=Date.now();}renderVerkoopmemo(r.verkoopmemorandum_tekst,'nieuw gegenereerd');}
+      if(!zelfdeSessie())return;
+      if(r.ok){
+        t2.verkoopmemorandum_tekst=r.verkoopmemorandum_tekst;t2.verkoopmemorandum_status='gegenereerd';if(ndaDoor){t2.verkoopmemorandum_nda_door=ndaDoor;t2.verkoopmemorandum_nda_op=Date.now();}
+        readiness=r.readiness||null;internOntbrekend=Array.isArray(r.intern_ontbrekend)?r.intern_ontbrekend:null;redactie=Array.isArray(r.redactie_waarschuwingen)?r.redactie_waarschuwingen:null;nieuwConcept=false;verouderd=false;melding='';
+        if(!actueel())return;
+        renderVerkoopmemo(r.verkoopmemorandum_tekst,'nieuw gegenereerd');
+      }
       else{
-        out.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem"><div style="color:var(--red);margin-bottom:.75rem">'+esc(r.error||'Genereren mislukt.')+'</div>'
-          +'<div style="display:flex;gap:8px"><button class="btn btn-sm" id="verkoopmemo-err-opnieuw" style="background:#8a5a00">Opnieuw proberen</button><button class="btn-ghost btn-sm" id="verkoopmemo-err-sluit">Sluiten</button></div></div>';
+        if(!actueel())return;
+        // Readiness uitsluitend uit de backend (ONVOLDOENDE_DATA → readiness.blocking_validations).
+        var blok=(r.readiness&&Array.isArray(r.readiness.blocking_validations)&&r.readiness.blocking_validations.length)
+          ?'<ul style="margin:0 0 .75rem 1.25rem;font-size:12px;color:var(--sub)">'+r.readiness.blocking_validations.map(function(b){return '<li>'+esc((b&&b.reden)||'')+'</li>';}).join('')+'</ul>':'';
+        out.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem"><div style="color:var(--red);margin-bottom:.75rem">'+esc(r.error||'Genereren mislukt.')+'</div>'+blok
+          +'<div style="display:flex;gap:8px">'+(r.code==='DEFINITIEF'?'<button class="btn btn-sm" id="verkoopmemo-err-herlees" style="background:#8a5a00">&#8635; Opnieuw lezen</button>':'<button class="btn btn-sm" id="verkoopmemo-err-opnieuw" style="background:#8a5a00">Opnieuw proberen</button>')+'<button class="btn-ghost btn-sm" id="verkoopmemo-err-sluit">Sluiten</button></div></div>';
         document.getElementById('verkoopmemo-err-sluit').onclick=function(){out.style.display='none';};
-        document.getElementById('verkoopmemo-err-opnieuw').onclick=function(){ if(t2.nda_getekend){genereerVerkoopmemo(false);}else{toonNdaBevestiging();} };
+        var eo=document.getElementById('verkoopmemo-err-opnieuw');
+        if(eo)eo.onclick=function(){ genereerVerkoopmemo(false); };
+        var eh=document.getElementById('verkoopmemo-err-herlees');
+        if(eh)eh.onclick=function(){return herlees();};
       }
     }
-    function toonNdaBevestiging(){
-      out.innerHTML='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem">'
-        +'<div style="font-size:11px;font-weight:600;color:#8a5a00;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.75rem">&#128220; Verkoopmemorandum &mdash; controle vooraf</div>'
-        +'<div style="font-size:13px;color:var(--sub);margin-bottom:1rem;line-height:1.6">Dit document bevat de bedrijfsnaam en gedetailleerde bedrijfsinformatie. Er is voor dit traject nog geen NDA ondertekend via het platform (die kan bijv. wel al buiten het platform om ondertekend zijn — dat is normaal in deze fase, vóór er een formele koper is ingevoerd).</div>'
-        +'<label style="display:flex;align-items:flex-start;gap:8px;font-size:13px;color:var(--sub);cursor:pointer;margin-bottom:.75rem"><input type="checkbox" id="verkoopmemo-nda-chk" style="margin-top:2px"> Ik bevestig dat de partij die dit document ontvangt een NDA heeft ondertekend (in het platform of extern).</label>'
-        +'<div style="margin-bottom:1rem"><label for="verkoopmemo-nda-naam" style="display:block;font-size:12px;color:var(--muted);margin-bottom:3px">Bevestigd door (uw naam) &mdash; wordt vastgelegd bij het traject</label><input type="text" id="verkoopmemo-nda-naam" placeholder="Voor- en achternaam" style="width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:var(--r);font-family:\'IBM Plex Sans\',sans-serif;font-size:13px;padding:8px 11px;color:var(--sub);outline:none"></div>'
-        +'<div style="display:flex;gap:8px"><button class="btn" id="verkoopmemo-nda-door" style="background:#8a5a00">Doorgaan &amp; genereren</button><button class="btn-ghost" id="verkoopmemo-nda-ann">Annuleren</button></div>'
-        +'</div>';
-      document.getElementById('verkoopmemo-nda-ann').onclick=function(){out.style.display='none';};
-      document.getElementById('verkoopmemo-nda-door').onclick=function(){
-        if(!document.getElementById('verkoopmemo-nda-chk').checked){toast('Bevestig eerst dat er een NDA is ondertekend.','err');return;}
-        var naam=(document.getElementById('verkoopmemo-nda-naam').value||'').trim();
-        if(!naam){toast('Vul uw naam in — dit wordt bij het traject vastgelegd.','err');return;}
-        genereerVerkoopmemo(true,naam);
-      };
+    // Opnieuw lezen via de bestaande trajectroute (zelfde aanroep als refreshData); neemt alleen de
+    // memorandumtekst/-status over. Eigen niet-opgeslagen tekst blijft als "Uw eigen tekst" staan.
+    async function herlees(){
+      if(bezig)return;
+      zetBezig(true);
+      var r=await leesAntw(fetchMetTimeout(WORKER+'/mna/traject/'+S.code,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ts:Date.now()})},15000));
+      zetBezig(false);
+      if(!zelfdeSessie())return;
+      var tr=(r.ok&&r.j&&!r.j.error&&r.j.traject&&typeof r.j.traject==='object')?r.j.traject:null;
+      if(!tr){
+        if(!actueel())return;
+        melding='Opnieuw lezen is mislukt; er is niets gewijzigd. Probeer het opnieuw.';
+        if(document.getElementById('verkoopmemo-txt'))renderVerkoopmemo(editor(),label);else toast(melding,'err');
+        return;
+      }
+      var vorige=editor();
+      t2.verkoopmemorandum_tekst=typeof tr.verkoopmemorandum_tekst==='string'?tr.verkoopmemorandum_tekst:'';
+      t2.verkoopmemorandum_status=typeof tr.verkoopmemorandum_status==='string'?tr.verkoopmemorandum_status:'';
+      verouderd=false;nieuwConcept=false;melding='';defInfo=null;
+      if(vorige.trim()&&vorige.trim()!==opgeslagen())eigenTekst=vorige;
+      if(!actueel())return;
+      toast('Verkoopmemorandum opnieuw gelezen.','ok');
+      renderVerkoopmemo(opgeslagen(),t2.verkoopmemorandum_status);
+      if(isDef())controleerDefinitief();
+    }
+    // Versie/vaststeller/controlegetal van het actuele definitieve memorandum uit het bestaande,
+    // begeleider-only auditspoor (GET /mna/wijzigingen, type verkoopmemorandum_definitief). Alleen als
+    // het snapshot-controlegetal gelijk is aan dat van de opgeslagen tekst, telt het als bevestigd.
+    async function controleerDefinitief(){
+      var r=await leesAntw(fetchMetTimeout(WORKER+'/mna/wijzigingen/'+S.code,{headers:{'x-tussen-key':S._bgKey||''}},15000));
+      if(!actueel()||!isDef())return;
+      var lijst=(r.ok&&r.j&&!r.j.inhoud_afgeschermd&&Array.isArray(r.j.wijzigingen))?r.j.wijzigingen:null,laatste=null;
+      (lijst||[]).forEach(function(w){
+        if(!w||w.type!=='verkoopmemorandum_definitief')return;
+        var e=null;try{e=JSON.parse(w.nieuwe_waarde||'');}catch(x){e=null;}
+        if(!e||e.schema!=='verkoopmemorandum-lifecycle/1'||!(Number(e.definitief_versie)>0)||Math.floor(e.definitief_versie)!==e.definitief_versie||typeof e.tekst_sha256!=='string')return;
+        if(!laatste||e.definitief_versie>laatste.versie)laatste={versie:e.definitief_versie,hash:e.tekst_sha256,door:w.auteur_naam||'',op:w.created_at};
+      });
+      var vast=opgeslagen(),h=null;
+      if(laatste){try{h=await sha256(vast);}catch(x){h=null;}}
+      if(!actueel()||!isDef()||opgeslagen()!==vast)return;
+      if(laatste&&h&&h===laatste.hash){laatste.tekst=vast;defInfo=laatste;melding='';}
+      else{
+        defInfo=null;
+        melding=lijst?'Er is geen bijpassende vastgelegde definitieve versie gevonden voor de opgeslagen tekst. Print / PDF krijgt daarom het CONCEPT-watermerk.'
+          :'De vaststelling (versie en controlegetal) kon niet worden gelezen. Print / PDF krijgt daarom het CONCEPT-watermerk.';
+      }
+      if(!nieuwConcept&&!bezig)renderVerkoopmemo(opgeslagen(),label);
     }
     var docOutEl=document.getElementById('bg-verkoopmemo-out');
     bgToonUitvoer(docOutEl);
-    if(t2.verkoopmemorandum_tekst){renderVerkoopmemo(t2.verkoopmemorandum_tekst,t2.verkoopmemorandum_status||'');}
-    else if(t2.nda_getekend){await genereerVerkoopmemo(false);}
-    else{toonNdaBevestiging();}
+    if(t2.verkoopmemorandum_tekst){renderVerkoopmemo(herstelConcept()||t2.verkoopmemorandum_tekst,t2.verkoopmemorandum_status||'');if(isDef())await controleerDefinitief();}
+    else{await genereerVerkoopmemo(false);}
   }
 
   async function toonClosingModal(){
@@ -5564,11 +6180,21 @@ function renderBegeleiderDashboard(app){
   // ── Documenten sectie begeleider ──
   var bgDocsEl = document.getElementById('bg-docs-sectie');
   if (bgDocsEl) {
+    // Productpunt 16 (13 okt 2026): alleen het antwoord van de laatste laadBgDocs voor dezelfde sessie,
+    // code en nog getoonde sectie wordt verwerkt; een mislukte leesactie is nooit "Nog geen documenten".
+    var bgDocsLaadNr=0;
     async function laadBgDocs() {
+      var nr=++bgDocsLaadNr, sessie=S, code=S.code;
       bgDocsEl.innerHTML = '<div style="font-size:12px;color:var(--muted)">Laden...</div>';
       try {
-        var r = await fetch(WORKER+'/mna/versies/'+S.code);
-        var versies = await r.json();
+        var versies = await leesVersieLijst(WORKER+'/mna/versies/'+S.code).catch(function(){ return null; });
+        if (nr!==bgDocsLaadNr||S!==sessie||S.code!==code||document.getElementById('bg-docs-sectie')!==bgDocsEl) return;
+        if (!versies) {
+          bgDocsEl.innerHTML='<div style="font-size:12px;color:var(--red);font-style:normal">De documentgeschiedenis kon niet worden geladen. <button class="btn-ghost bg-docs-opnieuw" style="font-size:10px;padding:2px 10px;margin-left:4px">Opnieuw proberen</button></div>';
+          var opnieuwBtn=bgDocsEl.querySelector('.bg-docs-opnieuw');
+          if (opnieuwBtn) opnieuwBtn.addEventListener('click', function(){ laadBgDocs(); });
+          return;
+        }
         if (!versies.length) { bgDocsEl.innerHTML='<div style="font-size:12px;color:var(--muted);font-style:italic">Nog geen documenten.</div>'; return; }
         var labels={nda:'NDA',loi:'LoI',bem:'Bemiddelingsovereenkomst',bem_verk:'Bemiddelingsovereenkomst',bem_koper:'Bemiddelingsovereenkomst',excl:'Exclusiviteitsbrief',exclusief:'Exclusiviteitsbrief',bem_upload:'BEM (geüpload)',excl_upload:'Excl (geüpload)',nda_upload:'NDA (geüpload)',loi_upload:'LoI (geüpload)'};
         var kleuren={nda:'#7c5cbf',loi:'var(--gold)',bem:'#2a5ea0',bem_verk:'#2a5ea0',bem_koper:'#2a5ea0',excl:'var(--teal)',exclusief:'var(--teal)',bem_upload:'#2a5ea0',excl_upload:'var(--teal)',nda_upload:'#7c5cbf',loi_upload:'var(--gold)'};
@@ -6159,4 +6785,3 @@ function renderBegeleiderDashboard(app){
 
   // (slaConceptOp verwijderd juli 2026 — dood gewicht: het endpoint bestond niet
   //  en niets las de concepten terug.)
-

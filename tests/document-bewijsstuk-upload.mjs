@@ -57,6 +57,7 @@ function laad(root) {
     knip(src02, 'function leesUploadKeuzes(faseId) {', '\n}\n'),
     knip(src02, 'window.uploadDocumentenSequentieel = async function(faseId, files) {', '\n};\n'),
     knip(src02, 'async function uploadDocument(faseId, file, existingId, vervangtDocId', '\n}\n'),
+    knip(src02, 'function aandachtspuntenHtml(doc) {', '\n}\n'),
     knip(src02, 'function renderDocumentSectie(faseId) {', '\n}\n'),
     knip(src02, 'window.vervangDocument = function(faseId, docId) {', '\n};\n'),
   ];

@@ -17,7 +17,7 @@ export default defineConfig({
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
   ],
   webServer: {
-    command: 'python3 -m http.server 8799',
+    command: 'node tests/statische-server.mjs 8799', // N-156: robuust onder belasting (was python3 -m http.server)
     url: 'http://localhost:8799/mna.html',
     reuseExistingServer: true,
     timeout: 20000,

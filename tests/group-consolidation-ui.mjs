@@ -8,6 +8,8 @@
 // live-, staging-, echte-document- en productiebewijs staan apart OPEN (docs/group-consolidation-ui.md).
 // Sectie 12 (12 okt 2026) draait daarnaast de echte financiële opslagpaden uit mna/02 met uitgestelde
 // synthetische /mna/save-antwoorden: succes, fout, malformed, uit volgorde, sessie-/rolwissel, dirty invoer.
+// Sectie 13 (13 okt 2026) draait Bewerken in beide partneroverzichten (mna/04 en mna/06) met een minimale
+// DOM en een synthetische /mna/partners.
 //
 // Gebruik: node tests/group-consolidation-ui.mjs   (vanuit de repo-root)
 // Wordt ook aangeroepen door tests/audit-consistentie.mjs (check 29).
@@ -139,7 +141,7 @@ function laadOpslag(root, { rol = 'verkoper', code = 'VSYN0001', entiteit = 'ENT
     regel(src02, /^function isKoper\(\)\{.*\}$/m, 'isKoper'),
     regel(src02, /^function isTussen\(\)\{.*\}$/m, 'isTussen'),
     regel(src02, /^function veldBron\(key\)\{[\s\S]*?\n\}/m, 'veldBron'),
-    regel(src02, /^function getDataForFase\(id\)\{[\s\S]*?\n\}/m, 'getDataForFase'),
+    regel(src02, /^function getDataForFase\(id\)\{[\s\S]*?\n\}/m, 'getDataForFase'), regel(src02, /^function opslagRij\([\s\S]*?(?=^function getDataForFase\(id\))/m, 'N-154-basis'),
     regel(src02, /^function getChecklistForFase\(id\)\{.*\}$/m, 'getChecklistForFase'),
     regel(src02, /^function saveGroepsniveauVelden\(faseId\)\{[\s\S]*?\n\}/m, 'saveGroepsniveauVelden'),
     regel(src02, /^function saveCurrent\(cb\)\{[\s\S]*?\n\}/m, 'saveCurrent'),
@@ -189,6 +191,124 @@ function laadOpslag(root, { rol = 'verkoper', code = 'VSYN0001', entiteit = 'ENT
 }
 const tel = (html, re) => (html.match(re) || []).length;
 const tekst = (html) => html.replace(/<[^>]*>/g, '');
+
+// ── Partnerbediening (productpunt 18, 13 okt 2026): echte toonPartnersModal (mna/04) en
+// renderOpening/bindOpeningScreen (mna/06) in node:vm met een minimale DOM en een synthetische
+// /mna/partners volgens het backendcontract (bewerken = POST met id; ok:true+id, 404 bij onbekend id).
+const kopie = (x) => JSON.parse(JSON.stringify(x));
+const PT_ENT = () => [{ id: 'E1', naam: 'Alfa BV' }, { id: 'E2', naam: 'Beta BV' }];
+const PT_RIJEN = () => [
+  { id: 'P1', naam: 'Anna', leeftijd: '58', veranderbereidheid: 'hoog', opvolgingskandidaat: 'Bram', omzet_incl_team: '450000', winstaandeel_pct: '40', entiteit_ids: ['E1', 'E_WEG'], created_at: 1 },
+  { id: 'P2', naam: 'Bas', leeftijd: '61', veranderbereidheid: '', opvolgingskandidaat: '', omzet_incl_team: '', winstaandeel_pct: '60', entiteit_ids: ['E2'], created_at: 2 },
+];
+const htmlDec = (s) => String(s).replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
+// Platte DOM: innerHTML maakt elk geopend element een kind van de eigenaar; genoeg voor id-/klasse-
+// opzoeking, isConnected, dataset (gedecodeerd zoals de browser) en het ruwe HTML voor escapingbewijs.
+function maakDom() {
+  let body = null;
+  class El {
+    constructor(tag, attrs = {}) {
+      this.tagName = tag.toUpperCase(); this.kids = []; this.parent = null; this._html = ''; this._text = ''; this.listeners = {};
+      this.id = attrs.id || ''; this.className = attrs.class || ''; this.type = attrs.type || '';
+      this.value = attrs.value !== undefined ? attrs.value : ''; this.checked = false; this.disabled = false; this.onclick = null;
+      this.style = { display: /display:none/.test(attrs.style || '') ? 'none' : '' }; this.dataset = {};
+      for (const k of Object.keys(attrs)) if (k.startsWith('data-')) this.dataset[k.slice(5)] = attrs[k];
+    }
+    get isConnected() { for (let e = this; e; e = e.parent) if (e === body) return true; return false; }
+    leeg() { this.kids.forEach((k) => { k.parent = null; }); this.kids = []; }
+    set innerHTML(h) {
+      this.leeg(); this._html = String(h); this._text = htmlDec(this._html.replace(/<[^>]*>/g, ''));
+      for (const m of this._html.matchAll(/<([a-zA-Z][\w-]*)([^>]*)>/g)) {
+        const attrs = {};
+        for (const a of m[2].matchAll(/([\w-]+)="([^"]*)"/g)) attrs[a[1]] = htmlDec(a[2]);
+        const el = new El(m[1], attrs); el.parent = this; this.kids.push(el);
+      }
+    }
+    get innerHTML() { return this._html; }
+    set textContent(t) { this.leeg(); this._text = String(t); this._html = this._text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+    get textContent() { return this._text; }
+    appendChild(c) { c.parent = this; this.kids.push(c); return c; }
+    removeChild(c) { this.kids = this.kids.filter((k) => k !== c); c.parent = null; return c; }
+    setAttribute() {}
+    addEventListener(type, f) { this.listeners[type] = f; }
+    alle() { return this.kids.flatMap((k) => [k, ...k.alle()]); }
+    querySelectorAll(sel) {
+      const m = sel.match(/^\.([\w-]+)(:checked)?$/); if (!m) throw new Error('test-DOM: selector niet ondersteund: ' + sel);
+      return this.alle().filter((e) => e.className.split(/\s+/).includes(m[1]) && (!m[2] || e.checked));
+    }
+  }
+  body = new El('body');
+  const document = { body, createElement: (tag) => new El(tag), getElementById: (id) => body.alle().find((e) => e.id === id) || null, querySelectorAll: (sel) => body.querySelectorAll(sel) };
+  return { document, body };
+}
+function laadPartnerUi(root, soort, { rol, maatschap = true, entiteiten = PT_ENT(), rijen = PT_RIJEN() } = {}) {
+  const src02 = lees(root, 'mna/02-state-opslag-documenten.js');
+  const delen = [regel(src02, /^function ge\(id\)\{.*\}$/m, 'ge'), regel(src02, /^function esc\(s\)\{.*\}$/m, 'esc')];
+  if (soort === 'modal') delen.push(regel(lees(root, 'mna/04-begeleider-dashboard.js'), /^function toonPartnersModal\(app\)\{[\s\S]*?\n\}/m, 'toonPartnersModal'));
+  else {
+    const s06 = lees(root, 'mna/06-schermen.js');
+    delen.push(regel(s06, /^function renderOpening\(\)\{[\s\S]*?\n\}/m, 'renderOpening'), regel(s06, /^function bindOpeningScreen\(\)\{[\s\S]*?\n\}/m, 'bindOpeningScreen'));
+  }
+  const store = { rijen: kopie(rijen), entiteiten: kopie(entiteiten), nr: 0 };
+  const log = { req: [] };
+  const dom = maakDom();
+  const fetch = (url, opt = {}) => new Promise((resolve, reject) => {
+    const r = { url, method: opt.method || 'GET', headers: opt.headers || {}, body: opt.body ? JSON.parse(opt.body) : null, open: true };
+    const af = (f) => (...a) => { if (!r.open) throw new Error('test: dubbel antwoord'); r.open = false; f(...a); };
+    const http = (status) => ({ ok: status >= 200 && status < 300, status });
+    r.antwoord = af((d, status = 200) => resolve({ ...http(status), json: () => Promise.resolve(d) }));
+    r.kapotteJson = af((status = 200) => resolve({ ...http(status), json: () => Promise.reject(new SyntaxError('synthetisch: geen JSON')) }));
+    r.netwerkfout = af(() => reject(new Error('synthetisch: netwerkfout')));
+    log.req.push(r);
+  });
+  // Synthetische server: zelfde contract als backend/worker/07-mna-groepen.js (alleen in het geheugen).
+  function serveer(r) {
+    const b = r.body || {};
+    if (r.url.includes('/mna/entiteiten/')) {
+      if (r.method === 'GET') return r.antwoord(kopie(store.entiteiten));
+      store.entiteiten = store.entiteiten.filter((e) => e.id !== b.id);
+      store.rijen.forEach((p) => { p.entiteit_ids = p.entiteit_ids.filter((id) => id !== b.id); });
+      return r.antwoord({ ok: true });
+    }
+    if (r.method === 'GET') return r.antwoord(kopie(store.rijen));
+    if (b.actie === 'verwijderen') { store.rijen = store.rijen.filter((p) => p.id !== b.id); return r.antwoord({ ok: true }); }
+    const velden = { naam: b.naam, leeftijd: b.leeftijd, veranderbereidheid: b.veranderbereidheid, opvolgingskandidaat: b.opvolgingskandidaat, omzet_incl_team: b.omzet_incl_team, winstaandeel_pct: b.winstaandeel_pct, entiteit_ids: b.entiteit_ids };
+    if (b.id) {
+      const p = store.rijen.find((x) => x.id === b.id);
+      if (!p) return r.antwoord({ error: 'Partner niet gevonden' }, 404);
+      Object.assign(p, velden); return r.antwoord({ ok: true, id: b.id, naam: b.naam });
+    }
+    const id = 'PN' + (++store.nr); store.rijen.push({ id, ...velden, created_at: 100 + store.nr });
+    return r.antwoord({ ok: true, id, naam: b.naam });
+  }
+  const server = async () => { for (let i = 0; i < 6; i++) { const open = log.req.filter((r) => r.open); if (!open.length) break; open.forEach(serveer); await flush(); } };
+  const S = soort === 'modal'
+    ? { code: 'TSYN0001', rol: rol || 'tussenpersoon', _bgKey: 'synthetisch-sleutel', _entiteiten: kopie(entiteiten), data: {} }
+    : { code: 'VSYN0001', rol: rol || 'verkoper', traject: { kantoor_naam: 'Synthetisch kantoor' } };
+  const ctx = { console, S, WORKER: 'https://synthetisch.invalid', document: dom.document, fetch, BRAND: { platform: 'KVM' },
+    brandMerkHtml: () => '', versieLabel: () => '', getPartnerTerm: () => ({ enkel: 'partner', meer: 'partners', titel: 'Partners' }), isMaatschap: () => maatschap };
+  ctx.window = ctx;
+  vm.createContext(ctx);
+  vm.runInContext(delen.join('\n'), ctx, { filename: soort === 'modal' ? 'mna/04#partners' : 'mna/06#partners' });
+  const p = soort === 'modal' ? 'pt-' : 'op-pt-';
+  let app = null;
+  const open = () => {
+    if (soort === 'modal') return ctx.toonPartnersModal({});
+    if (!app) { app = dom.document.createElement('div'); dom.body.appendChild(app); }
+    app.innerHTML = ctx.renderOpening(); ctx.bindOpeningScreen();
+  };
+  // Scherm weg: modal sluiten via de bestaande Sluiten-knop, of het openingsscherm opnieuw tekenen.
+  const sluit = () => { if (soort === 'modal') dom.document.getElementById('pt-sluiten').onclick(); else open(); };
+  const el = (id) => dom.document.getElementById(p + id);
+  const klik = (e) => { e.onclick.call(e); return flush(); };
+  const bewerkKnoppen = () => dom.document.querySelectorAll('.' + p + 'bewerk');
+  const bewerkKnop = (id) => bewerkKnoppen().find((b) => b.dataset.id === id);
+  const chk = (id) => dom.document.querySelectorAll('.' + p + 'ent-chk').find((c) => c.value === id);
+  const posts = () => log.req.filter((r) => r.method === 'POST');
+  const gets = () => log.req.filter((r) => r.method === 'GET' && r.url.includes('/mna/partners/'));
+  const formulier = () => ['naam', 'leeftijd', 'verandering', 'opvolging', 'omzet', 'winstaandeel'].map((k) => (el(k) ? el(k).value : null));
+  return { ctx, dom, store, log, server, open, sluit, el, klik, bewerkKnoppen, bewerkKnop, chk, posts, gets, formulier, p };
+}
 
 export async function draaiGroupConsolidationUiChecks(root = process.cwd()) {
   const res = [];
@@ -514,6 +634,76 @@ export async function draaiGroupConsolidationUiChecks(root = process.cwd()) {
     check(stand(t.html()) === 'BEVESTIGD' && t.html().includes('1.500.000'), 'volgende entiteit-save herstelt een bevestigde stand');
   }
   {
+    // Productpunt 37 (22 okt 2026): de server geeft na een groepsrij-save de herberekende groepsrij terug.
+    // A1: groepswaarden → BEVESTIGD met precies die rij; S._groepData (handmatige invoer) blijft ongemoeid.
+    const t = laadOpslag(root, { entiteit: null }); t.toon();
+    t.invoer('df_omzet3', '999999'); t.ctx.saveCurrent(); t.timersAf();
+    const groepVoor = JSON.stringify(t.ctx.S._groepData);
+    t.log.req[0].antwoord(okAntwoord(nieuwDj(1500000))); await flush();
+    const h = t.html();
+    check(t.log.req[0].body.entiteit_id === undefined && stand(h) === 'BEVESTIGD' && h.includes('1.500.000') && !h.includes('1.200.000') && h.includes('Bijgewerkt met de groepsrij die de server') && t.log.renderApp === 0, 'A1 groepsrij-save met groepswaarden: paneel BEVESTIGD met de nieuwe bruto som, zonder renderApp');
+    check(JSON.stringify(t.ctx.S._groepData) === groepVoor && t.ctx.S._groepAuto === undefined && t.dom.df_omzet3.value === '999999', 'A1 groepsrij-save: groepswaarden uit het antwoord overschrijven S._groepData en de invoer niet');
+    // Ook via saveGroepsniveauVelden (groepsniveau-veld / groepsdocument).
+    const g = laadOpslag(root); g.toon();
+    const gVoor = JSON.stringify(g.ctx.S._groepData);
+    g.ctx.saveGroepsniveauVelden('financieel');
+    g.log.req[0].antwoord(okAntwoord(nieuwDj(1750000))); await flush();
+    check(g.log.req[0].body.entiteit_id === undefined && stand(g.html()) === 'BEVESTIGD' && g.html().includes('1.750.000') && JSON.stringify(g.ctx.S._groepData) === gVoor, 'A1 saveGroepsniveauVelden met groepswaarden: paneel BEVESTIGD, S._groepData ongewijzigd');
+  }
+  {
+    // A2: oudere backend zonder groepswaarden → exact het oude gedrag (VEROUDERD, oude stand).
+    const t = laadOpslag(root); t.toon();
+    t.ctx.saveGroepsniveauVelden('financieel');
+    t.log.req[0].antwoord({ ok: true, fase_id: 'financieel', velden: 3 }); await flush();
+    check(stand(t.html()) === 'VEROUDERD' && t.html().includes('1.200.000') && t.ctx.S._gbBevestigd.data_json === null, 'A2 groepsrij-save zonder groepswaarden: oude stand met status VEROUDERD');
+  }
+  {
+    // A3: een ouder groepsrij-antwoord of een antwoord voor een andere sessie verandert niets.
+    const t = laadOpslag(root); t.toon();
+    t.ctx.saveGroepsniveauVelden('financieel'); t.ctx.saveGroepsniveauVelden('financieel');
+    t.log.req[1].antwoord(okAntwoord(nieuwDj(2000000))); await flush();
+    t.log.req[0].antwoord(okAntwoord(nieuwDj(1500000))); await flush();
+    check(stand(t.html()) === 'BEVESTIGD' && t.html().includes('2.000.000') && !t.html().includes('1.500.000') && t.ctx.S._gbBevestigd.volgnr === 2, 'A3 ouder groepsrij-antwoord overschrijft de nieuwere bevestigde stand niet');
+    const s = laadOpslag(root); s.toon();
+    s.ctx.saveGroepsniveauVelden('financieel');
+    s.ctx.S = maakS('VSYN0001', 'verkoper', [rij('financieel', null, nieuwDj(333000))]); s.toon();
+    const nieuwGroep = JSON.stringify(s.ctx.S._groepData);
+    s.log.req[0].antwoord(okAntwoord(nieuwDj(1500000))); await flush();
+    check(s.ctx.S._gbBevestigd === undefined && stand(s.html()) === 'GELADEN' && s.html().includes('333.000') && JSON.stringify(s.ctx.S._groepData) === nieuwGroep && s.log.paneel === 0, 'A3 groepsrij-antwoord na sessiewissel raakt de nieuwe sessie en het paneel niet');
+  }
+  {
+    // A4: fase-wisselsave in mna/06 (.fase-card[data-fi]-onclick) — groepswaarden alleen naar S._groepData
+    // als bij het versturen een entiteit vastlag; een groepsrij-antwoord laat S._groepData ongemoeid.
+    const s06 = lees(root, 'mna/06-schermen.js');
+    const kaart = s06.indexOf(".fase-card[data-fi]').forEach(");
+    const begin = s06.indexOf('var entVerstuurd=S._actieveEntiteit||null;', kaart);
+    const slot = '}).catch(function(){});';
+    const eind = s06.indexOf(slot, begin);
+    const frag = kaart > 0 && begin > kaart && eind > begin ? s06.slice(begin, eind + slot.length) : '';
+    check(frag.indexOf("fetch(WORKER+'/mna/save'") > 0 && frag.includes('entiteit_id:S._actieveEntiteit||undefined') && frag.includes('if(entVerstuurd&&d&&d.groepswaarden)') && !/S\._groepData\[[^\]]*\]=/.test(frag.slice(0, frag.indexOf('if(entVerstuurd&&d&&d.groepswaarden)'))), 'A4 mna/06 fase-wisselsave: entiteit vastgelegd vóór de fetch; groepswaarden alleen verwerkt bij een vastgelegde entiteit');
+    const draai = async (actief, wisselNaVersturen) => {
+      const verzoeken = [];
+      const ctx = vm.createContext({
+        WORKER: 'https://syn.invalid',
+        S: { code: 'VSYN0001', _actieveEntiteit: actief, notities: {}, _groepData: { financieel_omzet3: '999999' } },
+        getDataForFase: () => ({}), getChecklistForFase: () => ({ items: {}, redflags: {} }),
+        metBasis: (pl) => pl, naOpslag: () => {}, // N-154: basis en verwerking na opslag apart getest (audit-consistentie 49)
+        fetch: (url, opts) => { verzoeken.push(JSON.parse(opts.body)); return Promise.resolve({ json: () => Promise.resolve({ ok: true, fase_id: 'financieel', groepswaarden: { omzet3: { value: '1500000', label: '', auto: true } } }) }); },
+      });
+      vm.runInContext('function faseWisselSave(f){' + frag + '}', ctx, { filename: 'mna/06#fase-wisselsave' });
+      ctx.faseWisselSave({ id: 'financieel' });
+      if (wisselNaVersturen !== undefined) ctx.S._actieveEntiteit = wisselNaVersturen;
+      await flush();
+      return { S: ctx.S, body: verzoeken[0] };
+    };
+    const groep = frag ? await draai(null) : null;
+    check(groep && groep.body.entiteit_id === undefined && groep.S._groepData.financieel_omzet3 === '999999', 'A4 groepsrij-antwoord met afwijkende groepswaarde: S._groepData ongewijzigd');
+    const groepDanEnt = frag ? await draai(null, 'ENT_A') : null;
+    check(groepDanEnt && groepDanEnt.S._groepData.financieel_omzet3 === '999999', 'A4 entiteit pas na het versturen gekozen: groepsrij-antwoord werkt S._groepData nog steeds niet bij');
+    const ent = frag ? await draai('ENT_A') : null;
+    check(ent && ent.body.entiteit_id === 'ENT_A' && ent.S._groepData.financieel_omzet3 === '1500000', 'A4 entiteit-antwoord: S._groepData bijgewerkt (gedrag van vóór productpunt 37)');
+  }
+  {
     // Groepsniveau-veld in entiteitcontext: entiteit-save én groepsrij-save; de latere groepsrij-save wint.
     const t = laadOpslag(root); t.toon();
     t.invoer('df_aantalPartners', '3'); t.ctx.saveCurrent(); t.timersAf();
@@ -548,6 +738,151 @@ export async function draaiGroupConsolidationUiChecks(root = process.cwd()) {
     try { u.log.req[0].antwoord(okAntwoord(nieuwDj(1500000))); await flush(); } catch (e) { fout = e; }
     u.toon();
     check(!fout && u.log.paneel === 0 && stand(u.html()) === 'BEVESTIGD' && u.html().includes('1.500.000'), 'paneel niet in beeld: stand wordt bewaard en bij de volgende render getoond');
+  }
+
+  // 13. Partnerbediening (productpunt 18, 13 okt 2026): Bewerken in beide bestaande overzichten — de
+  // begeleidermodal (toonPartnersModal, mna/04) en het openingsscherm (renderOpening/bindOpeningScreen,
+  // mna/06) — met de echte functies, een minimale DOM en een synthetische /mna/partners. Geen netwerk.
+  for (const soort of ['modal', 'opening']) {
+    const nm = soort === 'modal' ? 'partners begeleidermodal' : 'partners openingsscherm';
+    const ANNA = ['Anna', '58', 'hoog', 'Bram', '450000', '40'];
+    // Start: overzicht open, lijst gelezen, P1 in bewerking met leeftijd 59 en E2 extra aangevinkt.
+    const startBewerk = async (opts) => {
+      const t = laadPartnerUi(root, soort, opts); t.open(); await t.server();
+      await t.klik(t.bewerkKnop('P1'));
+      t.el('leeftijd').value = '59'; t.chk('E2').checked = true;
+      return t;
+    };
+    {
+      // Bewerken → wijzigen → opslaan → herladen.
+      const t = laadPartnerUi(root, soort); t.open(); await t.server();
+      check(t.bewerkKnoppen().length === 2 && t.el('bewerk-status').style.display === 'none' && t.el('annuleren').style.display === 'none' && t.posts().length === 0, nm + ': elke rij heeft een Bewerkenknop; geen bewerkmodus bij openen');
+      await t.klik(t.bewerkKnop('P1'));
+      check(JSON.stringify(t.formulier()) === JSON.stringify(ANNA) && t.chk('E1').checked && !t.chk('E2').checked, nm + ': formulier voorgevuld met alle partnervelden, winstaandeel en entiteitkoppelingen');
+      check(t.el('bewerk-status').textContent === 'Bewerken: Anna' && t.el('bewerk-status').style.display === 'block' && t.el('annuleren').style.display !== 'none' && t.el('toevoegen').textContent === 'Opslaan' && t.posts().length === 0, nm + ': bewerkmodus zichtbaar (status, Annuleren, Opslaan); nog geen request');
+      t.el('leeftijd').value = '59'; t.chk('E2').checked = true;
+      const getsVoor = t.gets().length;
+      await t.klik(t.el('toevoegen'));
+      const p = t.posts();
+      check(p.length === 1 && p[0].url === 'https://synthetisch.invalid/mna/partners/' + t.ctx.S.code && p[0].body.id === 'P1' && p[0].body.actie === undefined && p[0].body.naam === 'Anna' && p[0].body.leeftijd === '59' && p[0].body.winstaandeel_pct === '40' && JSON.stringify(p[0].body.entiteit_ids) === '["E1","E2","E_WEG"]', nm + ': één POST naar de bestaande route met het bestaande id; koppeling zonder checkbox (E_WEG) en winstaandeel gaan mee');
+      check(soort === 'modal' ? p[0].headers['x-tussen-key'] === 'synthetisch-sleutel' : p[0].headers['x-tussen-key'] === undefined, nm + ': dezelfde authheaders als het bestaande toevoegformulier');
+      check(t.el('toevoegen').disabled && t.el('toevoegen').textContent === '...' && t.gets().length === getsVoor, nm + ': tijdens opslaan knop uit; geen succes vóór het antwoord');
+      await t.server();
+      const rij = t.store.rijen.find((r) => r.id === 'P1');
+      check(t.store.rijen.length === 2 && rij.leeftijd === '59' && rij.naam === 'Anna' && JSON.stringify(rij.entiteit_ids) === '["E1","E2","E_WEG"]' && JSON.stringify(t.store.rijen[1]) === JSON.stringify(PT_RIJEN()[1]) && t.posts().length === 1, nm + ': serverrij P1 bijgewerkt met zelfde id en koppelingen; geen verwijderen of nieuwe rij; andere partner ongemoeid');
+      check(t.gets().length === getsVoor + 1 && t.el('lijst').innerHTML.includes('59 jaar') && t.bewerkKnoppen().length === 2 && t.formulier().every((v) => v === '') && !t.chk('E1').checked && t.el('bewerk-status').style.display === 'none' && t.el('annuleren').style.display === 'none' && t.el('toevoegen').textContent === '+ Toevoegen' && !t.el('toevoegen').disabled && t.el('err').style.display === 'none', nm + ': na ack de lijst opnieuw van de server gelezen; formulier leeg en terug in toevoegmodus');
+      await t.klik(t.bewerkKnop('P1'));
+      check(t.el('leeftijd').value === '59' && t.chk('E1').checked && t.chk('E2').checked && t.el('bewerk-status').textContent === 'Bewerken: Anna', nm + ': na herladen opnieuw bewerken toont de herlezen serverrij (id gelijk, koppelingen behouden)');
+    }
+    {
+      // Geen winstaandeelveld (geen maatschap): de bestaande waarde gaat ongewijzigd mee.
+      const t = await startBewerk({ maatschap: false });
+      await t.klik(t.el('toevoegen'));
+      check(t.el('winstaandeel') === null && t.posts()[0].body.winstaandeel_pct === '40', nm + ': zonder winstaandeelveld blijft het bestaande winstaandeel behouden');
+    }
+    {
+      // Annuleren: geen mutatie; invoer van vóór de eerste Bewerken-klik komt terug.
+      const t = laadPartnerUi(root, soort); t.open(); await t.server();
+      t.el('naam').value = 'Concept'; t.chk('E2').checked = true;
+      await t.klik(t.bewerkKnop('P1')); await t.klik(t.bewerkKnop('P2'));
+      check(t.el('naam').value === 'Bas' && t.el('bewerk-status').textContent === 'Bewerken: Bas', nm + ': tweede Bewerken-klik wisselt naar de andere partner');
+      const reqVoor = t.log.req.length;
+      await t.klik(t.el('annuleren'));
+      check(t.el('naam').value === 'Concept' && t.chk('E2').checked && !t.chk('E1').checked && t.el('bewerk-status').style.display === 'none' && t.el('toevoegen').textContent === '+ Toevoegen' && t.log.req.length === reqVoor && t.posts().length === 0 && JSON.stringify(t.store.rijen) === JSON.stringify(PT_RIJEN()), nm + ': Annuleren zonder request of mutatie; eerdere onopgeslagen invoer terug');
+      await t.klik(t.el('toevoegen')); await t.server();
+      check(t.posts().length === 1 && t.posts()[0].body.id === undefined && t.store.rijen.length === 3 && t.store.rijen[2].naam === 'Concept' && t.el('naam').value === '', nm + ': na Annuleren voegt de knop weer een nieuwe partner toe (toevoegen intact)');
+    }
+    // Fout, 404 en rolweigering: geen succes, invoer en bewerkmodus blijven, geen herlezing.
+    for (const [naam, af, verwacht] of [
+      ['serverfout 500', (r) => r.antwoord({ error: 'Partner opslaan mislukt' }, 500), 'Partner opslaan mislukt'],
+      ['rolweigering 403', (r) => r.antwoord({ error: 'Unauthorized' }, 403), 'Geen toestemming om deze partner te bewerken.'],
+      ['rolweigering 401', (r) => r.antwoord({ error: 'Unauthorized' }, 401), 'Geen toestemming om deze partner te bewerken.'],
+      ['netwerkfout', (r) => r.netwerkfout(), 'Fout bij opslaan'],
+      ['geen JSON', (r) => r.kapotteJson(), 'Fout bij opslaan'],
+      ['leeg antwoord', (r) => r.antwoord(null), 'Fout bij opslaan'],
+      ['ok zonder id', (r) => r.antwoord({ ok: true }), 'Fout bij opslaan'],
+      ['ok met ander id', (r) => r.antwoord({ ok: true, id: 'P2' }), 'Fout bij opslaan'],
+      ['ok als tekst', (r) => r.antwoord({ ok: 'true', id: 'P1' }), 'Fout bij opslaan'],
+      ['HTTP 500 met ok', (r) => r.antwoord({ ok: true, id: 'P1' }, 500), 'Fout bij opslaan'],
+    ]) {
+      const t = await startBewerk();
+      const getsVoor = t.gets().length;
+      await t.klik(t.el('toevoegen'));
+      af(t.posts()[0]); await flush();
+      check(t.el('err').style.display === 'block' && t.el('err').textContent === verwacht && t.el('leeftijd').value === '59' && t.el('naam').value === 'Anna' && t.chk('E2').checked
+        && t.el('bewerk-status').textContent === 'Bewerken: Anna' && t.el('toevoegen').textContent === 'Opslaan' && !t.el('toevoegen').disabled && t.gets().length === getsVoor, nm + ', ' + naam + ': foutmelding, invoer en bewerkmodus behouden, geen herlezing');
+    }
+    {
+      // Echte 404 van de synthetische server: partner intussen elders verwijderd.
+      const t = await startBewerk();
+      t.store.rijen = t.store.rijen.filter((r) => r.id !== 'P1');
+      await t.klik(t.el('toevoegen')); await t.server();
+      check(t.el('err').textContent === 'Partner niet gevonden' && t.el('leeftijd').value === '59' && t.store.rijen.length === 1 && t.posts().length === 1, nm + ': 404 onbekend id toont "Partner niet gevonden", maakt niets opnieuw aan en behoudt de invoer');
+      await t.klik(t.el('annuleren'));
+      check(t.el('naam').value === '' && t.el('err').style.display === 'none' && t.posts().length === 1, nm + ': na 404 annuleren zonder extra request');
+    }
+    {
+      // Nieuwere bewerking tijdens opslaan: succes van de oude sluit de nieuwe niet.
+      const t = await startBewerk();
+      await t.klik(t.el('toevoegen'));
+      await t.klik(t.bewerkKnop('P2'));
+      const getsVoor = t.gets().length;
+      t.posts()[0].antwoord({ ok: true, id: 'P1', naam: 'Anna' }); await flush();
+      check(t.el('naam').value === 'Bas' && t.el('bewerk-status').textContent === 'Bewerken: Bas' && t.el('toevoegen').textContent === 'Opslaan' && !t.el('toevoegen').disabled && t.gets().length === getsVoor + 1, nm + ': laat succes van een oudere bewerking laat de nieuwere bewerking staan en herleest de lijst');
+      const t2 = await startBewerk();
+      await t2.klik(t2.el('toevoegen'));
+      await t2.klik(t2.bewerkKnop('P2'));
+      t2.posts()[0].antwoord({ error: 'Partner opslaan mislukt' }, 500); await flush();
+      check(t2.el('naam').value === 'Bas' && t2.el('err').textContent === 'Opslaan van Anna mislukt: Partner opslaan mislukt' && t2.el('bewerk-status').textContent === 'Bewerken: Bas', nm + ': late fout van een oudere bewerking wordt gemeld zonder de nieuwere bewerking aan te raken');
+    }
+    // Contextwissel tijdens opslaan: nieuwe sessie (zelfde code), andere code, rolwissel, scherm weg.
+    for (const [naam, wissel] of [
+      ['nieuwe sessie zelfde code', (t) => { t.ctx.S = { ...t.ctx.S }; }],
+      ['andere code', (t) => { t.ctx.S.code = t.ctx.S.code.replace('SYN0001', 'SYN0002'); }],
+      ['rolwissel', (t) => { t.ctx.S.rol = 'koper'; }],
+      [soort === 'modal' ? 'modal gesloten' : 'scherm opnieuw getekend', (t) => { t.sluit(); }],
+    ]) {
+      const t = await startBewerk();
+      await t.klik(t.el('toevoegen'));
+      wissel(t);
+      const getsVoor = t.gets().length, nieuwForm = JSON.stringify(t.formulier());
+      t.posts()[0].antwoord({ ok: true, id: 'P1', naam: 'Anna' }); await flush();
+      check(t.gets().length === getsVoor && JSON.stringify(t.formulier()) === nieuwForm && (t.el('err') === null || t.el('err').style.display === 'none'), nm + ', ' + naam + ': laat antwoord wordt genegeerd (geen herlezing, geen formulier- of statuswijziging)');
+    }
+    {
+      // Oud leesantwoord na sluiten/opnieuw openen komt niet in het nieuwe overzicht.
+      const t = laadPartnerUi(root, soort);
+      t.open();
+      const oud = t.log.req.filter((r) => r.open && r.method === 'GET' && r.url.includes('/mna/partners/'));
+      t.sluit(); if (soort === 'modal') t.open();
+      const nieuw = t.log.req.filter((r) => r.open && !oud.includes(r));
+      nieuw.forEach((r) => r.antwoord(r.url.includes('/mna/partners/') ? kopie(t.store.rijen) : kopie(t.store.entiteiten))); await flush();
+      oud.forEach((r) => r.antwoord([{ id: 'PX', naam: 'Oude lijst', entiteit_ids: [] }])); await flush();
+      check(oud.length === 1 && !t.el('lijst').innerHTML.includes('Oude lijst') && !t.bewerkKnop('PX') && t.bewerkKnoppen().length === 2, nm + ': laat leesantwoord van een gesloten/vervangen overzicht overschrijft het nieuwe overzicht niet');
+      await t.klik(t.bewerkKnop('P2'));
+      check(t.el('naam').value === 'Bas' && t.el('bewerk-status').textContent === 'Bewerken: Bas', nm + ': Bewerken in het nieuwe overzicht gebruikt de actuele rijen');
+    }
+    {
+      // HTML-escaping: naam en id met markup.
+      const boos = { id: 'P"<x>', naam: '<img src=x onerror=alert(1)>', leeftijd: '', veranderbereidheid: '<b>v</b>', opvolgingskandidaat: '', omzet_incl_team: '', winstaandeel_pct: '', entiteit_ids: ['E1'] };
+      const t = laadPartnerUi(root, soort, { rijen: [boos] }); t.open(); await t.server();
+      const lh = t.el('lijst').innerHTML;
+      check(!/<img|<b>|"<x>/.test(lh) && lh.includes('&lt;img src=x onerror=alert(1)&gt;') && t.bewerkKnop('P"<x>'), nm + ': lijst escapet naam, velden en id; Bewerkenknop draagt het echte id');
+      await t.klik(t.bewerkKnop('P"<x>'));
+      check(t.el('naam').value === boos.naam && t.el('verandering').value === '<b>v</b>' && t.el('bewerk-status').textContent === 'Bewerken: ' + boos.naam && t.el('bewerk-status').kids.length === 0 && !t.el('bewerk-status').innerHTML.includes('<img'), nm + ': voorvullen als platte waarde; status via textContent zonder markup');
+      await t.klik(t.el('toevoegen')); await t.server();
+      check(t.posts()[0].body.id === 'P"<x>' && t.store.rijen.length === 1 && t.store.rijen[0].naam === boos.naam, nm + ': opslaan stuurt het ongewijzigde id terug');
+    }
+    if (soort === 'opening') {
+      // Entiteit verwijderen tijdens bewerken: die koppeling vervalt, de koppeling zonder checkbox blijft.
+      const t = await startBewerk();
+      const verwijder = t.dom.document.querySelectorAll('.op-gs-verwijder').find((b) => b.dataset.id === 'E1');
+      await t.klik(verwijder); await t.server();
+      check(!t.chk('E1') && t.chk('E2').checked && t.el('bewerk-status').textContent === 'Bewerken: Anna' && t.el('leeftijd').value === '59', nm + ': na entiteit verwijderen blijft de bewerking met de gekozen koppelingen staan');
+      await t.klik(t.el('toevoegen'));
+      const b = t.posts().filter((r) => r.url.includes('/mna/partners/'))[0].body;
+      check(b.id === 'P1' && JSON.stringify(b.entiteit_ids) === '["E2","E_WEG"]', nm + ': verwijderde entiteit valt uit de koppeling; koppeling zonder checkbox blijft behouden');
+    }
   }
 
   return res;

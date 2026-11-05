@@ -37,6 +37,7 @@ function mdToHtml(text){
   h=esc(h);
   // Pipe-tabellen (| Veld | Status |) omzetten naar leesbare tekst zonder pipes
   h=h.replace(/^\|[-| ]+\|$/gm,'');
+  h=h.replace(/^\|[\s:|-]+\|$/gm,''); // #91 fase C: tabel-scheidingsregel weglaten
   h=h.replace(/^\|.+\|$/gm,function(line){
     return line.replace(/^\||\|$/g,'').split('|').map(function(s){return s.trim();}).filter(Boolean).join(' — ');
   });
@@ -387,7 +388,10 @@ function saveCurrent(cb){
   // actieve entiteit, gelabeld met het entiteit_id van de OUDE — écht cross-entiteit-databesmetting.
   // Gevonden 18 augustus 2026 bij het verifiëren van taak 24: twee entiteiten kregen na kort na
   // elkaar uploaden + wisselen exact dezelfde (verkeerde) cijfers in de database.
-  var saveSnapshot={code:S.code,fase_id:f.id,data_json:getDataForFase(f.id),checklist_json:getChecklistForFase(f.id),notitie:S.notities[f.id]||'',entiteit_id:S._actieveEntiteit||undefined};
+  // N-154: de basis hoort bij deze momentopname. Werkt het antwoord van een eerdere opslag binnen de 800ms een elders
+  // gewijzigd veld bij, dan zou een basis die pas bij het versturen wordt bepaald de oude waarde als wijziging tonen.
+  // Pas bij het versturen aangemeld als lopend (_verstuurGeplandeSave), zodat een vervangen momentopname niets achterlaat.
+  var saveSnapshot=metBasis({code:S.code,fase_id:f.id,data_json:getDataForFase(f.id),checklist_json:getChecklistForFase(f.id),notitie:S.notities[f.id]||'',entiteit_id:S._actieveEntiteit||undefined},true);
   var nieuwePending={snapshot:saveSnapshot,faseId:f.id,groepsniveauGewijzigd:groepsniveauGewijzigd,cb:cb,sessie:S};
   // Staat er al een save van een ANDERE fase/entiteit te wachten (nog niet verstuurd)? Dan die eerst
   // direct versturen i.p.v. zomaar annuleren — anders raakt die wijziging stilzwijgend kwijt zodra de
@@ -411,8 +415,11 @@ function saveCurrent(cb){
 // legt gbOpslagKlaar vast wat de server terugmeldt, zonder zelf iets te berekenen:
 // - entiteit-save: /mna/save geeft de volledige groepsrij-data_json terug (groepswaarden, incl.
 //   consolidatieCheck.groepsbeeld) → status BEVESTIGD met precies die rij;
-// - groepsrij-save: de server vervangt data_json door de verstuurde invoer en geeft niets terug → de
-//   getoonde stand blijft, met status VEROUDERD (de eigen invoer wordt nooit als servermetadata gebruikt);
+// - groepsrij-save: productpunt 37 (22 okt 2026) — geeft de server de herberekende groepsrij terug
+//   (groepswaarden, incl. consolidatieCheck), dan ook BEVESTIGD met precies die rij. Zonder groepswaarden
+//   (oudere backend) blijft de getoonde stand, met status VEROUDERD (de eigen invoer wordt nooit als
+//   servermetadata gebruikt). Een groepsrij-antwoord werkt alleen dit paneel bij, nooit S._groepData
+//   (handmatige invoer blijft staan);
 // - foutmelding, netwerkfout, onleesbaar of onvolledig antwoord → oude stand blijft, status ONBEVESTIGD.
 // Bewust geen extra leesverzoek: /mna/traject telt server-side als login (rate limit en audit-'login').
 // Een antwoord telt alleen voor dezelfde sessie (S wordt bij elke login/uitlog als nieuw object
@@ -428,30 +435,75 @@ function gbOpslagKlaar(tk,d){
   var oud=S._gbBevestigd;
   if(oud&&oud.volgnr>=tk.volgnr)return;
   var ok=!!d&&typeof d==='object'&&d.ok===true&&!d.error;
-  var gw=ok&&tk.entiteit&&(d.fase_id===undefined||d.fase_id==='financieel')?d.groepswaarden:null;
+  var gw=ok&&(d.fase_id===undefined||d.fase_id==='financieel')?d.groepswaarden:null;
   var geldig=!!gw&&typeof gw==='object'&&!Array.isArray(gw);
   S._gbBevestigd={code:tk.code,volgnr:tk.volgnr,status:geldig?'BEVESTIGD':(ok&&!tk.entiteit?'VEROUDERD':'ONBEVESTIGD'),data_json:geldig?gw:(oud?oud.data_json:null)};
   var el=typeof renderGroepsbeeld==='function'?ge('gb-panel'):null;
   if(el){var f=FASES[S.fase];el.outerHTML=renderGroepsbeeld(f?f.id:'');}
 }
+// Productpunt 38 (22 okt 2026): lopend financieel werk per sessie. Bewezen in productie-E2E 22 okt: een
+// groepsdocument direct na een entiteitsdocument toonde in het keuzevenster als "bruto berekende som" alleen
+// de oude som — de entiteitsave liep nog (fire-and-forget) en S._groepData wordt pas bij dat antwoord
+// bijgewerkt. Entiteit-/groepssaves en uploads melden zich hier aan en (ook bij fout) weer af;
+// verwerkGroepsdocument wacht daarop. Opgeslagen op S, dus een nieuwe sessie begint leeg.
+function finWerkStart(soort){
+  var sessie=S;
+  if(!sessie)return null;
+  if(!sessie._lopendFinWerk)sessie._lopendFinWerk=[];
+  sessie._finWerkVolgnr=(sessie._finWerkVolgnr||0)+1;
+  var klaar;
+  var w={soort:soort,volgnr:sessie._finWerkVolgnr,belofte:new Promise(function(r){klaar=r;})};
+  w.af=function(){var i=sessie._lopendFinWerk.indexOf(w);if(i>=0)sessie._lopendFinWerk.splice(i,1);klaar();};
+  sessie._lopendFinWerk.push(w);
+  return w;
+}
+// Wat een groepsdocument moet afwachten: alle lopende saves en de uploads die vóór de eigen upload
+// (volgnummer grens) gestart zijn — de eigen en latere uploads niet (die wachten zelf eventueel op dit document).
+function finWerkLopend(sessie,grens){
+  return (sessie&&sessie._lopendFinWerk||[]).filter(function(w){return !(w.soort==='upload'&&w.volgnr>=grens);});
+}
+// null = niets lopend (direct verwerken); anders een belofte: true zodra alles klaar is (ook werk dat
+// intussen bijkomt, bijv. de entiteitsave na een lopende upload), false na ms (standaard 60 s) of bij een
+// sessiewissel.
+function finWerkAfwachten(grens,ms){
+  var sessie=S;
+  if(!finWerkLopend(sessie,grens).length)return null;
+  return new Promise(function(klaar){
+    var gedaan=false;
+    function einde(ok){if(gedaan)return;gedaan=true;clearTimeout(t);klaar(ok);}
+    var t=setTimeout(function(){einde(false);},ms||60*1000);
+    (function ronde(){
+      if(gedaan)return;
+      if(S!==sessie)return einde(false);
+      var lijst=finWerkLopend(sessie,grens);
+      if(!lijst.length)return einde(true);
+      Promise.all(lijst.map(function(w){return w.belofte;})).then(ronde);
+    })();
+  });
+}
 function _verstuurGeplandeSave(pending){
   var gbTk=gbOpslagStart(pending.snapshot.code,pending.snapshot.fase_id,pending.snapshot.entiteit_id);
+  // Productpunt 38: als lopend financieel werk aangemeld tot het antwoord (of de fout) verwerkt is.
+  var finWerk=typeof finWerkStart==='function'?finWerkStart('save'):null;
+  function finAf(){if(finWerk)finWerk.af();}
   // Productpunt 19 (12 okt 2026): "Opgeslagen ✓" alleen na HTTP 2xx + leesbare JSON met ok:true, en bij
   // een groepsniveau-wijziging pas als óók de groepsrij-save zo is bevestigd. Netwerkfout, onleesbaar of
   // leeg antwoord gaf tot nu toe geen enkele melding; nu een eerlijke melding. Alleen in dezelfde sessie.
   var sessie=pending.sessie||S;
   var http=false,groepAck=null;
   fetch(WORKER+'/mna/save',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify(pending.snapshot)
+    body:JSON.stringify(metBasis(pending.snapshot))
   }).then(function(r){http=!!(r&&r.ok);return r.json();}).then(null,function(){return null;}).then(function(d){
     var eigen=S===sessie&&S.code===pending.snapshot.code;
+    if(eigen)naOpslag(pending.snapshot,d,sessie);
     var nietBevestigd='Opslaan niet bevestigd door de server (geen verbinding, foutmelding of onleesbaar antwoord). Uw wijzigingen staan nog in dit scherm maar zijn niet opgeslagen; probeer het opnieuw.';
     // Elke serverfout moet zichtbaar zijn — niet alleen 'vergrendeld'. Vóór deze fix toonde elke
     // andere afwijzing (bijv. de nieuwe fase-Financieel-blokkade hierboven) alsnog "✓ Opgeslagen",
     // een stille onterechte bevestiging (schending GOUDEN STANDAARD, gevonden bij onafhankelijke
     // review 12 sep 2026).
     if(eigen){
-      if(d&&d.error){showAlert(d.error==='vergrendeld'?'Dit traject is vergrendeld. Uw wijzigingen zijn niet opgeslagen.':('Opslaan mislukt: '+d.error));}
+      // N-154: bij VELD_CONFLICT toont naOpslag al de foutmelding van de server met de actuele waarde.
+      if(d&&d.error){if(d.code!=='VELD_CONFLICT')showAlert(d.error==='vergrendeld'?'Dit traject is vergrendeld. Uw wijzigingen zijn niet opgeslagen.':('Opslaan mislukt: '+d.error));}
       else if(!http||!d||typeof d!=='object'||d.ok!==true){showAlert(nietBevestigd);}
       else (groepAck||Promise.resolve(true)).then(function(g){
         if(S!==sessie)return;
@@ -460,9 +512,10 @@ function _verstuurGeplandeSave(pending){
     }
     // Groepsstructuur: bij een entiteit-save stuurt de server de bijgewerkte groepswaarden mee terug —
     // direct verwerken in S._groepData zodat "Groep"-weergave meteen klopt, ook zonder herfetch.
-    if(eigen&&d&&!d.error&&d.groepswaarden)Object.keys(d.groepswaarden).forEach(function(k){var v=d.groepswaarden[k];if(v&&v.value!==undefined)S._groepData[pending.faseId+'_'+k]=v.value;});
+    // Niet bij een groepsrij-save (productpunt 37): die groepswaarden zijn alleen voor het groepsbeeldpaneel.
+    if(eigen&&pending.snapshot.entiteit_id&&d&&!d.error&&d.groepswaarden)Object.keys(d.groepswaarden).forEach(function(k){var v=d.groepswaarden[k];if(v&&v.value!==undefined){var gk=pending.faseId+'_'+k;S._groepData[gk]=v.value;if(v.auto===true){if(!S._groepAuto)S._groepAuto={};S._groepAuto[gk]=String(v.value);}else if(S._groepAuto)delete S._groepAuto[gk];}});
     gbOpslagKlaar(gbTk,d);
-  }).catch(function(){gbOpslagKlaar(gbTk,null);});
+  }).catch(function(){gbOpslagKlaar(gbTk,null);}).then(finAf,finAf);
   // Groepsniveau-veld gewijzigd terwijl een entiteit actief was: die hoort niet in de
   // entiteit-eigen save hierboven (getDataForFase sluit 'm al uit) — apart naar de groepsrij.
   if(pending.groepsniveauGewijzigd)groepAck=saveGroepsniveauVelden(pending.faseId);
@@ -482,6 +535,104 @@ function veldBron(key){
   if(S._userEdited&&S._userEdited[key])return {bron:'handmatig'};
   return null;
 }
+// N-154 (prioriteit 0, 30 okt 2026): per opgeslagen rij (fase + eventuele entiteit) de laatst bekende serverstand
+// (basis). Bij elke opslag gaat die mee; de server neemt alleen velden over die hier zijn gewijzigd en weigert als
+// hetzelfde veld intussen elders is veranderd. Zo draait een verouderd scherm nooit ongemerkt nieuwere waarden terug.
+function opslagRij(faseId,entiteitId){return (entiteitId||'')+'|'+faseId;}
+function basisVeldIds(faseId,entiteitId){var f=FASES.find(function(x){return x.id===faseId;});if(!f)return [];return f.dataFields.filter(function(df){return !df.header&&!(df.groepsniveau&&entiteitId);}).map(function(df){return df.id;});}
+function basisWaarden(faseId,entiteitId,dj){var b={};basisVeldIds(faseId,entiteitId).forEach(function(k){var v=dj&&dj[k];if(v&&v.value)b[k]=String(v.value);});return b;}
+function zetBasis(faseId,entiteitId,dj){if(!S._basis)S._basis={};S._basis[opslagRij(faseId,entiteitId)]=basisWaarden(faseId,entiteitId,dj);}
+// Loopt er voor dezelfde rij nog een opslag, dan is de basis wat die opslag verstuurde (zo lijkt terugzetten
+// naar de oude waarde tijdens een lopende opslag geen "ongewijzigd"). Een beacon krijgt nooit antwoord en wordt
+// daarom niet als lopend geregistreerd (zonderAntwoord); een geplande momentopname ook nog niet (pas bij versturen).
+// Heeft de payload al een basis (vastgelegd bij de momentopname), dan blijft die staan en wordt alleen aangemeld;
+// behalve als die basis kwam van een lopende opslag die intussen mislukte (die waarden staan niet op de server).
+function metBasis(payload,zonderAntwoord){
+  if(!S._basis)S._basis={};if(!S._basisOpen)S._basisOpen={};
+  var rij=opslagRij(payload.fase_id,payload.entiteit_id),open=S._basisOpen[rij]||(S._basisOpen[rij]=[]);
+  if(!Object.prototype.hasOwnProperty.call(payload,'basis')||(payload._basisBron&&payload._basisBron.mislukt)){
+    var bron=open.length?open[open.length-1]:null,b=bron?bron.waarden:S._basis[rij];
+    payload.basis=b?Object.assign({},b):{};
+    Object.defineProperty(payload,'_basisBron',{value:bron,enumerable:false,configurable:true,writable:true});
+  }
+  if(!zonderAntwoord){
+    S._basisVolg=(S._basisVolg||0)+1;
+    var reg={volg:S._basisVolg,waarden:basisWaarden(payload.fase_id,payload.entiteit_id,payload.data_json)};
+    open.push(reg);
+    Object.defineProperty(payload,'_basisReg',{value:reg,enumerable:false,configurable:true,writable:true});
+  }
+  return payload;
+}
+// Het invoerveld dat nu op het scherm de waarde uit dit geheugen toont (of null).
+function basisInvoer(faseId,k,geheugen){
+  var f=FASES[S.fase];if(!f||f.id!==faseId||S.screen!=='main'||typeof ge!=='function')return null;
+  var df=f.dataFields.find(function(x){return x.id===k;});if(!df)return null;
+  return (df.groepsniveau?S._groepData:S.data)===geheugen?ge('df_'+k):null;
+}
+// Verwerkt elk antwoord (ook d=null bij een netwerkfout) precies één keer per verzonden opslag.
+function naOpslag(payload,d,sessie){
+  if(!payload||(sessie&&S!==sessie))return;
+  var rij=opslagRij(payload.fase_id,payload.entiteit_id),reg=payload._basisReg,open=(S._basisOpen&&S._basisOpen[rij])||[];
+  if(reg){var i=open.indexOf(reg);if(i<0)return;open.splice(i,1);}
+  var later=reg?open.filter(function(o){return o.volg>reg.volg;}):[];
+  if(!S._basisBevestigd)S._basisBevestigd={};
+  var nieuwste=!later.length&&!(reg&&(S._basisBevestigd[rij]||0)>reg.volg);
+  var geheugen=payload.entiteit_id?(S.dataPerEntiteit[payload.entiteit_id]=S.dataPerEntiteit[payload.entiteit_id]||{}):S._groepData;
+  if(d&&d.ok===true&&d.data_json_actueel&&typeof d.data_json_actueel==='object'){
+    // Een latere opslag van deze rij loopt nog of is al verwerkt: die bepaalt de basis.
+    if(!nieuwste)return;
+    var act=d.data_json_actueel,oud=payload.basis||{},verzonden=payload.data_json||{},overgenomen=false;
+    // Bouwde deze opslag voort op een mislukte of geweigerde opslag, dan niets overnemen: de invoer op het scherm
+    // geldt dan als nog niet opgeslagen en gaat bij de volgende opslag als wijziging mee.
+    if(!(reg&&reg.onbetrouwbaar))basisVeldIds(payload.fase_id,payload.entiteit_id).forEach(function(k){
+      var sv=verzonden[k]&&verzonden[k].value?String(verzonden[k].value):'',ob=oud[k]||'',av=act[k]&&act[k].value?String(act[k].value):'',key=payload.fase_id+'_'+k;
+      var el=basisInvoer(payload.fase_id,k,geheugen);
+      // Door de gebruiker niet gewijzigd en intussen elders anders: de actuele waarde overnemen, ook in het invoerveld
+      // (anders leest saveCurrent de oude waarde terug en draait de volgende opslag de wijziging alsnog terug).
+      // Niet als de gebruiker al verder typte.
+      if(sv===ob&&av!==sv&&String(geheugen[key]||'')===sv&&(!el||el.value===sv)){
+        if(av)geheugen[key]=av;else delete geheugen[key];
+        if(el)el.value=av;
+        overgenomen=true;
+      }
+    });
+    zetBasis(payload.fase_id,payload.entiteit_id,act);
+    if(reg)S._basisBevestigd[rij]=reg.volg;
+    // Afgeleide weergaven bijwerken, maar niet midden in het typen (focus en caret blijven staan).
+    var actief=typeof document!=='undefined'&&document.activeElement;
+    if(overgenomen&&!(actief&&/^(INPUT|TEXTAREA|SELECT)$/.test(actief.tagName))&&typeof renderApp==='function'){try{renderApp();}catch(e){}}
+  }else if(d&&d.code==='VELD_CONFLICT'&&Array.isArray(d.conflicten)){
+    // De afgewezen opslag staat niet op de server: als mislukt markeren, zodat een momentopname met deze opslag als
+    // basisbron bij het versturen de basis opnieuw bepaalt (anders gaat een niet-conflicterende wijziging, bijv. EBITDA
+    // naast een conflict op omzet, als "ongewijzigd" mee en verdwijnt hij ongemerkt; review N-154 ronde 3).
+    if(reg)reg.mislukt=true;
+    later.forEach(function(o){o.onbetrouwbaar=true;});
+    if(!S._basis)S._basis={};
+    var b=S._basis[rij]||(S._basis[rij]={}),verz=payload.data_json||{},uitleg=[];
+    d.conflicten.forEach(function(c){
+      var key=payload.fase_id+'_'+c.veld,eigen=verz[c.veld]&&verz[c.veld].value?String(verz[c.veld].value):'';
+      var el=basisInvoer(payload.fase_id,c.veld,geheugen),nu=el?el.value:String(geheugen[key]||'');
+      b[c.veld]=c.actueel||'';
+      if(nu===eigen&&String(geheugen[key]||'')===eigen){
+        if(c.actueel)geheugen[key]=c.actueel;else delete geheugen[key];
+        if(el)el.value=c.actueel||'';
+        uitleg.push((c.label||c.veld)+': actueel '+(c.actueel||'leeg')+', uw invoer '+(eigen||'leeg'));
+      }else{
+        // De gebruiker typte na deze opslag al verder: die nieuwere invoer blijft staan (ook na het hertekenen) en
+        // gaat bij de volgende opslag als bewuste wijziging t.o.v. de actuele waarde mee; de melding noemt hem.
+        if(el){if(el.value)geheugen[key]=el.value;else delete geheugen[key];}
+        uitleg.push((c.label||c.veld)+': actueel '+(c.actueel||'leeg')+', uw invoer '+(eigen||'leeg')+', uw nieuwere invoer '+(nu||'leeg')+' blijft staan en wordt bij de volgende opslag opgeslagen');
+      }
+    });
+    if(typeof showAlert==='function')showAlert((d.error||'Niet opgeslagen: intussen elders gewijzigd.')+(uitleg.length?' ('+uitleg.join('; ')+')':''));
+    if(typeof renderApp==='function'){try{renderApp();}catch(e){}}
+  }else if(!(d&&d.ok===true)){
+    // Mislukt of niet bevestigd: opslagen die hierop voortbouwden mogen niets automatisch overnemen. Een geplande
+    // momentopname met deze opslag als basisbron bepaalt bij het versturen de basis opnieuw (metBasis).
+    if(reg)reg.mislukt=true;
+    later.forEach(function(o){o.onbetrouwbaar=true;});
+  }
+}
 function getDataForFase(id){
   var f=FASES.find(function(x){return x.id===id;});if(!f)return {};
   var out={};
@@ -494,7 +645,11 @@ function getDataForFase(id){
     if(df.groepsniveau&&inEntiteitContext)return;
     var key=id+'_'+df.id;
     var v=(df.groepsniveau?S._groepData:S.data)[key];
-    if(v){var obj={value:v,label:df.label,req:df.req||false};var b=veldBron(key);if(b)Object.assign(obj,b);out[df.id]=obj;}
+    // Productpunt 5 (22 okt 2026): een ongewijzigde bruto som (door de server als auto:true geleverd, zie
+    // S._groepAuto) gaat in de groepsrij terug mét auto:true. Zonder deze vlag zag consolideerFase elke
+    // meegestuurde som als aangeleverd cijfer en verdween het onderscheid bruto/aangeleverd.
+    var autoSom=(!inEntiteitContext||df.groepsniveau)&&S._groepAuto&&S._groepAuto[key]!==undefined&&S._groepAuto[key]===String(v)&&!(S._userEdited&&S._userEdited[key]);
+    if(v){var obj={value:v,label:df.label,req:df.req||false};if(autoSom)obj.auto=true;else{var b=veldBron(key);if(b)Object.assign(obj,b);}out[df.id]=obj;}
   });
   return out;
 }
@@ -507,11 +662,14 @@ function saveGroepsniveauVelden(faseId){
   var payload=getDataForFase(faseId);
   S.data=origData;
   var gbTk=gbOpslagStart(S.code,faseId,null);
+  // Productpunt 38: als lopend financieel werk aangemeld tot het antwoord (of de fout) verwerkt is.
+  var finWerk=typeof finWerkStart==='function'?finWerkStart('save'):null;
   // Geeft (productpunt 19) true terug alleen bij HTTP 2xx + JSON ok:true — zie _verstuurGeplandeSave.
   var http=false;
+  var gnPl=metBasis({code:S.code,fase_id:faseId,data_json:payload,checklist_json:getChecklistForFase(faseId),notitie:S.notities[faseId]||''}),gnSessie=S;
   return fetch(WORKER+'/mna/save',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({code:S.code,fase_id:faseId,data_json:payload,checklist_json:getChecklistForFase(faseId),notitie:S.notities[faseId]||''})
-  }).then(function(r){http=!!(r&&r.ok);return r.json();}).then(function(d){gbOpslagKlaar(gbTk,d);return http&&!!d&&typeof d==='object'&&d.ok===true&&!d.error;}).catch(function(){gbOpslagKlaar(gbTk,null);}).then(function(ok){return ok===true;});
+    body:JSON.stringify(gnPl)
+  }).then(function(r){http=!!(r&&r.ok);return r.json();}).then(function(d){naOpslag(gnPl,d,gnSessie);gbOpslagKlaar(gbTk,d);return http&&!!d&&typeof d==='object'&&d.ok===true&&!d.error;}).catch(function(){gbOpslagKlaar(gbTk,null);}).then(function(ok){naOpslag(gnPl,null,gnSessie);if(finWerk)finWerk.af();return ok===true;},function(){naOpslag(gnPl,null,gnSessie);if(finWerk)finWerk.af();return false;});
 }
 function getChecklistForFase(id){var out={items:{},redflags:{}};var f=FASES.find(function(x){return x.id===id;});if(!f)return out;f.items.forEach(function(_,i){out.items[i]=!!S.checked[id+'_'+i];});f.redflags.forEach(function(_,i){out.redflags[i]=!!S.checked[id+'_rf_'+i];});return out;}
 
@@ -541,7 +699,10 @@ window.consolKies = function(faseId, veld, keuze, somWaarde){
 function loadDataFromDB(dbData){dbData.forEach(function(row){var id=row.fase_id;var dj=typeof row.data_json==='string'?JSON.parse(row.data_json||'{}'):row.data_json||{};var cj=typeof row.checklist_json==='string'?JSON.parse(row.checklist_json||'{}'):row.checklist_json||{};var f=FASES.find(function(x){return x.id===id;});if(!f)return;
   // Groepsstructuur (Fase 2): rijen met entiteit_id gaan naar de per-entiteit-opslag, niet naar S._groepData
   var doel=row.entiteit_id?(S.dataPerEntiteit[row.entiteit_id]=S.dataPerEntiteit[row.entiteit_id]||{}):S._groepData;
+  zetBasis(id,row.entiteit_id||null,dj);
   Object.keys(dj).forEach(function(k){var v=dj[k];if(v&&v.value){doel[id+'_'+k]=v.value;
+    // Productpunt 5: welke groepswaarden een bruto som zijn (auto:true), zie getDataForFase.
+    if(!row.entiteit_id){if(v.auto===true){if(!S._groepAuto)S._groepAuto={};S._groepAuto[id+'_'+k]=String(v.value);}else if(S._groepAuto)delete S._groepAuto[id+'_'+k];}
     // Herkomst herstellen zodat de AI-verificatiestatus ook na herladen nog klopt
     if(v.bron==='ai_document'&&v.bron_doc){if(!S._docSource)S._docSource={};S._docSource[id+'_'+k]=v.bron_doc;
       if(v.bron_fragment){if(!S._docFragment)S._docFragment={};S._docFragment[id+'_'+k]=v.bron_fragment;}}
@@ -601,6 +762,17 @@ function userEdit(el){
   }
   schedSave();checkOmzetSom();
 }
+// Productpunt 19 (15 okt 2026): zelfde renderverlies als userEdit hierboven, voor de fasenotitie
+// (notitie_<fase> in mna/06). Tot nu toe las saveCurrent S.notities pas na de debounce uit de DOM; een
+// renderApp daartussen tekende de textarea opnieuw uit de oude S.notities en de oude notitie werd
+// verstuurd. Nu direct in S.notities van deze sessie/fase, met dezelfde poorten als userEdit/saveCurrent.
+function notitieEdit(el){
+  var f=FASES[S.fase];
+  if(f&&el&&el.id==='notitie_'+f.id&&typeof el.value==='string'&&S.screen==='main'&&!isKoper()&&!(isTussen()&&f.id==='financieel')&&!(S.traject&&S.traject.status==='vergrendeld')){
+    S.notities[f.id]=el.value;
+  }
+  schedSave();
+}
 
 // Dirty tracking — weet of er onopgeslagen wijzigingen zijn
 var _lastSavedHash = '';
@@ -647,7 +819,7 @@ function saveAll(opts){
     sessie._beaconRev=rev;
   }else sessie._saveAllBezig=(sessie._saveAllBezig||0)+1;
   fasesMetData.forEach(function(f){
-    var payload={code:S.code,fase_id:f.id,data_json:getDataForFase(f.id),checklist_json:getChecklistForFase(f.id),notitie:S.notities[f.id]||'',entiteit_id:S._actieveEntiteit||undefined};
+    var payload=metBasis({code:S.code,fase_id:f.id,data_json:getDataForFase(f.id),checklist_json:getChecklistForFase(f.id),notitie:S.notities[f.id]||'',entiteit_id:S._actieveEntiteit||undefined},!!useBeacon);
     var body=JSON.stringify(payload);
     if(useBeacon){
       // sendBeacon: alleen in de wachtrij van de browser gezet (ook als tabblad sluit) — géén
@@ -664,7 +836,8 @@ function saveAll(opts){
           mislukt=true;
           if(eigen){
             S._dirty=true;
-            showAlert(d&&d.error==='vergrendeld'?'Dit traject is vergrendeld. Uw wijzigingen zijn niet opgeslagen.'
+            // N-154: bij VELD_CONFLICT toont naOpslag al de foutmelding van de server met de actuele waarde.
+            if(!(d&&d.code==='VELD_CONFLICT'))showAlert(d&&d.error==='vergrendeld'?'Dit traject is vergrendeld. Uw wijzigingen zijn niet opgeslagen.'
               :'Opslaan mislukt'+(d&&typeof d.error==='string'?': '+d.error:' (geen verbinding, foutmelding of onleesbaar antwoord van de server)')+'. Uw wijzigingen staan nog in dit scherm maar zijn niet opgeslagen; probeer het opnieuw.');
           }
         }
@@ -677,9 +850,10 @@ function saveAll(opts){
       };
       fetch(WORKER+'/mna/save',{method:'POST',headers:{'Content-Type':'application/json'},body:body
       }).then(function(r){http=!!(r&&r.ok);return r.json();}).then(null,function(){return null;}).then(function(d){
+        naOpslag(payload,d,sessie);
         faseKlaar(http&&!!d&&typeof d==='object'&&d.ok===true&&!d.error,d);
         gbOpslagKlaar(gbTk,d);
-      }).catch(function(){gbOpslagKlaar(gbTk,null);}).then(function(){faseKlaar(false,null);});
+      }).catch(function(){gbOpslagKlaar(gbTk,null);}).then(function(){naOpslag(payload,null,sessie);faseKlaar(false,null);});
     }
   });
 }
@@ -745,8 +919,30 @@ function laadBankmutaties() {
   if (!S.code) return;
   fetch(WORKER + '/mna/bankmutaties/lijst/' + encodeURIComponent(S.code))
     .then(function(r){ return r.json(); })
-    .then(function(d){ BANKMUTATIES = (d && d.imports) || []; renderApp(); })
-    .catch(function(){ BANKMUTATIES = []; renderApp(); });
+    .then(function(d){ BANKMUTATIES = (d && d.imports) || []; BANKMUTATIES_KANDIDATEN = (d && d.kandidaten) || []; renderApp(); })
+    .catch(function(){ BANKMUTATIES = []; BANKMUTATIES_KANDIDATEN = []; renderApp(); });
+}
+// UAT DOC-A24/A26 (2 nov 2026): bankafschriften die via de centrale upload in het dossier staan, met één klik
+// inlezen; valt een deel samen met al ingelezen transacties, dan kiest de verkoper om alleen de nieuwe in te lezen.
+var BANKMUTATIES_KANDIDATEN = [];
+var BANKMUTATIES_INLEZEN_BEZIG = false;
+function bankDubbelVraag(d) {
+  if (!d || d.code !== 'DUBBELE_IMPORT') return false;
+  if (!d.nieuw) { toast(d.error || 'Alle transacties zijn al ingelezen.', 'err'); return false; }
+  return confirm(d.error + '\n\nAlleen de ' + d.nieuw + ' nieuwe transactie(s) inlezen? De ' + d.dubbel + ' dubbele worden overgeslagen.');
+}
+function inlezenBankUitDocument(docId, alleenNieuw) {
+  if (BANKMUTATIES_INLEZEN_BEZIG) return;
+  BANKMUTATIES_INLEZEN_BEZIG = true; renderApp();
+  fetchMetTimeout(WORKER + '/mna/bankmutaties/uit-document', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: S.code, doc_id: docId, alleen_nieuw: alleenNieuw || undefined }) }, 60000)
+    .then(function(r){ return r.json().then(function(d){ return { s: r.status, d: d }; }, function(){ return { s: r.status, d: null }; }); }, function(){ return { s: 0, d: null }; })
+    .then(function(x){
+      BANKMUTATIES_INLEZEN_BEZIG = false;
+      if (x.s === 409 && bankDubbelVraag(x.d)) { inlezenBankUitDocument(docId, true); return; }
+      if (x.s !== 200 || !x.d || !x.d.ok) { if (!(x.d && x.d.code === 'DUBBELE_IMPORT')) toast(x.s === 0 ? 'Verbindingsfout; er is niets ingelezen.' : ((x.d && x.d.error) || ('Inlezen mislukt (HTTP ' + x.s + ').')), 'err'); renderApp(); return; }
+      toast(x.d.aantal_regels + ' transactie(s) ingelezen.' + (x.d.status_reden ? ' ' + x.d.status_reden : ''), 'ok');
+      laadBankmutaties();
+    });
 }
 
 // -- CASHFLOW-OVERZICHT (V1b Groep A, 22 sep 2026) — zichtbaar voor verkoper/begeleider/koper
@@ -997,14 +1193,15 @@ function laadBankmutatiesRegels(importId) {
     .catch(function(){ BANKMUTATIES_REGELS[importId] = []; renderApp(); });
 }
 
-function uploadBankmutatiesBestand(input) {
-  var file = input.files && input.files[0];
+function uploadBankmutatiesBestand(input, alleenNieuw, bestand) {
+  var file = bestand || (input.files && input.files[0]);
   if (!file) return;
   var statusEl = ge('bankmut-upload-status');
   if (statusEl) statusEl.textContent = 'Bezig met verwerken...';
   var fd = new FormData();
   fd.append('code', S.code);
   fd.append('file', file);
+  if (alleenNieuw) fd.append('alleen_nieuw', 'true');
   // fetchMetTimeout (60s): zelfde bugklasse als de fix van 15 sep 2026 (foutpropagatie-check, zie de
   // document-upload-fix van 21 sep 2026) — kon bij een stallende verbinding voor altijd op "Bezig
   // met verwerken..." blijven staan.
@@ -1012,6 +1209,7 @@ function uploadBankmutatiesBestand(input) {
     .then(function(r){ return r.json(); })
     .then(function(d){
       input.value = '';
+      if (d && d.code === 'DUBBELE_IMPORT') { if (statusEl) statusEl.textContent = ''; if (bankDubbelVraag(d)) uploadBankmutatiesBestand(input, true, file); return; }
       if (!d || !d.ok) { if (statusEl) statusEl.textContent = 'Fout: ' + ((d && d.error) || 'onbekend'); return; }
       if (statusEl) statusEl.textContent = '';
       laadBankmutaties();
@@ -1045,11 +1243,20 @@ function renderBankmutatiesSectie(faseId) {
   if (magUploaden) {
     uploadHtml = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:.75rem;flex-wrap:wrap">'
       + '<label style="display:flex;align-items:center;gap:6px;background:var(--teal);color:#fff;font-family:IBM Plex Sans,sans-serif;font-size:12px;font-weight:600;padding:6px 14px;border-radius:var(--r);cursor:pointer">'
-      + '&#127974; Bankmutaties uploaden (CSV/MT940)'
-      + '<input type="file" accept=".csv,.940,.sta,.mt940,.txt" style="display:none" onchange="uploadBankmutatiesBestand(this)">'
+      + '&#127974; Bankmutaties uploaden (CSV, MT940 of CAMT.053)'
+      + '<input type="file" accept=".csv,.940,.sta,.mt940,.txt,.xml" style="display:none" onchange="uploadBankmutatiesBestand(this)">'
       + '</label>'
       + '<div id="bankmut-upload-status" style="font-size:11px;color:var(--muted)"></div>'
       + '</div>';
+    if (BANKMUTATIES_KANDIDATEN && BANKMUTATIES_KANDIDATEN.length) {
+      uploadHtml = '<div style="border:1px solid var(--info);background:var(--info-bg);border-radius:var(--r);padding:.6rem .8rem;margin-bottom:.75rem">'
+        + '<div style="font-size:12px;font-weight:600;color:var(--head)">&#8505;&#65039; Bankafschriften in het dossier, nog niet ingelezen</div>'
+        + '<div style="font-size:12px;color:var(--sub);margin:.2rem 0 .4rem">U heeft deze bestanden al met de andere documenten geüpload. Lees ze hier in; opnieuw uploaden is niet nodig. Dubbele transacties worden herkend.</div>'
+        + BANKMUTATIES_KANDIDATEN.map(function(k){
+          return '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:.25rem 0"><span style="font-size:12px;flex:1 1 220px">' + esc(k.bestand_naam) + '</span>'
+            + '<button class="btn btn-sm" style="font-size:11px" onclick="inlezenBankUitDocument(\'' + esc(k.doc_id) + '\')"' + (BANKMUTATIES_INLEZEN_BEZIG ? ' disabled' : '') + '>' + (BANKMUTATIES_INLEZEN_BEZIG ? 'Bezig…' : 'Inlezen als bankmutaties') + '</button></div>';
+        }).join('') + '</div>' + uploadHtml;
+    }
   }
 
   var lijstHtml = '';
@@ -1156,6 +1363,9 @@ function loadDocsForFase(faseId) {
       // Dedupliceer op id — server kan dubbele records hebben
       var seen={};
       var lokaal = (DOCS[faseId] || []).filter(function(d){ return d.uploading && d.traject_code === code; });
+      // Productpunt 35: lokale aandachtspunten (niet op de server) per document-id behouden.
+      var aandachtPerId = {};
+      (DOCS[faseId] || []).forEach(function(d){ if (d.id && d.aandachtspunten) aandachtPerId[d.id] = d.aandachtspunten; });
       DOCS[faseId] = lokaal.concat(res.docs.filter(function(d){ if(seen[d.id])return false; seen[d.id]=true; return true; })
         .map(function(d){
           var status = d.verwerking_status || null;
@@ -1173,6 +1383,7 @@ function loadDocsForFase(faseId) {
             bestand_opgeslagen: status ? !!d.bestand_opgeslagen : undefined, inhoud_hash: d.inhoud_hash||null
           };
         }));
+      DOCS[faseId].forEach(function(d){ if (!d.uploading && aandachtPerId[d.id]) d.aandachtspunten = aandachtPerId[d.id]; });
       if (S._docsLaadFout) delete S._docsLaadFout[faseId];
       renderApp();
     }).catch(function(){});
@@ -1188,15 +1399,86 @@ function saveEntiteitData(entiteitId, faseIds){
     var payload=getDataForFase(faseId);
     if(!Object.keys(payload).length)return;
     var gbTk=gbOpslagStart(S.code,faseId,entiteitId);
+    // Productpunt 38: aangemeld als lopend financieel werk tot het antwoord (of de fout) verwerkt is; een
+    // antwoord voor een vorige sessie werkt de groepsdata van de huidige sessie niet bij.
+    var sessie=S;
+    var finWerk=typeof finWerkStart==='function'?finWerkStart('save'):null;
+    // N-154: ook na een netwerkfout de verzonden basis afmelden (naOpslag verwerkt elk antwoord maar één keer).
+    function finAf(){naOpslag(ekPl,null,sessie);if(finWerk)finWerk.af();}
+    var ekPl=metBasis({code:S.code,fase_id:faseId,data_json:payload,entiteit_id:entiteitId});
     fetch(WORKER+'/mna/save',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({code:S.code,fase_id:faseId,data_json:payload,entiteit_id:entiteitId})
+      body:JSON.stringify(ekPl)
     }).then(function(r){return r.json();}).then(function(d){
-      if(d.groepswaarden)Object.keys(d.groepswaarden).forEach(function(k){var v=d.groepswaarden[k];if(v&&v.value!==undefined)S._groepData[faseId+'_'+k]=v.value;});
+      naOpslag(ekPl,d,sessie);
+      if(S===sessie&&d.groepswaarden)Object.keys(d.groepswaarden).forEach(function(k){var v=d.groepswaarden[k];if(v&&v.value!==undefined){var gk=faseId+'_'+k;S._groepData[gk]=v.value;if(v.auto===true){if(!S._groepAuto)S._groepAuto={};S._groepAuto[gk]=String(v.value);}else if(S._groepAuto)delete S._groepAuto[gk];}});
       gbOpslagKlaar(gbTk,d);
       renderApp();
-    }).catch(function(){gbOpslagKlaar(gbTk,null);});
+    }).catch(function(){gbOpslagKlaar(gbTk,null);}).then(finAf,finAf);
   });
   S.data=origData;
+}
+
+// Productpunt 5 (22 okt 2026): een geconsolideerd groepsdocument expliciet op groepsniveau verwerken
+// (uploadkeuze "Groep (geconsolideerd document)" of koppelmenu-optie "Groepsniveau (geconsolideerd)").
+// Geen entiteitherkenning, geen gok en geen koppel-entiteit-aanroep: de extractie gaat naar S._groepData,
+// ook als er een entiteit actief is. Een bestaande bedragwaarde (ook een bruto som) gaat naar het bestaande
+// keuzevenster; pas daarna (of direct, zonder afwijkingen) worden de gewijzigde groepsrijen opgeslagen.
+// Gekozen documentcijfers gaan als documentwaarde (zonder auto) naar de groepsrij, zodat de
+// consolidatiecontrole van de server bruto som en aangeleverd cijfer apart toont. Het documentcijfer
+// blijft hoe dan ook in het documentrecord (veld_extractie) staan.
+// Productpunt 38 (22 okt 2026): vóór de vergelijking eerst wachten (max. 60 s) op lopend financieel werk
+// (finWerkAfwachten), zodat de bruto som de net opgeslagen entiteiten meetelt. Optioneel 4e argument: de
+// aanmelding van de eigen upload (finWerkStart) — die en latere uploads tellen niet mee; bij uitstel neemt
+// deze functie het afmelden daarvan over. Na het wachten alleen verder in dezelfde sessie. Was de wachttijd
+// verstreken, dan krijgen de conflicten nietActueel (zie toonConflictDialog).
+function verwerkGroepsdocument(velden, docNaam, velden2) {
+  var eigenWerk=arguments[3]||null;
+  var sessie=S;
+  var grens=eigenWerk?eigenWerk.volgnr:Infinity;
+  var wacht=typeof finWerkAfwachten==='function'?finWerkAfwachten(grens,60*1000):null;
+  if(!wacht)return verwerk(false);
+  toast('"'+docNaam+'": de groepscijfers worden vergeleken zodra de lopende verwerking van een ander document klaar is.','ok');
+  wacht.then(function(actueel){
+    try{ if(S===sessie)verwerk(!actueel); }
+    finally{ if(eigenWerk)eigenWerk.af(); }
+  });
+  return {conflicten:0,uitgesteld:true};
+  function verwerk(nietActueel){
+    var alleFases=['financieel','commercieel','partner','compliance','it','juridisch','strategisch'];
+    var opties={groepsdocument:true};
+    var voor=Object.assign({}, S._groepData);
+    S._conflicts=[];
+    alleFases.forEach(function(fid){ autoFillFromExtraction(fid, velden, false, docNaam, '', opties); });
+    if(velden2){
+      autoFillFromExtraction('financieel',{omzet:velden2.omzet,boekjaar:velden2.boekjaar,omzet_per_jaar:velden2.omzet_per_jaar},false,docNaam+' (2e AI-lezing, extra controle)','',opties);
+      var overigeDiffs=vergelijkDubbelePassOverigeVelden(velden,velden2,'',S._groepData);
+      if(overigeDiffs.length)S._conflicts=(S._conflicts||[]).concat(overigeDiffs);
+    }
+    var conflictenBatch=(S._conflicts||[]).slice();S._conflicts=[];
+    conflictenBatch.forEach(function(c){c.finWerkGrens=grens;if(nietActueel)c.nietActueel=true;});
+    function opslaan(){
+      if(S!==sessie)return;
+      var groep=S._groepData||{};
+      var fases=alleFases.filter(function(fid){
+        return Object.keys(groep).concat(Object.keys(voor)).some(function(k){return k.indexOf(fid+'_')===0&&String(groep[k]||'')!==String(voor[k]||'');});
+      });
+      opslaanGroepsdocument(fases);
+    }
+    markDirty();
+    if(conflictenBatch.length){
+      renderApp();setTimeout(function(){toonConflictDialog(conflictenBatch,'Voor: Groep (geconsolideerd document)',opslaan);},300);
+    }else{renderApp();opslaan();}
+    return {conflicten:conflictenBatch.length};
+  }
+}
+function opslaanGroepsdocument(fases){
+  if(!fases.length)return;
+  var sessie=S;
+  Promise.all(fases.map(function(fid){return saveGroepsniveauVelden(fid);})).then(function(acks){
+    if(S!==sessie)return;
+    if(acks.every(function(a){return a===true;}))showSaveIndicator();
+    else toast('De groepscijfers uit het document staan in dit scherm, maar het opslaan is niet door de server bevestigd. Probeer het opnieuw.','warn',8000);
+  });
 }
 
 // Meerdere bestanden tegelijk geselecteerd (multi-select in "Document toevoegen") ÉÉN voor ÉÉN
@@ -1221,11 +1503,15 @@ function leesUploadKeuzes(faseId) {
   var entiteitSel = document.getElementById('entiteit-select-'+faseId);
   var dubbeleCheckEl = document.getElementById('dubbele-check-'+faseId);
   var bewijsstukEl = document.getElementById('bewijsstuk-alleen-'+faseId);
+  // Productpunt 5 (22 okt 2026): '__GROEP__' = expliciet "Groep (geconsolideerd document)" — verstuurd als
+  // groepsniveau (geen entiteit_id) met de sleutel groepsdocument; '' blijft "Automatisch herkennen".
+  var groepsdocument = !!entiteitSel && entiteitSel.value === '__GROEP__';
   var keuzes = {
-    entiteitId: entiteitSel ? entiteitSel.value : '',
+    entiteitId: entiteitSel && !groepsdocument ? entiteitSel.value : '',
     dubbeleCheck: !!(dubbeleCheckEl && dubbeleCheckEl.checked),
     alleenBewijsstuk: !!(bewijsstukEl && bewijsstukEl.checked)
   };
+  if (groepsdocument) keuzes.groepsdocument = true;
   if (typeof dclSnapshot === 'function') {
     var klas = dclSnapshot(document, faseId, { rol: S.rol, code: S.code, vergrendeld: !!(S.traject && S.traject.status === 'vergrendeld'), entiteitId: keuzes.entiteitId, entiteiten: S._entiteiten });
     if (klas) keuzes.classificatie = klas;
@@ -1345,8 +1631,8 @@ async function uploadDocument(faseId, file, existingId, vervangtDocId, uploadKeu
   }
   if (!S.code || isKoper()) return nietAangeboden('Niet verzonden: uploaden is hier niet mogelijk.');
   if (S.traject && S.traject.status === 'vergrendeld') { toast('Traject is vergrendeld.','warn'); return nietAangeboden('Niet verzonden: het traject is vergrendeld.'); }
-  var maxSize = 20 * 1024 * 1024;
-  if (file.size > maxSize) { toast('Bestand te groot (max 20MB). Huidig: ' + Math.round(file.size/1024/1024) + 'MB','warn'); return nietAangeboden('Niet verzonden: bestand te groot (max 20MB).'); }
+  // Geen eigen grootte-afwijzing meer in het scherm (de oude 20MB-grens): het bestand gaat volledig naar
+  // de server, die over opslag/verwerking beslist en de echte status (of een concrete fout) teruggeeft.
   // Productpunt 6: een ongeldige classificatie gaat nooit naar de server (ook niet bij Vervangen).
   var klasKeuze = uploadKeuzes.classificatie || null;
   if (klasKeuze && !klasKeuze.ok) { toast('Niet verzonden: ' + klasKeuze.fout, 'err', 10000); return nietAangeboden('Niet verzonden: ' + klasKeuze.fout); }
@@ -1357,30 +1643,37 @@ async function uploadDocument(faseId, file, existingId, vervangtDocId, uploadKeu
   // Vanaf hier is het verzoek gestart: "Annuleer resterende bestanden" raakt deze plek niet meer.
   var tempRij = (DOCS[faseId] || []).find(function(x){ return x.id === tempId; });
   if (tempRij) tempRij.gestart = true;
+  // Productpunt 38: lopende upload aangemeld als financieel werk (een later groepsdocument wacht erop);
+  // afgemeld bij elke uitkomst via klaar(), behalve als verwerkGroepsdocument het afmelden overneemt.
+  var finWerk = typeof finWerkStart === 'function' ? finWerkStart('upload') : null;
+  function klaar(uitkomst) { if (finWerk && !finWerk.overgedragen) finWerk.af(); return uitkomst; }
 
   var formData = new FormData();
   formData.append('file', file);
   var bewaar = S.traject && S.traject.bewaar_docs !== false;
   var entiteitId = uploadKeuzes.entiteitId;
+  var groepsdocument = !!uploadKeuzes.groepsdocument && !entiteitId;
   var dubbeleCheck = uploadKeuzes.dubbeleCheck;
   var alleenBewijsstuk = uploadKeuzes.alleenBewijsstuk;
   var url = WORKER + '/mna/document/upload?code=' + S.code + '&fase_id=' + faseId + '&bewaar=' + bewaar + (entiteitId?'&entiteit_id='+encodeURIComponent(entiteitId):'') + (klasKeuze && typeof dclQuery === 'function' ? dclQuery(klasKeuze.params) : '') + (dubbeleCheck?'&dubbele_check=true':'') + (alleenBewijsstuk?'&alleen_bewijsstuk=true':'') + (vervangtDocId?'&vervangt='+encodeURIComponent(vervangtDocId):'');
 
-  // 1. Verzoek. fetchMetTimeout (60s): dezelfde AI-generatie-fetch-zonder-timeout-klasse als de bugfix
+  // 1. Verzoek. fetchMetTimeout: dezelfde AI-generatie-fetch-zonder-timeout-klasse als de bugfix
   // van 15 sep 2026 (teaser/verkoopmemorandum/SPA/risicoraamwerk/waardering) — deze fase-uploadzone
   // gebruikte nog een kale fetch() en kon dus voor altijd op "uploaden..." blijven hangen bij een
-  // stallende AI-respons.
+  // stallende AI-respons. De deadline is 900000 ms (15 min) en blijft eindig: de server analyseert een
+  // groot document synchroon in meerdere delen (elk tot 150s) plus een eventuele onafhankelijke dubbele
+  // check, dus 60s brak al één trage modelaanroep af. Bij afloop: uitkomst onbekend + lijst herladen.
   var resp;
   try {
-    resp = await fetchMetTimeout(url, { method: 'POST', body: formData }, 60000);
+    resp = await fetchMetTimeout(url, { method: 'POST', body: formData }, 900000);
   } catch (e) {
-    return uitkomstOnbekend(e && e.name === 'AbortError' ? 'Geen antwoord van de server binnen 60 seconden.' : 'Geen verbinding met de server.');
+    return klaar(uitkomstOnbekend(e && e.name === 'AbortError' ? 'Geen antwoord van de server binnen 15 minuten.' : 'Geen verbinding met de server.'));
   }
   // 2. Antwoord lezen — een onleesbaar antwoord is geen verbindingsfout.
   var d = null;
   try { d = await resp.json(); } catch (e) { d = null; }
-  if (!d || typeof d !== 'object' || Array.isArray(d)) return uitkomstOnbekend('Het antwoord van de server was onleesbaar (HTTP ' + resp.status + ').');
-  if (!nogActueel()) return { naam: file.name, soort: 'onbekend', tekst: 'Niet meer getoond: u bent intussen uitgelogd, opnieuw ingelogd of van traject gewisseld. Het bestand kan wel op de server zijn opgeslagen; controleer de documentenlijst.' };
+  if (!d || typeof d !== 'object' || Array.isArray(d)) return klaar(uitkomstOnbekend('Het antwoord van de server was onleesbaar (HTTP ' + resp.status + ').'));
+  if (!nogActueel()) return klaar({ naam: file.name, soort: 'onbekend', tekst: 'Niet meer getoond: u bent intussen uitgelogd, opnieuw ingelogd of van traject gewisseld. Het bestand kan wel op de server zijn opgeslagen; controleer de documentenlijst.' });
   var status = typeof d.verwerking_status === 'string' ? d.verwerking_status : '';
 
   // 3. Serverfout (non-200 of ok:false). Heeft de server een doc_id vastgelegd, dan blijft dát record
@@ -1401,7 +1694,7 @@ async function uploadDocument(faseId, file, existingId, vervangtDocId, uploadKeu
     }
     toast('"' + file.name + '": ' + foutTekst + (vervangtDocId ? ' De vorige versie blijft ongewijzigd staan.' : ''), 'err', 8000);
     renderApp();
-    return { naam: file.name, soort: 'mislukt', tekst: foutTekst };
+    return klaar({ naam: file.name, soort: 'mislukt', tekst: foutTekst });
   }
 
   // 4. Succes (200): alleen PROCESSED (of een antwoord zonder status volgens het oude contract, niet
@@ -1476,7 +1769,8 @@ async function uploadDocument(faseId, file, existingId, vervangtDocId, uploadKeu
         var behoeftHandmatigeKoppeling = false;
         // Expliciet geclassificeerd (productpunt 6): de gebruiker koos zelf groep of entiteit, dus geen
         // naamherkenning en geen automatische koppeling (die zou de entiteit van de rij wijzigen).
-        if (!effectiefEntiteitId && !klasKeuze && S._entiteiten && S._entiteiten.length) {
+        // Productpunt 5: bij de expliciete keuze "Groep (geconsolideerd document)" evenmin.
+        if (!effectiefEntiteitId && !klasKeuze && !groepsdocument && S._entiteiten && S._entiteiten.length) {
           var gokIdUpload = gokEntiteitId(d.entiteit_naam, true);
           if (gokIdUpload) {
             effectiefEntiteitId = gokIdUpload;
@@ -1496,6 +1790,11 @@ async function uploadDocument(faseId, file, existingId, vervangtDocId, uploadKeu
           uitkomstTekst = 'Geanalyseerd, maar de entiteit is niet zeker herkend — cijfers niet verwerkt; koppel het document handmatig.';
           toast('⚠ "'+file.name+'": entiteit niet zeker herkend ("'+d.entiteit_naam+'") — cijfers zijn NIET verwerkt. Koppel het document handmatig aan de juiste entiteit via de dataroom.','warn',8000);
           renderApp();
+        } else if (groepsdocument) {
+          var docRefGroep=DOCS[faseId].find(function(x){return x.id===d.doc_id;});
+          if(docRefGroep)docRefGroep.groepsniveauVerwerkt=true;
+          var uitGroepUpload=verwerkGroepsdocument(d.veld_extractie, file.name, d.veld_extractie_2 || null, finWerk);
+          if(finWerk&&uitGroepUpload&&uitGroepUpload.uitgesteld)finWerk.overgedragen=true;
         } else {
           S._conflicts=[];
           var alleFases=['financieel','commercieel','partner','compliance','it','juridisch','strategisch'];
@@ -1544,14 +1843,12 @@ async function uploadDocument(faseId, file, existingId, vervangtDocId, uploadKeu
           msgs.push('ℹ AI geeft een gemiddelde betrouwbaarheid aan voor de extractie uit dit document (bijv. minder scherpe scan of interpretatie nodig) — een korte controle is aan te raden.');
         if(d.crosschecks)msgs=msgs.concat(d.crosschecks);
         if(d.sanity_waarschuwingen)msgs=msgs.concat(d.sanity_waarschuwingen);
+        // Productpunt 35 (19 okt 2026): de meldingen werden in de DOM gezet na een nooit gerenderd
+        // 'upload-zone-'-anker (dus nooit getoond) en zouden een renderApp() niet overleven. Nu bewaard op
+        // het documentobject (alleen lokaal, niet naar de server) en getoond in de documentkaart.
         if(msgs.length){
-          var md='<div style="background:var(--gold-bg);border:1px solid var(--gold);border-radius:6px;padding:.75rem;margin:.5rem 0">'
-            +'<div style="font-size:11px;font-weight:600;color:var(--gold-dark);margin-bottom:.4rem">⚠ Aandachtspunten bij '+esc(file.name)+'</div>'
-            +msgs.map(function(m){return '<div style="font-size:12px;color:var(--gold-dark);padding:2px 0">• '+esc(m)+'</div>';}).join('')
-            +'</div>';
-          // Toon onder de upload zone
-          var uz=document.getElementById('upload-zone-'+faseId);
-          if(uz){var w=document.createElement('div');w.innerHTML=md;uz.parentNode.insertBefore(w,uz.nextSibling);}
+          var docRefMsgs=DOCS[faseId].find(function(x){return x.id===d.doc_id;});
+          if(docRefMsgs)docRefMsgs.aandachtspunten=msgs;
         }
       }
       renderApp();
@@ -1562,9 +1859,9 @@ async function uploadDocument(faseId, file, existingId, vervangtDocId, uploadKeu
     toast('"' + file.name + '": ' + lokaleTekst, 'err', 10000);
     if (nogActueel()) { zonderTijdelijk(); loadDocsForFase(faseId); }
     try { renderApp(); } catch (e2) { /* weergave blijft de vorige */ }
-    return { naam: file.name, soort: 'lokale_fout', tekst: lokaleTekst };
+    return klaar({ naam: file.name, soort: 'lokale_fout', tekst: lokaleTekst });
   }
-  return { naam: file.name, soort: soort, tekst: uitkomstTekst };
+  return klaar({ naam: file.name, soort: soort, tekst: uitkomstTekst });
 }
 
 // Centrale upload: verwerk bestanden en laat AI alle fases invullen. Sinds 7 okt 2026 geen eigen
@@ -1708,9 +2005,10 @@ var AI_VELD_MAP = {
   cultuur:{key:'strategisch_cultuurFit',label:'Cultuur/fit'},
   tijdlijn:{key:'strategisch_tijdlijn',label:'Gewenste tijdlijn'}
 };
-function vergelijkDubbelePassOverigeVelden(veld1, veld2, entiteitId) {
+// groepBucket (optioneel, productpunt 5): vergelijk tegen de groepsdata (groepsdocument) i.p.v. S.data.
+function vergelijkDubbelePassOverigeVelden(veld1, veld2, entiteitId, groepBucket) {
   veld1 = veld1 || {}; veld2 = veld2 || {};
-  var bucket = entiteitId ? (S.dataPerEntiteit[entiteitId] = S.dataPerEntiteit[entiteitId] || {}) : S.data;
+  var bucket = entiteitId ? (S.dataPerEntiteit[entiteitId] = S.dataPerEntiteit[entiteitId] || {}) : (groepBucket || S.data);
   var diffs = [];
   Object.keys(AI_VELD_MAP).forEach(function(aiKey) {
     var m = AI_VELD_MAP[aiKey];
@@ -1727,7 +2025,10 @@ function vergelijkDubbelePassOverigeVelden(veld1, veld2, entiteitId) {
   return diffs;
 }
 
-function autoFillFromExtraction(faseId, velden, forceOverwrite, docNaam, entiteitId) {
+// opties (optioneel, productpunt 5): { groepsdocument: true } = geconsolideerd groepsdocument; schrijft
+// zonder entiteitId altijd in S._groepData (ook als er een entiteit actief is) en legt de financiële
+// bedragvelden bij een bestaande waarde (ook een bruto som) als keuze voor, zie GROEPSDOC_BEDRAGVELDEN.
+function autoFillFromExtraction(faseId, velden, forceOverwrite, docNaam, entiteitId, opties) {
   // Groepsstructuur (Fase 2): als deze upload aan een entiteit is gekoppeld, alle S.data-lezingen/
   // -schrijvingen hieronder tijdelijk omleiden naar die entiteit se eigen dataopslag — zonder de
   // huidige formulier-context (S._actieveEntiteit) te wijzigen. Aan het eind altijd terugzetten.
@@ -1748,15 +2049,27 @@ function autoFillFromExtraction(faseId, velden, forceOverwrite, docNaam, entitei
     S._opy = S._opyPerEntiteit[entiteitId];
     S._epy = S._epyPerEntiteit[entiteitId];
     S._opySlotJaar = S._opySlotJaarPerEntiteit[entiteitId];
+  } else if (opties && opties.groepsdocument && S._groepData) {
+    S.data = S._groepData;
   }
   try {
-    _autoFillFromExtractionBody(faseId, velden, forceOverwrite, docNaam);
+    _autoFillFromExtractionBody(faseId, velden, forceOverwrite, docNaam, opties);
   } finally {
     S.data = _origData; S._opy = _origOpy; S._epy = _origEpy; S._opySlotJaar = _origOpySlotJaar;
   }
 }
-function _autoFillFromExtractionBody(faseId, velden, forceOverwrite, docNaam) {
+// Productpunt 5 (22 okt 2026, productkeuze Marcel): een aangeleverd groepscijfer vervangt de bruto som
+// nooit automatisch. Bij een groepsdocument gaan deze bedragvelden bij elke bestaande, afwijkende waarde
+// naar het keuzevenster — ook velden die anders via setIfEmpty stil zouden worden overgeslagen.
+var GROEPSDOC_BEDRAGVELDEN = {
+  financieel_omzet1: 'Jaaromzet jaar 1 (oudste)', financieel_omzet2: 'Jaaromzet jaar 2', financieel_omzet3: 'Jaaromzet jaar 3 (meest recent)',
+  financieel_omzetYTD: 'Omzet YTD', financieel_ebitda: 'EBITDA (€, absoluut)', financieel_ebitdaNorm: 'EBITDA genormaliseerd',
+  financieel_wip: 'Onderhanden werk / OHW', financieel_debiteuren: 'Debiteuren totaal', financieel_partnerBel: 'Partnerbeloning'
+};
+function _autoFillFromExtractionBody(faseId, velden, forceOverwrite, docNaam, opties) {
   var currentDocNaam = docNaam || 'onbekend document';
+  var groepsdoc = !!(opties && opties.groepsdocument);
+  function strikt(key) { return groepsdoc && Object.prototype.hasOwnProperty.call(GROEPSDOC_BEDRAGVELDEN, key); }
   // Boekjaar van dit document (uit de extractie) — per veld onthouden zodat de conflict-dialoog kan
   // tonen bij welk boekjaar elke waarde hoort. Was een gemeld pijnpunt (Marcel, 25 juli 2026): bij
   // afwijkende waarden (bv. EBITDA-marge 46,9 vs 48,9) was onduidelijk dat het twee verschillende
@@ -1786,7 +2099,9 @@ function _autoFillFromExtractionBody(faseId, velden, forceOverwrite, docNaam) {
         var val=cleanGetal(velden[k]);
         if(val&&val!=='null'&&String(val).trim()!==''){
           var doelDirect=doelData(k);
-          if(forceOverwrite||!(doelDirect[k]||'').trim())doelDirect[k]=String(val);
+          // Groepsdocument: bedragveld via het keuzevenster, één keer (alleen bij de eigen fase-aanroep).
+          if(strikt(k)){if(parts[0]===faseId)applyOrConflict(k,String(val),GROEPSDOC_BEDRAGVELDEN[k]);}
+          else if(forceOverwrite||!(doelDirect[k]||'').trim())doelDirect[k]=String(val);
         }
       }
     }
@@ -1797,6 +2112,7 @@ function _autoFillFromExtractionBody(faseId, velden, forceOverwrite, docNaam) {
   // bij de belangrijkste financiële cijfervelden — niet bij elke aanroep (zie toelichting bij de
   // aanroepen zelf): dat zou 70+ call sites raken voor velden die niet expliciet gevraagd zijn.
   function setIfEmpty(key, val, rawVeldNaam) {
+    if(strikt(key)){applyOrConflict(key,val,GROEPSDOC_BEDRAGVELDEN[key],rawVeldNaam);return;}
     var d=doelData(key);
     if(val&&val!=='null'&&val!==null&&String(val).trim()!==''&&!(d[key]||'').trim()){
       d[key]=String(val);
@@ -1821,7 +2137,8 @@ function _autoFillFromExtractionBody(faseId, velden, forceOverwrite, docNaam) {
     if(existing===newVal)return;
     if(forceOverwrite){d[key]=newVal;if(!S._docSource)S._docSource={};S._docSource[key]=currentDocNaam;S._docJaar[key]=docJaar;zetFragment();return;}
     // Zelfde document dat dit veld eerder al zette (bijv. herverwerking) — gewoon bijwerken, geen conflict.
-    if(S._docSource&&S._docSource[key]===currentDocNaam){d[key]=newVal;S._docJaar[key]=docJaar;return;}
+    // Bij een groepsdocument geldt dat niet voor de bedragvelden: daar kan intussen een bruto som staan.
+    if(!strikt(key)&&S._docSource&&S._docSource[key]===currentDocNaam){d[key]=newVal;S._docJaar[key]=docJaar;return;}
     // Andere waarde dan wat er al stond — altijd laten kiezen, ook als het huidige veld zelf
     // automatisch is ingevuld door een ander document. Stilzwijgend overschrijven leidde ertoe dat
     // een later document (bijv. van een ander bedrijfsonderdeel) correcte cijfers ongemerkt verving.
@@ -1833,7 +2150,13 @@ function _autoFillFromExtractionBody(faseId, velden, forceOverwrite, docNaam) {
     // toepassen schreef de keuze soms in de verkeerde (groeps- i.p.v. entiteit-)bucket.
     // huidigJaar = boekjaar van het document dat de bestaande waarde zette; nieuwJaar = boekjaar van
     // dit document. De dialoog toont ze zodat duidelijk is waar elke waarde betrekking op heeft.
-    S._conflicts.push({key:key,label:label,huidig:existing,nieuw:newVal,bron:currentDocNaam,doel:d,huidigJaar:(S._docJaar&&S._docJaar[key])||null,nieuwJaar:docJaar});
+    var conflict={key:key,label:label,huidig:existing,nieuw:newVal,bron:currentDocNaam,doel:d,huidigJaar:(S._docJaar&&S._docJaar[key])||null,nieuwJaar:docJaar};
+    // Groepsdocument: de keuze wordt na afloop in de groepsrij vastgelegd; een bestaande bruto som heet zo.
+    if(groepsdoc){
+      conflict.groepsdocument=true;
+      if(S._groepAuto&&S._groepAuto[key]===existing)conflict.huidigBron='bruto berekende som van de entiteiten';
+    }
+    S._conflicts.push(conflict);
     if(!S._pendingConflicts)S._pendingConflicts={};
     S._pendingConflicts[key]=newVal;
   }
@@ -1873,7 +2196,11 @@ function _autoFillFromExtractionBody(faseId, velden, forceOverwrite, docNaam) {
       toFill.forEach(function(yr,i){
         var w=S._opy[String(yr)];if(!w)return;
         var slot=usedFlds[i],slotKey='financieel_'+slot,prevJaar=S._opySlotJaar[slot];
-        if(prevJaar!==undefined&&String(prevJaar)!==String(yr)){
+        // Groepsdocument: alleen opschuiven als het vak nog het eerdere documentcijfer bevat; staat er
+        // intussen iets anders (bv. een bruto som), dan is het een keuze (applyOrConflict hieronder).
+        var slotBestaand=strikt(slotKey)?(doelData(slotKey)[slotKey]||'').trim():'';
+        var slotAnders=!!slotBestaand&&prevJaar!==undefined&&slotBestaand!==String(S._opy[String(prevJaar)]||'').trim();
+        if(prevJaar!==undefined&&String(prevJaar)!==String(yr)&&!slotAnders){
           // Venster is opgeschoven: dit vak stelt nu een ander boekjaar voor dan voorheen —
           // geen gebruikersconflict, gewoon bijwerken.
           var d=doelData(slotKey);d[slotKey]=String(w);
@@ -2150,6 +2477,16 @@ async function deleteDocument(docId, faseId) {
   fetch(WORKER+'/mna/document/delete/'+docId+'?code='+encodeURIComponent(S.code||''),{method:'POST'}).catch(function(){});
 }
 
+// Extractiewaarschuwingen bij upload (productpunt 35): zelfde opmaak als vroeger, elke melding ge-escaped.
+function aandachtspuntenHtml(doc) {
+  var msgs = doc && Array.isArray(doc.aandachtspunten) ? doc.aandachtspunten : [];
+  if (!msgs.length) return '';
+  return '<div style="flex-basis:100%"><div style="background:var(--gold-bg);border:1px solid var(--gold);border-radius:6px;padding:.75rem;margin:.5rem 0">'
+    +'<div style="font-size:11px;font-weight:600;color:var(--gold-dark);margin-bottom:.4rem">⚠ Aandachtspunten bij '+esc(doc.naam)+'</div>'
+    +msgs.map(function(m){return '<div style="font-size:12px;color:var(--gold-dark);padding:2px 0">• '+esc(m)+'</div>';}).join('')
+    +'</div></div>';
+}
+
 function renderDocumentSectie(faseId) {
   if(isKoper()) return '';
   var docs = getDocsForFase(faseId);
@@ -2164,7 +2501,8 @@ function renderDocumentSectie(faseId) {
     var entiteitKiezer = '';
     if (S._entiteiten && S._entiteiten.length) {
       entiteitKiezer = '<select id="entiteit-select-'+faseId+'" style="font-size:11px;background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:5px 8px">'
-        + '<option value="">Groep/hoofdentiteit</option>'
+        + '<option value="">Automatisch herkennen</option>'
+        + '<option value="__GROEP__">Groep (geconsolideerd document)</option>'
         + S._entiteiten.map(function(e){return '<option value="'+esc(e.id)+'">'+esc(e.naam)+'</option>';}).join('')
         + '</select>';
     }
@@ -2260,7 +2598,8 @@ function renderDocumentSectie(faseId) {
       // matcht niet zeker/exact met precies één geregistreerde entiteit) is niets automatisch
       // verwerkt — herberekend uit de opgeslagen extractie (dus ook kloppend ná een pagina-herlaad,
       // niet afhankelijk van in-memory state van het moment van uploaden).
-      var behoeftKoppelingDoc = toonKoppelenDoc && !doc.entiteit_id && (doc.velden||{}).entiteit_naam && !gokEntiteitId((doc.velden||{}).entiteit_naam, true);
+      // Productpunt 5: in deze sessie expliciet op groepsniveau verwerkt → geen "Handmatig koppelen" meer.
+      var behoeftKoppelingDoc = toonKoppelenDoc && !doc.entiteit_id && !doc.groepsniveauVerwerkt && (doc.velden||{}).entiteit_naam && !gokEntiteitId((doc.velden||{}).entiteit_naam, true);
       var isBewijsstuk = doc.alleen_bewijsstuk || doc.methode === 'bewijsstuk';
       var bewijsstukBadgeDoc = isBewijsstuk ? ' <span style="font-size:9px;font-weight:600;color:var(--muted);background:var(--panel);border-radius:8px;padding:1px 6px;margin-left:2px" title="Alleen als onderbouwing toegevoegd, niet automatisch geanalyseerd — velden hieronder blijven ongewijzigd">&#128206; Bewijsstuk</span>' : '';
       var groepsniveauBadgeDoc = (toonKoppelenDoc && !doc.entiteit_id && !isBewijsstuk)
@@ -2281,12 +2620,14 @@ function renderDocumentSectie(faseId) {
         + '<span style="font-size:13px">'+icon+'</span>'
         + '<span style="font-size:11px;color:'+(behoeftKoppelingDoc?'var(--head)':'var(--teal)')+';flex:1">'+(magDownloaden?'<a href="'+WORKER+'/mna/document/download/'+encodeURIComponent(doc.id)+'?code='+encodeURIComponent(S.code)+'" target="_blank" rel="noopener" style="color:'+(behoeftKoppelingDoc?'var(--head)':'var(--teal)')+';text-decoration:'+(behoeftKoppelingDoc?'underline':'none')+'">'+esc(doc.naam)+'</a>':esc(doc.naam))+statusBadgeDoc+(entNaamDoc?' <span style="font-size:9px;font-weight:600;color:var(--teal);background:var(--teal-bg);border-radius:8px;padding:1px 6px;margin-left:2px">'+esc(entNaamDoc)+'</span>':groepsniveauBadgeDoc)+bewijsstukBadgeDoc+((doc.versie||1)>1?' <span style="font-size:9px;font-weight:600;color:var(--muted);background:var(--panel);border-radius:8px;padding:1px 6px;margin-left:2px" title="Dit is versie '+(doc.versie||1)+' — vervangt een eerder geüpload document">v'+(doc.versie||1)+'</span>':'')+'</span>'
         + '<span style="font-size:10px;color:var(--muted)">'+(doc.grootte/1024/1024).toFixed(1)+'MB</span>'
-        + (toonKoppelenDoc?'<select id="fd-ent-'+doc.id+'" style="font-size:10px;background:var(--panel);border:1px solid var(--border2);border-radius:var(--r);padding:2px 4px"><option value="">'+(doc.entiteit_id?'— Groepsniveau (ontkoppelen) —':'— Koppel aan entiteit —')+'</option>'+S._entiteiten.map(function(e){return '<option value="'+esc(e.id)+'"'+(e.id===geselecteerdDoc?' selected':'')+'>'+esc(e.naam)+(e.id===gokIdDoc&&!doc.entiteit_id?' (AI-suggestie)':'')+'</option>';}).join('')+'</select><button onclick="koppelDocumentAanEntiteit(\''+doc.id+'\',\'fd-ent-\')" style="background:none;border:1px solid var(--teal);color:var(--teal);border-radius:var(--r);cursor:pointer;font-size:10px;padding:1px 6px">&#128279;</button>':'')
+        + (toonKoppelenDoc?'<select id="fd-ent-'+doc.id+'" style="font-size:10px;background:var(--panel);border:1px solid var(--border2);border-radius:var(--r);padding:2px 4px"><option value="">'+(doc.entiteit_id?'— Groepsniveau (ontkoppelen) —':'— Koppel aan entiteit —')+'</option>'+(behoeftKoppelingDoc?'<option value="__GROEP__">Groepsniveau (geconsolideerd)</option>':'')+S._entiteiten.map(function(e){return '<option value="'+esc(e.id)+'"'+(e.id===geselecteerdDoc?' selected':'')+'>'+esc(e.naam)+(e.id===gokIdDoc&&!doc.entiteit_id?' (AI-suggestie)':'')+'</option>';}).join('')+'</select><button onclick="koppelDocumentAanEntiteit(\''+doc.id+'\',\'fd-ent-\')" style="background:none;border:1px solid var(--teal);color:var(--teal);border-radius:var(--r);cursor:pointer;font-size:10px;padding:1px 6px">&#128279;</button>':'')
         + ((doc.heeft_eerdere_versies||(doc.versie||1)>1)?'<button onclick="toonVersieGeschiedenis(\''+doc.id+'\')" title="Eerdere versies bekijken" style="background:none;border:1px solid var(--border2);color:var(--muted);border-radius:var(--r);cursor:pointer;font-size:10px;padding:1px 6px">&#128337; Versies</button>':'')
+        + ((!isReadOnly && typeof dclMagWijzigen==='function' && dclMagWijzigen(doc,{ rol:S.rol, code:S.code, faseId:faseId, vergrendeld:isReadOnly }))?'<button onclick="wijzigDocumentClassificatie(\''+faseId+'\',\''+doc.id+'\')" title="Classificatie van dit document wijzigen (de cijfers worden niet automatisch aangepast)" style="background:none;border:1px solid var(--border2);color:var(--muted);border-radius:var(--r);cursor:pointer;font-size:10px;padding:1px 6px">Classificatie wijzigen</button>':'')
         + (!isReadOnly?'<button onclick="vervangDocument(\''+faseId+'\',\''+doc.id+'\')" title="Nieuwe versie uploaden (vervangt dit document)" style="background:none;border:1px solid var(--border2);color:var(--muted);border-radius:var(--r);cursor:pointer;font-size:10px;padding:1px 6px">&#8635; Vervangen</button>':'')
         + (!isReadOnly?'<button onclick="deleteDocument(\''+doc.id+'\',\''+faseId+'\')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:10px;padding:0 2px">✕</button>':'')
         + redenDoc
         + klasHtml
+        + aandachtspuntenHtml(doc)
         + '</div>';
     }).join('');
     docsHtml += '</div>';
@@ -2294,6 +2635,64 @@ function renderDocumentSectie(faseId) {
 
   return '<div style="margin-bottom:1rem">'+uploadHtml+batchHtml+docsHtml+'</div>';
 }
+
+// Productpunt 15 (23 okt 2026): classificatie van een bestaand document wijzigen. Zelfde keuzes en
+// validatie als bij upload (mna/12); de server controleert rol, entiteit en gelijktijdige wijziging
+// (verwacht_inhoud_hash). Er wordt niets herberekend of gewist: het document krijgt een markering dat
+// eerder overgenomen cijfers opnieuw gecontroleerd moeten worden.
+var DCLW_ONBEKEND = 'Het is niet bevestigd of de classificatie is gewijzigd (geen of een onleesbaar antwoord). De documentenlijst wordt vernieuwd; controleer daar de classificatie voordat u het opnieuw probeert.';
+window.wijzigDocumentClassificatie = function(faseId, docId) {
+  var doc = (DOCS[faseId] || []).find(function(d){ return d.id === docId; });
+  if (!doc || typeof dclRenderWijzigVelden !== 'function') return;
+  if (!dclMagWijzigen(doc, { rol:S.rol, code:S.code, faseId:faseId, vergrendeld:(S.traject && S.traject.status === 'vergrendeld') })) return;
+  var sessie = S, code = S.code;
+  var ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;display:flex;align-items:center;justify-content:center;padding:1.5rem';
+  var box = document.createElement('div');
+  box.setAttribute('role','dialog'); box.setAttribute('aria-modal','true'); box.setAttribute('aria-labelledby','dclw-titel');
+  box.style.cssText = 'background:var(--panel);border:1px solid var(--border2);border-radius:var(--r2);padding:1.5rem;max-width:620px;width:100%';
+  box.innerHTML = '<div id="dclw-titel" style="font-family:Playfair Display,serif;font-size:1.05rem;color:var(--head);font-weight:600;margin-bottom:.4rem">Classificatie wijzigen</div>'
+    + '<div style="font-size:12px;color:var(--mid);margin-bottom:.8rem">'+esc(doc.naam||'')+'</div>'
+    + dclRenderWijzigVelden(faseId, doc.documentclassificatie, S._entiteiten)
+    + '<div style="font-size:11px;color:var(--muted);margin:.8rem 0">Cijfers die eerder uit dit document zijn overgenomen, worden niet automatisch aangepast of gewist. Het document krijgt een markering zodat u ze kunt controleren.</div>'
+    + '<div id="dclw-fout" style="font-size:12px;color:var(--red);margin-bottom:.6rem"></div>'
+    + '<div style="display:flex;justify-content:flex-end;gap:8px"><button id="dclw-annuleer" style="background:transparent;border:1px solid var(--border2);border-radius:var(--r);padding:7px 14px;cursor:pointer;font-size:12px">Annuleren</button>'
+    + '<button id="dclw-opslaan" style="background:var(--teal);color:#fff;border:none;border-radius:var(--r);padding:7px 14px;cursor:pointer;font-size:12px">Opslaan</button></div>';
+  ov.appendChild(box); document.body.appendChild(ov);
+  var sluit = function(){ if (ov.parentNode) ov.parentNode.removeChild(ov); };
+  document.getElementById('dclw-annuleer').onclick = sluit;
+  var knop = document.getElementById('dclw-opslaan');
+  knop.onclick = function(){
+    var fout = document.getElementById('dclw-fout');
+    var invoer = dclLeesWijzigRuw(document);
+    var v = dclValideer(invoer.ruw, invoer.entiteitId, S._entiteiten, faseId === 'financieel' ? {} : { alleenAlgemeen: true });
+    if (!v.ok) { fout.textContent = v.fout; return; }
+    var body = Object.assign({ code: code, verwacht_inhoud_hash: doc.inhoud_hash }, v.params);
+    if (v.params.doc_scope === 'ENTITY') body.entiteit_id = invoer.entiteitId;
+    knop.disabled = true; knop.textContent = 'Opslaan...';
+    fetchMetTimeout(WORKER+'/mna/document/classificatie/'+encodeURIComponent(docId), { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(body) }, 30000)
+      .then(function(r){ return r.json().then(function(d){ return { http:r.status, d:d }; }, function(){ return { http:r.status, d:null }; }); })
+      .then(function(res){
+        if (S !== sessie || S.code !== code) { sluit(); return; }
+        if (res.http === 200 && res.d && res.d.ok === true) {
+          var nieuweEnt = (res.d.documentclassificatie && res.d.documentclassificatie.entiteit_id) || null;
+          var klas = dclSaneer(res.d.documentclassificatie, nieuweEnt);
+          var huidig = (DOCS[faseId] || []).find(function(d){ return d.id === docId; });
+          sluit();
+          if (klas && huidig) { huidig.documentclassificatie = klas; huidig.entiteit_id = nieuweEnt; renderApp(); }
+          else loadDocsForFase(faseId);
+          toast('Classificatie gewijzigd. Controleer de cijfers die eerder uit dit document zijn overgenomen.', 'ok', 7000);
+          return;
+        }
+        knop.disabled = false; knop.textContent = 'Opslaan';
+        if (res.http === 409) { sluit(); toast('Het document is intussen gewijzigd. De documentenlijst wordt vernieuwd; probeer het daarna opnieuw.', 'warn', 8000); loadDocsForFase(faseId); return; }
+        // Alleen een leesbare 4xx betekent zeker "niets gewijzigd"; anders is de uitkomst onbekend.
+        if (res.http >= 400 && res.http < 500 && res.d && typeof res.d.error === 'string') { fout.textContent = res.d.error; return; }
+        sluit(); toast(DCLW_ONBEKEND, 'warn', 10000); loadDocsForFase(faseId);
+      })
+      .catch(function(){ if (S !== sessie || S.code !== code) { sluit(); return; } sluit(); toast(DCLW_ONBEKEND, 'warn', 10000); loadDocsForFase(faseId); });
+  };
+};
 
 // Nieuwe versie van een bestaand document uploaden (Documentversiebeheer, 25 juli 2026): opent een
 // verborgen bestandskiezer en koppelt de nieuwe upload via ?vervangt= aan het oude document — de
@@ -2439,13 +2838,32 @@ function fmtConflictWaarde(v){
 // tussen documenten. Is er al een dialoog open, dan wordt deze batch in de wachtrij gezet i.p.v.
 // er nog een overlay overheen te stapelen (dat maakte het scherm zwart — meerdere halftransparante
 // overlays op elkaar). Gevonden 22 juli 2026 na een test met veel documenten tegelijk.
-function toonConflictDialog(conflicts, contextLabel) {
+// naAfloop (optioneel, productpunt 5): wordt na "Toepassen" of "Alles behouden" aangeroepen (groepsdocument:
+// de groepsrij opslaan).
+function toonConflictDialog(conflicts, contextLabel, naAfloop) {
   if(!conflicts||!conflicts.length)return;
   if(S._conflictDialoogOpen){
     if(!S._conflictWachtrij)S._conflictWachtrij=[];
-    S._conflictWachtrij.push({conflicts:conflicts,contextLabel:contextLabel});
+    S._conflictWachtrij.push({conflicts:conflicts,contextLabel:contextLabel,naAfloop:naAfloop});
     return;
   }
+  // Productpunt 38 (22 okt 2026): bij een groepsdocument 'huidig' pas bij het tonen (ook later uit de
+  // wachtrij) afleiden uit de actuele S._groepData/S._groepAuto — intussen kan een entiteitsave de bruto som
+  // hebben bijgewerkt. Is huidig nu gelijk aan het documentcijfer, dan vervalt het conflict. Was de wachttijd
+  // verstreken of loopt er nog financieel werk, dan wordt huidig expliciet als nog niet actueel getoond.
+  var nietActueel=false;
+  conflicts=conflicts.filter(function(c){
+    if(!c.groepsdocument)return true;
+    var huidig=String((S._groepData||{})[c.key]||'').trim();
+    if(huidig===String(c.nieuw)){if(S._pendingConflicts)delete S._pendingConflicts[c.key];return false;}
+    c.huidig=huidig;
+    if(S._groepAuto&&S._groepAuto[c.key]===huidig)c.huidigBron='bruto berekende som van de entiteiten';else delete c.huidigBron;
+    if(c.nietActueel||(typeof finWerkLopend==='function'&&finWerkLopend(S,c.finWerkGrens===undefined?Infinity:c.finWerkGrens).length)){
+      c.huidigBron='nog niet actueel: verwerking van een ander document loopt nog';nietActueel=true;
+    }
+    return true;
+  });
+  if(!conflicts.length){renderApp();if(naAfloop)naAfloop();sluitConflictDialoogEnGaVerder();return;}
   S._conflictDialoogOpen=true;
   if(!S._choiceLog)S._choiceLog=[];
   var ov=document.createElement('div');
@@ -2458,6 +2876,11 @@ function toonConflictDialog(conflicts, contextLabel) {
   // tonen al het jaartal (zie de dynamische omzetPerJaar-labels), maar de entiteit ontbrak volledig.
   if(contextLabel){
     var ctxEl=document.createElement('div');ctxEl.style.cssText='font-size:12px;font-weight:600;color:var(--teal);margin-bottom:.6rem';ctxEl.textContent=contextLabel;box.appendChild(ctxEl);
+  }
+  if(nietActueel){
+    var naEl=document.createElement('div');naEl.style.cssText='font-size:12px;font-weight:600;color:var(--gold-dark);margin-bottom:.6rem';
+    naEl.textContent='Let op: de huidige groepswaarde is nog niet actueel, want de verwerking van een ander document loopt nog. U kunt wel kiezen; "Huidig" wijzigt niets.';
+    box.appendChild(naEl);
   }
   // Toon brondocumenten — als alle conflicten uit hetzelfde ene document komen (het gangbare
   // geval), dat maar één keer bovenaan noemen i.p.v. per veld en per optie te herhalen: dat maakte
@@ -2486,7 +2909,7 @@ function toonConflictDialog(conflicts, contextLabel) {
     var lblH=document.createElement('label');
     var rH=document.createElement('input');rH.type='radio';rH.name='cf_'+i;rH.value='huidig';rH.checked=true;rH.style.accentColor='var(--teal)';lblH.appendChild(rH);
     var tH=document.createElement('span');tH.style.color='var(--mid)';
-    var bronHuidig=S._docSource&&S._docSource[c.key]?'uit '+S._docSource[c.key]:'handmatig ingevoerd';
+    var bronHuidig=c.huidigBron||(S._docSource&&S._docSource[c.key]?'uit '+S._docSource[c.key]:'handmatig ingevoerd');
     var jaarHuidig=c.huidigJaar?'<div style="font-size:10px;font-weight:700;color:var(--gold-dark);margin-top:2px">Boekjaar '+esc(c.huidigJaar)+'</div>':'';
     tH.innerHTML='<div style="font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-bottom:2px">Huidig</div><strong style="font-size:15px;color:var(--sub)">'+esc(fmtConflictWaarde(c.huidig))+'</strong>'+jaarHuidig+'<div style="font-size:10px;color:var(--muted);margin-top:2px">'+esc(bronHuidig)+'</div>';lblH.appendChild(tH);opts.appendChild(lblH);
     var lblN=document.createElement('label');
@@ -2519,7 +2942,7 @@ function toonConflictDialog(conflicts, contextLabel) {
       if(S._pendingConflicts)delete S._pendingConflicts[c.key];
       S._choiceLog.push({key:c.key,label:c.label,gekozen:'huidig',waarde:c.huidig,bron:'handmatig ingevoerd',ts:new Date().toLocaleString('nl-NL')});
     });
-    document.body.removeChild(ov);renderApp();sluitConflictDialoogEnGaVerder();
+    document.body.removeChild(ov);renderApp();if(naAfloop)naAfloop();sluitConflictDialoogEnGaVerder();
   });btns.appendChild(btnB);
   var btnA=document.createElement('button');btnA.className='btn';btnA.style.fontSize='12px';btnA.textContent='Toepassen';
   btnA.addEventListener('click',function(){
@@ -2533,6 +2956,12 @@ function toonConflictDialog(conflicts, contextLabel) {
       }
       var gekozenHuidig=r.rH.checked;
       if(!gekozenHuidig)(c.doel||S.data)[r.key]=c.nieuw;
+      // Groepsdocument: het gekozen documentcijfer is een aangeleverde groepswaarde (geen bruto som meer).
+      if(!gekozenHuidig&&c.groepsdocument){
+        if(S._groepAuto)delete S._groepAuto[r.key];
+        if(!S._docSource)S._docSource={};S._docSource[r.key]=c.bron;
+        if(S._userEdited)delete S._userEdited[r.key];
+      }
       if(S._pendingConflicts)delete S._pendingConflicts[r.key];
       // Leg keuze vast in log
       S._choiceLog.push({
@@ -2544,7 +2973,7 @@ function toonConflictDialog(conflicts, contextLabel) {
         ts:new Date().toLocaleString('nl-NL')
       });
     });
-    document.body.removeChild(ov);renderApp();schedSave();sluitConflictDialoogEnGaVerder();
+    document.body.removeChild(ov);renderApp();schedSave();if(naAfloop)naAfloop();sluitConflictDialoogEnGaVerder();
   });btns.appendChild(btnA);box.appendChild(btns);ov.appendChild(box);document.body.appendChild(ov);
 }
 // Na het sluiten van een conflict-dialoog: vlag vrijgeven en, als er ondertussen meer batches in de
@@ -2553,7 +2982,7 @@ function sluitConflictDialoogEnGaVerder(){
   S._conflictDialoogOpen=false;
   if(S._conflictWachtrij&&S._conflictWachtrij.length){
     var volgende=S._conflictWachtrij.shift();
-    toonConflictDialog(volgende.conflicts,volgende.contextLabel);
+    toonConflictDialog(volgende.conflicts,volgende.contextLabel,volgende.naAfloop);
   }
 }
 
@@ -2612,7 +3041,7 @@ function renderDataroom(){
         var toonKoppelen=!isKoper()&&S._entiteiten&&S._entiteiten.length;
         var gokId=(toonKoppelen&&!doc.entiteit_id)?gokEntiteitId((doc.velden||{}).entiteit_naam):'';
         var geselecteerd=doc.entiteit_id||gokId;
-        var behoeftKoppeling=toonKoppelen&&!doc.entiteit_id&&(doc.velden||{}).entiteit_naam&&!gokEntiteitId((doc.velden||{}).entiteit_naam,true);
+        var behoeftKoppeling=toonKoppelen&&!doc.entiteit_id&&!doc.groepsniveauVerwerkt&&(doc.velden||{}).entiteit_naam&&!gokEntiteitId((doc.velden||{}).entiteit_naam,true);
         var groepsniveauBadge=(toonKoppelen&&!doc.entiteit_id)
           ?(behoeftKoppeling
             ?' <span style="font-size:10px;font-weight:700;color:#fff;background:var(--gold);border-radius:8px;padding:2px 8px;margin-left:4px">&#9888; Handmatig koppelen</span>'
@@ -2624,6 +3053,7 @@ function renderDataroom(){
           +'<div style="font-size:11px;color:var(--muted);margin-top:2px">'+gr+(st?' &middot; Geupload: '+st:'')+'</div>'
           +(toonKoppelen?'<div style="margin-top:6px;display:flex;gap:6px;align-items:center">'
             +'<select id="dr-ent-'+doc.id+'" style="font-size:11px;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:4px 6px"><option value="">'+(doc.entiteit_id?'— Groepsniveau (ontkoppelen) —':'— Koppel aan entiteit —')+'</option>'
+            +(behoeftKoppeling?'<option value="__GROEP__">Groepsniveau (geconsolideerd)</option>':'')
             +S._entiteiten.map(function(e){return '<option value="'+esc(e.id)+'"'+(e.id===geselecteerd?' selected':'')+'>'+esc(e.naam)+(e.id===gokId&&!doc.entiteit_id?' (AI-suggestie)':'')+'</option>';}).join('')
             +'</select>'
             +'<button class="btn-ghost btn-sm" style="font-size:11px" onclick="koppelDocumentAanEntiteit(\''+doc.id+'\')">&#128279; '+(doc.entiteit_id?'Wijzigen':'Koppelen')+'</button>'
@@ -2655,6 +3085,17 @@ window.koppelDocumentAanEntiteit = async function(docId, selectPrefix){
     });
   }
   if(!doc)return;
+  // Productpunt 5: "Groepsniveau (geconsolideerd)" — het document staat al op groepsniveau (geen
+  // entiteit_id), dus geen koppel-entiteit-aanroep; de opgeslagen extractie wordt op groepsniveau verwerkt.
+  if(entiteitId==='__GROEP__'){
+    if(doc.entiteit_id)return;
+    if(!doc.velden||!Object.keys(doc.velden).length){toast('Er zijn geen opgeslagen cijfers om op groepsniveau te verwerken.','warn');return;}
+    doc.groepsniveauVerwerkt=true;
+    Object.keys(DOCS||{}).forEach(function(fid){(DOCS[fid]||[]).forEach(function(d){if(d.id===docId)d.groepsniveauVerwerkt=true;});});
+    var uitGroep=verwerkGroepsdocument(doc.velden, doc.naam, null);
+    if(!uitGroep.conflicten&&!uitGroep.uitgesteld)toast('"'+doc.naam+'" op groepsniveau verwerkt (geconsolideerd document).','ok');
+    return;
+  }
   var vorigeEntiteitId=doc.entiteit_id||'';
   if(!entiteitId&&!vorigeEntiteitId){toast('Kies eerst een entiteit.','warn');return;}
   if(vorigeEntiteitId&&entiteitId!==vorigeEntiteitId){

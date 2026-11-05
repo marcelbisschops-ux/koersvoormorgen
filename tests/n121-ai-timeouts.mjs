@@ -2,7 +2,8 @@
 // N-121 (4 okt 2026) — lange AI-generaties begrensd 180 seconden laten afronden. Staging mat 57/62s
 // voor rijke trajecten; de frontend brak de 13 AI-generatiecalls in mna/04 (9) en mna/06 (4) na
 // 60000 ms af en toonde een valse fout. Die calls staan nu op 180000 ms; de wrapper, gewone
-// fetch-defaults (15s) en uploads (60s) blijven ongewijzigd.
+// fetch-defaults (15s) en de overige 60s-calls blijven ongewijzigd. De synchrone documentupload
+// (uploadDocument in mna/02) staat apart op 900000 ms (15 min, meerdere AI-delen van elk tot 150s).
 //
 // Deze test draait de ECHTE fetchMetTimeout uit mna/01 en de ECHTE verkoopmemorandum-handler uit
 // mna/04 in node:vm met een virtuele klok en een gecontroleerde fetch — geen netwerk, geen browser,
@@ -24,8 +25,8 @@ const AI_MS = 180000;
 // wijzigt). Wijkt headers/body af, dan is dat een regressie buiten de N-121-scope.
 const AI_CALLS = [
   ['mna/04-begeleider-dashboard.js', "WORKER+'/mna/document/'+type+'/genereer'", "{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||S.code},body:JSON.stringify({code:S._bgKey||S.code})}"],
-  ['mna/04-begeleider-dashboard.js', "WORKER+'/mna/dealvoorstel/hoofdstukken/genereer'", "{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||S.code},body:JSON.stringify({code:S._bgKey||S.code,contextBlok:contextBlok,vlaggen:dvVlaggen})}"],
-  ['mna/04-begeleider-dashboard.js', "WORKER+'/mna/dealvoorstel/bijlage/genereer'", "{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||S.code},body:JSON.stringify({code:S._bgKey||S.code,interneContext:interneContext})}"],
+  ['mna/04-begeleider-dashboard.js', "WORKER+'/mna/dealvoorstel/hoofdstukken/genereer'", "{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||S.code},body:JSON.stringify({code:S._bgKey||S.code,contextBlok:contextBlok,vlaggen:dvVlaggen,cijfers:dvCijfers})}"],
+  ['mna/04-begeleider-dashboard.js', "WORKER+'/mna/dealvoorstel/bijlage/genereer'", "{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||S.code},body:JSON.stringify({code:S._bgKey||S.code,interneContext:interneContext,cijfers:dvCijfersIntern})}"],
   ['mna/04-begeleider-dashboard.js', "WORKER+'/mna/document/bieding/genereer'", "{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||S.code},body:JSON.stringify({code:S._bgKey||S.code,ebitda:ebitda,multLaag:multLaag,multHoog:multHoog,betaling:betaling,exclWeken:exclWeken,geldigTot:geldigTotV})}"],
   ['mna/04-begeleider-dashboard.js', "WORKER+'/mna/spa/genereer'", "{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||''},body:JSON.stringify({code:S._bgKey})}"],
   ['mna/04-begeleider-dashboard.js', "WORKER+'/mna/risicoraamwerk/genereer'", "{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||''},body:JSON.stringify({code:S.code})}"],
@@ -38,14 +39,17 @@ const AI_CALLS = [
   ['mna/06-schermen.js', "WORKER+'/mna/analyse/traject/genereer'", "{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||S.code||''},body:JSON.stringify({code:S.code,dataSamenvatting:dataSamenvatting,benchmarkTekst:bmTekst,sectorLabel:_b5Sec,kantoorNaam:t3.kantoor_naam,trajectType:t3.traject_type})}"],
 ];
 
-// Buiten de N-121-scope: deze expliciete 60s-calls (twee uploads, consolidatie, meeting) blijven
+// Buiten de N-121-scope: deze expliciete 60s-calls (bankmutatie-upload, consolidatie, meeting) blijven
 // ongewijzigd.
 const BUITEN_SCOPE_60S = [
   ['mna/02-state-opslag-documenten.js', "fetchMetTimeout(WORKER + '/mna/bankmutaties/upload', { method: 'POST', body: fd }, 60000)"],
-  ['mna/02-state-opslag-documenten.js', "fetchMetTimeout(url, { method: 'POST', body: formData }, 60000)"],
   ['mna/02-state-opslag-documenten.js', "fetchMetTimeout(WORKER+'/mna/analyse/consolideer/genereer',"],
   ['mna/03-rekenkern-waardering.js', "fetchMetTimeout(WORKER+'/mna/logboek-meeting/genereer',"],
 ];
+// Documentupload (uploadDocument): synchrone verwerking in meerdere AI-delen (elk tot 150s) plus een
+// eventuele onafhankelijke dubbele check — eigen, eindige deadline van 15 minuten.
+const DOC_UPLOAD_MS = 900000;
+const DOC_UPLOAD = "fetchMetTimeout(url, { method: 'POST', body: formData }, ";
 
 const lees = (root, rel) => fs.readFileSync(path.join(root, rel), 'utf8');
 const flush = () => new Promise((r) => setImmediate(r));
@@ -170,6 +174,19 @@ export async function draaiN121AiTimeoutChecks(root = process.cwd()) {
     const i = src.indexOf(snippet);
     check(i >= 0 && /^[^\n]*?\b60000\)/.test(src.slice(i)), rel + ': ' + snippet.slice(0, 60) + '… blijft 60000 ms (buiten N-121-scope)');
   });
+  {
+    const src02 = lees(root, 'mna/02-state-opslag-documenten.js');
+    const a = src02.indexOf('async function uploadDocument(faseId, file, existingId, vervangtDocId');
+    const b = a < 0 ? -1 : src02.indexOf('\n}\n', a);
+    const fn = a >= 0 && b > a ? src02.slice(a, b) : '';
+    const treffers = src02.split(DOC_UPLOAD).length - 1;
+    check(treffers === 1 && fn.includes(DOC_UPLOAD + DOC_UPLOAD_MS + ')') && !/\b60000\b/.test(fn),
+      'mna/02 uploadDocument: documentupload exact één keer op ' + DOC_UPLOAD_MS + ' ms (15 min), niet meer op 60000 ms');
+    check(/binnen 15 minuten/.test(fn) && !/60 seconden/.test(fn), 'mna/02 uploadDocument: time-outmelding noemt 15 minuten, niet meer 60 seconden');
+    // UAT DOC-A24/A26 (2 nov 2026): zesde 60000 ms-call = bankafschrift inlezen uit het dossier (inlezenBankUitDocument).
+    check((src02.match(/\b60000\)/g) || []).length === 6 && /mna\/bankmutaties\/uit-document'[^\n]*\b60000\)/.test(src02) && (src02.match(/\b900000\)/g) || []).length === 1,
+      'mna/02: de overige zes 60000 ms-calls (incl. bankafschrift inlezen) ongewijzigd, 900000 ms alleen bij de documentupload');
+  }
 
   // ── B. Echte fetchMetTimeout met virtuele klok ──
   await probeer('wrapper', async () => {
@@ -219,14 +236,36 @@ export async function draaiN121AiTimeoutChecks(root = process.cwd()) {
       await klok.tik(1);
       check(nogOpen && f.calls[0].aborted && s.fout && s.fout.name === 'AbortError' && klok.open === 0, 'wrapper-default zonder ms blijft 15000 ms');
     }
-    // B5. Contrast: een expliciete 60000 ms (uploads e.d.) breekt nog steeds op 60s af — precies de
-    //     valse fout die de 13 AI-calls bij 62s gaven.
+    // B5. Contrast: een expliciete 60000 ms (bankmutatie-upload e.d.) breekt nog steeds op 60s af — precies
+    //     de valse fout die de 13 AI-calls bij 62s gaven.
     {
       const { klok, f, fmt } = laadWrapper(root);
       const s = volg(fmt(WORKER + '/x', { method: 'POST' }, 60000));
       await flush();
       await klok.tik(60000);
-      check(f.calls[0].aborted && s.fout && s.fout.name === 'AbortError' && klok.open === 0, 'expliciete 60000 ms (uploads) breekt nog steeds op 60s af — wrapper zelf ongewijzigd');
+      check(f.calls[0].aborted && s.fout && s.fout.name === 'AbortError' && klok.open === 0, 'expliciete 60000 ms (overige 60s-calls) breekt nog steeds op 60s af — wrapper zelf ongewijzigd');
+    }
+    // B6. Documentupload op 900000 ms: antwoord na 3 × 150s (meerdere AI-delen) slaagt; een hangend
+    //     verzoek blijft open tot 899999 ms en wordt precies op 900000 ms afgebroken (eindig).
+    {
+      const { klok, f, fmt } = laadWrapper(root);
+      const s = volg(fmt(WORKER + '/mna/document/upload?code=' + BGKEY, { method: 'POST', body: 'synthetisch' }, DOC_UPLOAD_MS));
+      await flush();
+      await klok.tik(450000);
+      const nietAfgebroken = f.calls[0] && !f.calls[0].aborted && !s.klaar;
+      f.calls[0].resolve(antwoord({ ok: true }));
+      await flush();
+      check(nietAfgebroken && s.klaar && !s.fout && klok.open === 0, 'documentupload (900000 ms): antwoord na 450s (3 × 150s AI-deel) blijft succes, timer opgeruimd');
+    }
+    {
+      const { klok, f, fmt } = laadWrapper(root);
+      const s = volg(fmt(WORKER + '/mna/document/upload?code=' + BGKEY, { method: 'POST', body: 'synthetisch' }, DOC_UPLOAD_MS));
+      await flush();
+      await klok.tik(DOC_UPLOAD_MS - 1);
+      const nogOpen = !f.calls[0].aborted && !s.klaar;
+      await klok.tik(1);
+      check(nogOpen && f.calls[0].aborted && s.fout && s.fout.name === 'AbortError' && klok.open === 0 && f.calls.length === 1,
+        'documentupload hangend: open tot 899999 ms, abort (AbortError) op 900000 ms, geen tweede verzoek, timer weg');
     }
   });
 

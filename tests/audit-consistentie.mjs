@@ -658,6 +658,10 @@ if (backendFiles.length) {
       const covered = new Set();
       let dm;
       while ((dm = delRe.exec(fnScope))) covered.add(dm[1]);
+      // WF-001: zelfde regel als backend tests/lib-cascade-scope.mjs — een bewust losgemaakte koppeling (bron buiten
+      // KVM, bijv. de externe financiële administratie) telt als gedekt, uitsluitend met exact dit patroon.
+      const losRe = /UPDATE (\w+) SET traject_id=NULL WHERE traject_id=/g;
+      while ((dm = losRe.exec(fnScope))) covered.add(dm[1]);
       const missing = [...tablesWithTrajectId].filter(t => !covered.has(t));
       if (!missing.length) ok('verwijderTrajectData(): ' + tablesWithTrajectId.size + ' tabellen met traject_id gecontroleerd, allemaal gedekt.');
       else missing.forEach(t => warn('verwijderTrajectData(): tabel "' + t + '" heeft een traject_id-kolom maar staat er NIET in — voeg toe: DELETE FROM ' + t + ' WHERE traject_id=?'));
@@ -1069,6 +1073,19 @@ log('14. Documentcontent-race NDA/LoI/MOU (KVM-QUALITY-GATE.md, regressie 12 sep
   } else {
     ok('Generatiebewaking (_mouGen) en het atomische commit-moment zijn nog aanwezig in bgMouComposer/bgMouRender.');
   }
+  // Productpunt 19 (11 okt 2026): een geslaagde blur-PATCH hertekende de hele composer en wiste daarmee
+  // andere onopgeslagen velden/vrije tekst; een mislukte opslag zette het veld stil terug; de
+  // documentkeuze zette _mouDocId al vóór het laden. Gedrag wordt bewezen in check 26
+  // (tests/document-output-security.mjs, sectie G); dit vergrendelt alleen de aanhaakpunten.
+  if (!/out\.innerHTML=h;\s*_mouHertekent=false;\s*bgMouWire\(bevroren\);\s*bgMouConceptenToepassen\(out,bevroren,focus\);/.test(src04mou)) {
+    warn('mna/04-begeleider-dashboard.js — bgMouRender() zet onopgeslagen composerconcepten niet meer terug na out.innerHTML/bgMouWire (productpunt 19: formulierverlies bij hertekenen).');
+  } else if (/inp\.value=inp\.getAttribute\('data-orig'\)/.test(src04mou)) {
+    warn('mna/04-begeleider-dashboard.js — een mislukte veldopslag zet de invoer weer stil terug naar de oude waarde (productpunt 19).');
+  } else if (/_mouDocId=this\.value/.test(src04mou)) {
+    warn('mna/04-begeleider-dashboard.js — de documentkeuze (mou-kies) zet _mouDocId weer vóór het laden; invoer in het oude document kan dan onder het nieuwe vallen (productpunt 19).');
+  } else {
+    ok('Composer behoudt onopgeslagen invoer bij hertekenen (concepten na bgMouWire terug), mislukte opslag zet niets stil terug, documentkeuze commit _mouDocId pas bij tonen.');
+  }
 }
 
 log('15. bgDocSpa() gebruikt de dedicated /mna/spa/genereer-route, niet de generieke /ai-proxy (P3-45)');
@@ -1287,7 +1304,7 @@ log('25. Documentupload-status (tests/document-processing-ui.mjs): blijvende sta
     const gefaald = resultaten.filter(r => !r.ok);
     gefaald.forEach(r => warn('Uploadstatus: ' + r.msg));
     if (!resultaten.length) warn('Uploadstatus: geen checks uitgevoerd.');
-    else if (!gefaald.length) ok('Alle ' + resultaten.length + ' uploadstatuschecks geslaagd (PROCESSED/STORED/NEEDS_REVIEW/FAILED met eigen status en reden, non-200 met doc_id blijft zichtbaar en na herladen, geen fictieve rij zonder doc_id, timeout/netwerk/onleesbaar antwoord/lokale fout gescheiden zonder automatische herupload, batch met uitkomst per bestand en annuleren van alleen niet-gestarte bestanden, geen vreemde state na uitloggen, oude versie blijft bij mislukte vervanging, lijst-503 behoudt cache, geen veldinvulling uit foutdocumenten, escaping).');
+    else if (!gefaald.length) ok('Alle ' + resultaten.length + ' uploadstatuschecks geslaagd (PROCESSED/STORED/NEEDS_REVIEW/FAILED met eigen status en reden, non-200 met doc_id blijft zichtbaar en na herladen, geen fictieve rij zonder doc_id, timeout/netwerk/onleesbaar antwoord/lokale fout gescheiden zonder automatische herupload, batch met uitkomst per bestand en annuleren van alleen niet-gestarte bestanden, geen vreemde state na uitloggen, oude versie blijft bij mislukte vervanging, lijst-503 behoudt cache, geen veldinvulling uit foutdocumenten, escaping, geconsolideerd groepsdocument expliciet op groepsniveau met keuzevenster i.p.v. vervanging van de bruto som).');
   } catch (e) {
     warn('tests/document-processing-ui.mjs kon niet worden uitgevoerd: ' + String((e && e.message) || e));
   }
@@ -1305,7 +1322,7 @@ log('26. Documentuitvoer (tests/document-output-security.mjs): veilige tekstopma
     const gefaald = resultaten.filter(r => !r.ok);
     gefaald.forEach(r => warn('Documentuitvoer: ' + r.msg));
     if (!resultaten.length) warn('Documentuitvoer: geen checks uitgevoerd.');
-    else if (!gefaald.length) ok('Alle ' + resultaten.length + ' documentuitvoer-checks geslaagd (geen bron-HTML/attributen/handlers als markup in rapport of print, <b>/<strong>/<em>/<i>/<br> leesbaar zonder markers, bestaande Markdown-/printopmaak en branding behouden, titel/bedrijf/adres/logo-alt geëscapet, logo alleen https/base64-afbeelding, alleen "Trajectreferentie: TR-…" en nooit een toegangscode/id, print zonder API-/opslag-/navigatie-effect en zonder wijziging van S).');
+    else if (!gefaald.length) ok('Alle ' + resultaten.length + ' documentuitvoer-checks geslaagd (geen bron-HTML/attributen/handlers als markup in rapport of print, <b>/<strong>/<em>/<i>/<br> leesbaar zonder markers, bestaande Markdown-/printopmaak en branding behouden, titel/bedrijf/adres/logo-alt geëscapet, logo alleen https/base64-afbeelding, alleen "Trajectreferentie: TR-…" en nooit een toegangscode/id, print zonder API-/opslag-/navigatie-effect en zonder wijziging van S; composer (productpunt 19): twee velden + vrije tekst overleven blur/opslaan/hertekenen, oudere vertraagde opslag overschrijft nieuwere invoer niet, mislukte opslag houdt invoer met fout, geen overdracht naar ander document/traject, bevroren document krijgt geen concepten terug, geen AI-/opslagbijwerking).');
   } catch (e) {
     warn('tests/document-output-security.mjs kon niet worden uitgevoerd: ' + String((e && e.message) || e));
   }
@@ -1500,6 +1517,957 @@ log('33. Marilyn verwijderbeheer: benchmarkverwijdering (.btn-del-bench) leest h
 }
 
 // ── Samenvatting ──────────────────────────────────────────────────────────
+log('34. Productpunt 31: doorzoekbare handleiding en "Leg mij dit uit" (ingebedde DOM-test)');
+{
+  // Zoekveld in beide handleidingen (rolfilter blijft, geen HTML uit invoer) en contextuele knop met vaste
+  // onderwerpen die per rol altijd uitleg opleveren. Echt script in node:vm; geen netwerk.
+  try {
+    // Ingebed (geen los testbestand: de releasecompositie staat geen nieuwe bestanden toe).
+    const vm = (await import('vm')).default;
+    const { execFileSync } = await import('child_process');
+
+    function knip(src, van, tot, naam) {
+      const a = src.indexOf(van), b = src.indexOf(tot, a + 1);
+      if (a < 0 || b < a) throw new Error(naam + ': markers ontbreken');
+      return src.slice(a, b);
+    }
+
+    // ── Minimale DOM-fixture ──
+    const VOID = new Set(['input', 'br', 'img', 'hr', 'meta', 'link']);
+    const NAMED = { amp: '&', lt: '<', gt: '>', quot: '"', nbsp: ' ', mdash: '—', ndash: '–', middot: '·', rsquo: '’', lsquo: '‘', euml: 'ë', eacute: 'é' };
+    const ontsnap = (s) => s
+      .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(parseInt(h, 16)))
+      .replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(parseInt(d, 10)))
+      .replace(/&([a-z]+);/gi, (m, n) => (n in NAMED ? NAMED[n] : m))
+      .replace(/&#39;/g, "'");
+
+    function attrSelector(sel) {
+      const m = /^\[([a-z0-9-]+)\]$/.exec(sel);
+      if (!m) throw new Error('fixture ondersteunt alleen [attr]-selectors, niet: ' + sel);
+      return m[1];
+    }
+
+    function maakDom() {
+      const log = { innerHTML: [], aangemaakt: 0 };
+      class El {
+        constructor(tag, attrs, parent) {
+          this.tag = tag; this.attrs = attrs; this.parent = parent; this.children = [];
+          this._hidden = 'hidden' in attrs; this.value = '';
+          log.aangemaakt++;
+        }
+        get hidden() { return this._hidden; }
+        set hidden(v) { this._hidden = !!v; }
+        get textContent() { return this.children.map((c) => (c.tag === '#text' ? c.text : c.textContent)).join(''); }
+        // Zoals in de browser: textContent zetten vervangt alle kinderen door één tekstknoop — nooit HTML-parsing.
+        set textContent(v) { this.children = [{ tag: '#text', text: String(v), parent: this }]; }
+        get innerHTML() { throw new Error('innerHTML lezen niet nodig in deze fixture'); }
+        set innerHTML(v) { log.innerHTML.push(String(v)); throw new Error('innerHTML schrijven is niet toegestaan'); }
+        matches(sel) { return attrSelector(sel) in this.attrs; }
+        closest(sel) { for (let n = this; n && n.tag !== '#root'; n = n.parent) if (n.matches(sel)) return n; return null; }
+        elementen() { return this.children.flatMap((c) => (c.tag === '#text' ? [] : [c, ...c.elementen()])); }
+        querySelectorAll(sel) { attrSelector(sel); return this.elementen().filter((e) => e.matches(sel)); }
+        querySelector(sel) { return this.querySelectorAll(sel)[0] || null; }
+      }
+      function parse(html) {
+        const root = new El('#root', {}, null);
+        let cur = root;
+        const re = /<!--[\s\S]*?-->|<\/([a-zA-Z0-9]+)\s*>|<([a-zA-Z0-9]+)((?:\s+[^\s=>]+(?:="[^"]*"|='[^']*')?)*)\s*\/?>|([^<]+)/g;
+        let m;
+        while ((m = re.exec(html))) {
+          if (m[1]) {
+            const tag = m[1].toLowerCase();
+            let n = cur;
+            while (n && n.tag !== tag) n = n.parent;
+            if (n && n.parent) cur = n.parent;
+          } else if (m[2]) {
+            const attrs = {};
+            const ar = /([^\s=]+)(?:="([^"]*)"|='([^']*)')?/g;
+            let am;
+            while ((am = ar.exec(m[3] || ''))) attrs[am[1].toLowerCase()] = ontsnap(am[2] ?? am[3] ?? '');
+            const el = new El(m[2].toLowerCase(), attrs, cur);
+            cur.children.push(el);
+            if (!VOID.has(el.tag)) cur = el;
+          } else if (m[4]) {
+            cur.children.push({ tag: '#text', text: ontsnap(m[4]), parent: cur });
+          }
+        }
+        return root;
+      }
+      return { parse, log };
+    }
+
+    const zichtbaar = (el) => { for (let n = el; n && n.tag !== '#root'; n = n.parent) if (n.hidden) return false; return true; };
+    const norm = (s) => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+    const MELDING = 'Geen onderdelen gevonden voor deze zoekterm.';
+
+    // ── Laden van de echte code ──
+    function laadMna(root, rol) {
+      const src = fs.readFileSync(path.join(root, 'mna/08-handleiding.js'), 'utf8');
+      const esc = fs.readFileSync(path.join(root, 'mna/02-state-opslag-documenten.js'), 'utf8').match(/^function esc\(s\)\{.*\}$/m);
+      if (!esc) throw new Error('esc() niet gevonden in mna/02');
+      const ctx = vm.createContext({
+        BRAND: { platform: 'KVM' }, brandMerkHtml: () => '',
+        isKoper: () => rol === 'koper', isTussen: () => rol === 'begeleider',
+      });
+      vm.runInContext(esc[0] + '\n' + src, ctx, { filename: 'mna/08-handleiding.js' });
+      return { html: ctx.renderHandleiding(), hbZoek: ctx.hbZoek, src, HB_UITLEG: ctx.HB_UITLEG, legUitKnop: ctx.legUitKnop };
+    }
+
+    function advScript(root) {
+      const html = fs.readFileSync(path.join(root, 'adv.html'), 'utf8');
+      const a = html.indexOf('<script>'), b = html.indexOf('</script>', a);
+      if (a < 0 || b < a) throw new Error('adv.html: inline <script> niet gevonden');
+      return html.slice(a + '<script>'.length, b);
+    }
+
+    function laadAdv(root) {
+      const script = advScript(root);
+      const esc = script.match(/^function esc\(s\)\{.*\}$/m);
+      if (!esc) throw new Error('esc() niet gevonden in adv.html');
+      const deel = knip(script, 'function renderAdvHandleiding(){', '// Security-fix 17 aug 2026 (fix 6)', 'adv.html renderAdvHandleiding');
+      let uit = null;
+      const ctx = vm.createContext({ BRAND: { platform: 'KVM', suffix: 'Portaal' }, VIEW: '', G: { proef: false, proefTot: null, isTester: false }, render: (h) => { uit = h; } });
+      vm.runInContext(esc[0] + '\n' + deel, ctx, { filename: 'adv.html#handleiding' });
+      ctx.renderAdvHandleiding();
+      return { html: uit, hbZoek: ctx.hbZoek, src: deel };
+    }
+
+    // Generieke zoekchecks op één gerenderde handleiding.
+    function zoekChecks(naam, geladen, check) {
+      const { parse, log } = maakDom();
+      const doc = parse(geladen.html);
+      const alle = doc.elementen();
+      const invoer = alle.find((e) => e.tag === 'input' && e.attrs.id === 'hb-zoek');
+      const label = alle.find((e) => e.tag === 'label' && e.attrs.for === 'hb-zoek');
+      check(invoer && invoer.attrs.type === 'search' && alle.filter((e) => e.attrs.id === 'hb-zoek').length === 1, naam + ': één zoekveld type="search" (id hb-zoek)');
+      check(label && label.textContent.trim() === 'Zoek in de handleiding', naam + ': gekoppeld label "Zoek in de handleiding"');
+      const rootEl = invoer && invoer.closest('[data-hb-root]');
+      const secties = rootEl ? rootEl.querySelectorAll('[data-hb-sectie]') : [];
+      const items = rootEl ? rootEl.querySelectorAll('[data-hb-item]') : [];
+      const melding = rootEl && rootEl.querySelector('[data-hb-leeg]');
+      check(rootEl && secties.length >= 3 && items.length > 20 && melding, naam + ': zoekveld staat in de data-hb-root met secties (' + secties.length + '), items (' + items.length + ') en een meldingselement');
+      check(invoer && /^hbZoek\(this\)$/.test(invoer.attrs.oninput || ''), naam + ': oninput roept hbZoek(this) aan');
+      check(typeof geladen.hbZoek === 'function' && !/innerHTML|insertAdjacentHTML|outerHTML|fetch\(|localStorage|sessionStorage/.test(geladen.hbZoek.toString()), naam + ': hbZoek bestaat en gebruikt geen innerHTML/netwerk/opslag');
+      if (!invoer || !rootEl || !melding || typeof geladen.hbZoek !== 'function') return null;
+
+      const zoek = (q) => { invoer.value = q; geladen.hbZoek(invoer); };
+      const zichtbareItems = () => items.filter(zichtbaar);
+      const consistent = (q) => {
+        const nq = norm(q);
+        const itemsOk = items.every((it) => zichtbaar(it) === (!nq || (it.closest('[data-hb-sectie]') && norm(it.textContent).includes(nq))));
+        const sectiesOk = secties.every((s) => s.hidden === (!!nq && !s.querySelectorAll('[data-hb-item]').some((i) => !i.hidden)));
+        return itemsOk && sectiesOk;
+      };
+
+      // Begintoestand: alles zichtbaar, melding verborgen.
+      check(items.every(zichtbaar) && secties.every((s) => !s.hidden) && melding.hidden, naam + ': begintoestand — alles zichtbaar, melding verborgen');
+
+      // Filter op term.
+      zoek('escrow');
+      const na = zichtbareItems();
+      check(na.length > 0 && na.length < items.length && consistent('escrow'), naam + ': "escrow" toont alleen items met die term (' + na.length + '/' + items.length + ') en verbergt secties zonder treffer');
+      check(na.some((i) => /^\s*Escrow/.test(i.textContent)), naam + ': begrip "Escrow" blijft zichtbaar');
+      check(melding.hidden, naam + ': bij treffers geen geen-treffer-melding');
+
+      // Hoofdletter- en accentongevoelig.
+      zoek('ESCROW');
+      const hoofd = zichtbareItems();
+      check(hoofd.length === na.length && hoofd.every((x, i) => x === na[i]), naam + ': "ESCROW" geeft dezelfde treffers als "escrow"');
+      zoek('voor rente');
+      const zonderAccent = zichtbareItems();
+      check(zonderAccent.length > 0 && zonderAccent.some((i) => i.textContent.normalize('NFC').includes('vóór rente')) && consistent('voor rente'), naam + ': "voor rente" vindt de tekst "vóór rente" (accent genormaliseerd)');
+      zoek('VÓÓR   Rente');
+      const metAccent = zichtbareItems();
+      check(metAccent.length === zonderAccent.length && metAccent.every((x, i) => x === zonderAccent[i]), naam + ': "VÓÓR   Rente" geeft dezelfde treffers (accent, hoofdletters, witruimte)');
+
+      // Lege term toont alles.
+      zoek('escrow'); zoek('');
+      check(items.every(zichtbaar) && secties.every((s) => !s.hidden) && melding.hidden, naam + ': lege zoekterm maakt alles weer zichtbaar');
+      zoek('   ');
+      check(items.every(zichtbaar) && secties.every((s) => !s.hidden) && melding.hidden, naam + ': zoekterm met alleen spaties telt als leeg');
+
+      // Geen treffer.
+      zoek('qzxwvjk-geen-treffer');
+      check(zichtbareItems().length === 0 && secties.every((s) => s.hidden), naam + ': geen treffer — alle items en secties verborgen');
+      check(!melding.hidden && melding.textContent === MELDING, naam + ': geen treffer — melding "' + MELDING + '"');
+      zoek('');
+      check(melding.hidden && melding.textContent === '', naam + ': melding verdwijnt weer bij lege term');
+
+      // XSS-invoer wordt nooit als HTML ingevoegd.
+      const voor = log.aangemaakt;
+      const xss = '<img src=x onerror="globalThis.__hbXss=1">';
+      zoek(xss);
+      check(log.innerHTML.length === 0 && log.aangemaakt === voor, naam + ': XSS-invoer — geen innerHTML-schrijving en geen nieuw element aangemaakt');
+      check(melding.children.every((c) => c.tag === '#text') && melding.textContent === MELDING && !melding.textContent.includes('<img'), naam + ': XSS-invoer — melding is uitsluitend de vaste tekst (geen invoer echo)');
+      check(typeof globalThis.__hbXss === 'undefined', naam + ': XSS-invoer — onerror nooit uitgevoerd');
+      zoek('');
+      return { doc, invoer, zoek, items, secties };
+    }
+
+    async function draaiHandleidingZoekChecks(root = process.cwd()) {
+      const res = [];
+      const check = (voorwaarde, msg) => res.push({ ok: !!voorwaarde, msg });
+
+      // ── A. Syntax ──
+      try {
+        execFileSync(process.execPath, ['--check', path.join(root, 'mna/08-handleiding.js')], { stdio: 'pipe' });
+        check(true, 'node --check mna/08-handleiding.js');
+      } catch (e) {
+        check(false, 'node --check mna/08-handleiding.js faalt: ' + String((e && e.stderr) || e));
+      }
+      try {
+        new vm.Script(advScript(root), { filename: 'adv.html#inline' });
+        check(true, 'adv.html: inline script syntactisch geldig');
+      } catch (e) {
+        check(false, 'adv.html: inline script ongeldig: ' + String((e && e.message) || e));
+      }
+
+      // ── B. mna/08: per rol ──
+      for (const rol of ['verkoper', 'koper', 'begeleider']) {
+        try {
+          const g = laadMna(root, rol);
+          const r = zoekChecks('mna/' + rol, g, check);
+          if (!r) continue;
+          const ids = r.secties.map((s) => s.attrs.id);
+          check(ids.join(',') === 'hl-' + rol + ',hl-begrippen,hl-berekeningen', 'mna/' + rol + ': alleen eigen rolsectie + begrippen + berekeningen gerenderd (' + ids.join(',') + ')');
+          if (rol === 'koper') {
+            // Termen die alleen in de verkoper-/begeleidersectie voorkomen: ook na zoeken nooit zichtbaar.
+            for (const q of ['verkopercode', 'tussenpersoonscode', 'Begeleider (binnen een traject)', 'Verkoper']) {
+              r.zoek(q);
+              const zicht = r.secties.filter((s) => !s.hidden).map((s) => s.attrs.id);
+              check(!r.doc.elementen().some((e) => e.attrs.id === 'hl-verkoper' || e.attrs.id === 'hl-begeleider')
+                && zicht.every((id) => id === 'hl-koper' || id === 'hl-begrippen' || id === 'hl-berekeningen'),
+              'mna/koper: zoeken op "' + q + '" toont geen begeleider-/verkopersectie (zichtbaar: ' + (zicht.join(',') || 'geen') + ')');
+            }
+            r.zoek('');
+          }
+          check(/Met het zoekveld bovenaan filtert u de onderdelen op deze pagina/.test(g.html), 'mna/' + rol + ': voetnoot noemt het zoekveld');
+          // Productpunt 31: "Leg mij dit uit" — elk onderwerp dat deze rol kan tegenkomen levert in de eigen
+          // rolsectie minstens één treffer op (nooit een lege uitleg), en de voetnoot noemt de knop.
+          const schermen = rol === 'begeleider' ? ['fase', 'begeleider'] : ['fase'];
+          for (const sch of schermen) {
+            const term = g.HB_UITLEG && g.HB_UITLEG[sch];
+            r.zoek(term || '');
+            const eigen = r.secties.find((s) => s.attrs.id === 'hl-' + rol);
+            const treffers = eigen ? eigen.querySelectorAll('[data-hb-item]').filter((i) => !i.hidden).length : 0;
+            check(!!term && treffers > 0, 'mna/' + rol + ': "Leg mij dit uit" op scherm ' + sch + ' (zoekterm "' + term + '") toont ' + treffers + ' uitleg in de eigen rolsectie');
+          }
+          r.zoek('');
+          check(/Leg mij dit uit/.test(g.html), 'mna/' + rol + ': voetnoot noemt de knop "Leg mij dit uit"');
+        } catch (e) {
+          check(false, 'mna/' + rol + ': kon niet worden getest: ' + String((e && e.message) || e));
+        }
+      }
+
+      // ── Productpunt 31: knophelper ──
+      try {
+        const g = laadMna(root, 'verkoper');
+        const knop = g.legUitKnop('fase');
+        check(/Leg mij dit uit/.test(knop) && /legMijDitUit\('fase'\)/.test(knop) && g.legUitKnop('onbekend<img>') === '', 'knop: vaste onderwerpen, onbekend scherm geeft geen knop en nooit ingevoegde invoer');
+        const s06 = fs.readFileSync(path.join(root, 'mna/06-schermen.js'), 'utf8'), s04 = fs.readFileSync(path.join(root, 'mna/04-begeleider-dashboard.js'), 'utf8');
+        const adv = fs.readFileSync(path.join(root, 'adv.html'), 'utf8');
+        check(/legUitKnop\('fase'\)/.test(s06) && /legUitKnop\('begeleider'\)/.test(s04) && /legMijDitUitAdv\('traject'\)/.test(adv), 'knop staat op het fasescherm, het begeleidersdashboard en het adviseursdashboard');
+      } catch (e) { check(false, 'knophelper: kon niet worden getest: ' + String((e && e.message) || e)); }
+
+      // ── C. adv.html ──
+      try {
+        const g = laadAdv(root);
+        const r = zoekChecks('adv', g, check);
+        if (r) {
+          check(r.secties.length === 6, 'adv: alle zes secties (adviseur, begeleider, verkoper, koper, begrippen, berekeningen) ongewijzigd gerenderd');
+          r.zoek('tweestapsverificatie');
+          check(!r.secties[0].hidden && r.secties.slice(1).some((s) => s.hidden), 'adv: zoeken op "tweestapsverificatie" toont de adviseurssectie en verbergt secties zonder treffer');
+          r.zoek('');
+        }
+        check(/Met het zoekveld bovenaan filtert u de onderdelen op deze pagina/.test(g.html), 'adv: voetnoot noemt het zoekveld');
+        if (r) {
+          r.zoek('traject');
+          const adviseur = r.secties[0];
+          check(adviseur && adviseur.querySelectorAll('[data-hb-item]').some((i) => !i.hidden), 'adv: "Leg mij dit uit" op het dashboard (zoekterm "traject") toont uitleg in de adviseurssectie');
+          r.zoek('');
+        }
+        check(/Leg mij dit uit/.test(g.html), 'adv: voetnoot noemt de knop "Leg mij dit uit"');
+      } catch (e) {
+        check(false, 'adv.html: kon niet worden getest: ' + String((e && e.message) || e));
+      }
+      return res;
+    }
+
+    const resultaten = await draaiHandleidingZoekChecks(ROOT);
+    const gefaald = resultaten.filter(r => !r.ok);
+    gefaald.forEach(r => warn('#31: ' + r.msg));
+    if (!resultaten.length) warn('#31: geen checks uitgevoerd.');
+    else if (!gefaald.length) ok('Alle ' + resultaten.length + ' handleiding-zoekchecks geslaagd (zoekveld, rolfilter, XSS-veilig, "Leg mij dit uit" met uitleg per rol).');
+  } catch (e) {
+    warn('#31 handleiding-zoekchecks konden niet worden uitgevoerd: ' + String((e && e.message) || e));
+  }
+}
+
+log('35. #91 F2 transactievorm: scenario-rekenkern, paneel (mna/13), laadvolgorde en veiligheid');
+{
+  // MASTER #91 F2 (28 okt 2026). Echte functies uit mna/03 en mna/13 in node:vm; geen netwerk, geen echte data.
+  const fouten = [];
+  const c = (ok, msg) => { if (!ok) fouten.push(msg); };
+  try {
+    const vm = (await import('vm')).default;
+    const src03 = fs.readFileSync(path.join(ROOT, 'mna/03-rekenkern-waardering.js'), 'utf8');
+    const src13 = fs.readFileSync(path.join(ROOT, 'mna/13-transactiemodel.js'), 'utf8');
+    const html = fs.readFileSync(path.join(ROOT, 'mna.html'), 'utf8');
+    const src06 = fs.readFileSync(path.join(ROOT, 'mna/06-schermen.js'), 'utf8');
+    const src04 = fs.readFileSync(path.join(ROOT, 'mna/04-begeleider-dashboard.js'), 'utf8');
+    const fn = (bron, naam) => {
+      const i = bron.indexOf('function ' + naam + '(');
+      if (i < 0) throw new Error('functie ' + naam + ' niet gevonden');
+      let d = 0, j = bron.indexOf('{', i);
+      for (; j < bron.length; j++) { if (bron[j] === '{') d++; else if (bron[j] === '}') { d--; if (d === 0) break; } }
+      return bron.slice(i, j + 1);
+    };
+    // (a) handmatig doorgerekend geval
+    const ctx = vm.createContext({});
+    vm.runInContext(fn(src03, 'dvBerekenTransactieScenario'), ctx);
+    const S1 = { belang_pct: 80, direct_pct: 60, earn_out_pct: 20, vendor_loan_pct: 10, gespreid_pct: 10, behouden_belang_pct: 20 };
+    const r = ctx.dvBerekenTransactieScenario(2000000, S1);
+    const gelijk = (a, b) => Math.abs(a - b) < 0.005;
+    c(gelijk(r.verkochtBelang, 1600000) && gelijk(r.direct, 960000) && gelijk(r.earnOut, 320000) && gelijk(r.vendorLoan, 160000)
+      && gelijk(r.gespreid, 160000) && gelijk(r.behoudenBelangWaarde, 400000) && r.aandelenwaarde100 === 2000000 && !r.geenEquity && !r.equityNegatief,
+      'handmatig geval 2.000.000 / 80 / 60-20-10-10 / 20 klopt niet: ' + JSON.stringify(r));
+    const neg = ctx.dvBerekenTransactieScenario(-500000, S1);
+    c(neg.equityNegatief === true && neg.verkochtBelang === 0 && neg.direct === 0 && neg.behoudenBelangWaarde === 0, 'negatieve aandelenwaarde: bedragen 0 met vlag');
+    const nan = ctx.dvBerekenTransactieScenario(NaN, S1);
+    c(nan.geenEquity === true && nan.verkochtBelang === null && nan.direct === null && nan.aandelenwaarde100 === null, 'NaN: alle bedragen null + geenEquity');
+    // (b) laadvolgorde: 13 na 11 en vóór 06
+    const pos = (n) => html.indexOf('<script src="mna/' + n);
+    c(pos('13-transactiemodel.js') > pos('11-groepsbeeld.js') && pos('11-groepsbeeld.js') > 0 && pos('13-transactiemodel.js') < pos('06-schermen.js'), 'laadvolgorde mna.html: 13 na 11 en vóór 06');
+    c(/\+renderTransactiemodel\(f\.id\)/.test(src06), 'renderMain roept renderTransactiemodel(f.id) aan');
+    // (c) koper / andere fase → lege string, geen verzoek
+    let fetches = 0;
+    const ctx13 = vm.createContext({
+      S: { code: 'SYNTH1', rol: 'koper', screen: 'main', fase: 0 }, FASES: [{ id: 'strategisch', dataFields: [] }],
+      isVerkoper: () => ctx13.S.rol === 'verkoper', isTussen: () => ctx13.S.rol === 'tussenpersoon',
+      fetchMetTimeout: () => { fetches++; return new Promise(() => {}); }, WORKER: 'https://worker.test', setTimeout: (f) => f(),
+      renderApp: () => {}, ge: () => null, window: {},
+    });
+    vm.runInContext(src13, ctx13);
+    c(ctx13.renderTransactiemodel('strategisch') === '' && fetches === 0, 'koper: lege string en geen verzoek');
+    ctx13.S.rol = 'verkoper';
+    c(ctx13.renderTransactiemodel('financieel') === '' && fetches === 0, 'verkoper in andere fase: lege string en geen verzoek');
+    const h = ctx13.renderTransactiemodel('strategisch');
+    c(/tm-panel/.test(h) && fetches === 1, 'verkoper in Strategisch: paneel + precies één laadverzoek');
+    // (d) geen kale fetch( in mna/13
+    c(!/(^|[^A-Za-z.])fetch\(/.test(src13.replace(/fetchMetTimeout\(/g, '')), 'mna/13 gebruikt alleen fetchMetTimeout');
+    // (e) XSS: invoer van de server wordt geëscapet
+    ctx13.TM.status = 'ok';
+    ctx13.TM.data = { versie: 1, verkoper: { structuur: 'share', omvang: 'volledig', betaling: ['direct'], advies: 'bekend', toelichting: '<img src=x onerror=alert(1)>' }, adviseur: null, scenarios: [{ naam: '<script>x</script>', structuur: 'share' }] };
+    ctx13.TM.v = ctx13.tmKopieDeel(ctx13.TM.data.verkoper); ctx13.TM.a = ctx13.tmKopieDeel(null); ctx13.TM.scen = ctx13.TM.data.scenarios;
+    ctx13.TM.scope = ctx13.tmScopeKey();
+    const hv = ctx13.renderTransactiemodel('strategisch');
+    c(!/<img src=x/.test(hv) && /&lt;img src=x/.test(hv), 'verkoper: toelichting geëscapet');
+    ctx13.S.rol = 'tussenpersoon'; ctx13.TM.scope = ctx13.tmScopeKey(); ctx13.TM.status = 'ok';
+    const hb = ctx13.renderTransactiemodel('strategisch');
+    c(!/<script>x<\/script>/.test(hb) && !/<img src=x/.test(hb) && /Oorspronkelijke voorkeur verkoper/.test(hb), 'begeleider: scenarionaam en verkopersvoorkeur geëscapet, voorkeur gelabeld');
+    // validatie vóór opslaan
+    c(ctx13.tmControleerScenarios([{ naam: 'A', structuur: 'share', belang_pct: 80, direct_pct: 50, earn_out_pct: 20, earn_out_jaren: 3, vendor_loan_pct: 10, vendor_loan_rente_pct: 5, vendor_loan_jaren: 5, gespreid_pct: 10, gespreid_jaren: 2, behouden_belang_pct: 20 }]) !== null, 'scenario met som 90 wordt geweigerd');
+    c(ctx13.tmControleerScenarios([{ naam: 'A', structuur: 'share', belang_pct: 80, direct_pct: 60, earn_out_pct: 20, earn_out_jaren: 3, vendor_loan_pct: 10, vendor_loan_rente_pct: 5, vendor_loan_jaren: 5, gespreid_pct: 10, gespreid_jaren: 2, behouden_belang_pct: 30 }]) !== null, 'belang + behouden > 100 wordt geweigerd');
+    c(ctx13.tmControleerScenarios([{ naam: 'A', structuur: 'share', belang_pct: 80, direct_pct: 60, earn_out_pct: 20, earn_out_jaren: 3, vendor_loan_pct: 10, vendor_loan_rente_pct: 5, vendor_loan_jaren: 5, gespreid_pct: 10, gespreid_jaren: 2, behouden_belang_pct: 20 }]) === null, 'geldig scenario geaccepteerd');
+    // (f) bestaande opbrengst-brug onveranderd + tabel alleen met scenario's
+    const ctxB = vm.createContext({});
+    vm.runInContext(fn(src03, 'dvBerekenOpbrengstBrug'), ctxB);
+    const b = ctxB.dvBerekenOpbrengstBrug({ nettoSchuld: 300000, debtLike: 0, debtLikeItems: 50000, werkkapitaalCorrectie: 0, transactiekostenPct: 2, belangPct: 100, escrowPct: 10, escrowMaanden: 12, earnOutAan: false }, { evBasis: 3000000 });
+    c(gelijk(b.equityValue100, 2590000) && gelijk(b.verkochtBelangWaarde, 2590000) && gelijk(b.cashBijClosing, 2331000), 'dvBerekenOpbrengstBrug ongewijzigd (3.000.000 − 300.000 − 50.000 − 60.000 = 2.590.000; cash 2.331.000)');
+    const ctxT = vm.createContext({ dvMln: (n) => (n / 1e6).toFixed(2), dvPct: (n) => n + '%', dvRenderTabelHtml: (k, rows) => JSON.stringify(rows), esc: (x) => x });
+    vm.runInContext(fn(src03, 'dvBerekenTransactieScenario') + '\nvar DV_TM_STRUCTUUR={share:"aandelentransactie"};\n' + fn(src03, 'dvTabelTransactieScenarios'), ctxT);
+    c(ctxT.dvTabelTransactieScenarios(null, b) === '' && ctxT.dvTabelTransactieScenarios({ scenarios: [] }, b) === '', 'zonder scenario\'s geen tabel');
+    c(/"0\.96"/.test(ctxT.dvTabelTransactieScenarios({ scenarios: [Object.assign({ naam: 'A', structuur: 'share' }, S1)] }, { ev: 3000000, equityValue100: 2000000 })), 'tabel toont doorgerekende scenariobedragen');
+    c(/dvTabelOpbrengstBrug\(opbrengstBrug\)\+dvTabelTransactieScenarios\(tmModel,opbrengstBrug\)/.test(src04), 'dealvoorstel voegt de scenariotabel toe onder de opbrengst-brug');
+  } catch (e) {
+    fouten.push('check kon niet worden uitgevoerd: ' + String((e && e.message) || e));
+  }
+  if (fouten.length) fouten.forEach((f) => warn('#91 F2: ' + f));
+  else ok('#91 F2: rekenkern (handmatig geval, negatief, NaN), laadvolgorde, rol/fase-afscherming, alleen fetchMetTimeout, escaping, validatie en ongewijzigde opbrengst-brug');
+}
+
+log('36. #91 F4 informatiememorandum: printopmaak (voorblad, inhoudsopgave, disclaimer) en geen NDA-venster vóór het concept');
+{
+  const fouten = [];
+  try {
+    const vm = (await import('vm')).default;
+    const src05 = fs.readFileSync(path.join(ROOT, 'mna/05-documentflow-partijen.js'), 'utf8');
+    const src04 = fs.readFileSync(path.join(ROOT, 'mna/04-begeleider-dashboard.js'), 'utf8');
+    const i = src05.indexOf('function printDocNaAkkoord(');
+    let d = 0, j = src05.indexOf('{', i);
+    for (; j < src05.length; j++) { if (src05[j] === '{') d++; else if (src05[j] === '}') { d--; if (d === 0) break; } }
+    let html = '';
+    const ctx = vm.createContext({
+      esc: (x) => String(x == null ? '' : x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'),
+      S: { traject: { kantoor_naam: 'Synth <i>IM</i> BV' } }, BRAND: { bedrijfKort: 'X', adres: 'Y' }, printHtmlDocument: (h) => { html = h; },
+    });
+    vm.runInContext(src05.slice(i, j + 1), ctx);
+    const tekst = '## Managementsamenvatting\nA\n\n## Klanten\nB';
+    ctx.printDocNaAkkoord(tekst, 'Verkoopmemorandum', 'memo');
+    const memo = html;
+    ctx.printDocNaAkkoord(tekst, 'NDA', 'nda');
+    const nda = html;
+    if (!/class="im-voorblad"/.test(memo) || !/Informatiememorandum/.test(memo) || !memo.includes('Synth &lt;i&gt;IM&lt;/i&gt; BV')) fouten.push('voorblad met geëscapete naam ontbreekt');
+    if (!/<li>Managementsamenvatting<\/li><li>Klanten<\/li><\/ul>/.test(memo)) fouten.push('inhoudsopgave uit ##-koppen ontbreekt');
+    if (!(memo.indexOf('class="im-voorblad"') < memo.indexOf('class="im-disclaimer"') && memo.indexOf('class="im-disclaimer"') < memo.indexOf('class="im-toc"'))) fouten.push('disclaimer niet VOORIN (fase E: na voorblad, vóór inhoud)');
+    if (!/class="im-disclaimer"/.test(memo) || !/geen rechten worden ontleend/.test(memo)) fouten.push('disclaimer ontbreekt');
+    if (!/counter\(page\)/.test(memo)) fouten.push('paginanummering ontbreekt');
+    if (/im-voorblad|im-disclaimer/.test(nda)) fouten.push('andere documenttypes krijgen ten onrechte IM-opmaak');
+    const be36 = path.join(ROOT, '..', 'koersvoormorgen-backend', 'backend', 'worker', '36-pdf-renderer.js');
+    if (fs.existsSync(be36)) {
+      const m = fs.readFileSync(be36, 'utf8').match(/VM_DISCLAIMER_CONCEPT = ([\s\S]*?);\n/);
+      const f = src05.match(/VM_DISCLAIMER_CONCEPT = ([\s\S]*?);\n/);
+      if (!m || !f || m[1].replace(/\s+/g, ' ') !== f[1].replace(/\s+/g, ' ')) fouten.push('disclaimertekst frontend wijkt af van backend (worker/36)');
+    }
+    if (/toonNdaBevestiging|verkoopmemo-nda-door/.test(src04)) fouten.push('NDA-bevestigingsvenster vóór het concept staat nog in mna/04');
+    if (/verkoopmemo-nda-chk|nda_bevestigd_door:t2/.test(src04) || !/verkoopmemo-email-btn" style="background:#8a5a00"'\+\(t2\.nda_getekend\?'':' disabled'\)/.test(src04)) fouten.push('versturen zonder ondertekende NDA moet uitgeschakeld zijn, zonder handmatige bevestiging (besluit 28-10)');
+    if (!/internOntbrekend/.test(src04)) fouten.push('interne lijst weggelaten onderdelen ontbreekt in mna/04');
+  } catch (e) { fouten.push('check kon niet worden uitgevoerd: ' + String((e && e.message) || e)); }
+  if (fouten.length) fouten.forEach((f) => warn('#91 F4: ' + f)); else ok('#91 F4: IM-print met voorblad, inhoudsopgave, paginanummering en disclaimer (gelijk aan backend), andere documenten ongewijzigd, concept zonder NDA-venster, interne ontbrekend-lijst');
+}
+
+log('37. #91 F5 verkopersreview: paneel verkoper (mna/14), begeleidersectie, laadvolgorde en veiligheid');
+{
+  const fouten = [];
+  try {
+    const vm = (await import('vm')).default;
+    const src14 = fs.readFileSync(path.join(ROOT, 'mna/14-im-review.js'), 'utf8');
+    const html = fs.readFileSync(path.join(ROOT, 'mna.html'), 'utf8');
+    const src06 = fs.readFileSync(path.join(ROOT, 'mna/06-schermen.js'), 'utf8');
+    const src04 = fs.readFileSync(path.join(ROOT, 'mna/04-begeleider-dashboard.js'), 'utf8');
+    const pos = (n) => html.indexOf('<script src="mna/' + n);
+    if (!(pos('14-im-review.js') > pos('13-transactiemodel.js') && pos('14-im-review.js') < pos('06-schermen.js'))) fouten.push('laadvolgorde: 14 na 13 en vóór 06');
+    if (!/\+renderImReviewVerkoper\(\)/.test(src06)) fouten.push('renderMain roept renderImReviewVerkoper() niet aan');
+    if (!/id="imr-bg"/.test(src04) || !/imrBgLaad\(\)/.test(src04)) fouten.push('begeleidersectie ontbreekt in het verkoopmemorandum-venster');
+    if (/(^|[^A-Za-z.])fetch\(/.test(src14.replace(/fetchMetTimeout\(/g, ''))) fouten.push('mna/14 gebruikt een kale fetch(');
+    let fetches = 0;
+    const els = {};
+    const ctx = vm.createContext({ S: { code: 'SYNV', rol: 'koper', fase: 0 }, FASES: [{ id: 'financieel', dataFields: [] }], WORKER: 'https://w.test',
+      isVerkoper: () => ctx.S.rol === 'verkoper', isTussen: () => ctx.S.rol === 'tussenpersoon', setTimeout: (f) => f(),
+      fetchMetTimeout: () => { fetches++; return new Promise(() => {}); }, renderApp: () => {}, ge: (id) => els[id] || null, window: {} });
+    vm.runInContext(src14, ctx);
+    if (ctx.renderImReviewVerkoper() !== '' || fetches !== 0) fouten.push('koper: paneel of verzoek');
+    ctx.S.rol = 'verkoper';
+    ctx.renderImReviewVerkoper();
+    if (fetches !== 1) fouten.push('verkoper: precies één laadverzoek verwacht');
+    ctx.IMR.status = 'ok';
+    ctx.IMR.data = { ok: true, rol: 'verkoper', status: 'CONCEPT', versie_no: 0, rev: 0, opmerkingen: [] };
+    if (ctx.renderImReviewVerkoper() !== '') fouten.push('verkoper ziet een concept dat nog niet gedeeld is');
+    ctx.IMR.data = { ok: true, rol: 'verkoper', status: 'TER_GOEDKEURING_VERKOPER', versie_no: 2, rev: 5, gedeelde_sha256: 'a'.repeat(64),
+      gedeelde_tekst: '## Klanten <img src=x onerror=alert(1)>\nTekst <script>x</script>', opmerkingen: [{ id: 'IMO1', versie_no: 2, onderdeel: 'Klanten <img src=x onerror=alert(1)>', soort: 'tekst', tekst: '<b>opm</b>', status: 'info_gevraagd', motivering: 'Welke? <i>x</i>' }] };
+    const h = ctx.renderImReviewVerkoper();
+    if (/<img src=x|<script>x|<b>opm<\/b>|<i>x<\/i>/.test(h)) fouten.push('verkoperpaneel escapet servertekst niet');
+    if (!/Ik ga akkoord met deze versie/.test(h)) fouten.push('akkoordknop ontbreekt bij TER_GOEDKEURING');
+    if (!/imr-reactie-IMO1/.test(h)) fouten.push('reactieveld bij info_gevraagd ontbreekt');
+    const d = ctx.imrOnderdelen('Intro\n## A\nx\n## B\ny');
+    if (JSON.stringify(d.map((o) => o.kop)) !== '["Algemeen","A","B"]') fouten.push('onderdelen uit ##-koppen onjuist: ' + JSON.stringify(d.map((o) => o.kop)));
+    ctx.S.rol = 'tussenpersoon'; ctx.IMR.scope = ctx.imrScopeKey(); ctx.IMR.status = 'ok';
+    ctx.IMR.data.status = 'OPMERKINGEN_ONTVANGEN';
+    els['imr-bg'] = { innerHTML: '' };
+    ctx.imrBgTeken();
+    if (!/imr-beoordeel-IMO1/.test(els['imr-bg'].innerHTML) || /<b>opm<\/b>/.test(els['imr-bg'].innerHTML)) fouten.push('begeleidersectie: beoordeling ontbreekt of escaping faalt');
+    if (!/disabled/.test(els['imr-bg'].innerHTML.split('Ter goedkeuring aanbieden')[0].slice(-120))) fouten.push('ter goedkeuring niet geblokkeerd bij open opmerking');
+  } catch (e) { fouten.push('check kon niet worden uitgevoerd: ' + String((e && e.message) || e)); }
+  if (fouten.length) fouten.forEach((f) => warn('#91 F5: ' + f)); else ok('#91 F5: verkoperpaneel alleen na delen, escaping, akkoord/reactie, onderdelen uit koppen, begeleidersectie met beoordeling, ter goedkeuring geblokkeerd bij open opmerkingen, laadvolgorde, alleen fetchMetTimeout');
+}
+
+log('38. #91 F3 kolommenbalans: paneel (mna/15), laadvolgorde, escaping en geen invoer in event-handlers');
+{
+  const fouten = [];
+  try {
+    const vm = (await import('vm')).default;
+    const src15 = fs.readFileSync(path.join(ROOT, 'mna/15-kolommenbalans.js'), 'utf8');
+    const html = fs.readFileSync(path.join(ROOT, 'mna.html'), 'utf8');
+    const src06 = fs.readFileSync(path.join(ROOT, 'mna/06-schermen.js'), 'utf8');
+    const pos = (n) => html.indexOf('<script src="mna/' + n);
+    if (!(pos('15-kolommenbalans.js') > pos('14-im-review.js') && pos('15-kolommenbalans.js') < pos('06-schermen.js'))) fouten.push('laadvolgorde: 15 na 14 en vóór 06');
+    if (!/\+renderKolommenbalans\(f\.id\)/.test(src06)) fouten.push('renderMain roept renderKolommenbalans(f.id) niet aan');
+    if (/(^|[^A-Za-z.])fetch\(/.test(src15.replace(/fetchMetTimeout\(/g, ''))) fouten.push('mna/15 gebruikt een kale fetch(');
+    let fetches = 0;
+    const ctx = vm.createContext({ S: { code: 'SYNV', rol: 'koper', fase: 0 }, FASES: [{ id: 'financieel', dataFields: [] }, { id: 'it' }], WORKER: 'https://w.test',
+      isVerkoper: () => ctx.S.rol === 'verkoper', isTussen: () => ctx.S.rol === 'tussenpersoon', setTimeout: (f) => f(),
+      fetchMetTimeout: () => { fetches++; return new Promise(() => {}); }, renderApp: () => {}, ge: () => null, window: {}, Date });
+    vm.runInContext(src15, ctx);
+    if (ctx.renderKolommenbalans('financieel') !== '' || fetches) fouten.push('koper ziet paneel of doet verzoek');
+    ctx.S.rol = 'tussenpersoon';
+    if (ctx.renderKolommenbalans('it') !== '' ) fouten.push('paneel buiten fase Financieel');
+    ctx.renderKolommenbalans('financieel');
+    if (fetches !== 1) fouten.push('begeleider: precies één laadverzoek verwacht');
+    ctx.KB.status = 'ok';
+    const kwaad = "x'\"><img src=x onerror=alert(1)>";
+    ctx.KB.data = { ok: true, categorieen: { omzet: 'Netto-omzet' }, jaren: [{ jaar: 2024, rev: 3, status: 'controle', bron_naam: '<b>k.csv</b>', redenen: ['1 rekening(en) nog handmatig toe te wijzen.'],
+      exploitatie: { omzet: 500000, ebitda: 134000 }, werkkapitaal: 33000, netto_schuld: 8500, rekeningen: [{ rekening: kwaad, omschrijving: '<script>x</script>', saldo: 100, categorie: 'onbekend', bron: 'auto' }] }] };
+    const h = ctx.renderKolommenbalans('financieel');
+    if (/<img src=x|<script>x|<b>k\.csv/.test(h)) fouten.push('servertekst niet geëscapet');
+    if (/onchange="[^"]*img/.test(h) || /onchange="[^"]*x'/.test(h)) fouten.push('rekeningnummer staat in een event-handler');
+    if (!/data-rek="x&#39;&quot;&gt;&lt;img/.test(h)) fouten.push('rekeningnummer niet veilig als data-attribuut');
+    if (!/€ 134\.000/.test(h) || !/Te controleren/.test(h)) fouten.push('exploitatie of status niet zichtbaar');
+    ctx.S.rol = 'verkoper'; ctx.KB.scope = null; ctx.kbSync(); ctx.KB.status = 'ok'; ctx.KB.data = { ok: true, categorieen: {}, jaren: [] };
+    if (/<select data-rek/.test(ctx.renderKolommenbalans('financieel'))) fouten.push('verkoper krijgt toewijskeuzes');
+    // Fase A-correcties (28 okt 2026)
+    if (ctx.kbGeld(-2500) !== '-€ 2.500' || ctx.kbGeld(2500) !== '€ 2.500' || ctx.kbGeld(-0.4) !== '€ 0') fouten.push('notatie bedragen: verwacht -€ 2.500 / € 2.500, kreeg ' + ctx.kbGeld(-2500));
+    ctx.window.kbKiesJaar('2021');
+    if (!/<option value="2021" selected>/.test(ctx.renderKolommenbalans('financieel'))) fouten.push('gekozen boekjaar blijft niet behouden na hertekenen');
+    const src06b = fs.readFileSync(path.join(ROOT, 'mna/06-schermen.js'), 'utf8');
+    if (!/if\(isTussen\(\)\) fetch\(WORKER\+'\/mna\/gesprek\/concept\/'\+S\.code\)/.test(src06b) || /\n\s*fetch\(WORKER\+'\/mna\/gesprek\/concept\/'\+S\.code\)/.test(src06b)) fouten.push('N-148: gespreksconcept wordt niet alleen voor de begeleider opgehaald');
+  } catch (e) { fouten.push('check kon niet worden uitgevoerd: ' + String((e && e.message) || e)); }
+  if (fouten.length) fouten.forEach((f) => warn('#91 F3: ' + f)); else ok('#91 F3: paneel alleen in Financieel voor verkoper/begeleider, escaping, rekeningnummer niet in event-handler, toewijzen alleen begeleider, laadvolgorde, alleen fetchMetTimeout');
+}
+
+log('39. #91 fase B normalisaties/prognose: paneel (mna/16), dealvoorstel-keuze, escaping en rollen');
+{
+  const fouten = [];
+  try {
+    const vm = (await import('vm')).default;
+    const src16 = fs.readFileSync(path.join(ROOT, 'mna/16-financieel.js'), 'utf8');
+    const html = fs.readFileSync(path.join(ROOT, 'mna.html'), 'utf8');
+    const src06 = fs.readFileSync(path.join(ROOT, 'mna/06-schermen.js'), 'utf8');
+    const src04 = fs.readFileSync(path.join(ROOT, 'mna/04-begeleider-dashboard.js'), 'utf8');
+    const pos = (n) => html.indexOf('<script src="mna/' + n);
+    if (!(pos('16-financieel.js') > pos('15-kolommenbalans.js') && pos('16-financieel.js') < pos('06-schermen.js'))) fouten.push('laadvolgorde 16');
+    if (!/\+renderFinancieleAnalyse\(f\.id\)/.test(src06)) fouten.push('renderMain roept renderFinancieleAnalyse niet aan');
+    if (!/id="dv-fin-hint"/.test(src04) || !/finDealvoorstelHint\(document\.getElementById\('dv-fin-hint'\)\)/.test(src04)) fouten.push('dealvoorstel-keuze ontbreekt');
+    if (/(^|[^A-Za-z.])fetch\(/.test(src16.replace(/fetchMetTimeout\(/g, ''))) fouten.push('kale fetch in mna/16');
+    let fetches = 0;
+    const els = {};
+    const ctx = vm.createContext({ S: { code: 'SYNV', rol: 'koper', fase: 0, _bgKey: 'x' }, FASES: [{ id: 'financieel', dataFields: [] }], WORKER: 'https://w.test',
+      isVerkoper: () => ctx.S.rol === 'verkoper', isTussen: () => ctx.S.rol === 'tussenpersoon', setTimeout: (f) => f(),
+      fetchMetTimeout: () => { fetches++; return new Promise(() => {}); }, renderApp: () => {}, ge: (id) => els[id] || null, window: {}, document: { querySelectorAll: () => [] } });
+    vm.runInContext(src16, ctx);
+    if (ctx.renderFinancieleAnalyse('financieel') !== '' || fetches) fouten.push('koper ziet paneel');
+    ctx.S.rol = 'tussenpersoon'; ctx.renderFinancieleAnalyse('financieel');
+    if (fetches !== 1) fouten.push('één laadverzoek verwacht');
+    const k = '<img src=x onerror=alert(1)>';
+    ctx.FIN.status = 'ok';
+    ctx.FIN.data = { ok: true, jaren: [{ jaar: 2024, gerapporteerd: { ebitda: 124000 }, genormaliseerd: { omzet: 500000, ebitda: 104000 }, normalisatie_totaal: -20000, kpi: { brutomarge_pct: 100, ebitda_marge_pct: 20.8, omzetgroei_pct: null, omzet_per_fte: 125000, ebitda_per_fte: 26000 } }],
+      normalisaties: [{ id: 'NM1', jaar: 2024, post: 'personeel', soort: 'partnerbeloning', bedrag: -30000, omschrijving: k, bron: k, motivering: k, karakter: 'structureel', zekerheid: 'midden', risico: '', kvm_advies: '', beoordeling: '', herkomst: 'verkoper', status: 'voorstel', rev: 1 }],
+      prognose: { status: 'concept', aannames: [], fte: {}, rev: 1, jaren: [{ jaar: 2025, exploitatie: { omzet: 525000, ebitda: 117780 }, kpi: { brutomarge_pct: 100, ebitda_marge_pct: 22.43 } }] } };
+    const h = ctx.renderFinancieleAnalyse('financieel');
+    if (/<img src=x/.test(h)) fouten.push('servertekst niet geëscapet');
+    if (!/€ 104\.000/.test(h) || !/-€ 30\.000/.test(h) || !/20,8%/.test(h) || !/2025 \(prognose, concept\)/.test(h)) fouten.push('aansluiting, notatie of prognoselabel ontbreekt');
+    if (!/finBeoordeel\(this\)/.test(h) || !/Prognose goedkeuren/.test(h)) fouten.push('begeleider mist beoordelen of goedkeuren');
+    ctx.S.rol = 'verkoper'; ctx.FIN.scope = ctx.finScope();
+    const hv = ctx.renderFinancieleAnalyse('financieel');
+    if (/finBeoordeel|Prognose goedkeuren|Voorstellen van KVM/.test(hv) || !/Normalisatie voorstellen/.test(hv)) fouten.push('verkoper: verkeerde rechten in de UI');
+  } catch (e) { fouten.push('check kon niet worden uitgevoerd: ' + String((e && e.message) || e)); }
+  if (fouten.length) fouten.forEach((f) => warn('#91 fase B: ' + f)); else ok('#91 fase B: paneel met aansluiting, KPI en prognoselabel, escaping, rolrechten (verkoper alleen voorstellen), dealvoorstel-keuze, laadvolgorde, alleen fetchMetTimeout');
+}
+
+log('40. #91 fase C klantenanalyse: paneel (mna/17), escaping, rollen en laadvolgorde');
+{
+  const fouten = [];
+  try {
+    const vm = (await import('vm')).default;
+    const src16 = fs.readFileSync(path.join(ROOT, 'mna/16-financieel.js'), 'utf8');
+    const src17 = fs.readFileSync(path.join(ROOT, 'mna/17-klantanalyse.js'), 'utf8');
+    const html = fs.readFileSync(path.join(ROOT, 'mna.html'), 'utf8');
+    const src06 = fs.readFileSync(path.join(ROOT, 'mna/06-schermen.js'), 'utf8');
+    const pos = (n) => html.indexOf('<script src="mna/' + n);
+    if (!(pos('17-klantanalyse.js') > pos('16-financieel.js') && pos('17-klantanalyse.js') < pos('06-schermen.js'))) fouten.push('laadvolgorde 17');
+    if (!/\+renderKlantanalyse\(f\.id\)/.test(src06)) fouten.push('renderMain roept renderKlantanalyse niet aan');
+    if (/(^|[^A-Za-z.])fetch\(/.test(src17.replace(/fetchMetTimeout\(/g, ''))) fouten.push('kale fetch in mna/17');
+    for (const f of ['mna/08-handleiding.js', 'adv.html']) if (!/Verdienmodel, klanten en tarieven/.test(fs.readFileSync(path.join(ROOT, f), 'utf8'))) fouten.push('handleiding ' + f);
+    let fetches = 0;
+    const ctx = vm.createContext({ S: { code: 'SYNV', rol: 'koper', fase: 0, _bgKey: 'x' }, FASES: [{ id: 'commercieel', dataFields: [] }], WORKER: 'https://w.test',
+      isVerkoper: () => ctx.S.rol === 'verkoper', isTussen: () => ctx.S.rol === 'tussenpersoon', setTimeout: (f) => f(),
+      fetchMetTimeout: () => { fetches++; return new Promise(() => {}); }, renderApp: () => {}, ge: () => null, window: {}, document: { querySelectorAll: () => [] } });
+    vm.runInContext(src16 + '\n' + src17, ctx);
+    if (ctx.renderKlantanalyse('commercieel') !== '' || fetches) fouten.push('koper ziet paneel');
+    if (ctx.renderKlantanalyse('financieel') !== '') fouten.push('paneel buiten fase Commercieel');
+    ctx.S.rol = 'tussenpersoon'; ctx.renderKlantanalyse('commercieel');
+    if (fetches !== 1) fouten.push('één laadverzoek verwacht');
+    const k = '<img src=x onerror=alert(1)>';
+    ctx.KA.status = 'ok';
+    ctx.KA.data = { ok: true, rev: 1, bron: { naam: k, regels: 7, dubbel: 1 }, verdienmodel: { model: 'abonnement', facturatie: 'maandelijks', toelichting: k },
+      jaren: [{ jaar: 2024, omzet: 61500, relaties: 5, facturen: 6, gemiddeld_per_relatie: 12300, concentratie: { top1_pct: 48.78, top5_pct: 100, top10_pct: 100 },
+        top10: [{ rang: 1, naam: k, branche: k, omzet: 30000, aandeel_pct: 48.78, relatie_jaren: 15 }], omzetklassen: [{ label: '> € 25.000', aantal: 1, omzet: 30000, aandeel_pct: 48.78 }],
+        relatieleeftijd: { klassen: [{ label: '≥ 10 jaar', aantal: 1, aandeel_pct: 48.78 }], gewogen_gemiddeld_jaren: 7.5 }, branches: [{ naam: k, omzet: 30000, aandeel_pct: 48.78 }],
+        werksoorten: [{ naam: k, omzet: 26000, aandeel_pct: 42.28, uren: 210, gerealiseerd_uurtarief: 123.81, standaard_uurtarief: 125, realisatie_pct: 99.05 }],
+        aansluiting: { status: 'afwijking', verschil: -438500, verschil_pct: -87.7 } }],
+      werkkapitaal: [{ jaar: 2024, debiteuren: 60000, debiteurendagen: 44, onderhanden_werk: 15000, ohw_dagen: 11, werkkapitaal: 33000, werkkapitaal_pct_omzet: 6.6 }] };
+    const h = ctx.renderKlantanalyse('commercieel');
+    if (/<img src=x/.test(h)) fouten.push('servertekst niet geëscapet');
+    if (!/€ 61\.500/.test(h) || !/48,78%/.test(h) || !/99,05%/.test(h) || !/wijkt af van de kolommenbalans: -€ 438\.500/.test(h) || !/>44</.test(h)) fouten.push('cijfers, notatie of aansluiting ontbreekt');
+    if (!/kaVerwijder\(\)/.test(h)) fouten.push('begeleider mist verwijderen');
+    ctx.S.rol = 'verkoper'; ctx.KA.scope = ctx.finScope();
+    ctx.KA.status = 'ok'; ctx.KA.data = { ok: true, rev: 1, bron: { naam: 'f.csv', regels: 1, dubbel: 0 }, verdienmodel: {}, jaren: [], werkkapitaal: [] };
+    const hv = ctx.renderKlantanalyse('commercieel');
+    if (/kaVerwijder/.test(hv) || !/kaUpload\(\)/.test(hv)) fouten.push('verkoper: verkeerde rechten in de UI');
+  } catch (e) { fouten.push('check kon niet worden uitgevoerd: ' + String((e && e.message) || e)); }
+  if (fouten.length) fouten.forEach((f) => warn('#91 fase C: ' + f)); else ok('#91 fase C: paneel met klantenanalyse, werksoort/tarieven en werkkapitaal, escaping, rolrechten (verkoper geen verwijderen), alleen fase Commercieel, handleiding, laadvolgorde, alleen fetchMetTimeout');
+}
+
+log('41. #91 fase D personeel/huisvesting/IT: paneel (mna/18), escaping, rollen, fasen en laadvolgorde');
+{
+  const fouten = [];
+  try {
+    const vm = (await import('vm')).default;
+    const src = ['mna/16-financieel.js', 'mna/17-klantanalyse.js', 'mna/18-organisatie.js'].map((f) => fs.readFileSync(path.join(ROOT, f), 'utf8')).join('\n');
+    const src18 = fs.readFileSync(path.join(ROOT, 'mna/18-organisatie.js'), 'utf8');
+    const html = fs.readFileSync(path.join(ROOT, 'mna.html'), 'utf8');
+    const src06 = fs.readFileSync(path.join(ROOT, 'mna/06-schermen.js'), 'utf8');
+    const pos = (n) => html.indexOf('<script src="mna/' + n);
+    if (!(pos('18-organisatie.js') > pos('17-klantanalyse.js') && pos('18-organisatie.js') < pos('06-schermen.js'))) fouten.push('laadvolgorde 18');
+    if (!/\+renderOrganisatie\(f\.id\)/.test(src06)) fouten.push('renderMain roept renderOrganisatie niet aan');
+    if (/(^|[^A-Za-z.])fetch\(/.test(src18.replace(/fetchMetTimeout\(/g, ''))) fouten.push('kale fetch in mna/18');
+    for (const f of ['mna/08-handleiding.js', 'adv.html']) if (!/Personeel, huisvesting en IT/.test(fs.readFileSync(path.join(ROOT, f), 'utf8'))) fouten.push('handleiding ' + f);
+    let fetches = 0;
+    const k = '<img src=x onerror=alert(1)>';
+    const ctx = vm.createContext({ S: { code: 'SYNV', rol: 'koper', fase: 0, _bgKey: 'x' }, FASES: [{ id: 'partner', dataFields: [] }], WORKER: 'https://w.test',
+      isVerkoper: () => ctx.S.rol === 'verkoper', isTussen: () => ctx.S.rol === 'tussenpersoon', setTimeout: (f) => f(), DOCS: { juridisch: [{ id: "D1'\"><x", naam: k }] },
+      fetchMetTimeout: () => { fetches++; return new Promise(() => {}); }, renderApp: () => {}, ge: () => null, window: {}, document: { querySelectorAll: () => [] } });
+    vm.runInContext(src, ctx);
+    if (ctx.renderOrganisatie('partner') !== '' || fetches) fouten.push('koper ziet paneel');
+    if (ctx.renderOrganisatie('financieel') !== '' || ctx.renderOrganisatie('commercieel') !== '') fouten.push('paneel in verkeerde fase');
+    ctx.S.rol = 'tussenpersoon'; ctx.renderOrganisatie('partner');
+    if (fetches !== 1) fouten.push('één laadverzoek verwacht');
+    const data = { ok: true, rev: 1, personeel_bron: k, personeel: { peiljaar: 2024, aantal: 6, fte: 5.4, partners: { aantal: 2, fte: 2 }, gem_leeftijd: 45.33, gem_dienstjaren: 11, zestig_plus: 1, loonkosten: { totaal: 418000, per_fte: 77407 },
+      functiegroepen: [{ functie: k, aantal: 3, fte: 2.8, gem_dienstjaren: 4.5, loonkosten_per_fte: 56429 }], leeftijdsklassen: [], dienstjarenklassen: [], contracten: [], kwalificaties: [] },
+      locaties: [{ plaats: k, eigendom: 'huur', m2: 400, document_ids: [], documenten: [{ id: 'D1', bestand_naam: k, foto: true }] }], huisvesting: { locaties: 1, m2: 400, werkplekken: 20, huur_per_jaar: 60000, huur_aflopend_24mnd: 1, huur_zonder_einddatum: 0 },
+      it: [{ naam: k, categorie: 'boekhouding', hosting: 'cloud', overdraagbaar: 'nee' }], it_analyse: { systemen: 1, kosten_per_jaar: 25000, kosten_pct_omzet: 5, cloud: 1, niet_overdraagbaar: 1, overdraagbaar_onbekend: 0, contract_aflopend_12mnd: 0 } };
+    ctx.ORG.status = 'ok'; ctx.ORG.data = data; ctx.ORG.locs = JSON.parse(JSON.stringify(data.locaties)); ctx.ORG.it = JSON.parse(JSON.stringify(data.it));
+    const hp = ctx.renderOrganisatie('partner'), hh = (ctx.FASES[0].id = 'juridisch', ctx.ORG.scope = ctx.finScope(), ctx.ORG.status = 'ok', ctx.ORG.data = data, ctx.ORG.locs = JSON.parse(JSON.stringify(data.locaties)), ctx.ORG.it = JSON.parse(JSON.stringify(data.it)), ctx.renderOrganisatie('juridisch')), hi = ctx.renderOrganisatie('it');
+    if ([hp, hh, hi].some((h) => /<img src=x|"><x/.test(h))) fouten.push('servertekst of document-id niet geëscapet');
+    if (!/€ 418\.000/.test(hp) || !/€ 56\.429/.test(hp) || !/orgVerwijderPersoneel\(\)/.test(hp)) fouten.push('personeel: cijfers of verwijderknop begeleider ontbreekt');
+    if (!/1 huurcontract\(en\) lopen binnen 24 maanden af/.test(hh) || !/data-id="D1&#39;&quot;&gt;&lt;x"/.test(hh) || !/orgBewaar\('locs'\)/.test(hh)) fouten.push('huisvesting: markering, documentkoppeling of opslaan ontbreekt');
+    if (!/5%/.test(hi) || !/1 licentie\(s\) niet overdraagbaar/.test(hi) || !/orgBewaar\('it'\)/.test(hi)) fouten.push('IT: kosten-% of markering ontbreekt');
+    ctx.S.rol = 'verkoper'; ctx.FASES[0].id = 'partner'; ctx.ORG.scope = ctx.finScope(); ctx.ORG.status = 'ok'; ctx.ORG.data = data; ctx.ORG.locs = []; ctx.ORG.it = [];
+    const hv = ctx.renderOrganisatie('partner');
+    if (/orgVerwijderPersoneel/.test(hv) || !/orgUploadPersoneel\(\)/.test(hv)) fouten.push('verkoper: verkeerde rechten in de UI');
+  } catch (e) { fouten.push('check kon niet worden uitgevoerd: ' + String((e && e.message) || e)); }
+  if (fouten.length) fouten.forEach((f) => warn('#91 fase D: ' + f)); else ok('#91 fase D: panelen personeel/huisvesting/IT in de juiste fasen, escaping (ook document-id), rolrechten, markeringen, handleiding, laadvolgorde, alleen fetchMetTimeout');
+}
+
+log('42. #91 fase E / #96: IM-venster (PDF zoals de koper hem ontvangt, kerngegevens vernieuwen, foutdetail), handleiding');
+{
+  const fouten = [];
+  const src04 = fs.readFileSync(path.join(ROOT, 'mna/04-begeleider-dashboard.js'), 'utf8');
+  if (!/id="verkoopmemo-pdf-btn"/.test(src04) || !/\/mna\/verkoopmemorandum\/pdf\?code='\+encodeURIComponent\(S\.code\)/.test(src04)) fouten.push('PDF-knop of route ontbreekt');
+  if (!/id="verkoopmemo-kern-btn"/.test(src04) || !/\/mna\/verkoopmemorandum\/kerngegevens'/.test(src04) || !/\(def\?'':'<button class="btn-ghost btn-sm" id="verkoopmemo-kern-btn"/.test(src04)) fouten.push('kerngegevens vernieuwen ontbreekt of staat ook bij definitief');
+  const m = /function vmFeitDetail\(j\)\{[\s\S]*?\n    \}/.exec(src04);
+  if (!m) fouten.push('vmFeitDetail ontbreekt in de IM-closure');
+  else {
+    const f = new Function('esc', m[0] + '; return vmFeitDetail;')((x) => String(x).replace(/</g, '&lt;'));
+    const d = f({ code: 'FEITCONTROLE_AFWIJKING', afwijkingen: [{ fragment: '<b>€ 1.000' }] });
+    if (!/&lt;b>€ 1\.000/.test(d) || /<b>/.test(d)) fouten.push('afwijkingen niet geëscapet getoond');
+    if (!/Betreft: Financiële kerncijfers/.test(f({ code: 'FEITEN_VEROUDERD', koppen: ['Financiële kerncijfers'] }))) fouten.push('verouderde koppen niet getoond');
+  }
+  for (const f of ['mna/08-handleiding.js', 'adv.html']) if (!/Feiten uit de bron, opmaak naar keuze/.test(fs.readFileSync(path.join(ROOT, f), 'utf8'))) fouten.push('handleiding ' + f);
+  if (fouten.length) fouten.forEach((f) => warn('#91 fase E: ' + f)); else ok('#91 fase E / #96: PDF-voorbeeld, kerngegevens vernieuwen (niet bij definitief), geëscapete foutdetails, handleiding mna/adv');
+}
+
+log('43. #91 fase F: transactiedoel in het transactiemodel-paneel (mna/13) en handleiding');
+{
+  const fouten = [];
+  const src13 = fs.readFileSync(path.join(ROOT, 'mna/13-transactiemodel.js'), 'utf8');
+  if (!/var TM_DOEL = \[\['verkoop', [^\]]*\], \['fusie', [^\]]*\], \['gedeeltelijk', [^\]]*\], \['onbekend', [^\]]*\]\];/.test(src13)) fouten.push('keuzelijst doel ontbreekt of wijkt af van de backend');
+  if (!/kop\('Doel van het traject'\) \+ radio\('doel', TM_DOEL\)/.test(src13) || !/if \(d\.doel\) b\.doel = d\.doel;/.test(src13) || !/doel: '', structuur: ''/.test(src13)) fouten.push('doel niet in formulier, opslag of lege staat');
+  for (const f of ['mna/08-handleiding.js', 'adv.html']) if (!/Leg eerst het doel van het traject vast/.test(fs.readFileSync(path.join(ROOT, f), 'utf8'))) fouten.push('handleiding ' + f);
+  if (fouten.length) fouten.forEach((f) => warn('#91 fase F: ' + f)); else ok('#91 fase F: transactiedoel in formulier, opslag en samenvatting; handleiding mna/adv');
+}
+
+log('44. N-151: vrijgave-melding en handleiding over geldige NDA (mna/04, mna/08, adv.html)');
+{
+  const fouten = [];
+  const src04 = fs.readFileSync(path.join(ROOT, 'mna/04-begeleider-dashboard.js'), 'utf8');
+  if (!/Er is nog geen geldig ondertekende NDA van de koper\./.test(src04) || /Koper krijgt toegang zonder geheimhoudingsovereenkomst/.test(src04)) fouten.push('vrijgave-melding beschrijft nog toegang zonder NDA');
+  for (const f of ['mna/08-handleiding.js', 'adv.html']) if (!/Een alleen ingevulde naam is niet genoeg|een alleen ingevulde naam is niet genoeg/.test(fs.readFileSync(path.join(ROOT, f), 'utf8'))) fouten.push('handleiding ' + f);
+  if (fouten.length) fouten.forEach((f) => warn('N-151: ' + f)); else ok('N-151: vrijgave-melding en handleidingen beschrijven de geldige-NDA-voorwaarde');
+}
+
+log('45. #91 fase E v4: redactionele waarschuwingen in het IM-venster (mna/04), geëscapet');
+{
+  const fouten = [];
+  const src04 = fs.readFileSync(path.join(ROOT, 'mna/04-begeleider-dashboard.js'), 'utf8');
+  if (!/redactie=Array\.isArray\(r\.redactie_waarschuwingen\)\?r\.redactie_waarschuwingen:null/.test(src04)) fouten.push('waarschuwingen uit de generatie niet overgenomen');
+  if (!/'Letterlijk overgenomen veldwaarde \('\+esc\(w\.woord\|\|''\)\+'\): '/.test(src04) || !/esc\(\(w&&w\.zin\)\|\|''\)/.test(src04)) fouten.push('waarschuwingen niet (geëscapet) getoond');
+  if (fouten.length) fouten.forEach((f) => warn('#91 E v4: ' + f)); else ok('#91 E v4: redactionele waarschuwingen na generatie zichtbaar voor de begeleider, geëscapet, geen blokkade');
+}
+
+log('46. #91 fase E v4b: beeldpaneel (mna/19), rollen, escaping, privé bestanden, laadvolgorde, handleiding');
+{
+  const fouten = [];
+  try {
+    const vm = (await import('vm')).default;
+    const src = ['mna/16-financieel.js', 'mna/19-im-beeld.js'].map((f) => fs.readFileSync(path.join(ROOT, f), 'utf8')).join('\n');
+    const src19 = fs.readFileSync(path.join(ROOT, 'mna/19-im-beeld.js'), 'utf8'), html = fs.readFileSync(path.join(ROOT, 'mna.html'), 'utf8'), src06 = fs.readFileSync(path.join(ROOT, 'mna/06-schermen.js'), 'utf8');
+    const pos = (n) => html.indexOf('<script src="mna/' + n);
+    if (!(pos('19-im-beeld.js') > pos('18-organisatie.js') && pos('19-im-beeld.js') < pos('06-schermen.js'))) fouten.push('laadvolgorde 19');
+    if (!/\+renderImBeeld\(f\.id\)/.test(src06)) fouten.push('renderMain roept renderImBeeld niet aan');
+    if (/(^|[^A-Za-z.])fetch\(/.test(src19.replace(/fetchMetTimeout\(/g, ''))) fouten.push('kale fetch in mna/19');
+    if (!/\/mna\/im-beeld\/bestand\?code=/.test(src19) || /https?:\/\//.test(src19)) fouten.push('miniaturen niet via de geauthenticeerde route of externe URL');
+    for (const f of ['mna/08-handleiding.js', 'adv.html']) if (!/Beeldmateriaal in het informatiememorandum/.test(fs.readFileSync(path.join(ROOT, f), 'utf8'))) fouten.push('handleiding ' + f);
+    let fetches = 0;
+    const k = '<img src=x onerror=alert(1)>';
+    const ctx = vm.createContext({ S: { code: 'SYNV', rol: 'koper', fase: 0, _bgKey: 'x' }, FASES: [{ id: 'strategisch', dataFields: [] }], WORKER: 'https://w.test', URL: { createObjectURL: () => 'blob:x' },
+      isVerkoper: () => ctx.S.rol === 'verkoper', isTussen: () => ctx.S.rol === 'tussenpersoon', setTimeout: (f) => f(), fetchMetTimeout: () => { fetches++; return new Promise(() => {}); }, renderApp: () => {}, ge: () => null, window: {}, document: { querySelectorAll: () => [] } });
+    vm.runInContext(src, ctx);
+    if (ctx.renderImBeeld('strategisch') !== '' || fetches) fouten.push('koper ziet beeldpaneel');
+    ctx.S.rol = 'tussenpersoon'; ctx.renderImBeeld('strategisch');
+    const b = { id: "IB1\"><x", categorie: 'pand', herkomst: 'sfeer', bijschrift: k, bron: k, licentie: 'CC0', naamsvermelding: k, volgorde: 0, im_toegestaan: true, cover: false, focus_x: 40, focus_y: 50, rechten_bevestigd: false, rev: 1, mag_in_im: true, onderschrift: k };
+    ctx.IMB.status = 'ok'; ctx.IMB.data = { ok: true, beelden: [b] };
+    const hb = ctx.renderImBeeld('strategisch');
+    if (/<img src=x|"><x/.test(hb)) fouten.push('servertekst of id niet geëscapet');
+    if (!/data-veld="im_toegestaan"/.test(hb) || !/data-veld="cover"/.test(hb) || !/imbVerwijder\(this\)/.test(hb)) fouten.push('begeleider mist opname/cover/verwijderen');
+    ctx.S.rol = 'verkoper'; ctx.IMB.scope = ctx.finScope(); ctx.IMB.status = 'ok'; ctx.IMB.data = { ok: true, beelden: [b] };
+    const hv = ctx.renderImBeeld('strategisch');
+    if (/data-veld="im_toegestaan"|data-veld="cover"|imbVerwijder/.test(hv) || !/imbUpload\(\)/.test(hv)) fouten.push('verkoper: verkeerde rechten in de UI');
+  } catch (e) { fouten.push('check kon niet worden uitgevoerd: ' + String((e && e.message) || e)); }
+  if (fouten.length) fouten.forEach((f) => warn('#91 E v4b: ' + f)); else ok('#91 E v4b: beeldpaneel in Strategisch, escaping, rolrechten (alleen begeleider beslist), privé miniaturen, handleiding, laadvolgorde, alleen fetchMetTimeout');
+}
+
+log('47. #91 fase E v4: juridisch paneel (mna/20), rollen, escaping, vrijgave alleen begeleider, laadvolgorde, handleiding');
+{
+  const fouten = [];
+  try {
+    const vm = (await import('vm')).default;
+    const src = ['mna/16-financieel.js', 'mna/18-organisatie.js', 'mna/20-juridisch.js'].map((f) => fs.readFileSync(path.join(ROOT, f), 'utf8')).join('\n');
+    const src20 = fs.readFileSync(path.join(ROOT, 'mna/20-juridisch.js'), 'utf8'), html = fs.readFileSync(path.join(ROOT, 'mna.html'), 'utf8'), src06 = fs.readFileSync(path.join(ROOT, 'mna/06-schermen.js'), 'utf8');
+    const pos = (n) => html.indexOf('<script src="mna/' + n);
+    if (!(pos('20-juridisch.js') > pos('18-organisatie.js') && pos('20-juridisch.js') < pos('06-schermen.js'))) fouten.push('laadvolgorde 20');
+    if (!/\+renderJuridisch\(f\.id\)/.test(src06)) fouten.push('renderMain roept renderJuridisch niet aan');
+    if (/(^|[^A-Za-z.])fetch\(/.test(src20.replace(/fetchMetTimeout\(/g, ''))) fouten.push('kale fetch in mna/20');
+    for (const f of ['mna/08-handleiding.js', 'adv.html']) if (!/Overeenkomsten en juridische aandachtspunten/.test(fs.readFileSync(path.join(ROOT, f), 'utf8'))) fouten.push('handleiding ' + f);
+    let fetches = 0;
+    const k = '<img src=x onerror=alert(1)>';
+    const ctx = vm.createContext({ S: { code: 'SYNV', rol: 'koper', fase: 0, _bgKey: 'x' }, FASES: [{ id: 'juridisch', dataFields: [] }], WORKER: 'https://w.test',
+      isVerkoper: () => ctx.S.rol === 'verkoper', isTussen: () => ctx.S.rol === 'tussenpersoon', setTimeout: (f) => f(), fetchMetTimeout: () => { fetches++; return new Promise(() => {}); }, renderApp: () => {}, ge: () => null, window: {}, document: { querySelectorAll: () => [] }, kaTabel: () => '' });
+    vm.runInContext(src, ctx);
+    if (ctx.renderJuridisch('juridisch') !== '' || fetches) fouten.push('koper ziet juridisch paneel');
+    ctx.S.rol = 'tussenpersoon';
+    if (ctx.renderJuridisch('financieel') !== '') fouten.push('paneel buiten fase Juridisch');
+    ctx.renderJuridisch('juridisch');
+    const d = { ok: true, rev: 2, contracten: [{ id: 'c_000000000001', soort: 'klant', omschrijving: k, einddatum: '2026-06-30', change_of_control: 'ja', exclusiviteit: 'nee', jaarwaarde: 1000, in_im: true }],
+      aandachtspunten: [{ id: 'a_000000000001', soort: 'geschil', omschrijving: k, status: 'lopend', in_im: false }], analyse: { contracten: 1, change_of_control: 1, aflopend_24mnd: 1, jaarwaarde: 1000 }, im: { contracten: 1, aandachtspunten: 0 }, intern_aandachtspunten: 1 };
+    ctx.JUR.status = 'ok'; ctx.jurZetData(d);
+    const hb = ctx.renderJuridisch('juridisch');
+    if (/<img src=x/.test(hb)) fouten.push('servertekst niet geëscapet');
+    if ((hb.match(/Opnemen in IM/g) || []).length !== 2 || !/jurBewaar\('contr'\)/.test(hb) || !/jurBewaar\('punt'\)/.test(hb)) fouten.push('begeleider mist vrijgave of opslaan');
+    ctx.S.rol = 'verkoper'; ctx.JUR.scope = ctx.finScope(); ctx.JUR.status = 'ok'; ctx.jurZetData(d);
+    const hv = ctx.renderJuridisch('juridisch');
+    if (/Opnemen in IM/.test(hv) || !/Opgenomen in IM/.test(hv) || !/Niet in IM/.test(hv) || !/jurBewaar\('contr'\)/.test(hv)) fouten.push('verkoper: verkeerde rechten in de UI');
+  } catch (e) { fouten.push('check kon niet worden uitgevoerd: ' + String((e && e.message) || e)); }
+  if (fouten.length) fouten.forEach((f) => warn('#91 E v4 juridisch: ' + f)); else ok('#91 E v4 juridisch: paneel alleen in fase Juridisch voor verkoper/begeleider, escaping, vrijgave voor het IM alleen door de begeleider, handleiding, laadvolgorde, alleen fetchMetTimeout');
+}
+
+log('48. #91 fase E v4: bijlagekeuze kolommenbalans (mna/21), alleen begeleider, alleen gereed, dashboardkoppeling, handleiding');
+{
+  const fouten = [];
+  try {
+    const vm = (await import('vm')).default;
+    const src = ['mna/16-financieel.js', 'mna/21-im-bijlage.js'].map((f) => fs.readFileSync(path.join(ROOT, f), 'utf8')).join('\n');
+    const src21 = fs.readFileSync(path.join(ROOT, 'mna/21-im-bijlage.js'), 'utf8'), html = fs.readFileSync(path.join(ROOT, 'mna.html'), 'utf8'), src04 = fs.readFileSync(path.join(ROOT, 'mna/04-begeleider-dashboard.js'), 'utf8');
+    const pos = (n) => html.indexOf('<script src="mna/' + n);
+    if (!(pos('21-im-bijlage.js') > pos('16-financieel.js') && pos('21-im-bijlage.js') < pos('06-schermen.js'))) fouten.push('laadvolgorde 21');
+    if (!/<div id="imbj-bg"><\/div>/.test(src04) || !/imbjLaad\(\)/.test(src04)) fouten.push('dashboard roept de bijlagekeuze niet aan');
+    if (/(^|[^A-Za-z.])fetch\(/.test(src21.replace(/fetchMetTimeout\(/g, ''))) fouten.push('kale fetch in mna/21');
+    for (const f of ['mna/08-handleiding.js', 'adv.html']) if (!/Kolommenbalans als bijlage bij het memorandum/.test(fs.readFileSync(path.join(ROOT, f), 'utf8'))) fouten.push('handleiding ' + f);
+    const el = { innerHTML: '' };
+    let fetches = 0;
+    const ctx = vm.createContext({ S: { code: 'SYNV', rol: 'verkoper', fase: 0, _bgKey: 'x' }, FASES: [], WORKER: 'https://w.test', toast: () => {},
+      isVerkoper: () => ctx.S.rol === 'verkoper', isTussen: () => ctx.S.rol === 'tussenpersoon', setTimeout: () => {}, fetchMetTimeout: () => { fetches++; return new Promise(() => {}); }, renderApp: () => {}, ge: () => null, window: {},
+      document: { getElementById: (id) => (id === 'imbj-bg' ? el : null), querySelectorAll: () => [] } });
+    ctx.window = ctx; // in de browser is window het globale object
+    vm.runInContext(src, ctx);
+    ctx.imbjLaad();
+    if (fetches) fouten.push('verkoper laadt bijlagekeuze');
+    ctx.S.rol = 'tussenpersoon'; ctx.imbjLaad();
+    if (fetches !== 1) fouten.push('begeleider laadt bijlagekeuze niet');
+    ctx.IMBJ.data = { ok: true, rev: 1, gekozen: [2024], beschikbaar: [{ jaar: 2023, gereed: false }, { jaar: 2024, gereed: true }] }; ctx.IMBJ.fout = '<img src=x onerror=alert(1)>';
+    ctx.imbjTeken();
+    if (/<img src=x/.test(el.innerHTML)) fouten.push('foutmelding niet geëscapet');
+    if (!/value="2023" disabled/.test(el.innerHTML) || !/value="2024" checked>/.test(el.innerHTML) || !/imbjBewaar\(\)/.test(el.innerHTML)) fouten.push('niet-gereed jaar kiesbaar of opslaan ontbreekt');
+  } catch (e) { fouten.push('check kon niet worden uitgevoerd: ' + String((e && e.message) || e)); }
+  if (fouten.length) fouten.forEach((f) => warn('#91 E v4 bijlage: ' + f)); else ok('#91 E v4 bijlage: keuze alleen voor de begeleider, niet-gereed jaar niet kiesbaar, escaping, dashboardkoppeling, handleiding, laadvolgorde, alleen fetchMetTimeout');
+}
+
+log('49. N-154: elk opslagpad in mna.html stuurt de basis mee; verwerking na opslag en conflict');
+{
+  const fouten = [];
+  try {
+    const vm = (await import('vm')).default;
+    for (const f of ['mna/02-state-opslag-documenten.js', 'mna/06-schermen.js']) {
+      const src = fs.readFileSync(path.join(ROOT, f), 'utf8');
+      const paden = [...src.matchAll(/fetch\(WORKER\+'\/mna\/save'[\s\S]{0,200}?body:\s*(?:JSON\.stringify\(([^)]*)\)|body)/g)];
+      for (const m of paden) {
+        const voor = src.slice(Math.max(0, m.index - 4000), m.index + m[0].length);
+        if (!/metBasis\(/.test(voor)) fouten.push(f + ': opslagpad zonder basis (' + src.slice(0, m.index).split('\n').length + ')');
+      }
+      const beacon = src.indexOf("navigator.sendBeacon(WORKER+'/mna/save'");
+      if (beacon > 0 && !/metBasis\(/.test(src.slice(beacon - 1500, beacon))) fouten.push(f + ': beacon zonder basis');
+    }
+    const src02 = fs.readFileSync(path.join(ROOT, 'mna/02-state-opslag-documenten.js'), 'utf8');
+    const helpers = src02.slice(src02.indexOf('function opslagRij('), src02.indexOf('function getDataForFase(id){'));
+    const ctx = vm.createContext({ S: { _groepData: { financieel_omzet3: '1000000', financieel_ebitda: '160000' }, dataPerEntiteit: {} }, FASES: [{ id: 'financieel', dataFields: [{ id: 'omzet3' }, { id: 'ebitda' }, { id: 'kop', header: true }] }], renderApp: () => { ctx.getekend = true; } });
+    vm.runInContext(helpers, ctx);
+    // Scherm: fase financieel open op groepsniveau, invoervelden in de DOM.
+    const dom = { df_omzet3: { value: '1000000' }, df_ebitda: { value: '160000' } };
+    Object.assign(ctx.S, { fase: 0, screen: 'main', data: ctx.S._groepData });
+    ctx.ge = (id) => dom[id] || null;
+    ctx.showAlert = (m) => { ctx.melding = m; };
+    const v = (o) => Object.fromEntries(Object.entries(o).map(([k, x]) => [k, { value: x }]));
+    ctx.zetBasis('financieel', null, { omzet3: { value: '1000000' }, ebitda: { value: '150000' }, consolidatieCheck: [1] });
+    const pl = ctx.metBasis({ fase_id: 'financieel', data_json: { omzet3: { value: '1000000' }, ebitda: { value: '160000' } } });
+    if (JSON.stringify(pl.basis) !== '{"omzet3":"1000000","ebitda":"150000"}') fouten.push('basis bevat niet exact de velden van de fase: ' + JSON.stringify(pl.basis));
+    if (JSON.parse(JSON.stringify(pl))._basisReg !== undefined) fouten.push('interne registratie lekt in het verzoek');
+    ctx.naOpslag(pl, { ok: true, data_json_actueel: { omzet3: { value: '1100000' }, ebitda: { value: '160000' } } });
+    if (ctx.S._groepData.financieel_omzet3 !== '1100000' || ctx.S._basis['|financieel'].omzet3 !== '1100000') fouten.push('na opslag niet de elders gewijzigde omzet overgenomen');
+    if (dom.df_omzet3.value !== '1100000') fouten.push('na opslag toont het invoerveld nog de oude omzet (volgende opslag zou die terugzetten)');
+    // Gebruiker typte intussen verder: niets overnemen.
+    const plT = ctx.metBasis({ fase_id: 'financieel', data_json: v({ omzet3: '1100000', ebitda: '160000' }) });
+    dom.df_ebitda.value = '170000';
+    ctx.naOpslag(plT, { ok: true, data_json_actueel: v({ omzet3: '1100000', ebitda: '165000' }) });
+    if (dom.df_ebitda.value !== '170000' || ctx.S._groepData.financieel_ebitda !== '160000') fouten.push('invoer die de gebruiker nog typt is overschreven');
+    dom.df_ebitda.value = '160000';
+    ctx.zetBasis('financieel', null, v({ omzet3: '1100000', ebitda: '160000' }));
+    const pl2 = ctx.metBasis({ fase_id: 'financieel', data_json: { omzet3: { value: '1200000' }, ebitda: { value: '160000' } } });
+    ctx.S._groepData.financieel_omzet3 = '1200000'; dom.df_omzet3.value = '1200000';
+    ctx.getekend = false;
+    ctx.naOpslag(pl2, { error: 'x', code: 'VELD_CONFLICT', conflicten: [{ veld: 'omzet3', label: 'Omzet', actueel: '1150000' }] });
+    if (ctx.S._groepData.financieel_omzet3 !== '1150000' || dom.df_omzet3.value !== '1150000' || ctx.S._basis['|financieel'].omzet3 !== '1150000' || !ctx.getekend) fouten.push('conflict toont niet de actuele waarde');
+    if (!/^x/.test(ctx.melding || '') || !/actueel 1150000/.test(ctx.melding) || !/uw invoer 1200000/.test(ctx.melding)) fouten.push('conflict toont niet de foutmelding van de server met actuele waarde en eigen invoer: ' + ctx.melding);
+    // Conflict terwijl de gebruiker na de geweigerde opslag al verder typte: nieuwere invoer blijft staan en wordt genoemd.
+    ctx.zetBasis('financieel', null, v({ omzet3: '1100000', ebitda: '160000' }));
+    const plV = ctx.metBasis({ fase_id: 'financieel', data_json: v({ omzet3: '1200000', ebitda: '160000' }) });
+    dom.df_omzet3.value = '1250000';
+    ctx.naOpslag(plV, { error: 'x', code: 'VELD_CONFLICT', conflicten: [{ veld: 'omzet3', label: 'Omzet', actueel: '1150000' }] });
+    if (dom.df_omzet3.value !== '1250000' || ctx.S._groepData.financieel_omzet3 !== '1250000' || ctx.S._basis['|financieel'].omzet3 !== '1150000') fouten.push('conflict overschrijft invoer die de gebruiker na de opslag al typte');
+    if (!/nieuwere invoer 1250000/.test(ctx.melding || '')) fouten.push('conflictmelding noemt de nieuwere invoer niet: ' + ctx.melding);
+    // Wijzigen en terugzetten terwijl de eerste opslag nog loopt: de tweede opslag geldt als wijziging.
+    dom.df_omzet3.value = '1150000';
+    const plA = ctx.metBasis({ fase_id: 'financieel', data_json: v({ omzet3: '1300000', ebitda: '160000' }) });
+    const plB = ctx.metBasis({ fase_id: 'financieel', data_json: v({ omzet3: '1150000', ebitda: '160000' }) });
+    if (plB.basis.omzet3 !== '1300000') fouten.push('terugzetten tijdens een lopende opslag lijkt ongewijzigd (basis ' + plB.basis.omzet3 + ')');
+    ctx.S._groepData.financieel_omzet3 = '1150000';
+    ctx.naOpslag(plA, { ok: true, data_json_actueel: v({ omzet3: '1300000', ebitda: '160000' }) });
+    ctx.naOpslag(plB, { ok: true, data_json_actueel: v({ omzet3: '1150000', ebitda: '160000' }) });
+    if (ctx.S._groepData.financieel_omzet3 !== '1150000' || dom.df_omzet3.value !== '1150000' || ctx.S._basis['|financieel'].omzet3 !== '1150000') fouten.push('teruggezette waarde niet behouden na twee lopende opslagen');
+    // Eerste opslag mislukt, tweede (voortbouwend) slaagt: niets ongemerkt overnemen, basis = serverstand.
+    ctx.S._groepData.financieel_omzet3 = '1400000'; dom.df_omzet3.value = '1400000';
+    const plC = ctx.metBasis({ fase_id: 'financieel', data_json: v({ omzet3: '1400000', ebitda: '160000' }) });
+    const plD = ctx.metBasis({ fase_id: 'financieel', data_json: v({ omzet3: '1400000', ebitda: '160000' }) });
+    ctx.naOpslag(plC, null);
+    ctx.naOpslag(plD, { ok: true, data_json_actueel: v({ omzet3: '1150000', ebitda: '160000' }) });
+    if (ctx.S._groepData.financieel_omzet3 !== '1400000' || dom.df_omzet3.value !== '1400000' || ctx.S._basis['|financieel'].omzet3 !== '1150000') fouten.push('na een mislukte opslag is de invoer ongemerkt vervangen');
+    ctx.naOpslag(plD, null);
+    if (ctx.S._basis['|financieel'].omzet3 !== '1150000') fouten.push('dubbele verwerking van hetzelfde antwoord');
+    // Geplande opslag: de basis hoort bij de momentopname (saveCurrent), niet bij het versturen 800ms later.
+    ctx.zetBasis('financieel', null, v({ omzet3: '1000000', ebitda: '160000' }));
+    Object.assign(ctx.S._groepData, { financieel_omzet3: '1000000', financieel_ebitda: '170000' }); dom.df_omzet3.value = '1000000'; dom.df_ebitda.value = '170000';
+    const plE = ctx.metBasis({ fase_id: 'financieel', data_json: v({ omzet3: '1000000', ebitda: '170000' }) });
+    const snap = ctx.metBasis({ fase_id: 'financieel', data_json: v({ omzet3: '1000000', ebitda: '170000' }) }, true);
+    ctx.naOpslag(plE, { ok: true, data_json_actueel: v({ omzet3: '1100000', ebitda: '170000' }) });
+    ctx.metBasis(snap);
+    if (snap.basis.omzet3 !== '1000000') fouten.push('geplande opslag verstuurt de oude omzet met een nieuwere basis (zou 1.100.000 terugdraaien): basis ' + snap.basis.omzet3);
+    if (ctx.S._groepData.financieel_omzet3 !== '1100000') fouten.push('elders gewijzigde omzet niet overgenomen voor de geplande opslag');
+    ctx.naOpslag(snap, { ok: true, data_json_actueel: v({ omzet3: '1100000', ebitda: '170000' }) });
+    if (ctx.S._groepData.financieel_omzet3 !== '1100000' || dom.df_omzet3.value !== '1100000') fouten.push('na de geplande opslag is de overgenomen omzet weer vervangen');
+    // Bron van de momentopname mislukt voor het versturen: basis opnieuw bepalen uit de serverstand.
+    Object.assign(ctx.S._groepData, { financieel_ebitda: '180000' }); dom.df_ebitda.value = '180000';
+    const plF = ctx.metBasis({ fase_id: 'financieel', data_json: v({ omzet3: '1100000', ebitda: '180000' }) });
+    const snap2 = ctx.metBasis({ fase_id: 'financieel', data_json: v({ omzet3: '1100000', ebitda: '180000' }) }, true);
+    ctx.naOpslag(plF, null);
+    ctx.metBasis(snap2);
+    if (snap2.basis.ebitda !== '170000') fouten.push('na een mislukte eerdere opslag gaat de wijziging van de geplande opslag ongemerkt verloren: basis ' + snap2.basis.ebitda);
+    if (JSON.parse(JSON.stringify(snap2))._basisBron !== undefined) fouten.push('interne basisbron lekt in het verzoek');
+    ctx.naOpslag(snap2, null);
+    // Review N-154 ronde 3: bron van de momentopname krijgt een conflict op omzet; de EBITDA-wijziging uit die opslag mag
+    // niet als "ongewijzigd" meegaan (basis opnieuw uit de serverstand, niet uit de afgewezen opslag).
+    ctx.zetBasis('financieel', null, v({ omzet3: '1100000', ebitda: '170000' }));
+    Object.assign(ctx.S._groepData, { financieel_omzet3: '1200000', financieel_ebitda: '190000' }); dom.df_omzet3.value = '1200000'; dom.df_ebitda.value = '190000';
+    const plG = ctx.metBasis({ fase_id: 'financieel', data_json: v({ omzet3: '1200000', ebitda: '190000' }) });
+    const snap3 = ctx.metBasis({ fase_id: 'financieel', data_json: v({ omzet3: '1200000', ebitda: '190000' }) }, true);
+    ctx.naOpslag(plG, { error: 'x', code: 'VELD_CONFLICT', conflicten: [{ veld: 'omzet3', label: 'Omzet', actueel: '1150000' }] });
+    ctx.metBasis(snap3);
+    if (snap3.basis.ebitda !== '170000') fouten.push('momentopname na een conflict op omzet stuurt de niet-opgeslagen EBITDA als basis mee (wijziging zou verdwijnen): basis ' + snap3.basis.ebitda);
+  } catch (e) { fouten.push('check kon niet worden uitgevoerd: ' + String((e && e.message) || e)); }
+  if (fouten.length) fouten.forEach((f) => warn('N-154: ' + f)); else ok('N-154: alle opslagpaden (ook beacon) sturen de basis mee; na opslag wordt een elders gewijzigd veld overgenomen (ook in het invoerveld); bij een conflict toont het scherm de actuele waarde en de foutmelding; lopende en mislukte opslagen veroorzaken geen ongemerkt verlies');
+}
+
+log('50. #91 E v5 en N-154: handleiding (mna/08 en adv.html) beschrijft het vijfjarenoverzicht en gelijktijdig werken');
+{
+  const fouten = [];
+  for (const f of ['mna/08-handleiding.js', 'adv.html']) {
+    const t = fs.readFileSync(path.join(ROOT, f), 'utf8');
+    if (!/stap\('11h','Financieel overzicht in één oogopslag'/.test(t) || !/2026P/.test(t) || !/niet definitief vaststellen of versturen/.test(t)) fouten.push(f + ': sectie vijfjarenoverzicht ontbreekt of is onvolledig');
+    if (!/stap\('11i','Gelijktijdig werken aan hetzelfde dossier'/.test(t) || !/overschrijft een opslag nooit ongemerkt/.test(t)) fouten.push(f + ': sectie gelijktijdig werken ontbreekt of is onvolledig');
+  }
+  if (fouten.length) fouten.forEach((f) => warn('#91 E v5 / N-154: ' + f)); else ok('#91 E v5 / N-154: beide handleidingen beschrijven het vijfjarenoverzicht en gelijktijdig werken');
+}
+
+log('51. #97 M&A Journey: gedeelde component, laadvolgorde, plaatshouders per rol, alleen-lezen, handleiding mna en adv');
+{
+  const f = [];
+  const html = fs.readFileSync(path.join(ROOT, 'mna.html'), 'utf8');
+  const j = fs.readFileSync(path.join(ROOT, 'mna/22-journey.js'), 'utf8');
+  const s04 = fs.readFileSync(path.join(ROOT, 'mna/04-begeleider-dashboard.js'), 'utf8');
+  const s06 = fs.readFileSync(path.join(ROOT, 'mna/06-schermen.js'), 'utf8');
+  const hl = fs.readFileSync(path.join(ROOT, 'mna/08-handleiding.js'), 'utf8');
+  const adv = fs.readFileSync(path.join(ROOT, 'adv.html'), 'utf8');
+  const pos = (x) => html.indexOf('<script src="mna/' + x);
+  if (!(pos('22-journey.js') > pos('21-im-bijlage.js') && pos('22-journey.js') < pos('06-schermen.js'))) f.push('mna/22-journey.js niet tussen 21 en 06 geladen');
+  if (/method:\s*'(POST|PUT|PATCH|DELETE)'/.test(j)) f.push('journeycomponent mag niets schrijven');
+  if (!/\/mna\/journey\//.test(j)) f.push('journeycomponent leest niet uit /mna/journey');
+  for (const id of ['jr-begeleider', 'jr-kaartenbak', 'jr-fallback-kop', 'jr-koopmandaat']) if (!s04.includes('id="' + id + '"')) f.push('plaatshouder ' + id + ' ontbreekt in mna/04');
+  if ((s06.match(/id="jr-portaal"/g) || []).length !== 2) f.push('jr-portaal moet op het voorblad (verkoper/koper) en op het koperscherm vóór vrijgave staan');
+  if (!/bindAll\(\);\n  if\(typeof jrMount==='function'\)jrMount\(\);/.test(s04)) f.push('jrMount niet aangeroepen na renderApp');
+  if (s04.includes("Documenten &mdash; flow')")) f.push('oude vlakke documentenflow-kop staat er nog');
+  if (/jrActie[\s\S]*?'bg-afsluiten'\) \{ jrScroll/.test(j) === false) f.push('afsluiten mag vanuit de journey alleen in beeld worden gebracht, nooit automatisch');
+  for (const k of ["stap('1b','De M&amp;A Journey", "stap('2a','Uw route: de M&amp;A Journey'"]) { if (!hl.includes(k)) f.push('handleiding mna mist ' + k.slice(0, 40)); if (!adv.includes(k)) f.push('handleiding adv mist ' + k.slice(0, 40)); }
+  if (!/t\.journey&&t\.journey\.fase/.test(adv)) f.push('adv-trajectenlijst toont de journeyfase niet');
+  if (f.length) warn('#97 M&A Journey: ' + f.join('; ')); else ok('#97 M&A Journey: component na 21 en vóór 06, alleen-lezen, plaatshouders begeleider/verkoper/koper/koopmandaat, jrMount na renderApp, oude flowkop weg, afsluiten nooit automatisch, handleiding mna + adv, adv-lijst toont fase.');
+}
+
+// ── UAT-023.01: transactievorm nooit stil verloren (automatisch opslaan, bewaren bij verlaten) ──
+log('UAT-023.01 transactievorm: automatisch opslaan, bewaren bij verlaten van fase/scherm/tabblad, melding bij onvolledige invoer');
+{
+  const t = fs.readFileSync(path.join(ROOT, 'mna/13-transactiemodel.js'), 'utf8');
+  const fouten = [];
+  if (!/window\.tmZet = function[^\n]*tmPlanAuto\(\)/.test(t)) fouten.push('tmZet plant geen automatische opslag');
+  if (!/window\.tmBetaling = function[^\n]*tmPlanAuto\(\)/.test(t)) fouten.push('tmBetaling plant geen automatische opslag');
+  if (!/window\.tmScenZet = function[^\n]*tmPlanAuto\(\)/.test(t)) fouten.push('tmScenZet plant geen automatische opslag');
+  if (!/if \(TM\.scope !== k\) \{ tmBewaarBijVerlaten\(\);/.test(t)) fouten.push('scopewissel bewaart niet eerst');
+  if (!/addEventListener\('pagehide', function \(\) \{ tmBewaarBijVerlaten\(\); \}\)/.test(t) || !/visibilitychange[^\n]*tmBewaarBijVerlaten/.test(t)) fouten.push('tabblad verlaten bewaart niet');
+  if (!/function tmBewaarBijVerlaten\([^)]*\)[\s\S]{0,700}showAlert\('De transactievorm is niet opgeslagen omdat de invoer nog onvolledig is/.test(t)) fouten.push('geen melding bij onvolledige invoer');
+  if (!/keepalive: !!keepalive/.test(t)) fouten.push('verzending bij verlaten zonder keepalive');
+  if (!/if \(TM\.conflict && !handmatig\) return;/.test(t) || !/if \(TM\.conflict\) \{ if \(!stil && typeof showAlert === 'function'\) showAlert\(/.test(t)) fouten.push('echt conflict wordt automatisch of bij verlaten doorgeschreven');
+  if (!/renderApp = function \(\) \{ tmSyncScope\(\); _tmOrigRenderApp\(\); \}/.test(t)) fouten.push('schermwissel buiten de fase bewaart of meldt niet');
+  if (fouten.length) warn('UAT-023.01: ' + fouten.join('; '));
+  else ok('UAT-023.01: elke invoerhandler plant automatische opslag, scope-/scherm-/tabbladwissel bewaart eerst (keepalive), onvolledige invoer geeft een melding, een echt conflict wordt nooit automatisch doorgeschreven.');
+}
+
+// ── UAT-024.01: kolommenbalans uit de centrale upload inlezen (kandidaten, jaar bevestigen, handleiding) ──
+log('UAT-024.01 kolommenbalans: kandidaten uit het dossier, jaar door de gebruiker, verdwijnt na inlezen, handleiding mna/adv');
+{
+  const t = fs.readFileSync(path.join(ROOT, 'mna/15-kolommenbalans.js'), 'utf8');
+  const h = fs.readFileSync(path.join(ROOT, 'mna/08-handleiding.js'), 'utf8'), adv = fs.readFileSync(path.join(ROOT, 'adv.html'), 'utf8');
+  const fouten = [];
+  if (!/kbPost\('uit-document', \{ jaar: jaar, doc_id: docId/.test(t)) fouten.push('inlezen uit document ontbreekt');
+  if (!/Kies eerst het boekjaar van/.test(t)) fouten.push('geen weigering zonder boekjaar');
+  if (!/bevestig_afwijkend_jaar: afwijkend \|\| undefined/.test(t) || !/confirm\('U kiest boekjaar/.test(t)) fouten.push('afwijkend jaar niet expliciet bevestigd');
+  if (!/KB\.data\.kandidaten = \(KB\.data\.kandidaten \|\| \[\]\)\.filter/.test(t)) fouten.push('kandidaat blijft staan na inlezen');
+  if (!/var\(--info\);background:var\(--info-bg\)/.test(t)) fouten.push('kandidatenblok zonder informatiekleur');
+  if ((h.match(/In het dossier gevonden/g) || []).length < 2 || !/In het dossier gevonden/.test(adv)) fouten.push('handleiding mna/adv niet bijgewerkt');
+  if (fouten.length) warn('UAT-024.01: ' + fouten.join('; '));
+  else ok('UAT-024.01: kandidaten uit het dossier, jaar alleen door de gebruiker (afwijking bevestigen), kandidaat verdwijnt na inlezen, handleiding mna en adv.');
+}
+
+// ── UAT DOC-A24/A26: bankafschriften uit het dossier inlezen, dubbele herkend; journey laadt Financieel ──
+log('UAT DOC-A24/A26 bankmutaties: kandidaten uit het dossier, keuze bij dubbele transacties, CAMT.053 in upload, journeynavigatie laadt de fase');
+{
+  const t = fs.readFileSync(path.join(ROOT, 'mna/02-state-opslag-documenten.js'), 'utf8'), j = fs.readFileSync(path.join(ROOT, 'mna/22-journey.js'), 'utf8');
+  const h = fs.readFileSync(path.join(ROOT, 'mna/08-handleiding.js'), 'utf8'), adv = fs.readFileSync(path.join(ROOT, 'adv.html'), 'utf8');
+  const fouten = [];
+  if (!/fetchMetTimeout\(WORKER \+ '\/mna\/bankmutaties\/uit-document'/.test(t)) fouten.push('inlezen uit dossier ontbreekt of zonder timeout');
+  if (!/function bankDubbelVraag\(d\)[\s\S]{0,400}Alleen de ' \+ d\.nieuw \+ ' nieuwe transactie/.test(t)) fouten.push('geen keuze bij dubbele transacties');
+  if (!/if \(alleenNieuw\) fd\.append\('alleen_nieuw', 'true'\)/.test(t)) fouten.push('handmatige upload kent geen alleen-nieuw');
+  if (!/accept="\.csv,\.940,\.sta,\.mt940,\.txt,\.xml"/.test(t)) fouten.push('CAMT.053 niet kiesbaar');
+  if (!/fid === 'financieel' && typeof BANKMUTATIES !== 'undefined' && BANKMUTATIES === null && typeof laadBankmutaties === 'function'\) laadBankmutaties\(\);/.test(j) || !/loadDocsForFase\(fid\)/.test(j)) fouten.push('journeynavigatie verkoper laadt Financieel niet');
+  if (!/stap\('4b2','Bankafschriften inlezen'/.test(h) || !/dubbele transacties uit hetzelfde afschrift/.test(adv)) fouten.push('handleiding mna/adv niet bijgewerkt');
+  if (fouten.length) warn('UAT DOC-A24/A26: ' + fouten.join('; '));
+  else ok('UAT DOC-A24/A26: bankafschriften uit het dossier inlezen (timeout), keuze alleen-nieuw bij dubbele, CAMT.053 kiesbaar, journey laadt documenten en bankmutaties, handleiding mna en adv.');
+}
+
 log('Samenvatting');
 if (!bevindingen) {
   console.log('  \x1b[32mGeen bevindingen.\x1b[0m');

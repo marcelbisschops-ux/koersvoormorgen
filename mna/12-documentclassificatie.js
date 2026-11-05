@@ -36,7 +36,8 @@ var DCL_TEKST = {
   geenConsolidatie: 'Eigen indeling van de gebruiker, geen officiële consolidatie.',
   nietGeclassificeerd: 'Niet geclassificeerd (classificatie onbekend).',
   algemeen: 'Algemeen document: geen entiteit, overzicht, periode of cijfersoort. Opgeslagen zonder analyse en niet als financiële bron gebruikt.',
-  onbevestigd: 'De server heeft de opgegeven classificatie niet bevestigd. Het document staat als niet geclassificeerd; bij een prognose, begroting of deelperiode zijn geen gegevens overgenomen.'
+  onbevestigd: 'De server heeft de opgegeven classificatie niet bevestigd. Het document staat als niet geclassificeerd; bij een prognose, begroting of deelperiode zijn geen gegevens overgenomen.',
+  herclassificeerd: 'Classificatie gewijzigd{datum}. Controleer de cijfers die eerder uit dit document zijn overgenomen; die zijn niet automatisch aangepast.'
 };
 
 function dclEsc(v){
@@ -182,7 +183,17 @@ function dclSnapshot(doc,faseId,ctx){
 // ── Serverweergave saneren ─────────────────────────────────────────────────────────────────────────
 // Kopie van het serverveld documentclassificatie met alleen bekende enums, een opnieuw gelezen periode en
 // de entiteit van de rij. Alles wat niet exact klopt → null (wordt "classificatie onbekend").
+// Productpunt 15 (23 okt 2026): achteraf gewijzigde classificatie → markering voor hercontrole doorgeven.
+function dclMetMarkering(dto,uit){
+  if(!uit)return uit;
+  var op=dclEigen(dto,'herclassificeerd_op');
+  if(dclEigen(dto,'hercontrole_nodig')===true&&typeof op==='number'&&isFinite(op)&&op>0&&Math.floor(op)===op){ uit.hercontrole_nodig=true; uit.herclassificeerd_op=op; }
+  return uit;
+}
 function dclSaneer(dto,rijEntiteitId){
+  return dclMetMarkering(dto,dclSaneerBasis(dto,rijEntiteitId));
+}
+function dclSaneerBasis(dto,rijEntiteitId){
   if(!dclIsObj(dto))return null;
   var scope=dclEigen(dto,'scope'), statement=dclEigen(dto,'statement'), datatype=dclEigen(dto,'datatype');
   if(dclEigen(dto,'herkomst')!=='GEBRUIKER'||dclEigen(dto,'officiele_consolidatie')!==false)return null;
@@ -222,6 +233,12 @@ function dclStatusLabel(klas,verwerkingFout){
   return verwerkingFout==='GEEN_JAARREALISATIE'?'Te beoordelen. '+DCL_TEKST.geenJaarrealisatie:basis;
 }
 // Eén regel per document. entNaam: al opgezochte naam van de eigen entiteit (of leeg).
+function dclHercontroleTekst(klas){
+  if(!dclIsObj(klas)||klas.hercontrole_nodig!==true)return '';
+  var d=new Date(klas.herclassificeerd_op);
+  var dt=isNaN(d.getTime())?'':(' op '+String(d.getDate()).padStart(2,'0')+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+d.getFullYear());
+  return '<br><span style="color:var(--gold-dark);font-weight:600">'+dclEsc(DCL_TEKST.herclassificeerd.replace('{datum}',dt))+'</span>';
+}
 function dclRenderWeergave(klas,opts){
   opts=dclIsObj(opts)?opts:{};
   var stijl='flex-basis:100%;font-size:10px;padding-left:19px;';
@@ -229,13 +246,14 @@ function dclRenderWeergave(klas,opts){
   if(klas.scope===DCL_ALGEMEEN){
     return '<div class="dcl-weergave" style="'+stijl+'color:var(--sub)">'
       +'<strong>Eigen classificatie</strong> (herkomst: gebruiker, niet geverifieerd): '+dclEsc(DCL_LABEL.scope.GENERAL)
-      +'<br>'+dclEsc(dclStatusLabel(klas))+'</div>';
+      +'<br>'+dclEsc(dclStatusLabel(klas))+dclHercontroleTekst(klas)+'</div>';
   }
   var wie=klas.scope==='GROUP'?DCL_LABEL.scope.GROUP:(DCL_LABEL.scope.ENTITY+': '+(opts.entNaam?opts.entNaam:'entiteit niet in de huidige lijst'));
   return '<div class="dcl-weergave" style="'+stijl+'color:var(--sub)">'
     +'<strong>Eigen classificatie</strong> (herkomst: gebruiker, niet geverifieerd): '
     +dclEsc(wie)+' · '+dclEsc(DCL_LABEL.statement[klas.statement])+' · '+dclEsc(dclPeriodeTekst(klas.periode))+' · '+dclEsc(DCL_LABEL.datatype[klas.datatype])
     +'<br>'+dclEsc(dclStatusLabel(klas,opts.verwerkingFout))+(klas.scope==='GROUP'?' '+dclEsc(DCL_TEKST.geenConsolidatie):'')
+    +dclHercontroleTekst(klas)
     +'</div>';
 }
 
@@ -283,4 +301,38 @@ function dclRenderPaneel(faseId,ctx){
     +'Bij Vervangen wordt de classificatie van de vorige versie niet overgenomen; alleen wat hier is ingevuld gaat mee. '
     +'Een onvolledige of tegenstrijdige keuze wordt vóór het verzenden geweigerd.'
     +'</div></div></div>';
+}
+
+// ── Productpunt 15: classificatie achteraf wijzigen ─────────────────────────────────────────────────
+// Zuivere helpers: formulier-HTML (voorgevuld met de huidige classificatie) en het uitlezen ervan. Het
+// versturen gebeurt in mna/02. Zelfde keuzes en regels als bij upload; buiten Financieel alleen Algemeen.
+function dclMagWijzigen(doc,ctx){
+  return dclIsObj(doc)&&!doc.uploading&&typeof doc.id==='string'&&!!doc.id&&typeof doc.inhoud_hash==='string'&&!!doc.inhoud_hash
+    &&dclMagClassificeren({ rol:ctx&&ctx.rol, code:ctx&&ctx.code, faseId:ctx&&ctx.faseId, vergrendeld:ctx&&ctx.vergrendeld });
+}
+function dclRenderWijzigVelden(faseId,klas,entiteiten){
+  klas=dclIsObj(klas)?klas:{};
+  var fin=faseId==='financieel';
+  var sel='font-size:12px;background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:5px 7px';
+  var opt=function(lijst,labels,leeg,huidig){ return '<option value="">'+dclEsc(leeg)+'</option>'+lijst.map(function(v){ return '<option value="'+dclEsc(v)+'"'+(v===huidig?' selected':'')+'>'+dclEsc(labels[v])+'</option>'; }).join(''); };
+  var p=dclIsObj(klas.periode)?klas.periode:null;
+  var scopes=fin?DCL_SCOPE.concat([DCL_ALGEMEEN]):[DCL_ALGEMEEN];
+  var ents=(Array.isArray(entiteiten)?entiteiten:[]).filter(function(e){ return dclIsObj(e)&&typeof e.id==='string'&&DCL_ID_RE.test(e.id); });
+  var html='<div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">'
+    +'<select id="dclw-scope" style="'+sel+'">'+opt(scopes,DCL_LABEL.scope,'Groep, entiteit of algemeen?',klas.scope)+'</select>';
+  if(fin){
+    html+='<select id="dclw-entiteit" style="'+sel+'"><option value="">Geen entiteit (groep of algemeen)</option>'
+      +ents.map(function(e){ return '<option value="'+dclEsc(e.id)+'"'+(e.id===klas.entiteit_id?' selected':'')+'>'+dclEsc(e.naam||e.id)+'</option>'; }).join('')+'</select>'
+      +'<select id="dclw-statement" style="'+sel+'">'+opt(DCL_STATEMENT,DCL_LABEL.statement,'Overzicht?',klas.statement)+'</select>'
+      +'<select id="dclw-periodesoort" style="'+sel+'"><option value="">Periode?</option><option value="BOEKJAAR"'+(p&&p.soort==='BOEKJAAR'?' selected':'')+'>Boekjaar</option><option value="DATUMBEREIK"'+(p&&p.soort==='DATUMBEREIK'?' selected':'')+'>Datumbereik (max. één jaar)</option></select>'
+      +'<input type="number" id="dclw-boekjaar" min="'+DCL_JAAR_MIN+'" max="'+DCL_JAAR_MAX+'" step="1" placeholder="Boekjaar" value="'+(p&&p.soort==='BOEKJAAR'?dclEsc(p.boekjaar):'')+'" style="'+sel+';width:90px">'
+      +'<input type="date" id="dclw-begin" title="Begindatum" value="'+(p&&p.soort==='DATUMBEREIK'?dclEsc(p.begin):'')+'" style="'+sel+'">'
+      +'<input type="date" id="dclw-eind" title="Einddatum" value="'+(p&&p.soort==='DATUMBEREIK'?dclEsc(p.eind):'')+'" style="'+sel+'">'
+      +'<select id="dclw-datatype" style="'+sel+'">'+opt(DCL_DATATYPE,DCL_LABEL.datatype,'Cijfersoort?',klas.datatype)+'</select>';
+  }
+  return html+'</div>';
+}
+function dclLeesWijzigRuw(doc){
+  var w=function(id){ var el=doc&&doc.getElementById?doc.getElementById(id):null; return el&&typeof el.value==='string'?el.value:''; };
+  return { ruw:{ scope:w('dclw-scope'), statement:w('dclw-statement'), periodeSoort:w('dclw-periodesoort'), boekjaar:w('dclw-boekjaar'), begin:w('dclw-begin'), eind:w('dclw-eind'), datatype:w('dclw-datatype') }, entiteitId:w('dclw-entiteit') };
 }

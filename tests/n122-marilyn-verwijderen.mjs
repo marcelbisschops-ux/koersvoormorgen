@@ -215,18 +215,28 @@ const DELETE_ROUTES = [
   ['docs', /^\/mna\/document\/delete\/([^/]+)$/, 'id'],
   ['gebruikers', /^\/gebruikers\/verwijder\/([^/]+)$/, 'id'],
   ['benchmarks', /^\/admin\/benchmarks\/delete\/([^/]+)$/, 'sleutel'],
+  // #45 (24 okt 2026): extern test-/verlopen traject via verwijzing (zelfde lijst als de trajecten).
+  ['mnaext', /^\/admin\/delete\/mna-extern\/([^/]+)$/, 'extern_ref'],
 ];
 const LIJSTEN = {
   '/admin/scans': (d) => d.scans, '/admin/callbacks': (d) => d.callbacks, '/mna/admin/lijst': (d) => d.mna,
   '/admin/rapporten': (d) => d.rapporten, '/admin/leads': (d) => d.leads, '/adviseur/proef/aanvragen': (d) => d.proef,
   '/mna/admin/koopmandaten': (d) => ({ ok: true, mandaten: d.km }), '/mna/admin/documenten': (d) => d.docs,
   '/gebruikers/lijst': (d) => d.gebruikers, '/benchmarks': (d) => d.benchmarks,
+  // #44 (24 okt 2026): tarieventab.
+  '/mna/admin/tarieven': () => [], '/mna/admin/tarieven/events': (d) => d.fee, '/mna/admin/factuurconfig': () => ({}),
 };
 const antwoord = (status, body) => ({ ok: status >= 200 && status < 300, status, json: () => Promise.resolve(JSON.parse(JSON.stringify(body))) });
 const geenJson = (status) => ({ ok: status >= 200 && status < 300, status, json: () => Promise.reject(new SyntaxError('Unexpected token <')) });
 
 function maakWorker() {
-  const srv = { data: basisData(), uitkomst: {}, lijstenNetwerkfout: false, calls: [], onbekend: [] };
+  const srv = { data: basisData(), uitkomst: {}, lijstenNetwerkfout: false, calls: [], onbekend: [], annuleer: [] };
+  srv.data.mnaext = srv.data.mna;
+  srv.data.fee = [];
+  // #49: kleine facturatie-nepbackend (alleen wat de Marilyn-UI aanroept).
+  srv.fact = { posts: [], uit: null, facturen: [{ id: 'KF1', kantoor_id: 'KA', kantoor_naam: 'Synth Kantoor A', soort: 'factuur', periode: '2026-08', status: 'concept', is_test: 0, nummer: null, totaal: 121, subtotaal: 100, btw: 21, blokkades: 'GEEN_TARIEF', created_at: 1, regels: [{ id: 'R1', soort: 'module', omschrijving: 'Module contracten — 2026-08-01 t/m 2026-08-31', bedrag: 100 }, { id: 'R2', soort: 'traject', adviseur_naam: 'Synth Adviseur', traject_ref: 'TR-ABCDEF12', omschrijving: 'Teaser gegenereerd', bedrag: 0 }], audit: [], betalingen: [] }],
+    tarieven: [{ id: 'FT1', module_id: 'contracten', kantoor_id: null, bedrag_per_maand: 100, ingangsdatum: '2026-01-01', status: 'test' }],
+    kantoren: [{ id: 'KA', naam: 'Synth Kantoor A', modus: 'test', aantal_leden: 2, tenaamstelling: 'Synth A BV', adres: 'Synthstraat 1', postcode: '1234 AB', plaats: 'Synthdorp', land: 'Nederland', kvk: '', btw_nummer: '', factuur_email: 'f@example.invalid', betaaltermijn_dagen: null, modules: [{ module_id: 'contracten', ingangsdatum: '2026-01-01', einddatum: null }] }] };
   srv.fetch = (url, opts = {}) => {
     const u = new URL(String(url));
     const methode = (opts.method || 'GET').toUpperCase();
@@ -240,6 +250,35 @@ function maakWorker() {
       return Promise.resolve(antwoord(200, LIJSTEN[u.pathname](srv.data)));
     }
     if (u.pathname === '/admin/login-notify') return Promise.resolve(antwoord(200, { ok: true }));
+    if (u.pathname.startsWith('/mna/admin/facturatie/')) {
+      const sub = u.pathname.slice('/mna/admin/facturatie/'.length), F = srv.fact;
+      if (call.key !== KEY) return Promise.resolve(antwoord(401, { error: 'Unauthorized' }));
+      if (methode === 'POST') { const body = JSON.parse(opts.body || '{}'); F.posts.push({ sub, body }); if (F.uit) return Promise.resolve(antwoord(F.uit, { error: 'Synth serverweigering: concept verouderd.' }));
+        let mm;
+        if (sub === 'concepten') return Promise.resolve(antwoord(200, { ok: true, resultaten: [{ kantoor_id: 'KA', resultaat: 'concept' }, { kantoor_id: 'KB', resultaat: 'overgeslagen' }] }));
+        if ((mm = sub.match(/^factuur\/(\w+)\/definitief$/))) { const f = F.facturen.find(x => x.id === mm[1]); f.status = 'definitief'; f.nummer = '2026-0007'; f.blokkades = null; f.factuurdatum = 2; f.vervaldatum = 3; return Promise.resolve(antwoord(200, { ok: true, factuur: f })); }
+        if ((mm = sub.match(/^factuur\/(\w+)\/crediteer$/))) { const f = F.facturen.find(x => x.id === mm[1]); f.status = 'gecrediteerd'; f.regels.forEach(r => { r.gecrediteerd_door = 'KF2'; }); return Promise.resolve(antwoord(200, { ok: true, creditnota: { nummer: '2026-0008' }, factuur: f })); }
+        if ((mm = sub.match(/^tarieven\/(\w+)\/activeer$/))) { F.tarieven.find(x => x.id === mm[1]).status = 'commercieel'; return Promise.resolve(antwoord(200, { ok: true })); }
+        if ((mm = sub.match(/^kantoor\/(\w+)\/modus$/))) { F.kantoren.find(x => x.id === mm[1]).modus = body.modus; return Promise.resolve(antwoord(200, { ok: true, modus: body.modus })); }
+        return Promise.resolve(antwoord(200, { ok: true }));
+      }
+      if (sub === 'facturen') return Promise.resolve(antwoord(200, { ok: true, facturen: F.facturen.map(f => ({ ...f, regels: undefined })) }));
+      if (sub === 'tarieven') return Promise.resolve(antwoord(200, { ok: true, tarieven: F.tarieven }));
+      if (sub === 'kantoren') return Promise.resolve(antwoord(200, { ok: true, standaard_betaaltermijn: 14, kantoren: F.kantoren }));
+      const mf = sub.match(/^factuur\/(\w+)$/); if (mf) { const f = F.facturen.find(x => x.id === mf[1]); return Promise.resolve(f ? antwoord(200, { ok: true, factuur: f }) : antwoord(404, { error: 'Factuur niet gevonden.' })); }
+    }
+    // #44: kostenposten annuleren (zoals de backend: alleen open, niet geannuleerde posten).
+    if (u.pathname === '/mna/admin/tarieven/events/annuleren' && methode === 'POST') {
+      const body = JSON.parse(opts.body || '{}');
+      srv.annuleer.push({ key: call.key, body });
+      if (call.key !== KEY) return Promise.resolve(antwoord(401, { error: 'Unauthorized' }));
+      const uit = srv.uitkomst.annuleer || 'ok';
+      if (uit === 'net') return Promise.reject(new TypeError('Failed to fetch'));
+      if (uit === 500) return Promise.resolve(antwoord(500, { error: 'Annuleren is mislukt; er is niets gewijzigd. Probeer het opnieuw.' }));
+      const gedaan = [], over = [];
+      body.ids.forEach((id) => { const f = srv.data.fee.find((x) => x.id === id); if (f && !f.gefactureerd_op && !f.geannuleerd_op && uit !== 'half') { f.geannuleerd_op = 1730000000000; f.geannuleerd_reden = body.reden; gedaan.push(id); } else over.push({ id, reden: 'al_gefactureerd' }); });
+      return Promise.resolve(antwoord(200, { ok: true, geannuleerd: gedaan.length, geannuleerd_ids: gedaan, overgeslagen: over }));
+    }
     for (const [lijst, re, veld] of DELETE_ROUTES) {
       const m = re.exec(u.pathname);
       if (!m || methode !== 'POST') continue;
@@ -857,6 +896,121 @@ export async function draaiN122VerwijderChecks(root = process.cwd()) {
 
   await settle();
   const handlerFouten =omgevingen.flatMap((o) => o.doc.fouten || []);
+  // ── #44 Kostenposten annuleren in de tarieventab ──
+  const zetFee = (o) => { o.srv.data.fee.push(
+    { id: 'F1', gebruiker_id: 'GSYN1', gebruiker_naam: 'Synth Adviseur', fee_type: 'basis', bedrag: 100, created_at: 1 },
+    { id: 'F2', gebruiker_id: 'GSYN1', gebruiker_naam: 'Synth Adviseur', fee_type: 'ai', bedrag: 50, created_at: 2 },
+    { id: 'F3', gebruiker_id: 'GSYN1', gebruiker_naam: 'Synth Adviseur', fee_type: 'basis', bedrag: 70, created_at: 3, gefactureerd_op: 5, factuur_referentie: '2026-0001' },
+    { id: 'F4', gebruiker_id: 'GSYN1', gebruiker_naam: 'Synth Adviseur', fee_type: 'teaser', bedrag: 30, created_at: 4, geannuleerd_op: 6, geannuleerd_reden: 'Synth eerdere reden' }); };
+  await probeer('#44 kostenposten annuleren', async () => {
+    const o = await maak(); zetFee(o);
+    await o.tab('t-tarieven');
+    const ann = () => o.srv.annuleer.length;
+    check(o.vakjes('fee-cb').map((c) => c.attrs['data-id']).sort().join(',') === 'F1,F2', '#44: alleen open, niet geannuleerde posten hebben een vakje (gefactureerd en geannuleerd niet)');
+    check(/Geannuleerd/.test(o.$('tc').textContent) && /Synth eerdere reden/.test(o.$('tc').textContent), '#44: geannuleerde post blijft zichtbaar met status en reden');
+    check(/€150/.test(o.$('tc').textContent.replace(/\s/g, '')) && !/€250/.test(o.$('tc').textContent.replace(/\s/g, '')), '#44: openstaand per adviseur telt geannuleerde en gefactureerde posten niet mee (150)');
+    const knop = o.$('btn-ann-fee');
+    check(knop && knop.style.display === 'none', '#44: annuleerknop verborgen zolang niets is aangevinkt');
+    o.$('cb-all-fee').click();
+    check(o.vakjes('fee-cb').every((c) => c.checked) && knop.style.display === 'inline-block' && o.$('sel-cnt-fee').textContent === '2', '#44: "alles" vinkt alle open posten in de lijst aan, knop toont (2)');
+    o.ctx.prompt = () => null; knop.click(); await settle();
+    check(ann() === 0, '#44: reden-venster afgebroken → niets verstuurd');
+    o.ctx.prompt = () => 'ab'; knop.click(); await settle();
+    check(ann() === 0 && /minimaal 3 tekens/.test((o.st.toasts.at(-1) || {}).msg || ''), '#44: te korte reden → melding, niets verstuurd');
+    o.ctx.prompt = () => 'Synth dubbel geboekt'; o.st.confirmAntwoord = false; knop.click(); await settle();
+    check(ann() === 0 && /Synth dubbel geboekt/.test(o.st.confirms.at(-1) || '') && /niet meer op een factuur/.test(o.st.confirms.at(-1) || ''), '#44: bevestiging toont reden en gevolg; geweigerd → niets verstuurd');
+    o.st.confirmAntwoord = true; knop.click(); await settle();
+    const a = o.srv.annuleer[0] || { body: {} };
+    check(ann() === 1 && a.key === KEY && JSON.stringify(a.body.ids.sort()) === '["F1","F2"]' && a.body.reden === 'Synth dubbel geboekt', '#44: één verzoek met beide posten, reden en beheersleutel');
+    check((o.st.toasts.at(-1) || {}).type === 'ok' && /Alle 2 aangevinkte kostenposten zijn geannuleerd/.test((o.st.toasts.at(-1) || {}).msg), '#44: succesmelding na annuleren');
+    check(o.vakjes('fee-cb').length === 0 && (o.$('tc').textContent.match(/Geannuleerd/g) || []).length >= 3, '#44: na verversen geen open posten meer, alle drie als geannuleerd zichtbaar');
+  });
+  await probeer('#44 gedeeltelijk, serverfout en geen verbinding', async () => {
+    for (const [uit, type, re, naam] of [['half', 'err', /0 van 1 kostenposten geannuleerd; 1 overgeslagen/, 'niets geannuleerd → overgeslagen gemeld'], [500, 'err', /niet gelukt: Annuleren is mislukt/, 'serverfout → leesbare melding'], ['net', 'err', /Geen verbinding/, 'netwerkfout → melding']]) {
+      const o = await maak(); zetFee(o); await o.tab('t-tarieven');
+      o.srv.uitkomst.annuleer = uit; o.ctx.prompt = () => 'Synth reden';
+      o.vakje('fee-cb', 'data-id', 'F1').click(); o.$('btn-ann-fee').click(); await settle();
+      const t = o.st.toasts.at(-1) || { msg: '' };
+      check(t.type === type && re.test(t.msg) && !/TypeError|Failed to fetch|undefined/.test(t.msg), '#44: ' + naam);
+    }
+  });
+
+  // ── #45 Externe test-/verlopen trajecten via verwijzing ──
+  await probeer('#45 externe trajecten', async () => {
+    const o = await maak();
+    const REF = 'a'.repeat(32), REF2 = 'b'.repeat(32);
+    o.srv.data.mna.push({ kantoor_naam: '🔒 Extern traject (afgeschermd)', status: 'actief', inhoud_afgeschermd: true, extern_verwijderbaar: 'test', extern_ref: REF },
+      { kantoor_naam: '🔒 Extern traject (afgeschermd)', status: 'afgesloten', inhoud_afgeschermd: true, extern_verwijderbaar: 'bewaartermijn_verstreken', extern_ref: REF2 },
+      { kantoor_naam: '🔒 Extern traject (afgeschermd)', status: 'actief', inhoud_afgeschermd: true, extern_ref: 'geen-hex<script>' });
+    await o.tab('t-mna');
+    o.$('btn-ref-m').click(); await settle();
+    check(o.vakje('mna-cb', 'data-id', REF) && o.vakje('mna-cb', 'data-id', REF).attrs['data-extern'] === '1' && /testtraject/.test(o.vakje('mna-cb', 'data-id', REF).attrs.title), '#45: extern testtraject met verwijzing heeft een vakje met uitleg');
+    check(o.vakjes('mna-cb').length === 5 && !o.vakjes('mna-cb').some((c) => /script/.test(c.attrs['data-id'])), '#45: lopend extern traject (zonder of met ongeldige verwijzing) houdt het slot, geen vakje');
+    o.srv.uitkomst[REF2] = 403;
+    o.$('cb-all-mna').click();
+    o.$('btn-del-sel-mna').click(); await settle();
+    const vraag = o.st.confirms.at(-1) || '';
+    check(/2 trajecten van een externe adviseur/.test(vraag) && /Gefactureerde kostenposten blijven altijd bewaard/.test(vraag), '#45: bevestiging noemt de externe trajecten en de bewaarde kostenposten');
+    const paden = o.srv.posts().map((p) => p.pad).sort();
+    check(paden.join(',') === ['/admin/delete/mna-extern/' + REF, '/admin/delete/mna-extern/' + REF2, '/admin/delete/mna/MSYN01', '/admin/delete/mna/MSYN03'].sort().join(','), '#45: eigen trajecten via de bestaande route, externe via de verwijzingsroute; nooit een code');
+    const t = o.st.toasts.at(-1) || { msg: '' };
+    check(t.type === 'warn' && /3 van 4 trajecten verwijderd, 1 niet/.test(t.msg) && /geen toegang/.test(t.msg), '#45: geweigerd extern traject wordt gemeld, niet geslikt');
+    check(!o.vakje('mna-cb', 'data-id', REF) && !!o.vakje('mna-cb', 'data-id', REF2), '#45: na verversen is het verwijderde testtraject weg en het geweigerde nog zichtbaar');
+  });
+
+  // ── #49 Facturatie-tab ──
+  await probeer('#49 facturatie', async () => {
+    const o = await maak();
+    check(!!o.$('t-facturatie'), '#49: tab Facturatie zichtbaar voor de beheerder');
+    await o.tab('t-facturatie');
+    const tekst = () => o.$('tc').textContent;
+    check(/maandelijks achteraf per kantoor/.test(tekst()) && /Synth Kantoor A/.test(tekst()) && o.doc.querySelectorAll('.fact-open').length === 1, '#49: facturenoverzicht met uitleg en het concept van kantoor A');
+    o.st.confirmAntwoord = false; o.$('fact-alle').click(); await settle();
+    check(!o.srv.fact.posts.length, '#49: "concepten maken" geannuleerd → niets verstuurd');
+    o.st.confirmAntwoord = true; o.$('fact-alle').click(); await settle();
+    const pc = o.srv.fact.posts.at(-1) || {};
+    check(pc.sub === 'concepten' && /^\d{4}-\d{2}$/.test(pc.body.periode) && /1 concept\(en\) gemaakt, 1 kantoor/.test((o.st.toasts.at(-1) || {}).msg || ''), '#49: concepten voor alle kantoren met periode, melding met overgeslagen kantoren');
+    o.doc.querySelectorAll('.fact-open')[0].click(); await settle();
+    check(/Kan nog niet definitief: een module heeft geen tarief/.test(tekst()) && o.$('fact-definitief') && o.$('fact-herbereken') && o.$('fact-correctie') && !o.$('fact-pdf') && !o.$('fact-betaling') && !o.$('fact-crediteer'), '#49: concept toont blokkade; alleen conceptacties, geen pdf/betaling/creditering');
+    check(/TR-ABCDEF12/.test(tekst()) && /Synth Adviseur/.test(tekst()), '#49: trajectregel met adviseur en trajectreferentie');
+    o.srv.fact.uit = 409; o.$('fact-definitief').click(); await settle();
+    check(/Synth serverweigering: concept verouderd/.test((o.st.toasts.at(-1) || {}).msg || '') && (o.st.toasts.at(-1) || {}).type === 'err', '#49: weigering van de server wordt leesbaar gemeld');
+    o.srv.fact.uit = null; o.$('fact-definitief').click(); await settle();
+    check(/kan daarna niet meer worden gewijzigd/.test(o.st.confirms.at(-1) || '') && /2026-0007/.test(tekst()) && o.$('fact-pdf') && o.$('fact-betaling') && o.$('fact-crediteer') && !o.$('fact-definitief') && !o.$('fact-correctie'), '#49: na definitief nummer zichtbaar; pdf, betaling en crediteren; geen conceptacties meer');
+    const antwoorden = ['Synth correctie'];
+    o.ctx.prompt = () => antwoorden.shift() ?? null;
+    o.$('fact-crediteer').click(); await settle();
+    const cr = o.srv.fact.posts.at(-1) || {};
+    check(cr.sub === 'factuur/KF1/crediteer' && cr.body.reden === 'Synth correctie' && cr.body.herfactureren === true && /2026-0008/.test((o.st.toasts.at(-1) || {}).msg || ''), '#49: crediteren met reden en keuze herfactureren; creditnotanummer gemeld');
+    o.doc.querySelectorAll('.fact-sub').find(b => b.attrs['data-sub'] === 'tarieven').click(); await settle();
+    check(/altijd eerst een testtarief/.test(tekst()) && o.doc.querySelectorAll('.fact-tact').length === 1, '#49: tarieven met uitleg; testtarief heeft "Activeren"');
+    o.doc.querySelectorAll('.fact-tact')[0].click(); await settle();
+    const ta = o.srv.fact.posts.at(-1) || {};
+    check(ta.sub === 'tarieven/FT1/activeer' && ta.body.bevestiging === 'COMMERCIEEL' && /voor echte facturen/.test(o.st.confirms.at(-1) || ''), '#49: activeren vraagt bevestiging en stuurt de bevestiging mee');
+    o.doc.querySelectorAll('.fact-sub').find(b => b.attrs['data-sub'] === 'kantoren').click(); await settle();
+    check(/testmodus/.test(tekst()) && o.doc.querySelectorAll('.fact-modus').length === 1, '#49: kantoren met modusuitleg');
+    o.doc.querySelectorAll('.fact-opslaan')[0].click(); await settle();
+    const go = o.srv.fact.posts.at(-1) || {};
+    check(go.sub === 'kantoor/KA/gegevens' && go.body.tenaamstelling === 'Synth A BV' && go.body.betaaltermijn_dagen === null, '#49: factuurgegevens opgeslagen; lege betaaltermijn = standaard (null)');
+    o.st.confirmAntwoord = false; o.doc.querySelectorAll('.fact-modus')[0].click(); await settle();
+    check((o.srv.fact.posts.at(-1) || {}).sub === 'kantoor/KA/gegevens', '#49: live zetten geannuleerd → niets verstuurd');
+    o.st.confirmAntwoord = true; o.doc.querySelectorAll('.fact-modus')[0].click(); await settle();
+    const lm = o.srv.fact.posts.at(-1) || {};
+    check(lm.sub === 'kantoor/KA/modus' && lm.body.modus === 'live' && lm.body.bevestiging === 'LIVE', '#49: live zetten na bevestiging met expliciete bevestiging');
+    check(o.srv.calls.filter(c => c.pad.startsWith('/mna/admin/facturatie/')).every(c => c.key === KEY), '#49: elke facturatieaanroep met de beheerderssleutel in de header (niet in de URL)');
+  });
+
+  // ── #49 correctie releasereview: Nederlandse bedragnotatie, betaaltermijn 0-120, leesbare blokkade ──
+  await probeer('#49 bedragnotatie en blokkadetekst', async () => {
+    const o = await maak();
+    const fb = (x) => o.run('factBedrag(' + JSON.stringify(x) + ')');
+    check(fb('1234,56') === 1234.56 && fb('1.234,56') === 1234.56 && fb('12,5') === 12.5 && fb('100') === 100 && fb('-25,00') === -25, '#49: bedragen in Nederlandse notatie correct gelezen (komma = centen, punt = duizendtal)');
+    check(Number.isNaN(fb('1.234')) && Number.isNaN(fb('abc')) && Number.isNaN(fb('')), '#49: dubbelzinnig of ongeldig bedrag (1.234) wordt geweigerd in plaats van stil als 1,234 gelezen');
+    check(/uitgeschakelde module/.test(o.run('FACT_BLOK.MODULE_UITGESCHAKELD')), '#49: blokkade MODULE_UITGESCHAKELD heeft een leesbare tekst');
+    const html = fs.readFileSync(path.join(root, 'marilyn.html'), 'utf8');
+    check(/bt>120/.test(html) && /0 tot 120/.test(html) && !/bt>365/.test(html), '#49: betaaltermijn in Marilyn begrensd op 0-120 dagen, gelijk aan de backend');
+  });
+
   check(!handlerFouten.length, 'geen enkele klik-handler faalde asynchroon' + (handlerFouten.length ? ': ' + handlerFouten.map((e) => String((e && e.message) || e)).join(' | ') : ''));
   } finally {
     process.off('unhandledRejection', onverwacht);

@@ -1238,3 +1238,714 @@ meekijkers met `DAILY_QA_20261003` = 0/0.
 
 **Score:** 50 (2 bevindingen niet zelf opgelost, −25 elk).
 Melding aan marilyn (stap 5b) mislukt: 401 met de lokale productie-ADMIN_KEY (N-110, ongewijzigd).
+
+- 2026-10-04 — diepe-audit-routine: geen open aanvraag, cadans nog niet verstreken (dag 4, buiten 1e-3e-venster).
+
+## 2026-10-04 — dagelijkse-knoppentest-routine (scheduled task)
+
+**Rotatiekeuze:** sector **handel** (het langst geleden: 21 sep), trajecttype **PE-traject** (het langst geleden: 23 sep),
+sell-side, extern adviseurstraject. Rollen adviseur, verkoper, koper en begeleider. Accent: **teaser- en
+verkoopmemorandum-generatie** op een rijk gevuld traject (stond bij elke eerdere run als "niet getest"; bekende
+foutklasse max_tokens/timeout, werkregel 15) en de **koper-Q&A-levenscyclus** (vraag, beheer, antwoord, reactie,
+categorie-intrekking). Scripts: `reports/daily-qa/daily-qa-20261004*.mjs` (alleen staging).
+
+**Hoofdrun: 53 van 56 checks geslaagd.** Doorlopen: adviseur + 2 trajecten (D1: handel/PE-traject/verkoper/adviseur);
+verkoper slaat 51 velden over 7 fases op (teruggelezen); teaser: koper/verkoper/begeleider B/ADMIN_KEY (muur) geweigerd,
+begeleider genereert met echte AI (209 woorden, anoniem, omzetklasse i.p.v. exacte omzet, onbewerkt opslaanbaar, fee 1x);
+verkoopmemorandum: koper/verkoper/begeleider B geweigerd, zonder NDA-bevestiging of zonder naam 400, met bevestiging 200
+(bedrijfsnaam + aangeleverde omzet, verplichte koppen, binnen 2000 woorden, NDA-spoor in D1); koper kan teaser/VM niet
+opslaan of versturen; Q&A: eigen nummering per traject, beheer/antwoord door koper en begeleider B geweigerd, reactie
+cross-traject geweigerd, categorie-intrekking verbergt de vraag voor de koper, verkoper ziet alles, admin-muur leeg.
+Rode checks: MFA-bypass via wrangler (tijdelijk, flow liep door), een te strikte teaser-regex in mijn eigen test
+("tussen de €5 en €10 miljoen" is correct; testfout, geen platformfout), en de Q&A-check die tot bevinding 1 leidde.
+Twee gerichte vervolgruns (werkregel 40: één run per open vraag).
+
+**Gevonden (2, beide runtime gereproduceerd op staging):**
+1. **P0-1 / MASTER N-120** — rolgrensbevinding: externe rollen kunnen een auth-sleutel van een andere rol bemachtigen.
+   Zone C. Bewust geen mechanisme in dit publieke logboek zolang het open staat; reproductie, foutpropagatie (33
+   GET-routes gescand) en lekpaden lokaal in `OPEN-BEVINDINGEN.md` P0-1 en de MASTER. Deel van de fix gebouwd op
+   backend-branch `fix/daily-qa-20261004-n120` (`96910d3`), lokaal bewezen tegen de gepatchte worker (14/14, audit-backend
+   schoon, policy-equivalentie 133/133); de rest vraagt een besluit van Marcel.
+2. **P2-80 / MASTER N-121** — verkoopmemorandum-generatie duurt bij een rijk traject 57 s (51 velden) en 62 s (82
+   velden), terwijl de knop na 60 s afbreekt; geldt voor meer AI-knoppen met 16k-tokenbudget. Ontwerpkeuze (langere
+   timeout / streaming / achtergrondtaak), niet zelf gewijzigd.
+
+**Observatie (geen bevinding):** via de directe API kan de koper een vraag stellen in, of reageren op een vraag uit, een
+niet-vrijgegeven categorie (200); de UI biedt dat niet aan en er komt geen inhoud terug.
+
+**Niet gedeployed, waarom:** staging staat op de N-100-releasegate-versie, de backend-werkboom bevat niet-gecommitte
+wijzigingen van een andere sessie (werkregel 44.4, daarom geïsoleerde worktree), en de fix raakt een rolgrens (zone C:
+Breaker-review + akkoord). Bij P0 wél aandacht vandaag nodig.
+
+**Niet getest:** browser-klikpad (mna.html wijst naar de productie-worker), teaser/VM-verzending per mail (verstuurt echte
+mail), dealvoorstel/SPA/bieding-generatie (zelfde timeout-risico, niet apart gemeten), meekijker/eigen specialist op alle
+GET-routes, productie.
+
+**Opgeruimd:** 4 staging-trajecten over 3 runs via de opruimroute (ok), 3 testadviseurs verwijderd; D1-controle trajecten
+en Q&A-rijen met `DAILY_QA_20261004` = 0/0. Lokale testworker en worktree verwijderd.
+
+**Score:** 50 (2 bevindingen niet volledig zelf opgelost, −25 elk).
+
+- 2026-10-08 — diepe-audit-routine: geen open aanvraag, cadans nog niet verstreken (dag 8, geen dag 1–3).
+
+## 2026-10-08 — dagelijkse-knoppentest-routine (scheduled task) — AFGEBROKEN (infra)
+
+**Rotatiekeuze:** sector **itsoftware** (het langst geleden: 23 sep), trajecttype **Verkoop** (laatst 30 sep),
+**kopers-zijde** (`opdrachtgever_rol: koper`, laatst 19 sep), extern adviseurstraject. Accent: indicatieve
+biedingsbrief en SPA-generatie met echte AI (stonden bij elke eerdere run als "niet getest"; bekende foutklasse
+max_tokens/60s-timeout, N-121) + hertest van P0-1 (bekend risico, werkregel 15). Script:
+`reports/daily-qa/daily-qa-20261008.mjs` (alleen staging; klaar voor een herhaalrun).
+
+**Wat gebeurde:** adviseur uitgenodigd en 2 trajecten aangemaakt (beide 200). Daarna faalde elke D1-stap:
+de wrangler-OAuth-login is verlopen (7 okt 20:21 UTC) en kan in een niet-interactieve sessie niet worden ververst
+(`wrangler whoami`). Zonder D1 werken MFA-bypass, DB-controles en de opruimhelpers niet; het script brak af vóór
+de eigenlijke tests. **Geen productbevindingen** (er is niets inhoudelijks getest).
+
+**Infra-bevinding:** MASTER **N-122** (wrangler-login verlopen, onbewaakte routines kunnen D1 niet lezen). Niet zelf
+op te lossen: vraagt een interactieve `wrangler login` of een besluit over een eigen staging-token.
+
+**Niet opgeruimd (wacht op N-122):** 2 staging-trajecten + 1 testadviseur `DAILY_QA_20261008`. Via de API niet op te
+ruimen (admin-lijst geeft door de muur geen codes; adviseur-login vraagt MFA, staging verstuurt geen mail).
+Opruimscript klaar: `reports/daily-qa/opruim-20261008.mjs` (na `npx wrangler login`). Geen productiedata geraakt.
+
+**Niet getest:** alles behalve traject aanmaken (bieding, SPA, biedingen-vergelijk, P0-1-hertest, upload).
+
+**Score:** 75 (1 bevinding niet zelf op te lossen, −25).
+- 2026-10-09 — diepe-audit-routine: geen open aanvraag, cadans nog niet verstreken (dag 9, niet 1e-3e van de maand).
+
+## 2026-10-09 — dagelijkse-knoppentest-routine (scheduled task)
+
+**Rotatiekeuze:** de gisteren afgebroken combinatie opnieuw: sector **itsoftware**, trajecttype **Verkoop**,
+**kopers-zijde** (`opdrachtgever_rol: koper`). Rollen verkoper, koper, begeleider A en begeleider B. Accent:
+**indicatieve biedingsbrief en SPA met echte AI** (stonden nog nooit als getest) + hertest P0-1/N-120 (bekend risico,
+werkregel 15). Script: `reports/daily-qa/daily-qa-20261009.mjs` (alleen staging).
+
+**Aangepaste opzet wegens N-122 (wrangler-login nog steeds verlopen, `wrangler whoami` 9 okt):** D1-vrije variant.
+Eigen (platform)trajecten via `/mna/create` met de staging-admin-sleutel (die geeft de tussen_code terug), read-back via
+de API in plaats van D1, opruimen via `/test/opruimen` met die tussen_code. Gevolg: extern adviseurstraject en adviseur-
+rol vandaag niet getest (adviseur-login vraagt MFA-bypass via D1).
+
+**Resultaat: 46 van 47 checks geslaagd.** Doorlopen: 2 trajecten (read-back itsoftware/Verkoop/buy-side, koper_naam met
+"&" ongeëscaped); verkoper slaat 40 velden over 4 fases op (teruggelezen); koper kan verkoperdata niet overschrijven;
+upload IT/SLA-overzicht met echte AI-analyse (in documentlijst, geen r2_key). Biedingsbrief: koper/verkoper/begeleider B
+geweigerd, zonder EBITDA 400, begeleider genereert in 22 s (bandbreedte 6.900.000–8.050.000, EBITDA en multiple juist,
+geen verzonnen bedragen, geldigheid + 8 weken exclusiviteit, expliciet indicatief); koper kan niet versturen, begeleider
+zonder interne goedkeuring 400. SPA: koper/verkoper/begeleider B en cross-traject geweigerd; begeleider genereert in 71 s
+(10.823 tekens, partijen correct, zonder dealvoorstel geen verzonnen koopsom, placeholders blijven staan). Biedingen-
+vergelijk: koper en begeleider B geweigerd, begeleider A "geen_groep". P0-1-hertest: 5 koper-GET-routes geven geen
+verkoper- of begeleidercode terug (bevestigt de N-120-fix op staging).
+
+**De ene rode check is een testfout, geen platformfout:** mijn script toetste nog aan de oude 60 s-frontendtimeout. De
+SPA-knop wacht in productie al 180 s (N-121, gecontroleerd in de live `mna/04-begeleider-dashboard.js`), dus 71 s rondt
+af. Drempel in het script naar 180 s gezet; niet opnieuw gedraaid (werkregel 40, het bewijs staat).
+
+**Observatie (geen productbevinding):** de N-121-fix (`03b3aab`) staat op branch `codex/weekend-option2` en niet op de
+lokale `main`; lokale `main` toont dus nog 60 s terwijl productie 180 s heeft. Wie vanaf `main` naar productie publiceert,
+zou die fix terugdraaien. Ter controle voor Marcel/Bridge-releasepad.
+
+**Gevonden:** geen bevindingen binnen de geteste combinatie vandaag. Dat betekent niet dat het platform foutloos is.
+
+**Niet getest:** adviseur-rol en extern adviseurstraject (N-122), D1-controles op database-niveau (alleen API-read-back),
+browser-klikpad, bieding-verzending per mail, meekijker/eigen specialist, productie.
+
+**Opgeruimd:** beide `DAILY_QA_20261009`-trajecten via de opruimroute (ok, daarna niet meer opvraagbaar). **Nog niet
+opgeruimd:** de 2 trajecten + 1 testadviseur `DAILY_QA_20261008` (wacht op N-122, `reports/daily-qa/opruim-20261008.mjs`).
+
+**Score:** 100 (geen bevindingen).
+Melding aan marilyn (stap 5b): gelukt (200) met de productiesleutel uit de Sleutelhanger (`kantoorinzicht-production-admin-key`); de `ADMIN_KEY` uit de shell-omgeving gaf 401 en is dus verouderd.
+
+- 2026-10-10 — diepe-audit-routine: geen open aanvraag, cadans nog niet verstreken (dag 10, niet 1e-3e van de maand).
+
+## 2026-10-10 — dagelijkse-knoppentest-routine (scheduled task)
+
+**Vooraf:** wrangler-login werkt weer (MASTER N-122/P2-81 punt 1). `reports/daily-qa/opruim-20261008.mjs` gedraaid:
+2 trajecten + 1 testadviseur `DAILY_QA_20261008` verwijderd, 0 restanten (4/4).
+
+**Rotatiekeuze:** sector **accountancy** (het langst geleden: 24 sep), trajecttype **Opvolging** (het langst geleden: 1 okt),
+sell-side, extern adviseurstraject. Rollen adviseur, verkoper, koper, begeleider A/B en **meekijker** met fase-scope
+compliance. Accent: accountancy-compliancefase (NBA, kwaliteitstoetsing, Wwft, tuchtzaken), fase-afronden/-status en
+dossier-vrijgave per rol (niet eerder door deze routine getest), plus hertest van eerdere bevindingen (werkregel 15):
+N-119 (meekijker + zacht verwijderd) en N-120 punt 4 voor de meekijker (document-id's). Script:
+`reports/daily-qa/daily-qa-20261010.mjs` (alleen staging; staging-Worker versie 3eb20baf, 10 okt 01:12 UTC).
+
+**Resultaat: 34 van 35 checks geslaagd.** Doorlopen: adviseur + 2 trajecten (D1: accountancy/Opvolging/sell-side, "&" in
+naam ongeëscaped); verkoper slaat compliance + partner op (D1-read-back); koper en begeleider B kunnen niet schrijven;
+upload compliancedossier (verkoper) en opvolgingsnotitie (begeleider, tussen_code), beide met echte AI-analyse (analyse
+herkent de entiteit, noemt de toetsing 2023 en "geen lopende tuchtzaken", geen verzonnen claim); documentdekking: koper
+en begeleider B geweigerd. Fase afronden: verkoper zichtbaar in fase-status; koper-code rondt geen verkoperfase af;
+niet-bestaande code geweigerd zonder rij in `mna_fase_status`. Meekijker: begeleider B en koper kunnen er geen maken;
+info/data lekken geen codes; scope compliance toont alleen compliance-data en het ene compliancedocument zonder r2_key.
+Dossier-vrijgave: koper-code geeft niets vrij (D1 `verkoper_klaar` blijft 0), verkoper wel; verwijderen na vrijgave is
+zacht. **Hertests groen op staging:** N-119 (meekijker ziet het zacht verwijderde document niet meer) en N-120 punt 4
+(document-id's bij de meekijker bevatten geen verkopercode of tussen_code). Intrekken → meekijker 401.
+
+**De ene rode check is een testfout:** ik verwachtte de compliancefase in `/mna/documentdekking/`, maar die toont alleen
+fases met `vereisteDocumenten`, en accountancy-compliance heeft er geen (sectorprofiel). Endpoint gaf 200 met de juiste
+fases. Script aangepast (check op partner); niet opnieuw gedraaid (werkregel 40).
+
+**Observatie (administratief, geen productbevinding):** master-ID **N-122** is dubbel in gebruik (tabelregel ~128 =
+Marilyn-groepsverwijderactie, DONE; sectie verderop = wrangler-login). Genoteerd bij het item, niet hernummerd.
+
+**Gevonden:** geen bevindingen binnen de geteste combinatie vandaag. Dat betekent niet dat het platform foutloos is.
+
+**Niet getest:** browser-klikpad, documentgeneratie (niet aan de beurt), mailverzending (dossier-vrijgave-mail), eigen
+specialist, N-119/N-120 op productie, AI-veldextractie naar het formulier (frontend `autoFillFromExtraction`).
+
+**Opgeruimd:** beide `DAILY_QA_20261010`-trajecten, testadviseur, meekijker en de testrij `mna_fase_status` (D1-controle 0).
+
+**Score:** 100 (geen bevindingen).
+- 2026-10-11 — diepe-audit-routine: geen open aanvraag, cadans nog niet verstreken (dag 11, buiten venster 1e–3e).
+
+## 2026-10-11 — dagelijkse-knoppentest-routine (scheduled task)
+
+**Rotatiekeuze:** sector **mkb** (het langst geleden: 25 sep), trajecttype **Overname** (het langst geleden: 2 okt),
+`opdrachtgever_rol:"verkoper"` (2 okt was koperszijde), rollen adviseur (extern traject), verkoper, koper, begeleider
+en **eigen specialist** (bekend risico: leverde 2 okt N-111/N-112/N-113 op, werkregel 15). Fases commercieel +
+juridisch. Script: `reports/daily-qa/daily-qa-20261011.mjs` (alleen staging).
+
+**Resultaat definitieve run: 40 van 40 checks geslaagd.** Doorlopen: adviseur + 2 trajecten (D1: mkb/Overname/
+verkoperszijde); verkoper slaat commercieel en juridisch op (D1-read-back); koper kan niet schrijven of uploaden;
+begeleider B schrijft alleen in traject B, A blijft ongewijzigd; begeleider kan Financieel niet schrijven (403).
+Upload van een CSV-klantenoverzicht en een fiscale notitie, beide met echte AI-analyse. Die analyse zegt terecht dat
+de entiteit niet in de CSV zelf staat ("kan niet uit het document zelf worden bevestigd": nooit-gokken correct) en
+noemt de fiscale notitie geen brondocument met gerealiseerde cijfers. TOS + MoU; eigen specialist: verkoper en
+ADMIN_KEY als `x-tussen-key` geweigerd bij toevoegen en lijst; verkoper kan geen opdracht aanvragen; onbekend domein
+400; opdracht kosten 0; specialist ziet mkb/Overname, accepteert, dossier zonder VALUATION en zonder verkoper-/koper-/
+tussen_code; aftekenen = aantal LEGAL-onderdelen = APPROVED-rijen in D1.
+**Hertests (bekend risico) groen op staging:** N-111 (admin `GET /mna/tos/document/{id}` toont geen naam en geen
+inschrijvingsnummer; admin opdrachten-detail gemaskeerd), N-112 (hoedanigheid zonder "pool"). Kanttekening N-112: de
+hoedanigheid bevat nog het inschrijvingsnummer (open beslissing Marcel, ongewijzigd).
+
+**Eerste run: 1 rode check = testfout.** Mijn negatieve test "begeleider B schrijft in A" stuurde de verkopercode van
+A in de body mee; `/mna/save` autoriseert op `body.code` (`worker/11-mna-tekenen-beheer.js:743`) en negeert de
+header, dus dit was gewoon de verkoper. Geen lek. Script gecorrigeerd; daarnaast een kolomnaamfout in de
+documentquery (`bestand_naam`). Tweede run was nodig omdat de eerste vóór het TOS-/specialistdeel afbrak.
+
+**N-113 niet conclusief:** het token van een tweede opdracht gaf na intrekken van de specialist 403, maar het script
+controleerde niet of die tweede opdracht echt was aangemaakt (leeg token geeft ook 403). Code-niveau: `magPool()` in
+`worker/32-pool.js` controleert de status van de eigen specialist nog steeds niet, dus N-113 blijft open (BLOCKED
+MARCEL, ongewijzigd). Script aangevuld zodat dit voortaan zichtbaar is; niet opnieuw gedraaid (werkregel 40).
+
+**Observatie (niet aangeraakt):** MoU bevat geen TAX-onderdelen (LEGAL 18, VALUATION 1, NONE 1), dus een fiscale eigen
+specialist kan op een MoU alleen een LEGAL-opdracht krijgen. Geen fout, wel ter info. Backend-werkboom staat op branch
+`fix/daily-qa-20261002-eigen-specialist` met niet-gecommitte WIP (N-114 beheerdersmuur in 32-pool.js, N-100 in
+24-veiligheidsdashboard.js) van een andere sessie; niet aangeraakt.
+
+**Gevonden:** geen bevindingen binnen de geteste combinatie vandaag. Dat betekent niet dat het platform foutloos is.
+
+**Niet getest:** browser-klikpad, documentgeneratie, TAX-domein (geen TAX-onderdelen in MoU), N-113 conclusief,
+mailverzending, meekijker, productie.
+
+**Opgeruimd:** 4 staging-trajecten (2 runs) en 2 testadviseurs; D1-controle trajecten/specialisten/gebruikers met
+`DAILY_QA_20261011` = 0/0/0.
+
+**Score:** 100 (geen bevindingen).
+Melding aan marilyn (stap 5b) mislukt: 401 met de lokale ADMIN_KEY (zelfde oorzaak als N-110). Score staat NIET in het marilyn-dashboard.
+- 2026-10-12 — diepe-audit-routine: geen open aanvraag, cadans nog niet verstreken (dag 12, buiten venster 1–3).
+- 2026-10-13 — diepe-audit-routine: geen open aanvraag, cadans nog niet verstreken (13e van de maand).
+
+## 2026-10-13 — dagelijkse-knoppentest-routine (scheduled task)
+
+**Rotatiekeuze:** sector **consultancy** (het langst geleden: 26 sep), trajecttype **Fusie** (het langst geleden: 3 okt),
+`opdrachtgever_rol:"koper"`, extern adviseurstraject; rollen adviseur, verkoper, koper, begeleider A/B. Accent:
+**documentgeneratie (teaser)**, die al weken bij "niet getest" stond. Script: `reports/daily-qa/daily-qa-20261013.mjs`
+(alleen staging, één run, twee AI-aanroepen: teaser + documentanalyse).
+
+**Resultaat: 33 van 33 checks geslaagd.** Doorlopen: adviseur + 2 trajecten (D1: consultancy/Fusie/koperszijde);
+teaser vóór data → 400 met lijst ontbrekende velden; verkoper vult financieel/commercieel/partner/strategisch
+(D1-read-back); koper kan niet schrijven. Teaser-rolgrenzen: zonder header 401, koper-code en verkopercode als
+tussen-key geweigerd, begeleider B op traject A geweigerd, D1 daarna nog leeg. Teaser door begeleider A: 198 woorden,
+geen bedrijfsnaam/plaatsnaam/exacte omzet (alleen omzetklasse, regio gegeneraliseerd naar "Midden-Nederland"), D1
+`teaser_tekst` + status gegenereerd, precies 1 fee-event. Opslaan: koper geweigerd, 300 woorden → 400 en D1 ongewijzigd,
+bewerkte tekst → D1 status bewerkt, traject B onaangeroerd; koper kan teaser niet versturen. Upload project-/
+klantenoverzicht met echte AI-analyse (herkent entiteit en jaar, zegt terecht dat omzet/EBITDA niet als bedrag in het
+document staan); koper kan niet uploaden.
+
+**Gevonden (1): MASTER N-127 / OPEN-BEVINDINGEN P3-71.** Teaser laat klantenband en terugkerende omzet altijd weg.
+Oorzaak (code-niveau bewezen): `/mna/teaser/genereer` haalt fase `commercieel` niet op maar leest er `aantalKlanten` uit;
+`recurring` wordt alleen in `financieel` gezocht, terwijl 6 sectoren het in `commercieel` hebben (itsoftware:
+`financieel.recurringPct`). Runtime-observatie: teaser noemde 16% marge (opgehaalde fase) maar niet de klantenband of
+72% retainer. Foutpropagatie: matching (`19c`) leest alleen fases die het ophaalt, verkoopmemorandum haalt alle fases
+op, bankmutaties alleen financieel; geen andere treffer. Fix gebouwd als patch
+(`reports/daily-qa/0002-teaser-commercieel-velden.patch`, schone worktree vanaf backend `main`), `node --check` groen,
+`git apply --check` ook op de huidige backend-branch groen, keuzelogica lokaal gesimuleerd (consultancy/itsoftware/
+accountancy/leeg). **Niet gedeployd** (ook niet naar staging): zone B klantdocument vereist Breaker-review (werkregel 26),
+en de backend-werkboom staat op `fix/daily-qa-20261002-eigen-specialist` met WIP van een andere sessie. Wacht op
+Breaker-review en daarna staging + productie.
+
+**Observatie (geen bevinding):** de teaser begint met "Te koop:" in een Fusie-traject; de prompt vraagt generiek om een
+overname-teaser. Ter info, niet aangeraakt.
+
+**Niet getest:** browser-klikpad, verkoopmemorandum/dealvoorstel/contracten, teaser-verzending per mail (staging zonder
+RESEND), regeneratie zonder dubbele fee (bewust één AI-run, werkregel 40), meekijker, eigen specialist, productie.
+
+**Opgeruimd:** beide `DAILY_QA_20261013`-trajecten en de testadviseur; D1-controle trajecten/gebruikers = 0/0.
+
+**Score:** 75 (één bevinding niet zelfstandig opgelost: wacht op Breaker-review en deploy).
+Melding aan marilyn (stap 5b) mislukt: 401 met de lokale ADMIN_KEY (zelfde als 11 okt, N-110-patroon). Score staat NIET in het marilyn-dashboard.
+
+- 2026-10-15 diepe-audit-routine: geen open aanvraag, cadans nog niet verstreken (dag 15, buiten dag 1-3).
+
+## 2026-10-15 — dagelijkse-knoppentest-routine (scheduled task)
+
+**Rotatiekeuze:** sector **verhuizingen** (het langst geleden: 30 sep), trajecttype **PE-traject** (het langst geleden:
+4 okt), `opdrachtgever_rol:"koper"`, extern adviseurstraject; rollen adviseur, verkoper, koper, begeleider A/B. Accent:
+**groepsstructuur en consolidatie** (holding + 2 werkmaatschappijen, holding-uitsluiting, entiteit verwijderen) en
+**traject afsluiten + dossier-ZIP-export**: beide nog niet eerder door deze routine getest. Geen AI-aanroepen. Script:
+`reports/daily-qa/daily-qa-20261015.mjs` (alleen staging, één run).
+
+**Resultaat: 38 van 42 checks geslaagd.** Doorlopen: adviseur + 2 trajecten (D1: verhuizingen/PE-traject/koperszijde,
+"&" ongeëscaped). Entiteiten: verkoper maakt holding + WM aan, begeleider A een tweede WM; koper en begeleider B
+geweigerd (401); koper zonder vrijgave ziet lege groepsstructuur. Financieel per entiteit door verkoper: groepsrij
+5,0 mln / EBITDA 400k / marge 8,0 (holding terecht niet dubbel geteld); begeleider en koper kunnen financieel per
+entiteit niet schrijven (403), groep ongewijzigd. Begeleider B kan entiteit van A niet verwijderen via eigen pad (data
+intact). Afsluiten: koper, verkoper en begeleider B geweigerd; begeleider A sluit af → status afgesloten, ZIP downloadbaar
+(PK, 4 bestanden incl. DD-eindrapport.pdf, groepsstructuur aanwezig), tweede download binnen coulance-uur 200, onbekend
+token 404, opslaan na afsluiten 403, tweede afsluitpoging 400, traject B onaangeroerd.
+
+**Gevonden (1): MASTER N-128 / OPEN-BEVINDINGEN P2-82 (runtime gereproduceerd + code-niveau).** Na verwijderen van
+werkmaatschappij WM2 wordt de entiteitdata correct gewist, maar het groepstotaal blijft 5,0 mln / 400k / 8% (verwacht
+3,0 mln / 300k / 10%). Oorzaak: de verwijdertak in `worker/07-mna-groepen.js` roept `consolideerFase()` niet aan, en
+`consolideerFase()` schrijft niets bij nul resterende entiteiten. Bevestigd aanwezig in de actuele releasebasis
+(`/private/tmp/kvm-weekend-option2-h_nlnin8`, 48e8f19) en alle `KVM-releases/*-20261010`. Foutpropagatie: alle
+schrijvers naar `mna_data` gegrept; broncorrectie (`worker/40-financiele-broncontrole.js`) wijzigt ook een entiteitrij
+zonder te consolideren (code-niveau, niet runtime getest). **Niet zelf gefixt of gedeployd:** staging draait uit de
+Codex-releaseketen met globale builderlock (KVM-OVERDRACHT); de lege-groep-situatie vraagt een keuze (auto-velden wissen
+vs. handmatige groepswaarden behouden); raakt waarderingsinvoer (Breaker-review nodig).
+
+**Testfouten (geen platformfout):** (1) MFA-bypass via wrangler D1 faalde eenmalig (wrangler-uitvoer, latere D1-queries
+werkten; flow liep door). (2) Mijn audit-check zocht de download-regel op `extra`, maar die logt `code=traject_id`;
+alleen "aangemaakt" gevonden. Code-niveau logt de download wel (`worker/13` r.129). Script gecorrigeerd, niet opnieuw
+gedraaid (werkregel 40).
+
+**Observatie:** `download_url` uit afsluiten wijst ook op staging naar de productie-Worker-host (hardcoded); op staging
+werkt de link dus alleen met handmatig vervangen host. Geen productiefout, ter info.
+
+**Niet getest:** browser-klikpad, broncorrectie-pad (N-128 propagatie), maatschap-structuur, partnerregister,
+koper na vrijgave, ZIP-download na coulance-uur (vereist tijd), afsluitmail (staging zonder RESEND), meekijker,
+eigen specialist, productie.
+
+**Opgeruimd:** beide `DAILY_QA_20261015`-trajecten en de testadviseur; D1-controle trajecten/gebruikers/entiteiten =
+0/0/0. Export-ZIP in staging-R2 niet apart gecontroleerd.
+
+**Score:** 75 (één bevinding niet zelfstandig opgelost: wacht op releaseketen/keuze lege groep).
+Melding aan marilyn (stap 5b) mislukt: 401 met de lokale ADMIN_KEY (N-110-patroon, zelfde als 11 en 13 okt). Score staat NIET in het marilyn-dashboard.
+
+- 2026-10-16 — diepe-audit-routine: geen open aanvraag, cadans nog niet verstreken (dag 16, maandelijkse check alleen op dag 1–3).
+
+## 2026-10-16 — dagelijkse-knoppentest-routine (scheduled task)
+
+**Rotatiekeuze:** sector **transport** (het langst geleden: 1 okt), trajecttype **Verkoop** (het langst geleden: 9 okt),
+`opdrachtgever_rol:"verkoper"`, extern adviseurstraject; rollen adviseur, verkoper, koper, begeleider A/B en
+platformbeheerder (ADMIN_KEY-muur). Accent: **gesprekken/logboek, gespreksconcept (autosave), informatieverzoek en
+wijzigingenlog**, nauwelijks eerder door deze routine getest, en bekend risico (eerdere rolgrenslekken bij interne
+gesprekken, werkregel 15). Geen AI-aanroepen. Script: `reports/daily-qa/daily-qa-20261016.mjs` (alleen staging, één run).
+
+**Resultaat: 31 van 37 checks geslaagd.** Goed: begeleider legt 3 gesprekken vast (D1 op traject-id); verkoper ziet alleen
+"verkoper"+"iedereen", koper alleen "iedereen", geen van beiden ruwe notities; begeleider B en ADMIN_KEY (extern traject)
+zien niets; verkoper/koper kunnen geen gesprek vastleggen (403/401); begeleider B kan gesprek van A niet overschrijven,
+A wel (D1 V2 + vergrendeld); ADMIN_KEY kan niet verwijderen (muur). Informatieverzoek: opslaan/teruglezen per fase,
+geen cross-traject. Wijzigingenlog: oud→nieuw zichtbaar voor begeleider A, 401 voor verkoper/koper/begeleider B.
+
+**Gevonden (1, P1): MASTER N-129 / OPEN-BEVINDINGEN P1-97 (runtime gereproduceerd + code-niveau).** Verkoper én koper
+lezen het gespreksconcept van de begeleider inclusief ruwe notities (`GET /mna/gesprek/concept/{code}` → 200); koper kan
+het overschrijven en wissen; verkoper kan de informatieverzoek-selectie overschrijven. Oorzaak: vier routes in
+`worker/12-mna-gesprekken-logboek.js` zonder rolcontrole; enige aanroepers zijn begeleiderschermen. Corrigeert de
+beoordeling van 18 sep (P1-25-vervolg) dat het concept door alle rollen wordt gebruikt. Fix gebouwd als patch
+(`reports/daily-qa/0003-gespreksconcept-infoverzoek-alleen-begeleider.patch`), `node --check` groen, toepasbaar op
+releasebasis 8a3c8fb, lokale routetest 15/15 PASS (ongepatcht 7/15). Foutpropagatie: alle multi-rol-lookups
+geïnventariseerd; vergelijkbare begeleider-features hebben wel een rolcontrole. **Niet gedeployd** (ook niet naar
+staging): zone C vereist Breaker-review; backend loopt via de releaseketen (KVM-OVERDRACHT).
+
+**Gevonden (2, P3): MASTER N-130 / P3-72.** Trajectverwijdering laat de `kv_store`-rijen `infoverzoek_*` en
+`gesprek_concept_*` staan (runtime: 1 rij bleef staan; code: geen van beide cascades kent de sleutels). Niet gebouwd.
+
+**Testfout (geen platformfout):** MFA-bypass via wrangler D1 faalde eenmalig (zelfde als 15 okt); flow liep door.
+
+**Niet getest:** browser-klikpad, gespreksverslag-AI-generatie, gespreksbijlagen, informatieverzoek versturen (mail),
+meekijker, eigen specialist, productie.
+
+**Opgeruimd:** beide `DAILY_QA_20261016`-trajecten en de testadviseur; D1-controle trajecten/gebruikers/gesprekken/
+concepten/wijzigingen = 0; de achtergebleven infoverzoek-rij (N-130) handmatig verwijderd, daarna 0.
+
+**Score:** 50 (twee bevindingen niet zelfstandig opgelost: wachten op Breaker-review en releaseketen).
+Melding aan marilyn (stap 5b) mislukt: 401 met de lokale ADMIN_KEY (N-110-patroon, zelfde als 11, 13 en 15 okt). Score staat NIET in het marilyn-dashboard.
+
+## 2026-10-17 — dagelijkse-knoppentest-routine (scheduled task)
+
+**Rotatiekeuze:** sector **bouw** (het langst geleden: 2 okt), trajecttype **Opvolging** (het langst geleden: 10 okt),
+`opdrachtgever_rol:"verkoper"`, extern adviseurstraject; rollen adviseur, verkoper, koper, begeleider A/B en
+platformbeheerder (ADMIN_KEY-muur). Accent: **Q&A-flow** (vraag, voorstel met bedrag, antwoord, accepteren, deadline/
+toewijzing, reacties, categorie-intrekking, volgnummer bij gelijktijdige vragen) en de **closing-checklist** (vinken,
+eigen punt toevoegen/verwijderen, rolgrenzen, cross-traject, verwijdercascade). Beide nog niet eerder door deze routine
+getest; bekend risico N-129 (multi-rol-lookups zonder rolcontrole). Geen AI-aanroepen. Script:
+`reports/daily-qa/daily-qa-20261017.mjs` (alleen staging, één run).
+
+**Resultaat: 32 van 34 checks geslaagd.** Goed: D1 bouw/Opvolging/verkoperszijde, "&" ongeëscaped. Koper kan zelf geen
+categorieën vrijgeven (401). Koper ziet vragen, voorstel met type + bedrag; koper van B en ADMIN_KEY (extern traject) zien
+niets. Deadline/toewijzing alleen door begeleider A (B, koper, verkoper 401, DB ongewijzigd). Antwoorden: koper en B 401,
+leeg 400; A beantwoordt en accepteert (DB-status beantwoord/geaccepteerd); onbekende status valt terug op beantwoord.
+Reacties: koper + begeleider ok; koper van B 404; ongeldige code 401, ook bij onbekende qa-id (geen existence-oracle).
+Na intrekken van categorie financieel verdwijnt die thread incl. antwoord en reacties voor de koper; begeleider ziet alles.
+Closing-checklist: verkoper/koper/begeleider B 401; eigen punt toevoegen (301 tekens → 400, koper/B 401), zichtbaar alleen
+in traject A, B kan het niet verwijderen, A verwijdert item + vinkstatus. Verwijdercascade: 0 restanten in mna_qa,
+mna_qa_reacties, closing-checklist-status en eigen punten.
+
+**Gevonden (1, P2): MASTER N-131 / OPEN-BEVINDINGEN P2-83 (runtime gereproduceerd + schema-niveau op staging en
+productie).** Drie gelijktijdige koper-vragen gaven vraagnummers 1,2,3,3. Oorzaak: bij de FK-migratie van 26 juli
+(`RENAME TO *_backup_20260726`) verhuisden 18 (productie) / 19 (staging) indexen mee naar de back-uptabellen; de
+`CREATE INDEX IF NOT EXISTS` met dezelfde naam in `initDB()` is sindsdien een no-op. Daardoor ontbreken o.a. de UNIQUE-
+indexen voor Q&A-nummers en documentversienummers (vangnet van `metVolgnummerRetry`/`metDocVersieRetry`) plus 14
+traject_id-indexen. Productie gelezen via `sqlite_master` + tellingen (geen inhoud): 0 bestaande dubbelen. Foutpropagatie:
+geen andere hernoemde tabellen met indexen, geen `RENAME TO` in workercode. Fix als patch
+(`reports/daily-qa/0004-indexen-terug-op-live-tabellen-v38.patch`, SCHEMA_VERSION 38, 16 `_v38`-indexen, additief) op
+releasebasis 51bb982; `node --check` groen, `git apply --check` groen, audit-backend met/zonder patch identiek, SQLite-
+reproductie van het RENAME-scenario (zonder fix dubbel toegestaan, met fix geweigerd). **Niet gedeployd:** releaseketen
+met builderlock (#14 stagingdeploy loopt) en SCHEMA_VERSION-bump kan botsen met een parallelle bump.
+
+**Gevonden (2, P3): MASTER N-132 / P3-73.** Q&A-reactie neemt `auteur_naam` uit het verzoek over: koper reageerde onder
+de naam van de begeleider (opgeslagen als begeleidersnaam met rol koper; UI toont de naam). Niet gebouwd (weergavekeuze).
+
+**Observaties (geen bevinding):** koper kan vóór categorie-vrijgave een vraag stellen (200) maar ziet die zelf niet;
+verkopercode kan de volledige Q&A lezen (geen UI-pad voor de verkoper; productkeuze, niet aangeraakt).
+
+**Testfout (geen platformfout):** mijn script nam aan dat checklist-items objecten met `key` zijn; het zijn tekst-items
+met categorie/index-sleutels. Daardoor zijn aan-/uitvinken van een standaarditem en de negatieve vinktests voor koper/B
+niet uitgevoerd. Vinken van een eigen punt (sleutel `eigen_…`) liep wel en werd bij verwijderen correct opgeruimd; de
+vinkroute heeft code-niveau dezelfde rolcontrole als toevoegen. Script niet opnieuw gedraaid (werkregel 40).
+
+**Niet getest:** browser-klikpad, vinken standaard-checklistitem + negatieve vinktests (zie testfout), Q&A-mails (staging
+zonder RESEND), Q&A met module uit, Q&A-export, meekijker, eigen specialist, productie (alleen schema gelezen).
+
+**Opgeruimd:** beide `DAILY_QA_20261017`-trajecten en de testadviseur; D1-controle trajecten/gebruikers/qa/reacties/
+checklist = 0. Tijdelijke git-werkboom `/private/tmp/dailyqa-20261017-be` verwijderd (patch bewaard).
+
+**Score:** 50 (twee bevindingen niet zelfstandig opgelost: N-131 wacht op de releaseketen, N-132 op een weergavekeuze).
+Melding aan marilyn (stap 5b) gelukt: HTTP 200 (score 50 staat in het marilyn-dashboard).
+
+## 2026-10-17 — red-team-pentest-routine (scheduled task, Stap 2B, aanvraag AV1792153119600QISX)
+
+**Eindoordeel: GO WITH CONDITIONS, score 60.** Rapport: `tests/rapporten/red_team_pentest-20261017.html`.
+Begrensde ronde op staging: F1-F17-regressieset (`tests/e2e-crosspath-fixes.mjs`, 2 runs: 87/90, na testcorrectie 95/96;
+enige rood = F17-upload 502 door de bekende staging-AI-storing, beveiligingschecks F17 groen), verse cross-traject-
+aanvallen met twee aparte externe adviseurs + twee koopmandaten (`tests/redteam-crosstraject-20261017.mjs`, 39/40; de
+rode check was een fout in de eigen assertie, los nagecontroleerd), diff van `00-policy.js` sinds 17 sep en een sweep
+van alle 72 `begeleiderAuth`-aanroepen en de directe koperpaden (P1C-grens) in de releasebron
+`KVM-releases/koersvoormorgen-backend` (10 okt).
+
+**Cross-traject-verdict: NEE** (136 live combinaties, positieve merkteken-isolatie).
+
+**Gevonden HIGH (MASTER N-133), runtime staging + code-niveau:** `GET /mna/signhost/status/{code}` heeft geen
+rolcontrole en geeft rauwe `signhost_transactions` (ondertekenaar-e-mail, doc_type incl. BEM) aan de koper, vóór NDA en
+langs de P1C-vrijgavegrens. Reproductie: `tests/redteam-signhost-status-20261017.mjs`. Niet zelf gefixt (zone C,
+werkregel 26/39; releaseketen, lokale backend-repo loopt achter op productie). Productie: alleen code-niveau.
+**LOW:** N-134 (CRM-activiteit traject_id/target_id niet kantoor-gecontroleerd, geen leespad), N-135
+(resolveMandaatRol-comment vs. code).
+**Testdrift opgelost:** `publieke_referentie` (bewust publiek, geen lookup-sleutel) toegevoegd aan KOPER_ALLOW.
+**Niet getest:** AI/RAG, TOS-finalisatieraces, policy-equivalentie, brede injectiesweep, export/sessie, CRM live,
+productie. **Opgeruimd:** 5 testtrajecten, 5 testadviseurs, 3 koopmandaten (alle opruimchecks groen).
+
+- 2026-10-18 — diepe-audit-routine: aanvraag `AV1792153125684IJNK` uitgevoerd (begrensde ronde). Score 66 (van 60). Checks groen; e2e productie niet gedraaid (ADMIN_KEY 401). 9 items 🔴/🟡→🟢 (code-niveau productie fbe49ad), P0-1 punt 4 🟡, 5 items blijven 🔴 (P1-97, P2-82, P2-83, P3-71, P3-73), P4-22 verergerd, 1 nieuwe waarneming P3-74. Rapport: `tests/rapporten/diepe_audit-20261018.html`.
+
+## 2026-10-18 — dagelijkse-knoppentest-routine (scheduled task)
+
+**Rotatiekeuze:** sector **zorg** (het langst geleden: 3 okt), trajecttype **Overname** (het langst geleden: 12 okt),
+`opdrachtgever_rol:"koper"` (vorige twee dagen verkoperszijde), extern adviseurstraject; rollen adviseur/begeleider A/B,
+verkoper, koper, platformbeheerder (ADMIN_KEY-muur) en **poolspecialist** (token). Accent: **specialistenpool**
+(`worker/32-pool.js`), nog nooit door deze routine getest (2 okt alleen de eigen specialist), plus bekend risico N-113
+(actorintrekking die een lopend token niet raakt, werkregel 15). Geen AI-aanroepen. Code gelezen uit de releasebron
+`KVM-releases/koersvoormorgen-backend` (de lokale backend-repo loopt achter, bijv. N-119 ontbreekt daar). Script:
+`reports/daily-qa/daily-qa-20261018.mjs` (alleen staging).
+
+**Resultaat: 42 van 44 checks geslaagd** (tweede run; de eerste brak na sectie 7 af op een fout in mijn eigen script,
+zie testfout). Goed: TOS activeren + 3 MoU's; admin voegt poolspecialisten toe, begeleider kan dat niet (403); bladeren
+op sector zorg zonder e-mail; verkoper/koper bladeren en aanvragen niet (403); begeleider B met document + code van A
+→ 400, geen opdracht; ADMIN_KEY op extern traject → 403 (muur, ook op lijst en intrekken); ongeldig domein/lege scope
+400, onbekende specialist 404. Tokenflow: opdracht zonder rolcodes, dossier vóór accepteren 403, twee gelijktijdige
+acceptaties precies één 200 + één 409, dossier bevat alleen de gescopte MoU (niet de tweede MoU van A, niet B),
+verzonnen token 403. Begeleider B/koper/ADMIN_KEY kunnen O1 niet intrekken (DB ongewijzigd). Na aftekenen: reviews +
+fee-events + audit-keten REVIEW_APPROVED, tweede aftekening 409 zonder extra fee, afgeronde review niet intrekbaar (409).
+Afwijzen en intrekken maken het token ongeldig (dossier/aftekenen 403), onbekende actie 400. Admin-overzicht toont de
+opdrachten met "(extern traject)", zonder tokens; begeleider krijgt het niet (403).
+
+**Gevonden (1, MEDIUM): MASTER N-136 / OPEN-BEVINDINGEN P2-84 (runtime gereproduceerd, 2 runs, + code-niveau).**
+Na royeren van de poolspecialist blijven opdracht, dossier en aftekenen met het al uitgegeven token werken (200);
+aftekenen zette 16 LEGAL-onderdelen op APPROVED "via de Koers voor Morgen-pool" en boekte honorarium 450 + marge 75.
+Nieuwe opdrachten voor die specialist zijn wel geblokkeerd (404). Oorzaak: `magPool()` controleert bij poolbron de
+status van `pool_specialisten` niet (eigen specialist sinds N-113 wel). **Niet zelf gefixt:** marilyn zegt bij royeren
+"Lopende opdrachten blijven staan", dus het gedrag kan bewust zijn; besluit van Marcel nodig. Patch voor de keuze
+"intrekken" klaar (`reports/daily-qa/0005-pool-geroyeerde-specialist-token-intrekken.patch`, `node --check` groen,
+niet toegepast, niet gedeployd; zone C vraagt daarna Breaker-review en de releaseketen). Foutpropagatie: meekijker
+(`viewerAuth` toetst ingetrokken/verlopen) en eigen specialist (N-113-check in `magPool`) zijn wel fail-closed; voor
+een uitgeschakelde adviseur bestaat geen status in `bf_gebruikers` (geen vergelijkbaar pad gevonden via grep).
+
+**Observaties (geen bevinding):** `POST /mna/pool/opdracht` toetst `status='actief'` maar niet `beschikbaar`;
+staging-`pool_specialisten` bevat geroyeerde rijen van eerdere `e2e-tos`-runs (die suite royeert maar verwijdert niet).
+
+**Testfout (geen platformfout):** mijn auditcheck zocht `tos_audit_event.traject_id`; die kolom heet `traject_ref`.
+Gecorrigeerd (zoeken op opdracht-id in `meta_json`) en één keer opnieuw gedraaid, omdat secties 8–9 niet waren
+uitgevoerd (werkregel 40: nieuwe informatie, geen herhaling van bewezen checks).
+
+**Niet getest:** browser-klikpad (specialist.html en het poolscherm van de begeleider), poolmails (staging zonder
+RESEND), deadline-plus-coulance-verloop (vereist tijd), VALUATION-scope, conflictsignalen C1–C4, meekijker, eigen
+specialist, productie.
+
+**Opgeruimd:** per run beide `DAILY_QA_20261018`-trajecten, de testadviseur en de twee testpoolspecialisten (D1, er is
+geen verwijderroute); D1-controle trajecten/gebruikers/pool-opdrachten/-reviews/fee-events/tos-documenten/-reviews/
+poolspecialisten = 0. `tos_audit_event` is append-only en bewust niet in de cascade.
+
+**Score:** 75 (één bevinding niet zelfstandig opgelost: wacht op een besluit van Marcel).
+
+- 2026-10-22 — diepe-audit-routine: geen open aanvraag, cadans nog niet verstreken (dag 22, maandelijkse zelf-indiening alleen op dag 1-3).
+
+## 2026-10-22 — dagelijkse-knoppentest-routine (scheduled task)
+
+**Rotatiekeuze:** sector **handel** (het langst geleden: 4 okt), trajecttype **Fusie** (het langst geleden: 13 okt),
+`opdrachtgever_rol:"verkoper"` (gisteren-run 18 okt was koperszijde), extern adviseurstraject met groepsstructuur
+(holding + werkmaatschappij). Rollen adviseur/begeleider A/B, verkoper, koper, platformbeheerder (ADMIN_KEY-muur) en
+**meekijker** (laatst 3 okt; 17 en 18 okt als "niet getest"). Accent: de randen van de meekijker-levenscyclus die 3 okt
+niet gedekt waren, plus de foutklasse van N-113/N-136 (intrekking die een lopende toegang niet raakt, werkregel 15).
+Geen AI-aanroepen. Code gelezen uit de releasebron `KVM-releases/koersvoormorgen-backend` (P3-74). Script:
+`reports/daily-qa/daily-qa-20261022.mjs` (alleen staging). 19, 20 en 21 okt staan niet in dit logboek (zie N-137).
+
+**Resultaat: 38 van 39 checks geslaagd** (één run). Goed: module "meekijker" uit → adviseur-begeleider 403 en geen rij;
+begeleider B en ADMIN_KEY (muur) geweigerd; 5 gelijktijdige aanmaakverzoeken → precies 1 actieve code en 1 fee-event
+(15 sep-racefix houdt); viewercode in kleine letters werkt; data vóór acceptatie 403; scope financieel strikt (geen
+commercieel-velden, geen checklist/notitie); acceptatie van een oudere voorwaardenversie telt niet (data 403, info
+akkoord=false); scope alle toont financieel + commercieel; documenten zonder r2_key; POST op viewer-route 405;
+viewercode werkt niet als traject- of meekijkerscode (404); verkoper/koper/begeleider zien de meekijkerslijst zonder
+codes, verkoper B ziet die van A niet, ADMIN_KEY op extern traject afgeschermd; viewerlog voor begeleider A (data +
+documenten), niet voor B of koper. Verloop: kortlopende code (≈4 s) daarna 401 op info/accepteren/data en uit de
+transparantielijst. Intrekken: B (met traject_id A of B) en koper trekken niet in (DB ongewijzigd, code blijft werken);
+na intrekken door A geeft de code 401 op info/data/documenten/accepteren, de andere meekijker blijft werken, opnieuw
+aanmaken geeft een nieuwe werkende code terwijl de oude dood blijft; begeleiderlijst toont ingetrokken/verlopen/actief.
+Viewer-rate-limiter (15 per 10 min per IP, in-memory per isolate): 22 viewer-aanroepen zonder 429 (dus niet
+reproduceerbaar als hinder voor een gewone meekijker in deze run; geen conclusie over één isolate).
+
+**Gevonden (1, LOW/P3): MASTER N-139 / OPEN-BEVINDINGEN P3-75 (runtime staging-API + code-niveau live viewer.html).**
+Bij een groepsstructuur krijgt de meekijker per fase één rij per entiteit zonder entiteit_id of naam; `viewer.html`
+toont ze als twee blokken "Financieel" met dezelfde jaaromzet, zonder te zeggen welke de groep is. Geen rolgrenslek.
+Niet zelf gebouwd: productkeuze (entiteitnaam via allowlist tonen, of alleen groepsniveau). Foutpropagatie: de
+meekijkerdocumentenlijst selecteert evenmin entiteit_id (zelfde patroon, geen uploads gedaan om het te tonen); de
+eigen documentenlijst van de portalen geeft entiteit_id wél mee.
+
+**Observaties (geen bevinding):** `scope_fase:"   "` wordt opgeslagen als lege string; `/mna/viewer/data` filtert dan
+niet (code-niveau, lege string is falsy) en de transparantielijst toont een lege scope i.p.v. "alle". Alleen bereikbaar
+voor de begeleider zelf via de directe API, die ook gewoon "alle" kan kiezen. `verloopt_dagen` wordt niet gevalideerd
+(tekst = nooit verlopen, negatief = direct verlopen); ook alleen begeleider-zijde.
+
+**Testfout (geen platformfout):** mijn check verwachtte dat `/mna/document/lijst/{viewercode}` geen 200 geeft; die route
+geeft voor elke onbekende code `200 []` (los bevestigd met een verzonnen code). Geen inhoud, geen lek.
+
+**Niet getest:** browser-klikpad van viewer.html (alleen API + broncode), meekijker-documenten met echte uploads
+(bewust geen AI-kosten, 3 okt gedekt), meekijkermails (staging zonder RESEND), eigen specialist, poolspecialist,
+productie. Welke backendversie op staging draait is niet apart vastgesteld.
+
+**Opgeruimd:** beide `DAILY_QA_20261022`-trajecten via de test-opruimroute (200) en de testadviseur (200); D1-controle
+trajecten/gebruikers/meekijkers/viewerlog/entiteiten/data/fee-events = 0.
+
+**Score:** 75 (één bevinding niet zelfstandig opgelost: wacht op een productkeuze van Marcel).
+Melding aan marilyn (stap 5b) gelukt: HTTP 200.
+
+- 2026-10-23 — diepe-audit-routine: geen open aanvraag, cadans nog niet verstreken (dag 23, buiten venster 1e-3e).
+
+## 2026-10-23 — dagelijkse-knoppentest-routine (scheduled task)
+
+**Rotatiekeuze:** sector **itsoftware** (het langst geleden: 8/9 okt), trajecttype **PE-traject** (het langst geleden:
+15 okt), **koperszijde** (22 okt was verkoperszijde). Rollen: adviseur A (eigenaar), adviseur B (ander kantoor),
+mandaat-begeleider (tussen_code), mandaat-koper (koper_code), platformbeheerder (ADMIN_KEY-muur), en op de trajecten
+verkoper/koper/begeleider. Accent: **koopmandaat** (`worker/37-koopmandaat.js`, buy-side: mandaat, targets, promotie)
+en **koper-bod** (`worker/35-koper-bod.js`): beide nog nooit door deze routine getest. Geen AI-aanroepen. Code gelezen
+uit de releasebron `KVM-releases/koersvoormorgen-backend`. Script: `reports/daily-qa/daily-qa-20261023.mjs` (alleen
+staging, één run).
+
+**Resultaat: 64 van 67 checks geslaagd; de 3 rode checks waren verwachtingsfouten in mijn script (zie testfouten), geen
+platformfout.** Goed: mandaat aanmaken door adviseur zonder sessie 401, meegestuurde `tussen_code`/`gebruiker_id` 400,
+lege koper_naam en tekst als omzet 400; eigenaar/kantoor/begeleider komen uit de sessie (DB). Targets: koper, sleutel
+van mandaat B en ADMIN_KEY (muur) kunnen niets toevoegen (exact 4 targets in DB); ongeldige targetflow en lege naam 400.
+Bijwerken: 5 gelijktijdige contactlog-toevoegingen → alle 5 in DB (geen lost update); handmatig match/gepromoveerd/
+onbekende status 400; koper 401, mandaat B 404, DB ongewijzigd. Per rol: begeleider ziet notities/contactlog/bron, koper
+ziet geen notities, contactlog, bron, codes of contactgegevens; ADMIN_KEY op extern mandaat 401, admin-overzicht toont
+het alleen als administratieve regel. Promotie: alleen mandaatsleutel 403 `identiteit_onbekend`, sessie van B 403
+`fee_recht_niet_besloten`, eigenaar ziet 3 pakketten; generieke target zonder match 409; target zonder sector 400
+`sector_ontbreekt` (geen aanname); zonder/onbekend pakket en meegestuurd bedrag 400. **5 gelijktijdige promoties →
+precies één 200 + vier 409**, DB: 1 traject (Overname/itsoftware/koperszijde, koppelingen + voorinvulling, verkoper-
+contact leeg), 1 pakket-fee-event, 1 startrij; daarna status wijzigen en opnieuw promoveren 409; koper ziet geen
+trajectcodes. Koper-bod: sell-side vóór dossiervrijgave 403, daarna 200; negatief bedrag 400; verkoper 403; **PE-traject
+koperszijde 403 "niet beschikbaar"** (Marcels randvoorwaarde houdt); begeleider ziet het bod, koper niet (403).
+Trajectlimiet (3 bereikt): promotieprijs en promotie 403, target blijft kandidaat zonder claim, geen extra fee-event.
+
+**Gevonden: geen bevindingen binnen de geteste combinatie vandaag** (geen bewijs dat het platform foutloos is).
+
+**Testfouten (geen platformfout):** (1) begeleider van traject X met het pad van traject Y op `/mna/begeleider/
+biedingen/` → 403 i.p.v. mijn verwachte lege lijst: strenger, fail-closed. (2) ADMIN_KEY op een extern traject geeft
+daar 403 i.p.v. de lege lijst uit de routecomment: de centrale muur `begeleiderAuthMetMuur` (00-policy) weigert al vóór
+de eigen admin-tak van de route; geen lek. (3) mijn fee-telling verwachtte 1 event, het waren er 3: `/adviseur/create`
+boekt per traject een trajectfee (code-niveau `worker/16-adviseur.js`), dus 1 promotie + 2 trajectaanmaken; de
+mislukte promotie bij de limiet voegde niets toe. Niet opnieuw gedraaid (werkregel 40: de uitkomst is verklaard).
+
+**Observaties (geen bevinding):** na opruimen blijven 2 regels (`target_aangemaakt`, `target_status`, categorie audit)
+in `mna_koopmandaat_introductie_bewijs` staan: bewust zonder cascade (N-115, 12 maanden), zonder inhoud of
+persoonsgegevens. De admin-tak in `35-koper-bod.js` (lege lijst bij extern traject) is voor externe trajecten niet meer
+bereikbaar door de centrale muur; alleen een verouderde comment. Eén alleen-lezen controlequery (SELECT op de
+introductiebewijstabel, lege uitkomst) liep per ongeluk tegen de productie-D1 omdat WORKER_URL in die losse shell niet
+gezet was; meteen tegen staging herhaald. Geen schrijfactie op productie.
+
+**Niet getest:** browser-klikpad (koopmandaatscherm in mna.html/adv.html), generieke targetflow verder dan de
+match-poort (introductieovereenkomst, N-115-vrijgave, match), CRM-koppeling (`organisatie_id`), introductiemails
+(staging zonder RESEND), testaccount-variant (`is_tester`), productie. Welke backendversie op staging draait is niet
+apart vastgesteld.
+
+**Opgeruimd:** 3 trajecten via de test-opruimroute (200), 2 mandaten (200), 2 testadviseurs (200); D1-controle
+trajecten/mandaten/targets/gebruikers/fee-events/biedingen = 0.
+
+**Score:** 100 (geen bevindingen in deze combinatie).
+- 2026-10-23 — dagelijkse knoppentest: melding aan marilyn (stap 5b) gelukt, HTTP 200.
+- 2026-10-24 — diepe-audit-routine: geen open aanvraag, cadans nog niet verstreken (dag 24, geen eigen aanvraag ingediend).
+- 2026-10-25 — diepe-audit-routine: geen open aanvraag, cadans nog niet verstreken (dag 25, buiten venster 1–3).
+
+## 2026-10-25 — dagelijkse-knoppentest-routine (scheduled task)
+
+**Rotatiekeuze:** sector **mkb** (het langst geleden in dit logboek: 11 okt), trajecttype **Opvolging** (17 okt; Verkoop
+16 okt is ouder, maar het niet-gelogde script van 24 okt was accountancy/Verkoop), **koperszijde** (`opdrachtgever_rol:
+"koper"`; 23 okt koper, 24 okt verkoper). Rollen: adviseur (extern traject), verkoper, begeleider A/B, koper. Accent:
+**meerdere schrijvers op dezelfde fase** via `/mna/save` (werkregel 14) en de **wijzigingenlog**, nog nooit door deze
+routine getest. Geen AI. Code gelezen uit de releasebron `KVM-releases/koersvoormorgen-backend` + frontend `mna/02`.
+Script: `reports/daily-qa/daily-qa-20261025.mjs` (alleen staging, één run).
+
+**Vooraf:** 24 okt staat niet in dit logboek terwijl `reports/daily-qa/daily-qa-20261024.mjs` (accountancy/Verkoop,
+CRM-relatielaag) bestaat; of en hoe ver die ronde liep is niet vast te stellen. Staging-D1 gecontroleerd: geen
+`DAILY_QA_20261024`-restanten (trajecten, gebruikers, CRM-organisaties = 0). Wel 5 oudere restanten met `DAILY_QA` in
+de naam (4× "DAILY_QA Traject van Eigenaar/Lid A", eind sep; 1× `DAILY_QA_KMF1_… race`, begin okt), niet van deze
+routine; bewust niet aangeraakt.
+
+**Resultaat: 23 van 28 checks geslaagd; de 5 rode checks horen bij één bevinding.** Goed: trajecten in DB als mkb/
+Opvolging/koperszijde; opslaan vóór platformvoorwaarden 403; verkoper slaat commercieel op (velden, checklist, notitie,
+DB teruggelezen); begeleider leest traject en voegt veld toe (DB 4 velden); wijzigingenlog toont per rol wie wat
+wijzigde (begeleider ja, koper 401, begeleider B leeg); koper kan niet schrijven (403, DB ongewijzigd); begeleider
+niet in financieel (403), verkoper wel (200, DB); begeleider B schrijft alleen in traject B; objectwaarde 400;
+onbekende code 404.
+
+**Gevonden (1, P1 data-integriteit): MASTER N-146 / OPEN-BEVINDINGEN P1-98 (runtime staging serverhelft + code-niveau
+browserhelft).** Probleem: verkoper en begeleider overschrijven elkaars invoer in dezelfde fase zonder melding.
+Reproductie: begeleider voegt Orderportefeuille + checklistpunt + notitie toe; verkoper slaat daarna op vanuit zijn
+eerder geladen staat (alleen een percentage gewijzigd) → alle drie weg in D1; de wijzigingenlog meldt het verdwijnen
+niet. Oorzaak: `/mna/save` vervangt per fase de hele data_json/checklist/notitie (`worker/11` r.979-982) en
+`saveAll()` (`mna/02` r.551-609; Opslaan, uitloggen, tabwissel, 30s-autosave, pagina verlaten) stuurt alle fases met
+data vanuit de lokale browserstaat, zonder verversen of versiecontrole. De browserhelft is code-niveau, niet in een
+browser gereproduceerd. Aanvullend: 5 gelijktijdige saves met elk één ander veld laten 1 veld over; dat bevestigt
+alleen dezelfde vervang-semantiek (de frontend stuurt altijd de hele fase), geen aparte fout. Fix: niet zelf gebouwd,
+ontwerpkeuze (samenvoegen per veld, versiecontrole + conflictmelding, of alleen gewijzigde velden sturen) en zone
+data-integriteit/Breaker-review. Foutpropagatie: adv.html gebruikt `/mna/save` niet (grep); het groepsrij-pad
+(`saveGroepsniveauVelden`) heeft dezelfde vervang-semantiek (N-37/#37 al bekend voor consolidatieCheck); andere
+JSON-blob-schrijvers met meerdere rollen niet verder doorzocht in deze ronde.
+
+**Niet getest:** browser-klikpad (de stale-staat-kant is code-niveau), entiteit-rijen (consolideerFase), documentupload
+(bewust geen AI-kosten), e-mailnotificatie na opslaan (staging zonder RESEND), meekijker/eigen specialist, productie.
+Welke backendversie op staging draait is niet apart vastgesteld.
+
+**Opgeruimd:** beide `DAILY_QA_20261025`-trajecten (200) en de testadviseur (200); D1-controle trajecten/mna_data/
+mna_wijzigingen/gebruikers = 0.
+
+**Score:** 75 (één bevinding niet zelfstandig opgelost: wacht op een ontwerpkeuze van Marcel).
+- 2026-10-25 — dagelijkse knoppentest: melding aan marilyn (stap 5b) gelukt, HTTP 200.
+- 2026-10-29 — diepe-audit-routine: geen open aanvraag, cadans nog niet verstreken (dag 29, buiten venster 1–3).
+
+## 2026-10-29 — dagelijkse-knoppentest-routine (scheduled task)
+
+**Rotatiekeuze:** sector **consultancy** (het langst geleden in dit logboek: 13 okt), trajecttype **Verkoop** (16 okt;
+24 okt ongelogd), **verkoperszijde** (25 okt was koperszijde). Rollen: adviseur (extern traject), verkoper, begeleider
+A/B, koper, ADMIN_KEY (muur). Accent: **financiële broncontrole + correctie** (`worker/40`, routes in `worker/11`) en
+**juridische broncontrole** (`worker/41`) op een groepsstructuur (holding + 2 werkmaatschappijen, groepsbeeld
+`worker/42`); nog nooit door deze routine getest. Eigen specialist overwogen, maar al gedekt op 2 en 11 okt. Uploads als
+veld/waarde-CSV (deterministisch, `methode: text_extract`), dus geen AI. Code gelezen uit de releasebron
+`Codex/KVM-releases/koersvoormorgen-backend`. Staging-Worker 320b4f70 (deploy 28 okt 22:51). Script:
+`reports/daily-qa/daily-qa-20261029.mjs` (alleen staging, één run).
+
+**Resultaat: 61 van 61 checks geslaagd.** Goed: broncontrole vóór platformvoorwaarden 403; entiteiten (holding-rol in
+DB), koper kan geen entiteit toevoegen (401); groepsbeeld 4,1 mln / 690k met holding uitgesloten, `BRUTO_BEREKEND`,
+`officiele_consolidatie:false`; upload financieel door begeleider en koper 403, verkoper 200 (DB: juiste entiteit,
+PROCESSED). Lezen: verkoper 200 + correctierecht, begeleider 200 zonder correctierecht, koper 403 zonder inhoud,
+ADMIN_KEY op extern traject 403, entiteit van traject B 404, begeleider B 404, ongeldige entiteit_id 400; scope per
+entiteit klopt, bron 2.450.000 naast huidige 2.400.000, crosscheck eerlijk `ONVOLDOENDE_BRONNEN`; DTO zonder
+toegangscodes of r2_key. Correctie: begeleider/koper/ADMIN_KEY 403; onbekend veld, korte reden, niet-canoniek bedrag,
+niet-corrigeerbaar veld 400; bron van andere entiteit 409; verouderde verwachte waarde 409 met huidige waarde; DB en
+audit ongewijzigd na alle weigeringen. **5 gelijktijdige correcties → precies één 200 + vier 409 VEROUDERD**, één
+auditrij (rol verkoper, document gekoppeld, schema v1), label en overige velden behouden, `nog_actueel` true; afgeleide
+groepswaarde niet corrigeerbaar. Juridisch: verkoper/begeleider 200 (alleen begeleider beoordelingsrecht), koper en
+ADMIN_KEY 403; zonder AI-bron 0 bruikbare bronnen en `ONVOLDOENDE_BRONINFORMATIE` (niets verzonnen); beoordeling zonder
+bronvoorstel 409, verkoper/ADMIN_KEY 403, verkeerde digest 409, ongeldige beslissing 400; geen auditrij, entiteiten
+ongewijzigd. Entiteit verwijderen: data weg, document losgekoppeld (daarna zichtbaar op trajectniveau), groepsrij
+herberekend (4,1 → 2,45 mln): het N-128-herstel werkt kennelijk op staging (welke build precies is niet vastgesteld).
+
+**Gevonden (1, P2 data-integriteit): MASTER N-149 / OPEN-BEVINDINGEN P2-85 (runtime staging + code-niveau).** Probleem:
+na een financiële broncorrectie op een werkmaatschappij blijft het groepstotaal op de oude som staan. Reproductie: WM1
+2,4 → 2,45 mln via de correctieroute (200) → groepsrij omzet3 blijft 4,1 mln, entiteiten tellen 4,15 mln op. Oorzaak:
+`voerFinancieleBroncorrectieUit` wijzigt alleen de entiteit-rij en draait bewust geen `consolideerFase`
+(`docs/financial-source-control.md`); dat botst met het besluit bij N-128. Fix: niet zelf gebouwd (zone A, gedocumenteerde
+ontwerpkeuze); kleinste optie staat in N-149. Foutpropagatie: alle `mna_data`-schrijvers gegrept; `/mna/save` en de
+verwijdertak (staging) herberekenen, de overige schrijvers raken geen entiteit-rijen. Blootstelling beperkt: geen
+frontend roept de broncontrole aan (alleen directe API).
+
+**Niet getest:** browser-klikpad (er is geen UI voor de broncontrole), juridische beoordeling met een echt AI-bronvoorstel
+(bewust geen AI-kosten), crosscheck met twee onafhankelijke bronnen, correctie op een vergrendeld traject, meekijker/eigen
+specialist, productie.
+
+**Opgeruimd:** beide `DAILY_QA_20261029`-trajecten (200) en de testadviseur (200); D1-controle trajecten/data/
+entiteiten/documenten/wijzigingen/gebruikers = 0.
+
+**Score:** 75 (één bevinding niet zelfstandig opgelost: wacht op besluit van Marcel).
+- 2026-10-29 — dagelijkse knoppentest: melding aan marilyn (stap 5b) gelukt, HTTP 200.
+- 2026-11-05 — diepe-audit-routine: geen open aanvraag, cadans nog niet verstreken (5 nov, geen dag 1-3).
+
+## 2026-11-05 — dagelijkse-knoppentest-routine (scheduled task)
+
+**Rotatiekeuze:** sector **verhuizingen** (het langst geleden in dit logboek: 15 okt), trajecttype **Overname** (18 okt),
+**koperszijde** (`opdrachtgever_rol: "koper"`; 29 okt verkoperszijde). Rollen: adviseur (extern traject), verkoper,
+begeleider A/B, koper. Accent: **documentclassificatie** (productpunt 6/7: `worker/43`, upload-routes in `worker/14`,
+lijst/versies in `worker/15`), nog nooit door deze routine getest. Uploads als veld/waarde-CSV of txt (geen AI). Code
+gelezen uit de releasebron `KVM-releases/koersvoormorgen-backend` en de nieuwste kandidaat `wf001-be-20261105`. Welke
+build precies op staging draait is niet vastgesteld (`wrangler deployments list` gaf geen uitvoer). Script:
+`reports/daily-qa/daily-qa-20261105.mjs` (+ `-repro.mjs`), alleen staging.
+
+**Verloop runs (eerlijk):** run 1 liep na 15 uploads tegen de AI-kostenlimiet (15/min per IP op de uploadroutes,
+bedoeld gedrag): testontwerp, opgelost in de test met ruim 4,3 s tussen uploads. Runs 2–4 braken af op lokale
+netwerktime-outs (ETIMEDOUT, ook richting productie-/health, niet richting cloudflare.com): infra, geen productbevinding;
+het script probeert nu alleen bij een verbindingsfout vóór het verzoek opnieuw en logt dat. Bij één commando liep per
+vergissing een tweede, stille run mee; die is aantoonbaar opgeruimd (D1: 0 trajecten/gebruikers). Run 5: 53/54; de ene
+rode check (koper ziet lege lijst) bleek verwachting in de test, zie hieronder. Run 6 (eindrun): **56 van 56 geslaagd.**
+
+**Goed:** trajecten in DB als verhuizingen/Overname/koperszijde; upload vóór platformvoorwaarden 403. 14 ongeldige
+classificaties → elk 400 met de juiste foutcode en `geregistreerd:false` (onvolledig, GENERAL met overzicht of entiteit,
+onbekend overzicht/cijfersoort, periode > 1 jaar, niet-bestaande datum, eind vóór begin, FY buiten bereik, GROUP met
+entiteit, ENTITY zonder/met vreemde/met SQL-achtige entiteit, query en formulier tegenstrijdig) en D1 bevat daarna alleen
+het ene geaccepteerde document (query = formulier). GENERAL → STORED, niet geanalyseerd, overige velden null. ENTITY
+FORECAST FY2026 en GROUP ACTUAL halfjaar → NEEDS_REVIEW `GEEN_JAARREALISATIE`, geen velden, prognosecijfer nergens als
+realisatie. ENTITY ACTUAL gebroken boekjaar (1-4-2025 t/m 31-3-2026) → realisatie toepasbaar, `text_extract` PROCESSED,
+record met herkomst GEBRUIKER + 64-hex binding. Base64: GENERAL STORED met classificatie, entiteit van traject B 400 zonder
+registratie, koper 403; multipart koper 403; begeleider GENERAL in juridisch 200, in financieel 403. Lijst verkoper en
+begeleider: gesaneerde `documentclassificatie`, nooit `_documentclassificatie`/binding; vaste reden bij review;
+begeleider B ziet niets van A. Koper (na NDA): alleen goede documenten, geen classificatie/binding/verwerkingsvelden,
+geen interne id's, review-documenten onzichtbaar. Versies: v2 met andere periode, keten toont beide classificaties, geen
+binding, koper 403, verkoper B 404, standaardlijst alleen v2. **Integriteit:** cijfersoort in D1 gemanipuleerd → geen
+classificatie getoond; geldig record overgezet op ander document → geen classificatie; origineel teruggezet → weer
+zichtbaar. Verwijderen door verkoper werkt, koper kan niet verwijderen.
+
+**Gevonden: geen productbevindingen binnen deze combinatie.** Wel één testverwachting bijgesteld: na categorievrijgave
+met `force=1` maar zonder geldige NDA ziet de koper een lege documentenlijst (ook voor een document zonder
+classificatie, gereproduceerd met `-repro.mjs`). Dat is het N-151-besluit van Marcel (29-10: dataroom pas ná geldige NDA)
+en exact het testpatroon van N-157; de test controleert nu eerst dat lege resultaat en laat de koper daarna op het
+platform tekenen. Kanttekening (geen bevinding, al onderdeel van N-151/N-157): de vrijgaveroute antwoordt dan
+`koper_vrijgegeven:1` terwijl de koper niets ziet; of de begeleider-UI dat verschil toont is niet in de browser bekeken.
+Observatie: de base64-route zet een ENTITY FORECAST op STORED (niet NEEDS_REVIEW); die route analyseert nooit, dus er
+wordt niets overgenomen, consistent met het bewijsstuk-pad; niet als fout aangemerkt.
+
+**Niet getest:** browser-klikpad (geen UI-classificatiekeuze bekeken), AI-extractie met classificatie (bewust geen
+AI-kosten), consolidatie/groepsbeeld na een geclassificeerde upload, meekijkerweergave met classificatie (code-niveau:
+`worker/21` saneert via `zonderClassificatie`), eigen specialist, productie.
+
+**Opgeruimd:** alle `DAILY_QA_20261105`-trajecten (elke run, 200) en testadviseurs (200); D1-controle na de eindrun
+trajecten/documenten/entiteiten/gebruikers = 0.
+
+**Score:** 100 (geen bevindingen in deze combinatie; geen bewijs van foutloosheid).
+- 2026-11-05 — dagelijkse knoppentest: melding aan marilyn (stap 5b) gelukt, HTTP 200.

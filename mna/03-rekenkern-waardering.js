@@ -646,6 +646,44 @@ function dvBerekenOpbrengstBrug(p,closing){
   };
 }
 
+// MASTER #91 F2 (28 okt 2026): één transactiescenario doorrekenen vanaf de aandelenwaarde (100%) uit
+// dvBerekenOpbrengstBrug — geen nieuwe waardering. Alle percentages komen uit het door de adviseur
+// vastgelegde scenario (worker/43 valideert: betaaldelen samen 100, belang+behouden <= 100). Geen
+// eindige aandelenwaarde → alle bedragen null (nooit een gegokte waarde). Negatieve aandelenwaarde →
+// bedragen 0 met de vlag equityNegatief (zelfde clamping als de opbrengst-brug).
+function dvBerekenTransactieScenario(equityValue100,s){
+  var num=function(v){var x=Number(v);return isFinite(x)?x:0;};
+  if(typeof equityValue100!=='number'||!isFinite(equityValue100)||!s||typeof s!=='object'){
+    return {geenEquity:true,equityNegatief:false,aandelenwaarde100:null,verkochtBelang:null,direct:null,earnOut:null,vendorLoan:null,gespreid:null,behoudenBelangWaarde:null};
+  }
+  var eq=Math.max(0,equityValue100);
+  var verkocht=eq*num(s.belang_pct)/100;
+  return {
+    geenEquity:false,equityNegatief:equityValue100<0,aandelenwaarde100:equityValue100,
+    verkochtBelang:verkocht,
+    direct:verkocht*num(s.direct_pct)/100,
+    earnOut:verkocht*num(s.earn_out_pct)/100,
+    vendorLoan:verkocht*num(s.vendor_loan_pct)/100,
+    gespreid:verkocht*num(s.gespreid_pct)/100,
+    behoudenBelangWaarde:eq*num(s.behouden_belang_pct)/100
+  };
+}
+var DV_TM_STRUCTUUR={share:'aandelentransactie',asset:'activa-passivatransactie',fusie:'fusie',anders:'andere vorm',onbekend:'structuur nog onbekend'};
+function dvTabelTransactieScenarios(model,brug){
+  if(!model||!Array.isArray(model.scenarios)||!model.scenarios.length||!brug)return '';
+  var kop=['','Ondernemingswaarde','Aandelenwaarde (100%)','Contant bij closing','Uitgesteld (gespreid)','Earn-out','Vendor loan','Behouden belang'];
+  var rijen=model.scenarios.map(function(s){
+    var r=dvBerekenTransactieScenario(brug.equityValue100,s);
+    var m=function(v){return v===null?'':dvMln(v);};
+    return [String(s.naam||'')+' ('+(DV_TM_STRUCTUUR[s.structuur]||'')+', belang '+(Number(s.belang_pct)||0)+'%)',
+      dvMln(brug.ev),m(r.aandelenwaarde100),m(r.direct),m(r.gespreid),m(r.earnOut),m(r.vendorLoan),m(r.behoudenBelangWaarde)];
+  });
+  var html='<div style="font-weight:600;margin:.75rem 0 .35rem">Transactiescenario\'s</div>'+dvRenderTabelHtml(kop,rijen);
+  html+='<div style="font-size:9pt;color:#8a8880;font-style:italic;margin-top:-.75rem">Bedragen in &euro; mln, berekend vanaf de aandelenwaarde uit de opbrengst-brug hierboven en de percentages per scenario zoals vastgelegd door de adviseur. Earn-out en vendor loan zijn uitgestelde en deels voorwaardelijke betalingen.</div>';
+  if(brug.equityNegatief)html+='<div style="font-size:9pt;color:#c0392b;margin-top:.25rem">De aandelenwaarde is negatief; de scenariobedragen zijn op 0 gezet. Dit vraagt een andere transactiestructuur.</div>';
+  return html;
+}
+
 function dvTabelOpbrengstBrug(b){
   var rows=[
     ['Ondernemingswaarde (100%, bewezen basis)',dvMln(b.ev)],
