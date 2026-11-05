@@ -17,6 +17,12 @@ var MT_SCHERMEN = [
   ['analyse', 'Analyse en waardering', '&#128202;'],
   ['toegang', 'Koper-toegang', '&#128275;']
 ];
+// Design 2.0 (N-174 R1): alleen met <html data-ui="2">. Zonder schakelaar blijft alles exact zoals hierboven.
+function mtUi2() { return typeof document !== 'undefined' && document.documentElement.getAttribute('data-ui') === '2'; }
+function mtSchermen() {
+  if (!mtUi2()) return MT_SCHERMEN;
+  return [MT_SCHERMEN[0], ['journey', 'Journey', '']].concat(MT_SCHERMEN.slice(1));
+}
 // Andere begeleiderschermen horen bij een menu-item (zelfde app, ander bestaand scherm).
 var MT_SCREEN_MENU = { begeleider: null, main: 'dd', dataroom: 'documenten', waardering: 'analyse', logboek: 'communicatie', handleiding: 'handleiding', summary: 'dd', koopmandaat: 'dashboard' };
 function mtEsc(v) { return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
@@ -32,6 +38,7 @@ function mtSchermVanBlok(el) {
   if (!el.children.length && el.textContent.trim() === 'Due diligence voortgang') return 'dd';
   if (/^bg-[a-z-]+-out$/.test(id)) return 'uitvoer';
   if (id === 'kb-topbanner') return 'altijd';
+  if (mtUi2() && heeft('#jr-begeleider')) return 'journey';
   if (id === 'kd-plek') return 'kandidaten';
   if (id === 'bg-consistentie') return 'documenten';
   if (id === 'mt-dd-anker' || heeft('[id^="bg-risico-badge-"]')) return 'dd';
@@ -50,7 +57,7 @@ function mtBlokken() {
 function mtBeschikbaar() {
   var aanwezig = {};
   mtBlokken().forEach(function (el) { var s = el.getAttribute('data-mt-scherm'); if (s === 'kandidaten' && el.hidden) return; aanwezig[s] = true; });
-  return MT_SCHERMEN.filter(function (s) { return s[0] === 'dashboard' || aanwezig[s[0]]; });
+  return mtSchermen().filter(function (s) { return s[0] === 'dashboard' || aanwezig[s[0]]; });
 }
 
 // Toon op het dashboardscherm alleen de blokken van het gekozen onderdeel.
@@ -79,6 +86,7 @@ function mtToepassen() {
 
 // Dashboardtegels: per onderdeel de actuele stand uit de bestaande blokken, met één klik naar het scherm.
 var MT_UITLEG = {
+  journey: 'Alle 14 fasen van de transactie met taken, uitvoerder, status en de documenten per fase.',
   dd: 'Voortgang per categorie. Open een categorie om de ingevulde gegevens en documenten te bekijken of een risico vast te leggen.',
   documenten: 'Alle documenten van dit traject en de controle op tegenstrijdigheden tussen documenten.',
   kandidaten: 'Longlist, shortlist en het besluit van de opdrachtgever per kandidaat.',
@@ -94,7 +102,7 @@ function mtSchermkop(wrap) {
     var na = wrap.querySelector('[data-mt-scherm="altijd"]'); wrap.insertBefore(kop, na ? na.nextSibling : wrap.firstChild);
   }
   kop.removeAttribute('data-mt-verborgen');
-  var s = MT_SCHERMEN.filter(function (x) { return x[0] === MT.scherm; })[0];
+  var s = mtSchermen().filter(function (x) { return x[0] === MT.scherm; })[0];
   var h = '<h2>' + mtEsc(s ? s[1] : '') + '</h2><span class="mt-sub">' + mtEsc(MT_UITLEG[MT.scherm] || '') + '</span>';
   if (kop.getAttribute('data-mt-html') !== h) { kop.innerHTML = h; kop.setAttribute('data-mt-html', h); }
 }
@@ -107,7 +115,10 @@ function mtTegels(wrap) {
     bak.setAttribute('data-mt-scherm', 'dashboard');
     var kop = wrap.querySelector('[data-mt-scherm="altijd"]');
     wrap.insertBefore(bak, kop ? kop.nextSibling : wrap.firstChild);
-    bak.addEventListener('click', function (e) { var b = e.target.closest('[data-mt-naar]'); if (b) mtNaar(b.getAttribute('data-mt-naar')); });
+    bak.addEventListener('click', function (e) {
+      var a = e.target.closest('[data-jr-actie]'); if (a && typeof jrActie === 'function') { jrActie(a.getAttribute('data-jr-actie')); return; }
+      var b = e.target.closest('[data-mt-naar]'); if (b) mtNaar(b.getAttribute('data-mt-naar'));
+    });
   }
   bak.removeAttribute('data-mt-verborgen');
   var tekst = function (sel) { var el = wrap.querySelector(sel); return el ? el.textContent.replace(/\s+/g, ' ').trim() : ''; };
@@ -127,6 +138,11 @@ function mtTegels(wrap) {
     analyse: 'Waardering, herkomst van gegevens en koperfit',
     toegang: toegang
   };
+  if (mtUi2() && typeof mtCockpitHtml === 'function') {
+    var hc = mtCockpitHtml(stand);
+    if (bak.getAttribute('data-mt-html') !== hc) { bak.innerHTML = hc; bak.setAttribute('data-mt-html', hc); }
+    return;
+  }
   var h = '<div class="mt-tegels-kop"><h2>Overzicht</h2><span class="mt-sub">Kies een onderdeel om ermee te werken. De journey en de volgende stap staan hieronder.</span></div><div class="mt-tegel-grid">';
   mtBeschikbaar().forEach(function (s) {
     if (s[0] === 'dashboard') return;
@@ -148,15 +164,20 @@ function mtZijbalk() {
     zij.addEventListener('click', function (e) { var b = e.target.closest('[data-mt-naar]'); if (b) mtNaar(b.getAttribute('data-mt-naar')); });
   } else if (zij !== app.firstChild) app.insertBefore(zij, app.firstChild);
   var actief = S.screen === 'begeleider' ? MT.scherm : MT_SCREEN_MENU[S.screen];
-  var items = S.screen === 'begeleider' ? mtBeschikbaar() : MT_SCHERMEN.filter(function (s) { return s[0] !== 'kandidaten' || (MT.kandidatenBekend !== false); });
+  var items = S.screen === 'begeleider' ? mtBeschikbaar() : mtSchermen().filter(function (s) { return s[0] !== 'kandidaten' || (MT.kandidatenBekend !== false); });
   var t = S.traject || {};
   var h = '<div class="mt-zij-kop"><span class="mt-zij-merk">Koers voor <b>Morgen</b></span><span class="mt-zij-traject" title="' + mtEsc(t.kantoor_naam || '') + '">' + mtEsc(t.kantoor_naam || 'Traject') + '</span>'
-    + (t.traject_type ? '<span class="mt-zij-type">' + mtEsc(t.traject_type) + '</span>' : '') + '</div><ul class="mt-zij-lijst">';
+    + (t.traject_type ? '<span class="mt-zij-type">' + mtEsc(t.traject_type) + '</span>' : '')
+    + (mtUi2() && typeof WORKER !== 'undefined' && /staging/.test(WORKER) ? '<span class="mt-zij-omgeving">Testomgeving (staging)</span>' : '') + '</div><ul class="mt-zij-lijst">';
   items.forEach(function (s) {
-    h += '<li><button type="button" class="mt-zij-knop" data-mt-naar="' + s[0] + '"' + (actief === s[0] ? ' aria-current="page"' : '') + '><span class="mt-zij-ico" aria-hidden="true">' + s[2] + '</span><span>' + mtEsc(s[1]) + '</span></button></li>';
+    h += '<li><button type="button" class="mt-zij-knop" data-mt-naar="' + s[0] + '"' + (actief === s[0] ? ' aria-current="page"' : '') + '><span class="mt-zij-ico" aria-hidden="true">' + (mtUi2() ? mtIcoon(s[0]) : s[2]) + '</span><span>' + mtEsc(s[1]) + '</span></button></li>';
   });
-  h += '</ul><div class="mt-zij-voet"><button type="button" class="mt-zij-knop" data-mt-naar="handleiding"' + (actief === 'handleiding' ? ' aria-current="page"' : '') + '><span class="mt-zij-ico" aria-hidden="true">&#128214;</span><span>Handleiding</span></button></div>';
-  if (zij.getAttribute('data-mt-html') !== h) { zij.innerHTML = h; zij.setAttribute('data-mt-html', h); }
+  h += '</ul><div class="mt-zij-voet"><button type="button" class="mt-zij-knop" data-mt-naar="handleiding"' + (actief === 'handleiding' ? ' aria-current="page"' : '') + '><span class="mt-zij-ico" aria-hidden="true">' + (mtUi2() ? mtIcoon('handleiding') : '&#128214;') + '</span><span>Handleiding</span></button></div>';
+  if (zij.getAttribute('data-mt-html') !== h) {
+    zij.innerHTML = h; zij.setAttribute('data-mt-html', h);
+    // Tablet/mobiel (menu als balk): het actieve onderdeel altijd in beeld schuiven.
+    if (mtUi2()) { var act = zij.querySelector('[aria-current="page"]'); if (act && zij.scrollWidth > zij.clientWidth) { try { act.scrollIntoView({ block: 'nearest', inline: 'center' }); } catch (e) {} } }
+  }
   if (S.screen === 'begeleider') MT.kandidatenBekend = items.some(function (s) { return s[0] === 'kandidaten'; });
 }
 
@@ -169,7 +190,7 @@ function mtNaar(id) {
   try { window.scrollTo(0, 0); } catch (e) {}
 }
 // Compatibel met bestaande aanroepen (WF-001): mtGa(id) opent nu het scherm in plaats van te scrollen.
-function mtGa(id) { mtNaar({ overzicht: 'dashboard', journey: 'dashboard', dd: 'dd', documenten: 'documenten', kandidaten: 'kandidaten', communicatie: 'communicatie' }[id] || id); }
+function mtGa(id) { mtNaar({ overzicht: 'dashboard', journey: mtUi2() ? 'journey' : 'dashboard', dd: 'dd', documenten: 'documenten', kandidaten: 'kandidaten', communicatie: 'communicatie' }[id] || id); }
 // Maak een element zichtbaar door het scherm te openen waar het in staat (voor knoppen uit de journey en meldingen).
 function mtToonElement(el) {
   if (!el || !mtActief() || S.screen !== 'begeleider') return;

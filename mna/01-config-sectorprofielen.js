@@ -2,7 +2,18 @@
 // Standaard altijd productie. Alleen overschrijfbaar via ?worker=... in de URL — bedoeld voor de
 // staging-omgeving testen (Playwright UI-tests, of handmatig), nooit als permanente instelling
 // (geen localStorage/cookie: sluit je het tabblad, is het weer productie).
-var WORKER=new URLSearchParams(location.search).get('worker')||'https://kantoorinzicht.marcel-bisschops.workers.dev';
+// Welke backend (N-174 R1, 05-11-2026): op koersvoormorgen.nl ongewijzigd (productie, of een expliciete ?worker=).
+// Buiten het productiedomein is staging de standaard, zodat een preview of lokale server nooit onbedoeld
+// productiegegevens toont; op een *.pages.dev-preview is staging zelfs verplicht. Lokaal blijft een expliciete
+// ?worker= werken (testsuites en de pre-push-controle gebruiken dat).
+var WORKER=kvmKiesWorker(location.hostname,new URLSearchParams(location.search).get('worker'));
+function kvmKiesWorker(host,gevraagd){
+  var PROD='https://kantoorinzicht.marcel-bisschops.workers.dev', STAGING='https://kantoorinzicht-staging.marcel-bisschops.workers.dev';
+  host=String(host||'').toLowerCase();
+  if(host==='koersvoormorgen.nl'||/\.koersvoormorgen\.nl$/.test(host)) return gevraagd||PROD;
+  if(/\.pages\.dev$/.test(host)) return STAGING;
+  return gevraagd||STAGING;
+}
 // fetch() zelf timet nooit uit — bij een stallende verbinding (slechte wifi, cold-start-hik, een
 // proxy die de connectie openhoudt zonder data) blijft een aanroep zonder deze wrapper voor altijd
 // hangen: geen foutmelding, geen herstel, de knop blijft "Laden..." tonen. Vooral riskant op een

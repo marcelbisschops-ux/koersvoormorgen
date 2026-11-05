@@ -13,26 +13,66 @@ var JR_VORM = { verkoop: 'Verkoop van de onderneming', koop: 'Aankoop (buy-side)
 function jrEsc(v) { return v === null || v === undefined ? '' : String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
 function jrChip(s) { var x = JR_STATUS[s] || [s, 'jr-open']; return '<span class="jr-chip ' + x[1] + '">' + jrEsc(x[0]) + '</span>'; }
 
+// Design 2.0 (N-174 R1): alleen voor de begeleider en alleen met <html data-ui="2">. Zelfde 14 fasen, zelfde knoppen en
+// data-attributen; alleen gegroepeerd in etappes. Fasen en statussen komen ongewijzigd uit de backend.
+var JR2_ETAPPES = [['Voorbereiding', 0, 3], ['Marktbenadering', 3, 6], ['NDA en selectie', 6, 8], ['Biedingen en onderzoek', 8, 11], ['Contractering', 11, 12], ['Afronding', 12, 14]];
+function jrUi2(d, opts) {
+  return !!(opts && opts.docs && d && d.rol === 'begeleider' && d.niveau !== 'koopmandaat' && d.fasen && d.fasen.length === 14
+    && typeof document !== 'undefined' && document.documentElement.getAttribute('data-ui') === '2');
+}
+function jrStapLi(f, gekozen, d) {
+  var actief = f.nr === gekozen, huidig = f.nr === d.huidige_fase;
+  return '<li><button type="button" role="tab" class="jr-stap ' + (JR_STATUS[f.status] || ['', 'jr-open'])[1] + (actief ? ' jr-actief' : '') + (huidig ? ' jr-huidig' : '') + '" data-jr-fase="' + f.nr + '" aria-selected="' + actief + '">'
+    + '<span class="jr-nr">' + (f.status === 'gereed' ? '&#10003;' : f.nr) + '</span><span class="jr-naam">' + jrEsc(f.titel) + '</span>'
+    + (huidig ? '<span class="jr-nu">nu</span>' : '') + '</button></li>';
+}
+function jrEtappesHtml(d, gekozen) {
+  var h = '<div class="jr2-etappes" role="tablist" aria-label="Fasen van het traject">';
+  JR2_ETAPPES.forEach(function (e) {
+    var fasen = d.fasen.slice(e[1], e[2]);
+    var telt = fasen.filter(function (f) { return f.status !== 'nvt'; });
+    var gereed = telt.filter(function (f) { return f.status === 'gereed'; }).length;
+    var nu = fasen.some(function (f) { return f.nr === d.huidige_fase; });
+    var klaar = telt.length > 0 && gereed === telt.length;
+    h += '<section class="jr2-etappe' + (nu ? ' jr2-nu' : '') + (klaar ? ' jr2-klaar' : '') + '"><div class="jr2-etappe-kop"><span class="jr2-etappe-naam">' + jrEsc(e[0]) + '</span>'
+      + '<span class="jr2-etappe-telling">' + (telt.length ? gereed + ' van ' + telt.length + ' gereed' : 'niet van toepassing') + '</span></div>'
+      + '<div class="jr2-segmenten" aria-hidden="true">' + fasen.map(function (f) { return '<i class="jr2-seg jr2-' + jrEsc(f.status) + '"></i>'; }).join('') + '</div>'
+      + '<ol class="jr-lijn jr2-lijn">' + fasen.map(function (f) { return jrStapLi(f, gekozen, d); }).join('') + '</ol></section>';
+  });
+  return h + '</div>';
+}
+// Per fase: hoeveel open of lopende taken elke uitvoerder heeft (alleen uit de taken die de backend levert).
+function jrAanZetHtml(f) {
+  var tel = {};
+  f.items.forEach(function (x) { if ((x.status === 'open' || x.status === 'bezig') && x.eigenaar) tel[x.eigenaar] = (tel[x.eigenaar] || 0) + 1; });
+  var rollen = ['begeleider', 'verkoper', 'koper'].filter(function (r) { return tel[r]; });
+  if (!rollen.length) return '';
+  return '<div class="jr2-aanzet"><div class="jr2-zijkop">Wie is aan zet</div><div class="jr2-aanzet-rij">' + rollen.map(function (r) {
+    return '<div class="jr2-aanzet-vak"><span>' + jrEsc(JR_EIGENAAR[r] || r) + '</span><b>' + tel[r] + '</b><span>' + (tel[r] === 1 ? 'taak' : 'taken') + '</span></div>';
+  }).join('') + '</div></div>';
+}
 // Pure weergave. opts: { gekozen: fasenr, docs: true (begeleider: plek voor documentkaarten), titel }
 function jrHtml(d, opts) {
   opts = opts || {};
   if (!d || !d.fasen) return '';
   var gekozen = opts.gekozen || d.huidige_fase || (d.volgende_stap && d.volgende_stap.fase) || 1;
   var rol = d.rol;
-  var h = '<div class="jr" data-rol="' + jrEsc(rol) + '">';
+  var ui2 = jrUi2(d, opts);
+  var h = '<div class="jr' + (ui2 ? ' jr2' : '') + '" data-rol="' + jrEsc(rol) + '">';
   h += '<div class="jr-kop"><div>' + (opts.titel === '' ? '' : '<div class="jr-titel">' + jrEsc(opts.titel || 'M&A Journey') + '</div>')
     + '<div class="jr-sub">' + jrEsc(JR_VORM[d.transactievorm] || '') + (d.niveau === 'koopmandaat' ? ' &middot; koopmandaat met meerdere doelwitten' : '') + '</div></div>';
   if (d.volgende_stap) h += '<div class="jr-volgende"><span>Volgende stap' + (rol === 'begeleider' ? '' : ' voor u') + '</span><b>' + jrEsc(d.volgende_stap.label) + '</b></div>';
   else if (rol === 'koper' && d.nda_geldig === false) h += '';
   h += '</div>';
-  h += '<ol class="jr-lijn" role="tablist" aria-label="Fasen van het traject">';
-  d.fasen.forEach(function (f) {
+  if (ui2) h += jrEtappesHtml(d, gekozen);
+  else h += '<ol class="jr-lijn" role="tablist" aria-label="Fasen van het traject">';
+  if (!ui2) d.fasen.forEach(function (f) {
     var actief = f.nr === gekozen, huidig = f.nr === d.huidige_fase;
     h += '<li><button type="button" role="tab" class="jr-stap ' + (JR_STATUS[f.status] || ['', 'jr-open'])[1] + (actief ? ' jr-actief' : '') + (huidig ? ' jr-huidig' : '') + '" data-jr-fase="' + f.nr + '" aria-selected="' + actief + '">'
       + '<span class="jr-nr">' + (f.status === 'gereed' ? '&#10003;' : f.nr) + '</span><span class="jr-naam">' + jrEsc(f.titel) + '</span>'
       + (huidig ? '<span class="jr-nu">nu</span>' : '') + '</button></li>';
   });
-  h += '</ol>';
+  if (!ui2) h += '</ol>';
   d.fasen.forEach(function (f) {
     h += '<div class="jr-paneel" data-jr-paneel="' + f.nr + '"' + (f.nr === gekozen ? '' : ' hidden') + '>';
     // WF-001 (WF-C): de begeleider kan een fase met reden op niet van toepassing zetten of weer opnemen.
@@ -69,7 +109,9 @@ function jrHtml(d, opts) {
         return '<li><span>' + jrEsc(w.naam) + '</span>' + jrChip(w.uitkomst) + (w.traject_fase ? '<span class="jr-sub">transactie in fase ' + w.traject_fase + '</span>' : '') + '</li>';
       }).join('') + '</ul></div>';
     }
+    if (ui2) h += '<div class="jr2-zij">' + jrAanZetHtml(f) + '<div class="jr2-zijkop">Documenten in deze fase</div>';
     if (opts.docs) h += '<div class="jr-docs" data-jr-docs="' + f.nr + '"></div>';
+    if (ui2) h += '</div>';
     h += '</div>';
   });
   h += '</div>';

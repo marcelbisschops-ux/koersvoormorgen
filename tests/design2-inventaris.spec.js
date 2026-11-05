@@ -20,7 +20,7 @@ let V, K, T;
 async function inventaris(page) {
   return page.evaluate(() => Array.from(document.querySelectorAll('#app button, #app a, #app input, #app select, #app textarea, #mt-zij [data-mt-naar]'))
     .filter((e) => !e.closest('[data-mt-verborgen]') && !e.closest('[hidden]') && e.getBoundingClientRect().height > 0 && getComputedStyle(e).visibility !== 'hidden')
-    .map((e) => [e.tagName, e.id || '', (e.textContent || e.value || e.getAttribute('aria-label') || '').replace(/\s+/g, ' ').trim().slice(0, 60), (e.getAttribute('onclick') || '').slice(0, 60), e.getAttribute('href') || '', e.getAttribute('data-mt-naar') || '', e.type || ''].join('|'))
+    .map((e) => [e.tagName, e.id || '', (e.textContent || e.value || e.getAttribute('aria-label') || '').replace(/[\p{Extended_Pictographic}\u2190-\u21FF\u2300-\u23FF\u25A0-\u27BF\uFE0F]/gu, '').replace(/\s+/g, ' ').trim().slice(0, 60), (e.getAttribute('onclick') || '').slice(0, 60), e.getAttribute('href') || '', e.getAttribute('data-mt-naar') || '', e.type || ''].join('|'))
     .sort());
 }
 async function login(page, code, ui) {
@@ -106,6 +106,18 @@ test.describe('Design 2.0 R0 — inventaris uit/aan', () => {
       await c2.close();
       fs.writeFileSync(path.join(UIT, 'inventaris-' + rol + '.json'), JSON.stringify({ ui1: a, ui2: b }, null, 1));
       const verschil = [];
+      if (rol === 'begeleider') {
+        // R1: de begeleidersapp is heringedeeld (eigen Journey-scherm, cockpit). Eis: elk bestaand element komt in
+        // Design 2.0 ergens terug, even vaak of vaker (geen functie kwijt). Nieuwe elementen zijn toegestaan.
+        const tel = (o) => { const m = {}; Object.values(o).flat().forEach((e) => { m[e] = (m[e] || 0) + 1; }); return m; };
+        const t1 = tel(a), t2 = tel(b);
+        const kwijt = Object.keys(t1).filter((e) => !t2[e]);
+        console.log('begeleider: ' + Object.keys(t1).length + ' unieke elementen uit, ' + Object.keys(t2).length + ' aan, kwijt: ' + kwijt.length + (kwijt.length ? ' → ' + kwijt.slice(0, 8).join(' ; ') : ''));
+        fs.writeFileSync(path.join(UIT, 'inventaris-begeleider-kwijt.json'), JSON.stringify(kwijt, null, 1));
+        expect(kwijt, 'bestaande begeleider-elementen die in Design 2.0 ontbreken').toEqual([]);
+        expect(f1.concat(f2), 'scriptfouten').toEqual([]);
+        return;
+      }
       for (const s of new Set([...Object.keys(a), ...Object.keys(b)])) {
         const x = a[s] || [], y = b[s] || [];
         const alleen1 = x.filter((e) => !y.includes(e)), alleen2 = y.filter((e) => !x.includes(e));

@@ -801,6 +801,12 @@ test.describe('KANTOORINZICHT 3-ROLLEN E2E', () => {
       // isVisible() wacht NIET (directe snapshot) — de begeleider-dashboard-render start pas ná
       // S.rol, dus expect(...).toBeVisible() (met auto-retry) i.p.v. een race-gevoelige istante check.
       const knop = page.locator('#bg-nda-composer-actie');
+      // Design 2.0 (N-174 R1): de documentkaarten staan in het eigen Journey-scherm, bij hun fase. Zonder de
+      // schakelaar (productie) blijft deze test exact zoals hij was.
+      if (await page.evaluate(() => document.documentElement.getAttribute('data-ui') === '2')) {
+        await page.waitForSelector('#mt-zij [data-mt-naar="journey"]', { timeout: 20000 });
+        await page.click('#mt-zij [data-mt-naar="journey"]');
+      }
       let knopZichtbaar = false;
       try { await expect(knop).toBeVisible({ timeout: 10000 }); knopZichtbaar = true; } catch (e) {}
       const ok = rol === 'tussenpersoon' && knopZichtbaar;
