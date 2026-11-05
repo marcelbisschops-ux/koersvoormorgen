@@ -254,6 +254,13 @@ async function main() {
     check('categorie-vrijgave ok:true', zet.json && zet.json.ok === true, JSON.stringify(zet.json));
     check('endpoint zet koper_vrijgegeven=1', zet.json && zet.json.koper_vrijgegeven === 1, JSON.stringify(zet.json));
 
+    // N-151/N-170 (05-11-2026): een vrijgave geeft pas toegang na een geldige NDA. Eerst negatief, dan tekent de koper
+    // de NDA zelf op het platform (geldig volgens ndaGeldig, geen e-mail).
+    const zonderNda = await api('POST', '/mna/traject/' + hoofdTraject.koper_code, { body: {} });
+    check('koper ziet vóór een geldige NDA nog geen vrijgegeven data', !((zonderNda.json && Array.isArray(zonderNda.json.data)) ? zonderNda.json.data : []).some(d => d.fase_id === 'financieel'));
+    const ndaK = await api('POST', '/mna/teken', { body: { code: hoofdTraject.koper_code, document: 'nda', naam: 'E2E Koper' } });
+    check('koper tekent de NDA op het platform', ndaK.json && ndaK.json.ok === true, JSON.stringify(ndaK.json).slice(0, 200));
+
     // Koper logt in: moet ALLEEN financieel zien, niet commercieel
     const kLogin = await api('POST', '/mna/traject/' + hoofdTraject.koper_code, { body: {} });
     const faseIds = (kLogin.json && Array.isArray(kLogin.json.data)) ? kLogin.json.data.map(d => d.fase_id) : [];
