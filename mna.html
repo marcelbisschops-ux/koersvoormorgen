@@ -201,10 +201,52 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--void);color:var(--s
 .jr-paneel{border:1px solid var(--border);border-radius:var(--r2);padding:.85rem 1rem;background:var(--panel)}
 .jr-paneel-kop{display:flex;justify-content:space-between;align-items:center;gap:.5rem;margin-bottom:.5rem;flex-wrap:wrap}
 /* WF-001 contexttabs per mandaat (mna/24) */
-.mt-balk{position:sticky;top:0;z-index:20;display:flex;gap:2px;overflow-x:auto;background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:2px 6px;margin-bottom:.75rem}
-.mt-tab{background:none;border:0;border-bottom:3px solid transparent;padding:.55rem .8rem;font:600 12.5px 'IBM Plex Sans',sans-serif;color:var(--mid);cursor:pointer;white-space:nowrap}
-.mt-tab[aria-current="true"]{border-bottom-color:var(--teal);color:var(--head)}
-.mt-tab:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+/* UX 05-11-2026: begeleider werkt in één applicatie met vaste navigatie links en afzonderlijke schermen (mna/24). */
+#app.mt-shell{display:grid;grid-template-columns:240px minmax(0,1fr);align-items:start}
+#app.mt-shell>:not(#mt-zij){grid-column:2;min-width:0}
+#app.mt-shell .wrap{max-width:1080px}
+#mt-zij{grid-column:1;grid-row:1/span 200;position:sticky;top:0;height:100vh;overflow-y:auto;background:var(--panel);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:1rem .75rem;gap:.75rem;z-index:30}
+.mt-zij-kop{display:flex;flex-direction:column;gap:2px;padding:0 .5rem .75rem;border-bottom:1px solid var(--border)}
+.mt-zij-merk{font-family:'Playfair Display',serif;font-size:15px;color:var(--head)}
+.mt-zij-traject{font-size:13px;font-weight:600;color:var(--head);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mt-zij-type{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.mt-zij-lijst{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
+.mt-zij-knop{display:flex;align-items:center;gap:10px;width:100%;background:none;border:0;border-radius:var(--r);padding:.55rem .6rem;font:600 13px 'IBM Plex Sans',sans-serif;color:var(--mid);cursor:pointer;text-align:left;min-height:40px}
+.mt-zij-knop:hover{background:var(--card);color:var(--head)}
+.mt-zij-knop[aria-current="page"]{background:var(--teal-bg);color:var(--head);box-shadow:inset 3px 0 0 var(--teal)}
+.mt-zij-knop:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.mt-zij-ico{width:20px;text-align:center;flex:0 0 20px}
+.mt-zij-voet{margin-top:auto;border-top:1px solid var(--border);padding-top:.5rem}
+[data-mt-verborgen]{display:none!important}
+@media(min-width:961px){body.mt-shell-aan #bg-ververs-fab{left:264px!important}}
+.mt-tegels{margin-bottom:1rem}
+.mt-tegels-kop{display:flex;flex-direction:column;gap:2px;margin-bottom:.6rem}
+.mt-tegels-kop h2{font-family:'Playfair Display',serif;font-size:1.25rem;color:var(--head);margin:0;font-weight:600}
+.mt-sub{font-size:12.5px;color:var(--muted)}
+.mt-schermkop{margin:0 0 1rem}
+.mt-tegel-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
+.mt-tegel{display:flex;flex-direction:column;align-items:flex-start;gap:4px;background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:.85rem .9rem;cursor:pointer;text-align:left;font-family:'IBM Plex Sans',sans-serif;min-height:92px}
+.mt-tegel:hover{border-color:var(--teal)}
+.mt-tegel:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.mt-tegel-ico{font-size:16px}
+.mt-tegel-naam{font-weight:600;font-size:13.5px;color:var(--head)}
+.mt-tegel-stand{font-size:12px;color:var(--muted);line-height:1.4}
+@media(max-width:960px){
+  #app.mt-shell{display:block}
+  #mt-zij{position:sticky;top:0;height:auto;flex-direction:row;align-items:center;padding:.4rem .5rem;gap:.4rem;border-right:0;border-bottom:1px solid var(--border);overflow-x:auto;overflow-y:hidden}
+  .mt-zij-kop{display:none}
+  .mt-zij-lijst{flex-direction:row;gap:2px}
+  .mt-zij-voet{margin:0;border:0;padding:0}
+  .mt-zij-knop{white-space:nowrap;padding:.45rem .6rem;font-size:12.5px}
+  .mt-zij-knop[aria-current="page"]{box-shadow:inset 0 -3px 0 var(--teal)}
+  #app.mt-shell .wrap{padding:1rem 1rem 4rem}
+}
+@media(max-width:600px){
+  /* Rijen met knoppen en de kopregel slaan om in plaats van buiten beeld te steken (pagina scrolt nooit horizontaal). */
+  #app.mt-shell .wrap div{flex-wrap:wrap}
+  #app.mt-shell .wrap [style*="grid-template-columns:repeat(4"],#app.mt-shell .wrap [style*="grid-template-columns:repeat(3"]{grid-template-columns:1fr 1fr!important}
+  .mt-tegel-grid{grid-template-columns:1fr 1fr}
+}
 .jr-paneel-rechts{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .jr-nvt-form{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin:0 0 .6rem;font-size:12px;color:var(--mid)}
 .jr-nvt-form label{display:flex;flex-direction:column;gap:3px;flex:1;min-width:200px}

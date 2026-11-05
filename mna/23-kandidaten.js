@@ -335,6 +335,8 @@ function kdSubmit(e) {
 function kdOpen(actie) {
   KD.tab = actie === 'bg-tab-shortlist' ? 'shortlist' : 'longlist';
   kdTeken();
+  // Begeleider: Kandidaten is een eigen scherm (mna/24); niet meer naar een sectie verderop scrollen.
+  if (typeof mtNaar === 'function' && typeof mtActief === 'function' && mtActief()) { mtNaar('kandidaten'); return true; }
   var el = document.getElementById('kd-plek');
   if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
   return true;

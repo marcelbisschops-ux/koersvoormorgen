@@ -127,6 +127,7 @@ function jrVernieuw() { JR.cache = {}; }
 function jrScroll(id) {
   var e = document.getElementById(id);
   if (!e) return false;
+  if (typeof mtToonElement === 'function') mtToonElement(e); // begeleider: eerst het scherm openen waar het onderdeel staat
   e.scrollIntoView({ behavior: 'smooth', block: 'center' });
   e.classList.add('jr-markeer'); setTimeout(function () { e.classList.remove('jr-markeer'); }, 1800);
   return true;
@@ -160,7 +161,7 @@ function jrActie(a) {
   if (a === 'koper-nda' || a === 'koper-loi') { var slot = a === 'koper-nda' ? 'composer-nda-slot' : 'composer-loi-slot'; if (!jrScroll(slot)) { S.screen = 'cover'; renderApp(); setTimeout(function () { jrScroll(slot); }, 400); } return; }
   if (a === 'koper-bod') { if (!jrScroll('koper-bod-sectie')) { S.screen = 'cover'; renderApp(); setTimeout(function () { jrScroll('koper-bod-sectie'); }, 400); } return; }
   var knop = document.getElementById(a);
-  if (knop && !knop.disabled) { knop.scrollIntoView({ behavior: 'smooth', block: 'center' }); knop.click(); }
+  if (knop && !knop.disabled) { if (typeof mtToonElement === 'function') mtToonElement(knop); knop.scrollIntoView({ behavior: 'smooth', block: 'center' }); knop.click(); }
 }
 // Begeleider: de bestaande documentkaarten (zelfde id's en koppelingen) verhuizen naar de fase waar ze horen.
 function jrPlaatsKaarten(el, d) {

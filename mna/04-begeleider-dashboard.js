@@ -257,6 +257,7 @@ function renderApp(){
   else if(S.screen==='koopmandaat')renderKoopmandaatScherm(app);
   bindAll();
   if(typeof jrMount==='function')jrMount(); // #97 M&A Journey
+  if(typeof mtMount==='function')mtMount(); // UX 05-11-2026: schermnavigatie begeleider (mna/24), direct na de render, zonder flikkering
 }
 
 // ============================================================
@@ -6386,6 +6387,7 @@ function renderBegeleiderDashboard(app){
       if(topbannerBtn)topbannerBtn.onclick=function(){
         toonEnMarkeerGezien();
         var panel=document.getElementById('kb-panel');
+        if(panel&&typeof mtToonElement==='function')mtToonElement(panel); // eerst het scherm openen waar het paneel staat
         if(panel)panel.scrollIntoView({behavior:'smooth',block:'center'});
       };
       laadBiedingen();

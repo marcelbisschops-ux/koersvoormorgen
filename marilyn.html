@@ -5155,6 +5155,48 @@ var veiligheidRefreshTimer = null;
 var ERNST_KLEUR = { kritiek: 'var(--red)', hoog: 'var(--red)', midden: 'var(--gold)', laag: 'var(--info)' };
 var ERNST_LABEL = { kritiek: 'Kritiek', hoog: 'Hoog', midden: 'Midden', laag: 'Laag' };
 
+// Planning en uitvoering van alle automatische controles (Marcel 05-11-2026): per check de planning, de laatst
+// geregistreerde uitvoering en een eerlijke status. PASS/FAIL alleen als het resultaat nog geldig is; NIET UITGEVOERD
+// als het laatste geplande moment voorbij is zonder nieuw resultaat; VEROUDERD als het laatste resultaat te oud is.
+// Alleen afgeleid uit /mna/admin/veiligheid/overzicht: niets wordt groen gemaakt zonder een echte, recente run.
+function controlePlanningTabel(ov, nu) {
+  nu = nu || Date.now();
+  var D = 864e5, H = 36e5;
+  function dt(ms) { return ms ? new Date(ms).toLocaleString('nl-NL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'nooit'; }
+  // Laatste gepland moment vóór nu (lokale tijd), met marge voor wachttijd/jitter.
+  function laatsteDagelijks(uur, minuut, marge) { var d = new Date(nu); d.setHours(uur, minuut, 0, 0); if (d.getTime() + marge > nu) d = new Date(d.getTime() - D); return d.getTime(); }
+  function laatsteDagelijksUtc(uur, minuut, marge) { var d = new Date(nu); d.setUTCHours(uur, minuut, 0, 0); if (d.getTime() + marge > nu) d = new Date(d.getTime() - D); return d.getTime(); }
+  function laatsteMaand(marge) { var d = new Date(nu); d.setDate(3); d.setHours(23, 59, 0, 0); if (d.getTime() + marge > nu) d.setMonth(d.getMonth() - 1); return d.getTime(); }
+  function status(laatst, ok, geldigMs, gepland) {
+    if (!laatst || nu - laatst > geldigMs) return ['VEROUDERD', 'var(--red)'];
+    if (gepland && laatst < gepland) return ['NIET UITGEVOERD', 'var(--gold-dark)'];
+    return ok ? ['PASS', 'var(--teal)'] : ['FAIL', 'var(--red)'];
+  }
+  var nacht = ov.laatste_selfcheck, och = ov.laatste_ochtendcontrole, e2e = ov.e2e_regressie, kn = ov.knoppentest, da = ov.diepe_audit, pt = ov.red_team_pentest;
+  var sa = ov.statische_audit || {};
+  var rijen = [
+    ['Nachtelijke selfcheck (productie)', 'Dagelijks 02:00 UTC, Cloudflare-cron', nacht && nacht.ran_at, nacht ? nacht.checks_geslaagd + '/' + nacht.checks_totaal : '', nacht && nacht.checks_geslaagd === nacht.checks_totaal, 2 * D, laatsteDagelijksUtc(2, 0, 2 * H)],
+    ['E2E-regressie 3 rollen (staging)', 'Dagelijks 04:30 UTC, GitHub Actions (frontendrepo)', e2e && e2e.ran_at, e2e ? e2e.checks_geslaagd + '/' + e2e.checks_totaal : '', e2e && e2e.checks_geslaagd === e2e.checks_totaal, 2 * D, laatsteDagelijksUtc(4, 30, 10 * H)],
+    ['Dagelijkse knoppentest', 'Dagelijks circa 06:12, geplande Claude-taak', kn && kn.datum, kn ? 'score ' + kn.score : '', kn && kn.score >= 90, 2 * D, laatsteDagelijks(6, 12, 3 * H)],
+    ['Diepe audit', 'Maandelijks dag 1 tot 3 en op aanvraag, geplande Claude-taak (06:00)', da && da.datum, da ? 'score ' + da.score : '', da && da.score >= 70, 35 * D, laatsteMaand(12 * H)],
+    ['Red-team pentest', 'Op aanvraag (zelfde routine), richtlijn maandelijks', pt && pt.datum, pt ? 'oordeel ' + pt.score : '', pt && pt.score >= 70, 35 * D, null],
+    ['Ochtendcontrole (productie)', 'Handmatig (knop hieronder), geen automatische planning', och && och.ran_at, och ? och.checks_geslaagd + '/' + och.checks_totaal : '', och && och.checks_geslaagd === och.checks_totaal, 7 * D, null],
+    ['Statische audit frontend', 'Bij elke push (git-hook), alleen gemeld als de beheersleutel in de shell staat', sa.frontend && sa.frontend.ran_at, sa.frontend ? sa.frontend.checks_geslaagd + '/' + sa.frontend.checks_totaal : '', sa.frontend && sa.frontend.checks_geslaagd === sa.frontend.checks_totaal, 14 * D, null],
+    ['Statische audit backend', 'Bij elke push (git-hook), alleen gemeld als de beheersleutel in de shell staat', sa.backend && sa.backend.ran_at, sa.backend ? sa.backend.checks_geslaagd + '/' + sa.backend.checks_totaal : '', sa.backend && sa.backend.checks_geslaagd === sa.backend.checks_totaal, 14 * D, null]
+  ];
+  var h = '<div class="table-wrap" style="margin-bottom:1.25rem"><div class="table-hdr"><div class="table-title">Planning en uitvoering van alle automatische controles</div></div>'
+    + '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr>'
+    + ['Controle', 'Planning', 'Laatst geregistreerd', 'Resultaat', 'Status'].map(function (k) { return '<th style="text-align:left;padding:8px 10px;font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);border-bottom:1px solid var(--border)">' + k + '</th>'; }).join('') + '</tr></thead><tbody>';
+  rijen.forEach(function (r) {
+    var st = status(r[2], r[4], r[5], r[6]);
+    h += '<tr><td style="padding:8px 10px;border-bottom:1px solid var(--border);font-weight:600;color:var(--head)">' + esc(r[0]) + '</td>'
+      + '<td style="padding:8px 10px;border-bottom:1px solid var(--border);color:var(--mid)">' + esc(r[1]) + (r[6] ? '<div style="color:var(--muted);font-size:11px">laatst gepland: ' + esc(dt(r[6])) + '</div>' : '') + '</td>'
+      + '<td style="padding:8px 10px;border-bottom:1px solid var(--border)">' + esc(dt(r[2])) + '</td>'
+      + '<td style="padding:8px 10px;border-bottom:1px solid var(--border)">' + esc(r[3] || 'geen resultaat') + '</td>'
+      + '<td style="padding:8px 10px;border-bottom:1px solid var(--border);font-weight:700;color:' + st[1] + '">' + st[0] + '</td></tr>';
+  });
+  return h + '</tbody></table></div><div style="padding:.6rem 1.25rem;font-size:11px;color:var(--muted);line-height:1.6">PASS of FAIL: resultaat van de laatste run, nog geldig. NIET UITGEVOERD: het laatste geplande moment is voorbij zonder nieuw resultaat (bijvoorbeeld een run die niet startte of afbrak). VEROUDERD: het laatste resultaat is ouder dan de geldigheidstermijn (2 dagen voor dagelijkse, 35 dagen voor maandelijkse controles). Een controle die afbreekt voordat hij iets meldt, is hier alleen zichtbaar als NIET UITGEVOERD of VEROUDERD.</div></div>';
+}
 function veiligheidGauge(waarde, label, subtekst) {
   var cx = 110, cy = 95, r = 75, strokeW = 14;
   function polair(hoekGraden) { var rad = hoekGraden * Math.PI / 180; return { x: cx + r * Math.cos(rad), y: cy - r * Math.sin(rad) }; }
@@ -5413,6 +5455,8 @@ async function renderVeiligheidTab(el) {
         + '<div style="font-size:13px;font-weight:700;color:' + (veiligheidActueel ? 'var(--teal)' : 'var(--red)') + '">' + (veiligheidActueel ? '&#10003; Veiligheid actueel — alle verplichte controles op schema, geen open kritieke/hoge bevinding' : '&#9888; Veiligheid NIET actueel: ' + esc(verlopenControles.join('; '))) + '</div>'
         + '<div style="font-size:11px;color:var(--muted);margin-top:4px">Samengevat over alle secties hieronder. "0 open bevindingen" in sectie 2 betekent uitdrukkelijk niet "alles is actueel gecontroleerd" — zie de toelichting daar.</div>'
         + '</div>'
+
+        + controlePlanningTabel(ov)
 
         + '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;margin-bottom:.4rem">'
         + '<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">&#128737; Veiligheid</div>'
