@@ -47,6 +47,14 @@ async function login(page, code) {
   await page.locator('#l-btn').click();
 }
 
+// Design 2.0 (N-174): de documentkaarten staan bij de begeleider in het eigen Journey-scherm. Open dat scherm
+// alleen als Design 2.0 aan staat; in de vorige vormgeving (?ui=1) doet deze helper niets.
+async function naarJourneyBijUi2(page) {
+  if (!(await page.evaluate(() => document.documentElement.getAttribute('data-ui') === '2'))) return;
+  await page.waitForSelector('#mt-zij [data-mt-naar="journey"]', { timeout: 20000 });
+  await page.click('#mt-zij [data-mt-naar="journey"]');
+}
+
 // ───────────────────── 1. REKENKERN ─────────────────────
 // De dealvoorstel-berekeningen zijn de commerciële kern: één foute wijziging
 // hier zet verkeerde bedragen in een echt voorstel. Deze tests draaien de
@@ -330,6 +338,7 @@ test.describe('Rol Click-Through: documentcontent-race (regressie 12 sep 2026)',
   test('snel na elkaar NDA dan LoI openen toont uiteindelijk alléén de LoI', async ({ page }) => {
     await login(page, tussenCode);
     await page.waitForFunction(() => window.S && S.traject && S.rol === 'tussenpersoon', null, { timeout: 15000 });
+    await naarJourneyBijUi2(page);
     const ndaBtn = page.locator('#bg-nda-composer-actie');
     const loiBtn = page.locator('#bg-loi-composer-actie');
     await expect(ndaBtn).toBeVisible({ timeout: 15000 });
@@ -409,6 +418,7 @@ test.describe('Login en rollen (eigen testtraject)', () => {
   test('begeleider-code opent dashboard met alle documentknoppen', async ({ page }) => {
     await login(page, tussenCode);
     await page.waitForFunction(() => window.S && S.traject && S.rol === 'tussenpersoon', null, { timeout: 15000 });
+    await naarJourneyBijUi2(page);
     // Alle zeven documentknoppen aanwezig en (module contracten AAN) actief
     for (const id of ['bg-nda-composer-actie', 'bg-loi-composer-actie', 'bg-bem-actie', 'bg-excl-actie', 'bg-dealvoorstel-actie', 'bg-bieding-actie', 'bg-spa-actie']) {
       await expect(page.locator('#' + id)).toBeVisible();
@@ -726,6 +736,7 @@ test.describe('Documentknoppen module-gating', () => {
   test('module contracten uit → documentknoppen vergrendeld', async ({ page }) => {
     await login(page, tussenCode);
     await page.waitForFunction(() => window.S && S.traject && S.rol === 'tussenpersoon', null, { timeout: 15000 });
+    await naarJourneyBijUi2(page);
     // Knoppen bestaan maar zijn disabled (vergrendelde variant)
     for (const id of ['bg-nda-composer-actie', 'bg-dealvoorstel-actie', 'bg-bieding-actie', 'bg-spa-actie']) {
       await expect(page.locator('#' + id)).toBeVisible();
