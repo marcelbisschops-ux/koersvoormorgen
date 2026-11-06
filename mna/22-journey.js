@@ -17,7 +17,8 @@ function jrChip(s) { var x = JR_STATUS[s] || [s, 'jr-open']; return '<span class
 // data-attributen; alleen gegroepeerd in etappes. Fasen en statussen komen ongewijzigd uit de backend.
 var JR2_ETAPPES = [['Voorbereiding', 0, 3], ['Marktbenadering', 3, 6], ['NDA en selectie', 6, 8], ['Biedingen en onderzoek', 8, 11], ['Contractering', 11, 12], ['Afronding', 12, 14]];
 function jrUi2(d, opts) {
-  return !!(opts && opts.docs && d && d.rol === 'begeleider' && d.niveau !== 'koopmandaat' && d.fasen && d.fasen.length === 14
+  // Alle rollen (R3): zelfde etappe-indeling; de zijkolom (wie aan zet, documenten) alleen bij de begeleider (opts.docs).
+  return !!(opts && d && d.niveau !== 'koopmandaat' && d.fasen && d.fasen.length === 14
     && typeof document !== 'undefined' && document.documentElement.getAttribute('data-ui') === '2');
 }
 function jrStapLi(f, gekozen, d) {
@@ -109,9 +110,10 @@ function jrHtml(d, opts) {
         return '<li><span>' + jrEsc(w.naam) + '</span>' + jrChip(w.uitkomst) + (w.traject_fase ? '<span class="jr-sub">transactie in fase ' + w.traject_fase + '</span>' : '') + '</li>';
       }).join('') + '</ul></div>';
     }
-    if (ui2) h += '<div class="jr2-zij">' + jrAanZetHtml(f) + '<div class="jr2-zijkop">Documenten in deze fase</div>';
+    var zij = ui2 && opts.docs;
+    if (zij) h += '<div class="jr2-zij">' + jrAanZetHtml(f) + '<div class="jr2-zijkop">Documenten in deze fase</div>';
     if (opts.docs) h += '<div class="jr-docs" data-jr-docs="' + f.nr + '"></div>';
-    if (ui2) h += '</div>';
+    if (zij) h += '</div>';
     h += '</div>';
   });
   h += '</div>';

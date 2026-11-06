@@ -335,3 +335,81 @@ html[data-ui="2"] .mt-tegels-kop h2,
 html[data-ui="2"] .mt-zij-merk,
 html[data-ui="2"] .wr-titel,
 html[data-ui="2"] h1{font-family:var(--k2-font)!important;font-weight:700;letter-spacing:-.01em}
+
+/* ───────────── R3 (N-174): portalen en rollen in richting B ───────────── */
+html[data-ui="2"] .jr2 .jr-paneel:not(:has(>.jr2-zij)){grid-template-columns:minmax(0,1fr)}
+/* Gedeelde navy kopbalk: verkoper/koper/meekijker/specialist (mna zonder begeleidersschil), viewer, specialist, Marilyn */
+html[data-ui="2"][data-portaal="mna"] body:not(.mt-shell-aan) .hdr,
+html[data-ui="2"][data-portaal="viewer"] .hdr,
+html[data-ui="2"][data-portaal="specialist"] .hdr,
+html[data-ui="2"][data-portaal="marilyn"] .hdr{background:var(--k2-nav);border:0;border-radius:var(--k2-r-l);padding:12px 18px;margin-bottom:22px;color:#fff;flex-wrap:wrap;gap:10px}
+html[data-ui="2"][data-portaal="mna"] body:not(.mt-shell-aan) .hdr .brand,
+html[data-ui="2"][data-portaal="viewer"] .hdr .brand,html[data-ui="2"][data-portaal="specialist"] .hdr .brand,
+html[data-ui="2"][data-portaal="marilyn"] .hdr .brand{color:#C9D3E0}
+html[data-ui="2"][data-portaal="mna"] body:not(.mt-shell-aan) .hdr span,html[data-ui="2"][data-portaal="marilyn"] .hdr span{color:inherit}
+html[data-ui="2"][data-portaal="mna"] body:not(.mt-shell-aan) .hdr .btn-ghost,html[data-ui="2"][data-portaal="mna"] body:not(.mt-shell-aan) .hdr button,
+html[data-ui="2"][data-portaal="viewer"] .hdr button,html[data-ui="2"][data-portaal="specialist"] .hdr button,
+html[data-ui="2"][data-portaal="marilyn"] .hdr button{background:#16263D;border:1px solid #2B4366;color:#fff}
+html[data-ui="2"][data-portaal="mna"] body:not(.mt-shell-aan) .hdr .btn-ghost:hover,html[data-ui="2"][data-portaal="marilyn"] .hdr button:hover{background:#1C3150}
+/* Verkoper/koper: fase-stepper op één rij, bredere werkkolom */
+@media (min-width:1100px){
+  html[data-ui="2"][data-portaal="mna"] body:not(.mt-shell-aan) .fase-grid{grid-template-columns:repeat(7,minmax(0,1fr));gap:8px}
+  html[data-ui="2"][data-portaal="mna"] body:not(.mt-shell-aan) .fase-card{padding:10px 12px}
+}
+html[data-ui="2"][data-portaal="mna"] body:not(.mt-shell-aan) .fase-card.active{border-color:var(--k2-nav);box-shadow:0 0 0 2px var(--k2-nav)}
+html[data-ui="2"][data-portaal="mna"] body:not(.mt-shell-aan) .fase-fill{background:var(--k2-voortgang)}
+
+/* Adviseursportaal: navy kop, navigatie als zijbalk, brede werkkolom */
+html[data-ui="2"][data-portaal="adv"] .hdr{background:var(--k2-nav);border-bottom:0;height:60px}
+html[data-ui="2"][data-portaal="adv"] .hdr-brand{color:#C9D3E0}
+html[data-ui="2"][data-portaal="adv"] .hdr-dot{background:#3CC2AE}
+html[data-ui="2"][data-portaal="adv"] .hdr-user{color:#9FB2C8}
+html[data-ui="2"][data-portaal="adv"] .hdr-name{color:#fff}
+html[data-ui="2"][data-portaal="adv"] .hdr .btn-outline,html[data-ui="2"][data-portaal="adv"] .hdr button{background:#16263D;border:1px solid #2B4366;color:#fff}
+html[data-ui="2"][data-portaal="adv"] .main{max-width:1240px;padding:28px 32px}
+@media (min-width:961px){
+  html[data-ui="2"][data-portaal="adv"] body:has(.wr-nav){padding-left:232px}
+  html[data-ui="2"][data-portaal="adv"] body:has(.wr-nav) .hdr{margin-left:-232px;padding-left:calc(2rem + 232px)}
+  html[data-ui="2"][data-portaal="adv"] .wr-nav{position:fixed;left:0;top:0;bottom:0;width:232px;flex-direction:column;gap:2px;padding:76px 12px 16px;background:var(--k2-nav);border:0;overflow-y:auto;z-index:11}
+  html[data-ui="2"][data-portaal="adv"] .wr-nav-knop{text-align:left;border:0;border-radius:9px;padding:10px 12px;color:var(--k2-nav-tekst);font:500 14px var(--k2-font)}
+  html[data-ui="2"][data-portaal="adv"] .wr-nav-knop:hover{background:#16263D;color:#fff}
+  html[data-ui="2"][data-portaal="adv"] .wr-nav-knop.wr-nav-actief{background:var(--k2-nav-actief);color:#fff;border:0}
+}
+@media (max-width:960px){
+  html[data-ui="2"][data-portaal="adv"] .wr-nav{background:var(--k2-nav);border:0;top:60px}
+  html[data-ui="2"][data-portaal="adv"] .wr-nav-knop{color:var(--k2-nav-tekst)}
+  html[data-ui="2"][data-portaal="adv"] .wr-nav-knop.wr-nav-actief{color:#fff;border-bottom-color:#3CC2AE}
+  html[data-ui="2"][data-portaal="adv"] .main{padding:18px 16px}
+}
+
+/* Marilyn: tabbladen als navy zijbalk, brede werkkolom */
+html[data-ui="2"][data-portaal="marilyn"] .wrap{max-width:1480px}
+@media (min-width:961px){
+  html[data-ui="2"][data-portaal="marilyn"] body:has(.tabs .tab){padding-left:232px}
+  html[data-ui="2"][data-portaal="marilyn"] .tabs{position:fixed;left:0;top:0;bottom:0;width:232px;flex-direction:column;flex-wrap:nowrap;gap:2px;margin:0;padding:24px 12px 16px;background:var(--k2-nav);border:0;overflow-y:auto;z-index:20}
+  html[data-ui="2"][data-portaal="marilyn"] .tabs::before{content:"KVM · Beheer";display:block;color:#fff;font:800 15px var(--k2-font);padding:0 10px 18px;border-bottom:1px solid #22344D;margin-bottom:10px}
+  html[data-ui="2"][data-portaal="marilyn"] .tab{text-align:left;border:0!important;border-radius:9px;padding:9px 12px;margin:0;color:var(--k2-nav-tekst);font:500 13.5px var(--k2-font);flex:0 0 auto}
+  html[data-ui="2"][data-portaal="marilyn"] .tab:hover{background:#16263D;color:#fff}
+  html[data-ui="2"][data-portaal="marilyn"] .tab.active{background:var(--k2-nav-actief);color:#fff;border:0}
+  html[data-ui="2"][data-portaal="marilyn"] .tabs>:not(.tab){border-color:#22344D!important;margin:6px 0!important;height:1px;width:auto;align-self:stretch}
+}
+@media (max-width:960px){
+  html[data-ui="2"][data-portaal="marilyn"] .tabs{flex-wrap:nowrap;overflow-x:auto;background:var(--k2-nav);border-radius:var(--k2-r-l);padding:4px}
+  html[data-ui="2"][data-portaal="marilyn"] .tab{color:var(--k2-nav-tekst);white-space:nowrap;flex:0 0 auto}
+  html[data-ui="2"][data-portaal="marilyn"] .tab.active{color:#fff;border-bottom-color:#3CC2AE}
+}
+html[data-ui="2"][data-portaal="marilyn"] .stat,html[data-ui="2"][data-portaal="marilyn"] .table-wrap{border-radius:var(--k2-r-l)}
+/* R3 mobiel: knoppenrijen omslaan of schuiven, tabellen scrollen binnen hun kaart (overloop bestond ook in de vorige vormgeving) */
+html[data-ui="2"] div:has(>#next-btn){flex-wrap:wrap;gap:8px;justify-content:flex-end}
+html[data-ui="2"] div:has(>#next-btn)>*{flex-wrap:wrap;gap:8px}
+@media (max-width:640px){
+  html[data-ui="2"][data-portaal="adv"] .hdr{height:auto;flex-wrap:wrap;padding:10px 16px;gap:8px}
+  html[data-ui="2"][data-portaal="adv"] .hdr-right{flex-wrap:nowrap;overflow-x:auto;max-width:100%;gap:6px}
+  html[data-ui="2"][data-portaal="adv"] .hdr-right>*{flex:0 0 auto;white-space:nowrap}
+  html[data-ui="2"][data-portaal="adv"] .wr-nav{top:0;position:sticky}
+  html[data-ui="2"][data-portaal="adv"] .card,html[data-ui="2"][data-portaal="marilyn"] .table-wrap{overflow-x:auto;max-width:100%}
+  html[data-ui="2"][data-portaal="adv"] .card table{min-width:560px}
+}
+html[data-ui="2"] .fase-nav{flex-wrap:wrap;gap:8px;justify-content:flex-end}
+html[data-ui="2"] .fase-nav>*{flex-wrap:wrap;gap:8px}
+@media (max-width:640px){html[data-ui="2"][data-portaal="marilyn"] .wrap>*{max-width:100%;overflow-x:auto}html[data-ui="2"][data-portaal="marilyn"] .wrap{padding:16px}}
