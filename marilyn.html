@@ -5175,11 +5175,13 @@ function controlePlanningTabel(ov, nu) {
     return ok ? ['PASS', 'var(--teal)'] : ['FAIL', 'var(--red)'];
   }
   var nacht = ov.laatste_selfcheck, och = ov.laatste_ochtendcontrole, e2e = ov.e2e_regressie, kn = ov.knoppentest, da = ov.diepe_audit, pt = ov.red_team_pentest;
+  var kv = ov.knoppentest_vast; // G1: vast deel van de knoppentest (GitHub Actions), eigen rij
   var sa = ov.statische_audit || {};
   var rijen = [
     ['Nachtelijke selfcheck (productie)', 'Dagelijks 02:00 UTC, Cloudflare-cron', nacht && nacht.ran_at, nacht ? nacht.checks_geslaagd + '/' + nacht.checks_totaal : '', nacht && nacht.checks_geslaagd === nacht.checks_totaal, 2 * D, laatsteDagelijksUtc(2, 0, 2 * H)],
     ['E2E-regressie 3 rollen (staging)', 'Dagelijks 04:30 UTC, GitHub Actions (frontendrepo)', e2e && e2e.ran_at, e2e ? e2e.checks_geslaagd + '/' + e2e.checks_totaal : '', e2e && e2e.checks_geslaagd === e2e.checks_totaal, 2 * D, laatsteDagelijksUtc(4, 30, 10 * H)],
     ['Dagelijkse knoppentest', 'Dagelijks circa 06:12, geplande Claude-taak', kn && kn.datum, kn ? 'score ' + kn.score : '', kn && kn.score >= 90, 2 * D, laatsteDagelijks(6, 12, 3 * H)],
+    ['Knoppentest vast deel (staging)', 'Dagelijks 05:15 UTC, GitHub Actions (frontendrepo)', kv && kv.ran_at, kv ? kv.checks_geslaagd + '/' + kv.checks_totaal : '', kv && kv.checks_geslaagd === kv.checks_totaal, 2 * D, laatsteDagelijksUtc(5, 15, 10 * H)],
     ['Diepe audit', 'Maandelijks dag 1 tot 3 en op aanvraag, geplande Claude-taak (06:00)', da && da.datum, da ? 'score ' + da.score : '', da && da.score >= 70, 35 * D, laatsteMaand(12 * H)],
     ['Red-team pentest', 'Op aanvraag (zelfde routine), richtlijn maandelijks', pt && pt.datum, pt ? 'oordeel ' + pt.score : '', pt && pt.score >= 70, 35 * D, null],
     ['Ochtendcontrole (productie)', 'Handmatig (knop hieronder), geen automatische planning', och && och.ran_at, och ? och.checks_geslaagd + '/' + och.checks_totaal : '', och && och.checks_geslaagd === och.checks_totaal, 7 * D, null],

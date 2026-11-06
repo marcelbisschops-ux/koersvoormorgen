@@ -922,12 +922,12 @@ test.describe('KANTOORINZICHT 3-ROLLEN E2E', () => {
     });
 
     test('B6 · risicoraamwerk genereren — echte AI-inhoud, geen placeholder [AI]', async ({ page }) => {
-      test.setTimeout(90000); // zelfde reden als V5 hierboven — 30s standaard is te kort voor een echte AI-generatie
+      test.setTimeout(200000); // zelfde reden als V5 hierboven — 30s standaard is te kort voor een echte AI-generatie
       test.skip(!setupOk, 'Setup mislukt — zie beforeAll');
       test.skip(!DOE_AI, 'KVM_DOE_AI niet gezet — AI-stap overgeslagen (kost geld), zie bestandskop');
       await login(page, tussenCode);
       await page.waitForFunction(() => window.S && S.traject && S.rol === 'tussenpersoon', null, { timeout: 15000 });
-      const genResp = page.waitForResponse(r => r.url().includes('/mna/risicoraamwerk/genereer') && r.request().method() === 'POST', { timeout: 45000 });
+      const genResp = page.waitForResponse(r => r.url().includes('/mna/risicoraamwerk/genereer') && r.request().method() === 'POST', { timeout: 170000 }); // app wacht zelf tot 180 s (fetchMetTimeout in mna/04)
       await page.locator('#bg-risicoraamwerk-actie').click();
       let genOk = false;
       try { const r = await genResp; genOk = r.ok(); } catch (e) {}
