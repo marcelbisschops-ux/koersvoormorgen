@@ -806,6 +806,9 @@ test.describe('KANTOORINZICHT 3-ROLLEN E2E', () => {
       if (await page.evaluate(() => document.documentElement.getAttribute('data-ui') === '2')) {
         await page.waitForSelector('#mt-zij [data-mt-naar="journey"]', { timeout: 20000 });
         await page.click('#mt-zij [data-mt-naar="journey"]');
+        // Na het laden van de journey staat elke documentkaart in zijn eigen (ingeklapte) fase: open die fase, zoals een gebruiker.
+        await page.waitForTimeout(800);
+        await page.evaluate(() => { const k = document.getElementById('bg-nda-composer-actie'); const p = k && k.closest('[data-jr-paneel]'); if (p && p.hidden) { const b = document.querySelector('#jr-begeleider [data-jr-fase="' + p.getAttribute('data-jr-paneel') + '"]'); if (b) b.click(); } });
       }
       let knopZichtbaar = false;
       try { await expect(knop).toBeVisible({ timeout: 10000 }); knopZichtbaar = true; } catch (e) {}

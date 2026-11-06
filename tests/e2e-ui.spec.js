@@ -49,10 +49,18 @@ async function login(page, code) {
 
 // Design 2.0 (N-174): de documentkaarten staan bij de begeleider in het eigen Journey-scherm. Open dat scherm
 // alleen als Design 2.0 aan staat; in de vorige vormgeving (?ui=1) doet deze helper niets.
+// Documentkaarten staan na het laden van de journey in hun eigen (ingeklapte) fase: open die fase vóór een
+// zichtbaarheidscontrole, zoals een gebruiker doet. Staat de kaart niet in een fase, dan verandert er niets.
+async function toonKaart(page, id) {
+  await page.evaluate((id) => { const k = document.getElementById(id); const p = k && k.closest('[data-jr-paneel]'); if (p && p.hidden) { const b = document.querySelector('#jr-begeleider [data-jr-fase="' + p.getAttribute('data-jr-paneel') + '"]'); if (b) b.click(); } }, id);
+}
 async function naarJourneyBijUi2(page) {
   if (!(await page.evaluate(() => document.documentElement.getAttribute('data-ui') === '2'))) return;
   await page.waitForSelector('#mt-zij [data-mt-naar="journey"]', { timeout: 20000 });
   await page.click('#mt-zij [data-mt-naar="journey"]');
+  // Na het laden van de journey staat elke documentkaart in zijn eigen (ingeklapte) fase: open die fase, zoals een gebruiker.
+  await page.waitForTimeout(800);
+  await page.evaluate(() => { const k = document.getElementById('bg-nda-composer-actie'); const p = k && k.closest('[data-jr-paneel]'); if (p && p.hidden) { const b = document.querySelector('#jr-begeleider [data-jr-fase="' + p.getAttribute('data-jr-paneel') + '"]'); if (b) b.click(); } });
 }
 
 // ───────────────────── 1. REKENKERN ─────────────────────
@@ -341,7 +349,9 @@ test.describe('Rol Click-Through: documentcontent-race (regressie 12 sep 2026)',
     await naarJourneyBijUi2(page);
     const ndaBtn = page.locator('#bg-nda-composer-actie');
     const loiBtn = page.locator('#bg-loi-composer-actie');
+    await toonKaart(page, 'bg-nda-composer-actie');
     await expect(ndaBtn).toBeVisible({ timeout: 15000 });
+    await toonKaart(page, 'bg-loi-composer-actie');
     await expect(loiBtn).toBeVisible({ timeout: 15000 });
     // Het dashboard tekent zich kort na het inloggen nog één keer opnieuw (tweede laadronde); een composer die vóór die
     // ronde opent wordt daarbij gewist. Een gebruiker klikt na het laden: wacht dus tot het netwerk rustig is (N-170).
@@ -421,6 +431,7 @@ test.describe('Login en rollen (eigen testtraject)', () => {
     await naarJourneyBijUi2(page);
     // Alle zeven documentknoppen aanwezig en (module contracten AAN) actief
     for (const id of ['bg-nda-composer-actie', 'bg-loi-composer-actie', 'bg-bem-actie', 'bg-excl-actie', 'bg-dealvoorstel-actie', 'bg-bieding-actie', 'bg-spa-actie']) {
+      await toonKaart(page, id);
       await expect(page.locator('#' + id)).toBeVisible();
       await expect(page.locator('#' + id)).toBeEnabled();
     }
@@ -739,6 +750,7 @@ test.describe('Documentknoppen module-gating', () => {
     await naarJourneyBijUi2(page);
     // Knoppen bestaan maar zijn disabled (vergrendelde variant)
     for (const id of ['bg-nda-composer-actie', 'bg-dealvoorstel-actie', 'bg-bieding-actie', 'bg-spa-actie']) {
+      await toonKaart(page, id);
       await expect(page.locator('#' + id)).toBeVisible();
       await expect(page.locator('#' + id)).toBeDisabled();
     }
