@@ -4,7 +4,7 @@
 // Draaien: WORKER_URL=<staging> npx playwright test tests/e2e-n146-twee-schermen.spec.js
 import fs from 'fs';
 import { test, expect } from '@playwright/test';
-import { api, leesAdminKey, accepteerPlatformvoorwaarden, ruimTrajectOp, IS_STAGING_WORKER, WORKER } from './lib.mjs';
+import { api, d1, leesAdminKey, accepteerPlatformvoorwaarden, ruimTrajectOp, IS_STAGING_WORKER, WORKER } from './lib.mjs';
 
 test.skip(!IS_STAGING_WORKER, 'alleen staging');
 const ADMIN = leesAdminKey();
@@ -32,7 +32,10 @@ async function open(browser) {
   await page.waitForTimeout(500);
   return page;
 }
-const notitieServer = async (faseId) => { const t = await api('GET', '/mna/traject/' + V); const r = ((t.json && t.json.data) || []).find((x) => x.fase_id === faseId); return r ? r.notitie || '' : ''; };
+// Lezen via de staging-D1 i.p.v. GET /mna/traject: die route telt als inlogpoging (limiet 15 per 10 min per IP) en
+// liet in de volledige pre-push-suite latere logins op 429 lopen.
+const d1Rij = (sql) => { const r = d1(sql); return Array.isArray(r) ? r[0] : (r && r.results ? r.results[0] : null); };
+const notitieServer = async (faseId) => { const r = d1Rij("SELECT notitie FROM mna_data WHERE id='" + V + '_' + faseId + "'"); return r ? r.notitie || '' : ''; };
 
 test('notitie van scherm A overleeft een opslag vanuit verouderd scherm B; conflict geeft een melding', async ({ browser }) => {
   test.setTimeout(420000);

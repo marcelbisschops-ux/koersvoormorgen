@@ -3,11 +3,14 @@
 // STAGING, fictief, geen AI, ruimt op.
 import fs from 'fs';
 import { test, expect } from '@playwright/test';
-import { api, leesAdminKey, accepteerPlatformvoorwaarden, ruimTrajectOp, IS_STAGING_WORKER, WORKER } from './lib.mjs';
+import { api, d1, leesAdminKey, accepteerPlatformvoorwaarden, ruimTrajectOp, IS_STAGING_WORKER, WORKER } from './lib.mjs';
 
 test.skip(!IS_STAGING_WORKER, 'alleen staging');
 const ADMIN = leesAdminKey();
 let T;
+// Lezen via de staging-D1 i.p.v. GET /mna/traject: die route telt als inlogpoging (limiet 15 per 10 min per IP) en
+// liet in de volledige pre-push-suite latere logins op 429 lopen.
+const d1Rij = (sql) => { const r = d1(sql); return Array.isArray(r) ? r[0] : (r && r.results ? r.results[0] : null); };
 const veld = (x) => ({ value: x, label: 'x' });
 test.beforeAll(async () => {
   T = (await api('POST', '/mna/create', { adminKey: ADMIN, body: { kantoor_naam: 'Synth N183 Paneel B.V.', sector: 'accountancy', traject_type: 'Verkoop', contact_email: 'v@synth.invalid' } })).json;
@@ -55,7 +58,8 @@ test('vragen in het profiel, paneel voor de begeleider, beoordeling vastleggen',
   const g = await api('GET', '/mna/toekomst/' + T.code, { headers: { 'x-tussen-key': T.tussen_code } });
   expect(g.json.beoordeling).toMatchObject({ beoordeeld: true, in_im: true, toelichting: 'Synth toelichting begeleider' });
   // Wijzigt de verkoper daarna een toekomstveld, dan toont het paneel dat de beoordeling verouderd is.
-  const itNu = JSON.parse(((await api('GET', '/mna/traject/' + T.code)).json.data || []).find((x) => x.fase_id === 'it').data_json);
+  const itRijD1 = d1Rij("SELECT data_json FROM mna_data WHERE id='" + T.code + "_it'");
+  const itNu = JSON.parse(itRijD1.data_json);
   const bas = Object.fromEntries(Object.entries(itNu).filter(([, x]) => x && x.value).map(([k, x]) => [k, String(x.value)]));
   await api('POST', '/mna/save', { body: { code: T.code, fase_id: 'it', data_json: { ...itNu, pctHandmatig: veld('12') }, basis: bas } });
   await page.evaluate(() => tkLaad());

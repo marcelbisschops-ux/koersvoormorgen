@@ -25,6 +25,8 @@ async function dashboard(browser) {
   await expect(page.locator('#bg-ca-chk')).toBeAttached({ timeout: 20000 });
   return page;
 }
+// Verversen binnen dezelfde pagina (geen nieuwe login): elke login telt mee voor de limiet van 15 per 10 min per IP.
+const ververs = (page) => page.evaluate(() => { S._dashW = null; const w = mtWrap(); if (w) mtTegels(w); });
 const kpi = (page) => page.locator('.k2-kpi', { hasText: 'Indicatieve waardering' });
 
 test('alleen goedgekeurde waardering, indicatief, verouderd na financiële wijziging', async ({ browser }) => {
@@ -33,21 +35,19 @@ test('alleen goedgekeurde waardering, indicatief, verouderd na financiële wijzi
   d1("INSERT INTO mna_waarderingen (id,traject_id,methode,range_laag,range_midden,range_hoog,onderbouwing,ai_voorstel,adviseur_akkoord,created_at,updated_at) VALUES ('" + id + "','" + T.code + "','EBITDA-multiple',900000,1100000,1300000,'synth','{}',0," + oud + "," + oud + ")");
   let p = await dashboard(browser);
   await expect(kpi(p)).toContainText('Nog geen goedgekeurde waardering', { timeout: 15000 });
-  await p.context().close();
 
   const ak = await api('POST', '/mna/waardering/akkoord', { headers: { 'x-tussen-key': T.tussen_code }, body: { code: T.code, waardering_id: id } });
   expect(ak.status).toBe(200);
-  p = await dashboard(browser);
+  await ververs(p);
   await expect(kpi(p)).toContainText('€ 1,1 mln', { timeout: 15000 });
   await expect(kpi(p)).toContainText('Indicatief');
   await expect(kpi(p)).toContainText('EBITDA-multiple');
   await expect(kpi(p)).toContainText('peildatum');
   await expect(kpi(p)).not.toContainText('verouderd');
-  await p.context().close();
 
   await api('POST', '/mna/save', { body: { code: T.code, fase_id: 'financieel', data_json: { omzet3: { value: '2000000', label: 'x' } }, basis: {} } });
   await new Promise((r) => setTimeout(r, 1500));
-  p = await dashboard(browser);
+  await ververs(p);
   await expect(kpi(p)).toContainText('verouderd sinds', { timeout: 15000 });
   await p.context().close();
 
