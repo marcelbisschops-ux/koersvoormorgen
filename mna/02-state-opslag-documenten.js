@@ -561,6 +561,19 @@ function metBasis(payload,zonderAntwoord){
     open.push(reg);
     Object.defineProperty(payload,'_basisReg',{value:reg,enumerable:false,configurable:true,writable:true});
   }
+  // N-146: checklist en notitie (alleen groepsniveau) volgen hetzelfde patroon als de velden hierboven (N-154): de basis
+  // is wat een nog lopende opslag van deze rij verstuurde, anders de laatst bevestigde stand. Vastgelegd bij de
+  // momentopname en alleen opnieuw bepaald als de bronopslag mislukte. Onbekend (fase nooit geladen) = geen basis.
+  if(!payload.entiteit_id&&Object.prototype.hasOwnProperty.call(payload,'checklist_json')){
+    if(!S._basisExtra)S._basisExtra={};
+    if(!Object.prototype.hasOwnProperty.call(payload,'basis_checklist')||(payload._exBron&&payload._exBron.mislukt)){
+      var exReg=null;for(var oi=open.length-1;oi>=0;oi--){if(open[oi]!==payload._basisReg&&open[oi].extra){exReg=open[oi];break;}}
+      var ex=exReg?exReg.extra:(S._basisExtra[rij]||(S._basisGeladen?{cl:'{}',nt:''}:null));
+      if(ex){payload.basis_checklist=ex.cl;payload.basis_notitie=ex.nt;}else{delete payload.basis_checklist;delete payload.basis_notitie;}
+      Object.defineProperty(payload,'_exBron',{value:exReg,enumerable:false,configurable:true,writable:true});
+    }
+    if(!zonderAntwoord&&payload._basisReg)payload._basisReg.extra={cl:JSON.stringify(payload.checklist_json||{}),nt:String(payload.notitie||'')};
+  }
   return payload;
 }
 // Het invoerveld dat nu op het scherm de waarde uit dit geheugen toont (of null).
@@ -569,6 +582,19 @@ function basisInvoer(faseId,k,geheugen){
   var df=f.dataFields.find(function(x){return x.id===k;});if(!df)return null;
   return (df.groepsniveau?S._groepData:S.data)===geheugen?ge('df_'+k):null;
 }
+// N-146: checklist vergelijken zoals de server (worker/53 vasteChecklist): niet aangevinkt = ontbrekend, vaste volgorde.
+function vasteCl(x){
+  var p;try{p=typeof x==='string'?JSON.parse(x||'{}'):(x||{});}catch(e){return null;}
+  function srt(v){if(Array.isArray(v))return v.map(srt);if(v&&typeof v==='object'){var o={};Object.keys(v).sort().forEach(function(k){var w=srt(v[k]);if(w===false||w===null||w===undefined)return;if(w&&typeof w==='object'&&!Array.isArray(w)&&!Object.keys(w).length)return;o[k]=w;});return o;}return v;}
+  return JSON.stringify(srt(p&&typeof p==='object'?p:{}));
+}
+function zetChecklistVanServer(faseId,cl){
+  var cj;try{cj=typeof cl==='string'?JSON.parse(cl||'{}'):(cl||{});}catch(e){return;}
+  Object.keys(S.checked).forEach(function(k){if(k.indexOf(faseId+'_')===0&&/^\d+$|^rf_\d+$/.test(k.slice(faseId.length+1)))delete S.checked[k];});
+  if(cj.items)Object.keys(cj.items).forEach(function(i){S.checked[faseId+'_'+i]=cj.items[i];});
+  if(cj.redflags)Object.keys(cj.redflags).forEach(function(i){S.checked[faseId+'_rf_'+i]=cj.redflags[i];});
+}
+function notitieOpScherm(faseId){var el=typeof ge==='function'?ge('notitie_'+faseId):null;return el?el.value:String(S.notities[faseId]||'');}
 // Verwerkt elk antwoord (ook d=null bij een netwerkfout) precies één keer per verzonden opslag.
 function naOpslag(payload,d,sessie){
   if(!payload||(sessie&&S!==sessie))return;
@@ -580,7 +606,17 @@ function naOpslag(payload,d,sessie){
   var geheugen=payload.entiteit_id?(S.dataPerEntiteit[payload.entiteit_id]=S.dataPerEntiteit[payload.entiteit_id]||{}):S._groepData;
   if(d&&d.ok===true&&d.data_json_actueel&&typeof d.data_json_actueel==='object'){
     // Een latere opslag van deze rij loopt nog of is al verwerkt: die bepaalt de basis.
-    if(!nieuwste)return;
+    // N-146: een geslaagde maar niet-nieuwste opslag: wat hij aantoonbaar schreef, onthouden als terugval voor het geval
+    // de nieuwere opslag mislukt (anders ziet de volgende opslag de eigen eerdere opslag als wijziging van een ander).
+    if(!nieuwste){
+      if(!payload.entiteit_id&&typeof d.checklist_json_actueel==='string'&&typeof d.notitie_actueel==='string'&&S._basisExtra){
+        var tv=Object.assign({},S._basisExtra[rij]||{cl:'{}',nt:''});
+        if(d.notitie_actueel===String(payload.notitie||''))tv.nt=d.notitie_actueel;
+        if(vasteCl(d.checklist_json_actueel)===vasteCl(payload.checklist_json||{}))tv.cl=d.checklist_json_actueel;
+        if(!S._exTerugval)S._exTerugval={};S._exTerugval[rij]=tv;
+      }
+      return;
+    }
     var act=d.data_json_actueel,oud=payload.basis||{},verzonden=payload.data_json||{},overgenomen=false;
     // Bouwde deze opslag voort op een mislukte of geweigerde opslag, dan niets overnemen: de invoer op het scherm
     // geldt dan als nog niet opgeslagen en gaat bij de volgende opslag als wijziging mee.
@@ -598,6 +634,47 @@ function naOpslag(payload,d,sessie){
     });
     zetBasis(payload.fase_id,payload.entiteit_id,act);
     if(reg)S._basisBevestigd[rij]=reg.volg;
+    // N-146: checklist en notitie. De basis schuift nooit door naar een serverwaarde die de gebruiker niet te zien kreeg:
+    //  - server gelijk aan het verstuurde → basis = server;
+    //  - gebruiker had niets gewijzigd en typte niet verder → actuele stand overnemen op het scherm, basis = server;
+    //  - anders basis = het verstuurde, zodat een volgende eigen wijziging een conflict geeft in plaats van overschrijven.
+    // Bouwde de opslag voort op een mislukte opslag: per onderdeel alleen bevestigen wat al gelijk is aan de server;
+    // de rest gaat direct opnieuw mee (ook als de fase niet meer open staat).
+    if(!payload.entiteit_id&&typeof d.checklist_json_actueel==='string'&&typeof d.notitie_actueel==='string'){
+      if(!S._basisExtra)S._basisExtra={};if(S._exTerugval)delete S._exTerugval[rij];
+      var fid=payload.fase_id,avC=d.checklist_json_actueel,avN=d.notitie_actueel;
+      var sentC=JSON.stringify(payload.checklist_json||{}),sentN=String(payload.notitie||'');
+      if(!(reg&&reg.onbetrouwbaar)){
+        var nbN=sentN,nbC=sentC;
+        if(avN===sentN||notitieOpScherm(fid)===avN)nbN=avN;
+        else if(payload.basis_notitie!==undefined&&sentN===payload.basis_notitie&&notitieOpScherm(fid)===sentN){
+          S.notities[fid]=avN;var nEl=typeof ge==='function'?ge('notitie_'+fid):null;if(nEl)nEl.value=avN;overgenomen=true;nbN=avN;
+        }
+        if(vasteCl(avC)===vasteCl(sentC)||vasteCl(getChecklistForFase(fid))===vasteCl(avC))nbC=avC;
+        else if(payload.basis_checklist!==undefined&&vasteCl(sentC)===vasteCl(payload.basis_checklist)&&vasteCl(getChecklistForFase(fid))===vasteCl(sentC)){
+          zetChecklistVanServer(fid,avC);overgenomen=true;nbC=avC;
+        }
+        S._basisExtra[rij]={cl:nbC,nt:nbN};
+      }else{
+        var exO=S._basisExtra[rij]||{cl:payload.basis_checklist||'{}',nt:payload.basis_notitie||''},opnieuw=false;
+        if(vasteCl(getChecklistForFase(fid))===vasteCl(avC))exO.cl=avC;else opnieuw=true;
+        if(notitieOpScherm(fid)===avN)exO.nt=avN;else opnieuw=true;
+        S._basisExtra[rij]=exO;
+        // Heropslag altijd van de groepsrij: via de geplande opslag alleen als die ook de groepsrij van deze fase
+        // verstuurt (fase open, geen entiteit actief); anders direct. Mislukt die heropslag, dan is dat zichtbaar.
+        if(opnieuw){
+          if(FASES[S.fase]&&FASES[S.fase].id===fid&&S.screen==='main'&&!S._actieveEntiteit&&S.data===S._groepData&&typeof schedSave==='function')schedSave();
+          else if(typeof saveGroepsniveauVelden==='function'){
+            var hrSessie=S;
+            Promise.resolve(saveGroepsniveauVelden(fid)).then(function(okH){
+              if(S!==hrSessie||okH===true)return;
+              if(typeof markDirty==='function')markDirty();
+              if(typeof showAlert==='function')showAlert('De checklist of notitie van deze fase is nog niet opgeslagen. Open de fase en sla opnieuw op.');
+            },function(){if(S===hrSessie&&typeof showAlert==='function')showAlert('De checklist of notitie van deze fase is nog niet opgeslagen. Open de fase en sla opnieuw op.');});
+          }
+        }
+      }
+    }
     // Afgeleide weergaven bijwerken, maar niet midden in het typen (focus en caret blijven staan).
     var actief=typeof document!=='undefined'&&document.activeElement;
     if(overgenomen&&!(actief&&/^(INPUT|TEXTAREA|SELECT)$/.test(actief.tagName))&&typeof renderApp==='function'){try{renderApp();}catch(e){}}
@@ -609,7 +686,25 @@ function naOpslag(payload,d,sessie){
     later.forEach(function(o){o.onbetrouwbaar=true;});
     if(!S._basis)S._basis={};
     var b=S._basis[rij]||(S._basis[rij]={}),verz=payload.data_json||{},uitleg=[];
+    if(!S._basisExtra)S._basisExtra={};
+    if(S._exTerugval&&S._exTerugval[rij]){S._basisExtra[rij]=S._exTerugval[rij];delete S._exTerugval[rij];}
     d.conflicten.forEach(function(c){
+      // N-146: checklist/notitie. Net als bij een veld toont het scherm de actuele versie van de ander; de basis wordt
+      // die serverstand. Eigen notitietekst gaat niet verloren: die blijft beschikbaar via "Mijn tekst terugzetten".
+      if(c.veld==='__checklist__'||c.veld==='__notitie__'){
+        var exK=S._basisExtra[rij]||(S._basisExtra[rij]={cl:payload.basis_checklist||'{}',nt:payload.basis_notitie||''});
+        if(c.veld==='__checklist__'){
+          exK.cl=String(c.actueel||'{}');zetChecklistVanServer(payload.fase_id,exK.cl);
+          uitleg.push('Checklist: intussen door een ander gewijzigd; het scherm toont nu die versie. Zet uw vinkjes zo nodig opnieuw');
+        }else{
+          exK.nt=String(c.actueel||'');
+          var eigenN=notitieOpScherm(payload.fase_id);
+          if(eigenN&&eigenN!==exK.nt){if(!S._notitieHerstel)S._notitieHerstel={};S._notitieHerstel[payload.fase_id]=eigenN;}
+          S.notities[payload.fase_id]=exK.nt;var nEl2=typeof ge==='function'?ge('notitie_'+payload.fase_id):null;if(nEl2)nEl2.value=exK.nt;
+          uitleg.push('Notitie: intussen door een ander gewijzigd; het scherm toont nu die versie. Uw eigen tekst kunt u terugzetten met de knop onder de notitie');
+        }
+        return;
+      }
       var key=payload.fase_id+'_'+c.veld,eigen=verz[c.veld]&&verz[c.veld].value?String(verz[c.veld].value):'';
       var el=basisInvoer(payload.fase_id,c.veld,geheugen),nu=el?el.value:String(geheugen[key]||'');
       b[c.veld]=c.actueel||'';
@@ -631,6 +726,7 @@ function naOpslag(payload,d,sessie){
     // momentopname met deze opslag als basisbron bepaalt bij het versturen de basis opnieuw (metBasis).
     if(reg)reg.mislukt=true;
     later.forEach(function(o){o.onbetrouwbaar=true;});
+    if(S._exTerugval&&S._exTerugval[rij]){if(!S._basisExtra)S._basisExtra={};S._basisExtra[rij]=S._exTerugval[rij];delete S._exTerugval[rij];}
   }
 }
 function getDataForFase(id){
@@ -696,6 +792,16 @@ window.consolKies = function(faseId, veld, keuze, somWaarde){
   renderApp();
   toast(keuze==='som'?'Som van de entiteiten overgenomen als groepscijfer.':'Aangeleverd cijfer behouden.','ok');
 };
+// N-149 (GO Marcel 06-11-2026): een analyse of waardering die is gemaakt vóór de laatste wijziging van de financiële
+// brongegevens is verouderd. Toont dat met datum; regenereert niets automatisch. Onbekend tijdstip = geen melding.
+function verouderdMelding(gemaaktOp,finGewijzigdOp,wat){
+  var g=new Date(gemaaktOp).getTime(),f=Number(finGewijzigdOp);
+  if(!isFinite(g)||!g||!isFinite(f)||!f||g>=f)return '';
+  var d=new Date(f).toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'});
+  return '<div class="kvm-verouderd" style="background:var(--gold-bg);border:1px solid var(--gold);border-radius:var(--r);padding:.55rem .8rem;margin-bottom:.75rem;font-size:12px;color:var(--sub)"><strong>Verouderd sinds '+esc(d)+'.</strong> De financiële brongegevens zijn na het maken van '+esc(wat||'deze analyse')+' gewijzigd. Genereer opnieuw als de nieuwe cijfers moeten meetellen.</div>';
+}
+// N-146: bij elke (her)lading van de trajectgegevens begint de checklist/notitie-basis opnieuw bij de serverstand.
+function basisExtraStart(data){if(Array.isArray(data)){S._basisExtra={};S._basisGeladen=true;}}
 function loadDataFromDB(dbData){dbData.forEach(function(row){var id=row.fase_id;var dj=typeof row.data_json==='string'?JSON.parse(row.data_json||'{}'):row.data_json||{};var cj=typeof row.checklist_json==='string'?JSON.parse(row.checklist_json||'{}'):row.checklist_json||{};var f=FASES.find(function(x){return x.id===id;});if(!f)return;
   // Groepsstructuur (Fase 2): rijen met entiteit_id gaan naar de per-entiteit-opslag, niet naar S._groepData
   var doel=row.entiteit_id?(S.dataPerEntiteit[row.entiteit_id]=S.dataPerEntiteit[row.entiteit_id]||{}):S._groepData;
@@ -709,7 +815,9 @@ function loadDataFromDB(dbData){dbData.forEach(function(row){var id=row.fase_id;
     else if(v.bron==='handmatig'){if(!S._userEdited)S._userEdited={};S._userEdited[id+'_'+k]=true;}
   }});
   if(row.entiteit_id)return; // checklist/notitie/koper_reactie blijven groepsniveau — niet per entiteit
-  if(cj.items)Object.keys(cj.items).forEach(function(i){S.checked[id+'_'+i]=cj.items[i];});if(cj.redflags)Object.keys(cj.redflags).forEach(function(i){S.checked[id+'_rf_'+i]=cj.redflags[i];});if(row.notitie)S.notities[id]=row.notitie;if(row.koper_reactie){if(!S.koperReacties)S.koperReacties={};S.koperReacties[id]=row.koper_reactie;}});}
+  if(!S._basisExtra)S._basisExtra={};
+  S._basisExtra[opslagRij(id,null)]={cl:row.checklist_json==null?'{}':(typeof row.checklist_json==='string'?row.checklist_json:JSON.stringify(row.checklist_json)),nt:String(row.notitie||'')};
+  if(cj.items)Object.keys(cj.items).forEach(function(i){S.checked[id+'_'+i]=cj.items[i];});if(cj.redflags)Object.keys(cj.redflags).forEach(function(i){S.checked[id+'_rf_'+i]=cj.redflags[i];});S.notities[id]=row.notitie||'';if(row.koper_reactie){if(!S.koperReacties)S.koperReacties={};S.koperReacties[id]=row.koper_reactie;}});}
 // Overzicht "wat heeft AI gedaan" per traject — telt velden per herkomst en documentstatus,
 // zodat de adviseur in één oogopslag ziet wat AI wel heeft geverifieerd/ingevuld en wat niet.
 function berekenAiVerificatiestatus(){
@@ -766,6 +874,13 @@ function userEdit(el){
 // (notitie_<fase> in mna/06). Tot nu toe las saveCurrent S.notities pas na de debounce uit de DOM; een
 // renderApp daartussen tekende de textarea opnieuw uit de oude S.notities en de oude notitie werd
 // verstuurd. Nu direct in S.notities van deze sessie/fase, met dezelfde poorten als userEdit/saveCurrent.
+// N-146: keuze na een notitieconflict. Terugzetten vervangt bewust de versie van de ander (normale opslag met de
+// actuele serverstand als basis); houden laat de versie van de ander staan.
+function notitieHerstel(faseId,terugzetten){
+  var t=S._notitieHerstel&&S._notitieHerstel[faseId];if(S._notitieHerstel)delete S._notitieHerstel[faseId];
+  if(terugzetten&&t){S.notities[faseId]=t;var el=ge('notitie_'+faseId);if(el)el.value=t;schedSave();}
+  if(typeof renderApp==='function')renderApp();
+}
 function notitieEdit(el){
   var f=FASES[S.fase];
   if(f&&el&&el.id==='notitie_'+f.id&&typeof el.value==='string'&&S.screen==='main'&&!isKoper()&&!(isTussen()&&f.id==='financieel')&&!(S.traject&&S.traject.status==='vergrendeld')){
@@ -2776,6 +2891,9 @@ async function refreshData(){
       S.traject = d.traject;
       S.data = {};
       S.checked = {};
+      S.notities = {};
+      S._dashW = null; // dashboardwaardering opnieuw laden na verversen
+      basisExtraStart(d.data);
       if(d.data && d.data.length) loadDataFromDB(d.data);
       S.rol = d.rol;
       // N-83 (27 sep 2026): ééns per sessie, ná de eerste geslaagde login, de volledige

@@ -730,6 +730,8 @@ function renderMain(){
     var notHtml='<div class="panel"><div class="sec-hdr">Notities (intern)</div>'
       +(notitieReadOnly?'<div style="font-size:13px;color:var(--mid);font-style:italic">'+(S.notities[f.id]||'Geen notities.')+'</div>'
         :'<textarea id="notitie_'+f.id+'" style="width:100%;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:9px 11px;font-family:IBM Plex Sans,sans-serif;font-size:13px;color:var(--sub);resize:vertical;min-height:70px;outline:none" placeholder="Interne bevindingen en aandachtspunten..." oninput="notitieEdit(this)">'+(S.notities[f.id]||'')+'</textarea>')
+      // N-146: na een conflict blijft de eigen, niet-opgeslagen notitietekst beschikbaar; de gebruiker kiest zelf.
+      +(!notitieReadOnly&&S._notitieHerstel&&S._notitieHerstel[f.id]?'<div id="notitie-herstel" style="margin-top:.4rem;padding:.5rem .7rem;border:1px solid var(--gold);background:var(--gold-bg);border-radius:var(--r);font-size:12px;color:var(--sub)"><strong>Uw niet-opgeslagen tekst:</strong> <span style="white-space:pre-wrap">'+esc(S._notitieHerstel[f.id])+'</span><div style="margin-top:.4rem;display:flex;gap:6px"><button class="btn-ghost btn-sm" onclick="notitieHerstel(\''+f.id+'\',true)">Mijn tekst terugzetten</button><button class="btn-ghost btn-sm" onclick="notitieHerstel(\''+f.id+'\',false)">Versie van de ander houden</button></div></div>':'')
       +'<div style="display:flex;align-items:center;gap:.75rem;margin-top:.3rem"><div style="font-size:11px;color:var(--muted)">'+(notitieReadOnly?'':'Wijzigingen worden automatisch opgeslagen.')+'</div><div id="save-ind" class="save-indicator">&#10003; Opgeslagen</div></div>'
       +choiceLogHtml
       +'</div>';
@@ -1455,6 +1457,7 @@ function bindAll(){
           if(d.branding.logo_url){ BRAND._logoUrl=d.branding.logo_url; }
           document.title='M&A Begeleiding - '+BRAND.platform;
         }
+        if(typeof basisExtraStart==='function')basisExtraStart(d.data);
         if(d.data&&d.data.length){
           loadDataFromDB(d.data);S._mnaData=d.data;S._dirty=false;
         }
@@ -1835,6 +1838,7 @@ function bindAll(){
     var out=ge('w-ai-out');if(!out)return;
     out.style.display='block';
     out.innerHTML='<div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">Waarderingsrapport'+(nietOpgeslagen?' &middot; niet opgeslagen':(versie?' &middot; versie '+esc(String(versie)):''))+' &middot; gegenereerd '+esc(new Date(ts).toLocaleString('nl-NL',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}))+'</div>'
+      +(typeof verouderdMelding==='function'?verouderdMelding(ts,S._finGewijzigdOp,'dit waarderingsrapport'):'')
       +'<div class="ai-body" style="padding:0"></div>';
     out.querySelector('.ai-body').appendChild(wSaneerRapport(tekstHtml));
   }
@@ -1984,7 +1988,17 @@ function bindAll(){
       }else{
         html2+='<div style="font-size:11px;color:var(--muted);margin-top:.6rem;padding-top:.6rem;border-top:1px solid var(--border)">Geen gebronde marktbenchmarks gebruikt bij deze inschatting — uitsluitend gebaseerd op de ingevulde due-diligence-gegevens en eerdere beoordelingen.</div>';
       }
+      // Dashboardwaardering (GO Marcel 06-11-2026, optie A): de begeleider keurt deze waardering bewust goed voordat
+      // hij als indicatieve waardering op het dashboard verschijnt. Goedkeuren maakt geen document en start geen AI.
+      if(rd2.id)html2+='<div style="margin-top:.75rem;display:flex;align-items:center;gap:10px;flex-wrap:wrap"><button class="btn-outline" id="w-ai2-akkoord" style="font-size:12px;padding:6px 14px">Goedkeuren als indicatieve waardering</button><span style="font-size:11px;color:var(--muted)">Alleen een goedgekeurde waardering verschijnt op het dashboard.</span></div>';
       out2.innerHTML=html2;
+      var akBtn=ge('w-ai2-akkoord');
+      if(akBtn)akBtn.addEventListener('click',async function(){
+        akBtn.disabled=true;akBtn.textContent='Goedkeuren...';
+        var ak=await fetchMetTimeout(WORKER+'/mna/waardering/akkoord',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||S.code||''},body:JSON.stringify({code:S.code,waardering_id:rd2.id})},20000).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});
+        if(ak&&ak.ok===true){akBtn.textContent='✓ Goedgekeurd als indicatieve waardering';S._dashW=null;toast('Waardering goedgekeurd; zichtbaar op het dashboard','ok');}
+        else{akBtn.disabled=false;akBtn.textContent='Goedkeuren als indicatieve waardering';toast('Goedkeuren is niet gelukt; er is niets gewijzigd','err');}
+      });
       wAi2Btn.disabled=false;wAi2Btn.textContent='↻ Opnieuw genereren';
       toast('✓ AI-waardering (second opinion) is gegenereerd','ok');
     }catch(e){out2.innerHTML='<div style="color:var(--red);font-size:13px">Fout: '+esc(e.message)+'</div>';wAi2Btn.disabled=false;wAi2Btn.textContent='🤖 Genereer AI-waardering (second opinion)';toast('Genereren van AI-waardering is mislukt','err');}
@@ -2010,6 +2024,12 @@ function bindAll(){
     try{
       vd=await fetch(WORKER+'/mna/versie/'+laatste.id+'?code='+encodeURIComponent(S.code)).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();});
     }catch(e){leesfout();return;}
+    if(!actueel())return;
+    // N-149: moment van de laatste wijziging van de financiële brongegevens (alleen voor de verouderd-melding).
+    try{
+      var fg=await fetchMetTimeout(WORKER+'/mna/waardering/geschiedenis/'+S.code,{headers:{'x-tussen-key':S._bgKey||S.code||''}},8000).then(function(r){return r.ok?r.json():null;});
+      S._finGewijzigdOp=fg&&fg.ok?fg.financieel_gewijzigd_op||null:null;
+    }catch(e){S._finGewijzigdOp=null;}
     if(!actueel())return;
     if(vd&&vd.tekst){
       wToonRapport(vd.tekst, vd.created_at, vd.versie);

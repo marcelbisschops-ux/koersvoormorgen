@@ -44,6 +44,42 @@ function k2Kpi2(label, waarde, toel, naar) {
 var MT_STATUS2 = { gereed: ['Gereed', 'ok'], bezig: ['Bezig', 'info'], open: ['Open', ''], nvt: ['N.v.t.', ''], niet_beschikbaar: ['Nog niet beschikbaar', ''], voorbereiding: ['In voorbereiding', ''], afgevallen: ['Afgevallen', ''] };
 function mtChip2(st) { var x = MT_STATUS2[st] || [st || '', '']; return '<span class="k2-chip' + (x[1] ? ' k2-chip--' + x[1] : '') + '">' + mtEsc(x[0]) + '</span>'; }
 
+// Dashboardwaardering (GO Marcel 06-11-2026, optie A): uitsluitend de laatst door de begeleider goedgekeurde
+// waardering, als indicatief, met bandbreedte, methode en peildatum; verouderd als de financiële brongegevens daarna
+// wijzigden (N-149). Geen goedkeuring = geen bedrag. Alleen voor de begeleider (de bron is begeleider-only).
+function k2WaarderingLaad() {
+  // Een fout wordt niet blijvend onthouden: na 30 seconden opnieuw proberen bij de volgende weergave.
+  if (S._dashW && S._dashW.code === S.code && !(S._dashW.status === 'fout' && Date.now() - (S._dashW.tot || 0) > 30000)) return;
+  var sessie = S, code = S.code;
+  S._dashW = { code: code, status: 'laden' };
+  fetchMetTimeout(WORKER + '/mna/waardering/geschiedenis/' + code, { headers: { 'x-tussen-key': S._bgKey || '' } }, 10000)
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (d) {
+      if (S !== sessie || S.code !== code) return;
+      var ok = !!(d && d.ok && Array.isArray(d.waarderingen));
+      // Laatst goedgekeurd = het meest recente goedkeuringsmoment (updated_at wordt bij goedkeuren gezet).
+      var w = ok ? d.waarderingen.filter(function (x) { return Number(x.adviseur_akkoord) === 1; })
+        .sort(function (a, b) { return (Number(b.updated_at) || Number(b.created_at) || 0) - (Number(a.updated_at) || Number(a.created_at) || 0); })[0] || null : null;
+      S._dashW = { code: code, status: ok ? 'ok' : 'fout', tot: Date.now(), w: w, fin: ok ? d.financieel_gewijzigd_op || null : null };
+      var wr = mtWrap(); if (wr) mtTegels(wr);
+    })
+    .catch(function () { if (S === sessie && S.code === code) { S._dashW = { code: code, status: 'fout', tot: Date.now() }; var wr = mtWrap(); if (wr) mtTegels(wr); } });
+}
+function k2WaarderingKpi() {
+  if (typeof isTussen !== 'function' || !isTussen()) return '';
+  k2WaarderingLaad();
+  var dw = S._dashW || {};
+  if (dw.status === 'laden') return k2Kpi2('Indicatieve waardering', 'Laden…', '', 'analyse');
+  if (dw.status !== 'ok') return k2Kpi2('Indicatieve waardering', null, 'Kon niet worden geladen', 'analyse');
+  if (!dw.w) return k2Kpi2('Indicatieve waardering', null, 'Nog geen goedgekeurde waardering', 'analyse');
+  var w = dw.w, fmt = function (t) { return new Date(Number(t)).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' }); };
+  var laag = k2Bedrag(w.range_laag), hoog = k2Bedrag(w.range_hoog);
+  var verouderd = Number(dw.fin) > 0 && Number(w.created_at) > 0 && Number(w.created_at) < Number(dw.fin);
+  var toel = 'Indicatief' + (laag && hoog ? ' · ' + laag + ' tot ' + hoog : '') + (w.methode ? ' · ' + w.methode : '') + (Number(w.created_at) > 0 ? ' · peildatum ' + fmt(w.created_at) : '')
+    + (verouderd ? ' · verouderd sinds ' + fmt(dw.fin) + ': financiële gegevens daarna gewijzigd' : '');
+  return k2Kpi2('Indicatieve waardering', k2Bedrag(w.range_midden), toel, 'analyse');
+}
+
 function mtCockpitHtml(stand) {
   var t = S.traject || {}, g = S._groepData || {};
   var jd = (typeof JR !== 'undefined' && JR.cache && typeof jrSleutel === 'function' && JR.cache[jrSleutel('traject')]) ? JR.cache[jrSleutel('traject')].d : null;
@@ -71,6 +107,7 @@ function mtCockpitHtml(stand) {
   h += '<div class="k2-kpi-rij">'
     + k2Kpi2('Omzet laatste jaar', omzet3, omzet2 ? 'Jaar ervoor ' + omzet2 : 'Uit due diligence, financieel', 'dd')
     + k2Kpi2(ebNorm ? 'Genormaliseerde EBITDA' : 'EBITDA laatste jaar', ebNorm || eb, recurring ? 'Recurring omzet ' + recurring : 'Uit due diligence, financieel', 'dd')
+    + k2WaarderingKpi()
     + k2Kpi2('Due diligence', ddCat ? ddVelden + ' velden' : null, ddCat ? 'ingevuld in ' + ddCat + ' categorieën' : 'Nog geen velden ingevuld', 'dd')
     + k2Kpi2('Transactie', huidig ? 'Fase ' + huidig.nr + ' van ' + jd.fasen.length : (jd ? null : 'Laden…'), huidig ? huidig.titel + ' · ' + gereed + ' van ' + telt.length + ' fasen gereed' : '', 'journey')
     + (mtBeschikbaar().some(function (s) { return s[0] === 'kandidaten'; }) ? k2Kpi2('Kandidaten', nKand === null ? 'Laden…' : nKand ? String(nKand) : '0', nKand ? nShort + ' op de shortlist' : 'Nog geen kandidaten', 'kandidaten') : '')

@@ -306,7 +306,10 @@ function fbcVerwerkCorrectie(c,body,x){
     FBC.melding={soort:'ok',html:'&#10003; Correctie vastgelegd: '+fbcVeldLabel(body.veld_id)+' van '+fbcBedrag(d.oude_waarde,true)+' naar '+fbcBedrag(body.nieuwe_waarde)
       +'. Brondocument: '+fbcEsc(c.docNaam||body.bron_document_id)+'. Audit-id: '+fbcEsc(d.audit_id)+'. Basisstatus: '+fbcEsc(d.basis_status||'ONBEKEND')+'.'
       +' Dit is een gebruikerscorrectie met reden, <strong>geen bronfeit</strong>; de oorspronkelijke bronwaarden en documenten blijven ongewijzigd.'
-      +(lokaal==='invoer_behouden'?' <strong>Let op:</strong> uw eigen invoer in het formulierveld is behouden en niet overschreven; als u die opslaat, vervangt die de gecorrigeerde waarde.':'')};
+      +(lokaal==='invoer_behouden'?' <strong>Let op:</strong> uw eigen invoer in het formulierveld is behouden en niet overschreven; als u die opslaat, vervangt die de gecorrigeerde waarde.':'')
+      // N-149: uitkomst van de groepsherberekening na de correctie (bijgewerkt, niet nodig, of mislukt).
+      +(d.groep_herberekening==='bijgewerkt'&&body.entiteit_id?' De groepstotalen zijn opnieuw berekend.':'')
+      +(/^(DB_LEESFOUT|GROEPSRIJ_ONLEESBAAR|GELIJKTIJDIGE_WIJZIGING|CAS_GEWIJZIGD|FOUT|onbekend)$/.test(String(d.groep_herberekening||''))?' <strong>Let op:</strong> de groepstotalen konden nu niet opnieuw worden berekend; ze worden bijgewerkt bij de volgende opslag in deze fase. Controleer de groepstotalen voordat u ze gebruikt.':'')};
     return fbcLaadIntern();
   }
   c.bezig=false;

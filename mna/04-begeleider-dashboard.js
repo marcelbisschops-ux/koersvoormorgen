@@ -5182,6 +5182,8 @@ function renderBegeleiderDashboard(app){
       +'<button id="rr-nieuw" class="btn-outline" style="font-size:12px;padding:6px 14px">&#8635; Opnieuw genereren</button>'
       +'</div>'
       +'<div style="font-size:12px;color:var(--gold-dark);background:var(--gold-bg);border:1px solid var(--gold);border-radius:6px;padding:.5rem .75rem;margin-bottom:.85rem;line-height:1.5">&#129302; AI-gegenereerd (bèta), gebaseerd uitsluitend op de al ingevulde DD-data en beoordelingen van dit traject — geen extern marktonderzoek. Controleer vóór gebruik richting een tegenpartij.</div>';
+    // N-149: gemaakt vóór de laatste wijziging van de financiële brongegevens = verouderd (met datum, niets automatisch).
+    if(typeof verouderdMelding==='function')html+=verouderdMelding(d.updated_at,d.financieel_gewijzigd_op,'dit risicoraamwerk');
     if(d.onvoldoende_data_voor&&d.onvoldoende_data_voor.length){
       html+='<div style="font-size:12px;color:var(--red);margin-bottom:.85rem">&#9888; Onvoldoende brondata voor: '+d.onvoldoende_data_voor.map(esc).join(', ')+'</div>';
     }
