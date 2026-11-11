@@ -2038,6 +2038,8 @@ function bindAll(){
     }
   }
   if(wAiBtn)wLaadLaatsteRapport();
+  // N-183: analyse toekomstbestendigheid (alleen begeleider, accountancy).
+  if(typeof tkLaad==='function')tkLaad();
   var opslaanBtn=ge('opslaan-btn');if(opslaanBtn)opslaanBtn.onclick=function(){
     saveCurrent(function(){
       var btn=ge('opslaan-btn');
