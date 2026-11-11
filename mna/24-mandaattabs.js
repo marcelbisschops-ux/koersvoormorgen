@@ -172,7 +172,9 @@ function mtZijbalk() {
   items.forEach(function (s) {
     h += '<li><button type="button" class="mt-zij-knop" data-mt-naar="' + s[0] + '"' + (actief === s[0] ? ' aria-current="page"' : '') + '><span class="mt-zij-ico" aria-hidden="true">' + (mtUi2() ? mtIcoon(s[0]) : s[2]) + '</span><span>' + mtEsc(s[1]) + '</span></button></li>';
   });
-  h += '</ul><div class="mt-zij-voet"><button type="button" class="mt-zij-knop" data-mt-naar="handleiding"' + (actief === 'handleiding' ? ' aria-current="page"' : '') + '><span class="mt-zij-ico" aria-hidden="true">' + (mtUi2() ? mtIcoon('handleiding') : '&#128214;') + '</span><span>Handleiding</span></button></div>';
+  h += '</ul><div class="mt-zij-voet"><button type="button" class="mt-zij-knop" data-mt-naar="handleiding"' + (actief === 'handleiding' ? ' aria-current="page"' : '') + '><span class="mt-zij-ico" aria-hidden="true">' + (mtUi2() ? mtIcoon('handleiding') : '&#128214;') + '</span><span>Handleiding</span></button>'
+    // N-189: vaste ingang naar het overzicht van beveiliging, leveranciers en continuïteit (openbare pagina).
+    + '<a class="mt-zij-knop" href="/platform/beveiliging-en-gegevens" target="_blank" rel="noopener"><span class="mt-zij-ico" aria-hidden="true">&#128274;</span><span>Beveiliging &amp; continuïteit</span></a></div>';
   if (zij.getAttribute('data-mt-html') !== h) {
     zij.innerHTML = h; zij.setAttribute('data-mt-html', h);
     // Tablet/mobiel (menu als balk): het actieve onderdeel altijd in beeld schuiven.

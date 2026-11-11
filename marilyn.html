@@ -5383,6 +5383,63 @@ async function renderMatchingTab(el){
   await laad();
 }
 
+// N-189 (GO Marcel 11-11-2026): transparantie over leveranciers, eigen maatregelen en continuïteit, alleen voor de
+// beheerder. Stand en bronnen: kvm-bridge/inbox/KVM-BEVEILIGING-CONTINUITEIT-20261111.md. Bij elke wijziging in
+// infrastructuur, beveiliging of leveranciers bijwerken (Definition of Done, MASTER N-189g), samen met de openbare
+// pagina platform/beveiliging-en-gegevens.html.
+var VEILIGHEID_STAND = '11 november 2026';
+var VEILIGHEID_LEVERANCIERS = [
+  ['Cloudflare', 'Workers, Pages, D1, R2, Browser Rendering', 'ISO 27001, ISO 27701, ISO 27018, SOC 2 Type II, PCI DSS', 'https://www.cloudflare.com/trust-hub/compliance-resources/'],
+  ['Anthropic', 'Claude API (AI-analyse en concepten)', 'SOC 2 Type II, ISO 27001, ISO/IEC 42001', 'https://trust.anthropic.com/'],
+  ['Entrust Signhost', 'Digitaal ondertekenen', 'ISO 27001, SOC 2 Type 2, eIDAS', 'https://www.signhost.com/compliance'],
+  ['Resend', 'E-mail', 'SOC 2 Type II (geen ISO 27001)', 'https://resend.com/security/soc-2'],
+  ['GitHub', 'Broncode, Actions', 'SOC 2 Type 2, ISO 27001', 'https://docs.github.com/en/enterprise-cloud@latest/organizations/keeping-your-organization-secure/managing-security-settings-for-your-organization/accessing-compliance-reports-for-your-organization'],
+  ['Apple iCloud', 'Opslag dagelijkse back-up', 'ISO 27001, ISO 27018 (Geavanceerde gegevensbescherming: niet geverifieerd)', 'https://support.apple.com/guide/certifications/apc34d2c0468b/web'],
+  ['UptimeRobot', 'Beschikbaarheidsmonitor (geen klantdata)', 'SOC 2 (type niet eenduidig vermeld)', 'https://uptimerobot.com/security/']
+];
+// Status: AANWEZIG, GETEST, ONAFHANKELIJK GEVERIFIEERD, NIET GEVERIFIEERD (zie bronbestand voor bewijs).
+var VEILIGHEID_MAATREGELEN = [
+  ['Scheiding tussen trajecten en rollen', 'ONAFHANKELIJK GEVERIFIEERD', 'Red-team 17-10-2026 (136 combinaties, geen lek); N-133 productiegeverifieerd'],
+  ['Gelijktijdig werken zonder ongemerkt verlies (N-146/N-149)', 'ONAFHANKELIJK GEVERIFIEERD', 'Bridge-reviews, live 11-11-2026'],
+  ['XSS-bescherming postvak (N-180), AI-kostenlimiet (N-181)', 'GETEST', 'Productie 06-11-2026'],
+  ['Wachtwoorden PBKDF2 (100.000 iteraties) + e-mail-MFA adviseurs', 'AANWEZIG', 'MFA standaard aan, per account uit te zetten; 600.000 iteraties aanbevolen'],
+  ['Beheerderstoegang', 'NIET GEVERIFIEERD', 'Eén statische beheersleutel zonder MFA of persoonsgebonden identiteit (open risico)'],
+  ['Beveiligingsheaders API', 'GETEST', 'HSTS, CSP, X-Frame-Options op productie (curl 11-11)'],
+  ['Beveiligingsheaders website', 'GETEST', 'HSTS en framebeveiliging toegevoegd (preview 11-11); volledige CSP volgt'],
+  ['Encryptie in rust (D1/R2)', 'AANWEZIG', 'AES-256 volgens Cloudflare; sleutels bij Cloudflare'],
+  ['Login-rate-limiting', 'AANWEZIG', 'Per Worker-instantie, niet globaal'],
+  ['Dagelijkse back-up D1 + documenten', 'GETEST', 'Hersteltest 11-11-2026 geïsoleerd geslaagd; melding bij mislukken hersteld'],
+  ['D1 Time Travel', 'AANWEZIG', 'Herstel naar eerder moment (Cloudflare)'],
+  ['Herstel naar werkende omgeving', 'NIET GEVERIFIEERD', 'Nog niet geoefend'],
+  ['Monitoring', 'GETEST', 'UptimeRobot /health; dagelijkse selfcheck 15/15 (11-11)'],
+  ['Incidentprocedure', 'AANWEZIG', 'legal/INCIDENTPROCEDURE.md; tabletop nog niet gehouden (N-27)'],
+  ['Externe pentest', 'NIET GEVERIFIEERD', 'Alleen interne red-team-routine']
+];
+var VEILIGHEID_OPEN_RISICOS = [
+  'Beheerderstoegang zonder MFA en persoonsgebonden identiteit.',
+  'R2 bevat documenten van trajecten die niet meer bestaan; back-up bewaart documenten onbeperkt (besluit nodig, N-186).',
+  'Opslag zonder EU-jurisdictie (regio West-Europa); privacyverklaring noemt Frankfurt (besluit nodig).',
+  'Continuïteit hangt aan één beheerder en één Mac (back-up, deploys).',
+  'Volledige Content-Security-Policy voor de website ontbreekt nog.'
+];
+function veiligheidTransparantieHtml() {
+  var kleur = { 'AANWEZIG': 'var(--mid)', 'GETEST': 'var(--teal)', 'ONAFHANKELIJK GEVERIFIEERD': 'var(--teal)', 'NIET GEVERIFIEERD': 'var(--red)' };
+  var h = '<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);margin-top:1.25rem">'
+    + '<div style="padding:.85rem 1rem;border-bottom:1px solid var(--border);font-weight:600">Leveranciers, maatregelen en continuïteit <span style="font-weight:400;font-size:12px;color:var(--muted)">stand ' + esc(VEILIGHEID_STAND) + '</span></div>'
+    + '<div style="padding:.75rem 1rem;font-size:12px;color:var(--muted)">Leverancierscertificeringen gelden voor hun diensten, niet voor Koers voor Morgen zelf. Openbare versie: <a href="/platform/beveiliging-en-gegevens" target="_blank" rel="noopener">Beveiliging &amp; continuïteit</a>.</div>'
+    + '<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr><th style="text-align:left;padding:6px 10px">Leverancier</th><th style="text-align:left;padding:6px 10px">Dienst</th><th style="text-align:left;padding:6px 10px">Certificering</th></tr></thead><tbody>';
+  VEILIGHEID_LEVERANCIERS.forEach(function (l) {
+    h += '<tr style="border-top:1px solid var(--border)"><td style="padding:6px 10px"><a href="' + esc(l[3]) + '" target="_blank" rel="noopener">' + esc(l[0]) + '</a></td><td style="padding:6px 10px">' + esc(l[1]) + '</td><td style="padding:6px 10px">' + esc(l[2]) + '</td></tr>';
+  });
+  h += '</tbody></table><table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:.75rem"><thead><tr><th style="text-align:left;padding:6px 10px">Eigen maatregel</th><th style="text-align:left;padding:6px 10px">Status</th><th style="text-align:left;padding:6px 10px">Bewijs / toelichting</th></tr></thead><tbody>';
+  VEILIGHEID_MAATREGELEN.forEach(function (m) {
+    h += '<tr style="border-top:1px solid var(--border)"><td style="padding:6px 10px">' + esc(m[0]) + '</td><td style="padding:6px 10px;font-weight:600;color:' + (kleur[m[1]] || 'var(--mid)') + '">' + esc(m[1]) + '</td><td style="padding:6px 10px;color:var(--sub)">' + esc(m[2]) + '</td></tr>';
+  });
+  h += '</tbody></table><div style="padding:.75rem 1rem;border-top:1px solid var(--border);font-size:12px"><strong>Open risico\'s en verbetermaatregelen</strong><ul style="margin:.4rem 0 0 1.1rem">'
+    + VEILIGHEID_OPEN_RISICOS.map(function (r) { return '<li>' + esc(r) + '</li>'; }).join('') + '</ul></div></div>';
+  return h;
+}
+
 async function renderVeiligheidTab(el) {
   if (veiligheidRefreshTimer) { clearInterval(veiligheidRefreshTimer); veiligheidRefreshTimer = null; }
   el.innerHTML = '<div style="padding:1rem;color:var(--muted);font-size:13px">Laden...</div>';
@@ -5640,6 +5697,8 @@ async function renderVeiligheidTab(el) {
           + onbekendeStatus.map(function(b){ return esc(b.code || b.titel || '—') + ' (status: ' + esc(String(b.status)) + ')'; }).join('; ') + '</div>';
       }
       html += '</div>';
+      // N-189: leveranciers, eigen maatregelen met bewijsniveau, back-up, monitoring en open risico's.
+      html += veiligheidTransparantieHtml();
 
       el.innerHTML = html;
 
