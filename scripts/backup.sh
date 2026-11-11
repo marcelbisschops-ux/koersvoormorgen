@@ -56,16 +56,30 @@ mkdir -p "$BACKUP_DIR"
 # een lokaal logbestand dat niemand actief in de gaten houdt. ADMIN_KEY komt uit de omgeving (in de
 # launchd-plist gezet, niet in dit script of git) — ontbreekt hij (bijv. een handmatige run zonder
 # ~/.zshrc geladen), dan wordt de melding overgeslagen, nooit de back-up zelf geblokkeerd.
+# 11 nov 2026: de sleutel uit de launchd-plist bleek verouderd na de rotatie van 19 sep; curl -s negeerde de 401,
+# waardoor de mislukte back-ups van 9 en 10 nov nergens gemeld werden. Nu: eerst de macOS-sleutelhanger (dezelfde
+# bron als de tests, altijd actueel), dan pas de omgeving; een geweigerde melding (HTTP-fout) wordt gelogd; en bij
+# een mislukte back-up verschijnt altijd ook een lokale macOS-melding, los van het netwerk of de worker.
+KC_SLEUTEL=$(/usr/bin/security find-generic-password -a "$(id -un)" -s kantoorinzicht-production-admin-key -w 2>/dev/null || true)
+[ -n "$KC_SLEUTEL" ] && ADMIN_KEY="$KC_SLEUTEL"
+unset KC_SLEUTEL
 meld_backup_status() {
   local ok="$1" details="$2"
+  if [ "$ok" != "true" ]; then
+    /usr/bin/osascript -e 'display notification "Dagelijkse back-up Koers voor Morgen mislukt. Zie ~/Library/Logs/kantoorinzicht-backup.log" with title "Back-up mislukt" sound name "Basso"' >/dev/null 2>&1 || true
+  fi
   if [ -z "${ADMIN_KEY:-}" ]; then
-    echo "   ⊘ ADMIN_KEY niet in de omgeving — melding aan de worker overgeslagen." >&2
+    echo "   ⊘ Geen beheersleutel (sleutelhanger of omgeving) — melding aan de worker overgeslagen." >&2
     return 0
   fi
-  curl -s -m 15 -X POST -H "x-admin-key: $ADMIN_KEY" -H "Content-Type: application/json" \
+  local code
+  code=$(curl -s -m 15 -o /dev/null -w '%{http_code}' -X POST -H "x-admin-key: $ADMIN_KEY" -H "Content-Type: application/json" \
     "https://kantoorinzicht.marcel-bisschops.workers.dev/mna/admin/veiligheid/backup-melding" \
-    -d "{\"ok\":$ok,\"details\":$(printf '%s' "$details" | python3 -c 'import json,sys;print(json.dumps(sys.stdin.read()))')}" \
-    >/dev/null 2>&1 || echo "   ⊘ Melding aan de worker mislukte (netwerk?) — geen blokkade van de back-up zelf." >&2
+    -d "{\"ok\":$ok,\"details\":$(printf '%s' "$details" | python3 -c 'import json,sys;print(json.dumps(sys.stdin.read()))')}" 2>/dev/null || echo "000")
+  if [ "$code" != "200" ]; then
+    echo "   ⊘ Melding aan de worker niet aangekomen (HTTP $code) — geen blokkade van de back-up zelf." >&2
+    /usr/bin/osascript -e 'display notification "Back-upmelding aan het veiligheidsdashboard is niet aangekomen" with title "Back-up: melding mislukt"' >/dev/null 2>&1 || true
+  fi
 }
 
 # Audit-fix P1 (24 aug 2026, zevende heraudit): de export hieronder stond drie dagen op rij
@@ -130,6 +144,8 @@ if [ "$EXPORT_STATUS" -ne 0 ] || [ ! -s "$OUT" ]; then
   exit 1
 fi
 TABELLEN=$(grep -c "CREATE TABLE" "$OUT" || true)
+# Integriteit (11 nov 2026): hash van de export ernaast, zodat een herstel kan aantonen dat het bestand ongewijzigd is.
+( cd "$BACKUP_DIR" && shasum -a 256 "$(basename "$OUT")" > "$(basename "$OUT").sha256" ) || echo "   ⚠ hash van de export niet vastgelegd" >&2
 echo "   ✓ $(basename "$OUT")  ($(du -h "$OUT" | cut -f1), $TABELLEN tabellen)"
 
 echo "▶ 2/4  Documenten (R2) ophalen ..."
@@ -157,6 +173,9 @@ else
   echo "   ⊘ geen documenten in R2 (of database niet bereikbaar)"
 fi
 
+# Manifest van de documentenmap (11 nov 2026): SHA-256 per bestand, voor een aantoonbare integriteitscontrole bij herstel.
+( cd "$BACKUP_DIR" && find documenten -type f | sort | while IFS= read -r f; do shasum -a 256 "$f"; done > "documenten-manifest_$STAMP.sha256" ) 2>/dev/null || echo "   ⚠ documentenmanifest niet vastgelegd" >&2
+find "$BACKUP_DIR" -maxdepth 1 -name "documenten-manifest_*.sha256" -mtime +60 -delete 2>/dev/null || true
 echo "▶ 3/5  Lokale (niet-gecommitte) documentatie back-uppen ..."
 # Bevinding 13 sep 2026 (doorlichtingsopdracht, technisch overdrachtsdocument): CLAUDE.md, het
 # technisch overdrachtsdocument zelf (kantoorinzicht_documentatie.md), BACKLOG.md en alle overige
@@ -187,6 +206,7 @@ fi
 
 echo "▶ 5/5  Oude database-back-ups opruimen (>60 dagen) ..."
 find "$BACKUP_DIR" -maxdepth 1 -name "kantoorinzicht_*.sql" -mtime +60 -delete 2>/dev/null || true
+find "$BACKUP_DIR" -maxdepth 1 -name "kantoorinzicht_*.sql.sha256" -mtime +60 -delete 2>/dev/null || true
 AANTAL=$(ls -1 "$BACKUP_DIR"/kantoorinzicht_*.sql 2>/dev/null | wc -l | tr -d ' ')
 echo "   ✓ $AANTAL database-back-up(s) in $BACKUP_DIR"
 

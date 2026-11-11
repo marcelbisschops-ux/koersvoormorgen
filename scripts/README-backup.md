@@ -116,3 +116,12 @@ Terugzetten van een document naar R2 (in geval van nood):
 cd ~/Documents/GitHub/koersvoormorgen-backend/backend
 npx wrangler r2 object put "kantoorinzicht-docs/<r2_key>" --file="<pad naar back-up>" --remote
 ```
+
+## Controle 11 november 2026 (stand en verbeteringen)
+- **Dagelijkse run:** launchd `com.bisschopsfinancing.kantoorinzicht-backup`, elke dag 20:00. Liep dagelijks van 9 sep t/m 8 nov 2026 (één gat op 30 okt). **9 en 10 nov mislukt:** `npx wrangler` haalde een nieuwe wrangler-versie op; die download was onvolledig (platformbinary ontbrak). Hersteld op 11 nov door de ontbrekende afhankelijkheid in de npx-cache te installeren; daarna handmatige run geslaagd (`kantoorinzicht_2026-11-11_1304.sql`, 173 tabellen, 67/67 documenten).
+- **Melding bij mislukken:** werkte niet sinds de sleutelrotatie van 19 sep (verouderde sleutel in de launchd-plist; de 401 werd genegeerd). Nu: het script leest de beheersleutel uit de macOS-sleutelhanger (`kantoorinzicht-production-admin-key`), logt een geweigerde melding, en toont bij elke mislukking ook een lokale macOS-melding. De verouderde sleutel in de plist is ongeldig en wordt niet meer gebruikt; Marcel kan hem verwijderen.
+- **Integriteit:** per back-up een `.sha256` van de SQL-export en een SHA-256-manifest van de documentenmap (vanaf 11 nov handmatig, zie hieronder voor automatisering).
+- **Hersteltest 11 nov (geïsoleerd, lokaal, daarna gewist):** SQL-hash OK; terugzetten in een lege SQLite-database zonder fouten, `integrity_check` = ok; 67/67 documentkoppelingen aanwezig; 65/65 documenten met opgeslagen hash byte-identiek (2 oudere zonder hash, wel aanwezig).
+- **Dekking R2:** de back-up haalt alle documenten op die in `mna_documenten` staan (alle objecten van bestaande trajecten: 67). Niet meegenomen: adviseurslogo's (`branding/`), exportbestanden (`export/`) en objecten van trajecten die niet meer in de database staan (zie MASTER N-186).
+- **Bewaartermijn:** database-exports 60 dagen; documentenmap wordt niet opgeschoond (documenten van inmiddels verwijderde trajecten blijven in de back-up staan, zie N-186).
+- **Cloudflare-eigen herstel:** D1 Time Travel actief (herstelpunt per moment, binnen de bewaarperiode van het abonnement); R2 heeft geen objectversiebeheer, herstel van documenten loopt via deze back-up.
