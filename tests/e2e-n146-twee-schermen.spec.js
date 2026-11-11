@@ -35,68 +35,78 @@ async function open(browser) {
 const notitieServer = async (faseId) => { const t = await api('GET', '/mna/traject/' + V); const r = ((t.json && t.json.data) || []).find((x) => x.fase_id === faseId); return r ? r.notitie || '' : ''; };
 
 test('notitie van scherm A overleeft een opslag vanuit verouderd scherm B; conflict geeft een melding', async ({ browser }) => {
-  test.setTimeout(120000);
+  test.setTimeout(420000);
   const a = await open(browser), b = await open(browser);
   const faseId = await a.evaluate(() => FASES[S.fase].id);
   expect(await b.evaluate(() => FASES[S.fase].id)).toBe(faseId);
   const opslag = (p) => p.waitForResponse((r) => r.url().includes('/mna/save') && r.request().method() === 'POST', { timeout: 20000 });
+  // In de volledige suite (parallel, één IP) kan de algemene limiet van 120 verzoeken/minuut een 429 geven. Dat is
+  // testbelasting, geen productgedrag: dan na het verlopen van het venster dezelfde handeling opnieuw uitvoeren.
+  const slaOp = async (p, handeling) => {
+    for (let poging = 0; poging < 3; poging++) {
+      const w = opslag(p); await handeling(); const r = await w;
+      if (r.status() !== 429) return r.status();
+      await p.waitForTimeout(61000);
+    }
+    return 429;
+  };
 
-  let w = opslag(a);
-  await a.locator('#notitie_' + faseId).fill('Notitie van scherm A');
-  await a.locator('#notitie_' + faseId).dispatchEvent('input');
-  expect((await w).status()).toBe(200);
+  expect(await slaOp(a, async () => {
+    await a.locator('#notitie_' + faseId).fill('Notitie van scherm A');
+    await a.locator('#notitie_' + faseId).dispatchEvent('input');
+  })).toBe(200);
   expect(await notitieServer(faseId)).toBe('Notitie van scherm A');
 
   // B (verouderd: notitie nog leeg) wijzigt alleen een gegevensveld.
   const veldId = await b.evaluate(() => { const f = FASES[S.fase]; const d = f.dataFields.find((x) => !x.header && document.getElementById('df_' + x.id) && document.getElementById('df_' + x.id).tagName === 'INPUT'); return d ? 'df_' + d.id : null; });
   expect(veldId).toBeTruthy();
-  w = opslag(b);
-  await b.locator('#' + veldId).fill('N146 synth');
-  await b.locator('#' + veldId).dispatchEvent('input');
-  await b.locator('#' + veldId).dispatchEvent('change');
-  expect((await w).status()).toBe(200);
+  expect(await slaOp(b, async () => {
+    await b.locator('#' + veldId).fill('N146 synth');
+    await b.locator('#' + veldId).dispatchEvent('input');
+    await b.locator('#' + veldId).dispatchEvent('change');
+  })).toBe(200);
   expect(await notitieServer(faseId)).toBe('Notitie van scherm A');
   // B had de notitie niet aangeraakt: na zijn opslag toont B nu de actuele notitie van A (zoals bij velden).
   await expect(b.locator('#notitie_' + faseId)).toHaveValue('Notitie van scherm A', { timeout: 5000 });
 
   // A wijzigt de notitie opnieuw; B is weer verouderd en wijzigt ook de notitie: 409, het scherm van B toont de
   // nieuwe tekst van A, de eigen tekst van B staat in het herstelblok.
-  w = opslag(a);
-  await a.locator('#notitie_' + faseId).fill('Notitie van scherm A, versie 2');
-  await a.locator('#notitie_' + faseId).dispatchEvent('input');
-  expect((await w).status()).toBe(200);
-  w = opslag(b);
-  await b.locator('#notitie_' + faseId).fill('Notitie van scherm B');
-  await b.locator('#notitie_' + faseId).dispatchEvent('input');
-  expect((await w).status()).toBe(409);
+  expect(await slaOp(a, async () => {
+    await a.locator('#notitie_' + faseId).fill('Notitie van scherm A, versie 2');
+    await a.locator('#notitie_' + faseId).dispatchEvent('input');
+  })).toBe(200);
+  expect(await slaOp(b, async () => {
+    await b.locator('#notitie_' + faseId).fill('Notitie van scherm B');
+    await b.locator('#notitie_' + faseId).dispatchEvent('input');
+  })).toBe(409);
   await expect(b.locator('#notitie_' + faseId)).toHaveValue('Notitie van scherm A, versie 2', { timeout: 5000 });
   await expect(b.locator('#notitie-herstel')).toContainText('Notitie van scherm B');
   expect(await notitieServer(faseId)).toBe('Notitie van scherm A, versie 2');
   // Geen stille overschrijving door een volgende automatische opslag: B wijzigt een veld, notitie van A blijft.
-  w = opslag(b);
-  await b.locator('#' + veldId).fill('N146 synth 2');
-  await b.locator('#' + veldId).dispatchEvent('input');
-  expect((await w).status()).toBe(200);
+  expect(await slaOp(b, async () => {
+    await b.locator('#' + veldId).fill('N146 synth 2');
+    await b.locator('#' + veldId).dispatchEvent('input');
+  })).toBe(200);
   expect(await notitieServer(faseId)).toBe('Notitie van scherm A, versie 2');
   // B kiest bewust "Mijn tekst terugzetten": opgeslagen.
-  w = opslag(b);
-  await b.locator('#notitie-herstel button', { hasText: 'Mijn tekst terugzetten' }).click();
-  expect((await w).status()).toBe(200);
+  expect(await slaOp(b, async () => {
+    await b.locator('#notitie-herstel button', { hasText: 'Mijn tekst terugzetten' }).click();
+  })).toBe(200);
   expect(await notitieServer(faseId)).toBe('Notitie van scherm B');
 
   // F2: A wist de notitie niet, maar B maakt hem leeg; A herlaadt (refreshData) en wijzigt een veld: leeg blijft leeg.
-  w = opslag(b);
-  await b.locator('#notitie_' + faseId).fill('');
-  await b.locator('#notitie_' + faseId).dispatchEvent('input');
-  expect((await w).status()).toBe(200);
+  expect(await slaOp(b, async () => {
+    await b.locator('#notitie_' + faseId).fill('');
+    await b.locator('#notitie_' + faseId).dispatchEvent('input');
+  })).toBe(200);
   expect(await notitieServer(faseId)).toBe('');
   await a.evaluate(async () => { if (typeof refreshData === 'function') await refreshData(); S.screen = 'main'; S.fase = FASES.findIndex((f) => f.id === 'commercieel'); renderApp(); });
   expect(await a.evaluate((fid) => S.notities[fid] || '', faseId)).toBe('');
   const veldA = await a.evaluate(() => { const f = FASES[S.fase]; const d = f.dataFields.find((x) => !x.header && document.getElementById('df_' + x.id) && document.getElementById('df_' + x.id).tagName === 'INPUT'); return 'df_' + d.id; });
-  w = opslag(a);
-  await a.locator('#' + veldA).fill('N146 synth A');
-  await a.locator('#' + veldA).dispatchEvent('input');
-  expect((await w).status()).toBe(200);
+  expect(await slaOp(a, async () => {
+    await a.locator('#' + veldA).fill('N146 synth A');
+    await a.locator('#' + veldA).dispatchEvent('input');
+  })).toBe(200);
   expect(await notitieServer(faseId)).toBe('');
 });
 
