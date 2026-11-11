@@ -26,3 +26,13 @@
 
 /assets/kvm.js
   Cache-Control: no-cache
+
+# Beveiligingsheaders voor alle pagina's (11 nov 2026, beveiligingscontrole N-187, bevinding A5): de API had ze al,
+# de website niet. HSTS: browsers gebruiken voortaan alleen HTTPS (zonder includeSubDomains, omdat niet van elk
+# subdomein vaststaat dat het HTTPS heeft). Framebeveiliging: pagina's mogen alleen door het eigen domein in een
+# frame worden getoond (tegen clickjacking op o.a. het beheerscherm en de portalen); het postvak-iframe in marilyn
+# gebruikt srcdoc en valt hier niet onder. Een volledige Content-Security-Policy volgt gefaseerd (inline scripts).
+/*
+  Strict-Transport-Security: max-age=31536000
+  X-Frame-Options: SAMEORIGIN
+  Content-Security-Policy: frame-ancestors 'self'
