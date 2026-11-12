@@ -36,6 +36,8 @@ _mock/*.png
 # Build-artifact van scripts/build-frontend-release.mjs (N-83, 27 sep 2026) — de allowlist-gebaseerde
 # Cloudflare Pages-deploymap. Wordt bij elke deploy opnieuw, schoon opgebouwd; hoort niet in git.
 /.pages-dist/
+/.pages-dist
+/.pages-dist.nosync/
 
 # Interne documentatie/architectuur/audit-standaarden + schema.sql + legal/ — 12 sep 2026,
 # GOUDEN STANDAARD-bevinding: GitHub Pages publiceert de VOLLEDIGE repo-inhoud (geen Jekyll-

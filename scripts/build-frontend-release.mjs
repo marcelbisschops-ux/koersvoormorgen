@@ -13,11 +13,15 @@
 // werd gegitignored) wordt hieronder aanvullend expliciet uitgesloten — .gitignore untrackt geen
 // reeds-getrackte bestanden met terugwerkende kracht.
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, copyFileSync, rmSync, existsSync } from 'node:fs';
+import { mkdirSync, copyFileSync, rmSync, existsSync, symlinkSync, lstatSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 
 const REPO_ROOT = new URL('..', import.meta.url).pathname.replace(/\/$/, '');
-const DIST_DIR = join(REPO_ROOT, '.pages-dist');
+// 12-11-2026: de build staat in een map met de extensie .nosync, die iCloud Drive niet synchroniseert. In een
+// gesynchroniseerde map maakte iCloud na elke herbouw conflictkopieën ("adv 2.html") die anders mee gepubliceerd
+// zouden worden. `.pages-dist` blijft het vaste pad voor deploy, releasegate en hook: een koppeling naar deze map.
+const DIST_DIR = join(REPO_ROOT, '.pages-dist.nosync');
+const DIST_LINK = join(REPO_ROOT, '.pages-dist');
 
 // Aanvullende, expliciete uitsluiting bovenop .gitignore — vangt reeds-getrackte bestanden die niet
 // met terugwerkende kracht uit een latere .gitignore-regel worden gehaald (zie toelichting hierboven).
@@ -44,6 +48,8 @@ function main() {
 
   if (existsSync(DIST_DIR)) rmSync(DIST_DIR, { recursive: true, force: true });
   mkdirSync(DIST_DIR, { recursive: true });
+  let isLink = false; try { isLink = lstatSync(DIST_LINK).isSymbolicLink(); } catch {}
+  if (!isLink) { rmSync(DIST_LINK, { recursive: true, force: true }); symlinkSync('.pages-dist.nosync', DIST_LINK); }
 
   let gekopieerd = 0;
   for (const rel of files) {

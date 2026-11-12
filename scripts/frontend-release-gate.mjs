@@ -59,12 +59,40 @@ function schrijf(rec) { fs.mkdirSync(LOGDIR, { recursive: true }); fs.appendFile
 
 export function beoordeel(hash, records = leesLog(), nu = Date.now()) {
   if (!hash) return { ok: false, reden: 'Geen .pages-dist gevonden; bouw eerst met scripts/build-frontend-release.mjs.' };
-  const eigen = records.filter((r) => r.hash === hash);
+  // Records met een tijdstip in de toekomst tellen niet (Codex-review 12-11, P2).
+  const eigen = records.filter((r) => r.hash === hash && Number.isFinite(r.ts) && r.ts <= nu + 5 * 60 * 1000);
   if (eigen.some((r) => r.result === 'FAIL')) return { ok: false, reden: 'Voor deze build is een RODE previewcontrole vastgelegd. Harde blokkade: maak een nieuwe build en een nieuwe preview.' };
   const pass = eigen.filter((r) => r.result === 'PASS').sort((a, b) => b.ts - a.ts)[0];
   if (!pass) return { ok: false, reden: 'Geen groene previewcontrole voor deze build. Eerst: node scripts/frontend-release-gate.mjs preview <preview-url>.' };
   if (nu - pass.ts > MAX_LEEFTIJD_MS) return { ok: false, reden: 'De groene previewcontrole voor deze build is ouder dan 60 minuten. Opnieuw previewen.' };
   return { ok: true, reden: 'Groene preview voor deze build (' + pass.url + ', ' + new Date(pass.ts).toISOString() + ').' };
+}
+
+// iCloud-conflictkopieën ("adv 2.html") ontstaan als .pages-dist in een gesynchroniseerde map opnieuw wordt opgebouwd
+// (12-11-2026 aangetroffen). Zo'n build wordt nooit vrijgegeven: opnieuw bouwen.
+export function conflictKopieen(dir = DIST) {
+  const uit = [];
+  const loop = (d) => { for (const n of fs.readdirSync(d)) { const p = path.join(d, n); if (/ \d+(\.[^./]+)?$/.test(n)) uit.push(path.relative(dir, p)); else if (fs.lstatSync(p).isDirectory()) loop(p); } };
+  if (fs.existsSync(dir)) loop(dir);
+  return uit;
+}
+
+// Inhoudsbinding (Codex-review 12-11, P1): de opgegeven preview moet exact deze build serveren. Elk publiek bestand
+// van .pages-dist wordt van de preview gehaald en op SHA-256 vergeleken. Niet-geserveerde bestanden (_headers,
+// _redirects, functions/) worden overgeslagen. Eén afwijking = geen binding = geen PASS.
+export async function controleerInhoud(url, dir = DIST) {
+  const basis = url.replace(/\/$/, '');
+  const bestanden = [];
+  const loop = (d) => { for (const n of fs.readdirSync(d).sort()) { const p = path.join(d, n); const rel = path.relative(dir, p).split(path.sep).join('/'); if (fs.lstatSync(p).isDirectory()) { if (rel !== 'functions') loop(p); } else if (!rel.startsWith('_')) bestanden.push(rel); } };
+  loop(dir);
+  const afwijkend = [];
+  for (const rel of bestanden) {
+    const lokaal = crypto.createHash('sha256').update(fs.readFileSync(path.join(dir, rel))).digest('hex');
+    let remote = null;
+    try { const r = await fetch(basis + '/' + rel.split('/').map(encodeURIComponent).join('/'), { redirect: 'follow' }); if (r.ok) remote = crypto.createHash('sha256').update(Buffer.from(await r.arrayBuffer())).digest('hex'); } catch {}
+    if (remote !== lokaal) afwijkend.push(rel);
+  }
+  return { totaal: bestanden.length, afwijkend };
 }
 
 async function wachtOpPreview(url) {
@@ -80,6 +108,8 @@ async function main() {
   const [cmd, arg] = process.argv.slice(2);
   if (cmd === 'hash') { console.log(vingerafdruk() || 'geen .pages-dist'); return 0; }
   if (cmd === 'check') {
+    const ck = conflictKopieen();
+    if (ck.length) { console.log('🔴 Build bevat conflictkopieën (' + ck.slice(0, 3).join(', ') + (ck.length > 3 ? ', …' : '') + '). Opnieuw bouwen.'); return 1; }
     const b = beoordeel(vingerafdruk());
     console.log((b.ok ? '🟢 ' : '🔴 ') + b.reden);
     return b.ok ? 0 : 1;
@@ -88,7 +118,18 @@ async function main() {
     if (!arg || !PREVIEW_RE.test(arg)) { console.error('🔴 Geef de unieke preview-deployment-URL (https://<hash>.kantoorinzicht-frontend.pages.dev).'); return 2; }
     const hash = vingerafdruk();
     if (!hash) { console.error('🔴 Geen .pages-dist gevonden.'); return 1; }
+    const ck = conflictKopieen();
+    if (ck.length) { console.error('🔴 Build bevat conflictkopieën (' + ck.slice(0, 3).join(', ') + '). Opnieuw bouwen; niets vastgelegd.'); return 1; }
     const bereikbaar = await wachtOpPreview(arg);
+    if (bereikbaar) {
+      const inh = await controleerInhoud(arg);
+      if (inh.afwijkend.length) {
+        schrijf({ ts: Date.now(), hash, url: arg, result: 'GEEN_BINDING', detail: inh.afwijkend.length + '/' + inh.totaal + ' bestanden wijken af: ' + inh.afwijkend.slice(0, 5).join(', ') });
+        console.error('🔴 Preview serveert niet exact deze build (' + inh.afwijkend.length + '/' + inh.totaal + ' afwijkend, o.a. ' + inh.afwijkend.slice(0, 3).join(', ') + '). Geen previewbewijs vastgelegd.');
+        return 1;
+      }
+      console.log('🟢 Preview serveert exact deze build (' + inh.totaal + ' bestanden, SHA-256 gelijk).');
+    }
     let result = 'FAIL'; let detail = '';
     if (!bereikbaar) detail = 'preview niet bereikbaar binnen 120 s';
     else {
