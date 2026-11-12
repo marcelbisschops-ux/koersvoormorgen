@@ -135,8 +135,8 @@ PAGES = [
      "https://koersvoormorgen.nl/platform/ai-signalen", "platform-dashboard.jpg", "website", "platform-sub"),
 
     ("platform/beveiliging-en-gegevens.html", 1,
-     "Beveiliging en gegevens · M&amp;A-platform · Koers voor Morgen",
-     "EU-opslag (Frankfurt, ISO 27001 / SOC 2), TLS, rol- en fase-toegang, 14-dagen-verwijdering, technisch afgedwongen scheiding tussen trajecten.",
+     "Vertrouwen, beveiliging en continuïteit · Koers voor Morgen",
+     "Waar je gegevens staan, welke leveranciers Koers voor Morgen gebruikt en hun certificeringen, eigen beveiligingsmaatregelen, back-up en continuïteit.",
      "https://koersvoormorgen.nl/platform/beveiliging-en-gegevens", "platform-dashboard.jpg", "website", "platform-sub"),
 
     ("platform/voor-adviseurs.html", 1,
@@ -253,6 +253,11 @@ PAGES = [
      "Inzichten over M&amp;A, due diligence en integratie · Koers voor Morgen",
      "Stukken die een vraagstuk scherper maken, over M&amp;A, due diligence, integratie, strategie en AI in M&amp;A.",
      "https://koersvoormorgen.nl/inzichten", "expertise-staal.jpg", "website", "simple|Inzichten"),
+
+    ("inzichten/de-verborgen-integratiekosten-van-een-accountantskantoor.html", 1,
+     "De verborgen integratiekosten van een accountantskantoor · Koers voor Morgen",
+     "Waarom een goedkope overname van een accountantskantoor duur kan uitpakken: equity bridge, integratie, standaardisatie, personeel en de investering in AI-gereedheid.",
+     "https://koersvoormorgen.nl/inzichten/de-verborgen-integratiekosten-van-een-accountantskantoor", "expertise-staal.jpg", "article", "post|Integratie|De verborgen integratiekosten van een accountantskantoor"),
 
     ("inzichten/de-toekomst-van-m-en-a.html", 1,
      "De toekomst van M&amp;A: waar verdient de adviseur van morgen zijn geld? &middot; Koers voor Morgen",
