@@ -2245,7 +2245,9 @@ function renderBegeleiderDashboard(app){
     +'<div style="display:flex;gap:8px">'
     // Bevinding 12 sep 2026: vanuit adv.html kwam u hier terecht, maar er was geen enkele link terug —
     // alleen via het browsertabblad. Zichtbaar voor elke begeleider, ongeacht hoe dit scherm bereikt is.
-    +'<a href="adv.html" class="btn-ghost btn-sm" style="text-decoration:none;display:inline-flex;align-items:center">&#8592; Adviseursportaal</a>'
+    // #57 (12-11-2026): terug naar het al ingelogde adviseurstabblad als dit traject daaruit is geopend (zelfde
+    // domein); anders, zoals voorheen, de inlogpagina van het adviseursportaal.
+    +'<a href="adv.html" onclick="return terugNaarAdviseursportaal()" class="btn-ghost btn-sm" style="text-decoration:none;display:inline-flex;align-items:center">&#8592; Adviseursportaal</a>'
     +'<button class="btn-ghost btn-sm" onclick="refreshData()">&#8635; Ververs</button>'
     +'<button class="btn-ghost btn-sm" onclick="S.screen=\'handleiding\';renderApp()">&#128214; Handleiding</button>'+legUitKnop('begeleider')
     +'<button class="btn-ghost btn-sm" onclick="window.print()">&#128196; PDF</button>'
@@ -6789,3 +6791,19 @@ function renderBegeleiderDashboard(app){
 
   // (slaConceptOp verwijderd juli 2026 — dood gewicht: het endpoint bestond niet
   //  en niets las de concepten terug.)
+
+// #57: terugkeren naar het openende adviseurstabblad (zelfde origin, adv.html) en dit tabblad sluiten. Geeft false
+// terug als dat gelukt is (link volgt dan niet), true als de gewone link moet worden gevolgd.
+function terugNaarAdviseursportaal(){
+  try{
+    var o=window.opener;
+    if(o&&!o.closed&&o.location.origin===location.origin&&/\/adv(\.html)?$/.test(o.location.pathname)){
+      try{o.focus();}catch(e){}
+      window.close();
+      // Lukt sluiten niet (bijv. het tabblad heeft eigen geschiedenis), dan het bestaande gedrag.
+      setTimeout(function(){ if(!window.closed)location.href='adv.html'; },300);
+      return false;
+    }
+  }catch(e){}
+  return true;
+}
