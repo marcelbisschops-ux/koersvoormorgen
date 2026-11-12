@@ -231,6 +231,10 @@ test('3. Marilyn: M&A-traject volledige CRUD-keten (nieuw → bewerk → vergren
     expect(crBody && crBody.ok, 'traject aangemaakt via Marilyn /mna/create').toBe(true);
     trajectCode = crBody.code;
     expect(trajectCode, 'trajectcode ontvangen').toBeTruthy();
+    // #72 (12-11-2026): het venster blijft open met de codes en 'Open als begeleider'; daarna sluiten.
+    await expect(page.locator('#res-open-begeleider'), 'codes en directe ingang zichtbaar na aanmaken').toBeVisible({ timeout: 10000 });
+    await page.locator('#m-ann').click();
+    await expect(page.locator('#m-ok')).toHaveCount(0);
 
     // Bewerken: rechtstreeks naar het bewerk-endpoint via de UI-modal (naam wijzigen is genoeg bewijs).
     const bewerkResp0 = await api('POST', '/mna/admin/update/' + trajectCode, { adminKey: ADMIN, body: { begeleider_naam: 'E2E Begeleider Bewerkt' } });
