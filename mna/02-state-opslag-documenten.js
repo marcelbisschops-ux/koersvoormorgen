@@ -530,10 +530,27 @@ function veldBron(key){
   if(S._docSource&&S._docSource[key]){
     var out={bron:'ai_document',bron_doc:S._docSource[key]};
     if(S._docFragment&&S._docFragment[key])out.bron_fragment=S._docFragment[key];
+    // #73: documentsoort en boekjaar per cijfer, zodat de herkomst ook na herladen controleerbaar blijft.
+    if(S._docSoort&&S._docSoort[key])out.bron_soort=S._docSoort[key];
+    if(S._docJaar&&S._docJaar[key])out.bron_jaar=String(S._docJaar[key]);
     return out;
   }
   if(S._userEdited&&S._userEdited[key])return {bron:'handmatig'};
   return null;
+}
+// #73: herkomst van één cijfer als korte tekst voor de begeleider: "bestand · soort · boekjaar", "handmatig ingevuld"
+// of (alleen in Financieel, bij een ingevulde waarde zonder vastgelegde bron) "herkomst onbekend".
+function herkomstTekst(key, val, faseId) {
+  var b = veldBron(key);
+  if (b && b.bron === 'ai_document') {
+    var delen = [b.bron_doc];
+    if (b.bron_soort) delen.push(DOC_SOORT_LABEL[b.bron_soort] || b.bron_soort);
+    if (b.bron_jaar) delen.push('boekjaar ' + b.bron_jaar);
+    return delen.join(' · ');
+  }
+  if (b && b.bron === 'handmatig') return 'handmatig ingevuld';
+  if (faseId === 'financieel' && val && String(val).trim()) return 'herkomst onbekend';
+  return '';
 }
 // N-154 (prioriteit 0, 30 okt 2026): per opgeslagen rij (fase + eventuele entiteit) de laatst bekende serverstand
 // (basis). Bij elke opslag gaat die mee; de server neemt alleen velden over die hier zijn gewijzigd en weigert als
@@ -747,6 +764,8 @@ function getDataForFase(id){
     var autoSom=(!inEntiteitContext||df.groepsniveau)&&S._groepAuto&&S._groepAuto[key]!==undefined&&S._groepAuto[key]===String(v)&&!(S._userEdited&&S._userEdited[key]);
     if(v){var obj={value:v,label:df.label,req:df.req||false};if(autoSom)obj.auto=true;else{var b=veldBron(key);if(b)Object.assign(obj,b);}out[df.id]=obj;}
   });
+  // #73: prognoses uit documenten apart opslaan (geen sectorprofielveld), duidelijk gelabeld als niet gerealiseerd.
+  if(id==='financieel'&&S.data[PROGNOSE_VELD]&&leesPrognoses(S.data).length)out.prognoseUitDocumenten={value:S.data[PROGNOSE_VELD],label:'Prognoses uit documenten (geen gerealiseerde cijfers)',req:false};
   return out;
 }
 // Bouwt en verstuurt (los van de huidige entiteit-save) de volledige, actuele groepsrij voor een
@@ -811,6 +830,8 @@ function loadDataFromDB(dbData){dbData.forEach(function(row){var id=row.fase_id;
     if(!row.entiteit_id){if(v.auto===true){if(!S._groepAuto)S._groepAuto={};S._groepAuto[id+'_'+k]=String(v.value);}else if(S._groepAuto)delete S._groepAuto[id+'_'+k];}
     // Herkomst herstellen zodat de AI-verificatiestatus ook na herladen nog klopt
     if(v.bron==='ai_document'&&v.bron_doc){if(!S._docSource)S._docSource={};S._docSource[id+'_'+k]=v.bron_doc;
+      if(v.bron_soort){if(!S._docSoort)S._docSoort={};S._docSoort[id+'_'+k]=normaliseerDocSoort(v.bron_soort);}
+      if(v.bron_jaar){if(!S._docJaar)S._docJaar={};S._docJaar[id+'_'+k]=String(v.bron_jaar);}
       if(v.bron_fragment){if(!S._docFragment)S._docFragment={};S._docFragment[id+'_'+k]=v.bron_fragment;}}
     else if(v.bron==='handmatig'){if(!S._userEdited)S._userEdited={};S._userEdited[id+'_'+k]=true;}
   }});
@@ -2151,7 +2172,7 @@ function autoFillFromExtraction(faseId, velden, forceOverwrite, docNaam, entitei
   // boekjaren van verschillende bedrijfsonderdelen door elkaar (dit veroorzaakte de omzet3-bug bij
   // Marilyn en Co: een klein onderdeel schoof de groepscijfers uit het venster).
   // S._opySlotJaar (welk boekjaar er nu in omzet1/2/3 zit) hoort om dezelfde reden ook per entiteit.
-  var _origData = S.data, _origOpy = S._opy, _origEpy = S._epy, _origOpySlotJaar = S._opySlotJaar;
+  var _origData = S.data, _origOpy = S._opy, _origEpy = S._epy, _origOpySlotJaar = S._opySlotJaar, _origOpyBron = S._opyBron;
   if (entiteitId) {
     S.dataPerEntiteit[entiteitId] = S.dataPerEntiteit[entiteitId] || {};
     S.data = S.dataPerEntiteit[entiteitId];
@@ -2164,13 +2185,16 @@ function autoFillFromExtraction(faseId, velden, forceOverwrite, docNaam, entitei
     S._opy = S._opyPerEntiteit[entiteitId];
     S._epy = S._epyPerEntiteit[entiteitId];
     S._opySlotJaar = S._opySlotJaarPerEntiteit[entiteitId];
+    // #73: herkomst per boekjaar hoort, net als S._opy, per entiteit.
+    if (!S._opyBronPerEntiteit) S._opyBronPerEntiteit = {};
+    S._opyBron = S._opyBronPerEntiteit[entiteitId] = S._opyBronPerEntiteit[entiteitId] || {};
   } else if (opties && opties.groepsdocument && S._groepData) {
     S.data = S._groepData;
   }
   try {
     _autoFillFromExtractionBody(faseId, velden, forceOverwrite, docNaam, opties);
   } finally {
-    S.data = _origData; S._opy = _origOpy; S._epy = _origEpy; S._opySlotJaar = _origOpySlotJaar;
+    S.data = _origData; S._opy = _origOpy; S._epy = _origEpy; S._opySlotJaar = _origOpySlotJaar; S._opyBron = _origOpyBron;
   }
 }
 // Productpunt 5 (22 okt 2026, productkeuze Marcel): een aangeleverd groepscijfer vervangt de bruto som
@@ -2181,7 +2205,28 @@ var GROEPSDOC_BEDRAGVELDEN = {
   financieel_omzetYTD: 'Omzet YTD', financieel_ebitda: 'EBITDA (€, absoluut)', financieel_ebitdaNorm: 'EBITDA genormaliseerd',
   financieel_wip: 'Onderhanden werk / OHW', financieel_debiteuren: 'Debiteuren totaal', financieel_partnerBel: 'Partnerbeloning'
 };
+// #73 (13-11-2026, GO Marcel): bronvolgorde bij financiële cijfers. Het documentsoort komt uit de extractie
+// (worker/04, zelfde AI-aanroep); bij twijfel 'onbekend'. Rang bepaalt welke bron in een conflict wordt aanbevolen;
+// er wordt nooit stil overschreven. Prognoses en jaren die nog niet zijn afgesloten komen nooit in historische velden.
+var DOC_SOORT_LABEL = { jaarrekening: 'Jaarrekening', historisch_overig: 'Overige historische bron', tussentijds: 'Tussentijdse cijfers', prognose: 'Prognose', afgeleid: 'Afgeleid document', onbekend: 'Soort onbekend', handmatig: 'Handmatig ingevuld' };
+var DOC_SOORT_RANG = { jaarrekening: 3, historisch_overig: 2, tussentijds: 1, onbekend: 0 };
+function normaliseerDocSoort(v) {
+  var w = String(v == null ? '' : v).trim().toLowerCase().replace(/[\s-]+/g, '_');
+  return Object.prototype.hasOwnProperty.call(DOC_SOORT_LABEL, w) && w !== 'handmatig' ? w : 'onbekend';
+}
+// Prognoses uit documenten: per bucket (groep of entiteit) als JSON in het aparte veld financieel_prognoseUitDocumenten.
+var PROGNOSE_VELD = 'financieel_prognoseUitDocumenten';
+function leesPrognoses(bucket) { try { var l = JSON.parse((bucket && bucket[PROGNOSE_VELD]) || '[]'); return Array.isArray(l) ? l : []; } catch (e) { return []; } }
+function voegPrognoseToe(bucket, item) {
+  var lijst = leesPrognoses(bucket).filter(function (x) { return !(x.jaar === item.jaar && x.bron === item.bron && x.grootheid === item.grootheid); });
+  lijst.push(item);
+  lijst.sort(function (a, b) { return a.jaar - b.jaar || String(a.grootheid).localeCompare(String(b.grootheid)); });
+  bucket[PROGNOSE_VELD] = JSON.stringify(lijst);
+}
 function _autoFillFromExtractionBody(faseId, velden, forceOverwrite, docNaam, opties) {
+  // #73: werk op een kopie; de filtering hieronder mag het extractieobject van de aanroeper niet wijzigen
+  // (deze functie wordt per fase met hetzelfde object aangeroepen).
+  velden = Object.assign({}, velden || {});
   var currentDocNaam = docNaam || 'onbekend document';
   var groepsdoc = !!(opties && opties.groepsdocument);
   function strikt(key) { return groepsdoc && Object.prototype.hasOwnProperty.call(GROEPSDOC_BEDRAGVELDEN, key); }
@@ -2192,6 +2237,46 @@ function _autoFillFromExtractionBody(faseId, velden, forceOverwrite, docNaam, op
   // alleen de bestandsnaam, zoals voorheen.
   var docJaar = velden.boekjaar ? String(velden.boekjaar).trim() : null;
   if(!S._docJaar) S._docJaar = {};
+  if(!S._docSoort) S._docSoort = {};
+  // #73: documentsoort en de veiligheidsgrens voor historische cijfers. Een jaar vanaf het huidige kalenderjaar is
+  // nog niet afgesloten en kan geen gerealiseerd jaarcijfer zijn, ongeacht wat de extractie zegt.
+  var docSoort = normaliseerDocSoort(velden.documentsoort);
+  var eersteOpenJaar = new Date().getFullYear();
+  var geenHistorie = (docSoort === 'prognose' || docSoort === 'afgeleid');
+  {
+    // Filtering bij elke fase-aanroep (de jaar-voorbewerking verderop draait ook buiten 'financieel'); het
+    // prognoseoverzicht wordt alleen bij de financiële aanroep aangevuld (ontdubbeld per jaar/grootheid/bron).
+    var progBucket = faseId === 'financieel' ? doelData(PROGNOSE_VELD) : null;
+    var progItem = function (jaar, grootheid, waarde, reden) {
+      if (!progBucket) return;
+      var w = cleanGetal(waarde); if (!w || w === 'null') return;
+      voegPrognoseToe(progBucket, { jaar: Number(jaar), grootheid: grootheid, waarde: String(w), bron: currentDocNaam, soort: docSoort, reden: reden });
+    };
+    var ppj = velden.prognose_per_jaar;
+    if (ppj && typeof ppj === 'object' && !Array.isArray(ppj)) Object.keys(ppj).forEach(function (j) {
+      var n = Number(j), e = ppj[j]; if (isNaN(n) || n < 1990 || n > 2100 || !e || typeof e !== 'object') return;
+      if (e.omzet != null) progItem(n, 'omzet', e.omzet, 'prognose');
+      if (e.ebitda != null) progItem(n, 'ebitda', e.ebitda, 'prognose');
+    });
+    // Gerealiseerd-gelabelde jaren die toch prognose zijn (prognosedocument) of nog niet afgesloten (lopend jaar):
+    // naar het aparte prognoseoverzicht, nooit naar de historische reeks.
+    var opyRuw = velden.omzet_per_jaar && typeof velden.omzet_per_jaar === 'object' ? velden.omzet_per_jaar : {};
+    var opyGefilterd = {};
+    Object.keys(opyRuw).forEach(function (j) {
+      var n = Number(j); if (isNaN(n)) return;
+      if (geenHistorie || n >= eersteOpenJaar) { if (docSoort !== 'afgeleid') progItem(n, 'omzet', opyRuw[j], n >= eersteOpenJaar && !geenHistorie ? 'lopend_jaar' : 'prognose'); }
+      else opyGefilterd[j] = opyRuw[j];
+    });
+    Object.keys(velden).forEach(function (k) {
+      var m = k.match(/^omzet_per_jaar_(\d{4})$/); if (!m) return;
+      var n = Number(m[1]);
+      if (geenHistorie || n >= eersteOpenJaar) { if (docSoort !== 'afgeleid') progItem(n, 'omzet', velden[k], n >= eersteOpenJaar && !geenHistorie ? 'lopend_jaar' : 'prognose'); delete velden[k]; }
+    });
+    velden.omzet_per_jaar = opyGefilterd;
+    if (velden.boekjaar && Number(velden.boekjaar) >= eersteOpenJaar && velden.omzet && !geenHistorie) { progItem(Number(velden.boekjaar), 'omzet', velden.omzet, 'lopend_jaar'); velden.omzet = null; }
+    // Een prognose- of afgeleid document vult geen enkel historisch financieel bedrag (zelfde lijst als de extractie-instructie).
+    if (geenHistorie) ['omzet', 'omzet_ytd', 'ebitda_pct', 'ebitda_abs', 'resultaat', 'ohw', 'debiteuren', 'partnerbeloning'].forEach(function (k) { velden[k] = null; });
+  }
   var knownFases = ['financieel','commercieel','partner','compliance','it','juridisch','strategisch'];
 
   // Pre-pass: omzet_per_jaar_YYYY losse velden samenvoegen tot _opy object
@@ -2201,7 +2286,7 @@ function _autoFillFromExtractionBody(faseId, velden, forceOverwrite, docNaam, op
     if (m) {
       var jaar = m[1];
       var val = cleanGetal(velden[k]);
-      if (val && val !== 'null') S._opy[jaar] = val;
+      if (val && val !== 'null') { S._opy[jaar] = val; if (!S._opyBron) S._opyBron = {}; S._opyBron[jaar] = { doc: currentDocNaam, soort: docSoort }; }
     }
   });
 
@@ -2232,13 +2317,14 @@ function _autoFillFromExtractionBody(faseId, velden, forceOverwrite, docNaam, op
     if(val&&val!=='null'&&val!==null&&String(val).trim()!==''&&!(d[key]||'').trim()){
       d[key]=String(val);
       if(rawVeldNaam){
-        if(!S._docSource)S._docSource={};S._docSource[key]=currentDocNaam;S._docJaar[key]=docJaar;
+        if(!S._docSource)S._docSource={};S._docSource[key]=currentDocNaam;S._docJaar[key]=docJaar;S._docSoort[key]=docSoort;
         var frag=(velden._bron_fragmenten||{})[rawVeldNaam];
         if(frag){if(!S._docFragment)S._docFragment={};S._docFragment[key]=frag;}
       }
     }
   }
-  function applyOrConflict(key, val, label, rawVeldNaam) {
+  function applyOrConflict(key, val, label, rawVeldNaam, jaarVeld) {
+    var veldJaar = jaarVeld || docJaar;
     if(!val||val==='null'||val===null||String(val).trim()==='')return;
     var d=doelData(key);
     var newVal=String(val);
@@ -2248,12 +2334,17 @@ function _autoFillFromExtractionBody(faseId, velden, forceOverwrite, docNaam, op
       var frag=(velden._bron_fragmenten||{})[rawVeldNaam];
       if(frag){if(!S._docFragment)S._docFragment={};S._docFragment[key]=frag;}
     }
-    if(!existing){d[key]=newVal;if(!S._docSource)S._docSource={};S._docSource[key]=currentDocNaam;S._docJaar[key]=docJaar;zetFragment();return;}
-    if(existing===newVal)return;
-    if(forceOverwrite){d[key]=newVal;if(!S._docSource)S._docSource={};S._docSource[key]=currentDocNaam;S._docJaar[key]=docJaar;zetFragment();return;}
+    if(!existing){d[key]=newVal;if(!S._docSource)S._docSource={};S._docSource[key]=currentDocNaam;S._docJaar[key]=veldJaar;S._docSoort[key]=docSoort;zetFragment();return;}
+    if(existing===newVal){
+      // #73: zelfde waarde uit een hogere bron (bijv. de jaarrekening bevestigt een tussentijds cijfer): herkomst bijwerken.
+      var rangNu=DOC_SOORT_RANG[S._docSoort[key]]; if(rangNu===undefined)rangNu=-1;
+      if((DOC_SOORT_RANG[docSoort]||0)>rangNu&&S._docSource&&S._docSource[key]){S._docSource[key]=currentDocNaam;S._docJaar[key]=veldJaar;S._docSoort[key]=docSoort;zetFragment();}
+      return;
+    }
+    if(forceOverwrite){d[key]=newVal;if(!S._docSource)S._docSource={};S._docSource[key]=currentDocNaam;S._docJaar[key]=veldJaar;S._docSoort[key]=docSoort;zetFragment();return;}
     // Zelfde document dat dit veld eerder al zette (bijv. herverwerking) — gewoon bijwerken, geen conflict.
     // Bij een groepsdocument geldt dat niet voor de bedragvelden: daar kan intussen een bruto som staan.
-    if(!strikt(key)&&S._docSource&&S._docSource[key]===currentDocNaam){d[key]=newVal;S._docJaar[key]=docJaar;return;}
+    if(!strikt(key)&&S._docSource&&S._docSource[key]===currentDocNaam){d[key]=newVal;S._docJaar[key]=veldJaar;S._docSoort[key]=docSoort;return;}
     // Andere waarde dan wat er al stond — altijd laten kiezen, ook als het huidige veld zelf
     // automatisch is ingevuld door een ander document. Stilzwijgend overschrijven leidde ertoe dat
     // een later document (bijv. van een ander bedrijfsonderdeel) correcte cijfers ongemerkt verving.
@@ -2265,7 +2356,9 @@ function _autoFillFromExtractionBody(faseId, velden, forceOverwrite, docNaam, op
     // toepassen schreef de keuze soms in de verkeerde (groeps- i.p.v. entiteit-)bucket.
     // huidigJaar = boekjaar van het document dat de bestaande waarde zette; nieuwJaar = boekjaar van
     // dit document. De dialoog toont ze zodat duidelijk is waar elke waarde betrekking op heeft.
-    var conflict={key:key,label:label,huidig:existing,nieuw:newVal,bron:currentDocNaam,doel:d,huidigJaar:(S._docJaar&&S._docJaar[key])||null,nieuwJaar:docJaar};
+    var conflict={key:key,label:label,huidig:existing,nieuw:newVal,bron:currentDocNaam,doel:d,huidigJaar:(S._docJaar&&S._docJaar[key])||null,nieuwJaar:veldJaar,
+      // #73: documentsoort van beide bronnen; de dialoog beveelt de hoogste bron aan, maar de gebruiker kiest.
+      huidigSoort:(S._docSource&&S._docSource[key])?(S._docSoort[key]||'onbekend'):((S._userEdited&&S._userEdited[key])?'handmatig':null),nieuwSoort:docSoort,nieuwBronJaar:veldJaar};
     // Groepsdocument: de keuze wordt na afloop in de groepsrij vastgelegd; een bestaande bruto som heet zo.
     if(groepsdoc){
       conflict.groepsdocument=true;
@@ -2277,11 +2370,18 @@ function _autoFillFromExtractionBody(faseId, velden, forceOverwrite, docNaam, op
   }
   if(faseId==='financieel'){
     if(!S._opy)S._opy={};
+    // #73 punt 8: handmatige correcties in omzet1/2/3 per boekjaar vastleggen vóórdat documentcijfers S._opy bijwerken,
+    // zodat een correctie bij het opschuiven van het jaarvenster met haar eigen jaar meeverhuist (nooit stil verloren).
+    var opyHandmatig={};
+    ['omzet1','omzet2','omzet3'].forEach(function(sl){
+      var k='financieel_'+sl,j=(S._opySlotJaar||{})[sl],v=(doelData(k)[k]||'').trim();
+      if(j!==undefined&&v&&S._userEdited&&S._userEdited[k])opyHandmatig[String(j)]=v;
+    });
     var opy=velden.omzet_per_jaar;
     if(opy&&typeof opy==='object'){
       Object.keys(opy).forEach(function(jaar){
         var v=opy[jaar],j=Number(jaar);
-        if(v&&v!=='null'&&v!==null&&!isNaN(j)&&j>1990&&j<2100)S._opy[String(j)]=v;
+        if(v&&v!=='null'&&v!==null&&!isNaN(j)&&j>1990&&j<2100){S._opy[String(j)]=v;if(!S._opyBron)S._opyBron={};S._opyBron[String(j)]={doc:currentDocNaam,soort:docSoort};}
       });
     }
     if(velden.omzet&&velden.omzet!=='null'&&velden.boekjaar&&!isNaN(Number(velden.boekjaar))){velden.omzet=cleanGetal(velden.omzet);
@@ -2289,7 +2389,7 @@ function _autoFillFromExtractionBody(faseId, velden, forceOverwrite, docNaam, op
       // Altijd bijwerken (niet alleen als nog leeg) — anders werd een tweede document dat een
       // ANDERE waarde voor hetzelfde boekjaar aanlevert stilzwijgend genegeerd, vóórdat het
       // hieronder ooit als conflict aan de gebruiker kon worden voorgelegd. Gevonden 24 juli 2026.
-      S._opy[bj]=velden.omzet;
+      S._opy[bj]=velden.omzet;if(!S._opyBron)S._opyBron={};S._opyBron[bj]={doc:currentDocNaam,soort:docSoort};
     }
     var yrs=Object.keys(S._opy).map(Number).filter(function(j){return!isNaN(j)&&j>1990&&j<2100;}).sort(function(a,b){return a-b;});
     if(yrs.length){
@@ -2318,11 +2418,22 @@ function _autoFillFromExtractionBody(faseId, velden, forceOverwrite, docNaam, op
         if(prevJaar!==undefined&&String(prevJaar)!==String(yr)&&!slotAnders){
           // Venster is opgeschoven: dit vak stelt nu een ander boekjaar voor dan voorheen —
           // geen gebruikersconflict, gewoon bijwerken.
-          var d=doelData(slotKey);d[slotKey]=String(w);
-          if(!S._docSource)S._docSource={};S._docSource[slotKey]=currentDocNaam;
+          var d=doelData(slotKey);
+          var hw=opyHandmatig[String(yr)];
+          if(hw){
+            // Handmatige correctie voor dit jaar verhuist mee; wijkt het document af, dan kiest de gebruiker.
+            d[slotKey]=hw;if(!S._userEdited)S._userEdited={};S._userEdited[slotKey]=true;
+            if(S._docSource)delete S._docSource[slotKey];if(S._docSoort)delete S._docSoort[slotKey];S._docJaar[slotKey]=String(yr);
+            S._opySlotJaar[slot]=yr;
+            if(String(w)!==hw&&(S._opyBron||{})[String(yr)]&&S._opyBron[String(yr)].doc===currentDocNaam)applyOrConflict(slotKey,String(w),fldLabel[labelOffset+i]+' ('+yr+')',undefined,String(yr));
+          }else{
+          d[slotKey]=String(w);
+          if(S._userEdited)delete S._userEdited[slotKey];
+          if(!S._docSource)S._docSource={};var ob=(S._opyBron||{})[String(yr)]||{doc:currentDocNaam,soort:docSoort};S._docSource[slotKey]=ob.doc;S._docJaar[slotKey]=String(yr);S._docSoort[slotKey]=ob.soort;
           S._opySlotJaar[slot]=yr;
+          }
         }else{
-          applyOrConflict(slotKey,String(w),fldLabel[labelOffset+i]+' ('+yr+')');
+          applyOrConflict(slotKey,String(w),fldLabel[labelOffset+i]+' ('+yr+')',undefined,String(yr));
           S._opySlotJaar[slot]=yr;
         }
       });
@@ -3028,11 +3139,17 @@ function toonConflictDialog(conflicts, contextLabel, naAfloop) {
     var rH=document.createElement('input');rH.type='radio';rH.name='cf_'+i;rH.value='huidig';rH.checked=true;rH.style.accentColor='var(--teal)';lblH.appendChild(rH);
     var tH=document.createElement('span');tH.style.color='var(--mid)';
     var bronHuidig=c.huidigBron||(S._docSource&&S._docSource[c.key]?'uit '+S._docSource[c.key]:'handmatig ingevoerd');
-    var jaarHuidig=c.huidigJaar?'<div style="font-size:10px;font-weight:700;color:var(--gold-dark);margin-top:2px">Boekjaar '+esc(c.huidigJaar)+'</div>':'';
+    // #73: documentsoort per optie en een aanbeveling voor de hoogste bron (jaarrekening > overige historische bron >
+    // tussentijds). De aanbevolen optie wordt voorgeselecteerd, maar pas toegepast na 'Toepassen' door de gebruiker.
+    var soortTag=function(soort){return soort?'<div style="font-size:10px;font-weight:600;color:var(--teal);margin-top:2px">'+esc(DOC_SOORT_LABEL[soort]||soort)+'</div>':'';};
+    var rH_=c.huidigSoort?DOC_SOORT_RANG[c.huidigSoort]:undefined, rN_=c.nieuwSoort?DOC_SOORT_RANG[c.nieuwSoort]:undefined;
+    var aanbevolen=(rH_!==undefined&&rN_!==undefined&&rH_!==rN_)?(rN_>rH_?'nieuw':'huidig'):null;
+    var aanbTag='<div style="font-size:10px;font-weight:700;color:var(--teal-dark);margin-top:2px">&#10003; Aanbevolen (hogere bron)</div>';
+    var jaarHuidig=(c.huidigJaar?'<div style="font-size:10px;font-weight:700;color:var(--gold-dark);margin-top:2px">Boekjaar '+esc(c.huidigJaar)+'</div>':'')+soortTag(c.huidigSoort)+(aanbevolen==='huidig'?aanbTag:'');
     tH.innerHTML='<div style="font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-bottom:2px">Huidig</div><strong style="font-size:15px;color:var(--sub)">'+esc(fmtConflictWaarde(c.huidig))+'</strong>'+jaarHuidig+'<div style="font-size:10px;color:var(--muted);margin-top:2px">'+esc(bronHuidig)+'</div>';lblH.appendChild(tH);opts.appendChild(lblH);
     var lblN=document.createElement('label');
     var rN=document.createElement('input');rN.type='radio';rN.name='cf_'+i;rN.value='nieuw';rN.style.accentColor='var(--teal)';lblN.appendChild(rN);
-    var jaarNieuw=c.nieuwJaar?'<div style="font-size:10px;font-weight:700;color:var(--gold-dark);margin-top:2px">Boekjaar '+esc(c.nieuwJaar)+'</div>':'';
+    var jaarNieuw=(c.nieuwJaar?'<div style="font-size:10px;font-weight:700;color:var(--gold-dark);margin-top:2px">Boekjaar '+esc(c.nieuwJaar)+'</div>':'')+soortTag(c.nieuwSoort)+(aanbevolen==='nieuw'?aanbTag:'');
     var tN=document.createElement('span');tN.style.color='var(--mid)';tN.innerHTML='<div style="font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-bottom:2px">Uit document</div><strong style="font-size:15px;color:var(--sub)">'+esc(fmtConflictWaarde(c.nieuw))+'</strong>'+jaarNieuw+'<div style="font-size:10px;color:var(--muted);margin-top:2px">uit '+esc(c.bron||'document')+'</div>';lblN.appendChild(tN);opts.appendChild(lblN);
     // Visueel duidelijk maken welke optie daadwerkelijk gekozen is (voorheen kreeg "Document"
     // altijd een teal-accent, ook als "Huidig" geselecteerd was — dat oogde tegenstrijdig).
@@ -3049,6 +3166,7 @@ function toonConflictDialog(conflicts, contextLabel, naAfloop) {
       lblN.style.cssText=stijlBasis+(rN.checked?'var(--teal-dark);background:var(--teal-bg)':'var(--border2);background:var(--panel)');
       lblG.style.color=rG.checked?'var(--red)':'var(--muted)';lblG.style.fontWeight=rG.checked?'600':'400';
     }
+    if(aanbevolen==='nieuw'){rN.checked=true;rH.checked=false;}
     rH.addEventListener('change',updateOptieStijl);rN.addEventListener('change',updateOptieStijl);rG.addEventListener('change',updateOptieStijl);updateOptieStijl();
     row.appendChild(opts);row.appendChild(lblG);list.appendChild(row);radios.push({key:c.key,rH:rH,rN:rN,rG:rG,conflict:c});
   });
@@ -3073,7 +3191,14 @@ function toonConflictDialog(conflicts, contextLabel, naAfloop) {
         return;
       }
       var gekozenHuidig=r.rH.checked;
-      if(!gekozenHuidig)(c.doel||S.data)[r.key]=c.nieuw;
+      if(!gekozenHuidig){
+        (c.doel||S.data)[r.key]=c.nieuw;
+        // #73: herkomst volgt de gekozen waarde (was: bleef op de oude bron staan buiten groepsdocumenten).
+        if(!S._docSource)S._docSource={};if(!S._docJaar)S._docJaar={};if(!S._docSoort)S._docSoort={};
+        S._docSource[r.key]=c.bron;if(c.nieuwBronJaar)S._docJaar[r.key]=String(c.nieuwBronJaar);else delete S._docJaar[r.key];
+        if(c.nieuwSoort)S._docSoort[r.key]=c.nieuwSoort;
+        if(S._userEdited)delete S._userEdited[r.key];
+      }
       // Groepsdocument: het gekozen documentcijfer is een aangeleverde groepswaarde (geen bruto som meer).
       if(!gekozenHuidig&&c.groepsdocument){
         if(S._groepAuto)delete S._groepAuto[r.key];

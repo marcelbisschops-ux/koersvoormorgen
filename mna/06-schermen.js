@@ -650,8 +650,9 @@ function renderMain(){
     dataHtml+='<div>';
     if(isRO){
       var roFragTitle=veldBronInfo&&veldBronInfo.bron_fragment?(' title="Uit het document: &quot;'+esc(veldBronInfo.bron_fragment)+'&quot;"'):'';
+      var roHerkomst=val?herkomstTekst(f.id+'_'+df.id,val,f.id):''; // #73
       dataHtml+='<div class="f"><label>'+df.label+reqLabel(df)+(df.doc?' &#128196;':'')+'</label>'
-        +'<div class="readonly-val'+(val?'':' empty')+'">'+(val?esc(val):'Niet ingevuld')+(ref?'<span style="color:var(--gold);font-size:11px;margin-left:8px;cursor:help"'+roFragTitle+'>&#128196; '+esc(ref)+'</span>':'')+'</div></div>';
+        +'<div class="readonly-val'+(val?'':' empty')+'">'+(val?esc(val):'Niet ingevuld')+(roHerkomst?'<span class="herkomst" data-veld="'+esc(f.id+'_'+df.id)+'" style="color:var(--gold);font-size:11px;margin-left:8px;cursor:help"'+roFragTitle+'>'+(ref?'&#128196; ':'')+esc(roHerkomst)+'</span>':'')+'</div></div>';
     }else if(isGeaggregeerdInGroep){
       dataHtml+='<div class="f"><label>'+df.label+reqLabel(df)+' <span style="color:var(--teal);font-size:9px;font-weight:600">&#128279; som van entiteiten</span></label>'
         +'<div class="readonly-val" style="background:var(--teal-bg);border-color:var(--teal-dark)" title="Automatisch berekend uit de geregistreerde entiteiten — vóór eliminatie van onderlinge transacties. Wijzig per entiteit via de kiezer hierboven.">'+(val?esc(val):'Nog geen entiteitsdata')+'</div></div>';
@@ -663,7 +664,10 @@ function renderMain(){
       // bron_fragment (letterlijk citaat uit het brondocument) is alleen gekoppeld voor de
       // belangrijkste financiële cijfervelden — zie setIfEmpty/applyOrConflict-aanroepen.
       var bronFragTitle=veldBronInfo&&veldBronInfo.bron_fragment?('Uit het document: &quot;'+esc(veldBronInfo.bron_fragment)+'&quot;'):'Automatisch ingevuld uit dit document — controleer de waarde.';
-      var bronTag=(val&&ref)?' <span style="color:var(--gold-dark);font-size:9px;font-weight:600;cursor:help" title="'+bronFragTitle+'">&#128196; uit: '+esc(ref)+(veldBronInfo&&veldBronInfo.bron_fragment?' &#128172;':'')+'</span>':'';
+      // #73: herkomst incl. documentsoort en boekjaar; in Financieel ook 'handmatig ingevuld' of 'herkomst onbekend'.
+      var edHerkomst=val?herkomstTekst(f.id+'_'+df.id,val,f.id):'';
+      var bronTag=(val&&ref)?' <span class="herkomst" data-veld="'+esc(f.id+'_'+df.id)+'" style="color:var(--gold-dark);font-size:9px;font-weight:600;cursor:help" title="'+bronFragTitle+'">&#128196; uit: '+esc(edHerkomst||ref)+(veldBronInfo&&veldBronInfo.bron_fragment?' &#128172;':'')+'</span>'
+        :(edHerkomst?' <span class="herkomst" data-veld="'+esc(f.id+'_'+df.id)+'" style="color:var(--muted);font-size:9px;font-weight:600">'+esc(edHerkomst)+'</span>':'');
       // Audit-fix P2 (25 juli 2026, vierde ronde, Marcels keuze: hint tonen, nooit automatisch
       // overschrijven — ebitdaNorm blijft een bewust door de begeleider gevalideerd veld): waarschuw
       // niet-blokkerend als het ingevulde bedrag afwijkt van ebitda + normalisatie, voor het geval dat
@@ -686,6 +690,19 @@ function renderMain(){
     }
     dataHtml+='</div>';
   });
+  // #73: prognoses en nog niet afgesloten jaren uit documenten, apart van de historische cijfers.
+  if(f.id==='financieel'&&typeof leesPrognoses==='function'){
+    var prog=leesPrognoses(S.data);
+    if(prog.length){
+      var redenTekst={prognose:'prognose',lopend_jaar:'jaar nog niet afgesloten'};
+      dataHtml+='</div><div id="prognose-uit-documenten" style="margin-top:1rem;padding:.75rem 1rem;border:1px solid var(--border2);border-radius:var(--r);background:var(--card)">'
+        +'<div style="font-weight:600;font-size:13px;color:var(--head)">Prognoses en niet-afgesloten jaren uit documenten</div>'
+        +'<div style="font-size:11px;color:var(--muted);margin:.25rem 0 .5rem">Deze cijfers staan los van de historische cijfers hierboven en worden daar niet in opgenomen.</div>'
+        +'<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr><th style="text-align:left;padding:3px 6px">Jaar</th><th style="text-align:left;padding:3px 6px">Cijfer</th><th style="text-align:right;padding:3px 6px">Bedrag</th><th style="text-align:left;padding:3px 6px">Bron</th><th style="text-align:left;padding:3px 6px">Soort</th></tr></thead><tbody>'
+        +prog.map(function(p){return '<tr style="border-top:1px solid var(--border)"><td style="padding:3px 6px">'+esc(String(p.jaar))+'</td><td style="padding:3px 6px">'+(p.grootheid==='ebitda'?'EBITDA':'Omzet')+'</td><td style="padding:3px 6px;text-align:right">'+esc(typeof fmtGeld==='function'?fmtGeld(parseGeld(p.waarde)):p.waarde)+'</td><td style="padding:3px 6px">'+esc(p.bron||'')+'</td><td style="padding:3px 6px">'+esc(redenTekst[p.reden]||p.reden||'')+'</td></tr>';}).join('')
+        +'</tbody></table>';
+    }
+  }
   dataHtml+='</div>'+(S.showValidation&&getMissing().find(function(m){return m.fase.startsWith(f.num);})
     ?'<div style="font-size:12px;color:var(--red);margin-top:.5rem">&#9888; Vul alle als <span class="req-tag">verplicht</span> gemarkeerde velden in voor een volledig beeld.</div>':'')+'</div>';
 
