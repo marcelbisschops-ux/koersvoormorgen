@@ -40,8 +40,10 @@
 # ══════════════════════════════════════════════════════════════════
 set -euo pipefail
 
-FE_DIR="$HOME/Documents/GitHub/koersvoormorgen"
-BE_DIR="$HOME/Documents/GitHub/koersvoormorgen-backend/backend"
+# 12-11-2026 (releasegate N-203): releases worden vanuit een releasewerkboom gebouwd, niet vanuit de hoofdcheckout.
+# Zonder deze overschrijving werd het script in de praktijk omzeild met losse commando's (precies waar de gate brak).
+FE_DIR="${KVM_FE_DIR:-$HOME/Documents/GitHub/koersvoormorgen}"
+BE_DIR="${KVM_BE_DIR:-$HOME/Documents/GitHub/koersvoormorgen-backend/backend}"
 WORKER_URL="https://kantoorinzicht.marcel-bisschops.workers.dev"
 PAGES_PROJECT="kantoorinzicht-frontend"
 WAT="${1:-alles}"
