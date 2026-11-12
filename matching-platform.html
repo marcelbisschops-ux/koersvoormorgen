@@ -203,6 +203,11 @@ var ADMIN_BYPASS = sessionStorage.getItem('mna_matching_admin') || '';
     sessionStorage.setItem('mna_matching_admin', urlAdminKey);
     history.replaceState({}, '', location.pathname);
   }
+  // N-193: een persoonlijke beheersessie uit Marilyn (zelfde origin) alleen in het geheugen, nooit in URL of opslag.
+  try {
+    var bs = window.opener && window.opener.location.origin === location.origin && typeof window.opener.kvmBeheerSessie === 'function' ? window.opener.kvmBeheerSessie() : '';
+    if (typeof bs === 'string' && bs.indexOf('bs_') === 0) ADMIN_BYPASS = bs;
+  } catch (e) {}
 })();
 function matchingAuthHeader(){
   return ADMIN_BYPASS ? { 'x-admin-key': ADMIN_BYPASS } : { 'x-matching-key': MATCHING_KEY };

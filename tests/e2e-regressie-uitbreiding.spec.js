@@ -52,6 +52,7 @@ async function loginMna(page, code) {
 
 async function loginMarilyn(page) {
   await page.goto('/marilyn.html?worker=' + encodeURIComponent(WORKER));
+  await page.locator('#nood summary').click(); // N-193: noodtoegang staat ingeklapt onder de persoonlijke login
   await page.locator('#ak').fill(ADMIN);
   await page.locator('#login-btn').click();
   await page.waitForSelector('#t-mna', { timeout: 15000 });

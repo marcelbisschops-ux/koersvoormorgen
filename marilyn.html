@@ -93,6 +93,7 @@ tr:hover td{background:rgba(61,107,99,.04)}
   <div class="hdr">
     <div class="brand"><div class="wdot"></div>Koers voor Morgen <span style="color:var(--teal);margin-left:4px">Beheer</span></div>
     <div id="hdr-actions" style="display:none;gap:10px;align-items:center">
+      <span id="hdr-wie" style="font-size:12px;color:var(--muted)"></span>
       <button class="btn-ghost" style="font-size:12px" id="btn-refresh">&#8635; Verversen</button>
       <button class="btn-ghost" style="font-size:12px" id="btn-logout">Uitloggen</button>
     </div>
@@ -190,28 +191,132 @@ function partijLabels(type){
 }
 
 // LOGIN
+// N-193 (12-11-2026): standaard persoonlijke beheerderslogin (e-mail, wachtwoord, code uit authenticator-app) via de
+// bestaande backend /beheer/login en /beheer/mfa. De sessie (bs_...) gaat als x-admin-key mee; de backend vertaalt die
+// centraal. Noodtoegang met de beheersleutel blijft beschikbaar en wordt in de backend apart gelogd.
+var beheerNaam='';
 function renderLogin(){
   document.getElementById('app').innerHTML='<div class="login-wrap"><div class="login-box">'
     +'<div class="login-title">'+BRAND.platform+' '+BRAND.suffix+'</div>'
     +'<div class="login-sub">Beheerder-toegang. Alleen voor beheerder.</div>'
-    +'<div class="field" style="margin-top:1rem"><label for="ak">Beheerder-sleutel</label><input type="password" id="ak" placeholder="••••••••" autofocus></div>'
-    +'<button class="btn" id="login-btn" style="width:100%">Inloggen</button>'
-    +'<div style="margin-top:1rem;padding:.75rem 1rem;background:var(--teal-bg);border:1px solid var(--teal-dark);border-radius:var(--r);font-size:11px;color:var(--muted);line-height:1.7">&#128274; <strong style="color:var(--sub)">Beveiliging & privacy</strong><br>Verbinding versleuteld (HTTPS). Gegevens in Cloudflare EU (Frankfurt). Geen gegevensverkoop. <a href="privacy.html" style="color:var(--teal)">Privacyverklaring</a></div>'
-    +'<div id="login-err" style="color:var(--red);font-size:12px;margin-top:.75rem;display:none">Sleutel incorrect.</div>'
+    +'<div id="pl-stap1">'
+    +'<div class="field" style="margin-top:1rem"><label for="pl-email">E-mailadres</label><input type="email" id="pl-email" autocomplete="username" autofocus></div>'
+    +'<div class="field"><label for="pl-ww">Wachtwoord</label><input type="password" id="pl-ww" autocomplete="current-password"></div>'
+    +'<button class="btn" id="pl-btn1" style="width:100%">Verder</button>'
+    +'</div>'
+    +'<div id="pl-stap2" style="display:none">'
+    +'<div class="field" style="margin-top:1rem"><label for="pl-code">Code uit je authenticator-app (6 cijfers)</label><input type="text" id="pl-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6"></div>'
+    +'<button class="btn" id="pl-btn2" style="width:100%">Inloggen</button>'
+    +'</div>'
+    +'<div id="login-err" style="color:var(--red);font-size:12px;margin-top:.75rem;display:none"></div>'
+    +'<details id="nood" style="margin-top:1.25rem;font-size:12px;color:var(--muted)"><summary style="cursor:pointer">Noodtoegang met beheersleutel</summary>'
+    +'<div class="field" style="margin-top:.75rem"><label for="ak">Beheerder-sleutel</label><input type="password" id="ak" autocomplete="off"></div>'
+    +'<button class="btn-ghost" id="login-btn" style="width:100%">Inloggen met beheersleutel</button>'
+    +'<div style="margin-top:.5rem;line-height:1.6">Gebruik dit alleen als persoonlijk inloggen niet lukt. Elk gebruik wordt vastgelegd.</div>'
+    +'</details>'
+    +'<div style="margin-top:1rem;padding:.75rem 1rem;background:var(--teal-bg);border:1px solid var(--teal-dark);border-radius:var(--r);font-size:11px;color:var(--muted);line-height:1.7">&#128274; <strong style="color:var(--sub)">Beveiliging & privacy</strong><br>Verbinding versleuteld (HTTPS). Gegevens bij Cloudflare in West-Europa. <a href="privacy.html" style="color:var(--teal)">Privacyverklaring</a></div>'
     +'<div id="login-mode" style="display:none"></div>'
     +'<div id="admin-fields" style="display:none"></div>'
     +'<div id="adviseur-fields" style="display:none"></div>'
     +'<div style="text-align:center;margin-top:1rem;font-size:11px;color:var(--muted)">&copy; '+new Date().getFullYear()+' '+BRAND.bedrijf+' Alle rechten voorbehouden.</div>'
     +'</div></div>';
+  var tussenstap='',bezig=false;
+  function fout(t){var e=document.getElementById('login-err');e.textContent=t;e.style.display='block';}
+  async function stap1(){
+    if(bezig)return;bezig=true;try{await stap1in();}finally{bezig=false;}
+  }
+  async function stap1in(){
+    var b=document.getElementById('pl-btn1');document.getElementById('login-err').style.display='none';
+    var email=document.getElementById('pl-email').value.trim(),ww=document.getElementById('pl-ww').value;
+    if(!email||!ww)return;
+    b.disabled=true;b.textContent='Controleren...';
+    try{
+      var r=await fetchMetTimeoutM(WORKER+'/beheer/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email,wachtwoord:ww})});
+      var d=await r.json().catch(function(){return {};});
+      if(!r.ok||!d.tussenstap){fout(d.error||'Inloggen mislukt.');b.disabled=false;b.textContent='Verder';return;}
+      tussenstap=d.tussenstap;document.getElementById('pl-ww').value='';
+      document.getElementById('pl-stap1').style.display='none';document.getElementById('pl-stap2').style.display='block';
+      document.getElementById('pl-code').focus();
+    }catch(e){fout('Verbindingsfout. Probeer het opnieuw.');b.disabled=false;b.textContent='Verder';}
+  }
+  async function stap2(){
+    if(bezig)return;bezig=true;try{await stap2in();}finally{bezig=false;}
+  }
+  async function stap2in(){
+    var b=document.getElementById('pl-btn2');document.getElementById('login-err').style.display='none';
+    var code=document.getElementById('pl-code').value.replace(/\s/g,'');
+    if(!/^\d{6}$/.test(code)){fout('Vul de 6 cijfers uit je authenticator-app in.');return;}
+    b.disabled=true;b.textContent='Inloggen...';
+    try{
+      var r=await fetchMetTimeoutM(WORKER+'/beheer/mfa',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tussenstap:tussenstap,code:code})});
+      var d=await r.json().catch(function(){return {};});
+      if(!r.ok||!d.sessie){
+        // Een tussenstap geldt voor één poging: bij een fout opnieuw beginnen met wachtwoord.
+        fout((d.error||'Inloggen mislukt.')+' Log opnieuw in.');tussenstap='';
+        document.getElementById('pl-code').value='';document.getElementById('pl-stap2').style.display='none';document.getElementById('pl-stap1').style.display='block';
+        var b1=document.getElementById('pl-btn1');b1.disabled=false;b1.textContent='Verder';b.disabled=false;b.textContent='Inloggen';return;
+      }
+      beheerNaam=d.naam||'';
+      var ok=await startMetSleutel(d.sessie);
+      if(!ok){
+        // N-193 review L2: geen weessessie achterlaten; terug naar stap 1.
+        fetch(WORKER+'/beheer/uitloggen',{method:'POST',keepalive:true,headers:{'Content-Type':'application/json'},body:JSON.stringify({sessie:d.sessie})}).catch(function(){});
+        fout('Inloggen gelukt, maar de gegevens konden niet worden geladen. Log opnieuw in.');tussenstap='';
+        document.getElementById('pl-code').value='';document.getElementById('pl-stap2').style.display='none';document.getElementById('pl-stap1').style.display='block';
+        var b1b=document.getElementById('pl-btn1');b1b.disabled=false;b1b.textContent='Verder';b.disabled=false;b.textContent='Inloggen';
+      }
+    }catch(e){fout('Verbindingsfout. Probeer het opnieuw.');b.disabled=false;b.textContent='Inloggen';}
+  }
+  document.getElementById('pl-btn1').addEventListener('click',stap1);
+  document.getElementById('pl-ww').addEventListener('keydown',function(e){if(e.key==='Enter')stap1();});
+  document.getElementById('pl-btn2').addEventListener('click',stap2);
+  document.getElementById('pl-code').addEventListener('keydown',function(e){if(e.key==='Enter')stap2();});
   document.getElementById('login-btn').addEventListener('click',doLogin);
   document.getElementById('ak').addEventListener('keydown',function(e){if(e.key==='Enter')doLogin();});
 }
+function fetchMetTimeoutM(url,opts){var c=new AbortController();var t=setTimeout(function(){c.abort();},20000);return fetch(url,Object.assign({},opts,{signal:c.signal})).finally(function(){clearTimeout(t);});}
+var isBeheersessie=function(){return typeof adminKey==='string'&&adminKey.indexOf('bs_')===0;};
+var laatsteActiviteit=Date.now();
+['click','keydown','mousemove','touchstart'].forEach(function(ev){document.addEventListener(ev,function(){laatsteActiviteit=Date.now();},{passive:true});});
+// N-193 review M3: het matchingplatform (zelfde origin) haalt een persoonlijke sessie via window.opener op, nooit via URL of opslag.
+window.kvmBeheerSessie=function(){return isBeheersessie()?adminKey:'';};
+// N-193 review M4: een verlopen of ingetrokken persoonlijke sessie netjes afhandelen. Bij een 401 eerst controleren of de
+// sessie zelf nog geldig is (sommige routes geven om andere redenen 401); zo niet, uitloggen met een duidelijke melding.
+var sessieControleBezig=false;
+(function(){
+  if(typeof window==='undefined'||typeof window.fetch!=='function')return; // testomgevingen zonder fetch bij laden
+  var origFetch=window.fetch.bind(window);
+  window.fetch=function(url,opts){
+    return origFetch(url,opts).then(function(r){
+      try{
+        if(r.status===401&&isBeheersessie()&&String(url).indexOf(WORKER)===0&&String(url).indexOf('/beheer/')<0&&!sessieControleBezig){
+          sessieControleBezig=true;var k=adminKey;
+          origFetch(WORKER+'/mna/admin/veiligheid/r2-reconciliatie',{headers:{'x-admin-key':k}}).then(function(c){
+            sessieControleBezig=false;
+            if((c.status===401||c.status===403)&&adminKey===k){logout();var e=document.getElementById('login-err');if(e){e.textContent='Je sessie is verlopen. Log opnieuw in.';e.style.display='block';}}
+          }).catch(function(){sessieControleBezig=false;});
+        }
+      }catch(e){}
+      return r;
+    });
+  };
+})();
 
 async function doLogin(){
   var btn=document.getElementById('login-btn');btn.disabled=true;btn.textContent='Laden...';
   var err=document.getElementById('login-err');err.style.display='none';
   var key=document.getElementById('ak').value.trim();
-  if(!key){btn.disabled=false;btn.textContent='Inloggen';return;}
+  if(!key){btn.disabled=false;btn.textContent='Inloggen met beheersleutel';return;}
+  beheerNaam='';
+  var ok=await startMetSleutel(key);
+  if(!ok){
+    err.textContent='Sleutel incorrect of verbindingsfout.';
+    err.style.display='block';
+    btn.disabled=false;btn.textContent='Inloggen met beheersleutel';
+  }
+}
+
+async function startMetSleutel(key){
   try{
     var [r1,r2,r3,r4,r5,r6]=await Promise.all([
       fetch(WORKER+'/admin/scans',{headers:{'x-admin-key':key}}),
@@ -233,18 +338,23 @@ async function doLogin(){
     // maar werd hier nooit aangeroepen. Fire-and-forget: een mislukte melding mag het inloggen zelf
     // nooit blokkeren.
     fetch(WORKER+'/admin/login-notify',{method:'POST',headers:{'x-admin-key':key,'Content-Type':'application/json'},body:JSON.stringify({})}).catch(function(){});
+    var wie=document.getElementById('hdr-wie');
+    if(wie)wie.textContent=isBeheersessie()?('Ingelogd als '+(beheerNaam||'beheerder')):'Noodtoegang (beheersleutel)';
     document.getElementById('hdr-actions').style.display='flex';
-    document.getElementById('btn-refresh').addEventListener('click',refreshData);
-    document.getElementById('btn-logout').addEventListener('click',logout);
+    document.getElementById('btn-refresh').onclick=refreshData;
+    document.getElementById('btn-logout').onclick=logout;
     renderDashboard();
+    return true;
   }catch(e){
-    err.textContent='Sleutel incorrect of verbindingsfout.';
-    err.style.display='block';
-    btn.disabled=false;btn.textContent='Inloggen';
+    return false;
   }
 }
 
 function logout(){
+  // N-193: een persoonlijke sessie ook op de server intrekken (best effort).
+  if(isBeheersessie()){var s=adminKey;fetch(WORKER+'/beheer/uitloggen',{method:'POST',keepalive:true,headers:{'Content-Type':'application/json'},body:JSON.stringify({sessie:s})}).catch(function(){});}
+  beheerNaam='';var hw=document.getElementById('hdr-wie');if(hw)hw.textContent='';
+  if(typeof veiligheidRefreshTimer!=='undefined'&&veiligheidRefreshTimer){clearInterval(veiligheidRefreshTimer);veiligheidRefreshTimer=null;}
   adminKey='';scans=[];callbacks=[];mnaList=[];rapporten=[];leads=[];
   gebruikerToken='';gebruikerInfo=null;isSuperAdmin=false;
   document.getElementById('hdr-actions').style.display='none';
@@ -252,6 +362,7 @@ function logout(){
 }
 
 async function refreshData(){
+  if(!adminKey)return; // N-193: na uitloggen (bijv. verlopen sessie) nooit een leeg dashboard tekenen
   try{
     var [r1,r2,r3,r4,r5,r6]=await Promise.all([
       fetch(WORKER+'/admin/scans',{headers:{'x-admin-key':adminKey}}),
@@ -261,6 +372,7 @@ async function refreshData(){
       fetch(WORKER+'/admin/leads',{headers:{'x-admin-key':adminKey}}),
       fetch(WORKER+'/adviseur/proef/aanvragen',{headers:{'x-admin-key':adminKey}})
     ]);
+    if(!r1.ok)return; // N-193: 401 bij een verlopen sessie wordt centraal afgehandeld (uitloggen met melding)
     scans=await r1.json();callbacks=await r2.json();
     mnaList=r3.ok?await r3.json():[];
     try{var r4data=r4.ok?await r4.json().catch(()=>[]):[];rapporten=Array.isArray(r4data)?r4data:[];}catch(e){rapporten=[];}
@@ -5308,7 +5420,9 @@ async function renderMatchingTab(el){
     el.innerHTML=html;
 
     document.getElementById('mk-open-btn').addEventListener('click',function(){
-      window.open('matching-platform.html?admin_key='+encodeURIComponent(adminKey),'_blank');
+      // N-193 review M3: een persoonlijke sessie nooit in de URL; het matchingplatform haalt hem via window.opener op.
+      if(isBeheersessie())window.open('matching-platform.html','_blank');
+      else window.open('matching-platform.html?admin_key='+encodeURIComponent(adminKey),'_blank');
     });
     (async function(){
       var wwEl=document.getElementById('mk-ww-huidig');
@@ -5438,6 +5552,63 @@ function veiligheidTransparantieHtml() {
   h += '</tbody></table><div style="padding:.75rem 1rem;border-top:1px solid var(--border);font-size:12px"><strong>Open risico\'s en verbetermaatregelen</strong><ul style="margin:.4rem 0 0 1.1rem">'
     + VEILIGHEID_OPEN_RISICOS.map(function (r) { return '<li>' + esc(r) + '</li>'; }).join('') + '</ul></div></div>';
   return h;
+}
+
+// N-193 (12-11-2026): persoonlijke beheertoegang activeren. Een account aanmaken of herstellen kan alleen met de
+// noodsleutel (de backend vertaalt een persoonlijke sessie op /beheer/* nooit). Het geheim voor de authenticator-app
+// wordt één keer getoond en daarna nergens bewaard; er wordt geen externe QR-bibliotheek geladen.
+function beheertoegangHtml() {
+  var h = '<div class="card" style="margin-top:1.25rem"><div style="padding:1rem 1.25rem;border-bottom:1px solid var(--border)"><strong>Persoonlijke beheertoegang (inloggen met authenticator-app)</strong></div><div style="padding:1rem 1.25rem;font-size:13px;line-height:1.7">';
+  if (isBeheersessie()) {
+    return h + 'Je bent persoonlijk ingelogd' + (beheerNaam ? ' als ' + esc(beheerNaam) : '') + '. Een account aanmaken of je authenticator opnieuw koppelen kan alleen met noodtoegang (beheersleutel).</div></div>';
+  }
+  return h + '<p style="margin:0 0 .75rem">Maak een persoonlijk beheeraccount aan. Daarna log je in met e-mail, wachtwoord en een code uit een authenticator-app (bijvoorbeeld Microsoft Authenticator, Google Authenticator of 1Password). De beheersleutel blijft als noodtoegang werken.</p>'
+    + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:.75rem">'
+    + '<div class="field"><label for="bt-naam">Naam</label><input id="bt-naam" type="text" autocomplete="name"></div>'
+    + '<div class="field"><label for="bt-email">E-mailadres</label><input id="bt-email" type="email" autocomplete="username"></div>'
+    + '<div class="field"><label for="bt-ww">Wachtwoord (minimaal 14 tekens)</label><input id="bt-ww" type="password" autocomplete="new-password"></div>'
+    + '<div class="field"><label for="bt-ww2">Wachtwoord herhalen</label><input id="bt-ww2" type="password" autocomplete="new-password"></div>'
+    + '</div>'
+    + '<label style="display:flex;gap:.5rem;align-items:center;margin:.25rem 0 .75rem;font-size:12px"><input id="bt-reset" type="checkbox"> Bestaand account herstellen (nieuwe authenticator koppelen; wachtwoord leeg laten om het huidige te houden)</label>'
+    + '<button class="btn" id="bt-maak">Account aanmaken</button>'
+    + '<div id="bt-uit" style="margin-top:1rem"></div></div></div>';
+}
+function koppelBeheertoegang() {
+  var knop = document.getElementById('bt-maak');
+  if (!knop) return;
+  var reset = document.getElementById('bt-reset');
+  reset.addEventListener('change', function(){ knop.textContent = reset.checked ? 'Account herstellen' : 'Account aanmaken'; });
+  knop.addEventListener('click', async function(){
+    var uit = document.getElementById('bt-uit');
+    var naam = document.getElementById('bt-naam').value.trim(), email = document.getElementById('bt-email').value.trim();
+    var ww = document.getElementById('bt-ww').value, ww2 = document.getElementById('bt-ww2').value;
+    var isReset = reset.checked;
+    function melding(t, ok){ uit.innerHTML = '<div style="font-size:12px;color:' + (ok ? 'var(--teal)' : 'var(--red)') + '">' + esc(t) + '</div>'; }
+    if (!email) return melding('Vul een e-mailadres in.');
+    if (ww !== ww2) return melding('De wachtwoorden zijn niet gelijk.');
+    if ((!isReset || ww) && ww.length < 14) return melding('Kies een wachtwoord van minimaal 14 tekens.');
+    knop.disabled = true;
+    try {
+      var body = { email: email, naam: naam };
+      if (ww) body.wachtwoord = ww;
+      if (isReset) body.reset = true;
+      var r = await fetchMetTimeoutM(WORKER + '/beheer/account', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-key': adminKey }, body: JSON.stringify(body) });
+      var d = await r.json().catch(function(){ return {}; });
+      if (!r.ok || !d.otpauth) { knop.disabled = false; return melding(d.error || 'Aanmaken mislukt.'); }
+      var geheim = (/[?&]secret=([A-Z2-7]+)/.exec(d.otpauth) || [])[1] || '';
+      document.getElementById('bt-ww').value = ''; document.getElementById('bt-ww2').value = '';
+      uit.innerHTML = '<div style="border:1px solid var(--teal-dark);background:var(--teal-bg);border-radius:var(--r);padding:1rem;font-size:13px;line-height:1.7">'
+        + '<strong>Koppel nu je authenticator-app.</strong> Dit geheim wordt maar één keer getoond.<br>'
+        + '1. Open je authenticator-app en kies "account toevoegen" en dan "sleutel handmatig invoeren".<br>'
+        + '2. Accountnaam: Koers voor Morgen (' + esc(email) + '), type: op tijd gebaseerd.<br>'
+        + '3. Sleutel: <code id="bt-geheim" style="font-size:15px;letter-spacing:1px;user-select:all">' + esc(geheim.replace(/(.{4})/g, '$1 ').trim()) + '</code><br>'
+        + 'Op je telefoon kun je ook deze link openen: <a href="' + esc(d.otpauth) + '">in authenticator-app openen</a>.<br>'
+        + '4. Log daarna uit en log in met je e-mailadres, wachtwoord en de code uit de app. Pas als dat werkt is je persoonlijke toegang actief.'
+        + '<div style="margin-top:.75rem"><button class="btn-ghost" id="bt-klaar">Ik heb de sleutel ingevoerd, verbergen</button></div></div>';
+      document.getElementById('bt-klaar').addEventListener('click', function(){ uit.innerHTML = '<div style="font-size:12px;color:var(--teal)">Sleutel verborgen. Log uit en test de persoonlijke login.</div>'; });
+      knop.disabled = false;
+    } catch (e) { knop.disabled = false; melding('Verbindingsfout. Probeer het opnieuw.'); }
+  });
 }
 
 async function renderVeiligheidTab(el) {
@@ -5699,8 +5870,11 @@ async function renderVeiligheidTab(el) {
       html += '</div>';
       // N-189: leveranciers, eigen maatregelen met bewijsniveau, back-up, monitoring en open risico's.
       html += veiligheidTransparantieHtml();
+      // N-193: persoonlijke beheertoegang instellen (alleen met noodtoegang).
+      html += beheertoegangHtml();
 
       el.innerHTML = html;
+      koppelBeheertoegang();
 
       function haalRapportLinkOp(nieuw) {
         var linkBtn = document.getElementById('btn-rapport-link');
@@ -5803,7 +5977,13 @@ async function renderVeiligheidTab(el) {
   // "Live/doorlopend" (Marcels verzoek 19 aug 2026): elke 60s verversen zolang dit tabblad open
   // staat — geen websocket/SSE-infrastructuur nodig, en de dagelijkse cron zelf draait toch maar
   // 1x per nacht, dus vaker pollen dan dit voegt niets toe.
-  veiligheidRefreshTimer = setInterval(laadVeiligheid, 60000);
+  veiligheidRefreshTimer = setInterval(function(){
+    // N-193 review M1: niet verversen zolang het activatieblok in gebruik is (het eenmalige geheim of ingevulde velden).
+    if (document.getElementById('bt-geheim') || ['bt-ww','bt-ww2'].some(function(id){ var x = document.getElementById(id); return x && x.value; })) return;
+    // N-193 review M2: automatisch verversen houdt een persoonlijke sessie niet actief; alleen bij recente activiteit.
+    if (isBeheersessie() && Date.now() - laatsteActiviteit > 25 * 60000) return;
+    laadVeiligheid();
+  }, 60000);
 }
 
 function toonUitnodigenModal() {
