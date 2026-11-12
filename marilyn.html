@@ -205,7 +205,7 @@ function renderLogin(){
     +'<button class="btn" id="pl-btn1" style="width:100%">Verder</button>'
     +'</div>'
     +'<div id="pl-stap2" style="display:none">'
-    +'<div class="field" style="margin-top:1rem"><label for="pl-code">Code uit je authenticator-app (6 cijfers)</label><input type="text" id="pl-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6"></div>'
+    +'<div class="field" style="margin-top:1rem"><label for="pl-code">Code uit je authenticator-app (6 cijfers)</label><input type="text" id="pl-code" inputmode="numeric" autocomplete="one-time-code" maxlength="8"></div>'
     +'<button class="btn" id="pl-btn2" style="width:100%">Inloggen</button>'
     +'</div>'
     +'<div id="login-err" style="color:var(--red);font-size:12px;margin-top:.75rem;display:none"></div>'
@@ -5563,51 +5563,76 @@ function beheertoegangHtml() {
     return h + 'Je bent persoonlijk ingelogd' + (beheerNaam ? ' als ' + esc(beheerNaam) : '') + '. Een account aanmaken of je authenticator opnieuw koppelen kan alleen met noodtoegang (beheersleutel).</div></div>';
   }
   return h + '<p style="margin:0 0 .75rem">Maak een persoonlijk beheeraccount aan. Daarna log je in met e-mail, wachtwoord en een code uit een authenticator-app (bijvoorbeeld Microsoft Authenticator, Google Authenticator of 1Password). De beheersleutel blijft als noodtoegang werken.</p>'
-    + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:.75rem">'
+    + '<div id="bt-formulier"><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:.75rem">'
     + '<div class="field"><label for="bt-naam">Naam</label><input id="bt-naam" type="text" autocomplete="name"></div>'
     + '<div class="field"><label for="bt-email">E-mailadres</label><input id="bt-email" type="email" autocomplete="username"></div>'
     + '<div class="field"><label for="bt-ww">Wachtwoord (minimaal 14 tekens)</label><input id="bt-ww" type="password" autocomplete="new-password"></div>'
     + '<div class="field"><label for="bt-ww2">Wachtwoord herhalen</label><input id="bt-ww2" type="password" autocomplete="new-password"></div>'
     + '</div>'
-    + '<label style="display:flex;gap:.5rem;align-items:center;margin:.25rem 0 .75rem;font-size:12px"><input id="bt-reset" type="checkbox"> Bestaand account herstellen (nieuwe authenticator koppelen; wachtwoord leeg laten om het huidige te houden)</label>'
     + '<button class="btn" id="bt-maak">Account aanmaken</button>'
+    + '<details id="bt-meer" style="margin-top:1rem;font-size:12px"><summary style="cursor:pointer">Bestaand account: koppeling bevestigen of herstellen</summary>'
+    + '<div style="margin-top:.6rem">Heb je het account al aangemaakt en staat de sleutel in je app, maar is de koppeling nog niet bevestigd? Vul hierboven je e-mailadres in en bevestig met een code.'
+    + '<div style="display:flex;gap:.5rem;align-items:flex-end;margin-top:.5rem;flex-wrap:wrap"><div class="field" style="margin:0"><label for="bt-bev-code-los">Code uit je app</label><input id="bt-bev-code-los" type="text" inputmode="numeric" maxlength="8" autocomplete="one-time-code"></div><button class="btn-ghost" id="bt-bev-los">Koppeling bevestigen</button></div>'
+    + '<div style="margin-top:1rem">Nieuwe telefoon of app? Met herstellen krijg je een nieuwe sleutel. <strong>De oude koppeling werkt daarna niet meer</strong>: verwijder de oude vermelding van Koers voor Morgen uit je app. Laat het wachtwoord leeg om het huidige te houden.</div>'
+    + '<button class="btn-ghost" id="bt-herstel" style="margin-top:.5rem">Account herstellen (nieuwe sleutel)</button></div></details>'
+    + '</div>'
     + '<div id="bt-uit" style="margin-top:1rem"></div></div></div>';
 }
 function koppelBeheertoegang() {
   var knop = document.getElementById('bt-maak');
   if (!knop) return;
-  var reset = document.getElementById('bt-reset');
-  reset.addEventListener('change', function(){ knop.textContent = reset.checked ? 'Account herstellen' : 'Account aanmaken'; });
-  knop.addEventListener('click', async function(){
-    var uit = document.getElementById('bt-uit');
+  var uit = document.getElementById('bt-uit');
+  function melding(t, ok){ uit.innerHTML = '<div style="font-size:12px;color:' + (ok ? 'var(--teal)' : 'var(--red)') + '">' + esc(t) + '</div>'; }
+  function vergrendel(aan){ document.querySelectorAll('#bt-formulier input, #bt-formulier button').forEach(function(x){ x.disabled = aan; }); }
+  async function bevestig(email, code, terug){
+    code = String(code || '').replace(/\s/g, '');
+    if (!/^\d{6}$/.test(code)) return terug('Vul de 6 cijfers uit je app in.');
+    var r = await fetchMetTimeoutM(WORKER + '/beheer/account/bevestig', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-key': adminKey }, body: JSON.stringify({ email: email, code: code }) });
+    var d = await r.json().catch(function(){ return {}; });
+    if (!r.ok) return terug(d.error || 'Bevestigen mislukt.');
+    uit.innerHTML = '<div style="font-size:13px;color:var(--teal);line-height:1.7"><strong>Koppeling bevestigd.</strong> Log uit en log in met je e-mailadres, wachtwoord en de volgende code uit je app (de code waarmee je net bevestigde, is gebruikt).</div>';
+    vergrendel(false);
+  }
+  async function verstuur(isReset){
     var naam = document.getElementById('bt-naam').value.trim(), email = document.getElementById('bt-email').value.trim();
     var ww = document.getElementById('bt-ww').value, ww2 = document.getElementById('bt-ww2').value;
-    var isReset = reset.checked;
-    function melding(t, ok){ uit.innerHTML = '<div style="font-size:12px;color:' + (ok ? 'var(--teal)' : 'var(--red)') + '">' + esc(t) + '</div>'; }
     if (!email) return melding('Vul een e-mailadres in.');
     if (ww !== ww2) return melding('De wachtwoorden zijn niet gelijk.');
     if ((!isReset || ww) && ww.length < 14) return melding('Kies een wachtwoord van minimaal 14 tekens.');
-    knop.disabled = true;
+    if (isReset && !confirm('Herstellen maakt een nieuwe sleutel. De huidige koppeling in je app werkt daarna niet meer. Doorgaan?')) return;
+    vergrendel(true);
     try {
       var body = { email: email, naam: naam };
       if (ww) body.wachtwoord = ww;
       if (isReset) body.reset = true;
       var r = await fetchMetTimeoutM(WORKER + '/beheer/account', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-key': adminKey }, body: JSON.stringify(body) });
       var d = await r.json().catch(function(){ return {}; });
-      if (!r.ok || !d.otpauth) { knop.disabled = false; return melding(d.error || 'Aanmaken mislukt.'); }
+      if (!r.ok || !d.otpauth) { vergrendel(false); return melding(d.error || 'Aanmaken mislukt.'); }
       var geheim = (/[?&]secret=([A-Z2-7]+)/.exec(d.otpauth) || [])[1] || '';
       document.getElementById('bt-ww').value = ''; document.getElementById('bt-ww2').value = '';
+      // Formulier blijft vergrendeld tot de koppeling bevestigd is: zo kan niet per ongeluk een tweede sleutel ontstaan.
       uit.innerHTML = '<div style="border:1px solid var(--teal-dark);background:var(--teal-bg);border-radius:var(--r);padding:1rem;font-size:13px;line-height:1.7">'
-        + '<strong>Koppel nu je authenticator-app.</strong> Dit geheim wordt maar één keer getoond.<br>'
-        + '1. Open je authenticator-app en kies "account toevoegen" en dan "sleutel handmatig invoeren".<br>'
+        + '<strong>Koppel nu je authenticator-app.</strong> Dit geheim wordt maar één keer getoond.' + (isReset ? ' Verwijder eerst de oude vermelding van Koers voor Morgen uit je app.' : '') + '<br>'
+        + '1. Open je authenticator-app, kies "account toevoegen" en dan "sleutel handmatig invoeren".<br>'
         + '2. Accountnaam: Koers voor Morgen (' + esc(email) + '), type: op tijd gebaseerd.<br>'
-        + '3. Sleutel: <code id="bt-geheim" style="font-size:15px;letter-spacing:1px;user-select:all">' + esc(geheim.replace(/(.{4})/g, '$1 ').trim()) + '</code><br>'
+        + '3. Sleutel: <code id="bt-geheim" style="font-size:14px;user-select:all;word-break:break-all">' + esc(geheim) + '</code> <button class="btn-ghost" id="bt-kopieer" style="font-size:11px;padding:2px 8px">Kopiëren</button><br>'
         + 'Op je telefoon kun je ook deze link openen: <a href="' + esc(d.otpauth) + '">in authenticator-app openen</a>.<br>'
-        + '4. Log daarna uit en log in met je e-mailadres, wachtwoord en de code uit de app. Pas als dat werkt is je persoonlijke toegang actief.'
-        + '<div style="margin-top:.75rem"><button class="btn-ghost" id="bt-klaar">Ik heb de sleutel ingevoerd, verbergen</button></div></div>';
-      document.getElementById('bt-klaar').addEventListener('click', function(){ uit.innerHTML = '<div style="font-size:12px;color:var(--teal)">Sleutel verborgen. Log uit en test de persoonlijke login.</div>'; });
-      knop.disabled = false;
-    } catch (e) { knop.disabled = false; melding('Verbindingsfout. Probeer het opnieuw.'); }
+        + '4. Bevestig de koppeling met de code die je app nu toont:'
+        + '<div style="display:flex;gap:.5rem;align-items:flex-end;margin-top:.5rem;flex-wrap:wrap"><div class="field" style="margin:0"><label for="bt-bev-code">Code uit je app</label><input id="bt-bev-code" type="text" inputmode="numeric" maxlength="8" autocomplete="one-time-code"></div><button class="btn" id="bt-bevestig">Koppeling bevestigen</button></div>'
+        + '<div id="bt-bev-fout" style="font-size:12px;color:var(--red);margin-top:.4rem"></div></div>';
+      document.getElementById('bt-kopieer').addEventListener('click', function(){ var k = this; try { navigator.clipboard.writeText(geheim).then(function(){ k.textContent = 'Gekopieerd'; }, function(){ k.textContent = 'Kopiëren lukt niet, selecteer de sleutel'; }); } catch (e) { k.textContent = 'Kopiëren lukt niet, selecteer de sleutel'; } });
+      document.getElementById('bt-bevestig').addEventListener('click', function(){
+        var f = document.getElementById('bt-bev-fout'); f.textContent = '';
+        bevestig(email, document.getElementById('bt-bev-code').value, function(t){ f.textContent = t; }).catch(function(){ f.textContent = 'Verbindingsfout. Probeer het opnieuw.'; });
+      });
+    } catch (e) { vergrendel(false); melding('Verbindingsfout. Probeer het opnieuw.'); }
+  }
+  knop.addEventListener('click', function(){ verstuur(false); });
+  document.getElementById('bt-herstel').addEventListener('click', function(){ verstuur(true); });
+  document.getElementById('bt-bev-los').addEventListener('click', function(){
+    var email = document.getElementById('bt-email').value.trim();
+    if (!email) return melding('Vul hierboven je e-mailadres in.');
+    bevestig(email, document.getElementById('bt-bev-code-los').value, function(t){ melding(t); }).catch(function(){ melding('Verbindingsfout. Probeer het opnieuw.'); });
   });
 }
 

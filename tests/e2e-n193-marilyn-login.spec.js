@@ -55,8 +55,21 @@ test('activeren, inloggen met authenticator, uitloggen', async ({ page }) => {
   // Review M1: de automatische verversing (60 s) wist het eenmalige geheim niet.
   await page.clock.fastForward(125000);
   await expect(page.locator('#bt-geheim')).toBeVisible();
-  await page.locator('#bt-klaar').click();
+  // Herstel 12-11: formulier vergrendeld tot de koppeling bevestigd is (geen tweede sleutel per ongeluk).
+  await expect(page.locator('#bt-maak')).toBeDisabled();
+  await expect(page.locator('#bt-herstel')).toBeDisabled();
+  // Vóór bevestiging kan niet worden ingelogd: duidelijke melding (via de API gecontroleerd).
+  const voor = await page.request.post(WORKER + '/beheer/login', { data: { email: EMAIL, wachtwoord: WW } });
+  expect(voor.status()).toBe(403);
+  // Foute code: uitleg, nog niet bevestigd.
+  await page.locator('#bt-bev-code').fill(totp(geheim) === '000000' ? '111111' : '000000');
+  await page.locator('#bt-bevestig').click();
+  await expect(page.locator('#bt-bev-fout')).toContainText('oudere vermeldingen');
+  await page.locator('#bt-bev-code').fill(totp(geheim));
+  await page.locator('#bt-bevestig').click();
+  await expect(page.locator('#bt-uit')).toContainText('Koppeling bevestigd');
   await expect(page.locator('#bt-geheim')).toHaveCount(0);
+  await expect(page.locator('#bt-maak')).toBeEnabled();
   await page.locator('#btn-logout').click();
 
   // 2. Foute code: melding en terug naar stap 1 (tussenstap is eenmalig).
@@ -122,4 +135,38 @@ test('activeren, inloggen met authenticator, uitloggen', async ({ page }) => {
   await expect.poll(() => page.evaluate(() => adminKey), { timeout: 20000 }).toBe('');
   await expect(page.locator('#login-err')).toContainText('sessie is verlopen', { timeout: 20000 });
   await expect(page.locator('#pl-email')).toBeVisible();
+});
+
+test('herstellen met waarschuwing, pagina verlaten, later de koppeling los bevestigen (situatie 12-11)', async ({ page }) => {
+  test.setTimeout(120000);
+  const url = '/marilyn.html?worker=' + encodeURIComponent(WORKER);
+  const noodtoegang = async () => {
+    await page.goto(url);
+    await page.locator('#nood summary').click();
+    await page.locator('#ak').fill(ADMIN);
+    await page.locator('#login-btn').click();
+    await expect(page.locator('#hdr-wie')).toHaveText(/Noodtoegang/);
+    await page.locator('#t-veiligheid').click();
+    await expect(page.locator('#bt-maak')).toBeVisible({ timeout: 20000 });
+  };
+  await noodtoegang();
+  await page.locator('#bt-email').fill(EMAIL);
+  await page.locator('#bt-meer summary').click();
+  page.once('dialog', (d) => { expect(d.message()).toContain('werkt daarna niet meer'); d.accept(); });
+  await page.locator('#bt-herstel').click();
+  const geheim = (await page.locator('#bt-geheim').textContent()).replace(/\s/g, '');
+  expect(geheim).toMatch(/^[A-Z2-7]{32}$/);
+  // Pagina verlaten zonder te bevestigen: inloggen kan nog niet.
+  const voor = await page.request.post(WORKER + '/beheer/login', { data: { email: EMAIL, wachtwoord: WW } });
+  expect(voor.status()).toBe(403);
+  expect((await voor.json()).code).toBe('NIET_BEVESTIGD');
+  // Later: los bevestigen.
+  await noodtoegang();
+  await page.locator('#bt-email').fill(EMAIL);
+  await page.locator('#bt-meer summary').click();
+  await page.locator('#bt-bev-code-los').fill(totp(geheim));
+  await page.locator('#bt-bev-los').click();
+  await expect(page.locator('#bt-uit')).toContainText('Koppeling bevestigd');
+  const na = await page.request.post(WORKER + '/beheer/login', { data: { email: EMAIL, wachtwoord: WW } });
+  expect(na.status()).toBe(200);
 });
