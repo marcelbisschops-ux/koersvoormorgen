@@ -5573,6 +5573,8 @@ function beheertoegangHtml() {
     + '<details id="bt-meer" style="margin-top:1rem;font-size:12px"><summary style="cursor:pointer">Bestaand account: koppeling bevestigen of herstellen</summary>'
     + '<div style="margin-top:.6rem">Heb je het account al aangemaakt en staat de sleutel in je app, maar is de koppeling nog niet bevestigd? Vul hierboven je e-mailadres in en bevestig met een code.'
     + '<div style="display:flex;gap:.5rem;align-items:flex-end;margin-top:.5rem;flex-wrap:wrap"><div class="field" style="margin:0"><label for="bt-bev-code-los">Code uit je app</label><input id="bt-bev-code-los" type="text" inputmode="numeric" maxlength="8" autocomplete="one-time-code"></div><button class="btn-ghost" id="bt-bev-los">Koppeling bevestigen</button></div>'
+    + '<div style="margin-top:1rem">Wachtwoord vergeten of geweigerd? Vul hierboven je e-mailadres en tweemaal een nieuw wachtwoord in. Je authenticator-app blijft gewoon werken.</div>'
+    + '<button class="btn-ghost" id="bt-ww-reset" style="margin-top:.5rem">Alleen wachtwoord opnieuw instellen</button>'
     + '<div style="margin-top:1rem">Nieuwe telefoon of app? Met herstellen krijg je een nieuwe sleutel. <strong>De oude koppeling werkt daarna niet meer</strong>: verwijder de oude vermelding van Koers voor Morgen uit je app. Laat het wachtwoord leeg om het huidige te houden.</div>'
     + '<button class="btn-ghost" id="bt-herstel" style="margin-top:.5rem">Account herstellen (nieuwe sleutel)</button></div></details>'
     + '</div>'
@@ -5629,6 +5631,22 @@ function koppelBeheertoegang() {
   }
   knop.addEventListener('click', function(){ verstuur(false); });
   document.getElementById('bt-herstel').addEventListener('click', function(){ verstuur(true); });
+  // N-193 (12-11-2026): alleen het wachtwoord opnieuw instellen (noodsleutel); authenticator-koppeling ongewijzigd.
+  document.getElementById('bt-ww-reset').addEventListener('click', async function(){
+    var email = document.getElementById('bt-email').value.trim(), ww = document.getElementById('bt-ww').value, ww2 = document.getElementById('bt-ww2').value;
+    if (!email) return melding('Vul hierboven je e-mailadres in.');
+    if (ww !== ww2) return melding('De wachtwoorden zijn niet gelijk.');
+    if (ww.length < 14) return melding('Kies een wachtwoord van minimaal 14 tekens.');
+    var b = this; b.disabled = true;
+    try {
+      var r = await fetchMetTimeoutM(WORKER + '/beheer/account/wachtwoord', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-key': adminKey }, body: JSON.stringify({ email: email, wachtwoord: ww }) });
+      var d = await r.json().catch(function(){ return {}; });
+      document.getElementById('bt-ww').value = ''; document.getElementById('bt-ww2').value = '';
+      if (!r.ok) { b.disabled = false; return melding(d.error || 'Opnieuw instellen mislukt.'); }
+      melding('Wachtwoord opnieuw ingesteld. Log uit en log in met je e-mailadres, het nieuwe wachtwoord en een code uit je app.', true);
+    } catch (e) { melding('Verbindingsfout. Probeer het opnieuw.'); }
+    b.disabled = false;
+  });
   document.getElementById('bt-bev-los').addEventListener('click', function(){
     var email = document.getElementById('bt-email').value.trim();
     if (!email) return melding('Vul hierboven je e-mailadres in.');

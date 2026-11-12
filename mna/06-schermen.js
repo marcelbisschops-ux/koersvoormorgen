@@ -736,8 +736,12 @@ function renderMain(){
       +choiceLogHtml
       +'</div>';
     var aiText=S.aiTexts[f.id];var aiLoad=S.aiLoading[f.id];
+    // N-160 (GO Marcel 12-11-2026): de server staat de AI-analyse in fase Financieel voor de begeleider niet toe
+    // (worker/19); de knop wordt daar verborgen met een eerlijke uitleg in plaats van een melding 'Verbindingsfout'.
+    var aiNietVoorRol=isTussen()&&f.id==='financieel';
     var aiBodyHtml;
     if(aiLoad)aiBodyHtml='<div style="display:flex;align-items:center;gap:8px;color:var(--mid);font-size:13px"><div class="spin" style="border-color:var(--border2);border-top-color:var(--teal);width:14px;height:14px;border-width:2px"></div>Genereren...</div>';
+    else if(aiNietVoorRol&&!aiText)aiBodyHtml='<div style="color:var(--muted);font-size:13px">In de fase Financieel is het AI-advies niet beschikbaar voor de begeleider; de cijfers in deze fase vult en beheert de verkoper.</div>';
     else if(!aiText)aiBodyHtml='<div style="color:var(--muted);font-size:13px">Klik op Genereer advies voor een analyse op basis van de ingevulde data, checklist en notities.</div>';
     else if(aiText==='__ERROR__')aiBodyHtml='<div style="color:var(--red);font-size:13px">Verbindingsfout. Probeer opnieuw.</div>';
     else{
@@ -770,7 +774,7 @@ function renderMain(){
       aiBodyHtml=h;
     }
     var aiHtml='<div class="ai-panel"><div class="ai-hdr"><div><div class="ai-title">AI-advies: '+f.title+'</div><div class="ai-sub">Intern analyse-instrument</div></div>'
-      +(!isKoper()&&!isVerkoper()?'<button class="btn-gen" id="gen-btn" '+(aiLoad?'disabled':'')+'>'+(aiLoad?'<div class="spin"></div> Genereren...':aiText&&aiText!=='__ERROR__'?'Opnieuw':'Genereer advies')+'</button>':'')
+      +(!isKoper()&&!isVerkoper()&&!aiNietVoorRol?'<button class="btn-gen" id="gen-btn" '+(aiLoad?'disabled':'')+'>'+(aiLoad?'<div class="spin"></div> Genereren...':aiText&&aiText!=='__ERROR__'?'Opnieuw':'Genereer advies')+'</button>':'')
       +'</div><div class="ai-body">'+aiBodyHtml+'</div></div>';
     extraHtml+=chkHtml+notHtml+aiHtml;
   }

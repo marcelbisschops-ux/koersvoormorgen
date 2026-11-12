@@ -3916,9 +3916,11 @@ function renderBegeleiderDashboard(app){
           document.getElementById('dv-print').style.opacity=actief?'.4':'1';
           dvAkkoordCtrl.setOverride(actief);
         });
-        document.getElementById('dv-print').onclick=function(){printDealvoorstel(document.getElementById('dv-preview').innerHTML,titel);};
+        // N-159 (GO Marcel 12-11-2026): ook het printen van het dealvoorstel en de interne bijlage loopt via de bestaande
+        // disclaimer-bevestiging met vastlegging (#62), zoals printDoc; de tekst van de disclaimer blijft ongewijzigd.
+        document.getElementById('dv-print').onclick=function(){var html=document.getElementById('dv-preview').innerHTML;toonRelianceAkkoord(titel,'dealvoorstel',function(){printDealvoorstel(html,titel);});};
         var dvBijlPrintBtn=document.getElementById('dv-bijlage-print');
-        if(dvBijlPrintBtn)dvBijlPrintBtn.onclick=function(){printDealvoorstel(document.getElementById('dv-bijlage').innerHTML,'INTERNE BIJLAGE (niet delen met de koper) — '+(t2.kantoor_naam||S.code));};
+        if(dvBijlPrintBtn)dvBijlPrintBtn.onclick=function(){var html=document.getElementById('dv-bijlage').innerHTML,bt='INTERNE BIJLAGE (niet delen met de koper) — '+(t2.kantoor_naam||S.code);toonRelianceAkkoord(bt,'dealvoorstel_bijlage',function(){printDealvoorstel(html,bt);});};
         document.getElementById('dv-email').onclick=function(){
           var ebtn=this;
           // Bevinding 12 sep 2026 (Marcel, harde eis): bevestiging vooraf i.p.v. een vaste

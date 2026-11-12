@@ -169,4 +169,14 @@ test('herstellen met waarschuwing, pagina verlaten, later de koppeling los beves
   await expect(page.locator('#bt-uit')).toContainText('Koppeling bevestigd');
   const na = await page.request.post(WORKER + '/beheer/login', { data: { email: EMAIL, wachtwoord: WW } });
   expect(na.status()).toBe(200);
+  // 12-11: alleen het wachtwoord opnieuw instellen; de authenticator-koppeling blijft actief.
+  const NIEUW = WW + '-nieuw';
+  await page.locator('#bt-ww').fill(NIEUW);
+  await page.locator('#bt-ww2').fill(NIEUW);
+  await page.locator('#bt-ww-reset').click();
+  await expect(page.locator('#bt-uit')).toContainText('Wachtwoord opnieuw ingesteld');
+  expect((await page.request.post(WORKER + '/beheer/login', { data: { email: EMAIL, wachtwoord: WW } })).status()).toBe(401);
+  const nw = await page.request.post(WORKER + '/beheer/login', { data: { email: EMAIL, wachtwoord: NIEUW } });
+  expect(nw.status()).toBe(200);
+  expect((await nw.json()).tussenstap).toBeTruthy();
 });
