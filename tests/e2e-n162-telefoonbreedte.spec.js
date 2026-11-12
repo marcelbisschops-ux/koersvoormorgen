@@ -29,13 +29,15 @@ test('begeleiderskop op 390 px: geen horizontaal scrollen, knoppen zichtbaar', a
   const breedte = await page.evaluate(() => document.documentElement.scrollWidth);
   if (breedte > 390) console.log('TE BREED', await page.evaluate(() => [...document.querySelectorAll('body *')].filter((e) => e.getBoundingClientRect().right > 392 && getComputedStyle(e).position !== 'fixed').slice(0, 12).map((e) => e.tagName + '.' + (e.className || '').toString().slice(0, 30) + '#' + e.id + ' ' + Math.round(e.getBoundingClientRect().right) + ' ' + (e.textContent || '').trim().slice(0, 40)).join('\n')));
   expect(breedte).toBeLessThanOrEqual(390);
+  // Het dashboard kan na het inloggen nog opnieuw tekenen; daarom in de pagina zelf meten, met herhaling.
   for (const tekst of ['Adviseursportaal', 'Ververs', 'Handleiding', 'Uitloggen']) {
-    const knop = page.locator('.hdr').getByText(tekst).first();
-    await knop.scrollIntoViewIfNeeded(); // knoppenrij scrollt binnen de eigen balk (Design 2.0-patroon)
-    await expect(knop).toBeVisible();
-    const box = await knop.boundingBox();
-    expect(box.x).toBeGreaterThanOrEqual(0);
-    expect(box.x + box.width).toBeLessThanOrEqual(390);
+    await expect.poll(() => page.evaluate((t) => {
+      const el = [...document.querySelectorAll('.hdr a, .hdr button')].find((x) => (x.textContent || '').includes(t));
+      if (!el) return 'ontbreekt';
+      el.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      const r = el.getBoundingClientRect();
+      return r.width > 0 && r.left >= 0 && r.right <= 390 ? 'ok' : 'buiten beeld ' + Math.round(r.left) + '-' + Math.round(r.right);
+    }, tekst), { timeout: 15000 }).toBe('ok');
   }
   await page.screenshot({ path: 'test-results/n162-390.png', fullPage: false });
   expect(fouten).toEqual([]);
