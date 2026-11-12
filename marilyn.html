@@ -5532,7 +5532,7 @@ async function renderMatchingTab(el){
 // beheerder. Stand en bronnen: kvm-bridge/inbox/KVM-BEVEILIGING-CONTINUITEIT-20261111.md. Bij elke wijziging in
 // infrastructuur, beveiliging of leveranciers bijwerken (Definition of Done, MASTER N-189g), samen met de openbare
 // pagina platform/beveiliging-en-gegevens.html.
-var VEILIGHEID_STAND = '11 november 2026';
+var VEILIGHEID_STAND = '12 november 2026';
 var VEILIGHEID_LEVERANCIERS = [
   ['Cloudflare', 'Workers, Pages, D1, R2, Browser Rendering', 'ISO 27001, ISO 27701, ISO 27018, SOC 2 Type II, PCI DSS', 'https://www.cloudflare.com/trust-hub/compliance-resources/'],
   ['Anthropic', 'Claude API (AI-analyse en concepten)', 'SOC 2 Type II, ISO 27001, ISO/IEC 42001', 'https://trust.anthropic.com/'],
@@ -5558,7 +5558,8 @@ var VEILIGHEID_MAATREGELEN = [
   ['Herstel naar werkende omgeving', 'NIET GEVERIFIEERD', 'Nog niet geoefend'],
   ['Monitoring', 'GETEST', 'UptimeRobot /health; dagelijkse selfcheck 15/15 (11-11)'],
   ['Incidentprocedure', 'AANWEZIG', 'legal/INCIDENTPROCEDURE.md; tabletop nog niet gehouden (N-27)'],
-  ['Externe pentest', 'NIET GEVERIFIEERD', 'Alleen interne red-team-routine']
+  ['Externe pentest', 'NIET GEVERIFIEERD', 'Alleen interne red-team-routine'],
+  ['ISO 27001-controleregister met bewijs per uitvoering', 'AANWEZIG', '16 controles (register v1, 12-11-2026); handmatige controles staan op MISSING tot de eerste vastlegging. Geen certificering.']
 ];
 var VEILIGHEID_OPEN_RISICOS = [
   'Beheerderstoegang zonder MFA en persoonsgebonden identiteit.',
@@ -5584,6 +5585,57 @@ function veiligheidTransparantieHtml() {
     + VEILIGHEID_OPEN_RISICOS.map(function (r) { return '<li>' + esc(r) + '</li>'; }).join('') + '</ul></div></div>';
   return h;
 }
+
+// ISO 27001-readiness (12-11-2026): register van periodieke controles met bewijs (backend worker/64-isms.js).
+// Automatische controles komen rechtstreeks uit de logboeken; handmatige controles leg je hier vast (append-only).
+// Niets wordt groen zonder een echte uitvoering binnen de termijn: dan staat er MISSING.
+var ISMS_KLEUR = { PASS: 'var(--teal)', FAIL: 'var(--red)', SKIP: 'var(--gold)', MISSING: 'var(--red)' };
+function ismsDatum(ms) { return ms ? new Date(ms).toLocaleString('nl-NL', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'; }
+async function laadIsms() {
+  var box = document.getElementById('isms-sectie');
+  if (!box) return;
+  var r, d;
+  try { r = await fetch(WORKER + '/mna/admin/isms/controles', { headers: { 'x-admin-key': adminKey } }); d = await r.json(); } catch (e) { d = null; }
+  if (!r || !r.ok || !d || d.ok !== true || !Array.isArray(d.controles)) { box.innerHTML = '<div class="card" style="margin-top:1.25rem;padding:1rem 1.25rem;color:var(--red);font-size:13px">ISO 27001-controleregister kon niet worden geladen' + (r ? ' (HTTP ' + r.status + ')' : '') + '. Er is daarom geen uitspraak over de controles.</div>'; return; }
+  var t = d.telling || {};
+  var h = '<div class="card" style="margin-top:1.25rem"><div style="padding:1rem 1.25rem;border-bottom:1px solid var(--border)"><strong>ISO 27001-readiness: periodieke controles</strong> <span style="font-size:12px;color:var(--muted)">register v' + esc(String(d.registerversie)) + ', opgehaald ' + esc(ismsDatum(d.gegenereerd_op)) + '</span>'
+    + '<div style="font-size:12px;margin-top:.4rem">' + ['PASS', 'FAIL', 'SKIP', 'MISSING'].map(function (k) { return '<span style="color:' + ISMS_KLEUR[k] + ';font-weight:600;margin-right:1rem">' + k + ' ' + esc(String(t[k] || 0)) + '</span>'; }).join('') + '</div>'
+    + '<div style="font-size:12px;color:var(--muted);margin-top:.4rem">Eigenaar van alle controles: ISMS-verantwoordelijke (M. Bisschops). Automatische controles lezen hun bewijs uit de logboeken van het platform; MISSING betekent: geen uitvoering binnen de termijn.</div></div>'
+    + '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr>'
+    + ['ID', 'ISO', 'Controle', 'Frequentie', 'Bron', 'Laatst uitgevoerd', 'Volgende', 'Resultaat', 'Bewijs / afwijking'].map(function (x) { return '<th style="text-align:left;padding:6px 10px;white-space:nowrap">' + x + '</th>'; }).join('') + '</tr></thead><tbody>';
+  d.controles.forEach(function (c) {
+    h += '<tr style="border-top:1px solid var(--border)" data-isms-id="' + esc(c.id) + '"><td style="padding:6px 10px;white-space:nowrap">' + esc(c.id) + '</td><td style="padding:6px 10px;white-space:nowrap">' + esc(c.iso) + '</td><td style="padding:6px 10px">' + esc(c.titel) + '</td><td style="padding:6px 10px">' + esc(c.frequentie_label) + '</td><td style="padding:6px 10px">' + esc(c.bron) + '</td>'
+      + '<td style="padding:6px 10px;white-space:nowrap">' + esc(ismsDatum(c.laatst_uitgevoerd)) + '</td><td style="padding:6px 10px;white-space:nowrap">' + (c.laatst_uitgevoerd ? esc(ismsDatum(c.volgende_gepland)) : 'nu') + '</td>'
+      + '<td style="padding:6px 10px;font-weight:600;color:' + (ISMS_KLEUR[c.status] || 'var(--mid)') + '" class="isms-status">' + esc(c.status) + '</td>'
+      + '<td style="padding:6px 10px;color:var(--mid)">' + (c.status === 'MISSING' ? (c.laatst_uitgevoerd ? 'Termijn verstreken. Laatste: ' : 'Nog nooit uitgevoerd.') : '') + esc(c.bewijs || '') + (c.afwijking ? '<div style="color:var(--red)">Afwijking: ' + esc(c.afwijking) + '</div>' : '') + '</td></tr>';
+  });
+  h += '</tbody></table></div>';
+  var handmatig = d.controles.filter(function (c) { return c.bron === 'handmatig'; });
+  h += '<div style="padding:1rem 1.25rem;border-top:1px solid var(--border)"><strong style="font-size:13px">Uitvoering van een handmatige controle vastleggen</strong>'
+    + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:.75rem;margin-top:.6rem">'
+    + '<div class="field"><label for="isms-controle">Controle</label><select id="isms-controle">' + handmatig.map(function (c) { return '<option value="' + esc(c.id) + '">' + esc(c.id + ' ' + c.titel) + '</option>'; }).join('') + '</select></div>'
+    + '<div class="field"><label for="isms-resultaat">Resultaat</label><select id="isms-resultaat"><option value="PASS">PASS</option><option value="FAIL">FAIL</option><option value="SKIP">SKIP (overgeslagen, met reden)</option></select></div>'
+    + '<div class="field"><label for="isms-datum">Uitgevoerd op (leeg = nu)</label><input id="isms-datum" type="date"></div></div>'
+    + '<div class="field" style="margin-top:.6rem"><label for="isms-bewijs">Bewijs: wat is gecontroleerd en waar ligt het bewijs (geen wachtwoorden, sleutels of codes)</label><textarea id="isms-bewijs" rows="2" style="width:100%"></textarea></div>'
+    + '<div class="field" style="margin-top:.6rem"><label for="isms-afwijking">Afwijking (verplicht bij FAIL) of reden (verplicht bij SKIP)</label><textarea id="isms-afwijking" rows="2" style="width:100%"></textarea></div>'
+    + '<div id="isms-melding" style="font-size:12px;margin-top:.5rem"></div>'
+    + '<button class="btn" id="isms-opslaan" style="margin-top:.6rem">Uitvoering vastleggen</button></div></div>';
+  box.innerHTML = h;
+  document.getElementById('isms-opslaan').onclick = async function () {
+    var btn = this, m = document.getElementById('isms-melding');
+    var datum = document.getElementById('isms-datum').value;
+    var body = { controle_id: document.getElementById('isms-controle').value, resultaat: document.getElementById('isms-resultaat').value, bewijs: document.getElementById('isms-bewijs').value.trim(), afwijking: document.getElementById('isms-afwijking').value.trim() };
+    if (datum) { var dt = new Date(datum + 'T12:00:00'); if (!isNaN(dt.getTime())) body.uitgevoerd_op = Math.min(dt.getTime(), Date.now()); }
+    btn.disabled = true; m.style.color = 'var(--muted)'; m.textContent = 'Vastleggen...';
+    var res, j;
+    try { res = await fetch(WORKER + '/mna/admin/isms/uitvoering', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-key': adminKey }, body: JSON.stringify(body) }); j = await res.json(); } catch (e) { j = null; }
+    btn.disabled = false;
+    if (!res || !res.ok || !j || !j.ok) { m.style.color = 'var(--red)'; m.textContent = (j && j.error) || 'Vastleggen mislukt.'; return; }
+    await laadIsms();
+    var m2 = document.getElementById('isms-melding'); if (m2) { m2.style.color = 'var(--teal)'; m2.textContent = 'Vastgelegd.'; }
+  };
+}
+function ismsFormulierInGebruik() { return ['isms-bewijs', 'isms-afwijking', 'isms-datum'].some(function (id) { var x = document.getElementById(id); return x && x.value; }); }
 
 // N-193 (12-11-2026): persoonlijke beheertoegang activeren. Een account aanmaken of herstellen kan alleen met de
 // noodsleutel (de backend vertaalt een persoonlijke sessie op /beheer/* nooit). Het geheim voor de authenticator-app
@@ -5946,9 +5998,11 @@ async function renderVeiligheidTab(el) {
       html += veiligheidTransparantieHtml();
       // N-193: persoonlijke beheertoegang instellen (alleen met noodtoegang).
       html += beheertoegangHtml();
+      html += '<div id="isms-sectie"><div class="card" style="margin-top:1.25rem;padding:1rem 1.25rem;font-size:13px;color:var(--muted)">ISO 27001-controleregister laden...</div></div>';
 
       el.innerHTML = html;
       koppelBeheertoegang();
+      laadIsms();
 
       function haalRapportLinkOp(nieuw) {
         var linkBtn = document.getElementById('btn-rapport-link');
@@ -6054,6 +6108,8 @@ async function renderVeiligheidTab(el) {
   veiligheidRefreshTimer = setInterval(function(){
     // N-193 review M1: niet verversen zolang het activatieblok in gebruik is (het eenmalige geheim of ingevulde velden).
     if (document.getElementById('bt-geheim') || ['bt-ww','bt-ww2'].some(function(id){ var x = document.getElementById(id); return x && x.value; })) return;
+    // ISO 27001-register: niet verversen terwijl een uitvoering wordt ingevuld.
+    if (ismsFormulierInGebruik()) return;
     // N-193 review M2: automatisch verversen houdt een persoonlijke sessie niet actief; alleen bij recente activiteit.
     if (isBeheersessie() && Date.now() - laatsteActiviteit > 25 * 60000) return;
     laadVeiligheid();

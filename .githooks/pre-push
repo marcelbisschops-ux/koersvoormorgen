@@ -39,8 +39,15 @@ echo "✓ Audit en testsuite groen — push gaat door."
 
 # Best-effort melding aan het veiligheidsdashboard (marilyn.html → Veiligheid) dat de statische
 # audit hier zojuist groen was — blokkeert de push nooit, faalt stil zonder ADMIN_KEY (20 aug 2026).
-if [ -n "${ADMIN_KEY:-}" ]; then
-  curl -s -m 5 -X POST -H "Content-Type: application/json" -H "x-admin-key: ${ADMIN_KEY}" \
+# 12-11-2026 (ISO-bewijs): kwam sinds de sleutelrotatie van 19 sep niet meer aan; nu eerst de sleutelhanger.
+MELD_SLEUTEL=$(/usr/bin/security find-generic-password -a "$(id -un)" -s kantoorinzicht-production-admin-key -w 2>/dev/null || true)
+[ -z "$MELD_SLEUTEL" ] && MELD_SLEUTEL="${ADMIN_KEY:-}"
+if [ -n "$MELD_SLEUTEL" ]; then
+  MELD_STATUS=$(curl -s -o /dev/null -w '%{http_code}' -m 5 -X POST -H "Content-Type: application/json" -H "x-admin-key: ${MELD_SLEUTEL}" \
     "https://kantoorinzicht.marcel-bisschops.workers.dev/mna/admin/veiligheid/statische-audit" \
-    -d '{"repo":"frontend","checks_totaal":11,"checks_geslaagd":11}' >/dev/null 2>&1 || true
+    -d '{"repo":"frontend","checks_totaal":11,"checks_geslaagd":11}' 2>/dev/null || echo 000)
+  [ "$MELD_STATUS" = "200" ] && echo "✓ Veiligheidsdashboard bijgewerkt (frontend)." || echo "  ⚠ Dashboard-melding mislukt (HTTP $MELD_STATUS), niet blokkerend."
+else
+  echo "  ⚠ Geen beheersleutel — veiligheidsdashboard niet bijgewerkt."
 fi
+unset MELD_SLEUTEL MELD_STATUS
