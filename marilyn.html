@@ -1662,7 +1662,7 @@ async function renderBenchmarksTab(el){
   async function laadBenchmarks(){
     var db=document.getElementById('bench-body');
     try{
-      var r=await fetch(WORKER+'/benchmarks');
+      var r=await fetch(WORKER+'/benchmarks',{headers:{'x-admin-key':adminKey}});
       var data=await r.json();
       if(!data.length){db.innerHTML='<div class="empty">Nog geen benchmarks. Klik op Bronnen updaten om de eerste data op te halen.</div>';updSelBench();return;}
       var html='<table><thead><tr>'+(magBulk?'<th style="width:32px"><input type="checkbox" id="cb-all-bench" title="Alle benchmarks in deze lijst aanvinken"></th>':'')+'<th>Sleutel</th><th>Omschrijving</th><th>Waarde</th><th>Bron</th><th>Peildatum</th><th>Bijgewerkt</th><th></th></tr></thead><tbody>';
@@ -1821,7 +1821,7 @@ async function renderBenchmarksTab(el){
         if(!gevonden.length)throw new Error('Geen benchmarkwaarden gevonden in dit document.');
         // Haal huidige benchmarks op voor conflict check
         var huidig={};
-        try{var br=await fetch(WORKER+'/benchmarks');var bd=await br.json();bd.forEach(function(b){huidig[b.sleutel]=b;});}catch(e){}
+        try{var br=await fetch(WORKER+'/benchmarks',{headers:{'x-admin-key':adminKey}});var bd=await br.json();bd.forEach(function(b){huidig[b.sleutel]=b;});}catch(e){}
         // Bouw preview met conflict waarschuwingen
         var conflicten=gevonden.filter(function(b){return huidig[b.sleutel]&&Math.abs(huidig[b.sleutel].waarde-b.waarde)>1;});
         var pvHtml='<strong style="color:var(--head)">'+gevonden.length+' waarden gevonden'+(conflicten.length?' &mdash; <span style="color:var(--gold)">'+conflicten.length+' conflict(en)</span>':'')+':</strong><br><br>';
@@ -1883,7 +1883,7 @@ async function renderBenchmarksTab(el){
       // Conflict check: huidige waarde ophalen
       if(!btn.dataset.confirmed){
         try{
-          var chkR=await fetch(WORKER+'/benchmarks');
+          var chkR=await fetch(WORKER+'/benchmarks',{headers:{'x-admin-key':adminKey}});
           var chkD=await chkR.json();
           var bestaand=chkD.find(function(b){return b.sleutel===id;});
           if(bestaand&&Math.abs(bestaand.waarde-val)>0.01){
@@ -3267,7 +3267,7 @@ async function toonDetail(id,naam){
       aiOut.innerHTML='<div style="color:var(--muted);font-size:13px">AI analyseert... (20-40 sec)</div>';
       try{
         var bms={};
-        try{var br=await fetch(WORKER+'/benchmarks');var bd=await br.json();bd.forEach(function(b){bms[b.sleutel]=b;});}catch(e){}
+        try{var br=await fetch(WORKER+'/benchmarks',{headers:{'x-admin-key':adminKey}});var bd=await br.json();bd.forEach(function(b){bms[b.sleutel]=b;});}catch(e){}
         var faseLabelsAI={financieel:'Financieel',commercieel:'Klanten & commercieel',partner:'Partners & personeel',compliance:'Compliance & kwaliteit',it:'IT & automatisering',juridisch:'Juridisch & fiscaal',strategisch:'Strategisch & markt'};
         var dataSamenvatting='';
         (d.data||[]).forEach(function(row){try{var dj=typeof row.data_json==='string'?JSON.parse(row.data_json):row.data_json;var lbl=faseLabelsAI[row.fase_id]||row.fase_id;var gevuld=Object.values(dj||{}).filter(function(v){return v&&v.value;});if(gevuld.length){dataSamenvatting+='\n## '+lbl+'\n';gevuld.forEach(function(v){dataSamenvatting+='- '+v.label+': '+v.value+'\n';});}}catch(e){}});

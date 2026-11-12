@@ -20,7 +20,7 @@ test.afterAll(() => {
 });
 
 test('activeren, inloggen met authenticator, uitloggen', async ({ page }) => {
-  test.setTimeout(120000);
+  test.setTimeout(240000);
   const url = '/marilyn.html?worker=' + encodeURIComponent(WORKER);
   // 1. Noodtoegang en activeren onder Veiligheid. Klok installeren om de 60-secondenverversing te kunnen naspelen.
   await page.clock.install();
@@ -39,7 +39,17 @@ test('activeren, inloggen met authenticator, uitloggen', async ({ page }) => {
   await page.locator('#bt-maak').click();
   await expect(page.locator('#bt-uit')).toContainText('niet gelijk');
   await page.locator('#bt-ww2').fill(WW);
-  await page.locator('#bt-maak').click();
+  // In de volledige suite kan de algemene limiet per IP (120/min) tijdelijk 429 geven; dan opnieuw proberen.
+  for (let poging = 0; poging < 4; poging++) {
+    await page.locator('#bt-maak').click();
+    await expect(page.locator('#bt-uit')).not.toContainText('niet gelijk', { timeout: 5000 });
+    await expect(page.locator('#bt-uit')).not.toBeEmpty({ timeout: 20000 });
+    if (await page.locator('#bt-geheim').count()) break;
+    const melding = await page.locator('#bt-uit').textContent();
+    console.log('aanmaken poging ' + (poging + 1) + ': ' + melding);
+    await page.waitForTimeout(20000);
+    await page.locator('#bt-ww').fill(WW); await page.locator('#bt-ww2').fill(WW);
+  }
   const geheim = (await page.locator('#bt-geheim').textContent()).replace(/\s/g, '');
   expect(geheim).toMatch(/^[A-Z2-7]{32}$/);
   // Review M1: de automatische verversing (60 s) wist het eenmalige geheim niet.
