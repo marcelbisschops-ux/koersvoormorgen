@@ -254,11 +254,6 @@ PAGES = [
      "Stukken die een vraagstuk scherper maken, over M&amp;A, due diligence, integratie, strategie en AI in M&amp;A.",
      "https://koersvoormorgen.nl/inzichten", "expertise-staal.jpg", "website", "simple|Inzichten"),
 
-    ("inzichten/de-verborgen-integratiekosten-van-een-accountantskantoor.html", 1,
-     "De verborgen integratiekosten van een accountantskantoor · Koers voor Morgen",
-     "Waarom een goedkope overname van een accountantskantoor duur kan uitpakken: equity bridge, integratie, standaardisatie, personeel en de investering in AI-gereedheid.",
-     "https://koersvoormorgen.nl/inzichten/de-verborgen-integratiekosten-van-een-accountantskantoor", "expertise-staal.jpg", "article", "post|Integratie|De verborgen integratiekosten van een accountantskantoor"),
-
     ("inzichten/de-toekomst-van-m-en-a.html", 1,
      "De toekomst van M&amp;A: waar verdient de adviseur van morgen zijn geld? &middot; Koers voor Morgen",
      "Ondernemers weten elkaar steeds beter te vinden. AI maakt marktinformatie toegankelijker en financi&euml;le analyses eenvoudiger. Wat betekent dat voor de onafhankelijke M&amp;A-adviseur?",
