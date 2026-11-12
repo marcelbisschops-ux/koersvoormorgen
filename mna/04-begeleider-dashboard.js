@@ -2305,7 +2305,9 @@ function renderBegeleiderDashboard(app){
     // verkeerd") — nu altijd zichtbaar in de trajectheader, geen sectie hoeft er open voor.
     +'<button class="btn-outline btn-sm" id="bg-feedback-actie" style="border-color:var(--gold);color:var(--gold)">&#128172; Feedback / bug</button>'
     // N-115: alleen-lezen introductieovereenkomst bij een uit een koopmandaat gepromoveerd traject.
-    +((t.koopmandaat_target_id||t.opdrachtgever_rol==='koper')?'<button class="btn-outline btn-sm" id="bg-introductie-actie" onclick="toonTrajectIntroductie()">&#128196; Introductieovereenkomst</button>':'')
+    // #72 (12-11-2026): alleen bij een traject dat uit een koopmandaat-target is gepromoveerd; zonder die koppeling gaf
+    // de knop altijd 'geen introductieovereenkomst gekoppeld' (backend /mna/koopmandaat/traject/{code}/introductie).
+    +(t.koopmandaat_target_id?'<button class="btn-outline btn-sm" id="bg-introductie-actie" onclick="toonTrajectIntroductie()">&#128196; Introductieovereenkomst</button>':'')
     +(t.status==='afgesloten'?'':'<button class="btn-ghost btn-sm" id="bg-afsluiten" style="color:var(--red);border-color:var(--red)">&#127937; Traject afsluiten</button>')
     +'<span style="display:inline-block;padding:4px 12px;border-radius:12px;font-size:11px;font-weight:600;background:'+(t.status==='vergrendeld'?'var(--red-bg)':'var(--teal-bg)')+';color:'+(t.status==='vergrendeld'?'var(--red)':'var(--teal)')+';border:1px solid '+(t.status==='vergrendeld'?'var(--red)':'var(--teal-dark)')+'">'+esc(t.status||'actief')+'</span>'
     +'</div></div></div>'

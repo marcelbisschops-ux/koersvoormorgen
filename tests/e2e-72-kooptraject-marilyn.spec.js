@@ -53,8 +53,10 @@ test('kooptraject aanmaken vanuit Marilyn en direct als begeleider openen', asyn
   const [mna] = await Promise.all([context.waitForEvent('page'), page.locator('#res-open-begeleider').click()]);
   await mna.waitForFunction(() => window.S && S.rol === 'tussenpersoon' && S.traject, null, { timeout: 30000 });
   expect(await mna.evaluate(() => S.traject.opdrachtgever_rol)).toBe('koper');
-  // Buy-side workspace: introductie met de target beschikbaar, geen sell-side 'biedingen vergelijken'.
-  await expect(mna.locator('#bg-introductie-actie')).toBeAttached({ timeout: 20000 });
+  // Buy-side workspace: geen sell-side 'biedingen vergelijken'; geen introductieknop zonder koopmandaatkoppeling (zou
+  // altijd 'niet gekoppeld' tonen).
+  await expect(mna.locator('#bg-start-actie, .bg-stap, body').first()).toBeVisible({ timeout: 20000 });
+  await expect(mna.locator('#bg-introductie-actie')).toHaveCount(0);
   await expect(mna.locator('#bg-biedingvergelijk-actie')).toHaveCount(0);
   await expect(mna.locator('body')).toContainText(NAAM);
 });
