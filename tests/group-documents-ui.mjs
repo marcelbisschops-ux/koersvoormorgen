@@ -533,7 +533,7 @@ export async function draaiGroupDocumentsUiChecks(root = process.cwd()) {
     check(g.ok && g.algemeen === true && g.jaarrealisatie === false && JSON.stringify(g.params) === '{"doc_scope":"GENERAL"}', 'algemeen validatie: alleen doc_scope, geen boekjaar of andere velden vereist');
     check(ctx.dclQuery(g.params) === '&doc_scope=GENERAL' && ctx.dclQuery({ doc_scope: 'GENERAL', doc_statement: 'P&L' }) === '&doc_scope=GENERAL', 'algemeen query: uitsluitend doc_scope, nooit undefined/null of overige doc_*');
     const gf = (k, ent = '') => ctx.dclValideer(Object.assign({}, leeg, k), ent, ENT());
-    check(!gf({}, 'ENT_SYN_A').ok && /hoort niet bij één entiteit: zet de entiteitkeuze op "Groep\/hoofdentiteit"/.test(gf({}, 'ENT_SYN_A').fout), 'algemeen validatie: gekozen entiteit geweigerd met aanwijzing');
+    check(!gf({}, 'ENT_SYN_A').ok && /hoort niet bij één entiteit: zet de entiteitkeuze op "Groep \(geconsolideerd document\)"/.test(gf({}, 'ENT_SYN_A').fout), 'algemeen validatie: gekozen entiteit geweigerd met aanwijzing');
     check(/geen overzicht: maak dat veld leeg/.test(gf({ statement: 'P&L' }).fout) && /geen periode/.test(gf({ boekjaar: '2026' }).fout) && /geen periode/.test(gf({ periodeSoort: 'DATUMBEREIK' }).fout) && /geen cijfersoort/.test(gf({ datatype: 'ACTUAL' }).fout), 'algemeen validatie: elk achtergebleven financieel veld concreet benoemd');
     check(!ctx.dclValideer(Object.assign({}, leeg, { scope: 'GROUP' }), '', ENT(), { alleenAlgemeen: true }).ok && /alleen "Algemeen dataroomdocument"/.test(ctx.dclValideer(Object.assign({}, leeg, { scope: 'ENTITY' }), 'ENT_SYN_A', ENT(), { alleenAlgemeen: true }).fout) && /kies "Algemeen dataroomdocument"/.test(ctx.dclValideer(Object.assign({}, leeg, { scope: '' }), '', ENT(), { alleenAlgemeen: true }).fout) && ctx.dclValideer(leeg, '', ENT(), { alleenAlgemeen: true }).ok, 'algemeen validatie: buiten Financieel geen GROUP/ENTITY');
     const s = ctx.dclSaneer(Object.assign(GEN(), { binding: BINDING, doc_id: 'doc_x' }), null);
@@ -580,7 +580,7 @@ export async function draaiGroupDocumentsUiChecks(root = process.cwd()) {
 
     // Tegenstrijdige keuze: nul verzoeken, invoer blijft staan (geen stil weggooien).
     const tegen = [
-      ['entiteit gekozen', { scope: 'GENERAL', entiteit: 'ENT_SYN_A' }, /Groep\/hoofdentiteit/, 'entiteit-select-' + FASE, 'ENT_SYN_A'],
+      ['entiteit gekozen', { scope: 'GENERAL', entiteit: 'ENT_SYN_A' }, /Groep \(geconsolideerd document\)/, 'entiteit-select-' + FASE, 'ENT_SYN_A'],
       ['overzicht ingevuld', { scope: 'GENERAL', statement: 'BALANCE_SHEET' }, /geen overzicht/, 'doc-klas-statement-' + FASE, 'BALANCE_SHEET'],
       ['boekjaar ingevuld', { scope: 'GENERAL', soort: 'BOEKJAAR', boekjaar: '2026' }, /geen periode/, 'doc-klas-boekjaar-' + FASE, '2026'],
       ['cijfersoort ingevuld', { scope: 'GENERAL', datatype: 'FORECAST' }, /geen cijfersoort/, 'doc-klas-datatype-' + FASE, 'FORECAST'],

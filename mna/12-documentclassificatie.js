@@ -111,7 +111,7 @@ function dclValideer(ruw,entiteitId,entiteiten,opties){
     if(soort||boekjaar||begin||eind)gevuld.push('periode');
     if(datatype)gevuld.push('cijfersoort');
     if(gevuld.length)fouten.push('een algemeen dataroomdocument heeft geen '+gevuld.join(', ')+': maak '+(gevuld.length>1?'die velden':'dat veld')+' leeg of kies een groeps- of entiteitsdocument');
-    if(ent)fouten.push('een algemeen dataroomdocument hoort niet bij één entiteit: zet de entiteitkeuze op "Groep/hoofdentiteit"');
+    if(ent)fouten.push('een algemeen dataroomdocument hoort niet bij één entiteit: zet de entiteitkeuze op "Groep (geconsolideerd document)"');
     if(fouten.length)return { ok:false, fout:'Documentclassificatie: '+fouten.join('; ')+'.' };
     return { ok:true, params:{ doc_scope:DCL_ALGEMEEN }, jaarrealisatie:false, algemeen:true };
   }
@@ -139,7 +139,7 @@ function dclValideer(ruw,entiteitId,entiteiten,opties){
     else if(!dclLeesPeriode(begin+'/'+eind))fouten.push('een datumbereik is maximaal één jaar');
     else periodeLabel=begin+'/'+eind;
   } else fouten.push('onbekende periodesoort');
-  if(scope==='GROUP'&&ent)fouten.push('een groepsdocument hoort niet bij één entiteit: zet de entiteitkeuze op "Groep/hoofdentiteit" of kies "Document van één entiteit"');
+  if(scope==='GROUP'&&ent)fouten.push('een groepsdocument hoort niet bij één entiteit: zet de entiteitkeuze op "Groep (geconsolideerd document)" of kies "Document van één entiteit"');
   if(scope==='ENTITY'){
     var lijst=Array.isArray(entiteiten)?entiteiten:[];
     if(!lijst.length)fouten.push('dit traject heeft geen geregistreerde entiteiten: kies "Groepsdocument" of zet de classificatie uit');
@@ -277,7 +277,7 @@ function dclRenderPaneel(faseId,ctx){
       +'<div id="doc-klas-velden-'+f+'" style="display:none;flex-wrap:wrap;gap:6px;align-items:center;margin-top:4px">'
       +'<select id="doc-klas-scope-'+f+'" style="'+sel+'">'+opties([DCL_ALGEMEEN],DCL_LABEL.scope,'Soort document?')+'</select>'
       +'<div style="flex-basis:100%;font-size:10px;line-height:1.45">'+uitlegAlgemeen
-      +'Zet de entiteitkeuze op "Groep/hoofdentiteit". Groeps- en entiteitsdocumenten met financiële gegevens classificeert u in de fase Financieel. '
+      +'Zet de entiteitkeuze op "Groep (geconsolideerd document)". Groeps- en entiteitsdocumenten met financiële gegevens classificeert u in de fase Financieel. '
       +'Een tegenstrijdige keuze wordt vóór het verzenden geweigerd.'
       +'</div></div></div>';
   }
@@ -294,9 +294,9 @@ function dclRenderPaneel(faseId,ctx){
     +'<input type="date" id="doc-klas-eind-'+f+'" title="Einddatum" style="'+sel+'">'
     +'<select id="doc-klas-datatype-'+f+'" style="'+sel+'">'+opties(DCL_DATATYPE,DCL_LABEL.datatype,'Cijfersoort?')+'</select>'
     +'<div style="flex-basis:100%;font-size:10px;line-height:1.45">'
-    +'Groepsdocument: een stuk over de groep als geheel; kies dan bij de entiteit "Groep/hoofdentiteit". Dit is uw eigen indeling en geen officiële consolidatie. '
+    +'Groepsdocument: een stuk over de groep als geheel; kies dan bij de entiteit "Groep (geconsolideerd document)". Dit is uw eigen indeling en geen officiële consolidatie. '
     +'Document van één entiteit: kies de entiteit in de entiteitkeuze hiernaast. '
-    +uitlegAlgemeen+'Laat bij die keuze overzicht, periode en cijfersoort leeg en zet de entiteitkeuze op "Groep/hoofdentiteit"; ingevulde velden worden niet weggegooid maar de upload wordt dan geweigerd. '
+    +uitlegAlgemeen+'Laat bij die keuze overzicht, periode en cijfersoort leeg en zet de entiteitkeuze op "Groep (geconsolideerd document)"; ingevulde velden worden niet weggegooid maar de upload wordt dan geweigerd. '
     +'Alleen realisatie over een volledig jaar geldt als jaarrealisatie. Een prognose, begroting, year-to-date of deelperiode wordt niet als jaarcijfers overgenomen en kan op "Controle nodig" blijven staan. '
     +'Bij Vervangen wordt de classificatie van de vorige versie niet overgenomen; alleen wat hier is ingevuld gaat mee. '
     +'Een onvolledige of tegenstrijdige keuze wordt vóór het verzenden geweigerd.'
