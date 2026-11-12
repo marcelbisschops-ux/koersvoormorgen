@@ -1,0 +1,59 @@
+name: Releasegate frontend (onafhankelijke controle)
+
+# N-203 stap 1 (ontwerp KVM-ONTWERP-CENTRALE-PUBLICATIESTAP-20261113, GO Marcel voor het ontwerp; geen wijziging van
+# productierechten): de releasegate draait hier buiten de werkplek en buiten Claude Code. De workflow bouwt de
+# frontend uit de opgegeven commit, controleert dat de opgegeven preview-URL exact die build serveert (SHA-256 per
+# publiek bestand) en draait de N-83-lektest. Het resultaat staat in het (onwijzigbare) Actions-logboek en als
+# artefact. Deze workflow publiceert niets en heeft geen Cloudflare-schrijfrecht nodig.
+on:
+  workflow_dispatch:
+    inputs:
+      preview_url:
+        description: 'Unieke preview-deployment-URL (https://<hash>.kantoorinzicht-frontend.pages.dev)'
+        required: true
+      ref:
+        description: 'Commit of branch die gebouwd moet worden (standaard main)'
+        required: false
+        default: 'main'
+
+jobs:
+  releasegate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Preview-URL valideren
+        env:
+          URL: ${{ inputs.preview_url }}
+        run: |
+          if ! printf '%s' "$URL" | grep -Eq '^https://[a-z0-9]+\.kantoorinzicht-frontend\.pages\.dev/?$'; then
+            echo "::error::Ongeldige preview-URL. Gebruik de unieke deployment-URL."; exit 1
+          fi
+
+      - name: Build (allowlist, N-83)
+        run: node scripts/build-frontend-release.mjs
+
+      - name: Releasegate — inhoudsbinding en N-83 op de preview
+        env:
+          URL: ${{ inputs.preview_url }}
+        run: |
+          node scripts/frontend-release-gate.mjs preview "$URL"
+          node scripts/frontend-release-gate.mjs check
+
+      - name: Bewijs bewaren
+        if: ${{ always() }}
+        run: |
+          mkdir -p bewijs
+          node scripts/frontend-release-gate.mjs hash > bewijs/build-vingerafdruk.txt || true
+          git rev-parse HEAD > bewijs/commit.txt
+          cp ~/.kvm-release-gate/frontend.jsonl bewijs/ 2>/dev/null || echo "geen gate-log" > bewijs/frontend.jsonl
+      - uses: actions/upload-artifact@v4
+        if: ${{ always() }}
+        with:
+          name: releasegate-bewijs
+          path: bewijs/
