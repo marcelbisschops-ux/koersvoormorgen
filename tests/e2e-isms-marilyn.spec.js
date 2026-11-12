@@ -16,7 +16,7 @@ test('controleregister zichtbaar en handmatige controle vastleggen', async ({ pa
   await page.locator('#login-btn').click();
   await page.locator('#t-veiligheid').click();
   const rijen = page.locator('#isms-sectie tr[data-isms-id]');
-  await expect(rijen).toHaveCount(16, { timeout: 20000 });
+  await expect(rijen).toHaveCount(20, { timeout: 20000 });
   for (const s of await page.locator('#isms-sectie .isms-status').allTextContents()) expect(['PASS', 'FAIL', 'SKIP', 'MISSING']).toContain(s.trim());
 
   await page.locator('#isms-controle').selectOption('KVM-C09');
