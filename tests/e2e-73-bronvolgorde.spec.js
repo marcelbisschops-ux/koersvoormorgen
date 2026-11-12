@@ -132,3 +132,27 @@ test('G: handmatige correctie blijft behouden bij een nieuw boekjaar; afwijkend 
   expect(r.s.h3).toBe('Jaarrekening ' + H3 + '.pdf · Jaarrekening · boekjaar ' + H3);
   expect(r.cf, 'afwijkend documentcijfer voor het gecorrigeerde jaar is een keuze, geen stille overschrijving').toEqual(['financieel_omzet2:1150000->1100000:handmatig']);
 });
+
+test('H: waardering en equity bridge veranderen niet door een prognosedocument (financiële keten)', async ({ page }) => {
+  await opzet(page);
+  const r = await page.evaluate(({ J, H1, H2, H3 }) => {
+    S.traject = Object.assign({ sector: 'accountancy', opdrachtgever_rol: 'verkoper', structuur_type: 'bv' }, S.traject || {});
+    vul({ documentsoort: 'jaarrekening', boekjaar: String(H3), omzet_per_jaar: { [H1]: '1000000', [H2]: '1100000', [H3]: '1200000' }, ebitda_abs: '240000', resultaat: '250000' }, 'Jaarrekening.pdf');
+    S.data.financieel_nettoSchuld = S.data.financieel_nettoSchuld || '';
+    const meet = () => {
+      const d = dvGetDefaults();
+      const w = typeof dvBerekenWaardering === 'function' ? dvBerekenWaardering() : null;
+      const brug = dvBerekenOpbrengstBrug(d, dvBerekenClosing(d));
+      return JSON.stringify({ omzet: d.omzet, ebitda: d.ebitda, w: w && (w.ev || w.midden || w.waarde || w), brug: { ev: brug.ev, equity: brug.equityValue100 } });
+    };
+    const voor = meet();
+    vul({ documentsoort: 'prognose', omzet_per_jaar: { [J]: '1350000', [J + 1]: '1500000' }, ebitda_abs: '400000', resultaat: '420000', prognose_per_jaar: { [J + 1]: { omzet: 1500000, ebitda: 400000 } } }, 'Prognose.xlsx');
+    vul({ documentsoort: 'onbekend', omzet_per_jaar: { [J]: '1400000' } }, 'Managementrapportage.pdf');
+    return { voor, na: meet(), ebitda: S.data.financieel_ebitda, norm: S.data.financieel_ebitdaNorm };
+  }, { J, H1, H2, H3 });
+  expect(r.ebitda, 'EBITDA uit de jaarrekening, niet uit de prognose').toBe('240000');
+  expect(r.norm).toBe('250000');
+  console.log('H-meting', r.voor);
+  expect(JSON.parse(r.voor).w.o3, 'meting bevat echte waarden (meest recente historische omzet)').toBe(1200000);
+  expect(r.na, 'waardering en equity bridge identiek vóór en na prognose/lopend jaar').toBe(r.voor);
+});
