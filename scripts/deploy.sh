@@ -159,7 +159,9 @@ deploy_frontend() {
 
   echo ""
   echo "════════ FRONTEND · NEGATIEVE RELEASETEST (N-83, verplicht vóór productie) ════════"
-  if ! node tests/verify-n83-geen-publieke-lek.mjs "$PREVIEW_URL"; then
+  # Releasegate (12-11-2026): het previewresultaat wordt vastgelegd voor exact deze build. Rood = harde
+  # blokkade voor deze build, ook als een latere controle groen zou zijn (scripts/frontend-release-gate.mjs).
+  if ! node scripts/frontend-release-gate.mjs preview "$PREVIEW_URL"; then
     echo ""
     echo "🔴 N-83-releasegate faalt op de preview — productie (koersvoormorgen.nl) wordt NIET aangeraakt."
     exit 1
@@ -168,6 +170,10 @@ deploy_frontend() {
 
   echo ""
   echo "════════ FRONTEND · CLOUDFLARE PAGES (productie) ════════"
+  if ! node scripts/frontend-release-gate.mjs check; then
+    echo "🔴 Releasegate: geen geldige groene preview voor deze build — productie wordt NIET aangeraakt."
+    exit 1
+  fi
   npx wrangler pages deploy .pages-dist --project-name="$PAGES_PROJECT" --branch=main
   echo ""
   echo "════════ FRONTEND · NEGATIEVE RELEASETEST (N-83, controle op productie zelf) ════════"
