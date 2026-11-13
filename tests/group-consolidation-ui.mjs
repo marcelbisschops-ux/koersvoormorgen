@@ -140,6 +140,8 @@ function laadOpslag(root, { rol = 'verkoper', code = 'VSYN0001', entiteit = 'ENT
     regel(src02, /^function isVerkoper\(\)\{.*\}$/m, 'isVerkoper'),
     regel(src02, /^function isKoper\(\)\{.*\}$/m, 'isKoper'),
     regel(src02, /^function isTussen\(\)\{.*\}$/m, 'isTussen'),
+    // #73: hulpblok (documentsoort, prognoseveld) dat getDataForFase/veldBron/de vullogica gebruiken.
+    regel(src02, /^var DOC_SOORT_LABEL = [\s\S]*?(?=^function _autoFillFromExtractionBody\()/m, '#73-hulpblok'),
     regel(src02, /^function veldBron\(key\)\{[\s\S]*?\n\}/m, 'veldBron'),
     regel(src02, /^function getDataForFase\(id\)\{[\s\S]*?\n\}/m, 'getDataForFase'), regel(src02, /^function opslagRij\([\s\S]*?(?=^function getDataForFase\(id\))/m, 'N-154-basis'),
     regel(src02, /^function getChecklistForFase\(id\)\{.*\}$/m, 'getChecklistForFase'),

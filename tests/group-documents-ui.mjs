@@ -167,6 +167,8 @@ function laadGroepswacht(root) {
     knip(src02, 'function opslaanGroepsdocument(fases){', '\n}\n'),
     regel(src02, /^function saveEntiteitData\(entiteitId, faseIds\)\{[\s\S]*?\n\}/m, 'saveEntiteitData'),
     knip(src02, 'async function uploadDocument(faseId, file, existingId, vervangtDocId', '\n}\n'),
+    // #73: hulpblok (documentsoort, prognoseveld) dat getDataForFase/veldBron/de vullogica gebruiken.
+    regel(src02, /^var DOC_SOORT_LABEL = [\s\S]*?(?=^function _autoFillFromExtractionBody\()/m, '#73-hulpblok'),
     regel(src02, /^function veldBron\(key\)\{[\s\S]*?\n\}/m, 'veldBron'),
     regel(src02, /^function getDataForFase\(id\)\{[\s\S]*?\n\}/m, 'getDataForFase'), regel(src02, /^function opslagRij\([\s\S]*?(?=^function getDataForFase\(id\))/m, 'N-154-basis'),
     regel(src02, /^function getChecklistForFase\(id\)\{.*\}$/m, 'getChecklistForFase'),
