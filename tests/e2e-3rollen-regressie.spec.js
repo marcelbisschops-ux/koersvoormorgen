@@ -72,6 +72,17 @@ const VOK_VERSIE = (() => {
   } catch { return '1.5'; }
 })();
 
+// B6-herstel (13-11-2026): Design 2.0 (N-174) zet de documentkaarten van de begeleider in het Journey-scherm, in
+// ingeklapte fases. Open dat scherm en de fase van de gevraagde kaart, zoals een gebruiker. In de vorige vormgeving
+// (data-ui niet '2') doet deze helper niets. Gedeeld door B1 en B6 (B6 klikte vóór dit herstel op een verborgen knop).
+async function openBegeleiderKaart(page, kaartId) {
+  if (!(await page.evaluate(() => document.documentElement.getAttribute('data-ui') === '2'))) return;
+  await page.waitForSelector('#mt-zij [data-mt-naar="journey"]', { timeout: 20000 });
+  await page.click('#mt-zij [data-mt-naar="journey"]');
+  await page.waitForTimeout(800);
+  await page.evaluate((id) => { const k = document.getElementById(id); const p = k && k.closest('[data-jr-paneel]'); if (p && p.hidden) { const b = document.querySelector('#jr-begeleider [data-jr-fase="' + p.getAttribute('data-jr-paneel') + '"]'); if (b) b.click(); } }, kaartId);
+}
+
 async function login(page, code) {
   // BELANGRIJKE FUNDERING (18 sep 2026, gevonden tijdens het bouwen van deze test): loadEntiteiten()
   // (mna/02-state-opslag-documenten.js) draait één keer per sessie, direct bij inloggen
@@ -803,15 +814,14 @@ test.describe('KANTOORINZICHT 3-ROLLEN E2E', () => {
       const knop = page.locator('#bg-nda-composer-actie');
       // Design 2.0 (N-174 R1): de documentkaarten staan in het eigen Journey-scherm, bij hun fase. Zonder de
       // schakelaar (productie) blijft deze test exact zoals hij was.
-      if (await page.evaluate(() => document.documentElement.getAttribute('data-ui') === '2')) {
-        await page.waitForSelector('#mt-zij [data-mt-naar="journey"]', { timeout: 20000 });
-        await page.click('#mt-zij [data-mt-naar="journey"]');
-        // Na het laden van de journey staat elke documentkaart in zijn eigen (ingeklapte) fase: open die fase, zoals een gebruiker.
-        await page.waitForTimeout(800);
-        await page.evaluate(() => { const k = document.getElementById('bg-nda-composer-actie'); const p = k && k.closest('[data-jr-paneel]'); if (p && p.hidden) { const b = document.querySelector('#jr-begeleider [data-jr-fase="' + p.getAttribute('data-jr-paneel') + '"]'); if (b) b.click(); } });
-      }
+      await openBegeleiderKaart(page, 'bg-nda-composer-actie');
       let knopZichtbaar = false;
       try { await expect(knop).toBeVisible({ timeout: 10000 }); knopZichtbaar = true; } catch (e) {}
+      // B6-voorwaarde zonder AI (13-11-2026): de risicoraamwerk-kaart is via dezelfde route zichtbaar en klikbaar.
+      await openBegeleiderKaart(page, 'bg-risicoraamwerk-actie');
+      let rrZichtbaar = false;
+      try { await expect(page.locator('#bg-risicoraamwerk-actie')).toBeVisible({ timeout: 10000 }); rrZichtbaar = true; } catch (e) {}
+      expect(rrZichtbaar, 'risicoraamwerk-kaart bereikbaar via Journey (voorwaarde B6)').toBe(true);
       const ok = rol === 'tussenpersoon' && knopZichtbaar;
       record('BEGELEIDER', 'mna.html login', '#l-code/#l-btn', 'inloggen met tussen_code', "S.rol === 'tussenpersoon', dashboard zichtbaar", ok, 'rol=' + rol + ' knopZichtbaar=' + knopZichtbaar);
       expect(ok, 'begeleider-login opent het dashboard').toBe(true);
@@ -930,6 +940,8 @@ test.describe('KANTOORINZICHT 3-ROLLEN E2E', () => {
       test.skip(!DOE_AI, 'KVM_DOE_AI niet gezet — AI-stap overgeslagen (kost geld), zie bestandskop');
       await login(page, tussenCode);
       await page.waitForFunction(() => window.S && S.traject && S.rol === 'tussenpersoon', null, { timeout: 15000 });
+      await openBegeleiderKaart(page, 'bg-risicoraamwerk-actie');
+      await expect(page.locator('#bg-risicoraamwerk-actie')).toBeVisible({ timeout: 10000 });
       const genResp = page.waitForResponse(r => r.url().includes('/mna/risicoraamwerk/genereer') && r.request().method() === 'POST', { timeout: 170000 }); // app wacht zelf tot 180 s (fetchMetTimeout in mna/04)
       await page.locator('#bg-risicoraamwerk-actie').click();
       let genOk = false;
