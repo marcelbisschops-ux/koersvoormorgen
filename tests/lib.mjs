@@ -78,6 +78,25 @@ export function sla_over(omschrijving, reden) {
 export function kop(tekst) { console.log('\n' + kleur('vet', tekst)); }
 
 // ── HTTP-helper: geeft {status, json, tekst} terug, nooit een throw ──
+// N-190 (13-11-2026, Codex-review 8db8b2a): herkent UITSLUITEND de algemene limiet van staging (120 verzoeken/min per IP,
+// exact antwoord {"error":"Te veel verzoeken. Wacht even."} met Retry-After 1-60). Geeft het aantal te wachten seconden
+// terug (Retry-After, nooit ingekort), anders 0: elke andere 429 (AI-, admin-, login-, berichten-, routespecifieke
+// limiet, andere Retry-After, productie of een andere server) blijft gewoon falen. Geen algemene testretry.
+export const ALGEMENE_LIMIET_ANTWOORD = '{"error":"Te veel verzoeken. Wacht even."}';
+export function algemeneLimietWacht(status, retryAfter, body, worker = WORKER) {
+  if (status !== 429) return 0;
+  if (worker.replace(/\/+$/, '') !== 'https://kantoorinzicht-staging.marcel-bisschops.workers.dev') return 0;
+  if (String(body).trim() !== ALGEMENE_LIMIET_ANTWOORD) return 0;
+  const sec = Number(retryAfter);
+  if (!Number.isInteger(sec) || sec < 1 || sec > 60) return 0;
+  return sec;
+}
+// Binnen een Playwright-test of -hook wordt de testtijd verlengd met de wachttijd (+30 s), zodat het wachten zelf
+// nooit tot een time-out leidt. Buiten Playwright (losse scripts) doet dit niets.
+export async function verlengTesttijd(sec) {
+  try { const { test } = await import('@playwright/test'); const i = test.info(); i.setTimeout(i.timeout + (sec + 30) * 1000); } catch { /* geen Playwright-context */ }
+}
+
 export async function api(method, pad, { body, headers, adminKey } = {}) {
   const opts = { method, headers: { ...(headers || {}) } };
   if (adminKey) opts.headers['x-admin-key'] = adminKey;
@@ -87,20 +106,15 @@ export async function api(method, pad, { body, headers, adminKey } = {}) {
   }
   try {
     let resp = await fetch(WORKER + pad, opts);
-    // N-190 (13-11-2026): de algemene limiet (120 verzoeken/min per IP) is correct productgedrag; een volledige suite
-    // vanaf één IP kan er tijdens de opbouw van testdata tegenaan lopen. Dan één keer wachten op Retry-After (max 60 s)
-    // en opnieuw, zichtbaar gelogd. Nooit bij de AI-kostenlimiet en nooit vaker dan één keer.
+    // N-190 (13-11-2026, na Codex-review): alleen de exacte algemene limiet van staging wordt één keer afgewacht.
     if (resp.status === 429) {
       const t429 = await resp.text();
-      if (!/AI verzoeken/.test(t429)) {
-        const wacht = Math.min(60, Number(resp.headers.get('Retry-After')) || 60);
-        console.log('[api] 429 algemene limiet op ' + method + ' ' + pad + ' — eenmalig opnieuw na ' + wacht + ' s');
-        await new Promise((z) => setTimeout(z, wacht * 1000));
-        resp = await fetch(WORKER + pad, opts);
-      } else {
-        let json = null; try { json = JSON.parse(t429); } catch { /* geen JSON */ }
-        return { status: 429, json, tekst: t429 };
-      }
+      const wacht = algemeneLimietWacht(resp.status, resp.headers.get('Retry-After'), t429);
+      if (!wacht) { let json = null; try { json = JSON.parse(t429); } catch { /* geen JSON */ } return { status: 429, json, tekst: t429 }; }
+      console.log('[api] 429 algemene staginglimiet op ' + method + ' ' + pad + ' — eenmalig opnieuw na ' + wacht + ' s (Retry-After)');
+      await verlengTesttijd(wacht);
+      await new Promise((z) => setTimeout(z, wacht * 1000));
+      resp = await fetch(WORKER + pad, opts);
     }
     const tekst = await resp.text();
     let json = null;

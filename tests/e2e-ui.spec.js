@@ -15,7 +15,7 @@
 // ══════════════════════════════════════════════════════════════════
 
 import { test, expect } from '@playwright/test';
-import { api, leesAdminKey, WORKER, accepteerPlatformvoorwaarden, ruimTestTrajectOp, verwijderTestGebruiker } from './lib.mjs';
+import { api, leesAdminKey, WORKER, accepteerPlatformvoorwaarden, ruimTestTrajectOp, verwijderTestGebruiker, algemeneLimietWacht, verlengTesttijd } from './lib.mjs';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -42,19 +42,22 @@ const VOK_VERSIE = (() => {
 
 async function login(page, code) {
   const url = IS_STANDAARD_PRODUCTIE ? '/mna.html' : ('/mna.html?worker=' + encodeURIComponent(WORKER));
-  // N-190 (13-11-2026): krijgt de login een 429 van de algemene staging-limiet (120/min per IP), dan één keer wachten
-  // op Retry-After en opnieuw inloggen, zichtbaar gelogd. Een andere fout blijft gewoon falen.
-  let kreeg429 = 0;
-  const let429 = (r) => { if (r.status() === 429 && r.url().startsWith(WORKER)) kreeg429 = Math.max(kreeg429, Math.min(60, Number(r.headers()['retry-after']) || 60)); };
+  // N-190 (13-11-2026, na Codex-review): alleen de exacte algemene staginglimiet (zie algemeneLimietWacht in lib.mjs)
+  // wordt één keer afgewacht; elke andere 429 (o.a. de inloglimiet) laat de test gewoon falen.
+  const bodies = [];
+  const let429 = (r) => { if (r.status() === 429 && r.url().startsWith(WORKER)) bodies.push(r.text().then((t) => algemeneLimietWacht(429, r.headers()['retry-after'], t)).catch(() => 0)); };
   page.on('response', let429);
   await page.goto(url);
   await page.locator('#l-code').fill(code);
   await page.locator('#l-btn').click();
   await page.waitForTimeout(1500);
   page.off('response', let429);
-  if (kreeg429) {
-    console.log('[login] 429 algemene limiet — eenmalig opnieuw na ' + kreeg429 + ' s');
-    await page.waitForTimeout(kreeg429 * 1000);
+  const uitslagen = await Promise.all(bodies);
+  const wacht = uitslagen.length && uitslagen.every((w) => w > 0) ? Math.max(...uitslagen) : 0;
+  if (wacht) {
+    console.log('[login] 429 algemene staginglimiet — eenmalig opnieuw na ' + wacht + ' s (Retry-After)');
+    await verlengTesttijd(wacht);
+    await page.waitForTimeout(wacht * 1000);
     await page.goto(url);
     await page.locator('#l-code').fill(code);
     await page.locator('#l-btn').click();
