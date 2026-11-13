@@ -1301,6 +1301,37 @@ function dvTabelGevoeligheid(g){
   return dvRenderTabelHtml(kolommen,rows);
 }
 
+// #91 B3 (13-11-2026): traceerbare waarderingsketen. Toont stap voor stap hoe de indicatieve koopprijs tot stand komt, met
+// per stap de bron en status: broncijfers (laatste gereed kolommenbalansjaar) → goedgekeurde normalisaties → genormaliseerde
+// EBITDA → gebruikte grondslag in dit dealvoorstel (gelijk of afwijkend van de genormaliseerde EBITDA) → multiple →
+// ondernemingswaarde → equity bridge (bron: goedgekeurde bridge of handmatig) → aandelenwaarde → verkocht belang →
+// cash bij closing / uitgesteld. Alleen weergave van al berekende waarden; zonder financiële analyse vervallen de eerste
+// drie stappen (vermeld), er wordt niets aangevuld.
+function dvTabelWaarderingsketen(fin,p,closing,brug){
+  var mln=function(n){return (n<0?'\u2212':'')+dvMln(Math.abs(n));};
+  var rows=[], j=fin&&fin.jaren&&fin.jaren.length?fin.jaren[fin.jaren.length-1]:null;
+  var nmGoed=j?((fin.normalisaties||[]).filter(function(x){return x.status==='goedgekeurd'&&x.jaar===j.jaar;}).length):0;
+  if(j){
+    rows.push(['1. Gerapporteerde EBITDA '+j.jaar,mln(j.gerapporteerd.ebitda),'Kolommenbalans '+j.jaar+' (gereed)']);
+    rows.push(['2. Goedgekeurde normalisaties',mln(j.normalisatie_totaal),nmGoed+' goedgekeurd door de adviseur']);
+    rows.push(['3. Genormaliseerde EBITDA '+j.jaar,mln(j.genormaliseerd.ebitda),'Financiële analyse']);
+  } else rows.push(['1–3. Broncijfers en normalisaties','–','Geen gereed kolommenbalansjaar; de grondslag hieronder is door de adviseur ingevoerd']);
+  var g=dvGrondslagBewezen(p), grW=(p.grondslag==='omzet')?'omzet':'EBITDA';
+  var gelijk=j&&p.grondslag!=='omzet'&&Math.abs(g-j.genormaliseerd.ebitda)<0.5;
+  rows.push(['4. Grondslag ('+grW+') in dit dealvoorstel',mln(g),gelijk?'Gelijk aan de genormaliseerde EBITDA':(j&&p.grondslag!=='omzet'?'Afwijkend van de genormaliseerde EBITDA (door de adviseur ingevoerd)':'Door de adviseur ingevoerd')]);
+  rows.push(['5. Multiple',dvMultiple(p.multipleBasis),'Waarderingsaanname van de adviseur']);
+  rows.push(['6. Ondernemingswaarde (100%)',mln(closing.evBasis),'Grondslag × multiple']);
+  var bron=p.nettoSchuldBron==='equitybridge'?'Goedgekeurde equity bridge':'Door de adviseur ingevoerd';
+  rows.push([brug.nettoSchuld<0?'7. + Netto kaspositie':'7. − Netto schuld',mln(Math.abs(brug.nettoSchuld)),bron]);
+  rows.push(['8. − Debt-like posten',mln(brug.debtLike),bron==='Goedgekeurde equity bridge'?'Goedgekeurde equity bridge':'Door de adviseur ingevoerd']);
+  rows.push(['9. − Werkkapitaalcorrectie',mln(brug.wcCorrectie),'Positief = tekort ten opzichte van normaal']);
+  rows.push(['10. − Transactiekosten',mln(brug.transactiekosten),String(brug.transactiekostenPct).replace('.',',')+'% van de ondernemingswaarde']);
+  rows.push(['11. Aandelenwaarde (100%)',mln(brug.equityValue100),brug.equityNegatief?'Negatief: schuld boven ondernemingswaarde; andere structuur nodig':'Uitkomst equity bridge']);
+  rows.push(['12. Indicatieve koopprijs verkocht belang ('+String(brug.belangPct).replace('.',',')+'%)',mln(brug.verkochtBelangWaarde),'Aandelenwaarde × belang']);
+  rows.push(['13. Waarvan cash bij closing',mln(brug.cashBijClosing),'Na escrow'+(brug.earnOutAan?' en earn-out':'')]);
+  return '<div style="font-weight:600;margin:.4rem 0">Waarderingsketen</div>'+dvRenderTabelHtml(['Stap','€ mln','Bron / status'],rows);
+}
+
 // #91 B2 (13-11-2026): gevoeligheid van de AANDELENWAARDE (100%) per EBITDA-scenario × multiple, via dezelfde componenten
 // als de opbrengst-brug (netto schuld of kaspositie volgens de bronregel van dvBerekenOpbrengstBrug, debt-like,
 // werkkapitaalcorrectie, transactiekosten als % van de ondernemingswaarde van die cel). Plus de gevoeligheid voor de
@@ -1320,9 +1351,9 @@ function dvTabelGevoeligheidAandelen(a){
   if(!a)return '';
   var grondslagLabel=(a.grondslag==='omzet')?'Omzet-scenario':'EBITDA-scenario';
   var t1=dvRenderTabelHtml(['Aandelenwaarde 100% (€ mln) bij '+grondslagLabel].concat(a.multiples.map(function(m){return m.label;})),
-    a.cellen.map(function(c){return [c.label].concat(c.waarden.map(function(w){return (w.aandelen<0?'&minus;':'')+dvMln(Math.abs(w.aandelen));}));}));
+    a.cellen.map(function(c){return [c.label].concat(c.waarden.map(function(w){return (w.aandelen<0?'\u2212':'')+dvMln(Math.abs(w.aandelen));}));}));
   var t2=dvRenderTabelHtml(['Werkkapitaalcorrectie (stap = % van de ondernemingswaarde '+dvMln(a.evBasis)+' mln)','Correctie (€ mln)','Aandelenwaarde 100% (€ mln)'],
-    a.werkkapitaal.map(function(w){return [(w.stapPct>0?'+':'')+String(w.stapPct).replace('.',',')+'%',(w.wcCorrectie<0?'&minus;':'')+dvMln(Math.abs(w.wcCorrectie)),(w.aandelen<0?'&minus;':'')+dvMln(Math.abs(w.aandelen))];}));
+    a.werkkapitaal.map(function(w){return [(w.stapPct>0?'+':'')+String(w.stapPct).replace('.',',')+'%',(w.wcCorrectie<0?'\u2212':'')+dvMln(Math.abs(w.wcCorrectie)),(w.aandelen<0?'\u2212':'')+dvMln(Math.abs(w.aandelen))];}));
   return t1+t2;
 }
 

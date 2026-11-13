@@ -3773,6 +3773,8 @@ function renderBegeleiderDashboard(app){
         var opbrengstBrug=dvBerekenOpbrengstBrug(p,closing);
         // MASTER #91 F2: transactiemodel (worker/43) voor de scenariotabel; bij een fout of geen model null → geen tabel.
         var tmModel=(typeof tmHaalModel==='function')?await tmHaalModel():null;
+        // MASTER #91 B3: financiële analyse (worker/46) voor de waarderingsketen; bij een fout null → keten zonder broncijfers.
+        var finOv=(typeof finHaal==='function')?await finHaal().then(function(x){return x&&x.s===200&&x.d&&x.d.ok===true?x.d:null;},function(){return null;}):null;
         var verkBedr=dvVerkoperBedragen(p,closing,opbrengstBrug);
         var zopa=dvBerekenZopaTradeSpace(p,closing,opbrengstBrug);
         var batna=isSellDv?dvBerekenBatna(p,closing,opbrengstBrug):null;
@@ -3780,7 +3782,7 @@ function renderBegeleiderDashboard(app){
           CIJFERS:dvTabelCijfers(),
           CIJFEROVERZICHT:dvTabelCijferoverzicht(),
           MGMTRISICO:dvTabelManagementRisico(),
-          OPBRENGSTBRUG:dvTabelOpbrengstBrug(opbrengstBrug)+dvTabelTransactieScenarios(tmModel,opbrengstBrug),
+          OPBRENGSTBRUG:dvTabelWaarderingsketen(finOv,p,closing,opbrengstBrug)+dvTabelOpbrengstBrug(opbrengstBrug)+dvTabelTransactieScenarios(tmModel,opbrengstBrug),
           ZOPA:dvTabelZopaTradeSpace(zopa),
           BATNA:batna?dvTabelBatna(batna):'',
           LOICHECKLIST:isSellDv?dvTabelLoiChecklist(p):'',

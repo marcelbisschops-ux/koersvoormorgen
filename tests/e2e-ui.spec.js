@@ -261,7 +261,10 @@ test.describe('Rekenkern dealvoorstel', () => {
       const kas = dvBerekenGevoeligheidAandelen(dvBerekenGevoeligheid(p), dvBerekenOpbrengstBrug({ ...p, nettoSchuld: -200000, nettoSchuldBron: 'equitybridge' }, dvBerekenClosing(p)));
       const leeg = dvBerekenGevoeligheidAandelen(dvBerekenGevoeligheid({ ...p, ebitdaBewezen: 0, ebitdaPrognose: 0 }), brug);
       return { cel: a.cellen[1].waarden.map((w) => Math.round(w.aandelen)), laag: Math.round(a.cellen[0].waarden[0].aandelen), wc: a.werkkapitaal.map((w) => Math.round(w.aandelen)),
-        kasCel: Math.round(kas.cellen[1].waarden[0].aandelen), leeg, html: dvTabelGevoeligheidAandelen(a).length > 100 };
+        kasCel: Math.round(kas.cellen[1].waarden[0].aandelen), leeg, html: dvTabelGevoeligheidAandelen(a).length > 100 && !/&amp;minus;|&minus;/.test(dvTabelGevoeligheidAandelen(a)),
+        keten: (() => { const brugK = dvBerekenOpbrengstBrug({ ...p, nettoSchuld: -200000, nettoSchuldBron: 'equitybridge' }, dvBerekenClosing(p)); const fin = { jaren: [{ jaar: 2024, gerapporteerd: { ebitda: 430000 }, normalisatie_totaal: -30000, genormaliseerd: { ebitda: 400000 } }], normalisaties: [{ jaar: 2024, status: 'goedgekeurd' }, { jaar: 2024, status: 'voorstel' }] };
+          const h = dvTabelWaarderingsketen(fin, { ...p, nettoSchuldBron: 'equitybridge' }, dvBerekenClosing(p), brugK); const h0 = dvTabelWaarderingsketen(null, p, dvBerekenClosing(p), brug);
+          return { kas: /Netto kaspositie/.test(h), bron: /Goedgekeurde equity bridge/.test(h), gelijk: /Gelijk aan de genormaliseerde EBITDA/.test(h), nm: /1 goedgekeurd door de adviseur/.test(h), geenEntity: !/&amp;|&minus;/.test(h + h0), zonderFin: /Geen gereed kolommenbalansjaar/.test(h0), eq: Math.round(brugK.equityValue100) }; })() };
     });
     // Bewezen 400k: EV 2,0 / 2,2 / 2,4 mln; aandelen = EV − 300k − 100k − 50k − 2%·EV
     expect(r.cel).toEqual([1510000, 1706000, 1902000]);
@@ -271,6 +274,7 @@ test.describe('Rekenkern dealvoorstel', () => {
     expect(r.kasCel).toBe(2010000);          // 2,0 mln + 200k − 100k − 50k − 40k
     expect(r.leeg).toBe(null);
     expect(r.html).toBe(true);
+    expect(r.keten).toEqual({ kas: true, bron: true, gelijk: true, nm: true, geenEntity: true, zonderFin: true, eq: 2010000 });
   });
 
   test('aansluiting #91 B4: omzet jaarrekening (#73) tegen kolommenbalans, verschil gemeld, onbekend jaar niet vergeleken', async ({ page }) => {
