@@ -10,6 +10,8 @@ const POORT = Number(process.argv[2] || 8799);
 const TYPE = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
   '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.ico': 'image/x-icon', '.woff2': 'font/woff2', '.woff': 'font/woff', '.webmanifest': 'application/manifest+json' };
 function behandel(req, res) {
+  // N-205: de server meldt welke werkboom hij serveert; tests/global-setup-server.mjs weigert een server van een andere werkboom.
+  res.setHeader('X-KVM-Root', encodeURIComponent(ROOT));
   if (req.method !== 'GET' && req.method !== 'HEAD') { res.writeHead(405); return res.end(); }
   let p;
   try { p = decodeURIComponent(new URL(req.url, 'http://localhost').pathname); } catch (e) { res.writeHead(400); return res.end(); }

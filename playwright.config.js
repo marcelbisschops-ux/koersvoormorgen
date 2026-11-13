@@ -1,16 +1,13 @@
 import { defineConfig, devices } from '@playwright/test';
-import { createHash } from 'node:crypto';
+// N-205 (13-11-2026): de staging-CORS staat alleen localhost:8799 toe, dus de poort blijft 8799. Met
+// reuseExistingServer kon een server uit een ANDERE werkboom worden hergebruikt (testte dan andere bestanden);
+// globalSetup controleert daarom dat de draaiende server exact deze werkboom serveert en stopt anders met een fout.
+const PORT = 8799;
 
-// 13-11-2026: elke werkboom krijgt een eigen, vaste poort (afgeleid van het pad). Met één vaste poort 8799 en
-// reuseExistingServer hergebruikte een test in werkboom B ongemerkt een server die de bestanden van werkboom A serveerde;
-// browsertests en de pre-push-suite testten dan andere bestanden dan de releasekandidaat. KVM_TEST_PORT overschrijft.
-const PORT = Number(process.env.KVM_TEST_PORT) || 8800 + (parseInt(createHash('sha256').update(process.cwd()).digest('hex').slice(0, 6), 16) % 900);
-
-// UI-tests draaien tegen een lokale static-server (mna.html) + de LIVE worker.
-// De static-server serveert de repo-root zodat /mna.html bereikbaar is.
 export default defineConfig({
   testDir: './tests',
   testMatch: '**/*.spec.js',
+  globalSetup: './tests/global-setup-server.mjs',
   fullyParallel: false,
   workers: 1,
   timeout: 30000,
