@@ -619,9 +619,12 @@ function dvTabelClosing(closing){
 // earn-out volledig behaald) en wordt ook zo gelabeld.
 function dvBerekenOpbrengstBrug(p,closing){
   var ev=closing.evBasis;                                  // 100% ondernemingswaarde, bewezen basis
-  var nettoSchuld=Math.max(0,p.nettoSchuld||0);
+  // #91 B1 (13-11-2026): komt de netto schuld ongewijzigd uit de goedgekeurde equity bridge (p.nettoSchuldBron), dan telt een
+  // netto kaspositie (negatieve netto schuld) mee en verhoogt zij de aandelenwaarde. Bij handmatige invoer blijft het bestaande
+  // gedrag (afkappen op 0) ongewijzigd; of dat ook moet veranderen is een open besluit (MASTER #91 B1).
+  var nettoSchuld=p.nettoSchuldBron==='equitybridge'&&isFinite(p.nettoSchuld)?p.nettoSchuld:Math.max(0,p.nettoSchuld||0);
   var debtLike=Math.max(0,p.debtLikeItems||0);
-  var wcCorrectie=p.werkkapitaalCorrectie||0;              // + verhoogt, − verlaagt de opbrengst
+  var wcCorrectie=p.werkkapitaalCorrectie||0;              // + verlaagt, − verhoogt de opbrengst (tekort ten opzichte van normaal = positief)
   var transactiekosten=Math.max(0,ev*((p.transactiekostenPct||0)/100));
   var equityValue100=ev-nettoSchuld-debtLike-wcCorrectie-transactiekosten;
   var belangFrac=(p.belangPct||0)/100;
@@ -687,7 +690,7 @@ function dvTabelTransactieScenarios(model,brug){
 function dvTabelOpbrengstBrug(b){
   var rows=[
     ['Ondernemingswaarde (100%, bewezen basis)',dvMln(b.ev)],
-    ['&minus; Netto schuld doelwit',b.nettoSchuld?'&minus;'+dvMln(b.nettoSchuld):'0,00'],
+    (b.nettoSchuld<0?['+ Netto kaspositie doelwit (equity bridge)','+'+dvMln(-b.nettoSchuld)]:['&minus; Netto schuld doelwit',b.nettoSchuld?'&minus;'+dvMln(b.nettoSchuld):'0,00']),
     ['&minus; Debt-like items',b.debtLike?'&minus;'+dvMln(b.debtLike):'0,00'],
     ['&minus; Werkkapitaalcorrectie',b.wcCorrectie?(b.wcCorrectie>0?'&minus;'+dvMln(b.wcCorrectie):'+'+dvMln(-b.wcCorrectie)):'0,00'],
     ['&minus; Transactiekosten ('+dvPct(b.transactiekostenPct)+' van EV, aanname)','&minus;'+dvMln(b.transactiekosten)],
@@ -702,7 +705,7 @@ function dvTabelOpbrengstBrug(b){
   rows.push(['= Verwachte gerealiseerde waarde',dvMln(b.verwachteGerealiseerd)]);
 
   var wf=[{label:'Ondernemingswaarde',delta:b.ev,isTotal:true}];
-  if(b.nettoSchuld) wf.push({label:'− Netto schuld',delta:-b.nettoSchuld});
+  if(b.nettoSchuld) wf.push({label:b.nettoSchuld<0?'+ Netto kaspositie':'− Netto schuld',delta:-b.nettoSchuld});
   if(b.debtLike) wf.push({label:'− Debt-like',delta:-b.debtLike});
   if(b.wcCorrectie) wf.push({label:(b.wcCorrectie>0?'−':'+')+' Werkkap.corr.',delta:-b.wcCorrectie});
   if(b.transactiekosten) wf.push({label:'− Transactiekosten',delta:-b.transactiekosten});

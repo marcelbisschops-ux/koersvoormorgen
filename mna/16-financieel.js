@@ -9,13 +9,15 @@ var FIN_POST = [['omzet', 'Netto-omzet'], ['kostprijs', 'Kostprijs'], ['personee
 var FIN_SOORT = [['incidenteel', 'Incidentele bate of last'], ['partnerbeloning', 'Afwijkende partnerbeloning'], ['vervangingskosten', 'Marktconforme vervangingskosten'], ['personeelsuitval', 'Tijdelijke personeelsuitval'],
   ['vacature', 'Vacature'], ['advieskosten', 'Eenmalige advieskosten'], ['reorganisatie', 'Reorganisatiekosten'], ['niet_operationeel', 'Niet-operationele kosten of opbrengsten'], ['overig', 'Andere aantoonbare correctie']];
 var FIN_STATUS = { voorstel: 'Voorstel', goedgekeurd: 'Goedgekeurd', afgewezen: 'Afgewezen' };
+// #91 B1 (13-11-2026): equity bridge-posten (backend worker/46). Teken volgt uit de soort; alleen goedgekeurde posten tellen.
+var FIN_EQ = [['rentedragende_schuld', 'Rentedragende schuld (verlaagt)'], ['liquide_middelen', 'Liquide middelen (verhoogt)'], ['cash_like', 'Cash-like post (verhoogt)'], ['debt_like', 'Debt-like post (verlaagt)'], ['werkkapitaal_normaal', 'Normaal werkkapitaal'], ['werkkapitaal_actueel', 'Actueel werkkapitaal']];
 
 function finEsc(v) { return v === null || v === undefined ? '' : String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
 function finGeld(n) { if (typeof n !== 'number' || !isFinite(n)) return ''; var r = Math.round(n); return (r < 0 ? '-€ ' : '€ ') + Math.abs(r).toLocaleString('nl-NL'); }
 function finPct(n) { return typeof n === 'number' && isFinite(n) ? String(n).replace('.', ',') + '%' : ''; }
 function finLabel(lijst, w) { for (var i = 0; i < lijst.length; i++) if (lijst[i][0] === w) return lijst[i][1]; return w; }
 function finScope() { var f = (typeof FASES !== 'undefined' && FASES[S.fase]) || null; return JSON.stringify([S.code || '', S.rol || '', f ? f.id : '']); }
-function finSync() { var k = finScope(); if (FIN.scope !== k) { FIN.scope = k; FIN.status = 'idle'; FIN.data = null; FIN.bezig = false; FIN.melding = null; FIN.form = null; } }
+function finSync() { var k = finScope(); if (FIN.scope !== k) { FIN.scope = k; FIN.status = 'idle'; FIN.data = null; FIN.bezig = false; FIN.melding = null; FIN.form = null; FIN.eqForm = null; } }
 function finHeaders() { var h = { 'Content-Type': 'application/json' }; if (isTussen()) h['x-tussen-key'] = S._bgKey || ''; return h; }
 function finHerteken() {
   var f = (typeof FASES !== 'undefined' && FASES[S.fase]) || null, bewaard = [];
@@ -41,7 +43,7 @@ function finPost(pad, body, ok) {
   body.code = S.code;
   finAntw(fetchMetTimeout(WORKER + '/mna/financieel/' + pad, { method: 'POST', headers: finHeaders(), body: JSON.stringify(body) }, 30000)).then(function (x) {
     FIN.bezig = false;
-    if (x.s === 200 && x.d && x.d.ok === true && Array.isArray(x.d.jaren)) { FIN.data = x.d; FIN.form = null; FIN.melding = { soort: 'ok', tekst: ok + (typeof x.d.nieuw === 'number' ? ' (' + x.d.nieuw + ' nieuw)' : '') }; }
+    if (x.s === 200 && x.d && x.d.ok === true && Array.isArray(x.d.jaren)) { FIN.data = x.d; FIN.form = null; FIN.eqForm = null; FIN.melding = { soort: 'ok', tekst: ok + (typeof x.d.nieuw === 'number' ? ' (' + x.d.nieuw + ' nieuw)' : '') }; }
     else {
       FIN.melding = { soort: 'fout', tekst: x.s === 0 ? 'Geen verbinding met de server; er is niets gewijzigd.' : ((x.d && x.d.error) || ('Niet gelukt (HTTP ' + x.s + ').')) };
       if (x.s === 409) { FIN.status = 'idle'; setTimeout(finLaad, 0); }
@@ -66,6 +68,21 @@ window.finBeoordeel = function (el) {
   finPost('normalisatie/beoordeel', { id: id, rev: n.rev, status: st ? st.value : '', motivering: mo ? mo.value : undefined, beoordeling: be ? be.value : '' }, 'Beoordeling vastgelegd.');
 };
 window.finVerwijder = function (el) { var id = el.getAttribute('data-id'), n = finNm(id); if (n && confirm('Deze normalisatie verwijderen?')) finPost('normalisatie/verwijder', { id: id, rev: n.rev }, 'Normalisatie verwijderd.'); };
+window.finEqVoorstellen = function () { finPost('equityvoorstellen', {}, 'Voorstellen uit de kolommenbalans opgehaald'); };
+window.finEqOpenForm = function () { FIN.eqForm = { soort: 'debt_like' }; finHerteken(); };
+window.finEqZet = function (k, v) { if (FIN.eqForm) FIN.eqForm[k] = v; };
+function finEqPost(id) { return ((FIN.data && FIN.data.equity_posten) || []).filter(function (x) { return x.id === id; })[0]; }
+window.finEqBewaar = function () {
+  var f = FIN.eqForm; if (!f) return;
+  var bedrag = Number(String(f.bedrag || '').replace(/\./g, '').replace(',', '.'));
+  finPost('equitypost', { soort: f.soort, bedrag: bedrag, omschrijving: f.omschrijving || '', bron: f.bron || '', peildatum: f.peildatum || null, motivering: f.motivering || '' }, 'Post als voorstel vastgelegd.');
+};
+window.finEqBeoordeel = function (el) {
+  var id = el.getAttribute('data-id'), n = finEqPost(id); if (!n) return;
+  var st = ge('fin-eq-st-' + id), mo = ge('fin-eq-mo-' + id), be = ge('fin-eq-be-' + id);
+  finPost('equitypost/beoordeel', { id: id, rev: n.rev, status: st ? st.value : '', motivering: mo ? mo.value : undefined, beoordeling: be ? be.value : '' }, 'Beoordeling vastgelegd.');
+};
+window.finEqVerwijder = function (el) { var id = el.getAttribute('data-id'), n = finEqPost(id); if (n && confirm('Deze post verwijderen?')) finPost('equitypost/verwijder', { id: id, rev: n.rev }, 'Post verwijderd.'); };
 window.finBewaarPrognose = function () {
   var a = [], fte = {};
   for (var i = 0; i < 2; i++) {
@@ -152,6 +169,45 @@ function finPrognoseHtml(d) {
     + (d.prognose.status === 'concept' ? '<button class="btn btn-sm" style="font-size:11px" onclick="finKeurPrognoseGoed()"' + dis + '>Prognose goedkeuren</button>' : '') + '</div>';
   return h;
 }
+function finEqPostHtml(n) {
+  var bg = isTussen(), dis = FIN.bezig ? ' disabled' : '';
+  var h = '<div style="border:1px solid var(--border);border-radius:var(--r);padding:.5rem .7rem;margin:.35rem 0;font-size:12px;color:var(--sub)">'
+    + '<div><strong>' + finEsc(n.omschrijving) + '</strong> · ' + finGeld(n.bedrag) + ' · ' + finEsc(finLabel(FIN_EQ, n.soort)) + ' · <em>' + finEsc(FIN_STATUS[n.status] || n.status) + '</em></div>'
+    + '<div>Bron: ' + finEsc(n.bron) + (n.peildatum ? ' · peildatum ' + finEsc(n.peildatum) : '') + ' · herkomst ' + finEsc(n.herkomst === 'kvm' ? 'KVM-voorstel' : n.herkomst) + '</div>'
+    + (n.motivering ? '<div>Motivering: ' + finEsc(n.motivering) + '</div>' : '') + (n.kvm_advies ? '<div style="color:var(--muted)">Advies KVM: ' + finEsc(n.kvm_advies) + '</div>' : '') + (n.beoordeling ? '<div>Beoordeling: ' + finEsc(n.beoordeling) + '</div>' : '');
+  if (bg) {
+    h += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:.4rem"><select id="fin-eq-st-' + finEsc(n.id) + '"' + dis + '>' + ['voorstel', 'goedgekeurd', 'afgewezen'].map(function (s) { return '<option value="' + s + '"' + (n.status === s ? ' selected' : '') + '>' + FIN_STATUS[s] + '</option>'; }).join('') + '</select>'
+      + '<input id="fin-eq-mo-' + finEsc(n.id) + '" maxlength="2000" aria-label="Motivering (verplicht bij goedkeuren)" value="' + finEsc(n.motivering) + '" style="flex:1;min-width:160px;font-size:12px"' + dis + '>'
+      + '<input id="fin-eq-be-' + finEsc(n.id) + '" maxlength="1000" aria-label="Beoordeling (verplicht bij afwijzen)" value="' + finEsc(n.beoordeling) + '" style="flex:1;min-width:160px;font-size:12px"' + dis + '>'
+      + '<button class="btn btn-sm" style="font-size:11px" data-id="' + finEsc(n.id) + '" onclick="finEqBeoordeel(this)"' + dis + '>Vastleggen</button>'
+      + '<button class="btn-ghost btn-sm" style="font-size:11px" data-id="' + finEsc(n.id) + '" onclick="finEqVerwijder(this)"' + dis + '>Verwijderen</button></div>';
+  }
+  return h + '</div>';
+}
+function finEqFormHtml() {
+  var f = FIN.eqForm, dis = FIN.bezig ? ' disabled' : '', st = 'font-size:12px;width:100%';
+  var inp = function (k, label, max) { return '<label style="font-size:11px;display:block;margin-top:.3rem">' + label + '<input maxlength="' + max + '" style="' + st + '" value="' + finEsc(f[k] || '') + '" oninput="finEqZet(\'' + k + '\',this.value)"' + dis + '></label>'; };
+  return '<div style="border:1px dashed var(--border2);border-radius:var(--r);padding:.6rem;margin-top:.5rem">'
+    + '<label style="font-size:11px">Soort<select style="' + st + '" onchange="finEqZet(\'soort\',this.value)"' + dis + '>' + FIN_EQ.map(function (o) { return '<option value="' + o[0] + '"' + (f.soort === o[0] ? ' selected' : '') + '>' + finEsc(o[1]) + '</option>'; }).join('') + '</select></label>'
+    + inp('bedrag', 'Bedrag in euro (positief; alleen werkkapitaal kan negatief zijn)', 20) + inp('omschrijving', 'Omschrijving', 160) + inp('bron', 'Bron (balanspost, document of toelichting)', 300)
+    + inp('peildatum', 'Peildatum (JJJJ-MM-DD, optioneel)', 10) + inp('motivering', 'Motivering', 2000)
+    + '<div style="margin-top:.4rem"><button class="btn btn-sm" style="font-size:11px" onclick="finEqBewaar()"' + dis + '>Als voorstel vastleggen</button></div></div>';
+}
+function finEqHtml(d) {
+  var b = d.equity_bridge, posten = d.equity_posten || [], dis = FIN.bezig ? ' disabled' : '';
+  if (!b) return '';
+  var rij = function (label, v, vet) { return '<tr' + (vet ? ' style="font-weight:600;border-top:1px solid var(--border)"' : '') + '><td style="padding:3px 6px">' + label + '</td><td style="text-align:right;padding:3px 6px">' + (v === null || v === undefined ? '–' : finGeld(v)) + '</td></tr>'; };
+  var ontb = { rentedragende_schuld: 'rentedragende schuld', liquide_middelen: 'liquide middelen', werkkapitaal: 'normaal én actueel werkkapitaal' };
+  return '<div style="font-size:12px;font-weight:600;margin-top:.9rem">Equity bridge (ondernemingswaarde → aandelenwaarde)</div>'
+    + '<div style="font-size:11px;color:var(--muted);line-height:1.5">Alleen goedgekeurde posten tellen. Rentedragende schuld en debt-like posten verlagen de aandelenwaarde; liquide middelen en cash-like posten verhogen haar; de werkkapitaalcorrectie is actueel min normaal werkkapitaal.</div>'
+    + '<table style="border-collapse:collapse;font-size:12px;margin-top:.3rem">'
+    + rij('Rentedragende schuld', b.rentedragende_schuld) + rij('Liquide middelen', b.liquide_middelen) + rij('Cash-like posten', b.cash_like) + rij('Netto schuld', b.netto_schuld, true)
+    + rij('Debt-like posten', b.debt_like) + rij('Werkkapitaalcorrectie (actueel − normaal)', b.werkkapitaal_correctie) + rij('Af te trekken van de ondernemingswaarde', b.aftrek_totaal, true) + '</table>'
+    + (b.ontbreekt && b.ontbreekt.length ? '<div style="font-size:11px;color:var(--red);margin-top:.3rem">Nog niet goedgekeurd: ' + b.ontbreekt.map(function (k) { return finEsc(ontb[k] || k); }).join(', ') + '.</div>' : '')
+    + '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:.5rem">' + (isTussen() ? '<button class="btn-ghost btn-sm" style="font-size:11px" onclick="finEqVoorstellen()"' + dis + '>Voorstellen uit de kolommenbalans</button>' : '')
+    + '<button class="btn-ghost btn-sm" style="font-size:11px" onclick="finEqOpenForm()"' + dis + '>Post voorstellen</button></div>'
+    + (FIN.eqForm ? finEqFormHtml() : '') + posten.map(finEqPostHtml).join('');
+}
 function renderFinancieleAnalyse(faseId) {
   finSync();
   if (faseId !== 'financieel' || !(isVerkoper() || isTussen()) || !S.code) return '';
@@ -164,7 +220,7 @@ function renderFinancieleAnalyse(faseId) {
   h += finAansluitingHtml(d)
     + '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:.6rem">' + (isTussen() ? '<button class="btn-ghost btn-sm" style="font-size:11px" onclick="finVoorstellen()"' + dis + '>Voorstellen van KVM ophalen</button>' : '')
     + '<button class="btn-ghost btn-sm" style="font-size:11px" onclick="finOpenForm()"' + dis + '>Normalisatie voorstellen</button></div>'
-    + (FIN.form ? finFormHtml() : '') + d.normalisaties.map(finNmHtml).join('') + finPrognoseHtml(d);
+    + (FIN.form ? finFormHtml() : '') + d.normalisaties.map(finNmHtml).join('') + finPrognoseHtml(d) + finEqHtml(d);
   return h + '</div>';
 }
 // Dealvoorstel (mna/04): genormaliseerde EBITDA en goedgekeurde prognose als expliciete keuze, nooit automatisch.
@@ -177,6 +233,23 @@ window.finDealvoorstelHint = function (doelEl) {
       + 'Uit de financiële analyse: genormaliseerde EBITDA ' + finEsc(j.jaar) + ' <strong>' + finGeld(j.genormaliseerd.ebitda) + '</strong>'
       + ' <button type="button" class="btn-ghost btn-sm" style="font-size:11px" data-waarde="' + Math.round(j.genormaliseerd.ebitda) + '" onclick="var e=document.getElementById(\'dv-ebitda-bewezen\');if(e){e.value=this.getAttribute(\'data-waarde\');}">Overnemen als bewezen EBITDA</button>'
       + (p ? '<br>Goedgekeurde prognose ' + finEsc(p.jaar) + ': EBITDA <strong>' + finGeld(p.exploitatie.ebitda) + '</strong> <button type="button" class="btn-ghost btn-sm" style="font-size:11px" data-waarde="' + Math.round(p.exploitatie.ebitda) + '" onclick="var e=document.getElementById(\'dv-ebitda-prognose\');if(e){e.value=this.getAttribute(\'data-waarde\');}">Overnemen als prognose-EBITDA</button>' : '')
+      + finEqHintHtml(x.d)
       + '</div>';
   });
 };
+// #91 B1: de goedgekeurde equity bridge als expliciete keuze in het dealvoorstel (nooit automatisch). Overnemen vult de
+// velden netto schuld, debt-like en werkkapitaalcorrectie en markeert de netto schuld als afkomstig uit de bridge; wijzigt de
+// adviseur het veld daarna, dan vervalt die markering (mna/04).
+function finEqHintHtml(d) {
+  var b = d && d.equity_bridge;
+  if (!b || !b.aantal_goedgekeurd) return '';
+  var wc = b.werkkapitaal_correctie === null ? 0 : -b.werkkapitaal_correctie; // dealvoorstelveld: + verlaagt de opbrengst
+  return '<br>Goedgekeurde equity bridge: netto schuld <strong>' + finGeld(b.netto_schuld) + '</strong>, debt-like ' + finGeld(b.debt_like) + ', werkkapitaalcorrectie ' + (b.werkkapitaal_correctie === null ? 'niet compleet' : finGeld(b.werkkapitaal_correctie))
+    + (b.ontbreekt && b.ontbreekt.length ? ' <span style="color:var(--red)">(onvolledig)</span>' : '')
+    + ' <button type="button" class="btn-ghost btn-sm" style="font-size:11px" data-ns="' + Math.round(b.netto_schuld) + '" data-dl="' + Math.round(b.debt_like) + '" data-wc="' + Math.round(wc) + '" onclick="finEqNeemOver(this)">Overnemen in het dealvoorstel</button>';
+}
+window.finEqNeemOver = function (el) {
+  var zet = function (id, v) { var e = document.getElementById(id); if (e) { e.value = v; e.setAttribute('data-bron', 'equitybridge'); e.setAttribute('data-bron-waarde', v); } };
+  zet('dv-nettoschuld', el.getAttribute('data-ns')); zet('dv-debtlike', el.getAttribute('data-dl')); zet('dv-wccorr', el.getAttribute('data-wc'));
+};
+

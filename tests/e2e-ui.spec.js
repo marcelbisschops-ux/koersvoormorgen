@@ -235,6 +235,23 @@ test.describe('Rekenkern dealvoorstel', () => {
     expect(Math.round(b.verwachteGerealiseerd)).toBe(770100);  // escrow + earn-out komen terug
   });
 
+  test('opbrengst-brug #91 B1: netto kaspositie uit de goedgekeurde equity bridge telt mee; handmatig blijft afgekapt', async ({ page }) => {
+    const r = await page.evaluate(() => {
+      const basis = { ebitdaBewezen: 400000, multipleBasis: 5.0, ebitdaPrognose: 520000, multipleBovengrens: 6.0, belangPct: 100,
+        nettoSchuld: -240000, debtLikeItems: 8000, werkkapitaalCorrectie: -3000, transactiekostenPct: 0, escrowPct: 0, earnOutAan: false };
+      const bridge = dvBerekenOpbrengstBrug({ ...basis, nettoSchuldBron: 'equitybridge' }, dvBerekenClosing(basis));
+      const handmatig = dvBerekenOpbrengstBrug({ ...basis, nettoSchuldBron: 'handmatig' }, dvBerekenClosing(basis));
+      const html = dvTabelOpbrengstBrug(bridge);
+      return { eqB: bridge.equityValue100, nsB: bridge.nettoSchuld, eqH: handmatig.equityValue100, nsH: handmatig.nettoSchuld, kas: /Netto kaspositie/.test(html), dubbelMin: /&minus;&minus;|−-|&minus;-/.test(html) };
+    });
+    expect(r.nsB).toBe(-240000);
+    expect(r.eqB).toBe(2235000);   // 2M + 240k − 8k + 3k (wc-correctie −3k = werkkapitaal boven normaal)
+    expect(r.nsH).toBe(0);         // bestaand gedrag handmatige invoer: afgekapt
+    expect(r.eqH).toBe(1995000);   // 2M − 0 − 8k + 3k
+    expect(r.kas).toBe(true);
+    expect(r.dubbelMin).toBe(false);
+  });
+
   test('ZOPA trade-space: buckets sommeren exact op verkocht belang + earn-up + behouden belang', async ({ page }) => {
     const r = await page.evaluate(() => {
       const p = { ebitdaBewezen: 400000, multipleBasis: 5.0, ebitdaPrognose: 520000, multipleBovengrens: 6.0, belangPct: 51,
