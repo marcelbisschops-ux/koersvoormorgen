@@ -58,29 +58,39 @@ jobs:
           set -euo pipefail
           mkdir -p ~/.kvm-release-gate eerder
           : > ~/.kvm-release-gate/frontend.jsonl
-          ids=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow releasegate-frontend.yml --limit 1000 --json databaseId,status --jq '.[] | select(.status=="completed") | .databaseId')
+          # Alle voltooide runs, volledig gepagineerd tot de allereerste. Het aantal moet gelijk zijn aan total_count;
+          # anders is de lijst niet aantoonbaar volledig en stopt de workflow.
+          api="repos/$GITHUB_REPOSITORY/actions/workflows/releasegate-frontend.yml/runs?status=completed&per_page=100"
+          totaal=$(gh api "$api" --jq '.total_count')
+          gh api --paginate "$api" --jq '.workflow_runs[].id' | awk '!z[$0]++' > runs.txt
+          if [ "$(wc -l < runs.txt | tr -d ' ')" != "$totaal" ]; then
+            echo "::error::Runlijst onvolledig ($(wc -l < runs.txt | tr -d ' ') van $totaal). Historie NIET GEVERIFIEERD: blokkade."; exit 1
+          fi
+          geldig() { node -e 'const r=require("fs").readFileSync(process.argv[1],"utf8").split("\n").filter(Boolean);if(!r.length)throw new Error("leeg");for(const l of r){const o=JSON.parse(l);if(!o.hash||!o.result||!Number.isFinite(o.ts))throw new Error("ongeldige regel")}' "$1" 2>/dev/null; }
           anker=""
-          for id in $ids; do
+          while read -r id; do
+            [ -z "$id" ] && continue
             [ "$id" = "$GITHUB_RUN_ID" ] && continue
             gate=$(gh run view "$id" --repo "$GITHUB_REPOSITORY" --json jobs --jq '[.jobs[].steps[] | select(.name | startswith("Releasegate")) | .conclusion] | first // ""')
+            uitgevoerd=1; if [ "$gate" = "skipped" ] || [ -z "$gate" ]; then uitgevoerd=0; fi
             if gh run download "$id" --repo "$GITHUB_REPOSITORY" -n releasegate-bewijs -D "eerder/$id" >/dev/null 2>&1; then
-              if [ -s "eerder/$id/frontend.jsonl" ]; then
-                if ! node -e 'const r=require("fs").readFileSync(process.argv[1],"utf8").split("\n").filter(Boolean);for(const l of r){const o=JSON.parse(l);if(!o.hash||!o.result||!Number.isFinite(o.ts))throw new Error("ongeldige regel")}' "eerder/$id/frontend.jsonl"; then
-                  echo "::error::Gate-historie van run $id is ongeldig. Historie NIET GEVERIFIEERD: blokkade."; exit 1
-                fi
-                cat "eerder/$id/frontend.jsonl" >> ~/.kvm-release-gate/frontend.jsonl
+              f="eerder/$id/frontend.jsonl"
+              if [ "$uitgevoerd" = 1 ]; then
+                # Bij een uitgevoerde gate is een niet-lege, geldige gate-historie verplicht bewijs.
+                geldig "$f" || { echo "::error::Run $id had een gate-uitkomst ($gate) maar geen geldige gate-historie in het artefact. Blokkade."; exit 1; }
+              elif [ -s "$f" ]; then
+                geldig "$f" || { echo "::error::Gate-historie van run $id is ongeldig. Blokkade."; exit 1; }
               fi
+              [ -s "$f" ] && cat "$f" >> ~/.kvm-release-gate/frontend.jsonl
               if [ "$(cat "eerder/$id/historie-status.txt" 2>/dev/null)" = "volledig" ]; then anker="$id"; break; fi
+            elif [ "$uitgevoerd" = 1 ]; then
+              echo "::error::Run $id had een gate-uitkomst ($gate) maar het artefact is niet leesbaar (verlopen of verwijderd). Historie NIET GEVERIFIEERD: blokkade."; exit 1
             else
-              if [ "$gate" = "skipped" ] || [ -z "$gate" ]; then
-                echo "Run $id: gate-stap niet uitgevoerd, geen uitkomst om mee te nemen."
-              else
-                echo "::error::Run $id had een gate-uitkomst ($gate) maar het artefact is niet leesbaar (verlopen of verwijderd). Historie NIET GEVERIFIEERD: blokkade."; exit 1
-              fi
+              echo "Run $id: gate-stap niet uitgevoerd, geen uitkomst om mee te nemen."
             fi
-          done
+          done < runs.txt
           sort -u ~/.kvm-release-gate/frontend.jsonl -o ~/.kvm-release-gate/frontend.jsonl
-          echo "Anker: ${anker:-geen (alle eerdere runs doorlopen)}; gate-regels: $(wc -l < ~/.kvm-release-gate/frontend.jsonl)"
+          echo "Anker: ${anker:-geen (alle $totaal eerdere runs tot de eerste doorlopen)}; gate-regels: $(wc -l < ~/.kvm-release-gate/frontend.jsonl)"
 
       - name: Releasegate — inhoudsbinding en N-83 op de preview
         env:
