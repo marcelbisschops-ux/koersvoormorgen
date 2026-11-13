@@ -42,9 +42,23 @@ const VOK_VERSIE = (() => {
 
 async function login(page, code) {
   const url = IS_STANDAARD_PRODUCTIE ? '/mna.html' : ('/mna.html?worker=' + encodeURIComponent(WORKER));
+  // N-190 (13-11-2026): krijgt de login een 429 van de algemene staging-limiet (120/min per IP), dan één keer wachten
+  // op Retry-After en opnieuw inloggen, zichtbaar gelogd. Een andere fout blijft gewoon falen.
+  let kreeg429 = 0;
+  const let429 = (r) => { if (r.status() === 429 && r.url().startsWith(WORKER)) kreeg429 = Math.max(kreeg429, Math.min(60, Number(r.headers()['retry-after']) || 60)); };
+  page.on('response', let429);
   await page.goto(url);
   await page.locator('#l-code').fill(code);
   await page.locator('#l-btn').click();
+  await page.waitForTimeout(1500);
+  page.off('response', let429);
+  if (kreeg429) {
+    console.log('[login] 429 algemene limiet — eenmalig opnieuw na ' + kreeg429 + ' s');
+    await page.waitForTimeout(kreeg429 * 1000);
+    await page.goto(url);
+    await page.locator('#l-code').fill(code);
+    await page.locator('#l-btn').click();
+  }
 }
 
 // Design 2.0 (N-174): de documentkaarten staan bij de begeleider in het eigen Journey-scherm. Open dat scherm

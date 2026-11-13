@@ -86,7 +86,22 @@ export async function api(method, pad, { body, headers, adminKey } = {}) {
     opts.body = typeof body === 'string' ? body : JSON.stringify(body);
   }
   try {
-    const resp = await fetch(WORKER + pad, opts);
+    let resp = await fetch(WORKER + pad, opts);
+    // N-190 (13-11-2026): de algemene limiet (120 verzoeken/min per IP) is correct productgedrag; een volledige suite
+    // vanaf één IP kan er tijdens de opbouw van testdata tegenaan lopen. Dan één keer wachten op Retry-After (max 60 s)
+    // en opnieuw, zichtbaar gelogd. Nooit bij de AI-kostenlimiet en nooit vaker dan één keer.
+    if (resp.status === 429) {
+      const t429 = await resp.text();
+      if (!/AI verzoeken/.test(t429)) {
+        const wacht = Math.min(60, Number(resp.headers.get('Retry-After')) || 60);
+        console.log('[api] 429 algemene limiet op ' + method + ' ' + pad + ' — eenmalig opnieuw na ' + wacht + ' s');
+        await new Promise((z) => setTimeout(z, wacht * 1000));
+        resp = await fetch(WORKER + pad, opts);
+      } else {
+        let json = null; try { json = JSON.parse(t429); } catch { /* geen JSON */ }
+        return { status: 429, json, tekst: t429 };
+      }
+    }
     const tekst = await resp.text();
     let json = null;
     try { json = JSON.parse(tekst); } catch { /* geen JSON */ }
