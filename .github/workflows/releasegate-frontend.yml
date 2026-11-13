@@ -16,6 +16,11 @@ on:
         required: false
         default: 'main'
 
+# Minimale rechten: alleen lezen (broncode en eerdere runs/artefacten van deze workflow).
+permissions:
+  contents: read
+  actions: read
+
 jobs:
   releasegate:
     runs-on: ubuntu-latest
@@ -38,6 +43,23 @@ jobs:
       - name: Build (allowlist, N-83)
         run: node scripts/build-frontend-release.mjs
 
+      # Codex-review 13-11 (P1): een verse runner kent de eerdere uitkomsten niet. Haal daarom de bewijsartefacten van
+      # alle eerdere runs van deze workflow op en voeg hun gate-log samen; een eerdere FAIL voor exact deze build blijft
+      # zo een blokkade. Kan de historie niet worden gelezen, dan stopt de workflow (fail-closed).
+      - name: Eerdere gate-uitkomsten van deze workflow ophalen
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.kvm-release-gate eerder
+          ids=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow releasegate-frontend.yml --limit 200 --json databaseId,status --jq '.[] | select(.status=="completed") | .databaseId')
+          for id in $ids; do
+            [ "$id" = "$GITHUB_RUN_ID" ] && continue
+            gh run download "$id" --repo "$GITHUB_REPOSITORY" -n releasegate-bewijs -D "eerder/$id" >/dev/null 2>&1 || echo "artefact run $id niet (meer) beschikbaar"
+          done
+          find eerder -name frontend.jsonl -exec cat {} + >> ~/.kvm-release-gate/frontend.jsonl 2>/dev/null || true
+          echo "Eerdere gate-regels: $(wc -l < ~/.kvm-release-gate/frontend.jsonl 2>/dev/null || echo 0)"
+
       - name: Releasegate — inhoudsbinding en N-83 op de preview
         env:
           URL: ${{ inputs.preview_url }}
@@ -57,3 +79,4 @@ jobs:
         with:
           name: releasegate-bewijs
           path: bewijs/
+          retention-days: 90
