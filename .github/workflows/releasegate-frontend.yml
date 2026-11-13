@@ -43,22 +43,44 @@ jobs:
       - name: Build (allowlist, N-83)
         run: node scripts/build-frontend-release.mjs
 
-      # Codex-review 13-11 (P1): een verse runner kent de eerdere uitkomsten niet. Haal daarom de bewijsartefacten van
-      # alle eerdere runs van deze workflow op en voeg hun gate-log samen; een eerdere FAIL voor exact deze build blijft
-      # zo een blokkade. Kan de historie niet worden gelezen, dan stopt de workflow (fail-closed).
-      - name: Eerdere gate-uitkomsten van deze workflow ophalen
+      # Codex-review 13-11 (P1, daarna 2x FAIL op volledigheid): eerdere uitkomsten moeten aantoonbaar VOLLEDIG meetellen.
+      # Elke run bewaart de samengevoegde historie als artefact, met historie-status.txt = "volledig" als die historie
+      # compleet was. Deze stap loopt de eerdere runs af van nieuw naar oud tot de eerste run met een volledige historie
+      # (het anker). Voor elke nieuwere run waarvan de gate-stap echt heeft gedraaid MOET het artefact leesbaar zijn en
+      # geldige JSON-regels bevatten; anders stopt de workflow (historie NIET GEVERIFIEERD = blokkade, fail-closed).
+      # Runs waarin de gate-stap nooit draaide (bijv. ongeldige URL) hebben geen uitkomst en worden overgeslagen.
+      # Alleen als er nooit eerder een gate-stap heeft gedraaid, start de historie leeg. Geen placeholders.
+      - name: Historie van eerdere gate-uitkomsten ophalen (volledig of blokkeren)
+        id: historie
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           mkdir -p ~/.kvm-release-gate eerder
-          ids=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow releasegate-frontend.yml --limit 200 --json databaseId,status --jq '.[] | select(.status=="completed") | .databaseId')
+          : > ~/.kvm-release-gate/frontend.jsonl
+          ids=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow releasegate-frontend.yml --limit 1000 --json databaseId,status --jq '.[] | select(.status=="completed") | .databaseId')
+          anker=""
           for id in $ids; do
             [ "$id" = "$GITHUB_RUN_ID" ] && continue
-            gh run download "$id" --repo "$GITHUB_REPOSITORY" -n releasegate-bewijs -D "eerder/$id" >/dev/null 2>&1 || echo "artefact run $id niet (meer) beschikbaar"
+            gate=$(gh run view "$id" --repo "$GITHUB_REPOSITORY" --json jobs --jq '[.jobs[].steps[] | select(.name | startswith("Releasegate")) | .conclusion] | first // ""')
+            if gh run download "$id" --repo "$GITHUB_REPOSITORY" -n releasegate-bewijs -D "eerder/$id" >/dev/null 2>&1; then
+              if [ -s "eerder/$id/frontend.jsonl" ]; then
+                if ! node -e 'const r=require("fs").readFileSync(process.argv[1],"utf8").split("\n").filter(Boolean);for(const l of r){const o=JSON.parse(l);if(!o.hash||!o.result||!Number.isFinite(o.ts))throw new Error("ongeldige regel")}' "eerder/$id/frontend.jsonl"; then
+                  echo "::error::Gate-historie van run $id is ongeldig. Historie NIET GEVERIFIEERD: blokkade."; exit 1
+                fi
+                cat "eerder/$id/frontend.jsonl" >> ~/.kvm-release-gate/frontend.jsonl
+              fi
+              if [ "$(cat "eerder/$id/historie-status.txt" 2>/dev/null)" = "volledig" ]; then anker="$id"; break; fi
+            else
+              if [ "$gate" = "skipped" ] || [ -z "$gate" ]; then
+                echo "Run $id: gate-stap niet uitgevoerd, geen uitkomst om mee te nemen."
+              else
+                echo "::error::Run $id had een gate-uitkomst ($gate) maar het artefact is niet leesbaar (verlopen of verwijderd). Historie NIET GEVERIFIEERD: blokkade."; exit 1
+              fi
+            fi
           done
-          find eerder -name frontend.jsonl -exec cat {} + >> ~/.kvm-release-gate/frontend.jsonl 2>/dev/null || true
-          echo "Eerdere gate-regels: $(wc -l < ~/.kvm-release-gate/frontend.jsonl 2>/dev/null || echo 0)"
+          sort -u ~/.kvm-release-gate/frontend.jsonl -o ~/.kvm-release-gate/frontend.jsonl
+          echo "Anker: ${anker:-geen (alle eerdere runs doorlopen)}; gate-regels: $(wc -l < ~/.kvm-release-gate/frontend.jsonl)"
 
       - name: Releasegate — inhoudsbinding en N-83 op de preview
         env:
@@ -73,10 +95,14 @@ jobs:
           mkdir -p bewijs
           node scripts/frontend-release-gate.mjs hash > bewijs/build-vingerafdruk.txt || true
           git rev-parse HEAD > bewijs/commit.txt
-          cp ~/.kvm-release-gate/frontend.jsonl bewijs/ 2>/dev/null || echo "geen gate-log" > bewijs/frontend.jsonl
+          if [ -f ~/.kvm-release-gate/frontend.jsonl ]; then cp ~/.kvm-release-gate/frontend.jsonl bewijs/; else : > bewijs/frontend.jsonl; fi
+          # Alleen een run waarin de historie volledig is opgehaald, mag als anker voor latere runs dienen.
+          if [ "${{ steps.historie.outcome }}" = "success" ]; then echo volledig > bewijs/historie-status.txt; else echo onvolledig > bewijs/historie-status.txt; fi
       - uses: actions/upload-artifact@v4
         if: ${{ always() }}
         with:
           name: releasegate-bewijs
           path: bewijs/
+          # Bewaartermijn: het anker moet leesbaar blijven. Verloopt het (90 dagen zonder run), dan blokkeert de
+          # volgende run fail-closed tot Marcel een herstelbesluit neemt; niets wordt stilzwijgend leeg gestart.
           retention-days: 90
