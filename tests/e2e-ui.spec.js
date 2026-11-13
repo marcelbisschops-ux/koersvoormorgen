@@ -235,7 +235,7 @@ test.describe('Rekenkern dealvoorstel', () => {
     expect(Math.round(b.verwachteGerealiseerd)).toBe(770100);  // escrow + earn-out komen terug
   });
 
-  test('opbrengst-brug #91 B1: netto kaspositie uit de goedgekeurde equity bridge telt mee; handmatig blijft afgekapt', async ({ page }) => {
+  test('opbrengst-brug #91 (besluit 13-11): netto kaspositie telt mee, uit de bridge én handmatig (geen afkapping op 0)', async ({ page }) => {
     const r = await page.evaluate(() => {
       const basis = { ebitdaBewezen: 400000, multipleBasis: 5.0, ebitdaPrognose: 520000, multipleBovengrens: 6.0, belangPct: 100,
         nettoSchuld: -240000, debtLikeItems: 8000, werkkapitaalCorrectie: -3000, transactiekostenPct: 0, escrowPct: 0, earnOutAan: false };
@@ -246,8 +246,8 @@ test.describe('Rekenkern dealvoorstel', () => {
     });
     expect(r.nsB).toBe(-240000);
     expect(r.eqB).toBe(2235000);   // 2M + 240k − 8k + 3k (wc-correctie −3k = werkkapitaal boven normaal)
-    expect(r.nsH).toBe(0);         // bestaand gedrag handmatige invoer: afgekapt
-    expect(r.eqH).toBe(1995000);   // 2M − 0 − 8k + 3k
+    expect(r.nsH).toBe(-240000);   // besluit Marcel 13-11: ook handmatig geen afkapping op 0
+    expect(r.eqH).toBe(2235000);
     expect(r.kas).toBe(true);
     expect(r.dubbelMin).toBe(false);
   });

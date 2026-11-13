@@ -152,10 +152,12 @@ function dvGetDefaults(){
   // te parsen bronveld → default 0, handmatig. Transactiekosten: gedocumenteerde standaardaanname 2%
   // van de ondernemingswaarde (zelfde soort default als escrowPct 12% — een expliciete, aanpasbare
   // waarde, geen verzonnen cijfer), aanpasbaar door de begeleider.
-  var _ks=S._groepData['financieel_kortlopendeSchulden'], _ls=S._groepData['financieel_langlopendeSchulden'], _lm=S._groepData['financieel_liquideMiddelen'];
-  var _nettoSchuldDefault=((_ks&&String(_ks).trim())||(_ls&&String(_ls).trim()))
-    ? Math.max(0, parseGeld(_ks||'0')+parseGeld(_ls||'0')-parseGeld(_lm||'0'))
-    : 0;
+  // Besluit Marcel 13-11-2026 (#91): één bron voor de netto schuld = de goedgekeurde equity bridge (alle rentedragende
+  // schulden min liquide middelen en cash-like; crediteuren horen bij het werkkapitaal). De oude standaardwaarde
+  // (kortlopend + langlopend − liquide) telde operationele crediteuren als schuld en vervalt. Zonder goedgekeurde bridge
+  // start het veld op 0 met een zichtbare melding in het dealvoorstelvenster (mna/16); is de bridge volledig goedgekeurd,
+  // dan wordt zij daar automatisch overgenomen.
+  var _nettoSchuldDefault=0;
   // Grondslag van de multiple (ChatGPT-review 31 aug 2026, bevinding #2): sommige sectoren
   // (zorg: praktijkwaarde) hanteren een OMZET-multiple, geen EBITDA-multiple — dvSectorMultipleRange()
   // levert dat als `basis`. Tot nu toe negeerde dvGetDefaults() dat en paste de omzet-range (1–3×)
@@ -619,10 +621,9 @@ function dvTabelClosing(closing){
 // earn-out volledig behaald) en wordt ook zo gelabeld.
 function dvBerekenOpbrengstBrug(p,closing){
   var ev=closing.evBasis;                                  // 100% ondernemingswaarde, bewezen basis
-  // #91 B1 (13-11-2026): komt de netto schuld ongewijzigd uit de goedgekeurde equity bridge (p.nettoSchuldBron), dan telt een
-  // netto kaspositie (negatieve netto schuld) mee en verhoogt zij de aandelenwaarde. Bij handmatige invoer blijft het bestaande
-  // gedrag (afkappen op 0) ongewijzigd; of dat ook moet veranderen is een open besluit (MASTER #91 B1).
-  var nettoSchuld=p.nettoSchuldBron==='equitybridge'&&isFinite(p.nettoSchuld)?p.nettoSchuld:Math.max(0,p.nettoSchuld||0);
+  // Besluit Marcel 13-11-2026 (#91): een netto kaspositie (negatieve netto schuld) telt altijd mee en verhoogt de
+  // aandelenwaarde, zonder afkapping op 0; p.nettoSchuldBron bepaalt alleen de bronvermelding (bridge of handmatig).
+  var nettoSchuld=isFinite(p.nettoSchuld)?Number(p.nettoSchuld)||0:0;
   var debtLike=Math.max(0,p.debtLikeItems||0);
   var wcCorrectie=p.werkkapitaalCorrectie||0;              // + verlaagt, − verhoogt de opbrengst (tekort ten opzichte van normaal = positief)
   var transactiekosten=Math.max(0,ev*((p.transactiekostenPct||0)/100));

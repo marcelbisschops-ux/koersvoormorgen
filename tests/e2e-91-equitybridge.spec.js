@@ -70,15 +70,15 @@ test('equity bridge: voorstellen, goedkeuren, overzicht en overname in het dealv
     w.innerHTML = '<input id="dv-nettoschuld" value="0"><input id="dv-debtlike" value="0"><input id="dv-wccorr" value="0"><input id="dv-ebitda-bewezen" value="0"><div id="dv-fin-hint"></div>';
     document.body.appendChild(w);
     finDealvoorstelHint(document.getElementById('dv-fin-hint'));
-    for (let i = 0; i < 100 && !document.querySelector('#dv-fin-hint button[onclick="finEqNeemOver(this)"]'); i++) await new Promise((z) => setTimeout(z, 100));
-    document.querySelector('#dv-fin-hint button[onclick="finEqNeemOver(this)"]').click();
+    for (let i = 0; i < 100 && !document.querySelector('#dv-fin-hint [data-eq-auto]'); i++) await new Promise((z) => setTimeout(z, 100));
+    const auto = !!document.querySelector('#dv-fin-hint [data-eq-auto]'); // volledige bridge + lege velden → automatisch overgenomen
     const e = document.getElementById('dv-nettoschuld');
     const bron = e.getAttribute('data-bron') === 'equitybridge' && e.value === e.getAttribute('data-bron-waarde') ? 'equitybridge' : 'handmatig';
-    const out = { ns: e.value, dl: document.getElementById('dv-debtlike').value, wc: document.getElementById('dv-wccorr').value, bron };
+    const out = { auto, ns: e.value, dl: document.getElementById('dv-debtlike').value, wc: document.getElementById('dv-wccorr').value, bron };
     e.value = '9000';
     out.bronNaWijziging = e.getAttribute('data-bron') === 'equitybridge' && e.value === e.getAttribute('data-bron-waarde') ? 'equitybridge' : 'handmatig';
     w.remove();
     return out;
   });
-  expect(r).toEqual({ ns: '8500', dl: '0', wc: '-825', bron: 'equitybridge', bronNaWijziging: 'handmatig' });
+  expect(r).toEqual({ auto: true, ns: '8500', dl: '0', wc: '-825', bron: 'equitybridge', bronNaWijziging: 'handmatig' });
 });

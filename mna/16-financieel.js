@@ -10,6 +10,8 @@ var FIN_SOORT = [['incidenteel', 'Incidentele bate of last'], ['partnerbeloning'
   ['vacature', 'Vacature'], ['advieskosten', 'Eenmalige advieskosten'], ['reorganisatie', 'Reorganisatiekosten'], ['niet_operationeel', 'Niet-operationele kosten of opbrengsten'], ['overig', 'Andere aantoonbare correctie']];
 var FIN_STATUS = { voorstel: 'Voorstel', goedgekeurd: 'Goedgekeurd', afgewezen: 'Afgewezen' };
 // #91 B1 (13-11-2026): equity bridge-posten (backend worker/46). Teken volgt uit de soort; alleen goedgekeurde posten tellen.
+// Balansherkomst van een debt-/cash-like post (besluit Marcel 13-11): voorkomt dubbeltelling met werkkapitaal en netto schuld.
+var FIN_EQ_BP = [['', 'Kies waar deze post op de balans staat'], ['buiten_balans', 'Niet in de jaarbalans (bijv. claim, achterstallig onderhoud)'], ['crediteuren', 'Crediteuren (werkkapitaal)'], ['belasting_premies', 'Belastingen en premies (werkkapitaal)'], ['schulden_kort_overig', 'Overige kortlopende schulden (werkkapitaal)'], ['voorzieningen', 'Voorzieningen'], ['vorderingen_overig', 'Overige vorderingen (werkkapitaal)'], ['debiteuren', 'Debiteuren (werkkapitaal)'], ['voorraad', 'Voorraad (werkkapitaal)'], ['onderhanden_werk', 'Onderhanden werk (werkkapitaal)'], ['financieel_va', 'Financiële vaste activa'], ['overig', 'Overig']];
 var FIN_EQ = [['rentedragende_schuld', 'Rentedragende schuld (verlaagt)'], ['liquide_middelen', 'Liquide middelen (verhoogt)'], ['cash_like', 'Cash-like post (verhoogt)'], ['debt_like', 'Debt-like post (verlaagt)'], ['werkkapitaal_normaal', 'Normaal werkkapitaal'], ['werkkapitaal_actueel', 'Actueel werkkapitaal']];
 
 function finEsc(v) { return v === null || v === undefined ? '' : String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
@@ -75,7 +77,7 @@ function finEqPost(id) { return ((FIN.data && FIN.data.equity_posten) || []).fil
 window.finEqBewaar = function () {
   var f = FIN.eqForm; if (!f) return;
   var bedrag = Number(String(f.bedrag || '').replace(/\./g, '').replace(',', '.'));
-  finPost('equitypost', { soort: f.soort, bedrag: bedrag, omschrijving: f.omschrijving || '', bron: f.bron || '', peildatum: f.peildatum || null, motivering: f.motivering || '' }, 'Post als voorstel vastgelegd.');
+  finPost('equitypost', { soort: f.soort, bedrag: bedrag, omschrijving: f.omschrijving || '', bron: f.bron || '', peildatum: f.peildatum || null, motivering: f.motivering || '', balanspost: f.balanspost || '' }, 'Post als voorstel vastgelegd.');
 };
 window.finEqBeoordeel = function (el) {
   var id = el.getAttribute('data-id'), n = finEqPost(id); if (!n) return;
@@ -201,7 +203,7 @@ function finEqPostHtml(n) {
   var bg = isTussen(), dis = FIN.bezig ? ' disabled' : '';
   var h = '<div style="border:1px solid var(--border);border-radius:var(--r);padding:.5rem .7rem;margin:.35rem 0;font-size:12px;color:var(--sub)">'
     + '<div><strong>' + finEsc(n.omschrijving) + '</strong> · ' + finGeld(n.bedrag) + ' · ' + finEsc(finLabel(FIN_EQ, n.soort)) + ' · <em>' + finEsc(FIN_STATUS[n.status] || n.status) + '</em></div>'
-    + '<div>Bron: ' + finEsc(n.bron) + (n.peildatum ? ' · peildatum ' + finEsc(n.peildatum) : '') + ' · herkomst ' + finEsc(n.herkomst === 'kvm' ? 'KVM-voorstel' : n.herkomst) + '</div>'
+    + '<div>Bron: ' + finEsc(n.bron) + (n.peildatum ? ' · peildatum ' + finEsc(n.peildatum) : '') + ' · herkomst ' + finEsc(n.herkomst === 'kvm' ? 'KVM-voorstel' : n.herkomst) + (n.balanspost ? ' · balans: ' + finEsc(finLabel(FIN_EQ_BP, n.balanspost)) : '') + (n.status === 'goedgekeurd' && n.goedgekeurd_door ? ' · goedgekeurd door ' + finEsc(n.goedgekeurd_door) : '') + '</div>'
     + (n.motivering ? '<div>Motivering: ' + finEsc(n.motivering) + '</div>' : '') + (n.kvm_advies ? '<div style="color:var(--muted)">Advies KVM: ' + finEsc(n.kvm_advies) + '</div>' : '') + (n.beoordeling ? '<div>Beoordeling: ' + finEsc(n.beoordeling) + '</div>' : '');
   if (bg) {
     h += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:.4rem"><select id="fin-eq-st-' + finEsc(n.id) + '"' + dis + '>' + ['voorstel', 'goedgekeurd', 'afgewezen'].map(function (s) { return '<option value="' + s + '"' + (n.status === s ? ' selected' : '') + '>' + FIN_STATUS[s] + '</option>'; }).join('') + '</select>'
@@ -216,7 +218,8 @@ function finEqFormHtml() {
   var f = FIN.eqForm, dis = FIN.bezig ? ' disabled' : '', st = 'font-size:12px;width:100%';
   var inp = function (k, label, max) { return '<label style="font-size:11px;display:block;margin-top:.3rem">' + label + '<input maxlength="' + max + '" style="' + st + '" value="' + finEsc(f[k] || '') + '" oninput="finEqZet(\'' + k + '\',this.value)"' + dis + '></label>'; };
   return '<div style="border:1px dashed var(--border2);border-radius:var(--r);padding:.6rem;margin-top:.5rem">'
-    + '<label style="font-size:11px">Soort<select style="' + st + '" onchange="finEqZet(\'soort\',this.value)"' + dis + '>' + FIN_EQ.map(function (o) { return '<option value="' + o[0] + '"' + (f.soort === o[0] ? ' selected' : '') + '>' + finEsc(o[1]) + '</option>'; }).join('') + '</select></label>'
+    + '<label style="font-size:11px">Soort<select style="' + st + '" onchange="finEqZet(\'soort\',this.value);finHerteken()"' + dis + '>' + FIN_EQ.map(function (o) { return '<option value="' + o[0] + '"' + (f.soort === o[0] ? ' selected' : '') + '>' + finEsc(o[1]) + '</option>'; }).join('') + '</select></label>'
+    + ((f.soort === 'debt_like' || f.soort === 'cash_like') ? '<label style="font-size:11px;display:block;margin-top:.3rem">Balansherkomst (tegen dubbeltelling met werkkapitaal en netto schuld)<select style="' + st + '" onchange="finEqZet(\'balanspost\',this.value)"' + dis + '>' + FIN_EQ_BP.map(function (o) { return '<option value="' + o[0] + '"' + ((f.balanspost || '') === o[0] ? ' selected' : '') + '>' + finEsc(o[1]) + '</option>'; }).join('') + '</select></label>' : '')
     + inp('bedrag', 'Bedrag in euro (positief; alleen werkkapitaal kan negatief zijn)', 20) + inp('omschrijving', 'Omschrijving', 160) + inp('bron', 'Bron (balanspost, document of toelichting)', 300)
     + inp('peildatum', 'Peildatum (JJJJ-MM-DD, optioneel)', 10) + inp('motivering', 'Motivering', 2000)
     + '<div style="margin-top:.4rem"><button class="btn btn-sm" style="font-size:11px" onclick="finEqBewaar()"' + dis + '>Als voorstel vastleggen</button></div></div>';
@@ -230,7 +233,9 @@ function finEqHtml(d) {
     + '<div style="font-size:11px;color:var(--muted);line-height:1.5">Alleen goedgekeurde posten tellen. Rentedragende schuld en debt-like posten verlagen de aandelenwaarde; liquide middelen en cash-like posten verhogen haar; de werkkapitaalcorrectie is actueel min normaal werkkapitaal.</div>'
     + '<table style="border-collapse:collapse;font-size:12px;margin-top:.3rem">'
     + rij('Rentedragende schuld', b.rentedragende_schuld) + rij('Liquide middelen', b.liquide_middelen) + rij('Cash-like posten', b.cash_like) + rij('Netto schuld', b.netto_schuld, true)
-    + rij('Debt-like posten', b.debt_like) + rij('Werkkapitaalcorrectie (actueel − normaal)', b.werkkapitaal_correctie) + rij('Af te trekken van de ondernemingswaarde', b.aftrek_totaal, true) + '</table>'
+    + rij('Debt-like posten', b.debt_like)
+    + (b.dubbeltelling_correctie ? rij('Actueel werkkapitaal, gecorrigeerd voor posten die al debt-/cash-like zijn (' + (b.dubbeltelling_correctie > 0 ? '+' : '') + finGeld(b.dubbeltelling_correctie) + ')', b.werkkapitaal_actueel_gecorrigeerd) : '')
+    + rij('Werkkapitaalcorrectie (actueel − normaal)', b.werkkapitaal_correctie) + rij('Af te trekken van de ondernemingswaarde', b.aftrek_totaal, true) + '</table>'
     + (b.ontbreekt && b.ontbreekt.length ? '<div style="font-size:11px;color:var(--red);margin-top:.3rem">Nog niet goedgekeurd: ' + b.ontbreekt.map(function (k) { return finEsc(ontb[k] || k); }).join(', ') + '.</div>' : '')
     + '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:.5rem">' + (isTussen() ? '<button class="btn-ghost btn-sm" style="font-size:11px" onclick="finEqVoorstellen()"' + dis + '>Voorstellen uit de kolommenbalans</button>' : '')
     + '<button class="btn-ghost btn-sm" style="font-size:11px" onclick="finEqOpenForm()"' + dis + '>Post voorstellen</button></div>'
@@ -263,6 +268,14 @@ window.finDealvoorstelHint = function (doelEl) {
       + (p ? '<br>Goedgekeurde prognose ' + finEsc(p.jaar) + ': EBITDA <strong>' + finGeld(p.exploitatie.ebitda) + '</strong> <button type="button" class="btn-ghost btn-sm" style="font-size:11px" data-waarde="' + Math.round(p.exploitatie.ebitda) + '" onclick="var e=document.getElementById(\'dv-ebitda-prognose\');if(e){e.value=this.getAttribute(\'data-waarde\');}">Overnemen als prognose-EBITDA</button>' : '')
       + finEqHintHtml(x.d)
       + '</div>';
+    // Besluit Marcel 13-11 (#91): een volledig goedgekeurde equity bridge is de bron. Staan de drie velden nog op hun
+    // beginwaarde (0), dan direct overnemen; heeft de adviseur al iets ingevuld, dan niets overschrijven (knop blijft).
+    var b = x.d.equity_bridge, knop = doelEl.querySelector('button[onclick="finEqNeemOver(this)"]');
+    var v = function (id) { var e = document.getElementById(id); return e ? String(e.value).trim() : null; };
+    if (b && b.aantal_goedgekeurd && !(b.ontbreekt || []).length && knop && v('dv-nettoschuld') === '0' && v('dv-debtlike') === '0' && v('dv-wccorr') === '0') {
+      finEqNeemOver(knop);
+      knop.insertAdjacentHTML('afterend', ' <span style="color:var(--teal)" data-eq-auto="1">Automatisch overgenomen.</span>');
+    }
   });
 };
 // #91 B1: de goedgekeurde equity bridge als expliciete keuze in het dealvoorstel (nooit automatisch). Overnemen vult de
@@ -270,7 +283,7 @@ window.finDealvoorstelHint = function (doelEl) {
 // adviseur het veld daarna, dan vervalt die markering (mna/04).
 function finEqHintHtml(d) {
   var b = d && d.equity_bridge;
-  if (!b || !b.aantal_goedgekeurd) return '';
+  if (!b || !b.aantal_goedgekeurd) return '<br><span style="color:var(--red)">Geen goedgekeurde equity bridge: netto schuld, debt-like posten en werkkapitaalcorrectie hieronder zijn handmatige aannames. Keur de equity bridge goed in de fase Financieel.</span>';
   var wc = b.werkkapitaal_correctie === null ? 0 : -b.werkkapitaal_correctie; // dealvoorstelveld: + verlaagt de opbrengst
   return '<br>Goedgekeurde equity bridge: netto schuld <strong>' + finGeld(b.netto_schuld) + '</strong>, debt-like ' + finGeld(b.debt_like) + ', werkkapitaalcorrectie ' + (b.werkkapitaal_correctie === null ? 'niet compleet' : finGeld(b.werkkapitaal_correctie))
     + (b.ontbreekt && b.ontbreekt.length ? ' <span style="color:var(--red)">(onvolledig)</span>' : '')
