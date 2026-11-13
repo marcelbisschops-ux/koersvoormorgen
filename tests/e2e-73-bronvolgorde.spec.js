@@ -190,3 +190,24 @@ test('I2 + J2: in een leeg dossier vullen prognose-CSV en EBITDA van een lopend 
   expect(r.e).toBe('');
   expect(r.m).toBe('');
 });
+
+test('K: centrale grens in elk schrijfpad; geblokkeerde cijfers apart bewaard (Codex-herreview 13-11 P2)', async ({ page }) => {
+  await opzet(page);
+  const r = await page.evaluate(({ J, H3 }) => {
+    // K1: directe CSV-prognose met bekend toekomstig boekjaar.
+    vul({ documentsoort: 'prognose', boekjaar: String(J + 1), financieel_omzet3: '1500000', financieel_ebitdaNorm: '210000' }, 'Prognose.csv');
+    // K2: synoniem partner_beloning en K6 omzetforecast uit een prognose.
+    vul({ documentsoort: 'prognose', partner_beloning: '100000', beloning_partners: '110000', omzetforecast: '1600000' }, 'Begroting.pdf');
+    // K4: lopend jaar met partnerbeloning.
+    vul({ documentsoort: 'tussentijds', boekjaar: String(J), partner_beloning: '90000' }, 'Kwartaal.pdf');
+    const naProg = { o3: S.data.financieel_omzet3 || '', n: S.data.financieel_ebitdaNorm || '', p: S.data.financieel_partnerBel || '', f: S.data.financieel_forecast || '' };
+    // K5: een gewone jaarrekening vult partnerbeloning wel.
+    vul({ documentsoort: 'jaarrekening', boekjaar: String(H3), partner_beloning: '120000' }, 'Jaarrekening.pdf');
+    return { naProg, naJr: S.data.financieel_partnerBel, prog: leesPrognoses(S.data).map((x) => (x.jaar === null ? 'onbekend' : x.jaar) + ':' + x.grootheid + ':' + x.waarde + ':' + x.reden + ':' + x.bron) };
+  }, { J, H3 });
+  expect(r.naProg, 'geen historisch veld gevuld door prognose of lopend jaar; forecastveld wel').toEqual({ o3: '', n: '', p: '', f: '1600000' });
+  expect(r.naJr, 'jaarrekening vult partnerbeloning wel (geen regressie)').toBe('120000');
+  expect(r.prog).toEqual(expect.arrayContaining([
+    (J + 1) + ':omzet:1500000:prognose:Prognose.csv', (J + 1) + ':ebitda:210000:prognose:Prognose.csv',
+    'onbekend:partnerBel:100000:prognose:Begroting.pdf', J + ':partnerBel:90000:lopend_jaar:Kwartaal.pdf']));
+});

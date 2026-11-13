@@ -2220,7 +2220,7 @@ function leesPrognoses(bucket) { try { var l = JSON.parse((bucket && bucket[PROG
 function voegPrognoseToe(bucket, item) {
   var lijst = leesPrognoses(bucket).filter(function (x) { return !(x.jaar === item.jaar && x.bron === item.bron && x.grootheid === item.grootheid); });
   lijst.push(item);
-  lijst.sort(function (a, b) { return a.jaar - b.jaar || String(a.grootheid).localeCompare(String(b.grootheid)); });
+  lijst.sort(function (a, b) { return (a.jaar || 0) - (b.jaar || 0) || String(a.grootheid).localeCompare(String(b.grootheid)); });
   bucket[PROGNOSE_VELD] = JSON.stringify(lijst);
 }
 function _autoFillFromExtractionBody(faseId, velden, forceOverwrite, docNaam, opties) {
@@ -2243,6 +2243,20 @@ function _autoFillFromExtractionBody(faseId, velden, forceOverwrite, docNaam, op
   var docSoort = normaliseerDocSoort(velden.documentsoort);
   var eersteOpenJaar = new Date().getFullYear();
   var geenHistorie = (docSoort === 'prognose' || docSoort === 'afgeleid');
+  var openJaarDoc = !geenHistorie && velden.boekjaar && !isNaN(Number(velden.boekjaar)) && Number(velden.boekjaar) >= eersteOpenJaar;
+  var progAfgewezen = function () {};
+  // Jaarcijfers (stroomgrootheden) die nooit uit een nog niet afgesloten jaar mogen komen.
+  // omzet1/2/3 staan hier bewust niet in: die komen per expliciet boekjaar via omzet_per_jaar (al gefilterd op afgesloten
+  // jaren); directe CSV-sleutels financieel_omzet1/2/3 van een open-jaardocument worden hieronder apart tegengehouden.
+  var JAARCIJFERS = { financieel_ebitda: 1, financieel_ebitdaNorm: 1, financieel_ebitdaMarge: 1, financieel_partnerBel: 1, financieel_resultaat: 1, financieel_dgaSalaris: 1, financieel_rentelasten: 1, financieel_brutomarge: 1 };
+  // Centrale grens voor elk schrijfpad (setIfEmpty, applyOrConflict, directe sleutels): een prognose-/afgeleid document
+  // schrijft geen enkel financieel veld behalve het expliciete prognoseveld (forecast) en het prognoseoverzicht; een
+  // document over een open jaar schrijft geen jaarcijfers.
+  var historischGeblokkeerd = function (key) {
+    if (!/^financieel_/.test(key) || key === PROGNOSE_VELD || key === 'financieel_forecast') return false;
+    if (geenHistorie) return true;
+    return !!(openJaarDoc && JAARCIJFERS[key]);
+  };
   {
     // Filtering bij elke fase-aanroep (de jaar-voorbewerking verderop draait ook buiten 'financieel'); het
     // prognoseoverzicht wordt alleen bij de financiële aanroep aangevuld (ontdubbeld per jaar/grootheid/bron).
@@ -2250,7 +2264,15 @@ function _autoFillFromExtractionBody(faseId, velden, forceOverwrite, docNaam, op
     var progItem = function (jaar, grootheid, waarde, reden) {
       if (!progBucket) return;
       var w = cleanGetal(waarde); if (!w || w === 'null') return;
-      voegPrognoseToe(progBucket, { jaar: Number(jaar), grootheid: grootheid, waarde: String(w), bron: currentDocNaam, soort: docSoort, reden: reden });
+      var j = (jaar === null || jaar === undefined || jaar === '' || isNaN(Number(jaar))) ? null : Number(jaar);
+      voegPrognoseToe(progBucket, { jaar: j, grootheid: grootheid, waarde: String(w), bron: currentDocNaam, soort: docSoort, reden: reden });
+    };
+    // Codex-herreview 13-11 (P2): de grens zit nu centraal in de schrijffuncties (alle aliassen/synoniemen), zie
+    // historischGeblokkeerd(). Wat geblokkeerd wordt, gaat naar het aparte overzicht in plaats van verloren te gaan.
+    progAfgewezen = function (key, val) {
+      var naam = String(key).replace(/^financieel_/, '');
+      var jaarDoc = velden.boekjaar && !isNaN(Number(velden.boekjaar)) ? Number(velden.boekjaar) : null;
+      progItem(jaarDoc, naam === 'ebitda' || naam === 'ebitdaNorm' ? 'ebitda' : (/^omzet[123]$/.test(naam) ? 'omzet' : naam), val, geenHistorie ? 'prognose' : 'lopend_jaar');
     };
     var ppj = velden.prognose_per_jaar;
     if (ppj && typeof ppj === 'object' && !Array.isArray(ppj)) Object.keys(ppj).forEach(function (j) {
@@ -2277,14 +2299,13 @@ function _autoFillFromExtractionBody(faseId, velden, forceOverwrite, docNaam, op
     // Een prognose- of afgeleid document vult geen enkel historisch financieel bedrag (zelfde lijst als de extractie-instructie).
     if (geenHistorie) ['omzet', 'omzet_ytd', 'ebitda_pct', 'ebitda_abs', 'resultaat', 'ohw', 'debiteuren', 'partnerbeloning'].forEach(function (k) { velden[k] = null; });
     // Codex-review 13-11 (P1): ook directe fase_veld-sleutels (CSV-route, bijv. financieel_omzet3) vallen onder de grens.
-    if (geenHistorie) Object.keys(velden).forEach(function (k) { if (/^financieel_/.test(k)) delete velden[k]; });
+    Object.keys(velden).forEach(function (k) { if (historischGeblokkeerd(k) || (openJaarDoc && /^financieel_omzet[123]$/.test(k))) { progAfgewezen(k, velden[k]); delete velden[k]; } });
     // Codex-review 13-11 (P2): een document over een nog niet afgesloten boekjaar levert geen jaarcijfers voor de
     // historische velden (EBITDA, marge, resultaat, omzet, partnerbeloning); omzet YTD blijft, die is expliciet een deelperiode.
     var docBoekjaar = Number(velden.boekjaar);
     if (!geenHistorie && velden.boekjaar && !isNaN(docBoekjaar) && docBoekjaar >= eersteOpenJaar) {
       if (velden.ebitda_abs != null && velden.ebitda_abs !== 'null') progItem(docBoekjaar, 'ebitda', velden.ebitda_abs, 'lopend_jaar');
       ['omzet', 'ebitda_pct', 'ebitda_abs', 'resultaat', 'partnerbeloning'].forEach(function (k) { velden[k] = null; });
-      ['financieel_omzet1', 'financieel_omzet2', 'financieel_omzet3', 'financieel_ebitda', 'financieel_ebitdaNorm', 'financieel_ebitdaMarge', 'financieel_partnerBel'].forEach(function (k) { delete velden[k]; });
     }
   }
   var knownFases = ['financieel','commercieel','partner','compliance','it','juridisch','strategisch'];
@@ -2322,6 +2343,7 @@ function _autoFillFromExtractionBody(faseId, velden, forceOverwrite, docNaam, op
   // bij de belangrijkste financiële cijfervelden — niet bij elke aanroep (zie toelichting bij de
   // aanroepen zelf): dat zou 70+ call sites raken voor velden die niet expliciet gevraagd zijn.
   function setIfEmpty(key, val, rawVeldNaam) {
+    if(historischGeblokkeerd(key)){if(val&&val!=='null'&&String(val).trim()!=='')progAfgewezen(key,val);return;}
     if(strikt(key)){applyOrConflict(key,val,GROEPSDOC_BEDRAGVELDEN[key],rawVeldNaam);return;}
     var d=doelData(key);
     if(val&&val!=='null'&&val!==null&&String(val).trim()!==''&&!(d[key]||'').trim()){
@@ -2334,6 +2356,7 @@ function _autoFillFromExtractionBody(faseId, velden, forceOverwrite, docNaam, op
     }
   }
   function applyOrConflict(key, val, label, rawVeldNaam, jaarVeld) {
+    if(historischGeblokkeerd(key)){if(val&&val!=='null'&&String(val).trim()!=='')progAfgewezen(key,val);return;}
     var veldJaar = jaarVeld || docJaar;
     if(!val||val==='null'||val===null||String(val).trim()==='')return;
     var d=doelData(key);
@@ -2402,7 +2425,9 @@ function _autoFillFromExtractionBody(faseId, velden, forceOverwrite, docNaam, op
       S._opy[bj]=velden.omzet;if(!S._opyBron)S._opyBron={};S._opyBron[bj]={doc:currentDocNaam,soort:docSoort};
     }
     var yrs=Object.keys(S._opy).map(Number).filter(function(j){return!isNaN(j)&&j>1990&&j<2100;}).sort(function(a,b){return a-b;});
-    if(yrs.length){
+    // #73: een prognose-/afgeleid document voegt geen jaren toe; het jaarvenster dan niet opnieuw toepassen (anders zou
+    // de centrale grens bestaande historische cijfers als 'prognose' registreren).
+    if(yrs.length&&!geenHistorie){
       // Meest recente 3 jaar op omzet1/2/3. LET OP: welk boekjaar in welk vak (jaar1/2/3) hoort,
       // schuift op zodra een nieuwer jaar binnenkomt (bijv. 2025 duwt 2023 uit het venster van
       // jaar3 naar jaar2). Dat opschuiven is GEEN inhoudelijk conflict — het is dezelfde,
