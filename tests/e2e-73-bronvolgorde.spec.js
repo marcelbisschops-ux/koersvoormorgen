@@ -156,3 +156,37 @@ test('H: waardering en equity bridge veranderen niet door een prognosedocument (
   expect(JSON.parse(r.voor).w.o3, 'meting bevat echte waarden (meest recente historische omzet)').toBe(1200000);
   expect(r.na, 'waardering en equity bridge identiek vóór en na prognose/lopend jaar').toBe(r.voor);
 });
+
+test('I + J: directe CSV-sleutels en EBITDA van een lopend jaar komen niet in historische velden, ook per entiteit (Codex-review 13-11)', async ({ page }) => {
+  await opzet(page);
+  const r = await page.evaluate(({ J, H3 }) => {
+    vul({ documentsoort: 'jaarrekening', boekjaar: String(H3), omzet_per_jaar: { [H3]: '1200000' }, ebitda_abs: '240000', resultaat: '250000', ebitda_pct: '20' }, 'Jaarrekening.pdf');
+    // I: prognose met directe fase_veld-sleutels (CSV-route).
+    const cI = vul({ documentsoort: 'prognose', financieel_omzet3: '1500000', financieel_ebitdaNorm: '210000', financieel_ebitda: '200000' }, 'Prognose.csv');
+    // J: tussentijdse cijfers over het lopende jaar met EBITDA-bedrag en -marge.
+    const cJ = vul({ documentsoort: 'tussentijds', boekjaar: String(J), ebitda_abs: '210000', ebitda_pct: '14', omzet_ytd: '900000' }, 'Kwartaal.pdf');
+    const groep = { o3: S.data.financieel_omzet3, e: S.data.financieel_ebitda, n: S.data.financieel_ebitdaNorm, m: S.data.financieel_ebitdaMarge, ytd: S.data.financieel_omzetYTD };
+    // Zelfde prognose via de entiteitroute (eigen bucket).
+    S.dataPerEntiteit = { ENT1: { financieel_omzet3: '700000' } };
+    autoFillFromExtraction('financieel', { documentsoort: 'prognose', financieel_omzet3: '999999', omzet_per_jaar: { [J + 1]: '999999' } }, false, 'Prognose BV.csv', 'ENT1', {});
+    return { groep, ent: S.dataPerEntiteit.ENT1.financieel_omzet3, conflicten: cI.length + cJ.length, prog: leesPrognoses(S.data).map((x) => x.jaar + ':' + x.grootheid + ':' + x.waarde + ':' + x.reden) };
+  }, { J, H3 });
+  expect(r.groep).toMatchObject({ o3: '1200000', e: '240000', n: '250000', m: '20' });
+  expect(r.groep.ytd, 'omzet YTD van een deelperiode blijft wel toegestaan').toBe('900000');
+  expect(r.conflicten, 'geen conflict nodig: de cijfers komen er niet in').toBe(0);
+  expect(r.ent, 'entiteitbucket ongemoeid door prognose').toBe('700000');
+  expect(r.prog).toEqual(expect.arrayContaining([J + ':ebitda:210000:lopend_jaar']));
+});
+
+test('I2 + J2: in een leeg dossier vullen prognose-CSV en EBITDA van een lopend jaar geen historische velden (Codex-review 13-11)', async ({ page }) => {
+  await opzet(page);
+  const r = await page.evaluate(({ J }) => {
+    vul({ documentsoort: 'prognose', financieel_omzet3: '1500000', financieel_ebitdaNorm: '210000' }, 'Prognose.csv');
+    const naI = { o3: S.data.financieel_omzet3 || '', n: S.data.financieel_ebitdaNorm || '' };
+    vul({ documentsoort: 'tussentijds', boekjaar: String(J), ebitda_abs: '210000', ebitda_pct: '14' }, 'Kwartaal.pdf');
+    return { naI, e: S.data.financieel_ebitda || '', m: S.data.financieel_ebitdaMarge || '' };
+  }, { J });
+  expect(r.naI).toEqual({ o3: '', n: '' });
+  expect(r.e).toBe('');
+  expect(r.m).toBe('');
+});

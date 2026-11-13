@@ -2276,6 +2276,16 @@ function _autoFillFromExtractionBody(faseId, velden, forceOverwrite, docNaam, op
     if (velden.boekjaar && Number(velden.boekjaar) >= eersteOpenJaar && velden.omzet && !geenHistorie) { progItem(Number(velden.boekjaar), 'omzet', velden.omzet, 'lopend_jaar'); velden.omzet = null; }
     // Een prognose- of afgeleid document vult geen enkel historisch financieel bedrag (zelfde lijst als de extractie-instructie).
     if (geenHistorie) ['omzet', 'omzet_ytd', 'ebitda_pct', 'ebitda_abs', 'resultaat', 'ohw', 'debiteuren', 'partnerbeloning'].forEach(function (k) { velden[k] = null; });
+    // Codex-review 13-11 (P1): ook directe fase_veld-sleutels (CSV-route, bijv. financieel_omzet3) vallen onder de grens.
+    if (geenHistorie) Object.keys(velden).forEach(function (k) { if (/^financieel_/.test(k)) delete velden[k]; });
+    // Codex-review 13-11 (P2): een document over een nog niet afgesloten boekjaar levert geen jaarcijfers voor de
+    // historische velden (EBITDA, marge, resultaat, omzet, partnerbeloning); omzet YTD blijft, die is expliciet een deelperiode.
+    var docBoekjaar = Number(velden.boekjaar);
+    if (!geenHistorie && velden.boekjaar && !isNaN(docBoekjaar) && docBoekjaar >= eersteOpenJaar) {
+      if (velden.ebitda_abs != null && velden.ebitda_abs !== 'null') progItem(docBoekjaar, 'ebitda', velden.ebitda_abs, 'lopend_jaar');
+      ['omzet', 'ebitda_pct', 'ebitda_abs', 'resultaat', 'partnerbeloning'].forEach(function (k) { velden[k] = null; });
+      ['financieel_omzet1', 'financieel_omzet2', 'financieel_omzet3', 'financieel_ebitda', 'financieel_ebitdaNorm', 'financieel_ebitdaMarge', 'financieel_partnerBel'].forEach(function (k) { delete velden[k]; });
+    }
   }
   var knownFases = ['financieel','commercieel','partner','compliance','it','juridisch','strategisch'];
 
