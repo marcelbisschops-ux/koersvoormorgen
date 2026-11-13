@@ -1308,6 +1308,9 @@ function dvTabelGevoeligheid(g){
 // ondernemingswaarde → equity bridge (bron: goedgekeurde bridge of handmatig) → aandelenwaarde → verkocht belang →
 // cash bij closing / uitgesteld. Alleen weergave van al berekende waarden; zonder financiële analyse vervallen de eerste
 // drie stappen (vermeld), er wordt niets aangevuld.
+// Bron van één dealvoorstelveld: 'equitybridge' alleen als het veld ongewijzigd de uit de goedgekeurde bridge
+// overgenomen waarde bevat (mna/16 finEqNeemOver zet data-bron + data-bron-waarde); anders 'handmatig'.
+function dvVeldBron(id){var e=document.getElementById(id);return e&&e.getAttribute('data-bron')==='equitybridge'&&e.value===e.getAttribute('data-bron-waarde')?'equitybridge':'handmatig';}
 function dvTabelWaarderingsketen(fin,p,closing,brug){
   var mln=function(n){return (n<0?'\u2212':'')+dvMln(Math.abs(n));};
   var rows=[], j=fin&&fin.jaren&&fin.jaren.length?fin.jaren[fin.jaren.length-1]:null;
@@ -1322,10 +1325,10 @@ function dvTabelWaarderingsketen(fin,p,closing,brug){
   rows.push(['4. Grondslag ('+grW+') in dit dealvoorstel',mln(g),gelijk?'Gelijk aan de genormaliseerde EBITDA':(j&&p.grondslag!=='omzet'?'Afwijkend van de genormaliseerde EBITDA (door de adviseur ingevoerd)':'Door de adviseur ingevoerd')]);
   rows.push(['5. Multiple',dvMultiple(p.multipleBasis),'Waarderingsaanname van de adviseur']);
   rows.push(['6. Ondernemingswaarde (100%)',mln(closing.evBasis),'Grondslag × multiple']);
-  var bron=p.nettoSchuldBron==='equitybridge'?'Goedgekeurde equity bridge':'Door de adviseur ingevoerd';
-  rows.push([brug.nettoSchuld<0?'7. + Netto kaspositie':'7. − Netto schuld',mln(Math.abs(brug.nettoSchuld)),bron]);
-  rows.push(['8. − Debt-like posten',mln(brug.debtLike),bron==='Goedgekeurde equity bridge'?'Goedgekeurde equity bridge':'Door de adviseur ingevoerd']);
-  rows.push(['9. − Werkkapitaalcorrectie',mln(brug.wcCorrectie),'Positief = tekort ten opzichte van normaal']);
+  var bronTekst=function(b){return b==='equitybridge'?'Goedgekeurde equity bridge':'Door de adviseur ingevoerd';};
+  rows.push([brug.nettoSchuld<0?'7. + Netto kaspositie':'7. − Netto schuld',mln(Math.abs(brug.nettoSchuld)),bronTekst(p.nettoSchuldBron)]);
+  rows.push(['8. − Debt-like posten',mln(brug.debtLike),bronTekst(p.debtLikeBron)]);
+  rows.push(['9. − Werkkapitaalcorrectie',mln(brug.wcCorrectie),bronTekst(p.wcCorrectieBron)+' (positief = tekort ten opzichte van normaal)']);
   rows.push(['10. − Transactiekosten',mln(brug.transactiekosten),String(brug.transactiekostenPct).replace('.',',')+'% van de ondernemingswaarde']);
   rows.push(['11. Aandelenwaarde (100%)',mln(brug.equityValue100),brug.equityNegatief?'Negatief: schuld boven ondernemingswaarde; andere structuur nodig':'Uitkomst equity bridge']);
   rows.push(['12. Indicatieve koopprijs verkocht belang ('+String(brug.belangPct).replace('.',',')+'%)',mln(brug.verkochtBelangWaarde),'Aandelenwaarde × belang']);

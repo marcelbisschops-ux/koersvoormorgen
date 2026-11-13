@@ -185,7 +185,10 @@ function finHistorieAansluiting(d) {
     var kb = jaar ? (d.jaren || []).filter(function (j) { return String(j.jaar) === String(jaar); })[0] : null;
     if (!jaar) { uit.push({ slot: slot, jaar: null, jaarrekening: waarde, kolommenbalans: null, status: 'jaar_onbekend' }); return; }
     if (!kb) { uit.push({ slot: slot, jaar: String(jaar), jaarrekening: waarde, kolommenbalans: null, status: 'geen_kolommenbalans' }); return; }
-    var kbOmzet = Number(kb.gerapporteerd && kb.gerapporteerd.omzet), verschil = waarde - kbOmzet;
+    var kbRuw = kb.gerapporteerd ? kb.gerapporteerd.omzet : null;
+    // Codex-review 13-11 (P2): een ontbrekende of niet-getalsmatige kolommenbalansomzet is geen aansluiting en geen nul.
+    if (kbRuw === null || kbRuw === undefined || kbRuw === '' || !isFinite(Number(kbRuw))) { uit.push({ slot: slot, jaar: String(jaar), jaarrekening: waarde, kolommenbalans: null, status: 'kolommenbalans_onvolledig' }); return; }
+    var kbOmzet = Number(kbRuw), verschil = waarde - kbOmzet;
     var drempel = Math.max(1000, Math.abs(kbOmzet) * 0.005);
     uit.push({ slot: slot, jaar: String(jaar), jaarrekening: waarde, kolommenbalans: kbOmzet, verschil: verschil, status: Math.abs(verschil) > drempel ? 'verschil' : 'sluit_aan' });
   });
@@ -194,10 +197,10 @@ function finHistorieAansluiting(d) {
 function finHistorieAansluitingHtml(d) {
   var r = finHistorieAansluiting(d);
   if (!r.length) return '';
-  var st = { sluit_aan: 'sluit aan', verschil: 'verschil: controleer welke bron juist is', jaar_onbekend: 'boekjaar onbekend, niet te vergelijken', geen_kolommenbalans: 'geen kolommenbalans voor dit jaar' };
+  var st = { sluit_aan: 'sluit aan', verschil: 'verschil: controleer welke bron juist is', jaar_onbekend: 'boekjaar onbekend, niet te vergelijken', geen_kolommenbalans: 'geen kolommenbalans voor dit jaar', kolommenbalans_onvolledig: 'omzet ontbreekt in de kolommenbalans, niet te vergelijken' };
   return '<div style="font-size:12px;font-weight:600;margin-top:.8rem">Aansluiting omzet jaarrekening en kolommenbalans</div>'
     + '<table style="border-collapse:collapse;font-size:12px;margin-top:.3rem"><tr><th style="text-align:left;padding:3px 6px">Boekjaar</th><th style="text-align:right;padding:3px 6px">Jaarrekening</th><th style="text-align:right;padding:3px 6px">Kolommenbalans</th><th style="text-align:left;padding:3px 6px"></th></tr>'
-    + r.map(function (x) { return '<tr><td style="padding:3px 6px">' + finEsc(x.jaar || '?') + '</td><td style="text-align:right;padding:3px 6px">' + finGeld(x.jaarrekening) + '</td><td style="text-align:right;padding:3px 6px">' + (x.kolommenbalans === null ? '–' : finGeld(x.kolommenbalans)) + '</td><td style="padding:3px 6px' + (x.status === 'verschil' ? ';color:var(--red)' : '') + '" data-aansluiting="' + x.status + '">' + st[x.status] + (x.status === 'verschil' ? ' (' + finGeld(x.verschil) + ')' : '') + '</td></tr>'; }).join('') + '</table>';
+    + r.map(function (x) { return '<tr><td style="padding:3px 6px">' + finEsc(x.jaar || '?') + '</td><td style="text-align:right;padding:3px 6px">' + finGeld(x.jaarrekening) + '</td><td style="text-align:right;padding:3px 6px">' + (x.kolommenbalans === null ? '–' : finGeld(x.kolommenbalans)) + '</td><td style="padding:3px 6px' + (x.status === 'verschil' || x.status === 'kolommenbalans_onvolledig' ? ';color:var(--red)' : '') + '" data-aansluiting="' + x.status + '">' + st[x.status] + (x.status === 'verschil' ? ' (' + finGeld(x.verschil) + ')' : '') + '</td></tr>'; }).join('') + '</table>';
 }
 function finEqPostHtml(n) {
   var bg = isTussen(), dis = FIN.bezig ? ' disabled' : '';

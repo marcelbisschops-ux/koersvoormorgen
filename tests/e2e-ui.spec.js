@@ -295,6 +295,34 @@ test.describe('Rekenkern dealvoorstel', () => {
     expect(r.html).toBe(true);
   });
 
+  test('Codex-review 13-11 #91: ontbrekende KB-omzet is geen aansluiting; bron per component in de waarderingsketen', async ({ page }) => {
+    const r = await page.evaluate(() => {
+      const oud = { g: S._groepData, j: S._docJaar, o: S._opySlotJaar };
+      S._groepData = { financieel_omzet1: '100.000' }; S._docJaar = { financieel_omzet1: '2024' }; S._opySlotJaar = {};
+      const st = [undefined, null, '', 'abc'].map((om) => finHistorieAansluiting({ jaren: [{ jaar: 2024, gerapporteerd: om === undefined ? {} : { omzet: om } }] })[0].status);
+      S._groepData = oud.g; S._docJaar = oud.j; S._opySlotJaar = oud.o;
+      // Bridge overnemen en daarna alleen debt-like handmatig wijzigen: alleen die component wordt 'handmatig'.
+      const w = document.createElement('div');
+      w.innerHTML = '<input id="dv-nettoschuld" value="0"><input id="dv-debtlike" value="0"><input id="dv-wccorr" value="0">';
+      document.body.appendChild(w);
+      const k = document.createElement('button'); k.setAttribute('data-ns', '8500'); k.setAttribute('data-dl', '1000'); k.setAttribute('data-wc', '-825');
+      finEqNeemOver(k);
+      document.getElementById('dv-debtlike').value = '99999';
+      const bronnen = [dvVeldBron('dv-nettoschuld'), dvVeldBron('dv-debtlike'), dvVeldBron('dv-wccorr')];
+      w.remove();
+      const p = { ebitdaBewezen: 400000, multipleBasis: 5, ebitdaPrognose: 400000, multipleBovengrens: 5, belangPct: 100, nettoSchuld: 8500, debtLikeItems: 99999, werkkapitaalCorrectie: -825, transactiekostenPct: 0, escrowPct: 0, earnOutAan: false,
+        nettoSchuldBron: bronnen[0], debtLikeBron: bronnen[1], wcCorrectieBron: bronnen[2] };
+      const h = dvTabelWaarderingsketen(null, p, dvBerekenClosing(p), dvBerekenOpbrengstBrug(p, dvBerekenClosing(p)));
+      const rij = (n) => { const m = h.match(new RegExp(n + '\\.[^<]*<\\/td>[^<]*<td[^>]*>[^<]*<\\/td>[^<]*<td[^>]*>([^<]*)<')); return m && m[1]; };
+      return { st, bronnen, r7: rij('7'), r8: rij('8'), r9: rij('9') };
+    });
+    expect(r.st).toEqual(['kolommenbalans_onvolledig', 'kolommenbalans_onvolledig', 'kolommenbalans_onvolledig', 'kolommenbalans_onvolledig']);
+    expect(r.bronnen).toEqual(['equitybridge', 'handmatig', 'equitybridge']);
+    expect(r.r7).toBe('Goedgekeurde equity bridge');
+    expect(r.r8).toBe('Door de adviseur ingevoerd');
+    expect(r.r9).toMatch(/^Goedgekeurde equity bridge/);
+  });
+
   test('ZOPA trade-space: buckets sommeren exact op verkocht belang + earn-up + behouden belang', async ({ page }) => {
     const r = await page.evaluate(() => {
       const p = { ebitdaBewezen: 400000, multipleBasis: 5.0, ebitdaPrognose: 520000, multipleBovengrens: 6.0, belangPct: 51,

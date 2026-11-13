@@ -3680,7 +3680,10 @@ function renderBegeleiderDashboard(app){
         nettoSchuld:parseFloat(document.getElementById('dv-nettoschuld').value)||0,
         // #91 B1: alleen als de netto schuld ongewijzigd uit de goedgekeurde equity bridge komt (mna/16 finEqNeemOver), mag een
         // netto kaspositie (negatief) meetellen; bij elke handmatige wijziging vervalt die markering.
-        nettoSchuldBron:(function(){var e=document.getElementById('dv-nettoschuld');return e&&e.getAttribute('data-bron')==='equitybridge'&&e.value===e.getAttribute('data-bron-waarde')?'equitybridge':'handmatig';})(),
+        nettoSchuldBron:dvVeldBron('dv-nettoschuld'),
+        // Codex-review 13-11 (P2): bron per component, niet alleen via de netto schuld.
+        debtLikeBron:dvVeldBron('dv-debtlike'),
+        wcCorrectieBron:dvVeldBron('dv-wccorr'),
         debtLikeItems:parseFloat(document.getElementById('dv-debtlike').value)||0,
         werkkapitaalCorrectie:parseFloat(document.getElementById('dv-wccorr').value)||0,
         transactiekostenPct:parseFloat(document.getElementById('dv-txkosten').value)||0,
