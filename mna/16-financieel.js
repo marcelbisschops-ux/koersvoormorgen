@@ -169,6 +169,34 @@ function finPrognoseHtml(d) {
     + (d.prognose.status === 'concept' ? '<button class="btn btn-sm" style="font-size:11px" onclick="finKeurPrognoseGoed()"' + dis + '>Prognose goedkeuren</button>' : '') + '</div>';
   return h;
 }
+// #91 B4 (13-11-2026): aansluiting tussen de historische omzet uit de jaarrekening (#73, velden omzet1/2/3 met boekjaar uit
+// de herkomst) en de gerapporteerde omzet uit de kolommenbalans van hetzelfde boekjaar. Alleen vergelijken bij een bekend
+// boekjaar; een verschil groter dan € 1.000 of 0,5% wordt gemeld, nooit stil gekozen (werkregel 6).
+function finHistorieAansluiting(d) {
+  var bron = S._groepData || S.data || {}, uit = [];
+  ['omzet1', 'omzet2', 'omzet3'].forEach(function (slot) {
+    var key = 'financieel_' + slot, ruw = bron[key];
+    if (!ruw || !String(ruw).trim()) return;
+    var waarde = parseGeld(ruw);
+    if (!isFinite(waarde)) return;
+    var jaar = (S._docJaar && S._docJaar[key]) || (S._opySlotJaar && S._opySlotJaar[slot]) || null;
+    var kb = jaar ? (d.jaren || []).filter(function (j) { return String(j.jaar) === String(jaar); })[0] : null;
+    if (!jaar) { uit.push({ slot: slot, jaar: null, jaarrekening: waarde, kolommenbalans: null, status: 'jaar_onbekend' }); return; }
+    if (!kb) { uit.push({ slot: slot, jaar: String(jaar), jaarrekening: waarde, kolommenbalans: null, status: 'geen_kolommenbalans' }); return; }
+    var kbOmzet = Number(kb.gerapporteerd && kb.gerapporteerd.omzet), verschil = waarde - kbOmzet;
+    var drempel = Math.max(1000, Math.abs(kbOmzet) * 0.005);
+    uit.push({ slot: slot, jaar: String(jaar), jaarrekening: waarde, kolommenbalans: kbOmzet, verschil: verschil, status: Math.abs(verschil) > drempel ? 'verschil' : 'sluit_aan' });
+  });
+  return uit;
+}
+function finHistorieAansluitingHtml(d) {
+  var r = finHistorieAansluiting(d);
+  if (!r.length) return '';
+  var st = { sluit_aan: 'sluit aan', verschil: 'verschil: controleer welke bron juist is', jaar_onbekend: 'boekjaar onbekend, niet te vergelijken', geen_kolommenbalans: 'geen kolommenbalans voor dit jaar' };
+  return '<div style="font-size:12px;font-weight:600;margin-top:.8rem">Aansluiting omzet jaarrekening en kolommenbalans</div>'
+    + '<table style="border-collapse:collapse;font-size:12px;margin-top:.3rem"><tr><th style="text-align:left;padding:3px 6px">Boekjaar</th><th style="text-align:right;padding:3px 6px">Jaarrekening</th><th style="text-align:right;padding:3px 6px">Kolommenbalans</th><th style="text-align:left;padding:3px 6px"></th></tr>'
+    + r.map(function (x) { return '<tr><td style="padding:3px 6px">' + finEsc(x.jaar || '?') + '</td><td style="text-align:right;padding:3px 6px">' + finGeld(x.jaarrekening) + '</td><td style="text-align:right;padding:3px 6px">' + (x.kolommenbalans === null ? '–' : finGeld(x.kolommenbalans)) + '</td><td style="padding:3px 6px' + (x.status === 'verschil' ? ';color:var(--red)' : '') + '" data-aansluiting="' + x.status + '">' + st[x.status] + (x.status === 'verschil' ? ' (' + finGeld(x.verschil) + ')' : '') + '</td></tr>'; }).join('') + '</table>';
+}
 function finEqPostHtml(n) {
   var bg = isTussen(), dis = FIN.bezig ? ' disabled' : '';
   var h = '<div style="border:1px solid var(--border);border-radius:var(--r);padding:.5rem .7rem;margin:.35rem 0;font-size:12px;color:var(--sub)">'
@@ -217,7 +245,7 @@ function renderFinancieleAnalyse(faseId) {
   if (FIN.melding) h += '<div style="font-size:12px;padding:.5rem .75rem;margin-bottom:.5rem;border-radius:var(--r);border:1px solid ' + (FIN.melding.soort === 'ok' ? 'var(--teal);background:var(--teal-bg)' : 'var(--red);background:var(--red-bg)') + '">' + finEsc(FIN.melding.tekst) + '</div>';
   if (FIN.status !== 'ok' || !FIN.data) return h + '<div style="font-size:12px;color:var(--muted)">' + (FIN.status === 'fout' ? 'De financiële analyse kon niet worden geladen.' : 'Laden…') + '</div></div>';
   var d = FIN.data, dis = FIN.bezig ? ' disabled' : '';
-  h += finAansluitingHtml(d)
+  h += finAansluitingHtml(d) + finHistorieAansluitingHtml(d)
     + '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:.6rem">' + (isTussen() ? '<button class="btn-ghost btn-sm" style="font-size:11px" onclick="finVoorstellen()"' + dis + '>Voorstellen van KVM ophalen</button>' : '')
     + '<button class="btn-ghost btn-sm" style="font-size:11px" onclick="finOpenForm()"' + dis + '>Normalisatie voorstellen</button></div>'
     + (FIN.form ? finFormHtml() : '') + d.normalisaties.map(finNmHtml).join('') + finPrognoseHtml(d) + finEqHtml(d);

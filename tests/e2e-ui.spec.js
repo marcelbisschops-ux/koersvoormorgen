@@ -273,6 +273,24 @@ test.describe('Rekenkern dealvoorstel', () => {
     expect(r.html).toBe(true);
   });
 
+  test('aansluiting #91 B4: omzet jaarrekening (#73) tegen kolommenbalans, verschil gemeld, onbekend jaar niet vergeleken', async ({ page }) => {
+    const r = await page.evaluate(() => {
+      const oud = { g: S._groepData, d: S.data, j: S._docJaar, o: S._opySlotJaar };
+      S._groepData = { financieel_omzet1: '480.000', financieel_omzet2: '500.400', financieel_omzet3: '455.000' };
+      S._docJaar = { financieel_omzet1: '2023', financieel_omzet2: '2024' };
+      S._opySlotJaar = {};
+      const d = { jaren: [{ jaar: 2023, gerapporteerd: { omzet: 475000 } }, { jaar: 2024, gerapporteerd: { omzet: 500000 } }] };
+      const uit = finHistorieAansluiting(d);
+      const html = finHistorieAansluitingHtml(d);
+      S._groepData = oud.g; S.data = oud.d; S._docJaar = oud.j; S._opySlotJaar = oud.o;
+      return { st: uit.map((x) => x.jaar + ':' + x.status), v: uit[0].verschil, html: /verschil: controleer/.test(html) };
+    });
+    // 2023: 480.000 vs 475.000 → verschil 5.000 > max(1.000; 2.375) → melding; 2024: 400 ≤ 2.500 → sluit aan; omzet3 zonder jaar → niet vergeleken
+    expect(r.st).toEqual(['2023:verschil', '2024:sluit_aan', 'null:jaar_onbekend']);
+    expect(r.v).toBe(5000);
+    expect(r.html).toBe(true);
+  });
+
   test('ZOPA trade-space: buckets sommeren exact op verkocht belang + earn-up + behouden belang', async ({ page }) => {
     const r = await page.evaluate(() => {
       const p = { ebitdaBewezen: 400000, multipleBasis: 5.0, ebitdaPrognose: 520000, multipleBovengrens: 6.0, belangPct: 51,
