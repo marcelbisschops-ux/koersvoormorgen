@@ -4564,6 +4564,7 @@ function renderBegeleiderDashboard(app){
         +'<button id="mou-manifest" class="btn-ghost" style="font-size:11px;padding:5px 12px">&#128203; Manifest bekijken</button>'
         +'<button id="mou-nieuw2" class="btn-ghost" style="font-size:11px;padding:5px 12px">+ Nieuwe '+esc(mouProfLabel(prof).kort)+'</button>'
         +'</div><div id="mou-manifest-out" style="margin-top:.5rem"></div>'
+        +(doc.status==='verstuurd'?'<div id="mou-akkoordlink" data-doc="'+esc(doc.id)+'"></div>':'')
         +(mouGetekendVeld?(mouGetekend
           ?'<div style="margin-top:.6rem;padding-top:.6rem;border-top:1px dashed var(--teal);font-size:12px;color:var(--teal-dim)">&#10003; Getekend door '+esc(mouGetekend)+'</div>'
           :'<div style="margin-top:.6rem;padding-top:.6rem;border-top:1px dashed var(--teal)">'
@@ -4963,6 +4964,7 @@ function renderBegeleiderDashboard(app){
       if(mk.ok&&mk.json.ok){ _mouDocId=mk.json.document_id; toast('Nieuwe '+mouProfLabel(prof).kort+' aangemaakt','ok'); bgMouComposer(prof); } else toast('Aanmaken mislukt','err');
     };
     if(bevroren){
+      if(typeof akkoordlinkBeheer==='function')akkoordlinkBeheer(document.getElementById('mou-akkoordlink'));
       var mm=document.getElementById('mou-manifest'); if(mm)mm.onclick=async function(){
         var m=await bgMouApi('GET','/document/'+encodeURIComponent(_mouDocId)+'/manifest');
         var box=document.getElementById('mou-manifest-out'); if(!box)return;
@@ -6815,4 +6817,40 @@ function terugNaarAdviseursportaal(){
     }
   }catch(e){}
   return true;
+}
+
+// #46 (13-11-2026): akkoordlink voor een verstuurd document (alleen zichtbaar als de backend de functie aanbiedt; in
+// productie geeft /mna/akkoordlink/lijst 404 en blijft dit leeg). De link wordt één keer getoond; de server bewaart
+// alleen een hash. Bindend gebruik pas na juridische en privacytoets.
+function akkoordlinkBeheer(el){
+  if(!el||!isTussen())return;
+  var docId=el.getAttribute('data-doc');
+  var teken=function(){
+    fetchMetTimeout(WORKER+'/mna/akkoordlink/lijst?code='+encodeURIComponent(S.code)+'&document_id='+encodeURIComponent(docId),{method:'GET',headers:{'x-tussen-key':S.code},cache:'no-store'},15000).then(function(r){
+      if(r.status===404){el.innerHTML='';return null;}
+      return r.json().then(function(d){
+        if(!d||!d.ok){el.innerHTML='';return;}
+        var st={open:'open',gebruikt:'akkoord gegeven',ingetrokken:'ingetrokken',verlopen:'verlopen'};
+        el.innerHTML='<div style="margin-top:.6rem;padding-top:.6rem;border-top:1px dashed var(--teal);font-size:12px">'
+          +'<div style="font-weight:600;margin-bottom:.3rem">Akkoord via persoonlijke link (proef)</div>'
+          +'<div style="color:var(--muted);margin-bottom:.4rem">Een eenmalige link waarmee de ontvanger zonder in te loggen akkoord geeft op deze versie. Alleen voor proefgebruik; bindend gebruik volgt na juridische toets.</div>'
+          +(d.links||[]).map(function(l){return '<div data-akl="'+esc(l.id)+'">'+esc(l.party_role)+' · '+esc(l.ontvanger_email)+' · '+esc(st[l.status]||l.status)+(l.status==='open'?' <button class="btn-ghost btn-sm" style="font-size:11px" data-akl-intrek="'+esc(l.id)+'">Intrekken</button>':'')+'</div>';}).join('')
+          +'<button class="btn-ghost btn-sm" style="font-size:11px;margin-top:.4rem" id="akl-maak">Akkoordlink maken</button><div id="akl-uit" style="margin-top:.4rem"></div></div>';
+        el.querySelectorAll('[data-akl-intrek]').forEach(function(b){b.onclick=function(){
+          if(!confirm('Deze akkoordlink intrekken?'))return;
+          fetchMetTimeout(WORKER+'/mna/akkoordlink/intrekken',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S.code},body:JSON.stringify({code:S.code,id:b.getAttribute('data-akl-intrek')})},15000).then(function(){teken();});
+        };});
+        document.getElementById('akl-maak').onclick=function(){
+          var rol=prompt('Voor welke partij? Typ koper of verkoper:','koper');if(!rol)return;
+          var mail=prompt('E-mailadres van de ontvanger (de ontvanger bevestigt met dit adres):','');if(!mail)return;
+          fetchMetTimeout(WORKER+'/mna/akkoordlink/maak',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S.code},body:JSON.stringify({code:S.code,document_id:docId,party_role:String(rol).trim().toLowerCase(),ontvanger_email:mail})},15000).then(function(r){return r.json().then(function(x){return {s:r.status,x:x};});}).then(function(res){
+            var uit=document.getElementById('akl-uit');
+            if(res.s===200&&res.x&&res.x.ok){uit.innerHTML='<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:.5rem">Link (wordt maar één keer getoond; deel hem alleen met de ontvanger):<br><input readonly style="width:100%;font-size:11px" value="'+esc(res.x.url)+'" onclick="this.select()"><div style="color:var(--muted)">Geldig tot '+esc(new Date(res.x.verloopt_op).toLocaleDateString('nl-NL'))+'</div></div>';setTimeout(function(){var keep=uit.innerHTML;teken();setTimeout(function(){var u2=document.getElementById('akl-uit');if(u2)u2.innerHTML=keep;},400);},50);}
+            else uit.innerHTML='<div style="color:var(--red)">'+esc((res.x&&res.x.error)||'Niet gelukt.')+'</div>';
+          },function(){var uit=document.getElementById('akl-uit');if(uit)uit.innerHTML='<div style="color:var(--red)">Geen verbinding.</div>';});
+        };
+      });
+    },function(){el.innerHTML='';});
+  };
+  teken();
 }

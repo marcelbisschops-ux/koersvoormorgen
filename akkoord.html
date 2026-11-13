@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<meta name="referrer" content="no-referrer">
+<title>Akkoord geven · Koers voor Morgen</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500&family=Inter:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="./assets/kvm.css">
+<style>
+/* #46: persoonlijke akkoordlink (worker/65). Toont alleen wat bij deze link hoort; geen inlog. */
+.ak-wrap{max-width:600px;margin:0 auto;padding:40px 16px 64px}
+.ak-kaart{background:var(--paper,#fff);border:1px solid rgba(0,0,0,.12);border-radius:12px;padding:24px}
+.ak-kaart h1{font-family:Newsreader,Georgia,serif;font-weight:500;font-size:28px;margin:0 0 12px}
+.ak-form{display:grid;gap:12px;margin-top:16px}
+.ak-form label{display:grid;gap:4px;font-size:14px}
+.ak-form input[type=email]{font:15px Inter,system-ui,sans-serif;padding:9px 10px;border:1px solid rgba(0,0,0,.25);border-radius:6px}
+.ak-form .ak-check{display:flex;gap:8px;align-items:flex-start}
+.ak-form button{font:600 14px Inter,system-ui,sans-serif;padding:10px 16px;border-radius:8px;border:1px solid #3d6b63;background:#3d6b63;color:#fff;cursor:pointer;justify-self:start}
+.ak-melding{margin-top:14px;padding:10px 12px;border-radius:8px;font-size:14px}
+.ak-ok{background:rgba(61,107,99,.12)}.ak-fout{background:rgba(224,82,82,.12)}
+.ak-klein{font-size:13px;opacity:.8}
+button:focus-visible,input:focus-visible{outline:2px solid #c49a4a;outline-offset:2px}
+</style>
+</head>
+<body>
+<header class="nav"><div class="nav__in"><span class="nav__brand">Koers voor <b>Morgen</b></span></div></header>
+<main class="ak-wrap"><div class="ak-kaart" id="ak" aria-live="polite"><p>Laden…</p></div></main>
+<script>
+(function () {
+  var LIJST = ['https://kantoorinzicht.marcel-bisschops.workers.dev', 'https://kantoorinzicht-staging.marcel-bisschops.workers.dev'];
+  var q = new URLSearchParams(location.search), wp = q.get('worker') || '';
+  var WORKER = LIJST.indexOf(wp) >= 0 ? wp : LIJST[0];
+  var h = new URLSearchParams((location.hash || '').replace(/^#/, ''));
+  var t = (h.get('t') || '').trim();
+  // Token alleen in het geheugen: uit de adresbalk halen (fragment gaat nooit naar een server of in een verwijzing).
+  try { if (t && history && typeof history.replaceState === 'function') history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
+  var el = document.getElementById('ak');
+  var SOORT = { nda: 'geheimhoudingsovereenkomst (NDA)', loi: 'intentieverklaring (LoI)', mou: 'memorandum of understanding' };
+  function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
+  function api(pad, body) {
+    return fetch(WORKER + pad, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), cache: 'no-store', referrerPolicy: 'no-referrer' })
+      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { return { s: r.status, j: j }; }); })
+      .catch(function () { return { s: 0, j: { error: 'Geen verbinding. Probeer het later opnieuw.' } }; });
+  }
+  function fout(tekst) { el.innerHTML = '<h1>Akkoord geven</h1><div class="ak-melding ak-fout" role="alert">' + esc(tekst) + '</div>'; }
+  if (!t) { fout('Deze link is onvolledig. Gebruik de volledige link of vraag je adviseur om een nieuwe.'); return; }
+  api('/mna/akkoordlink/bekijk', { token: t }).then(function (r) {
+    if (r.s !== 200) { fout(r.j.error || 'Deze link werkt niet (meer). Vraag je adviseur om een nieuwe.'); return; }
+    var d = r.j, soort = SOORT[String(d.doc_type || '').toLowerCase()] || ('document (' + esc(d.doc_type) + ')');
+    el.innerHTML = '<h1>Akkoord geven</h1>'
+      + '<p>Je geeft akkoord op versie ' + esc(d.versie) + ' van de ' + esc(soort) + (d.verstuurd_op ? ', verstuurd op ' + esc(new Date(d.verstuurd_op).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })) : '') + '.</p>'
+      + '<p class="ak-klein">Lees het document eerst volledig. Wil je een wijziging, geef dan geen akkoord maar neem contact op met je adviseur.</p>'
+      + '<form class="ak-form" id="ak-form" novalidate><label>Je e-mailadres (het adres waarop je deze link ontving)<input type="email" id="ak-mail" autocomplete="email" required></label>'
+      + '<label class="ak-check"><input type="checkbox" id="ak-ja"> <span>Ik ga akkoord met deze versie van het document.</span></label>'
+      + '<button type="submit" id="ak-knop">Akkoord geven</button></form><div id="ak-m" role="status"></div>'
+      + '<p class="ak-klein">Deze persoonlijke link werkt één keer en is geldig tot ' + esc(new Date(d.verloopt_op).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })) + '.</p>';
+    document.getElementById('ak-form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var m = document.getElementById('ak-m'), knop = document.getElementById('ak-knop');
+      if (!document.getElementById('ak-ja').checked) { m.className = 'ak-melding ak-fout'; m.textContent = 'Vink aan dat je akkoord gaat met deze versie.'; return; }
+      knop.disabled = true;
+      api('/mna/akkoordlink/bevestig', { token: t, email: document.getElementById('ak-mail').value, bevestiging: true }).then(function (x) {
+        if (x.s === 200) { el.innerHTML = '<h1>Bedankt</h1><div class="ak-melding ak-ok" role="status">Je akkoord is vastgelegd. Je adviseur ziet dit direct in het dossier.</div>'; return; }
+        knop.disabled = false; m.className = 'ak-melding ak-fout'; m.textContent = x.j.error || 'Dat lukte niet. Probeer het opnieuw.';
+      });
+    });
+  });
+})();
+</script>
+</body>
+</html>
