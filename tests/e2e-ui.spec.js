@@ -252,6 +252,27 @@ test.describe('Rekenkern dealvoorstel', () => {
     expect(r.dubbelMin).toBe(false);
   });
 
+  test('gevoeligheid #91 B2: aandelenwaarde per EBITDA × multiple en werkkapitaalstappen, handmatig nagerekend', async ({ page }) => {
+    const r = await page.evaluate(() => {
+      const p = { ebitdaBewezen: 400000, multipleBasis: 5.0, ebitdaPrognose: 500000, multipleBovengrens: 6.0, belangPct: 100,
+        nettoSchuld: 300000, nettoSchuldBron: 'handmatig', debtLikeItems: 100000, werkkapitaalCorrectie: 50000, transactiekostenPct: 2, escrowPct: 0, earnOutAan: false };
+      const brug = dvBerekenOpbrengstBrug(p, dvBerekenClosing(p));
+      const a = dvBerekenGevoeligheidAandelen(dvBerekenGevoeligheid(p), brug);
+      const kas = dvBerekenGevoeligheidAandelen(dvBerekenGevoeligheid(p), dvBerekenOpbrengstBrug({ ...p, nettoSchuld: -200000, nettoSchuldBron: 'equitybridge' }, dvBerekenClosing(p)));
+      const leeg = dvBerekenGevoeligheidAandelen(dvBerekenGevoeligheid({ ...p, ebitdaBewezen: 0, ebitdaPrognose: 0 }), brug);
+      return { cel: a.cellen[1].waarden.map((w) => Math.round(w.aandelen)), laag: Math.round(a.cellen[0].waarden[0].aandelen), wc: a.werkkapitaal.map((w) => Math.round(w.aandelen)),
+        kasCel: Math.round(kas.cellen[1].waarden[0].aandelen), leeg, html: dvTabelGevoeligheidAandelen(a).length > 100 };
+    });
+    // Bewezen 400k: EV 2,0 / 2,2 / 2,4 mln; aandelen = EV − 300k − 100k − 50k − 2%·EV
+    expect(r.cel).toEqual([1510000, 1706000, 1902000]);
+    expect(r.laag).toBe(1314000);            // 360k × 5 = 1,8 mln − 450k − 36k
+    // Werkkapitaal bij basis-EV 2,0 mln: stappen −2/−1/0/+1/+2% = −40k/−20k/0/+20k/+40k extra correctie
+    expect(r.wc).toEqual([1550000, 1530000, 1510000, 1490000, 1470000]);
+    expect(r.kasCel).toBe(2010000);          // 2,0 mln + 200k − 100k − 50k − 40k
+    expect(r.leeg).toBe(null);
+    expect(r.html).toBe(true);
+  });
+
   test('ZOPA trade-space: buckets sommeren exact op verkocht belang + earn-up + behouden belang', async ({ page }) => {
     const r = await page.evaluate(() => {
       const p = { ebitdaBewezen: 400000, multipleBasis: 5.0, ebitdaPrognose: 520000, multipleBovengrens: 6.0, belangPct: 51,

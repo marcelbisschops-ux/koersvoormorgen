@@ -1301,6 +1301,31 @@ function dvTabelGevoeligheid(g){
   return dvRenderTabelHtml(kolommen,rows);
 }
 
+// #91 B2 (13-11-2026): gevoeligheid van de AANDELENWAARDE (100%) per EBITDA-scenario × multiple, via dezelfde componenten
+// als de opbrengst-brug (netto schuld of kaspositie volgens de bronregel van dvBerekenOpbrengstBrug, debt-like,
+// werkkapitaalcorrectie, transactiekosten als % van de ondernemingswaarde van die cel). Plus de gevoeligheid voor de
+// werkkapitaalcorrectie bij de basiswaardering, in stappen van 1% en 2% van die ondernemingswaarde (stapgrootte vast en
+// zichtbaar vermeld; geen nieuwe aanname over het werkelijke werkkapitaal). Geen grondslag > 0 → null (geen tabel).
+function dvBerekenGevoeligheidAandelen(g,brug){
+  if(!g||!brug||!g.ebitdaScenarios||!g.ebitdaScenarios.length)return null;
+  var vast=brug.nettoSchuld+brug.debtLike+brug.wcCorrectie, tkPct=(brug.transactiekostenPct||0)/100;
+  var eq=function(ev){return ev-vast-ev*tkPct;};
+  if(!(g.ebitdaScenarios.some(function(s){return s.ebitda>0;})))return null;
+  var cellen=g.ebitdaScenarios.map(function(s){return {label:s.label,ebitda:s.ebitda,waarden:g.multiples.map(function(m){var ev=s.ebitda*m.m;return {ev:ev,aandelen:eq(ev)};})};});
+  var evBasis=brug.ev;
+  var wc=[-0.02,-0.01,0,0.01,0.02].map(function(f){var corr=brug.wcCorrectie+f*evBasis;return {stapPct:f*100,wcCorrectie:corr,aandelen:evBasis-brug.nettoSchuld-brug.debtLike-corr-evBasis*tkPct};});
+  return {cellen:cellen,multiples:g.multiples,grondslag:g.grondslag,werkkapitaal:wc,evBasis:evBasis};
+}
+function dvTabelGevoeligheidAandelen(a){
+  if(!a)return '';
+  var grondslagLabel=(a.grondslag==='omzet')?'Omzet-scenario':'EBITDA-scenario';
+  var t1=dvRenderTabelHtml(['Aandelenwaarde 100% (€ mln) bij '+grondslagLabel].concat(a.multiples.map(function(m){return m.label;})),
+    a.cellen.map(function(c){return [c.label].concat(c.waarden.map(function(w){return (w.aandelen<0?'&minus;':'')+dvMln(Math.abs(w.aandelen));}));}));
+  var t2=dvRenderTabelHtml(['Werkkapitaalcorrectie (stap = % van de ondernemingswaarde '+dvMln(a.evBasis)+' mln)','Correctie (€ mln)','Aandelenwaarde 100% (€ mln)'],
+    a.werkkapitaal.map(function(w){return [(w.stapPct>0?'+':'')+String(w.stapPct).replace('.',',')+'%',(w.wcCorrectie<0?'&minus;':'')+dvMln(Math.abs(w.wcCorrectie)),(w.aandelen<0?'&minus;':'')+dvMln(Math.abs(w.aandelen))];}));
+  return t1+t2;
+}
+
 // Meerjarige trendanalyse op basis van de aangeleverde omzetcijfers (3 jaar + YTD + forecast).
 // EBITDA-marge is maar over 1 jaar uitgevraagd — expliciet zo gelabeld, geen verzonnen historie.
 function dvTabelTrend(){

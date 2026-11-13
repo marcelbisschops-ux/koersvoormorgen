@@ -3784,7 +3784,7 @@ function renderBegeleiderDashboard(app){
           ZOPA:dvTabelZopaTradeSpace(zopa),
           BATNA:batna?dvTabelBatna(batna):'',
           LOICHECKLIST:isSellDv?dvTabelLoiChecklist(p):'',
-          GEVOELIGHEID:dvTabelGevoeligheid(gevoeligheid),
+          GEVOELIGHEID:dvTabelGevoeligheid(gevoeligheid)+dvTabelGevoeligheidAandelen(dvBerekenGevoeligheidAandelen(gevoeligheid,opbrengstBrug)),
           TREND:dvTabelTrend(),
           VERGELIJKBAAR:dvBlokVergelijkbareTransacties(),
           PRIJSMECHANISME:dvTabelPrijsmechanisme(prijsmechanisme),
