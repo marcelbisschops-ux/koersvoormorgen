@@ -16,14 +16,15 @@ const fixture = { status: 200, json: { ok: true, peildatum: '2026-12-31',
     { id: 'o2', soort: 'succesfee', grondslag: 'percentage', percentage: 3, minimum: 25000, tail_maanden: 12, rev: 1 }],
   gebeurtenissen: [{ id: 'g1', soort: 'closing', datum: '2026-06-20', transactiewaarde: null, omschrijving: X }],
   boekingen: [{ id: 'b1', onderdeel_id: 'o1', soort: 'betaling', datum: '2026-02-10', bedrag: 5000, referentie: X }],
-  berekening: { onderdelen: [{ id: 'o1', posten: [{ datum: '2026-02-01', bedrag: 5000, grond: 'ondertekening overeenkomst' }], verschuldigd: 5000, gefactureerd: 0, betaald: 5000, openstaand: 0 }, { id: 'o2', verschuldigd: 0, niet_te_berekenen: 'transactiewaarde bij closing ontbreekt', gefactureerd: 0, betaald: 0, openstaand: null }],
-    totaal: { verschuldigd: 5000, gefactureerd: 0, betaald: 5000, openstaand: 0, onvolledig: true } } } };
+  berekening: { afwijkingen: [{ onderdeel_id: 'o1', soort: 'betaling_zonder_factuur', bedrag: 5000, tekst: 'Betaling zonder (voldoende) factuur' }], onderdelen: [{ id: 'o1', posten: [{ datum: '2026-02-01', bedrag: 5000, grond: 'ondertekening overeenkomst' }], verschuldigd: 5000, gefactureerd: 0, betaald: 5000, ontvangen: 5000, nog_te_factureren: 5000, nog_te_ontvangen: 0, openstaand: 0 }, { id: 'o2', verschuldigd: 0, niet_te_berekenen: 'transactiewaarde bij closing ontbreekt', gefactureerd: 0, betaald: 0, openstaand: null }],
+    totaal: { verschuldigd: 5000, gefactureerd: 0, betaald: 5000, ontvangen: 5000, nog_te_factureren: 5000, nog_te_ontvangen: 0, openstaand: 0, onvolledig: true } } } };
 ctx.wrHonTeken('T1', fixture);
 const h = el['wr-hon-T1'].innerHTML;
 ok(h && !h.includes('<img') && h.includes('&lt;img'), 'alle vrije tekst (toelichting, omschrijving, referentie) ge-escaped', h.match(/<img[^>]*>/));
 ok(h.includes('Niet te berekenen') && h.includes('transactiewaarde bij closing ontbreekt') && h.includes('Niet alle onderdelen zijn te berekenen'), "'niet te berekenen' met reden en totaalmelding zichtbaar");
 ok(h.includes('3% van de transactiewaarde, minimaal') && h.includes('verrekenbaar met de succesfee') && h.includes('tail 12 maanden'), 'afspraken leesbaar weergegeven');
 ok(h.includes('€ 5.000,00 (ondertekening overeenkomst)'), 'per onderdeel zichtbaar wanneer welk bedrag verschuldigd is (posten)', h.slice(0, 600));
+ok(h.includes('Afwijkingen: Betaling zonder (voldoende) factuur bij Aanvangsvergoeding') && h.includes('Nog te factureren') && h.includes('Nog te ontvangen') && h.includes('Onbetaald') && h.includes('openstaande facturen'), 'saldi met uitleg en afwijkingen zichtbaar');
 ok((h.match(/Verwijderen/g) || []).length === 4, 'verwijderknop per onderdeel, gebeurtenis en boeking');
 ctx.wrHonTeken('T1', { status: 403, json: { error: 'Geen toegang tot dit mandaat.' } });
 ok(el['wr-hon-T1'].innerHTML.includes('Geen toegang tot dit mandaat.') && el['wr-hon-T1'].innerHTML.includes('Opnieuw laden'), 'fout: melding en opnieuw laden');
