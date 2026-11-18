@@ -179,11 +179,17 @@ echo "▶ 2/4  Documenten (R2) ophalen ..."
 DOCS_DIR="$BACKUP_DIR/documenten"
 mkdir -p "$DOCS_DIR"
 # De database is de bron van waarheid voor welke bestanden in R2 staan (r2_key).
-KEYS=$( ( cd "$BACKEND_DIR" && wrangler_cmd d1 execute kantoorinzicht --remote --json \
-  --command "SELECT r2_key FROM mna_documenten WHERE r2_key IS NOT NULL AND r2_key != ''" ) 2>/dev/null \
-  | { grep -o '"r2_key": "[^"]*"' || true; } | sed 's/"r2_key": "//;s/"//' )
-DOC_OK=0; DOC_SKIP=0
-if [ -n "$KEYS" ]; then
+# 18-11-2026 (Codex-review FAIL): elk deelresultaat telt mee in de eindstatus. Een mislukte documentlijst-query
+# brak eerder door set -e/pipefail het hele script af zonder melding; mislukte downloads bleven 'groen'.
+DEELFOUTEN=""  # tekst i.p.v. array: /bin/bash 3.2 (macOS) kent een lege array onder set -u als unbound
+KEYS_JSON=$(mktemp)
+DOC_OK=0; DOC_SKIP=0; DOC_FOUT=0
+if ( cd "$BACKEND_DIR" && wrangler_cmd d1 execute kantoorinzicht --remote --json \
+     --command "SELECT r2_key FROM mna_documenten WHERE r2_key IS NOT NULL AND r2_key != ''" ) > "$KEYS_JSON" 2>/dev/null \
+   && KEYS=$(python3 -c 'import json,sys
+d=json.load(open(sys.argv[1]))
+rs=d[0]["results"] if isinstance(d,list) else d["results"]
+print("\n".join(r["r2_key"] for r in rs))' "$KEYS_JSON"); then
   while IFS= read -r KEY; do
     [ -z "$KEY" ] && continue
     DEST="$DOCS_DIR/$KEY"
@@ -192,16 +198,20 @@ if [ -n "$KEYS" ]; then
     if ( cd "$BACKEND_DIR" && wrangler_cmd r2 object get "kantoorinzicht-docs/$KEY" --file="$DEST" --remote ) >/dev/null 2>&1 && [ -s "$DEST" ]; then
       DOC_OK=$((DOC_OK+1))
     else
-      rm -f "$DEST"; echo "   ⚠ kon niet ophalen: $KEY"
+      rm -f "$DEST"; DOC_FOUT=$((DOC_FOUT+1)); echo "   ✗ kon niet ophalen: $KEY" >&2
     fi
   done <<< "$KEYS"
-  echo "   ✓ $DOC_OK nieuw opgehaald, $DOC_SKIP al aanwezig ($DOCS_DIR)"
+  echo "   ✓ $DOC_OK nieuw opgehaald, $DOC_SKIP al aanwezig, $DOC_FOUT mislukt ($DOCS_DIR)"
+  if [ "$DOC_FOUT" -gt 0 ]; then DEELFOUTEN="${DEELFOUTEN}R2: $DOC_FOUT document(en) niet opgehaald; "; fi
 else
-  echo "   ⊘ geen documenten in R2 (of database niet bereikbaar)"
+  echo "   ✗ documentlijst (r2_key) niet opvraagbaar — R2-back-up niet uitgevoerd" >&2
+  DEELFOUTEN="${DEELFOUTEN}R2: documentlijst niet opvraagbaar; "
 fi
+rm -f "$KEYS_JSON"
 
 # Manifest van de documentenmap (11 nov 2026): SHA-256 per bestand, voor een aantoonbare integriteitscontrole bij herstel.
-( cd "$BACKUP_DIR" && find documenten -type f | sort | while IFS= read -r f; do shasum -a 256 "$f"; done > "documenten-manifest_$STAMP.sha256" ) 2>/dev/null || echo "   ⚠ documentenmanifest niet vastgelegd" >&2
+( cd "$BACKUP_DIR" && find documenten -type f | sort | while IFS= read -r f; do shasum -a 256 "$f"; done > "documenten-manifest_$STAMP.sha256" ) 2>/dev/null \
+  || { echo "   ✗ documentenmanifest niet vastgelegd" >&2; DEELFOUTEN="${DEELFOUTEN}documentenmanifest niet vastgelegd; "; }
 find "$BACKUP_DIR" -maxdepth 1 -name "documenten-manifest_*.sha256" -mtime +60 -delete 2>/dev/null || true
 echo "▶ 3/5  Lokale (niet-gecommitte) documentatie back-uppen ..."
 # Bevinding 13 sep 2026 (doorlichtingsopdracht, technisch overdrachtsdocument): CLAUDE.md, het
@@ -223,6 +233,7 @@ done
 if [ "$DOC_COUNT" -lt 5 ]; then
   echo "   ✗ slechts $DOC_COUNT .md-bestanden in $DOCS_BRON_DIR — documentatieback-up onvolledig" >&2
   DOCS_STATUS="documentatie ONVOLLEDIG ($DOC_COUNT)"
+  DEELFOUTEN="${DEELFOUTEN}documentatie onvolledig: $DOC_COUNT .md-bestanden in $DOCS_BRON_DIR; "
 else
   DOCS_STATUS="documentatie $DOC_COUNT bestanden"
 fi
@@ -249,7 +260,15 @@ find "$BACKUP_DIR" -maxdepth 1 -name "kantoorinzicht_*.sql.sha256" -mtime +60 -d
 AANTAL=$(ls -1 "$BACKUP_DIR"/kantoorinzicht_*.sql 2>/dev/null | wc -l | tr -d ' ')
 echo "   ✓ $AANTAL database-back-up(s) in $BACKUP_DIR"
 
-meld_backup_status "true" "OK — $(basename "$OUT"), $TABELLEN tabellen, $DOC_OK nieuwe document(en); $HERSTELPROEF; $DOCS_STATUS; $HERKOMST_STATUS."
+SAMENVATTING="$(basename "$OUT"), $TABELLEN tabellen, $DOC_OK nieuwe document(en); $HERSTELPROEF; $DOCS_STATUS; $HERKOMST_STATUS"
+if [ -n "$DEELFOUTEN" ]; then
+  # Database-export en herstelproef zijn wél geslaagd en blijven bewaard; de back-up als geheel is niet volledig.
+  FOUTTEKST="$DEELFOUTEN"
+  echo "✗ Back-up ONVOLLEDIG: ${FOUTTEKST%; }" >&2
+  meld_backup_status "false" "ONVOLLEDIG — ${FOUTTEKST%; }. Wel gelukt: $SAMENVATTING."
+  exit 1
+fi
+meld_backup_status "true" "OK — $SAMENVATTING."
 
 echo ""
 echo "Klaar. Bewaar $BACKUP_DIR op een plek los van Cloudflare (iCloud Drive / externe schijf)."
