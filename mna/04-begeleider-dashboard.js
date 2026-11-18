@@ -5269,7 +5269,15 @@ function renderBegeleiderDashboard(app){
         +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
         +'<input type="email" id="teaser-email-naar" placeholder="naam@voorbeeld.nl" style="flex:1;min-width:200px;background:var(--bg);border:1.5px solid var(--border);border-radius:var(--r);font-family:\'IBM Plex Sans\',sans-serif;font-size:13px;padding:8px 11px;color:var(--sub);outline:none">'
         +'<button class="btn" id="teaser-email-btn" style="background:var(--teal)">&#9993; Verstuur</button>'
-        +'</div></div></div>';
+        +'</div>'
+        // #52 visuele teaser: de pdf krijgt geanonimiseerde grafieken (bandbreedtes, index-trend, sectorillustratie).
+        // Verzenden kan pas na een voorbeeld van exact deze tekst, een groene herleidbaarheidscontrole en je akkoord.
+        +'<div style="margin-top:.6rem;display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
+        +'<button class="btn-outline btn-sm" id="teaser-voorbeeld-btn">&#128202; Voorbeeld met grafieken</button>'
+        +'<span id="teaser-voorbeeld-link"></span></div>'
+        +'<div id="teaser-controle" style="font-size:12px;margin-top:.5rem"></div>'
+        +'<label style="display:flex;gap:6px;align-items:flex-start;font-size:12px;color:var(--sub);margin-top:.5rem"><input type="checkbox" id="teaser-akkoord" disabled> <span>Ik heb het voorbeeld met grafieken bekeken en ga akkoord met verzending.</span></label>'
+        +'</div></div>';
       document.getElementById('teaser-sluit-btn').onclick=function(){out.style.display='none';};
       document.getElementById('teaser-print-btn').onclick=function(){
         printDoc(document.getElementById('teaser-txt').value||'', 'Teaser', 'teaser');
@@ -5283,15 +5291,36 @@ function renderBegeleiderDashboard(app){
         btn.disabled=false;btn.textContent='Opslaan';
       };
       document.getElementById('teaser-nieuw-btn').onclick=function(){genereerTeaser();};
+      var voorbeeldVan=null;
+      function teaserResetAkkoord(){var a=document.getElementById('teaser-akkoord');if(a){a.checked=false;a.disabled=true;}voorbeeldVan=null;document.getElementById('teaser-voorbeeld-link').innerHTML='';document.getElementById('teaser-controle').innerHTML='';}
+      document.getElementById('teaser-txt').addEventListener('input',teaserResetAkkoord);
+      function teaserTreffersHtml(tr){return '<div style="color:var(--red)">Mogelijk herleidbaar, pas de tekst aan:</div><ul style="margin:.25rem 0 0 1.2rem">'+(tr||[]).map(function(t){return '<li>'+esc(t.soort)+': '+esc(t.waarde)+'</li>';}).join('')+'</ul>';}
+      document.getElementById('teaser-voorbeeld-btn').onclick=async function(){
+        var btn=this;var tekstNu=document.getElementById('teaser-txt').value;
+        teaserResetAkkoord();btn.disabled=true;btn.textContent='Voorbeeld maken...';
+        var r=await fetchMetTimeout(WORKER+'/mna/teaser/voorbeeld',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||''},body:JSON.stringify({code:S.code,teaser_tekst:tekstNu})},90000).then(function(x){return x.json();}).catch(function(){return{error:'Verbindingsfout.'};});
+        btn.disabled=false;btn.innerHTML='&#128202; Voorbeeld met grafieken';
+        if(document.getElementById('teaser-txt').value!==tekstNu)return;
+        var ctl=document.getElementById('teaser-controle');
+        if(r.ok&&r.pdf_base64){
+          var bin=atob(r.pdf_base64),buf=new Uint8Array(bin.length);for(var i=0;i<bin.length;i++)buf[i]=bin.charCodeAt(i);
+          var url=URL.createObjectURL(new Blob([buf],{type:'application/pdf'}));
+          document.getElementById('teaser-voorbeeld-link').innerHTML='<a href="'+url+'" target="_blank" rel="noopener" download="Teaser_voorbeeld.pdf">Voorbeeld-pdf openen</a>';
+        }
+        if(r.controle&&r.controle.ok){ctl.innerHTML='<span style="color:var(--teal)">&#10003; Herleidbaarheidscontrole: geen exacte bedragen, namen of plaatsnamen gevonden.</span>';if(r.ok){voorbeeldVan=tekstNu;document.getElementById('teaser-akkoord').disabled=false;}}
+        else if(r.controle){ctl.innerHTML=teaserTreffersHtml(r.controle.treffers);}
+        if(!r.ok){toast('Fout: '+(r.error||'onbekend'),'err');}
+      };
       document.getElementById('teaser-email-btn').onclick=async function(){
         var btn=this;
         var naarAdres=(document.getElementById('teaser-email-naar').value||'').trim();
         if(!naarAdres||naarAdres.indexOf('@')<0){toast('Vul een geldig e-mailadres in.','err');return;}
-        btn.disabled=true;btn.textContent='Versturen...';
         var tekstNu=document.getElementById('teaser-txt').value;
-        var r=await fetchMetTimeout(WORKER+'/mna/teaser/email',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||''},body:JSON.stringify({code:S.code,teaser_tekst:tekstNu,to:[naarAdres]})},30000).then(function(x){return x.json();}).catch(function(){return{error:'Verbindingsfout.'};});
+        if(voorbeeldVan!==tekstNu||!document.getElementById('teaser-akkoord').checked){toast('Maak eerst een voorbeeld met grafieken van deze tekst en vink je akkoord aan.','err');return;}
+        btn.disabled=true;btn.textContent='Versturen...';
+        var r=await fetchMetTimeout(WORKER+'/mna/teaser/email',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||''},body:JSON.stringify({code:S.code,teaser_tekst:tekstNu,to:[naarAdres],akkoord_visueel:true})},30000).then(function(x){return x.json();}).catch(function(){return{error:'Verbindingsfout.'};});
         if(r.ok){toast('Teaser verstuurd naar '+naarAdres+'.','ok');document.getElementById('teaser-email-naar').value='';}
-        else{toast('Fout: '+(r.error||'onbekend'),'err');}
+        else{if(r.code==='HERLEIDBAAR'){document.getElementById('teaser-controle').innerHTML=teaserTreffersHtml(r.treffers);teaserResetAkkoord();document.getElementById('teaser-controle').innerHTML=teaserTreffersHtml(r.treffers);}toast('Fout: '+(r.error||'onbekend'),'err');}
         btn.disabled=false;btn.textContent='✉ Verstuur';
       };
     }

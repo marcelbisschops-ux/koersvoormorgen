@@ -2480,6 +2480,21 @@ log('#91 B5 waarderingsset: paneel begeleider, rollen, escaping, payload, explic
   } catch (e) { warn('#91 B5: tests/n91-b5-waarderingsset-ui.mjs faalt: ' + String((e && e.stdout) || (e && e.message) || e).split('\n').filter((r) => /✗/.test(r)).join('; ')); }
 }
 
+log('#52 visuele teaser: voorbeeld vóór verzending, akkoord en herleidbaarheidscontrole, handleiding mna/adv');
+{
+  const d = fs.readFileSync(path.join(ROOT, 'mna/04-begeleider-dashboard.js'), 'utf8');
+  const i = d.indexOf('async function toonTeaserModal'), t = i >= 0 ? d.slice(i, d.indexOf('async function toonVerkoopmemoModal', i)) : '';
+  const h = fs.readFileSync(path.join(ROOT, 'mna/08-handleiding.js'), 'utf8'), adv = fs.readFileSync(path.join(ROOT, 'adv.html'), 'utf8');
+  const fouten = [];
+  if (!/\/mna\/teaser\/voorbeeld/.test(t)) fouten.push('geen voorbeeldaanroep');
+  if (!/akkoord_visueel:true/.test(t)) fouten.push('verzending zonder akkoord_visueel');
+  if (!/voorbeeldVan!==tekstNu\|\|!document\.getElementById\('teaser-akkoord'\)\.checked/.test(t)) fouten.push('verzenden niet geblokkeerd zonder voorbeeld van deze tekst en akkoord');
+  if (!/addEventListener\('input',teaserResetAkkoord\)/.test(t)) fouten.push('akkoord vervalt niet bij tekstwijziging');
+  if (!/esc\(t\.soort\)\+': '\+esc\(t\.waarde\)/.test(t)) fouten.push('treffers niet ge-escaped');
+  if (!/stap\('2k2','Teaser met grafieken/.test(h) || !/stap\('2i2','Teaser met grafieken/.test(adv)) fouten.push('handleiding mna/adv niet bijgewerkt');
+  if (fouten.length) warn('#52: ' + fouten.join('; ')); else ok('#52: voorbeeld met grafieken, akkoord per tekstversie, controle-uitkomst ge-escaped, handleiding mna en adv.');
+}
+
 log('Samenvatting');
 if (!bevindingen) {
   console.log('  \x1b[32mGeen bevindingen.\x1b[0m');
