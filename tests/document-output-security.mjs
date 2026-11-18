@@ -623,7 +623,7 @@ function laadDealvoorstel(root, antwoorden) {
   const helpers = tot(src04, '  function dvBouwCijfers(p,r){', '  // ===== DEALVOORSTEL: parameterformulier + generatie =====');
   const modal = tot(src04, '  function toonDealvoorstelModal(){', '  // ===== INDICATIEVE BIEDING');
   const els = {};
-  const el = (id) => els[id] || (els[id] = { id, value: '', checked: false, disabled: false, textContent: '', innerHTML: '', style: {}, onclick: null, onchange: null });
+  const el = (id) => els[id] || (els[id] = { id, value: '', checked: false, disabled: false, textContent: '', innerHTML: '', style: {}, onclick: null, onchange: null, attrs: {}, getAttribute(k) { return k in this.attrs ? this.attrs[k] : null; }, setAttribute(k, v) { this.attrs[k] = String(v); } });
   Object.entries(DV_INVOER).forEach(([k, v]) => { el(k).value = v; });
   DV_AAN.forEach((k) => { el(k).checked = true; });
   // Uitvoerblok bestaat al op de pagina; op het foutpad vraagt mna/04 het (terecht) niet op.
@@ -645,7 +645,7 @@ function laadDealvoorstel(root, antwoorden) {
     dvBerekenPrijsmechanisme: () => ({}), dvBerekenClosing: () => R.closing, dvBerekenSchuldafbouw: () => [{}], dvBerekenBuyAndBuild: () => null,
     dvBerekenVendorLoan: () => null, dvBerekenRuilverhouding: () => R.ruilverhouding, dvBerekenEarnOut: () => R.earnOut,
     dvBerekenAlternatieveWaarderingen: () => R.altWaardering, dvBerekenSynergie: () => R.synergie, dvBerekenScenarios: () => R.scenarios,
-    dvBerekenDCFGevoeligheid: () => ({}), dvBerekenGevoeligheid: () => ({}), dvBerekenDCF: () => R.dcf, dvBerekenOpbrengstBrug: () => R.opbrengstBrug,
+    dvBerekenDCFGevoeligheid: () => ({}), dvBerekenGevoeligheid: () => ({}), dvBerekenGevoeligheidAandelen: () => ({}), dvBerekenDCF: () => R.dcf, dvBerekenOpbrengstBrug: () => R.opbrengstBrug,
     dvVerkoperBedragen: () => R.verkBedr, dvBerekenZopaTradeSpace: () => R.zopa, dvBerekenBatna: () => R.batna, dvManagementRisico: () => R.mr,
     dvBouwRapportHtml: (t) => '<p>' + t + '</p>',
     akkoordHtmlDv: () => '', eigenPdfHtml: () => '', bgToonUitvoer: () => {}, wireAkkoord: () => ({ setOverride() {} }), wireEigenPdf: () => {},
@@ -658,7 +658,7 @@ function laadDealvoorstel(root, antwoorden) {
   };
   [...new Set([...modal.matchAll(/\b(dv(?:Tabel|Blok)\w+)\(/g)].map((m) => m[1]))].forEach((n) => { ctx[n] = () => ''; });
   vm.createContext(ctx);
-  vm.runInContext([regel(src02, /^function esc\(s\)\{.*\}$/m, 'esc'), helpers, modal].join('\n'), ctx, { filename: 'mna/04#dealvoorstel' });
+  vm.runInContext([regel(src02, /^function esc\(s\)\{.*\}$/m, 'esc'), regel(lees(root, 'mna/03-rekenkern-waardering.js'), /^function dvVeldBron\(id\)\{.*\}$/m, 'dvVeldBron'), helpers, modal].join('\n'), ctx, { filename: 'mna/04#dealvoorstel' });
   return {
     ctx, els, calls, toasts,
     async genereer() { ctx.toonDealvoorstelModal(); await els['dv-ok'].onclick.call(els['dv-ok']); },

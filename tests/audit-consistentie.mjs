@@ -2468,6 +2468,18 @@ log('UAT DOC-A24/A26 bankmutaties: kandidaten uit het dossier, keuze bij dubbele
   else ok('UAT DOC-A24/A26: bankafschriften uit het dossier inlezen (timeout), keuze alleen-nieuw bij dubbele, CAMT.053 kiesbaar, journey laadt documenten en bankmutaties, handleiding mna en adv.');
 }
 
+// ── #91 B5: waarderingsset (mna/16), alleen begeleider, expliciete overname in het dealvoorstel, handleiding ──
+log('#91 B5 waarderingsset: paneel begeleider, rollen, escaping, payload, expliciete overname dealvoorstel, handleiding mna/adv');
+{
+  try {
+    const { execFileSync } = await import('child_process');
+    execFileSync(process.execPath, [path.join(ROOT, 'tests/n91-b5-waarderingsset-ui.mjs')], { stdio: 'pipe', cwd: ROOT });
+    const h = fs.readFileSync(path.join(ROOT, 'mna/08-handleiding.js'), 'utf8'), adv = fs.readFileSync(path.join(ROOT, 'adv.html'), 'utf8');
+    if (!/stap\('3c3','Waarderingsset'/.test(h) || !/stap\('3c3','Waarderingsset'/.test(adv)) warn('#91 B5: handleiding mna/adv niet bijgewerkt');
+    else ok('#91 B5: waarderingsset-paneel en expliciete overname (tests/n91-b5-waarderingsset-ui.mjs groen), handleiding mna en adv.');
+  } catch (e) { warn('#91 B5: tests/n91-b5-waarderingsset-ui.mjs faalt: ' + String((e && e.stdout) || (e && e.message) || e).split('\n').filter((r) => /✗/.test(r)).join('; ')); }
+}
+
 log('Samenvatting');
 if (!bevindingen) {
   console.log('  \x1b[32mGeen bevindingen.\x1b[0m');

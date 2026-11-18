@@ -19,7 +19,7 @@ function finGeld(n) { if (typeof n !== 'number' || !isFinite(n)) return ''; var 
 function finPct(n) { return typeof n === 'number' && isFinite(n) ? String(n).replace('.', ',') + '%' : ''; }
 function finLabel(lijst, w) { for (var i = 0; i < lijst.length; i++) if (lijst[i][0] === w) return lijst[i][1]; return w; }
 function finScope() { var f = (typeof FASES !== 'undefined' && FASES[S.fase]) || null; return JSON.stringify([S.code || '', S.rol || '', f ? f.id : '']); }
-function finSync() { var k = finScope(); if (FIN.scope !== k) { FIN.scope = k; FIN.status = 'idle'; FIN.data = null; FIN.bezig = false; FIN.melding = null; FIN.form = null; FIN.eqForm = null; } }
+function finSync() { var k = finScope(); if (FIN.scope !== k) { FIN.scope = k; FIN.status = 'idle'; FIN.data = null; FIN.bezig = false; FIN.melding = null; FIN.form = null; FIN.eqForm = null; FIN.wsForm = null; } }
 function finHeaders() { var h = { 'Content-Type': 'application/json' }; if (isTussen()) h['x-tussen-key'] = S._bgKey || ''; return h; }
 function finHerteken() {
   var f = (typeof FASES !== 'undefined' && FASES[S.fase]) || null, bewaard = [];
@@ -45,7 +45,7 @@ function finPost(pad, body, ok) {
   body.code = S.code;
   finAntw(fetchMetTimeout(WORKER + '/mna/financieel/' + pad, { method: 'POST', headers: finHeaders(), body: JSON.stringify(body) }, 30000)).then(function (x) {
     FIN.bezig = false;
-    if (x.s === 200 && x.d && x.d.ok === true && Array.isArray(x.d.jaren)) { FIN.data = x.d; FIN.form = null; FIN.eqForm = null; FIN.melding = { soort: 'ok', tekst: ok + (typeof x.d.nieuw === 'number' ? ' (' + x.d.nieuw + ' nieuw)' : '') }; }
+    if (x.s === 200 && x.d && x.d.ok === true && Array.isArray(x.d.jaren)) { FIN.data = x.d; FIN.form = null; FIN.eqForm = null; FIN.wsForm = null; FIN.melding = { soort: 'ok', tekst: ok + (typeof x.d.nieuw === 'number' ? ' (' + x.d.nieuw + ' nieuw)' : '') }; }
     else {
       FIN.melding = { soort: 'fout', tekst: x.s === 0 ? 'Geen verbinding met de server; er is niets gewijzigd.' : ((x.d && x.d.error) || ('Niet gelukt (HTTP ' + x.s + ').')) };
       if (x.s === 409) { FIN.status = 'idle'; setTimeout(finLaad, 0); }
@@ -85,6 +85,26 @@ window.finEqBeoordeel = function (el) {
   finPost('equitypost/beoordeel', { id: id, rev: n.rev, status: st ? st.value : '', motivering: mo ? mo.value : undefined, beoordeling: be ? be.value : '' }, 'Beoordeling vastgelegd.');
 };
 window.finEqVerwijder = function (el) { var id = el.getAttribute('data-id'), n = finEqPost(id); if (n && confirm('Deze post verwijderen?')) finPost('equitypost/verwijder', { id: id, rev: n.rev }, 'Post verwijderd.'); };
+// ── #91 B5 (13-11/18-11-2026): centrale goedgekeurde waarderingsset (alleen begeleider; backend worker/46) ──
+window.finWsOpen = function () {
+  var w = FIN.data && FIN.data.waarderingsset, j = FIN.data && FIN.data.jaren.length ? FIN.data.jaren[FIN.data.jaren.length - 1].jaar : null;
+  FIN.wsForm = w ? { grondslag: w.grondslag, grondslag_jaar: w.grondslag_jaar || j, grondslag_bedrag: w.grondslag_bedrag || '', grondslag_reden: w.grondslag_reden, multiple_laag: w.multiple_laag, multiple_hoog: w.multiple_hoog, multiple_onderbouwing: w.multiple_onderbouwing, transactiekosten_pct: w.transactiekosten_pct, scenario: w.scenario, peildatum: w.peildatum }
+    : { grondslag: j ? 'genormaliseerde_ebitda' : 'handmatig', grondslag_jaar: j, transactiekosten_pct: 2, scenario: 'Basisscenario', peildatum: new Date().toISOString().slice(0, 10) };
+  finHerteken();
+};
+window.finWsZet = function (k, v) { if (FIN.wsForm) FIN.wsForm[k] = v; };
+window.finWsBewaar = function () {
+  var f = FIN.wsForm; if (!f) return;
+  var getal = function (v) { return Number(String(v == null ? '' : v).replace(/\./g, '').replace(',', '.')); };
+  var dec = function (v) { return Number(String(v == null ? '' : v).replace(',', '.')); };
+  var w = FIN.data.waarderingsset, rev = w && w.status === 'concept' ? w.rev : 0;
+  finPost('waardering', { rev: rev, grondslag: f.grondslag, grondslag_jaar: Number(f.grondslag_jaar), grondslag_bedrag: f.grondslag === 'handmatig' ? getal(f.grondslag_bedrag) : undefined, grondslag_reden: f.grondslag_reden || '',
+    multiple_laag: dec(f.multiple_laag), multiple_hoog: dec(f.multiple_hoog), multiple_onderbouwing: f.multiple_onderbouwing || '', transactiekosten_pct: dec(f.transactiekosten_pct), scenario: f.scenario || '', peildatum: f.peildatum || '' }, 'Waarderingsset als concept opgeslagen.');
+};
+window.finWsKeurGoed = function () {
+  var w = FIN.data.waarderingsset, mo = ge('fin-ws-mo'); if (!w) return;
+  finPost('waardering/goedkeuren', { rev: w.rev, motivering: mo ? mo.value : '' }, 'Waarderingsset goedgekeurd; de indicatieve waardering op het dashboard volgt deze set.');
+};
 window.finBewaarPrognose = function () {
   var a = [], fte = {};
   for (var i = 0; i < 2; i++) {
@@ -244,6 +264,35 @@ function finEqHtml(d) {
     + '<button class="btn-ghost btn-sm" style="font-size:11px" onclick="finEqOpenForm()"' + dis + '>Post voorstellen</button></div>'
     + (FIN.eqForm ? finEqFormHtml() : '') + posten.map(finEqPostHtml).join('');
 }
+function finWsHtml(d) {
+  if (!isTussen()) return '';
+  var w = d.waarderingsset, b = d.waardering_berekend, dis = FIN.bezig ? ' disabled' : '';
+  var h = '<div style="font-size:12px;font-weight:600;margin-top:.9rem">Waarderingsset (centraal, voor dealvoorstel en dashboard)</div>'
+    + '<div style="font-size:11px;color:var(--muted);line-height:1.5">Eén goedgekeurde set met grondslag, multiple-bandbreedte, scenario en peildatum. Alleen voor de adviseur; niet zichtbaar voor verkoper of koper en niet in het informatiememorandum. Goedkeuren zet de indicatieve waardering op het dashboard.</div>';
+  if (w && b) {
+    var st = w.status === 'goedgekeurd' ? (b.verouderd ? 'goedgekeurd, maar VEROUDERD: een bron is sindsdien gewijzigd' : 'goedgekeurd' + (w.goedgekeurd_door ? ' door ' + w.goedgekeurd_door : '')) : w.status;
+    h += '<div style="font-size:12px;margin-top:.3rem' + (b.verouderd ? ';color:var(--red)' : '') + '">Versie ' + finEsc(w.versie) + ' · ' + finEsc(st) + ' · ' + finEsc(w.scenario) + ' · peildatum ' + finEsc(w.peildatum) + '</div>'
+      + '<table style="border-collapse:collapse;font-size:12px;margin-top:.3rem">'
+      + '<tr><td style="padding:3px 6px">Grondslag</td><td style="text-align:right;padding:3px 6px">' + finGeld(b.grondslag_bedrag) + '</td><td style="padding:3px 6px;color:var(--muted)">' + finEsc(w.grondslag === 'genormaliseerde_ebitda' ? 'genormaliseerde EBITDA ' + w.grondslag_jaar : 'handmatig: ' + w.grondslag_reden) + '</td></tr>'
+      + '<tr><td style="padding:3px 6px">Multiple</td><td style="text-align:right;padding:3px 6px">' + finEsc(String(w.multiple_laag).replace('.', ',') + ' – ' + String(w.multiple_hoog).replace('.', ',')) + '</td><td style="padding:3px 6px;color:var(--muted)">' + finEsc(w.multiple_onderbouwing) + '</td></tr>'
+      + (b.ondernemingswaarde ? '<tr><td style="padding:3px 6px">Ondernemingswaarde (laag / midden / hoog)</td><td style="text-align:right;padding:3px 6px" colspan="2">' + finGeld(b.ondernemingswaarde.laag) + ' / ' + finGeld(b.ondernemingswaarde.midden) + ' / ' + finGeld(b.ondernemingswaarde.hoog) + '</td></tr>' : '')
+      + '<tr><td style="padding:3px 6px">Aandelenwaarde (laag / midden / hoog)</td><td style="text-align:right;padding:3px 6px" colspan="2">' + (b.aandelenwaarde ? finGeld(b.aandelenwaarde.laag) + ' / ' + finGeld(b.aandelenwaarde.midden) + ' / ' + finGeld(b.aandelenwaarde.hoog) : '<span style="color:var(--muted)">equity bridge nog niet volledig goedgekeurd</span>') + '</td></tr></table>';
+    if (w.status === 'concept') h += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:.4rem"><input id="fin-ws-mo" maxlength="2000" aria-label="Motivering (verplicht bij goedkeuren)" style="flex:1;min-width:200px;font-size:12px"' + dis + '><button class="btn btn-sm" style="font-size:11px" onclick="finWsKeurGoed()"' + dis + '>Set goedkeuren</button></div>';
+  } else h += '<div style="font-size:12px;color:var(--muted);margin-top:.3rem">Nog geen waarderingsset.</div>';
+  h += '<div style="margin-top:.4rem"><button class="btn-ghost btn-sm" style="font-size:11px" onclick="finWsOpen()"' + dis + '>' + (w && w.status === 'concept' ? 'Concept bewerken' : (w ? 'Nieuwe versie maken' : 'Waarderingsset maken')) + '</button></div>';
+  if (FIN.wsForm) {
+    var f = FIN.wsForm, stl = 'font-size:12px;width:100%';
+    var inp = function (k, label, max) { return '<label style="font-size:11px;display:block;margin-top:.3rem">' + label + '<input maxlength="' + max + '" style="' + stl + '" value="' + finEsc(f[k] == null ? '' : f[k]) + '" oninput="finWsZet(\'' + k + '\',this.value)"' + dis + '></label>'; };
+    var jaren = (d.jaren || []).map(function (j) { return '<option value="' + j.jaar + '"' + (Number(f.grondslag_jaar) === j.jaar ? ' selected' : '') + '>' + j.jaar + ' (genormaliseerde EBITDA ' + finEsc(finGeld(j.genormaliseerd.ebitda)) + ')</option>'; }).join('');
+    h += '<div style="border:1px dashed var(--border2);border-radius:var(--r);padding:.6rem;margin-top:.5rem">'
+      + '<label style="font-size:11px">Grondslag<select style="' + stl + '" onchange="finWsZet(\'grondslag\',this.value);finHerteken()"' + dis + '><option value="genormaliseerde_ebitda"' + (f.grondslag === 'genormaliseerde_ebitda' ? ' selected' : '') + '>Genormaliseerde EBITDA (financiële analyse)</option><option value="handmatig"' + (f.grondslag === 'handmatig' ? ' selected' : '') + '>Handmatig (met reden)</option></select></label>'
+      + (f.grondslag === 'genormaliseerde_ebitda' ? '<label style="font-size:11px;display:block;margin-top:.3rem">Boekjaar<select style="' + stl + '" onchange="finWsZet(\'grondslag_jaar\',this.value)"' + dis + '>' + jaren + '</select></label>' : inp('grondslag_bedrag', 'Grondslag in euro', 20) + inp('grondslag_reden', 'Reden voor een handmatige grondslag', 1000))
+      + inp('multiple_laag', 'Multiple laag', 6) + inp('multiple_hoog', 'Multiple hoog', 6) + inp('multiple_onderbouwing', 'Onderbouwing multiple (bijv. sectorbandbreedte, vergelijkbare transacties)', 2000)
+      + inp('transactiekosten_pct', 'Transactiekosten (% van de ondernemingswaarde)', 5) + inp('scenario', 'Scenario', 120) + inp('peildatum', 'Peildatum (JJJJ-MM-DD)', 10)
+      + '<div style="margin-top:.4rem"><button class="btn btn-sm" style="font-size:11px" onclick="finWsBewaar()"' + dis + '>Als concept opslaan</button></div></div>';
+  }
+  return h;
+}
 function renderFinancieleAnalyse(faseId) {
   finSync();
   if (faseId !== 'financieel' || !(isVerkoper() || isTussen()) || !S.code) return '';
@@ -256,7 +305,7 @@ function renderFinancieleAnalyse(faseId) {
   h += finAansluitingHtml(d) + finHistorieAansluitingHtml(d)
     + '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:.6rem">' + (isTussen() ? '<button class="btn-ghost btn-sm" style="font-size:11px" onclick="finVoorstellen()"' + dis + '>Voorstellen van KVM ophalen</button>' : '')
     + '<button class="btn-ghost btn-sm" style="font-size:11px" onclick="finOpenForm()"' + dis + '>Normalisatie voorstellen</button></div>'
-    + (FIN.form ? finFormHtml() : '') + d.normalisaties.map(finNmHtml).join('') + finPrognoseHtml(d) + finEqHtml(d);
+    + (FIN.form ? finFormHtml() : '') + d.normalisaties.map(finNmHtml).join('') + finPrognoseHtml(d) + finEqHtml(d) + finWsHtml(d);
   return h + '</div>';
 }
 // Dealvoorstel (mna/04): genormaliseerde EBITDA en goedgekeurde prognose als expliciete keuze, nooit automatisch.
@@ -270,6 +319,7 @@ window.finDealvoorstelHint = function (doelEl) {
       + ' <button type="button" class="btn-ghost btn-sm" style="font-size:11px" data-waarde="' + Math.round(j.genormaliseerd.ebitda) + '" onclick="var e=document.getElementById(\'dv-ebitda-bewezen\');if(e){e.value=this.getAttribute(\'data-waarde\');}">Overnemen als bewezen EBITDA</button>'
       + (p ? '<br>Goedgekeurde prognose ' + finEsc(p.jaar) + ': EBITDA <strong>' + finGeld(p.exploitatie.ebitda) + '</strong> <button type="button" class="btn-ghost btn-sm" style="font-size:11px" data-waarde="' + Math.round(p.exploitatie.ebitda) + '" onclick="var e=document.getElementById(\'dv-ebitda-prognose\');if(e){e.value=this.getAttribute(\'data-waarde\');}">Overnemen als prognose-EBITDA</button>' : '')
       + finEqHintHtml(x.d)
+      + finWsHintHtml(x.d)
       + '</div>';
     // Besluit Marcel 13-11 (#91): een volledig goedgekeurde equity bridge is de bron. Staan de drie velden nog op hun
     // beginwaarde (0), dan direct overnemen; heeft de adviseur al iets ingevuld, dan niets overschrijven (knop blijft).
@@ -297,3 +347,21 @@ window.finEqNeemOver = function (el) {
   zet('dv-nettoschuld', el.getAttribute('data-ns')); zet('dv-debtlike', el.getAttribute('data-dl')); zet('dv-wccorr', el.getAttribute('data-wc'));
 };
 
+
+// #91 B5: goedgekeurde waarderingsset als expliciete keuze in het dealvoorstel. Neemt de grondslag (bewezen EBITDA) en het
+// midden van de goedgekeurde multiple-bandbreedte (als basis-multiple) en de transactiekosten over; de bovengrens-multiple
+// van het prijsmechanisme heeft een andere betekenis en wordt NIET gewijzigd. Verouderde of concept-sets worden niet
+// aangeboden; nooit automatisch.
+function finWsHintHtml(d) {
+  var w = d && d.waarderingsset, b = d && d.waardering_berekend;
+  if (!w || !b) return '';
+  if (w.status !== 'goedgekeurd') return '<br><span style="color:var(--muted)">Waarderingsset v' + finEsc(w.versie) + ' is nog niet goedgekeurd.</span>';
+  if (b.grondslag_bedrag == null || !(b.multiple_midden > 0)) return '<br><span style="color:var(--muted)">Waarderingsset v' + finEsc(w.versie) + ' heeft geen bruikbare grondslag (boekjaar niet meer gereed?).</span>';
+  if (b.verouderd) return '<br><span style="color:var(--red)">Waarderingsset v' + finEsc(w.versie) + ' is verouderd (een bron is gewijzigd); keur eerst een nieuwe versie goed.</span>';
+  return '<br>Goedgekeurde waarderingsset v' + finEsc(w.versie) + ' (' + finEsc(w.scenario) + ', peildatum ' + finEsc(w.peildatum) + '): grondslag <strong>' + finGeld(b.grondslag_bedrag) + '</strong>, multiple ' + finEsc(String(w.multiple_laag).replace('.', ',') + '–' + String(w.multiple_hoog).replace('.', ',')) + ' (midden ' + finEsc(String(b.multiple_midden).replace('.', ',')) + ')'
+    + ' <button type="button" class="btn-ghost btn-sm" style="font-size:11px" data-g="' + Math.round(b.grondslag_bedrag) + '" data-m="' + b.multiple_midden + '" data-tk="' + w.transactiekosten_pct + '" data-v="' + finEsc(w.versie) + '" onclick="finWsNeemOver(this)">Overnemen als grondslag en basis-multiple</button>';
+}
+window.finWsNeemOver = function (el) {
+  var zet = function (id, v) { var e = document.getElementById(id); if (e) { e.value = v; e.setAttribute('data-bron', 'waarderingsset-v' + el.getAttribute('data-v')); e.setAttribute('data-bron-waarde', v); } };
+  zet('dv-ebitda-bewezen', el.getAttribute('data-g')); zet('dv-mult-basis', el.getAttribute('data-m')); zet('dv-txkosten', el.getAttribute('data-tk'));
+};
