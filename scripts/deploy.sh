@@ -57,8 +57,13 @@ REGRESSIE_STATUS="onbekend"
 herkomst_controle() { # $1 = repo-map, $2 = 'main' (productie) of 'branch' (staging/preview); zet HERKOMST_COMMIT
   local map="$1" eis="$2" root
   root=$(git -C "$map" rev-parse --show-toplevel)
-  if [ -n "$(git -C "$root" status --porcelain --untracked-files=no)" ]; then
-    echo "🔴 Releaseherkomst: werkboom $root heeft niet-vastgelegde wijzigingen — niet uitrollen."; exit 1
+  # Codex-review 18-11 (P2): ook niet-vastgelegde (niet-genegeerde) bestanden weigeren. De frontendbuild neemt die mee
+  # (git ls-files --others --exclude-standard); zonder deze eis kon een los bestand worden gepubliceerd dat niet in de
+  # gecontroleerde commit staat. Met deze eis is de build-uitvoer exact de vastgelegde inhoud van HERKOMST_COMMIT.
+  local vuil
+  vuil=$(git -C "$root" status --porcelain --untracked-files=all)
+  if [ -n "$vuil" ]; then
+    echo "🔴 Releaseherkomst: werkboom $root bevat wijzigingen of niet-vastgelegde bestanden — niet uitrollen:"; echo "$vuil" | head -20; exit 1
   fi
   git -C "$root" fetch -q origin
   HERKOMST_COMMIT=$(git -C "$root" rev-parse HEAD)

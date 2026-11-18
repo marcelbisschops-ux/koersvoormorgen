@@ -2468,6 +2468,15 @@ log('UAT DOC-A24/A26 bankmutaties: kandidaten uit het dossier, keuze bij dubbele
   else ok('UAT DOC-A24/A26: bankafschriften uit het dossier inlezen (timeout), keuze alleen-nieuw bij dubbele, CAMT.053 kiesbaar, journey laadt documenten en bankmutaties, handleiding mna en adv.');
 }
 
+log('Releaseherkomst: geen uitrol vanuit een werkboom met wijzigingen of niet-vastgelegde bestanden (Codex-review 18-11, P2)');
+{
+  try {
+    const { execFileSync } = await import('child_process');
+    execFileSync('bash', [path.join(ROOT, 'tests/releaseherkomst-schone-werkboom.test.sh')], { stdio: 'pipe', cwd: ROOT });
+    ok('herkomst_controle weigert gewijzigde en niet-vastgelegde bestanden (tests/releaseherkomst-schone-werkboom.test.sh groen).');
+  } catch (e) { warn('Releaseherkomst: schone-werkboomcontrole faalt: ' + String((e && e.stdout) || (e && e.message) || e).split('\n').filter((r) => /✗/.test(r)).join('; ')); }
+}
+
 log('Samenvatting');
 if (!bevindingen) {
   console.log('  \x1b[32mGeen bevindingen.\x1b[0m');
