@@ -13,7 +13,7 @@
 // werd gegitignored) wordt hieronder aanvullend expliciet uitgesloten — .gitignore untrackt geen
 // reeds-getrackte bestanden met terugwerkende kracht.
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, copyFileSync, rmSync, existsSync, symlinkSync, lstatSync } from 'node:fs';
+import { mkdirSync, copyFileSync, rmSync, existsSync, symlinkSync, lstatSync, renameSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 
 const REPO_ROOT = new URL('..', import.meta.url).pathname.replace(/\/$/, '');
@@ -22,6 +22,11 @@ const REPO_ROOT = new URL('..', import.meta.url).pathname.replace(/\/$/, '');
 // zouden worden. `.pages-dist` blijft het vaste pad voor deploy, releasegate en hook: een koppeling naar deze map.
 const DIST_DIR = join(REPO_ROOT, '.pages-dist.nosync');
 const DIST_LINK = join(REPO_ROOT, '.pages-dist');
+// Mislukte build mag nooit tot publicatie leiden (bevinding 18-11-2026: een afgebroken kopie liet een halve
+// .pages-dist achter die daarna toch werd gepubliceerd). Daarom: bouwen in een tijdelijke map, pas bij volledig
+// succes vervangen; bij elke fout ook de vorige uitvoer en de link weghalen, zodat er niets te publiceren valt.
+const BOUW_DIR = join(REPO_ROOT, '.pages-dist.bouw');
+function ruimUitvoerOp() { for (const p of [BOUW_DIR, DIST_DIR]) rmSync(p, { recursive: true, force: true }); try { lstatSync(DIST_LINK); rmSync(DIST_LINK, { recursive: true, force: true }); } catch {} }
 
 // Aanvullende, expliciete uitsluiting bovenop .gitignore — vangt reeds-getrackte bestanden die niet
 // met terugwerkende kracht uit een latere .gitignore-regel worden gehaald (zie toelichting hierboven).
@@ -39,6 +44,8 @@ function isExtraExcluded(relPath) {
   return EXTRA_EXCLUDE_PREFIXES.some((p) => relPath === p.replace(/\/$/, '') || relPath.startsWith(p));
 }
 
+function isSymlink(p) { try { return lstatSync(p).isSymbolicLink(); } catch { return false; } }
+
 function main() {
   const raw = execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard'], {
     cwd: REPO_ROOT,
@@ -46,23 +53,31 @@ function main() {
   });
   const files = raw.split('\n').filter(Boolean).filter((f) => !isExtraExcluded(f));
 
-  if (existsSync(DIST_DIR)) rmSync(DIST_DIR, { recursive: true, force: true });
-  mkdirSync(DIST_DIR, { recursive: true });
-  let isLink = false; try { isLink = lstatSync(DIST_LINK).isSymbolicLink(); } catch {}
-  if (!isLink) { rmSync(DIST_LINK, { recursive: true, force: true }); symlinkSync('.pages-dist.nosync', DIST_LINK); }
+  ruimUitvoerOp();
+  mkdirSync(BOUW_DIR, { recursive: true });
 
   let gekopieerd = 0;
   for (const rel of files) {
     const src = join(REPO_ROOT, rel);
-    const dest = join(DIST_DIR, rel);
-    if (!existsSync(src)) continue; // git kent 'm, maar staat (nog) niet op schijf — sla over
+    const dest = join(BOUW_DIR, rel);
+    if (!existsSync(src) && !isSymlink(src)) continue; // git kent 'm, maar staat (nog) niet op schijf — sla over
+    // Alleen gewone bestanden. Een symlink, socket of map (bijv. een tijdelijke node_modules-link) is onverwacht:
+    // de build faalt dan in plaats van iets onbedoelds mee te nemen.
+    if (!lstatSync(src).isFile()) throw new Error('Geen gewoon bestand in de build-bron: ' + rel + ' (verwijder het of neem het op in .gitignore).');
     mkdirSync(dirname(dest), { recursive: true });
     copyFileSync(src, dest);
     gekopieerd++;
   }
+  if (!gekopieerd) throw new Error('Lege build-uitvoer.');
+  renameSync(BOUW_DIR, DIST_DIR);
+  symlinkSync('.pages-dist.nosync', DIST_LINK);
 
   console.log(`Build-output samengesteld: ${gekopieerd} bestanden in ${DIST_DIR}`);
   console.log(`(bron: git ls-files --cached --others --exclude-standard, min. ${EXTRA_EXCLUDE_PREFIXES.join(', ')}, dotfiles en ${[...EXTRA_EXCLUDE_EXACT].join(', ')})`);
 }
 
-main();
+try { main(); } catch (e) {
+  ruimUitvoerOp();
+  console.error('BUILD MISLUKT, er is geen build-uitvoer (.pages-dist) en er valt niets te publiceren: ' + (e && e.message || e));
+  process.exit(1);
+}

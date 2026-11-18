@@ -100,3 +100,4 @@ tests/.env.staging.local
 # Operationele rapporten van runs (30 sep 2026, N-86): lokale bewijs-output, geen broncode.
 # Publicatie is al geblokkeerd via functions/_middleware.js (N-83); hier alleen git-hygiëne.
 /reports/
+.pages-dist.bouw/
