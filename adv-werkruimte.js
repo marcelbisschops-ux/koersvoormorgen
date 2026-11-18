@@ -192,6 +192,8 @@ function wrMandaatDetail(x) {
 }
 // KVM-008: honoraria per mandaat (vergoedingsonderdelen, gebeurtenissen, facturen en betalingen). Verschuldigd volgt alleen
 // uit geregistreerde gebeurtenissen; ontbreekt een grondslag, dan toont het scherm 'niet te berekenen' met de reden.
+// Honoraria in centen (de rekenkern rekent op centen; afronden op hele euro's zou openstaande bedragen vertekenen).
+function wrHonEuro(n) { return n === null || n === undefined ? null : '€ ' + Number(n).toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 var WR_HON_SOORT = { aanvang: 'Aanvangsvergoeding', introductie: 'Introductie-/kennismakingsvergoeding', retainer: 'Retainer', succesfee: 'Succesfee' };
 var WR_HON_GEB = { ondertekening: 'Overeenkomst ondertekend', introductie: 'Introductie', closing: 'Closing', mandaat_einde: 'Einde mandaat' };
 function wrHonLaad(tid) {
@@ -206,8 +208,8 @@ function wrHonPost(e, tid, pad, b) {
 }
 function wrHonAfspraak(o) {
   var d = [];
-  if (o.grondslag === 'percentage') d.push(String(o.percentage).replace('.', ',') + '% van de transactiewaarde' + (o.minimum ? ', minimaal ' + wrEuro(o.minimum) : ''));
-  else d.push(wrEuro(o.bedrag) + (o.soort === 'retainer' ? ' per maand' : o.soort === 'introductie' ? ' per introductie' : ''));
+  if (o.grondslag === 'percentage') d.push(String(o.percentage).replace('.', ',') + '% van de transactiewaarde' + (o.minimum ? ', minimaal ' + wrHonEuro(o.minimum) : ''));
+  else d.push(wrHonEuro(o.bedrag) + (o.soort === 'retainer' ? ' per maand' : o.soort === 'introductie' ? ' per introductie' : ''));
   if (o.soort === 'retainer') d.push(o.looptijd_maanden + ' maanden vanaf ' + wrDatum(o.startdatum));
   if (o.soort === 'succesfee') d.push('tail ' + (o.tail_maanden || 0) + ' maanden');
   if (o.verrekenen_met_succesfee) d.push('verrekenbaar met de succesfee');
@@ -224,11 +226,12 @@ function wrHonTeken(tid, r) {
     + d.onderdelen.map(function (o) {
       var x = per[o.id] || {};
       var vs = x.niet_te_berekenen ? '<span class="wr-label wr-oranje">Niet te berekenen</span><div class="wr-sub">' + wrEsc(x.niet_te_berekenen) + '</div>'
-        : wrEsc(wrEuro(x.verschuldigd)) + (x.verrekening ? '<div class="wr-sub">na verrekening ' + wrEsc(wrEuro(x.verrekening)) + '</div>' : '') + (x.toelichting ? '<div class="wr-sub">' + wrEsc(x.toelichting) + '</div>' : '');
-      return '<tr><td>' + wrEsc(WR_HON_SOORT[o.soort] || o.soort) + (o.toelichting ? '<div class="wr-sub">' + wrEsc(o.toelichting) + '</div>' : '') + '</td><td>' + wrEsc(wrHonAfspraak(o)) + '</td><td>' + vs + '</td><td>' + wrEsc(wrEuro(x.gefactureerd || 0)) + '</td><td>' + wrEsc(wrEuro(x.betaald || 0)) + '</td><td>'
-        + (x.openstaand === null || x.openstaand === undefined ? '–' : wrEsc(wrEuro(x.openstaand)) + (x.openstaand < 0 ? '<div class="wr-sub">te veel betaald</div>' : '')) + '</td>'
+        : wrEsc(wrHonEuro(x.verschuldigd)) + (x.verrekening ? '<div class="wr-sub">na verrekening ' + wrEsc(wrHonEuro(x.verrekening)) + '</div>' : '') + (x.toelichting ? '<div class="wr-sub">' + wrEsc(x.toelichting) + '</div>' : '')
+        + ((x.posten || []).length ? '<div class="wr-sub">' + x.posten.map(function (p) { return wrEsc(wrDatum(p.datum)) + ': ' + wrEsc(wrHonEuro(p.bedrag)) + ' (' + wrEsc(p.grond) + ')'; }).join('<br>') + '</div>' : '');
+      return '<tr><td>' + wrEsc(WR_HON_SOORT[o.soort] || o.soort) + (o.toelichting ? '<div class="wr-sub">' + wrEsc(o.toelichting) + '</div>' : '') + '</td><td>' + wrEsc(wrHonAfspraak(o)) + '</td><td>' + vs + '</td><td>' + wrEsc(wrHonEuro(x.gefactureerd || 0)) + '</td><td>' + wrEsc(wrHonEuro(x.betaald || 0)) + '</td><td>'
+        + (x.openstaand === null || x.openstaand === undefined ? '–' : wrEsc(wrHonEuro(x.openstaand)) + (x.openstaand < 0 ? '<div class="wr-sub">te veel betaald</div>' : '')) + '</td>'
         + '<td><button type="button" class="wr-link" onclick="wrHonPost(null,\'' + t + '\',\'/mna/honorarium/onderdeel\',{id:\'' + wrEsc(o.id) + '\',rev:' + o.rev + ',verwijder:true})">Verwijderen</button></td></tr>';
-    }).join('') + '<tr><td colspan="2"><strong>Totaal</strong>' + (b.totaal.onvolledig ? '<div class="wr-sub">Niet alle onderdelen zijn te berekenen.</div>' : '') + '</td><td><strong>' + wrEsc(wrEuro(b.totaal.verschuldigd)) + '</strong></td><td>' + wrEsc(wrEuro(b.totaal.gefactureerd)) + '</td><td>' + wrEsc(wrEuro(b.totaal.betaald)) + '</td><td><strong>' + wrEsc(wrEuro(b.totaal.openstaand)) + '</strong></td><td></td></tr></tbody></table></div>'
+    }).join('') + '<tr><td colspan="2"><strong>Totaal</strong>' + (b.totaal.onvolledig ? '<div class="wr-sub">Niet alle onderdelen zijn te berekenen.</div>' : '') + '</td><td><strong>' + wrEsc(wrHonEuro(b.totaal.verschuldigd)) + '</strong></td><td>' + wrEsc(wrHonEuro(b.totaal.gefactureerd)) + '</td><td>' + wrEsc(wrHonEuro(b.totaal.betaald)) + '</td><td><strong>' + wrEsc(wrHonEuro(b.totaal.openstaand)) + '</strong></td><td></td></tr></tbody></table></div>'
     : '<div class="wr-leeg">Nog geen vergoedingsonderdelen.</div>';
   h += '<form class="wr-form" onsubmit="return wrHonOnderdeel(event,\'' + t + '\')"><select name="soort" aria-label="Soort vergoeding">' + Object.keys(WR_HON_SOORT).map(function (k) { return '<option value="' + k + '">' + WR_HON_SOORT[k] + '</option>'; }).join('') + '</select>'
     + '<select name="grondslag" aria-label="Grondslag succesfee"><option value="vast">Vast bedrag</option><option value="percentage">Percentage van de transactiewaarde</option></select>'
@@ -240,7 +243,7 @@ function wrHonTeken(tid, r) {
     + '<label class="wr-check"><input name="verrekenen" type="checkbox"> verrekenen met de succesfee</label><input name="toelichting" maxlength="500" placeholder="Toelichting" aria-label="Toelichting">'
     + '<button class="btn btn-sm" type="submit">Onderdeel toevoegen</button></form>';
   h += '<h4 class="wr-h3">Gebeurtenissen</h4>' + (d.gebeurtenissen.length ? '<ul class="wr-besl">' + d.gebeurtenissen.map(function (g) {
-    return '<li>' + wrEsc(wrDatum(g.datum)) + ' · ' + wrEsc(WR_HON_GEB[g.soort] || g.soort) + (g.transactiewaarde !== null && g.transactiewaarde !== undefined ? ' · transactiewaarde ' + wrEsc(wrEuro(g.transactiewaarde)) : '') + (g.omschrijving ? ' · ' + wrEsc(g.omschrijving) : '')
+    return '<li>' + wrEsc(wrDatum(g.datum)) + ' · ' + wrEsc(WR_HON_GEB[g.soort] || g.soort) + (g.transactiewaarde !== null && g.transactiewaarde !== undefined ? ' · transactiewaarde ' + wrEsc(wrHonEuro(g.transactiewaarde)) : '') + (g.omschrijving ? ' · ' + wrEsc(g.omschrijving) : '')
       + ' <button type="button" class="wr-link" onclick="wrHonPost(null,\'' + t + '\',\'/mna/honorarium/gebeurtenis\',{verwijder_id:\'' + wrEsc(g.id) + '\'})">Verwijderen</button></li>';
   }).join('') + '</ul>' : '<div class="wr-leeg">Nog geen gebeurtenissen.</div>')
     + '<form class="wr-form" onsubmit="return wrHonGebeurtenis(event,\'' + t + '\')"><select name="soort" aria-label="Soort gebeurtenis">' + Object.keys(WR_HON_GEB).map(function (k) { return '<option value="' + k + '">' + WR_HON_GEB[k] + '</option>'; }).join('') + '</select>'
@@ -248,7 +251,7 @@ function wrHonTeken(tid, r) {
     + '<input name="omschrijving" maxlength="200" placeholder="Omschrijving (bijv. welke overeenkomst of introductie)" aria-label="Omschrijving"><button class="btn btn-sm" type="submit">Registreren</button></form>';
   h += '<h4 class="wr-h3">Facturen en betalingen</h4>' + (d.boekingen.length ? '<ul class="wr-besl">' + d.boekingen.map(function (k) {
     var o = d.onderdelen.filter(function (x) { return x.id === k.onderdeel_id; })[0];
-    return '<li>' + wrEsc(wrDatum(k.datum)) + ' · ' + (k.soort === 'factuur' ? 'Factuur' : 'Betaling') + ' ' + wrEsc(wrEuro(k.bedrag)) + ' · ' + wrEsc(o ? WR_HON_SOORT[o.soort] : 'onderdeel') + (k.referentie ? ' · ' + wrEsc(k.referentie) : '')
+    return '<li>' + wrEsc(wrDatum(k.datum)) + ' · ' + (k.soort === 'factuur' ? 'Factuur' : 'Betaling') + ' ' + wrEsc(wrHonEuro(k.bedrag)) + ' · ' + wrEsc(o ? WR_HON_SOORT[o.soort] : 'onderdeel') + (k.referentie ? ' · ' + wrEsc(k.referentie) : '')
       + ' <button type="button" class="wr-link" onclick="wrHonPost(null,\'' + t + '\',\'/mna/honorarium/boeking\',{verwijder_id:\'' + wrEsc(k.id) + '\'})">Verwijderen</button></li>';
   }).join('') + '</ul>' : '<div class="wr-leeg">Nog geen facturen of betalingen.</div>')
     + (d.onderdelen.length ? '<form class="wr-form" onsubmit="return wrHonBoeking(event,\'' + t + '\')"><select name="onderdeel_id" aria-label="Vergoedingsonderdeel">' + d.onderdelen.map(function (o) { return '<option value="' + wrEsc(o.id) + '">' + wrEsc(WR_HON_SOORT[o.soort] || o.soort) + '</option>'; }).join('') + '</select>'
