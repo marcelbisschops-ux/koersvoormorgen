@@ -49,11 +49,54 @@ PAGES_PROJECT="kantoorinzicht-frontend"
 WAT="${1:-alles}"
 REGRESSIE_STATUS="onbekend"
 
+# ── Releaseherkomst (Marcel 18-11-2026) ─────────────────────────────────────────────────────────────────────
+# GitHub is leidend. Elke deploy komt uit een schone werkboom met een commit die op GitHub staat; productie alleen
+# uit de geschiedenis van main. Elke Worker-versie krijgt de commit als tag. Na productie controleert
+# scripts/releaseherkomst.mjs of wat werkelijk draait herleidbaar is; bij een afwijking: waarschuwen en stoppen,
+# nooit automatisch overschrijven. Productie vraagt altijd Marcels expliciete GO per release (besluit 18-11-2026).
+herkomst_controle() { # $1 = repo-map, $2 = 'main' (productie) of 'branch' (staging/preview); zet HERKOMST_COMMIT
+  local map="$1" eis="$2" root
+  root=$(git -C "$map" rev-parse --show-toplevel)
+  # Codex-review 18-11 (P2): ook niet-vastgelegde (niet-genegeerde) bestanden weigeren. De frontendbuild neemt die mee
+  # (git ls-files --others --exclude-standard); zonder deze eis kon een los bestand worden gepubliceerd dat niet in de
+  # gecontroleerde commit staat. Met deze eis is de build-uitvoer exact de vastgelegde inhoud van HERKOMST_COMMIT.
+  local vuil
+  vuil=$(git -C "$root" status --porcelain --untracked-files=all)
+  if [ -n "$vuil" ]; then
+    echo "🔴 Releaseherkomst: werkboom $root bevat wijzigingen of niet-vastgelegde bestanden — niet uitrollen:"; echo "$vuil" | head -20; exit 1
+  fi
+  git -C "$root" fetch -q origin
+  HERKOMST_COMMIT=$(git -C "$root" rev-parse HEAD)
+  if [ "$eis" = "main" ]; then
+    git -C "$root" merge-base --is-ancestor "$HERKOMST_COMMIT" origin/main \
+      || { echo "🔴 Releaseherkomst: commit ${HERKOMST_COMMIT:0:12} staat niet in de geschiedenis van origin/main — productie alleen vanaf main."; exit 1; }
+  else
+    [ -n "$(git -C "$root" branch -r --contains "$HERKOMST_COMMIT" 2>/dev/null)" ] \
+      || { echo "🔴 Releaseherkomst: commit ${HERKOMST_COMMIT:0:12} staat nog niet op GitHub — eerst pushen."; exit 1; }
+  fi
+  echo "🟢 Releaseherkomst: ${HERKOMST_COMMIT:0:12} ($(git -C "$root" log -1 --format=%s "$HERKOMST_COMMIT" | cut -c1-70))"
+}
+vraag_release_go() { # $1 = onderdeel; vereist expliciete GO voor exact deze commit
+  local kort="${HERKOMST_COMMIT:0:12}" antw
+  if [ "${KVM_RELEASE_GO:-}" = "$kort" ]; then echo "🟢 GO Marcel voor $1 ${kort} (KVM_RELEASE_GO)."; return 0; fi
+  if [ -t 0 ]; then
+    read -rp "Productierelease $1 commit $kort. Alleen met GO van Marcel: typ 'GO $kort' om door te gaan: " antw
+    [ "$antw" = "GO $kort" ] && return 0
+  fi
+  echo "🔴 Geen expliciete GO voor $1 ${kort} — productie wordt NIET gestart."; exit 1
+}
+controleer_productieherkomst() {
+  if node "$FE_DIR/scripts/releaseherkomst.mjs"; then return 0; fi
+  echo "🔴 AFWIJKING: de draaiende productie is niet herleidbaar tot GitHub (zie hierboven). Niets overschreven; onderzoek voordat je verdergaat."
+  exit 1
+}
+
 deploy_backend_staging() {
   echo ""
   echo "════════ BACKEND · STAGING ════════"
+  herkomst_controle "$BE_DIR" branch
   cd "$BE_DIR"
-  npx wrangler deploy cloudflare-worker.js --env=staging
+  npx wrangler deploy cloudflare-worker.js --env=staging --tag "${HERKOMST_COMMIT:0:12}" --message "commit $HERKOMST_COMMIT"
   echo ""
   echo "Staging live: https://kantoorinzicht-staging.marcel-bisschops.workers.dev/health"
   echo "Test daar de gewijzigde route(s) vóór je verdergaat."
@@ -95,8 +138,8 @@ draai_regressietest() {
   fi
 }
 
-# Beleid (Marcel, 23 sep 2026): bij 🟢 REGRESSIE_STATUS gaat het standaardpad automatisch
-# door naar productie, zonder aparte bevestigingsvraag. Bij alles anders dan 🟢 (🔴 hier;
+# Beleid: tot 18-11-2026 ging het standaardpad bij 🟢 automatisch door naar productie (23 sep 2026); sinds
+# 18-11-2026 vraagt productie altijd Marcels expliciete GO per release (vraag_release_go). Bij alles anders dan 🟢 (🔴 hier;
 # een eventuele 🟠 — automatisch deel groen maar een menselijke controle nog open — is voor
 # dit script gelijk aan stoppen, want dit script kan die controle zelf niet vaststellen)
 # stopt het script vóór productie.
@@ -107,15 +150,18 @@ deploy_backend_prod() {
     echo "Los eerst de fout op en start het script opnieuw."
     exit 1
   fi
-  echo "🟢 Staging + regressietest volledig groen — automatisch door naar productie."
+  echo "🟢 Staging + regressietest volledig groen."
+  herkomst_controle "$BE_DIR" main
+  vraag_release_go backend
   echo ""
   echo "════════ BACKEND · PRODUCTIE ════════"
   cd "$BE_DIR"
-  npx wrangler deploy cloudflare-worker.js
+  npx wrangler deploy cloudflare-worker.js --tag "${HERKOMST_COMMIT:0:12}" --message "commit $HERKOMST_COMMIT (main)"
   echo ""
   echo -n "Health check: "
   curl -s "$WORKER_URL/health" || echo "(health-check mislukt — controleer handmatig)"
   echo ""
+  controleer_productieherkomst
   echo "Rollback indien nodig: vorige Version ID opnieuw deployen (staat in de output hierboven)."
 }
 
@@ -168,7 +214,9 @@ deploy_frontend() {
     echo "🔴 N-83-releasegate faalt op de preview — productie (koersvoormorgen.nl) wordt NIET aangeraakt."
     exit 1
   fi
-  echo "🟢 Negatieve releasetest groen — automatisch door naar productie."
+  echo "🟢 Negatieve releasetest groen."
+  herkomst_controle "$FE_DIR" main
+  vraag_release_go frontend
 
   echo ""
   echo "════════ FRONTEND · CLOUDFLARE PAGES (productie) ════════"
@@ -177,6 +225,7 @@ deploy_frontend() {
     exit 1
   fi
   npx wrangler pages deploy .pages-dist --project-name="$PAGES_PROJECT" --branch=main
+  controleer_productieherkomst
   echo ""
   echo "════════ FRONTEND · NEGATIEVE RELEASETEST (N-83, controle op productie zelf) ════════"
   if ! node tests/verify-n83-geen-publieke-lek.mjs "https://koersvoormorgen.nl"; then

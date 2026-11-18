@@ -2506,6 +2506,15 @@ log('KVM-008 honoraria: scherm in de KantoorCockpit (escaping, niet te berekenen
   } catch (e) { warn('KVM-008: tests/kvm008-honoraria-ui.mjs faalt: ' + String((e && e.stdout) || (e && e.message) || e).split('\n').filter((r) => /✗/.test(r)).join('; ')); }
 }
 
+log('Releaseherkomst: geen uitrol vanuit een werkboom met wijzigingen of niet-vastgelegde bestanden (Codex-review 18-11, P2)');
+{
+  try {
+    const { execFileSync } = await import('child_process');
+    execFileSync('bash', [path.join(ROOT, 'tests/releaseherkomst-schone-werkboom.test.sh')], { stdio: 'pipe', cwd: ROOT, env: Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith('GIT_'))) });
+    ok('herkomst_controle weigert gewijzigde en niet-vastgelegde bestanden (tests/releaseherkomst-schone-werkboom.test.sh groen).');
+  } catch (e) { warn('Releaseherkomst: schone-werkboomcontrole faalt: ' + String((e && e.stdout) || (e && e.message) || e).split('\n').filter((r) => /✗/.test(r)).join('; ')); }
+}
+
 log('Samenvatting');
 if (!bevindingen) {
   console.log('  \x1b[32mGeen bevindingen.\x1b[0m');

@@ -263,19 +263,31 @@ async function meldResultaatAanMarilyn() {
     // gewone run (DOE_AI=false) op 'skipped' — dat is bedoeld gedrag, geen fout, en hoort dus niet
     // in de noemer mee te tellen (anders toont Marilyn "16/18" i.p.v. de bedoelde "16/16").
     const gedraaid = TEST_RESULTS.filter((t) => t.status !== 'skipped');
-    const geslaagd = gedraaid.filter((t) => t.status === 'passed').length;
-    const fails = gedraaid.filter((t) => t.status !== 'passed').map((t) => ({ test: t.title, fout: t.fout }));
-    const resp = await fetch(E2E_REPORT_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-e2e-key': process.env.E2E_REPORT_KEY },
-      body: JSON.stringify({ checks_totaal: gedraaid.length, checks_geslaagd: geslaagd, type: DOE_AI ? 'ai' : 'deterministisch', fails }),
-    });
-    // Bugfix (18 sep 2026, tijdens het bouwen ontdekt): de productie-worker heeft een generieke
-    // catch-all die ELK onbekend pad met HTTP 200 beantwoordt ({"status":"...actief",...}) — resp.ok
-    // alleen checken zou dus stil "geslaagd" loggen zelfs als de route (nog) niet bestaat of de
-    // sleutel verkeerd is. Altijd de body-vorm controleren, nooit alleen de HTTP-status.
-    const json = await resp.json().catch(() => null);
-    if (!resp.ok || !json || json.ok !== true) console.log('Resultaatmelding aan Marilyn mislukt (niet kritiek): status ' + resp.status + ' — ' + JSON.stringify(json).slice(0, 200));
+    const meld = async (lijst, type) => {
+      const resp = await fetch(E2E_REPORT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-e2e-key': process.env.E2E_REPORT_KEY },
+        body: JSON.stringify({ checks_totaal: lijst.length, checks_geslaagd: lijst.filter((t) => t.status === 'passed').length, type,
+          fails: lijst.filter((t) => t.status !== 'passed').map((t) => ({ test: t.title, fout: t.fout })) }),
+      });
+      // Bugfix (18 sep 2026, tijdens het bouwen ontdekt): de productie-worker heeft een generieke
+      // catch-all die ELK onbekend pad met HTTP 200 beantwoordt ({"status":"...actief",...}) — resp.ok
+      // alleen checken zou dus stil "geslaagd" loggen zelfs als de route (nog) niet bestaat of de
+      // sleutel verkeerd is. Altijd de body-vorm controleren, nooit alleen de HTTP-status.
+      const json = await resp.json().catch(() => null);
+      if (!resp.ok || !json || json.ok !== true) console.log('Resultaatmelding (' + type + ') aan Marilyn mislukt (niet kritiek): status ' + resp.status + ' — ' + JSON.stringify(json).slice(0, 200));
+    };
+    // C04 (besluit Marcel 18-11-2026): de dagelijkse AI-run bevat het volledige deterministische deel. Dat deel wordt
+    // eerst AFZONDERLIJK en herkenbaar gemeld als 'deterministisch' (alleen de tests zonder [AI] in de titel), zodat
+    // het controleregister (KVM-C04: run_type deterministisch, min. 18) dagelijks echt uitgevoerd bewijs krijgt;
+    // daarna de volledige run als 'ai'. Een gewone run meldt zoals voorheen alleen 'deterministisch'.
+    if (DOE_AI) {
+      const det = gedraaid.filter((t) => !/\[AI\]/.test(t.title));
+      if (det.length) await meld(det, 'deterministisch');
+      await meld(gedraaid, 'ai');
+    } else {
+      await meld(gedraaid, 'deterministisch');
+    }
   } catch (e) {
     // Best-effort, nooit fataal: de melding zelf mag de teststatus nooit beïnvloeden — de
     // oorspronkelijke PASS/FAIL van de suite (hieronder, via expect()) blijft leidend.
