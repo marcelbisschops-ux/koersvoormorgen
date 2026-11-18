@@ -210,14 +210,23 @@ echo "▶ 3/5  Lokale (niet-gecommitte) documentatie back-uppen ..."
 # infrastructuur-ID's en interne werkafspraken die niet in de publieke repo horen (werkregel 25).
 # Daardoor stonden ze NERGENS geback-upt: bij verlies van dit apparaat was alle vastgelegde
 # operationele kennis (gouden regels, architectuur, herstelprocedures) weg, los van de D1-data zelf.
+# 18-11-2026: de back-up draait vanuit een vaste ops-werkboom op main (launchd), maar deze interne .md-bestanden
+# (MASTER, CLAUDE.md, standaarden) staan alleen in de hoofdmap. Bron daarom expliciet, niet afgeleid van de scriptmap.
+DOCS_BRON_DIR="${KVM_DOCS_DIR:-$HOME/Documents/GitHub/koersvoormorgen}"
 DOCS_BACKUP_DIR="$BACKUP_DIR/lokale-documentatie_$STAMP"
 mkdir -p "$DOCS_BACKUP_DIR"
 DOC_COUNT=0
-for f in "$REPO_DIR"/*.md; do
+for f in "$DOCS_BRON_DIR"/*.md; do
   [ -f "$f" ] || continue
   cp "$f" "$DOCS_BACKUP_DIR/" && DOC_COUNT=$((DOC_COUNT+1))
 done
-echo "   ✓ $DOC_COUNT lokale .md-bestanden gekopieerd naar $DOCS_BACKUP_DIR"
+if [ "$DOC_COUNT" -lt 5 ]; then
+  echo "   ✗ slechts $DOC_COUNT .md-bestanden in $DOCS_BRON_DIR — documentatieback-up onvolledig" >&2
+  DOCS_STATUS="documentatie ONVOLLEDIG ($DOC_COUNT)"
+else
+  DOCS_STATUS="documentatie $DOC_COUNT bestanden"
+fi
+echo "   ✓ $DOC_COUNT lokale .md-bestanden gekopieerd naar $DOCS_BACKUP_DIR (bron $DOCS_BRON_DIR)"
 # Oudere kopieën van deze documentatie-back-up opruimen (>60 dagen, zelfde bewaartermijn als de
 # database-dumps hieronder) — voorkomt dat elke dagelijkse run een aparte, nooit-opgeruimde map achterlaat.
 find "$BACKUP_DIR" -maxdepth 1 -name "lokale-documentatie_*" -type d -mtime +60 -exec rm -rf {} + 2>/dev/null || true
@@ -240,7 +249,7 @@ find "$BACKUP_DIR" -maxdepth 1 -name "kantoorinzicht_*.sql.sha256" -mtime +60 -d
 AANTAL=$(ls -1 "$BACKUP_DIR"/kantoorinzicht_*.sql 2>/dev/null | wc -l | tr -d ' ')
 echo "   ✓ $AANTAL database-back-up(s) in $BACKUP_DIR"
 
-meld_backup_status "true" "OK — $(basename "$OUT"), $TABELLEN tabellen, $DOC_OK nieuwe document(en); $HERSTELPROEF; $HERKOMST_STATUS."
+meld_backup_status "true" "OK — $(basename "$OUT"), $TABELLEN tabellen, $DOC_OK nieuwe document(en); $HERSTELPROEF; $DOCS_STATUS; $HERKOMST_STATUS."
 
 echo ""
 echo "Klaar. Bewaar $BACKUP_DIR op een plek los van Cloudflare (iCloud Drive / externe schijf)."
