@@ -2472,7 +2472,7 @@ log('Releaseherkomst: geen uitrol vanuit een werkboom met wijzigingen of niet-va
 {
   try {
     const { execFileSync } = await import('child_process');
-    execFileSync('bash', [path.join(ROOT, 'tests/releaseherkomst-schone-werkboom.test.sh')], { stdio: 'pipe', cwd: ROOT });
+    execFileSync('bash', [path.join(ROOT, 'tests/releaseherkomst-schone-werkboom.test.sh')], { stdio: 'pipe', cwd: ROOT, env: Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith('GIT_'))) });
     ok('herkomst_controle weigert gewijzigde en niet-vastgelegde bestanden (tests/releaseherkomst-schone-werkboom.test.sh groen).');
   } catch (e) { warn('Releaseherkomst: schone-werkboomcontrole faalt: ' + String((e && e.stdout) || (e && e.message) || e).split('\n').filter((r) => /✗/.test(r)).join('; ')); }
 }
