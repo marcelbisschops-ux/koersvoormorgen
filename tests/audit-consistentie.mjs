@@ -2495,6 +2495,17 @@ log('#52 visuele teaser: voorbeeld vóór verzending, akkoord en herleidbaarheid
   if (fouten.length) warn('#52: ' + fouten.join('; ')); else ok('#52: voorbeeld met grafieken, akkoord per tekstversie, controle-uitkomst ge-escaped, handleiding mna en adv.');
 }
 
+log('KVM-008 honoraria: scherm in de KantoorCockpit (escaping, niet te berekenen, payload) en handleiding mna/adv');
+{
+  try {
+    const { execFileSync } = await import('child_process');
+    execFileSync(process.execPath, [path.join(ROOT, 'tests/kvm008-honoraria-ui.mjs')], { stdio: 'pipe', cwd: ROOT });
+    const h = fs.readFileSync(path.join(ROOT, 'mna/08-handleiding.js'), 'utf8'), adv = fs.readFileSync(path.join(ROOT, 'adv.html'), 'utf8');
+    if (!/stap\('14b','Honoraria per mandaat/.test(h) || !/stap\('9b','Honoraria per mandaat/.test(adv)) warn('KVM-008: handleiding mna/adv niet bijgewerkt');
+    else ok('KVM-008: honorariumscherm (tests/kvm008-honoraria-ui.mjs groen) en handleiding mna en adv.');
+  } catch (e) { warn('KVM-008: tests/kvm008-honoraria-ui.mjs faalt: ' + String((e && e.stdout) || (e && e.message) || e).split('\n').filter((r) => /✗/.test(r)).join('; ')); }
+}
+
 log('Samenvatting');
 if (!bevindingen) {
   console.log('  \x1b[32mGeen bevindingen.\x1b[0m');

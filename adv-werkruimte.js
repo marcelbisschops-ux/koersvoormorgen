@@ -182,12 +182,93 @@ function wrMandaatDetail(x) {
   h += '<h3 class="wr-h3">Besluiten</h3>' + (x.besluiten.length ? '<ul class="wr-besl">' + x.besluiten.map(function (b) { return '<li>' + wrEsc(b.tekst) + ' <span class="wr-sub">(' + wrEsc(b.door) + ', ' + wrEsc(wrDatum(b.op)) + ')</span></li>'; }).join('') + '</ul>' : '<div class="wr-leeg">Nog geen besluiten.</div>')
     + '<form class="wr-form" onsubmit="return wrBesluit(event,\'' + id + '\')"><input name="tekst" required maxlength="1000" placeholder="Besluit vastleggen" aria-label="Besluit"><button class="btn btn-sm" type="submit">Vastleggen</button></form>';
   h += wrFeeFormHtml(x);
+  h += '<h3 class="wr-h3">Honoraria</h3><div id="wr-hon-' + id + '"><button type="button" class="wr-link" onclick="wrHonLaad(\'' + id + '\')">Honoraria tonen (vergoedingen, introducties, facturen en betalingen)</button></div>';
   h += '<h3 class="wr-h3">Status</h3><div class="wr-sub">Voorstel volgens de regels: ' + wrStatusLabel(x.voorstel.status) + ' ' + (x.voorstel.redenen || []).map(function (r) { return wrEsc(r.tekst); }).join('; ') + '</div>'
     + '<form class="wr-form" onsubmit="return wrRag(event,\'' + id + '\',' + x.rag_rev + ')"><select name="status" aria-label="Status">' + ['groen', 'geel', 'rood'].map(function (s) { return '<option value="' + s + '"' + (s === x.status ? ' selected' : '') + '>' + WR_STATUS[s][0] + '</option>'; }).join('') + '</select>'
     + '<input name="reden" maxlength="500" placeholder="Reden (verplicht als je afwijkt van het voorstel)" aria-label="Reden"><button class="btn-outline" type="submit">Status vastleggen</button>'
     + (x.handmatig ? '<button class="btn-outline" type="button" onclick="wrRagTerug(\'' + id + '\',' + x.rag_rev + ',this)">Terug naar voorstel</button>' : '') + '</form>'
     + '<button type="button" class="wr-link" onclick="wrRagHistorie(\'' + id + '\')">Statushistorie tonen</button><div id="wr-hist-' + id + '"></div>';
   return h + '</div>';
+}
+// KVM-008: honoraria per mandaat (vergoedingsonderdelen, gebeurtenissen, facturen en betalingen). Verschuldigd volgt alleen
+// uit geregistreerde gebeurtenissen; ontbreekt een grondslag, dan toont het scherm 'niet te berekenen' met de reden.
+var WR_HON_SOORT = { aanvang: 'Aanvangsvergoeding', introductie: 'Introductie-/kennismakingsvergoeding', retainer: 'Retainer', succesfee: 'Succesfee' };
+var WR_HON_GEB = { ondertekening: 'Overeenkomst ondertekend', introductie: 'Introductie', closing: 'Closing', mandaat_einde: 'Einde mandaat' };
+function wrHonLaad(tid) {
+  var el = ge('wr-hon-' + tid); if (el) el.innerHTML = '<div class="wr-sub">Laden…</div>';
+  wrApi('GET', '/mna/honorarium/overzicht?traject_id=' + encodeURIComponent(tid)).then(function (r) { wrHonTeken(tid, r); });
+}
+function wrHonPost(e, tid, pad, b) {
+  if (e) e.preventDefault(); if (WR.bezig) return false; WR.bezig = true;
+  b.traject_id = tid;
+  wrApi('POST', pad, b).then(function (r) { WR.bezig = false; wrHonTeken(tid, r); });
+  return false;
+}
+function wrHonAfspraak(o) {
+  var d = [];
+  if (o.grondslag === 'percentage') d.push(String(o.percentage).replace('.', ',') + '% van de transactiewaarde' + (o.minimum ? ', minimaal ' + wrEuro(o.minimum) : ''));
+  else d.push(wrEuro(o.bedrag) + (o.soort === 'retainer' ? ' per maand' : o.soort === 'introductie' ? ' per introductie' : ''));
+  if (o.soort === 'retainer') d.push(o.looptijd_maanden + ' maanden vanaf ' + wrDatum(o.startdatum));
+  if (o.soort === 'succesfee') d.push('tail ' + (o.tail_maanden || 0) + ' maanden');
+  if (o.verrekenen_met_succesfee) d.push('verrekenbaar met de succesfee');
+  return d.join(' · ');
+}
+function wrHonTeken(tid, r) {
+  var el = ge('wr-hon-' + tid); if (!el) return;
+  if (r.status === 200 && !(r.json && r.json.berekening && Array.isArray(r.json.onderdelen))) r = { status: 502, json: { error: 'Onverwacht antwoord; er is mogelijk niets vastgelegd. Laad het overzicht opnieuw.' } };
+  if (r.status !== 200) { el.innerHTML = '<div class="wr-melding wr-rood-bg">' + wrEsc(r.json.error || 'Dat lukte niet (HTTP ' + r.status + ').') + '</div>' + '<button type="button" class="wr-link" onclick="wrHonLaad(\'' + wrEsc(tid) + '\')">Opnieuw laden</button>'; return; }
+  var d = r.json, b = d.berekening, t = wrEsc(tid);
+  var per = {}; b.onderdelen.forEach(function (x) { per[x.id] = x; });
+  var h = '<div class="wr-sub">Peildatum ' + wrEsc(wrDatum(d.peildatum)) + '. Verschuldigd volgt uit de geregistreerde gebeurtenissen.</div>';
+  h += d.onderdelen.length ? '<div class="wr-tabel-wrap"><table class="wr-tabel"><thead><tr><th>Onderdeel</th><th>Afspraak</th><th>Verschuldigd</th><th>Gefactureerd</th><th>Betaald</th><th>Openstaand</th><th></th></tr></thead><tbody>'
+    + d.onderdelen.map(function (o) {
+      var x = per[o.id] || {};
+      var vs = x.niet_te_berekenen ? '<span class="wr-label wr-oranje">Niet te berekenen</span><div class="wr-sub">' + wrEsc(x.niet_te_berekenen) + '</div>'
+        : wrEsc(wrEuro(x.verschuldigd)) + (x.verrekening ? '<div class="wr-sub">na verrekening ' + wrEsc(wrEuro(x.verrekening)) + '</div>' : '') + (x.toelichting ? '<div class="wr-sub">' + wrEsc(x.toelichting) + '</div>' : '');
+      return '<tr><td>' + wrEsc(WR_HON_SOORT[o.soort] || o.soort) + (o.toelichting ? '<div class="wr-sub">' + wrEsc(o.toelichting) + '</div>' : '') + '</td><td>' + wrEsc(wrHonAfspraak(o)) + '</td><td>' + vs + '</td><td>' + wrEsc(wrEuro(x.gefactureerd || 0)) + '</td><td>' + wrEsc(wrEuro(x.betaald || 0)) + '</td><td>'
+        + (x.openstaand === null || x.openstaand === undefined ? '–' : wrEsc(wrEuro(x.openstaand)) + (x.openstaand < 0 ? '<div class="wr-sub">te veel betaald</div>' : '')) + '</td>'
+        + '<td><button type="button" class="wr-link" onclick="wrHonPost(null,\'' + t + '\',\'/mna/honorarium/onderdeel\',{id:\'' + wrEsc(o.id) + '\',rev:' + o.rev + ',verwijder:true})">Verwijderen</button></td></tr>';
+    }).join('') + '<tr><td colspan="2"><strong>Totaal</strong>' + (b.totaal.onvolledig ? '<div class="wr-sub">Niet alle onderdelen zijn te berekenen.</div>' : '') + '</td><td><strong>' + wrEsc(wrEuro(b.totaal.verschuldigd)) + '</strong></td><td>' + wrEsc(wrEuro(b.totaal.gefactureerd)) + '</td><td>' + wrEsc(wrEuro(b.totaal.betaald)) + '</td><td><strong>' + wrEsc(wrEuro(b.totaal.openstaand)) + '</strong></td><td></td></tr></tbody></table></div>'
+    : '<div class="wr-leeg">Nog geen vergoedingsonderdelen.</div>';
+  h += '<form class="wr-form" onsubmit="return wrHonOnderdeel(event,\'' + t + '\')"><select name="soort" aria-label="Soort vergoeding">' + Object.keys(WR_HON_SOORT).map(function (k) { return '<option value="' + k + '">' + WR_HON_SOORT[k] + '</option>'; }).join('') + '</select>'
+    + '<select name="grondslag" aria-label="Grondslag succesfee"><option value="vast">Vast bedrag</option><option value="percentage">Percentage van de transactiewaarde</option></select>'
+    + '<input name="bedrag" type="number" min="0" step="any" inputmode="decimal" placeholder="Bedrag (€)" aria-label="Bedrag in euro">'
+    + '<input name="percentage" type="number" min="0" max="100" step="any" inputmode="decimal" placeholder="Percentage" aria-label="Percentage">'
+    + '<input name="minimum" type="number" min="0" step="any" inputmode="decimal" placeholder="Minimum (€)" aria-label="Minimum succesfee in euro">'
+    + '<input name="looptijd_maanden" type="number" min="1" max="120" step="1" placeholder="Looptijd (maanden)" aria-label="Looptijd retainer in maanden">'
+    + '<input name="startdatum" type="date" aria-label="Startdatum retainer"><input name="tail_maanden" type="number" min="0" max="60" step="1" placeholder="Tail (maanden)" aria-label="Tail-periode in maanden">'
+    + '<label class="wr-check"><input name="verrekenen" type="checkbox"> verrekenen met de succesfee</label><input name="toelichting" maxlength="500" placeholder="Toelichting" aria-label="Toelichting">'
+    + '<button class="btn btn-sm" type="submit">Onderdeel toevoegen</button></form>';
+  h += '<h4 class="wr-h3">Gebeurtenissen</h4>' + (d.gebeurtenissen.length ? '<ul class="wr-besl">' + d.gebeurtenissen.map(function (g) {
+    return '<li>' + wrEsc(wrDatum(g.datum)) + ' · ' + wrEsc(WR_HON_GEB[g.soort] || g.soort) + (g.transactiewaarde !== null && g.transactiewaarde !== undefined ? ' · transactiewaarde ' + wrEsc(wrEuro(g.transactiewaarde)) : '') + (g.omschrijving ? ' · ' + wrEsc(g.omschrijving) : '')
+      + ' <button type="button" class="wr-link" onclick="wrHonPost(null,\'' + t + '\',\'/mna/honorarium/gebeurtenis\',{verwijder_id:\'' + wrEsc(g.id) + '\'})">Verwijderen</button></li>';
+  }).join('') + '</ul>' : '<div class="wr-leeg">Nog geen gebeurtenissen.</div>')
+    + '<form class="wr-form" onsubmit="return wrHonGebeurtenis(event,\'' + t + '\')"><select name="soort" aria-label="Soort gebeurtenis">' + Object.keys(WR_HON_GEB).map(function (k) { return '<option value="' + k + '">' + WR_HON_GEB[k] + '</option>'; }).join('') + '</select>'
+    + '<input name="datum" type="date" required aria-label="Datum gebeurtenis"><input name="transactiewaarde" type="number" min="0" step="any" inputmode="decimal" placeholder="Transactiewaarde bij closing (€)" aria-label="Transactiewaarde bij closing">'
+    + '<input name="omschrijving" maxlength="200" placeholder="Omschrijving (bijv. welke overeenkomst of introductie)" aria-label="Omschrijving"><button class="btn btn-sm" type="submit">Registreren</button></form>';
+  h += '<h4 class="wr-h3">Facturen en betalingen</h4>' + (d.boekingen.length ? '<ul class="wr-besl">' + d.boekingen.map(function (k) {
+    var o = d.onderdelen.filter(function (x) { return x.id === k.onderdeel_id; })[0];
+    return '<li>' + wrEsc(wrDatum(k.datum)) + ' · ' + (k.soort === 'factuur' ? 'Factuur' : 'Betaling') + ' ' + wrEsc(wrEuro(k.bedrag)) + ' · ' + wrEsc(o ? WR_HON_SOORT[o.soort] : 'onderdeel') + (k.referentie ? ' · ' + wrEsc(k.referentie) : '')
+      + ' <button type="button" class="wr-link" onclick="wrHonPost(null,\'' + t + '\',\'/mna/honorarium/boeking\',{verwijder_id:\'' + wrEsc(k.id) + '\'})">Verwijderen</button></li>';
+  }).join('') + '</ul>' : '<div class="wr-leeg">Nog geen facturen of betalingen.</div>')
+    + (d.onderdelen.length ? '<form class="wr-form" onsubmit="return wrHonBoeking(event,\'' + t + '\')"><select name="onderdeel_id" aria-label="Vergoedingsonderdeel">' + d.onderdelen.map(function (o) { return '<option value="' + wrEsc(o.id) + '">' + wrEsc(WR_HON_SOORT[o.soort] || o.soort) + '</option>'; }).join('') + '</select>'
+      + '<select name="soort" aria-label="Factuur of betaling"><option value="factuur">Factuur</option><option value="betaling">Betaling</option></select><input name="datum" type="date" required aria-label="Datum">'
+      + '<input name="bedrag" type="number" min="0.01" step="any" required inputmode="decimal" placeholder="Bedrag (€)" aria-label="Bedrag"><input name="referentie" maxlength="80" placeholder="Factuurnummer of referentie" aria-label="Referentie"><button class="btn btn-sm" type="submit">Vastleggen</button></form>' : '');
+  el.innerHTML = h;
+}
+function wrHonGetal(v) { return v === '' || v === null || v === undefined ? null : Number(v); }
+function wrHonOnderdeel(e, tid) {
+  var f = e.target.elements, b = { soort: f.soort.value, grondslag: f.grondslag.value, bedrag: wrHonGetal(f.bedrag.value), percentage: wrHonGetal(f.percentage.value), minimum: wrHonGetal(f.minimum.value),
+    looptijd_maanden: wrHonGetal(f.looptijd_maanden.value), startdatum: f.startdatum.value || null, tail_maanden: wrHonGetal(f.tail_maanden.value), verrekenen_met_succesfee: f.verrekenen.checked, toelichting: f.toelichting.value, idem: wrIdem() };
+  return wrHonPost(e, tid, '/mna/honorarium/onderdeel', b);
+}
+function wrHonGebeurtenis(e, tid) {
+  var f = e.target.elements;
+  return wrHonPost(e, tid, '/mna/honorarium/gebeurtenis', { soort: f.soort.value, datum: f.datum.value, transactiewaarde: wrHonGetal(f.transactiewaarde.value), omschrijving: f.omschrijving.value, idem: wrIdem() });
+}
+function wrHonBoeking(e, tid) {
+  var f = e.target.elements;
+  return wrHonPost(e, tid, '/mna/honorarium/boeking', { onderdeel_id: f.onderdeel_id.value, soort: f.soort.value, datum: f.datum.value, bedrag: wrHonGetal(f.bedrag.value), referentie: f.referentie.value, idem: wrIdem() });
 }
 // Bij succes opnieuw laden; bij een fout blijft het scherm (en je invoer) staan en verschijnt alleen de melding.
 // Bij een versieconflict laadt het overzicht wel opnieuw: je ziet dan de actuele waarde van de ander.
