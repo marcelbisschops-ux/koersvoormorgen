@@ -41,6 +41,11 @@ if [ -z "${BACKUP_DIR:-}" ]; then
 fi
 REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 BACKEND_REPO_DIR="$HOME/Documents/GitHub/koersvoormorgen-backend"
+# 18-11-2026 (back-up-betrouwbaarheid): `npx wrangler` zonder versie vroeg bij elke run het npm-register naar de
+# nieuwste versie en installeerde die opnieuw; een trage registry gaf EIDLETIMEOUT (back-ups 14-11 mislukt, zie log).
+# Nu een vaste versie uit de lokale npx-cache, eerst offline. Ophogen = deze ene regel aanpassen.
+WRANGLER_VERSIE="${KVM_WRANGLER_VERSIE:-4.164.0}"
+wrangler_cmd() { npx --yes --prefer-offline "wrangler@$WRANGLER_VERSIE" "$@"; }
 BACKEND_DIR="$BACKEND_REPO_DIR/backend"
 STAMP="$(date +%Y-%m-%d_%H%M)"
 
@@ -111,7 +116,7 @@ EXPORT_TIMEOUT=600
 # automatische herkansing na een korte pauze vangt precies dit scenario op zonder de wrangler-
 # authenticatie zelf aan te hoeven passen.
 probeer_export() {
-  ( cd "$BACKEND_DIR" && npx wrangler d1 export kantoorinzicht --remote --output="$OUT" ) &
+  ( cd "$BACKEND_DIR" && wrangler_cmd d1 export kantoorinzicht --remote --output="$OUT" ) &
   local export_pid=$!
   ( sleep "$EXPORT_TIMEOUT" && kill -TERM "$export_pid" 2>/dev/null ) &
   local watcher_pid=$!
@@ -147,12 +152,34 @@ TABELLEN=$(grep -c "CREATE TABLE" "$OUT" || true)
 # Integriteit (11 nov 2026): hash van de export ernaast, zodat een herstel kan aantonen dat het bestand ongewijzigd is.
 ( cd "$BACKUP_DIR" && shasum -a 256 "$(basename "$OUT")" > "$(basename "$OUT").sha256" ) || echo "   ⚠ hash van de export niet vastgelegd" >&2
 echo "   ✓ $(basename "$OUT")  ($(du -h "$OUT" | cut -f1), $TABELLEN tabellen)"
+# Herstelproef (18-11-2026): de export wordt dagelijks in een lege, tijdelijke SQLite-database geladen en gecontroleerd
+# (integriteit + aantal tabellen). Zo is herstelbaarheid elke dag aantoonbaar, niet alleen bij de maandelijkse C13.
+HERSTEL_DB=$(mktemp -t kvm-herstelproef).db
+if /usr/bin/sqlite3 "$HERSTEL_DB" < "$OUT" >/dev/null 2>&1 \
+   && [ "$(/usr/bin/sqlite3 "$HERSTEL_DB" 'PRAGMA integrity_check;' 2>/dev/null)" = "ok" ]; then
+  HERSTEL_TABELLEN=$(/usr/bin/sqlite3 "$HERSTEL_DB" "SELECT COUNT(*) FROM sqlite_master WHERE type='table';" 2>/dev/null || echo 0)
+  if [ "${HERSTEL_TABELLEN:-0}" -ge 150 ]; then
+    HERSTELPROEF="herstelproef ok ($HERSTEL_TABELLEN tabellen, integriteit ok)"
+    echo "   ✓ $HERSTELPROEF"
+  else
+    HERSTELPROEF="herstelproef ONVOLLEDIG ($HERSTEL_TABELLEN tabellen)"
+    echo "   ✗ $HERSTELPROEF" >&2
+  fi
+else
+  HERSTELPROEF="herstelproef MISLUKT (laden of integriteitscontrole faalt)"
+  echo "   ✗ $HERSTELPROEF" >&2
+fi
+rm -f "$HERSTEL_DB"
+case "$HERSTELPROEF" in
+  "herstelproef ok"*) ;;
+  *) meld_backup_status "false" "Export gelukt maar $HERSTELPROEF — back-up niet bruikbaar voor herstel."; exit 1 ;;
+esac
 
 echo "▶ 2/4  Documenten (R2) ophalen ..."
 DOCS_DIR="$BACKUP_DIR/documenten"
 mkdir -p "$DOCS_DIR"
 # De database is de bron van waarheid voor welke bestanden in R2 staan (r2_key).
-KEYS=$( ( cd "$BACKEND_DIR" && npx wrangler d1 execute kantoorinzicht --remote --json \
+KEYS=$( ( cd "$BACKEND_DIR" && wrangler_cmd d1 execute kantoorinzicht --remote --json \
   --command "SELECT r2_key FROM mna_documenten WHERE r2_key IS NOT NULL AND r2_key != ''" ) 2>/dev/null \
   | { grep -o '"r2_key": "[^"]*"' || true; } | sed 's/"r2_key": "//;s/"//' )
 DOC_OK=0; DOC_SKIP=0
@@ -162,7 +189,7 @@ if [ -n "$KEYS" ]; then
     DEST="$DOCS_DIR/$KEY"
     if [ -f "$DEST" ]; then DOC_SKIP=$((DOC_SKIP+1)); continue; fi  # al gebackupt (documenten wijzigen niet)
     mkdir -p "$(dirname "$DEST")"
-    if ( cd "$BACKEND_DIR" && npx wrangler r2 object get "kantoorinzicht-docs/$KEY" --file="$DEST" --remote ) >/dev/null 2>&1 && [ -s "$DEST" ]; then
+    if ( cd "$BACKEND_DIR" && wrangler_cmd r2 object get "kantoorinzicht-docs/$KEY" --file="$DEST" --remote ) >/dev/null 2>&1 && [ -s "$DEST" ]; then
       DOC_OK=$((DOC_OK+1))
     else
       rm -f "$DEST"; echo "   ⚠ kon niet ophalen: $KEY"
@@ -195,13 +222,16 @@ echo "   ✓ $DOC_COUNT lokale .md-bestanden gekopieerd naar $DOCS_BACKUP_DIR"
 # database-dumps hieronder) — voorkomt dat elke dagelijkse run een aparte, nooit-opgeruimde map achterlaat.
 find "$BACKUP_DIR" -maxdepth 1 -name "lokale-documentatie_*" -type d -mtime +60 -exec rm -rf {} + 2>/dev/null || true
 
-echo "▶ 4/5  Backend-code-status controleren ..."
-if [ ! -d "$BACKEND_REPO_DIR/.git" ]; then
-  echo "   ⊘ $BACKEND_REPO_DIR bestaat niet (of is geen git-repo) — niets te controleren"
-elif [ -n "$(cd "$BACKEND_REPO_DIR" && git status --porcelain 2>/dev/null)" ]; then
-  echo "   ⚠ Er staan ongecommitte wijzigingen in $BACKEND_REPO_DIR — commit + push die zelf om ze veilig te stellen (dit script kopieert daar niets meer naartoe, de repo IS al de back-up)."
+echo "▶ 4/5  Releaseherkomst productie controleren ..."
+# 18-11-2026: vervangt de controle op de backend-hoofdmap (die staat op een oude branch en zei niets over productie).
+# Dagelijks via deze bestaande planner: is wat in productie draait herleidbaar tot een commit op GitHub-main?
+if HERKOMST=$(node "$REPO_DIR/scripts/releaseherkomst.mjs" 2>&1); then
+  echo "$HERKOMST" | sed 's/^/   /'
+  HERKOMST_STATUS="releaseherkomst ok"
 else
-  echo "   ✓ $BACKEND_REPO_DIR is schoon (alles gecommit)"
+  echo "$HERKOMST" | sed 's/^/   /' >&2
+  HERKOMST_STATUS="releaseherkomst AFWIJKING (zie log)"
+  /usr/bin/osascript -e 'display notification "Productie is niet herleidbaar tot GitHub. Zie ~/Library/Logs/kantoorinzicht-backup.log" with title "KVM releaseherkomst"' >/dev/null 2>&1 || true
 fi
 
 echo "▶ 5/5  Oude database-back-ups opruimen (>60 dagen) ..."
@@ -210,7 +240,7 @@ find "$BACKUP_DIR" -maxdepth 1 -name "kantoorinzicht_*.sql.sha256" -mtime +60 -d
 AANTAL=$(ls -1 "$BACKUP_DIR"/kantoorinzicht_*.sql 2>/dev/null | wc -l | tr -d ' ')
 echo "   ✓ $AANTAL database-back-up(s) in $BACKUP_DIR"
 
-meld_backup_status "true" "OK — $(basename "$OUT"), $TABELLEN tabellen, $DOC_OK nieuwe document(en)."
+meld_backup_status "true" "OK — $(basename "$OUT"), $TABELLEN tabellen, $DOC_OK nieuwe document(en); $HERSTELPROEF; $HERKOMST_STATUS."
 
 echo ""
 echo "Klaar. Bewaar $BACKUP_DIR op een plek los van Cloudflare (iCloud Drive / externe schijf)."
