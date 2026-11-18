@@ -2468,6 +2468,15 @@ log('UAT DOC-A24/A26 bankmutaties: kandidaten uit het dossier, keuze bij dubbele
   else ok('UAT DOC-A24/A26: bankafschriften uit het dossier inlezen (timeout), keuze alleen-nieuw bij dubbele, CAMT.053 kiesbaar, journey laadt documenten en bankmutaties, handleiding mna en adv.');
 }
 
+log('Build faalt nooit naar publicatie: mislukte build laat geen .pages-dist achter (bevinding 18-11-2026)');
+{
+  try {
+    const { execFileSync } = await import('child_process');
+    execFileSync(process.execPath, [path.join(ROOT, 'tests/build-faalt-nooit-publiceren.test.mjs')], { stdio: 'pipe', cwd: ROOT });
+    ok('Bouwscript fail-closed: mislukte build verwijdert alle uitvoer, symlinks/niet-gewone bestanden laten de build falen (tests/build-faalt-nooit-publiceren.test.mjs groen).');
+  } catch (e) { warn('Bouwscript niet fail-closed: ' + String((e && e.stdout) || (e && e.message) || e).split('\n').filter((r) => /✗/.test(r)).join('; ')); }
+}
+
 log('Samenvatting');
 if (!bevindingen) {
   console.log('  \x1b[32mGeen bevindingen.\x1b[0m');
