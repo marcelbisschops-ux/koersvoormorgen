@@ -370,6 +370,10 @@ test.describe('KANTOORINZICHT 3-ROLLEN E2E', () => {
   });
 
   test.afterAll(async () => {
+    // Opruimen = API-verwijderingen + zes losse D1-tellingen (elk een wrangler-aanroep met retry). Bij tijdelijke
+    // D1-traagheid paste dat niet in de standaard hooktimeout van 30 s (CI 44450513099, 19-11-2026). Ruimere timeout,
+    // controles en verwachtingen ongewijzigd.
+    test.setTimeout(180000);
     // Cleanup draait ALTIJD, ook als bovenstaande setup of een van de tests hieronder faalde.
     const cleanupResultaten = [];
     if (trajectCode) {
