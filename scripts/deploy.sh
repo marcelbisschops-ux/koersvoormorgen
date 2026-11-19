@@ -180,7 +180,14 @@ deploy_frontend() {
   echo ""
   echo "════════ FRONTEND · BUILD (allowlist-gebaseerd, N-83) ════════"
   cd "$FE_DIR"
+  # Codex-review R-HERKOMST (19-11-2026, P2): herkomst en GO vóór de build en de preview, niet erna. Daarna wordt de
+  # build-uitvoer bestand voor bestand aan exact die commit gebonden (scripts/build-herkomst-check.mjs), vóór de
+  # preview én opnieuw vlak vóór productie (samen met de controle dat HEAD nog dezelfde commit is).
+  herkomst_controle "$FE_DIR" main
+  FE_RELEASE_COMMIT="$HERKOMST_COMMIT"
+  vraag_release_go frontend
   node scripts/build-frontend-release.mjs
+  node scripts/build-herkomst-check.mjs "$FE_RELEASE_COMMIT" || { echo "🔴 Build niet gebonden aan ${FE_RELEASE_COMMIT:0:12} — geen preview, productie wordt NIET aangeraakt."; exit 1; }
 
   echo ""
   echo "════════ FRONTEND · CLOUDFLARE PAGES (preview) ════════"
@@ -216,7 +223,9 @@ deploy_frontend() {
   fi
   echo "🟢 Negatieve releasetest groen."
   herkomst_controle "$FE_DIR" main
-  vraag_release_go frontend
+  if [ "$HERKOMST_COMMIT" != "$FE_RELEASE_COMMIT" ]; then
+    echo "🔴 Releaseherkomst: commit veranderd tijdens de release (${FE_RELEASE_COMMIT:0:12} → ${HERKOMST_COMMIT:0:12}) — productie wordt NIET aangeraakt."; exit 1
+  fi
 
   echo ""
   echo "════════ FRONTEND · CLOUDFLARE PAGES (productie) ════════"
@@ -224,6 +233,7 @@ deploy_frontend() {
     echo "🔴 Releasegate: geen geldige groene preview voor deze build — productie wordt NIET aangeraakt."
     exit 1
   fi
+  node scripts/build-herkomst-check.mjs "$FE_RELEASE_COMMIT" || { echo "🔴 Build wijkt vlak vóór productie af van ${FE_RELEASE_COMMIT:0:12} — productie wordt NIET aangeraakt."; exit 1; }
   npx wrangler pages deploy .pages-dist --project-name="$PAGES_PROJECT" --branch=main
   controleer_productieherkomst
   echo ""
