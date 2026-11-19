@@ -2519,7 +2519,7 @@ log('Build faalt nooit naar publicatie: mislukte build laat geen .pages-dist ach
 {
   try {
     const { execFileSync } = await import('child_process');
-    execFileSync(process.execPath, [path.join(ROOT, 'tests/build-faalt-nooit-publiceren.test.mjs')], { stdio: 'pipe', cwd: ROOT });
+    execFileSync(process.execPath, [path.join(ROOT, 'tests/build-faalt-nooit-publiceren.test.mjs')], { stdio: 'pipe', cwd: ROOT, env: Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith('GIT_'))) });
     ok('Bouwscript fail-closed: mislukte build verwijdert alle uitvoer, symlinks/niet-gewone bestanden laten de build falen (tests/build-faalt-nooit-publiceren.test.mjs groen).');
   } catch (e) { warn('Bouwscript niet fail-closed: ' + String((e && e.stdout) || (e && e.message) || e).split('\n').filter((r) => /✗/.test(r)).join('; ')); }
 }

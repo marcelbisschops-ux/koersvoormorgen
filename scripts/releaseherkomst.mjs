@@ -21,7 +21,7 @@ const REPO = { backend: 'koersvoormorgen-backend', frontend: 'koersvoormorgen' }
 // --worker <naam> alleen voor een negatieve proef (bijv. de staging-Worker, die geen productieherkomst heeft).
 const wi = process.argv.indexOf('--worker');
 const WORKER = wi > 0 ? process.argv[wi + 1] : 'kantoorinzicht', PAGES = 'kantoorinzicht-frontend';
-const env = { ...process.env }; delete env.CLOUDFLARE_API_TOKEN; // zelfde OAuth-aanmelding als de andere scripts
+const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith('GIT_'))); delete env.CLOUDFLARE_API_TOKEN; // geen geërfde GIT_DIR: git -C <spiegel> moet echt de spiegel lezen // zelfde OAuth-aanmelding als de andere scripts
 
 const sh = (cmd, args, opts = {}) => execFileSync(cmd, args, { encoding: 'utf8', env, stdio: ['ignore', 'pipe', 'pipe'], timeout: 120000, ...opts }).trim();
 const git = (repo, ...args) => sh('git', ['-C', path.join(SPIEGEL, REPO[repo] + '.git'), ...args]);

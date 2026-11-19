@@ -9,12 +9,15 @@ import path from 'node:path';
 let n = 0, fout = 0; const ok = (c, m) => { n++; if (c) console.log('✓ ' + m); else { fout++; console.log('✗ ' + m); } };
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'kvm-build-'));
-const g = (...a) => execFileSync('git', a, { cwd: tmp, stdio: 'pipe' });
-g('init', '-q'); fs.mkdirSync(path.join(tmp, 'scripts')); fs.copyFileSync(path.join(ROOT, 'scripts/build-frontend-release.mjs'), path.join(tmp, 'scripts/build-frontend-release.mjs'));
+// Nooit de omringende repo raken (incident 19-11-2026): zonder GIT_*-variabelen draaien en hard stoppen buiten de tijdelijke repo.
+const ENV = Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith('GIT_')));
+const g = (...a) => execFileSync('git', a, { cwd: tmp, stdio: 'pipe', env: ENV });
+g('init', '-q');
+if (fs.realpathSync(String(g('rev-parse', '--show-toplevel')).trim()) !== fs.realpathSync(tmp)) { console.log('✗ veiligheidsstop: git wijst niet naar de tijdelijke testrepo'); process.exit(1); } fs.mkdirSync(path.join(tmp, 'scripts')); fs.copyFileSync(path.join(ROOT, 'scripts/build-frontend-release.mjs'), path.join(tmp, 'scripts/build-frontend-release.mjs'));
 fs.writeFileSync(path.join(tmp, '.gitignore'), 'node_modules/\n.pages-dist\n.pages-dist.nosync/\n.pages-dist.bouw/\n');
 fs.writeFileSync(path.join(tmp, 'index.html'), '<p>x</p>'); fs.mkdirSync(path.join(tmp, 'mna')); fs.writeFileSync(path.join(tmp, 'mna/a.js'), 'var a=1;');
 g('add', '.'); g('-c', 'user.email=t@t.invalid', '-c', 'user.name=t', 'commit', '-qm', 'x');
-const bouw = () => { try { execFileSync(process.execPath, ['scripts/build-frontend-release.mjs'], { cwd: tmp, stdio: 'pipe' }); return 0; } catch (e) { return e.status || 1; } };
+const bouw = () => { try { execFileSync(process.execPath, ['scripts/build-frontend-release.mjs'], { cwd: tmp, stdio: 'pipe', env: ENV }); return 0; } catch (e) { return e.status || 1; } };
 const dist = path.join(tmp, '.pages-dist');
 ok(bouw() === 0 && fs.existsSync(path.join(dist, 'index.html')) && fs.existsSync(path.join(dist, 'mna/a.js')), 'normale build: uitvoer compleet');
 fs.mkdirSync(path.join(tmp, 'elders')); fs.writeFileSync(path.join(tmp, 'elders/groot.bin'), 'x');

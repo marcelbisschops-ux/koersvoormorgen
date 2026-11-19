@@ -13,6 +13,9 @@
 # ══════════════════════════════════════════════════════════════════
 set -euo pipefail
 REPO_DIR="$(git rev-parse --show-toplevel)"
+# Incident 19-11-2026: git zet in een hook GIT_DIR e.d. op de echte repo. Tests die zelf een tijdelijke repo maken erfden
+# die en schreven naar de echte repo (commit + push, core.bare). Na het bepalen van REPO_DIR zijn ze niet meer nodig.
+for v in $(git rev-parse --local-env-vars); do unset "$v"; done
 cd "$REPO_DIR"
 
 echo "── Rem vóór push: veiligheidsaudit + UI-testsuite ──"
