@@ -203,6 +203,12 @@ function maakWorker() {
       k.status = 'verwijderd';
       return Promise.resolve(antwoord(200, { ok: true, id: k.id, status: 'verwijderd', al_verwijderd: al }));
     }
+    // KVM-004: het kantoordetail vult de verplaats-keuzelijst via de bestaande beheerdersroute (alleen met sleutel).
+    if (methode === 'GET' && u.pathname === '/gebruikers/lijst') {
+      call.gebruikerslijst = true;
+      if (call.key !== KEY) return Promise.resolve(antwoord(401, { error: 'Unauthorized' }));
+      return Promise.resolve(antwoord(200, [{ id: 'G1', naam: 'Synth <b>Een</b>', email: 'een@synth.invalid' }]));
+    }
     m = DETAIL_RE.exec(u.pathname);
     if (m && methode === 'GET') {
       const k = srv.kantoren.find((x) => x.id === decodeURIComponent(m[1]));
