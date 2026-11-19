@@ -224,12 +224,21 @@ echo "▶ 3/5  Lokale (niet-gecommitte) documentatie back-uppen ..."
 # (MASTER, CLAUDE.md, standaarden) staan alleen in de hoofdmap. Bron daarom expliciet, niet afgeleid van de scriptmap.
 DOCS_BRON_DIR="${KVM_DOCS_DIR:-$HOME/Documents/GitHub/koersvoormorgen}"
 DOCS_BACKUP_DIR="$BACKUP_DIR/lokale-documentatie_$STAMP"
-mkdir -p "$DOCS_BACKUP_DIR"
 DOC_COUNT=0
+DOC_MISLUKT=0  # Codex-review R-BACKUP (19-11-2026, P2): een mislukte kopie is een deelfout, niet stil overslaan.
+DOC_MISLUKT_NAMEN=""
+if ! mkdir -p "$DOCS_BACKUP_DIR"; then
+  echo "   ✗ map $DOCS_BACKUP_DIR niet aan te maken" >&2
+  DEELFOUTEN="${DEELFOUTEN}documentatiemap niet aan te maken; "
+fi
 for f in "$DOCS_BRON_DIR"/*.md; do
   [ -f "$f" ] || continue
-  cp "$f" "$DOCS_BACKUP_DIR/" && DOC_COUNT=$((DOC_COUNT+1))
+  if cp "$f" "$DOCS_BACKUP_DIR/"; then DOC_COUNT=$((DOC_COUNT+1)); else DOC_MISLUKT=$((DOC_MISLUKT+1)); DOC_MISLUKT_NAMEN="${DOC_MISLUKT_NAMEN}$(basename "$f") "; fi
 done
+if [ "$DOC_MISLUKT" -gt 0 ]; then
+  echo "   ✗ $DOC_MISLUKT documentatiebestand(en) niet gekopieerd: $DOC_MISLUKT_NAMEN" >&2
+  DEELFOUTEN="${DEELFOUTEN}documentatie: $DOC_MISLUKT bestand(en) niet gekopieerd ($DOC_MISLUKT_NAMEN); "
+fi
 if [ "$DOC_COUNT" -lt 5 ]; then
   echo "   ✗ slechts $DOC_COUNT .md-bestanden in $DOCS_BRON_DIR — documentatieback-up onvolledig" >&2
   DOCS_STATUS="documentatie ONVOLLEDIG ($DOC_COUNT)"
