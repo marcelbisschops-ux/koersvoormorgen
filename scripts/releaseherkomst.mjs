@@ -8,7 +8,7 @@
 // oudere versie een GitHub-tag `prod-backend-<datum>-<eerste 8 tekens versie-id>` (zoals prod-backend-20261113-a238162d).
 // Herkomst Pages: de commit die Cloudflare zelf per deployment registreert (kolom Source).
 // Vergelijking via kale spiegels van de GitHub-repo's (geen werkmap wordt aangeraakt):
-//   ~/Documents/Codex/KVM-dev/mirror/{koersvoormorgen,koersvoormorgen-backend}.git  (git clone --mirror, hier bijgewerkt)
+//   ~/Developer/KVM/mirror/{koersvoormorgen,koersvoormorgen-backend}.git  (git clone --mirror, hier bijgewerkt; KVM_SPIEGEL_DIR overschrijft)
 //
 // Gebruik: node scripts/releaseherkomst.mjs [--json] [--worker <naam>]
 import { execFileSync } from 'child_process';
@@ -16,7 +16,8 @@ import os from 'os';
 import path from 'path';
 import fs from 'fs';
 
-const SPIEGEL = path.join(os.homedir(), 'Documents', 'Codex', 'KVM-dev', 'mirror');
+// 19-11-2026 (besluit Marcel: werkbomen buiten iCloud): spiegels staan in ~/Developer/KVM/mirror; KVM_SPIEGEL_DIR overschrijft.
+const SPIEGEL = process.env.KVM_SPIEGEL_DIR || path.join(os.homedir(), 'Developer', 'KVM', 'mirror');
 const REPO = { backend: 'koersvoormorgen-backend', frontend: 'koersvoormorgen' };
 // --worker <naam> alleen voor een negatieve proef (bijv. de staging-Worker, die geen productieherkomst heeft).
 const wi = process.argv.indexOf('--worker');
