@@ -2311,6 +2311,9 @@ function renderBegeleiderDashboard(app){
     +(t.status==='afgesloten'?'':'<button class="btn-ghost btn-sm" id="bg-afsluiten" style="color:var(--red);border-color:var(--red)">&#127937; Traject afsluiten</button>')
     +'<span style="display:inline-block;padding:4px 12px;border-radius:12px;font-size:11px;font-weight:600;background:'+(t.status==='vergrendeld'?'var(--red-bg)':'var(--teal-bg)')+';color:'+(t.status==='vergrendeld'?'var(--red)':'var(--teal)')+';border:1px solid '+(t.status==='vergrendeld'?'var(--red)':'var(--teal-dark)')+'">'+esc(t.status||'actief')+'</span>'
     +'</div></div></div>'
+    // #67 (besluit Marcel 19-11-2026, optie B): 'Dossier downloaden' als eigen blok direct onder de kop, zodat het in
+    // Design 2.0 op het Dashboard staat (de kop zelf valt onder Koper-toegang). Alleen met de module export.
+    +((!S.modules||S.modules.export!==false)?'<div id="bg-dossier-blok" style="display:flex;justify-content:flex-end;margin:0 0 1rem"><button class="btn-outline btn-sm" id="bg-dossier-download">&#128229; Dossier downloaden</button></div>':'')
     // Actie knoppen — gegroepeerd per dealfase, secties inklapbaar (16 aug 2026, op verzoek Marcel:
     // volledig uitgeschreven documentnamen i.p.v. afkortingen, betere groepering, minder tegelijk in beeld).
     +(function(){
@@ -2612,6 +2615,23 @@ function renderBegeleiderDashboard(app){
   if(gsBtn)gsBtn.onclick=function(){ toonGroepsstructuurModal(app); };
   var ptBtn=document.getElementById('bg-partners');
   if(ptBtn)ptBtn.onclick=function(){ toonPartnersModal(app); };
+
+  // #67: dossier downloaden (zelfde export als in het adviseursportaal); de server bepaalt traject en rechten.
+  var dlBtn=document.getElementById('bg-dossier-download');
+  if(dlBtn)dlBtn.onclick=async function(){
+    if(dlBtn.disabled)return;
+    dlBtn.disabled=true;var oud=dlBtn.innerHTML;dlBtn.textContent='Dossier wordt samengesteld...';
+    try{
+      var r=await fetchMetTimeout(WORKER+'/mna/begeleider/export?code='+encodeURIComponent(S.code),{method:'GET',headers:{'x-tussen-key':S.code},cache:'no-store'},90000);
+      if(!r.ok){var j=await r.json().catch(function(){return null;});toast('Dossier downloaden mislukt: '+((j&&j.error)||('fout '+r.status)),'err',7000);return;}
+      var blob=await r.blob();
+      var naam=((r.headers.get('content-disposition')||'').match(/filename="([^"]+)"/)||[])[1]||('dossier-'+S.code+'.txt');
+      var url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=naam;document.body.appendChild(a);a.click();a.remove();
+      setTimeout(function(){URL.revokeObjectURL(url);},2000);
+      toast('Dossier gedownload.','ok',4000);
+    }catch(e){toast('Dossier downloaden mislukt: geen verbinding. Probeer het opnieuw.','err',6000);}
+    finally{dlBtn.disabled=false;dlBtn.innerHTML=oud;}
+  };
 
   // Traject afsluiten: dossier-export (ZIP + DD-rapport), downloadmail, daarna 14 dagen tot verwijdering
   var afsBtn=document.getElementById('bg-afsluiten');
