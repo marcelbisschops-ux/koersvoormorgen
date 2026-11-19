@@ -9,7 +9,8 @@ import { api, WORKER, leesAdminKey, d1, ruimTrajectOp, accepteerPlatformvoorwaar
 
 const A = leesAdminKey();
 const nu = Date.now();
-const BE = new URL('../../g1g2-be-20261105/backend/', import.meta.url).pathname;
+// Backendmap voor wrangler (staging-R2): KVM_BE_DIR of de vaste buurmap (sinds 19-11 buiten iCloud, ~/Developer/KVM).
+const BE = process.env.KVM_BE_DIR || new URL('../../koersvoormorgen-backend/backend/', import.meta.url).pathname;
 const gemaakt = [];
 const r2Keys = [];
 const r2Put = (key) => {

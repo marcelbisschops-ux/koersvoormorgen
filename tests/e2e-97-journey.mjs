@@ -49,6 +49,14 @@ try {
   const kp = await traject('Koop', { traject_type: 'Overname', opdrachtgever_rol: 'koper' });
   const bk = await jr(kp.T, { 'x-tussen-key': kp.T });
   check('B1 koop: transactievorm koop, variantfase zoekprofiel', bk.status === 200 && bk.json.transactievorm === 'koop' && F(bk.json, 'matching').titel === 'Zoekprofiel en koopmandaat' && F(bk.json, 'longlist').titel === 'Doelwitten en selectie', bk.status);
+  // B2–B4 (#72 / KVM-009 D1, 20-11-2026): kopersweergave in een rechtstreeks kooptraject (koper = opdrachtgever).
+  const kk = await jr(kp.K); const kks = JSON.stringify(kk.json || {});
+  check('B2 koop: koper vóór NDA → rol koper, transactievorm koop, alleen NDA-stap, targetnaam niet zichtbaar', kk.status === 200 && kk.json.rol === 'koper' && kk.json.transactievorm === 'koop' && kk.json.nda_geldig === false && kk.json.fasen.every((f) => f.items.every((x) => x.key === 'nda')) && !kks.includes('Synth J97 Koop'), kk.status + ' ' + kks.slice(0, 200));
+  d1('UPDATE mna_trajecten SET nda_getekend=' + q('Synth Koper Koop (koper)') + ', koper_vrijgegeven=1 WHERE id=' + q(kp.V)); // staging-testopzet: geldige NDA
+  const kk2 = await jr(kp.K); const kk2s = JSON.stringify(kk2.json || {});
+  check('B3 koop: koper na NDA → koop-fasetitels zichtbaar, geen interne begeleidersstukken', kk2.status === 200 && kk2.json.nda_geldig === true && kk2.json.transactievorm === 'koop' && kk2.json.fasen.some((f) => f.items.some((x) => x.key !== 'nda')) && !/dealvoorstel|risicoraamwerk|biedingen_vergelijken/.test(kk2s), kk2.status + ' ' + kk2s.slice(0, 200));
+  const kv = await jr(kp.V);
+  check('B4 koop: target/verkopercode → rol verkoper, geen begeleiderrechten', kv.status === 200 && kv.json.rol === 'verkoper', kv.status + ' ' + (kv.json && kv.json.rol));
   // ── C. Fusie ──
   const fu = await traject('Fusie', { traject_type: 'Fusie' });
   const bf = await jr(fu.T, { 'x-tussen-key': fu.T });
