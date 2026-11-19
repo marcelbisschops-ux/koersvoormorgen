@@ -38,14 +38,18 @@ test('nieuw traject: vooraf ingevulde KvK en adres worden geaccepteerd in het op
   // Verkoper logt in: openingsscherm met vooraf ingevulde KvK en adres.
   await page.goto('/mna.html?worker=' + encodeURIComponent(WORKER));
   await page.locator('#l-code').fill(code);
+  // Na inloggen tekent loadEntiteiten() het scherm één keer opnieuw (zelfde patroon als e2e-52/e2e-3rollen): eerst daarop
+  // wachten, anders kan een al ingevuld veld leeg worden en verstuurt de knop niets (suite-flake 19-11).
+  const ent = page.waitForResponse((r) => r.url().includes('/mna/entiteiten/'), { timeout: 30000 });
   await page.locator('#l-btn').click();
+  await ent; await page.waitForTimeout(800);
   await expect(page.locator('#op-voltooien-btn')).toBeVisible({ timeout: 30000 });
   await expect(page.locator('#op-kvk')).toHaveValue('12345678');
   await expect(page.locator('#op-adres')).toHaveValue('Synthetischestraat 1, 1234 AB Testdorp');
   await page.locator('#op-tekenbevoegde').fill('Synth Verkoper');
-  const v = page.waitForResponse((r) => r.url().includes('/mna/opening/voltooien'));
+  const v = page.waitForResponse((r) => r.url().includes('/mna/opening/voltooien'), { timeout: 30000 });
   await page.locator('#op-voltooien-btn').click();
-  const vr = await v;
+  const vr = await v.catch(async (e) => { throw new Error('geen /mna/opening/voltooien-verzoek; melding op het scherm: ' + (await page.locator('#op-voltooien-err').textContent().catch(() => '?'))); });
   expect(vr.status(), await vr.text()).toBe(200);
   await expect(page.locator('#op-voltooien-btn')).toHaveCount(0, { timeout: 15000 });
   expect(await page.evaluate(() => S.screen)).not.toBe('opening');
