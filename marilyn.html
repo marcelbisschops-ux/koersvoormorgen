@@ -4903,7 +4903,9 @@ async function laadKantoorDetail(kId) {
     });
     html += '<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)"><input type="text" id="kantoor-nieuwenaam-' + kId + '" placeholder="Nieuwe kantoornaam" value="' + esc(d.kantoor.naam) + '" style="font-size:12px;padding:5px 8px;width:70%;margin-right:6px">'
       + '<button class="btn-ghost btn-kantoor-naam" data-id="' + kId + '" style="font-size:11px;padding:5px 10px">Naam opslaan</button></div>'
-      + '<div style="margin-top:10px"><input type="text" id="kantoor-verplaats-gid-' + kId + '" placeholder="gebruiker-ID om hierheen te verplaatsen" style="font-size:11px;padding:5px 8px;width:70%;margin-right:6px">'
+      // KVM-004 (18-11-2026): kies de gebruiker op naam en e-mailadres i.p.v. een technisch gebruiker-ID in te typen.
+      + '<div style="margin-top:10px"><label for="kantoor-verplaats-gid-' + kId + '" style="display:block;font-size:11px;color:var(--muted);margin-bottom:3px">Gebruiker naar dit kantoor verplaatsen</label>'
+      + '<select id="kantoor-verplaats-gid-' + kId + '" style="font-size:11px;padding:5px 8px;width:70%;margin-right:6px"><option value="">Gebruikers laden...</option></select>'
       + '<button class="btn-ghost btn-kantoor-verplaats" data-id="' + kId + '" style="font-size:11px;padding:5px 10px">Verplaatsen</button></div>'
       + '</div>';
     // Modules
@@ -4947,6 +4949,19 @@ async function laadKantoorDetail(kId) {
       await fetch(WORKER + '/mna/admin/kantoren/' + encodeURIComponent(kId) + '/naam', { method: 'POST', headers: { 'x-admin-key': adminKey, 'Content-Type': 'application/json' }, body: JSON.stringify({ naam: nieuweNaam }) }).catch(function() {});
       renderKantorenTab(document.getElementById('tc'));
     });
+    // KVM-004: keuzelijst vullen met de bestaande beheerdersroute /gebruikers/lijst (naam + e-mail); huidige leden niet.
+    (async function() {
+      var sel = document.getElementById('kantoor-verplaats-gid-' + kId);
+      if (!sel) return;
+      var lijst = await fetch(WORKER + '/gebruikers/lijst', { headers: { 'x-admin-key': adminKey } }).then(function(x) { return x.ok ? x.json() : null; }).catch(function() { return null; });
+      if (!sel.isConnected) return;
+      if (!Array.isArray(lijst)) { sel.innerHTML = '<option value="">Gebruikers konden niet worden geladen</option>'; return; }
+      var leden = {}; (d.leden || []).forEach(function(l) { leden[String(l.id)] = 1; });
+      var kandidaten = lijst.filter(function(g) { return g && g.id && !leden[String(g.id)]; })
+        .sort(function(a, b) { return String(a.naam || a.email || '').localeCompare(String(b.naam || b.email || ''), 'nl'); });
+      sel.innerHTML = '<option value="">' + (kandidaten.length ? 'Kies een gebruiker' : 'Geen andere gebruikers') + '</option>'
+        + kandidaten.map(function(g) { return '<option value="' + esc(g.id) + '">' + esc(g.naam || '(zonder naam)') + ' (' + esc(g.email || '') + ')' + (g.bedrijf ? ' · ' + esc(g.bedrijf) : '') + '</option>'; }).join('');
+    })();
     var verplaatsBtn = target.querySelector('.btn-kantoor-verplaats');
     if (verplaatsBtn) verplaatsBtn.addEventListener('click', async function() {
       var gid = document.getElementById('kantoor-verplaats-gid-' + kId).value.trim();
