@@ -2250,7 +2250,7 @@ function renderBegeleiderDashboard(app){
     +'<a href="adv.html" onclick="return terugNaarAdviseursportaal()" class="btn-ghost btn-sm" style="text-decoration:none;display:inline-flex;align-items:center">&#8592; Adviseursportaal</a>'
     +'<button class="btn-ghost btn-sm" onclick="refreshData()">&#8635; Ververs</button>'
     +'<button class="btn-ghost btn-sm" onclick="S.screen=\'handleiding\';renderApp()">&#128214; Handleiding</button>'+legUitKnop('begeleider')
-    +'<button class="btn-ghost btn-sm" onclick="window.print()">&#128196; PDF</button>'
+    +'<button class="btn-ghost btn-sm" onclick="printSchermMetAkkoord(\'Begeleidersdashboard\',\'scherm_dashboard\')">&#128196; PDF</button>'
     +'<button class="btn-ghost btn-sm" onclick="uitloggen()">&#8592; Uitloggen</button>'
     +'</div></div>'
     +kbTopbannerHtml

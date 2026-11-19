@@ -1958,7 +1958,7 @@ function renderWaardering(){
   var html='<div class="wrap anim">'
     +'<div class="hdr"><div class="brand">'+brandMerkHtml()+BRAND.platform+' &middot; Waardering'+versieLabel()+'</div>'
     +'<div style="display:flex;gap:8px">'
-    +'<button class="btn-ghost btn-sm" onclick="window.print()">PDF</button>'
+    +'<button class="btn-ghost btn-sm" onclick="printSchermMetAkkoord(\'Waardering\',\'scherm_waardering\')">PDF</button>'
     +'<button class="btn-ghost btn-sm" onclick="exporteerWaarderingCsv()" title="Downloadbaar als CSV — opent direct in Excel">CSV</button>'
     +'<button class="btn-ghost btn-sm" onclick="S.screen=(isTussen()?\'begeleider\':\'cover\');renderApp()">&#8592; Terug</button>'
     +'</div></div>'

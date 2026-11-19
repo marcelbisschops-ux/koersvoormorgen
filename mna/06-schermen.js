@@ -82,7 +82,7 @@ function renderCover(){
 
   return '<div class="wrap anim">'
     +'<div class="hdr"><div class="brand">'+brandMerkHtml()+BRAND.platform+' &middot; M&amp;A'+versieLabel()+'</div>'
-    +'<div style="display:flex;gap:8px"><button class="btn-ghost btn-sm" onclick="window.print()">PDF afdrukken</button>'
+    +'<div style="display:flex;gap:8px"><button class="btn-ghost btn-sm" onclick="printSchermMetAkkoord(\'Dossieroverzicht\',\'scherm_overzicht\')">PDF afdrukken</button>'
     +'<button class="btn-ghost btn-sm" onclick="uitloggen()">&#8592; Uitloggen</button>'
     +(S.rol==='tussen'?'<button class="btn-ghost btn-sm" id="logboek-btn">&#128221; Logboek</button>':'')
     +'</div><div style="display:flex;align-items:center;gap:10px;padding:.5rem 0"><span style="font-size:12px;color:var(--muted)">Huidige fase:</span><span id="cover-fase-badge" style="font-size:11px;font-weight:600;padding:3px 12px;border-radius:12px;background:var(--teal-bg);color:var(--teal);border:1px solid var(--teal-dark)">Laden...</span></div><div style="display:none">'
@@ -850,7 +850,7 @@ function renderMain(){
     +'<span style="font-size:11px;color:var(--muted)">'+esc(trajNaamWeergave)+'</span>'
     +'<button class="btn-ghost btn-sm" onclick="saveCurrent();S.screen=\'handleiding\';renderApp()">&#128214; Handleiding</button>'
     +legUitKnop('fase')
-    +'<button class="btn-ghost btn-sm" onclick="window.print()">PDF</button>'
+    +'<button class="btn-ghost btn-sm" onclick="printSchermMetAkkoord(\'Due diligence\',\'scherm_due_diligence\')">PDF</button>'
     +'</div></div>'
     +lockedBanner
     // MASTER #91 F5 (28 okt 2026): verkopersreview van het concept-IM (mna/14) — alleen de verkoper, en
@@ -1080,7 +1080,7 @@ function renderSummary(){
   var tp=(isVerkoper()||isKoper())?totalFillPct():Math.round(FASES.reduce(function(a,f){return a+pct(f.id);},0)/FASES.length);
   return '<div class="wrap anim">'
     +'<div class="hdr"><div class="brand">'+brandMerkHtml()+BRAND.platform+' &middot; M&amp;A'+versieLabel()+'</div>'
-    +'<div style="display:flex;gap:8px"><button class="btn-ghost btn-sm" onclick="window.print()">PDF</button><button class="btn-ghost btn-sm" id="back-main">&#8592; Terug</button></div></div>'
+    +'<div style="display:flex;gap:8px"><button class="btn-ghost btn-sm" onclick="printSchermMetAkkoord(\'Samenvatting\',\'scherm_samenvatting\')">PDF</button><button class="btn-ghost btn-sm" id="back-main">&#8592; Terug</button></div></div>'
     +(vergrendeld?'<div style="background:var(--red-bg);border:1px solid var(--red);border-radius:var(--r);padding:10px 14px;margin-bottom:1rem;font-size:13px;color:var(--red)">&#128274; Vergrendeld op '+(S.traject.vergrendeld_op?new Date(S.traject.vergrendeld_op).toLocaleString('nl-NL'):'')+'</div>':'')
     +'<div style="font-family:Playfair Display,serif;font-size:1.4rem;color:var(--head);font-weight:600;margin-bottom:.25rem">DD Samenvatting</div>'
     +'<div style="font-size:13px;color:var(--muted);margin-bottom:1.5rem">'+esc(S.traject&&S.traject.kantoor_naam||S.code)+' &middot; '+new Date().toLocaleDateString('nl-NL',{day:'2-digit',month:'long',year:'numeric'})+'</div>'

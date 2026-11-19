@@ -8,6 +8,11 @@
 // print-/bekijkvenster van de adviseur; de daadwerkelijk VERSTUURDE kopie (e-mail/Signhost, backend
 // maakPDF()/maakDocEmail()) behoudt de voettekst ongewijzigd — dat is een formele, aan een echte
 // tegenpartij verstrekte kopie, een ander vraagstuk dan dit scherm-/printgebruik door de adviseur zelf.
+// N-159 (besluit Marcel 19-11-2026): ook de printknoppen van schermrapporten lopen via dezelfde kennisname-pop-up
+// (eenmalig per sessie, elke print gelogd). De pop-up is weg vóór window.print(), dus de rapportinhoud blijft gelijk.
+function printSchermMetAkkoord(titel, docType) {
+  toonRelianceAkkoord(titel, docType, function () { window.print(); });
+}
 function toonRelianceAkkoord(titel, docType, onAkkoord) {
   // Eenmalig per sessie (13 sep 2026, Marcel: "komt erg vaak terug... belemmert het fijne gevoel" —
   // de tekst is bij elke print identiek, dus herhaalde kennisname voegt niets toe). De eerste
