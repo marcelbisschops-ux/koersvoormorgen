@@ -21,13 +21,21 @@ function parseGeld(s){
 // fmtGeld: 0/leeg/NaN → "—" (ongewijzigd). Negatieve bedragen: magnitude formatteren en het minteken
 // ervóór zetten, i.p.v. de kale "€-200000" die de bucket-grenzen (>=1000/1000000) voor een negatief
 // getal opleverden.
+// KVM-005 (20-11-2026): Nederlandse notatie, volledig en zonder afronding op duizenden (voorheen werd € 12.500,50
+// weergegeven als "€13.000" en € 1.234.567 als "€1.23 mln"). Centen alleen als die er zijn: € 1.000.000; € 12.500,50.
+// Alleen weergave: de onderliggende waarden en de berekeningen veranderen niet.
 function fmtGeld(n){
   if(!n||isNaN(n))return '—';
+  var neg=n<0, a=Math.abs(n), centen=Math.round(a*100)%100!==0;
+  // Minteken ná het euroteken (€ -200.000): gangbare NL-notatie en de vorm die parseGeld als negatief herkent.
+  return '€ '+(neg?'-':'')+a.toLocaleString('nl-NL',{minimumFractionDigits:centen?2:0,maximumFractionDigits:centen?2:0});
+}
+// Compacte variant voor grafieklabels met weinig ruimte: vanaf een miljoen "€ 1,23 mln" (NL-komma), anders als fmtGeld.
+function fmtGeldKort(n){
+  if(!n||isNaN(n))return '—';
   var neg=n<0, a=Math.abs(n);
-  var s=a>=1000000 ? '€'+(a/1000000).toFixed(2)+' mln'
-       : a>=1000    ? '€'+(a/1000).toFixed(0)+'.000'
-       : '€'+Math.round(a);
-  return neg ? '-'+s : s;
+  if(a<1000000)return fmtGeld(n);
+  return '€ '+(neg?'-':'')+(a/1000000).toLocaleString('nl-NL',{minimumFractionDigits:2,maximumFractionDigits:2})+' mln';
 }
 // Zelfde als parseGeld, maar geeft null terug als het veld niet is ingevuld (i.p.v. 0) — nodig voor
 // de financiële ratio's hieronder, waar 0 een geldige uitkomst kan zijn (bijv. geen schuld) en dus
@@ -1506,7 +1514,7 @@ function dvSvgBarChart(items,titel){
     var barY=y(item.waarde);
     var barH=Math.max(chartH-(barY-padTop),1);
     return '<rect x="'+x.toFixed(1)+'" y="'+barY.toFixed(1)+'" width="'+barW.toFixed(1)+'" height="'+barH.toFixed(1)+'" fill="'+(item.kleur||'var(--teal)')+'" rx="3"/>'
-      +'<text x="'+(x+barW/2).toFixed(1)+'" y="'+(barY-8).toFixed(1)+'" text-anchor="middle" font-size="12" font-family="IBM Plex Mono, monospace" fill="var(--sub)">'+esc(fmtGeld(item.waarde))+'</text>'
+      +'<text x="'+(x+barW/2).toFixed(1)+'" y="'+(barY-8).toFixed(1)+'" text-anchor="middle" font-size="12" font-family="IBM Plex Mono, monospace" fill="var(--sub)">'+esc(fmtGeldKort(item.waarde))+'</text>'
       +'<text x="'+(x+barW/2).toFixed(1)+'" y="'+(h-padBottom+18).toFixed(1)+'" text-anchor="middle" font-size="11" font-family="IBM Plex Sans, sans-serif" fill="var(--muted)">'+esc(item.label)+'</text>';
   }).join('');
   var basislijn='<line x1="'+padLeft+'" y1="'+y(0).toFixed(1)+'" x2="'+(w-padRight)+'" y2="'+y(0).toFixed(1)+'" stroke="var(--border2)" stroke-width="1"/>';
@@ -1532,7 +1540,7 @@ function dvSvgWaterfallChart(steps,titel){
     var top=Math.min(y(c.start),y(c.end));
     var barH=Math.max(Math.abs(y(c.start)-y(c.end)),1);
     var kleur=c.isTotal?'var(--teal)':(c.delta>=0?'var(--info)':'var(--gold-dark)');
-    var label=c.isTotal?fmtGeld(c.end):(c.delta>=0?'+':'')+fmtGeld(c.delta);
+    var label=c.isTotal?fmtGeldKort(c.end):(c.delta>=0?'+':'')+fmtGeldKort(c.delta);
     return '<rect x="'+x.toFixed(1)+'" y="'+top.toFixed(1)+'" width="'+barW.toFixed(1)+'" height="'+barH.toFixed(1)+'" fill="'+kleur+'" rx="3"/>'
       +'<text x="'+(x+barW/2).toFixed(1)+'" y="'+(top-8).toFixed(1)+'" text-anchor="middle" font-size="11" font-family="IBM Plex Mono, monospace" fill="var(--sub)">'+esc(label)+'</text>'
       +'<text x="'+(x+barW/2).toFixed(1)+'" y="'+(h-padBottom+18).toFixed(1)+'" text-anchor="middle" font-size="11" font-family="IBM Plex Sans, sans-serif" fill="var(--muted)">'+esc(c.label)+'</text>';

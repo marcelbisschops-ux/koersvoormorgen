@@ -2270,7 +2270,8 @@ function renderWaarderingTab(el){
   // Fix 1 sep 2026: teken behouden (zie parseGeld in mna/03) — de tekenklasse [^0-9,.] slikte het
   // minteken, waardoor een negatief bedrag als positief werd ingelezen.
   function parseGeld(s){if(!s)return 0;var str=String(s).trim();var neg=/^[^\d]*[-−–—‑－]\s*\d/.test(str)||/\d\s*[-−–—‑－]\s*$/.test(str)||/^\(.*\d.*\)$/.test(str);var n=str.replace(/[^0-9,.]/g,'').replace(/\./g,'').replace(',','.');var v=parseFloat(n)||0;return neg?-v:v;}
-  function fmtGeld(n){if(!n||isNaN(n))return '—';if(n>=1000000)return '\u20ac'+(n/1000000).toFixed(2).replace('.',',')+' mln';if(n>=1000)return '\u20ac'+(n/1000).toFixed(0)+'.000';return '\u20ac'+Math.round(n);}
+  // KVM-005 (20-11-2026): NL-notatie zonder afronding op duizenden (zelfde regel als mna/03 fmtGeld).
+  function fmtGeld(n){if(!n||isNaN(n))return '—';var neg=n<0,a=Math.abs(n),c=Math.round(a*100)%100!==0;return '\u20ac '+(neg?'-':'')+a.toLocaleString('nl-NL',{minimumFractionDigits:c?2:0,maximumFractionDigits:c?2:0});}
   function fmtPct(n){return n?n.toFixed(1)+'%':'—';}
 
   function bereken(){
