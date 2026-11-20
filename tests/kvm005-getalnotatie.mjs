@@ -29,5 +29,9 @@ for (const x of [1, 7, 999.99, 1000, 12500, 12500.5, 99999.01, 1000000, 1234567.
   const y = A.parseGeld(A.fmtGeld(x)); if (Math.abs(y - x) > 1e-9) { terug = false; fouten.push([x, A.fmtGeld(x), y]); }
 }
 ok(terug, 'terugleesproef: parseGeld(fmtGeld(x)) === x voor positieve, negatieve en centbedragen', fouten);
+// Statisch: geen bedragen meer in 'K'-notatie of met afronding op duizenden in de schermen.
+const bronnen = ['marilyn.html', 'adv.html', 'adv-werkruimte.js', ...fs.readdirSync(path.join(ROOT, 'mna')).filter((f) => f.endsWith('.js')).map((f) => 'mna/' + f)];
+const kNotatie = bronnen.filter((f) => /'€'\+\([^)]*\/1000\)\.toFixed\(0\)\+'(K|\.000)/.test(fs.readFileSync(path.join(ROOT, f), 'utf8')));
+ok(kNotatie.length === 0, "geen '€…K' of '€….000' (afronding op duizenden) meer in mna, adv en marilyn", kNotatie);
 console.log(fout ? '✗ ' + fout + '/' + n + ' gefaald' : n + '/' + n + ' geslaagd');
 process.exit(fout ? 1 : 0);

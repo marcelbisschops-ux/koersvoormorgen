@@ -1491,7 +1491,7 @@ function nieuwTraject(){
             email:ge('n-es-email').value.trim(),inschrijvingsnummer:ge('n-es-insch').value.trim(),
           })},15000);
           var esD=await esR.json().catch(function(){return{};});
-          if(esD&&esD.ok) esFeeHtml='<br>&#10003; Eigen specialist toegevoegd'+(esD.fee_geboekt?(' (eenmalige fee &euro;'+esD.fee_geboekt+' geboekt)'):'');
+          if(esD&&esD.ok) esFeeHtml='<br>&#10003; Eigen specialist toegevoegd'+(esD.fee_geboekt?(' (eenmalige fee &euro; '+Number(esD.fee_geboekt).toLocaleString('nl-NL',{minimumFractionDigits:2,maximumFractionDigits:2})+' geboekt)'):'');
           else esFeeHtml='<br><span style="color:var(--red)">&#9888; Eigen specialist niet toegevoegd: '+esc((esD&&esD.error)||'onbekende fout')+' — probeer dit later opnieuw vanuit het traject.</span>';
         }catch(e){ esFeeHtml='<br><span style="color:var(--red)">&#9888; Eigen specialist niet toegevoegd (verbindingsfout) — probeer dit later opnieuw vanuit het traject.</span>'; }
       }

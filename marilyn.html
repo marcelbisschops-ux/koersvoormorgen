@@ -1668,7 +1668,7 @@ async function renderBenchmarksTab(el){
       var html='<table><thead><tr>'+(magBulk?'<th style="width:32px"><input type="checkbox" id="cb-all-bench" title="Alle benchmarks in deze lijst aanvinken"></th>':'')+'<th>Sleutel</th><th>Omschrijving</th><th>Waarde</th><th>Bron</th><th>Peildatum</th><th>Bijgewerkt</th><th></th></tr></thead><tbody>';
       data.forEach(function(b){
         var dt=b.updated_at?new Date(b.updated_at).toLocaleString('nl-NL',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'--';
-        var valFmt=b.waarde>1000?'€'+(b.waarde/1000).toFixed(0)+'K':b.waarde.toFixed(2)+'x';
+        var valFmt=b.waarde>1000?'€ '+Math.round(b.waarde).toLocaleString('nl-NL'):b.waarde.toFixed(2)+'x';
         html+='<tr>'
           +(magBulk?'<td><input type="checkbox" class="bench-cb" data-sleutel="'+esc(b.sleutel)+'" data-naam="'+esc(b.sleutel+(b.omschrijving?' — '+b.omschrijving:''))+'" style="cursor:pointer"></td>':'')
           +'<td class="mono" style="font-size:11px;color:var(--teal)">'+esc(b.sleutel)+'</td>'
@@ -1828,9 +1828,9 @@ async function renderBenchmarksTab(el){
         gevonden.forEach(function(b){
           var hv=huidig[b.sleutel];
           var conflict=hv&&Math.abs(hv.waarde-b.waarde)>1;
-          var nvFmt=b.waarde>1000?'€'+(b.waarde/1000).toFixed(0)+'K':b.waarde.toFixed(2)+'x';
+          var nvFmt=b.waarde>1000?'€ '+Math.round(b.waarde).toLocaleString('nl-NL'):b.waarde.toFixed(2)+'x';
           if(conflict){
-            var ovFmt=hv.waarde>1000?'€'+(hv.waarde/1000).toFixed(0)+'K':hv.waarde.toFixed(2)+'x';
+            var ovFmt=hv.waarde>1000?'€ '+Math.round(hv.waarde).toLocaleString('nl-NL'):hv.waarde.toFixed(2)+'x';
             pvHtml+='<div style="padding:6px 10px;margin-bottom:4px;background:var(--gold-bg);border-left:3px solid var(--gold);border-radius:0 var(--r) var(--r) 0">'
               +'<span style="color:var(--gold)">&#9888; Conflict</span> <code>'+b.sleutel+'</code><br>'
               +'Huidig ('+esc(hv.bron||'onbekend')+'): <strong>'+ovFmt+'</strong> → Nieuw ('+esc(bron)+'): <strong>'+nvFmt+'</strong></div>';
@@ -1887,8 +1887,8 @@ async function renderBenchmarksTab(el){
           var chkD=await chkR.json();
           var bestaand=chkD.find(function(b){return b.sleutel===id;});
           if(bestaand&&Math.abs(bestaand.waarde-val)>0.01){
-            var ovFmt2=bestaand.waarde>1000?'€'+(bestaand.waarde/1000).toFixed(0)+'K':bestaand.waarde.toFixed(2)+'x';
-            var nvFmt2=val>1000?'€'+(val/1000).toFixed(0)+'K':val.toFixed(2)+'x';
+            var ovFmt2=bestaand.waarde>1000?'€ '+Math.round(bestaand.waarde).toLocaleString('nl-NL'):bestaand.waarde.toFixed(2)+'x';
+            var nvFmt2=val>1000?'€ '+Math.round(val).toLocaleString('nl-NL'):val.toFixed(2)+'x';
             err.style.display='block';
             err.style.color='var(--gold)';
             err.innerHTML='&#9888; Huidige waarde: <strong>'+ovFmt2+'</strong> ('+esc(bestaand.bron||'onbekend')+')<br>Nieuwe waarde: <strong>'+nvFmt2+'</strong><br><br>Klik nogmaals op Opslaan om te overschrijven.';
@@ -2115,7 +2115,7 @@ async function renderWaarderingsmodelTab(el){
       if(!d.beschikbaar){box.innerHTML='<div class="empty">'+esc(d.reden||'Nog niet beschikbaar')+'</div>';return;}
       function curveHtml(conf,titel){
         if(!conf)return '<div style="font-size:12px;color:var(--muted)">Geen '+titel+'-config actief.</div>';
-        var punten=conf.curve_punten.map(function(p){return '€'+(p[0]/1000).toFixed(0)+'K → '+p[1].toFixed(1)+'x';}).join(' &middot; ');
+        var punten=conf.curve_punten.map(function(p){return '€ '+Math.round(p[0]).toLocaleString('nl-NL')+' → '+p[1].toFixed(1)+'x';}).join(' &middot; ');
         var bronnen=(conf.bron_referenties||[]).map(function(b){return b.url?'<a href="'+esc(b.url)+'" target="_blank" rel="noopener" style="color:var(--teal)">'+esc(b.omschrijving)+'</a>':esc(b.omschrijving);}).join('<br>');
         return '<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:.85rem 1rem;margin-bottom:.75rem">'
           +'<div style="font-size:12px;font-weight:600;color:var(--head);margin-bottom:.4rem">'+titel+' (versie '+conf.versie+')</div>'
@@ -3003,7 +3003,7 @@ async function toonDetail(id,naam){
           self.disabled=false;
           if(res&&res.ok){
             var f=res.opslagfee;
-            if(f&&f.geboekt>0)toast('Bewaartermijn '+res.bewaartermijn_dagen+' dgn. Opslagfee €'+f.geboekt.toFixed(2)+' geboekt ('+f.maanden+' mnd).','ok');
+            if(f&&f.geboekt>0)toast('Bewaartermijn '+res.bewaartermijn_dagen+' dgn. Opslagfee € '+Number(f.geboekt).toLocaleString('nl-NL',{minimumFractionDigits:2,maximumFractionDigits:2})+' geboekt ('+f.maanden+' mnd).','ok');
             else if(f&&f.maanden>0&&f.geboekt===0)toast('Bewaartermijn '+res.bewaartermijn_dagen+' dgn. Geen extra fee (al gefactureerd bedrag ≥ nieuw totaal).','ok');
             else toast('Bewaartermijn ingesteld op '+res.bewaartermijn_dagen+' dagen.','ok');
             laadBt();
