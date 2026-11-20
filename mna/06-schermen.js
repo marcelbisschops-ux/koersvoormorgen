@@ -99,12 +99,13 @@ function renderCover(){
     +'</div></div>'
     +(vergrendeld?'<div style="background:var(--red-bg);border:1px solid var(--red);border-radius:var(--r);padding:10px 14px;margin-bottom:1rem;font-size:13px;color:var(--red)">&#128274; <strong>Dit traject is vergrendeld op '+(t.vergrendeld_op?new Date(t.vergrendeld_op).toLocaleString('nl-NL'):'onbekend')+'.</strong> Verdere wijzigingen zijn niet meer mogelijk.</div>':'')
     +((isVerkoper()||isKoper())?'<div id="jr-portaal" class="jr-plek" style="margin-bottom:1rem"></div>':'') // #97 M&A Journey
+    +(isKoper()&&!isAdmin()?'<div id="koper-overeenkomsten" class="mo-plek" style="margin-bottom:1rem"></div>':'') // KVM-009 B1
     +'<div class="cover-letter">'
     +'<div style="font-size:11px;color:var(--muted);margin-bottom:.5rem">' + esc(t.begeleider_bedrijf||BRAND.bedrijfKort) + ' &middot; M&amp;A Begeleiding &middot; '+datum+'</div>'
     +'<h2>'+( isVerkoper()?'Informatieverzoek due diligence':'Due diligence overzicht')+'</h2>'
     +'<div style="font-size:12px;color:var(--muted);margin-bottom:1.25rem">Trajectcode: <span style="font-family:IBM Plex Mono,monospace;color:var(--teal)">'+esc(S.code)+'</span></div>'
     +intro+'</div>'
-    +(S.ndaTekst?'<div style="margin-top:1.5rem;background:#f3f0ff;border:1px solid #7c5cbf;border-radius:var(--r2);padding:1.25rem">'
+    +(S.ndaTekst?'<div id="nda-sjabloon-blok" style="margin-top:1.5rem;background:#f3f0ff;border:1px solid #7c5cbf;border-radius:var(--r2);padding:1.25rem">'
       +'<div style="font-size:11px;font-weight:600;color:#7c5cbf;letter-spacing:.1em;text-transform:uppercase;margin-bottom:.6rem">&#128274; Non-Disclosure Agreement beschikbaar</div>'
       +'<div style="font-size:12px;color:var(--mid);margin-bottom:.75rem">De NDA is aangemaakt op '+(S.ndaDatum?new Date(S.ndaDatum).toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'}):'-')+'. Lees de NDA door en retourneer de ondertekende versie aan de adviseur.</div>'
       +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:.5rem">'
@@ -1720,6 +1721,45 @@ function bindAll(){
   laadComposerPartijPaneel('loi');
   laadComposerPartijPaneel('bem');
   laadComposerPartijPaneel('excl');
+
+  // KVM-009 B1 (20-11-2026): "Mijn overeenkomsten" voor de koper. Eén vaste plek met alle overeenkomsten
+  // die aan de koper zijn verstuurd, met status en een knop naar het bestaande document hieronder. Bron is
+  // dezelfde lijst als de panelen (server filtert al op verstuurd + koper als adressaat, veld-allowlist);
+  // geen nieuwe gegevens, geen andere partijen.
+  (function laadMijnOvereenkomsten(){
+    var plek=ge('koper-overeenkomsten'); if(!plek||!isKoper())return;
+    var titels={NDA:'Geheimhoudingsovereenkomst (NDA)',LOI:'Letter of Intent',MOU:'Memorandum of Understanding',BEM:'Bemiddelingsovereenkomst',EXCL:'Exclusiviteitsovereenkomst'};
+    var slots={NDA:'composer-nda-slot',LOI:'composer-loi-slot',MOU:'composer-mou-slot',BEM:'composer-bem-slot',EXCL:'composer-excl-slot'};
+    var statusTekst={verstuurd:'Wacht op uw reactie',goedgekeurd:'Akkoord',wijziging_gevraagd:'Wijziging gevraagd'};
+    function render(rijen, fout){
+      var h='<div class="mo-kop">Mijn overeenkomsten</div>';
+      if(fout) h+='<div class="mo-leeg">Het overzicht kon nu niet worden geladen. Ververs de pagina om het opnieuw te proberen.</div>';
+      if(fout&&!rijen.length){ plek.innerHTML=h; return; }
+      if(!rijen.length) h+='<div class="mo-leeg">Er is nog geen overeenkomst aan u verstuurd. U ziet ze hier zodra dat gebeurt.</div>';
+      else h+='<ul class="mo-lijst">'+rijen.map(function(r){
+        return '<li class="mo-rij"><span class="mo-titel">'+esc(r.titel)+'</span><span class="mo-status">'+esc(r.status)+'</span>'
+          +(r.doel?'<button type="button" class="btn-ghost btn-sm mo-bekijk" data-mo-doel="'+esc(r.doel)+'">Bekijk</button>':'')+'</li>';
+      }).join('')+'</ul>';
+      plek.innerHTML=h;
+      plek.querySelectorAll('.mo-bekijk').forEach(function(b){ b.onclick=function(){ var el=ge(b.getAttribute('data-mo-doel')); if(el&&el.scrollIntoView)el.scrollIntoView({behavior:'smooth',block:'start'}); }; });
+    }
+    var rijen=[];
+    if(S.ndaTekst) rijen.push({titel:titels.NDA,status:S.ndaGetekend?'Getekend':'Ter ondertekening',doel:'nda-sjabloon-blok'});
+    fetchMetTimeout(WORKER+'/mna/tos/documenten/'+encodeURIComponent(S.code)+'?code='+encodeURIComponent(S.code),{},12000)
+      .then(function(r){return r.json();})
+      .then(function(d){
+        if(!d||d.ok!==true){ render(rijen,true); return; }
+        var gezien={};
+        (d.documenten||[]).forEach(function(x){
+          var pf=(x.profiel||'').split('@')[0]; if(!titels[pf]||gezien[pf])return; gezien[pf]=1; // nieuwste per soort (server sorteert)
+          if(pf==='NDA'&&S.ndaTekst)return;
+          var st=statusTekst[x.status]||'In behandeling';
+          if((pf==='NDA'&&S.ndaGetekend)||(pf==='LOI'&&S.loiGetekend))st='Getekend';
+          rijen.push({titel:titels[pf],status:st,doel:slots[pf]});
+        });
+        render(rijen);
+      }).catch(function(){ render(rijen,true); });
+  })();
 
   // LoI knoppen op cover
   var loiLees=ge('loi-lees-btn');
