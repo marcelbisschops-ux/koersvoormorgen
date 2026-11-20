@@ -28,13 +28,6 @@ async function api(...args) {
   return apiOrigineel(...args);
 }
 
-// N-211 / KVM-012 (20-11-2026): deze test verstuurt bewust een ECHTE mail via Resend (delivered@resend.dev) om de
-// verzendketen te bewijzen. Zolang uitgaande communicatie geparkeerd is (KVM-012) alleen draaien met expliciete GO.
-if (process.env.KVM_ECHTE_MAIL_GO !== '1') {
-  console.log('WEIGERT: tests/e2e-tos.mjs verstuurt een echte mail via Resend. Alleen draaien met KVM_ECHTE_MAIL_GO=1 (GO van Marcel; KVM-012).');
-  console.log('Offline alternatief zonder verzending: node tests/tos-ontvangers.mjs in de backend-repo (Resend gestubd).');
-  process.exit(2);
-}
 const ADMIN = leesAdminKey();
 const WW = 'E2E-tos-' + Date.now() + '!';
 const DOM = '@e2e-test.invalid';
