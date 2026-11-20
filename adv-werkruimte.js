@@ -125,7 +125,24 @@ function wrTekenOverleg() {
   }).sort(function (a, b) { var o2 = { rood: 0, geel: 1, groen: 2 }; return o2[a.status] - o2[b.status]; });
   if (!lijst.length) h += '<div class="wr-leeg">Geen mandaten binnen dit filter.</div>';
   h += '<div class="wr-lijst">' + lijst.map(wrMandaatHtml).join('') + '</div>';
+  h += '<h2 class="wr-h">Honoraria koopmandaten</h2><div id="wr-km-hon"><div class="wr-sub">Laden…</div></div>';
   wrPagina('overleg', h);
+  wrKmHonLaad();
+}
+// KVM-008 dekking aankoop (20-11-2026): honoraria per koopmandaat (zoekopdracht vóór er een target is), met hetzelfde
+// paneel als bij trajecten. De server bepaalt welke koopmandaten je mag zien (eigen, of van je kantoor als eigenaar).
+function wrKmHonLaad() {
+  wrApi('GET', '/mna/honorarium/mandaten').then(function (r) {
+    var el = ge('wr-km-hon'); if (!el) return;
+    if (r.status !== 200) { el.innerHTML = '<div class="wr-melding wr-rood-bg">' + wrEsc(r.json.error || ('Koopmandaten konden niet worden geladen (HTTP ' + r.status + ').')) + '</div>'; return; }
+    var l = r.json.koopmandaten || [];
+    if (!l.length) { el.innerHTML = '<div class="wr-leeg">Geen koopmandaten.</div>'; return; }
+    el.innerHTML = l.map(function (m) {
+      var id = wrEsc(m.id);
+      return '<div class="wr-paneel wr-km"><div class="wr-regel"><b>' + wrEsc(m.naam || 'Koopmandaat') + '</b> <span class="wr-sub">' + wrEsc(m.status) + '</span></div>'
+        + '<div id="wr-hon-' + id + '"><button type="button" class="wr-link" onclick="wrHonLaad(\'' + id + '\')">Honoraria tonen (vergoedingen, introducties, facturen en betalingen)</button></div></div>';
+    }).join('');
+  });
 }
 function wrMandaatHtml(x) {
   var open = x.acties.filter(function (a) { return a.status === 'open'; }), eerste = open[0];

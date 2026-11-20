@@ -35,5 +35,16 @@ await new Promise((r) => setTimeout(r, 10));
 const p = posts.find((x) => x.url.endsWith('/mna/honorarium/onderdeel'));
 const b = p && JSON.parse(p.opts.body);
 ok(b && b.traject_id === 'T1' && b.soort === 'succesfee' && b.percentage === 2.5 && b.minimum === 25000 && b.bedrag === null && b.tail_maanden === 6 && b.idem === 'uuid-1' && p.opts.headers['x-gebruiker-token'] === 'tok', 'nieuw onderdeel: juiste gegevens, idem en gebruikerstoken', JSON.stringify(b));
+// KVM-008 dekking aankoop (20-11): blok 'Honoraria koopmandaten' in het OHW-overleg.
+const antwoord = (status, json) => { ctx.fetchMetTimeout = async (url, opts) => { posts.push({ url, opts }); return { status, json: async () => json }; }; };
+antwoord(200, { ok: true, koopmandaten: [{ id: 'mandaat_abc123', naam: X, status: 'actief' }] });
+ctx.wrKmHonLaad(); await new Promise((r) => setTimeout(r, 10));
+let km = el['wr-km-hon'].innerHTML;
+ok(posts.some((x) => x.url.endsWith('/mna/honorarium/mandaten') && x.opts.method === 'GET'), 'koopmandaten opgehaald via /mna/honorarium/mandaten');
+ok(!km.includes('<img') && km.includes('&lt;img') && km.includes('id="wr-hon-mandaat_abc123"') && km.includes("wrHonLaad('mandaat_abc123')"), 'koopmandaat: naam ge-escaped, eigen honorariumpaneel met knop', km);
+antwoord(200, { ok: true, koopmandaten: [] }); ctx.wrKmHonLaad(); await new Promise((r) => setTimeout(r, 10));
+ok(el['wr-km-hon'].innerHTML.includes('Geen koopmandaten.'), 'geen koopmandaten: nette melding');
+antwoord(503, { error: 'Honoraria tijdelijk niet beschikbaar.' }); ctx.wrKmHonLaad(); await new Promise((r) => setTimeout(r, 10));
+ok(el['wr-km-hon'].innerHTML.includes('Honoraria tijdelijk niet beschikbaar.') && !el['wr-km-hon'].innerHTML.includes('Geen koopmandaten'), 'laadfout: foutmelding, geen onjuiste lege lijst');
 console.log(fout ? '✗ ' + fout + '/' + n + ' gefaald' : n + '/' + n + ' geslaagd');
 process.exit(fout ? 1 : 0);
