@@ -52,6 +52,24 @@ function jrAanZetHtml(f) {
     return '<div class="jr2-aanzet-vak"><span>' + jrEsc(JR_EIGENAAR[r] || r) + '</span><b>' + tel[r] + '</b><span>' + (tel[r] === 1 ? 'taak' : 'taken') + '</span></div>';
   }).join('') + '</div></div>';
 }
+// KVM-009 A1 (20-11-2026): kopersbanner. Eén duidelijke regel bovenaan voor de koper: wat moet ik nu doen, of wie is
+// aan zet als ik zelf niets hoef te doen. Alleen gegevens uit de kopersweergave van de backend (volgende_stap, wacht_op).
+var JR_DOOR = { begeleider: 'de begeleider', verkoper: 'de verkoper' };
+function jrKopersbanner(d, opts) {
+  if (!d || d.rol !== 'koper') return '';
+  opts = opts || {};
+  var h = '<div class="jr-kopersbanner" role="status">';
+  if (d.volgende_stap) {
+    h += '<div class="jr-kb-tekst"><span class="jr-kb-kop">Uw volgende stap</span><b>' + jrEsc(d.volgende_stap.label) + '</b></div>';
+    if (d.volgende_stap.actie && !opts.alleenLezen) h += '<button type="button" class="btn-primary btn-sm jr-knop" data-jr-actie="' + jrEsc(d.volgende_stap.actie) + '">Nu doen</button>';
+  } else if (d.wacht_op) {
+    h += '<div class="jr-kb-tekst"><span class="jr-kb-kop">Aan zet: ' + jrEsc(JR_DOOR[d.wacht_op.door] || 'de begeleider') + '</span><b>' + jrEsc(d.wacht_op.label) + '</b>'
+      + '<span class="jr-kb-sub">U hoeft nu niets te doen. U ziet hier vanzelf wanneer u weer aan zet bent.</span></div>';
+  } else {
+    h += '<div class="jr-kb-tekst"><span class="jr-kb-kop">Op dit moment</span><b>Er staat geen actie voor u open.</b></div>';
+  }
+  return h + '</div>';
+}
 // Pure weergave. opts: { gekozen: fasenr, docs: true (begeleider: plek voor documentkaarten), titel }
 function jrHtml(d, opts) {
   opts = opts || {};
@@ -62,9 +80,10 @@ function jrHtml(d, opts) {
   var h = '<div class="jr' + (ui2 ? ' jr2' : '') + '" data-rol="' + jrEsc(rol) + '">';
   h += '<div class="jr-kop"><div>' + (opts.titel === '' ? '' : '<div class="jr-titel">' + jrEsc(opts.titel || 'M&A Journey') + '</div>')
     + '<div class="jr-sub">' + jrEsc(JR_VORM[d.transactievorm] || '') + (d.niveau === 'koopmandaat' ? ' &middot; koopmandaat met meerdere doelwitten' : '') + '</div></div>';
-  if (d.volgende_stap) h += '<div class="jr-volgende"><span>Volgende stap' + (rol === 'begeleider' ? '' : ' voor u') + '</span><b>' + jrEsc(d.volgende_stap.label) + '</b></div>';
+  if (d.volgende_stap && rol !== 'koper') h += '<div class="jr-volgende"><span>Volgende stap' + (rol === 'begeleider' ? '' : ' voor u') + '</span><b>' + jrEsc(d.volgende_stap.label) + '</b></div>';
   else if (rol === 'koper' && d.nda_geldig === false) h += '';
   h += '</div>';
+  h += jrKopersbanner(d, opts);
   if (ui2) h += jrEtappesHtml(d, gekozen);
   else h += '<ol class="jr-lijn" role="tablist" aria-label="Fasen van het traject">';
   if (!ui2) d.fasen.forEach(function (f) {
