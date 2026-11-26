@@ -20,6 +20,7 @@ import fs from 'fs';
 import path from 'path';
 import vm from 'vm';
 import { fileURLToPath, pathToFileURL } from 'url';
+import { kvm005Blok } from './lib-kvm005-geldvelden.mjs';
 
 const WORKER = 'https://worker.test';
 const FASE = 'financieel';
@@ -103,7 +104,7 @@ function laad(root) {
     markDirty() {}, schedSave() {}, saveEntiteitData() {},
   });
   ctx.window = ctx;
-  vm.runInContext(delen.join('\n\n'), ctx, { filename: 'mna/01+02#bewijsstuk-upload' });
+  vm.runInContext(delen.concat(kvm005Blok()).join('\n\n'), ctx, { filename: 'mna/01+02#bewijsstuk-upload' });
 
   const nieuwBestand = (naam) => new File(['Synthetisch bewijsstuk (geen echte gegevens).'], naam, { type: 'text/plain' });
   // Gebruiker opent de fase: uploadzone getekend, vinkt eventueel "Alleen als bewijsstuk" aan.

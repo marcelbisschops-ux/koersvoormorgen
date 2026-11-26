@@ -64,7 +64,7 @@ function jbcNietBeoordelenReden(){
 function jbcHerteken(){
   var f=(typeof FASES!=='undefined'&&FASES[S.fase])||null;
   var bewaard=[];
-  if(f&&f.dataFields)f.dataFields.forEach(function(df){var el=ge('df_'+df.id);if(el&&typeof el.value==='string')bewaard.push([df.id,el.value]);});
+  if(f&&f.dataFields)f.dataFields.forEach(function(df){var el=ge('df_'+df.id);if(el&&typeof el.value==='string')bewaard.push([df.id,veldInvoer(el)]);});
   renderApp();
   bewaard.forEach(function(b){var el=ge('df_'+b[0]);if(el&&el.value!==b[1])el.value=b[1];});
 }

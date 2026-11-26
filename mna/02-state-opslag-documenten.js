@@ -373,9 +373,10 @@ function saveCurrent(cb){
     var key=f.id+'_'+df.id;
     if(el){
       // _userEdited wordt alleen gezet via oninput, NIET hier
-      if(el.value.trim()||S._userEdited[key]){
-        if(df.groepsniveau){S._groepData[key]=el.value;if(inEntiteitContext)groepsniveauGewijzigd=true;}
-        else S.data[key]=el.value;
+      var invoer=veldInvoer(el); // KVM-005: de getypte waarde, niet de NL-weergave van een bedragveld
+      if(invoer.trim()||S._userEdited[key]){
+        if(df.groepsniveau){S._groepData[key]=invoer;if(inEntiteitContext)groepsniveauGewijzigd=true;}
+        else S.data[key]=invoer;
       }
     }
     // Als element niet in DOM is, behoud altijd bestaande waarde
@@ -643,7 +644,7 @@ function naOpslag(payload,d,sessie){
       // Door de gebruiker niet gewijzigd en intussen elders anders: de actuele waarde overnemen, ook in het invoerveld
       // (anders leest saveCurrent de oude waarde terug en draait de volgende opslag de wijziging alsnog terug).
       // Niet als de gebruiker al verder typte.
-      if(sv===ob&&av!==sv&&String(geheugen[key]||'')===sv&&(!el||el.value===sv)){
+      if(sv===ob&&av!==sv&&String(geheugen[key]||'')===sv&&(!el||veldInvoer(el)===sv)){
         if(av)geheugen[key]=av;else delete geheugen[key];
         if(el)el.value=av;
         overgenomen=true;
@@ -723,7 +724,7 @@ function naOpslag(payload,d,sessie){
         return;
       }
       var key=payload.fase_id+'_'+c.veld,eigen=verz[c.veld]&&verz[c.veld].value?String(verz[c.veld].value):'';
-      var el=basisInvoer(payload.fase_id,c.veld,geheugen),nu=el?el.value:String(geheugen[key]||'');
+      var el=basisInvoer(payload.fase_id,c.veld,geheugen),nu=el?veldInvoer(el):String(geheugen[key]||'');
       b[c.veld]=c.actueel||'';
       if(nu===eigen&&String(geheugen[key]||'')===eigen){
         if(c.actueel)geheugen[key]=c.actueel;else delete geheugen[key];
@@ -761,7 +762,7 @@ function getDataForFase(id){
     // Productpunt 5 (22 okt 2026): een ongewijzigde bruto som (door de server als auto:true geleverd, zie
     // S._groepAuto) gaat in de groepsrij terug mét auto:true. Zonder deze vlag zag consolideerFase elke
     // meegestuurde som als aangeleverd cijfer en verdween het onderscheid bruto/aangeleverd.
-    var autoSom=(!inEntiteitContext||df.groepsniveau)&&S._groepAuto&&S._groepAuto[key]!==undefined&&S._groepAuto[key]===String(v)&&!(S._userEdited&&S._userEdited[key]);
+    var autoSom=(!inEntiteitContext||df.groepsniveau)&&S._groepAuto&&S._groepAuto[key]!==undefined&&veldWaardeGelijk(key,S._groepAuto[key],v)&&!(S._userEdited&&S._userEdited[key]);
     if(v){var obj={value:v,label:df.label,req:df.req||false};if(autoSom)obj.auto=true;else{var b=veldBron(key);if(b)Object.assign(obj,b);}out[df.id]=obj;}
   });
   // #73: prognoses uit documenten apart opslaan (geen sectorprofielveld), duidelijk gelabeld als niet gerealiseerd.
@@ -868,6 +869,74 @@ function toast(msg,type,dur){type=type||'ok';dur=dur||3500;var c=document.getEle
 // Een late timer van een vorige sessie (uitloggen + opnieuw inloggen, ook met dezelfde code) start
 // geen saveCurrent() in de nieuwe sessie.
 function schedSave(){if(S.traject&&S.traject.status==='vergrendeld')return;markDirty();clearTimeout(S.saveTimer);var sessie=S;S.saveTimer=setTimeout(function(){if(S===sessie)saveCurrent();},1200);}
+// ===== KVM-005 (26-11-2026): bedragvelden — getalwaarde los van weergave =====
+// Een DD-veld is een bedragveld als het in GROEPSDOC_BEDRAGVELDEN staat, of als het label een euroteken heeft en
+// geen procentteken (de bestaande velddefinities, ook die uit de backend-sectorprofielen; geen aparte lijst).
+function isGeldVeld(faseId,df){
+  if(!df||df.header)return false;
+  if(typeof GROEPSDOC_BEDRAGVELDEN!=='undefined'&&Object.prototype.hasOwnProperty.call(GROEPSDOC_BEDRAGVELDEN,faseId+'_'+df.id))return true;
+  var l=String(df.label||'');return l.indexOf('€')>=0&&l.indexOf('%')<0;
+}
+function isGeldVeldKey(key){
+  var k=String(key||''),i=k.indexOf('_');if(i<1)return false;
+  var faseId=k.slice(0,i),dfId=k.slice(i+1);
+  if(typeof GROEPSDOC_BEDRAGVELDEN!=='undefined'&&Object.prototype.hasOwnProperty.call(GROEPSDOC_BEDRAGVELDEN,k))return true;
+  var f=(typeof FASES!=='undefined'&&FASES)?FASES.find(function(x){return x.id===faseId;}):null;
+  var df=f&&f.dataFields?f.dataFields.find(function(x){return x.id===dfId;}):null;
+  return isGeldVeld(faseId,df);
+}
+// Alleen een tekst die als geheel een bedrag is (cijfers, punt/komma, spaties, €, minteken of haakjes) en waarvan de
+// lezing eenduidig is. Een punt met 1-2 of 4+ cijfers erachter (zonder komma) kan een decimaalpunt zijn ("1250.5"):
+// dan is de NL-lezing (parseGeld) niet zeker en wordt er niets afgeleid (nooit gokken).
+function geldTekstEenduidig(s){
+  var t=String(s==null?'':s).trim();
+  if(!t||!/\d/.test(t)||t.length>40)return false;
+  var kern=t.replace(/€/g,'').replace(/\s+/g,'');
+  if(!/^[+\-−–—‑－(]?\d[\d.,]*[\-−–—‑－)]?$/.test(kern))return false;
+  if(t.indexOf(',')<0&&(/\.\d{1,2}\D*$/.test(t)||/\.\d{4,}/.test(t)))return false;
+  if((t.match(/,/g)||[]).length>1)return false;
+  var heel=kern.replace(/^[+\-−–—‑－(]/,'').replace(/[\-−–—‑－)]$/,'').split(',');
+  if(!/^(\d+|\d{1,3}(\.\d{3})+)$/.test(heel[0])||(heel.length>1&&!/^\d+$/.test(heel[1])))return false;
+  return true;
+}
+// Gelijk als bedrag: letterlijk gelijk, of beide eenduidige bedragteksten met dezelfde waarde ("1250000" = "€ 1.250.000").
+function geldGelijk(a,b){
+  var sa=String(a==null?'':a).trim(),sb=String(b==null?'':b).trim();
+  if(sa===sb)return true;
+  if(!geldTekstEenduidig(sa)||!geldTekstEenduidig(sb))return false;
+  return Math.abs(parseGeld(sa)-parseGeld(sb))<0.005;
+}
+// Waardevergelijking voor een veld: bedragvelden op getalwaarde, alle andere velden letterlijk (zoals voorheen).
+function veldWaardeGelijk(key,a,b){
+  var sa=String(a==null?'':a).trim(),sb=String(b==null?'':b).trim();
+  return sa===sb||(isGeldVeldKey(key)&&geldGelijk(sa,sb));
+}
+// Weergave: na het verlaten van een bedragveld de NL-notatie tonen; de getypte tekst blijft de opgeslagen waarde.
+// veldInvoer(el) geeft altijd die getypte tekst terug zolang het veld de weergave toont. Elke andere waarde in het
+// veld (getypt of door code gezet) wint automatisch, omdat die niet meer gelijk is aan de weergave.
+function veldInvoer(el){
+  if(!el||typeof el.value!=='string')return el?el.value:'';
+  var d=el.dataset;
+  if(d&&d.geldWeergave!==undefined&&el.value===d.geldWeergave)return d.geldRuw||'';
+  return el.value;
+}
+function geldVeldBlur(el){
+  if(!el||!el.dataset)return;
+  var ruw=veldInvoer(el);
+  delete el.dataset.geldWeergave;delete el.dataset.geldRuw;
+  if(!geldTekstEenduidig(ruw))return;
+  var v=parseGeld(ruw);if(!v||!isFinite(v))return; // 0 toont fmtGeld als "—": dan de invoer laten staan
+  var weergave=fmtGeld(v);
+  if(Math.abs(parseGeld(weergave)-v)>0.005)return; // terugleesproef faalt: niets veranderen
+  if(weergave===ruw)return;
+  el.dataset.geldRuw=ruw;el.dataset.geldWeergave=weergave;el.value=weergave;
+}
+function geldVeldFocus(el){
+  if(!el||!el.dataset)return;
+  if(el.dataset.geldWeergave!==undefined&&el.value===el.dataset.geldWeergave)el.value=el.dataset.geldRuw||'';
+  delete el.dataset.geldWeergave;delete el.dataset.geldRuw;
+}
+// ===== /KVM-005 bedragvelden =====
 function userEdit(el){
   // Markeer veld als handmatig bewerkt door gebruiker
   var f=FASES[S.fase];
@@ -885,8 +954,8 @@ function userEdit(el){
     // Dezelfde poorten als saveCurrent: geen koper, geen begeleider in Financieel, niet vergrendeld.
     var df=f.dataFields&&f.dataFields.find(function(x){return x.id===dfId;});
     if(df&&!df.header&&typeof el.value==='string'&&S.screen==='main'&&!isKoper()&&!(isTussen()&&faseId==='financieel')&&!(S.traject&&S.traject.status==='vergrendeld')){
-      if(df.groepsniveau)S._groepData[faseId+'_'+dfId]=el.value;
-      else S.data[faseId+'_'+dfId]=el.value;
+      if(df.groepsniveau)S._groepData[faseId+'_'+dfId]=veldInvoer(el);
+      else S.data[faseId+'_'+dfId]=veldInvoer(el);
     }
   }
   schedSave();checkOmzetSom();
@@ -2153,9 +2222,9 @@ function vergelijkDubbelePassOverigeVelden(veld1, veld2, entiteitId, groepBucket
     var aLeeg = (a === null || a === undefined || a === 'null' || String(a).trim() === '');
     var bLeeg = (b === null || b === undefined || b === 'null' || String(b).trim() === '');
     if (aLeeg || bLeeg) return; // alleen vergelijken als BEIDE AI-lezingen een waarde gaven
-    if (String(a) === String(b)) return; // de twee lezingen zijn het eens
+    if (veldWaardeGelijk(m.key, a, b)) return; // de twee lezingen zijn het eens (bedragvelden: op getalwaarde)
     var existing = (bucket[m.key] || '').trim();
-    if (!existing || existing === String(b)) return; // niets ingevuld, of huidige waarde is toch al gelijk aan lezing 2
+    if (!existing || veldWaardeGelijk(m.key, existing, b)) return; // niets ingevuld, of huidige waarde is toch al gelijk aan lezing 2
     diffs.push({ key: m.key, label: m.label, huidig: existing, nieuw: String(b), bron: '2e AI-lezing (extra controle)', doel: bucket });
   });
   return diffs;
@@ -2368,7 +2437,7 @@ function _autoFillFromExtractionBody(faseId, velden, forceOverwrite, docNaam, op
       if(frag){if(!S._docFragment)S._docFragment={};S._docFragment[key]=frag;}
     }
     if(!existing){d[key]=newVal;if(!S._docSource)S._docSource={};S._docSource[key]=currentDocNaam;S._docJaar[key]=veldJaar;S._docSoort[key]=docSoort;zetFragment();return;}
-    if(existing===newVal){
+    if(veldWaardeGelijk(key,existing,newVal)){ // KVM-005: bedragvelden op getalwaarde ("1250000" = "€ 1.250.000")
       // #73: zelfde waarde uit een hogere bron (bijv. de jaarrekening bevestigt een tussentijds cijfer): herkomst bijwerken.
       var rangNu=DOC_SOORT_RANG[S._docSoort[key]]; if(rangNu===undefined)rangNu=-1;
       if((DOC_SOORT_RANG[docSoort]||0)>rangNu&&S._docSource&&S._docSource[key]){S._docSource[key]=currentDocNaam;S._docJaar[key]=veldJaar;S._docSoort[key]=docSoort;zetFragment();}
@@ -2395,7 +2464,7 @@ function _autoFillFromExtractionBody(faseId, velden, forceOverwrite, docNaam, op
     // Groepsdocument: de keuze wordt na afloop in de groepsrij vastgelegd; een bestaande bruto som heet zo.
     if(groepsdoc){
       conflict.groepsdocument=true;
-      if(S._groepAuto&&S._groepAuto[key]===existing)conflict.huidigBron='bruto berekende som van de entiteiten';
+      if(S._groepAuto&&S._groepAuto[key]!==undefined&&veldWaardeGelijk(key,S._groepAuto[key],existing))conflict.huidigBron='bruto berekende som van de entiteiten';
     }
     S._conflicts.push(conflict);
     if(!S._pendingConflicts)S._pendingConflicts={};
@@ -2449,7 +2518,7 @@ function _autoFillFromExtractionBody(faseId, velden, forceOverwrite, docNaam, op
         // Groepsdocument: alleen opschuiven als het vak nog het eerdere documentcijfer bevat; staat er
         // intussen iets anders (bv. een bruto som), dan is het een keuze (applyOrConflict hieronder).
         var slotBestaand=strikt(slotKey)?(doelData(slotKey)[slotKey]||'').trim():'';
-        var slotAnders=!!slotBestaand&&prevJaar!==undefined&&slotBestaand!==String(S._opy[String(prevJaar)]||'').trim();
+        var slotAnders=!!slotBestaand&&prevJaar!==undefined&&!veldWaardeGelijk(slotKey,slotBestaand,S._opy[String(prevJaar)]||'');
         if(prevJaar!==undefined&&String(prevJaar)!==String(yr)&&!slotAnders){
           // Venster is opgeschoven: dit vak stelt nu een ander boekjaar voor dan voorheen —
           // geen gebruikersconflict, gewoon bijwerken.
@@ -3119,9 +3188,9 @@ function toonConflictDialog(conflicts, contextLabel, naAfloop) {
   conflicts=conflicts.filter(function(c){
     if(!c.groepsdocument)return true;
     var huidig=String((S._groepData||{})[c.key]||'').trim();
-    if(huidig===String(c.nieuw)){if(S._pendingConflicts)delete S._pendingConflicts[c.key];return false;}
+    if(veldWaardeGelijk(c.key,huidig,c.nieuw)){if(S._pendingConflicts)delete S._pendingConflicts[c.key];return false;}
     c.huidig=huidig;
-    if(S._groepAuto&&S._groepAuto[c.key]===huidig)c.huidigBron='bruto berekende som van de entiteiten';else delete c.huidigBron;
+    if(S._groepAuto&&S._groepAuto[c.key]!==undefined&&veldWaardeGelijk(c.key,S._groepAuto[c.key],huidig))c.huidigBron='bruto berekende som van de entiteiten';else delete c.huidigBron;
     if(c.nietActueel||(typeof finWerkLopend==='function'&&finWerkLopend(S,c.finWerkGrens===undefined?Infinity:c.finWerkGrens).length)){
       c.huidigBron='nog niet actueel: verwerking van een ander document loopt nog';nietActueel=true;
     }

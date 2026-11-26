@@ -687,7 +687,9 @@ function renderMain(){
       dataHtml+='<div class="f"><label for="df_'+df.id+'">'+df.label+reqLabel(df)+(df.doc?' <span style="color:var(--gold);font-size:9px">&#128196; ref</span>':'')+bronTag
         +(hasConflict?' <span style="color:var(--gold);font-size:9px;font-weight:600" title="Document geeft andere waarde: '+esc(hasConflict)+'">&#9888; afwijking</span>':'')
         +(toontGroepsniveauBadge?' <span style="color:var(--muted);font-size:9px;font-weight:600" title="Dit veld geldt voor de hele groep, niet alleen voor de geselecteerde entiteit — wijzigingen gelden overal.">&#128279; geldt voor hele groep</span>':'')+'</label>'
-        +'<input type="text" id="df_'+df.id+'" value="'+esc(val)+'" placeholder="'+esc(df.ph)+'" class="'+(missing?'missing':'')+'" style="'+conflictStyle+'"'+conflictTitle+' oninput="userEdit(this)">'+ebitdaNormHint+'</div>';
+        +'<input type="text" id="df_'+df.id+'" value="'+esc(val)+'" placeholder="'+esc(df.ph)+'" class="'+(missing?'missing':'')+'" style="'+conflictStyle+'"'+conflictTitle+' oninput="userEdit(this)"'
+        // KVM-005: bedragveld toont na verlaten de NL-notatie (€ 1.250.000); opgeslagen blijft de getypte waarde.
+        +((typeof isGeldVeld==='function'&&isGeldVeld(f.id,df))?' data-geldveld="1" onfocus="geldVeldFocus(this)" onblur="geldVeldBlur(this)"':'')+'>'+ebitdaNormHint+'</div>';
     }
     dataHtml+='</div>';
   });
@@ -2202,7 +2204,7 @@ function bindAll(){
         var domEl=ge('df_'+df.id);
         var key=f.id+'_'+df.id;
         if(domEl){
-          if(domEl.value.trim()||S._userEdited[key])S.data[key]=domEl.value;
+          var domInvoer=typeof veldInvoer==='function'?veldInvoer(domEl):domEl.value;if(domInvoer.trim()||S._userEdited[key])S.data[key]=domInvoer;
         }
       });
       var nel=ge('notitie_'+f.id);if(nel)S.notities[f.id]=nel.value;

@@ -25,6 +25,7 @@ import path from 'path';
 import vm from 'vm';
 import crypto from 'crypto';
 import { fileURLToPath, pathToFileURL } from 'url';
+import { kvm005Blok } from './lib-kvm005-geldvelden.mjs';
 
 const WORKER = 'https://worker.test';
 const FASE = 'financieel';
@@ -153,7 +154,7 @@ function laad(root) {
     brandMerkHtml: () => '', versieLabel: () => '', secAuditLog() {},
   });
   ctx.window = ctx;
-  vm.runInContext(delen.join('\n\n'), ctx, { filename: 'mna/01+02#document-processing-ui' });
+  vm.runInContext(delen.concat(kvm005Blok()).join('\n\n'), ctx, { filename: 'mna/01+02#document-processing-ui' });
 
   const bestand = (naam) => new File(['Synthetisch document (geen echte gegevens).'], naam, { type: 'text/plain' });
   const begin = (docs) => {
@@ -253,7 +254,7 @@ function laadAutosave(root) {
     S: maakAutosaveS(),
   });
   ctx.window = ctx;
-  vm.runInContext(delen.join('\n\n'), ctx, { filename: 'mna/02#autosave' });
+  vm.runInContext(delen.concat(kvm005Blok()).join('\n\n'), ctx, { filename: 'mna/02#autosave' });
   // Eerstvolgende nog lopende timer met deze vertraging afgaan (1200 = schedSave, 800 = saveCurrent).
   const timer = (ms) => { const t = timers.find((x) => x.fn && x.ms === ms); if (!t) return false; const fn = t.fn; t.fn = null; fn(); return true; };
   const autosave = () => intervals.find((i) => i.ms === 30000).fn();
@@ -317,7 +318,7 @@ function laadGroepsdocument(root) {
     S: null,
   });
   ctx.window = ctx;
-  vm.runInContext(delen.join('\n\n'), ctx, { filename: 'mna/02#groepsdocument' });
+  vm.runInContext(delen.concat(kvm005Blok()).join('\n\n'), ctx, { filename: 'mna/02#groepsdocument' });
   // Groep met twee entiteiten; actieve context = entiteit A (zoals loadEntiteiten standaard kiest). De groepsrij
   // komt via de echte loadDataFromDB binnen met bruto sommen (auto:true) in omzet2, omzet3, debiteuren en ebitda.
   const opzetGroep = () => {

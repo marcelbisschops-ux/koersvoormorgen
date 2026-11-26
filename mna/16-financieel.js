@@ -23,7 +23,7 @@ function finSync() { var k = finScope(); if (FIN.scope !== k) { FIN.scope = k; F
 function finHeaders() { var h = { 'Content-Type': 'application/json' }; if (isTussen()) h['x-tussen-key'] = S._bgKey || ''; return h; }
 function finHerteken() {
   var f = (typeof FASES !== 'undefined' && FASES[S.fase]) || null, bewaard = [];
-  if (f && f.dataFields) f.dataFields.forEach(function (df) { var el = ge('df_' + df.id); if (el && typeof el.value === 'string') bewaard.push([df.id, el.value]); });
+  if (f && f.dataFields) f.dataFields.forEach(function (df) { var el = ge('df_' + df.id); if (el && typeof el.value === 'string') bewaard.push([df.id, veldInvoer(el)]); });
   renderApp();
   bewaard.forEach(function (b) { var el = ge('df_' + b[0]); if (el && el.value !== b[1]) el.value = b[1]; });
 }

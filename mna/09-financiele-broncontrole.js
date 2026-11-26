@@ -134,7 +134,7 @@ function fbcAfgekapt(getoond,totaal,wat){
 function fbcHerteken(){
   var f=(typeof FASES!=='undefined'&&FASES[S.fase])||null;
   var bewaard=[];
-  if(f&&f.dataFields)f.dataFields.forEach(function(df){var el=ge('df_'+df.id);if(el&&typeof el.value==='string')bewaard.push([df.id,el.value]);});
+  if(f&&f.dataFields)f.dataFields.forEach(function(df){var el=ge('df_'+df.id);if(el&&typeof el.value==='string')bewaard.push([df.id,veldInvoer(el)]);});
   renderApp();
   bewaard.forEach(function(b){var el=ge('df_'+b[0]);if(el&&el.value!==b[1])el.value=b[1];});
 }
@@ -219,7 +219,7 @@ function fbcLokaleWaarde(veldId){
   var df=fbcVeldDef(veldId);var key='financieel_'+veldId;
   var doel=df&&df.groepsniveau?S._groepData:S.data;
   var el=ge('df_'+veldId);
-  return {doel:doel,key:key,dom:el&&typeof el.value==='string'?el.value:null,lokaal:doel&&doel[key]!=null?String(doel[key]):''};
+  return {doel:doel,key:key,dom:el&&typeof el.value==='string'?veldInvoer(el):null,lokaal:doel&&doel[key]!=null?String(doel[key]):''};
 }
 // Niet-opgeslagen invoer in het gewone formulier mag nooit stil verloren gaan of tegen een andere
 // basis worden gecorrigeerd: dan eerst gewoon opslaan en de broncontrole verversen.
@@ -227,7 +227,9 @@ function fbcLokaleAfwijking(veldId,serverWaarde){
   var srv=serverWaarde==null?'':String(serverWaarde).trim();
   if(S._pendingSave)return 'Er staat nog een opslag van het formulier klaar. Wacht tot die is opgeslagen en ververs dan de broncontrole.';
   var l=fbcLokaleWaarde(veldId);
-  if((l.dom!==null&&l.dom.trim()!==srv)||l.lokaal.trim()!==srv)
+  // KVM-005: bedragen op getalwaarde vergelijken ("1250000" = "€ 1.250.000"), andere velden letterlijk.
+  var fk='financieel_'+veldId;
+  if((l.dom!==null&&!veldWaardeGelijk(fk,l.dom,srv))||!veldWaardeGelijk(fk,l.lokaal,srv))
     return 'Dit veld heeft in het formulier een andere waarde dan op de server (mogelijk nog niet opgeslagen). Sla eerst op en ververs de broncontrole; er is niets gecorrigeerd.';
   return null;
 }
@@ -285,7 +287,7 @@ window.fbcVerstuurCorrectie=function(){
 function fbcWerkLokaalBij(c,actueel){
   var b=c.binding;if(!b||!b.doel)return 'onbekend';
   var el=actueel?ge('df_'+c.veld_id):null;
-  if(el&&typeof el.value==='string'&&el.value.trim()!==b.oud.trim()){b.doel[b.key]=el.value;return 'invoer_behouden';}
+  if(el&&typeof el.value==='string'&&veldInvoer(el).trim()!==b.oud.trim()){b.doel[b.key]=veldInvoer(el);return 'invoer_behouden';}
   var nu=b.doel[b.key]==null?'':String(b.doel[b.key]);
   if(nu.trim()!==b.oud.trim())return 'invoer_behouden';
   b.doel[b.key]=c.opgeslagenWaarde;

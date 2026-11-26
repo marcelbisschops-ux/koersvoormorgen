@@ -15,6 +15,7 @@ import fs from 'fs';
 import path from 'path';
 import vm from 'vm';
 import { fileURLToPath, pathToFileURL } from 'url';
+import { kvm005Blok } from './lib-kvm005-geldvelden.mjs';
 
 const WORKER = 'https://worker.test';
 const LEES_PAD = WORKER + '/mna/juridisch/broncontrole/';
@@ -137,7 +138,7 @@ function laad(root, { rol = 'verkoper', code = 'VSYN0001', status = 'actief', fa
   };
   ctx.window = ctx;
   vm.createContext(ctx);
-  vm.runInContext(delen.join('\n') + '\n' + src10, ctx, { filename: 'mna/10-juridische-broncontrole.js' });
+  vm.runInContext(delen.concat(kvm005Blok()).join('\n') + '\n' + src10, ctx, { filename: 'mna/10-juridische-broncontrole.js' });
   const render = () => { log.html = ctx.renderJuridischeBroncontrole(FASES[S.fase] ? FASES[S.fase].id : ''); return log.html; };
   const gets = () => log.requests.filter((r) => r.method === 'GET');
   const posts = () => log.requests.filter((r) => r.method === 'POST');

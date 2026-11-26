@@ -33,6 +33,7 @@ import path from 'path';
 import vm from 'vm';
 import { fileURLToPath, pathToFileURL } from 'url';
 import { createHash, webcrypto } from 'crypto';
+import { kvm005Blok } from './lib-kvm005-geldvelden.mjs';
 
 const CODES = { verkoper: 'VSYN0001', koper: 'KSYN0002', tussen: 'TSYN0003' };
 const REF = 'TR-ABCD-EFGH-JKLM-NPQR';
@@ -267,7 +268,7 @@ function laadComposer(root, opts = {}) {
     delen.push(knip(src05, 'function toonRelianceAkkoord(titel, docType, onAkkoord) {', '\n}\n'), knip(src05, 'function printDoc(tekst, titel, docType) {', '\n}\n'),
       knip(src05, 'var printTosDefinitief = (function () {', '\n})();\n'), knip(src05, 'function printDocNaAkkoord(tekst, titel, docType) {', '\n}\n'));
   }
-  vm.runInContext(delen.join('\n'), ctx, { filename: 'mna/04#composer' });
+  vm.runInContext(delen.concat(kvm005Blok()).join('\n'), ctx, { filename: 'mna/04#composer' });
   // Een PATCH uit de wachtrij beantwoorden: bij ok wordt de synthetische server bijgewerkt (zoals worker/31).
   const los = (filter, ok, fout) => {
     const i = srv.wachtrij.findIndex(filter); if (i < 0) throw new Error('geen wachtend verzoek gevonden');

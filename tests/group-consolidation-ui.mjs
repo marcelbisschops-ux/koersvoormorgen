@@ -18,6 +18,7 @@ import fs from 'fs';
 import path from 'path';
 import vm from 'vm';
 import { fileURLToPath, pathToFileURL } from 'url';
+import { kvm005Blok } from './lib-kvm005-geldvelden.mjs';
 
 const lees = (root, rel) => fs.readFileSync(path.join(root, rel), 'utf8');
 function regel(src, re, naam) { const m = src.match(re); if (!m) throw new Error('niet gevonden in bron: ' + naam); return m[0]; }
@@ -108,7 +109,7 @@ function laad(root, { rol = 'verkoper', code = 'VSYN0001', fase = 0, mnaData } =
   };
   ctx.window = ctx;
   vm.createContext(ctx);
-  vm.runInContext(delen.join('\n') + '\n' + src11, ctx, { filename: 'mna/11-groepsbeeld.js' });
+  vm.runInContext(delen.concat(kvm005Blok()).join('\n') + '\n' + src11, ctx, { filename: 'mna/11-groepsbeeld.js' });
   const render = (faseId) => ctx.renderGroepsbeeld(faseId === undefined ? (FASES[ctx.S.fase] ? FASES[ctx.S.fase].id : '') : faseId);
   return { ctx, S, log, render };
 }
@@ -185,7 +186,7 @@ function laadOpslag(root, { rol = 'verkoper', code = 'VSYN0001', entiteit = 'ENT
   ctx.window = ctx;
   ctx.S = maakS(code, rol, mnaData, entiteit);
   vm.createContext(ctx);
-  vm.runInContext(delen.join('\n') + '\n' + src11, ctx, { filename: 'mna/02+11#opslag' });
+  vm.runInContext(delen.concat(kvm005Blok()).join('\n') + '\n' + src11, ctx, { filename: 'mna/02+11#opslag' });
   const toon = () => { dom['gb-panel'] = paneel(ctx.renderGroepsbeeld('financieel')); };
   const html = () => (dom['gb-panel'] ? dom['gb-panel'].outerHTML : '');
   const timersAf = () => { for (let i = 0; i < timers.length; i++) { const f = timers[i]; if (f) { timers[i] = null; f(); } } };
@@ -291,7 +292,7 @@ function laadPartnerUi(root, soort, { rol, maatschap = true, entiteiten = PT_ENT
     brandMerkHtml: () => '', versieLabel: () => '', getPartnerTerm: () => ({ enkel: 'partner', meer: 'partners', titel: 'Partners' }), isMaatschap: () => maatschap };
   ctx.window = ctx;
   vm.createContext(ctx);
-  vm.runInContext(delen.join('\n'), ctx, { filename: soort === 'modal' ? 'mna/04#partners' : 'mna/06#partners' });
+  vm.runInContext(delen.concat(kvm005Blok()).join('\n'), ctx, { filename: soort === 'modal' ? 'mna/04#partners' : 'mna/06#partners' });
   const p = soort === 'modal' ? 'pt-' : 'op-pt-';
   let app = null;
   const open = () => {
