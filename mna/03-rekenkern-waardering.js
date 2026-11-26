@@ -1835,6 +1835,17 @@ function dvBerekenWaardering(){
   var multipleType=mRangeW.basis||'ebitda';
 
   // Bereken
+  // KVM-014 / werkregel 59: de genormaliseerde EBITDA uit de financiële analyse (alleen goedgekeurde normalisaties) is de
+  // gezaghebbende grondslag; de DD-velden zijn alleen een zichtbare terugval (ebitdaBron).
+  var _fc=(typeof finCentraleGrondslag==='function')?finCentraleGrondslag():null;
+  var ebitdaBron='DD-velden (terugval: geen gereed boekjaar in de financiële analyse)';
+  var _centraalMaatschapOk=false;
+  if(_fc&&isFinite(_fc.ebitda)){
+    ebitdaAbs=_fc.ebitda;
+    ebitdaPct=_fc.omzet?_fc.ebitda/_fc.omzet*100:ebitdaPct;
+    ebitdaBron='financiële analyse, genormaliseerde EBITDA '+_fc.jaar;
+    _centraalMaatschapOk=!!_fc.ondernemersloonGenormaliseerd;
+  }
   var ebitdaAmt=ebitdaAbs||(o3*(ebitdaPct/100));
   var multipleTypeBedrag=multipleType==='omzet'?o3:ebitdaAmt;
 
@@ -1849,7 +1860,15 @@ function dvBerekenWaardering(){
   var maatschapGrondslagOnbekend=false;
   if(maatschapModus){
     multipleType='maatschap';
-    if(partnerBel>0){
+    if(_fc&&_centraalMaatschapOk){
+      // Ondernemersloon is al als goedgekeurde normalisatie in de genormaliseerde EBITDA verwerkt: niet nogmaals aftrekken.
+      multipleTypeBedrag=Math.max(0,ebitdaAbs||0);
+    } else if(_fc){
+      // Centrale bron zonder goedgekeurd ondernemersloon: geen gok, terug naar de bestaande DD-berekening met melding.
+      ebitdaBron='DD-velden (terugval: in de financiële analyse is voor '+_fc.jaar+' nog geen ondernemersloon als normalisatie goedgekeurd)';
+      ebitdaAbs=parseGeld(S.data['financieel_ebitdaNorm']||S.data['financieel_ebitda']);
+      if(partnerBel>0){ multipleTypeBedrag=Math.max(0,(ebitdaAbs||0)-partnerBel); } else { maatschapGrondslagOnbekend=true; multipleTypeBedrag=0; }
+    } else if(partnerBel>0){
       multipleTypeBedrag=Math.max(0,(ebitdaAbs||0)-partnerBel);
     } else {
       maatschapGrondslagOnbekend=true;
@@ -1894,6 +1913,7 @@ function dvBerekenWaardering(){
   var earnJaarlijks=earnBase===null?null:earnBase*(earnPct/100)/earnJaren;
 
   return {
+    ebitdaBron:ebitdaBron,
     o1:o1,o2:o2,o3:o3,omzetYTD:omzetYTD,ebitdaAbs:ebitdaAbs,ebitdaPct:ebitdaPct,ebitdaAmt:ebitdaAmt,
     partnerBel:partnerBel,partnerBelLabel:partnerBelLabel,recurring:recurring,declarab:declarab,wip:wip,debiteuren:debiteuren,
     fte:fte,aantalP:aantalP,omzetPerP:omzetPerP,aantalKlanten:aantalKlanten,top1pct:top1pct,top10pct:top10pct,churn:churn,
@@ -1953,6 +1973,8 @@ function dvIndicatorenRij(v){
 function renderWaardering(){
   var t=S.traject||{};
   var isRO=isKoper();
+  // KVM-014: centrale grondslag één keer laden; daarna opnieuw tekenen met de financiële analyse als bron.
+  if(typeof finZorgCentraal==='function')finZorgCentraal(function(){ if(typeof renderApp==='function')renderApp(); });
   var v=dvBerekenWaardering();
   var o1=v.o1,o2=v.o2,o3=v.o3,ebitdaAbs=v.ebitdaAbs,ebitdaPct=v.ebitdaPct,ebitdaAmt=v.ebitdaAmt,
     fte=v.fte,recurring=v.recurring,churn=v.churn,
@@ -1994,6 +2016,7 @@ function renderWaardering(){
   html+='<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem;margin-bottom:1.25rem">'
     +'<div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)">Waardebepaling as-is ('+basisLabel+'-methode)</div>'
     +(multipleType==='omzet'?'<div style="font-size:12px;color:var(--gold);background:var(--gold-bg);border:1px solid var(--gold);border-radius:var(--r);padding:8px 12px;margin-bottom:.75rem">Deze sector gebruikt een omzet-multiple (praktijkwaarde), geen EBITDA-multiple. Het Dealvoorstel-scherm (prijsmechanisme, bankfinanciering, schuldaflossing, DCF) blijft EBITDA-based — gebruik daar de cijfers hieronder met dat voorbehoud.</div>':'')
+    +(v.ebitdaBron&&!isRO?'<div id="wd-ebitda-bron" style="font-size:11px;color:'+(/^financi/.test(v.ebitdaBron)?'var(--teal)':'var(--gold-dark)')+';margin-bottom:.6rem">Grondslag: '+esc(v.ebitdaBron)+'</div>':'')
     +(v.maatschapModus&&!v.maatschapGrondslagOnbekend?'<div style="font-size:12px;color:var(--teal-dim);background:var(--teal-bg);border:1px solid var(--teal-dark);border-radius:var(--r);padding:8px 12px;margin-bottom:.75rem">Maatschap / IB-onderneming: de grondslag is de genormaliseerde winst ('+fmtGeld(ebitdaAmt)+') <strong>minus</strong> een marktconform ondernemersloon voor de werkende maten ('+fmtGeld(v.ondernemersloonTotaal)+', overgenomen uit het veld eigenaar-/partnerbeloning) = <strong>'+fmtGeld(v.multipleTypeBedrag)+'</strong>. Er wordt niet met vennootschapsbelasting gerekend (maten betalen box-1 inkomstenbelasting).</div>':'')
     +(v.maatschapModus&&v.maatschapGrondslagOnbekend?'<div style="font-size:12px;color:var(--red);background:var(--red-bg);border:1px solid var(--red);border-radius:var(--r);padding:8px 12px;margin-bottom:.75rem"><strong>&#9888; Grondslag nog niet vast te stellen.</strong> Dit is een maatschap: de waardering rekent op de winst ná een marktconform ondernemersloon voor de werkende maten. Vul daarvoor eerst het veld <strong>eigenaar-/partnerbeloning totaal per jaar</strong> in (fase Financieel). Zolang dat leeg is, wordt hier bewust géén waarde getoond in plaats van een ongecorrigeerd cijfer.</div>':'')
     +(v.multipleOnbekend?'<div style="font-size:12px;color:var(--red);background:var(--red-bg);border:1px solid var(--red);border-radius:var(--r);padding:8px 12px;margin-bottom:.75rem"><strong>&#9888; Geen multiple-range voor deze sector.</strong> Er is geen onderbouwde EBITDA-/omzet-multiple bekend voor deze sector, dus er wordt hier bewust géén waardering getoond in plaats van een gegokte bandbreedte. Gebruik het Dealvoorstel-scherm en vul daar een onderbouwde multiple handmatig in.</div>':'')

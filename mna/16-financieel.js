@@ -334,6 +334,29 @@ function renderFinancieleAnalyse(faseId) {
   return h + '</div>';
 }
 // Dealvoorstel (mna/04): genormaliseerde EBITDA en goedgekeurde prognose als expliciete keuze, nooit automatisch.
+// KVM-014 / werkregel 59 (26-11-2026): centrale grondslag voor het waarderingsscherm (mna/03 dvBerekenWaardering).
+// Aparte cache per traject (los van het financiële paneel); null = niet beschikbaar → zichtbare terugval op DD-velden.
+window.FIN_CENTRAAL = { code: null, status: 'idle', data: null };
+window.finCentraleGrondslag = function () {
+  var c = window.FIN_CENTRAAL;
+  if (!c || c.code !== S.code || c.status !== 'ok' || !c.data || !c.data.jaren || !c.data.jaren.length) return null;
+  var jl = c.data.jaren[c.data.jaren.length - 1];
+  var ol = (c.data.normalisaties || []).some(function (n) { return n.status === 'goedgekeurd' && n.soort === 'partnerbeloning' && Number(n.jaar) === Number(jl.jaar); });
+  return { jaar: jl.jaar, ebitda: jl.genormaliseerd.ebitda, omzet: jl.genormaliseerd.omzet, ondernemersloonGenormaliseerd: ol };
+};
+// Laadt de centrale grondslag één keer per traject en tekent daarna opnieuw (geen lus: status voorkomt herhaling).
+window.finZorgCentraal = function (herteken) {
+  var c = window.FIN_CENTRAAL;
+  if (!S.code || !(isVerkoper() || isTussen())) return;
+  if (c.code === S.code && (c.status === 'ok' || c.status === 'laden' || c.status === 'fout')) return;
+  c.code = S.code; c.status = 'laden'; c.data = null;
+  var code = S.code;
+  finHaal().then(function (x) {
+    if (window.FIN_CENTRAAL.code !== code) return;
+    if (x.s === 200 && x.d && x.d.ok === true) { c.status = 'ok'; c.data = x.d; } else c.status = 'fout';
+    if (typeof herteken === 'function') herteken();
+  });
+};
 // KVM-014 stap 1 + gouden werkregel 59 (26-11-2026): de genormaliseerde EBITDA uit de financiële analyse (alleen goedgekeurde
 // normalisaties) is de gezaghebbende bron voor de bewezen EBITDA in het dealvoorstel, dus ook voor de multiple en de DCF die op
 // dat veld rekenen. Het DD-veld is uitsluitend een zichtbare, gemotiveerde terugval; een handmatige afwijking vraagt een motivering
