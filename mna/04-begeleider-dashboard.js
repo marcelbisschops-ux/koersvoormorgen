@@ -3517,8 +3517,8 @@ function renderBegeleiderDashboard(app){
     }
     var ic=lijst(),b=r.batna;
     // KVM-014: herkomst van de bewezen EBITDA (centrale bron of gemotiveerde handmatige uitzondering), alleen intern.
-    if(p.ebitdaBron)ic.voeg('ebitda_bron','Herkomst bewezen EBITDA','tekst',String(p.ebitdaBron).slice(0,120));
-    if(p.ebitdaMotivering)ic.voeg('ebitda_motivering','Motivering handmatige bewezen EBITDA','tekst',String(p.ebitdaMotivering).slice(0,120));
+    if(r.isSellDv&&p.ebitdaBron)ic.voeg('ebitda_bron','Herkomst bewezen EBITDA','tekst',String(p.ebitdaBron).slice(0,120));
+    if(r.isSellDv&&p.ebitdaMotivering)ic.voeg('ebitda_motivering','Motivering handmatige bewezen EBITDA','tekst',String(p.ebitdaMotivering).slice(0,120));
     if(r.isSellDv){
       ic.voeg('verkoper_naam','Verkopende partij','tekst',r.verkoperNaam);
       ic.voeg('cash_closing_verkoper','Cash bij closing voor de verkoper','eur',R(vb.verkopersopbrengstCashClosing));
@@ -3870,7 +3870,8 @@ function renderBegeleiderDashboard(app){
         // INTERNE context — uitsluitend voor de verkoper + begeleider, NOOIT naar de koper.
         // Voedt de aparte interne bijlage, niet het deelbare dealvoorstel.
         var interneContext = !isSellDv ? '' : (
-          'Verkopende partij: '+(t2.kantoor_naam||S.code)+'. Cash bij closing voor de verkoper: €'+Math.round(verkBedr.verkopersopbrengstCashClosing)+'. Totale tegenprestatie verkocht belang (cash + escrow + uitgestelde earn-out): €'+Math.round((batna&&batna.totaalVerkocht)||opbrengstBrug.verkochtBelangWaarde)+'.\n'
+          (p.ebitdaBron?'Herkomst bewezen EBITDA: '+String(p.ebitdaBron).slice(0,120)+'. ':'')+(p.ebitdaMotivering?'Motivering handmatige bewezen EBITDA: '+String(p.ebitdaMotivering).slice(0,120)+'. ':'')
+          +'Verkopende partij: '+(t2.kantoor_naam||S.code)+'. Cash bij closing voor de verkoper: €'+Math.round(verkBedr.verkopersopbrengstCashClosing)+'. Totale tegenprestatie verkocht belang (cash + escrow + uitgestelde earn-out): €'+Math.round((batna&&batna.totaalVerkocht)||opbrengstBrug.verkochtBelangWaarde)+'.\n'
           +'LoI-checklist (onderhandel de LoI alsof het de SPA is): het dealvoorstel dekt de koopsom/het prijsmechanisme, de betaalstructuur'+(p.earnOutAan?', earn-out':'')+' en escrow. Nog expliciet in de LoI vast te leggen (SPA-materie, met een jurist): koopsom-aanpassingsmechanisme (locked box vs. completion accounts), exclusiviteitsduur, reps & warranties-kader (cap/basket/survival), W&I-verzekering, MAC-clausule, opschortende voorwaarden, non-concurrentie/relatiebeding, retentie sleutelpersonen, behandeling overtollige liquiditeiten, kostenverdeling en geschillenregeling. Wie deze pas in de SPA regelt, geeft leverage weg.\n'
           +(batna?('BATNA & walk-away (verkoperspositie, door de begeleider ingevoerd — geen platformberekening): '+(batna.status==='nietIngevuld'?'walk-awayprijs NIET ingevuld — geen ondergrens om het bod tegen af te wegen'+(batna.batnaKeuze?(', gekozen alternatief: '+batna.batnaKeuze):''):'walk-awayprijs (minimale acceptabele opbrengst) €'+Math.round(batna.walkAway)+'. Zekere cash bij closing €'+Math.round(batna.cashNu)+' ('+(batna.margeCash>=0?'+':'')+Math.round(batna.margeCash)+' t.o.v. walk-away). Totale tegenprestatie verkocht belang €'+Math.round(batna.totaalVerkocht)+' ('+(batna.margeTotaal>=0?'+':'')+Math.round(batna.margeTotaal)+'). Alternatief zonder deze deal: '+(batna.batnaKeuze||'niet gekozen')+(batna.batnaWaarde>0?(' (geschatte waarde €'+Math.round(batna.batnaWaarde)+')'):'')+'. Tijdsdruk verkoper: '+batna.tijdsdruk+'. Oordeel: '+(batna.status==='ruimBoven'?'BOVEN de walk-away — bod aantrekkelijker dan het alternatief':batna.status==='krap'?'KRAP — alleen met volledige escrow/earn-out boven de ondergrens':'ONDER de walk-away — niet accepteren zoals het nu ligt'))+'.'):'')
         );
