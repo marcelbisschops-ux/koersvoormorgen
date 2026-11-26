@@ -23,6 +23,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { pathToFileURL } from 'node:url';
 import { WORKER, leesAdminKey, api, check, kop, kleur, samenvatting, d1, D1_NAAM, sla_over, accepteerPlatformvoorwaarden, verwijderTestGebruiker, ruimTrajectOp as ruimTrajectOpLib, IS_STAGING_WORKER } from './lib.mjs';
+if (!process.env.WORKER_URL) { console.log('WEIGERT: geef de doelomgeving expliciet op met WORKER_URL (productie of staging); sinds 20-11 is de standaard staging.'); process.exit(2); }
 
 const ADMIN = leesAdminKey();
 const DOM = '@e2e-test.invalid';

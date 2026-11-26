@@ -5,7 +5,9 @@
 
 import { execFileSync } from 'node:child_process';
 
-export const WORKER = process.env.WORKER_URL || 'https://kantoorinzicht.marcel-bisschops.workers.dev';
+// 20-11-2026 (Marcel): tests wijzen NIET standaard naar productie. Zonder WORKER_URL draait alles tegen staging; productie
+// alleen met een expliciete WORKER_URL=https://kantoorinzicht.marcel-bisschops.workers.dev (bijv. prod-smoke, deploy.sh).
+export const WORKER = process.env.WORKER_URL || 'https://kantoorinzicht-staging.marcel-bisschops.workers.dev';
 
 // N-68 (26 sep 2026, structurele credential-fix): canonieke bron is de macOS Sleutelhanger —
 // versleuteld, geen ~/.zshrc-afhankelijkheid, geen risico op een verouderde/desynchrone waarde in
