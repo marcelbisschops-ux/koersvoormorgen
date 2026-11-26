@@ -7,8 +7,12 @@
 var FIN = { scope: null, status: 'idle', data: null, bezig: false, melding: null, form: null };
 var FIN_POST = [['omzet', 'Netto-omzet'], ['kostprijs', 'Kostprijs'], ['personeel', 'Personeelskosten'], ['huisvesting', 'Huisvestingskosten'], ['vervoer', 'Vervoerskosten'], ['verkoop', 'Verkoopkosten'], ['algemeen', 'Kantoor- en algemene kosten']];
 var FIN_SOORT = [['incidenteel', 'Incidentele bate of last'], ['partnerbeloning', 'Afwijkende partnerbeloning'], ['vervangingskosten', 'Marktconforme vervangingskosten'], ['personeelsuitval', 'Tijdelijke personeelsuitval'],
-  ['vacature', 'Vacature'], ['advieskosten', 'Eenmalige advieskosten'], ['reorganisatie', 'Reorganisatiekosten'], ['niet_operationeel', 'Niet-operationele kosten of opbrengsten'], ['overig', 'Andere aantoonbare correctie']];
-var FIN_STATUS = { voorstel: 'Voorstel', goedgekeurd: 'Goedgekeurd', afgewezen: 'Afgewezen' };
+  ['vacature', 'Vacature'], ['advieskosten', 'Eenmalige advieskosten'], ['reorganisatie', 'Reorganisatiekosten'], ['niet_operationeel', 'Niet-operationele kosten of opbrengsten'], ['overig', 'Andere aantoonbare correctie'],
+  // KVM-014 (26-11-2026)
+  ['managementfee', 'Managementfee'], ['familieleden', 'Beloning meewerkende familieleden'], ['huisvesting_marktconform', 'Marktconforme huisvestingskosten'], ['prive_kosten', 'Privé- of niet-zakelijke kosten'],
+  ['transactiekosten', 'Transactiekosten'], ['it_implementatie', 'Eenmalige IT- of implementatiekosten'], ['subsidie', 'Niet-structurele subsidie'], ['verbonden_partijen', 'Niet-marktconforme transactie met verbonden partij'],
+  ['niet_overdraagbaar', 'Niet-overdraagbare activiteit'], ['ontbrekende_kosten', 'Structureel ontbrekende kosten'], ['eigen', 'Eigen categorie']];
+var FIN_STATUS = { voorstel: 'Voorstel', goedgekeurd: 'Goedgekeurd', afgewezen: 'Afgewezen', geparkeerd: 'Geparkeerd (wacht op informatie)' };
 // #91 B1 (13-11-2026): equity bridge-posten (backend worker/46). Teken volgt uit de soort; alleen goedgekeurde posten tellen.
 // Balansherkomst van een debt-/cash-like post (besluit Marcel 13-11): voorkomt dubbeltelling met werkkapitaal en netto schuld.
 var FIN_EQ_BP = [['', 'Kies waar deze post op de balans staat'], ['buiten_balans', 'Niet in de jaarbalans (bijv. claim, achterstallig onderhoud)'], ['crediteuren', 'Crediteuren (werkkapitaal)'], ['belasting_premies', 'Belastingen en premies (werkkapitaal)'], ['schulden_kort_overig', 'Overige kortlopende schulden (werkkapitaal)'], ['voorzieningen', 'Voorzieningen'], ['vorderingen_overig', 'Overige vorderingen (werkkapitaal)'], ['debiteuren', 'Debiteuren (werkkapitaal)'], ['voorraad', 'Voorraad (werkkapitaal)'], ['onderhanden_werk', 'Onderhanden werk (werkkapitaal)'], ['financieel_va', 'Financiële vaste activa'], ['overig', 'Overig']];
@@ -62,12 +66,25 @@ window.finZet = function (k, v) { if (FIN.form) FIN.form[k] = v; };
 window.finBewaarNieuw = function () {
   var f = FIN.form; if (!f) return;
   var bedrag = Number(String(f.bedrag || '').replace(/\./g, '').replace(',', '.'));
-  finPost('normalisatie', { jaar: Number(f.jaar), post: f.post, soort: f.soort, bedrag: bedrag, omschrijving: f.omschrijving || '', bron: f.bron || '', karakter: f.karakter, zekerheid: f.zekerheid, motivering: f.motivering || '', risico: f.risico || '' }, 'Normalisatie als voorstel vastgelegd.');
+  var ob = String(f.oorspronkelijk_bedrag == null ? '' : f.oorspronkelijk_bedrag).trim();
+  var body = { jaar: Number(f.jaar), post: f.post, soort: f.soort, bedrag: bedrag, omschrijving: f.omschrijving || '', bron: f.bron || '', karakter: f.karakter, zekerheid: f.zekerheid, motivering: f.motivering || '', risico: f.risico || '',
+    grootboekrekening: f.grootboekrekening || '', oorspronkelijk_bedrag: ob === '' ? null : Number(ob.replace(/\./g, '').replace(',', '.')), berekeningswijze: f.berekeningswijze || '', soort_label: f.soort === 'eigen' ? (f.soort_label || '') : '' };
+  // KVM-014: hetzelfde formulier wijzigt een bestaande normalisatie; die wordt daarna weer een voorstel (opnieuw goedkeuren).
+  if (f.id) { body.id = f.id; body.rev = f.rev; finPost('normalisatie/wijzig', body, 'Normalisatie gewijzigd; opnieuw goedkeuren is nodig.'); }
+  else finPost('normalisatie', body, 'Normalisatie als voorstel vastgelegd.');
 };
 window.finBeoordeel = function (el) {
   var id = el.getAttribute('data-id'), n = finNm(id); if (!n) return;
   var st = ge('fin-st-' + id), mo = ge('fin-mo-' + id), be = ge('fin-be-' + id);
-  finPost('normalisatie/beoordeel', { id: id, rev: n.rev, status: st ? st.value : '', motivering: mo ? mo.value : undefined, beoordeling: be ? be.value : '' }, 'Beoordeling vastgelegd.');
+  var oi = ge('fin-oi-' + id), ao = ge('fin-ao-' + id);
+  finPost('normalisatie/beoordeel', { id: id, rev: n.rev, status: st ? st.value : '', motivering: mo ? mo.value : undefined, beoordeling: be ? be.value : '',
+    ontbrekende_info: oi ? oi.value : undefined, aanvullende_onderbouwing: ao ? ao.value : '' }, 'Beoordeling vastgelegd.');
+};
+window.finWijzig = function (el) {
+  var n = finNm(el.getAttribute('data-id')); if (!n) return;
+  FIN.form = { id: n.id, rev: n.rev, jaar: n.jaar, post: n.post, soort: n.soort, karakter: n.karakter, zekerheid: n.zekerheid, bedrag: String(n.bedrag).replace('.', ','), omschrijving: n.omschrijving, bron: n.bron,
+    motivering: n.motivering, risico: n.risico, grootboekrekening: n.grootboekrekening, oorspronkelijk_bedrag: n.oorspronkelijk_bedrag == null ? '' : String(n.oorspronkelijk_bedrag).replace('.', ','), berekeningswijze: n.berekeningswijze, soort_label: n.soort_label };
+  finHerteken();
 };
 window.finVerwijder = function (el) { var id = el.getAttribute('data-id'), n = finNm(id); if (n && confirm('Deze normalisatie verwijderen?')) finPost('normalisatie/verwijder', { id: id, rev: n.rev }, 'Normalisatie verwijderd.'); };
 window.finEqVoorstellen = function () { finPost('equityvoorstellen', {}, 'Voorstellen uit de kolommenbalans opgehaald'); };
@@ -143,15 +160,22 @@ function finNmHtml(n) {
   var bg = isTussen(), dis = FIN.bezig ? ' disabled' : '';
   var h = '<div style="border:1px solid var(--border);border-radius:var(--r);padding:.5rem .7rem;margin:.35rem 0;font-size:12px;color:var(--sub)">'
     + '<div><strong>' + finEsc(n.jaar) + ' · ' + finEsc(n.omschrijving) + '</strong> · ' + finGeld(n.bedrag) + ' · ' + finEsc(finLabel(FIN_POST, n.post)) + ' · <em>' + finEsc(FIN_STATUS[n.status] || n.status) + '</em></div>'
-    + '<div style="color:var(--muted)">' + finEsc(finLabel(FIN_SOORT, n.soort)) + ' · ' + finEsc(n.karakter) + ' · zekerheid ' + finEsc(n.zekerheid) + ' · herkomst ' + finEsc(n.herkomst === 'kvm' ? 'KVM-voorstel' : n.herkomst) + '</div>'
-    + '<div>Bron: ' + finEsc(n.bron) + '</div>'
+    + '<div style="color:var(--muted)">' + finEsc(n.soort === 'eigen' && n.soort_label ? n.soort_label : finLabel(FIN_SOORT, n.soort)) + ' · ' + finEsc(n.karakter) + ' · zekerheid ' + finEsc(n.zekerheid) + ' · herkomst ' + finEsc(n.herkomst === 'kvm' ? 'KVM-voorstel' : n.herkomst) + '</div>'
+    + '<div>Bron: ' + finEsc(n.bron) + (n.grootboekrekening ? ' · grootboekrekening ' + finEsc(n.grootboekrekening) : '') + (n.oorspronkelijk_bedrag != null ? ' · oorspronkelijk bedrag ' + finGeld(n.oorspronkelijk_bedrag) : '') + ' · versie ' + finEsc(n.versie || 1) + '</div>'
+    + (n.berekeningswijze ? '<div>Berekeningswijze: ' + finEsc(n.berekeningswijze) + '</div>' : '')
+    + (n.ontbrekende_info ? '<div style="color:var(--gold-dark)"><strong>Informatieverzoek:</strong> ' + finEsc(n.ontbrekende_info) + '</div>' : '')
+    + ((n.signalen || []).length ? '<div style="color:var(--red)">' + n.signalen.map(function (x) { return '&#9888; ' + finEsc(x.tekst); }).join('<br>') + '</div>' : '')
+    + (n.herhaling_onderbouwing ? '<div>Aanvullende onderbouwing: ' + finEsc(n.herhaling_onderbouwing) + '</div>' : '')
     + (n.motivering ? '<div>Motivering: ' + finEsc(n.motivering) + '</div>' : '') + (n.risico ? '<div>Risico: ' + finEsc(n.risico) + '</div>' : '')
     + (n.kvm_advies ? '<div style="color:var(--muted)">Advies KVM: ' + finEsc(n.kvm_advies) + '</div>' : '') + (n.beoordeling ? '<div>Beoordeling: ' + finEsc(n.beoordeling) + '</div>' : '');
   if (bg) {
-    h += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:.4rem"><select id="fin-st-' + finEsc(n.id) + '"' + dis + '>' + ['voorstel', 'goedgekeurd', 'afgewezen'].map(function (s) { return '<option value="' + s + '"' + (n.status === s ? ' selected' : '') + '>' + FIN_STATUS[s] + '</option>'; }).join('') + '</select>'
+    h += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:.4rem"><select id="fin-st-' + finEsc(n.id) + '"' + dis + '>' + ['voorstel', 'goedgekeurd', 'afgewezen', 'geparkeerd'].map(function (s) { return '<option value="' + s + '"' + (n.status === s ? ' selected' : '') + '>' + FIN_STATUS[s] + '</option>'; }).join('') + '</select>'
       + '<input id="fin-mo-' + finEsc(n.id) + '" maxlength="2000" placeholder="" aria-label="Motivering (verplicht bij goedkeuren)" value="' + finEsc(n.motivering) + '" style="flex:1;min-width:160px;font-size:12px"' + dis + '>'
       + '<input id="fin-be-' + finEsc(n.id) + '" maxlength="1000" aria-label="Beoordeling (verplicht bij afwijzen)" value="' + finEsc(n.beoordeling) + '" style="flex:1;min-width:160px;font-size:12px"' + dis + '>'
+      + '<input id="fin-oi-' + finEsc(n.id) + '" maxlength="1000" aria-label="Ontbrekende informatie (verplicht bij parkeren)" value="' + finEsc(n.ontbrekende_info) + '" style="flex:1;min-width:160px;font-size:12px"' + dis + '>'
+      + ((n.signalen || []).length ? '<input id="fin-ao-' + finEsc(n.id) + '" maxlength="1000" aria-label="Aanvullende onderbouwing (verplicht bij goedkeuren met signaal)" value="" style="flex:1;min-width:160px;font-size:12px"' + dis + '>' : '')
       + '<button class="btn btn-sm" style="font-size:11px" data-id="' + finEsc(n.id) + '" onclick="finBeoordeel(this)"' + dis + '>Vastleggen</button>'
+      + '<button class="btn-ghost btn-sm" style="font-size:11px" data-id="' + finEsc(n.id) + '" onclick="finWijzig(this)"' + dis + '>Wijzigen</button>'
       + '<button class="btn-ghost btn-sm" style="font-size:11px" data-id="' + finEsc(n.id) + '" onclick="finVerwijder(this)"' + dis + '>Verwijderen</button></div>';
   }
   return h + '</div>';
@@ -167,8 +191,9 @@ function finFormHtml() {
     + '<label style="font-size:11px">Boekjaar' + sel('jaar', jaren) + '</label><label style="font-size:11px">EBITDA-post' + sel('post', FIN_POST) + '</label><label style="font-size:11px">Soort' + sel('soort', FIN_SOORT) + '</label>'
     + '<label style="font-size:11px">Karakter' + sel('karakter', [['incidenteel', 'Incidenteel'], ['structureel', 'Structureel']]) + '</label><label style="font-size:11px">Zekerheid' + sel('zekerheid', [['hoog', 'Hoog'], ['midden', 'Midden'], ['laag', 'Laag']]) + '</label></div>'
     + inp('bedrag', 'Effect op de EBITDA in euro (positief verhoogt, negatief verlaagt)', 20) + inp('omschrijving', 'Omschrijving', 160) + inp('bron', 'Financiële bron (rekening, document of toelichting)', 300)
-    + inp('motivering', 'Motivering', 2000) + inp('risico', 'Risico en onzekerheid', 1000)
-    + '<div style="margin-top:.4rem"><button class="btn btn-sm" style="font-size:11px" onclick="finBewaarNieuw()"' + dis + '>Als voorstel vastleggen</button></div></div>';
+    + inp('soort_label', 'Naam eigen categorie (alleen bij soort Eigen categorie)', 60) + inp('grootboekrekening', 'Grootboekrekening', 40) + inp('oorspronkelijk_bedrag', 'Oorspronkelijk bedrag in euro', 20)
+    + inp('berekeningswijze', 'Berekeningswijze', 1000) + inp('motivering', 'Motivering', 2000) + inp('risico', 'Risico en onzekerheid', 1000)
+    + '<div style="margin-top:.4rem"><button class="btn btn-sm" style="font-size:11px" onclick="finBewaarNieuw()"' + dis + '>' + (f.id ? 'Wijziging vastleggen (daarna opnieuw goedkeuren)' : 'Als voorstel vastleggen') + '</button></div></div>';
 }
 function finPrognoseHtml(d) {
   if (!isTussen()) return d.prognose.status === 'goedgekeurd' ? '<div style="font-size:12px;color:var(--muted);margin-top:.4rem">De adviseur heeft een prognose als scenario goedgekeurd.</div>' : '';
