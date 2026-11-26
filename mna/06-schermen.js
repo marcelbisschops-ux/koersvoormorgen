@@ -2035,7 +2035,7 @@ function bindAll(){
         +'<div style="background:var(--gold-bg);border:1px solid var(--gold);border-radius:var(--r);padding:.75rem;text-align:center"><div style="font-size:10px;color:var(--gold-dark);margin-bottom:.2rem">Midden</div><div style="font-family:IBM Plex Mono,monospace;font-size:14px;font-weight:600;color:var(--gold-dark)">'+fmtGeld(w2.range_midden||0)+'</div></div>'
         +'<div style="background:var(--card);border-radius:var(--r);padding:.75rem;text-align:center"><div style="font-size:10px;color:var(--muted);margin-bottom:.2rem">Hoog</div><div style="font-family:IBM Plex Mono,monospace;font-size:13px;font-weight:600">'+fmtGeld(w2.range_hoog||0)+'</div></div>'
         +'</div>'
-        +'<div style="font-size:12px;color:var(--mid);margin-bottom:.5rem"><strong>Methode:</strong> '+esc(w2.methode||'onbekend')+(w2.gehanteerde_multiple?' ('+esc(String(w2.gehanteerde_multiple))+'x)':'')+'</div>'
+        +'<div style="font-size:12px;color:var(--mid);margin-bottom:.5rem"><strong>Methode:</strong> '+esc(w2.methode||'onbekend')+(w2.gehanteerde_multiple?' ('+(isNaN(w2.gehanteerde_multiple)?esc(String(w2.gehanteerde_multiple))+'\u00d7':fmtMultiple(w2.gehanteerde_multiple))+')':'')+'</div>'
         +(w2.onderbouwing?'<div style="font-size:12px;color:var(--mid);margin-bottom:.5rem;line-height:1.6"><strong>Onderbouwing:</strong> '+esc(w2.onderbouwing)+'</div>':'')
         +(w2.risicofactoren?'<div style="font-size:12px;color:var(--mid);margin-bottom:.5rem;line-height:1.6"><strong>Risicofactoren:</strong> '+esc(w2.risicofactoren)+'</div>':'');
       // Bevinding 13 sep 2026 (Marcel: "welke sectorinfo gebruikt hier ter vergelijking?"): zonder

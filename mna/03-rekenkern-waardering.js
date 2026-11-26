@@ -37,6 +37,12 @@ function fmtGeldKort(n){
   if(a<1000000)return fmtGeld(n);
   return '€ '+(neg?'-':'')+(a/1000000).toLocaleString('nl-NL',{minimumFractionDigits:2,maximumFractionDigits:2})+' mln';
 }
+// KVM-005 (26-11-2026): de ENIGE weergavefunctie voor multiples (EBITDA-/omzet-multiple, schuld/EBITDA, leverage).
+// NL-decimaalkomma + vermenigvuldigingsteken: 5,5×. Zonder `decimalen`: 0 tot 2 decimalen, zonder overbodige nullen
+// (4 → "4×", 5,5 → "5,5×", 5,05 → "5,05×"); met `decimalen`: vast aantal (fmtMultiple(5.5,2) → "5,50×").
+// Leeg/ongeldig → "—". Alleen weergave: de rekenkern rekent met het onderliggende getal. marilyn.html heeft een
+// identieke kopie (laadt mna/03 niet); tests/kvm005-getalnotatie.mjs bewaakt dat beide gelijk blijven.
+function fmtMultiple(n,decimalen){if(n===null||n===undefined||n===''||isNaN(n))return '—';var vast=typeof decimalen==='number';return Number(n).toLocaleString('nl-NL',{minimumFractionDigits:vast?decimalen:0,maximumFractionDigits:vast?decimalen:2})+'\u00d7';}
 // Zelfde als parseGeld, maar geeft null terug als het veld niet is ingevuld (i.p.v. 0) — nodig voor
 // de financiële ratio's hieronder, waar 0 een geldige uitkomst kan zijn (bijv. geen schuld) en dus
 // onderscheiden moet worden van "nog niet ingevuld" (GOUDEN STANDAARD: nooit stilzwijgend gokken).
@@ -68,7 +74,7 @@ function isGeaggregeerdVeld(faseId, veldId){ return !!(VELD_AGGREGATIE[faseId]&&
 // ===== DEALVOORSTEL: parameters, berekeningen, weergave =====
 function dvMln(n){return (n/1000000).toLocaleString('nl-NL',{minimumFractionDigits:2,maximumFractionDigits:2});}
 function dvPct(n){return n.toLocaleString('nl-NL',{minimumFractionDigits:1,maximumFractionDigits:1})+'%';}
-function dvMultiple(n){return n.toLocaleString('nl-NL',{minimumFractionDigits:1,maximumFractionDigits:1})+'×';}
+function dvMultiple(n){return fmtMultiple(n,1);} // KVM-005: zelfde uitkomst als voorheen (1 vaste decimaal, ×), nu via de centrale helper
 
 // Sectorbewuste multiple-range — gedeeld tussen dvGetDefaults() (dealvoorstel) en
 // dvBerekenWaardering() (hoofdscherm). Sinds de vierde kwartaalaudit (25 juli 2026, P1 #1) leest dit
@@ -1936,7 +1942,7 @@ function dvIndicatorenRij(v){
     {label:'Current ratio',val:v.currentRatio,fmt:function(x){return x.toFixed(2);}},
     {label:'Quick ratio',val:v.quickRatio,fmt:function(x){return x.toFixed(2);},titel:'Acid test: (debiteuren + liquide middelen) / kortlopende schulden. Voorraad en onderhanden werk zijn hier bewust uitgesloten (die zitten wél in de current ratio).'},
     {label:'EBITDA-dekking schuldendienst',val:v.dscr,fmt:function(x){return x.toFixed(2);},titel:'Vereenvoudigde dekkingsgraad: EBITDA / (rentelasten + aflossingsverplichting). GEEN volwaardige DSCR — die gebruikt de vrije kasstroom vóór schuldendienst (na belasting, capex en werkkapitaal).'},
-    {label:'Netto schuld / EBITDA',val:v.netDebtEbitda,fmt:function(x){return x.toFixed(2)+'×';}}
+    {label:'Netto schuld / EBITDA',val:v.netDebtEbitda,fmt:function(x){return fmtMultiple(x,2);}}
   ].filter(function(it){return it.val!==null&&it.val!==undefined&&isFinite(it.val);});
   var alleItems=items.concat(ratioItems);
   if(!alleItems.length)return '';
@@ -2000,13 +2006,13 @@ function renderWaardering(){
     +((v.grondslagNegatief&&!v.multipleOnbekend)?'<div style="font-size:12px;color:var(--red);background:var(--red-bg);border:1px solid var(--red);border-radius:var(--r);padding:8px 12px;margin-bottom:.75rem"><strong>&#9888; Verlieslatende of nul grondslag.</strong> De '+(multipleType==='omzet'?'omzet':'genormaliseerde EBITDA')+' waarop de multiple wordt toegepast is '+fmtGeld(v.multipleTypeBedrag)+'. Een multiplewaardering is dan betekenisloos, dus er wordt hier bewust géén bandbreedte getoond. Beoordeel dit traject via de alternatieve methodes (intrinsieke waarde, liquidatiewaarde) op het Dealvoorstel-scherm.</div>':'')
     +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:.75rem">'
     +'<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r2);padding:1rem;text-align:center">'
-      +'<div style="font-size:10px;color:var(--muted);margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.06em">Laag ('+(mLaag!=null?mLaag:'?')+'&times; '+basisLabel+')</div>'
+      +'<div style="font-size:10px;color:var(--muted);margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.06em">Laag ('+(mLaag!=null?fmtMultiple(mLaag):'?&times;')+' '+basisLabel+')</div>'
       +'<div style="font-family:Playfair Display,serif;font-size:1.4rem;font-weight:600;color:var(--mid)">'+fmtGeld(wLaag)+'</div></div>'
     +'<div style="background:var(--teal-bg);border:2px solid var(--teal-dark);border-radius:var(--r2);padding:1rem;text-align:center">'
-      +'<div style="font-size:10px;color:var(--teal-dim);margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.06em;font-weight:600">Midden ('+(mMid!=null?mMid:'?')+'&times; '+basisLabel+')</div>'
+      +'<div style="font-size:10px;color:var(--teal-dim);margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.06em;font-weight:600">Midden ('+(mMid!=null?fmtMultiple(mMid):'?&times;')+' '+basisLabel+')</div>'
       +'<div style="font-family:Playfair Display,serif;font-size:1.8rem;font-weight:600;color:var(--teal)">'+fmtGeld(wMid)+'</div></div>'
     +'<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r2);padding:1rem;text-align:center">'
-      +'<div style="font-size:10px;color:var(--muted);margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.06em">Hoog ('+(mHoog!=null?mHoog:'?')+'&times; '+basisLabel+')</div>'
+      +'<div style="font-size:10px;color:var(--muted);margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.06em">Hoog ('+(mHoog!=null?fmtMultiple(mHoog):'?&times;')+' '+basisLabel+')</div>'
       +'<div style="font-family:Playfair Display,serif;font-size:1.4rem;font-weight:600;color:var(--mid)">'+fmtGeld(wHoog)+'</div></div>'
     +'</div>'
     +((recurring>0||churn>0)?('<div style="font-size:12px;color:var(--mid);padding:.6rem .75rem;background:var(--card);border-radius:var(--r)">'
@@ -2015,9 +2021,9 @@ function renderWaardering(){
       +(churn>0?'Churn: <strong>'+churn+'%</strong>':'')
     +'</div>'):'')
     +((v.maatschapGrondslagOnbekend||v.multipleOnbekend||v.grondslagNegatief)?'':'<div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)">'+dvSvgBarChart([
-      {label:'Laag ('+mLaag+'\xd7 '+basisLabel+')',waarde:wLaag,kleur:'var(--border2)'},
-      {label:'Midden ('+mMid+'\xd7 '+basisLabel+')',waarde:wMid,kleur:'var(--teal)'},
-      {label:'Hoog ('+mHoog+'\xd7 '+basisLabel+')',waarde:wHoog,kleur:'var(--border2)'}
+      {label:'Laag ('+fmtMultiple(mLaag)+' '+basisLabel+')',waarde:wLaag,kleur:'var(--border2)'},
+      {label:'Midden ('+fmtMultiple(mMid)+' '+basisLabel+')',waarde:wMid,kleur:'var(--teal)'},
+      {label:'Hoog ('+fmtMultiple(mHoog)+' '+basisLabel+')',waarde:wHoog,kleur:'var(--border2)'}
     ],'Waardebandbreedte: laag '+fmtGeld(wLaag)+', midden '+fmtGeld(wMid)+', hoog '+fmtGeld(wHoog))+'</div>')+'</div>';
 
   // Management- & retentiescan (backlogpunt 8 stap 3) — kwalitatief aandachtspunt, geen correctie op

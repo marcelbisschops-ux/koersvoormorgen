@@ -1,5 +1,5 @@
 // KVM-005 (20-11-2026): Nederlandse getalnotatie voor bedragen. Haalt de ECHTE functies uit mna/03 (fmtGeld, fmtGeldKort,
-// parseGeld) en marilyn.html (fmtGeld) en toetst ze tegen handmatig vastgestelde uitkomsten. Terugleesproef: een
+// parseGeld, fmtMultiple) en marilyn.html (fmtGeld, fmtMultiple) en toetst ze tegen handmatig vastgestelde uitkomsten. Terugleesproef: een
 // weergegeven bedrag levert via parseGeld exact dezelfde waarde op (invoer en opslag blijven correct). Synthetisch, geen netwerk.
 import fs from 'fs';
 import path from 'path';
@@ -11,8 +11,8 @@ const functie = (src, naam) => { const i = src.indexOf('function ' + naam + '(')
   let d = 0, j = src.indexOf('{', i); for (; j < src.length; j++) { if (src[j] === '{') d++; else if (src[j] === '}' && --d === 0) break; } return src.slice(i, j + 1); };
 const m03 = fs.readFileSync(path.join(ROOT, 'mna/03-rekenkern-waardering.js'), 'utf8');
 const mar = fs.readFileSync(path.join(ROOT, 'marilyn.html'), 'utf8');
-const A = {}; vm.createContext(A); vm.runInContext(['fmtGeld', 'fmtGeldKort', 'parseGeld'].map((f) => functie(m03, f)).join('\n'), A);
-const B = {}; vm.createContext(B); vm.runInContext(functie(mar, 'fmtGeld'), B);
+const A = {}; vm.createContext(A); vm.runInContext(['fmtGeld', 'fmtGeldKort', 'parseGeld', 'fmtMultiple', 'dvMultiple'].map((f) => functie(m03, f)).join('\n'), A);
+const B = {}; vm.createContext(B); vm.runInContext(['fmtGeld', 'fmtMultiple'].map((f) => functie(mar, f)).join('\n'), B);
 const nbsp = (s) => String(s).replace(/ | /g, ' ');
 const verwacht = [[1000000, '€ 1.000.000'], [12500.5, '€ 12.500,50'], [12500, '€ 12.500'], [1234567, '€ 1.234.567'], [999.99, '€ 999,99'],
   [12999.99, '€ 12.999,99'], [7, '€ 7'], [-200000, '€ -200.000'], [-12500.5, '€ -12.500,50'], [3500000000, '€ 3.500.000.000']];
@@ -29,9 +29,30 @@ for (const x of [1, 7, 999.99, 1000, 12500, 12500.5, 99999.01, 1000000, 1234567.
   const y = A.parseGeld(A.fmtGeld(x)); if (Math.abs(y - x) > 1e-9) { terug = false; fouten.push([x, A.fmtGeld(x), y]); }
 }
 ok(terug, 'terugleesproef: parseGeld(fmtGeld(x)) === x voor positieve, negatieve en centbedragen', fouten);
+// Multiples (26-11-2026). Regel: NL-decimaalkomma + '×'. Zonder decimalen-argument 0 tot 2 decimalen zonder
+// overbodige nullen (4 → 4×, 5,5 → 5,5×); met decimalen-argument een vast aantal (5,5 met 2 → 5,50×). Leeg/ongeldig → —.
+const mult = [[[5.5, 2], '5,50×'], [[4, 2], '4,00×'], [[4], '4×'], [[5.5], '5,5×'], [[5.05], '5,05×'], [[4.825], '4,83×'],
+  [[5.5, 1], '5,5×'], [[0.8, 2], '0,80×'], [[2.345, 1], '2,3×'], [[0], '0×'], [[-0.5], '-0,5×'], [[1250, 1], '1.250,0×'], [['5.5', 2], '5,50×']];
+for (const [args, s] of mult) {
+  ok(A.fmtMultiple(...args) === s, 'mna fmtMultiple(' + args.join(', ') + ') = ' + s, A.fmtMultiple(...args));
+  ok(B.fmtMultiple(...args) === s, 'marilyn fmtMultiple(' + args.join(', ') + ') = ' + s, B.fmtMultiple(...args));
+}
+for (const x of [null, undefined, '', NaN, 'abc']) ok(A.fmtMultiple(x) === '—' && B.fmtMultiple(x, 2) === '—', 'multiple leeg/ongeldig (' + String(x) + ') → —');
+ok(A.dvMultiple(5.5) === '5,5×' && A.dvMultiple(4) === '4,0×' && A.dvMultiple(3.25) === '3,3×', 'dvMultiple (dealvoorstel) ongewijzigd: 1 vaste decimaal via fmtMultiple');
+ok(functie(m03, 'fmtMultiple').replace(/\s+/g, '') === functie(mar, 'fmtMultiple').replace(/\s+/g, ''), 'marilyn-kopie van fmtMultiple is gelijk aan die in mna/03 (één regel, geen afwijkende formule)');
+// Terugleesproef invoer: wat een gebruiker typt → parseGeld → NL-weergave → parseGeld levert hetzelfde bedrag.
+const invoer = ['1250000', '1.250.000', '€ 1.250.000', '12500,50', '€ 12.500,50', '-200000', '€ -200.000', '1.234-', '(5.000)', '999,99', '7'];
+const invFout = invoer.filter((t) => { const v = A.parseGeld(t); return Math.abs(A.parseGeld(A.fmtGeld(v)) - v) > 1e-9; });
+ok(invFout.length === 0, 'terugleesproef invoer: parseGeld(fmtGeld(parseGeld(getypt))) === parseGeld(getypt) voor ' + invoer.length + ' invoervormen', invFout);
 // Statisch: geen bedragen meer in 'K'-notatie of met afronding op duizenden in de schermen.
 const bronnen = ['marilyn.html', 'adv.html', 'adv-werkruimte.js', ...fs.readdirSync(path.join(ROOT, 'mna')).filter((f) => f.endsWith('.js')).map((f) => 'mna/' + f)];
 const kNotatie = bronnen.filter((f) => /'€'\+\([^)]*\/1000\)\.toFixed\(0\)\+'(K|\.000)/.test(fs.readFileSync(path.join(ROOT, f), 'utf8')));
 ok(kNotatie.length === 0, "geen '€…K' of '€….000' (afronding op duizenden) meer in mna, adv en marilyn", kNotatie);
+// Statisch: geen multiples meer met decimaalpunt via toFixed(n)+'x' of +'×' (of de oude '\xd7 '-labels) in de schermen.
+const multPunt = [];
+for (const f of bronnen) fs.readFileSync(path.join(ROOT, f), 'utf8').split('\n').forEach((r, i) => {
+  if (/toFixed\(\d\)\s*\+\s*'\s*(x|×|\\xd7|\\u00d7|&times;)/.test(r) || /\+\s*'\\xd7 '/.test(r)) multPunt.push(f + ':' + (i + 1));
+});
+ok(multPunt.length === 0, "geen multiple-weergave meer als toFixed(n)+'x'/'×' in mna, adv en marilyn (gebruik fmtMultiple)", multPunt);
 console.log(fout ? '✗ ' + fout + '/' + n + ' gefaald' : n + '/' + n + ' geslaagd');
 process.exit(fout ? 1 : 0);

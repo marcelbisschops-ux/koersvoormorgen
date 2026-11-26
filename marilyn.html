@@ -1648,6 +1648,9 @@ async function renderDocsTab(el){
 // Tijdens het verwijderen staan vakjes en ✕ uit; daarna altijd verversen (selectie leeg).
 var benchVerwijderBezig=false;
 var BENCH_GEVOLGEN='Alleen de benchmarkconfiguratie (de ingestelde waarde met bron en peildatum) wordt verwijderd, per benchmark via de bestaande verwijderroute. Klantdocumenten, trajecten en de waarderingshistorie worden niet gewist.';
+// KVM-005 (26-11-2026): weergave van multiples in NL-notatie (5,5×). Identieke kopie van fmtMultiple in
+// mna/03-rekenkern-waardering.js (marilyn laadt mna/03 niet); tests/kvm005-getalnotatie.mjs bewaakt de gelijkheid.
+function fmtMultiple(n,decimalen){if(n===null||n===undefined||n===''||isNaN(n))return '—';var vast=typeof decimalen==='number';return Number(n).toLocaleString('nl-NL',{minimumFractionDigits:vast?decimalen:0,maximumFractionDigits:vast?decimalen:2})+'\u00d7';}
 async function renderBenchmarksTab(el){
   var magBulk=isSuperAdmin&&!!adminKey;
   el.innerHTML='<div class="table-wrap"><div class="table-hdr"><div class="table-title">Benchmarks</div>'
@@ -1668,7 +1671,7 @@ async function renderBenchmarksTab(el){
       var html='<table><thead><tr>'+(magBulk?'<th style="width:32px"><input type="checkbox" id="cb-all-bench" title="Alle benchmarks in deze lijst aanvinken"></th>':'')+'<th>Sleutel</th><th>Omschrijving</th><th>Waarde</th><th>Bron</th><th>Peildatum</th><th>Bijgewerkt</th><th></th></tr></thead><tbody>';
       data.forEach(function(b){
         var dt=b.updated_at?new Date(b.updated_at).toLocaleString('nl-NL',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'--';
-        var valFmt=b.waarde>1000?'€ '+Math.round(b.waarde).toLocaleString('nl-NL'):b.waarde.toFixed(2)+'x';
+        var valFmt=b.waarde>1000?'€ '+Math.round(b.waarde).toLocaleString('nl-NL'):fmtMultiple(b.waarde,2);
         html+='<tr>'
           +(magBulk?'<td><input type="checkbox" class="bench-cb" data-sleutel="'+esc(b.sleutel)+'" data-naam="'+esc(b.sleutel+(b.omschrijving?' — '+b.omschrijving:''))+'" style="cursor:pointer"></td>':'')
           +'<td class="mono" style="font-size:11px;color:var(--teal)">'+esc(b.sleutel)+'</td>'
@@ -1828,9 +1831,9 @@ async function renderBenchmarksTab(el){
         gevonden.forEach(function(b){
           var hv=huidig[b.sleutel];
           var conflict=hv&&Math.abs(hv.waarde-b.waarde)>1;
-          var nvFmt=b.waarde>1000?'€ '+Math.round(b.waarde).toLocaleString('nl-NL'):b.waarde.toFixed(2)+'x';
+          var nvFmt=b.waarde>1000?'€ '+Math.round(b.waarde).toLocaleString('nl-NL'):fmtMultiple(b.waarde,2);
           if(conflict){
-            var ovFmt=hv.waarde>1000?'€ '+Math.round(hv.waarde).toLocaleString('nl-NL'):hv.waarde.toFixed(2)+'x';
+            var ovFmt=hv.waarde>1000?'€ '+Math.round(hv.waarde).toLocaleString('nl-NL'):fmtMultiple(hv.waarde,2);
             pvHtml+='<div style="padding:6px 10px;margin-bottom:4px;background:var(--gold-bg);border-left:3px solid var(--gold);border-radius:0 var(--r) var(--r) 0">'
               +'<span style="color:var(--gold)">&#9888; Conflict</span> <code>'+b.sleutel+'</code><br>'
               +'Huidig ('+esc(hv.bron||'onbekend')+'): <strong>'+ovFmt+'</strong> → Nieuw ('+esc(bron)+'): <strong>'+nvFmt+'</strong></div>';
@@ -1887,8 +1890,8 @@ async function renderBenchmarksTab(el){
           var chkD=await chkR.json();
           var bestaand=chkD.find(function(b){return b.sleutel===id;});
           if(bestaand&&Math.abs(bestaand.waarde-val)>0.01){
-            var ovFmt2=bestaand.waarde>1000?'€ '+Math.round(bestaand.waarde).toLocaleString('nl-NL'):bestaand.waarde.toFixed(2)+'x';
-            var nvFmt2=val>1000?'€ '+Math.round(val).toLocaleString('nl-NL'):val.toFixed(2)+'x';
+            var ovFmt2=bestaand.waarde>1000?'€ '+Math.round(bestaand.waarde).toLocaleString('nl-NL'):fmtMultiple(bestaand.waarde,2);
+            var nvFmt2=val>1000?'€ '+Math.round(val).toLocaleString('nl-NL'):fmtMultiple(val,2);
             err.style.display='block';
             err.style.color='var(--gold)';
             err.innerHTML='&#9888; Huidige waarde: <strong>'+ovFmt2+'</strong> ('+esc(bestaand.bron||'onbekend')+')<br>Nieuwe waarde: <strong>'+nvFmt2+'</strong><br><br>Klik nogmaals op Opslaan om te overschrijven.';
@@ -2115,7 +2118,7 @@ async function renderWaarderingsmodelTab(el){
       if(!d.beschikbaar){box.innerHTML='<div class="empty">'+esc(d.reden||'Nog niet beschikbaar')+'</div>';return;}
       function curveHtml(conf,titel){
         if(!conf)return '<div style="font-size:12px;color:var(--muted)">Geen '+titel+'-config actief.</div>';
-        var punten=conf.curve_punten.map(function(p){return '€ '+Math.round(p[0]).toLocaleString('nl-NL')+' → '+p[1].toFixed(1)+'x';}).join(' &middot; ');
+        var punten=conf.curve_punten.map(function(p){return '€ '+Math.round(p[0]).toLocaleString('nl-NL')+' → '+fmtMultiple(p[1],1);}).join(' &middot; ');
         var bronnen=(conf.bron_referenties||[]).map(function(b){return b.url?'<a href="'+esc(b.url)+'" target="_blank" rel="noopener" style="color:var(--teal)">'+esc(b.omschrijving)+'</a>':esc(b.omschrijving);}).join('<br>');
         return '<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:.85rem 1rem;margin-bottom:.75rem">'
           +'<div style="font-size:12px;font-weight:600;color:var(--head);margin-bottom:.4rem">'+titel+' (versie '+conf.versie+')</div>'
@@ -2128,7 +2131,7 @@ async function renderWaarderingsmodelTab(el){
       var mcHtml=mc?('<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:.85rem 1rem;margin-bottom:.75rem">'
         +'<div style="font-size:12px;font-weight:600;color:var(--head);margin-bottom:.4rem">Marktconfig (versie '+mc.versie+')</div>'
         +'<div style="font-size:11px;color:var(--sub)">Gewichten: '+Object.keys(mc.gewicht_per_sleutel).map(function(k){return k+' '+(mc.gewicht_per_sleutel[k]*100).toFixed(0)+'%';}).join(' &middot; ')+'</div>'
-        +'<div style="font-size:11px;color:var(--muted);margin-top:.3rem">Max correctie ±'+mc.max_correctie+'x &middot; Grenzen '+mc.ondergrens_eindmultiple+'x–'+mc.bovengrens_eindmultiple+'x &middot; Drempel '+mc.drempel_afwijking+'x over '+mc.meetperiodes_vereist+' periodes</div>'
+        +'<div style="font-size:11px;color:var(--muted);margin-top:.3rem">Max correctie ±'+fmtMultiple(mc.max_correctie)+' &middot; Grenzen '+fmtMultiple(mc.ondergrens_eindmultiple)+'–'+fmtMultiple(mc.bovengrens_eindmultiple)+' &middot; Drempel '+fmtMultiple(mc.drempel_afwijking)+' over '+mc.meetperiodes_vereist+' periodes</div>'
         +'</div>'):'';
       box.innerHTML=curveHtml(d.basisconfig.regulier,'Regulier')+curveHtml(d.basisconfig.pe,'PE-platform')+mcHtml;
     }catch(e){box.innerHTML='<div class="empty">Fout bij laden: '+e.message+'</div>';}
@@ -2146,7 +2149,7 @@ async function renderWaarderingsmodelTab(el){
         html+='<tr>'
           +'<td class="mono" style="font-size:11px;color:var(--teal)">'+esc(f.sleutel)+'</td>'
           +'<td class="mono">'+(f.waarde!=null?f.waarde:'--')+'</td>'
-          +'<td class="mono">'+(f.effect_op_multiple>0?'+':'')+f.effect_op_multiple+'x</td>'
+          +'<td class="mono">'+(f.effect_op_multiple>0?'+':'')+fmtMultiple(f.effect_op_multiple)+'</td>'
           +'<td style="font-size:11px;color:var(--muted)">'+esc(f.bron)+(f.bron_url?'<br><a href="'+esc(f.bron_url)+'" target="_blank" rel="noopener" style="color:var(--teal);font-size:10px">Bron &#8599;</a>':'')+'<br>'+esc(f.publicatiedatum||'')+'</td>'
           +'<td><span style="color:'+(badge[f.betrouwbaarheid]||'var(--muted)')+';font-size:11px;font-weight:600">'+esc(f.betrouwbaarheid)+'</span></td>'
           +'<td style="font-size:11px">'+esc(f.status)+'</td>'
@@ -2365,7 +2368,7 @@ function renderWaarderingTab(el){
         +'<div style="font-family:Newsreader,Georgia,serif;font-size:1.4rem;font-weight:600;color:var(--mid)">'+fmtGeld(res.waardeMultiHoog)+'</div></div>'
       +'</div>'
       +'<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:.75rem 1rem;margin-bottom:1.5rem;font-size:12px;color:var(--mid)">'
-      +'<strong style="color:var(--sub)">Omzet-methode:</strong> '+fmtGeld(res.waardeOmzet)+' (omzet × '+W.omzetFactor.toFixed(2)+')'
+      +'<strong style="color:var(--sub)">Omzet-methode:</strong> '+fmtGeld(res.waardeOmzet)+' (omzetfactor '+fmtMultiple(W.omzetFactor,2)+')'
       +(W.risico>0?' &nbsp;|&nbsp; <strong>Risico-aftrek:</strong> '+W.risico+'% toegepast':'')
       +'</div>';
 
