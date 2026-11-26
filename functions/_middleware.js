@@ -72,10 +72,68 @@ function isGeblokkeerd(ruwPathname) {
   return false;
 }
 
+// KVM-016 (26-11-2026) — organisatiegebonden huisstijl per vaste Pages-branchalias.
+// De koppeling host → kantoor staat uitsluitend hier (server-side; functions/ wordt niet als bestand
+// geserveerd), zodat de publieke site geen kantoornamen bevat. Een kantoor heeft een eigen map
+// /assets/kantoren/<slug>/ met huisstijl.css (+ logo, eventueel presentatie.html). Op elke andere host
+// is die map niet bereikbaar (404) en levert /assets/kantoorhuisstijl.css het lege standaardbestand.
+// Uitsluitend weergave: huisstijl bepaalt nooit autorisatie (die blijft volledig server-side in de Worker).
+// Isolatie: zo'n alias draait altijd tegen de staging-Worker (zie kvmKiesWorker in mna/01 en adv.html:
+// *.pages.dev = verplicht staging); de productie-API staat deze origin bovendien niet toe (CORS-allowlist).
+// Nieuw kantoor: map toevoegen + één regel hieronder + branch-alias deployen. Geen andere codewijziging.
+export const KANTOOR_HOSTS = {
+  'maes.kantoorinzicht-frontend.pages.dev': 'maes',
+};
+const KANTOOR_PREFIX = '/assets/kantoren/';
+
+export function kantoorVoorHost(host) {
+  const h = String(host || '').toLowerCase();
+  return Object.prototype.hasOwnProperty.call(KANTOOR_HOSTS, h) ? KANTOOR_HOSTS[h] : null;
+}
+
+// Pure beslissing (los testbaar in tests/kvm016-kantoorhuisstijl.mjs): wat doet de edge met dit verzoek?
+// { soort: 'blok' } | { soort: 'redirect', naar } | { soort: 'asset', pad } | { soort: 'door' }
+export function kantoorRoute(host, ruwPathname) {
+  const slug = kantoorVoorHost(host);
+  const p = normaliseer(ruwPathname);
+  if (p === null) return { soort: 'blok' };
+  const klein = p.toLowerCase();
+  if (klein === '/assets/kantoren' || klein.startsWith(KANTOOR_PREFIX)) {
+    if (!slug || !klein.startsWith(KANTOOR_PREFIX + slug + '/')) return { soort: 'blok' };
+    return { soort: 'door' };
+  }
+  if (!slug) return { soort: 'door' };
+  if (klein === '/' || klein === '/index.html' || klein === '/inloggen' || klein === '/inloggen.html') return { soort: 'redirect', naar: '/adv.html' };
+  if (klein === '/assets/kantoorhuisstijl.css') return { soort: 'asset', pad: KANTOOR_PREFIX + slug + '/huisstijl.css' };
+  if (klein === '/presentatie' || klein === '/presentatie/') return { soort: 'asset', pad: KANTOOR_PREFIX + slug + '/presentatie' };
+  return { soort: 'door' };
+}
+
 export async function onRequest(context) {
   const url = new URL(context.request.url);
   if (isGeblokkeerd(url.pathname)) {
     return new Response('Not found', { status: 404, headers: { 'Content-Type': 'text/plain' } });
   }
-  return context.next();
+  const route = kantoorRoute(url.hostname, url.pathname);
+  if (route.soort === 'blok') {
+    return new Response('Not found', { status: 404, headers: { 'Content-Type': 'text/plain' } });
+  }
+  if (route.soort === 'redirect') {
+    return new Response(null, { status: 302, headers: { Location: route.naar, 'Cache-Control': 'no-store' } });
+  }
+  if (route.soort === 'asset') {
+    const doel = new URL(route.pad, url.origin);
+    const r = await context.env.ASSETS.fetch(new Request(doel.toString(), { method: 'GET', headers: context.request.headers }));
+    const h = new Headers(r.headers);
+    h.set('Cache-Control', 'no-cache');
+    h.set('X-Robots-Tag', 'noindex, nofollow');
+    return new Response(r.body, { status: r.status, headers: h });
+  }
+  const res = await context.next();
+  if (kantoorVoorHost(url.hostname)) {
+    const h = new Headers(res.headers);
+    h.set('X-Robots-Tag', 'noindex, nofollow');
+    return new Response(res.body, { status: res.status, statusText: res.statusText, headers: h });
+  }
+  return res;
 }
