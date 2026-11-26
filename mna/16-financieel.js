@@ -309,10 +309,51 @@ function renderFinancieleAnalyse(faseId) {
   return h + '</div>';
 }
 // Dealvoorstel (mna/04): genormaliseerde EBITDA en goedgekeurde prognose als expliciete keuze, nooit automatisch.
+// KVM-014 stap 1 + gouden werkregel 59 (26-11-2026): de genormaliseerde EBITDA uit de financiële analyse (alleen goedgekeurde
+// normalisaties) is de gezaghebbende bron voor de bewezen EBITDA in het dealvoorstel, dus ook voor de multiple en de DCF die op
+// dat veld rekenen. Het DD-veld is uitsluitend een zichtbare, gemotiveerde terugval; een handmatige afwijking vraagt een motivering
+// die in de interne cijferbijlage van het dealvoorstel wordt vastgelegd (finEbitdaBronStatus, mna/04).
+window.FIN_EBITDA_BRON = null;
+function finZetEbitdaBron(bron, waarde, toelichting) {
+  window.FIN_EBITDA_BRON = { bron: bron, waarde: waarde, toelichting: toelichting };
+  var el = document.getElementById('dv-ebitda-bewezen'), info = document.getElementById('dv-ebitda-bron');
+  if (el && bron === 'financieel') { el.value = Math.round(waarde); el.setAttribute('data-bron', 'financieel'); el.setAttribute('data-bron-waarde', String(Math.round(waarde))); }
+  var mi = document.getElementById('dv-maatschap-info'); if (mi && bron === 'financieel') mi.style.display = 'none';
+  if (el && !el.getAttribute('data-bron-luister')) {
+    el.setAttribute('data-bron-luister', '1');
+    el.addEventListener('input', finEbitdaBronTeken);
+  }
+  finEbitdaBronTeken();
+}
+function finEbitdaBronTeken() {
+  var el = document.getElementById('dv-ebitda-bewezen'), info = document.getElementById('dv-ebitda-bron'), b = window.FIN_EBITDA_BRON;
+  if (!el || !info || !b) return;
+  var afwijking = b.bron !== 'financieel' || String(Math.round(parseFloat(el.value) || 0)) !== el.getAttribute('data-bron-waarde');
+  var motVeld = '<label for="dv-ebitda-motivatie" style="display:block;font-size:11px;font-weight:600;margin-top:.35rem">Motivering handmatige bewezen EBITDA (verplicht)</label>'
+    + '<input type="text" id="dv-ebitda-motivatie" maxlength="120" style="width:100%;font-size:12px" value="' + finEsc((document.getElementById('dv-ebitda-motivatie') || {}).value || '') + '">';
+  info.innerHTML = !afwijking
+    ? '<span style="color:var(--teal)">Bron: financiële analyse, genormaliseerde EBITDA ' + finEsc(b.toelichting) + ' (alleen goedgekeurde normalisaties).</span>'
+    : '<span style="color:var(--red)">Handmatige waarde: ' + finEsc(b.bron === 'financieel' ? 'afwijkend van de genormaliseerde EBITDA uit de financiële analyse (' + finGeld(b.waarde) + ').' : b.toelichting) + '</span>' + motVeld;
+}
+// Voor mna/04 bij genereren: bron, waarde en motivering; geeft een foutmelding als een handmatige waarde geen motivering heeft.
+window.finEbitdaBronStatus = function () {
+  var el = document.getElementById('dv-ebitda-bewezen'), b = window.FIN_EBITDA_BRON;
+  var huidig = el ? Math.round(parseFloat(el.value) || 0) : 0;
+  var centraal = !!(b && b.bron === 'financieel' && el && String(huidig) === el.getAttribute('data-bron-waarde'));
+  var mot = ((document.getElementById('dv-ebitda-motivatie') || {}).value || '').trim();
+  return { bron: centraal ? 'financiële analyse (' + (b ? b.toelichting : '') + ')' : 'handmatig', motivering: centraal ? '' : mot, fout: !centraal && !mot ? 'Geef een motivering voor de handmatige bewezen EBITDA (afwijking van of ontbrekende genormaliseerde EBITDA uit de financiële analyse).' : '' };
+};
 window.finDealvoorstelHint = function (doelEl) {
   if (!doelEl || !isTussen()) return;
+  window.FIN_EBITDA_BRON = null;
+  var terugval = function (reden) { finZetEbitdaBron('handmatig', null, reden); };
   finHaal().then(function (x) {
-    if (!(x.s === 200 && x.d && x.d.ok === true && x.d.jaren && x.d.jaren.length)) return;
+    if (!(x.s === 200 && x.d && x.d.ok === true && x.d.jaren && x.d.jaren.length)) { terugval('geen gereed boekjaar in de financiële analyse; de waarde komt uit het DD-veld (terugval).'); return; }
+    var jl = x.d.jaren[x.d.jaren.length - 1];
+    var maatschap = (typeof isMaatschap === 'function') && isMaatschap();
+    var ondernemersloon = (x.d.normalisaties || []).some(function (n) { return n.status === 'goedgekeurd' && n.soort === 'partnerbeloning' && Number(n.jaar) === Number(jl.jaar); });
+    if (maatschap && !ondernemersloon) terugval('maatschap: in de financiële analyse is voor ' + jl.jaar + ' nog geen marktconform ondernemersloon (normalisatie partnerbeloning) goedgekeurd; de waarde komt uit het DD-veld (terugval).');
+    else finZetEbitdaBron('financieel', jl.genormaliseerd.ebitda, String(jl.jaar));
     var j = x.d.jaren[x.d.jaren.length - 1], p = x.d.prognose.status === 'goedgekeurd' && x.d.prognose.jaren.length ? x.d.prognose.jaren[0] : null;
     doelEl.innerHTML = '<div style="font-size:12px;background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:.5rem .7rem;margin-bottom:.8rem">'
       + 'Uit de financiële analyse: genormaliseerde EBITDA ' + finEsc(j.jaar) + ' <strong>' + finGeld(j.genormaliseerd.ebitda) + '</strong>'

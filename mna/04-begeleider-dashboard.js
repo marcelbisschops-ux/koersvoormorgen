@@ -3516,6 +3516,9 @@ function renderBegeleiderDashboard(app){
       c.voeg('dcf_groei_delta','DCF-gevoeligheid: groeivoet-bandbreedte (± procentpunt)','aantal',p.dcfGroeiDeltaPct);
     }
     var ic=lijst(),b=r.batna;
+    // KVM-014: herkomst van de bewezen EBITDA (centrale bron of gemotiveerde handmatige uitzondering), alleen intern.
+    if(p.ebitdaBron)ic.voeg('ebitda_bron','Herkomst bewezen EBITDA','tekst',String(p.ebitdaBron).slice(0,120));
+    if(p.ebitdaMotivering)ic.voeg('ebitda_motivering','Motivering handmatige bewezen EBITDA','tekst',String(p.ebitdaMotivering).slice(0,120));
     if(r.isSellDv){
       ic.voeg('verkoper_naam','Verkopende partij','tekst',r.verkoperNaam);
       ic.voeg('cash_closing_verkoper','Cash bij closing voor de verkoper','eur',R(vb.verkopersopbrengstCashClosing));
@@ -3572,11 +3575,11 @@ function renderBegeleiderDashboard(app){
     var mo=document.createElement('div');mo.setAttribute('role','dialog');mo.setAttribute('aria-modal','true');mo.setAttribute('aria-labelledby','dv-modal-titel');mo.style.cssText='background:var(--panel);border-radius:10px;padding:2rem;max-width:640px;width:100%;max-height:92vh;overflow-y:auto';
     mo.innerHTML='<div id="dv-modal-titel" style="font-family:Playfair Display,serif;font-size:1.15rem;color:var(--head);font-weight:600;margin-bottom:.25rem">&#128202; Dealvoorstel — dealparameters</div>'
       +'<div style="font-size:12px;color:#8a8880;margin-bottom:1.25rem">Deze cijfers worden exact zo berekend en meegenomen — de AI verzint geen eigen bedragen of multiples.</div>'
-      +(d.isMaatschap&&!d.maatschapGrondslagOnbekend?'<div style="font-size:12px;color:var(--teal-dim);background:var(--teal-bg);border:1px solid var(--teal-dark);border-radius:6px;padding:8px 12px;margin-bottom:1rem">Maatschap: "Bewezen EBITDA" is hier voorgevuld als de genormaliseerde winst mín een marktconform ondernemersloon voor de werkende maten ('+fmtGeld(d.ondernemersloonTotaal)+', uit het veld eigenaar-/partnerbeloning). VpB-tarief staat op 0 (maten betalen box-1 IB). Pas de bedragen aan als u een zuiverder ondernemersloon hanteert.</div>':'')
+      +(d.isMaatschap&&!d.maatschapGrondslagOnbekend?'<div id="dv-maatschap-info" style="font-size:12px;color:var(--teal-dim);background:var(--teal-bg);border:1px solid var(--teal-dark);border-radius:6px;padding:8px 12px;margin-bottom:1rem">Maatschap: "Bewezen EBITDA" is hier voorgevuld als de genormaliseerde winst mín een marktconform ondernemersloon voor de werkende maten ('+fmtGeld(d.ondernemersloonTotaal)+', uit het veld eigenaar-/partnerbeloning). VpB-tarief staat op 0 (maten betalen box-1 IB). Pas de bedragen aan als u een zuiverder ondernemersloon hanteert.</div>':'')
       +(d.isMaatschap&&d.maatschapGrondslagOnbekend?'<div style="font-size:12px;color:var(--red);background:var(--red-bg);border:1px solid var(--red);border-radius:6px;padding:8px 12px;margin-bottom:1rem"><strong>&#9888; Grondslag onbekend.</strong> Dit is een maatschap — de waardering rekent op de winst ná een marktconform ondernemersloon. Vul eerst het veld <strong>eigenaar-/partnerbeloning totaal per jaar</strong> in (fase Financieel), of vul "Bewezen EBITDA" hieronder handmatig met de reeds gecorrigeerde winst. Nu voorgevuld op 0 om geen ongecorrigeerd cijfer te suggereren.</div>':'')
       +'<div style="margin-bottom:1rem"><label for="dv-koper" style="'+lbl+'">Tegenpartij (koper)</label><input type="text" id="dv-koper" value="'+esc(d.koperNaam)+'" placeholder="Naam kopende partij" style="'+inp+'"></div>'
       +sectie('EBITDA & belang')
-      +'<div id="dv-fin-hint"></div>'+'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('dv-belang','Belang koper bij closing (%)',d.belangPct)+veld('dv-ebitda-bewezen','Bewezen EBITDA laatste boekjaar (€)',d.ebitdaBewezen)+'</div>'
+      +'<div id="dv-fin-hint"></div>'+'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('dv-belang','Belang koper bij closing (%)',d.belangPct)+veld('dv-ebitda-bewezen','Bewezen EBITDA laatste boekjaar (€)',d.ebitdaBewezen)+'</div>'+'<div id="dv-ebitda-bron" style="font-size:11px;line-height:1.5;margin:-.6rem 0 1rem"></div>'
       +'<div style="display:flex;gap:10px;margin-bottom:1rem">'+veld('dv-ebitda-prognose','Prognose-EBITDA komend jaar (€)',d.ebitdaPrognose)+veld('dv-cliff','Cliff-drempel (% van prognose)',d.cliffPct)+'</div>'
       +(d.grondslag==='omzet'
         ? '<div style="font-size:12px;color:var(--gold-dark);background:var(--gold-bg);border:1px solid var(--gold);border-radius:6px;padding:8px 12px;margin-bottom:1rem">Deze sector waardeert op een <strong>omzet-multiple</strong> (praktijkwaarde), niet op EBITDA. De multiple hieronder wordt op de <strong>omzet</strong> toegepast; de EBITDA-velden blijven nodig voor het schuldafbouw-/DCF-model (schuldcapaciteit is EBITDA-gedreven).</div>'
@@ -3673,6 +3676,9 @@ function renderBegeleiderDashboard(app){
     document.getElementById('dv-dcfgv-aan').onchange=function(){document.getElementById('dv-dcfgv-velden').style.display=this.checked?'block':'none';};
 
     document.getElementById('dv-ok').onclick=async function(){
+      // KVM-014 / werkregel 59: een handmatige bewezen EBITDA is alleen een gemotiveerde uitzondering.
+      var _ebBron=(typeof finEbitdaBronStatus==='function')?finEbitdaBronStatus():{bron:'handmatig',motivering:'',fout:''};
+      if(_ebBron.fout){var _e0=document.getElementById('dv-err');_e0.textContent=_ebBron.fout;_e0.style.display='block';return;}
       var btn=this;btn.disabled=true;btn.textContent='Genereren... (20-40 sec)';
       toast('⚙️ Bezig met genereren: Dealvoorstel...','info',4000);
       var errEl=document.getElementById('dv-err');errEl.style.display='none';
@@ -3680,6 +3686,7 @@ function renderBegeleiderDashboard(app){
         koperNaam:document.getElementById('dv-koper').value.trim()||'de koper',
         belangPct:parseFloat(document.getElementById('dv-belang').value)||51,
         ebitdaBewezen:parseFloat(document.getElementById('dv-ebitda-bewezen').value)||0,
+        ebitdaBron:_ebBron.bron,ebitdaMotivering:_ebBron.motivering,
         ebitdaPrognose:parseFloat(document.getElementById('dv-ebitda-prognose').value)||0,
         grondslag:d.grondslag||'ebitda',
         grondslagBewezen:(d.grondslag==='omzet')?(parseFloat((document.getElementById('dv-grondslag-bewezen')||{}).value)||0):(parseFloat(document.getElementById('dv-ebitda-bewezen').value)||0),
